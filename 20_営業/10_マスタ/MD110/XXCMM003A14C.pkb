@@ -33,6 +33,7 @@ AS
  *  2008/01/21    1.0   SCS Okuyama      新規作成
  *  2009/02/29    1.1   Yutaka.Kuboshima 顧客ステータス更新処理を変更
  *  2009/03/18    1.2   Yuuki.Nakamura   タスクステータス名定義テーブル．名称の取得条件を「クローズ」に変更
+ *  2009/05/20    1.3   Yutaka.Kuboshima 障害T1_0476,T1_1098の対応
  *
  *****************************************************************************************/
 --
@@ -148,6 +149,11 @@ AS
   cv_para02_name            CONSTANT VARCHAR2(12) := '処理日(TO)  ';        -- ｺﾝｶﾚﾝﾄ･ﾊﾟﾗﾒｰﾀ名02
   cv_para_at_name           CONSTANT VARCHAR2(10) := '自動取得値';          -- ｺﾝｶﾚﾝﾄ･ﾊﾟﾗﾒｰﾀ名_自動
 --
+-- 2009/05/20 Ver1.3 障害T1_1098 add start by Yutaka.Kuboshima
+  cv_cust_kbn               CONSTANT VARCHAR2(2)  := '10';                  -- 顧客区分（顧客）
+  cv_uesama_kbn             CONSTANT VARCHAR2(2)  := '12';                  -- 顧客区分（上様顧客）
+-- 2009/05/20 Ver1.3 障害T1_1098 add end by Yutaka.Kuboshima
+--
   -- ===============================
   -- ユーザー定義グローバル型
   -- ===============================
@@ -189,30 +195,39 @@ AS
       hz_cust_accounts        hzac,                       -- 顧客マスタ
       hz_parties              hzpt,                       -- パーティ
       xxcmm_cust_accounts     xcac,                       -- 顧客追加情報
-      (
-        SELECT
-          jtab.customer_id            AS  party_id,         -- パーティID
-          MAX(jtab.actual_end_date)   AS  final_call_date   -- 実績終了日（訪問日）
-        FROM
-          jtf_tasks_b                 jtab,                 -- タスク
-          jtf_task_statuses_b         jtsb,                 -- タスクステータス定義
-          jtf_task_statuses_tl        jtst,                 -- タスクステータス名定義
-          jtf_task_types_b            jttb,                 -- タスクタイプ定義
-          jtf_task_types_tl           jttt                  -- タスクタイプ名定義
-        WHERE
-              jtab.task_type_id     = jttb.task_type_id
-          AND jtab.task_status_id   = jtsb.task_status_id
-          AND jttb.task_type_id     = jttt.task_type_id
-          AND jtsb.task_status_id   = jtst.task_status_id
-          AND jttt.language         = cv_lang_ja
-          AND jttt.name             = cv_tsk_type_visit
-          AND jtsb.completed_flag   = cv_flag_yes
-          AND jtst.language         = cv_lang_ja
-          AND jtst.name             = cv_tsk_status_cmp
-          AND jtab.last_update_date BETWEEN gd_para_proc_date_f AND gd_para_proc_date_t
-        GROUP BY
-          jtab.customer_id
-      )                     fcdt      -- 最終訪問日更新対象情報
+-- 2009/05/20 Ver1.3 障害T1_0476 modify start by Yutaka.Kuboshima
+--      (
+--        SELECT
+--          jtab.customer_id            AS  party_id,         -- パーティID
+--          MAX(jtab.actual_end_date)   AS  final_call_date   -- 実績終了日（訪問日）
+--        FROM
+--          jtf_tasks_b                 jtab,                 -- タスク
+--          jtf_task_statuses_b         jtsb,                 -- タスクステータス定義
+--          jtf_task_statuses_tl        jtst,                 -- タスクステータス名定義
+--          jtf_task_types_b            jttb,                 -- タスクタイプ定義
+--          jtf_task_types_tl           jttt                  -- タスクタイプ名定義
+--        WHERE
+--              jtab.task_type_id     = jttb.task_type_id
+--          AND jtab.task_status_id   = jtsb.task_status_id
+--          AND jttb.task_type_id     = jttt.task_type_id
+--          AND jtsb.task_status_id   = jtst.task_status_id
+--          AND jttt.language         = cv_lang_ja
+--          AND jttt.name             = cv_tsk_type_visit
+--          AND jtsb.completed_flag   = cv_flag_yes
+--          AND jtst.language         = cv_lang_ja
+--          AND jtst.name             = cv_tsk_status_cmp
+--          AND jtab.last_update_date BETWEEN gd_para_proc_date_f AND gd_para_proc_date_t
+--        GROUP BY
+--          jtab.customer_id
+--      )                     fcdt      -- 最終訪問日更新対象情報
+        (
+          SELECT xvav.customer_id          AS party_id,       -- パーティID
+                 MAX(xvav.actual_end_date) AS final_call_date -- 実績終了日（訪問日）
+          FROM xxcso_visit_actual_v xvav                      -- 有効訪問実績ビュー
+          WHERE xvav.last_update_date BETWEEN gd_para_proc_date_f AND gd_para_proc_date_t
+          GROUP BY xvav.customer_id
+        )                     fcdt      -- 最終訪問日更新対象情報
+-- 2009/05/20 Ver1.3 障害T1_0476 modify end by Yutaka.Kuboshima
     WHERE
           hzac.party_id         = fcdt.party_id
       AND hzpt.party_id         = hzac.party_id
@@ -223,7 +238,6 @@ AS
 --
 --
 --
-
   /**********************************************************************************
    * Procedure Name   : prc_upd_xxcmm_cust_accounts
    * Description      : 顧客ステータス更新(A-6)
@@ -391,6 +405,9 @@ AS
     lv_step       VARCHAR2(10);     -- ステップ
     lv_emp_code   hz_org_profiles_ext_b.c_ext_attr1%TYPE;     -- 担当営業員
     lv_base_code  per_all_assignments_f.ass_attribute5%TYPE;  -- 拠点コード（新）
+-- 2009/05/20 Ver1.3 障害T1_1098 add start by Yutaka.Kuboshima
+    lv_delivery_base_code xxcmm_cust_accounts.delivery_base_code%TYPE; -- 納品拠点コード
+-- 2009/05/20 Ver1.3 障害T1_1098 add end by Yutaka.Kuboshima
 --
     -- *** ローカル・カーソル ***
 --
@@ -449,6 +466,14 @@ AS
       WHEN OTHERS THEN
         RAISE global_get_base_cd_expt;
     END;
+-- 2009/05/20 Ver1.3 障害T1_01098 add start by Yutaka.Kuboshima
+    -- 顧客区分が'10','12'の場合、拠点コード（新）を納品拠点に登録
+    IF (iv_rec.cust_kbn IN (cv_cust_kbn, cv_uesama_kbn)) THEN
+      lv_delivery_base_code := lv_base_code;
+    ELSE
+      lv_delivery_base_code := NULL;
+    END IF;
+-- 2009/05/20 Ver1.3 障害T1_01098 add end by Yutaka.Kuboshima
     --
     -- 顧客追加情報登録SQL文
     lv_step := 'A-5.1';
@@ -569,7 +594,10 @@ AS
       SUBSTRB(lv_base_code, 1, 4),  -- 前月売上拠点コード
       NULL,                         -- 予約売上拠点有効開始日
       NULL,                         -- 予約売上拠点コード
-      NULL,                         -- 納品拠点コード
+-- 2009/05/20 Ver1.3 障害T1_1098 modify start by Yutaka.Kuboshima
+--      NULL,                         -- 納品拠点コード
+      lv_delivery_base_code,        -- 納品拠点コード
+-- 2009/05/20 Ver1.3 障害T1_1098 modify end by Yutaka.Kuboshima
       NULL,                         -- 販売先本部担当拠点
       NULL,                         -- チェーン店コード（EDI）
       NULL,                         -- 店舗コード
