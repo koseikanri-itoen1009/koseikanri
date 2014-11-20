@@ -1,0 +1,1836 @@
+CREATE OR REPLACE PACKAGE BODY xxcmn770010c
+AS
+/*****************************************************************************************
+ * Copyright(c)Oracle Corporation Japan, 2008. All rights reserved.
+ *
+ * Package Name     : XXCMN770010C(body)
+ * Description      : 標準原価内訳表
+ * MD.050/070       : 月次〆切処理帳票Issue1.0 (T_MD050_BPO_770)
+ *                    月次〆切処理帳票Issue1.0 (T_MD070_BPO_77J)
+ * Version          : 1.2
+ *
+ * Program List
+ * -------------------------- ----------------------------------------------------------
+ *  Name                       Description
+ * -------------------------- ----------------------------------------------------------
+ *  prc_set_xml               PROCEDRUE : ＸＭＬ用配列に格納する。
+ *  fnc_conv_xml              FUNCTION  : ＸＭＬタグに変換する。
+ *  prc_initialize            PROCEDURE : 前処理
+ *  prc_get_report_data       PROCEDURE : 明細データ取得(J-1)
+ *  prc_create_xml_data       PROCEDURE : ＸＭＬデータ作成
+ *  submain                   PROCEDURE : メイン処理プロシージャ
+ *  main                      PROCEDURE : コンカレント実行ファイル登録プロシージャ
+ *
+ * Change Record
+ * ------------- ----- ---------------- -------------------------------------------------
+ *  Date          Ver.  Editor           Description
+ * ------------- ----- ---------------- -------------------------------------------------
+ *  2008/04/14    1.0   N.Chinen         新規作成
+ *  2008/05/13    1.1   N.Chinen         着荷日でデータを抽出するよう修正。
+ *  2008/05/16    1.2   Y.Majikina       パラメータ：処理年月がYYYYMで入力されるとエラーと
+ *                                       なる点を修正。
+ *
+ *****************************************************************************************/
+--
+--#######################  固定グローバル定数宣言部 START   #######################
+--
+  gv_status_normal CONSTANT VARCHAR2(1) := '0' ;
+  gv_status_warn   CONSTANT VARCHAR2(1) := '1' ;
+  gv_status_error  CONSTANT VARCHAR2(1) := '2' ;
+  gv_msg_part      CONSTANT VARCHAR2(3) := ' : ' ;
+  gv_msg_cont      CONSTANT VARCHAR2(3) := '.';
+--
+--################################  固定部 END   ###############################
+--
+--#######################  固定グローバル変数宣言部 START   #######################
+--
+--################################  固定部 END   ###############################
+--
+  -- ======================================================
+  -- ユーザー宣言部
+  -- ======================================================
+  -- ===============================
+  -- ユーザー定義グローバル定数
+  -- ===============================
+  gv_pkg_name               CONSTANT VARCHAR2(20) := 'XXCMN770010C' ;     -- パッケージ名
+  gv_print_name             CONSTANT VARCHAR2(20) := '標準原価内訳表' ;   -- 帳票名
+  gc_first_date             CONSTANT VARCHAR2(2) := '01'; -- 月初め:01日
+--
+  ------------------------------
+  -- クイックコード関連
+  ------------------------------
+  gc_lookup_type             CONSTANT VARCHAR2(40) := 'XXCMN_MONTH_TRANS_OUTPUT_FLAG';
+--
+  ------------------------------
+  -- 品目カテゴリ関連
+  ------------------------------
+  gc_cat_set_goods_class        CONSTANT VARCHAR2(100) := '商品区分' ;
+  gc_cat_set_item_class         CONSTANT VARCHAR2(100) := '品目区分' ;
+--
+   ------------------------------
+  -- 群種別
+  ------------------------------
+  gc_crowd_kind           CONSTANT VARCHAR2(1) := '3';    --群別
+  gc_crowd_acct_kind      CONSTANT VARCHAR2(1) := '4';    --経理群別
+--
+  ------------------------------
+  -- エラーメッセージ関連
+  ------------------------------
+  gc_application          CONSTANT VARCHAR2(5)  := 'XXCMN' ;          -- アプリケーション
+--
+  ------------------------------
+  -- 日付項目編集関連
+  ------------------------------
+  gc_char_y_format        CONSTANT VARCHAR2(30) := 'YYYYMM';
+  gc_char_format          CONSTANT VARCHAR2(30) := 'YYYYMMDD' ;
+  gc_char_d_format        CONSTANT VARCHAR2(30) := 'YYYY/MM/DD' ;
+  gc_char_dt_format       CONSTANT VARCHAR2(30) := 'YYYY/MM/DD HH24:MI:SS' ;
+  gc_char_ym_format       CONSTANT VARCHAR2(30) := 'YYYY"年"MM"月"';
+--
+  ------------------------------
+  -- 項目編集関連
+  ------------------------------
+  gc_d                   CONSTANT VARCHAR2(1) := 'D';
+  gc_n                   CONSTANT VARCHAR2(1) := 'N';
+  gc_t                   CONSTANT VARCHAR2(1) := 'T';
+  gc_z                   CONSTANT VARCHAR2(1) := 'Z';
+--
+  ------------------------------
+  -- 数値・金額小数点位置
+  ------------------------------
+  gn_qty_dec             CONSTANT NUMBER      := 3;
+--
+  gn_one                 CONSTANT NUMBER      := 1   ;
+  gn_two                 CONSTANT NUMBER      := 2   ;
+--
+  ------------------------------
+  -- 項目位置判断
+  ------------------------------
+  -- 受入
+  gc_col_no_po             CONSTANT VARCHAR2(2) := '1';    -- 仕入
+  gc_col_no_wrap           CONSTANT VARCHAR2(2) := '2';    -- 包装
+  gc_col_no_set            CONSTANT VARCHAR2(2) := '3';    -- セット
+  gc_col_no_oki            CONSTANT VARCHAR2(2) := '4';    -- 沖縄
+  gc_col_no_trnsfr         CONSTANT VARCHAR2(2) := '5';    -- 振替入庫
+  gc_col_no_acct_1         CONSTANT VARCHAR2(2) := '6';    -- 緑営１
+  gc_col_no_acct_2         CONSTANT VARCHAR2(2) := '7';    -- 緑営２
+  gc_col_no_guift          CONSTANT VARCHAR2(2) := '8';    -- ドリンクギフト
+  gc_col_no_locat_chg      CONSTANT VARCHAR2(2) := '9';    -- 倉替
+  gc_col_no_ret_goods      CONSTANT VARCHAR2(2) := '10';   -- 返品
+  gc_col_no_other          CONSTANT VARCHAR2(2) := '11';   -- その他
+  -- 払出
+  gc_col_no_out_set        CONSTANT VARCHAR2(2) := '12';   -- セット
+  gc_col_no_out_mtrl       CONSTANT VARCHAR2(2) := '13';   -- 返品原料へ
+  gc_col_no_out_dismnt     CONSTANT VARCHAR2(2) := '14';   -- 解体半製品へ
+  gc_col_no_out_pay        CONSTANT VARCHAR2(2) := '15';   -- 有償
+  gc_col_no_out_trnsfr     CONSTANT VARCHAR2(2) := '16';   -- 振替有償
+  gc_col_no_out_point      CONSTANT VARCHAR2(2) := '17';   -- 拠点
+  gc_col_no_out_guift      CONSTANT VARCHAR2(2) := '18';   -- ドリンクギフト
+  gc_col_no_out_other      CONSTANT VARCHAR2(2) := '19';   -- その他
+--
+  -- ===============================
+  -- ユーザー定義グローバル型
+  -- ===============================
+  -- 入力パラメータ格納用レコード変数
+  TYPE rec_param_data  IS RECORD(
+      exec_date_from      VARCHAR2(6)                              -- 処理年月(from,'YYYYMM'形式)
+     ,exec_date_to        VARCHAR2(6)                              -- 処理年月(to,  'YYYYMM'形式)
+     ,goods_class         mtl_categories_b.segment1%TYPE           -- 商品区分
+     ,item_class          mtl_categories_b.segment1%TYPE           -- 品目区分
+     ,rcv_pay_div         xxcmn_rcv_pay_mst_prod_v.rcv_pay_div%TYPE -- 受払区分
+     ,crowd_kind          fnd_lookup_values.meaning%TYPE           -- 群種別
+     ,crowd_code          mtl_categories_b.segment1%TYPE           -- 群コード
+     ,acct_crowd_code     mtl_categories_b.segment1%TYPE           -- 経理群コード
+    );
+--
+  -- 受払残高表データ格納用レコード変数
+  TYPE rec_data_type_dtl IS RECORD(
+      item_code             ic_item_mst_b.item_no%TYPE              -- 品目コード
+     ,item_name             xxcmn_item_mst_b.item_short_name%TYPE   -- 品目名称
+     ,unit_price            cm_cmpt_dtl.cmpnt_cost%TYPE             -- 標準原価
+     ,raw_material_cost     cm_cmpt_dtl.cmpnt_cost%TYPE             -- 原料費
+     ,agein_cost            cm_cmpt_dtl.cmpnt_cost%TYPE             -- 再製費
+     ,material_cost         cm_cmpt_dtl.cmpnt_cost%TYPE             -- 資材費
+     ,pack_cost             cm_cmpt_dtl.cmpnt_cost%TYPE             -- 包装費
+     ,other_expense_cost    cm_cmpt_dtl.cmpnt_cost%TYPE             -- その他経費
+     ,crowd_code            mtl_categories_b.segment1%TYPE          -- 群コード
+     ,crowd_low             mtl_categories_b.segment1%TYPE          -- 群コード（小）
+     ,crowd_mid             mtl_categories_b.segment1%TYPE          -- 群コード（中）
+     ,crowd_high            mtl_categories_b.segment1%TYPE          -- 群コード（大）
+     ,trans_qty             ic_tran_pnd.trans_qty%TYPE              -- 取引数量
+    );
+  TYPE tab_data_type_dtl IS TABLE OF rec_data_type_dtl INDEX BY BINARY_INTEGER ;
+--
+  -- ===============================
+  -- ユーザー定義グローバル変数
+  -- ===============================
+  gn_user_id                fnd_user.user_id%TYPE DEFAULT FND_GLOBAL.USER_ID; -- ユーザーＩＤ
+--
+  ------------------------------
+  -- ヘッダ情報取得用
+  ------------------------------
+  gv_user_dept              xxcmn_locations_all.location_short_name%TYPE; -- 担当部署
+  gv_user_name              per_all_people_f.per_information18%TYPE;      -- 担当者
+  gv_print_class_name       fnd_lookup_values.meaning%TYPE;               -- 帳票種別名
+  gv_goods_class_name       mtl_categories_tl.description%TYPE;           -- 商品区分名
+  gv_rcv_pay_div_name       fnd_lookup_values.meaning%TYPE;               -- 受払区分名
+  gv_crowd_kind_name        mtl_categories_tl.description%TYPE;           -- 群種別名
+--
+  ------------------------------
+  -- 条件取得用
+  ------------------------------
+  gv_exec_year_month_bef    VARCHAR2(6);       -- 処理年月の前月
+  gd_exec_start             DATE;             -- 処理年月の開始日
+  gd_exec_end               DATE;             -- 処理年月の終了日
+  gv_exec_start             VARCHAR2(20);     -- 処理年月の開始日
+  gv_exec_end               VARCHAR2(20);     -- 処理年月の終了日
+--
+  ------------------------------
+  -- ＸＭＬ用
+  ------------------------------
+  gv_report_id              VARCHAR2(12) ;    -- 帳票ID
+  gd_exec_date              DATE         ;    -- 実施日
+--
+  gt_main_data              tab_data_type_dtl ;       -- 取得レコード表
+  gt_xml_data_table         XML_DATA ;                -- ＸＭＬデータタグ表
+  gl_xml_idx                NUMBER DEFAULT 0 ;        -- ＸＭＬデータタグ表のインデックス
+--
+--#####################  固定共通例外宣言部 START   ####################
+--
+  --*** 処理部共通例外 ***
+  global_process_expt       EXCEPTION ;
+  --*** 共通関数例外 ***
+  global_api_expt           EXCEPTION ;
+  --*** 共通関数OTHERS例外 ***
+  global_api_others_expt    EXCEPTION ;
+--
+  PRAGMA EXCEPTION_INIT(global_api_others_expt,-20000) ;
+--
+--###########################  固定部 END   ############################
+--
+  /**********************************************************************************
+   * Function Name    : fnc_conv_xml
+   * Description      : ＸＭＬタグに変換する。
+   ***********************************************************************************/
+  FUNCTION fnc_conv_xml(
+      iv_name              IN        VARCHAR2   --   タグネーム
+     ,iv_value             IN        VARCHAR2   --   タグデータ
+     ,ic_type              IN        CHAR       --   タグタイプ
+    ) RETURN VARCHAR2
+  IS
+    -- =====================================================
+    -- 固定ローカル定数
+    -- =====================================================
+    cv_prg_name    CONSTANT VARCHAR2(100) := 'fnc_conv_xml' ;   -- プログラム名
+--
+    -- =====================================================
+    -- ユーザー宣言部
+    -- =====================================================
+    -- *** ローカル変数 ***
+    lv_convert_data         VARCHAR2(2000) ;
+--
+  BEGIN
+--
+    --データの場合
+    IF (ic_type = 'D') THEN
+      lv_convert_data := '<'||iv_name||'>'||iv_value||'</'||iv_name||'>' ;
+    ELSE
+      lv_convert_data := '<'||iv_name||'>' ;
+    END IF ;
+--
+    RETURN(lv_convert_data) ;
+--
+  END fnc_conv_xml ;
+--
+  /**********************************************************************************
+   * Procedure Name   : prc_initialize
+   * Description      : 前処理
+   ***********************************************************************************/
+  PROCEDURE prc_initialize(
+      ir_param      IN     rec_param_data   -- 01.入力パラメータ群
+     ,ov_errbuf     OUT    VARCHAR2         --    エラー・メッセージ           --# 固定 #
+     ,ov_retcode    OUT    VARCHAR2         --    リターン・コード             --# 固定 #
+     ,ov_errmsg     OUT    VARCHAR2         --    ユーザー・エラー・メッセージ --# 固定 #
+    )
+  IS
+    -- ===============================
+    -- 固定ローカル定数
+    -- ===============================
+    -- プログラム名
+    cv_prg_name           CONSTANT VARCHAR2(100) := 'prc_initialize';
+    --受払区分
+    cv_div_type           CONSTANT fnd_lookup_values.lookup_type%TYPE := 'XXCMN_NEW_ACCOUNT_DIV';
+    --処理年月(FROM)のエラー
+    cv_err_exec_date_from CONSTANT VARCHAR2(20) := '処理年月(FROM)';
+    --処理年月(TO)のエラー
+    cv_err_exec_date_to   CONSTANT VARCHAR2(20) := '処理年月(TO)';
+--
+--#####################  固定ローカル変数宣言部 START   ########################
+--
+    lv_errbuf  VARCHAR2(5000);  -- エラー・メッセージ
+    lv_retcode VARCHAR2(1);     -- リターン・コード
+    lv_errmsg  VARCHAR2(5000);  -- ユーザー・エラー・メッセージ
+--
+--###########################  固定部 END   ####################################
+--
+    -- ===============================
+    -- ユーザー宣言部
+    -- ===============================
+    -- *** ローカル定数 ***
+    lc_f_time          CONSTANT VARCHAR2(10) := ' 00:00:00';
+    lc_e_time          CONSTANT VARCHAR2(10) := ' 23:59:59';
+    -- *** ローカル変数 ***
+--
+    -- *** ローカル・例外処理 ***
+    get_value_expt        EXCEPTION ;     -- 値取得エラー
+--
+  BEGIN
+--
+--##################  固定ステータス初期化部 START   ###################
+--
+    ov_retcode := gv_status_normal;
+--
+--###########################  固定部 END   ############################
+--
+    -- ====================================================
+    -- 担当部署名取得
+    -- ====================================================
+    gv_user_dept := xxcmn_common_pkg.get_user_dept( gn_user_id ) ;
+--
+    -- ====================================================
+    -- 担当者名取得
+    -- ====================================================
+    gv_user_name := xxcmn_common_pkg.get_user_name( gn_user_id ) ;
+--
+    -- ====================================================
+    -- 商品区分取得
+    -- ====================================================
+    BEGIN
+      SELECT cat.description
+      INTO   gv_goods_class_name
+      FROM   xxcmn_categories2_v cat
+      WHERE  cat.category_set_name = gc_cat_set_goods_class
+      AND    cat.segment1          = ir_param.goods_class
+      ;
+    EXCEPTION
+      WHEN NO_DATA_FOUND THEN
+        NULL;
+    END ;
+--
+    -- ====================================================
+    -- 受払区分取得
+    -- ====================================================
+    BEGIN
+      SELECT xlvv.meaning
+      INTO   gv_rcv_pay_div_name
+      FROM   xxcmn_lookup_values_v xlvv
+      WHERE  xlvv.lookup_type = cv_div_type
+      AND    lookup_code = ir_param.rcv_pay_div
+      ;
+    EXCEPTION
+      WHEN NO_DATA_FOUND THEN
+        NULL;
+    END ;
+--
+    -- ====================================================
+    -- 日付情報取得
+    -- ====================================================
+    -- 処理年月・開始日
+    gd_exec_start := FND_DATE.STRING_TO_DATE(ir_param.exec_date_from, gc_char_y_format);
+    gv_exec_start := TO_CHAR(gd_exec_start, gc_char_d_format) || lc_f_time;
+    -- エラー処理
+    IF ( gd_exec_start IS NULL ) THEN
+      lv_errmsg := xxcmn_common_pkg.get_msg ( gc_application
+                                             ,'APP-XXCMN-10155'
+                                             ,'ERROR_PARAM'
+                                             ,cv_err_exec_date_from
+                                             ,'ERROR_VALUE'
+                                             ,ir_param.exec_date_from ) ;
+      lv_retcode  := gv_status_error;
+      RAISE global_api_expt;
+    END IF;
+    -- 処理年月・終了日
+    gd_exec_end   := LAST_DAY(FND_DATE.STRING_TO_DATE(ir_param.exec_date_to, gc_char_y_format));
+    gv_exec_end   := TO_CHAR(gd_exec_end, gc_char_d_format) || lc_f_time;
+    -- エラー処理
+    IF ( gd_exec_end IS NULL ) THEN
+      lv_errmsg := xxcmn_common_pkg.get_msg ( gc_application
+                                             ,'APP-XXCMN-10155'
+                                             ,'ERROR_PARAM'
+                                             ,cv_err_exec_date_to
+                                             ,'ERROR_VALUE'
+                                             ,ir_param.exec_date_to ) ;
+      lv_retcode  := gv_status_error;
+      RAISE global_api_expt;
+    END IF;
+--
+  EXCEPTION
+    --*** 値取得エラー例外 ***
+    WHEN get_value_expt THEN
+--
+      ov_errmsg  := lv_errmsg ;
+      ov_errbuf  := lv_errmsg ;
+      ov_retcode := lv_retcode ;
+--
+--#################################  固定例外処理部 START   ####################################
+--
+    -- *** 共通関数例外ハンドラ ***
+    WHEN global_api_expt THEN
+      ov_errmsg  := lv_errmsg;
+      ov_errbuf  := SUBSTRB(gv_pkg_name||gv_msg_cont||cv_prg_name||gv_msg_part||lv_errbuf,1,5000);
+      ov_retcode := gv_status_error;
+    -- *** 共通関数OTHERS例外ハンドラ ***
+    WHEN global_api_others_expt THEN
+      ov_errbuf  := gv_pkg_name||gv_msg_cont||cv_prg_name||gv_msg_part||SQLERRM;
+      ov_retcode := gv_status_error;
+    -- *** OTHERS例外ハンドラ ***
+    WHEN OTHERS THEN
+      ov_errbuf  := gv_pkg_name||gv_msg_cont||cv_prg_name||gv_msg_part||SQLERRM;
+      ov_retcode := gv_status_error;
+--
+--#####################################  固定部 END   ##########################################
+--
+  END prc_initialize ;
+  /**********************************************************************************
+   * Procedure Name   : prc_get_report_data
+   * Description      : 明細データ取得(J-1)
+   ***********************************************************************************/
+  PROCEDURE prc_get_report_data(
+      ir_param      IN  rec_param_data            -- 01.入力パラメータ群
+     ,ot_data_rec   OUT NOCOPY tab_data_type_dtl  -- 02.取得レコード群
+     ,ov_errbuf     OUT VARCHAR2                  --    エラー・メッセージ           --# 固定 #
+     ,ov_retcode    OUT VARCHAR2                  --    リターン・コード             --# 固定 #
+     ,ov_errmsg     OUT VARCHAR2                  --    ユーザー・エラー・メッセージ --# 固定 #
+    )
+  IS
+    -- ===============================
+    -- 固定ローカル定数
+    -- ===============================
+    cv_prg_name   CONSTANT VARCHAR2(100) := 'prc_get_report_data'; -- プログラム名
+--
+--#####################  固定ローカル変数宣言部 START   ########################
+--
+    lv_errbuf  VARCHAR2(5000);  -- エラー・メッセージ
+    lv_retcode VARCHAR2(1);     -- リターン・コード
+    lv_errmsg  VARCHAR2(5000);  -- ユーザー・エラー・メッセージ
+--
+--###########################  固定部 END   ####################################
+--
+    -- ===============================
+    -- ユーザー宣言部
+    -- ===============================
+    -- *** ローカル・定数 ***
+    -- 各文書タイプ
+    cv_doc_type_xfer          CONSTANT VARCHAR2(4) := 'XFER';
+    cv_doc_type_trni          CONSTANT VARCHAR2(4) := 'TRNI';
+    cv_doc_type_prod          CONSTANT VARCHAR2(4) := 'PROD';
+    cv_doc_type_adji          CONSTANT VARCHAR2(4) := 'ADJI';
+    cv_doc_type_porc          CONSTANT VARCHAR2(4) := 'PORC';
+    cv_doc_type_omso          CONSTANT VARCHAR2(4) := 'OMSO';
+    -- 完了フラグ
+    cv_completed_ind          CONSTANT VARCHAR2(4) := '1';
+    -- 在庫調整事由コード
+    cv_reason_code_henpin     CONSTANT VARCHAR2(4) := 'X201'; -- 仕入先返品
+    cv_reason_code_hamaoka    CONSTANT VARCHAR2(4) := 'X988'; -- 浜岡受入
+    cv_reason_code_aitezaiko  CONSTANT VARCHAR2(4) := 'X977'; -- 相手先在庫
+    cv_reason_code_idouteisei CONSTANT VARCHAR2(4) := 'X123'; -- 移動実績訂正
+    cv_reason_code_mokusi     CONSTANT VARCHAR2(4) := 'X942'; -- 黙視品目受払
+    cv_reason_code_sonota     CONSTANT VARCHAR2(4) := 'X951'; -- その他受払
+    -- 原価管理区分
+    cv_cost_manage_code       CONSTANT VARCHAR2(4) := '1'; -- 標準原価
+    -- 日本
+    cv_jpn                    CONSTANT VARCHAR2(4) := 'JA';
+    -- 受払区分
+    cv_rcv_pay_div_plus       CONSTANT VARCHAR2(3) := '1';
+    cv_rcv_pay_div_minus      CONSTANT VARCHAR2(3) := '-1';
+    -- 取引区分
+    cv_dealings_div_hinsyu    CONSTANT VARCHAR2(3) := '308'; -- 品種振替
+    cv_dealings_div_hinmoku   CONSTANT VARCHAR2(3) := '309'; -- 品目振替
+--
+    -- *** ローカル・変数 ***
+    lv_from_xfer    VARCHAR2(32000) ; -- 移動積送あり
+    lv_from_trni    VARCHAR2(32000) ; -- 移動積送なし
+    lv_from_prod_1  VARCHAR2(32000) ; -- 生産関連：reverse_id is null
+    lv_from_adji_1  VARCHAR2(32000) ; -- 在庫調整：下記以外のデータ全て
+    lv_from_adji_2  VARCHAR2(32000) ; -- 在庫調整：仕入先返品
+    lv_from_adji_3  VARCHAR2(32000) ; -- 在庫調整：浜岡受入
+    lv_from_adji_4  VARCHAR2(32000) ; -- 在庫調整：相手先在庫
+    lv_from_adji_5  VARCHAR2(32000) ; -- 在庫調整：移動実績訂正
+    lv_from_porc_1  VARCHAR2(32000) ; -- 購買関連：文書タイプRMA
+    lv_from_porc_2  VARCHAR2(32000) ; -- 購買関連：文書タイプPO
+    lv_from_omso    VARCHAR2(32000) ; -- 受注関連
+--
+    -- UNION ALLするSQLの共通部
+    lv_select_inner VARCHAR2(32000) ;
+    lv_where_inner  VARCHAR2(32000) ;
+--
+    lv_from         VARCHAR2(32000) ;
+    lv_order_by     VARCHAR2(32000) ;
+    lv_sql          VARCHAR2(32000) ;     -- データ取得用ＳＱＬ
+--
+    -- *** ローカル・カーソル ***
+    TYPE   ref_cursor IS REF CURSOR ;
+    lc_ref ref_cursor ;
+--
+  BEGIN
+--
+--##################  固定ステータス初期化部 START   ###################
+--
+    ov_retcode := gv_status_normal;
+--
+--###########################  固定部 END   ############################
+--
+    -- ----------------------------------------------------
+    -- ＳＥＬＥＣＴ句生成
+    -- ----------------------------------------------------
+    -- INNER_SQLのSELECT部
+    lv_select_inner := ' SELECT '
+                    || ' ximv.item_no             item_code,          ' -- 品目コード
+                    || ' ximv.item_short_name     item_name,          ' -- 品目名称
+                    || ' xsup.stnd_unit_price     unit_price,         ' -- 原価：標準原価
+                    || ' xsup.stnd_unit_price_gen raw_material_cost,  ' -- 原価：原料費
+                    || ' xsup.stnd_unit_price_sai agein_cost,         ' -- 原価：再製費
+                    || ' xsup.stnd_unit_price_shi material_cost,      ' -- 原価：資材費
+                    || ' xsup.stnd_unit_price_hou pack_cost,          ' -- 原価：包装費
+                    || ' xsup.stnd_unit_price_kei other_expense_cost, ' -- 原価：その他経費
+                    ;
+    IF (ir_param.crowd_kind = gc_crowd_kind) THEN
+      -- 群種別＝「3：郡別」が指定されている場合
+      lv_select_inner := lv_select_inner
+                      || 'xicv.crowd_code                crowd_code, '        --群コード
+                      || 'SUBSTR(xicv.crowd_code, 1, 3)  crowd_low,  '         --小群
+                      || 'SUBSTR(xicv.crowd_code, 1, 2)  crowd_mid,  '         --中群
+                      || 'SUBSTR(xicv.crowd_code, 1, 1)  crowd_high,  '         --大群
+                      ;
+    ELSIF (ir_param.crowd_kind = gc_crowd_acct_kind) THEN
+      -- 群種別＝「4：経理郡別」が指定されている場合
+      lv_select_inner := lv_select_inner
+                      || 'xicv.acnt_crowd_code                crowd_code, '    --経理群コード
+                      || 'SUBSTR(xicv.acnt_crowd_code, 1, 3)  crowd_low,  '     --小群
+                      || 'SUBSTR(xicv.acnt_crowd_code, 1, 2)  crowd_mid,  '     --中群
+                      || 'SUBSTR(xicv.acnt_crowd_code, 1, 1)  crowd_high,  '     --大群
+                      ;
+    END IF;
+    -- ----------------------------------------------------
+    -- ＷＨＥＲＥ句生成
+    -- ----------------------------------------------------
+    -- INNER_SQLのWHERE部
+    lv_where_inner := ' AND it.trans_date '
+                   || ' BETWEEN FND_DATE.STRING_TO_DATE(''' || ir_param.exec_date_from
+                                                            || gc_first_date
+                                                            || ''', '''
+                                                            || gc_char_format
+                                                            || ''')'
+                   || ' AND LAST_DAY(FND_DATE.STRING_TO_DATE(''' || ir_param.exec_date_to
+                                                                 || gc_first_date
+                                                                 || ''', '''
+                                                                 || gc_char_format
+                                                                 || '''))'
+                   || ' AND xlvv.lookup_type            = ''' || gc_lookup_type || ''' '
+                   || ' AND xlvv.language               = ''' || cv_jpn || ''' '
+                   || ' AND xlvv.source_lang            = ''' || cv_jpn || ''' '
+                   || ' AND xlvv.attribute10            IS NOT NULL '
+                   || ' AND (   (xlvv.start_date_active IS NULL) '
+                   || '      OR (xlvv.start_date_active <= TRUNC(it.trans_date))) '
+                   || ' AND (   (xlvv.end_date_active   IS NULL) '
+                   || '      OR (xlvv.end_date_active   >= TRUNC(it.trans_date))) '
+                   || ' AND (   (ximv.start_date_active IS NULL) '
+                   || '      OR (ximv.start_date_active <= TRUNC(it.trans_date))) '
+                   || ' AND (   (ximv.end_date_active   IS NULL) '
+                   || '      OR (ximv.end_date_active   >= TRUNC(it.trans_date))) '
+                   || ' AND ximv.cost_manage_code       = ''' || cv_cost_manage_code || ''' '
+                   || ' AND ximv.item_id                = xicv.item_id '
+                   || ' AND xicv.prod_class_code        = ''' || ir_param.goods_class || ''' '
+                   || ' AND xicv.item_class_code        = ''' || ir_param.item_class || ''''
+                   || ' AND (   (xsup.start_date_active IS NULL) '
+                   || '      OR (xsup.start_date_active <= TRUNC(it.trans_date))) '
+                   || ' AND (   (xsup.end_date_active   IS NULL) '
+                   || '      OR (xsup.end_date_active   >= TRUNC(it.trans_date))) '
+                   ;
+--
+    -- ----------------------------------------------------
+    -- パラメータで抽出が変わるwhere項目の生成
+    -- ----------------------------------------------------
+    -- 群種別＝「3：郡別」が指定されている場合
+    IF (ir_param.crowd_kind = gc_crowd_kind) THEN
+      -- 群コードが入力されている場合
+      IF (ir_param.crowd_code  IS NOT NULL) THEN
+        lv_where_inner := lv_where_inner
+                       || ' AND xicv.crowd_code = ''' || ir_param.crowd_code || ''''
+                       ;
+      END IF;
+    END IF;
+--
+    -- 群種別＝「4：経理郡別」が指定されている場合
+    IF (ir_param.crowd_kind = gc_crowd_acct_kind) THEN
+      -- 経理群コードが入力されている場合
+       IF (ir_param.acct_crowd_code  IS NOT NULL) THEN
+        lv_where_inner := lv_where_inner
+                       || ' AND xicv.acnt_crowd_code = ''' || ir_param.acct_crowd_code || ''''
+                       ;
+      END IF;
+    END IF;
+--
+    -- ----------------------------------------------------
+    -- ＦＲＯＭ句生成
+    -- ----------------------------------------------------
+    -- 1:移動積送あり
+    lv_from_xfer := lv_select_inner
+                 || ' it.trans_qty trans_qty ' -- 数量
+                 -- from
+                 || ' FROM '
+                 || ' ic_tran_pnd               it,     '
+                 || ' xxcmn_rcv_pay_mst_xfer_v  xrpmxv, '
+                 || ' ic_xfer_mst               ixm,    ' -- ＯＰＭ在庫転送マスタ
+                 || ' xxinv_mov_req_instr_lines xmril,  ' -- 移動依頼／指示明細（アドオン）
+                 || ' xxcmn_lookup_values2_v    xlvv,   ' -- クイックコード情報VIEW2
+                 || ' xxcmn_item_mst2_v         ximv,   ' -- 品目情報ビュー
+                 || ' xxcmn_item_categories3_v  xicv,   ' -- 品目カテゴリービュー
+                 || ' xxcmn_stnd_unit_price_v   xsup    ' -- 標準原価情報VIEW
+                 || ' WHERE '
+                 || '     it.doc_type             = ''' || cv_doc_type_xfer || ''' '
+                 || ' AND it.completed_ind        = ' || cv_completed_ind || ' '
+                 || ' AND it.doc_type             = xrpmxv.doc_type '
+                 || ' AND it.reason_code          = xrpmxv.reason_code '
+                 || ' AND xrpmxv.rcv_pay_div      = CASE '
+                 || '                                 WHEN it.trans_qty >= 0 THEN '''
+                                                               || cv_rcv_pay_div_plus  || ''' '
+                 || '                                 ELSE ''' || cv_rcv_pay_div_minus || ''' '
+                 || '                               END '
+                 || ' AND it.doc_id               = ixm.transfer_id '
+                 || ' AND ixm.attribute1          = xmril.mov_line_id '
+                 || ' AND xrpmxv.dealings_div     = xlvv.meaning '
+                 || ' AND xrpmxv.new_div_account  = ''' || ir_param.rcv_pay_div || ''' '
+                 || ' AND it.item_id              = ximv.item_id '
+                 || ' AND it.item_id              = xsup.item_id '
+                 || lv_where_inner
+                 ;
+    -- 2:移動積送なし
+    lv_from_trni := lv_select_inner
+                 || ' it.trans_qty trans_qty ' -- 数量
+                 || ' FROM '
+                 || ' ic_tran_cmp               it, '
+                 || ' xxcmn_rcv_pay_mst_trni_v  xrpmtv, '
+                 || ' ic_adjs_jnl               iaj, '    -- ＯＰＭ在庫調整ジャーナル
+                 || ' ic_jrnl_mst               ijm, '    -- ＯＰＭジャーナルマスタ
+                 || ' xxinv_mov_req_instr_lines xmril, '  -- 移動依頼／指示明細（アドオン）
+                 || ' xxcmn_lookup_values2_v    xlvv,   ' -- クイックコード情報view2
+                 || ' xxcmn_item_mst2_v         ximv,   ' -- 品目情報ビュー
+                 || ' xxcmn_item_categories3_v  xicv,   ' -- 品目カテゴリービュー
+                 || ' xxcmn_stnd_unit_price_v   xsup    ' -- 標準原価情報view
+                 || ' WHERE '
+                 || ' it.doc_type                 = ''' || cv_doc_type_trni || ''' '
+                 || ' AND it.doc_type             = xrpmtv.doc_type '
+                 || ' AND it.line_type            = xrpmtv.rcv_pay_div '
+                 || ' AND it.reason_code          = xrpmtv.reason_code '
+                 || ' AND xrpmtv.rcv_pay_div      = CASE '
+                 || '                                 WHEN it.trans_qty >= 0 THEN '''
+                                                               || cv_rcv_pay_div_plus  || ''' '
+                 || '                                 ELSE ''' || cv_rcv_pay_div_minus || ''' '
+                 || '                               END '
+                 || ' AND it.doc_type             = iaj.trans_type '
+                 || ' AND it.doc_id               = iaj.doc_id '
+                 || ' AND it.doc_line             = iaj.doc_line '
+                 || ' AND iaj.journal_id          = ijm.journal_id '
+                 || ' AND ijm.attribute1          = xmril.mov_line_id '
+                 || ' AND xrpmtv.dealings_div     = xlvv.meaning '
+                 || ' AND xrpmtv.new_div_account  = ''' || ir_param.rcv_pay_div || ''' '
+                 || ' AND it.item_id              = ximv.item_id '
+                 || ' AND it.item_id              = xsup.item_id '
+                 || lv_where_inner
+                 ;
+    -- 3:生産関連：reverse_id is null
+    lv_from_prod_1 := lv_select_inner
+                   || ' it.trans_qty trans_qty ' -- 数量
+                   || ' FROM '
+                   || ' ic_tran_pnd                 it, '
+                   || ' xxcmn_rcv_pay_mst_prod_v    xrpmpv, '
+                   || ' xxwip_material_detail       xmd, '    -- 生産原料詳細（アドオン）
+                   || ' xxcmn_lookup_values2_v      xlvv,   ' -- クイックコード情報view2
+                   || ' xxcmn_item_mst2_v           ximv,   ' -- 品目情報ビュー
+                   || ' xxcmn_item_categories3_v    xicv,   ' -- 品目カテゴリービュー
+                   || ' xxcmn_stnd_unit_price_v     xsup    ' -- 標準原価情報view
+                   || ' WHERE '
+                   || ' it.doc_type                 = ''' || cv_doc_type_prod || ''' '
+                   || ' AND it.completed_ind        = ' || cv_completed_ind || ' '
+                   || ' AND it.reverse_id           IS NULL '
+                   || ' AND it.doc_type             = xrpmpv.doc_type '
+                   || ' AND it.line_type            = xrpmpv.line_type '
+                   || ' AND it.doc_id               = xrpmpv.doc_id '
+                   || ' AND it.doc_line             = xrpmpv.doc_line '
+                   || ' AND it.item_id              = xmd.item_id '
+                   || ' AND it.lot_id               = xmd.lot_id '
+                   || ' AND xrpmpv.dealings_div     <> ''' || cv_dealings_div_hinsyu || ''' '
+                   || ' AND xrpmpv.dealings_div     <> ''' || cv_dealings_div_hinmoku || ''' '
+                   || ' AND xrpmpv.dealings_div     = xlvv.meaning '
+                   || ' AND xrpmpv.new_div_account  = ''' || ir_param.rcv_pay_div || ''' '
+                   || ' AND it.item_id              = ximv.item_id '
+                   || ' AND it.item_id              = xsup.item_id '
+                   || lv_where_inner
+                   ;
+    -- 4:在庫調整：(仕入先返品、浜岡受入、相手先在庫、移動実績訂正、黙視品目受払、その他受払以外)
+    lv_from_adji_1 := lv_select_inner
+                   || ' it.trans_qty trans_qty ' -- 数量
+                   || ' FROM '
+                   || ' ic_tran_cmp               it, '
+                   || ' xxcmn_rcv_pay_mst_adji_v  xrpmav, '
+                   || ' xxcmn_lookup_values2_v    xlvv,   ' -- クイックコード情報view2
+                   || ' xxcmn_item_mst2_v         ximv,   ' -- 品目情報ビュー
+                   || ' xxcmn_item_categories3_v  xicv,   ' -- 品目カテゴリービュー
+                   || ' xxcmn_stnd_unit_price_v   xsup    ' -- 標準原価情報view
+                   || ' WHERE '
+                   || ' it.doc_type                 = ''' || cv_doc_type_adji || ''' '
+                   || ' AND it.doc_type             = xrpmav.doc_type '
+                   || ' AND it.reason_code          <> ''' || cv_reason_code_henpin     || ''' '
+                   || ' AND it.reason_code          <> ''' || cv_reason_code_hamaoka    || ''' '
+                   || ' AND it.reason_code          <> ''' || cv_reason_code_aitezaiko  || ''' '
+                   || ' AND it.reason_code          <> ''' || cv_reason_code_idouteisei || ''' '
+                   || ' AND it.reason_code          <> ''' || cv_reason_code_mokusi     || ''' '
+                   || ' AND it.reason_code          <> ''' || cv_reason_code_sonota     || ''' '
+                   || ' AND it.reason_code          = xrpmav.reason_code '
+                   || ' AND xrpmav.dealings_div     = xlvv.meaning '
+                   || ' AND xrpmav.new_div_account  = ''' || ir_param.rcv_pay_div || ''' '
+                   || ' AND it.item_id              = ximv.item_id '
+                   || ' AND it.item_id              = xsup.item_id '
+                   || lv_where_inner
+                   ;
+    -- 5:在庫調整：仕入先返品
+    lv_from_adji_2 := lv_select_inner
+                   || ' it.trans_qty trans_qty ' -- 数量
+                   || ' FROM '
+                   || ' ic_tran_cmp               it, '         -- opm完了在庫トラン
+                   || ' ic_adjs_jnl               iaj, '        -- opm在庫調整ジャーナル
+                   || ' ic_jrnl_mst               ijm, '        -- opmジャーナルマスタ
+                   || ' xxpo_rcv_and_rtn_txns     xrrt, '       -- 受入返品実績アドオン
+                   || ' xxcmn_rcv_pay_mst_adji_v  xrpmav, '
+                   || ' xxcmn_lookup_values2_v    xlvv,   ' -- クイックコード情報view2
+                   || ' xxcmn_item_mst2_v         ximv,   ' -- 品目情報ビュー
+                   || ' xxcmn_item_categories3_v  xicv,   ' -- 品目カテゴリービュー
+                   || ' xxcmn_stnd_unit_price_v   xsup    ' -- 標準原価情報view
+                   || ' WHERE '
+                   || ' it.doc_type                 = ''' || cv_doc_type_adji || ''' '
+                   || ' AND it.doc_type             = xrpmav.doc_type '
+                   || ' AND it.reason_code          = ''' || cv_reason_code_henpin || ''' '
+                   || ' AND iaj.trans_type          = it.doc_type '
+                   || ' AND iaj.doc_id              = it.doc_id '
+                   || ' AND iaj.doc_line            = it.doc_line '
+                   || ' AND ijm.journal_id          = iaj.journal_id '
+                   || ' AND xrrt.txns_id            = ijm.attribute1 '
+                   || ' AND it.reason_code          = xrpmav.reason_code '
+                   || ' AND xrpmav.dealings_div     = xlvv.meaning '
+                   || ' AND xrpmav.new_div_account  = ''' || ir_param.rcv_pay_div || ''' '
+                   || ' AND it.item_id              = ximv.item_id '
+                   || ' AND it.item_id              = xsup.item_id '
+                   || lv_where_inner
+                   ;
+    -- 6:在庫調整：浜岡受入
+    lv_from_adji_3 := lv_select_inner
+                   || ' it.trans_qty trans_qty ' -- 数量
+                   -- from
+                   || ' FROM '
+                   || ' ic_tran_cmp               it, '         -- opm完了在庫トラン
+                   || ' ic_adjs_jnl               iaj, '        -- opm在庫調整ジャーナル
+                   || ' ic_jrnl_mst               ijm, '        -- opmジャーナルマスタ
+                   || ' xxpo_namaha_prod_txns     xnpt, '       -- 精算実績アドオン
+                   || ' xxcmn_rcv_pay_mst_adji_v  xrpmav, '
+                   || ' xxcmn_lookup_values2_v    xlvv,   ' -- クイックコード情報view2
+                   || ' xxcmn_item_mst2_v         ximv,   ' -- 品目情報ビュー
+                   || ' xxcmn_item_categories3_v  xicv,   ' -- 品目カテゴリービュー
+                   || ' xxcmn_stnd_unit_price_v   xsup    ' -- 標準原価情報view
+                   || ' WHERE '
+                   || ' it.doc_type                 = ''' || cv_doc_type_adji || ''' '
+                   || ' AND it.doc_type             = xrpmav.doc_type '
+                   || ' AND it.reason_code          = ''' || cv_reason_code_hamaoka || ''' '
+                   || ' AND iaj.trans_type          = it.doc_type '
+                   || ' AND iaj.doc_id              = it.doc_id '
+                   || ' AND iaj.doc_line            = it.doc_line '
+                   || ' AND ijm.journal_id          = iaj.journal_id '
+                   || ' AND xnpt.entry_number       = ijm.attribute1 '
+                   || ' AND it.reason_code          = xrpmav.reason_code '
+                   || ' AND xrpmav.dealings_div     = xlvv.meaning '
+                   || ' AND xrpmav.new_div_account  = ''' || ir_param.rcv_pay_div || ''' '
+                   || ' AND it.item_id              = ximv.item_id '
+                   || ' AND it.item_id              = xsup.item_id '
+                   || lv_where_inner
+                   ;
+    -- 7:在庫調整(黙視品目払出、その他払出)
+    lv_from_adji_4 := lv_select_inner
+                   || ' it.trans_qty trans_qty ' -- 数量
+                   || ' FROM '
+                   || ' ic_tran_cmp               it,     '
+                   || ' xxcmn_rcv_pay_mst_adji_v  xrpmav, '
+                   || ' xxcmn_lookup_values2_v    xlvv,   '
+                   || ' xxcmn_item_mst2_v         ximv,   '
+                   || ' xxcmn_item_categories3_v  xicv,   '
+                   || ' xxcmn_stnd_unit_price_v   xsup    '
+                   || ' WHERE '
+                   || ' it.doc_type                = ''' || cv_doc_type_adji || ''' '
+                   || ' AND it.doc_type            = xrpmav.doc_type '
+                   || ' AND (   it.reason_code     = ''' || cv_reason_code_mokusi || ''' '
+                   || '      OR it.reason_code     = ''' || cv_reason_code_sonota || ''') '
+                   || ' AND it.reason_code         = xrpmav.reason_code '
+                   || ' AND xrpmav.rcv_pay_div     = CASE '
+                   || '                                WHEN it.trans_qty >= 0 then '''
+                                                                || cv_rcv_pay_div_plus  || ''' '
+                   || '                                ELSE ''' || cv_rcv_pay_div_minus || ''' '
+                   || '                              END '
+                   || ' AND xrpmav.dealings_div    = xlvv.meaning '
+                   || ' AND xrpmav.new_div_account = ''' || ir_param.rcv_pay_div || ''' '
+                   || ' AND it.item_id             = ximv.item_id '
+                   || ' AND it.item_id             = xsup.item_id '
+                   || lv_where_inner
+                   ;
+     -- 8:在庫調整：移動実績訂正
+    lv_from_adji_5 := lv_select_inner
+                   || ' it.trans_qty trans_qty ' -- 数量
+                   || ' FROM '
+                   || ' ic_tran_cmp               it,     ' -- opm完了在庫トラン
+                   || ' ic_adjs_jnl               iaj,    ' -- opm在庫調整ジャーナル
+                   || ' ic_jrnl_mst               ijm,    ' -- opmジャーナルマスタ
+                   || ' xxinv_mov_req_instr_lines xmrl,   ' -- 移動依頼/支持明細
+                   || ' xxcmn_rcv_pay_mst_adji_v  xrpmav, '
+                   || ' xxcmn_lookup_values2_v    xlvv,   ' -- クイックコード情報view2
+                   || ' xxcmn_item_mst2_v         ximv,   ' -- 品目情報ビュー
+                   || ' xxcmn_item_categories3_v  xicv,   ' -- 品目カテゴリービュー
+                   || ' xxcmn_stnd_unit_price_v   xsup    ' -- 標準原価情報view
+                   || ' WHERE '
+                   || ' it.doc_type                 = ''' || cv_doc_type_adji || ''' '
+                   || ' AND it.doc_type             = xrpmav.doc_type '
+                   || ' AND it.reason_code          = ''' || cv_reason_code_idouteisei || ''' '
+                   || ' AND iaj.trans_type          = it.doc_type '
+                   || ' AND iaj.doc_id              = it.doc_id '
+                   || ' AND iaj.doc_line            = it.doc_line '
+                   || ' AND ijm.journal_id          = iaj.journal_id '
+                   || ' AND xmrl.mov_line_id        = ijm.attribute1 '
+                   || ' AND it.reason_code          = xrpmav.reason_code '
+                   || ' AND xrpmav.rcv_pay_div      = CASE '
+                   || '                                 WHEN it.trans_qty >= 0 THEN '''
+                                                        || cv_rcv_pay_div_minus || ''' '
+                   || '                                 WHEN it.trans_qty <  0 THEN '''
+                                                        || cv_rcv_pay_div_plus || ''' '
+                   || '                                 ELSE xrpmav.rcv_pay_div '
+                   || '                               END '
+                   || ' AND xrpmav.dealings_div     = xlvv.meaning '
+                   || ' AND xrpmav.new_div_account  = ''' || ir_param.rcv_pay_div || ''' '
+                   || ' AND it.item_id              = ximv.item_id '
+                   || ' AND it.item_id              = xsup.item_id '
+                   || lv_where_inner
+                   ;
+    -- 9:購買関連：文書タイプRMA
+    lv_from_porc_1 := lv_select_inner
+                   || ' NVL2(xrpmprv.item_id, '
+                   ||      ' it.trans_qty, '
+                   ||      ' it.trans_qty * TO_NUMBER(xrpmprv.rcv_pay_div)) trans_qty ' -- 数量
+                   || ' FROM '
+                   || ' ic_tran_pnd                  it,      '
+                   || ' xxcmn_rcv_pay_mst_porc_rma_v xrpmprv, '
+                   || ' xxcmn_lookup_values2_v       xlvv,    ' -- クイックコード情報view2
+                   || ' xxcmn_item_mst2_v            ximv,    ' -- 品目情報ビュー
+                   || ' xxcmn_item_categories3_v     xicv,    ' -- 品目カテゴリービュー
+                   || ' xxcmn_stnd_unit_price_v      xsup     ' -- 標準原価情報view
+                   || ' WHERE '
+                   || ' it.doc_type                 = ''' || cv_doc_type_porc || ''' '
+                   || ' AND it.doc_id               = xrpmprv.doc_id '
+                   || ' AND it.doc_line             = xrpmprv.doc_line '
+                   || ' AND it.completed_ind        = ' || cv_completed_ind || ' '
+                   || ' AND xrpmprv.dealings_div    = xlvv.meaning '
+                   || ' AND xrpmprv.new_div_account = ''' || ir_param.rcv_pay_div || ''' '
+                   || ' AND ximv.item_id            = NVL(xrpmprv.item_id,it.item_id) '
+                   || ' AND xsup.item_id            = NVL(xrpmprv.item_id,it.item_id) '
+                   || lv_where_inner
+                   ;
+    -- 10:購買関連：文書タイプPO
+    lv_from_porc_2 := lv_select_inner
+                   || ' it.trans_qty trans_qty ' -- 数量
+                   || ' FROM '
+                   || ' ic_tran_pnd                 it, '
+                   || ' xxcmn_rcv_pay_mst_porc_po_v xrpmppv, '
+                   || ' xxcmn_lookup_values2_v      xlvv,   ' -- クイックコード情報view2
+                   || ' xxcmn_item_mst2_v           ximv,   ' -- 品目情報ビュー
+                   || ' xxcmn_item_categories3_v    xicv,   ' -- 品目カテゴリービュー
+                   || ' xxcmn_stnd_unit_price_v     xsup    ' -- 標準原価情報view
+                   || ' WHERE '
+                   || ' it.doc_type                 = ''' || cv_doc_type_porc || ''' '
+                   || ' AND it.doc_id               = xrpmppv.doc_id '
+                   || ' AND it.doc_line             = xrpmppv.doc_line '
+                   || ' AND it.line_id              = xrpmppv.line_id '
+                   || ' AND it.completed_ind        = ' || cv_completed_ind || ' '
+                   || ' AND xrpmppv.dealings_div    = xlvv.meaning '
+                   || ' AND xrpmppv.new_div_account = ''' || ir_param.rcv_pay_div || ''' '
+                   || ' AND it.item_id              = ximv.item_id '
+                   || ' AND it.item_id              = xsup.item_id '
+                   || lv_where_inner
+                   ;
+    -- 11:受注関連
+    lv_from_omso := lv_select_inner
+                 || ' NVL2(xrpmov.item_id, '
+                 ||      ' it.trans_qty, '
+                 ||      ' it.trans_qty * TO_NUMBER(xrpmov.rcv_pay_div)) trans_qty ' -- 数量
+                 || ' FROM '
+                 || ' ic_tran_pnd               it, '
+                 || ' xxcmn_rcv_pay_mst_omso_v  xrpmov, '
+                 || ' xxcmn_lookup_values2_v    xlvv,   ' -- クイックコード情報view2
+                 || ' xxcmn_item_mst2_v         ximv,   ' -- 品目情報ビュー
+                 || ' xxcmn_item_categories3_v  xicv,   ' -- 品目カテゴリービュー
+                 || ' xxcmn_stnd_unit_price_v   xsup    ' -- 標準原価情報view
+                 || ' WHERE '
+                 || ' it.doc_type                 = ''' || cv_doc_type_omso || ''' '
+                 || ' AND it.completed_ind        = ' || cv_completed_ind || ' '
+                 || ' AND it.doc_type             = xrpmov.doc_type '
+                 || ' AND it.line_detail_id       = xrpmov.doc_line '
+                 || ' AND xrpmov.dealings_div     = xlvv.meaning '
+                 || ' AND xrpmov.new_div_account  = ''' || ir_param.rcv_pay_div || ''' '
+                 || ' AND xrpmov.arrival_date >= '
+                 || '     FND_DATE.STRING_TO_DATE(''' || gv_exec_start || ''','''
+                                                      || gc_char_dt_format || ''')' -- 着荷日
+                 || ' AND xrpmov.arrival_date <= '
+                 || '     FND_DATE.STRING_TO_DATE(''' || gv_exec_end || ''','''
+                                                      || gc_char_dt_format || ''')' -- 着荷日
+                 || ' AND ximv.item_id            = NVL(xrpmov.item_id,it.item_id) '
+                 || ' AND xsup.item_id            = NVL(xrpmov.item_id,it.item_id) '
+                 || lv_where_inner
+                 ;
+--
+    -- ----------------------------------------------------
+    -- ＦＲＯＭ句生成
+    -- ----------------------------------------------------
+    lv_from := lv_from_xfer
+            || ' UNION ALL '
+            || lv_from_trni
+            || ' UNION ALL '
+            || lv_from_prod_1
+            || ' UNION ALL '
+            || lv_from_adji_1
+            || ' UNION ALL '
+            || lv_from_adji_2
+            || ' UNION ALL '
+            || lv_from_adji_3
+            || ' UNION ALL '
+            || lv_from_adji_4
+            || ' UNION ALL '
+            || lv_from_adji_5
+            || ' UNION ALL '
+            || lv_from_porc_1
+            || ' UNION ALL '
+            || lv_from_porc_2
+            || ' UNION ALL '
+            || lv_from_omso
+            ;
+    -- ----------------------------------------------------
+    -- ＯＲＤＥＲ  ＢＹ句生成
+    -- ----------------------------------------------------
+    -- 群種別＝「3：郡別」が指定されている場合
+    lv_order_by := ' ORDER BY'
+                || ' crowd_code'      -- 群コード
+                || ',item_code'       -- 品目コード
+                ;
+--
+    -- ====================================================
+    -- ＳＱＬ生成
+    -- ====================================================
+    lv_sql := lv_from || lv_order_by ;
+--
+    -- ====================================================
+    -- データ抽出
+    -- ====================================================
+    -- オープン
+    OPEN lc_ref FOR lv_sql ;
+    -- バルクフェッチ
+    FETCH lc_ref BULK COLLECT INTO ot_data_rec ;
+    -- カーソルクローズ
+    CLOSE lc_ref ;
+--
+  EXCEPTION
+--#################################  固定例外処理部 START   ####################################
+--
+    -- *** 共通関数例外ハンドラ ***
+    WHEN global_api_expt THEN
+      IF (lc_ref%ISOPEN) THEN
+        CLOSE lc_ref ;
+      END IF ;
+      ov_errmsg  := lv_errmsg;
+      ov_errbuf  := SUBSTRB(gv_pkg_name||gv_msg_cont||cv_prg_name||gv_msg_part||lv_errbuf,1,5000);
+      ov_retcode := gv_status_error;
+    -- *** 共通関数OTHERS例外ハンドラ ***
+    WHEN global_api_others_expt THEN
+      IF (lc_ref%ISOPEN) THEN
+        CLOSE lc_ref ;
+      END IF ;
+      ov_errbuf  := gv_pkg_name||gv_msg_cont||cv_prg_name||gv_msg_part||SQLERRM;
+      ov_retcode := gv_status_error;
+    -- *** OTHERS例外ハンドラ ***
+    WHEN OTHERS THEN
+      IF (lc_ref%ISOPEN) THEN
+        CLOSE lc_ref ;
+      END IF ;
+      ov_errbuf  := gv_pkg_name||gv_msg_cont||cv_prg_name||gv_msg_part||SQLERRM;
+      ov_retcode := gv_status_error;
+--
+--#####################################  固定部 END   ##########################################
+--
+  END prc_get_report_data ;
+--
+  /**********************************************************************************
+   * Procedure Name   : prc_create_xml_data
+   * Description      : ＸＭＬデータ作成
+   ***********************************************************************************/
+  PROCEDURE prc_create_xml_data(
+      ir_param          IN  rec_param_data    -- 01.レコード  ：パラメータ
+     ,ov_errbuf         OUT VARCHAR2          --    エラー・メッセージ           --# 固定 #
+     ,ov_retcode        OUT VARCHAR2          --    リターン・コード             --# 固定 #
+     ,ov_errmsg         OUT VARCHAR2          --    ユーザー・エラー・メッセージ --# 固定 #
+    )
+  IS
+--
+    -- =====================================================
+    -- 固定ローカル定数
+    -- =====================================================
+    cv_prg_name    CONSTANT VARCHAR2(100) := 'prc_create_xml_data' ; -- プログラム名
+--
+--#####################  固定ローカル変数宣言部 START   ########################
+--
+    lv_errbuf  VARCHAR2(5000) ;  -- エラー・メッセージ
+    lv_retcode VARCHAR2(1) ;     -- リターン・コード
+    lv_errmsg  VARCHAR2(5000) ;  -- ユーザー・エラー・メッセージ
+--
+--###########################  固定部 END   ####################################
+--
+    -- =====================================================
+    -- ユーザー宣言部
+    -- =====================================================
+    -- *** ローカル定数 ***
+    -- キーブレイク判断用
+    lc_break_init           VARCHAR2(100) DEFAULT '*' ;            -- 初期値
+    lc_break_null           VARCHAR2(100) DEFAULT '**' ;           -- ＮＵＬＬ判定
+    -- 項目判定用
+    lc_break_col            VARCHAR2(100) DEFAULT '-' ;            -- 項目判定切り替え
+--
+    -- *** ローカル変数 ***
+    -- キーブレイク判断用
+    lv_locat_code           VARCHAR2(100) DEFAULT lc_break_init ;  -- 倉庫コード
+    lv_crowd_code           VARCHAR2(100) DEFAULT lc_break_init ;  -- 群コード
+    lv_crowd_low            VARCHAR2(100) DEFAULT lc_break_init ;  -- 群コード（小）
+    lv_crowd_mid            VARCHAR2(100) DEFAULT lc_break_init ;  -- 群コード（中）
+    lv_crowd_high           VARCHAR2(100) DEFAULT lc_break_init ;  -- 群コード（大）
+    lv_item_code            VARCHAR2(100) DEFAULT lc_break_init ;  -- 品目コード
+    lv_cost_kbn             VARCHAR2(100) DEFAULT lc_break_init ;  -- 原価管理区分
+    lv_rcv_pay_div          VARCHAR2(100) DEFAULT lc_break_init ;  -- 受払区分
+    lv_col_idx              VARCHAR2(100) DEFAULT lc_break_init ;  -- 項目位置
+    lv_col_name             VARCHAR2(100) DEFAULT lc_break_init ;  -- 項目タグ
+--
+    -- 値取得用用
+    ln_unit_price           xxcmn_lot_cost.unit_ploce%TYPE ;                   -- 単価
+    ln_inv_qty              ic_tran_pnd.trans_qty%TYPE;                        -- 在庫数量
+    ln_inv_amt              xxcmn_lot_cost.unit_ploce%TYPE;                    -- 在庫金額
+    ln_first_inv_qty        xxinv_stc_inventory_month_stck.monthly_stock%TYPE; -- 在庫数量（月首）
+    ln_first_inv_amt        xxcmn_lot_cost.unit_ploce%TYPE;                    -- 在庫金額（月首）
+    ln_end_inv_qty          xxinv_stc_inventory_result.loose_amt%TYPE;         -- 在庫数量（月末）
+    ln_end_inv_amt          xxcmn_lot_cost.unit_ploce%TYPE;                    -- 在庫金額（月末）
+--
+    -- 計算用
+    ln_quantity             ic_tran_pnd.trans_qty%TYPE ;                       -- 数量
+    ln_qty_in               ic_tran_pnd.trans_qty%TYPE ;                       -- 数量（受入）
+    ln_qty_out              ic_tran_pnd.trans_qty%TYPE ;                       -- 数量（払出）
+    ln_amount               xxcmn_lot_cost.unit_ploce%TYPE ;                   -- 金額
+    ln_amt_in               xxcmn_lot_cost.unit_ploce%TYPE ;                   -- 金額（受入）
+    ln_amt_out              xxcmn_lot_cost.unit_ploce%TYPE ;                   -- 金額（払出）
+    ln_position             NUMBER        DEFAULT 0 ;                          -- ポジション
+    ln_instr                NUMBER        DEFAULT 0 ;                          -- 項目判定切替位置
+--
+    -- *** ローカル・例外処理 ***
+    no_data_expt            EXCEPTION ;             -- 取得レコードなし
+--
+    ------------------
+    -- xmlタグ登録処理
+    ------------------
+    PROCEDURE prc_set_xml(
+        ic_type              IN        CHAR       -- タグタイプ T:タグ
+                                                  --            D:データ
+                                                  --            N:データ(NULLの場合タグを書かない)
+                                                  --            Z:データ(NULLの場合0表示)
+       ,iv_name              IN        VARCHAR2                --   タグ名
+       ,iv_value             IN        VARCHAR2  DEFAULT NULL  --   タグデータ(省略可
+       ,in_lengthb           IN        NUMBER    DEFAULT NULL  --   文字長（バイト）(省略可
+       ,iv_index             IN        NUMBER    DEFAULT NULL  --   インデックス(省略可
+      )
+    IS
+      -- ----------------
+      -- 固定ローカル定数
+      -- ----------------
+      cv_prg_name    CONSTANT VARCHAR2(100) := 'prc_set_xml' ;   -- プログラム名
+--
+      -- --------------
+      -- ユーザー宣言部
+      -- --------------
+      -- *** ローカル変数 ***
+      ln_xml_idx NUMBER;
+      ln_work    NUMBER;
+--
+    BEGIN
+--
+      IF (ic_type = gc_n) THEN
+        --NULLの場合タグを書かない対応
+        IF (iv_value IS NULL) THEN
+          RETURN;
+        END IF;
+--
+        BEGIN
+          ln_work := TO_NUMBER(iv_value);
+        EXCEPTION
+          WHEN INVALID_NUMBER OR VALUE_ERROR THEN
+            RETURN;
+        END;
+      END IF;
+--
+      IF (iv_index IS NULL) THEN
+        ln_xml_idx := gt_xml_data_table.COUNT + 1 ;
+      ELSE
+        ln_xml_idx := iv_index;
+      END IF;
+--
+      --タグセット
+      gt_xml_data_table(ln_xml_idx).tag_name  := iv_name ; --<タグ名>
+      IF (ic_type = gc_t) THEN
+        gt_xml_data_table(ln_xml_idx).tag_type  := gc_t ;  --<タグのみ>
+      ELSE
+        gt_xml_data_table(ln_xml_idx).tag_type  := gc_d ;  --<タグ ＆ データ>
+        IF (ic_type = gc_z) THEN
+          gt_xml_data_table(ln_xml_idx).tag_value := NVL(iv_value, 0) ; --Nullの場合０表示
+        ELSE
+          gt_xml_data_table(ln_xml_idx).tag_value := iv_value ;         --Nullでもそのまま表示
+        END IF;
+      END IF;
+--
+      --文字切り
+      IF (in_lengthb IS NOT NULL) THEN
+        gt_xml_data_table(ln_xml_idx).tag_value
+          := SUBSTRB(gt_xml_data_table(ln_xml_idx).tag_value , gn_one , in_lengthb);
+      END IF;
+    END prc_set_xml;
+--
+  BEGIN
+--
+--##################  固定ステータス初期化部 START   ###################
+--
+    ov_retcode := gv_status_normal;
+--
+--###########################  固定部 END   ############################
+--
+    -- =====================================================
+    -- 項目データ抽出処理
+    -- =====================================================
+    prc_get_report_data(
+        ir_param      => ir_param       -- 01.入力パラメータ群
+       ,ot_data_rec   => gt_main_data   -- 02.取得レコード群
+       ,ov_errbuf     => lv_errbuf      --    エラー・メッセージ           --# 固定 #
+       ,ov_retcode    => lv_retcode     --    リターン・コード             --# 固定 #
+       ,ov_errmsg     => lv_errmsg      --    ユーザー・エラー・メッセージ --# 固定 #
+      ) ;
+    IF ( lv_retcode = gv_status_error ) THEN
+      RAISE global_api_expt ;
+--
+    -- 取得データが０件の場合
+    ELSIF ( gt_main_data.COUNT = 0 ) THEN
+      RAISE no_data_expt ;
+--
+    END IF ;
+    ln_quantity := 0;
+--
+    -- =====================================================
+    -- 項目データ抽出・出力処理
+    -- =====================================================
+    -- -----------------------------------------------------
+    -- ユーザーＧ開始タグ出力
+    -- -----------------------------------------------------
+    prc_set_xml('T', 'user_info');
+    -- -----------------------------------------------------
+    -- ユーザーＧデータタグ出力
+    -- -----------------------------------------------------
+--
+    -- 帳票ＩＤ
+    prc_set_xml('D', 'report_id', gv_report_id);
+    -- 実施日
+    prc_set_xml('D', 'exec_date', TO_CHAR(gd_exec_date,gc_char_dt_format));
+    -- 担当部署
+    prc_set_xml('D', 'exec_user_dept', gv_user_dept, 10);
+    -- 担当者名
+    prc_set_xml('D', 'exec_user_name', gv_user_name, 14);
+    -- 処理年月(from)
+    prc_set_xml('D', 'p_trans_ym_from',
+                TO_CHAR(TO_DATE(ir_param.exec_date_from||gc_first_date, gc_char_format),
+                        gc_char_ym_format));
+    -- 処理年月(to)
+    prc_set_xml('D', 'p_trans_ym_to',
+                TO_CHAR(TO_DATE(ir_param.exec_date_to||gc_first_date, gc_char_format),
+                        gc_char_ym_format));
+    -- 商品区分
+    prc_set_xml('D', 'p_item_div_code', ir_param.goods_class);
+    prc_set_xml('D', 'p_item_div_name', gv_goods_class_name, 20);
+    -- 受払区分
+    prc_set_xml('D', 'p_rcv_pay_div_code', ir_param.rcv_pay_div);
+    prc_set_xml('D', 'p_rcv_pay_div_name', gv_rcv_pay_div_name, 20);
+    --
+    -- -----------------------------------------------------
+    -- ユーザーＧ終了タグ出力
+    -- -----------------------------------------------------
+    prc_set_xml('T','/user_info');
+    -- -----------------------------------------------------
+    -- データＬＧ開始タグ出力
+    -- -----------------------------------------------------
+    prc_set_xml('T', 'data_info');
+    -- -----------------------------------------------------
+    -- 受払区分データタグ出力
+    -- -----------------------------------------------------
+    prc_set_xml('D', 'rcv_pay_div_code_sum', ir_param.rcv_pay_div);
+    -- -----------------------------------------------------
+    -- 群コード(大)ＬＧ開始タグ出力
+    -- -----------------------------------------------------
+    prc_set_xml('T', 'lg_crowd_l');
+--
+    -- =====================================================
+    -- 項目データ抽出・出力処理
+    -- =====================================================
+    <<main_data_loop>>
+    FOR i IN 1..gt_main_data.COUNT LOOP
+--
+      -- =====================================================
+      -- 大群コードブレイク
+      -- =====================================================
+      -- 大群コードが切り替わった場合
+      IF ( NVL( gt_main_data(i).crowd_high, lc_break_null ) <> lv_crowd_high ) THEN
+        -- -----------------------------------------------------
+        -- 終了タグ出力
+        -- -----------------------------------------------------
+        -- 初回レコードの場合は終了タグを出力しない。
+        IF ( lv_crowd_high <> lc_break_init ) THEN
+          ------------------------------
+          -- 品目コードＬＧ終了タグ
+          ------------------------------
+          prc_set_xml('T', '/lg_item');
+          ------------------------------
+          -- 群コードＧ終了タグ
+          ------------------------------
+          prc_set_xml('T', '/g_crowd');
+          ------------------------------
+          -- 群コードＬＧ終了タグ
+          ------------------------------
+          prc_set_xml('T', '/lg_crowd');
+          ------------------------------
+          -- 小群コードＧ終了タグ
+          ------------------------------
+          prc_set_xml('T', '/g_crowd_s');
+          ------------------------------
+          -- 小群コードＬＧ終了タグ
+          ------------------------------
+          prc_set_xml('T', '/lg_crowd_s');
+          ------------------------------
+          -- 中群コードＧ終了タグ
+          ------------------------------
+          prc_set_xml('T', '/g_crowd_m');
+          ------------------------------
+          -- 中群コードＬＧ終了タグ
+          ------------------------------
+          prc_set_xml('T', '/lg_crowd_m');
+          ------------------------------
+          -- 大群コードＧ終了タグ
+          ------------------------------
+          prc_set_xml('T', '/g_crowd_l');
+        END IF ;
+--
+        ------------------------------
+        -- 大群コードＧ開始タグ
+        ------------------------------
+        prc_set_xml('T', 'g_crowd_l');
+        -- -----------------------------------------------------
+        -- 大群コードＧデータタグ出力
+        -- -----------------------------------------------------
+        -- 大群コード
+        prc_set_xml('D', 'crowd_code_large_sum', gt_main_data(i).crowd_high);
+        ------------------------------
+        -- 中群コードＬＧ開始タグ
+        ------------------------------
+        prc_set_xml('T', 'lg_crowd_m');
+--
+        -- -----------------------------------------------------
+        -- キーブレイク時の初期処理
+        -- -----------------------------------------------------
+        -- キーブレイク用変数退避
+        lv_crowd_high := NVL( gt_main_data(i).crowd_high, lc_break_null ) ;
+        lv_crowd_mid  := lc_break_init ;
+--
+      END IF ;
+--
+      -- =====================================================
+      -- 中群コードブレイク
+      -- =====================================================
+      -- 中群コードが切り替わった場合
+      IF ( NVL( gt_main_data(i).crowd_mid, lc_break_null ) <> lv_crowd_mid ) THEN
+        -- -----------------------------------------------------
+        -- 終了タグ出力
+        -- -----------------------------------------------------
+        -- 初回レコードの場合は終了タグを出力しない。
+        IF ( lv_crowd_mid <> lc_break_init ) THEN
+          ------------------------------
+          -- 品目コードＬＧ終了タグ
+          ------------------------------
+          prc_set_xml('T', '/lg_item');
+          ------------------------------
+          -- 群コードＧ終了タグ
+          ------------------------------
+          prc_set_xml('T', '/g_crowd');
+          ------------------------------
+          -- 群コードＬＧ終了タグ
+          ------------------------------
+          prc_set_xml('T', '/lg_crowd');
+          ------------------------------
+          -- 小群コードＧ終了タグ
+          ------------------------------
+          prc_set_xml('T', '/g_crowd_s');
+          ------------------------------
+          -- 小群コードＬＧ終了タグ
+          ------------------------------
+          prc_set_xml('T', '/lg_crowd_s');
+          ------------------------------
+          -- 中群コードＧ終了タグ
+          ------------------------------
+          prc_set_xml('T', '/g_crowd_m');
+        END IF ;
+--
+        ------------------------------
+        -- 中群コードＧ開始タグ
+        ------------------------------
+        prc_set_xml('T', 'g_crowd_m');
+        -- -----------------------------------------------------
+        -- 中群コードＧデータタグ出力
+        -- -----------------------------------------------------
+        -- 中群コード
+        prc_set_xml('D', 'crowd_code_middle_sum', gt_main_data(i).crowd_mid);
+        ------------------------------
+        -- 小群コードＬＧ開始タグ
+        ------------------------------
+        prc_set_xml('T', 'lg_crowd_s');
+--
+        -- -----------------------------------------------------
+        -- キーブレイク時の初期処理
+        -- -----------------------------------------------------
+        -- キーブレイク用変数退避
+        lv_crowd_mid := NVL( gt_main_data(i).crowd_mid, lc_break_null ) ;
+        lv_crowd_low  := lc_break_init ;
+--
+      END IF ;
+--
+      -- =====================================================
+      -- 小群コードブレイク
+      -- =====================================================
+      -- 小群コードが切り替わった場合
+      IF ( NVL( gt_main_data(i).crowd_low, lc_break_null ) <> lv_crowd_low ) THEN
+        -- -----------------------------------------------------
+        -- 終了タグ出力
+        -- -----------------------------------------------------
+        -- 初回レコードの場合は終了タグを出力しない。
+        IF ( lv_crowd_low <> lc_break_init ) THEN
+          ------------------------------
+          -- 品目コードＬＧ終了タグ
+          ------------------------------
+          prc_set_xml('T', '/lg_item');
+          ------------------------------
+          -- 群コードＧ終了タグ
+          ------------------------------
+          prc_set_xml('T', '/g_crowd');
+          ------------------------------
+          -- 群コードＬＧ終了タグ
+          ------------------------------
+          prc_set_xml('T', '/lg_crowd');
+          ------------------------------
+          -- 小群コードＧ終了タグ
+          ------------------------------
+          prc_set_xml('T', '/g_crowd_s');
+        END IF ;
+--
+        ------------------------------
+        -- 小群コードＧ開始タグ
+        ------------------------------
+        prc_set_xml('T', 'g_crowd_s');
+        -- -----------------------------------------------------
+        -- 小群コードＧデータタグ出力
+        -- -----------------------------------------------------
+        -- 小群コード
+        prc_set_xml('D', 'crowd_code_small_sum', gt_main_data(i).crowd_low);
+        ------------------------------
+        -- 群コードＬＧ開始タグ
+        ------------------------------
+        prc_set_xml('T', 'lg_crowd');
+--
+        -- -----------------------------------------------------
+        -- キーブレイク時の初期処理
+        -- -----------------------------------------------------
+        -- キーブレイク用変数退避
+        lv_crowd_low  := NVL( gt_main_data(i).crowd_low, lc_break_null ) ;
+        lv_crowd_code := lc_break_init ;
+--
+      END IF ;
+--
+      -- =====================================================
+      -- 群コードブレイク
+      -- =====================================================
+      -- 群コードが切り替わった場合
+      IF ( NVL( gt_main_data(i).crowd_code, lc_break_null ) <> lv_crowd_code ) THEN
+        -- -----------------------------------------------------
+        -- 終了タグ出力
+        -- -----------------------------------------------------
+        -- 初回レコードの場合は終了タグを出力しない。
+        IF ( lv_crowd_code <> lc_break_init ) THEN
+          ------------------------------
+          -- 品目コードＬＧ終了タグ
+          ------------------------------
+          prc_set_xml('T', '/lg_item');
+          ------------------------------
+          -- 群コードＧ終了タグ
+          ------------------------------
+          prc_set_xml('T', '/g_crowd');
+        END IF ;
+--
+        ------------------------------
+        -- 群コードＧ開始タグ
+        ------------------------------
+        prc_set_xml('T', 'g_crowd');
+        -- -----------------------------------------------------
+        -- 群コードＧデータタグ出力
+        -- -----------------------------------------------------
+        -- 群コード
+        prc_set_xml('D', 'crowd_code_sum', gt_main_data(i).crowd_code);
+        ------------------------------
+        -- 商品コードＬＧ開始タグ
+        ------------------------------
+        prc_set_xml('T', 'lg_item');
+--
+        -- -----------------------------------------------------
+        -- キーブレイク時の初期処理
+        -- -----------------------------------------------------
+        -- キーブレイク用変数退避
+        lv_crowd_code := NVL( gt_main_data(i).crowd_code, lc_break_null ) ;
+        lv_item_code  := NVL( gt_main_data(i).item_code, lc_break_null ) ;
+        lv_cost_kbn   := lc_break_init ;
+--
+        -- 計算項目初期化
+        ln_unit_price    := 0;
+        ln_inv_qty       := 0;
+        ln_inv_amt       := 0;
+        ln_first_inv_qty := 0;
+        ln_first_inv_amt := 0;
+        ln_end_inv_qty   := 0;
+        ln_end_inv_amt   := 0;
+--
+      END IF ;
+--
+      ln_quantity := ln_quantity + NVL(gt_main_data(i).trans_qty, 0);
+--
+      IF (   (gt_main_data.COUNT = i)
+          OR (NVL(gt_main_data(i+1).item_code, lc_break_null) <> lv_item_code)) THEN
+        ------------------------------
+        -- 品目コードＧ開始タグ
+        ------------------------------
+        prc_set_xml('T','g_item');
+        -- 品目コード
+        prc_set_xml('D','item_code', gt_main_data(i).item_code);
+        -- 品目名
+        prc_set_xml('D','item_name', gt_main_data(i).item_name);
+        -- 取引数量
+        IF (ln_quantity <> 0) THEN
+          prc_set_xml('N','quantity', ln_quantity);
+        END IF;
+        -- 標準原価
+        IF (gt_main_data(i).unit_price <> 0) THEN
+          prc_set_xml('N','standard_cost', round(gt_main_data(i).unit_price, gn_qty_dec));
+        END IF;
+        -- 原価費
+        IF (gt_main_data(i).raw_material_cost <> 0) THEN
+          prc_set_xml('N','raw_material_cost',round(gt_main_data(i).raw_material_cost,gn_qty_dec));
+        END IF;
+        -- 再製費
+        IF (gt_main_data(i).agein_cost <> 0) THEN
+          prc_set_xml('N','agein_cost', round(gt_main_data(i).agein_cost, gn_qty_dec));
+        END IF;
+        -- 資材費
+        IF (gt_main_data(i).material_cost <> 0) THEN
+          prc_set_xml('N','material_cost', round(gt_main_data(i).material_cost, gn_qty_dec));
+        END IF;
+        -- 包装費
+        IF (gt_main_data(i).pack_cost <> 0) THEN
+          prc_set_xml('N','pack_cost', round(gt_main_data(i).pack_cost, gn_qty_dec));
+        END IF;
+        -- その他経費
+        IF (gt_main_data(i).other_expense_cost <> 0) THEN
+          prc_set_xml('N','other_expense_cost',round(gt_main_data(i).other_expense_cost,
+                      gn_qty_dec));
+        END IF;
+        -- 品目コードＧ終了タグ
+        prc_set_xml('T','/g_item');
+--
+        IF (gt_main_data.COUNT <> i) THEN
+          lv_item_code := NVL( gt_main_data(i+1).item_code, lc_break_null );
+        END IF;
+--
+        -- 集計値初期化
+        ln_quantity           := 0;
+      END IF;
+--
+    END LOOP main_data_loop ;
+--
+    -- =====================================================
+    -- 終了処理
+    -- =====================================================
+    ------------------------------
+    -- 品目コードＬＧ終了タグ
+    ------------------------------
+    prc_set_xml('T', '/lg_item');
+    ------------------------------
+    -- 群コードＧ終了タグ
+    ------------------------------
+    prc_set_xml('T', '/g_crowd');
+    ------------------------------
+    -- 群コードＬＧ終了タグ
+    ------------------------------
+    prc_set_xml('T', '/lg_crowd');
+    ------------------------------
+    -- 小群コードＧ終了タグ
+    ------------------------------
+    prc_set_xml('T', '/g_crowd_s');
+    ------------------------------
+    -- 小群コードＬＧ終了タグ
+    ------------------------------
+    prc_set_xml('T', '/lg_crowd_s');
+    ------------------------------
+    -- 中群コードＧ終了タグ
+    ------------------------------
+    prc_set_xml('T', '/g_crowd_m');
+    ------------------------------
+    -- 中群コードＬＧ終了タグ
+    ------------------------------
+    prc_set_xml('T', '/lg_crowd_m');
+    ------------------------------
+    -- 大群コードＧ終了タグ
+    ------------------------------
+    prc_set_xml('T', '/g_crowd_l');
+    ------------------------------
+    -- 大群コードＬＧ終了タグ
+    ------------------------------
+    prc_set_xml('T', '/lg_crowd_l');
+    ------------------------------
+    -- データＬＧ終了タグ
+    ------------------------------
+    prc_set_xml('T', '/data_info');
+--
+  EXCEPTION
+    -- *** 取得データ０件 ***
+    WHEN no_data_expt THEN
+      ov_retcode := gv_status_warn ;
+      ov_errmsg  := xxcmn_common_pkg.get_msg( gc_application
+                                             ,'APP-XXCMN-10122' ) ;
+--
+--#################################  固定例外処理部 START   ####################################
+--
+    -- *** 共通関数例外ハンドラ ***
+    WHEN global_api_expt THEN
+      ov_errmsg  := lv_errmsg;
+      ov_errbuf  := SUBSTRB(gv_pkg_name||gv_msg_cont||cv_prg_name||gv_msg_part||lv_errbuf,1,5000);
+      ov_retcode := gv_status_error;
+    -- *** 共通関数OTHERS例外ハンドラ ***
+    WHEN global_api_others_expt THEN
+      ov_errbuf  := gv_pkg_name||gv_msg_cont||cv_prg_name||gv_msg_part||SQLERRM;
+      ov_retcode := gv_status_error;
+    -- *** OTHERS例外ハンドラ ***
+    WHEN OTHERS THEN
+      ov_errbuf  := gv_pkg_name||gv_msg_cont||cv_prg_name||gv_msg_part||SQLERRM;
+      ov_retcode := gv_status_error;
+--
+--#####################################  固定部 END   ##########################################
+--
+  END prc_create_xml_data ;
+--
+  /**********************************************************************************
+   * Procedure Name   : submain
+   * Description      : メイン処理プロシージャ
+   **********************************************************************************/
+  PROCEDURE submain(
+      iv_exec_date_from     IN     VARCHAR2         --   01 : 処理年月(from)
+     ,iv_exec_date_to       IN     VARCHAR2         --   02 : 処理年月(to)
+     ,iv_goods_class        IN     VARCHAR2         --   03 : 商品区分
+     ,iv_item_class         IN     VARCHAR2         --   04 : 品目区分
+     ,iv_rcv_pay_div        IN     VARCHAR2         --   05 : 受払区分
+     ,iv_crowd_kind         IN     VARCHAR2         --   06 : 集計種別
+     ,iv_crowd_code         IN     VARCHAR2         --   07 : 群コード
+     ,iv_acct_crowd_code    IN     VARCHAR2         --   08 : 経理群コード
+     ,ov_errbuf            OUT     VARCHAR2         -- エラー・メッセージ           --# 固定 #
+     ,ov_retcode           OUT     VARCHAR2         -- リターン・コード             --# 固定 #
+     ,ov_errmsg            OUT     VARCHAR2         -- ユーザー・エラー・メッセージ --# 固定 #
+    )
+  IS
+--
+--#####################  固定ローカル定数変数宣言部 START   ####################
+--
+    -- ======================================================
+    -- 固定ローカル定数
+    -- ======================================================
+    cv_prg_name    CONSTANT VARCHAR2(100) := 'submain' ; -- プログラム名
+    -- ======================================================
+    -- ローカル変数
+    -- ======================================================
+    lv_errbuf  VARCHAR2(5000) ;                   --   エラー・メッセージ
+    lv_retcode VARCHAR2(1) ;                      --   リターン・コード
+    lv_errmsg  VARCHAR2(5000) ;                   --   ユーザー・エラー・メッセージ
+--
+--###########################  固定部 END   ####################################
+--
+    -- ======================================================
+    -- ユーザー宣言部
+    -- ======================================================
+    -- *** ローカル変数 ***
+    lr_param_rec            rec_param_data ;          -- パラメータ受渡し用
+    lv_f_date               VARCHAR2(20);
+    lv_e_date               VARCHAR2(20);
+--
+    lv_xml_string           VARCHAR2(32000) ;
+    ln_retcode              NUMBER ;
+--
+  BEGIN
+--
+--##################  固定ステータス初期化部 START   ###################
+--
+    ov_retcode := gv_status_normal ;
+--
+--###########################  固定部 END   ############################
+--
+    -- =====================================================
+    -- 初期処理
+    -- =====================================================
+    -- 帳票出力値格納
+    gv_report_id                    := 'XXCMN770010T' ;      -- 帳票ID
+    gd_exec_date                    := SYSDATE ;             -- 実施日
+    -- パラメータ格納
+    --
+    lv_f_date := TO_CHAR(FND_DATE.STRING_TO_DATE(
+                      iv_exec_date_from , gc_char_y_format),gc_char_y_format);
+    IF (lv_f_date IS NULL) THEN
+      lr_param_rec.exec_date_from := iv_exec_date_from;
+    ELSE
+      lr_param_rec.exec_date_from := lv_f_date;
+    END IF;                                                  -- 処理年月FROM
+--
+    lv_e_date := TO_CHAR(FND_DATE.STRING_TO_DATE(
+                      iv_exec_date_to , gc_char_y_format),gc_char_y_format);
+    IF (lv_e_date IS NULL) THEN
+      lr_param_rec.exec_date_to := iv_exec_date_to;
+    ELSE
+      lr_param_rec.exec_date_to := lv_e_date;
+    END IF;                                                  -- 処理年月TO
+--
+    lr_param_rec.goods_class        := iv_goods_class ;      -- 商品区分
+    lr_param_rec.item_class         := iv_item_class ;       -- 商品区分
+    lr_param_rec.rcv_pay_div        := iv_rcv_pay_div;       -- 受払区分
+    lr_param_rec.crowd_kind         := iv_crowd_kind;        -- 群種別
+    lr_param_rec.crowd_code         := iv_crowd_code;        -- 群コード
+    lr_param_rec.acct_crowd_code    := iv_acct_crowd_code;   -- 経理郡コード
+--
+    -- =====================================================
+    -- 前処理
+    -- =====================================================
+    prc_initialize(
+        ir_param          => lr_param_rec       -- 入力パラメータ群
+       ,ov_errbuf         => lv_errbuf          -- エラー・メッセージ           --# 固定 #
+       ,ov_retcode        => lv_retcode         -- リターン・コード             --# 固定 #
+       ,ov_errmsg         => lv_errmsg          -- ユーザー・エラー・メッセージ --# 固定 #
+      ) ;
+    IF  (lv_retcode = gv_status_error)
+     OR (lv_retcode = gv_status_warn) THEN
+      RAISE global_process_expt ;
+    END IF ;
+--
+    -- =====================================================
+    -- 帳票データ出力
+    -- =====================================================
+    prc_create_xml_data(
+        ir_param          => lr_param_rec       -- 入力パラメータレコード
+       ,ov_errbuf         => lv_errbuf          -- エラー・メッセージ           --# 固定 #
+       ,ov_retcode        => lv_retcode         -- リターン・コード             --# 固定 #
+       ,ov_errmsg         => lv_errmsg          -- ユーザー・エラー・メッセージ --# 固定 #
+      ) ;
+    IF (lv_retcode = gv_status_error) THEN
+      RAISE global_process_expt ;
+    END IF ;
+--
+    -- ==================================================
+    -- ＸＭＬ出力
+    -- ==================================================
+    FND_FILE.PUT_LINE( FND_FILE.OUTPUT, '<?xml version="1.0" encoding="shift_jis" ?>' ) ;
+--
+    -- --------------------------------------------------
+    -- 抽出データが０件の場合
+    -- --------------------------------------------------
+    IF  ( lv_errmsg IS NOT NULL )
+    AND ( lv_retcode = gv_status_warn ) THEN
+      -- ０件メッセージ出力
+      FND_FILE.PUT_LINE( FND_FILE.OUTPUT, '<root>' ) ;
+      FND_FILE.PUT_LINE( FND_FILE.OUTPUT, '  <data_info>' ) ;
+      FND_FILE.PUT_LINE( FND_FILE.OUTPUT, '    <lg_crowd_high>' ) ;
+      FND_FILE.PUT_LINE( FND_FILE.OUTPUT, '      <g_crowd_high>' ) ;
+      FND_FILE.PUT_LINE( FND_FILE.OUTPUT, '        <lg_crowd_mid>' ) ;
+      FND_FILE.PUT_LINE( FND_FILE.OUTPUT, '          <g_crowd_mid>' ) ;
+      FND_FILE.PUT_LINE( FND_FILE.OUTPUT, '            <lg_crowd_low>' ) ;
+      FND_FILE.PUT_LINE( FND_FILE.OUTPUT, '              <g_crowd_low>' ) ;
+      FND_FILE.PUT_LINE( FND_FILE.OUTPUT, '                <lg_crowd_dtl>' ) ;
+      FND_FILE.PUT_LINE( FND_FILE.OUTPUT, '                  <g_crowd_dtl>' ) ;
+      FND_FILE.PUT_LINE( FND_FILE.OUTPUT, '                   <msg>' || lv_errmsg || '</msg>');
+      FND_FILE.PUT_LINE( FND_FILE.OUTPUT, '                  </g_crowd_dtl>' ) ;
+      FND_FILE.PUT_LINE( FND_FILE.OUTPUT, '                </lg_crowd_dtl>' ) ;
+      FND_FILE.PUT_LINE( FND_FILE.OUTPUT, '              </g_crowd_low>' ) ;
+      FND_FILE.PUT_LINE( FND_FILE.OUTPUT, '            </lg_crowd_low>' ) ;
+      FND_FILE.PUT_LINE( FND_FILE.OUTPUT, '          </g_crowd_mid>' ) ;
+      FND_FILE.PUT_LINE( FND_FILE.OUTPUT, '        </lg_crowd_mid>' ) ;
+      FND_FILE.PUT_LINE( FND_FILE.OUTPUT, '      </g_crowd_high>' ) ;
+      FND_FILE.PUT_LINE( FND_FILE.OUTPUT, '    </lg_crowd_high>' ) ;
+      FND_FILE.PUT_LINE( FND_FILE.OUTPUT, '  </data_info>' ) ;
+      FND_FILE.PUT_LINE( FND_FILE.OUTPUT, '</root>' ) ;
+--
+      -- ０件メッセージログ出力
+      lv_errmsg  := xxcmn_common_pkg.get_msg( gc_application
+                                             ,'APP-XXCMN-10154'
+                                             ,'TABLE'
+                                             ,gv_print_name ) ;
+--
+    -- --------------------------------------------------
+    -- 帳票データが出力できた場合
+    -- --------------------------------------------------
+    ELSE
+      -- ＸＭＬヘッダー出力
+      FND_FILE.PUT_LINE( FND_FILE.OUTPUT, '<root>' ) ;
+--
+      -- ＸＭＬデータ部出力
+      <<xml_data_table>>
+      FOR i IN 1 .. gt_xml_data_table.COUNT LOOP
+        -- 編集したデータをタグに変換
+        lv_xml_string := fnc_conv_xml
+                          (
+                            iv_name   => gt_xml_data_table(i).tag_name    -- タグネーム
+                           ,iv_value  => gt_xml_data_table(i).tag_value   -- タグデータ
+                           ,ic_type   => gt_xml_data_table(i).tag_type    -- タグタイプ
+                          ) ;
+        -- ＸＭＬタグ出力
+        FND_FILE.PUT_LINE( FND_FILE.OUTPUT, lv_xml_string ) ;
+      END LOOP xml_data_table ;
+--
+      -- ＸＭＬフッダー出力
+      FND_FILE.PUT_LINE( FND_FILE.OUTPUT, '</root>' ) ;
+--
+    END IF ;
+--
+    -- ==================================================
+    -- 終了ステータス設定
+    -- ==================================================
+    ov_retcode := lv_retcode ;
+    ov_errmsg  := lv_errmsg ;
+    ov_errbuf  := lv_errbuf ;
+--
+  EXCEPTION
+--#################################  固定例外処理部 START   ###################################
+--
+    -- *** 処理部共通例外ハンドラ ***
+    WHEN global_process_expt THEN
+      ov_errmsg  := lv_errmsg ;
+      ov_errbuf  := SUBSTRB(gv_pkg_name||gv_msg_cont||cv_prg_name||gv_msg_part||lv_errbuf,1,5000) ;
+      ov_retcode := gv_status_error ;
+    -- *** 共通関数OTHERS例外ハンドラ ***
+    WHEN global_api_others_expt THEN
+      ov_errbuf  := gv_pkg_name||gv_msg_cont||cv_prg_name||gv_msg_part||SQLERRM ;
+      ov_retcode := gv_status_error ;
+    -- *** OTHERS例外ハンドラ ***
+    WHEN OTHERS THEN
+      ov_errbuf  := gv_pkg_name||gv_msg_cont||cv_prg_name||gv_msg_part||SQLERRM ;
+      ov_retcode := gv_status_error ;
+--
+--####################################  固定部 END   ##########################################
+  END submain ;
+--
+  /**********************************************************************************
+   * Procedure Name   : main
+   * Description      : コンカレント実行ファイル登録プロシージャ
+   **********************************************************************************/
+--
+  PROCEDURE main(
+      errbuf                OUT    VARCHAR2         -- エラーメッセージ
+     ,retcode               OUT    VARCHAR2         -- エラーコード
+     ,iv_exec_date_from     IN     VARCHAR2         --   01 : 処理年月(from)
+     ,iv_exec_date_to       IN     VARCHAR2         --   02 : 処理年月(to)
+     ,iv_goods_class        IN     VARCHAR2         --   03 : 商品区分
+     ,iv_item_class         IN     VARCHAR2         --   04 : 品目区分
+     ,iv_rcv_pay_div        IN     VARCHAR2         --   05 : 受払区分
+     ,iv_crowd_kind         IN     VARCHAR2         --   06 : 集計種別
+     ,iv_crowd_code         IN     VARCHAR2         --   07 : 群コード
+     ,iv_acct_crowd_code    IN     VARCHAR2         --   08 : 経理群コード
+    )
+--
+--###########################  固定部 START   ###########################
+--
+  IS
+--
+    -- ======================================================
+    -- 固定ローカル定数
+    -- ======================================================
+    cv_prg_name    CONSTANT VARCHAR2(100) := 'main' ; -- プログラム名
+    -- ======================================================
+    -- ローカル変数
+    -- ======================================================
+    lv_errbuf               VARCHAR2(5000) ;      --   エラー・メッセージ
+    lv_retcode              VARCHAR2(1) ;         --   リターン・コード
+    lv_errmsg               VARCHAR2(5000) ;      --   ユーザー・エラー・メッセージ
+--
+  BEGIN
+--
+--###########################  固定部 END   #############################
+--
+    -- ======================================================
+    -- submainの呼び出し（実際の処理はsubmainで行う）
+    -- ======================================================
+    submain(
+        iv_exec_date_from     =>     iv_exec_date_from      --   01 : 処理年月(from)
+       ,iv_exec_date_to       =>     iv_exec_date_to        --   02 : 処理年月(to)
+       ,iv_goods_class        =>     iv_goods_class         --   03 : 商品区分
+       ,iv_item_class         =>     iv_item_class          --   04 : 品目区分
+       ,iv_rcv_pay_div        =>     iv_rcv_pay_div         --   05 : 受払区分
+       ,iv_crowd_kind         =>     iv_crowd_kind          --   06 : 集計種別
+       ,iv_crowd_code         =>     iv_crowd_code          --   07 : 群コード
+       ,iv_acct_crowd_code    =>     iv_acct_crowd_code     --   08 : 経理群コード
+       ,ov_errbuf            => lv_errbuf            -- エラー・メッセージ           --# 固定 #
+       ,ov_retcode           => lv_retcode           -- リターン・コード             --# 固定 #
+       ,ov_errmsg            => lv_errmsg            -- ユーザー・エラー・メッセージ --# 固定 #
+     ) ;
+--
+--###########################  固定部 START   #####################################################
+--
+    -- ======================================================
+    -- エラー・メッセージ出力
+    -- ======================================================
+    IF  ( lv_retcode = gv_status_error )
+     OR ( lv_retcode = gv_status_warn  ) THEN
+      errbuf := lv_errmsg ;
+      FND_FILE.PUT_LINE(FND_FILE.LOG,lv_errbuf) ;
+    END IF ;
+--
+    --ステータスセット
+    retcode := lv_retcode ;
+--
+  EXCEPTION
+    -- *** 共通関数OTHERS例外ハンドラ ***
+    WHEN global_api_others_expt THEN
+      errbuf  := gv_pkg_name||gv_msg_cont||cv_prg_name||gv_msg_part||SQLERRM ;
+      retcode := gv_status_error ;
+    -- *** OTHERS例外ハンドラ ***
+    WHEN OTHERS THEN
+      errbuf  := gv_pkg_name||gv_msg_cont||cv_prg_name||gv_msg_part||SQLERRM ;
+      retcode := gv_status_error ;
+  END main ;
+--
+--###########################  固定部 END   #######################################################
+--
+END XXCMN770010C ;
+/
