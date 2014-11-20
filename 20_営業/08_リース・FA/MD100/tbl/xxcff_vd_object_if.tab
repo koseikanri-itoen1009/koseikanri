@@ -3,7 +3,7 @@
  * Table Name      : xxcff_vd_object_if
  * Description     : 自販機SH物件インタフェース
  * MD.070          : 
- * Version         : 1.1
+ * Version         : 1.2
  * 
  * Change Record
  * ------------- ----- ------------ -------------------------------------
@@ -11,6 +11,7 @@
  * ------------- ----- ------------ -------------------------------------
  *  2009/01/23    1.0  SCS 奥河美樹  初回作成
  *  2009/02/06    1.1  SCS 奥河美樹  物件コード9桁→10桁へ変更
+ *  2009/04/13    1.2  SCS 松中俊樹  【T1_0471】物件設置場所の桁数を変更
  ************************************************************************/
 CREATE TABLE xxcff.xxcff_vd_object_if (
      object_code                    VARCHAR2(10)  NOT NULL
@@ -25,7 +26,10 @@ CREATE TABLE xxcff.xxcff_vd_object_if (
     ,department_code                VARCHAR2(5)
     ,owner_company                  VARCHAR2(4)
     ,installation_place             VARCHAR2(50)
-    ,installation_address           VARCHAR2(50)
+    --T1_0471 START 2009/04/13
+    --,installation_address           VARCHAR2(50)
+    ,installation_address           VARCHAR2(600)
+    --T1_0471 END   2009/04/13
     ,active_flag                    VARCHAR2(1)
     ,import_status                  VARCHAR2(1)
     ,group_id                       VARCHAR2(50)
