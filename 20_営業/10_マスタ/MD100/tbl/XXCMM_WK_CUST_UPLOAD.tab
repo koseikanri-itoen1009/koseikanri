@@ -31,6 +31,23 @@ CREATE TABLE XXCMM.XXCMM_WK_CUST_UPLOAD (
     ,industry_div                   VARCHAR2(10)
     ,torihiki_form                  VARCHAR2(10)
     ,delivery_form                  VARCHAR2(10)
+-- Ver1.1 Add E_本稼動_09963対応
+    ,tdb_code                       VARCHAR2(20)    -- TDBコード
+    ,base_code                      VARCHAR2(10)    -- 本部担当拠点
+    ,credit_limit                   VARCHAR2(10)    -- 与信限度額
+    ,decide_div                     VARCHAR2(10)    -- 判定区分
+    ,approval_date                  VARCHAR2(30)    -- 決裁日付
+    ,tax_div                        VARCHAR2(10)    -- 消費税区分
+    ,tax_rounding_rule              VARCHAR2(40)    -- 税金端数処理
+    ,invoice_grp_code               VARCHAR2(160)   -- 売掛コード1（請求書）
+    ,output_form                    VARCHAR2(160)   -- 請求書出力形式
+    ,prt_cycle                      VARCHAR2(160)   -- 請求書発行サイクル
+    ,payment_term                   VARCHAR2(20)    -- 支払条件
+    ,delivery_base_code             VARCHAR2(10)    -- 納品拠点
+    ,bill_base_code                 VARCHAR2(10)    -- 請求拠点
+    ,receiv_base_code               VARCHAR2(10)    -- 入金拠点
+    ,sales_head_base_code           VARCHAR2(10)    -- 販売先本部担当拠点
+-- Ver1.1 End
     ,created_by                     NUMBER(15)    NOT NULL
     ,creation_date                  DATE          NOT NULL
     ,last_updated_by                NUMBER(15)    NOT NULL
@@ -107,6 +124,38 @@ COMMENT ON COLUMN xxcmm_wk_cust_upload.torihiki_form                            
 /
 COMMENT ON COLUMN xxcmm_wk_cust_upload.delivery_form                             IS '配送形態'
 /
+-- Ver1.1 Add E_本稼動_09963対応
+COMMENT ON COLUMN xxcmm_wk_cust_upload.tdb_code                                  IS 'TDBコード'
+/
+COMMENT ON COLUMN xxcmm_wk_cust_upload.base_code                                 IS '本部担当拠点'
+/
+COMMENT ON COLUMN xxcmm_wk_cust_upload.credit_limit                              IS '与信限度額'
+/
+COMMENT ON COLUMN xxcmm_wk_cust_upload.decide_div                                IS '判定区分'
+/
+COMMENT ON COLUMN xxcmm_wk_cust_upload.approval_date                             IS '決裁日付'
+/
+COMMENT ON COLUMN xxcmm_wk_cust_upload.tax_div                                   IS '消費税区分'
+/
+COMMENT ON COLUMN xxcmm_wk_cust_upload.tax_rounding_rule                         IS '税金端数処理'
+/
+COMMENT ON COLUMN xxcmm_wk_cust_upload.invoice_grp_code                          IS '売掛コード1（請求書）'
+/
+COMMENT ON COLUMN xxcmm_wk_cust_upload.output_form                               IS '請求書出力形式'
+/
+COMMENT ON COLUMN xxcmm_wk_cust_upload.prt_cycle                                 IS '請求書発行サイクル'
+/
+COMMENT ON COLUMN xxcmm_wk_cust_upload.payment_term                              IS '支払条件'
+/
+COMMENT ON COLUMN xxcmm_wk_cust_upload.delivery_base_code                        IS '納品拠点'
+/
+COMMENT ON COLUMN xxcmm_wk_cust_upload.bill_base_code                            IS '請求拠点'
+/
+COMMENT ON COLUMN xxcmm_wk_cust_upload.receiv_base_code                          IS '入金拠点'
+/
+COMMENT ON COLUMN xxcmm_wk_cust_upload.sales_head_base_code                      IS '販売先本部担当拠点'
+/
+-- Ver1.1 End
 COMMENT ON COLUMN xxcmm_wk_cust_upload.created_by                                IS '作成者'
 /
 COMMENT ON COLUMN xxcmm_wk_cust_upload.creation_date                             IS '作成日'
