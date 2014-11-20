@@ -157,6 +157,16 @@ AND    xgmd.lot_id                = xmld.lot_id(+)
 AND    xmld.document_type_code(+) = '40'
 AND    xmld.record_type_code(+)   = '40'
 AND    xgmd.material_detail_id    = TO_NUMBER(:3)
+AND    NOT EXISTS(SELECT item_id
+                  FROM   ic_tran_pnd           
+                  WHERE  doc_id      = xgmd.batch_id
+                  AND    item_id     = xgmd.item_id
+                  AND    lot_id      = xgmd.lot_id
+                  AND    doc_type    = 'PROD'
+                  AND    delete_mark = 0
+                  AND    line_type   = 1
+                  AND    reverse_id  IS NULL
+                  AND    lot_id      <> 0)
 GROUP BY xgmd.batch_id
         ,xgmd.material_detail_id
         ,xgmd.line_no
