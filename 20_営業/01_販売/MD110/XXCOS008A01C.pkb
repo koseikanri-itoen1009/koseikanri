@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCOS008A01C(body)
  * Description      : 工場直送出荷依頼IF作成を行う
  * MD.050           : 工場直送出荷依頼IF作成 MD050_COS_008_A01
- * Version          : 1.12
+ * Version          : 1.15
  *
  * Program List
  * --------------------------- ----------------------------------------------------------
@@ -55,6 +55,9 @@ AS
  *  2009/11/04    1.14  K.Atsushiba      [0000067]出荷元保管場所取得の条件を納品拠点から売上拠点に変更
  *                                                出荷依頼ヘッダ.入力拠点をログインユーザの自拠点コードに変更
  *                                                [A-12]のログインユーザの自拠点取得処理を初期処理に移動し、グローバル変数化
+ *  2009/11/22    1.15  S.Miyakoshi      [I_E_698](A-3)物流構成マスタを検索する際に子コードで検索するよう変更
+ *                                                (A-5)出荷区分、率区分、顧客受注可能フラグは子コードでチェックするよう変更
+ *                                                (A-5)売上対象区分は、子コードがあればチェックせず、なければチェックするよう変更
  *
  *****************************************************************************************/
 --
@@ -1420,7 +1423,10 @@ AS
         SELECT xsr.delivery_whse_code           -- 出荷保管倉庫コード
         INTO   lv_ship_subinventory
         FROM   xxcmn_sourcing_rules  xsr        -- 物流構成アドオンマスタ
-        WHERE  xsr.item_code               = it_order_rec.item_code            -- 品目コード
+--****************************** 2009/11/22 1.15 S.Miyakoshi MOD START ******************************--
+--        WHERE  xsr.item_code               = it_order_rec.item_code            -- 品目コード
+        WHERE  xsr.item_code               = it_order_rec.child_code           -- 品目コード
+--****************************** 2009/11/22 1.15 S.Miyakoshi MOD  END  ******************************--
         AND    xsr.ship_to_code            = it_order_rec.province             -- 配送先コード
         AND    it_order_rec.request_date   BETWEEN xsr.start_date_active       -- 有効日From
                                            AND     xsr.end_date_active;        -- 有効日To
@@ -1439,7 +1445,10 @@ AS
           SELECT xsr.delivery_whse_code           -- 出荷保管倉庫コード
           INTO   lv_ship_subinventory
           FROM   xxcmn_sourcing_rules  xsr        -- 物流構成アドオンマスタ
-          WHERE  xsr.item_code               = it_order_rec.item_code            -- 品目コード
+--****************************** 2009/11/22 1.15 S.Miyakoshi MOD START ******************************--
+--          WHERE  xsr.item_code               = it_order_rec.item_code            -- 品目コード
+          WHERE  xsr.item_code               = it_order_rec.child_code           -- 品目コード
+--****************************** 2009/11/22 1.15 S.Miyakoshi MOD  END  ******************************--
 /* 2009/11/04 Ver.1.14 Mod Start */
           AND    xsr.base_code               = it_order_rec.base_code            -- 拠点コード
 --          AND    xsr.base_code               = it_order_rec.delivery_base_code   -- 拠点コード
@@ -2157,9 +2166,14 @@ AS
 /* 2009/09/16 Ver.1.12 Add End [0001232] */
     --
     -- 品目データを取得済みかチェック
-    IF ( gt_item_info_tbl.EXISTS(it_order_rec.item_code) = TRUE ) THEN
+--****************************** 2009/11/22 1.15 S.Miyakoshi MOD START ******************************--
+--    IF ( gt_item_info_tbl.EXISTS(it_order_rec.item_code) = TRUE ) THEN
+--      -- 取得済みの場合、再利用する
+--      gt_item_info_rec := gt_item_info_tbl(it_order_rec.item_code);
+    IF ( gt_item_info_tbl.EXISTS(it_order_rec.child_code) = TRUE ) THEN
       -- 取得済みの場合、再利用する
-      gt_item_info_rec := gt_item_info_tbl(it_order_rec.item_code);
+      gt_item_info_rec := gt_item_info_tbl(it_order_rec.child_code);
+--****************************** 2009/11/22 1.15 S.Miyakoshi MOD  END  ******************************--
     ELSE
       -- 未取得の場合
       -- 出荷区分、売上対象区分、率区分データ取得
@@ -2170,7 +2184,10 @@ AS
              ,lv_sales_div
              ,lv_rate_class
       FROM   xxcmn_item_mst2_v   ximv        -- OPM品目情報VIEW2
-      WHERE  ximv.item_no       = it_order_rec.item_code             -- 品目コード
+--****************************** 2009/11/22 1.15 S.Miyakoshi MOD START ******************************--
+--      WHERE  ximv.item_no       = it_order_rec.item_code             -- 品目コード
+      WHERE  ximv.item_no       = it_order_rec.child_code            -- 品目コード
+--****************************** 2009/11/22 1.15 S.Miyakoshi MOD  END  ******************************--
       AND    gd_business_date   BETWEEN ximv.start_date_active       -- 有効日From
                                 AND     ximv.end_date_active;        -- 有効日To
       --
@@ -2178,7 +2195,10 @@ AS
       SELECT msib.customer_order_enabled_flag         -- 顧客受注可能フラグ
       INTO   lv_cust_order_flag
       FROM   mtl_system_items_b       msib            -- 品目マスタ
-      WHERE  msib.inventory_item_id = it_order_rec.inventory_item_id       -- 品目ID
+--****************************** 2009/11/22 1.15 S.Miyakoshi MOD START ******************************--
+--      WHERE  msib.inventory_item_id = it_order_rec.inventory_item_id       -- 品目ID
+      WHERE  msib.segment1          = it_order_rec.child_code              -- 品目コード
+--****************************** 2009/11/22 1.15 S.Miyakoshi MOD  END  ******************************--
       AND    msib.organization_id   = it_order_rec.ship_from_org_id;       -- 組織ID
       --
       -- 出荷区分チェック
@@ -2189,11 +2209,17 @@ AS
       END IF;
       --
       -- 売上対象区分チェック
+--****************************** 2009/11/22 1.15 S.Miyakoshi ADD START ******************************--
+      IF ( it_order_rec.item_code = it_order_rec.child_code ) THEN
+--****************************** 2009/11/22 1.15 S.Miyakoshi ADD  END  ******************************--
       IF ( ( lv_sales_div IS NULL )
              OR ( lv_sales_div <> cv_normal_sales_div ) )
       THEN
         gt_item_info_rec.sales_div_flag := cn_check_status_error;
       END IF;
+--****************************** 2009/11/22 1.15 S.Miyakoshi ADD START ******************************--
+      END IF;
+--****************************** 2009/11/22 1.15 S.Miyakoshi ADD  END  ******************************--
       --
       -- 率区分チェック
       IF ( ( lv_rate_class IS NULL )
@@ -2210,7 +2236,10 @@ AS
       END IF;
       --
       -- テーブルに設定
-      gt_item_info_tbl(it_order_rec.item_code) := gt_item_info_rec;
+--****************************** 2009/11/22 1.15 S.Miyakoshi ADD START ******************************--
+--      gt_item_info_tbl(it_order_rec.item_code) := gt_item_info_rec;
+      gt_item_info_tbl(it_order_rec.child_code) := gt_item_info_rec;
+--****************************** 2009/11/22 1.15 S.Miyakoshi ADD  END  ******************************--
     END IF;
     --
     ----------------------------------
@@ -2233,7 +2262,10 @@ AS
         ,iv_token_name3  => cv_tkn_field_name              -- 項目名
         ,iv_token_value3 => lv_item_name
         ,iv_token_name4  => cv_tkn_divide_value            -- 項目値
-        ,iv_token_value4 => it_order_rec.item_code
+--****************************** 2009/11/22 1.15 S.Miyakoshi MOD START ******************************--
+--        ,iv_token_value4 => it_order_rec.item_code
+        ,iv_token_value4 => it_order_rec.child_code
+--****************************** 2009/11/22 1.15 S.Miyakoshi ADD  END  ******************************--
       );
       -- メッセージ出力
       fnd_file.put_line(
@@ -2308,7 +2340,10 @@ AS
         ,iv_token_name3  => cv_tkn_field_name             -- 項目名
         ,iv_token_value3 => lv_item_name
         ,iv_token_name4  => cv_tkn_divide_value           -- 項目値
-        ,iv_token_value4 => it_order_rec.item_code
+--****************************** 2009/11/22 1.15 S.Miyakoshi MOD START ******************************--
+--        ,iv_token_value4 => it_order_rec.item_code
+        ,iv_token_value4 => it_order_rec.child_code
+--****************************** 2009/11/22 1.15 S.Miyakoshi ADD  END  ******************************--
       );
       -- メッセージ出力
       fnd_file.put_line(
@@ -2344,7 +2379,10 @@ AS
         ,iv_token_name3  => cv_tkn_field_name                 -- 項目名
         ,iv_token_value3 => lv_item_name
         ,iv_token_name4  => cv_tkn_divide_value               -- 項目値
-        ,iv_token_value4 => it_order_rec.item_code
+--****************************** 2009/11/22 1.15 S.Miyakoshi MOD START ******************************--
+--        ,iv_token_value4 => it_order_rec.item_code
+        ,iv_token_value4 => it_order_rec.child_code
+--****************************** 2009/11/22 1.15 S.Miyakoshi ADD  END  ******************************--
       );
       -- メッセージ出力
       fnd_file.put_line(
