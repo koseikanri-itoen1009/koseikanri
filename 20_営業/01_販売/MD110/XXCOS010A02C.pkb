@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCOS010A02C(body)
  * Description      : 受注OIFへの取込機能
  * MD.050           : 受注OIFへの取込(MD050_COS_010_A02)
- * Version          : 1.9
+ * Version          : 1.10
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -45,6 +45,7 @@ AS
  *  2009/08/04    1.7   M.Sano           [0000923]情報区分がNULL、01、02のみ対象とするように変更
  *  2009/11/05    1.8   N.Maeda          [E_T4_00081] 予定出荷日セット内容をNULLに変更
  *  2009/12/04    1.9   M.Fujinuma       [E_本稼動_00316]営業担当IDを受注ヘッダOIF用変数に追加
+ *  2009/12/29    1.10  K.Oomata         [E_本稼動_00595]EDI情報データ抽出時のロックエラーは"警告"終了
  *
  *****************************************************************************************/
 --
@@ -115,7 +116,9 @@ AS
   cv_pkg_name               CONSTANT VARCHAR2(100) := 'XXCOS010A02C';                 -- パッケージ名
   cv_application            CONSTANT VARCHAR2(5)   := 'XXCOS';                        -- アプリケーション名
   -- プロファイル
-  cv_prf_operation_unit     CONSTANT VARCHAR2(50)  := 'XXCOS1_ITOE_OU_MFG';           -- MO:営業単位（ITOE-OU-MFG）
+-- 2009/12/29 K.Oomata Ver.1.10 del start
+--  cv_prf_operation_unit     CONSTANT VARCHAR2(50)  := 'XXCOS1_ITOE_OU_MFG';           -- MO:営業単位（ITOE-OU-MFG）
+-- 2009/12/29 K.Oomata Ver.1.10 del end
   -- 参照コード
   cv_order_class            CONSTANT VARCHAR2(50)  := 'XXCOS1_EDI_ORDER_CLASS';       -- 受注データ(受注納品確定区分11,12,24)
   cv_delivered_class        CONSTANT VARCHAR2(50)  := 'XXCOS1_EDI_DELIVERED_CLASS';   -- 納品確定データ(受注納品確定区分13)
@@ -780,26 +783,28 @@ AS
     END;
 --
     gv_sales_type  :=  lv_sales_type;
---
-    -- ==============================================================
-    -- プロファイルの取得(MO:営業単位)
-    -- ==============================================================
-    gv_operation_unit := FND_PROFILE.VALUE(cv_prf_operation_unit);
---
-    -- プロファイルが取得できなかった場合
-    IF ( gv_operation_unit IS NULL ) THEN
-      -- プロファイル（営業単位）取得エラーを出力
-      lv_errmsg    := xxccp_common_pkg.get_msg(
-                         iv_application  => cv_application
-                       , iv_name         => cv_msg_profile
-                       , iv_token_name1  => cv_tkn_profile
-                       , iv_token_value1 => cv_prf_operation_unit
-                      );
-      lv_errbuf := lv_errmsg;
-      -- ログ出力
-      proc_msg_output( cv_prg_name, lv_errbuf );
-      ov_retcode := cv_status_error;
-    END IF;
+-- 2009/12/29 K.Oomata Ver.1.10 del start
+----
+--    -- ==============================================================
+--    -- プロファイルの取得(MO:営業単位)
+--    -- ==============================================================
+--    gv_operation_unit := FND_PROFILE.VALUE(cv_prf_operation_unit);
+----
+--    -- プロファイルが取得できなかった場合
+--    IF ( gv_operation_unit IS NULL ) THEN
+--      -- プロファイル（営業単位）取得エラーを出力
+--      lv_errmsg    := xxccp_common_pkg.get_msg(
+--                         iv_application  => cv_application
+--                       , iv_name         => cv_msg_profile
+--                       , iv_token_name1  => cv_tkn_profile
+--                       , iv_token_value1 => cv_prf_operation_unit
+--                      );
+--      lv_errbuf := lv_errmsg;
+--      -- ログ出力
+--      proc_msg_output( cv_prg_name, lv_errbuf );
+--      ov_retcode := cv_status_error;
+--    END IF;
+-- 2009/12/29 K.Oomata Ver.1.10 del end
 --
     gn_org_id := fnd_global.org_id;
 --
@@ -897,7 +902,17 @@ AS
                        , iv_token_value1 => gv_edi_header_tab
                       );
         lv_errbuf  := lv_errmsg;
-        RAISE global_api_expt;
+-- 2009/12/29 K.Oomata Ver.1.10 mod start
+--        RAISE global_api_expt;
+        -- ログ出力
+        proc_msg_output( cv_prg_name, lv_errbuf );
+        FND_FILE.PUT_LINE(
+            which  => FND_FILE.OUTPUT
+          , buff   => ''
+        );
+        -- ロックエラー例外をスロー
+        RAISE lock_expt;
+-- 2009/12/29 K.Oomata Ver.1.10 mod end
 --
       -- データ抽出エラー
       WHEN OTHERS THEN
@@ -937,6 +952,13 @@ AS
 --
 --#################################  固定例外処理部 START   ####################################
 --
+-- 2009/12/29 K.Oomata Ver.1.10 add start
+    -- ロックエラー
+    WHEN lock_expt THEN
+      ov_errmsg  := lv_errmsg;
+      ov_errbuf  := SUBSTRB( cv_pkg_name||cv_msg_cont||cv_prg_name||cv_msg_part||lv_errbuf, 1, 5000);
+      ov_retcode := cv_status_warn;
+-- 2009/12/29 K.Oomata Ver.1.10 add end
     -- *** 共通関数例外ハンドラ ***
     WHEN global_api_expt THEN
       ov_errmsg  := lv_errmsg;
@@ -2144,7 +2166,12 @@ AS
     );
 --
     -- エラーの場合
-    IF ( lv_retcode = cv_status_error ) THEN
+-- 2009/12/29 K.Oomata Ver.1.10 mod start
+--    IF ( lv_retcode = cv_status_error ) THEN
+    IF ( lv_retcode = cv_status_error 
+      OR lv_retcode = cv_status_warn )
+    THEN
+-- 2009/12/29 K.Oomata Ver.1.10 mod end
       ov_errbuf  := lv_errbuf;
       ov_retcode := lv_retcode;
       ov_errmsg  := lv_errmsg;
