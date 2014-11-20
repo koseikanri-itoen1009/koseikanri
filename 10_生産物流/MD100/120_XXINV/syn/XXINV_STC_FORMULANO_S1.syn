@@ -1,0 +1,1 @@
+CREATE OR REPLACE SYNONYM apps.xxinv_stc_formulano_s1 FOR xxinv.xxinv_stc_formulano_s1;

@@ -1,0 +1,1 @@
+CREATE INDEX xxinv.xxinv_mrih_n02 ON xxinv.xxinv_mov_req_instr_headers(mov_num) TABLESPACE xxidx ;

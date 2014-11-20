@@ -1,0 +1,1 @@
+CREATE OR REPLACE SYNONYM apps.xxinv_mrp_file_ul_s1 FOR xxinv.xxinv_mrp_file_ul_s1;

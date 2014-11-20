@@ -1,0 +1,17 @@
+CREATE OR REPLACE FORCE VIEW "APPS"."XXINV_STC_LOT_NO_V" (
+  "LOT_NO"
+  ) AS 
+  SELECT
+    ILM.LOT_NO             -- ロットNo
+  FROM   IC_LOTS_MST ILM  -- OPMロットマスタ
+  WHERE  ILM.LOT_ID > 0
+  GROUP BY
+        ILM.LOT_NO
+  ORDER BY 
+        ILM.LOT_NO
+  ;
+--
+COMMENT ON COLUMN XXINV_STC_LOT_NO_V.LOT_NO   IS 'ロットNo';
+--
+COMMENT ON TABLE  XXINV_STC_LOT_NO_V IS '在庫_値セット用VIEW_ロットNO' ;
+/

@@ -1,0 +1,64 @@
+CREATE TABLE xxinv.xxinv_stc_inventory_result
+(
+  invent_result_id        NUMBER        NOT NULL,
+  report_post_code        VARCHAR2(4)   NOT NULL,
+  invent_date             DATE          NOT NULL,
+  invent_whse_code        VARCHAR2(3)   NOT NULL,
+  invent_seq              VARCHAR2(12)  NOT NULL,
+  item_id                 NUMBER        NOT NULL,
+  item_code               VARCHAR2(7)   NOT NULL,
+  lot_id                  NUMBER,
+  lot_no                  VARCHAR2(10),
+  maker_date              VARCHAR2(10),
+  limit_date              VARCHAR2(10),
+  proper_mark             VARCHAR2(6) ,
+  case_amt                NUMBER(9,0)   NOT NULL,
+  content                 NUMBER(8,3)   NOT NULL,
+  loose_amt               NUMBER(12,3)  NOT NULL,
+  location                VARCHAR2(10)  NOT NULL,
+  rack_no1                VARCHAR2(2)   NOT NULL,
+  rack_no2                VARCHAR2(2)   NOT NULL,
+  rack_no3                VARCHAR2(2)   NOT NULL,
+  created_by              NUMBER(15,0)  NOT NULL,
+  creation_date           DATE          NOT NULL,
+  last_updated_by         NUMBER(15,0)  NOT NULL,
+  last_update_date        DATE          NOT NULL,
+  last_update_login       NUMBER(15,0),
+  request_id              NUMBER(15,0),
+  program_application_id  NUMBER(15,0),
+  program_id              NUMBER(15,0),
+  program_update_date     DATE,
+  CONSTRAINT xxinv_stc_inv_res_pk PRIMARY KEY ( invent_result_id )
+  USING INDEX TABLESPACE xxidx
+) ;
+--
+COMMENT ON COLUMN xxinv.xxinv_stc_inventory_result.invent_result_id        IS '棚卸結果ID';
+COMMENT ON COLUMN xxinv.xxinv_stc_inventory_result.report_post_code        IS '報告部署';
+COMMENT ON COLUMN xxinv.xxinv_stc_inventory_result.invent_date             IS '棚卸日';
+COMMENT ON COLUMN xxinv.xxinv_stc_inventory_result.invent_whse_code        IS '棚卸倉庫';
+COMMENT ON COLUMN xxinv.xxinv_stc_inventory_result.invent_seq              IS '棚卸連番';
+COMMENT ON COLUMN xxinv.xxinv_stc_inventory_result.item_id                 IS '品目ID';
+COMMENT ON COLUMN xxinv.xxinv_stc_inventory_result.item_code               IS '品目';
+COMMENT ON COLUMN xxinv.xxinv_stc_inventory_result.lot_id                  IS 'ロットID';
+COMMENT ON COLUMN xxinv.xxinv_stc_inventory_result.lot_no                  IS 'ロットNo.';
+COMMENT ON COLUMN xxinv.xxinv_stc_inventory_result.maker_date              IS '製造日';
+COMMENT ON COLUMN xxinv.xxinv_stc_inventory_result.limit_date              IS '賞味期限';
+COMMENT ON COLUMN xxinv.xxinv_stc_inventory_result.proper_mark             IS '固有記号';
+COMMENT ON COLUMN xxinv.xxinv_stc_inventory_result.case_amt                IS '棚卸ケース数';
+COMMENT ON COLUMN xxinv.xxinv_stc_inventory_result.content                 IS '入数';
+COMMENT ON COLUMN xxinv.xxinv_stc_inventory_result.loose_amt               IS '棚卸バラ';
+COMMENT ON COLUMN xxinv.xxinv_stc_inventory_result.location                IS 'ロケーション';
+COMMENT ON COLUMN xxinv.xxinv_stc_inventory_result.rack_no1                IS 'ラックNo１';
+COMMENT ON COLUMN xxinv.xxinv_stc_inventory_result.rack_no2                IS 'ラックNo２';
+COMMENT ON COLUMN xxinv.xxinv_stc_inventory_result.rack_no3                IS 'ラックNo３';
+COMMENT ON COLUMN xxinv.xxinv_stc_inventory_result.created_by              IS '作成者';
+COMMENT ON COLUMN xxinv.xxinv_stc_inventory_result.creation_date           IS '作成日';
+COMMENT ON COLUMN xxinv.xxinv_stc_inventory_result.last_updated_by         IS '最終更新者';
+COMMENT ON COLUMN xxinv.xxinv_stc_inventory_result.last_update_date        IS '最終更新日';
+COMMENT ON COLUMN xxinv.xxinv_stc_inventory_result.last_update_login       IS '最終更新ログイン';
+COMMENT ON COLUMN xxinv.xxinv_stc_inventory_result.request_id              IS '要求ID';
+COMMENT ON COLUMN xxinv.xxinv_stc_inventory_result.program_application_id  IS 'コンカレント・プログラム・アプリケーションID';
+COMMENT ON COLUMN xxinv.xxinv_stc_inventory_result.program_id              IS 'コンカレント・プログラムID';
+COMMENT ON COLUMN xxinv.xxinv_stc_inventory_result.program_update_date     IS 'プログラム更新日';
+--
+COMMENT ON TABLE  xxinv.xxinv_stc_inventory_result IS '棚卸結果テーブル';

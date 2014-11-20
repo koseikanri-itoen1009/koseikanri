@@ -1,0 +1,36 @@
+CREATE TABLE xxinv.xxinv_mrp_file_ul_interface
+(
+  file_id                   NUMBER          NOT NULL,
+  file_name                 VARCHAR2(256),
+  file_content_type         VARCHAR2(256),
+  file_data                 BLOB            NOT NULL,
+  file_format               VARCHAR2(10),
+  created_by                NUMBER(15,0)    NOT NULL,
+  creation_date             DATE            NOT NULL,
+  last_updated_by           NUMBER(15,0)    NOT NULL,
+  last_update_date          DATE            NOT NULL,
+  last_update_login         NUMBER(15,0),
+  request_id                NUMBER(15,0),
+  program_application_id    NUMBER(15,0),
+  program_id                NUMBER(15,0),
+  program_update_date       DATE,
+  CONSTRAINT xxinv_mfui_pk PRIMARY KEY ( file_id )
+  USING INDEX TABLESPACE xxidx
+  ) ;
+--
+COMMENT ON COLUMN xxinv.xxinv_mrp_file_ul_interface.file_id                  IS 'FILE_ID';
+COMMENT ON COLUMN xxinv.xxinv_mrp_file_ul_interface.file_name                IS 'FILE_NAME';
+COMMENT ON COLUMN xxinv.xxinv_mrp_file_ul_interface.file_content_type        IS 'FILE_CONTENT_TYPE';
+COMMENT ON COLUMN xxinv.xxinv_mrp_file_ul_interface.file_data                IS 'FILE_DATA';
+COMMENT ON COLUMN xxinv.xxinv_mrp_file_ul_interface.file_format              IS 'FILE_FORMAT';
+COMMENT ON COLUMN xxinv.xxinv_mrp_file_ul_interface.created_by               IS '作成者';
+COMMENT ON COLUMN xxinv.xxinv_mrp_file_ul_interface.creation_date            IS '作成日';
+COMMENT ON COLUMN xxinv.xxinv_mrp_file_ul_interface.last_updated_by          IS '最終更新者';
+COMMENT ON COLUMN xxinv.xxinv_mrp_file_ul_interface.last_update_date         IS '最終更新日';
+COMMENT ON COLUMN xxinv.xxinv_mrp_file_ul_interface.last_update_login        IS '最終更新ログイン';
+COMMENT ON COLUMN xxinv.xxinv_mrp_file_ul_interface.request_id               IS '要求ID';
+COMMENT ON COLUMN xxinv.xxinv_mrp_file_ul_interface.program_application_id   IS 'コンカレント・プログラム・アプリケーションID';
+COMMENT ON COLUMN xxinv.xxinv_mrp_file_ul_interface.program_id               IS 'コンカレント・プログラムID';
+COMMENT ON COLUMN xxinv.xxinv_mrp_file_ul_interface.program_update_date      IS 'プログラム更新日';
+--
+COMMENT ON TABLE  xxinv.xxinv_mrp_file_ul_interface IS 'ファイルアップロードIFテーブル';

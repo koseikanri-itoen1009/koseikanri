@@ -1,0 +1,44 @@
+CREATE TABLE xxinv.xxinv_stc_inventory_month_stck
+(
+  invent_monthly_stock_id   NUMBER  NOT NULL,
+  whse_code                 VARCHAR2(3),
+  item_id                   NUMBER,
+  item_code                 VARCHAR2(7),
+  lot_id                    NUMBER,
+  lot_no                    VARCHAR2(10),
+  monthly_stock             NUMBER,
+  cargo_stock               NUMBER,
+  invent_ym                 VARCHAR2(6),
+  created_by                NUMBER(15,0)  NOT NULL,
+  creation_date             DATE          NOT NULL,
+  last_updated_by           NUMBER(15,0)  NOT NULL,
+  last_update_date          DATE          NOT NULL,
+  last_update_login         NUMBER(15,0),
+  request_id                NUMBER(15,0),
+  program_application_id    NUMBER(15,0),
+  program_id                NUMBER(15,0),
+  program_update_date       DATE,
+  CONSTRAINT xxinv_stc_i_m_s_pk PRIMARY KEY ( invent_monthly_stock_id )
+  USING INDEX TABLESPACE XXIDX
+  ) ;
+--
+COMMENT ON TABLE xxinv.xxinv_stc_inventory_month_stck IS '棚卸月末在庫テーブル';
+--
+COMMENT ON COLUMN xxinv.xxinv_stc_inventory_month_stck.invent_monthly_stock_id  IS '棚卸月末在庫ID';
+COMMENT ON COLUMN xxinv.xxinv_stc_inventory_month_stck.whse_code                IS '倉庫コード';
+COMMENT ON COLUMN xxinv.xxinv_stc_inventory_month_stck.item_id                  IS '品目ID';
+COMMENT ON COLUMN xxinv.xxinv_stc_inventory_month_stck.item_code                IS '品目コード';
+COMMENT ON COLUMN xxinv.xxinv_stc_inventory_month_stck.lot_id                   IS 'ロットID';
+COMMENT ON COLUMN xxinv.xxinv_stc_inventory_month_stck.lot_no                   IS 'ロットNo.';
+COMMENT ON COLUMN xxinv.xxinv_stc_inventory_month_stck.monthly_stock            IS '月末在庫数';
+COMMENT ON COLUMN xxinv.xxinv_stc_inventory_month_stck.cargo_stock              IS '積送中在庫数';
+COMMENT ON COLUMN xxinv.xxinv_stc_inventory_month_stck.invent_ym                IS '棚卸年月';
+COMMENT ON COLUMN xxinv.xxinv_stc_inventory_month_stck.created_by               IS '作成者';
+COMMENT ON COLUMN xxinv.xxinv_stc_inventory_month_stck.creation_date            IS '作成日';
+COMMENT ON COLUMN xxinv.xxinv_stc_inventory_month_stck.last_updated_by          IS '最終更新者';
+COMMENT ON COLUMN xxinv.xxinv_stc_inventory_month_stck.last_update_date         IS '最終更新日';
+COMMENT ON COLUMN xxinv.xxinv_stc_inventory_month_stck.last_update_login        IS '最終更新ログイン';
+COMMENT ON COLUMN xxinv.xxinv_stc_inventory_month_stck.request_id               IS '要求ID';
+COMMENT ON COLUMN xxinv.xxinv_stc_inventory_month_stck.program_application_id   IS 'コンカレント・プログラム・アプリケーションID';
+COMMENT ON COLUMN xxinv.xxinv_stc_inventory_month_stck.program_id               IS 'コンカレント・プログラムID';
+COMMENT ON COLUMN xxinv.xxinv_stc_inventory_month_stck.program_update_date      IS 'プログラム更新日';

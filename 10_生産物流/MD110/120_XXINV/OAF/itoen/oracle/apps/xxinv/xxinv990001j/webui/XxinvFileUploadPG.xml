@@ -1,0 +1,32 @@
+<?xml version = '1.0' encoding = 'UTF-8'?>
+<!-- dbdrv: exec java oracle/jrad/tools/xml/importer XMLImporter.class java &phase=dat+24 checkfile:~PROD:~PATH:~FILE &fullpath:~PROD:~PATH:~FILE -username &un_apps -password &pw_apps -dbconnection &jdbc_db_addr  -userId "1" -rootPackage /oracle/apps/~PROD  -rootdir &fullpath:~PROD:mds:directory  -->
+<page xmlns:jrad="http://xmlns.oracle.com/jrad" xmlns:oa="http://xmlns.oracle.com/oa" xmlns:ui="http://xmlns.oracle.com/uix/ui" version="9.0.3.8.13_1566" xml:lang="en-US" xmlns:user="http://xmlns.oracle.com/jrad/user" xmlns="http://xmlns.oracle.com/jrad" file-version="$Header: /cvsrepo/itoen/oracle/apps/xxinv/xxinv990001j/webui/XxinvFileUploadPG.xml,v 1.1.1.1 2008/02/15 08:54:19 02614 Exp $">
+   <content>
+      <oa:pageLayout id="PageLayoutRN" amDefName="itoen.oracle.apps.xxinv.xxinv990001j.server.XxinvFileUploadAM" windowTitle="ファイルアップロード：${oa.XxinvLookUpValueVO1.Meaning}" title="ファイルアップロード：${oa.XxinvLookUpValueVO1.Meaning}" controllerClass="itoen.oracle.apps.xxinv.xxinv990001j.webui.XxinvFileUploadCreateCO">
+         <ui:corporateBranding>
+            <oa:image id="corporateBrandingImage" source="/OA_MEDIA/FNDSSCORP.gif"/>
+         </ui:corporateBranding>
+         <ui:contents>
+            <oa:pageButtonBar id="PageButtons">
+               <ui:contents>
+                  <oa:submitButton id="Cancel" use="/oracle/apps/fnd/attributesets/Buttons/Cancel" serverUnvalidated="true" unvalidated="true" shortDesc="このトランザクションを取り消す場合に選択します"/>
+                  <oa:submitButton id="Apply" use="/oracle/apps/fnd/attributesets/Buttons/Apply" shortDesc="ファイルをアップロードする場合に選択します" serverUnvalidated="false" unvalidated="false"/>
+               </ui:contents>
+            </oa:pageButtonBar>
+            <oa:header id="HdrRN" text="アップロード・ファイル"/>
+            <oa:messageComponentLayout id="MainRN">
+               <ui:contents>
+                  <oa:messageFileUpload id="FileData" dataType="BLOB" prompt="ファイル" viewName="XxinvMrpFileUlInterfaceVO1" viewAttr="FileData" required="uiOnly" columns="40"/>
+                  <oa:messageLayout id="UploadInfoLayout">
+                     <ui:contents>
+                        <oa:formValue id="LookupCode" viewName="XxinvLookUpValueVO1" viewAttr="LookupCode" prompt="ルックアップコード" rendered="true"/>
+                        <oa:formValue id="Description" viewName="XxinvLookUpValueVO1" viewAttr="Description" prompt="コンカレント名称" rendered="true"/>
+                        <oa:formValue id="Attribute1" viewName="XxinvLookUpValueVO1" viewAttr="Attribute1" prompt="フォーマットパターン" rendered="true"/>
+                     </ui:contents>
+                  </oa:messageLayout>
+               </ui:contents>
+            </oa:messageComponentLayout>
+         </ui:contents>
+      </oa:pageLayout>
+   </content>
+</page>

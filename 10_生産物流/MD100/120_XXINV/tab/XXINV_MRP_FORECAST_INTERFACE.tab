@@ -1,0 +1,48 @@
+CREATE TABLE xxinv.xxinv_mrp_forecast_interface
+(
+  forecast_if_id            NUMBER          NOT NULL,
+  forecast_designator       VARCHAR2(2)     NOT NULL,
+  location_code             VARCHAR2(4),
+  base_code                 VARCHAR2(4),
+  dept_code                 VARCHAR2(4),
+  item_code                 VARCHAR2(7)     NOT NULL,
+  forecast_date             DATE            NOT NULL,
+  forecast_end_date         DATE            NOT NULL,
+  case_quantity             NUMBER          NOT NULL,
+  indivi_quantity           NUMBER          NOT NULL,
+  amount                    NUMBER,
+  created_by                NUMBER(15,0)    NOT NULL,
+  creation_date             DATE            NOT NULL,
+  last_updated_by           NUMBER(15,0)    NOT NULL,
+  last_update_date          DATE            NOT NULL,
+  last_update_login         NUMBER(15,0),
+  request_id                NUMBER(15,0),
+  program_application_id    NUMBER(15,0),
+  program_id                NUMBER(15,0),
+  program_update_date       DATE,
+  CONSTRAINT xxinv_mfi_pk PRIMARY KEY ( forecast_if_id )
+  USING INDEX TABLESPACE xxidx
+  ) ;
+--
+COMMENT ON COLUMN xxinv.xxinv_mrp_forecast_interface.forecast_if_id           IS '取引ID';
+COMMENT ON COLUMN xxinv.xxinv_mrp_forecast_interface.forecast_designator      IS 'Forecast分類';
+COMMENT ON COLUMN xxinv.xxinv_mrp_forecast_interface.location_code            IS '出庫倉庫';
+COMMENT ON COLUMN xxinv.xxinv_mrp_forecast_interface.base_code                IS '拠点';
+COMMENT ON COLUMN xxinv.xxinv_mrp_forecast_interface.dept_code                IS '取込部署';
+COMMENT ON COLUMN xxinv.xxinv_mrp_forecast_interface.item_code                IS '品目';
+COMMENT ON COLUMN xxinv.xxinv_mrp_forecast_interface.forecast_date            IS '開始日付';
+COMMENT ON COLUMN xxinv.xxinv_mrp_forecast_interface.forecast_end_date        IS '終了日付';
+COMMENT ON COLUMN xxinv.xxinv_mrp_forecast_interface.case_quantity            IS 'ケース数量';
+COMMENT ON COLUMN xxinv.xxinv_mrp_forecast_interface.indivi_quantity          IS 'バラ数量';
+COMMENT ON COLUMN xxinv.xxinv_mrp_forecast_interface.amount                   IS '金額';
+COMMENT ON COLUMN xxinv.xxinv_mrp_forecast_interface.created_by               IS '作成者';
+COMMENT ON COLUMN xxinv.xxinv_mrp_forecast_interface.creation_date            IS '作成日';
+COMMENT ON COLUMN xxinv.xxinv_mrp_forecast_interface.last_updated_by          IS '最終更新者';
+COMMENT ON COLUMN xxinv.xxinv_mrp_forecast_interface.last_update_date         IS '最終更新日';
+COMMENT ON COLUMN xxinv.xxinv_mrp_forecast_interface.last_update_login        IS '最終更新ログイン';
+COMMENT ON COLUMN xxinv.xxinv_mrp_forecast_interface.request_id               IS '要求ID';
+COMMENT ON COLUMN xxinv.xxinv_mrp_forecast_interface.program_application_id   IS 'コンカレント・プログラム・アプリケーションID';
+COMMENT ON COLUMN xxinv.xxinv_mrp_forecast_interface.program_id               IS 'コンカレント・プログラムID';
+COMMENT ON COLUMN xxinv.xxinv_mrp_forecast_interface.program_update_date      IS 'プログラム更新日';
+--
+COMMENT ON TABLE  xxinv.xxinv_mrp_forecast_interface IS 'ファイルアップロードIFテーブル';
