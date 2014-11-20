@@ -7,7 +7,7 @@ AS
  * Package Name           : xx03_deptinput_gl_check_pkg(body)
  * Description            : 部門入力(GL)において入力チェックを行う共通関数
  * MD.070                 : 部門入力(GL)共通関数 OCSJ/BFAFIN/MD070/F601/01
- * Version                : 11.5.10.2.11
+ * Version                : 11.5.10.2.12
  *
  * Program List
  *  -------------------------- ---- ----- ------------------------------------------------
@@ -54,6 +54,7 @@ AS
  *  2007/10/29   11.5.10.2.10B  通貨の精度チェック(入力可能精度か桁チェック)追加
  *  2010/04/05   11.5.10.2.11   [E_本稼動_02174]部門入力エラーチェック結果が警告の場合、
  *                                              共通エラーチェックを実行するように変更
+ *  2013/09/19   11.5.10.2.12   [E_本稼動_10999]項目整合性チェック追加
  *
  *****************************************************************************************/
 --
@@ -670,6 +671,52 @@ AS
                OR (iv_drcr_flg = 'CR' AND xjsl.entered_amount_cr is not null) );
 -- ver 11.5.10.2.9 Add End
 --
+-- 2013/09/19 ver 11.5.10.2.12 ADD START
+    -- 項目整合性チェックカーソル
+    CURSOR xx03_save_code_chk_cur(
+      in_org_id          IN  NUMBER  -- 営業単位ID
+    , in_set_of_books_id IN  NUMBER  -- 会計帳簿ID
+    )
+    IS
+      SELECT /*+ LEADING(xjs xjsl) */
+             COUNT(1)                AS exist_check
+      FROM   xx03_journal_slips      xjs  -- GL部門入力ヘッダ
+           , xx03_journal_slip_lines xjsl -- GL部門入力明細
+      WHERE  xjs.journal_id       = in_journal_id      -- 伝票ID
+      AND    xjs.org_id           = in_org_id          -- 営業単位ID
+      AND    xjs.set_of_books_id  = in_set_of_books_id -- 会計帳簿ID
+      AND    xjs.journal_id       = xjsl.journal_id    -- 伝票ID
+      AND (
+           ( SUBSTRB( xjs.requestor_person_name, 1, 5 ) <> ( SELECT papf.employee_number AS employee_number         -- 申請者名
+                                                             FROM   per_all_people_f     papf
+                                                             WHERE  papf.person_id = xjs.requestor_person_id
+                                                             AND    TRUNC(SYSDATE) BETWEEN papf.effective_start_date
+                                                                                   AND     papf.effective_end_date ) )
+        OR ( SUBSTRB( xjs.approver_person_name, 1, 5 )  <> ( SELECT papf.employee_number AS employee_number         -- 承認者名
+                                                             FROM   per_all_people_f     papf
+                                                             WHERE  papf.person_id = xjs.approver_person_id
+                                                             AND    TRUNC(SYSDATE) BETWEEN papf.effective_start_date
+                                                                                   AND     papf.effective_end_date ) )
+        OR ( ( xjsl.slip_line_type_dr IS NULL )     AND ( xjsl.slip_line_type_name_dr IS NOT NULL ) )               -- 借方 摘要コード名
+        OR ( ( xjsl.slip_line_type_dr IS NOT NULL ) AND ( xjsl.slip_line_type_name_dr IS NULL ) )                   -- 借方 摘要コード名
+        OR ( xjsl.slip_line_type_dr <> SUBSTRB( xjsl.slip_line_type_name_dr, 1, LENGTHB(xjsl.slip_line_type_dr) ) ) -- 借方 摘要コード名
+        OR ( xjsl.tax_code_dr       <> SUBSTRB( xjsl.tax_name_dr,            1, LENGTHB(xjsl.tax_code_dr) ) )       -- 借方 税金コード名
+        OR ( ( xjsl.slip_line_type_cr IS NULL )     AND ( xjsl.slip_line_type_name_cr IS NOT NULL ) )               -- 貸方 摘要コード名
+        OR ( ( xjsl.slip_line_type_cr IS NOT NULL ) AND ( xjsl.slip_line_type_name_cr IS NULL ) )                   -- 貸方 摘要コード名
+        OR ( xjsl.slip_line_type_cr <> SUBSTRB( xjsl.slip_line_type_name_cr, 1, LENGTHB(xjsl.slip_line_type_cr) ) ) -- 貸方 摘要コード名
+        OR ( xjsl.tax_code_cr       <> SUBSTRB( xjsl.tax_name_cr,            1, LENGTHB(xjsl.tax_code_cr) ) )       -- 貸方 税金コード名
+        OR ( xjsl.segment1 <> SUBSTRB( xjsl.segment1_name, 1, LENGTHB(xjsl.segment1) ) )                            -- AFF 会社
+        OR ( xjsl.segment2 <> SUBSTRB( xjsl.segment2_name, 1, LENGTHB(xjsl.segment2) ) )                            -- AFF 部門
+        OR ( xjsl.segment3 <> SUBSTRB( xjsl.segment3_name, 1, LENGTHB(xjsl.segment3) ) )                            -- AFF 勘定科目
+        OR ( xjsl.segment4 <> SUBSTRB( xjsl.segment4_name, 1, LENGTHB(xjsl.segment4) ) )                            -- AFF 補助科目
+        OR ( xjsl.segment5 <> SUBSTRB( xjsl.segment5_name, 1, LENGTHB(xjsl.segment5) ) )                            -- AFF 顧客
+        OR ( xjsl.segment6 <> SUBSTRB( xjsl.segment6_name, 1, LENGTHB(xjsl.segment6) ) )                            -- AFF 企業
+        OR ( xjsl.segment7 <> SUBSTRB( xjsl.segment7_name, 1, LENGTHB(xjsl.segment7) ) )                            -- AFF 予備１
+        OR ( xjsl.segment8 <> SUBSTRB( xjsl.segment8_name, 1, LENGTHB(xjsl.segment8) ) )                            -- AFF 予備２
+          )
+      ;
+-- 2013/09/19 ver 11.5.10.2.12 ADD END
+--
     -- *** ローカル・レコード ***
     -- 処理対象データ取得カーソルレコード型
     xx03_xjsjlv_rec            xx03_xjsjlv_cur%ROWTYPE;
@@ -704,6 +751,10 @@ AS
     xx03_line_tax_rec           xx03_line_tax_cur%ROWTYPE;
     xx03_enter_account_rec      xx03_enter_account_cur%ROWTYPE;
 -- ver 11.5.10.2.9 Add End
+-- 2013/09/19 ver 11.5.10.2.12 ADD START
+    -- 項目整合性チェックカーソルレコード型
+    xx03_save_code_chk_rec       xx03_save_code_chk_cur%ROWTYPE;
+-- 2013/09/19 ver 11.5.10.2.12 ADD END
 --
     -- ===============================
     -- ユーザー定義例外
@@ -1308,6 +1359,23 @@ AS
 -- Ver11.5.10.1.6G Add End
 --
       END IF; -- xx03_xjsjlv_rec.segment1 IS NOT NULL
+--
+-- 2013/09/19 ver 11.5.10.2.12 ADD START
+      -- 項目整合性チェック
+      OPEN xx03_save_code_chk_cur(
+               in_org_id          => ln_org_id    -- 営業単位ID
+             , in_set_of_books_id => ln_books_id  -- 会計帳簿ID
+           );
+      FETCH xx03_save_code_chk_cur INTO xx03_save_code_chk_rec;
+      -- 存在チェック件数が1件でも存在する場合
+      IF ( xx03_save_code_chk_rec.exist_check <> 0 ) THEN
+        -- 項目相違エラー
+        errflg_tbl(ln_err_cnt) := 'E';
+        errmsg_tbl(ln_err_cnt) := xx00_message_pkg.get_msg('XXCFO', 'APP-XXCFO1-00049');
+        ln_err_cnt := ln_err_cnt + 1;
+      END IF;
+      CLOSE xx03_save_code_chk_cur;
+-- 2013/09/19 ver 11.5.10.2.12 ADD END
 --
 -- ver 11.5.10.2.9 Add Start
       -- 部門入力エラーチェックでエラーがあった場合はその時点でループ終了
