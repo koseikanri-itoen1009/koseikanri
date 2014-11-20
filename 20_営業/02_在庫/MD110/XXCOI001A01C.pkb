@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCOI001A01C(body)
  * Description      : 生産物流システムから営業システムへの出荷依頼データの抽出・データ連携を行う
  * MD.050           : 入庫情報取得 MD050_COI_001_A01
- * Version          : 1.8
+ * Version          : 1.9
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -50,6 +50,7 @@ AS
  *  2009/06/03    1.6   H.Sasaki         [T1_1186]サマリ、明細カーソルのPT
  *  2009/07/13    1.7   H.Sasaki         [0000495]入庫情報サマリ抽出カーソルのPT対応
  *  2009/09/08    1.8   H.Sasaki         [0001266]OPM品目アドオンの版管理対応
+ *  2009/10/26    1.9   H.Sasaki         [E_T4_00076]倉庫コードの設定方法を修正
  *
  *****************************************************************************************/
 --
@@ -118,6 +119,9 @@ AS
   conv_slip_num_expt        EXCEPTION;                                -- 伝票番号コンバートエラー
   period_status_close_expt  EXCEPTION;                                -- 在庫会計期間クローズエラー
   period_status_common_expt EXCEPTION;                                -- 在庫会計期間例外
+-- == 2009/10/26 V1.9 Modified START ===============================================================
+  main_store_expt           EXCEPTION;                                -- メイン倉庫区分重複エラー
+-- == 2009/10/26 V1.9 Modified END   ===============================================================
 --
   PRAGMA EXCEPTION_INIT(lock_expt, -54);
 --
@@ -152,6 +156,9 @@ AS
   cv_tkn_den_no    CONSTANT VARCHAR2(100) := 'DEN_NO';
   cv_tkn_api_nm    CONSTANT VARCHAR2(100) := 'API_NAME';
   cv_tkn_target    CONSTANT VARCHAR2(100) := 'TARGET_DATE';
+-- == 2009/10/26 V1.9 Modified START ===============================================================
+  cv_token_10379   CONSTANT VARCHAR2(30)  := 'BASE_CODE_TOK';
+-- == 2009/10/26 V1.9 Modified END   ===============================================================
 --
   -- 初期処理出力
   cv_prf_org_err_msg          CONSTANT VARCHAR2(100) := 'APP-XXCOI1-00005'; -- 在庫組織コード取得エラーメッセージ
@@ -172,6 +179,9 @@ AS
   cv_process_date_expt_msg    CONSTANT VARCHAR2(100) := 'APP-XXCOI1-00011'; -- 業務日付取得エラーメッセージ
   cv_period_status_cmn_msg    CONSTANT VARCHAR2(100) := 'APP-XXCOI1-00026'; -- 在庫会計期間取得エラーメッセージ
   cv_period_status_close_msg  CONSTANT VARCHAR2(100) := 'APP-XXCOI1-10361'; -- 在庫会計期間クローズメッセージ
+-- == 2009/10/26 V1.9 Modified START ===============================================================
+  cv_msg_code_10379           CONSTANT VARCHAR2(30)  := 'APP-XXCOI1-10379'; -- メイン倉庫区分重複エラーメッセージ
+-- == 2009/10/26 V1.9 Modified END   ===============================================================
 --
   -- 更新時出力
   cv_lock_expt_err_msg        CONSTANT VARCHAR2(100) := 'APP-XXCOI1-10029'; -- ロックエラーメッセージ(入庫情報一時表)
@@ -1475,14 +1485,30 @@ AS
 --        END;
 --    END;
 --
+-- == 2009/10/26 V1.9 Modified START ===============================================================
     --==============================================================
     --1.倉庫コードの取得
     --==============================================================
-    lt_store_code :=  SUBSTRB ( it_deliverly_code , LENGTHB(it_deliverly_code)-1 , 2 );
+--    lt_store_code :=  SUBSTRB ( it_deliverly_code , LENGTHB(it_deliverly_code)-1 , 2 );
 -- == 2009/04/16 V1.3 Added END   ===============================================================
+    BEGIN
+      SELECT  xsi.store_code
+      INTO    lt_store_code
+      FROM    xxcoi_subinventory_info_v xsi
+      WHERE   xsi.base_code               =   iv_base_code
+      AND     xsi.organization_id         =   it_org_id
+      AND     xsi.auto_confirmation_flag  =   cv_y_flag
+      AND     xsi.main_store_class        =   cv_y_flag;
+    EXCEPTION
+      WHEN NO_DATA_FOUND THEN
+        lt_store_code :=  SUBSTRB ( it_deliverly_code , LENGTHB(it_deliverly_code)-1 , 2 );
+      WHEN TOO_MANY_ROWS THEN
+        RAISE main_store_expt;
+    END;
+-- == 2009/10/26 V1.9 Modified END   ===============================================================
 --
     --==============================================================
-    --3.1もしくは2で取得した倉庫コードより保管場所の存在チェックを行う
+    --3.1で取得した倉庫コードより保管場所の存在チェックを行う
     --==============================================================
     SELECT COUNT(1)
     INTO   ln_valid_cnt
@@ -1498,7 +1524,7 @@ AS
     END IF;
 --
     --==============================================================
-    --4.1もしくは2で取得した倉庫コードより保管場所の有効チェックを行う
+    --4.1で取得した倉庫コードより保管場所の有効チェックを行う
     --==============================================================
     BEGIN
       SELECT  xsi.store_code
@@ -1545,6 +1571,20 @@ AS
     --==============================================================
 --
   EXCEPTION
+-- == 2009/10/26 V1.9 Modified START ===============================================================
+    WHEN main_store_expt THEN
+      lv_errmsg   := xxccp_common_pkg.get_msg(
+                         iv_application  => cv_application
+                       , iv_name         => cv_msg_code_10379
+                       , iv_token_name1  => cv_token_10379
+                       , iv_token_value1 => iv_base_code
+                     );
+      lv_errbuf := lv_errmsg;
+--
+      ov_errmsg  := lv_errmsg;
+      ov_errbuf  := SUBSTRB(cv_pkg_name||cv_msg_cont||cv_prg_name||cv_msg_part||lv_errbuf,1,5000);
+      ov_retcode := cv_status_warn;
+-- == 2009/10/26 V1.9 Modified END   ===============================================================
     WHEN subinventory_found_expt THEN
       lv_errmsg   := xxccp_common_pkg.get_msg(
                          iv_application  => cv_application
