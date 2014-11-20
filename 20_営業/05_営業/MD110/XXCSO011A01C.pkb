@@ -8,7 +8,7 @@ AS
  *                    その結果を発注依頼に返します。
  * MD.050           : MD050_CSO_011_A01_作業依頼（発注依頼）時のインストールベースチェック機能
  *
- * Version          : 1.17
+ * Version          : 1.19
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -71,6 +71,8 @@ AS
  *  2009-07-16    1.15  K.Hosoi          【0000375,0000419】
  *  2009-08-10    1.16  K.Satomura       【0000662】顧客担当営業員存在チェックをコメントアウト
  *  2009-09-10    1.17  K.Satomura       【0001335】顧客チェックを顧客区分によって変更するよう修正
+ *  2009-11-25    1.18  K.Satomura       【E_本稼動_00027】MC、MC候補をエラーとするよう修正
+ *  2009-11-30    1.19  K.Satomura       【E_本稼動_00204】作業希望日のチェックを一時的に外す
  *****************************************************************************************/
   --
   --#######################  固定グローバル定数宣言部 START   #######################
@@ -1330,24 +1332,26 @@ AS
       END IF;
       --
 /*20090413_yabuki_ST170 START*/
+      /* 2009.11.30 K.Satomura E_本稼動_00204対応 START */
       -- 依頼日 ＞ 作業希望日（作業希望年||作業希望月||作業希望日）の場合
-      IF ( TO_CHAR( i_requisition_rec.request_date, cv_date_fmt )
-            > i_requisition_rec.work_hope_year
-               || i_requisition_rec.work_hope_month
-               || i_requisition_rec.work_hope_day ) THEN
-        lv_errbuf2 := xxccp_common_pkg.get_msg(
-                          iv_application  => cv_sales_appl_short_name  -- アプリケーション短縮名
-                        , iv_name         => cv_tkn_number_46          -- メッセージコード
-                        , iv_token_name1  => cv_tkn_req_date           -- トークンコード1
-                        , iv_token_value1 => TO_CHAR( i_requisition_rec.request_date, cv_date_fmt2 )  -- トークン値1
-                      );
-        --
-        lv_errbuf  := CASE WHEN ( lv_errbuf IS NULL )
-                           THEN lv_errbuf2
-                           ELSE SUBSTRB( lv_errbuf || cv_msg_comma ||  lv_errbuf2, 1, 5000 ) END;
-        ov_retcode := cv_status_warn;
-        --
-      END IF;
+      --IF ( TO_CHAR( i_requisition_rec.request_date, cv_date_fmt )
+      --      > i_requisition_rec.work_hope_year
+      --         || i_requisition_rec.work_hope_month
+      --         || i_requisition_rec.work_hope_day ) THEN
+      --  lv_errbuf2 := xxccp_common_pkg.get_msg(
+      --                    iv_application  => cv_sales_appl_short_name  -- アプリケーション短縮名
+      --                  , iv_name         => cv_tkn_number_46          -- メッセージコード
+      --                  , iv_token_name1  => cv_tkn_req_date           -- トークンコード1
+      --                  , iv_token_value1 => TO_CHAR( i_requisition_rec.request_date, cv_date_fmt2 )  -- トークン値1
+      --                );
+      --  --
+      --  lv_errbuf  := CASE WHEN ( lv_errbuf IS NULL )
+      --                     THEN lv_errbuf2
+      --                     ELSE SUBSTRB( lv_errbuf || cv_msg_comma ||  lv_errbuf2, 1, 5000 ) END;
+      --  ov_retcode := cv_status_warn;
+      --  --
+      --END IF;
+      /* 2009.11.30 K.Satomura E_本稼動_00204対応 END */
 /*20090413_yabuki_ST170 END*/
       --
 /*20090413_yabuki_ST171 START*/
@@ -1520,23 +1524,25 @@ AS
       END IF;
       --
       -- 依頼日 ＞ 作業希望日（作業希望年||作業希望月||作業希望日）の場合
-      IF ( TO_CHAR( i_requisition_rec.request_date, cv_date_fmt )
-            > i_requisition_rec.work_hope_year
-               || i_requisition_rec.work_hope_month
-               || i_requisition_rec.work_hope_day ) THEN
-        lv_errbuf2 := xxccp_common_pkg.get_msg(
-                          iv_application  => cv_sales_appl_short_name  -- アプリケーション短縮名
-                        , iv_name         => cv_tkn_number_46          -- メッセージコード
-                        , iv_token_name1  => cv_tkn_req_date           -- トークンコード1
-                        , iv_token_value1 => TO_CHAR( i_requisition_rec.request_date, cv_date_fmt2 )  -- トークン値1
-                      );
-        --
-        lv_errbuf  := CASE WHEN ( lv_errbuf IS NULL )
-                           THEN lv_errbuf2
-                           ELSE SUBSTRB( lv_errbuf || cv_msg_comma ||  lv_errbuf2, 1, 5000 ) END;
-        ov_retcode := cv_status_warn;
-        --
-      END IF;
+      /* 2009.11.30 K.Satomura E_本稼動_00204対応 START */
+      --IF ( TO_CHAR( i_requisition_rec.request_date, cv_date_fmt )
+      --      > i_requisition_rec.work_hope_year
+      --         || i_requisition_rec.work_hope_month
+      --         || i_requisition_rec.work_hope_day ) THEN
+      --  lv_errbuf2 := xxccp_common_pkg.get_msg(
+      --                    iv_application  => cv_sales_appl_short_name  -- アプリケーション短縮名
+      --                  , iv_name         => cv_tkn_number_46          -- メッセージコード
+      --                  , iv_token_name1  => cv_tkn_req_date           -- トークンコード1
+      --                  , iv_token_value1 => TO_CHAR( i_requisition_rec.request_date, cv_date_fmt2 )  -- トークン値1
+      --                );
+      --  --
+      --  lv_errbuf  := CASE WHEN ( lv_errbuf IS NULL )
+      --                     THEN lv_errbuf2
+      --                     ELSE SUBSTRB( lv_errbuf || cv_msg_comma ||  lv_errbuf2, 1, 5000 ) END;
+      --  ov_retcode := cv_status_warn;
+      --  --
+      --END IF;
+      /* 2009.11.30 K.Satomura E_本稼動_00204対応 END */
       --
       -- 設置場所区分が「屋外」の場合
       IF ( SUBSTRB( i_requisition_rec.install_place_type, 1, 1 ) = cv_inst_place_type_exterior ) THEN
@@ -2776,6 +2782,21 @@ AS
         --
       END IF;
       --
+    /* 2009.11.25 K.Satomura E_本稼動_00027対応 START */
+    ELSE
+      -- 上記以外の場合はエラー
+      lv_errbuf := xxccp_common_pkg.get_msg(
+                      iv_application  => cv_sales_appl_short_name -- アプリケーション短縮名
+                     ,iv_name         => cv_tkn_number_34         -- メッセージコード
+                     ,iv_token_name1  => cv_tkn_kokyaku           -- トークンコード1
+                     ,iv_token_value1 => iv_account_number        -- トークン値1
+                     ,iv_token_name2  => cv_tkn_cust_status       -- トークンコード2
+                     ,iv_token_value2 => lv_customer_status       -- トークン値2
+                   );
+      --
+      RAISE sql_expt;
+      --
+    /* 2009.11.25 K.Satomura E_本稼動_00027対応 END */
     END IF;
     /* 2009.09.10 K.Satomura 0001335対応 END */
     --
