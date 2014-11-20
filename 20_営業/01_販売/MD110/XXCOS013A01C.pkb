@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCOS013A01C (body)
  * Description      : 販売実績情報より仕訳情報を作成し、AR請求取引に連携する処理
  * MD.050           : ARへの販売実績データ連携 MD050_COS_013_A01
- * Version          : 1.10
+ * Version          : 1.13
  * Program List
  * ----------------------------------------------------------------------------------------
  *  Name                   Description
@@ -39,6 +39,9 @@ AS
  *  2009/04/13    1.8   K.KIN            T1_0497
  *  2009/04/13    1.9   K.KIN            T1_0054,T1_0186,T1_0456,T1_0467
  *  2009/04/16    1.10  K.KIN            T1_0587
+ *  2009/04/17    1.11  K.KIN            T1_0328
+ *  2009/04/21    1.12  K.KIN            T1_0659
+ *  2009/04/22    1.13  K.KIN            T1_0116
  *
  *****************************************************************************************/
 --
@@ -144,6 +147,10 @@ AS
   cv_disc_msg               CONSTANT VARCHAR2(20) := 'APP-XXCOS1-12775'; -- 売上値引(勘定科目用)
   cv_success_aroif_msg      CONSTANT VARCHAR2(20) := 'APP-XXCOS1-12776'; -- AR請求取引OIF成功件数メッセージ
   cv_success_ardis_msg      CONSTANT VARCHAR2(20) := 'APP-XXCOS1-12777'; -- AR会計配分OIF成功件数メッセージ
+  cv_employee_code_msg      CONSTANT VARCHAR2(20) := 'APP-XXCOS1-12786'; -- 従業員コード
+  cv_header_id_msg          CONSTANT VARCHAR2(20) := 'APP-XXCOS1-12787'; -- ヘッダID
+  cv_order_no_msg           CONSTANT VARCHAR2(20) := 'APP-XXCOS1-00131'; -- 伝票番号
+  cv_skip_rec_msg           CONSTANT VARCHAR2(20) := 'APP-XXCOS1-12788'; -- スキップ件数メッセージ
   cv_term_id_msg            CONSTANT VARCHAR2(20) := 'APP-XXCOS1-12778'; -- 支払条件ID取得エラー
   cv_tax_in_msg             CONSTANT VARCHAR2(20) := 'APP-XXCOS1-12779'; -- 内税コード取得エラー
   cv_tax_out_msg            CONSTANT VARCHAR2(20) := 'APP-XXCOS1-12780'; -- 外税コード取得エラー
@@ -152,6 +159,7 @@ AS
   cv_cust_num_msg           CONSTANT VARCHAR2(20) := 'APP-XXCOS1-12782'; -- カード会社のデータが顧客追加情報にない
   cv_receiv_base_msg        CONSTANT VARCHAR2(20) := 'APP-XXCOS1-12783'; -- 入金拠点が未設定
   cv_org_sys_id_msg         CONSTANT VARCHAR2(20) := 'APP-XXCOS1-12784'; -- 顧客所在地参照IDが未設定
+  cv_jour_no_msg            CONSTANT VARCHAR2(20) := 'APP-XXCOS1-12785'; -- 仕訳パターンない
 --
   -- トークン
   cv_tkn_pro                CONSTANT  VARCHAR2(20) := 'PROFILE';         -- プロファイル
@@ -180,6 +188,13 @@ AS
   cv_tkn_payment_term2      CONSTANT  VARCHAR2(20) := 'PAYMENT_TERM2';   -- 支払条件２
   cv_tkn_payment_term3      CONSTANT  VARCHAR2(20) := 'PAYMENT_TERM3';   -- 支払条件３
   cv_tkn_procedure_name     CONSTANT  VARCHAR2(20) := 'PROCEDURE_NAME';  -- プロシージャ名
+  cv_tkn_invoice_cls        CONSTANT  VARCHAR2(20) := 'INVOICE_CLS';     -- 伝票区分
+  cv_tkn_prod_cls           CONSTANT  VARCHAR2(20) := 'PROD_CLS';        -- 品目区分
+  cv_tkn_gyotai_sho         CONSTANT  VARCHAR2(20) := 'GYOTAI_SHO';      -- 業態小分類
+  cv_tkn_sale_cls           CONSTANT  VARCHAR2(20) := 'SALE_CLS';        -- カード売り区分
+  cv_tkn_red_black_flag     CONSTANT  VARCHAR2(20) := 'RED_BLACK_FLAG';  -- 赤黒フラグ
+  cv_tkn_header_id          CONSTANT  VARCHAR2(20) := 'HEADER_ID';       -- ヘッダID
+  cv_tkn_order_no           CONSTANT  VARCHAR2(20) := 'ORDER_NO';        -- 伝票番号
 --
   -- フラグ・区分定数
   cv_y_flag                 CONSTANT  VARCHAR2(1)  := 'Y';               -- フラグ値:Y
@@ -374,9 +389,11 @@ gt_bulk_card_tbl              g_sales_exp_ttype;                                
 --
   TYPE g_ar_oif_ttype    IS TABLE OF ra_interface_lines_all%ROWTYPE INDEX BY BINARY_INTEGER;
   gt_ar_interface_tbl                g_ar_oif_ttype;                                -- AR請求取引OIF
+  gt_ar_interface_tbl1               g_ar_oif_ttype;                                -- AR請求取引OIF
 --
   TYPE g_ar_dis_ttype    IS TABLE OF ra_interface_distributions_all%ROWTYPE INDEX BY BINARY_INTEGER;
   gt_ar_dis_tbl                      g_ar_dis_ttype;                                -- AR会計配分OIF
+  gt_ar_dis_tbl1                     g_ar_dis_ttype;                                -- AR会計配分OIF
 --
   TYPE g_dis_sum_ttype   IS TABLE OF gr_dis_sum INDEX BY BINARY_INTEGER;
   gt_ar_dis_sum_tbl                  g_dis_sum_ttype;                               -- AR会計配分集約用
@@ -427,7 +444,8 @@ gt_bulk_card_tbl              g_sales_exp_ttype;                                
   gn_aroif_cnt                        NUMBER;                                       -- 正常件数（AR請求取引OIF）
   gn_ardis_cnt                        NUMBER;                                       -- 正常件数（AR会計配分OIF）
   gn_warn_flag                        VARCHAR2(1) DEFAULT 'N';                      -- 警告フラグ
-  gn_card_err_cnt                     NUMBER DEFAULT 0;                             -- カード会社取得エラー件数
+  gn_skip_cnt                         NUMBER DEFAULT 0;                             -- スキップ件数
+  gv_skip_flag                        VARCHAR2(1);                                  -- スキップフラグ
 --
   -- ===============================
   -- ユーザー定義グローバルカーソル
@@ -1196,7 +1214,6 @@ gt_bulk_card_tbl              g_sales_exp_ttype;                                
              , xseh.dlv_invoice_class
              , NVL( xseh.card_sale_class, cv_cash_class )
              , xseh.cust_gyotai_sho
-             , xgpc.goods_prod_class_code
              , xsel.item_code
              , xsel.red_black_flag
              , gcc.segment3
@@ -1353,11 +1370,6 @@ gt_bulk_card_tbl              g_sales_exp_ttype;                                
             gn_warn_flag := cv_y_flag;
 --
           END IF;
-          -- カード情報エラー件数
-          IF ( lv_sale_flag = cv_n_flag ) THEN
-            gn_card_err_cnt := gn_card_err_cnt + 1;
-          END IF;
---
         END;
         IF ( lv_sale_flag = cv_y_flag ) THEN
 --
@@ -1413,13 +1425,11 @@ gt_bulk_card_tbl              g_sales_exp_ttype;                                
             gt_sales_exp_tbl( ln_sale_idx ).cash_and_card    := 0;
           END IF;
 --
-        ELSIF ( lt_skip_header_id <> gt_sales_exp_tbl2( sale_idx ).sales_exp_header_id ) THEN
-          -- スキップ用ヘッダID取得
+        ELSE
+          --スキップ処理
           ln_skip_idx := ln_skip_idx + 1;
           gt_sales_skip_tbl( ln_skip_idx ).sales_exp_header_id
                                                            := gt_sales_exp_tbl2( sale_idx ).sales_exp_header_id;
-          lt_skip_header_id                                := gt_sales_skip_tbl( ln_skip_idx ).sales_exp_header_id;
-        ELSE
           -- 空行出力
           FND_FILE.PUT_LINE(
              which  => FND_FILE.LOG
@@ -1438,6 +1448,24 @@ gt_bulk_card_tbl              g_sales_exp_ttype;                                
             ,buff   => cv_blank
           );
 --
+--
+          -- 空行出力
+          FND_FILE.PUT_LINE(
+             which  => FND_FILE.OUTPUT
+            ,buff   => cv_blank
+          );
+--
+          -- メッセージ出力
+          FND_FILE.PUT_LINE(
+             which  => FND_FILE.OUTPUT
+            ,buff   => lv_errmsg
+          );
+--
+          -- 空行出力
+          FND_FILE.PUT_LINE(
+             which  => FND_FILE.OUTPUT
+            ,buff   => cv_blank
+          );
         END IF;
       ELSE
         -- 対象外データセット
@@ -1450,7 +1478,7 @@ gt_bulk_card_tbl              g_sales_exp_ttype;                                
           -- 税金を０に固定
           gt_sales_exp_tbl( ln_sale_idx ).tax_amount       := 0;
 --
-          gt_sales_exp_tbl( ln_sale_idx ).pure_amount      := gt_sales_exp_tbl2( sale_idx ).pure_amount
+            gt_sales_exp_tbl( ln_sale_idx ).pure_amount      := gt_sales_exp_tbl2( sale_idx ).pure_amount
                                                                 + gt_sales_exp_tbl2( sale_idx ).tax_amount;
 --
         END IF;
@@ -1460,7 +1488,7 @@ gt_bulk_card_tbl              g_sales_exp_ttype;                                
     END LOOP gt_sales_exp_tbl2_loop;                                  -- 販売実績データループ終了
 --
     -- 対象処理件数
-    gn_target_cnt   := gt_sales_exp_tbl.COUNT + gn_card_err_cnt;
+    gn_target_cnt   := gt_sales_exp_tbl2.COUNT;
 --
     IF ( gn_target_cnt > 0 ) THEN
 --
@@ -1721,6 +1749,8 @@ gt_bulk_card_tbl              g_sales_exp_ttype;                                
     lv_trx_sent_dv          VARCHAR2(30);               -- 請求書発行区分
     lv_trx_number           VARCHAR2(20);               -- AR取引番号
     ln_trx_number_small     NUMBER;                     -- 取引番号:自動採番
+    ln_term_amount          NUMBER DEFAULT 0;           -- 一時金額
+    ln_max_amount           NUMBER DEFAULT 0;           -- 最大金額
 --
     -- *** 取引NO取得キー
       -- 作成区分
@@ -1748,6 +1778,17 @@ gt_bulk_card_tbl              g_sales_exp_ttype;                                
     ln_first_index          VARCHAR2(300);
     ln_smb_idx              NUMBER DEFAULT 0;           -- 生成したインデックス
     lv_tbl_nm               VARCHAR2(100);              -- 従業員マスタ
+    lv_employee_nm          VARCHAR2(100);              -- 従業員
+    lv_header_id_nm         VARCHAR2(100);              -- ヘッダID
+    lv_order_no_nm          VARCHAR2(100);              -- 伝票番号
+    lv_key_info             VARCHAR2(100);              -- 伝票番号
+      -- 品目区分
+    lt_goods_prod_class     xxcos_good_prod_class_v.goods_prod_class_code%TYPE;
+    lv_err_flag             VARCHAR2(1);                -- エラー用フラグ
+    ln_skip_idx             NUMBER DEFAULT 0;           -- スキップ用インデックス;
+    lt_goods_item_code      xxcos_sales_exp_lines.item_code%TYPE;
+    lt_item_code            xxcos_sales_exp_lines.item_code%TYPE;
+    lt_prod_cls             xxcos_good_prod_class_v.goods_prod_class_code%TYPE;
 --
     -- *** ローカル例外 ***
 --
@@ -1801,6 +1842,9 @@ gt_bulk_card_tbl              g_sales_exp_ttype;                                
       ln_now_index := gt_sales_norm_order_tbl.next(ln_now_index);
 --
     END LOOP;--ソート完了
+--
+    --スキップカウントセット
+    ln_skip_idx := gt_sales_skip_tbl.COUNT;
 --
     <<gt_sales_norm_tbl2_loop>>
     FOR sale_norm_idx IN 1 .. gt_sales_norm_tbl2.COUNT LOOP
@@ -1910,6 +1954,9 @@ gt_bulk_card_tbl              g_sales_exp_ttype;                                
     gt_sales_norm_tbl2( gt_sales_norm_tbl2.COUNT + 1 ).sales_exp_header_id
                         := gt_sales_norm_tbl2( gt_sales_norm_tbl2.COUNT ).sales_exp_header_id;
 --
+    lt_item_code        := gt_sales_norm_tbl2( 1 ).item_code;
+    lt_prod_cls         := gt_sales_norm_tbl2( 1 ).goods_prod_cls;
+--
     <<gt_sales_norm_sum_loop>>
     FOR sale_norm_idx IN 1 .. gt_sales_norm_tbl2.COUNT LOOP
 --
@@ -1927,6 +1974,33 @@ gt_bulk_card_tbl              g_sales_exp_ttype;                                
         -- 本体金額を集約する
         ln_amount := ln_amount + gt_sales_norm_tbl2( sale_norm_idx ).pure_amount;
 --
+        IF ( (
+               (
+                  NVL( lt_prod_cls, 'X' ) = cv_goods_prod_syo
+               OR NVL( lt_prod_cls, 'X' ) = cv_goods_prod_sei
+               )
+             AND
+               NVL( lt_prod_cls, 'X' ) = NVL( gt_sales_norm_tbl2( sale_norm_idx ).goods_prod_cls, 'X' )
+             )
+           OR
+             (
+               (
+                   NVL( lt_prod_cls, 'X' ) <> cv_goods_prod_syo
+               AND NVL( lt_prod_cls, 'X' ) <> cv_goods_prod_sei
+               )
+               AND lt_item_code = gt_sales_norm_tbl2( sale_norm_idx ).item_code
+             )
+           )THEN
+             ln_term_amount := ln_term_amount + gt_sales_norm_tbl2( sale_norm_idx ).pure_amount;
+        ELSIF ( ln_term_amount >= ln_max_amount ) THEN
+             ln_max_amount       := ln_term_amount;
+             ln_term_amount      := gt_sales_norm_tbl2( sale_norm_idx ).pure_amount;
+             lt_goods_prod_class := lt_prod_cls;
+             lt_goods_item_code  := lt_item_code;
+        END IF;
+        lt_item_code        := gt_sales_norm_tbl2( sale_norm_idx ).item_code;
+        lt_prod_cls         := gt_sales_norm_tbl2( sale_norm_idx ).goods_prod_cls;
+--
         -- 課税の場合、消費税額を集約する
         IF ( gt_sales_norm_tbl2( sale_norm_idx ).consumption_tax_class != gt_no_tax_cls ) THEN
           ln_tax := ln_tax + gt_sales_norm_tbl2( sale_norm_idx ).tax_amount;
@@ -1934,11 +2008,23 @@ gt_bulk_card_tbl              g_sales_exp_ttype;                                
 --
       ELSE
 --
+        IF ( ln_term_amount >= ln_max_amount ) THEN
+             lt_goods_prod_class := lt_prod_cls;
+             lt_goods_item_code  := lt_item_code;
+        END IF;
+        ln_max_amount       := 0;
+        ln_term_amount      := 0;
+        lt_item_code        := gt_sales_norm_tbl2( sale_norm_idx ).item_code;
+        lt_prod_cls         := gt_sales_norm_tbl2( sale_norm_idx ).goods_prod_cls;
+--
         lv_sum_flag := cv_n_flag;
         ln_trx_idx  := sale_norm_idx - 1;
       END IF;
 --
       IF ( lv_sum_flag = cv_n_flag ) THEN
+--
+        --エラーフラグOFF
+        lv_err_flag := cv_n_flag;
         --=====================================================================
         -- １．支払条件IDの取得
         --=====================================================================
@@ -2110,10 +2196,53 @@ gt_bulk_card_tbl              g_sales_exp_ttype;                                
                             , iv_token_value4  => gt_sales_norm_tbl2( ln_trx_idx ).xchv_bill_pay_id3
                             , iv_token_name5   => cv_tkn_procedure_name
                             , iv_token_value5  => cv_prg_name
+                            , iv_token_name6   => cv_tkn_header_id
+                            , iv_token_value6  => lt_header_id
+                            , iv_token_name7   => cv_tkn_order_no
+                            , iv_token_value7  => gt_sales_norm_tbl2( ln_trx_idx ).dlv_invoice_number
                           );
               lv_errbuf  := lv_errmsg;
 --
-              RAISE global_term_id_expt;
+              --エラーフラグON
+              lv_err_flag := cv_y_flag;
+              gn_warn_flag := cv_y_flag;
+--
+              -- 空行出力
+              FND_FILE.PUT_LINE(
+                 which  => FND_FILE.LOG
+                ,buff   => cv_blank
+              );
+--
+              -- メッセージ出力
+              FND_FILE.PUT_LINE(
+                 which  => FND_FILE.LOG
+                ,buff   => lv_errmsg
+              );
+--
+              -- 空行出力
+              FND_FILE.PUT_LINE(
+                 which  => FND_FILE.LOG
+                ,buff   => cv_blank
+              );
+--
+               -- 空行出力
+               FND_FILE.PUT_LINE(
+                  which  => FND_FILE.OUTPUT
+                 ,buff   => cv_blank
+               );
+--
+               -- メッセージ出力
+               FND_FILE.PUT_LINE(
+                  which  => FND_FILE.OUTPUT
+                 ,buff   => lv_errmsg
+               );
+--
+               -- 空行出力
+               FND_FILE.PUT_LINE(
+                  which  => FND_FILE.OUTPUT
+                 ,buff   => cv_blank
+               );
+--
           END;
 --
         --=====================================================================
@@ -2161,10 +2290,53 @@ gt_bulk_card_tbl              g_sales_exp_ttype;                                
                             , iv_token_value1  => cv_qct_mkorg_cls
                                                || cv_and
                                                || cv_qct_dlv_slp_cls
+                            , iv_token_name2   => cv_tkn_header_id
+                            , iv_token_value2  => lt_header_id
+                            , iv_token_name3   => cv_tkn_order_no
+                            , iv_token_value3  => gt_sales_norm_tbl2( ln_trx_idx ).dlv_invoice_number
                           );
               lv_errbuf  := lv_errmsg;
 --
-              RAISE global_no_lookup_expt;
+              --エラーフラグON
+              lv_err_flag := cv_y_flag;
+              gn_warn_flag := cv_y_flag;
+--
+              -- 空行出力
+              FND_FILE.PUT_LINE(
+                 which  => FND_FILE.LOG
+                ,buff   => cv_blank
+              );
+--
+              -- メッセージ出力
+              FND_FILE.PUT_LINE(
+                 which  => FND_FILE.LOG
+                ,buff   => lv_errmsg
+              );
+--
+              -- 空行出力
+              FND_FILE.PUT_LINE(
+                 which  => FND_FILE.LOG
+                ,buff   => cv_blank
+              );
+--
+               -- 空行出力
+               FND_FILE.PUT_LINE(
+                  which  => FND_FILE.OUTPUT
+                 ,buff   => cv_blank
+               );
+--
+               -- メッセージ出力
+               FND_FILE.PUT_LINE(
+                  which  => FND_FILE.OUTPUT
+                 ,buff   => lv_errmsg
+               );
+--
+               -- 空行出力
+               FND_FILE.PUT_LINE(
+                  which  => FND_FILE.OUTPUT
+                 ,buff   => cv_blank
+               );
+--
           END;
 --
           -- 取得した取引タイプをワークテーブルに設定する
@@ -2178,12 +2350,12 @@ gt_bulk_card_tbl              g_sales_exp_ttype;                                
         --=====================================================================
 --
         -- 品目明細摘要の存在チェック-->存在している場合、取得必要がない
-        IF ( gt_sales_norm_tbl2( ln_trx_idx ).goods_prod_cls IS NULL ) THEN
+        IF ( lt_goods_prod_class IS NULL ) THEN
           lv_item_idx := gt_sales_norm_tbl2( ln_trx_idx ).dlv_invoice_class
-                      || gt_sales_norm_tbl2( ln_trx_idx ).item_code;
+                      || lt_goods_item_code;
         ELSE
           lv_item_idx := gt_sales_norm_tbl2( ln_trx_idx ).dlv_invoice_class
-                      || gt_sales_norm_tbl2( ln_trx_idx ).goods_prod_cls;
+                      || lt_goods_prod_class;
         END IF;
 --
         IF ( gt_sel_item_desp_tbl.EXISTS( lv_item_idx ) ) THEN
@@ -2196,8 +2368,8 @@ gt_bulk_card_tbl              g_sales_exp_ttype;                                
             WHERE  flvi.lookup_type               = cv_qct_item_cls
               AND  flvi.lookup_code               LIKE cv_qcc_code
               AND  flvi.attribute1                = gt_sales_norm_tbl2( ln_trx_idx ).dlv_invoice_class
-              AND  flvi.attribute2                = NVL( gt_sales_norm_tbl2( ln_trx_idx ).goods_prod_cls,
-                                                         gt_sales_norm_tbl2( ln_trx_idx ).item_code )
+              AND  flvi.attribute2                = NVL( lt_goods_prod_class,
+                                                         lt_goods_item_code )
               AND  flvi.enabled_flag              = cv_enabled_yes
               AND  flvi.language                  = USERENV( 'LANG' )
               AND  gd_process_date BETWEEN        NVL( flvi.start_date_active, gd_process_date )
@@ -2211,10 +2383,53 @@ gt_bulk_card_tbl              g_sales_exp_ttype;                                
                             , iv_name          => cv_itemdesp_err_msg
                             , iv_token_name1   => cv_tkn_lookup_type
                             , iv_token_value1  => cv_qct_item_cls
+                            , iv_token_name2   => cv_tkn_header_id
+                            , iv_token_value2  => lt_header_id
+                            , iv_token_name3   => cv_tkn_order_no
+                            , iv_token_value3  => gt_sales_norm_tbl2( ln_trx_idx ).dlv_invoice_number
                           );
               lv_errbuf  := lv_errmsg;
 --
-              RAISE global_no_lookup_expt;
+              --エラーフラグON
+              lv_err_flag := cv_y_flag;
+              gn_warn_flag := cv_y_flag;
+--
+              -- 空行出力
+              FND_FILE.PUT_LINE(
+                 which  => FND_FILE.LOG
+                ,buff   => cv_blank
+              );
+--
+              -- メッセージ出力
+              FND_FILE.PUT_LINE(
+                 which  => FND_FILE.LOG
+                ,buff   => lv_errmsg
+              );
+--
+              -- 空行出力
+              FND_FILE.PUT_LINE(
+                 which  => FND_FILE.LOG
+                ,buff   => cv_blank
+              );
+--
+               -- 空行出力
+               FND_FILE.PUT_LINE(
+                  which  => FND_FILE.OUTPUT
+                 ,buff   => cv_blank
+               );
+--
+               -- メッセージ出力
+               FND_FILE.PUT_LINE(
+                  which  => FND_FILE.OUTPUT
+                 ,buff   => lv_errmsg
+               );
+--
+               -- 空行出力
+               FND_FILE.PUT_LINE(
+                  which  => FND_FILE.OUTPUT
+                 ,buff   => cv_blank
+               );
+--
           END;
 --
           -- 取得したAR品目明細摘要をワークテーブルに設定する
@@ -2238,18 +2453,91 @@ gt_bulk_card_tbl              g_sales_exp_ttype;                                
                             , iv_name          => cv_tkn_user_msg
                             );
 --
+              lv_employee_nm :=xxccp_common_pkg.get_msg(
+                              iv_application   => cv_xxcos_short_nm
+                            , iv_name          => cv_employee_code_msg
+                            );
+--
+              lv_header_id_nm :=xxccp_common_pkg.get_msg(
+                              iv_application   => cv_xxcos_short_nm
+                            , iv_name          => cv_header_id_msg
+                            );
+--
+              lv_order_no_nm  :=xxccp_common_pkg.get_msg(
+                              iv_application   => cv_xxcos_short_nm
+                            , iv_name          => cv_order_no_msg
+                            );
+--
+              xxcos_common_pkg.makeup_key_info(
+                            iv_item_name1         =>  lv_employee_nm,
+                            iv_data_value1        =>  gt_sales_norm_tbl2( ln_trx_idx ).results_employee_code,
+                            iv_item_name2         =>  lv_header_id_nm,
+                            iv_data_value2        =>  lt_header_id,
+                            iv_item_name3         =>  lv_order_no_nm,
+                            iv_data_value3        =>  gt_sales_norm_tbl2( ln_trx_idx ).dlv_invoice_number,
+                            ov_key_info           =>  lv_key_info,                --編集されたキー情報
+                            ov_errbuf             =>  lv_errbuf,                  --エラーメッセージ
+                            ov_retcode            =>  lv_retcode,                 --リターンコード
+                            ov_errmsg             =>  lv_errmsg                   --ユーザ・エラー・メッセージ
+                          );
+--
               lv_errmsg := xxccp_common_pkg.get_msg(
                               iv_application   => cv_xxcos_short_nm
                             , iv_name          => cv_data_get_msg
                             , iv_token_name1   => cv_tkn_tbl_nm
                             , iv_token_value1  => lv_tbl_nm
                             , iv_token_name2   => cv_tkn_key_data
-                            , iv_token_value2  => gt_sales_norm_tbl2( ln_trx_idx ).results_employee_code
+                            , iv_token_value2  => lv_key_info
                           );
               lv_errbuf  := lv_errmsg;
 --
-              RAISE global_no_lookup_expt;
+              --エラーフラグON
+              lv_err_flag := cv_y_flag;
+              gn_warn_flag := cv_y_flag;
+--
+              -- 空行出力
+              FND_FILE.PUT_LINE(
+                 which  => FND_FILE.LOG
+                ,buff   => cv_blank
+              );
+--
+              -- メッセージ出力
+              FND_FILE.PUT_LINE(
+                 which  => FND_FILE.LOG
+                ,buff   => lv_errmsg
+              );
+--
+              -- 空行出力
+              FND_FILE.PUT_LINE(
+                 which  => FND_FILE.LOG
+                ,buff   => cv_blank
+              );
+--
+               -- 空行出力
+               FND_FILE.PUT_LINE(
+                  which  => FND_FILE.OUTPUT
+                 ,buff   => cv_blank
+               );
+--
+               -- メッセージ出力
+               FND_FILE.PUT_LINE(
+                  which  => FND_FILE.OUTPUT
+                 ,buff   => lv_errmsg
+               );
+--
+               -- 空行出力
+               FND_FILE.PUT_LINE(
+                  which  => FND_FILE.OUTPUT
+                 ,buff   => cv_blank
+               );
+--
         END;
+      END IF;
+--
+      --スキップ処理
+      IF ( lv_err_flag = cv_y_flag ) THEN
+         ln_skip_idx := ln_skip_idx + 1;
+         gt_sales_skip_tbl( ln_skip_idx ).sales_exp_header_id := gt_sales_norm_tbl2( ln_trx_idx ).sales_exp_header_id;
       END IF;
 --
       --==============================================================
@@ -2534,9 +2822,6 @@ gt_bulk_card_tbl              g_sales_exp_ttype;                                
         END IF;
       END IF;
 --
-      -- 販売実績ヘッダ更新のため：ROWIDの設定
-      gt_sales_h_tbl( sale_norm_idx ) := gt_sales_norm_tbl2( sale_norm_idx ).xseh_rowid;
---
     END LOOP gt_sales_norm_sum_loop;                    -- 販売実績データループ終了
 --
     --==============================================================
@@ -2627,6 +2912,9 @@ gt_bulk_card_tbl              g_sales_exp_ttype;                                
     lv_rec_flag         VARCHAR2(1);                                     -- RECフラグ
     -- AR取引番号
     lt_trx_number       VARCHAR2(20);
+    lv_err_flag         VARCHAR2(1);                                     -- エラー用フラグ
+    lv_jour_flag        VARCHAR2(1);                                     -- エラー用フラグ
+    ln_skip_idx         NUMBER DEFAULT 0;                                -- スキップ用インデックス;
 --
     -- *** ローカル・カーソル ***
 --
@@ -2679,6 +2967,8 @@ gt_bulk_card_tbl              g_sales_exp_ttype;                                
     -- カーソルクローズ
     CLOSE jour_cls_cur;
 --
+    --スキップカウントセット
+    ln_skip_idx := gt_sales_skip_tbl.COUNT;
     --=====================================
     -- 3.AR会計配分データ作成
     --=====================================
@@ -2753,6 +3043,7 @@ gt_bulk_card_tbl              g_sales_exp_ttype;                                
 --
         -- 仕訳生成カウント初期値
         ln_jour_cnt := 1;
+        lv_jour_flag := cv_n_flag;
 --
         -- 仕訳パターンよりAR会計配分の仕訳を編集する
         <<gt_jour_cls_tbl_loop>>
@@ -2820,6 +3111,8 @@ gt_bulk_card_tbl              g_sales_exp_ttype;                                
                            , gt_jour_cls_tbl( jcls_idx ).segment8
                          );
 --
+              --エラーフラグOFF
+              lv_err_flag := cv_n_flag;
               IF ( lt_ccid IS NULL ) THEN
                 -- CCIDが取得できない場合
                 lv_errmsg  := xxccp_common_pkg.get_msg(
@@ -2842,9 +3135,50 @@ gt_bulk_card_tbl              g_sales_exp_ttype;                                
                                 , iv_token_value7      => gt_jour_cls_tbl( jcls_idx ).segment7
                                 , iv_token_name8       => cv_tkn_segment8
                                 , iv_token_value8      => gt_jour_cls_tbl( jcls_idx ).segment8
+                                , iv_token_name9       => cv_tkn_header_id
+                                , iv_token_value9      => lt_header_id
+                                , iv_token_name10      => cv_tkn_order_no
+                                , iv_token_value10     => lt_invoice_number
                               );
                 lv_errbuf  := lv_errmsg;
-                RAISE non_ccid_expt;
+                lv_err_flag  := cv_y_flag;
+                gn_warn_flag := cv_y_flag;
+                -- 空行出力
+                FND_FILE.PUT_LINE(
+                   which  => FND_FILE.LOG
+                  ,buff   => cv_blank
+                );
+--
+                -- メッセージ出力
+                FND_FILE.PUT_LINE(
+                   which  => FND_FILE.LOG
+                  ,buff   => lv_errmsg
+                );
+--
+                -- 空行出力
+                FND_FILE.PUT_LINE(
+                   which  => FND_FILE.LOG
+                  ,buff   => cv_blank
+                );
+--
+               -- 空行出力
+               FND_FILE.PUT_LINE(
+                  which  => FND_FILE.OUTPUT
+                 ,buff   => cv_blank
+               );
+--
+               -- メッセージ出力
+               FND_FILE.PUT_LINE(
+                  which  => FND_FILE.OUTPUT
+                 ,buff   => lv_errmsg
+               );
+--
+               -- 空行出力
+               FND_FILE.PUT_LINE(
+                  which  => FND_FILE.OUTPUT
+                 ,buff   => cv_blank
+               );
+--
               END IF;
 --
               -- 取得したCCIDをワークテーブルに設定する
@@ -2852,6 +3186,11 @@ gt_bulk_card_tbl              g_sales_exp_ttype;                                
 --
             END IF;                                       -- CCID編集終了
 --
+            --スキップ処理
+            IF ( lv_err_flag = cv_y_flag ) THEN
+               ln_skip_idx := ln_skip_idx + 1;
+               gt_sales_skip_tbl( ln_skip_idx ).sales_exp_header_id := gt_sales_norm_tbl2( ln_dis_idx ).sales_exp_header_id;
+            END IF;
             --=====================================
             -- AR会計配分OIFデータ設定
             --=====================================
@@ -2999,6 +3338,68 @@ gt_bulk_card_tbl              g_sales_exp_ttype;                                
           END IF;                                         -- 仕訳パターン毎にAR会計配分OIFデータの作成処理終了
 --
         END LOOP gt_jour_cls_tbl_loop;                    -- 仕訳パターンよりデータ作成処理終了
+        IF ( ln_jour_cnt = 1 AND dis_sum_idx <> gt_sales_norm_tbl2.COUNT ) THEN
+          lv_errmsg  := xxccp_common_pkg.get_msg(
+                            iv_application       => cv_xxcos_short_nm
+                          , iv_name              => cv_jour_no_msg
+                          , iv_token_name1       => cv_tkn_invoice_cls
+                          , iv_token_value1      => lt_invoice_class
+                          , iv_token_name2       => cv_tkn_prod_cls
+                          , iv_token_value2      => NVL( lt_prod_cls, lt_item_code )
+                          , iv_token_name3       => cv_tkn_gyotai_sho
+                          , iv_token_value3      => lt_gyotai_sho
+                          , iv_token_name4       => cv_tkn_sale_cls
+                          , iv_token_value4      => lt_card_sale_class
+                          , iv_token_name5       => cv_tkn_red_black_flag
+                          , iv_token_value5      => lt_red_black_flag
+                          , iv_token_name6       => cv_tkn_header_id
+                          , iv_token_value6      => lt_header_id
+                          , iv_token_name7       => cv_tkn_order_no
+                          , iv_token_value7      => lt_invoice_number
+                        );
+          lv_errbuf  := lv_errmsg;
+          lv_jour_flag  := cv_y_flag;
+          gn_warn_flag := cv_y_flag;
+          -- 空行出力
+          FND_FILE.PUT_LINE(
+             which  => FND_FILE.LOG
+            ,buff   => cv_blank
+          );
+--
+          -- メッセージ出力
+          FND_FILE.PUT_LINE(
+             which  => FND_FILE.LOG
+            ,buff   => lv_errmsg
+          );
+--
+          -- 空行出力
+          FND_FILE.PUT_LINE(
+             which  => FND_FILE.LOG
+            ,buff   => cv_blank
+          );
+          -- 空行出力
+          FND_FILE.PUT_LINE(
+             which  => FND_FILE.OUTPUT
+            ,buff   => cv_blank
+          );
+--
+          -- メッセージ出力
+          FND_FILE.PUT_LINE(
+             which  => FND_FILE.OUTPUT
+            ,buff   => lv_errmsg
+          );
+--
+          -- 空行出力
+          FND_FILE.PUT_LINE(
+             which  => FND_FILE.OUTPUT
+            ,buff   => cv_blank
+          );
+          --スキップ処理
+          IF ( lv_jour_flag = cv_y_flag ) THEN
+             ln_skip_idx := ln_skip_idx + 1;
+             gt_sales_skip_tbl( ln_skip_idx ).sales_exp_header_id := gt_sales_norm_tbl2( ln_dis_idx ).sales_exp_header_id;
+          END IF;
+        END IF;
 --
 --
         -- 金額の設定
@@ -3135,6 +3536,8 @@ gt_bulk_card_tbl              g_sales_exp_ttype;                                
     ln_key_ship_customer_id NUMBER;                     -- 出荷先顧客ID
     ln_start_index          NUMBER;                     -- 取引No毎の開始位置
     ln_ship_flg             NUMBER DEFAULT 0;           -- 出荷先顧客フラグ
+    ln_term_amount          NUMBER DEFAULT 0;           -- 一時金額
+    ln_max_amount           NUMBER DEFAULT 0;           -- 最大金額
 --
     -- *** 取引NO取得キー
       -- 作成区分
@@ -3164,6 +3567,17 @@ gt_bulk_card_tbl              g_sales_exp_ttype;                                
     ln_first_index          VARCHAR2(300);
     ln_smb_idx              NUMBER DEFAULT 0;           -- 生成したインデックス
     lv_tbl_nm               VARCHAR2(100);              -- 従業員マスタ
+    lv_employee_nm          VARCHAR2(100);              -- 従業員
+    lv_header_id_nm         VARCHAR2(100);              -- ヘッダID
+    lv_order_no_nm          VARCHAR2(100);              -- 伝票番号
+    lv_key_info             VARCHAR2(100);              -- 伝票番号
+      -- 品目区分
+    lt_goods_prod_class     xxcos_good_prod_class_v.goods_prod_class_code%TYPE;
+    lv_err_flag             VARCHAR2(1);                -- エラー用フラグ
+    ln_skip_idx             NUMBER DEFAULT 0;           -- スキップ用インデックス;
+    lt_goods_item_code      xxcos_sales_exp_lines.item_code%TYPE;
+    lt_item_code            xxcos_sales_exp_lines.item_code%TYPE;
+    lt_prod_cls             xxcos_good_prod_class_v.goods_prod_class_code%TYPE;
 --
     -- *** ローカル例外 ***
 --
@@ -3221,8 +3635,9 @@ gt_bulk_card_tbl              g_sales_exp_ttype;                                
     -- 請求取引テーブルの非大手量販店データカウントセット
     ln_ar_idx := gt_ar_interface_tbl.COUNT;
 --
-    -- 販売実績ヘッダ更新用インデックス
-    ln_sales_h_tbl_idx := gt_sales_h_tbl.COUNT;
+    --スキップカウントセット
+    ln_skip_idx := gt_sales_skip_tbl.COUNT;
+--
     <<gt_sales_bulk_tbl2_loop>>
     FOR sale_bulk_idx IN 1 .. gt_sales_bulk_tbl2.COUNT LOOP
 --
@@ -3332,6 +3747,9 @@ gt_bulk_card_tbl              g_sales_exp_ttype;                                
     gt_sales_bulk_tbl2( gt_sales_bulk_tbl2.COUNT + 1 ).sales_exp_header_id
                         := gt_sales_bulk_tbl2( gt_sales_bulk_tbl2.COUNT ).sales_exp_header_id;
 --
+    lt_item_code        := gt_sales_bulk_tbl2( 1 ).item_code;
+    lt_prod_cls         := gt_sales_bulk_tbl2( 1 ).goods_prod_cls;
+--
     <<gt_sales_bulk_sum_loop>>
     FOR sale_bulk_idx IN 1 .. gt_sales_bulk_tbl2.COUNT LOOP
 --
@@ -3349,6 +3767,33 @@ gt_bulk_card_tbl              g_sales_exp_ttype;                                
         -- 本体金額を集約する
         ln_amount := ln_amount + gt_sales_bulk_tbl2( sale_bulk_idx ).pure_amount;
 --
+       IF ( (
+               (
+                  NVL( lt_prod_cls, 'X' ) = cv_goods_prod_syo
+               OR NVL( lt_prod_cls, 'X' ) = cv_goods_prod_sei
+               )
+             AND
+               NVL( lt_prod_cls, 'X' ) = NVL( gt_sales_bulk_tbl2( sale_bulk_idx ).goods_prod_cls, 'X' )
+             )
+           OR
+             (
+               (
+                   NVL( lt_prod_cls, 'X' ) <> cv_goods_prod_syo
+               AND NVL( lt_prod_cls, 'X' ) <> cv_goods_prod_sei
+               )
+               AND lt_item_code = gt_sales_bulk_tbl2( sale_bulk_idx ).item_code
+             )
+           )THEN
+             ln_term_amount := ln_term_amount + gt_sales_bulk_tbl2( sale_bulk_idx ).pure_amount;
+        ELSIF ( ln_term_amount >= ln_max_amount ) THEN
+             ln_max_amount       := ln_term_amount;
+             ln_term_amount      := gt_sales_bulk_tbl2( sale_bulk_idx ).pure_amount;
+             lt_goods_prod_class := lt_prod_cls;
+             lt_goods_item_code  := lt_item_code;
+        END IF;
+        lt_item_code        := gt_sales_bulk_tbl2( sale_bulk_idx ).item_code;
+        lt_prod_cls         := gt_sales_bulk_tbl2( sale_bulk_idx ).goods_prod_cls;
+--
         -- 課税の場合、消費税額を集約する
         IF ( gt_sales_bulk_tbl2( sale_bulk_idx ).consumption_tax_class != gt_no_tax_cls ) THEN
           ln_tax := ln_tax + gt_sales_bulk_tbl2( sale_bulk_idx ).tax_amount;
@@ -3356,11 +3801,23 @@ gt_bulk_card_tbl              g_sales_exp_ttype;                                
 --
       ELSE
 --
+        IF ( ln_term_amount >= ln_max_amount ) THEN
+             lt_goods_prod_class := lt_prod_cls;
+             lt_goods_item_code  := lt_item_code;
+        END IF;
+        ln_max_amount       := 0;
+        ln_term_amount      := 0;
+        lt_item_code        := gt_sales_bulk_tbl2( sale_bulk_idx ).item_code;
+        lt_prod_cls         := gt_sales_bulk_tbl2( sale_bulk_idx ).goods_prod_cls;
+--
         lv_sum_flag := cv_n_flag;
         ln_trx_idx  := sale_bulk_idx - 1;
       END IF;
 --
       IF ( lv_sum_flag = cv_n_flag ) THEN
+--
+        --エラーフラグOFF
+        lv_err_flag := cv_n_flag;
         --=====================================================================
         -- １．支払条件IDの取得
         --=====================================================================
@@ -3532,10 +3989,52 @@ gt_bulk_card_tbl              g_sales_exp_ttype;                                
                             , iv_token_value4  => gt_sales_bulk_tbl2( ln_trx_idx ).xchv_bill_pay_id3
                             , iv_token_name5   => cv_tkn_procedure_name
                             , iv_token_value5  => cv_prg_name
+                            , iv_token_name6   => cv_tkn_header_id
+                            , iv_token_value6  => lt_header_id
+                            , iv_token_name7   => cv_tkn_order_no
+                            , iv_token_value7  => gt_sales_bulk_tbl2( ln_trx_idx ).dlv_invoice_number
                           );
               lv_errbuf  := lv_errmsg;
 --
-              RAISE global_term_id_expt;
+              lv_err_flag  := cv_y_flag;
+              gn_warn_flag := cv_y_flag;
+--
+              -- 空行出力
+              FND_FILE.PUT_LINE(
+                 which  => FND_FILE.LOG
+                ,buff   => cv_blank
+              );
+--
+              -- メッセージ出力
+              FND_FILE.PUT_LINE(
+                 which  => FND_FILE.LOG
+                ,buff   => lv_errmsg
+              );
+--
+              -- 空行出力
+              FND_FILE.PUT_LINE(
+                 which  => FND_FILE.LOG
+                ,buff   => cv_blank
+              );
+--
+               -- 空行出力
+               FND_FILE.PUT_LINE(
+                  which  => FND_FILE.OUTPUT
+                 ,buff   => cv_blank
+               );
+--
+               -- メッセージ出力
+               FND_FILE.PUT_LINE(
+                  which  => FND_FILE.OUTPUT
+                 ,buff   => lv_errmsg
+               );
+--
+               -- 空行出力
+               FND_FILE.PUT_LINE(
+                  which  => FND_FILE.OUTPUT
+                 ,buff   => cv_blank
+               );
+--
           END;
 --
         --=====================================================================
@@ -3583,10 +4082,52 @@ gt_bulk_card_tbl              g_sales_exp_ttype;                                
                             , iv_token_value1  => cv_qct_mkorg_cls
                                                || cv_and
                                                || cv_qct_dlv_slp_cls
+                            , iv_token_name2   => cv_tkn_header_id
+                            , iv_token_value2  => lt_header_id
+                            , iv_token_name3   => cv_tkn_order_no
+                            , iv_token_value3  => gt_sales_bulk_tbl2( ln_trx_idx ).dlv_invoice_number
                           );
               lv_errbuf  := lv_errmsg;
 --
-              RAISE global_no_lookup_expt;
+              lv_err_flag  := cv_y_flag;
+              gn_warn_flag := cv_y_flag;
+--
+              -- 空行出力
+              FND_FILE.PUT_LINE(
+                 which  => FND_FILE.LOG
+                ,buff   => cv_blank
+              );
+--
+              -- メッセージ出力
+              FND_FILE.PUT_LINE(
+                 which  => FND_FILE.LOG
+                ,buff   => lv_errmsg
+              );
+--
+              -- 空行出力
+              FND_FILE.PUT_LINE(
+                 which  => FND_FILE.LOG
+                ,buff   => cv_blank
+              );
+--
+               -- 空行出力
+               FND_FILE.PUT_LINE(
+                  which  => FND_FILE.OUTPUT
+                 ,buff   => cv_blank
+               );
+--
+               -- メッセージ出力
+               FND_FILE.PUT_LINE(
+                  which  => FND_FILE.OUTPUT
+                 ,buff   => lv_errmsg
+               );
+--
+               -- 空行出力
+               FND_FILE.PUT_LINE(
+                  which  => FND_FILE.OUTPUT
+                 ,buff   => cv_blank
+               );
+--
           END;
 --
           -- 取得した取引タイプをワークテーブルに設定する
@@ -3600,12 +4141,12 @@ gt_bulk_card_tbl              g_sales_exp_ttype;                                
         --=====================================================================
 --
         -- 品目明細摘要の存在チェック-->存在している場合、取得必要がない
-        IF ( gt_sales_bulk_tbl2( ln_trx_idx ).goods_prod_cls IS NULL ) THEN
+        IF ( lt_goods_prod_class IS NULL ) THEN
           lv_item_idx := gt_sales_bulk_tbl2( ln_trx_idx ).dlv_invoice_class
-                      || gt_sales_bulk_tbl2( ln_trx_idx ).item_code;
+                      || lt_goods_item_code;
         ELSE
           lv_item_idx := gt_sales_bulk_tbl2( ln_trx_idx ).dlv_invoice_class
-                      || gt_sales_bulk_tbl2( ln_trx_idx ).goods_prod_cls;
+                      || lt_goods_prod_class;
         END IF;
 --
         IF ( gt_sel_item_desp_tbl.EXISTS( lv_item_idx ) ) THEN
@@ -3618,8 +4159,8 @@ gt_bulk_card_tbl              g_sales_exp_ttype;                                
             WHERE  flvi.lookup_type               = cv_qct_item_cls
               AND  flvi.lookup_code               LIKE cv_qcc_code
               AND  flvi.attribute1                = gt_sales_bulk_tbl2( ln_trx_idx ).dlv_invoice_class
-              AND  flvi.attribute2                = NVL( gt_sales_bulk_tbl2( ln_trx_idx ).goods_prod_cls,
-                                                         gt_sales_bulk_tbl2( ln_trx_idx ).item_code )
+              AND  flvi.attribute2                = NVL( lt_goods_prod_class,
+                                                         lt_goods_item_code )
               AND  flvi.enabled_flag              = cv_enabled_yes
               AND  flvi.language                  = USERENV( 'LANG' )
               AND  gd_process_date BETWEEN        NVL( flvi.start_date_active, gd_process_date )
@@ -3633,10 +4174,52 @@ gt_bulk_card_tbl              g_sales_exp_ttype;                                
                             , iv_name          => cv_itemdesp_err_msg
                             , iv_token_name1   => cv_tkn_lookup_type
                             , iv_token_value1  => cv_qct_item_cls
+                            , iv_token_name2   => cv_tkn_header_id
+                            , iv_token_value2  => lt_header_id
+                            , iv_token_name3   => cv_tkn_order_no
+                            , iv_token_value3  => gt_sales_bulk_tbl2( ln_trx_idx ).dlv_invoice_number
                           );
               lv_errbuf  := lv_errmsg;
 --
-              RAISE global_no_lookup_expt;
+              lv_err_flag  := cv_y_flag;
+              gn_warn_flag := cv_y_flag;
+--
+              -- 空行出力
+              FND_FILE.PUT_LINE(
+                 which  => FND_FILE.LOG
+                ,buff   => cv_blank
+              );
+--
+              -- メッセージ出力
+              FND_FILE.PUT_LINE(
+                 which  => FND_FILE.LOG
+                ,buff   => lv_errmsg
+              );
+--
+              -- 空行出力
+              FND_FILE.PUT_LINE(
+                 which  => FND_FILE.LOG
+                ,buff   => cv_blank
+              );
+--
+               -- 空行出力
+               FND_FILE.PUT_LINE(
+                  which  => FND_FILE.OUTPUT
+                 ,buff   => cv_blank
+               );
+--
+               -- メッセージ出力
+               FND_FILE.PUT_LINE(
+                  which  => FND_FILE.OUTPUT
+                 ,buff   => lv_errmsg
+               );
+--
+               -- 空行出力
+               FND_FILE.PUT_LINE(
+                  which  => FND_FILE.OUTPUT
+                 ,buff   => cv_blank
+               );
+--
           END;
 --
           -- 取得したAR品目明細摘要をワークテーブルに設定する
@@ -3660,20 +4243,91 @@ gt_bulk_card_tbl              g_sales_exp_ttype;                                
                             , iv_name          => cv_tkn_user_msg
                             );
 --
+              lv_employee_nm :=xxccp_common_pkg.get_msg(
+                              iv_application   => cv_xxcos_short_nm
+                            , iv_name          => cv_employee_code_msg
+                            );
+--
+              lv_header_id_nm :=xxccp_common_pkg.get_msg(
+                              iv_application   => cv_xxcos_short_nm
+                            , iv_name          => cv_header_id_msg
+                            );
+--
+              lv_order_no_nm  :=xxccp_common_pkg.get_msg(
+                              iv_application   => cv_xxcos_short_nm
+                            , iv_name          => cv_order_no_msg
+                            );
+--
+              xxcos_common_pkg.makeup_key_info(
+                            iv_item_name1         =>  lv_employee_nm,
+                            iv_data_value1        =>  gv_busi_emp_cd,
+                            iv_item_name2         =>  lv_header_id_nm,
+                            iv_data_value2        =>  lt_header_id,
+                            iv_item_name3         =>  lv_order_no_nm,
+                            iv_data_value3        =>  gt_sales_bulk_tbl2( ln_trx_idx ).dlv_invoice_number,
+                            ov_key_info           =>  lv_key_info,                --編集されたキー情報
+                            ov_errbuf             =>  lv_errbuf,                  --エラーメッセージ
+                            ov_retcode            =>  lv_retcode,                 --リターンコード
+                            ov_errmsg             =>  lv_errmsg                   --ユーザ・エラー・メッセージ
+                          );
+--
               lv_errmsg := xxccp_common_pkg.get_msg(
                               iv_application   => cv_xxcos_short_nm
                             , iv_name          => cv_data_get_msg
                             , iv_token_name1   => cv_tkn_tbl_nm
                             , iv_token_value1  => lv_tbl_nm
                             , iv_token_name2   => cv_tkn_key_data
-                            , iv_token_value2  => gv_busi_emp_cd
+                            , iv_token_value2  => lv_key_info
                           );
               lv_errbuf  := lv_errmsg;
 --
-              RAISE global_no_lookup_expt;
+              lv_err_flag  := cv_y_flag;
+              gn_warn_flag := cv_y_flag;
+--
+              -- 空行出力
+              FND_FILE.PUT_LINE(
+                 which  => FND_FILE.LOG
+                ,buff   => cv_blank
+              );
+--
+              -- メッセージ出力
+              FND_FILE.PUT_LINE(
+                 which  => FND_FILE.LOG
+                ,buff   => lv_errmsg
+              );
+--
+              -- 空行出力
+              FND_FILE.PUT_LINE(
+                 which  => FND_FILE.LOG
+                ,buff   => cv_blank
+              );
+--
+               -- 空行出力
+               FND_FILE.PUT_LINE(
+                  which  => FND_FILE.OUTPUT
+                 ,buff   => cv_blank
+               );
+--
+               -- メッセージ出力
+               FND_FILE.PUT_LINE(
+                  which  => FND_FILE.OUTPUT
+                 ,buff   => lv_errmsg
+               );
+--
+               -- 空行出力
+               FND_FILE.PUT_LINE(
+                  which  => FND_FILE.OUTPUT
+                 ,buff   => cv_blank
+               );
+--
         END;
       END IF;
 --
+      --スキップ処理
+      IF ( lv_err_flag = cv_y_flag ) THEN
+         ln_skip_idx := ln_skip_idx + 1;
+         gt_sales_skip_tbl( ln_skip_idx ).sales_exp_header_id := gt_sales_bulk_tbl2( ln_trx_idx ).sales_exp_header_id;
+      END IF;
       --==============================================================
       -- ４．AR請求取引OIFデータ作成
       --==============================================================
@@ -3725,8 +4379,8 @@ gt_bulk_card_tbl              g_sales_exp_ttype;                                
                                                         -- 取引タイプ名
         gt_ar_interface_tbl( ln_ar_idx ).term_id        := ln_term_id;
                                                         -- 支払条件ID
-        IF (  gt_sales_bulk_tbl2( sale_bulk_idx ).card_sale_class = cv_cash_class
-          AND gt_sales_bulk_tbl2( sale_bulk_idx ).cash_and_card   = 0 ) THEN
+        IF (  gt_sales_bulk_tbl2( ln_trx_idx ).card_sale_class = cv_cash_class
+          AND gt_sales_bulk_tbl2( ln_trx_idx ).cash_and_card   = 0 ) THEN
         -- 現金の場合
           gt_ar_interface_tbl( ln_ar_idx ).orig_system_bill_address_id
                                                         := gt_sales_bulk_tbl2( ln_trx_idx ).hcsb_org_sys_id;
@@ -3952,10 +4606,6 @@ gt_bulk_card_tbl              g_sales_exp_ttype;                                
         END IF;
       END IF;
 --
-      -- 販売実績ヘッダ更新のため：ROWIDの設定
-      ln_sales_h_tbl_idx                   := ln_sales_h_tbl_idx + 1;
-      gt_sales_h_tbl( ln_sales_h_tbl_idx ) := gt_sales_bulk_tbl2( sale_bulk_idx ).xseh_rowid;
---
     END LOOP gt_sales_bulk_sum_loop;                    -- 販売実績データループ終了
 --
     --==============================================================
@@ -4046,6 +4696,9 @@ gt_bulk_card_tbl              g_sales_exp_ttype;                                
     lv_rec_flag         VARCHAR2(1);                                     -- RECフラグ
     -- AR取引番号
     lt_trx_number       VARCHAR2(20);
+    lv_err_flag         VARCHAR2(1);                                     -- エラー用フラグ
+    lv_jour_flag        VARCHAR2(1);                                     -- エラー用フラグ
+    ln_skip_idx         NUMBER DEFAULT 0;                                -- スキップ用インデックス;
 --
     -- *** ローカル・カーソル ***
 --
@@ -4101,6 +4754,8 @@ gt_bulk_card_tbl              g_sales_exp_ttype;                                
     -- カーソルクローズ
     CLOSE jour_cls_cur;
 --
+    --スキップカウントセット
+    ln_skip_idx := gt_sales_skip_tbl.COUNT;
     --=====================================
     -- 3.AR会計配分データ作成
     --=====================================
@@ -4175,6 +4830,7 @@ gt_bulk_card_tbl              g_sales_exp_ttype;                                
 --
         -- 仕訳生成カウント初期値
         ln_jour_cnt := 1;
+        lv_jour_flag := cv_n_flag;
 --
         -- 仕訳パターンよりAR会計配分の仕訳を編集する
         <<gt_jour_cls_tbl_loop>>
@@ -4242,6 +4898,8 @@ gt_bulk_card_tbl              g_sales_exp_ttype;                                
                            , gt_jour_cls_tbl( jcls_idx ).segment8
                          );
 --
+              --エラーフラグOFF
+              lv_err_flag := cv_n_flag;
               IF ( lt_ccid IS NULL ) THEN
                 -- CCIDが取得できない場合
                 lv_errmsg  := xxccp_common_pkg.get_msg(
@@ -4264,11 +4922,57 @@ gt_bulk_card_tbl              g_sales_exp_ttype;                                
                                 , iv_token_value7      => gt_jour_cls_tbl( jcls_idx ).segment7
                                 , iv_token_name8       => cv_tkn_segment8
                                 , iv_token_value8      => gt_jour_cls_tbl( jcls_idx ).segment8
+                                , iv_token_name9       => cv_tkn_header_id
+                                , iv_token_value9      => lt_header_id
+                                , iv_token_name10      => cv_tkn_order_no
+                                , iv_token_value10     => lt_invoice_number
                               );
                 lv_errbuf  := lv_errmsg;
-                RAISE non_ccid_expt;
+                lv_err_flag  := cv_y_flag;
+                gn_warn_flag := cv_y_flag;
+                -- 空行出力
+                FND_FILE.PUT_LINE(
+                   which  => FND_FILE.LOG
+                  ,buff   => cv_blank
+                );
+--
+                -- メッセージ出力
+                FND_FILE.PUT_LINE(
+                   which  => FND_FILE.LOG
+                  ,buff   => lv_errmsg
+                );
+--
+                -- 空行出力
+                FND_FILE.PUT_LINE(
+                   which  => FND_FILE.LOG
+                  ,buff   => cv_blank
+                );
+--
+               -- 空行出力
+               FND_FILE.PUT_LINE(
+                  which  => FND_FILE.OUTPUT
+                 ,buff   => cv_blank
+               );
+--
+               -- メッセージ出力
+               FND_FILE.PUT_LINE(
+                  which  => FND_FILE.OUTPUT
+                 ,buff   => lv_errmsg
+               );
+--
+               -- 空行出力
+               FND_FILE.PUT_LINE(
+                  which  => FND_FILE.OUTPUT
+                 ,buff   => cv_blank
+               );
+--
               END IF;
 --
+              --スキップ処理
+              IF ( lv_err_flag = cv_y_flag ) THEN
+                 ln_skip_idx := ln_skip_idx + 1;
+                 gt_sales_skip_tbl( ln_skip_idx ).sales_exp_header_id := gt_sales_bulk_tbl2( ln_dis_idx ).sales_exp_header_id;
+              END IF;
               -- 取得したCCIDをワークテーブルに設定する
               gt_sel_ccid_tbl( lv_ccid_idx ).code_combination_id := lt_ccid;
 --
@@ -4422,6 +5126,69 @@ gt_bulk_card_tbl              g_sales_exp_ttype;                                
 --
         END LOOP gt_jour_cls_tbl_loop;                    -- 仕訳パターンよりデータ作成処理終了
 --
+        IF ( ln_jour_cnt = 1 AND dis_sum_idx <> gt_sales_bulk_tbl2.COUNT ) THEN
+          lv_errmsg  := xxccp_common_pkg.get_msg(
+                            iv_application       => cv_xxcos_short_nm
+                          , iv_name              => cv_jour_no_msg
+                          , iv_token_name1       => cv_tkn_invoice_cls
+                          , iv_token_value1      => lt_invoice_class
+                          , iv_token_name2       => cv_tkn_prod_cls
+                          , iv_token_value2      => NVL( lt_prod_cls, lt_item_code )
+                          , iv_token_name3       => cv_tkn_gyotai_sho
+                          , iv_token_value3      => lt_gyotai_sho
+                          , iv_token_name4       => cv_tkn_sale_cls
+                          , iv_token_value4      => lt_card_sale_class
+                          , iv_token_name5       => cv_tkn_red_black_flag
+                          , iv_token_value5      => lt_red_black_flag
+                          , iv_token_name6       => cv_tkn_header_id
+                          , iv_token_value6      => lt_header_id
+                          , iv_token_name7       => cv_tkn_order_no
+                          , iv_token_value7      => lt_invoice_number
+                        );
+          lv_errbuf  := lv_errmsg;
+          lv_jour_flag  := cv_y_flag;
+          gn_warn_flag := cv_y_flag;
+          -- 空行出力
+          FND_FILE.PUT_LINE(
+             which  => FND_FILE.LOG
+            ,buff   => cv_blank
+          );
+--
+          -- メッセージ出力
+          FND_FILE.PUT_LINE(
+             which  => FND_FILE.LOG
+            ,buff   => lv_errmsg
+          );
+--
+          -- 空行出力
+          FND_FILE.PUT_LINE(
+             which  => FND_FILE.LOG
+            ,buff   => cv_blank
+          );
+--
+          -- 空行出力
+          FND_FILE.PUT_LINE(
+             which  => FND_FILE.OUTPUT
+            ,buff   => cv_blank
+          );
+--
+          -- メッセージ出力
+          FND_FILE.PUT_LINE(
+             which  => FND_FILE.OUTPUT
+            ,buff   => lv_errmsg
+          );
+--
+          -- 空行出力
+          FND_FILE.PUT_LINE(
+             which  => FND_FILE.OUTPUT
+            ,buff   => cv_blank
+          );
+          --スキップ処理
+          IF ( lv_jour_flag = cv_y_flag ) THEN
+             ln_skip_idx := ln_skip_idx + 1;
+             gt_sales_skip_tbl( ln_skip_idx ).sales_exp_header_id := gt_sales_bulk_tbl2( ln_dis_idx ).sales_exp_header_id;
+          END IF;
+        END IF;
 --
         -- 金額の設定
         ln_amount        := gt_sales_bulk_tbl2( dis_sum_idx ).pure_amount;
@@ -4529,7 +5296,9 @@ gt_bulk_card_tbl              g_sales_exp_ttype;                                
     -- *** ローカル定数 ***
 --
     -- *** ローカル変数 ***
-    lv_tbl_nm VARCHAR2(255);                -- テーブル名
+    lv_tbl_nm     VARCHAR2(255);                -- テーブル名
+    ln_ar_idx     NUMBER DEFAULT 0;             -- 請求取引OIFインデックス
+    lv_skip_flag  VARCHAR2(1);                  -- フラグ
 --
     -- *** ローカル・カーソル ***
 --
@@ -4546,17 +5315,41 @@ gt_bulk_card_tbl              g_sales_exp_ttype;                                
     --==============================================================
     -- 一般会計OIFテーブルへデータ登録
     --==============================================================
-    BEGIN
-      FORALL i IN 1..gt_ar_interface_tbl.COUNT
-        INSERT INTO
-          ra_interface_lines_all
-        VALUES
-          gt_ar_interface_tbl(i)
-        ;
-    EXCEPTION
-      WHEN OTHERS THEN
-        RAISE global_insert_data_expt;
-    END;
+    <<gt_ar_interface_tbl_loop>>
+    FOR sale_idx IN 1 .. gt_ar_interface_tbl.COUNT LOOP
+      lv_skip_flag := cv_n_flag;
+      -- スキップ処理
+      IF ( gt_sales_skip_tbl.COUNT > 0 ) THEN
+--
+        <<gt_sales_skip_tbl_loop>>
+        FOR skip_idx IN 1 .. gt_sales_skip_tbl.COUNT LOOP
+          IF( gt_sales_skip_tbl( skip_idx ).sales_exp_header_id
+              = gt_ar_interface_tbl( sale_idx ).interface_line_attribute7 ) THEN
+            lv_skip_flag := cv_y_flag;
+            EXIT;
+          END IF;
+        END LOOP gt_sales_skip_tbl_loop;
+      END IF;
+--
+      IF ( lv_skip_flag = cv_n_flag ) THEN
+        ln_ar_idx := ln_ar_idx + 1;
+        gt_ar_interface_tbl1( ln_ar_idx )                  := gt_ar_interface_tbl( sale_idx );
+      END IF;
+    END LOOP gt_ar_interface_tbl_loop;
+--
+    IF ( gt_ar_interface_tbl1.COUNT > 0 ) THEN 
+      BEGIN
+        FORALL i IN 1..gt_ar_interface_tbl1.COUNT
+          INSERT INTO
+            ra_interface_lines_all
+          VALUES
+            gt_ar_interface_tbl(i)
+          ;
+      EXCEPTION
+        WHEN OTHERS THEN
+          RAISE global_insert_data_expt;
+      END;
+    END IF;
 --
     --==============================================================
     --メッセージ出力をする必要がある場合は処理を記述
@@ -4629,7 +5422,9 @@ gt_bulk_card_tbl              g_sales_exp_ttype;                                
     -- *** ローカル定数 ***
 --
     -- *** ローカル変数 ***
-    lv_tbl_nm VARCHAR2(255);                -- テーブル名
+    lv_tbl_nm     VARCHAR2(255);                -- テーブル名
+    ln_ar_dis_idx NUMBER DEFAULT 0;             -- 請求取引OIFインデックス
+    lv_skip_flag  VARCHAR2(1);                  -- フラグ
 --
     -- *** ローカル・カーソル ***
 --
@@ -4646,17 +5441,41 @@ gt_bulk_card_tbl              g_sales_exp_ttype;                                
     --==============================================================
     -- AR会計配分OIFテーブルへデータ登録
     --==============================================================
-    BEGIN
-      FORALL i IN 1..gt_ar_dis_tbl.COUNT
-        INSERT INTO
-          ra_interface_distributions_all
-        VALUES
-          gt_ar_dis_tbl(i)
-        ;
-    EXCEPTION
-      WHEN OTHERS THEN
-        RAISE global_insert_data_expt;
-    END;
+    <<gt_ar_dis_tbl_loop>>
+    FOR sale_idx IN 1 .. gt_ar_dis_tbl.COUNT LOOP
+      lv_skip_flag := cv_n_flag;
+      -- スキップ処理
+      IF ( gt_sales_skip_tbl.COUNT > 0 ) THEN
+--
+        <<gt_sales_skip_tbl_loop>>
+        FOR skip_idx IN 1 .. gt_sales_skip_tbl.COUNT LOOP
+          IF( gt_sales_skip_tbl( skip_idx ).sales_exp_header_id
+              = gt_ar_dis_tbl( sale_idx ).interface_line_attribute7 ) THEN
+            lv_skip_flag := cv_y_flag;
+            EXIT;
+          END IF;
+        END LOOP gt_sales_skip_tbl_loop;
+      END IF;
+--
+      IF ( lv_skip_flag = cv_n_flag ) THEN
+        ln_ar_dis_idx := ln_ar_dis_idx + 1;
+        gt_ar_dis_tbl1( ln_ar_dis_idx )                  := gt_ar_dis_tbl( sale_idx );
+      END IF;
+    END LOOP gt_ar_dis_tbl_loop;
+--
+    IF ( gt_ar_dis_tbl1.COUNT > 0 ) THEN 
+      BEGIN
+        FORALL i IN 1..gt_ar_dis_tbl1.COUNT
+          INSERT INTO
+            ra_interface_distributions_all
+          VALUES
+            gt_ar_dis_tbl(i)
+          ;
+      EXCEPTION
+        WHEN OTHERS THEN
+          RAISE global_insert_data_expt;
+      END;
+    END IF;
 --
     --==============================================================
     --メッセージ出力をする必要がある場合は処理を記述
@@ -4729,7 +5548,9 @@ gt_bulk_card_tbl              g_sales_exp_ttype;                                
     -- *** ローカル定数 ***
 --
     -- *** ローカル変数 ***
-    lv_tbl_nm VARCHAR2(255);                -- テーブル名
+    lv_tbl_nm           VARCHAR2(255);                -- テーブル名
+    lv_skip_flag        VARCHAR2(1);                  -- フラグ
+    ln_sales_h_tbl_idx  NUMBER DEFAULT 0;           -- 販売実績ヘッダ更新用インデックス
 --
     -- *** ローカル・カーソル ***
 --
@@ -4745,6 +5566,27 @@ gt_bulk_card_tbl              g_sales_exp_ttype;                                
     --==============================================================
     -- 販売実績ヘッダ更新処理
     --==============================================================
+--
+      FOR sale_idx IN 1 .. gt_sales_exp_tbl2.COUNT LOOP
+--
+          lv_skip_flag := cv_n_flag;
+          IF ( gt_sales_skip_tbl.COUNT > 0 ) THEN
+--
+            <<gt_sales_skip_tbl_loop>>
+            FOR skip_idx IN 1 .. gt_sales_skip_tbl.COUNT LOOP
+              IF( gt_sales_skip_tbl( skip_idx ).sales_exp_header_id
+                  = gt_sales_exp_tbl2( sale_idx ).sales_exp_header_id ) THEN
+                lv_skip_flag := cv_y_flag;
+                EXIT;
+              END IF;
+            END LOOP gt_sales_skip_tbl_loop;
+          END IF;
+--
+          IF ( lv_skip_flag = cv_n_flag ) THEN
+            ln_sales_h_tbl_idx := ln_sales_h_tbl_idx + 1;
+            gt_sales_h_tbl( ln_sales_h_tbl_idx )                  := gt_sales_exp_tbl2( sale_idx ).xseh_rowid;
+          END IF;
+      END LOOP gt_sales_exp_tbl2_loop;                                  -- 販売実績データループ終了
 --
     -- 処理対象データのインタフェース済フラグを一括更新する
     BEGIN
@@ -4868,7 +5710,6 @@ gt_bulk_card_tbl              g_sales_exp_ttype;                                
     gn_error_cnt     := 0;                  -- エラー件数
     gn_aroif_cnt     := 0;                  -- AR請求取引OIF登録件数
     gn_ardis_cnt     := 0;                  -- AR会計配分OIF登録件数
-
 --
     --*********************************************
     --***      MD.050のフロー図を表す           ***
@@ -5003,13 +5844,33 @@ gt_bulk_card_tbl              g_sales_exp_ttype;                                
     END IF;
 --
     -- 成功件数をセット
-    gn_aroif_cnt  := gt_ar_interface_tbl.COUNT;                      -- AR請求取引OIF登録件数
-    gn_ardis_cnt  := gt_ar_dis_tbl.COUNT;                            -- AR会計配分OIF登録件数
+    gn_aroif_cnt  := gt_ar_interface_tbl1.COUNT;                      -- AR請求取引OIF登録件数
+    gn_ardis_cnt  := gt_ar_dis_tbl1.COUNT;                            -- AR会計配分OIF登録件数
     gn_normal_cnt := gn_aroif_cnt + gn_ardis_cnt;
 --
-    --カード会社情報エラー
     IF ( gn_warn_flag = cv_y_flag ) THEN
-      gn_error_cnt := gn_card_err_cnt;
+--
+      IF ( gt_sales_skip_tbl.COUNT > 0 ) THEN
+        --スキップ件数計算する
+        <<gt_sales_exp_tbl2_loop>>
+        FOR sale_idx IN 1 .. gt_sales_exp_tbl2.COUNT LOOP
+          gv_skip_flag := cv_n_flag;
+          -- スキップ処理
+            <<gt_sales_skip_tbl_loop>>
+            FOR skip_idx IN 1 .. gt_sales_skip_tbl.COUNT LOOP
+              IF( gt_sales_skip_tbl( skip_idx ).sales_exp_header_id
+                  = gt_sales_exp_tbl2( sale_idx ).sales_exp_header_id ) THEN
+                gv_skip_flag := cv_y_flag;
+                EXIT;
+              END IF;
+            END LOOP gt_sales_skip_tbl_loop;
+--
+          IF ( gv_skip_flag = cv_y_flag ) THEN
+            gn_skip_cnt := gn_skip_cnt + 1;
+          END IF;
+        END LOOP gt_sales_exp_tbl2_loop;
+      END IF;
+--
       RAISE global_card_inf_expt;
     END IF;
 --
@@ -5161,6 +6022,7 @@ gt_bulk_card_tbl              g_sales_exp_ttype;                                
        which  => FND_FILE.OUTPUT
       ,buff   => gv_out_msg
     );
+--
     --成功件数出力:AR請求取引OIF
     gv_out_msg := xxccp_common_pkg.get_msg(
                       iv_application  => cv_xxcos_short_nm
@@ -5172,6 +6034,7 @@ gt_bulk_card_tbl              g_sales_exp_ttype;                                
        which  => FND_FILE.OUTPUT
       ,buff   => gv_out_msg
     );
+--
     --成功件数出力:AR会計配分OIF
     gv_out_msg := xxccp_common_pkg.get_msg(
                       iv_application  => cv_xxcos_short_nm
@@ -5194,6 +6057,18 @@ gt_bulk_card_tbl              g_sales_exp_ttype;                                
     FND_FILE.PUT_LINE(
         which => FND_FILE.OUTPUT
       , buff  => gv_out_msg
+    );
+--
+    --スキップ件数出力
+    gv_out_msg := xxccp_common_pkg.get_msg(
+                      iv_application  => cv_xxcos_short_nm
+                    , iv_name         => cv_skip_rec_msg
+                    , iv_token_name1  => cv_cnt_token
+                    , iv_token_value1 => TO_CHAR ( gn_skip_cnt )
+                  );
+    FND_FILE.PUT_LINE(
+       which  => FND_FILE.OUTPUT
+      ,buff   => gv_out_msg
     );
 --
     --終了メッセージ
