@@ -8,7 +8,7 @@ AS
  *                    
  * MD.050           : MD050_CSO_006_A02_訪問実績データ格納
  *                    
- * Version          : 1.0
+ * Version          : 1.3
  *
  * Program List
  * ---------------------------- ----------------------------------------------------------
@@ -38,7 +38,8 @@ AS
  *  2008-12-01    1.0   Kichi.Cho        新規作成
  *  2009-03-16    1.1   Kazuo.Satomura   仕様変更対応(障害ID62)
  *                                       ・顧客セキュリティ要件対応
- *  2009-05-01    1.2   Tomoko.Mori      T1_0897対応
+ *  2009-05-01    1.3   Tomoko.Mori      T1_0897対応
+ *  2009-05-14    1.4   Kazuo.Satomura   T1_0931対応
  *****************************************************************************************/
 -- 
 -- #######################  固定グローバル定数宣言部 START   #######################
@@ -166,22 +167,28 @@ AS
   -- ===============================
   -- 行単位データを格納する配列
   TYPE g_col_data_ttype IS TABLE OF VARCHAR2(5000) INDEX BY BINARY_INTEGER;
+  /* 2009.05.14 K.Satomura T1_0931対応 START */
+  TYPE g_dff_cd_array IS VARRAY(10) OF fnd_lookup_values_vl.lookup_code%TYPE;
+  /* 2009.05.14 K.Satomura T1_0931対応 END */
   -- 訪問実績データ＆関連情報抽出データ
   TYPE g_visit_data_rtype IS RECORD(
     employee_number      per_people_f.employee_number%TYPE,        -- 社員コード
     account_number       hz_cust_accounts.account_number%TYPE,     -- 顧客コード
     visit_date           DATE,                                     -- 訪問日時
     description          jtf_tasks_tl.description%TYPE,            -- 詳細内容
-    dff1_cd              fnd_lookup_values_vl.lookup_code%TYPE,    -- 拡販活動
-    dff2_cd              fnd_lookup_values_vl.lookup_code%TYPE,    -- 販促フォロー
-    dff3_cd              fnd_lookup_values_vl.lookup_code%TYPE,    -- 店頭調査
-    dff4_cd              fnd_lookup_values_vl.lookup_code%TYPE,    -- クレーム対応
-    dff5_cd              fnd_lookup_values_vl.lookup_code%TYPE,    -- 売り場支援
-    dff6_cd              fnd_lookup_values_vl.lookup_code%TYPE,    -- 導入チェック（お茶）
-    dff7_cd              fnd_lookup_values_vl.lookup_code%TYPE,    -- 導入チェック（野菜）
-    dff8_cd              fnd_lookup_values_vl.lookup_code%TYPE,    -- 導入チェック（その他）
-    dff9_cd              fnd_lookup_values_vl.lookup_code%TYPE,    -- 導入チェック（リーフ）
-    dff10_cd             fnd_lookup_values_vl.lookup_code%TYPE,    -- 導入チェック（チルド）
+    /* 2009.05.14 K.Satomura T1_0931対応 START */
+    --dff1_cd              fnd_lookup_values_vl.lookup_code%TYPE,    -- 拡販活動
+    --dff2_cd              fnd_lookup_values_vl.lookup_code%TYPE,    -- 販促フォロー
+    --dff3_cd              fnd_lookup_values_vl.lookup_code%TYPE,    -- 店頭調査
+    --dff4_cd              fnd_lookup_values_vl.lookup_code%TYPE,    -- クレーム対応
+    --dff5_cd              fnd_lookup_values_vl.lookup_code%TYPE,    -- 売り場支援
+    --dff6_cd              fnd_lookup_values_vl.lookup_code%TYPE,    -- 導入チェック（お茶）
+    --dff7_cd              fnd_lookup_values_vl.lookup_code%TYPE,    -- 導入チェック（野菜）
+    --dff8_cd              fnd_lookup_values_vl.lookup_code%TYPE,    -- 導入チェック（その他）
+    --dff9_cd              fnd_lookup_values_vl.lookup_code%TYPE,    -- 導入チェック（リーフ）
+    --dff10_cd             fnd_lookup_values_vl.lookup_code%TYPE,    -- 導入チェック（チルド）
+    dff_cd_table         g_dff_cd_array,                           -- 訪問区分用配列
+    /* 2009.05.14 K.Satomura T1_0931対応 END */
     resource_id          jtf_rs_resource_extns.resource_id%TYPE,   -- リソースID
     party_id             hz_parties.party_id%TYPE,                 -- パーティID
     party_name           hz_parties.party_name%TYPE,               -- パーティ名称
@@ -873,6 +880,9 @@ AS
     lv_item_nm                VARCHAR2(100);         -- 該当項目名
     lv_visit_date             VARCHAR2(100);         -- 訪問日時
     lb_return                 BOOLEAN;               -- リターンステータス
+    /* 2009.05.14 K.Satomura T1_0931対応 START */
+    ln_array_count            NUMBER;
+    /* 2009.05.14 K.Satomura T1_0931対応 END */
 --
     lv_tmp                    VARCHAR2(2000);
     ln_pos                    NUMBER;
@@ -1083,46 +1093,112 @@ AS
     g_visit_data_rec.account_number  := l_col_data_tab(cn_account_number);              -- 顧客コード
     g_visit_data_rec.visit_date      := TO_DATE(lv_visit_date, cv_visit_date_fmt);      -- 訪問日時
     g_visit_data_rec.description  := SUBSTRB(l_col_data_tab(cn_description), 1, cn_description_cut_len); -- 詳細内容
+    /* 2009.05.14 K.Satomura T1_0931対応 START */
     -- 拡販活動
+    --IF (TO_NUMBER(l_col_data_tab(g_csv_order_rec.dff1_num)) <> cn_visit_dff_0) THEN
+    --  g_visit_data_rec.dff1_cd := g_csv_order_rec.dff1_cd;
+    --END IF;
+    ---- 販促フォロー
+    --IF (TO_NUMBER(l_col_data_tab(g_csv_order_rec.dff2_num)) <> cn_visit_dff_0) THEN
+    --  g_visit_data_rec.dff2_cd := g_csv_order_rec.dff2_cd;
+    --END IF;
+    ---- 店頭調査
+    --IF (TO_NUMBER(l_col_data_tab(g_csv_order_rec.dff3_num)) <> cn_visit_dff_0) THEN
+    --  g_visit_data_rec.dff3_cd := g_csv_order_rec.dff3_cd;
+    --END IF;
+    ---- クレーム対応
+    --IF (TO_NUMBER(l_col_data_tab(g_csv_order_rec.dff4_num)) <> cn_visit_dff_0) THEN
+    --  g_visit_data_rec.dff4_cd := g_csv_order_rec.dff4_cd;
+    --END IF;
+    ---- 売り場支援
+    --IF (TO_NUMBER(l_col_data_tab(g_csv_order_rec.dff5_num)) <> cn_visit_dff_0) THEN
+    --  g_visit_data_rec.dff5_cd := g_csv_order_rec.dff5_cd;
+    --END IF;
+    ---- 導入チェック（お茶）
+    --IF (TO_NUMBER(l_col_data_tab(g_csv_order_rec.dff6_num)) <> cn_visit_dff_0) THEN
+    --  g_visit_data_rec.dff6_cd := g_csv_order_rec.dff6_cd;
+    --END IF;
+    ---- 導入チェック（野菜）
+    --IF (TO_NUMBER(l_col_data_tab(g_csv_order_rec.dff7_num)) <> cn_visit_dff_0) THEN
+    --  g_visit_data_rec.dff7_cd := g_csv_order_rec.dff7_cd;
+    --END IF;
+    ---- 導入チェック（その他）
+    --IF (TO_NUMBER(l_col_data_tab(g_csv_order_rec.dff8_num)) <> cn_visit_dff_0) THEN
+    --  g_visit_data_rec.dff8_cd := g_csv_order_rec.dff8_cd;
+    --END IF;
+    ---- 導入チェック（リーフ）
+    --IF (TO_NUMBER(l_col_data_tab(g_csv_order_rec.dff9_num)) <> cn_visit_dff_0) THEN
+    --  g_visit_data_rec.dff9_cd := g_csv_order_rec.dff9_cd;
+    --END IF;
+    ---- 導入チェック（チルド）
+    --IF (TO_NUMBER(l_col_data_tab(g_csv_order_rec.dff10_num)) <> cn_visit_dff_0) THEN
+    --  g_visit_data_rec.dff10_cd := g_csv_order_rec.dff10_cd;
+    --END IF;
+    ln_array_count := 1;
+    g_visit_data_rec.dff_cd_table := g_dff_cd_array();
+    g_visit_data_rec.dff_cd_table.EXTEND(10);
+    --
     IF (TO_NUMBER(l_col_data_tab(g_csv_order_rec.dff1_num)) <> cn_visit_dff_0) THEN
-      g_visit_data_rec.dff1_cd := g_csv_order_rec.dff1_cd;
+      g_visit_data_rec.dff_cd_table(ln_array_count) := g_csv_order_rec.dff1_cd;
+      ln_array_count                                := ln_array_count + 1;
+      --
     END IF;
-    -- 販促フォロー
+    --
     IF (TO_NUMBER(l_col_data_tab(g_csv_order_rec.dff2_num)) <> cn_visit_dff_0) THEN
-      g_visit_data_rec.dff2_cd := g_csv_order_rec.dff2_cd;
+      g_visit_data_rec.dff_cd_table(ln_array_count) := g_csv_order_rec.dff2_cd;
+      ln_array_count                                := ln_array_count + 1;
+      --
     END IF;
-    -- 店頭調査
+    --
     IF (TO_NUMBER(l_col_data_tab(g_csv_order_rec.dff3_num)) <> cn_visit_dff_0) THEN
-      g_visit_data_rec.dff3_cd := g_csv_order_rec.dff3_cd;
+      g_visit_data_rec.dff_cd_table(ln_array_count) := g_csv_order_rec.dff3_cd;
+      ln_array_count                                := ln_array_count + 1;
+      --
     END IF;
-    -- クレーム対応
+    --
     IF (TO_NUMBER(l_col_data_tab(g_csv_order_rec.dff4_num)) <> cn_visit_dff_0) THEN
-      g_visit_data_rec.dff4_cd := g_csv_order_rec.dff4_cd;
+      g_visit_data_rec.dff_cd_table(ln_array_count) := g_csv_order_rec.dff4_cd;
+      ln_array_count                                := ln_array_count + 1;
+      --
     END IF;
-    -- 売り場支援
+    --
     IF (TO_NUMBER(l_col_data_tab(g_csv_order_rec.dff5_num)) <> cn_visit_dff_0) THEN
-      g_visit_data_rec.dff5_cd := g_csv_order_rec.dff5_cd;
+      g_visit_data_rec.dff_cd_table(ln_array_count) := g_csv_order_rec.dff5_cd;
+      ln_array_count                                := ln_array_count + 1;
+      --
     END IF;
-    -- 導入チェック（お茶）
+    --
     IF (TO_NUMBER(l_col_data_tab(g_csv_order_rec.dff6_num)) <> cn_visit_dff_0) THEN
-      g_visit_data_rec.dff6_cd := g_csv_order_rec.dff6_cd;
+      g_visit_data_rec.dff_cd_table(ln_array_count) := g_csv_order_rec.dff6_cd;
+      ln_array_count                                := ln_array_count + 1;
+      --
     END IF;
-    -- 導入チェック（野菜）
+    --
     IF (TO_NUMBER(l_col_data_tab(g_csv_order_rec.dff7_num)) <> cn_visit_dff_0) THEN
-      g_visit_data_rec.dff7_cd := g_csv_order_rec.dff7_cd;
+      g_visit_data_rec.dff_cd_table(ln_array_count) := g_csv_order_rec.dff7_cd;
+      ln_array_count                                := ln_array_count + 1;
+      --
     END IF;
-    -- 導入チェック（その他）
+    --
     IF (TO_NUMBER(l_col_data_tab(g_csv_order_rec.dff8_num)) <> cn_visit_dff_0) THEN
-      g_visit_data_rec.dff8_cd := g_csv_order_rec.dff8_cd;
+      g_visit_data_rec.dff_cd_table(ln_array_count) := g_csv_order_rec.dff8_cd;
+      ln_array_count                                := ln_array_count + 1;
+      --
     END IF;
-    -- 導入チェック（リーフ）
+    --
     IF (TO_NUMBER(l_col_data_tab(g_csv_order_rec.dff9_num)) <> cn_visit_dff_0) THEN
-      g_visit_data_rec.dff9_cd := g_csv_order_rec.dff9_cd;
+      g_visit_data_rec.dff_cd_table(ln_array_count) := g_csv_order_rec.dff9_cd;
+      ln_array_count                                := ln_array_count + 1;
+      --
     END IF;
-    -- 導入チェック（チルド）
+    --
     IF (TO_NUMBER(l_col_data_tab(g_csv_order_rec.dff10_num)) <> cn_visit_dff_0) THEN
-      g_visit_data_rec.dff10_cd := g_csv_order_rec.dff10_cd;
+      g_visit_data_rec.dff_cd_table(ln_array_count) := g_csv_order_rec.dff10_cd;
+      ln_array_count                                := ln_array_count + 1;
+      --
     END IF;
+    --
+    /* 2009.05.14 K.Satomura T1_0931対応 END */
 --
   EXCEPTION
     -- *** スキップ例外ハンドラ ***
@@ -1557,16 +1633,28 @@ AS
       ,g_visit_data_rec.party_name         -- パーティ名称
       ,g_visit_data_rec.visit_date         -- 訪問日時
       ,g_visit_data_rec.description        -- 詳細内容
-      ,g_visit_data_rec.dff1_cd            -- 拡販活動
-      ,g_visit_data_rec.dff2_cd            -- 販促フォロー
-      ,g_visit_data_rec.dff3_cd            -- 店頭調査
-      ,g_visit_data_rec.dff4_cd            -- クレーム対応
-      ,g_visit_data_rec.dff5_cd            -- 売り場支援
-      ,g_visit_data_rec.dff6_cd            -- 導入チェック（お茶）
-      ,g_visit_data_rec.dff7_cd            -- 導入チェック（野菜）
-      ,g_visit_data_rec.dff8_cd            -- 導入チェック（その他）
-      ,g_visit_data_rec.dff9_cd            -- 導入チェック（リーフ）
-      ,g_visit_data_rec.dff10_cd           -- 導入チェック（チルド）
+      /* 2009.05.14 K.Satomura T1_0931対応 START */
+      --,g_visit_data_rec.dff1_cd            -- 拡販活動
+      --,g_visit_data_rec.dff2_cd            -- 販促フォロー
+      --,g_visit_data_rec.dff3_cd            -- 店頭調査
+      --,g_visit_data_rec.dff4_cd            -- クレーム対応
+      --,g_visit_data_rec.dff5_cd            -- 売り場支援
+      --,g_visit_data_rec.dff6_cd            -- 導入チェック（お茶）
+      --,g_visit_data_rec.dff7_cd            -- 導入チェック（野菜）
+      --,g_visit_data_rec.dff8_cd            -- 導入チェック（その他）
+      --,g_visit_data_rec.dff9_cd            -- 導入チェック（リーフ）
+      --,g_visit_data_rec.dff10_cd           -- 導入チェック（チルド）
+      ,g_visit_data_rec.dff_cd_table(1)      -- 拡販活動
+      ,g_visit_data_rec.dff_cd_table(2)      -- 販促フォロー
+      ,g_visit_data_rec.dff_cd_table(3)      -- 店頭調査
+      ,g_visit_data_rec.dff_cd_table(4)      -- クレーム対応
+      ,g_visit_data_rec.dff_cd_table(5)      -- 売り場支援
+      ,g_visit_data_rec.dff_cd_table(6)      -- 導入チェック（お茶）
+      ,g_visit_data_rec.dff_cd_table(7)      -- 導入チェック（野菜）
+      ,g_visit_data_rec.dff_cd_table(8)      -- 導入チェック（その他）
+      ,g_visit_data_rec.dff_cd_table(9)      -- 導入チェック（リーフ）
+      ,g_visit_data_rec.dff_cd_table(10)     -- 導入チェック（チルド）
+      /* 2009.05.14 K.Satomura T1_0931対応 END */
       ,'0'
       ,'2'
       ,NULL
@@ -1664,16 +1752,28 @@ AS
       ,g_visit_data_rec.visit_date        -- 訪問日時
       ,g_visit_data_rec.description       -- 詳細内容
       ,in_obj_ver_num
-      ,g_visit_data_rec.dff1_cd           -- 拡販活動
-      ,g_visit_data_rec.dff2_cd           -- 販促フォロー
-      ,g_visit_data_rec.dff3_cd           -- 店頭調査
-      ,g_visit_data_rec.dff4_cd           -- クレーム対応
-      ,g_visit_data_rec.dff5_cd           -- 売り場支援
-      ,g_visit_data_rec.dff6_cd           -- 導入チェック（お茶）
-      ,g_visit_data_rec.dff7_cd           -- 導入チェック（野菜）
-      ,g_visit_data_rec.dff8_cd           -- 導入チェック（その他）
-      ,g_visit_data_rec.dff9_cd           -- 導入チェック（リーフ）
-      ,g_visit_data_rec.dff10_cd          -- 導入チェック（チルド）
+      /* 2009.05.14 K.Satomura T1_0931対応 START */
+      --,g_visit_data_rec.dff1_cd            -- 拡販活動
+      --,g_visit_data_rec.dff2_cd            -- 販促フォロー
+      --,g_visit_data_rec.dff3_cd            -- 店頭調査
+      --,g_visit_data_rec.dff4_cd            -- クレーム対応
+      --,g_visit_data_rec.dff5_cd            -- 売り場支援
+      --,g_visit_data_rec.dff6_cd            -- 導入チェック（お茶）
+      --,g_visit_data_rec.dff7_cd            -- 導入チェック（野菜）
+      --,g_visit_data_rec.dff8_cd            -- 導入チェック（その他）
+      --,g_visit_data_rec.dff9_cd            -- 導入チェック（リーフ）
+      --,g_visit_data_rec.dff10_cd           -- 導入チェック（チルド）
+      ,g_visit_data_rec.dff_cd_table(1)      -- 拡販活動
+      ,g_visit_data_rec.dff_cd_table(2)      -- 販促フォロー
+      ,g_visit_data_rec.dff_cd_table(3)      -- 店頭調査
+      ,g_visit_data_rec.dff_cd_table(4)      -- クレーム対応
+      ,g_visit_data_rec.dff_cd_table(5)      -- 売り場支援
+      ,g_visit_data_rec.dff_cd_table(6)      -- 導入チェック（お茶）
+      ,g_visit_data_rec.dff_cd_table(7)      -- 導入チェック（野菜）
+      ,g_visit_data_rec.dff_cd_table(8)      -- 導入チェック（その他）
+      ,g_visit_data_rec.dff_cd_table(9)      -- 導入チェック（リーフ）
+      ,g_visit_data_rec.dff_cd_table(10)     -- 導入チェック（チルド）
+      /* 2009.05.14 K.Satomura T1_0931対応 END */
       ,'0'
       ,'2'
       ,NULL
