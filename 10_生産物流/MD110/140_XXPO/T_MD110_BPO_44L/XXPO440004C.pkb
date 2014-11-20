@@ -7,7 +7,7 @@ AS
  * Description      : 入出庫差異明細表
  * MD.050/070       : 有償支給帳票Issue1.0(T_MD050_BPO_444)
  *                    有償支給帳票Issue1.0(T_MD070_BPO_44L)
- * Version          : 1.3
+ * Version          : 1.4
  *
  * Program List
  * ---------------------------- ----------------------------------------------------------
@@ -24,10 +24,11 @@ AS
  * ------------- ----- ---------------- -------------------------------------------------
  *  Date          Ver.  Editor           Description
  * ------------- ----- ---------------- -------------------------------------------------
- *  2008/03/18    1.0   Yusuke Tabata   新規作成
- *  2008/05/20    1.1   Yusuke Tabata   内部変更要求Seq95(日付型パラメータ型変換)対応
- *  2008/05/28    1.2   Yusuke Tabata   結合不具合対応(出荷実績計上済のコード誤り)
- *  2008/07/01    1.3   椎名            内部変更要求142
+ *  2008/03/18    1.0   Yusuke Tabata    新規作成
+ *  2008/05/20    1.1   Yusuke Tabata    内部変更要求Seq95(日付型パラメータ型変換)対応
+ *  2008/05/28    1.2   Yusuke Tabata    結合不具合対応(出荷実績計上済のコード誤り)
+ *  2008/07/01    1.3   Oracle 椎名      内部変更要求142
+ *  2009/12/14    1.4   SCS    吉元 強樹 E_本稼動_00430対応
  *
  *****************************************************************************************/
 --
@@ -474,10 +475,41 @@ AS
     || '     xxinv_mov_lot_details   xmlds'
     || '    ,xxwsh_order_headers_all xohas'   -- 受注ヘッダアドオン
     || '    ,xxwsh_order_lines_all   xolas'   -- 受注明細アドオン
+-- 2009/12/11 v1.4 T.Yoshimoto Add Start E_本稼動_00430
+    || '    ,oe_transaction_types_all ottas'  -- 受注タイプ
+-- 2009/12/11 v1.4 T.Yoshimoto Add End E_本稼動_00430
     || '    WHERE'
     || '    xmlds.document_type_code   = '''  || gc_doc_type_prov || ''''
     || '    AND xohas.order_header_id  = xolas.order_header_id'
     || '    AND xolas.order_line_id    = xmlds.mov_line_id' 
+-- 2009/12/11 v1.4 T.Yoshimoto Add Start E_本稼動_00430
+    || '    AND NVL(xohas.shipped_date,xohas.schedule_ship_date) >=  ' || lv_date_from
+    ;
+--
+    -- 出庫日TO
+    IF (gr_param.date_to IS NOT NULL) THEN
+lv_from := lv_from
+      || '    AND NVL(xohas.shipped_date,xohas.schedule_ship_date)'
+      || '       <= FND_DATE.STRING_TO_DATE(NVL(''' || TO_CHAR(gr_param.date_to 
+                                                                  ,gc_date_mask) || ''''
+      || '                                  ,''' || gc_max_date_char || ''')'
+      || '          ,''' || gc_date_mask     || ''')'
+      ;
+    END IF ;
+--
+lv_from := lv_from
+    || '    AND xohas.latest_external_flag     = ''' || gc_yn_div_y         || ''''
+    || '    AND xohas.notif_status             = ''' || gc_notif_status_ok  || ''''
+    || '    AND xohas.req_status              <> ''' || gc_req_status_p_ccl || ''''
+    || '    AND NVL( xolas.delete_flag, ''' || gc_yn_div_n || ''')'
+    ||                                '    = ''' || gc_yn_div_n || ''''
+--
+    || '    AND ottas.org_id                   = '   || gn_prof_org_id
+    || '    AND ottas.attribute1               = ''' || gc_sp_class_prov || ''''
+    || '    AND ottas.order_category_code     <> ''' || gc_order_cat_r   || ''''
+    || '    AND ottas.attribute11              = ''' || gc_sp_category_s || ''''
+    || '    AND xohas.order_type_id            = ottas.transaction_type_id'  -- 受注タイプ結合
+-- 2009/12/11 v1.4 T.Yoshimoto Add End E_本稼動_00430
     || '    GROUP BY'
     || '     xohas.req_status'
     || '    ,xmlds.mov_line_id'
