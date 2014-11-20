@@ -7,7 +7,7 @@ AS
  * Description      : 仕入明細表
  * MD.050/070       : 有償支給帳票Issue1.0(T_MD050_BPO_360)
  *                  : 有償支給帳票Issue1.0(T_MD070_BPO_36E)
- * Version          : 1.14
+ * Version          : 1.15
  *
  * Program List
  * -------------------------- ------------------------------------------------------------
@@ -57,6 +57,9 @@ AS
  *  2008/07/15    1.14  I.Higa           「発注なし仕入先返品」以外は、発注ヘッダの部署コードを
  *                                       事業所情報VIEW2と緋付ける
  *                                       受入返品実績アドオンの部署コードとは緋付けない
+ *  2008/07/24    1.15  I.Higa           「発注なし仕入先返品」の場合、以下の項目は受入返品実績
+ *                                       より取得する
+ *                                        「工場」、「納入先」、「摘要」、「付帯コード」
  *
  *****************************************************************************************/
 --
@@ -912,7 +915,7 @@ AS
                 || ' ximv.old_crowd_code        AS  old_crw_cd,'
                 || ' ximv.item_no               AS  item_no,'
                 || ' ximv.item_short_name       AS  item_sht_nm,'
-                || ' NULL                       AS  po_attr3,'
+                || ' rcrt.futai_code            AS  po_attr3,'
                 || ' rcrt.txns_date             AS  txns_date,'
                 || ' DECODE(ximv.lot_ctl,'      || gv_lot_n_div
                 || '  ,NULL,ilm.lot_no)        AS lot_no, '
@@ -920,7 +923,7 @@ AS
                 || ' ilm.attribute2             AS  ic_attr2,'
                 || ' ilm.attribute3             AS  ic_attr3,'
                 || ' rcrt.rcv_rtn_number        AS  order_no,'
-                || ' NULL                       AS  factry_code,'
+                || ' rcrt.factory_code          AS  factry_code,'
                 || ' rcrt.conversion_factor     AS  in_cnt,'
                 || ' rcrt.rcv_rtn_quantity * ' || cn_sts_num || ' AS total_cnt,'
                 || ' rcrt.rcv_rtn_uom           AS  rtn_uom,'
@@ -928,8 +931,8 @@ AS
                 || ' ROUND((( rcrt.quantity * ' || cn_sts_num || ' ) * ( '
                 || ' rcrt.kobki_converted_unit_price )),' || cn_sts_num_zero || ' )'
                 || ' AS amount_pay,'
-                || ' NULL                       AS  deliver_dist,'
-                || ' NULL                       AS  po_attr15,'
+                || ' rcrt.location_code         AS  deliver_dist,'
+                || ' rcrt.line_description      AS  po_attr15,'
                 || ' xlv.location_code          AS  order_loc_cd,';
 --
     -- ------------------------------------

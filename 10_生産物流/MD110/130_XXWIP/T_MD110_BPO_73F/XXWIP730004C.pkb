@@ -7,7 +7,7 @@ AS
  * Description      : 支払運賃チェックリスト
  * MD.050/070       : 運賃計算（トランザクション）  (T_MD050_BPO_734)
  *                    支払運賃チェックリスト        (T_MD070_BPO_73F)
- * Version          : 1.5
+ * Version          : 1.6
  *
  * Program List
  * ---------------------------- ----------------------------------------------------------
@@ -31,6 +31,7 @@ AS
  *  2008/07/15    1.3   Masayuki Nomura  ST障害対応#444
  *  2008/07/15    1.4   Masayuki Nomura  ST障害対応#444（記号対応）
  *  2008/07/17    1.5   Satoshi Takemoto ST障害対応#456
+ *  2008/07/24    1.6   Satoshi Takemoto ST障害対応#477
  *
  *****************************************************************************************/
 --
@@ -172,16 +173,25 @@ AS
      ,deliv_div_name    VARCHAR2(10)      -- 配送区分名
      ,qty               VARCHAR2(4)       -- 数量
      ,qty_sum           VARCHAR2(5)       -- 数量計
-     ,weight            VARCHAR2(5)       -- 重量
+-- S 2008/07/24 1.6 MOD BY S.Takemoto---------------------------------------------------------- S --
+--     ,weight            VARCHAR2(5)       -- 重量
+     ,weight            VARCHAR2(6)       -- 重量
+-- E 2008/07/24 1.6 MOD BY S.Takemoto---------------------------------------------------------- E --
      ,weight_sum        VARCHAR2(6)       -- 重量計
      ,rate_charged      VARCHAR2(7)       -- 請求運賃
      ,rate_contract     VARCHAR2(7)       -- 契約運賃
-     ,charge_consol     VARCHAR2(6)       -- 混載割増
+-- S 2008/07/24 1.6 MOD BY S.Takemoto---------------------------------------------------------- S --
+--     ,charge_consol     VARCHAR2(6)       -- 混載割増
+     ,charge_consol     VARCHAR2(7)       -- 混載割増
+-- E 2008/07/24 1.6 MOD BY S.Takemoto---------------------------------------------------------- E --
      ,charge_picking    VARCHAR2(7)       -- PIC
      ,charge_many       VARCHAR2(7)       -- 諸料金
      ,total_amount      VARCHAR2(7)       -- 支払合計
      ,balance           VARCHAR2(8)       -- 差額
-     ,charge_congest    VARCHAR2(6)       -- 通行料
+-- S 2008/07/24 1.6 MOD BY S.Takemoto---------------------------------------------------------- S --
+--     ,charge_congest    VARCHAR2(6)       -- 通行料
+     ,charge_congest    VARCHAR2(7)       -- 通行料
+-- E 2008/07/24 1.6 MOD BY S.Takemoto---------------------------------------------------------- E --
      ,div_type          VARCHAR2(2)       -- タ
      ,div_weight        VARCHAR2(2)       -- 重
      ,div_outside       VARCHAR2(2)       -- 契
@@ -520,7 +530,10 @@ AS
     CURSOR cu_main
     IS
       SELECT xcat.segment1                                  AS prod_div         -- 商品区分
-            ,xcat.description                               AS prod_div_name    -- 商品区分名称
+-- S 2008/07/24 1.6 MOD BY S.Takemoto---------------------------------------------------------- S --
+--            ,xcat.description                               AS prod_div_name    -- 商品区分名称
+            ,SUBSTRB(xcat.description,1,8)                  AS prod_div_name    -- 商品区分名称
+-- E 2008/07/24 1.6 MOD BY S.Takemoto---------------------------------------------------------- E --
             ,xcar.party_number                              AS carrier_code     -- 運送業者コード
             ,xcar.party_short_name                          AS carrier_name     -- 運送業者名称
             ,xd.judgement_date                              AS judge_date       -- 決済日
@@ -715,18 +728,34 @@ AS
         -- 配送先コード区分が「1」の場合
         ------------------------------------------------------------
         IF ( gt_main_data(i).code_division = gc_code_division_s ) THEN
-          SELECT xil.description
+-- S 2008/07/24 1.6 MOD BY S.Takemoto---------------------------------------------------------- S --
+--          SELECT xil.description
+--          INTO   gt_main_data(i).ship_to_name
+--          FROM xxcmn_item_locations_v   xil   -- OPM保管場所情報VIEW
+--          WHERE xil.segment1 = gt_main_data(i).ship_to_code
+--          ;
+          SELECT SUBSTRB(xil.description ,1,30)
           INTO   gt_main_data(i).ship_to_name
-          FROM xxcmn_item_locations_v   xil   -- OPM保管場所情報VIEW
-          WHERE xil.segment1 = gt_main_data(i).ship_to_code
+          FROM xxcmn_item_locations2_v   xil   -- OPM保管場所情報VIEW
+          WHERE gt_main_data(i).judge_date
+                  BETWEEN xil.date_from
+                  AND     NVL( xil.date_to, gt_main_data(i).judge_date )
+          AND xil.disable_date        IS NULL
+          AND xil.segment1 = gt_main_data(i).ship_to_code
           ;
+-- E 2008/07/24 1.6 MOD BY S.Takemoto---------------------------------------------------------- E --
         ------------------------------------------------------------
         -- 配送先コード区分が「2」の場合
         ------------------------------------------------------------
         ELSIF ( gt_main_data(i).code_division = gc_code_division_p ) THEN
-          SELECT xvs.vendor_site_name
+-- S 2008/07/24 1.6 MOD BY S.Takemoto---------------------------------------------------------- S --
+--          SELECT xvs.vendor_site_name
+--          INTO   gt_main_data(i).ship_to_name
+--          FROM xxcmn_vendor_sites_v   xvs-- 仕入先サイト情報VIEW2
+          SELECT SUBSTRB(xvs.vendor_site_name ,1,30)
           INTO   gt_main_data(i).ship_to_name
-          FROM xxcmn_vendor_sites_v   xvs-- 仕入先サイト情報VIEW2
+          FROM xxcmn_vendor_sites2_v   xvs-- 仕入先サイト情報VIEW2
+-- E 2008/07/24 1.6 MOD BY S.Takemoto---------------------------------------------------------- E --
           WHERE gt_main_data(i).judge_date
                   BETWEEN xvs.start_date_active
                   AND     NVL( xvs.end_date_active, gt_main_data(i).judge_date )
@@ -756,7 +785,10 @@ AS
     -- ====================================================
     FOR i IN 1..gt_main_data.COUNT LOOP
       BEGIN
-        SELECT xlv.meaning
+-- S 2008/07/24 1.6 MOD BY S.Takemoto---------------------------------------------------------- S --
+--        SELECT xlv.meaning
+        SELECT SUBSTRB(xlv.meaning,1,10)
+-- E 2008/07/24 1.6 MOD BY S.Takemoto---------------------------------------------------------- E --
         INTO   gt_main_data(i).deliv_div_name
         FROM xxcmn_lookup_values_v   xlv   -- クイックコード情報VIEW
         WHERE xlv.lookup_type = gc_lookup_type_deliv_div

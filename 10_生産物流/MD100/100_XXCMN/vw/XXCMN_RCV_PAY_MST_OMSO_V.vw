@@ -3,7 +3,7 @@
  *
  * View Name       : XXCMN_RCV_PAY_MST_OMSO_V
  * Description     : Œo—ó•¥‹æ•ªî•ñVIEW_ó’ŠÖ˜A
- * Version         : 1.7
+ * Version         : 1.8
  *
  * Change Record
  * ------------- ----- ---------------- ---------------------------------
@@ -20,6 +20,7 @@
  *  2008-06-13    1.6   Y.Ishikawa       ƒJƒeƒSƒŠæ“¾•”•ª‚ÅGROUP BY‚Ì—˜—p‚ğ‚â‚ß‚é
  *  2008-07-01    1.7   Y.Ishikawa       o‰×x‹‹‹æ•ª‚É‚æ‚Á‚Äó’ƒwƒbƒ_[‚Ì’ŠoğŒ
  *                                       ‚ªo‰×ÀÑ‚©x‹‹ÀÑ‚ğ”»’f‚·‚é‚æ‚¤•ÏX‚·‚é
+ *  2008-07-24    1.8   Y.Ishikawa       —˜—p‚µ‚Ä‚¢‚È‚¢ƒJƒeƒSƒŠî•ñ‚ÌŒ‹‡íœ
  *
  ************************************************************************/
 CREATE OR REPLACE VIEW XXCMN_RCV_PAY_MST_OMSO_V
@@ -70,18 +71,9 @@ SELECT  xrpm.new_div_account            AS new_div_account            -- VŒo—
        ,oe_transaction_types_all otta    -- ó’ƒ^ƒCƒv
        ,ic_item_mst_b          iimb_a    -- U‘Öæ•i–Úî•ñ
        ,ic_item_mst_b          iimb_o    -- U‘ÖŒ³•i–Úî•ñ
-       ,gmi_item_categories    gic_a1    -- U‘Öæ•i–Ú¤•i‹æ•ªƒJƒeƒSƒŠî•ñ
-       ,mtl_categories_b       mcb_a1    -- U‘Öæ•i–Ú¤•i‹æ•ªƒJƒeƒSƒŠî•ñ
-       ,mtl_category_sets_tl   mcst_a1   -- U‘Öæ•i–Ú¤•i‹æ•ªƒJƒeƒSƒŠî•ñ
        ,gmi_item_categories    gic_a2    -- U‘Öæ•i–Ú•i–Ú‹æ•ªƒJƒeƒSƒŠî•ñ
        ,mtl_categories_b       mcb_a2    -- U‘Öæ•i–Ú•i–Ú‹æ•ªƒJƒeƒSƒŠî•ñ
        ,mtl_category_sets_tl   mcst_a2   -- U‘Öæ•i–Ú•i–Ú‹æ•ªƒJƒeƒSƒŠî•ñ
-       ,gmi_item_categories    gic_a3    -- U‘Öæ•i–ÚŒSƒJƒeƒSƒŠî•ñ
-       ,mtl_categories_b       mcb_a3    -- U‘Öæ•i–ÚŒSƒJƒeƒSƒŠî•ñ
-       ,mtl_category_sets_tl   mcst_a3   -- U‘Öæ•i–ÚŒSƒJƒeƒSƒŠî•ñ
-       ,gmi_item_categories    gic_a4    -- U‘Öæ•i–ÚŒo—ŒSƒJƒeƒSƒŠî•ñ
-       ,mtl_categories_b       mcb_a4    -- U‘Öæ•i–ÚŒo—ŒSƒJƒeƒSƒŠî•ñ
-       ,mtl_category_sets_tl   mcst_a4   -- U‘Öæ•i–ÚŒo—ŒSƒJƒeƒSƒŠî•ñ
        ,gmi_item_categories    gic_o1    -- U‘ÖŒ³•i–Ú¤•i‹æ•ªƒJƒeƒSƒŠî•ñ
        ,mtl_categories_b       mcb_o1    -- U‘ÖŒ³•i–Ú¤•i‹æ•ªƒJƒeƒSƒŠî•ñ
        ,mtl_category_sets_tl   mcst_o1   -- U‘ÖŒ³•i–Ú¤•i‹æ•ªƒJƒeƒSƒŠî•ñ
@@ -125,34 +117,13 @@ WHERE xrpm.doc_type             = 'OMSO'
   AND xrpm.item_div_ahead  = mcb_a2.segment1
   AND xrpm.item_div_origin = mcb_o2.segment1
   AND xola.request_item_code = xola.shipping_item_code
-  -- U‘Öæ¤•i‹æ•ªƒJƒeƒSƒŠæ“¾î•ñ
-  AND gic_a1.category_set_id    = mcst_a1.category_set_id
-  AND gic_a1.category_id        = mcb_a1.category_id
-  AND mcst_a1.language          = 'JA'
-  AND mcst_a1.source_lang       = 'JA'
-  AND mcst_a1.category_set_name = '¤•i‹æ•ª'
-  AND iimb_a.item_id            = gic_a1.item_id
-  -- U‘Öæ¤•i‹æ•ªƒJƒeƒSƒŠæ“¾î•ñ
+  -- U‘Öæ•i–Ú‹æ•ªƒJƒeƒSƒŠæ“¾î•ñ
   AND gic_a2.category_set_id    = mcst_a2.category_set_id
   AND gic_a2.category_id        = mcb_a2.category_id
   AND mcst_a2.language          = 'JA'
   AND mcst_a2.source_lang       = 'JA'
   AND mcst_a2.category_set_name = '•i–Ú‹æ•ª'
   AND iimb_a.item_id            = gic_a2.item_id
-  -- U‘ÖæŒSæ“¾î•ñ
-  AND gic_a3.category_set_id    = mcst_a3.category_set_id
-  AND gic_a3.category_id        = mcb_a3.category_id
-  AND mcst_a3.language          = 'JA'
-  AND mcst_a3.source_lang       = 'JA'
-  AND mcst_a3.category_set_name = 'ŒQƒR[ƒh'
-  AND iimb_a.item_id            = gic_a3.item_id
-  -- U‘ÖæŒo—ŒSæ“¾î•ñ
-  AND gic_a4.category_set_id    = mcst_a4.category_set_id
-  AND gic_a4.category_id        = mcb_a4.category_id
-  AND mcst_a4.language          = 'JA'
-  AND mcst_a4.source_lang       = 'JA'
-  AND mcst_a4.category_set_name = 'Œo—•”—pŒQƒR[ƒh'
-  AND iimb_a.item_id            = gic_a4.item_id
   -- U‘ÖŒ³¤•i‹æ•ªƒJƒeƒSƒŠæ“¾î•ñ
   AND gic_o1.category_set_id    = mcst_o1.category_set_id
   AND gic_o1.category_id        = mcb_o1.category_id
@@ -224,18 +195,9 @@ SELECT  xrpm.new_div_account            AS new_div_account            -- VŒo—
        ,oe_transaction_types_all otta    -- ó’ƒ^ƒCƒv
        ,ic_item_mst_b          iimb_a    -- U‘Öæ•i–Úî•ñ
        ,ic_item_mst_b          iimb_o    -- U‘ÖŒ³•i–Úî•ñ
-       ,gmi_item_categories    gic_a1    -- U‘Öæ•i–Ú¤•i‹æ•ªƒJƒeƒSƒŠî•ñ
-       ,mtl_categories_b       mcb_a1    -- U‘Öæ•i–Ú¤•i‹æ•ªƒJƒeƒSƒŠî•ñ
-       ,mtl_category_sets_tl   mcst_a1   -- U‘Öæ•i–Ú¤•i‹æ•ªƒJƒeƒSƒŠî•ñ
        ,gmi_item_categories    gic_a2    -- U‘Öæ•i–Ú•i–Ú‹æ•ªƒJƒeƒSƒŠî•ñ
        ,mtl_categories_b       mcb_a2    -- U‘Öæ•i–Ú•i–Ú‹æ•ªƒJƒeƒSƒŠî•ñ
        ,mtl_category_sets_tl   mcst_a2   -- U‘Öæ•i–Ú•i–Ú‹æ•ªƒJƒeƒSƒŠî•ñ
-       ,gmi_item_categories    gic_a3    -- U‘Öæ•i–ÚŒSƒJƒeƒSƒŠî•ñ
-       ,mtl_categories_b       mcb_a3    -- U‘Öæ•i–ÚŒSƒJƒeƒSƒŠî•ñ
-       ,mtl_category_sets_tl   mcst_a3   -- U‘Öæ•i–ÚŒSƒJƒeƒSƒŠî•ñ
-       ,gmi_item_categories    gic_a4    -- U‘Öæ•i–ÚŒo—ŒSƒJƒeƒSƒŠî•ñ
-       ,mtl_categories_b       mcb_a4    -- U‘Öæ•i–ÚŒo—ŒSƒJƒeƒSƒŠî•ñ
-       ,mtl_category_sets_tl   mcst_a4   -- U‘Öæ•i–ÚŒo—ŒSƒJƒeƒSƒŠî•ñ
        ,gmi_item_categories    gic_o1    -- U‘ÖŒ³•i–Ú¤•i‹æ•ªƒJƒeƒSƒŠî•ñ
        ,mtl_categories_b       mcb_o1    -- U‘ÖŒ³•i–Ú¤•i‹æ•ªƒJƒeƒSƒŠî•ñ
        ,mtl_category_sets_tl   mcst_o1   -- U‘ÖŒ³•i–Ú¤•i‹æ•ªƒJƒeƒSƒŠî•ñ
@@ -280,33 +242,12 @@ WHERE xrpm.doc_type             = 'OMSO'
   AND mcb_o2.segment1  <> '5'   -- »•iˆÈŠO
   AND xola.request_item_code = xola.shipping_item_code
   -- U‘Öæ¤•i‹æ•ªƒJƒeƒSƒŠæ“¾î•ñ
-  AND gic_a1.category_set_id    = mcst_a1.category_set_id
-  AND gic_a1.category_id        = mcb_a1.category_id
-  AND mcst_a1.language          = 'JA'
-  AND mcst_a1.source_lang       = 'JA'
-  AND mcst_a1.category_set_name = '¤•i‹æ•ª'
-  AND iimb_a.item_id            = gic_a1.item_id
-  -- U‘Öæ¤•i‹æ•ªƒJƒeƒSƒŠæ“¾î•ñ
   AND gic_a2.category_set_id    = mcst_a2.category_set_id
   AND gic_a2.category_id        = mcb_a2.category_id
   AND mcst_a2.language          = 'JA'
   AND mcst_a2.source_lang       = 'JA'
   AND mcst_a2.category_set_name = '•i–Ú‹æ•ª'
   AND iimb_a.item_id            = gic_a2.item_id
-  -- U‘ÖæŒSæ“¾î•ñ
-  AND gic_a3.category_set_id    = mcst_a3.category_set_id
-  AND gic_a3.category_id        = mcb_a3.category_id
-  AND mcst_a3.language          = 'JA'
-  AND mcst_a3.source_lang       = 'JA'
-  AND mcst_a3.category_set_name = 'ŒQƒR[ƒh'
-  AND iimb_a.item_id            = gic_a3.item_id
-  -- U‘ÖæŒo—ŒSæ“¾î•ñ
-  AND gic_a4.category_set_id    = mcst_a4.category_set_id
-  AND gic_a4.category_id        = mcb_a4.category_id
-  AND mcst_a4.language          = 'JA'
-  AND mcst_a4.source_lang       = 'JA'
-  AND mcst_a4.category_set_name = 'Œo—•”—pŒQƒR[ƒh'
-  AND iimb_a.item_id            = gic_a4.item_id
   -- U‘ÖŒ³¤•i‹æ•ªƒJƒeƒSƒŠæ“¾î•ñ
   AND gic_o1.category_set_id    = mcst_o1.category_set_id
   AND gic_o1.category_id        = mcb_o1.category_id

@@ -7,7 +7,7 @@ AS
  * Description      : 標準原価内訳表
  * MD.050/070       : 月次〆切処理帳票Issue1.0 (T_MD050_BPO_770)
  *                    月次〆切処理帳票Issue1.0 (T_MD070_BPO_77J)
- * Version          : 1.6
+ * Version          : 1.7
  *
  * Program List
  * -------------------------- ----------------------------------------------------------
@@ -34,6 +34,7 @@ AS
  *  2008/06/19    1.5   Y.Ishikawa       金額、数量がNULLの場合は0を表示する。
  *  2008/06/25    1.6   T.Ikehara        特定文字列を出力しようとすると、エラーとなり帳票が出力
  *                                       されない現象への対応
+ *  2008/07/23    1.7   Y.Ishikawa       XXCMN_ITEM_CATEGORIES3_V→XXCMN_ITEM_CATEGORIES6_V変更
  *
  *****************************************************************************************/
 --
@@ -596,7 +597,7 @@ AS
                  || ' xxinv_mov_req_instr_lines xmril,  ' -- 移動依頼／指示明細（アドオン）
                  || ' xxcmn_lookup_values2_v    xlvv,   ' -- クイックコード情報VIEW2
                  || ' xxcmn_item_mst2_v         ximv,   ' -- 品目情報ビュー
-                 || ' xxcmn_item_categories3_v  xicv,   ' -- 品目カテゴリービュー
+                 || ' xxcmn_item_categories6_v  xicv,   ' -- 品目カテゴリービュー
                  || ' xxcmn_stnd_unit_price_v   xsup    ' -- 標準原価情報VIEW
                  || ' WHERE '
                  || '     it.doc_type             = ''' || cv_doc_type_xfer || ''' '
@@ -627,7 +628,7 @@ AS
                  || ' xxinv_mov_req_instr_lines xmril, '  -- 移動依頼／指示明細（アドオン）
                  || ' xxcmn_lookup_values2_v    xlvv,   ' -- クイックコード情報view2
                  || ' xxcmn_item_mst2_v         ximv,   ' -- 品目情報ビュー
-                 || ' xxcmn_item_categories3_v  xicv,   ' -- 品目カテゴリービュー
+                 || ' xxcmn_item_categories6_v  xicv,   ' -- 品目カテゴリービュー
                  || ' xxcmn_stnd_unit_price_v   xsup    ' -- 標準原価情報view
                  || ' WHERE '
                  || ' it.doc_type                 = ''' || cv_doc_type_trni || ''' '
@@ -658,7 +659,7 @@ AS
                    || ' xxcmn_rcv_pay_mst_prod_v    xrpmpv, '
                    || ' xxcmn_lookup_values2_v      xlvv,   ' -- クイックコード情報view2
                    || ' xxcmn_item_mst2_v           ximv,   ' -- 品目情報ビュー
-                   || ' xxcmn_item_categories3_v    xicv,   ' -- 品目カテゴリービュー
+                   || ' xxcmn_item_categories6_v    xicv,   ' -- 品目カテゴリービュー
                    || ' xxcmn_stnd_unit_price_v     xsup    ' -- 標準原価情報view
                    || ' WHERE '
                    || ' it.doc_type                 = ''' || cv_doc_type_prod || ''' '
@@ -684,7 +685,7 @@ AS
                    || ' xxcmn_rcv_pay_mst_adji_v  xrpmav, '
                    || ' xxcmn_lookup_values2_v    xlvv,   ' -- クイックコード情報view2
                    || ' xxcmn_item_mst2_v         ximv,   ' -- 品目情報ビュー
-                   || ' xxcmn_item_categories3_v  xicv,   ' -- 品目カテゴリービュー
+                   || ' xxcmn_item_categories6_v  xicv,   ' -- 品目カテゴリービュー
                    || ' xxcmn_stnd_unit_price_v   xsup    ' -- 標準原価情報view
                    || ' WHERE '
                    || ' it.doc_type                 = ''' || cv_doc_type_adji || ''' '
@@ -713,7 +714,7 @@ AS
                    || ' xxcmn_rcv_pay_mst_adji_v  xrpmav, '
                    || ' xxcmn_lookup_values2_v    xlvv,   ' -- クイックコード情報view2
                    || ' xxcmn_item_mst2_v         ximv,   ' -- 品目情報ビュー
-                   || ' xxcmn_item_categories3_v  xicv,   ' -- 品目カテゴリービュー
+                   || ' xxcmn_item_categories6_v  xicv,   ' -- 品目カテゴリービュー
                    || ' xxcmn_stnd_unit_price_v   xsup    ' -- 標準原価情報view
                    || ' WHERE '
                    || ' it.doc_type                 = ''' || cv_doc_type_adji || ''' '
@@ -743,7 +744,7 @@ AS
                    || ' xxcmn_rcv_pay_mst_adji_v  xrpmav, '
                    || ' xxcmn_lookup_values2_v    xlvv,   ' -- クイックコード情報view2
                    || ' xxcmn_item_mst2_v         ximv,   ' -- 品目情報ビュー
-                   || ' xxcmn_item_categories3_v  xicv,   ' -- 品目カテゴリービュー
+                   || ' xxcmn_item_categories6_v  xicv,   ' -- 品目カテゴリービュー
                    || ' xxcmn_stnd_unit_price_v   xsup    ' -- 標準原価情報view
                    || ' WHERE '
                    || ' it.doc_type                 = ''' || cv_doc_type_adji || ''' '
@@ -769,7 +770,7 @@ AS
                    || ' xxcmn_rcv_pay_mst_adji_v  xrpmav, '
                    || ' xxcmn_lookup_values2_v    xlvv,   '
                    || ' xxcmn_item_mst2_v         ximv,   '
-                   || ' xxcmn_item_categories3_v  xicv,   '
+                   || ' xxcmn_item_categories6_v  xicv,   '
                    || ' xxcmn_stnd_unit_price_v   xsup    '
                    || ' WHERE '
                    || ' it.doc_type                = ''' || cv_doc_type_adji || ''' '
@@ -799,7 +800,7 @@ AS
                    || ' xxcmn_rcv_pay_mst_adji_v  xrpmav, '
                    || ' xxcmn_lookup_values2_v    xlvv,   ' -- クイックコード情報view2
                    || ' xxcmn_item_mst2_v         ximv,   ' -- 品目情報ビュー
-                   || ' xxcmn_item_categories3_v  xicv,   ' -- 品目カテゴリービュー
+                   || ' xxcmn_item_categories6_v  xicv,   ' -- 品目カテゴリービュー
                    || ' xxcmn_stnd_unit_price_v   xsup    ' -- 標準原価情報view
                    || ' WHERE '
                    || ' it.doc_type                 = ''' || cv_doc_type_adji || ''' '
@@ -838,7 +839,7 @@ AS
                    || ' xxcmn_rcv_pay_mst_porc_rma_v xrpmprv, '
                    || ' xxcmn_lookup_values2_v       xlvv,    ' -- クイックコード情報view2
                    || ' xxcmn_item_mst2_v            ximv,    ' -- 品目情報ビュー
-                   || ' xxcmn_item_categories3_v     xicv,    ' -- 品目カテゴリービュー
+                   || ' xxcmn_item_categories6_v     xicv,    ' -- 品目カテゴリービュー
                    || ' xxcmn_stnd_unit_price_v      xsup     ' -- 標準原価情報view
                    || ' WHERE '
                    || ' it.doc_type                 = ''' || cv_doc_type_porc || ''' '
@@ -859,7 +860,7 @@ AS
                    || ' xxcmn_rcv_pay_mst_porc_po_v xrpmppv, '
                    || ' xxcmn_lookup_values2_v      xlvv,   ' -- クイックコード情報view2
                    || ' xxcmn_item_mst2_v           ximv,   ' -- 品目情報ビュー
-                   || ' xxcmn_item_categories3_v    xicv,   ' -- 品目カテゴリービュー
+                   || ' xxcmn_item_categories6_v    xicv,   ' -- 品目カテゴリービュー
                    || ' xxcmn_stnd_unit_price_v     xsup    ' -- 標準原価情報view
                    || ' WHERE '
                    || ' it.doc_type                 = ''' || cv_doc_type_porc || ''' '
@@ -887,7 +888,7 @@ AS
                  || ' xxcmn_rcv_pay_mst_omso_v  xrpmov, '
                  || ' xxcmn_lookup_values2_v    xlvv,   ' -- クイックコード情報view2
                  || ' xxcmn_item_mst2_v         ximv,   ' -- 品目情報ビュー
-                 || ' xxcmn_item_categories3_v  xicv,   ' -- 品目カテゴリービュー
+                 || ' xxcmn_item_categories6_v  xicv,   ' -- 品目カテゴリービュー
                  || ' xxcmn_stnd_unit_price_v   xsup    ' -- 標準原価情報view
                  || ' WHERE '
                  || ' it.doc_type                 = ''' || cv_doc_type_omso || ''' '

@@ -7,7 +7,7 @@ AS
  * Description      : 他勘定振替原価差異表
  * MD.050/070       : 月次〆切処理帳票Issue1.0(T_MD050_BPO_770)
  *                  : 月次〆切処理帳票Issue1.0(T_MD070_BPO_77I)
- * Version          : 1.4
+ * Version          : 1.5
  *
  * Program List
  * -------------------------- ----------------------------------------------------------
@@ -36,6 +36,7 @@ AS
  *  2008/06/19    1.3   Y.Ishikawa       金額、数量がNULLの場合は0を表示する。
  *  2008/06/25    1.4   T.Ikehara        特定文字列を出力しようとすると、エラーとなり帳票が出力
  *                                       されない現象への対応
+ *  2008/07/23    1.5   Y.Ishikawa       XXCMN_ITEM_CATEGORIES3_V→XXCMN_ITEM_CATEGORIES6_V変更
  *
  *****************************************************************************************/
 --
@@ -471,7 +472,7 @@ AS
       || '   , xxcmn_stnd_unit_price_v  xsup '
       || '   , xxcmn_stnd_unit_price_v  xsup_m '
       || '   , xxcmn_item_mst2_v        ximv '
-      || '   , xxcmn_item_categories3_v xicv '
+      || '   , xxcmn_item_categories6_v xicv '
       || '   , xxcmn_lookup_values2_v   xlvv '
       || 'WHERE itp.doc_type            = ''' || cv_porc || ''''
       || '  AND itp.completed_ind       = '   || TO_CHAR(cn_one)
@@ -572,7 +573,7 @@ AS
       || '   , xxcmn_stnd_unit_price_v  xsup_m '
       ||'   , xxcmn_lookup_values2_v   xlvv '
       ||'   , xxcmn_item_mst2_v        ximv '
-      ||'   , xxcmn_item_categories3_v xicv '
+      ||'   , xxcmn_item_categories6_v xicv '
       ||'WHERE itp.doc_type            = ''' || cv_omso || ''''
       ||'  AND itp.completed_ind       = '   || TO_CHAR(cn_one)
       ||'  AND xrpmo.doc_type          = itp.doc_type'

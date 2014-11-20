@@ -7,7 +7,7 @@ AS
  * Description      : 仕入取引明細表
  * MD.050           : 有償支給帳票Issue1.0(T_MD050_BPO_360)
  * MD.070           : 有償支給帳票Issue1.0(T_MD070_BPO_36G)
- * Version          : 1.14
+ * Version          : 1.15
  *
  * Program List
  * -------------------------- ----------------------------------------------------------
@@ -50,6 +50,7 @@ AS
  *                                       使用しないようにする
  *  2008/06/24    1.14  T.Ikehara        特定文字列を出力しようとすると、エラーとなり帳票が出力
  *                                       されない現象への対応
+ *  2008/07/23    1.15  Y.Ishikawa       XXCMN_ITEM_CATEGORIES3_V→XXCMN_ITEM_CATEGORIES6_V変更
  *
  *****************************************************************************************/
 --
@@ -977,7 +978,7 @@ AS
         ||       ' , pll.attribute7)          fukakin '      --賦課金'
         || ',DECODE( xrart.txns_type ,'|| cv_type_nasi ||', NVL(flv_u_tax.lookup_code, 0) '
         ||       ' , NVL(flv_p_tax.lookup_code, 0))   zeiritu '      --税率'
-        || ',DECODE( xic3.item_class_code '
+        || ',DECODE( xic6.item_class_code '
         ||       ' , '|| cv_item_class || ', ilm.attribute1||ilm.attribute2 '
         ||       ' ,ilm.lot_no )              order1 '       --表示順'
         ;
@@ -997,8 +998,8 @@ AS
       ||    ' AND ximv.end_date_active   >= xrart.txns_date ) '
       || 'INNER JOIN xxcmn_item_categories2_v gic '               --品目カテゴリ割当
       ||  ' ON (  gic.item_id  = ximv.item_id ) '
-      || 'INNER JOIN xxcmn_item_categories3_v xic3 '              --品目カテゴリ割当3
-      ||  ' ON (  xic3.item_id   = gic.item_id ) '
+      || 'INNER JOIN xxcmn_item_categories6_v xic6 '              --品目カテゴリ割当6
+      ||  ' ON (  xic6.item_id   = gic.item_id ) '
       || 'INNER JOIN (SELECT mcb.segment1  AS category_code '
       || ',  mcb.category_id AS category_id '
       || ',  mcst.category_set_id AS category_set_id '
