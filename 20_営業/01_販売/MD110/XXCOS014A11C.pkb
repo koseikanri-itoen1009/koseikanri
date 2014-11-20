@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCOS014A11C (body)
  * Description      : 入庫予定データの作成を行う
  * MD.050           : 入庫予定情報データ作成 (MD050_COS_014_A11)
- * Version          : 1.4
+ * Version          : 1.5
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -31,6 +31,7 @@ AS
  *  2009/09/28    1.3   K.Satomura       [0001156]
  *  2010/03/16    1.4   Y.Kuboshima      [E_本稼動_01833]・ソート順の変更 (ヘッダID -> 伝票番号, 品目コード)
  *                                                       ・ヘッダID, 品目コードのサマリを削除
+ *  2010/04/23    1.5   M.Sano           [E_本稼動_02322]・顧客品目の抽出条件を訂正
  *
  *****************************************************************************************/
 --
@@ -78,6 +79,10 @@ AS
   global_api_expt           EXCEPTION;
   --*** 共通関数OTHERS例外 ***
   global_api_others_expt    EXCEPTION;
+/* 2010/04/23 Ver1.5 Add Start */
+  --*** 顧客品目登録エラー例外 ***
+  global_cust_item_expt     EXCEPTION;
+/* 2010/04/23 Ver1.5 Add Start */
 --
   PRAGMA EXCEPTION_INIT(global_api_others_expt,-20000);
 --
@@ -130,6 +135,10 @@ AS
 /* 2009/07/01 Ver1.10 Add Start */
   cv_msg_proc_err       CONSTANT VARCHAR2(20)  := 'APP-XXCOS1-00037';             -- 共通関数エラー
 /* 2009/07/01 Ver1.10 Add End   */
+/* 2010/04/23 Ver1.5 Add Start  */
+  cv_msg_many_citem_err CONSTANT VARCHAR2(20)  := 'APP-XXCOS1-13754';             -- 顧客品目未登録エラー
+  cv_msg_no_citem_err   CONSTANT VARCHAR2(20)  := 'APP-XXCOS1-13755';             -- 顧客品目複数登録エラー
+/* 2010/04/23 Ver1.5 Add End    */
   -- トークンコード
   cv_tkn_param1         CONSTANT VARCHAR2(6)   := 'PARAM1';                       --入力パラメータ1
   cv_tkn_param2         CONSTANT VARCHAR2(6)   := 'PARAM2';                       --入力パラメータ2
@@ -150,6 +159,13 @@ AS
 /* 2009/07/01 Ver1.10 Add Start */
   cv_tkn_err_msg        CONSTANT VARCHAR2(6)   := 'ERRMSG';                       -- 共通関数エラー
 /* 2009/07/01 Ver1.10 Add End   */
+/* 2010/04/23 Ver1.5 Add Start */
+  cv_tkn_invoice_num    CONSTANT VARCHAR2(20)  := 'INVOICE_NUM';                  -- 伝票番号
+  cv_tkn_item_code      CONSTANT VARCHAR2(20)  := 'ITEM_CODE';                    -- 品目コード
+  cv_tkn_cust_item_code CONSTANT VARCHAR2(20)  := 'CUST_ITEM_CODE';               -- 顧客品目コード
+  cv_tkn_cust_code      CONSTANT VARCHAR2(20)  := 'CUST_CODE';                    -- 顧客コード
+  cv_tkn_uom_code       CONSTANT VARCHAR2(20)  := 'UOM_CODE';                     -- 単位
+/* 2010/04/23 Ver1.5 Add End   */
   --日付
   cd_sysdate            CONSTANT DATE          := SYSDATE;                            --システム日付
   cd_process_date       CONSTANT DATE          := xxccp_common_pkg2.get_process_date; --業務処理日
@@ -175,6 +191,10 @@ AS
 /* 2009/07/01 Ver1.10 Add Start */
   cv_uom_code_dummy     CONSTANT VARCHAR2(1)   := 'X';                           --単位コード(共通関数用のダミー)
 /* 2009/07/01 Ver1.10 Add End   */
+/* 2010/04/23 Ver1.5 Add Start */
+  --エラータイプ
+  cv_err_type_cust_err  CONSTANT VARCHAR2(1)   := '1';                           --エラー種別:顧客品目登録エラー
+/* 2010/04/23 Ver1.5 Add End   */
   --その他
   cv_1                  CONSTANT VARCHAR2(1)   := '1';                           --固定値:1(VARCHAR)
   cv_2                  CONSTANT VARCHAR2(1)   := '2';                           --固定値:2(VARCHAR)
@@ -618,6 +638,9 @@ AS
     case_qty                     NUMBER,                                                  --ケース数
     indv_qty                     NUMBER,                                                  --バラ数
     ship_qty                     NUMBER                                                   --出荷数量(合計、バラ)
+/* 2010/04/23 Ver1.5 Add Start */
+   ,unit_of_measure              mtl_system_items_b.primary_unit_of_measure%TYPE          --基準単位
+/* 2010/04/23 Ver1.5 Add End   */
   );
   --ヘッダ情報
   TYPE g_header_data_rtype IS RECORD(
@@ -663,6 +686,9 @@ AS
   gn_orga_id            NUMBER;                                        --在庫組織ID
   gt_edi_item_code_div  xxcmm_cust_accounts.edi_item_code_div%TYPE;    --EDI連携品目コード区分
   gt_chain_cust_acct_id hz_cust_accounts.cust_account_id%TYPE;         --顧客ID(チェーン店)
+/* 2010/04/23 Ver1.5 Add Start */
+  gv_err_type           VARCHAR2(1);    --エラー種別
+/* 2010/04/23 Ver1.5 Add End   */
 --
   /**********************************************************************************
    * Procedure Name   : init
@@ -1291,6 +1317,11 @@ AS
     ln_ball_stockout_qty  NUMBER;  --欠品数量(ボール)
     ln_sum_stockout_qty   NUMBER;  --欠品数量(合計、バラ)
 /* 2009/07/01 Ver1.10 Add End   */
+/* 2010/04/23 Ver1.5 Add Start */
+    ln_cust_item_cnt      NUMBER;                                --顧客品目件数
+    lt_chain_acct_number  hz_cust_accounts.account_number%TYPE;  --顧客コード
+--
+/* 2010/04/23 Ver1.5 Add End   */
 --
     lt_invc_break  xxcos_edi_stc_headers.header_id%TYPE;  --ブレーク用
     ln_line_no     NUMBER;                                --行No用
@@ -1359,6 +1390,9 @@ AS
              ,(
                  ( xesl.case_qty_sum * TO_NUMBER( NVL( imb.case_inc_num, cn_1 ) ) ) + xesl.indv_qty_sum
               )                                       ship_qty                     --出荷数量(合計、バラ)
+/* 2010/04/23 Ver1.5 Add Start */
+             ,sib.unit_of_measure                     unit_of_measure              --基準単位
+/* 2010/04/23 Ver1.5 Add End   */
       FROM    xxcos_edi_stc_headers    xesh    --入庫予定ヘッダ
              ,( SELECT  hca.account_number             account_number
                        ,hp.party_name                  party_name
@@ -1408,15 +1442,34 @@ AS
                 AND     mcix.customer_item_id        = mci.customer_item_id        --結合(顧客品目相 = 顧客品目)
                 AND     mcix.inactive_flag           = cv_n                        --有効
                 AND     mp.master_organization_id    = mcix.master_organization_id --結合(在庫組織   = 顧客品目相)
+/* 2010/04/23 Ver1.5 Add Start */
+                AND     mp.organization_id           = gn_orga_id                  --在庫組織ID
+                -- 最小ランクの取得(『顧客ID･単位･品目ID・マスター在庫組織ＩＤ』単位)
+/* 2010/04/23 Ver1.5 Add End   */
 /* 2009/09/28 Ver1.3 Add Start */
                 AND     mcix.preference_number       =
                         (
-                          SELECT MIN(cix.preference_number)
+/* 2010/04/23 Ver1.5 Mod Start */
+--                          SELECT MIN(cix.preference_number)
+                          SELECT /*+
+                                  USE_NL( cit cix )
+                                  */
+                                 MIN(cix.preference_number)
+/* 2010/04/23 Ver1.5 Mod End   */
                           FROM   mtl_customer_items      cit
                                 ,mtl_customer_item_xrefs cix
-                          WHERE  cit.customer_id      = gt_chain_cust_acct_id
+                          WHERE  cit.customer_id      = gt_chain_cust_acct_id         -- 顧客(mci)
+/* 2010/04/23 Ver1.5 Add Start */
+                          AND    cit.attribute1       = mci.attribute1                -- 単位(mci)
+/* 2010/04/23 Ver1.5 Add End   */
                           AND    cit.inactive_flag    = cv_n
                           AND    cit.customer_item_id = cix.customer_item_id
+/* 2010/04/23 Ver1.5 Add Start */
+                          AND    cix.inventory_item_id
+                                                      = mcix.inventory_item_id        -- 品目ID(mcix)
+                          AND    cix.master_organization_id
+                                                      = mcix.master_organization_id   -- マスタ在庫組織ID(mcix)
+/* 2010/04/23 Ver1.5 Add End   */
                           AND    cix.inactive_flag    = cv_n
                         )
 /* 2009/09/28 Ver1.3 Add End   */
@@ -1593,6 +1646,9 @@ AS
              ,(
                  ( xesl.case_qty_sum * TO_NUMBER( NVL( imb.case_inc_num, cn_1 ) ) ) + xesl.indv_qty_sum
               )                                       ship_qty                     --出荷数量(合計、バラ)
+/* 2010/04/23 Ver1.5 Add Start */
+             ,NULL                                    unit_of_measure              --基準単位
+/* 2010/04/23 Ver1.5 Add End   */
       FROM    xxcos_edi_stc_headers   xesh    --入庫予定ヘッダ
              ,( SELECT  hca.account_number             account_number
                        ,hp.party_name                  party_name
@@ -1798,10 +1854,16 @@ AS
              ,hca.cust_account_id            cust_account_id     --顧客ID(チェーン店)
              ,hp.party_name                  edi_chain_name      --EDIチェーン店名
              ,hp.organization_name_phonetic  edi_chain_phonetic  --EDIチェーン店名カナ
+/* 2010/04/23 Ver1.5 Add Start */
+             ,hca.account_number             account_number      --顧客コード
+/* 2010/04/23 Ver1.5 Add End   */
       INTO    gt_edi_item_code_div
              ,gt_chain_cust_acct_id
              ,gt_header_data.edi_chain_name
              ,gt_header_data.edi_chain_name_phonetic
+/* 2010/04/23 Ver1.5 Add Start */
+             ,lt_chain_acct_number
+/* 2010/04/23 Ver1.5 Add End   */
       FROM    hz_cust_accounts    hca  --顧客
              ,hz_parties          hp   --パーティ
              ,xxcmm_cust_accounts xca  --顧客追加情報
@@ -1897,7 +1959,7 @@ AS
       CLOSE jan_item_cur;
     END IF;
     --==============================================================
-    --行NOの編集、伝票計の算出
+    --行NOの編集、伝票計の算出、顧客品目の妥当性チェック
     --==============================================================
     <<sum_qty_loop>>
     FOR i IN 1.. gn_target_cnt LOOP
@@ -1956,8 +2018,109 @@ AS
       END IF;
       --行Noの設定
       gt_edi_stc_date(i).line_no := ln_line_no;
+/* 2010/04/23 Ver1.5 Add Start */
+--
+      -- EDI連携品目コード区分が"顧客品目"の場合のみ下記チェックを実施
+      IF ( gt_edi_item_code_div = cv_1 ) THEN
+        -- 顧客品目件数を取得
+        SELECT /*+ USE_NL( mcis mcix mpar ) */
+               COUNT(1)                  cust_item_cnt
+        INTO   ln_cust_item_cnt
+        FROM   mtl_customer_items        mcis                                         -- 顧客品目
+              ,mtl_customer_item_xrefs   mcix                                         -- 顧客品目相互参照
+              ,mtl_parameters            mpar                                         -- 在庫組織
+        WHERE  mcix.customer_item_id       = mcis.customer_item_id
+        AND    mpar.master_organization_id = mcix.master_organization_id
+        AND    mcis.customer_id            = gt_chain_cust_acct_id                    -- 条件:顧客ID
+        AND    mcis.attribute1             = gt_edi_stc_date(i).unit_of_measure       -- 条件:基準単位
+        AND    mcis.inactive_flag          = cv_n                                     -- 条件:有効'N'
+        AND    mcix.inventory_item_id      = gt_edi_stc_date(i).inventory_item_id     -- 条件:品目ID
+        AND    mcix.inactive_flag          = cv_n                                     -- 条件:有効'N'
+        AND    mpar.organization_id        = gn_orga_id                               -- 条件:在庫組織ID
+        AND    mcix.preference_number      = (                                        -- 条件:最小ランク
+                -- ↓↓「顧客・単位・品目・在庫組織」単位の最小ランク抽出SQL↓↓
+                SELECT /*+ USE_NL( mcix_min, mcis_min ) */
+                       MIN(mcix_min.preference_number)
+                FROM   mtl_customer_item_xrefs  mcix_min                              -- 顧客品目
+                      ,mtl_customer_items       mcis_min                              -- 顧客品目相互参照
+                WHERE  mcix_min.customer_item_id       = mcis_min.customer_item_id
+                AND    mcis_min.customer_id            = gt_chain_cust_acct_id        -- 条件：顧客コード
+                AND    mcis_min.attribute1             = mcis.attribute1              -- 条件：単位
+                AND    mcis_min.inactive_flag          = cv_n                         -- 条件：有効'N'
+                AND    mcix_min.inventory_item_id      = mcix.inventory_item_id       -- 条件：品目ID
+                AND    mcix_min.inactive_flag          = cv_n                         -- 条件：有効'N'
+                AND    mcix_min.master_organization_id = mcix.master_organization_id  -- 条件：マスタ在庫組織ID
+              )                                                    
+        ;
+--
+        -- 顧客品目の件数が「0件」かチェック
+        IF ( ln_cust_item_cnt = cn_0 ) THEN
+          --顧客品目未登録エラーを出力
+          lv_errmsg := xxccp_common_pkg.get_msg(
+                          iv_application  => cv_application                     --アプリケーション
+                         ,iv_name         => cv_msg_many_citem_err              --顧客品目未登録エラー
+                         ,iv_token_name1  => cv_tkn_invoice_num                 --トークン１
+                         ,iv_token_value1 => gt_edi_stc_date(i).invoice_number  --伝票番号
+                         ,iv_token_name2  => cv_tkn_cust_code                   --トークン２
+                         ,iv_token_value2 => lt_chain_acct_number               --顧客コード
+                         ,iv_token_name3  => cv_tkn_uom_code                    --トークン３
+                         ,iv_token_value3 => gt_edi_stc_date(i).unit_of_measure --単位
+                         ,iv_token_name4  => cv_tkn_item_code                   --トークン４
+                         ,iv_token_value4 => gt_edi_stc_date(i).item_code       --品目コード
+                        );
+          FND_FILE.PUT_LINE(
+            which  => FND_FILE.OUTPUT
+           ,buff   => lv_errmsg
+          );
+          FND_FILE.PUT_LINE(
+            which  => FND_FILE.LOG
+           ,buff   => lv_errmsg
+          );
+          lv_errmsg := NULL;
+          --エラー種別に顧客品目エラーをセット
+          gv_err_type := cv_err_type_cust_err;
+--
+        -- 顧客品目の件数が「複数件」かチェック
+        ELSIF ( ln_cust_item_cnt > cn_1 ) THEN
+          --顧客品目複数登録エラーを出力
+          lv_errmsg := xxccp_common_pkg.get_msg(
+                          iv_application  => cv_application                          --アプリケーション
+                         ,iv_name         => cv_msg_no_citem_err                     --顧客品目複数登録エラー
+                         ,iv_token_name1  => cv_tkn_invoice_num                      --トークン１
+                         ,iv_token_value1 => gt_edi_stc_date(i).invoice_number       --伝票番号
+                         ,iv_token_name2  => cv_tkn_cust_code                        --トークン２
+                         ,iv_token_value2 => lt_chain_acct_number                    --顧客コード
+                         ,iv_token_name3  => cv_tkn_cust_item_code                   --トークン３
+                         ,iv_token_value3 => gt_edi_stc_date(i).customer_item_number --顧客品目
+                         ,iv_token_name4  => cv_tkn_uom_code                         --トークン４
+                         ,iv_token_value4 => gt_edi_stc_date(i).unit_of_measure      --単位
+                         ,iv_token_name5  => cv_tkn_item_code                        --トークン５
+                         ,iv_token_value5 => gt_edi_stc_date(i).item_code            --品目コード
+                        );
+          FND_FILE.PUT_LINE(
+            which  => FND_FILE.OUTPUT
+           ,buff   => lv_errmsg
+          );
+          FND_FILE.PUT_LINE(
+            which  => FND_FILE.LOG
+           ,buff   => lv_errmsg
+          );
+          lv_errmsg := NULL;
+          --エラー種別に顧客品目エラーをセット
+          gv_err_type := cv_err_type_cust_err;
+--
+        END IF;
+      END IF;
+/* 2010/04/23 Ver1.5 Add End   */
     END LOOP sum_qty_loop;
 --
+/* 2010/04/23 Ver1.5 Add Start */
+    -- エラー種別がNULL以外の場合はエラー
+    IF ( gv_err_type IS NOT NULL ) THEN
+      RAISE global_api_expt;
+    END IF;
+--
+/* 2010/04/23 Ver1.5 Add End   */
   EXCEPTION
 --
 --#################################  固定例外処理部 START   ####################################
@@ -2803,6 +2966,10 @@ AS
 /* 2009/08/17 Ver1.2 Mod End   */
     gt_param_rec.move_order_number   := iv_move_order_number;     --移動オーダー番号
     gt_param_rec.edi_send_flag       := iv_edi_send_flag;         --EDI送信状況
+/* 2010/04/23 Ver1.5 Add Start */
+    -- グローバル変数の初期化
+    gv_err_type                      := NULL;
+/* 2010/04/23 Ver1.5 Add End  */
     -- ===============================
     -- 初期処理(A-1)
     -- ===============================
@@ -3083,14 +3250,20 @@ AS
 --
     --エラー出力
     IF (lv_retcode = cv_status_error) THEN
-      FND_FILE.PUT_LINE(
-         which  => FND_FILE.OUTPUT
-        ,buff   => lv_errmsg --ユーザー・エラーメッセージ
-      );
-      FND_FILE.PUT_LINE(
-         which  => FND_FILE.LOG
-        ,buff   => lv_errbuf --エラーメッセージ
-      );
+/* 2010/04/23 Ver1.5 Add Start */
+      IF ( gv_err_type IS NULL ) THEN
+/* 2010/04/23 Ver1.5 Add End   */
+        FND_FILE.PUT_LINE(
+           which  => FND_FILE.OUTPUT
+          ,buff   => lv_errmsg --ユーザー・エラーメッセージ
+        );
+        FND_FILE.PUT_LINE(
+           which  => FND_FILE.LOG
+          ,buff   => lv_errbuf --エラーメッセージ
+        );
+/* 2010/04/23 Ver1.5 Add Start */
+      END IF;
+/* 2010/04/23 Ver1.5 Add End   */
       --空行挿入
       FND_FILE.PUT_LINE(
          which  => FND_FILE.OUTPUT

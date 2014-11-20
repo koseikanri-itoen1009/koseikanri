@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCOS011A04C (body)
  * Description      : 入庫予定データの作成を行う
  * MD.050           : 入庫予定データ作成 (MD050_COS_011_A04)
- * Version          : 1.8
+ * Version          : 1.9
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -44,6 +44,7 @@ AS
  *                                                      ・伝票番号, 品目コードのサマリを削除
  *                                                      ・入庫予定ヘッダテーブル,移動オーダーヘッダテーブルの
  *                                                        更新の条件にEDIチェーン店コードを追加
+ *  2010/04/16    1.9  M.Sano           [E_本稼動_02322]・顧客品目の抽出条件を訂正
  *
  *****************************************************************************************/
 --
@@ -118,6 +119,9 @@ AS
   cv_prf_outbound_d     CONSTANT VARCHAR2(50)  := 'XXCOS1_EDI_OUTBOUND_INV_DIR';  -- XXCOS:EDI%ディレクトリパス(名称略)
   cv_prf_bks_id         CONSTANT VARCHAR2(50)  := 'GL_SET_OF_BKS_ID';             -- GL会計帳簿ID
   cv_prf_org_id         CONSTANT VARCHAR2(50)  := 'ORG_ID';                       -- MO:営業単位
+-- ************ 2010/04/16 M.Sano  1.9 ADD START *****************
+  cv_prf_orga_code      CONSTANT VARCHAR2(50)  := 'XXCOI1_ORGANIZATION_CODE';     -- XXCOI:在庫組織コード
+-- ************ 2010/04/16 M.Sano  1.9 ADD  END  *****************
   -- メッセージコード
   cv_msg_no_target      CONSTANT VARCHAR2(20)  := 'APP-XXCOS1-00003';  -- 対象データなしエラー
   cv_msg_lock_err       CONSTANT VARCHAR2(20)  := 'APP-XXCOS1-00001';  -- ロックエラー
@@ -159,6 +163,11 @@ AS
   cv_msg_category_err             CONSTANT  VARCHAR2(100) := 'APP-XXCOS1-12954';     --カテゴリセットID取得エラーメッセージ
   cv_msg_item_div_h               CONSTANT  VARCHAR2(100) := 'APP-XXCOS1-12955';     --本社商品区分
 -- ************ 2009/08/24 N.Maeda 1.6 ADD  END  ***************** --
+--********************  2010/04/16    1.9  M.Sano     ADD Start *******************
+  cv_msg_orga_err       CONSTANT VARCHAR2(20)  := 'APP-XXCOS1-12318';  -- 在庫組織ID取得エラー
+  cv_msg_orga_tkn       CONSTANT VARCHAR2(20)  := 'APP-XXCOS1-00048';  -- 在庫組織プロファイル名
+  cv_msg_cust_item_err  CONSTANT VARCHAR2(20)  := 'APP-XXCOS1-12317';  -- 複数顧客品目エラーメッセージ
+--********************  2010/04/16    1.9  M.Sano     ADD END   *******************
   -- トークンコード
   cv_tkn_in_param       CONSTANT VARCHAR2(8)   := 'IN_PARAM';          -- パラメータ名称
   cv_tkn_prf            CONSTANT VARCHAR2(7)   := 'PROFILE';           -- プロファイル名称
@@ -178,6 +187,11 @@ AS
   cv_tkn_invoice_num    CONSTANT VARCHAR2(11)  := 'INVOICE_NUM';       -- 伝票番号
   cv_tkn_item_code      CONSTANT VARCHAR2(20)  := 'ITEM_CODE';         -- 品目コード
   cv_tkn_cust_item_code CONSTANT VARCHAR2(20)  := 'CUST_ITEM_CODE';    -- 顧客品目コード
+--********************  2010/04/16    1.9  M.Sano     ADD Start *******************
+  cv_tkn_orga           CONSTANT VARCHAR2(8)   := 'ORG_CODE';          -- 在庫組織コード
+  cv_tkn_cust_code      CONSTANT VARCHAR2(20)  := 'CUST_CODE';         -- 顧客コード
+  cv_tkn_uom_code       CONSTANT VARCHAR2(20)  := 'UOM_CODE';          -- 単位
+--********************  2010/04/16    1.9  M.Sano     ADD END   *******************
 -- ************ 2009/08/24 N.Maeda 1.6 ADD START ***************** --
   ct_item_div_h                   CONSTANT fnd_profile_options.profile_option_name%TYPE := 'XXCOS1_ITEM_DIV_H';
 -- ************ 2009/08/24 N.Maeda 1.6 ADD  END  ***************** --
@@ -587,6 +601,10 @@ AS
   -- 条件判定、共通関数用
   gt_edi_item_code_div  xxcmm_cust_accounts.edi_item_code_div%TYPE;    --EDI連携品目コード区分
   gt_chain_cust_acct_id hz_cust_accounts.cust_account_id%TYPE;         --顧客ID(チェーン店)
+--********************  2010/04/16    1.9  M.Sano     ADD Start *******************
+  gt_chain_acct_number  hz_cust_accounts.account_number%TYPE;          --顧客コード(チェーン店)
+  gn_organization_id    NUMBER;                                        --在庫組織ID
+--********************  2010/04/16    1.9  M.Sano     ADD  End  *******************
   gt_from_series        fnd_lookup_values_vl.attribute1%TYPE;          --IF元業務系列コード
   gv_edi_p_term         VARCHAR2(4);                                   --EDI情報削除期間
   gv_if_header          VARCHAR2(2);                                   --ヘッダレコード区分
@@ -664,6 +682,9 @@ AS
 --    edi_forward_number           xxcmm_cust_accounts.edi_forward_number%TYPE              --EDI伝票追番
 ----********************  2009/06/15    1.5  N.Maeda ADD  End  ********************
 --********************  2009/07/08    1.5  N.Maeda DEL  End  ********************
+--********************  2010/04/16    1.9  M.Sano     ADD Start *******************
+   ,unit                         mtl_system_items_b.primary_unit_of_measure%TYPE          --単位
+--********************  2010/04/16    1.9  M.Sano     ADD  End  *******************
   );
 -- ************************ 2009/07/15 N.Maeda 1.5 N.Maeda ADD start ********************* --
   TYPE g_inv_qty_sum_rtype IS RECORD(
@@ -730,6 +751,10 @@ AS
 -- ************ 2009/08/24 N.Maeda 1.6 ADD START ***************** --
     lt_item_div_h                           fnd_profile_option_values.profile_option_value%TYPE;
 -- ************ 2009/08/24 N.Maeda 1.6 ADD  END  ***************** --
+-- ************ 2010/04/16 M.Sano  1.9 ADD START *****************
+    lt_orga_code   fnd_profile_option_values.profile_option_value%TYPE;
+                                    --在庫組織コード
+-- ************ 2010/04/16 M.Sano  1.9 ADD  END  *****************
 --
     -- *** ローカル・カーソル ***
 --
@@ -855,6 +880,9 @@ AS
 -- ************ 2009/08/24 N.Maeda 1.6 ADD START ***************** --
     lt_item_div_h  := FND_PROFILE.VALUE(ct_item_div_h);                 --XXCOS:本社商品区分
 -- ************ 2009/08/24 N.Maeda 1.6 ADD  END  ***************** --
+-- ************ 2010/04/16 M.Sano  1.9 ADD START *****************
+    lt_orga_code   := FND_PROFILE.VALUE( cv_prf_orga_code );            --XXCOI:在庫組織コード
+-- ************ 2010/04/16 M.Sano  1.9 ADD  END  *****************
     --EDI情報削除期間のチェック
     IF ( gv_edi_p_term IS NULL ) THEN
       --トークン取得
@@ -1045,6 +1073,29 @@ AS
       ln_err_chk := 1;  --エラー有り
     END IF;
 -- ************ 2009/08/24 N.Maeda 1.6 ADD  END  ***************** --
+-- ************ 2010/04/16 M.Sano  1.9 ADD START *****************
+    --在庫コード取得チェック
+    IF ( lt_orga_code IS NULL ) THEN
+      --トークン取得
+      lv_tkn_name1 := xxccp_common_pkg.get_msg(
+                        iv_application  => cv_application     --アプリケーション
+                       ,iv_name         => cv_msg_orga_tkn    --在庫組織コード
+                     );
+      --メッセージ取得
+      lv_err_msg := xxccp_common_pkg.get_msg(
+                      iv_application  => cv_application  --アプリケーション
+                     ,iv_name         => cv_msg_prf_err  --プロファイル取得エラー
+                     ,iv_token_name1  => cv_tkn_prf      --トークンコード１
+                     ,iv_token_value1 => lv_tkn_name1    --プロファイル名
+                   );
+      --メッセージに出力
+      FND_FILE.PUT_LINE(
+        which  => FND_FILE.OUTPUT
+       ,buff   => lv_err_msg
+      );
+      ln_err_chk := 1;  --エラー有り
+    END IF;
+-- ************ 2010/04/16 M.Sano  1.9 ADD  END  *****************
     --プロファイル取得でエラーの場合
     IF ( ln_err_chk = 1 ) THEN
       RAISE global_api_others_expt;
@@ -1081,8 +1132,14 @@ AS
     BEGIN
       SELECT  xca.edi_item_code_div  edi_item_code_div  --EDI連携品目コード
              ,hca.cust_account_id    cust_account_id    --顧客ID(チェーン店)
+--********************  2010/04/16    1.9  M.Sano     ADD Start *******************
+             ,hca.account_number     account_number     --顧客コード(チェーン店)
+--********************  2010/04/16    1.9  M.Sano     ADD  End  *******************
       INTO    gt_edi_item_code_div
              ,gt_chain_cust_acct_id
+--********************  2010/04/16    1.9  M.Sano     ADD Start *******************
+             ,gt_chain_acct_number
+--********************  2010/04/16    1.9  M.Sano     ADD  End  *******************
       FROM    hz_cust_accounts    hca  --顧客
              ,xxcmm_cust_accounts xca  --顧客追加情報
       WHERE   hca.customer_class_code =  cv_cust_code_chain  --顧客区分(チェーン店)
@@ -1252,6 +1309,23 @@ AS
     END IF;
 -- ************ 2009/08/24 N.Maeda 1.6 ADD  END  ***************** --
 --
+-- ************ 2010/04/16 M.Sano  1.9 ADD START *******************
+    --==============================================================
+    --在庫組織IDの取得
+    --==============================================================
+    gn_organization_id := xxcoi_common_pkg.get_organization_id( lt_orga_code );
+    --取得チェック
+    IF ( gn_organization_id  IS NULL ) THEN
+      ov_errmsg := xxccp_common_pkg.get_msg(
+                      iv_application  => cv_application   --アプリケーション
+                     ,iv_name         => cv_msg_orga_err  --在庫組織ID取得エラー
+                     ,iv_token_name1  => cv_tkn_orga      --トークンコード１
+                     ,iv_token_value1 => lt_orga_code     --在庫組織コード
+                   );
+      RAISE global_api_others_expt;
+    END IF;
+--
+-- ************ 2010/04/16 M.Sano  1.9 ADD  END *******************
     --==============================================================
     -- ファイルオープン
     --==============================================================
@@ -1534,7 +1608,15 @@ AS
     --EDI連携品目コード「顧客品目」
     CURSOR cust_item_cur
     IS
-      SELECT  xesh.header_id                          header_id                    --ヘッダID
+--********************  2010/04/16    1.9  M.Sano     Mod Start *******************
+--      SELECT  xesh.header_id                          header_id                    --ヘッダID
+      SELECT  /*+
+                INDEX ( xesh xxcos_edi_stc_headers_pk )
+                USE_NL( xesl xesh )
+                USE_NL( msib mcis )
+               */
+              xesh.header_id                          header_id                    --ヘッダID
+--********************  2010/04/16    1.9  M.Sano     MOD  End  *******************
              ,xesh.move_order_header_id               move_order_header_id         --移動オーダーヘッダID
              ,xesh.move_order_num                     move_order_num               --移動オーダー番号
              ,xesh.to_subinventory_code               to_subinventory_code         --搬送先保管場所
@@ -1588,6 +1670,9 @@ AS
 --             ,hca.edi_forward_number                  edi_forward_number           --EDI伝票追番
 ----********************  2009/06/15    1.5  N.Maeda ADD  End  ********************
 --********************  2009/07/08    1.5  N.Maeda DEL  End  ********************
+--********************  2010/04/16    1.9  M.Sano     ADD Start *******************
+             ,msib.primary_unit_of_measure            unit                         --単位
+--********************  2010/04/16    1.9  M.Sano     ADD  End  *******************
       FROM    xxcos_edi_stc_headers   xesh    --入庫予定ヘッダ
              ,mtl_txn_request_headers mtrh    --移動オーダーヘッダ
              ,( SELECT  hca.account_number             account_number
@@ -1607,7 +1692,13 @@ AS
                 AND     hca.cust_account_id  =  xca.customer_id
                 AND     hca.status           =  cv_status_a     --ステータス(有効)
               )                        hca     --顧客
-             ,( SELECT  xesl.header_id          header_id
+--********************  2010/04/16    1.9  M.Sano     MOD Start *******************
+--             ,( SELECT  xesl.header_id          header_id
+             ,( SELECT  /*+
+                          INDEX( xesh xxcos_edi_stc_headers_n03 )
+                         */
+                        xesl.header_id          header_id
+--********************  2010/04/16    1.9  M.Sano     MOD  End  *******************
                        ,xesl.inventory_item_id  inventory_item_id
 --********************  2010/03/16    1.8  Y.Kuboshima MOD Start *******************
 -- 伝票番号, 品目コードのサマリの削除
@@ -1637,7 +1728,10 @@ AS
                 SELECT
 -- ************* 2009/08/24 1.6 N.Maeda ADD START ******************** --
                        /*+
-                         INDEX ( MCIX MTL_CUSTOMER_ITEM_XREFS_U2 )
+--********************  2010/04/16    1.9  M.Sano     ADD Start *******************
+                         USE_NL( mci mcix mp )
+--********************  2010/04/16    1.9  M.Sano     ADD  End  *******************
+                         INDEX ( mcix mtl_customer_item_xrefs_u2 )
                        */
 -- ************* 2009/08/24 1.6 N.Maeda ADD  END  ******************** --
                         mci.customer_id             customer_id
@@ -1654,6 +1748,12 @@ AS
                        ,mtl_parameters           mp     --在庫組織
                 WHERE  mcix.customer_item_id        = mci.customer_item_id        --結合(顧客品目相 = 顧客品目)
                 AND    mp.master_organization_id    = mcix.master_organization_id --結合(在庫組織   = 顧客品目相)
+--********************  2010/04/16    1.9  M.Sano     ADD Start *******************
+                AND    mci.inactive_flag            = cv_n                        --顧客品目.有効フラグ(有効)
+                AND    mcix.inactive_flag           = cv_n                        --顧客品目相互参照.有効フラグ(有効)
+                AND    mci.customer_id              = gt_chain_cust_acct_id       --チェーン店の顧客品目
+                AND    mp.organization_id           = gn_organization_id          --在庫組織ID
+--********************  2010/04/16    1.9  M.Sano     ADD  End  *******************
 -- ************* 2009/09/25 1.7 N.Maeda ADD START ************
                 AND    mcix.preference_number       = (
                          SELECT MIN(mcix_min.preference_number)
@@ -1663,6 +1763,9 @@ AS
                          WHERE  mcix_min.inventory_item_id      = mcix.inventory_item_id
                          AND    mcix_min.master_organization_id = mcix.master_organization_id
                          AND    mci_min.customer_id             = mci.customer_id
+--********************  2010/04/16    1.9  M.Sano     ADD Start *******************
+                         AND    mci_min.attribute1              = mci.attribute1
+--********************  2010/04/16    1.9  M.Sano     ADD  End  *******************
                          AND    mp_min.organization_id          = mp.organization_id
                          AND    mcix_min.customer_item_id       = mci_min.customer_item_id        --結合(顧客品目相 = 顧客品目)
                          AND    mp_min.master_organization_id   = mcix_min.master_organization_id --結合(在庫組織   = 顧客品目相)
@@ -1713,9 +1816,11 @@ AS
       AND    msib.primary_unit_of_measure = mcis.attribute1(+)             --結合(D品目 = 顧客品目相)
 --********************  2009/04/06    1.3  T.Kitajima ADD  End  ********************
 --********************  2009/03/10    1.2  T.Kitajima MOD  End  ********************
--- ************* 2009/09/25 1.7 N.Maeda ADD START ************
-      AND    mcis.organization_id         = xesh.organization_id
--- ************* 2009/09/25 1.7 N.Maeda ADD  END  ************
+--********************  2010/04/16    1.9  M.Sano     DEL Start *******************
+---- ************* 2009/09/25 1.7 N.Maeda ADD START ************
+--      AND    mcis.organization_id         = xesh.organization_id
+---- ************* 2009/09/25 1.7 N.Maeda ADD  END  ************
+--********************  2010/04/16    1.9  M.Sano     DEL  End  *******************
       AND    ( cd_process_date BETWEEN ximb.start_date_active AND  ximb.end_date_active )  --O品目A適用日FROM-TO
       AND    iimb.item_id                 = ximb.item_id                 --結合(O品目 = O品目A)
       AND    msib.segment1                = iimb.item_no                 --結合(D品目 = O品目)
@@ -1794,6 +1899,9 @@ AS
 --             ,hca.edi_forward_number                  edi_forward_number           --EDI伝票追番
 ----********************  2009/06/15    1.5  N.Maeda ADD  End  ********************
 --********************  2009/07/08    1.5  N.Maeda DEL  End  ********************
+--********************  2010/04/16    1.9  M.Sano     ADD Start *******************
+             ,msib.primary_unit_of_measure            unit                         --単位
+--********************  2010/04/16    1.9  M.Sano     ADD  End  *******************
       FROM    xxcos_edi_stc_headers   xesh    --入庫予定ヘッダ
              ,mtl_txn_request_headers mtrh    --移動オーダーヘッダ
              ,( SELECT  hca.account_number             account_number
@@ -1998,6 +2106,9 @@ AS
     ln_line_cnt           NUMBER;                                     --A-3で抽出した明細の件数
     lv_err_msg            VARCHAR2(5000);                             --メッセージ格納用
     lv_chk_flag           VARCHAR2(1);                                --エラーチェックフラグ
+--********************  2010/04/16    1.9  M.Sano     ADD Start *******************
+    ln_cust_item_cnt      NUMBER;                                     --顧客品目の取得件数
+--********************  2010/04/16    1.9  M.Sano     ADD  End  *******************
 --
     -- *** ローカル・カーソル ***
 --
@@ -2117,39 +2228,129 @@ AS
 --        --抽出データ件数のインクリメント
 --        ln_line_cnt := ln_line_cnt + cn_1;
 --      END IF;
-      --顧客品目がNULLまたは、
-      --顧客品目.有効フラグが無効または、
-      --顧客品目相互参照.有効フラグが無効の場合エラーとする。
-      IF ( gt_edi_stc_date(i).customer_item_number IS NULL )
-        OR ( gt_edi_stc_date(i).inactive_flag = cv_y ) 
-        OR ( gt_edi_stc_date(i).inactive_ref_flag = cv_y ) 
-      THEN
-        --メッセージ取得
-        lv_err_msg := xxccp_common_pkg.get_msg(
-                        iv_application  => cv_application                           --アプリケーション
-                       ,iv_name         => cv_msg_line_cnt_err                      --入庫予定データ作成エラー
-                       ,iv_token_name1  => cv_tkn_invoice_num                       --トークンコード１
-                       ,iv_token_value1 => gt_edi_stc_date(i).invoice_number        --伝票番号
-                       ,iv_token_name2  => cv_tkn_item_code                         --トークンコード２
-                       ,iv_token_value2 => gt_edi_stc_date(i).item_code             --品目コード
-                       ,iv_token_name3  => cv_tkn_cust_item_code                    --トークンコード３
-                       ,iv_token_value3 => gt_edi_stc_date(i).customer_item_number  --顧客品目
-                      );
-            --メッセージに出力
-            FND_FILE.PUT_LINE(
-              which  => FND_FILE.OUTPUT
-             ,buff   => lv_err_msg
-            );
-        --チェックフラグを変更する。
-        lv_chk_flag := cv_1;
+--********************  2010/04/16    1.9  M.Sano     MOD Start *******************
+--      --顧客品目がNULLまたは、
+--      --顧客品目.有効フラグが無効または、
+--      --顧客品目相互参照.有効フラグが無効の場合エラーとする。
+--      IF ( gt_edi_stc_date(i).customer_item_number IS NULL )
+--        OR ( gt_edi_stc_date(i).inactive_flag = cv_y ) 
+--        OR ( gt_edi_stc_date(i).inactive_ref_flag = cv_y ) 
+--      THEN
+--        --メッセージ取得
+--        lv_err_msg := xxccp_common_pkg.get_msg(
+--                        iv_application  => cv_application                           --アプリケーション
+--                       ,iv_name         => cv_msg_line_cnt_err                      --入庫予定データ作成エラー
+--                       ,iv_token_name1  => cv_tkn_invoice_num                       --トークンコード１
+--                       ,iv_token_value1 => gt_edi_stc_date(i).invoice_number        --伝票番号
+--                       ,iv_token_name2  => cv_tkn_item_code                         --トークンコード２
+--                       ,iv_token_value2 => gt_edi_stc_date(i).item_code             --品目コード
+--                       ,iv_token_name3  => cv_tkn_cust_item_code                    --トークンコード３
+--                       ,iv_token_value3 => gt_edi_stc_date(i).customer_item_number  --顧客品目
+--                      );
+--            --メッセージに出力
+--            FND_FILE.PUT_LINE(
+--              which  => FND_FILE.OUTPUT
+--             ,buff   => lv_err_msg
+--            );
+--        --チェックフラグを変更する。
+--        lv_chk_flag := cv_1;
+--      END IF;
+----********************  2009/03/10    1.2  T.Kitajima MOD  End  ********************
+      -- EDI連携品目コード区分が"顧客品目"の場合のみ下記チェックを実施
+      IF ( gt_edi_item_code_div = cv_1 ) THEN
+        -- 顧客品目の件数を取得
+        SELECT COUNT(1)           cust_item_cnt
+        INTO   ln_cust_item_cnt
+        FROM   mtl_customer_items        mcis -- 顧客品目
+              ,mtl_customer_item_xrefs   mcix -- 顧客品目相互参照
+              ,mtl_parameters            mpar -- 在庫組織
+        WHERE  mcis.customer_id       = gt_chain_cust_acct_id       -- 条件：顧客ID
+        AND    mcis.attribute1        = gt_edi_stc_date(i).unit     -- 条件：単位
+        AND    mcis.inactive_flag     = cv_n                        -- 条件：無効フラグ(有効)
+        AND    mcix.customer_item_id  = mcis.customer_item_id       -- 結合：相互参照・顧客品目
+        AND    mcix.inventory_item_id = gt_edi_stc_date(i).inventory_item_id
+                                                                    -- 条件：品目ID
+        AND    mcix.inactive_flag     = cv_n                        -- 条件：無効フラグ(有効)
+        AND    mpar.master_organization_id
+                                      = mcix.master_organization_id -- 結合：在庫組織・相互参照
+        AND    mpar.organization_id   = gt_edi_stc_date(i).organization_id
+        AND    mpar.organization_id   = gn_organization_id          -- 条件：在庫組織ID(入庫･プロファイル)
+        AND    mcix.preference_number = (
+                SELECT MIN(mcix_min.preference_number)
+                FROM   mtl_customer_item_xrefs  mcix_min -- 顧客品目
+                      ,mtl_customer_items       mcis_min -- 顧客品目相互参照
+                WHERE  mcis_min.customer_id       = gt_chain_cust_acct_id       -- 条件：顧客コード
+                AND    mcis_min.attribute1        = gt_edi_stc_date(i).unit     -- 条件：単位
+                AND    mcis_min.inactive_flag     = cv_n                        -- 条件：無効フラグ(有効)
+                AND    mcix_min.customer_item_id  = mcis_min.customer_item_id   -- 結合：相互参照・顧客品目
+                AND    mcix_min.inventory_item_id = gt_edi_stc_date(i).inventory_item_id
+                                                                                -- 条件：品目ID
+                AND    mcix_min.inactive_flag     = cv_n                        -- 条件：無効フラグ(有効)
+                AND    mcix_min.master_organization_id
+                                                  = mcix.master_organization_id 
+              )                                                    -- 条件：最小ランク(顧客･品目･単位)
+        ;
+--
+        --件数チェック
+        --取得件数が 0件の場合 ⇒ 入庫予定データ作成エラー
+        IF ( ln_cust_item_cnt = cn_0 ) THEN
+          --入庫予定データ作成エラーメッセージを出力する
+          lv_err_msg := xxccp_common_pkg.get_msg(
+                          iv_application  => cv_application                     --アプリケーション
+                         ,iv_name         => cv_msg_line_cnt_err                --入庫予定データ作成エラー
+                         ,iv_token_name1  => cv_tkn_invoice_num                 --トークンコード１
+                         ,iv_token_value1 => gt_edi_stc_date(i).invoice_number  --伝票番号
+                         ,iv_token_name2  => cv_tkn_cust_code                   --トークンコード２
+                         ,iv_token_value2 => gt_chain_acct_number               --顧客コード
+                         ,iv_token_name3  => cv_tkn_uom_code                    --トークンコード３
+                         ,iv_token_value3 => gt_edi_stc_date(i).unit            --単位
+                         ,iv_token_name4  => cv_tkn_item_code                   --トークンコード４
+                         ,iv_token_value4 => gt_edi_stc_date(i).item_code       --品目コード
+                        );
+          FND_FILE.PUT_LINE(
+            which  => FND_FILE.OUTPUT
+           ,buff   => lv_err_msg
+          );
+          --チェックフラグを変更する。
+          lv_chk_flag := cv_1;
+--
+        --取得件数が複数の場合 ⇒ 顧客品目複数取得エラー
+        ELSIF ( ln_cust_item_cnt > cn_1 ) THEN
+          --複数顧客品目エラーメッセージを出力する
+          lv_err_msg := xxccp_common_pkg.get_msg(
+                          iv_application  => cv_application                     --アプリケーション
+                         ,iv_name         => cv_msg_cust_item_err               --複数顧客品目エラー
+                         ,iv_token_name1  => cv_tkn_invoice_num                 --トークンコード１
+                         ,iv_token_value1 => gt_edi_stc_date(i).invoice_number  --伝票番号
+                         ,iv_token_name2  => cv_tkn_cust_code                   --トークンコード１
+                         ,iv_token_value2 => gt_chain_acct_number               --顧客コード
+                         ,iv_token_name3  => cv_tkn_uom_code                    --トークンコード２
+                         ,iv_token_value3 => gt_edi_stc_date(i).unit            --単位
+                         ,iv_token_name4  => cv_tkn_cust_item_code              --トークンコード３
+                         ,iv_token_value4 => gt_edi_stc_date(i).customer_item_number
+                                                                                --顧客品目
+                         ,iv_token_name5  => cv_tkn_item_code                   --トークンコード４
+                         ,iv_token_value5 => gt_edi_stc_date(i).item_code       --品目コード
+                        );
+          FND_FILE.PUT_LINE(
+            which  => FND_FILE.OUTPUT
+           ,buff   => lv_err_msg
+          );
+          --チェックフラグを変更する
+          lv_chk_flag := cv_1;
+--
+        END IF;
       END IF;
---********************  2009/03/10    1.2  T.Kitajima MOD  End  ********************
+--********************  2010/04/16    1.9  M.Sano     MOD  End  *******************
 --
     END LOOP check_loop;
 --
     --チェックエラーがある場合、エラーとする。
     IF ( lv_chk_flag <> cv_0 ) THEN
-      gn_warn_cnt := gn_target_cnt;  --スキップ件数(全件)を設定
+--********************  2010/04/16    1.9  M.Sano     MOD Start *******************
+--      gn_warn_cnt := gn_target_cnt;  --スキップ件数(全件)を設定
+      gn_error_cnt := gn_target_cnt;    --エラー件数(全件)を設定
+--********************  2010/04/16    1.9  M.Sano     MOD  End  *******************
       RAISE global_api_others_expt;
     END IF;
 --
