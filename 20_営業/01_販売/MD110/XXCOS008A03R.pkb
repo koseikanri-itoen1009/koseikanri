@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCOS008A03R (body)
  * Description      : 直送受注例外データリスト
  * MD.050           : 直送受注例外データリスト MD050_COS_008_A03
- * Version          : 1.16
+ * Version          : 1.17
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -47,6 +47,7 @@ AS
  *  2011/03/08    1.15  K.Kiriu          [E_本稼動_04367] 対象月含む以前のデータのみ出力の対応
  *                                                        クローズデータの日付参照不具合対応
  *  2011/04/18    1.16  Y.Kanami         [E_本稼動_06646] ALL指定時の条件に顧客追加対応
+ *  2011/11/11    1.17  K.Nakamura       [E_本稼動_08743] 受注あり、出荷なし時の受注ステータス見直し
  *
  *****************************************************************************************/
 --
@@ -3276,7 +3277,10 @@ AS
            LEADING(ooha)
            INDEX(ooha xxcos_oe_order_headers_all_n11)
            INDEX(oola xxcos_oe_order_lines_all_n23)
-           USE_NL( ooha hca  )
+-- 2011/11/11 Ver.1.17 Mod Start
+--           USE_NL( ooha hca  )
+           USE_NL( ooha hca xca )
+-- 2011/11/11 Ver.1.17 Mod End
            USE_NL( oola mtsi ottt otta )
 -- 2010/04/09 Ver.1.14 Add M.Sano Start
            USE_NL( oola iimb ximb )
@@ -3324,8 +3328,12 @@ AS
      AND  oola.subinventory =  mtsi.secondary_inventory_name     -- 受注明細.保管場所 = 保管場所ﾏｽﾀ.保管場所ｺｰﾄﾞ
      AND  oola.ship_from_org_id  =  mtsi.organization_id         -- 受注明細.出荷元組織ID = 保管場所ﾏｽﾀ.組織ID
      AND  mtsi.attribute13       =  gv_subinventory_class        -- 保管場所ﾏｽﾀ.保管場所分類 = '11':直送
-     AND  ooha.flow_status_code  IN ( cv_status_booked , cv_status_closed ) -- 受注ﾍｯﾀﾞ.ｽﾃｰﾀｽ IN ( 'BOOKED','CLOSED' )
-     AND  oola.flow_status_code  <> cv_status_cancelled          -- 受注明細.ｽﾃｰﾀｽ <> 'CANCELLED'
+-- 2011/11/11 Ver.1.17 Mod Start
+--     AND  ooha.flow_status_code  IN ( cv_status_booked , cv_status_closed ) -- 受注ﾍｯﾀﾞ.ｽﾃｰﾀｽ IN ( 'BOOKED','CLOSED' )
+--     AND  oola.flow_status_code  <> cv_status_cancelled          -- 受注明細.ｽﾃｰﾀｽ <> 'CANCELLED'
+     AND  ooha.flow_status_code  = cv_status_booked              -- 受注ﾍｯﾀﾞ.ｽﾃｰﾀｽ = 'BOOKED'
+     AND  oola.flow_status_code  = cv_status_booked              -- 受注明細.ｽﾃｰﾀｽ = 'BOOKED'
+-- 2011/11/11 Ver.1.17 Mod End
      AND  oola.org_id       = gn_org_id
      AND  oola.packing_instructions  IS NOT NULL                 -- 受注明細.梱包指示 IS NOT NULL
      AND  NOT EXISTS ( SELECT                                    -- NVL(受注明細.子コード,受注明細.受注品目)≠非在庫品目コード
@@ -3395,11 +3403,14 @@ AS
                                                                   -- NVL(受注明細.子コード,受注明細.受注品目) = 受注ﾍｯﾀﾞｱﾄﾞｵﾝ.依頼品目
              AND  NVL( oola.attribute6, oola.ordered_item ) = xola.request_item_code
              )
-       AND  ( ( oola.flow_status_code = cv_status_closed
-              AND oola.request_date >= to_date( gd_target_closed_month ) )
-            OR ( oola.flow_status_code <> cv_status_closed
-              AND oola.request_date >= to_date( gd_trans_start_date ) )
-            )
+-- 2011/11/11 Ver.1.17 Mod Start
+--       AND  ( ( oola.flow_status_code = cv_status_closed
+--              AND oola.request_date >= to_date( gd_target_closed_month ) )
+--            OR ( oola.flow_status_code <> cv_status_closed
+--              AND oola.request_date >= to_date( gd_trans_start_date ) )
+--            )
+     AND  oola.request_date >= to_date( gd_trans_start_date )
+-- 2011/11/11 Ver.1.17 Mod End
 -- 2011/03/08 Ver.1.15 Add K.Kiriu Start
        AND  oola.request_date < gd_trans_end_date --前月納品日(業務日付の月初より前)のみ出力
 -- 2011/03/08 Ver.1.15 Add K.Kiriu End
@@ -3606,8 +3617,12 @@ AS
      AND  oola.subinventory =  mtsi.secondary_inventory_name     -- 受注明細.保管場所 = 保管場所ﾏｽﾀ.保管場所ｺｰﾄﾞ
      AND  oola.ship_from_org_id  =  mtsi.organization_id         -- 受注明細.出荷元組織ID = 保管場所ﾏｽﾀ.組織ID
      AND  mtsi.attribute13       =  gv_subinventory_class        -- 保管場所ﾏｽﾀ.保管場所分類 = '11':直送
-     AND  ooha.flow_status_code  IN ( cv_status_booked , cv_status_closed ) -- 受注ﾍｯﾀﾞ.ｽﾃｰﾀｽ IN ( 'BOOKED','CLOSED' )
-     AND  oola.flow_status_code  <> cv_status_cancelled          -- 受注明細.ｽﾃｰﾀｽ <> 'CANCELLED'
+-- 2011/11/11 Ver.1.17 Mod Start
+--     AND  ooha.flow_status_code  IN ( cv_status_booked , cv_status_closed ) -- 受注ﾍｯﾀﾞ.ｽﾃｰﾀｽ IN ( 'BOOKED','CLOSED' )
+--     AND  oola.flow_status_code  <> cv_status_cancelled          -- 受注明細.ｽﾃｰﾀｽ <> 'CANCELLED'
+     AND  ooha.flow_status_code  =  cv_status_booked             -- 受注ﾍｯﾀﾞ.ｽﾃｰﾀｽ = 'BOOKED'
+     AND  oola.flow_status_code  =  cv_status_booked             -- 受注明細.ｽﾃｰﾀｽ = 'BOOKED'
+-- 2011/11/11 Ver.1.17 Mod End
      AND  oola.org_id       = gn_org_id
      AND  oola.packing_instructions  IS NOT NULL                 -- 受注明細.梱包指示 IS NOT NULL
      AND  NOT EXISTS ( SELECT                                    -- NVL(受注明細.子コード,受注明細.受注品目)≠非在庫品目コード
@@ -3655,11 +3670,14 @@ AS
                                                                   -- NVL(受注明細.子コード,受注明細.受注品目) = 受注ﾍｯﾀﾞｱﾄﾞｵﾝ.依頼品目
              AND  NVL( oola.attribute6, oola.ordered_item ) = xola.request_item_code
              )
-       AND  ( ( oola.flow_status_code = cv_status_closed
-              AND oola.request_date >= to_date( gd_target_closed_month ) )
-            OR ( oola.flow_status_code <> cv_status_closed
-              AND oola.request_date >= to_date( gd_trans_start_date ) )
-            )
+-- 2011/11/11 Ver.1.17 Mod Start
+--       AND  ( ( oola.flow_status_code = cv_status_closed
+--              AND oola.request_date >= to_date( gd_target_closed_month ) )
+--            OR ( oola.flow_status_code <> cv_status_closed
+--              AND oola.request_date >= to_date( gd_trans_start_date ) )
+--            )
+     AND  oola.request_date >= to_date( gd_trans_start_date )
+-- 2011/11/11 Ver.1.17 Mod End
      UNION ALL
     -- ======================================================
     -- [拠点指定]例外２
