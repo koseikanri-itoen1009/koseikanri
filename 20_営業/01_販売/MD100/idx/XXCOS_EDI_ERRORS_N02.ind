@@ -1,0 +1,6 @@
+CREATE INDEX xxcos.xxcos_edi_errors_n02 ON xxcos.xxcos_edi_errors (
+    edi_create_class
+  , err_list_out_flag
+  , chain_code
+  , edi_received_date
+) TABLESPACE xxidx2 ;

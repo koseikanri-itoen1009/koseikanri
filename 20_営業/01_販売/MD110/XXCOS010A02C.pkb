@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCOS010A02C(body)
  * Description      : 受注OIFへの取込機能
  * MD.050           : 受注OIFへの取込(MD050_COS_010_A02)
- * Version          : 1.10
+ * Version          : 1.11
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -46,6 +46,12 @@ AS
  *  2009/11/05    1.8   N.Maeda          [E_T4_00081] 予定出荷日セット内容をNULLに変更
  *  2009/12/04    1.9   M.Fujinuma       [E_本稼動_00316]営業担当IDを受注ヘッダOIF用変数に追加
  *  2009/12/29    1.10  K.Oomata         [E_本稼動_00595]EDI情報データ抽出時のロックエラーは"警告"終了
+ *  2010/01/26    1.11  M.Sano           [E_本稼動_01156]
+ *                                       ・外部システム受注明細番号のセット項目の変更
+ *                                       ・行No重複時、記帳しないように変更
+ *                                       ・受注OIF明細の明細番号に受注関連明細番号の値をセット。
+ *                                       [E_本稼動_01215]
+ *                                       ・ロックエラー時は正常終了するように修正
  *
  *****************************************************************************************/
 --
@@ -314,6 +320,10 @@ AS
 --****************************** 2009/05/08 1.5 T.Kitajima ADD START ******************************--
              , xel.taking_unit_price  taking_unit_price        -- 取込時原単価（発注）
 --****************************** 2009/05/08 1.5 T.Kitajima ADD  END  ******************************--
+--****************************** 2010/01/26 1.11 M.Sano    ADD START ******************************--
+             , xel.order_connection_line_number   order_connection_line_number
+                                                               -- 受注関連明細番号
+--****************************** 2010/01/26 1.11 M.Sano    ADD  END  ******************************--
       FROM     xxcos_edi_lines       xel                       -- EDI明細情報テーブル
              , xxcos_lookup_values_v xlvv                      -- クイックコード(エラー品目)
       WHERE    xel.edi_header_info_id    =  gt_edi_headers ( gn_idx ).edi_header_info_id
@@ -438,6 +448,10 @@ AS
   -- 受注明細OIF テーブルタイプ定義
   TYPE  g_tab_order_source_id_l          IS TABLE OF oe_lines_iface_all.order_source_id%TYPE
     INDEX BY PLS_INTEGER;                                                                         -- インポートソースID
+--****************************** 2010/01/26 1.11 M.Sano    ADD START ******************************--
+  TYPE  g_tab_line_number                IS TABLE OF oe_lines_iface_all.line_number%TYPE
+    INDEX BY PLS_INTEGER;                                                                         -- 明細番号
+--****************************** 2010/01/26 1.11 M.Sano    ADD  END  ******************************--
   TYPE  g_tab_inventory_item             IS TABLE OF oe_lines_iface_all.inventory_item%TYPE
     INDEX BY PLS_INTEGER;                                                                         -- 受注品目
   TYPE  g_tab_ordered_quantity           IS TABLE OF oe_lines_iface_all.ordered_quantity%TYPE
@@ -502,6 +516,9 @@ AS
 --
   -- 受注明細OIFインサート用変数
   gt_order_source_id_l                    g_tab_order_source_id_l;           -- インポートソースID
+--****************************** 2010/01/26 1.11 M.Sano    ADD START ******************************--
+  gt_line_number                          g_tab_line_number;                 -- 明細番号
+--****************************** 2010/01/26 1.11 M.Sano    ADD  END  ******************************--
   gt_inventory_item                       g_tab_inventory_item;              -- 受注品目
   gt_ordered_quantity                     g_tab_ordered_quantity;            -- 受注数量
   gt_order_quantity_uom                   g_tab_order_quantity_uom;          -- 受注単位
@@ -957,7 +974,10 @@ AS
     WHEN lock_expt THEN
       ov_errmsg  := lv_errmsg;
       ov_errbuf  := SUBSTRB( cv_pkg_name||cv_msg_cont||cv_prg_name||cv_msg_part||lv_errbuf, 1, 5000);
-      ov_retcode := cv_status_warn;
+--****************************** 2010/01/26 1.11 M.Sano    MOD START ******************************--
+--      ov_retcode := cv_status_warn;
+      ov_retcode := cv_status_normal;
+--****************************** 2010/01/26 1.11 M.Sano    MOD  END  ******************************--
 -- 2009/12/29 K.Oomata Ver.1.10 add end
     -- *** 共通関数例外ハンドラ ***
     WHEN global_api_expt THEN
@@ -1346,8 +1366,13 @@ AS
     END IF;
 --
     -- A-5で取得した「品目コード」にダミー品目コードが設定されていた場合
+    -- または、受注関連明細番号と明細番号が異なる場合
     -- または、原単価(発注)がNULLの場合(EDI受注のみ。EDI納品確定はエラーになる)
     IF  (( gt_edi_lines ( gn_l_idx ).err_item_flg     = cv_flg_y)
+--****************************** 2010/01/26 1.11 M.Sano    ADD START ******************************--
+      OR ( gt_edi_lines ( gn_l_idx ).line_no         <>
+              gt_edi_lines ( gn_l_idx ).order_connection_line_number )
+--****************************** 2010/01/26 1.11 M.Sano    ADD END   ******************************--
       OR ( gt_edi_lines ( gn_l_idx ).order_unit_price IS NULL ))
     THEN
       gv_dummy_item_flg := cv_dummy_item_flg_n;
@@ -1423,6 +1448,10 @@ AS
 --###########################  固定部 END   ############################
 --
     gt_order_source_id_l( gn_l_idx_all )           :=  gv_order_source_id;                        -- インポートソースID
+--****************************** 2010/01/26 1.11 M.Sano    ADD START ******************************--
+    gt_line_number( gn_l_idx_all )                 :=  gt_edi_lines( gn_l_idx ).order_connection_line_number;
+                                                                                                  -- 明細番号
+--****************************** 2010/01/26 1.11 M.Sano    ADD  END  ******************************--
     gt_inventory_item( gn_l_idx_all )              :=  gt_edi_lines( gn_l_idx ).item_code;        -- 受注品目
     gt_ordered_quantity( gn_l_idx_all )            :=  gt_edi_lines( gn_l_idx ).sum_order_qty;    -- 受注数量
     gt_order_quantity_uom( gn_l_idx_all )          :=  gt_edi_lines( gn_l_idx ).line_uom;         -- 受注単位
@@ -1442,11 +1471,15 @@ AS
 --****************************** 2009/04/15 1.4 T.Kitajima MOD START ******************************--
 --    gt_customer_po_number_l( gn_l_idx_all )        :=  gt_edi_headers ( gn_idx ).conv_customer_code;   -- 顧客発注番号
     gt_customer_po_number_l( gn_l_idx_all )        :=  gt_edi_headers ( gn_idx ).invoice_number;  -- 顧客発注番号
---****************************** 2009/04/15 1.4 T.Kitajima MOD START ******************************--
+--****************************** 2009/04/15 1.4 T.Kitajima MOD  END  ******************************--
     gt_customer_line_number( gn_l_idx_all )        :=  gt_edi_lines( gn_l_idx ).line_no;          -- 顧客発注明細番号
     gt_orig_sys_document_ref_l( gn_l_idx_all )     :=  gt_edi_headers ( gn_idx ).order_connection_number;
                                                                                                   -- 外部システム受注番号
-    gt_orig_sys_line_ref( gn_l_idx_all )           :=  gt_edi_lines( gn_l_idx ).line_no;          -- 外部システム受注明細番号
+--****************************** 2010/01/26 1.11 M.Sano    MOD START ******************************--
+--    gt_orig_sys_line_ref( gn_l_idx_all )           :=  gt_edi_lines( gn_l_idx ).line_no;          -- 外部システム受注明細番号
+    gt_orig_sys_line_ref( gn_l_idx_all )           :=  gt_edi_lines( gn_l_idx ).order_connection_line_number;
+                                                                                                  -- 外部システム受注明細番号
+--****************************** 2010/01/26 1.11 M.Sano    MOD  END  ******************************--
     gt_line_type_id( gn_l_idx_all )                :=  gv_trans_line_type_id;                     -- 明細タイプID
     gt_attribute5( gn_l_idx_all )                  :=  gv_sales_type;                             -- 売上区分
     gt_name_l( gn_l_idx_all )                      :=  gv_name_l;                                 -- 取引明細タイプ名称
@@ -1876,6 +1909,9 @@ AS
       FORALL ln_ins_idx IN 1 ..gn_l_idx_all 
         INSERT INTO oe_lines_iface_all(
             order_source_id                                               -- インポートソースID
+--****************************** 2010/01/26 1.11 M.Sano    ADD START ******************************--
+          , line_number                                                   -- 明細番号
+--****************************** 2010/01/26 1.11 M.Sano    ADD  END  ******************************--
           , inventory_item                                                -- 受注品目
           , ordered_quantity                                              -- 受注数量
           , order_quantity_uom                                            -- 受注単位
@@ -1903,6 +1939,9 @@ AS
         )
         VALUES(
             gt_order_source_id_l( ln_ins_idx )                            -- インポートソースID
+--****************************** 2010/01/26 1.11 M.Sano    ADD START ******************************--
+          , gt_line_number( ln_ins_idx )                                  -- 明細番号
+--****************************** 2010/01/26 1.11 M.Sano    ADD  END  ******************************--
           , gt_inventory_item( ln_ins_idx )                               -- 受注品目
           , gt_ordered_quantity( ln_ins_idx )                             -- 受注数量
           , gt_order_quantity_uom( ln_ins_idx )                           -- 受注単位
@@ -2312,7 +2351,10 @@ AS
 --
       END LOOP edi_lines_loop;
 --
-      -- ダミー品目コードが設定されていない場合
+      -- 以下の条件を満たさない場合は、「記帳済」に更新する為の変数に変換
+      -- ・ダミー品目コード
+      -- ・単価0円
+      -- ・同一のEDIヘッダ内に行Noが重複
       IF ( gv_dummy_item_flg != cv_dummy_item_flg_n ) THEN
 --
         -- ============================================

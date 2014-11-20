@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCOS010A01C (body)
  * Description      : 受注データ取込機能
  * MD.050           : 受注データ取込(MD050_COS_010_A01)
- * Version          : 1.14
+ * Version          : 1.15
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -15,6 +15,7 @@ AS
  *  proc_param_check       入力パラメータ妥当性チェック(A-1)
  *  proc_init              初期処理(A-2)
  *  proc_get_edi_work      EDI受注情報ワークテーブルデータ抽出(A-3)
+ *  proc_set_edi_errors    EDIエラー情報変数格納(A-5-1)
  *  proc_data_validate     データ妥当性チェック(A-4)
  *  proc_set_edi_work      EDI受注情報ワーク変数格納(A-5)
  *  proc_set_edi_status    EDIステータス更新用変数格納(A-6)
@@ -30,6 +31,7 @@ AS
  *  proc_upd_edi_headers   EDIヘッダ情報テーブルデータ更新(A-16)
  *  proc_ins_edi_lines     EDI明細情報テーブルデータ追加(A-17)
  *  proc_upd_edi_lines     EDI明細情報テーブルデータ更新(A-18)
+ *  proc_del_edi_errors    EDIエラー情報テーブルデータ削除(A-19-1)
  *  proc_ins_edi_errors    EDIエラー情報テーブルデータ追加(A-19)
  *  proc_upd_edi_work      EDI受注情報ワークテーブルステータス更新(A-20)
  *  proc_del_edi_work      EDI受注情報ワークテーブルデータ削除(A-21)
@@ -68,6 +70,15 @@ AS
  *  2009/12/28    1.14  M.Sano           [E_本稼動_00738]
  *                                       ・必須チェック外のレコード作成時の受注連携済フラグのセット値変更
  *                                       ・項目「通過在庫型区分」の追加
+ *  2010/01/19    1.15  M.Sano           [E_本稼動_01154][E_本稼動_01156][E_本稼動_01159][E_本稼動_01162][E_本稼動_01551]
+ *                                       ・入力パラメータ「チェーン店コード」追加
+ *                                       ・EDIエラー情報に列の追加対応
+ *                                        (エラーメッセージコード・EDI品目名・EDI受信日・エラーリスト出力済フラグ)
+ *                                       ・EDIヘッダ情報に列の追加対応 (EDI受信日)
+ *                                       ・妥当性チェックの追加・修正（必須・担当営業員・受注関連明細番号)
+ *                                       ・受注エラーリスト出力用の品目エラーメッセージの変更
+ *                                       ・EDIエラー情報のパージ処理追加
+ *                                       ・情報区分「04」時はチェック処理を実施
  *
  *****************************************************************************************/
 --
@@ -139,6 +150,10 @@ AS
   cv_prf_case_uom        CONSTANT VARCHAR2(50)  := 'XXCOS1_CASE_UOM_CODE';      -- XXCOS:ケース単位コード
   cv_prf_organization_cd CONSTANT VARCHAR2(50)  := 'XXCOI1_ORGANIZATION_CODE';  -- XXCOI:在庫組織コード
   cv_prf_org_unit        CONSTANT VARCHAR2(50)  := 'ORG_ID';                    -- MO:営業単位
+-- 2010/01/19 Ver.1.15 M.Sano add Start
+  cv_prf_err_purge_term  CONSTANT VARCHAR2(50)  := 'XXCOS1_EDI_ERRMSG_PARGE_TERM';
+                                                                                -- XXCOS:EDIエラー情報保持期間
+-- 2010/01/19 Ver.1.15 M.Sano add End
   -- エラーコード
   cv_msg_param_required  CONSTANT VARCHAR2(20)  := 'APP-XXCOS1-00006';          -- 必須入力パラメータ未設定エラーメッセージ
   cv_msg_param_invalid   CONSTANT VARCHAR2(20)  := 'APP-XXCOS1-00019';          -- 入力パラメータ不正エラーメッセージ
@@ -156,6 +171,10 @@ AS
   cv_msg_edi_item        CONSTANT VARCHAR2(20)  := 'APP-XXCOS1-00023';          -- EDI連携品目コード区分エラーメッセージ
   cv_msg_item_conv       CONSTANT VARCHAR2(20)  := 'APP-XXCOS1-00024';          -- 商品コード変換エラーメッセージ
   cv_msg_price_err       CONSTANT VARCHAR2(20)  := 'APP-XXCOS1-00123';          -- 単価取得エラーメッセージ
+-- 2010/01/19 Ver.1.15 M.Sano add Start
+  cv_msg_salesrep_err    CONSTANT VARCHAR2(20)  := 'APP-XXCOS1-11963';          -- 担当営業員取得エラーメッセージ
+  cv_msg_line_no_err     CONSTANT VARCHAR2(20)  := 'APP-XXCOS1-11964';          -- 行No重複エラーメッセージ
+-- 2010/01/19 Ver.1.15 M.Sano add End
   cv_msg_insert          CONSTANT VARCHAR2(20)  := 'APP-XXCOS1-00010';          -- データ登録エラーメッセージ
   cv_msg_update          CONSTANT VARCHAR2(20)  := 'APP-XXCOS1-00011';          -- データ更新エラーメッセージ
   cv_msg_delete          CONSTANT VARCHAR2(20)  := 'APP-XXCOS1-00012';          -- データ削除エラーメッセージ
@@ -179,6 +198,9 @@ AS
   cv_msg_param_info      CONSTANT VARCHAR2(20)  := 'APP-XXCOS1-11951';          -- パラメータ出力メッセージ
   cv_msg_edi_exe         CONSTANT VARCHAR2(20)  := 'APP-XXCOS1-11952';          -- 実行区分
   cv_msg_purge_term      CONSTANT VARCHAR2(20)  := 'APP-XXCOS1-11953';          -- XXCOS:EDI情報削除期間
+-- 2010/01/19 Ver.1.15 M.Sano add Start
+  cv_msg_err_purge_term  CONSTANT VARCHAR2(20)  := 'APP-XXCOS1-11962';          -- XXCOS:EDIエラー情報削除期間
+-- 2010/01/19 Ver.1.15 M.Sano add End
   cv_msg_shop_code       CONSTANT VARCHAR2(20)  := 'APP-XXCOS1-11954';          -- 店コード
   cv_msg_line_no         CONSTANT VARCHAR2(20)  := 'APP-XXCOS1-11955';          -- 行番号
   cv_msg_order_qty       CONSTANT VARCHAR2(20)  := 'APP-XXCOS1-11956';          -- 発注数量（合計、バラ）
@@ -195,6 +217,14 @@ AS
   cv_msg_rep_item_conv   CONSTANT VARCHAR2(20)  := 'APP-XXCOS1-00154';          -- エラーリスト用：商品コード変換エラー
   cv_msg_rep_duplicate   CONSTANT VARCHAR2(20)  := 'APP-XXCOS1-00155';          -- エラーリスト用：重複登録エラー
   cv_msg_rep_price_err   CONSTANT VARCHAR2(20)  := 'APP-XXCOS1-00156';          -- エラーリスト用：単価取得エラー
+-- 2010/01/19 Ver.1.15 M.Sano add Start
+  cv_msg_rep_salesrep    CONSTANT VARCHAR2(20)  := 'APP-XXCOS1-00198';          -- エラーリスト用：担当営業員取得エラー
+  cv_msg_rep_line_no     CONSTANT VARCHAR2(20)  := 'APP-XXCOS1-00199';          -- エラーリスト用：行No重複エラー
+  cv_msg_rep_no_shop_cd  CONSTANT VARCHAR2(20)  := 'APP-XXCOS1-00200';          -- エラーリスト用：必須項目(店コード)未入力エラー
+  cv_msg_rep_no_line_no  CONSTANT VARCHAR2(20)  := 'APP-XXCOS1-00201';          -- エラーリスト用：必須項目(行No)未入力エラー
+  cv_msg_rep_no_quantity CONSTANT VARCHAR2(20)  := 'APP-XXCOS1-00202';          -- エラーリスト用：必須項目(本数)未入力エラー
+  cv_msg_rep_cust_item   CONSTANT VARCHAR2(20)  := 'APP-XXCOS1-00203';          -- エラーリスト用：顧客品目変換エラー
+-- 2010/01/19 Ver.1.15 M.Sano add End
   -- トークン
   cv_tkn_in_param        CONSTANT VARCHAR2(20)  := 'IN_PARAM';                  -- 入力パラメータ
   cv_tkn_profile         CONSTANT VARCHAR2(20)  := 'PROFILE';                   -- プロファイル
@@ -213,6 +243,11 @@ AS
   cv_tkn_column          CONSTANT VARCHAR2(20)  := 'COLMUN';                    -- カラム名
   cv_tkn_param1          CONSTANT VARCHAR2(20)  := 'PARAME1';                   -- パラメータ１
   cv_tkn_param2          CONSTANT VARCHAR2(20)  := 'PARAME2';                   -- パラメータ２
+-- 2010/01/19 Ver.1.15 M.Sano add Start
+  cv_tkn_param3          CONSTANT VARCHAR2(20)  := 'PARAM3';                    -- パラメータ３
+  cv_tkn_new_line_no     CONSTANT VARCHAR2(20)  := 'NEW_LINE_NO';               -- 行番号(採番後)
+  cv_tkn_cust_code       CONSTANT VARCHAR2(20)  := 'CUST_CODE';                 -- (変換後)顧客コード
+-- 2010/01/19 Ver.1.15 M.Sano add End
   -- クイックコードタイプ
   cv_qck_edi_exe         CONSTANT VARCHAR2(50)  := 'XXCOS1_EDI_EXE_TYPE';       -- 実行区分
   cv_qck_creation_class  CONSTANT VARCHAR2(50)  := 'XXCOS1_EDI_CREATE_CLASS';   -- EDI作成元区分
@@ -260,12 +295,22 @@ AS
 -- 2009/06/29 M.Sano Ver.1.6 add Start
   cv_info_class_01       CONSTANT VARCHAR2(10)  := '01';                        -- 情報区分:01
   cv_info_class_02       CONSTANT VARCHAR2(10)  := '02';                        -- 情報区分:02
+-- 2010/01/19 Ver.1.15 M.Sano add Start
+  cv_info_class_04       CONSTANT VARCHAR2(10)  := '04';                        -- 情報区分:04
+-- 2010/01/19 Ver.1.15 M.Sano add End
   cn_check_record_yes    CONSTANT NUMBER        := 1;                           -- 対象レコードのチェック：有
   cn_check_record_no     CONSTANT NUMBER        := 0;                           -- 対象レコードのチェック：無
 -- 2009/06/29 M.Sano Ver.1.6 mod End
 -- 2009/10/02 Ver1.10 M.Sano Add Start
   cv_inactive_flag_no    CONSTANT VARCHAR2(1)   := 'N';                         -- 顧客品目･相互参照.有効フラグ：有効
 -- 2009/10/02 Ver1.10 M.Sano Add End
+-- 2010/01/19 Ver1.15 M.Sano Add Start
+  cv_err_out_flag_new    CONSTANT VARCHAR2(2)   := 'N0';                        -- エラーリスト出力済フラグ：未出力(新規)
+  cv_err_out_flag_retry  CONSTANT VARCHAR2(2)   := 'N1';                        -- エラーリスト出力済フラグ：未出力(再実施)
+  cv_err_out_flag_yes    CONSTANT VARCHAR2(2)   := 'Y';                         -- エラーリスト出力済フラグ：出力済
+  cv_edi_create_class    CONSTANT VARCHAR2(2)   := '01';                        -- エラーリスト種別：受注
+  ct_order_date_def      CONSTANT DATE          := SYSDATE;                     -- 営業担当チェック用日付NULL時のデフォルト値
+-- 2010/01/19 Ver1.15 M.Sano Add End
 --
   -- ===============================
   -- ユーザー定義グローバル型
@@ -275,7 +320,11 @@ AS
   CURSOR edi_order_work_cur(
     iv_file_name       VARCHAR2,             -- インタフェースファイル名
     iv_data_type_code  VARCHAR2,             -- データ種コード
-    iv_status          VARCHAR2              -- ステータス
+-- 2010/01/19 Ver1.15 M.Sano Mod Start
+--    iv_status          VARCHAR2              -- ステータス
+    iv_status          VARCHAR2,             -- ステータス
+    iv_edi_chain_code  VARCHAR2              -- EDIチェーン店コード
+-- 2010/01/19 Ver1.15 M.Sano Mod End
   )
   IS
     SELECT  edi.order_info_work_id           order_info_work_id,                -- 受注情報ワークID
@@ -631,9 +680,19 @@ AS
             edi.total_line_qty               total_line_qty,                    -- トータル行数
             edi.total_invoice_qty            total_invoice_qty,                 -- トータル伝票枚数
             edi.chain_peculiar_area_footer   chain_peculiar_area_footer,        -- チェーン店固有エリア（フッター）
-            edi.err_status                   err_status                         -- ステータス
+-- 2010/01/19 Ver1.15 M.Sano Mod Start
+--            edi.err_status                   err_status                         -- ステータス
+            edi.err_status                   err_status,                        -- ステータス
+            edi.creation_date                creation_date                      -- 作成日
+-- 2010/01/19 Ver1.15 M.Sano Mod End
     FROM    xxcos_edi_order_work             edi
-    WHERE   edi.if_file_name                 = iv_file_name                     -- インタフェースファイル名
+-- 2010/01/19 Ver1.15 M.Sano Mod Start
+--    WHERE   edi.if_file_name                 = iv_file_name                     -- インタフェースファイル名
+    WHERE (   iv_file_name IS NULL
+           OR edi.if_file_name               = iv_file_name )                   -- インタフェースファイル名
+    AND   (   iv_edi_chain_code IS NULL
+           OR edi.edi_chain_code             = iv_edi_chain_code )              -- EDIチェーン店コード
+-- 2010/01/19 Ver1.15 M.Sano Mod End
     AND     edi.data_type_code               = iv_data_type_code                -- データ種コード
     AND     edi.err_status                   = iv_status                        -- ステータス
     ORDER BY
@@ -1017,6 +1076,9 @@ AS
       total_invoice_qty                      xxcos_edi_order_work.total_invoice_qty%TYPE,                -- トータル伝票枚数
       chain_peculiar_area_footer             xxcos_edi_order_work.chain_peculiar_area_footer%TYPE,       -- チェーン店固有エリア（フッター）
       err_status                             xxcos_edi_order_work.err_status%TYPE,                       -- ステータス
+-- 2010/01/19 Ver1.15 M.Sano Mod Start
+      creation_date                          xxcos_edi_order_work.creation_date%TYPE,                    -- 作成日
+-- 2010/01/19 Ver1.15 M.Sano Mod End
       -- 以降、EDI受注情報ワークテーブル以外のカラム
       conv_customer_code                     xxcos_edi_headers.conv_customer_code%TYPE,                  -- 変換後顧客コード
       price_list_header_id                   xxcos_edi_headers.price_list_header_id%TYPE,                -- 価格表ヘッダID
@@ -1026,6 +1088,9 @@ AS
       order_forward_flag                     xxcos_edi_headers.order_forward_flag%TYPE,                  -- 受注連携済フラグ
       tsukagatazaiko_div                     xxcos_edi_headers.tsukagatazaiko_div%TYPE,                  -- 通過在庫型区分
 -- 2009/12/28 M.Sano Ver.1.14 add End
+-- 2010/01/19 Ver.1.15 M.Sano add Start
+      order_connection_line_number           xxcos_edi_lines.order_connection_line_number%TYPE,          -- 受注関連明細番号
+-- 2010/01/19 Ver.1.15 M.Sano add End
       check_status                           xxcos_edi_order_work.err_status%TYPE                        -- チェックステータス
     );
 --
@@ -1578,6 +1643,10 @@ AS
   TYPE g_tsukagatazaiko_div_ttype            IS TABLE OF xxcos_edi_headers.tsukagatazaiko_div%TYPE
     INDEX BY PLS_INTEGER;     -- 通過在庫型区分
 -- 2009/12/28 M.Sano Ver.1.14 add End
+-- 2010/01/19 Ver.1.15 M.Sano add Start
+  TYPE g_edi_received_date_ttype             IS TABLE OF xxcos_edi_headers.edi_received_date%TYPE
+    INDEX BY PLS_INTEGER;     -- EDI受信日
+-- 2010/01/19 Ver.1.15 M.Sano add End
 --
   -- EDI明細情報テーブル テーブルタイプ定義
   TYPE g_edi_lines_ttype                     IS TABLE OF xxcos_edi_lines%ROWTYPE
@@ -1792,6 +1861,9 @@ AS
   -- ユーザー定義グローバル変数
   -- ===============================
   gv_purge_term                              fnd_profile_option_values.profile_option_value%TYPE;   -- EDI情報削除期間
+-- 2010/01/19 Ver.1.15 M.Sano add Start
+  gv_err_purge_term                          fnd_profile_option_values.profile_option_value%TYPE;   -- EDIエラー情報保持期間
+-- 2010/01/19 Ver.1.15 M.Sano add End
   gv_case_uom_code                           fnd_profile_option_values.profile_option_value%TYPE;   -- ケース単位コード
   gn_organization_id                         NUMBER;                                                -- 在庫組織ID
   gn_org_unit_id                             NUMBER;                                                -- 営業単位
@@ -2249,8 +2321,13 @@ AS
    * Description      : 入力パラメータ妥当性チェック(A-1)
    ***********************************************************************************/
   PROCEDURE proc_param_check(
-    iv_filename   IN  VARCHAR2,              -- インタフェースファイル名
-    iv_exe_type   IN  VARCHAR2,              -- 実行区分
+-- 2010/01/19 Ver1.15 M.Sano Add Start
+--    iv_filename   IN  VARCHAR2,              -- インタフェースファイル名
+--    iv_exe_type   IN  VARCHAR2,              -- 実行区分
+    iv_filename       IN  VARCHAR2,          -- インタフェースファイル名
+    iv_exe_type       IN  VARCHAR2,          -- 実行区分
+    iv_edi_chain_code IN  VARCHAR2,          -- EDIチェーン店コード
+-- 2010/01/19 Ver1.15 M.Sano Add End
     ov_errbuf     OUT NOCOPY VARCHAR2,       -- エラー・メッセージ           --# 固定 #
     ov_retcode    OUT NOCOPY VARCHAR2,       -- リターン・コード             --# 固定 #
     ov_errmsg     OUT NOCOPY VARCHAR2)       -- ユーザー・エラー・メッセージ --# 固定 #
@@ -2306,7 +2383,12 @@ AS
                                             cv_tkn_param1,
                                             iv_filename,
                                             cv_tkn_param2,
-                                            iv_exe_type
+-- 2010/01/19 Ver1.15 M.Sano Mod Start
+--                                            iv_exe_type
+                                            iv_exe_type,
+                                            cv_tkn_param3,
+                                            iv_edi_chain_code
+-- 2010/01/19 Ver1.15 M.Sano Mod End
                                           );
     lv_errbuf  := lv_errmsg;
     FND_FILE.PUT_LINE(
@@ -2328,8 +2410,14 @@ AS
       buff   => NULL
     );
 --
-    -- インタフェースファイル名が未入力の場合
-    IF ( iv_filename IS NULL ) THEN
+-- 2010/01/19 Ver1.15 M.Sano Mod Start
+--    -- インタフェースファイル名が未入力の場合
+--    IF ( iv_filename IS NULL ) THEN
+    -- IFファイルとEDIチェーン店をどちらか指定する必要がある為、IFファイルとEDIチェーン店の必須チェックを実施
+    -- ・ いずれかが設定 ⇒ 後続の処理を実施
+    -- ・ 両方ともNULL   ⇒ 必須パラメータ未設定エラー(IFファイル)
+    IF ( iv_filename IS NULL AND iv_edi_chain_code IS NULL ) THEN
+-- 2010/01/19 Ver1.15 M.Sano Mod End
       -- 必須パラメータ未設定エラーを出力
       lv_tkn1    := xxccp_common_pkg.get_msg( cv_application, cv_msg_file_name );
       lv_errmsg  := xxccp_common_pkg.get_msg( cv_application, cv_msg_param_required, cv_tkn_in_param, lv_tkn1 );
@@ -2570,6 +2658,24 @@ AS
       ov_retcode := cv_status_error;
     END IF;
 --
+-- 2010/01/19 Ver.1.15 M.Sano add Start
+    --==============================================================
+    -- プロファイルの取得(XXCOS:EDIエラー情報削除期間)
+    --==============================================================
+    gv_err_purge_term := FND_PROFILE.VALUE( cv_prf_err_purge_term );
+--
+    -- プロファイルが取得できなかった場合
+    IF ( gv_err_purge_term IS NULL ) THEN
+      -- プロファイル（XXCOS:EDIエラー情報削除期間)取得エラーを出力
+      lv_tkn1   := xxccp_common_pkg.get_msg( cv_application, cv_msg_err_purge_term );
+      lv_errmsg := xxccp_common_pkg.get_msg( cv_application, cv_msg_profile, cv_tkn_profile, lv_tkn1 );
+      lv_errbuf := lv_errmsg;
+      -- ログ出力
+      proc_msg_output( cv_prg_name, lv_errbuf );
+      ov_retcode := cv_status_error;
+    END IF;
+--
+-- 2010/01/19 Ver.1.15 M.Sano add End
     --==============================================================
     -- EDI作成元区分取得
     --==============================================================
@@ -2652,8 +2758,13 @@ AS
    * Description      : EDI受注情報ワークテーブルデータ抽出(A-3)
    ***********************************************************************************/
   PROCEDURE proc_get_edi_work(
-    iv_filename   IN  VARCHAR2,            -- インタフェースファイル名
-    iv_exe_type   IN  VARCHAR2,            -- 実行区分
+-- 2010/01/19 Ver1.15 M.Sano Mod Start
+--    iv_filename   IN  VARCHAR2,            -- インタフェースファイル名
+--    iv_exe_type   IN  VARCHAR2,            -- 実行区分
+    iv_filename       IN  VARCHAR2,        -- インタフェースファイル名
+    iv_exe_type       IN  VARCHAR2,        -- 実行区分
+    iv_edi_chain_code IN  VARCHAR2,        -- EDIチェーン店コード
+-- 2010/01/19 Ver1.15 M.Sano Mod End
     on_target_cnt OUT NOCOPY NUMBER,       -- 対象データ件数
     ov_errbuf     OUT NOCOPY VARCHAR2,     --   エラー・メッセージ           --# 固定 #
     ov_retcode    OUT NOCOPY VARCHAR2,     --   リターン・コード             --# 固定 #
@@ -2707,8 +2818,12 @@ AS
 --
     END IF;
 --
+-- 2010/01/19 Ver1.15 M.Sano Mod Start
+--    -- カーソルオープン
+--    OPEN edi_order_work_cur( iv_filename, cv_data_type_code, lv_status );
     -- カーソルオープン
-    OPEN edi_order_work_cur( iv_filename, cv_data_type_code, lv_status );
+    OPEN edi_order_work_cur( iv_filename, cv_data_type_code, lv_status, iv_edi_chain_code );
+-- 2010/01/19 Ver1.15 M.Sano Mod End
     -- バルクフェッチ
     FETCH edi_order_work_cur BULK COLLECT INTO gt_edi_order_work;
     -- 抽出件数セット
@@ -2779,7 +2894,7 @@ AS
 --
   /**********************************************************************************
    * Procedure Name   : proc_set_edi_errors
-   * Description      : EDIエラー情報変数格納
+   * Description      : EDIエラー変数格納(A-5-1)
    ***********************************************************************************/
   PROCEDURE proc_set_edi_errors(
     it_edi_work          IN g_edi_work_rtype,     -- EDI受注情報ワークレコード
@@ -2807,10 +2922,23 @@ AS
     -- ユーザー宣言部
     -- ===============================
     -- *** ローカル定数 ***
+-- 2010/01/19 Ver1.15 M.Sano Add Start
+    cv_brank             VARCHAR2(1) := '';
+    cv_err_item_yes      VARCHAR2(1) := 'Y';
+    cv_err_item_no       VARCHAR2(1) := 'N';
+-- 2010/01/19 Ver1.15 M.Sano Add End
 --
     -- *** ローカル変数 ***
     ln_idx               NUMBER;
     ln_seq               NUMBER;
+-- 2010/01/19 Ver1.15 M.Sano Add Start
+    lv_error_type        VARCHAR2(1);
+    lv_err_item_flag     VARCHAR2(1);
+    lt_err_list_out_flag xxcos_edi_errors.err_list_out_flag%TYPE;
+    lt_item_code         ic_item_mst_b.item_no%TYPE;
+    lt_item_name         xxcmn_item_mst_b.item_short_name%TYPE;
+    ld_delivery_date     DATE;                                    -- 納品予定日
+-- 2010/01/19 Ver1.15 M.Sano Add End
 --
     -- *** ローカル・カーソル ***
 --
@@ -2830,6 +2958,84 @@ AS
     -- メッセージIDからメッセージを取得
     lv_errmsg := xxccp_common_pkg.get_msg( cv_application, iv_message_id );
 --
+-- 2010/01/19 Ver1.15 M.Sano Add Start
+    -- ・行No重複エラーの場合、トークンに行Noを取得する為、再度メッセージを取得
+    IF ( iv_message_id = cv_msg_rep_line_no ) THEN
+      lv_errmsg := xxccp_common_pkg.get_msg(
+                       cv_application
+                     , iv_message_id
+                     , cv_tkn_line_no
+                     , it_edi_work.order_connection_line_number
+                   );
+    END IF;
+--
+    -- EDIエラー情報の項目算出
+    -- ・EDIエラー情報にセットするエラーリスト出力済フラグを取得する。
+    --   (新規取込の場合 ⇒ エラーリスト出力済フラグに「N0」）
+    --   (再実施の場合   ⇒ エラーリスト出力済フラグに「N1」）
+    IF ( it_edi_work.err_status = cv_edi_status_new ) THEN
+      lt_err_list_out_flag := cv_err_out_flag_new;
+    ELSE
+      lt_err_list_out_flag := cv_err_out_flag_retry;
+    END IF;
+--
+    -- ・対象品目がエラー品目かどうか判定する。
+    lv_err_item_flag := cv_err_item_no;
+    lv_error_type    := gt_edi_item_err_type.FIRST;
+    lt_item_code     := NVL(iv_dummy_item, it_edi_work.item_code);
+    WHILE ( lv_error_type IS NOT NULL AND lt_item_code IS NOT NULL ) LOOP
+      IF ( gt_edi_item_err_type(lv_error_type) = lt_item_code ) THEN
+        lv_err_item_flag := cv_err_item_yes;
+      END IF;
+      lv_error_type := gt_edi_item_err_type.NEXT(lv_error_type);
+    END LOOP;
+--
+    -- ・EDI品目名称を抽出する。
+    --   1. エラー品目    で商品名２（カナ）又は、規格2がNULL以外 ⇒ EDI品目名称に「商品名２（カナ） + 規格2」
+    IF ( lv_err_item_flag = cv_err_item_yes
+      AND ( it_edi_work.product_name2_alt IS NOT NULL OR it_edi_work.item_standard2 IS NOT NULL )
+    ) THEN
+      lt_item_name := NVL(it_edi_work.product_name2_alt, cv_brank)
+                   || NVL(it_edi_work.item_standard2, cv_brank);
+    --   2. エラー品目    で商品名１（カナ）又は、規格1がNULL以外 ⇒ EDI品目名称に「商品名１（カナ） + 規格1」
+    ELSIF ( lv_err_item_flag = cv_err_item_yes
+      AND ( it_edi_work.product_name1_alt IS NOT NULL OR it_edi_work.item_standard1 IS NOT NULL )
+    ) THEN
+      lt_item_name := NVL(it_edi_work.product_name1_alt, cv_brank)
+                   || NVL(it_edi_work.item_standard1, cv_brank);
+    --   3. エラー品目以外で品目コードがNULL以外                  ⇒ EDI品目名称に「OPM品目マスタ.品目名称」
+    ELSIF ( lv_err_item_flag = cv_err_item_no AND lt_item_code IS NOT NULL  ) THEN
+      --[要求日を取得]
+      ld_delivery_date := NVL( it_edi_work.shop_delivery_date, 
+                            NVL( it_edi_work.center_delivery_date, 
+                                 NVL( it_edi_work.order_date, 
+                                      it_edi_work.data_creation_date_edi_data
+                                    )
+                               )
+                          );
+      --[品目名称を取得]
+      BEGIN
+        SELECT ximb.item_short_name item_name           -- 品目名称
+        INTO   lt_item_name
+        FROM   ic_item_mst_b      iimb                  -- OPM品目マスタ
+             , xxcmn_item_mst_b   ximb                  -- OPM品目マスタアドオン
+        WHERE  iimb.item_no    = lt_item_code
+        AND    ximb.item_id    = iimb.item_id
+        AND    ld_delivery_date
+                 BETWEEN NVL(TRUNC(ximb.start_date_active), ld_delivery_date)
+                 AND     NVL(TRUNC(ximb.end_date_active),   ld_delivery_date)
+        ;
+      EXCEPTION
+        WHEN NO_DATA_FOUND THEN
+          lt_item_name := NULL;
+      END;
+    --   4. 上記以外                                              ⇒ EDI品目名称に「NULL」
+    ELSE
+      lt_item_name := NULL;
+    END IF;
+--
+    -- EDIエラー情報に作成するデータを作成用配列に格納
+-- 2010/01/19 Ver1.15 M.Sano Mod End
     gt_edi_errors(ln_idx).edi_err_id                   := ln_seq;                                        -- EDIエラーID
     gt_edi_errors(ln_idx).edi_create_class             := gv_creation_class;                             -- EDI作成元区分：受注
     gt_edi_errors(ln_idx).chain_code                   := it_edi_work.edi_chain_code;                    -- EDIチェーン店コード
@@ -2848,6 +3054,12 @@ AS
     gt_edi_errors(ln_idx).work_id                      := it_edi_work.order_info_work_id;                -- EDI受注情報ワークID
     gt_edi_errors(ln_idx).status                       := cv_edi_status_warning;                         -- ステータス：警告
     gt_edi_errors(ln_idx).err_message                  := SUBSTRB(lv_errmsg, 1, 40);                     -- エラーメッセージ（40ﾊﾞｲﾄ分）
+-- 2010/01/19 Ver1.15 M.Sano Add Start
+    gt_edi_errors(ln_idx).err_message_code             := iv_message_id;                                 -- メッセージID
+    gt_edi_errors(ln_idx).edi_received_date            := it_edi_work.creation_date;                     -- EDI受信日
+    gt_edi_errors(ln_idx).err_list_out_flag            := lt_err_list_out_flag;                          -- 受注エラーリスト出力済フラグ
+    gt_edi_errors(ln_idx).edi_item_name                := SUBSTRB(lt_item_name, 1, 20);                  -- EDI品目名称
+-- 2010/01/19 Ver1.15 M.Sano Add End
     gt_edi_errors(ln_idx).created_by                   := cn_created_by;                                 -- 作成者
     gt_edi_errors(ln_idx).creation_date                := cd_creation_date;                              -- 作成日
     gt_edi_errors(ln_idx).last_updated_by              := cn_last_updated_by;                            -- 最終更新者
@@ -2900,6 +3112,10 @@ AS
     -- ===============================
 --
     -- *** ローカル定数 ***
+-- 2010/01/19 M.Sano Ver.1.15 add Start
+    cv_line_no_dupli_yes   CONSTANT VARCHAR2(1) := 'Y';                         -- 行No重複エラー:Yes
+    cv_line_no_dupli_no    CONSTANT VARCHAR2(1) := 'N';                         -- 行No重複エラー:No
+-- 2010/01/19 M.Sano Ver.1.15 add End
 --
     -- *** ローカル変数 ***
     -- 顧客情報定義
@@ -2929,6 +3145,10 @@ AS
     lv_edi_item_code_div      xxcmm_cust_accounts.edi_item_code_div%TYPE;       -- EDI連携品目コード区分
     lv_check_status           xxcos_edi_order_work.err_status%TYPE;             -- EDIエラーステータス
     ln_idx                    NUMBER;
+-- 2010/01/19 M.Sano Ver.1.15 add Start
+    ln_new_line_no            NUMBER;                                           -- 行No(再採番用)
+    lt_salesrep_id            jtf_rs_salesreps.salesrep_id%TYPE;                -- 営業担当ID
+-- 2010/01/19 M.Sano Ver.1.15 add End
 --
     -- *** ローカル・カーソル ***
 --
@@ -3002,7 +3222,10 @@ AS
         -- ログ出力
         proc_msg_output( cv_prg_name, lv_errbuf );
         -- EDIエラー情報追加
-        proc_set_edi_errors( it_edi_work(it_edi_work.first), NULL, NULL, cv_msg_rep_required );
+-- 2010/01/19 Ver.1.15 M.Sano mod Start
+--        proc_set_edi_errors( it_edi_work(it_edi_work.first), NULL, NULL, cv_msg_rep_required );
+        proc_set_edi_errors( it_edi_work(it_edi_work.first), NULL, cv_error_delete_flag, cv_msg_rep_no_shop_cd );
+-- 2010/01/19 Ver.1.15 M.Sano mod End
         -- エラー設定
         ln_result := 1;
       END IF;
@@ -3019,7 +3242,10 @@ AS
           -- ログ出力
           proc_msg_output( cv_prg_name, lv_errbuf );
           -- EDIエラー情報追加
-          proc_set_edi_errors( it_edi_work(ln_idx), NULL, NULL, cv_msg_rep_required );
+-- 2010/01/19 Ver.1.15 M.Sano mod Start
+--          proc_set_edi_errors( it_edi_work(ln_idx), NULL, NULL, cv_msg_rep_required );
+          proc_set_edi_errors( it_edi_work(ln_idx), NULL, cv_error_delete_flag, cv_msg_rep_no_line_no );
+-- 2010/01/19 Ver.1.15 M.Sano mod End
           -- エラー設定
           ln_result := 1;
         END IF;
@@ -3038,7 +3264,10 @@ AS
           -- ログ出力
           proc_msg_output( cv_prg_name, lv_errbuf );
           -- EDIエラー情報追加
-          proc_set_edi_errors( it_edi_work(ln_idx), NULL, NULL, cv_msg_rep_required );
+-- 2010/01/19 Ver.1.15 M.Sano mod Start
+--          proc_set_edi_errors( it_edi_work(ln_idx), NULL, NULL, cv_msg_rep_required );
+          proc_set_edi_errors( it_edi_work(ln_idx), NULL, cv_error_delete_flag, cv_msg_rep_no_quantity );
+-- 2010/01/19 Ver.1.15 M.Sano mod End
           -- エラー設定
           ln_result := 1;
         END IF;
@@ -3229,6 +3458,49 @@ AS
         NULL;
     END;
 --
+-- 2010/01/19 Ver.1.15 M.Sano add Start
+    -- -------------------------------
+    -- 営業担当ID取得
+    -- -------------------------------
+    PROCEDURE get_salesrep_id(
+      it_customer_code         IN  hz_cust_accounts.account_number%TYPE, -- IN ：顧客コード
+      id_date                  IN  DATE,                                 -- IN ：受注日付
+      ot_salesrep_id           OUT jtf_rs_salesreps.salesrep_id%TYPE     -- OUT：営業担当ID
+    )
+    IS
+      -- ===============================
+      -- 固定ローカル定数
+      -- ===============================
+      cv_prg_name   CONSTANT VARCHAR2(100) := 'get_salesrep_id'; -- プログラム名
+      
+    BEGIN
+      SELECT jrs.salesrep_id                                                    -- 営業担当ID
+      INTO   ot_salesrep_id
+      FROM   hz_cust_accounts          hca                                      -- 顧客マスタ
+            ,hz_organization_profiles  hop                                      -- 組織プロファイル
+            ,ego_resource_agv          era                                      -- 組織プロファイル拡張
+            ,jtf_rs_salesreps          jrs                                      -- 営業担当
+      WHERE  hca.account_number          = it_customer_code                     -- [抽出]顧客コード
+      AND    hop.party_id                = hca.party_id                         -- [結合]パーティID
+      AND    era.organization_profile_id = hop.organization_profile_id          -- [結合]組織プロファイルID
+      AND    hop.effective_end_date      IS NULL                                -- [抽出]組織プロファイル.有効終了日：NULL
+      AND    jrs.salesrep_number         = era.resource_no                      -- [結合]営業担当No
+      AND    jrs.org_id                  = gn_org_unit_id                       -- [抽出]営業単位ID
+      AND    TRUNC(era.resource_s_date)              <= TRUNC(NVL(id_date, ct_order_date_def) )
+      AND    TRUNC(NVL(era.resource_e_date, NVL(id_date, ct_order_date_def) ) )
+                                                     >= TRUNC(NVL(id_date, ct_order_date_def) )
+      AND    TRUNC(jrs.start_date_active)            <= TRUNC(NVL(id_date, ct_order_date_def) )
+      AND    TRUNC(NVL(jrs.end_date_active, NVL(id_date, ct_order_date_def) ) )
+                                                     >= TRUNC(NVL(id_date, ct_order_date_def) )
+      AND    ROWNUM = 1
+      ;
+    EXCEPTION
+      -- データが存在しない場合、呼出元でエラー処理を実施する
+      WHEN NO_DATA_FOUND THEN
+        ot_salesrep_id := NULL;
+    END;
+--
+-- 2010/01/19 Ver.1.15 M.Sano add End
     -- -------------------------------
     -- JANコード情報取得
     -- -------------------------------
@@ -3741,8 +4013,17 @@ AS
                             ot_item_info_rec.item_id,
                             ot_item_info_rec.unit );
 --
+-- 2010/01/19 Ver.1.15 M.Sano mod Start
+--        -- EDIエラー情報追加
+--        proc_set_edi_errors( it_edi_work, lv_dummy_item, cv_error_delete_flag, cv_msg_rep_item_conv );
         -- EDIエラー情報追加
-        proc_set_edi_errors( it_edi_work, lv_dummy_item, cv_error_delete_flag, cv_msg_rep_item_conv );
+        -- ・JANコード ⇒ 「商品コード変換エラー」 顧客品目 ⇒ 「顧客品目変換エラー」
+        IF ( iv_edi_item_code_div = cv_item_code_div_jan ) THEN
+          proc_set_edi_errors( it_edi_work, lv_dummy_item, cv_error_delete_flag, cv_msg_rep_item_conv );
+        ELSIF ( iv_edi_item_code_div = cv_item_code_div_cust ) THEN
+          proc_set_edi_errors( it_edi_work, lv_dummy_item, cv_error_delete_flag, cv_msg_rep_cust_item );
+        END IF;
+-- 2010/01/19 Ver.1.15 M.Sano mod End
 --
         -- エラー件数インクリメント
         gn_warn_cnt := gn_warn_cnt + 1;
@@ -3769,17 +4050,47 @@ AS
 --
     -- 伝票エラーフラグ初期化
     gn_invoice_err_flag := 0;
+-- 2010/01/19 Ver.1.15 M.Sano add Start
+    -- 最終行の行Noを取得する。
+    ln_new_line_no := gt_edi_work( gt_edi_work.last ).line_no;
+-- 2010/01/19 Ver.1.15 M.Sano add End
 -- 2009/06/29 M.Sano Ver.1.6 add Start
 --
     -- チェック対象の有無を取得する。
     IF ( ( gt_edi_work(gt_edi_work.first).info_class IS NULL )
     OR   ( gt_edi_work(gt_edi_work.first).info_class  = cv_info_class_01 )
+-- 2010/01/19 Ver.1.15 M.Sano add Start
+    OR   ( gt_edi_work(gt_edi_work.first).info_class  = cv_info_class_04 )
+-- 2010/01/19 Ver.1.15 M.Sano add End
     OR   ( gt_edi_work(gt_edi_work.first).info_class  = cv_info_class_02 ) ) THEN
       gn_check_record_flag := cn_check_record_yes;
     ELSE
       gn_check_record_flag := cn_check_record_no;
     END IF;
 -- 2009/06/29 M.Sano Ver.1.6 add End
+-- 2010/01/19 Ver.1.15 M.Sano add Start
+--
+    ----------------------------------------
+    -- 顧客コード変換チェック
+    ----------------------------------------
+    -- 店コードがNULL以外の場合
+    IF ( gt_edi_work(gt_edi_work.first).shop_code IS NOT NULL ) THEN
+      --チェーン店・店コードから顧客情報を取得する。
+      customer_conv_check(
+        gt_edi_work(gt_edi_work.first),        -- IN：EDI受注情報ワークデータ
+        lt_cust_info_rec,                      -- OUT：顧客情報
+        lv_check_status                        -- OUT：チェックステータス
+      );
+--
+      -- エラーチェック
+      -- ・エラー時、全データのステータスを警告に変更後、チェック処理終了
+      IF ( lv_check_status != cv_edi_status_normal ) THEN
+        set_check_status_all( lv_check_status );
+        ov_retcode := cv_status_warn;
+        RETURN;
+      END IF;
+    END IF;
+-- 2010/01/19 Ver.1.15 M.Sano add end
 --
     ----------------------------------------
     -- 必須入力チェック
@@ -3794,21 +4105,23 @@ AS
       RETURN;
     END IF;
 --
-    -- 顧客コード変換チェック
-    customer_conv_check(
-      gt_edi_work(gt_edi_work.first),        -- IN：EDI受注情報ワークデータ
-      lt_cust_info_rec,                      -- OUT：顧客情報
-      lv_check_status                        -- OUT：チェックステータス
-    );
---
-    -- ステータスが正常以外は、ステータスを設定
-    IF ( lv_check_status != cv_edi_status_normal ) THEN
-      -- 全データにステータスを設定
-      set_check_status_all( lv_check_status );
-      -- チェック処理終了
-      ov_retcode := cv_status_warn;
-      RETURN;
-    END IF;
+-- 2010/01/19 Ver.1.15 M.Sano del Start
+--    -- 顧客コード変換チェック
+--    customer_conv_check(
+--      gt_edi_work(gt_edi_work.first),        -- IN：EDI受注情報ワークデータ
+--      lt_cust_info_rec,                      -- OUT：顧客情報
+--      lv_check_status                        -- OUT：チェックステータス
+--    );
+----
+--    -- ステータスが正常以外は、ステータスを設定
+--    IF ( lv_check_status != cv_edi_status_normal ) THEN
+--      -- 全データにステータスを設定
+--      set_check_status_all( lv_check_status );
+--      -- チェック処理終了
+--      ov_retcode := cv_status_warn;
+--      RETURN;
+--    END IF;
+-- 2010/01/19 Ver.1.15 M.Sano del end
 --
     -- EDI連携品目コード区分を取得
     get_edi_item_code_div(
@@ -3843,6 +4156,46 @@ AS
       RETURN;
     END IF;
 --
+-- 2010/01/19 Ver.1.15 M.Sano add Start
+    ----------------------------------------
+    -- 営業担当員存在チェック
+    ----------------------------------------
+    get_salesrep_id(
+      lt_cust_info_rec.conv_cust_code,            -- IN ：顧客コード
+      gt_edi_work(gt_edi_work.first).order_date,  -- IN ：受注日
+      lt_salesrep_id                              -- OUT：営業担当員ID
+    );
+    IF ( lt_salesrep_id IS NULL AND gn_check_record_flag = cn_check_record_yes )THEN
+      -- 営業担当員取得エラーを出力
+      lv_errmsg := xxccp_common_pkg.get_msg(
+                       cv_application
+                     , cv_msg_salesrep_err
+                     , cv_tkn_chain_shop_code
+                     , gt_edi_work(gt_edi_work.first).edi_chain_code
+                     , cv_tkn_shop_code
+                     , gt_edi_work(gt_edi_work.first).shop_code
+                     , cv_tkn_cust_code
+                     , lt_cust_info_rec.conv_cust_code
+                     , cv_tkn_order_no
+                     , gt_edi_work(gt_edi_work.first).invoice_number
+                     , cv_tkn_store_deliv_dt
+                     , TO_CHAR( gt_edi_work(gt_edi_work.first).shop_delivery_date
+                              , cv_format_yyyymmdds )
+                   );
+      lv_errbuf := lv_errmsg;
+      -- ログ出力
+      proc_msg_output( cv_prg_name, lv_errbuf );
+      -- 全データに警告ステータスを設定
+      set_check_status_all( cv_edi_status_warning );
+      -- EDIエラー情報追加
+      proc_set_edi_errors( gt_edi_work(gt_edi_work.first), NULL, NULL, cv_msg_rep_salesrep );
+      -- 伝票エラーフラグ設定
+      gn_invoice_err_flag := 1;
+      -- チェック処理終了
+      ov_retcode := cv_status_warn;
+      RETURN;
+    END IF;
+-- 2010/01/19 Ver.1.15 M.Sano add End
     -- 同一伝票内の全明細のチェック
     <<loop_edi_lines_check>>
     FOR ln_Idx IN 1..gt_edi_work.COUNT LOOP
@@ -3880,7 +4233,12 @@ AS
 --
       -- 受注連携済フラグを設定
       IF (  gt_lookup_tsukagata_divs.EXISTS(lt_cust_info_rec.tsukagatazaiko_div)
-        AND gn_check_record_flag = cn_check_record_yes
+-- 2010/01/19 Ver.1.15 M.Sano add Start
+--        AND gn_check_record_flag = cn_check_record_yes
+          AND (   gt_edi_work(gt_edi_work.first).info_class IS NULL
+               OR gt_edi_work(gt_edi_work.first).info_class  = cv_info_class_01
+               OR gt_edi_work(gt_edi_work.first).info_class  = cv_info_class_02 )
+-- 2010/01/19 Ver.1.15 M.Sano add End
       ) THEN
         gt_edi_work(gt_edi_work.first).order_forward_flag := cv_order_forward_flag;
       ELSE
@@ -3959,6 +4317,50 @@ AS
 --
       END IF;
 --
+-- 2010/01/19 Ver.1.15 M.Sano add Start
+      ----------------------------------------
+      -- 行No重複チェック
+      ----------------------------------------
+      -- 1レコード目以外で前レコードと同一の行Noの場合
+      IF ( ln_idx <> 1 AND gt_edi_work(ln_idx - 1).line_no = gt_edi_work(ln_idx).line_no ) THEN
+        -- 受注関連明細番号に行Noの最大値+1を設定する。
+        ln_new_line_no := ln_new_line_no + 1;
+        gt_edi_work(ln_idx).order_connection_line_number := ln_new_line_no;
+        -- チェック対象の場合、行No重複エラー
+        IF ( gn_check_record_flag = cn_check_record_yes ) THEN
+          -- 行No重複エラーを出力
+          lv_errmsg := xxccp_common_pkg.get_msg(
+                           cv_application
+                         , cv_msg_line_no_err
+                         , cv_tkn_new_line_no
+                         , gt_edi_work(ln_idx).order_connection_line_number
+                         , cv_tkn_chain_shop_code
+                         , gt_edi_work(ln_idx).edi_chain_code
+                         , cv_tkn_shop_code
+                         , gt_edi_work(ln_idx).shop_code
+                         , cv_tkn_order_no
+                         , gt_edi_work(ln_idx).invoice_number
+                         , cv_tkn_store_deliv_dt
+                         , TO_CHAR( gt_edi_work(ln_idx).shop_delivery_date, cv_format_yyyymmdds )
+                         , cv_tkn_line_no
+                         , gt_edi_work(ln_idx).line_no
+                       );
+          lv_errbuf := lv_errmsg;
+          -- ログ出力
+          proc_msg_output( cv_prg_name, lv_errbuf );
+          -- 警告ステータス設定
+          gt_edi_work(ln_idx).check_status := cv_edi_status_warning;
+          -- EDIエラー情報追加
+          proc_set_edi_errors( gt_edi_work(ln_idx), NULL, cv_error_delete_flag, cv_msg_rep_line_no );
+          -- エラー件数インクリメント
+          gn_warn_cnt := gn_warn_cnt + 1;
+        END IF;
+      ELSE
+        -- 受注関連明細番号に行Noを設定する。
+        gt_edi_work(ln_idx).order_connection_line_number := gt_edi_work(ln_idx).line_no;
+      END IF;
+--
+-- 2010/01/19 Ver.1.15 M.Sano add End
       -- 原価金額(発注)を再計算【発注数量(合計、バラ)×原単価(発注)】
 -- 2009/08/06 Ver.1.8 M.Sano Mod Start
 --      gt_edi_work(ln_idx).order_cost_amt := NVL( gt_edi_work(ln_idx).sum_order_qty, 0 )
@@ -4410,6 +4812,9 @@ AS
     gt_edi_work(ln_idx).total_invoice_qty              := it_edi_work.total_invoice_qty;                 -- トータル伝票枚数
     gt_edi_work(ln_idx).chain_peculiar_area_footer     := it_edi_work.chain_peculiar_area_footer;        -- チェーン店固有エリア（フッター）
     gt_edi_work(ln_idx).err_status                     := it_edi_work.err_status;                        -- ステータス
+-- 2010/01/19 Ver.1.15 M.Sano add Start
+    gt_edi_work(ln_idx).creation_date                  := it_edi_work.creation_date;                     -- 作成日
+-- 2010/01/19 Ver.1.15 M.Sano add End
     gt_edi_work(ln_idx).conv_customer_code             := NULL;                                          -- 変換後顧客コード
     gt_edi_work(ln_idx).price_list_header_id           := NULL;                                          -- 価格表ヘッダID
     gt_edi_work(ln_idx).item_code                      := NULL;                                          -- 品目コード
@@ -4962,6 +5367,9 @@ AS
 -- 2009/12/28 M.Sano Ver.1.14 add Start
     gt_edi_headers(ln_idx).tsukagatazaiko_div               := it_edi_work.tsukagatazaiko_div;                -- 通過在庫型区分
 -- 2009/12/28 M.Sano Ver.1.14 add End
+-- 2010/01/19 Ver1.15 M.Sano Add Start
+    gt_edi_headers(ln_idx).edi_received_date                := it_edi_work.creation_date;                     -- EDI受信日
+-- 2010/01/19 Ver1.15 M.Sano Add End
     gt_edi_headers(ln_idx).created_by                       := cn_created_by;                                 -- 作成者
     gt_edi_headers(ln_idx).creation_date                    := cd_creation_date;                              -- 作成日
     gt_edi_headers(ln_idx).last_updated_by                  := cn_last_updated_by;                            -- 最終更新者
@@ -5391,7 +5799,10 @@ AS
     INTO    on_edi_line_info_id
     FROM    xxcos_edi_lines             line
     WHERE   line.edi_header_info_id     = in_edi_header_info_id            -- EDIヘッダ情報ID
-    AND     line.line_no                = it_edi_work.line_no;             -- 行番号
+-- 2010/01/19 Ver1.15 M.Sano Mod Start
+--    AND     line.line_no                = it_edi_work.line_no;             -- 行番号
+    AND     line.order_connection_line_number = it_edi_work.order_connection_line_number; -- 受注関連明細番号
+-- 2010/01/19 Ver1.15 M.Sano Mod End
 --
   EXCEPTION
     WHEN NO_DATA_FOUND THEN
@@ -5577,7 +5988,10 @@ AS
     gt_edi_lines(ln_idx).item_code                     := it_edi_work.item_code;                         -- 品目コード
     gt_edi_lines(ln_idx).line_uom                      := it_edi_work.line_uom;                          -- 明細単位
     gt_edi_lines(ln_idx).hht_delivery_schedule_flag    := cv_hht_delivery_flag;                          -- HHT納品予定連携済フラグ
-    gt_edi_lines(ln_idx).order_connection_line_number  := it_edi_work.line_no;                           -- 受注関連明細番号
+-- 2010/01/19 Ver.1.15 M.Sano add Start
+--    gt_edi_lines(ln_idx).order_connection_line_number  := it_edi_work.line_no;                           -- 受注関連明細番号
+    gt_edi_lines(ln_idx).order_connection_line_number  := it_edi_work.order_connection_line_number;      -- 受注関連明細番号
+-- 2010/01/19 Ver.1.15 M.Sano add End
 --****************************** 2009/05/08 1.4 T.Kitajima ADD START ******************************--
     gt_edi_lines(ln_idx).taking_unit_price             := it_edi_work.order_unit_price;                  -- 取込時原単価（発注）
 --****************************** 2009/05/08 1.4 T.Kitajima ADD  END  ******************************--
@@ -5758,7 +6172,10 @@ AS
     gt_upd_item_code(ln_idx)                           := it_edi_work.item_code;                         -- 品目コード
     gt_upd_line_uom(ln_idx)                            := it_edi_work.line_uom;                          -- 明細単位
     gt_upd_hht_delivery_sche_flag(ln_idx)              := cv_hht_delivery_flag;                          -- HHT納品予定連携済フラグ
-    gt_upd_order_connect_line_num(ln_idx)              := it_edi_work.line_no;                           -- 受注関連明細番号
+-- 2010/01/19 Ver.1.15 M.Sano add Start
+--    gt_upd_order_connect_line_num(ln_idx)              := it_edi_work.line_no;                           -- 受注関連明細番号
+    gt_upd_order_connect_line_num(ln_idx)              := it_edi_work.order_connection_line_number;      -- 受注関連明細番号
+-- 2010/01/19 Ver.1.15 M.Sano add End
 --
   EXCEPTION
 --
@@ -6659,6 +7076,119 @@ AS
 --
   END proc_upd_edi_lines;
 --
+-- 2010/01/19 Ver1.15 M.Sano Add Start
+  /**********************************************************************************
+   * Procedure Name   : proc_del_edi_errors
+   * Description      : EDIエラー情報テーブルデータ削除(A-19-1)
+   ***********************************************************************************/
+  PROCEDURE proc_del_edi_errors(
+    iv_exe_type   IN  VARCHAR2,              -- 実行区分
+    ov_errbuf     OUT NOCOPY VARCHAR2,     --   エラー・メッセージ           --# 固定 #
+    ov_retcode    OUT NOCOPY VARCHAR2,     --   リターン・コード             --# 固定 #
+    ov_errmsg     OUT NOCOPY VARCHAR2)     --   ユーザー・エラー・メッセージ --# 固定 #
+  IS
+    -- ===============================
+    -- 固定ローカル定数
+    -- ===============================
+    cv_prg_name   CONSTANT VARCHAR2(100) := 'proc_set_edi_errors'; -- プログラム名
+--
+--#####################  固定ローカル変数宣言部 START   ########################
+--
+    lv_errbuf  VARCHAR2(5000);  -- エラー・メッセージ
+    lv_retcode VARCHAR2(1);     -- リターン・コード
+    lv_errmsg  VARCHAR2(5000);  -- ユーザー・エラー・メッセージ
+    lv_tkn1    VARCHAR2(100);   -- メッセージトークン１
+    lv_tkn2    VARCHAR2(100);   -- メッセージトークン２
+--
+--###########################  固定部 END   ####################################
+--
+    -- ===============================
+    -- ユーザー宣言部
+    -- ===============================
+    -- *** ローカル定数 ***
+--
+    -- *** ローカル変数 ***
+    ln_idx               NUMBER;
+    ld_purge_date        DATE;
+    lt_work_id           xxcos_edi_errors.work_id%TYPE;
+--
+    -- *** ローカル・カーソル ***
+    -- EDI情報削除対象カーソル(EDIヘッダID)
+    CURSOR edi_errors_lock1_cur (
+      it_work_id     xxcos_edi_errors.work_id%TYPE
+    )
+    IS
+      SELECT  xee.edi_err_id                       -- EDIエラーID
+      FROM    xxcos_edi_errors  xee                -- EDIエラーテーブル
+      WHERE   xee.work_id = it_work_id
+      FOR UPDATE NOWAIT;
+--
+    -- *** ローカル・レコード ***
+--
+  BEGIN
+--
+    IF ( iv_exe_type = cv_exe_type_retry ) THEN
+      -- EDI情報削除対象のEDIエラー情報テーブルのロックを取得する。
+      <<work_id_lock_loop>>
+      FOR ln_idx IN 1..gt_order_info_work_id.COUNT LOOP
+        lt_work_id := gt_order_info_work_id(ln_idx);
+        OPEN edi_errors_lock1_cur(lt_work_id);
+        CLOSE edi_errors_lock1_cur;
+      END LOOP work_id_lock_loop;
+--
+      -- 対象データを削除
+      FORALL ln_idx IN 1..gt_order_info_work_id.COUNT
+        DELETE
+        FROM   xxcos_edi_errors xee
+        WHERE  xee.work_id = gt_order_info_work_id(ln_idx)
+        ;
+    END IF;
+--
+  EXCEPTION
+    -- ロックエラー
+    WHEN lock_expt THEN
+      -- ロックエラーを出力
+      lv_tkn1    := xxccp_common_pkg.get_msg( cv_application, cv_msg_err_tbl );
+      lv_errmsg  := xxccp_common_pkg.get_msg( cv_application, cv_msg_lock, cv_tkn_table, lv_tkn1 );
+      lv_errbuf  := lv_errmsg;
+      ov_errmsg  := lv_errmsg;
+      ov_errbuf  := SUBSTRB( cv_pkg_name||cv_msg_cont||cv_prg_name||cv_msg_part||lv_errbuf, 1, 5000 );
+      ov_retcode := cv_status_error;
+--
+      -- カーソルがオープンしている場合はクローズする
+      IF ( edi_errors_lock1_cur%ISOPEN ) THEN
+        CLOSE edi_errors_lock1_cur;
+      END IF;
+--
+--#################################  固定例外処理部 START   ####################################
+--
+    -- *** 共通関数例外ハンドラ ***
+    WHEN global_api_expt THEN
+      ov_errmsg  := lv_errmsg;
+      ov_errbuf  := SUBSTRB( cv_pkg_name||cv_msg_cont||cv_prg_name||cv_msg_part||lv_errbuf, 1, 5000 );
+      ov_retcode := cv_status_error;
+    -- *** 共通関数OTHERS例外ハンドラ ***
+    WHEN global_api_others_expt THEN
+      ov_errbuf  := cv_pkg_name||cv_msg_cont||cv_prg_name||cv_msg_part||SQLERRM;
+      ov_retcode := cv_status_error;
+    -- *** OTHERS例外ハンドラ ***
+    WHEN OTHERS THEN
+      -- データ削除エラーを出力
+      lv_tkn1    := xxccp_common_pkg.get_msg( cv_application, cv_msg_err_tbl );
+      lv_errmsg  := xxccp_common_pkg.get_msg( cv_application, cv_msg_delete, cv_tkn_table_name, lv_tkn1, cv_tkn_key_data, NULL );
+      ov_errmsg  := lv_errmsg;
+      ov_errbuf  := cv_pkg_name||cv_msg_cont||cv_prg_name||cv_msg_part||SQLERRM;
+      ov_retcode := cv_status_error;
+--
+      -- カーソルがオープンしている場合はクローズする
+      IF ( edi_errors_lock1_cur%ISOPEN ) THEN
+        CLOSE edi_errors_lock1_cur;
+      END IF;
+--
+--#####################################  固定部 END   ##########################################
+--
+  END proc_del_edi_errors;
+-- 2010/01/19 Ver1.15 M.Sano Add End
 --
   /**********************************************************************************
    * Procedure Name   : proc_ins_edi_errors
@@ -6980,6 +7510,19 @@ AS
               )                         < id_purge_date
       FOR UPDATE NOWAIT;
 --
+-- 2010/01/19 Ver1.15 M.Sano Add Start
+    -- EDI情報削除対象カーソル(EDI受信日)
+    CURSOR edi_errors_lock2_cur (
+      id_purge_date DATE
+    )
+    IS
+      SELECT  xee.edi_err_id                          -- EDIエラーID
+      FROM    xxcos_edi_errors  xee                   -- EDIエラーテーブル
+      WHERE   xee.creation_date     < id_purge_date       -- 作成日がパージ対象日以前
+      AND     xee.edi_create_class  = cv_edi_create_class -- エラーリスト種別：受注
+      FOR UPDATE NOWAIT;
+--
+-- 2010/01/19 Ver1.15 M.Sano Add End
     -- *** ローカル・レコード ***
 --
 --
@@ -7043,6 +7586,23 @@ AS
     -- ロックカーソルクローズ
     CLOSE edi_head_line_cur;
 --
+-- 2010/01/19 Ver1.15 M.Sano Add Start
+    -- EDI情報削除基準日を取得
+    SELECT  TRUNC( SYSDATE - TO_NUMBER( gv_err_purge_term ) )
+    INTO    ld_purge_date
+    FROM    dual;
+--
+    -- EDI情報削除対象のEDIエラー情報テーブルのロックを取得する。
+    OPEN edi_errors_lock2_cur(ld_purge_date);
+    CLOSE edi_errors_lock2_cur;
+--
+    -- 対象データを削除
+    DELETE
+    FROM   xxcos_edi_errors xee
+    WHERE  xee.creation_date    < ld_purge_date       -- 作成日がパージ対象日以前
+    AND    xee.edi_create_class = cv_edi_create_class -- エラーリスト種別：受注
+    ;
+-- 2010/01/19 Ver1.15 M.Sano Add End
 --
   EXCEPTION
     -- ロックエラー
@@ -7053,12 +7613,19 @@ AS
       lv_errbuf  := lv_errmsg;
       ov_errmsg  := lv_errmsg;
       ov_errbuf  := SUBSTRB( cv_pkg_name||cv_msg_cont||cv_prg_name||cv_msg_part||lv_errbuf, 1, 5000 );
-      ov_retcode := cv_status_error;
+-- 2010/01/19 Ver1.15 M.Sano Del Start
+--      ov_retcode := cv_status_error;
+-- 2010/01/19 Ver1.15 M.Sano Del End
 --
       -- カーソルがオープンしている場合はクローズする
       IF ( edi_head_line_cur%ISOPEN ) THEN
         CLOSE edi_head_line_cur;
       END IF;
+-- 2010/01/19 Ver1.15 M.Sano Add Start
+      IF ( edi_errors_lock2_cur%ISOPEN ) THEN
+        CLOSE edi_errors_lock2_cur;
+      END IF;
+-- 2010/01/19 Ver1.15 M.Sano Add End
 --
 --#################################  固定例外処理部 START   ####################################
 --
@@ -7084,6 +7651,11 @@ AS
       IF ( edi_head_line_cur%ISOPEN ) THEN
         CLOSE edi_head_line_cur;
       END IF;
+-- 2010/01/19 Ver1.15 M.Sano Add Start
+      IF ( edi_errors_lock2_cur%ISOPEN ) THEN
+        CLOSE edi_errors_lock2_cur;
+      END IF;
+-- 2010/01/19 Ver1.15 M.Sano Add End
 --
 --#####################################  固定部 END   ##########################################
 --
@@ -7471,7 +8043,11 @@ AS
                                                       cv_tkn_order_no,
                                                       gt_edi_work(ln_Idx).invoice_number,
                                                       cv_tkn_store_deliv_dt,
-                                                      gt_edi_work(ln_Idx).shop_delivery_date,
+-- 2010/01/19 Ver.1.15 M.Sano mod Start
+--                                                      gt_edi_work(ln_Idx).shop_delivery_date,
+                                                      TO_CHAR(gt_edi_work(ln_Idx).shop_delivery_date,
+                                                              cv_format_yyyymmdds),
+-- 2010/01/19 Ver.1.15 M.Sano mod End
                                                       cv_tkn_shop_code,
                                                       gt_edi_work(ln_Idx).shop_code,
                                                       cv_tkn_line_no,
@@ -7567,8 +8143,13 @@ AS
    * Description      : メイン処理プロシージャ
    **********************************************************************************/
   PROCEDURE submain(
-    iv_filename   IN  VARCHAR2,              --   インタフェースファイル名
-    iv_exetype    IN  VARCHAR2,              --   実行区分（0：新規、1：再実施）
+-- 2010/01/19 Ver1.15 M.Sano Add Start
+--    iv_filename   IN  VARCHAR2,              --   インタフェースファイル名
+--    iv_exetype    IN  VARCHAR2,              --   実行区分（0：新規、1：再実施）
+    iv_filename       IN  VARCHAR2,              --   インタフェースファイル名
+    iv_exetype        IN  VARCHAR2,              --   実行区分（0：新規、1：再実施）
+    iv_edi_chain_code IN  VARCHAR2,              --   EDIチェーン店コード
+-- 2010/01/19 Ver1.15 M.Sano Add End
     ov_errbuf     OUT NOCOPY VARCHAR2,       --   エラー・メッセージ           --# 固定 #
     ov_retcode    OUT NOCOPY VARCHAR2,       --   リターン・コード             --# 固定 #
     ov_errmsg     OUT NOCOPY VARCHAR2)       --   ユーザー・エラー・メッセージ --# 固定 #
@@ -7631,6 +8212,9 @@ AS
     proc_param_check(
       iv_filename,
       iv_exetype,
+-- 2010/01/19 Ver1.15 M.Sano Add Start
+      iv_edi_chain_code,
+-- 2010/01/19 Ver1.15 M.Sano Add End
       lv_errbuf,
       lv_retcode,
       lv_errmsg
@@ -7665,6 +8249,9 @@ AS
     proc_get_edi_work(
       iv_filename,
       iv_exetype,
+-- 2010/01/19 Ver1.15 M.Sano Add Start
+      iv_edi_chain_code,
+-- 2010/01/19 Ver1.15 M.Sano Add End
       gn_target_cnt,
       lv_errbuf,
       lv_retcode,
@@ -7709,7 +8296,7 @@ AS
       lv_errmsg
     );
 --
-    -- データ更新エラー時は処理中止
+    -- エラーが発生した場合は処理中止
     IF ( lv_retcode = cv_status_error ) THEN
       ov_errbuf  := lv_errbuf;
       ov_retcode := lv_retcode;
@@ -7726,7 +8313,7 @@ AS
       lv_errmsg
     );
 --
-    -- データ更新エラー時は処理中止
+    -- エラーが発生した場合は処理中止
     IF ( lv_retcode = cv_status_error ) THEN
       ov_errbuf  := lv_errbuf;
       ov_retcode := lv_retcode;
@@ -7744,7 +8331,7 @@ AS
       lv_errmsg
     );
 --
-    -- データ更新エラー時は処理中止
+    -- エラーが発生した場合は処理中止
     IF ( lv_retcode = cv_status_error ) THEN
       ov_errbuf  := lv_errbuf;
       ov_retcode := lv_retcode;
@@ -7762,7 +8349,7 @@ AS
       lv_errmsg
     );
 --
-    -- データ更新エラー時は処理中止
+    -- エラーが発生した場合は処理中止
     IF ( lv_retcode = cv_status_error ) THEN
       ov_errbuf  := lv_errbuf;
       ov_retcode := lv_retcode;
@@ -7773,6 +8360,25 @@ AS
     -- 正常件数を設定
     gn_normal_cnt := ln_ins_normal_cnt + ln_upd_normal_cnt;
 --
+-- 2010/01/19 Ver1.15 M.Sano Add Start
+    -- ============================================
+    -- EDIエラー情報テーブルデータ削除(A-18-1)
+    -- ============================================
+    proc_del_edi_errors(
+      iv_exetype,
+      lv_errbuf,
+      lv_retcode,
+      lv_errmsg
+    );
+--
+    -- エラーが発生した場合は処理中止
+    IF ( lv_retcode = cv_status_error ) THEN
+      ov_errbuf  := lv_errbuf;
+      ov_retcode := lv_retcode;
+      ov_errmsg  := lv_errmsg;
+      RETURN;
+    END IF;
+-- 2010/01/19 Ver1.15 M.Sano Add End
     -- ============================================
     -- EDIエラー情報テーブルデータ追加(A-19)
     -- ============================================
@@ -7783,7 +8389,7 @@ AS
       lv_errmsg
     );
 --
-    -- データ更新エラー時は処理中止
+    -- エラーが発生した場合は処理中止
     IF ( lv_retcode = cv_status_error ) THEN
       ov_errbuf  := lv_errbuf;
       ov_retcode := lv_retcode;
@@ -7800,7 +8406,7 @@ AS
       lv_errmsg
     );
 --
-    -- データ更新エラー時は処理中止
+    -- エラーが発生した場合は処理中止
     IF ( lv_retcode = cv_status_error ) THEN
       ov_errbuf  := lv_errbuf;
       ov_retcode := lv_retcode;
@@ -7818,7 +8424,7 @@ AS
       lv_errmsg
     );
 --
-    -- データ更新エラー時は処理中止
+    -- エラーが発生した場合は処理中止
     IF ( lv_retcode = cv_status_error ) THEN
       ov_errbuf  := lv_errbuf;
       ov_retcode := lv_retcode;
@@ -7838,7 +8444,7 @@ AS
       lv_errmsg
     );
 --
-    -- データ更新エラー時は処理中止
+    -- エラーが発生した場合は処理中止
     IF ( lv_retcode = cv_status_error ) THEN
       ov_errbuf  := lv_errbuf;
       ov_retcode := lv_retcode;
@@ -7877,8 +8483,13 @@ AS
   PROCEDURE main(
     errbuf        OUT VARCHAR2,              --   エラー・メッセージ  --# 固定 #
     retcode       OUT VARCHAR2,              --   リターン・コード    --# 固定 #
-    iv_file_name  IN  VARCHAR2,              --   インタフェースファイル名
-    iv_exetype    IN  VARCHAR2               --   実行区分（0：新規、1：再実施）
+-- 2010/01/19 Ver1.15 M.Sano Mod Start
+--    iv_file_name  IN  VARCHAR2,              --   インタフェースファイル名
+--    iv_exetype    IN  VARCHAR2               --   実行区分（0：新規、1：再実施）
+    iv_file_name      IN  VARCHAR2 DEFAULT NULL,    --   インタフェースファイル名
+    iv_exetype        IN  VARCHAR2 DEFAULT NULL,    --   実行区分（0：新規、1：再実施）
+    iv_edi_chain_code IN  VARCHAR2 DEFAULT NULL     --   EDIチェーン店コード
+-- 2010/01/19 Ver1.15 M.Sano Mod End
   )
 --
 --
@@ -7933,6 +8544,9 @@ AS
     submain(
        iv_file_name -- インタフェースファイル名
       ,iv_exetype   -- 実行区分
+-- 2010/01/19 Ver1.15 M.Sano Add Start
+      ,iv_edi_chain_code  -- EDIチェーン店コード
+-- 2010/01/19 Ver1.15 M.Sano Add End
       ,lv_errbuf    -- エラー・メッセージ           --# 固定 #
       ,lv_retcode   -- リターン・コード             --# 固定 #
       ,lv_errmsg    -- ユーザー・エラー・メッセージ --# 固定 #

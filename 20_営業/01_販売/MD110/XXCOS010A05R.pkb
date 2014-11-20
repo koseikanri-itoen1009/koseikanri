@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCOS010A05R(body)
  * Description      : 受注エラーリスト
  * MD.050           : 受注エラーリスト MD050_COS_010_A05
- * Version          : 1.6
+ * Version          : 1.7
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -33,6 +33,12 @@ AS
  *  2009/07/23    1.4   N.Maeda          [0000300]ロック処理修正
  *  2009/08/03    1.5   M.Sano           [0000902]受注エラーリストの終了ステータス変更
  *  2009/09/29    1.6   N.Maeda          [0001338]プロシージャexecute_svfの独立トランザクション化
+ *  2010/01/19    1.7   M.Sano           [E_本稼動_01159]
+ *                                       ・入力パラメータの追加
+ *                                         (実行区分･拠点･チェーン店･EDI受信日(FROM)･EDI受信日(TO))
+ *                                       ・再発行の可能化
+ *                                       ・出力対象のエラー情報を制御する機能の追加
+ *                                       ・伝票単位でEDIワーク情報を削除できる機能の追加
  *
  *****************************************************************************************/
 --
@@ -92,6 +98,9 @@ AS
   delete_expt               EXCEPTION; --削除エラー
   execute_svf_expt          EXCEPTION; --SVF起動エラー
   resource_busy_expt        EXCEPTION;     --ロックエラー
+-- 2010/01/19 M.Sano Ver.1.7 add start
+  profile_expt              EXCEPTION; --プロファイルエラー
+-- 2010/01/19 M.Sano Ver.1.7 add end
   PRAGMA EXCEPTION_INIT(resource_busy_expt, -54);
 --
   -- ===============================
@@ -121,10 +130,21 @@ AS
 -- ******************** 2009/07/23 N.Maeda 1.4 ADD START ******************************* --
   ct_msg_Processed_other          CONSTANT fnd_new_messages.message_name%TYPE := 'APP-XXCOS1-12104'; --他処理出力済みメッセージ
 -- ******************** 2009/07/23 N.Maeda 1.4 ADD  END  ******************************* --
-
+-- 2010/01/19 M.Sano Ver.1.7 add start
+  cv_msg_profile                  CONSTANT fnd_new_messages.message_name%TYPE := 'APP-XXCOS1-00004'; --プロファイル取得エラーメッセージ
+  ct_msg_biz_man_dept_code        CONSTANT fnd_new_messages.message_name%TYPE := 'APP-XXCOS1-12105'; --EDIエラーリスト用業務管理部コード
+-- 2010/01/19 M.Sano Ver.1.7 add end
 --
   --トークン
   cv_tkn_param1                   CONSTANT VARCHAR2(6) := 'PARAM1';
+-- 2010/01/19 M.Sano Ver.1.7 add start
+  cv_tkn_param2                   CONSTANT VARCHAR2(6) := 'PARAM2';
+  cv_tkn_param3                   CONSTANT VARCHAR2(6) := 'PARAM3';
+  cv_tkn_param4                   CONSTANT VARCHAR2(6) := 'PARAM4';
+  cv_tkn_param5                   CONSTANT VARCHAR2(6) := 'PARAM5';
+  cv_tkn_param6                   CONSTANT VARCHAR2(6) := 'PARAM6';
+  cv_tkn_profile                  CONSTANT VARCHAR2(7) := 'PROFILE';                                 --トークン.プロファイル
+-- 2010/01/19 M.Sano Ver.1.7 add end
   cv_tkn_data                     CONSTANT VARCHAR2(4) := 'DATA';                                    --トークン.データ
   cv_tkn_table_name               CONSTANT VARCHAR2(10) := 'TABLE_NAME';                             --トークン.テーブル名
   cv_tkn_table                    CONSTANT VARCHAR2(10) := 'TABLE';                                  --トークン.テーブル名
@@ -133,9 +153,16 @@ AS
 --
   --クイックコード
   ct_qc_err_list_type             CONSTANT fnd_lookup_values.lookup_type%TYPE := 'XXCOS1_EDI_CREATE_CLASS';  --参照タイプ.EDI作成元区分
+-- 2010/01/19 M.Sano Ver.1.7 add start
+  ct_order_err_list_message       CONSTANT fnd_lookup_values.lookup_type%TYPE := 'XXCOS1_ORDER_ERR_LIST_MESSAGE';
+                                                                                           --参照タイプ.受注エラーリスト出力メッセージ
+-- 2010/01/19 M.Sano Ver.1.7 add end
 --
   --プロファイル
   ct_prf_organization_code CONSTANT fnd_profile_options.profile_option_name%TYPE := 'XXCOI1_ORGANIZATION_CODE'; --在庫組織コード
+-- 2010/01/19 M.Sano Ver.1.7 add start
+  ct_prf_biz_man_dept_code CONSTANT fnd_profile_options.profile_option_name%TYPE := 'XXCOS1_EDI_ERR_BIZ_MAN_DEPT_CODE'; --EDIエラーリスト用業務管理部コード
+-- 2010/01/19 M.Sano Ver.1.7 add end
 --
   --SVF関連
   cv_conc_name              CONSTANT VARCHAR2(100) := 'XXCOS010A05R';          -- コンカレント名
@@ -150,6 +177,24 @@ AS
   cv_cust_class_store       CONSTANT hz_cust_accounts.customer_class_code%TYPE := '10';
   cv_cust_class_base        CONSTANT hz_cust_accounts.customer_class_code%TYPE := '1';
 --
+-- 2010/01/19 M.Sano Ver.1.7 add start
+  --再発行区分
+  cv_exec_type_new          CONSTANT VARCHAR2(1)   := '0';              -- 再発行区分「新規」
+--
+  --言語コード
+  cv_default_language       CONSTANT VARCHAR2(10)  := USERENV('LANG');  -- 標準言語タイプ
+--
+  --フラグ
+  cv_enabled_flag_yes       CONSTANT VARCHAR2(1)   := 'Y';              -- 有効フラグ「有効」
+  cv_output_flag_yes        CONSTANT VARCHAR2(1)   := 'Y';              -- 参照タイプ.属性1～3(出力フラグ)：出力対象
+  cv_err_list_out_flag_yes  CONSTANT VARCHAR2(1)   := 'Y';              -- エラーリスト出力済フラグ:Yes
+  cv_err_list_out_flag_no0  CONSTANT VARCHAR2(2)   := 'N0';             -- エラーリスト出力済フラグ:No(新規)
+  cv_attribute4_d_line      CONSTANT VARCHAR2(1)   := '1';              -- ワークテーブル削除区分:該当行
+  cv_attribute4_d_head      CONSTANT VARCHAR2(1)   := '2';              -- ワークテーブル削除区分:伝票単位
+--
+  --存在チェック出力用
+  cv_exists_flag            CONSTANT VARCHAR2(1)   := 'Y';
+-- 2010/01/19 M.Sano Ver.1.7 add end
   -- ===============================
   -- ユーザー定義グローバル型
   -- ===============================
@@ -157,12 +202,22 @@ AS
   TYPE g_input_rtype IS RECORD (
     err_list_type        VARCHAR2(100) --エラーリスト種別
    ,err_list_type_name   fnd_lookup_values.description%TYPE --エラーリスト種別名
+-- 2010/01/19 M.Sano Ver.1.7 add start
+   ,request_type           VARCHAR2(100) --再発行区分
+   ,base_code              VARCHAR2(100) --拠点コード
+   ,edi_chain_code         VARCHAR2(100) --EDIチェーン店コード
+   ,edi_received_date_from DATE          --EDI受信日(FROM)
+   ,edi_received_date_to   DATE          --EDI受信日(TO)
+-- 2010/01/19 M.Sano Ver.1.7 add end
   );
 --
   --プロファイル情報
   TYPE g_prf_rtype IS RECORD (
     organization_code    fnd_profile_option_values.profile_option_value%TYPE --在庫組織コード
    ,organization_id      NUMBER --在庫組織ID
+-- 2010/01/19 M.Sano Ver.1.7 add start
+   ,biz_man_dept_code    fnd_profile_option_values.profile_option_value%TYPE --業務管理部コード
+-- 2010/01/19 M.Sano Ver.1.7 add end
   );
 --
   --EDIエラー情報格納レコード
@@ -180,7 +235,10 @@ AS
    ,line_no              xxcos_edi_errors.line_no%TYPE            --行No
    ,item_code            xxcos_edi_errors.item_code%TYPE          --品目コード
    ,edi_item_code        xxcos_edi_errors.edi_item_code%TYPE      --EDI商品コード
-   ,item_name            xxcmn_item_mst_b.item_short_name%TYPE    --品目名称
+-- 2010/01/19 M.Sano Ver.1.7 mod start
+--   ,item_name            xxcmn_item_mst_b.item_short_name%TYPE    --品目名称
+   ,item_name            xxcos_edi_errors.edi_item_name%TYPE      --品目名称
+-- 2010/01/19 M.Sano Ver.1.7 mod end
    ,quantity             xxcos_edi_errors.quantity%TYPE           --本数
    ,unit_price           xxcos_edi_errors.unit_price%TYPE         --原単価
    ,unit_price_amount    NUMBER                                   --原価金額
@@ -188,6 +246,9 @@ AS
    ,edi_err_id           xxcos_edi_errors.edi_err_id%TYPE         --EDIエラーID
    ,delete_flag          xxcos_edi_errors.delete_flag%TYPE        --削除フラグ
    ,work_id              xxcos_edi_errors.work_id%TYPE            --ワークID
+-- 2010/01/19 M.Sano Ver.1.7 add start
+   ,output_flag          fnd_lookup_values.attribute3%TYPE        --出力フラグ
+-- 2010/01/19 M.Sano Ver.1.7 add end
   );
 --
   --EDIエラー情報格納テーブル
@@ -202,6 +263,9 @@ AS
   g_input_rec_init      g_input_rtype;
   g_edi_err_tab         g_edi_err_ttype;
   g_process_date        DATE;
+-- 2010/01/19 M.Sano Ver.1.7 add start
+  g_profile_rec         g_prf_rtype;
+-- 2010/01/19 M.Sano Ver.1.7 add end
 -- ****************** 2009/07/23 N.Maeda 1.4 ADD START ******************************* --
   gn_lock_flg           NUMBER := 0;                     -- ロックフラグ
 -- ****************** 2009/07/23 N.Maeda 1.4 ADD  END  ******************************* --
@@ -287,6 +351,18 @@ AS
                   ,iv_name               => ct_msg_parameters
                   ,iv_token_name1        => cv_tkn_param1
                   ,iv_token_value1       => g_input_rec.err_list_type
+-- 2010/01/19 M.Sano Ver.1.7 add start
+                  ,iv_token_name2        => cv_tkn_param2
+                  ,iv_token_value2       => g_input_rec.request_type
+                  ,iv_token_name3        => cv_tkn_param3
+                  ,iv_token_value3       => g_input_rec.base_code
+                  ,iv_token_name4        => cv_tkn_param4
+                  ,iv_token_value4       => g_input_rec.edi_chain_code
+                  ,iv_token_name5        => cv_tkn_param5
+                  ,iv_token_value5       => TO_CHAR(g_input_rec.edi_received_date_from, cv_fmt_date)
+                  ,iv_token_name6        => cv_tkn_param6
+                  ,iv_token_value6       => TO_CHAR(g_input_rec.edi_received_date_to, cv_fmt_date)
+-- 2010/01/19 M.Sano Ver.1.7 add end
                  );
 --
     fnd_file.put_line(
@@ -304,8 +380,32 @@ AS
     --==============================================================
     g_process_date := TRUNC(xxccp_common_pkg2.get_process_date);
 --
+-- 2010/01/19 M.Sano Ver.1.7 add start
+    --==============================================================
+    --プロファイルの取得(業務管理部コード)
+    --==============================================================
+    g_profile_rec.biz_man_dept_code := FND_PROFILE.VALUE( ct_prf_biz_man_dept_code );
+--
+    -- プロファイルが取得できなかった場合 ⇒ プロファイルエラー(業務管理部コード)
+    IF ( g_profile_rec.biz_man_dept_code IS NULL ) THEN
+      lt_tkn := xxccp_common_pkg.get_msg( ct_apl_name, ct_msg_biz_man_dept_code );
+      RAISE profile_expt;
+    END IF;
+--
+-- 2010/01/19 M.Sano Ver.1.7 add end
     out_line(buff => cv_prg_name || ' end');
   EXCEPTION
+-- 2010/01/19 M.Sano Ver.1.7 add start
+    -- *** プロファイル取得エラーハンドラ ***
+    WHEN profile_expt THEN
+      -- メッセージを取得
+      lv_errmsg := xxccp_common_pkg.get_msg( ct_apl_name, cv_msg_profile, cv_tkn_profile, lt_tkn );
+      lv_errbuf := lv_errmsg;
+      -- 出力項目にセット
+      ov_errmsg  := lv_errmsg;
+      ov_errbuf  := SUBSTRB(cv_pkg_name||cv_msg_cont||cv_prg_name||cv_msg_part||lv_errbuf,1,5000);
+      ov_retcode := cv_status_error;
+-- 2010/01/19 M.Sano Ver.1.7 add end
     -- *** 共通関数OTHERS例外ハンドラ ***
     WHEN global_api_others_expt THEN
       ov_errbuf  := cv_pkg_name||cv_msg_cont||cv_prg_name||cv_msg_part||SQLERRM;
@@ -627,12 +727,27 @@ AS
 --###########################  固定部 END   ############################
 --
     --==============================================================
-    --EDIエラーテーブルの要求ID更新
+    --EDIエラーテーブルのエラーリスト出力済フラグの更新
     --==============================================================
     BEGIN
       FOR i IN 1..g_edi_err_tab.COUNT LOOP
-        UPDATE xxcos_edi_errors SET request_id = cn_request_id
-        WHERE edi_err_id = g_edi_err_tab(i).edi_err_id;
+-- 2010/01/19 M.Sano Ver.1.7 mod start
+--        UPDATE xxcos_edi_errors SET request_id = cn_request_id
+--        WHERE edi_err_id = g_edi_err_tab(i).edi_err_id;
+        -- エラーリスト出力済フラグが「Y」以外の場合、フラグを更新。
+        UPDATE xxcos_edi_errors
+        SET    err_list_out_flag       = cv_err_list_out_flag_yes,   -- 受注エラーリスト出力済フラグ
+               last_updated_by         = cn_last_updated_by,         -- 最終更新者
+               last_update_date        = cd_last_update_date,        -- 最終更新日
+               last_update_login       = cn_last_update_login,       -- 最終更新ログイン
+               request_id              = cn_request_id,              -- 要求ID
+               program_application_id  = cn_program_application_id,  -- コンカレント・プログラム・アプリケーションID
+               program_id              = cn_program_id,              -- コンカレント・プログラムID
+               program_update_date     = cd_program_update_date      -- プログラム更新日
+        WHERE  edi_err_id              = g_edi_err_tab(i).edi_err_id
+        AND  (  err_list_out_flag     <> cv_err_list_out_flag_yes
+             OR err_list_out_flag     IS NULL );
+-- 2010/01/19 M.Sano Ver.1.7 mod end
       END LOOP;
     EXCEPTION
       WHEN OTHERS THEN
@@ -656,8 +771,51 @@ AS
         WHERE xeow.order_info_work_id IN (
           SELECT xee.work_id
           FROM   xxcos_edi_errors xee
+-- 2010/01/19 M.Sano Ver.1.7 add start
+               , fnd_lookup_values    flv
+-- 2010/01/19 M.Sano Ver.1.7 add end
           WHERE  xee.request_id = cn_request_id
           AND    xee.delete_flag = cv_delete
+-- 2010/01/19 M.Sano Ver.1.7 add start
+          -- [クイックコード]条件
+          AND    flv.meaning               = xee.err_message_code                   -- メッセージコードが概要と同一
+          AND    flv.lookup_type           = ct_order_err_list_message              -- タイプ:XXCOS1_ORDER_ERR_LIST_MESSAGE
+          AND    flv.attribute4            = cv_attribute4_d_line                   -- ワークテーブル削除区分：該当行
+          AND    flv.enabled_flag          = cv_enabled_flag_yes
+          AND    flv.language              = cv_default_language
+          AND    g_process_date           >= NVL(flv.start_date_active, g_process_date)
+          AND    g_process_date           <= NVL(flv.end_date_active,   g_process_date)
+         UNION ALL
+          SELECT xeow_d.order_info_work_id
+          FROM   xxcos_edi_errors     xee
+               , fnd_lookup_values    flv
+               , xxcos_edi_order_work xeow_e
+               , xxcos_edi_order_work xeow_d
+          WHERE  xee.request_id            = cn_request_id                          -- 本コンカレントで更新した要求
+          AND    xee.delete_flag           = cv_delete                              -- 削除対象
+          -- [クイックコード]条件
+          AND    flv.meaning               = xee.err_message_code                   -- メッセージコードが概要と同一
+          AND    flv.lookup_type           = ct_order_err_list_message              -- タイプ:XXCOS1_ORDER_ERR_LIST_MESSAGE
+          AND    flv.attribute4            = cv_attribute4_d_head                   -- ワークテーブル削除区分：伝票単位
+          AND    flv.enabled_flag          = cv_enabled_flag_yes
+          AND    flv.language              = cv_default_language
+          AND    g_process_date           >= NVL(flv.start_date_active, g_process_date)
+          AND    g_process_date           <= NVL(flv.end_date_active,   g_process_date)
+          -- [EDIワークTBL_EDIエラー情報に紐付くレコード]条件
+          AND    xeow_e.order_info_work_id = xee.work_id                            -- ワークTBLID
+          -- [EDIワークTBL_削除対象]条件
+          AND    xeow_d.if_file_name       = xeow_e.if_file_name                    -- IFファイル名が同一
+          AND    TRUNC(xeow_d.creation_date)
+                                           = TRUNC(xeow_e.creation_date)            -- 作成日が同一
+          AND    xeow_d.edi_chain_code     = xeow_e.edi_chain_code                  -- 顧客が同一
+          AND  (   (  xeow_d.shop_code     = xeow_e.shop_code )
+                OR (  xeow_d.shop_code IS NULL AND xeow_e.shop_code IS NULL ))      -- 店コードが同一
+          AND  (   (  xeow_d.shop_delivery_date = xeow_e.shop_delivery_date )
+                OR (  xeow_d.shop_delivery_date IS NULL
+                    AND
+                      xeow_e.shop_delivery_date IS NULL ) )                         -- 店舗納品日が同一
+          AND    xeow_d.invoice_number     = xeow_e.invoice_number                  -- 伝票番号が同一
+-- 2010/01/19 M.Sano Ver.1.7 add end
         );
 --
       EXCEPTION
@@ -679,8 +837,51 @@ AS
         WHERE xedw.delivery_return_work_id IN (
           SELECT xee.work_id
           FROM   xxcos_edi_errors xee
+-- 2010/01/19 M.Sano Ver.1.7 add start
+               , fnd_lookup_values    flv
+-- 2010/01/19 M.Sano Ver.1.7 add end
           WHERE  xee.request_id = cn_request_id
           AND    xee.delete_flag = cv_delete
+-- 2010/01/19 M.Sano Ver.1.7 add start
+          -- [クイックコード]条件
+          AND    flv.meaning               = xee.err_message_code                   -- メッセージコードが概要と同一
+          AND    flv.lookup_type           = ct_order_err_list_message              -- タイプ:XXCOS1_ORDER_ERR_LIST_MESSAGE
+          AND    flv.attribute4            = cv_attribute4_d_line                   -- ワークテーブル削除区分：該当行
+          AND    flv.enabled_flag          = cv_enabled_flag_yes
+          AND    flv.language              = cv_default_language
+          AND    g_process_date           >= NVL(flv.start_date_active, g_process_date)
+          AND    g_process_date           <= NVL(flv.end_date_active,   g_process_date)
+         UNION ALL
+          SELECT xeow_d.delivery_return_work_id
+          FROM   xxcos_edi_errors        xee
+               , fnd_lookup_values       flv
+               , xxcos_edi_delivery_work xeow_e
+               , xxcos_edi_delivery_work xeow_d
+          WHERE  xee.request_id            = cn_request_id                          -- 本コンカレントで更新した要求
+          AND    xee.delete_flag           = cv_delete                              -- 削除対象
+          -- [クイックコード]条件
+          AND    flv.meaning               = xee.err_message_code                   -- メッセージコードが概要と同一
+          AND    flv.lookup_type           = ct_order_err_list_message              -- タイプ:XXCOS1_ORDER_ERR_LIST_MESSAGE
+          AND    flv.attribute4            = cv_attribute4_d_head                   -- ワークテーブル削除区分：伝票単位
+          AND    flv.enabled_flag          = cv_enabled_flag_yes
+          AND    flv.language              = cv_default_language
+          AND    g_process_date           >= NVL(flv.start_date_active, g_process_date)
+          AND    g_process_date           <= NVL(flv.end_date_active,   g_process_date)
+          -- [EDIワークTBL_EDIエラー情報に紐付くレコード]条件
+          AND    xeow_e.delivery_return_work_id = xee.work_id                            -- ワークTBLID
+          -- [EDIワークTBL_削除対象]条件
+          AND    xeow_d.if_file_name       = xeow_e.if_file_name                    -- IFファイル名が同一
+          AND    TRUNC(xeow_d.creation_date)
+                                           = TRUNC(xeow_e.creation_date)            -- 作成日が同一
+          AND    xeow_d.edi_chain_code     = xeow_e.edi_chain_code                  -- 顧客が同一
+          AND  (   (  xeow_d.shop_code     = xeow_e.shop_code )
+                OR (  xeow_d.shop_code IS NULL AND xeow_e.shop_code IS NULL ))      -- 店コードが同一
+          AND  (   (  xeow_d.shop_delivery_date = xeow_e.shop_delivery_date )
+                OR (  xeow_d.shop_delivery_date IS NULL
+                    AND
+                      xeow_e.shop_delivery_date IS NULL ) )                         -- 店舗納品日が同一
+          AND    xeow_d.invoice_number     = xeow_e.invoice_number                  -- 伝票番号が同一
+-- 2010/01/19 M.Sano Ver.1.7 add end
         );
 --
       EXCEPTION
@@ -695,27 +896,29 @@ AS
       END;
     END IF;
 --
-    --==============================================================
-    --EDIエラー情報テーブルの削除
-    --==============================================================
---
-    BEGIN
-      --EDIエラー情報テーブルの削除
-      DELETE FROM xxcos_edi_errors xee
-      WHERE xee.request_id = cn_request_id
-      ;
---
-    EXCEPTION
-      WHEN OTHERS THEN
-        lv_errbuf := SQLERRM;
-        --テーブル名取得
-        lv_table_name := xxccp_common_pkg.get_msg(
-                           iv_application   => ct_apl_name
-                          ,iv_name          => ct_msg_edi_err_tab
-                         );
---
-        RAISE delete_expt;
-    END;
+-- 2010/01/19 M.Sano Ver.1.7 del start
+--    --==============================================================
+--    --EDIエラー情報テーブルの削除
+--    --==============================================================
+----
+--    BEGIN
+--      --EDIエラー情報テーブルの削除
+--      DELETE FROM xxcos_edi_errors xee
+--      WHERE xee.request_id = cn_request_id
+--      ;
+----
+--    EXCEPTION
+--      WHEN OTHERS THEN
+--        lv_errbuf := SQLERRM;
+--        --テーブル名取得
+--        lv_table_name := xxccp_common_pkg.get_msg(
+--                           iv_application   => ct_apl_name
+--                          ,iv_name          => ct_msg_edi_err_tab
+--                         );
+----
+--        RAISE delete_expt;
+--    END;
+-- 2010/01/19 M.Sano Ver.1.7 del end
 --
     out_line(buff => cv_prg_name || ' end');
 --
@@ -822,6 +1025,9 @@ AS
 --
     -- *** ローカル変数 ***
     lv_table VARCHAR2(100);
+-- 2010/01/19 M.Sano Ver.1.7 add start
+    lv_work_idx    NUMBER   := 0;
+-- 2010/01/19 M.Sano Ver.1.7 add end
 --
     -- *** ローカル・カーソル ***
 --
@@ -842,35 +1048,72 @@ AS
     --帳票ワークテーブルの登録
     --==============================================================
     FOR i IN 1..g_edi_err_tab.COUNT LOOP
-      SELECT xxcos_rep_order_err_list_s01.NEXTVAL INTO l_work_tab(i).record_id FROM DUAL;
-      l_work_tab(i).base_code                   := SUBSTRB(g_edi_err_tab(i).base_code,1,4);
-      l_work_tab(i).base_name                   := SUBSTRB(g_edi_err_tab(i).base_name,1,20);
-      l_work_tab(i).edi_create_class            := SUBSTRB(g_edi_err_tab(i).edi_create_class,1,1);
-      l_work_tab(i).edi_create_class_name       := SUBSTRB(g_input_rec.err_list_type_name,1,14);
-      l_work_tab(i).chain_code                  := SUBSTRB(g_edi_err_tab(i).chain_code,1,4);
-      l_work_tab(i).chain_name                  := SUBSTRB(g_edi_err_tab(i).chain_name,1,40);
-      l_work_tab(i).dlv_date                    := SUBSTRB(g_edi_err_tab(i).dlv_date,1,10);
-      l_work_tab(i).invoice_number              := SUBSTRB(g_edi_err_tab(i).invoice_number,1,12);
-      l_work_tab(i).shop_code                   := SUBSTRB(g_edi_err_tab(i).shop_code,1,10);
-      l_work_tab(i).customer_number             := SUBSTRB(g_edi_err_tab(i).customer_number,1,9);
-      l_work_tab(i).shop_name                   := SUBSTRB(g_edi_err_tab(i).shop_name,1,20);
-      l_work_tab(i).line_no                     := g_edi_err_tab(i).line_no;
-      l_work_tab(i).item_code                   := SUBSTRB(g_edi_err_tab(i).item_code,1,7);
-      l_work_tab(i).edi_item_code               := SUBSTRB(g_edi_err_tab(i).edi_item_code,1,20);
-      l_work_tab(i).item_name                   := SUBSTRB(g_edi_err_tab(i).item_name,1,20);
-      l_work_tab(i).quantity                    := g_edi_err_tab(i).quantity;
-      l_work_tab(i).unit_price                  := g_edi_err_tab(i).unit_price;
-      l_work_tab(i).unit_price_amount           := g_edi_err_tab(i).unit_price_amount;
-      l_work_tab(i).err_message                 := SUBSTRB(g_edi_err_tab(i).err_message,1,40);
-      l_work_tab(i).created_by                  := cn_created_by;
-      l_work_tab(i).creation_date               := cd_creation_date;
-      l_work_tab(i).last_updated_by             := cn_last_updated_by;
-      l_work_tab(i).last_update_date            := cd_last_update_date;
-      l_work_tab(i).last_update_login           := cn_last_update_login;
-      l_work_tab(i).request_id                  := cn_request_id;
-      l_work_tab(i).program_application_id      := cn_program_application_id;
-      l_work_tab(i).program_id                  := cn_program_id;
-      l_work_tab(i).program_update_date         := cd_program_update_date;
+-- 2010/01/19 M.Sano Ver.1.7 mod start
+--      SELECT xxcos_rep_order_err_list_s01.NEXTVAL INTO l_work_tab(i).record_id FROM DUAL;
+--      l_work_tab(i).base_code                   := SUBSTRB(g_edi_err_tab(i).base_code,1,4);
+--      l_work_tab(i).base_name                   := SUBSTRB(g_edi_err_tab(i).base_name,1,20);
+--      l_work_tab(i).edi_create_class            := SUBSTRB(g_edi_err_tab(i).edi_create_class,1,1);
+--      l_work_tab(i).edi_create_class_name       := SUBSTRB(g_input_rec.err_list_type_name,1,14);
+--      l_work_tab(i).chain_code                  := SUBSTRB(g_edi_err_tab(i).chain_code,1,4);
+--      l_work_tab(i).chain_name                  := SUBSTRB(g_edi_err_tab(i).chain_name,1,40);
+--      l_work_tab(i).dlv_date                    := SUBSTRB(g_edi_err_tab(i).dlv_date,1,10);
+--      l_work_tab(i).invoice_number              := SUBSTRB(g_edi_err_tab(i).invoice_number,1,12);
+--      l_work_tab(i).shop_code                   := SUBSTRB(g_edi_err_tab(i).shop_code,1,10);
+--      l_work_tab(i).customer_number             := SUBSTRB(g_edi_err_tab(i).customer_number,1,9);
+--      l_work_tab(i).shop_name                   := SUBSTRB(g_edi_err_tab(i).shop_name,1,20);
+--      l_work_tab(i).line_no                     := g_edi_err_tab(i).line_no;
+--      l_work_tab(i).item_code                   := SUBSTRB(g_edi_err_tab(i).item_code,1,7);
+--      l_work_tab(i).edi_item_code               := SUBSTRB(g_edi_err_tab(i).edi_item_code,1,20);
+--      l_work_tab(i).item_name                   := SUBSTRB(g_edi_err_tab(i).item_name,1,20);
+--      l_work_tab(i).quantity                    := g_edi_err_tab(i).quantity;
+--      l_work_tab(i).unit_price                  := g_edi_err_tab(i).unit_price;
+--      l_work_tab(i).unit_price_amount           := g_edi_err_tab(i).unit_price_amount;
+--      l_work_tab(i).err_message                 := SUBSTRB(g_edi_err_tab(i).err_message,1,40);
+--      l_work_tab(i).created_by                  := cn_created_by;
+--      l_work_tab(i).creation_date               := cd_creation_date;
+--      l_work_tab(i).last_updated_by             := cn_last_updated_by;
+--      l_work_tab(i).last_update_date            := cd_last_update_date;
+--      l_work_tab(i).last_update_login           := cn_last_update_login;
+--      l_work_tab(i).request_id                  := cn_request_id;
+--      l_work_tab(i).program_application_id      := cn_program_application_id;
+--      l_work_tab(i).program_id                  := cn_program_id;
+--      l_work_tab(i).program_update_date         := cd_program_update_date;
+      -- EDIエラー情報が出力対象(帳票出力フラグが"Y")のレコードのみ登録する。
+      IF ( g_edi_err_tab(i).output_flag = cv_output_flag_yes ) THEN
+        -- 件数を加算
+        lv_work_idx := lv_work_idx + 1;
+        -- データを登録
+        SELECT xxcos_rep_order_err_list_s01.NEXTVAL INTO l_work_tab(lv_work_idx).record_id FROM DUAL;
+        l_work_tab(lv_work_idx).base_code                   := SUBSTRB(g_edi_err_tab(i).base_code,1,4);
+        l_work_tab(lv_work_idx).base_name                   := SUBSTRB(g_edi_err_tab(i).base_name,1,20);
+        l_work_tab(lv_work_idx).edi_create_class            := SUBSTRB(g_edi_err_tab(i).edi_create_class,1,1);
+        l_work_tab(lv_work_idx).edi_create_class_name       := SUBSTRB(g_input_rec.err_list_type_name,1,14);
+        l_work_tab(lv_work_idx).chain_code                  := SUBSTRB(g_edi_err_tab(i).chain_code,1,4);
+        l_work_tab(lv_work_idx).chain_name                  := SUBSTRB(g_edi_err_tab(i).chain_name,1,40);
+        l_work_tab(lv_work_idx).dlv_date                    := SUBSTRB(g_edi_err_tab(i).dlv_date,1,10);
+        l_work_tab(lv_work_idx).invoice_number              := SUBSTRB(g_edi_err_tab(i).invoice_number,1,12);
+        l_work_tab(lv_work_idx).shop_code                   := SUBSTRB(g_edi_err_tab(i).shop_code,1,10);
+        l_work_tab(lv_work_idx).customer_number             := SUBSTRB(g_edi_err_tab(i).customer_number,1,9);
+        l_work_tab(lv_work_idx).shop_name                   := SUBSTRB(g_edi_err_tab(i).shop_name,1,20);
+        l_work_tab(lv_work_idx).line_no                     := g_edi_err_tab(i).line_no;
+        l_work_tab(lv_work_idx).item_code                   := SUBSTRB(g_edi_err_tab(i).item_code,1,7);
+        l_work_tab(lv_work_idx).edi_item_code               := SUBSTRB(g_edi_err_tab(i).edi_item_code,1,20);
+        l_work_tab(lv_work_idx).item_name                   := SUBSTRB(g_edi_err_tab(i).item_name,1,20);
+        l_work_tab(lv_work_idx).quantity                    := g_edi_err_tab(i).quantity;
+        l_work_tab(lv_work_idx).unit_price                  := g_edi_err_tab(i).unit_price;
+        l_work_tab(lv_work_idx).unit_price_amount           := g_edi_err_tab(i).unit_price_amount;
+        l_work_tab(lv_work_idx).err_message                 := SUBSTRB(g_edi_err_tab(i).err_message,1,40);
+        l_work_tab(lv_work_idx).created_by                  := cn_created_by;
+        l_work_tab(lv_work_idx).creation_date               := cd_creation_date;
+        l_work_tab(lv_work_idx).last_updated_by             := cn_last_updated_by;
+        l_work_tab(lv_work_idx).last_update_date            := cd_last_update_date;
+        l_work_tab(lv_work_idx).last_update_login           := cn_last_update_login;
+        l_work_tab(lv_work_idx).request_id                  := cn_request_id;
+        l_work_tab(lv_work_idx).program_application_id      := cn_program_application_id;
+        l_work_tab(lv_work_idx).program_id                  := cn_program_id;
+        l_work_tab(lv_work_idx).program_update_date         := cd_program_update_date;
+      END IF;
+-- 2010/01/19 M.Sano Ver.1.7 mod end
 --
     END LOOP;
 --
@@ -974,7 +1217,10 @@ AS
             ,xee.line_no                                         line_no               --行No
             ,xee.item_code                                       item_code             --品目コード
             ,xee.edi_item_code                                   edi_item_code         --EDI商品コード
-            ,ximb.item_short_name                                item_name             --品目名称
+-- 2010/01/19 M.Sano Ver.1.7 add start
+--            ,ximb.item_short_name                                item_name             --品目名称
+            ,xee.edi_item_name                                   item_name             --品目名称
+-- 2010/01/19 M.Sano Ver.1.7 add end
             ,xee.quantity                                        quantity              --本数
             ,xee.unit_price                                      unit_price            --原単価
             ,round(xee.quantity * xee.unit_price,1)              unit_price_amount     --原価金額
@@ -982,9 +1228,27 @@ AS
             ,xee.edi_err_id                                      edi_err_id            --エラーID
             ,xee.delete_flag                                     delete_flag           --削除フラグ
             ,xee.work_id                                         work_id               --ワークID
+-- 2010/01/19 M.Sano Ver.1.7 add start
+            ,CASE
+               -- 入力.再発行区分 ＝ 新規                          ⇒ 属性1
+               WHEN g_input_rec.request_type  = cv_exec_type_new THEN
+                 flv.attribute1
+               -- 入力.再発行区分 ≠ 新規, 入力.拠点 ＝ 業務管理部 ⇒ 属性2
+               WHEN g_input_rec.request_type <> cv_exec_type_new
+                AND g_input_rec.base_code     = g_profile_rec.biz_man_dept_code THEN
+                 flv.attribute2
+               -- 上記以外                                         ⇒ 属性3
+               ELSE
+                 flv.attribute3
+             END                                                 output_flag           --帳票出力フラグ
+-- 2010/01/19 M.Sano Ver.1.7 add end
       FROM   xxcos_edi_errors                                    xee                   --EDIエラーテーブル
-            ,ic_item_mst_b                                       iimb                  --OPM品目マスタ
-            ,xxcmn_item_mst_b                                    ximb                  --OPM品目マスタアドオン
+-- 2010/01/19 M.Sano Ver.1.7 mod start
+--            ,ic_item_mst_b                                       iimb                  --OPM品目マスタ
+--            ,xxcmn_item_mst_b                                    ximb                  --OPM品目マスタアドオン
+            -- クイックコード(受注エラーリスト出力メッセージ)情報
+            ,fnd_lookup_values                                   flv
+-- 2010/01/19 M.Sano Ver.1.7 mod end
             --チェーン店情報
             ,(
               SELECT  xca.chain_store_code                       chain_store_code      --チェーン店コード(EDI)
@@ -1023,11 +1287,45 @@ AS
       AND   store.store_code(+) = xee.shop_code
       AND   chain.chain_store_code(+) = xee.chain_code
       AND   base.account_number(+) = store.delivery_base_code
-      AND   iimb.item_no(+) = xee.item_code
-      AND   ximb.item_id(+) = iimb.item_id
-      AND   g_process_date
-        BETWEEN NVL(TRUNC(ximb.start_date_active),g_process_date)
-        AND     NVL(TRUNC(ximb.end_date_active),g_process_date)
+-- 2010/01/19 M.Sano Ver.1.7 mod start
+--      AND   iimb.item_no(+) = xee.item_code
+--      AND   ximb.item_id(+) = iimb.item_id
+--      AND   g_process_date
+--        BETWEEN NVL(TRUNC(ximb.start_date_active),g_process_date)
+--        AND     NVL(TRUNC(ximb.end_date_active),g_process_date)
+      -- [クイックコード]条件
+      AND   flv.meaning            = xee.err_message_code                   -- 概要とEDIエラー情報.エラーコードが同一
+      AND   flv.lookup_type        = ct_order_err_list_message              -- XXCOS1_ORDER_ERR_LIST_MESSAGE
+      AND   flv.enabled_flag       = cv_enabled_flag_yes
+      AND   g_process_date   BETWEEN NVL(flv.start_date_active, g_process_date)
+                                 AND NVL(flv.end_date_active,   g_process_date)
+      AND   flv.language           = cv_default_language
+      -- [再発行区分]条件
+      AND ( (    (   xee.err_list_out_flag     = cv_err_list_out_flag_no0   -- エラーリスト出力済フラグ：N0 or NULL
+                  OR xee.err_list_out_flag    IS NULL )
+             AND (   g_input_rec.request_type  = cv_exec_type_new ) )       -- 再発行区分：新規
+          OR
+            (    xee.err_list_out_flag    <> cv_err_list_out_flag_no0       -- エラーリスト出力済フラグ：N0以外
+             AND g_input_rec.request_type <> cv_exec_type_new )      )      -- 再発行区分：新規以外
+      -- [拠点コード]条件
+      AND ( (    g_input_rec.base_code IS NULL )                            -- 入力.拠点：NULL
+          OR
+            (    g_input_rec.base_code  = g_profile_rec.biz_man_dept_code 
+             AND flv.attribute2         = cv_output_flag_yes             )  -- 入力.拠点：業務管理部
+          OR
+            (    g_input_rec.base_code   <> g_profile_rec.biz_man_dept_code -- 入力.拠点：業務管理部以外
+             AND (   base.account_number  = g_input_rec.base_code
+                  OR base.account_number IS NULL ) ) )                      -- 拠点情報.拠点コード : 入力.拠点 or NULL
+      -- [チェーン店]条件
+      AND (  ( g_input_rec.edi_chain_code IS NULL )
+          OR ( g_input_rec.edi_chain_code  = xee.chain_code ) )             -- エラー.チェーン店 : 入力.チェーン店 or NULL
+      -- [EDI受信日]条件
+      -- 入力.EDI受信日(FROM) ≦ EDIエラー情報.EDI受信日 ≦ 入力.EDI受信日(TO)
+      AND TRUNC(xee.edi_received_date) 
+            >= NVL( g_input_rec.edi_received_date_from, TRUNC(xee.edi_received_date) )
+      AND TRUNC(xee.edi_received_date) 
+            <= NVL( g_input_rec.edi_received_date_to,   TRUNC(xee.edi_received_date) )
+-- 2010/01/19 M.Sano Ver.1.7 mod end
       ORDER BY base.account_number
               ,xee.chain_code
               ,xee.dlv_date
@@ -1194,6 +1492,13 @@ AS
    **********************************************************************************/
   PROCEDURE submain(
     iv_err_list_type IN VARCHAR2
+-- 2010/01/19 M.Sano Ver.1.7 add start
+   ,iv_request_type             IN VARCHAR2 --   再発行区分
+   ,iv_base_code                IN VARCHAR2 --   拠点コード
+   ,iv_edi_chain_code           IN VARCHAR2 --   チェーン店コード
+   ,iv_edi_received_date_from   IN VARCHAR2 --   EDI受信日（FROM）
+   ,iv_edi_received_date_to     IN VARCHAR2 --   EDI受信日（TO)
+-- 2010/01/19 M.Sano Ver.1.7 add end
    ,ov_errbuf     OUT VARCHAR2     --   エラー・メッセージ           --# 固定 #
    ,ov_retcode    OUT VARCHAR2     --   リターン・コード             --# 固定 #
    ,ov_errmsg     OUT VARCHAR2     --   ユーザー・エラー・メッセージ --# 固定 #
@@ -1250,6 +1555,13 @@ AS
     --初期化
     g_input_rec := g_input_rec_init;
     g_input_rec.err_list_type := iv_err_list_type;
+-- 2010/01/19 M.Sano Ver.1.7 add start
+    g_input_rec.request_type           := NVL(iv_request_type, cv_exec_type_new);
+    g_input_rec.base_code              := iv_base_code;
+    g_input_rec.edi_chain_code         := iv_edi_chain_code;
+    g_input_rec.edi_received_date_from := TO_DATE(iv_edi_received_date_from, cv_fmt_date);
+    g_input_rec.edi_received_date_to   := TO_DATE(iv_edi_received_date_to, cv_fmt_date);
+-- 2010/01/19 M.Sano Ver.1.7 add end
 --
     -- ===============================================
     -- A-1.初期処理
@@ -1382,7 +1694,10 @@ AS
 --      IF (gn_target_cnt = 0) THEN
 --        ov_retcode := cv_status_warn;
 --      END IF;
-      IF ( gn_target_cnt > 0 ) THEN
+-- 2010/01/19 M.Sano Ver.1.7 mod start
+--      IF ( gn_target_cnt > 0 ) THEN
+      IF ( gn_normal_cnt > 0 ) THEN
+-- 2010/01/19 M.Sano Ver.1.7 mod end
         ov_retcode := cv_status_warn;
       END IF;
 -- 2009/08/03  Ver1.5 0000902  Mod End
@@ -1427,6 +1742,13 @@ AS
     errbuf        OUT VARCHAR2      --   エラー・メッセージ  --# 固定 #
    ,retcode       OUT VARCHAR2      --   リターン・コード    --# 固定 #
    ,iv_err_list_type IN  VARCHAR2   --   エラーリスト種別
+-- 2010/01/19 M.Sano Ver.1.7 add start
+   ,iv_request_type             IN VARCHAR2 DEFAULT NULL --   再発行区分
+   ,iv_base_code                IN VARCHAR2 DEFAULT NULL --   拠点コード
+   ,iv_edi_chain_code           IN VARCHAR2 DEFAULT NULL --   チェーン店コード
+   ,iv_edi_received_date_from   IN VARCHAR2 DEFAULT NULL --   EDI受信日（FROM）
+   ,iv_edi_received_date_to     IN VARCHAR2 DEFAULT NULL --   EDI受信日（TO)
+-- 2010/01/19 M.Sano Ver.1.7 add end
   )
 --
 --
@@ -1482,6 +1804,13 @@ AS
     -- ===============================================
     submain(
       iv_err_list_type
+-- 2010/01/19 M.Sano Ver.1.7 add start
+     ,iv_request_type                             --再発行区分
+     ,iv_base_code                                --拠点コード
+     ,iv_edi_chain_code                           --チェーン店コード
+     ,iv_edi_received_date_from                   --EDI受信日（FROM）
+     ,iv_edi_received_date_to                     --EDI受信日（TO)
+-- 2010/01/19 M.Sano Ver.1.7 add end
      ,lv_errbuf   -- エラー・メッセージ           --# 固定 #
      ,lv_retcode  -- リターン・コード             --# 固定 #
      ,lv_errmsg   -- ユーザー・エラー・メッセージ --# 固定 #

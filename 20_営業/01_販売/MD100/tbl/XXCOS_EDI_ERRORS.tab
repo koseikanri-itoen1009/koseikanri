@@ -3,7 +3,7 @@
  *
  * Table Name  : XXCOS_EDI_ERRORS
  * Description : EDIエラー情報テーブル
- * Version     : 1.1
+ * Version     : 1.2
  *
  * Change Record
  * ------------- ----- ---------------- ---------------------------------
@@ -11,6 +11,10 @@
  * ------------- ----- ---------------- ---------------------------------
  *  2009/01/30    1.0   SCS M.Yamaki     新規作成
  *  2009/07/09    1.1   SCS T.Tominaga 【0000486】行番号(LINE_NO)の桁数を3,0に変更
+ *  2010/01/13    1.2   SCS M.Sano     【E_本稼動_01159】カラムの追加
+ *                                      ・エラーメッセージコード
+ *                                      ・EDI受信日
+ *                                      ・受注エラーリスト出力済フラグ
  *
  ****************************************************************************************/
 CREATE TABLE XXCOS.XXCOS_EDI_ERRORS(
@@ -29,6 +33,12 @@ CREATE TABLE XXCOS.XXCOS_EDI_ERRORS(
  ,WORK_ID                          NUMBER              NULL                               -- ワークID
  ,STATUS                           VARCHAR2(1)         NULL                               -- ステータス
  ,ERR_MESSAGE                      VARCHAR2(40)        NULL                               -- エラーメッセージ
+-- 2010/01/13 Ver1.2 Add Start
+ ,ERR_MESSAGE_CODE                 VARCHAR2(20)        NULL                               -- エラーメッセージコード
+ ,EDI_ITEM_NAME                    VARCHAR2(20)        NULL                               -- EDI品目名称
+ ,EDI_RECEIVED_DATE                DATE                NULL                               -- EDI受信日
+ ,ERR_LIST_OUT_FLAG                VARCHAR2(2)         NULL                               -- 受注エラーリスト出力済フラグ
+-- 2010/01/13 Ver1.2 Add End
  ,CREATED_BY                       NUMBER(15)          NOT NULL                           -- 作成者
  ,CREATION_DATE                    DATE                NOT NULL                           -- 作成日
  ,LAST_UPDATED_BY                  NUMBER(15)          NOT NULL                           -- 最終更新者
@@ -57,6 +67,12 @@ COMMENT ON COLUMN XXCOS.XXCOS_EDI_ERRORS.DELETE_FLAG                            
 COMMENT ON COLUMN XXCOS.XXCOS_EDI_ERRORS.WORK_ID                                     IS  'ワークID';
 COMMENT ON COLUMN XXCOS.XXCOS_EDI_ERRORS.STATUS                                      IS  'ステータス';
 COMMENT ON COLUMN XXCOS.XXCOS_EDI_ERRORS.ERR_MESSAGE                                 IS  'エラーメッセージ';
+-- 2010/01/13 Ver1.2 Add Start
+COMMENT ON COLUMN XXCOS.XXCOS_EDI_ERRORS.ERR_MESSAGE_CODE                            IS  'エラーメッセージコード';
+COMMENT ON COLUMN XXCOS.XXCOS_EDI_ERRORS.EDI_ITEM_NAME                               IS  'EDI品目名称';
+COMMENT ON COLUMN XXCOS.XXCOS_EDI_ERRORS.EDI_RECEIVED_DATE                           IS  'EDI受信日';
+COMMENT ON COLUMN XXCOS.XXCOS_EDI_ERRORS.ERR_LIST_OUT_FLAG                           IS  '受注エラーリスト出力済フラグ';
+-- 2010/01/13 Ver1.2 Add End
 COMMENT ON COLUMN XXCOS.XXCOS_EDI_ERRORS.CREATED_BY                                  IS  '作成者';
 COMMENT ON COLUMN XXCOS.XXCOS_EDI_ERRORS.CREATION_DATE                               IS  '作成日';
 COMMENT ON COLUMN XXCOS.XXCOS_EDI_ERRORS.LAST_UPDATED_BY                             IS  '最終更新者';

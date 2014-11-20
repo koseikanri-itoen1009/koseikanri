@@ -1,0 +1,4 @@
+CREATE INDEX xxcos.xxcos_edi_errors_n03 ON xxcos.xxcos_edi_errors (
+    edi_create_class
+  , creation_date
+) TABLESPACE xxidx2 ;

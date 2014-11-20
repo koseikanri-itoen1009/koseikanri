@@ -1,0 +1,4 @@
+CREATE INDEX xxcos.xxcos_edi_errors_n04 ON xxcos.xxcos_edi_errors (
+    request_id
+  , delete_flag
+) TABLESPACE xxidx2 ;

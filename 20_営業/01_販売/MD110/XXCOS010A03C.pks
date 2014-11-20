@@ -43,6 +43,14 @@ AS
  *  2009/12/28    1.16  M.Sano           [E_本稼動_00738]
  *                                       ・必須チェック外のレコード作成時の受注連携済フラグのセット値変更
  *                                       ・項目「通過在庫型区分」の追加
+ *  2010/01/29    1.17  K.Hosoi          [E_本稼動_01154][E_本稼動_01156][E_本稼動_01159][E_本稼動_01162]
+ *                                       ・入力パラメータ「チェーン店コード」追加
+ *                                       ・EDIエラー情報に列の追加対応
+ *                                        (エラーメッセージコード・EDI品目名・EDI受信日・エラーリスト出力済フラグ)
+ *                                       ・EDIヘッダ情報に列の追加対応 (EDI受信日)
+ *                                       ・妥当性チェックの追加・修正（必須・担当営業員・受注関連明細番号)
+ *                                       ・受注エラーリスト出力用の品目エラーメッセージの変更
+ *                                       ・EDIエラー情報のパージ処理追加
  *
  *****************************************************************************************/
 --
@@ -50,8 +58,13 @@ AS
   PROCEDURE main(
     errbuf        OUT    VARCHAR2,         --   エラーメッセージ #固定#
     retcode       OUT    VARCHAR2,         --   エラーコード     #固定#
-    iv_file_name  IN     VARCHAR2,         --   インタフェースファイル名
-    iv_exetype    IN     VARCHAR2          --   実行区分（0:新規 or 1:再実施）
+-- 2010/01/29 Ver1.17 K.Hosoi Mod Start
+--    iv_file_name  IN     VARCHAR2,         --   インタフェースファイル名
+--    iv_exetype    IN     VARCHAR2          --   実行区分（0:新規 or 1:再実施）
+    iv_file_name      IN  VARCHAR2 DEFAULT NULL,   --   インタフェースファイル名
+    iv_exetype        IN  VARCHAR2 DEFAULT NULL,   --   実行区分（0:新規 or 1:再実施）
+    iv_edi_chain_code IN  VARCHAR2 DEFAULT NULL    --   EDIチェーン店コード
+-- 2010/01/29 Ver1.17 K.Hosoi Mod End
   );
 END XXCOS010A03C;
 /
