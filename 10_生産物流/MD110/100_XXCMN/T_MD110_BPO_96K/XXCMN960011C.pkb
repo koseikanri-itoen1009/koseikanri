@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCMN960011C(body)
  * Description      : OPM手持在庫パージ
  * MD.050           : T_MD050_BPO_96K_OPM手持在庫パージ
- * Version          : 1.00
+ * Version          : 1.2
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -21,6 +21,7 @@ AS
  * ------------- ----- ---------------- -------------------------------------------------
  *  2012/12/06   1.00  T.Makuta          新規作成
  *  2013/01/31   1.1   N.Miyamoto        障害管理票IT_0014対応
+ *  2013/04/15   1.2   D.Sugahara        E_本稼働_10593対応（ログ出力）
  *
  *****************************************************************************************/
 --
@@ -38,6 +39,16 @@ AS
   cv_gmipebal          CONSTANT VARCHAR2(10) := 'GMIPEBAL';
   cv_description       CONSTANT VARCHAR2(50) := '空残高のパージ';
 --
+--Add 2013.04.15 D.Sugahara E_本稼働_10593 Start
+  --CSV出力用
+  cv_csv_delimiter       CONSTANT VARCHAR2(1) := ',' ;  --CSV区切り文字
+  cv_csv_datefmt         CONSTANT VARCHAR2(21):= 'YYYY/MM/DD HH24:MI:SS' ;  --日付書式
+  cv_csv_title           CONSTANT VARCHAR2(255) := '' ||
+      'ITEM_ID,WHSE_CODE,LOT_ID,LOCATION,LOCT_ONHAND,LOCT_ONHAND2,'       || 
+      'LOT_STATUS,QCHOLD_RES_CODE,DELETE_MARK,TEXT_CODE,LAST_UPDATED_BY,' ||
+      'CREATED_BY,LAST_UPDATE_DATE,CREATION_DATE,LAST_UPDATE_LOGIN,'      ||
+      'PROGRAM_APPLICATION_ID,PROGRAM_ID,PROGRAM_UPDATE_DATE,REQUEST_ID' ; --列タイトル
+--Add 2013.04.15 D.Sugahara E_本稼働_10593 End
   --=============
   --メッセージ
   --=============
@@ -216,6 +227,10 @@ AS
     lb_ret_code               BOOLEAN;
     ln_purge_cnt_b            NUMBER;                           --空残高のパージ（処理前）件数
     ln_purge_cnt_a            NUMBER;                           --空残高のパージ（処理後）件数
+--Add 2013.04.15 D.Sugahara E_本稼働_10593 Start
+    lb_first_rec              BOOLEAN := TRUE;                  --列見出し出力制御フラグ
+    lv_csv_rec                VARCHAR2(300);                    --CSV出力レコード（最大288byte想定）
+--Add 2013.04.15 D.Sugahara E_本稼働_10593 End
 --
     lt_item_id                ic_loct_inv.item_id%TYPE;
     lt_lot_id                 ic_loct_inv.lot_id%TYPE;
@@ -499,6 +514,132 @@ AS
 --
           COMMIT;
 --
+--Add 2013.04.15 D.Sugahara E_本稼働_10593 Start
+-- バックアップした分のデータをCSV形式でログ出力する
+--
+          /*
+          --初回のみ列タイトル出力
+          IF lb_列見出し出力制御フラグ かつ ln_未コミットバックアップ件数(OPM手持在庫トランザクション) = 0 THEN
+            FND_FILE.PUT_LINE(FND_FILE.LOG,cv_csv_title)
+            lb_列見出し出力制御フラグ := FALSE;
+          END IF
+          */
+          IF lb_first_rec and ln_arc_cnt_yet != 0 THEN
+--
+            FND_FILE.PUT_LINE(
+               which  => FND_FILE.LOG
+              ,buff   => cv_csv_title --CSV列見出し
+            );
+--
+            lb_first_rec := FALSE;
+--            
+          END IF;
+--
+          /*
+          --CSVレコード出力
+          FOR ln_idx in 1 .. 未コミットバックアップ件数(OPM手持在庫トランザクション)
+          LOOP
+            lv_CSV出力レコード := '';
+            lv_CSV出力レコード := SUBSTRB(
+                          TO_CHAR(lt_OPM手持在庫トランザクションテーブル(ln_idx).item_id) 
+                       || cv_csv区切り文字
+                       || lt_OPM手持在庫トランザクションテーブル(ln_idx).whse_code 
+                       || cv_csv区切り文字
+                       || TO_CHAR(lt_OPM手持在庫トランザクションテーブル(ln_idx).lot_id) 
+                       || cv_csv区切り文字
+                       || lt_OPM手持在庫トランザクションテーブル(ln_idx).location 
+                       || cv_csv区切り文字
+                       || TO_CHAR(lt_OPM手持在庫トランザクションテーブル(ln_idx).loct_onhand) 
+                       || cv_csv区切り文字
+                       || TO_CHAR(lt_OPM手持在庫トランザクションテーブル(ln_idx).loct_onhand2) 
+                       || cv_csv区切り文字
+                       || lt_OPM手持在庫トランザクションテーブル(ln_idx).lot_status 
+                       || cv_csv区切り文字
+                       || lt_OPM手持在庫トランザクションテーブル(ln_idx).qchold_res_code 
+                       || cv_csv区切り文字
+                       || lt_OPM手持在庫トランザクションテーブル(ln_idx).delete_mark 
+                       || cv_csv区切り文字
+                       || lt_OPM手持在庫トランザクションテーブル(ln_idx).text_code 
+                       || cv_csv区切り文字
+                       || TO_CHAR(lt_OPM手持在庫トランザクションテーブル(ln_idx).last_updated_by) 
+                       || cv_csv区切り文字
+                       || TO_CHAR(lt_OPM手持在庫トランザクションテーブル(ln_idx).created_by) 
+                       || cv_csv区切り文字
+                       || TO_CHAR(lt_OPM手持在庫トランザクションテーブル(ln_idx).last_update_date,cv_csv_datefmt) 
+                       || cv_csv区切り文字 
+                       || TO_CHAR(lt_OPM手持在庫トランザクションテーブル(ln_idx).creation_date,cv_csv_datefmt) 
+                       || cv_csv区切り文字
+                       || TO_CHAR(lt_OPM手持在庫トランザクションテーブル(ln_idx).last_update_login) 
+                       || cv_csv区切り文字
+                       || TO_CHAR(lt_OPM手持在庫トランザクションテーブル(ln_idx).program_application_id) 
+                       || cv_csv区切り文字
+                       || TO_CHAR(lt_OPM手持在庫トランザクションテーブル(ln_idx).program_id) 
+                       || cv_csv区切り文字
+                       || TO_CHAR(lt_OPM手持在庫トランザクションテーブル(ln_idx).program_update_date,cv_csv_datefmt) 
+                       || cv_csv区切り文字
+                       || TO_CHAR(lt_OPM手持在庫トランザクションテーブル(ln_idx).request_id) 
+                       ,1 ,300 );
+--
+            --コンカレントログに出力
+            FND_FILE.PUT_LINE(
+               which  => FND_FILE.LOG
+              ,buff   => lv_csv_rec --CSV1行
+            );
+--
+          END LOOP
+          */
+          << loctinv_log_loop >>
+          FOR ln_idx in 1 .. ln_arc_cnt_yet
+          LOOP
+            lv_csv_rec := '';
+            lv_csv_rec := SUBSTRB(
+                            TO_CHAR(l_loct_inv_tab(ln_idx).item_id) 
+                         || cv_csv_delimiter
+                         || l_loct_inv_tab(ln_idx).whse_code 
+                         || cv_csv_delimiter
+                         || TO_CHAR(l_loct_inv_tab(ln_idx).lot_id) 
+                         || cv_csv_delimiter
+                         || l_loct_inv_tab(ln_idx).location 
+                         || cv_csv_delimiter
+                         || TO_CHAR(l_loct_inv_tab(ln_idx).loct_onhand) 
+                         || cv_csv_delimiter
+                         || TO_CHAR(l_loct_inv_tab(ln_idx).loct_onhand2) 
+                         || cv_csv_delimiter
+                         || l_loct_inv_tab(ln_idx).lot_status 
+                         || cv_csv_delimiter
+                         || l_loct_inv_tab(ln_idx).qchold_res_code 
+                         || cv_csv_delimiter
+                         || l_loct_inv_tab(ln_idx).delete_mark 
+                         || cv_csv_delimiter
+                         || l_loct_inv_tab(ln_idx).text_code 
+                         || cv_csv_delimiter
+                         || TO_CHAR(l_loct_inv_tab(ln_idx).last_updated_by) 
+                         || cv_csv_delimiter
+                         || TO_CHAR(l_loct_inv_tab(ln_idx).created_by) 
+                         || cv_csv_delimiter
+                         || TO_CHAR(l_loct_inv_tab(ln_idx).last_update_date,cv_csv_datefmt) 
+                         || cv_csv_delimiter 
+                         || TO_CHAR(l_loct_inv_tab(ln_idx).creation_date,cv_csv_datefmt) 
+                         || cv_csv_delimiter
+                         || TO_CHAR(l_loct_inv_tab(ln_idx).last_update_login) 
+                         || cv_csv_delimiter
+                         || TO_CHAR(l_loct_inv_tab(ln_idx).program_application_id) 
+                         || cv_csv_delimiter
+                         || TO_CHAR(l_loct_inv_tab(ln_idx).program_id) 
+                         || cv_csv_delimiter
+                         || TO_CHAR(l_loct_inv_tab(ln_idx).program_update_date,cv_csv_datefmt) 
+                         || cv_csv_delimiter
+                         || TO_CHAR(l_loct_inv_tab(ln_idx).request_id) 
+                         ,1 ,300 );
+--
+            --コンカレントログに出力
+            FND_FILE.PUT_LINE(
+               which  => FND_FILE.LOG
+              ,buff   => lv_csv_rec --CSV1行
+            );
+--
+          END LOOP loctinv_log_loop;
+--Add 2013.04.15 D.Sugahara E_本稼働_10593 End
           /*
           ln_バックアップ件数(OPM手持在庫トランザクション) := 
                                         ln_バックアップ件数(OPM手持在庫トランザクション) +
@@ -562,6 +703,132 @@ AS
     FORALL ln_idx IN 1..ln_arc_cnt_yet
       INSERT INTO xxcmn_ic_loct_inv_arc VALUES l_loct_inv_tab(ln_idx);
 --
+--Add 2013.04.15 D.Sugahara E_本稼働_10593 Start
+-- バックアップした分のデータをCSV形式でログ出力する
+--
+    /*
+    --初回のみ列タイトル出力
+    IF lb_列見出し出力制御フラグ かつ ln_未コミットバックアップ件数(OPM手持在庫トランザクション) = 0 THEN
+      FND_FILE.PUT_LINE(FND_FILE.LOG,cv_csv_title)
+      lb_列見出し出力制御フラグ := FALSE;
+    END IF
+    */
+    IF lb_first_rec and ln_arc_cnt_yet != 0 THEN
+--
+      FND_FILE.PUT_LINE(
+         which  => FND_FILE.LOG
+        ,buff   => cv_csv_title --CSV列見出し
+      );
+--
+      lb_first_rec := FALSE;
+--            
+    END IF;
+--
+    /*
+    --CSVレコード出力
+    FOR ln_idx in 1 .. 未コミットバックアップ件数(OPM手持在庫トランザクション)
+    LOOP
+      lv_CSV出力レコード := '';
+      lv_CSV出力レコード := SUBSTRB(
+                    TO_CHAR(lt_OPM手持在庫トランザクションテーブル(ln_idx).item_id) 
+                 || cv_csv区切り文字
+                 || lt_OPM手持在庫トランザクションテーブル(ln_idx).whse_code 
+                 || cv_csv区切り文字
+                 || TO_CHAR(lt_OPM手持在庫トランザクションテーブル(ln_idx).lot_id) 
+                 || cv_csv区切り文字
+                 || lt_OPM手持在庫トランザクションテーブル(ln_idx).location 
+                 || cv_csv区切り文字
+                 || TO_CHAR(lt_OPM手持在庫トランザクションテーブル(ln_idx).loct_onhand) 
+                 || cv_csv区切り文字
+                 || TO_CHAR(lt_OPM手持在庫トランザクションテーブル(ln_idx).loct_onhand2) 
+                 || cv_csv区切り文字
+                 || lt_OPM手持在庫トランザクションテーブル(ln_idx).lot_status 
+                 || cv_csv区切り文字
+                 || lt_OPM手持在庫トランザクションテーブル(ln_idx).qchold_res_code 
+                 || cv_csv区切り文字
+                 || lt_OPM手持在庫トランザクションテーブル(ln_idx).delete_mark 
+                 || cv_csv区切り文字
+                 || lt_OPM手持在庫トランザクションテーブル(ln_idx).text_code 
+                 || cv_csv区切り文字
+                 || TO_CHAR(lt_OPM手持在庫トランザクションテーブル(ln_idx).last_updated_by) 
+                 || cv_csv区切り文字
+                 || TO_CHAR(lt_OPM手持在庫トランザクションテーブル(ln_idx).created_by) 
+                 || cv_csv区切り文字
+                 || TO_CHAR(lt_OPM手持在庫トランザクションテーブル(ln_idx).last_update_date,cv_csv_datefmt) 
+                 || cv_csv区切り文字 
+                 || TO_CHAR(lt_OPM手持在庫トランザクションテーブル(ln_idx).creation_date,cv_csv_datefmt) 
+                 || cv_csv区切り文字
+                 || TO_CHAR(lt_OPM手持在庫トランザクションテーブル(ln_idx).last_update_login) 
+                 || cv_csv区切り文字
+                 || TO_CHAR(lt_OPM手持在庫トランザクションテーブル(ln_idx).program_application_id) 
+                 || cv_csv区切り文字
+                 || TO_CHAR(lt_OPM手持在庫トランザクションテーブル(ln_idx).program_id) 
+                 || cv_csv区切り文字
+                 || TO_CHAR(lt_OPM手持在庫トランザクションテーブル(ln_idx).program_update_date,cv_csv_datefmt) 
+                 || cv_csv区切り文字
+                 || TO_CHAR(lt_OPM手持在庫トランザクションテーブル(ln_idx).request_id) 
+                 ,1 ,300 );
+--
+      --コンカレントログに出力
+      FND_FILE.PUT_LINE(
+         which  => FND_FILE.LOG
+        ,buff   => lv_csv_rec --CSV1行
+      );
+--
+    END LOOP
+    */
+    << loctinv_log2_loop >>
+    FOR ln_idx in 1 .. ln_arc_cnt_yet
+    LOOP
+      lv_csv_rec := '';
+      lv_csv_rec := SUBSTRB(
+                      TO_CHAR(l_loct_inv_tab(ln_idx).item_id) 
+                   || cv_csv_delimiter
+                   || l_loct_inv_tab(ln_idx).whse_code 
+                   || cv_csv_delimiter
+                   || TO_CHAR(l_loct_inv_tab(ln_idx).lot_id) 
+                   || cv_csv_delimiter
+                   || l_loct_inv_tab(ln_idx).location 
+                   || cv_csv_delimiter
+                   || TO_CHAR(l_loct_inv_tab(ln_idx).loct_onhand) 
+                   || cv_csv_delimiter
+                   || TO_CHAR(l_loct_inv_tab(ln_idx).loct_onhand2) 
+                   || cv_csv_delimiter
+                   || l_loct_inv_tab(ln_idx).lot_status 
+                   || cv_csv_delimiter
+                   || l_loct_inv_tab(ln_idx).qchold_res_code 
+                   || cv_csv_delimiter
+                   || l_loct_inv_tab(ln_idx).delete_mark 
+                   || cv_csv_delimiter
+                   || l_loct_inv_tab(ln_idx).text_code 
+                   || cv_csv_delimiter
+                   || TO_CHAR(l_loct_inv_tab(ln_idx).last_updated_by) 
+                   || cv_csv_delimiter
+                   || TO_CHAR(l_loct_inv_tab(ln_idx).created_by) 
+                   || cv_csv_delimiter
+                   || TO_CHAR(l_loct_inv_tab(ln_idx).last_update_date,cv_csv_datefmt) 
+                   || cv_csv_delimiter 
+                   || TO_CHAR(l_loct_inv_tab(ln_idx).creation_date,cv_csv_datefmt) 
+                   || cv_csv_delimiter
+                   || TO_CHAR(l_loct_inv_tab(ln_idx).last_update_login) 
+                   || cv_csv_delimiter
+                   || TO_CHAR(l_loct_inv_tab(ln_idx).program_application_id) 
+                   || cv_csv_delimiter
+                   || TO_CHAR(l_loct_inv_tab(ln_idx).program_id) 
+                   || cv_csv_delimiter
+                   || TO_CHAR(l_loct_inv_tab(ln_idx).program_update_date,cv_csv_datefmt) 
+                   || cv_csv_delimiter
+                   || TO_CHAR(l_loct_inv_tab(ln_idx).request_id) 
+                   ,1 ,300 );
+--
+      --コンカレントログに出力
+      FND_FILE.PUT_LINE(
+         which  => FND_FILE.LOG
+        ,buff   => lv_csv_rec --CSV1行
+      );
+--
+    END LOOP loctinv_log2_loop;
+--Add 2013.04.15 D.Sugahara E_本稼働_10593 End
     /*
     ln_バックアップ件数(OPM手持在庫トランザクション) := 
                                         ln_バックアップ件数(OPM手持在庫トランザクション) +
