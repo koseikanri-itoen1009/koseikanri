@@ -7,7 +7,7 @@ AS
  * Description      : 生産物流共通（出荷・移動チェック）
  * MD.050           : 生産物流共通（出荷・移動チェック）T_MD050_BPO_910
  * MD.070           : なし
- * Version          : 1.23
+ * Version          : 1.25
  *
  * Program List
  *  -------------------- ---- ----- --------------------------------------------------
@@ -58,19 +58,23 @@ AS
  *  2008/10/15   1.21  ORACLE伊藤ひとみ [積載効率チェック(積載効率算出)] 統合テスト指摘298対応
  *  2008/10/15   1.22  ORACLE伊藤ひとみ [鮮度条件チェック] 統合テスト指摘379対応
  *  2008/11/04   1.23  ORACLE伊藤ひとみ [ロット逆転防止チェック] T_S_573対応
+ *  2008/11/12   1.24  ORACLE伊藤ひとみ [積載効率チェック(合計値算出)] 統合テスト指摘597対応
+ *  2008/11/12   1.25  ORACLE伊藤ひとみ [積載効率チェック(合計値算出)] 統合テスト指摘311対応
  *****************************************************************************************/
 --
-  -- 積載効率チェック(合計値算出)
-  PROCEDURE calc_total_value(
-    iv_item_no                    IN  xxcmn_item_mst_v.item_no%TYPE,                       -- 1.品目コード
-    in_quantity                   IN  NUMBER,                                              -- 2.数量
-    ov_retcode                    OUT NOCOPY VARCHAR2,                                     -- 3.リターンコード
-    ov_errmsg_code                OUT NOCOPY VARCHAR2,                                     -- 4.エラーメッセージコード
-    ov_errmsg                     OUT NOCOPY VARCHAR2,                                     -- 5.エラーメッセージ
-    on_sum_weight                 OUT NOCOPY NUMBER,                                       -- 6.合計重量
-    on_sum_capacity               OUT NOCOPY NUMBER,                                       -- 7.合計容積
-    on_sum_pallet_weight          OUT NOCOPY NUMBER                                        -- 8.合計パレット重量
-    );
+-- 2008/10/06 H.Itou Del Start 統合テスト指摘240
+--  -- 積載効率チェック(合計値算出)
+--  PROCEDURE calc_total_value(
+--    iv_item_no                    IN  xxcmn_item_mst_v.item_no%TYPE,                       -- 1.品目コード
+--    in_quantity                   IN  NUMBER,                                              -- 2.数量
+--    ov_retcode                    OUT NOCOPY VARCHAR2,                                     -- 3.リターンコード
+--    ov_errmsg_code                OUT NOCOPY VARCHAR2,                                     -- 4.エラーメッセージコード
+--    ov_errmsg                     OUT NOCOPY VARCHAR2,                                     -- 5.エラーメッセージ
+--    on_sum_weight                 OUT NOCOPY NUMBER,                                       -- 6.合計重量
+--    on_sum_capacity               OUT NOCOPY NUMBER,                                       -- 7.合計容積
+--    on_sum_pallet_weight          OUT NOCOPY NUMBER                                        -- 8.合計パレット重量
+--    );
+-- 2008/10/06 H.Itou Del End
 --
 -- 2008/10/06 H.Itou Add Start 統合テスト指摘240基準値あり
   -- 積載効率チェック(合計値算出)
@@ -86,6 +90,22 @@ AS
     id_standard_date              IN  DATE                                                 -- 9.基準日(適用日基準日)
     );
 -- 2008/10/06 H.Itou Add End
+--
+-- 2008/11/12 H.Itou Add Start 統合テスト指摘311 指示/実績区分あり
+  -- 積載効率チェック(合計値算出)
+  PROCEDURE calc_total_value(
+    iv_item_no                    IN  xxcmn_item_mst_v.item_no%TYPE,                       -- 1.品目コード
+    in_quantity                   IN  NUMBER,                                              -- 2.数量
+    ov_retcode                    OUT NOCOPY VARCHAR2,                                     -- 3.リターンコード
+    ov_errmsg_code                OUT NOCOPY VARCHAR2,                                     -- 4.エラーメッセージコード
+    ov_errmsg                     OUT NOCOPY VARCHAR2,                                     -- 5.エラーメッセージ
+    on_sum_weight                 OUT NOCOPY NUMBER,                                       -- 6.合計重量
+    on_sum_capacity               OUT NOCOPY NUMBER,                                       -- 7.合計容積
+    on_sum_pallet_weight          OUT NOCOPY NUMBER,                                       -- 8.合計パレット重量
+    id_standard_date              IN  DATE,                                                -- 9.基準日(適用日基準日)
+    iv_mode                       IN  VARCHAR2                                             -- 10.指示/実績区分 1:指示 2:実績
+    );
+-- 2008/11/12 H.Itou Add End
 --
   -- 積載効率チェック(積載効率算出)
   PROCEDURE calc_load_efficiency(

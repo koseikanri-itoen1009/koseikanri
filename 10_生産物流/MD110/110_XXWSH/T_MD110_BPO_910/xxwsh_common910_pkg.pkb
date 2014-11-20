@@ -6,7 +6,7 @@ AS
  * Package Name           : xxwsh_common910_pkg(BODY)
  * Description            : 共通関数(BODY)
  * MD.070(CMD.050)        : なし
- * Version                : 1.23
+ * Version                : 1.25
  *
  * Program List
  *  -------------------- ---- ----- --------------------------------------------------
@@ -57,6 +57,8 @@ AS
  *  2008/10/15   1.21  ORACLE伊藤ひとみ [積載効率チェック(積載効率算出)] 統合テスト指摘298対応
  *  2008/10/15   1.22  ORACLE伊藤ひとみ [鮮度条件チェック] 統合テスト指摘379対応
  *  2008/11/04   1.23  ORACLE伊藤ひとみ [ロット逆転防止チェック] T_S_573対応
+ *  2008/11/12   1.24  ORACLE伊藤ひとみ [積載効率チェック(合計値算出)] 統合テスト指摘597対応
+ *  2008/11/12   1.25  ORACLE伊藤ひとみ [積載効率チェック(合計値算出)] 統合テスト指摘311対応
  *****************************************************************************************/
 --
 --#######################  固定グローバル定数宣言部 START   #######################
@@ -123,297 +125,299 @@ AS
 --
   END comp_round_up;
 --
-  /**********************************************************************************
-   * Procedure Name   : calc_total_value
-   * Description      : 積載効率チェック(合計値算出)
-   ***********************************************************************************/
-  PROCEDURE calc_total_value(
-    iv_item_no                    IN  xxcmn_item_mst_v.item_no%TYPE,   -- 1.品目コード
-    in_quantity                   IN  NUMBER,                          -- 2.数量
-    ov_retcode                    OUT NOCOPY VARCHAR2,                 -- 3.リターンコード
-    ov_errmsg_code                OUT NOCOPY VARCHAR2,                 -- 4.エラーメッセージコード
-    ov_errmsg                     OUT NOCOPY VARCHAR2,                 -- 5.エラーメッセージ
-    on_sum_weight                 OUT NOCOPY NUMBER,                   -- 6.合計重量
-    on_sum_capacity               OUT NOCOPY NUMBER,                   -- 7.合計容積
-    on_sum_pallet_weight          OUT NOCOPY NUMBER                    -- 8.合計パレット重量
-  )
-  IS
-    -- ===============================
-    -- 固定ローカル定数
-    -- ===============================
-    cv_prg_name   CONSTANT VARCHAR2(100) := 'calc_total_value';        --プログラム名
-    --
-    -- ===============================
-    -- ユーザー宣言部
-    -- ===============================
-    -- *** ローカル定数 ***
-    -- メッセージID
-    cv_xxwsh_no_data_found_err CONSTANT VARCHAR2(100) := 'APP-XXWSH-12551'; -- 対象データなしエラーメッセージ
-    cv_xxwsh_palette_steps_err CONSTANT VARCHAR2(100) := 'APP-XXWSH-12552'; -- パレット当り最大段数値ゼロエラーメッセージ
-    cv_xxwsh_get_prof_err      CONSTANT VARCHAR2(100) := 'APP-XXWSH-12553'; -- プロファイル取得エラーメッセージ
-    cv_xxwsh_get_deliv_qty_err CONSTANT VARCHAR2(100) := 'APP-XXWSH-12554'; -- 配数値ゼロエラーメッセージ
-    cv_xxwsh_indispensable_err CONSTANT VARCHAR2(100) := 'APP-XXWSH-12555'; -- 必須入力パラメータ未設定エラーメッセージ
-    cv_xxwsh_num_of_case_err   CONSTANT VARCHAR2(100) := 'APP-XXWSH-12556'; -- ケース入数値ゼロエラーメッセージ
-    cv_xxwsh_d_num_of_case_err CONSTANT VARCHAR2(100) := 'APP-XXWSH-12557'; -- ドリンクケース入数値ゼロエラーメッセージ
-    -- トークン
-    cv_tkn_item_code      CONSTANT VARCHAR2(100) := 'ITEM_CODE';
-    cv_tkn_prof_name      CONSTANT VARCHAR2(100) := 'PROF_NAME';
-    cv_tkn_in_parm        CONSTANT VARCHAR2(100) := 'IN_PARM';
-    -- トークンセット値
-    cv_item_code_char     CONSTANT VARCHAR2(100) := '品目コード';
-    cv_qty_char           CONSTANT VARCHAR2(100) := '数量';
-    -- プロファイル
-    cv_prof_mast_org_id   CONSTANT VARCHAR2(30)  := 'XXCMN_MASTER_ORG_ID'; -- XXCMN:マスタ組織
-    cv_prof_pallet_waight CONSTANT VARCHAR2(30)  := 'XXWSH_PALLET_WEIGHT'; -- XXWSH:パレット重量
-    -- 商品区分
-    cv_prod_class_drink   CONSTANT VARCHAR2(1)   := '2';                   -- ドリンク
-    -- 品目区分
-    cv_item_class_product CONSTANT VARCHAR2(1)   := '5';                   -- 製品
-    -- 切り上げ用定数
-    cn_rounup_const_no    CONSTANT NUMBER        := 0.9;
-    -- 丸め桁数
-    cn_roundup_digits     CONSTANT NUMBER        := 0;
-    -- 単位換算(1) 立法センチメートル->立方メートル
-    cn_conv_cm3_to_m3     CONSTANT NUMBER        := 1000000;
-    -- 単位換算(2) グラム->キログラム
-    cn_conv_g_to_kg       CONSTANT NUMBER        := 1000;
---
-    -- *** ローカル変数 ***
-    -- エラー変数
-    lv_errmsg             VARCHAR2(1000);
-    lv_err_cd             VARCHAR2(30);
---
-    -- プロファイル変数
-    ln_mst_org_id         mtl_parameters.organization_id%TYPE;            -- マスタ組織ID
-    ln_pallet_waight      NUMBER;                                         -- パレット重量
---
-    -- 品目マスタ項目
-    ln_weight             NUMBER;                                         -- 重量
-    ln_capacity           NUMBER;                                         -- 容積
-    ln_delivery_qty       NUMBER;                                         -- 配数
-    ln_max_palette_steps  NUMBER;                                         -- パレット当り最大段数
-    ln_num_of_cases       NUMBER;                                         -- ケース入数
-    lv_conv_unit          xxcmn_item_mst_v.conv_unit%TYPE;                -- 入出庫換算単位
-    lv_prod_class_code    xxcmn_item_categories5_v.prod_class_code%TYPE;  -- 商品区分
-    lv_item_class_code    xxcmn_item_categories5_v.item_class_code%TYPE;  -- 品目区分
---
-    ln_pallet_qty         NUMBER DEFAULT 0;                               -- パレット枚数
-    ln_pallet_sum_weight  NUMBER DEFAULT 0;                               -- 合計パレット重量
---
-    -- *** ローカル・カーソル ***
---
-    -- *** ローカル・レコード ***
---
-    -- ===============================
-    -- ユーザー定義例外
-    -- ===============================
---
-  BEGIN
---
-    -- ***********************************************
-    -- ***      共通関数処理ロジックの記述         ***
-    -- ***********************************************
---
-    /*************************************
-     *  プロファイル取得(B-1)            *
-     *************************************/
-    --
-    ln_mst_org_id    := to_number( fnd_profile.valuE( cv_prof_mast_org_id ));   -- 品目マスタ組織ID
-    ln_pallet_waight := to_number( fnd_profile.valuE( cv_prof_pallet_waight )); -- パレット重量
-    --
-    -- エラー処理
-    -- 「XXCMN:マスタ組織」取得失敗
-    IF ( ln_mst_org_id    IS NULL ) THEN
-      lv_errmsg := xxcmn_common_pkg.get_msg(gv_cnst_xxwsh,
-                                            cv_xxwsh_get_prof_err,
-                                            cv_tkn_prof_name,
-                                            cv_prof_mast_org_id);
-      lv_err_cd := cv_xxwsh_get_prof_err;
-      RAISE global_api_expt;
-    --
-    -- 「XXWSH:パレット重量」取得失敗
-    ELSIF ( ln_pallet_waight IS NULL ) THEN
-      lv_errmsg := xxcmn_common_pkg.get_msg(gv_cnst_xxwsh,
-                                            cv_xxwsh_get_prof_err,
-                                            cv_tkn_prof_name,
-                                            cv_prof_pallet_waight);
-      lv_err_cd := cv_xxwsh_get_prof_err;
-      RAISE global_api_expt;
-    END IF;
---
-    /*************************************
-     *  必須入力パラメータチェック(B-2)  *
-     *************************************/
-    --
-    -- 品目コード
-    IF ( iv_item_no  IS NULL ) THEN
-      lv_errmsg := xxcmn_common_pkg.get_msg(gv_cnst_xxwsh,
-                                            cv_xxwsh_indispensable_err,
-                                            cv_tkn_in_parm,
-                                            cv_item_code_char);
-      lv_err_cd := cv_xxwsh_indispensable_err;
-      RAISE global_api_expt;
-    --
-    -- 数量
-    ELSIF ( in_quantity IS NULL ) THEN
-      lv_errmsg := xxcmn_common_pkg.get_msg(gv_cnst_xxwsh,
-                                            cv_xxwsh_indispensable_err,
-                                            cv_tkn_in_parm,
-                                            cv_qty_char);
-      lv_err_cd := cv_xxwsh_indispensable_err;
-      RAISE global_api_expt;
-    END IF;
---
-    /*************************************
-     *  品目マスタ抽出(B-3)              *
-     *************************************/
-    --
-    BEGIN
-      SELECT  to_number( ximv.unit ),               -- 重量
-              to_number( ximv.capacity ),           -- 容積
-              to_number( ximv.delivery_qty ),       -- 配数
-              to_number( ximv.max_palette_steps ),  -- パレット当り最大段数
-              to_number( ximv.num_of_cases ),       -- ケース入数
-              ximv.conv_unit,                       -- 入出庫換算単位
-              xicv.prod_class_code,                 -- 商品区分
-              xicv.item_class_code                  -- 品目区分
-      INTO    ln_weight,
-              ln_capacity,
-              ln_delivery_qty,
-              ln_max_palette_steps,
-              ln_num_of_cases,
-              lv_conv_unit,
-              lv_prod_class_code,
-              lv_item_class_code
-      FROM    xxcmn_item_mst2_v         ximv,      -- OPM品目情報VIEW2
-              xxcmn_item_categories5_v  xicv       -- OPM品目カテゴリ割当情報VIEW5
-      WHERE   ximv.item_no           =  iv_item_no
-        AND   xicv.item_id           =  ximv.item_id
 -- 2008/10/06 H.Itou Del Start 統合テスト指摘240
---        AND   ROWNUM                 =  1
+--  /**********************************************************************************
+--   * Procedure Name   : calc_total_value
+--   * Description      : 積載効率チェック(合計値算出)
+--   ***********************************************************************************/
+--  PROCEDURE calc_total_value(
+--    iv_item_no                    IN  xxcmn_item_mst_v.item_no%TYPE,   -- 1.品目コード
+--    in_quantity                   IN  NUMBER,                          -- 2.数量
+--    ov_retcode                    OUT NOCOPY VARCHAR2,                 -- 3.リターンコード
+--    ov_errmsg_code                OUT NOCOPY VARCHAR2,                 -- 4.エラーメッセージコード
+--    ov_errmsg                     OUT NOCOPY VARCHAR2,                 -- 5.エラーメッセージ
+--    on_sum_weight                 OUT NOCOPY NUMBER,                   -- 6.合計重量
+--    on_sum_capacity               OUT NOCOPY NUMBER,                   -- 7.合計容積
+--    on_sum_pallet_weight          OUT NOCOPY NUMBER                    -- 8.合計パレット重量
+--  )
+--  IS
+--    -- ===============================
+--    -- 固定ローカル定数
+--    -- ===============================
+--    cv_prg_name   CONSTANT VARCHAR2(100) := 'calc_total_value';        --プログラム名
+--    --
+--    -- ===============================
+--    -- ユーザー宣言部
+--    -- ===============================
+--    -- *** ローカル定数 ***
+--    -- メッセージID
+--    cv_xxwsh_no_data_found_err CONSTANT VARCHAR2(100) := 'APP-XXWSH-12551'; -- 対象データなしエラーメッセージ
+--    cv_xxwsh_palette_steps_err CONSTANT VARCHAR2(100) := 'APP-XXWSH-12552'; -- パレット当り最大段数値ゼロエラーメッセージ
+--    cv_xxwsh_get_prof_err      CONSTANT VARCHAR2(100) := 'APP-XXWSH-12553'; -- プロファイル取得エラーメッセージ
+--    cv_xxwsh_get_deliv_qty_err CONSTANT VARCHAR2(100) := 'APP-XXWSH-12554'; -- 配数値ゼロエラーメッセージ
+--    cv_xxwsh_indispensable_err CONSTANT VARCHAR2(100) := 'APP-XXWSH-12555'; -- 必須入力パラメータ未設定エラーメッセージ
+--    cv_xxwsh_num_of_case_err   CONSTANT VARCHAR2(100) := 'APP-XXWSH-12556'; -- ケース入数値ゼロエラーメッセージ
+--    cv_xxwsh_d_num_of_case_err CONSTANT VARCHAR2(100) := 'APP-XXWSH-12557'; -- ドリンクケース入数値ゼロエラーメッセージ
+--    -- トークン
+--    cv_tkn_item_code      CONSTANT VARCHAR2(100) := 'ITEM_CODE';
+--    cv_tkn_prof_name      CONSTANT VARCHAR2(100) := 'PROF_NAME';
+--    cv_tkn_in_parm        CONSTANT VARCHAR2(100) := 'IN_PARM';
+--    -- トークンセット値
+--    cv_item_code_char     CONSTANT VARCHAR2(100) := '品目コード';
+--    cv_qty_char           CONSTANT VARCHAR2(100) := '数量';
+--    -- プロファイル
+--    cv_prof_mast_org_id   CONSTANT VARCHAR2(30)  := 'XXCMN_MASTER_ORG_ID'; -- XXCMN:マスタ組織
+--    cv_prof_pallet_waight CONSTANT VARCHAR2(30)  := 'XXWSH_PALLET_WEIGHT'; -- XXWSH:パレット重量
+--    -- 商品区分
+--    cv_prod_class_drink   CONSTANT VARCHAR2(1)   := '2';                   -- ドリンク
+--    -- 品目区分
+--    cv_item_class_product CONSTANT VARCHAR2(1)   := '5';                   -- 製品
+--    -- 切り上げ用定数
+--    cn_rounup_const_no    CONSTANT NUMBER        := 0.9;
+--    -- 丸め桁数
+--    cn_roundup_digits     CONSTANT NUMBER        := 0;
+--    -- 単位換算(1) 立法センチメートル->立方メートル
+--    cn_conv_cm3_to_m3     CONSTANT NUMBER        := 1000000;
+--    -- 単位換算(2) グラム->キログラム
+--    cn_conv_g_to_kg       CONSTANT NUMBER        := 1000;
+----
+--    -- *** ローカル変数 ***
+--    -- エラー変数
+--    lv_errmsg             VARCHAR2(1000);
+--    lv_err_cd             VARCHAR2(30);
+----
+--    -- プロファイル変数
+--    ln_mst_org_id         mtl_parameters.organization_id%TYPE;            -- マスタ組織ID
+--    ln_pallet_waight      NUMBER;                                         -- パレット重量
+----
+--    -- 品目マスタ項目
+--    ln_weight             NUMBER;                                         -- 重量
+--    ln_capacity           NUMBER;                                         -- 容積
+--    ln_delivery_qty       NUMBER;                                         -- 配数
+--    ln_max_palette_steps  NUMBER;                                         -- パレット当り最大段数
+--    ln_num_of_cases       NUMBER;                                         -- ケース入数
+--    lv_conv_unit          xxcmn_item_mst_v.conv_unit%TYPE;                -- 入出庫換算単位
+--    lv_prod_class_code    xxcmn_item_categories5_v.prod_class_code%TYPE;  -- 商品区分
+--    lv_item_class_code    xxcmn_item_categories5_v.item_class_code%TYPE;  -- 品目区分
+----
+--    ln_pallet_qty         NUMBER DEFAULT 0;                               -- パレット枚数
+--    ln_pallet_sum_weight  NUMBER DEFAULT 0;                               -- 合計パレット重量
+----
+--    -- *** ローカル・カーソル ***
+----
+--    -- *** ローカル・レコード ***
+----
+--    -- ===============================
+--    -- ユーザー定義例外
+--    -- ===============================
+----
+--  BEGIN
+----
+--    -- ***********************************************
+--    -- ***      共通関数処理ロジックの記述         ***
+--    -- ***********************************************
+----
+--    /*************************************
+--     *  プロファイル取得(B-1)            *
+--     *************************************/
+--    --
+--    ln_mst_org_id    := to_number( fnd_profile.valuE( cv_prof_mast_org_id ));   -- 品目マスタ組織ID
+--    ln_pallet_waight := to_number( fnd_profile.valuE( cv_prof_pallet_waight )); -- パレット重量
+--    --
+--    -- エラー処理
+--    -- 「XXCMN:マスタ組織」取得失敗
+--    IF ( ln_mst_org_id    IS NULL ) THEN
+--      lv_errmsg := xxcmn_common_pkg.get_msg(gv_cnst_xxwsh,
+--                                            cv_xxwsh_get_prof_err,
+--                                            cv_tkn_prof_name,
+--                                            cv_prof_mast_org_id);
+--      lv_err_cd := cv_xxwsh_get_prof_err;
+--      RAISE global_api_expt;
+--    --
+--    -- 「XXWSH:パレット重量」取得失敗
+--    ELSIF ( ln_pallet_waight IS NULL ) THEN
+--      lv_errmsg := xxcmn_common_pkg.get_msg(gv_cnst_xxwsh,
+--                                            cv_xxwsh_get_prof_err,
+--                                            cv_tkn_prof_name,
+--                                            cv_prof_pallet_waight);
+--      lv_err_cd := cv_xxwsh_get_prof_err;
+--      RAISE global_api_expt;
+--    END IF;
+----
+--    /*************************************
+--     *  必須入力パラメータチェック(B-2)  *
+--     *************************************/
+--    --
+--    -- 品目コード
+--    IF ( iv_item_no  IS NULL ) THEN
+--      lv_errmsg := xxcmn_common_pkg.get_msg(gv_cnst_xxwsh,
+--                                            cv_xxwsh_indispensable_err,
+--                                            cv_tkn_in_parm,
+--                                            cv_item_code_char);
+--      lv_err_cd := cv_xxwsh_indispensable_err;
+--      RAISE global_api_expt;
+--    --
+--    -- 数量
+--    ELSIF ( in_quantity IS NULL ) THEN
+--      lv_errmsg := xxcmn_common_pkg.get_msg(gv_cnst_xxwsh,
+--                                            cv_xxwsh_indispensable_err,
+--                                            cv_tkn_in_parm,
+--                                            cv_qty_char);
+--      lv_err_cd := cv_xxwsh_indispensable_err;
+--      RAISE global_api_expt;
+--    END IF;
+----
+--    /*************************************
+--     *  品目マスタ抽出(B-3)              *
+--     *************************************/
+--    --
+--    BEGIN
+--      SELECT  to_number( ximv.unit ),               -- 重量
+--              to_number( ximv.capacity ),           -- 容積
+--              to_number( ximv.delivery_qty ),       -- 配数
+--              to_number( ximv.max_palette_steps ),  -- パレット当り最大段数
+--              to_number( ximv.num_of_cases ),       -- ケース入数
+--              ximv.conv_unit,                       -- 入出庫換算単位
+--              xicv.prod_class_code,                 -- 商品区分
+--              xicv.item_class_code                  -- 品目区分
+--      INTO    ln_weight,
+--              ln_capacity,
+--              ln_delivery_qty,
+--              ln_max_palette_steps,
+--              ln_num_of_cases,
+--              lv_conv_unit,
+--              lv_prod_class_code,
+--              lv_item_class_code
+--      FROM    xxcmn_item_mst2_v         ximv,      -- OPM品目情報VIEW2
+--              xxcmn_item_categories5_v  xicv       -- OPM品目カテゴリ割当情報VIEW5
+--      WHERE   ximv.item_no           =  iv_item_no
+--        AND   xicv.item_id           =  ximv.item_id
+---- 2008/10/06 H.Itou Del Start 統合テスト指摘240
+----        AND   ROWNUM                 =  1
+---- 2008/10/06 H.Itou Del End
+---- 2008/10/06 H.Itou Add Start 統合テスト指摘240
+--        AND   TRUNC(SYSDATE) BETWEEN ximv.start_date_active AND ximv.end_date_active
+---- 2008/10/06 H.Itou Add End
+--      ;
+--    EXCEPTION
+--      WHEN  NO_DATA_FOUND THEN
+--        lv_errmsg := xxcmn_common_pkg.get_msg(gv_cnst_xxwsh,
+--                                              cv_xxwsh_no_data_found_err,
+--                                              cv_tkn_item_code,
+--                                              iv_item_no);
+--        lv_err_cd := cv_xxwsh_no_data_found_err;
+--        RAISE global_api_expt;
+--    END;
+----
+--     -- 業務例外チェック
+--    -- ドリンクかつ製品の品目の場合
+--    IF (  ( lv_prod_class_code = cv_prod_class_drink   )
+--      AND ( lv_item_class_code = cv_item_class_product )) THEN
+--    --
+--    -- 配数が0またはNULLならエラー
+--      IF ( NVL(ln_delivery_qty, 0) = 0 ) THEN
+--        lv_errmsg := xxcmn_common_pkg.get_msg(gv_cnst_xxwsh,
+--                                              cv_xxwsh_get_deliv_qty_err,
+--                                              cv_tkn_item_code,
+--                                              iv_item_no);
+--        lv_err_cd := cv_xxwsh_get_deliv_qty_err;
+--        RAISE global_api_expt;
+--    --
+--    -- パレット当り最大段数が0またはNULLならエラー
+--      ELSIF ( NVL(ln_max_palette_steps, 0) = 0 ) THEN
+--        lv_errmsg := xxcmn_common_pkg.get_msg(gv_cnst_xxwsh,
+--                                              cv_xxwsh_palette_steps_err,
+--                                              cv_tkn_item_code,
+--                                              iv_item_no);
+--        lv_err_cd := cv_xxwsh_palette_steps_err;
+--        RAISE global_api_expt;
+--    --
+--    -- ケース入数が0またはNULLならエラー
+--      ELSIF ( NVL(ln_num_of_cases, 0) = 0 ) THEN
+--        lv_errmsg := xxcmn_common_pkg.get_msg(gv_cnst_xxwsh,
+--                                              cv_xxwsh_d_num_of_case_err,
+--                                              cv_tkn_item_code,
+--                                              iv_item_no);
+--        lv_err_cd := cv_xxwsh_d_num_of_case_err;
+--        RAISE global_api_expt;
+--      END IF;
+--    END IF;
+--    --
+--    -- 入出庫換算単位がNULL以外の場合、ケース入数が0またはNULLならエラー
+--    IF (  ( lv_conv_unit IS NOT NULL )
+--      AND ( NVL(ln_num_of_cases, 0) = 0 ) ) THEN
+--        lv_errmsg := xxcmn_common_pkg.get_msg(gv_cnst_xxwsh,
+--                                              cv_xxwsh_num_of_case_err,
+--                                              cv_tkn_item_code,
+--                                              iv_item_no);
+--        lv_err_cd := cv_xxwsh_num_of_case_err;
+--        RAISE global_api_expt;
+--    END IF;
+----
+--    /**********************************
+--     *  合計パレット重量の算出(B-4)   *
+--     **********************************/
+--    --
+--    -- ドリンク製品の場合のみ、数量分のパレット重量を算出する。
+--    IF (  ( lv_prod_class_code = cv_prod_class_drink   )
+--      AND ( lv_item_class_code = cv_item_class_product ) )
+--    THEN
+--      --「パレット枚数」の算出
+--      ln_pallet_qty
+--        := ( (  ( in_quantity   / ln_num_of_cases  ) / ln_delivery_qty  ) / ln_max_palette_steps);
+--      ln_pallet_qty
+--        := TRUNC( ln_pallet_qty + cn_rounup_const_no , cn_roundup_digits );
+--      --
+--      -- 「合計パレット重量」の算出
+--      ln_pallet_sum_weight
+--                    := ln_pallet_qty * ln_pallet_waight;
+--    END IF;
+--    --
+----
+--    /**********************************
+--     *  合計値の算出(B-5)             *
+--     **********************************/
+--    --
+--    -- 出力パラメータ「合計容積」「合計重量」
+--    on_sum_capacity      := ( ln_capacity * in_quantity ) / cn_conv_cm3_to_m3;
+--    on_sum_weight        := ( ln_weight   * in_quantity ) / cn_conv_g_to_kg;
+--    -- 出力パラメータ「合計パレット重量」
+--    on_sum_pallet_weight := ln_pallet_sum_weight;
+--    --
+--    -- ステータスコードセット
+--    ov_retcode           := gv_status_normal;   -- リターンコード
+--    ov_errmsg_code       := NULL;               -- エラーメッセージコード
+--    ov_errmsg            := NULL;               -- エラーメッセージ
+--    --
+----
+--    --==============================================================
+--    --メッセージ出力（エラー以外）をする必要がある場合は処理を記述
+--    --==============================================================
+----
+--  EXCEPTION
+----
+----#################################  固定例外処理部 START   ####################################
+----
+--    -- *** 共通関数例外ハンドラ ***
+--    WHEN global_api_expt THEN
+--      ov_errmsg      := lv_errmsg;
+--      ov_errmsg_code := lv_err_cd;
+--      ov_retcode     := gv_status_error;
+--    -- *** 共通関数OTHERS例外ハンドラ ***
+--    WHEN global_api_others_expt THEN
+--      ov_errmsg      := SQLERRM;
+--      ov_errmsg_code := SQLCODE;
+--      ov_retcode     := gv_status_error;
+--    -- *** OTHERS例外ハンドラ ***
+--    WHEN OTHERS THEN
+--      ov_errmsg      := SQLERRM;
+--      ov_errmsg_code := SQLCODE;
+--      ov_retcode     := gv_status_error;
+----
+----#####################################  固定部 END   ##########################################
+----
+--  END calc_total_value;
 -- 2008/10/06 H.Itou Del End
--- 2008/10/06 H.Itou Add Start 統合テスト指摘240
-        AND   TRUNC(SYSDATE) BETWEEN ximv.start_date_active AND ximv.end_date_active
--- 2008/10/06 H.Itou Add End
-      ;
-    EXCEPTION
-      WHEN  NO_DATA_FOUND THEN
-        lv_errmsg := xxcmn_common_pkg.get_msg(gv_cnst_xxwsh,
-                                              cv_xxwsh_no_data_found_err,
-                                              cv_tkn_item_code,
-                                              iv_item_no);
-        lv_err_cd := cv_xxwsh_no_data_found_err;
-        RAISE global_api_expt;
-    END;
---
-     -- 業務例外チェック
-    -- ドリンクかつ製品の品目の場合
-    IF (  ( lv_prod_class_code = cv_prod_class_drink   )
-      AND ( lv_item_class_code = cv_item_class_product )) THEN
-    --
-    -- 配数が0またはNULLならエラー
-      IF ( NVL(ln_delivery_qty, 0) = 0 ) THEN
-        lv_errmsg := xxcmn_common_pkg.get_msg(gv_cnst_xxwsh,
-                                              cv_xxwsh_get_deliv_qty_err,
-                                              cv_tkn_item_code,
-                                              iv_item_no);
-        lv_err_cd := cv_xxwsh_get_deliv_qty_err;
-        RAISE global_api_expt;
-    --
-    -- パレット当り最大段数が0またはNULLならエラー
-      ELSIF ( NVL(ln_max_palette_steps, 0) = 0 ) THEN
-        lv_errmsg := xxcmn_common_pkg.get_msg(gv_cnst_xxwsh,
-                                              cv_xxwsh_palette_steps_err,
-                                              cv_tkn_item_code,
-                                              iv_item_no);
-        lv_err_cd := cv_xxwsh_palette_steps_err;
-        RAISE global_api_expt;
-    --
-    -- ケース入数が0またはNULLならエラー
-      ELSIF ( NVL(ln_num_of_cases, 0) = 0 ) THEN
-        lv_errmsg := xxcmn_common_pkg.get_msg(gv_cnst_xxwsh,
-                                              cv_xxwsh_d_num_of_case_err,
-                                              cv_tkn_item_code,
-                                              iv_item_no);
-        lv_err_cd := cv_xxwsh_d_num_of_case_err;
-        RAISE global_api_expt;
-      END IF;
-    END IF;
-    --
-    -- 入出庫換算単位がNULL以外の場合、ケース入数が0またはNULLならエラー
-    IF (  ( lv_conv_unit IS NOT NULL )
-      AND ( NVL(ln_num_of_cases, 0) = 0 ) ) THEN
-        lv_errmsg := xxcmn_common_pkg.get_msg(gv_cnst_xxwsh,
-                                              cv_xxwsh_num_of_case_err,
-                                              cv_tkn_item_code,
-                                              iv_item_no);
-        lv_err_cd := cv_xxwsh_num_of_case_err;
-        RAISE global_api_expt;
-    END IF;
---
-    /**********************************
-     *  合計パレット重量の算出(B-4)   *
-     **********************************/
-    --
-    -- ドリンク製品の場合のみ、数量分のパレット重量を算出する。
-    IF (  ( lv_prod_class_code = cv_prod_class_drink   )
-      AND ( lv_item_class_code = cv_item_class_product ) )
-    THEN
-      --「パレット枚数」の算出
-      ln_pallet_qty
-        := ( (  ( in_quantity   / ln_num_of_cases  ) / ln_delivery_qty  ) / ln_max_palette_steps);
-      ln_pallet_qty
-        := TRUNC( ln_pallet_qty + cn_rounup_const_no , cn_roundup_digits );
-      --
-      -- 「合計パレット重量」の算出
-      ln_pallet_sum_weight
-                    := ln_pallet_qty * ln_pallet_waight;
-    END IF;
-    --
---
-    /**********************************
-     *  合計値の算出(B-5)             *
-     **********************************/
-    --
-    -- 出力パラメータ「合計容積」「合計重量」
-    on_sum_capacity      := ( ln_capacity * in_quantity ) / cn_conv_cm3_to_m3;
-    on_sum_weight        := ( ln_weight   * in_quantity ) / cn_conv_g_to_kg;
-    -- 出力パラメータ「合計パレット重量」
-    on_sum_pallet_weight := ln_pallet_sum_weight;
-    --
-    -- ステータスコードセット
-    ov_retcode           := gv_status_normal;   -- リターンコード
-    ov_errmsg_code       := NULL;               -- エラーメッセージコード
-    ov_errmsg            := NULL;               -- エラーメッセージ
-    --
---
-    --==============================================================
-    --メッセージ出力（エラー以外）をする必要がある場合は処理を記述
-    --==============================================================
---
-  EXCEPTION
---
---#################################  固定例外処理部 START   ####################################
---
-    -- *** 共通関数例外ハンドラ ***
-    WHEN global_api_expt THEN
-      ov_errmsg      := lv_errmsg;
-      ov_errmsg_code := lv_err_cd;
-      ov_retcode     := gv_status_error;
-    -- *** 共通関数OTHERS例外ハンドラ ***
-    WHEN global_api_others_expt THEN
-      ov_errmsg      := SQLERRM;
-      ov_errmsg_code := SQLCODE;
-      ov_retcode     := gv_status_error;
-    -- *** OTHERS例外ハンドラ ***
-    WHEN OTHERS THEN
-      ov_errmsg      := SQLERRM;
-      ov_errmsg_code := SQLCODE;
-      ov_retcode     := gv_status_error;
---
---#####################################  固定部 END   ##########################################
---
-  END calc_total_value;
 --
 -- 2008/10/06 H.Itou Add Start 統合テスト指摘240
   /**********************************************************************************
@@ -460,6 +464,9 @@ AS
     -- プロファイル
     cv_prof_mast_org_id   CONSTANT VARCHAR2(30)  := 'XXCMN_MASTER_ORG_ID'; -- XXCMN:マスタ組織
     cv_prof_pallet_waight CONSTANT VARCHAR2(30)  := 'XXWSH_PALLET_WEIGHT'; -- XXWSH:パレット重量
+-- 2008/11/12 H.Itou Add Start 統合テスト指摘597
+    cv_prof_p_weight_s_date CONSTANT VARCHAR2(50)  := 'XXWSH_PALLET_WEIGHT_START_DATE'; -- XXWSH:パレット重量加味開始日
+-- 2008/11/12 H.Itou Add End
     -- 商品区分
     cv_prod_class_drink   CONSTANT VARCHAR2(1)   := '2';                   -- ドリンク
     -- 品目区分
@@ -481,6 +488,9 @@ AS
     -- プロファイル変数
     ln_mst_org_id         mtl_parameters.organization_id%TYPE;            -- マスタ組織ID
     ln_pallet_waight      NUMBER;                                         -- パレット重量
+-- 2008/11/12 H.Itou Add Start 統合テスト指摘597
+    ld_p_weight_s_date    DATE;                                           -- パレット重量加味開始日
+-- 2008/11/12 H.Itou Add End
 --
     -- 品目マスタ項目
     ln_weight             NUMBER;                                         -- 重量
@@ -513,8 +523,11 @@ AS
      *  プロファイル取得(B-1)            *
      *************************************/
     --
-    ln_mst_org_id    := to_number( fnd_profile.valuE( cv_prof_mast_org_id ));   -- 品目マスタ組織ID
-    ln_pallet_waight := to_number( fnd_profile.valuE( cv_prof_pallet_waight )); -- パレット重量
+    ln_mst_org_id    := TO_NUMBER( FND_PROFILE.VALUE( cv_prof_mast_org_id ));   -- 品目マスタ組織ID
+    ln_pallet_waight := TO_NUMBER( FND_PROFILE.VALUE( cv_prof_pallet_waight )); -- パレット重量
+-- 2008/11/12 H.Itou Add Start 統合テスト指摘597
+    ld_p_weight_s_date := TO_DATE( FND_PROFILE.VALUE( cv_prof_p_weight_s_date ), gv_yyyymmdd );   -- パレット重量加味開始日
+-- 2008/11/12 H.Itou Add End
     --
     -- エラー処理
     -- 「XXCMN:マスタ組織」取得失敗
@@ -534,7 +547,20 @@ AS
                                             cv_prof_pallet_waight);
       lv_err_cd := cv_xxwsh_get_prof_err;
       RAISE global_api_expt;
+    --
     END IF;
+-- 2008/11/12 H.Itou Add Start 統合テスト指摘597
+    -- 「XXWSH:パレット重量加味開始日」取得失敗
+    IF ( ld_p_weight_s_date IS NULL ) THEN
+      lv_errmsg := xxcmn_common_pkg.get_msg(gv_cnst_xxwsh,
+                                            cv_xxwsh_get_prof_err,
+                                            cv_tkn_prof_name,
+                                            cv_prof_p_weight_s_date);
+      lv_err_cd := cv_xxwsh_get_prof_err;
+      RAISE global_api_expt;
+    END IF;
+-- 2008/11/12 H.Itou Add End
+
 --
     /*************************************
      *  必須入力パラメータチェック(B-2)  *
@@ -678,7 +704,17 @@ AS
     on_sum_capacity      := ( ln_capacity * in_quantity ) / cn_conv_cm3_to_m3;
     on_sum_weight        := ( ln_weight   * in_quantity ) / cn_conv_g_to_kg;
     -- 出力パラメータ「合計パレット重量」
-    on_sum_pallet_weight := ln_pallet_sum_weight;
+-- 2008/11/12 H.Itou Add Start 統合テスト指摘597
+    -- 基準日がプロファイル：パレット重量加味開始日以降の場合、パレット重量は計算値を返す。
+    IF (TRUNC(id_standard_date) >= ld_p_weight_s_date) THEN
+-- 2008/11/12 H.Itou Add End
+      on_sum_pallet_weight := ln_pallet_sum_weight;
+-- 2008/11/12 H.Itou Add Start 統合テスト指摘597
+    -- 基準日がプロファイル：パレット重量加味開始日未満の場合、パレット重量は0を返す。
+    ELSE
+      on_sum_pallet_weight := 0;
+    END IF;
+-- 2008/11/12 H.Itou Add End
     --
     -- ステータスコードセット
     ov_retcode           := gv_status_normal;   -- リターンコード
@@ -715,6 +751,375 @@ AS
   END calc_total_value;
 -- 2008/10/06 H.Itou Add End
 --
+-- 2008/11/12 H.Itou Add Start 統合テスト指摘311 指示/実績区分を追加し、処理を分ける。
+  /**********************************************************************************
+   * Procedure Name   : calc_total_value
+   * Description      : 積載効率チェック(合計値算出)
+   ***********************************************************************************/
+  PROCEDURE calc_total_value(
+    iv_item_no                    IN  xxcmn_item_mst_v.item_no%TYPE,   -- 1.品目コード
+    in_quantity                   IN  NUMBER,                          -- 2.数量
+    ov_retcode                    OUT NOCOPY VARCHAR2,                 -- 3.リターンコード
+    ov_errmsg_code                OUT NOCOPY VARCHAR2,                 -- 4.エラーメッセージコード
+    ov_errmsg                     OUT NOCOPY VARCHAR2,                 -- 5.エラーメッセージ
+    on_sum_weight                 OUT NOCOPY NUMBER,                   -- 6.合計重量
+    on_sum_capacity               OUT NOCOPY NUMBER,                   -- 7.合計容積
+    on_sum_pallet_weight          OUT NOCOPY NUMBER,                   -- 8.合計パレット重量
+    id_standard_date              IN  DATE,                            -- 9.基準日(適用日基準日)
+    iv_mode                       IN  VARCHAR2                         -- 10.指示/実績区分 1:指示 2:実績
+  )
+  IS
+    -- ===============================
+    -- 固定ローカル定数
+    -- ===============================
+    cv_prg_name   CONSTANT VARCHAR2(100) := 'calc_total_value';        --プログラム名
+    --
+    -- ===============================
+    -- ユーザー宣言部
+    -- ===============================
+    -- *** ローカル定数 ***
+    -- メッセージID
+    cv_xxwsh_no_data_found_err CONSTANT VARCHAR2(100) := 'APP-XXWSH-12551'; -- 対象データなしエラーメッセージ
+    cv_xxwsh_palette_steps_err CONSTANT VARCHAR2(100) := 'APP-XXWSH-12552'; -- パレット当り最大段数値ゼロエラーメッセージ
+    cv_xxwsh_get_prof_err      CONSTANT VARCHAR2(100) := 'APP-XXWSH-12553'; -- プロファイル取得エラーメッセージ
+    cv_xxwsh_get_deliv_qty_err CONSTANT VARCHAR2(100) := 'APP-XXWSH-12554'; -- 配数値ゼロエラーメッセージ
+    cv_xxwsh_indispensable_err CONSTANT VARCHAR2(100) := 'APP-XXWSH-12555'; -- 必須入力パラメータ未設定エラーメッセージ
+    cv_xxwsh_num_of_case_err   CONSTANT VARCHAR2(100) := 'APP-XXWSH-12556'; -- ケース入数値ゼロエラーメッセージ
+    cv_xxwsh_d_num_of_case_err CONSTANT VARCHAR2(100) := 'APP-XXWSH-12557'; -- ドリンクケース入数値ゼロエラーメッセージ
+    -- トークン
+    cv_tkn_item_code      CONSTANT VARCHAR2(100) := 'ITEM_CODE';
+    cv_tkn_prof_name      CONSTANT VARCHAR2(100) := 'PROF_NAME';
+    cv_tkn_in_parm        CONSTANT VARCHAR2(100) := 'IN_PARM';
+    -- トークンセット値
+    cv_item_code_char     CONSTANT VARCHAR2(100) := '品目コード';
+    cv_qty_char           CONSTANT VARCHAR2(100) := '数量';
+    cv_qty_standard_date  CONSTANT VARCHAR2(100) := '基準日';
+-- 2008/11/12 H.Itou Add Start 統合テスト指摘311
+   cv_mode_char           CONSTANT VARCHAR2(100) := '指示/実績区分';
+-- 2008/11/12 H.Itou Add End
+    -- プロファイル
+    cv_prof_mast_org_id   CONSTANT VARCHAR2(30)  := 'XXCMN_MASTER_ORG_ID'; -- XXCMN:マスタ組織
+    cv_prof_pallet_waight CONSTANT VARCHAR2(30)  := 'XXWSH_PALLET_WEIGHT'; -- XXWSH:パレット重量
+-- 2008/11/12 H.Itou Add Start 統合テスト指摘597
+    cv_prof_p_weight_s_date CONSTANT VARCHAR2(50)  := 'XXWSH_PALLET_WEIGHT_START_DATE'; -- XXWSH:パレット重量加味開始日
+-- 2008/11/12 H.Itou Add End
+    -- 商品区分
+    cv_prod_class_drink   CONSTANT VARCHAR2(1)   := '2';                   -- ドリンク
+    -- 品目区分
+    cv_item_class_product CONSTANT VARCHAR2(1)   := '5';                   -- 製品
+    -- 切り上げ用定数
+    cn_rounup_const_no    CONSTANT NUMBER        := 0.9;
+    -- 丸め桁数
+    cn_roundup_digits     CONSTANT NUMBER        := 0;
+    -- 単位換算(1) 立法センチメートル->立方メートル
+    cn_conv_cm3_to_m3     CONSTANT NUMBER        := 1000000;
+    -- 単位換算(2) グラム->キログラム
+    cn_conv_g_to_kg       CONSTANT NUMBER        := 1000;
+--
+-- 2008/11/12 H.Itou Add Start 統合テスト指摘311
+    -- INパラメータ.指示/実績区分
+    cv_mode_plan          CONSTANT VARCHAR2(1)   := '1';    -- 指示
+    cv_mode_result        CONSTANT VARCHAR2(1)   := '2';    -- 実績
+-- 2008/11/12 H.Itou Add End
+    -- *** ローカル変数 ***
+    -- エラー変数
+    lv_errmsg             VARCHAR2(1000);
+    lv_err_cd             VARCHAR2(30);
+--
+    -- プロファイル変数
+    ln_mst_org_id         mtl_parameters.organization_id%TYPE;            -- マスタ組織ID
+    ln_pallet_waight      NUMBER;                                         -- パレット重量
+-- 2008/11/12 H.Itou Add Start 統合テスト指摘597
+    ld_p_weight_s_date    DATE;                                           -- パレット重量加味開始日
+-- 2008/11/12 H.Itou Add End
+--
+    -- 品目マスタ項目
+    ln_weight             NUMBER;                                         -- 重量
+    ln_capacity           NUMBER;                                         -- 容積
+    ln_delivery_qty       NUMBER;                                         -- 配数
+    ln_max_palette_steps  NUMBER;                                         -- パレット当り最大段数
+    ln_num_of_cases       NUMBER;                                         -- ケース入数
+    lv_conv_unit          xxcmn_item_mst_v.conv_unit%TYPE;                -- 入出庫換算単位
+    lv_prod_class_code    xxcmn_item_categories5_v.prod_class_code%TYPE;  -- 商品区分
+    lv_item_class_code    xxcmn_item_categories5_v.item_class_code%TYPE;  -- 品目区分
+--
+    ln_pallet_qty         NUMBER DEFAULT 0;                               -- パレット枚数
+    ln_pallet_sum_weight  NUMBER DEFAULT 0;                               -- 合計パレット重量
+--
+    -- *** ローカル・カーソル ***
+--
+    -- *** ローカル・レコード ***
+--
+    -- ===============================
+    -- ユーザー定義例外
+    -- ===============================
+--
+  BEGIN
+--
+    -- ***********************************************
+    -- ***      共通関数処理ロジックの記述         ***
+    -- ***********************************************
+--
+    /*************************************
+     *  プロファイル取得(B-1)            *
+     *************************************/
+    --
+    ln_mst_org_id    := TO_NUMBER( FND_PROFILE.VALUE( cv_prof_mast_org_id ));   -- 品目マスタ組織ID
+    ln_pallet_waight := TO_NUMBER( FND_PROFILE.VALUE( cv_prof_pallet_waight )); -- パレット重量
+-- 2008/11/12 H.Itou Add Start 統合テスト指摘597
+    ld_p_weight_s_date := TO_DATE( FND_PROFILE.VALUE( cv_prof_p_weight_s_date ), gv_yyyymmdd );   -- パレット重量加味開始日
+-- 2008/11/12 H.Itou Add End
+    --
+    -- エラー処理
+    -- 「XXCMN:マスタ組織」取得失敗
+    IF ( ln_mst_org_id    IS NULL ) THEN
+      lv_errmsg := xxcmn_common_pkg.get_msg(gv_cnst_xxwsh,
+                                            cv_xxwsh_get_prof_err,
+                                            cv_tkn_prof_name,
+                                            cv_prof_mast_org_id);
+      lv_err_cd := cv_xxwsh_get_prof_err;
+      RAISE global_api_expt;
+    --
+    -- 「XXWSH:パレット重量」取得失敗
+    ELSIF ( ln_pallet_waight IS NULL ) THEN
+      lv_errmsg := xxcmn_common_pkg.get_msg(gv_cnst_xxwsh,
+                                            cv_xxwsh_get_prof_err,
+                                            cv_tkn_prof_name,
+                                            cv_prof_pallet_waight);
+      lv_err_cd := cv_xxwsh_get_prof_err;
+      RAISE global_api_expt;
+    --
+    END IF;
+-- 2008/11/12 H.Itou Add Start 統合テスト指摘597
+    -- 「XXWSH:パレット重量加味開始日」取得失敗
+    IF ( ld_p_weight_s_date IS NULL ) THEN
+      lv_errmsg := xxcmn_common_pkg.get_msg(gv_cnst_xxwsh,
+                                            cv_xxwsh_get_prof_err,
+                                            cv_tkn_prof_name,
+                                            cv_prof_p_weight_s_date);
+      lv_err_cd := cv_xxwsh_get_prof_err;
+      RAISE global_api_expt;
+    END IF;
+-- 2008/11/12 H.Itou Add End
+
+--
+    /*************************************
+     *  必須入力パラメータチェック(B-2)  *
+     *************************************/
+    --
+    -- 品目コード
+    IF ( iv_item_no  IS NULL ) THEN
+      lv_errmsg := xxcmn_common_pkg.get_msg(gv_cnst_xxwsh,
+                                            cv_xxwsh_indispensable_err,
+                                            cv_tkn_in_parm,
+                                            cv_item_code_char);
+      lv_err_cd := cv_xxwsh_indispensable_err;
+      RAISE global_api_expt;
+    --
+    -- 数量
+    ELSIF ( in_quantity IS NULL ) THEN
+      lv_errmsg := xxcmn_common_pkg.get_msg(gv_cnst_xxwsh,
+                                            cv_xxwsh_indispensable_err,
+                                            cv_tkn_in_parm,
+                                            cv_qty_char);
+      lv_err_cd := cv_xxwsh_indispensable_err;
+      RAISE global_api_expt;
+    --
+    -- 基準日
+    ELSIF ( id_standard_date IS NULL ) THEN
+      lv_errmsg := xxcmn_common_pkg.get_msg(gv_cnst_xxwsh,
+                                            cv_xxwsh_indispensable_err,
+                                            cv_tkn_in_parm,
+                                            cv_qty_standard_date);
+      lv_err_cd := cv_xxwsh_indispensable_err;
+      RAISE global_api_expt;
+--
+-- 2008/11/12 H.Itou Add Start 統合テスト指摘311
+    -- 指示/実績区分
+    ELSIF ( iv_mode IS NULL ) THEN
+      lv_errmsg := xxcmn_common_pkg.get_msg(gv_cnst_xxwsh,
+                                            cv_xxwsh_indispensable_err,
+                                            cv_tkn_in_parm,
+                                            cv_mode_char);
+      lv_err_cd := cv_xxwsh_indispensable_err;
+      RAISE global_api_expt;
+-- 2008/11/12 H.Itou Add End
+    END IF;
+--
+    /*************************************
+     *  品目マスタ抽出(B-3)              *
+     *************************************/
+    --
+    BEGIN
+      SELECT  to_number( ximv.unit ),               -- 重量
+              to_number( ximv.capacity ),           -- 容積
+              to_number( ximv.delivery_qty ),       -- 配数
+              to_number( ximv.max_palette_steps ),  -- パレット当り最大段数
+              to_number( ximv.num_of_cases ),       -- ケース入数
+              ximv.conv_unit,                       -- 入出庫換算単位
+              xicv.prod_class_code,                 -- 商品区分
+              xicv.item_class_code                  -- 品目区分
+      INTO    ln_weight,
+              ln_capacity,
+              ln_delivery_qty,
+              ln_max_palette_steps,
+              ln_num_of_cases,
+              lv_conv_unit,
+              lv_prod_class_code,
+              lv_item_class_code
+      FROM    xxcmn_item_mst2_v         ximv,      -- OPM品目情報VIEW2
+              xxcmn_item_categories5_v  xicv       -- OPM品目カテゴリ割当情報VIEW5
+      WHERE   ximv.item_no           =  iv_item_no
+        AND   xicv.item_id           =  ximv.item_id
+        AND   TRUNC(id_standard_date) BETWEEN ximv.start_date_active AND ximv.end_date_active
+      ;
+    EXCEPTION
+      WHEN  NO_DATA_FOUND THEN
+        lv_errmsg := xxcmn_common_pkg.get_msg(gv_cnst_xxwsh,
+                                              cv_xxwsh_no_data_found_err,
+                                              cv_tkn_item_code,
+                                              iv_item_no);
+        lv_err_cd := cv_xxwsh_no_data_found_err;
+        RAISE global_api_expt;
+    END;
+--
+     -- 業務例外チェック
+    -- ドリンクかつ製品の品目の場合
+    IF (  ( lv_prod_class_code = cv_prod_class_drink   )
+      AND ( lv_item_class_code = cv_item_class_product )) THEN
+    --
+-- 2008/11/12 H.Itou Add Start 統合テスト指摘311
+      -- 配数・段数チェックは指示/実績区分が1：指示の場合のみ。
+      IF(iv_mode = cv_mode_plan) THEN
+-- 2008/11/12 H.Itou Add End
+        -- 配数が0またはNULLならエラー
+        IF ( NVL(ln_delivery_qty, 0) = 0 ) THEN
+          lv_errmsg := xxcmn_common_pkg.get_msg(gv_cnst_xxwsh,
+                                                cv_xxwsh_get_deliv_qty_err,
+                                                cv_tkn_item_code,
+                                                iv_item_no);
+          lv_err_cd := cv_xxwsh_get_deliv_qty_err;
+          RAISE global_api_expt;
+        --
+        -- パレット当り最大段数が0またはNULLならエラー
+        ELSIF ( NVL(ln_max_palette_steps, 0) = 0 ) THEN
+          lv_errmsg := xxcmn_common_pkg.get_msg(gv_cnst_xxwsh,
+                                                cv_xxwsh_palette_steps_err,
+                                                cv_tkn_item_code,
+                                                iv_item_no);
+          lv_err_cd := cv_xxwsh_palette_steps_err;
+          RAISE global_api_expt;
+-- 2008/11/12 H.Itou Add Start 統合テスト指摘311
+        END IF;
+      END IF;
+-- 2008/11/12 H.Itou Add End
+      --
+      -- ケース入数が0またはNULLならエラー
+-- 2008/11/12 H.Itou Mod Start 統合テスト指摘311
+--      ELSIF ( NVL(ln_num_of_cases, 0) = 0 ) THEN
+      IF ( NVL(ln_num_of_cases, 0) = 0 ) THEN
+-- 2008/11/12 H.Itou Mod End
+        lv_errmsg := xxcmn_common_pkg.get_msg(gv_cnst_xxwsh,
+                                              cv_xxwsh_d_num_of_case_err,
+                                              cv_tkn_item_code,
+                                              iv_item_no);
+        lv_err_cd := cv_xxwsh_d_num_of_case_err;
+        RAISE global_api_expt;
+      END IF;
+    END IF;
+    --
+    -- 入出庫換算単位がNULL以外の場合、ケース入数が0またはNULLならエラー
+    IF (  ( lv_conv_unit IS NOT NULL )
+      AND ( NVL(ln_num_of_cases, 0) = 0 ) ) THEN
+        lv_errmsg := xxcmn_common_pkg.get_msg(gv_cnst_xxwsh,
+                                              cv_xxwsh_num_of_case_err,
+                                              cv_tkn_item_code,
+                                              iv_item_no);
+        lv_err_cd := cv_xxwsh_num_of_case_err;
+        RAISE global_api_expt;
+    END IF;
+--
+    /**********************************
+     *  合計パレット重量の算出(B-4)   *
+     **********************************/
+    --
+    -- ドリンク製品の場合のみ、数量分のパレット重量を算出する。
+    IF (  ( lv_prod_class_code = cv_prod_class_drink   )
+-- 2008/11/12 H.Itou Mod Start 統合テスト指摘311
+--      AND ( lv_item_class_code = cv_item_class_product ) )
+      AND ( lv_item_class_code = cv_item_class_product )
+-- 2008/11/12 H.Itou Mod End
+-- 2008/11/12 H.Itou Add Start 統合テスト指摘311 配数・段数が0かNULLでない場合のみ計算する。計算しない場合、合計パレット重量は0とする。
+      AND ( NVL(ln_delivery_qty, 0)      <> 0 )
+      AND ( NVL(ln_max_palette_steps, 0) <> 0 ) ) 
+-- 2008/11/12 H.Itou Add End
+    THEN
+      --「パレット枚数」の算出
+      ln_pallet_qty
+        := ( (  ( in_quantity   / ln_num_of_cases  ) / ln_delivery_qty  ) / ln_max_palette_steps);
+      ln_pallet_qty
+        := TRUNC( ln_pallet_qty + cn_rounup_const_no , cn_roundup_digits );
+      --
+      -- 「合計パレット重量」の算出
+      ln_pallet_sum_weight
+                    := ln_pallet_qty * ln_pallet_waight;
+    END IF;
+    --
+--
+    /**********************************
+     *  合計値の算出(B-5)             *
+     **********************************/
+    --
+    -- 出力パラメータ「合計容積」「合計重量」
+    on_sum_capacity      := ( ln_capacity * in_quantity ) / cn_conv_cm3_to_m3;
+    on_sum_weight        := ( ln_weight   * in_quantity ) / cn_conv_g_to_kg;
+    -- 出力パラメータ「合計パレット重量」
+-- 2008/11/12 H.Itou Add Start 統合テスト指摘597
+    -- 基準日がプロファイル：パレット重量加味開始日以降の場合、パレット重量は計算値を返す。
+    IF (TRUNC(id_standard_date) >= ld_p_weight_s_date) THEN
+-- 2008/11/12 H.Itou Add End
+      on_sum_pallet_weight := ln_pallet_sum_weight;
+-- 2008/11/12 H.Itou Add Start 統合テスト指摘597
+    -- 基準日がプロファイル：パレット重量加味開始日未満の場合、パレット重量は0を返す。
+    ELSE
+      on_sum_pallet_weight := 0;
+    END IF;
+-- 2008/11/12 H.Itou Add End
+    --
+    -- ステータスコードセット
+    ov_retcode           := gv_status_normal;   -- リターンコード
+    ov_errmsg_code       := NULL;               -- エラーメッセージコード
+    ov_errmsg            := NULL;               -- エラーメッセージ
+    --
+--
+    --==============================================================
+    --メッセージ出力（エラー以外）をする必要がある場合は処理を記述
+    --==============================================================
+--
+  EXCEPTION
+--
+--#################################  固定例外処理部 START   ####################################
+--
+    -- *** 共通関数例外ハンドラ ***
+    WHEN global_api_expt THEN
+      ov_errmsg      := lv_errmsg;
+      ov_errmsg_code := lv_err_cd;
+      ov_retcode     := gv_status_error;
+    -- *** 共通関数OTHERS例外ハンドラ ***
+    WHEN global_api_others_expt THEN
+      ov_errmsg      := SQLERRM;
+      ov_errmsg_code := SQLCODE;
+      ov_retcode     := gv_status_error;
+    -- *** OTHERS例外ハンドラ ***
+    WHEN OTHERS THEN
+      ov_errmsg      := SQLERRM;
+      ov_errmsg_code := SQLCODE;
+      ov_retcode     := gv_status_error;
+--
+--#####################################  固定部 END   ##########################################
+--
+  END calc_total_value;
+-- 2008/11/12 H.Itou Add End
   /**********************************************************************************
    * Procedure Name   : calc_load_efficiency
    * Description      : 積載効率チェック(積載効率算出)
