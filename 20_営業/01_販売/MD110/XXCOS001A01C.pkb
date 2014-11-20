@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCOS001A01C (body)
  * Description      : 納品データの取込を行う
  * MD.050           : HHT納品データ取込 (MD050_COS_001_A01)
- * Version          : 1.26
+ * Version          : 1.27
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -60,6 +60,7 @@ AS
  *  2011/02/03    1.25  Y.Kanami         [E_本稼動_02624] データ妥当性チェックの顧客情報取得時の条件追加
  *  2011/03/16    1.26  S.Ochiai         [E_本稼動_06589,06590] 売上区分＝９（補填）の許可
  *                                                              オーダーNoの追加
+ *  2013/09/06    1.27  R.Watanabe       [E_本稼動_10904⑩]消費税区分の参照先変更
  *
  *****************************************************************************************/
 --
@@ -1226,7 +1227,10 @@ AS
     -- クイックコード取得：消費税区分
     CURSOR get_tax_class_cur
     IS
-      SELECT  look_val.lookup_code  lookup_code
+-- ********** 2013/09/06 1.27 R.Watanabe MOD START ******** --
+--      SELECT  look_val.lookup_code  lookup_code
+      SELECT  SUBSTRB(look_val.attribute1,1,1)  lookup_code
+-- ********** 2013/09/06 1.27 R.Watanabe MOD END ******** --
 -- ********** 2009/09/01 1.15 N.Maeda DEL START ******** --
 --              look_val.attribute3   attribute3
 -- ********** 2009/09/01 1.15 N.Maeda DEL START ******** --
