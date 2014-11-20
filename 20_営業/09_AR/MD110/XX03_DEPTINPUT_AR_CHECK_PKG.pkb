@@ -7,7 +7,7 @@ AS
  * Package Name           : xx03_deptinput_ar_check_pkg(body)
  * Description            : 部門入力(AR)において入力チェックを行う共通関数
  * MD.070                 : 部門入力(AR)共通関数 OCSJ/BFAFIN/MD070/F702
- * Version                : 11.5.10.2.11
+ * Version                : 11.5.10.2.14
  *
  * Program List
  *  -------------------------- ---- ----- --------------------------------------------------
@@ -50,6 +50,7 @@ AS
  *  2010/01/14   11.5.10.2.11   障害「E_本稼動_01066」対応
  *  2010/02/16   11.5.10.2.12   障害「E_本稼動_01408」対応
  *  2010/11/22   11.5.10.2.13   障害「E_本稼動_05407」対応
+ *  2010/12/24   11.5.10.2.14   障害「E_本稼動_02004」対応
  *
  *****************************************************************************************/
 --
@@ -809,6 +810,45 @@ AS
     ORDER BY xrsl.line_number;
 -- ver 11.5.10.2.12 Modify Emd
 --
+-- ver 11.5.10.2.14 2010/12/24 Add Start [E_本稼動_02004]
+    -- 顧客売上拠点チェックカーソル
+    CURSOR xx03_sale_base_cur(
+      in_org_id          IN  NUMBER  -- 営業単位ID
+    , in_set_of_books_id IN  NUMBER  -- 会計帳簿ID
+    )
+    IS
+    SELECT CASE WHEN TRUNC(xrs.gl_date,'MM') <  TRUNC(SYSDATE    ,'MM')
+                THEN NULL
+                ELSE xca.sale_base_code
+           END                AS sale_base_code       -- 売上拠点
+          ,CASE WHEN TRUNC(xrs.gl_date,'MM') <  TRUNC(SYSDATE    ,'MM')
+                THEN xca.past_sale_base_code
+                ELSE NULL
+           END                AS past_sale_base_code  -- 前月売上拠点
+          ,xrl.segment2       AS segment2             -- AFF部門(収益)
+          ,xrl.line_number    AS line_number          -- 明細番号
+    FROM   xx03_receivable_slips      xrs   -- AR部門入力ヘッダ
+          ,xx03_receivable_slips_line xrl   -- AR部門入力明細
+          ,xxcmm_cust_accounts        xca   -- 顧客追加情報
+          ,ra_cust_trx_types_all      rctt  -- 取引タイプマスタ
+    WHERE xrs.receivable_id    = in_receivable_id       -- 内部ID
+    AND   xrs.receivable_id    = xrl.receivable_id      -- 内部ID
+    AND   xrs.customer_id      = xca.customer_id        -- 顧客内部ID
+    AND   xrs.trans_type_id    = rctt.cust_trx_type_id  -- 取引タイプID
+    AND   xrs.org_id           = in_org_id              -- 営業単位ID
+    AND   xrs.set_of_books_id  = in_set_of_books_id     -- 会計帳簿ID
+    AND   rctt.org_id          = in_org_id              -- 営業単位ID
+    AND   rctt.set_of_books_id = in_set_of_books_id     -- 会計帳簿ID
+    AND   NVL(rctt.attribute10,'N') = 'Y'               -- 売上拠点チェック
+    AND   xrl.segment2        <> ( CASE WHEN TRUNC(xrs.gl_date,'MM') < TRUNC(SYSDATE    ,'MM')
+                                        THEN xca.past_sale_base_code  -- 売上拠点(収益) <> 顧客の前月売上拠点
+                                        ELSE xca.sale_base_code       -- 売上拠点(収益) <> 顧客の売上拠点
+                                   END
+                                 )
+    ORDER BY xrl.line_number ASC
+    ;
+-- ver 11.5.10.2.14 2010/12/24 Add End   [E_本稼動_02004]
+--
     -- 共通エラーチェック結果取得カーソル
     CURSOR xx03_errchk_result_cur
     IS
@@ -879,6 +919,9 @@ AS
     -- 入金時値引の対象顧客チェックカーソルレコード型
     xx03_customer_chk_rec        xx03_customer_chk_cur%ROWTYPE;
 -- Ver.11.5.10.2.13 2010/11/29 Add End   [E_本稼動_05407]
+-- ver 11.5.10.2.14 2010/12/13 Add Start [E_本稼動_02004]
+    xx03_sale_base_rec           xx03_sale_base_cur%ROWTYPE;
+-- ver 11.5.10.2.14 2010/12/13 Add End   [E_本稼動_02004]
 -- ver 11.5.10.2.12 Modify Start
     -- 文字列バイトチェックレコード型
     xx03_length_chk_rec xx03_length_chk_cur%ROWTYPE;
@@ -1587,6 +1630,45 @@ AS
         CLOSE xx03_length_chk_cur;
 -- ver 11.5.10.2.12 Modify End
 --
+-- ver 11.5.10.2.14 2010/12/24 Add Start [E_本稼動_02004]
+--
+        -- 初期化
+        xx03_sale_base_rec := NULL;
+        --収益勘定(部門)チェック
+        OPEN xx03_sale_base_cur(
+                 in_org_id          => ln_org_id    -- 営業単位ID
+               , in_set_of_books_id => ln_books_id  -- 会計帳簿ID
+             );
+        <<sale_base_loop>>
+        LOOP
+          FETCH xx03_sale_base_cur INTO xx03_sale_base_rec;
+          EXIT WHEN xx03_sale_base_cur%NOTFOUND;
+          -- 収益勘定(部門)チェックエラー
+          errflg_tbl(ln_err_cnt) := 'E';
+          IF ( xx03_sale_base_rec.sale_base_code IS NULL ) THEN  -- 売上拠点がNULLの場合
+            errmsg_tbl(ln_err_cnt) := xx00_message_pkg.get_msg('XXCFR',
+                                                               'APP-XXCFR1-00131',  -- 前月売上拠点を出力
+                                                               'PAST_SALE_BASE_CODE',
+                                                               xx03_sale_base_rec.past_sale_base_code,
+                                                               'DEPARTMENT_CODE',
+                                                               xx03_sale_base_rec.segment2,
+                                                               'LINE_NUMBER',
+                                                               xx03_sale_base_rec.line_number);
+          ELSE
+            errmsg_tbl(ln_err_cnt) := xx00_message_pkg.get_msg('XXCFR',
+                                                               'APP-XXCFR1-00130',  -- 売上拠点を出力
+                                                               'SALE_BASE_CODE',
+                                                               xx03_sale_base_rec.sale_base_code,
+                                                               'DEPARTMENT_CODE',
+                                                               xx03_sale_base_rec.segment2,
+                                                               'LINE_NUMBER',
+                                                               xx03_sale_base_rec.line_number);
+          END IF;
+          ln_err_cnt := ln_err_cnt + 1;
+        END LOOP sale_base_loop;
+        CLOSE xx03_sale_base_cur;
+-- ver 11.5.10.2.14 2010/12/24 Add End   [E_本稼動_02004]
+--
 -- 2006/02/18 Ver11.5.10.1.6E Add END
 --
         -- 部門入力エラーチェックでエラーがなかった場合のみチェックID取得
@@ -2142,6 +2224,11 @@ AS
         CLOSE xx03_customer_chk_cur;
       END IF;
       -- Ver.11.5.10.2.13 2010/11/29 Add End   [E_本稼動_05407]
+      -- ver 11.5.10.2.14 2010/12/13 Add Start [E_本稼動_02004]
+      IF ( xx03_sale_base_cur%ISOPEN ) THEN
+        CLOSE xx03_sale_base_cur;
+      END IF;
+      -- Ver.11.5.10.2.14 2010/12/13 Add End   [E_本稼動_02004]
 --
 --###############################  固定例外処理部 START   ###################################
 --
