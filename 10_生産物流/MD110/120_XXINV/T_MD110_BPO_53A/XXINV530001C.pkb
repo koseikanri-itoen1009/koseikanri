@@ -7,7 +7,7 @@ AS
  * Description      : 棚卸結果インターフェース
  * MD.050           : 棚卸(T_MD050_BPO_530)
  * MD.070           : 結果インターフェース(T_MD070_BPO_53A)
- * Version          : 1.6
+ * Version          : 1.7
  *
  * Program List
  *  ----------------------------------------------------------------------------------------
@@ -39,6 +39,7 @@ AS
  *  2008/05/20    1.4   T.Ikehara        修正(不具合ID6対応：出力メッセージの誤り)
  *  2008/09/04    1.5   H.Itou           修正(PT 6-3_39指摘#12 動的SQLの変数をバインド変数化)
  *  2008/09/11    1.6   T.Ohashi         修正(PT 6-3_39指摘74 対応)
+ *  2008/09/16    1.7   T.Ikehara        修正(不具合ID7対応：重複削除はエラーとしない)
  *****************************************************************************************/
 --
 --#######################  固定グローバル定数宣言部 START   #######################
@@ -412,6 +413,7 @@ AS
      if_rec        IN  xxinv_stc_inv_if_rec    -- 1.棚卸インターフェース
     ,iv_item_typ   IN  VARCHAR2                -- 2.品目区分
     ,ib_dup_sts    OUT BOOLEAN                 -- 3.重複チェック結果
+    ,ib_dup_del_sts OUT BOOLEAN                -- 4.異なる要求IDで重複し、最新要求IDでない=TRUE
     ,ov_errbuf     OUT VARCHAR2     --   エラー・メッセージ           --# 固定 #
     ,ov_retcode    OUT VARCHAR2     --   リターン・コード             --# 固定 #
     ,ov_errmsg     OUT VARCHAR2)    --   ユーザー・エラー・メッセージ --# 固定 #
@@ -447,7 +449,8 @@ AS
 --###########################  固定部 END   ############################
 --
     -- 結果初期化
-    ib_dup_sts  := TRUE;
+    ib_dup_sts     := TRUE;
+    ib_dup_del_sts := FALSE;
 --
     -- 同要求ID配下での重複チェック
     lv_sql  :=  'SELECT COUNT(xsi.report_post_code) cnt '  -- カウント
@@ -651,9 +654,10 @@ AS
       END;
 --
       IF  (ln_cnt  > 1)  THEN
-        --エラー（最新要求IDではない）
+        --（最新要求IDではない）削除対象となるがエラーとしない
         If  (if_rec.request_id  <  ln_request_id)  THEN
-          ib_dup_sts := FALSE;
+          ib_dup_sts     := FALSE;
+          ib_dup_del_sts := TRUE;
         END IF;
       END IF;
 --
@@ -1283,6 +1287,7 @@ AS
     lv_dump                                             VARCHAR2(5000) DEFAULT NULL;--データダンプ
     lv_msg_col                                          VARCHAR2(100)  DEFAULT NULL;--項目名引数
     lb_dup_sts                                          BOOLEAN DEFAULT FALSE; -- 重複チェック結果
+    lb_dup_del_sts                                   BOOLEAN DEFAULT FALSE; -- 重複削除チェック結果
     ld_maker_date                                       DATE  DEFAULT NULL;--製造日チェック用
     ld_limit_date                                       DATE  DEFAULT NULL;--賞味期限チェック用
 --
@@ -1373,6 +1378,7 @@ AS
         if_rec      => inv_if_rec(i)  -- 1.棚卸インターフェース
        ,iv_item_typ => lv_item_type   -- 2.データダンプ文字列
        ,ib_dup_sts  => lb_dup_sts     -- 3.重複チェック結果
+       ,ib_dup_del_sts => lb_dup_del_sts -- 4.重複削除チェック結果
        ,ov_errbuf   => lv_errbuf
        ,ov_retcode  => lv_dupretcd
        ,ov_errmsg   => lv_errmsg);
@@ -1382,8 +1388,12 @@ AS
       END IF;
 --
       IF  (lb_dup_sts  = FALSE) THEN
-        inv_if_rec(i).sts  :=  gv_sts_ng;  --重複エラー 4,6
-        IF  (lb_dump_flag  = FALSE)  THEN
+        IF (lb_dup_del_sts = TRUE) THEN
+          inv_if_rec(i).sts  :=  gv_sts_del;  --重複削除
+        ELSE
+          inv_if_rec(i).sts  :=  gv_sts_ng;  --重複エラー 4,6
+        END IF;
+        IF  ((lb_dump_flag  = FALSE) AND (lb_dup_del_sts = FALSE)) THEN -- 重複削除はエラーとしない
           --データダンプ取得
           proc_get_data_dump(
             if_rec     => inv_if_rec(i)  -- 1.棚卸インターフェース
@@ -1403,14 +1413,16 @@ AS
           lb_dump_flag :=  TRUE;
         END IF;
 --
-        -- 警告エラーメッセージ取得 (同一ファイル内に重複データが存在します。)
-        lv_errmsg := xxcmn_common_pkg.get_msg(
-                      iv_application  => gv_xxinv,
-                      iv_name         => 'APP-XXINV-10101');
+        IF (lb_dup_del_sts = FALSE) THEN -- 重複削除はエラーとしない
+          -- 警告エラーメッセージ取得 (同一ファイル内に重複データが存在します。)
+          lv_errmsg := xxcmn_common_pkg.get_msg(
+                        iv_application  => gv_xxinv,
+                        iv_name         => 'APP-XXINV-10101');
 --
-        -- 警告メッセージPL/SQL表投入
-        gn_err_msg_cnt := gn_err_msg_cnt + 1;
-        warn_dump_tab(gn_err_msg_cnt) := lv_errmsg;
+          -- 警告メッセージPL/SQL表投入
+          gn_err_msg_cnt := gn_err_msg_cnt + 1;
+          warn_dump_tab(gn_err_msg_cnt) := lv_errmsg;
+        END IF;
 --
       END IF;
 --
