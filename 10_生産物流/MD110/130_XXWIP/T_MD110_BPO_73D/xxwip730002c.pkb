@@ -7,7 +7,7 @@ AS
  * Description      : ‰^’ÀXV
  * MD.050           : ‰^’ÀŒvZiƒgƒ‰ƒ“ƒUƒNƒVƒ‡ƒ“j T_MD050_BPO_733
  * MD.070           : ‰^’ÀXV T_MD070_BPO_73D
- * Version          : 1.3
+ * Version          : 1.4
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -44,6 +44,7 @@ AS
  *  2008/07/11    1.1  Oracle Rª ˆê_  •ÏX—v‹”96A”98‘Î‰
  *  2008/07/23    1.2  Oracle –ì‘º ³K  “à•”•ÏX#132‘Î‰
  *  2008/09/16    1.3  Oracle ‹g“c ‰Ä÷  T_S_570 ‘Î‰
+ *  2008/10/24    1.4  Oracle –ì‘º ³K  “‡#408‘Î‰
  *
  *****************************************************************************************/
 --
@@ -689,13 +690,22 @@ AS
     ln_picking_charge := ROUND(in_qty1 * in_bill_picking_amount);
 --
     -- ¢‡Œv£‚ÌZo
-    ln_total_amount := in_shipping_expenses + ln_consolid_surcharge
+-- ##### 20081024 Ver.1.4 “‡#408‘Î‰ START #####
+--    ln_total_amount := in_shipping_expenses + ln_consolid_surcharge
+--                     + ln_picking_charge    + NVL(in_many_rate, 0);
+    -- ‡Œv  ¿‹‰^’À{¬ÚŠ„‘‹àŠz{PIC{”—¿‹à
+    ln_total_amount := NVL(in_charged_amount,0) + ln_consolid_surcharge
                      + ln_picking_charge    + NVL(in_many_rate, 0);
+-- ##### 20081024 Ver.1.4 “‡#408‘Î‰ END   #####
 --
-    -- ¢·Šz£‚ÌZo(¿‹‰^’À | ‡Œv)
+    -- ¢·Šz£‚ÌZo(‡Œv|¿‹‰^’À{¬ÚŠ„‘‹àŠz{PIC{”—¿‹à)
 -- ##### 20080723 Ver.1.2 “à•”•ÏX#132‘Î‰ START #####
 --    ln_balance := in_shipping_expenses - ln_total_amount;
-    ln_balance := in_charged_amount - ln_total_amount;
+-- ##### 20081024 Ver.1.4 “‡#408‘Î‰ START #####
+--    ln_balance := in_charged_amount - ln_total_amount;
+    ln_balance := ln_total_amount - (NVL(in_charged_amount,0) + ln_consolid_surcharge
+                                       + ln_picking_charge    + NVL(in_many_rate, 0));
+-- ##### 20081024 Ver.1.4 “‡#408‘Î‰ END   #####
 -- ##### 20080723 Ver.1.2 “à•”•ÏX#132‘Î‰ END   #####
 --
     -- ŠeZo’l‚ğOUT•Ï”‚ÉƒZƒbƒg
