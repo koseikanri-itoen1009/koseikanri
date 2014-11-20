@@ -8,7 +8,7 @@ AS
  *                    CSVファイルを作成します。
  * MD.050           :  MD050_CSO_016_A04_情報系-EBSインターフェース：
  *                     (OUT)訪問実績データ
- * Version          : 1.5
+ * Version          : 1.7
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -42,6 +42,7 @@ AS
  *  2009-05-21    1.4   Kazuo.Satomura   システムテスト障害対応(T1_1036)
  *  2009-06-05    1.5   Kazuo.Satomura   システムテスト障害対応(T1_0478再修正)
  *  2009-07-21    1.6   Kazuo.Satomura   統合テスト障害対応(0000070)
+ *  2009-09-09    1.7   Daisuke.Abe      統合テスト障害対応(0001323)
  *****************************************************************************************/
 --
 --#######################  固定グローバル定数宣言部 START   #######################
@@ -1683,6 +1684,10 @@ AS
       AND    jtb.owner_id                = jrr.resource_id
       AND    jrr.category                = cv_category
       AND    jrr.source_id               = ppf.person_id
+      /* 2009.09.09 D.Abe 0001323対応 START */
+      AND    TRUNC(jtb.actual_end_date) BETWEEN ppf.effective_start_date
+      AND    ppf.effective_end_date
+      /* 2009.09.09 D.Abe 0001323対応 END */
       /* 2009.06.05 K.Satomura T1_0478再修正対応 END */
       /* 2009.07.21 K.Satomura 0000070対応 START */
       AND    TRUNC(jtb.actual_end_date) <= ld_process_date
@@ -1737,6 +1742,11 @@ AS
       AND    jtb.owner_id                 = jrr.resource_id
       AND    jrr.category                 = cv_category
       AND    jrr.source_id                = ppf.person_id
+      /* 2009.09.09 D.Abe 0001323対応 START */
+      AND    TRUNC(jtb.actual_end_date) BETWEEN ppf.effective_start_date
+      AND    ppf.effective_end_date
+      AND    jtb.deleted_flag            = cv_no
+      /* 2009.09.09 D.Abe 0001323対応 END */
       /* 2009.06.05 K.Satomura T1_0478再修正対応 END */
       UNION ALL
       -- クローズされている商談タスク
@@ -1797,6 +1807,10 @@ AS
       AND    jtb.owner_id                = jrr.resource_id
       AND    jrr.category                = cv_category
       AND    jrr.source_id               = ppf.person_id
+      /* 2009.09.09 D.Abe 0001323対応 START */
+      AND    TRUNC(jtb.actual_end_date) BETWEEN ppf.effective_start_date
+      AND    ppf.effective_end_date
+      /* 2009.09.09 D.Abe 0001323対応 END */
       AND    ala.lead_id                 = jtb.source_object_id
       /* 2009.06.05 K.Satomura T1_0478再修正対応 END */
       /* 2009.07.21 K.Satomura 0000070対応 START */
@@ -1820,7 +1834,10 @@ AS
             ,jtb.attribute9                        attribute9              -- 訪問区分コード9
             ,jtb.attribute10                       attribute10             -- 訪問区分コード10
             ,TO_CHAR(jtb.actual_end_date,'hh24mi') actual_end_hour         -- 訪問時間
-            ,cv_yes                                deleted_flag            -- 削除フラグ
+            /* 2009.09.09 D.Abe 0001323対応 START */
+            --,cv_yes                                deleted_flag            -- 削除フラグ
+            ,cv_no                                 deleted_flag            -- 削除フラグ
+            /* 2009.09.09 D.Abe 0001323対応 END */
             ,jtb.source_object_type_code           source_object_type_code -- ソースタイプ
             ,ala.customer_id                       source_object_id        -- パーティID
             ,jtb.attribute11                       attribute11             -- 有効訪問区分
@@ -1851,6 +1868,11 @@ AS
       AND    jtb.owner_id                =  jrr.resource_id
       AND    jrr.category                =  cv_category
       AND    jrr.source_id               =  ppf.person_id
+      /* 2009.09.09 D.Abe 0001323対応 START */
+      AND    TRUNC(jtb.actual_end_date) BETWEEN ppf.effective_start_date
+      AND    ppf.effective_end_date
+      AND    jtb.deleted_flag            = cv_no
+      /* 2009.09.09 D.Abe 0001323対応 END */
       AND    ala.lead_id                 =  jtb.source_object_id
       /* 2009.06.05 K.Satomura T1_0478再修正対応 END */
       /* 2009.04.22 K.Satomura T1_0478対応 END */
