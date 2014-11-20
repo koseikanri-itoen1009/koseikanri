@@ -7,7 +7,7 @@ AS
  * Description      : 入出庫配送計画情報抽出処理
  * MD.050           : T_MD050_BPO_601_配車配送計画
  * MD.070           : T_MD070_BPO_60E_入出庫配送計画情報抽出処理
- * Version          : 1.17
+ * Version          : 1.18
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -56,6 +56,8 @@ AS
  *  2008/09/01    1.16  Y.Yamamoto       PT 2-2_17 指摘17対応
  *  2008/09/09    1.17  N.Fukuda         TE080_600指摘#30対応
  *  2008/09/10    1.17  N.Fukuda         参照Viewの変更(パーティから顧客に変更)
+ *  2008/09/19    1.18  M.Nomura         T_S_453 460 468対応
+ *
  *****************************************************************************************/
 --
 --#######################  固定グローバル定数宣言部 START   #######################
@@ -270,6 +272,10 @@ AS
   gd_date_from        DATE ;    -- 基準日付From
   gd_date_to          DATE ;    -- 基準日付To
   gn_prof_del_date    NUMBER ;  -- 削除基準日数
+--
+-- ##### 20080919 Ver.1.18 T_S_453 460 468対応 START #####
+  gv_filetimes        VARCHAR2(14);   -- YYYYMMDDHH24MISS形式
+-- ##### 20080919 Ver.1.18 T_S_453 460 468対応 END   #####
 --
 -- ##### 20080611 Ver.1.6 WF対応 START #####
   gr_wf_whs_rec       xxwsh_common3_pkg.wf_whs_rec ;   -- ファイル情報のレコードの定義
@@ -727,6 +733,14 @@ AS
     ov_retcode := gv_status_normal;
 --##### 固定ステータス初期化部 END   #################################
 --
+
+-- ##### 20080919 Ver.1.18 T_S_453 460 468対応 START #####
+  -- ====================================================
+  -- 初期処理
+  -- ====================================================
+  --ファイル名タイムスタンプ取得
+  gv_filetimes  := TO_CHAR(SYSDATE, 'YYYYMMDDHH24MISS');
+-- ##### 20080919 Ver.1.18 T_S_453 460 468対応 END   #####
     -- ====================================================
     -- プロファイル取得
     -- ====================================================
@@ -1109,7 +1123,11 @@ AS
       AND   xoha.career_id    = xc.party_id(+)
       ----------------------------------------------------------------------------------------------
       -- 保管場所
+-- ##### 20080919 Ver.1.18 T_S_453 460 468対応 START #####
+/***** EOS宛先による条件削除
       AND   xil.eos_control_type = gc_manage_eos_y    -- EOS業者
+*****/
+-- ##### 20080919 Ver.1.18 T_S_453 460 468対応 END   #####
       AND   xoha.deliver_from_id = xil.inventory_location_id
       ----------------------------------------------------------------------------------------------
       -- 受注タイプ
@@ -1262,7 +1280,11 @@ AS
       AND   xoha.career_id    = xc.party_id(+)
       ----------------------------------------------------------------------------------------------
       -- 保管場所
+-- ##### 20080919 Ver.1.18 T_S_453 460 468対応 START #####
+/***** EOS宛先による条件削除
       AND   xil.eos_control_type = gc_manage_eos_y    -- EOS業者
+*****/
+-- ##### 20080919 Ver.1.18 T_S_453 460 468対応 END   #####
       AND   xoha.deliver_from_id = xil.inventory_location_id
       ----------------------------------------------------------------------------------------------
       -- 受注タイプ
@@ -1434,8 +1456,12 @@ AS
       -- 保管場所（配送元）
       AND   xmrih.shipped_locat_id = xil1.inventory_location_id
       ----------------------------------------------------------------------------------------------
+-- ##### 20080919 Ver.1.18 T_S_453 460 468対応 START #####
+/***** EOS宛先による条件削除
       AND   (xil1.eos_control_type  = gc_manage_eos_y   -- EOS業者（配送先）
           OR xil2.eos_control_type  = gc_manage_eos_y)  -- EOS業者（配送元）
+*****/
+-- ##### 20080919 Ver.1.18 T_S_453 460 468対応 END   #####
       ----------------------------------------------------------------------------------------------
 -- ##### 20080623 Ver.1.9 EOS宛先対応 END   #####
       -- 移動依頼指示ヘッダ
@@ -1606,7 +1632,11 @@ AS
       AND   xoha.career_id    = xc.party_id(+)
       ----------------------------------------------------------------------------------------------
       -- 保管場所
+-- ##### 20080919 Ver.1.18 T_S_453 460 468対応 START #####
+/***** EOS宛先による条件削除
       AND   xil.eos_control_type = gc_manage_eos_y    -- EOS業者
+*****/
+-- ##### 20080919 Ver.1.18 T_S_453 460 468対応 END   #####
       AND   xoha.deliver_from_id = xil.inventory_location_id
       ----------------------------------------------------------------------------------------------
       -- 受注タイプ
@@ -1760,7 +1790,11 @@ AS
       AND   xoha.career_id    = xc.party_id(+)
       ----------------------------------------------------------------------------------------------
       -- 保管場所
+-- ##### 20080919 Ver.1.18 T_S_453 460 468対応 START #####
+/***** EOS宛先による条件削除
       AND   xil.eos_control_type = gc_manage_eos_y    -- EOS業者
+*****/
+-- ##### 20080919 Ver.1.18 T_S_453 460 468対応 END   #####
       AND   xoha.deliver_from_id = xil.inventory_location_id
       ----------------------------------------------------------------------------------------------
       -- 受注タイプ
@@ -1934,8 +1968,12 @@ AS
       -- 保管場所（配送元）
       AND   xmrih.shipped_locat_id = xil1.inventory_location_id
       ----------------------------------------------------------------------------------------------
+-- ##### 20080919 Ver.1.18 T_S_453 460 468対応 START #####
+/***** EOS宛先による条件削除
       AND   (xil1.eos_control_type  = gc_manage_eos_y   -- EOS業者（配送先）
           OR xil2.eos_control_type  = gc_manage_eos_y)  -- EOS業者（配送元）
+*****/
+-- ##### 20080919 Ver.1.18 T_S_453 460 468対応 END   #####
       ----------------------------------------------------------------------------------------------
 -- ##### 20080623 Ver.1.9 EOS宛先対応 END   #####
       -- 移動依頼指示ヘッダ
@@ -2158,6 +2196,17 @@ AS
           ;
 --
     END IF ;
+--
+-- ##### 20080919 Ver.1.18 T_S_453 460 468対応 START #####
+    -------------------------------------------------------
+    -- EOS宛先条件（入庫・出庫・運送業者のEOS宛先いずれかが設定されていたら）
+    -------------------------------------------------------
+    lv_where := lv_where
+            || ' AND ( wsdit2.eos_shipped_to_locat IS NOT NULL   '  -- EOS宛先（入庫倉庫）
+            || '    OR wsdit2.eos_shipped_locat    IS NOT NULL   '  -- EOS宛先（出庫倉庫）
+            || '    OR wsdit2.eos_freight_carrier  IS NOT NULL ) '  -- EOS宛先（運送業者）
+            ;
+-- ##### 20080919 Ver.1.18 T_S_453 460 468対応 END   #####
 --
     -------------------------------------------------------
     -- 移動ロット詳細と結合
@@ -2793,50 +2842,59 @@ AS
       END IF;
 -- ##### 20080627 Ver.1.11 ロット数量換算対応 END   #####
 --
-      -------------------------------------------------------
-      -- ヘッダデータの作成
-      -------------------------------------------------------
-      IF ( iv_break_flg = gc_yes_no_y ) THEN
-        prc_cre_head_data
-          (
-            ir_main_data            => gt_main_data(in_idx)     -- 対象データ
-           ,iv_data_class           => gc_data_class_syu_s      -- データ種別
-           ,iv_pallet_sum_quantity  => lv_pallet_sum_quantity   -- パレット使用枚数
+-- ##### 20080919 Ver.1.18 T_S_453 460 468対応 START #####
+      -- 出庫倉庫のEOS宛先が設定されている場合
+      IF (lv_eos_shipped_locat IS NOT NULL) THEN
+-- ##### 20080919 Ver.1.18 T_S_453 460 468対応 END   #####
+--
+        -------------------------------------------------------
+        -- ヘッダデータの作成
+        -------------------------------------------------------
+        IF ( iv_break_flg = gc_yes_no_y ) THEN
+          prc_cre_head_data
+            (
+              ir_main_data            => gt_main_data(in_idx)     -- 対象データ
+              ,iv_data_class           => gc_data_class_syu_s      -- データ種別
+              ,iv_pallet_sum_quantity  => lv_pallet_sum_quantity   -- パレット使用枚数
 -- ##### 20080623 Ver.1.9 EOS宛先対応 START #####
-           ,iv_eos_shipped_locat    => lv_eos_shipped_locat     -- EOS宛先
+              ,iv_eos_shipped_locat    => lv_eos_shipped_locat     -- EOS宛先
 -- ##### 20080623 Ver.1.9 EOS宛先対応 END   #####
-           ,iv_eos_csv_output       => lv_eos_csv_output        -- ＥＯＳ宛先（ＣＳＶ）
-           ,ov_errbuf               => lv_errbuf                -- エラー・メッセージ
-           ,ov_retcode              => lv_retcode               -- リターン・コード
-           ,ov_errmsg               => lv_errmsg                -- ユーザー・エラー・メッセージ
-          ) ;
-        IF ( lv_retcode = gv_status_error ) THEN
-          RAISE global_api_expt;
+              ,iv_eos_csv_output       => lv_eos_csv_output        -- ＥＯＳ宛先（ＣＳＶ）
+              ,ov_errbuf               => lv_errbuf                -- エラー・メッセージ
+              ,ov_retcode              => lv_retcode               -- リターン・コード
+              ,ov_errmsg               => lv_errmsg                -- ユーザー・エラー・メッセージ
+            ) ;
+          IF ( lv_retcode = gv_status_error ) THEN
+            RAISE global_api_expt;
+          END IF ;
         END IF ;
-      END IF ;
-      -------------------------------------------------------
-      -- 明細データの作成
-      -------------------------------------------------------
-      -- 明細の削除フラグが「Y」の場合、明細データを作成しない。
-      IF ( gt_main_data(in_idx).line_delete_flag = gc_delete_flag_n ) THEN
-        prc_cre_dtl_data
-          (
-            ir_main_data            => gt_main_data(in_idx)     -- 対象データ
-           ,iv_data_class           => gc_data_class_syu_s      -- データ種別
-           ,iv_item_uom_code        => lv_item_uom_code         -- 品目単位
-           ,iv_item_quantity        => lv_item_quantity         -- 品目数量
+        -------------------------------------------------------
+        -- 明細データの作成
+        -------------------------------------------------------
+        -- 明細の削除フラグが「Y」の場合、明細データを作成しない。
+        IF ( gt_main_data(in_idx).line_delete_flag = gc_delete_flag_n ) THEN
+          prc_cre_dtl_data
+            (
+              ir_main_data            => gt_main_data(in_idx)     -- 対象データ
+             ,iv_data_class           => gc_data_class_syu_s      -- データ種別
+             ,iv_item_uom_code        => lv_item_uom_code         -- 品目単位
+             ,iv_item_quantity        => lv_item_quantity         -- 品目数量
 -- ##### 20080623 Ver.1.9 EOS宛先対応 START #####
-           ,iv_eos_shipped_locat    => lv_eos_shipped_locat     -- EOS宛先
+             ,iv_eos_shipped_locat    => lv_eos_shipped_locat     -- EOS宛先
 -- ##### 20080623 Ver.1.9 EOS宛先対応 END   #####
-           ,iv_eos_csv_output       => lv_eos_csv_output        -- ＥＯＳ宛先（ＣＳＶ）
-           ,ov_errbuf               => lv_errbuf                -- エラー・メッセージ
-           ,ov_retcode              => lv_retcode               -- リターン・コード
-           ,ov_errmsg               => lv_errmsg                -- ユーザー・エラー・メッセージ
-          ) ;
-        IF ( lv_retcode = gv_status_error ) THEN
-          RAISE global_api_expt;
+             ,iv_eos_csv_output       => lv_eos_csv_output        -- ＥＯＳ宛先（ＣＳＶ）
+             ,ov_errbuf               => lv_errbuf                -- エラー・メッセージ
+             ,ov_retcode              => lv_retcode               -- リターン・コード
+             ,ov_errmsg               => lv_errmsg                -- ユーザー・エラー・メッセージ
+            ) ;
+          IF ( lv_retcode = gv_status_error ) THEN
+            RAISE global_api_expt;
+          END IF ;
         END IF ;
+--
+-- ##### 20080919 Ver.1.18 T_S_453 460 468対応 START #####
       END IF ;
+-- ##### 20080919 Ver.1.18 T_S_453 460 468対応 END   #####
 --
     -------------------------------------------------------
     -- データタイプ：支給
@@ -2849,50 +2907,57 @@ AS
       lv_item_uom_code       := gt_main_data(in_idx).item_uom_code  ;           -- 品目単位
       lv_item_quantity       := gt_main_data(in_idx).item_quantity ;            -- 品目数量
 --
-      -------------------------------------------------------
-      -- ヘッダデータの作成
-      -------------------------------------------------------
-      IF ( iv_break_flg = gc_yes_no_y ) THEN
-        prc_cre_head_data
-          (
-            ir_main_data            => gt_main_data(in_idx)     -- 対象データ
-           ,iv_data_class           => gc_data_class_shi_s      -- データ種別
-           ,iv_pallet_sum_quantity  => lv_pallet_sum_quantity   -- パレット使用枚数
+-- ##### 20080919 Ver.1.18 T_S_453 460 468対応 START #####
+      -- 出庫倉庫のEOS宛先が設定されている場合
+      IF (lv_eos_shipped_locat IS NOT NULL) THEN
+-- ##### 20080919 Ver.1.18 T_S_453 460 468対応 END   #####
+        -------------------------------------------------------
+        -- ヘッダデータの作成
+        -------------------------------------------------------
+        IF ( iv_break_flg = gc_yes_no_y ) THEN
+          prc_cre_head_data
+            (
+              ir_main_data            => gt_main_data(in_idx)     -- 対象データ
+             ,iv_data_class           => gc_data_class_shi_s      -- データ種別
+             ,iv_pallet_sum_quantity  => lv_pallet_sum_quantity   -- パレット使用枚数
 -- ##### 20080623 Ver.1.9 EOS宛先対応 START #####
-           ,iv_eos_shipped_locat    => lv_eos_shipped_locat     -- EOS宛先
+             ,iv_eos_shipped_locat    => lv_eos_shipped_locat     -- EOS宛先
 -- ##### 20080623 Ver.1.9 EOS宛先対応 END   #####
-           ,iv_eos_csv_output       => lv_eos_csv_output        -- ＥＯＳ宛先（ＣＳＶ）
-           ,ov_errbuf               => lv_errbuf                -- エラー・メッセージ
-           ,ov_retcode              => lv_retcode               -- リターン・コード
-           ,ov_errmsg               => lv_errmsg                -- ユーザー・エラー・メッセージ
-          ) ;
-        IF ( lv_retcode = gv_status_error ) THEN
-          RAISE global_api_expt;
+             ,iv_eos_csv_output       => lv_eos_csv_output        -- ＥＯＳ宛先（ＣＳＶ）
+             ,ov_errbuf               => lv_errbuf                -- エラー・メッセージ
+             ,ov_retcode              => lv_retcode               -- リターン・コード
+             ,ov_errmsg               => lv_errmsg                -- ユーザー・エラー・メッセージ
+            ) ;
+          IF ( lv_retcode = gv_status_error ) THEN
+            RAISE global_api_expt;
+          END IF ;
         END IF ;
-      END IF ;
-      -------------------------------------------------------
-      -- 明細データの作成
-      -------------------------------------------------------
-      -- 明細の削除フラグが「Y」の場合、明細データを作成しない。
-      IF ( gt_main_data(in_idx).line_delete_flag = gc_delete_flag_n ) THEN
-        prc_cre_dtl_data
-          (
-            ir_main_data            => gt_main_data(in_idx)     -- 対象データ
-           ,iv_data_class           => gc_data_class_shi_s      -- データ種別
-           ,iv_item_uom_code        => lv_item_uom_code         -- 品目単位
-           ,iv_item_quantity        => lv_item_quantity         -- 品目数量
+        -------------------------------------------------------
+        -- 明細データの作成
+        -------------------------------------------------------
+        -- 明細の削除フラグが「Y」の場合、明細データを作成しない。
+        IF ( gt_main_data(in_idx).line_delete_flag = gc_delete_flag_n ) THEN
+          prc_cre_dtl_data
+            (
+              ir_main_data            => gt_main_data(in_idx)     -- 対象データ
+             ,iv_data_class           => gc_data_class_shi_s      -- データ種別
+             ,iv_item_uom_code        => lv_item_uom_code         -- 品目単位
+             ,iv_item_quantity        => lv_item_quantity         -- 品目数量
 -- ##### 20080623 Ver.1.9 EOS宛先対応 START #####
-           ,iv_eos_shipped_locat    => lv_eos_shipped_locat     -- EOS宛先
+             ,iv_eos_shipped_locat    => lv_eos_shipped_locat     -- EOS宛先
 -- ##### 20080623 Ver.1.9 EOS宛先対応 END   #####
-           ,iv_eos_csv_output       => lv_eos_csv_output        -- ＥＯＳ宛先（ＣＳＶ）
-           ,ov_errbuf               => lv_errbuf                -- エラー・メッセージ
-           ,ov_retcode              => lv_retcode               -- リターン・コード
-           ,ov_errmsg               => lv_errmsg                -- ユーザー・エラー・メッセージ
-          ) ;
-        IF ( lv_retcode = gv_status_error ) THEN
-          RAISE global_api_expt;
+             ,iv_eos_csv_output       => lv_eos_csv_output        -- ＥＯＳ宛先（ＣＳＶ）
+             ,ov_errbuf               => lv_errbuf                -- エラー・メッセージ
+             ,ov_retcode              => lv_retcode               -- リターン・コード
+             ,ov_errmsg               => lv_errmsg                -- ユーザー・エラー・メッセージ
+            ) ;
+          IF ( lv_retcode = gv_status_error ) THEN
+            RAISE global_api_expt;
+          END IF ;
         END IF ;
+-- ##### 20080919 Ver.1.18 T_S_453 460 468対応 START #####
       END IF ;
+-- ##### 20080919 Ver.1.18 T_S_453 460 468対応 END   #####
 --
     -------------------------------------------------------
     -- データタイプ：移動
@@ -3061,14 +3126,22 @@ AS
     -- 配送依頼データ作成
     -- =============================================================================================
     lv_eos_csv_output := lv_eos_freight_carrier ;   -- ＥＯＳ宛先（ＣＳＶ）
-    IF (   ( lv_eos_freight_carrier IS NOT NULL             )
 -- ##### 20080623 Ver.1.9 EOS宛先対応 START #####
 /***
        AND ( lv_eos_freight_carrier <> lv_eos_shipped_locat ) ) THEN
 ***/
+-- ##### 20080919 Ver.1.18 T_S_453 460 468対応 START #####
+/*****
+    IF (   ( lv_eos_freight_carrier IS NOT NULL             )
        AND ( lv_eos_freight_carrier <> NVL(lv_eos_shipped_locat   ,lv_eos_shipped_to_locat))
        AND ( lv_eos_freight_carrier <> NVL(lv_eos_shipped_to_locat, lv_eos_shipped_locat))) THEN
-
+*****/
+    -- 運送業者のEOS宛先が設定せれていて、入庫のEOSと出庫のEOSと異なる場合
+    --   配送依頼データを出力する
+    IF  ( lv_eos_freight_carrier  IS NOT NULL )
+    AND ((lv_eos_shipped_locat    IS NULL) OR ( lv_eos_freight_carrier <> lv_eos_shipped_locat))
+    AND ((lv_eos_shipped_to_locat IS NULL) OR ( lv_eos_freight_carrier <> lv_eos_shipped_to_locat)) THEN
+-- ##### 20080919 Ver.1.18 T_S_453 460 468対応 END   #####
 -- ##### 20080623 Ver.1.9 EOS宛先対応 END   #####
       -------------------------------------------------------
       -- データタイプ：出荷
@@ -3783,6 +3856,10 @@ AS
     lc_transfer_branch_no_d CONSTANT VARCHAR2(100) := '20' ;    -- 明細
 -- M.Hokkanji Ver1.4 END
 --
+-- ##### 20080919 Ver.1.18 T_S_453 460 468対応 START #####
+    cv_cr         CONSTANT VARCHAR2(1)  := CHR(13); -- 改行コード
+-- ##### 20080919 Ver.1.18 T_S_453 460 468対応 END   #####
+--
     -- ==================================================
     -- 変数宣言
     -- ==================================================
@@ -3959,9 +4036,12 @@ AS
           -------------------------------------------------------
           -- ディレクトリ
           lv_dir        :=  gr_wf_whs_rec.directory;
-          -- ファイル名（処理区分'-'EOS宛先'_'クイックコードファイル名）
+          -- ファイル名（処理区分'-'EOS宛先'_'YYYYMMDDHH24MISS'_'クイックコードファイル名）
           lv_file_name  :=  lv_wf_ope_div               || '-' || 
                             re_out_data.eos_csv_output  || '_' || 
+-- ##### 20080919 Ver.1.18 T_S_453 460 468対応 START #####
+                            gv_filetimes                || '_' ||
+-- ##### 20080919 Ver.1.18 T_S_453 460 468対応 END   #####
                             gr_wf_whs_rec.file_name ;
 --
           -------------------------------------------------------
@@ -4026,7 +4106,13 @@ AS
 -- M.Hokkanji Ver1.4 STRAT
                     || lt_new_modify_del_class              || ','    -- データ区分
 --                    || re_out_data.new_modify_del_class     || ','    -- データ区分
-                    || TO_CHAR( re_out_data.update_date, 'YYYY/MM/DD HH24:MI:SS' );
+--
+-- ##### 20080919 Ver.1.18 T_S_453 460 468対応 START #####
+--                    || TO_CHAR( re_out_data.update_date, 'YYYY/MM/DD HH24:MI:SS' );
+                    || TO_CHAR( re_out_data.update_date, 'YYYY/MM/DD HH24:MI:SS' )
+                    || cv_cr;                                         -- 改行コード(CR)
+-- ##### 20080919 Ver.1.18 T_S_453 460 468対応 END   #####
+--
 --                    || TO_CHAR( re_out_data.update_date, 'YYYY/MM/DD HH24:MI:SS' ) || ','
 --                    || re_out_data.line_number              || ','    -- 明細番号
 --                    || re_out_data.data_type                || ','    -- データタイプ
@@ -4530,7 +4616,11 @@ AS
          AND ( lv_break_flg                      = gc_yes_no_y       )    -- 依頼Ｎｏブレイク
          AND ( gr_param.fix_class                = gc_fix_class_k    )    -- 予定確定区分：確定
          AND ( gt_main_data(i).prev_notif_status = gc_notif_status_r )    -- 前回通知ＳＴ：再通知要
+-- ##### 20080919 Ver.1.18 T_S_453 460 468対応 START #####
+/***** 再通知要の場合は登録されている、無条件で通知済み全てに対して、取消のデータを作成する
          AND ( gt_main_data(i).eos_shipped_locat   IS NOT NUll )          -- 出ＥＯＳ宛先：NOT NULL
+*****/
+-- ##### 20080919 Ver.1.18 T_S_453 460 468対応 END   #####
 -- M.Hokkanji Ver1.5 START
              ) THEN
 --         AND ( gt_main_data(i).eos_freight_carrier IS NOT NUll ) ) THEN   -- 運ＥＯＳ宛先：NOT NULL
