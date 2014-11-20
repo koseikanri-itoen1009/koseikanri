@@ -19,14 +19,146 @@ SELECT ximv.item_id         item_id
       ,ximv.destination_div destination_type
       ,null                 inventory_location_id
 FROM   xxcmn_item_mst_v     ximv
-WHERE  EXISTS ( SELECT 'X'
-                FROM   ic_loct_inv            ili
-                      ,xxcmn_item_locations_v xilv
-                WHERE  ili.whse_code = xilv.whse_code
-                AND    ili.item_id   = ximv.item_id
-                AND    xilv.inventory_location_id = NVL(:1, xilv.inventory_location_id)
-                HAVING NVL(SUM(ili.loct_onhand), 0) > 0
-                GROUP BY ili.item_id )
+-- 2010/01/18 H.Itou Mod Start 本稼動障害#1151
+--WHERE  EXISTS ( SELECT 'X'
+--                FROM   ic_loct_inv            ili
+--                      ,xxcmn_item_locations_v xilv
+--                WHERE  ili.whse_code = xilv.whse_code
+--                AND    ili.item_id   = ximv.item_id
+--                AND    xilv.inventory_location_id = NVL(:1, xilv.inventory_location_id)
+--                HAVING NVL(SUM(ili.loct_onhand), 0) > 0
+--                GROUP BY ili.item_id )
+      ,(  SELECT stock_qty.item_id  item_id  -- I0-I8で在庫ありの品目ID
+          FROM   (-- I0)EBS手持在庫取得
+                  SELECT ili.item_id      item_id
+                        ,ili.loct_onhand  actual_quantity
+                  FROM   ic_loct_inv            ili
+                        ,xxcmn_item_locations_v xilv
+                  WHERE  ili.whse_code = xilv.whse_code
+                  AND    xilv.inventory_location_id = :1
+                  -- I1)実績未取在庫数  移動入庫（入出庫報告有）
+                  -- I2)実績未取在庫数  移動入庫（入庫報告有）
+                  UNION ALL
+                  SELECT mld.item_id                 item_id
+                        ,mld.actual_quantity         actual_quantity
+                  FROM   xxinv_mov_req_instr_headers mrih    -- 移動依頼/指示ヘッダ（アドオン）
+                        ,xxinv_mov_req_instr_lines   mril    -- 移動依頼/指示明細（アドオン）
+                        ,xxinv_mov_lot_details       mld     -- 移動ロット詳細（アドオン）
+                  WHERE  mrih.mov_hdr_id           = mril.mov_hdr_id
+                  AND    mril.mov_line_id          = mld.mov_line_id
+                  AND    mrih.status              IN ('05','06')
+                  AND    mrih.comp_actual_flg      = 'N'
+                  AND    mrih.ship_to_locat_id     = :2
+                  AND    mrih.actual_arrival_date >= ADD_MONTHS(TO_DATE(xxcmn_common_pkg.get_opminv_close_period,'YYYYMM'), 1)  -- 実績計上前なのでOPEN日付のデータのみ対象。
+                  AND    mril.delete_flg           = 'N'
+                  AND    mld.document_type_code    = '20'
+                  AND    mld.record_type_code      = '30'
+                  -- I3)実績未取在庫数  移動出庫（入出庫報告有）
+                  -- I4)実績未取在庫数  移動出庫（出庫報告有）
+                  UNION ALL
+                  SELECT mld.item_id                 item_id
+                        ,mld.actual_quantity * -1    actual_quantity
+                  FROM   xxinv_mov_req_instr_headers mrih    -- 移動依頼/指示ヘッダ（アドオン）
+                        ,xxinv_mov_req_instr_lines   mril    -- 移動依頼/指示明細（アドオン）
+                        ,xxinv_mov_lot_details       mld     -- 移動ロット詳細（アドオン）
+                  WHERE  mrih.mov_hdr_id           = mril.mov_hdr_id
+                  AND    mril.mov_line_id          = mld.mov_line_id
+                  AND    mrih.status              IN ('04','06')
+                  AND    mrih.comp_actual_flg      = 'N'
+                  AND    mrih.shipped_locat_id     = :3
+                  AND    mrih.actual_ship_date    >= ADD_MONTHS(TO_DATE(xxcmn_common_pkg.get_opminv_close_period,'YYYYMM'), 1)  -- 実績計上前なのでOPEN日付のデータのみ対象。
+                  AND    mril.delete_flg           = 'N'
+                  AND    mld.document_type_code    = '20'
+                  AND    mld.record_type_code      = '20'
+                  UNION ALL
+                  -- I7)実績未取在庫数  移動入庫訂正（入出庫報告有）
+                  SELECT mld.item_id                                                    item_id
+                        ,NVL(mld.actual_quantity,0) - NVL(mld.before_actual_quantity,0) actual_quantity
+                  FROM   xxinv_mov_req_instr_headers mrih    -- 移動依頼/指示ヘッダ（アドオン）
+                        ,xxinv_mov_req_instr_lines   mril    -- 移動依頼/指示明細（アドオン）
+                        ,xxinv_mov_lot_details       mld     -- 移動ロット詳細（アドオン）
+                  WHERE  mrih.mov_hdr_id           = mril.mov_hdr_id
+                  AND    mril.mov_line_id          = mld.mov_line_id
+                  AND    mrih.status               = '06'
+                  AND    mrih.comp_actual_flg      = 'Y'
+                  AND    mrih.correct_actual_flg   = 'Y'
+                  AND    mrih.ship_to_locat_id     = :4
+                  AND    mrih.actual_arrival_date >= ADD_MONTHS(TO_DATE(xxcmn_common_pkg.get_opminv_close_period,'YYYYMM'), 1)  -- 実績計上前なのでOPEN日付のデータのみ対象。
+                  AND    mril.delete_flg           = 'N'
+                  AND    mld.document_type_code    = '20'
+                  AND    mld.record_type_code      = '30'
+                  UNION ALL
+                  -- I8)実績未取在庫数  移動出庫訂正（入出庫報告有）
+                  SELECT mld.item_id                                                    item_id
+                        ,NVL(mld.before_actual_quantity,0) - NVL(mld.actual_quantity,0) actual_quantity
+                  FROM   xxinv_mov_req_instr_headers mrih    -- 移動依頼/指示ヘッダ（アドオン）
+                        ,xxinv_mov_req_instr_lines   mril    -- 移動依頼/指示明細（アドオン）
+                        ,xxinv_mov_lot_details       mld     -- 移動ロット詳細（アドオン）
+                  WHERE  mrih.mov_hdr_id           = mril.mov_hdr_id
+                  AND    mril.mov_line_id          = mld.mov_line_id
+                  AND    mrih.status               = '06'
+                  AND    mrih.comp_actual_flg      = 'Y'
+                  AND    mrih.correct_actual_flg   = 'Y'
+                  AND    mrih.shipped_locat_id     = :5
+                  AND    mrih.actual_ship_date    >= ADD_MONTHS(TO_DATE(xxcmn_common_pkg.get_opminv_close_period,'YYYYMM'), 1)  -- 実績計上前なのでOPEN日付のデータのみ対象。
+                  AND    mril.delete_flg           = 'N'
+                  AND    mld.document_type_code    = '20'
+                  AND    mld.record_type_code      = '20'
+                  UNION ALL
+                  -- I5)実績未取在庫数  出荷
+                  SELECT mld.item_id item_id
+                        ,CASE otta.order_category_code
+                           WHEN 'ORDER' THEN
+                             (NVL(mld.actual_quantity, 0) - NVL(mld.before_actual_quantity, 0)) * -1
+                           WHEN 'RETURN' THEN
+                             NVL(mld.actual_quantity, 0) - NVL(mld.before_actual_quantity, 0)
+                         END actual_quantity
+                  FROM   xxwsh_order_headers_all    oha  -- 受注ヘッダ（アドオン）
+                        ,oe_transaction_types_all   otta -- 受注タイプ
+                        ,xxwsh_order_lines_all      ola  -- 受注明細（アドオン）
+                        ,xxinv_mov_lot_details      mld  -- 移動ロット詳細（アドオン）
+                  WHERE  oha.order_header_id       = ola.order_header_id
+                  AND    oha.order_type_id         = otta.transaction_type_id
+                  AND    ola.order_line_id         = mld.mov_line_id
+                  AND    oha.req_status            = '04'
+                  AND    oha.actual_confirm_class  = 'N'
+                  AND    oha.latest_external_flag  = 'Y'
+                  AND    oha.deliver_from_id       = :6
+                  AND    oha.shipped_date         >= ADD_MONTHS(TO_DATE(xxcmn_common_pkg.get_opminv_close_period,'YYYYMM'), 1)  -- 実績計上前なのでOPEN日付のデータのみ対象。
+                  AND    otta.attribute1          IN ('1','3')
+                  AND    ola.delete_flag           = 'N'
+                  AND    mld.document_type_code    = '10'
+                  AND    mld.record_type_code      = '20'
+                  UNION ALL
+                  -- I6)実績未取在庫数  支給
+                  SELECT mld.item_id item_id
+                        ,CASE otta.order_category_code
+                           WHEN 'ORDER' THEN
+                             (NVL(mld.actual_quantity, 0) - NVL(mld.before_actual_quantity, 0)) * -1
+                           WHEN 'RETURN' THEN
+                             NVL(mld.actual_quantity, 0) - NVL(mld.before_actual_quantity, 0)
+                         END actual_quantity
+                  FROM   xxwsh_order_headers_all    oha  -- 受注ヘッダ（アドオン）
+                        ,oe_transaction_types_all   otta -- 受注タイプ
+                        ,xxwsh_order_lines_all      ola  -- 受注明細（アドオン）
+                        ,xxinv_mov_lot_details      mld  -- 移動ロット詳細（アドオン）
+                  WHERE  oha.order_header_id       = ola.order_header_id
+                  AND    oha.order_type_id         = otta.transaction_type_id
+                  AND    ola.order_line_id         = mld.mov_line_id
+                  AND    oha.req_status            = '08'
+                  AND    oha.actual_confirm_class  = 'N'
+                  AND    oha.latest_external_flag  = 'Y'
+                  AND    oha.deliver_from_id       = :7
+                  AND    oha.shipped_date         >= ADD_MONTHS(TO_DATE(xxcmn_common_pkg.get_opminv_close_period,'YYYYMM'), 1)  -- 実績計上前なのでOPEN日付のデータのみ対象。
+                  AND    otta.attribute1           = '2'
+                  AND    ola.delete_flag           = 'N'
+                  AND    mld.document_type_code    = '30'
+                  AND    mld.record_type_code      = '20'
+                 ) stock_qty
+          HAVING   SUM(stock_qty.actual_quantity) > 0
+          GROUP BY stock_qty.item_id
+          ) stock_exists_item
+WHERE  stock_exists_item.item_id = ximv.item_id
    ]]></SQLQuery>
    <DesignTime>
       <Attr Name="_version" Value="9.0.3.14.00" />
