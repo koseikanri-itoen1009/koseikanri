@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCMM002A01C(body)
  * Description      : 社員データ取込処理
  * MD.050           : MD050_CMM_002_A01_社員データ取込
- * Version          : 1.1
+ * Version          : 1.3
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -49,29 +49,31 @@ AS
  *  2009/01/09    1.0   SCS 工藤 真純    初回作成
  *  2009/03/09    1.1   SCS 竹下 昭範    正常終了時だけ、CSVファイルを削除するように変更
  *  2009/04/03    1.2   SCS 吉川 博章    追加従業員情報詳細のコンテキスト設定を追加
+ *  2009/04/16    1.3   SCS 吉川 博章    障害No.483 対応
+ *                                       submain の処理を大幅修正
  *
  *****************************************************************************************/
 --
 --#######################  固定グローバル定数宣言部 START   #######################
 --
   --ステータス・コード
-  cv_status_normal CONSTANT VARCHAR2(1) := xxccp_common_pkg.set_status_normal; --正常:0
-  cv_status_warn   CONSTANT VARCHAR2(1) := xxccp_common_pkg.set_status_warn;   --警告:1
-  cv_status_error  CONSTANT VARCHAR2(1) := xxccp_common_pkg.set_status_error;  --異常:2
+  cv_status_normal           CONSTANT VARCHAR2(1) := xxccp_common_pkg.set_status_normal;  -- 正常:0
+  cv_status_warn             CONSTANT VARCHAR2(1) := xxccp_common_pkg.set_status_warn;    -- 警告:1
+  cv_status_error            CONSTANT VARCHAR2(1) := xxccp_common_pkg.set_status_error;   -- 異常:2
 
   --WHOカラム
-  cn_created_by             CONSTANT NUMBER      := fnd_global.user_id;         --CREATED_BY
-  cd_creation_date          CONSTANT DATE        := SYSDATE;                    --CREATION_DATE
-  cn_last_updated_by        CONSTANT NUMBER      := fnd_global.user_id;         --LAST_UPDATED_BY
-  cd_last_update_date       CONSTANT DATE        := SYSDATE;                    --LAST_UPDATE_DATE
-  cn_last_update_login      CONSTANT NUMBER      := fnd_global.login_id;        --LAST_UPDATE_LOGIN
-  cn_request_id             CONSTANT NUMBER      := fnd_global.conc_request_id; --REQUEST_ID
-  cn_program_application_id CONSTANT NUMBER      := fnd_global.prog_appl_id;    --PROGRAM_APPLICATION_ID
-  cn_program_id             CONSTANT NUMBER      := fnd_global.conc_program_id; --PROGRAM_ID
-  cd_program_update_date    CONSTANT DATE        := SYSDATE;                    --PROGRAM_UPDATE_DATE
+  cn_created_by              CONSTANT NUMBER      := fnd_global.user_id;         -- CREATED_BY
+  cd_creation_date           CONSTANT DATE        := SYSDATE;                    -- CREATION_DATE
+  cn_last_updated_by         CONSTANT NUMBER      := fnd_global.user_id;         -- LAST_UPDATED_BY
+  cd_last_update_date        CONSTANT DATE        := SYSDATE;                    -- LAST_UPDATE_DATE
+  cn_last_update_login       CONSTANT NUMBER      := fnd_global.login_id;        -- LAST_UPDATE_LOGIN
+  cn_request_id              CONSTANT NUMBER      := fnd_global.conc_request_id; -- REQUEST_ID
+  cn_program_application_id  CONSTANT NUMBER      := fnd_global.prog_appl_id;    -- PROGRAM_APPLICATION_ID
+  cn_program_id              CONSTANT NUMBER      := fnd_global.conc_program_id; -- PROGRAM_ID
+  cd_program_update_date     CONSTANT DATE        := SYSDATE;                    -- PROGRAM_UPDATE_DATE
 --
-  cv_msg_part      CONSTANT VARCHAR2(3) := ' : ';
-  cv_msg_cont      CONSTANT VARCHAR2(3) := '.';
+  cv_msg_part                CONSTANT VARCHAR2(3) := ' : ';
+  cv_msg_cont                CONSTANT VARCHAR2(3) := '.';
 --
 --
 --################################  固定部 END   ##################################
@@ -187,12 +189,26 @@ AS
   cv_input_no_msg      CONSTANT VARCHAR2(20) := 'APP-XXCCP1-90008'; -- コンカレント入力パラメータなし
 
   --プロファイル
-  cv_prf_dir           CONSTANT VARCHAR2(30) := 'XXCMM1_JINJI_IN_DIR';  -- 人事(INBOUND)連携用CSVファイル保管場所
-  cv_prf_fil           CONSTANT VARCHAR2(30) := 'XXCMM1_002A01_IN_FILE';  -- 人事連携用社員データ取込用CSVファイル出力先
-  cv_prf_supervisor    CONSTANT VARCHAR2(30) := 'XXCMM1_002A01_SUPERVISOR_CD'; -- 管理者従業員番号
-  cv_prf_default       CONSTANT VARCHAR2(30) := 'XXCMM1_002A01_DEFAULT_CD';   -- デフォルト費用勘定
-  cv_prf_password      CONSTANT VARCHAR2(30) := 'XXCMM1_002A01_PASSWORD';  -- 初期パスワード
-
+  cv_prf_dir           CONSTANT VARCHAR2(30) := 'XXCMM1_JINJI_IN_DIR';          -- 人事(INBOUND)連携用CSVファイル保管場所
+  cv_prf_fil           CONSTANT VARCHAR2(30) := 'XXCMM1_002A01_IN_FILE';        -- 人事連携用社員データ取込用CSVファイル出力先
+-- Ver1.3 Add  2009/04/16
+  cv_prf_bks_name      CONSTANT VARCHAR2(30) := 'GL_SET_OF_BKS_NAME';           -- 会計帳簿名
+-- End Ver1.3
+  cv_prf_supervisor    CONSTANT VARCHAR2(30) := 'XXCMM1_002A01_SUPERVISOR_CD';  -- 管理者従業員番号
+-- Ver1.3 Del  2009/04/16  各セグメント毎にプロファイル定義し不要のため
+--  cv_prf_default       CONSTANT VARCHAR2(30) := 'XXCMM1_002A01_DEFAULT_CD';   -- デフォルト費用勘定
+-- End Ver1.3
+-- Ver1.3 Add  2009/04/16  デフォルト費用勘定各ＡＦＦセグメント毎にプロファイル定義
+  cv_prf_def_aff1      CONSTANT VARCHAR2(30) := 'XXCMM1_002A01_DEF_AFF1';     -- AFF1(SEG1:会社)
+  cv_prf_def_aff3      CONSTANT VARCHAR2(30) := 'XXCMM1_002A01_DEF_AFF3';     -- AFF3(SEG3:勘定科目)
+  cv_prf_def_aff4      CONSTANT VARCHAR2(30) := 'XXCMM1_002A01_DEF_AFF4';     -- AFF4(SEG4:補助科目)
+  cv_prf_def_aff5      CONSTANT VARCHAR2(30) := 'XXCMM1_002A01_DEF_AFF5';     -- AFF5(SEG5:顧客コード)
+  cv_prf_def_aff6      CONSTANT VARCHAR2(30) := 'XXCMM1_002A01_DEF_AFF6';     -- AFF6(SEG6:企業コード)
+  cv_prf_def_aff7      CONSTANT VARCHAR2(30) := 'XXCMM1_002A01_DEF_AFF7';     -- AFF7(SEG7:予備1)
+  cv_prf_def_aff8      CONSTANT VARCHAR2(30) := 'XXCMM1_002A01_DEF_AFF8';     -- AFF8(SEG8:予備2)
+-- End Ver1.3
+  cv_prf_password      CONSTANT VARCHAR2(30) := 'XXCMM1_002A01_PASSWORD';     -- 初期パスワード
+  --
   -- トークン
   cv_cnt_token          CONSTANT VARCHAR2(10) := 'COUNT';              -- 件数メッセージ用トークン名
   cv_tkn_ng_profile     CONSTANT VARCHAR2(15) := 'NG_PROFILE';         -- エラープロファイル名
@@ -208,7 +224,18 @@ AS
   cv_prf_fil_nm         CONSTANT VARCHAR2(20) := 'CSVファイル名';      -- プロファイル;
   cv_prf_supervisor_nm  CONSTANT VARCHAR2(20) := '管理者従業員番号';   -- プロファイル;
   cv_prf_supervisor_nm2 CONSTANT VARCHAR2(40) := '管理者従業員番号(従業員未登録データ)'; -- プロファイル;
-  cv_prf_default_nm     CONSTANT VARCHAR2(20) := 'デフォルト費用勘定'; -- プロファイル;
+-- Ver1.3 Del  2009/04/16  各セグメント毎にプロファイル定義し不要のため
+--  cv_prf_default_nm     CONSTANT VARCHAR2(20) := 'デフォルト費用勘定'; -- プロファイル;
+-- End Ver1.3
+-- Ver1.3 Add  2009/04/16  デフォルト費用勘定各ＡＦＦセグメント毎にプロファイル定義
+  cv_prf_def_aff1_nm   CONSTANT VARCHAR2(40) := 'デフォルト費用勘定ＡＦＦ１：会社';
+  cv_prf_def_aff3_nm   CONSTANT VARCHAR2(40) := 'デフォルト費用勘定ＡＦＦ３：勘定科目';
+  cv_prf_def_aff4_nm   CONSTANT VARCHAR2(40) := 'デフォルト費用勘定ＡＦＦ４：補助科目';
+  cv_prf_def_aff5_nm   CONSTANT VARCHAR2(40) := 'デフォルト費用勘定ＡＦＦ５：顧客コード';
+  cv_prf_def_aff6_nm   CONSTANT VARCHAR2(40) := 'デフォルト費用勘定ＡＦＦ６：企業コード';
+  cv_prf_def_aff7_nm   CONSTANT VARCHAR2(40) := 'デフォルト費用勘定ＡＦＦ７：予備１';
+  cv_prf_def_aff8_nm   CONSTANT VARCHAR2(40) := 'デフォルト費用勘定ＡＦＦ８：予備２';
+-- End Ver1.3
   cv_prf_password_nm    CONSTANT VARCHAR2(20) := '初期パスワード';     -- プロファイル;
   cv_xxcmm1_in_if_nm            CONSTANT VARCHAR2(20) := '社員インタフェース';   -- ファイル名
   cv_per_all_people_f_nm        CONSTANT VARCHAR2(20) := '従業員マスタ';         -- ファイル名
@@ -224,15 +251,19 @@ AS
   cv_flv_job_post       CONSTANT VARCHAR2(30) := 'XXCMM_POSITION_CODE';         -- 職位テーブル
   cv_flv_job_duty       CONSTANT VARCHAR2(30) := 'XXCMM_JOB_CODE';              -- 職務テーブル
   cv_flv_job_type       CONSTANT VARCHAR2(30) := 'XXCMM_OCCUPATIONAL_CODE';     -- 職種テーブル
-  cv_flv_job_system     CONSTANT VARCHAR2(30) := 'XXCMM_002A01_**';  -- 適用労働時間制テーブル
-  cv_flv_consent        CONSTANT VARCHAR2(30) := 'XXCMM_002A01_**';  -- 承認区分テーブル
-  cv_flv_agent          CONSTANT VARCHAR2(30) := 'XXCMM_002A01_**';  -- 代行区分テーブル
-  cv_flv_responsibility CONSTANT VARCHAR2(30) := 'XXCMM1_002A01_RESP';  -- 職責自動割当テーブル
+  cv_flv_job_system     CONSTANT VARCHAR2(30) := 'XXCMM_002A01_**';             -- 適用労働時間制テーブル
+  cv_flv_consent        CONSTANT VARCHAR2(30) := 'XXCMM_002A01_**';             -- 承認区分テーブル
+  cv_flv_agent          CONSTANT VARCHAR2(30) := 'XXCMM_002A01_**';             -- 代行区分テーブル
+  cv_flv_responsibility CONSTANT VARCHAR2(30) := 'XXCMM1_002A01_RESP';          -- 職責自動割当テーブル
 --
   -- テーブル名
-  cd_sysdate           DATE := SYSDATE;     -- 処理開始時間(YYYYMMDDHH24MISS)
-  cd_process_date      DATE;                -- 業務日付(YYYYMMDD)
-  cc_process_date      CHAR(8);             -- 業務日付(YYYYMMDD)
+  cd_sysdate            DATE := SYSDATE;                -- 処理開始時間(YYYYMMDDHH24MISS)
+  cd_process_date       DATE;                           -- 業務日付(YYYYMMDD)
+  cc_process_date       CHAR(8);                        -- 業務日付(YYYYMMDD)
+--
+-- Ver1.3 Add  2009/04/16  従業員 郵便送付先設定用
+  cv_send_to_addres     CONSTANT VARCHAR2(1) := 'O';    -- 郵便送付先(コード)
+-- End Ver1.3
 --
   -- ===============================
   -- ユーザー定義グローバル型
@@ -251,64 +282,67 @@ AS
     location_id_kbn         VARCHAR2(1),  -- 事業所変更区分('Y':変更する)
     row_err_message         VARCHAR2(1000),  -- 警告メッセージ
     -- 社員取込インタフェース
-    employee_number         xxcmm_in_people_if.employee_number%type,    --社員番号
-    hire_date               xxcmm_in_people_if.hire_date%type,          --入社年月日
-    actual_termination_date xxcmm_in_people_if.actual_termination_date%type,--退職年月日
-    last_name_kanji         xxcmm_in_people_if.last_name_kanji%type,    --漢字姓
-    first_name_kanji        xxcmm_in_people_if.first_name_kanji%type,   --漢字名
-    last_name               xxcmm_in_people_if.last_name%type,          --カナ姓
-    first_name              xxcmm_in_people_if.first_name%type,         --カナ名
-    sex                     xxcmm_in_people_if.sex%type,                --性別
-    employee_division       xxcmm_in_people_if.employee_division%type,  --社員・外部委託区分
-    location_code           xxcmm_in_people_if.location_code%type,      --所属コード（新）
-    change_code             xxcmm_in_people_if.change_code%type,        --異動事由コード
-    announce_date           xxcmm_in_people_if.announce_date%type,      --発令日
-    office_location_code    xxcmm_in_people_if.office_location_code%type, --勤務地拠点コード（新）
-    license_code            xxcmm_in_people_if.license_code%type,       --資格コード（新）
-    license_name            xxcmm_in_people_if.license_name%type,       --資格名（新）
-    job_post                xxcmm_in_people_if.job_post%type,           --職位コード（新）
-    job_post_name           xxcmm_in_people_if.job_post_name%type,      --職位名（新）
-    job_duty                xxcmm_in_people_if.job_duty%type,           --職務コード（新）
-    job_duty_name           xxcmm_in_people_if.job_duty_name%type,      --職務名（新）
-    job_type                xxcmm_in_people_if.job_type%type,           --職種コード（新）
-    job_type_name           xxcmm_in_people_if.job_type_name%type,      --職種名（新）
-    job_system              xxcmm_in_people_if.job_system%type,         --適用労働時間制コード（新）
-    job_system_name         xxcmm_in_people_if.job_system_name%type,    --適用労働名（新）
-    job_post_order          xxcmm_in_people_if.job_post_order%type,     --職位並順コード（新）
-    consent_division        xxcmm_in_people_if.consent_division%type,   --承認区分（新）
-    agent_division          xxcmm_in_people_if.agent_division%type,     --代行区分（新）
-    office_location_code_old xxcmm_in_people_if.office_location_code_old%type,--勤務地拠点コード（旧）
-    location_code_old       xxcmm_in_people_if.location_code_old%type,  --所属コード（旧）
-    license_code_old        xxcmm_in_people_if.license_code_old%type,   --資格コード（旧）
-    license_code_name_old   xxcmm_in_people_if.license_code_name_old%type,--資格名（旧）
-    job_post_old            xxcmm_in_people_if.job_post_old%type,       --職位コード（旧）
-    job_post_name_old       xxcmm_in_people_if.job_post_name_old%type,  --職位名（旧）
-    job_duty_old            xxcmm_in_people_if.job_duty_old%type,       --職務コード（旧）
-    job_duty_name_old       xxcmm_in_people_if.job_duty_name_old%type,  --職務名（旧）
-    job_type_old            xxcmm_in_people_if.job_type_old%type,       --職種コード（旧）
-    job_type_name_old       xxcmm_in_people_if.job_type_name_old%type,  --職種名（旧）
-    job_system_old          xxcmm_in_people_if.job_system_old%type,     --適用労働時間制コード（旧）
-    job_system_name_old     xxcmm_in_people_if.job_system_name_old%type,--適用労働名（旧）
-    job_post_order_old      xxcmm_in_people_if.job_post_order_old%type, --職位並順コード（旧）
-    consent_division_old    xxcmm_in_people_if.consent_division_old%type, --承認区分（旧）
-    agent_division_old      xxcmm_in_people_if.agent_division_old%type, --代行区分（旧）
+    employee_number         xxcmm_in_people_if.employee_number%type,            -- 社員番号
+    hire_date               xxcmm_in_people_if.hire_date%type,                  -- 入社年月日
+    actual_termination_date xxcmm_in_people_if.actual_termination_date%type,    -- 退職年月日
+    last_name_kanji         xxcmm_in_people_if.last_name_kanji%type,            -- 漢字姓
+    first_name_kanji        xxcmm_in_people_if.first_name_kanji%type,           -- 漢字名
+    last_name               xxcmm_in_people_if.last_name%type,                  -- カナ姓
+    first_name              xxcmm_in_people_if.first_name%type,                 -- カナ名
+    sex                     xxcmm_in_people_if.sex%type,                        -- 性別
+    employee_division       xxcmm_in_people_if.employee_division%type,          -- 社員・外部委託区分
+    location_code           xxcmm_in_people_if.location_code%type,              -- 所属コード（新）
+    change_code             xxcmm_in_people_if.change_code%type,                -- 異動事由コード
+    announce_date           xxcmm_in_people_if.announce_date%type,              -- 発令日
+    office_location_code    xxcmm_in_people_if.office_location_code%type,       -- 勤務地拠点コード（新）
+    license_code            xxcmm_in_people_if.license_code%type,               -- 資格コード（新）
+    license_name            xxcmm_in_people_if.license_name%type,               -- 資格名（新）
+    job_post                xxcmm_in_people_if.job_post%type,                   -- 職位コード（新）
+    job_post_name           xxcmm_in_people_if.job_post_name%type,              -- 職位名（新）
+    job_duty                xxcmm_in_people_if.job_duty%type,                   -- 職務コード（新）
+    job_duty_name           xxcmm_in_people_if.job_duty_name%type,              -- 職務名（新）
+    job_type                xxcmm_in_people_if.job_type%type,                   -- 職種コード（新）
+    job_type_name           xxcmm_in_people_if.job_type_name%type,              -- 職種名（新）
+    job_system              xxcmm_in_people_if.job_system%type,                 -- 適用労働時間制コード（新）
+    job_system_name         xxcmm_in_people_if.job_system_name%type,            -- 適用労働名（新）
+    job_post_order          xxcmm_in_people_if.job_post_order%type,             -- 職位並順コード（新）
+    consent_division        xxcmm_in_people_if.consent_division%type,           -- 承認区分（新）
+    agent_division          xxcmm_in_people_if.agent_division%type,             -- 代行区分（新）
+    office_location_code_old xxcmm_in_people_if.office_location_code_old%type,  -- 勤務地拠点コード（旧）
+    location_code_old       xxcmm_in_people_if.location_code_old%type,          -- 所属コード（旧）
+    license_code_old        xxcmm_in_people_if.license_code_old%type,           -- 資格コード（旧）
+    license_code_name_old   xxcmm_in_people_if.license_code_name_old%type,      -- 資格名（旧）
+    job_post_old            xxcmm_in_people_if.job_post_old%type,               -- 職位コード（旧）
+    job_post_name_old       xxcmm_in_people_if.job_post_name_old%type,          -- 職位名（旧）
+    job_duty_old            xxcmm_in_people_if.job_duty_old%type,               -- 職務コード（旧）
+    job_duty_name_old       xxcmm_in_people_if.job_duty_name_old%type,          -- 職務名（旧）
+    job_type_old            xxcmm_in_people_if.job_type_old%type,               -- 職種コード（旧）
+    job_type_name_old       xxcmm_in_people_if.job_type_name_old%type,          -- 職種名（旧）
+    job_system_old          xxcmm_in_people_if.job_system_old%type,             -- 適用労働時間制コード（旧）
+    job_system_name_old     xxcmm_in_people_if.job_system_name_old%type,        -- 適用労働名（旧）
+    job_post_order_old      xxcmm_in_people_if.job_post_order_old%type,         -- 職位並順コード（旧）
+    consent_division_old    xxcmm_in_people_if.consent_division_old%type,       -- 承認区分（旧）
+    agent_division_old      xxcmm_in_people_if.agent_division_old%type,         -- 代行区分（旧）
     -- 従業員マスタ
-    person_id               per_all_people_f.person_id%TYPE,                --従業員ID
-    hire_date_old           per_all_people_f.effective_start_date%type,     --既存_入社年月日
-    pap_version             per_all_people_f.object_version_number%TYPE,    --バージョン番号
+    person_id               per_all_people_f.person_id%TYPE,                    -- 従業員ID
+    hire_date_old           per_all_people_f.effective_start_date%type,         -- 既存_入社年月日
+    pap_version             per_all_people_f.object_version_number%TYPE,        -- バージョン番号
     -- アサインメントマスタ
-    assignment_id           per_all_assignments_f.assignment_id%TYPE,       --アサインメントID
-    assignment_number       per_all_assignments_f.assignment_number%TYPE,   --アサインメント番号
-    effective_start_date    per_all_assignments_f.effective_start_date%TYPE,--登録年月日
-    effective_end_date      per_all_assignments_f.effective_end_date%TYPE,  --登録期限年月日
-    location_id             per_all_assignments_f.location_id%TYPE,         --事業所
-    supervisor_id           per_all_assignments_f.supervisor_id%TYPE,       --管理者
-    paa_version             per_all_assignments_f.object_version_number%TYPE, --バージョン番号
+    assignment_id           per_all_assignments_f.assignment_id%TYPE,           -- アサインメントID
+    assignment_number       per_all_assignments_f.assignment_number%TYPE,       -- アサインメント番号
+    effective_start_date    per_all_assignments_f.effective_start_date%TYPE,    -- 登録年月日
+    effective_end_date      per_all_assignments_f.effective_end_date%TYPE,      -- 登録期限年月日
+    location_id             per_all_assignments_f.location_id%TYPE,             -- 事業所
+    supervisor_id           per_all_assignments_f.supervisor_id%TYPE,           -- 管理者
+    paa_version             per_all_assignments_f.object_version_number%TYPE,   -- バージョン番号
+-- Ver1.3 Add  2009/04/16  デフォルト費用勘定ＣＣＩＤを追加
+    default_code_comb_id    per_all_assignments_f.default_code_comb_id%TYPE,    -- デフォルト費用勘定
+-- End Ver1.3
     -- ユーザマスタ
-    user_id                 fnd_user.user_id%TYPE,                            --ユーザーID
+    user_id                 fnd_user.user_id%TYPE,                              -- ユーザーID
     -- サービス期間マスタ
-    period_of_service_id    per_periods_of_service.period_of_service_id%TYPE, --サービスID
-    ppos_version            per_periods_of_service.object_version_number%TYPE --バージョン番号
+    period_of_service_id    per_periods_of_service.period_of_service_id%TYPE,   -- サービスID
+    ppos_version            per_periods_of_service.object_version_number%TYPE   -- バージョン番号
   );
 
 --
@@ -369,59 +403,62 @@ AS
     agent_division          per_all_assignments_f.ass_attribute15%type,  -- 代行区分（新）
     agent_division_old      per_all_assignments_f.ass_attribute16%type,  -- 代行区分（旧）
     paa_version             per_all_assignments_f.object_version_number%type, -- バージョン番号(アサインメント)
+-- Ver1.3 Add  2009/04/16  デフォルト費用勘定ＣＣＩＤを追加
+    default_code_comb_id    per_all_assignments_f.default_code_comb_id%TYPE,    -- デフォルト費用勘定
+-- End Ver1.3
     -- 従業員サービス期間マスタ
     period_of_service_id    per_periods_of_service.period_of_service_id%type, -- サービスID
     actual_termination_date per_periods_of_service.actual_termination_date%type, -- 退職年月日
     ppos_version            per_periods_of_service.object_version_number%type
   );
   lr_check_rec  check_rec;  -- マスタ取得データ格納エリア
-
+  --
   -- 出力するログを格納するレコード
   TYPE report_rec IS RECORD(
     -- 区分(masterと同じ)
     proc_flg                 VARCHAR2(1),  -- 更新区分('U':処理対象,'E':更新不可能,'S':変更なし)
     -- 出力内容(社員インターフェースと同じ)
-    employee_number          xxcmm_in_people_if.employee_number%type,    --社員番号
-    hire_date                xxcmm_in_people_if.hire_date%type,          --入社年月日
-    actual_termination_date  xxcmm_in_people_if.actual_termination_date%type,--退職年月日
-    last_name_kanji          xxcmm_in_people_if.last_name_kanji%type,    --漢字姓
-    first_name_kanji         xxcmm_in_people_if.first_name_kanji%type,   --漢字名
-    last_name                xxcmm_in_people_if.last_name%type,          --カナ姓
-    first_name               xxcmm_in_people_if.first_name%type,         --カナ名
-    sex                      xxcmm_in_people_if.sex%type,                --性別
-    employee_division        xxcmm_in_people_if.employee_division%type,  --社員・外部委託区分
-    location_code            xxcmm_in_people_if.location_code%type,      --所属コード（新）
-    change_code              xxcmm_in_people_if.change_code%type,        --異動事由コード
-    announce_date            xxcmm_in_people_if.announce_date%type,      --発令日
-    office_location_code     xxcmm_in_people_if.office_location_code%type, --勤務地拠点コード（新）
-    license_code             xxcmm_in_people_if.license_code%type,       --資格コード（新）
-    license_name             xxcmm_in_people_if.license_name%type,       --資格名（新）
-    job_post                 xxcmm_in_people_if.job_post%type,           --職位コード（新）
-    job_post_name            xxcmm_in_people_if.job_post_name%type,      --職位名（新）
-    job_duty                 xxcmm_in_people_if.job_duty%type,           --職務コード（新）
-    job_duty_name            xxcmm_in_people_if.job_duty_name%type,      --職務名（新）
-    job_type                 xxcmm_in_people_if.job_type%type,           --職種コード（新）
-    job_type_name            xxcmm_in_people_if.job_type_name%type,      --職種名（新）
-    job_system               xxcmm_in_people_if.job_system%type,         --適用労働時間制コード（新）
-    job_system_name          xxcmm_in_people_if.job_system_name%type,    --適用労働名（新）
-    job_post_order           xxcmm_in_people_if.job_post_order%type,     --職位並順コード（新）
-    consent_division         xxcmm_in_people_if.consent_division%type,   --承認区分（新）
-    agent_division           xxcmm_in_people_if.agent_division%type,     --代行区分（新）
-    office_location_code_old xxcmm_in_people_if.office_location_code_old%type,--勤務地拠点コード（旧）
-    location_code_old        xxcmm_in_people_if.location_code_old%type,  --所属コード（旧）
-    license_code_old         xxcmm_in_people_if.license_code_old%type,   --資格コード（旧）
-    license_code_name_old    xxcmm_in_people_if.license_code_name_old%type,--資格名（旧）
-    job_post_old             xxcmm_in_people_if.job_post_old%type,       --職位コード（旧）
-    job_post_name_old        xxcmm_in_people_if.job_post_name_old%type,  --職位名（旧）
-    job_duty_old             xxcmm_in_people_if.job_duty_old%type,       --職務コード（旧）
-    job_duty_name_old        xxcmm_in_people_if.job_duty_name_old%type,  --職務名（旧）
-    job_type_old             xxcmm_in_people_if.job_type_old%type,       --職種コード（旧）
-    job_type_name_old        xxcmm_in_people_if.job_type_name_old%type,  --職種名（旧）
-    job_system_old           xxcmm_in_people_if.job_system_old%type,     --適用労働時間制コード（旧）
-    job_system_name_old      xxcmm_in_people_if.job_system_name_old%type,--適用労働名（旧）
-    job_post_order_old       xxcmm_in_people_if.job_post_order_old%type, --職位並順コード（旧）
-    consent_division_old     xxcmm_in_people_if.consent_division_old%type, --承認区分（旧）
-    agent_division_old       xxcmm_in_people_if.agent_division_old%type, --代行区分（旧）
+    employee_number           xxcmm_in_people_if.employee_number%type,           -- 社員番号
+    hire_date                 xxcmm_in_people_if.hire_date%type,                 -- 入社年月日
+    actual_termination_date   xxcmm_in_people_if.actual_termination_date%type,   -- 退職年月日
+    last_name_kanji           xxcmm_in_people_if.last_name_kanji%type,           -- 漢字姓
+    first_name_kanji          xxcmm_in_people_if.first_name_kanji%type,          -- 漢字名
+    last_name                 xxcmm_in_people_if.last_name%type,                 -- カナ姓
+    first_name                xxcmm_in_people_if.first_name%type,                -- カナ名
+    sex                       xxcmm_in_people_if.sex%type,                       -- 性別
+    employee_division         xxcmm_in_people_if.employee_division%type,         -- 社員・外部委託区分
+    location_code             xxcmm_in_people_if.location_code%type,             -- 所属コード（新）
+    change_code               xxcmm_in_people_if.change_code%type,               -- 異動事由コード
+    announce_date             xxcmm_in_people_if.announce_date%type,             -- 発令日
+    office_location_code      xxcmm_in_people_if.office_location_code%type,      -- 勤務地拠点コード（新）
+    license_code              xxcmm_in_people_if.license_code%type,              -- 資格コード（新）
+    license_name              xxcmm_in_people_if.license_name%type,              -- 資格名（新）
+    job_post                  xxcmm_in_people_if.job_post%type,                  -- 職位コード（新）
+    job_post_name             xxcmm_in_people_if.job_post_name%type,             -- 職位名（新）
+    job_duty                  xxcmm_in_people_if.job_duty%type,                  -- 職務コード（新）
+    job_duty_name             xxcmm_in_people_if.job_duty_name%type,             -- 職務名（新）
+    job_type                  xxcmm_in_people_if.job_type%type,                  -- 職種コード（新）
+    job_type_name             xxcmm_in_people_if.job_type_name%type,             -- 職種名（新）
+    job_system                xxcmm_in_people_if.job_system%type,                -- 適用労働時間制コード（新）
+    job_system_name           xxcmm_in_people_if.job_system_name%type,           -- 適用労働名（新）
+    job_post_order            xxcmm_in_people_if.job_post_order%type,            -- 職位並順コード（新）
+    consent_division          xxcmm_in_people_if.consent_division%type,          -- 承認区分（新）
+    agent_division            xxcmm_in_people_if.agent_division%type,            -- 代行区分（新）
+    office_location_code_old  xxcmm_in_people_if.office_location_code_old%type,  -- 勤務地拠点コード（旧）
+    location_code_old         xxcmm_in_people_if.location_code_old%type,         -- 所属コード（旧）
+    license_code_old          xxcmm_in_people_if.license_code_old%type,          -- 資格コード（旧）
+    license_code_name_old     xxcmm_in_people_if.license_code_name_old%type,     -- 資格名（旧）
+    job_post_old              xxcmm_in_people_if.job_post_old%type,              -- 職位コード（旧）
+    job_post_name_old         xxcmm_in_people_if.job_post_name_old%type,         -- 職位名（旧）
+    job_duty_old              xxcmm_in_people_if.job_duty_old%type,              -- 職務コード（旧）
+    job_duty_name_old         xxcmm_in_people_if.job_duty_name_old%type,         -- 職務名（旧）
+    job_type_old              xxcmm_in_people_if.job_type_old%type,              -- 職種コード（旧）
+    job_type_name_old         xxcmm_in_people_if.job_type_name_old%type,         -- 職種名（旧）
+    job_system_old            xxcmm_in_people_if.job_system_old%type,            -- 適用労働時間制コード（旧）
+    job_system_name_old       xxcmm_in_people_if.job_system_name_old%type,       -- 適用労働名（旧）
+    job_post_order_old        xxcmm_in_people_if.job_post_order_old%type,        -- 職位並順コード（旧）
+    consent_division_old      xxcmm_in_people_if.consent_division_old%type,      -- 承認区分（旧）
+    agent_division_old        xxcmm_in_people_if.agent_division_old%type,        -- 代行区分（旧）
 --
     message                   VARCHAR2(1000)
   );
@@ -430,10 +467,16 @@ AS
   TYPE report_normal_tbl IS TABLE OF report_rec INDEX BY BINARY_INTEGER;
   TYPE report_warn_tbl IS TABLE OF report_rec INDEX BY BINARY_INTEGER;
 --
+-- Ver1.3 Add  2009/04/16  ＣＣＩＤ取得用（fnd_flex_ext.get_combination_id）
+  g_aff_segments_tab    fnd_flex_ext.segmentarray;
+-- End Ver1.3
+  --
   -- ===============================
   -- ユーザー定義グローバル変数
   -- ===============================
-  gn_if             NUMBER;     -- 社員インターフェースカウント
+-- Ver1.3 Del  2009/04/16  使用しないため削除
+--  gn_if             NUMBER;     -- 社員インターフェースカウント
+-- End Ver1.3
   gn_rep_n_cnt      NUMBER;     -- レポート件数(正常)
   gn_rep_w_cnt      NUMBER;     -- レポート件数(警告)
 
@@ -446,40 +489,49 @@ AS
   gv_directory      VARCHAR2(255);         -- プロファイル・ファイルパス名
   gv_file_name      VARCHAR2(255);         -- プロファイル・ファイル名
   gv_supervisor     VARCHAR2(255);         -- プロファイル・管理者従業員番号
-  gv_default        VARCHAR2(255);         -- プロファイル・デフォルト費用勘定
+-- Ver1.3 Del  2009/04/16  各セグメント毎にプロファイル定義し不要のため
+--  gv_default        VARCHAR2(255);         -- プロファイル・デフォルト費用勘定
+-- End Ver1.3
   gv_password       VARCHAR2(255);         -- プロファイル・初期パスワード
   gn_person_id      NUMBER(10);            -- ﾌﾟﾛﾌｧｲﾙ管理者従業員番号をパーソンIDに変換
   gn_person_start   DATE;                  -- ﾌﾟﾛﾌｧｲﾙ管理者の入社年月日
 --
-  gf_file_hand      UTL_FILE.FILE_TYPE;    -- ファイル・ハンドルの宣言
-
-  gt_mst_tbl        masters_tbl;           -- 結合配列の定義
-  gt_report_normal_tbl  report_normal_tbl; -- 結合配列の定義
-  gt_report_warn_tbl    report_warn_tbl;     -- 結合配列の定義
+-- Ver1.3 Add  2009/04/16  ＣＣＩＤ取得用（fnd_flex_ext.get_combination_id）
+  gn_set_of_book_id           gl_sets_of_books.set_of_books_id%TYPE;
+  gn_chart_of_acct_id         gl_sets_of_books.chart_of_accounts_id%TYPE;
+  gv_id_flex_code             fnd_id_flex_structures_vl.id_flex_code%TYPE;
+-- End Ver1.3
+--
+  gf_file_hand                UTL_FILE.FILE_TYPE;   -- ファイル・ハンドルの宣言
+--
+-- Ver1.3 Del  2009/04/16  グローバルである必要がなく、TABLEタイプである必要もないため削除
+--  gt_mst_tbl                  masters_tbl;          -- 結合配列の定義
+-- End Ver1.3
+  gt_report_normal_tbl        report_normal_tbl;    -- 結合配列の定義
+  gt_report_warn_tbl          report_warn_tbl;      -- 結合配列の定義
 --
   -- 定数
-  gn_created_by               NUMBER;                     -- 作成者
-  gd_creation_date            DATE;                       -- 作成日
-  gd_last_update_date         DATE;                       -- 最終更新日
-  gn_last_update_by           NUMBER;                     -- 最終更新者
-  gn_last_update_login        NUMBER;                     -- 最終更新ログイン
-  gn_request_id               NUMBER;                     -- 要求ID
-  gn_program_application_id   NUMBER;                     -- プログラムアプリケーションID
-  gn_program_id               NUMBER;                     -- プログラムID
-  gd_program_update_date      DATE;                       -- プログラム更新日
+  gn_created_by               NUMBER;               -- 作成者
+  gd_creation_date            DATE;                 -- 作成日
+  gd_last_update_date         DATE;                 -- 最終更新日
+  gn_last_update_by           NUMBER;               -- 最終更新者
+  gn_last_update_login        NUMBER;               -- 最終更新ログイン
+  gn_request_id               NUMBER;               -- 要求ID
+  gn_program_application_id   NUMBER;               -- プログラムアプリケーションID
+  gn_program_id               NUMBER;               -- プログラムID
+  gd_program_update_date      DATE;                 -- プログラム更新日
 --
   -- ===============================
   -- ユーザー定義グローバルカーソル
   -- ===============================
 --
-
   -- 社員インタフェース
   CURSOR gc_xip_cur
   IS
     SELECT xip.employee_number
     FROM   xxcmm_in_people_if xip    -- 従業員マスタ
     FOR UPDATE OF xip.employee_number NOWAIT;
-
+  --
   -- 従業員マスタ
   CURSOR gc_ppf_cur
   IS
@@ -490,7 +542,7 @@ AS
            FROM   xxcmm_in_people_if xip    -- 社員インタフェース
            WHERE  xip.employee_number = pap.employee_number)
     FOR UPDATE OF pap.person_id NOWAIT;
---
+  --
   -- アサインメントマスタ
   CURSOR gc_paf_cur
   IS
@@ -505,7 +557,7 @@ AS
                   WHERE  xip.employee_number = pap.employee_number)
            AND    pap.person_id = paa.person_id)
     FOR UPDATE OF paa.assignment_id NOWAIT;
---
+  --
   -- ユーザーマスタ
   CURSOR gc_fu_cur
   IS
@@ -520,7 +572,7 @@ AS
                   WHERE  xip.employee_number = pap.employee_number)
            AND    pap.person_id = fu.employee_id)
     FOR UPDATE OF fu.user_id NOWAIT;
---
+  --
   -- ユーザー職責マスタ
   CURSOR gc_fug_cur
   IS
@@ -539,6 +591,119 @@ AS
                   AND    pap.person_id = fu.employee_id)
            AND    fu.user_id = fug.user_id)
     FOR UPDATE OF fug.user_id NOWAIT;
+  --
+--
+-- Ver1.3 Add  2009/04/16  ＣＣＩＤ取得プロシージャ作成
+  /***********************************************************************************
+   * Procedure Name   : get_ccid
+   * Description      : CCID取得
+   ***********************************************************************************/
+  PROCEDURE get_ccid(
+    iv_aff_segment2    IN  VARCHAR2,     --   AFF02部門(所属部門)
+    on_ccid            OUT NUMBER,       --   CCID
+    ov_errbuf          OUT VARCHAR2,     --   エラー・メッセージ           --# 固定 #
+    ov_retcode         OUT VARCHAR2,     --   リターン・コード             --# 固定 #
+    ov_errmsg          OUT VARCHAR2)     --   ユーザー・エラー・メッセージ --# 固定 #
+  IS
+    -- ===============================
+    -- 固定ローカル定数
+    -- ===============================
+    cv_prg_name   CONSTANT VARCHAR2(100) := 'get_ccid'; -- プログラム名
+--
+--#####################  固定ローカル変数宣言部 START   ########################
+--
+    lv_errbuf  VARCHAR2(5000);  -- エラー・メッセージ
+    lv_retcode VARCHAR2(1);     -- リターン・コード
+    lv_errmsg  VARCHAR2(5000);  -- ユーザー・エラー・メッセージ
+--
+--#####################################  固定部 END   #############################################
+--
+    -- ===============================
+    -- ユーザー宣言部
+    -- ===============================
+    -- *** ローカル定数 ***
+    cv_short_name         VARCHAR2(5) := 'SQLGL';
+    --
+    -- *** ローカル変数 ***
+    lb_ret                BOOLEAN;
+    ln_ccid               gl_code_combinations.code_combination_id%TYPE;
+    --
+    -- *** テーブル変数 ***
+    l_aff_segments_tab    fnd_flex_ext.segmentarray;
+    --
+  BEGIN
+--
+--##################  固定ステータス初期化部 START   ###################
+--
+    ov_retcode := cv_status_normal;
+--
+--###########################  固定部 END   ############################
+--
+    ----------------
+    -- ＡＦＦ設定
+    ----------------
+    -- セグメント値配列設定(SEG1:会社)
+    l_aff_segments_tab( 1 ) := g_aff_segments_tab( 1 );
+    -- セグメント値配列設定(SEG2:部門)  所属部門
+    l_aff_segments_tab( 2 ) := iv_aff_segment2;
+    -- セグメント値配列設定(SEG3:勘定科目)
+    l_aff_segments_tab( 3 ) := g_aff_segments_tab( 3 );
+    -- セグメント値配列設定(SEG4:補助科目)
+    l_aff_segments_tab( 4 ) := g_aff_segments_tab( 4 );
+    -- セグメント値配列設定(SEG5:顧客コード)
+    l_aff_segments_tab( 5 ) := g_aff_segments_tab( 5 );
+    -- セグメント値配列設定(SEG6:企業コード)
+    l_aff_segments_tab( 6 ) := g_aff_segments_tab( 6 );
+    -- セグメント値配列設定(SEG7:予備1)
+    l_aff_segments_tab( 7 ) := g_aff_segments_tab( 7 );
+    -- セグメント値配列設定(SEG8:予備2)
+    l_aff_segments_tab( 8 ) := g_aff_segments_tab( 8 );
+    --
+    --
+    -- CCID取得関数呼び出し
+    lb_ret := fnd_flex_ext.get_combination_id(
+                 application_short_name  => cv_short_name          -- アプリケーション短縮名(GL)
+                ,key_flex_code           => gv_id_flex_code        -- キーフレックスコード
+                ,structure_number        => gn_chart_of_acct_id    -- 勘定科目体系番号
+                ,validation_date         => SYSDATE                -- 日付チェック
+                ,n_segments              => 8                      -- セグメント数
+                ,segments                => l_aff_segments_tab     -- セグメント値配列
+                ,combination_id          => ln_ccid                -- CCID
+              );
+    --
+    IF lb_ret THEN
+      on_ccid := ln_ccid;
+    ELSE
+      lv_errmsg := fnd_flex_ext.get_message;
+      RAISE global_api_expt;
+    END IF;
+    --
+--
+  EXCEPTION
+    --==============================================================
+    --メッセージ出力(エラー以外)をする必要がある場合は処理を記述
+    --==============================================================
+--
+--#################################  固定例外処理部 START   #######################################
+--
+    -- *** 共通関数例外ハンドラ ***
+    WHEN global_api_expt THEN
+      ov_errmsg  := lv_errmsg;
+      ov_errbuf  := SUBSTRB(cv_pkg_name||cv_msg_cont||cv_prg_name||cv_msg_part||lv_errbuf,1,5000);
+      ov_retcode := cv_status_error;
+    -- *** 共通関数OTHERS例外ハンドラ ***
+    WHEN global_api_others_expt THEN
+      ov_errbuf  := cv_pkg_name||cv_msg_cont||cv_prg_name||cv_msg_part||SQLERRM;
+      ov_retcode := cv_status_error;
+    -- *** OTHERS例外ハンドラ ***
+    WHEN OTHERS THEN
+      ov_errbuf  := cv_pkg_name||cv_msg_cont||cv_prg_name||cv_msg_part||SQLERRM;
+      ov_retcode := cv_status_error;
+--
+--#####################################  固定部 END   #############################################
+--
+  END get_ccid;
+-- End Ver1.3
 --
   /***********************************************************************************
    * Procedure Name   : init_get_profile
@@ -636,15 +801,79 @@ AS
       END;
     END IF;
 --
-    -- デフォルト費用勘定取得
-    gv_default := FND_PROFILE.VALUE(cv_prf_default);
+-- Ver1.3 Del  2009/04/16  各セグメント毎にプロファイル定義し不要のため
+--    -- デフォルト費用勘定取得
+--    gv_default := FND_PROFILE.VALUE(cv_prf_default);
+----
+--    -- プロファイルが取得できない場合はエラー
+--    IF (gv_default IS NULL) THEN
+--      lv_token_value1 := cv_prf_default_nm;
+--      RAISE global_process_expt;
+--    END IF;
+-- End Ver1.3
 --
+-- Ver1.3 Add  2009/04/16  デフォルト費用勘定各ＡＦＦセグメント毎にプロファイル定義
+    -----------------------------------------
+    -- デフォルト費用勘定ＡＦＦ値取得
+    -----------------------------------------
+    -- セグメント値配列設定(SEG1:会社)
+    g_aff_segments_tab( 1 ) := FND_PROFILE.VALUE( cv_prf_def_aff1 );
     -- プロファイルが取得できない場合はエラー
-    IF (gv_default IS NULL) THEN
-      lv_token_value1 := cv_prf_default_nm;
+    IF ( g_aff_segments_tab( 1 ) IS NULL ) THEN
+      lv_token_value1 := cv_prf_def_aff1_nm;
       RAISE global_process_expt;
     END IF;
---
+    --
+    -- セグメント値配列設定(SEG3:勘定科目)
+    g_aff_segments_tab( 3 ) := FND_PROFILE.VALUE( cv_prf_def_aff3 );
+    -- プロファイルが取得できない場合はエラー
+    IF ( g_aff_segments_tab( 3 ) IS NULL ) THEN
+      lv_token_value1 := cv_prf_def_aff3_nm;
+      RAISE global_process_expt;
+    END IF;
+    --
+    -- セグメント値配列設定(SEG4:補助科目)
+    g_aff_segments_tab( 4 ) := FND_PROFILE.VALUE( cv_prf_def_aff4 );
+    -- プロファイルが取得できない場合はエラー
+    IF ( g_aff_segments_tab( 4 ) IS NULL ) THEN
+      lv_token_value1 := cv_prf_def_aff4_nm;
+      RAISE global_process_expt;
+    END IF;
+    --
+    -- セグメント値配列設定(SEG5:顧客コード)
+    g_aff_segments_tab( 5 ) := FND_PROFILE.VALUE( cv_prf_def_aff5 );
+    -- プロファイルが取得できない場合はエラー
+    IF ( g_aff_segments_tab( 5 ) IS NULL ) THEN
+      lv_token_value1 := cv_prf_def_aff5_nm;
+      RAISE global_process_expt;
+    END IF;
+    --
+    -- セグメント値配列設定(SEG6:企業コード)
+    g_aff_segments_tab( 6 ) := FND_PROFILE.VALUE( cv_prf_def_aff6 );
+    -- プロファイルが取得できない場合はエラー
+    IF ( g_aff_segments_tab( 6 ) IS NULL ) THEN
+      lv_token_value1 := cv_prf_def_aff6_nm;
+      RAISE global_process_expt;
+    END IF;
+    --
+    -- セグメント値配列設定(SEG7:予備1)
+    g_aff_segments_tab( 7 ) := FND_PROFILE.VALUE( cv_prf_def_aff7 );
+    -- プロファイルが取得できない場合はエラー
+    IF ( g_aff_segments_tab( 7 ) IS NULL ) THEN
+      lv_token_value1 := cv_prf_def_aff7_nm;
+      RAISE global_process_expt;
+    END IF;
+    --
+    -- セグメント値配列設定(SEG8:予備2)
+    g_aff_segments_tab( 8 ) := FND_PROFILE.VALUE( cv_prf_def_aff8 );
+    -- プロファイルが取得できない場合はエラー
+    IF ( g_aff_segments_tab( 8 ) IS NULL ) THEN
+      lv_token_value1 := cv_prf_def_aff8_nm;
+      RAISE global_process_expt;
+    END IF;
+    --
+-- End Ver1.3
+    --
     -- 初期パスワード取得
     gv_password := FND_PROFILE.VALUE(cv_prf_password);
 --
@@ -1155,64 +1384,66 @@ AS
     -- 従業員マスタ/アサインメントマスタ/従業員サービス期間マスタ(※check_recと同じ並びにする）
     CURSOR gc_per_cur(lv_emp in varchar2)
     IS
-      SELECT pap.person_id            person_id,            --従業員ID
-             pap.effective_start_date effective_start_date, --登録年月日
-             pap.last_name            last_name,            --カナ姓
-             pap.employee_number      employee_number,      --従業員番号
-             pap.first_name           first_name,           --カナ名
-             pap.sex                  sex,                  --性別
-             pap.attribute3           employee_division,    --従業員区分
-             pap.attribute7           license_code,         --資格コード（新）
-             pap.attribute8           license_name,         --資格名（新）
-             pap.attribute11          job_post,             --職位コード（新）
-             pap.attribute12          job_post_name,        --職位名（新）
-             pap.attribute15          job_duty,             --職務コード（新）
-             pap.attribute16          job_duty_name,        --職務名（新）
-             pap.attribute19          job_type,             --職種コード（新）
-             pap.attribute20          job_type_name,        --職種名（新）
-             pap.attribute9           license_code_old,     --資格コード（旧）
-             pap.attribute10          license_code_name_old,--資格名（旧）
-             pap.attribute13          job_post_old,         --職位コード（旧）
-             pap.attribute14          job_post_name_old,    --職位名（旧）
-             pap.attribute17          job_duty_old,         --職務コード（旧）
-             pap.attribute18          job_duty_name_old,    --務名（旧）
-             pap.attribute21          job_type_old,         --職種コード（旧）
-             pap.attribute22          job_type_name_old,    --職種名（旧）
-             pap.attribute28          pap_location_code,    --起票部門
-             pap.per_information18    last_name_kanji,      --漢字姓
-             pap.per_information19    first_name_kanji,     --漢字名
-             pap.object_version_number pap_version,         --バージョン番号
-             paa.assignment_id        assignment_id,        --アサインメントID
-             paa.assignment_number    assignment_number,    --アサインメント番号
-             paa.effective_start_date paa_effective_start_date,--登録年月日
-             paa.effective_end_date   paa_effective_end_date,--登録期限年月日
-             paa.location_id          location_id,          --事業所
-             paa.supervisor_id        supervisor_id,        --管理者
-             paa.ass_attribute1       change_code,          --異動事由コード
-             paa.ass_attribute2       announce_date,        --発令日
-             paa.ass_attribute3       office_location_code, --勤務地拠点コード（新）
-             paa.ass_attribute4       office_location_code_old,--勤務地拠点コード（旧）
-             paa.ass_attribute5       location_code,        --拠点コード（新）
-             paa.ass_attribute6       location_code_old,    --拠点コード（旧）
-             paa.ass_attribute7       job_system,           --適用労働時間制コード（新）
-             paa.ass_attribute8       job_system_name,      --適用労働名（新）
-             paa.ass_attribute9       job_system_old,       --適用労働時間制コード（旧）
-             paa.ass_attribute10      job_system_name_old,  --適用労働名（旧）
-             paa.ass_attribute11      job_post_order,       --職位並順コード（新）
-             paa.ass_attribute12      job_post_order_old,   --職位並順コード（旧）
-             paa.ass_attribute13      consent_division,     --承認区分（新）
-             paa.ass_attribute14      consent_division_old, --承認区分（旧）
-             paa.ass_attribute15      agent_division,       --代行区分（新）
-             paa.ass_attribute16      agent_division_old,   --代行区分（旧）
-             paa.object_version_number paa_version,         --バージョン番号(アサインメント)
-             ppos.period_of_service_id period_of_service_id,--サービスID
-             ppos.actual_termination_date actual_termination_date,--退職年月日
-             ppos.object_version_number ppos_version        --バージョン番号(サービス期間マスタ)
-      FROM   per_periods_of_service ppos,                   -- 従業員サービス期間マスタ
-             per_all_assignments_f paa,                     -- アサインメントマスタ
-             per_all_people_f pap                           -- 従業員マスタ
+      SELECT pap.person_id                   person_id,                   -- 従業員ID
+             pap.effective_start_date        effective_start_date,        -- 登録年月日
+             pap.last_name                   last_name,                   -- カナ姓
+             pap.employee_number             employee_number,             -- 従業員番号
+             pap.first_name                  first_name,                  -- カナ名
+             pap.sex                         sex,                         -- 性別
+             pap.attribute3                  employee_division,           -- 従業員区分
+             pap.attribute7                  license_code,                -- 資格コード（新）
+             pap.attribute8                  license_name,                -- 資格名（新）
+             pap.attribute11                 job_post,                    -- 職位コード（新）
+             pap.attribute12                 job_post_name,               -- 職位名（新）
+             pap.attribute15                 job_duty,                    -- 職務コード（新）
+             pap.attribute16                 job_duty_name,               -- 職務名（新）
+             pap.attribute19                 job_type,                    -- 職種コード（新）
+             pap.attribute20                 job_type_name,               -- 職種名（新）
+             pap.attribute9                  license_code_old,            -- 資格コード（旧）
+             pap.attribute10                 license_code_name_old,       -- 資格名（旧）
+             pap.attribute13                 job_post_old,                -- 職位コード（旧）
+             pap.attribute14                 job_post_name_old,           -- 職位名（旧）
+             pap.attribute17                 job_duty_old,                -- 職務コード（旧）
+             pap.attribute18                 job_duty_name_old,           -- 務名（旧）
+             pap.attribute21                 job_type_old,                -- 職種コード（旧）
+             pap.attribute22                 job_type_name_old,           -- 職種名（旧）
+             pap.attribute28                 pap_location_code,           -- 起票部門
+             pap.per_information18           last_name_kanji,             -- 漢字姓
+             pap.per_information19           first_name_kanji,            -- 漢字名
+             pap.object_version_number       pap_version,                 -- バージョン番号
+             paa.assignment_id               assignment_id,               -- アサインメントID
+             paa.assignment_number           assignment_number,           -- アサインメント番号
+             paa.effective_start_date        paa_effective_start_date,    -- 登録年月日
+             paa.effective_end_date          paa_effective_end_date,      -- 登録期限年月日
+             paa.location_id                 location_id,                 -- 事業所
+             paa.supervisor_id               supervisor_id,               -- 管理者
+             paa.ass_attribute1              change_code,                 -- 異動事由コード
+             paa.ass_attribute2              announce_date,               -- 発令日
+             paa.ass_attribute3              office_location_code,        -- 勤務地拠点コード（新）
+             paa.ass_attribute4              office_location_code_old,    -- 勤務地拠点コード（旧）
+             paa.ass_attribute5              location_code,               -- 拠点コード（新）
+             paa.ass_attribute6              location_code_old,           -- 拠点コード（旧）
+             paa.ass_attribute7              job_system,                  -- 適用労働時間制コード（新）
+             paa.ass_attribute8              job_system_name,             -- 適用労働名（新）
+             paa.ass_attribute9              job_system_old,              -- 適用労働時間制コード（旧）
+             paa.ass_attribute10             job_system_name_old,         -- 適用労働名（旧）
+             paa.ass_attribute11             job_post_order,              -- 職位並順コード（新）
+             paa.ass_attribute12             job_post_order_old,          -- 職位並順コード（旧）
+             paa.ass_attribute13             consent_division,            -- 承認区分（新）
+             paa.ass_attribute14             consent_division_old,        -- 承認区分（旧）
+             paa.ass_attribute15             agent_division,              -- 代行区分（新）
+             paa.ass_attribute16             agent_division_old,          -- 代行区分（旧）
+             paa.object_version_number       paa_version,                 -- バージョン番号(アサインメント)
+-- Ver1.3 Add  2009/04/16  デフォルト費用勘定を追加
+             paa.default_code_comb_id        default_code_comb_id,        -- デフォルト費用勘定
+-- End Ver1.3
+             ppos.period_of_service_id       period_of_service_id,        -- サービスID
+             ppos.actual_termination_date    actual_termination_date,     -- 退職年月日
+             ppos.object_version_number      ppos_version                 -- バージョン番号(サービス期間マスタ)
+      FROM   per_periods_of_service          ppos,                        -- 従業員サービス期間マスタ
+             per_all_assignments_f           paa,                         -- アサインメントマスタ
+             per_all_people_f                pap                          -- 従業員マスタ
       WHERE  pap.employee_number = lv_emp
-
       AND    pap.current_emp_or_apl_flag = gv_const_y             -- 履歴フラグ
       AND    pap.person_id = paa.person_id                        -- 従業員ID
       AND    paa.period_of_service_id = ppos.period_of_service_id -- サービスID
@@ -1235,31 +1466,31 @@ AS
     -- ***        実処理の記述             ***
     -- ***       共通関数の呼び出し        ***
     -- ***************************************
---
+    --
     -- 新規社員登録処理
     lr_check_rec.employee_number := NULL;     -- 社員コード
     <<per_loop>>
-      FOR gc_per_rec IN gc_per_cur(ir_masters_rec.employee_number) LOOP
+    FOR gc_per_rec IN gc_per_cur(ir_masters_rec.employee_number) LOOP
       lr_check_rec := gc_per_rec;
       EXIT;
     END LOOP per_loop;
---
+    --
     IF lr_check_rec.employee_number IS NULL THEN
-      ir_masters_rec.emp_kbn  := gv_kbn_new;  -- 新規社員
-      ir_masters_rec.proc_kbn := gv_sts_yes;  -- 連携データ
-      ir_masters_rec.ymd_kbn  := NULL;        -- 日付変更なし
-      ir_masters_rec.resp_kbn := gv_sts_yes;  -- 職責・管理者 変更
-      ir_masters_rec.location_id_kbn := gv_sts_yes;  -- 事業所 変更
-      lr_check_rec.license_code := NULL;     -- 資格コード（新）
-      lr_check_rec.job_post := NULL;         -- 職位コード（新）
-      lr_check_rec.job_duty := NULL;         -- 職務コード（新）
-      lr_check_rec.job_type := NULL;         -- 職種コード（新）
-      lr_check_rec.job_system := NULL;       -- 適用労働時間制コード（新）
-      lr_check_rec.job_post_order := NULL;   -- 職位並順コード（新）
-      lr_check_rec.consent_division := NULL; -- 承認区分（新）
-      lr_check_rec.agent_division := NULL;   -- 代行区分（新）
+      ir_masters_rec.emp_kbn         := gv_kbn_new;    -- 新規社員
+      ir_masters_rec.proc_kbn        := gv_sts_yes;    -- 連携データ
+      ir_masters_rec.ymd_kbn         := NULL;          -- 日付変更なし
+      ir_masters_rec.resp_kbn        := gv_sts_yes;    -- 職責・管理者 変更
+      ir_masters_rec.location_id_kbn := gv_sts_yes;    -- 事業所 変更
+      lr_check_rec.license_code      := NULL;          -- 資格コード（新）
+      lr_check_rec.job_post          := NULL;          -- 職位コード（新）
+      lr_check_rec.job_duty          := NULL;          -- 職務コード（新）
+      lr_check_rec.job_type          := NULL;          -- 職種コード（新）
+      lr_check_rec.job_system        := NULL;          -- 適用労働時間制コード（新）
+      lr_check_rec.job_post_order    := NULL;          -- 職位並順コード（新）
+      lr_check_rec.consent_division  := NULL;          -- 承認区分（新）
+      lr_check_rec.agent_division    := NULL;          -- 代行区分（新）
       IF (ir_masters_rec.actual_termination_date IS NOT NULL) THEN
-        ir_masters_rec.retire_kbn  := gv_sts_yes; -- 退職データ
+        ir_masters_rec.retire_kbn    := gv_sts_yes;    -- 退職データ
       END IF;
       --事業所マスタチェック(ロケーションIDの取得)
       get_location_id(
@@ -1274,7 +1505,7 @@ AS
         RAISE global_api_others_expt;
       END IF;
     END IF;
---
+    --
     IF (ir_masters_rec.emp_kbn IS NULL) THEN
       -- 連携前の退職日がNULLの場合
       IF (lr_check_rec.actual_termination_date IS NULL) THEN
@@ -1284,9 +1515,9 @@ AS
         END IF;
       ELSE
         ir_masters_rec.emp_kbn  := gv_kbn_retiree;  -- 退職者
-        ir_masters_rec.retire_kbn  := NULL;  --退職処理なし
+        ir_masters_rec.retire_kbn  := NULL;         -- 退職処理なし
       END IF;
-
+      --
       -- 入社年月日・退職年月日以外のデータ差異判断
       IF (lr_check_rec.employee_number||lr_check_rec.last_name_kanji||lr_check_rec.first_name_kanji
         ||lr_check_rec.last_name||lr_check_rec.first_name||lr_check_rec.sex||lr_check_rec.employee_division
@@ -1326,7 +1557,7 @@ AS
           ir_masters_rec.location_id_kbn := gv_sts_yes;  -- 事業所 変更
         END IF;
       END IF;
---
+      --
       --事業所マスタチェック(ロケーションIDの取得) (再雇用処理で使用する為、事業所は取得しておく)
       get_location_id(
         ir_masters_rec
@@ -1339,32 +1570,54 @@ AS
       ELSIF (lv_retcode = cv_status_error) THEN
         RAISE global_api_others_expt;
       END IF;
---
+      --
       -- 入社年月日差異判断
       IF (lr_check_rec.effective_start_date = ir_masters_rec.hire_date) THEN
         ir_masters_rec.ymd_kbn  := NULL;  -- 入社日変更なし
       ELSE
         ir_masters_rec.ymd_kbn  := gv_sts_yes;  -- 入社日変更
       END IF;
-
+      --
       -- データ登録に必要なデータ格納
       -- 従業員マスタ
-      ir_masters_rec.person_id            := lr_check_rec.person_id;     -- 従業員ID
-      ir_masters_rec.pap_version          := lr_check_rec.pap_version;   -- バージョン番号
-      ir_masters_rec.hire_date_old        := lr_check_rec.effective_start_date;   -- 既存_入社年月日
+      ir_masters_rec.person_id            := lr_check_rec.person_id;                 -- 従業員ID
+      ir_masters_rec.pap_version          := lr_check_rec.pap_version;               -- バージョン番号
+      ir_masters_rec.hire_date_old        := lr_check_rec.effective_start_date;      -- 既存_入社年月日
       -- アサインメントマスタ
-      ir_masters_rec.assignment_id        := lr_check_rec.assignment_id;     -- アサインメントID
-      ir_masters_rec.assignment_number    := lr_check_rec.assignment_number; -- アサインメント番号
-      ir_masters_rec.supervisor_id        := lr_check_rec.supervisor_id;     -- 管理者
+      ir_masters_rec.assignment_id        := lr_check_rec.assignment_id;             -- アサインメントID
+      ir_masters_rec.assignment_number    := lr_check_rec.assignment_number;         -- アサインメント番号
+      ir_masters_rec.supervisor_id        := lr_check_rec.supervisor_id;             -- 管理者
       ir_masters_rec.effective_start_date := lr_check_rec.paa_effective_start_date;  -- 登録年月日
       ir_masters_rec.effective_end_date   := lr_check_rec.paa_effective_end_date;    -- 登録期限年月日
-      ir_masters_rec.paa_version          := lr_check_rec.paa_version;       -- バージョン番号
+      ir_masters_rec.paa_version          := lr_check_rec.paa_version;               -- バージョン番号
+-- Ver1.3 Add  2009/04/16  デフォルト費用勘定を追加
+      ir_masters_rec.default_code_comb_id := lr_check_rec.default_code_comb_id;      -- デフォルト費用勘定
+-- End Ver1.3
       -- サービス期間マスタ
-      ir_masters_rec.period_of_service_id := lr_check_rec.period_of_service_id;  -- サービスID
-      ir_masters_rec.ppos_version         := lr_check_rec.ppos_version;          -- バージョン番号
-
+      ir_masters_rec.period_of_service_id := lr_check_rec.period_of_service_id;      -- サービスID
+      ir_masters_rec.ppos_version         := lr_check_rec.ppos_version;              -- バージョン番号
+      --
     END IF;
-
+    --
+-- Ver1.3 Add 2009/04/16  デフォルト費用勘定取得処理を追加
+    -- 新規社員、所属コード変更時取得する
+    --   所属未変更時は、デフォルト費用勘定に変更がないため必要ないはず。
+    IF ( ir_masters_rec.resp_kbn = gv_sts_yes ) THEN
+      -- デフォルト費用勘定CCIDの取得
+      get_ccid(
+        iv_aff_segment2  =>  ir_masters_rec.location_code             --   AFF02部門(所属コード)
+       ,on_ccid          =>  ir_masters_rec.default_code_comb_id      --   CCID
+       ,ov_errbuf        =>  lv_errbuf                                --   エラー・メッセージ           --# 固定 #
+       ,ov_retcode       =>  lv_retcode                               --   リターン・コード             --# 固定 #
+       ,ov_errmsg        =>  lv_errmsg                                --   ユーザー・エラー・メッセージ --# 固定 #
+      );
+      --
+      IF (lv_retcode = cv_status_error) THEN
+        RAISE global_process_expt;
+      END IF;
+      --
+    END IF;
+-- End Ver1.3
     --==============================================================
     --メッセージ出力(エラー以外)をする必要がある場合は処理を記述
     --==============================================================
@@ -2857,7 +3110,6 @@ AS
     ELSIF  ir_masters_rec.proc_flg = gv_sts_error THEN
       gt_report_warn_tbl(gn_warn_cnt) := lr_report_rec;
     END IF;
-
 --
     --==============================================================
     --メッセージ出力(エラー以外)をする必要がある場合は処理を記述
@@ -3184,8 +3436,7 @@ AS
     -- ***        実処理の記述             ***
     -- ***       共通関数の呼び出し        ***
     -- ***************************************
---
-
+    --
     <<wk_pr1_loop>>
     FOR wk_pr1_rec IN wk_pr1_cur LOOP
       lv_update_flg := NULL;
@@ -3781,49 +4032,52 @@ AS
     BEGIN
 
       HR_PERSON_API.UPDATE_PERSON(
-         P_VALIDATE                =>  FALSE
-        ,P_EFFECTIVE_DATE          =>  SYSDATE
-        ,P_DATETRACK_UPDATE_MODE   =>  gv_upd_mode                      -- 'CORRECTION'
-        ,P_PERSON_ID               =>  ir_masters_rec.person_id         -- 従業員ID
-        ,P_OBJECT_VERSION_NUMBER   =>  ir_masters_rec.pap_version       -- 従業員ﾏｽﾀﾊﾞｰｼﾞｮﾝ(IN/OUT)
-        ,P_PERSON_TYPE_ID          =>  gv_person_type                   -- パーソンタイプ
-        ,P_LAST_NAME               =>  ir_masters_rec.last_name         -- カナ姓
-        ,P_EMPLOYEE_NUMBER         =>  ir_masters_rec.employee_number   -- 社員番号(IN/OUT)
-        ,P_FIRST_NAME              =>  ir_masters_rec.first_name        -- カナ名
-        ,P_SEX                     =>  ir_masters_rec.sex               -- 性別
+         P_VALIDATE                     =>  FALSE
+        ,P_EFFECTIVE_DATE               =>  SYSDATE
+        ,P_DATETRACK_UPDATE_MODE        =>  gv_upd_mode                           -- 'CORRECTION'
+        ,P_PERSON_ID                    =>  ir_masters_rec.person_id              -- 従業員ID
+        ,P_OBJECT_VERSION_NUMBER        =>  ir_masters_rec.pap_version            -- 従業員ﾏｽﾀﾊﾞｰｼﾞｮﾝ(IN/OUT)
+        ,P_PERSON_TYPE_ID               =>  gv_person_type                        -- パーソンタイプ
+        ,P_LAST_NAME                    =>  ir_masters_rec.last_name              -- カナ姓
+        ,P_EMPLOYEE_NUMBER              =>  ir_masters_rec.employee_number        -- 社員番号(IN/OUT)
+-- Ver1.3 Add  2009/04/16  「O:会社」を設定
+        ,P_EXPENSE_CHECK_SEND_TO_ADDRES =>  cv_send_to_addres                     -- 郵便送付先(コード)
+-- Ver1.3 End
+        ,P_FIRST_NAME                   =>  ir_masters_rec.first_name             -- カナ名
+        ,P_SEX                          =>  ir_masters_rec.sex                    -- 性別
 -- Ver1.2  2009/04/03 Add コンテキストに SALES-OU を設定 
-        ,P_ATTRIBUTE_CATEGORY      =>  gn_org_id                        -- ORG_ID
+        ,P_ATTRIBUTE_CATEGORY           =>  gn_org_id                             -- ORG_ID
 -- End
-        ,P_ATTRIBUTE3              =>  ir_masters_rec.employee_division -- 従業員区分
-        ,P_ATTRIBUTE7              =>  ir_masters_rec.license_code      -- 資格コード（新）
-        ,P_ATTRIBUTE8              =>  ir_masters_rec.license_name      -- 資格名（新）
-        ,P_ATTRIBUTE9              =>  ir_masters_rec.license_code_old  -- 資格コード（旧）
-        ,P_ATTRIBUTE10             =>  ir_masters_rec.license_code_name_old -- 資格名（旧）
-        ,P_ATTRIBUTE11             =>  ir_masters_rec.job_post          -- 職位コード（新）
-        ,P_ATTRIBUTE12             =>  ir_masters_rec.job_post_name     -- 職位名（新）
-        ,P_ATTRIBUTE13             =>  ir_masters_rec.job_post_old      -- 職位コード（旧）
-        ,P_ATTRIBUTE14             =>  ir_masters_rec.job_post_name_old -- 職位名（旧）
-        ,P_ATTRIBUTE15             =>  ir_masters_rec.job_duty          -- 職務コード（新）
-        ,P_ATTRIBUTE16             =>  ir_masters_rec.job_duty_name     -- 職務名（新）
-        ,P_ATTRIBUTE17             =>  ir_masters_rec.job_duty_old      -- 職務コード（旧）
-        ,P_ATTRIBUTE18             =>  ir_masters_rec.job_duty_name_old -- 職務名（旧）
-        ,P_ATTRIBUTE19             =>  ir_masters_rec.job_type          -- 職種コード（新）
-        ,P_ATTRIBUTE20             =>  ir_masters_rec.job_type_name     -- 職種名（新）
-        ,P_ATTRIBUTE21             =>  ir_masters_rec.job_type_old      -- 職種コード（旧）
-        ,P_ATTRIBUTE22             =>  ir_masters_rec.job_type_name_old -- 職種名（旧）
-        ,P_ATTRIBUTE28             =>  ir_masters_rec.location_code     -- 起票部門(所属コード（新）)
-        ,P_ATTRIBUTE29             =>  ir_masters_rec.location_code     -- 照会範囲(所属コード（新）)
-        ,P_ATTRIBUTE30             =>  ir_masters_rec.location_code     -- 承認者範囲(所属コード（新）)
-        ,P_PER_INFORMATION_CATEGORY => gv_info_category                 -- 'JP'
-        ,P_PER_INFORMATION18       =>  ir_masters_rec.last_name_kanji   -- 漢字姓
-        ,P_PER_INFORMATION19       =>  ir_masters_rec.first_name_kanji  -- 漢字名
-        ,P_EFFECTIVE_START_DATE    =>  ir_masters_rec.effective_start_date -- OUT(登録年月日)
-        ,P_EFFECTIVE_END_DATE      =>  ir_masters_rec.effective_end_date   -- OUT(登録期限年月日)
-        ,P_FULL_NAME               =>  lv_full_name                        -- OUT
-        ,P_COMMENT_ID              =>  ln_comment_id                       -- OUT
-        ,P_NAME_COMBINATION_WARNING => lb_name_combination_warning         -- OUT
-        ,P_ASSIGN_PAYROLL_WARNING  =>  lb_assign_payroll_warning           -- OUT
-        ,P_ORIG_HIRE_WARNING       =>  lb_orig_hire_warning                -- OUT
+        ,P_ATTRIBUTE3                   =>  ir_masters_rec.employee_division      -- 従業員区分
+        ,P_ATTRIBUTE7                   =>  ir_masters_rec.license_code           -- 資格コード（新）
+        ,P_ATTRIBUTE8                   =>  ir_masters_rec.license_name           -- 資格名（新）
+        ,P_ATTRIBUTE9                   =>  ir_masters_rec.license_code_old       -- 資格コード（旧）
+        ,P_ATTRIBUTE10                  =>  ir_masters_rec.license_code_name_old  -- 資格名（旧）
+        ,P_ATTRIBUTE11                  =>  ir_masters_rec.job_post               -- 職位コード（新）
+        ,P_ATTRIBUTE12                  =>  ir_masters_rec.job_post_name          -- 職位名（新）
+        ,P_ATTRIBUTE13                  =>  ir_masters_rec.job_post_old           -- 職位コード（旧）
+        ,P_ATTRIBUTE14                  =>  ir_masters_rec.job_post_name_old      -- 職位名（旧）
+        ,P_ATTRIBUTE15                  =>  ir_masters_rec.job_duty               -- 職務コード（新）
+        ,P_ATTRIBUTE16                  =>  ir_masters_rec.job_duty_name          -- 職務名（新）
+        ,P_ATTRIBUTE17                  =>  ir_masters_rec.job_duty_old           -- 職務コード（旧）
+        ,P_ATTRIBUTE18                  =>  ir_masters_rec.job_duty_name_old      -- 職務名（旧）
+        ,P_ATTRIBUTE19                  =>  ir_masters_rec.job_type               -- 職種コード（新）
+        ,P_ATTRIBUTE20                  =>  ir_masters_rec.job_type_name          -- 職種名（新）
+        ,P_ATTRIBUTE21                  =>  ir_masters_rec.job_type_old           -- 職種コード（旧）
+        ,P_ATTRIBUTE22                  =>  ir_masters_rec.job_type_name_old      -- 職種名（旧）
+        ,P_ATTRIBUTE28                  =>  ir_masters_rec.location_code          -- 起票部門(所属コード（新）)
+        ,P_ATTRIBUTE29                  =>  ir_masters_rec.location_code          -- 照会範囲(所属コード（新）)
+        ,P_ATTRIBUTE30                  =>  ir_masters_rec.location_code          -- 承認者範囲(所属コード（新）)
+        ,P_PER_INFORMATION_CATEGORY     => gv_info_category                       -- 'JP'
+        ,P_PER_INFORMATION18            =>  ir_masters_rec.last_name_kanji        -- 漢字姓
+        ,P_PER_INFORMATION19            =>  ir_masters_rec.first_name_kanji       -- 漢字名
+        ,P_EFFECTIVE_START_DATE         =>  ir_masters_rec.effective_start_date   -- OUT(登録年月日)
+        ,P_EFFECTIVE_END_DATE           =>  ir_masters_rec.effective_end_date     -- OUT(登録期限年月日)
+        ,P_FULL_NAME                    =>  lv_full_name                          -- OUT
+        ,P_COMMENT_ID                   =>  ln_comment_id                         -- OUT
+        ,P_NAME_COMBINATION_WARNING     => lb_name_combination_warning            -- OUT
+        ,P_ASSIGN_PAYROLL_WARNING       =>  lb_assign_payroll_warning             -- OUT
+        ,P_ORIG_HIRE_WARNING            =>  lb_orig_hire_warning                  -- OUT
         );
 --
     EXCEPTION
@@ -3848,37 +4102,41 @@ AS
       HR_ASSIGNMENT_API.UPDATE_EMP_ASG(
          P_VALIDATE               =>  FALSE
         ,P_EFFECTIVE_DATE         =>  SYSDATE
-        ,P_DATETRACK_UPDATE_MODE  =>  gv_upd_mode                       -- 'CORRECTION'
-        ,P_ASSIGNMENT_ID          =>  ir_masters_rec.assignment_id      -- ｱｻｲﾝﾒﾝﾄID(ﾁｪｯｸ時取得)
-        ,P_OBJECT_VERSION_NUMBER  =>  ir_masters_rec.paa_version        -- ｱｻｲﾝﾒﾝﾄﾏｽﾀﾊﾞｰｼﾞｮﾝ番号(IN/OUT)
-        ,P_SUPERVISOR_ID          =>  ir_masters_rec.supervisor_id      -- 管理者
-        ,P_ASSIGNMENT_NUMBER      =>  ir_masters_rec.assignment_number  -- ｱｻｲﾝﾒﾝﾄ番号(ﾁｪｯｸ時取得)
-        ,P_DEFAULT_CODE_COMB_ID   =>  gv_default                        -- ﾌﾟﾛﾌｧｲﾙｵﾌﾟｼｮﾝ.ﾃﾞﾌｫﾙﾄ費用勘定
-        ,P_ASS_ATTRIBUTE1         =>  ir_masters_rec.change_code        -- 異動事由コード
-        ,P_ASS_ATTRIBUTE2         =>  ir_masters_rec.announce_date      -- 発令日
-        ,P_ASS_ATTRIBUTE3         =>  ir_masters_rec.office_location_code -- 勤務地拠点コード（新）
-        ,P_ASS_ATTRIBUTE4         =>  ir_masters_rec.office_location_code_old -- 勤務地拠点コード（旧）
-        ,P_ASS_ATTRIBUTE5         =>  ir_masters_rec.location_code      -- 拠点コード（新）
-        ,P_ASS_ATTRIBUTE6         =>  ir_masters_rec.location_code_old  -- 拠点コード（旧）
-        ,P_ASS_ATTRIBUTE7         =>  ir_masters_rec.job_system         -- 適用労働時間制コード（新）
-        ,P_ASS_ATTRIBUTE8         =>  ir_masters_rec.job_system_name    -- 適用労働名（新）
-        ,P_ASS_ATTRIBUTE9         =>  ir_masters_rec.job_system_old     -- 適用労働時間制コード（旧）
-        ,P_ASS_ATTRIBUTE10        =>  ir_masters_rec.job_system_name_old -- 適用労働名（旧）
-        ,P_ASS_ATTRIBUTE11        =>  ir_masters_rec.job_post_order     -- 職位並順コード（新）
-        ,P_ASS_ATTRIBUTE12        =>  ir_masters_rec.job_post_order_old -- 職位並順コード（旧）
-        ,P_ASS_ATTRIBUTE13        =>  ir_masters_rec.consent_division   -- 承認区分（新）
-        ,P_ASS_ATTRIBUTE14        =>  ir_masters_rec.consent_division_old -- 承認区分（旧）
-        ,P_ASS_ATTRIBUTE15        =>  ir_masters_rec.agent_division     -- 代行区分（新）
-        ,P_ASS_ATTRIBUTE16        =>  ir_masters_rec.agent_division_old -- 代行区分（旧）
-        ,P_ASS_ATTRIBUTE17        =>  NULL                              -- 差分連携用日付（自販機）
-        ,P_ASS_ATTRIBUTE18        =>  NULL                              -- 差分連携用日付（帳票）
-        ,P_CONCATENATED_SEGMENTS  =>  lv_concatenated_segments          -- OUT
-        ,P_SOFT_CODING_KEYFLEX_ID =>  ln_soft_coding_keyflex_id         -- IN/OUT
-        ,P_COMMENT_ID             =>  ln_comment_id                     -- OUT
-        ,P_EFFECTIVE_START_DATE   =>  ir_masters_rec.effective_start_date -- OUT（登録年月日）
-        ,P_EFFECTIVE_END_DATE     =>  ir_masters_rec.effective_end_date -- OUT（登録期限年月日）
-        ,P_NO_MANAGERS_WARNING    =>  lb_no_managers_warning            -- OUT
-        ,P_OTHER_MANAGER_WARNING  =>  lb_other_manager_warning          -- OUT
+        ,P_DATETRACK_UPDATE_MODE  =>  gv_upd_mode                              -- 'CORRECTION'
+        ,P_ASSIGNMENT_ID          =>  ir_masters_rec.assignment_id             -- ｱｻｲﾝﾒﾝﾄID(ﾁｪｯｸ時取得)
+        ,P_OBJECT_VERSION_NUMBER  =>  ir_masters_rec.paa_version               -- ｱｻｲﾝﾒﾝﾄﾏｽﾀﾊﾞｰｼﾞｮﾝ番号(IN/OUT)
+        ,P_SUPERVISOR_ID          =>  ir_masters_rec.supervisor_id             -- 管理者
+        ,P_ASSIGNMENT_NUMBER      =>  ir_masters_rec.assignment_number         -- ｱｻｲﾝﾒﾝﾄ番号(ﾁｪｯｸ時取得)
+-- Ver1.3
+--        ,P_DEFAULT_CODE_COMB_ID   =>  gv_default                               -- ﾌﾟﾛﾌｧｲﾙｵﾌﾟｼｮﾝ.ﾃﾞﾌｫﾙﾄ費用勘定
+        ,P_SET_OF_BOOKS_ID        =>  gn_set_of_book_id                        -- 会計帳簿ID
+        ,P_DEFAULT_CODE_COMB_ID   =>  ir_masters_rec.default_code_comb_id      -- デフォルト費用勘定
+-- End Ver1.3
+        ,P_ASS_ATTRIBUTE1         =>  ir_masters_rec.change_code               -- 異動事由コード
+        ,P_ASS_ATTRIBUTE2         =>  ir_masters_rec.announce_date             -- 発令日
+        ,P_ASS_ATTRIBUTE3         =>  ir_masters_rec.office_location_code      -- 勤務地拠点コード（新）
+        ,P_ASS_ATTRIBUTE4         =>  ir_masters_rec.office_location_code_old  -- 勤務地拠点コード（旧）
+        ,P_ASS_ATTRIBUTE5         =>  ir_masters_rec.location_code             -- 拠点コード（新）
+        ,P_ASS_ATTRIBUTE6         =>  ir_masters_rec.location_code_old         -- 拠点コード（旧）
+        ,P_ASS_ATTRIBUTE7         =>  ir_masters_rec.job_system                -- 適用労働時間制コード（新）
+        ,P_ASS_ATTRIBUTE8         =>  ir_masters_rec.job_system_name           -- 適用労働名（新）
+        ,P_ASS_ATTRIBUTE9         =>  ir_masters_rec.job_system_old            -- 適用労働時間制コード（旧）
+        ,P_ASS_ATTRIBUTE10        =>  ir_masters_rec.job_system_name_old       -- 適用労働名（旧）
+        ,P_ASS_ATTRIBUTE11        =>  ir_masters_rec.job_post_order            -- 職位並順コード（新）
+        ,P_ASS_ATTRIBUTE12        =>  ir_masters_rec.job_post_order_old        -- 職位並順コード（旧）
+        ,P_ASS_ATTRIBUTE13        =>  ir_masters_rec.consent_division          -- 承認区分（新）
+        ,P_ASS_ATTRIBUTE14        =>  ir_masters_rec.consent_division_old      -- 承認区分（旧）
+        ,P_ASS_ATTRIBUTE15        =>  ir_masters_rec.agent_division            -- 代行区分（新）
+        ,P_ASS_ATTRIBUTE16        =>  ir_masters_rec.agent_division_old        -- 代行区分（旧）
+        ,P_ASS_ATTRIBUTE17        =>  NULL                                     -- 差分連携用日付（自販機）
+        ,P_ASS_ATTRIBUTE18        =>  NULL                                     -- 差分連携用日付（帳票）
+        ,P_CONCATENATED_SEGMENTS  =>  lv_concatenated_segments                 -- OUT
+        ,P_SOFT_CODING_KEYFLEX_ID =>  ln_soft_coding_keyflex_id                -- IN/OUT
+        ,P_COMMENT_ID             =>  ln_comment_id                            -- OUT
+        ,P_EFFECTIVE_START_DATE   =>  ir_masters_rec.effective_start_date      -- OUT（登録年月日）
+        ,P_EFFECTIVE_END_DATE     =>  ir_masters_rec.effective_end_date        -- OUT（登録期限年月日）
+        ,P_NO_MANAGERS_WARNING    =>  lb_no_managers_warning                   -- OUT
+        ,P_OTHER_MANAGER_WARNING  =>  lb_other_manager_warning                 -- OUT
     );
 
     EXCEPTION
@@ -3904,20 +4162,20 @@ AS
         HR_ASSIGNMENT_API.UPDATE_EMP_ASG_CRITERIA(
            P_VALIDATE                      =>  FALSE
           ,P_EFFECTIVE_DATE                =>  SYSDATE
-          ,P_DATETRACK_UPDATE_MODE         =>  gv_upd_mode                      -- 'CORRECTION'
-          ,P_ASSIGNMENT_ID                 =>  ir_masters_rec.assignment_id     -- ｱｻｲﾝﾒﾝﾄID(ﾁｪｯｸ時取得)
-          ,P_LOCATION_ID                   =>  ir_masters_rec.location_id       -- 事業所(勤務地拠点コード変更時）
-          ,P_OBJECT_VERSION_NUMBER         =>  ir_masters_rec.paa_version       -- ｱｻｲﾝﾒﾝﾄﾏｽﾀﾊﾞｰｼﾞｮﾝ番号(IN/OUT)
-          ,P_SPECIAL_CEILING_STEP_ID       =>  ln_special_ceiling_step_id       -- OUT
-          ,P_PEOPLE_GROUP_ID               =>  ln_people_group_id               -- OUT
-          ,P_GROUP_NAME                    =>  lv_group_name                    -- OUT
-          ,P_EFFECTIVE_START_DATE          =>  ir_masters_rec.effective_start_date --OUT（登録年月日）
-          ,P_EFFECTIVE_END_DATE            =>  ir_masters_rec.effective_end_date -- OUT（登録期限年月日）
-          ,P_ORG_NOW_NO_MANAGER_WARNING    =>  lb_org_now_no_manager_warning    -- OUT
-          ,P_OTHER_MANAGER_WARNING         =>  lb_other_manager_warning         -- OUT
-          ,P_SPP_DELETE_WARNING            =>  lb_spp_delete_warning            -- OUT
-          ,P_ENTRIES_CHANGED_WARNING       =>  lv_entries_changes_warn          -- OUT
-          ,P_TAX_DISTRICT_CHANGED_WARNING  =>  lb_tax_district_changed_warn     -- OUT
+          ,P_DATETRACK_UPDATE_MODE         =>  gv_upd_mode                          -- 'CORRECTION'
+          ,P_ASSIGNMENT_ID                 =>  ir_masters_rec.assignment_id         -- ｱｻｲﾝﾒﾝﾄID(ﾁｪｯｸ時取得)
+          ,P_LOCATION_ID                   =>  ir_masters_rec.location_id           -- 事業所(勤務地拠点コード変更時）
+          ,P_OBJECT_VERSION_NUMBER         =>  ir_masters_rec.paa_version           -- ｱｻｲﾝﾒﾝﾄﾏｽﾀﾊﾞｰｼﾞｮﾝ番号(IN/OUT)
+          ,P_SPECIAL_CEILING_STEP_ID       =>  ln_special_ceiling_step_id           -- OUT
+          ,P_PEOPLE_GROUP_ID               =>  ln_people_group_id                   -- OUT
+          ,P_GROUP_NAME                    =>  lv_group_name                        -- OUT
+          ,P_EFFECTIVE_START_DATE          =>  ir_masters_rec.effective_start_date  -- OUT（登録年月日）
+          ,P_EFFECTIVE_END_DATE            =>  ir_masters_rec.effective_end_date    -- OUT（登録期限年月日）
+          ,P_ORG_NOW_NO_MANAGER_WARNING    =>  lb_org_now_no_manager_warning        -- OUT
+          ,P_OTHER_MANAGER_WARNING         =>  lb_other_manager_warning             -- OUT
+          ,P_SPP_DELETE_WARNING            =>  lb_spp_delete_warning                -- OUT
+          ,P_ENTRIES_CHANGED_WARNING       =>  lv_entries_changes_warn              -- OUT
+          ,P_TAX_DISTRICT_CHANGED_WARNING  =>  lb_tax_district_changed_warn         -- OUT
         );
       EXCEPTION
         WHEN OTHERS THEN
@@ -4435,35 +4693,39 @@ AS
       HR_ASSIGNMENT_API.UPDATE_EMP_ASG(
          P_VALIDATE               =>  FALSE
         ,P_EFFECTIVE_DATE         =>  SYSDATE
-        ,P_DATETRACK_UPDATE_MODE  =>  gv_upd_mode                       -- 'CORRECTION'
-        ,P_ASSIGNMENT_ID          =>  ir_masters_rec.assignment_id      -- ｱｻｲﾝﾒﾝﾄID(ﾁｪｯｸ時取得)
-        ,P_OBJECT_VERSION_NUMBER  =>  ir_masters_rec.paa_version        -- ｱｻｲﾝﾒﾝﾄﾏｽﾀﾊﾞｰｼﾞｮﾝ番号(IN/OUT)
-        ,P_SUPERVISOR_ID          =>  ir_masters_rec.supervisor_id      -- 管理者
-        ,P_ASSIGNMENT_NUMBER      =>  ir_masters_rec.assignment_number  -- ｱｻｲﾝﾒﾝﾄ番号(ﾁｪｯｸ時取得)
-        ,P_DEFAULT_CODE_COMB_ID   =>  gv_default                        -- ﾌﾟﾛﾌｧｲﾙｵﾌﾟｼｮﾝ.ﾃﾞﾌｫﾙﾄ費用勘定
-        ,P_ASS_ATTRIBUTE1         =>  ir_masters_rec.change_code        -- 異動事由コード
-        ,P_ASS_ATTRIBUTE2         =>  ir_masters_rec.announce_date      -- 発令日
-        ,P_ASS_ATTRIBUTE3         =>  ir_masters_rec.office_location_code -- 勤務地拠点コード（新）
-        ,P_ASS_ATTRIBUTE4         =>  ir_masters_rec.office_location_code_old -- 勤務地拠点コード（旧）
-        ,P_ASS_ATTRIBUTE5         =>  ir_masters_rec.location_code      -- 拠点コード（新）
-        ,P_ASS_ATTRIBUTE6         =>  ir_masters_rec.location_code_old  -- 拠点コード（旧）
-        ,P_ASS_ATTRIBUTE7         =>  ir_masters_rec.job_system         -- 適用労働時間制コード（新）
-        ,P_ASS_ATTRIBUTE8         =>  ir_masters_rec.job_system_name    -- 適用労働名（新）
-        ,P_ASS_ATTRIBUTE9         =>  ir_masters_rec.job_system_old     -- 適用労働時間制コード（旧）
-        ,P_ASS_ATTRIBUTE10        =>  ir_masters_rec.job_system_name_old -- 適用労働名（旧）
-        ,P_ASS_ATTRIBUTE11        =>  ir_masters_rec.job_post_order     -- 職位並順コード（新）
-        ,P_ASS_ATTRIBUTE12        =>  ir_masters_rec.job_post_order_old -- 職位並順コード（旧）
-        ,P_ASS_ATTRIBUTE13        =>  ir_masters_rec.consent_division   -- 承認区分（新）
-        ,P_ASS_ATTRIBUTE14        =>  ir_masters_rec.consent_division_old -- 承認区分（旧）
-        ,P_ASS_ATTRIBUTE15        =>  ir_masters_rec.agent_division     -- 代行区分（新）
-        ,P_ASS_ATTRIBUTE16        =>  ir_masters_rec.agent_division_old -- 代行区分（旧）
-        ,P_CONCATENATED_SEGMENTS  =>  lv_concatenated_segments          -- OUT
-        ,P_SOFT_CODING_KEYFLEX_ID =>  ln_soft_coding_keyflex_id         -- IN/OUT
-        ,P_COMMENT_ID             =>  ln_comment_id                     -- OUT
-        ,P_EFFECTIVE_START_DATE   =>  ir_masters_rec.effective_start_date -- OUT（登録年月日）
-        ,P_EFFECTIVE_END_DATE     =>  ir_masters_rec.effective_end_date -- OUT（登録期限年月日）
-        ,P_NO_MANAGERS_WARNING    =>  lb_no_managers_warning            -- OUT
-        ,P_OTHER_MANAGER_WARNING  =>  lb_other_manager_warning          -- OUT
+        ,P_DATETRACK_UPDATE_MODE  =>  gv_upd_mode                              -- 'CORRECTION'
+        ,P_ASSIGNMENT_ID          =>  ir_masters_rec.assignment_id             -- ｱｻｲﾝﾒﾝﾄID(ﾁｪｯｸ時取得)
+        ,P_OBJECT_VERSION_NUMBER  =>  ir_masters_rec.paa_version               -- ｱｻｲﾝﾒﾝﾄﾏｽﾀﾊﾞｰｼﾞｮﾝ番号(IN/OUT)
+        ,P_SUPERVISOR_ID          =>  ir_masters_rec.supervisor_id             -- 管理者
+        ,P_ASSIGNMENT_NUMBER      =>  ir_masters_rec.assignment_number         -- ｱｻｲﾝﾒﾝﾄ番号(ﾁｪｯｸ時取得)
+-- Ver1.3
+--        ,P_DEFAULT_CODE_COMB_ID   =>  gv_default                               -- ﾌﾟﾛﾌｧｲﾙｵﾌﾟｼｮﾝ.ﾃﾞﾌｫﾙﾄ費用勘定
+        ,P_SET_OF_BOOKS_ID        =>  gn_set_of_book_id                        -- 会計帳簿ID
+        ,P_DEFAULT_CODE_COMB_ID   =>  ir_masters_rec.default_code_comb_id      -- デフォルト費用勘定
+-- End Ver1.3
+        ,P_ASS_ATTRIBUTE1         =>  ir_masters_rec.change_code               -- 異動事由コード
+        ,P_ASS_ATTRIBUTE2         =>  ir_masters_rec.announce_date             -- 発令日
+        ,P_ASS_ATTRIBUTE3         =>  ir_masters_rec.office_location_code      -- 勤務地拠点コード（新）
+        ,P_ASS_ATTRIBUTE4         =>  ir_masters_rec.office_location_code_old  -- 勤務地拠点コード（旧）
+        ,P_ASS_ATTRIBUTE5         =>  ir_masters_rec.location_code             -- 拠点コード（新）
+        ,P_ASS_ATTRIBUTE6         =>  ir_masters_rec.location_code_old         -- 拠点コード（旧）
+        ,P_ASS_ATTRIBUTE7         =>  ir_masters_rec.job_system                -- 適用労働時間制コード（新）
+        ,P_ASS_ATTRIBUTE8         =>  ir_masters_rec.job_system_name           -- 適用労働名（新）
+        ,P_ASS_ATTRIBUTE9         =>  ir_masters_rec.job_system_old            -- 適用労働時間制コード（旧）
+        ,P_ASS_ATTRIBUTE10        =>  ir_masters_rec.job_system_name_old       -- 適用労働名（旧）
+        ,P_ASS_ATTRIBUTE11        =>  ir_masters_rec.job_post_order            -- 職位並順コード（新）
+        ,P_ASS_ATTRIBUTE12        =>  ir_masters_rec.job_post_order_old        -- 職位並順コード（旧）
+        ,P_ASS_ATTRIBUTE13        =>  ir_masters_rec.consent_division          -- 承認区分（新）
+        ,P_ASS_ATTRIBUTE14        =>  ir_masters_rec.consent_division_old      -- 承認区分（旧）
+        ,P_ASS_ATTRIBUTE15        =>  ir_masters_rec.agent_division            -- 代行区分（新）
+        ,P_ASS_ATTRIBUTE16        =>  ir_masters_rec.agent_division_old        -- 代行区分（旧）
+        ,P_CONCATENATED_SEGMENTS  =>  lv_concatenated_segments                 -- OUT
+        ,P_SOFT_CODING_KEYFLEX_ID =>  ln_soft_coding_keyflex_id                -- IN/OUT
+        ,P_COMMENT_ID             =>  ln_comment_id                            -- OUT
+        ,P_EFFECTIVE_START_DATE   =>  ir_masters_rec.effective_start_date      -- OUT（登録年月日）
+        ,P_EFFECTIVE_END_DATE     =>  ir_masters_rec.effective_end_date        -- OUT（登録期限年月日）
+        ,P_NO_MANAGERS_WARNING    =>  lb_no_managers_warning                   -- OUT
+        ,P_OTHER_MANAGER_WARNING  =>  lb_other_manager_warning                 -- OUT
     );
 
     EXCEPTION
@@ -4631,53 +4893,56 @@ AS
     BEGIN
 --
       HR_EMPLOYEE_API.CREATE_EMPLOYEE(
-         P_VALIDATE                  =>  FALSE
-        ,P_HIRE_DATE                 =>  ir_masters_rec.hire_date              -- 入社年月日
-        ,P_BUSINESS_GROUP_ID         =>  gv_bisiness_grp_id                    -- ビジネスグループID
-        ,P_LAST_NAME                 =>  ir_masters_rec.last_name              -- カナ姓
-        ,P_SEX                       =>  ir_masters_rec.sex                    -- 性別
-        ,P_PERSON_TYPE_ID            =>  gv_person_type                        -- パーソンタイプ
-        ,P_EMPLOYEE_NUMBER           =>  ir_masters_rec.employee_number        -- 社員番号
-        ,P_FIRST_NAME                =>  ir_masters_rec.first_name             -- カナ名
+         P_VALIDATE                     =>  FALSE
+        ,P_HIRE_DATE                    =>  ir_masters_rec.hire_date              -- 入社年月日
+        ,P_BUSINESS_GROUP_ID            =>  gv_bisiness_grp_id                    -- ビジネスグループID
+        ,P_LAST_NAME                    =>  ir_masters_rec.last_name              -- カナ姓
+        ,P_SEX                          =>  ir_masters_rec.sex                    -- 性別
+        ,P_PERSON_TYPE_ID               =>  gv_person_type                        -- パーソンタイプ
+        ,P_EMPLOYEE_NUMBER              =>  ir_masters_rec.employee_number        -- 社員番号
+-- Ver1.3 Add  2009/04/16  「O:会社」を設定
+        ,P_EXPENSE_CHECK_SEND_TO_ADDRES =>  cv_send_to_addres                     -- 郵便送付先(コード)
+-- Ver1.3 End
+        ,P_FIRST_NAME                   =>  ir_masters_rec.first_name             -- カナ名
 -- Ver1.2  2009/04/03 Add コンテキストに SALES-OU を設定 
-        ,P_ATTRIBUTE_CATEGORY        =>  gn_org_id                             -- ORG_ID
+        ,P_ATTRIBUTE_CATEGORY           =>  gn_org_id                             -- ORG_ID
 -- End
-        ,P_ATTRIBUTE3                =>  ir_masters_rec.employee_division      -- 従業員区分
-        ,P_ATTRIBUTE7                =>  ir_masters_rec.license_code           -- 資格コード（新）
-        ,P_ATTRIBUTE8                =>  ir_masters_rec.license_name           -- 資格名（新）
-        ,P_ATTRIBUTE9                =>  ir_masters_rec.license_code_old       -- 資格コード（旧）
-        ,P_ATTRIBUTE10               =>  ir_masters_rec.license_code_name_old  -- 資格名（旧）
-        ,P_ATTRIBUTE11               =>  ir_masters_rec.job_post               -- 職位コード（新）
-        ,P_ATTRIBUTE12               =>  ir_masters_rec.job_post_name          -- 職位名（新）
-        ,P_ATTRIBUTE13               =>  ir_masters_rec.job_post_old           -- 職位コード（旧）
-        ,P_ATTRIBUTE14               =>  ir_masters_rec.job_post_name_old      -- 職位名（旧）
-        ,P_ATTRIBUTE15               =>  ir_masters_rec.job_duty               -- 職務コード（新）
-        ,P_ATTRIBUTE16               =>  ir_masters_rec.job_duty_name          -- 職務名（新）
-        ,P_ATTRIBUTE17               =>  ir_masters_rec.job_duty_old           -- 職務コード（旧）
-        ,P_ATTRIBUTE18               =>  ir_masters_rec.job_duty_name_old      -- 職務名（旧）
-        ,P_ATTRIBUTE19               =>  ir_masters_rec.job_type               -- 職種コード（新）
-        ,P_ATTRIBUTE20               =>  ir_masters_rec.job_type_name          -- 職種名（新）
-        ,P_ATTRIBUTE21               =>  ir_masters_rec.job_type_old           -- 職種コード（旧）
-        ,P_ATTRIBUTE22               =>  ir_masters_rec.job_type_name_old      -- 職種名（旧）
-        ,P_ATTRIBUTE28               =>  ir_masters_rec.location_code          -- 起票部門(所属コード（新）)
-        ,P_ATTRIBUTE29               =>  ir_masters_rec.location_code          -- 照会範囲(所属コード（新）)
-        ,P_ATTRIBUTE30               =>  ir_masters_rec.location_code          -- 承認者範囲(所属コード（新）)
-        ,P_PER_INFORMATION_CATEGORY  =>  gv_info_category                      -- 'JP'
-        ,P_PER_INFORMATION18         =>  ir_masters_rec.last_name_kanji        -- 漢字姓
-        ,P_PER_INFORMATION19         =>  ir_masters_rec.first_name_kanji       -- 漢字名
-        ,P_PERSON_ID                 =>  ir_masters_rec.person_id              -- OUT（従業員ID）
-        ,P_ASSIGNMENT_ID             =>  ir_masters_rec.assignment_id          -- OUT（ｱｻｲﾝﾒﾝﾄID）
-        ,P_PER_OBJECT_VERSION_NUMBER =>  ir_masters_rec.pap_version            -- OUT（従業員ﾏｽﾀﾊﾞｰｼﾞｮﾝ番号）
-        ,P_ASG_OBJECT_VERSION_NUMBER =>  ir_masters_rec.paa_version            -- OUT（ｱｻｲﾝﾒﾝﾄﾏｽﾀﾊﾞｰｼﾞｮﾝ番号）
-        ,P_PER_EFFECTIVE_START_DATE  =>  ir_masters_rec.effective_start_date   -- OUT（登録年月日）
-        ,P_PER_EFFECTIVE_END_DATE    =>  ir_masters_rec.effective_end_date     -- OUT（登録期限年月日）
-        ,P_FULL_NAME                 =>  lv_full_name                          -- OUT（フルネーム）
-        ,P_PER_COMMENT_ID            =>  ln_per_comment_id                     -- OUT
-        ,P_ASSIGNMENT_SEQUENCE       =>  ln_assignment_sequence                -- OUT
-        ,P_ASSIGNMENT_NUMBER         =>  ir_masters_rec.assignment_number      -- OUT（ｱｻｲﾝﾒﾝﾄ番号）
-        ,P_NAME_COMBINATION_WARNING  =>  lb_name_combination_warning           -- OUT
-        ,P_ASSIGN_PAYROLL_WARNING    =>  lb_assign_payroll_warning             -- OUT
-        ,P_ORIG_HIRE_WARNING         =>  lb_orig_hire_warning                  -- OUT
+        ,P_ATTRIBUTE3                   =>  ir_masters_rec.employee_division      -- 従業員区分
+        ,P_ATTRIBUTE7                   =>  ir_masters_rec.license_code           -- 資格コード（新）
+        ,P_ATTRIBUTE8                   =>  ir_masters_rec.license_name           -- 資格名（新）
+        ,P_ATTRIBUTE9                   =>  ir_masters_rec.license_code_old       -- 資格コード（旧）
+        ,P_ATTRIBUTE10                  =>  ir_masters_rec.license_code_name_old  -- 資格名（旧）
+        ,P_ATTRIBUTE11                  =>  ir_masters_rec.job_post               -- 職位コード（新）
+        ,P_ATTRIBUTE12                  =>  ir_masters_rec.job_post_name          -- 職位名（新）
+        ,P_ATTRIBUTE13                  =>  ir_masters_rec.job_post_old           -- 職位コード（旧）
+        ,P_ATTRIBUTE14                  =>  ir_masters_rec.job_post_name_old      -- 職位名（旧）
+        ,P_ATTRIBUTE15                  =>  ir_masters_rec.job_duty               -- 職務コード（新）
+        ,P_ATTRIBUTE16                  =>  ir_masters_rec.job_duty_name          -- 職務名（新）
+        ,P_ATTRIBUTE17                  =>  ir_masters_rec.job_duty_old           -- 職務コード（旧）
+        ,P_ATTRIBUTE18                  =>  ir_masters_rec.job_duty_name_old      -- 職務名（旧）
+        ,P_ATTRIBUTE19                  =>  ir_masters_rec.job_type               -- 職種コード（新）
+        ,P_ATTRIBUTE20                  =>  ir_masters_rec.job_type_name          -- 職種名（新）
+        ,P_ATTRIBUTE21                  =>  ir_masters_rec.job_type_old           -- 職種コード（旧）
+        ,P_ATTRIBUTE22                  =>  ir_masters_rec.job_type_name_old      -- 職種名（旧）
+        ,P_ATTRIBUTE28                  =>  ir_masters_rec.location_code          -- 起票部門(所属コード（新）)
+        ,P_ATTRIBUTE29                  =>  ir_masters_rec.location_code          -- 照会範囲(所属コード（新）)
+        ,P_ATTRIBUTE30                  =>  ir_masters_rec.location_code          -- 承認者範囲(所属コード（新）)
+        ,P_PER_INFORMATION_CATEGORY     =>  gv_info_category                      -- 'JP'
+        ,P_PER_INFORMATION18            =>  ir_masters_rec.last_name_kanji        -- 漢字姓
+        ,P_PER_INFORMATION19            =>  ir_masters_rec.first_name_kanji       -- 漢字名
+        ,P_PERSON_ID                    =>  ir_masters_rec.person_id              -- OUT（従業員ID）
+        ,P_ASSIGNMENT_ID                =>  ir_masters_rec.assignment_id          -- OUT（ｱｻｲﾝﾒﾝﾄID）
+        ,P_PER_OBJECT_VERSION_NUMBER    =>  ir_masters_rec.pap_version            -- OUT（従業員ﾏｽﾀﾊﾞｰｼﾞｮﾝ番号）
+        ,P_ASG_OBJECT_VERSION_NUMBER    =>  ir_masters_rec.paa_version            -- OUT（ｱｻｲﾝﾒﾝﾄﾏｽﾀﾊﾞｰｼﾞｮﾝ番号）
+        ,P_PER_EFFECTIVE_START_DATE     =>  ir_masters_rec.effective_start_date   -- OUT（登録年月日）
+        ,P_PER_EFFECTIVE_END_DATE       =>  ir_masters_rec.effective_end_date     -- OUT（登録期限年月日）
+        ,P_FULL_NAME                    =>  lv_full_name                          -- OUT（フルネーム）
+        ,P_PER_COMMENT_ID               =>  ln_per_comment_id                     -- OUT
+        ,P_ASSIGNMENT_SEQUENCE          =>  ln_assignment_sequence                -- OUT
+        ,P_ASSIGNMENT_NUMBER            =>  ir_masters_rec.assignment_number      -- OUT（ｱｻｲﾝﾒﾝﾄ番号）
+        ,P_NAME_COMBINATION_WARNING     =>  lb_name_combination_warning           -- OUT
+        ,P_ASSIGN_PAYROLL_WARNING       =>  lb_assign_payroll_warning             -- OUT
+        ,P_ORIG_HIRE_WARNING            =>  lb_orig_hire_warning                  -- OUT
       );
     EXCEPTION
       WHEN OTHERS THEN
@@ -4706,7 +4971,11 @@ AS
         ,P_OBJECT_VERSION_NUMBER =>  ir_masters_rec.paa_version              -- IN/OUT(ｱｻｲﾝﾒﾝﾄﾏｽﾀﾊﾞｰｼﾞｮﾝ番号)
         ,P_SUPERVISOR_ID         =>  ir_masters_rec.supervisor_id            -- 管理者
         ,P_ASSIGNMENT_NUMBER     =>  ir_masters_rec.assignment_number        -- HR_EMPLOYEE_API.CREATE_EMPLOYEEの出力項目のP_ASSIGNMENT_NUMBER
-        ,P_DEFAULT_CODE_COMB_ID  =>  gv_default                              -- ﾌﾟﾛﾌｧｲﾙｵﾌﾟｼｮﾝ.ﾃﾞﾌｫﾙﾄ費用勘定
+-- Ver1.3
+--        ,P_DEFAULT_CODE_COMB_ID  =>  gv_default                              -- ﾌﾟﾛﾌｧｲﾙｵﾌﾟｼｮﾝ.ﾃﾞﾌｫﾙﾄ費用勘定
+        ,P_SET_OF_BOOKS_ID       =>  gn_set_of_book_id                       -- 会計帳簿ID
+        ,P_DEFAULT_CODE_COMB_ID  =>  ir_masters_rec.default_code_comb_id     -- デフォルト費用勘定
+-- End Ver1.3
         ,P_ASS_ATTRIBUTE1        =>  ir_masters_rec.change_code              -- 異動事由コード
         ,P_ASS_ATTRIBUTE2        =>  ir_masters_rec.announce_date            -- 発令日
         ,P_ASS_ATTRIBUTE3        =>  ir_masters_rec.office_location_code     -- 勤務地拠点コード（新）
@@ -5332,6 +5601,23 @@ AS
       RAISE global_api_expt;
     END IF;
 --
+-- Ver1.3 Add  2009/04/16  会計帳簿ＩＤ取得、ＣＣＩＤ取得用（fnd_flex_ext.get_combination_id）
+    -- ===============================
+    -- 会計帳簿ＩＤ その他取得
+    -- ===============================
+    SELECT  gsob.chart_of_accounts_id    -- 勘定科目体系ＩＤ
+           ,fifsv.id_flex_code           -- キーフレックスコード
+           ,gsob.set_of_books_id         -- 会計帳簿ＩＤ
+    INTO    gn_chart_of_acct_id
+           ,gv_id_flex_code
+           ,gn_set_of_book_id
+    FROM    fnd_id_flex_structures_vl    fifsv
+           ,gl_sets_of_books             gsob
+    WHERE   gsob.name            = fnd_profile.value( cv_prf_bks_name )
+    AND     fifsv.id_flex_num    = gsob.chart_of_accounts_id;
+    --
+-- End Ver1.3
+    --
     -- ===============================
     -- CSVファイル存在チェック
     -- ===============================
@@ -5506,20 +5792,30 @@ AS
     -- ユーザー宣言部
     -- ===============================
     -- *** ローカル定数 ***
+-- Ver1.3 Del 2009/04/16  使用していないため削除
+--    lr_masters_rec       masters_rec;       -- 処理対象データ格納レコード
+-- Ver1.3 End
 --
-    lr_masters_rec masters_rec; -- 処理対象データ格納レコード
+-- Ver1.3 Add 2009/04/16  重複チェックのため追加
+    l_people_if_rec      masters_rec;       -- 処理対象データ格納レコード
+    l_if_clear_rec       masters_rec;       -- 処理対象データクリア用レコード
+-- Ver1.3 End
 --
-    lt_insert_masters masters_tbl; -- 各マスタへ登録するデータ
-    lt_update_masters masters_tbl; -- 各マスタへ更新するデータ
-    lt_delete_masters masters_tbl; -- 各マスタへ削除するデータ
+    lt_insert_masters    masters_tbl;       -- 各マスタへ登録するデータ
+    lt_update_masters    masters_tbl;       -- 各マスタへ更新するデータ
+    lt_delete_masters    masters_tbl;       -- 各マスタへ削除するデータ
 --
-    ln_insert_cnt NUMBER;          -- 登録件数
-    ln_update_cnt NUMBER;          -- 更新件数
-    ln_delete_cnt NUMBER;          -- 削除件数
-    ln_exec_cnt   NUMBER;
-    ln_log_cnt    NUMBER;
-    lc_flg        CHAR(1) := ' ';  -- 重複データ用フラグ
-    lb_retcd      BOOLEAN;         -- 検索結果
+    ln_insert_cnt        NUMBER;            -- 登録件数
+    ln_update_cnt        NUMBER;            -- 更新件数
+    ln_delete_cnt        NUMBER;            -- 削除件数
+    ln_exec_cnt          NUMBER;
+    ln_log_cnt           NUMBER;
+    lc_flg               CHAR(1) := ' ';    -- 重複データ用フラグ
+    lb_retcd             BOOLEAN;           -- 検索結果
+-- Ver1.3 Add 2009/04/16  重複チェックのため追加
+    ln_exist_cnt         NUMBER;
+    ln_wk_emp_num        xxcmm_in_people_if.employee_number%TYPE;
+-- End Ver1.3
     -- ===============================
     -- ローカル・カーソル
     -- ===============================
@@ -5527,7 +5823,11 @@ AS
     -- 社員取込インターフェース
     CURSOR in_if_cur
     IS
-      SELECT xip.employee_number        employee_number,
+-- Ver1.3 Mod 2009/04/16  重複チェックのため抽出項目にROWIDを追加
+--      SELECT xip.employee_number        employee_number,
+      SELECT xip.ROWID                  xip_rowid,
+             xip.employee_number        employee_number,
+-- End Ver1.3
              xip.hire_date              hire_date,
              xip.actual_termination_date  actual_termination_date,
              xip.last_name_kanji        last_name_kanji,
@@ -5570,8 +5870,7 @@ AS
              xip.agent_division_old     agent_division_old
       FROM   xxcmm_in_people_if xip
       ORDER BY xip.employee_number;
-
---
+      --
     -- 職責自動割当ワーク
     CURSOR wk_pr2_cur(lv_emp_kbn IN VARCHAR2)
     IS
@@ -5594,8 +5893,7 @@ AS
     ov_retcode := cv_status_normal;
 --
 --###########################  固定部 END   ############################
---
---
+    --
     -- グローバル変数の初期化
     gn_target_cnt := 0; -- 処理件数
     gn_normal_cnt := 0; -- 成功件数
@@ -5607,12 +5905,14 @@ AS
     ln_insert_cnt := 0;
     ln_update_cnt := 0;
     ln_delete_cnt := 0;
-    gn_if := 0; -- 社員インターフェース件数
+-- Ver1.3 Del 2009/04/16  不要ないため削除
+--    gn_if         := 0; -- 社員インターフェース件数
+-- End Ver1.3
+    --
     --*********************************************
     --***      MD.050のフロー図を表す           ***
     --***      分岐と処理部の呼び出しを行う     ***
     --*********************************************
---
     -- ===============================
     -- 初期処理(A-2)
     -- ===============================
@@ -5621,397 +5921,637 @@ AS
       ,lv_retcode  -- リターン・コード             --# 固定 #
       ,lv_errmsg   -- ユーザー・エラー・メッセージ --# 固定 #
     );
---
+    --
     IF (lv_retcode = cv_status_error) THEN
       RAISE global_api_expt;
     END IF;
+    --
+-- Ver1.3 Del 2009/04/16  意味不明なため削除
+--                        おそらく、重複チェックをするために１件目を飛ばしていると思われるが、
+--                        対象データがあやふやで正常に制御されていないと思われる。
+--    -- ===============================
+--    -- 社員インタフェース情報取得(A-3)
+--    -- ===============================
+----
+--    -- IF件数の初期化
+--    gn_target_cnt := 0;
 --
+--    <<in_if_loop>>
+--    FOR in_if_rec IN in_if_cur LOOP
+--      -- ステータスの初期化
+--      gt_mst_tbl(gn_if).proc_flg := NULL;   -- 更新区分
+--      gt_mst_tbl(gn_if).proc_kbn := NULL;   -- 連携区分
+--      gt_mst_tbl(gn_if).emp_kbn := NULL;    -- 社員状態
+--      gt_mst_tbl(gn_if).ymd_kbn := NULL;    -- 入社日連携区分
+--      gt_mst_tbl(gn_if).retire_kbn := NULL; -- 退職区分
+--      gt_mst_tbl(gn_if).resp_kbn := NULL;   -- 職責・管理者変更区分
 --
+--      -- 退避したレコードと次レコードとの比較後に、退避レコードを登録更新エリアに格納(社員番号重複データは更新しない為)
+--      IF (gn_target_cnt = 0) THEN
+--        NULL;
+--      ELSE
+--        IF (gt_mst_tbl(gn_if).employee_number <> in_if_rec.employee_number) THEN
+--          IF (lc_flg <> gv_flg_on) THEN
+--            NULL;  --処理続ける
+--          ELSE
+--            lc_flg := ' ';
+--            lv_errmsg := xxccp_common_pkg.get_msg(
+--                         iv_application  => cv_appl_short_name
+--                        ,iv_name         => cv_data_check_err
+--                        ,iv_token_name1  => cv_tkn_ng_user
+--                        ,iv_token_value1 => gt_mst_tbl(gn_if).employee_number
+--                        ,iv_token_name2  => cv_tkn_ng_err
+--                        ,iv_token_value2 => cv_employee_err_nm  -- '社員番号重複'
+--                       );
+--            gt_mst_tbl(gn_if).proc_flg := gv_sts_error;  -- 更新不可能
+--            gt_mst_tbl(gn_if).row_err_message := lv_errmsg;
+--          END IF;
+--        ELSE
+--          lc_flg := gv_flg_on;
+--          lv_errmsg := xxccp_common_pkg.get_msg(
+--                       iv_application  => cv_appl_short_name
+--                      ,iv_name         => cv_data_check_err
+--                      ,iv_token_name1  => cv_tkn_ng_user
+--                      ,iv_token_value1 => gt_mst_tbl(gn_if).employee_number
+--                      ,iv_token_name2  => cv_tkn_ng_err
+--                      ,iv_token_value2 => cv_employee_err_nm  -- '社員番号重複'
+--                     );
+--          gt_mst_tbl(gn_if).proc_flg := gv_sts_error;  -- 更新不可能
+--          gt_mst_tbl(gn_if).row_err_message := lv_errmsg;
+--        END IF;
+--      END IF;
+--
+--      IF (gt_mst_tbl(gn_if).proc_flg IS NULL) AND (gn_target_cnt > 0) THEN
+--        -- ===============================
+--        -- データ妥当性チェック処理(A-4)
+--        -- ===============================
+--        in_if_check(
+--           gt_mst_tbl(gn_if)  -- 待避エリア
+--          ,lv_errbuf   -- エラー・メッセージ           --# 固定 #
+--          ,lv_retcode  -- リターン・コード             --# 固定 #
+--          ,lv_errmsg   -- ユーザー・エラー・メッセージ --# 固定 #
+--        );
+----
+--        --エラー処理（処理中止）
+--        IF (lv_retcode = cv_status_error) THEN
+--          RAISE global_api_expt;
+--        --警告処理（警告データ更新不可・次データ処理継続）
+--        ELSIF (lv_retcode = cv_status_warn) THEN
+--          gt_mst_tbl(gn_if).proc_flg := gv_sts_error;  -- 更新不可能
+--          gt_mst_tbl(gn_if).row_err_message := lv_errmsg;
+--        --正常処理：異動なし社員データ（SKIP）
+--        ELSIF ((gt_mst_tbl(gn_if).proc_kbn IS NULL)         -- 連携なし
+--          AND (gt_mst_tbl(gn_if).ymd_kbn IS NULL)           -- 入社日変更なし
+--          AND (gt_mst_tbl(gn_if).retire_kbn IS NULL)) THEN  -- 退職処理なし
+--          gt_mst_tbl(gn_if).proc_flg := gv_sts_thru; -- 変更なし
+----
+--        --正常処理：新規社員データ（登録）
+--        ELSIF (gt_mst_tbl(gn_if).emp_kbn  = gv_kbn_new) THEN  -- 新規社員
+--          -- =================================
+--          -- 社員データ登録分チェック処理(A-5)
+--          -- =================================
+--          check_insert(
+--             gt_mst_tbl(gn_if)  -- 待避エリア
+--            ,lv_errbuf   -- エラー・メッセージ           --# 固定 #
+--            ,lv_retcode  -- リターン・コード             --# 固定 #
+--            ,lv_errmsg   -- ユーザー・エラー・メッセージ --# 固定 #
+--          );
+--          --エラー処理（処理中止）
+--          IF (lv_retcode = cv_status_error) THEN
+--            RAISE global_api_expt;
+--          --警告処理（警告データ更新不可・次データ処理継続）
+--          ELSIF (lv_retcode = cv_status_warn) THEN
+--            gt_mst_tbl(gn_if).proc_flg := gv_sts_error;  -- 更新不可能
+--            gt_mst_tbl(gn_if).row_err_message := lv_errmsg;
+--          --正常処理：新規社員データ（登録）
+--          ELSE
+--            -- =================================
+--            -- 社員データ登録情報格納処理(A-8)
+--            -- =================================
+--            gt_mst_tbl(gn_if).proc_flg := gv_sts_update;  -- 処理対象
+--            ln_insert_cnt := ln_insert_cnt + 1;
+--            lt_insert_masters(ln_insert_cnt) := gt_mst_tbl(gn_if);
+--          END IF;
+----
+--        --正常処理：既存社員異動データ・退職社員再雇用データ（更新）
+--        ELSE --(emp_kbn 'U'：既存社員、'D'：退職者)
+--          -- =================================
+--          -- 社員データ更新分チェック処理(A-6)
+--          -- =================================
+--          check_update(
+--             gt_mst_tbl(gn_if)  -- 待避エリア
+--            ,lv_errbuf   -- エラー・メッセージ           --# 固定 #
+--            ,lv_retcode  -- リターン・コード             --# 固定 #
+--            ,lv_errmsg   -- ユーザー・エラー・メッセージ --# 固定 #
+--          );
+--          --エラー処理（処理中止）
+--          IF (lv_retcode = cv_status_error) THEN
+--            RAISE global_api_expt;
+--          --警告処理（警告データ更新不可・次データ処理継続）
+--          ELSIF (lv_retcode = cv_status_warn) THEN
+--            gt_mst_tbl(gn_if).proc_flg := gv_sts_error;  -- 更新不可能
+--            gt_mst_tbl(gn_if).row_err_message := lv_errmsg;
+--          --正常処理：異動なし（SKIP）
+--          ELSIF (gt_mst_tbl(gn_if).proc_flg  = gv_sts_thru) THEN
+--            NULL;
+--          --正常処理：既存社員データ（更新）
+--          ELSIF (gt_mst_tbl(gn_if).emp_kbn  = gv_kbn_employee) THEN
+--            -- =================================
+--            -- 社員データ更新情報格納処理(A-9)
+--            -- =================================
+--            gt_mst_tbl(gn_if).proc_flg := gv_sts_update;  -- 処理対象
+--            ln_update_cnt := ln_update_cnt + 1;
+--            lt_update_masters(ln_update_cnt) := gt_mst_tbl(gn_if);
+--          --正常処理：退職社員データ（更新）
+--          ELSIF (gt_mst_tbl(gn_if).emp_kbn  = gv_kbn_retiree) THEN
+--            -- =================================
+--            -- 社員データ削除情報格納処理(A-10)
+--            -- =================================
+--            gt_mst_tbl(gn_if).proc_flg := gv_sts_update;  -- 処理対象
+--            ln_delete_cnt := ln_delete_cnt + 1;
+--            lt_delete_masters(ln_delete_cnt) := gt_mst_tbl(gn_if);
+--          END IF;
+--        END IF;
+--      END IF;
+--
+--      -- 件数のカウントアップ（異常時以外、処理件数=gn_skip_cnt + gn_normal_cnt + gn_warn_cnt ）
+--      -- 異動なし件数（スキップ）をカウントアップ
+--      IF (gt_mst_tbl(gn_if).proc_flg = gv_sts_thru) THEN  -- 異動なしデータ
+--        gn_skip_cnt := gn_skip_cnt + 1;
+--      -- 更新対象件数（正常）をカウントアップ
+--      ELSIF (gt_mst_tbl(gn_if).proc_flg = gv_sts_update) THEN  -- 更新対象
+--        gn_normal_cnt := gn_normal_cnt + 1;
+--      -- 更新対象件数（異常）をカウントアップ
+--      ELSIF (gt_mst_tbl(gn_if).proc_flg = gv_sts_error) THEN  -- 更新不可能
+--        gn_warn_cnt := gn_warn_cnt + 1;
+--      -- 異常件数をカウントアップ
+--      ELSE
+--        gn_error_cnt := gn_error_cnt +1;
+--      END IF;
+----
+--      -- ==================================
+--      -- 社員データエラー情報格納処理(A-11)
+--      -- ==================================
+--      add_report(
+--        gt_mst_tbl(gn_if)  -- 待避エリア
+----          ,lt_report_tbl
+--        ,lv_errbuf   -- エラー・メッセージ           --# 固定 #
+--        ,lv_retcode  -- リターン・コード             --# 固定 #
+--        ,lv_errmsg   -- ユーザー・エラー・メッセージ --# 固定 #
+--      );
+--      IF (lv_retcode = cv_status_error) THEN
+--        RAISE global_api_expt;
+--      END IF;
+----
+--
+--      -- 社員取込インタフェースの内容をチェックテーブルに待避(処理はここから始まる)
+--      gn_target_cnt := gn_target_cnt + 1; -- 処理件数カウントアップ
+--      BEGIN
+--        gn_if := gn_if + 1;
+--        gt_mst_tbl(gn_if).employee_number          := in_if_rec.employee_number;    --社員番号
+--        gt_mst_tbl(gn_if).hire_date                := in_if_rec.hire_date;          --入社年月日
+--        gt_mst_tbl(gn_if).actual_termination_date  := in_if_rec.actual_termination_date;--退職年月日
+--        gt_mst_tbl(gn_if).last_name_kanji          := in_if_rec.last_name_kanji;    --漢字姓
+--        gt_mst_tbl(gn_if).first_name_kanji         := in_if_rec.first_name_kanji;   --漢字名
+--        gt_mst_tbl(gn_if).last_name                := in_if_rec.last_name;          --カナ姓
+--        gt_mst_tbl(gn_if).first_name               := in_if_rec.first_name;         --カナ名
+--        gt_mst_tbl(gn_if).sex                      := UPPER(in_if_rec.sex);         --性別
+--        gt_mst_tbl(gn_if).employee_division        := NVL(in_if_rec.employee_division,'1');  --社員・外部委託区分
+--        gt_mst_tbl(gn_if).location_code            := in_if_rec.location_code;      --所属コード（新）
+--        gt_mst_tbl(gn_if).change_code              := in_if_rec.change_code;        --異動事由コード
+--        gt_mst_tbl(gn_if).announce_date            := in_if_rec.announce_date;      --発令日
+--        gt_mst_tbl(gn_if).office_location_code     := in_if_rec.office_location_code; --勤務地拠点コード（新）
+--        gt_mst_tbl(gn_if).license_code             := in_if_rec.license_code;       --資格コード（新）
+--        gt_mst_tbl(gn_if).license_name             := in_if_rec.license_name;       --資格名（新）
+--        gt_mst_tbl(gn_if).job_post                 := in_if_rec.job_post;           --職位コード（新）
+--        gt_mst_tbl(gn_if).job_post_name            := in_if_rec.job_post_name;      --職位名（新）
+--        gt_mst_tbl(gn_if).job_duty                 := in_if_rec.job_duty;           --職務コード（新）
+--        gt_mst_tbl(gn_if).job_duty_name            := in_if_rec.job_duty_name;      --職務名（新）
+--        gt_mst_tbl(gn_if).job_type                 := in_if_rec.job_type;           --職種コード（新）
+--        gt_mst_tbl(gn_if).job_type_name            := in_if_rec.job_type_name;      --職種名（新）
+--        gt_mst_tbl(gn_if).job_system               := in_if_rec.job_system;         --適用労働時間制コード（新）
+--        gt_mst_tbl(gn_if).job_system_name          := in_if_rec.job_system_name;    --適用労働名（新）
+--        gt_mst_tbl(gn_if).job_post_order           := in_if_rec.job_post_order;     --職位並順コード（新）
+--        gt_mst_tbl(gn_if).consent_division         := in_if_rec.consent_division;   --承認区分（新）
+--        gt_mst_tbl(gn_if).agent_division           := in_if_rec.agent_division;     --代行区分（新）
+--        gt_mst_tbl(gn_if).office_location_code_old := in_if_rec.office_location_code_old; --勤務地拠点コード（旧）
+--        gt_mst_tbl(gn_if).location_code_old        := in_if_rec.location_code_old;  --所属コード（旧）
+--        gt_mst_tbl(gn_if).license_code_old         := in_if_rec.license_code_old;   --資格コード（旧）
+--        gt_mst_tbl(gn_if).license_code_name_old    := in_if_rec.license_code_name_old;--資格名（旧）
+--        gt_mst_tbl(gn_if).job_post_old             := in_if_rec.job_post_old;       --職位コード（旧）
+--        gt_mst_tbl(gn_if).job_post_name_old        := in_if_rec.job_post_name_old;  --職位名（旧）
+--        gt_mst_tbl(gn_if).job_duty_old             := in_if_rec.job_duty_old;       --職務コード（旧）
+--        gt_mst_tbl(gn_if).job_duty_name_old        := in_if_rec.job_duty_name_old;  --職務名（旧）
+--        gt_mst_tbl(gn_if).job_type_old             := in_if_rec.job_type_old;       --職種コード（旧）
+--        gt_mst_tbl(gn_if).job_type_name_old        := in_if_rec.job_type_name_old;  --職種名（旧）
+--        gt_mst_tbl(gn_if).job_system_old           := in_if_rec.job_system_old;     --適用労働時間制コード（旧）
+--        gt_mst_tbl(gn_if).job_system_name_old      := in_if_rec.job_system_name_old;--適用労働名（旧）
+--        gt_mst_tbl(gn_if).job_post_order_old       := in_if_rec.job_post_order_old; --職位並順コード（旧）
+--        gt_mst_tbl(gn_if).consent_division_old     := in_if_rec.consent_division_old; --承認区分（旧）
+--        gt_mst_tbl(gn_if).agent_division_old       := in_if_rec.agent_division_old; --代行区分（旧）
+--        gt_mst_tbl(gn_if).proc_flg := NULL;   -- 更新区分
+--      EXCEPTION
+--        WHEN VALUE_ERROR THEN
+--          lv_errmsg := xxccp_common_pkg.get_msg(
+--                       iv_application  => cv_appl_short_name
+--                      ,iv_name         => cv_data_check_err
+--                      ,iv_token_name1  => cv_tkn_ng_user
+--                      ,iv_token_value1 => gt_mst_tbl(gn_if).employee_number
+--                      ,iv_token_name2  => cv_tkn_ng_err
+--                      ,iv_token_value2 => cv_data_err  -- 'データ異常'
+--                     );
+--          RAISE global_api_expt;
+--        WHEN OTHERS THEN
+--          RAISE global_api_others_expt;
+--      END;
+--    END LOOP in_if_loop;
+----
+--    -- 最終データチェック処理(in_if_loopの内容と同様)
+--    -- ステータスの初期化
+--    gt_mst_tbl(gn_if).proc_kbn := NULL;   -- 連携区分
+--    gt_mst_tbl(gn_if).emp_kbn := NULL;    -- 社員状態
+--    gt_mst_tbl(gn_if).ymd_kbn := NULL;    -- 入社日連携区分
+--    gt_mst_tbl(gn_if).retire_kbn := NULL; -- 退職区分
+--    gt_mst_tbl(gn_if).proc_flg := NULL;   -- 更新区分
+--    -- 社員データ重複チェック（前のデータと同じ場合）
+--    IF (lc_flg = gv_flg_on) THEN
+--      lc_flg := ' ';
+--      lv_errmsg := xxccp_common_pkg.get_msg(
+--                   iv_application  => cv_appl_short_name
+--                  ,iv_name         => cv_data_check_err
+--                  ,iv_token_name1  => cv_tkn_ng_user
+--                  ,iv_token_value1 => gt_mst_tbl(gn_if).employee_number
+--                  ,iv_token_name2  => cv_tkn_ng_err
+--                  ,iv_token_value2 => cv_employee_err_nm  -- '社員番号重複'
+--                  );
+--      gt_mst_tbl(gn_if).proc_flg := gv_sts_error;  -- 更新不可能
+--      gt_mst_tbl(gn_if).row_err_message := lv_errmsg;
+--    ELSE
+--      -- ===============================
+--      -- データ妥当性チェック処理(A-4)
+--      -- ===============================
+--      in_if_check(
+--         gt_mst_tbl(gn_if)  -- 待避エリア
+--        ,lv_errbuf   -- エラー・メッセージ           --# 固定 #
+--        ,lv_retcode  -- リターン・コード             --# 固定 #
+--        ,lv_errmsg   -- ユーザー・エラー・メッセージ --# 固定 #
+--      );
+----
+--      --エラー処理（処理中止）
+--      IF (lv_retcode = cv_status_error) THEN
+--        RAISE global_api_expt;
+----
+--      --警告処理（警告データ更新不可・次データ処理継続）
+--      ELSIF (lv_retcode = cv_status_warn) THEN
+--        gt_mst_tbl(gn_if).proc_flg := gv_sts_error;  -- 更新不可能
+--        gt_mst_tbl(gn_if).row_err_message := lv_errmsg;
+----
+--      --正常処理：異動なし社員データ（SKIP）
+--      ELSIF ((gt_mst_tbl(gn_if).proc_kbn IS NULL)         -- 連携なし
+--        AND (gt_mst_tbl(gn_if).ymd_kbn IS NULL)           -- 入社日変更なし
+--        AND (gt_mst_tbl(gn_if).retire_kbn IS NULL)) THEN  -- 退職処理なし
+--        gt_mst_tbl(gn_if).proc_flg := gv_sts_thru; -- 変更なし
+----
+--      --正常処理：新規社員データ（登録）
+--      ELSIF (gt_mst_tbl(gn_if).emp_kbn  = gv_kbn_new) THEN  -- 新規社員
+--        -- =================================
+--        -- 社員データ登録分チェック処理(A-5)
+--        -- =================================
+--        check_insert(
+--           gt_mst_tbl(gn_if)  -- 待避エリア
+--          ,lv_errbuf   -- エラー・メッセージ           --# 固定 #
+--          ,lv_retcode  -- リターン・コード             --# 固定 #
+--          ,lv_errmsg   -- ユーザー・エラー・メッセージ --# 固定 #
+--        );
+--        --エラー処理（処理中止）
+--        IF (lv_retcode = cv_status_error) THEN
+--          RAISE global_api_expt;
+--        --警告処理（警告データ更新不可・次データ処理継続）
+--        ELSIF (lv_retcode = cv_status_warn) THEN
+--          gt_mst_tbl(gn_if).proc_flg := gv_sts_error;  -- 更新不可能
+--          gt_mst_tbl(gn_if).row_err_message := lv_errmsg;
+--        --正常処理：新規社員データ（登録）
+--        ELSE
+--          -- =================================
+--          -- 社員データ登録情報格納処理(A-8)
+--          -- =================================
+--          gt_mst_tbl(gn_if).proc_flg := gv_sts_update;  -- 処理対象
+--          ln_insert_cnt := ln_insert_cnt + 1;
+--          lt_insert_masters(ln_insert_cnt) := gt_mst_tbl(gn_if);
+--        END IF;
+--
+--      --正常処理：既存社員異動データ・退職社員再雇用データ（更新）
+--      ELSE --(emp_kbn 'U'：既存社員、'D'：退職者)
+--        -- =================================
+--        -- 社員データ更新分チェック処理(A-6)
+--        -- =================================
+--        check_update(
+--           gt_mst_tbl(gn_if)  -- 待避エリア
+--          ,lv_errbuf   -- エラー・メッセージ           --# 固定 #
+--          ,lv_retcode  -- リターン・コード             --# 固定 #
+--          ,lv_errmsg   -- ユーザー・エラー・メッセージ --# 固定 #
+--        );
+--        --エラー処理（処理中止）
+--        IF (lv_retcode = cv_status_error) THEN
+--          RAISE global_api_expt;
+--        --警告処理（警告データ更新不可・次データ処理継続）
+--        ELSIF (lv_retcode = cv_status_warn) THEN
+--          gt_mst_tbl(gn_if).proc_flg := gv_sts_error;  -- 更新不可能
+--          gt_mst_tbl(gn_if).row_err_message := lv_errmsg;
+--        --正常処理：既存社員データ（更新）
+--        ELSIF (gt_mst_tbl(gn_if).emp_kbn  = gv_kbn_employee) THEN
+--          -- =================================
+--          -- 社員データ更新情報格納処理(A-9)
+--          -- =================================
+--          gt_mst_tbl(gn_if).proc_flg := gv_sts_update;  -- 処理対象
+--          ln_update_cnt := ln_update_cnt + 1;
+--          lt_update_masters(ln_update_cnt) := gt_mst_tbl(gn_if);
+--        --正常処理：異動なし（SKIP）
+--        ELSIF (gt_mst_tbl(gn_if).proc_flg  = gv_sts_thru) THEN
+--          NULL;
+--        --正常処理：退職社員データ（更新）
+--        ELSIF (gt_mst_tbl(gn_if).emp_kbn  = gv_kbn_retiree) THEN
+--          -- =================================
+--          -- 社員データ削除情報格納処理(A-10)
+--          -- =================================
+--          gt_mst_tbl(gn_if).proc_flg := gv_sts_update;  -- 処理対象
+--          ln_delete_cnt := ln_delete_cnt + 1;
+--          lt_delete_masters(ln_delete_cnt) := gt_mst_tbl(gn_if);
+--        END IF;
+--      END IF;
+--    END IF;
+--
+--    -- 件数のカウントアップ（異常時以外、処理件数=gn_skip_cnt + gn_normal_cnt + gn_warn_cnt ）
+--    -- 異動なし件数（スキップ）をカウントアップ
+--    IF (gt_mst_tbl(gn_if).proc_flg = gv_sts_thru) THEN  -- 異動なしデータ
+--      gn_skip_cnt := gn_skip_cnt + 1;
+--    -- 更新対象件数（正常）をカウントアップ
+--    ELSIF (gt_mst_tbl(gn_if).proc_flg = gv_sts_update) THEN  -- 更新対象
+--      gn_normal_cnt := gn_normal_cnt + 1;
+--    -- 更新対象件数（異常）をカウントアップ
+--    ELSIF (gt_mst_tbl(gn_if).proc_flg = gv_sts_error) THEN  -- 更新不可能
+--      gn_warn_cnt := gn_warn_cnt + 1;
+--    -- 異常件数をカウントアップ
+--    ELSE
+--      gn_error_cnt := gn_error_cnt +1;
+--    END IF;
+----
+--    -- ==================================
+--    -- 社員データエラー情報格納処理(A-11)
+--    -- ==================================
+--    add_report(
+--      gt_mst_tbl(gn_if)  -- 待避エリア
+--      ,lv_errbuf   -- エラー・メッセージ           --# 固定 #
+--      ,lv_retcode  -- リターン・コード             --# 固定 #
+--      ,lv_errmsg   -- ユーザー・エラー・メッセージ --# 固定 #
+--    );
+--    IF (lv_retcode = cv_status_error) THEN
+--      RAISE global_api_expt;
+--    END IF;
+--
+-- Ver1.3 Add 2009/04/16  データ取得・チェック周りを作成し直し追加
+--                        対象データは都度、処理用レコードに格納するよう修正
+--                        重複チェックは、I/F上に同じ従業員コードが存在するか取得するよう修正
     -- ===============================
     -- 社員インタフェース情報取得(A-3)
     -- ===============================
---
     -- IF件数の初期化
     gn_target_cnt := 0;
-
+    --
     <<in_if_loop>>
     FOR in_if_rec IN in_if_cur LOOP
-      -- ステータスの初期化
-      gt_mst_tbl(gn_if).proc_flg := NULL;   -- 更新区分
-      gt_mst_tbl(gn_if).proc_kbn := NULL;   -- 連携区分
-      gt_mst_tbl(gn_if).emp_kbn := NULL;    -- 社員状態
-      gt_mst_tbl(gn_if).ymd_kbn := NULL;    -- 入社日連携区分
-      gt_mst_tbl(gn_if).retire_kbn := NULL; -- 退職区分
-      gt_mst_tbl(gn_if).resp_kbn := NULL;   -- 職責・管理者変更区分
-
-      -- 退避したレコードと次レコードとの比較後に、退避レコードを登録更新エリアに格納(社員番号重複データは更新しない為)
-      IF (gn_target_cnt = 0) THEN
-        NULL;
-      ELSE
-        IF (gt_mst_tbl(gn_if).employee_number <> in_if_rec.employee_number) THEN
-          IF (lc_flg <> gv_flg_on) THEN
-            NULL;  --処理続ける
-          ELSE
-            lc_flg := ' ';
-            lv_errmsg := xxccp_common_pkg.get_msg(
-                         iv_application  => cv_appl_short_name
-                        ,iv_name         => cv_data_check_err
-                        ,iv_token_name1  => cv_tkn_ng_user
-                        ,iv_token_value1 => gt_mst_tbl(gn_if).employee_number
-                        ,iv_token_name2  => cv_tkn_ng_err
-                        ,iv_token_value2 => cv_employee_err_nm  -- '社員番号重複'
-                       );
-            gt_mst_tbl(gn_if).proc_flg := gv_sts_error;  -- 更新不可能
-            gt_mst_tbl(gn_if).row_err_message := lv_errmsg;
-          END IF;
-        ELSE
-          lc_flg := gv_flg_on;
+      -- 社員取込インタフェースの内容をチェックテーブルに待避
+      gn_target_cnt := gn_target_cnt + 1;        -- 処理件数カウントアップ
+      l_people_if_rec := l_if_clear_rec;         -- クリア
+      --
+      BEGIN
+        -- ステータスの初期化
+        l_people_if_rec.proc_flg                 := NULL;                                     -- 更新区分
+        l_people_if_rec.proc_kbn                 := NULL;                                     -- 連携区分
+        l_people_if_rec.emp_kbn                  := NULL;                                     -- 社員状態
+        l_people_if_rec.ymd_kbn                  := NULL;                                     -- 入社日連携区分
+        l_people_if_rec.retire_kbn               := NULL;                                     -- 退職区分
+        l_people_if_rec.resp_kbn                 := NULL;                                     -- 職責・管理者変更区分
+        --
+        -- 取得I/Fデータ格納
+        l_people_if_rec.employee_number          := in_if_rec.employee_number;                -- 社員番号
+        l_people_if_rec.hire_date                := in_if_rec.hire_date;                      -- 入社年月日
+        l_people_if_rec.actual_termination_date  := in_if_rec.actual_termination_date;        -- 退職年月日
+        l_people_if_rec.last_name_kanji          := in_if_rec.last_name_kanji;                -- 漢字姓
+        l_people_if_rec.first_name_kanji         := in_if_rec.first_name_kanji;               -- 漢字名
+        l_people_if_rec.last_name                := in_if_rec.last_name;                      -- カナ姓
+        l_people_if_rec.first_name               := in_if_rec.first_name;                     -- カナ名
+        l_people_if_rec.sex                      := UPPER( in_if_rec.sex );                   -- 性別
+        l_people_if_rec.employee_division        := NVL( in_if_rec.employee_division, '1' );  -- 社員・外部委託区分
+        l_people_if_rec.location_code            := in_if_rec.location_code;                  -- 所属コード（新）
+        l_people_if_rec.change_code              := in_if_rec.change_code;                    -- 異動事由コード
+        l_people_if_rec.announce_date            := in_if_rec.announce_date;                  -- 発令日
+        l_people_if_rec.office_location_code     := in_if_rec.office_location_code;           -- 勤務地拠点コード（新）
+        l_people_if_rec.license_code             := in_if_rec.license_code;                   -- 資格コード（新）
+        l_people_if_rec.license_name             := in_if_rec.license_name;                   -- 資格名（新）
+        l_people_if_rec.job_post                 := in_if_rec.job_post;                       -- 職位コード（新）
+        l_people_if_rec.job_post_name            := in_if_rec.job_post_name;                  -- 職位名（新）
+        l_people_if_rec.job_duty                 := in_if_rec.job_duty;                       -- 職務コード（新）
+        l_people_if_rec.job_duty_name            := in_if_rec.job_duty_name;                  -- 職務名（新）
+        l_people_if_rec.job_type                 := in_if_rec.job_type;                       -- 職種コード（新）
+        l_people_if_rec.job_type_name            := in_if_rec.job_type_name;                  -- 職種名（新）
+        l_people_if_rec.job_system               := in_if_rec.job_system;                     -- 適用労働時間制コード（新）
+        l_people_if_rec.job_system_name          := in_if_rec.job_system_name;                -- 適用労働名（新）
+        l_people_if_rec.job_post_order           := in_if_rec.job_post_order;                 -- 職位並順コード（新）
+        l_people_if_rec.consent_division         := in_if_rec.consent_division;               -- 承認区分（新）
+        l_people_if_rec.agent_division           := in_if_rec.agent_division;                 -- 代行区分（新）
+        l_people_if_rec.office_location_code_old := in_if_rec.office_location_code_old;       -- 勤務地拠点コード（旧）
+        l_people_if_rec.location_code_old        := in_if_rec.location_code_old;              -- 所属コード（旧）
+        l_people_if_rec.license_code_old         := in_if_rec.license_code_old;               -- 資格コード（旧）
+        l_people_if_rec.license_code_name_old    := in_if_rec.license_code_name_old;          -- 資格名（旧）
+        l_people_if_rec.job_post_old             := in_if_rec.job_post_old;                   -- 職位コード（旧）
+        l_people_if_rec.job_post_name_old        := in_if_rec.job_post_name_old;              -- 職位名（旧）
+        l_people_if_rec.job_duty_old             := in_if_rec.job_duty_old;                   -- 職務コード（旧）
+        l_people_if_rec.job_duty_name_old        := in_if_rec.job_duty_name_old;              -- 職務名（旧）
+        l_people_if_rec.job_type_old             := in_if_rec.job_type_old;                   -- 職種コード（旧）
+        l_people_if_rec.job_type_name_old        := in_if_rec.job_type_name_old;              -- 職種名（旧）
+        l_people_if_rec.job_system_old           := in_if_rec.job_system_old;                 -- 適用労働時間制コード（旧）
+        l_people_if_rec.job_system_name_old      := in_if_rec.job_system_name_old;            -- 適用労働名（旧）
+        l_people_if_rec.job_post_order_old       := in_if_rec.job_post_order_old;             -- 職位並順コード（旧）
+        l_people_if_rec.consent_division_old     := in_if_rec.consent_division_old;           -- 承認区分（旧）
+        l_people_if_rec.agent_division_old       := in_if_rec.agent_division_old;             -- 代行区分（旧）
+      --
+      EXCEPTION
+        WHEN OTHERS THEN
           lv_errmsg := xxccp_common_pkg.get_msg(
                        iv_application  => cv_appl_short_name
                       ,iv_name         => cv_data_check_err
                       ,iv_token_name1  => cv_tkn_ng_user
-                      ,iv_token_value1 => gt_mst_tbl(gn_if).employee_number
+                      ,iv_token_value1 => l_people_if_rec.employee_number
                       ,iv_token_name2  => cv_tkn_ng_err
-                      ,iv_token_value2 => cv_employee_err_nm  -- '社員番号重複'
+                      ,iv_token_value2 => cv_data_err  -- 'データ異常'
                      );
-          gt_mst_tbl(gn_if).proc_flg := gv_sts_error;  -- 更新不可能
-          gt_mst_tbl(gn_if).row_err_message := lv_errmsg;
+          RAISE global_api_expt;
+      END;
+      -- 退避用従業員コードが未設定の場合
+      -- または、退避用従業員コードとレコードの従業員コードが異なる場合
+      -- 重複チェックを実施する
+      IF ( ln_wk_emp_num IS NULL )
+      OR ( ln_wk_emp_num != in_if_rec.employee_number )
+      THEN
+        -- SQLで従業員コードが重複していないか確認する
+        SELECT      COUNT( xip.ROWID )
+        INTO        ln_exist_cnt
+        FROM        xxcmm_in_people_if   xip
+        WHERE       xip.employee_number = in_if_rec.employee_number
+        AND         xip.ROWID != in_if_rec.xip_rowid
+        AND         ROWNUM = 1;
+        --
+        IF ( ln_exist_cnt = 0 ) THEN
+          ln_wk_emp_num := NULL;
+        ELSE
+          ln_wk_emp_num := in_if_rec.employee_number;
         END IF;
       END IF;
-
-      IF (gt_mst_tbl(gn_if).proc_flg IS NULL) AND (gn_target_cnt > 0) THEN
+      --
+      -- 退避用従業員コードがNULLの場合、チェック処理を実施
+      IF ( ln_wk_emp_num IS NULL ) THEN
         -- ===============================
         -- データ妥当性チェック処理(A-4)
         -- ===============================
         in_if_check(
-           gt_mst_tbl(gn_if)  -- 待避エリア
+           l_people_if_rec  -- 待避エリア
           ,lv_errbuf   -- エラー・メッセージ           --# 固定 #
           ,lv_retcode  -- リターン・コード             --# 固定 #
           ,lv_errmsg   -- ユーザー・エラー・メッセージ --# 固定 #
         );
---
+        --
         --エラー処理（処理中止）
         IF (lv_retcode = cv_status_error) THEN
           RAISE global_api_expt;
         --警告処理（警告データ更新不可・次データ処理継続）
         ELSIF (lv_retcode = cv_status_warn) THEN
-          gt_mst_tbl(gn_if).proc_flg := gv_sts_error;  -- 更新不可能
-          gt_mst_tbl(gn_if).row_err_message := lv_errmsg;
+          l_people_if_rec.proc_flg := gv_sts_error;       -- 更新不可能
+          l_people_if_rec.row_err_message := lv_errmsg;
         --正常処理：異動なし社員データ（SKIP）
-        ELSIF ((gt_mst_tbl(gn_if).proc_kbn IS NULL)         -- 連携なし
-          AND (gt_mst_tbl(gn_if).ymd_kbn IS NULL)           -- 入社日変更なし
-          AND (gt_mst_tbl(gn_if).retire_kbn IS NULL)) THEN  -- 退職処理なし
-          gt_mst_tbl(gn_if).proc_flg := gv_sts_thru; -- 変更なし
---
+        ELSIF ((l_people_if_rec.proc_kbn IS NULL)         -- 連携なし
+          AND (l_people_if_rec.ymd_kbn IS NULL)           -- 入社日変更なし
+          AND (l_people_if_rec.retire_kbn IS NULL)) THEN  -- 退職処理なし
+          l_people_if_rec.proc_flg := gv_sts_thru;        -- 変更なし
+          --
         --正常処理：新規社員データ（登録）
-        ELSIF (gt_mst_tbl(gn_if).emp_kbn  = gv_kbn_new) THEN  -- 新規社員
+        ELSIF (l_people_if_rec.emp_kbn  = gv_kbn_new) THEN  -- 新規社員
           -- =================================
           -- 社員データ登録分チェック処理(A-5)
           -- =================================
           check_insert(
-             gt_mst_tbl(gn_if)  -- 待避エリア
+             l_people_if_rec  -- 待避エリア
             ,lv_errbuf   -- エラー・メッセージ           --# 固定 #
             ,lv_retcode  -- リターン・コード             --# 固定 #
             ,lv_errmsg   -- ユーザー・エラー・メッセージ --# 固定 #
           );
           --エラー処理（処理中止）
-          IF (lv_retcode = cv_status_error) THEN
+          IF ( lv_retcode = cv_status_error ) THEN
             RAISE global_api_expt;
           --警告処理（警告データ更新不可・次データ処理継続）
-          ELSIF (lv_retcode = cv_status_warn) THEN
-            gt_mst_tbl(gn_if).proc_flg := gv_sts_error;  -- 更新不可能
-            gt_mst_tbl(gn_if).row_err_message := lv_errmsg;
+          ELSIF ( lv_retcode = cv_status_warn ) THEN
+            l_people_if_rec.proc_flg := gv_sts_error;  -- 更新不可能
+            l_people_if_rec.row_err_message := lv_errmsg;
           --正常処理：新規社員データ（登録）
           ELSE
             -- =================================
             -- 社員データ登録情報格納処理(A-8)
             -- =================================
-            gt_mst_tbl(gn_if).proc_flg := gv_sts_update;  -- 処理対象
+            l_people_if_rec.proc_flg := gv_sts_update;  -- 処理対象
             ln_insert_cnt := ln_insert_cnt + 1;
-            lt_insert_masters(ln_insert_cnt) := gt_mst_tbl(gn_if);
+            lt_insert_masters( ln_insert_cnt ) := l_people_if_rec;
           END IF;
---
+          --
         --正常処理：既存社員異動データ・退職社員再雇用データ（更新）
         ELSE --(emp_kbn 'U'：既存社員、'D'：退職者)
           -- =================================
           -- 社員データ更新分チェック処理(A-6)
           -- =================================
           check_update(
-             gt_mst_tbl(gn_if)  -- 待避エリア
+             l_people_if_rec  -- 待避エリア
             ,lv_errbuf   -- エラー・メッセージ           --# 固定 #
             ,lv_retcode  -- リターン・コード             --# 固定 #
             ,lv_errmsg   -- ユーザー・エラー・メッセージ --# 固定 #
           );
           --エラー処理（処理中止）
-          IF (lv_retcode = cv_status_error) THEN
+          IF ( lv_retcode = cv_status_error ) THEN
             RAISE global_api_expt;
           --警告処理（警告データ更新不可・次データ処理継続）
-          ELSIF (lv_retcode = cv_status_warn) THEN
-            gt_mst_tbl(gn_if).proc_flg := gv_sts_error;  -- 更新不可能
-            gt_mst_tbl(gn_if).row_err_message := lv_errmsg;
+          ELSIF ( lv_retcode = cv_status_warn ) THEN
+            l_people_if_rec.proc_flg := gv_sts_error;  -- 更新不可能
+            l_people_if_rec.row_err_message := lv_errmsg;
           --正常処理：異動なし（SKIP）
-          ELSIF (gt_mst_tbl(gn_if).proc_flg  = gv_sts_thru) THEN
+          ELSIF ( l_people_if_rec.proc_flg  = gv_sts_thru ) THEN
             NULL;
           --正常処理：既存社員データ（更新）
-          ELSIF (gt_mst_tbl(gn_if).emp_kbn  = gv_kbn_employee) THEN
+          ELSIF ( l_people_if_rec.emp_kbn  = gv_kbn_employee ) THEN
             -- =================================
             -- 社員データ更新情報格納処理(A-9)
             -- =================================
-            gt_mst_tbl(gn_if).proc_flg := gv_sts_update;  -- 処理対象
+            l_people_if_rec.proc_flg := gv_sts_update;  -- 処理対象
             ln_update_cnt := ln_update_cnt + 1;
-            lt_update_masters(ln_update_cnt) := gt_mst_tbl(gn_if);
+            lt_update_masters( ln_update_cnt ) := l_people_if_rec;
           --正常処理：退職社員データ（更新）
-          ELSIF (gt_mst_tbl(gn_if).emp_kbn  = gv_kbn_retiree) THEN
+          ELSIF ( l_people_if_rec.emp_kbn  = gv_kbn_retiree ) THEN
             -- =================================
             -- 社員データ削除情報格納処理(A-10)
             -- =================================
-            gt_mst_tbl(gn_if).proc_flg := gv_sts_update;  -- 処理対象
+            l_people_if_rec.proc_flg := gv_sts_update;  -- 処理対象
             ln_delete_cnt := ln_delete_cnt + 1;
-            lt_delete_masters(ln_delete_cnt) := gt_mst_tbl(gn_if);
+            lt_delete_masters( ln_delete_cnt ) := l_people_if_rec;
           END IF;
         END IF;
-      END IF;
-
-      -- 件数のカウントアップ（異常時以外、処理件数=gn_skip_cnt + gn_normal_cnt + gn_warn_cnt ）
-      -- 異動なし件数（スキップ）をカウントアップ
-      IF (gt_mst_tbl(gn_if).proc_flg = gv_sts_thru) THEN  -- 異動なしデータ
-        gn_skip_cnt := gn_skip_cnt + 1;
-      -- 更新対象件数（正常）をカウントアップ
-      ELSIF (gt_mst_tbl(gn_if).proc_flg = gv_sts_update) THEN  -- 更新対象
-        gn_normal_cnt := gn_normal_cnt + 1;
-      -- 更新対象件数（異常）をカウントアップ
-      ELSIF (gt_mst_tbl(gn_if).proc_flg = gv_sts_error) THEN  -- 更新不可能
-        gn_warn_cnt := gn_warn_cnt + 1;
-      -- 異常件数をカウントアップ
       ELSE
-        gn_error_cnt := gn_error_cnt +1;
-      END IF;
---
-      -- ==================================
-      -- 社員データエラー情報格納処理(A-11)
-      -- ==================================
-      add_report(
-        gt_mst_tbl(gn_if)  -- 待避エリア
---          ,lt_report_tbl
-        ,lv_errbuf   -- エラー・メッセージ           --# 固定 #
-        ,lv_retcode  -- リターン・コード             --# 固定 #
-        ,lv_errmsg   -- ユーザー・エラー・メッセージ --# 固定 #
-      );
-      IF (lv_retcode = cv_status_error) THEN
-        RAISE global_api_expt;
-      END IF;
---
-
-      -- 社員取込インタフェースの内容をチェックテーブルに待避(処理はここから始まる)
-      gn_target_cnt := gn_target_cnt + 1; -- 処理件数カウントアップ
-      BEGIN
-        gn_if := gn_if + 1;
-        gt_mst_tbl(gn_if).employee_number          := in_if_rec.employee_number;    --社員番号
-        gt_mst_tbl(gn_if).hire_date                := in_if_rec.hire_date;          --入社年月日
-        gt_mst_tbl(gn_if).actual_termination_date  := in_if_rec.actual_termination_date;--退職年月日
-        gt_mst_tbl(gn_if).last_name_kanji          := in_if_rec.last_name_kanji;    --漢字姓
-        gt_mst_tbl(gn_if).first_name_kanji         := in_if_rec.first_name_kanji;   --漢字名
-        gt_mst_tbl(gn_if).last_name                := in_if_rec.last_name;          --カナ姓
-        gt_mst_tbl(gn_if).first_name               := in_if_rec.first_name;         --カナ名
-        gt_mst_tbl(gn_if).sex                      := UPPER(in_if_rec.sex);         --性別
-        gt_mst_tbl(gn_if).employee_division        := NVL(in_if_rec.employee_division,'1');  --社員・外部委託区分
-        gt_mst_tbl(gn_if).location_code            := in_if_rec.location_code;      --所属コード（新）
-        gt_mst_tbl(gn_if).change_code              := in_if_rec.change_code;        --異動事由コード
-        gt_mst_tbl(gn_if).announce_date            := in_if_rec.announce_date;      --発令日
-        gt_mst_tbl(gn_if).office_location_code     := in_if_rec.office_location_code; --勤務地拠点コード（新）
-        gt_mst_tbl(gn_if).license_code             := in_if_rec.license_code;       --資格コード（新）
-        gt_mst_tbl(gn_if).license_name             := in_if_rec.license_name;       --資格名（新）
-        gt_mst_tbl(gn_if).job_post                 := in_if_rec.job_post;           --職位コード（新）
-        gt_mst_tbl(gn_if).job_post_name            := in_if_rec.job_post_name;      --職位名（新）
-        gt_mst_tbl(gn_if).job_duty                 := in_if_rec.job_duty;           --職務コード（新）
-        gt_mst_tbl(gn_if).job_duty_name            := in_if_rec.job_duty_name;      --職務名（新）
-        gt_mst_tbl(gn_if).job_type                 := in_if_rec.job_type;           --職種コード（新）
-        gt_mst_tbl(gn_if).job_type_name            := in_if_rec.job_type_name;      --職種名（新）
-        gt_mst_tbl(gn_if).job_system               := in_if_rec.job_system;         --適用労働時間制コード（新）
-        gt_mst_tbl(gn_if).job_system_name          := in_if_rec.job_system_name;    --適用労働名（新）
-        gt_mst_tbl(gn_if).job_post_order           := in_if_rec.job_post_order;     --職位並順コード（新）
-        gt_mst_tbl(gn_if).consent_division         := in_if_rec.consent_division;   --承認区分（新）
-        gt_mst_tbl(gn_if).agent_division           := in_if_rec.agent_division;     --代行区分（新）
-        gt_mst_tbl(gn_if).office_location_code_old := in_if_rec.office_location_code_old; --勤務地拠点コード（旧）
-        gt_mst_tbl(gn_if).location_code_old        := in_if_rec.location_code_old;  --所属コード（旧）
-        gt_mst_tbl(gn_if).license_code_old         := in_if_rec.license_code_old;   --資格コード（旧）
-        gt_mst_tbl(gn_if).license_code_name_old    := in_if_rec.license_code_name_old;--資格名（旧）
-        gt_mst_tbl(gn_if).job_post_old             := in_if_rec.job_post_old;       --職位コード（旧）
-        gt_mst_tbl(gn_if).job_post_name_old        := in_if_rec.job_post_name_old;  --職位名（旧）
-        gt_mst_tbl(gn_if).job_duty_old             := in_if_rec.job_duty_old;       --職務コード（旧）
-        gt_mst_tbl(gn_if).job_duty_name_old        := in_if_rec.job_duty_name_old;  --職務名（旧）
-        gt_mst_tbl(gn_if).job_type_old             := in_if_rec.job_type_old;       --職種コード（旧）
-        gt_mst_tbl(gn_if).job_type_name_old        := in_if_rec.job_type_name_old;  --職種名（旧）
-        gt_mst_tbl(gn_if).job_system_old           := in_if_rec.job_system_old;     --適用労働時間制コード（旧）
-        gt_mst_tbl(gn_if).job_system_name_old      := in_if_rec.job_system_name_old;--適用労働名（旧）
-        gt_mst_tbl(gn_if).job_post_order_old       := in_if_rec.job_post_order_old; --職位並順コード（旧）
-        gt_mst_tbl(gn_if).consent_division_old     := in_if_rec.consent_division_old; --承認区分（旧）
-        gt_mst_tbl(gn_if).agent_division_old       := in_if_rec.agent_division_old; --代行区分（旧）
-        gt_mst_tbl(gn_if).proc_flg := NULL;   -- 更新区分
-      EXCEPTION
-        WHEN VALUE_ERROR THEN
-          lv_errmsg := xxccp_common_pkg.get_msg(
+        -- 従業員コードが重複している場合
+        lv_errmsg := xxccp_common_pkg.get_msg(
                        iv_application  => cv_appl_short_name
                       ,iv_name         => cv_data_check_err
                       ,iv_token_name1  => cv_tkn_ng_user
-                      ,iv_token_value1 => gt_mst_tbl(gn_if).employee_number
+                      ,iv_token_value1 => l_people_if_rec.employee_number
                       ,iv_token_name2  => cv_tkn_ng_err
-                      ,iv_token_value2 => cv_data_err  -- 'データ異常'
+                      ,iv_token_value2 => cv_employee_err_nm     -- '社員番号重複'
                      );
-          RAISE global_api_expt;
-        WHEN OTHERS THEN
-          RAISE global_api_others_expt;
-      END;
-    END LOOP in_if_loop;
---
-    -- 最終データチェック処理(in_if_loopの内容と同様)
-    -- ステータスの初期化
-    gt_mst_tbl(gn_if).proc_kbn := NULL;   -- 連携区分
-    gt_mst_tbl(gn_if).emp_kbn := NULL;    -- 社員状態
-    gt_mst_tbl(gn_if).ymd_kbn := NULL;    -- 入社日連携区分
-    gt_mst_tbl(gn_if).retire_kbn := NULL; -- 退職区分
-    gt_mst_tbl(gn_if).proc_flg := NULL;   -- 更新区分
-    -- 社員データ重複チェック（前のデータと同じ場合）
-    IF (lc_flg = gv_flg_on) THEN
-      lc_flg := ' ';
-      lv_errmsg := xxccp_common_pkg.get_msg(
-                   iv_application  => cv_appl_short_name
-                  ,iv_name         => cv_data_check_err
-                  ,iv_token_name1  => cv_tkn_ng_user
-                  ,iv_token_value1 => gt_mst_tbl(gn_if).employee_number
-                  ,iv_token_name2  => cv_tkn_ng_err
-                  ,iv_token_value2 => cv_employee_err_nm  -- '社員番号重複'
-                  );
-      gt_mst_tbl(gn_if).proc_flg := gv_sts_error;  -- 更新不可能
-      gt_mst_tbl(gn_if).row_err_message := lv_errmsg;
-    ELSE
-      -- ===============================
-      -- データ妥当性チェック処理(A-4)
-      -- ===============================
-      in_if_check(
-         gt_mst_tbl(gn_if)  -- 待避エリア
-        ,lv_errbuf   -- エラー・メッセージ           --# 固定 #
-        ,lv_retcode  -- リターン・コード             --# 固定 #
-        ,lv_errmsg   -- ユーザー・エラー・メッセージ --# 固定 #
+        l_people_if_rec.proc_flg := gv_sts_error;                -- 更新不可能
+        l_people_if_rec.row_err_message := lv_errmsg;
+        --
+      END IF;
+      --
+      -- 件数のカウントアップ（異常時以外、処理件数=gn_skip_cnt + gn_normal_cnt + gn_warn_cnt ）
+      IF ( l_people_if_rec.proc_flg = gv_sts_thru ) THEN  -- 異動なしデータ
+      -- 異動なし件数（スキップ）をカウントアップ
+        gn_skip_cnt := gn_skip_cnt + 1;
+      ELSIF ( l_people_if_rec.proc_flg = gv_sts_update ) THEN  -- 更新対象
+      -- 更新対象件数（正常）をカウントアップ
+        gn_normal_cnt := gn_normal_cnt + 1;
+      ELSIF ( l_people_if_rec.proc_flg = gv_sts_error ) THEN  -- 更新不可能
+      -- 更新対象件数（異常）をカウントアップ
+        gn_warn_cnt := gn_warn_cnt + 1;
+      ELSE
+      -- 異常件数をカウントアップ
+        gn_error_cnt := gn_error_cnt +1;
+      END IF;
+      --
+      -- ==================================
+      -- 社員データエラー情報格納処理(A-11)
+      -- ==================================
+      -- 正常データと異常データがそれぞれの配列に格納される
+      add_report(
+        l_people_if_rec    -- 待避エリア
+       ,lv_errbuf          -- エラー・メッセージ           --# 固定 #
+       ,lv_retcode         -- リターン・コード             --# 固定 #
+       ,lv_errmsg          -- ユーザー・エラー・メッセージ --# 固定 #
       );
---
-      --エラー処理（処理中止）
       IF (lv_retcode = cv_status_error) THEN
         RAISE global_api_expt;
---
-      --警告処理（警告データ更新不可・次データ処理継続）
-      ELSIF (lv_retcode = cv_status_warn) THEN
-        gt_mst_tbl(gn_if).proc_flg := gv_sts_error;  -- 更新不可能
-        gt_mst_tbl(gn_if).row_err_message := lv_errmsg;
---
-      --正常処理：異動なし社員データ（SKIP）
-      ELSIF ((gt_mst_tbl(gn_if).proc_kbn IS NULL)         -- 連携なし
-        AND (gt_mst_tbl(gn_if).ymd_kbn IS NULL)           -- 入社日変更なし
-        AND (gt_mst_tbl(gn_if).retire_kbn IS NULL)) THEN  -- 退職処理なし
-        gt_mst_tbl(gn_if).proc_flg := gv_sts_thru; -- 変更なし
---
-      --正常処理：新規社員データ（登録）
-      ELSIF (gt_mst_tbl(gn_if).emp_kbn  = gv_kbn_new) THEN  -- 新規社員
-        -- =================================
-        -- 社員データ登録分チェック処理(A-5)
-        -- =================================
-        check_insert(
-           gt_mst_tbl(gn_if)  -- 待避エリア
-          ,lv_errbuf   -- エラー・メッセージ           --# 固定 #
-          ,lv_retcode  -- リターン・コード             --# 固定 #
-          ,lv_errmsg   -- ユーザー・エラー・メッセージ --# 固定 #
-        );
-        --エラー処理（処理中止）
-        IF (lv_retcode = cv_status_error) THEN
-          RAISE global_api_expt;
-        --警告処理（警告データ更新不可・次データ処理継続）
-        ELSIF (lv_retcode = cv_status_warn) THEN
-          gt_mst_tbl(gn_if).proc_flg := gv_sts_error;  -- 更新不可能
-          gt_mst_tbl(gn_if).row_err_message := lv_errmsg;
-        --正常処理：新規社員データ（登録）
-        ELSE
-          -- =================================
-          -- 社員データ登録情報格納処理(A-8)
-          -- =================================
-          gt_mst_tbl(gn_if).proc_flg := gv_sts_update;  -- 処理対象
-          ln_insert_cnt := ln_insert_cnt + 1;
-          lt_insert_masters(ln_insert_cnt) := gt_mst_tbl(gn_if);
-        END IF;
-
-      --正常処理：既存社員異動データ・退職社員再雇用データ（更新）
-      ELSE --(emp_kbn 'U'：既存社員、'D'：退職者)
-        -- =================================
-        -- 社員データ更新分チェック処理(A-6)
-        -- =================================
-        check_update(
-           gt_mst_tbl(gn_if)  -- 待避エリア
-          ,lv_errbuf   -- エラー・メッセージ           --# 固定 #
-          ,lv_retcode  -- リターン・コード             --# 固定 #
-          ,lv_errmsg   -- ユーザー・エラー・メッセージ --# 固定 #
-        );
-        --エラー処理（処理中止）
-        IF (lv_retcode = cv_status_error) THEN
-          RAISE global_api_expt;
-        --警告処理（警告データ更新不可・次データ処理継続）
-        ELSIF (lv_retcode = cv_status_warn) THEN
-          gt_mst_tbl(gn_if).proc_flg := gv_sts_error;  -- 更新不可能
-          gt_mst_tbl(gn_if).row_err_message := lv_errmsg;
-        --正常処理：既存社員データ（更新）
-        ELSIF (gt_mst_tbl(gn_if).emp_kbn  = gv_kbn_employee) THEN
-          -- =================================
-          -- 社員データ更新情報格納処理(A-9)
-          -- =================================
-          gt_mst_tbl(gn_if).proc_flg := gv_sts_update;  -- 処理対象
-          ln_update_cnt := ln_update_cnt + 1;
-          lt_update_masters(ln_update_cnt) := gt_mst_tbl(gn_if);
-        --正常処理：異動なし（SKIP）
-        ELSIF (gt_mst_tbl(gn_if).proc_flg  = gv_sts_thru) THEN
-          NULL;
-        --正常処理：退職社員データ（更新）
-        ELSIF (gt_mst_tbl(gn_if).emp_kbn  = gv_kbn_retiree) THEN
-          -- =================================
-          -- 社員データ削除情報格納処理(A-10)
-          -- =================================
-          gt_mst_tbl(gn_if).proc_flg := gv_sts_update;  -- 処理対象
-          ln_delete_cnt := ln_delete_cnt + 1;
-          lt_delete_masters(ln_delete_cnt) := gt_mst_tbl(gn_if);
-        END IF;
       END IF;
-    END IF;
-
-    -- 件数のカウントアップ（異常時以外、処理件数=gn_skip_cnt + gn_normal_cnt + gn_warn_cnt ）
-    -- 異動なし件数（スキップ）をカウントアップ
-    IF (gt_mst_tbl(gn_if).proc_flg = gv_sts_thru) THEN  -- 異動なしデータ
-      gn_skip_cnt := gn_skip_cnt + 1;
-    -- 更新対象件数（正常）をカウントアップ
-    ELSIF (gt_mst_tbl(gn_if).proc_flg = gv_sts_update) THEN  -- 更新対象
-      gn_normal_cnt := gn_normal_cnt + 1;
-    -- 更新対象件数（異常）をカウントアップ
-    ELSIF (gt_mst_tbl(gn_if).proc_flg = gv_sts_error) THEN  -- 更新不可能
-      gn_warn_cnt := gn_warn_cnt + 1;
-    -- 異常件数をカウントアップ
-    ELSE
-      gn_error_cnt := gn_error_cnt +1;
-    END IF;
---
-    -- ==================================
-    -- 社員データエラー情報格納処理(A-11)
-    -- ==================================
-    add_report(
-      gt_mst_tbl(gn_if)  -- 待避エリア
-      ,lv_errbuf   -- エラー・メッセージ           --# 固定 #
-      ,lv_retcode  -- リターン・コード             --# 固定 #
-      ,lv_errmsg   -- ユーザー・エラー・メッセージ --# 固定 #
-    );
-    IF (lv_retcode = cv_status_error) THEN
-      RAISE global_api_expt;
-    END IF;
---
+      --
+    END LOOP in_if_loop;
+-- End Ver1.3
+    --
     -- ================================
     -- 社員データ反映処理(A-12)
     -- ================================
---
-    IF (ln_insert_cnt > 0) THEN
+    IF ( ln_insert_cnt > 0 ) THEN
       -- 新規社員登録処理
       <<lt_insert_masters_loop>>
       FOR ln_cnt IN 1 .. ln_insert_cnt LOOP
@@ -6022,18 +6562,18 @@ AS
           ,lv_retcode  -- リターン・コード             --# 固定 #
           ,lv_errmsg   -- ユーザー・エラー・メッセージ --# 固定 #
         );
---
+        --
         IF (lv_retcode = cv_status_error) THEN
           RAISE global_api_expt;
         END IF;
       END LOOP lt_insert_masters_loop;
-
+      --
       -- 新規社員の職責は社員職責自動割当ワークより一括登録
       <<wk_pr2_loop>>
       FOR wk_pr2_rec IN wk_pr2_cur(gv_kbn_new) LOOP
       -- 新規社員登録処理
         insert_resp_all(
-            wk_pr2_rec.employee_number
+           wk_pr2_rec.employee_number
           ,wk_pr2_rec.responsibility_key
           ,wk_pr2_rec.application_short_name
           ,wk_pr2_rec.start_date
@@ -6047,7 +6587,7 @@ AS
         END IF;
       END LOOP wk_pr2_loop;
     END IF;
---
+    --
     IF (ln_update_cnt > 0) THEN
       -- 既存社員更新処理
       <<lt_update_masters_loop>>
@@ -6059,13 +6599,13 @@ AS
           ,lv_retcode  -- リターン・コード             --# 固定 #
           ,lv_errmsg   -- ユーザー・エラー・メッセージ --# 固定 #
         );
---
+        --
         IF (lv_retcode = cv_status_error) THEN
           RAISE global_api_expt;
         END IF;
       END LOOP lt_update_masters_loop;
     END IF;
---
+    --
     IF (ln_delete_cnt > 0) THEN
       -- 退職者再雇用処理
       <<lt_delete_masters_loop>>
@@ -6077,16 +6617,16 @@ AS
           ,lv_retcode  -- リターン・コード             --# 固定 #
           ,lv_errmsg   -- ユーザー・エラー・メッセージ --# 固定 #
         );
---
+        --
         IF (lv_retcode = cv_status_error) THEN
           RAISE global_api_expt;
         END IF;
       END LOOP lt_update_masters_loop;
     END IF;
---
+    --
     -- 初期化
     ov_retcode := cv_status_normal;
-
+    --
     --==============================================================
     --メッセージ出力(エラー以外)をする必要がある場合は処理を記述
     --==============================================================
