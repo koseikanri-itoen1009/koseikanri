@@ -1,4 +1,4 @@
-CREATE OR REPLACE PACKAGE XXCOS004A02C
+CREATE OR REPLACE PACKAGE APPS.XXCOS004A02C
 AS
 /*****************************************************************************************
  * Copyright(c)Sumisho Computer Systems Corporation, 2008. All rights reserved.
@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCOS004A02C (spec)
  * Description      : 商品別売上計算
  * MD.050           : 商品別売上計算 MD050_COS_004_A02
- * Version          : 1.14
+ * Version          : 1.15
  *
  * Program List
  * -------------------- ------------------------------------------------------------
@@ -36,6 +36,7 @@ AS
  *  2009/06/10    1.12  T.kitajima       [T1_1412]納品伝票番号取得処理変更
  *  2009/06/11    1.13  T.kitajima       [T1_1415]納品伝票番号取得処理変更
  *  2009/08/17    1.14  K.Kiriu          [0000430]PT対応
+ *  2009/09/11    1.15  M.Sano           [0001345]PT対応
  *
  *****************************************************************************************/
 --

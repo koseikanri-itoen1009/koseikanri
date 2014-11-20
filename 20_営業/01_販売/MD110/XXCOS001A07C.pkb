@@ -1,4 +1,4 @@
-CREATE OR REPLACE PACKAGE BODY XXCOS001A07C
+CREATE OR REPLACE PACKAGE BODY APPS.XXCOS001A07C
 AS
 /*****************************************************************************************
  * Copyright(c)Sumisho Computer Systems Corporation, 2008. All rights reserved.
@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCOS001A07C (body)
  * Description      : 入出庫一時表、納品ヘッダ・明細テーブルのデータの抽出を行う
  * MD.050           : VDコラム別取引データ抽出 (MD050_COS_001_A07)
- * Version          : 1.12
+ * Version          : 1.13
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -40,6 +40,7 @@ AS
  *  2009/06/02    1.10  N.Maeda          [T1_1192]端数処理(切上)の修正
  *  2009/07/17    1.11  N.Maeda          [T1_1438]ロック単位の変更
  *  2009/08/10    1.12  N.Maeda          [0000425]PT対応
+ *  2009/09/04    1.13  N.Maeda          [0001211]消費税関連項目取得基準日修正
  *
  *****************************************************************************************/
 --
@@ -135,7 +136,10 @@ AS
   cv_msg_warn        CONSTANT VARCHAR2(20)  := 'APP-XXCCP1-90005';       -- 警告終了メッセージ
   cv_msg_error       CONSTANT VARCHAR2(20)  := 'APP-XXCCP1-90006';       -- エラー終了全ロールバックメッセージ
   cv_msg_parameter   CONSTANT VARCHAR2(20)  := 'APP-XXCCP1-90008';       -- コンカレント入力パラメータなし
-  cv_msg_tax_table   CONSTANT VARCHAR2(20)  := 'APP-XXCOS1-10352';       -- 参照コードマスタ及びAR消費税マスタ
+-- *************** 2009/09/04 1.13 N.Maeda MOD START *****************************--
+--  cv_msg_tax_table   CONSTANT VARCHAR2(20)  := 'APP-XXCOS1-10352';       -- 参照コードマスタ及びAR消費税マスタ
+  cv_msg_tax_table   CONSTANT VARCHAR2(20)  := 'APP-XXCOS1-00190';       -- 消費税VIEW
+-- *************** 2009/09/04 1.13 N.Maeda MOD  END  *****************************--
   cv_msg_inv_table   CONSTANT VARCHAR2(20)  := 'APP-XXCOS1-10353';       -- 入出庫一時表
   cv_msg_vdh_table   CONSTANT VARCHAR2(20)  := 'APP-XXCOS1-10354';       -- VDコラム別取引ヘッダテーブル
   cv_msg_vdl_table   CONSTANT VARCHAR2(20)  := 'APP-XXCOS1-10355';       -- VDコラム別取引明細テーブル
@@ -202,6 +206,10 @@ AS
       rate                ar_vat_tax_all_b.tax_rate%TYPE,                     -- 消費税率
       code                ar_vat_tax_all_b.tax_code%TYPE,                     -- 消費税コード
       tax_class           fnd_lookup_values.attribute3%TYPE                   -- 消費税区分
+-- *************** 2009/09/04 1.13 N.Maeda ADD START *****************************--
+      ,qck_start_date_active  fnd_lookup_values.start_date_active%TYPE        -- クイックコード適用開始日
+      ,qck_end_date_active    fnd_lookup_values.end_date_active%TYPE          -- クイックコード適用終了日
+-- *************** 2009/09/04 1.13 N.Maeda ADD  END  *****************************--
     );
   TYPE g_tab_tax_rate IS TABLE OF g_rec_tax_rate INDEX BY PLS_INTEGER;
 --
@@ -772,52 +780,62 @@ AS
     -- 消費税率 and クイックコード：消費税コード、消費税区分
     CURSOR get_tax_rate_cur( gl_id VARCHAR2 )
     IS
-      SELECT tax.tax_rate  tax_rate,  -- 消費税率
-             tax.tax_code  tax_code,  -- 消費税コード
-             qck.cla       cla        -- 消費税区分
-      FROM   ar_vat_tax_all_b tax,    -- 税コードマスタ
-             (
--- *************** 2009/08/10 1.12 N.Maeda MOD START *****************************--
-               SELECT look_val.attribute2   code,   -- 消費税コード
-                      look_val.attribute3   cla     -- 消費税区分
-               FROM   fnd_lookup_values     look_val
-               WHERE  look_val.lookup_type       = cv_qck_typ_tax       -- タイプ＝XXCOS1_CONSUMPTION_TAX_CLASS
-               AND    look_val.enabled_flag      = cv_tkn_yes           -- 使用可能＝Y
-               AND    gd_process_date           >= NVL(look_val.start_date_active, gd_process_date)
-               AND    gd_process_date           <= NVL(look_val.end_date_active, gd_max_date)
-               AND    look_val.language          = ct_user_lang    -- 言語＝JA
-               ORDER BY look_val.attribute3
---
+-- *************** 2009/09/04 1.13 N.Maeda MOD START *****************************--
+      SELECT  xtv.tax_rate        tax_rate      -- 消費税率
+             ,xtv.tax_code        tax_code      -- 税金コード
+             ,xtv.hht_tax_class   tax_class -- 消費税区分
+             ,xtv.start_date_active start_date_active -- 適用開始日
+             ,xtv.end_date_active   end_date_active   -- 適用終了日
+      FROM   xxcos_tax_v xtv
+      WHERE  xtv.set_of_books_id = gl_id
+      ;
+--      SELECT tax.tax_rate  tax_rate,  -- 消費税率
+--             tax.tax_code  tax_code,  -- 消費税コード
+--             qck.cla       cla        -- 消費税区分
+--      FROM   ar_vat_tax_all_b tax,    -- 税コードマスタ
+--             (
+---- *************** 2009/08/10 1.12 N.Maeda MOD START *****************************--
 --               SELECT look_val.attribute2   code,   -- 消費税コード
 --                      look_val.attribute3   cla     -- 消費税区分
---               FROM   fnd_lookup_values     look_val,
---                      fnd_lookup_types_tl   types_tl,
---                      fnd_lookup_types      types,
---                      fnd_application_tl    appl,
---                      fnd_application       app
---               WHERE  app.application_short_name = cv_application       -- XXCOS
---               AND    look_val.lookup_type       = cv_qck_typ_tax       -- タイプ＝XXCOS1_CONSUMPTION_TAX_CLASS
+--               FROM   fnd_lookup_values     look_val
+--               WHERE  look_val.lookup_type       = cv_qck_typ_tax       -- タイプ＝XXCOS1_CONSUMPTION_TAX_CLASS
 --               AND    look_val.enabled_flag      = cv_tkn_yes           -- 使用可能＝Y
 --               AND    gd_process_date           >= NVL(look_val.start_date_active, gd_process_date)
 --               AND    gd_process_date           <= NVL(look_val.end_date_active, gd_max_date)
---               AND    types_tl.language          = USERENV( 'LANG' )    -- 言語＝JA
---               AND    look_val.language          = USERENV( 'LANG' )    -- 言語＝JA
---               AND    appl.language              = USERENV( 'LANG' )    -- 言語＝JA
---               AND    appl.application_id        = types.application_id
---               AND    app.application_id         = appl.application_id
---               AND    types_tl.lookup_type       = look_val.lookup_type
---               AND    types.lookup_type          = types_tl.lookup_type
---               AND    types.security_group_id    = types_tl.security_group_id
---               AND    types.view_application_id  = types_tl.view_application_id
+--               AND    look_val.language          = ct_user_lang    -- 言語＝JA
 --               ORDER BY look_val.attribute3
--- *************** 2009/08/10 1.12 N.Maeda MOD  END  *****************************--
-             ) qck
-      WHERE  tax.tax_code        = qck.code
-      AND    tax.set_of_books_id = gl_id                -- GL会計帳簿ID
-      AND    tax.enabled_flag    = cv_tkn_yes           -- 使用可能＝Y
-      AND    gd_process_date    >= NVL(tax.start_date, gd_process_date)
-      AND    gd_process_date    <= NVL(tax.end_date, gd_max_date)
-      ;
+----
+----               SELECT look_val.attribute2   code,   -- 消費税コード
+----                      look_val.attribute3   cla     -- 消費税区分
+----               FROM   fnd_lookup_values     look_val,
+----                      fnd_lookup_types_tl   types_tl,
+----                      fnd_lookup_types      types,
+----                      fnd_application_tl    appl,
+----                      fnd_application       app
+----               WHERE  app.application_short_name = cv_application       -- XXCOS
+----               AND    look_val.lookup_type       = cv_qck_typ_tax       -- タイプ＝XXCOS1_CONSUMPTION_TAX_CLASS
+----               AND    look_val.enabled_flag      = cv_tkn_yes           -- 使用可能＝Y
+----               AND    gd_process_date           >= NVL(look_val.start_date_active, gd_process_date)
+----               AND    gd_process_date           <= NVL(look_val.end_date_active, gd_max_date)
+----               AND    types_tl.language          = USERENV( 'LANG' )    -- 言語＝JA
+----               AND    look_val.language          = USERENV( 'LANG' )    -- 言語＝JA
+----               AND    appl.language              = USERENV( 'LANG' )    -- 言語＝JA
+----               AND    appl.application_id        = types.application_id
+----               AND    app.application_id         = appl.application_id
+----               AND    types_tl.lookup_type       = look_val.lookup_type
+----               AND    types.lookup_type          = types_tl.lookup_type
+----               AND    types.security_group_id    = types_tl.security_group_id
+----               AND    types.view_application_id  = types_tl.view_application_id
+----               ORDER BY look_val.attribute3
+---- *************** 2009/08/10 1.12 N.Maeda MOD  END  *****************************--
+--             ) qck
+--      WHERE  tax.tax_code        = qck.code
+--      AND    tax.set_of_books_id = gl_id                -- GL会計帳簿ID
+--      AND    tax.enabled_flag    = cv_tkn_yes           -- 使用可能＝Y
+--      AND    gd_process_date    >= NVL(tax.start_date, gd_process_date)
+--      AND    gd_process_date    <= NVL(tax.end_date, gd_max_date)
+--      ;
+-- *************** 2009/09/04 1.13 N.Maeda MOD  END  *****************************--
 --
     -- クイックコード：伝票区分
     CURSOR get_invoice_type_cur
@@ -976,12 +994,13 @@ AS
 --****************************** 2009/04/17 1.6 T.Kitajima ADD  END  ******************************--
       FROM
         (
+        SELECT
 -- *************** 2009/08/10 1.12 N.Maeda ADD START *****************************--
              /*+
                INDEX ( vd XXCOI_MST_VD_COLUMN_U01 )
              */
 -- *************** 2009/08/10 1.12 N.Maeda ADD  END  *****************************--
-          SELECT inv.base_code                 base_code                    -- 拠点コード
+                 inv.base_code                 base_code                    -- 拠点コード
                 ,inv.employee_num              employee_num                 -- 営業員コード
                 ,inv.invoice_no                invoice_no                   -- 伝票No.
                 ,inv.item_code                 item_code                    -- 品目コード（品名コード）
@@ -1639,7 +1658,15 @@ AS
       --== 税率の算出 ==--
       FOR i IN 1..gt_tax_rate.COUNT LOOP
 --
-        IF ( gt_tax_rate(i).tax_class = lt_tax_div ) THEN
+-- *************** 2009/09/04 1.13 N.Maeda MOD START *****************************--
+--        IF ( gt_tax_rate(i).tax_class = lt_tax_div ) THEN
+        -- クイックコード消費税区分 = 消費税区分
+        IF  ( gt_tax_rate(i).tax_class = lt_tax_div )
+        -- 伝票日付 ≧ NVL( クイックコード適用開始日 , 伝票日付 )
+        AND ( lt_invoice_date >= NVL( gt_tax_rate(i).qck_start_date_active,lt_invoice_date ) )
+        -- 伝票日付 ≦ NVL( クイックコード適用終了日 , A-0で取得したMAX日付 )
+        AND ( lt_invoice_date <= NVL( gt_tax_rate(i).qck_end_date_active, gd_max_date ) ) THEN
+-- *************** 2009/09/04 1.13 N.Maeda MOD  END  *****************************--
           ln_rate := 1 + gt_tax_rate(i).rate / 100;     -- 税率をセット
           EXIT;
         END IF;

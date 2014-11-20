@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCOS014A02C (body)
  * Description      : 納品書用データ作成(EDI)
  * MD.050           : 納品書用データ作成(EDI) MD050_COS_014_A02
- * Version          : 1.11
+ * Version          : 1.12
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -43,6 +43,8 @@ AS
  *  2009/07/03    1.10  M.Sano           [T1_1158] 対象データ抽出条件変更(レビュー指摘修正)
  *  2009/08/12    1.11  N.Maeda          [0000441] PT対応
  *  2009/08/13    1.11  N.Maeda          [0000441] レビュー指摘対応
+ *  2009/09/08    1.12  M.Sano           [0001211] 税関連項目取得基準日修正
+ *  2009/09/15    1.12  M.Sano           [0001211] レビュー指摘対応
  *
  *****************************************************************************************/
 --
@@ -213,6 +215,10 @@ AS
 --
   --参照タイプ
   ct_qc_sale_class                CONSTANT fnd_lookup_values.lookup_type%TYPE := 'XXCOS1_SALE_CLASS';                   --参照タイプ.売上区分
+/* 2009/09/15 Ver1.12 Add Start */
+  --参照タイプ
+  ct_qc_consumption_tax_class     CONSTANT fnd_lookup_values.lookup_type%TYPE :=  'XXCOS1_CONSUMPTION_TAX_CLASS';       --参照タイプ.HHT消費税区分
+/* 2009/09/15 Ver1.12 Add End   */
 --
   --その他
   cv_utl_file_mode                CONSTANT VARCHAR2(1)   := 'w';                                  --UTL_FILE.オープンモード
@@ -227,6 +233,13 @@ AS
 -- ************ 2009/08/12 N.Maeda 1.11 ADD START ***************** --
   ct_user_lang                    CONSTANT mtl_category_sets_tl.language%TYPE := userenv('LANG'); --LANG
 -- ************ 2009/08/12 N.Maeda 1.11 ADD  END  ***************** --
+/* 2009/09/15 Ver1.12 Add Start */
+  cv_enabled_flag                 CONSTANT VARCHAR2(1) := 'Y';                                    --有効フラグ.有効
+  cv_order_forward_flag_y         CONSTANT VARCHAR2(1) := 'Y';                                    --受注連携済フラグ.有効
+  cv_order_forward_flag_n         CONSTANT VARCHAR2(1) := 'N';                                    --受注連携済フラグ.無効
+  cv_select_block_1               CONSTANT VARCHAR2(1) := '1';                                    --変換後顧客コードがNULL以外のEDIヘッダデータ
+  cv_select_block_2               CONSTANT VARCHAR2(1) := '2';                                    --変換後顧客コードがNULLのEDIヘッダ
+/* 2009/09/15 Ver1.12 Add End   */
 --
   -- ===============================
   -- ユーザー定義グローバル型
@@ -2582,10 +2595,16 @@ AS
                 AND mic.category_set_id = i_other_rec.category_set_id
                 AND mic.category_id = mcb.category_id
                 AND ( mcb.disable_date IS NULL OR mcb.disable_date > i_other_rec.process_date )
-                AND   mcb.enabled_flag   = 'Y'      -- カテゴリ有効フラグ
+/* 2009/09/15 Ver1.12 Mod Start */
+--                AND   mcb.enabled_flag   = 'Y'      -- カテゴリ有効フラグ
+                AND   mcb.enabled_flag   = cv_enabled_flag      -- カテゴリ有効フラグ
+/* 2009/09/15 Ver1.12 Mod End   */
                 AND   i_other_rec.process_date BETWEEN NVL(mcb.start_date_active, i_other_rec.process_date)
                                                  AND   NVL(mcb.end_date_active, i_other_rec.process_date)
-                AND   msib.enabled_flag  = 'Y'      -- 品目マスタ有効フラグ
+/* 2009/09/15 Ver1.12 Mod Start */
+--                AND   msib.enabled_flag  = 'Y'      -- 品目マスタ有効フラグ
+                AND   msib.enabled_flag  = cv_enabled_flag      -- 品目マスタ有効フラグ
+/* 2009/09/15 Ver1.12 Mod End   */
                 AND   i_other_rec.process_date BETWEEN NVL(msib.start_date_active, i_other_rec.process_date)
                                                  AND  NVL(msib.end_date_active, i_other_rec.process_date)
              ) PROD_CLASS
@@ -2714,7 +2733,10 @@ AS
             ,xeh_l.xeh_chain_peculiar_area_footer                              chain_peculiar_area_footer    --チェーン店固有エリア（フッター）
 --
       FROM  (
-             SELECT  '1'                                select_block
+/* 2009/09/15 Ver1.12 Mod Start */
+--             SELECT  '1'                                select_block
+             SELECT cv_select_block_1                   select_block
+/* 2009/09/15 Ver1.12 Mod End   */
                     -------------------- ヘッダデータ -------------------------------------------------------------------------------
                     ,xeh.edi_header_info_id             xeh_edi_header_info_id     -- EDIヘッダ情報ID
                     ,xeh.medium_class                   xeh_medium_class           -- 媒体区分
@@ -3163,7 +3185,10 @@ AS
              AND    xcss.chain_store_code = xeh.shop_code                                                         --店コード
              AND    xcss.user_id          = i_input_rec.user_id                                                   --ユーザID
 --
-             AND xlvv2.lookup_type = 'XXCOS1_CONSUMPTION_TAX_CLASS'                               --
+/* 2009/09/15 Ver1.12 Mod Start */
+--             AND xlvv2.lookup_type = 'XXCOS1_CONSUMPTION_TAX_CLASS'                               --
+             AND xlvv2.lookup_type = ct_qc_consumption_tax_class                               --
+/* 2009/09/15 Ver1.12 Mod End   */
              AND xlvv2.attribute3  = xca.tax_div                                             --
              AND TRUNC( xeh.shop_delivery_date )                                               --
                BETWEEN NVL( xlvv2.start_date_active, TRUNC( xeh.shop_delivery_date ) )         --
@@ -3171,10 +3196,15 @@ AS
              AND avtab.tax_code = xlvv2.attribute2
              AND avtab.set_of_books_id = i_prf_rec.set_of_books_id
              AND avtab.org_id                   = i_prf_rec.org_id       --MO:営業単位
-             AND avtab.enabled_flag             = 'Y'                    --使用可能フラグ
-             AND i_other_rec.process_date
-               BETWEEN NVL( avtab.start_date ,i_other_rec.process_date )
-               AND     NVL( avtab.end_date   ,i_other_rec.process_date )
+/* 2009/09/15 Ver1.12 Mod Start */
+--             AND avtab.enabled_flag             = 'Y'                    --使用可能フラグ
+             AND avtab.enabled_flag             = cv_enabled_flag        --使用可能フラグ
+/* 2009/09/15 Ver1.12 Mod End   */
+/* 2009/09/08 Ver1.12 Del Start */
+--             AND i_other_rec.process_date
+--               BETWEEN NVL( avtab.start_date ,i_other_rec.process_date )
+--               AND     NVL( avtab.end_date   ,i_other_rec.process_date )
+/* 2009/09/08 Ver1.12 Del End   */
              --
              AND xca.delivery_base_code = cdm.account_number
 -- ************ 2009/08/12 N.Maeda 1.11 ADD START ***************** --
@@ -3190,7 +3220,10 @@ AS
                       USE_NL ( OTTT_H )
                     */
 -- ************ 2009/08/12 N.Maeda 1.11 ADD  END  ***************** --
-                    '2'                                 select_block
+/* 2009/09/15 Ver1.12 Mod Start */
+--                    '2'                                 select_block
+                     cv_select_block_2                  select_block
+/* 2009/09/15 Ver1.12 Mod End   */
                     -------------------- ヘッダデータ -------------------------------------------------------------------------------
                     ,xeh.edi_header_info_id              xeh_edi_header_info_id     -- EDIヘッダ情報ID
                     ,xeh.medium_class                   xeh_medium_class           -- 媒体区分
@@ -3598,7 +3631,7 @@ AS
                                USE_NL ( OOS OTTT_H )
                              */
 -- ************ 2009/08/12 N.Maeda 1.11 ADD  END  ***************** --
-                             xeh.edi_header_info_id   edi_header_info_id  --EDIヘッダID
+                             xeh.edi_header_info_id   edi_header_info_id   --EDIヘッダID
                              ,xel.edi_line_info_id     edi_line_info_id    --EDI明細ID
                              ,ooha.order_number        order_number        --受注番号
                              ,ooha.request_date        request_date        --納品日
@@ -3612,25 +3645,39 @@ AS
                              ,oe_order_lines_all       oola        --受注明細
                              ,oe_transaction_types_tl  ottt_l      --受注タイプ(明細)
                              ,xxcos_lookup_values_v    xlvv        --クイックコード(売上区分マスタ)
-                      WHERE   xeh.order_forward_flag        = 'Y'                        --受注連携済
+/* 2009/09/15 Ver1.12 Mod Start */
+--                      WHERE   xeh.order_forward_flag        = 'Y'                        --受注連携済
+                      WHERE   xeh.order_forward_flag        = cv_order_forward_flag_y    --受注連携済
+/* 2009/09/15 Ver1.12 Mod End   */
                       AND     xeh.edi_header_info_id        = xel.edi_header_info_id
                       AND     xeh.order_connection_number   = ooha.orig_sys_document_ref
                       AND     ooha.org_id                   = i_prf_rec.org_id           --MO:営業単位
                       AND     ooha.flow_status_code        != cv_cancel                  --ステータス(キャンセル以外)
                       AND     ooha.order_type_id            = ottt_h.transaction_type_id
-                      AND     ottt_h.language               = userenv('LANG')
-                      AND     ottt_h.source_lang            = userenv('LANG')
+/* 2009/09/08 Ver1.12 Mod Start */
+--                      AND     ottt_h.language               = userenv('LANG')
+--                      AND     ottt_h.source_lang            = userenv('LANG')
+                      AND     ottt_h.language               = ct_user_lang
+                      AND     ottt_h.source_lang            = ct_user_lang
+/* 2009/09/08 Ver1.12 Mod End   */
                       AND     ottt_h.description            = i_msg_rec.header_type      --受注タイプ(ヘッダ)
                       AND     ooha.order_source_id          = oos.order_source_id
                       AND     oos.description               = i_msg_rec.order_source     --受注ソース
-                      AND     oos.enabled_flag              = 'Y'
+/* 2009/09/15 Ver1.12 Mod Start */
+--                      AND     oos.enabled_flag              = 'Y'
+                      AND     oos.enabled_flag              = cv_enabled_flag
+/* 2009/09/15 Ver1.12 Mod End   */
                       AND     ooha.header_id                = oola.header_id
                       AND     ooha.org_id                   = oola.org_id                --MO:営業単位
                       AND     oola.orig_sys_line_ref        = xel.order_connection_line_number
                       AND     oola.flow_status_code        != cv_cancel                  --ステータス(キャンセル以外)
                       AND     oola.line_type_id             = ottt_l.transaction_type_id
-                      AND     ottt_l.language               = userenv('LANG')
-                      AND     ottt_l.source_lang            = userenv('LANG')
+/* 2009/09/08 Ver1.12 Mod Start */
+--                      AND     ottt_l.language               = userenv('LANG')
+--                      AND     ottt_l.source_lang            = userenv('LANG')
+                      AND     ottt_l.language               = ct_user_lang
+                      AND     ottt_l.source_lang            = ct_user_lang
+/* 2009/09/08 Ver1.12 Mod End   */
                       AND     ottt_l.description            = i_msg_rec.line_type        --受注タイプ(明細)
                       AND     xlvv.lookup_type(+)           = ct_qc_sale_class           --売上区分
                       AND     xlvv.lookup_code(+)           = oola.attribute5
@@ -3651,7 +3698,10 @@ AS
                              ,TO_CHAR( NULL )          outbound_flag       --OUTBOUND可否
                       FROM   xxcos_edi_headers         xeh         --EDIヘッダ
                              ,xxcos_edi_lines          xel         --EDI明細
-                      WHERE   xeh.order_forward_flag        = 'N'                        --受注未連携
+/* 2009/09/15 Ver1.12 Mod Start */
+--                      WHERE   xeh.order_forward_flag        = 'N'                        --受注未連携
+                      WHERE   xeh.order_forward_flag        = cv_order_forward_flag_n    --受注未連携
+/* 2009/09/15 Ver1.12 Mod End   */
                       AND     xeh.edi_header_info_id        = xel.edi_header_info_id
 -- ************ 2009/08/12 N.Maeda 1.11 ADD START ***************** --
                       AND     xeh.data_type_code = i_input_rec.data_type_code
@@ -3729,7 +3779,10 @@ AS
       --
       AND xeh_l.select_block       = DECODE( i_input_rec.store_code,
                                              NULL,xeh_l.select_block,
-                                             '1')
+/* 2009/09/15 Ver1.12 Mod Start */
+--                                             '1')
+                                             cv_select_block_1)
+/* 2009/09/15 Ver1.12 Mod End   */
       ORDER BY xeh_l.xeh_shop_code, xeh_l.xeh_invoice_number, xeh_l.xel_line_no
 --****************************** 2009/06/18 1.11 N.Maeda MOD  END    ******************************--
 /* 2009/06/11 Ver1.10 Mod End   */

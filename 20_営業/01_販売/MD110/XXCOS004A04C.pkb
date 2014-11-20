@@ -1,4 +1,4 @@
-CREATE OR REPLACE PACKAGE BODY XXCOS004A04C
+CREATE OR REPLACE PACKAGE BODY APPS.XXCOS004A04C
 AS
 /*****************************************************************************************
  * Copyright(c)Sumisho Computer Systems Corporation, 2008. All rights reserved.
@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCOS004A04C (body)
  * Description      : è¡âªÇuÇcî[ïiÉfÅ[É^çÏê¨
  * MD.050           : è¡âªÇuÇcî[ïiÉfÅ[É^çÏê¨ MD050_COS_004_A04
- * Version          : 1.19
+ * Version          : 1.20
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -55,6 +55,7 @@ AS
  *  2009/06/11   1.17  T.kitajima        [T1_1415]î[ïiì`ï[î‘çÜéÊìæèàóùïœçX
  *  2009/06/12   1.18  T.kitajima        [T1_1432]VDÉRÉâÉÄï éÊà¯ÉwÉbÉ_çXêVèåèïœçX
  *  2009/08/10   1.19  K.Kiriu           [0000431]PTëŒâû
+ *  2009/09/14   1.20  M.Sano            [0001345]PTëŒâû
  *
  *****************************************************************************************/
 --
@@ -1169,15 +1170,30 @@ AS
     IS
 /* 2009/08/10 Ver1.19 Mod Start */
 --      SELECT xsdh.vd_digestion_hdr_id           vd_digestion_hdr_id,              --è¡âªÇuÇcópè¡âªåvéZÉwÉbÉ_ID
+/* 2009/09/14 Ver1.20 Mod Start */
+--      SELECT /*+
+--               LEADING(xsdh)
+--               INDEX(xsdh xxcos_shop_digestion_hdrs_n04)
+--               INDEX(xxca xxcmm_cust_accounts_pk)
+--               USE_NL(xchv.cust_hier.cash_hcar_3)
+--               USE_NL(xchv.cust_hier.bill_hasa_3)
+--               USE_NL(xchv.cust_hier.bill_hasa_4)
+--               USE_NL(flv xxca)
+--             */ 
       SELECT /*+
                LEADING(xsdh)
-               INDEX(xsdh xxcos_shop_digestion_hdrs_n04)
+               INDEX(xsdh xxcos_vd_digestion_hdrs_n04)
                INDEX(xxca xxcmm_cust_accounts_pk)
+               INDEX(xchv.cust_hier.ship_hzca_1 hz_cust_accounts_u1)
+               INDEX(xchv.cust_hier.ship_hzca_2 hz_cust_accounts_u1)
+               INDEX(xchv.cust_hier.ship_hzca_3 hz_cust_accounts_u1)
+               INDEX(xchv.cust_hier.ship_hzca_4 hz_cust_accounts_u1)
                USE_NL(xchv.cust_hier.cash_hcar_3)
                USE_NL(xchv.cust_hier.bill_hasa_3)
                USE_NL(xchv.cust_hier.bill_hasa_4)
                USE_NL(flv xxca)
              */ 
+/* 2009/09/14 Ver1.20 Mod Start */
              xsdh.vd_digestion_hdr_id           vd_digestion_hdr_id,              --è¡âªÇuÇcópè¡âªåvéZÉwÉbÉ_ID
 /* 2009/08/10 Ver1.19 Mod End   */
              xsdh.customer_number               customer_number,                  --å⁄ãqÉRÅ[Éh
@@ -1480,15 +1496,30 @@ AS
     IS
 /* 2009/08/10 Ver1.19 Mod Start */
 --      SELECT xsdh.vd_digestion_hdr_id           vd_digestion_hdr_id,              --è¡âªÇuÇcópè¡âªåvéZÉwÉbÉ_ID
+/* 2009/09/14 Ver1.20 Mod Start */
+--      SELECT /*+
+--               LEADING(xsdh)
+--               INDEX(xsdh xxcos_shop_digestion_hdrs_n04)
+--               INDEX(xxca xxcmm_cust_accounts_pk)
+--               USE_NL(xchv.cust_hier.cash_hcar_3)
+--               USE_NL(xchv.cust_hier.bill_hasa_3)
+--               USE_NL(xchv.cust_hier.bill_hasa_4)
+--               USE_NL(flv xxca)
+--             */
       SELECT /*+
                LEADING(xsdh)
-               INDEX(xsdh xxcos_shop_digestion_hdrs_n04)
+               INDEX(xsdh xxcos_vd_digestion_hdrs_n04)
                INDEX(xxca xxcmm_cust_accounts_pk)
+               INDEX(xchv.cust_hier.ship_hzca_1 hz_cust_accounts_u1)
+               INDEX(xchv.cust_hier.ship_hzca_2 hz_cust_accounts_u1)
+               INDEX(xchv.cust_hier.ship_hzca_3 hz_cust_accounts_u1)
+               INDEX(xchv.cust_hier.ship_hzca_4 hz_cust_accounts_u1)
                USE_NL(xchv.cust_hier.cash_hcar_3)
                USE_NL(xchv.cust_hier.bill_hasa_3)
                USE_NL(xchv.cust_hier.bill_hasa_4)
                USE_NL(flv xxca)
              */
+/* 2009/09/14 Ver1.20 Mod End   */
              xsdh.vd_digestion_hdr_id           vd_digestion_hdr_id,              --è¡âªÇuÇcópè¡âªåvéZÉwÉbÉ_ID
 /* 2009/08/10 Ver1.19 Mod End   */
              xsdh.customer_number               customer_number,                  --å⁄ãqÉRÅ[Éh

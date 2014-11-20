@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCOS014A03C (body)
  * Description      : 納品確定情報データ作成(EDI)
  * MD.050           : 納品確定情報データ作成(EDI) MD050_COS_014_A03
- * Version          : 1.11
+ * Version          : 1.12
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -43,6 +43,7 @@ AS
  *  2009/07/29    1.9   M.Sano           [T1_1359] レビュー指摘対応(INパラ：単位設定方法修正)
  *  2009/08/10    1.10  M.Sano           [0000442] 『返品確定情報データ作成』PTの考慮
  *  2009/08/13    1.11  M.Sano           [0001043] 売上区分混在チェック削除
+ *  2009/09/09    1.12  M.Sano           [0001211] 税関連項目取得基準日修正
  *
  *****************************************************************************************/
 --
@@ -195,6 +196,9 @@ AS
   cv_cust_class_chain_store       CONSTANT VARCHAR2(2)  := '10';                                  --顧客区分.顧客
   cv_cust_class_uesama            CONSTANT VARCHAR2(2)  := '12';                                  --顧客区分.上様
   cv_space                        CONSTANT VARCHAR2(2)  := '　';                                  --全角スペース
+-- 2009/09/09 Ver.1.12 add start
+  ct_lang                         CONSTANT fnd_lookup_values.language%TYPE := USERENV('LANG');    -- 言語
+-- 2009/09/09 Ver.1.12 add end
 --
   -- ===============================
   -- ユーザー定義グローバル型
@@ -3171,9 +3175,11 @@ AS
                  AND avtab.set_of_books_id    = i_prf_rec.set_of_books_id
                  AND avtab.org_id             = i_prf_rec.org_id                 --MO:営業単位
                  AND avtab.enabled_flag       = cv_enabled_flag                  --使用可能フラグ
-                 AND i_other_rec.process_date
-                       BETWEEN NVL( avtab.start_date ,i_other_rec.process_date )
-                       AND     NVL( avtab.end_date   ,i_other_rec.process_date )
+-- 2009/09/09 Ver1.12 M.Sano Del Start
+--                 AND i_other_rec.process_date
+--                       BETWEEN NVL( avtab.start_date ,i_other_rec.process_date )
+--                       AND     NVL( avtab.end_date   ,i_other_rec.process_date )
+-- 2009/09/09 Ver1.12 M.Sano Del End
               UNION ALL
               SELECT 2                                                           select_block                  --店舗コードがある
                      ,xeh.edi_header_info_id                                     edi_header_info_id            --ヘッダID
@@ -3542,13 +3548,21 @@ AS
 -- 2009/08/10 Ver1.10 M.Sano Add Start
               --受注タイプ(ヘッダ)抽出条件
               AND    ottt_h.transaction_type_id = ooha.order_type_id
-              AND    ottt_h.language            = USERENV('LANG')
-              AND    ottt_h.source_lang         = USERENV('LANG')
+-- 2009/09/09 Ver1.12 M.Sano Mod Start
+--              AND    ottt_h.language            = USERENV('LANG')
+--              AND    ottt_h.source_lang         = USERENV('LANG')
+              AND    ottt_h.language            = ct_lang
+              AND    ottt_h.source_lang         = ct_lang
+-- 2009/09/09 Ver1.12 M.Sano Mod End
               AND    ottt_h.description         = i_msg_rec.header_type
               --受注タイプ(明細)抽出条件
               AND    ottt_l.transaction_type_id = oola.line_type_id
-              AND    ottt_l.language            = USERENV('LANG')
-              AND    ottt_l.source_lang         = USERENV('LANG')
+-- 2009/09/09 Ver1.12 M.Sano Mod Start
+--              AND    ottt_l.language            = USERENV('LANG')
+--              AND    ottt_l.source_lang         = USERENV('LANG')
+              AND    ottt_l.language            = ct_lang
+              AND    ottt_l.source_lang         = ct_lang
+-- 2009/09/09 Ver1.12 M.Sano Mod End
               AND    ottt_l.description         = i_msg_rec.line_type
               --受注ソース抽出条件
               AND    oos.order_source_id        = ooha.order_source_id

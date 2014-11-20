@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCOS014A01C (body)
  * Description      : 納品書用データ作成
  * MD.050           : 納品書用データ作成 MD050_COS_014_A01
- * Version          : 1.14
+ * Version          : 1.15
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -47,6 +47,9 @@ AS
  *  2009/08/12    1.14  K.Kiriu          [0000037] PT対応
  *                                       [0000901] 顧客指定時の不具合対応
  *                                       [0001043] 売上区分混在チェック無効化対応
+ *  2009/09/07    1.15  M.Sano           [0001211] 税関連項目取得基準日修正
+ *                                       [0001216] 売上区分の外部結合化対応
+ *  2009/09/15    1.15  M.Sano           [0001211] レビュー指摘対応
  *
  *****************************************************************************************/
 --
@@ -223,6 +226,10 @@ AS
 /* 2009/08/12 Ver1.14 Add Start */
   ct_lang                         CONSTANT fnd_lookup_values.language%TYPE := USERENV('LANG');    -- 言語
 /* 2009/08/12 Ver1.14 Add End   */
+/* 2009/09/15 Ver1.15 Mod Start */
+  cv_exists_flag                  CONSTANT VARCHAR2(1)  := '1';                                   --存在フラグ
+  cv_datatime_fmt                 CONSTANT VARCHAR2(21) := 'YYYY/MM/DD HH24:MI:SS';               --日時書式
+/* 2009/09/15 Ver1.15 Mod End   */
 --
   -- ===============================
   -- ユーザー定義グローバル型
@@ -2339,7 +2346,10 @@ AS
             ,TO_CHAR( ivoh.ordered_date,cv_date_fmt )                           order_date                    --発注日
             ,NULL                                                               center_delivery_date          --センター納品日
             ,NULL                                                               result_delivery_date          --実納品日
-            ,TO_CHAR( ivoh.request_date,cv_date_fmt )                           shop_delivery_date            --店舗納品日
+/* 2009/09/15 Ver1.15 Mod Start */
+--            ,TO_CHAR( ivoh.request_date,cv_date_fmt )                           shop_delivery_date            --店舗納品日
+            ,TO_CHAR( oola.request_date,cv_date_fmt )                           shop_delivery_date            --店舗納品日
+/* 2009/09/15 Ver1.15 Mod End   */
             ,NULL                                                               data_creation_date_edi_data   --データ作成日（ＥＤＩデータ中）
             ,NULL                                                               data_creation_time_edi_data   --データ作成時刻（ＥＤＩデータ中）
 /* 2009/07/13 Ver1.13 Mod Start */
@@ -2860,14 +2870,23 @@ AS
                      ,xxcos_lookup_values_v  xlvv2
                WHERE  xlvv2.lookup_type           = ct_tax_class
                AND    xlvv2.attribute3            = ivoh.tax_div
-               AND    ivoh.request_date           BETWEEN NVL( xlvv2.start_date_active, ivoh.request_date )
-                                                  AND     NVL( xlvv2.end_date_active, ivoh.request_date )
+/* 2009/09/15 Ver1.15 Mod Start */
+--               AND    ivoh.request_date           BETWEEN NVL( xlvv2.start_date_active, ivoh.request_date )
+--                                                  AND     NVL( xlvv2.end_date_active, ivoh.request_date )
+               AND    NVL( TO_DATE(oola.attribute4, cv_datatime_fmt), oola.request_date)
+                        BETWEEN NVL( xlvv2.start_date_active
+                                   , NVL(TO_DATE(oola.attribute4, cv_datatime_fmt), oola.request_date) )
+                        AND     NVL( xlvv2.end_date_active
+                                   , NVL(TO_DATE(oola.attribute4, cv_datatime_fmt), oola.request_date) )
+/* 2009/09/15 Ver1.15 Mod End   */
                AND    xlvv2.attribute2            = avtab.tax_code
                AND    avtab.set_of_books_id       = i_prf_rec.set_of_books_id
                AND    avtab.org_id                = i_prf_rec.org_id
                AND    avtab.enabled_flag          = cv_enabled_flag
-               AND    i_other_rec.process_date    BETWEEN avtab.start_date
-                                                  AND     NVL( avtab.end_date, i_other_rec.process_date )
+/* 2009/09/07 Ver1.15 Del Start */
+--               AND    i_other_rec.process_date    BETWEEN avtab.start_date
+--                                                  AND     NVL( avtab.end_date, i_other_rec.process_date )
+/* 2009/09/07 Ver1.15 Del End   */
                AND    rownum                      = 1
              )                                                                  general_add_item1             --汎用付加項目１(税率)
 /* 2009/08/12 Ver1.14 Mod End   */
@@ -2977,7 +2996,7 @@ AS
 --******************************************* 2009/04/13 1.7 T.Kitajima MOD START *************************************
 --             AND    xca.chain_store_code            = i_input_rec.chain_code                                  --チェーン店コード(EDI)
              AND    xca.chain_store_code            = i_input_rec.ssm_store_code                              --チェーン店コード(EDI)
-             AND    xca.store_code                  = NVL( i_input_rec.store_code, xca.store_code )           --チェーン店コード(EDI)
+             AND    xca.store_code                  = NVL( i_input_rec.store_code, xca.store_code )           --店舗コード
 --******************************************* 2009/04/13 1.7 T.Kitajima MOD  END  *************************************
 /* 2009/08/12 Ver1.14 Add Start */
              AND    xcss.account_number             = hca.account_number
@@ -2988,9 +3007,19 @@ AS
              AND    oos.enabled_flag                = cv_enabled_flag
              AND    ooha.order_source_id            = oos.order_source_id
              AND    ooha.flow_status_code          != cv_cancel                                               --ステータス
-             AND    TRUNC(ooha.request_date)                                                                  --店舗納品日
-               BETWEEN TO_DATE(i_input_rec.shop_delivery_date_from, cv_date_fmt)
-               AND     TO_DATE(i_input_rec.shop_delivery_date_to, cv_date_fmt)
+/* 2009/09/15 Ver1.15 Mod Start */
+--             AND    TRUNC(ooha.request_date)                                                                  --店舗納品日
+--               BETWEEN TO_DATE(i_input_rec.shop_delivery_date_from, cv_date_fmt)
+--               AND     TO_DATE(i_input_rec.shop_delivery_date_to, cv_date_fmt)
+             AND    EXISTS (
+                      SELECT cv_exists_flag
+                      FROM   oe_order_lines_all oola_chk1
+                      WHERE  oola_chk1.header_id = ooha.header_id
+                      AND    TRUNC(oola_chk1.request_date)
+                               BETWEEN TO_DATE(i_input_rec.shop_delivery_date_from, cv_date_fmt)
+                               AND     TO_DATE(i_input_rec.shop_delivery_date_to, cv_date_fmt)
+                    )
+/* 2009/09/15 Ver1.15 Mod End   */
              AND    xxcos_common2_pkg.get_deliv_slip_flag(
                       i_input_rec.publish_flag_seq
                      ,ooha.global_attribute1 )      = i_input_rec.publish_div                                 --納品書発行フラグ取得関数
@@ -3040,9 +3069,19 @@ AS
              AND    oos.enabled_flag                = cv_enabled_flag
              AND    ooha.order_source_id            = oos.order_source_id
              AND    ooha.flow_status_code          != cv_cancel                                               --ステータス
-             AND    TRUNC(ooha.request_date)                                                                  --店舗納品日
-               BETWEEN TO_DATE(i_input_rec.shop_delivery_date_from, cv_date_fmt)
-               AND     TO_DATE(i_input_rec.shop_delivery_date_to, cv_date_fmt)
+/* 2009/09/15 Ver1.15 Mod Start */
+--             AND    TRUNC(ooha.request_date)                                                                  --店舗納品日
+--               BETWEEN TO_DATE(i_input_rec.shop_delivery_date_from, cv_date_fmt)
+--               AND     TO_DATE(i_input_rec.shop_delivery_date_to, cv_date_fmt)
+             AND    EXISTS (
+                      SELECT cv_exists_flag
+                      FROM   oe_order_lines_all oola_chk2
+                      WHERE  oola_chk2.header_id = ooha.header_id
+                      AND    TRUNC(oola_chk2.request_date)
+                               BETWEEN TO_DATE(i_input_rec.shop_delivery_date_from, cv_date_fmt)
+                               AND     TO_DATE(i_input_rec.shop_delivery_date_to, cv_date_fmt)
+                    )
+/* 2009/09/15 Ver1.15 Mod End   */
              AND    xxcos_common2_pkg.get_deliv_slip_flag(
                       i_input_rec.publish_flag_seq
                     ,ooha.global_attribute1 )       = i_input_rec.publish_div                                 --納品書発行フラグ取得関数
@@ -3159,6 +3198,11 @@ AS
                                                  i_msg_rec.line_type20,                                       --種類：20_協賛
                                                  i_msg_rec.line_type30 )                                      --種類：30_値引
        AND   oola.line_type_id              = ottt_l.transaction_type_id                                      --トランザクションID
+/* 2009/09/15 Ver1.15 Add Start */
+       AND   TRUNC(oola.request_date)                                                                         --店舗納品日
+               BETWEEN TO_DATE(i_input_rec.shop_delivery_date_from, cv_date_fmt)
+               AND     TO_DATE(i_input_rec.shop_delivery_date_to, cv_date_fmt)
+/* 2009/09/15 Ver1.15 Add End   */
        --パーティマスタ抽出条件
        AND   hp.party_id(+)                 = ivoh.party_id                                                   --パーティID
 /* 2009/08/12 Ver1.14 Mod Start */
@@ -3186,8 +3230,15 @@ AS
        --DISC品目アドオン抽出条件
        AND   disc.inventory_item_id         = oola.inventory_item_id                                          --品目ID
        --売上区分マスタ
-       AND   xlvv.lookup_type               = ct_qc_sale_class                                                --売上区分マスタ
-       AND   xlvv.lookup_code               = oola.attribute5                                                 --売上区分
+/* 2009/09/07 Ver1.15 Mod Start */
+--       AND   xlvv.lookup_type               = ct_qc_sale_class                                                --売上区分マスタ
+--       AND   xlvv.lookup_code               = oola.attribute5                                                 --売上区分
+       AND   xlvv.lookup_type(+)            = ct_qc_sale_class                                                --売上区分マスタ
+       AND   xlvv.lookup_code(+)            = oola.attribute5                                                 --売上区分
+       AND   oola.request_date
+               BETWEEN NVL( xlvv.start_date_active, oola.request_date )
+                   AND NVL( xlvv.end_date_active,   oola.request_date )
+/* 2009/09/07 Ver1.15 Mod Start */
 /* 2009/08/12 Ver1.14 Mod End   */
        --店舗セキュリティview抽出条件
 --******************************************* 2009/06/19 Ver.1.12 N.Maeda MOD START *****************************************

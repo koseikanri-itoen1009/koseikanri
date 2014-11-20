@@ -1,4 +1,4 @@
-CREATE OR REPLACE PACKAGE BODY XXCOS004A02C
+CREATE OR REPLACE PACKAGE BODY APPS.XXCOS004A02C
 AS
 /*****************************************************************************************
  * Copyright(c)Sumisho Computer Systems Corporation, 2008. All rights reserved.
@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCOS004A02C (body)
  * Description      : è§ïiï îÑè„åvéZ
  * MD.050           : è§ïiï îÑè„åvéZ MD050_COS_004_A02
- * Version          : 1.14
+ * Version          : 1.15
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -44,6 +44,7 @@ AS
  *  2009/06/10    1.12  T.kitajima       [T1_1412]î[ïiì`ï[î‘çÜéÊìæèàóùïœçX
  *  2009/06/11    1.13  T.kitajima       [T1_1415]î[ïiì`ï[î‘çÜéÊìæèàóùïœçX
  *  2009/08/17    1.14  K.Kiriu          [0000430]PTëŒâû
+ *  2009/09/11    1.15  M.Sano           [0001345]PTëŒâû
  *
  *****************************************************************************************/
 --
@@ -974,15 +975,30 @@ AS
     IS
 /* 2009/08/17 Ver1.14 Mod Start */
 --      SELECT xsdh.shop_digestion_hdr_id         shop_digestion_hdr_id,            --ìXï‹ï ópè¡âªåvéZÉwÉbÉ_ID
+/* 2009/09/11 Ver1.15 Mod Start */
+--        SELECT /*+
+--                 LEADING(xsdh)
+--                 INDEX(xsdh xxcos_shop_digestion_hdrs_n04 )
+--                 INDEX(xxca xxcmm_cust_accounts_pk)
+--                 USE_NL(xchv.cust_hier.cash_hcar_3)
+--                 USE_NL(xchv.cust_hier.bill_hasa_3)
+--                 USE_NL(xchv.cust_hier.bill_hasa_4)
+--                 USE_NL(flv xxca)
+--               */
         SELECT /*+
                  LEADING(xsdh)
                  INDEX(xsdh xxcos_shop_digestion_hdrs_n04 )
                  INDEX(xxca xxcmm_cust_accounts_pk)
+                 INDEX(xchv.cust_hier.ship_hzca_1 hz_cust_accounts_u1)
+                 INDEX(xchv.cust_hier.ship_hzca_2 hz_cust_accounts_u1)
+                 INDEX(xchv.cust_hier.ship_hzca_3 hz_cust_accounts_u1)
+                 INDEX(xchv.cust_hier.ship_hzca_4 hz_cust_accounts_u1)
                  USE_NL(xchv.cust_hier.cash_hcar_3)
                  USE_NL(xchv.cust_hier.bill_hasa_3)
                  USE_NL(xchv.cust_hier.bill_hasa_4)
                  USE_NL(flv xxca)
                */
+/* 2009/09/11 Ver1.15 Mod Start */
              xsdh.shop_digestion_hdr_id         shop_digestion_hdr_id,            --ìXï‹ï ópè¡âªåvéZÉwÉbÉ_ID
 /* 2009/08/17 Ver1.14 Mod End   */
              xsdh.digestion_due_date            digestion_due_date,               --è¡âªåvéZí˜îNåéì˙

@@ -7,7 +7,7 @@ AS
  * Description      : 生産物流システムの工場直送出荷実績データから販売実績を作成し、
  *                    販売実績を作成したＯＭ受注をクローズします。
  * MD.050           : 出荷確認（生産物流出荷）  MD050_COS_008_A02
- * Version          : 1.11
+ * Version          : 1.12
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -50,6 +50,8 @@ AS
  *  2009/07/09    1.11  K.Kiriu          [0000063] 情報区分の課題対応
  *                                       [0000064] 受注ヘッダDFF項目漏れ対応
  *                                       [0000435] PT対応
+ *  2009/09/02    1.12  N.Maeda          [0000864] PT対応
+ *                                       [0001211] 消費税基準日の修正
  *
  *****************************************************************************************/
 --
@@ -454,6 +456,10 @@ AS
     , tax_code                    xxcos_sales_exp_headers.tax_code%TYPE               -- 税コード
     , tax_rate                    xxcos_sales_exp_headers.tax_rate%TYPE               -- 税率
     , tax_include                 fnd_lookup_values.attribute5%TYPE                   -- 内税フラグ
+-- *************** 2009/09/02 1.12 N.Maeda ADD START *************** --
+    , flv_start_date_active       fnd_lookup_values.start_date_active%TYPE            -- クイックコード消費税区分適用開始日
+    , flv_end_date_active         fnd_lookup_values.end_date_active%TYPE              -- クイックコード消費税区分適用終了日
+-- *************** 2009/09/02 1.12 N.Maeda ADD  END  *************** --
   );
 --
   -- 消費税区分
@@ -493,9 +499,14 @@ AS
         IS TABLE OF sales_class_rtype INDEX BY fnd_lookup_values.lookup_code%TYPE;
   --消費税コード
   TYPE g_tax_sub_ttype
-        IS TABLE OF tax_rtype INDEX BY BINARY_INTEGER;
-  TYPE g_tax_ttype
-        IS TABLE OF tax_rtype INDEX BY xxcos_sales_exp_headers.consumption_tax_class%TYPE;
+-- *************** 2009/09/02 1.12 N.Maeda MOD START *************** --
+--        IS TABLE OF tax_rtype INDEX BY BINARY_INTEGER;
+        IS TABLE OF tax_rtype INDEX BY PLS_INTEGER;
+-- *************** 2009/09/02 1.12 N.Maeda MOD END *************** --
+-- *************** 2009/09/02 1.12 N.Maeda DEL START *************** --
+--  TYPE g_tax_ttype
+--        IS TABLE OF tax_rtype INDEX BY xxcos_sales_exp_headers.consumption_tax_class%TYPE;
+-- *************** 2009/09/02 1.12 N.Maeda DEL END *************** --
 /* 2009/07/09 Ver1.11 Add Start */
   -- 受注明細ID
   TYPE g_line_id_ttype
@@ -508,7 +519,9 @@ AS
   g_sale_class_sub_tab        g_sale_class_sub_ttype;         -- 売上区分
   g_sale_class_tab            g_sale_class_ttype;             -- 売上区分
   g_tax_sub_tab               g_tax_sub_ttype;                -- 消費税コード
-  g_tax_tab                   g_tax_ttype;                    -- 消費税コード
+-- *************** 2009/09/02 1.12 N.Maeda DEL START *************** --
+--  g_tax_tab                   g_tax_ttype;                    -- 消費税コード
+-- *************** 2009/09/02 1.12 N.Maeda DEL END *************** --
   g_order_data_tab            g_n_order_data_ttype;           -- 受注データ
 /* 2009/07/09 Ver1.11 Add Start */
   g_order_data_all_tab        g_n_order_data_ttype;           -- 受注データ(受注作成対象全データ取得用)
@@ -778,14 +791,18 @@ AS
       BULK COLLECT INTO
         g_sale_class_sub_tab
       FROM
-        fnd_application               fa
-      , fnd_lookup_types              flt
-      , fnd_lookup_values             flv
+-- *************** 2009/09/02 1.12 N.Maeda DEL START *************** --
+--        fnd_application               fa
+--      , fnd_lookup_types              flt
+-- *************** 2009/09/02 1.12 N.Maeda DEL END *************** --
+        fnd_lookup_values             flv
       WHERE
-          fa.application_id           = flt.application_id
-      AND flt.lookup_type             = flv.lookup_type
-      AND fa.application_short_name   = cv_xxcos_appl_short_nm
-      AND flv.lookup_type             = ct_qct_sales_class_type
+-- *************** 2009/09/02 1.12 N.Maeda DEL START *************** --
+--          fa.application_id           = flt.application_id
+--      AND flt.lookup_type             = flv.lookup_type
+--      AND fa.application_short_name   = cv_xxcos_appl_short_nm
+-- *************** 2009/09/02 1.12 N.Maeda DEL END *************** --
+          flv.lookup_type             = ct_qct_sales_class_type
       AND flv.start_date_active      <= gd_process_date
       AND gd_process_date            <= NVL( flv.end_date_active, gd_max_date )
       AND flv.enabled_flag            = ct_yes_flg
@@ -816,14 +833,18 @@ AS
       INTO
         gv_black_flag
       FROM
-        fnd_application               fa
-      , fnd_lookup_types              flt
-      , fnd_lookup_values             flv
+-- *************** 2009/09/02 1.12 N.Maeda DEL START *************** --
+--        fnd_application               fa
+--      , fnd_lookup_types              flt
+-- *************** 2009/09/02 1.12 N.Maeda DEL END *************** --
+        fnd_lookup_values             flv
       WHERE
-          fa.application_id           = flt.application_id
-      AND flt.lookup_type             = flv.lookup_type
-      AND fa.application_short_name   = cv_xxcos_appl_short_nm
-      AND flv.lookup_type             = ct_qct_red_black_flag_type
+-- *************** 2009/09/02 1.12 N.Maeda DEL START *************** --
+--          fa.application_id           = flt.application_id
+--      AND flt.lookup_type             = flv.lookup_type
+--      AND fa.application_short_name   = cv_xxcos_appl_short_nm
+-- *************** 2009/09/02 1.12 N.Maeda DEL END *************** --
+          flv.lookup_type             = ct_qct_red_black_flag_type
       AND flv.lookup_code             = ct_qcc_red_black_flag_type
       AND flv.start_date_active      <= gd_process_date
       AND gd_process_date            <= NVL( flv.end_date_active, gd_max_date )
@@ -847,43 +868,75 @@ AS
     --==================================
     BEGIN
 --
+-- *************** 2009/09/02 1.12 N.Maeda MOD START *************** --
       SELECT
-        tax_code_mst.tax_class    AS tax_class    -- 消費税区分
-      , tax_code_mst.tax_code     AS tax_code     -- 税コード
-      , avtab.tax_rate            AS tax_rate     -- 税率
-      , tax_code_mst.tax_include  AS tax_include  -- 内税フラグ
+        tax_code_mst.tax_class    AS tax_class     -- 消費税区分
+      , tax_code_mst.tax_code     AS tax_code      -- 税コード
+      , avtab.tax_rate            AS tax_rate      -- 税率
+      , tax_code_mst.tax_include  AS tax_include   -- 内税フラグ
+      , tax_code_mst.flv_start_date_active AS flv_start_date_active -- クイックコード消費税区分適用開始日
+      , tax_code_mst.flv_end_date_active   AS flv_end_date_active   -- クイックコード消費税区分適用終了日
       BULK COLLECT INTO
         g_tax_sub_tab
       FROM
         ar_vat_tax_all_b          avtab           -- 税コードマスタ
         ,(
           SELECT
-              flv.attribute3      AS tax_class    -- 消費税区分
-            , flv.attribute2      AS tax_code     -- 税コード
-            , flv.attribute5      AS tax_include  -- 内税フラグ
+              flv.attribute3        AS tax_class    -- 消費税区分
+            , flv.attribute2        AS tax_code     -- 税コード
+            , flv.attribute5        AS tax_include  -- 内税フラグ
+            , flv.start_date_active AS flv_start_date_active -- クイックコード消費税区分適用開始日
+            , flv.end_date_active   AS flv_end_date_active   -- クイックコード消費税区分適用終了日
           FROM
-            fnd_application       fa,
-            fnd_lookup_types      flt,
             fnd_lookup_values     flv
           WHERE
-              fa.application_id           = flt.application_id
-          AND flt.lookup_type             = flv.lookup_type
-          AND fa.application_short_name   = cv_xxcos_appl_short_nm
-          AND flv.lookup_type             = ct_qct_tax_type
-          AND flv.start_date_active      <= gd_process_date
-          AND gd_process_date            <= NVL( flv.end_date_active, gd_max_date )
+              flv.lookup_type             = ct_qct_tax_type
           AND flv.enabled_flag            = ct_yes_flg
-/* 2009/07/09 Ver1.11 Mod Start */
---          AND flv.language                = USERENV( 'LANG' )
           AND flv.language                = cv_lang
-/* 2009/07/09 Ver1.11 Mod End   */
         ) tax_code_mst
       WHERE
         tax_code_mst.tax_code     = avtab.tax_code
-        AND avtab.start_date     <= gd_process_date
-        AND gd_process_date      <= NVL( avtab.end_date, gd_max_date )
         AND enabled_flag          = ct_yes_flg
         AND avtab.set_of_books_id = gn_gl_id;       -- GL会計帳簿ID
+--
+--      SELECT
+--        tax_code_mst.tax_class    AS tax_class    -- 消費税区分
+--      , tax_code_mst.tax_code     AS tax_code     -- 税コード
+--      , avtab.tax_rate            AS tax_rate     -- 税率
+--      , tax_code_mst.tax_include  AS tax_include  -- 内税フラグ
+--      BULK COLLECT INTO
+--        g_tax_sub_tab
+--      FROM
+--        ar_vat_tax_all_b          avtab           -- 税コードマスタ
+--        ,(
+--          SELECT
+--              flv.attribute3      AS tax_class    -- 消費税区分
+--            , flv.attribute2      AS tax_code     -- 税コード
+--            , flv.attribute5      AS tax_include  -- 内税フラグ
+--          FROM
+--            fnd_application       fa,
+--            fnd_lookup_types      flt,
+--            fnd_lookup_values     flv
+--          WHERE
+--              fa.application_id           = flt.application_id
+--          AND flt.lookup_type             = flv.lookup_type
+--          AND fa.application_short_name   = cv_xxcos_appl_short_nm
+--          AND flv.lookup_type             = ct_qct_tax_type
+--          AND flv.start_date_active      <= gd_process_date
+--          AND gd_process_date            <= NVL( flv.end_date_active, gd_max_date )
+--          AND flv.enabled_flag            = ct_yes_flg
+--/* 2009/07/09 Ver1.11 Mod Start */
+----          AND flv.language                = USERENV( 'LANG' )
+--          AND flv.language                = cv_lang
+--/* 2009/07/09 Ver1.11 Mod End   */
+--        ) tax_code_mst
+--      WHERE
+--        tax_code_mst.tax_code     = avtab.tax_code
+--        AND avtab.start_date     <= gd_process_date
+--        AND gd_process_date      <= NVL( avtab.end_date, gd_max_date )
+--        AND enabled_flag          = ct_yes_flg
+--        AND avtab.set_of_books_id = gn_gl_id;       -- GL会計帳簿ID
+-- *************** 2009/09/02 1.12 N.Maeda MOD END *************** --
 --
     EXCEPTION
       WHEN OTHERS THEN
@@ -894,9 +947,14 @@ AS
         RAISE global_select_data_expt;
     END;
 --
-    FOR i IN 1..g_tax_sub_tab.COUNT LOOP
-      g_tax_tab( g_tax_sub_tab(i).tax_class ) := g_tax_sub_tab(i);
-    END LOOP;
+-- *************** 2009/09/02 1.12 N.Maeda DEL START *************** --
+--
+--    FOR i IN 1..g_tax_sub_tab.COUNT LOOP
+--      g_tax_tab( g_tax_sub_tab(i).tax_class ) := g_tax_sub_tab(i);
+--    END LOOP;
+--
+-- *************** 2009/09/02 1.12 N.Maeda DEL  END  *************** --
+--
 --
 --
     --==================================
@@ -908,14 +966,18 @@ AS
       INTO
         gv_add_status_sum_up   -- 出荷実績計上済
       FROM
-        fnd_application               fa
-      , fnd_lookup_types              flt
-      , fnd_lookup_values             flv
+-- *************** 2009/09/02 1.12 N.Maeda DEL START *************** --
+--        fnd_application               fa
+--      , fnd_lookup_types              flt
+-- *************** 2009/09/02 1.12 N.Maeda DEL END *************** --
+        fnd_lookup_values             flv
       WHERE
-          fa.application_id           = flt.application_id
-      AND flt.lookup_type             = flv.lookup_type
-      AND fa.application_short_name   = cv_xxcos_appl_short_nm
-      AND flv.lookup_type             = ct_qct_odr_hdr_add_sts_type
+-- *************** 2009/09/02 1.12 N.Maeda DEL START *************** --
+--          fa.application_id           = flt.application_id
+--      AND flt.lookup_type             = flv.lookup_type
+--      AND fa.application_short_name   = cv_xxcos_appl_short_nm
+-- *************** 2009/09/02 1.12 N.Maeda DEL END *************** --
+          flv.lookup_type             = ct_qct_odr_hdr_add_sts_type
       AND flv.start_date_active      <= gd_process_date
       AND gd_process_date            <= NVL( flv.end_date_active, gd_max_date )
       AND flv.enabled_flag            = ct_yes_flg
@@ -942,14 +1004,18 @@ AS
       INTO
         gv_direct_ship_code
       FROM
-        fnd_application               fa
-      , fnd_lookup_types              flt
-      , fnd_lookup_values             flv
+-- *************** 2009/09/02 1.12 N.Maeda DEL START *************** --
+--        fnd_application               fa
+--      , fnd_lookup_types              flt
+-- *************** 2009/09/02 1.12 N.Maeda DEL END *************** --
+        fnd_lookup_values             flv
       WHERE
-          fa.application_id           = flt.application_id
-      AND flt.lookup_type             = flv.lookup_type
-      AND fa.application_short_name   = cv_xxcos_appl_short_nm
-      AND flv.lookup_type             = ct_qct_hokan_type
+-- *************** 2009/09/02 1.12 N.Maeda DEL START *************** --
+--          fa.application_id           = flt.application_id
+--      AND flt.lookup_type             = flv.lookup_type
+--      AND fa.application_short_name   = cv_xxcos_appl_short_nm
+-- *************** 2009/09/02 1.12 N.Maeda DEL END *************** --
+          flv.lookup_type             = ct_qct_hokan_type
       AND flv.start_date_active      <= gd_process_date
       AND gd_process_date            <= NVL( flv.end_date_active, gd_max_date )
       AND flv.enabled_flag            = ct_yes_flg
@@ -983,14 +1049,18 @@ AS
         ,g_tax_class_rec.tax_slip                 -- 内税(伝票課税)
         ,g_tax_class_rec.tax_included             -- 内税(単価込み)
       FROM
-        fnd_application       fa,
-        fnd_lookup_types      flt,
+-- *************** 2009/09/02 1.12 N.Maeda DEL START *************** --
+--        fnd_application       fa,
+--        fnd_lookup_types      flt,
+-- *************** 2009/09/02 1.12 N.Maeda DEL END *************** --
         fnd_lookup_values     flv
       WHERE
-          fa.application_id           = flt.application_id
-      AND flt.lookup_type             = flv.lookup_type
-      AND fa.application_short_name   = cv_xxcos_appl_short_nm
-      AND flv.lookup_type             = ct_qct_tax_class_type
+-- *************** 2009/09/02 1.12 N.Maeda DEL START *************** --
+--          fa.application_id           = flt.application_id
+--      AND flt.lookup_type             = flv.lookup_type
+--      AND fa.application_short_name   = cv_xxcos_appl_short_nm
+-- *************** 2009/09/02 1.12 N.Maeda DEL END *************** --
+          flv.lookup_type             = ct_qct_tax_class_type
       AND flv.start_date_active      <= gd_process_date
       AND gd_process_date            <= NVL( flv.end_date_active, gd_max_date )
       AND flv.enabled_flag            = ct_yes_flg
@@ -1108,6 +1178,15 @@ AS
 --
 --
     SELECT
+-- ********** 2009/09/02 1.12 N.Maeda ADD START ************ --
+    /*+
+        leading(ooha)
+        index(ooha xxcos_oe_order_headers_all_n11)
+        use_nl(oola ooha xca ottth otttl ottth ottal msi)
+        use_nl(ooha xchv)
+        use_nl(xchv.cust_hier.cash_hcar_3 xchv.cust_hier.ship_hzca_3)
+    */
+-- ********** 2009/09/02 1.12 N.Maeda ADD  END  ************ --
       ooha.header_id                        AS header_id                  -- 受注ヘッダID
     , oola.line_id                          AS line_id                    -- 受注明細ID
     , ottth.name                            AS order_type                 -- 受注タイプ
@@ -1214,7 +1293,7 @@ AS
 /* 2009/07/09 Ver1.11 Del Start */
 --      LEFT JOIN xxcos_edi_headers xeh                   -- EDIヘッダ情報
 --        -- 受注ヘッダ.外部システム受注番号 = EDIヘッダ情報.受注関連番号
---        ON ooha.orig_sys_document_ref = xeh.order_connection_number     
+--        ON ooha.orig_sys_document_ref = xeh.order_connection_number
 /* 2009/07/09 Ver1.11 Del End   */
     , oe_order_lines_all  oola                          -- 受注明細
       INNER JOIN xxwsh_order_headers_all  xoha          -- 受注ヘッダアドオン
@@ -1262,16 +1341,26 @@ AS
     AND NOT EXISTS (                                  -- 受注明細.受注品目≠非在庫品目
 /* 2009/07/09 Ver1.11 Mod End   */
                                   SELECT
+-- ********** 2009/09/02 1.12 N.Maeda ADD START ************ --
+                                   /*+ 
+                                       use_nl(flv)
+                                   */
+-- ********** 2009/09/02 1.12 N.Maeda ADD  END  ************ --
                                     flv.lookup_code
                                   FROM
-                                    fnd_application               fa
-                                  , fnd_lookup_types              flt
-                                  , fnd_lookup_values             flv
+-- ********** 2009/09/02 1.12 N.Maeda DEL START ************ --
+--                                    fnd_application               fa
+--                                  , fnd_lookup_types              flt
+-- ********** 2009/09/02 1.12 N.Maeda DEL  END  ************ --
+                                    fnd_lookup_values             flv
                                   WHERE
-                                      fa.application_id           = flt.application_id
-                                  AND flt.lookup_type             = flv.lookup_type
-                                  AND fa.application_short_name   = cv_xxcos_appl_short_nm
-                                  AND flv.lookup_type             = ct_qct_no_inv_item_code_type
+-- ********** 2009/09/02 1.12 N.Maeda MOD START ************ --
+--                                      fa.application_id           = flt.application_id
+--                                  AND flt.lookup_type             = flv.lookup_type
+--                                  AND fa.application_short_name   = cv_xxcos_appl_short_nm
+--                                  AND flv.lookup_type             = ct_qct_no_inv_item_code_type
+                                      flv.lookup_type             = ct_qct_no_inv_item_code_type
+-- ********** 2009/09/02 1.12 N.Maeda MOD  END  ************ --
                                   AND flv.start_date_active      <= gd_process_date
                                   AND gd_process_date            <= NVL( flv.end_date_active, gd_max_date )
                                   AND flv.enabled_flag            = ct_yes_flg
@@ -1286,33 +1375,47 @@ AS
     AND EXISTS (
               SELECT
                 'X'
-              FROM (
-                  SELECT
-                    flv.attribute1 AS subinventory
-                  , flv.attribute2 AS order_type
-                  , flv.attribute3 AS line_type
-                  FROM
-                    fnd_application               fa
-                  , fnd_lookup_types              flt
-                  , fnd_lookup_values             flv
-                  WHERE
-                      fa.application_id           = flt.application_id
-                  AND flt.lookup_type             = flv.lookup_type
-                  AND fa.application_short_name   = cv_xxcos_appl_short_nm
-                  AND flv.lookup_type             = ct_qct_sale_exp_condition
-                  AND flv.lookup_code          LIKE ct_qcc_sale_exp_condition
-                  AND flv.start_date_active      <= gd_process_date
-                  AND gd_process_date            <= NVL( flv.end_date_active, gd_max_date )
-                  AND flv.enabled_flag            = ct_yes_flg
-/* 2009/07/09 Ver1.11 Mod Start */
---                  AND flv.language                = USERENV( 'LANG' )
-                  AND flv.language                = cv_lang
-/* 2009/07/09 Ver1.11 Mod End   */
-                ) flvs
+-- ********** 2009/09/02 1.12 N.Maeda MOD START ************ --
+--              FROM (
+--                  SELECT
+--                    flv.attribute1 AS subinventory
+--                  , flv.attribute2 AS order_type
+--                  , flv.attribute3 AS line_type
+--                  FROM
+--                    fnd_application               fa
+--                  , fnd_lookup_types              flt
+--                  , fnd_lookup_values             flv
+--                  WHERE
+--                      fa.application_id           = flt.application_id
+--                  AND flt.lookup_type             = flv.lookup_type
+--                  AND fa.application_short_name   = cv_xxcos_appl_short_nm
+--                  AND flv.lookup_type             = ct_qct_sale_exp_condition
+--                  AND flv.lookup_code          LIKE ct_qcc_sale_exp_condition
+--                  AND flv.start_date_active      <= gd_process_date
+--                  AND gd_process_date            <= NVL( flv.end_date_active, gd_max_date )
+--                  AND flv.enabled_flag            = ct_yes_flg
+--/* 2009/07/09 Ver1.11 Mod Start */
+----                  AND flv.language                = USERENV( 'LANG' )
+--                  AND flv.language                = cv_lang
+--/* 2009/07/09 Ver1.11 Mod End   */
+--                ) flvs
+--              WHERE
+--                  msi.attribute13 = flvs.subinventory                  -- 保管場所分類
+--              AND ottth.name      = NVL( flvs.order_type, ottth.name ) -- 受注タイプ
+--              AND otttl.name      = NVL( flvs.line_type,  otttl.name ) -- 明細タイプ
+              FROM
+                   fnd_lookup_values             flv
               WHERE
-                  msi.attribute13 = flvs.subinventory                  -- 保管場所分類
-              AND ottth.name      = NVL( flvs.order_type, ottth.name ) -- 受注タイプ
-              AND otttl.name      = NVL( flvs.line_type,  otttl.name ) -- 明細タイプ
+                   flv.lookup_type             = ct_qct_sale_exp_condition
+              AND  flv.lookup_code          LIKE ct_qcc_sale_exp_condition
+              AND  flv.start_date_active      <= gd_process_date
+              AND  gd_process_date            <= NVL( flv.end_date_active, gd_max_date )
+              AND  flv.enabled_flag            = ct_yes_flg
+              AND  flv.language                = cv_lang
+              AND  msi.attribute13             = flv.attribute1
+              AND  ottth.name                  = NVL( flv.attribute2, ottth.name )
+              AND  otttl.name                  = NVL( flv.attribute3, otttl.name )
+-- ********** 2009/09/02 1.12 N.Maeda MOD  END  ************ --
         )
 /* 2009/07/09 Ver1.11 Add Start */
     AND (
@@ -1635,15 +1738,45 @@ AS
     --==================================
     -- 4.税率
     --==================================
-    IF ( g_tax_tab.EXISTS( io_order_rec.consumption_tax_class ) ) THEN
+-- *************** 2009/09/02 1.12 N.Maeda MOD START *************** --
 --
-      io_order_rec.tax_rate := NVL( g_tax_tab( io_order_rec.consumption_tax_class ).tax_rate, 0 );
+    <<tax_loop>>
+    FOR t IN 1..g_tax_sub_tab.COUNT LOOP
 --
-    ELSE
+      IF  ( g_tax_sub_tab(t).tax_class = io_order_rec.consumption_tax_class )      -- 消費税区分が合致
+      -- クイックコード消費税区分適用開始日 <= NVL(販売実績.検収日,OM.要求日(オリジナル納品日))
+      AND ( g_tax_sub_tab(t).flv_start_date_active <= NVL(io_order_rec.inspect_date, io_order_rec.org_dlv_date ) )
+      -- NVL(販売実績.検収日,OM.要求日(オリジナル納品日)) <= クイックコード消費税区分適用終了日
+      AND ( NVL(io_order_rec.inspect_date, io_order_rec.org_dlv_date ) <= NVL(g_tax_sub_tab(t).flv_end_date_active,gd_max_date) ) THEN 
 --
-      io_order_rec.tax_rate := 0;
+        -- 税率をセット
+        io_order_rec.tax_rate := NVL( g_tax_sub_tab(t).tax_rate, 0 );
+        -- 税コードをセット
+        io_order_rec.tax_code := g_tax_sub_tab(t).tax_code;
 --
-    END IF;
+        -- 対象が存在した場合、ループ終了
+        EXIT;
+--
+      END IF;
+--
+      IF ( t = g_tax_sub_tab.COUNT ) THEN
+        -- 税率をセット
+        io_order_rec.tax_rate := 0;
+        -- 税コードをセット
+        io_order_rec.tax_code := NULL;
+      END IF;
+    END LOOP tax_loop;
+--
+--    IF ( g_tax_tab.EXISTS( io_order_rec.consumption_tax_class ) ) THEN
+----
+--      io_order_rec.tax_rate := NVL( g_tax_tab( io_order_rec.consumption_tax_class ).tax_rate, 0 );
+----
+--    ELSE
+----
+--      io_order_rec.tax_rate := 0;
+----
+--    END IF;
+-- *************** 2009/09/02 1.12 N.Maeda MOD  END  *************** --
 --
 --
     --==================================
@@ -1848,14 +1981,16 @@ AS
 /* 2009/05/20 Ver1.7 Del End   */
 --
 --
-    --==================================
-    -- 10.税コード取得
-    --==================================
-    IF ( g_tax_tab.EXISTS( io_order_rec.consumption_tax_class ) ) THEN
-      io_order_rec.tax_code := g_tax_tab( io_order_rec.consumption_tax_class ).tax_code;
-    ELSE
-      io_order_rec.tax_code := NULL;
-    END IF;
+-- *************** 2009/09/02 1.12 N.Maeda DEL START *************** --
+--    --==================================
+--    -- 10.税コード取得
+--    --==================================
+--    IF ( g_tax_tab.EXISTS( io_order_rec.consumption_tax_class ) ) THEN
+--      io_order_rec.tax_code := g_tax_tab( io_order_rec.consumption_tax_class ).tax_code;
+--    ELSE
+--      io_order_rec.tax_code := NULL;
+--    END IF;
+-- *************** 2009/09/02 1.12 N.Maeda DEL  end  *************** --
 --
     --==================================
     -- 11.売上区分
@@ -1876,14 +2011,18 @@ AS
       INTO
         io_order_rec.dlv_invoice_class
       FROM
-        fnd_application               fa
-      , fnd_lookup_types              flt
-      , fnd_lookup_values             flv
+-- *************** 2009/09/02 1.12 N.Maeda DEL START *************** --
+--        fnd_application               fa
+--      , fnd_lookup_types              flt
+-- *************** 2009/09/02 1.12 N.Maeda DEL END *************** --
+        fnd_lookup_values             flv
       WHERE
-          fa.application_id           = flt.application_id
-      AND flt.lookup_type             = flv.lookup_type
-      AND fa.application_short_name   = cv_xxcos_appl_short_nm
-      AND flv.lookup_type             = ct_qct_dlv_slp_cls_type
+-- *************** 2009/09/02 1.12 N.Maeda DEL START *************** --
+--          fa.application_id           = flt.application_id
+--      AND flt.lookup_type             = flv.lookup_type
+--      AND fa.application_short_name   = cv_xxcos_appl_short_nm
+-- *************** 2009/09/02 1.12 N.Maeda DEL END *************** --
+          flv.lookup_type             = ct_qct_dlv_slp_cls_type
       AND flv.lookup_code          LIKE ct_qcc_dlv_slp_cls_type
       AND flv.start_date_active      <= gd_process_date
       AND gd_process_date            <= NVL( flv.end_date_active, gd_max_date )

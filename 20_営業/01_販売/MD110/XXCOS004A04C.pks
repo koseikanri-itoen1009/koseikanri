@@ -1,4 +1,4 @@
-CREATE OR REPLACE PACKAGE XXCOS004A04C
+CREATE OR REPLACE PACKAGE APPS.XXCOS004A04C
 AS
 /*****************************************************************************************
  * Copyright(c)Sumisho Computer Systems Corporation, 2008. All rights reserved.
@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCOS004A04C (spec)
  * Description      : 消化VD納品データ作成
  * MD.050           : 消化VD納品データ作成 MD050_COS_004_A04
- * Version          : 1.19
+ * Version          : 1.20
  *
  * Program List
  * -------------------- ------------------------------------------------------------
@@ -45,6 +45,7 @@ AS
  *  2009/06/11   1.17  T.kitajima        [T1_1415]納品伝票番号取得処理変更
  *  2009/06/12   1.18  T.kitajima        [T1_1432]VDコラム別取引ヘッダ更新条件変更
  *  2009/08/10   1.19  K.Kiriu           [0000431]PT対応
+ *  2009/09/14   1.20  M.Sano            [0001345]PT対応
  *
  *****************************************************************************************/
 --

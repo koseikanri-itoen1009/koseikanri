@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCOS001A03C (body)
  * Description      : VD納品データ作成
  * MD.050           : VD納品データ作成(MD050_COS_001_A03)
- * Version          : 1.17
+ * Version          : 1.18
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -63,6 +63,7 @@ AS
  *  2009/08/12    1.16    N.Maeda          [0000900] クイックコード取得方法修正
  *                                         [0001010] 従業員ビュー取得条件追加
  *  2009/08/21    1.17    N.Maeda          [0001141] 前月売上拠点の考慮追加
+ *  2009/09/03    1.18    N.Maeda          [0001211] 消費税関連項目取得基準日付の修正
  *
  *****************************************************************************************/
 --
@@ -230,11 +231,17 @@ AS
   cv_inv_item_mst    CONSTANT VARCHAR2(20)  := 'APP-XXCOS1-00050';         -- 品目マスタ
   cv_location_mst    CONSTANT VARCHAR2(20)  := 'APP-XXCOS1-00052';         -- 保管場所マスタ
   cv_msg_lookup_mst  CONSTANT VARCHAR2(20)  := 'APP-XXCOS1-00066';         -- 参照コードマスタ
-  cv_ar_tax_mst      CONSTANT VARCHAR2(20)  := 'APP-XXCOS1-00067';         -- AR消費税マスタ
+-- ************ 2009/09/03 1.18 N.Maeda MOD START ************ --
+--  cv_ar_tax_mst      CONSTANT VARCHAR2(20)  := 'APP-XXCOS1-00067';         -- AR消費税マスタ
+  cv_ar_tax_mst      CONSTANT VARCHAR2(20)  := 'APP-XXCOS1-00190';         -- 消費税VIEW
+-- ************ 2009/09/03 1.18 N.Maeda MOD  END  ************ --
   cv_emp_data_mst    CONSTANT VARCHAR2(20)  := 'APP-XXCOS1-00068';         -- 従業員情報VIEW
   cv_msg_cus_type    CONSTANT VARCHAR2(20)  := 'APP-XXCOS1-00074';         -- 顧客区分
   cv_msg_cus_code    CONSTANT VARCHAR2(20)  := 'APP-XXCOS1-00053';         -- 顧客コード
-  cv_msg_lookup_code CONSTANT VARCHAR2(20)  := 'APP-XXCOS1-00082';         -- 参照コード
+-- ************ 2009/09/03 1.18 N.Maeda MOD START ************ --
+--  cv_msg_lookup_code CONSTANT VARCHAR2(20)  := 'APP-XXCOS1-00082';         -- 参照コード
+  cv_msg_lookup_code CONSTANT VARCHAR2(20)  := 'APP-XXCOS1-00189';         -- 参照コード
+-- ************ 2009/09/03 1.18 N.Maeda MOD  END  ************ --
   cv_msg_lookup_type CONSTANT VARCHAR2(20)  := 'APP-XXCOS1-00075';         -- 参照タイプ
   cv_msg_lookup_tax  CONSTANT VARCHAR2(20)  := 'APP-XXCOS1-00076';         -- 消費税コード（参照コードマスタDFF2)
   cv_msg_item_code   CONSTANT VARCHAR2(20)  := 'APP-XXCOS1-10041';         -- 品目コード
@@ -297,6 +304,10 @@ AS
   cv_cust_code     CONSTANT VARCHAR2(20)  := 'CUST_CODE';
   cv_dlv_date      CONSTANT VARCHAR2(20)  := 'DLV_DATE';
 -- ************* 2009/08/21 1.17 N.Maeda ADD  END  *************--
+-- ************ 2009/09/03 1.18 N.Maeda MOD START ************ --
+  cv_msg_order_num_hht    CONSTANT VARCHAR2(20)  := 'APP-XXCOS1-00191';
+  cv_msg_digestion_number CONSTANT VARCHAR2(20)  := 'APP-XXCOS1-00192';
+-- ************ 2009/09/03 1.18 N.Maeda MOD  END  ************ --
 --
   -- ===============================
   -- ユーザー定義グローバル型
@@ -1475,6 +1486,59 @@ AS
       lt_red_black_flag               := gt_vd_c_headers_data(ck_no).red_black_flag;         --赤黒フラグ
       lt_cancel_correct_class         := gt_vd_c_headers_data(ck_no).cancel_correct_class;   --取消・訂正区分
 --
+-- ****************** 2009/09/03 1.18 N.Maeda ADD START ************** --
+      --==================================
+      -- 1.納品日算出
+      --==================================
+      get_fiscal_period_from(
+          iv_div        => cv_fiscal_period_ar             -- 会計区分
+        , id_base_date  => lt_dlv_date                     -- 基準日            =  オリジナル納品日
+        , od_open_date  => lt_open_dlv_date                -- 有効会計期間FROM  => 納品日
+        , ov_errbuf     => lv_errbuf                       -- エラー・メッセージエラー       #固定#
+        , ov_retcode    => lv_retcode                      -- リターン・コード               #固定#
+        , ov_errmsg     => lv_errmsg                       -- ユーザー・エラー・メッセージ   #固定#
+      );
+      IF ( lv_retcode != cv_status_normal ) THEN
+        lv_state_flg    := cv_status_warn;
+        gn_wae_data_num := gn_wae_data_num + 1 ;
+        gt_msg_war_data(gn_wae_data_num) := xxccp_common_pkg.get_msg(
+                                              iv_application   => cv_application,    --アプリケーション短縮名
+                                              iv_name          => ct_msg_fiscal_period_err,    --メッセージコード
+                                              iv_token_name1   => cv_tkn_account_name,         --トークンコード1
+                                              iv_token_value1  => cv_fiscal_period_ar,         --トークン値1
+                                              iv_token_name2   => cv_tkn_order_number,         --トークンコード2
+                                              iv_token_value2  => lt_order_no_hht,
+                                              iv_token_name3   => cv_tkn_base_date,
+                                              iv_token_value3  => TO_CHAR( lt_dlv_date,cv_stand_date ) );
+      END IF;
+--
+--
+      --==================================
+      -- 2.売上計上日算出
+      --==================================
+      get_fiscal_period_from(
+          iv_div        => cv_fiscal_period_ar                  -- 会計区分
+        , id_base_date  => lt_inspect_date                      -- 基準日           =  オリジナル検収日
+        , od_open_date  => lt_open_inspect_date                 -- 有効会計期間FROM => 検収日
+        , ov_errbuf     => lv_errbuf                            -- エラー・メッセージエラー       #固定#
+        , ov_retcode    => lv_retcode                           -- リターン・コード               #固定#
+        , ov_errmsg     => lv_errmsg                            -- ユーザー・エラー・メッセージ   #固定#
+      );
+      IF ( lv_retcode != cv_status_normal ) THEN
+        lv_state_flg    := cv_status_warn;
+        gn_wae_data_num := gn_wae_data_num + 1 ;
+        gt_msg_war_data(gn_wae_data_num) := xxccp_common_pkg.get_msg(
+                                              iv_application   => cv_application,    --アプリケーション短縮名
+                                              iv_name          => ct_msg_fiscal_period_err,    --メッセージコード
+                                              iv_token_name1   => cv_tkn_account_name,         --トークンコード1
+                                              iv_token_value1  => cv_fiscal_period_ar,         --トークン値1
+                                              iv_token_name2   => cv_tkn_order_number,         --トークンコード2
+                                              iv_token_value2  => lt_order_no_hht,
+                                              iv_token_name3   => cv_tkn_base_date,
+                                              iv_token_value3  => TO_CHAR( lt_inspect_date,cv_stand_date ) );
+      END IF;
+-- ****************** 2009/09/03 1.18 N.Maeda ADD  END  ************** --
+--
 --******************************* 2009/04/16 N.Maeda Var1.10 DEL START ***************************************
 --      --================================
 --      --販売実績ヘッダID(シーケンス取得)
@@ -1591,96 +1655,112 @@ AS
 --******************************* 2009/04/16 N.Maeda Var1.10 MOD END *****************************************
       END;
 --
-      --========================
-      --消費税コードの導出
-      --========================
-      BEGIN
+-- ****************** 2009/09/03 1.18 N.Maeda DEL START ************** --
+--      --========================
+--      --消費税コードの導出
+--      --========================
+--      BEGIN
 --******************************* 2009/08/12 N.Maeda Ver1.16 MOD START ***************************************
-        SELECT  look_val.attribute2,  --消費税コード
-                look_val.attribute3   --販売実績連携時の消費税区分
-        INTO    lt_consum_code,
-                lt_consum_type
-        FROM    fnd_lookup_values     look_val
-        WHERE   look_val.language = ct_user_lang
-        AND     gd_process_date      >= look_val.start_date_active
-        AND     gd_process_date      <= NVL(look_val.end_date_active, gd_max_date)
-        AND     look_val.enabled_flag = cv_tkn_yes
-        AND     look_val.lookup_type = cv_lookup_type
-        AND     look_val.lookup_code = lt_consumption_tax_class;
---
 --        SELECT  look_val.attribute2,  --消費税コード
 --                look_val.attribute3   --販売実績連携時の消費税区分
 --        INTO    lt_consum_code,
 --                lt_consum_type
---        FROM    fnd_lookup_values     look_val,  --クイックコード
---                fnd_lookup_types_tl   types_tl,  --
---                fnd_lookup_types      types,     --
---                fnd_application_tl    appl,      --
---                fnd_application       app        --
---        WHERE   appl.application_id   = types.application_id
---        AND     app.application_id    = appl.application_id
---        AND     types_tl.lookup_type  = look_val.lookup_type
---        AND     types.lookup_type     = types_tl.lookup_type
---        AND     types.security_group_id   = types_tl.security_group_id
---        AND     types.view_application_id = types_tl.view_application_id
---        AND     types_tl.language = USERENV( 'LANG' )
---        AND     look_val.language = USERENV( 'LANG' )
---        AND     appl.language     = USERENV( 'LANG' )
---        AND     app.application_short_name = cv_application
+--        FROM    fnd_lookup_values     look_val
+--        WHERE   look_val.language = ct_user_lang
 --        AND     gd_process_date      >= look_val.start_date_active
 --        AND     gd_process_date      <= NVL(look_val.end_date_active, gd_max_date)
 --        AND     look_val.enabled_flag = cv_tkn_yes
 --        AND     look_val.lookup_type = cv_lookup_type
 --        AND     look_val.lookup_code = lt_consumption_tax_class;
---******************************* 2009/08/12 N.Maeda Ver1.16 MOD END *****************************************
-      EXCEPTION
-        WHEN NO_DATA_FOUND THEN
-          -- ログ出力
-          gv_tkn1   := xxccp_common_pkg.get_msg(cv_application, cv_msg_lookup_mst );
-          --キー編集処理
---******************************* 2009/04/16 N.Maeda Var1.10 MOD START ***************************************
---          lv_key_name1 := xxccp_common_pkg.get_msg( cv_application, cv_msg_lookup_code );
---          lv_key_name2 := xxccp_common_pkg.get_msg( cv_application, cv_msg_lookup_type );
---          lv_key_data1 := lt_consumption_tax_class;
---          lv_key_data2 := cv_lookup_type;
---          RAISE no_data_extract;
-          lv_state_flg    := cv_status_warn;
-          gn_wae_data_num := gn_wae_data_num + 1 ;
-          xxcos_common_pkg.makeup_key_info(
-            iv_item_name1  => xxccp_common_pkg.get_msg( cv_application, cv_msg_lookup_code ), -- 項目名称１
-            iv_item_name2  => xxccp_common_pkg.get_msg( cv_application, cv_msg_lookup_type ), -- 項目名称２
-            iv_data_value1 => lt_consumption_tax_class,         -- データの値１
-            iv_data_value2 => cv_lookup_type,   -- データの値２
-            ov_key_info    => gv_tkn2,              -- キー情報
-            ov_errbuf      => lv_errbuf,            -- エラー・メッセージエラー
-            ov_retcode     => lv_retcode,           -- リターン・コード
-            ov_errmsg      => lv_errmsg);            -- ユーザー・エラー・メッセージ
-          gt_msg_war_data(gn_wae_data_num) := xxccp_common_pkg.get_msg(
-                                                iv_application   => cv_application,    --アプリケーション短縮名
-                                                iv_name          => cv_msg_no_data,    --メッセージコード
-                                                iv_token_name1   => cv_tkn_table, --トークンコード1
-                                                iv_token_value1  => gv_tkn1,           --トークン値1
-                                                iv_token_name2   => cv_key_data,       --トークンコード2
-                                                iv_token_value2  => gv_tkn2 );         --トークン値2
---******************************* 2009/04/16 N.Maeda Var1.10 MOD END *****************************************
-      END;
+----
+----        SELECT  look_val.attribute2,  --消費税コード
+----                look_val.attribute3   --販売実績連携時の消費税区分
+----        INTO    lt_consum_code,
+----                lt_consum_type
+----        FROM    fnd_lookup_values     look_val,  --クイックコード
+----                fnd_lookup_types_tl   types_tl,  --
+----                fnd_lookup_types      types,     --
+----                fnd_application_tl    appl,      --
+----                fnd_application       app        --
+----        WHERE   appl.application_id   = types.application_id
+----        AND     app.application_id    = appl.application_id
+----        AND     types_tl.lookup_type  = look_val.lookup_type
+----        AND     types.lookup_type     = types_tl.lookup_type
+----        AND     types.security_group_id   = types_tl.security_group_id
+----        AND     types.view_application_id = types_tl.view_application_id
+----        AND     types_tl.language = USERENV( 'LANG' )
+----        AND     look_val.language = USERENV( 'LANG' )
+----        AND     appl.language     = USERENV( 'LANG' )
+----        AND     app.application_short_name = cv_application
+----        AND     gd_process_date      >= look_val.start_date_active
+----        AND     gd_process_date      <= NVL(look_val.end_date_active, gd_max_date)
+----        AND     look_val.enabled_flag = cv_tkn_yes
+----        AND     look_val.lookup_type = cv_lookup_type
+----        AND     look_val.lookup_code = lt_consumption_tax_class;
+----******************************* 2009/08/12 N.Maeda Ver1.16 MOD END *****************************************
+--      EXCEPTION
+--        WHEN NO_DATA_FOUND THEN
+--          -- ログ出力
+--          gv_tkn1   := xxccp_common_pkg.get_msg(cv_application, cv_msg_lookup_mst );
+--          --キー編集処理
+----******************************* 2009/04/16 N.Maeda Var1.10 MOD START ***************************************
+----          lv_key_name1 := xxccp_common_pkg.get_msg( cv_application, cv_msg_lookup_code );
+----          lv_key_name2 := xxccp_common_pkg.get_msg( cv_application, cv_msg_lookup_type );
+----          lv_key_data1 := lt_consumption_tax_class;
+----          lv_key_data2 := cv_lookup_type;
+----          RAISE no_data_extract;
+--          lv_state_flg    := cv_status_warn;
+--          gn_wae_data_num := gn_wae_data_num + 1 ;
+--          xxcos_common_pkg.makeup_key_info(
+--            iv_item_name1  => xxccp_common_pkg.get_msg( cv_application, cv_msg_lookup_code ), -- 項目名称１
+--            iv_item_name2  => xxccp_common_pkg.get_msg( cv_application, cv_msg_lookup_type ), -- 項目名称２
+--            iv_data_value1 => lt_consumption_tax_class,         -- データの値１
+--            iv_data_value2 => cv_lookup_type,   -- データの値２
+--            ov_key_info    => gv_tkn2,              -- キー情報
+--            ov_errbuf      => lv_errbuf,            -- エラー・メッセージエラー
+--            ov_retcode     => lv_retcode,           -- リターン・コード
+--            ov_errmsg      => lv_errmsg);            -- ユーザー・エラー・メッセージ
+--          gt_msg_war_data(gn_wae_data_num) := xxccp_common_pkg.get_msg(
+--                                                iv_application   => cv_application,    --アプリケーション短縮名
+--                                                iv_name          => cv_msg_no_data,    --メッセージコード
+--                                                iv_token_name1   => cv_tkn_table, --トークンコード1
+--                                                iv_token_value1  => gv_tkn1,           --トークン値1
+--                                                iv_token_name2   => cv_key_data,       --トークンコード2
+--                                                iv_token_value2  => gv_tkn2 );         --トークン値2
+----******************************* 2009/04/16 N.Maeda Var1.10 MOD END *****************************************
+--      END;
+-- ****************** 2009/09/03 1.18 N.Maeda DEL  END  ************** --
 --
       --====================
       --消費税マスタ情報取得
       --====================
       BEGIN
-        SELECT avtab.tax_rate           -- 消費税率
-        INTO   lt_tax_consum 
-        FROM   ar_vat_tax_all_b avtab   -- AR消費税マスタ
-        WHERE  avtab.tax_code = lt_consum_code
-        AND    avtab.set_of_books_id = TO_NUMBER(gv_bks_id)
-/*--==============2009/2/4-START=========================--*/
-        AND    NVL( avtab.start_date, gd_process_date )  <= gd_process_date
-        AND    NVL( avtab.end_date, gd_max_date ) >= gd_process_date
-/*--==============2009/2/4--END==========================--*/
-/*--==============2009/2/17-START=========================--*/
-        AND    avtab.enabled_flag = cv_tkn_yes;
-/*--==============2009/2/17--END==========================--*/
+-- ****************** 2009/09/03 1.18 N.Maeda MOD START ************** --
+        SELECT  xtv.tax_rate             -- 消費税率
+               ,xtv.tax_class                -- 販売実績連携消費税区分
+               ,xtv.tax_code             -- 税金コード
+        INTO    lt_tax_consum
+               ,lt_consum_type
+               ,lt_consum_code
+        FROM   xxcos_tax_v   xtv         -- 消費税view
+        WHERE  xtv.hht_tax_class    = lt_consumption_tax_class
+        AND    xtv.set_of_books_id  = TO_NUMBER( gv_bks_id )
+        AND    NVL( xtv.start_date_active, lt_open_inspect_date )  <= lt_open_inspect_date
+        AND    NVL( xtv.end_date_active, gd_max_date ) >= lt_open_inspect_date;
+--
+--        SELECT avtab.tax_rate           -- 消費税率
+--        INTO   lt_tax_consum 
+--        FROM   ar_vat_tax_all_b avtab   -- AR消費税マスタ
+--        WHERE  avtab.tax_code = lt_consum_code
+--        AND    avtab.set_of_books_id = TO_NUMBER(gv_bks_id)
+--/*--==============2009/2/4-START=========================--*/
+--        AND    NVL( avtab.start_date, gd_process_date )  <= gd_process_date
+--        AND    NVL( avtab.end_date, gd_max_date ) >= gd_process_date
+--/*--==============2009/2/4--END==========================--*/
+--/*--==============2009/2/17-START=========================--*/
+--        AND    avtab.enabled_flag = cv_tkn_yes;
+--/*--==============2009/2/17--END==========================--*/
+-- ****************** 2009/09/03 1.18 N.Maeda MOD  END  ************** --
       EXCEPTION
         WHEN NO_DATA_FOUND THEN
           -- ログ出力          
@@ -1695,8 +1775,16 @@ AS
           lv_state_flg    := cv_status_warn;
           gn_wae_data_num := gn_wae_data_num + 1 ;
           xxcos_common_pkg.makeup_key_info(
-            iv_item_name1  => xxccp_common_pkg.get_msg( cv_application, cv_msg_lookup_tax ), -- 項目名称１
-            iv_data_value1 => lt_consum_code,         -- データの値１
+-- ****************** 2009/09/03 1.18 N.Maeda MOD START ************** --
+--            iv_item_name1  => xxccp_common_pkg.get_msg( cv_application, cv_msg_lookup_tax ), -- 項目名称１
+--            iv_data_value1 => lt_consum_code,         -- データの値１
+            iv_item_name1  => xxccp_common_pkg.get_msg( cv_application, cv_msg_order_num_hht ), -- 項目名称１
+            iv_data_value1 => lt_order_no_hht,
+            iv_item_name2  => xxccp_common_pkg.get_msg( cv_application, cv_msg_digestion_number ), -- 項目名称
+            iv_data_value2 => lt_digestion_ln_number,
+            iv_item_name3  => xxccp_common_pkg.get_msg( cv_application, cv_msg_lookup_code ), -- 項目名称
+            iv_data_value3 => lt_consumption_tax_class,
+-- ****************** 2009/09/03 1.18 N.Maeda MOD  END  ************** --
             ov_key_info    => gv_tkn2,              -- キー情報
             ov_errbuf      => lv_errbuf,            -- エラー・メッセージエラー
             ov_retcode     => lv_retcode,           -- リターン・コード
@@ -2160,58 +2248,60 @@ AS
 --******************************* 2009/04/21 N.Maeda Var1.10 MOD END *****************************************
         END;
 --
---******************************* 2009/05/20 N.Maeda Var1.13 ADD START ***************************************
-    --==================================
-    -- 1.納品日算出
-    --==================================
-    get_fiscal_period_from(
-        iv_div        => cv_fiscal_period_ar             -- 会計区分
-      , id_base_date  => lt_dlv_date                     -- 基準日            =  オリジナル納品日
-      , od_open_date  => lt_open_dlv_date                -- 有効会計期間FROM  => 納品日
-      , ov_errbuf     => lv_errbuf                       -- エラー・メッセージエラー       #固定#
-      , ov_retcode    => lv_retcode                      -- リターン・コード               #固定#
-      , ov_errmsg     => lv_errmsg                       -- ユーザー・エラー・メッセージ   #固定#
-    );
-    IF ( lv_retcode != cv_status_normal ) THEN
-      lv_state_flg    := cv_status_warn;
-      gn_wae_data_num := gn_wae_data_num + 1 ;
-      gt_msg_war_data(gn_wae_data_num) := xxccp_common_pkg.get_msg(
-                                            iv_application   => cv_application,    --アプリケーション短縮名
-                                            iv_name          => ct_msg_fiscal_period_err,    --メッセージコード
-                                            iv_token_name1   => cv_tkn_account_name,         --トークンコード1
-                                            iv_token_value1  => cv_fiscal_period_ar,         --トークン値1
-                                            iv_token_name2   => cv_tkn_order_number,         --トークンコード2
-                                            iv_token_value2  => lt_order_no_hht,
-                                            iv_token_name3   => cv_tkn_base_date,
-                                            iv_token_value3  => TO_CHAR( lt_dlv_date,cv_stand_date ) );
-    END IF;
---
---
-    --==================================
-    -- 2.売上計上日算出
-    --==================================
-    get_fiscal_period_from(
-        iv_div        => cv_fiscal_period_ar                  -- 会計区分
-      , id_base_date  => lt_inspect_date                      -- 基準日           =  オリジナル検収日
-      , od_open_date  => lt_open_inspect_date                 -- 有効会計期間FROM => 検収日
-      , ov_errbuf     => lv_errbuf                            -- エラー・メッセージエラー       #固定#
-      , ov_retcode    => lv_retcode                           -- リターン・コード               #固定#
-      , ov_errmsg     => lv_errmsg                            -- ユーザー・エラー・メッセージ   #固定#
-    );
-    IF ( lv_retcode != cv_status_normal ) THEN
-      lv_state_flg    := cv_status_warn;
-      gn_wae_data_num := gn_wae_data_num + 1 ;
-      gt_msg_war_data(gn_wae_data_num) := xxccp_common_pkg.get_msg(
-                                            iv_application   => cv_application,    --アプリケーション短縮名
-                                            iv_name          => ct_msg_fiscal_period_err,    --メッセージコード
-                                            iv_token_name1   => cv_tkn_account_name,         --トークンコード1
-                                            iv_token_value1  => cv_fiscal_period_ar,         --トークン値1
-                                            iv_token_name2   => cv_tkn_order_number,         --トークンコード2
-                                            iv_token_value2  => lt_order_no_hht,
-                                            iv_token_name3   => cv_tkn_base_date,
-                                            iv_token_value3  => TO_CHAR( lt_inspect_date,cv_stand_date ) );
-    END IF;
---******************************* 2009/05/20 N.Maeda Var1.13 ADD END *****************************************
+-- ****************** 2009/09/03 1.18 N.Maeda DEL START ************** --
+----******************************* 2009/05/20 N.Maeda Var1.13 ADD START ***************************************
+--    --==================================
+--    -- 1.納品日算出
+--    --==================================
+--    get_fiscal_period_from(
+--        iv_div        => cv_fiscal_period_ar             -- 会計区分
+--      , id_base_date  => lt_dlv_date                     -- 基準日            =  オリジナル納品日
+--      , od_open_date  => lt_open_dlv_date                -- 有効会計期間FROM  => 納品日
+--      , ov_errbuf     => lv_errbuf                       -- エラー・メッセージエラー       #固定#
+--      , ov_retcode    => lv_retcode                      -- リターン・コード               #固定#
+--      , ov_errmsg     => lv_errmsg                       -- ユーザー・エラー・メッセージ   #固定#
+--    );
+--    IF ( lv_retcode != cv_status_normal ) THEN
+--      lv_state_flg    := cv_status_warn;
+--      gn_wae_data_num := gn_wae_data_num + 1 ;
+--      gt_msg_war_data(gn_wae_data_num) := xxccp_common_pkg.get_msg(
+--                                            iv_application   => cv_application,    --アプリケーション短縮名
+--                                            iv_name          => ct_msg_fiscal_period_err,    --メッセージコード
+--                                            iv_token_name1   => cv_tkn_account_name,         --トークンコード1
+--                                            iv_token_value1  => cv_fiscal_period_ar,         --トークン値1
+--                                            iv_token_name2   => cv_tkn_order_number,         --トークンコード2
+--                                            iv_token_value2  => lt_order_no_hht,
+--                                            iv_token_name3   => cv_tkn_base_date,
+--                                            iv_token_value3  => TO_CHAR( lt_dlv_date,cv_stand_date ) );
+--    END IF;
+----
+----
+--    --==================================
+--    -- 2.売上計上日算出
+--    --==================================
+--    get_fiscal_period_from(
+--        iv_div        => cv_fiscal_period_ar                  -- 会計区分
+--      , id_base_date  => lt_inspect_date                      -- 基準日           =  オリジナル検収日
+--      , od_open_date  => lt_open_inspect_date                 -- 有効会計期間FROM => 検収日
+--      , ov_errbuf     => lv_errbuf                            -- エラー・メッセージエラー       #固定#
+--      , ov_retcode    => lv_retcode                           -- リターン・コード               #固定#
+--      , ov_errmsg     => lv_errmsg                            -- ユーザー・エラー・メッセージ   #固定#
+--    );
+--    IF ( lv_retcode != cv_status_normal ) THEN
+--      lv_state_flg    := cv_status_warn;
+--      gn_wae_data_num := gn_wae_data_num + 1 ;
+--      gt_msg_war_data(gn_wae_data_num) := xxccp_common_pkg.get_msg(
+--                                            iv_application   => cv_application,    --アプリケーション短縮名
+--                                            iv_name          => ct_msg_fiscal_period_err,    --メッセージコード
+--                                            iv_token_name1   => cv_tkn_account_name,         --トークンコード1
+--                                            iv_token_value1  => cv_fiscal_period_ar,         --トークン値1
+--                                            iv_token_name2   => cv_tkn_order_number,         --トークンコード2
+--                                            iv_token_value2  => lt_order_no_hht,
+--                                            iv_token_name3   => cv_tkn_base_date,
+--                                            iv_token_value3  => TO_CHAR( lt_inspect_date,cv_stand_date ) );
+--    END IF;
+----******************************* 2009/05/20 N.Maeda Var1.13 ADD END *****************************************
+-- ****************** 2009/09/03 1.18 N.Maeda DEL  END  ************** --
 --
       <<line_loop>>
       FOR ln_line_no IN ln_line_cnt..gn_target_lines_cnt LOOP                                   --明細番号

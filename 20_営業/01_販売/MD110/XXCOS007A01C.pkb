@@ -1,4 +1,4 @@
-CREATE OR REPLACE PACKAGE BODY XXCOS007A01C
+CREATE OR REPLACE PACKAGE BODY APPS.XXCOS007A01C
 AS
 /*****************************************************************************************
  * Copyright(c)Sumisho Computer Systems Corporation, 2008. All rights reserved.
@@ -7,7 +7,7 @@ AS
  * Description      : 納品予定日の到来した拠点出荷の受注に対して販売実績を作成し、
  *                    販売実績を作成した受注をクローズします。
  * MD.050           : 出荷確認（納品予定日）  MD050_COS_007_A01
- * Version          : 1.9
+ * Version          : 1.10
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -50,6 +50,9 @@ AS
  *                                       [0000433] PT対応
  *  2009/07/24    1.9   K.Kiriu          [0000433] PT対応(追加)
  *  2009/07/30    1.9   N.Maeda          [0000433] PT対応(再追加)
+ *  2009/09/14    1.10  K.Kiriu          [0000943] PT対応(クローズ処理を分離)
+ *                                       [0001211] 消費税関連項目取得基準日修正
+ *                                       [0001337] PT対応(ヒント句追加)
  *
  *****************************************************************************************/
 --
@@ -197,7 +200,9 @@ AS
   cv_tkn_after_code       CONSTANT  VARCHAR2(100)  :=  'AFTER_CODE';     -- 換算後単位コード
   cv_tkn_key_data         CONSTANT  VARCHAR2(100)  :=  'KEY_DATA';       -- キー情報
   cv_tkn_table_name       CONSTANT  VARCHAR2(100)  :=  'TABLE_NAME';     -- テーブル名称
-  cv_tkn_api_name         CONSTANT  VARCHAR2(100)  :=  'API_NAME';       -- API名称
+/* 2009/09/14 Ver1.10 Del Start */
+--  cv_tkn_api_name         CONSTANT  VARCHAR2(100)  :=  'API_NAME';       -- API名称
+/* 2009/09/14 Ver1.10 Del End   */
   cv_tkn_err_msg          CONSTANT  VARCHAR2(100)  :=  'ERR_MSG';        -- エラーメッセージ
 --
   --メッセージ用文字列
@@ -227,7 +232,10 @@ AS
   cv_sales_exp_line_table          CONSTANT VARCHAR2(100) := 'APP-XXCOS1-11526';  -- 販売実績明細
   cv_item_table                    CONSTANT VARCHAR2(100) := 'APP-XXCOS1-11527';  -- OPM品目マスタ
   cv_person_table                  CONSTANT VARCHAR2(100) := 'APP-XXCOS1-11528';  -- 従業員マスタ
-  cv_api_name                      CONSTANT VARCHAR2(100) := 'APP-XXCOS1-11532';  -- 受注クローズAPI
+/* 2009/09/14 Ver1.10 Mod Start */
+--  cv_api_name                      CONSTANT VARCHAR2(100) := 'APP-XXCOS1-11532';  -- 受注クローズAPI
+  cv_oe_close_table                CONSTANT VARCHAR2(100) := 'APP-XXCOS1-11532';  -- 受注クローズ対象情報
+/* 2009/09/14 Ver1.10 Mod End   */
   cv_tax_class                     CONSTANT VARCHAR2(100) := 'APP-XXCOS1-11534';  -- 消費税区分
 --
   --プロファイル名称
@@ -457,7 +465,11 @@ AS
     tax_class                     xxcos_sales_exp_headers.consumption_tax_class%type  -- 消費税区分
     , tax_code                    xxcos_sales_exp_headers.tax_code%type               -- 税コード
     , tax_rate                    xxcos_sales_exp_headers.tax_rate%type               -- 税率
-    , tax_include                 fnd_lookup_values.attribute5%TYPE                   -- 内税フラグ
+/* 2009/09/14 Ver1.10 Mod Start */
+--    , tax_include                 fnd_lookup_values.attribute5%TYPE                   -- 内税フラグ
+    , start_date_active           fnd_lookup_values.start_date_active%type            -- 適用開始日
+    , end_date_active             fnd_lookup_values.end_date_active%type              -- 適用終了日
+/* 2009/09/14 Ver1.10 Mod End   */
   );
 --
   -- 消費税区分
@@ -496,8 +508,10 @@ AS
   --消費税コード
   TYPE g_tax_sub_ttype
         IS TABLE OF tax_rtype INDEX BY BINARY_INTEGER;
-  TYPE g_tax_ttype
-        IS TABLE OF tax_rtype INDEX BY xxcos_sales_exp_headers.consumption_tax_class%type;
+/* 2009/09/14 Ver1.10 Del Start */
+--  TYPE g_tax_ttype
+--        IS TABLE OF tax_rtype INDEX BY xxcos_sales_exp_headers.consumption_tax_class%type;
+/* 2009/09/14 Ver1.10 Del End   */
 -- 2009/07/02 Ver.1.9 M.Sano Add Start
   --受注明細ID
   TYPE g_order_line_id_rtype IS TABLE OF oe_order_lines_all.line_id%TYPE INDEX BY BINARY_INTEGER;
@@ -510,8 +524,11 @@ AS
   g_sale_class_tab            g_sale_class_ttype;             -- 売上区分
   g_red_black_flag_sub_tab    g_red_black_flag_sub_ttype;     -- 赤黒フラグ
   g_red_black_flag_tab        g_red_black_flag_ttype;         -- 赤黒フラグ
-  g_tax_sub_tab               g_tax_sub_ttype;                -- 消費税コード
-  g_tax_tab                   g_tax_ttype;                    -- 消費税コード
+/* 2009/09/14 Ver1.10 Mod Start */
+--  g_tax_sub_tab               g_tax_sub_ttype;                -- 消費税コード
+--  g_tax_tab                   g_tax_ttype;                    -- 消費税コード
+  g_tax_tab                  g_tax_sub_ttype;                 -- 消費税コード
+/* 2009/09/14 Ver1.10 Mod End   */
 -- 2009/07/02 Ver.1.9 M.Sano Add Start
   g_order_line_id_rec         g_order_line_id_rtype;          -- 受注明細ID(CLOSE対象)
   g_order_data_all_tab        g_n_order_data_ttype;           -- 受注データ(情報区分：01,02,nullデータ）
@@ -856,43 +873,54 @@ AS
     --==================================
     BEGIN
 --
-      SELECT
-        tax_code_mst.tax_class    AS tax_class    -- 消費税区分
-      , tax_code_mst.tax_code     AS tax_code     -- 税コード
-      , avtab.tax_rate            AS tax_rate     -- 税率
-      , tax_code_mst.tax_include  AS tax_include  -- 内税フラグ
+/* 2009/09/14 Ver1.10 Mod Start */
+--      SELECT
+--        tax_code_mst.tax_class    AS tax_class    -- 消費税区分
+--      , tax_code_mst.tax_code     AS tax_code     -- 税コード
+--      , avtab.tax_rate            AS tax_rate     -- 税率
+--      , tax_code_mst.tax_include  AS tax_include  -- 内税フラグ
+--      BULK COLLECT INTO
+--        g_tax_sub_tab
+--      FROM
+--        ar_vat_tax_all_b          avtab           -- 税コードマスタ
+--        ,(
+--          SELECT
+--              flv.attribute3      AS tax_class    -- 消費税区分
+--            , flv.attribute2      AS tax_code     -- 税コード
+--            , flv.attribute5      AS tax_include  -- 内税フラグ
+--          FROM
+--            fnd_application       fa,
+--            fnd_lookup_types      flt,
+--            fnd_lookup_values     flv
+--          WHERE
+--              fa.application_id           = flt.application_id
+--          AND flt.lookup_type             = flv.lookup_type
+--          AND fa.application_short_name   = cv_xxcos_appl_short_nm
+--          AND flv.lookup_type             = ct_qct_tax_type
+--          AND flv.start_date_active      <= gd_process_date
+--          AND gd_process_date            <= NVL( flv.end_date_active, gd_max_date )
+--          AND flv.enabled_flag            = ct_yes_flg
+---- 2009/07/02 Ver.1.9 M.Sano Mod Start
+----          AND flv.language                = USERENV( 'LANG' )
+--          AND flv.language                = gt_lang
+---- 2009/07/02 Ver.1.9 M.Sano Mod End
+--        ) tax_code_mst
+--      WHERE
+--        tax_code_mst.tax_code     = avtab.tax_code
+--        AND avtab.start_date     <= gd_process_date
+--        AND gd_process_date      <= NVL( avtab.end_date, gd_max_date )
+--        AND enabled_flag          = ct_yes_flg
+--        AND avtab.set_of_books_id = gn_gl_id;       -- GL会計帳簿ID
+--
+      SELECT  xtv.tax_class                           tax_class         -- 消費税区分
+             ,xtv.tax_code                            tax_code          -- 税コード
+             ,xtv.tax_rate                            tax_rate          -- 税率
+             ,xtv.start_date_active                   start_date_active -- 適用開始日
+             ,NVL( xtv.end_date_active, gd_max_date)  end_date_active   -- 適用終了日
       BULK COLLECT INTO
-        g_tax_sub_tab
-      FROM
-        ar_vat_tax_all_b          avtab           -- 税コードマスタ
-        ,(
-          SELECT
-              flv.attribute3      AS tax_class    -- 消費税区分
-            , flv.attribute2      AS tax_code     -- 税コード
-            , flv.attribute5      AS tax_include  -- 内税フラグ
-          FROM
-            fnd_application       fa,
-            fnd_lookup_types      flt,
-            fnd_lookup_values     flv
-          WHERE
-              fa.application_id           = flt.application_id
-          AND flt.lookup_type             = flv.lookup_type
-          AND fa.application_short_name   = cv_xxcos_appl_short_nm
-          AND flv.lookup_type             = ct_qct_tax_type
-          AND flv.start_date_active      <= gd_process_date
-          AND gd_process_date            <= NVL( flv.end_date_active, gd_max_date )
-          AND flv.enabled_flag            = ct_yes_flg
--- 2009/07/02 Ver.1.9 M.Sano Mod Start
---          AND flv.language                = USERENV( 'LANG' )
-          AND flv.language                = gt_lang
--- 2009/07/02 Ver.1.9 M.Sano Mod End
-        ) tax_code_mst
-      WHERE
-        tax_code_mst.tax_code     = avtab.tax_code
-        AND avtab.start_date     <= gd_process_date
-        AND gd_process_date      <= NVL( avtab.end_date, gd_max_date )
-        AND enabled_flag          = ct_yes_flg
-        AND avtab.set_of_books_id = gn_gl_id;       -- GL会計帳簿ID
+        g_tax_tab
+      FROM   xxcos_tax_v xtv
+      WHERE  xtv.set_of_books_id = gn_gl_id; -- GL会計帳簿ID
 --
     EXCEPTION
       WHEN OTHERS THEN
@@ -903,9 +931,11 @@ AS
         RAISE global_select_data_expt;
     END;
 --
-    FOR i IN 1..g_tax_sub_tab.COUNT LOOP
-      g_tax_tab(g_tax_sub_tab(i).tax_class) := g_tax_sub_tab(i);
-    END LOOP;
+/* 2009/09/14 Ver1.10 Del Start */
+--    FOR i IN 1..g_tax_sub_tab.COUNT LOOP
+--      g_tax_tab(g_tax_sub_tab(i).tax_class) := g_tax_sub_tab(i);
+--    END LOOP;
+/* 2009/09/14 Ver1.10 Del End   */
 --
     --==================================
     -- 消費税区分特定情報
@@ -1039,6 +1069,20 @@ AS
 --
 --
     SELECT
+/* 2009/09/14 Ver1.10 Add Start */
+      /*+
+        LEADING(ooha)
+        INDEX(ooha xxcos_oe_order_headers_all_n11)
+        USE_NL(ooha oola xca ottth otttl ottth ottal msi)
+        INDEX(oola oe_order_lines_n1)
+        ORDERED
+        USE_NL(ooha xchv)
+        INDEX(xchv.cust_hier.ship_hzca_1 hz_cust_accounts_u1)
+        INDEX(xchv.cust_hier.ship_hzca_2 hz_cust_accounts_u1)
+        INDEX(xchv.cust_hier.ship_hzca_3 hz_cust_accounts_u1)
+        INDEX(xchv.cust_hier.ship_hzca_4 hz_cust_accounts_u1)
+      */
+/* 2009/09/14 Ver1.10 Add End   */
       ooha.header_id                          AS header_id                  -- 受注ヘッダID
       , oola.line_id                          AS line_id                    -- 受注明細ID
       , ottth.name                            AS order_type                 -- 受注タイプ
@@ -1138,8 +1182,12 @@ AS
       oe_order_headers_all        ooha    -- 受注ヘッダ
       , oe_order_lines_all        oola    -- 受注明細
       , oe_transaction_types_tl   ottth   -- 受注ヘッダ摘要用取引タイプ
-      , oe_transaction_types_tl   otttl   -- 受注明細摘要用取引タイプ
+/* 2009/09/14 Ver1.10 Mod Start */
+--      , oe_transaction_types_tl   otttl   -- 受注明細摘要用取引タイプ
+--      , oe_transaction_types_all  ottal   -- 受注明細取引タイプ
       , oe_transaction_types_all  ottal   -- 受注明細取引タイプ
+      , oe_transaction_types_tl   otttl   -- 受注明細摘要用取引タイプ
+/* 2009/09/14 Ver1.10 Mod End   */
       , mtl_secondary_inventories msi     -- 保管場所マスタ
 -- 2009/07/02 Ver.1.9 M.Sano Del Start
 --      , xxcos_edi_headers         xeh     -- EDIヘッダ情報
@@ -1191,6 +1239,11 @@ AS
 --                                      flv.lookup_code
       AND NOT EXISTS (                                                -- 受注明細.受注品目≠エラー品目
                                     SELECT
+/* 2009/09/14 Ver1.10 Add Start */
+                                      /*+
+                                        USE_NL(flv)
+                                      */
+/* 2009/09/14 Ver1.10 Add End   */
                                       'X'
 -- 2009/07/02 Ver.1.9 M.Sano Mod End
                                     FROM
@@ -1221,6 +1274,11 @@ AS
 -- ********* 2009/07/30 N.Maeda 1.9 MOD START *********** --
       AND ( NOT  EXISTS (
                    SELECT
+/* 2009/09/14 Ver1.10 Add Start */
+                   /*+
+                     USE_NL(flv)
+                   */
+/* 2009/09/14 Ver1.10 Add End   */
                    'X'
                    FROM 
                      fnd_lookup_values             flv
@@ -1282,6 +1340,11 @@ AS
               OR  EXISTS (                                            -- 受注明細.受注品目＝非在庫品目
 -- ********* 2009/07/30 N.Maeda 1.9 MOD  END  *********** --
                                        SELECT
+/* 2009/09/14 Ver1.10 Add Start */
+                                         /*+
+                                           USE_NL(flv)
+                                         */
+/* 2009/09/14 Ver1.10 Add End   */
                                          'X'
 -- 2009/07/02 Ver.1.9 M.Sano Mod End
                                        FROM
@@ -1315,6 +1378,11 @@ AS
 --                                     flv.attribute1
       AND NOT EXISTS (                                          -- 保管場所分類≠営業車,自販機(ﾌﾙ),自販機(消化)
                                    SELECT
+/* 2009/09/14 Ver1.10 Add Start */
+                                     /*+
+                                       USE_NL(flv)
+                                     */
+/* 2009/09/14 Ver1.10 Add End   */
                                      'X'
 -- 2009/07/02 Ver.1.9 M.Sano Mod End
                                    FROM
@@ -1658,15 +1726,31 @@ AS
     --==================================
     -- 4.税率
     --==================================
-    IF ( g_tax_tab.EXISTS(io_order_rec.consumption_tax_class) ) THEN
+/* 2009/09/14 Ver1.10 Mod Start */
+--    IF ( g_tax_tab.EXISTS(io_order_rec.consumption_tax_class) ) THEN
 --
-      io_order_rec.tax_rate := NVL(g_tax_tab(io_order_rec.consumption_tax_class).tax_rate, 0);
+--      io_order_rec.tax_rate := NVL(g_tax_tab(io_order_rec.consumption_tax_class).tax_rate, 0);
 --
-    ELSE
+--    ELSE
 --
-      io_order_rec.tax_rate := 0;
+--      io_order_rec.tax_rate := 0;
 --
-    END IF;
+--    END IF;
+--
+    FOR i IN 1..g_tax_tab.COUNT LOOP
+      IF ( g_tax_tab(i).tax_class = io_order_rec.consumption_tax_class )
+        AND ( g_tax_tab(i).start_date_active <= io_order_rec.inspect_date )
+        AND ( g_tax_tab(i).end_date_active   >= io_order_rec.inspect_date )
+      THEN
+         io_order_rec.tax_rate  := NVL(g_tax_tab(i).tax_rate, 0);  -- 税率
+         io_order_rec.tax_code  := g_tax_tab(i).tax_code;          -- 税コード
+         EXIT;
+      ELSE
+        io_order_rec.tax_rate  := 0;
+        io_order_rec.tax_code  := NULL;
+      END IF;
+    END LOOP;
+/* 2009/09/14 Ver1.10 Mod End   */
 --
 --
     --==================================
@@ -1874,11 +1958,13 @@ AS
     --==================================
     -- 10.税コード取得
     --==================================
-    IF ( g_tax_tab.EXISTS(io_order_rec.consumption_tax_class) ) THEN
-      io_order_rec.tax_code := g_tax_tab(io_order_rec.consumption_tax_class).tax_code;
-    ELSE
-      io_order_rec.tax_code := NULL;
-    END IF;
+/* 2009/09/14 Ver1.10 Del Start */
+--    IF ( g_tax_tab.EXISTS(io_order_rec.consumption_tax_class) ) THEN
+--      io_order_rec.tax_code := g_tax_tab(io_order_rec.consumption_tax_class).tax_code;
+--    ELSE
+--      io_order_rec.tax_code := NULL;
+--    END IF;
+/* 2009/09/14 Ver1.10 Del End   */
 --
     --==================================
     -- 11.売上区分
@@ -2972,9 +3058,14 @@ AS
     -- ユーザー宣言部
     -- ===============================
     -- *** ローカル定数 ***
+/* 2009/09/14 Ver1.10 Add Start */
+    cv_n          VARCHAR2(1) := 'N';  -- 未処理
+/* 2009/09/14 Ver1.10 Add End   */
 --
     -- *** ローカル変数 ***
-    lv_api_name   VARCHAR2(100);
+/* 2009/09/14 Ver1.10 Del Start */
+--    lv_api_name   VARCHAR2(100);
+/* 2009/09/14 Ver1.10 Del End   */
     ln_now_index  VARCHAR2(100);
 --
     -- *** ローカル・カーソル ***
@@ -3001,16 +3092,46 @@ AS
 --
       BEGIN
 --
-        WF_ENGINE.COMPLETEACTIVITY(
-            Itemtype => cv_close_type
--- 2009/07/02 Ver.1.9 M.Sano Mod Start
---          , Itemkey  => g_order_data_sort_tab(ln_now_index).line_id  -- 受注明細ID
-          , Itemkey  => g_order_line_id_rec(ln_now_index)
--- 2009/07/02 Ver.1.9 M.Sano Mod End
-          , Activity => cv_activity
-          , Result   => cv_result
-        );
+/* 2009/09/14 Ver1.10 Mod Start */
+--        WF_ENGINE.COMPLETEACTIVITY(
+--            Itemtype => cv_close_type
+---- 2009/07/02 Ver.1.9 M.Sano Mod Start
+----          , Itemkey  => g_order_data_sort_tab(ln_now_index).line_id  -- 受注明細ID
+--          , Itemkey  => g_order_line_id_rec(ln_now_index)
+---- 2009/07/02 Ver.1.9 M.Sano Mod End
+--          , Activity => cv_activity
+--          , Result   => cv_result
+--        );
 --
+        INSERT INTO xxcos_order_close(
+           order_line_id              -- 受注明細ID
+          ,process_status             -- 処理ステータス
+          ,process_date               -- 処理日
+          ,created_by                 -- 作成者
+          ,creation_date              -- 作成日
+          ,last_updated_by            -- 最終更新者
+          ,last_update_date           -- 最終更新日
+          ,last_update_login          -- 最終更新ログイン
+          ,request_id                 -- 要求ID
+          ,program_application_id     -- コンカレント・プログラム・アプリケーションID
+          ,program_id                 -- コンカレント・プログラムID
+          ,program_update_date        -- プログラム更新日
+        )
+        VALUES (
+           g_order_line_id_rec(ln_now_index)  -- クローズ対象受注明細ID
+          ,cv_n                               -- 未処理
+          ,gd_business_date                   -- 業務日付
+          ,cn_created_by
+          ,cd_creation_date
+          ,cn_last_updated_by
+          ,cd_last_update_date
+          ,cn_last_update_login
+          ,cn_request_id
+          ,cn_program_application_id
+          ,cn_program_id
+          ,cd_program_update_date
+        );
+/* 2009/09/14 Ver1.10 Mod End   */
         -- 次のインデックスを取得する
 -- 2009/07/02 Ver.1.9 M.Sano Mod Start
 --       ln_now_index := g_order_data_sort_tab.next(ln_now_index);
@@ -3020,6 +3141,9 @@ AS
         
       EXCEPTION
         WHEN OTHERS THEN
+/* 2009/09/14 Ver1.10 Add Start */
+          lv_errbuf := SQLERRM;
+/* 2009/09/14 Ver1.10 Add End   */
           RAISE global_api_err_expt;
       END;
 --
@@ -3029,23 +3153,37 @@ AS
 --
     --*** API呼び出し例外ハンドラ ***
     WHEN global_api_err_expt THEN
-      lv_api_name := xxccp_common_pkg.get_msg(
+/* 2009/09/14 Mod Start */
+--      lv_api_name := xxccp_common_pkg.get_msg(
+--                   iv_application => cv_xxcos_appl_short_nm,
+--                   iv_name        => cv_api_name
+--                  );
+--      ov_errmsg := xxccp_common_pkg.get_msg(
+--                   iv_application => cv_xxcos_appl_short_nm,
+--                   iv_name        => ct_msg_api_err,
+--                   iv_token_name1 => cv_tkn_api_name,
+--                   iv_token_value1=> lv_api_name,
+--                   iv_token_name2 => cv_tkn_err_msg,
+--                   iv_token_value2=> SQLERRM,
+--                   iv_token_name3 => cv_tkn_line_number,
+---- 2009/07/02 Ver.1.9 M.Sano Mod Start
+----                   iv_token_value3=> g_order_data_sort_tab(ln_now_index).line_id
+--                   iv_token_value3=> g_order_line_id_rec(ln_now_index)
+---- 2009/07/02 Ver.1.9 M.Sano Mod Start
+--                  );
+      lv_errmsg := xxccp_common_pkg.get_msg(
                    iv_application => cv_xxcos_appl_short_nm,
-                   iv_name        => cv_api_name
+                   iv_name        => cv_oe_close_table
                   );
       ov_errmsg := xxccp_common_pkg.get_msg(
                    iv_application => cv_xxcos_appl_short_nm,
-                   iv_name        => ct_msg_api_err,
-                   iv_token_name1 => cv_tkn_api_name,
-                   iv_token_value1=> lv_api_name,
-                   iv_token_name2 => cv_tkn_err_msg,
-                   iv_token_value2=> SQLERRM,
-                   iv_token_name3 => cv_tkn_line_number,
--- 2009/07/02 Ver.1.9 M.Sano Mod Start
---                   iv_token_value3=> g_order_data_sort_tab(ln_now_index).line_id
-                   iv_token_value3=> g_order_line_id_rec(ln_now_index)
--- 2009/07/02 Ver.1.9 M.Sano Mod Start
+                   iv_name        => ct_msg_insert_data_err,
+                   iv_token_name1 => cv_tkn_table_name,
+                   iv_token_value1=> lv_errmsg,
+                   iv_token_name2 => cv_tkn_key_data,
+                   iv_token_value2=> lv_errbuf
                   );
+/* 2009/09/14 Mod End   */
       ov_errbuf  := SUBSTRB(cv_pkg_name||cv_msg_cont||cv_prg_name||cv_msg_part||ov_errmsg,1,5000);
       ov_retcode := cv_status_error;
 --
