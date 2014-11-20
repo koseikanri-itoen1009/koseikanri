@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCFF015A34C(body)
  * Description      : 自販機リース料予算作成
  * MD.050           : 自販機リース料予算作成 MD050_CFF_015_A34
- * Version          : 1.1
+ * Version          : 1.2
  *
  * Program List
  * -------------------------- ----------------------------------------------------------
@@ -38,6 +38,7 @@ AS
  * ------------- ----- ---------------- -------------------------------------------------
  *  2011/11/25    1.0   SCSK 中村健一    新規作成
  *  2014/09/29    1.1   SCSK 小路恭弘    E_本稼働_11719対応
+ *  2014/10/08    1.2   SCSK 小路恭弘    E_本稼働_11719対応
  *
  *****************************************************************************************/
 --
@@ -2300,18 +2301,32 @@ AS
            , xlbw.department_code           AS department_code  -- 拠点
            , xlbw.department_name           AS department_name  -- 拠点名
            , xlbw.object_name               AS object_name      -- 物件
-           , xlbw.may_charge                AS may              -- 5月
-           , xlbw.june_charge               AS june             -- 6月
-           , xlbw.july_charge               AS july             -- 7月
-           , xlbw.august_charge             AS august           -- 8月
-           , xlbw.september_charge          AS september        -- 9月
-           , xlbw.october_charge            AS october          -- 10月
-           , xlbw.november_charge           AS november         -- 11月
-           , xlbw.december_charge           AS december         -- 12月
-           , xlbw.january_charge            AS january          -- 1月
-           , xlbw.february_charge           AS february         -- 2月
-           , xlbw.march_charge              AS march            -- 3月
-           , xlbw.april_charge              AS april            -- 4月
+-- 2014/10/08 Ver.1.2 Y.Shouji MOD START
+--           , xlbw.may_charge                AS may              -- 5月
+--           , xlbw.june_charge               AS june             -- 6月
+--           , xlbw.july_charge               AS july             -- 7月
+--           , xlbw.august_charge             AS august           -- 8月
+--           , xlbw.september_charge          AS september        -- 9月
+--           , xlbw.october_charge            AS october          -- 10月
+--           , xlbw.november_charge           AS november         -- 11月
+--           , xlbw.december_charge           AS december         -- 12月
+--           , xlbw.january_charge            AS january          -- 1月
+--           , xlbw.february_charge           AS february         -- 2月
+--           , xlbw.march_charge              AS march            -- 3月
+--           , xlbw.april_charge              AS april            -- 4月
+           , SUM(xlbw.may_charge)           AS may              -- 5月
+           , SUM(xlbw.june_charge)          AS june             -- 6月
+           , SUM(xlbw.july_charge)          AS july             -- 7月
+           , SUM(xlbw.august_charge)        AS august           -- 8月
+           , SUM(xlbw.september_charge)     AS september        -- 9月
+           , SUM(xlbw.october_charge)       AS october          -- 10月
+           , SUM(xlbw.november_charge)      AS november         -- 11月
+           , SUM(xlbw.december_charge)      AS december         -- 12月
+           , SUM(xlbw.january_charge)       AS january          -- 1月
+           , SUM(xlbw.february_charge)      AS february         -- 2月
+           , SUM(xlbw.march_charge)         AS march            -- 3月
+           , SUM(xlbw.april_charge)         AS april            -- 4月
+-- 2014/10/08 Ver.1.2 Y.Shouji MOD END
       FROM   xxcff_lease_budget_work xlbw                       -- リース料予算ワーク
       WHERE  xlbw.file_id            = in_file_id               -- ファイルID
       AND ( ( xlbw.record_type       = cv_record_type_3 )       -- レコード区分：新規
@@ -2326,6 +2341,16 @@ AS
       AND ( ( lv_department_code     IS NULL )                  -- パラメータ<拠点>がNULL
         OR  ( xlbw.department_code   = lv_department_code ) ) ) --   またはパラメータ<拠点>と一致
           )
+-- 2014/10/08 Ver.1.2 Y.Shouji ADD START
+      GROUP BY xlbw.record_type                                 -- レコード区分
+             , xlbw.lease_class                                 -- リース種別
+             , xlbw.lease_class_name                            -- リース種別名
+             , xlbw.lease_type                                  -- リース区分
+             , xlbw.lease_type_name                             -- リース区分名
+             , xlbw.department_code                             -- 拠点
+             , xlbw.department_name                             -- 拠点名
+             , xlbw.object_name                                 -- 物件
+-- 2014/10/08 Ver.1.2 Y.Shouji ADD END
       ORDER BY lease_class                                      -- リース種別
              , department_code                                  -- 拠点
              , lease_type                                       -- リース区分
@@ -2433,18 +2458,32 @@ AS
            , xlbw.department_code           AS department_code  -- 拠点
            , xlbw.department_name           AS department_name  -- 拠点名
            , xlbw.object_name               AS object_name      -- 物件
-           , xlbw.may_charge                AS may              -- 5月
-           , xlbw.june_charge               AS june             -- 6月
-           , xlbw.july_charge               AS july             -- 7月
-           , xlbw.august_charge             AS august           -- 8月
-           , xlbw.september_charge          AS september        -- 9月
-           , xlbw.october_charge            AS october          -- 10月
-           , xlbw.november_charge           AS november         -- 11月
-           , xlbw.december_charge           AS december         -- 12月
-           , xlbw.january_charge            AS january          -- 1月
-           , xlbw.february_charge           AS february         -- 2月
-           , xlbw.march_charge              AS march            -- 3月
-           , xlbw.april_charge              AS april            -- 4月
+-- 2014/10/08 Ver.1.2 Y.Shouji MOD START
+--           , xlbw.may_charge                AS may              -- 5月
+--           , xlbw.june_charge               AS june             -- 6月
+--           , xlbw.july_charge               AS july             -- 7月
+--           , xlbw.august_charge             AS august           -- 8月
+--           , xlbw.september_charge          AS september        -- 9月
+--           , xlbw.october_charge            AS october          -- 10月
+--           , xlbw.november_charge           AS november         -- 11月
+--           , xlbw.december_charge           AS december         -- 12月
+--           , xlbw.january_charge            AS january          -- 1月
+--           , xlbw.february_charge           AS february         -- 2月
+--           , xlbw.march_charge              AS march            -- 3月
+--           , xlbw.april_charge              AS april            -- 4月
+           , SUM(xlbw.may_charge)           AS may              -- 5月
+           , SUM(xlbw.june_charge)          AS june             -- 6月
+           , SUM(xlbw.july_charge)          AS july             -- 7月
+           , SUM(xlbw.august_charge)        AS august           -- 8月
+           , SUM(xlbw.september_charge)     AS september        -- 9月
+           , SUM(xlbw.october_charge)       AS october          -- 10月
+           , SUM(xlbw.november_charge)      AS november         -- 11月
+           , SUM(xlbw.december_charge)      AS december         -- 12月
+           , SUM(xlbw.january_charge)       AS january          -- 1月
+           , SUM(xlbw.february_charge)      AS february         -- 2月
+           , SUM(xlbw.march_charge)         AS march            -- 3月
+           , SUM(xlbw.april_charge)         AS april            -- 4月
+-- 2014/10/08 Ver.1.2 Y.Shouji MOD END
       FROM   xxcff_lease_budget_work xlbw                       -- リース料予算ワーク
       WHERE  xlbw.file_id            = in_file_id               -- ファイルID
       AND ( ( xlbw.record_type       = cv_record_type_3 )       -- レコード区分：新規
@@ -2459,6 +2498,16 @@ AS
       AND ( ( lv_department_code     IS NULL )                  -- パラメータ<拠点>がNULL
         OR  ( xlbw.department_code   = lv_department_code ) ) ) --   またはパラメータ<拠点>と一致
           )
+-- 2014/10/08 Ver.1.2 Y.Shouji ADD START
+      GROUP BY xlbw.record_type                                 -- レコード区分
+             , xlbw.lease_class                                 -- リース種別
+             , xlbw.lease_class_name                            -- リース種別名
+             , xlbw.lease_type                                  -- リース区分
+             , xlbw.lease_type_name                             -- リース区分名
+             , xlbw.department_code                             -- 拠点
+             , xlbw.department_name                             -- 拠点名
+             , xlbw.object_name                                 -- 物件
+-- 2014/10/08 Ver.1.2 Y.Shouji ADD END
       UNION ALL
       SELECT cv_record_type_4               AS record_type      -- レコード区分
            , xlbw.lease_class               AS lease_class      -- リース種別
@@ -3943,6 +3992,9 @@ AS
     ld_vd_end_output_months          DATE        DEFAULT NULL;  -- 出力年度の事業供用月
     ln_re_lease_flag                 VARCHAR2(1) DEFAULT NULL;  -- 再リース処理フラグ
 -- 2014/09/29 Ver.1.1 Y.Shouji ADD END
+-- 2014/10/08 Ver.1.2 Y.Shouji ADD START
+    ln_count_his_move                NUMBER      DEFAULT 0;     -- 移動履歴件数
+-- 2014/10/08 Ver.1.2 Y.Shouji ADD END
     -- ===============================
     -- ローカル・カーソル
     -- ===============================
@@ -4236,6 +4288,25 @@ AS
 -- 2014/09/29 Ver.1.1 Y.Shouji ADD START
     CURSOR get_vd_budget_cur
     IS
+-- 2014/10/08 Ver.1.2 Y.Shouji ADD START
+      SELECT xvohe.object_name                  -- 物件コード
+            ,xvohe.lease_class                  -- リース種別
+            ,xvohe.lease_class_name             -- リース種別名
+            ,xvohe.lease_type                   -- リース区分
+            ,xvohe.lease_type_name              -- リース区分名
+            ,xvohe.chiku_code                   -- 地区コード
+            ,xvohe.department_code              -- 拠点コード
+            ,xvohe.department_name              -- 拠点名
+            ,xvohe.cust_shift_date              -- 顧客移行日
+            ,xvohe.new_department_code          -- 新拠点コー
+            ,xvohe.new_department_name          -- 新拠点名
+            ,xvohe.lease_start_year             -- リース開始年度
+            ,xvohe.date_placed_in_service       -- 事業供用日
+            ,xvohe.moved_date                   -- 移動日
+            ,xvohe.date_retired                 -- 除売却日
+            ,xvohe.assets_cost                  -- 取得価格
+      FROM (
+-- 2014/10/08 Ver.1.2 Y.Shouji ADD END
       SELECT 
              xvoh.object_code                                                             AS object_name            -- 物件コード
            , xvoh.lease_class                                                             AS lease_class            -- リース種別
@@ -4318,16 +4389,18 @@ AS
       AND    hca.status               = cv_cust_status_a                                                   -- 顧客ステータスが有効
       AND  ( ( g_lord_head_data_rec.lease_class  IS NULL )                                                 -- パラメータ<種別>がNULL
         OR   ( xvoh.lease_class       = g_lord_head_data_rec.lease_class ) )                               -- またはパラメータ<種別>と一致
-      AND  ( ( g_lord_head_data_rec.chiku_code   IS NULL )                                                 -- パラメータ<地区>がNULL
-        OR   ( ( g_lord_head_data_rec.chiku_code IS NOT NULL )                                             -- またはパラメータ<地区>がNOT NULL
-        AND    ( hl.address3          = g_lord_head_data_rec.chiku_code ) )                                -- パラメータ<地区>と地区が一致
-           )
-      AND  ( ( g_lord_head_data_rec.department_code IS NULL )                                              -- パラメータ<拠点>がNULL
-        OR   ( ( g_lord_head_data_rec.department_code IS NOT NULL )                                        -- またはパラメータ<拠点>がNOT NULL
-        AND    ( ( xvoh.department_code = g_lord_head_data_rec.department_code )                           --   パラメータ<拠点>と旧拠点が一致
-        OR       ( xcsi1.new_base_code  = g_lord_head_data_rec.department_code ) )                         --   またはパラメータ<拠点>と新拠点が一致
-             )
-           )
+-- 2014/10/08 Ver.1.2 Y.Shouji DEL START
+--      AND  ( ( g_lord_head_data_rec.chiku_code   IS NULL )                                                 -- パラメータ<地区>がNULL
+--        OR   ( ( g_lord_head_data_rec.chiku_code IS NOT NULL )                                             -- またはパラメータ<地区>がNOT NULL
+--        AND    ( hl.address3          = g_lord_head_data_rec.chiku_code ) )                                -- パラメータ<地区>と地区が一致
+--           )
+--      AND  ( ( g_lord_head_data_rec.department_code IS NULL )                                              -- パラメータ<拠点>がNULL
+--        OR   ( ( g_lord_head_data_rec.department_code IS NOT NULL )                                        -- またはパラメータ<拠点>がNOT NULL
+--        AND    ( ( xvoh.department_code = g_lord_head_data_rec.department_code )                           --   パラメータ<拠点>と旧拠点が一致
+--        OR       ( xcsi1.new_base_code  = g_lord_head_data_rec.department_code ) )                         --   またはパラメータ<拠点>と新拠点が一致
+--             )
+--           )
+-- 2014/10/08 Ver.1.2 Y.Shouji DEL END
       UNION ALL
       SELECT 
              xvoh.object_code                                                             AS object_name            -- 物件コード
@@ -4376,15 +4449,37 @@ AS
       AND    ffvs.flex_value_set_name = cv_department                                                      -- 値セット名
       AND    ffv.flex_value_id        = ffvt.flex_value_id                                                 -- 値ID
       AND    ffvt.language            = ct_language                                                        -- 言語
-      AND  ( ( xvoh.customer_code   IS NULL )                                                              -- 顧客コードがNULL
-        OR   ( xvoh.customer_code   =  gv_aff_cust_code ) )                                                -- 顧客コードがプロファイルと一致
+-- 2014/10/08 Ver.1.2 Y.Shouji DEL START
+--      AND  ( ( xvoh.customer_code   IS NULL )                                                              -- 顧客コードがNULL
+--        OR   ( xvoh.customer_code   =  gv_aff_cust_code ) )                                                -- 顧客コードがプロファイルと一致
+-- 2014/10/08 Ver.1.2 Y.Shouji DEL END
       AND  ( ( g_lord_head_data_rec.lease_class  IS NULL )                                                 -- パラメータ<種別>がNULL
         OR   ( xvoh.lease_class       = g_lord_head_data_rec.lease_class ) )                               -- またはパラメータ<種別>と一致
-      AND  ( ( g_lord_head_data_rec.department_code IS NULL )                                              -- パラメータ<拠点>がNULL
-        OR   ( ( g_lord_head_data_rec.department_code IS NOT NULL )                                        -- またはパラメータ<拠点>がNOT NULL
-        AND    ( xvoh.department_code = g_lord_head_data_rec.department_code )                           --   パラメータ<拠点>と旧拠点が一致
-             )
-           )
+-- 2014/10/08 Ver.1.2 Y.Shouji MOD START
+--      AND  ( ( g_lord_head_data_rec.department_code IS NULL )                                              -- パラメータ<拠点>がNULL
+--        OR   ( ( g_lord_head_data_rec.department_code IS NOT NULL )                                        -- またはパラメータ<拠点>がNOT NULL
+--        AND    ( xvoh.department_code = g_lord_head_data_rec.department_code )                           --   パラメータ<拠点>と旧拠点が一致
+--             )
+--           )
+      ) xvohe
+      GROUP BY 
+             xvohe.object_name
+            ,xvohe.lease_class
+            ,xvohe.lease_class_name
+            ,xvohe.lease_type
+            ,xvohe.lease_type_name
+            ,xvohe.chiku_code
+            ,xvohe.department_code
+            ,xvohe.department_name
+            ,xvohe.cust_shift_date
+            ,xvohe.new_department_code
+            ,xvohe.new_department_name
+            ,xvohe.lease_start_year
+            ,xvohe.date_placed_in_service
+            ,xvohe.moved_date
+            ,xvohe.date_retired
+            ,xvohe.assets_cost
+-- 2014/10/08 Ver.1.2 Y.Shouji MOD END
       ORDER BY
              object_name
     ;
@@ -4458,16 +4553,26 @@ AS
       AND    hcas.org_id              = g_init_rec.org_id                          -- 営業単位
       AND    hl.location_id           = hps.location_id                            -- ロケーションID
       AND    hca.status               = cv_cust_status_a                           -- 顧客ステータスが有効
-      AND  ( ( g_lord_head_data_rec.chiku_code   IS NULL )                         -- パラメータ<地区>がNULL
-        OR   ( ( g_lord_head_data_rec.chiku_code IS NOT NULL )                     -- またはパラメータ<地区>がNOT NULL
-        AND    ( hl.address3          = g_lord_head_data_rec.chiku_code ) )        -- パラメータ<地区>と地区が一致
-           )
-      AND  ( ( g_lord_head_data_rec.department_code IS NULL )                      -- パラメータ<拠点>がNULL
-        OR   ( ( g_lord_head_data_rec.department_code IS NOT NULL )                -- またはパラメータ<拠点>がNOT NULL
-        AND    ( ( xvohi.department_code = g_lord_head_data_rec.department_code )  --   パラメータ<拠点>と旧拠点が一致
-        OR       ( xcsi1.new_base_code  = g_lord_head_data_rec.department_code ) ) --   またはパラメータ<拠点>と新拠点が一致
-             )
-           )
+-- 2014/10/08 Ver.1.2 Y.Shouji MOD START
+--      AND  ( ( g_lord_head_data_rec.chiku_code   IS NULL )                         -- パラメータ<地区>がNULL
+--        OR   ( ( g_lord_head_data_rec.chiku_code IS NOT NULL )                     -- またはパラメータ<地区>がNOT NULL
+--        AND    ( hl.address3          = g_lord_head_data_rec.chiku_code ) )        -- パラメータ<地区>と地区が一致
+--           )
+--      AND  ( ( g_lord_head_data_rec.department_code IS NULL )                      -- パラメータ<拠点>がNULL
+--        OR   ( ( g_lord_head_data_rec.department_code IS NOT NULL )                -- またはパラメータ<拠点>がNOT NULL
+--        AND    ( ( xvohi.department_code = g_lord_head_data_rec.department_code )  --   パラメータ<拠点>と旧拠点が一致
+--        OR       ( xcsi1.new_base_code  = g_lord_head_data_rec.department_code ) ) --   またはパラメータ<拠点>と新拠点が一致
+--             )
+--           )
+      GROUP BY 
+             xvohi.moved_date
+           , xvohi.department_code
+           , ffvt.description
+           , xcsi1.new_base_code
+           , xcsi1.department_name
+           , xcsi1.cust_shift_date
+           , hl.address3
+-- 2014/10/08 Ver.1.2 Y.Shouji MOD END
       UNION ALL
       SELECT 
              xvohi.moved_date                                 AS moved_date             -- 移動日
@@ -4489,12 +4594,18 @@ AS
       AND    ffvs.flex_value_set_name = cv_department                              -- 値セット名
       AND    ffv.flex_value_id        = ffvt.flex_value_id                         -- 値ID
       AND    ffvt.language            = ct_language                                -- 言語
-      AND  ( ( xvohi.customer_code      IS NULL )                                  -- 顧客コードがNULL
-        OR   ( xvohi.customer_code      = gv_aff_cust_code ) )                     -- 顧客コードがプロファイルと一致
-      AND  ( ( g_lord_head_data_rec.department_code IS NULL )                      -- パラメータ<拠点>がNULL
-        OR   ( ( g_lord_head_data_rec.department_code IS NOT NULL )                -- またはパラメータ<拠点>がNOT NULL
-        AND    ( xvohi.department_code = g_lord_head_data_rec.department_code )    --   パラメータ<拠点>と旧拠点が一致
-           ) )
+-- 2014/10/08 Ver.1.2 Y.Shouji MOD START
+--      AND  ( ( xvohi.customer_code      IS NULL )                                  -- 顧客コードがNULL
+--        OR   ( xvohi.customer_code      = gv_aff_cust_code ) )                     -- 顧客コードがプロファイルと一致
+--      AND  ( ( g_lord_head_data_rec.department_code IS NULL )                      -- パラメータ<拠点>がNULL
+--        OR   ( ( g_lord_head_data_rec.department_code IS NOT NULL )                -- またはパラメータ<拠点>がNOT NULL
+--        AND    ( xvohi.department_code = g_lord_head_data_rec.department_code )    --   パラメータ<拠点>と旧拠点が一致
+--           ) )
+      GROUP BY 
+             xvohi.moved_date
+           , xvohi.department_code
+           , ffvt.description
+-- 2014/10/08 Ver.1.2 Y.Shouji MOD END
       ORDER BY
              moved_date DESC NULLS LAST
     ;
@@ -5405,8 +5516,26 @@ AS
             END IF;
           END IF;
 --
-          -- ② A-13で取得した移動日が存在する場合
-          IF ( g_vd_budget_bulk_tab(i).moved_date IS NOT NULL ) THEN
+-- 2014/10/08 Ver.1.2 Y.Shouji ADD START
+          -- 自販機履歴情報の存在確認
+          SELECT 
+                 COUNT(object_code)
+          INTO
+                 ln_count_his_move
+          FROM   xxcff_vd_object_histories  xvohi                        -- 自販機情報履歴
+          WHERE  xvohi.object_code        = g_vd_budget_bulk_tab(gn_count).object_name -- 物件コード
+          AND    ( (xvohi.process_type = cv_process_type_103)                          -- 処理区分
+            OR     (xvohi.process_type = cv_process_type_102))                         -- 処理区分
+          AND    rownum = 1
+          ;
+--
+-- 2014/10/08 Ver.1.2 Y.Shouji ADD END
+-- 2014/10/08 Ver.1.2 Y.Shouji MOD START
+          -- ② A-13で取得した移動日が存在する、かつ履歴情報が存在する場合
+--          IF ( g_vd_budget_bulk_tab(i).moved_date IS NOT NULL ) THEN
+          IF    ( g_vd_budget_bulk_tab(i).moved_date IS NOT NULL ) 
+            AND ( ln_count_his_move > 0 ) THEN
+-- 2014/10/08 Ver.1.2 Y.Shouji MOD END
             -- 自販機情報履歴から物件の移動情報を取得
             OPEN get_vd_his_move_cur;
             FETCH get_vd_his_move_cur BULK COLLECT INTO g_vd_his_move_tab;
@@ -6196,8 +6325,12 @@ AS
               END IF;
             END LOOP set_g_vd_his_move_loop;
 --
-          -- ③ A-13で取得した移動日が存在しない場合
-          ELSIF ( g_vd_budget_bulk_tab(i).moved_date IS NULL ) THEN
+-- 2014/10/08 Ver.1.2 Y.Shouji MOD START
+          -- ③ A-13で取得した移動日が存在しない、または履歴情報が存在しない場合
+--          ELSIF ( g_vd_budget_bulk_tab(i).moved_date IS NULL ) THEN
+          ELSIF ( g_vd_budget_bulk_tab(i).moved_date IS NULL ) 
+            OR  ( ln_count_his_move = 0 ) THEN
+-- 2014/10/08 Ver.1.2 Y.Shouji MOD END
             -- ③-1 A-13で取得したリース区分が’1’（原契約）かつ出力年度内に事業供用日から60ヵ月を経過しない
             IF ( ( g_vd_budget_bulk_tab(i).lease_type = cv_lease_type_1 ) AND ( ld_vd_end_months >= ld_output_april ) ) THEN
               -- 1 A-13顧客移行日が出力年度の最初の月より後の場合
