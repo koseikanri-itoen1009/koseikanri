@@ -11,6 +11,7 @@
  * ------------- ----- ---------------- ---------------------------------
  *  2009/01/30    1.0   SCS K.Okaguchi   新規作成
  *  2009/05/08    1.1   T.Kitajima       [T1_0780]価格表未設定リカバリー対応
+ *  2009/06/29    1.2   M.Sano           [T1_0022]情報区分による必須チェックの実行制御対応
  *
  ****************************************************************************************/
 CREATE TABLE  XXCOS.XXCOS_EDI_LINES(
@@ -21,7 +22,7 @@ CREATE TABLE  XXCOS.XXCOS_EDI_LINES(
  ,STOCKOUT_REASON                 VARCHAR2(20)        NULL                                -- 欠品理由
  ,PRODUCT_CODE_ITOUEN             VARCHAR2(7)         NULL                                -- 商品コード（伊藤園）
  ,PRODUCT_CODE1                   VARCHAR2(16)        NULL                                -- 商品コード１
- ,PRODUCT_CODE2                   VARCHAR2(16)        NOT NULL                            -- 商品コード２
+ ,PRODUCT_CODE2                   VARCHAR2(16)        NULL                                -- 商品コード２
  ,JAN_CODE                        VARCHAR2(13)        NULL                                -- ＪＡＮコード
  ,ITF_CODE                        VARCHAR2(16)        NULL                                -- ＩＴＦコード
  ,EXTENSION_ITF_CODE              VARCHAR2(16)        NULL                                -- 内箱ＩＴＦコード
