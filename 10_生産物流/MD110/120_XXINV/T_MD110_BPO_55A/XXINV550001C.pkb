@@ -7,7 +7,7 @@ AS
  * Description      : 在庫（帳票）
  * MD.050/070       : 在庫（帳票）Issue1.0  (T_MD050_BPO_550)
  *                    受払残高リスト        (T_MD070_BPO_55A)
- * Version          : 2.1
+ * Version          : 2.2
  *
  * Program List
  * -------------------------- ----------------------------------------------------------
@@ -38,6 +38,7 @@ AS
  *  2008/05/26    1.9   Kazuo Kumamoto     結合テスト障害対応(単位出力のズレ)
  *  2008/05/26    2.0   Kazuo Kumamoto     結合テスト障害対応(品目計出力条件変更)
  *  2008/06/07    2.1   Yasuhisa Yamamoto  結合テスト障害対応(抽出データ不正対応)
+ *  2008/06/20    2.2   Kazuo Kumamoto     システムテスト障害対応(パラメータ条件指定の不具合)
  *
  *****************************************************************************************/
 --
@@ -1327,6 +1328,8 @@ AS
     AND    xrpm.trans_date        BETWEEN gd_date_ym_first
                                       AND gd_date_ym_last
     -- ここからパラメータ条件との結合
+--mod start 2.2
+/*
     AND (((( xilv.whse_code             = in_whse_code1  )
       OR  (  xilv.whse_code             = in_whse_code2  )
       OR  (  xilv.whse_code             = in_whse_code3  ) )
@@ -1385,6 +1388,32 @@ AS
      OR  ( ( in_create_date3           IS NULL )
         OR ( ilm.attribute1             = in_create_date3 ) ) )
 -- 08/05/09 Y.Yamamoto Update v1.2 End
+*/
+    --倉庫管理部署による絞込み
+    AND (in_whse_dept1 IS NULL AND in_whse_dept2 IS NULL AND in_whse_dept3 IS NULL
+      OR xilv.whse_department IN (in_whse_dept1,in_whse_dept2,in_whse_dept3)
+    )
+    --倉庫コードによる絞込み
+    AND (in_whse_code1 IS NULL AND in_whse_code2 IS NULL AND in_whse_code3 IS NULL
+      OR xilv.whse_code IN (in_whse_code1,in_whse_code2,in_whse_code3)
+    )
+    --物流ブロックによる絞込み
+    AND (in_block_code1 IS NULL AND in_block_code2 IS NULL AND in_block_code3 IS NULL
+      OR xilv.distribution_block IN (in_block_code1,in_block_code2,in_block_code3)
+    )
+    --品目コードによる絞込み
+    AND (in_item_no1 IS NULL AND in_item_no2 IS NULL AND in_item_no3 IS NULL
+      OR ximv.item_no IN (in_item_no1,in_item_no2,in_item_no3)
+    )
+    --製造年月日による絞込み
+    AND (in_create_date1 IS NULL AND in_create_date2 IS NULL AND in_create_date3 IS NULL
+      OR ilm.attribute1 IN (in_create_date1,in_create_date2,in_create_date3)
+    )
+    --ロットNoによる絞込み
+    AND (in_lot_no1 IS NULL AND in_lot_no2 IS NULL AND in_lot_no3 IS NULL
+      OR ilm.lot_no IN (in_lot_no1,in_lot_no2,in_lot_no3)
+    )
+--mod end 2.2
     GROUP BY  xilv.whse_code                                                 -- 倉庫コード
              ,ximv.item_id                                                   -- 品目ID
              ,ximv.item_no                                                   -- 品目コード
@@ -1865,6 +1894,8 @@ AS
     AND    xrpm.trans_date        BETWEEN gd_date_ym_first
                                       AND gd_date_ym_last
     -- ここからパラメータ条件との結合
+--mod start 2.2
+/*
     AND (((( xilv.whse_code             = in_whse_code1  )
       OR  (  xilv.whse_code             = in_whse_code2  )
       OR  (  xilv.whse_code             = in_whse_code3  ) )
@@ -1923,6 +1954,32 @@ AS
      OR  ( ( in_create_date3           IS NULL )
         OR ( ilm.attribute1             = in_create_date3 ) ) )
 -- 08/05/09 Y.Yamamoto Update v1.2 End
+*/
+    --倉庫管理部署による絞込み
+    AND (in_whse_dept1 IS NULL AND in_whse_dept2 IS NULL AND in_whse_dept3 IS NULL
+      OR xilv.whse_department IN (in_whse_dept1,in_whse_dept2,in_whse_dept3)
+    )
+    --倉庫コードによる絞込み
+    AND (in_whse_code1 IS NULL AND in_whse_code2 IS NULL AND in_whse_code3 IS NULL
+      OR xilv.whse_code IN (in_whse_code1,in_whse_code2,in_whse_code3)
+    )
+    --物流ブロックによる絞込み
+    AND (in_block_code1 IS NULL AND in_block_code2 IS NULL AND in_block_code3 IS NULL
+      OR xilv.distribution_block IN (in_block_code1,in_block_code2,in_block_code3)
+    )
+    --品目コードによる絞込み
+    AND (in_item_no1 IS NULL AND in_item_no2 IS NULL AND in_item_no3 IS NULL
+      OR ximv.item_no IN (in_item_no1,in_item_no2,in_item_no3)
+    )
+    --製造年月日による絞込み
+    AND (in_create_date1 IS NULL AND in_create_date2 IS NULL AND in_create_date3 IS NULL
+      OR ilm.attribute1 IN (in_create_date1,in_create_date2,in_create_date3)
+    )
+    --ロットNoによる絞込み
+    AND (in_lot_no1 IS NULL AND in_lot_no2 IS NULL AND in_lot_no3 IS NULL
+      OR ilm.lot_no IN (in_lot_no1,in_lot_no2,in_lot_no3)
+    )
+--mod end 2.2
     GROUP BY  xilv.whse_code                                                 -- 倉庫コード
              ,ximv.item_id                                                   -- 品目ID
              ,ximv.item_no                                                   -- 品目コード
