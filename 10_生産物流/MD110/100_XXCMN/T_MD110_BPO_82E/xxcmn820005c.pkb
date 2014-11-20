@@ -7,7 +7,7 @@ AS
  * Description      : 原価コピー処理
  * MD.050           : 標準原価マスタT_MD050_BPO_821
  * MD.070           : 原価コピー処理(82E) T_MD070_BPO_82E
- * Version          : 1.0
+ * Version          : 1.1
  *
  * Program List
  * --------------------------- ----------------------------------------------------------
@@ -29,6 +29,7 @@ AS
  *  Date          Ver.  Editor           Description
  * ------------- ----- ---------------- -------------------------------------------------
  *  2008/07/01    1.0   H.Itou           新規作成
+ *  2009/01/08    1.1   N.Yoshida        本番#968対応
  *
  *****************************************************************************************/
 --
@@ -112,6 +113,10 @@ AS
   -- 日付書式
   gv_yyyymmddhh24miss         CONSTANT VARCHAR2(100) := 'YYYY/MM/DD HH24:MI:SS';
   gv_yyyymm                   CONSTANT VARCHAR2(100) := 'YYYYMM';
+-- 2009/01/08 v1.1 N.Yoshida add start
+  gc_f_time                   CONSTANT VARCHAR2(100) := ' 00:00:00';
+  gc_e_time                   CONSTANT VARCHAR2(100) := ' 23:59:59';
+-- 2009/01/08 v1.1 N.Yoshida add end
 --
   -- プロファイル
   gv_prf_cost_price_whse_code CONSTANT VARCHAR2(100) := 'XXCMN_COST_PRICE_WHSE_CODE';
@@ -1377,15 +1382,23 @@ AS
     FND_FILE.PUT_LINE(FND_FILE.OUTPUT, gv_param_prod_class_name    || gv_msg_part || iv_prod_class_code);  -- 商品区分
     FND_FILE.PUT_LINE(FND_FILE.OUTPUT, gv_param_item_class_name    || gv_msg_part || iv_item_class_code);  -- 品目区分
     FND_FILE.PUT_LINE(FND_FILE.OUTPUT, gv_param_item_code_name     || gv_msg_part || iv_item_code);        -- 品目
-    FND_FILE.PUT_LINE(FND_FILE.OUTPUT, gv_param_upd_date_from_name || gv_msg_part || iv_update_date_from); -- 更新日時FROM
-    FND_FILE.PUT_LINE(FND_FILE.OUTPUT, gv_param_upd_date_to_name   || gv_msg_part || iv_update_date_to);   -- 更新日時TO
+-- 2009/01/08 v1.1 N.Yoshida mod start
+--    FND_FILE.PUT_LINE(FND_FILE.OUTPUT, gv_param_upd_date_from_name || gv_msg_part || iv_update_date_from); -- 更新日時FROM
+--    FND_FILE.PUT_LINE(FND_FILE.OUTPUT, gv_param_upd_date_to_name   || gv_msg_part || iv_update_date_to);   -- 更新日時TO
+    FND_FILE.PUT_LINE(FND_FILE.OUTPUT, gv_param_upd_date_from_name || gv_msg_part || iv_update_date_from || gc_f_time); -- 更新日時FROM
+    FND_FILE.PUT_LINE(FND_FILE.OUTPUT, gv_param_upd_date_to_name   || gv_msg_part || iv_update_date_to || gc_e_time);   -- 更新日時TO
+-- 2009/01/08 v1.1 N.Yoshida mod end
 --
     gv_calendar_code    := iv_calendar_code;    -- カレンダコード
     gv_prod_class_code  := iv_prod_class_code;  -- 商品区分
     gv_item_class_code  := iv_item_class_code;  -- 品目区分
     gv_item_code        := iv_item_code;        -- 品目
-    gd_update_date_from := FND_DATE.STRING_TO_DATE(iv_update_date_from, gv_yyyymmddhh24miss); -- 更新日時FROM
-    gd_update_date_to   := FND_DATE.STRING_TO_DATE(iv_update_date_to, gv_yyyymmddhh24miss);   -- 更新日時TO
+-- 2009/01/08 v1.1 N.Yoshida mod start
+--    gd_update_date_from := FND_DATE.STRING_TO_DATE(iv_update_date_from, gv_yyyymmddhh24miss); -- 更新日時FROM
+--    gd_update_date_to   := FND_DATE.STRING_TO_DATE(iv_update_date_to, gv_yyyymmddhh24miss);   -- 更新日時TO
+    gd_update_date_from := FND_DATE.STRING_TO_DATE(iv_update_date_from || gc_f_time, gv_yyyymmddhh24miss); -- 更新日時FROM
+    gd_update_date_to   := FND_DATE.STRING_TO_DATE(iv_update_date_to || gc_e_time, gv_yyyymmddhh24miss);   -- 更新日時TO
+-- 2009/01/08 v1.1 N.Yoshida mod end
 --
     -- ===============================
     -- E-2.パラメータチェック

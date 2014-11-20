@@ -1,0 +1,1 @@
+CREATE INDEX gmi.ic_whse_mst_u2 ON gmi.ic_whse_mst(whse_code, attribute1 ) TABLESPACE apps_ts_tx_idx;

@@ -7,7 +7,7 @@ AS
  * Description      : 直送仕入・出荷実績作成処理
  * MD.050           : 仕入先出荷実績         T_MD050_BPO_320
  * MD.070           : 直送仕入・出荷実績作成 T_MD070_BPO_32B
- * Version          : 1.13
+ * Version          : 1.14
  *
  * Program List
  * -------------------- ------------------------------------------------------------
@@ -62,6 +62,7 @@ AS
  *  2008/12/15    1.11  Oracle 北寒寺 正夫 本番障害No648対応
  *  2008/12/19    1.12  Oracle 二瓶 大輔 本番障害No648再対応
  *  2008/12/30    1.13  Oracle 吉元 強樹 標準-ｱﾄﾞｵﾝ受入差異対応
+ *  2009/01/08    1.14  Oracle 吉元 強樹 受入明細番号採番不備対応
  *****************************************************************************************/
 --
 --#######################  固定グローバル定数宣言部 START   #######################
@@ -1399,7 +1400,10 @@ AS
         ,ir_masters_rec.po_header_number                 -- rcv_rtn_number
         ,ir_masters_rec.line_num                         -- rcv_rtn_line_number
         ,ir_masters_rec.po_header_number                 -- source_document_number
-        ,ir_masters_rec.line_num                         -- source_document_line_num
+-- 2009/01/08 v1.14 T.Yoshimoto Mod Start
+        --,ir_masters_rec.line_num                         -- source_document_line_num
+        ,'1'                                             -- source_document_line_num
+-- 2009/01/08 v1.14 T.Yoshimoto Mod End
         ,ir_masters_rec.attribute9                       -- supply_requested_number
         ,ir_masters_rec.drop_ship_type                   -- drop_ship_type
         ,ir_masters_rec.vendor_id                        -- vendor_id

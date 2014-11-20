@@ -1,0 +1,1 @@
+CREATE INDEX xxinv.xxinv_sims_n05 ON xxinv.xxinv_stc_inventory_month_stck( item_id, invent_ym, whse_code ) TABLESPACE xxidx;
