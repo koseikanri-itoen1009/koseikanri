@@ -8,7 +8,7 @@ AS
  * Description      : 棚卸スナップショット作成
  * MD.050           : 在庫(帳票)               T_MD050_BPO_550
  * MD.070           : 棚卸スナップショット作成 T_MD070_BPO_55D
- * Version          : 1.14
+ * Version          : 1.15
  *
  * Program List
  * -------------------- ------------------------------------------------------------
@@ -36,6 +36,7 @@ AS
  *  2010/05/13    1.12  M.Hokkanji       本稼動障害#2250対応
  *  2012/04/19    1.13  SCSK D.Sugahara  E_本稼動_09050対応
  *  2012/11/29    1.14  SCSK K.Kiriu     E_本稼動_10251対応
+ *  2013/01/07    1.15  SCSK K.Kiriu     E_本稼動_10251再対応(ヒント句固定化)
  *
  *****************************************************************************************/
 --  
@@ -749,8 +750,34 @@ AS
                   ||'        /*+ '
                   ||'          LEADING(xilv.mil) '
                   ||'          FULL(xilv.mil) '
+-- 2013/01/07 v1.15 K.Kiriu Update Start
+--                  ||'          INDEX(ili ic_loct_inv_i1) '
+--                  ||'          USE_NL(xilv.mil xilv.haou xilv.iwm) '
+                  ||'          USE_NL(xilv.mil '
+                  ||'                 xilv.haou '
+                  ||'                 xilv.iwm '
+                  ||'                 ili '
+                  ||'                 iimb '
+                  ||'                 ilm '
+                  ||'                 xicv.gic_s '
+                  ||'                 xicv.mcb_s '
+                  ||'                 xicv.mct_s '
+                  ||'                 xicv.gic_h '
+                  ||'                 xicv.mcb_h '
+                  ||'                 xicv.mct_h '
+                  ||'                 xlmv.ili '
+                  ||'                ) '
                   ||'          INDEX(ili ic_loct_inv_i1) '
-                  ||'          USE_NL(xilv.mil xilv.haou xilv.iwm) '
+                  ||'          INDEX(iimb ic_item_mst_b_pk) '
+                  ||'          INDEX(ilm ic_lots_mst_pk) '
+                  ||'          INDEX(xicv.gic_s gmi_item_categories_pk) '
+                  ||'          INDEX(xicv.mcb_s mtl_categories_b_u1) '
+                  ||'          INDEX(xicv.mct_s mtl_categories_tl_u1) '
+                  ||'          INDEX(xicv.gic_h gmi_item_categories_pk) '
+                  ||'          INDEX(xicv.mcb_h mtl_categories_b_u1) '
+                  ||'          INDEX(xicv.mct_h mtl_categories_tl_u1) '
+                  ||'          INDEX(xlmv.ili ic_loct_inv_pk) '
+-- 2013/01/07 v1.15 K.Kiriu Update End
                   ||'        */ '
      ;
     --倉庫コード・倉庫管理部署に指定あり、もしくは、ブロック指定なし
