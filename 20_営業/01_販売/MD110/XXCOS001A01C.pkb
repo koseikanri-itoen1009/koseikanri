@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCOS001A01C (body)
  * Description      : 納品データの取込を行う
  * MD.050           : HHT納品データ取込 (MD050_COS_001_A01)
- * Version          : 1.20
+ * Version          : 1.21
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -53,6 +53,7 @@ AS
  *  2009/11/25    1.18  N.Maeda          [E_本稼動_00053] H/Cの整合性チェック削除
  *  2009/12/01    1.19  M.Sano           [E_本稼動_00234] 成績者、納品者の妥当性チェック修正
  *  2009/12/10    1.20  M.Sano           [E_本稼動_00108] 共通関数＜会計期間情報取得＞異常終了時の処理修正
+ *  2010/01/18    1.21  M.Uehara         [E_本稼動_01128] カード売区分設定時のカード会社存在チェック追加
  *
  *****************************************************************************************/
 --
@@ -200,6 +201,9 @@ AS
   cv_msg_dlv_emp     CONSTANT VARCHAR2(20)  := 'APP-XXCOS1-00174';     -- 納品者コード
   cv_err_msg_get_resource_id  CONSTANT VARCHAR2(20)  := 'APP-XXCOS1-13511'; --リソースID取得エラー
 --****************************** 2009/05/15 1.14 N.Maeda ADD END ********************************--
+--****************************** 2010/01/18 1.21 M.Uehara ADD START *******************************--
+  cv_msg_card_company CONSTANT VARCHAR2(20)  := 'APP-XXCOS1-13512';     -- カード会社未設定エラーメッセージ
+--****************************** 2010/01/18 1.21 M.Uehara ADD END   *******************************--
   -- トークン
   cv_tkn_table       CONSTANT VARCHAR2(20)  := 'TABLE';                -- テーブル名
   cv_tkn_colmun      CONSTANT VARCHAR2(20)  := 'COLMUN';               -- テーブル列名
@@ -231,6 +235,10 @@ AS
 -- ******* 2009/10/01 N.Maeda ADD START ********* --
   cv_user_lang       CONSTANT fnd_lookup_values.language%TYPE := USERENV( 'LANG' );
 -- ******* 2009/10/01 N.Maeda ADD  END  ********* --
+--****************************** 2010/01/18 1.21 M.Uehara ADD START *******************************--
+  cv_card            CONSTANT VARCHAR2(1)   := '1';                    -- カード売区分＝1:カード
+  cv_cash            CONSTANT VARCHAR2(1)   := '0';                    -- カード売区分＝0:現金
+--****************************** 2010/01/18 1.21 M.Uehara ADD END   *******************************--
 --
   -- クイックコードタイプ
   cv_qck_typ_status  CONSTANT VARCHAR2(30)  := 'XXCOS1_CUS_STATUS_MST_001_A01';   -- 顧客ステータス
@@ -320,11 +328,17 @@ AS
 --****************************** 2009/12/01 1.19 M.Sano DEL END   *******************************--
       bus_low_type    xxcmm_cust_accounts.business_low_type%TYPE,      -- 業態（小分類）
       base_name       hz_cust_accounts.account_name%TYPE,              -- 拠点名称
-      dept_hht_div    xxcmm_cust_accounts.dept_hht_div%TYPE            -- 百貨店用HHT区分
+--****************************** 2010/01/18 1.21 M.Uehara MOD START *******************************--
+--      dept_hht_div    xxcmm_cust_accounts.dept_hht_div%TYPE            -- 百貨店用HHT区分
+      dept_hht_div    xxcmm_cust_accounts.dept_hht_div%TYPE,            -- 百貨店用HHT区分
+--****************************** 2010/01/18 1.21 M.Uehara MOD END *******************************--
 --****************************** 2009/12/01 1.19 M.Sano DEL START *******************************--
 --      base_perf       per_all_assignments_f.ass_attribute5%TYPE,       -- 拠点コード（成績者）
 --      base_dlv        per_all_assignments_f.ass_attribute5%TYPE        -- 拠点コード（納品者）
 --****************************** 2009/12/01 1.19 M.Sano DEL END   *******************************--
+--****************************** 2010/01/18 1.21 M.Uehara ADD START *******************************--
+      card_company    xxcmm_cust_accounts.card_company%TYPE            -- カード会社
+--****************************** 2010/01/18 1.21 M.Uehara ADD END *******************************--
     );
   TYPE g_tab_select_cus IS TABLE OF g_rec_select_cus INDEX BY VARCHAR2(9);
 --
@@ -1879,6 +1893,9 @@ AS
     lt_in_case              ic_item_mst_b.attribute11%TYPE;                    -- 品目マスタ：ケース入数
     lt_sale_object          ic_item_mst_b.attribute26%TYPE;                    -- 品目マスタ：売上対象区分
     lt_item_status          xxcmm_system_items_b.item_status%TYPE;             -- 品目マスタ：品目ステータス
+--****************************** 2010/01/18 1.21 M.Uehara ADD START *******************************--
+    lt_card_company         xxcmm_cust_accounts.card_company%TYPE;              -- カード会社
+--****************************** 2010/01/18 1.21 M.Uehara ADD END   *******************************--
 -- ******************** 2009/11/25 1.18 N.Maeda DEL START ******************** --
 --    lt_vd_column            xxcoi_mst_vd_column.column_no%TYPE;                -- VDコラムマスタ：コラムNo.
 --    lt_vd_hc                xxcoi_mst_vd_column.hot_cold%TYPE;                 -- VDコラムマスタ：H/C
@@ -2007,6 +2024,9 @@ AS
         lt_hht_class       := NULL;
         lt_base_perf       := NULL;
         lt_base_dlv        := NULL;
+--****************************** 2010/01/18 1.21 M.Uehara ADD START *******************************--
+        lt_card_company    := NULL;
+--****************************** 2010/01/18 1.21 M.Uehara ADD START *******************************--
 --
         --== 顧客マスタデータ抽出 ==--
         -- 既に取得済みの値であるかを確認する。
@@ -2032,6 +2052,9 @@ AS
 --        lt_base_perf      := gt_select_cus(lt_customer_number).base_perf;       -- 拠点コード（成績者）
 --        lt_base_dlv       := gt_select_cus(lt_customer_number).base_dlv;        -- 拠点コード（納品者）
 --****************************** 2009/12/01 1.19 M.Sano DEL END   *******************************--
+--****************************** 2010/01/18 1.21 M.Uehara ADD START *******************************--
+        lt_card_company   := gt_select_cus(lt_customer_number).card_company;    -- カード会社
+--****************************** 2010/01/18 1.21 M.Uehara ADD START *******************************--
       ELSE
 --****************************** 2009/05/15 1.14 N.Maeda MOD START ******************************--
 --          SELECT SUBSTRB(parties.party_name,1,40)  party_name,                    -- 顧客名称
@@ -2197,7 +2220,11 @@ AS
                  parties.duns_number_c        customer_status,                    -- 顧客ステータス
                  custadd.business_low_type    business_low_type,                  -- 業態（小分類）
                  SUBSTRB(base.account_name,1,30)  account_name,                   -- 拠点名称
-                 baseadd.dept_hht_div         dept_hht_div                        -- 百貨店用HHT区分
+--****************************** 2010/01/18 1.21 M.Uehara MOD START *******************************--
+--                 baseadd.dept_hht_div         dept_hht_div                        -- 百貨店用HHT区分
+                 baseadd.dept_hht_div         dept_hht_div,                       -- 百貨店用HHT区分
+                 custadd.card_company         card_company                        -- カード会社
+--****************************** 2010/01/18 1.21 M.Uehara MOD END   *******************************--
           INTO   lt_customer_name,
                  lt_customer_id,
                  lt_party_id,
@@ -2206,7 +2233,11 @@ AS
                  lt_cus_status,
                  lt_bus_low_type,
                  lt_base_name,
-                 lt_hht_class
+--****************************** 2010/01/18 1.21 M.Uehara MOD START *******************************--
+--                 lt_hht_class
+                 lt_hht_class,
+                 lt_card_company
+--****************************** 2010/01/18 1.21 M.Uehara MOD END   *******************************--
           FROM   hz_cust_accounts     cust,                    -- 顧客マスタ
                  hz_cust_accounts     base,                    -- 拠点マスタ
                  hz_parties           parties,                 -- パーティ
@@ -2795,6 +2826,34 @@ AS
         END IF;
       END LOOP;
 --
+--****************************** 2010/01/18 1.21 M.Uehara ADD START *******************************--
+      --==============================================================
+      --カード会社チェック（ヘッダ部）
+      --==============================================================
+      IF ( lt_card_sale_class = cv_card AND lt_card_company IS NULL ) THEN
+        -- ログ出力
+        lv_errmsg := xxccp_common_pkg.get_msg( cv_application, cv_msg_card_company );
+        FND_FILE.PUT_LINE( FND_FILE.LOG, lv_errmsg );
+        ov_retcode := cv_status_warn;
+        -- エラー変数へ格納
+        gt_err_base_name(ln_err_no)        := lt_base_name;                 -- 拠点名称
+        gt_err_data_name(ln_err_no)        := lt_data_name;                 -- データ名称
+        gt_err_order_no_hht(ln_err_no)     := lt_order_noh_hht;             -- 受注NO(HHT)
+        gt_err_line_no(ln_err_no)          := NULL;                         -- 行NO
+        gt_err_order_no_ebs(ln_err_no)     := lt_order_noh_ebs;             -- 受注NO(EBS)
+        gt_err_customer_name(ln_err_no)    := lt_customer_name;             -- 顧客名
+        gt_err_payment_dlv_date(ln_err_no) := lt_dlv_date;                  -- 入金/納品日
+        gt_err_base_code(ln_err_no)        := SUBSTRB(lt_base_code,1,4);                  -- 拠点コード
+        gt_err_entry_number(ln_err_no)     := SUBSTRB(lt_hht_invoice_no,1,12);            -- 伝票NO
+        gt_err_party_num(ln_err_no)        := SUBSTRB(lt_customer_number,1,9);            -- 顧客コード
+        gt_err_perform_by_code(ln_err_no)  := SUBSTRB(lt_performance_code,1,5);           -- 成績者コード
+        gt_err_item_code(ln_err_no)        := NULL;                         -- 品目コード
+        gt_err_error_message(ln_err_no)    := SUBSTRB( lv_errmsg, 1, 60 );  -- エラー内容
+        ln_err_no := ln_err_no + 1;
+        -- エラーフラグ更新
+        lv_err_flag := cv_hit;
+      END IF;
+--****************************** 2010/01/18 1.21 M.Uehara ADD END   *******************************--
       --==============================================================
       --入力区分の妥当性チェック（ヘッダ部）
       --==============================================================
@@ -3473,6 +3532,35 @@ AS
           END IF;
         END LOOP;
 --
+--****************************** 2010/01/18 1.21 M.Uehara ADD START *******************************--
+        --==============================================================
+        --カード会社チェック（明細部）
+        --==============================================================
+          IF ( lt_card_sale_class <> cv_card AND (NVL(lt_cash_and_card ,0) <> 0)
+                                             AND lt_card_company IS NULL ) THEN
+            -- ログ出力
+          lv_errmsg := xxccp_common_pkg.get_msg( cv_application, cv_msg_card_company );
+            FND_FILE.PUT_LINE( FND_FILE.LOG, lv_errmsg );
+            ov_retcode := cv_status_warn;
+            -- エラー変数へ格納
+            gt_err_base_name(ln_err_no)        := lt_base_name;                 -- 拠点名称
+            gt_err_data_name(ln_err_no)        := lt_data_name;                 -- データ名称
+            gt_err_order_no_hht(ln_err_no)     := lt_order_noh_hht;             -- 受注NO(HHT)
+            gt_err_order_no_ebs(ln_err_no)     := lt_order_noh_ebs;             -- 受注NO(EBS)
+            gt_err_customer_name(ln_err_no)    := lt_customer_name;             -- 顧客名
+            gt_err_payment_dlv_date(ln_err_no) := lt_dlv_date;                  -- 入金/納品日
+            gt_err_base_code(ln_err_no)        := SUBSTRB(lt_base_code,1,4);                  -- 拠点コード
+            gt_err_entry_number(ln_err_no)     := SUBSTRB(lt_hht_invoice_no,1,12);            -- 伝票NO
+            gt_err_line_no(ln_err_no)          := SUBSTRB(lt_line_no_hht,1,2);                -- 行NO
+            gt_err_party_num(ln_err_no)        := SUBSTRB(lt_customer_number,1,9);            -- 顧客コード
+            gt_err_perform_by_code(ln_err_no)  := SUBSTRB(lt_performance_code,1,5);           -- 成績者コード
+            gt_err_item_code(ln_err_no)        := SUBSTRB(lt_item_code,1,7);                  -- 品目コード
+            gt_err_error_message(ln_err_no)    := SUBSTRB( lv_errmsg, 1, 60 );  -- エラー内容
+            ln_err_no := ln_err_no + 1;
+            -- エラーフラグ更新
+            lv_err_flag := cv_hit;
+          END IF;
+--****************************** 2010/01/18 1.21 M.Uehara ADD END   *******************************--
         --==============================================================
         --コラムNo.とH/Cの妥当性チェック（明細部）
         --==============================================================
