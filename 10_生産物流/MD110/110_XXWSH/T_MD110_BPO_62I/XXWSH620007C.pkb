@@ -7,7 +7,7 @@ AS
  * Description      : 倉庫払出指示書（配送先明細）
  * MD.050           : 引当/配車(帳票) T_MD050_BPO_621
  * MD.070           : 倉庫払出指示書（配送先明細） T_MD070_BPO_62I
- * Version          : 1.0
+ * Version          : 1.1
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -29,6 +29,8 @@ AS
  *  Date          Ver.  Editor             Description
  * ------------- ----- ------------------ -----------------------------------------------
  *  2008/05/14    1.0   Nozomi Kashiwagi   新規作成
+ *  2008/06/24    1.1   Masayoshi Uehara   支給の場合、パラメータ配送先/入庫先のリレーションを
+ *                                         vendor_site_codeに変更。
  *
  *****************************************************************************************/
 --
@@ -611,7 +613,10 @@ AS
              xoha.req_status  >=  gc_ship_status_receipt  -- 受領済
         AND  xoha.req_status  <>  gc_ship_status_delete   -- 取消
         AND  (gt_param.delivery_to IS NULL
-          OR  xoha.deliver_to = gt_param.delivery_to
+             --Mod start 2008/06/24 uehara
+--          OR  xoha.deliver_to = gt_param.delivery_to
+          OR  xoha.vendor_site_code = gt_param.delivery_to
+             --Mod end 2008/06/24 uehara
         )
         AND  ((gt_param.shipped_cd IS NULL) AND  (gt_param.block IS NULL)
           OR  xoha.deliver_from         =  gt_param.shipped_cd
