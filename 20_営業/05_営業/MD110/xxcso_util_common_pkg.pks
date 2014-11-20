@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCSO_UTIL_COMMON_PKG(SPEC)
  * Description      : 共通関数(XXCSOユーティリティ）
  * MD.050/070       :
- * Version          : 1.1
+ * Version          : 1.3
  *
  * Program List
  *  ------------------------- ---- ----- --------------------------------------------------
@@ -50,6 +50,8 @@ AS
  *  2009/02/02    1.0   K.Boku           chk_responsibility新規作成
  *  2009/04/16    1.1   K.Satomura       conv_multi_byte新規作成(T1_0172対応)
  *  2009-05-01    1.2   Tomoko.Mori      T1_0897対応
+ *  2009/05/12    1.3   K.Satomura       get_rs_base_code
+ *                                       get_current_rs_base_code 新規作成(T1_0593対応)
  *****************************************************************************************/
 --
   /**********************************************************************************
@@ -221,12 +223,31 @@ AS
   /* 2009.04.16 K.Satomura T1_0172対応 START */
   /**********************************************************************************
    * Function Name    : conv_multi_byte
-   * Description      :半角文字全角置換関数
+   * Description      : 半角文字全角置換関数
    ***********************************************************************************/
   FUNCTION conv_multi_byte(
     iv_char IN VARCHAR2 -- 文字列
   ) RETURN VARCHAR2;
   /* 2009.04.16 K.Satomura T1_0172対応 END */
+--
+  /* 2009.05.12 K.Satomura T1_0593対応 START */
+  /**********************************************************************************
+   * Function Name    : get_rs_base_code
+   * Description      : 所属拠点取得（リソースID、基準日指定）
+   ***********************************************************************************/
+  FUNCTION  get_rs_base_code(
+    in_resource_id   IN NUMBER
+   ,id_standard_date IN DATE
+  ) RETURN VARCHAR2;
+--
+  /**********************************************************************************
+   * Function Name    : get_current_rs_base_code
+   * Description      : 現所属拠点取得（ログインユーザー）
+   ***********************************************************************************/
+  FUNCTION  get_current_rs_base_code
+  RETURN VARCHAR2;
+  /* 2009.05.12 K.Satomura T1_0593対応 END */
+--
 END xxcso_util_common_pkg;
 --
 /

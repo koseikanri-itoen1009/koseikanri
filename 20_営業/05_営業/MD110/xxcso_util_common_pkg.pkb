@@ -6,7 +6,7 @@ AS
  * Package Name     : xxcso_util_common_pkg(BODY)
  * Description      : 共通関数(XXCSOユーティリティ）
  * MD.050/070       :
- * Version          : 1.1
+ * Version          : 1.3
  *
  * Program List
  *  ------------------------- ---- ----- --------------------------------------------------
@@ -59,6 +59,8 @@ AS
  *                                       メッセージを追加
  *  2009/04/16    1.1   K.Satomura       conv_multi_byte新規作成(T1_0172対応)
  *  2009-05-01    1.2   Tomoko.Mori      T1_0897対応
+ *  2009/05/12    1.3   K.Satomura       get_rs_base_code
+ *                                       get_current_rs_base_code 新規作成(T1_0593対応)
  *****************************************************************************************/
 --
   -- ===============================
@@ -1576,7 +1578,127 @@ AS
 --
 --#####################################  固定部 END   ##########################################
   END conv_multi_byte;
-
   /* 2009.04.16 K.Satomura T1_0172対応 END */
+  /* 2009.05.12 K.Satomura T1_0593対応 START */
+   /**********************************************************************************
+   * Function Name    : get_rs_base_code
+   * Description      : 所属拠点取得（リソースID、基準日指定）
+   ***********************************************************************************/
+  FUNCTION  get_rs_base_code(
+    in_resource_id       IN   NUMBER
+   ,id_standard_date     IN   DATE
+  ) RETURN VARCHAR2
+  IS
+    -- ===============================
+    -- 固定ローカル定数
+    -- ===============================
+    cv_prg_name                  CONSTANT VARCHAR2(100)   := 'get_rs_base_code';
+--
+    -- ===============================
+    -- ローカルカーソル
+    -- ===============================
+    CURSOR  get_rs_group_cur(
+      in_resource_id       IN   NUMBER
+     ,id_standard_date     IN   DATE
+    )
+    IS
+      SELECT  jrgb.attribute1
+      FROM    jtf_rs_group_members  jrgm
+             ,jtf_rs_role_relations jrrr
+             ,jtf_rs_groups_b       jrgb
+             ,xxcso_aff_base_v2     xabv
+      WHERE   jrgm.resource_id                             = in_resource_id
+      AND     jrgm.delete_flag                             = 'N'
+      AND     jrgb.group_id                                = jrgm.group_id
+      AND     jrgb.start_date_active                      <= id_standard_date
+      AND     NVL(jrgb.end_date_active, id_standard_date) >= id_standard_date
+      AND     xabv.base_code                               = jrgb.attribute1
+      AND     jrrr.role_resource_id                        = jrgm.group_member_id
+      AND     jrrr.role_resource_type                      = 'RS_GROUP_MEMBER'
+      AND     jrrr.delete_flag                             = 'N'
+      AND     jrrr.start_date_active                      <= id_standard_date
+      AND     NVL(jrrr.end_date_active, id_standard_date) >= id_standard_date
+      ORDER BY jrrr.start_date_active, jrrr.last_update_date DESC
+    ;
+    -- ===============================
+    -- ローカル変数
+    -- ===============================
+    lv_base_code  jtf_rs_groups_b.attribute1%TYPE;
+--
+  BEGIN
+--
+    << resource_group_loop >>
+    FOR lr_rec IN get_rs_group_cur(in_resource_id, id_standard_date)
+    LOOP
+--
+      lv_base_code := lr_rec.attribute1;
+      EXIT resource_group_loop;
+--
+    END LOOP resource_group_loop;
+--
+    RETURN lv_base_code;
+--
+  EXCEPTION
+--#################################  固定例外処理部 START   ####################################
+--
+    -- *** OTHERS例外ハンドラ ***
+    WHEN OTHERS THEN
+      xxcso_common_pkg.raise_api_others_expt(gv_pkg_name, cv_prg_name);
+--
+--#####################################  固定部 END   ##########################################
+  END get_rs_base_code;
+--
+   /**********************************************************************************
+   * Function Name    : get_current_rs_base_code
+   * Description      : 現所属拠点取得
+   ***********************************************************************************/
+  FUNCTION  get_current_rs_base_code
+  RETURN VARCHAR2
+  IS
+    -- ===============================
+    -- 固定ローカル定数
+    -- ===============================
+    cv_prg_name                  CONSTANT VARCHAR2(100)   := 'get_current_rs_base_code';
+--
+    -- ===============================
+    -- ローカル変数
+    -- ===============================
+    ln_resource_id  xxcso_resources_v2.resource_id%TYPE;
+    lv_base_code    jtf_rs_groups_b.attribute1%TYPE;
+--
+  BEGIN
+--
+    BEGIN
+--
+      SELECT  xrv.resource_id
+      INTO    ln_resource_id
+      FROM    xxcso_resources_v2  xrv
+      WHERE   xrv.user_id = fnd_global.user_id
+      ;
+--
+      lv_base_code :=
+        get_rs_base_code(
+          ln_resource_id
+         ,TRUNC(xxcso_util_common_pkg.get_online_sysdate)
+        );
+--
+    EXCEPTION
+      WHEN OTHERS THEN
+        lv_base_code := NULL;
+    END;
+--
+    RETURN lv_base_code;
+--
+  EXCEPTION
+--#################################  固定例外処理部 START   ####################################
+--
+    -- *** OTHERS例外ハンドラ ***
+    WHEN OTHERS THEN
+      xxcso_common_pkg.raise_api_others_expt(gv_pkg_name, cv_prg_name);
+--
+--#####################################  固定部 END   ##########################################
+  END get_current_rs_base_code;
+  /* 2009.05.12 K.Satomura T1_0593対応 END */
+--
 END xxcso_util_common_pkg;
 /
