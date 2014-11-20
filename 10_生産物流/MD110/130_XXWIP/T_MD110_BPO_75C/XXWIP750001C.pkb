@@ -7,7 +7,7 @@ AS
  * Description      : 振替運賃情報更新
  * MD.050           : 運賃計算（振替） T_MD050_BPO_750
  * MD.070           : 振替運賃情報更新 T_MD070_BPO_75C
- * Version          : 1.7
+ * Version          : 1.9
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -51,7 +51,8 @@ AS
  *  2008/09/22    1.6  Oracle 山根 一浩  T_S_552,T_TE080_BPO_750 指摘4対応
  *  2008/10/16    1.7  Oracle 野村 正幸  内部変更#225
  *  2008/10/17    1.8  Oracle 野村 正幸  T_S_465対応
- *
+ *  2008/11/06    1.9  Oracle 福田 直樹  統合#537対応
+ *  2008/11/06    1.9  Oracle 福田 直樹  統合#563対応
  *****************************************************************************************/
 --
 --#######################  固定グローバル定数宣言部 START   #######################
@@ -1031,6 +1032,14 @@ AS
             AND (xpv.drink_transfer_std      = '1'))    -- 「1:設定振替」
         )
 -- ********** 20080508 内部変更要求 seq#75 MOD END   **********
+--
+-- ##### 20081106 Ver.1.9 統合#563対応 start #####
+    AND 
+      NOT ((xoha.prod_class = gv_prod_class_lef)            -- 商品区分 = リーフの
+            AND (xsmv.small_amount_class = gv_small_sum_no) -- 「0:車立」は除外する
+          )
+-- ##### 20081106 Ver.1.9 統合#563対応 end   #####
+--
     AND    xotv.shipping_shikyu_class = '1'      -- 「1:出荷依頼」
     AND    xola.shipping_item_code    = ximv.item_no
     AND    xola.delete_flag           = 'N'      -- 削除されていない明細
@@ -1431,7 +1440,10 @@ AS
           i_trn_amount_tab(gn_ins_order_inf_cnt) :=
 -- ##### 20080903 Ver.1.5 内部変更要求201_203 start #####
 --          gt_order_inf_tbl(ln_index).setting_amount * i_trn_calc_qry_tab(gn_ins_order_inf_cnt);
-            ROUND(gt_order_inf_tbl(ln_index).setting_amount * i_trn_calc_qry_tab(gn_ins_order_inf_cnt));
+   -- ##### 20081106 Ver.1.9 統合#537対応 start #####
+--          ROUND(gt_order_inf_tbl(ln_index).setting_amount * i_trn_calc_qry_tab(gn_ins_order_inf_cnt));
+            gt_order_inf_tbl(ln_index).setting_amount;
+   -- ##### 20081106 Ver.1.9 統合#537対応 End   #####
 -- ##### 20080903 Ver.1.5 内部変更要求201_203 end   #####
 --
         -- 存在する場合は振替運賃情報アドオン更新用PL/SQL表に格納
@@ -1535,7 +1547,10 @@ AS
           u_trn_amount_tab(gn_upd_order_inf_cnt) :=
 -- ##### 20080903 Ver.1.5 内部変更要求201_203 start #####
 --          gt_order_inf_tbl(ln_index).setting_amount * u_trn_calc_qry_tab(gn_upd_order_inf_cnt);
-            ROUND(gt_order_inf_tbl(ln_index).setting_amount * u_trn_calc_qry_tab(gn_upd_order_inf_cnt));
+   -- ##### 20081106 Ver.1.9 統合#537対応 start #####
+--          ROUND(gt_order_inf_tbl(ln_index).setting_amount * u_trn_calc_qry_tab(gn_upd_order_inf_cnt));
+            gt_order_inf_tbl(ln_index).setting_amount;
+   -- ##### 20081106 Ver.1.9 統合#537対応 End   #####
 -- ##### 20080903 Ver.1.5 内部変更要求201_203 end   #####
         END IF;
 --2008/09/22 Add ↓
