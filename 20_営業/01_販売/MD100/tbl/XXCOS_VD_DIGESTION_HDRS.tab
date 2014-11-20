@@ -3,13 +3,14 @@
  *
  * Table Name  : XXCOS_VD_DIGESTION_HDRS
  * Description : 消化VD用消化計算ヘッダテーブル
- * Version     : 1.0
+ * Version     : 1.1
  *
  * Change Record
  * ------------- ----- ---------------- ---------------------------------
  *  Date          Ver.  Editor           Description
  * ------------- ----- ---------------- ---------------------------------
  *  2009/01/30    1.0   SCS K.Kakishita新規作成
+ *  2010/02/12    1.1   SCS K.Atsushiba  [E_本稼動_01386対応]販売実績ID追加
  *
  ****************************************************************************************/
 CREATE TABLE XXCOS.XXCOS_VD_DIGESTION_HDRS
@@ -36,6 +37,7 @@ CREATE TABLE XXCOS.XXCOS_VD_DIGESTION_HDRS
   UNCALCULATE_CLASS               VARCHAR2(1),                                  --未計算区分
   CHANGE_OUT_TIME_100             VARCHAR2(4),                                  --つり銭切れ時間100円
   CHANGE_OUT_TIME_10              VARCHAR2(4),                                  --つり銭切れ時間10円
+  SALES_EXP_HEADER_ID             NUMBER,                                       --販売実績ヘッダID
   CREATED_BY                      NUMBER(15)    NOT NULL,                       --作成者
   CREATION_DATE                   DATE          NOT NULL,                       --作成日
   LAST_UPDATED_BY                 NUMBER(15)    NOT NULL,                       --最終更新者
@@ -71,6 +73,7 @@ COMMENT ON COLUMN XXCOS.XXCOS_VD_DIGESTION_HDRS.PRE_DIGESTION_DUE_DATE          
 COMMENT ON COLUMN XXCOS.XXCOS_VD_DIGESTION_HDRS.UNCALCULATE_CLASS               IS '未計算区分';
 COMMENT ON COLUMN XXCOS.XXCOS_VD_DIGESTION_HDRS.CHANGE_OUT_TIME_100             IS 'つり銭切れ時間100円';
 COMMENT ON COLUMN XXCOS.XXCOS_VD_DIGESTION_HDRS.CHANGE_OUT_TIME_10              IS 'つり銭切れ時間10円';
+COMMENT ON COLUMN XXCOS.XXCOS_VD_DIGESTION_HDRS.SALES_EXP_HEADER_ID             IS '販売実績ヘッダID';
 COMMENT ON COLUMN XXCOS.XXCOS_VD_DIGESTION_HDRS.CREATED_BY                      IS '作成者';
 COMMENT ON COLUMN XXCOS.XXCOS_VD_DIGESTION_HDRS.CREATION_DATE                   IS '作成日';
 COMMENT ON COLUMN XXCOS.XXCOS_VD_DIGESTION_HDRS.LAST_UPDATED_BY                 IS '最終更新者';
