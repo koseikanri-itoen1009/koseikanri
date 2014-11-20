@@ -7,7 +7,7 @@ AS
  * Description      : 支払運賃データ自動作成
  * MD.050           : 運賃計算（トランザクション） T_MD050_BPO_730
  * MD.070           : 支払運賃データ自動作成 T_MD070_BPO_73A
- * Version          : 1.0
+ * Version          : 1.3
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -87,6 +87,7 @@ AS
  *  2008/04/01    1.0  Oracle 野村       初回作成
  *  2008/05/27    1.1  Oracle 野村       結合障害 混載処理
  *  2008/06/25    1.2  Oracle 野村       TE080指摘事項 反映
+ *  2008/07/15    1.3  Oracle 野村       ST障害#452対応（切上対応含む）
  *
  *****************************************************************************************/
 --
@@ -1735,7 +1736,10 @@ AS
         ELSE
           -- 重量 × 出荷実績数量（四捨五入）
           ln_delivery_weight :=
-                ROUND(ln_unit * lt_order_line_inf_tab(ln_line_index).shipped_quantity / 1000);
+-- ##### 20080715 Ver.1.3 ST障害#452対応 START #####
+--                ROUND(ln_unit * lt_order_line_inf_tab(ln_line_index).shipped_quantity / 1000);
+                CEIL(ln_unit * lt_order_line_inf_tab(ln_line_index).shipped_quantity / 1000);
+-- ##### 20080715 Ver.1.3 ST障害#452対応 END   #####
         END IF;
 --
 --<><><><><><><><><><><><><><><><><> DEBUG START <><><><><><><><><><><><><><><><><><><><><><><>
@@ -2545,6 +2549,9 @@ AS
     lt_move_line_inf_tab    move_line_inf_tbl;     --移動依頼／指示明細
 --
     ln_item_id        xxcmn_item_mst2_v.item_id%TYPE;       -- 品目ID
+-- ##### 20080715 Ver.1.3 ST障害#452対応 START #####
+    ln_item_no        xxcmn_item_mst2_v.item_no%TYPE;       -- 品目コード
+-- ##### 20080715 Ver.1.3 ST障害#452対応 END   #####
     ln_num_of_cases   xxcmn_item_mst2_v.num_of_cases%TYPE;  -- ケース入り数
     ln_conv_unit      xxcmn_item_mst2_v.conv_unit%TYPE;     -- 入出庫換算単位
     ln_unit           xxcmn_item_mst2_v.unit%TYPE;          -- 重量
@@ -2609,7 +2616,7 @@ AS
             , NVL(xmril.shipped_quantity, 0)    -- 出荷実績数量
 -- ##### 20080625 Ver.1.2 出荷実績数量NULL対応 END   #####
       BULK COLLECT INTO lt_move_line_inf_tab
-      FROM  xxinv_mov_req_instr_lines   xmril       -- 受注明細アドオン
+      FROM  xxinv_mov_req_instr_lines   xmril       -- 移動依頼/指示明細アドオン
       WHERE xmril.mov_hdr_id = gt_move_inf_tab(ln_index).mov_hdr_id -- 移動ヘッダID
       AND   NVL(xmril.delete_flg, gv_ktg_no)  = gv_ktg_no;          -- 取消フラグ
 --
@@ -2642,11 +2649,17 @@ AS
 --
         -- 入出庫換算単位、ケース入り数、重量 取得
         BEGIN
-          SELECT ximv.item_id         -- 品目ID
+-- ##### 20080715 Ver.1.3 ST障害#452対応 START #####
+--          SELECT ximv.item_id         -- 品目ID
+          SELECT ximv.item_no         -- 品目コード
+-- ##### 20080715 Ver.1.3 ST障害#452対応 END   #####
                , ximv.num_of_cases    -- ケース入り数
                , ximv.conv_unit       -- 入出庫換算単位
                , ximv.unit            -- 重量
-          INTO   ln_item_id
+ -- ##### 20080715 Ver.1.3 ST障害#452対応 START #####
+--         INTO   ln_item_id
+         INTO   ln_item_no
+-- ##### 20080715 Ver.1.3 ST障害#452対応 END   #####
                , ln_num_of_cases
                , ln_conv_unit
                , ln_unit
@@ -2692,7 +2705,12 @@ AS
         -- リーフ小口区分 ＝ N の場合
         ELSE
           -- 個数に合計数量を設定
-          ln_qty := gt_move_inf_tab(ln_index).sum_quantity;
+-- ##### 20080715 Ver.1.3 ST障害#452対応 START #####
+--          ln_qty := gt_move_inf_tab(ln_index).sum_quantity;
+          ln_qty := xxwip_common3_pkg.deliv_rcv_ship_conv_qty(
+                        ln_item_no                                             -- 品目コード
+                      , lt_move_line_inf_tab(ln_line_index).shipped_quantity); -- 数量
+-- ##### 20080715 Ver.1.3 ST障害#452対応 END   #####
         END IF;
 --
         -- *** 重量 算出 ***
@@ -2707,7 +2725,10 @@ AS
         ELSE
           -- 重量 × 出荷実績数量（四捨五入）
           ln_delivery_weight :=
-                ROUND(ln_unit * lt_move_line_inf_tab(ln_line_index).shipped_quantity / 1000);
+-- ##### 20080715 Ver.1.3 ST障害#452対応 START #####
+--                ROUND(ln_unit * lt_move_line_inf_tab(ln_line_index).shipped_quantity / 1000);
+                CEIL(ln_unit * lt_move_line_inf_tab(ln_line_index).shipped_quantity / 1000);
+-- ##### 20080715 Ver.1.3 ST障害#452対応 END   #####
         END IF;
 --
 --<><><><><><><><><><><><><><><><><> DEBUG START <><><><><><><><><><><><><><><><><><><><><><><>
@@ -2720,7 +2741,7 @@ AS
           FND_FILE.PUT_LINE(FND_FILE.LOG, 'get_move_line：リーフ小口区分：' || gt_move_inf_tab(ln_index).ref_small_amount_class);
           FND_FILE.PUT_LINE(FND_FILE.LOG, 'get_move_line：重量容積区分  ：' || gt_move_inf_tab(ln_index).weight_capacity_class);
           FND_FILE.PUT_LINE(FND_FILE.LOG, 'get_move_line：+++++ OPM品目 +++++');
-          FND_FILE.PUT_LINE(FND_FILE.LOG, 'get_move_line：品目ID        ：' || ln_item_id);
+          FND_FILE.PUT_LINE(FND_FILE.LOG, 'get_move_line：品目ID        ：' || lt_move_line_inf_tab(ln_line_index).item_id);
           FND_FILE.PUT_LINE(FND_FILE.LOG, 'get_move_line：ケース入り数  ：' || TO_CHAR(ln_num_of_cases));
           FND_FILE.PUT_LINE(FND_FILE.LOG, 'get_move_line：入出庫換算単位：' || ln_conv_unit);
           FND_FILE.PUT_LINE(FND_FILE.LOG, 'get_move_line：重量          ：' || TO_CHAR(ln_unit));
@@ -2734,7 +2755,15 @@ AS
         -- ***  移動個数/数量集計(A-21)
         -- **************************************************
         -- 個数（合計）
-        ln_sum_qty := ln_qty;
+-- ##### 20080715 Ver.1.3 ST障害#452対応 START #####
+--        ln_sum_qty := ln_qty;
+        -- リーフ小口区分 ＝ Y の場合
+        IF (gt_move_inf_tab(ln_index).ref_small_amount_class = gv_ktg_yes) THEN
+          ln_sum_qty := ln_qty;
+        ELSE
+          ln_sum_qty := ln_sum_qty + ln_qty;
+        END IF;
+-- ##### 20080715 Ver.1.3 ST障害#452対応 END   #####
 --
         -- 重量（合計）
         -- リーフ小口区分 ＝ Y 且つ、重量容積区分 ＝ 容積 の場合
@@ -3906,8 +3935,12 @@ AS
       -- *** ピッキング料 ***
       -- 個数 × 支払ピッキング単価
       gt_deliv_line_tab(ln_index).picking_charge  := 
-                                    ROUND(gt_delivno_deliv_line_tab(ln_index).qty *
+-- ##### 20080715 Ver.1.3 ST障害#452対応 START #####
+--                                    ROUND(gt_delivno_deliv_line_tab(ln_index).qty *
+--                                    gt_deliv_line_tab(ln_index).pay_picking_amount);
+                                    CEIL(gt_delivno_deliv_line_tab(ln_index).qty *
                                     gt_deliv_line_tab(ln_index).pay_picking_amount);
+-- ##### 20080715 Ver.1.3 ST障害#452対応 END   #####
 --
 --<><><><><><><><><><><><><><><><><> DEBUG START <><><><><><><><><><><><><><><><><><><><><><><>
       IF (gv_debug_flg = gv_debug_on) THEN
@@ -6346,8 +6379,12 @@ AS
 --
       -- *** ピッキング料 ***
       -- 個数 × 支払ピッキング単価
-      ueh_head_pick_charge_tab(ln_index)  := ROUND(gt_exch_deliv_tab(ln_index).qty1 *
+-- ##### 20080715 Ver.1.3 ST障害#452対応 START #####
+--      ueh_head_pick_charge_tab(ln_index)  := ROUND(gt_exch_deliv_tab(ln_index).qty1 *
+--                                              gt_exch_deliv_tab(ln_index).pay_picking_amount);
+      ueh_head_pick_charge_tab(ln_index)  := CEIL(gt_exch_deliv_tab(ln_index).qty1 *
                                               gt_exch_deliv_tab(ln_index).pay_picking_amount);
+-- ##### 20080715 Ver.1.3 ST障害#452対応 END   #####
 --
       -- *** 合計 ***
       -- 契約運賃＋混載割増金額＋ピッキング料＋諸料金
