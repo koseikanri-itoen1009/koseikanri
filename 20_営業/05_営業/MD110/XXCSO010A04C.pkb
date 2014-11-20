@@ -7,8 +7,8 @@ AS
  * Description      : 自動販売機設置契約情報登録/更新画面、契約書検索画面から
  *                    自動販売機設置契約書を帳票に出力します。
  * MD.050           : MD050_CSO_010_A04_自動販売機設置契約書PDFファイル作成
- *                    
- * Version          : 1.8
+ *
+ * Version          : 1.9
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -38,6 +38,7 @@ AS
  *  2009-11-12    1.6   Kazuo.Satomura   I_E_658対応
  *  2009-11-30    1.7   T.Maruyama       E_本稼動_00193対応
  *  2010-03-02    1.8   K.Hosoi          E_本稼動_01678対応
+ *  2010-08-03    1.9   H.Sasaki         E_本稼動_00822対応
  *****************************************************************************************/
 --
 --#######################  固定グローバル定数宣言部 START   #######################
@@ -120,11 +121,30 @@ AS
   cv_enabled_flag       CONSTANT VARCHAR2(1)  := 'Y';
   -- アクティブ
   cv_active_status      CONSTANT VARCHAR2(1)  := 'A';
+  --
+-- == 2010/08/03 V1.9 Added START ===============================================================
+  cv_lkup_kozatype      CONSTANT VARCHAR2(30) :=  'XXCSO1_KOZA_TYPE';                 --  参照タイプ：口座種別
+  cv_space              CONSTANT VARCHAR2(1)  :=  ' ';                                --  半角スペース
+  cv_msg_xxcso_00470    CONSTANT VARCHAR2(30) :=  'APP-XXCSO1-00470';                 --  データ取得エラー
+  cv_msg_xxcso_00604    CONSTANT VARCHAR2(30) :=  'APP-XXCSO1-00604';                 --  契約書出力日定型メッセージ
+  cv_msg_xxcso_00605    CONSTANT VARCHAR2(30) :=  'APP-XXCSO1-00605';                 --  販売手数料但書（売価別）メッセージ
+  cv_msg_xxcso_00606    CONSTANT VARCHAR2(30) :=  'APP-XXCSO1-00606';                 --  販売手数料但書（容器別）メッセージ
+  cv_tkn_xxcso_00470_01 CONSTANT VARCHAR2(30) :=  'ACTION';                           --  APP-XXCSO1-00470のトークン
+  cv_tkn_xxcso_00470_02 CONSTANT VARCHAR2(30) :=  'KEY_NAME';                         --  APP-XXCSO1-00470のトークン
+  cv_tkn_xxcso_00470_03 CONSTANT VARCHAR2(30) :=  'KEY_ID';                           --  APP-XXCSO1-00470のトークン
+  cv_cnst_message       CONSTANT VARCHAR2(10) :=  'メッセージ';                       --  トークン値
+  cv_cnst_item_name     CONSTANT VARCHAR2(12) :=  'MESSAGE_NAME';                     --  トークン値
+-- == 2010/08/03 V1.9 Added END   ===============================================================
   -- ===============================
   -- ユーザー定義グローバル変数
   -- ===============================
   gt_con_mng_id         xxcso_contract_managements.contract_management_id%TYPE;      -- 自動販売機設置契約書ID
   gt_contract_number    xxcso_contract_managements.contract_number%TYPE;             -- 契約書番号
+-- == 2010/08/03 V1.9 Added START ===============================================================
+  gt_contract_date_ptn  fnd_new_messages.message_text%TYPE;                           --  契約書出力日定型
+  gt_terms_note_price   fnd_new_messages.message_text%TYPE;                           --  販売手数料但書（売価別）
+  gt_terms_note_ves     fnd_new_messages.message_text%TYPE;                           --  販売手数料但書（容器別）
+-- == 2010/08/03 V1.9 Added END   ===============================================================
 --
   -- ===============================
   -- ユーザー定義グローバル型
@@ -208,6 +228,9 @@ AS
     -- *** ローカル変数 ***
     -- メッセージ出力用
     lv_msg               VARCHAR2(5000);
+-- == 2010/08/03 V1.9 Added START ===============================================================
+    lv_err_key          VARCHAR2(30);
+-- == 2010/08/03 V1.9 Added END   ===============================================================
 --
   BEGIN
 --
@@ -287,6 +310,64 @@ AS
         RAISE global_process_expt;
     END;
 --
+-- == 2010/08/03 V1.9 Added START ===============================================================
+    BEGIN
+      -- ===========================
+      -- 契約書出力日定型
+      -- ===========================
+      lv_err_key  :=  cv_msg_xxcso_00604;
+      --
+      SELECT  fnm.message_text      message_text                  --  現行テキストメッセージ
+      INTO    gt_contract_date_ptn                                --  契約書出力日定型
+      FROM    fnd_new_messages      fnm                           --  メッセージ
+            , fnd_application       fa                            --  アプリケーション
+      WHERE   fnm.application_id          =   fa.application_id
+      AND     fnm.message_name            =   cv_msg_xxcso_00604
+      AND     fnm.language_code           =   USERENV('LANG')
+      AND     fa.application_short_name   =   cv_app_name;
+      -- ===========================
+      -- 販売手数料但書（売価別）
+      -- ===========================
+      lv_err_key  :=  cv_msg_xxcso_00605;
+      --
+      SELECT  fnm.message_text      message_text                  --  現行テキストメッセージ
+      INTO    gt_terms_note_price                                 --  販売手数料但書（売価別）
+      FROM    fnd_new_messages      fnm                           --  メッセージ
+            , fnd_application       fa                            --  アプリケーション
+      WHERE   fnm.application_id          =   fa.application_id
+      AND     fnm.message_name            =   cv_msg_xxcso_00605
+      AND     fnm.language_code           =   USERENV('LANG')
+      AND     fa.application_short_name   =   cv_app_name;
+      -- ===========================
+      -- 販売手数料但書（容器別）
+      -- ===========================
+      lv_err_key  :=  cv_msg_xxcso_00606;
+      --
+      SELECT  fnm.message_text      message_text                  --  現行テキストメッセージ
+      INTO    gt_terms_note_ves                                   --  販売手数料但書（容器別）
+      FROM    fnd_new_messages      fnm                           --  メッセージ
+            , fnd_application       fa                            --  アプリケーション
+      WHERE   fnm.application_id          =   fa.application_id
+      AND     fnm.message_name            =   cv_msg_xxcso_00606
+      AND     fnm.language_code           =   USERENV('LANG')
+      AND     fa.application_short_name   =   cv_app_name;
+      --
+    EXCEPTION
+      WHEN NO_DATA_FOUND THEN
+        lv_errmsg :=  xxccp_common_pkg.get_msg(
+                          iv_application    =>  cv_app_name                -- アプリケーション短縮名
+                        , iv_name           =>  cv_msg_xxcso_00470           -- メッセージコード
+                        , iv_token_name1    =>  cv_tkn_xxcso_00470_01
+                        , iv_token_value1   =>  cv_cnst_message
+                        , iv_token_name2    =>  cv_tkn_xxcso_00470_02
+                        , iv_token_value2   =>  cv_cnst_item_name
+                        , iv_token_name3    =>  cv_tkn_xxcso_00470_03
+                        , iv_token_value3   =>  lv_err_key
+                      );
+        lv_errbuf :=  lv_errmsg || SQLERRM;
+        RAISE global_process_expt;
+    END;
+-- == 2010/08/03 V1.9 Added END   ===============================================================
   EXCEPTION
     -- *** 処理例外ハンドラ ***
     WHEN global_process_expt THEN
@@ -404,6 +485,9 @@ AS
     ln_work_cnt_ritu         NUMBER;            -- 率判断時件数カウント用
     ln_work_cnt_gaku         NUMBER;            -- 額判断時件数カウント用
     /* 2009.11.30 T.Maruyama E_本稼動_00193 END */
+-- == 2010/08/03 V1.9 Added START ===============================================================
+    lv_condition_content_type VARCHAR2(1);      --  全容器一律区分
+-- == 2010/08/03 V1.9 Added END   ===============================================================
 --
     -- *** ローカル・カーソル *** 
     CURSOR l_sales_charge_cur
@@ -427,28 +511,80 @@ AS
             ,xsdl.sales_price sales_price                           -- 売価
             ,xsdl.bm1_bm_rate bm1_bm_rate                           -- ＢＭ１ＢＭ率
             ,xsdl.bm1_bm_amount bm1_bm_amount                       -- ＢＭ１ＢＭ金額
-            ,(CASE
-               WHEN ((xsdh.condition_business_type IN (cv_cond_b_type_1, cv_cond_b_type_2))
-                       AND (xsdl.bm1_bm_rate IS NOT NULL AND xsdl.bm1_bm_rate <> '0')) THEN
-                 '販売価格 ' || TO_CHAR(xsdl.sales_price)
-                             || '円のとき、１本につき販売価格の '
-                             || TO_CHAR(xsdl.bm1_bm_rate) || '%を支払う'
-               WHEN ((xsdh.condition_business_type IN (cv_cond_b_type_1, cv_cond_b_type_2))
-                       AND (xsdl.bm1_bm_amount IS NOT NULL AND xsdl.bm1_bm_amount <> '0')) THEN
-                 '販売価格 ' || TO_CHAR(xsdl.sales_price)
-                             || '円のとき、１本につき '
-                             || TO_CHAR(xsdl.bm1_bm_amount) || '円を支払う'
-               WHEN ((xsdh.condition_business_type IN (cv_cond_b_type_3, cv_cond_b_type_4))
-                       AND (xsdl.bm1_bm_rate IS NOT NULL AND xsdl.bm1_bm_rate <> '0')) THEN
-                 '販売容器が ' || flvv.meaning
-                               || 'のとき、１本につき売価の '
-                               || TO_CHAR(xsdl.bm1_bm_rate) || '%を支払う'
-               WHEN ((xsdh.condition_business_type IN (cv_cond_b_type_3, cv_cond_b_type_4))
-                       AND (xsdl.bm1_bm_amount IS NOT NULL  AND xsdl.bm1_bm_amount <> '0')) THEN
-                 '販売容器が ' || flvv.meaning
-                               || 'のとき、１本につき '
-                               || TO_CHAR(xsdl.bm1_bm_amount) || '円を支払う'
-              END) condition_contents                               -- 条件内容
+-- == 2010/08/03 V1.9 Modified START ===============================================================
+--            ,(CASE
+--               WHEN ((xsdh.condition_business_type IN (cv_cond_b_type_1, cv_cond_b_type_2))
+--                       AND (xsdl.bm1_bm_rate IS NOT NULL AND xsdl.bm1_bm_rate <> '0')) THEN
+--                 '販売価格 ' || TO_CHAR(xsdl.sales_price)
+--                             || '円のとき、１本につき販売価格の '
+--                             || TO_CHAR(xsdl.bm1_bm_rate) || '%を支払う'
+--               WHEN ((xsdh.condition_business_type IN (cv_cond_b_type_1, cv_cond_b_type_2))
+--                       AND (xsdl.bm1_bm_amount IS NOT NULL AND xsdl.bm1_bm_amount <> '0')) THEN
+--                 '販売価格 ' || TO_CHAR(xsdl.sales_price)
+--                             || '円のとき、１本につき '
+--                             || TO_CHAR(xsdl.bm1_bm_amount) || '円を支払う'
+--               WHEN ((xsdh.condition_business_type IN (cv_cond_b_type_3, cv_cond_b_type_4))
+--                       AND (xsdl.bm1_bm_rate IS NOT NULL AND xsdl.bm1_bm_rate <> '0')) THEN
+--                 '販売容器が ' || flvv.meaning
+--                               || 'のとき、１本につき売価の '
+--                               || TO_CHAR(xsdl.bm1_bm_rate) || '%を支払う'
+--               WHEN ((xsdh.condition_business_type IN (cv_cond_b_type_3, cv_cond_b_type_4))
+--                       AND (xsdl.bm1_bm_amount IS NOT NULL  AND xsdl.bm1_bm_amount <> '0')) THEN
+--                 '販売容器が ' || flvv.meaning
+--                               || 'のとき、１本につき '
+--                               || TO_CHAR(xsdl.bm1_bm_amount) || '円を支払う'
+--              END) condition_contents                               -- 条件内容
+            , CASE
+                WHEN  (     (xsdh.condition_business_type IN (cv_cond_b_type_1, cv_cond_b_type_2))
+                        AND (xsdl.bm1_bm_rate IS NOT NULL)
+                        AND (xsdl.bm1_bm_rate <> '0')
+                      )
+                THEN      '販売価格 '
+                      ||  TO_CHAR(xsdl.sales_price)
+                      ||  '円の商品につき、販売金額に対し、'
+                      ||  TO_CHAR(xsdl.bm1_bm_rate)
+                      ||  '%とする。'
+                WHEN  (     (xsdh.condition_business_type IN (cv_cond_b_type_1, cv_cond_b_type_2))
+                        AND (xsdl.bm1_bm_amount IS NOT NULL)
+                        AND (xsdl.bm1_bm_amount <> '0')
+                      )
+                THEN      '販売価格 '
+                      ||  TO_CHAR(xsdl.sales_price)
+                      ||  '円の商品につき、１本当たり '
+                      ||  TO_CHAR(xsdl.bm1_bm_amount)
+                      ||  '円とする。'
+                WHEN  (     (xsdh.condition_business_type IN (cv_cond_b_type_3, cv_cond_b_type_4))
+                        AND (xsdl.bm1_bm_rate IS NOT NULL)
+                        AND (xsdl.bm1_bm_rate <> '0')
+                      )
+                THEN      flvv.meaning
+                      ||  '商品につき、販売金額に対し、'
+                      ||  TO_CHAR(xsdl.bm1_bm_rate)
+                      ||  '%とする。'
+                WHEN  (     (xsdh.condition_business_type IN (cv_cond_b_type_3, cv_cond_b_type_4))
+                        AND (xsdl.bm1_bm_amount IS NOT NULL)
+                        AND (xsdl.bm1_bm_amount <> '0')
+                      )
+                THEN      flvv.meaning
+                      ||  '商品につき、１本当たり '
+                      ||  TO_CHAR(xsdl.bm1_bm_amount)
+                      ||  '円とする。'
+              END                                 condition_contents                          --  条件内容
+            , CASE  WHEN  (     (xsdh.condition_business_type IN (cv_cond_b_type_3, cv_cond_b_type_4))
+                            AND (xsdl.bm1_bm_rate IS NOT NULL)
+                            AND (xsdl.bm1_bm_rate <> 0)
+                            AND (NVL(xsdh.all_container_type, '*') = '1')
+                          )
+                    THEN    '1'       --  全容器一律（レート）
+                    WHEN  (     (xsdh.condition_business_type IN (cv_cond_b_type_3, cv_cond_b_type_4))
+                            AND (xsdl.bm1_bm_amount IS NOT NULL)
+                            AND (xsdl.bm1_bm_amount <> 0)
+                            AND (NVL(xsdh.all_container_type, '*') = '1')
+                          )
+                    THEN    '2'       --  全容器一律（価格）
+                    ELSE    '0'       --  全容器一律以外
+              END                                 condition_content_type                      --  全容器一律区分
+-- == 2010/08/03 V1.9 Modified END   ===============================================================
        FROM   xxcso_contract_managements xcm      -- 契約管理テーブル
              ,xxcso_sp_decision_headers  xsdh     -- ＳＰ専決ヘッダテーブル
              ,xxcso_sp_decision_lines    xsdl     -- ＳＰ専決明細テーブル
@@ -557,7 +693,10 @@ AS
                 ) blanches_name                                    -- 支店名
               ,(DECODE(xd.belling_details_div
                           , cv_csh_pymnt, NULL
-                          , xba.bank_account_number)
+-- == 2010/08/03 V1.9 Modified START ===============================================================
+--                          , xba.bank_account_number)
+                          , flv.bank_acct_type_name || cv_space || xba.bank_account_number)
+-- == 2010/08/03 V1.9 Modified END   ===============================================================
                 ) bank_account_number                              -- 口座番号
               ,(DECODE(xd.belling_details_div
                           , cv_csh_pymnt, NULL
@@ -567,24 +706,45 @@ AS
               ,xcm.install_account_number account_number           -- 設置先顧客コード
               ,xcm.publish_dept_code publish_base_code             -- 担当所属コード
               ,xlv2.location_name publish_base_name                -- 担当拠点名
-              ,(SUBSTR(TO_CHAR(xcm.contract_effect_date, 'eedl', 'nls_calendar=''japanese imperial''')
-                 , 1, INSTR(TO_CHAR(xcm.contract_effect_date, 'eedl', 'nls_calendar=''japanese imperial'''), ' ') -1)
-                ) contract_effect_date                             -- 契約書発効日
+-- == 2010/08/03 V1.9 Modified START ===============================================================
+--              ,(SUBSTR(TO_CHAR(xcm.contract_effect_date, 'eedl', 'nls_calendar=''japanese imperial''')
+--                 , 1, INSTR(TO_CHAR(xcm.contract_effect_date, 'eedl', 'nls_calendar=''japanese imperial'''), ' ') -1)
+--                ) contract_effect_date                             -- 契約書発効日
+              , NVL(SUBSTR(   TO_CHAR(xcm.contract_effect_date, 'eedl', 'nls_calendar=''japanese imperial''')
+                            , 1
+                            , INSTR(TO_CHAR(xcm.contract_effect_date, 'eedl', 'nls_calendar=''japanese imperial'''), ' ') -1
+                    ), gt_contract_date_ptn
+                )     contract_effect_date                             -- 契約書発効日
+-- == 2010/08/03 V1.9 Modified END   ===============================================================
               ,(NVL2(xlv2.zip, cv_post_mark || xlv2.zip || ' ', '')
                     || xlv2.address_line1) issue_belonging_address      -- 住所
               ,xlv2.location_name issue_belonging_name             -- 発行元所属名
               ,xsdh.install_support_amt install_support_amt        -- 初回設置協賛金
               ,xsdh.electricity_amount electricity_amount          -- 電気代
-              ,(DECODE(xsdh.electricity_type
-                          , cv_electricity_type_1,  '月額 定額 '|| xsdh.electricity_amount || '円'
-                          , cv_electricity_type_2, '販売機に関わる電気代は、実費にて乙が支払う'
-                          , '')
-                ) electricity_information                          -- 電気代情報
-              ,(DECODE(xd.bank_transfer_fee_charge_div
-                          , cv_bank_trans_fee_div_1,  '振り込み手数料は甲の負担とする'
-                          , cv_bank_trans_fee_div_2, '振り込み手数料は乙の負担とする'
-                          , '振り込み手数料は発生致しません')
-                ) transfer_commission_info                         -- 振り込み手数料情報
+-- == 2010/08/03 V1.9 Modified START ===============================================================
+--              ,(DECODE(xsdh.electricity_type
+--                          , cv_electricity_type_1,  '月額 定額 '|| xsdh.electricity_amount || '円'
+--                          , cv_electricity_type_2, '販売機に関わる電気代は、実費にて乙が支払う'
+--                          , '')
+--                ) electricity_information                          -- 電気代情報
+--              ,(DECODE(xd.bank_transfer_fee_charge_div
+--                          , cv_bank_trans_fee_div_1,  '振り込み手数料は甲の負担とする'
+--                          , cv_bank_trans_fee_div_2, '振り込み手数料は乙の負担とする'
+--                          , '振り込み手数料は発生致しません')
+--                ) transfer_commission_info                         -- 振り込み手数料情報
+              , ( DECODE( xsdh.electricity_type
+                            , cv_electricity_type_1, '月額 定額 '|| xsdh.electricity_amount || '円（税込）とする。'
+                            , cv_electricity_type_2, '販売機に関わる電気代は、実費にて乙が支払う。'
+                            , ''
+                  )
+                )       electricity_information                          -- 電気代情報
+              , ( DECODE( xd.bank_transfer_fee_charge_div
+                            , cv_bank_trans_fee_div_1, '甲の負担とする。'
+                            , cv_bank_trans_fee_div_2, '乙の負担とする。'
+                            , '発生致しません。'
+                  )
+                )       transfer_commission_info                         -- 振り込み手数料情報
+-- == 2010/08/03 V1.9 Modified END   ===============================================================
         INTO   o_rep_cont_data_rec.install_location              -- 設置ロケーション
               ,o_rep_cont_data_rec.contract_number               -- 契約書番号
               ,o_rep_cont_data_rec.contract_name                 -- 契約者名
@@ -625,6 +785,16 @@ AS
                   AND  flvv.enabled_flag = cv_enabled_flag
                   AND  ROWNUM = 1
                ) flvv_con
+-- == 2010/08/03 V1.9 Added START ===============================================================
+              , ( SELECT  flvv.lookup_code    lookup_code
+                        , flvv.meaning        bank_acct_type_name
+                  FROM    fnd_lookup_values_vl    flvv
+                  WHERE   flvv.lookup_type              =   cv_lkup_kozatype
+                  AND     flvv.enabled_flag             =   cv_enabled_flag
+                  AND     TRUNC(ld_sysdate)   BETWEEN TRUNC(flvv.start_date_active)
+                                              AND     TRUNC(NVL(flvv.end_date_active, ld_sysdate))
+                )                         flv       --  口座種別名取得
+-- == 2010/08/03 V1.9 Added END   ===============================================================
         WHERE  xcm.contract_management_id = gt_con_mng_id
           AND  xcm.install_account_number = xcav.account_number
           AND  xcav.account_status = cv_active_status
@@ -633,7 +803,11 @@ AS
           AND  xd.contract_management_id(+) = xcm.contract_management_id
           AND  xd.delivery_div(+) = cv_delivery_div_1
           AND  xd.delivery_id = xba.delivery_id(+)
-          AND  xlv2.dept_code = xcm.publish_dept_code;
+          AND  xlv2.dept_code = xcm.publish_dept_code
+-- == 2010/08/03 V1.9 Added START ===============================================================
+        AND     xba.bank_account_type       =   flv.lookup_code(+)
+-- == 2010/08/03 V1.9 Added END   ===============================================================
+        ;
 --
         /* 2009.11.12 K.Satomura I_E_658対応 START */
         --SELECT  (CASE
@@ -738,7 +912,10 @@ AS
                 ) blanches_name                                        -- 支店名
               ,(DECODE(pvs.attribute4
                           , cv_csh_pymnt, NULL
-                          , xbav.bank_account_num)
+-- == 2010/08/03 V1.9 Modified START ===============================================================
+--                          , xbav.bank_account_num)
+                          , flv.bank_acct_type_name || cv_space || xbav.bank_account_num)
+-- == 2010/08/03 V1.9 Modified END   ===============================================================
                 ) bank_account_number                                  -- 口座番号
               ,(DECODE(pvs.attribute4
                           , cv_csh_pymnt, NULL
@@ -748,22 +925,41 @@ AS
               ,xcm.install_account_number account_number               -- 設置先顧客コード
               ,xcm.publish_dept_code publish_base_code                 -- 担当所属コード
               ,xlv2.location_name publish_base_name                    -- 担当拠点名
-              ,(SUBSTR(TO_CHAR(xcm.contract_effect_date, 'eedl', 'nls_calendar=''japanese imperial''')
-                 , 1, INSTR(TO_CHAR(xcm.contract_effect_date, 'eedl', 'nls_calendar=''japanese imperial'''), ' ') -1)
-                ) contract_effect_date                                 -- 契約書発効日
+-- == 2010/08/03 V1.9 Modified START ===============================================================
+--              ,(SUBSTR(TO_CHAR(xcm.contract_effect_date, 'eedl', 'nls_calendar=''japanese imperial''')
+--                 , 1, INSTR(TO_CHAR(xcm.contract_effect_date, 'eedl', 'nls_calendar=''japanese imperial'''), ' ') -1)
+--                ) contract_effect_date                                 -- 契約書発効日
+              , NVL(SUBSTR(   TO_CHAR(xcm.contract_effect_date, 'eedl', 'nls_calendar=''japanese imperial''')
+                            , 1
+                            , INSTR(TO_CHAR(xcm.contract_effect_date, 'eedl', 'nls_calendar=''japanese imperial'''), ' ') -1
+                    ), gt_contract_date_ptn
+                )     contract_effect_date                             -- 契約書発効日
+-- == 2010/08/03 V1.9 Modified END   ===============================================================
               ,(NVL2(xlv2.zip, cv_post_mark || xlv2.zip || ' ', '') 
                   || xlv2.address_line1) issue_belonging_address       -- 住所
               ,xlv2.location_name issue_belonging_name                 -- 発行元所属名
               ,xsdh.install_support_amt install_support_amt            -- 初回設置協賛金
               ,xsdh.electricity_amount electricity_amount              -- 電気代
-              ,DECODE(xsdh.electricity_type
-                      , cv_electricity_type_1, '月額 定額 '|| xsdh.electricity_amount || '円'
-                      , cv_electricity_type_2, '販売機に関わる電気代は、実費にて乙が支払う'
-                      , '') electricity_information                   -- 電気代情報
-              ,DECODE(pvs.bank_charge_bearer
-                      , cv_bank_trans_fee_div_1, '振り込み手数料は甲の負担とする'
-                      , cv_bank_trans_fee_div_2, '振り込み手数料は乙の負担とする'
-                      , '振り込み手数料は発生致しません') transfer_commission_info -- 振り込み手数料情報
+-- == 2010/08/03 V1.9 Modified START ===============================================================
+--              ,DECODE(xsdh.electricity_type
+--                      , cv_electricity_type_1, '月額 定額 '|| xsdh.electricity_amount || '円'
+--                      , cv_electricity_type_2, '販売機に関わる電気代は、実費にて乙が支払う'
+--                      , '') electricity_information                   -- 電気代情報
+--              ,DECODE(pvs.bank_charge_bearer
+--                      , cv_bank_trans_fee_div_1, '振り込み手数料は甲の負担とする'
+--                      , cv_bank_trans_fee_div_2, '振り込み手数料は乙の負担とする'
+--                      , '振り込み手数料は発生致しません') transfer_commission_info -- 振り込み手数料情報
+              , DECODE(xsdh.electricity_type
+                        , cv_electricity_type_1, '月額 定額 '|| xsdh.electricity_amount || '円（税込）とする。'
+                        , cv_electricity_type_2, '販売機に関わる電気代は、実費にて乙が支払う。'
+                        , ''
+                )     electricity_information                     --  電気代情報
+              , DECODE(pvs.bank_charge_bearer
+                        , cv_bank_trans_fee_div_1, '甲の負担とする。'
+                        , cv_bank_trans_fee_div_2, '乙の負担とする。'
+                        , '発生致しません。'
+                )     transfer_commission_info                    --  振り込み手数料情報
+-- == 2010/08/03 V1.9 Modified END   ===============================================================
         INTO   o_rep_cont_data_rec.install_location              -- 設置ロケーション
               ,o_rep_cont_data_rec.contract_number               -- 契約書番号
               ,o_rep_cont_data_rec.contract_name                 -- 契約者名
@@ -811,6 +1007,16 @@ AS
                --,po_vendors pv                      -- 仕入先マスタ
                /* 2010.03.02 K.Hosoi E_本稼動_01678対応 START */
                ,po_vendor_sites pvs                -- 仕入先サイトマスタ
+-- == 2010/08/03 V1.9 Added START ===============================================================
+              , ( SELECT  flvv.lookup_code    lookup_code
+                        , flvv.meaning        bank_acct_type_name
+                  FROM    fnd_lookup_values_vl    flvv
+                  WHERE   flvv.lookup_type              =   cv_lkup_kozatype
+                  AND     flvv.enabled_flag             =   cv_enabled_flag
+                  AND     TRUNC(ld_sysdate)   BETWEEN TRUNC(flvv.start_date_active)
+                                              AND     TRUNC(NVL(flvv.end_date_active, ld_sysdate))
+                )                         flv       --  口座種別名取得
+-- == 2010/08/03 V1.9 Added END   ===============================================================
         WHERE  xcm.contract_management_id = gt_con_mng_id
           AND  xcm.sp_decision_header_id = xsdh.sp_decision_header_id
           /* 2010.03.02 K.Hosoi E_本稼動_01678対応 START */
@@ -826,7 +1032,11 @@ AS
           AND  xd.supplier_id               = xbav.vendor_id(+)
           AND  xd.contract_management_id(+) = xcm.contract_management_id
           AND  xd.delivery_div(+)           = cv_delivery_div_1
-          AND  pvs.vendor_id(+)             = xd.supplier_id;
+          AND  pvs.vendor_id(+)             = xd.supplier_id
+-- == 2010/08/03 V1.9 Added START ===============================================================
+        AND   xbav.bank_account_type        =   flv.lookup_code(+)
+-- == 2010/08/03 V1.9 Added END   ===============================================================
+        ;
           --AND  pv.vendor_id(+) = NVL(xsdc.customer_id,fnd_api.g_miss_num)
           --AND  pvs.vendor_id(+) = NVL(xsdc.customer_id,fnd_api.g_miss_num);
           /* 2010.03.02 K.Hosoi E_本稼動_01678対応 END */
@@ -936,8 +1146,12 @@ AS
       ln_lines_cnt             := 0;               -- 明細件数
       ln_bm1_bm_rate           := 0;               -- ＢＭ１ＢＭ率
       ln_bm1_bm_amount         := 0;               -- ＢＭ１ＢＭ金額
-      lb_bm1_bm_rate           := TRUE;            -- ＢＭ１ＢＭ率による定率判断フラグ
-      lb_bm1_bm_amount         := TRUE;            -- ＢＭ１ＢＭ金額による定率判断フラグ
+-- == 2010/08/03 V1.9 Added START ===============================================================
+--      lb_bm1_bm_rate           := TRUE;            -- ＢＭ１ＢＭ率による定率判断フラグ
+--      lb_bm1_bm_amount         := TRUE;            -- ＢＭ１ＢＭ金額による定率判断フラグ
+      lb_bm1_bm_rate           := FALSE;           -- ＢＭ１ＢＭ率による定率判断フラグ
+      lb_bm1_bm_amount         := FALSE;           -- ＢＭ１ＢＭ金額による定率判断フラグ
+-- == 2010/08/03 V1.9 Added END   ===============================================================
       lb_bm1_bm                := FALSE;           -- 販売手数料有無フラグ(TRUE:有,FALSE:無)
 --
       -- ＳＰ専決明細カーソルオープン
@@ -961,6 +1175,10 @@ AS
           ELSIF (lv_cond_business_type IN (cv_cond_b_type_3, cv_cond_b_type_4)) THEN
             o_rep_cont_data_rec.exchange_condition := cv_youki_rate;
           END IF;
+          --
+-- == 2010/08/03 V1.9 Added START ===============================================================
+          lv_condition_content_type :=  l_sales_charge_rec.condition_content_type;        --  全容器一律区分
+-- == 2010/08/03 V1.9 Added END   ===============================================================
 --
           /* 2009.11.30 T.Maruyama E_本稼動_00193 START */
           ---- ＢＭ１ＢＭ率、金額
@@ -1058,8 +1276,17 @@ AS
         ,buff   => '' || CHR(10) || '販売手数料情報件数：' || ln_lines_cnt || '件'
       );
 --
-      -- 明細件数が1件を超える場合
-      IF (ln_lines_cnt > 1) THEN
+-- == 2010/08/03 V1.9 Modified START ===============================================================
+--      -- 明細件数が1件を超える場合
+--      IF (ln_lines_cnt > 1) THEN
+      IF  (     (     ln_lines_cnt  >  1
+                  OR  lv_condition_content_type <> '0'
+                )
+            AND lv_cond_business_type IN(cv_cond_b_type_3, cv_cond_b_type_4)
+          )
+      THEN
+        --  明細２件以上または、全容器一律、且つ取引条件「容器別」の場合
+-- == 2010/08/03 V1.9 Modified END   ===============================================================
 --
         /* 2009.11.30 T.Maruyama E_本稼動_00193 START */
         -- ＢＭ１ＢＭ率 定率判断
@@ -1157,16 +1384,35 @@ AS
         /* 2009.11.30 T.Maruyama E_本稼動_00193 END */
         
         
-        -- 容器別、定率の場合
-        IF ((lv_cond_business_type IN (cv_cond_b_type_3, cv_cond_b_type_4))
-               AND (lb_bm1_bm_rate OR lb_bm1_bm_amount)) THEN
+-- == 2010/08/03 V1.9 Modified START ===============================================================
+--        -- 容器別、定率の場合
+--        IF ((lv_cond_business_type IN (cv_cond_b_type_3, cv_cond_b_type_4))
+--               AND (lb_bm1_bm_rate OR lb_bm1_bm_amount)) THEN
+        IF  (     lb_bm1_bm_rate
+              OR  lb_bm1_bm_amount
+              OR  lv_condition_content_type <> '0'
+            )
+        THEN
+          --  全容器一律、または、定率
+-- == 2010/08/03 V1.9 Modified END   ===============================================================
           -- ＢＭ１ＢＭ率
-          IF (lb_bm1_bm_rate) THEN
-            lv_cond_conts_tmp := '販売金額につき、１本 ' || ln_bm1_bm_rate || '%を支払う';
+-- == 2010/08/03 V1.9 Modified START ===============================================================
+--          IF (lb_bm1_bm_rate) THEN
+--            lv_cond_conts_tmp := '販売金額につき、１本 ' || ln_bm1_bm_rate || '%を支払う';
+--          -- ＢＭ１ＢＭ金額
+--          ELSE
+--            lv_cond_conts_tmp := '販売金額につき、１本 ' || ln_bm1_bm_amount || '円を支払う';
+--          END IF;
+          IF  (     lb_bm1_bm_rate
+                OR  lv_condition_content_type = '1'
+              )
+          THEN
+            lv_cond_conts_tmp := '販売金額に対し、' || ln_bm1_bm_rate || '%とする。';
           -- ＢＭ１ＢＭ金額
           ELSE
-            lv_cond_conts_tmp := '販売金額につき、１本 ' || ln_bm1_bm_amount || '円を支払う';
+            lv_cond_conts_tmp := '販売数量に対し、１本当たり ' || ln_bm1_bm_amount || '円とする。';
           END IF;
+-- == 2010/08/03 V1.9 Modified END   ===============================================================
           -- 取引条件（定率）
           o_rep_cont_data_rec.exchange_condition := cv_tei_rate;
           -- 条件内容セット
@@ -1183,42 +1429,140 @@ AS
           o_rep_cont_data_rec.condition_contents_11 := NULL;
           o_rep_cont_data_rec.condition_contents_12 := NULL;
 --
+-- == 2010/08/03 V1.9 Modified START ===============================================================
           -- ログ出力
-          fnd_file.put_line(
-             which  => FND_FILE.LOG
-            ,buff   => '' || CHR(10) || '販売手数料情報が容器別、定率です。'
-          );
+--          fnd_file.put_line(
+--             which  => FND_FILE.LOG
+--            ,buff   => '' || CHR(10) || '販売手数料情報が容器別、定率です。'
+--          );
+          IF  (lv_condition_content_type <> '0')  THEN
+            fnd_file.put_line(
+               which  => FND_FILE.LOG
+              ,buff   => '' || CHR(10) || '販売手数料情報が容器別、全容器一律です。'
+            );
+          ELSE
+            fnd_file.put_line(
+               which  => FND_FILE.LOG
+              ,buff   => '' || CHR(10) || '販売手数料情報が容器別、定率です。'
+            );
+          END IF;
+-- == 2010/08/03 V1.9 Modified END   ===============================================================
 --
-        ELSE
-          -- 条件内容が12件に満たない場合、最終行に「以下余白」をセット
-          IF (ln_lines_cnt < 12) THEN
-          -- 条件内容セット
-            IF (o_rep_cont_data_rec.condition_contents_2 IS NULL) THEN
-              o_rep_cont_data_rec.condition_contents_2 := cv_cond_conts_space;    -- 以下余白
-            ELSIF (o_rep_cont_data_rec.condition_contents_3 IS NULL) THEN
-              o_rep_cont_data_rec.condition_contents_3 := cv_cond_conts_space;    -- 以下余白
-            ELSIF (o_rep_cont_data_rec.condition_contents_4 IS NULL) THEN
-              o_rep_cont_data_rec.condition_contents_4 := cv_cond_conts_space;    -- 以下余白
-            ELSIF (o_rep_cont_data_rec.condition_contents_5 IS NULL) THEN
-              o_rep_cont_data_rec.condition_contents_5 := cv_cond_conts_space;    -- 以下余白
-            ELSIF (o_rep_cont_data_rec.condition_contents_6 IS NULL) THEN
-              o_rep_cont_data_rec.condition_contents_6 := cv_cond_conts_space;    -- 以下余白
-            ELSIF (o_rep_cont_data_rec.condition_contents_7 IS NULL) THEN
-              o_rep_cont_data_rec.condition_contents_7 := cv_cond_conts_space;    -- 以下余白
-            ELSIF (o_rep_cont_data_rec.condition_contents_8 IS NULL) THEN
-              o_rep_cont_data_rec.condition_contents_8 := cv_cond_conts_space;    -- 以下余白
-            ELSIF (o_rep_cont_data_rec.condition_contents_9 IS NULL) THEN
-              o_rep_cont_data_rec.condition_contents_9 := cv_cond_conts_space;    -- 以下余白
-            ELSIF (o_rep_cont_data_rec.condition_contents_10 IS NULL) THEN
-              o_rep_cont_data_rec.condition_contents_10 := cv_cond_conts_space;   -- 以下余白
-            ELSIF (o_rep_cont_data_rec.condition_contents_11 IS NULL) THEN
-              o_rep_cont_data_rec.condition_contents_11 := cv_cond_conts_space;   -- 以下余白
-            ELSIF (o_rep_cont_data_rec.condition_contents_12 IS NULL) THEN
-              o_rep_cont_data_rec.condition_contents_12 := cv_cond_conts_space;   -- 以下余白
-            END IF;
+-- == 2010/08/03 V1.9 Deleted START ===============================================================
+--        ELSE
+--          -- 条件内容が12件に満たない場合、最終行に「以下余白」をセット
+--          IF (ln_lines_cnt < 12) THEN
+--          -- 条件内容セット
+--            IF (o_rep_cont_data_rec.condition_contents_2 IS NULL) THEN
+--              o_rep_cont_data_rec.condition_contents_2 := cv_cond_conts_space;    -- 以下余白
+--            ELSIF (o_rep_cont_data_rec.condition_contents_3 IS NULL) THEN
+--              o_rep_cont_data_rec.condition_contents_3 := cv_cond_conts_space;    -- 以下余白
+--            ELSIF (o_rep_cont_data_rec.condition_contents_4 IS NULL) THEN
+--              o_rep_cont_data_rec.condition_contents_4 := cv_cond_conts_space;    -- 以下余白
+--            ELSIF (o_rep_cont_data_rec.condition_contents_5 IS NULL) THEN
+--              o_rep_cont_data_rec.condition_contents_5 := cv_cond_conts_space;    -- 以下余白
+--            ELSIF (o_rep_cont_data_rec.condition_contents_6 IS NULL) THEN
+--              o_rep_cont_data_rec.condition_contents_6 := cv_cond_conts_space;    -- 以下余白
+--            ELSIF (o_rep_cont_data_rec.condition_contents_7 IS NULL) THEN
+--              o_rep_cont_data_rec.condition_contents_7 := cv_cond_conts_space;    -- 以下余白
+--            ELSIF (o_rep_cont_data_rec.condition_contents_8 IS NULL) THEN
+--              o_rep_cont_data_rec.condition_contents_8 := cv_cond_conts_space;    -- 以下余白
+--            ELSIF (o_rep_cont_data_rec.condition_contents_9 IS NULL) THEN
+--              o_rep_cont_data_rec.condition_contents_9 := cv_cond_conts_space;    -- 以下余白
+--            ELSIF (o_rep_cont_data_rec.condition_contents_10 IS NULL) THEN
+--              o_rep_cont_data_rec.condition_contents_10 := cv_cond_conts_space;   -- 以下余白
+--            ELSIF (o_rep_cont_data_rec.condition_contents_11 IS NULL) THEN
+--              o_rep_cont_data_rec.condition_contents_11 := cv_cond_conts_space;   -- 以下余白
+--            ELSIF (o_rep_cont_data_rec.condition_contents_12 IS NULL) THEN
+--              o_rep_cont_data_rec.condition_contents_12 := cv_cond_conts_space;   -- 以下余白
+--            END IF;
+--          END IF;
+-- == 2010/08/03 V1.9 Deleted END   ===============================================================
+        END IF;
+        --
+      END IF;
+-- == 2010/08/03 V1.9 Added START ===============================================================
+      --  条件内容が12件に満たない場合、販売手数料但書と「以下余白」をセット
+      IF  (ln_lines_cnt < 12) THEN
+        IF    (lv_cond_business_type IN (cv_cond_b_type_1, cv_cond_b_type_2)) THEN
+          --  売上別
+          IF    (o_rep_cont_data_rec.condition_contents_2   IS NULL)  THEN
+            o_rep_cont_data_rec.condition_contents_2  :=  gt_terms_note_price;      --  販売手数料但書（売価別）
+            o_rep_cont_data_rec.condition_contents_3  :=  cv_cond_conts_space;      --  以下余白
+          ELSIF (o_rep_cont_data_rec.condition_contents_3   IS NULL)  THEN
+            o_rep_cont_data_rec.condition_contents_3  :=  gt_terms_note_price;      --  販売手数料但書（売価別）
+            o_rep_cont_data_rec.condition_contents_4  :=  cv_cond_conts_space;      --  以下余白
+          ELSIF (o_rep_cont_data_rec.condition_contents_4   IS NULL)  THEN
+            o_rep_cont_data_rec.condition_contents_4  :=  gt_terms_note_price;      --  販売手数料但書（売価別）
+            o_rep_cont_data_rec.condition_contents_5  :=  cv_cond_conts_space;      --  以下余白
+          ELSIF (o_rep_cont_data_rec.condition_contents_5   IS NULL)  THEN
+            o_rep_cont_data_rec.condition_contents_5  :=  gt_terms_note_price;      --  販売手数料但書（売価別）
+            o_rep_cont_data_rec.condition_contents_6  :=  cv_cond_conts_space;      --  以下余白
+          ELSIF (o_rep_cont_data_rec.condition_contents_6   IS NULL)  THEN
+            o_rep_cont_data_rec.condition_contents_6  :=  gt_terms_note_price;      --  販売手数料但書（売価別）
+            o_rep_cont_data_rec.condition_contents_7  :=  cv_cond_conts_space;      --  以下余白
+          ELSIF (o_rep_cont_data_rec.condition_contents_7   IS NULL)  THEN
+            o_rep_cont_data_rec.condition_contents_7  :=  gt_terms_note_price;      --  販売手数料但書（売価別）
+            o_rep_cont_data_rec.condition_contents_8  :=  cv_cond_conts_space;      --  以下余白
+          ELSIF (o_rep_cont_data_rec.condition_contents_8   IS NULL)  THEN
+            o_rep_cont_data_rec.condition_contents_8  :=  gt_terms_note_price;      --  販売手数料但書（売価別）
+            o_rep_cont_data_rec.condition_contents_9  :=  cv_cond_conts_space;      --  以下余白
+          ELSIF (o_rep_cont_data_rec.condition_contents_9   IS NULL)  THEN
+            o_rep_cont_data_rec.condition_contents_9  :=  gt_terms_note_price;      --  販売手数料但書（売価別）
+            o_rep_cont_data_rec.condition_contents_10 :=  cv_cond_conts_space;      --  以下余白
+          ELSIF (o_rep_cont_data_rec.condition_contents_10  IS NULL)  THEN
+            o_rep_cont_data_rec.condition_contents_10 :=  gt_terms_note_price;      --  販売手数料但書（売価別）
+            o_rep_cont_data_rec.condition_contents_11 :=  cv_cond_conts_space;      --  以下余白
+          ELSIF (o_rep_cont_data_rec.condition_contents_11  IS NULL)  THEN
+            o_rep_cont_data_rec.condition_contents_11 :=  gt_terms_note_price;      --  販売手数料但書（売価別）
+            o_rep_cont_data_rec.condition_contents_12 :=  cv_cond_conts_space;      --  以下余白
+          ELSIF (o_rep_cont_data_rec.condition_contents_12  IS NULL)  THEN
+            o_rep_cont_data_rec.condition_contents_12 :=  gt_terms_note_price;      --  販売手数料但書（売価別）
+          END IF;
+          --
+        ELSIF (     lv_cond_business_type IN (cv_cond_b_type_3, cv_cond_b_type_4)
+                AND lv_condition_content_type = '0'
+                AND NOT(lb_bm1_bm_rate)
+                AND NOT(lb_bm1_bm_amount)
+              )
+        THEN
+          --  容器別（全容器一律以外、かつ、定率以外）
+          IF    (o_rep_cont_data_rec.condition_contents_2   IS NULL)  THEN
+            o_rep_cont_data_rec.condition_contents_2  :=  gt_terms_note_ves;        --  販売手数料但書（容器別）
+            o_rep_cont_data_rec.condition_contents_3  :=  cv_cond_conts_space;      --  以下余白
+          ELSIF (o_rep_cont_data_rec.condition_contents_3   IS NULL)  THEN
+            o_rep_cont_data_rec.condition_contents_3  :=  gt_terms_note_ves;        --  販売手数料但書（容器別）
+            o_rep_cont_data_rec.condition_contents_4  :=  cv_cond_conts_space;      --  以下余白
+          ELSIF (o_rep_cont_data_rec.condition_contents_4   IS NULL)  THEN
+            o_rep_cont_data_rec.condition_contents_4  :=  gt_terms_note_ves;        --  販売手数料但書（容器別）
+            o_rep_cont_data_rec.condition_contents_5  :=  cv_cond_conts_space;      --  以下余白
+          ELSIF (o_rep_cont_data_rec.condition_contents_5   IS NULL)  THEN
+            o_rep_cont_data_rec.condition_contents_5  :=  gt_terms_note_ves;        --  販売手数料但書（容器別）
+            o_rep_cont_data_rec.condition_contents_6  :=  cv_cond_conts_space;      --  以下余白
+          ELSIF (o_rep_cont_data_rec.condition_contents_6   IS NULL)  THEN
+            o_rep_cont_data_rec.condition_contents_6  :=  gt_terms_note_ves;        --  販売手数料但書（容器別）
+            o_rep_cont_data_rec.condition_contents_7  :=  cv_cond_conts_space;      --  以下余白
+          ELSIF (o_rep_cont_data_rec.condition_contents_7   IS NULL)  THEN
+            o_rep_cont_data_rec.condition_contents_7  :=  gt_terms_note_ves;        --  販売手数料但書（容器別）
+            o_rep_cont_data_rec.condition_contents_8  :=  cv_cond_conts_space;      --  以下余白
+          ELSIF (o_rep_cont_data_rec.condition_contents_8   IS NULL)  THEN
+            o_rep_cont_data_rec.condition_contents_8  :=  gt_terms_note_ves;        --  販売手数料但書（容器別）
+            o_rep_cont_data_rec.condition_contents_9  :=  cv_cond_conts_space;      --  以下余白
+          ELSIF (o_rep_cont_data_rec.condition_contents_9   IS NULL)  THEN
+            o_rep_cont_data_rec.condition_contents_9  :=  gt_terms_note_ves;        --  販売手数料但書（容器別）
+            o_rep_cont_data_rec.condition_contents_10 :=  cv_cond_conts_space;      --  以下余白
+          ELSIF (o_rep_cont_data_rec.condition_contents_10  IS NULL)  THEN
+            o_rep_cont_data_rec.condition_contents_10 :=  gt_terms_note_ves;        --  販売手数料但書（容器別）
+            o_rep_cont_data_rec.condition_contents_11 :=  cv_cond_conts_space;      --  以下余白
+          ELSIF (o_rep_cont_data_rec.condition_contents_11  IS NULL)  THEN
+            o_rep_cont_data_rec.condition_contents_11 :=  gt_terms_note_ves;        --  販売手数料但書（容器別）
+            o_rep_cont_data_rec.condition_contents_12 :=  cv_cond_conts_space;      --  以下余白
+          ELSIF (o_rep_cont_data_rec.condition_contents_12  IS NULL)  THEN
+            o_rep_cont_data_rec.condition_contents_12 :=  gt_terms_note_ves;        --  販売手数料但書（容器別）
           END IF;
         END IF;
       END IF;
+-- == 2010/08/03 V1.9 Added END   ===============================================================
 --
       -- 販売手数料有無の設定
         o_rep_cont_data_rec.condition_contents_flag := lb_bm1_bm;

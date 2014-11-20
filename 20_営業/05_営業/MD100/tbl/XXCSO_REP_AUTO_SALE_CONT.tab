@@ -3,7 +3,7 @@
  * TABLE Name      : xxcso_rep_auto_sale_cont
  * Description     : 自動販売機設置契約書帳票ワークテーブル
  * MD.070          : 
- * Version         : 1.4
+ * Version         : 1.5
  * 
  * Change Record
  * ------------- ----- ------------ -------------------------------------
@@ -17,6 +17,8 @@
  *  2009/09/14    1.4  M.Maruyama   【SCS障害 0001355】
  *                                    項目(契約者名)サイズ修正漏れの修正
  *                                    (360桁⇒660桁)
+ *  2010/08/02    1.5  H.Sasaki     【E_本稼動_00822】
+ *                                    項目サイズの変更（口座番号：30byte⇒35byte）
  ************************************************************************/
 CREATE TABLE xxcso.xxcso_rep_auto_sale_cont
 (
@@ -37,7 +39,10 @@ CREATE TABLE xxcso.xxcso_rep_auto_sale_cont
   bank_name                       VARCHAR2(60),
   blanches_name                   VARCHAR2(60),
   account_number                  VARCHAR2(9),
-  bank_account_number             VARCHAR2(30),
+-- == 2010/08/02 V1.5 Modified START ===============================================================
+--  bank_account_number             VARCHAR2(30),
+  bank_account_number             VARCHAR2(35),
+-- == 2010/08/02 V1.5 Modified END   ===============================================================
   bank_account_name_kana          VARCHAR2(150),
   publish_base_code               VARCHAR2(4),
   publish_base_name               VARCHAR2(60),
