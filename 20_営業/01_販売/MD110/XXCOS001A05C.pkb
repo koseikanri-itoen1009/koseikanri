@@ -1,5 +1,4 @@
-create or replace
-PACKAGE BODY XXCOS001A05C
+CREATE OR REPLACE PACKAGE BODY XXCOS001A05C
 AS
 /*****************************************************************************************
  * Copyright(c)Sumisho Computer Systems Corporation, 2008. All rights reserved.
@@ -7,7 +6,7 @@ AS
  * Package Name     : XXCOS001A05C (body)
  * Description      : 出荷確認処理（HHT納品データ）
  * MD.050           : 出荷確認処理(MD050_COS_001_A05)
- * Version          : 1.9
+ * Version          : 1.10
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -46,6 +45,7 @@ AS
  *                                                 外税、内税(伝票課税)時の売上金額の計算方法修正
  *                                                 外税時の売上金額合計の計算方法修正
  *                                                 入出庫データの販売実績(納品数量)設定値に総本数を設定
+ *  2009/04/14    1.10  N.Maeda          [T1_0532]ヘッダ消費税金額合計算出値の代入値修正
  *
  *****************************************************************************************/
 --
@@ -2097,7 +2097,7 @@ AS
 --    ln_consum_amount             NUMBER;                                          -- 消費税金額
 --    ln_tax_odd                   NUMBER;                                          -- 消費税端数
 --    ln_up_odd                    NUMBER;                                          -- 端数切り上げ数値
---    ln_amount_data               NUMBER;                                          -- 本体金額
+--    ]ln_amount_data               NUMBER;                                          -- 本体金額
 --    lt_lin_sale_amount           NUMBER;                                          -- 売上金額
     ln_sales_exp_line_id         NUMBER;                                          -- 明細ID
     ln_discount_tax              NUMBER;                                          -- 値引消費税額
@@ -3515,7 +3515,7 @@ AS
             -- 本体金額合計
             lt_pure_amount_sum := lt_total_amount;
             -- 消費税金額合計
-            ln_amount  := ( lt_sale_amount_sum - lt_pure_amount_sum );
+            lt_tax_amount_sum  := ( lt_sale_amount_sum - lt_pure_amount_sum );
 --
           ELSIF ( lt_consumption_tax_class = cv_ins_bid_tax ) THEN  -- 内税（単価込み）
 --  
@@ -5062,7 +5062,7 @@ AS
 --                lt_sale_amount_sum := ROUND( lt_sale_amount_sum );
 --                END IF;
 --              END IF;
-            ln_amount := lt_tax_include;
+              ln_amount := lt_tax_include;
               IF ( ln_amount <> TRUNC( ln_amount ) ) THEN
                 IF ( lt_tax_odd = cv_amount_up ) THEN
                 lt_sale_amount_sum := ( TRUNC( ln_amount ) + 1 );
@@ -5284,7 +5284,7 @@ AS
             -- 本体金額合計
             lt_pure_amount_sum := lt_total_amount;
             -- 消費税金額合計
-            ln_amount  := ( lt_sale_amount_sum - lt_pure_amount_sum );
+            lt_tax_amount_sum  := ( lt_sale_amount_sum - lt_pure_amount_sum );
 --
           ELSIF ( lt_consumption_tax_class = cv_ins_bid_tax ) THEN  -- 内税（単価込み）
 --
@@ -6972,7 +6972,7 @@ AS
             -- 本体金額合計
             lt_pure_amount_sum := lt_total_amount;
             -- 消費税金額合計
-            ln_amount  := ( lt_sale_amount_sum - lt_pure_amount_sum );
+            lt_tax_amount_sum  := ( lt_sale_amount_sum - lt_pure_amount_sum );
 --
           ELSIF ( lt_consumption_tax_class = cv_ins_bid_tax ) THEN  -- 内税（単価込み）
 --  
@@ -7467,7 +7467,7 @@ AS
                                           AND    dhs.order_no_ebs <> cn_tkn_zero
                                           AND    dhs.program_application_id IS NOT NULL )
       AND    dls.program_application_id IS NOT NULL 
-      ORDER BY dls.order_no_hht,dls.digestion_ln_number
+      ORDER BY dls.order_no_hht,dls.digestion_ln_number,dls.line_no_hht
     FOR UPDATE NOWAIT;
 --
     --HHT入出庫一時ヘッダ用抽出
