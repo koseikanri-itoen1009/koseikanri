@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCOP005A01C(body)
  * Description      : 工場出荷計画
  * MD.050           : 工場出荷計画 MD050_COP_005_A01
- * Version          : 1.0
+ * Version          : 1.2
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -34,6 +34,7 @@ AS
  * ------------- ----- ---------------- -------------------------------------------------
  *  2008/12/02    1.0   SCS Uda          新規作成
  *  2009/02/25    1.1   SCS Uda          結合テスト仕様変更（結合障害No.014）
+ *  2009/04/07    1.2   SCS Uda          システムテスト障害対応（T1_0277、T1_0278、T1_0280、T1_0281、T1_0368）
  *
  *****************************************************************************************/
 --
@@ -96,6 +97,9 @@ AS
   resource_busy_expt        EXCEPTION;     -- デッドロックエラー
   reverse_invalid_expt      EXCEPTION;     -- 日付逆転エラー
   profile_validate_expt     EXCEPTION;     -- プロファイル取得エラー
+--20090407_Ver1.2_T1_0368_SCS_Uda_ADD_START
+  item_status_expt          EXCEPTION;     -- 品目ステータス不正警告メッセージ
+--20090407_Ver1.2_T1_0368_SCS_Uda_ADD_END
 
   PRAGMA EXCEPTION_INIT(resource_busy_expt, -54);
 --
@@ -135,6 +139,9 @@ AS
   cv_msg_00061     CONSTANT VARCHAR2(100) := 'APP-XXCOP1-00061';      -- ケース入数不正メッセージ
   cv_msg_00028     CONSTANT VARCHAR2(100) := 'APP-XXCOP1-00028';      -- 更新処理エラーメッセージ
   cv_msg_00062     CONSTANT VARCHAR2(100) := 'APP-XXCOP1-00062';      -- 経路エラーメッセージ
+--20090407_Ver1.2_T1_0368_SCS_Uda_ADD_START
+  cv_msg_10042     CONSTANT VARCHAR2(100) := 'APP-XXCOP1-10042';      -- 経路エラーメッセージ
+--20090407_Ver1.2_T1_0368_SCS_Uda_ADD_END
   -- メッセージ関連
   cv_msg_application            CONSTANT VARCHAR2(100) := 'XXCOP';
   cv_others_err_msg             CONSTANT VARCHAR2(100) := 'APP-XXCOP1-00041';
@@ -156,13 +163,23 @@ AS
   cv_msg_00058_token_2      CONSTANT VARCHAR2(100) := 'ITEM_NAME2';
   cv_msg_00059_token_1      CONSTANT VARCHAR2(100) := 'ITEM';
   cv_msg_00042_token_1      CONSTANT VARCHAR2(100) := 'TABLE';
-  cv_msg_10025_token_1      CONSTANT VARCHAR2(100) := 'WHSE_CODE';
-  cv_msg_10025_token_2      CONSTANT VARCHAR2(100) := 'ITEM';
+--20090407_Ver1.2_T1_0281_SCS_Uda_MOD_START
+--  cv_msg_10025_token_1      CONSTANT VARCHAR2(100) := 'WHSE_CODE';
+--  cv_msg_10025_token_2      CONSTANT VARCHAR2(100) := 'ITEM';
+  cv_msg_10025_token_1      CONSTANT VARCHAR2(100) := 'ITEM';
+  cv_msg_10025_token_2      CONSTANT VARCHAR2(100) := 'ITEM_NAME';
+--20090407_Ver1.2_T1_0281_SCS_Uda_MOD_END
   cv_msg_00060_token_1      CONSTANT VARCHAR2(100) := 'WHSE_NAME';
   cv_msg_00061_token_1      CONSTANT VARCHAR2(100) := 'ITEM';
   cv_msg_00062_token_1      CONSTANT VARCHAR2(100) := 'WHSE_CODE';
   cv_msg_00027_token_1      CONSTANT VARCHAR2(100) := 'TABLE';
   cv_msg_00028_token_1      CONSTANT VARCHAR2(100) := 'TABLE';
+--20090407_Ver1.2_T1_0368_SCS_Uda_ADD_START
+  cv_msg_10042_token_1      CONSTANT VARCHAR2(100) := 'ORG_CODE';
+  cv_msg_10042_token_2      CONSTANT VARCHAR2(100) := 'ITEM';
+  cv_msg_10042_token_3      CONSTANT VARCHAR2(100) := 'DATE';
+  cv_msg_10042_token_4      CONSTANT VARCHAR2(100) := 'STATUS';
+--20090407_Ver1.2_T1_0368_SCS_Uda_ADD_END
 --
   --メッセージトークン値
   cv_msg_unit_delivery      CONSTANT VARCHAR2(100) := '配送単位';
@@ -212,8 +229,8 @@ AS
   cv_source_rule            CONSTANT NUMBER        := 1;                        -- ソースルール
   cv_mrp_sourcing_rule      CONSTANT NUMBER        := 2;                        -- 物流構成表
   --翌週取得用コンスタント
-  cv_sunday                 CONSTANT VARCHAR2(100)        := '日';              -- 翌週開始日取得用
-  cv_saturday               CONSTANT VARCHAR2(100)        := '土';              -- 翌週終了日取得用
+  cv_sunday                 CONSTANT VARCHAR2(100)        := '日曜';              -- 翌週開始日取得用
+  cv_saturday               CONSTANT VARCHAR2(100)        := '土曜';              -- 翌週終了日取得用
   --プロファイル取得
   cv_master_org_id          CONSTANT VARCHAR2(20)  := 'XXCMN_MASTER_ORG_ID';           -- プロファイル取得用 マスタ組織
   cv_profile_name_mo_id     CONSTANT VARCHAR2(20)  := 'マスタ組織';                    -- プロファイル名 マスタ組織
@@ -247,6 +264,12 @@ AS
   cv_plan_typef             CONSTANT VARCHAR2(1)   := '2';                      -- 計画区分（出荷予測）
   cn_data_lvl_plant         CONSTANT NUMBER        := 0;                        -- 組織データレベル(工場レベル)
   cn_data_lvl_output        CONSTANT NUMBER        := 1;                        -- 組織データレベル(工場出荷レベル)
+--20090407_Ver1.2_T1_0368_SCS.Uda_ADD_START
+  --DISC品目アドオンマスタ
+  cn_xsib_status_temporary  CONSTANT NUMBER := 20;                              -- 仮登録
+  cn_xsib_status_registered CONSTANT NUMBER := 30;                              -- 本登録
+  cn_xsib_status_obsolete   CONSTANT NUMBER := 40;                              -- 廃
+--20090407_Ver1.2_T1_0368_SCS.Uda_ADD_END
   -- CSV出力用
   cv_csv_part                   CONSTANT VARCHAR2(1)   := '"';
   cv_csv_cont                   CONSTANT VARCHAR2(1)   := ',';
@@ -461,10 +484,6 @@ AS
       ,iv_value       => cv_pkg_name || cv_msg_cont || cv_prg_name
     );
     --空白行を挿入
---    fnd_file.put_line(
---       which  => FND_FILE.OUTPUT
---      ,buff   => NULL
---    );
     fnd_file.put_line(
        which  => FND_FILE.LOG
       ,buff   => NULL
@@ -472,49 +491,29 @@ AS
     --入力パラメータの出力
     --計画区分
     lv_errmsg := cv_plan_type_tl || cv_msg_part || iv_plan_type;
---    fnd_file.put_line(
---       which  => FND_FILE.OUTPUT
---      ,buff   => lv_errmsg
---    );
     fnd_file.put_line(
        which  => FND_FILE.LOG
       ,buff   => lv_errmsg
     );
     --出荷ペース計画期間(FROM)
     lv_errmsg := cv_pace_from_tl || cv_msg_part || iv_shipment_from;
---    fnd_file.put_line(
---       which  => FND_FILE.OUTPUT
---      ,buff   => lv_errmsg
---    );
     fnd_file.put_line(
        which  => FND_FILE.LOG
       ,buff   => lv_errmsg
     );
     --出荷ペース計画期間(TO)
     lv_errmsg := cv_pace_to_tl || cv_msg_part || iv_shipment_to;
---    fnd_file.put_line(
---       which  => FND_FILE.OUTPUT
---      ,buff   => lv_errmsg
---    );
     fnd_file.put_line(
        which  => FND_FILE.LOG
       ,buff   => lv_errmsg
     );
     --出荷予測区分
     lv_errmsg := cv_forcast_type_tl || cv_msg_part || iv_forcast_type;
---    fnd_file.put_line(
---       which  => FND_FILE.OUTPUT
---      ,buff   => lv_errmsg
---    );
     fnd_file.put_line(
        which  => FND_FILE.LOG
       ,buff   => lv_errmsg
     );
     --空白行を挿入
---    fnd_file.put_line(
---       which  => FND_FILE.OUTPUT
---      ,buff   => NULL
---    );
     fnd_file.put_line(
        which  => FND_FILE.LOG
       ,buff   => NULL
@@ -724,15 +723,15 @@ AS
     );
     --工場固有記号取得処理取得
     BEGIN
-        SELECT ffmb.attribute6
-        INTO   io_xwsp_rec.plant_mark
-        FROM   fm_matl_dtl      fmd
-           ,   fm_form_mst_b  ffmb
-        WHERE  fmd.formula_id = ffmb.formula_id
-        AND    fmd.item_id = io_xwsp_rec.item_id
-        AND    ffmb.attribute6 is not null
-        AND    ROWNUM = 1
-        ;
+      SELECT ffmb.attribute6
+      INTO   io_xwsp_rec.plant_mark
+      FROM   fm_matl_dtl      fmd
+         ,   fm_form_mst_b  ffmb
+      WHERE  fmd.formula_id = ffmb.formula_id
+      AND    fmd.item_id = io_xwsp_rec.item_id
+      AND    ffmb.attribute6 is not null
+      AND    ROWNUM = 1
+      ;
     EXCEPTION
       --既存データがない場合
       WHEN NO_DATA_FOUND THEN
@@ -995,6 +994,9 @@ AS
     lv_organization_name  ic_whse_mst.whse_name%TYPE;
     lv_whse_code          ic_whse_mst.whse_code%TYPE;
     ln_product_schedule_qty  xxcop_wk_ship_planning.product_schedule_qty%TYPE;
+--20090407_Ver1.2_T1_0368_SCS_Uda_ADD_START
+    ln_item_status        xxcmm_system_items_b.item_status%TYPE;
+--20090407_Ver1.2_T1_0368_SCS_Uda_ADD_END
 --
     -- *** ローカル・レコード ***
     lr_xwsp_rec     xxcop_wk_ship_planning%ROWTYPE := NULL;
@@ -1071,6 +1073,32 @@ AS
     io_xwsp_rec.plant_org_name      := lv_organization_name;      -- 工場組織名称
     io_xwsp_rec.ship_org_name       := lv_organization_name;      -- 出荷組織名称
     --
+--20090407_Ver1.2_T1_0368_SCS_Uda_ADD_START
+    SELECT item_status
+    INTO   ln_item_status
+    FROM  xxcmm_system_items_b
+    WHERE item_status_apply_date     <= cd_sys_date
+    AND   item_id                     = io_xwsp_rec.item_id;
+    IF ln_item_status NOT IN (cn_xsib_status_temporary,cn_xsib_status_registered,cn_xsib_status_obsolete) THEN
+      lv_errmsg :=  xxccp_common_pkg.get_msg(
+                       iv_application  => cv_msg_appl_cont
+                      ,iv_name         => cv_msg_10042
+                      ,iv_token_name1  => cv_msg_10042_token_1
+                      ,iv_token_value1 => io_xwsp_rec.plant_org_code
+                      ,iv_token_name2  => cv_msg_10042_token_2
+                      ,iv_token_value2 => io_xwsp_rec.item_no
+                      ,iv_token_name3  => cv_msg_10042_token_3
+                      ,iv_token_value3 => TO_CHAR(io_xwsp_rec.product_schedule_date,cv_date_format_slash)
+                      ,iv_token_name4  => cv_msg_10042_token_4
+                      ,iv_token_value4 => TO_CHAR(ln_item_status)
+                    );
+      FND_FILE.PUT_LINE(
+         which  => FND_FILE.LOG
+        ,buff   => lv_errmsg
+      );
+      RAISE item_status_expt;
+    END IF;
+--20090407_Ver1.2_T1_0368_SCS_Uda_ADD_END
     -- 組織品目チェック処理
     xxcop_common_pkg2.chk_item_exists(
        in_inventory_item_id => io_xwsp_rec.inventory_item_id
@@ -1103,8 +1131,14 @@ AS
       lv_errmsg :=  xxccp_common_pkg.get_msg(
                        iv_application  => cv_msg_appl_cont
                       ,iv_name         => cv_msg_10025
+--20090407_Ver1.2_T1_0281_SCS_Uda_MOD_START
+--                      ,iv_token_name1  => cv_msg_10025_token_1
+--                      ,iv_token_value1 => io_xwsp_rec.plant_org_code || cv_msg_org_name || cv_pm_part || io_xwsp_rec.plant_org_name
                       ,iv_token_name1  => cv_msg_10025_token_1
-                      ,iv_token_value1 => io_xwsp_rec.plant_org_code || cv_msg_org_name || cv_pm_part || io_xwsp_rec.plant_org_name
+                      ,iv_token_value1 => io_xwsp_rec.item_no
+                      ,iv_token_name2  => cv_msg_10025_token_2
+                      ,iv_token_value2 => io_xwsp_rec.item_name
+--20090407_Ver1.2_T1_0281_SCS_Uda_MOD_END
                     );
       RAISE internal_process_expt;
     END IF;
@@ -1153,6 +1187,12 @@ AS
     END IF;
     --
   EXCEPTION
+--20090407_Ver1.2_T1_0368_SCS_Uda_ADD_START
+    WHEN item_status_expt THEN
+      ov_errmsg  := lv_errmsg;
+      ov_errbuf  := NULL;
+      ov_retcode := cv_status_warn;
+--20090407_Ver1.2_T1_0368_SCS_Uda_ADD_END
     WHEN internal_process_expt THEN
       ov_errmsg  := lv_errmsg;
       ov_errbuf  := NULL;
@@ -1644,7 +1684,13 @@ AS
               AND    NVL(flv.end_date_active,cd_sys_date)         >= cd_sys_date
               AND    flv.lookup_code              = TO_CHAR(msa.assignment_type)
               AND    flv.language                 = cv_flv_language
+--20090407_Ver1.2_T1_0277_SCS_Uda_ADD_START
+              ORDER BY yusen
+--20090407_Ver1.2_T1_0277_SCS_Uda_ADD_END
             )
+--20090407_Ver1.2_T1_0277_SCS_Uda_ADD_START
+            WHERE ROWNUM = 1
+--20090407_Ver1.2_T1_0277_SCS_Uda_ADD_END
           ) dummy
           WHERE keiro.receipt_organization_id = NVL(dummy.organization_id(+),keiro.receipt_organization_id)
         )
@@ -2297,7 +2343,13 @@ AS
               AND    NVL(flv.end_date_active,cd_sys_date)         >= cd_sys_date
               AND    flv.lookup_code              = to_char(msa.assignment_type)
               AND    flv.language                 = cv_flv_language
+--20090407_Ver1.2_T1_0277_SCS_Uda_ADD_START
+              ORDER BY yusen
+--20090407_Ver1.2_T1_0277_SCS_Uda_ADD_END
             )
+--20090407_Ver1.2_T1_0277_SCS_Uda_ADD_START
+            WHERE ROWNUM = 1
+--20090407_Ver1.2_T1_0277_SCS_Uda_ADD_END
           ) dummy
           WHERE keiro.receipt_organization_id = NVL(dummy.organization_id(+),keiro.receipt_organization_id)
         )
@@ -2957,6 +3009,7 @@ AS
       --変数初期化
       ln_before_stock := NULL;
       BEGIN
+--20090407_Ver1.2_T1_0278_SCS_Uda_ADD_START
         SELECT
              plant_org_code
           ,  product_schedule_date
@@ -2967,15 +3020,34 @@ AS
           ,  ld_product_schedule_date
           ,  ln_before_stock
           ,  ln_num_of_case
-        FROM  xxcop_wk_ship_planning
-        WHERE transaction_id = get_wk_ship_planning_rec.transaction_id
-          AND org_data_lvl = cn_data_lvl_output
-          AND inventory_item_id = get_wk_ship_planning_rec.inventory_item_id
-          AND receipt_org_id = get_wk_ship_planning_rec.receipt_org_id
-          AND after_stock IS NOT NULL
-          AND product_schedule_date < get_wk_ship_planning_rec.product_schedule_date
-          AND ROWNUM = 1
-        ORDER BY product_schedule_date DESC;
+        FROM(
+--20090407_Ver1.2_T1_0278_SCS_Uda_ADD_END
+          SELECT
+               plant_org_code
+            ,  product_schedule_date
+            ,  after_stock
+            ,  num_of_case
+--20090407_Ver1.2_T1_0278_SCS_Uda_DEL_START
+--        INTO
+--             lv_plant_org_code
+--          ,  ld_product_schedule_date
+--          ,  ln_before_stock
+--          ,  ln_num_of_case
+--20090407_Ver1.2_T1_0278_SCS_Uda_DEL_END
+          FROM  xxcop_wk_ship_planning
+          WHERE transaction_id = get_wk_ship_planning_rec.transaction_id
+            AND org_data_lvl = cn_data_lvl_output
+            AND inventory_item_id = get_wk_ship_planning_rec.inventory_item_id
+            AND receipt_org_id = get_wk_ship_planning_rec.receipt_org_id
+            AND after_stock IS NOT NULL
+--20090407_Ver1.2_T1_0278_SCS_Uda_MOD_START
+--            AND product_schedule_date < get_wk_ship_planning_rec.product_schedule_date
+--            AND ROWNUM = 1
+--          ORDER BY product_schedule_date DESC;
+          ORDER BY product_schedule_date DESC,plant_org_code DESC
+          )
+        WHERE ROWNUM = 1;
+--20090407_Ver1.2_T1_0278_SCS_Uda_MOD_END
       EXCEPTION
         WHEN NO_DATA_FOUND THEN
           ln_before_stock := NULL;
@@ -3629,8 +3701,10 @@ AS
     -- ===============================
     CURSOR get_schedule_cur IS
     SELECT
-       msdate.schedule_designator    schedule_designator      --基準計画名
-      ,msdate.organization_id        plant_org_id             --工場倉庫
+--20090407_Ver1.2_T1_0280_SCS_Uda_DEL_START
+--       msdate.schedule_designator    schedule_designator      --基準計画名
+--20090407_Ver1.2_T1_0280_SCS_Uda_DEL_END
+       msdate.organization_id        plant_org_id             --工場倉庫
       ,msdate.inventory_item_id      inventory_item_id        --在庫品目ID
       ,msdate.schedule_date          product_schedule_date    --計画日付
       ,SUM(msdate.schedule_quantity)      product_schedule_qty     --計画数量
@@ -3644,8 +3718,10 @@ AS
       AND  msdesi.attribute1          =  cv_buy_type       --基準計画分類「3：購入計画」
       AND  msdate.schedule_level      =  cn_schedule_level --レベル２
     GROUP BY
-       msdate.schedule_designator
-      ,msdate.organization_id
+--20090407_Ver1.2_T1_0280_SCS_Uda_DEL_START
+--       msdate.schedule_designator
+--20090407_Ver1.2_T1_0280_SCS_Uda_DEL_END
+       msdate.organization_id
       ,msdate.inventory_item_id
       ,msdate.schedule_date
     ORDER BY msdate.schedule_date,msdate.inventory_item_id , msdate.organization_id
@@ -3711,88 +3787,102 @@ AS
       lr_xwsp_rec.product_schedule_qty    := get_schedule_rec.product_schedule_qty;       -- 生産計画数
       lr_xwsp_rec.shipping_date           := get_schedule_rec.product_schedule_date;      -- 出荷日
       --
-      -- =============================================
-      --      A-2 基準生産計画取得
-      -- =============================================
-      get_schedule_date(
-        io_xwsp_rec          =>   lr_xwsp_rec      --   工場出荷ワークレコードタイプ
-       ,ov_errmsg            =>   lv_errmsg        -- ユーザー・エラー・メッセージ --# 固定 #
-       ,ov_errbuf            =>   lv_errbuf        -- エラー・メッセージ           --# 固定 #
-       ,ov_retcode           =>   lv_retcode       -- リターン・コード             --# 固定 #
-      );
-      IF (lv_retcode = cv_status_error) THEN
-        gn_error_cnt := gn_error_cnt + 1;
-        RAISE internal_process_expt;
-      END IF;
-      -- =============================================
-      --      A-3 工場出荷計画制御マスタ取得
-      -- =============================================
-      get_plant_shipping(
-        io_xwsp_rec          =>   lr_xwsp_rec     --   工場出荷ワークレコードタイプ
-       ,ov_errmsg            =>   lv_errmsg        -- ユーザー・エラー・メッセージ --# 固定 #
-       ,ov_errbuf            =>   lv_errbuf        -- エラー・メッセージ           --# 固定 #
-       ,ov_retcode           =>   lv_retcode       -- リターン・コード             --# 固定 #
-      );
-      IF (lv_retcode = cv_status_error) THEN
-        gn_error_cnt := gn_error_cnt + 1;
-        RAISE internal_process_expt;
-      END IF;
-      -- =============================================
-      --      A-4 基本横持制御マスタ取得
-      -- =============================================
-      --基本横持制御マスタ取得処理
-      get_base_yokomst(
-        io_xwsp_rec          =>   lr_xwsp_rec      --   工場出荷ワークレコードタイプ
-       ,ov_errmsg            =>   lv_errmsg        -- ユーザー・エラー・メッセージ --# 固定 #
-       ,ov_errbuf            =>   lv_errbuf        -- エラー・メッセージ           --# 固定 #
-       ,ov_retcode           =>   lv_retcode       -- リターン・コード             --# 固定 #
-      );
-      IF (lv_retcode = cv_status_error) THEN
-        gn_error_cnt := gn_error_cnt + 1;
-        RAISE internal_process_expt;
-      END IF;
-      -- =============================================
-      --      A-5 下位倉庫出荷ペース取得
-      -- =============================================
-      --下位倉庫出荷ペース取得処理
-      get_under_lvl_pace(
-        io_xwsp_rec          =>   lr_xwsp_rec      --   工場出荷ワークレコードタイプ
-       ,ov_errmsg            =>   lv_errmsg        -- ユーザー・エラー・メッセージ --# 固定 #
-       ,ov_errbuf            =>   lv_errbuf        -- エラー・メッセージ           --# 固定 #
-       ,ov_retcode           =>   lv_retcode       -- リターン・コード             --# 固定 #
-      );
-      IF lv_retcode = cv_status_error THEN
-        gn_error_cnt := gn_error_cnt + 1;
-        RAISE internal_process_expt;
-      END IF;
-      -- =============================================
-      --      A-6 在庫数取得
-      -- =============================================
-      --在庫数取得処理
-      get_stock_qty(
-        io_xwsp_rec          =>   lr_xwsp_rec      --   工場出荷ワークレコードタイプ
-       ,ov_errmsg            =>   lv_errmsg        -- ユーザー・エラー・メッセージ --# 固定 #
-       ,ov_errbuf            =>   lv_errbuf        -- エラー・メッセージ           --# 固定 #
-       ,ov_retcode           =>   lv_retcode       -- リターン・コード             --# 固定 #
-      );
-      IF lv_retcode = cv_status_error THEN
-        gn_error_cnt := gn_error_cnt + 1;
-        RAISE internal_process_expt;
-      END IF;
-      -- =============================================
-      --      A-7 移動数取得
-      -- =============================================
-      --移動数取得処理
-      get_move_qty(
-        io_xwsp_rec          =>   lr_xwsp_rec      --   工場出荷ワークレコードタイプ
-       ,ov_errmsg            =>   lv_errmsg        -- ユーザー・エラー・メッセージ --# 固定 #
-       ,ov_errbuf            =>   lv_errbuf        -- エラー・メッセージ           --# 固定 #
-       ,ov_retcode           =>   lv_retcode       -- リターン・コード             --# 固定 #
-      );
-      IF lv_retcode = cv_status_error THEN
-        gn_error_cnt := gn_error_cnt + 1;
-        RAISE internal_process_expt;
-      END IF;
+--20090407_Ver1.2_T1_0368_SCS_Uda_ADD_START
+      BEGIN
+--20090407_Ver1.2_T1_0368_SCS_Uda_ADD_END
+        -- =============================================
+        --      A-2 基準生産計画取得
+        -- =============================================
+        get_schedule_date(
+          io_xwsp_rec          =>   lr_xwsp_rec      --   工場出荷ワークレコードタイプ
+         ,ov_errmsg            =>   lv_errmsg        -- ユーザー・エラー・メッセージ --# 固定 #
+         ,ov_errbuf            =>   lv_errbuf        -- エラー・メッセージ           --# 固定 #
+         ,ov_retcode           =>   lv_retcode       -- リターン・コード             --# 固定 #
+        );
+        IF (lv_retcode = cv_status_error) THEN
+          gn_error_cnt := gn_error_cnt + 1;
+          RAISE internal_process_expt;
+--20090407_Ver1.2_T1_0368_SCS_Uda_ADD_START
+        ELSIF (lv_retcode = cv_status_warn) THEN
+          gn_warn_cnt := gn_warn_cnt + 1;
+          RAISE expt_next_record;
+--20090407_Ver1.2_T1_0368_SCS_Uda_ADD_END
+        END IF;
+        -- =============================================
+        --      A-3 工場出荷計画制御マスタ取得
+        -- =============================================
+        get_plant_shipping(
+          io_xwsp_rec          =>   lr_xwsp_rec     --   工場出荷ワークレコードタイプ
+         ,ov_errmsg            =>   lv_errmsg        -- ユーザー・エラー・メッセージ --# 固定 #
+         ,ov_errbuf            =>   lv_errbuf        -- エラー・メッセージ           --# 固定 #
+         ,ov_retcode           =>   lv_retcode       -- リターン・コード             --# 固定 #
+        );
+        IF (lv_retcode = cv_status_error) THEN
+          gn_error_cnt := gn_error_cnt + 1;
+          RAISE internal_process_expt;
+        END IF;
+        -- =============================================
+        --      A-4 基本横持制御マスタ取得
+        -- =============================================
+        --基本横持制御マスタ取得処理
+        get_base_yokomst(
+          io_xwsp_rec          =>   lr_xwsp_rec      --   工場出荷ワークレコードタイプ
+         ,ov_errmsg            =>   lv_errmsg        -- ユーザー・エラー・メッセージ --# 固定 #
+         ,ov_errbuf            =>   lv_errbuf        -- エラー・メッセージ           --# 固定 #
+         ,ov_retcode           =>   lv_retcode       -- リターン・コード             --# 固定 #
+        );
+        IF (lv_retcode = cv_status_error) THEN
+          gn_error_cnt := gn_error_cnt + 1;
+          RAISE internal_process_expt;
+        END IF;
+        -- =============================================
+        --      A-5 下位倉庫出荷ペース取得
+        -- =============================================
+        --下位倉庫出荷ペース取得処理
+        get_under_lvl_pace(
+          io_xwsp_rec          =>   lr_xwsp_rec      --   工場出荷ワークレコードタイプ
+         ,ov_errmsg            =>   lv_errmsg        -- ユーザー・エラー・メッセージ --# 固定 #
+         ,ov_errbuf            =>   lv_errbuf        -- エラー・メッセージ           --# 固定 #
+         ,ov_retcode           =>   lv_retcode       -- リターン・コード             --# 固定 #
+        );
+        IF lv_retcode = cv_status_error THEN
+          gn_error_cnt := gn_error_cnt + 1;
+          RAISE internal_process_expt;
+        END IF;
+        -- =============================================
+        --      A-6 在庫数取得
+        -- =============================================
+        --在庫数取得処理
+        get_stock_qty(
+          io_xwsp_rec          =>   lr_xwsp_rec      --   工場出荷ワークレコードタイプ
+         ,ov_errmsg            =>   lv_errmsg        -- ユーザー・エラー・メッセージ --# 固定 #
+         ,ov_errbuf            =>   lv_errbuf        -- エラー・メッセージ           --# 固定 #
+         ,ov_retcode           =>   lv_retcode       -- リターン・コード             --# 固定 #
+        );
+        IF lv_retcode = cv_status_error THEN
+          gn_error_cnt := gn_error_cnt + 1;
+          RAISE internal_process_expt;
+        END IF;
+        -- =============================================
+        --      A-7 移動数取得
+        -- =============================================
+        --移動数取得処理
+        get_move_qty(
+          io_xwsp_rec          =>   lr_xwsp_rec      --   工場出荷ワークレコードタイプ
+         ,ov_errmsg            =>   lv_errmsg        -- ユーザー・エラー・メッセージ --# 固定 #
+         ,ov_errbuf            =>   lv_errbuf        -- エラー・メッセージ           --# 固定 #
+         ,ov_retcode           =>   lv_retcode       -- リターン・コード             --# 固定 #
+        );
+        IF lv_retcode = cv_status_error THEN
+          gn_error_cnt := gn_error_cnt + 1;
+          RAISE internal_process_expt;
+        END IF;
+--20090407_Ver1.2_T1_0368_SCS_Uda_ADD_START
+      EXCEPTION
+        WHEN expt_next_record THEN
+          NULL;
+      END;
+--20090407_Ver1.2_T1_0368_SCS_Uda_ADD_END
     END LOOP get_schedule_cur;
     --
     IF ln_loop_cnt = 0 THEN
