@@ -1,7 +1,7 @@
 /*============================================================================
 * ファイル名 : XxwshStockCanEncQtyVOImpl
 * 概要説明   : 手持数・引当可能数一覧リージョンビューオブジェクト
-* バージョン : 1.1
+* バージョン : 1.3
 *============================================================================
 * 修正履歴
 * 日付       Ver. 担当者       修正内容
@@ -9,6 +9,7 @@
 * 2008-04-17 1.0  北寒寺正夫     新規作成
 * 2008-08-07 1.1  二瓶　大輔     内部変更要求#183
 * 2008-09-10 1.2  大橋　孝郎     PT 6-2_35 指摘35
+* 2008-10-22 1.3  二瓶　大輔     T_TE080_BPO_920 No16
 *============================================================================
 */
 package itoen.oracle.apps.xxwsh.xxwsh920002j.server;
@@ -22,7 +23,7 @@ import com.sun.java.util.collections.HashMap;
 /***************************************************************************
  * 手持数・引当可能数一覧リージョンビューオブジェクトクラスです。
  * @author  ORACLE 北寒寺 正夫
- * @version 1.1
+ * @version 1.3
  ***************************************************************************
  */
 public class XxwshStockCanEncQtyVOImpl extends OAViewObjectImpl
@@ -134,7 +135,10 @@ public class XxwshStockCanEncQtyVOImpl extends OAViewObjectImpl
         } else
         {
           // Order BY句生成
-          orderByClause.append(" show_lot_no asc ");     // ロットNo(昇順)
+// 2008-10-22 D.Nihei ADD START T_TE080_BPO_920 No16
+//          orderByClause.append(" show_lot_no asc ");     // ロットNo(昇順)
+          orderByClause.append(" TO_NUMBER(show_lot_no) asc ");     // ロットNo(昇順)
+// 2008-10-22 D.Nihei ADD END
         }
         //追加検索条件をセット
         setWhereClause(whereClause.toString());

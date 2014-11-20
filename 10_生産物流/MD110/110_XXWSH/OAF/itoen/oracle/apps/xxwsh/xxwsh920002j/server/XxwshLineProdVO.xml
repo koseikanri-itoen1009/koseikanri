@@ -10,34 +10,37 @@
    MsgBundleClass="oracle.jbo.common.JboResourceBundle"
    UseGlueCode="false" >
    <SQLQuery><![CDATA[
-SELECT xola.order_line_id line_id,
-       '30' document_type_code,
-       NULL location_rel_code,
-       xoha.vendor_site_id deliver_to_id,
-       xoha.vendor_site_code deliver_to,
-       xoha.head_sales_branch,
-       xoha.schedule_arrival_date,
-       xoha.order_header_id header_id,
-       xoha.request_no request_no,
-       xoha.delivery_no delivery_no,
-       xoha.shipping_method_code ship_method_meaning,
-       xoha.weight_capacity_class,
-       xoha.schedule_ship_date,
-       xoha.freight_charge_class,
-       xoha.deliver_from input_inventory_location_code,
-       xoha.deliver_from_id input_inventory_location_id,
-       xoha.prod_class header_prod_class,
-       TO_CHAR(NVL(xola.reserved_quantity,0)) sum_reserved_quantity_item,
-       TO_CHAR(NVL(xola.quantity,0)) instruct_qty,
-       xola.shipping_item_code item_code,
-       TO_CHAR(xola.designated_production_date,
-       'YYYY/MM/DD') designated_production_date,
-       xilv.short_name input_inventory_location_name,
-       xlvv.attribute6 small_amount_class
-  FROM xxwsh_order_lines_all   xola,
-       xxwsh_order_headers_all xoha,
-       xxcmn_lookup_values_v   xlvv,
-       xxcmn_item_locations_v  xilv
+SELECT xola.order_line_id                       line_id
+     , '30'                                     document_type_code
+     , NULL                                     location_rel_code
+     , xoha.vendor_site_id                      deliver_to_id
+     , xoha.vendor_site_code                    deliver_to
+     , xoha.head_sales_branch                   head_sales_branch
+     , xoha.schedule_arrival_date               schedule_arrival_date
+     , xoha.order_header_id                     header_id
+     , xoha.request_no                          request_no
+     , xoha.delivery_no                         delivery_no
+     , xoha.shipping_method_code                ship_method_meaning
+     , xoha.weight_capacity_class               weight_capacity_class
+     , xoha.schedule_ship_date                  schedule_ship_date
+     , xoha.freight_charge_class                freight_charge_class
+     , xoha.deliver_from                        input_inventory_location_code
+     , xoha.deliver_from_id                     input_inventory_location_id
+     , xoha.prod_class                          header_prod_class
+     , TO_CHAR(NVL(xola.reserved_quantity, 0))  sum_reserved_quantity_item
+     , TO_CHAR(NVL(xola.quantity, 0))           instruct_qty
+     , xola.shipping_item_code                  item_code
+     , TO_CHAR(xola.designated_production_date, 'YYYY/MM/DD') 
+                                                designated_production_date
+     , xilv.short_name                          input_inventory_location_name
+     , xlvv.attribute6                          small_amount_class
+-- 2008/10/22 D.Nihei ADD START 統合障害#194
+     , NULL                                     deliver_to_name
+-- 2008/10/22 D.Nihei ADD END
+  FROM xxwsh_order_lines_all   xola  -- 受注明細アドオン
+     , xxwsh_order_headers_all xoha  -- 受注ヘッダアドオン
+     , xxcmn_lookup_values_v   xlvv  -- クイックコード情報VIEW(配送区分用)
+     , xxcmn_item_locations_v  xilv  -- OPM保管場所情報VIEW(出庫倉庫用)
  WHERE xola.order_line_id   = :0
    AND xoha.order_header_id = xola.order_header_id
    AND xlvv.lookup_type(+)  = 'XXCMN_SHIP_METHOD'
@@ -342,6 +345,16 @@ SELECT xola.order_line_id line_id,
       <DesignTime>
          <Attr Name="_DisplaySize" Value="150" />
       </DesignTime>
+   </ViewAttribute>
+   <ViewAttribute
+      Name="DeliverToName"
+      IsPersistent="false"
+      Precision="255"
+      Type="java.lang.String"
+      ColumnType="VARCHAR2"
+      AliasName="DELIVER_TO_NAME"
+      Expression="DELIVER_TO_NAME"
+      SQLType="VARCHAR" >
    </ViewAttribute>
    <AttrArray Name="KeyAttributes">
       <Item Value="LineId" />

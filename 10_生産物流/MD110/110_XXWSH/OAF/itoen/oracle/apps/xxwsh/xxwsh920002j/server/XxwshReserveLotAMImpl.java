@@ -1,7 +1,7 @@
 /*============================================================================
 * ファイル名 : XxwshReserveLotAMImpl
 * 概要説明   : 引当ロット入力:登録アプリケーションモジュール
-* バージョン : 1.2
+* バージョン : 1.3
 *============================================================================
 * 修正履歴
 * 日付       Ver. 担当者       修正内容
@@ -9,6 +9,7 @@
 * 2008-03-17 1.0  北寒寺正夫     新規作成
 * 2008-08-07 1.1  二瓶　大輔     内部変更要求#166,#173
 * 2008-10-07 1.2  伊藤ひとみ     統合テスト指摘240対応
+* 2008-10-22 1.3  二瓶　大輔     統合テスト指摘194対応
 *============================================================================
 */
 package itoen.oracle.apps.xxwsh.xxwsh920002j.server;
@@ -35,7 +36,7 @@ import oracle.jbo.domain.Number;
 /***************************************************************************
  * 仮引当ロット入力画面のアプリケーションモジュールクラスです。
  * @author  ORACLE 北寒寺 正夫
- * @version 1.2
+ * @version 1.3
  ***************************************************************************
  */
  
@@ -546,9 +547,9 @@ public class XxwshReserveLotAMImpl extends XxcmnOAApplicationModuleImpl
     OARow row                     = null;
     String showActualQuantity     = null;                                        // 引当数量(換算後)
     BigDecimal setActualQuantity  = null;                                        // 引当数量(VOセット用)
-    double actualQuantity        = 0;                                           // 引当数量
-    double sumActualQuantity     = 0;                                           // 引当数量合計(換算後)
-    double sumActualQuantityItem = 0;                                           // 引当数量合計
+    double actualQuantity        = 0;                                            // 引当数量
+    double sumActualQuantity     = 0;                                            // 引当数量合計(換算後)
+    double sumActualQuantityItem = 0;                                            // 引当数量合計
     ArrayList exceptions          = new ArrayList(100);                          // エラーメッセージ格納配列
 
     // 手持在庫数・引当可能数一覧リージョン1行目を取得
@@ -697,8 +698,6 @@ public class XxwshReserveLotAMImpl extends XxcmnOAApplicationModuleImpl
     XxwshSearchVOImpl hvo = getXxwshSearchVO1();
     // 検索条件表示リージョンの一行目を取得
     OARow hrow            = (OARow)hvo.first();
-
-
 
     // 使用する下記項目をクリアします。
     hrow.setAttribute("WarningClass",              null); // 警告区分
@@ -1181,17 +1180,17 @@ public class XxwshReserveLotAMImpl extends XxcmnOAApplicationModuleImpl
     String freightChargeClass         = (String)lrow.getAttribute("FreightChargeClass");         // 運賃区分
 
     // 配車関連情報を格納する変数を宣言
-    double weight                    = 0;    // 重量
-    double capacity                  = 0;    // 容積
-    double sumWeight                 = 0;    // 積載重量合計
-    double sumCapacity               = 0;    // 積載容積合計
-    double loadingEfficiencyWeight   = 0;    // 積載効率(重量)
-    double loadingEfficiencyCapacity = 0;    // 積載効率(容積)
-    double sumQuantity               = 0;    // 合計数量
-    double smallQuantity             = 0;    // 小口個数
-    double labelQuantity             = 0;    // ラベル枚数
-    double palletWeight              = 0;    // パレット重量
-    double sumPalletWeight           = 0;    // 合計パレット重量
+    double weight                    = 0;     // 重量
+    double capacity                  = 0;     // 容積
+    double sumWeight                 = 0;     // 積載重量合計
+    double sumCapacity               = 0;     // 積載容積合計
+    double loadingEfficiencyWeight   = 0;     // 積載効率(重量)
+    double loadingEfficiencyCapacity = 0;     // 積載効率(容積)
+    double sumQuantity               = 0;     // 合計数量
+    double smallQuantity             = 0;     // 小口個数
+    double labelQuantity             = 0;     // ラベル枚数
+    double palletWeight              = 0;     // パレット重量
+    double sumPalletWeight           = 0;     // 合計パレット重量
     String retCode                    = null; // リターンコード
     String errMsg                     = null; // エラーメッセージ
     String systemMsg                  = null; // システムエラーメッセージ
@@ -1220,7 +1219,7 @@ public class XxwshReserveLotAMImpl extends XxcmnOAApplicationModuleImpl
       // 検索条件表示リージョンにセットするため型変換
       BigDecimal setWeigtht  = new BigDecimal(String.valueOf(weight));
       // 明細の更新に使用するため検索条件表示リージョンにセット
-      hrow.setAttribute("Weight",XxcmnUtility.stringValue(setWeigtht));
+      hrow.setAttribute("Weight", XxcmnUtility.stringValue(setWeigtht));
       // ヘッダにセットする合計重量に加算
       sumWeight              = sumWeight + weight;
     }
@@ -1654,7 +1653,7 @@ public class XxwshReserveLotAMImpl extends XxcmnOAApplicationModuleImpl
     String prodClass                 = (String)hrow.getAttribute("ProdClass");               // 商品区分
     String itemClass                 = (String)hrow.getAttribute("ItemClass");               // 品目区分
     Number itemId                    = (Number)hrow.getAttribute("ItemId");                  // 品目ID
-    String itemShortName             = (String)hrow.getAttribute("ItemShortName");              // 品目略称
+    String itemShortName             = (String)hrow.getAttribute("ItemShortName");           // 品目略称
     // 検索条件表示リージョン格納用変数
     String warningClass              = null;                                                 // 警告区分
     Date   warningDate               = null;                                                 // 警告日付
@@ -1671,17 +1670,20 @@ public class XxwshReserveLotAMImpl extends XxcmnOAApplicationModuleImpl
     Date scheduleShipDate            = (Date)lrow.getAttribute("ScheduleShipDate");             // 出庫予定日
     Number inventoryLocationId       = (Number)lrow.getAttribute("InputInventoryLocationId");   // 保管倉庫ID
     String locationName              = (String)lrow.getAttribute("InputInventoryLocationName"); // 出庫元保管場所
+// 2008-10-22 D.Nihei ADD START 統合テスト指摘194対応
+    String deliverToName             = (String)lrow.getAttribute("DeliverToName");              // 入庫先保管場所
+// 2008-10-22 D.Nihei ADD END
 
    // 手持在庫数・引当可能数一覧リージョン取得
     OAViewObject vo                  = getXxwshStockCanEncQtyVO1();
     // 手持在庫数・引当可能数一覧リージョンのデータ格納用変数
     OARow row                        = null;
-    double canEncQty                = 0;                                                    // 画面表示時引当可能数
-    Number lotId                     = null;                                                    // ロットID
-    double actualQuantity           = 0;                                                    // 引当数量(換算後)
-    double actualQuantityBk         = 0;                                                    // 画面表示時引当数量(換算後)
-    String showLotNo                 = null;                                                    // 表示用ロットNo
-    String productionDate            = null;                                                    // 製造年月日
+    double canEncQty                 = 0;                                                    // 画面表示時引当可能数
+    Number lotId                     = null;                                                 // ロットID
+    double actualQuantity            = 0;                                                    // 引当数量(換算後)
+    double actualQuantityBk          = 0;                                                    // 画面表示時引当数量(換算後)
+    String showLotNo                 = null;                                                 // 表示用ロットNo
+    String productionDate            = null;                                                 // 製造年月日
 
     // 警告情報格納用
     String[]  lotRevErrFlgRow   = new String[vo.getRowCount()]; // ロット逆転防止チェックエラーフラグ
@@ -1695,6 +1697,9 @@ public class XxwshReserveLotAMImpl extends XxcmnOAApplicationModuleImpl
     String[]  itemShortNameRow  = new String[vo.getRowCount()]; // 品目略称
     String[]  deliverToRow      = new String[vo.getRowCount()]; // 出庫先
     String[]  locationNameRow   = new String[vo.getRowCount()]; // 出庫元保管場所
+// 2008-10-22 D.Nihei ADD START 統合テスト指摘194対応
+    String[]  deliverToNameRow  = new String[vo.getRowCount()]; // 入庫先保管場所
+// 2008-10-22 D.Nihei ADD END
 
 
     // チェックで複数回使用する変数を宣言
@@ -1732,6 +1737,9 @@ public class XxwshReserveLotAMImpl extends XxcmnOAApplicationModuleImpl
       deliverToRow[vo.getCurrentRowIndex()]      = deliverTo;               // 出庫先
       itemShortNameRow[vo.getCurrentRowIndex()]  = itemShortName;           // 品目名
       locationNameRow[vo.getCurrentRowIndex()]   = locationName;            // 出庫元
+// 2008-10-22 D.Nihei ADD START 統合テスト指摘194対応
+      deliverToNameRow[vo.getCurrentRowIndex()]  = deliverToName;           // 入庫先
+// 2008-10-22 D.Nihei ADD END
       // 引当数量が変更されている場合もしくは0より大きい場合にチェックを行う
       if (actualQuantityBk != actualQuantity
         || (actualQuantity > 0))
@@ -1928,6 +1936,9 @@ public class XxwshReserveLotAMImpl extends XxcmnOAApplicationModuleImpl
     msg.put("deliverTo",        (String[])deliverToRow);      // 出庫先
     msg.put("itemShortName",    (String[])itemShortNameRow);  // 品目名
     msg.put("locationName",     (String[])locationNameRow);   // 出庫元
+// 2008-10-22 D.Nihei ADD START 統合テスト指摘194対応
+    msg.put("deliverToName",    (String[])deliverToNameRow);   // 入庫先
+// 2008-10-22 D.Nihei ADD END
 
     return msg;
   }

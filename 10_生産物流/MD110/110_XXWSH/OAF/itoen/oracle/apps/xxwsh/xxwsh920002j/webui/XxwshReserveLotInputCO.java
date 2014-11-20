@@ -1,12 +1,13 @@
 /*============================================================================
 * ファイル名 : XxwshReserveLotInputCO
 * 概要説明   : 仮引当ロット入力画面コントローラ
-* バージョン : 1.0
+* バージョン : 1.1
 *============================================================================
 * 修正履歴
 * 日付       Ver. 担当者       修正内容
 * ---------- ---- ------------ ----------------------------------------------
-* 2008-04-17 1.0  北寒寺   新規作成
+* 2008-04-17 1.0  北寒寺正夫     新規作成
+* 2008-10-22 1.1  二瓶  大輔     統合テスト指摘194対応
 *============================================================================
 */
 package itoen.oracle.apps.xxwsh.xxwsh920002j.webui;
@@ -36,7 +37,7 @@ import oracle.jbo.domain.Date;
 /***************************************************************************
  * 仮引当ロット入力画面コントローラクラスです。
  * @author  ORACLE 北寒寺 正夫
- * @version 1.0
+ * @version 1.1
  ***************************************************************************
  */
 public class XxwshReserveLotInputCO extends XxcmnOAControllerImpl
@@ -202,6 +203,9 @@ public class XxwshReserveLotInputCO extends XxcmnOAControllerImpl
         String[] itemShortName  = (String[])msg.get("itemShortName");                      // 品目名
         String[] deliverTo      = (String[])msg.get("deliverTo");                          // 出庫先
         String[] locationName   = (String[])msg.get("locationName");                       // 出庫元保管場所
+// 2008-10-22 D.Nihei ADD START 統合テスト指摘194対応
+        String[] deliverToName  = (String[])msg.get("deliverToName");                      // 入庫先保管場所
+// 2008-10-22 D.Nihei ADD END
         
 
         // ダイアログ画面表示用メッセージ
@@ -253,7 +257,10 @@ public class XxwshReserveLotInputCO extends XxcmnOAControllerImpl
             XxcmnUtility.newLineAppend(pageHeaderText);
 
             // 引当可能在庫数減数チェック警告メッセージ取得
-            MessageToken[] tokens = { new MessageToken(XxwshConstants.TOKEN_LOCATION, locationName[i]),
+// 2008-10-22 D.Nihei MOD START 統合テスト指摘194対応
+//            MessageToken[] tokens = { new MessageToken(XxwshConstants.TOKEN_LOCATION, locationName[i]),
+            MessageToken[] tokens = { new MessageToken(XxwshConstants.TOKEN_LOCATION, deliverToName[i]),
+// 2008-10-22 D.Nihei MOD END
                                       new MessageToken(XxcmnConstants.TOKEN_ITEM,  itemShortName[i]),
                                       new MessageToken(XxcmnConstants.TOKEN_LOT,   lotNo[i])};
             pageHeaderText.append(

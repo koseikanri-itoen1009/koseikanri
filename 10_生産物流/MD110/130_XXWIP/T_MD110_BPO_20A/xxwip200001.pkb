@@ -7,7 +7,7 @@ AS
  * Description            : 生産バッチロット詳細画面データソースパッケージ(BODY)
  * MD.050                 : T_MD050_BPO_200_生産バッチ.doc
  * MD.070                 : T_MD070_BPO_20A_生産バッチ一覧画面.doc
- * Version                : 1.1
+ * Version                : 1.2
  *
  * Program List
  *  --------------------  ---- ----- -------------------------------------------------
@@ -21,7 +21,7 @@ AS
  * ------------ ----- ---------------- -----------------------------------------------
  *  2008/08/28   1.0   D.Nihei          新規作成
  *  2008/10/07   1.1   D.Nihei          統合障害#123対応（PT 6-2_31）
- *
+ *  2008/10/22   1.2   D.Nihei          統合障害#123対応（PT 6-2_31）(ロットステータスVIEW箇所修正)
  *****************************************************************************************/
 --
   -- 定数宣言
@@ -58,6 +58,9 @@ AS
     TYPE wk_cur IS REF CURSOR;
     wk_cv   wk_cur;
     ln_cnt                   NUMBER;                                              -- 配列の添字
+-- 2008/10/22 D.Nihei ADD START
+    lt_dummy                 ic_lots_mst.attribute23%TYPE;                        -- 
+-- 2008/10/22 D.Nihei ADD END
 --
   BEGIN
 --
@@ -1123,26 +1126,29 @@ AS
         wk_sql2 := wk_sql2 || '                 AND     mld.record_type_code    = ''20'' ';
       END IF;
       wk_sql2 := wk_sql2 || '                 ) inv ';
-      wk_sql2 := wk_sql2 || '               , ( SELECT  ilm.item_id  item_id ';
-      wk_sql2 := wk_sql2 || '                         , ilm.lot_id   lot_id  ';
-      wk_sql2 := wk_sql2 || '                   FROM    ic_lots_mst        ilm     '; -- OPMロットマスタ
-      --==========================
-      -- 資材
-      --==========================
-      IF ( lt_item_class_code = cv_shizai ) 
-      THEN
-        wk_sql2 := wk_sql2 || '                 WHERE   ilm.item_id = ' || lt_item_id;
-      --==========================
-      -- 資材以外
-      --==========================
-      ELSE
-        wk_sql2 := wk_sql2 || '                       , xxcmn_lot_status_v xlsv '; -- ロットステータス
-        wk_sql2 := wk_sql2 || '                 WHERE   ilm.item_id                  = '   || lt_item_id;
-        wk_sql2 := wk_sql2 || '                 AND     xlsv.prod_class_code         = ''' || lt_prod_class_code || '''';
-        wk_sql2 := wk_sql2 || '                 AND     xlsv.raw_mate_turn_m_reserve = ''Y''           ';
-        wk_sql2 := wk_sql2 || '                 AND     xlsv.lot_status              = ilm.attribute23 ';
-      END IF;
-      wk_sql2 := wk_sql2 || '                 ) lot ';
+-- 2008/10/22 D.Nihei MOD START
+--      wk_sql2 := wk_sql2 || '               , ( SELECT  ilm.item_id  item_id ';
+--      wk_sql2 := wk_sql2 || '                         , ilm.lot_id   lot_id  ';
+--      wk_sql2 := wk_sql2 || '                   FROM    ic_lots_mst        ilm     '; -- OPMロットマスタ
+--      --==========================
+--      -- 資材
+--      --==========================
+--      IF ( lt_item_class_code = cv_shizai ) 
+--      THEN
+--        wk_sql2 := wk_sql2 || '                 WHERE   ilm.item_id = ' || lt_item_id;
+--      --==========================
+--      -- 資材以外
+--      --==========================
+--      ELSE
+--        wk_sql2 := wk_sql2 || '                       , xxcmn_lot_status_v xlsv '; -- ロットステータス
+--        wk_sql2 := wk_sql2 || '                 WHERE   ilm.item_id                  = '   || lt_item_id;
+--        wk_sql2 := wk_sql2 || '                 AND     xlsv.prod_class_code         = ''' || lt_prod_class_code || '''';
+--        wk_sql2 := wk_sql2 || '                 AND     xlsv.raw_mate_turn_m_reserve = ''Y''           ';
+--        wk_sql2 := wk_sql2 || '                 AND     xlsv.lot_status              = ilm.attribute23 ';
+--      END IF;
+--      wk_sql2 := wk_sql2 || '                 ) lot ';
+      wk_sql2 := wk_sql2 || '                 , ic_lots_mst lot ';
+-- 2008/10/22 D.Nihei MOD END
       wk_sql2 := wk_sql2 || '               WHERE NOT EXISTS (SELECT 1  ';
       wk_sql2 := wk_sql2 || '                                 FROM   xxwip_material_detail   xmdd ';     -- 生産原料詳細アドオン
       wk_sql2 := wk_sql2 || '                                 WHERE  xmdd.material_detail_id  = ' || in_material_detail_id;
@@ -1237,7 +1243,29 @@ AS
          AND ( ior_ilm_data(ln_cnt).record_type =  0 ) ) 
         THEN
           ior_ilm_data.DELETE(ln_cnt);
+-- 2008/10/22 D.Nihei ADD START
+        ELSIF ( ( lt_item_class_code              <> cv_shizai ) 
+            AND ( ior_ilm_data(ln_cnt).record_type =  0        ) ) 
+        THEN
+          BEGIN
+            SELECT  ilm.attribute23
+            INTO    lt_dummy
+            FROM    xxcmn_lot_status_v xlsv
+                   ,ic_lots_mst        ilm
+            WHERE   ilm.item_id                  = lt_item_id
+            AND     ilm.lot_id                   = ior_ilm_data(ln_cnt).lot_id
+            AND     xlsv.prod_class_code         = lt_prod_class_code
+            AND     xlsv.raw_mate_turn_m_reserve = 'Y'
+            AND     xlsv.lot_status              = ilm.attribute23
+            
+            ;
+          EXCEPTION
+            WHEN NO_DATA_FOUND THEN
+              ior_ilm_data.DELETE(ln_cnt);
+          END;
+-- 2008/10/22 D.Nihei ADD END
         END IF;
+--
         ln_cnt := ln_cnt + 1;
       END LOOP;
 --
