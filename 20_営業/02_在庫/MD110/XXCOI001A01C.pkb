@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCOI001A01C(body)
  * Description      : 生産物流システムから営業システムへの出荷依頼データの抽出・データ連携を行う
  * MD.050           : 入庫情報取得 MD050_COI_001_A01
- * Version          : 1.11
+ * Version          : 1.12
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -53,6 +53,8 @@ AS
  *  2009/10/26    1.9   H.Sasaki         [E_T4_00076]倉庫コードの設定方法を修正
  *  2009/11/06    1.10  H.Sasaki         [E_T4_00143]PT対応
  *  2009/11/13    1.11  N.Abe            [E_T4_00189]品目1桁目が5,6を資材として処理
+ *  2009/12/08    1.12  N.Abe            [E_本稼動_00308,E_本稼動_00312]削除データ処理順序の修正
+                                         [E_本稼動_00374]削除データ登録方法の修正
  *
  *****************************************************************************************/
 --
@@ -760,7 +762,10 @@ AS
             , xola.request_item_code           AS item_no             -- 子品目コード
             , imbp.item_no                     AS parent_item_no      -- 親品目コード
             , hca.account_number               AS base_code           -- 拠点コード
-            , xola.delete_flag                 AS delete_flag         -- 削除フラグ
+-- == 2009/12/08 V1.12 Modified START ===============================================================
+--            , xola.delete_flag                 AS delete_flag         -- 削除フラグ
+            , NVL(xola.delete_flag,cv_n_flag)  AS delete_flag         -- 削除フラグ
+-- == 2009/12/08 V1.12 Modified END   ===============================================================
             , xca.dept_hht_div                 AS dept_hht_div        -- 百貨店用HHT区分
             , hl.province                      AS deliverly_code
             , imbc.attribute11                 AS case_in_qty         -- ケース入数
@@ -813,8 +818,12 @@ AS
               xoha.req_status                          = gt_ship_status_close
               AND xoha.notif_status                    = gt_notice_status
               AND NVL(xola.delete_flag,cv_n_flag)      = cv_n_flag
-              AND xola.shipping_request_if_flg         = cv_n_flag
-              AND xola.shipping_result_if_flg          = cv_n_flag
+-- == 2009/12/08 V1.12 Modified START ===============================================================
+--              AND xola.shipping_request_if_flg         = cv_n_flag
+--              AND xola.shipping_result_if_flg          = cv_n_flag
+              AND NVL(xola.shipping_request_if_flg,cv_n_flag) = cv_n_flag
+              AND NVL(xola.shipping_result_if_flg,cv_n_flag)  = cv_n_flag
+-- == 2009/12/08 V1.12 Modified END   ===============================================================
               AND xoha.deliver_to_id                   = hps.party_site_id
             )
          OR ( -- 出荷実績計上済出荷実績（出荷実績は削除明細を除外、ただし出荷依頼連携済は対象）
@@ -822,20 +831,33 @@ AS
               AND xoha.result_deliver_to_id            = hps.party_site_id)
               AND(( xoha.req_status                    = gt_ship_status_result
                    AND NVL(xola.delete_flag,cv_n_flag) = cv_n_flag
-                   AND xola.shipping_result_if_flg     = cv_n_flag
+-- == 2009/12/08 V1.12 Modified START ===============================================================
+--                   AND xola.shipping_result_if_flg     = cv_n_flag
+                   AND NVL(xola.shipping_result_if_flg,cv_n_flag) = cv_n_flag
+-- == 2009/12/08 V1.12 Modified END   ===============================================================
                   )
               OR ( xoha.req_status                     = gt_ship_status_result
-                   AND xola.delete_flag                = cv_y_flag
-                   AND xola.shipping_request_if_flg    = cv_y_flag
-                   AND xola.shipping_result_if_flg     = cv_n_flag
+-- == 2009/12/08 V1.12 Modified START ===============================================================
+--                   AND xola.delete_flag                = cv_y_flag
+--                   AND xola.shipping_request_if_flg    = cv_y_flag
+--                   AND xola.shipping_result_if_flg     = cv_n_flag
+                   AND NVL(xola.delete_flag,cv_n_flag)             = cv_y_flag
+                   AND NVL(xola.shipping_request_if_flg,cv_n_flag) = cv_y_flag
+                   AND NVL(xola.shipping_result_if_flg,cv_n_flag)  = cv_n_flag
+-- == 2009/12/08 V1.12 Modified END   ===============================================================
                  ))
             )
          OR ( -- 出荷依頼連携済に対して取消を行ったものは対象
               xoha.req_status                                       = gt_ship_status_cancel
               AND NVL(xoha.deliver_to_id,xoha.result_deliver_to_id) = hps.party_site_id
-              AND xola.shipping_request_if_flg                      = cv_y_flag
-              AND xola.shipping_result_if_flg                       = cv_n_flag
-              AND xola.delete_flag                                  = cv_y_flag
+-- == 2009/12/08 V1.12 Modified START ===============================================================
+--              AND xola.shipping_request_if_flg                      = cv_y_flag
+--              AND xola.shipping_result_if_flg                       = cv_n_flag
+--              AND xola.delete_flag                                  = cv_y_flag
+              AND NVL(xola.shipping_request_if_flg,cv_n_flag)       = cv_y_flag
+              AND NVL(xola.shipping_result_if_flg,cv_n_flag)        = cv_n_flag
+              AND NVL(xola.delete_flag,cv_n_flag)                   = cv_y_flag
+-- == 2009/12/08 V1.12 Modified END   ===============================================================
             )
           )
       AND     otta.attribute1             = cv_1
@@ -869,7 +891,10 @@ AS
               , xoha.deliver_from
               , xola.request_item_code
               , imbp.item_no
-              , xola.delete_flag
+-- == 2009/12/08 V1.12 Modified START ===============================================================
+--              , xola.delete_flag
+              , NVL(xola.delete_flag,cv_n_flag)
+-- == 2009/12/08 V1.12 Modified END   ===============================================================
               , xca.dept_hht_div
               , hl.province
               , imbc.attribute11
@@ -879,6 +904,9 @@ AS
               , hca.account_number
               , xola.request_item_code
               , imbp.item_no
+-- == 2009/12/08 V1.12 Modified START ===============================================================
+              , NVL(xola.delete_flag,cv_n_flag) DESC
+-- == 2009/12/08 V1.12 Modified END   ===============================================================
       ;
 -- == 2009/06/03 V1.6 Modified END   ===============================================================
 --
@@ -1366,7 +1394,10 @@ AS
                                   , xoha.request_no                     AS  req_move_no                 -- 依頼No
                                   , xoha.deliver_from                   AS  deliver_from                -- 出荷元保管場所
                                   , xola.request_item_code              AS  item_no                     -- 子品目コード
-                                  , xola.delete_flag                    AS  delete_flag                 -- 削除フラグ
+-- == 2009/12/08 V1.12 Modified START ===============================================================
+--                                  , xola.delete_flag                    AS  delete_flag                 -- 削除フラグ
+                                  , NVL(xola.delete_flag,cv_n_flag)     AS  delete_flag                 -- 削除フラグ
+-- == 2009/12/08 V1.12 Modified END   ===============================================================
                                   , ilm.attribute3                      AS  taste_term                  -- 賞味期限
                                   , ilm.attribute2                      AS  difference_summary_code     -- 固有記号
                                   , xola.order_header_id                AS  order_header_id             -- 受注ヘッダID
@@ -1378,24 +1409,41 @@ AS
                                   , CASE  WHEN      xoha.req_status                   = gt_ship_status_close
                                                 AND xoha.notif_status                 = gt_notice_status
                                                 AND NVL(xola.delete_flag,cv_n_flag)   = cv_n_flag
-                                                AND xola.shipping_request_if_flg      = cv_n_flag
-                                                AND xola.shipping_result_if_flg       = cv_n_flag
+-- == 2009/12/08 V1.12 Modified START ===============================================================
+--                                                AND xola.shipping_request_if_flg      = cv_n_flag
+--                                                AND xola.shipping_result_if_flg       = cv_n_flag
+                                                AND NVL(xola.shipping_request_if_flg,cv_n_flag) = cv_n_flag
+                                                AND NVL(xola.shipping_result_if_flg,cv_n_flag)  = cv_n_flag
+-- == 2009/12/08 V1.12 Modified END   ===============================================================
                                           THEN  xoha.deliver_to_id
                                           WHEN      xoha.actual_confirm_class         = cv_y_flag
                                                 AND xoha.req_status                   = gt_ship_status_result
                                                 AND NVL(xola.delete_flag,cv_n_flag)   = cv_n_flag
-                                                AND xola.shipping_result_if_flg       = cv_n_flag
+-- == 2009/12/08 V1.12 Modified START ===============================================================
+--                                                AND xola.shipping_result_if_flg       = cv_n_flag
+                                                AND NVL(xola.shipping_result_if_flg,cv_n_flag) = cv_n_flag
+-- == 2009/12/08 V1.12 Modified END   ===============================================================
                                           THEN  xoha.result_deliver_to_id
                                           WHEN      xoha.actual_confirm_class         = cv_y_flag
                                                 AND xoha.req_status                   = gt_ship_status_result
-                                                AND xola.delete_flag                  = cv_y_flag
-                                                AND xola.shipping_request_if_flg      = cv_y_flag
-                                                AND xola.shipping_result_if_flg       = cv_n_flag
+-- == 2009/12/08 V1.12 Modified START ===============================================================
+--                                                AND xola.delete_flag                  = cv_y_flag
+--                                                AND xola.shipping_request_if_flg      = cv_y_flag
+--                                                AND xola.shipping_result_if_flg       = cv_n_flag
+                                                AND NVL(xola.delete_flag,cv_n_flag)             = cv_y_flag
+                                                AND NVL(xola.shipping_request_if_flg,cv_n_flag) = cv_y_flag
+                                                AND NVL(xola.shipping_result_if_flg,cv_n_flag)  = cv_n_flag
+-- == 2009/12/08 V1.12 Modified END   ===============================================================
                                           THEN  xoha.result_deliver_to_id
                                           WHEN      xoha.req_status                   = gt_ship_status_cancel
-                                                AND xola.shipping_request_if_flg      = cv_y_flag
-                                                AND xola.shipping_result_if_flg       = cv_n_flag
-                                                AND xola.delete_flag                  = cv_y_flag
+-- == 2009/12/08 V1.12 Modified START ===============================================================
+--                                                AND xola.shipping_request_if_flg      = cv_y_flag
+--                                                AND xola.shipping_result_if_flg       = cv_n_flag
+--                                                AND xola.delete_flag                  = cv_y_flag
+                                                AND NVL(xola.shipping_request_if_flg,cv_n_flag) = cv_y_flag
+                                                AND NVL(xola.shipping_result_if_flg,cv_n_flag)  = cv_n_flag
+                                                AND NVL(xola.delete_flag,cv_n_flag)             = cv_y_flag
+-- == 2009/12/08 V1.12 Modified END   ===============================================================
                                           THEN NVL(xoha.deliver_to_id, xoha.result_deliver_to_id)
                                     END                                 AS  party_site_id               -- パーティサイト結合ID
                       FROM
@@ -1422,8 +1470,12 @@ AS
                                         xoha.req_status                         = gt_ship_status_close
                                     AND xoha.notif_status                       = gt_notice_status
                                     AND NVL(xola.delete_flag,cv_n_flag)         = cv_n_flag
-                                    AND xola.shipping_request_if_flg            = cv_n_flag
-                                    AND xola.shipping_result_if_flg             = cv_n_flag
+-- == 2009/12/08 V1.12 Modified START ===============================================================
+--                                    AND xola.shipping_request_if_flg            = cv_n_flag
+--                                    AND xola.shipping_result_if_flg             = cv_n_flag
+                                    AND NVL(xola.shipping_request_if_flg,cv_n_flag) = cv_n_flag
+                                    AND NVL(xola.shipping_result_if_flg,cv_n_flag)  = cv_n_flag
+-- == 2009/12/08 V1.12 Modified END   ===============================================================
                                   )
                                   OR
                                   ( -- 出荷実績計上済出荷実績（出荷実績は削除明細を除外、ただし出荷依頼連携済は対象）
@@ -1431,21 +1483,34 @@ AS
                                     AND xoha.req_status                         = gt_ship_status_result
                                     AND(
                                         (     NVL(xola.delete_flag,cv_n_flag)   = cv_n_flag
-                                          AND xola.shipping_result_if_flg       = cv_n_flag
+-- == 2009/12/08 V1.12 Modified START ===============================================================
+--                                          AND xola.shipping_result_if_flg       = cv_n_flag
+                                          AND NVL(xola.shipping_result_if_flg,cv_n_flag) = cv_n_flag
+-- == 2009/12/08 V1.12 Modified END   ===============================================================
                                         )
                                         OR
-                                        (     xola.delete_flag                  = cv_y_flag
-                                          AND xola.shipping_request_if_flg      = cv_y_flag
-                                          AND xola.shipping_result_if_flg       = cv_n_flag
+-- == 2009/12/08 V1.12 Modified START ===============================================================
+--                                        (     xola.delete_flag                  = cv_y_flag
+--                                          AND xola.shipping_request_if_flg      = cv_y_flag
+--                                          AND xola.shipping_result_if_flg       = cv_n_flag
+                                        (     NVL(xola.delete_flag,cv_n_flag)             = cv_y_flag
+                                          AND NVL(xola.shipping_request_if_flg,cv_n_flag) = cv_y_flag
+                                          AND NVL(xola.shipping_result_if_flg,cv_n_flag)  = cv_n_flag
+-- == 2009/12/08 V1.12 Modified END   ===============================================================
                                         )
                                     )
                                   )
                                   OR
                                   ( -- 出荷依頼連携済に対して取消を行ったものは対象
                                         xoha.req_status                         = gt_ship_status_cancel
-                                    AND xola.shipping_request_if_flg            = cv_y_flag
-                                    AND xola.shipping_result_if_flg             = cv_n_flag
-                                    AND xola.delete_flag                        = cv_y_flag
+-- == 2009/12/08 V1.12 Modified START ===============================================================
+--                                    AND xola.shipping_request_if_flg            = cv_y_flag
+--                                    AND xola.shipping_result_if_flg             = cv_n_flag
+--                                    AND xola.delete_flag                        = cv_y_flag
+                                    AND NVL(xola.delete_flag,cv_n_flag)             = cv_y_flag
+                                    AND NVL(xola.shipping_request_if_flg,cv_n_flag) = cv_y_flag
+                                    AND NVL(xola.shipping_result_if_flg,cv_n_flag)  = cv_n_flag
+-- == 2009/12/08 V1.12 Modified END   ===============================================================
                                   )
                       )
                       AND(        (
@@ -1499,7 +1564,12 @@ AS
               , oiv.taste_term
               , oiv.difference_summary_code
               , oiv.order_header_id
-              , oiv.order_line_id;
+-- == 2009/12/08 V1.12 Modified START ===============================================================
+--              , oiv.order_line_id;
+              , oiv.order_line_id
+      ORDER BY  oiv.delete_flag   DESC
+      ;
+-- == 2009/12/08 V1.12 Modified END   ===============================================================
 -- == 2009/11/06 V1.10 Modified END   ===============================================================
 --
     -- *** ローカル・レコード ***
@@ -1939,11 +2009,21 @@ AS
       , g_summary_tab ( in_slip_cnt ). parent_item_no                 -- 親品目コード
       , g_summary_tab ( in_slip_cnt ). item_no                        -- 子品目コード
       , g_summary_tab ( in_slip_cnt ). case_in_qty                    -- 入数
-      , TRUNC ( g_summary_tab ( in_slip_cnt ) .shipped_qty / g_summary_tab ( in_slip_cnt ) .case_in_qty )
+-- == 2009/12/08 V1.12 Modified START ===============================================================
+--      , TRUNC ( g_summary_tab ( in_slip_cnt ) .shipped_qty / g_summary_tab ( in_slip_cnt ) .case_in_qty )
+--                                                                      -- 出庫数量ケース数
+--      , MOD ( g_summary_tab ( in_slip_cnt ) .shipped_qty , NVL ( g_summary_tab ( in_slip_cnt ) .case_in_qty , 0 ) )
+--                                                                      -- 出庫数量バラ数
+--      , g_summary_tab ( in_slip_cnt ) .shipped_qty                    -- 出荷数量総バラ数
+      , DECODE ( g_summary_tab ( in_slip_cnt ) .delete_flag , cv_y_flag , 0 ,
+          TRUNC ( g_summary_tab ( in_slip_cnt ) .shipped_qty / g_summary_tab ( in_slip_cnt ) .case_in_qty ) )
                                                                       -- 出庫数量ケース数
-      , MOD ( g_summary_tab ( in_slip_cnt ) .shipped_qty , NVL ( g_summary_tab ( in_slip_cnt ) .case_in_qty , 0 ) )
+      , DECODE ( g_summary_tab ( in_slip_cnt ) .delete_flag , cv_y_flag , 0 ,
+          MOD ( g_summary_tab ( in_slip_cnt ) .shipped_qty , NVL ( g_summary_tab ( in_slip_cnt ) .case_in_qty , 0 ) ) )
                                                                       -- 出庫数量バラ数
-      , g_summary_tab ( in_slip_cnt ) .shipped_qty                    -- 出荷数量総バラ数
+      , DECODE ( g_summary_tab ( in_slip_cnt ) .delete_flag , cv_y_flag , 0 ,
+          g_summary_tab ( in_slip_cnt ) .shipped_qty )                -- 出荷数量総バラ数
+-- == 2009/12/08 V1.12 Modified END   ===============================================================
       , DECODE ( g_summary_tab ( in_slip_cnt ) .dept_hht_div , cv_hht_kbn , iv_shop_code , NULL )
                                                                       -- 転送先倉庫コード
       , iv_store_code                                                 -- 確認倉庫コード
@@ -2097,11 +2177,21 @@ AS
       , g_summary_tab ( in_slip_cnt ) .parent_item_no                 -- 親品目コード
       , g_summary_tab ( in_slip_cnt ) .item_no                        -- 子品目コード
       , g_summary_tab ( in_slip_cnt ) .case_in_qty                    -- 入数
-      , TRUNC ( g_summary_tab ( in_slip_cnt ) .shipped_qty / g_summary_tab ( in_slip_cnt ) .case_in_qty )
+-- == 2009/12/08 V1.12 Modified START ===============================================================
+--      , TRUNC ( g_summary_tab ( in_slip_cnt ) .shipped_qty / g_summary_tab ( in_slip_cnt ) .case_in_qty )
+--                                                                      -- 出庫数量ケース数
+--      , MOD ( g_summary_tab ( in_slip_cnt ) .shipped_qty , NVL ( g_summary_tab ( in_slip_cnt ) .case_in_qty , 0 ) )
+--                                                                      -- 出庫数量バラ数
+--      , g_summary_tab ( in_slip_cnt ) .shipped_qty                    -- 出荷数量総バラ数
+      , DECODE ( g_summary_tab ( in_slip_cnt ) .delete_flag , cv_y_flag , 0 ,
+          TRUNC ( g_summary_tab ( in_slip_cnt ) .shipped_qty / g_summary_tab ( in_slip_cnt ) .case_in_qty ) )
                                                                       -- 出庫数量ケース数
-      , MOD ( g_summary_tab ( in_slip_cnt ) .shipped_qty , NVL ( g_summary_tab ( in_slip_cnt ) .case_in_qty , 0 ) )
+      , DECODE ( g_summary_tab ( in_slip_cnt ) .delete_flag , cv_y_flag , 0 ,
+          MOD ( g_summary_tab ( in_slip_cnt ) .shipped_qty , NVL ( g_summary_tab ( in_slip_cnt ) .case_in_qty , 0 ) ) )
                                                                       -- 出庫数量バラ数
-      , g_summary_tab ( in_slip_cnt ) .shipped_qty                    -- 出荷数量総バラ数
+      , DECODE ( g_summary_tab ( in_slip_cnt ) .delete_flag , cv_y_flag , 0 ,
+          g_summary_tab ( in_slip_cnt ) .shipped_qty )                -- 出荷数量総バラ数
+-- == 2009/12/08 V1.12 Modified END   ===============================================================
       , DECODE ( g_summary_tab ( in_slip_cnt ) .dept_hht_div , cv_hht_kbn , iv_shop_code , NULL )
                                                                       -- 転送先倉庫コード
       , iv_store_code                                                 -- 確認倉庫コード
@@ -2689,11 +2779,21 @@ AS
       , g_detail_tab(in_line_cnt).parent_item_no                       -- 親品目コード
       , g_detail_tab(in_line_cnt).item_no                              -- 子品目コード
       , g_detail_tab(in_line_cnt).case_in_qty                          -- 入数
-      , TRUNC ( g_detail_tab ( in_line_cnt ) .shipped_qty / g_detail_tab ( in_line_cnt ) .case_in_qty )
+-- == 2009/12/08 V1.12 Modified START ===============================================================
+--      , TRUNC ( g_detail_tab ( in_line_cnt ) .shipped_qty / g_detail_tab ( in_line_cnt ) .case_in_qty )
+--                                                                       -- 出庫数量ケース数
+--      , MOD ( g_detail_tab ( in_line_cnt ) .shipped_qty , NVL ( g_detail_tab ( in_line_cnt ) .case_in_qty , 0 ) )
+--                                                                       -- 出庫数量バラ数
+--      , g_detail_tab ( in_line_cnt ). shipped_qty                      -- 出荷数量総バラ数
+      , DECODE ( g_detail_tab ( in_line_cnt ) .delete_flag , cv_y_flag , 0 ,
+          TRUNC ( g_detail_tab ( in_line_cnt ) .shipped_qty / g_detail_tab ( in_line_cnt ) .case_in_qty ) )
                                                                        -- 出庫数量ケース数
-      , MOD ( g_detail_tab ( in_line_cnt ) .shipped_qty , NVL ( g_detail_tab ( in_line_cnt ) .case_in_qty , 0 ) )
+      , DECODE ( g_detail_tab ( in_line_cnt ) .delete_flag , cv_y_flag , 0 ,
+          MOD ( g_detail_tab ( in_line_cnt ) .shipped_qty , NVL ( g_detail_tab ( in_line_cnt ) .case_in_qty , 0 ) ) )
                                                                        -- 出庫数量バラ数
-      , g_detail_tab ( in_line_cnt ). shipped_qty                      -- 出荷数量総バラ数
+      , DECODE ( g_detail_tab ( in_line_cnt ) .delete_flag , cv_y_flag , 0 ,
+          g_detail_tab ( in_line_cnt ). shipped_qty )                  -- 出荷数量総バラ数
+-- == 2009/12/08 V1.12 Modified END   ===============================================================
       , DECODE ( g_detail_tab ( in_line_cnt ) .dept_hht_div , cv_hht_kbn , iv_shop_code , NULL )
                                                                        -- 転送先倉庫コード
       , iv_store_code                                                  -- 確認倉庫コード
