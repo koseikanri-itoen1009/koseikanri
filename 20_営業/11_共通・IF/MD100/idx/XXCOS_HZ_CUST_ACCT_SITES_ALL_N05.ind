@@ -1,2 +1,0 @@
-CREATE INDEX ar.xxcos_hz_cust_acct_sites_all_n05 ON hz_cust_acct_sites_all (cust_acct_site_id,party_site_id) TABLESPACE apps_ts_tx_idx;
-/
