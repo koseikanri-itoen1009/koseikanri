@@ -43,6 +43,9 @@ CREATE TABLE xxcmm.xxcmm_wk_cust_batch_regist
   WHOLESALE_CTRL_CODE     VARCHAR2(9),
   PRICE_LIST              VARCHAR2(240),
 -- 2009/10/21 add end by Y.Kuboshima
+-- 2010/04/16 add start by Y.Kuboshima
+  SHIP_STORAGE_CODE       VARCHAR2(10),
+-- 2010/04/16 add end by Y.Kuboshima
   CREATED_BY              NUMBER(15,0) NOT NULL,
   CREATION_DATE           DATE NOT NULL,
   LAST_UPDATED_BY         NUMBER(15,0) NOT NULL,
@@ -142,6 +145,10 @@ COMMENT ON COLUMN xxcmm.xxcmm_wk_cust_batch_regist.wholesale_ctrl_code IS 'ñ‚âÆä
 COMMENT ON COLUMN xxcmm.xxcmm_wk_cust_batch_regist.price_list IS 'âøäiï\'
 /
 -- 2009/10/19 add end by Y.Kuboshima
+-- 2010/04/16 add start by Y.Kuboshima
+COMMENT ON COLUMN xxcmm.xxcmm_wk_cust_batch_regist.ship_storage_code IS 'èoâ◊å≥ï€ä«èÍèä'
+/
+-- 2010/04/16 add end by Y.Kuboshima
 COMMENT ON COLUMN xxcmm.xxcmm_wk_cust_batch_regist.created_by IS 'çÏê¨é“'
 /
 COMMENT ON COLUMN xxcmm.xxcmm_wk_cust_batch_regist.creation_date IS 'çÏê¨ì˙'

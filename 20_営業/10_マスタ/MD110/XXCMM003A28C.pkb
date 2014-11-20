@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCMM003A28C(body)
  * Description      : 顧客一括更新用ＣＳＶダウンロード
  * MD.050           : MD050_CMM_003_A28_顧客一括更新用CSVダウンロード
- * Version          : 1.2
+ * Version          : 1.4
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -26,6 +26,7 @@ AS
  *  2009/03/09    1.1   中村 祐基        ファイル出力先プロファイル名称変更
  *  2009/10/08    1.2   仁木 重人        障害I_E_542、E_T3_00469対応
  *  2009/10/20    1.3   久保島 豊        障害0001350対応
+ *  2010/04/16    1.4   久保島 豊        障害E_本稼動_02295対応 出荷元保管場所の項目追加
  *
  *****************************************************************************************/
 --
@@ -484,6 +485,9 @@ AS
               ,xca.wholesale_ctrl_code                wholesale_ctrl_code   --問屋管理コード
               ,hcas.cust_acct_site_id                 cust_acct_site_id     --顧客所在地ＩＤ
 -- 2009/10/20 Ver1.3 add end by Y.Kuboshima
+-- 2010/04/16 Ver1.4 E_本稼動_02295 add start by Y.Kuboshima
+              ,xca.ship_storage_code                  ship_storage_code     --出荷元保管場所
+-- 2010/04/16 Ver1.4 E_本稼動_02295 add end by Y.Kuboshima
       FROM     hz_cust_accounts     hca,
                hz_cust_acct_sites   hcas,
                hz_cust_site_uses    hcsu,
@@ -757,6 +761,9 @@ AS
           cust_data_rec.industry_div         := NULL;
           cust_data_rec.selling_transfer_div := NULL;
           cust_data_rec.wholesale_ctrl_code  := NULL;
+-- 2010/04/16 Ver1.4 E_本稼動_02295 add start by Y.Kuboshima
+          cust_data_rec.ship_storage_code    := NULL;
+-- 2010/04/16 Ver1.4 E_本稼動_02295 add end by Y.Kuboshima
         END IF;
         --
         -- 顧客区分'10','12','14','20','21'以外の場合
@@ -863,6 +870,9 @@ AS
         lv_output_str := lv_output_str || cv_comma || SUBSTRB(cust_data_rec.wholesale_ctrl_code,1,9);  --問屋管理コード
         lv_output_str := lv_output_str || cv_comma || SUBSTRB(lv_price_list,1,240);                    --価格表
 -- 2009/10/20 Ver1.3 add end by Y.Kuboshima
+-- 2010/04/16 Ver1.4 E_本稼動_02295 add start by Y.Kuboshima
+        lv_output_str := lv_output_str || cv_comma || SUBSTRB(cust_data_rec.ship_storage_code,1,10);   --出荷元保管場所
+-- 2010/04/16 Ver1.4 E_本稼動_02295 add end by Y.Kuboshima
         lv_output_str := lv_output_str || cv_comma || SUBSTRB(lv_information,1,100);                   --情報欄
 --
         --文字列出力

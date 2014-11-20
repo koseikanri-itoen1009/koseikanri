@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCMM003A29C(body)
  * Description      : 顧客一括更新
  * MD.050           : MD050_CMM_003_A29_顧客一括更新
- * Version          : 1.4
+ * Version          : 1.6
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -28,7 +28,10 @@ AS
  *  2010/01/04    1.3   Yutaka.Kuboshima 障害E_本稼動_00778の対応
  *  2010/01/27    1.4   Yutaka.Kuboshima 障害E_本稼動_01279,E_本稼動_01280の対応
  *  2010/02/15    1.5   Yutaka.Kuboshima 障害E_本稼動_01582 顧客ステータス変更チェックの引数修正
- *                                                          (lv_customer_status -> 
+ *                                                          (lv_customer_status -> lv_business_low_type_now)
+ *  2010/04/23    1.6   Yutaka.Kuboshima 障害E_本稼動_02295 出荷元保管場所の項目追加
+ *                                                          CSV項目数のチェックを追加
+ *                                                          実行した職責によるセキュリティを追加
  *
  *****************************************************************************************/
 --
@@ -149,6 +152,10 @@ AS
   cv_stop_date_val_err_msg    CONSTANT VARCHAR2(16)  := 'APP-XXCMM1-00354';                --中止決裁日妥当性チェックエラー
   cv_stop_date_future_err_msg CONSTANT VARCHAR2(16)  := 'APP-XXCMM1-00355';                --中止決裁日未来日チェックエラー
 -- 2010/01/04 Ver1.3 E_本稼動_00778 add start by Yutaka.Kuboshima
+--
+-- 2010/04/23 Ver1.6 E_本稼動_02295 add start by Yutaka.Kuboshima
+  cv_item_num_err_msg         CONSTANT VARCHAR2(16)  := 'APP-XXCMM1-00028';                --データ項目数エラー
+-- 2010/04/23 Ver1.6 E_本稼動_02295 add end by Yutaka.Kuboshima
 --
   cv_param                    CONSTANT VARCHAR2(5)   := 'PARAM';                           --パラメータトークン
   cv_value                    CONSTANT VARCHAR2(5)   := 'VALUE';                           --パラメータ値トークン
@@ -277,6 +284,20 @@ AS
   cv_apl_short_nm_ar          CONSTANT VARCHAR2(2)   := 'AR';                              --アプリケーション：AR
 -- 2010/01/04v Ver1.3 E_本稼動_00778 add end by Yutaka.Kuboshima
 --
+-- 2010/04/23 Ver1.6 E_本稼動_02295 add start by Yutaka.Kuboshima
+  cv_organization_code        CONSTANT VARCHAR2(30)  := 'XXCOI1_ORGANIZATION_CODE';        --在庫組織コードプロファイル
+  cv_profile_org_code         CONSTANT VARCHAR2(30)  := '在庫組織コード';                  --在庫組織コードプロファイル名
+  cv_ship_storage_code        CONSTANT VARCHAR2(14)  := '出荷元保管場所';                  --出荷元保管場所
+  cv_second_inv_mst           CONSTANT VARCHAR2(14)  := '保管場所マスタ';                  --保管場所マスタ
+  cv_csv_item_num             CONSTANT VARCHAR2(30)  := 'XXCMM1_003A29_ITEM_NUM';          --顧客一括更新データ項目数
+  cv_csv_item_num_name        CONSTANT VARCHAR2(30)  := '顧客一括更新データ項目数';        --顧客一括更新データ項目数名
+  cv_management_resp          CONSTANT VARCHAR2(30)  := 'XXCMM1_MANAGEMENT_RESP';          --職責管理プロファイル
+  cv_management_resp_name     CONSTANT VARCHAR2(30)  := '職責管理プロファイル';            --職責管理プロファイル名
+  cv_joho_kanri_resp          CONSTANT VARCHAR2(30)  := 'XXCMM_RESP_011';                  --職責管理プロファイル値(情報管理_担当者)
+  cv_count_token              CONSTANT VARCHAR2(30)  := 'COUNT';                           --件数トークン
+  cv_xxcmm_003_a29c_name      CONSTANT VARCHAR2(30)  := '顧客一括更新';                    --顧客一括更新名
+-- 2010/04/23 Ver1.6 E_本稼動_02295 add end by Yutaka.Kuboshima
+--
   -- ===============================
   -- ユーザー定義グローバル型
   -- ===============================
@@ -292,6 +313,13 @@ AS
   gv_gl_cal_code              VARCHAR2(30);                                                --会計カレンダコード値
   gv_ar_set_of_books          VARCHAR2(30);                                                --営業システム会計帳簿定義名
 -- 2010/01/04 Ver1.3 E_本稼動_00778 add end by Yutaka.Kuboshima
+--
+-- 2010/04/23 Ver1.6 E_本稼動_02295 add start by Yutaka.Kuboshima
+  gv_organization_code        VARCHAR2(30);                                                --在庫組織コード
+  gn_item_num                 NUMBER;                                                      --顧客一括更新データ項目数
+  gv_management_resp          VARCHAR2(30);                                                --職責管理プロファイル
+  gv_resp_flag                VARCHAR2(1);                                                 --職責管理フラグ(情報管理部：'Y' その他：'N')
+-- 2010/04/23 Ver1.6 E_本稼動_02295 add end by Yutaka.Kuboshima
 --
   /**********************************************************************************
    * Procedure Name   : cust_data_make_wk
@@ -427,6 +455,11 @@ AS
     lv_period_status            VARCHAR2(1)     := NULL;                  --ローカル変数・会計期間クローズステータス
 -- 2010/01/04 Ver1.3 E_本稼動_00778 add end by Yutaka.Kuboshima
 --
+-- 2010/04/23 Ver1.6 E_本稼動_02295 add start by Yutaka.Kuboshima
+    lv_ship_storage_code        VARCHAR2(100)   := NULL;                  --ローカル変数・出荷元保管場所
+    lv_ship_storage_code_mst    VARCHAR2(100)   := NULL;                  --出荷元保管場所
+    ln_item_num                 NUMBER;                                   --CSV項目数
+-- 2010/04/23 Ver1.6 E_本稼動_02295 add end by Yutaka.Kuboshima
     -- ===============================
     -- ローカル・カーソル
     -- ===============================
@@ -773,6 +806,22 @@ AS
     get_business_low_type_rec get_business_low_type_cur%ROWTYPE;
 -- 2010/02/15 Ver1.5 E_本稼動_01582 add end by Yutaka.Kuboshima
 --
+-- 2010/04/23 Ver1.6 E_本稼動_02295 add start by Yutaka.Kuboshima
+    -- 出荷元保管場所チェックカーソル
+    CURSOR check_ship_storage_code_cur(
+      iv_ship_storage_code IN VARCHAR2)
+    IS
+      SELECT msi.secondary_inventory_name secondary_inventory_name
+      FROM   mtl_secondary_inventories msi
+            ,mtl_parameters            mp
+      WHERE  msi.organization_id          = mp.organization_id
+        AND  mp.organization_code         = gv_organization_code
+        AND  msi.secondary_inventory_name = iv_ship_storage_code
+      ;
+    -- 出荷元保管場所チェックレコード
+    check_ship_storage_code_rec check_ship_storage_code_cur%ROWTYPE;
+-- 2010/04/23 Ver1.6 E_本稼動_02295 add end by Yutaka.Kuboshima
+--
   BEGIN
 --
 --##################  固定ステータス初期化部 START   ###################
@@ -836,6 +885,25 @@ AS
           lv_errbuf := gv_out_msg;
           RAISE invalid_data_expt;
         END IF;
+-- 2010/04/23 Ver1.6 E_本稼動_02295 add start by Yutaka.Kuboshima
+        -- ヘッダ項目数のチェック
+        ln_item_num := LENGTH(lv_temp) - LENGTH(REPLACE(lv_temp, cv_comma, NULL)) + 1;
+        -- 項目数が一致しない場合
+        IF (gn_item_num <> ln_item_num) THEN
+          -- エラーメッセージ表示
+          gv_out_msg := xxccp_common_pkg.get_msg(
+                           iv_application  => gv_xxcmm_msg_kbn
+                          ,iv_name         => cv_item_num_err_msg
+                          ,iv_token_name1  => cv_table
+                          ,iv_token_value1 => cv_xxcmm_003_a29c_name
+                          ,iv_token_name2  => cv_count_token
+                          ,iv_token_value2 => TO_CHAR(ln_item_num)
+                         );
+          lv_errmsg := gv_out_msg;
+          lv_errbuf := gv_out_msg;
+          RAISE invalid_data_expt;
+        END IF;
+-- 2010/04/23 Ver1.6 E_本稼動_02295 add end by Yutaka.Kuboshima
       END IF;
 --
       --ヘッダデータ読み飛ばし
@@ -4078,6 +4146,86 @@ AS
         END IF;
         --
 -- 2009/10/23 Ver1.2 add end by Yutaka.Kuboshima
+--
+-- 2010/04/23 Ver1.6 E_本稼動_02295 add start by Yutaka.Kuboshima
+        -- 職責管理フラグが'Y'の場合
+        IF (gv_resp_flag = cv_yes) THEN
+          -- 出荷元保管場所取得
+          lv_ship_storage_code := xxccp_common_pkg.char_delim_partition(  lv_temp
+                                                                         ,cv_comma
+                                                                         ,46);
+          --出荷元保管場所型・桁数チェック
+          xxccp_common_pkg2.upload_item_check( cv_ship_storage_code    --出荷元保管場所
+                                              ,lv_ship_storage_code    --出荷元保管場所
+                                              ,10                      --項目長
+                                              ,NULL                    --項目長（小数点以下）
+                                              ,cv_null_ok              --必須フラグ
+                                              ,cv_element_vc2          --属性（0・検証なし、1、数値、2、日付）
+                                              ,lv_item_errbuf          --エラーバッファ
+                                              ,lv_item_retcode         --エラーコード
+                                              ,lv_item_errmsg);        --エラーメッセージ
+          --出荷元保管場所型・桁数チェックエラー時
+          IF (lv_item_retcode <> cv_status_normal) THEN
+            lv_check_status := cv_status_error;
+            lv_retcode      := cv_status_error;
+            --出荷元保管場所エラーメッセージ取得
+            gv_out_msg := xxccp_common_pkg.get_msg(
+                             iv_application  => gv_xxcmm_msg_kbn
+                            ,iv_name         => cv_val_form_err_msg
+                            ,iv_token_name1  => cv_cust_code
+                            ,iv_token_value1 => lv_customer_code
+                            ,iv_token_name2  => cv_col_name
+                            ,iv_token_value2 => cv_ship_storage_code
+                            ,iv_token_name3  => cv_input_val
+                            ,iv_token_value3 => lv_ship_storage_code
+                           );
+            FND_FILE.PUT_LINE(
+               which  => FND_FILE.LOG
+              ,buff   => gv_out_msg
+            );
+            FND_FILE.PUT_LINE(
+               which  => FND_FILE.LOG
+              ,buff   => lv_item_errmsg
+            );
+          END IF;
+          -- 顧客区分'10','12','13','14','15','16','17'の場合、エラーチェックを行う
+          IF (lv_cust_customer_class IN (cv_kokyaku_kbn, cv_uesama_kbn, cv_trust_corp, cv_urikake_kbn, cv_tenpo_kbn, cv_tonya_kbn, cv_keikaku_kbn)) THEN
+            --出荷元保管場所が-でない場合
+            IF (lv_ship_storage_code <> cv_null_bar) THEN
+              --出荷元保管場所存在チェック
+              << check_ship_storage_code_loop >>
+              FOR check_ship_storage_code_rec IN check_ship_storage_code_cur( lv_ship_storage_code )
+              LOOP
+                lv_ship_storage_code_mst  := check_ship_storage_code_rec.secondary_inventory_name;
+              END LOOP check_price_list_loop;
+              IF (lv_ship_storage_code_mst IS NULL) THEN
+                lv_check_status   := cv_status_error;
+                lv_retcode        := cv_status_error;
+                --出荷元保管場所マスタ存在チェックエラーメッセージ取得
+                gv_out_msg := xxccp_common_pkg.get_msg(
+                                 iv_application  => gv_xxcmm_msg_kbn
+                                ,iv_name         => cv_mst_err_msg
+                                ,iv_token_name1  => cv_cust_code
+                                ,iv_token_value1 => lv_customer_code
+                                ,iv_token_name2  => cv_col_name
+                                ,iv_token_value2 => cv_ship_storage_code
+                                ,iv_token_name3  => cv_input_val
+                                ,iv_token_value3 => lv_ship_storage_code
+                                ,iv_token_name4  => cv_table
+                                ,iv_token_value4 => cv_second_inv_mst
+                               );
+                FND_FILE.PUT_LINE(
+                   which  => FND_FILE.LOG
+                  ,buff   => gv_out_msg);
+              END IF;
+            END IF;
+          END IF;
+        ELSE
+          -- 職責管理プロファイルが'N'の場合、出荷元保管場所にNULLをセット
+          lv_ship_storage_code := NULL;
+        END IF;
+        --
+-- 2010/04/23 Ver1.6 E_本稼動_02295 add end by Yutaka.Kuboshima
         --
         IF (lv_check_status = cv_status_normal) THEN
           BEGIN
@@ -4125,6 +4273,9 @@ AS
               ,wholesale_ctrl_code
               ,price_list
 -- 2009/10/23 Ver1.2 add end by Yutaka.Kuboshima
+-- 2010/04/23 Ver1.6 E_本稼動_02295 add start by Yutaka.Kuboshima
+              ,ship_storage_code
+-- 2010/04/23 Ver1.6 E_本稼動_02295 add end by Yutaka.Kuboshima
               ,created_by
               ,creation_date
               ,last_updated_by
@@ -4178,6 +4329,9 @@ AS
               ,lv_wholesale_ctrl_code
               ,lv_price_list
 -- 2009/10/23 Ver1.2 add end by Yutaka.Kuboshima
+-- 2010/04/23 Ver1.6 E_本稼動_02295 add start by Yutaka.Kuboshima
+              ,lv_ship_storage_code
+-- 2010/04/23 Ver1.6 E_本稼動_02295 add end by Yutaka.Kuboshima
               ,fnd_global.user_id
               ,sysdate
               ,fnd_global.user_id
@@ -4255,6 +4409,10 @@ AS
       lv_price_list               := NULL;
       lv_price_list_mst           := NULL;
 -- 2009/10/23 Ver1.2 add end by Yutaka.Kuboshima
+-- 2010/04/23 Ver1.6 E_本稼動_02295 add start by Yutaka.Kuboshima
+      lv_ship_storage_code        := NULL;
+      lv_ship_storage_code_mst    := NULL;
+-- 2010/04/23 Ver1.6 E_本稼動_02295 add end by Yutaka.Kuboshima
     END LOOP cust_data_wk_loop;
 --
     --データエラー時メッセージ設定（コンカレント出力）
@@ -4499,6 +4657,10 @@ AS
              ,xca.past_customer_status    addon_past_customer_status  --顧客追加情報・前月顧客ステータス
 -- 2010/01/04 Ver1.3 E_本稼動_00778 add end by Yutaka.Kuboshima
 --
+-- 2010/04/23 Ver1.6 E_本稼動_02295 add start by Yutaka.Kuboshima
+             ,xwcbr.ship_storage_code     ship_storage_code           --出荷元保管場所
+             ,xca.ship_storage_code       addon_ship_storage_code     --顧客追加情報・出荷元保管場所
+-- 2010/04/23 Ver1.6 E_本稼動_02295 add end by Yutaka.Kuboshima
       FROM    hz_cust_accounts     hca,
               hz_cust_acct_sites   hcas,
               hz_cust_site_uses    hcsu,
@@ -5304,16 +5466,44 @@ AS
     -- ===============================
     -- 前月顧客ステータス
     -- ===============================
-    -- 中止決裁日が前月の場合
-    IF (TRUNC(TO_DATE(cust_data_rec.approval_date, cv_date_format), 'MM') = ADD_MONTHS(TRUNC(gd_process_date, 'MM'), -1)) THEN
-      -- '90'(中止決裁済)をセット
-      l_xxcmm_cust_accounts.past_customer_status := cv_stop_approved;
-    ELSE
+    -- 中止決裁日が'-'の場合
+    IF (NVL(cust_data_rec.approval_date, cv_null_bar) = cv_null_bar) THEN
       -- 更新前の値をセット
       l_xxcmm_cust_accounts.past_customer_status := cust_data_rec.addon_past_customer_status;
+    ELSE
+      -- 中止決裁日が前月の場合
+      IF (TRUNC(TO_DATE(cust_data_rec.approval_date, cv_date_format), 'MM') = ADD_MONTHS(TRUNC(gd_process_date, 'MM'), -1)) THEN
+        -- '90'(中止決裁済)をセット
+        l_xxcmm_cust_accounts.past_customer_status := cv_stop_approved;
+      ELSE
+        -- 更新前の値をセット
+        l_xxcmm_cust_accounts.past_customer_status := cust_data_rec.addon_past_customer_status;
+      END IF;
     END IF;
     --
 -- 2010/01/04 Ver1.3 E_本稼動_00778 add end by Yutaka.Kuboshima
+    --
+-- 2010/04/23 Ver1.6 E_本稼動_02295 add start by Yutaka.Kuboshima
+    -- ===============================
+    -- 出荷元保管場所
+    -- ===============================
+    -- 出荷元保管場所が'-'の場合
+    IF (cust_data_rec.ship_storage_code = cv_null_bar) THEN
+      -- NULLをセット
+      l_xxcmm_cust_accounts.ship_storage_code := NULL;
+    -- 出荷元保管場所がNULLまたは、
+    -- 顧客区分が'18','19','20','21'の場合
+    ELSIF (cust_data_rec.ship_storage_code IS NULL)
+      OR (cust_data_rec.customer_class_code IN (cv_edi_class, cv_hyakkaten_kbn, cv_seikyusho_kbn, cv_toukatu_kbn))
+    THEN
+      -- 更新前の値をセット
+      l_xxcmm_cust_accounts.ship_storage_code := cust_data_rec.addon_ship_storage_code;
+    ELSE
+      -- CSVの項目値をセット
+      l_xxcmm_cust_accounts.ship_storage_code := cust_data_rec.ship_storage_code;
+    END IF;
+    --
+-- 2010/04/23 Ver1.6 E_本稼動_02295 add end by Yutaka.Kuboshima
     --
     -- ===============================
     -- 顧客追加情報マスタ更新
@@ -5339,6 +5529,9 @@ AS
 -- 2010/01/04 Ver1.3 E_本稼動_00778 add start by Yutaka.Kuboshima
           ,xca.past_customer_status   = l_xxcmm_cust_accounts.past_customer_status       --前月顧客ステータス
 -- 2010/01/04 Ver1.3 E_本稼動_00778 add end by Yutaka.Kuboshima
+-- 2010/04/23 Ver1.6 E_本稼動_02295 add start by Yutaka.Kuboshima
+          ,xca.ship_storage_code      = l_xxcmm_cust_accounts.ship_storage_code          --出荷元保管場所
+-- 2010/04/23 Ver1.6 E_本稼動_02295 add end by Yutaka.Kuboshima
           ,xca.last_updated_by        = cn_last_updated_by                               --最終更新者
           ,xca.last_update_date       = cd_last_update_date                              --最終更新日
           ,xca.request_id             = cn_request_id                                    --要求ID
@@ -5636,6 +5829,57 @@ AS
     END IF;
     --
 -- 2010/01/04 Ver1.3 E_本稼動_00778 add end by Yutaka.Kuboshima
+--
+-- 2010/04/23 Ver1.6 E_本稼動_02295 add start by Yutaka.Kuboshima
+    --
+    -- 在庫組織コード取得
+    gv_organization_code := fnd_profile.value(cv_organization_code);
+    IF (gv_organization_code IS NULL) THEN
+      lv_errmsg :=  xxccp_common_pkg.get_msg(
+                      iv_application    =>  gv_xxcmm_msg_kbn,     -- アプリケーション短縮名
+                      iv_name           =>  cv_profile_err_msg,   -- プロファイル取得エラー
+                      iv_token_name1    =>  cv_tkn_ng_profile,    -- トークン(NG_PROFILE)
+                      iv_token_value1   =>  cv_profile_org_code   -- プロファイル定義名
+                     );
+      lv_errbuf := lv_errmsg;
+      RAISE global_process_expt;
+    END IF;
+    --
+    -- 顧客一括更新データ項目数取得
+    gn_item_num := TO_NUMBER(fnd_profile.value(cv_csv_item_num));
+    IF (gn_item_num IS NULL) THEN
+      lv_errmsg :=  xxccp_common_pkg.get_msg(
+                      iv_application    =>  gv_xxcmm_msg_kbn,     -- アプリケーション短縮名
+                      iv_name           =>  cv_profile_err_msg,   -- プロファイル取得エラー
+                      iv_token_name1    =>  cv_tkn_ng_profile,    -- トークン(NG_PROFILE)
+                      iv_token_value1   =>  cv_csv_item_num_name  -- プロファイル定義名
+                     );
+      lv_errbuf := lv_errmsg;
+      RAISE global_process_expt;
+    END IF;
+    --
+    -- 職責管理プロファイル取得
+    gv_management_resp := fnd_profile.value(cv_management_resp);
+    IF (gv_management_resp IS NULL) THEN
+      lv_errmsg :=  xxccp_common_pkg.get_msg(
+                      iv_application    =>  gv_xxcmm_msg_kbn,       -- アプリケーション短縮名
+                      iv_name           =>  cv_profile_err_msg,     -- プロファイル取得エラー
+                      iv_token_name1    =>  cv_tkn_ng_profile,      -- トークン(NG_PROFILE)
+                      iv_token_value1   =>  cv_management_resp_name -- プロファイル定義名
+                     );
+      lv_errbuf := lv_errmsg;
+      RAISE global_process_expt;
+    END IF;
+    --
+    -- 職責管理プロファイルで取得した値が'XXCMM_RESP_011'であるか
+    IF (gv_management_resp = cv_joho_kanri_resp) THEN
+      -- 職責管理フラグを'Y'に設定
+      gv_resp_flag := cv_yes;
+    ELSE
+      -- 職責管理フラグを'N'に設定
+      gv_resp_flag := cv_no;
+    END IF;
+-- 2010/04/23 Ver1.6 E_本稼動_02295 add end by Yutaka.Kuboshima
     --
     -- ===============================
     -- ファイルアップロードI/Fテーブル取得処理(A-1)・顧客一括更新用ワークテーブル登録処理(A-2)
