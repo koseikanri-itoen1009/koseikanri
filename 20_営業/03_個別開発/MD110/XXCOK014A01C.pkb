@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCOK014A01C(body)
  * Description      : 販売実績情報・手数料計算条件からの販売手数料計算処理
  * MD.050           : 条件別販手販協計算処理 MD050_COK_014_A01
- * Version          : 3.9
+ * Version          : 3.10
  *
  * Program List
  * -------------------- ------------------------------------------------------------
@@ -70,6 +70,8 @@ AS
  *  2010/02/19    3.8   S.Moriyama       [E_本稼動_01446] 担当営業員が取得できなかった場合警告とする
  *  2010/03/16    3.9   K.Yamaguchi      [E_本稼動_01896] 計算対象顧客の判別を、販売実績の存在有無から顧客ステータスに変更
  *                                       [E_本稼動_01870] 売上拠点・担当営業員を締め日単位で固定化
+ *  2010/04/06    3.10  K.Yamaguchi      [E_本稼動_01896] [E_本稼動_01870] 差し戻し対応
+ *                                                        クイックコード取得時の有効日参照方法不正
  *
  *****************************************************************************************/
   --==================================================
@@ -535,8 +537,12 @@ AS
             FROM fnd_lookup_values_vl  flvv
             WHERE flvv.lookup_type             = cv_lookup_type_08
               AND flvv.enabled_flag            = cv_enable
-              AND flvv.start_date_active BETWEEN NVL( flvv.start_date_active, gd_process_date )
+-- 2010/04/06 Ver.3.10 [E_本稼動_01896] [E_本稼動_01870] SCS K.Yamaguchi REPAIR START
+--              AND flvv.start_date_active BETWEEN NVL( flvv.start_date_active, gd_process_date )
+--                                             AND NVL( flvv.end_date_active  , gd_process_date )
+              AND gd_process_date        BETWEEN NVL( flvv.start_date_active, gd_process_date )
                                              AND NVL( flvv.end_date_active  , gd_process_date )
+-- 2010/04/06 Ver.3.10 [E_本稼動_01896] [E_本稼動_01870] SCS K.Yamaguchi REPAIR END
           )
 -- 2010/03/16 Ver.3.9 [E_本稼動_01896] SCS K.Yamaguchi REPAIR END
       AND ship_xca.customer_id         = ship_hca.cust_account_id
