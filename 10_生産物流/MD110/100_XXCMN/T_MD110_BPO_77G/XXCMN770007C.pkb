@@ -7,7 +7,7 @@ AS
  * Description      : ê∂éYå¥âøç∑àŸï\
  * MD.050           : óLèûéxããí†ï[Issue1.0(T_MD050_BPO_770)
  * MD.070           : óLèûéxããí†ï[Issue1.0(T_MD070_BPO_77G)
- * Version          : 1.15
+ * Version          : 1.16
  *
  * Program List
  * -------------------------- ----------------------------------------------------------
@@ -43,6 +43,7 @@ AS
  *  2008/11/29    1.13  N.Yoshida        ñ{î‘#212ëŒâû
  *  2008/12/04    1.14  T.Mitaya         ñ{î‘#379ëŒâû
  *  2009/01/16    1.15  N.Yoshida        ñ{î‘#1031ëŒâû
+ *  2009/06/22    1.16  Marushita        ñ{î‘#1541ëŒâû
  *
  *****************************************************************************************/
 --
@@ -749,6 +750,9 @@ AS
                              AND    xlvv1.attribute2      = xlvv2.lookup_code
                              AND    xph.price_type        = gv_lookup_code
                              AND    xph.item_code         = iimb.item_no
+                             -- 2009/06/22 ADD START
+                             AND    itp.trans_date BETWEEN xph.start_date_active AND xph.end_date_active
+                             -- 2009/06/22 ADD END
                              AND    xlvv1.lookup_type     = gv_expense_item_type
                              AND    xlvv2.lookup_type     = gv_cmpntcls_type
                              AND    xlvv2.meaning         IN ( gv_raw_mat_cost_name
@@ -774,6 +778,9 @@ AS
                                            AND    xlvv1.attribute2      = xlvv2.lookup_code
                                            AND    xph.price_type        = gv_lookup_code
                                            AND    xph.item_code         = iimb.item_no
+                                           -- 2009/06/22 ADD START
+                                           AND    itp.trans_date BETWEEN xph.start_date_active AND xph.end_date_active
+                                           -- 2009/06/22 ADD END
                                            AND    xlvv1.lookup_type     = gv_expense_item_type
                                            AND    xlvv2.lookup_type     = gv_cmpntcls_type
                                            AND    xlvv2.meaning         IN ( gv_raw_mat_cost_name
@@ -801,6 +808,9 @@ AS
                                        AND    xlvv1.attribute2      = xlvv2.lookup_code
                                        AND    xph.price_type        = gv_lookup_code
                                        AND    xph.item_code         = iimb.item_no
+                                       -- 2009/06/22 ADD START
+                                       AND    itp.trans_date BETWEEN xph.start_date_active AND xph.end_date_active
+                                       -- 2009/06/22 ADD END
                                        AND    xlvv1.lookup_type     = gv_expense_item_type
                                        AND    xlvv2.lookup_type     = gv_cmpntcls_type
                                        AND    xlvv2.meaning         IN ( gv_raw_mat_cost_name
@@ -826,6 +836,9 @@ AS
                                             AND    xlvv1.attribute2      = xlvv2.lookup_code
                                             AND    xph.price_type        = gv_lookup_code
                                             AND    xph.item_code         = iimb.item_no
+                                           -- 2009/06/22 ADD START
+                                           AND    itp.trans_date BETWEEN xph.start_date_active AND xph.end_date_active
+                                           -- 2009/06/22 ADD END
                                             AND    xlvv1.lookup_type     = gv_expense_item_type
                                             AND    xlvv2.lookup_type     = gv_cmpntcls_type
                                             AND    xlvv2.meaning         IN ( gv_raw_mat_cost_name
@@ -853,6 +866,9 @@ AS
                                        AND    xlvv1.attribute2      = xlvv2.lookup_code
                                        AND    xph.price_type        = gv_lookup_code
                                        AND    xph.item_code         = iimb.item_no
+                                       -- 2009/06/22 ADD START
+                                       AND    itp.trans_date BETWEEN xph.start_date_active AND xph.end_date_active
+                                       -- 2009/06/22 ADD END
                                        AND    xlvv1.lookup_type     = gv_expense_item_type
                                        AND    xlvv2.lookup_type     = gv_cmpntcls_type
                                        AND    xlvv2.meaning         IN ( gv_raw_mat_cost_name
@@ -878,6 +894,9 @@ AS
                                             AND    xlvv1.attribute2      = xlvv2.lookup_code
                                             AND    xph.price_type        = gv_lookup_code
                                             AND    xph.item_code         = iimb.item_no
+                                           -- 2009/06/22 ADD START
+                                           AND    itp.trans_date BETWEEN xph.start_date_active AND xph.end_date_active
+                                           -- 2009/06/22 ADD END
                                             AND    xlvv1.lookup_type     = gv_expense_item_type
                                             AND    xlvv2.lookup_type     = gv_cmpntcls_type
                                             AND    xlvv2.meaning         IN ( gv_raw_mat_cost_name
@@ -908,6 +927,9 @@ AS
 --                      AND    xph.item_code         = iimb.item_no
                       AND    xph.item_code         = iimb2.item_no
 -- 2009/01/16 v1.15 N.Yoshida mod end
+                      -- 2009/06/22 ADD START
+                      AND    itp.trans_date BETWEEN xph.start_date_active AND xph.end_date_active
+                      -- 2009/06/22 ADD END
                       AND    xlvv1.lookup_type     = gv_expense_item_type
                       AND    xlvv2.lookup_type     = gv_cmpntcls_type
                       AND    xlvv2.meaning         = gv_raw_mat_cost_name)
@@ -924,6 +946,9 @@ AS
                                 AND    xlvv1.attribute2      = xlvv2.lookup_code
                                 AND    xph.price_type        = gv_lookup_code
                                 AND    xph.item_code         = iimb.item_no
+                                -- 2009/06/22 ADD START
+                                AND    itp.trans_date BETWEEN xph.start_date_active AND xph.end_date_active
+                                -- 2009/06/22 ADD END
                                 AND    xlvv1.lookup_type     = gv_expense_item_type
                                 AND    xlvv2.lookup_type     = gv_cmpntcls_type
                                 AND    xlvv2.meaning         = gv_raw_mat_cost_name)
@@ -941,6 +966,9 @@ AS
 --                      AND    xph.item_code         = iimb.item_no
                       AND    xph.item_code         = iimb2.item_no
 -- 2009/01/16 v1.15 N.Yoshida mod end
+                      -- 2009/06/22 ADD START
+                      AND    itp.trans_date BETWEEN xph.start_date_active AND xph.end_date_active
+                      -- 2009/06/22 ADD END
                       AND    xlvv1.lookup_type     = gv_expense_item_type
                       AND    xlvv2.lookup_type     = gv_cmpntcls_type
                       AND    xlvv2.meaning         = gv_raw_mat_cost_name),0)
@@ -966,6 +994,9 @@ AS
                                  AND    xlvv1.attribute2      = xlvv2.lookup_code
                                  AND    xph.price_type        = gv_lookup_code
                                  AND    xph.item_code         = iimb.item_no
+                                 -- 2009/06/22 ADD START
+                                 AND    itp.trans_date BETWEEN xph.start_date_active AND xph.end_date_active
+                                 -- 2009/06/22 ADD END
                                  AND    xlvv1.lookup_type     = gv_expense_item_type
                                  AND    xlvv2.lookup_type     = gv_cmpntcls_type
                                  AND    xlvv2.meaning         IN ( gv_raw_mat_cost_name
@@ -991,6 +1022,9 @@ AS
                                            AND    xlvv1.attribute2      = xlvv2.lookup_code
                                            AND    xph.price_type        = gv_lookup_code
                                            AND    xph.item_code         = iimb.item_no
+                                           -- 2009/06/22 ADD START
+                                           AND    itp.trans_date BETWEEN xph.start_date_active AND xph.end_date_active
+                                           -- 2009/06/22 ADD END
                                            AND    xlvv1.lookup_type     = gv_expense_item_type
                                            AND    xlvv2.lookup_type     = gv_cmpntcls_type
                                            AND    xlvv2.meaning         IN ( gv_raw_mat_cost_name
@@ -1019,6 +1053,9 @@ AS
                                        AND    xlvv1.attribute2      = xlvv2.lookup_code
                                        AND    xph.price_type        = gv_lookup_code
                                        AND    xph.item_code         = iimb.item_no
+                                       -- 2009/06/22 ADD START
+                                       AND    itp.trans_date BETWEEN xph.start_date_active AND xph.end_date_active
+                                       -- 2009/06/22 ADD END
                                        AND    xlvv1.lookup_type     = gv_expense_item_type
                                        AND    xlvv2.lookup_type     = gv_cmpntcls_type
                                        AND    xlvv2.meaning         IN ( gv_raw_mat_cost_name
@@ -1044,6 +1081,9 @@ AS
                                            AND    xlvv1.attribute2      = xlvv2.lookup_code
                                            AND    xph.price_type        = gv_lookup_code
                                            AND    xph.item_code         = iimb.item_no
+                                           -- 2009/06/22 ADD START
+                                           AND    itp.trans_date BETWEEN xph.start_date_active AND xph.end_date_active
+                                           -- 2009/06/22 ADD END
                                            AND    xlvv1.lookup_type     = gv_expense_item_type
                                            AND    xlvv2.lookup_type     = gv_cmpntcls_type
                                            AND    xlvv2.meaning         IN ( gv_raw_mat_cost_name
