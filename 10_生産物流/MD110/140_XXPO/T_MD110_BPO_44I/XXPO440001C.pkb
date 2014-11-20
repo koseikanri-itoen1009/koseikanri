@@ -7,7 +7,7 @@ AS
  * Description      : 有償出庫指示書
  * MD.050/070       : 有償支給帳票Issue1.0(T_MD050_BPO_444)
  *                    有償支給帳票Issue1.0(T_MD070_BPO_44I)
- * Version          : 1.7
+ * Version          : 1.8
  *
  * Program List
  * -------------------- ------------------------------------------------------------
@@ -46,6 +46,7 @@ AS
  *                                       内部変更要求対応No.160
  *  2008/09/19    1.6   Oracle山根一浩   T_S_439対応
  *  2008/10/22    1.7   Oracle大橋孝郎   指摘361対応
+ *  2008/11/21    1.8   Oracle大橋孝郎   指摘699対応
  *
  *****************************************************************************************/
 --
@@ -455,6 +456,11 @@ AS
         AND   xlv.lookup_code = lr_ref.arrival_time_from
         ;
 -- Ver1.1 Add 2008/05/16
+-- add start ver1.8
+      ELSIF lr_ref.arrival_time_from IS NULL THEN
+        -- 着荷時間FROM初期化
+        lv_arrival_time_from := NULL;
+-- add end ver1.8
       END IF;
 -- Ver1.1 Add 2008/05/16
       
@@ -470,6 +476,11 @@ AS
         AND   xlv.lookup_code = lr_ref.arrival_time_to
         ;
 -- Ver1.1 Add 2008/05/16
+-- add start ver1.8
+      ELSIF lr_ref.arrival_time_to IS NULL THEN
+        -- 着荷時間TO初期化
+        lv_arrival_time_to := NULL;
+-- add end ver1.8
       END IF;
 -- Ver1.1 Add 2008/05/16
       
@@ -487,6 +498,12 @@ AS
         AND   xlv.lookup_code = lr_ref.shipping_method_code
         ;
 -- Ver1.1 Add 2008/05/16
+-- add start ver1.8
+      ELSIF lr_ref.shipping_method_code IS NULL THEN
+        -- 配送区分,配送区分名称初期化
+        lv_ship_method_code := NULL;
+        lv_ship_method_name := NULL;
+-- add end ver1.8
       END IF;
 -- Ver1.1 Add 2008/05/16
 --
@@ -504,6 +521,12 @@ AS
         AND   xlv.lookup_code = lr_ref.takeback_class
         ;
 -- Ver1.1 Add 2008/05/16
+-- add start ver1.8
+      ELSIF lr_ref.takeback_class IS NULL THEN
+        -- 引取区分,引取区分名称初期化
+        lv_takeback_code  := NULL;
+        lv_takeback_class := NULL;
+-- add end ver1.8
       END IF;
 -- Ver1.1 Add 2008/05/16
 --
