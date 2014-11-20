@@ -4,10 +4,10 @@ AS
  * Copyright(c)Sumisho Computer Systems Corporation, 2008. All rights reserved.
  *
  * Package Name     : XXCSO017A04C(body)
- * Description      : ’ ‡–â‰®—pŒ©Ï“ü—Í‰æ–Ê‚©‚çAŒ©Ï”Ô†A”Å–ˆ‚ÉŒ©Ï‘‚ğ	
+ * Description      : ’ ‡–â‰®—pŒ©Ï“ü—Í‰æ–Ê‚©‚çAŒ©Ï”Ô†A”Å–ˆ‚ÉŒ©Ï‘‚ğ  
  *                    ’ •[‚Éo—Í‚µ‚Ü‚·B
  * MD.050           : MD050_CSO_017_A04_Œ©Ï‘i’ ‡–â‰®—pjPDFo—Í
- * Version          : 1.7
+ * Version          : 1.8
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -38,6 +38,7 @@ AS
  *  2009-05-13    1.5   Kazuo.Satomura   ‚r‚sáŠQ‘Î‰(T1_0972,T1_0974)
  *  2009-05-20    1.6   Makoto.Ohtsuki   ‚r‚sáŠQ‘Î‰(T1_0696)
  *  2009-06-17    1.7   Daisuke.Abe      ‚r‚sáŠQ‘Î‰(T1_1257)
+ *  2009-07-30    1.8   Daisuke.Abe      SCSáŠQ‘Î‰(0000806)
  *****************************************************************************************/
 --
 --#######################  ŒÅ’èƒOƒ[ƒoƒ‹’è”éŒ¾•” START   #######################
@@ -1526,7 +1527,10 @@ AS
                                                           ,cv_format_date_ymd2);                      -- ŠúŠÔiŠJnj
       l_rp_qte_lst_data_rec.quote_end_date           := TO_CHAR(l_get_quote_dt_rec.quote_end_date
                                                           ,cv_format_date_ymd2);                      -- ŠúŠÔiI—¹j
-      l_rp_qte_lst_data_rec.sales_discount_amt       := l_get_quote_dt_rec.sales_discount_price;      -- ”„ã’lˆø
+/* 2009.07.30 D.Abe 0000806‘Î‰ START */
+      --l_rp_qte_lst_data_rec.sales_discount_amt       := l_get_quote_dt_rec.sales_discount_price;      -- ”„ã’lˆø
+      l_rp_qte_lst_data_rec.sales_discount_amt       := TO_CHAR(l_get_quote_dt_rec.sales_discount_price,'FM99,990.00');      -- ”„ã’lˆø
+/* 2009.07.30 D.Abe 0000806‘Î‰ END */
       l_rp_qte_lst_data_rec.remarks                  := l_get_quote_dt_rec.remarks;                   -- ”õl
       l_rp_qte_lst_data_rec.created_by               := cn_created_by;                                -- ì¬Ò
       l_rp_qte_lst_data_rec.creation_date            := cd_creation_date;                             -- ì¬“ú
@@ -1564,7 +1568,11 @@ AS
             l_rp_qte_lst_data_rec.line_payment_condition   := l_get_quote_dt_rec.quotation_price
                                                                 - l_get_quote_dt_rec.this_time_net_price;
           -- ¡‰ñ‚m‚d‚s‰¿Ši‚ª0ˆÈ‰º‚Ìê‡
-          ELSIF (l_get_quote_dt_rec.this_time_net_price <= 0) THEN
+/* 2009.07.30 D.Abe 0000806‘Î‰ START */
+          ELSE
+--          ELSIF (l_get_quote_dt_rec.this_time_net_price <= 0) THEN
+/* 2009.07.30 D.Abe 0000806‘Î‰ END */
+
             -- ’Êí‚m‚d‚s‰¿Ši‚ª0‚æ‚è‘å‚«‚¢ê‡
             IF (l_get_quote_dt_rec.usuall_net_price > 0) THEN
               l_rp_qte_lst_data_rec.line_payment_condition   := l_get_quote_dt_rec.quotation_price
@@ -1581,7 +1589,10 @@ AS
                                                                 - (l_get_quote_dt_rec.this_time_net_price / 
                                                                   l_rp_qte_lst_data_rec.inc_num);
           -- ¡‰ñ‚m‚d‚s‰¿Ši‚ª0ˆÈ‰º‚Ìê‡
-          ELSIF (l_get_quote_dt_rec.this_time_net_price <= 0) THEN
+/* 2009.07.30 D.Abe 0000806‘Î‰ START */
+            ELSE
+--          ELSIF (l_get_quote_dt_rec.this_time_net_price <= 0) THEN
+/* 2009.07.30 D.Abe 0000806‘Î‰ END */
             -- ’Êí‚m‚d‚s‰¿Ši‚ª0‚æ‚è‘å‚«‚¢ê‡
             IF (l_get_quote_dt_rec.usuall_net_price > 0) THEN
               l_rp_qte_lst_data_rec.line_payment_condition   := l_get_quote_dt_rec.quotation_price
