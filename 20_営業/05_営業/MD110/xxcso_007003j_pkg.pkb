@@ -6,7 +6,7 @@ AS
  * Package Name     : xxcso_007003j_pkg(BODY)
  * Description      : 商談決定情報入力
  * MD.050/070       : 
- * Version          : 1.0
+ * Version          : 1.2
  *
  * Program List
  *  ------------------------- ---- ----- --------------------------------------------------
@@ -21,6 +21,7 @@ AS
  * ------------- ----- ---------------- -------------------------------------------------
  *  2008/12/10    1.0   H.Ogawa          新規作成
  *  2009-05-01    1.1   Tomoko.Mori      T1_0897対応
+ *  2012/09/06    1.2   M.Nagai          E_本稼動_09618対応
  *
  *****************************************************************************************/
 --
@@ -383,10 +384,17 @@ AS
     lv_baseline_base_code        fnd_flex_values.flex_value%TYPE;
     TYPE base_code_tbl IS TABLE OF fnd_flex_values.flex_value%TYPE INDEX BY BINARY_INTEGER;
     lt_base_code_tbl   base_code_tbl;
+/* 2012/09/06 Ver1.2 M.Nagai E_本稼動_09618対応 ADD START */
+    ln_aff             NUMBER;
+/* 2012/09/06 Ver1.2 M.Nagai E_本稼動_09618対応 ADD END */
 --
   -- 検索基準拠点コード取得
   BEGIN
 --
+/* 2012/09/06 Ver1.2 M.Nagai E_本稼動_09618対応 ADD START */
+    --プロファイル取得
+    ln_aff := TO_NUMBER(fnd_profile.value('XXCSO1_SALES_APPLY_AFF'));--★プロファイル・オプション名
+/* 2012/09/06 Ver1.2 M.Nagai E_本稼動_09618対応 ADD END */
     lv_baseline_base_code := iv_base_code;
 --
     lt_base_code_tbl(lt_base_code_tbl.COUNT + 1) := lv_baseline_base_code;
@@ -411,9 +419,16 @@ AS
       END;
     END LOOP base_code_loop;
 --
-    IF ( lt_base_code_tbl.COUNT >= 3 ) THEN
+/* 2012/09/06 Ver1.2 M.Nagai E_本稼動_09618対応 MOD START */
+--    IF ( lt_base_code_tbl.COUNT >= 3 ) THEN
+    --プロファイルに設定されている階層以上の場合
+    IF ( lt_base_code_tbl.COUNT >= ln_aff ) THEN
+/* 2012/09/06 Ver1.2 M.Nagai E_本稼動_09618対応 MOD END */
 --
-      lv_baseline_base_code := lt_base_code_tbl(lt_base_code_tbl.COUNT - 2);
+/* 2012/09/06 Ver1.2 M.Nagai E_本稼動_09618対応 MOD START */
+--      lv_baseline_base_code := lt_base_code_tbl(lt_base_code_tbl.COUNT - 2);
+      lv_baseline_base_code := lt_base_code_tbl(lt_base_code_tbl.COUNT - ( ln_aff - 1 ) );
+/* 2012/09/06 Ver1.2 M.Nagai E_本稼動_09618対応 MOD END */
 --
     END IF;
 --
