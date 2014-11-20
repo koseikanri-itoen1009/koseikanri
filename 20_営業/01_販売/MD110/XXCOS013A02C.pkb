@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCOS013A02C (body)
  * Description      : INVへの販売実績データ連携
  * MD.050           : INVへの販売実績データ連携 MD050_COS_013_A02
- * Version          : 1.11
+ * Version          : 1.12
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -40,6 +40,7 @@ AS
  *  2009/08/25    1.10  N.Maeda          [0001164]PT対応(警告データのフラグ更新処理追加[W])
  *                                                処理対象外データのフラグ更新処理追加[S]
  *  2009/09/14    1.11  S.Miyakoshi      [0001360]BULKへの対応
+ *  2009/10/08    1.12  M.Sano           [0001520]PT対応
  *
  *****************************************************************************************/
 --
@@ -3132,13 +3133,32 @@ AS
     ELSE
       -- 対象外データロック、対象外データ取得
       BEGIN
-        SELECT xsel.ROWID row_id
+-- ************************ 2009/10/09 M.Sano Var1.12 ADD START ************************ --
+--        SELECT xsel.ROWID row_id
+--        BULK COLLECT INTO l_row_id
+--        FROM   xxcos_sales_exp_headers xseh
+--               ,xxcos_sales_exp_lines   xsel
+--        WHERE  xseh.sales_exp_header_id = xsel.sales_exp_header_id
+--        AND    xsel.inv_interface_flag = cv_inv_flg_n
+--        AND    xseh.delivery_date     <= gd_proc_date
+        SELECT /*+
+                  LEADING(xsel)
+                  INDEX(xsel xxcos_sales_exp_lines_n03)
+                */
+               xsel.ROWID row_id
         BULK COLLECT INTO l_row_id
-        FROM   xxcos_sales_exp_headers xseh
-               ,xxcos_sales_exp_lines   xsel
-        WHERE  xseh.sales_exp_header_id = xsel.sales_exp_header_id
-        AND    xsel.inv_interface_flag = cv_inv_flg_n
-        AND    xseh.delivery_date     <= gd_proc_date
+        FROM   xxcos_sales_exp_lines   xsel
+        WHERE  xsel.inv_interface_flag = cv_inv_flg_n
+        AND    EXISTS (
+                 SELECT /*+
+                           USE_NL(xseh)
+                        */
+                        'Y'    ext_flg
+                 FROM   xxcos_sales_exp_headers xseh
+                 WHERE  xseh.sales_exp_header_id = xsel.sales_exp_header_id
+                 AND    xseh.delivery_date     <= gd_proc_date
+               )
+-- ************************ 2009/10/09 M.Sano Var1.12 ADD  END  ************************ --
         FOR UPDATE OF xsel.inv_interface_flag NOWAIT;
       EXCEPTION
         WHEN NO_DATA_FOUND THEN
