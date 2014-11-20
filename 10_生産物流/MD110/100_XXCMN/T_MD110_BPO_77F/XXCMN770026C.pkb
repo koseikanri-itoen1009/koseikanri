@@ -7,7 +7,7 @@ AS
  * Description      : 出庫実績表
  * MD.050/070       : 月次〆処理(経理)Issue1.0 (T_MD050_BPO_770)
  *                    月次〆処理(経理)Issue1.0 (T_MD070_BPO_77F)
- * Version          : 1.13
+ * Version          : 1.14
  *
  * Program List
  * -------------------------- ----------------------------------------------------------
@@ -48,6 +48,7 @@ AS
  *                                           変更箇所多数のため、修正履歴を残していないので、
  *                                           修正箇所確認の際は前Verと差分比較すること
  *  2008/11/12    1.13  N.Yoshida        移行データ検証不具合対応(履歴削除)
+ *  2008/12/02    1.14  A.Shiina         本番#207対応
  *
  *****************************************************************************************/
 --
@@ -736,6 +737,8 @@ AS
     || ' ,itp.trans_um AS trans_um'
     || ' ,itp.trans_qty * TO_NUMBER(xrpm.rcv_pay_div)'
     || ' AS trans_qty' -- 取引数量 
+-- 2008/12/02 v1.14 UPDATE START
+/*
     || ' ,(' 
     || ' ROUND((CASE iimb2.attribute15'
     || ' WHEN ''1'' THEN xsupv.stnd_unit_price' 
@@ -749,8 +752,20 @@ AS
     || ' WHERE xlc.item_id = iimb2.item_id),xsupv.stnd_unit_price)' 
     || ' END) * (itp.trans_qty * TO_NUMBER(xrpm.rcv_pay_div)))'
     || ' ) AS actual_price' -- 実際金額
+*/
+    || ' ,(' 
+    || ' ROUND((CASE iimb2.attribute15'
+    || '          WHEN ''1'' THEN xsupv.stnd_unit_price' 
+    || '          ELSE DECODE(iimb2.lot_ctl' 
+    || '                     ,1,NVL(xlc.unit_ploce, 0)' 
+    || '                     ,xsupv.stnd_unit_price)' 
+    || '        END) * (itp.trans_qty * TO_NUMBER(xrpm.rcv_pay_div)))' 
+    || ' ) AS actual_price' -- 実際金額
+-- 2008/12/02 v1.14 UPDATE END
     || ' ,ROUND(xsupv.stnd_unit_price * (itp.trans_qty * TO_NUMBER(xrpm.rcv_pay_div))'
     || ' ) AS stnd_price' -- 標準金額
+-- 2008/12/02 v1.14 UPDATE START
+/*
     || ' ,(CASE iimb.lot_ctl'
     || ' WHEN 0 THEN ROUND((xola.unit_price * (itp.trans_qty * TO_NUMBER(xrpm.rcv_pay_div))))'
     || ' ELSE ROUND(((SELECT DECODE('
@@ -761,6 +776,9 @@ AS
     || ' WHERE xlc.item_id = itp.item_id ) * (itp.trans_qty * TO_NUMBER(xrpm.rcv_pay_div)))'
     || ' )' 
     || ' END) AS price' -- 有償金額
+*/
+    || ' xola.unit_price * (itp.trans_qty * TO_NUMBER(xrpm.rcv_pay_div)) AS price' -- 有償金額
+-- 2008/12/02 v1.14 UPDATE END
     || ' ,TO_NUMBER(''' || lt_lkup_code    || ''') AS tax' 
     ;
 -- 
