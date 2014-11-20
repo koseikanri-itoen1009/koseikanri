@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCOS010A03C (body)
  * Description      : 納品確定データ取込機能
  * MD.050           : 納品確定データ取込(MD050_COS_010_A03)
- * Version          : 1.3
+ * Version          : 1.4
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -49,6 +49,7 @@ AS
  *                                       [COS_063]顧客ステータスに対応
  *  2009/02/24    1.2   T.Nakamura       [COS_133]メッセージ出力、ログ出力への出力内容の追加・修正
  *  2009/02/26    1.3   M.Yamaki         [COS_140]正常件数、警告件数の対応
+ *  2009/05/08    1.4   T.Kitajima       [T1_0780]価格表未設定リカバリー対応
  *
  *****************************************************************************************/
 --
@@ -1711,6 +1712,10 @@ AS
     INDEX BY PLS_INTEGER;     -- HHT納品予定連携済フラグ
   TYPE g_order_connect_line_num_ttype        IS TABLE OF xxcos_edi_lines.order_connection_line_number%TYPE
     INDEX BY PLS_INTEGER;     -- 受注関連明細番号
+--****************************** 2009/05/08 1.4 T.Kitajima ADD START ******************************--
+  TYPE g_taking_unit_price_ttype        IS TABLE OF xxcos_edi_lines.taking_unit_price%TYPE
+    INDEX BY PLS_INTEGER;     -- 取込時原単価（発注）
+--****************************** 2009/05/08 1.4 T.Kitajima ADD  END  ******************************--
 --
   -- EDIエラー情報テーブル テーブルタイプ定義
   TYPE g_edi_errors_ttype                    IS TABLE OF xxcos_edi_errors%ROWTYPE
@@ -2113,6 +2118,9 @@ AS
   gt_upd_line_uom                            g_line_uom_ttype;                  -- 明細単位
   gt_upd_hht_delivery_sche_flag              g_hht_delivery_sche_flag_ttype;    -- HHT納品予定連携済フラグ
   gt_upd_order_connect_line_num              g_order_connect_line_num_ttype;    -- 受注関連明細番号
+--****************************** 2009/05/08 1.4 T.Kitajima ADD START ******************************--
+  gt_upd_taking_unit_price                   g_taking_unit_price_ttype;         -- 取込時原単価（発注）
+--****************************** 2009/05/08 1.4 T.Kitajima ADD  END  ******************************--
 --
   -- EDIエラー情報用変数
   gt_edi_errors                              g_edi_errors_ttype;                -- EDIエラー情報テーブル
@@ -5149,6 +5157,9 @@ AS
     gt_edi_lines(ln_idx).line_uom                      := it_edi_work.line_uom;                          -- 明細単位
     gt_edi_lines(ln_idx).hht_delivery_schedule_flag    := cv_hht_delivery_flag;                          -- HHT納品予定連携済フラグ
     gt_edi_lines(ln_idx).order_connection_line_number  := it_edi_work.line_no;                           -- 受注関連明細番号
+--****************************** 2009/05/08 1.4 T.Kitajima ADD START ******************************--
+    gt_edi_lines(ln_idx).taking_unit_price             := it_edi_work.order_unit_price;                  -- 取込時原単価（発注）
+--****************************** 2009/05/08 1.4 T.Kitajima ADD  END  ******************************--
     gt_edi_lines(ln_idx).created_by                    := cn_created_by;                                 -- 作成者
     gt_edi_lines(ln_idx).creation_date                 := cd_creation_date;                              -- 作成日
     gt_edi_lines(ln_idx).last_updated_by               := cn_last_updated_by;                            -- 最終更新者
@@ -5327,6 +5338,9 @@ AS
     gt_upd_line_uom(ln_idx)                            := it_edi_work.line_uom;                          -- 明細単位
     gt_upd_hht_delivery_sche_flag(ln_idx)              := cv_hht_delivery_flag;                          -- HHT納品予定連携済フラグ
     gt_upd_order_connect_line_num(ln_idx)              := it_edi_work.line_no;                           -- 受注関連明細番号
+--****************************** 2009/05/08 1.4 T.Kitajima ADD START ******************************--
+    gt_upd_taking_unit_price(ln_idx)                   := it_edi_work.order_unit_price;                  -- 取込時原単価（発注）
+--****************************** 2009/05/08 1.4 T.Kitajima ADD  END  ******************************--
 --
   EXCEPTION
 --
@@ -6176,6 +6190,9 @@ AS
               item_code                      = gt_upd_item_code(ln_idx),                   -- 品目コード
               line_uom                       = gt_upd_line_uom(ln_idx),                    -- 明細単位
               order_connection_line_number   = gt_upd_order_connect_line_num(ln_idx),      -- 受注関連明細番号
+--****************************** 2009/05/08 1.4 T.Kitajima ADD START ******************************--
+              taking_unit_price              = gt_upd_taking_unit_price(ln_idx),           -- 取込時原単価（発注）
+--****************************** 2009/05/08 1.4 T.Kitajima ADD  END  ******************************--
               last_updated_by                = cn_last_updated_by,                         -- 最終更新者
               last_update_date               = cd_last_update_date,                        -- 最終更新日
               last_update_login              = cn_last_update_login,                       -- 最終更新ログイン

@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCOS010A02C(body)
  * Description      : 受注OIFへの取込機能
  * MD.050           : 受注OIFへの取込(MD050_COS_010_A02)
- * Version          : 1.4
+ * Version          : 1.5
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -39,6 +39,7 @@ AS
  *  2009/02/24    1.3   T.Nakamura       [COS_133]メッセージ出力、ログ出力への出力内容の追加・修正
  *  2009/04/15    1.4   T.Kitajima       [T1_0484]検索用拠点取得方法変更
  *                                       [T1_0469]受注明細OIF.顧客発注番号の編集修正
+ *  2009/05/08    1.5   T.Kitajima       [T1_0780]価格計算フラグ設定方法変更
  *
  *****************************************************************************************/
 --
@@ -285,6 +286,9 @@ AS
              , NVL2(xlvv.lookup_code
                   , cv_flg_y
                   , cv_flg_n        ) err_item_flg             -- エラー品目フラグ
+--****************************** 2009/05/08 1.5 T.Kitajima ADD START ******************************--
+             , xel.taking_unit_price  taking_unit_price        -- 取込時原単価（発注）
+--****************************** 2009/05/08 1.5 T.Kitajima ADD  END  ******************************--
       FROM     xxcos_edi_lines       xel                       -- EDI明細情報テーブル
              , xxcos_lookup_values_v xlvv                      -- クイックコード(エラー品目)
       WHERE    xel.edi_header_info_id    =  gt_edi_headers ( gn_idx ).edi_header_info_id
@@ -424,6 +428,10 @@ AS
     INDEX BY PLS_INTEGER;                                                                         -- 売上区分
   TYPE  g_tab_name_l                     IS TABLE OF oe_lines_iface_all.context%TYPE
     INDEX BY PLS_INTEGER;                                                                         -- 取引明細タイプ名称
+--****************************** 2009/05/08 1.5 T.Kitajima ADD START ******************************--
+  TYPE  g_tab_calculate_price_flag       IS TABLE OF oe_lines_iface_all.calculate_price_flag%TYPE
+    INDEX BY PLS_INTEGER;                                                                         -- 価格計算フラグ
+--****************************** 2009/05/08 1.5 T.Kitajima ADD  END  ******************************--
   -- 受注処理OIF テーブルタイプ定義
   TYPE  g_tab_order_source_id_ac         IS TABLE OF oe_actions_iface_all.order_source_id%TYPE
     INDEX BY PLS_INTEGER;                                                                         -- インポートソースID
@@ -463,6 +471,9 @@ AS
   gt_line_type_id                         g_tab_line_type_id;                -- 明細タイプID
   gt_attribute5                           g_tab_attribute5;                  -- 売上区分
   gt_name_l                               g_tab_name_l;                      -- 取引明細タイプ名称
+--****************************** 2009/05/08 1.5 T.Kitajima ADD START ******************************--
+  gt_calculate_price_flag                 g_tab_calculate_price_flag;        -- 価格計算フラグ
+--****************************** 2009/05/08 1.5 T.Kitajima ADD  END  ******************************--
 --
   -- 受注処理OIFインサート用変数
   gt_order_source_id_ac                   g_tab_order_source_id_ac;          -- インポートソースID
@@ -1342,6 +1353,16 @@ AS
     ELSE
       gt_unit_selling_price ( gn_l_idx_all )       := gt_edi_lines( gn_l_idx ).order_unit_price;
     END IF;
+--****************************** 2009/05/08 1.5 T.Kitajima ADD START ******************************--
+    --EDI明細 「取込時原単価（発注）」がNULLならば
+    IF ( gt_edi_lines( gn_l_idx ).taking_unit_price IS NULL ) THEN
+      --受注明細OIF「価格計算フラグ」を「Y」
+      gt_calculate_price_flag( gn_l_idx_all )      := cv_flg_y;
+    ELSE
+      --それ以外は「N」
+      gt_calculate_price_flag( gn_l_idx_all )      := cv_flg_n;
+    END IF;
+--****************************** 2009/05/08 1.5 T.Kitajima ADD  END  ******************************--
 --
   EXCEPTION
 --
@@ -1767,7 +1788,10 @@ AS
           , gt_order_quantity_uom( ln_ins_idx )                           -- 受注単位
           , gt_unit_selling_price( ln_ins_idx )                           -- 販売単価
           , gt_unit_selling_price( ln_ins_idx )                           -- 定価
-          , cv_flg_n                                                      -- 価格計算フラグ
+--****************************** 2009/05/08 1.5 T.Kitajima ADD START ******************************--
+--          , cv_flg_n                                                      -- 価格計算フラグ
+          , gt_calculate_price_flag( ln_ins_idx )                         -- 価格計算フラグ
+--****************************** 2009/05/08 1.5 T.Kitajima ADD  END  ******************************--
           , gt_request_date_l( ln_ins_idx )                               -- 要求日
           , gt_schedule_ship_date( ln_ins_idx )                           -- 予定出荷日
           , gt_customer_po_number_l( ln_ins_idx )                         -- 顧客発注番号
