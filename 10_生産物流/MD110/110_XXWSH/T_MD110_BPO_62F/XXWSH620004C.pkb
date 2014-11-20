@@ -7,7 +7,7 @@ AS
  * Description      : 倉庫払出指示書
  * MD.050           : 引当/配車(帳票) T_MD050_BPO_621
  * MD.070           : 倉庫払出指示書  T_MD070_BPO_62F
- * Version          : 1.1
+ * Version          : 1.2
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -27,6 +27,7 @@ AS
  *  2008/05/02    1.0   Yuki Komikado    新規作成
  *  2008/06/24    1.1   Masayoshi Uehara   支給の場合、パラメータ配送先/入庫先のリレーションを
  *                                         vendor_site_codeに変更。
+ *  2008/07/02    1.2   Satoshi Yunba    禁則文字対応
  *
  *****************************************************************************************/
 --
@@ -1090,7 +1091,7 @@ AS
 --
     --データの場合
     IF (ic_type = 'D') THEN
-      lv_convert_data := '<'||iv_name||'>'||iv_value||'</'||iv_name||'>';
+      lv_convert_data := '<'||iv_name||'><![CDATA['||iv_value||']]></'||iv_name||'>';
     ELSE
       lv_convert_data := '<'||iv_name||'>';
     END IF ;
