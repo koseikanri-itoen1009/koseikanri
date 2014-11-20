@@ -7,7 +7,7 @@ AS
  * Description      : 原料費原価計算処理
  * MD.050           : ロット別実際原価計算 T_MD050_BPO_790
  * MD.070           : 原料費原価計算処理 T_MD070_BPO_79A
- * Version          : 1.6
+ * Version          : 1.7
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -33,6 +33,7 @@ AS
  *  2008/12/06    1.4   H.Marushita      削除処理条件修正
  *  2008/12/18    1.5   N.Yoshida        本番#777対応
  *  2009/03/30    1.6   H.Iida           本番障害#1346対応
+ *  2009/09/24    1.7   H.Marushita      本番障害#1638対応
  *****************************************************************************************/
 --
 --#######################  固定グローバル定数宣言部 START   #######################
@@ -269,6 +270,28 @@ AS
       AND    xtlc.lot_id   =  lt_lot_id_tab  (loop_cnt)  -- ロットID
       ;
 -- 2008/10/27 H.Itou Del End
+--
+-- 2009/09/24 ADD START
+    -- =====================================
+    -- 取消済み発注データ削除
+    -- =====================================
+    DELETE
+    FROM  xxcmn_txn_lot_cost xtlc
+    WHERE xtlc.doc_type   = 'PORC'
+    AND   xtlc.trans_qty <> 0
+    AND   0 = (
+      SELECT SUM(trans_qty)
+      FROM  ic_tran_pnd itp
+      WHERE itp.doc_type      = xtlc.doc_type
+      AND   itp.doc_id        = xtlc.doc_id
+      AND   itp.item_id       = xtlc.item_id
+      AND   itp.lot_id        = xtlc.lot_id
+      AND   itp.reverse_id IS NULL
+      AND   itp.completed_ind = '1'
+      AND   itp.lot_id       >  0
+      AND   itp.trans_date   >= gd_opening_date
+    );
+-- 2009/09/24 ADD END
 --
   EXCEPTION
 --
