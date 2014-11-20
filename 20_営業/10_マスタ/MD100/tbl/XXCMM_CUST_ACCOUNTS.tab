@@ -3,7 +3,7 @@
  * TABLE Name      : xxcmm_cust_accounts
  * Description     : 顧客追加情報
  * MD.070          : 
- * Version         : 1.5
+ * Version         : 1.6
  * 
  * Change Record
  * ------------- ----- ------------ -------------------------------------
@@ -17,6 +17,7 @@
  *                                              NUMBER(3,2) -> NUMBER(3,1)
  *  2010/09/22    1.5  S.Niki        【E_本稼動_02021】項目：店舗営業用顧客コードの追加
  *                                                     店舗営業区分対応の取消
+ *  2011/05/18    1.6  S.Niki        【E_本稼動_07429】経度 -> ピークカット開始時刻
  *
  ************************************************************************/
 CREATE TABLE xxcmm.xxcmm_cust_accounts
@@ -258,7 +259,10 @@ COMMENT ON COLUMN xxcmm.xxcmm_cust_accounts.edi_chain_code              IS 'チェ
 /
 COMMENT ON COLUMN xxcmm.xxcmm_cust_accounts.latitude                    IS '緯度'
 /
-COMMENT ON COLUMN xxcmm.xxcmm_cust_accounts.longitude                   IS '経度'
+-- 2011/05/18 Ver1.6 modify start by S.Niki
+--COMMENT ON COLUMN xxcmm.xxcmm_cust_accounts.longitude                   IS '経度'
+COMMENT ON COLUMN xxcmm.xxcmm_cust_accounts.longitude                   IS 'ピークカット開始時刻'
+-- 2011/05/18 Ver1.6 modify end by S.Niki
 /
 COMMENT ON COLUMN xxcmm.xxcmm_cust_accounts.management_base_code        IS '管理元拠点コード'
 /
