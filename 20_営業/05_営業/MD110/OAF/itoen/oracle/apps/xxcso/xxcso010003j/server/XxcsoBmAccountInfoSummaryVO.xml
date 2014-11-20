@@ -11,24 +11,26 @@
    MsgBundleClass="oracle.jbo.common.JboResourceBundle"
    UseGlueCode="false" >
    <SQLQuery><![CDATA[
-SELECT   xcav.cust_account_id  AS account_id
-        ,xcav.account_number   AS account_number
-        ,xcav.party_name       AS party_name
-FROM     xxcso_cust_accounts_v xcav
-WHERE    (
-           (
-             xcav.contractor_supplier_code IN (:1, :2, :3)
-           )
-           OR
-           (
-             xcav.bm_pay_supplier_code1 IN (:4, :5, :6)
-           )
-           OR
-           (
-             xcav.bm_pay_supplier_code2 IN (:7, :8, :9)
-           )
-         )
-  AND    xcav.cust_account_id <> :10
+SELECT  hca.cust_account_id  AS account_id
+       ,hca.account_number   AS account_number
+       ,hp.party_name        AS party_name
+FROM    hz_cust_accounts hca
+       ,hz_parties       hp
+WHERE   hp.party_id = hca.party_id
+  AND   hca.cust_account_id IN
+        (
+          SELECT xca.customer_id
+          FROM   xxcmm_cust_accounts xca
+          WHERE  xca.contractor_supplier_code IN (:1, :2, :3)
+          OR     xca.bm_pay_supplier_code1    IN (:4, :5, :6)
+          OR     xca.bm_pay_supplier_code2    IN (:7, :8, :9)
+        )
+  AND   NOT EXISTS
+        (
+          SELECT  1
+          FROM    DUAL
+          WHERE   hca.cust_account_id = :10
+        )
    ]]></SQLQuery>
    <DesignTime>
       <Attr Name="_isCodegen" Value="true" />
