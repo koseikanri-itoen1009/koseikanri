@@ -1,0 +1,5 @@
+CREATE INDEX xxcmm.xxcmm_system_items_b_n02
+ON xxcmm.xxcmm_system_items_b
+(case_jan_code)
+TABLESPACE xxidx2
+/
