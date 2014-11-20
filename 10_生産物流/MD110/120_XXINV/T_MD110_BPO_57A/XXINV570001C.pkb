@@ -7,7 +7,7 @@ AS
  * Description      : 移動入出庫実績登録
  * MD.050           : 移動入出庫実績登録(T_MD050_BPO_570)
  * MD.070           : 移動入出庫実績登録(T_MD070_BPO_57A)
- * Version          : 1.21
+ * Version          : 1.22
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -51,6 +51,7 @@ AS
  *  2009/02/19    1.19  Akiyoshi Shiina  本番障害#1179(ロット実績数量0が存在する移動実績情報の処理)
  *  2009/02/19    1.20  Akiyoshi Shiina  本番障害#1194(ロックエラーを警告にする)
  *  2009/02/24    1.21  Akiyoshi Shiina  再対応_本番障害#1179(ロット実績数量0が存在する移動実績情報の処理)
+ *  2009/06/09    1.22  Hitomi Itou      本番障害#1526(最新標準データ抽出はMAX(最終更新日)とする)
  *****************************************************************************************/
 --
 --#######################  固定グローバル定数宣言部 START   #######################
@@ -2407,8 +2408,13 @@ AS
             --AND  ixm.attribute1    = move_target_tbl(gn_rec_idx).mov_line_id -- 移動明細ID
             --AND  ROWNUM            = 1                                       -- 最新のデータ
           --ORDER BY itp.creation_date DESC                                    -- 作成日 降順
-              AND  ixm.transfer_id IN
-                                  (SELECT MAX(transfer_id)
+-- 2009/06/09 H.Itou Mod Start 本番障害#1527 MAX(ID)は最新でない場合があるので、MAX(最終更新日)に変更。
+--              AND  ixm.transfer_id IN
+--                                  (SELECT MAX(transfer_id)
+              AND  ixm.attribute1      = move_target_tbl(gn_rec_idx).mov_line_id
+              AND  ixm.last_update_date IN
+                                  (SELECT MAX(last_update_date)
+-- 2009/06/09 H.Itou Mod End
                                    FROM   ic_xfer_mst
                                    WHERE  item_id        = move_target_tbl(gn_rec_idx).item_id
                                    AND    lot_id         = move_target_tbl(gn_rec_idx).lot_id
@@ -2456,8 +2462,13 @@ AS
                 AND  itc.location   = iaj.location
                 AND  itc.item_id    = iaj.item_id
                 AND  itc.lot_id     = iaj.lot_id
-                AND  iaj.journal_id IN
-                                    (SELECT MAX(adj.journal_id)           -- 最新のデータ
+-- 2009/06/09 H.Itou Mod Start 本番障害#1527 MAX(ID)は最新でない場合があるので、MAX(最終更新日)に変更。
+--                AND  iaj.journal_id IN
+--                                    (SELECT MAX(adj.journal_id)           -- 最新のデータ
+                AND  ijm.attribute1 = move_target_tbl(gn_rec_idx).mov_line_id
+                AND  iaj.last_update_date IN
+                                    (SELECT MAX(adj.last_update_date)           -- 最新のデータ
+-- 2009/06/09 H.Itou Mod End
                                      FROM   ic_adjs_jnl   adj
                                            ,ic_jrnl_mst   jrn
                                      WHERE adj.journal_id  = jrn.journal_id
@@ -2507,8 +2518,13 @@ AS
                 AND  itp.completed_ind = 1                                      -- 完了フラグ
               ------ 2008/04/11 modify start  ------
              -- AND  ixm.attribute1    = move_target_tbl(gn_rec_idx).mov_line_id -- 移動明細ID
-                AND  ixm.transfer_id IN
-                                    (SELECT MAX(transfer_id)                     -- 最新のデータ
+-- 2009/06/09 H.Itou Mod Start 本番障害#1527 MAX(ID)は最新でない場合があるので、MAX(最終更新日)に変更。
+--                AND  ixm.transfer_id IN
+--                                    (SELECT MAX(transfer_id)                     -- 最新のデータ
+                AND  ixm.attribute1    = move_target_tbl(gn_rec_idx).mov_line_id
+                AND  ixm.last_update_date IN
+                                    (SELECT MAX(last_update_date)                     -- 最新のデータ
+-- 2009/06/09 H.Itou Mod End
                                      FROM   ic_xfer_mst
                                      WHERE  item_id     = move_target_tbl(gn_rec_idx).item_id
                                      AND    lot_id      = move_target_tbl(gn_rec_idx).lot_id
@@ -2560,8 +2576,13 @@ AS
                 AND  itc.location   = iaj.location
                 AND  itc.item_id    = iaj.item_id
                 AND  itc.lot_id     = iaj.lot_id
-                AND  iaj.journal_id IN
-                                    (SELECT MAX(adj.journal_id)           -- 最新のデータ
+-- 2009/06/09 H.Itou Mod Start 本番障害#1527 MAX(ID)は最新でない場合があるので、MAX(最終更新日)に変更。
+--                AND  iaj.journal_id IN
+--                                    (SELECT MAX(adj.journal_id)           -- 最新のデータ
+                AND  ijm.attribute1 = move_target_tbl(gn_rec_idx).mov_line_id
+                AND  iaj.last_update_date IN
+                                    (SELECT MAX(adj.last_update_date)           -- 最新のデータ
+-- 2009/06/09 H.Itou Mod End
                                      FROM   ic_adjs_jnl   adj
                                            ,ic_jrnl_mst   jrn
                                      WHERE adj.journal_id  = jrn.journal_id
@@ -3966,8 +3987,13 @@ AS
                 AND  itc.location   = iaj.location
                 AND  itc.item_id    = iaj.item_id
                 AND  itc.lot_id     = iaj.lot_id
-                AND  iaj.journal_id IN
-                                    (SELECT MAX(adj.journal_id)           -- 最新のデータ
+-- 2009/06/09 H.Itou Mod Start 本番障害#1527 MAX(ID)は最新でない場合があるので、MAX(最終更新日)に変更。
+--                AND  iaj.journal_id IN
+--                                    (SELECT MAX(adj.journal_id)           -- 最新のデータ
+                AND  ijm.attribute1 = move_target_tbl(gn_rec_idx).mov_line_id
+                AND  iaj.last_update_date IN
+                                    (SELECT MAX(adj.last_update_date)           -- 最新のデータ
+-- 2009/06/09 H.Itou Mod End
                                      FROM   ic_adjs_jnl   adj
                                            ,ic_jrnl_mst   jrn
                                      WHERE adj.journal_id  = jrn.journal_id
@@ -4020,8 +4046,13 @@ AS
               -- AND  ijm.attribute1 = move_target_tbl(gn_rec_idx).mov_line_id  -- 移動明細ID
               -- AND  ROWNUM         = 1                                        -- 最新のデータ
               -- ORDER BY itc.creation_date DESC                                -- 作成日 降順
-                AND  iaj.journal_id IN
-                                      (SELECT MAX(adj.journal_id)           -- 最新のデータ
+-- 2009/06/09 H.Itou Mod Start 本番障害#1527 MAX(ID)は最新でない場合があるので、MAX(最終更新日)に変更。
+--                AND  iaj.journal_id IN
+--                                      (SELECT MAX(adj.journal_id)           -- 最新のデータ
+                AND  ijm.attribute1 = move_target_tbl(gn_rec_idx).mov_line_id
+                AND  iaj.last_update_date IN
+                                      (SELECT MAX(adj.last_update_date)           -- 最新のデータ
+-- 2009/06/09 H.Itou Mod End
                                        FROM   ic_adjs_jnl   adj
                                              ,ic_jrnl_mst   jrn
                                        WHERE adj.journal_id  = jrn.journal_id
@@ -4078,8 +4109,13 @@ AS
                 AND  itc.location   = iaj.location
                 AND  itc.item_id    = iaj.item_id
                 AND  itc.lot_id     = iaj.lot_id
-                AND  iaj.journal_id IN
-                                      (SELECT MAX(adj.journal_id)           -- 最新のデータ
+-- 2009/06/09 H.Itou Mod Start 本番障害#1527 MAX(ID)は最新でない場合があるので、MAX(最終更新日)に変更。
+--                AND  iaj.journal_id IN
+--                                      (SELECT MAX(adj.journal_id)           -- 最新のデータ
+                AND  ijm.attribute1 = move_target_tbl(gn_rec_idx).mov_line_id
+                AND  iaj.last_update_date IN
+                                      (SELECT MAX(adj.last_update_date)           -- 最新のデータ
+-- 2009/06/09 H.Itou Mod End
                                        FROM   ic_adjs_jnl   adj
                                              ,ic_jrnl_mst   jrn
                                        WHERE adj.journal_id  = jrn.journal_id
@@ -4133,8 +4169,13 @@ AS
                 AND  itc.location   = iaj.location
                 AND  itc.item_id    = iaj.item_id
                 AND  itc.lot_id     = iaj.lot_id
-                AND  iaj.journal_id IN
-                                      (SELECT MAX(adj.journal_id)           -- 最新のデータ
+-- 2009/06/09 H.Itou Mod Start 本番障害#1527 MAX(ID)は最新でない場合があるので、MAX(最終更新日)に変更。
+--                AND  iaj.journal_id IN
+--                                      (SELECT MAX(adj.journal_id)           -- 最新のデータ
+                AND  ijm.attribute1 = move_target_tbl(gn_rec_idx).mov_line_id
+                AND  iaj.last_update_date IN
+                                      (SELECT MAX(adj.last_update_date)           -- 最新のデータ
+-- 2009/06/09 H.Itou Mod End
                                        FROM   ic_adjs_jnl   adj
                                              ,ic_jrnl_mst   jrn
                                        WHERE adj.journal_id  = jrn.journal_id
