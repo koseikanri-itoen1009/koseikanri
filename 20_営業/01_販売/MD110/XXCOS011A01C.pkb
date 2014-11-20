@@ -43,6 +43,9 @@ AS
  *                                      [COS_096]原単価（発注）の取得処理追加
  *                                      [COS_103]変換後顧客コード取得ロジックの修正
  *                                      [COS_118]EDI情報削除ロジックの修正
+ *  2009/05/19    1.2   T.Kitajima      [T1_0242]品目取得時、OPM品目マスタ.発売（製造）開始日条件追加
+ *                                      [T1_0243]品目取得時、子品目対象外条件追加
+ *                                      [T1_1055]価格表、単価取得ロジック変更
  *
  *****************************************************************************************/
 --
@@ -161,6 +164,9 @@ AS
   gv_msg_warning_msg        CONSTANT   VARCHAR2(20)  := 'APP-XXCCP1-90005'; --警告終了メッセージ
   gv_msg_error_msg          CONSTANT   VARCHAR2(20)  := 'APP-XXCCP1-90006'; --エラー終了全ロールバックメッセージ
   cv_msg_call_api_err       CONSTANT   VARCHAR2(20)  := 'APP-XXCOS1-00017'; --API呼出エラー
+--****************************** 2009/05/19 1.2 T.Kitajima ADD START ******************************--
+  cv_msg_price_err          CONSTANT   VARCHAR2(20)  := 'APP-XXCOS1-00123'; -- 単価取得エラーメッセージ
+--****************************** 2009/05/19 1.2 T.Kitajima ADD  END  ******************************--
   --* -------------------------------------------------------------------------------------------
   --トークン
   cv_msg_in_param           CONSTANT   VARCHAR2(20)  := 'APP-XXCOS1-12168';  -- 実行区分
@@ -204,7 +210,11 @@ AS
   cv_msg_none               CONSTANT   VARCHAR2(20)  := 'APP-XXCOS1-12167';  -- なし
   --トークン プロファイル
   cv_msg_in_file_name1      CONSTANT   VARCHAR2(20)  := 'APP-XXCOS1-12172';  -- インターフェースファイル名
+
   --* -------------------------------------------------------------------------------------------
+--****************************** 2009/05/19 1.2 T.Kitajima ADD START ******************************--
+  cv_format_yyyymmdd        CONSTANT   VARCHAR2(20)  := 'YYYY/MM/DD';        -- 日付フォーマット
+--****************************** 2009/05/19 1.2 T.Kitajima ADD  END  ******************************--
   -- ===============================
   -- ユーザー定義グローバル変数
   -- ===============================
@@ -3265,19 +3275,53 @@ AS
         --== 品目マスタ(JANコード)よりデータ抽出 ==--
         --* -------------------------------------------------------------
         BEGIN
-          SELECT mtl_item.inventory_item_id,        -- 品目ID
-                 mtl_item.segment1,                 -- 品目コード
-                 mtl_item.primary_unit_of_measure   -- 基準単位
-          INTO   gt_req_mtl_sys_items(in_line_cnt).inventory_item_id,
+--****************************** 2009/05/19 1.2 T.Kitajima MOD START ******************************--
+--          SELECT mtl_item.inventory_item_id,        -- 品目ID
+--                 mtl_item.segment1,                 -- 品目コード
+--                 mtl_item.primary_unit_of_measure   -- 基準単位
+--          INTO   gt_req_mtl_sys_items(in_line_cnt).inventory_item_id,
+--                 gt_req_mtl_sys_items(in_line_cnt).segment1,
+--                 gt_req_mtl_sys_items(in_line_cnt).unit_of_measure
+--          FROM   mtl_system_items_b    mtl_item,
+--                 ic_item_mst_b         mtl_item1
+--          WHERE  mtl_item.segment1          = mtl_item1.item_no
+--                                            -- 商品コード２
+--            AND  mtl_item1.attribute21      = gt_req_edi_lines_data(in_line_cnt).product_code2
+--                                            -- 在庫組織ID
+--            AND  mtl_item.organization_id   = gv_prf_orga_id;
+--
+          SELECT ims.inventory_item_id,
+                 ims.segment1,
+                 ims.primary_unit_of_measure
+            INTO gt_req_mtl_sys_items(in_line_cnt).inventory_item_id,
                  gt_req_mtl_sys_items(in_line_cnt).segment1,
                  gt_req_mtl_sys_items(in_line_cnt).unit_of_measure
-          FROM   mtl_system_items_b    mtl_item,
-                 ic_item_mst_b         mtl_item1
-          WHERE  mtl_item.segment1          = mtl_item1.item_no
-                                            -- 商品コード２
-            AND  mtl_item1.attribute21      = gt_req_edi_lines_data(in_line_cnt).product_code2
-                                            -- 在庫組織ID
-            AND  mtl_item.organization_id   = gv_prf_orga_id;
+            FROM (
+                  SELECT msi.inventory_item_id,        -- 品目ID
+                         msi.segment1,                 -- 品目コード
+                         msi.primary_unit_of_measure   -- 基準単位
+                    FROM mtl_system_items_b    msi,
+                         ic_item_mst_b         iim,
+                         xxcmn_item_mst_b      xim
+                   WHERE msi.segment1          = iim.item_no
+                                                    -- 商品コード２
+                    AND  iim.attribute21      = gt_req_edi_lines_data(in_line_cnt).product_code2
+                                                    -- 在庫組織ID
+                    AND  msi.organization_id  = gv_prf_orga_id
+                    AND xim.item_id           = iim.item_id         --OPM品目.品目ID        =OPM品目アドオン.品目ID
+                    AND xim.item_id           = xim.parent_item_id  --OPM品目アドオン.品目ID=OPM品目アドオン.親品目ID
+                    AND TO_DATE(iim.attribute13,cv_format_yyyymmdd) <= NVL( gt_edideli_work_data(in_line_cnt).shop_delivery_date, 
+                                                                      NVL( gt_edideli_work_data(in_line_cnt).center_delivery_date, 
+                                                                           NVL( gt_edideli_work_data(in_line_cnt).order_date, 
+                                                                                gt_edideli_work_data(in_line_cnt).data_creation_date_edi_data
+                                                                              )
+                                                                         )
+                                                                    )
+                  ORDER BY iim.attribute13 DESC
+                 ) ims
+          WHERE ROWNUM  = 1
+          ;
+--****************************** 2009/05/19 1.2 T.Kitajima MOD  END  ******************************--
         EXCEPTION
           WHEN NO_DATA_FOUND THEN  -- 検索データなし
             --* -------------------------------------------------------------
@@ -3288,19 +3332,52 @@ AS
               --* -------------------------------------------------------------
               --== 品目マスタ(ケースJANコード)よりデータ抽出 ==--
               --* -------------------------------------------------------------
-              SELECT mtl_item.inventory_item_id,        -- 品目ID
-                     mtl_item.segment1                  -- 品目コード
-              INTO   gt_req_mtl_sys_items(in_line_cnt).inventory_item_id,
+--****************************** 2009/05/19 1.2 T.Kitajima MOD START ******************************--
+--              SELECT mtl_item.inventory_item_id,        -- 品目ID
+--                     mtl_item.segment1                  -- 品目コード
+--              INTO   gt_req_mtl_sys_items(in_line_cnt).inventory_item_id,
+--                     gt_req_mtl_sys_items(in_line_cnt).segment1
+--              FROM   mtl_system_items_b    mtl_item,
+--                     ic_item_mst_b         mtl_item1,
+--                     xxcmm_system_items_b  xxcmm_sib
+--              WHERE  mtl_item.segment1      = mtl_item1.item_no
+--                AND  mtl_item.segment1      = xxcmm_sib.item_code
+--                                            -- 商品コード２
+--                AND  xxcmm_sib.case_jan_code = gt_req_edi_lines_data(in_line_cnt).product_code2
+--                                            -- 在庫組織ID
+--                AND  mtl_item.organization_id = gv_prf_orga_id;
+--
+              SELECT ims.inventory_item_id,
+                     ims.segment1
+                INTO gt_req_mtl_sys_items(in_line_cnt).inventory_item_id,
                      gt_req_mtl_sys_items(in_line_cnt).segment1
-              FROM   mtl_system_items_b    mtl_item,
-                     ic_item_mst_b         mtl_item1,
-                     xxcmm_system_items_b  xxcmm_sib
-              WHERE  mtl_item.segment1      = mtl_item1.item_no
-                AND  mtl_item.segment1      = xxcmm_sib.item_code
-                                            -- 商品コード２
-                AND  xxcmm_sib.case_jan_code = gt_req_edi_lines_data(in_line_cnt).product_code2
-                                            -- 在庫組織ID
-                AND  mtl_item.organization_id = gv_prf_orga_id;
+                FROM (
+                      SELECT msi.inventory_item_id inventory_item_id,   -- 品目ID
+                             msi.segment1          segment1             -- 品目コード
+                        FROM mtl_system_items_b    msi,
+                             ic_item_mst_b         iim,
+                             xxcmn_item_mst_b      xim,
+                             xxcmm_system_items_b  xsi
+                       WHERE msi.segment1        = iim.item_no
+                         AND msi.segment1        = xsi.item_code
+                                                     -- 商品コード２
+                         AND xsi.case_jan_code   = gt_req_edi_lines_data(in_line_cnt).product_code2
+                                                     -- 在庫組織ID
+                         AND msi.organization_id = gv_prf_orga_id
+                         AND xim.item_id         = iim.item_id         --OPM品目.品目ID        =OPM品目アドオン.品目ID
+                         AND xim.item_id         = xim.parent_item_id  --OPM品目アドオン.品目ID=OPM品目アドオン.親品目ID
+                         AND TO_DATE(iim.attribute13,cv_format_yyyymmdd) <= NVL( gt_edideli_work_data(in_line_cnt).shop_delivery_date, 
+                                                                           NVL( gt_edideli_work_data(in_line_cnt).center_delivery_date, 
+                                                                                NVL( gt_edideli_work_data(in_line_cnt).order_date, 
+                                                                                     gt_edideli_work_data(in_line_cnt).data_creation_date_edi_data
+                                                                                   )
+                                                                              )
+                                                                         )
+                       ORDER BY iim.attribute13 DESC
+                     ) ims
+              WHERE ROWNUM  = 1
+              ;
+--****************************** 2009/05/19 1.2 T.Kitajima MOD  END  ******************************--
               --* -------------------------------------------------------------
               --== A-1で抽出したケース単位ｺｰﾄﾞ
               --* -------------------------------------------------------------
@@ -3455,6 +3532,50 @@ AS
       IF  (( gt_req_edi_lines_data(in_line_cnt).order_unit_price  IS NULL )
       OR   ( gt_req_edi_lines_data(in_line_cnt).order_unit_price  = 0     ))
       THEN
+--****************************** 2009/05/19 1.2 T.Kitajima MOD START ******************************--
+--        --* -------------------------------------------------------------
+--        -- 顧客の価格表IDが設定されている場合
+--        --* -------------------------------------------------------------
+--        IF  ( lt_head_price_list_id IS NOT NULL ) THEN
+--          --* -------------------------------------------------------------
+--          -- 共通関数より取得する
+--          --* -------------------------------------------------------------
+--          lt_unit_price := xxcos_common2_pkg.get_unit_price(
+--                        gt_req_mtl_sys_items(in_line_cnt).inventory_item_id, -- 品目ID
+--                        lt_head_price_list_id,                               -- 価格表ID
+--                        gt_req_edi_lines_data(in_line_cnt).line_uom          -- 明細単位
+--                        );
+--        ELSE
+--          lt_unit_price := cn_m1;
+--        END IF;
+--        --* -------------------------------------------------------------
+--        -- 共通関数より取得より単価が取得できた場合
+--        --* -------------------------------------------------------------
+--        IF ( lt_unit_price >= cn_0 ) THEN
+--          gt_req_edi_lines_data(in_line_cnt).order_unit_price := lt_unit_price;
+--        ELSE
+--          --* -------------------------------------------------------------
+--          --価格表未設定エラーメッセージ  gv_msg_price_list_err
+--          --* -------------------------------------------------------------
+--          lv_process_flag :=  cv_status_warn;
+--          ov_retcode      :=  cv_status_warn;
+--          -- 納品返品ワークID(error)
+--          gt_err_edideli_work_data(in_line_cnt).delivery_return_work_id :=
+--                  gt_edideli_work_data(in_line_cnt).delivery_return_work_id;
+--          --ステータス(error)
+--          gt_err_edideli_work_data(in_line_cnt).err_status2 := cv_status_warn;
+--          -- ユーザー・エラー・メッセージ
+--          gt_err_edideli_work_data(in_line_cnt).errmsg2 :=
+--                  xxccp_common_pkg.get_msg(
+--                    iv_application   =>  cv_application,
+--                    iv_name          =>  gv_msg_price_list_err,
+--                    iv_token_name1   =>  cv_chain_shop_code,
+--                    iv_token_name2   =>  cv_shop_code,
+--                    iv_token_value1  =>  gt_req_edi_headers_data(in_line_cnt).edi_chain_code,
+--                    iv_token_value2  =>  gt_req_edi_headers_data(in_line_cnt).shop_code
+--                    );
+--        END IF;
+--
         --* -------------------------------------------------------------
         -- 顧客の価格表IDが設定されている場合
         --* -------------------------------------------------------------
@@ -3467,14 +3588,29 @@ AS
                         lt_head_price_list_id,                               -- 価格表ID
                         gt_req_edi_lines_data(in_line_cnt).line_uom          -- 明細単位
                         );
-        ELSE
-          lt_unit_price := cn_m1;
-        END IF;
-        --* -------------------------------------------------------------
-        -- 共通関数より取得より単価が取得できた場合
-        --* -------------------------------------------------------------
-        IF ( lt_unit_price >= cn_0 ) THEN
-          gt_req_edi_lines_data(in_line_cnt).order_unit_price := lt_unit_price;
+--
+          --* -------------------------------------------------------------
+          -- 共通関数より取得より単価が取得できた場合
+          --* -------------------------------------------------------------
+          IF ( lt_unit_price >= cn_0 ) THEN
+            gt_req_edi_lines_data(in_line_cnt).order_unit_price := lt_unit_price;
+          ELSE
+           --* -------------------------------------------------------------
+           --単価取得エラーメッセージ  cv_msg_price_err
+           --* -------------------------------------------------------------
+            lv_process_flag :=  cv_status_warn;
+            ov_retcode      :=  cv_status_warn;
+            -- 納品返品ワークID(error)
+            gt_err_edideli_work_data(in_line_cnt).delivery_return_work_id :=
+                    gt_edideli_work_data(in_line_cnt).delivery_return_work_id;
+            --ステータス(error)
+            gt_err_edideli_work_data(in_line_cnt).err_status2 := cv_status_warn;
+            -- ユーザー・エラー・メッセージ
+            gt_err_edideli_work_data(in_line_cnt).errmsg2 :=
+                   xxccp_common_pkg.get_msg( cv_application, 
+                                             cv_msg_price_err 
+                                           );
+          END IF;
         ELSE
           --* -------------------------------------------------------------
           --価格表未設定エラーメッセージ  gv_msg_price_list_err
@@ -3497,6 +3633,7 @@ AS
                     iv_token_value2  =>  gt_req_edi_headers_data(in_line_cnt).shop_code
                     );
         END IF;
+--****************************** 2009/05/19 1.2 T.Kitajima MOD  END  ******************************--
       END IF;
     END IF;
     -- * -------------------------------------------------------------

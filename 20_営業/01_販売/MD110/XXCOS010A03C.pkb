@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCOS010A03C (body)
  * Description      : 納品確定データ取込機能
  * MD.050           : 納品確定データ取込(MD050_COS_010_A03)
- * Version          : 1.4
+ * Version          : 1.5
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -50,6 +50,8 @@ AS
  *  2009/02/24    1.2   T.Nakamura       [COS_133]メッセージ出力、ログ出力への出力内容の追加・修正
  *  2009/02/26    1.3   M.Yamaki         [COS_140]正常件数、警告件数の対応
  *  2009/05/08    1.4   T.Kitajima       [T1_0780]価格表未設定リカバリー対応
+ *  2009/05/19    1.5   T.Kitajima       [T1_0242]品目取得時、OPM品目マスタ.発売（製造）開始日条件追加
+ *                                       [T1_0243]品目取得時、子品目対象外条件追加
  *
  *****************************************************************************************/
 --
@@ -228,6 +230,9 @@ AS
   cv_cust_status_active  CONSTANT VARCHAR2(10)  := 'A';                         -- 顧客マスタステータス：A（有効）
   cv_enabled             CONSTANT VARCHAR2(10)  := 'Y';                         -- 有効フラグ
   cv_default_language    CONSTANT VARCHAR2(10)  := USERENV('LANG');             -- 標準言語タイプ
+--****************************** 2009/05/19 1.5 T.Kitajima ADD START  ******************************--
+  cv_format_yyyymmdds    CONSTANT VARCHAR2(10)  := 'YYYY/MM/DD';                -- 日付フォーマット
+--****************************** 2009/05/19 1.5 T.Kitajima ADD  END  ******************************--
 --
   -- ===============================
   -- ユーザー定義グローバル型
@@ -3020,7 +3025,10 @@ AS
     -- JANコード情報取得
     -- -------------------------------
     FUNCTION get_jan_code_item(
-      iv_product_code2      IN  VARCHAR2,         -- IN：商品コード２
+--****************************** 2009/05/19 1.5 T.Kitajima MOD START ******************************--
+--      iv_product_code2      IN  VARCHAR2,         -- IN：商品コード２
+      it_edi_work           IN  g_edi_work_rtype, -- IN：EDI受注情報ワークレコード
+--****************************** 2009/05/19 1.5 T.Kitajima MOD  END  ******************************--
       on_item_id            OUT NOCOPY NUMBER,    -- OUT：品目ID
       ov_item_code          OUT NOCOPY VARCHAR2,  -- OUT：品目コード
       ov_cust_order_flag    OUT NOCOPY VARCHAR2,  -- OUT：顧客受注可能フラグ
@@ -3030,21 +3038,61 @@ AS
     IS
     BEGIN
 --
-      SELECT  disc_item.inventory_item_id,                       -- 品目ID
-              opm_item.item_no,                                  -- 品名コード
-              disc_item.customer_order_enabled_flag,             -- 顧客受注可能フラグ
-              opm_item.attribute26,                              -- 売上対象区分
-              disc_item.primary_unit_of_measure                  -- 単位
-      INTO    on_item_id,
-              ov_item_code,
-              ov_cust_order_flag,
-              ov_sales_class,
-              ov_unit
-      FROM    ic_item_mst_b             opm_item,                -- ＯＰＭ品目
-              mtl_system_items_b        disc_item                -- Disc品目
-      WHERE   opm_item.attribute21      = iv_product_code2       -- 商品コード２
-      AND     opm_item.item_no          = disc_item.segment1     -- 品目コード
-      AND     disc_item.organization_id = gn_organization_id;    -- 在庫組織ID
+--****************************** 2009/05/19 1.5 T.Kitajima MOD START ******************************--
+--      SELECT  disc_item.inventory_item_id,                       -- 品目ID
+--              opm_item.item_no,                                  -- 品名コード
+--              disc_item.customer_order_enabled_flag,             -- 顧客受注可能フラグ
+--              opm_item.attribute26,                              -- 売上対象区分
+--              disc_item.primary_unit_of_measure                  -- 単位
+--      INTO    on_item_id,
+--              ov_item_code,
+--              ov_cust_order_flag,
+--              ov_sales_class,
+--              ov_unit
+--      FROM    ic_item_mst_b             opm_item,                -- ＯＰＭ品目
+--              mtl_system_items_b        disc_item                -- Disc品目
+--      WHERE   opm_item.attribute21      = iv_product_code2       -- 商品コード２
+--      AND     opm_item.item_no          = disc_item.segment1     -- 品目コード
+--      AND     disc_item.organization_id = gn_organization_id;    -- 在庫組織ID
+      SELECT ims.inventory_item_id,
+             ims.item_no,
+             ims.customer_order_enabled_flag,
+             ims.attribute26,
+             ims.primary_unit_of_measure
+        INTO on_item_id,
+             ov_item_code,
+             ov_cust_order_flag,
+             ov_sales_class,
+             ov_unit
+        FROM (
+              SELECT msi.inventory_item_id           inventory_item_id,           --品目ID
+                     iim.item_no                     item_no,                     --品名コード
+                     msi.customer_order_enabled_flag customer_order_enabled_flag, --顧客受注可能フラグ
+                     iim.attribute26                 attribute26,                 --売上対象区分
+                     msi.primary_unit_of_measure     primary_unit_of_measure      --単位
+                FROM ic_item_mst_b                   iim,                         --OPM品目
+                     xxcmn_item_mst_b                xim,                         --OPM品目アドオン
+                     mtl_system_items_b              msi                          --Disc品目
+               WHERE iim.attribute21      = it_edi_work.product_code2             --商品コード２
+                 AND iim.item_no          = msi.segment1                          --品目コード
+                 AND msi.organization_id  = gn_organization_id                    --在庫組織ID
+                 AND xim.item_id          = iim.item_id                           --OPM品目.品目ID        =OPM品目アドオン.品目ID
+                 AND xim.item_id          = xim.parent_item_id                    --OPM品目アドオン.品目ID=OPM品目アドオン.親品目ID
+                 --OPM品目マスタ.発売（製造）開始日.(ATTRIBUTE13) <= 
+                 --NVL( 店舗納品日, NVL( センター納品日, NVL( 発注日, データ作成日（EDIデータ中）) ) )
+                 AND TO_DATE(iim.attribute13,cv_format_yyyymmdds) <=
+                                                NVL( it_edi_work.shop_delivery_date, 
+                                                     NVL( it_edi_work.center_delivery_date, 
+                                                          NVL( it_edi_work.order_date, 
+                                                               it_edi_work.data_creation_date_edi_data
+                                                             )
+                                                        )
+                                                   )
+              ORDER BY iim.attribute13 DESC
+             ) ims
+       WHERE ROWNUM  = 1
+       ;
+--****************************** 2009/05/19 1.5 T.Kitajima MOD  END  ******************************--
 --
       RETURN 1;
 --
@@ -3079,7 +3127,10 @@ AS
     -- ケースJANコード情報取得
     -- -------------------------------
     FUNCTION get_case_jan_code_item(
-      iv_product_code2      IN  VARCHAR2,         -- IN：商品コード２
+--****************************** 2009/05/19 1.5 T.Kitajima MOD START ******************************--
+--      iv_product_code2      IN  VARCHAR2,         -- IN：商品コード２
+      it_edi_work           IN  g_edi_work_rtype, -- IN：EDI受注情報ワークレコード
+--****************************** 2009/05/19 1.5 T.Kitajima MOD  END  ******************************--
       on_item_id            OUT NOCOPY NUMBER,    -- OUT：品目ID
       ov_item_code          OUT NOCOPY VARCHAR2,  -- OUT：品目コード
       ov_cust_order_flag    OUT NOCOPY VARCHAR2,  -- OUT：顧客受注可能フラグ
@@ -3089,23 +3140,64 @@ AS
     IS
     BEGIN
 --
-      SELECT  disc_item.inventory_item_id,                       -- 品目ID
-              opm_item.item_no,                                  -- 品名コード
-              disc_item.customer_order_enabled_flag,             -- 顧客受注可能フラグ
-              opm_item.attribute26,                              -- 売上対象区分
-              gv_case_uom_code                                   -- 単位
-      INTO    on_item_id,
-              ov_item_code,
-              ov_cust_order_flag,
-              ov_sales_class,
-              ov_unit
-      FROM    ic_item_mst_b             opm_item,                -- ＯＰＭ品目
-              mtl_system_items_b        disc_item,               -- Disc品目
-              xxcmm_system_items_b      item_addon               -- Disc品目アドオン
-      WHERE   item_addon.case_jan_code  = iv_product_code2       -- 商品コード２
-      AND     item_addon.item_code      = disc_item.segment1
-      AND     disc_item.segment1        = opm_item.item_no
-      AND     disc_item.organization_id = gn_organization_id;
+--****************************** 2009/05/19 1.5 T.Kitajima MOD START ******************************--
+--      SELECT  disc_item.inventory_item_id,                       -- 品目ID
+--              opm_item.item_no,                                  -- 品名コード
+--              disc_item.customer_order_enabled_flag,             -- 顧客受注可能フラグ
+--              opm_item.attribute26,                              -- 売上対象区分
+--              gv_case_uom_code                                   -- 単位
+--      INTO    on_item_id,
+--              ov_item_code,
+--              ov_cust_order_flag,
+--              ov_sales_class,
+--              ov_unit
+--      FROM    ic_item_mst_b             opm_item,                -- ＯＰＭ品目
+--              mtl_system_items_b        disc_item,               -- Disc品目
+--              xxcmm_system_items_b      item_addon               -- Disc品目アドオン
+--      WHERE   item_addon.case_jan_code  = iv_product_code2       -- 商品コード２
+--      AND     item_addon.item_code      = disc_item.segment1
+--      AND     disc_item.segment1        = opm_item.item_no
+--      AND     disc_item.organization_id = gn_organization_id;
+      SELECT ims.inventory_item_id,
+             ims.item_no,
+             ims.customer_order_enabled_flag,
+             ims.attribute26,
+             gv_case_uom_code                                                     --単位
+        INTO on_item_id,
+             ov_item_code,
+             ov_cust_order_flag,
+             ov_sales_class,
+             ov_unit
+        FROM (
+              SELECT msi.inventory_item_id           inventory_item_id,           --品目ID
+                     iim.item_no                     item_no,                     --品名コード
+                     msi.customer_order_enabled_flag customer_order_enabled_flag, --顧客受注可能フラグ
+                     iim.attribute26                 attribute26                  --売上対象区分
+                FROM ic_item_mst_b                   iim,                         --OPM品目
+                     xxcmn_item_mst_b                xim,                         --OPM品目アドオン
+                     mtl_system_items_b              msi,                         --Disc品目
+                     xxcmm_system_items_b            xsi                          --Disc品目アドオン
+               WHERE xsi.case_jan_code    = it_edi_work.product_code2             --商品コード２
+                 AND xsi.item_code        = msi.segment1
+                 AND msi.segment1         = iim.item_no
+                 AND msi.organization_id  = gn_organization_id
+                 AND xim.item_id          = iim.item_id                           --OPM品目.品目ID        =OPM品目アドオン.品目ID
+                 AND xim.item_id          = xim.parent_item_id                    --OPM品目アドオン.品目ID=OPM品目アドオン.親品目ID
+                 --OPM品目マスタ.発売（製造）開始日.(ATTRIBUTE13) <= 
+                 --NVL( 店舗納品日, NVL( センター納品日, NVL( 発注日, データ作成日（EDIデータ中）) ) )
+                 AND TO_DATE(iim.attribute13,cv_format_yyyymmdds) <=
+                                                NVL( it_edi_work.shop_delivery_date, 
+                                                     NVL( it_edi_work.center_delivery_date, 
+                                                          NVL( it_edi_work.order_date, 
+                                                               it_edi_work.data_creation_date_edi_data
+                                                             )
+                                                        )
+                                                   )
+              ORDER BY iim.attribute13 DESC
+            ) ims
+       WHERE ROWNUM  = 1
+       ;
+--****************************** 2009/05/19 1.5 T.Kitajima MOD  END  ******************************--
 --
       RETURN 1;
 --
@@ -3292,7 +3384,10 @@ AS
 --
         -- JANコード情報取得
         ln_rowcount := get_jan_code_item(
-                         it_edi_work.product_code2,
+--****************************** 2009/05/19 1.5 T.Kitajima MOD START ******************************--
+--                         it_edi_work.product_code2,
+                         it_edi_work,
+--****************************** 2009/05/19 1.5 T.Kitajima MOD  END  ******************************--
                          ot_item_info_rec.item_id,
                          ot_item_info_rec.item_no,
                          ot_item_info_rec.cust_order_flag,
@@ -3305,7 +3400,10 @@ AS
 --
           -- ケースJANコード情報取得
           ln_rowcount := get_case_jan_code_item(
-                           it_edi_work.product_code2,
+--****************************** 2009/05/19 1.5 T.Kitajima MOD START ******************************--
+--                           it_edi_work.product_code2,
+                           it_edi_work,
+--****************************** 2009/05/19 1.5 T.Kitajima MOD  END  ******************************--
                            ot_item_info_rec.item_id,
                            ot_item_info_rec.item_no,
                            ot_item_info_rec.cust_order_flag,

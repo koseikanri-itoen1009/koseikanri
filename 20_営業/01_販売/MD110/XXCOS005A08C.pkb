@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCOS005A08C (body)
  * Description      : CSVファイルの受注取込
  * MD.050           : CSVファイルの受注取込 MD050_COS_005_A08
- * Version          : 1.5
+ * Version          : 1.6
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -49,8 +49,10 @@ AS
  *  2009/02/19    1.3   T.kitajima       受注インポート呼び出し対応
  *                                       get_msgのパッケージ名修正
  *  2009/2/20     1.4   T.Miyashita      パラメータのログファイル出力対応
- *  2009/04/06    1.5   T.Kitajima       [T1_313]配送先番号のデータ型修正
- *                                       [T1_314]出荷元保管場所取得修正
+ *  2009/04/06    1.5   T.Kitajima       [T1_0313]配送先番号のデータ型修正
+ *                                       [T1_0314]出荷元保管場所取得修正
+ *  2009/05/19    1.6   T.Kitajima       [T1_0242]品目取得時、OPM品目マスタ.発売（製造）開始日条件追加
+ *                                       [T1_0243]品目取得時、子品目対象外条件追加
  *
  *****************************************************************************************/
 --
@@ -2314,25 +2316,61 @@ AS
       --  (ケースJANコードのチェック)
       ------------------------------------
       BEGIN
-        SELECT xim.item_code,                   --品目コード
-               mib.primary_unit_of_measure,     --基準単位
-               mib.customer_order_enabled_flag, --品目ステータス
-               iim.attribute26,                 --売上対象区分
-               xi5.prod_class_code              --商品区分コード
+--****************************** 2009/05/19 1.6 T.Kitajima MOD START ******************************--
+--        SELECT xim.item_code,                   --品目コード
+--               mib.primary_unit_of_measure,     --基準単位
+--               mib.customer_order_enabled_flag, --品目ステータス
+--               iim.attribute26,                 --売上対象区分
+--               xi5.prod_class_code              --商品区分コード
+--        INTO   ov_item_no,                      --品目コード
+--               on_primary_unit_of_measure,      --基準単位
+--               gt_inventory_item_status_code,   --品目ステータス
+--               gt_prod_class_code,              --売上対象区分
+--               ov_prod_class_code               --商品区分コード
+--        FROM   mtl_system_items_b         mib,  -- 品目マスタ
+--               xxcmm_system_items_b       xim,  -- Disc品目アドオンマスタ
+--               ic_item_mst_b              iim,  -- OPM品目マスタ
+--               xxcmn_item_categories5_v   xi5   -- 商品区分View
+--        WHERE  mib.segment1          = xim.item_code
+--        AND    mib.segment1          = iim.item_no
+--        AND    iim.item_no           = xi5.item_no
+--        AND    mib.organization_id   = iv_organization_id  --組織ID
+--        AND    xim.case_jan_code     = iv_case_jan_code;   --ケースJANコード
+--
+        SELECT ims.item_code,
+               ims.primary_unit_of_measure,
+               ims.customer_order_enabled_flag,
+               ims.attribute26,
+               ims.prod_class_code
         INTO   ov_item_no,                      --品目コード
                on_primary_unit_of_measure,      --基準単位
                gt_inventory_item_status_code,   --品目ステータス
                gt_prod_class_code,              --売上対象区分
                ov_prod_class_code               --商品区分コード
-        FROM   mtl_system_items_b         mib,  -- 品目マスタ
-               xxcmm_system_items_b       xim,  -- Disc品目アドオンマスタ
-               ic_item_mst_b              iim,  -- OPM品目マスタ
-               xxcmn_item_categories5_v   xi5   -- 商品区分View
-        WHERE  mib.segment1          = xim.item_code
-        AND    mib.segment1          = iim.item_no
-        AND    iim.item_no           = xi5.item_no
-        AND    mib.organization_id   = iv_organization_id  --組織ID
-        AND    xim.case_jan_code     = iv_case_jan_code;   --ケースJANコード
+        FROM   (
+                SELECT xsi.item_code                   item_code,                   --品目コード
+                       mib.primary_unit_of_measure     primary_unit_of_measure,     --基準単位
+                       mib.customer_order_enabled_flag customer_order_enabled_flag, --品目ステータス
+                       iim.attribute26                 attribute26,                 --売上対象区分
+                       xi5.prod_class_code             prod_class_code              --商品区分コード
+                FROM   mtl_system_items_b         mib,                              --Disc品目マスタ
+                       xxcmm_system_items_b       xsi,                              --Disc品目アドオンマスタ
+                       ic_item_mst_b              iim,                              --OPM品目マスタ
+                       xxcmn_item_mst_b           xim,                              --OPM品目アドオンマスタ
+                       xxcmn_item_categories5_v   xi5                               --商品区分View
+                WHERE  mib.segment1                                  = xsi.item_code
+                AND    mib.segment1                                  = iim.item_no
+                AND    iim.item_no                                   = xi5.item_no
+                AND    TO_DATE(iim.attribute13,cv_yyyymmdds_format) <= id_order_date
+                AND    iim.item_id                                   = xim.item_id
+                AND    xim.item_id                                   = xim.parent_item_id
+                AND    mib.organization_id                           = TO_NUMBER( iv_organization_id ) --組織ID
+                AND    xsi.case_jan_code                             = iv_case_jan_code                --ケースJANコード
+                ORDER BY iim.attribute13 DESC
+               ) ims
+        WHERE  ROWNUM  = 1
+        ;
+--****************************** 2009/05/19 1.6 T.Kitajima MOD START ******************************--
         -- 品目マスタ情報が取得できない場合
         IF ( ( ov_item_no IS NULL ) OR
              ( on_primary_unit_of_measure IS NULL ) OR
@@ -2397,23 +2435,57 @@ AS
       ------------------------------------
       IF ( ln_item_chk = 1 ) THEN
         BEGIN
-          SELECT iim.item_no,                         --品目コード
-                 mib.primary_unit_of_measure,         --基準単位
-                 mib.customer_order_enabled_flag,     --顧客受注可能フラグ
-                 iim.attribute26,                     --売上対象区分
-                 xi5.prod_class_code                  --商品区分コード
+--****************************** 2009/05/19 1.6 T.Kitajima MOD START ******************************--
+--          SELECT iim.item_no,                         --品目コード
+--                 mib.primary_unit_of_measure,         --基準単位
+--                 mib.customer_order_enabled_flag,     --顧客受注可能フラグ
+--                 iim.attribute26,                     --売上対象区分
+--                 xi5.prod_class_code                  --商品区分コード
+--          INTO   ov_item_no,                          --品目コード
+--                 on_primary_unit_of_measure,          --基準単位
+--                 gt_inventory_item_status_code,       --顧客受注可能フラグ
+--                 gt_prod_class_code,                  --売上対象区分
+--                 ov_prod_class_code                   --商品区分コード
+--          FROM   mtl_system_items_b         mib,      --品目マスタ
+--                 ic_item_mst_b              iim,      --OPM品目マスタ
+--                 xxcmn_item_categories5_v   xi5       --商品区分View
+--          WHERE mib.segment1          = iim.item_no
+--          AND   iim.item_id           = xi5.item_id
+--          AND   mib.organization_id   = iv_organization_id   --組織ID
+--          AND   iim.attribute21       = iv_case_jan_code;    --JANコード
+--
+          SELECT item_no,
+                 primary_unit_of_measure,
+                 customer_order_enabled_flag,
+                 attribute26,
+                 prod_class_code
           INTO   ov_item_no,                          --品目コード
                  on_primary_unit_of_measure,          --基準単位
                  gt_inventory_item_status_code,       --顧客受注可能フラグ
                  gt_prod_class_code,                  --売上対象区分
                  ov_prod_class_code                   --商品区分コード
-          FROM   mtl_system_items_b         mib,      --品目マスタ
-                 ic_item_mst_b              iim,      --OPM品目マスタ
-                 xxcmn_item_categories5_v   xi5       --商品区分View
-          WHERE mib.segment1          = iim.item_no
-          AND   iim.item_id           = xi5.item_id
-          AND   mib.organization_id   = iv_organization_id   --組織ID
-          AND   iim.attribute21       = iv_case_jan_code;    --JANコード
+          FROM   (
+                  SELECT iim.item_no                     item_no,                         --品目コード
+                         mib.primary_unit_of_measure     primary_unit_of_measure,         --基準単位
+                         mib.customer_order_enabled_flag customer_order_enabled_flag,     --顧客受注可能フラグ
+                         iim.attribute26                 attribute26,                     --売上対象区分
+                         xi5.prod_class_code             prod_class_code                  --商品区分コード
+                  FROM   mtl_system_items_b         mib,      --Disc品目マスタ
+                         ic_item_mst_b              iim,      --OPM品目マスタ
+                         xxcmn_item_mst_b           xim,      --OPM品目アドオンマスタ
+                         xxcmn_item_categories5_v   xi5       --商品区分View
+                  WHERE mib.segment1                                  = iim.item_no
+                  AND   iim.item_id                                   = xi5.item_id
+                  AND   mib.organization_id                           = TO_NUMBER( iv_organization_id )   --組織ID
+                  AND   iim.attribute21                               = iv_case_jan_code                  --JANコード
+                  AND   TO_DATE(iim.attribute13,cv_yyyymmdds_format) <= id_order_date
+                  AND   iim.item_id                                   = xim.item_id
+                  AND   xim.item_id                                   = xim.parent_item_id
+                  ORDER BY iim.attribute13 DESC
+                 ) ims
+          WHERE  ROWNUM  = 1
+          ;
+--****************************** 2009/05/19 1.6 T.Kitajima MOD START ******************************--
             -- 品目マスタ情報が取得できない場合のエラー編集
         IF ( ( ov_item_no IS NULL ) OR
              ( on_primary_unit_of_measure IS NULL ) OR

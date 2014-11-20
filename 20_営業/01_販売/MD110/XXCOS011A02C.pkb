@@ -7,7 +7,7 @@ AS
  * Description      : SQL-LOADERによってEDI在庫情報ワークテーブルに取込まれたEDI在庫情報データを
  *                     EDI在庫情報テーブルにそれぞれ登録します。
  * MD.050           : 在庫情報データ取込（MD050_COS_011_A02）
- * Version          : 1.0
+ * Version          : 1.2
  *
  * Program List
  * ----------------------------------- ----------------------------------------------------------
@@ -39,6 +39,8 @@ AS
  *                                      [COS_088]エラー、警告混在時の終了設定の修正
  *                                      [COS_089]エラー時の正常件数設定の修正
  *                                      [COS_090]顧客品目の取得ロジック修正
+ *  2009/05/19    1.2   T.Kitajima      [T1_0242]品目取得時、OPM品目マスタ.発売（製造）開始日条件追加
+ *                                      [T1_0243]品目取得時、子品目対象外条件追加
  *
  *****************************************************************************************/
 --
@@ -193,6 +195,9 @@ AS
   --トークン プロファイル
   cv_msg_in_file_name1      CONSTANT   VARCHAR2(20)  := 'APP-XXCOS1-12172';  -- インターフェースファイル名
   --* -------------------------------------------------------------------------------------------
+--****************************** 2009/05/19 1.2 T.Kitajima ADD START ******************************--
+  cv_format_yyyymmdd        CONSTANT   VARCHAR2(20)  := 'YYYY/MM/DD';        -- 日付フォーマット
+--****************************** 2009/05/19 1.2 T.Kitajima ADD  END  ******************************--
   -- ===============================
   -- ユーザー定義グローバル変数
   -- ===============================
@@ -2647,17 +2652,46 @@ AS
             --* -------------------------------------------------------------
             --== 品目マスタデータ抽出 ==--
             --* -------------------------------------------------------------
-            SELECT mtl_item.segment1,                 -- 品目コード
-                   mtl_item.primary_unit_of_measure   -- 単位
-            INTO   gt_req_edi_inv_data(in_line_cnt).item_code,
+--****************************** 2009/05/19 1.2 T.Kitajima MOD START ******************************--
+--            SELECT mtl_item.segment1,                 -- 品目コード
+--                   mtl_item.primary_unit_of_measure   -- 単位
+--            INTO   gt_req_edi_inv_data(in_line_cnt).item_code,
+--                   lt_unit_of_measure
+--            FROM   mtl_system_items_b    mtl_item,
+--                   ic_item_mst_b         mtl_item1
+--            WHERE  mtl_item.segment1        = mtl_item1.item_no
+--                                                 -- 商品コード（先方）
+--              AND  mtl_item1.attribute21    = gt_req_edi_inv_data(in_line_cnt).product_code_other_party
+--                                                 -- 在庫組織ID
+--              AND  mtl_item.organization_id = gv_prf_orga_id;
+--
+            SELECT ims.segment1,
+                   ims.primary_unit_of_measure
+              INTO gt_req_edi_inv_data(in_line_cnt).item_code,
                    lt_unit_of_measure
-            FROM   mtl_system_items_b    mtl_item,
-                   ic_item_mst_b         mtl_item1
-            WHERE  mtl_item.segment1        = mtl_item1.item_no
-                                                 -- 商品コード（先方）
-              AND  mtl_item1.attribute21    = gt_req_edi_inv_data(in_line_cnt).product_code_other_party
-                                                 -- 在庫組織ID
-              AND  mtl_item.organization_id = gv_prf_orga_id;
+              FROM (
+                    SELECT msi.segment1,                 -- 品目コード
+                           msi.primary_unit_of_measure   -- 基準単位
+                      FROM mtl_system_items_b    msi,
+                           ic_item_mst_b         iim,
+                           xxcmn_item_mst_b      xim
+                     WHERE msi.segment1          = iim.item_no
+                                                      -- 商品コード２
+                      AND  iim.attribute21      = gt_req_edi_inv_data(in_line_cnt).product_code_other_party
+                                                      -- 在庫組織ID
+                      AND  msi.organization_id  = gv_prf_orga_id
+                      AND xim.item_id           = iim.item_id         --OPM品目.品目ID        =OPM品目アドオン.品目ID
+                      AND xim.item_id           = xim.parent_item_id  --OPM品目アドオン.品目ID=OPM品目アドオン.親品目ID
+                      AND TO_DATE(iim.attribute13,cv_format_yyyymmdd) <= NVL( gt_ediinv_work_data(in_line_cnt).center_delivery_date, 
+                                                                        NVL( gt_ediinv_work_data(in_line_cnt).order_date, 
+                                                                             gt_ediinv_work_data(in_line_cnt).data_creation_date_edi_data
+                                                                           )
+                                                                      )
+                    ORDER BY iim.attribute13 DESC
+                   ) ims
+            WHERE ROWNUM  = 1
+            ;
+--****************************** 2009/05/19 1.2 T.Kitajima MOD  END  ******************************--
           --
           EXCEPTION
             WHEN  NO_DATA_FOUND THEN
@@ -2669,18 +2703,45 @@ AS
               --* -------------------------------------------------------------
               --== 品目マスタデータ抽出 ==-- 
               --* -------------------------------------------------------------
-              SELECT mtl_item.segment1                  -- 品目コード
-              INTO   gt_req_edi_inv_data(in_line_cnt).item_code
-              FROM   mtl_system_items_b    mtl_item,
-                     ic_item_mst_b         mtl_item1,
-                     xxcmm_system_items_b  xxcmm_sib
-              WHERE  mtl_item.segment1        = mtl_item1.item_no
-                AND  mtl_item.segment1        = xxcmm_sib.item_code
-                                            -- 商品コード（先方）
-                AND  xxcmm_sib.case_jan_code  = gt_req_edi_inv_data(in_line_cnt).product_code_other_party
-                                            -- 在庫組織ID
-                AND  mtl_item.organization_id = gv_prf_orga_id;
-                --* -------------------------------------------------------------
+--****************************** 2009/05/19 1.2 T.Kitajima MOD START ******************************--
+--              SELECT mtl_item.segment1                  -- 品目コード
+--              INTO   gt_req_edi_inv_data(in_line_cnt).item_code
+--              FROM   mtl_system_items_b    mtl_item,
+--                     ic_item_mst_b         mtl_item1,
+--                     xxcmm_system_items_b  xxcmm_sib
+--              WHERE  mtl_item.segment1        = mtl_item1.item_no
+--                AND  mtl_item.segment1        = xxcmm_sib.item_code
+--                                            -- 商品コード（先方）
+--                AND  xxcmm_sib.case_jan_code  = gt_req_edi_inv_data(in_line_cnt).product_code_other_party
+--                                            -- 在庫組織ID
+--                AND  mtl_item.organization_id = gv_prf_orga_id;
+              SELECT ims.segment1
+                INTO gt_req_edi_inv_data(in_line_cnt).item_code
+                FROM (
+                      SELECT msi.segment1          segment1             -- 品目コード
+                        FROM mtl_system_items_b    msi,
+                             ic_item_mst_b         iim,
+                             xxcmn_item_mst_b      xim,
+                             xxcmm_system_items_b  xsi
+                       WHERE msi.segment1        = iim.item_no
+                         AND msi.segment1        = xsi.item_code
+                                                     -- 商品コード２
+                         AND xsi.case_jan_code   = gt_req_edi_inv_data(in_line_cnt).product_code_other_party
+                                                     -- 在庫組織ID
+                         AND msi.organization_id = gv_prf_orga_id
+                         AND xim.item_id         = iim.item_id         --OPM品目.品目ID        =OPM品目アドオン.品目ID
+                         AND xim.item_id         = xim.parent_item_id  --OPM品目アドオン.品目ID=OPM品目アドオン.親品目ID
+                         AND TO_DATE(iim.attribute13,cv_format_yyyymmdd) <= NVL( gt_ediinv_work_data(in_line_cnt).center_delivery_date, 
+                                                                           NVL( gt_ediinv_work_data(in_line_cnt).order_date, 
+                                                                                gt_ediinv_work_data(in_line_cnt).data_creation_date_edi_data
+                                                                              )
+                                                                         )
+                       ORDER BY iim.attribute13 DESC
+                     ) ims
+              WHERE ROWNUM  = 1
+              ;
+--****************************** 2009/05/19 1.2 T.Kitajima MOD  END  ******************************--
+               --* -------------------------------------------------------------
                 --== A-1で抽出したケース単位ｺｰﾄﾞ
                 --* -------------------------------------------------------------
                 lt_unit_of_measure := gv_prf_case_code;
