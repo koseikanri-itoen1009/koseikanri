@@ -7,7 +7,7 @@ AS
  * Description      : 生産物流(引当、配車)
  * MD.050           : 出荷・移動インタフェース         T_MD050_BPO_930
  * MD.070           : ＨＨＴ入出庫実績インタフェース   T_MD070_BPO_93B
- * Version          : 1.10
+ * Version          : 1.11
  *
  * -------------------------------------------------------------------------------------
  * 注意事項！    HHT(xxwsh930002c)をどのように作ったか
@@ -82,6 +82,7 @@ AS
  *  2008/07/02    1.8  Oracle 宮田 隆史  ST不具合#365対応
  *  2008/07/03    1.9  Oracle 宮田 隆史  ST不具合#392対応
  *  2008/07/04    1.10 Oracle 宮田 隆史  TE080指摘事項#26対応
+ *  2008/07/07    1.11 Oracle 宮田 隆史  TE080指摘事項#1対応
  *****************************************************************************************/
 --
 --#######################  固定グローバル定数宣言部 START   #######################
@@ -277,40 +278,61 @@ AS
   -- メッセージPARAM1：処理件数名
   gv_c_file_id_name             CONSTANT VARCHAR2(50)   := '受注ヘッダ更新作成件数(実績計上)';
 --
-  -- 受注ヘッダ
-  gv_ord_h_upd_n_cnt_nm   CONSTANT VARCHAR2(50) := '受注ヘッダ更新作成(実績計上)';
-  gv_ord_h_ins_cnt_nm     CONSTANT VARCHAR2(50) := '受注ヘッダ登録作成(外部倉庫発番)';
-  gv_ord_h_upd_y_cnt_nm   CONSTANT VARCHAR2(50) := '受注ヘッダ更新作成(実績訂正)';
-  -- 受注明細
-  gv_ord_l_upd_n_cnt_nm   CONSTANT VARCHAR2(50) := '受注明細更新作成(実績計上品目あり)';
-  gv_ord_l_ins_n_cnt_nm   CONSTANT VARCHAR2(50) := '受注明細登録作成(実績計上品目なし)';
-  gv_ord_l_ins_cnt_nm     CONSTANT VARCHAR2(50) := '受注明細登録作成(外部倉庫発番)';
-  gv_ord_l_ins_y_cnt_nm   CONSTANT VARCHAR2(50) := '受注明細登録作成(実績修正)';
-  -- ロット詳細
-  gv_ord_mov_ins_n_cnt_nm CONSTANT VARCHAR2(50) := 'ロット詳細新規作成(受注_実績計上)';
-  gv_ord_mov_ins_cnt_nm   CONSTANT VARCHAR2(50) := 'ロット詳細新規作成(受注_外部倉庫発番)';
-  gv_ord_mov_ins_y_cnt_nm CONSTANT VARCHAR2(50) := 'ロット詳細新規作成(受注_実績修正)';
-  -- 移動依頼/指示ヘッダ
-  gv_mov_h_ins_cnt_nm     CONSTANT VARCHAR2(50) := '移動依頼/指示ヘッダ登録作成(外部倉庫発番)';
-  gv_mov_h_upd_n_cnt_nm   CONSTANT VARCHAR2(50) := '移動依頼/指示ヘッダ更新作成(実績計上)';
-  gv_mov_h_upd_y_cnt_nm   CONSTANT VARCHAR2(50) := '移動依頼/指示ヘッダ更新作成(実績訂正)';
-  -- 移動依頼/指示明細
-  gv_mov_l_upd_n_cnt_nm   CONSTANT VARCHAR2(50) := '移動依頼/指示明細更新作成(実績計上品目あり)';
-  gv_mov_l_ins_n_cnt_nm   CONSTANT VARCHAR2(50) := '移動依頼/指示明細登録作成(実績計上品目なし)';
-  gv_mov_l_ins_cnt_nm     CONSTANT VARCHAR2(50) := '移動依頼/指示明細登録作成(外部倉庫発番)';
-  gv_mov_l_upd_y_cnt_nm   CONSTANT VARCHAR2(50) := '移動依頼/指示明細登録作成(訂正元品目あり)';
-  gv_mov_l_ins_y_cnt_nm   CONSTANT VARCHAR2(50) := '移動依頼/指示明細登録作成(訂正元品目なし)';
-  -- ロット詳細
-  gv_mov_mov_ins_n_cnt_nm CONSTANT VARCHAR2(50) := 'ロット詳細新規作成(移動依頼_実績計上)';
-  gv_mov_mov_ins_cnt_nm   CONSTANT VARCHAR2(50) := 'ロット詳細新規作成(移動依頼_外部倉庫発番)';
-  gv_mov_mov_upd_y_cnt_nm CONSTANT VARCHAR2(50) := 'ロット詳細新規作成(移動依頼_訂正ロットあり)';
-  gv_mov_mov_ins_y_cnt_nm CONSTANT VARCHAR2(50) := 'ロット詳細新規作成(移動依頼_訂正ロットなし)';
-  -- IFヘッダ・明細
-  gv_header_cnt_nm        CONSTANT VARCHAR2(50) := '出荷依頼インタフェースヘッダ(アドオン)削除';
-  gv_lines_cnt_nm         CONSTANT VARCHAR2(50) := '出荷依頼インタフェース明細(アドオン)削除';
+--********** 2008/07/07 ********** ADD    START ***
+  -- 新規用の件数名称
+  gv_ord_new_shikyu_cnt_nm       CONSTANT VARCHAR2(50) := '新規受注（支給）作成';
+  gv_ord_new_syukka_cnt_nm       CONSTANT VARCHAR2(50) := '新規受注（出荷）作成';
+  gv_mov_new_cnt_nm              CONSTANT VARCHAR2(50) := '新規移動　　　　作成';
+  -- 訂正用の件数名称
+  gv_ord_correct_shikyu_cnt_nm   CONSTANT VARCHAR2(50) := '訂正受注（支給）作成';
+  gv_ord_correct_syukka_cnt_nm   CONSTANT VARCHAR2(50) := '訂正受注（出荷）作成';
+  gv_mov_correct_cnt_nm          CONSTANT VARCHAR2(50) := '訂正移動　　　　作成';
+--********** 2008/07/07 ********** ADD    START ***
+--
+--********** 2008/07/07 ********** DELETE START ***
+--*  -- 受注ヘッダ
+--*  gv_ord_h_upd_n_cnt_nm   CONSTANT VARCHAR2(50) := '受注ヘッダ更新作成(実績計上)';
+--*  gv_ord_h_ins_cnt_nm     CONSTANT VARCHAR2(50) := '受注ヘッダ登録作成(外部倉庫発番)';
+--*  gv_ord_h_upd_y_cnt_nm   CONSTANT VARCHAR2(50) := '受注ヘッダ更新作成(実績訂正)';
+--*  -- 受注明細
+--*  gv_ord_l_upd_n_cnt_nm   CONSTANT VARCHAR2(50) := '受注明細更新作成(実績計上品目あり)';
+--*  gv_ord_l_ins_n_cnt_nm   CONSTANT VARCHAR2(50) := '受注明細登録作成(実績計上品目なし)';
+--*  gv_ord_l_ins_cnt_nm     CONSTANT VARCHAR2(50) := '受注明細登録作成(外部倉庫発番)';
+--*  gv_ord_l_ins_y_cnt_nm   CONSTANT VARCHAR2(50) := '受注明細登録作成(実績修正)';
+--*  -- ロット詳細
+--*  gv_ord_mov_ins_n_cnt_nm CONSTANT VARCHAR2(50) := 'ロット詳細新規作成(受注_実績計上)';
+--*  gv_ord_mov_ins_cnt_nm   CONSTANT VARCHAR2(50) := 'ロット詳細新規作成(受注_外部倉庫発番)';
+--*  gv_ord_mov_ins_y_cnt_nm CONSTANT VARCHAR2(50) := 'ロット詳細新規作成(受注_実績修正)';
+--*  -- 移動依頼/指示ヘッダ
+--*  gv_mov_h_ins_cnt_nm     CONSTANT VARCHAR2(50) := '移動依頼/指示ヘッダ登録作成(外部倉庫発番)';
+--*  gv_mov_h_upd_n_cnt_nm   CONSTANT VARCHAR2(50) := '移動依頼/指示ヘッダ更新作成(実績計上)';
+--*  gv_mov_h_upd_y_cnt_nm   CONSTANT VARCHAR2(50) := '移動依頼/指示ヘッダ更新作成(実績訂正)';
+--*  -- 移動依頼/指示明細
+--*  gv_mov_l_upd_n_cnt_nm   CONSTANT VARCHAR2(50) := '移動依頼/指示明細更新作成(実績計上品目あり)';
+--*  gv_mov_l_ins_n_cnt_nm   CONSTANT VARCHAR2(50) := '移動依頼/指示明細登録作成(実績計上品目なし)';
+--*  gv_mov_l_ins_cnt_nm     CONSTANT VARCHAR2(50) := '移動依頼/指示明細登録作成(外部倉庫発番)';
+--*  gv_mov_l_upd_y_cnt_nm   CONSTANT VARCHAR2(50) := '移動依頼/指示明細登録作成(訂正元品目あり)';
+--*  gv_mov_l_ins_y_cnt_nm   CONSTANT VARCHAR2(50) := '移動依頼/指示明細登録作成(訂正元品目なし)';
+--*  -- ロット詳細
+--*  gv_mov_mov_ins_n_cnt_nm CONSTANT VARCHAR2(50) := 'ロット詳細新規作成(移動依頼_実績計上)';
+--*  gv_mov_mov_ins_cnt_nm   CONSTANT VARCHAR2(50) := 'ロット詳細新規作成(移動依頼_外部倉庫発番)';
+--*  gv_mov_mov_upd_y_cnt_nm CONSTANT VARCHAR2(50) := 'ロット詳細新規作成(移動依頼_訂正ロットあり)';
+--*  gv_mov_mov_ins_y_cnt_nm CONSTANT VARCHAR2(50) := 'ロット詳細新規作成(移動依頼_訂正ロットなし)';
+--*  -- IFヘッダ・明細
+--*  gv_header_cnt_nm        CONSTANT VARCHAR2(50) := '出荷依頼インタフェースヘッダ(アドオン)削除';
+--********** 2008/07/07 ********** DELETE END   ***
+--
+--********** 2008/07/07 ********** MODIFY START ***
+--*  gv_lines_cnt_nm         CONSTANT VARCHAR2(50) := '出荷依頼インタフェース明細(アドオン)削除';
+  gv_lines_cnt_nm         CONSTANT VARCHAR2(50) := '出荷依頼インタフェースパージ削除';
+--********** 2008/07/07 ********** MODIFY END   ***
   --
-  -- エラーデータ削除件数
-  gv_err_data_del_cnt_nm         CONSTANT VARCHAR2(50) := 'エラーデータ削除';
+--********** 2008/07/07 ********** MODIFY START ***
+--*  -- エラーデータ削除件数
+--*  gv_err_data_del_cnt_nm         CONSTANT VARCHAR2(50) := 'エラーデータ削除';
+  -- 出荷依頼インタフェースエラー削除
+  gv_err_data_del_cnt_nm         CONSTANT VARCHAR2(50) := '出荷依頼インタフェースエラー削除';
+--********** 2008/07/07 ********** MODIFY END   ***
 --
   gv_err_code_token    CONSTANT VARCHAR2(8)  := 'ERR_CODE'; -- システムエラーコードトークン
   gv_err_msg_token     CONSTANT VARCHAR2(7)  := 'ERR_MSG';  -- システムエラーメッセージトークン
@@ -903,42 +925,62 @@ AS
   -- ===============================
   gd_sysdate            DATE;                 -- システム現在日付
   gn_target_cnt         NUMBER;               -- 入力件数
-  -- 受注ヘッダ
-  gn_ord_h_upd_n_cnt    NUMBER;               -- 受注ヘッダ更新作成件数(実績計上)
-  gn_ord_h_ins_cnt      NUMBER;               -- 受注ヘッダ登録作成件数(外部倉庫発番)
-  gn_ord_h_upd_y_cnt    NUMBER;               -- 受注ヘッダ更新作成件数(実績訂正)
-  -- 受注明細
-  gn_ord_l_upd_n_cnt    NUMBER;               -- 受注明細更新作成件数(実績計上品目あり)
-  gn_ord_l_ins_n_cnt    NUMBER;               -- 受注明細登録作成件数(実績計上品目なし)
-  gn_ord_l_ins_cnt      NUMBER;               -- 受注明細登録作成件数(外部倉庫発番)
-  gn_ord_l_ins_y_cnt    NUMBER;               -- 受注明細登録作成件数(実績修正)
-  -- ロット詳細
-  gn_ord_mov_ins_n_cnt  NUMBER;               -- ロット詳細新規作成件数(受注_実績計上)
-  gn_ord_mov_ins_cnt    NUMBER;               -- ロット詳細新規作成件数(受注_外部倉庫発番)
-  gn_ord_mov_ins_y_cnt  NUMBER;               -- ロット詳細新規作成件数(受注_実績修正)
-  -- 移動依頼/指示ヘッダ
-  gn_mov_h_ins_cnt      NUMBER;               -- 移動依頼/指示ヘッダ登録作成件数(外部倉庫発番)
-  gn_mov_h_upd_n_cnt    NUMBER;               -- 移動依頼/指示ヘッダ更新作成件数(実績計上)
-  gn_mov_h_upd_y_cnt    NUMBER;               -- 移動依頼/指示ヘッダ更新作成件数(実績訂正)
-  -- 移動依頼/指示明細
-  gn_mov_l_upd_n_cnt    NUMBER;               -- 移動依頼/指示明細更新作成件数(実績計上品目あり)
-  gn_mov_l_ins_n_cnt    NUMBER;               -- 移動依頼/指示明細登録作成件数(実績計上品目なし)
-  gn_mov_l_ins_cnt      NUMBER;               -- 移動依頼/指示明細登録作成件数(外部倉庫発番)
-  gn_mov_l_upd_y_cnt    NUMBER;               -- 移動依頼/指示明細登録作成件数(訂正元品目あり)
-  gn_mov_l_ins_y_cnt    NUMBER;               -- 移動依頼/指示明細登録作成件数(訂正元品目なし)
-  -- ロット詳細
-  gn_mov_mov_ins_n_cnt  NUMBER;               -- ロット詳細新規作成件数(移動依頼_実績計上)
-  gn_mov_mov_ins_cnt    NUMBER;               -- ロット詳細新規作成件数(移動依頼_外部倉庫発番)
-  gn_mov_mov_upd_y_cnt  NUMBER;               -- ロット詳細新規作成件数(移動依頼_訂正ロットあり)
-  gn_mov_mov_ins_y_cnt  NUMBER;               -- ロット詳細新規作成件数(移動依頼_訂正ロットなし)
-  --
-  gn_del_headers_cnt    NUMBER;               -- IFヘッダ取消情報件数
+--
+--********** 2008/07/07 ********** ADD    START ***
+  -- 新規用のカウント
+  gn_ord_new_shikyu_cnt     NUMBER;               -- 新規受注（支給）作成件数
+  gn_ord_new_syukka_cnt     NUMBER;               -- 新規受注（出荷）作成件数
+  gn_mov_new_cnt            NUMBER;               -- 新規移動作成件数
+  -- 訂正用のカウント
+  gn_ord_correct_shikyu_cnt NUMBER;               -- 訂正受注（支給）作成件数
+  gn_ord_correct_syukka_cnt NUMBER;               -- 訂正受注（出荷）作成件数
+  gn_mov_correct_cnt        NUMBER;               -- 訂正移動作成件数
+--********** 2008/07/07 ********** ADD    END   ***
+--
+--********** 2008/07/07 ********** DELETE START ***
+--*  -- 受注ヘッダ
+--*  gn_ord_h_upd_n_cnt    NUMBER;               -- 受注ヘッダ更新作成件数(実績計上)
+--*  gn_ord_h_ins_cnt      NUMBER;               -- 受注ヘッダ登録作成件数(外部倉庫発番)
+--*  gn_ord_h_upd_y_cnt    NUMBER;               -- 受注ヘッダ更新作成件数(実績訂正)
+--*  -- 受注明細
+--*  gn_ord_l_upd_n_cnt    NUMBER;               -- 受注明細更新作成件数(実績計上品目あり)
+--*  gn_ord_l_ins_n_cnt    NUMBER;               -- 受注明細登録作成件数(実績計上品目なし)
+--*  gn_ord_l_ins_cnt      NUMBER;               -- 受注明細登録作成件数(外部倉庫発番)
+--*  gn_ord_l_ins_y_cnt    NUMBER;               -- 受注明細登録作成件数(実績修正)
+--*  -- ロット詳細
+--*  gn_ord_mov_ins_n_cnt  NUMBER;               -- ロット詳細新規作成件数(受注_実績計上)
+--*  gn_ord_mov_ins_cnt    NUMBER;               -- ロット詳細新規作成件数(受注_外部倉庫発番)
+--*  gn_ord_mov_ins_y_cnt  NUMBER;               -- ロット詳細新規作成件数(受注_実績修正)
+--*  -- 移動依頼/指示ヘッダ
+--*  gn_mov_h_ins_cnt      NUMBER;               -- 移動依頼/指示ヘッダ登録作成件数(外部倉庫発番)
+--*  gn_mov_h_upd_n_cnt    NUMBER;               -- 移動依頼/指示ヘッダ更新作成件数(実績計上)
+--*  gn_mov_h_upd_y_cnt    NUMBER;               -- 移動依頼/指示ヘッダ更新作成件数(実績訂正)
+--*--
+--*  -- 移動依頼/指示明細
+--*  gn_mov_l_upd_n_cnt    NUMBER;               -- 移動依頼/指示明細更新作成件数(実績計上品目あり)
+--*  gn_mov_l_ins_n_cnt    NUMBER;               -- 移動依頼/指示明細登録作成件数(実績計上品目なし)
+--*  gn_mov_l_ins_cnt      NUMBER;               -- 移動依頼/指示明細登録作成件数(外部倉庫発番)
+--*  gn_mov_l_upd_y_cnt    NUMBER;               -- 移動依頼/指示明細登録作成件数(訂正元品目あり)
+--*  gn_mov_l_ins_y_cnt    NUMBER;               -- 移動依頼/指示明細登録作成件数(訂正元品目なし)
+--*  -- ロット詳細
+--*  gn_mov_mov_ins_n_cnt  NUMBER;               -- ロット詳細新規作成件数(移動依頼_実績計上)
+--*  gn_mov_mov_ins_cnt    NUMBER;               -- ロット詳細新規作成件数(移動依頼_外部倉庫発番)
+--*  gn_mov_mov_upd_y_cnt  NUMBER;               -- ロット詳細新規作成件数(移動依頼_訂正ロットあり)
+--*  gn_mov_mov_ins_y_cnt  NUMBER;               -- ロット詳細新規作成件数(移動依頼_訂正ロットなし)
+--*  --
+--*
+--*  gn_del_headers_cnt    NUMBER;               -- IFヘッダ取消情報件数
+--********** 2008/07/07 ********** DELETE END   ***
+--
   gn_del_lines_cnt      NUMBER;               -- IF明細取消情報件数
   --
   gn_del_errdata_cnt    NUMBER;               -- エラーデータ削除件数
   --
   gn_warn_cnt           NUMBER;               -- 警告件数
-  gn_error_cnt          NUMBER;               -- 異常件数
+--
+--********** 2008/07/07 ********** DELETE START ***
+--*  gn_error_cnt          NUMBER;               -- 異常件数
+--********** 2008/07/07 ********** DELETE END   ***
 --
   gr_interface_info_rec    interface_tbl;             -- インターフェーステーブルのデータ
   gr_movlot_detail_rec     movlot_detail_rec;         -- 移動ロット詳細のデータ
@@ -988,6 +1030,91 @@ AS
   gt_conc_request_id xxinv_mov_lot_details.request_id%TYPE;             -- 要求ID
   gt_prog_appl_id    xxinv_mov_lot_details.program_application_id%TYPE; -- アプリケーションID
   gt_conc_program_id xxinv_mov_lot_details.program_id%TYPE;             -- コンカレント・プログラムID
+--
+  -- デバッグ用
+  gb_debug    BOOLEAN DEFAULT FALSE;    --デバッグログ出力用スイッチ
+--
+  /**********************************************************************************
+   * Procedure Name   : set_debug_switch
+   * Description      : デバッグ用ログ出力用切り替えスイッチ取得処理
+   ***********************************************************************************/
+  PROCEDURE set_debug_switch 
+  IS
+    -- ===============================
+    -- 固定ローカル定数
+    -- ===============================
+    cv_prg_name   CONSTANT VARCHAR2(100) := 'set_debug_switch'; -- プログラム名
+--
+--#####################  固定ローカル変数宣言部 START   ########################
+--
+--###########################  固定部 END   ####################################
+--
+    -- ===============================
+    -- ユーザー宣言部
+    -- ===============================
+    -- *** ローカル定数 ***
+    cv_debug_switch_prof_name CONSTANT VARCHAR2(30) := 'XXWSH_93A_DEBUG_SWITCH';  -- ﾃﾞﾊﾞｯｸﾞﾌﾗｸﾞ
+    cv_debug_switch_ON        CONSTANT VARCHAR2(1)  := '1';   --デバッグ出力する
+    cv_debug_switch_OFF       CONSTANT VARCHAR2(1)  := '0';   --デバッグ出力しない
+    -- *** ローカル変数 ***
+    -- *** ローカル・カーソル ***
+    -- *** ローカル・レコード ***
+--
+  BEGIN
+--
+    --デバッグ切り替えプロファイル取得
+    IF (FND_PROFILE.VALUE(cv_debug_switch_prof_name) = cv_debug_switch_ON ) THEN
+      gb_debug := TRUE;
+    END IF;
+--
+  EXCEPTION
+    -- *** OTHERS例外ハンドラ ***
+    WHEN OTHERS THEN
+      gb_debug := FALSE;
+--
+--#####################################  固定部 END   ##########################################
+--
+  END set_debug_switch;
+--
+  /**********************************************************************************
+   * Procedure Name   : debug_log
+   * Description      : デバッグ用ログ出力処理
+   ***********************************************************************************/
+  PROCEDURE debug_log(in_which in number,       -- 出力先：FND_FILE.LOG or FND_FILE.OUTPUT
+                      iv_msg   in varchar2 )    -- メッセージ
+  IS
+    -- ===============================
+    -- 固定ローカル定数
+    -- ===============================
+    cv_prg_name   CONSTANT VARCHAR2(100) := 'debug_log'; -- プログラム名
+--
+--#####################  固定ローカル変数宣言部 START   ########################
+--
+--###########################  固定部 END   ####################################
+--
+    -- ===============================
+    -- ユーザー宣言部
+    -- ===============================
+    -- *** ローカル定数 ***
+    -- *** ローカル変数 ***
+    -- *** ローカル・カーソル ***
+    -- *** ローカル・レコード ***
+--
+  BEGIN
+--
+    --デバッグONなら出力
+    IF (gb_debug) THEN
+      FND_FILE.PUT_LINE(in_which, iv_msg);
+    END IF;
+--
+  EXCEPTION
+    -- *** OTHERS例外ハンドラ ***
+    WHEN OTHERS THEN
+      NULL ;
+--
+--#####################################  固定部 END   ##########################################
+--
+  END debug_log;
 --
   /**********************************************************************************
    * Procedure Name   : set_deliveryno_unit_errflg
@@ -2809,7 +2936,10 @@ AS
 --
              In_not_cnt :=In_not_cnt + 1;
              gr_line_not_header(In_not_cnt) := gr_header_id(i);
-             gn_del_headers_cnt := gn_del_headers_cnt + 1;
+--
+--********** 2008/07/07 ********** DELETE START ***
+--*          gn_del_headers_cnt := gn_del_headers_cnt + 1;
+--********** 2008/07/07 ********** DELETE END   ***
 --
           END IF;
 --
@@ -2828,7 +2958,10 @@ AS
 --
            In_not_cnt :=In_not_cnt + 1;
            gr_line_not_header(In_not_cnt) := gr_header_id(i);
-           gn_del_headers_cnt := gn_del_headers_cnt + 1;
+--
+--********** 2008/07/07 ********** DELETE START ***
+--*        gn_del_headers_cnt := gn_del_headers_cnt + 1;
+--********** 2008/07/07 ********** DELETE END   ***
 --
         END IF;
 --
@@ -3035,7 +3168,10 @@ AS
 --
             In_not_cnt :=In_not_cnt + 1;
             gr_line_not_header(In_not_cnt) := gr_header_id(i);
-            gn_del_headers_cnt := gn_del_headers_cnt + 1;
+--
+--********** 2008/07/07 ********** DELETE START ***
+--*         gn_del_headers_cnt := gn_del_headers_cnt + 1;
+--********** 2008/07/07 ********** DELETE END   ***
 --
         END IF;
 --
@@ -3043,7 +3179,10 @@ AS
           -- 最終データの処理
           In_not_cnt :=In_not_cnt + 1;
           gr_line_not_header(In_not_cnt) := gr_header_id(i);
-          gn_del_headers_cnt := gn_del_headers_cnt + 1;
+--
+--********** 2008/07/07 ********** DELETE START ***
+--*       gn_del_headers_cnt := gn_del_headers_cnt + 1;
+--********** 2008/07/07 ********** DELETE END   ***
 --
       END IF;
 --
@@ -8377,8 +8516,10 @@ AS
        ,gt_sysdate                                  -- プログラム更新日
       );
 --
-        --受注ヘッダ登録作成件数(外部倉庫発番)
-        gn_ord_h_ins_cnt := gn_ord_h_ins_cnt + 1;
+--********** 2008/07/07 ********** DELETE START ***
+--*     --受注ヘッダ登録作成件数(外部倉庫発番)
+--*     gn_ord_h_ins_cnt := gn_ord_h_ins_cnt + 1;
+--********** 2008/07/07 ********** DELETE END   ***
 --
     --==============================================================
     --メッセージ出力(エラー以外)をする必要がある場合は処理を記述
@@ -8748,8 +8889,11 @@ AS
     AND   xoha.latest_external_flag = gv_yesno_y;
 --
     gr_order_h_rec.order_header_id := lt_order_header_id;
-    -- 受注ヘッダ更新作成件数(実績計上)加算
-    gn_ord_h_upd_n_cnt := gn_ord_h_upd_n_cnt + 1;
+--
+--********** 2008/07/07 ********** DELETE START ***
+--* -- 受注ヘッダ更新作成件数(実績計上)加算
+--* gn_ord_h_upd_n_cnt := gn_ord_h_upd_n_cnt + 1;
+--********** 2008/07/07 ********** DELETE END   ***
 --
     --==============================================================
     --メッセージ出力(エラー以外)をする必要がある場合は処理を記述
@@ -9216,8 +9360,10 @@ AS
        ,gt_sysdate                                   -- プログラム更新日
       );
 --
-    -- 受注ヘッダ更新作成件数(実績訂正)加算
-    gn_ord_h_upd_y_cnt := gn_ord_h_upd_y_cnt + 1;
+--********** 2008/07/07 ********** DELETE START ***
+--* -- 受注ヘッダ更新作成件数(実績訂正)加算
+--* gn_ord_h_upd_y_cnt := gn_ord_h_upd_y_cnt + 1;
+--********** 2008/07/07 ********** DELETE END   ***
 --
     --==============================================================
     --メッセージ出力(エラー以外)をする必要がある場合は処理を記述
@@ -9327,8 +9473,21 @@ AS
 --
     END IF;
 --
-    --受注明細更新作成件数(実績計上品目あり)加算
-    gn_ord_l_upd_n_cnt := gn_ord_l_upd_n_cnt + 1;
+--********** 2008/07/07 ********** MODIFY START ***
+--* --受注明細更新作成件数(実績計上品目あり)加算
+--* gn_ord_l_upd_n_cnt := gn_ord_l_upd_n_cnt + 1;
+--
+    IF (gr_interface_info_rec(in_idx).eos_data_type = gv_eos_data_cd_200)
+    THEN
+      -- 支給の場合
+      gn_ord_new_shikyu_cnt := gn_ord_new_shikyu_cnt + 1;
+--
+    ELSE
+      -- 出荷の場合
+      gn_ord_new_syukka_cnt := gn_ord_new_syukka_cnt + 1;
+--
+    END IF;
+--********** 2008/07/07 ********** MODIFY END   ***
 --
     -- 受注明細IDを設定
     gr_order_l_rec.order_line_id := in_order_line_id;
@@ -9603,22 +9762,58 @@ AS
      );
 --
     --件数加算
-    IF (iv_cnt_kbn = gv_cnt_kbn_2) -- 指示品目≠実績品目に加算
+--********** 2008/07/07 ********** MODIFY START ***
+--* IF (iv_cnt_kbn = gv_cnt_kbn_2) -- 指示品目≠実績品目に加算
+--* THEN
+--*
+--*   gn_ord_l_ins_n_cnt := gn_ord_l_ins_n_cnt + 1;
+--*
+--* ELSIF  (iv_cnt_kbn = gv_cnt_kbn_3) -- 外部倉庫(指示なし)に加算
+--*  THEN
+--*
+--*       gn_ord_l_ins_cnt := gn_ord_l_ins_cnt + 1;
+--*
+--* ELSIF  (iv_cnt_kbn = gv_cnt_kbn_4) -- 実績修正に加算
+--*  THEN
+--*
+--*   gn_ord_l_ins_y_cnt := gn_ord_l_ins_y_cnt + 1;
+--*
+--* END IF;
+--*
+--
+    IF ((iv_cnt_kbn = gv_cnt_kbn_2) OR
+        (iv_cnt_kbn = gv_cnt_kbn_3))
     THEN
+      -- 指示あり（実績計上）／指示なし（外部倉庫）の場合
 --
-      gn_ord_l_ins_n_cnt := gn_ord_l_ins_n_cnt + 1;
+      IF (gr_interface_info_rec(in_idx).eos_data_type = gv_eos_data_cd_200)
+      THEN
+        -- 支給の場合
+        gn_ord_new_shikyu_cnt := gn_ord_new_shikyu_cnt + 1;
 --
-    ELSIF  (iv_cnt_kbn = gv_cnt_kbn_3) -- 外部倉庫(指示なし)に加算
-     THEN
+      ELSE
+        -- 出荷の場合
+        gn_ord_new_syukka_cnt := gn_ord_new_syukka_cnt + 1;
 --
-          gn_ord_l_ins_cnt := gn_ord_l_ins_cnt + 1;
+      END IF;
 --
-    ELSIF  (iv_cnt_kbn = gv_cnt_kbn_4) -- 実績修正に加算
-     THEN
+    ELSIF (iv_cnt_kbn = gv_cnt_kbn_4) THEN
+      -- 訂正の場合
 --
-      gn_ord_l_ins_y_cnt := gn_ord_l_ins_y_cnt + 1;
+      IF (gr_interface_info_rec(in_idx).eos_data_type = gv_eos_data_cd_200)
+      THEN
+        -- 支給の場合
+        gn_ord_correct_shikyu_cnt := gn_ord_correct_shikyu_cnt + 1;
+--
+      ELSE
+        -- 出荷の場合
+        gn_ord_correct_syukka_cnt := gn_ord_correct_syukka_cnt + 1;
+--
+      END IF;
 --
     END IF;
+--
+--********** 2008/07/07 ********** MODIFY END   ***
 --
     --==============================================================
     --メッセージ出力(エラー以外)をする必要がある場合は処理を記述
@@ -9975,23 +10170,25 @@ AS
         ,gt_sysdate                                       -- プログラム更新日
        );
 --
-    --件数加算
-    IF (iv_cnt_kbn = gv_cnt_kbn_3) -- 外部倉庫(指示なし)に加算
-    THEN
---
-      gn_ord_mov_ins_cnt := gn_ord_mov_ins_cnt + 1;
---
-    ELSIF  (iv_cnt_kbn = gv_cnt_kbn_4) -- 実績修正に加算
-     THEN
---
-          gn_ord_mov_ins_y_cnt := gn_ord_mov_ins_y_cnt + 1;
---
-    ELSIF  (iv_cnt_kbn = gv_cnt_kbn_5) -- 実績計上に加算
-     THEN
---
-      gn_ord_mov_ins_n_cnt := gn_ord_mov_ins_n_cnt + 1;
---
-    END IF;
+--********** 2008/07/07 ********** DELETE START ***
+--* --件数加算
+--* IF (iv_cnt_kbn = gv_cnt_kbn_3) -- 外部倉庫(指示なし)に加算
+--* THEN
+--*
+--*   gn_ord_mov_ins_cnt := gn_ord_mov_ins_cnt + 1;
+--*
+--* ELSIF  (iv_cnt_kbn = gv_cnt_kbn_4) -- 実績修正に加算
+--*  THEN
+--*
+--*       gn_ord_mov_ins_y_cnt := gn_ord_mov_ins_y_cnt + 1;
+--*
+--* ELSIF  (iv_cnt_kbn = gv_cnt_kbn_5) -- 実績計上に加算
+--*  THEN
+--*
+--*   gn_ord_mov_ins_n_cnt := gn_ord_mov_ins_n_cnt + 1;
+--*
+--* END IF;
+--********** 2008/07/07 ********** DELETE END   ***
 --
     --==============================================================
     --メッセージ出力(エラー以外)をする必要がある場合は処理を記述
@@ -10141,8 +10338,10 @@ AS
         xmld.mov_lot_dtl_id         = in_mov_lot_dtl_id      -- ロット詳細ID
     ;
 --
-    --ロット詳細新規作成件数(受注_実績計上) 加算
-    gn_ord_mov_ins_n_cnt := gn_ord_mov_ins_n_cnt + 1;
+--********** 2008/07/07 ********** DELETE START ***
+--* --ロット詳細新規作成件数(受注_実績計上) 加算
+--* gn_ord_mov_ins_n_cnt := gn_ord_mov_ins_n_cnt + 1;
+--********** 2008/07/07 ********** DELETE END   ***
 --
     --==============================================================
     --メッセージ出力(エラー以外)をする必要がある場合は処理を記述
@@ -10633,8 +10832,10 @@ AS
        ,gt_sysdate                                          -- プログラム更新日
       );
 --
-    -- 移動依頼/指示ヘッダ登録作成件数(外部倉庫発番) に加算
-    gn_mov_h_ins_cnt := gn_mov_h_ins_cnt + 1;
+--********** 2008/07/07 ********** DELETE START ***
+--* -- 移動依頼/指示ヘッダ登録作成件数(外部倉庫発番) に加算
+--* gn_mov_h_ins_cnt := gn_mov_h_ins_cnt + 1;
+--********** 2008/07/07 ********** DELETE END   ***
 --
     --==============================================================
     --メッセージ出力(エラー以外)をする必要がある場合は処理を記述
@@ -10959,8 +11160,11 @@ AS
     ;
 --
     gr_mov_req_instr_h_rec.mov_hdr_id := lt_mov_hdr_id;
-    -- 移動依頼/指示ヘッダ更新作成件数(実績計上) 加算
-    gn_mov_h_upd_n_cnt := gn_mov_h_upd_n_cnt + 1;
+--
+--********** 2008/07/07 ********** DELETE START ***
+--* -- 移動依頼/指示ヘッダ更新作成件数(実績計上) 加算
+--* gn_mov_h_upd_n_cnt := gn_mov_h_upd_n_cnt + 1;
+--********** 2008/07/07 ********** DELETE END   ***
 --
     --==============================================================
     --メッセージ出力(エラー以外)をする必要がある場合は処理を記述
@@ -11241,8 +11445,10 @@ AS
     ;
 --
     gr_mov_req_instr_h_rec.mov_hdr_id := lt_mov_hdr_id;
-    --移動依頼/指示ヘッダ更新作成件数(実績訂正) 加算
-    gn_mov_h_upd_y_cnt := gn_mov_h_upd_y_cnt + 1;
+--
+--********** 2008/07/07 ********** DELETE START ***
+--* gn_mov_h_upd_y_cnt := gn_mov_h_upd_y_cnt + 1;
+--********** 2008/07/07 ********** DELETE END   ***
 --
   EXCEPTION
 --
@@ -11413,16 +11619,30 @@ AS
      );
 --
     --件数加算
-    IF (iv_cnt_kbn = gv_cnt_kbn_2) -- 指示品目≠実績品目に加算
+--********** 2008/07/07 ********** DELETE START ***
+--* IF (iv_cnt_kbn = gv_cnt_kbn_2) -- 指示品目≠実績品目に加算
+--* THEN
+--*   gn_mov_l_ins_n_cnt := gn_mov_l_ins_n_cnt + 1;
+--* ELSIF  (iv_cnt_kbn = gv_cnt_kbn_3) -- 外部倉庫(指示なし)に加算
+--*  THEN
+--*       gn_mov_l_ins_cnt := gn_mov_l_ins_cnt + 1;
+--* ELSIF  (iv_cnt_kbn = gv_cnt_kbn_7) -- 訂正元品目なしに加算
+--*  THEN
+--*       gn_mov_l_ins_y_cnt := gn_mov_l_ins_y_cnt + 1;
+--* END IF;
+--
+    IF ((iv_cnt_kbn = gv_cnt_kbn_2) OR
+        (iv_cnt_kbn = gv_cnt_kbn_3))
     THEN
-      gn_mov_l_ins_n_cnt := gn_mov_l_ins_n_cnt + 1;
-    ELSIF  (iv_cnt_kbn = gv_cnt_kbn_3) -- 外部倉庫(指示なし)に加算
-     THEN
-          gn_mov_l_ins_cnt := gn_mov_l_ins_cnt + 1;
-    ELSIF  (iv_cnt_kbn = gv_cnt_kbn_7) -- 訂正元品目なしに加算
-     THEN
-          gn_mov_l_ins_y_cnt := gn_mov_l_ins_y_cnt + 1;
+      -- 指示あり（実績計上）／指示なし（外部倉庫）の場合
+      gn_mov_new_cnt := gn_mov_new_cnt + 1;
+--
+    ELSIF (iv_cnt_kbn = gv_cnt_kbn_7) THEN
+      -- 訂正の場合
+      gn_mov_correct_cnt := gn_mov_correct_cnt + 1;
+--
     END IF;
+--********** 2008/07/07 ********** DELETE END   ***
 --
     --==============================================================
     --メッセージ出力(エラー以外)をする必要がある場合は処理を記述
@@ -11543,14 +11763,27 @@ AS
     END IF;
 --
     --件数加算
-    IF (iv_cnt_kbn = gv_cnt_kbn_1)     -- 指示品目=実績品目に加算
-    THEN
-      gn_mov_l_upd_n_cnt := gn_mov_l_upd_n_cnt + 1;
+--********** 2008/07/07 ********** MODIFY START ***
+--* IF (iv_cnt_kbn = gv_cnt_kbn_1)     -- 指示品目=実績品目に加算
+--* THEN
+--*   gn_mov_l_upd_n_cnt := gn_mov_l_upd_n_cnt + 1;
+--*
+--* ELSIF  (iv_cnt_kbn = gv_cnt_kbn_6) -- 訂正元品目ありに加算
+--*  THEN
+--*       gn_mov_l_upd_y_cnt := gn_mov_l_upd_y_cnt + 1;
+--* END IF;
 --
-    ELSIF  (iv_cnt_kbn = gv_cnt_kbn_6) -- 訂正元品目ありに加算
-     THEN
-          gn_mov_l_upd_y_cnt := gn_mov_l_upd_y_cnt + 1;
+    IF (iv_cnt_kbn = gv_cnt_kbn_1)
+    THEN
+      -- 指示あり（実績計上）の場合
+      gn_mov_new_cnt := gn_mov_new_cnt + 1;
+--
+    ELSIF (iv_cnt_kbn = gv_cnt_kbn_6) THEN
+      -- 訂正の場合
+      gn_mov_correct_cnt := gn_mov_correct_cnt + 1;
+--
     END IF;
+--********** 2008/07/07 ********** MODIFY END   ***
 --
     --==============================================================
     --メッセージ出力(エラー以外)をする必要がある場合は処理を記述
@@ -11760,19 +11993,21 @@ AS
         ,gt_sysdate                                       -- プログラム更新日
        );
 --
-    --件数加算
-    IF (iv_cnt_kbn = gv_cnt_kbn_5) -- 実績計上に加算
-    THEN
-      gn_mov_mov_ins_n_cnt := gn_mov_mov_ins_n_cnt + 1;
---
-    ELSIF  (iv_cnt_kbn = gv_cnt_kbn_3) -- 外部倉庫(指示なし)に加算
-     THEN
-          gn_mov_mov_ins_cnt := gn_mov_mov_ins_cnt + 1;
---
-    ELSIF  (iv_cnt_kbn = gv_cnt_kbn_9) -- 訂正ロットなしに加算
-     THEN
-      gn_mov_mov_ins_y_cnt := gn_mov_mov_ins_y_cnt + 1;
-    END IF;
+--********** 2008/07/07 ********** DELETE START ***
+--* --件数加算
+--* IF (iv_cnt_kbn = gv_cnt_kbn_5) -- 実績計上に加算
+--* THEN
+--*   gn_mov_mov_ins_n_cnt := gn_mov_mov_ins_n_cnt + 1;
+--*
+--* ELSIF  (iv_cnt_kbn = gv_cnt_kbn_3) -- 外部倉庫(指示なし)に加算
+--*  THEN
+--*       gn_mov_mov_ins_cnt := gn_mov_mov_ins_cnt + 1;
+--*
+--* ELSIF  (iv_cnt_kbn = gv_cnt_kbn_9) -- 訂正ロットなしに加算
+--*  THEN
+--*   gn_mov_mov_ins_y_cnt := gn_mov_mov_ins_y_cnt + 1;
+--* END IF;
+--********** 2008/07/07 ********** DELETE END   ***
 --
     --==============================================================
     --メッセージ出力(エラー以外)をする必要がある場合は処理を記述
@@ -11919,8 +12154,10 @@ AS
         xmld.mov_lot_dtl_id         = in_mov_lot_dtl_id      -- ロット詳細ID
     ;
 --
-    --ロット詳細新規作成件数(移動依頼_訂正ロットあり) 加算
-    gn_mov_mov_upd_y_cnt := gn_mov_mov_upd_y_cnt + 1;
+--********** 2008/07/07 ********** DELETE START ***
+--* --ロット詳細新規作成件数(移動依頼_訂正ロットあり) 加算
+--* gn_mov_mov_upd_y_cnt := gn_mov_mov_upd_y_cnt + 1;
+--********** 2008/07/07 ********** DELETE END   ***
 --
     --==============================================================
     --メッセージ出力(エラー以外)をする必要がある場合は処理を記述
@@ -12529,6 +12766,13 @@ AS
 --
 --##################  固定ステータス初期化部 START   ###################
 --
+--********** debug_log ********** START ***
+debug_log(FND_FILE.LOG,'【移動処理　開始】：' || in_idx || '件目');
+debug_log(FND_FILE.LOG,'　　配送No：' || gr_interface_info_rec(in_idx).delivery_no);
+debug_log(FND_FILE.LOG,'　　移動No：' || gr_interface_info_rec(in_idx).order_source_ref);
+--********** debug_log ********** END   ***
+
+--
     ov_retcode := gv_status_normal;
 --
 --###########################  固定部 END   ############################
@@ -12602,6 +12846,10 @@ AS
                   lv_errmsg                 -- ユーザー・エラー・メッセージ --# 固定 #
                  );
 --
+--********** debug_log ********** START ***
+debug_log(FND_FILE.LOG,'　　　移動依頼/指示ヘッダアドオン  (A-7-2)実施：mov_req_instr_head_upd');
+--********** debug_log ********** END   ***
+--
                 IF (lv_retcode = gv_status_error) THEN
                   RAISE global_api_expt;
                 END IF;
@@ -12615,6 +12863,10 @@ AS
                   lv_retcode,               -- リターン・コード             --# 固定 #
                   lv_errmsg                 -- ユーザー・エラー・メッセージ --# 固定 #
                 );
+--
+--********** debug_log ********** START ***
+debug_log(FND_FILE.LOG,'　　　移動依頼/指示ヘッダアドオン (A-7-3)実施：mov_req_instr_head_inup');
+--********** debug_log ********** END   ***
 --
                 IF (lv_retcode = gv_status_error) THEN
                   RAISE global_api_expt;
@@ -12650,6 +12902,11 @@ AS
                   lv_errmsg                 -- ユーザー・エラー・メッセージ --# 固定 #
                 );
 --
+--********** debug_log ********** START ***
+debug_log(FND_FILE.LOG,'　　　品目：' || gr_interface_info_rec(in_idx).orderd_item_code);
+debug_log(FND_FILE.LOG,'　　　移動依頼/指示明細アドオン (A-7-5) 実施：mov_req_instr_lines_upd');
+--********** debug_log ********** END   ***
+--
                 IF (lv_retcode = gv_status_error) THEN
                   RAISE global_api_expt;
                 END IF;
@@ -12668,6 +12925,11 @@ AS
                   lv_errmsg                 -- ユーザー・エラー・メッセージ --# 固定 #
                 );
 --
+--********** debug_log ********** START ***
+debug_log(FND_FILE.LOG,'　　　品目：' || gr_interface_info_rec(in_idx).orderd_item_code);
+debug_log(FND_FILE.LOG,'　　　移動依頼/指示明細アドオン (A-7-5) 実施：mov_req_instr_lines_upd');
+--********** debug_log ********** END   ***
+--
                 IF (lv_retcode = gv_status_error) THEN
                   RAISE global_api_expt;
                 END IF;
@@ -12683,11 +12945,11 @@ AS
           -- 移動ロット詳細(アドオン)の更新
           --------------------------------------
           -- ヘッダ登録・更新処理が正常終了の場合
--- 20080627 MODIFY START
---          IF  (lt_actual_confirm_class = gv_yesno_y) AND
---              (lb_header_warn = FALSE) THEN
+--********** 2008/06/27 ********** MODIFY START ***
+--*         IF  (lt_actual_confirm_class = gv_yesno_y) AND
+--*             (lb_header_warn = FALSE) THEN
           IF  (lb_header_warn = FALSE) THEN
--- 20080627 MODIFY END
+--********** 2008/06/27 ********** MODIFY END   ***
 --
             -- EOSデータ種別が、220:移動入庫確定報告の場合
             IF  (gr_interface_info_rec(in_idx).eos_data_type = gv_eos_data_cd_220) THEN
@@ -12699,11 +12961,11 @@ AS
                   (lr_tab_data(i).record_type_code = gv_record_type_20))
               THEN
 --
--- 20080627 DELETE START
---              -- ロット管理品のみ移動ロット詳細UPDATE処理を行う
---              IF  (gr_interface_info_rec(in_idx).lot_ctl = gv_lotkr_kbn_cd_1) 
---              THEN
--- 20080627 DELETE END
+--********** 2008/06/27 ********** DELETE START ***
+--*             -- ロット管理品のみ移動ロット詳細UPDATE処理を行う
+--*             IF  (gr_interface_info_rec(in_idx).lot_ctl = gv_lotkr_kbn_cd_1) 
+--*             THEN
+--********** 2008/06/27 ********** DELETE END   ***
 --
                   -- 移動ロット詳細UPDATE プロシージャ (A-7-7) 実施
                   movlot_detail_upd(
@@ -12714,24 +12976,30 @@ AS
                     lv_errmsg                       -- ユーザー・エラー・メッセージ --# 固定 #
                   );
 --
---ZANTEI 20080627 ADD START
-                  IF (lt_actual_confirm_class <> gv_yesno_y) THEN
+--********** 2008/07/07 ********** DELETE START ***
+--*--ZANTEI 2008/06/27 ADD START
+--*                  IF (lt_actual_confirm_class <> gv_yesno_y) THEN
+--*--
+--*                    --ロット詳細新規作成件数(移動依頼_訂正ロットあり) 減算
+--*                    gn_mov_mov_upd_y_cnt := gn_mov_mov_upd_y_cnt - 1;
+--*--
+--*                    --ロット詳細新規作成件数(移動依頼_実績計上) 加算
+--*                    gn_mov_mov_ins_n_cnt := gn_mov_mov_ins_n_cnt + 1;
+--*                  END IF;
+--*--ZANTEI 2008/06/27 ADD END
+--********** 2008/07/07 ********** DELETE END   ***
 --
-                    --ロット詳細新規作成件数(移動依頼_訂正ロットあり) 減算
-                    gn_mov_mov_upd_y_cnt := gn_mov_mov_upd_y_cnt - 1;
---
-                    --ロット詳細新規作成件数(移動依頼_実績計上) 加算
-                    gn_mov_mov_ins_n_cnt := gn_mov_mov_ins_n_cnt + 1;
-                  END IF;
---ZANTEI 20080627 ADD END
+--********** debug_log ********** START ***
+debug_log(FND_FILE.LOG,'　　　移動ロット詳細UPDATE プロシージャ (A-7-7) 実施：movlot_detail_upd');
+--********** debug_log ********** END   ***
 --
                   IF (lv_retcode = gv_status_error) THEN
                     RAISE global_api_expt;
                   END IF;
 --
--- 20080627 DELETE START
---              END IF;
--- 20080627 DELETE END
+--********** 2008/06/27 ********** DELETE START ***
+--*             END IF;
+--********** 2008/06/27 ********** DELETE END   ***
 --
                 lb_lot_upd_flg := TRUE; --ロットデータを処理済に設定(ロット管理品外でも、訂正ロットが存在するので済に設定)
 --
@@ -12746,11 +13014,11 @@ AS
                   (lr_tab_data(i).record_type_code = gv_record_type_30))
               THEN
 --
--- 20080627 DELETE START
---              -- ロット管理品のみ移動ロット詳細UPDATE処理を行う
---              IF  (gr_interface_info_rec(in_idx).lot_ctl = gv_lotkr_kbn_cd_1) 
---              THEN
--- 20080627 DELETE END
+--********** 2008/06/27 ********** DELETE START ***
+--*             -- ロット管理品のみ移動ロット詳細UPDATE処理を行う
+--*             IF  (gr_interface_info_rec(in_idx).lot_ctl = gv_lotkr_kbn_cd_1) 
+--*             THEN
+--********** 2008/06/27 ********** DELETE END   ***
 --
                   -- 移動ロット詳細UPDATE プロシージャ (A-7-7) 実施
                   movlot_detail_upd(
@@ -12761,25 +13029,31 @@ AS
                     lv_errmsg                       -- ユーザー・エラー・メッセージ --# 固定 #
                   );
 --
---ZANTEI 20080627 ADD START
-                  IF (lt_actual_confirm_class <> gv_yesno_y) THEN
+--********** 2008/07/07 ********** DELETE START ***
+--*--ZANTEI 2008/06/27 ADD START
+--*                  IF (lt_actual_confirm_class <> gv_yesno_y) THEN
+--*--
+--*                    --ロット詳細新規作成件数(移動依頼_訂正ロットあり) 減算
+--*                    gn_mov_mov_upd_y_cnt := gn_mov_mov_upd_y_cnt - 1;
+--*--
+--*                    --ロット詳細新規作成件数(移動依頼_実績計上) 加算
+--*                    gn_mov_mov_ins_n_cnt := gn_mov_mov_ins_n_cnt + 1;
+--*                  END IF;
+--*--ZANTEI 2008/06/27 ADD END
+--********** 2008/07/07 ********** DELETE END   ***
 --
-                    --ロット詳細新規作成件数(移動依頼_訂正ロットあり) 減算
-                    gn_mov_mov_upd_y_cnt := gn_mov_mov_upd_y_cnt - 1;
---
-                    --ロット詳細新規作成件数(移動依頼_実績計上) 加算
-                    gn_mov_mov_ins_n_cnt := gn_mov_mov_ins_n_cnt + 1;
-                  END IF;
---ZANTEI 20080627 ADD END
+--********** debug_log ********** START ***
+debug_log(FND_FILE.LOG,'　　　移動ロット詳細UPDATE プロシージャ (A-7-7) 実施：movlot_detail_upd');
+--********** debug_log ********** END   ***
 --
                   IF (lv_retcode = gv_status_error) THEN
                     RAISE global_api_expt;
                   END IF;
 --
 
--- 20080627 DELETE START
---              END IF;
--- 20080627 DELETE END
+--********** 2008/06/27 ********** DELETE START ***
+--*             END IF;
+--********** 2008/06/27 ********** DELETE END   ***
 --
                 lb_lot_upd_flg := TRUE; --ロットデータを処理済に設定(ロット管理品外でも、訂正ロットが存在するので済に設定)
 --
@@ -12820,6 +13094,11 @@ AS
             lv_errmsg                 -- ユーザー・エラー・メッセージ --# 固定 #
           );
 --
+--********** debug_log ********** START ***
+debug_log(FND_FILE.LOG,'　　　品目：' || gr_interface_info_rec(in_idx).orderd_item_code);
+debug_log(FND_FILE.LOG,'　　　移動依頼/指示明細アドオン (A-7-4)実施 (INSERT)：mov_req_instr_lines_ins');
+--********** debug_log ********** END   ***
+--
           IF (lv_retcode = gv_status_error) THEN
             RAISE global_api_expt;
           END IF;
@@ -12854,6 +13133,10 @@ AS
             lv_errmsg                 -- ユーザー・エラー・メッセージ --# 固定 #
           );
 --
+--********** debug_log ********** START ***
+debug_log(FND_FILE.LOG,'　　　移動依頼/指示データ移動ロット詳細 (A-7-6)実施(INSERT)：mov_movlot_detail_ins');
+--********** debug_log ********** END   ***
+--
           IF (lv_retcode = gv_status_error) THEN
             RAISE global_api_expt;
           END IF;
@@ -12867,6 +13150,10 @@ AS
               lv_retcode,               -- リターン・コード             --# 固定 #
               lv_errmsg                 -- ユーザー・エラー・メッセージ --# 固定 #
             );
+--
+--********** debug_log ********** START ***
+debug_log(FND_FILE.LOG,'　　　配車配送計画アドオン作成：carriers_schedule_inup');
+--********** debug_log ********** END   ***
 --
             IF (lv_retcode = gv_status_error) THEN
               RAISE global_api_expt;
@@ -12893,6 +13180,10 @@ AS
           lv_errmsg                 -- ユーザー・エラー・メッセージ --# 固定 #
         );
 --
+--********** debug_log ********** START ***
+debug_log(FND_FILE.LOG,'　　　移動依頼/指示ヘッダアドオン(外部倉庫編集) (A-7-1)実施(INSERT)：mov_req_instr_head_ins');
+--********** debug_log ********** END   ***
+--
         IF (lv_retcode = gv_status_error) THEN
           RAISE global_api_expt;
         END IF;
@@ -12913,6 +13204,11 @@ AS
             lv_errmsg                 -- ユーザー・エラー・メッセージ --# 固定 #
           );
 --
+--********** debug_log ********** START ***
+debug_log(FND_FILE.LOG,'　　　品目：' || gr_interface_info_rec(in_idx).orderd_item_code);
+debug_log(FND_FILE.LOG,'　　　移動依頼/指示明細アドオン (A-7-4)実施(INSERT)：mov_req_instr_lines_ins');
+--********** debug_log ********** END   ***
+--
           IF (lv_retcode = gv_status_error) THEN
             RAISE global_api_expt;
           END IF;
@@ -12931,6 +13227,10 @@ AS
             lv_errmsg                 -- ユーザー・エラー・メッセージ --# 固定 #
           );
 --
+--********** debug_log ********** START ***
+debug_log(FND_FILE.LOG,'　　　移動依頼/指示データ移動ロット詳細 (A-7-6)実施(INSERT)：mov_movlot_detail_ins');
+--********** debug_log ********** END   ***
+--
           IF (lv_retcode = gv_status_error) THEN
             RAISE global_api_expt;
           END IF;
@@ -12944,6 +13244,10 @@ AS
               lv_retcode,               -- リターン・コード             --# 固定 #
               lv_errmsg                 -- ユーザー・エラー・メッセージ --# 固定 #
             );
+--
+--********** debug_log ********** START ***
+debug_log(FND_FILE.LOG,'　　　配車配送計画アドオン作成：carriers_schedule_inup');
+--********** debug_log ********** END   ***
 --
             IF (lv_retcode = gv_status_error) THEN
               RAISE global_api_expt;
@@ -13004,6 +13308,10 @@ AS
           lv_retcode,             -- リターン・コード             --# 固定 #
           lv_errmsg               -- ユーザー・エラー・メッセージ --# 固定 #
         );
+--
+--********** debug_log ********** START ***
+debug_log(FND_FILE.LOG,'　　　出荷依頼実績数量の設定 プロシージャ：mov_results_quantity_set');
+--********** debug_log ********** END   ***
 --
         IF (lv_retcode = gv_status_error) THEN
           RAISE global_api_expt;
@@ -13222,6 +13530,12 @@ AS
 --
 --##################  固定ステータス初期化部 START   ###################
 --
+--********** debug_log ********** START ***
+debug_log(FND_FILE.LOG,'【受注処理　開始】：' || in_idx || '件目');
+debug_log(FND_FILE.LOG,'　　配送No：' || gr_interface_info_rec(in_idx).delivery_no);
+debug_log(FND_FILE.LOG,'　　依頼No：' || gr_interface_info_rec(in_idx).order_source_ref);
+--********** debug_log ********** END   ***
+--
     ov_retcode := gv_status_normal;
 --
 --###########################  固定部 END   ############################
@@ -13296,6 +13610,10 @@ AS
                     lv_errmsg                 -- ユーザー・エラー・メッセージ --# 固定 #
                    );
 --
+--********** debug_log ********** START ***
+debug_log(FND_FILE.LOG,'　　　受注ヘッダアドオン 実績計上 (A-8-1)実施 (UPDATE)：order_headers_upd');
+--********** debug_log ********** END   ***
+--
                   IF (lv_retcode = gv_status_error) THEN
                     RAISE global_api_expt;
                   END IF;
@@ -13310,6 +13628,10 @@ AS
                     lv_retcode,               -- リターン・コード             --# 固定 #
                     lv_errmsg                 -- ユーザー・エラー・メッセージ --# 固定 #
                   );
+--
+--********** debug_log ********** START ***
+debug_log(FND_FILE.LOG,'　　　受注ヘッダアドオン 実績訂正 (A-8-3,4)実施：order_headers_inup');
+--********** debug_log ********** END   ***
 --
                   IF (lv_retcode = gv_status_warn) THEN
                     lb_header_warn := TRUE;
@@ -13352,6 +13674,11 @@ AS
                     lv_errmsg                 -- ユーザー・エラー・メッセージ --# 固定 #
                   );
 --
+--********** debug_log ********** START ***
+debug_log(FND_FILE.LOG,'　　　品目：' || gr_interface_info_rec(in_idx).orderd_item_code);
+debug_log(FND_FILE.LOG,'　　　受注明細アドオン 指示品目＝実績品目 (A-8-5)実施(UPDATE)：order_lines_upd');
+--********** debug_log ********** END   ***
+--
                   IF (lv_retcode = gv_status_error) THEN
                     RAISE global_api_expt;
                   END IF;
@@ -13365,7 +13692,7 @@ AS
 --
             END IF;
 --
--- 20080627 ADD START
+--********** 2008/06/27 ********** ADD    START ***
             --------------------------------------
             -- 移動ロット詳細(アドオン)の更新
             --------------------------------------
@@ -13411,6 +13738,10 @@ AS
                     lv_errmsg                       -- ユーザー・エラー・メッセージ --# 固定 #
                   );
 --
+--********** debug_log ********** START ***
+debug_log(FND_FILE.LOG,'　　　受注データ移動ロット詳細UPDATE プロシージャ (A-8-8) 実施：order_movlot_detail_up');
+--********** debug_log ********** END   ***
+--
                   IF (lv_retcode = gv_status_error) THEN
                     RAISE global_api_expt;
                   END IF;
@@ -13422,7 +13753,7 @@ AS
               END IF;
 --
             END IF;
--- 20080627 ADD END
+--********** 2008/06/27 ********** ADD    END   ***
 --
           END IF;
 --
@@ -13458,6 +13789,11 @@ AS
             lv_errmsg                                 -- ユーザー・エラー・メッセージ --# 固定 #
           );
 --
+--********** debug_log ********** START ***
+debug_log(FND_FILE.LOG,'　　　品目：' || gr_interface_info_rec(in_idx).orderd_item_code);
+debug_log(FND_FILE.LOG,'　　　受注明細アドオン 指示品目≠実績品目 (A-8-6)実施 (INSERT)：order_lines_ins');
+--********** debug_log ********** END   ***
+--
           IF (lv_retcode = gv_status_error) THEN
             RAISE global_api_expt;
           END IF;
@@ -13492,6 +13828,10 @@ AS
             lv_errmsg               -- ユーザー・エラー・メッセージ --# 固定 #
           );
 --
+--********** debug_log ********** START ***
+debug_log(FND_FILE.LOG,'　　　受注データ移動ロット詳細 (A-8-7)実施(INSERT)：order_movlot_detail_ins');
+--********** debug_log ********** END   ***
+--
           IF (lv_retcode = gv_status_error) THEN
             RAISE global_api_expt;
           END IF;
@@ -13505,6 +13845,10 @@ AS
               lv_retcode,               -- リターン・コード             --# 固定 #
               lv_errmsg                 -- ユーザー・エラー・メッセージ --# 固定 #
             );
+--
+--********** debug_log ********** START ***
+debug_log(FND_FILE.LOG,'　　　配車配送計画アドオン作成：carriers_schedule_inup');
+--********** debug_log ********** END   ***
 --
             IF (lv_retcode = gv_status_error) THEN
               RAISE global_api_expt;
@@ -13531,6 +13875,10 @@ AS
           lv_errmsg                 -- ユーザー・エラー・メッセージ --# 固定 #
         );
 --
+--********** debug_log ********** START ***
+debug_log(FND_FILE.LOG,'　　　受注ヘッダアドオン 外部倉庫(指示なし) (A-8-2)実施(INSERT)：order_headers_ins');
+--********** debug_log ********** END   ***
+--
         IF (lv_retcode = gv_status_error) THEN
           RAISE global_api_expt;
         END IF;
@@ -13551,6 +13899,11 @@ AS
             lv_errmsg                 -- ユーザー・エラー・メッセージ --# 固定 #
           );
 --
+--********** debug_log ********** START ***
+debug_log(FND_FILE.LOG,'　　　品目：' || gr_interface_info_rec(in_idx).orderd_item_code);
+debug_log(FND_FILE.LOG,'　　　受注明細アドオン 実績修正 (A-8-6)実施(INSERT)：order_lines_ins');
+--********** debug_log ********** END   ***
+--
           IF (lv_retcode = gv_status_error) THEN
             RAISE global_api_expt;
           END IF;
@@ -13570,6 +13923,10 @@ AS
             lv_errmsg                 -- ユーザー・エラー・メッセージ --# 固定 #
           );
 --
+--********** debug_log ********** START ***
+debug_log(FND_FILE.LOG,'　　　受注データ移動ロット詳細 (A-8-7)実施(INSERT)：order_movlot_detail_ins');
+--********** debug_log ********** END   ***
+--
           IF (lv_retcode = gv_status_error) THEN
             RAISE global_api_expt;
           END IF;
@@ -13583,6 +13940,10 @@ AS
               lv_retcode,               -- リターン・コード             --# 固定 #
               lv_errmsg                 -- ユーザー・エラー・メッセージ --# 固定 #
             );
+--
+--********** debug_log ********** START ***
+debug_log(FND_FILE.LOG,'　　　配車配送計画アドオン作成：carriers_schedule_inup');
+--********** debug_log ********** END   ***
 --
             IF (lv_retcode = gv_status_error) THEN
               RAISE global_api_expt;
@@ -13642,6 +14003,10 @@ AS
           lv_retcode,             -- リターン・コード             --# 固定 #
           lv_errmsg               -- ユーザー・エラー・メッセージ --# 固定 #
         );
+--
+--********** debug_log ********** START ***
+debug_log(FND_FILE.LOG,'　　　受注実績数量の設定 プロシージャ：ord_results_quantity_set');
+--********** debug_log ********** END   ***
 --
         IF (lv_retcode = gv_status_error) THEN
           RAISE global_process_expt;
@@ -14728,7 +15093,9 @@ AS
       DELETE FROM xxwsh_shipping_headers_if xshi  --IF_H
       WHERE xshi.header_id = gr_line_not_header(i);
 --
-    gn_del_errdata_cnt := gn_del_errdata_cnt + gr_line_not_header.COUNT;  -- 削除件数加算
+--********** 2008/07/07 ********** DELETE START ***
+--* gn_del_errdata_cnt := gn_del_errdata_cnt + gr_line_not_header.COUNT;  -- 削除件数加算
+--********** 2008/07/07 ********** DELETE END   ***
 --
     --==============================================================
     --メッセージ出力(エラー以外)をする必要がある場合は処理を記述
@@ -15032,42 +15399,58 @@ AS
     gn_purge_period := 0;              -- プロファイルパージ処理期間
     -- 処理件数の初期化
     gn_target_cnt             := 0;              -- 入力件数
-    -- 受注ヘッダ
-    gn_ord_h_upd_n_cnt        := 0;              -- 受注ヘッダ更新作成件数(実績計上)
-    gn_ord_h_ins_cnt          := 0;              -- 受注ヘッダ登録作成件数(外部倉庫発番)
-    gn_ord_h_upd_y_cnt        := 0;              -- 受注ヘッダ更新作成件数(実績訂正)
-    -- 受注明細
-    gn_ord_l_upd_n_cnt        := 0;              -- 受注明細更新作成件数(実績計上品目あり)
-    gn_ord_l_ins_n_cnt        := 0;              -- 受注明細登録作成件数(実績計上品目なし)
-    gn_ord_l_ins_cnt          := 0;              -- 受注明細登録作成件数(外部倉庫発番)
-    gn_ord_l_ins_y_cnt        := 0;              -- 受注明細登録作成件数(実績修正)
-    -- ロット詳細
-    gn_ord_mov_ins_n_cnt      := 0;              -- ロット詳細新規作成件数(受注_実績計上)
-    gn_ord_mov_ins_cnt        := 0;              -- ロット詳細新規作成件数(受注_外部倉庫発番)
-    gn_ord_mov_ins_y_cnt      := 0;              -- ロット詳細新規作成件数(受注_実績修正)
-    -- 移動依頼/指示ヘッダ
-    gn_mov_h_ins_cnt          := 0;              -- 移動依頼/指示ヘッダ登録作成件数(外部倉庫発番)
-    gn_mov_h_upd_n_cnt        := 0;              -- 移動依頼/指示ヘッダ更新作成件数(実績計上)
-      gn_mov_h_upd_y_cnt      := 0;              -- 移動依頼/指示ヘッダ更新作成件数(実績訂正)
-    -- 移動依頼/指示明細
-    gn_mov_l_upd_n_cnt        := 0;              -- 移動依頼/指示明細更新作成件数(実績計上品目あり)
-    gn_mov_l_ins_n_cnt        := 0;              -- 移動依頼/指示明細登録作成件数(実績計上品目なし)
-    gn_mov_l_ins_cnt          := 0;              -- 移動依頼/指示明細登録作成件数(外部倉庫発番)
-    gn_mov_l_upd_y_cnt        := 0;              -- 移動依頼/指示明細登録作成件数(訂正元品目あり)
-    gn_mov_l_ins_y_cnt        := 0;              -- 移動依頼/指示明細登録作成件数(訂正元品目なし)
-    -- ロット詳細
-    gn_mov_mov_ins_n_cnt      := 0;              -- ロット詳細新規作成件数(移動依頼_実績計上)
-    gn_mov_mov_ins_cnt        := 0;              -- ロット詳細新規作成件数(移動依頼_外部倉庫発番)
-    gn_mov_mov_upd_y_cnt      := 0;              -- ロット詳細新規作成件数(移動依頼_訂正ロットあり)
-    gn_mov_mov_ins_y_cnt      := 0;              -- ロット詳細新規作成件数(移動依頼_訂正ロットなし)
-    --
-    gn_del_headers_cnt        := 0;              -- IFヘッダ取消情報件数
+--
+--********** 2008/07/07 ********** ADD    START ***
+    -- 新規用のカウント
+    gn_ord_new_shikyu_cnt     := 0;              -- 新規受注（支給）作成件数
+    gn_ord_new_syukka_cnt     := 0;              -- 新規受注（出荷）作成件数
+    gn_mov_new_cnt            := 0;              -- 新規移動作成件数
+    -- 訂正用のカウント
+    gn_ord_correct_shikyu_cnt := 0;              -- 訂正受注（支給）作成件数
+    gn_ord_correct_syukka_cnt := 0;              -- 訂正受注（出荷）作成件数
+    gn_mov_correct_cnt        := 0;              -- 訂正移動作成件数
+--********** 2008/07/07 ********** ADD    END   ***
+--
+--********** 2008/07/07 ********** DELETE START ***
+--* -- 受注ヘッダ
+--* gn_ord_h_upd_n_cnt        := 0;              -- 受注ヘッダ更新作成件数(実績計上)
+--* gn_ord_h_ins_cnt          := 0;              -- 受注ヘッダ登録作成件数(外部倉庫発番)
+--* gn_ord_h_upd_y_cnt        := 0;              -- 受注ヘッダ更新作成件数(実績訂正)
+--* -- 受注明細
+--* gn_ord_l_upd_n_cnt        := 0;              -- 受注明細更新作成件数(実績計上品目あり)
+--* gn_ord_l_ins_n_cnt        := 0;              -- 受注明細登録作成件数(実績計上品目なし)
+--* gn_ord_l_ins_cnt          := 0;              -- 受注明細登録作成件数(外部倉庫発番)
+--* gn_ord_l_ins_y_cnt        := 0;              -- 受注明細登録作成件数(実績修正)
+--* -- ロット詳細
+--* gn_ord_mov_ins_n_cnt      := 0;              -- ロット詳細新規作成件数(受注_実績計上)
+--* gn_ord_mov_ins_cnt        := 0;              -- ロット詳細新規作成件数(受注_外部倉庫発番)
+--* gn_ord_mov_ins_y_cnt      := 0;              -- ロット詳細新規作成件数(受注_実績修正)
+--* -- 移動依頼/指示ヘッダ
+--* gn_mov_h_ins_cnt          := 0;              -- 移動依頼/指示ヘッダ登録作成件数(外部倉庫発番)
+--* gn_mov_h_upd_n_cnt        := 0;              -- 移動依頼/指示ヘッダ更新作成件数(実績計上)
+--* gn_mov_h_upd_y_cnt        := 0;              -- 移動依頼/指示ヘッダ更新作成件数(実績訂正)
+--* -- 移動依頼/指示明細
+--* gn_mov_l_upd_n_cnt        := 0;              -- 移動依頼/指示明細更新作成件数(実績計上品目あり)
+--* gn_mov_l_ins_n_cnt        := 0;              -- 移動依頼/指示明細登録作成件数(実績計上品目なし)
+--* gn_mov_l_ins_cnt          := 0;              -- 移動依頼/指示明細登録作成件数(外部倉庫発番)
+--* gn_mov_l_upd_y_cnt        := 0;              -- 移動依頼/指示明細登録作成件数(訂正元品目あり)
+--* gn_mov_l_ins_y_cnt        := 0;              -- 移動依頼/指示明細登録作成件数(訂正元品目なし)
+--* -- ロット詳細
+--* gn_mov_mov_ins_n_cnt      := 0;              -- ロット詳細新規作成件数(移動依頼_実績計上)
+--* gn_mov_mov_ins_cnt        := 0;              -- ロット詳細新規作成件数(移動依頼_外部倉庫発番)
+--* gn_mov_mov_upd_y_cnt      := 0;              -- ロット詳細新規作成件数(移動依頼_訂正ロットあり)
+--* gn_mov_mov_ins_y_cnt      := 0;              -- ロット詳細新規作成件数(移動依頼_訂正ロットなし)
+--* --
+--* gn_del_headers_cnt        := 0;              -- IFヘッダ取消情報件数
+--********** 2008/07/07 ********** DELETE END   ***
     gn_del_lines_cnt          := 0;              -- IF明細取消情報件数
     --
     gn_del_errdata_cnt        := 0;              -- エラーデータ削除件数
     --
     gn_warn_cnt               := 0;              -- 警告件数
-    gn_error_cnt              := 0;              -- 異常件数
+--********** 2008/07/07 ********** DELETE START ***
+--* gn_error_cnt              := 0;              -- 異常件数
+--********** 2008/07/07 ********** DELETE END   ***
 --
     -- ================================
     -- パラメータチェック (A-0)
@@ -15139,11 +15522,11 @@ AS
 --*HHT*  lv_retcode,             -- リターン・コード             --# 固定 #
 --*HHT*  lv_errmsg               -- ユーザー・エラー・メッセージ --# 固定 #
 --*HHT*);
+--*HHT*--
+--*HHT*IF (lv_retcode = gv_status_error) THEN
+--*HHT*  RAISE global_process_expt;
+--*HHT*END IF;
 --*HHT**************************************************************************
---
-    IF (lv_retcode = gv_status_error) THEN
-      RAISE global_process_expt;
-    END IF;
 --
     -- ===============================
     -- エラーチェック_配送No単位 プロシージャ (A-5-1)
@@ -15438,9 +15821,18 @@ AS
     -- 出荷実績登録処理プロシージャ (A-16)
     -- ===============================
 --  受注アドオンへ登録又は更新するデータが1件以上存在した場合
-    IF ((gn_ord_h_upd_n_cnt > 0) OR
-       (gn_ord_h_ins_cnt > 0)    OR
-       (gn_ord_h_upd_y_cnt > 0))
+--
+--********** 2008/07/07 ********** MODIFY START ***
+--* IF ((gn_ord_h_upd_n_cnt > 0) OR
+--*    (gn_ord_h_ins_cnt > 0)    OR
+--*    (gn_ord_h_upd_y_cnt > 0))
+--
+    IF ((gn_ord_new_shikyu_cnt     > 0) OR
+        (gn_ord_new_syukka_cnt     > 0) OR
+        (gn_ord_correct_shikyu_cnt > 0) OR
+        (gn_ord_correct_syukka_cnt > 0))
+--********** 2008/07/07 ********** MODIFY END   ***
+--
     THEN
 --
       ship_results_regist_process(
@@ -15460,10 +15852,17 @@ AS
     -- 入出庫実績登録処理プロシージャ (A-17)
     -- ===============================
 --  移動依頼/指示アドオンへ登録又は更新するデータが1件以上存在した場合
-    IF ((gn_mov_h_ins_cnt > 0) OR
-      (gn_mov_h_upd_n_cnt > 0) OR
-      (gn_mov_h_upd_y_cnt > 0))
+--
+--********** 2008/07/07 ********** MODIFY START ***
+--* IF ((gn_mov_h_ins_cnt > 0) OR
+--*   (gn_mov_h_upd_n_cnt > 0) OR
+--*   (gn_mov_h_upd_y_cnt > 0))
+--* THEN
+--
+    IF ((gn_mov_new_cnt     > 0) OR
+        (gn_mov_correct_cnt > 0))
     THEN
+--********** 2008/07/07 ********** MODIFY END   ***
 --
       move_results_regist_process(
         lv_errbuf,              -- エラー・メッセージ           --# 固定 #
@@ -15531,6 +15930,9 @@ AS
     lv_errmsg  VARCHAR2(5000);  -- ユーザー・エラー・メッセージ
 --
   BEGIN
+--
+    -- ログ出力フラグ設定
+    set_debug_switch();
 --
 --###########################  固定部 START   #####################################################
 --
@@ -15619,36 +16021,51 @@ AS
     FND_FILE.PUT_LINE(FND_FILE.OUTPUT,gv_out_msg);
 --
     IF (lv_retcode = gv_status_error) THEN
-      -- 受注ヘッダ
-      gn_ord_h_upd_n_cnt        := 0;              -- 受注ヘッダ更新作成件数(実績計上)
-      gn_ord_h_ins_cnt          := 0;              -- 受注ヘッダ登録作成件数(外部倉庫発番)
-      gn_ord_h_upd_y_cnt        := 0;              -- 受注ヘッダ更新作成件数(実績訂正)
-      -- 受注明細
-      gn_ord_l_upd_n_cnt        := 0;              -- 受注明細更新作成件数(実績計上品目あり)
-      gn_ord_l_ins_n_cnt        := 0;              -- 受注明細登録作成件数(実績計上品目なし)
-      gn_ord_l_ins_cnt          := 0;              -- 受注明細登録作成件数(外部倉庫発番)
-      gn_ord_l_ins_y_cnt        := 0;              -- 受注明細登録作成件数(実績修正)
-      -- ロット詳細
-      gn_ord_mov_ins_n_cnt      := 0;              -- ロット詳細新規作成件数(受注_実績計上)
-      gn_ord_mov_ins_cnt        := 0;              -- ロット詳細新規作成件数(受注_外部倉庫発番)
-      gn_ord_mov_ins_y_cnt      := 0;              -- ロット詳細新規作成件数(受注_実績修正)
-      -- 移動依頼/指示ヘッダ
-      gn_mov_h_ins_cnt          := 0;              -- 移動依頼/指示ヘッダ登録作成件数(外部倉庫発番)
-      gn_mov_h_upd_n_cnt        := 0;              -- 移動依頼/指示ヘッダ更新作成件数(実績計上)
-        gn_mov_h_upd_y_cnt      := 0;              -- 移動依頼/指示ヘッダ更新作成件数(実績訂正)
-      -- 移動依頼/指示明細
-      gn_mov_l_upd_n_cnt        := 0;              -- 移動依頼/指示明細更新作成件数(実績計上品目あり)
-      gn_mov_l_ins_n_cnt        := 0;              -- 移動依頼/指示明細登録作成件数(実績計上品目なし)
-      gn_mov_l_ins_cnt          := 0;              -- 移動依頼/指示明細登録作成件数(外部倉庫発番)
-      gn_mov_l_upd_y_cnt        := 0;              -- 移動依頼/指示明細登録作成件数(訂正元品目あり)
-      gn_mov_l_ins_y_cnt        := 0;              -- 移動依頼/指示明細登録作成件数(訂正元品目なし)
-      -- ロット詳細
-      gn_mov_mov_ins_n_cnt      := 0;              -- ロット詳細新規作成件数(移動依頼_実績計上)
-      gn_mov_mov_ins_cnt        := 0;              -- ロット詳細新規作成件数(移動依頼_外部倉庫発番)
-      gn_mov_mov_upd_y_cnt      := 0;              -- ロット詳細新規作成件数(移動依頼_訂正ロットあり)
-      gn_mov_mov_ins_y_cnt      := 0;              -- ロット詳細新規作成件数(移動依頼_訂正ロットなし)
-      --
-      gn_del_headers_cnt        := 0;              -- IFヘッダ取消情報件数
+--
+--********** 2008/07/07 ********** DELETE START ***
+--*   -- 受注ヘッダ
+--*   gn_ord_h_upd_n_cnt        := 0;              -- 受注ヘッダ更新作成件数(実績計上)
+--*   gn_ord_h_ins_cnt          := 0;              -- 受注ヘッダ登録作成件数(外部倉庫発番)
+--*   gn_ord_h_upd_y_cnt        := 0;              -- 受注ヘッダ更新作成件数(実績訂正)
+--*   -- 受注明細
+--*   gn_ord_l_upd_n_cnt        := 0;              -- 受注明細更新作成件数(実績計上品目あり)
+--*   gn_ord_l_ins_n_cnt        := 0;              -- 受注明細登録作成件数(実績計上品目なし)
+--*   gn_ord_l_ins_cnt          := 0;              -- 受注明細登録作成件数(外部倉庫発番)
+--*   gn_ord_l_ins_y_cnt        := 0;              -- 受注明細登録作成件数(実績修正)
+--*   -- ロット詳細
+--*   gn_ord_mov_ins_n_cnt      := 0;              -- ロット詳細新規作成件数(受注_実績計上)
+--*   gn_ord_mov_ins_cnt        := 0;              -- ロット詳細新規作成件数(受注_外部倉庫発番)
+--*   gn_ord_mov_ins_y_cnt      := 0;              -- ロット詳細新規作成件数(受注_実績修正)
+--*   -- 移動依頼/指示ヘッダ
+--*   gn_mov_h_ins_cnt          := 0;              -- 移動依頼/指示ヘッダ登録作成件数(外部倉庫発番)
+--*   gn_mov_h_upd_n_cnt        := 0;              -- 移動依頼/指示ヘッダ更新作成件数(実績計上)
+--*   gn_mov_h_upd_y_cnt        := 0;              -- 移動依頼/指示ヘッダ更新作成件数(実績訂正)
+--*   -- 移動依頼/指示明細
+--*   gn_mov_l_upd_n_cnt        := 0;              -- 移動依頼/指示明細更新作成件数(実績計上品目あり)
+--*   gn_mov_l_ins_n_cnt        := 0;              -- 移動依頼/指示明細登録作成件数(実績計上品目なし)
+--*   gn_mov_l_ins_cnt          := 0;              -- 移動依頼/指示明細登録作成件数(外部倉庫発番)
+--*   gn_mov_l_upd_y_cnt        := 0;              -- 移動依頼/指示明細登録作成件数(訂正元品目あり)
+--*   gn_mov_l_ins_y_cnt        := 0;              -- 移動依頼/指示明細登録作成件数(訂正元品目なし)
+--*   -- ロット詳細
+--*   gn_mov_mov_ins_n_cnt      := 0;              -- ロット詳細新規作成件数(移動依頼_実績計上)
+--*   gn_mov_mov_ins_cnt        := 0;              -- ロット詳細新規作成件数(移動依頼_外部倉庫発番)
+--*   gn_mov_mov_upd_y_cnt      := 0;              -- ロット詳細新規作成件数(移動依頼_訂正ロットあり)
+--*   gn_mov_mov_ins_y_cnt      := 0;              -- ロット詳細新規作成件数(移動依頼_訂正ロットなし)
+--*   --
+--*   gn_del_headers_cnt        := 0;              -- IFヘッダ取消情報件数
+--********** 2008/07/07 ********** DELETE END   ***
+--
+--********** 2008/07/07 ********** ADD    START ***
+    -- 新規用のカウント
+    gn_ord_new_shikyu_cnt     := 0;                -- 新規受注（支給）作成件数
+    gn_ord_new_syukka_cnt     := 0;                -- 新規受注（出荷）作成件数
+    gn_mov_new_cnt            := 0;                -- 新規移動作成件数
+    -- 訂正用のカウント
+    gn_ord_correct_shikyu_cnt := 0;                -- 訂正受注（支給）作成件数
+    gn_ord_correct_syukka_cnt := 0;                -- 訂正受注（出荷）作成件数
+    gn_mov_correct_cnt        := 0;                -- 訂正移動作成件数
+--********** 2008/07/07 ********** ADD    END   ***
+--
       gn_del_lines_cnt          := 0;              -- IF明細取消情報件数
       --
       gn_del_errdata_cnt        := 0;              -- エラーデータ削除件数
@@ -15656,297 +16073,386 @@ AS
       gn_warn_cnt               := 0;              -- 警告件数
     END IF;
 --
-   --受注ヘッダ更新作成件数(実績計上) 出力
+--********** 2008/07/07 ********** DELETE START ***
+--*--受注ヘッダ更新作成件数(実績計上) 出力
+--* gv_out_msg := xxcmn_common_pkg.get_msg(
+--*                     gv_msg_kbn,              -- 'XXWSH'
+--*                     gv_msg_93a_040,          -- 各処理結果件数メッセージ
+--*                     gv_param1_token,         -- トークン'PARAM1'
+--*                     gv_ord_h_upd_n_cnt_nm,   -- 受注ヘッダ更新作成件数(実績計上)
+--*                     gv_tkn_cnt,              -- トークン'CNT'
+--*                     TO_CHAR(gn_ord_h_upd_n_cnt));
+--*
+--* FND_FILE.PUT_LINE(FND_FILE.OUTPUT,gv_out_msg);
+--*
+--* -- 受注ヘッダ登録作成件数(外部倉庫発番) 出力
+--* gv_out_msg := xxcmn_common_pkg.get_msg(
+--*                     gv_msg_kbn,              -- 'XXWSH'
+--*                     gv_msg_93a_040,          -- 各処理結果件数メッセージ
+--*                     gv_param1_token,         -- トークン'PARAM1'
+--*                     gv_ord_h_ins_cnt_nm,     -- 受注ヘッダ登録作成件数(外部倉庫発番)
+--*                     gv_tkn_cnt,              -- トークン'CNT'
+--*                     TO_CHAR(gn_ord_h_ins_cnt));
+--*
+--* FND_FILE.PUT_LINE(FND_FILE.OUTPUT,gv_out_msg);
+--*
+--* -- 受注ヘッダ更新作成件数(実績訂正) 出力
+--* gv_out_msg := xxcmn_common_pkg.get_msg(
+--*                     gv_msg_kbn,              -- 'XXWSH'
+--*                     gv_msg_93a_040,          -- 各処理結果件数メッセージ
+--*                     gv_param1_token,         -- トークン'PARAM1'
+--*                     gv_ord_h_upd_y_cnt_nm,   -- 受注ヘッダ更新作成件数(実績訂正)
+--*                     gv_tkn_cnt,              -- トークン'CNT'
+--*                     TO_CHAR(gn_ord_h_upd_y_cnt));
+--*
+--* FND_FILE.PUT_LINE(FND_FILE.OUTPUT,gv_out_msg);
+--*
+--* -- 受注明細更新作成件数(実績計上品目あり) 出力
+--* gv_out_msg := xxcmn_common_pkg.get_msg(
+--*                     gv_msg_kbn,              -- 'XXWSH'
+--*                     gv_msg_93a_040,          -- 各処理結果件数メッセージ
+--*                     gv_param1_token,         -- トークン'PARAM1'
+--*                     gv_ord_l_upd_n_cnt_nm,   -- 受注明細更新作成件数(実績計上品目あり)
+--*                     gv_tkn_cnt,              -- トークン'CNT'
+--*                     TO_CHAR(gn_ord_l_upd_n_cnt));
+--*
+--* FND_FILE.PUT_LINE(FND_FILE.OUTPUT,gv_out_msg);
+--*
+--* -- 受注明細登録作成件数(実績計上品目なし) 出力
+--* gv_out_msg := xxcmn_common_pkg.get_msg(
+--*                     gv_msg_kbn,              -- 'XXWSH'
+--*                     gv_msg_93a_040,          -- 各処理結果件数メッセージ
+--*                     gv_param1_token,         -- トークン'PARAM1'
+--*                     gv_ord_l_ins_n_cnt_nm,   -- 受注明細登録作成件数(実績計上品目なし)
+--*                     gv_tkn_cnt,              -- トークン'CNT'
+--*                     TO_CHAR(gn_ord_l_ins_n_cnt));
+--*
+--* FND_FILE.PUT_LINE(FND_FILE.OUTPUT,gv_out_msg);
+--*
+--* -- 受注明細登録作成件数(外部倉庫発番) 出力
+--* gv_out_msg := xxcmn_common_pkg.get_msg(
+--*                     gv_msg_kbn,              -- 'XXWSH'
+--*                     gv_msg_93a_040,          -- 各処理結果件数メッセージ
+--*                     gv_param1_token,         -- トークン'PARAM1'
+--*                     gv_ord_l_ins_cnt_nm,     -- 受注明細登録作成件数(外部倉庫発番)
+--*                     gv_tkn_cnt,              -- トークン'CNT'
+--*                     TO_CHAR(gn_ord_l_ins_cnt));
+--*
+--* FND_FILE.PUT_LINE(FND_FILE.OUTPUT,gv_out_msg);
+--*
+--* -- 受注明細登録作成件数(実績修正) 出力
+--* gv_out_msg := xxcmn_common_pkg.get_msg(
+--*                     gv_msg_kbn,              -- 'XXWSH'
+--*                     gv_msg_93a_040,          -- 各処理結果件数メッセージ
+--*                     gv_param1_token,         -- トークン'PARAM1'
+--*                     gv_ord_l_ins_y_cnt_nm,   -- 受注明細登録作成件数(実績修正)
+--*                     gv_tkn_cnt,              -- トークン'CNT'
+--*                     TO_CHAR(gn_ord_l_ins_y_cnt));
+--*
+--* FND_FILE.PUT_LINE(FND_FILE.OUTPUT,gv_out_msg);
+--*
+--* -- ロット詳細新規作成件数(受注_実績計上) 出力
+--* gv_out_msg := xxcmn_common_pkg.get_msg(
+--*                     gv_msg_kbn,              -- 'XXWSH'
+--*                     gv_msg_93a_040,          -- 各処理結果件数メッセージ
+--*                     gv_param1_token,         -- トークン'PARAM1'
+--*                     gv_ord_mov_ins_n_cnt_nm, -- ロット詳細新規作成件数(受注_実績計上)
+--*                     gv_tkn_cnt,              -- トークン'CNT'
+--*                     TO_CHAR(gn_ord_mov_ins_n_cnt));
+--*
+--* FND_FILE.PUT_LINE(FND_FILE.OUTPUT,gv_out_msg);
+--*
+--* -- ロット詳細新規作成件数(受注_外部倉庫発番) 出力
+--* gv_out_msg := xxcmn_common_pkg.get_msg(
+--*                     gv_msg_kbn,              -- 'XXWSH'
+--*                     gv_msg_93a_040,          -- 各処理結果件数メッセージ
+--*                     gv_param1_token,         -- トークン'PARAM1'
+--*                     gv_ord_mov_ins_cnt_nm,   -- ロット詳細新規作成件数(受注_外部倉庫発番)
+--*                     gv_tkn_cnt,              -- トークン'CNT'
+--*                     TO_CHAR(gn_ord_mov_ins_cnt));
+--*
+--* FND_FILE.PUT_LINE(FND_FILE.OUTPUT,gv_out_msg);
+--*
+--* -- ロット詳細新規作成件数(受注_実績修正) 出力
+--* gv_out_msg := xxcmn_common_pkg.get_msg(
+--*                     gv_msg_kbn,              -- 'XXWSH'
+--*                     gv_msg_93a_040,          -- 各処理結果件数メッセージ
+--*                     gv_param1_token,         -- トークン'PARAM1'
+--*                     gv_ord_mov_ins_y_cnt_nm, -- ロット詳細新規作成件数(受注_実績修正)
+--*                     gv_tkn_cnt,              -- トークン'CNT'
+--*                     TO_CHAR(gn_ord_mov_ins_y_cnt));
+--*
+--* FND_FILE.PUT_LINE(FND_FILE.OUTPUT,gv_out_msg);
+--*
+--* -- 移動依頼/指示ヘッダ登録作成件数(外部倉庫発番) 出力
+--* gv_out_msg := xxcmn_common_pkg.get_msg(
+--*                     gv_msg_kbn,              -- 'XXWSH'
+--*                     gv_msg_93a_040,          -- 各処理結果件数メッセージ
+--*                     gv_param1_token,         -- トークン'PARAM1'
+--*                     gv_mov_h_ins_cnt_nm, -- 移動依頼/指示ヘッダ登録作成件数(外部倉庫発番)
+--*                     gv_tkn_cnt,              -- トークン'CNT'
+--*                     TO_CHAR(gn_mov_h_ins_cnt));
+--*
+--* FND_FILE.PUT_LINE(FND_FILE.OUTPUT,gv_out_msg);
+--*
+--* -- 移動依頼/指示ヘッダ更新作成件数(実績計上) 出力
+--* gv_out_msg := xxcmn_common_pkg.get_msg(
+--*                     gv_msg_kbn,              -- 'XXWSH'
+--*                     gv_msg_93a_040,          -- 各処理結果件数メッセージ
+--*                     gv_param1_token,         -- トークン'PARAM1'
+--*                     gv_mov_h_upd_n_cnt_nm,   -- 移動依頼/指示ヘッダ更新作成件数(実績計上)
+--*                     gv_tkn_cnt,              -- トークン'CNT'
+--*                     TO_CHAR(gn_mov_h_upd_n_cnt));
+--*
+--* FND_FILE.PUT_LINE(FND_FILE.OUTPUT,gv_out_msg);
+--*
+--* -- 移動依頼/指示ヘッダ更新作成件数(実績訂正) 出力
+--* gv_out_msg := xxcmn_common_pkg.get_msg(
+--*                     gv_msg_kbn,              -- 'XXWSH'
+--*                     gv_msg_93a_040,          -- 各処理結果件数メッセージ
+--*                     gv_param1_token,         -- トークン'PARAM1'
+--*                     gv_mov_h_upd_y_cnt_nm,   -- 移動依頼/指示ヘッダ更新作成件数(実績訂正)
+--*                     gv_tkn_cnt,              -- トークン'CNT'
+--*                     TO_CHAR(gn_mov_h_upd_y_cnt));
+--*
+--* FND_FILE.PUT_LINE(FND_FILE.OUTPUT,gv_out_msg);
+--*
+--* -- 移動依頼/指示明細更新作成件数(実績計上品目あり) 出力
+--* gv_out_msg := xxcmn_common_pkg.get_msg(
+--*                     gv_msg_kbn,              -- 'XXWSH'
+--*                     gv_msg_93a_040,          -- 各処理結果件数メッセージ
+--*                     gv_param1_token,         -- トークン'PARAM1'
+--*                     gv_mov_l_upd_n_cnt_nm,   -- 移動依頼/指示明細更新作成件数(実績計上品目あり)
+--*                     gv_tkn_cnt,              -- トークン'CNT'
+--*                     TO_CHAR(gn_mov_l_upd_n_cnt));
+--*
+--* FND_FILE.PUT_LINE(FND_FILE.OUTPUT,gv_out_msg);
+--*
+--* -- 移動依頼/指示明細登録作成件数(実績計上品目なし) 出力
+--* gv_out_msg := xxcmn_common_pkg.get_msg(
+--*                     gv_msg_kbn,              -- 'XXWSH'
+--*                     gv_msg_93a_040,          -- 各処理結果件数メッセージ
+--*                     gv_param1_token,         -- トークン'PARAM1'
+--*                     gv_mov_l_ins_n_cnt_nm,   -- 移動依頼/指示明細登録作成件数(実績計上品目なし)
+--*                     gv_tkn_cnt,              -- トークン'CNT'
+--*                     TO_CHAR(gn_mov_l_ins_n_cnt));
+--*
+--* FND_FILE.PUT_LINE(FND_FILE.OUTPUT,gv_out_msg);
+--*
+--* -- 移動依頼/指示明細登録作成件数(外部倉庫発番) 出力
+--* gv_out_msg := xxcmn_common_pkg.get_msg(
+--*                     gv_msg_kbn,              -- 'XXWSH'
+--*                     gv_msg_93a_040,          -- 各処理結果件数メッセージ
+--*                     gv_param1_token,         -- トークン'PARAM1'
+--*                     gv_mov_l_ins_cnt_nm,     -- 移動依頼/指示明細登録作成件数(外部倉庫発番)
+--*                     gv_tkn_cnt,              -- トークン'CNT'
+--*                     TO_CHAR(gn_mov_l_ins_cnt));
+--*
+--* FND_FILE.PUT_LINE(FND_FILE.OUTPUT,gv_out_msg);
+--*
+--* -- 移動依頼/指示明細登録作成件数(訂正元品目あり) 出力
+--* gv_out_msg := xxcmn_common_pkg.get_msg(
+--*                     gv_msg_kbn,              -- 'XXWSH'
+--*                     gv_msg_93a_040,          -- 各処理結果件数メッセージ
+--*                     gv_param1_token,         -- トークン'PARAM1'
+--*                     gv_mov_l_upd_y_cnt_nm,   -- 移動依頼/指示明細登録作成件数(訂正元品目あり)
+--*                     gv_tkn_cnt,              -- トークン'CNT'
+--*                     TO_CHAR(gn_mov_l_upd_y_cnt));
+--*
+--* FND_FILE.PUT_LINE(FND_FILE.OUTPUT,gv_out_msg);
+--*
+--* -- 移動依頼/指示明細登録作成件数(訂正元品目なし) 出力
+--* gv_out_msg := xxcmn_common_pkg.get_msg(
+--*                     gv_msg_kbn,              -- 'XXWSH'
+--*                     gv_msg_93a_040,          -- 各処理結果件数メッセージ
+--*                     gv_param1_token,         -- トークン'PARAM1'
+--*                     gv_mov_l_ins_y_cnt_nm,   -- 移動依頼/指示明細登録作成件数(訂正元品目なし)
+--*                     gv_tkn_cnt,              -- トークン'CNT'
+--*                     TO_CHAR(gn_mov_l_ins_y_cnt));
+--*
+--* FND_FILE.PUT_LINE(FND_FILE.OUTPUT,gv_out_msg);
+--*
+--* -- ロット詳細新規作成件数(移動依頼_実績計上) 出力
+--* gv_out_msg := xxcmn_common_pkg.get_msg(
+--*                     gv_msg_kbn,              -- 'XXWSH'
+--*                     gv_msg_93a_040,          -- 各処理結果件数メッセージ
+--*                     gv_param1_token,         -- トークン'PARAM1'
+--*                     gv_mov_mov_ins_n_cnt_nm, -- ロット詳細新規作成件数(移動依頼_実績計上)
+--*                     gv_tkn_cnt,              -- トークン'CNT'
+--*                     TO_CHAR(gn_mov_mov_ins_n_cnt));
+--*
+--* FND_FILE.PUT_LINE(FND_FILE.OUTPUT,gv_out_msg);
+--*
+--* -- ロット詳細新規作成件数(移動依頼_外部倉庫発番) 出力
+--* gv_out_msg := xxcmn_common_pkg.get_msg(
+--*                     gv_msg_kbn,              -- 'XXWSH'
+--*                     gv_msg_93a_040,          -- 各処理結果件数メッセージ
+--*                     gv_param1_token,         -- トークン'PARAM1'
+--*                     gv_mov_mov_ins_cnt_nm,   -- ロット詳細新規作成件数(移動依頼_外部倉庫発番)
+--*                     gv_tkn_cnt,              -- トークン'CNT'
+--*                     TO_CHAR(gn_mov_mov_ins_cnt));
+--*
+--* FND_FILE.PUT_LINE(FND_FILE.OUTPUT,gv_out_msg);
+--*
+--* -- ロット詳細新規作成件数(移動依頼_訂正ロットあり) 出力
+--* gv_out_msg := xxcmn_common_pkg.get_msg(
+--*                     gv_msg_kbn,              -- 'XXWSH'
+--*                     gv_msg_93a_040,          -- 各処理結果件数メッセージ
+--*                     gv_param1_token,         -- トークン'PARAM1'
+--*                     gv_mov_mov_upd_y_cnt_nm, -- ロット詳細新規作成件数(移動依頼_訂正ロットあり)
+--*                     gv_tkn_cnt,              -- トークン'CNT'
+--*                     TO_CHAR(gn_mov_mov_upd_y_cnt));
+--*
+--* FND_FILE.PUT_LINE(FND_FILE.OUTPUT,gv_out_msg);
+--*
+--* -- ロット詳細新規作成件数(移動依頼_訂正ロットなし) 出力
+--* gv_out_msg := xxcmn_common_pkg.get_msg(
+--*                     gv_msg_kbn,              -- 'XXWSH'
+--*                     gv_msg_93a_040,          -- 各処理結果件数メッセージ
+--*                     gv_param1_token,         -- トークン'PARAM1'
+--*                     gv_mov_mov_ins_y_cnt_nm, -- ロット詳細新規作成件数(移動依頼_訂正ロットなし)
+--*                     gv_tkn_cnt,              -- トークン'CNT'
+--*                     TO_CHAR(gn_mov_mov_ins_y_cnt));
+--*
+--* FND_FILE.PUT_LINE(FND_FILE.OUTPUT,gv_out_msg);
+--********** 2008/07/07 ********** DELETE END   ***
+--
+--********** 2008/07/07 ********** ADD    START ***
+    -- 新規受注（支給）作成 出力
     gv_out_msg := xxcmn_common_pkg.get_msg(
-                        gv_msg_kbn,              -- 'XXWSH'
-                        gv_msg_93a_040,          -- 各処理結果件数メッセージ
-                        gv_param1_token,         -- トークン'PARAM1'
-                        gv_ord_h_upd_n_cnt_nm,   -- 受注ヘッダ更新作成件数(実績計上)
-                        gv_tkn_cnt,              -- トークン'CNT'
-                        TO_CHAR(gn_ord_h_upd_n_cnt));
+                        gv_msg_kbn,                 -- 'XXWSH'
+                        gv_msg_93a_040,             -- 各処理結果件数メッセージ
+                        gv_param1_token,            -- トークン'PARAM1'
+                        gv_ord_new_shikyu_cnt_nm,   -- 新規受注（支給）作成
+                        gv_tkn_cnt,                 -- トークン'CNT'
+                        TO_CHAR(gn_ord_new_shikyu_cnt));
 --
     FND_FILE.PUT_LINE(FND_FILE.OUTPUT,gv_out_msg);
 --
---*HHT********************************************************************************************
---*HHT*    -- 受注ヘッダ登録作成件数(外部倉庫発番) 出力
---*HHT*    gv_out_msg := xxcmn_common_pkg.get_msg(
---*HHT*                        gv_msg_kbn,              -- 'XXWSH'
---*HHT*                        gv_msg_93a_040,          -- 各処理結果件数メッセージ
---*HHT*                        gv_param1_token,         -- トークン'PARAM1'
---*HHT*                        gv_ord_h_ins_cnt_nm,     -- 受注ヘッダ登録作成件数(外部倉庫発番)
---*HHT*                        gv_tkn_cnt,              -- トークン'CNT'
---*HHT*                        TO_CHAR(gn_ord_h_ins_cnt));
---*HHT*--
---*HHT*    FND_FILE.PUT_LINE(FND_FILE.OUTPUT,gv_out_msg);
---*HHT********************************************************************************************
---
-    -- 受注ヘッダ更新作成件数(実績訂正) 出力
+    -- 新規受注（出荷）作成 出力
     gv_out_msg := xxcmn_common_pkg.get_msg(
-                        gv_msg_kbn,              -- 'XXWSH'
-                        gv_msg_93a_040,          -- 各処理結果件数メッセージ
-                        gv_param1_token,         -- トークン'PARAM1'
-                        gv_ord_h_upd_y_cnt_nm,   -- 受注ヘッダ更新作成件数(実績訂正)
-                        gv_tkn_cnt,              -- トークン'CNT'
-                        TO_CHAR(gn_ord_h_upd_y_cnt));
+                        gv_msg_kbn,                 -- 'XXWSH'
+                        gv_msg_93a_040,             -- 各処理結果件数メッセージ
+                        gv_param1_token,            -- トークン'PARAM1'
+                        gv_ord_new_syukka_cnt_nm,   -- 新規受注（出荷）作成
+                        gv_tkn_cnt,                 -- トークン'CNT'
+                        TO_CHAR(gn_ord_new_syukka_cnt));
 --
     FND_FILE.PUT_LINE(FND_FILE.OUTPUT,gv_out_msg);
 --
-    -- 受注明細更新作成件数(実績計上品目あり) 出力
+    -- 新規移動作成 出力
     gv_out_msg := xxcmn_common_pkg.get_msg(
                         gv_msg_kbn,              -- 'XXWSH'
                         gv_msg_93a_040,          -- 各処理結果件数メッセージ
                         gv_param1_token,         -- トークン'PARAM1'
-                        gv_ord_l_upd_n_cnt_nm,   -- 受注明細更新作成件数(実績計上品目あり)
+                        gv_mov_new_cnt_nm,       -- 新規移動作成
                         gv_tkn_cnt,              -- トークン'CNT'
-                        TO_CHAR(gn_ord_l_upd_n_cnt));
+                        TO_CHAR(gn_mov_new_cnt));
 --
     FND_FILE.PUT_LINE(FND_FILE.OUTPUT,gv_out_msg);
 --
-    -- 受注明細登録作成件数(実績計上品目なし) 出力
+    -- 訂正受注（支給）作成 出力
     gv_out_msg := xxcmn_common_pkg.get_msg(
-                        gv_msg_kbn,              -- 'XXWSH'
-                        gv_msg_93a_040,          -- 各処理結果件数メッセージ
-                        gv_param1_token,         -- トークン'PARAM1'
-                        gv_ord_l_ins_n_cnt_nm,   -- 受注明細登録作成件数(実績計上品目なし)
-                        gv_tkn_cnt,              -- トークン'CNT'
-                        TO_CHAR(gn_ord_l_ins_n_cnt));
+                        gv_msg_kbn,                   -- 'XXWSH'
+                        gv_msg_93a_040,               -- 各処理結果件数メッセージ
+                        gv_param1_token,              -- トークン'PARAM1'
+                        gv_ord_correct_shikyu_cnt_nm, -- 訂正受注（支給）作成
+                        gv_tkn_cnt,                   -- トークン'CNT'
+                        TO_CHAR(gn_ord_correct_shikyu_cnt));
 --
     FND_FILE.PUT_LINE(FND_FILE.OUTPUT,gv_out_msg);
 --
---*HHT********************************************************************************************
---*HHT*    -- 受注明細登録作成件数(外部倉庫発番) 出力
---*HHT*    gv_out_msg := xxcmn_common_pkg.get_msg(
---*HHT*                        gv_msg_kbn,              -- 'XXWSH'
---*HHT*                        gv_msg_93a_040,          -- 各処理結果件数メッセージ
---*HHT*                        gv_param1_token,         -- トークン'PARAM1'
---*HHT*                        gv_ord_l_ins_cnt_nm,     -- 受注明細登録作成件数(外部倉庫発番)
---*HHT*                        gv_tkn_cnt,              -- トークン'CNT'
---*HHT*                        TO_CHAR(gn_ord_l_ins_cnt));
---*HHT*--
---*HHT*    FND_FILE.PUT_LINE(FND_FILE.OUTPUT,gv_out_msg);
---*HHT********************************************************************************************
---
-    -- 受注明細登録作成件数(実績修正) 出力
+    --訂正受注（出荷）作成 出力
     gv_out_msg := xxcmn_common_pkg.get_msg(
-                        gv_msg_kbn,              -- 'XXWSH'
-                        gv_msg_93a_040,          -- 各処理結果件数メッセージ
-                        gv_param1_token,         -- トークン'PARAM1'
-                        gv_ord_l_ins_y_cnt_nm,   -- 受注明細登録作成件数(実績修正)
-                        gv_tkn_cnt,              -- トークン'CNT'
-                        TO_CHAR(gn_ord_l_ins_y_cnt));
+                        gv_msg_kbn,                   -- 'XXWSH'
+                        gv_msg_93a_040,               -- 各処理結果件数メッセージ
+                        gv_param1_token,              -- トークン'PARAM1'
+                        gv_ord_correct_syukka_cnt_nm, -- 訂正受注（出荷）作成
+                        gv_tkn_cnt,                   -- トークン'CNT'
+                        TO_CHAR(gn_ord_correct_syukka_cnt));
 --
     FND_FILE.PUT_LINE(FND_FILE.OUTPUT,gv_out_msg);
 --
-    -- ロット詳細新規作成件数(受注_実績計上) 出力
+    --訂正移動作成 出力
     gv_out_msg := xxcmn_common_pkg.get_msg(
                         gv_msg_kbn,              -- 'XXWSH'
                         gv_msg_93a_040,          -- 各処理結果件数メッセージ
                         gv_param1_token,         -- トークン'PARAM1'
-                        gv_ord_mov_ins_n_cnt_nm, -- ロット詳細新規作成件数(受注_実績計上)
+                        gv_mov_correct_cnt_nm,   -- 訂正移動作成
                         gv_tkn_cnt,              -- トークン'CNT'
-                        TO_CHAR(gn_ord_mov_ins_n_cnt));
+                        TO_CHAR(gn_mov_correct_cnt));
 --
     FND_FILE.PUT_LINE(FND_FILE.OUTPUT,gv_out_msg);
 --
---*HHT********************************************************************************************
---*HHT*    -- ロット詳細新規作成件数(受注_外部倉庫発番) 出力
---*HHT*    gv_out_msg := xxcmn_common_pkg.get_msg(
---*HHT*                        gv_msg_kbn,              -- 'XXWSH'
---*HHT*                        gv_msg_93a_040,          -- 各処理結果件数メッセージ
---*HHT*                        gv_param1_token,         -- トークン'PARAM1'
---*HHT*                        gv_ord_mov_ins_cnt_nm,   -- ロット詳細新規作成件数(受注_外部倉庫発番)
---*HHT*                        gv_tkn_cnt,              -- トークン'CNT'
---*HHT*                        TO_CHAR(gn_ord_mov_ins_cnt));
---*HHT*--
---*HHT*    FND_FILE.PUT_LINE(FND_FILE.OUTPUT,gv_out_msg);
---*HHT********************************************************************************************
+--********** 2008/07/07 ********** ADD    END   ***
 --
-    -- ロット詳細新規作成件数(受注_実績修正) 出力
+--********** 2008/07/07 ********** DELETE START ***
+--* -- 出荷依頼インタフェースヘッダ(アドオン)削除件数 出力
+--* gv_out_msg := xxcmn_common_pkg.get_msg(
+--*                     gv_msg_kbn,              -- 'XXWSH'
+--*                     gv_msg_93a_040,          -- 各処理結果件数メッセージ
+--*                     gv_param1_token,         -- トークン'PARAM1'
+--*                     gv_header_cnt_nm,        -- 出荷依頼インタフェースヘッダ(アドオン)削除
+--*                     gv_tkn_cnt,              -- トークン'CNT'
+--*                     TO_CHAR(gn_del_headers_cnt));
+--*
+--* FND_FILE.PUT_LINE(FND_FILE.OUTPUT,gv_out_msg);
+--********** 2008/07/07 ********** DELETE END   ***
+--
+--********** 2008/07/07 ********** MODIFY START ***
+--* -- 出荷依頼インタフェースヘッダ(アドオン)削除件数 出力
+--* gv_out_msg := xxcmn_common_pkg.get_msg(
+--*                     gv_msg_kbn,              -- 'XXWSH'
+--*                     gv_msg_93a_040,          -- 各処理結果件数メッセージ
+--*                     gv_param1_token,         -- トークン'PARAM1'
+--*                     gv_lines_cnt_nm,         -- 出荷依頼インタフェース明細(アドオン)削除
+--*                     gv_tkn_cnt,              -- トークン'CNT'
+--*                     TO_CHAR(gn_del_lines_cnt));
+--*
+--* FND_FILE.PUT_LINE(FND_FILE.OUTPUT,gv_out_msg);
+--
+    -- 出荷依頼インタフェースパージ削除件数 出力
     gv_out_msg := xxcmn_common_pkg.get_msg(
                         gv_msg_kbn,              -- 'XXWSH'
                         gv_msg_93a_040,          -- 各処理結果件数メッセージ
                         gv_param1_token,         -- トークン'PARAM1'
-                        gv_ord_mov_ins_y_cnt_nm, -- ロット詳細新規作成件数(受注_実績修正)
-                        gv_tkn_cnt,              -- トークン'CNT'
-                        TO_CHAR(gn_ord_mov_ins_y_cnt));
---
-    FND_FILE.PUT_LINE(FND_FILE.OUTPUT,gv_out_msg);
---
---*HHT********************************************************************************************
---*HHT*    -- 移動依頼/指示ヘッダ登録作成件数(外部倉庫発番) 出力
---*HHT*    gv_out_msg := xxcmn_common_pkg.get_msg(
---*HHT*                        gv_msg_kbn,              -- 'XXWSH'
---*HHT*                        gv_msg_93a_040,          -- 各処理結果件数メッセージ
---*HHT*                        gv_param1_token,         -- トークン'PARAM1'
---*HHT*                        gv_mov_h_ins_cnt_nm, -- 移動依頼/指示ヘッダ登録作成件数(外部倉庫発番)
---*HHT*                        gv_tkn_cnt,              -- トークン'CNT'
---*HHT*                        TO_CHAR(gn_mov_h_ins_cnt));
---*HHT*--
---*HHT*    FND_FILE.PUT_LINE(FND_FILE.OUTPUT,gv_out_msg);
---*HHT********************************************************************************************
---
-    -- 移動依頼/指示ヘッダ更新作成件数(実績計上) 出力
-    gv_out_msg := xxcmn_common_pkg.get_msg(
-                        gv_msg_kbn,              -- 'XXWSH'
-                        gv_msg_93a_040,          -- 各処理結果件数メッセージ
-                        gv_param1_token,         -- トークン'PARAM1'
-                        gv_mov_h_upd_n_cnt_nm,   -- 移動依頼/指示ヘッダ更新作成件数(実績計上)
-                        gv_tkn_cnt,              -- トークン'CNT'
-                        TO_CHAR(gn_mov_h_upd_n_cnt));
---
-    FND_FILE.PUT_LINE(FND_FILE.OUTPUT,gv_out_msg);
---
-    -- 移動依頼/指示ヘッダ更新作成件数(実績訂正) 出力
-    gv_out_msg := xxcmn_common_pkg.get_msg(
-                        gv_msg_kbn,              -- 'XXWSH'
-                        gv_msg_93a_040,          -- 各処理結果件数メッセージ
-                        gv_param1_token,         -- トークン'PARAM1'
-                        gv_mov_h_upd_y_cnt_nm,   -- 移動依頼/指示ヘッダ更新作成件数(実績訂正)
-                        gv_tkn_cnt,              -- トークン'CNT'
-                        TO_CHAR(gn_mov_h_upd_y_cnt));
---
-    FND_FILE.PUT_LINE(FND_FILE.OUTPUT,gv_out_msg);
---
-    -- 移動依頼/指示明細更新作成件数(実績計上品目あり) 出力
-    gv_out_msg := xxcmn_common_pkg.get_msg(
-                        gv_msg_kbn,              -- 'XXWSH'
-                        gv_msg_93a_040,          -- 各処理結果件数メッセージ
-                        gv_param1_token,         -- トークン'PARAM1'
-                        gv_mov_l_upd_n_cnt_nm,   -- 移動依頼/指示明細更新作成件数(実績計上品目あり)
-                        gv_tkn_cnt,              -- トークン'CNT'
-                        TO_CHAR(gn_mov_l_upd_n_cnt));
---
-    FND_FILE.PUT_LINE(FND_FILE.OUTPUT,gv_out_msg);
---
-    -- 移動依頼/指示明細登録作成件数(実績計上品目なし) 出力
-    gv_out_msg := xxcmn_common_pkg.get_msg(
-                        gv_msg_kbn,              -- 'XXWSH'
-                        gv_msg_93a_040,          -- 各処理結果件数メッセージ
-                        gv_param1_token,         -- トークン'PARAM1'
-                        gv_mov_l_ins_n_cnt_nm,   -- 移動依頼/指示明細登録作成件数(実績計上品目なし)
-                        gv_tkn_cnt,              -- トークン'CNT'
-                        TO_CHAR(gn_mov_l_ins_n_cnt));
---
-    FND_FILE.PUT_LINE(FND_FILE.OUTPUT,gv_out_msg);
---
---*HHT********************************************************************************************
---*HHT*    -- 移動依頼/指示明細登録作成件数(外部倉庫発番) 出力
---*HHT*    gv_out_msg := xxcmn_common_pkg.get_msg(
---*HHT*                        gv_msg_kbn,              -- 'XXWSH'
---*HHT*                        gv_msg_93a_040,          -- 各処理結果件数メッセージ
---*HHT*                        gv_param1_token,         -- トークン'PARAM1'
---*HHT*                        gv_mov_l_ins_cnt_nm,     -- 移動依頼/指示明細登録作成件数(外部倉庫発番)
---*HHT*                        gv_tkn_cnt,              -- トークン'CNT'
---*HHT*                        TO_CHAR(gn_mov_l_ins_cnt));
---*HHT*--
---*HHT*    FND_FILE.PUT_LINE(FND_FILE.OUTPUT,gv_out_msg);
---*HHT********************************************************************************************
---
-    -- 移動依頼/指示明細登録作成件数(訂正元品目あり) 出力
-    gv_out_msg := xxcmn_common_pkg.get_msg(
-                        gv_msg_kbn,              -- 'XXWSH'
-                        gv_msg_93a_040,          -- 各処理結果件数メッセージ
-                        gv_param1_token,         -- トークン'PARAM1'
-                        gv_mov_l_upd_y_cnt_nm,   -- 移動依頼/指示明細登録作成件数(訂正元品目あり)
-                        gv_tkn_cnt,              -- トークン'CNT'
-                        TO_CHAR(gn_mov_l_upd_y_cnt));
---
-    FND_FILE.PUT_LINE(FND_FILE.OUTPUT,gv_out_msg);
---
-    -- 移動依頼/指示明細登録作成件数(訂正元品目なし) 出力
-    gv_out_msg := xxcmn_common_pkg.get_msg(
-                        gv_msg_kbn,              -- 'XXWSH'
-                        gv_msg_93a_040,          -- 各処理結果件数メッセージ
-                        gv_param1_token,         -- トークン'PARAM1'
-                        gv_mov_l_ins_y_cnt_nm,   -- 移動依頼/指示明細登録作成件数(訂正元品目なし)
-                        gv_tkn_cnt,              -- トークン'CNT'
-                        TO_CHAR(gn_mov_l_ins_y_cnt));
---
-    FND_FILE.PUT_LINE(FND_FILE.OUTPUT,gv_out_msg);
---
-    -- ロット詳細新規作成件数(移動依頼_実績計上) 出力
-    gv_out_msg := xxcmn_common_pkg.get_msg(
-                        gv_msg_kbn,              -- 'XXWSH'
-                        gv_msg_93a_040,          -- 各処理結果件数メッセージ
-                        gv_param1_token,         -- トークン'PARAM1'
-                        gv_mov_mov_ins_n_cnt_nm, -- ロット詳細新規作成件数(移動依頼_実績計上)
-                        gv_tkn_cnt,              -- トークン'CNT'
-                        TO_CHAR(gn_mov_mov_ins_n_cnt));
---
-    FND_FILE.PUT_LINE(FND_FILE.OUTPUT,gv_out_msg);
---
---*HHT********************************************************************************************
---*HHT*    -- ロット詳細新規作成件数(移動依頼_外部倉庫発番) 出力
---*HHT*    gv_out_msg := xxcmn_common_pkg.get_msg(
---*HHT*                        gv_msg_kbn,              -- 'XXWSH'
---*HHT*                        gv_msg_93a_040,          -- 各処理結果件数メッセージ
---*HHT*                        gv_param1_token,         -- トークン'PARAM1'
---*HHT*                        gv_mov_mov_ins_cnt_nm,   -- ロット詳細新規作成件数(移動依頼_外部倉庫発番)
---*HHT*                        gv_tkn_cnt,              -- トークン'CNT'
---*HHT*                        TO_CHAR(gn_mov_mov_ins_cnt));
---*HHT*--
---*HHT*    FND_FILE.PUT_LINE(FND_FILE.OUTPUT,gv_out_msg);
---*HHT********************************************************************************************
---
-    -- ロット詳細新規作成件数(移動依頼_訂正ロットあり) 出力
-    gv_out_msg := xxcmn_common_pkg.get_msg(
-                        gv_msg_kbn,              -- 'XXWSH'
-                        gv_msg_93a_040,          -- 各処理結果件数メッセージ
-                        gv_param1_token,         -- トークン'PARAM1'
-                        gv_mov_mov_upd_y_cnt_nm, -- ロット詳細新規作成件数(移動依頼_訂正ロットあり)
-                        gv_tkn_cnt,              -- トークン'CNT'
-                        TO_CHAR(gn_mov_mov_upd_y_cnt));
---
-    FND_FILE.PUT_LINE(FND_FILE.OUTPUT,gv_out_msg);
---
-    -- ロット詳細新規作成件数(移動依頼_訂正ロットなし) 出力
-    gv_out_msg := xxcmn_common_pkg.get_msg(
-                        gv_msg_kbn,              -- 'XXWSH'
-                        gv_msg_93a_040,          -- 各処理結果件数メッセージ
-                        gv_param1_token,         -- トークン'PARAM1'
-                        gv_mov_mov_ins_y_cnt_nm, -- ロット詳細新規作成件数(移動依頼_訂正ロットなし)
-                        gv_tkn_cnt,              -- トークン'CNT'
-                        TO_CHAR(gn_mov_mov_ins_y_cnt));
---
-    FND_FILE.PUT_LINE(FND_FILE.OUTPUT,gv_out_msg);
---
-    -- 出荷依頼インタフェースヘッダ(アドオン)削除件数 出力
-    gv_out_msg := xxcmn_common_pkg.get_msg(
-                        gv_msg_kbn,              -- 'XXWSH'
-                        gv_msg_93a_040,          -- 各処理結果件数メッセージ
-                        gv_param1_token,         -- トークン'PARAM1'
-                        gv_header_cnt_nm,        -- 出荷依頼インタフェースヘッダ(アドオン)削除
-                        gv_tkn_cnt,              -- トークン'CNT'
-                        TO_CHAR(gn_del_headers_cnt));
---
-    FND_FILE.PUT_LINE(FND_FILE.OUTPUT,gv_out_msg);
---
-    -- 出荷依頼インタフェースヘッダ(アドオン)削除件数 出力
-    gv_out_msg := xxcmn_common_pkg.get_msg(
-                        gv_msg_kbn,              -- 'XXWSH'
-                        gv_msg_93a_040,          -- 各処理結果件数メッセージ
-                        gv_param1_token,         -- トークン'PARAM1'
-                        gv_lines_cnt_nm,         -- 出荷依頼インタフェース明細(アドオン)削除
+                        gv_lines_cnt_nm,         -- 出荷依頼インタフェースパージ削除
                         gv_tkn_cnt,              -- トークン'CNT'
                         TO_CHAR(gn_del_lines_cnt));
 --
     FND_FILE.PUT_LINE(FND_FILE.OUTPUT,gv_out_msg);
+--********** 2008/07/07 ********** MODIFY END   ***
 --
-    -- エラーデータ削除件数 出力
+--********** 2008/07/07 ********** MODIFY START ***
+--* -- エラーデータ削除件数 出力
+--* gv_out_msg := xxcmn_common_pkg.get_msg(
+--*                     gv_msg_kbn,              -- 'XXWSH'
+--*                     gv_msg_93a_040,          -- 各処理結果件数メッセージ
+--*                     gv_param1_token,         -- トークン'PARAM1'
+--*                     gv_err_data_del_cnt_nm,  -- エラーデータ削除
+--*                     gv_tkn_cnt,              -- トークン'CNT'
+--*                     TO_CHAR(gn_del_errdata_cnt));
+--*
+--* FND_FILE.PUT_LINE(FND_FILE.OUTPUT,gv_out_msg);
+--
+    -- 出荷依頼インタフェースエラー削除件数 出力
     gv_out_msg := xxcmn_common_pkg.get_msg(
                         gv_msg_kbn,              -- 'XXWSH'
                         gv_msg_93a_040,          -- 各処理結果件数メッセージ
                         gv_param1_token,         -- トークン'PARAM1'
-                        gv_err_data_del_cnt_nm,  -- エラーデータ削除
+                        gv_err_data_del_cnt_nm,  -- 出荷依頼インタフェースエラー削除
                         gv_tkn_cnt,              -- トークン'CNT'
                         TO_CHAR(gn_del_errdata_cnt));
 --
     FND_FILE.PUT_LINE(FND_FILE.OUTPUT,gv_out_msg);
+--********** 2008/07/07 ********** MODIFY END   ***
 --
-    --異常件数出力
-    gv_out_msg := xxcmn_common_pkg.get_msg(gv_msg_kbn, gv_msg_93a_038,gv_tkn_cnt,
-                                           TO_CHAR(gn_error_cnt));
-    FND_FILE.PUT_LINE(FND_FILE.OUTPUT,gv_out_msg);
+--********** 2008/07/07 ********** DELETE START ***
+--* --異常件数出力
+--* gv_out_msg := xxcmn_common_pkg.get_msg(gv_msg_kbn, gv_msg_93a_038,gv_tkn_cnt,
+--*                                        TO_CHAR(gn_error_cnt));
+--* FND_FILE.PUT_LINE(FND_FILE.OUTPUT,gv_out_msg);
+--********** 2008/07/07 ********** DELETE END   ***
 --
     --警告件数出力
     gv_out_msg := xxcmn_common_pkg.get_msg(gv_msg_kbn, gv_msg_93a_039,gv_tkn_cnt,
