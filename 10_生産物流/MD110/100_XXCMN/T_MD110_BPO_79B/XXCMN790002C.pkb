@@ -7,7 +7,7 @@ AS
  * Description      : 半製品原価計算処理
  * MD.050           : ロット別実際原価計算 T_MD050_BPO_790
  * MD.070           : 半製品原価計算処理 T_MD070_BPO_79B
- * Version          : 1.5
+ * Version          : 1.6
  *
  * Program List
  * ---------------------------- ----------------------------------------------------------
@@ -32,7 +32,7 @@ AS
  *  2008/06/03    1.3   Marushita        TE080_BPO_790 不具合ID 1
  *  2008/07/03    1.4   Marushita        ST不具合314対応
  *  2008/09/05    1.5   Oracle 山根 一浩 PT 3-1_19-2指摘67_01対応
- *
+ *  2008/10/27    1.6   H.Itou           T_S_500対応
  *****************************************************************************************/
 --
 --#######################  固定グローバル定数宣言部 START   #######################
@@ -258,14 +258,20 @@ AS
     -- =====================================
     -- 会計期間開始日を取得
     -- =====================================
-    SELECT  MIN(oap.period_start_date)                        -- 会計期間開始日
-    INTO    gd_opening_date
-    FROM    org_acct_periods       oap,                       -- 在庫会計期間
-            xxcmn_item_locations_v ilv                        -- OPM保管場所情報VIEW
-    WHERE   ilv.whse_code        = gt_whse_code               -- 倉庫コード
-    AND     oap.organization_id  = ilv.mtl_organization_id    -- 組織ID
-    AND     oap.open_flag        = cv_yes                     -- オープンフラグ
-    ;
+-- 2008/10/27 H.Itou Mod Start T_S_500 在庫クローズ年月は共通関数から取得
+--    SELECT  MIN(oap.period_start_date)                        -- 会計期間開始日
+--    INTO    gd_opening_date
+--    FROM    org_acct_periods       oap,                       -- 在庫会計期間
+--            xxcmn_item_locations_v ilv                        -- OPM保管場所情報VIEW
+--    WHERE   ilv.whse_code        = gt_whse_code               -- 倉庫コード
+--    AND     oap.organization_id  = ilv.mtl_organization_id    -- 組織ID
+--    AND     oap.open_flag        = cv_yes                     -- オープンフラグ
+--    ;
+--
+    --  会計期間開始日 = OPM在庫会計期間CLOSE年月 + 1ヶ月
+    gd_opening_date := ADD_MONTHS(TO_DATE(xxcmn_common_pkg.get_opminv_close_period, 'YYYYMM'), 1);
+-- 2008/10/27 H.Itou Mod End
+--
     IF (gd_opening_date IS NULL) THEN
 --
       -- エラーメッセージ取得

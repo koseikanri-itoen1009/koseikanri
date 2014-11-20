@@ -7,7 +7,7 @@ AS
  * Description      : 原料費原価計算処理
  * MD.050           : ロット別実際原価計算 T_MD050_BPO_790
  * MD.070           : 原料費原価計算処理 T_MD070_BPO_79A
- * Version          : 1.0
+ * Version          : 1.1
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -26,8 +26,8 @@ AS
  * ------------- ----- ---------------- -------------------------------------------------
  *  Date          Ver.  Editor           Description
  * ------------- ----- ---------------- -------------------------------------------------
- *  2008/1/31     1.0   Y.Kanami         新規作成
- *
+ *  2008/01/31    1.0   Y.Kanami         新規作成
+ *  2008/10/27    1.1   H.Itou           T_S_500,T_S_631対応
  *****************************************************************************************/
 --
 --#######################  固定グローバル定数宣言部 START   #######################
@@ -167,15 +167,23 @@ AS
     -- *** ローカル変数 ***
 --
     -- *** ローカル・カーソル ***
-    -- 表ロック取得
-    CURSOR get_tab_lock_cur
-    IS
-      SELECT  xtlc.lot_id
-      FROM    xxcmn_txn_lot_cost xtlc   -- 取引別ロット別原価（アドオン）
-      FOR UPDATE NOWAIT
-      ;
+-- 2008/10/27 H.Itou Del Start T_S_631 
+--    -- 表ロック取得
+--    CURSOR get_tab_lock_cur
+--    IS
+--      SELECT  xtlc.lot_id    lot_id   -- ロットID
+--      FROM    xxcmn_txn_lot_cost xtlc   -- 取引別ロット別原価（アドオン）
+--      FOR UPDATE NOWAIT
+--      ;
+-- 2008/10/27 H.Itou Del End
 --
     -- *** ローカル・レコード ***
+-- 2008/10/27 H.Itou Add Start T_S_631
+    lt_doc_type_tab doc_type_ttype; -- 文書タイプ
+    lt_doc_id_tab   doc_id_ttype;   -- 文書ID
+    lt_item_id_tab  item_id_ttype;  -- 品目ID
+    lt_lot_id_tab   lot_id_ttype;   -- ロットID
+-- 2008/10/27 H.Itou Add End
 --
 --
   BEGIN
@@ -190,17 +198,40 @@ AS
     -- 表ロック取得
     -- ===============================
     BEGIN
-      <<get_lock_loop>>
-      FOR loop_cnt IN get_tab_lock_cur LOOP
-        EXIT;
-      END LOOP get_lock_loop;
+-- 2008/10/27 H.Itou Mod Start T_S_631 削除対象は、会計期間開始日以降に作成されたロットデータのみ。
+--      <<get_lock_loop>>
+--      FOR loop_cnt IN get_tab_lock_cur LOOP
+--        EXIT;
+--      END LOOP get_lock_loop;
+--
+      SELECT  xtlc.doc_type       doc_type -- 文書タイプ
+             ,xtlc.doc_id         doc_id   -- 文書ID
+             ,xtlc.item_id        item_id  -- 品目ID
+             ,xtlc.lot_id         lot_id   -- ロットID
+      BULK COLLECT INTO
+              lt_doc_type_tab              -- 文書タイプ
+             ,lt_doc_id_tab                -- 文書ID
+             ,lt_item_id_tab               -- 品目ID
+             ,lt_lot_id_tab                -- ロットID
+      FROM    xxcmn_txn_lot_cost  xtlc     -- 取引別ロット別原価（アドオン）
+             ,ic_lots_mst         ilm      -- OPMロットマスタ
+      WHERE   -- *** 結合条件 *** --
+              xtlc.item_id = ilm.item_id
+      AND     xtlc.lot_id  = ilm.lot_id
+              -- *** 抽出条件 *** --
+      AND     ilm.creation_date >= gd_opening_date  -- 会計期間開始日以降に作成されたロットデータ
+      FOR UPDATE NOWAIT
+      ;
+-- 2008/10/27 H.Itou Mod End
 --
     EXCEPTION
       --*** ロック取得エラー ***
       WHEN lock_expt THEN
-        IF (get_tab_lock_cur%ISOPEN) THEN
-          CLOSE get_tab_lock_cur;
-        END IF;
+-- 2008/10/27 H.Itou Del Start T_S_631
+--        IF (get_tab_lock_cur%ISOPEN) THEN
+--          CLOSE get_tab_lock_cur;
+--        END IF;
+-- 2008/10/27 H.Itou Del End
         -- エラーメッセージ取得
         lv_errmsg  := SUBSTRB(xxcmn_common_pkg.get_msg(
                       gv_xxcmn          -- モジュール名略称：XXCMN マスタ・経理共通
@@ -209,11 +240,24 @@ AS
         RAISE global_api_expt;
     END;
 --
+-- 2008/10/27 H.Itou Del Start T_S_631 削除は会計期間開始日以降に作成されたロットデータのみ
+--    -- =====================================
+--    -- 取引別ロット別原価（アドオン）全件削除
+--    -- =====================================
+--    DELETE FROM xxcmn_txn_lot_cost xtlc -- 取引別ロット別原価（アドオン）
+--    ;
     -- =====================================
-    -- 取引別ロット別原価（アドオン）全件削除
+    -- 取引別ロット別原価（アドオン）対象データ削除
     -- =====================================
-    DELETE FROM xxcmn_txn_lot_cost xtlc -- 取引別ロット別原価（アドオン）
-    ;
+    FORALL loop_cnt IN 1..lt_doc_type_tab.COUNT
+      DELETE 
+      FROM   xxcmn_txn_lot_cost xtlc -- 取引別ロット別原価（アドオン）
+      WHERE  xtlc.doc_type =  lt_doc_type_tab(loop_cnt)  -- 文書タイプ
+      AND    xtlc.doc_id   =  lt_doc_id_tab  (loop_cnt)  -- 文書ID
+      AND    xtlc.item_id  =  lt_item_id_tab (loop_cnt)  -- 品目ID
+      AND    xtlc.lot_id   =  lt_lot_id_tab  (loop_cnt)  -- ロットID
+      ;
+-- 2008/10/27 H.Itou Del End
 --
   EXCEPTION
 --
@@ -221,24 +265,30 @@ AS
 --
     -- *** 共通関数例外ハンドラ ***
     WHEN global_api_expt THEN
-      IF ( get_tab_lock_cur%ISOPEN ) THEN
-        CLOSE get_tab_lock_cur;
-      END IF;
+-- 2008/10/27 H.Itou Del Start T_S_631
+--      IF ( get_tab_lock_cur%ISOPEN ) THEN
+--        CLOSE get_tab_lock_cur;
+--      END IF;
+-- 2008/10/27 H.Itou Del End
       ov_errmsg  := lv_errmsg;
       ov_errbuf  := SUBSTRB(gv_pkg_name||gv_msg_cont||cv_prg_name||gv_msg_part||lv_errbuf,1,5000);
       ov_retcode := gv_status_error;
     -- *** 共通関数OTHERS例外ハンドラ ***
     WHEN global_api_others_expt THEN
-      IF ( get_tab_lock_cur%ISOPEN ) THEN
-        CLOSE get_tab_lock_cur;
-      END IF;
+-- 2008/10/27 H.Itou Del Start T_S_631
+--      IF ( get_tab_lock_cur%ISOPEN ) THEN
+--        CLOSE get_tab_lock_cur;
+--      END IF;
+-- 2008/10/27 H.Itou Del End
       ov_errbuf  := gv_pkg_name||gv_msg_cont||cv_prg_name||gv_msg_part||SQLERRM;
       ov_retcode := gv_status_error;
     -- *** OTHERS例外ハンドラ ***
     WHEN OTHERS THEN
-      IF ( get_tab_lock_cur%ISOPEN ) THEN
-        CLOSE get_tab_lock_cur;
-      END IF;
+-- 2008/10/27 H.Itou Del Start T_S_631
+--      IF ( get_tab_lock_cur%ISOPEN ) THEN
+--        CLOSE get_tab_lock_cur;
+--      END IF;
+-- 2008/10/27 H.Itou Del End
       ov_errbuf  := gv_pkg_name||gv_msg_cont||cv_prg_name||gv_msg_part||SQLERRM;
       ov_retcode := gv_status_error;
 --
@@ -289,25 +339,31 @@ AS
 --
 --###########################  固定部 END   ############################
 --
-    -- =====================================
-    -- 倉庫コードを取得
-    -- =====================================
-    lt_whse_code  :=  FND_PROFILE.VALUE(cv_whse_code);
-    IF (lt_whse_code IS NULL) THEN
-      RAISE global_api_expt;
-    END IF;
+-- 2008/10/27 H.Itou Mod Start T_S_500 在庫クローズ年月は共通関数から取得
+--    -- =====================================
+--    -- 倉庫コードを取得
+--    -- =====================================
+--    lt_whse_code  :=  FND_PROFILE.VALUE(cv_whse_code);
+--    IF (lt_whse_code IS NULL) THEN
+--      RAISE global_api_expt;
+--    END IF;
+----
+--    -- =====================================
+--    -- 会計期間開始日を取得
+--    -- =====================================
+--    SELECT  MIN(oap.period_start_date)                        -- 会計期間開始日
+--    INTO    gd_opening_date
+--    FROM    org_acct_periods       oap,                       -- 在庫会計期間
+--            xxcmn_item_locations_v ilv                        -- OPM保管場所情報VIEW
+--    WHERE   ilv.whse_code        = lt_whse_code               -- 倉庫コード
+--    AND     oap.organization_id  = ilv.mtl_organization_id    -- 組織ID
+--    AND     oap.open_flag        = 'Y'                        -- オープンフラグ
+--    ;
 --
-    -- =====================================
-    -- 会計期間開始日を取得
-    -- =====================================
-    SELECT  MIN(oap.period_start_date)                        -- 会計期間開始日
-    INTO    gd_opening_date
-    FROM    org_acct_periods       oap,                       -- 在庫会計期間
-            xxcmn_item_locations_v ilv                        -- OPM保管場所情報VIEW
-    WHERE   ilv.whse_code        = lt_whse_code               -- 倉庫コード
-    AND     oap.organization_id  = ilv.mtl_organization_id    -- 組織ID
-    AND     oap.open_flag        = 'Y'                        -- オープンフラグ
-    ;
+    --  会計期間開始日 = OPM在庫会計期間CLOSE年月 + 1ヶ月
+    gd_opening_date := ADD_MONTHS(TO_DATE(xxcmn_common_pkg.get_opminv_close_period, 'YYYYMM'), 1);
+--
+-- 2008/10/27 H.Itou Mod End
     IF (gd_opening_date IS NULL) THEN
 --
       -- エラーメッセージ取得
@@ -904,17 +960,19 @@ AS
     gt_trans_qty_ins_tab.DELETE;  -- 取引数量
     gt_unit_price_ins_tab.DELETE; -- 単価
 --
-    -- =======================================
-    -- A-1.取引別ロット別原価テーブル削除処理
-    -- =======================================
-    del_table_data(
-       ov_errbuf  => lv_errbuf    -- エラー・メッセージ           --# 固定 #
-     , ov_retcode => lv_retcode   -- リターン・コード             --# 固定 #
-     , ov_errmsg  => lv_errmsg    -- ユーザー・エラー・メッセージ --# 固定 #
-    );
-    IF (lv_retcode = gv_status_error) THEN
-      RAISE global_process_expt;
-    END IF;
+-- 2008/10/27 H.Itou Del Start T_S_631 削除は会計期間OPENデータのみ行うため、在庫オープン期間取得処理を先に行う。
+--    -- =======================================
+--    -- A-1.取引別ロット別原価テーブル削除処理
+--    -- =======================================
+--    del_table_data(
+--       ov_errbuf  => lv_errbuf    -- エラー・メッセージ           --# 固定 #
+--     , ov_retcode => lv_retcode   -- リターン・コード             --# 固定 #
+--     , ov_errmsg  => lv_errmsg    -- ユーザー・エラー・メッセージ --# 固定 #
+--    );
+--    IF (lv_retcode = gv_status_error) THEN
+--      RAISE global_process_expt;
+--    END IF;
+-- 2008/10/27 H.Itou Del End
 --
     -- =======================================
     -- A-2.在庫オープン期間取得処理
@@ -927,6 +985,20 @@ AS
     IF (lv_retcode = gv_status_error) THEN
       RAISE global_process_expt;
     END IF;
+--
+-- 2008/10/27 H.Itou Add Start T_S_631 削除は会計期間OPENデータのみ行うため、在庫オープン期間取得処理を先に行う。
+    -- =======================================
+    -- A-1.取引別ロット別原価テーブル削除処理
+    -- =======================================
+    del_table_data(
+       ov_errbuf  => lv_errbuf    -- エラー・メッセージ           --# 固定 #
+     , ov_retcode => lv_retcode   -- リターン・コード             --# 固定 #
+     , ov_errmsg  => lv_errmsg    -- ユーザー・エラー・メッセージ --# 固定 #
+    );
+    IF (lv_retcode = gv_status_error) THEN
+      RAISE global_process_expt;
+    END IF;
+-- 2008/10/27 H.Itou Add End
 --
     -- =======================================
     -- A-3.在庫データ抽出・登録処理

@@ -7,7 +7,7 @@ AS
  * Description      : 仕入（帳票）
  * MD.050/070       : 仕入（帳票）Issue1.0  (T_MD050_BPO_360)
  *                    代行請求書            (T_MD070_BPO_36F)
- * Version          : 1.9
+ * Version          : 1.10
  *
  * Program List
  * -------------------------- ----------------------------------------------------------
@@ -43,6 +43,7 @@ AS
  *  2008/06/25    1.8   T.Endou          特定文字列を出力しようとすると、エラーとなり帳票が出力
  *                                       されない現象への対応
  *  2008/10/22    1.9   I.Higa           取引先の取得項目が不正（仕入先名⇒正式名）
+ *  2008/10/24    1.10  T.Ohashi         T_S_432対応（敬称の付与）
  *
  *****************************************************************************************/
 --
@@ -76,6 +77,9 @@ AS
   gv_xxcmn_consumption_tax_rate CONSTANT VARCHAR2(26) := 'XXCMN_CONSUMPTION_TAX_RATE'; -- 消費税
   gv_seqrt_view             CONSTANT VARCHAR2(30) := '有償支給セキュリティview' ;
   gv_seqrt_view_key         CONSTANT VARCHAR2(20) := '従業員ID' ;
+-- add start 1.10
+  gv_keishou                CONSTANT VARCHAR2(10) := '殿' ;
+-- add end 1.10
 --
   ------------------------------
   -- セキュリティ区分
@@ -110,6 +114,9 @@ AS
   gn_20                   CONSTANT NUMBER := 20;
   gn_21                   CONSTANT NUMBER := 21;
   gn_30                   CONSTANT NUMBER := 30;
+-- add start 1.10
+  gn_40                   CONSTANT NUMBER := 40;
+-- add end 1.10
   gv_n                    CONSTANT VARCHAR2(1) := 'N';
   gv_ja                   CONSTANT VARCHAR2(2) := 'JA';
   gv_ast                  CONSTANT VARCHAR2(1) := '*';
@@ -1058,6 +1065,9 @@ AS
     -- *** ローカル変数 ***
     -- キーブレイク判断用
     lv_company_code         VARCHAR2(100) DEFAULT lc_break_init;   -- 会社コード
+-- add start 1.10
+    ln_vendor_name_len      NUMBER;                                -- 取引先名称文字数
+-- add end 1.10
 --
     -- *** ローカル・例外処理 ***
     no_data_expt            EXCEPTION ;  -- 取得レコードなし
@@ -1240,18 +1250,42 @@ AS
         lt_xml_idx := ot_xml_data_table.COUNT + 1 ;
         ot_xml_data_table(lt_xml_idx).tag_name  := 'g_company_code' ;
         ot_xml_data_table(lt_xml_idx).tag_type  := 'T' ;
+-- add start 1.10
+        -- 取引先名の文字数取得
+        ln_vendor_name_len := LENGTH(it_data_rec(i).vendor_name);
+-- add end 1.10
         -- 取引先名１
         lt_xml_idx := ot_xml_data_table.COUNT + 1 ;
         ot_xml_data_table(lt_xml_idx).tag_name  := 'business_partner_name' ;
         ot_xml_data_table(lt_xml_idx).tag_type  := 'D' ;
-        ot_xml_data_table(lt_xml_idx).tag_value :=
-          SUBSTR(it_data_rec(i).vendor_name,gn_one,gn_15) ;
+-- mod start 1.10
+--        ot_xml_data_table(lt_xml_idx).tag_value :=
+--          SUBSTR(it_data_rec(i).vendor_name,gn_one,gn_15) ;
+        IF (ln_vendor_name_len <= gn_20) THEN
+          -- 敬称を付ける
+          ot_xml_data_table(lt_xml_idx).tag_value :=
+            SUBSTR(it_data_rec(i).vendor_name,gn_one,gn_20) || gv_keishou ;
+        ELSE
+          ot_xml_data_table(lt_xml_idx).tag_value :=
+            SUBSTR(it_data_rec(i).vendor_name,gn_one,gn_20) ;
+        END IF;
+-- mod end 1.10
         -- 取引先名２
         lt_xml_idx := ot_xml_data_table.COUNT + 1 ;
         ot_xml_data_table(lt_xml_idx).tag_name  := 'business_partner_name2' ;
         ot_xml_data_table(lt_xml_idx).tag_type  := 'D' ;
-        ot_xml_data_table(lt_xml_idx).tag_value :=
-          SUBSTR(it_data_rec(i).vendor_name,gn_16,gn_30) ;
+-- mod start 1.10
+--        ot_xml_data_table(lt_xml_idx).tag_value :=
+--          SUBSTR(it_data_rec(i).vendor_name,gn_16,gn_30) ;
+        IF (ln_vendor_name_len >= gn_21) THEN
+          -- 敬称を付ける
+          ot_xml_data_table(lt_xml_idx).tag_value :=
+            SUBSTR(it_data_rec(i).vendor_name,gn_21,gn_40) || gv_keishou ;
+        ELSE
+          ot_xml_data_table(lt_xml_idx).tag_value :=
+            SUBSTR(it_data_rec(i).vendor_name,gn_21,gn_40) ;
+        END IF;
+-- mod end 1.10
         -- 貴社コード
         lt_xml_idx := ot_xml_data_table.COUNT + 1 ;
         ot_xml_data_table(lt_xml_idx).tag_name  := 'your_company_code' ;

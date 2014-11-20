@@ -7,7 +7,7 @@ AS
  * Description      : 生産物流(引当、配車)
  * MD.050           : 出荷・引当/配車：生産物流共通（出荷・移動仮引当） T_MD050_BPO_920
  * MD.070           : 出荷・引当/配車：生産物流共通（出荷・移動仮引当） T_MD070_BPO92A
- * Version          : 1.14
+ * Version          : 1.15
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -52,7 +52,7 @@ AS
  *  2008/09/17   1.12  Oracle 椎名 昭圭   TE080_BPO540指摘5対応
  *  2008/09/18   1.13  Oracle 椎名 昭圭   TE080_BPO920指摘5対応
  *  2008/09/19   1.14  Oracle 椎名 昭圭   TE080_BPO920指摘4対応
- *
+ *  2008/10/27   1.15  Oracle 伊藤 ひとみ 統合テスト指摘325対応
  *****************************************************************************************/
 --
 --#######################  固定グローバル定数宣言部 START   #######################
@@ -2345,7 +2345,10 @@ AS
 --    OPEN fwd_cur FOR iv_fwd_sql;
     OPEN fwd_cur FOR iv_fwd_sql USING gv_cons_biz_t_deliv,
                                       gv_yyyymmdd_from,
-                                      gv_yyyymmdd_from,
+-- 2008/10/27 H.Itou Mod Start 統合テスト指摘325
+--                                      gv_yyyymmdd_from,
+                                        gv_yyyymmdd_to,
+-- 2008/10/27 H.Itou Mod End
                                       gv_base,
                                       gv_cons_t_deliv,
                                       gv_cons_status,
