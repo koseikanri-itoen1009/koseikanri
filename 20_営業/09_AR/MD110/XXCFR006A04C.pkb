@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCFR006A04C(body)
  * Description      : 入金一括消込アップロード
  * MD.050           : MD050_CFR_006_A04_入金一括消込アップロード
- * Version          : 1.0
+ * Version          : 1.1
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -29,6 +29,8 @@ AS
  *  Date          Ver.  Editor           Description
  * ------------- ----- ---------------- -------------------------------------------------
  *  2010/05/26    1.0   SCS 苅込 周平    新規作成
+ *  2010/09/02    1.1   SCS 渡辺 学      E_本稼動_00390 追加対応
+ *                                       
  *
  *****************************************************************************************/
 --
@@ -99,6 +101,11 @@ AS
   cv_appl_name_ar      CONSTANT VARCHAR2(10)  := 'AR';               -- 標準：AR
 --
   cv_closing_status_o  CONSTANT VARCHAR2(1)   := 'O';                -- 会計期間ステータス(オープン)
+--
+-- ************ 2010/09/02 1.1 M.Watanabe ADD START ************ --
+  -- 入金ステータス
+  cv_status_unapp      CONSTANT VARCHAR2(5)   := 'UNAPP';            -- 未消込
+-- ************ 2010/09/02 1.1 M.Watanabe ADD END   ************ --
 --
   -- メッセージ
   cv_msg_006a04_001    CONSTANT VARCHAR2(20) := 'APP-XXCFR1-00094'; -- アップロード初期出力メッセージ
@@ -865,7 +872,40 @@ AS
          AND hca.account_number  = gv_account_number       -- 顧客コード
          AND aps.class           = cv_class_pmt            -- 入金
          AND acrh.current_record_flag = cv_y               -- 現在行フラグ
+-- ************ 2010/09/02 1.1 M.Watanabe ADD START ************ --
+         AND acr.status               = cv_status_unapp    -- 入金ステータス(UNAPP 未消込)
+-- ************ 2010/09/02 1.1 M.Watanabe ADD END   ************ --
       ;
+-- ************ 2010/09/02 1.1 M.Watanabe ADD START ************ --
+    -- 未消込以外の入金情報取得
+    CURSOR  cash_not_unapp_data_cur
+    IS
+      SELECT acr.cash_receipt_id           AS cash_receipt_id       -- 入金内部ID
+            ,acrh.gl_date                  AS cash_gl_date          -- 入金GL記帳日
+            ,acr.receipt_method_id         AS receipt_method_id     -- 支払方法内部ID
+            ,aps.amount_due_remaining * -1 AS cash_amount_remaining -- 入金残額
+            ,acr.status                    AS cash_status           -- ステータス
+            ,(SELECT flv.meaning  AS meaning
+              FROM   fnd_lookup_values flv              -- 参照タイプマスタ
+              WHERE  flv.lookup_type = cv_lookup_cash   -- 参照タイプ(入金ステータス)
+              AND    flv.language    = USERENV('LANG')  -- 言語
+              AND    flv.lookup_code = acr.status       -- 参照コード(ステータス)
+             )                             AS cash_status_desc      -- ステータス摘要
+        FROM ar_cash_receipts          acr   -- 入金
+            ,ar_payment_schedules      aps   -- 支払計画
+            ,hz_cust_accounts          hca   -- 顧客マスタ
+            ,ar_cash_receipt_history   acrh  -- 入金履歴
+       WHERE acr.cash_receipt_id       =  aps.cash_receipt_id     -- 入金内部ID
+         AND acr.cash_receipt_id       =  acrh.cash_receipt_id    -- 入金内部ID
+         AND hca.cust_account_id       =  acr.pay_from_customer   -- 顧客内部ID
+         AND acr.receipt_number        =  gv_receipt_number       -- 入金番号
+         AND acr.receipt_date          =  gd_receipt_date         -- 入金日
+         AND hca.account_number        =  gv_account_number       -- 顧客コード
+         AND aps.class                 =  cv_class_pmt            -- 入金
+         AND acrh.current_record_flag  =  cv_y                    -- 現在行フラグ
+         AND acr.status               <>  cv_status_unapp         -- 入金ステータス(UNAPP 未消込 以外)
+      ;
+-- ************ 2010/09/02 1.1 M.Watanabe ADD END   ************ --
 --
     -- セキュリティチェック
     CURSOR  receipt_method_cur(
@@ -936,6 +976,12 @@ AS
     TYPE ttype_check_trx_exist  IS TABLE OF check_trx_exist_cur%ROWTYPE
                                   INDEX BY PLS_INTEGER;
     lt_check_trx_exist          ttype_check_trx_exist;
+-- ************ 2010/09/02 1.1 M.Watanabe ADD START ************ --
+--
+    TYPE ttype_cash_not_unapp   IS TABLE OF cash_not_unapp_data_cur%ROWTYPE
+                                  INDEX BY PLS_INTEGER;
+    lt_cash_not_unapp           ttype_cash_not_unapp;
+-- ************ 2010/09/02 1.1 M.Watanabe ADD END   ************ --
 ------------
   BEGIN
 --
@@ -955,28 +1001,113 @@ AS
     -- 入金番号をチェックする(DB上、入金番号、顧客、入金日で一意となるか)
     BEGIN
 --
+-- ************ 2010/09/02 1.1 M.Watanabe DEL START ************ --
+--      OPEN cash_unique_cur;
+--      FETCH cash_unique_cur BULK COLLECT INTO lt_cash_unique;
+--      CLOSE cash_unique_cur;
+----
+--      IF ( lt_cash_unique.COUNT < 1 ) THEN -- 対象の入金が存在しない場合(エラー)
+----
+--        FND_FILE.PUT_LINE(which => FND_FILE.OUTPUT
+--                         ,buff  => xxccp_common_pkg.get_msg(
+--                                     iv_application  => cv_appl_name_cfr     -- 'XXCFR'
+--                                    ,iv_name         => cv_msg_006a04_004    -- 入金データなしエラー
+--                                    ,iv_token_name1  => cv_tkn_006a04_004_1  --「RECEIPT_NUMBER」
+--                                    ,iv_token_value1 => gv_receipt_number    -- 入金番号
+--                                    ,iv_token_name2  => cv_tkn_006a04_004_2  --「ACCOUNT_NUMBER」
+--                                    ,iv_token_value2 => gv_account_number    -- 顧客コード
+--                                    ,iv_token_name3  => cv_tkn_006a04_004_3  --「RECEIPT_DATE」
+--                                    ,iv_token_value3 => gv_receipt_date      -- 入金日
+--                                    )
+--        );
+----
+--        gb_flag := TRUE;
+----
+--      ELSIF( lt_cash_unique.COUNT > 1 ) THEN  -- 対象の入金が複数存在する場合(エラー)
+----
+--        FND_FILE.PUT_LINE(which => FND_FILE.OUTPUT
+--                         ,buff  => xxccp_common_pkg.get_msg(
+--                                     iv_application  => cv_appl_name_cfr     -- 'XXCFR'
+--                                    ,iv_name         => cv_msg_006a04_005    -- 入金データ重複エラー
+--                                    ,iv_token_name1  => cv_tkn_006a04_005_1  --「RECEIPT_NUMBER」
+--                                    ,iv_token_value1 => gv_receipt_number    -- 入金番号
+--                                    ,iv_token_name2  => cv_tkn_006a04_005_2  --「ACCOUNT_NUMBER」
+--                                    ,iv_token_value2 => gv_account_number    -- 顧客コード
+--                                    ,iv_token_name3  => cv_tkn_006a04_005_3  --「RECEIPT_DATE」
+--                                    ,iv_token_value3 => gv_receipt_date      -- 入金日
+--                                    )
+--        );
+----
+--        gb_flag := TRUE;
+----
+--      ELSE
+----
+--        -- 入金ステータスが未消込以外の場合はエラー
+--        IF ( lt_cash_unique(1).cash_status = cv_status_unapp ) THEN
+----
+--          -- アップロード未回収残高の総額以上に入金残額がない場合はエラー
+--          IF ( lt_cash_unique(1).cash_amount_remaining >= gn_trx_amount_sum ) THEN
+----
+--            gn_cash_receipt_id := lt_cash_unique(1).cash_receipt_id;  -- 入金内部IDをグローバル化
+--            gd_receipt_gl_date := lt_cash_unique(1).cash_gl_date;     -- 入金GL記帳日をグローバル化
+----
+--          ELSE
+----
+--            FND_FILE.PUT_LINE(which => FND_FILE.OUTPUT
+--                             ,buff  => xxccp_common_pkg.get_msg(
+--                                         iv_application  => cv_appl_name_cfr     -- 'XXCFR'
+--                                        ,iv_name         => cv_msg_006a04_007    -- 入金残高エラー
+--                                        ,iv_token_name1  => cv_tkn_006a04_007_1  --「RECEIPT_NUMBER」
+--                                        ,iv_token_value1 => gv_receipt_number    -- 入金番号
+--                                        ,iv_token_name2  => cv_tkn_006a04_007_2  --「ACCOUNT_NUMBER」
+--                                        ,iv_token_value2 => gv_account_number    -- 顧客コード
+--                                        ,iv_token_name3  => cv_tkn_006a04_007_3  --「RECEIPT_DATE」
+--                                        ,iv_token_value3 => gv_receipt_date      -- 入金日
+--                                        ,iv_token_name4  => cv_tkn_006a04_007_4  --「CASH_AMOUNT」
+--                                        ,iv_token_value4 => lt_cash_unique(1).cash_amount_remaining  -- 入金残額
+--                                        ,iv_token_name5  => cv_tkn_006a04_007_5  --「TRX_AMOUNT_ALL」
+--                                        ,iv_token_value5 => gn_trx_amount_sum    -- 消込金額合計
+--                                        )
+--            );
+--            gb_flag := TRUE;
+----
+--          END IF;
+----
+--        ELSE
+----
+--          FND_FILE.PUT_LINE(which => FND_FILE.OUTPUT
+--                           ,buff  => xxccp_common_pkg.get_msg(
+--                                       iv_application  => cv_appl_name_cfr     -- 'XXCFR'
+--                                      ,iv_name         => cv_msg_006a04_006    -- 入金ステータスエラー
+--                                      ,iv_token_name1  => cv_tkn_006a04_006_1  -- RECEIPT_NUMBER」
+--                                      ,iv_token_value1 => gv_receipt_number    -- 入金番号
+--                                      ,iv_token_name2  => cv_tkn_006a04_006_2  --「ACCOUNT_NUMBER」
+--                                      ,iv_token_value2 => gv_account_number    -- 顧客コード
+--                                      ,iv_token_name3  => cv_tkn_006a04_006_3  --「RECEIPT_DATE」
+--                                      ,iv_token_value3 => gv_receipt_date      -- 入金日
+--                                      ,iv_token_name4  => cv_tkn_006a04_006_4  --「STATUS」
+--                                      ,iv_token_value4 => lt_cash_unique(1).cash_status_desc  -- ステータス摘要
+--                                     )
+--          );
+----
+--          gb_flag := TRUE;
+----
+--        END IF;
+----
+--      END IF;
+-- ************ 2010/09/02 1.1 M.Watanabe DEL END   ************ --
+--
+-- ************ 2010/09/02 1.1 M.Watanabe ADD START ************ --
+--
+      -- 入金ステータスが UNAPP(未消込) の入金情報を取得する
       OPEN cash_unique_cur;
       FETCH cash_unique_cur BULK COLLECT INTO lt_cash_unique;
       CLOSE cash_unique_cur;
 --
-      IF ( lt_cash_unique.COUNT < 1 ) THEN -- 対象の入金が存在しない場合(エラー)
---
-        FND_FILE.PUT_LINE(which => FND_FILE.OUTPUT
-                         ,buff  => xxccp_common_pkg.get_msg(
-                                     iv_application  => cv_appl_name_cfr     -- 'XXCFR'
-                                    ,iv_name         => cv_msg_006a04_004    -- 入金データなしエラー
-                                    ,iv_token_name1  => cv_tkn_006a04_004_1  --「RECEIPT_NUMBER」
-                                    ,iv_token_value1 => gv_receipt_number    -- 入金番号
-                                    ,iv_token_name2  => cv_tkn_006a04_004_2  --「ACCOUNT_NUMBER」
-                                    ,iv_token_value2 => gv_account_number    -- 顧客コード
-                                    ,iv_token_name3  => cv_tkn_006a04_004_3  --「RECEIPT_DATE」
-                                    ,iv_token_value3 => gv_receipt_date      -- 入金日
-                                    )
-        );
---
-        gb_flag := TRUE;
---
-      ELSIF( lt_cash_unique.COUNT > 1 ) THEN  -- 対象の入金が複数存在する場合(エラー)
+      --===================================================================
+      -- 入金ステータスが UNAPP(未消込) の入金情報が 2件以上 存在する場合
+      --===================================================================
+      IF ( lt_cash_unique.COUNT > 1 ) THEN
 --
         FND_FILE.PUT_LINE(which => FND_FILE.OUTPUT
                          ,buff  => xxccp_common_pkg.get_msg(
@@ -993,54 +1124,99 @@ AS
 --
         gb_flag := TRUE;
 --
-      ELSE
+      END IF;
 --
-        -- 入金ステータスが未消込以外の場合はエラー
-        IF ( lt_cash_unique(1).cash_status = cv_status_unapp ) THEN
+      --===================================================================
+      -- 入金ステータスが UNAPP(未消込) の入金情報が ゼロ件 の場合
+      --===================================================================
+      IF ( lt_cash_unique.COUNT = 0 ) THEN
 --
-          -- アップロード未回収残高の総額以上に入金残額がない場合はエラー
-          IF ( lt_cash_unique(1).cash_amount_remaining >= gn_trx_amount_sum ) THEN
+        -- 入金ステータスが UNAPP(未消込) 以外 の入金情報を取得する
+        OPEN cash_not_unapp_data_cur;
+        FETCH cash_not_unapp_data_cur BULK COLLECT INTO lt_cash_not_unapp;
+        CLOSE cash_not_unapp_data_cur;
 --
-            gn_cash_receipt_id := lt_cash_unique(1).cash_receipt_id;  -- 入金内部IDをグローバル化
-            gd_receipt_gl_date := lt_cash_unique(1).cash_gl_date;     -- 入金GL記帳日をグローバル化
+        --========================================================================
+        -- 入金ステータスが UNAPP(未消込) 以外 の入金情報が ゼロ件 の場合
+        --========================================================================
+        IF ( lt_cash_not_unapp.COUNT = 0 ) THEN
 --
-          ELSE
+          FND_FILE.PUT_LINE(which => FND_FILE.OUTPUT
+                           ,buff  => xxccp_common_pkg.get_msg(
+                                       iv_application  => cv_appl_name_cfr     -- 'XXCFR'
+                                      ,iv_name         => cv_msg_006a04_004    -- 入金データなしエラー
+                                      ,iv_token_name1  => cv_tkn_006a04_004_1  --「RECEIPT_NUMBER」
+                                      ,iv_token_value1 => gv_receipt_number    -- 入金番号
+                                      ,iv_token_name2  => cv_tkn_006a04_004_2  --「ACCOUNT_NUMBER」
+                                      ,iv_token_value2 => gv_account_number    -- 顧客コード
+                                      ,iv_token_name3  => cv_tkn_006a04_004_3  --「RECEIPT_DATE」
+                                      ,iv_token_value3 => gv_receipt_date      -- 入金日
+                                      )
+          );
+--
+          gb_flag := TRUE;
+        --========================================================================
+        -- 入金ステータスが UNAPP(未消込) 以外 の入金情報が 1件以上 存在する場合
+        --========================================================================
+        ELSE
+--
+          <<cash_err_msg_loop>>
+          FOR ln_cnt  IN  1 .. lt_cash_not_unapp.COUNT LOOP
 --
             FND_FILE.PUT_LINE(which => FND_FILE.OUTPUT
                              ,buff  => xxccp_common_pkg.get_msg(
-                                         iv_application  => cv_appl_name_cfr     -- 'XXCFR'
-                                        ,iv_name         => cv_msg_006a04_007    -- 入金残高エラー
-                                        ,iv_token_name1  => cv_tkn_006a04_007_1  --「RECEIPT_NUMBER」
-                                        ,iv_token_value1 => gv_receipt_number    -- 入金番号
-                                        ,iv_token_name2  => cv_tkn_006a04_007_2  --「ACCOUNT_NUMBER」
-                                        ,iv_token_value2 => gv_account_number    -- 顧客コード
-                                        ,iv_token_name3  => cv_tkn_006a04_007_3  --「RECEIPT_DATE」
-                                        ,iv_token_value3 => gv_receipt_date      -- 入金日
-                                        ,iv_token_name4  => cv_tkn_006a04_007_4  --「CASH_AMOUNT」
-                                        ,iv_token_value4 => lt_cash_unique(1).cash_amount_remaining  -- 入金残額
-                                        ,iv_token_name5  => cv_tkn_006a04_007_5  --「TRX_AMOUNT_ALL」
-                                        ,iv_token_value5 => gn_trx_amount_sum    -- 消込金額合計
-                                        )
+                                         iv_application  => cv_appl_name_cfr                            -- 'XXCFR'
+                                        ,iv_name         => cv_msg_006a04_006                           -- 入金ステータスエラー
+                                        ,iv_token_name1  => cv_tkn_006a04_006_1                         -- RECEIPT_NUMBER」
+                                        ,iv_token_value1 => gv_receipt_number                           -- 入金番号
+                                        ,iv_token_name2  => cv_tkn_006a04_006_2                         --「ACCOUNT_NUMBER」
+                                        ,iv_token_value2 => gv_account_number                           -- 顧客コード
+                                        ,iv_token_name3  => cv_tkn_006a04_006_3                         --「RECEIPT_DATE」
+                                        ,iv_token_value3 => gv_receipt_date                             -- 入金日
+                                        ,iv_token_name4  => cv_tkn_006a04_006_4                         --「STATUS」
+                                        ,iv_token_value4 => lt_cash_not_unapp(ln_cnt).cash_status_desc  -- ステータス摘要
+                                       )
             );
-            gb_flag := TRUE;
 --
-          END IF;
+          END LOOP cash_err_msg_loop;
+--
+          gb_flag := TRUE;
+--
+        END IF;
+--
+      END IF;
+--
+      --===================================================================
+      -- 入金ステータスが UNAPP(未消込) の入金情報が 1件 の場合
+      --===================================================================
+      IF ( lt_cash_unique.COUNT = 1 ) THEN
+--
+        --===================================================================
+        -- 入金の未消込残高と消込金額の合計チェック
+        -- 入金の未消込残高 < 消込金額合計 の場合は 入金残高エラー
+        --===================================================================
+        IF ( lt_cash_unique(1).cash_amount_remaining >= gn_trx_amount_sum ) THEN
+--
+          gn_cash_receipt_id := lt_cash_unique(1).cash_receipt_id;  -- 入金内部IDをグローバル化
+          gd_receipt_gl_date := lt_cash_unique(1).cash_gl_date;     -- 入金GL記帳日をグローバル化
 --
         ELSE
 --
           FND_FILE.PUT_LINE(which => FND_FILE.OUTPUT
                            ,buff  => xxccp_common_pkg.get_msg(
                                        iv_application  => cv_appl_name_cfr     -- 'XXCFR'
-                                      ,iv_name         => cv_msg_006a04_006    -- 入金ステータスエラー
-                                      ,iv_token_name1  => cv_tkn_006a04_006_1  -- RECEIPT_NUMBER」
+                                      ,iv_name         => cv_msg_006a04_007    -- 入金残高エラー
+                                      ,iv_token_name1  => cv_tkn_006a04_007_1  --「RECEIPT_NUMBER」
                                       ,iv_token_value1 => gv_receipt_number    -- 入金番号
-                                      ,iv_token_name2  => cv_tkn_006a04_006_2  --「ACCOUNT_NUMBER」
+                                      ,iv_token_name2  => cv_tkn_006a04_007_2  --「ACCOUNT_NUMBER」
                                       ,iv_token_value2 => gv_account_number    -- 顧客コード
-                                      ,iv_token_name3  => cv_tkn_006a04_006_3  --「RECEIPT_DATE」
+                                      ,iv_token_name3  => cv_tkn_006a04_007_3  --「RECEIPT_DATE」
                                       ,iv_token_value3 => gv_receipt_date      -- 入金日
-                                      ,iv_token_name4  => cv_tkn_006a04_006_4  --「STATUS」
-                                      ,iv_token_value4 => lt_cash_unique(1).cash_status_desc  -- ステータス摘要
-                                     )
+                                      ,iv_token_name4  => cv_tkn_006a04_007_4  --「CASH_AMOUNT」
+                                      ,iv_token_value4 => lt_cash_unique(1).cash_amount_remaining  -- 入金残額
+                                      ,iv_token_name5  => cv_tkn_006a04_007_5  --「TRX_AMOUNT_ALL」
+                                      ,iv_token_value5 => gn_trx_amount_sum    -- 消込金額合計
+                                      )
           );
 --
           gb_flag := TRUE;
@@ -1048,6 +1224,8 @@ AS
         END IF;
 --
       END IF;
+--
+-- ************ 2010/09/02 1.1 M.Watanabe ADD END   ************ --
 --
     EXCEPTION
 --
@@ -1182,6 +1360,11 @@ AS
       IF ( cash_unique_cur%ISOPEN ) THEN
         CLOSE cash_unique_cur;
       END IF;
+-- ************ 2010/09/02 1.1 M.Watanabe ADD START ************ --
+      IF ( cash_not_unapp_data_cur%ISOPEN ) THEN
+        CLOSE cash_not_unapp_data_cur;
+      END IF;
+-- ************ 2010/09/02 1.1 M.Watanabe ADD END   ************ --
       IF ( receipt_method_cur%ISOPEN ) THEN
         CLOSE receipt_method_cur;
       END IF;
@@ -1392,10 +1575,18 @@ AS
                                     ,iv_name         => cv_msg_006a04_011        -- 消込金額エラー
                                     ,iv_token_name1  => cv_tkn_006a04_011_1      --「TRX_NUMBER」
                                     ,iv_token_value1 => lt_trx_number(ln_count)  -- 取引番号
-                                    ,iv_token_name2  => cv_tkn_006a04_011_2      --「AMOUNT_DUE_REMAINING」
-                                    ,iv_token_value2 => lt_amount_due_remaining(ln_count)  -- 未回収残額
-                                    ,iv_token_name3  => cv_tkn_006a04_011_3      --「TRX_AMOUNT」
-                                    ,iv_token_value3 => lt_trx_amount(ln_count)  -- 消込金額
+-- ************ 2010/09/02 1.1 M.Watanabe MOD START ************ --
+--                                    ,iv_token_name2  => cv_tkn_006a04_011_2      --「AMOUNT_DUE_REMAINING」
+--                                    ,iv_token_value2 => lt_amount_due_remaining(ln_count)  -- 未回収残額
+--                                    ,iv_token_name3  => cv_tkn_006a04_011_3      --「TRX_AMOUNT」
+--                                    ,iv_token_value3 => lt_trx_amount(ln_count)  -- 消込金額
+                                    ,iv_token_name2  => cv_tkn_006a04_010_1               --「DOC_SEQUENCE_VALUE」
+                                    ,iv_token_value2 => lt_doc_sequence_value(ln_count)   -- 文書番号
+                                    ,iv_token_name3  => cv_tkn_006a04_011_2               --「AMOUNT_DUE_REMAINING」
+                                    ,iv_token_value3 => lt_amount_due_remaining(ln_count) -- 未回収残額
+                                    ,iv_token_name4  => cv_tkn_006a04_011_3               --「TRX_AMOUNT」
+                                    ,iv_token_value4 => lt_trx_amount(ln_count)           -- 消込金額
+-- ************ 2010/09/02 1.1 M.Watanabe MOD END   ************ --
                                    )
         );
 --
@@ -1633,6 +1824,10 @@ AS
                           ,iv_name         => cv_msg_006a04_012     -- APIエラーメッセージ
                           ,iv_token_name1  => cv_tkn_006a04_012_1   --「TRX_NUMBER」
                           ,iv_token_value1 => lt_get_work_table(ln_count).trx_number  -- 取引番号
+-- ************ 2010/09/02 1.1 M.Watanabe ADD START ************ --
+                          ,iv_token_name2  => cv_tkn_006a04_010_1                             --「DOC_SEQUENCE_VALUE」
+                          ,iv_token_value2 => lt_get_work_table(ln_count).doc_sequence_value  -- 文書番号
+-- ************ 2010/09/02 1.1 M.Watanabe ADD END   ************ --
                         )
                        ,1
                        ,5000
