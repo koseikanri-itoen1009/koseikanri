@@ -1,0 +1,2 @@
+CREATE INDEX xxcok_tmp_001a06c_upload_n02 ON xxcok_tmp_001a06c_upload (cust_code)
+/
