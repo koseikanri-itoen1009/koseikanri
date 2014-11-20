@@ -1,7 +1,7 @@
 /*============================================================================
 * ファイル名 : XxinvUtility
 * 概要説明   : 移動共通関数
-* バージョン : 1.4
+* バージョン : 1.5
 *============================================================================
 * 修正履歴
 * 日付       Ver. 担当者       修正内容
@@ -11,6 +11,7 @@
 * 2008-10-21 1.2  伊藤ひとみ   updateMovLotDetailsロック取得を変更
 * 2008-12-05 1.3  伊藤ひとみ   本番障害#452対応
 * 2008-12-06 1.4  伊藤ひとみ   本番障害#508対応
+* 2010-02-18 1.5  伊藤ひとみ   E_本稼動_01612
 *============================================================================
 */
 package itoen.oracle.apps.xxinv.util;
@@ -33,7 +34,7 @@ import oracle.jbo.domain.Number;
 /***************************************************************************
  * 移動共通関数クラスです。
  * @author  ORACLE 大橋孝郎
- * @version 1.3
+ * @version 1.5
  ***************************************************************************
  */
 public class XxinvUtility 
@@ -2081,17 +2082,18 @@ public class XxinvUtility
   /*****************************************************************************
    * 移動ロット詳細アドオンロックを取得します。
    * @param trans            - トランザクション
-   * @param movLineId        - 移動明細ID
-   * @param documentTypeCode - 文書タイプ(10:出荷依頼、30:支給指示)
-   * @param recordTypeCode   - レコードタイプ(10：指示、20：出庫実績  30：入庫実績)
+   * @param movHdrId        - 移動ヘッダID
    * @return boolean         - true ロック成功 false ロック失敗
    * @throws OAException - OA例外
    ****************************************************************************/
   public static boolean getMovLotDetailsLock(
     OADBTransaction trans,
-    Number movLineId,
-    String documentTypeCode,
-    String recordTypeCode
+// 2010-02-18 H.Itou MOD START E_本稼動_01612
+//    Number movLineId,
+//    String documentTypeCode,
+//    String recordTypeCode
+      Number movHdrId
+// 2010-02-18 H.Itou MOD END
   ) throws OAException
   {
     String apiName = "getMovLotDetailsLock";
@@ -2104,9 +2106,16 @@ public class XxinvUtility
     sb.append("CURSOR lock_cur IS "                          );
     sb.append("  SELECT 1 "                                  );
     sb.append("  FROM   xxinv_mov_lot_details xmld "         );
-    sb.append("  WHERE  xmld.mov_line_id        = :1 "       ); // 1.移動明細ID
-    sb.append("  AND    xmld.document_type_code = :2 "       ); // 2.文書タイプ
-    sb.append("  AND    xmld.record_type_code   = :3 "       ); // 3.レコードタイプ
+// 2010-02-18 H.Itou MOD START E_本稼動_01612 実績計上済フラグを更新するので、移動ヘッダに紐づくロットすべてをロックする。
+//    sb.append("  WHERE  xmld.mov_line_id        = :1 "       ); // 1.移動明細ID
+//    sb.append("  AND    xmld.document_type_code = :2 "       ); // 2.文書タイプ
+//    sb.append("  AND    xmld.record_type_code   = :3 "       ); // 3.レコードタイプ
+    sb.append("        ,xxinv_mov_req_instr_lines  xmril    ");
+    sb.append("  WHERE  xmld.document_type_code = '20'      "); // 文書タイプ 20:移動
+    sb.append("  AND    xmld.mov_line_id = xmril.mov_line_id");
+    sb.append("  AND    xmril.delete_flg = 'N'              "); // 削除されていない明細
+    sb.append("  AND    xmril.mov_hdr_id = :1               "); // 1.移動ヘッダID
+ // 2010-02-18 H.Itou MOD END
     sb.append("  FOR UPDATE NOWAIT; "                        );
     sb.append("  lock_rec lock_cur%ROWTYPE; "                );
     sb.append("BEGIN "                                       );
@@ -2118,8 +2127,12 @@ public class XxinvUtility
     sb.append("    IF (lock_cur%ISOPEN) THEN "               );
     sb.append("      CLOSE lock_cur; "                       );
     sb.append("    END IF; "                                 );
-    sb.append("    :4 := '1'; "                              );
-    sb.append("    :5 := SQLERRM; "                          );
+// 2010-02-18 H.Itou MOD START E_本稼動_01612
+//    sb.append("    :4 := '1'; "                              );
+//    sb.append("    :5 := SQLERRM; "                          );
+    sb.append("    :2 := '1'; "                              );
+    sb.append("    :3 := SQLERRM; "                          );
+// 2010-02-18 H.Itou MOD END
     sb.append("END; "                                        );
 
     //PL/SQLの設定を行います
@@ -2128,20 +2141,31 @@ public class XxinvUtility
                                 OADBTransaction.DEFAULT);
     try
     {
+// 2010-02-18 H.Itou MOD START E_本稼動_01612
+//      // パラメータ設定(INパラメータ)
+//      cstmt.setInt   (1, XxcmnUtility.intValue(movLineId)); // 移動明細ID
+//      cstmt.setString(2, documentTypeCode);                 // 文書タイプ
+//      cstmt.setString(3, recordTypeCode);                   // レコードタイプ
+//      
+//      // パラメータ設定(OUTパラメータ)
+//      cstmt.registerOutParameter(4, Types.VARCHAR);   // リターンコード
+//      cstmt.registerOutParameter(5, Types.VARCHAR);   // エラーメッセージ
       // パラメータ設定(INパラメータ)
-      cstmt.setInt   (1, XxcmnUtility.intValue(movLineId)); // 移動明細ID
-      cstmt.setString(2, documentTypeCode);                 // 文書タイプ
-      cstmt.setString(3, recordTypeCode);                   // レコードタイプ
+      cstmt.setInt   (1, XxcmnUtility.intValue(movHdrId)); // 移動明細ID
       
       // パラメータ設定(OUTパラメータ)
-      cstmt.registerOutParameter(4, Types.VARCHAR);   // リターンコード
-      cstmt.registerOutParameter(5, Types.VARCHAR);   // エラーメッセージ
+      cstmt.registerOutParameter(2, Types.VARCHAR);   // リターンコード
+      cstmt.registerOutParameter(3, Types.VARCHAR);   // エラーメッセージ
+// 2010-02-18 H.Itou MOD END
       
       //PL/SQL実行
       cstmt.execute();
 
       // ロックエラー終了の場合  
-      if ("1".equals(cstmt.getString(4)))
+// 2010-02-18 H.Itou MOD START E_本稼動_01612
+//      if ("1".equals(cstmt.getString(4)))
+      if ("1".equals(cstmt.getString(2)))
+// 2010-02-18 H.Itou MOD END
       {
         // ロールバック
         rollBack(trans);
@@ -2149,7 +2173,10 @@ public class XxinvUtility
         XxcmnUtility.writeLog(
           trans,
           XxinvConstants.CLASS_XXINV_UTILITY + XxcmnConstants.DOT + apiName,
-          cstmt.getString(5),
+// 2010-02-18 H.Itou MOD START E_本稼動_01612
+//          cstmt.getString(5),
+          cstmt.getString(3),
+// 2010-02-18 H.Itou MOD END
           6);
 
         return false;
@@ -3530,4 +3557,100 @@ public class XxinvUtility
     }
   } // isMovLineUpdForOwnConc
 // 2008-07-10 H.Itou ADD END
+// 2010-02-18 H.Itou ADD START E_本稼動_01612
+  /*****************************************************************************
+   * 移動ロット詳細の実績計上済フラグを更新するメソッドです。
+   * @param trans          - トランザクション
+   * @param movHeaderId    - 移動ヘッダID
+   * @param movHeaderId    - 実績計上済フラグ
+   * @throws OAException - OA例外
+   ****************************************************************************/
+  public static void updateActualConfirmClass(
+    OADBTransaction trans,
+     Number movHeaderId,
+     String actualConfirmClass
+  ) throws OAException
+  {
+    String apiName   = "updateActualConfirmClass";
+
+    // PL/SQLの作成
+    StringBuffer sb = new StringBuffer(1000);
+    sb.append("DECLARE                                                                    ");
+    sb.append("  lt_mov_hdr_id         xxinv_mov_req_instr_lines.mov_hdr_id    %TYPE;     ");
+    sb.append("  lt_actual_confirm_class xxinv_mov_lot_details.actual_confirm_class%TYPE; ");
+  	sb.append("BEGIN                                                                      ");
+                 // INパラメータ設定
+    sb.append("  lt_mov_hdr_id           := :1;                                           "); // 1.移動ヘッダID
+    sb.append("  lt_actual_confirm_class := :2;                                           "); // 2.実績計上済フラグ
+                 // 移動ロット詳細UPDATE
+    sb.append("  UPDATE xxinv_mov_lot_details xmld                                        "); // 移動ロット詳細
+    sb.append("  SET    xmld.actual_confirm_class = lt_actual_confirm_class               "); // 実績計上済フラグ
+    sb.append("        ,xmld.last_updated_by    = FND_GLOBAL.USER_ID                      "); // 最終更新者
+    sb.append("        ,xmld.last_update_date   = SYSDATE                                 "); // 最終更新日
+    sb.append("        ,xmld.last_update_login  = FND_GLOBAL.LOGIN_ID                     "); // 最終更新ログイン
+    sb.append("  WHERE  xmld.document_type_code = '20'                                    "); // 文書タイプ 20:移動
+    sb.append("  AND    xmld.record_type_code  <> '10'                                    "); // レコードタイプ 10:指示以外
+    sb.append("  AND    xmld.mov_line_id       IN (                                       "); // 同一移動ヘッダIDで、取消されていない移動明細ID
+    sb.append("           SELECT xmril.mov_line_id          mov_line_id                   ");
+    sb.append("           FROM   xxinv_mov_req_instr_lines  xmril                         ");
+    sb.append("           WHERE  xmril.mov_hdr_id = lt_mov_hdr_id                         ");
+    sb.append("           AND    xmril.delete_flg = 'N')                                  ");
+    sb.append("  ;                                                                        ");
+    sb.append("END;                                                                       ");
+  
+    //PL/SQLの設定を行います
+    CallableStatement cstmt
+      = trans.createCallableStatement(sb.toString(), OADBTransaction.DEFAULT);
+  
+    try
+    {
+      // パラメータ設定(INパラメータ)
+      cstmt.setInt(1, XxcmnUtility.intValue(movHeaderId)); // 1.移動ヘッダID
+      cstmt.setString(2, actualConfirmClass);                // 2.実績計上済フラグ
+
+      // PL/SQL実行
+      cstmt.execute();
+
+    // PL/SQL実行時例外の場合
+    } catch(SQLException s)
+    {
+      // ロールバック
+      rollBack(trans);
+      // ログ出力
+      XxcmnUtility.writeLog(
+        trans,
+        XxinvConstants.CLASS_XXINV_UTILITY + XxcmnConstants.DOT + apiName,
+        s.toString(),
+        6);
+      // エラーメッセージ出力
+      throw new OAException(
+        XxcmnConstants.APPL_XXCMN, 
+        XxcmnConstants.XXCMN10123);
+
+    } finally
+    {
+      try
+      {
+        // PLSQLクローズ
+        cstmt.close();
+      
+      //CLOSE処理中にエラーが発生した場合
+      } catch(SQLException s)
+      {
+        // ロールバック
+        rollBack(trans);
+        // ログ出力
+        XxcmnUtility.writeLog(
+          trans,
+          XxinvConstants.CLASS_XXINV_UTILITY + XxcmnConstants.DOT + apiName,
+          s.toString(),
+          6);
+        // エラーメッセージ出力
+        throw new OAException(
+          XxcmnConstants.APPL_XXCMN, 
+          XxcmnConstants.XXCMN10123);
+      }
+    }
+  } // updateActualConfirmClass
+// 2010-02-18 H.Itou ADD END
 }

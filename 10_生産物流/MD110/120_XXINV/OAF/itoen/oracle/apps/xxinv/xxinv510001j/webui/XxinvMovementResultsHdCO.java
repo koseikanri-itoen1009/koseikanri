@@ -1,7 +1,7 @@
 /*============================================================================
 * ファイル名 : XxinvMovementResultsHdCO
 * 概要説明   : 入出庫実績ヘッダ:検索コントローラ
-* バージョン : 1.5
+* バージョン : 1.6
 *============================================================================
 * 修正履歴
 * 日付       Ver. 担当者       修正内容
@@ -12,6 +12,7 @@
 * 2008-09-24 1.3  伊藤ひとみ   内部変更#157のバグ対応
 * 2008-10-21 1.4  伊藤ひとみ   統合テスト 指摘353対応
 * 2009-12-28 1.5  伊藤ひとみ   本稼動障害#695
+* 2010-02-18 1.6  伊藤ひとみ   E_本稼動_01612
 *============================================================================
 */
 package itoen.oracle.apps.xxinv.xxinv510001j.webui;
@@ -41,7 +42,7 @@ import itoen.oracle.apps.xxinv.util.XxinvConstants;
 /***************************************************************************
  * 入出庫実績ヘッダ:検索コントローラです。
  * @author  ORACLE 大橋 孝郎
- * @version 1.5
+ * @version 1.6
  ***************************************************************************
  */
 public class XxinvMovementResultsHdCO extends XxcmnOAControllerImpl
@@ -171,6 +172,14 @@ public class XxinvMovementResultsHdCO extends XxcmnOAControllerImpl
       } else if (pageContext.getParameter("Next") != null)
       {
         // 何もしない(再表示)
+// 2010-02-18 H.Itou ADD START E_本稼動_01612 ロックエラー時に入力項目をリフレッシュしてしまうので処理追加。
+      // ********************************* //
+      // *      適用ボタン押下時         * //
+      // ********************************* //
+      } else if (pageContext.getParameter("Go") != null)
+      {
+        // 何もしない(再表示)
+// 2010-02-18 H.Itou ADD END
 // 2008/08/18 v1.2 Y.Yamamoto Mod Start
 //      } else if (!XxinvConstants.URL_XXINV510001JL.equals(prevUrl))
       } else if (XxinvConstants.URL_XXINV510001JS.equals(prevUrl))

@@ -1,7 +1,7 @@
 /*============================================================================
 * ファイル名 : XxinvMovementShippedLotAMImpl
 * 概要説明   : 出庫・入庫ロット明細画面アプリケーションモジュール
-* バージョン : 1.4
+* バージョン : 1.5
 *============================================================================
 * 修正履歴
 * 日付       Ver. 担当者       修正内容
@@ -11,6 +11,7 @@
 * 2008-07-14 1.2  山本  恭久     内部変更 重量容積小口個数関数のコールタイミングの変更
 * 2008-10-21 1.3  伊藤ひとみ     統合テスト 指摘353対応
 * 2009-12-28 1.4  伊藤ひとみ     本稼動障害#695
+* 2010-02-18 1.5  伊藤ひとみ     E_本稼動_01612
 *============================================================================
 */
 package itoen.oracle.apps.xxinv.xxinv510002j.server;
@@ -38,7 +39,7 @@ import oracle.jbo.domain.Number;
 /***************************************************************************
  * 出庫ロット明細画面アプリケーションモジュールです。
  * @author  ORACLE 伊藤ひとみ
- * @version 1.4
+ * @version 1.5
  ***************************************************************************
  */
 public class XxinvMovementShippedLotAMImpl extends XxcmnOAApplicationModuleImpl 
@@ -1443,6 +1444,14 @@ public class XxinvMovementShippedLotAMImpl extends XxcmnOAApplicationModuleImpl
         // *  移動ヘッダ実績訂正フラグ更新処理  * //
         // ************************************** // 
         XxinvUtility.updateCorrectActualFlg(getOADBTransaction(), movHeaderId);
+
+// 2010-02-18 H.Itou ADD START E_本稼動_01612
+        // ******************************************** // 
+        // *  移動ロット詳細実績計上済フラグ更新処理  * //
+        // ******************************************** // 
+        // 訂正されたので、移動ロット詳細の実績ロットを「N:実績未計上」に変更
+        XxinvUtility.updateActualConfirmClass(getOADBTransaction(), movHeaderId, XxinvConstants.COMP_ACTUAL_FLG_N);
+// 2010-02-18 H.Itou ADD END
       }
     }
 
@@ -1608,6 +1617,13 @@ public class XxinvMovementShippedLotAMImpl extends XxcmnOAApplicationModuleImpl
         // *  移動ヘッダ実績訂正フラグ更新処理  * //
         // ************************************** // 
         XxinvUtility.updateCorrectActualFlg(getOADBTransaction(), movHeaderId);
+// 2010-02-18 H.Itou ADD START E_本稼動_01612
+        // ******************************************** // 
+        // *  移動ロット詳細実績計上済フラグ更新処理  * //
+        // ******************************************** // 
+        // 訂正されたので、移動ロット詳細の実績ロットを「N:実績未計上」に変更
+        XxinvUtility.updateActualConfirmClass(getOADBTransaction(), movHeaderId, XxinvConstants.COMP_ACTUAL_FLG_N);
+// 2010-02-18 H.Itou ADD END
       }
     }
     
@@ -1723,9 +1739,12 @@ public class XxinvMovementShippedLotAMImpl extends XxcmnOAApplicationModuleImpl
     // ロックエラーの場合
     if (!XxinvUtility.getMovLotDetailsLock(
           getOADBTransaction(),
-          movLineId,
-          documentTypeCode,
-          recordTypeCode))
+// 2010-02-18 H.Itou MOD START E_本稼動_01612
+//          movLineId,
+//          documentTypeCode,
+//          recordTypeCode))          
+          movHdrId))
+// 2010-02-18 H.Itou MOD END
     {
       // ロックエラーメッセージ出力
       throw new OAException(

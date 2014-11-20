@@ -1,7 +1,7 @@
 /*============================================================================
 * ファイル名 : XxinvMovementResultsAMImpl
 * 概要説明   : 入出庫実績要約:検索アプリケーションモジュール
-* バージョン : 1.15
+* バージョン : 1.16
 *============================================================================
 * 修正履歴
 * 日付       Ver. 担当者       修正内容
@@ -21,6 +21,7 @@
 * 2009-03-11 1.13 伊藤ひとみ   本番障害#885対応(再対応)
 * 2009-06-18 1.14 伊藤ひとみ   本番障害#1314対応
 * 2009-12-28 1.15 伊藤ひとみ   本稼動障害#695
+* 2010-02-18 1.16 伊藤ひとみ   E_本稼動_01612
 *============================================================================
 */
 package itoen.oracle.apps.xxinv.xxinv510001j.server;
@@ -50,7 +51,7 @@ import itoen.oracle.apps.xxinv.util.XxinvConstants;
 /***************************************************************************
  * 入出庫実績要約:検索アプリケーションモジュールです。
  * @author  ORACLE 大橋 孝郎
- * @version 1.15
+ * @version 1.16
  ***************************************************************************
  */
 public class XxinvMovementResultsAMImpl extends XxcmnOAApplicationModuleImpl 
@@ -2109,7 +2110,17 @@ public class XxinvMovementResultsAMImpl extends XxcmnOAApplicationModuleImpl
       }
       // 移動依頼/指示ヘッダ(アドオン)更新処理
       retCode = headerUpdate(makeHdrVORow);
-
+// 2010-02-18 H.Itou ADD START E_本稼動_01612
+      // 実績計上済フラグがYの場合
+      if (XxcmnConstants.STRING_Y.equals(makeHdrVORow.getAttribute("CompActualFlg")))
+      {
+        // ******************************************** // 
+        // *  移動ロット詳細実績計上済フラグ更新処理  * //
+        // ******************************************** // 
+        // 訂正されたので、移動ロット詳細の実績ロットを「N:実績未計上」に変更
+        XxinvUtility.updateActualConfirmClass(getOADBTransaction(), movHdrId, XxinvConstants.COMP_ACTUAL_FLG_N);
+      }
+// 2010-02-18 H.Itou ADD END
       // ヘッダ更新処理でエラーが発生した場合、処理を中断
       if (XxcmnConstants.STRING_FALSE.equals(retCode))
       {
@@ -2309,7 +2320,21 @@ public class XxinvMovementResultsAMImpl extends XxcmnOAApplicationModuleImpl
       throw new OAException(XxcmnConstants.APPL_XXINV,
                               XxinvConstants.XXINV10159);
     }
-
+// 2010-02-18 H.Itou ADD START E_本稼動_01612
+    // *************************** //
+    // *  移動ロット詳細ロック   * //
+    // *************************** //
+    // ロックエラーの場合
+    if (!XxinvUtility.getMovLotDetailsLock(
+          getOADBTransaction(),       
+          headerId))
+    {
+      // ロックエラーメッセージ出力
+      throw new OAException(
+          XxcmnConstants.APPL_XXINV, 
+          XxinvConstants.XXINV10159);
+    }
+// 2010-02-18 H.Itou ADD END
     // 排他チェックをします
     String lastUpdateDate = (String)params.get("LastUpdateDate");
     if (!XxinvUtility.chkExclusiveMovReqInstrHdr(getOADBTransaction(), 
