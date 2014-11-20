@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCMM003A36C(body)
  * Description      : 各諸マスタ連携IFデータ作成
  * MD.050           : MD050_CMM_003_A36_各諸マスタ連携IFデータ作成
- * Version          : 1.6
+ * Version          : 1.7
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -29,7 +29,8 @@ AS
  *  2009/04/15    1.3   Yutaka.Kuboshima    障害T1_0577の対応
  *  2009/05/28    1.4   Yutaka.Kuboshima    障害T1_1244の対応
  *  2009/06/03    1.5   Yutaka.Kuboshima    障害T1_1321の対応
- *  2009/06/30    1.6   Yutaka.Kuboshima    障害0000328の対応
+ *  2009/06/30    1.6   Yutaka.Kuboshima    統合テスト障害0000328の対応
+ *  2009/07/13    1.7   Yutaka.Kuboshima    統合テスト障害0000655,0000656の対応
  *
  *****************************************************************************************/
 --
@@ -6367,7 +6368,794 @@ AS
       WHEN OTHERS THEN
         RAISE;
     END;
--- 2009/06/03 Ver1.5 add end by Yutaka.Kuboshima
+-- 2009/06/03 Ver1.5 add end by Yutaka.Kuboshim
+-- 2009/07/13 Ver1.7 障害0000655,0000656 add start by Yutaka.Kuboshima
+    -- 1-80.関連分類取得
+    DECLARE
+      CURSOR relation_class_cur
+      IS
+        SELECT flv.lookup_type AS lv_ref_type
+              ,flv.lookup_code AS lv_ref_code
+              ,flv.meaning     AS lv_ref_name
+              ,NULL            AS lv_pt_ref_type
+              ,NULL            AS lv_pt_ref_code
+        FROM   fnd_lookup_values flv
+        WHERE  flv.language = cv_language_ja
+        AND    flv.lookup_type = 'XXCMM_CUST_KANREN_BUNRUI'
+        AND    flv.enabled_flag = cv_y_flag
+        ORDER BY flv.lookup_code;
+      relation_class_rec relation_class_cur%ROWTYPE;
+    BEGIN
+      OPEN relation_class_cur;
+        << relation_class_loop >>
+        LOOP
+          FETCH relation_class_cur INTO relation_class_rec;
+          EXIT WHEN relation_class_cur%NOTFOUND;
+            -- ファイル出力
+            write_csv(
+               relation_class_rec.lv_ref_type     -- 参照タイプ
+              ,relation_class_rec.lv_ref_code     -- 参照コード
+              ,relation_class_rec.lv_ref_name     -- 名称
+              ,relation_class_rec.lv_pt_ref_type  -- 親参照タイプ
+              ,relation_class_rec.lv_pt_ref_code  -- 親参照コード
+              ,if_file_handler
+              ,lv_errbuf
+              ,lv_retcode
+              ,lv_errmsg
+            );
+            --カーソルカウント
+            ln_data_cnt := ln_data_cnt + 1;
+        END LOOP;
+      CLOSE relation_class_cur;
+      --参照コード取得エラー
+      IF (ln_data_cnt = 0) THEN
+        lv_errmsg := xxccp_common_pkg.get_msg(gv_xxcmm_msg_kbn,
+                                              cv_no_data_err_msg,
+                                              cv_lookup_type,
+                                              'XXCMM_CUST_KANREN_BUNRUI');
+        ov_retcode := cv_status_warn;
+        --警告メッセージ出力
+        FND_FILE.PUT_LINE(which  => FND_FILE.LOG  ,buff   => lv_errmsg);
+        --警告カウントアップ
+        ln_warn_cnt := ln_warn_cnt + 1;
+      END IF;
+      --出力件数カウント
+      ln_output_cnt := ln_output_cnt + ln_data_cnt;
+      ln_data_cnt := 0;
+    EXCEPTION
+      WHEN OTHERS THEN
+        RAISE;
+    END;
+    -- 1-81.税金－計算取得
+    DECLARE
+      CURSOR tax_calculation_cur
+      IS
+        SELECT flv.lookup_type AS lv_ref_type
+              ,flv.lookup_code AS lv_ref_code
+              ,flv.meaning     AS lv_ref_name
+              ,NULL            AS lv_pt_ref_type
+              ,NULL            AS lv_pt_ref_code
+        FROM   fnd_lookup_values flv
+        WHERE  flv.language = cv_language_ja
+        AND    flv.lookup_type = 'AR_TAX_CALCULATION_LEVEL'
+        AND    flv.enabled_flag = cv_y_flag
+        ORDER BY flv.lookup_code;
+      tax_calculation_rec tax_calculation_cur%ROWTYPE;
+    BEGIN
+      OPEN tax_calculation_cur;
+        << tax_calculation_loop >>
+        LOOP
+          FETCH tax_calculation_cur INTO tax_calculation_rec;
+          EXIT WHEN tax_calculation_cur%NOTFOUND;
+            -- ファイル出力
+            write_csv(
+               tax_calculation_rec.lv_ref_type     -- 参照タイプ
+              ,tax_calculation_rec.lv_ref_code     -- 参照コード
+              ,tax_calculation_rec.lv_ref_name     -- 名称
+              ,tax_calculation_rec.lv_pt_ref_type  -- 親参照タイプ
+              ,tax_calculation_rec.lv_pt_ref_code  -- 親参照コード
+              ,if_file_handler
+              ,lv_errbuf
+              ,lv_retcode
+              ,lv_errmsg
+            );
+            --カーソルカウント
+            ln_data_cnt := ln_data_cnt + 1;
+        END LOOP;
+      CLOSE tax_calculation_cur;
+      --参照コード取得エラー
+      IF (ln_data_cnt = 0) THEN
+        lv_errmsg := xxccp_common_pkg.get_msg(gv_xxcmm_msg_kbn,
+                                              cv_no_data_err_msg,
+                                              cv_lookup_type,
+                                              'AR_TAX_CALCULATION_LEVEL');
+        ov_retcode := cv_status_warn;
+        --警告メッセージ出力
+        FND_FILE.PUT_LINE(which  => FND_FILE.LOG  ,buff   => lv_errmsg);
+        --警告カウントアップ
+        ln_warn_cnt := ln_warn_cnt + 1;
+      END IF;
+      --出力件数カウント
+      ln_output_cnt := ln_output_cnt + ln_data_cnt;
+      ln_data_cnt := 0;
+    EXCEPTION
+      WHEN OTHERS THEN
+        RAISE;
+    END;
+    -- 1-82.税金－端数処理取得
+    DECLARE
+      CURSOR tax_rounding_cur
+      IS
+        SELECT flv.lookup_type AS lv_ref_type
+              ,flv.lookup_code AS lv_ref_code
+              ,flv.meaning     AS lv_ref_name
+              ,NULL            AS lv_pt_ref_type
+              ,NULL            AS lv_pt_ref_code
+        FROM   fnd_lookup_values flv
+        WHERE  flv.language = cv_language_ja
+        AND    flv.lookup_type = 'AR_TAX_ROUNDING_RULE'
+        AND    flv.enabled_flag = cv_y_flag
+        ORDER BY flv.lookup_code;
+      tax_rounding_rec tax_rounding_cur%ROWTYPE;
+    BEGIN
+      OPEN tax_rounding_cur;
+        << tax_rounding_loop >>
+        LOOP
+          FETCH tax_rounding_cur INTO tax_rounding_rec;
+          EXIT WHEN tax_rounding_cur%NOTFOUND;
+            -- ファイル出力
+            write_csv(
+               tax_rounding_rec.lv_ref_type     -- 参照タイプ
+              ,tax_rounding_rec.lv_ref_code     -- 参照コード
+              ,tax_rounding_rec.lv_ref_name     -- 名称
+              ,tax_rounding_rec.lv_pt_ref_type  -- 親参照タイプ
+              ,tax_rounding_rec.lv_pt_ref_code  -- 親参照コード
+              ,if_file_handler
+              ,lv_errbuf
+              ,lv_retcode
+              ,lv_errmsg
+            );
+            --カーソルカウント
+            ln_data_cnt := ln_data_cnt + 1;
+        END LOOP;
+      CLOSE tax_rounding_cur;
+      --参照コード取得エラー
+      IF (ln_data_cnt = 0) THEN
+        lv_errmsg := xxccp_common_pkg.get_msg(gv_xxcmm_msg_kbn,
+                                              cv_no_data_err_msg,
+                                              cv_lookup_type,
+                                              'AR_TAX_ROUNDING_RULE');
+        ov_retcode := cv_status_warn;
+        --警告メッセージ出力
+        FND_FILE.PUT_LINE(which  => FND_FILE.LOG  ,buff   => lv_errmsg);
+        --警告カウントアップ
+        ln_warn_cnt := ln_warn_cnt + 1;
+      END IF;
+      --出力件数カウント
+      ln_output_cnt := ln_output_cnt + ln_data_cnt;
+      ln_data_cnt := 0;
+    EXCEPTION
+      WHEN OTHERS THEN
+        RAISE;
+    END;
+    -- 1-83.新規／更新フラグ取得
+    DECLARE
+      CURSOR update_flag_cur
+      IS
+        SELECT flv.lookup_type AS lv_ref_type
+              ,flv.lookup_code AS lv_ref_code
+              ,flv.meaning     AS lv_ref_name
+              ,NULL            AS lv_pt_ref_type
+              ,NULL            AS lv_pt_ref_code
+        FROM   fnd_lookup_values flv
+        WHERE  flv.language = cv_language_ja
+        AND    flv.lookup_type = 'XXCMM_CUST_UPDATE_FLG'
+        AND    flv.enabled_flag = cv_y_flag
+        ORDER BY flv.lookup_code;
+      update_flag_rec update_flag_cur%ROWTYPE;
+    BEGIN
+      OPEN update_flag_cur;
+        << update_flag_loop >>
+        LOOP
+          FETCH update_flag_cur INTO update_flag_rec;
+          EXIT WHEN update_flag_cur%NOTFOUND;
+            -- ファイル出力
+            write_csv(
+               update_flag_rec.lv_ref_type     -- 参照タイプ
+              ,update_flag_rec.lv_ref_code     -- 参照コード
+              ,update_flag_rec.lv_ref_name     -- 名称
+              ,update_flag_rec.lv_pt_ref_type  -- 親参照タイプ
+              ,update_flag_rec.lv_pt_ref_code  -- 親参照コード
+              ,if_file_handler
+              ,lv_errbuf
+              ,lv_retcode
+              ,lv_errmsg
+            );
+            --カーソルカウント
+            ln_data_cnt := ln_data_cnt + 1;
+        END LOOP;
+      CLOSE update_flag_cur;
+      --参照コード取得エラー
+      IF (ln_data_cnt = 0) THEN
+        lv_errmsg := xxccp_common_pkg.get_msg(gv_xxcmm_msg_kbn,
+                                              cv_no_data_err_msg,
+                                              cv_lookup_type,
+                                              'XXCMM_CUST_UPDATE_FLG');
+        ov_retcode := cv_status_warn;
+        --警告メッセージ出力
+        FND_FILE.PUT_LINE(which  => FND_FILE.LOG  ,buff   => lv_errmsg);
+        --警告カウントアップ
+        ln_warn_cnt := ln_warn_cnt + 1;
+      END IF;
+      --出力件数カウント
+      ln_output_cnt := ln_output_cnt + ln_data_cnt;
+      ln_data_cnt := 0;
+    EXCEPTION
+      WHEN OTHERS THEN
+        RAISE;
+    END;
+    -- 1-84.カード会社区分取得
+    DECLARE
+      CURSOR card_company_cur
+      IS
+        SELECT flv.lookup_type AS lv_ref_type
+              ,flv.lookup_code AS lv_ref_code
+              ,flv.meaning     AS lv_ref_name
+              ,NULL            AS lv_pt_ref_type
+              ,NULL            AS lv_pt_ref_code
+        FROM   fnd_lookup_values flv
+        WHERE  flv.language = cv_language_ja
+        AND    flv.lookup_type = 'XXCMM_CUST_CARD_COMPANY_KBN'
+        AND    flv.enabled_flag = cv_y_flag
+        ORDER BY flv.lookup_code;
+      card_company_rec card_company_cur%ROWTYPE;
+    BEGIN
+      OPEN card_company_cur;
+        << card_company_loop >>
+        LOOP
+          FETCH card_company_cur INTO card_company_rec;
+          EXIT WHEN card_company_cur%NOTFOUND;
+            -- ファイル出力
+            write_csv(
+               card_company_rec.lv_ref_type     -- 参照タイプ
+              ,card_company_rec.lv_ref_code     -- 参照コード
+              ,card_company_rec.lv_ref_name     -- 名称
+              ,card_company_rec.lv_pt_ref_type  -- 親参照タイプ
+              ,card_company_rec.lv_pt_ref_code  -- 親参照コード
+              ,if_file_handler
+              ,lv_errbuf
+              ,lv_retcode
+              ,lv_errmsg
+            );
+            --カーソルカウント
+            ln_data_cnt := ln_data_cnt + 1;
+        END LOOP;
+      CLOSE card_company_cur;
+      --参照コード取得エラー
+      IF (ln_data_cnt = 0) THEN
+        lv_errmsg := xxccp_common_pkg.get_msg(gv_xxcmm_msg_kbn,
+                                              cv_no_data_err_msg,
+                                              cv_lookup_type,
+                                              'XXCMM_CUST_CARD_COMPANY_KBN');
+        ov_retcode := cv_status_warn;
+        --警告メッセージ出力
+        FND_FILE.PUT_LINE(which  => FND_FILE.LOG  ,buff   => lv_errmsg);
+        --警告カウントアップ
+        ln_warn_cnt := ln_warn_cnt + 1;
+      END IF;
+      --出力件数カウント
+      ln_output_cnt := ln_output_cnt + ln_data_cnt;
+      ln_data_cnt := 0;
+    EXCEPTION
+      WHEN OTHERS THEN
+        RAISE;
+    END;
+    -- 1-85.売上対象区分取得
+    DECLARE
+      CURSOR sales_target_cur
+      IS
+        SELECT flv.lookup_type AS lv_ref_type
+              ,flv.lookup_code AS lv_ref_code
+              ,flv.meaning     AS lv_ref_name
+              ,NULL            AS lv_pt_ref_type
+              ,NULL            AS lv_pt_ref_code
+        FROM   fnd_lookup_values flv
+        WHERE  flv.language = cv_language_ja
+        AND    flv.lookup_type = 'XXCMN_SALES_TARGET_CLASS'
+        AND    flv.enabled_flag = cv_y_flag
+        ORDER BY flv.lookup_code;
+      sales_target_rec sales_target_cur%ROWTYPE;
+    BEGIN
+      OPEN sales_target_cur;
+        << sales_target_loop >>
+        LOOP
+          FETCH sales_target_cur INTO sales_target_rec;
+          EXIT WHEN sales_target_cur%NOTFOUND;
+            -- ファイル出力
+            write_csv(
+               sales_target_rec.lv_ref_type     -- 参照タイプ
+              ,sales_target_rec.lv_ref_code     -- 参照コード
+              ,sales_target_rec.lv_ref_name     -- 名称
+              ,sales_target_rec.lv_pt_ref_type  -- 親参照タイプ
+              ,sales_target_rec.lv_pt_ref_code  -- 親参照コード
+              ,if_file_handler
+              ,lv_errbuf
+              ,lv_retcode
+              ,lv_errmsg
+            );
+            --カーソルカウント
+            ln_data_cnt := ln_data_cnt + 1;
+        END LOOP;
+      CLOSE sales_target_cur;
+      --参照コード取得エラー
+      IF (ln_data_cnt = 0) THEN
+        lv_errmsg := xxccp_common_pkg.get_msg(gv_xxcmm_msg_kbn,
+                                              cv_no_data_err_msg,
+                                              cv_lookup_type,
+                                              'XXCMN_SALES_TARGET_CLASS');
+        ov_retcode := cv_status_warn;
+        --警告メッセージ出力
+        FND_FILE.PUT_LINE(which  => FND_FILE.LOG  ,buff   => lv_errmsg);
+        --警告カウントアップ
+        ln_warn_cnt := ln_warn_cnt + 1;
+      END IF;
+      --出力件数カウント
+      ln_output_cnt := ln_output_cnt + ln_data_cnt;
+      ln_data_cnt := 0;
+    EXCEPTION
+      WHEN OTHERS THEN
+        RAISE;
+    END;
+    -- 1-86.率区分取得
+    DECLARE
+      CURSOR rate_class_cur
+      IS
+        SELECT flv.lookup_type AS lv_ref_type
+              ,flv.lookup_code AS lv_ref_code
+              ,flv.meaning     AS lv_ref_name
+              ,NULL            AS lv_pt_ref_type
+              ,NULL            AS lv_pt_ref_code
+        FROM   fnd_lookup_values flv
+        WHERE  flv.language = cv_language_ja
+        AND    flv.lookup_type = 'XXCMM_ITM_RATE_CLASS'
+        AND    flv.enabled_flag = cv_y_flag
+        ORDER BY flv.lookup_code;
+      rate_class_rec rate_class_cur%ROWTYPE;
+    BEGIN
+      OPEN rate_class_cur;
+        << rate_class_loop >>
+        LOOP
+          FETCH rate_class_cur INTO rate_class_rec;
+          EXIT WHEN rate_class_cur%NOTFOUND;
+            -- ファイル出力
+            write_csv(
+               rate_class_rec.lv_ref_type     -- 参照タイプ
+              ,rate_class_rec.lv_ref_code     -- 参照コード
+              ,rate_class_rec.lv_ref_name     -- 名称
+              ,rate_class_rec.lv_pt_ref_type  -- 親参照タイプ
+              ,rate_class_rec.lv_pt_ref_code  -- 親参照コード
+              ,if_file_handler
+              ,lv_errbuf
+              ,lv_retcode
+              ,lv_errmsg
+            );
+            --カーソルカウント
+            ln_data_cnt := ln_data_cnt + 1;
+        END LOOP;
+      CLOSE rate_class_cur;
+      --参照コード取得エラー
+      IF (ln_data_cnt = 0) THEN
+        lv_errmsg := xxccp_common_pkg.get_msg(gv_xxcmm_msg_kbn,
+                                              cv_no_data_err_msg,
+                                              cv_lookup_type,
+                                              'XXCMM_ITM_RATE_CLASS');
+        ov_retcode := cv_status_warn;
+        --警告メッセージ出力
+        FND_FILE.PUT_LINE(which  => FND_FILE.LOG  ,buff   => lv_errmsg);
+        --警告カウントアップ
+        ln_warn_cnt := ln_warn_cnt + 1;
+      END IF;
+      --出力件数カウント
+      ln_output_cnt := ln_output_cnt + ln_data_cnt;
+      ln_data_cnt := 0;
+    EXCEPTION
+      WHEN OTHERS THEN
+        RAISE;
+    END;
+    -- 1-87.内容量単位取得
+    DECLARE
+      CURSOR net_uom_code_cur
+      IS
+        SELECT flv.lookup_type AS lv_ref_type
+              ,flv.lookup_code AS lv_ref_code
+              ,flv.meaning     AS lv_ref_name
+              ,NULL            AS lv_pt_ref_type
+              ,NULL            AS lv_pt_ref_code
+        FROM   fnd_lookup_values flv
+        WHERE  flv.language = cv_language_ja
+        AND    flv.lookup_type = 'XXCMM_ITM_NET_UOM_CODE'
+        AND    flv.enabled_flag = cv_y_flag
+        ORDER BY flv.lookup_code;
+      net_uom_code_rec net_uom_code_cur%ROWTYPE;
+    BEGIN
+      OPEN net_uom_code_cur;
+        << net_uom_code_loop >>
+        LOOP
+          FETCH net_uom_code_cur INTO net_uom_code_rec;
+          EXIT WHEN net_uom_code_cur%NOTFOUND;
+            -- ファイル出力
+            write_csv(
+               net_uom_code_rec.lv_ref_type     -- 参照タイプ
+              ,net_uom_code_rec.lv_ref_code     -- 参照コード
+              ,net_uom_code_rec.lv_ref_name     -- 名称
+              ,net_uom_code_rec.lv_pt_ref_type  -- 親参照タイプ
+              ,net_uom_code_rec.lv_pt_ref_code  -- 親参照コード
+              ,if_file_handler
+              ,lv_errbuf
+              ,lv_retcode
+              ,lv_errmsg
+            );
+            --カーソルカウント
+            ln_data_cnt := ln_data_cnt + 1;
+        END LOOP;
+      CLOSE net_uom_code_cur;
+      --参照コード取得エラー
+      IF (ln_data_cnt = 0) THEN
+        lv_errmsg := xxccp_common_pkg.get_msg(gv_xxcmm_msg_kbn,
+                                              cv_no_data_err_msg,
+                                              cv_lookup_type,
+                                              'XXCMM_ITM_NET_UOM_CODE');
+        ov_retcode := cv_status_warn;
+        --警告メッセージ出力
+        FND_FILE.PUT_LINE(which  => FND_FILE.LOG  ,buff   => lv_errmsg);
+        --警告カウントアップ
+        ln_warn_cnt := ln_warn_cnt + 1;
+      END IF;
+      --出力件数カウント
+      ln_output_cnt := ln_output_cnt + ln_data_cnt;
+      ln_data_cnt := 0;
+    EXCEPTION
+      WHEN OTHERS THEN
+        RAISE;
+    END;
+    -- 1-88.バラ茶区分取得
+    DECLARE
+      CURSOR barachakubun_cur
+      IS
+        SELECT flv.lookup_type AS lv_ref_type
+              ,flv.lookup_code AS lv_ref_code
+              ,flv.meaning     AS lv_ref_name
+              ,NULL            AS lv_pt_ref_type
+              ,NULL            AS lv_pt_ref_code
+        FROM   fnd_lookup_values flv
+        WHERE  flv.language = cv_language_ja
+        AND    flv.lookup_type = 'XXCMM_ITM_BARACHAKUBUN'
+        AND    flv.enabled_flag = cv_y_flag
+        ORDER BY flv.lookup_code;
+      barachakubun_rec barachakubun_cur%ROWTYPE;
+    BEGIN
+      OPEN barachakubun_cur;
+        << barachakubun_loop >>
+        LOOP
+          FETCH barachakubun_cur INTO barachakubun_rec;
+          EXIT WHEN barachakubun_cur%NOTFOUND;
+            -- ファイル出力
+            write_csv(
+               barachakubun_rec.lv_ref_type     -- 参照タイプ
+              ,barachakubun_rec.lv_ref_code     -- 参照コード
+              ,barachakubun_rec.lv_ref_name     -- 名称
+              ,barachakubun_rec.lv_pt_ref_type  -- 親参照タイプ
+              ,barachakubun_rec.lv_pt_ref_code  -- 親参照コード
+              ,if_file_handler
+              ,lv_errbuf
+              ,lv_retcode
+              ,lv_errmsg
+            );
+            --カーソルカウント
+            ln_data_cnt := ln_data_cnt + 1;
+        END LOOP;
+      CLOSE barachakubun_cur;
+      --参照コード取得エラー
+      IF (ln_data_cnt = 0) THEN
+        lv_errmsg := xxccp_common_pkg.get_msg(gv_xxcmm_msg_kbn,
+                                              cv_no_data_err_msg,
+                                              cv_lookup_type,
+                                              'XXCMM_ITM_BARACHAKUBUN');
+        ov_retcode := cv_status_warn;
+        --警告メッセージ出力
+        FND_FILE.PUT_LINE(which  => FND_FILE.LOG  ,buff   => lv_errmsg);
+        --警告カウントアップ
+        ln_warn_cnt := ln_warn_cnt + 1;
+      END IF;
+      --出力件数カウント
+      ln_output_cnt := ln_output_cnt + ln_data_cnt;
+      ln_data_cnt := 0;
+    EXCEPTION
+      WHEN OTHERS THEN
+        RAISE;
+    END;
+    -- 1-89.商品分類取得
+    DECLARE
+      CURSOR item_relation_cur
+      IS
+        SELECT flv.lookup_type AS lv_ref_type
+              ,flv.lookup_code AS lv_ref_code
+              ,flv.meaning     AS lv_ref_name
+              ,NULL            AS lv_pt_ref_type
+              ,NULL            AS lv_pt_ref_code
+        FROM   fnd_lookup_values flv
+        WHERE  flv.language = cv_language_ja
+        AND    flv.lookup_type = 'XXCMN_D02'
+        AND    flv.enabled_flag = cv_y_flag
+        ORDER BY flv.lookup_code;
+      item_relation_rec item_relation_cur%ROWTYPE;
+    BEGIN
+      OPEN item_relation_cur;
+        << item_relation_loop >>
+        LOOP
+          FETCH item_relation_cur INTO item_relation_rec;
+          EXIT WHEN item_relation_cur%NOTFOUND;
+            -- ファイル出力
+            write_csv(
+               item_relation_rec.lv_ref_type     -- 参照タイプ
+              ,item_relation_rec.lv_ref_code     -- 参照コード
+              ,item_relation_rec.lv_ref_name     -- 名称
+              ,item_relation_rec.lv_pt_ref_type  -- 親参照タイプ
+              ,item_relation_rec.lv_pt_ref_code  -- 親参照コード
+              ,if_file_handler
+              ,lv_errbuf
+              ,lv_retcode
+              ,lv_errmsg
+            );
+            --カーソルカウント
+            ln_data_cnt := ln_data_cnt + 1;
+        END LOOP;
+      CLOSE item_relation_cur;
+      --参照コード取得エラー
+      IF (ln_data_cnt = 0) THEN
+        lv_errmsg := xxccp_common_pkg.get_msg(gv_xxcmm_msg_kbn,
+                                              cv_no_data_err_msg,
+                                              cv_lookup_type,
+                                              'XXCMN_D02');
+        ov_retcode := cv_status_warn;
+        --警告メッセージ出力
+        FND_FILE.PUT_LINE(which  => FND_FILE.LOG  ,buff   => lv_errmsg);
+        --警告カウントアップ
+        ln_warn_cnt := ln_warn_cnt + 1;
+      END IF;
+      --出力件数カウント
+      ln_output_cnt := ln_output_cnt + ln_data_cnt;
+      ln_data_cnt := 0;
+    EXCEPTION
+      WHEN OTHERS THEN
+        RAISE;
+    END;
+    -- 1-90.新商品区分取得
+    DECLARE
+      CURSOR shinsyohinkubun_cur
+      IS
+        SELECT flv.lookup_type AS lv_ref_type
+              ,flv.lookup_code AS lv_ref_code
+              ,flv.meaning     AS lv_ref_name
+              ,NULL            AS lv_pt_ref_type
+              ,NULL            AS lv_pt_ref_code
+        FROM   fnd_lookup_values flv
+        WHERE  flv.language = cv_language_ja
+        AND    flv.lookup_type = 'XXCMM_ITM_SHINSYOHINKUBUN'
+        AND    flv.enabled_flag = cv_y_flag
+        ORDER BY flv.lookup_code;
+      shinsyohinkubun_rec shinsyohinkubun_cur%ROWTYPE;
+    BEGIN
+      OPEN shinsyohinkubun_cur;
+        << shinsyohinkubun_loop >>
+        LOOP
+          FETCH shinsyohinkubun_cur INTO shinsyohinkubun_rec;
+          EXIT WHEN shinsyohinkubun_cur%NOTFOUND;
+            -- ファイル出力
+            write_csv(
+               shinsyohinkubun_rec.lv_ref_type     -- 参照タイプ
+              ,shinsyohinkubun_rec.lv_ref_code     -- 参照コード
+              ,shinsyohinkubun_rec.lv_ref_name     -- 名称
+              ,shinsyohinkubun_rec.lv_pt_ref_type  -- 親参照タイプ
+              ,shinsyohinkubun_rec.lv_pt_ref_code  -- 親参照コード
+              ,if_file_handler
+              ,lv_errbuf
+              ,lv_retcode
+              ,lv_errmsg
+            );
+            --カーソルカウント
+            ln_data_cnt := ln_data_cnt + 1;
+        END LOOP;
+      CLOSE shinsyohinkubun_cur;
+      --参照コード取得エラー
+      IF (ln_data_cnt = 0) THEN
+        lv_errmsg := xxccp_common_pkg.get_msg(gv_xxcmm_msg_kbn,
+                                              cv_no_data_err_msg,
+                                              cv_lookup_type,
+                                              'XXCMM_ITM_SHINSYOHINKUBUN');
+        ov_retcode := cv_status_warn;
+        --警告メッセージ出力
+        FND_FILE.PUT_LINE(which  => FND_FILE.LOG  ,buff   => lv_errmsg);
+        --警告カウントアップ
+        ln_warn_cnt := ln_warn_cnt + 1;
+      END IF;
+      --出力件数カウント
+      ln_output_cnt := ln_output_cnt + ln_data_cnt;
+      ln_data_cnt := 0;
+    EXCEPTION
+      WHEN OTHERS THEN
+        RAISE;
+    END;
+    -- 1-91.専門店仕入先取得
+    DECLARE
+      CURSOR senmonten_shiiresaki_cur
+      IS
+        SELECT flv.lookup_type AS lv_ref_type
+              ,flv.lookup_code AS lv_ref_code
+              ,flv.description AS lv_ref_name
+              ,NULL            AS lv_pt_ref_type
+              ,NULL            AS lv_pt_ref_code
+        FROM   fnd_lookup_values flv
+        WHERE  flv.language = cv_language_ja
+        AND    flv.lookup_type = 'XXCMM_ITM_SENMONTEN_SHIIRESAKI'
+        AND    flv.enabled_flag = cv_y_flag
+        ORDER BY flv.lookup_code;
+      senmonten_shiiresaki_rec senmonten_shiiresaki_cur%ROWTYPE;
+    BEGIN
+      OPEN senmonten_shiiresaki_cur;
+        << senmonten_shiiresaki_loop >>
+        LOOP
+          FETCH senmonten_shiiresaki_cur INTO senmonten_shiiresaki_rec;
+          EXIT WHEN senmonten_shiiresaki_cur%NOTFOUND;
+            -- ファイル出力
+            write_csv(
+               senmonten_shiiresaki_rec.lv_ref_type     -- 参照タイプ
+              ,senmonten_shiiresaki_rec.lv_ref_code     -- 参照コード
+              ,senmonten_shiiresaki_rec.lv_ref_name     -- 名称
+              ,senmonten_shiiresaki_rec.lv_pt_ref_type  -- 親参照タイプ
+              ,senmonten_shiiresaki_rec.lv_pt_ref_code  -- 親参照コード
+              ,if_file_handler
+              ,lv_errbuf
+              ,lv_retcode
+              ,lv_errmsg
+            );
+            --カーソルカウント
+            ln_data_cnt := ln_data_cnt + 1;
+        END LOOP;
+      CLOSE senmonten_shiiresaki_cur;
+      --参照コード取得エラー
+      IF (ln_data_cnt = 0) THEN
+        lv_errmsg := xxccp_common_pkg.get_msg(gv_xxcmm_msg_kbn,
+                                              cv_no_data_err_msg,
+                                              cv_lookup_type,
+                                              'XXCMM_ITM_SENMONTEN_SHIIRESAKI');
+        ov_retcode := cv_status_warn;
+        --警告メッセージ出力
+        FND_FILE.PUT_LINE(which  => FND_FILE.LOG  ,buff   => lv_errmsg);
+        --警告カウントアップ
+        ln_warn_cnt := ln_warn_cnt + 1;
+      END IF;
+      --出力件数カウント
+      ln_output_cnt := ln_output_cnt + ln_data_cnt;
+      ln_data_cnt := 0;
+    EXCEPTION
+      WHEN OTHERS THEN
+        RAISE;
+    END;
+    -- 1-92.経理容器群コード取得
+    DECLARE
+      CURSOR keriyokigun_cur
+      IS
+        SELECT flv.lookup_type AS lv_ref_type
+              ,flv.lookup_code AS lv_ref_code
+              ,flv.meaning     AS lv_ref_name
+              ,NULL            AS lv_pt_ref_type
+              ,NULL            AS lv_pt_ref_code
+        FROM   fnd_lookup_values flv
+        WHERE  flv.language = cv_language_ja
+        AND    flv.lookup_type = 'XXCMM_ITM_KERIYOKIGUN'
+        AND    flv.enabled_flag = cv_y_flag
+        ORDER BY flv.lookup_code;
+      keriyokigun_rec keriyokigun_cur%ROWTYPE;
+    BEGIN
+      OPEN keriyokigun_cur;
+        << keriyokigun_loop >>
+        LOOP
+          FETCH keriyokigun_cur INTO keriyokigun_rec;
+          EXIT WHEN keriyokigun_cur%NOTFOUND;
+            -- ファイル出力
+            write_csv(
+               keriyokigun_rec.lv_ref_type     -- 参照タイプ
+              ,keriyokigun_rec.lv_ref_code     -- 参照コード
+              ,keriyokigun_rec.lv_ref_name     -- 名称
+              ,keriyokigun_rec.lv_pt_ref_type  -- 親参照タイプ
+              ,keriyokigun_rec.lv_pt_ref_code  -- 親参照コード
+              ,if_file_handler
+              ,lv_errbuf
+              ,lv_retcode
+              ,lv_errmsg
+            );
+            --カーソルカウント
+            ln_data_cnt := ln_data_cnt + 1;
+        END LOOP;
+      CLOSE keriyokigun_cur;
+      --参照コード取得エラー
+      IF (ln_data_cnt = 0) THEN
+        lv_errmsg := xxccp_common_pkg.get_msg(gv_xxcmm_msg_kbn,
+                                              cv_no_data_err_msg,
+                                              cv_lookup_type,
+                                              'XXCMM_ITM_KERIYOKIGUN');
+        ov_retcode := cv_status_warn;
+        --警告メッセージ出力
+        FND_FILE.PUT_LINE(which  => FND_FILE.LOG  ,buff   => lv_errmsg);
+        --警告カウントアップ
+        ln_warn_cnt := ln_warn_cnt + 1;
+      END IF;
+      --出力件数カウント
+      ln_output_cnt := ln_output_cnt + ln_data_cnt;
+      ln_data_cnt := 0;
+    EXCEPTION
+      WHEN OTHERS THEN
+        RAISE;
+    END;
+    -- 1-93.ブランド群取得
+    DECLARE
+      CURSOR brandgun_cur
+      IS
+        SELECT flv.lookup_type AS lv_ref_type
+              ,flv.lookup_code AS lv_ref_code
+              ,flv.meaning     AS lv_ref_name
+              ,NULL            AS lv_pt_ref_type
+              ,NULL            AS lv_pt_ref_code
+        FROM   fnd_lookup_values flv
+        WHERE  flv.language = cv_language_ja
+        AND    flv.lookup_type = 'XXCMM_ITM_BRANDGUN'
+        AND    flv.enabled_flag = cv_y_flag
+        ORDER BY flv.lookup_code;
+      brandgun_rec brandgun_cur%ROWTYPE;
+    BEGIN
+      OPEN brandgun_cur;
+        << brandgun_loop >>
+        LOOP
+          FETCH brandgun_cur INTO brandgun_rec;
+          EXIT WHEN brandgun_cur%NOTFOUND;
+            -- ファイル出力
+            write_csv(
+               brandgun_rec.lv_ref_type     -- 参照タイプ
+              ,brandgun_rec.lv_ref_code     -- 参照コード
+              ,brandgun_rec.lv_ref_name     -- 名称
+              ,brandgun_rec.lv_pt_ref_type  -- 親参照タイプ
+              ,brandgun_rec.lv_pt_ref_code  -- 親参照コード
+              ,if_file_handler
+              ,lv_errbuf
+              ,lv_retcode
+              ,lv_errmsg
+            );
+            --カーソルカウント
+            ln_data_cnt := ln_data_cnt + 1;
+        END LOOP;
+      CLOSE brandgun_cur;
+      --参照コード取得エラー
+      IF (ln_data_cnt = 0) THEN
+        lv_errmsg := xxccp_common_pkg.get_msg(gv_xxcmm_msg_kbn,
+                                              cv_no_data_err_msg,
+                                              cv_lookup_type,
+                                              'XXCMM_ITM_BRANDGUN');
+        ov_retcode := cv_status_warn;
+        --警告メッセージ出力
+        FND_FILE.PUT_LINE(which  => FND_FILE.LOG  ,buff   => lv_errmsg);
+        --警告カウントアップ
+        ln_warn_cnt := ln_warn_cnt + 1;
+      END IF;
+      --出力件数カウント
+      ln_output_cnt := ln_output_cnt + ln_data_cnt;
+      ln_data_cnt := 0;
+    EXCEPTION
+      WHEN OTHERS THEN
+        RAISE;
+    END;
+-- 2009/07/13 Ver1.7 障害0000655,0000656 add end by Yutaka.Kuboshima
+--
     -- ===============================
     -- 2.品目カテゴリの取得
     -- =============================== 
@@ -6380,6 +7168,10 @@ AS
                                               ,'CATEGORY_SEISAKUGUN'
                                               ,'商品製品区分' 
                                               ,'CATEGORY_SYOHIN_KBN'
+-- 2009/07/13 Ver1.7 障害0000656 add start by Yutaka.Kuboshima
+                                              ,'本社商品区分'
+                                              ,'CATEGORY_HONSYA_SYOHIN_KBN'
+-- 2009/07/13 Ver1.7 障害0000656 add end by Yutaka.Kuboshima
                                         )                  AS lv_ref_type
                                        ,mtl_b.segment1     AS lv_ref_code
                                        ,mtl_tl.description AS lv_ref_name
@@ -6394,7 +7186,10 @@ AS
                                 AND   mtl_tl.category_id = mtl_b.category_id
                                 AND   mtl_set_tl.language = cv_language_ja
                                 AND   mtl_tl.language = cv_language_ja
-                                AND   mtl_set_tl.category_set_name IN ('政策群コード', '商品製品区分')
+-- 2009/07/13 Ver1.7 障害0000656 modify start by Yutaka.Kuboshima
+--                                AND   mtl_set_tl.category_set_name IN ('政策群コード', '商品製品区分')
+                                AND   mtl_set_tl.category_set_name IN ('政策群コード', '商品製品区分', '本社商品区分')
+-- 2009/07/13 Ver1.7 障害0000656 modify end by Yutaka.Kuboshima
                                 ORDER BY mtl_set_tl.category_set_name
 -- 2009/04/02 Ver1.2 modify start by Yutaka.Kuboshima
 --                                        ,mtl_b.attribute1;
