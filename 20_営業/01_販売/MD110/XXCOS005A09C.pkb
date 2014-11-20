@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCOS005A09C (body)
  * Description      : CSVファイルのデータアップロード
  * MD.050           : CSVファイルのデータアップロード MD050_COS_005_A09
- * Version          : 1.7
+ * Version          : 1.8
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -39,6 +39,7 @@ AS
  *  2009/2/17     1.4   T.Miyashita      get_msgのパッケージ名修正
  *  2009/2/20     1.5   T.Miyashita      パラメータのログファイル出力対応
  *  2009/07/01    1.7   T.Tominaga       [0000137]Interval,Max_waitをFND_PROFILEより取得
+ *  2009/09/10    1.8   N.Maeda          [0001326]顧客品目相互参照重複チェックの修正
  *
  *****************************************************************************************/
 --
@@ -2211,6 +2212,9 @@ AS
         mtl_customer_items               mci,  --顧客品目マスタ
         mtl_system_items_b               msi   --品目マスタ
       WHERE hca.account_number           = g_cust_item_work_tab(in_cnt)(cn_cust_code)
+--*********** 2009/09/10 1.8 N.Maeda ADD START ********** --
+      AND   hca.cust_account_id          = mci.customer_id
+--*********** 2009/09/10 1.8 N.Maeda ADD  END  ********** --
       AND   mci.customer_item_number     = g_cust_item_work_tab(in_cnt)(cn_cust_item_code)
       AND   mci.customer_item_id         = mcix.customer_item_id
       AND   mcix.inventory_item_id       = msi.inventory_item_id
