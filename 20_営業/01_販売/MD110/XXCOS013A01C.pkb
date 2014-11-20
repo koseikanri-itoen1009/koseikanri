@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCOS013A01C (body)
  * Description      : 販売実績情報より仕訳情報を作成し、AR請求取引に連携する処理
  * MD.050           : ARへの販売実績データ連携 MD050_COS_013_A01
- * Version          : 1.31
+ * Version          : 1.32
  * Program List
  * ----------------------------------------------------------------------------------------
  *  Name                   Description
@@ -74,6 +74,7 @@ AS
  *  2010/08/11    1.29  M.Hirose         [E_本稼動_02863]内税顧客の売上値引
  *  2010/09/17    1.30  K.Kiriu          [E_本稼動_02635] 汎用エラーリスト出力対応
  *  2010/10/20    1.31  K.Kiriu          [E_本稼動_05091]請求書金額重複障害対応
+ *  2013/02/25    1.32  T.Nakano         [E_本稼動_10410]支払条件変更時障害対応
  *
  *****************************************************************************************/
 --
@@ -5052,14 +5053,27 @@ AS
         gt_ar_interface_tbl( ln_ar_idx ).header_attribute6
                                                         := lv_employee_name;
                                                         -- ヘッダーdff6(伝票入力者)
+        --請求書発行区分が'N'の場合、保留
+        --請求書発行区分が'Y'、かつ支払い条件が'00_00_00'の場合、保留
+        --請求書発行区分が'Y'、かつ支払い条件が'00_00_00'以外の場合、オープン
         IF( lv_trx_sent_dv = cv_n_flag ) THEN
           gt_ar_interface_tbl( ln_ar_idx ).header_attribute7
                                                         := cv_hold;
                                                         -- ヘッダーDFF7(予備１)
         ELSIF( lv_trx_sent_dv = cv_y_flag ) THEN
-          gt_ar_interface_tbl( ln_ar_idx ).header_attribute7
-                                                        := cv_open;
-                                                        -- ヘッダーDFF7(予備１)
+/* 2013/02/25 Ver1.32 Add Start */
+          IF( ln_term_id = lt_spot_term_id ) THEN
+            gt_ar_interface_tbl( ln_ar_idx ).header_attribute7
+                                                          := cv_hold;
+                                                          -- ヘッダーDFF7(予備１)
+          ELSE
+/* 2013/02/25 Ver1.32 Add END */
+            gt_ar_interface_tbl( ln_ar_idx ).header_attribute7
+                                                          := cv_open;
+                                                          -- ヘッダーDFF7(予備１)
+/* 2013/02/25 Ver1.32 Add Start */
+          END IF;
+/* 2013/02/25 Ver1.32 Add END */
         END IF;
         gt_ar_interface_tbl( ln_ar_idx ).header_attribute8
                                                         := cv_wait;
