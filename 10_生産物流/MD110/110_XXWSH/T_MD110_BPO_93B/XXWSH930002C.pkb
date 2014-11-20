@@ -7,7 +7,7 @@ AS
  * Description      : 生産物流(引当、配車)
  * MD.050           : 出荷・移動インタフェース         T_MD050_BPO_930
  * MD.070           : ＨＨＴ入出庫実績インタフェース   T_MD070_BPO_93B
- * Version          : 1.24
+ * Version          : 1.25
  *
  * Program List
  * ------------------------------------ -------------------------------------------------
@@ -109,6 +109,7 @@ AS
  *  2008/10/27    1.22 Oracle 福田 直樹  課題T_S_619(1)対応(常に無条件で全データについて引当可能チェックをしている)
  *  2008/10/30    1.23 Oracle 福田 直樹  統合指摘#390対応(顧客発注番号の9桁以内チェック・数字チェックを追加)
  *  2008/11/11    1.24 Oracle 福田 直樹  統合指摘#589対応(ヒント句追加対応)
+ *  2008/11/21    1.25 Oracle 福田 直樹  統合指摘#702対応(ロットが存在しない場合エラーでなく保留にする)
  *****************************************************************************************/
 --
 --#######################  固定グローバル定数宣言部 START   #######################
@@ -695,7 +696,7 @@ AS
     vendor_id                   xxcmn_vendor_sites2_v.vendor_id%TYPE,
     -- 仕入先サイト名
     vendor_site_code            xxcmn_vendor_sites2_v.vendor_site_code%TYPE,
-    -- 外部倉庫flag (※93Bの場合は、1:内部倉庫の指示なし実績、0：左記以外) 2008/09/01 TE080_930指摘#38
+    -- 外部倉庫flag (※93Bの場合は、1:内部倉庫の指示なし実績、0：左記以外) 2008/09/01 TE080_930指摘#38   --*HHT*
     out_warehouse_flg           VARCHAR2(1),
     -- エラーflag (1:エラーの場合、0:正常)
     err_flg                     VARCHAR2(1),
@@ -3898,7 +3899,7 @@ AS
     SELECT /*+ INDEX ( xshi xxwsh_sh_n04 ) */                 -- 2008/11/11 統合指摘#589 Add
            xshi.header_id
           ,xshi.order_source_ref
-	    FROM   xxwsh_shipping_headers_if xshi
+    FROM   xxwsh_shipping_headers_if xshi
     WHERE NOT EXISTS (SELECT 'X'
                         FROM xxwsh_shipping_lines_if xsli
                        WHERE xshi.header_id = xsli.header_id)
@@ -4369,49 +4370,49 @@ AS
     <<out_warehouse_number_check>>
     FOR i IN 1..gr_interface_info_rec.COUNT LOOP
 --
-      ---- 業務種別判定  -- 2008/09/01 TE080_930指摘#38 Del Start -------------------------------------------
-      ---- EOSデータ種別 = 200 有償出荷報告, 210 拠点出荷確定報告, 215 庭先出荷確定報告, 220 移動出庫確定報告
-      ---- 適用開始日・終了日を出荷日にて判定
-      --IF ((gr_interface_info_rec(i).eos_data_type = gv_eos_data_cd_200) OR
-      --    (gr_interface_info_rec(i).eos_data_type = gv_eos_data_cd_210) OR
-      --    (gr_interface_info_rec(i).eos_data_type = gv_eos_data_cd_215) OR
-      --    (gr_interface_info_rec(i).eos_data_type = gv_eos_data_cd_220))
-      --THEN
-      --
-      --  -- OPM保管場所マスタ／保管倉庫コードよりチェック
-      --  SELECT COUNT(xilv2.inventory_location_id) cnt
-      --  INTO   ln_count
-      --  FROM   xxcmn_item_locations2_v xilv2
-      --  WHERE  xilv2.segment1 = SUBSTRB(gr_interface_info_rec(i).order_source_ref, 1, 4)
-      --  AND    xilv2.date_from  <=  TRUNC(gr_interface_info_rec(i).shipped_date) -- 組織有効開始日
-      --  AND    ((xilv2.date_to IS NULL)
-      --   OR    (xilv2.date_to >= TRUNC(gr_interface_info_rec(i).shipped_date)))  -- 組織有効終了日
-      --  AND    xilv2.disable_date IS NULL   -- 無効日
-      --  ;
-      --
-      --END IF;
-      --
-      ---- EOSデータ種別 = 230:移動入庫確定報告
-      ---- 適用開始日・終了日を着荷日にて判定
-      --IF (gr_interface_info_rec(i).eos_data_type = gv_eos_data_cd_230) THEN
-      --
-      --  -- OPM保管場所マスタ／保管倉庫コードよりチェック
-      --  SELECT COUNT(xilv2.inventory_location_id) cnt
-      --  INTO   ln_count
-      --  FROM   xxcmn_item_locations2_v xilv2
-      --  WHERE  xilv2.segment1 = SUBSTRB(gr_interface_info_rec(i).order_source_ref, 1, 4)
-      --  AND    xilv2.date_from  <=  TRUNC(gr_interface_info_rec(i).arrival_date) -- 組織有効開始日
-      --  AND    ((xilv2.date_to IS NULL)
-      --   OR    (xilv2.date_to >= TRUNC(gr_interface_info_rec(i).arrival_date)))  -- 組織有効終了日
-      --  AND    xilv2.disable_date IS NULL   -- 無効日
-      --  ;
-      --
-      --END IF;  -- 2008/09/01 TE080_930指摘#38 Del End -----------------------------------------------
+      --*HHT*-- 業務種別判定  -- 2008/09/01 TE080_930指摘#38 Del Start -------------------------------------------
+      --*HHT*-- EOSデータ種別 = 200 有償出荷報告, 210 拠点出荷確定報告, 215 庭先出荷確定報告, 220 移動出庫確定報告
+      --*HHT*-- 適用開始日・終了日を出荷日にて判定
+      --*HHT*IF ((gr_interface_info_rec(i).eos_data_type = gv_eos_data_cd_200) OR
+      --*HHT*    (gr_interface_info_rec(i).eos_data_type = gv_eos_data_cd_210) OR
+      --*HHT*    (gr_interface_info_rec(i).eos_data_type = gv_eos_data_cd_215) OR
+      --*HHT*    (gr_interface_info_rec(i).eos_data_type = gv_eos_data_cd_220))
+      --*HHT*THEN
+      --*HHT*
+      --*HHT*  -- OPM保管場所マスタ／保管倉庫コードよりチェック
+      --*HHT*  SELECT COUNT(xilv2.inventory_location_id) cnt
+      --*HHT*  INTO   ln_count
+      --*HHT*  FROM   xxcmn_item_locations2_v xilv2
+      --*HHT*  WHERE  xilv2.segment1 = SUBSTRB(gr_interface_info_rec(i).order_source_ref, 1, 4)
+      --*HHT*  AND    xilv2.date_from  <=  TRUNC(gr_interface_info_rec(i).shipped_date) -- 組織有効開始日
+      --*HHT*  AND    ((xilv2.date_to IS NULL)
+      --*HHT*   OR    (xilv2.date_to >= TRUNC(gr_interface_info_rec(i).shipped_date)))  -- 組織有効終了日
+      --*HHT*  AND    xilv2.disable_date IS NULL   -- 無効日
+      --*HHT*  ;
+      --*HHT*
+      --*HHT*END IF;
+      --*HHT*
+      --*HHT*-- EOSデータ種別 = 230:移動入庫確定報告
+      --*HHT*-- 適用開始日・終了日を着荷日にて判定
+      --*HHT*IF (gr_interface_info_rec(i).eos_data_type = gv_eos_data_cd_230) THEN
+      --*HHT*
+      --*HHT*  -- OPM保管場所マスタ／保管倉庫コードよりチェック
+      --*HHT*  SELECT COUNT(xilv2.inventory_location_id) cnt
+      --*HHT*  INTO   ln_count
+      --*HHT*  FROM   xxcmn_item_locations2_v xilv2
+      --*HHT*  WHERE  xilv2.segment1 = SUBSTRB(gr_interface_info_rec(i).order_source_ref, 1, 4)
+      --*HHT*  AND    xilv2.date_from  <=  TRUNC(gr_interface_info_rec(i).arrival_date) -- 組織有効開始日
+      --*HHT*  AND    ((xilv2.date_to IS NULL)
+      --*HHT*   OR    (xilv2.date_to >= TRUNC(gr_interface_info_rec(i).arrival_date)))  -- 組織有効終了日
+      --*HHT*  AND    xilv2.disable_date IS NULL   -- 無効日
+      --*HHT*  ;
+      --*HHT*
+      --*HHT*END IF;  -- 2008/09/01 TE080_930指摘#38 Del End -----------------------------------------------
 --
-      ---- 存在する場合は、外部倉庫発番となる                                   -- 2008/09/01 TE080_930指摘#38 Del
-      --IF (ln_count > 0) THEN                                                  -- 2008/09/01 TE080_930指摘#38 Del
-      -- 受注ソース参照の上4桁='9600'のデータは、指示なし実績を意味する         -- 2008/09/01 TE080_930指摘#38 Add
-      IF (SUBSTRB(gr_interface_info_rec(i).order_source_ref,1,4) = '9600') THEN -- 2008/09/01 TE080_930指摘#38 Add
+      --*HHT*-- 存在する場合は、外部倉庫発番となる                                   -- 2008/09/01 TE080_930指摘#38 Del
+      --*HHT*IF (ln_count > 0) THEN                                                  -- 2008/09/01 TE080_930指摘#38 Del
+      -- 受注ソース参照の上4桁='9600'のデータは、指示なし実績を意味する         -- 2008/09/01 TE080_930指摘#38 Add  --*HHT*
+      IF (SUBSTRB(gr_interface_info_rec(i).order_source_ref,1,4) = '9600') THEN -- 2008/09/01 TE080_930指摘#38 Add  --*HHT*
 --
         gr_interface_info_rec(i).out_warehouse_flg := gv_flg_on;
 --
@@ -4583,9 +4584,9 @@ AS
 --
           -- 受注ソース（業者発番）と配送No            の矛盾がある為、エラー
           -- 受注ソース            と配送No（業者発番）の矛盾がある為、エラー
-          --IF ((ln_warehouse_count = 0) AND (gr_interface_info_rec(i).out_warehouse_flg =  gv_flg_on)) OR   -- 2008/09/01 TE080_930指摘#38 Del
-          --   ((ln_warehouse_count > 0) AND (gr_interface_info_rec(i).out_warehouse_flg <> gv_flg_on)) THEN -- 2008/09/01 TE080_930指摘#38 Del
-          IF ( (ln_warehouse_count > 0) AND (gr_interface_info_rec(i).out_warehouse_flg <> gv_flg_on) ) THEN -- 2008/09/01 TE080_930指摘#38 Add
+          --*HHT*IF ((ln_warehouse_count = 0) AND (gr_interface_info_rec(i).out_warehouse_flg =  gv_flg_on)) OR   -- 2008/09/01 TE080_930指摘#38 Del
+          --*HHT*   ((ln_warehouse_count > 0) AND (gr_interface_info_rec(i).out_warehouse_flg <> gv_flg_on)) THEN -- 2008/09/01 TE080_930指摘#38 Del
+          IF ( (ln_warehouse_count > 0) AND (gr_interface_info_rec(i).out_warehouse_flg <> gv_flg_on) ) THEN -- 2008/09/01 TE080_930指摘#38 Add  --*HHT*
 --
             lv_msg_buff := SUBSTRB( xxcmn_common_pkg.get_msg(
                            gv_msg_kbn                                 -- 'XXWSH'
@@ -4929,7 +4930,8 @@ AS
               lt_delivery_no,         -- 配送No
               lt_order_source_ref,    -- 受注ソース参照(依頼/移動No)
               gr_interface_info_rec(i).eos_data_type,  -- EOSデータ種別
-              gv_err_class,           -- エラー種別：エラー
+              --gv_err_class,           -- エラー種別：エラー              -- 2008/11/21 統合指摘#702 Del
+              gv_reserved_class,        -- エラー種別：保留                -- 2008/11/21 統合指摘#702 Add
               lv_msg_buff,            -- エラー・メッセージ(出力用)
               lv_errbuf,              -- エラー・メッセージ           --# 固定 #
               lv_retcode,             -- リターン・コード             --# 固定 #
