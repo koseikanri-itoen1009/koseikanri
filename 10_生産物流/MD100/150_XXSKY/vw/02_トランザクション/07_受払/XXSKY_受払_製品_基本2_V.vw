@@ -718,6 +718,9 @@ SELECT
 -- 2009/11/12 Mod Start
    --AND  SUHG.whse_code   = IWM.whse_code(+)
    AND  SUHG.whse_code   = IWM.whse_code
+-- 2010/03/10 M.Miyagawa Add Start
+   AND  IWM.attribute1 = '0' -- 0: 伊藤園在庫管理倉庫
+-- 2010/03/10 M.Miyagawa Add End
 -- 2009/11/12 Mod End
    --品目カテゴリ情報取得
 -- 2009/11/12 Mod Start

@@ -343,6 +343,9 @@ SELECT
        )
    --倉庫名取得
    AND  SUHG.whse_code   = IWM.whse_code(+)
+-- 2010/03/10 M.Miyagawa Add Start
+   AND  IWM.attribute1 = '0' -- 0: 伊藤園在庫管理倉庫
+-- 2010/03/10 M.Miyagawa Add End
    --品目カテゴリ情報取得
    AND  SUHG.item_id     = PRODC.item_id(+)  --商品区分
    AND  SUHG.item_id     = ITEMC.item_id(+)  --品目区分
