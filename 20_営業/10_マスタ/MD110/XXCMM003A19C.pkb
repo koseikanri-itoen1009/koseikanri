@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCMM003A19C(body)
  * Description      : HHT連携IFデータ作成
  * MD.050           : MD050_CMM_003_A19_HHT系連携IFデータ作成
- * Version          : 1.5
+ * Version          : 1.6
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -28,6 +28,7 @@ AS
  *  2009/04/28    1.3   Yutaka.Kuboshima 障害T1_0831の対応
  *  2009/06/09    1.4   Yutaka.Kuboshima 障害T1_1364の対応
  *  2009/08/24    1.5   Yutaka.Kuboshima 統合テスト障害0000487の対応
+ *  2009/11/23    1.6   Yutaka.Kuboshima 障害E_本番_00329の対応
  *
  *****************************************************************************************/
 --
@@ -437,10 +438,10 @@ AS
     cv_ver_line           CONSTANT VARCHAR2(1)      := '|';                       --縦棒
     cv_null_sts           CONSTANT VARCHAR2(1)      := NULL;                      --NULLデータ
 --
--- 2009/06/09 Ver1.6 add start by Yutaka.Kuboshima
+-- 2009/06/09 Ver1.4 add start by Yutaka.Kuboshima
     cv_single_byte_err1   CONSTANT VARCHAR2(30)    := 'ﾊﾝｶｸｴﾗｰ';                --半角エラー時のダミー値1
     cv_single_byte_err2   CONSTANT VARCHAR2(30)    := '99-9999-9999';           --半角エラー時のダミー値2
--- 2009/06/09 Ver1.6 add end by Yutaka.Kuboshima
+-- 2009/06/09 Ver1.4 add end by Yutaka.Kuboshima
 --
 -- 2009/08/24 Ver1.5 add start by Yutaka.Kuboshima
     cv_min_time           CONSTANT VARCHAR2(7)      := '000000';                  --時分秒最小
@@ -845,12 +846,18 @@ AS
              WHERE   (gd_process_date + 1) BETWEEN erea.resource_s_date AND NVL(erea.resource_e_date, TO_DATE(cv_eff_last_date, cv_fnd_date))
              AND     hcaviw1.party_id  = hopviw1.party_id
              AND     hopviw1.organization_profile_id = erea.organization_profile_id
+-- 2009/11/23 Ver1.6 add start by Yutaka.Kuboshima
+             AND     hopviw1.effective_end_date IS NULL
+-- 2009/11/23 Ver1.6 add end by Yutaka.Kuboshima
              AND     erea.extension_id = (SELECT  erearow1.extension_id
                                           FROM    hz_organization_profiles      hoprow1,       --組織プロファイルマスタ
                                                   ego_resource_agv              erearow1       --組織プロファイル拡張マスタ(営業員)
                                           WHERE   (gd_process_date + 1) BETWEEN erearow1.resource_s_date AND NVL(erearow1.resource_e_date, TO_DATE(cv_eff_last_date, cv_fnd_date))
                                           AND     hcaviw1.party_id            = hoprow1.party_id
                                           AND     hoprow1.organization_profile_id = erearow1.organization_profile_id
+-- 2009/11/23 Ver1.6 add start by Yutaka.Kuboshima
+                                          AND     hoprow1.effective_end_date IS NULL
+-- 2009/11/23 Ver1.6 add end by Yutaka.Kuboshima
                                           AND     ROWNUM = 1 ))  hopera, --組織プロファイル(担当営業員)
 --
              -- 組織プロファイル拡張マスタの結合を削除
@@ -864,6 +871,9 @@ AS
              WHERE   ereanm.resource_s_date BETWEEN p_process_date_next_f AND p_process_date_next_l
              AND     hopnm.party_id                = hcanm.party_id
              AND     hopnm.organization_profile_id = ereanm.organization_profile_id
+-- 2009/11/23 Ver1.6 add start by Yutaka.Kuboshima
+             AND     hopnm.effective_end_date IS NULL
+-- 2009/11/23 Ver1.6 add end by Yutaka.Kuboshima
              AND     ereanm.extension_id = (SELECT erevw.extension_id
                                             FROM   (SELECT   erea.extension_id           extension_id,
                                                              hop.party_id                party_id
@@ -871,6 +881,9 @@ AS
                                                              ego_resource_agv            erea       --組織プロファイル拡張マスタ(営業員)
                                                     WHERE    erea.resource_s_date BETWEEN p_process_date_next_f AND p_process_date_next_l
                                                     AND      hop.organization_profile_id = erea.organization_profile_id
+-- 2009/11/23 Ver1.6 add start by Yutaka.Kuboshima
+                                                    AND      hop.effective_end_date IS NULL
+-- 2009/11/23 Ver1.6 add end by Yutaka.Kuboshima
                                                     ORDER BY erea.resource_s_date) erevw
                                             WHERE  hopnm.party_id = erevw.party_id
                                             AND    ROWNUM = 1))   hopera2,  --組織プロファイルマスタ(次月担当営業員)
@@ -886,12 +899,18 @@ AS
              WHERE   (gd_process_date + 1) BETWEEN eroa.route_s_date AND NVL(eroa.route_e_date, TO_DATE(cv_eff_last_date, cv_fnd_date))
              AND     hcaviw2.party_id  = hopviw2.party_id
              AND     hopviw2.organization_profile_id = eroa.organization_profile_id
+-- 2009/11/23 Ver1.6 add start by Yutaka.Kuboshima
+             AND     hopviw2.effective_end_date IS NULL
+-- 2009/11/23 Ver1.6 add end by Yutaka.Kuboshima
              AND     eroa.extension_id = (SELECT  eroarow2.extension_id
                                           FROM    hz_organization_profiles      hoprow2,       --組織プロファイルマスタ
                                                   ego_route_agv                 eroarow2       --組織プロファイル拡張マスタ(ルート)
                                           WHERE   (gd_process_date + 1) BETWEEN eroarow2.route_s_date AND NVL(eroarow2.route_e_date, TO_DATE(cv_eff_last_date, cv_fnd_date))
                                           AND     hcaviw2.party_id  = hoprow2.party_id
                                           AND     hoprow2.organization_profile_id = eroarow2.organization_profile_id
+-- 2009/11/23 Ver1.6 add start by Yutaka.Kuboshima
+                                          AND     hoprow2.effective_end_date IS NULL
+-- 2009/11/23 Ver1.6 add end by Yutaka.Kuboshima
                                           AND     ROWNUM = 1 ))  hopero,  --組織プロファイル(ルート)
 --
              -- 組織プロファイル拡張マスタの結合を削除
@@ -905,13 +924,20 @@ AS
              WHERE   ereanm.route_s_date BETWEEN p_process_date_next_f AND p_process_date_next_l
              AND     hopnm.party_id                = hcanm.party_id
              AND     hopnm.organization_profile_id = ereanm.organization_profile_id
+-- 2009/11/23 Ver1.6 add start by Yutaka.Kuboshima
+             AND     hopnm.effective_end_date IS NULL
+-- 2009/11/23 Ver1.6 add end by Yutaka.Kuboshima
              AND     ereanm.extension_id = (SELECT erevw.extension_id
                                             FROM  (SELECT   erea.extension_id           extension_id,
                                                             hop.party_id                party_id
                                                    FROM     hz_organization_profiles    hop,       --組織プロファイルマスタ
                                                             ego_route_agv               erea       --組織プロファイル拡張マスタ(営業員)
                                                    WHERE    erea.route_s_date BETWEEN p_process_date_next_f AND p_process_date_next_l
-                                                   AND      hop.organization_profile_id = erea.organization_profile_id) erevw
+                                                   AND      hop.organization_profile_id = erea.organization_profile_id
+-- 2009/11/23 Ver1.6 add start by Yutaka.Kuboshima
+                                                   AND      hop.effective_end_date IS NULL
+                                                   ORDER BY erea.route_s_date) erevw
+-- 2009/11/23 Ver1.6 add end by Yutaka.Kuboshima
                                             WHERE  hopnm.party_id = erevw.party_id
                                             AND    ROWNUM = 1))   hopero2   --組織プロファイルマスタ(次月ルート)
 --
