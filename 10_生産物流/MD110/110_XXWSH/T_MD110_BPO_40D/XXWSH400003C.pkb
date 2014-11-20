@@ -7,7 +7,7 @@ AS
  * Description            : 出荷依頼確定関数(BODY)
  * MD.050                 : T_MD050_BPO_401_出荷依頼
  * MD.070                 : T_MD070_EDO_BPO_40D_出荷依頼確定関数
- * Version                : 1.8
+ * Version                : 1.10
  *
  * Program List
  *  ------------------------ ---- ---- --------------------------------------------------
@@ -36,6 +36,9 @@ AS
  *  2008/6/18    1.7   T.Ishiwata      締めステータスチェック区分＝２の場合、Updateするよう修正
  *                                     全体的にネスト修正
  *  2008/6/19    1.8   Y.Shindou       内部変更要求#143対応
+ *  2008/7/08    1.9   N.Fukuda        ST不具合対応#405
+ *  2008/7/08    1.10  M.Uehara        ST不具合対応#424
+ *
  *****************************************************************************************/
 --
 --#######################  固定グローバル定数宣言部 START   #######################
@@ -158,6 +161,8 @@ AS
   gv_msg_null_08          CONSTANT VARCHAR2(30)  := '出庫日';
   gv_status_A             CONSTANT VARCHAR2(1)   := 'A'; -- 有効
 --
+  gv_transaction_type_name_ship CONSTANT VARCHAR2(100) := '引取変更'; -- 出庫形態 2008/07/08 ST不具合対応#405
+--
   -- ===============================
   -- ユーザー定義グローバル型
   -- ===============================
@@ -180,6 +185,7 @@ AS
   gn_error_cnt     NUMBER;                    -- エラー件数
   gn_warn_cnt      NUMBER;                    -- スキップ件数
   gv_callfrom_flg  VARCHAR2(1);               -- 呼出元フラグ
+  gv_transaction_type_id_ship VARCHAR2(4) ;   -- 出庫形態 2008/07/08 ST不具合対応#405
 --
    /**********************************************************************************
    * Procedure Name   : allow_pickup_flag_chk
@@ -690,6 +696,7 @@ AS
     cv_c_s_j_chk   VARCHAR2(50)   := '出荷数制限（商品部）';
     cv_c_s_j_api   VARCHAR2(50)   := '出荷可否チェック';
     cv_c_s_j_msg   VARCHAR2(50)   := '出荷可否チェックでエラーが発生しました。';
+    cv_c_s_j_msg3  VARCHAR2(50)   := '出庫形態（引取変更）が取得できませんでした。';   -- 2008/07/08 ST不具合対応#405
     cv_c_s_j_chk2  VARCHAR2(50)   := '出荷数制限（物流部）';
     cv_c_s_j_chk3  VARCHAR2(50)   := '引取計画チェック';
     cv_c_s_j_msg2  VARCHAR2(50)   := '出荷可否チェックで計画総量を超えています。';
@@ -1207,7 +1214,19 @@ AS
           RAISE global_api_expt;
         END IF;
       END IF;
-  --
+--
+      -- D-2中止客申請フラグが'0'以外の場合はエラー
+      IF (loop_cnt.cust_enable_flag <> '0') THEN
+        lv_errmsg := xxcmn_common_pkg.get_msg(gv_cnst_msg_kbn,
+                                              gv_cnst_msg_164,
+                                              'REQUEST_NO',
+                                              loop_cnt.request_no,
+                                              'CUST',
+                                              loop_cnt.account_number);
+        RAISE global_api_expt;
+--
+      END IF;
+--
       -- **************************************************
       -- *** 締めステータス・顧客チェック(D-5)
       -- **************************************************
@@ -1232,59 +1251,47 @@ AS
           RAISE global_api_expt;
 --
         END IF;
-      END IF;
-      
-      -- D-2中止客申請フラグが'0'以外の場合はエラー
-      IF (loop_cnt.cust_enable_flag <> '0') THEN
-        lv_errmsg := xxcmn_common_pkg.get_msg(gv_cnst_msg_kbn,
-                                              gv_cnst_msg_164,
-                                              'REQUEST_NO',
-                                              loop_cnt.request_no,
-                                              'CUST',
-                                              loop_cnt.account_number);
-        RAISE global_api_expt;
-  --
-      END IF;
 --
-      -- **************************************************
-      -- *** 最大パレット枚数チェック(D-6)
-      -- **************************************************
+        -- **************************************************
+        -- *** 最大パレット枚数チェック(D-6)
+        -- **************************************************
 --
-      -- 最大パレット枚数算出関数
-      ln_retcode :=
-      xxwsh_common_pkg.get_max_pallet_qty(cv_whse_code, -- クイックコード「コード区分」「倉庫」
-                                          loop_cnt.deliver_from,         -- D-2出荷元保管場所
-                                          cv_deliver_to,
-                                                        -- クイックコード「コード区分」「配送先」
-                                          loop_cnt.deliver_to,           -- D-2配送先コード
-                                          loop_cnt.schedule_ship_date,   -- D-2出庫日
-                                          loop_cnt.shipping_method_code, -- D-2配送区分
-                                          ln_drink_deadweight,           -- ドリンク積載重量
-                                          ln_leaf_deadweight,            -- リーフ積載重量
-                                          ln_drink_loading_capacity,     -- ドリンク積載容積
-                                          ln_leaf_loading_capacity,      -- リーフ積載容積
-                                          ln_palette_max_qty);           -- パレット最大枚数
+        -- 最大パレット枚数算出関数
+        ln_retcode :=
+        xxwsh_common_pkg.get_max_pallet_qty(cv_whse_code, -- クイックコード「コード区分」「倉庫」
+                                            loop_cnt.deliver_from,         -- D-2出荷元保管場所
+                                            cv_deliver_to,
+                                                          -- クイックコード「コード区分」「配送先」
+                                            loop_cnt.deliver_to,           -- D-2配送先コード
+                                            loop_cnt.schedule_ship_date,   -- D-2出庫日
+                                            loop_cnt.shipping_method_code, -- D-2配送区分
+                                            ln_drink_deadweight,           -- ドリンク積載重量
+                                            ln_leaf_deadweight,            -- リーフ積載重量
+                                            ln_drink_loading_capacity,     -- ドリンク積載容積
+                                            ln_leaf_loading_capacity,      -- リーフ積載容積
+                                            ln_palette_max_qty);           -- パレット最大枚数
 --
-      -- リターン・コードにエラーが返された場合はエラー
-      IF (ln_retcode = gn_status_error) THEN
-        lv_errmsg := xxcmn_common_pkg.get_msg(gv_cnst_msg_kbn,
-                                              gv_cnst_msg_155,
-                                              'API_NAME',
-                                              cv_get_max_pallet_qty_api,
-                                              'ERR_MSG',
-                                              cv_get_max_pallet_qty_msg,
-                                              'REQUEST_NO',
-                                              loop_cnt.request_no);
-        RAISE global_api_expt;
+        -- リターン・コードにエラーが返された場合はエラー
+        IF (ln_retcode = gn_status_error) THEN
+          lv_errmsg := xxcmn_common_pkg.get_msg(gv_cnst_msg_kbn,
+                                                gv_cnst_msg_155,
+                                                'API_NAME',
+                                                cv_get_max_pallet_qty_api,
+                                                'ERR_MSG',
+                                                cv_get_max_pallet_qty_msg,
+                                                'REQUEST_NO',
+                                                loop_cnt.request_no);
+          RAISE global_api_expt;
 --
-      -- D-2パレット合計枚数 > D-6パレット最大枚数の場合はエラー
-      ELSIF (loop_cnt.pallet_sum_quantity > ln_palette_max_qty) THEN
-        lv_errmsg := xxcmn_common_pkg.get_msg(gv_cnst_msg_kbn,
-                                          gv_cnst_msg_151,
-                                          'REQUEST_NO',
-                                          loop_cnt.request_no);
-        RAISE global_api_expt;
+        -- D-2パレット合計枚数 > D-6パレット最大枚数の場合はエラー
+        ELSIF (loop_cnt.pallet_sum_quantity > ln_palette_max_qty) THEN
+          lv_errmsg := xxcmn_common_pkg.get_msg(gv_cnst_msg_kbn,
+                                            gv_cnst_msg_151,
+                                            'REQUEST_NO',
+                                            loop_cnt.request_no);
+          RAISE global_api_expt;
 --
+        END IF;
       END IF;
 --
       -- **************************************************
@@ -1594,72 +1601,97 @@ AS
 --
         IF ( iv_prod_class = cv_prod_class_leaf ) THEN -- リーフのみ
 --
-          -- チェック３
-          xxwsh_common910_pkg.check_shipping_judgment('1',                           -- チェック方法
-                                                      loop_cnt.head_sales_branch,    -- 拠点コード
-                                                      loop_cnt.shipping_inventory_item_id,-- D-2品目ID
-                                                      loop_cnt.quantity,            -- D-2数量
-                                                      loop_cnt.schedule_arrival_date, -- D-2着日
-                                                      loop_cnt.deliver_from_id,     -- D-2出庫元ID
-                                                      loop_cnt.request_no,           -- 依頼No   6/19追加
-                                                      lv_retcode,                   -- リターンコード
-                                                      lv_errbuf,            -- エラーメッセージコード
-                                                      lv_errmsg,                    -- エラーメッセージ
-                                                      ln_retcode);                  -- 処理結果
-          -- リターン・コードにエラーが返された場合はエラー
-          IF (( lv_retcode = '0' )
-          AND ( iv_callfrom_flg = '1' ) -- パラメータ・呼出元フラグ
-          AND ( ln_retcode = 1 )) THEN
-            lv_errmsg :=
-            xxcmn_common_pkg.get_msg(gv_cnst_msg_kbn,
-                                     gv_cnst_msg_156,
-                                     'API_NAME',
-                                     cv_c_s_j_api,
-                                     'CHK_TYPE',
-                                     cv_c_s_j_chk3,
-                                     'ERR_MSG',
-                                     cv_c_s_j_msg2,
-                                     'REQUEST_NO',
-                                     loop_cnt.request_no,
-                                     'ITEM_CODE',
-                                     loop_cnt.shipping_item_code);
-            -- 警告をセット
-            lv_warn_message := lv_warn_message || lv_errmsg || gv_line_feed;
-            ln_warn_flg := 1;
-            lv_retcode := gv_status_warn;
-            IF (gv_callfrom_flg = '1') THEN
-              FND_FILE.PUT_LINE(FND_FILE.OUTPUT,lv_errmsg );
+          -- 2008/07/08 ST不具合対応#405 START
+          -- 出庫形態(引取変更)取得
+          SELECT transaction_type_id
+            INTO gv_transaction_type_id_ship
+            FROM XXWSH_OE_TRANSACTION_TYPES2_V
+            WHERE transaction_type_name = gv_transaction_type_name_ship;
+--
+          IF gv_transaction_type_id_ship IS NULL THEN  -- 取得できない場合はエラー
+              lv_errmsg := xxcmn_common_pkg.get_msg(gv_cnst_msg_kbn,
+                                                    gv_cnst_msg_155,
+                                                    'API_NAME',
+                                                    cv_c_s_j_api,
+                                                    'ERR_MSG',
+                                                    cv_c_s_j_msg3,
+                                                    'REQUEST_NO',
+                                                    loop_cnt.request_no);
+              RAISE global_api_expt;
+          END IF;
+          -- 2008/07/08 ST不具合対応#405 END
+--
+          -- リーフで出庫形態が引取変更以外ならチェックは行わない 2008/07/08 ST不具合対応#405
+          IF ( loop_cnt.order_type_id = gv_transaction_type_id_ship ) THEN
+--
+            -- チェック３
+            xxwsh_common910_pkg.check_shipping_judgment('1',                           -- チェック方法
+                                                        loop_cnt.head_sales_branch,    -- 拠点コード
+                                                        loop_cnt.shipping_inventory_item_id,-- D-2品目ID
+                                                        loop_cnt.quantity,            -- D-2数量
+                                                        loop_cnt.schedule_arrival_date, -- D-2着日
+                                                        loop_cnt.deliver_from_id,     -- D-2出庫元ID
+                                                        loop_cnt.request_no,           -- 依頼No   6/19追加
+                                                        lv_retcode,                   -- リターンコード
+                                                        lv_errbuf,            -- エラーメッセージコード
+                                                        lv_errmsg,                    -- エラーメッセージ
+                                                        ln_retcode);                  -- 処理結果
+            -- リターン・コードにエラーが返された場合はエラー
+            IF (( lv_retcode = '0' )
+            AND ( iv_callfrom_flg = '1' ) -- パラメータ・呼出元フラグ
+            AND ( ln_retcode = 1 )) THEN
+              lv_errmsg :=
+              xxcmn_common_pkg.get_msg(gv_cnst_msg_kbn,
+                                       gv_cnst_msg_156,
+                                       'API_NAME',
+                                       cv_c_s_j_api,
+                                       'CHK_TYPE',
+                                       cv_c_s_j_chk3,
+                                       'ERR_MSG',
+                                       cv_c_s_j_msg2,
+                                       'REQUEST_NO',
+                                       loop_cnt.request_no,
+                                       'ITEM_CODE',
+                                       loop_cnt.shipping_item_code);
+              -- 警告をセット
+              lv_warn_message := lv_warn_message || lv_errmsg || gv_line_feed;
+              ln_warn_flg := 1;
+              lv_retcode := gv_status_warn;
+              IF (gv_callfrom_flg = '1') THEN
+                FND_FILE.PUT_LINE(FND_FILE.OUTPUT,lv_errmsg );
+              END IF;
+--
+            ELSIF (( lv_retcode = '0' )
+            AND    ( iv_callfrom_flg = '2' ) -- パラメータ・呼出元フラグ
+            AND    ( ln_retcode = 1 )) THEN
+              lv_errmsg :=
+              xxcmn_common_pkg.get_msg(gv_cnst_msg_kbn,
+                                       gv_cnst_msg_157,
+                                       'ITEM_CODE',
+                                       loop_cnt.shipping_item_code,
+                                       'CHK_TYPE',
+                                       cv_c_s_j_chk4);
+              -- 警告をセット
+              lv_warn_message := lv_warn_message || lv_errmsg || gv_line_feed;
+              ln_warn_cnt := 1;
+              lv_retcode := gv_status_warn;
+              IF (gv_callfrom_flg = '1') THEN
+                FND_FILE.PUT_LINE(FND_FILE.OUTPUT,lv_errmsg );
+              END IF;
+--
+            -- リターン・コードにエラーが返された場合はエラー
+            ELSIF ( lv_retcode = gn_status_error ) THEN-- 
+              lv_errmsg := xxcmn_common_pkg.get_msg(gv_cnst_msg_kbn,
+                                                    gv_cnst_msg_155,
+                                                    'API_NAME',
+                                                    cv_c_s_j_api,
+                                                    'ERR_MSG',
+                                                    lv_errmsg, --cv_c_s_j_msg,
+                                                    'REQUEST_NO',
+                                                    loop_cnt.request_no);
+              RAISE global_api_expt;
             END IF;
 --
-          ELSIF (( lv_retcode = '0' )
-          AND    ( iv_callfrom_flg = '2' ) -- パラメータ・呼出元フラグ
-          AND    ( ln_retcode = 1 )) THEN
-            lv_errmsg :=
-            xxcmn_common_pkg.get_msg(gv_cnst_msg_kbn,
-                                     gv_cnst_msg_157,
-                                     'ITEM_CODE',
-                                     loop_cnt.shipping_item_code,
-                                     'CHK_TYPE',
-                                     cv_c_s_j_chk4);
-            -- 警告をセット
-            lv_warn_message := lv_warn_message || lv_errmsg || gv_line_feed;
-            ln_warn_cnt := 1;
-            lv_retcode := gv_status_warn;
-            IF (gv_callfrom_flg = '1') THEN
-              FND_FILE.PUT_LINE(FND_FILE.OUTPUT,lv_errmsg );
-            END IF;
---
-          -- リターン・コードにエラーが返された場合はエラー
-          ELSIF ( lv_retcode = gn_status_error ) THEN-- 
-            lv_errmsg := xxcmn_common_pkg.get_msg(gv_cnst_msg_kbn,
-                                                  gv_cnst_msg_155,
-                                                  'API_NAME',
-                                                  cv_c_s_j_api,
-                                                  'ERR_MSG',
-                                                  lv_errmsg, --cv_c_s_j_msg,
-                                                  'REQUEST_NO',
-                                                  loop_cnt.request_no);
-            RAISE global_api_expt;
           END IF;
 --
         END IF;

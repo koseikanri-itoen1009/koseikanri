@@ -6,7 +6,7 @@ AS
  * Package Name           : xxwsh_common910_pkg(BODY)
  * Description            : 共通関数(BODY)
  * MD.070(CMD.050)        : なし
- * Version                : 1.9
+ * Version                : 1.10
  *
  * Program List
  *  -------------------- ---- ----- --------------------------------------------------
@@ -42,6 +42,7 @@ AS
  *  2008/06/13   1.7   ORACLE石渡賢和   [ロット逆転防止チェック] 移動指示の着日条件を変更
  *  2008/06/19   1.8   ORACLE山根一浩   [出荷可否チェック] 内部変更要求No143対応
  *  2008/06/26   1.9   ORACLE石渡賢和   [出荷可否チェック] 移動指示の着日条件を変更
+ *  2008/07/08   1.10  ORACLE椎名昭圭   [出荷可否チェック] ST不具合#405対応
  *
  *****************************************************************************************/
 --
@@ -2532,17 +2533,19 @@ AS
             RAISE global_api_expt;
         END;
         --
-        IF ( ln_forecast_cnt = 0 ) THEN
-          lv_errmsg := xxcmn_common_pkg.get_msg(gv_cnst_xxwsh,
-                                                cv_xxwsh_no_data_found_err,
-                                                cv_tkn_item_id,
-                                                in_item_id,
-                                                cv_tkn_sc_ship_date,
-                                                TO_CHAR(id_date, 'YYYY/MM/DD'));
-          lv_err_cd := cv_xxwsh_no_data_found_err;
-          RAISE global_api_expt;
-        END IF;
-        --
+-- 2008/07/08_1.10_UPDATA_Start
+--        IF ( ln_forecast_cnt = 0 ) THEN
+--          lv_errmsg := xxcmn_common_pkg.get_msg(gv_cnst_xxwsh,
+--                                                cv_xxwsh_no_data_found_err,
+--                                                cv_tkn_item_id,
+--                                                in_item_id,
+--                                                cv_tkn_sc_ship_date,
+--                                                TO_CHAR(id_date, 'YYYY/MM/DD'));
+--          lv_err_cd := cv_xxwsh_no_data_found_err;
+--          RAISE global_api_expt;
+--        END IF;
+--        --
+-- 2008/07/08_1.10_UPDATA_End
         -- 出荷依頼の抽出
         BEGIN
           SELECT
