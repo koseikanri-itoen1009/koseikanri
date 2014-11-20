@@ -7,7 +7,7 @@ AS
  * Description      : 入出庫情報差異リスト（出庫基準）
  * MD.050/070       : 生産物流共通（出荷・移動インタフェース）Issue1.0(T_MD050_BPO_930)
  *                    生産物流共通（出荷・移動インタフェース）Issue1.0(T_MD070_BPO_93C)
- * Version          : 1.1
+ * Version          : 1.2
  *
  * Program List
  * ---------------------------- ----------------------------------------------------------
@@ -30,6 +30,7 @@ AS
  * ------------- ----- ---------------- -------------------------------------------------
  *  2008/02/19    1.0   Masayuki Ikeda   新規作成
  *  2008/06/23    1.1   Oohashi  Takao   不具合ログ対応
+ *  2008/06/25    1.2   Oohashi  Takao   不具合ログ対応
  *
  *****************************************************************************************/
 --
@@ -259,6 +260,9 @@ AS
      ,conv_unit        VARCHAR2(240)  -- 入出庫換算単位
      ,num_of_cases     NUMBER         -- ケース入数
 -- add end ver1.1
+-- add start ver1.2
+     ,lot_id           NUMBER         -- ロットID
+-- add end ver1.2
     ) ;
 --
   -- ===============================
@@ -500,7 +504,10 @@ AS
     lv_request_no           VARCHAR2(12) ;        -- 依頼Ｎｏ／移動Ｎｏ
     lv_param_ship_type      VARCHAR2(4) ;         -- 業務種別（ＳＱＬ実行用）
     lv_param_reason         VARCHAR2(6) ;         -- 差異事由（ＳＱＬ実行用）
-
+-- add start ver1.2
+    lv_item_code            VARCHAR2(7) ;         -- 品目コード
+    lv_item_name            VARCHAR2(20) ;        -- 品目名称
+-- add end ver1.2
 --
     -- ==================================================
     -- Ｒｅｆカーソル宣言
@@ -772,12 +779,30 @@ AS
           gl_xml_idx := gt_xml_data_table.COUNT + 1 ;
           gt_xml_data_table(gl_xml_idx).tag_name  := 'item_code' ;
           gt_xml_data_table(gl_xml_idx).tag_type  := 'D' ;
-          gt_xml_data_table(gl_xml_idx).tag_value := lr_ref.item_code ;
+-- mod start ver1.2
+--          gt_xml_data_table(gl_xml_idx).tag_value := lr_ref.item_code ;
+          IF ( lv_item_code = lr_ref.item_code AND lv_request_no IS NULL ) THEN
+           gt_xml_data_table(gl_xml_idx).tag_value := NULL;
+          ELSIF ( lv_item_code IS NULL ) THEN
+           gt_xml_data_table(gl_xml_idx).tag_value := lr_ref.item_code ;
+          ELSE
+           gt_xml_data_table(gl_xml_idx).tag_value := lr_ref.item_code ;
+          END IF;
+-- mod start ver1.2
           -- 品目名称
           gl_xml_idx := gt_xml_data_table.COUNT + 1 ;
           gt_xml_data_table(gl_xml_idx).tag_name  := 'item_name' ;
           gt_xml_data_table(gl_xml_idx).tag_type  := 'D' ;
-          gt_xml_data_table(gl_xml_idx).tag_value := lr_ref.item_name ;
+-- mod start ver1.2
+--          gt_xml_data_table(gl_xml_idx).tag_value := lr_ref.item_name ;
+          IF ( lv_item_name = lr_ref.item_name AND lv_request_no IS NULL ) THEN
+           gt_xml_data_table(gl_xml_idx).tag_value := NULL;
+          ELSIF ( lv_item_name IS NULL ) THEN
+           gt_xml_data_table(gl_xml_idx).tag_value := lr_ref.item_name ;
+          ELSE
+           gt_xml_data_table(gl_xml_idx).tag_value := lr_ref.item_name ;
+          END IF;
+-- mod start ver1.2
           -- ロットＮｏ
           gl_xml_idx := gt_xml_data_table.COUNT + 1 ;
           gt_xml_data_table(gl_xml_idx).tag_name  := 'lot_no' ;
@@ -848,6 +873,10 @@ AS
           lv_delivery_no      := NULL ;
           lv_request_no       := NULL ;
 --
+-- add start ver1.2
+          lv_item_code := lr_ref.item_code ;
+          lv_item_name := lr_ref.item_name ;
+-- add end ver1.2
           FETCH lc_ref INTO lr_ref ;
           EXIT WHEN lc_ref%NOTFOUND ;
 --
@@ -1206,6 +1235,10 @@ AS
                 ,or_temp_tab.deliver_name     -- 配送先又は入庫先名称
           FROM xxcmn_item_locations2_v    xil -- ＯＰＭ保管場所マスタ
           WHERE xil.inventory_location_id = ir_get_data.deliver_id
+-- add start ver1.2
+          AND   gr_param.date_from BETWEEN xil.date_from 
+                                   AND     NVL(xil.date_to, gr_param.date_from )
+-- add end ver1.2
           ;
         END IF ;
 -- add end ver1.1
@@ -1248,6 +1281,10 @@ AS
                 ,or_temp_tab.deliver_name     -- 配送先又は入庫先名称
           FROM xxcmn_item_locations2_v    xil -- ＯＰＭ保管場所マスタ
           WHERE xil.inventory_location_id = ir_get_data.deliver_id
+-- add start ver1.2
+          AND   gr_param.date_from BETWEEN xil.date_from 
+                                   AND     NVL(xil.date_to, gr_param.date_from )
+-- add end ver1.2
           ;
         END IF ;
       END IF ;
@@ -1434,8 +1471,6 @@ AS
 --
     END IF ;
 --
-
-
     --------------------------------------------------
     -- ロット情報設定
     --------------------------------------------------
@@ -1485,7 +1520,10 @@ AS
                           WHEN xicv.item_class_code = '5'             -- 品目区分が製品
                            AND ir_get_data.conv_unit IS NOT NULL THEN -- 入出庫換算単位がNULLでない
                               -- 換算する
-                              (xmld.actual_quantity/ir_get_data.num_of_cases)
+-- mod start ver1.2
+--                              (xmld.actual_quantity/ir_get_data.num_of_cases)
+                              ROUND((xmld.actual_quantity/ir_get_data.num_of_cases),3)
+-- mod end ver1.2
                         ELSE
                               -- 換算しない
                               (xmld.actual_quantity/1)
@@ -1498,7 +1536,10 @@ AS
                           WHEN xicv.item_class_code = '5'             -- 品目区分が製品
                            AND ir_get_data.conv_unit IS NOT NULL THEN -- 入出庫換算単位がNULLでない
                               -- 換算する
-                              (xmld.actual_quantity/ir_get_data.num_of_cases)
+-- mod start ver1.2
+--                              (xmld.actual_quantity/ir_get_data.num_of_cases)
+                              ROUND((xmld.actual_quantity/ir_get_data.num_of_cases),3)
+-- mod end ver1.2
                         ELSE
                               -- 換算しない
                               (xmld.actual_quantity/1)
@@ -1511,7 +1552,10 @@ AS
                           WHEN xicv.item_class_code = '5'             -- 品目区分が製品
                            AND ir_get_data.conv_unit IS NOT NULL THEN -- 入出庫換算単位がNULLでない
                               -- 換算する
-                              (xmld.actual_quantity/ir_get_data.num_of_cases)
+-- mod start ver1.2
+--                              (xmld.actual_quantity/ir_get_data.num_of_cases)
+                              ROUND((xmld.actual_quantity/ir_get_data.num_of_cases),3)
+-- mod end ver1.2
                         ELSE
                               -- 換算しない
                               (xmld.actual_quantity/1)
@@ -1540,18 +1584,23 @@ AS
         AND   ilm.attribute23         = xlv.lookup_code(+)
 --        AND   xmld.actual_date        BETWEEN gr_param.date_from
 --                                      AND     NVL( gr_param.date_to, xmld.actual_date )
-        AND ((xmld.actual_date IS NULL)
-              OR
-             ((xmld.actual_date IS NOT NULL)
-               AND
-               (xmld.actual_date      BETWEEN gr_param.date_from
-                                      AND     NVL( gr_param.date_to, xmld.actual_date ))))
+-- del start ver1.2
+--        AND ((xmld.actual_date IS NULL)
+--              OR
+--             ((xmld.actual_date IS NOT NULL)
+--               AND
+--               (xmld.actual_date      BETWEEN gr_param.date_from
+--                                      AND     NVL( gr_param.date_to, xmld.actual_date ))))
+-- del end ver1.2
 -- mod end ver1.1
         AND   xmld.document_type_code = DECODE( ir_get_data.order_type
                                                ,gc_sp_class_ship, gc_doc_type_ship
                                                ,gc_sp_class_prov, gc_doc_type_prov
                                                ,gc_sp_class_move, gc_doc_type_move )
         AND   xmld.mov_line_id        = ir_get_data.order_line_id
+-- add start ver1.2
+        AND   xmld.lot_id        = ir_get_data.lot_id
+-- add end ver1.2
         AND   ilm.lot_id              = xmld.lot_id
         AND   ilm.item_id             = xmld.item_id
 -- add start ver1.1
@@ -1790,29 +1839,35 @@ AS
             -- 入庫報告有の場合
             ------------------------------
             IF ( ir_get_data.status = gc_mov_status_stc ) THEN
+-- mod start ver1.2
               -- 依頼数と入庫数が同じ場合
-              IF ( or_temp_tab.quant_r = or_temp_tab.quant_i ) THEN
-                or_temp_tab.reason        := NULL ;               -- 差異なし
+--              IF ( or_temp_tab.quant_r = or_temp_tab.quant_i ) THEN
+--                or_temp_tab.reason        := NULL ;               -- 差異なし
 --
               -- 依頼数と入庫数が異なる場合
-              ELSE
-                or_temp_tab.reason := gc_reason_ndel ;  -- 出庫未
+--              ELSE
+--                or_temp_tab.reason := gc_reason_ndel ;  -- 出庫未
 --
-              END IF ;
+--              END IF ;
+              or_temp_tab.reason := gc_reason_ndel ;  -- 出庫未
+-- mod end ver1.2
 --
             ------------------------------
             -- 出庫報告有の場合
             ------------------------------
             ELSIF ( ir_get_data.status = gc_mov_status_del ) THEN
+-- mod start ver1.2
               -- 依頼数と出庫数が同じ場合
-              IF ( or_temp_tab.quant_r = or_temp_tab.quant_o ) THEN
-                or_temp_tab.reason        := NULL ;               -- 差異なし
+--              IF ( or_temp_tab.quant_r = or_temp_tab.quant_o ) THEN
+--                or_temp_tab.reason        := NULL ;               -- 差異なし
 --
               -- 依頼数と出庫数が異なる場合
-              ELSE
-                or_temp_tab.reason := gc_reason_nstc ;  -- 入庫未
+--              ELSE
+--                or_temp_tab.reason := gc_reason_nstc ;  -- 入庫未
 --
-              END IF ;
+--              END IF ;
+              or_temp_tab.reason := gc_reason_nstc ;  -- 入庫未
+-- mod end ver1.2
 --
             ------------------------------
             -- 入出庫報告有の場合
@@ -1931,8 +1986,20 @@ AS
             ,NVL( xola.ship_to_quantity      , 0 )  AS quant_i  -- 入庫数（ロット管理外）
             ,NVL( xola.shipped_quantity      , 0 )  AS quant_o  -- 出庫数（ロット管理外）
             ,xoha.req_status              AS status             -- ヘッダステータス
+-- add start ver1.2
+            ,xmld.lot_id                  AS lot_id                -- ロットID
+            ,ximv.conv_unit               AS conv_unit             -- 入出庫換算単位
+            ,TO_NUMBER(NVL(ximv.num_of_cases,'1')) AS num_of_cases -- ケース入数
+-- add end ver1.2
       FROM xxwsh_order_headers_all    xoha      -- 受注ヘッダアドオン
           ,xxwsh_order_lines_all      xola      -- 受注明細アドオン
+-- add start ver1.2
+          ,(SELECT xmld.lot_id
+                  ,xmld.mov_line_id
+            FROM   xxinv_mov_lot_details  xmld 
+            WHERE  xmld.document_type_code IN( gc_doc_type_ship, gc_doc_type_prov)
+            GROUP BY xmld.lot_id,xmld.mov_line_id)  xmld    -- 移動ロット詳細アドオン
+-- add end ver1.2
           ,oe_transaction_types_all   otta      -- 受注タイプ
           ,xxcmn_item_locations2_v    xil       -- ＯＰＭ保管場所マスタ
           ,xxcmn_item_mst2_v          ximv      -- ＯＰＭ品目情報VIEW2
@@ -1954,6 +2021,9 @@ AS
       ----------------------------------------------------------------------------------------------
       AND   NVL( xola.delete_flag, gc_yn_div_n ) = gc_yn_div_n          -- 未削除
       AND   xoha.order_header_id                 = xola.order_header_id 
+-- add start ver1.2
+      AND   xmld.mov_line_id        = xola.order_line_id
+-- add end ver1.2
       ----------------------------------------------------------------------------------------------
       -- ＯＰＭ保管場所
       ----------------------------------------------------------------------------------------------
@@ -1971,6 +2041,10 @@ AS
       -- パラメータ条件．オンライン区分
       AND   xil.eos_control_type  = NVL( gr_param.online_type, xil.eos_control_type )
       AND   xoha.deliver_from_id  = xil.inventory_location_id
+-- add start ver1.2
+      AND   gr_param.date_from      BETWEEN xil.date_from
+                                    AND     NVL( xil.date_to, gr_param.date_from )
+-- add end ver1.2
       ----------------------------------------------------------------------------------------------
       -- 受注タイプ
       ----------------------------------------------------------------------------------------------
@@ -2031,9 +2105,21 @@ AS
             ,NVL( xola.ship_to_quantity      , 0 )  AS quant_i      -- 入庫数（ロット管理外）
             ,NVL( xola.shipped_quantity      , 0 )  AS quant_o      -- 出庫数（ロット管理外）
             ,xoha.req_status                    AS status           -- ヘッダステータス
+-- add start ver1.2
+            ,xmld.lot_id                        AS lot_id           -- ロットID
+            ,ximv.conv_unit                     AS conv_unit        -- 入出庫換算単位
+            ,TO_NUMBER(NVL(ximv.num_of_cases,'1')) AS num_of_cases  -- ケース入数
+-- add end ver1.2
       FROM xxwsh_order_headers_all    xoha      -- 受注ヘッダアドオン
           ,xxwsh_order_lines_all      xola      -- 受注明細アドオン
           ,oe_transaction_types_all   otta      -- 受注タイプ
+-- add start ver1.2
+          ,(SELECT xmld.lot_id
+                  ,xmld.mov_line_id
+            FROM   xxinv_mov_lot_details  xmld 
+            WHERE  xmld.document_type_code IN( gc_doc_type_ship, gc_doc_type_prov)
+            GROUP BY xmld.lot_id,xmld.mov_line_id)  xmld    -- 移動ロット詳細アドオン
+-- add end ver1.2
           ,xxcmn_item_locations2_v    xil       -- ＯＰＭ保管場所マスタ
           ,xxcmn_item_mst2_v          ximv      -- ＯＰＭ品目情報VIEW2
           ,xxcmn_item_categories4_v   xicv      -- ＯＰＭ品目カテゴリ割当情報VIEW4
@@ -2054,6 +2140,9 @@ AS
       ----------------------------------------------------------------------------------------------
       AND   NVL( xola.delete_flag, gc_yn_div_n ) = gc_yn_div_n          -- 未削除
       AND   xoha.order_header_id                 = xola.order_header_id 
+-- add start ver1.2
+      AND   xmld.mov_line_id        = xola.order_line_id
+-- add end ver1.2
       ----------------------------------------------------------------------------------------------
       -- ＯＰＭ保管場所
       ----------------------------------------------------------------------------------------------
@@ -2071,6 +2160,10 @@ AS
       -- パラメータ条件．オンライン区分
       AND   xil.eos_control_type  = NVL( gr_param.online_type, xil.eos_control_type )
       AND   xoha.deliver_from_id  = xil.inventory_location_id
+-- add start ver1.2
+      AND   gr_param.date_from      BETWEEN xil.date_from
+                                    AND     NVL( xil.date_to, gr_param.date_from )
+-- add end ver1.2
       ----------------------------------------------------------------------------------------------
       -- 受注タイプ
       ----------------------------------------------------------------------------------------------
@@ -2165,6 +2258,10 @@ AS
       -- パラメータ条件．オンライン区分
       AND   xil.eos_control_type  = NVL( gr_param.online_type, xil.eos_control_type )
       AND   xshi.location_code    = xil.segment1
+-- add start ver1.2
+      AND   gr_param.date_from      BETWEEN xil.date_from
+                                    AND     NVL( xil.date_to, gr_param.date_from )
+-- add end ver1.2
       ----------------------------------------------------------------------------------------------
       -- ＩＦヘッダ
       ----------------------------------------------------------------------------------------------
@@ -2229,6 +2326,11 @@ AS
         lr_get_data.quant_i          := re_main.quant_i ;           -- 入庫数（ロット管理外）
         lr_get_data.quant_o          := re_main.quant_o ;           -- 出庫数（ロット管理外）
         lr_get_data.status           := re_main.status ;            -- 受注ヘッダステータス
+-- add start ver1.2
+        lr_get_data.lot_id           := re_main.lot_id ;            -- ロットID
+        lr_get_data.conv_unit        := re_main.conv_unit ;         -- 入出庫換算単位
+        lr_get_data.num_of_cases     := re_main.num_of_cases ;      -- ケース入数
+-- add end ver1.2
 --
         --------------------------------------------------
         -- 中間テーブル登録データ設定
@@ -2418,8 +2520,18 @@ AS
             ,ximv.conv_unit               AS conv_unit             -- 入出庫換算単位
             ,TO_NUMBER(NVL(ximv.num_of_cases,'1')) AS num_of_cases -- ケース入数
 -- add end ver1.1
+-- add start ver1.2
+            ,xmld.lot_id                  AS lot_id                -- ロットID
+-- add end ver1.2
       FROM xxinv_mov_req_instr_headers    xmrih   -- 移動依頼/指示ヘッダアドオン
           ,xxinv_mov_req_instr_lines      xmril   -- 移動依頼/指示明細アドオン
+-- add start ver1.2
+          ,(SELECT xmld.lot_id
+                  ,xmld.mov_line_id
+            FROM   xxinv_mov_lot_details  xmld 
+            WHERE  xmld.document_type_code = gc_doc_type_move
+            GROUP BY xmld.lot_id,xmld.mov_line_id)  xmld    -- 移動ロット詳細アドオン
+-- add end ver1.2
           ,xxcmn_item_locations2_v        xil     -- ＯＰＭ保管場所マスタ
           ,xxcmn_item_mst2_v              ximv    -- ＯＰＭ品目情報VIEW2
           ,xxcmn_item_categories4_v       xicv    -- ＯＰＭ品目カテゴリ割当情報VIEW4
@@ -2440,6 +2552,9 @@ AS
       ----------------------------------------------------------------------------------------------
       AND   NVL( xmril.delete_flg, gc_yn_div_n ) = gc_yn_div_n          -- 未削除
       AND   xmrih.mov_hdr_id        = xmril.mov_hdr_id
+-- add start ver1.2
+      AND   xmld.mov_line_id        = xmril.mov_line_id
+-- add end ver1.2
       ----------------------------------------------------------------------------------------------
       -- ＯＰＭ保管場所
       ----------------------------------------------------------------------------------------------
@@ -2458,6 +2573,10 @@ AS
       -- パラメータ条件．オンライン区分
       AND   xil.eos_control_type   = NVL( gr_param.online_type, xil.eos_control_type )
       AND   xmrih.shipped_locat_id = xil.inventory_location_id
+-- add start ver1.2
+      AND   gr_param.date_from      BETWEEN xil.date_from
+                                    AND     NVL( xil.date_to, gr_param.date_from )
+-- add end ver1.2
       ----------------------------------------------------------------------------------------------
       -- 移動依頼指示ヘッダアドオン
       ----------------------------------------------------------------------------------------------
@@ -2510,8 +2629,18 @@ AS
             ,ximv.conv_unit               AS conv_unit             -- 入出庫換算単位
             ,TO_NUMBER(NVL(ximv.num_of_cases,'1')) AS num_of_cases -- ケース入数
 -- add end ver1.1
+-- add start ver1.2
+            ,xmld.lot_id                  AS lot_id                -- ロットID
+-- add end ver1.2
       FROM xxinv_mov_req_instr_headers    xmrih   -- 移動依頼/指示ヘッダアドオン
           ,xxinv_mov_req_instr_lines      xmril   -- 移動依頼/指示明細アドオン
+-- add start ver1.2
+          ,(SELECT xmld.lot_id
+                  ,xmld.mov_line_id
+            FROM   xxinv_mov_lot_details  xmld 
+            WHERE  xmld.document_type_code = gc_doc_type_move
+            GROUP BY xmld.lot_id,xmld.mov_line_id)  xmld    -- 移動ロット詳細アドオン
+-- add end ver1.2
           ,xxcmn_item_locations2_v        xil     -- ＯＰＭ保管場所マスタ
           ,xxcmn_item_mst2_v              ximv    -- ＯＰＭ品目情報VIEW2
           ,xxcmn_item_categories4_v       xicv    -- ＯＰＭ品目カテゴリ割当情報VIEW4
@@ -2532,6 +2661,9 @@ AS
       ----------------------------------------------------------------------------------------------
       AND   NVL( xmril.delete_flg, gc_yn_div_n ) = gc_yn_div_n          -- 未削除
       AND   xmrih.mov_hdr_id        = xmril.mov_hdr_id
+-- add start ver1.2
+      AND   xmld.mov_line_id        = xmril.mov_line_id
+-- add end ver1.2
       ----------------------------------------------------------------------------------------------
       -- ＯＰＭ保管場所
       ----------------------------------------------------------------------------------------------
@@ -2550,6 +2682,10 @@ AS
       -- パラメータ条件．オンライン区分
       AND   xil.eos_control_type   = NVL( gr_param.online_type, xil.eos_control_type )
       AND   xmrih.shipped_locat_id = xil.inventory_location_id
+-- add start ver1.2
+      AND   gr_param.date_from      BETWEEN xil.date_from
+                                    AND     NVL( xil.date_to, gr_param.date_from )
+-- add end ver1.2
       ----------------------------------------------------------------------------------------------
       -- 移動依頼指示ヘッダアドオン
       ----------------------------------------------------------------------------------------------
@@ -2636,6 +2772,10 @@ AS
       -- パラメータ条件．オンライン区分
       AND   xil.eos_control_type  = NVL( gr_param.online_type, xil.eos_control_type )
       AND   xshi.location_code    = xil.segment1
+-- add start ver1.2
+      AND   gr_param.date_from      BETWEEN xil.date_from
+                                    AND     NVL( xil.date_to, gr_param.date_from )
+-- add end ver1.2
       ----------------------------------------------------------------------------------------------
       -- ＩＦヘッダ
       ----------------------------------------------------------------------------------------------
@@ -2704,6 +2844,9 @@ AS
         lr_get_data.conv_unit        := re_main.conv_unit ;         -- 入出庫換算単位
         lr_get_data.num_of_cases     := re_main.num_of_cases ;      -- ケース入数
 -- add end ver1.1
+-- add start ver1.2
+        lr_get_data.lot_id           := re_main.lot_id ;            -- ロットID
+-- add end ver1.2
 --
         --------------------------------------------------
         -- 中間テーブル登録データ設定
