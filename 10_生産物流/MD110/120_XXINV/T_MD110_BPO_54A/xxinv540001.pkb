@@ -7,7 +7,7 @@ AS
  * Description            : 在庫照会画面データソースパッケージ(BODY)
  * MD.050                 : T_MD050_BPO_540_在庫照会Issue1.0.doc
  * MD.070                 : T_MD070_BPO_54A_在庫照会画面Draft1A.doc
- * Version                : 1.1
+ * Version                : 1.5
  *
  * Program List
  *  --------------------  ---- ----- -------------------------------------------------
@@ -31,6 +31,7 @@ AS
  *  2008/03/19   1.2   Jun.Komatsu      変更要求#15対応(2回目)
  *  2008/04/18   1.3   Jun.Komatsu      変更要求#43、#51対応
  *  2008/05/26   1.4   Kazuo.Kumamoto   変更要求##119対応
+ *  2008/06/13   1.5   Yuko.Kawano      結合テスト不具合対応
  *
  *****************************************************************************************/
 --
@@ -117,9 +118,12 @@ AS
     --===============================================================
     CURSOR cur_data_a1 IS
       SELECT NVL(iiim.frequent_whse, iiim.segment1),                   -- (代表)保管倉庫コード
-            (SELECT NVL(xilv_freq.short_name, iiim.short_name)
-             FROM   xxcmn_item_locations_v xilv_freq
-             WHERE  xilv_freq.segment1 = iiim.frequent_whse),          -- (代表)保管倉庫名
+--2008.06.13 mod start
+--            (SELECT NVL(xilv_freq.short_name, iiim.short_name)
+--             FROM   xxcmn_item_locations_v xilv_freq
+--             WHERE  xilv_freq.segment1 = iiim.frequent_whse),          -- (代表)保管倉庫名
+             NVL(iiim.fr_short_name, iiim.short_name),                 -- (代表)保管倉庫名
+--2008.06.13 mod end
              iiim.inventory_location_id,                               -- 保管倉庫ID
              iiim.item_id,                                             -- 品目ID
              iiim.item_no,                                             -- 品目コード
@@ -201,6 +205,10 @@ AS
                      xilv.inventory_location_id, -- 保管倉庫ID
                      xilv.mtl_organization_id,   -- 在庫組織ID
                      xilv.frequent_whse,         -- 代表倉庫
+--2008.06.13 mod start
+                     xilv_fr.short_name AS fr_short_name,
+                                                 -- 代表倉庫名
+--2008.06.13 mod end
                      xilv.customer_stock_whse,   -- 倉庫名義
                      ximv.item_id,               -- 品目ID
                      ximv.item_short_name,       -- 品目略称
@@ -239,6 +247,10 @@ AS
               FROM   xxcmn_item_mst_v ximv,         -- OPM品目マスタ情報VIEW
                      ic_lots_mst ilm,               -- OPMロットマスタ
                      xxcmn_item_locations_v  xilv,  -- OPM保管場所情報VIEW
+--2008.06.13 add start
+                     xxcmn_item_locations_v  xilv_fr,
+                                                    -- OPM保管場所情報VIEW(代表倉庫)
+--2008.06.13 add end
                      xxcmn_item_categories_v xicv1, -- OPM品目カテゴリ割当情報VIEW1
                      xxcmn_item_categories_v xicv2  -- OPM品目カテゴリ割当情報VIEW2
               WHERE  ximv.item_id            = ilm.item_id
@@ -248,6 +260,9 @@ AS
               AND    xicv2.item_id           = ximv.item_id
               AND    xicv2.category_set_name = lv_prof_xpd
               AND    xicv2.segment1          = NVL(iv_prod_div_code, xicv2.segment1)
+--2008.06.13 add start
+              AND    xilv.frequent_whse      = xilv_fr.segment1
+--2008.06.13 add end
               AND  ((ximv.lot_ctl            = cv_lot_code1
                 AND  ilm.lot_id             <> cn_zero)
                 OR   ximv.lot_ctl            = cv_lot_code0)) iiim,
@@ -356,9 +371,12 @@ AS
     --===============================================================
     CURSOR cur_data_a2 IS
       SELECT NVL(iiim.frequent_whse, iiim.segment1),                   -- (代表)保管倉庫コード
-            (SELECT NVL(xilv_freq.short_name, iiim.short_name)
-             FROM   xxcmn_item_locations_v xilv_freq
-             WHERE  xilv_freq.segment1 = iiim.frequent_whse),          -- (代表)保管倉庫名
+--2008.06.13 mod start
+--            (SELECT NVL(xilv_freq.short_name, iiim.short_name)
+--             FROM   xxcmn_item_locations_v xilv_freq
+--             WHERE  xilv_freq.segment1 = iiim.frequent_whse),          -- (代表)保管倉庫名
+             NVL(iiim.fr_short_name, iiim.short_name),                 -- (代表)保管倉庫名
+--2008.06.13 mod end
              iiim.inventory_location_id,                               -- 保管倉庫ID
              iiim.item_id,                                             -- 品目ID
              iiim.item_no,                                             -- 品目コード
@@ -440,6 +458,10 @@ AS
                      xilv.inventory_location_id, -- 保管倉庫ID
                      xilv.mtl_organization_id,   -- 在庫組織ID
                      xilv.frequent_whse,         -- 代表倉庫
+--2008.06.13 mod start
+                     xilv_fr.short_name AS fr_short_name,
+                                                 -- 代表倉庫名
+--2008.06.13 mod end
                      xilv.customer_stock_whse,   -- 倉庫名義
                      ximv.item_id,               -- 品目ID
                      ximv.item_short_name,       -- 品目略称
@@ -478,6 +500,10 @@ AS
               FROM   xxcmn_item_mst_v ximv,         -- OPM品目マスタ情報VIEW
                      ic_lots_mst ilm,               -- OPMロットマスタ
                      xxcmn_item_locations_v  xilv,  -- OPM保管場所情報VIEW
+--2008.06.13 add start
+                     xxcmn_item_locations_v  xilv_fr,
+                                                    -- OPM保管場所情報VIEW(代表倉庫)
+--2008.06.13 add end
                      xxcmn_item_categories_v xicv1, -- OPM品目カテゴリ割当情報VIEW1
                      xxcmn_item_categories_v xicv2  -- OPM品目カテゴリ割当情報VIEW2
               WHERE  ximv.item_id            = ilm.item_id
@@ -487,6 +513,9 @@ AS
               AND    xicv2.item_id           = ximv.item_id
               AND    xicv2.category_set_name = lv_prof_xpd
               AND    xicv2.segment1          = NVL(iv_prod_div_code, xicv2.segment1)
+--2008.06.13 add start
+              AND    xilv.frequent_whse      = xilv_fr.segment1
+--2008.06.13 add end
               AND  ((ximv.lot_ctl            = cv_lot_code1
                 AND  ilm.lot_id             <> cn_zero)
                 OR   ximv.lot_ctl            = cv_lot_code0)) iiim,
@@ -594,9 +623,12 @@ AS
     --===============================================================
     CURSOR cur_data_a3 IS
       SELECT NVL(iiim.frequent_whse, iiim.segment1),                   -- (代表)保管倉庫コード
-            (SELECT NVL(xilv_freq.short_name, iiim.short_name)
-             FROM   xxcmn_item_locations_v xilv_freq
-             WHERE  xilv_freq.segment1 = iiim.frequent_whse),          -- (代表)保管倉庫名
+--2008.06.13 mod start
+--            (SELECT NVL(xilv_freq.short_name, iiim.short_name)
+--             FROM   xxcmn_item_locations_v xilv_freq
+--             WHERE  xilv_freq.segment1 = iiim.frequent_whse),          -- (代表)保管倉庫名
+             NVL(iiim.fr_short_name, iiim.short_name),                 -- (代表)保管倉庫名
+--2008.06.13 mod end
              iiim.inventory_location_id,                               -- 保管倉庫ID
              iiim.item_id,                                             -- 品目ID
              iiim.item_no,                                             -- 品目コード
@@ -678,6 +710,10 @@ AS
                      xilv.inventory_location_id, -- 保管倉庫ID
                      xilv.mtl_organization_id,   -- 在庫組織ID
                      xilv.frequent_whse,         -- 代表倉庫
+--2008.06.13 mod start
+                     xilv_fr.short_name AS fr_short_name,
+                                                 -- 代表倉庫名
+--2008.06.13 mod end
                      xilv.customer_stock_whse,   -- 倉庫名義
                      ximv.item_id,               -- 品目ID
                      ximv.item_short_name,       -- 品目略称
@@ -716,6 +752,10 @@ AS
               FROM   xxcmn_item_mst_v ximv,         -- OPM品目マスタ情報VIEW
                      ic_lots_mst ilm,               -- OPMロットマスタ
                      xxcmn_item_locations_v  xilv,  -- OPM保管場所情報VIEW
+--2008.06.13 add start
+                     xxcmn_item_locations_v  xilv_fr,
+                                                    -- OPM保管場所情報VIEW(代表倉庫)
+--2008.06.13 add end
                      xxcmn_item_categories_v xicv1, -- OPM品目カテゴリ割当情報VIEW1
                      xxcmn_item_categories_v xicv2  -- OPM品目カテゴリ割当情報VIEW2
               WHERE  ximv.item_id            = ilm.item_id
@@ -725,6 +765,9 @@ AS
               AND    xicv2.item_id           = ximv.item_id
               AND    xicv2.category_set_name = lv_prof_xpd
               AND    xicv2.segment1          = NVL(iv_prod_div_code, xicv2.segment1)
+--2008.06.13 add start
+              AND    xilv.frequent_whse      = xilv_fr.segment1
+--2008.06.13 add end
               AND  ((ximv.lot_ctl            = cv_lot_code1
                 AND  ilm.lot_id             <> cn_zero)
                 OR   ximv.lot_ctl            = cv_lot_code0)) iiim,
@@ -832,9 +875,12 @@ AS
     --===============================================================
     CURSOR cur_data_a4 IS
       SELECT NVL(iiim.frequent_whse, iiim.segment1),                   -- (代表)保管倉庫コード
-            (SELECT NVL(xilv_freq.short_name, iiim.short_name)
-             FROM   xxcmn_item_locations_v xilv_freq
-             WHERE  xilv_freq.segment1 = iiim.frequent_whse),          -- (代表)保管倉庫名
+--2008.06.13 add start
+--            (SELECT NVL(xilv_freq.short_name, iiim.short_name)
+--             FROM   xxcmn_item_locations_v xilv_freq
+--             WHERE  xilv_freq.segment1 = iiim.frequent_whse),          -- (代表)保管倉庫名
+             NVL(iiim.fr_short_name, iiim.short_name),                 -- (代表)保管倉庫名
+--2008.06.13 add end
              iiim.inventory_location_id,                               -- 保管倉庫ID
              iiim.item_id,                                             -- 品目ID
              iiim.item_no,                                             -- 品目コード
@@ -916,6 +962,10 @@ AS
                      xilv.inventory_location_id, -- 保管倉庫ID
                      xilv.mtl_organization_id,   -- 在庫組織ID
                      xilv.frequent_whse,         -- 代表倉庫
+--2008.06.13 mod start
+                     xilv_fr.short_name AS fr_short_name,
+                                                 -- 代表倉庫名
+--2008.06.13 mod end
                      xilv.customer_stock_whse,   -- 倉庫名義
                      ximv.item_id,               -- 品目ID
                      ximv.item_short_name,       -- 品目略称
@@ -954,6 +1004,10 @@ AS
               FROM   xxcmn_item_mst_v ximv,         -- OPM品目マスタ情報VIEW
                      ic_lots_mst ilm,               -- OPMロットマスタ
                      xxcmn_item_locations_v  xilv,  -- OPM保管場所情報VIEW
+--2008.06.13 add start
+                     xxcmn_item_locations_v  xilv_fr,
+                                                    -- OPM保管場所情報VIEW(代表倉庫)
+--2008.06.13 add end
                      xxcmn_item_categories_v xicv1, -- OPM品目カテゴリ割当情報VIEW1
                      xxcmn_item_categories_v xicv2  -- OPM品目カテゴリ割当情報VIEW2
               WHERE  ximv.item_id            = ilm.item_id
@@ -963,6 +1017,9 @@ AS
               AND    xicv2.item_id           = ximv.item_id
               AND    xicv2.category_set_name = lv_prof_xpd
               AND    xicv2.segment1          = NVL(iv_prod_div_code, xicv2.segment1)
+--2008.06.13 add start
+              AND    xilv.frequent_whse      = xilv_fr.segment1
+--2008.06.13 add end
               AND  ((ximv.lot_ctl            = cv_lot_code1
                 AND  ilm.lot_id             <> cn_zero)
                 OR   ximv.lot_ctl            = cv_lot_code0)) iiim,
@@ -1069,9 +1126,12 @@ AS
     --===============================================================
     CURSOR cur_data_a5 IS
       SELECT NVL(iiim.frequent_whse, iiim.segment1),                   -- (代表)保管倉庫コード
-            (SELECT NVL(xilv_freq.short_name, iiim.short_name)
-             FROM   xxcmn_item_locations_v xilv_freq
-             WHERE  xilv_freq.segment1 = iiim.frequent_whse),          -- (代表)保管倉庫名
+--2008.06.13 mod start
+--            (SELECT NVL(xilv_freq.short_name, iiim.short_name)
+--             FROM   xxcmn_item_locations_v xilv_freq
+--             WHERE  xilv_freq.segment1 = iiim.frequent_whse),          -- (代表)保管倉庫名
+             NVL(iiim.fr_short_name, iiim.short_name),                 -- (代表)保管倉庫名
+--2008.06.13 mod end
              iiim.inventory_location_id,                               -- 保管倉庫ID
              iiim.item_id,                                             -- 品目ID
              iiim.item_no,                                             -- 品目コード
@@ -1153,6 +1213,10 @@ AS
                      xilv.inventory_location_id, -- 保管倉庫ID
                      xilv.mtl_organization_id,   -- 在庫組織ID
                      xilv.frequent_whse,         -- 代表倉庫
+--2008.06.13 mod start
+                     xilv_fr.short_name AS fr_short_name,
+                                                 -- 代表倉庫名
+--2008.06.13 mod end
                      xilv.customer_stock_whse,   -- 倉庫名義
                      ximv.item_id,               -- 品目ID
                      ximv.item_short_name,       -- 品目略称
@@ -1191,6 +1255,10 @@ AS
               FROM   xxcmn_item_mst_v ximv,         -- OPM品目マスタ情報VIEW
                      ic_lots_mst ilm,               -- OPMロットマスタ
                      xxcmn_item_locations_v  xilv,  -- OPM保管場所情報VIEW
+--2008.06.13 add start
+                     xxcmn_item_locations_v  xilv_fr,
+                                                    -- OPM保管場所情報VIEW(代表倉庫)
+--2008.06.13 add end
                      xxcmn_item_categories_v xicv1, -- OPM品目カテゴリ割当情報VIEW1
                      xxcmn_item_categories_v xicv2  -- OPM品目カテゴリ割当情報VIEW2
               WHERE  ximv.item_id            = ilm.item_id
@@ -1200,6 +1268,9 @@ AS
               AND    xicv2.item_id           = ximv.item_id
               AND    xicv2.category_set_name = lv_prof_xpd
               AND    xicv2.segment1          = NVL(iv_prod_div_code, xicv2.segment1)
+--2008.06.13 add start
+              AND    xilv.frequent_whse      = xilv_fr.segment1
+--2008.06.13 add end
               AND  ((ximv.lot_ctl            = cv_lot_code1
                 AND  ilm.lot_id             <> cn_zero)
                 OR   ximv.lot_ctl            = cv_lot_code0)) iiim,
@@ -1307,9 +1378,12 @@ AS
     --===============================================================
     CURSOR cur_data_a6 IS
       SELECT NVL(iiim.frequent_whse, iiim.segment1),                   -- (代表)保管倉庫コード
-            (SELECT NVL(xilv_freq.short_name, iiim.short_name)
-             FROM   xxcmn_item_locations_v xilv_freq
-             WHERE  xilv_freq.segment1 = iiim.frequent_whse),          -- (代表)保管倉庫名
+--2008.06.13 mod start
+--            (SELECT NVL(xilv_freq.short_name, iiim.short_name)
+--             FROM   xxcmn_item_locations_v xilv_freq
+--             WHERE  xilv_freq.segment1 = iiim.frequent_whse),          -- (代表)保管倉庫名
+             NVL(iiim.fr_short_name, iiim.short_name),                 -- (代表)保管倉庫名
+--2008.06.13 mod end
              iiim.inventory_location_id,                               -- 保管倉庫ID
              iiim.item_id,                                             -- 品目ID
              iiim.item_no,                                             -- 品目コード
@@ -1391,6 +1465,10 @@ AS
                      xilv.inventory_location_id, -- 保管倉庫ID
                      xilv.mtl_organization_id,   -- 在庫組織ID
                      xilv.frequent_whse,         -- 代表倉庫
+--2008.06.13 mod start
+                     xilv_fr.short_name AS fr_short_name,
+                                                 -- 代表倉庫名
+--2008.06.13 mod end
                      xilv.customer_stock_whse,   -- 倉庫名義
                      ximv.item_id,               -- 品目ID
                      ximv.item_short_name,       -- 品目略称
@@ -1429,6 +1507,10 @@ AS
               FROM   xxcmn_item_mst_v ximv,         -- OPM品目マスタ情報VIEW
                      ic_lots_mst ilm,               -- OPMロットマスタ
                      xxcmn_item_locations_v  xilv,  -- OPM保管場所情報VIEW
+--2008.06.13 add start
+                     xxcmn_item_locations_v  xilv_fr,
+                                                    -- OPM保管場所情報VIEW(代表倉庫)
+--2008.06.13 add end
                      xxcmn_item_categories_v xicv1, -- OPM品目カテゴリ割当情報VIEW1
                      xxcmn_item_categories_v xicv2  -- OPM品目カテゴリ割当情報VIEW2
               WHERE  ximv.item_id            = ilm.item_id
@@ -1438,6 +1520,9 @@ AS
               AND    xicv2.item_id           = ximv.item_id
               AND    xicv2.category_set_name = lv_prof_xpd
               AND    xicv2.segment1          = NVL(iv_prod_div_code, xicv2.segment1)
+--2008.06.13 add start
+              AND    xilv.frequent_whse      = xilv_fr.segment1
+--2008.06.13 add end
               AND  ((ximv.lot_ctl            = cv_lot_code1
                 AND  ilm.lot_id             <> cn_zero)
                 OR   ximv.lot_ctl            = cv_lot_code0)) iiim,
@@ -1544,9 +1629,12 @@ AS
     --===============================================================
     CURSOR cur_data_a7 IS
       SELECT NVL(iiim.frequent_whse, iiim.segment1),                   -- (代表)保管倉庫コード
-            (SELECT NVL(xilv_freq.short_name, iiim.short_name)
-             FROM   xxcmn_item_locations_v xilv_freq
-             WHERE  xilv_freq.segment1 = iiim.frequent_whse),          -- (代表)保管倉庫名
+--2008.06.13 mod start
+--            (SELECT NVL(xilv_freq.short_name, iiim.short_name)
+--             FROM   xxcmn_item_locations_v xilv_freq
+--             WHERE  xilv_freq.segment1 = iiim.frequent_whse),          -- (代表)保管倉庫名
+             NVL(iiim.fr_short_name, iiim.short_name),                 -- (代表)保管倉庫名
+--2008.06.13 mod end
              iiim.inventory_location_id,                               -- 保管倉庫ID
              iiim.item_id,                                             -- 品目ID
              iiim.item_no,                                             -- 品目コード
@@ -1628,6 +1716,10 @@ AS
                      xilv.inventory_location_id, -- 保管倉庫ID
                      xilv.mtl_organization_id,   -- 在庫組織ID
                      xilv.frequent_whse,         -- 代表倉庫
+--2008.06.13 mod start
+                     xilv_fr.short_name AS fr_short_name,
+                                                 -- 代表倉庫名
+--2008.06.13 mod end
                      xilv.customer_stock_whse,   -- 倉庫名義
                      ximv.item_id,               -- 品目ID
                      ximv.item_short_name,       -- 品目略称
@@ -1666,6 +1758,10 @@ AS
               FROM   xxcmn_item_mst_v ximv,         -- OPM品目マスタ情報VIEW
                      ic_lots_mst ilm,               -- OPMロットマスタ
                      xxcmn_item_locations_v  xilv,  -- OPM保管場所情報VIEW
+--2008.06.13 add start
+                     xxcmn_item_locations_v  xilv_fr,
+                                                    -- OPM保管場所情報VIEW(代表倉庫)
+--2008.06.13 add end
                      xxcmn_item_categories_v xicv1, -- OPM品目カテゴリ割当情報VIEW1
                      xxcmn_item_categories_v xicv2  -- OPM品目カテゴリ割当情報VIEW2
               WHERE  ximv.item_id            = ilm.item_id
@@ -1675,6 +1771,9 @@ AS
               AND    xicv2.item_id           = ximv.item_id
               AND    xicv2.category_set_name = lv_prof_xpd
               AND    xicv2.segment1          = NVL(iv_prod_div_code, xicv2.segment1)
+--2008.06.13 add start
+              AND    xilv.frequent_whse      = xilv_fr.segment1
+--2008.06.13 add end
               AND  ((ximv.lot_ctl            = cv_lot_code1
                 AND  ilm.lot_id             <> cn_zero)
                 OR   ximv.lot_ctl            = cv_lot_code0)) iiim,
@@ -1781,9 +1880,12 @@ AS
     --===============================================================
     CURSOR cur_data_a8 IS
       SELECT NVL(iiim.frequent_whse, iiim.segment1),                   -- (代表)保管倉庫コード
-            (SELECT NVL(xilv_freq.short_name, iiim.short_name)
-             FROM   xxcmn_item_locations_v xilv_freq
-             WHERE  xilv_freq.segment1 = iiim.frequent_whse),          -- (代表)保管倉庫名
+--2008.06.13 mod start
+--            (SELECT NVL(xilv_freq.short_name, iiim.short_name)
+--             FROM   xxcmn_item_locations_v xilv_freq
+--             WHERE  xilv_freq.segment1 = iiim.frequent_whse),          -- (代表)保管倉庫名
+             NVL(iiim.fr_short_name, iiim.short_name),                 -- (代表)保管倉庫名
+--2008.06.13 mod end
              iiim.inventory_location_id,                               -- 保管倉庫ID
              iiim.item_id,                                             -- 品目ID
              iiim.item_no,                                             -- 品目コード
@@ -1865,6 +1967,10 @@ AS
                      xilv.inventory_location_id, -- 保管倉庫ID
                      xilv.mtl_organization_id,   -- 在庫組織ID
                      xilv.frequent_whse,         -- 代表倉庫
+--2008.06.13 mod start
+                     xilv_fr.short_name AS fr_short_name,
+                                                 -- 代表倉庫名
+--2008.06.13 mod end
                      xilv.customer_stock_whse,   -- 倉庫名義
                      ximv.item_id,               -- 品目ID
                      ximv.item_short_name,       -- 品目略称
@@ -1903,6 +2009,10 @@ AS
               FROM   xxcmn_item_mst_v ximv,         -- OPM品目マスタ情報VIEW
                      ic_lots_mst ilm,               -- OPMロットマスタ
                      xxcmn_item_locations_v  xilv,  -- OPM保管場所情報VIEW
+--2008.06.13 add start
+                     xxcmn_item_locations_v  xilv_fr,
+                                                    -- OPM保管場所情報VIEW(代表倉庫)
+--2008.06.13 add end
                      xxcmn_item_categories_v xicv1, -- OPM品目カテゴリ割当情報VIEW1
                      xxcmn_item_categories_v xicv2  -- OPM品目カテゴリ割当情報VIEW2
               WHERE  ximv.item_id            = ilm.item_id
@@ -1912,6 +2022,9 @@ AS
               AND    xicv2.item_id           = ximv.item_id
               AND    xicv2.category_set_name = lv_prof_xpd
               AND    xicv2.segment1          = NVL(iv_prod_div_code, xicv2.segment1)
+--2008.06.13 add start
+              AND    xilv.frequent_whse      = xilv_fr.segment1
+--2008.06.13 add end
               AND  ((ximv.lot_ctl            = cv_lot_code1
                 AND  ilm.lot_id             <> cn_zero)
                 OR   ximv.lot_ctl            = cv_lot_code0)) iiim,
@@ -3901,9 +4014,12 @@ AS
     --===============================================================
     CURSOR cur_data_b8 IS
       SELECT NVL(iiim.frequent_whse, iiim.segment1),                   -- (代表)保管倉庫コード
-            (SELECT NVL(xilv_freq.short_name, iiim.short_name)
-             FROM   xxcmn_item_locations_v xilv_freq
-             WHERE  xilv_freq.segment1 = iiim.frequent_whse),          -- (代表)保管倉庫名
+--2008.06.13 mod start
+--            (SELECT NVL(xilv_freq.short_name, iiim.short_name)
+--             FROM   xxcmn_item_locations_v xilv_freq
+--             WHERE  xilv_freq.segment1 = iiim.frequent_whse),          -- (代表)保管倉庫名
+             NVL(iiim.fr_short_name, iiim.short_name),                 -- (代表)保管倉庫名
+--2008.06.13 mod end
              iiim.inventory_location_id,                               -- 保管倉庫ID
              iiim.item_id,                                             -- 品目ID
              iiim.item_no,                                             -- 品目コード
@@ -3985,6 +4101,10 @@ AS
                      xilv.inventory_location_id, -- 保管倉庫ID
                      xilv.mtl_organization_id,   -- 在庫組織ID
                      xilv.frequent_whse,         -- 代表倉庫
+--2008.06.13 mod start
+                     xilv_fr.short_name AS fr_short_name,
+                                                 -- 代表倉庫名
+--2008.06.13 mod end
                      xilv.customer_stock_whse,   -- 倉庫名義
                      ximv.item_id,               -- 品目ID
                      ximv.item_short_name,       -- 品目略称
@@ -4023,6 +4143,10 @@ AS
               FROM   xxcmn_item_mst_v ximv,         -- OPM品目マスタ情報VIEW
                      ic_lots_mst ilm,               -- OPMロットマスタ
                      xxcmn_item_locations_v  xilv,  -- OPM保管場所情報VIEW
+--2008.06.13 add start
+                     xxcmn_item_locations_v  xilv_fr,
+                                                    -- OPM保管場所情報VIEW(代表倉庫)
+--2008.06.13 add end
                      xxcmn_item_categories_v xicv1, -- OPM品目カテゴリ割当情報VIEW1
                      xxcmn_item_categories_v xicv2  -- OPM品目カテゴリ割当情報VIEW2
               WHERE  ximv.item_id            = ilm.item_id
@@ -4032,6 +4156,9 @@ AS
               AND    xicv2.item_id           = ximv.item_id
               AND    xicv2.category_set_name = lv_prof_xpd
               AND    xicv2.segment1          = NVL(iv_prod_div_code, xicv2.segment1)
+--2008.06.13 add start
+              AND    xilv.frequent_whse      = xilv_fr.segment1
+--2008.06.13 add end
               AND  ((ximv.lot_ctl            = cv_lot_code1
                 AND  ilm.lot_id             <> cn_zero)
                 OR   ximv.lot_ctl            = cv_lot_code0)) iiim,
@@ -4140,9 +4267,12 @@ AS
     --===============================================================
     CURSOR cur_data_b9 IS
       SELECT NVL(iiim.frequent_whse, iiim.segment1),                   -- (代表)保管倉庫コード
-            (SELECT NVL(xilv_freq.short_name, iiim.short_name)
-             FROM   xxcmn_item_locations_v xilv_freq
-             WHERE  xilv_freq.segment1 = iiim.frequent_whse),          -- (代表)保管倉庫名
+--2008.06.13 mod start
+--            (SELECT NVL(xilv_freq.short_name, iiim.short_name)
+--             FROM   xxcmn_item_locations_v xilv_freq
+--             WHERE  xilv_freq.segment1 = iiim.frequent_whse),          -- (代表)保管倉庫名
+             NVL(iiim.fr_short_name, iiim.short_name),                 -- (代表)保管倉庫名
+--2008.06.13 mod end
              iiim.inventory_location_id,                               -- 保管倉庫ID
              iiim.item_id,                                             -- 品目ID
              iiim.item_no,                                             -- 品目コード
@@ -4224,6 +4354,10 @@ AS
                      xilv.inventory_location_id, -- 保管倉庫ID
                      xilv.mtl_organization_id,   -- 在庫組織ID
                      xilv.frequent_whse,         -- 代表倉庫
+--2008.06.13 mod start
+                     xilv_fr.short_name AS fr_short_name,
+                                                 -- 代表倉庫名
+--2008.06.13 mod end
                      xilv.customer_stock_whse,   -- 倉庫名義
                      ximv.item_id,               -- 品目ID
                      ximv.item_short_name,       -- 品目略称
@@ -4262,6 +4396,10 @@ AS
               FROM   xxcmn_item_mst_v ximv,         -- OPM品目マスタ情報VIEW
                      ic_lots_mst ilm,               -- OPMロットマスタ
                      xxcmn_item_locations_v  xilv,  -- OPM保管場所情報VIEW
+--2008.06.13 add start
+                     xxcmn_item_locations_v  xilv_fr,
+                                                    -- OPM保管場所情報VIEW(代表倉庫)
+--2008.06.13 add end
                      xxcmn_item_categories_v xicv1, -- OPM品目カテゴリ割当情報VIEW1
                      xxcmn_item_categories_v xicv2  -- OPM品目カテゴリ割当情報VIEW2
               WHERE  ximv.item_id            = ilm.item_id
@@ -4271,6 +4409,9 @@ AS
               AND    xicv2.item_id           = ximv.item_id
               AND    xicv2.category_set_name = lv_prof_xpd
               AND    xicv2.segment1          = NVL(iv_prod_div_code, xicv2.segment1)
+--2008.06.13 add start
+              AND    xilv.frequent_whse      = xilv_fr.segment1
+--2008.06.13 add end
               AND  ((ximv.lot_ctl            = cv_lot_code1
                 AND  ilm.lot_id             <> cn_zero)
                 OR   ximv.lot_ctl            = cv_lot_code0)) iiim,
@@ -4378,9 +4519,12 @@ AS
     --===============================================================
     CURSOR cur_data_c1 IS
       SELECT NVL(iiim.frequent_whse, iiim.segment1),                   -- (代表)保管倉庫コード
-            (SELECT NVL(xilv_freq.short_name, iiim.short_name)
-             FROM   xxcmn_item_locations_v xilv_freq
-             WHERE  xilv_freq.segment1 = iiim.frequent_whse),          -- (代表)保管倉庫名
+--2008.06.13 mod start
+--            (SELECT NVL(xilv_freq.short_name, iiim.short_name)
+--             FROM   xxcmn_item_locations_v xilv_freq
+--             WHERE  xilv_freq.segment1 = iiim.frequent_whse),          -- (代表)保管倉庫名
+             NVL(iiim.fr_short_name, iiim.short_name),                 -- (代表)保管倉庫名
+--2008.06.13 mod end
              iiim.inventory_location_id,                               -- 保管倉庫ID
              iiim.item_id,                                             -- 品目ID
              iiim.item_no,                                             -- 品目コード
@@ -4462,6 +4606,10 @@ AS
                      xilv.inventory_location_id, -- 保管倉庫ID
                      xilv.mtl_organization_id,   -- 在庫組織ID
                      xilv.frequent_whse,         -- 代表倉庫
+--2008.06.13 mod start
+                     xilv_fr.short_name AS fr_short_name,
+                                                 -- 代表倉庫名
+--2008.06.13 mod end
                      xilv.customer_stock_whse,   -- 倉庫名義
                      ximv.item_id,               -- 品目ID
                      ximv.item_short_name,       -- 品目略称
@@ -4500,6 +4648,10 @@ AS
               FROM   xxcmn_item_mst_v ximv,         -- OPM品目マスタ情報VIEW
                      ic_lots_mst ilm,               -- OPMロットマスタ
                      xxcmn_item_locations_v  xilv,  -- OPM保管場所情報VIEW
+--2008.06.13 add start
+                     xxcmn_item_locations_v  xilv_fr,
+                                                    -- OPM保管場所情報VIEW(代表倉庫)
+--2008.06.13 add end
                      xxcmn_item_categories_v xicv1, -- OPM品目カテゴリ割当情報VIEW1
                      xxcmn_item_categories_v xicv2  -- OPM品目カテゴリ割当情報VIEW2
               WHERE  ximv.item_id            = ilm.item_id
@@ -4509,6 +4661,9 @@ AS
               AND    xicv2.item_id           = ximv.item_id
               AND    xicv2.category_set_name = lv_prof_xpd
               AND    xicv2.segment1          = NVL(iv_prod_div_code, xicv2.segment1)
+--2008.06.13 add start
+              AND    xilv.frequent_whse      = xilv_fr.segment1
+--2008.06.13 add end
               AND  ((ximv.lot_ctl            = cv_lot_code1
                 AND  ilm.lot_id             <> cn_zero)
                 OR   ximv.lot_ctl            = cv_lot_code0)) iiim,
@@ -4616,9 +4771,12 @@ AS
     --===============================================================
     CURSOR cur_data_c2 IS
       SELECT NVL(iiim.frequent_whse, iiim.segment1),                   -- (代表)保管倉庫コード
-            (SELECT NVL(xilv_freq.short_name, iiim.short_name)
-             FROM   xxcmn_item_locations_v xilv_freq
-             WHERE  xilv_freq.segment1 = iiim.frequent_whse),          -- (代表)保管倉庫名
+--2008.06.13 mod start
+--            (SELECT NVL(xilv_freq.short_name, iiim.short_name)
+--             FROM   xxcmn_item_locations_v xilv_freq
+--             WHERE  xilv_freq.segment1 = iiim.frequent_whse),          -- (代表)保管倉庫名
+             NVL(iiim.fr_short_name, iiim.short_name),                 -- (代表)保管倉庫名
+--2008.06.13 mod end
              iiim.inventory_location_id,                               -- 保管倉庫ID
              iiim.item_id,                                             -- 品目ID
              iiim.item_no,                                             -- 品目コード
@@ -4700,6 +4858,10 @@ AS
                      xilv.inventory_location_id, -- 保管倉庫ID
                      xilv.mtl_organization_id,   -- 在庫組織ID
                      xilv.frequent_whse,         -- 代表倉庫
+--2008.06.13 mod start
+                     xilv_fr.short_name AS fr_short_name,
+                                                 -- 代表倉庫名
+--2008.06.13 mod end
                      xilv.customer_stock_whse,   -- 倉庫名義
                      ximv.item_id,               -- 品目ID
                      ximv.item_short_name,       -- 品目略称
@@ -4738,6 +4900,10 @@ AS
               FROM   xxcmn_item_mst_v ximv,         -- OPM品目マスタ情報VIEW
                      ic_lots_mst ilm,               -- OPMロットマスタ
                      xxcmn_item_locations_v  xilv,  -- OPM保管場所情報VIEW
+--2008.06.13 add start
+                     xxcmn_item_locations_v  xilv_fr,
+                                                    -- OPM保管場所情報VIEW(代表倉庫)
+--2008.06.13 add end
                      xxcmn_item_categories_v xicv1, -- OPM品目カテゴリ割当情報VIEW1
                      xxcmn_item_categories_v xicv2  -- OPM品目カテゴリ割当情報VIEW2
               WHERE  ximv.item_id            = ilm.item_id
@@ -4747,6 +4913,9 @@ AS
               AND    xicv2.item_id           = ximv.item_id
               AND    xicv2.category_set_name = lv_prof_xpd
               AND    xicv2.segment1          = NVL(iv_prod_div_code, xicv2.segment1)
+--2008.06.13 add start
+              AND    xilv.frequent_whse      = xilv_fr.segment1
+--2008.06.13 add end
               AND  ((ximv.lot_ctl            = cv_lot_code1
                 AND  ilm.lot_id             <> cn_zero)
                 OR   ximv.lot_ctl            = cv_lot_code0)) iiim,
@@ -4853,9 +5022,12 @@ AS
     --===============================================================
     CURSOR cur_data_c3 IS
       SELECT NVL(iiim.frequent_whse, iiim.segment1),                   -- (代表)保管倉庫コード
-            (SELECT NVL(xilv_freq.short_name, iiim.short_name)
-             FROM   xxcmn_item_locations_v xilv_freq
-             WHERE  xilv_freq.segment1 = iiim.frequent_whse),          -- (代表)保管倉庫名
+--2008.06.13 mod start
+--            (SELECT NVL(xilv_freq.short_name, iiim.short_name)
+--             FROM   xxcmn_item_locations_v xilv_freq
+--             WHERE  xilv_freq.segment1 = iiim.frequent_whse),          -- (代表)保管倉庫名
+             NVL(iiim.fr_short_name, iiim.short_name),                 -- (代表)保管倉庫名
+--2008.06.13 mod end
              iiim.inventory_location_id,                               -- 保管倉庫ID
              iiim.item_id,                                             -- 品目ID
              iiim.item_no,                                             -- 品目コード
@@ -4937,6 +5109,10 @@ AS
                      xilv.inventory_location_id, -- 保管倉庫ID
                      xilv.mtl_organization_id,   -- 在庫組織ID
                      xilv.frequent_whse,         -- 代表倉庫
+--2008.06.13 mod start
+                     xilv_fr.short_name AS fr_short_name,
+                                                 -- 代表倉庫名
+--2008.06.13 mod end
                      xilv.customer_stock_whse,   -- 倉庫名義
                      ximv.item_id,               -- 品目ID
                      ximv.item_short_name,       -- 品目略称
@@ -4975,6 +5151,10 @@ AS
               FROM   xxcmn_item_mst_v ximv,         -- OPM品目マスタ情報VIEW
                      ic_lots_mst ilm,               -- OPMロットマスタ
                      xxcmn_item_locations_v  xilv,  -- OPM保管場所情報VIEW
+--2008.06.13 add start
+                     xxcmn_item_locations_v  xilv_fr,
+                                                    -- OPM保管場所情報VIEW(代表倉庫)
+--2008.06.13 add end
                      xxcmn_item_categories_v xicv1, -- OPM品目カテゴリ割当情報VIEW1
                      xxcmn_item_categories_v xicv2  -- OPM品目カテゴリ割当情報VIEW2
               WHERE  ximv.item_id            = ilm.item_id
@@ -4984,6 +5164,9 @@ AS
               AND    xicv2.item_id           = ximv.item_id
               AND    xicv2.category_set_name = lv_prof_xpd
               AND    xicv2.segment1          = NVL(iv_prod_div_code, xicv2.segment1)
+--2008.06.13 add start
+              AND    xilv.frequent_whse      = xilv_fr.segment1
+--2008.06.13 add end
               AND  ((ximv.lot_ctl            = cv_lot_code1
                 AND  ilm.lot_id             <> cn_zero)
                 OR   ximv.lot_ctl            = cv_lot_code0)) iiim,
@@ -5091,9 +5274,12 @@ AS
     --===============================================================
     CURSOR cur_data_c4 IS
       SELECT NVL(iiim.frequent_whse, iiim.segment1),                   -- (代表)保管倉庫コード
-            (SELECT NVL(xilv_freq.short_name, iiim.short_name)
-             FROM   xxcmn_item_locations_v xilv_freq
-             WHERE  xilv_freq.segment1 = iiim.frequent_whse),          -- (代表)保管倉庫名
+--2008.06.13 mod start
+--            (SELECT NVL(xilv_freq.short_name, iiim.short_name)
+--             FROM   xxcmn_item_locations_v xilv_freq
+--             WHERE  xilv_freq.segment1 = iiim.frequent_whse),          -- (代表)保管倉庫名
+             NVL(iiim.fr_short_name, iiim.short_name),                 -- (代表)保管倉庫名
+--2008.06.13 mod end
              iiim.inventory_location_id,                               -- 保管倉庫ID
              iiim.item_id,                                             -- 品目ID
              iiim.item_no,                                             -- 品目コード
@@ -5175,6 +5361,10 @@ AS
                      xilv.inventory_location_id, -- 保管倉庫ID
                      xilv.mtl_organization_id,   -- 在庫組織ID
                      xilv.frequent_whse,         -- 代表倉庫
+--2008.06.13 mod start
+                     xilv_fr.short_name AS fr_short_name,
+                                                 -- 代表倉庫名
+--2008.06.13 mod end
                      xilv.customer_stock_whse,   -- 倉庫名義
                      ximv.item_id,               -- 品目ID
                      ximv.item_short_name,       -- 品目略称
@@ -5213,6 +5403,10 @@ AS
               FROM   xxcmn_item_mst_v ximv,         -- OPM品目マスタ情報VIEW
                      ic_lots_mst ilm,               -- OPMロットマスタ
                      xxcmn_item_locations_v  xilv,  -- OPM保管場所情報VIEW
+--2008.06.13 add start
+                     xxcmn_item_locations_v  xilv_fr,
+                                                    -- OPM保管場所情報VIEW(代表倉庫)
+--2008.06.13 add end
                      xxcmn_item_categories_v xicv1, -- OPM品目カテゴリ割当情報VIEW1
                      xxcmn_item_categories_v xicv2  -- OPM品目カテゴリ割当情報VIEW2
               WHERE  ximv.item_id            = ilm.item_id
@@ -5222,6 +5416,9 @@ AS
               AND    xicv2.item_id           = ximv.item_id
               AND    xicv2.category_set_name = lv_prof_xpd
               AND    xicv2.segment1          = NVL(iv_prod_div_code, xicv2.segment1)
+--2008.06.13 add start
+              AND    xilv.frequent_whse      = xilv_fr.segment1
+--2008.06.13 add end
               AND  ((ximv.lot_ctl            = cv_lot_code1
                 AND  ilm.lot_id             <> cn_zero)
                 OR   ximv.lot_ctl            = cv_lot_code0)) iiim,
@@ -5328,9 +5525,12 @@ AS
     --===============================================================
     CURSOR cur_data_c5 IS
       SELECT NVL(iiim.frequent_whse, iiim.segment1),                   -- (代表)保管倉庫コード
-            (SELECT NVL(xilv_freq.short_name, iiim.short_name)
-             FROM   xxcmn_item_locations_v xilv_freq
-             WHERE  xilv_freq.segment1 = iiim.frequent_whse),          -- (代表)保管倉庫名
+--2008.06.13 mod start
+--            (SELECT NVL(xilv_freq.short_name, iiim.short_name)
+--             FROM   xxcmn_item_locations_v xilv_freq
+--             WHERE  xilv_freq.segment1 = iiim.frequent_whse),          -- (代表)保管倉庫名
+             NVL(iiim.fr_short_name, iiim.short_name),                 -- (代表)保管倉庫名
+--2008.06.13 mod end
              iiim.inventory_location_id,                               -- 保管倉庫ID
              iiim.item_id,                                             -- 品目ID
              iiim.item_no,                                             -- 品目コード
@@ -5412,6 +5612,10 @@ AS
                      xilv.inventory_location_id, -- 保管倉庫ID
                      xilv.mtl_organization_id,   -- 在庫組織ID
                      xilv.frequent_whse,         -- 代表倉庫
+--2008.06.13 mod start
+                     xilv_fr.short_name AS fr_short_name,
+                                                 -- 代表倉庫名
+--2008.06.13 mod end
                      xilv.customer_stock_whse,   -- 倉庫名義
                      ximv.item_id,               -- 品目ID
                      ximv.item_short_name,       -- 品目略称
@@ -5450,6 +5654,10 @@ AS
               FROM   xxcmn_item_mst_v ximv,         -- OPM品目マスタ情報VIEW
                      ic_lots_mst ilm,               -- OPMロットマスタ
                      xxcmn_item_locations_v  xilv,  -- OPM保管場所情報VIEW
+--2008.06.13 add start
+                     xxcmn_item_locations_v  xilv_fr,
+                                                    -- OPM保管場所情報VIEW(代表倉庫)
+--2008.06.13 add end
                      xxcmn_item_categories_v xicv1, -- OPM品目カテゴリ割当情報VIEW1
                      xxcmn_item_categories_v xicv2  -- OPM品目カテゴリ割当情報VIEW2
               WHERE  ximv.item_id            = ilm.item_id
@@ -5459,6 +5667,9 @@ AS
               AND    xicv2.item_id           = ximv.item_id
               AND    xicv2.category_set_name = lv_prof_xpd
               AND    xicv2.segment1          = NVL(iv_prod_div_code, xicv2.segment1)
+--2008.06.13 add start
+              AND    xilv.frequent_whse      = xilv_fr.segment1
+--2008.06.13 add end
               AND  ((ximv.lot_ctl            = cv_lot_code1
                 AND  ilm.lot_id             <> cn_zero)
                 OR   ximv.lot_ctl            = cv_lot_code0)) iiim,
@@ -5565,9 +5776,12 @@ AS
     --===============================================================
     CURSOR cur_data_c6 IS
       SELECT NVL(iiim.frequent_whse, iiim.segment1),                   -- (代表)保管倉庫コード
-            (SELECT NVL(xilv_freq.short_name, iiim.short_name)
-             FROM   xxcmn_item_locations_v xilv_freq
-             WHERE  xilv_freq.segment1 = iiim.frequent_whse),          -- (代表)保管倉庫名
+--2008.06.13 mod start
+--            (SELECT NVL(xilv_freq.short_name, iiim.short_name)
+--             FROM   xxcmn_item_locations_v xilv_freq
+--             WHERE  xilv_freq.segment1 = iiim.frequent_whse),          -- (代表)保管倉庫名
+             NVL(iiim.fr_short_name, iiim.short_name),                 -- (代表)保管倉庫名
+--2008.06.13 mod end
              iiim.inventory_location_id,                               -- 保管倉庫ID
              iiim.item_id,                                             -- 品目ID
              iiim.item_no,                                             -- 品目コード
@@ -5649,6 +5863,10 @@ AS
                      xilv.inventory_location_id, -- 保管倉庫ID
                      xilv.mtl_organization_id,   -- 在庫組織ID
                      xilv.frequent_whse,         -- 代表倉庫
+--2008.06.13 mod start
+                     xilv_fr.short_name AS fr_short_name,
+                                                 -- 代表倉庫名
+--2008.06.13 mod end
                      xilv.customer_stock_whse,   -- 倉庫名義
                      ximv.item_id,               -- 品目ID
                      ximv.item_short_name,       -- 品目略称
@@ -5687,6 +5905,10 @@ AS
               FROM   xxcmn_item_mst_v ximv,         -- OPM品目マスタ情報VIEW
                      ic_lots_mst ilm,               -- OPMロットマスタ
                      xxcmn_item_locations_v  xilv,  -- OPM保管場所情報VIEW
+--2008.06.13 add start
+                     xxcmn_item_locations_v  xilv_fr,
+                                                    -- OPM保管場所情報VIEW(代表倉庫)
+--2008.06.13 add end
                      xxcmn_item_categories_v xicv1, -- OPM品目カテゴリ割当情報VIEW1
                      xxcmn_item_categories_v xicv2  -- OPM品目カテゴリ割当情報VIEW2
               WHERE  ximv.item_id            = ilm.item_id
@@ -5696,6 +5918,9 @@ AS
               AND    xicv2.item_id           = ximv.item_id
               AND    xicv2.category_set_name = lv_prof_xpd
               AND    xicv2.segment1          = NVL(iv_prod_div_code, xicv2.segment1)
+--2008.06.13 add start
+              AND    xilv.frequent_whse      = xilv_fr.segment1
+--2008.06.13 add end
               AND  ((ximv.lot_ctl            = cv_lot_code1
                 AND  ilm.lot_id             <> cn_zero)
                 OR   ximv.lot_ctl            = cv_lot_code0)) iiim,
