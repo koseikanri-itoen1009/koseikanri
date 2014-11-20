@@ -1,0 +1,40 @@
+/*****************************************************************************************
+ * Copyright c 2011, SCSK Corporation. All rights reserved.
+ *
+ * Table Name  : XXCOS_TMP_ORDER_LIST_CUST
+ * Description : 受注ファイル出力顧客情報一時表
+ * Version     : 1.0
+ *
+ * Change Record
+ * ------------- ----- ---------------- ---------------------------------
+ *  Date          Ver.  Editor           Description
+ * ------------- ----- ---------------- ---------------------------------
+ *  2013/01/11    1.0   K.Onotsuka      新規作成 [E_本稼働_08657]
+ *
+ **************************************************************************************/
+CREATE GLOBAL TEMPORARY TABLE xxcos.xxcos_tmp_order_list_cust
+(
+   CUSTOMER_ID          NUMBER           --顧客ID
+  ,CUSTOMER_CODE        VARCHAR2(9)      --顧客コード
+  ,DELI_CENTER_CODE     VARCHAR2(8)      --EDI納品センターコード
+  ,DELI_CENTER_NAME     VARCHAR2(20)     --EDI納品センター名
+  ,EDI_DISTRICT_CODE    VARCHAR2(8)      --EDI地区コード（EDI)
+  ,EDI_DISTRICT_NAME    VARCHAR2(40)     --EDI地区名（EDI)
+  ,EDI_DISTRICT_KANA    VARCHAR2(20)     --EDI地区名カナ（EDI)
+  ,DELIVERY_BASE_CODE   VARCHAR2(4)      --納品拠点コード
+  ,CHAIN_STORE_CODE     VARCHAR2(4)      --チェーン店コード（EDI）
+  ,STORE_CODE           VARCHAR2(10)     --店舗コード
+)
+ON COMMIT DELETE ROWS
+/
+COMMENT ON TABLE  XXCOS.XXCOS_TMP_ORDER_LIST_CUST                        IS '受注ファイル出力顧客情報一時表';
+COMMENT ON COLUMN XXCOS.XXCOS_TMP_ORDER_LIST_CUST.CUSTOMER_ID            IS '顧客ID';
+COMMENT ON COLUMN XXCOS.XXCOS_TMP_ORDER_LIST_CUST.CUSTOMER_CODE          IS '顧客コード';
+COMMENT ON COLUMN XXCOS.XXCOS_TMP_ORDER_LIST_CUST.DELI_CENTER_CODE       IS 'EDI納品センターコード';
+COMMENT ON COLUMN XXCOS.XXCOS_TMP_ORDER_LIST_CUST.DELI_CENTER_NAME       IS 'EDI納品センター名';
+COMMENT ON COLUMN XXCOS.XXCOS_TMP_ORDER_LIST_CUST.EDI_DISTRICT_CODE      IS 'EDI地区コード（EDI)';
+COMMENT ON COLUMN XXCOS.XXCOS_TMP_ORDER_LIST_CUST.EDI_DISTRICT_NAME      IS 'EDI地区名（EDI)';
+COMMENT ON COLUMN XXCOS.XXCOS_TMP_ORDER_LIST_CUST.EDI_DISTRICT_KANA      IS 'EDI地区名カナ（EDI)';
+COMMENT ON COLUMN XXCOS.XXCOS_TMP_ORDER_LIST_CUST.DELIVERY_BASE_CODE     IS '納品拠点コード';
+COMMENT ON COLUMN XXCOS.XXCOS_TMP_ORDER_LIST_CUST.CHAIN_STORE_CODE       IS 'チェーン店コード（EDI）';
+COMMENT ON COLUMN XXCOS.XXCOS_TMP_ORDER_LIST_CUST.STORE_CODE             IS '店舗コード';
