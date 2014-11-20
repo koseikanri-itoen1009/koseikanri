@@ -7,7 +7,7 @@ AS
  * Description      : 品目マスタインタフェース
  * MD.050           : マスタインタフェース T_MD050_BPO_800
  * MD.070           : 品目インタフェース T_MD070_BPO_80B
- * Version          : 1.21
+ * Version          : 1.22
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -88,6 +88,7 @@ AS
  *  2009/01/09    1.19  Oracle 佐久間尚豊 本番#950対応
  *  2009/01/28    1.20  Oracle 椎名 昭圭 本番#1090対応
  *  2009/02/18    1.21  Oracle 丸下 博宣 本番#1090対応
+ *  2009/04/27    1.22  Oracle 丸下 博宣 本番#1345対応
  *****************************************************************************************/
 --
 --#######################  固定グローバル定数宣言部 START   #######################
@@ -3680,8 +3681,10 @@ AS
       INTO   ir_masters_rec.period_code
       FROM   cm_cldr_dtl ccd
       WHERE  ccd.calendar_code = gv_item_cal
-      AND    ccd.start_date   <= ir_masters_rec.standard_start_date
-      AND    ccd.end_date     >= ir_masters_rec.standard_start_date
+-- 2009/04/27 DEL START
+--      AND    ccd.start_date   <= ir_masters_rec.standard_start_date
+--      AND    ccd.end_date     >= ir_masters_rec.standard_start_date
+-- 2009/04/27 DEL END
       AND    ROWNUM            = 1;
 --
 -- 2008/08/27 Add ↓
@@ -5673,138 +5676,10 @@ AS
       RAISE check_cmpt_upd_expt;
     END IF;
 --
-    -- 以前に登録データが存在していない
-    IF (ir_masters_rec.row_ins_cnt = 0) THEN
-      <<check_cmpt_loop>>
-      FOR i IN 1..10 LOOP
---
-        ln_type := NULL;
--- 2008/09/08 Mod ↓
 /*
---
-        -- 原料
-        IF ((i = 1) AND (ir_masters_rec.raw_material_cost IS NOT NULL)) THEN
-          ln_type := i;
---
-        -- 再製費
-        ELSIF ((i = 2) AND (ir_masters_rec.agein_cost IS NOT NULL)) THEN
-          ln_type := i;
---
-        -- 資材費
-        ELSIF ((i = 3) AND (ir_masters_rec.material_cost IS NOT NULL)) THEN
-          ln_type := i;
---
-        -- 包装費
-        ELSIF ((i = 4) AND (ir_masters_rec.pack_cost IS NOT NULL)) THEN
-          ln_type := i;
---
-        -- 外注加工費
-        ELSIF ((i = 5) AND (ir_masters_rec.out_order_cost IS NOT NULL)) THEN
-          ln_type := i;
---
-        -- 保管費
-        ELSIF ((i = 6) AND (ir_masters_rec.safekeep_cost IS NOT NULL)) THEN
-          ln_type := i;
---
-        -- その他経費
-        ELSIF ((i = 7) AND (ir_masters_rec.other_expense_cost IS NOT NULL)) THEN
-          ln_type := i;
---
-        -- 予備1
-        ELSIF ((i = 8) AND (ir_masters_rec.spare1 IS NOT NULL)) THEN
-          ln_type := i;
---
-        -- 予備2
-        ELSIF ((i = 9) AND (ir_masters_rec.spare2 IS NOT NULL)) THEN
-          ln_type := i;
---
-        -- 予備3
-        ELSIF ((i = 10) AND (ir_masters_rec.spare3 IS NOT NULL)) THEN
-          ln_type := i;
-        END IF;
---
+-- 2009/04/27 DEL 年度切替の場合更新対象が存在せず新規登録する必要があるため
+--                存在チェックを削除しました
 */
---
-        -- 原料
-        IF ((i = 1) AND (ir_masters_rec.raw_material_cost IS NOT NULL)) THEN
-          ln_type := ir_masters_rec.cmpntcls_mast(i).cost_cmpntcls_id;
---
-        -- 再製費
-        ELSIF ((i = 2) AND (ir_masters_rec.agein_cost IS NOT NULL)) THEN
-          ln_type := ir_masters_rec.cmpntcls_mast(i).cost_cmpntcls_id;
---
-        -- 資材費
-        ELSIF ((i = 3) AND (ir_masters_rec.material_cost IS NOT NULL)) THEN
-          ln_type := ir_masters_rec.cmpntcls_mast(i).cost_cmpntcls_id;
---
-        -- 包装費
-        ELSIF ((i = 4) AND (ir_masters_rec.pack_cost IS NOT NULL)) THEN
-          ln_type := ir_masters_rec.cmpntcls_mast(i).cost_cmpntcls_id;
---
-        -- 外注加工費
-        ELSIF ((i = 5) AND (ir_masters_rec.out_order_cost IS NOT NULL)) THEN
-          ln_type := ir_masters_rec.cmpntcls_mast(i).cost_cmpntcls_id;
---
-        -- 保管費
-        ELSIF ((i = 6) AND (ir_masters_rec.safekeep_cost IS NOT NULL)) THEN
-          ln_type := ir_masters_rec.cmpntcls_mast(i).cost_cmpntcls_id;
---
-        -- その他経費
-        ELSIF ((i = 7) AND (ir_masters_rec.other_expense_cost IS NOT NULL)) THEN
-          ln_type := ir_masters_rec.cmpntcls_mast(i).cost_cmpntcls_id;
---
-        -- 予備1
-        ELSIF ((i = 8) AND (ir_masters_rec.spare1 IS NOT NULL)) THEN
-          ln_type := ir_masters_rec.cmpntcls_mast(i).cost_cmpntcls_id;
---
-        -- 予備2
-        ELSIF ((i = 9) AND (ir_masters_rec.spare2 IS NOT NULL)) THEN
-          ln_type := ir_masters_rec.cmpntcls_mast(i).cost_cmpntcls_id;
---
-        -- 予備3
-        ELSIF ((i = 10) AND (ir_masters_rec.spare3 IS NOT NULL)) THEN
-          ln_type := ir_masters_rec.cmpntcls_mast(i).cost_cmpntcls_id;
-        END IF;
---
--- 2008/09/08 Mod ↑
-        -- 対象あり
-        IF (ln_type IS NOT NULL) THEN
---
-          -- 品目の存在チェック(品目原価マスタ)
-          chk_cm_cmpt_dtl(ir_masters_rec,
-                          ln_type,
-                          lb_retcd,
-                          lv_errbuf,
-                          lv_retcode,
-                          lv_errmsg);
---
-          IF (lv_retcode = gv_status_error) THEN
-            RAISE global_api_expt;
-          END IF;
---
-          -- 存在していない
-          IF (NOT lb_retcd) THEN
---
-            -- 存在エラー
-            set_error_status(ir_status_rec,
-                             xxcmn_common_pkg.get_msg(gv_msg_kbn,
-                                                      gv_msg_80b_105,
-                                                      gv_tkn_ng_hinmoku,
-                                                      ir_masters_rec.item_code),
-                             lv_errbuf,
-                             lv_retcode,
-                             lv_errmsg);
---
-            IF (lv_retcode = gv_status_error) THEN
-              RAISE global_api_expt;
-            END IF;
---
-            RAISE check_cmpt_upd_expt;
-          END IF;
-        END IF;
---
-      END LOOP check_cmpt_loop;
-    END IF;
 --
     -- 単価のチェック
     chk_price(ir_masters_rec,
@@ -6746,6 +6621,7 @@ AS
     -- *** ローカル変数 ***
     ln_exec_cnt   NUMBER;
     ln_log_cnt    NUMBER;
+    ln_cnt        NUMBER;
 --
     -- *** ローカル・カーソル ***
 --
@@ -6815,16 +6691,41 @@ AS
 -- 2008/10/02 ADD START
            IF (NOT it_upd_mast_tbl(ln_exec_cnt).cldr_n_flg) THEN
 -- 2008/10/02 ADD END
-            -- 品目原価更新処理
-            cmpt_update_proc(it_report_tbl(ln_log_cnt),
-                             it_upd_mast_tbl(ln_exec_cnt),
-                             lv_errbuf,
-                             lv_retcode,
-                             lv_errmsg);
+-- 2009/04/27 ADD START
+            -- 品目原価存在チェック
+             SELECT COUNT(ccd.item_id)
+             INTO   ln_cnt
+             FROM   cm_cmpt_dtl ccd,
+                    ic_item_mst_b iimb
+             WHERE  iimb.item_no         = it_upd_mast_tbl(ln_exec_cnt).item_code
+             AND    ccd.item_id          = iimb.item_id
+             AND    ccd.calendar_code    = gv_item_cal
+             AND    ROWNUM               = 1;
 --
-            IF (lv_retcode = gv_status_error) THEN
-              RAISE global_api_expt;
-            END IF;
+             IF(ln_cnt = 0) THEN
+               -- 品目原価登録処理
+               cmpt_insert_proc(it_report_tbl(ln_log_cnt),
+                                it_upd_mast_tbl(ln_exec_cnt),
+                                lv_errbuf,
+                                lv_retcode,
+                                lv_errmsg);
+  --
+               IF (lv_retcode = gv_status_error) THEN
+                 RAISE global_api_expt;
+               END IF;
+             ELSE
+-- 2009/04/27 ADD END
+               -- 品目原価更新処理
+               cmpt_update_proc(it_report_tbl(ln_log_cnt),
+                                it_upd_mast_tbl(ln_exec_cnt),
+                                lv_errbuf,
+                                lv_retcode,
+                                lv_errmsg);
+  --
+               IF (lv_retcode = gv_status_error) THEN
+                 RAISE global_api_expt;
+               END IF;
+             END IF;
 --
 -- 2008/10/02 ADD START
            END IF;
