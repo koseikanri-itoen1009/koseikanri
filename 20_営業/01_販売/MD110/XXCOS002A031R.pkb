@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCOS002A031R(body)
  * Description      : 営業成績表
  * MD.050           : 営業成績表 MD050_COS_002_A03
- * Version          : 1.5
+ * Version          : 1.7
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -43,6 +43,8 @@ AS
  *  2009/02/27    1.3   T.Nakabayashi    帳票ワークテーブル削除処理 コメントアウト解除
  *  2009/06/09    1.4   T.Tominaga       帳票ワークテーブル削除処理"delete_rpt_wrk_data" コメントアウト解除
  *  2009/06/18    1.5   K.Kiriu          [T1_1446]PT対応
+ *  2009/06/22    1.6   K.Kiriu          [T1_1437]データパージ不具合対応
+ *  2009/07/07    1.7   K.Kiriu          [0000418]削除件数取得不具合対応
  *
  *****************************************************************************************/
 --
@@ -3184,12 +3186,20 @@ AS
         WHERE  xrbp.sum_data_class  = ct_sum_data_cls_employee
         AND    xrbp.request_id      = cn_request_id
         ;
+/* 2009/07/07 Ver1.7 Add Start */
+        --  登録件数カウント
+        g_counter_rec.delete_off_the_subject_info := SQL%ROWCOUNT;
+/* 2009/07/07 Ver1.7 Add End   */
       ELSIF ( iv_unit_of_output IN ( cv_para_unit_all, cv_para_unit_section_sum ) ) THEN
         DELETE
         FROM   xxcos_rep_bus_perf  xrbp
         WHERE  xrbp.section_code    = gt_prof_dummy_sales_group
         AND    xrbp.request_id      = cn_request_id
         ;
+/* 2009/07/07 Ver1.7 Add Start */
+        --  登録件数カウント
+        g_counter_rec.delete_off_the_subject_info := SQL%ROWCOUNT;
+/* 2009/07/07 Ver1.7 Add End   */
       END IF;
 /* 2009/06/18 Ver1.5 Mod End */
     EXCEPTION
@@ -3212,8 +3222,10 @@ AS
         RAISE global_delete_data_expt;
     END;
 --
-    --  登録件数カウント
-    g_counter_rec.delete_off_the_subject_info := SQL%ROWCOUNT;
+/* 2009/07/07 Ver1.7 Del Start */
+--    --  登録件数カウント
+--    g_counter_rec.delete_off_the_subject_info := SQL%ROWCOUNT;
+/* 2009/07/07 Ver1.7 Del End   */
 --
     --==============================================================
     --メッセージ出力をする必要がある場合は処理を記述
@@ -3762,6 +3774,12 @@ AS
     lv_errbuf  VARCHAR2(5000);  -- エラー・メッセージ
     lv_retcode VARCHAR2(1);     -- リターン・コード
     lv_errmsg  VARCHAR2(5000);  -- ユーザー・エラー・メッセージ
+/* 2009/06/22 Ver1.6 Add Start */
+    lv_errbuf_svf  VARCHAR2(5000);  -- エラー・メッセージ(SVF実行結果保持用)
+    lv_retcode_svf VARCHAR2(1);     -- リターン・コード(SVF実行結果保持用)
+    lv_errmsg_svf  VARCHAR2(5000);  -- ユーザー・エラー・メッセージ(SVF実行結果保持用)
+/* 2009/06/22 Ver1.6 Add End   */
+
 --
 --###########################  固定部 END   ####################################
 --
@@ -3963,10 +3981,16 @@ AS
       ,lv_errmsg   -- ユーザー・エラー・メッセージ --# 固定 #
     );
 --
-    IF  ( lv_retcode = cv_status_error  ) THEN
-      --(エラー処理)
-      RAISE global_process_expt;
-    END IF;
+/* 2009/06/22 Ver1.6 Mod Start */
+--    IF  ( lv_retcode = cv_status_error  ) THEN
+--     --(エラー処理)
+--      RAISE global_process_expt;
+--    END IF;
+    --エラーでもワークテーブルを削除する為、エラー情報を保持
+    lv_errbuf_svf  := lv_errbuf;
+    lv_retcode_svf := lv_retcode;
+    lv_errmsg_svf  := lv_errmsg;
+/* 2009/06/22 Ver1.6 Mod End   */
 --
     -- ===============================
     -- 帳票ワークテーブル削除(A-15)
@@ -3987,6 +4011,19 @@ AS
 --
       RAISE global_process_expt;
     END IF;
+--
+/* 2009/06/22 Ver1.6 Add Start */
+    --エラーの場合、ロールバックするのでここでコミット
+    COMMIT;
+--
+    --SVF実行結果確認
+    IF ( lv_retcode_svf = cv_status_error ) THEN
+      lv_errbuf  := lv_errbuf_svf;
+      lv_retcode := lv_retcode_svf;
+      lv_errmsg  := lv_errmsg_svf;
+      RAISE global_process_expt;
+    END IF;
+/* 2009/06/22 Ver1.6 Add Start */
 --
     --  ===============================
     --  終了処理(A-16)
