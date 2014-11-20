@@ -142,7 +142,6 @@
     AND    bill_hsua_1.primary_flag = 'Y'                                    --請求先顧客使用目的.主フラグ = 'Y'
     AND    ship_hsua_1.primary_flag = 'Y'                                    --請求先顧客使用目的.主フラグ = 'Y'
 /* 2010/04/02 Ver1.8 Add End   */
-
     AND NOT EXISTS (
                 SELECT /*+ INDEX( cash_hcar_1 HZ_CUST_ACCT_RELATE_N2 ) */
                        'X'
@@ -239,7 +238,6 @@
     AND    bill_hsua_2.primary_flag = 'Y'                                    --請求先顧客使用目的.主フラグ = 'Y'
     AND    ship_hsua_2.primary_flag = 'Y'                                    --請求先顧客使用目的.主フラグ = 'Y'
 /* 2010/04/02 Ver1.8 Add End   */
-
     UNION ALL
     --③入金先顧客－請求先顧客＆出荷先顧客
     SELECT
