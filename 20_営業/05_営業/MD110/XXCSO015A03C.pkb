@@ -3,7 +3,7 @@ AS
 /*****************************************************************************************
  * Copyright(c)Sumisho Computer Systems Corporation, 2008. All rights reserved.
  *
- * Package Name     : XXCSO015A03C(spec)
+ * Package Name     : XXCSO015A03C(body)
  * Description      : SQL*Loaderによって物件データワークテーブル（アドオン）に取り込まれた
  *                      物件の情報を物件マスタに登録します。
  * MD.050           : MD050_自販機-EBSインタフェース：（IN）物件マスタ情報(IB)
@@ -4980,7 +4980,8 @@ AS
     l_instance_rec.attribute2                 := lv_install_number;            -- 機番
     /* 2009.05.26 M.Ohtsuki T1_1141対応 START*/
     IF (io_inst_base_data_rec.new_old_flg = cv_flg_yes) THEN                                        -- 新古台フラグがYの場合
-      l_instance_rec.attribute3               := io_inst_base_data_rec.first_install_date;          -- 初回設置日
+      l_instance_rec.attribute3 := TO_CHAR(TO_DATE(TO_CHAR(
+        io_inst_base_data_rec.first_install_date),'yyyy/mm/dd'), 'yyyy/mm/dd hh24:mi:ss'); -- 初回設置日
     END IF;
     /* 2009.05.26 M.Ohtsuki T1_1141対応 END*/
     l_instance_rec.attribute4                 := cv_flg_no;                    -- 作業依頼中フラグ
