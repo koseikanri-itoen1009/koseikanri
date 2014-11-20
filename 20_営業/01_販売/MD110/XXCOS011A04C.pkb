@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCOS011A04C (body)
  * Description      : 入庫予定データの作成を行う
  * MD.050           : 入庫予定データ作成 (MD050_COS_011_A04)
- * Version          : 1.7
+ * Version          : 1.8
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -39,6 +39,11 @@ AS
  *  2009/08/17    1.6  N.Maeda          [0000439]PT対応
  *  2009/08/24    1.6  N.Maeda          [0000439]レビュー指摘対応
  *  2009/09/25    1.7  N.Maeda          [0001156]顧客品目からの品目導出条件追加
+ *  2010/03/16    1.8  Y.Kuboshima      [E_本稼動_01223]・対象件数0件時のステータス変更対応
+ *                                      [E_本稼動_01833]・ソート順の変更 (伝票番号 -> 伝票番号, 品目コード)
+ *                                                      ・伝票番号, 品目コードのサマリを削除
+ *                                                      ・入庫予定ヘッダテーブル,移動オーダーヘッダテーブルの
+ *                                                        更新の条件にEDIチェーン店コードを追加
  *
  *****************************************************************************************/
 --
@@ -1604,8 +1609,13 @@ AS
               )                        hca     --顧客
              ,( SELECT  xesl.header_id          header_id
                        ,xesl.inventory_item_id  inventory_item_id
-                       ,SUM( xesl.case_qty )    case_qty_sum
-                       ,SUM( xesl.indv_qty )    indv_qty_sum
+--********************  2010/03/16    1.8  Y.Kuboshima MOD Start *******************
+-- 伝票番号, 品目コードのサマリの削除
+--                       ,SUM( xesl.case_qty )    case_qty_sum
+--                       ,SUM( xesl.indv_qty )    indv_qty_sum
+                       ,xesl.case_qty           case_qty_sum
+                       ,xesl.indv_qty           indv_qty_sum
+--********************  2010/03/16    1.8  Y.Kuboshima MOD  End  *******************
                 FROM    xxcos_edi_stc_lines   xesl
 -- ********** 2009/08/17 N.Maeda 1.6 ADD START ************** --
                         ,xxcos_edi_stc_headers   xesh    --入庫予定ヘッダ
@@ -1615,9 +1625,12 @@ AS
                 AND    xesh.edi_chain_code       = it_edi_c_code     --EDIチェーン店コード
                 AND    xesh.to_subinventory_code = it_to_s_code      --搬送先保管場所
 -- ********** 2009/08/17 N.Maeda 1.6 ADD  END  ************** --
-                GROUP BY
-                        xesl.header_id
-                       ,xesl.inventory_item_id
+--********************  2010/03/16    1.8  Y.Kuboshima DEL Start *******************
+-- 伝票番号, 品目コードのサマリの削除
+--                GROUP BY
+--                        xesl.header_id
+--                       ,xesl.inventory_item_id
+--********************  2010/03/16    1.8  Y.Kuboshima DEL  End  *******************
               )                        xesl   --入庫予定明細(品目サマリ)
 --********************  2009/03/10    1.2  T.Kitajima ADD Start ********************
              ,(
@@ -1719,6 +1732,10 @@ AS
       AND    xesh.to_subinventory_code    = it_to_s_code                 --搬送先保管場所
       ORDER BY
              xesh.invoice_number  --伝票番号昇順(A-4で伝票番号順に処理をする為)
+--********************  2010/03/16    1.8  Y.Kuboshima ADD Start *******************
+-- ソート順に品目コードを追加
+            ,msib.segment1
+--********************  2010/03/16    1.8  Y.Kuboshima ADD  End  *******************
       FOR UPDATE OF
              xesh.header_id
             ,mtrh.header_id NOWAIT
@@ -1798,8 +1815,13 @@ AS
               )                       hca     --顧客
              ,( SELECT  xesl.header_id          header_id
                        ,xesl.inventory_item_id  inventory_item_id
-                       ,SUM( xesl.case_qty )    case_qty_sum
-                       ,SUM( xesl.indv_qty )    indv_qty_sum
+--********************  2010/03/16    1.8  Y.Kuboshima MOD Start *******************
+-- 伝票番号, 品目コードのサマリの削除
+--                       ,SUM( xesl.case_qty )    case_qty_sum
+--                       ,SUM( xesl.indv_qty )    indv_qty_sum
+                       ,xesl.case_qty           case_qty_sum
+                       ,xesl.indv_qty           indv_qty_sum
+--********************  2010/03/16    1.8  Y.Kuboshima MOD  End  *******************
                 FROM    xxcos_edi_stc_lines   xesl
 -- ********** 2009/08/17 N.Maeda 1.6 ADD START ************** --
                         ,xxcos_edi_stc_headers   xesh    --入庫予定ヘッダ
@@ -1809,9 +1831,12 @@ AS
                 AND    xesh.edi_chain_code       = it_edi_c_code     --EDIチェーン店コード
                 AND    xesh.to_subinventory_code = it_to_s_code      --搬送先保管場所
 -- ********** 2009/08/17 N.Maeda 1.6 ADD  END  ************** --
-                GROUP BY
-                        xesl.header_id
-                       ,xesl.inventory_item_id
+--********************  2010/03/16    1.8  Y.Kuboshima DEL Start *******************
+-- 伝票番号, 品目コードのサマリの削除
+--                GROUP BY
+--                        xesl.header_id
+--                       ,xesl.inventory_item_id
+--********************  2010/03/16    1.8  Y.Kuboshima DEL  End  *******************
               )                        xesl   --入庫予定明細(品目サマリ)
              ,mtl_system_items_b       msib   --Disc品目
              ,xxcmm_system_items_b     xsib   --Disc品目アドオン
@@ -1850,6 +1875,10 @@ AS
       AND    xesh.to_subinventory_code    = it_to_s_code                 --搬送先保管場所
       ORDER BY
              xesh.invoice_number  --伝票番号昇順(A-4で伝票番号順に処理をする為)
+--********************  2010/03/16    1.8  Y.Kuboshima ADD Start *******************
+-- ソート順に品目コードを追加
+            ,msib.segment1
+--********************  2010/03/16    1.8  Y.Kuboshima ADD  End  *******************
       FOR UPDATE OF
              xesh.header_id
             ,mtrh.header_id NOWAIT
@@ -2890,6 +2919,10 @@ AS
    * Description      : フラグ更新(A-8)
    ***********************************************************************************/
   PROCEDURE upd_edi_send_flag(
+--********************  2010/03/16    1.8  Y.Kuboshima ADD Start *******************
+-- パラメータにEDIチェーン店コードを追加
+    it_edi_c_code IN  xxcmm_cust_accounts.chain_store_code%TYPE,          --  EDIチェーン店コード
+--********************  2010/03/16    1.8  Y.Kuboshima ADD  End  *******************
     ov_errbuf     OUT VARCHAR2,     --   エラー・メッセージ           --# 固定 #
     ov_retcode    OUT VARCHAR2,     --   リターン・コード             --# 固定 #
     ov_errmsg     OUT VARCHAR2)     --   ユーザー・エラー・メッセージ --# 固定 #
@@ -2944,6 +2977,10 @@ AS
                   FROM   xxcos_edi_stc_headers xesh
                   WHERE  xesh.move_order_header_id IS NOT NULL
                   AND    xesh.invoice_number       = gt_invoice_num(i)
+--********************  2010/03/16    1.8  Y.Kuboshima ADD Start *******************
+-- 抽出条件にEDIチェーン店コードを追加
+                  AND    xesh.edi_chain_code       = it_edi_c_code
+--********************  2010/03/16    1.8  Y.Kuboshima ADD  End  *******************
                 );
     EXCEPTION
       WHEN OTHERS THEN
@@ -2977,6 +3014,10 @@ AS
                ,xesh.program_id              = cn_program_id              --コンカレント・プログラムID
                ,xesh.program_update_date     = cd_program_update_date     --プログラム更新日
         WHERE   xesh.invoice_number  = gt_invoice_num(i)
+--********************  2010/03/16    1.8  Y.Kuboshima ADD Start *******************
+-- 抽出条件にEDIチェーン店コードを追加
+        AND     xesh.edi_chain_code  = it_edi_c_code
+--********************  2010/03/16    1.8  Y.Kuboshima ADD  End  *******************
         ;
     EXCEPTION
       WHEN OTHERS THEN
@@ -3443,7 +3484,12 @@ AS
       -- フラグ更新(A-8)
       -- ===============================
       upd_edi_send_flag(
-        lv_errbuf   -- エラー・メッセージ           --# 固定 #
+--********************  2010/03/16    1.8  Y.Kuboshima MOD Start *******************
+-- パラメータにEDIチェーン店コードを追加
+--        lv_errbuf   -- エラー・メッセージ           --# 固定 #
+        iv_edi_c_code -- EDIチェーン店コード
+       ,lv_errbuf   -- エラー・メッセージ           --# 固定 #
+--********************  2010/03/16    1.8  Y.Kuboshima MOD  End  *******************
        ,lv_retcode  -- リターン・コード             --# 固定 #
        ,lv_errmsg   -- ユーザー・エラー・メッセージ --# 固定 #
       );
@@ -3577,6 +3623,14 @@ AS
        which  => FND_FILE.OUTPUT
       ,buff   => ''
     );
+--********************  2010/03/16    1.8  Y.Kuboshima ADD Start *******************
+    --対象件数が0件の場合かつ、終了ステータスが「正常」の場合、終了ステータスを「警告」とする
+    IF ( gn_target_cnt = cn_0 )
+      AND ( lv_retcode = cv_status_normal )
+    THEN
+      lv_retcode := cv_status_warn;
+    END IF;
+--********************  2010/03/16    1.8  Y.Kuboshima ADD  End  *******************
     --対象件数出力
     gv_out_msg := xxccp_common_pkg.get_msg(
                      iv_application  => cv_appl_short_name

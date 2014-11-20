@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCOS014A11C (body)
  * Description      : 入庫予定データの作成を行う
  * MD.050           : 入庫予定情報データ作成 (MD050_COS_014_A11)
- * Version          : 1.3
+ * Version          : 1.4
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -29,6 +29,8 @@ AS
  *  2009/07/01    1.1   K.Kiriu          [T1_1359]数量換算対応
  *  2009/08/18    1.2   K.Kiriu          [0000445]PT対応
  *  2009/09/28    1.3   K.Satomura       [0001156]
+ *  2010/03/16    1.4   Y.Kuboshima      [E_本稼動_01833]・ソート順の変更 (ヘッダID -> 伝票番号, 品目コード)
+ *                                                       ・ヘッダID, 品目コードのサマリを削除
  *
  *****************************************************************************************/
 --
@@ -1372,8 +1374,13 @@ AS
               )                        hca     --顧客
              ,( SELECT  xesl.header_id          header_id
                        ,xesl.inventory_item_id  inventory_item_id
-                       ,SUM( xesl.case_qty )    case_qty_sum
-                       ,SUM( xesl.indv_qty )    indv_qty_sum
+/* 2010/03/17 Ver1.4 Mod Start */
+-- ヘッダID, 品目コードのサマリの削除
+--                       ,SUM( xesl.case_qty )    case_qty_sum
+--                       ,SUM( xesl.indv_qty )    indv_qty_sum
+                       ,xesl.case_qty           case_qty_sum
+                       ,xesl.indv_qty           indv_qty_sum
+/* 2010/03/17 Ver1.4 Mod End   */
                 FROM    xxcos_edi_stc_lines   xesl
 /* 2009/08/18 Ver1.2 Add Start */
                        ,xxcos_edi_stc_headers xesh2
@@ -1381,9 +1388,12 @@ AS
                 AND     xesh2.fix_flag       = cv_y
                 AND     xesh2.header_id      = xesl.header_id
 /* 2009/08/18 Ver1.2 Add End   */
-                GROUP BY
-                        xesl.header_id
-                       ,xesl.inventory_item_id
+/* 2010/03/17 Ver1.4 Del Start */
+-- ヘッダID, 品目コードのサマリの削除
+--                GROUP BY
+--                        xesl.header_id
+--                       ,xesl.inventory_item_id
+/* 2010/03/17 Ver1.4 Del End   */
               )                        xesl   --入庫予定明細(品目サマリ)
              ,(
                 SELECT  mcix.inventory_item_id  inventory_item_id
@@ -1513,7 +1523,12 @@ AS
                 ( xesh.edi_send_flag    = gt_param_rec.edi_send_flag )
               )                                                                 --EDI送信状況フラグ
       ORDER BY
-              xesh.header_id  --伝票番号順に処理をする為
+/* 2010/03/17 Ver1.4 Mod Start */
+-- ヘッダID -> 伝票番号, 品目コードに修正
+--              xesh.header_id  --伝票番号順に処理をする為
+              xesh.invoice_number
+             ,sib.item_code
+/* 2010/03/17 Ver1.4 Mod End   */
       ;
     --EDI連携品目コード「JANコード」
     CURSOR jan_item_cur
@@ -1593,8 +1608,13 @@ AS
               )                       hca     --顧客
              ,( SELECT  xesl.header_id          header_id
                        ,xesl.inventory_item_id  inventory_item_id
-                       ,SUM( xesl.case_qty )    case_qty_sum
-                       ,SUM( xesl.indv_qty )    indv_qty_sum
+/* 2010/03/17 Ver1.4 Mod Start */
+-- ヘッダID, 品目コードのサマリの削除
+--                       ,SUM( xesl.case_qty )    case_qty_sum
+--                       ,SUM( xesl.indv_qty )    indv_qty_sum
+                       ,xesl.case_qty           case_qty_sum
+                       ,xesl.indv_qty           indv_qty_sum
+/* 2010/03/17 Ver1.4 Mod End   */
                 FROM    xxcos_edi_stc_lines   xesl
 /* 2009/08/18 Ver1.2 Add Start */
                        ,xxcos_edi_stc_headers xesh2
@@ -1602,9 +1622,12 @@ AS
                 AND     xesh2.fix_flag       = cv_y
                 AND     xesh2.header_id      = xesl.header_id
 /* 2009/08/18 Ver1.2 Add End   */
-                GROUP BY
-                        xesl.header_id
-                       ,xesl.inventory_item_id
+/* 2010/03/17 Ver1.4 Del Start */
+-- ヘッダID, 品目コードのサマリの削除
+--                GROUP BY
+--                        xesl.header_id
+--                       ,xesl.inventory_item_id
+/* 2010/03/17 Ver1.4 Del End   */
               )                        xesl   --入庫予定明細(品目サマリ)
              ,( SELECT  msib.inventory_item_id  inventory_item_id
                        ,msib.organization_id    organization_id
@@ -1704,7 +1727,12 @@ AS
                 ( xesh.edi_send_flag    = gt_param_rec.edi_send_flag )
               )                                                                 --EDI送信状況フラグ
       ORDER BY
-              xesh.header_id  --伝票番号順に処理をする為
+/* 2010/03/17 Ver1.4 Mod Start */
+-- ヘッダID -> 伝票番号, 品目コードに修正
+--              xesh.header_id  --伝票番号順に処理をする為
+              xesh.invoice_number
+             ,sib.item_code
+/* 2010/03/17 Ver1.4 Mod End   */
       ;
     -- *** ローカル・レコード ***
 --
