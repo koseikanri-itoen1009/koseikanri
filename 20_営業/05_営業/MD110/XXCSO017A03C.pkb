@@ -7,7 +7,7 @@ AS
  * Description      : 販売先用見積入力画面から、見積番号、版毎に見積書を
  *                    帳票に出力します。
  * MD.050           : MD050_CSO_017_A03_見積書（販売先用）PDF出力
- * Version          : 1.1
+ * Version          : 1.2
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -32,6 +32,7 @@ AS
  *  2009-03-03    1.1   Kazuyo.Hosoi     SVF起動API埋め込み
  *  2009-03-05    1.1   Kazuyo.Hosoi     帳票レイアウトレビュー指摘対応
  *                                       (郵便番号の取得、JANコードの編集)
+ *  2009-04-03    1.2   Kazuo.Satomura   ＳＴ障害対応(T1_0294)
  *****************************************************************************************/
 --
 --#######################  固定グローバル定数宣言部 START   #######################
@@ -49,7 +50,7 @@ AS
   cn_request_id             CONSTANT NUMBER      := fnd_global.conc_request_id; --REQUEST_ID
   cn_program_application_id CONSTANT NUMBER      := fnd_global.prog_appl_id;    --PROGRAM_APPLICATION_ID
   cn_program_id             CONSTANT NUMBER      := fnd_global.conc_program_id; --PROGRAM_ID
-  cd_program_update_date    CONSTANT DATE        := SYSDATE;                    --PROGRAM_UPDATE_DATE
+  cd_program_update_date   CONSTANT DATE        := SYSDATE;                    --PROGRAM_UPDATE_DATE
 --
   cv_msg_part      CONSTANT VARCHAR2(3) := ' : ';
   cv_msg_cont      CONSTANT VARCHAR2(3) := '.';
@@ -309,7 +310,10 @@ AS
     cv_lkup_tp_tx_dvsn       CONSTANT VARCHAR2(30) := 'XXCSO1_TAX_DIVISION';
     cv_lkup_tp_unt_prc_dvsn  CONSTANT VARCHAR2(30) := 'XXCSO1_UNIT_PRICE_DIVISION';
     cv_lkup_tp_qte_dvsn      CONSTANT VARCHAR2(30) := 'XXCSO1_QUOTE_DIVISION';
-    cv_lkup_tp_itm_nt_um_cd  CONSTANT VARCHAR2(30) := 'XXINV_ITM_NET_UOM_CODE';
+    /* 2009.04.03 K.Satomura T1_0294対応 START */
+    --cv_lkup_tp_itm_nt_um_cd  CONSTANT VARCHAR2(30) := 'XXINV_ITM_NET_UOM_CODE';
+    cv_lkup_tp_itm_nt_um_cd  CONSTANT VARCHAR2(30) := 'XXCMM_ITM_NET_UOM_CODE';
+    /* 2009.04.03 K.Satomura T1_0294対応 END */
     --
     cv_yes                   CONSTANT VARCHAR2(1)  := 'Y';
     cv_zero                  CONSTANT VARCHAR2(1)  := '0';
