@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCOP004A05R(body)
  * Description      : 引取計画立案表出力ワーク登録
  * MD.050           : 引取計画立案表 MD050_COP_004_A05
- * Version          : 1.3
+ * Version          : 1.4
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -29,6 +29,7 @@ AS
  *  2009/03/04    1.1  SCS.Kikuchi       SVF結合対応
  *  2009/04/28    1.2  SCS.Kikuchi       T1_0645,T1_0838対応
  *  2009/06/10    1.3  SCS.Kikuchi       T1_1411対応
+ *  2009/06/23    1.4  SCS.Kikuchi       障害:0000025対応
  *
  *****************************************************************************************/
 --
@@ -496,7 +497,10 @@ AS
       ,      xic1v.parent_item_no                                    -- 親品目コード
       UNION ALL
       SELECT cv_data_type_result                            data_type                -- データ種別区分
-      ,      TO_CHAR(shipment_date,cv_target_month_format)  detail_month             -- 明細年月
+--20090623_Ver1.4_0000025_SCS.Kikuchi_MOD_START
+--      ,      TO_CHAR(shipment_date,cv_target_month_format)  detail_month             -- 明細年月
+      ,      TO_CHAR(xsrst.shipment_date,cv_target_month_format)  detail_month             -- 明細年月
+--20090623_Ver1.4_0000025_SCS.Kikuchi_MOD_END
       ,      xic1v.prod_class_code                          prod_class_code          -- 商品区分
       ,      xic1v.prod_class_name                          prod_class_name          -- 商品区分名
       ,      SUBSTRB(xic1v.crowd_class_code,1,3)            crowd_class_code         -- 群コード
@@ -510,17 +514,38 @@ AS
       ,      xic1v.num_of_cases                             num_of_cases             -- ケース入数
       ,      xic1v.parent_item_no                           parent_item_no           -- 親品目コード
       FROM
-             xxcop_shipment_results   xsrst                          -- 親コード出荷実績表
+--20090623_Ver1.4_0000025_SCS.Kikuchi_MOD_START
+           ( SELECT xsr1.shipment_date
+             ,      xsr1.item_no
+             ,      xsr1.quantity
+             FROM   xxcop_shipment_results   xsr1
+             WHERE  xsr1.shipment_date  BETWEEN gd_result_collect_st_day1
+                                          AND     gd_result_collect_ed_day1
+             AND    xsr1.base_code      =       g_header_data_tbl(in_header_index).base_code
+             UNION
+             SELECT xsr2.shipment_date
+             ,      xsr2.item_no
+             ,      xsr2.quantity
+             FROM   xxcop_shipment_results   xsr2
+             WHERE  xsr2.shipment_date  BETWEEN gd_result_collect_st_day2
+                                          AND     gd_result_collect_ed_day2
+             AND    xsr2.base_code      =       g_header_data_tbl(in_header_index).base_code
+             )xsrst                                                  -- 親コード出荷実績表
+--             xxcop_shipment_results   xsrst                          -- 親コード出荷実績表
+--20090623_Ver1.4_0000025_SCS.Kikuchi_MOD_END
       ,      xxcop_item_categories1_v xic1v                          -- 計画_品目カテゴリビュー1
       ,      xxcmm_system_items_b     xsib                           -- Disc品目アドオン
       WHERE
-             xsrst.base_code            =       g_header_data_tbl(in_header_index).base_code
-      AND    (   xsrst.shipment_date    BETWEEN gd_result_collect_st_day1
-                                        AND     gd_result_collect_ed_day1
-             OR  xsrst.shipment_date    BETWEEN gd_result_collect_st_day2
-                                        AND     gd_result_collect_ed_day2
-             )
-      AND    xic1v.item_no              =       xsrst.item_no
+--20090623_Ver1.4_0000025_SCS.Kikuchi_MOD_START
+--             xsrst.base_code            =       g_header_data_tbl(in_header_index).base_code
+--      AND    (   xsrst.shipment_date    BETWEEN gd_result_collect_st_day1
+--                                        AND     gd_result_collect_ed_day1
+--             OR  xsrst.shipment_date    BETWEEN gd_result_collect_st_day2
+--                                        AND     gd_result_collect_ed_day2
+--             )
+--      AND    xic1v.item_no              =       xsrst.item_no
+             xic1v.item_no              =       xsrst.item_no
+--20090623_Ver1.4_0000025_SCS.Kikuchi_MOD_END
       AND    xic1v.start_date_active    <=      gd_system_date
       AND    xic1v.end_date_active      >=      gd_system_date
       AND    xic1v.prod_class_code      =       gv_prod_class_code
