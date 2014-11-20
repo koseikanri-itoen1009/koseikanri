@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCOS010A01C (body)
  * Description      : 受注データ取込機能
  * MD.050           : 受注データ取込(MD050_COS_010_A01)
- * Version          : 1.20
+ * Version          : 1.21
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -85,6 +85,7 @@ AS
  *                                       [E_本稼動_01900] EDI明細情報テーブルにEDI原単価(発注)を追加
  *  2010/05/06    1.19  K.Oomata         [E_本稼動_02569] 受注作成対象外データの担当営業員取得エラー不具合対応
  *  2010/05/10    1.20  K.Oomata         [E_本稼動_02626] EDIエラー情報テーブルのパージタイミング不具合対応
+ *  2011/02/04    1.21  T.Ishiwata       [E_本稼動_06475] 最上位担当営業員設定時、EDIワークに残さない対応
  *
  *****************************************************************************************/
 --
@@ -4586,8 +4587,10 @@ AS
 -- 2010/04/19 Ver.1.18 Y.Goto add Start
     -- データ妥当性チェックフラグが警告の場合、終了ステータスに警告を設定
     IF ( lv_date_validate_flag = cv_status_warn ) THEN
-      -- 全データに警告ステータスを設定
-      set_check_status_all( cv_edi_status_warning );
+-- 2011/02/04 Ver.1.21 T.Ishiwata del Start
+--      -- 全データに警告ステータスを設定
+--      set_check_status_all( cv_edi_status_warning );
+-- 2011/02/04 Ver.1.21 T.Ishiwata del End
       ov_retcode := cv_status_warn;
     END IF;
 -- 2010/04/19 Ver.1.18 Y.Goto add End
