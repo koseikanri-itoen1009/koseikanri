@@ -7,7 +7,7 @@ AS
  * Package Name     : XXCFF003A04C(body)
  * Description      : リース契約アップロード
  * MD.050           : MD050_CFF_003_A04_リース契約アップロード.doc
- * Version          : 1.4
+ * Version          : 1.5X 【暫定対応版】
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -51,6 +51,10 @@ AS
  *                                      初回設置場所と初回設置先の格納変数を修正
  *  2009/05/27    1.4   SCS礒崎祐次     [障害T1_1225] 税金コードマスタに
  *                                      よるマスタチェックの際、有効日の条件を追加する。
+ *  2009/11/27    1.5X  SCS渡辺学       【暫定対応版】
+ *                                      移行漏れ登録のため、チェックをはずす。
+ *                                      ・契約番号の半角チェック
+ *                                      ・終了日と最終支払日の大小チェック
   *****************************************************************************************/
 --
 --#######################  固定グローバル定数宣言部 START   #######################
@@ -800,6 +804,8 @@ AS
     -- データ区分が｢1:ヘッダー｣の時
     IF (gr_lord_data_tab(1) = cv_data_type_1) THEN
       -- 1.契約番号
+--DEL 2009/11/27 START
+/*
       --(半角チェック)
       lv_return := xxccp_common_pkg.chk_alphabet_number(
                      iv_check_char   => gr_lord_data_tab(2));
@@ -823,6 +829,8 @@ AS
                     ),1,5000)
         );
       END IF;
+*/
+--DEL 2009/11/27 END
       --(必須、文字数チェック)
       xxccp_common_pkg2.upload_item_check(
         gr_lord_name_tab(2)   -- 項目名称
@@ -1289,6 +1297,8 @@ AS
 --
     ELSIF (gr_lord_data_tab(1) = cv_data_type_2) THEN
       -- 1.契約番号
+--DEL 2009/11/27 START
+/*
       --(半角チェック)
       lv_return := xxccp_common_pkg.chk_alphabet_number(
                      iv_check_char   => gr_lord_data_tab(2));
@@ -1312,6 +1322,8 @@ AS
                     ),1,5000)
         );
       END IF;
+*/
+--DEL 2009/11/27 END
       --(必須、文字数チェック)
       xxccp_common_pkg2.upload_item_check(
         gr_lord_name_tab(2)   -- 項目名称
@@ -3288,6 +3300,8 @@ AS
         END IF;
       END IF;
 --
+--DEL 2009/11/27 START
+/*
       -- 3. リース終了日＜最終支払日
       IF (TO_CHAR(ld_lease_end_date,'YYYYMMDD') < TO_CHAR(ld_last_end_date,'YYYYMMDD')) THEN
         IF (lv_err_flag = cv_const_n) THEN
@@ -3306,6 +3320,8 @@ AS
                     ),1,5000)
         );
       END IF;
+*/
+--DEL 2009/11/27 END
 --
       --***************************************************
       -- 12. 税金コード
