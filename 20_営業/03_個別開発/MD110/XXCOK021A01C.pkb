@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCOK021A01C(body)
  * Description      : 問屋販売条件請求書Excelアップロード
  * MD.050           : 問屋販売条件請求書Excelアップロード MD050_COK_021_A01
- * Version          : 1.8
+ * Version          : 1.9
  *
  * Program List
  * ---------------------------- ----------------------------------------------------------
@@ -40,6 +40,7 @@ AS
  *  2009/12/18    1.6   K.Yamaguchi      [E_本稼動_00539] 妥当性チェック追加
  *  2009/12/24    1.7   K.Nakamura       [E_本稼動_00554] 問屋請求書テーブルデータチェック処理、明細データ削除処理に条件追加
  *  2009/12/25    1.8   K.Nakamura       [E_本稼動_00608] 請求単価、支払単価チェック修正
+ *  2010/01/04    1.9   K.Yamaguchi      [E_本稼動_00752] 請求数量、支払数量、請求金額、支払金額チェック修正
  *
  *****************************************************************************************/
 --
@@ -147,6 +148,10 @@ AS
   cv_number_format1          CONSTANT VARCHAR2(7)   := '9999999';      --勘定科目支払時の単価フォーマット
   cv_number_format2          CONSTANT VARCHAR2(10)  := '9999999.99';   --勘定科目支払時以外の単価フォーマット
 -- 2009/12/25 Ver.1.8 [E_本稼動_00608] SCS K.Nakamura ADD END
+-- 2010/01/04 Ver.1.9 [E_本稼動_00752] SCS K.Yamaguchi ADD START
+  cv_number_format3          CONSTANT VARCHAR2(10)  := '9999999999';   --金額書式フォーマット
+  cv_number_format4          CONSTANT VARCHAR2(10)  := '999999999';    --数量書式フォーマット
+-- 2010/01/04 Ver.1.9 [E_本稼動_00752] SCS K.Yamaguchi ADD END
   --記号
   cv_msg_part                CONSTANT VARCHAR2(3)   := ' : ';   --コロン
   cv_msg_cont                CONSTANT VARCHAR2(3)   := '.';     --ピリオド
@@ -909,10 +914,13 @@ AS
     END IF;
 */
     BEGIN
--- 2009/12/18 Ver.1.6 [E_本稼動_00539] SCS K.Yamaguchi REPAIR START
---      ln_chk_number := TO_NUMBER( iv_demand_qty );
-      ln_demand_qty := TO_NUMBER( iv_demand_qty );
--- 2009/12/18 Ver.1.6 [E_本稼動_00539] SCS K.Yamaguchi REPAIR END
+-- 2010/01/04 Ver.1.9 [E_本稼動_00752] SCS K.Yamaguchi REPAIR START
+---- 2009/12/18 Ver.1.6 [E_本稼動_00539] SCS K.Yamaguchi REPAIR START
+----      ln_chk_number := TO_NUMBER( iv_demand_qty );
+--      ln_demand_qty := TO_NUMBER( iv_demand_qty );
+---- 2009/12/18 Ver.1.6 [E_本稼動_00539] SCS K.Yamaguchi REPAIR END
+      ln_demand_qty := TO_NUMBER( iv_demand_qty, cv_number_format4 );
+-- 2010/01/04 Ver.1.9 [E_本稼動_00752] SCS K.Yamaguchi REPAIR END
 --
     EXCEPTION
       WHEN OTHERS THEN
@@ -956,10 +964,13 @@ AS
     END IF;
 */
     BEGIN
--- 2009/12/18 Ver.1.6 [E_本稼動_00539] SCS K.Yamaguchi REPAIR START
---      ln_chk_number := TO_NUMBER( iv_demand_amt );
-      ln_demand_amt := TO_NUMBER( iv_demand_amt );
--- 2009/12/18 Ver.1.6 [E_本稼動_00539] SCS K.Yamaguchi REPAIR END
+-- 2010/01/04 Ver.1.9 [E_本稼動_00752] SCS K.Yamaguchi REPAIR START
+---- 2009/12/18 Ver.1.6 [E_本稼動_00539] SCS K.Yamaguchi REPAIR START
+----      ln_chk_number := TO_NUMBER( iv_demand_amt );
+--      ln_demand_amt := TO_NUMBER( iv_demand_amt );
+---- 2009/12/18 Ver.1.6 [E_本稼動_00539] SCS K.Yamaguchi REPAIR END
+      ln_demand_amt := TO_NUMBER( iv_demand_amt, cv_number_format3 );
+-- 2010/01/04 Ver.1.9 [E_本稼動_00752] SCS K.Yamaguchi REPAIR END
 --
     EXCEPTION
       WHEN OTHERS THEN
@@ -1004,10 +1015,13 @@ AS
       END IF;
 */
       BEGIN
--- 2009/12/18 Ver.1.6 [E_本稼動_00539] SCS K.Yamaguchi REPAIR START
---        ln_chk_number := TO_NUMBER( iv_payment_qty );
-        ln_payment_qty := TO_NUMBER( iv_payment_qty );
--- 2009/12/18 Ver.1.6 [E_本稼動_00539] SCS K.Yamaguchi REPAIR END
+-- 2010/01/04 Ver.1.9 [E_本稼動_00752] SCS K.Yamaguchi REPAIR START
+---- 2009/12/18 Ver.1.6 [E_本稼動_00539] SCS K.Yamaguchi REPAIR START
+----        ln_chk_number := TO_NUMBER( iv_payment_qty );
+--        ln_payment_qty := TO_NUMBER( iv_payment_qty );
+---- 2009/12/18 Ver.1.6 [E_本稼動_00539] SCS K.Yamaguchi REPAIR END
+        ln_payment_qty := TO_NUMBER( iv_payment_qty, cv_number_format4 );
+-- 2010/01/04 Ver.1.9 [E_本稼動_00752] SCS K.Yamaguchi REPAIR END
 --
       EXCEPTION
         WHEN OTHERS THEN
@@ -1056,10 +1070,13 @@ AS
       END IF;
 */
       BEGIN
--- 2009/12/18 Ver.1.6 [E_本稼動_00539] SCS K.Yamaguchi REPAIR START
---        ln_chk_number := TO_NUMBER( iv_payment_amt );
-        ln_payment_amt := TO_NUMBER( iv_payment_amt );
--- 2009/12/18 Ver.1.6 [E_本稼動_00539] SCS K.Yamaguchi REPAIR END
+-- 2010/01/04 Ver.1.9 [E_本稼動_00752] SCS K.Yamaguchi REPAIR START
+---- 2009/12/18 Ver.1.6 [E_本稼動_00539] SCS K.Yamaguchi REPAIR START
+----        ln_chk_number := TO_NUMBER( iv_payment_amt );
+--        ln_payment_amt := TO_NUMBER( iv_payment_amt );
+---- 2009/12/18 Ver.1.6 [E_本稼動_00539] SCS K.Yamaguchi REPAIR END
+        ln_payment_amt := TO_NUMBER( iv_payment_amt, cv_number_format3 );
+-- 2010/01/04 Ver.1.9 [E_本稼動_00752] SCS K.Yamaguchi REPAIR END
 --
       EXCEPTION
         WHEN OTHERS THEN
