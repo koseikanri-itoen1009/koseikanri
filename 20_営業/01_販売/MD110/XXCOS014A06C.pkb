@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCOS014A06C (body)
  * Description      : 納品予定プルーフリスト作成 
  * MD.050           : 納品予定プルーフリスト作成 MD050_COS_014_A06
- * Version          : 1.20
+ * Version          : 1.21
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -60,6 +60,7 @@ AS
  *  2010/04/01    1.18  M.Hokkanji       [E_本稼動_01979] 原価金額(出荷)の計算式を変更
  *  2010/04/22    1.19  M.Sano           [E_本稼動_02249] 品目の結合をEDI→受注に変更
  *  2010/06/18    1.20  S.Miyakoshi      [E_本稼動_03075] 拠点選択対応
+ *  2011/04/28    1.21  T.Ishiwata       [E_本稼動_07218] 事由取得の共通関数化対応
  *
 *** 開発中の変更内容 ***
 *****************************************************************************************/
@@ -1534,6 +1535,9 @@ AS
 --******************************************* 2009/12/09 1.15 K.Nakamura ADD END   **********************************
     -- *** ローカル変数 ***
     lt_header_id                       oe_order_headers_all.header_id%TYPE;       --ヘッダID
+-- 2011/04/28 T.Ishiwata Ver.1.21 ADD START
+    lt_line_id                         oe_order_lines_all.line_id%TYPE;           --受注明細ID
+-- 2011/04/28 T.Ishiwata Ver.1.21 ADD END
     lt_tkn                             fnd_new_messages.message_text%TYPE;        --メッセージ用文字列
 --******************************************* 2009/12/09 1.15 K.Nakamura MOD START **********************************
 --    lv_break_key_old                  VARCHAR2(100);                             --旧ブレイクキー
@@ -2297,7 +2301,9 @@ AS
                     /*+
                       LEADING ( xeh )
                       USE_NL  ( xlvv_t.flv )
-                      USE_NL  ( ore )
+-- 2011/04/28 T.Ishiwata Ver.1.21 DEL START
+--                      USE_NL  ( ore )
+-- 2011/04/28 T.Ishiwata Ver.1.21 DEL END
                       USE_NL  ( ottt_h )
                       INDEX   ( ooha oe_order_headers_n7 )
                     */
@@ -2306,8 +2312,10 @@ AS
                     ,ooha.cust_po_number                                                cust_po_number                --受注ヘッダ（顧客発注）
                     ,xlvv.attribute8                                                    bargain_class                 --定番特売区分
                     ,xlvv.attribute10                                                   outbound_flag                 --OUTBOUND可否
-                    ,ore.reason_id                                                      reason_id                     --事由ID
-                    ,xlvv3.attribute1                                                   stockout_cancel_flag          --欠品事由取消フラグ
+-- 2011/04/28 T.Ishiwata Ver.1.21 DEL START
+--                    ,ore.reason_id                                                      reason_id                     --事由ID
+--                    ,xlvv3.attribute1                                                   stockout_cancel_flag          --欠品事由取消フラグ
+-- 2011/04/28 T.Ishiwata Ver.1.21 DEL END
                     ------------------------------------------------ヘッダ情報------------------------------------------------
                     ,xeh.medium_class                                                   medium_class                  --媒体区分
                     ,i_input_rec.data_type_code                                         data_type_code                --データ種コード
@@ -2986,10 +2994,15 @@ AS
                     ,oola.order_quantity_uom                                            order_quantity_uom            -- 単位(受注明細)
 -- ******************************* 2009/07/23 N.Maeda 1.11 ******************************* --
 -- ********* 2009/10/06 1.14 N.Maeda ADD START ********* --
-                    ,xlvv3.attribute1                                                   code_data
-                    ,ore.reason_code                                                    reason_code
+-- 2011/04/28 T.Ishiwata Ver.1.21 DEL START
+--                    ,xlvv3.attribute1                                                   code_data
+--                    ,ore.reason_code                                                    reason_code
+-- 2011/04/28 T.Ishiwata Ver.1.21 DEL END
                     ,'1'                                                                data_type                     -- 取得データタイプ(1:EDI)
 -- ********* 2009/10/06 1.14 N.Maeda ADD  END  ********* --
+-- 2011/04/28 T.Ishiwata Ver.1.21 ADD START
+                    ,oola.line_id                                                       line_id                       -- 受注明細ID
+-- 2011/04/28 T.Ishiwata Ver.1.21 ADD END
 -- ******************** 2010/03/24 1.17 M.Hirose MOD START ************************* --
 --              FROM   (SELECT xeh.medium_class                                            medium_class                  --媒体区分
 /* 2010/06/18 Ver1.20 Mod Start */
@@ -3833,44 +3846,46 @@ AS
 --                               INDEX ( ore xxcos_oe_reasons_n05 )
 --                               USE_NL ( ore_max )
 --                             */
-----******************************************* 2009/08/27 1.13 N.Maeda ADD  END  *************************************
---                             ore.reason_id                                              reason_id
---                            ,ore.reason_code                                            reason_code
---                            ,ore.entity_id                                              entity_id
---                      FROM oe_reasons                                         ore
---                          ,(SELECT 
-----******************************************* 2009/08/27 1.13 N.Maeda ADD START *************************************
---                                   /*+
---                                     INDEX ( oe_reasons xxcos_oe_reasons_n04 )
---                                   */
-----******************************************* 2009/08/27 1.13 N.Maeda ADD  END  *************************************
---                                   entity_id
---                                  ,MAX(creation_date) creation_date
---                            FROM   oe_reasons
---                            WHERE  reason_type = cv_reason_type
---                            AND    entity_code = cv_entity_code_line
---                            GROUP BY entity_id
---                           )                                                  ore_max
---                      WHERE ore.entity_id     = ore_max.entity_id
---                      AND   ore.creation_date = ore_max.creation_date
---                     )                                                                  ore                           --受注理由ビュー
-                    ,(SELECT temp.reason_id   AS reason_id    -- 内部ID
-                            ,temp.reason_code AS reason_code  -- 理由コード 
-                            ,temp.entity_id   AS entity_id    -- 要素ID
-                      FROM   (SELECT RANK() OVER( PARTITION BY ore_temp.entity_id           -- 要素ID
-                                                  ORDER     BY ore_temp.creation_date DESC  -- 作成日
-                                            )               AS ranking      -- 明細内部IDの中で最近作成されたもの順
-                                    ,ore_temp.reason_id     AS reason_id    -- 内部ID
-                                    ,ore_temp.reason_code   AS reason_code  -- 理由コード
-                                    ,ore_temp.entity_id     AS entity_id    -- 要素ID
-                              FROM   oe_reasons ore_temp  -- 受注理由
-                              WHERE  ore_temp.reason_type = cv_reason_type       -- エラータイプ
-                              AND    ore_temp.entity_code = cv_entity_code_line  -- 項目
-                            )  temp
-                      WHERE  temp.ranking = 1
-                      )                      ore     --受注理由ビュー
--- ******************** 2010/03/24 1.17 M.Hirose MOD END   ************************* --
-                    ,xxcos_lookup_values_v                                              xlvv3                         --事由コードマスタ
+-- 2011/04/28 T.Ishiwata Ver.1.21 DEL START
+------******************************************* 2009/08/27 1.13 N.Maeda ADD  END  *************************************
+----                             ore.reason_id                                              reason_id
+----                            ,ore.reason_code                                            reason_code
+----                            ,ore.entity_id                                              entity_id
+----                      FROM oe_reasons                                         ore
+----                          ,(SELECT 
+------******************************************* 2009/08/27 1.13 N.Maeda ADD START *************************************
+----                                   /*+
+----                                     INDEX ( oe_reasons xxcos_oe_reasons_n04 )
+----                                   */
+------******************************************* 2009/08/27 1.13 N.Maeda ADD  END  *************************************
+----                                   entity_id
+----                                  ,MAX(creation_date) creation_date
+----                            FROM   oe_reasons
+----                            WHERE  reason_type = cv_reason_type
+----                            AND    entity_code = cv_entity_code_line
+----                            GROUP BY entity_id
+----                           )                                                  ore_max
+----                      WHERE ore.entity_id     = ore_max.entity_id
+----                      AND   ore.creation_date = ore_max.creation_date
+----                     )                                                                  ore                           --受注理由ビュー
+--                    ,(SELECT temp.reason_id   AS reason_id    -- 内部ID
+--                            ,temp.reason_code AS reason_code  -- 理由コード 
+--                            ,temp.entity_id   AS entity_id    -- 要素ID
+--                      FROM   (SELECT RANK() OVER( PARTITION BY ore_temp.entity_id           -- 要素ID
+--                                                  ORDER     BY ore_temp.creation_date DESC  -- 作成日
+--                                            )               AS ranking      -- 明細内部IDの中で最近作成されたもの順
+--                                    ,ore_temp.reason_id     AS reason_id    -- 内部ID
+--                                    ,ore_temp.reason_code   AS reason_code  -- 理由コード
+--                                    ,ore_temp.entity_id     AS entity_id    -- 要素ID
+--                              FROM   oe_reasons ore_temp  -- 受注理由
+--                              WHERE  ore_temp.reason_type = cv_reason_type       -- エラータイプ
+--                              AND    ore_temp.entity_code = cv_entity_code_line  -- 項目
+--                            )  temp
+--                      WHERE  temp.ranking = 1
+--                      )                      ore     --受注理由ビュー
+---- ******************** 2010/03/24 1.17 M.Hirose MOD END   ************************* --
+--                    ,xxcos_lookup_values_v                                              xlvv3                         --事由コードマスタ
+-- 2011/04/28 T.Ishiwata Ver.1.21 DEL END
                     ,oe_order_sources                                                   oos                           --受注ソーステーブル
                     ,ic_item_mst_b                                                      iimb                          --OPM品目マスタ
                     ,xxcmn_item_mst_b                                                   ximb                          --OPM品目マスタアドオン
@@ -3960,14 +3975,16 @@ AS
 --              AND    oola.orig_sys_line_ref     = xel.order_connection_line_number                                    --外部ｼｽﾃﾑ受注明細番号 = 受注関連明細番号
 --******************************************* 2009/08/27 1.13 N.Maeda MOD  END  *************************************
               AND    oola.line_type_id          = ottt_l.transaction_type_id                                          --受注明細タイプ
-              --受注理由ビュー抽出条件
-              AND    ore.entity_id(+)           = oola.line_id
-              --受注理由テーブル抽出条件
-              AND    xlvv3.lookup_type(+)       = 'CANCEL_CODE'
-              AND    xlvv3.lookup_code(+)       = ore.reason_code
-              AND    i_other_rec.process_date
-                BETWEEN NVL(xlvv3.start_date_active,i_other_rec.process_date)
-                AND     NVL(xlvv3.end_date_active  ,i_other_rec.process_date)
+-- 2011/04/28 T.Ishiwata Ver.1.21 DEL START
+--              --受注理由ビュー抽出条件
+--              AND    ore.entity_id(+)           = oola.line_id
+--              --受注理由テーブル抽出条件
+--              AND    xlvv3.lookup_type(+)       = 'CANCEL_CODE'
+--              AND    xlvv3.lookup_code(+)       = ore.reason_code
+--              AND    i_other_rec.process_date
+--                BETWEEN NVL(xlvv3.start_date_active,i_other_rec.process_date)
+--                AND     NVL(xlvv3.end_date_active  ,i_other_rec.process_date)
+-- 2011/04/28 T.Ishiwata Ver.1.21 DEL END
 --******************************************* 2010/04/22 1.19 M.Sano  MOD START *************************************
 --              --OPM品目マスタ抽出条件
 ----******************************************* 2009/08/27 1.13 N.Maeda MOD START *************************************
@@ -4054,14 +4071,22 @@ AS
 --******************************************* 2009/08/27 1.13 N.Maeda MOD  END  *************************************
                 -- 欠品帳票出力条件
                 OR  ( ( xlvv_t.attribute2 = 'N' AND xlvv_t.attribute3 = 'Y' )
-                      AND ( ore.reason_code <> cv_reason_code_00 AND xeh.edi_delivery_schedule_flag = 'N' ) )
+-- 2011/04/28 T.Ishiwata Ver.1.21 MOD START
+--                      AND ( ore.reason_code <> cv_reason_code_00 AND xeh.edi_delivery_schedule_flag = 'N' ) )
+                      AND (    xxcos_common2_pkg.get_reason_code( oola.line_id ) <> cv_reason_code_00 
+                           AND xeh.edi_delivery_schedule_flag                     = 'N' ) )
+-- 2011/04/28 T.Ishiwata Ver.1.21 MOD END
                 -- 値引欠品帳票出力条件
                 OR  ( ( xlvv_t.attribute2 = 'Y' AND xlvv_t.attribute3 = 'Y' )
 --******************************************* 2009/08/27 1.13 N.Maeda MOD START *************************************
                       AND ( xeh.order_unit_price > oola.unit_selling_price
 --                      AND ( xel.order_unit_price > oola.unit_selling_price
 --******************************************* 2009/08/27 1.13 N.Maeda MOD  END  *************************************
-                        AND ( ore.reason_code <> cv_reason_code_00 AND xeh.edi_delivery_schedule_flag = 'N' ) ) )
+-- 2011/04/28 T.Ishiwata Ver.1.21 MOD START
+--                        AND ( ore.reason_code <> cv_reason_code_00 AND xeh.edi_delivery_schedule_flag = 'N' ) ) )
+                        AND (    xxcos_common2_pkg.get_reason_code( oola.line_id ) <> cv_reason_code_00 
+                             AND xeh.edi_delivery_schedule_flag                     = 'N' ) ) )
+-- 2011/04/28 T.Ishiwata Ver.1.21 MOD END
                 -- フラグ無
                 OR  ( xlvv_t.attribute2 = 'N' AND xlvv_t.attribute3 = 'N' )
                 OR  ( xlvv_t.attribute2 IS NULL AND xlvv_t.attribute3 IS NULL ) )
@@ -4076,15 +4101,19 @@ AS
 --              SELECT TO_CHAR(ooha.header_id)                                            header_id                     --ヘッダID(更新キー)
               SELECT /*+
                           USE_NL( xciv xciv.mcix xciv.mci xlvv.flv xlvv2.flv xlvv_t.flv )
-                          USE_NL( ore )
+-- 2011/04/28 T.Ishiwata Ver.1.21 DEL START
+--                          USE_NL( ore )
+-- 2011/04/28 T.Ishiwata Ver.1.21 DEL END
                      */
                      TO_CHAR(ooha.header_id)                                            header_id                     --ヘッダID(更新キー)
 -- ******************** 2010/03/24 1.17 M.Hirose MOD END   ************************* --
                     ,ooha.cust_po_number                                                cust_po_number                --受注ヘッダ（顧客発注）
                     ,xlvv.attribute8                                                    bargain_class                 --定番特売区分
                     ,xlvv.attribute12                                                   outbound_flag                 --EDI外OUTBOUND可否
-                    ,NULL                                                                reason_id                     --事由ID(ダミー)
-                    ,cv_stockout_cancel_flag                                            stockout_cancel_flag          --欠品事由取消フラグ
+-- 2011/04/28 T.Ishiwata Ver.1.21 DEL START
+--                    ,NULL                                                                reason_id                     --事由ID(ダミー)
+--                    ,cv_stockout_cancel_flag                                            stockout_cancel_flag          --欠品事由取消フラグ
+-- 2011/04/28 T.Ishiwata Ver.1.21 DEL END
                     ------------------------------------------------ヘッダ情報------------------------------------------------
                     ,cv_number01                                                        medium_class                  --媒体区分
                     ,i_input_rec.data_type_code                                         data_type_code                --データ種コード
@@ -4622,10 +4651,15 @@ AS
                     ,oola.order_quantity_uom                                            order_quantity_uom            -- 単位(受注明細)
 -- ******************************* 2009/07/23 N.Maeda 1.11 ******************************* --
 -- ********* 2009/10/06 1.14 N.Maeda ADD START ********* --
-                    ,NULL                                                               code_data
-                    ,NULL                                                               reason_code
+-- 2011/04/28 T.Ishiwata Ver.1.21 DEL START
+--                    ,NULL                                                               code_data
+--                    ,NULL                                                               reason_code
+-- 2011/04/28 T.Ishiwata Ver.1.21 DEL END
                     ,'2'                                                                data_type                     -- 取得データタイプ(1:Online)
 -- ********* 2009/10/06 1.14 N.Maeda ADD  END  ********* --
+-- 2011/04/28 T.Ishiwata Ver.1.21 ADD START
+                    ,oola.line_id                                                       line_id                       -- 受注明細ID
+-- 2011/04/28 T.Ishiwata Ver.1.21 ADD END
                     --受注ヘッダ情報インラインビュー
               FROM (SELECT ooha.header_id                                               header_id
 -- 2009/02/16 T.Nakamura Ver.1.3 add start
@@ -4759,51 +4793,53 @@ AS
 -- 2009/04/27 K.Kiriu Ver.1.10 mod start
                   ,mtl_units_of_measure_tl                                              muom                          -- 単位マスタ
 -- 2009/04/27 K.Kiriu Ver.1.10 mod end
--- ******************** 2010/03/24 1.17 M.Hirose MOD START ************************* --
----- ********************* 2009/07/07 1.11 N.Maeda ADD START *********************** --
---                  ,(SELECT 
----- ************ 2009/08/27 N.Maeda 1.13 ADD START ***************** --
---                           /*+
---                             INDEX ( ORE XXCOS_OE_REASONS_N05 )
---                             USE_NL ( ORE_MAX )
---                           */
----- ************ 2009/08/27 N.Maeda 1.13 ADD  END  ***************** --
---                           ore.reason_id                                              reason_id
---                          ,ore.reason_code                                            reason_code
---                          ,ore.entity_id                                              entity_id
---                    FROM oe_reasons                                         ore
---                        ,(SELECT 
----- ************ 2009/08/27 N.Maeda 1.13 ADD START ***************** --
---                                 /*+
---                                   INDEX ( OE_REASONS XXCOS_OE_REASONS_N04 )
---                                 */
----- ************ 2009/08/27 N.Maeda 1.13 ADD  END  ***************** --
---                                 entity_id
---                                 ,MAX(creation_date) creation_date
---                          FROM   oe_reasons
---                          WHERE  reason_type = cv_reason_type
---                          AND    entity_code = cv_entity_code_line
---                          GROUP BY entity_id
---                         )                                                  ore_max
---                    WHERE ore.entity_id     = ore_max.entity_id
---                    AND   ore.creation_date = ore_max.creation_date
---                   )                                                                  ore                           --受注理由ビュー
-                  ,(SELECT temp.reason_id   AS reason_id    -- 内部ID
-                          ,temp.reason_code AS reason_code  -- 理由コード 
-                          ,temp.entity_id   AS entity_id    -- 要素ID
-                    FROM   (SELECT RANK() OVER( PARTITION BY ore_temp.entity_id           -- 要素ID
-                                                ORDER     BY ore_temp.creation_date DESC  -- 作成日
-                                          )               AS ranking      -- 明細内部IDの中で最近作成されたもの順
-                                  ,ore_temp.reason_id     AS reason_id    -- 内部ID
-                                  ,ore_temp.reason_code   AS reason_code  -- 理由コード
-                                  ,ore_temp.entity_id     AS entity_id    -- 要素ID
-                            FROM   oe_reasons ore_temp  -- 受注理由
-                            WHERE  ore_temp.reason_type = cv_reason_type       -- エラータイプ
-                            AND    ore_temp.entity_code = cv_entity_code_line  -- 項目
-                          )  temp
-                    WHERE  temp.ranking = 1
-                    )                      ore     --受注理由ビュー
--- ******************** 2010/03/24 1.17 M.Hirose MOD END   ************************* --
+-- 2011/04/28 T.Ishiwata Ver.1.21 DEL START
+---- ******************** 2010/03/24 1.17 M.Hirose MOD START ************************* --
+------ ********************* 2009/07/07 1.11 N.Maeda ADD START *********************** --
+----                  ,(SELECT 
+------ ************ 2009/08/27 N.Maeda 1.13 ADD START ***************** --
+----                           /*+
+----                             INDEX ( ORE XXCOS_OE_REASONS_N05 )
+----                             USE_NL ( ORE_MAX )
+----                           */
+------ ************ 2009/08/27 N.Maeda 1.13 ADD  END  ***************** --
+----                           ore.reason_id                                              reason_id
+----                          ,ore.reason_code                                            reason_code
+----                          ,ore.entity_id                                              entity_id
+----                    FROM oe_reasons                                         ore
+----                        ,(SELECT 
+------ ************ 2009/08/27 N.Maeda 1.13 ADD START ***************** --
+----                                 /*+
+----                                   INDEX ( OE_REASONS XXCOS_OE_REASONS_N04 )
+----                                 */
+------ ************ 2009/08/27 N.Maeda 1.13 ADD  END  ***************** --
+----                                 entity_id
+----                                 ,MAX(creation_date) creation_date
+----                          FROM   oe_reasons
+----                          WHERE  reason_type = cv_reason_type
+----                          AND    entity_code = cv_entity_code_line
+----                          GROUP BY entity_id
+----                         )                                                  ore_max
+----                    WHERE ore.entity_id     = ore_max.entity_id
+----                    AND   ore.creation_date = ore_max.creation_date
+----                   )                                                                  ore                           --受注理由ビュー
+--                  ,(SELECT temp.reason_id   AS reason_id    -- 内部ID
+--                          ,temp.reason_code AS reason_code  -- 理由コード 
+--                          ,temp.entity_id   AS entity_id    -- 要素ID
+--                    FROM   (SELECT RANK() OVER( PARTITION BY ore_temp.entity_id           -- 要素ID
+--                                                ORDER     BY ore_temp.creation_date DESC  -- 作成日
+--                                          )               AS ranking      -- 明細内部IDの中で最近作成されたもの順
+--                                  ,ore_temp.reason_id     AS reason_id    -- 内部ID
+--                                  ,ore_temp.reason_code   AS reason_code  -- 理由コード
+--                                  ,ore_temp.entity_id     AS entity_id    -- 要素ID
+--                            FROM   oe_reasons ore_temp  -- 受注理由
+--                            WHERE  ore_temp.reason_type = cv_reason_type       -- エラータイプ
+--                            AND    ore_temp.entity_code = cv_entity_code_line  -- 項目
+--                          )  temp
+--                    WHERE  temp.ranking = 1
+--                    )                      ore     --受注理由ビュー
+---- ******************** 2010/03/24 1.17 M.Hirose MOD END   ************************* --
+-- 2011/04/28 T.Ishiwata Ver.1.21 DEL END
                   ,xxcos_lookup_values_v                                    xlvv_t                         -- プルーフ帳票情報マスタ
 -- ********************* 2009/07/07 1.11 N.Maeda ADD  END  *********************** --
               --受注タイプ(ヘッダ)抽出条件
@@ -4942,8 +4978,10 @@ AS
               AND ooha.delivery_base_code           = cdm.account_number(+)
 --******************************************* 2009/04/02 1.9 T.Kitajima ADD  END  *************************************
 -- ********************* 2009/07/07 1.11 N.Maeda ADD START *********************** --
-              -- 受注理由ビュー抽出条件
-              AND    ore.entity_id(+) = oola.line_id
+-- 2011/04/28 T.Ishiwata Ver.1.21 DEL START
+--              -- 受注理由ビュー抽出条件
+--              AND    ore.entity_id(+) = oola.line_id
+-- 2011/04/28 T.Ishiwata Ver.1.21 DEL END
               AND   xlvv_t.lookup_type   = cv_xxcos1_report_data_type_21
               AND   xlvv_t.meaning   = g_input_rec.report_code
                 -- 値引帳票出力条件(出力を行わない)
@@ -4951,7 +4989,10 @@ AS
                       AND 'Y' = 'N' )
                 -- 欠品帳票出力条件
                 OR  ( ( xlvv_t.attribute2 = 'N' AND xlvv_t.attribute3 = 'Y' )
-                      AND ( ore.reason_code <> cv_reason_code_00 ) )
+-- 2011/04/28 T.Ishiwata Ver.1.21 MOD START
+--                      AND ( ore.reason_code <> cv_reason_code_00 ) )
+                      AND ( xxcos_common2_pkg.get_reason_code( oola.line_id )  <> cv_reason_code_00 ) )
+-- 2011/04/28 T.Ishiwata Ver.1.21 MOD END
                 -- 値引欠品帳票出力条件(出力を行わない)
                 OR  ( ( xlvv_t.attribute2 = 'Y' AND xlvv_t.attribute3 = 'Y' )
                       AND (  'Y' = 'N' ) )
@@ -5153,8 +5194,10 @@ AS
        ,lt_cust_po_number                                                                                     --受注ヘッダ（顧客発注）
        ,lt_bargain_class                                                                                      --定番特売区分
        ,lt_outbound_flag                                                                                      --OUTBOUND可否
-       ,ln_reason_id                                                                                          --事由ID
-       ,lt_stockout_cancel_flag                                                                               --欠品事由取消フラグ
+-- 2011/04/28 T.Ishiwata Ver.1.21 DEL START
+--       ,ln_reason_id                                                                                          --事由ID
+--       ,lt_stockout_cancel_flag                                                                               --欠品事由取消フラグ
+-- 2011/04/28 T.Ishiwata Ver.1.21 DEL END
             ------------------------------------------------ヘッダ情報------------------------------------------------
        ,l_data_tab('MEDIUM_CLASS')                                                                            --媒体区分
        ,l_data_tab('DATA_TYPE_CODE')                                                                          --データ種コード
@@ -5510,16 +5553,43 @@ AS
        ,lt_order_quantity_uom                                                                                 --単位(受注明細)
 -- ********************************** 2009/07/23 N.Maeda 1.11 ADD  END  **************************************** --
 -- ********* 2009/10/06 1.14 N.Maeda ADD START ********* --
-       ,lt_code_data                                                                                          -- 
-       ,lt_reason_code                                                                                        -- 事由コード
+-- 2011/04/28 T.Ishiwata Ver.1.21 DEL START
+--       ,lt_code_data                                                                                          -- 
+--       ,lt_reason_code                                                                                        -- 事由コード
+-- 2011/04/28 T.Ishiwata Ver.1.21 DEL END
        ,lv_data_type                                                                                          -- 取得データタイプ(1:EDI,2:Online)
 -- ********* 2009/10/06 1.14 N.Maeda ADD  END  ********* --
+-- 2011/04/28 T.Ishiwata Ver.1.21 ADD START
+       ,lt_line_id                                                                                            -- 受注明細ID
+-- 2011/04/28 T.Ishiwata Ver.1.21 ADD END
       ;
 out_line(buff => '1');
       EXIT WHEN cur_data_record%NOTFOUND;
+-- 2011/04/28 T.Ishiwata Ver.1.21 ADD START
+      -- 変数の初期化
+      ln_reason_id            := NULL;
+      lt_reason_code          := NULL;
+      lt_code_data            := NULL;
+      lt_stockout_cancel_flag := NULL;
+-- 2011/04/28 T.Ishiwata Ver.1.21 ADD END
 -- ********* 2009/10/06 1.14 N.Maeda ADD START ********* --
       -- EDIデータの場合
       IF ( lv_data_type = '1' ) THEN
+-- 2011/04/28 T.Ishiwata Ver.1.21 ADD START
+        -- 事由コードマスタデータ取得関数
+        xxcos_common2_pkg.get_reason_data(
+           in_line_id      =>  lt_line_id                 -- 受注明細ID
+          ,on_reason_id    =>  ln_reason_id               -- 事由コードマスタ内部ID
+          ,ov_reason_code  =>  lt_reason_code             -- 事由コード
+          ,ov_select_flag  =>  lt_code_data               -- 選択可能フラグ
+          ,ov_errbuf       =>  lv_errbuf
+          ,ov_retcode      =>  lv_retcode
+          ,ov_errmsg       =>  lv_errmsg
+        );
+        --
+        -- 別用途同一内容の変数にセット
+        lt_stockout_cancel_flag  := lt_code_data;
+-- 2011/04/28 T.Ishiwata Ver.1.21 ADD END
         --欠品区分設定
         IF ( ( l_data_tab('SUM_ORDER_QTY') - l_data_tab('SUM_SHIPPING_QTY') ) = 0 ) THEN
           l_data_tab('STOCKOUT_CLASS') := cv_number00;
