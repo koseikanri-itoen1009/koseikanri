@@ -1,0 +1,5 @@
+CREATE INDEX xxcos.xxcos_sales_exp_ar_work_n1 ON xxcos.xxcos_sales_exp_ar_work (
+  request_id  --óvãÅID
+)
+TABLESPACE xxidx2
+;

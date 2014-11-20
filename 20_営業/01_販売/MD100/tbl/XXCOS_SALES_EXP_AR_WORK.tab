@@ -1,0 +1,105 @@
+/*****************************************************************************************
+ * Copyright(c)Sumisho Computer Systems Corporation, 2008. All rights reserved.
+ *
+ * Table Name  : XXCOS_SALES_EXP_AR_WORK
+ * Description : 販売実績AR用ワークテーブル
+ * Version     : 1.0
+ *
+ * Change Record
+ * ------------- ----- ---------------- ---------------------------------
+ *  Date          Ver.  Editor           Description
+ * ------------- ----- ---------------- ---------------------------------
+ *  2009/10/02    1.0   K.Kiriu          新規作成
+ *
+ ****************************************************************************************/
+CREATE TABLE XXCOS.XXCOS_SALES_EXP_AR_WORK(
+  SALES_EXP_HEADER_ID              NUMBER                          -- 販売実績ヘッダID
+ ,DLV_INVOICE_NUMBER               VARCHAR2(12)                    -- 納品伝票番号
+ ,DLV_INVOICE_CLASS                VARCHAR2(1)                     -- 納品伝票区分
+ ,CUST_GYOTAI_SHO                  VARCHAR2(2)                     -- 業態小分類
+ ,DELIVERY_DATE                    DATE                            -- 納品日
+ ,INSPECT_DATE                     DATE                            -- 検収日
+ ,SHIP_TO_CUSTOMER_CODE            VARCHAR2(9)                     -- 顧客【納品先】
+ ,TAX_CODE                         VARCHAR2(50)                    -- 税金コード
+ ,TAX_RATE                         NUMBER                          -- 消費税率
+ ,CONSUMPTION_TAX_CLASS            VARCHAR2(1)                     -- 消費税区分
+ ,RESULTS_EMPLOYEE_CODE            VARCHAR2(5)                     -- 成績計上者コード
+ ,SALES_BASE_CODE                  VARCHAR2(4)                     -- 売上拠点コード
+ ,RECEIV_BASE_CODE                 VARCHAR2(4)                     -- 入金拠点コード
+ ,CREATE_CLASS                     VARCHAR2(2)                     -- 作成元区分
+ ,CARD_SALE_CLASS                  VARCHAR2(1)                     -- カード売り区分
+ ,DLV_INV_LINE_NO                  NUMBER                          -- 納品明細番号
+ ,ITEM_CODE                        VARCHAR2(7)                     -- 品目コード
+ ,SALES_CLASS                      VARCHAR2(1)                     -- 売上区分
+ ,RED_BLACK_FLAG                   VARCHAR2(1)                     -- 赤黒フラグ
+ ,GOODS_PROD_CLS                   VARCHAR2(40)                    -- 品目区分(製品・商品)
+ ,PURE_AMOUNT                      NUMBER(12,0)                    -- 本体金額
+ ,TAX_AMOUNT                       NUMBER(11,0)                    -- 消費税金額
+ ,CASH_AND_CARD                    NUMBER(11,0)                    -- 現金・カード併用額
+ ,RCRM_RECEIPT_ID                  NUMBER(15,0)                    -- 顧客支払方法ID
+ ,XCHV_CUST_ID_S                   NUMBER(15,0)                    -- 出荷先顧客ID
+ ,XCHV_CUST_ID_B                   NUMBER(15,0)                    -- 請求先顧客ID
+ ,XCHV_CUST_NUMBER_B               VARCHAR2(30)                    -- 請求先顧客コード
+ ,XCHV_CUST_ID_C                   NUMBER(15,0)                    -- 入金先顧客ID
+ ,HCSS_ORG_SYS_ID                  NUMBER(15,0)                    -- 顧客所在地参照ID(出荷先)
+ ,HCSB_ORG_SYS_ID                  NUMBER(15,0)                    -- 顧客所在地参照ID(請求先)
+ ,HCSC_ORG_SYS_ID                  NUMBER(15,0)                    -- 顧客所在地参照ID(入金先)
+ ,XCHV_BILL_PAY_ID                 NUMBER(15,0)                    -- 支払条件ID
+ ,XCHV_BILL_PAY_ID2                NUMBER                          -- 支払条件2
+ ,XCHV_BILL_PAY_ID3                NUMBER                          -- 支払条件3
+ ,XCHV_TAX_ROUND                   VARCHAR2(30)                    -- 税金－端数処理
+ ,XSEH_ROWID                       ROWID                           -- ROWID
+ ,OIF_TRX_NUMBER                   VARCHAR2(20)                    -- AR取引番号
+ ,OIF_DFF4                         VARCHAR2(30)                    -- DFF4：伝票No＋シーケンス
+ ,OIF_TAX_DFF4                     VARCHAR2(30)                    -- DFF4税金用：伝票No＋シーケンス
+ ,LINE_ID                          NUMBER                          -- 販売実績明細番号
+ ,CARD_RECEIV_BASE                 VARCHAR2(4)                     -- カードVD入金拠点コード
+ ,PAY_CUST_NUMBER                  VARCHAR2(30)                    -- 支払条件用請求先顧客コード
+ ,REQUEST_ID                       NUMBER(15)                      -- 要求ID
+);
+--
+COMMENT ON COLUMN XXCOS.XXCOS_SALES_EXP_AR_WORK.SALES_EXP_HEADER_ID        IS '販売実績ヘッダID';
+COMMENT ON COLUMN XXCOS.XXCOS_SALES_EXP_AR_WORK.DLV_INVOICE_NUMBER         IS '納品伝票番号';
+COMMENT ON COLUMN XXCOS.XXCOS_SALES_EXP_AR_WORK.DLV_INVOICE_CLASS          IS '納品伝票区分';
+COMMENT ON COLUMN XXCOS.XXCOS_SALES_EXP_AR_WORK.CUST_GYOTAI_SHO            IS '業態小分類';
+COMMENT ON COLUMN XXCOS.XXCOS_SALES_EXP_AR_WORK.DELIVERY_DATE              IS '納品日';
+COMMENT ON COLUMN XXCOS.XXCOS_SALES_EXP_AR_WORK.INSPECT_DATE               IS '検収日';
+COMMENT ON COLUMN XXCOS.XXCOS_SALES_EXP_AR_WORK.SHIP_TO_CUSTOMER_CODE      IS '顧客【納品先】';
+COMMENT ON COLUMN XXCOS.XXCOS_SALES_EXP_AR_WORK.TAX_CODE                   IS '税金コード';
+COMMENT ON COLUMN XXCOS.XXCOS_SALES_EXP_AR_WORK.TAX_RATE                   IS '消費税率';
+COMMENT ON COLUMN XXCOS.XXCOS_SALES_EXP_AR_WORK.CONSUMPTION_TAX_CLASS      IS '消費税区分';
+COMMENT ON COLUMN XXCOS.XXCOS_SALES_EXP_AR_WORK.RESULTS_EMPLOYEE_CODE      IS '成績計上者コード';
+COMMENT ON COLUMN XXCOS.XXCOS_SALES_EXP_AR_WORK.SALES_BASE_CODE            IS '売上拠点コード';
+COMMENT ON COLUMN XXCOS.XXCOS_SALES_EXP_AR_WORK.RECEIV_BASE_CODE           IS '入金拠点コード';
+COMMENT ON COLUMN XXCOS.XXCOS_SALES_EXP_AR_WORK.CREATE_CLASS               IS '作成元区分';
+COMMENT ON COLUMN XXCOS.XXCOS_SALES_EXP_AR_WORK.CARD_SALE_CLASS            IS 'カード売り区分';
+COMMENT ON COLUMN XXCOS.XXCOS_SALES_EXP_AR_WORK.DLV_INV_LINE_NO            IS '納品明細番号';
+COMMENT ON COLUMN XXCOS.XXCOS_SALES_EXP_AR_WORK.ITEM_CODE                  IS '品目コード';
+COMMENT ON COLUMN XXCOS.XXCOS_SALES_EXP_AR_WORK.SALES_CLASS                IS '売上区分';
+COMMENT ON COLUMN XXCOS.XXCOS_SALES_EXP_AR_WORK.RED_BLACK_FLAG             IS '赤黒フラグ';
+COMMENT ON COLUMN XXCOS.XXCOS_SALES_EXP_AR_WORK.GOODS_PROD_CLS             IS '品目区分(製品・商品)';
+COMMENT ON COLUMN XXCOS.XXCOS_SALES_EXP_AR_WORK.PURE_AMOUNT                IS '本体金額';
+COMMENT ON COLUMN XXCOS.XXCOS_SALES_EXP_AR_WORK.TAX_AMOUNT                 IS '消費税金額';
+COMMENT ON COLUMN XXCOS.XXCOS_SALES_EXP_AR_WORK.CASH_AND_CARD              IS '現金・カード併用額';
+COMMENT ON COLUMN XXCOS.XXCOS_SALES_EXP_AR_WORK.RCRM_RECEIPT_ID            IS '顧客支払方法ID';
+COMMENT ON COLUMN XXCOS.XXCOS_SALES_EXP_AR_WORK.XCHV_CUST_ID_S             IS '出荷先顧客ID';
+COMMENT ON COLUMN XXCOS.XXCOS_SALES_EXP_AR_WORK.XCHV_CUST_ID_B             IS '請求先顧客ID';
+COMMENT ON COLUMN XXCOS.XXCOS_SALES_EXP_AR_WORK.XCHV_CUST_NUMBER_B         IS '請求先顧客コード';
+COMMENT ON COLUMN XXCOS.XXCOS_SALES_EXP_AR_WORK.XCHV_CUST_ID_C             IS '入金先顧客ID';
+COMMENT ON COLUMN XXCOS.XXCOS_SALES_EXP_AR_WORK.HCSS_ORG_SYS_ID            IS '顧客所在地参照ID(出荷先)';
+COMMENT ON COLUMN XXCOS.XXCOS_SALES_EXP_AR_WORK.HCSB_ORG_SYS_ID            IS '顧客所在地参照ID(請求先)';
+COMMENT ON COLUMN XXCOS.XXCOS_SALES_EXP_AR_WORK.HCSC_ORG_SYS_ID            IS '顧客所在地参照ID(入金先)';
+COMMENT ON COLUMN XXCOS.XXCOS_SALES_EXP_AR_WORK.XCHV_BILL_PAY_ID           IS '支払条件ID';
+COMMENT ON COLUMN XXCOS.XXCOS_SALES_EXP_AR_WORK.XCHV_BILL_PAY_ID2          IS '支払条件2';
+COMMENT ON COLUMN XXCOS.XXCOS_SALES_EXP_AR_WORK.XCHV_BILL_PAY_ID3          IS '支払条件3';
+COMMENT ON COLUMN XXCOS.XXCOS_SALES_EXP_AR_WORK.XCHV_TAX_ROUND             IS '税金－端数処理';
+COMMENT ON COLUMN XXCOS.XXCOS_SALES_EXP_AR_WORK.XSEH_ROWID                 IS '販売実績ヘッダROWID';
+COMMENT ON COLUMN XXCOS.XXCOS_SALES_EXP_AR_WORK.OIF_TRX_NUMBER             IS 'AR取引番号';
+COMMENT ON COLUMN XXCOS.XXCOS_SALES_EXP_AR_WORK.OIF_DFF4                   IS 'DFF4：伝票No＋シーケンス';
+COMMENT ON COLUMN XXCOS.XXCOS_SALES_EXP_AR_WORK.OIF_TAX_DFF4               IS 'DFF4税金用：伝票No＋シーケンス';
+COMMENT ON COLUMN XXCOS.XXCOS_SALES_EXP_AR_WORK.LINE_ID                    IS '販売実績明細番号';
+COMMENT ON COLUMN XXCOS.XXCOS_SALES_EXP_AR_WORK.CARD_RECEIV_BASE           IS 'カードVD入金拠点コード';
+COMMENT ON COLUMN XXCOS.XXCOS_SALES_EXP_AR_WORK.PAY_CUST_NUMBER            IS '支払条件用請求先顧客コード';
+COMMENT ON COLUMN XXCOS.XXCOS_SALES_EXP_AR_WORK.REQUEST_ID                 IS '要求ID';
+--
+COMMENT ON TABLE  XXCOS.XXCOS_SALES_EXP_AR_WORK                            IS  '販売実績AR用ワークテーブル';
