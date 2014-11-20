@@ -32,6 +32,10 @@ SELECT pha.po_header_id           header_id               -- 発注ヘッダID
            (SELECT xpsv.party_site_full_name
             FROM   xxcmn_party_sites2_v xpsv
             WHERE  xpsv.party_site_number = pha.attribute7
+            -- 2009/10/28 T.Yoshimoto Add Start 本番#1674
+            AND    xpsv.cust_acct_site_status = 'A'
+            AND    xpsv.party_site_status     = 'A'
+            -- 2009/10/28 T.Yoshimoto Add End 本番#1674
             AND    xpsv.start_date_active    <= TRUNC(TO_DATE(pha.attribute4,'YYYY/MM/DD'))
             AND    xpsv.end_date_active      >= TRUNC(TO_DATE(pha.attribute4,'YYYY/MM/DD')))
          -- 直送区分 3:支給の場合、配送先名は仕入先サイト情報VIEW.略称
