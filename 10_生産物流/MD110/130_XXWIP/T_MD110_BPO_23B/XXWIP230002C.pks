@@ -1,0 +1,55 @@
+CREATE OR REPLACE
+PACKAGE xxwip230002c 
+AS
+/*****************************************************************************************
+ * Copyright(c)Oracle Corporation Japan, 2008. All rights reserved.
+ *
+ * Package Name     : xxwip230002(spec)
+ * Description      : 生産帳票機能（生産日報）
+ * MD.050/070       : 生産帳票機能（生産日報）Issue1.0  (T_MD050_BPO_230)
+ *                    生産帳票機能（生産日報）          (T_MD070_BPO_23B)
+ * Version          : 1.2
+ *
+ * Program List
+ * -------------------- ------------------------------------------------------------
+ *  Name                 Description
+ * -------------------- ------------------------------------------------------------
+ *  main                 コンカレント実行ファイル登録プロシージャ
+ *
+ * Change Record
+ * ------------- ----- ------------------- -------------------------------------------------
+ *  Date          Ver.  Editor              Description
+ * ------------- ----- ------------------- -------------------------------------------------
+ *  2008/02/06    1.0   Ryouhei Fujii       新規作成
+ *  2008/05/20    1.1   Yusuke  Tabata      内部変更要求(Seq95)日付型パラメータ型変換対応
+ *  2008/05/29    1.2   Ryouhei Fujii       結合テスト不具合対応　NET換算パターン障害
+ *
+ *****************************************************************************************/
+--
+--#######################  固定グローバル変数宣言部 START   #######################
+--
+  TYPE xml_rec  IS RECORD (tag_name  VARCHAR2(50)
+                          ,tag_value VARCHAR2(2000)
+                          ,tag_type  CHAR(1));
+--
+  TYPE xml_data IS TABLE OF xml_rec INDEX BY PLS_INTEGER;
+--
+--################################  固定部 END   ###############################
+--
+  --コンカレント実行ファイル登録プロシージャ
+  PROCEDURE main(
+      errbuf                OUT    VARCHAR2         -- エラーメッセージ
+     ,retcode               OUT    VARCHAR2         -- エラーコード
+     ,iv_den_kbn            IN     VARCHAR2         -- 01 : 伝票区分
+     ,iv_plant              IN     VARCHAR2         -- 02 : プラント
+     ,iv_line_no            IN     VARCHAR2         -- 03 : ラインNo
+     ,iv_make_date_from     IN     VARCHAR2         -- 04 : 生産日(FROM)
+     ,iv_make_date_to       IN     VARCHAR2         -- 05 : 生産日(TO)
+     ,iv_tehai_no_from      IN     VARCHAR2         -- 06 : 手配No(FROM)
+     ,iv_tehai_no_to        IN     VARCHAR2         -- 07 : 手配No(TO)
+     ,iv_hinmoku_cd         IN     VARCHAR2         -- 08 : 品目コード
+     ,iv_input_date_from    IN     VARCHAR2         -- 09 : 入力日時(FROM)
+     ,iv_input_date_to      IN     VARCHAR2         -- 10 : 入力日時(TO)
+  );
+END xxwip230002c;
+/

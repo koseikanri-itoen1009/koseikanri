@@ -1,0 +1,17 @@
+LOAD DATA
+INFILE *
+APPEND
+INTO TABLE XXWIP_VOLUME_ACTUAL_IF
+FIELDS TERMINATED BY ','
+TRAILING NULLCOLS
+(
+VOLUME_ACTUAL_IF_ID          SEQUENCE(MAX,1),
+PLANT_CODE                   POSITION(1),
+BATCH_NO                     POSITION(*),
+ITEM_CODE                    POSITION(*),
+VOLUME_ACTUAL_QTY            POSITION(*),
+RCV_DATE                     POSITION(*)        DATE(8)"YYYYMMDD",
+ACTUAL_DATE                  POSITION(*)        DATE(8)"YYYYMMDD",
+MAKER_DATE                   POSITION(*)        DATE(8)"YYYYMMDD",
+EXPIRATION_DATE              POSITION(*)        DATE(8)"YYYYMMDD"
+)
