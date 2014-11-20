@@ -7,7 +7,7 @@ AS
  * Description      : 顧客インタフェース
  * MD.050           : マスタインタフェース T_MD050_BPO_800
  * MD.070           : 顧客インタフェース   T_MD070_BPO_80A
- * Version          : 1.13
+ * Version          : 1.14
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -89,6 +89,7 @@ AS
  *  2008/10/07    1.11  Oracle 椎名 昭圭 T_S_550対応
  *  2009/01/09    1.12  Oracle 椎名 昭圭 本番#857対応
  *  2009/02/25    1.13  Oracle 椎名 昭圭 本番#1235対応
+ *  2009/04/03    1.14  Oracle 丸下 博宣 本番#1357、1360
  *****************************************************************************************/
 --
 --#######################  固定グローバル定数宣言部 START   #######################
@@ -7514,7 +7515,7 @@ AS
     lr_cust_account_rec.customer_class_code      := lv_class_code;
 --
     -- パーティマスタ.DFF24(マスタ受信日時)
-    lr_organization_rec.party_rec.attribute24 := TO_CHAR(SYSDATE,'YYYYMMDD');
+    lr_organization_rec.party_rec.attribute24 := TO_CHAR(SYSDATE,'YYYY/MM/DD');
 --
     IF (in_kbn = gn_kbn_party) THEN
 --
@@ -7540,6 +7541,13 @@ AS
 --      -- 属性１３
 --      lr_cust_account_rec.attribute13       := ir_masters_rec.district_code;
 -- 2008/10/07 v1.11 DELETE END
+-- 2009/04/03 ADD START
+      -- 属性１２
+      lr_cust_account_rec.attribute12       := '0'; -- 中止客申請フラグ
+      lr_cust_account_rec.attribute13       := '0'; -- ドリンク拠点カテゴリ ALL
+      lr_cust_account_rec.attribute16       := '0'; -- リーフ拠点カテゴリ ALL
+      lr_cust_account_rec.attribute14       := '0'; -- 出荷依頼自動作成区分 自動作成対象外
+-- 2009/04/03 ADD END
 --
     ELSE
 --
@@ -7558,8 +7566,14 @@ AS
 -- 2008/10/07 v1.11 DELETE END
       -- 属性１７
       lr_cust_account_rec.attribute17       := ir_masters_rec.sale_base_code;
+-- 2009/04/03 MOD START
       -- 属性１８
-      lr_cust_account_rec.attribute18       := ir_masters_rec.res_sale_base_code;
+--      lr_cust_account_rec.attribute18       := ir_masters_rec.res_sale_base_code;
+      -- IFされる0000は値セットにない値であるためその場合は設定しない
+      IF (ir_masters_rec.res_sale_base_code <> '0000') THEN
+        lr_cust_account_rec.attribute18       := ir_masters_rec.res_sale_base_code;
+      END IF;
+-- 2009/04/03 MOD END
       -- 属性１９
       lr_cust_account_rec.attribute19       := ir_masters_rec.chain_store;
       -- 属性２０
@@ -8244,6 +8258,11 @@ AS
 2008/08/25 Del ↑ */
 -- 2008/08/18 Add
     lr_cust_site_rec.attribute_category := FND_PROFILE.VALUE('ORG_ID');
+-- 2009/04/03 ADD START
+    -- 配送先基準カレンダを初期値設定する
+    lr_cust_site_rec.attribute1         := FND_PROFILE.VALUE('XXCMN_DRNK_DELIVER_TO_STD_CAL');
+    lr_cust_site_rec.attribute19        := FND_PROFILE.VALUE('XXCMN_LEAF_DELIVER_TO_STD_CAL');
+-- 2009/04/03 ADD END
 --
     -- 顧客所在地マスタ(HZ_CUST_ACCOUNT_SITE_V2PUB)
     HZ_CUST_ACCOUNT_SITE_V2PUB.CREATE_CUST_ACCT_SITE (
