@@ -7,7 +7,7 @@ AS
  * Description      : 仕入実績表作成
  * MD.050/070       : 月次〆切処理（経理）Issue1.0(T_MD050_BPO_770)
  *                    月次〆切処理（経理）Issue1.0(T_MD070_BPO_77E)
- * Version          : 1.10
+ * Version          : 1.11
  *
  * Program List
  * -------------------- ------------------------------------------------------------
@@ -41,6 +41,7 @@ AS
  *  2008/11/13    1.8   A.Shiina         移行データ検証不具合対応
  *  2008/11/19    1.9   N.Yoshida        移行データ検証不具合対応
  *  2008/11/28    1.10  N.Yoshida        本番#182対応
+ *  2008/12/04    1.11  N.Yoshida        本番#389対応
  *****************************************************************************************/
 --
 --#######################  固定グローバル定数宣言部 START   #######################
@@ -1534,8 +1535,11 @@ AS
       || '       AND    rsl.po_line_id              = pla.po_line_id '
       || '       AND    pla.po_line_id              = plla.po_line_id '
       || '       AND    rsl.source_document_code    = :para_po '
-      || '       AND    rt.transaction_type     IN (:para_deliver '
-      || '                                         ,:para_return_to_vendor) '
+-- 2008/12/04 v1.14 UPDATE START
+      || '       AND    rt.transaction_type         = xrpm.transaction_type'
+--      || '       AND    rt.transaction_type     IN (:para_deliver '
+--      || '                                         ,:para_return_to_vendor) '
+-- 2008/12/04 v1.14 UPDATE END
       || '       AND    xvv.start_date_active < (TRUNC(itp.trans_date) + 1) '
       || '       AND    ((xvv.end_date_active >= TRUNC(itp.trans_date)) '
       || '              OR (xvv.end_date_active IS NULL)) '
@@ -1575,7 +1579,9 @@ AS
       || '       AND    rsl.source_document_code  = xrpm.source_document_code '
       || '       AND    rt.transaction_type       = xrpm.transaction_type '
       || '       AND    xrpm.source_document_code = :para_po '
-      || '       AND    xrpm.transaction_type IN (:para_deliver, :para_return_to_vendor) '
+-- 2008/12/04 v1.14 DELETE START
+--      || '       AND    xrpm.transaction_type IN (:para_deliver, :para_return_to_vendor) '
+-- 2008/12/04 v1.14 DELETE END
       || '       AND    itp.doc_type              = xrpm.doc_type '
       || '       AND    xrpm.break_col_05         IS NOT NULL '
 -- 2008/11/13 v1.8 ADD END
@@ -1910,8 +1916,10 @@ AS
                                       ,cn_crowd_code_id
                                       ,cn_acnt_crowd_id
                                       ,cv_po
-                                      ,cv_deliver
-                                      ,cv_return_to_vendor
+-- 2008/12/04 v1.14 UPDATE START
+--                                      ,cv_deliver
+--                                      ,cv_return_to_vendor
+-- 2008/12/04 v1.14 UPDATE END
 -- 2008/11/13 v1.8 ADD START
                                       ,gv_min_date
                                       ,gc_char_dt_format
@@ -1924,8 +1932,10 @@ AS
                                       ,cv_porc
                                       ,cv_rma
                                       ,cv_po
-                                      ,cv_deliver
-                                      ,cv_return_to_vendor
+-- 2008/12/04 v1.14 UPDATE START
+--                                      ,cv_deliver
+--                                      ,cv_return_to_vendor
+-- 2008/12/04 v1.14 UPDATE END
 -- 2008/11/13 v1.8 ADD END
                                       ,cv_zero
                                       ,cv_zero
