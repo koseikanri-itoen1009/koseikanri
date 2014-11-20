@@ -7,7 +7,7 @@ AS
  * Description      : 販売計画表
  * MD.050/070       : 販売計画・引取計画 (T_MD050_BPO_100)
  *                    販売計画表         (T_MD070_BPO_10B)
- * Version          : 1.5
+ * Version          : 1.6
  *
  * Program List
  * ---------------------------- ----------------------------------------------------------
@@ -34,6 +34,7 @@ AS
  *  2008/04/28    1.3   Yuko Kawano      内部変更要求#62,76
  *  2008/04/30    1.4   Tatsuya Kurata   内部変更要求#76
  *  2008/07/02    1.5   Satoshi Yunba    禁則文字対応
+ *  2009/03/23    1.6   Hajime Iida      本番障害#1334対応
  *
  *****************************************************************************************/
 --
@@ -374,7 +375,10 @@ AS
 --                            ,xph.total_amount                       -- 内訳合計
 --                            ,ximv.old_price         AS o_amount     -- 旧・定価
 --                            ,ximv.new_price         AS n_amount     -- 新・定価
-                            ,SUM(ximv.num_of_cases) AS case_quant   -- 入数
+-- 2009/03/23 v1.6 H.Iida Mod Start 統合テスト指摘311
+--                            ,SUM(ximv.num_of_cases) AS case_quant   -- 入数
+                            ,ximv.num_of_cases        AS case_quant   -- 入数
+-- 2009/03/23 v1.6 H.Iida Mod End
                             ,SUM(mfd.attribute4)    AS quant        -- 数量
                             ,SUM(mfd.attribute2)    AS amount       -- 金額
                             ,SUM(xph.total_amount)                  -- 内訳合計
@@ -445,6 +449,9 @@ AS
     gv_sql_group_by      := ' GROUP BY xicv1.segment1   -- 商品区分
                                       ,xicv.segment1    -- 群コード
                                       ,ximv.item_no     -- 品目
+-- 2009/03/23 v1.6 H.Iida Add Start 統合テスト指摘311
+                                      ,ximv.num_of_cases  -- 入数
+-- 2009/03/23 v1.6 H.Iida Add End
                                       ,ximv.item_short_name
                                       ,ximv.price_start_date';
 
@@ -693,7 +700,10 @@ AS
 --                            ,ximv.num_of_cases      AS case_quant   -- 入数
 --                            ,mfd.attribute4         AS quant        -- 数量
 --                            ,mfd.attribute2         AS amount       -- 金額
-                            ,SUM(ximv.num_of_cases) AS case_quant   -- 入数
+-- 2009/03/23 v1.6 H.Iida Mod Start 統合テスト指摘311
+--                            ,SUM(ximv.num_of_cases) AS case_quant   -- 入数
+                            ,ximv.num_of_cases      AS case_quant   -- 入数
+-- 2009/03/23 v1.6 H.Iida Mod End
                             ,SUM(mfd.attribute4)    AS quant        -- 数量
                             ,SUM(mfd.attribute2)    AS amount       -- 金額
 --2008.04.28 Y.Kawano modify end
@@ -787,6 +797,9 @@ AS
                                       ,mfd.attribute5
                                       ,xicv.segment1    -- 群コード
                                       ,ximv.item_no     -- 品目
+-- 2009/03/23 v1.6 H.Iida Add Start 統合テスト指摘311
+                                      ,ximv.num_of_cases  -- 入数
+-- 2009/03/23 v1.6 H.Iida Add End
                                       ,xpv.party_short_name 
                                       ,ximv.item_short_name
                                       ,ximv.price_start_date';
