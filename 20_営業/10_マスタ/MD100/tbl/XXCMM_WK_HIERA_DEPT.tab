@@ -1,0 +1,30 @@
+CREATE GLOBAL TEMPORARY TABLE xxcmm.xxcmm_wk_hiera_dept
+(
+    cur_dpt_cd                     VARCHAR2(150),
+    dpt1_cd                        VARCHAR2(4000),
+    dpt2_cd                        VARCHAR2(4000),
+    dpt3_cd                        VARCHAR2(4000),
+    dpt4_cd                        VARCHAR2(4000),
+    dpt5_cd                        VARCHAR2(4000),
+    dpt6_cd                        VARCHAR2(4000),
+    process_kbn                    VARCHAR2(1)
+) ON COMMIT PRESERVE ROWS
+/
+COMMENT ON TABLE  xxcmm.xxcmm_wk_hiera_dept                                     IS '社員データ取込用_部門階層一時ワーク'
+/
+COMMENT ON COLUMN xxcmm.xxcmm_wk_hiera_dept.cur_dpt_cd                          IS '最下層部門コード'
+/
+COMMENT ON COLUMN xxcmm.xxcmm_wk_hiera_dept.dpt1_cd                             IS '１階層目部門コード'
+/
+COMMENT ON COLUMN xxcmm.xxcmm_wk_hiera_dept.dpt2_cd                             IS '２階層目部門コード'
+/
+COMMENT ON COLUMN xxcmm.xxcmm_wk_hiera_dept.dpt3_cd                             IS '３階層目部門コード'
+/
+COMMENT ON COLUMN xxcmm.xxcmm_wk_hiera_dept.dpt4_cd                             IS '４階層目部門コード'
+/
+COMMENT ON COLUMN xxcmm.xxcmm_wk_hiera_dept.dpt5_cd                             IS '５階層目部門コード'
+/
+COMMENT ON COLUMN xxcmm.xxcmm_wk_hiera_dept.dpt6_cd                             IS '６階層目部門コード'
+/
+COMMENT ON COLUMN xxcmm.xxcmm_wk_hiera_dept.process_kbn                         IS '処理区分(1：全部門、2：部門)'
+/

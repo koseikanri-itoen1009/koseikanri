@@ -1,0 +1,5 @@
+CREATE INDEX xxcmm.xxcmm_in_people_if_n01
+ON xxcmm.xxcmm_in_people_if
+(employee_number)
+TABLESPACE xxidx2
+/
