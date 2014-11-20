@@ -6,7 +6,7 @@ AS
  * Package Name           : xxwip_common3_pkg(BODY)
  * Description            : 共通関数(XXWIP)(BODY)
  * MD.070(CMD.050)        : なし
- * Version                : 1.4
+ * Version                : 1.5
  *
  * Program List
  *  --------------------   ---- ----- --------------------------------------------------
@@ -29,6 +29,7 @@ AS
  *  2008/07/17   1.2   M.Nomura         変更要求#96、#98対応・内部課題32対応
  *  2008/10/01   1.3   Y.Kawano         内部変更#220,T_S_500対応
  *  2008/11/27   1.4   D.Nihei          本番障害#173対応
+ *  2008/12/24   1.5    M.Nomura         本番障害#832対応
  *
  *****************************************************************************************/
 --
@@ -264,12 +265,15 @@ AS
         RAISE global_api_expt;
       END IF;
 --
-      -- クローズ日付 + 猶予期間がSYSDATE未満の場合
-      IF (ld_temp_date <= SYSDATE) THEN
+      -- クローズ日付 + 猶予期間がSYSDATEより未来の場合
+-- ##### 20081224 Ver.1.5 本番#832対応 START #####
+--      IF (ld_temp_date <= SYSDATE) THEN
+      IF (ld_temp_date >= TRUNC(SYSDATE)) THEN
+-- ##### 20081224 Ver.1.5 本番#832対応 END   #####
         -- OPENなのでYを返す
         ov_close_type := gv_type_y;
 --
-      -- クローズ日付+猶予期間がSYSDATEより未来の場合
+      -- クローズ日付+猶予期間がSYSDATEより過去の場合
       ELSE
         -- CLOSEなのでNを返す
         ov_close_type := gv_type_n;
