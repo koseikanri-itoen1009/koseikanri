@@ -7,7 +7,7 @@ AS
  * Description      : AR部門入力の顧客情報更新
  * MD.050           : MD050_CFR_001_A01_AR部門入力の顧客情報更新
  * MD.070           : MD050_CFR_001_A01_AR部門入力の顧客情報更新
- * Version          : 1.2
+ * Version          : 1.3
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -29,6 +29,7 @@ AS
  *  2008/11/05    1.00 SCS 中村 博      初回作成
  *  2009/07/23    1.1  SCS T.KANEDA     T3時障害0000838対応
  *  2010/01/26    1.2  SCS M.HIROSE     [E_本稼動_01336] 期中の顧客階層変更対応
+ *  2012/02/12    1.3  SCS M.HIROSE     [E_本稼動_01606] 期中の支払方法変更対応
  *
  *****************************************************************************************/
 --
@@ -725,8 +726,14 @@ AS
           END;
         END IF;
 --
-        -- 顧客コードの読み替えが実行された時は、支払方法の最新値を取得するかを検討する。
-        IF ( ln_bill_customer_id IS NOT NULL ) THEN
+-- Modify 2010.02.12 Ver1.3 Start  全レコード通るが、テストを減らす為OR句としてつけた
+--        -- 顧客コードの読み替えが実行された時は、支払方法の最新値を取得するかを検討する。
+--        IF ( ln_bill_customer_id IS NOT NULL ) THEN
+        -- 読替後、請求先顧客の支払方法の最新値を取得する。
+        IF ( ( ln_bill_customer_id                     IS NOT NULL                  )  -- 読替がされた
+          OR ( gt_hca_customer_class_code(ln_loop_cnt)  = cv_cust_class_code_ar_mng )  -- 請求先が14顧客の時
+        ) THEN
+-- Modify 2010.02.12 Ver1.3 End
 --
           BEGIN
 --
