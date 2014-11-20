@@ -7,6 +7,7 @@
 * “ú•t       Ver. ’S“–Ò       C³“à—e
 * ---------- ---- ------------ ----------------------------------------------
 * 2008-11-06 1.0  SCS–ö•½’¼l  V‹Kì¬
+* 2009-04-09 1.1  SCS–ö•½’¼l  [STáŠQT1_0422]¤’kƒ^ƒXƒNæ“¾•s³‘Î‰
 *============================================================================
 */
 package itoen.oracle.apps.xxcso.xxcso008001j.server;
@@ -48,6 +49,10 @@ public class XxcsoTaskSummaryVOImpl extends OAViewObjectImpl
     int idx = 0;
     setWhereClauseParam(idx++, resourceId);
     setWhereClauseParam(idx++, resourceId);
+// 2009-04-08 [STáŠQT1_0422] Add Start
+    setWhereClauseParam(idx++, resourceId);
+    setWhereClauseParam(idx++, resourceId);
+// 2009-04-08 [STáŠQT1_0422] Add End
     setWhereClauseParam(idx++, appDate);
     setWhereClauseParam(idx++, appDate);
     setWhereClauseParam(idx++, appDate);

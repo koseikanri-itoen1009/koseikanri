@@ -7,6 +7,7 @@
 * 日付       Ver. 担当者       修正内容
 * ---------- ---- ------------ ----------------------------------------------
 * 2008-11-06 1.0  SCS柳平直人  新規作成
+* 2009-04-10 1.1  SCS柳平直人  [ST障害T1_0422,T1_0477]日付表示処理修正
 *============================================================================
 */
 package itoen.oracle.apps.xxcso.xxcso008001j.server;
@@ -757,6 +758,9 @@ public class XxcsoWeeklyTaskViewAMImpl extends OAApplicationModuleImpl
         appDate.dateValue().toString(),
         (Number) map.get(XxcsoWeeklyTaskViewConstants.RESOURCE_ID)
       );
+// 2009/04/10 [ST障害T1_0422,T1_0477] Add Start
+      this.setTaskLineDetail( taskSumVo );
+// 2009/04/10 [ST障害T1_0422,T1_0477] Add End
     }
 
     XxcsoUtils.debug(txt, "[END]");
@@ -847,6 +851,7 @@ public class XxcsoWeeklyTaskViewAMImpl extends OAApplicationModuleImpl
     XxcsoUtils.debug(txt, "[END]");
 
   }
+
   /*****************************************************************************
    * スケジュールの表示属性を設定します。
    * @param setSize 設定済みの行カウント
@@ -915,6 +920,48 @@ public class XxcsoWeeklyTaskViewAMImpl extends OAApplicationModuleImpl
     XxcsoUtils.debug(txt, "[END]");
 
   }
+
+// 2009/04/10 [ST障害T1_0422,T1_0477] Add Start
+  /*****************************************************************************
+   * タスクVOの検索後列設定
+   * @param taskSumVo 週次活動状況照会／検索用ビュークラス
+   *****************************************************************************
+   */
+  private void setTaskLineDetail(
+    XxcsoTaskSummaryVOImpl taskSumVo
+  )
+  {
+    int taskCnt = 0;
+    String oldTaskDate = null;
+
+    XxcsoTaskSummaryVORowImpl taskSumRow
+      = (XxcsoTaskSummaryVORowImpl) taskSumVo.first();
+
+    while ( taskSumRow != null )
+    {
+      String taskDate = taskSumRow.getTaskDate(); 
+
+      // 前レコードのタスク日付を確認
+      if ( oldTaskDate != null && oldTaskDate.equals(taskDate) )
+      {
+        // 前レコードと同じ場合は日付、曜日を空欄にする
+        // ※レコード幅を考慮し全角スペースを設定
+        taskSumRow.setTaskDate("　");
+        taskSumRow.setTaskDy("　");
+      }
+
+      if ( taskCnt == 0
+        || ( oldTaskDate != null && ! oldTaskDate.equals(taskDate) )
+      ) 
+      {
+        oldTaskDate = taskDate;
+      }
+
+      taskSumRow = (XxcsoTaskSummaryVORowImpl) taskSumVo.next();
+      taskCnt++;
+    }
+  }
+// 2009/04/10 [ST障害T1_0422,T1_0477] Add End
 
   /**
    * 

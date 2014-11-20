@@ -11,46 +11,29 @@
    MsgBundleClass="oracle.jbo.common.JboResourceBundle"
    UseGlueCode="false" >
    <SQLQuery><![CDATA[
-SELECT  xrv2.employee_number AS employee_number
-       ,xrv2.full_name AS full_name
+SELECT  xrv2.employee_number                     AS employee_number
+       ,xrv2.full_name                           AS full_name
        ,TO_CHAR(task_calendar.disp_date, 'fmdd') AS task_date
-       ,TO_CHAR(task_calendar.disp_date, 'DY') AS task_dy
-       ,(
-          CASE TO_CHAR(task.task_status_id)
-            WHEN FND_PROFILE.VALUE('XXCSO1_TASK_STATUS_OPEN_ID') THEN
-              '—\@'
-            WHEN FND_PROFILE.VALUE('XXCSO1_TASK_STATUS_CLOSED_ID') THEN
-              'ŽÀ@'
-            ELSE NULL
-          END
-          ||
-          CASE
-            WHEN task.actual_end_date IS NOT NULL THEN
-              TO_CHAR(task.actual_end_date, 'hh24:mi')
-            WHEN task.actual_end_date IS NULL AND task.scheduled_end_date IS NOT NULL THEN
-              '00:00'
-            ELSE NULL
-          END
-          ||
-          CASE
-            WHEN  task.source_object_type_code IN ('PARTY', 'OPPORTUNITY') THEN
-              '@' || task.party_name
-            ELSE NULL
-          END
-        ) AS task_plan_or_result
-       ,NVL(task.description, ' ') AS task_description
-       ,(
-          CASE
-            WHEN TO_DATE(xrv2.issue_date) >= TRUNC(XXCSO_UTIL_COMMON_PKG.get_online_sysdate) THEN
-              xrv2.position_sort_code_old
-            ELSE
-              xrv2.position_sort_code_new
-          END
-        ) AS position_sort_code
-       ,xrv2.user_id AS user_id
-       ,task_calendar.disp_date                 AS disp_date
-       ,task.account_number                     AS task_account_number
-       ,task.actual_end_date                    AS task_actual_end_date
+       ,TO_CHAR(task_calendar.disp_date, 'DY')   AS task_dy
+       ,xxcso_008001j_pkg.get_plan_or_result(
+          task.task_status_id
+         ,task.task_type_id
+         ,task.actual_end_date
+         ,task.scheduled_end_date
+         ,task.source_object_type_code
+         ,task.party_name
+        )                                        AS task_plan_or_result
+       ,NVL(task.description, ' ')               AS task_description
+       ,xxcso_util_common_pkg.get_emp_parameter(
+         xrv2.position_sort_code_new
+        ,xrv2.position_sort_code_old
+        ,xrv2.issue_date
+        ,TRUNC(XXCSO_UTIL_COMMON_PKG.get_online_sysdate)
+        )                                        AS position_sort_code
+       ,xrv2.user_id                             AS user_id
+       ,task_calendar.disp_date                  AS disp_date
+       ,task.account_number                      AS task_account_number
+       ,task.actual_end_date                     AS task_actual_end_date
 FROM    xxcso_resources_v2 xrv2
        ,(
           SELECT   base_code
@@ -70,34 +53,71 @@ FROM    xxcso_resources_v2 xrv2
                    FROM    DUAL
         ) tree_aff
        ,(
-          SELECT  jtv.task_id AS task_id
-                 ,jtv.task_name AS task_name
-                 ,jtv.description AS description
-                 ,jtv.task_status_id AS task_status_id
-                 ,jtv.scheduled_end_date AS scheduled_end_date
-                 ,jtv.actual_end_date AS actual_end_date
+          SELECT  jtv.task_id                 AS task_id
+                 ,jtv.task_name               AS task_name
+                 ,jtv.description             AS description
+                 ,jtv.task_status_id          AS task_status_id
+                 ,jtv.scheduled_end_date      AS scheduled_end_date
+                 ,jtv.actual_end_date         AS actual_end_date
                  ,jtv.source_object_type_code AS source_object_type_code
-                 ,xcav.party_name AS party_name
-                 ,xcav.account_number AS account_number
-                 ,xrv2.resource_id AS resource_id
-          FROM    jtf_tasks_vl jtv
+                 ,jtv.task_type_id            AS task_type_id
+                 ,xcav.party_name             AS party_name
+                 ,xcav.account_number         AS account_number
+                 ,xrv2.resource_id            AS resource_id
+          FROM    jtf_tasks_vl          jtv
                  ,xxcso_cust_accounts_v xcav
-                 ,xxcso_resources_v2 xrv2
-          WHERE  jtv.owner_type_code = 'RS_EMPLOYEE'
-            AND  (
-                   (task_status_id = FND_PROFILE.VALUE('XXCSO1_TASK_STATUS_OPEN_ID'))
-                   OR
-                   (task_status_id = FND_PROFILE.VALUE('XXCSO1_TASK_STATUS_CLOSED_ID'))
-                 )
-            AND  EXISTS
-                 (
-                   SELECT  1
-                   FROM    jtf_task_all_assignments jtaa
-                   WHERE   jtaa.resource_type_code = 'RS_EMPLOYEE'
-                     AND   jtaa.task_id = jtv.task_id
-                     AND   jtaa.resource_id = xrv2.resource_id
-                 )
-            AND  xcav.party_id(+) = jtv.source_object_id
+                 ,xxcso_resources_v2    xrv2
+          WHERE   jtv.owner_type_code         = 'RS_EMPLOYEE'
+            AND   jtv.source_object_type_code IN ('PARTY','TASK')
+            AND   jtv.deleted_flag            = 'N'
+            AND   (
+                    (jtv.task_status_id = FND_PROFILE.VALUE('XXCSO1_TASK_STATUS_OPEN_ID'))
+                    OR
+                    (jtv.task_status_id = FND_PROFILE.VALUE('XXCSO1_TASK_STATUS_CLOSED_ID'))
+                  )
+            AND   EXISTS
+                  (
+                    SELECT  1
+                    FROM    jtf_task_all_assignments jtaa
+                    WHERE   jtaa.resource_type_code = 'RS_EMPLOYEE'
+                      AND   jtaa.task_id            = jtv.task_id
+                      AND   jtaa.resource_id        = xrv2.resource_id
+                  )
+            AND   xcav.party_id(+) = jtv.source_object_id
+          UNION
+          SELECT  jtv.task_id                 AS task_id
+                 ,jtv.task_name               AS task_name
+                 ,jtv.description             AS description
+                 ,jtv.task_status_id          AS task_status_id
+                 ,jtv.scheduled_end_date      AS scheduled_end_date
+                 ,jtv.actual_end_date         AS actual_end_date
+                 ,jtv.source_object_type_code AS source_object_type_code
+                 ,jtv.task_type_id            AS task_type_id
+                 ,xcav.party_name             AS party_name
+                 ,xcav.account_number         AS account_number
+                 ,xrv2.resource_id            AS resource_id
+          FROM    jtf_tasks_vl          jtv
+                 ,xxcso_cust_accounts_v xcav
+                 ,xxcso_resources_v2    xrv2
+                 ,as_leads_all          ala
+          WHERE   jtv.owner_type_code         = 'RS_EMPLOYEE'
+            AND   jtv.source_object_type_code = 'OPPORTUNITY'
+            AND   jtv.deleted_flag            = 'N'
+            AND   (
+                    (jtv.task_status_id = FND_PROFILE.VALUE('XXCSO1_TASK_STATUS_OPEN_ID'))
+                    OR
+                    (jtv.task_status_id = FND_PROFILE.VALUE('XXCSO1_TASK_STATUS_CLOSED_ID'))
+                  )
+            AND   EXISTS
+                  (
+                    SELECT  1
+                    FROM    jtf_task_all_assignments jtaa
+                    WHERE   jtaa.resource_type_code = 'RS_EMPLOYEE'
+                      AND   jtaa.task_id            = jtv.task_id
+                      AND   jtaa.resource_id        = xrv2.resource_id
+                  )
+            AND   ala.lead_id                 = jtv.source_object_id
+            AND   xcav.party_id(+)            = ala.customer_id
         ) task
         ,(
           SELECT  first_day.monday + two_week.day_index AS disp_date
