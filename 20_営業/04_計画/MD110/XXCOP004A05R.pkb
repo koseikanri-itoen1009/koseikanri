@@ -30,6 +30,7 @@ AS
  *  2009/04/28    1.2  SCS.Kikuchi       T1_0645,T1_0838ëŒâû
  *  2009/06/10    1.3  SCS.Kikuchi       T1_1411ëŒâû
  *  2009/06/23    1.4  SCS.Kikuchi       è·äQ:0000025ëŒâû
+ *  2009/10/13    1.5  SCS.Fukada        è·äQ:E_T3_00556ëŒâû
  *
  *****************************************************************************************/
 --
@@ -522,7 +523,10 @@ AS
              WHERE  xsr1.shipment_date  BETWEEN gd_result_collect_st_day1
                                           AND     gd_result_collect_ed_day1
              AND    xsr1.base_code      =       g_header_data_tbl(in_header_index).base_code
-             UNION
+--20091013_Ver1.5_E_T3_00556_SCS.Fukada_MOD_START
+--             UNION
+             UNION ALL
+--20091013_Ver1.5_E_T3_00556_SCS.Fukada_MOD_END
              SELECT xsr2.shipment_date
              ,      xsr2.item_no
              ,      xsr2.quantity
