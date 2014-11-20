@@ -45,7 +45,10 @@ SELECT
   ,xoha.request_no                                     AS    request_no          -- 伝票No
   ,xoha.head_sales_branch                              AS    head_sales_branch   -- 管轄拠点(コード)
   ,xcav.party_name                                     AS    party_name          -- 管轄拠点(名称)
-  ,xoha.deliver_to                                     AS    deliver_to          -- 配送先(コード)
+-- 2009/09/09 H.Itou Mod Start 本番障害#1567 実績なので、配送先_実績を出力。
+--  ,xoha.deliver_to                                     AS    deliver_to          -- 配送先(コード)
+  ,xoha.result_deliver_to                              AS    deliver_to          -- 配送先(コード)
+-- 2009/09/09 H.Itou Mod End
   ,xcas2v.party_site_full_name                         AS    party_site_full_name-- 配送先(名称)
   , ( xcas2v.address_line1 || xcas2v.address_line2 )   AS    address_line        -- 住所
   ,xoha.deliver_from                                   AS    deliver_from        -- 出庫元(コード)
