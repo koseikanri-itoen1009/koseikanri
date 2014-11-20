@@ -3,13 +3,13 @@ AS
 /*****************************************************************************************
  * Copyright(c)Sumisho Computer Systems Corporation, 2008. All rights reserved.
  *
- * Package Name     : XXCSO015A04C(spec)
+ * Package Name     : XXCSO015A04C(body)
  * Description      : 拠点分割等により顧客マスタの拠点コードが変更になった物件マスタの情報と廃棄申請、
  *                    廃棄決裁の作業依頼情報を自販機管理システムに連携します。
  *                    
  * MD050            : MD050_CSO_015_A04_自販機-EBSインタフェース：（OUT）物件マスタ情報
  *                    
- * Version          : 1.7
+ * Version          : 1.8
  *
  * Program List
  * ---------------------------- ----------------------------------------------------------
@@ -44,6 +44,7 @@ AS
  *  2009-05-22    1.5   Tomoko.Mori      T1_1131対応 地区コード不正
  *  2009-05-29    1.6   K.Satomura       T1_1017対応
  *  2009-06-18    1.7   K.Satomura       T1_1017再修正対応
+ *  2009-06-24    1.8   M.Ohtsuki       【SCS障害管理番号_0000158】対応 
  *****************************************************************************************/
 --
 --#######################  固定グローバル定数宣言部 START   #######################
@@ -1997,8 +1998,18 @@ AS
         AND xrl.requisition_header_id = prh.requisition_header_id
         AND prh.authorization_status = cv_status_app
         AND xrl.requisition_line_id = xwrp.requisition_line_id 
-        AND (xwrp.interface_flag = cv_interface_flag_n
-               OR TRUNC(xwrp.interface_date) = TRUNC(TO_DATE(gv_date_value, cv_final_format)))
+    /* 2009.06.24 M.Ohtsuki 【SCS障害管理番号_0000158】対応 START */
+--        AND (xwrp.interface_flag = cv_interface_flag_n
+--               OR TRUNC(xwrp.interface_date) = TRUNC(TO_DATE(gv_date_value, cv_final_format)))
+--↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓
+        AND ((gv_date_value IS NULL                                                                 -- 入力パラメータ.処理日付 IS NULL
+            AND
+            xwrp.interface_flag = cv_interface_flag_n)                                              -- 連携済フラグ = 'N'
+            OR
+           (gv_date_value IS NOT NULL                                                               -- 入力パラメータ.処理日付 SI NOT NULL
+           AND
+           TRUNC(xwrp.interface_date) = TRUNC(TO_DATE(gv_date_value, cv_final_format))))            -- 連携日 = 入力パラメータ.処理日付
+    /* 2009.06.24 M.Ohtsuki 【SCS障害管理番号_0000158】対応 END */
         AND cii.external_reference = xrl.abolishment_install_code
         AND cii.owner_party_account_id = xcav.cust_account_id
         AND xcav.account_status = cv_active_status
@@ -2032,10 +2043,20 @@ AS
       WHERE  xiw.job_kbn                 IN (cn_job_kbn_new_install, cn_job_kbn_new_change)
       AND    xiw.install1_processed_flag = cv_flag_yes
       AND    xiw.completion_kbn          = cn_comp_kbn_comp
-      AND    (
-                  xiw.vdms_interface_flag = cv_flag_no
-               OR xiw.vdms_interface_date = TO_DATE(gv_date_value, cv_final_format)
-             )
+    /* 2009.06.24 M.Ohtsuki 【SCS障害管理番号_0000158】対応 START */
+--      AND    (
+--                  xiw.vdms_interface_flag = cv_flag_no
+--               OR xiw.vdms_interface_date = TO_DATE(gv_date_value, cv_final_format)
+--             )
+--↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓
+      AND ((gv_date_value IS NULL                                                                   -- 入力パラメータ.処理日付 IS NULL
+          AND
+          xiw.vdms_interface_flag = cv_flag_no)                                                     -- 自販機S連携フラグ = 'N'
+          OR
+         (gv_date_value IS NOT NULL                                                                 -- 入力パラメータ.処理日付 IS NOT NULL
+         AND
+         xiw.vdms_interface_date = TO_DATE(gv_date_value, cv_final_format)))                        -- 自販機S連携日 = 入力パラメータ.処理日付
+    /* 2009.06.24 M.Ohtsuki 【SCS障害管理番号_0000158】対応 END */
       AND    cii.external_reference    = xiw.install_code1
       AND    prh.segment1              = TO_CHAR(xiw.po_number)
       AND    prh.authorization_status  = cv_status_app
