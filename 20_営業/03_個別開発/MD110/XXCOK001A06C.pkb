@@ -4,9 +4,9 @@ AS
  * Copyright(c)SCSK Corporation, 2011. All rights reserved.
  *
  * Package Name     : XXCOK001A06C(body)
- * Description      : 年次顧客移行情報Excelアップロード
- * MD.050           : MD050_COK_001_A06_年次顧客移行情報Excelアップロード
- * Version          : 1.0
+ * Description      : 年次顧客移行情報csvアップロード
+ * MD.050           : MD050_COK_001_A06_年次顧客移行情報csvアップロード
+ * Version          : 1.1
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -15,7 +15,7 @@ AS
  *  init                   初期処理(A-1)
  *  get_file_upload_data   ファイルアップロードデータ取得処理(A-2)
  *  conv_file_upload_data  ファイルアップロードデータ変換処理(A-3)
- *  ins_tmp_001a06c_upload 年次顧客移行情報Excelアップロード一時表登録処理(A-4)
+ *  ins_tmp_001a06c_upload 年次顧客移行情報csvアップロード一時表登録処理(A-4)
  *  chk_validate_item      妥当性チェック処理(A-5)
  *  ins_cust_shift_info    顧客移行情報一括登録処理(A-6)
  *  upd_cust_shift_info    顧客移行情報一括更新処理(A-7)
@@ -30,6 +30,7 @@ AS
  *  Date          Ver.  Editor           Description
  * ------------- ----- ---------------- -------------------------------------------------
  *  2013/02/07    1.0   K.Nakamura       新規作成
+ *  2013/03/13    1.1   K.Nakamura       機能名を「年次顧客移行情報csvアップロード一時表」に変更
  *
  *****************************************************************************************/
 --
@@ -99,7 +100,7 @@ AS
   -- プロファイル
   cv_set_of_books_id          CONSTANT VARCHAR2(30) := 'GL_SET_OF_BKS_ID';        -- 会計帳簿ID
   -- クイックコード
-  cv_yearly_cust_shift_item   CONSTANT VARCHAR2(30) := 'XXCOK1_YEARLY_CUST_SHIFT_ITEM'; -- 年次顧客移行情報Excelアップロード項目チェック
+  cv_yearly_cust_shift_item   CONSTANT VARCHAR2(30) := 'XXCOK1_YEARLY_CUST_SHIFT_ITEM'; -- 年次顧客移行情報csvアップロード項目チェック
   cv_cust_shift_status        CONSTANT VARCHAR2(30) := 'XXCOK1_CUST_SHIFT_STATUS';      -- 顧客移行情報ステータス
   cv_file_upload_obj          CONSTANT VARCHAR2(30) := 'XXCCP1_FILE_UPLOAD_OBJ';        -- ファイルアップロード情報
   -- メッセージ
@@ -157,7 +158,7 @@ AS
   cv_tkn_upload_object        CONSTANT VARCHAR2(20) := 'UPLOAD_OBJECT';           -- ファイルアップロード名称
   -- 移行区分
   cv_shift_type_1             CONSTANT VARCHAR2(1)  := '1';                       -- 年次
-  -- ステータス（顧客移行情報／年次顧客移行情報Excelアップロード一時表）
+  -- ステータス（顧客移行情報／年次顧客移行情報csvアップロード一時表）
   cv_status_a                 CONSTANT VARCHAR2(1)  := 'A';                       -- 確定
   cv_status_c                 CONSTANT VARCHAR2(1)  := 'C';                       -- 取消
   cv_status_i                 CONSTANT VARCHAR2(1)  := 'I';                       -- 入力中
@@ -248,7 +249,7 @@ AS
          , xt0u.prev_base_code AS prev_base_code -- 旧拠点コード
          , xt0u.new_base_code  AS new_base_code  -- 新拠点コード
          , xt0u.status         AS status         -- ステータス
-    FROM   xxcok_tmp_001a06c_upload xt0u         -- 年次顧客移行情報Excelアップロード一時表
+    FROM   xxcok_tmp_001a06c_upload xt0u         -- 年次顧客移行情報csvアップロード一時表
     WHERE  xt0u.cust_code IS NOT NULL
     ORDER BY
            xt0u.cust_code                        -- 顧客コード
@@ -1005,7 +1006,7 @@ AS
 --
   /**********************************************************************************
    * Procedure Name   : ins_tmp_001a06c_upload
-   * Description      : 年次顧客移行情報Excelアップロード一時表登録処理(A-4)
+   * Description      : 年次顧客移行情報csvアップロード一時表登録処理(A-4)
    ***********************************************************************************/
   PROCEDURE ins_tmp_001a06c_upload(
       iv_file_id IN  VARCHAR2 -- ファイルID
@@ -1056,7 +1057,7 @@ AS
     END IF;
     --
     --==============================================================
-    -- 年次顧客移行情報Excelアップロード一時表登録処理
+    -- 年次顧客移行情報csvアップロード一時表登録処理
     --==============================================================
     BEGIN
       INSERT INTO xxcok_tmp_001a06c_upload(
@@ -1210,7 +1211,7 @@ AS
       -- 同一顧客ステータスチェックチェックカーソル
       SELECT COUNT(1)                 AS cnt     -- チェック件数
       INTO   ln_chk_cnt
-      FROM   xxcok_tmp_001a06c_upload xt0u       -- 年次顧客移行情報Excelアップロード一時表
+      FROM   xxcok_tmp_001a06c_upload xt0u       -- 年次顧客移行情報csvアップロード一時表
       WHERE  xt0u.status     = cv_status_c       -- ステータス（取消）
       AND    xt0u.record_no <> chk_rec.record_no -- レコードNo
       AND    xt0u.cust_code  = chk_rec.cust_code -- 顧客コード
@@ -1226,7 +1227,7 @@ AS
       -- 同一顧客ステータスチェックチェックカーソル
       SELECT COUNT(1)                 AS cnt     -- チェック件数
       INTO   ln_chk_cnt
-      FROM   xxcok_tmp_001a06c_upload xt0u       -- 年次顧客移行情報Excelアップロード一時表
+      FROM   xxcok_tmp_001a06c_upload xt0u       -- 年次顧客移行情報csvアップロード一時表
       WHERE  xt0u.status    <> cv_status_c       -- ステータス（取消）
       AND    xt0u.record_no <> chk_rec.record_no -- レコードNo
       AND    xt0u.cust_code  = chk_rec.cust_code -- 顧客コード
@@ -1246,7 +1247,7 @@ AS
     -- 同一顧客ステータスチェックチェックカーソル
     SELECT COUNT(1)                 AS cnt                   -- チェック件数
     INTO   ln_chk_cnt
-    FROM   xxcok_tmp_001a06c_upload xt0u                     -- 年次顧客移行情報Excelアップロード一時表
+    FROM   xxcok_tmp_001a06c_upload xt0u                     -- 年次顧客移行情報csvアップロード一時表
     WHERE  xt0u.upload_dicide_flag = cv_upload_dicide_flag_w -- アップロード判定フラグ（警告）
     AND    xt0u.record_no         <> chk_rec.record_no       -- レコードNo
     AND    xt0u.cust_code          = chk_rec.cust_code       -- 顧客コード
@@ -1418,7 +1419,7 @@ AS
       INTO   lv_new_base_code
            , lv_status
            , lv_upload_dicide_flag
-      FROM   xxcok_tmp_001a06c_upload xt0u                 -- 年次顧客移行情報Excelアップロード一時表
+      FROM   xxcok_tmp_001a06c_upload xt0u                 -- 年次顧客移行情報csvアップロード一時表
       WHERE  xt0u.upload_dicide_flag IS NOT NULL           -- アップロード判定フラグ
       AND    xt0u.cust_code          = chk_rec.cust_code   -- 顧客コード
       ORDER BY
@@ -1496,10 +1497,10 @@ AS
     END IF;
 --
     --==============================================================
-    -- １０．年次顧客移行情報Excelアップロード一時表更新
+    -- １０．年次顧客移行情報csvアップロード一時表更新
     --==============================================================
     BEGIN
-      UPDATE xxcok_tmp_001a06c_upload xt0u                        -- 年次顧客移行情報Excelアップロード一時表
+      UPDATE xxcok_tmp_001a06c_upload xt0u                        -- 年次顧客移行情報csvアップロード一時表
       SET    xt0u.cust_shift_id       = ln_cust_shift_id          -- 顧客移行情報ID
            , xt0u.customer_class_code = lv_customer_class_code    -- 顧客区分
            , xt0u.upload_dicide_flag  = lv_upload_dicide_flag_upd -- アップロード判定フラグ
@@ -1593,10 +1594,10 @@ AS
       -- 警告件数設定
       gn_warn_cnt := gn_warn_cnt + 1;
       --==============================================================
-      -- １０．年次顧客移行情報Excelアップロード一時表更新（チェックエラー時）
+      -- １０．年次顧客移行情報csvアップロード一時表更新（チェックエラー時）
       --==============================================================
       BEGIN
-        UPDATE xxcok_tmp_001a06c_upload xt0u                      -- 年次顧客移行情報Excelアップロード一時表
+        UPDATE xxcok_tmp_001a06c_upload xt0u                      -- 年次顧客移行情報csvアップロード一時表
         SET    xt0u.cust_shift_id       = ln_cust_shift_id        -- 顧客移行情報ID
              , xt0u.customer_class_code = lv_customer_class_code  -- 顧客区分
              , xt0u.upload_dicide_flag  = cv_upload_dicide_flag_w -- アップロード判定フラグ
@@ -1740,7 +1741,7 @@ AS
            , cn_program_application_id         AS program_application_id -- プログラムアプリケーションID
            , cn_program_id                     AS program_id             -- プログラムID
            , cd_program_update_date            AS program_update_date    -- プログラム更新日
-      FROM   xxcok_tmp_001a06c_upload          xt0u                      -- 年次顧客移行情報Excelアップロード一時表
+      FROM   xxcok_tmp_001a06c_upload          xt0u                      -- 年次顧客移行情報csvアップロード一時表
       WHERE  xt0u.upload_dicide_flag = cv_upload_dicide_flag_i           -- アップロード判定フラグ
       ;
       -- 登録件数設定
@@ -1824,7 +1825,7 @@ AS
     IS
       SELECT xt0u.cust_shift_id       AS cust_shift_id         -- 顧客移行情報ID
            , xt0u.status              AS status                -- ステータス
-      FROM   xxcok_tmp_001a06c_upload xt0u                     -- 年次顧客移行情報Excelアップロード一時表
+      FROM   xxcok_tmp_001a06c_upload xt0u                     -- 年次顧客移行情報csvアップロード一時表
       WHERE  xt0u.upload_dicide_flag = cv_upload_dicide_flag_u -- アップロード判定フラグ
     ;
     -- レコード定義
@@ -1971,7 +1972,7 @@ AS
     IS
       SELECT xt0u.record_no           AS record_no             -- レコードNo
            , xt0u.error_message       AS error_message         -- エラーメッセージ
-      FROM   xxcok_tmp_001a06c_upload xt0u                     -- 年次顧客移行情報Excelアップロード一時表
+      FROM   xxcok_tmp_001a06c_upload xt0u                     -- 年次顧客移行情報csvアップロード一時表
       WHERE  xt0u.upload_dicide_flag = cv_upload_dicide_flag_w -- アップロード判定フラグ
       ORDER BY
              xt0u.record_no
@@ -2197,7 +2198,7 @@ AS
       RAISE global_process_expt;
     END IF;
 --
-    -- 年次顧客移行情報Excelアップロード一時表登録ループ
+    -- 年次顧客移行情報csvアップロード一時表登録ループ
     << ins_tmp_loop >>
     FOR i IN gt_file_data_all.FIRST .. gt_file_data_all.COUNT LOOP
       -- ===============================================
@@ -2217,7 +2218,7 @@ AS
       -- 登録対象レコードフラグがONの場合のみ登録
       IF ( gb_ins_record_flg = TRUE ) THEN
         -- ===============================================
-        -- 年次顧客移行情報Excelアップロード一時表登録処理(A-4)
+        -- 年次顧客移行情報csvアップロード一時表登録処理(A-4)
         -- ===============================================
         ins_tmp_001a06c_upload(
             iv_file_id => iv_file_id -- ファイルID
