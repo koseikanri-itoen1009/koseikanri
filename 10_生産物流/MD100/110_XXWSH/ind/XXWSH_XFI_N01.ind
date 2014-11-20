@@ -1,0 +1,1 @@
+CREATE INDEX xxwsh.xxwsh_xfi_n01 ON xxwsh.xxwsh_frq_item_locations( item_id,item_location_id,frq_item_location_id ) TABLESPACE xxidx;
