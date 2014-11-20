@@ -7,7 +7,7 @@ AS
  * Package Name     : XXCFF013A19C(body)
  * Description      : リース契約月次更新
  * MD.050           : MD050_CFF_013_A19_リース契約月次更新
- * Version          : 1.3
+ * Version          : 1.4
  *
  * Program List
  * ---------------------------- ------------------------------------------------------------
@@ -35,6 +35,7 @@ AS
  *  2009/02/10    1.2   SCS 嶋田         ログの出力先が誤っていた箇所を修正
  *  2009/02/25    1.3   SCS 嶋田         （再リース要否）物件契約情報抽出の条件に'再リー
  *                                       ス回数'を追加
+ *  2009/08/28    1.4   SCS 渡辺         [統合テスト障害0001058(PT対応)]
  *
  *****************************************************************************************/
 --
@@ -628,6 +629,14 @@ AS
     CURSOR ctrcted_les_info_cur
     IS
       SELECT
+-- 0001058 2009/08/28 ADD START --
+            /*+
+              LEADING(XCL)
+              INDEX(XCL XXCFF_CONTRACT_LINES_N01)
+              INDEX(XCH XXCFF_CONTRACT_HEADERS_PK)
+              INDEX(XOH XXCFF_OBJECT_HEADERS_PK)
+            */
+-- 0001058 2009/08/28 ADD END --
               xch.lease_type                  AS lease_type                  --リース区分(A-4使用)
              ,xcl.contract_header_id          AS contract_header_id          --契約内部ID
              ,xcl.contract_line_id            AS contract_line_id            --契約明細内部ID
@@ -675,7 +684,7 @@ AS
          AND  xcl.contract_status    = cv_ctrct_st_reg                --契約ステータス:登録済み
          AND  TO_CHAR(xch.first_payment_date, 'YYYYMM') <= 
                 TO_CHAR(TO_DATE(gv_period_name, 'YYYY-MM'), 'YYYYMM') --初回支払日
-         FOR UPDATE OF xcl.contract_header_id NOWAIT
+         FOR UPDATE OF xcl.contract_header_id NOWAIT    
     ;
 --
     -- *** ローカル・レコード ***
@@ -998,7 +1007,16 @@ AS
     --（再リース要否）物件契約情報抽出カーソル
     CURSOR reles_ob_ctrct_info_cur
     IS
-      SELECT  xch.lease_end_date              AS lease_end_date              --リース終了日
+      SELECT
+-- 0001058 2009/08/28 ADD START --
+            /*+
+              LEADING(XCH)
+              INDEX(XCH XXCFF_CONTRACT_HEADERS_N03)
+              INDEX(XCL XXCFF_CONTRACT_LINES_U01)
+              INDEX(XOH XXCFF_OBJECT_HEADERS_PK)
+            */
+-- 0001058 2009/08/28 ADD END --
+              xch.lease_end_date              AS lease_end_date              --リース終了日
              ,xcl.contract_header_id          AS contract_header_id          --契約内部ID
              ,xcl.contract_line_id            AS contract_line_id            --契約明細内部ID
              ,xcl.contract_line_num           AS contract_line_num           --契約枝番(A-6使用)
@@ -1070,8 +1088,12 @@ AS
        WHERE
               xcl.object_header_id   = xoh.object_header_id           --物件内部ID
          AND  xcl.contract_header_id = xch.contract_header_id         --契約内部ID
-         AND  TO_CHAR(xch.lease_end_date, 'YYYYMM') = 
-                TO_CHAR(TO_DATE(gv_period_name, 'YYYY-MM'), 'YYYYMM') --リース終了日
+-- 0001058 2009/08/28 MOD START --
+--         AND  TO_CHAR(xch.lease_end_date, 'YYYYMM') = 
+--                TO_CHAR(TO_DATE(gv_period_name, 'YYYY-MM'), 'YYYYMM') --リース終了日
+         AND  xch.lease_end_date    BETWEEN TO_DATE(gv_period_name || '-01','YYYY-MM-DD')
+                                    AND     LAST_DAY(TO_DATE(gv_period_name || '-01','YYYY-MM-DD')) --リース終了日
+-- 0001058 2009/08/28 MOD END --
          AND  xoh.object_status                                       --物件ステータス
                 IN (cv_object_st_ctrcted, cv_object_st_reles_ctrcted, cv_object_st_mid_term_appl)
          AND  xoh.re_lease_times     = xch.re_lease_times             --再リース回数
