@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCOS001A02C (body)
  * Description      : 入金データの取込を行う
  * MD.050           : HHT入金データ取込 (MD050_COS_001_A02)
- * Version          : 1.9
+ * Version          : 1.10
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -37,6 +37,7 @@ AS
  *                                       [0000765]入金拠点コードの取得先変更
  *  2009/07/28    1.8   T.Tominaga       [0000881]拠点名称・顧客名の桁数編集
  *  2009/10/02    1.9   N.Maeda          [0001378]エラーリスト出力桁数編集
+ *  2010/02/01    1.10  N.Maeda          [E_本稼動_01353] 入金日-AR会計期間妥当性チェック、出力内容修正
  *
  *****************************************************************************************/
 --
@@ -1256,13 +1257,17 @@ AS
          ,lv_errmsg           -- ユーザー・エラー・メッセージ
           );
 --
-        --エラーチェック
-        IF ( lv_retcode = cv_status_error ) THEN
-          RAISE global_api_expt;
-        END IF;
+-- ******** 2010/02/01 1.10 N.Maeda MOD START ******** --
+--        --エラーチェック
+--        IF ( lv_retcode = cv_status_error ) THEN
+--          RAISE global_api_expt;
+--        END IF;
 --
         -- AR会計期間範囲外の場合
-        IF ( lv_status != cv_open ) THEN
+--        IF ( lv_status != cv_open ) THEN
+        IF ( lv_status != cv_open )
+          OR ( lv_retcode = cv_status_error ) THEN
+-- ******** 2010/02/01 1.10 N.Maeda MOD  END  ******** --
           -- ログ出力
           lv_errmsg := xxccp_common_pkg.get_msg( cv_application, cv_msg_prd );
           FND_FILE.PUT_LINE( FND_FILE.LOG, lv_errmsg );
@@ -1285,6 +1290,9 @@ AS
           ln_err_no := ln_err_no + 1;
           -- エラーフラグ更新
           lv_err_flag := cv_hit;
+-- ******** 2010/02/01 1.10 N.Maeda MOD START ******** --
+          lv_retcode := NULL;
+-- ******** 2010/02/01 1.10 N.Maeda MOD  END  ******** --
         END IF;
 --
         --== 未来日チェック ==--
