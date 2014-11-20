@@ -7,7 +7,7 @@ AS
  * Package Name     : XXCOI003A14C(body)
  * Description      : その他取引データOIF更新
  * MD.050           : その他取引データOIF更新（HHT入出庫データ） MD050_COI_003_A14 
- * Version          : 1.2
+ * Version          : 1.3
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -36,6 +36,7 @@ AS
  *  2009/01/19   1.0   H.Nakajima        新規作成
  *  2009/11/24   1.1   N.Abe             [E_本稼動_00025]画面入力時VDコラム品目チェックの解除
  *  2009/11/25   1.2   H.Sasaki          [E_本稼動_00025]画面入力時VDコラム品目チェックの削除
+ *  2010/08/31   1.3   H.Sasaki          [E_本稼動_04663]PT対応
  *
  *****************************************************************************************/
 --
@@ -1163,6 +1164,9 @@ AS
     CURSOR inout_kuragae_data_cur
     IS
       SELECT             
+-- == 2010/08/31 V1.3 Added START ===============================================================
+              /*+ INDEX(xhit xxcoi_hht_inv_transactions_n04) */
+-- == 2010/08/31 V1.3 Added END   ===============================================================
               xhit.rowid                  AS xhit_rowid             -- ROWID
             , xhit.invoice_no             AS invoice_no             -- 伝票No
             , xhit.transaction_id         AS transaction_id         -- 入庫情報一時表ID
@@ -1889,6 +1893,9 @@ AS
     CURSOR svd_cur
     IS
       SELECT             
+-- == 2010/08/31 V1.3 Added START ===============================================================
+              /*+ INDEX(xhit xxcoi_hht_inv_transactions_n04) */
+-- == 2010/08/31 V1.3 Added END   ===============================================================
               xhit.rowid                      AS xhit_rowid                 -- ROWID
             , xhit.invoice_no                 AS invoice_no                 -- 伝票No
             , xhit.transaction_id             AS transaction_id             -- 入庫情報一時表ID
@@ -2512,6 +2519,9 @@ AS
     CURSOR item_conv_cur
     IS
       SELECT             
+-- == 2010/08/31 V1.3 Added START ===============================================================
+              /*+ INDEX(xhit xxcoi_hht_inv_transactions_n04) */
+-- == 2010/08/31 V1.3 Added END   ===============================================================
               xhit.rowid                      AS xhit_rowid                 -- ROWID
             , xhit.invoice_no                 AS invoice_no                 -- 伝票No
             , xhit.transaction_id             AS transaction_id             -- 入庫情報一時表ID
