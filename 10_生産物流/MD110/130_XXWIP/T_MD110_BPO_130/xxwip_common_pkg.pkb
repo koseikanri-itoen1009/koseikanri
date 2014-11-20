@@ -6,7 +6,7 @@ AS
  * Package Name           : xxwip_common_pkg(BODY)
  * Description            : 共通関数(XXWIP)(BODY)
  * MD.070(CMD.050)        : なし
- * Version                : 1.9
+ * Version                : 1.10
  *
  * Program List
  *  --------------------   ---- ----- --------------------------------------------------
@@ -38,6 +38,7 @@ AS
  *  get_business_date      P          営業日取得
  *  make_qt_inspection     P          品質検査依頼情報作成
  *  get_can_stock_qty      F          手持在庫数量算出API(投入実績用)
+ *  change_trans_date_all  P          処理日付更新関数
  *
  * Change Record
  * ------------ ----- ------------------ -----------------------------------------------
@@ -53,6 +54,7 @@ AS
  *  2008/07/10   1.7   Oracle 二瓶 大輔   システムテスト不具合対応#315(在庫単価取得関数修正)
  *  2008/07/14   1.8   Oracle 伊藤ひとみ  結合不具合 指摘2対応  品質検査依頼情報作成で更新の場合、検査予定日・結果を更新しない。
  *  2008/08/25   1.9   Oracle 伊藤ひとみ  内部変更要求#189対応(品質検査依頼情報作成修正)更新・削除で検査依頼NoがNULLの場合、処理を行わない。
+ *  2008/09/03   1.10  Oracle 二瓶 大輔   統合テスト不具合#46対応(処理日付更新関数修正)
  *****************************************************************************************/
 --
 --###############################  固定グローバル定数宣言部 START   ###############################
@@ -4399,6 +4401,9 @@ AS
             ,itp.trans_date trans_date
       FROM   ic_tran_pnd itp -- OPM保留在庫トランザクション
       WHERE  itp.reverse_id  IS NULL
+-- 2008/09/03 D.Nihei ADD START 生産バッチのデータのみを取得する
+      AND    itp.doc_type    = 'PROD'
+-- 2008/09/03 D.Nihei ADD END
       AND    itp.delete_mark = gn_delete_mark_off
       AND    itp.doc_id      = in_batch_id
       ;
