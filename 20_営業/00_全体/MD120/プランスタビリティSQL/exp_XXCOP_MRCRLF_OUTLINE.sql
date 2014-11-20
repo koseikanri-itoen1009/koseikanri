@@ -1,0 +1,1 @@
+exp outln/outln file=XXCOP_MRCRLF_OUTLINE.dmp tables='OL$' 'OL$HINTS' 'OL$NODES' query= \"where ol_name like \'XXCOP_MRCRLF_OUTLINE%\'\"

@@ -1,0 +1,1 @@
+imp outln/outln file=XXCOP_INCOIN_OUTLINE.dmp fromuser=outln ignore=Y
