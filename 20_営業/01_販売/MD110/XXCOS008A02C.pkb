@@ -7,7 +7,7 @@ AS
  * Description      : 生産物流システムの工場直送出荷実績データから販売実績を作成し、
  *                    販売実績を作成したＯＭ受注をクローズします。
  * MD.050           : 出荷確認（生産物流出荷）  MD050_COS_008_A02
- * Version          : 1.15
+ * Version          : 1.16
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -56,6 +56,7 @@ AS
  *  2009/09/12    1.13  M.Sano           [0001345] PT対応
  *  2009/09/30    1.14  K.Satomura       [0001275] 拠点コード不一致対応
  *  2009/10/13    1.15  M.Sano           [0001526] 赤黒フラグの判定方法の修正
+ *  2009/10/16    1.16  M.Sano           [E_T4_00014] PT対応
  *
  *****************************************************************************************/
 --
@@ -1223,28 +1224,40 @@ AS
 --
 --
     SELECT
--- ********** 2009/09/12 1.13 M.Sano  MOD START ************ --
----- ********** 2009/09/02 1.12 N.Maeda ADD START ************ --
+-- ********** 2009/10/16 1.16 M.Sano  MOD START ************ --
+---- ********** 2009/09/12 1.13 M.Sano  MOD START ************ --
+------ ********** 2009/09/02 1.12 N.Maeda ADD START ************ --
+----    /*+
+----        leading(ooha)
+----        index(ooha xxcos_oe_order_headers_all_n11)
+----        use_nl(oola ooha xca ottth otttl ottth ottal msi)
+----        use_nl(ooha xchv)
+----        use_nl(xchv.cust_hier.cash_hcar_3 xchv.cust_hier.ship_hzca_3)
+----    */
+------ ********** 2009/09/02 1.12 N.Maeda ADD  END  ************ --
 --    /*+
 --        leading(ooha)
 --        index(ooha xxcos_oe_order_headers_all_n11)
+--        index(xchv.cust_hier.ship_hzca_1 hz_cust_accounts_u1)
+--        index(xchv.cust_hier.ship_hzca_2 hz_cust_accounts_u1)
+--        index(xchv.cust_hier.ship_hzca_3 hz_cust_accounts_u1)
+--        index(xchv.cust_hier.ship_hzca_4 hz_cust_accounts_u1)
 --        use_nl(oola ooha xca ottth otttl ottth ottal msi)
 --        use_nl(ooha xchv)
 --        use_nl(xchv.cust_hier.cash_hcar_3 xchv.cust_hier.ship_hzca_3)
 --    */
----- ********** 2009/09/02 1.12 N.Maeda ADD  END  ************ --
+---- ********** 2009/09/12 1.13 M.Sano  MOD End ************ --
     /*+
-        leading(ooha)
-        index(ooha xxcos_oe_order_headers_all_n11)
-        index(xchv.cust_hier.ship_hzca_1 hz_cust_accounts_u1)
-        index(xchv.cust_hier.ship_hzca_2 hz_cust_accounts_u1)
-        index(xchv.cust_hier.ship_hzca_3 hz_cust_accounts_u1)
-        index(xchv.cust_hier.ship_hzca_4 hz_cust_accounts_u1)
-        use_nl(oola ooha xca ottth otttl ottth ottal msi)
-        use_nl(ooha xchv)
-        use_nl(xchv.cust_hier.cash_hcar_3 xchv.cust_hier.ship_hzca_3)
+        LEADING(ilv1)
+        INDEX(xchv.cust_hier.ship_hzca_1 hz_cust_accounts_u1)
+        INDEX(xchv.cust_hier.ship_hzca_2 hz_cust_accounts_u1)
+        INDEX(xchv.cust_hier.ship_hzca_3 hz_cust_accounts_u1)
+        INDEX(xchv.cust_hier.ship_hzca_4 hz_cust_accounts_u1)
+        USE_NL(ilv1 ooha oola xoha xola xca otttl ottth ottal msi)
+        USE_NL(ooha xchv)
+        USE_NL(xchv.cust_hier.cash_hcar_3 xchv.cust_hier.ship_hzca_3)
     */
--- ********** 2009/09/12 1.13 M.Sano  MOD START ************ --
+-- ********** 2009/10/16 1.16 M.Sano MOD End    ************ --
       ooha.header_id                        AS header_id                  -- 受注ヘッダID
     , oola.line_id                          AS line_id                    -- 受注明細ID
     , ottth.name                            AS order_type                 -- 受注タイプ
@@ -1357,18 +1370,53 @@ AS
 --        ON ooha.orig_sys_document_ref = xeh.order_connection_number
 /* 2009/07/09 Ver1.11 Del End   */
     , oe_order_lines_all  oola                          -- 受注明細
-      INNER JOIN xxwsh_order_headers_all  xoha          -- 受注ヘッダアドオン
-        ON  oola.packing_instructions = xoha.request_no -- 受注明細.梱包指示＝受注ﾍｯﾀﾞｱﾄﾞｵﾝ.依頼No
-        AND xoha.latest_external_flag = ct_yes_flg      -- 受注ﾍｯﾀﾞｱﾄﾞｵﾝ.最新ﾌﾗｸﾞ = 'Y'
-        AND xoha.req_status = gv_add_status_sum_up      -- 受注ﾍｯﾀﾞｱﾄﾞｵﾝ.ｽﾃｰﾀｽ＝出荷実績計上済
-      LEFT JOIN xxwsh_order_lines_all     xola    
-        ON  xoha.order_header_id = xola.order_header_id -- 受注ﾍｯﾀﾞｱﾄﾞｵﾝ.ﾍｯﾀﾞID＝受注明細ｱﾄﾞｵﾝ.ﾍｯﾀﾞID
-        -- NVL(受注明細.品目子コード，受注明細.受注品目)＝受注明細ｱﾄﾞｵﾝ.出荷品目
-/* 2009/07/08 Ver1.10 Mod Start */
---        AND NVL( oola.attribute6, oola.ordered_item ) = xola.shipping_item_code
-        AND NVL( oola.attribute6, oola.ordered_item ) = xola.request_item_code
-/* 2009/07/08 Ver1.10 Mod End   */
-        AND NVL( xola.delete_flag, ct_no_flg ) = ct_no_flg  -- 受注明細ｱﾄﾞｵﾝ.削除ﾌﾗｸﾞ = 'N'
+-- ********** 2009/10/16 1.16 M.Sano  MOD START ************ --
+--      INNER JOIN xxwsh_order_headers_all  xoha          -- 受注ヘッダアドオン
+--        ON  oola.packing_instructions = xoha.request_no -- 受注明細.梱包指示＝受注ﾍｯﾀﾞｱﾄﾞｵﾝ.依頼No
+--        AND xoha.latest_external_flag = ct_yes_flg      -- 受注ﾍｯﾀﾞｱﾄﾞｵﾝ.最新ﾌﾗｸﾞ = 'Y'
+--        AND xoha.req_status = gv_add_status_sum_up      -- 受注ﾍｯﾀﾞｱﾄﾞｵﾝ.ｽﾃｰﾀｽ＝出荷実績計上済
+--      LEFT JOIN xxwsh_order_lines_all     xola    
+--        ON  xoha.order_header_id = xola.order_header_id -- 受注ﾍｯﾀﾞｱﾄﾞｵﾝ.ﾍｯﾀﾞID＝受注明細ｱﾄﾞｵﾝ.ﾍｯﾀﾞID
+--        -- NVL(受注明細.品目子コード，受注明細.受注品目)＝受注明細ｱﾄﾞｵﾝ.出荷品目
+--/* 2009/07/08 Ver1.10 Mod Start */
+----        AND NVL( oola.attribute6, oola.ordered_item ) = xola.shipping_item_code
+--        AND NVL( oola.attribute6, oola.ordered_item ) = xola.request_item_code
+--/* 2009/07/08 Ver1.10 Mod End   */
+--        AND NVL( xola.delete_flag, ct_no_flg ) = ct_no_flg  -- 受注明細ｱﾄﾞｵﾝ.削除ﾌﾗｸﾞ = 'N'
+    , xxwsh_order_headers_all   xoha
+    , xxwsh_order_lines_all     xola
+    , ( SELECT /*+
+                   USE_NL(ooha)
+                   USE_NL(oola)
+                   USE_NL(xoha)
+                   INDEX(ooha xxcos_oe_order_headers_all_n11)
+                   INDEX(oola xxcos_oe_order_lines_all_n21)
+                */
+               ooha.header_id           header_id         -- 受注ヘッダID
+             , oola.line_id             line_id           -- 受注明細ID
+             , oola.attribute6          attribute6        -- 子品目コード
+             , oola.ordered_item        ordered_item      -- 受注品目
+             , xoha.order_header_id     order_header_id   -- 受注ヘッダアドオンID 
+        FROM   oe_order_headers_all     ooha
+             , oe_order_lines_all       oola
+             , xxwsh_order_headers_all  xoha
+        WHERE
+        -- 受注ヘッダ抽出条件
+            ooha.flow_status_code = ct_hdr_status_booked            -- ステータス＝記帳済(BOOKED)
+        AND ooha.order_category_code != ct_order_category           -- 受注カテゴリコード≠返品(RETURN)
+        AND ooha.org_id = gn_org_id                                 -- 組織ID
+        AND ( ooha.global_attribute3 IS NULL
+            OR
+              ooha.global_attribute3 IN ( cv_target_order_01, cv_target_order_02 )
+            )                                                       -- 情報区分 =null,01,02
+        -- 受注明細抽出条件
+        AND oola.header_id            = ooha.header_id
+        -- 受注ヘッダアドオン抽出条件
+        AND xoha.request_no           = oola.packing_instructions   -- 依頼No  ＝受注明細.梱包指示
+        AND xoha.latest_external_flag = ct_yes_flg                  -- 最新ﾌﾗｸﾞ＝'Y'
+        AND xoha.req_status           = gv_add_status_sum_up        -- ｽﾃｰﾀｽ   ＝出荷実績計上済
+      )                         ilv1    -- インラインビュー(受注明細アドオン紐付けビュー)
+-- ********** 2009/10/16 1.16 M.Sano MOD End    ************ --
     , oe_transaction_types_tl   ottth   -- 受注ヘッダ摘要用取引タイプ
     , oe_transaction_types_tl   otttl   -- 受注明細摘要用取引タイプ
     , oe_transaction_types_all  ottal   -- 受注明細取引タイプ
@@ -1376,7 +1424,19 @@ AS
     , xxcmm_cust_accounts       xca     -- アカウントアドオンマスタ
     , xxcos_cust_hierarchy_v    xchv    -- 顧客階層VIEW
     WHERE
-        ooha.header_id = oola.header_id -- 受注ヘッダ.受注ヘッダID＝受注明細.受注ヘッダID
+-- ********** 2009/10/16 1.16 M.Sano  Mod START ************ --
+--        ooha.header_id = oola.header_id -- 受注ヘッダ.受注ヘッダID＝受注明細.受注ヘッダID
+    -- 受注ヘッダ抽出条件
+        ooha.header_id = ilv1.header_id
+    -- 受注明細抽出条件
+    AND oola.line_id   = ilv1.line_id
+    -- 受注ヘッダアドオン結合条件
+    AND xoha.order_header_id                  = ilv1.order_header_id
+    -- 受注明細アドオン結合条件
+    AND xola.order_header_id(+)               = ilv1.order_header_id
+    AND xola.request_item_code(+)             = NVL( ilv1.attribute6, ilv1.ordered_item )
+    AND NVL( xola.delete_flag(+), ct_no_flg ) = ct_no_flg
+-- ********** 2009/10/16 1.16 M.Sano Mod End    ************ --
     -- 受注ヘッダ.受注タイプID＝受注ヘッダ摘要用取引タイプ.取引タイプID
     AND ooha.order_type_id = ottth.transaction_type_id
     -- 受注明細.明細タイプID＝受注明細摘要用取引タイプ.取引タイプID
@@ -1389,11 +1449,15 @@ AS
     AND ottth.language = cv_lang
     AND otttl.language = cv_lang
 /* 2009/07/09 Ver1.11 Mod End   */
-    AND ooha.flow_status_code = ct_hdr_status_booked                -- 受注ヘッダ.ステータス＝記帳済(BOOKED)
-    AND ooha.order_category_code != ct_order_category               -- 受注ヘッダ.受注カテゴリコード≠返品(RETURN)
+-- ********** 2009/10/16 1.16 M.Sano  DEL Start ************ --
+--    AND ooha.flow_status_code = ct_hdr_status_booked                -- 受注ヘッダ.ステータス＝記帳済(BOOKED)
+--    AND ooha.order_category_code != ct_order_category               -- 受注ヘッダ.受注カテゴリコード≠返品(RETURN)
+-- ********** 2009/10/16 1.16 M.Sano  DEL End   ************ --
     -- 受注明細.ステータス≠ｸﾛｰｽﾞor取消
     AND oola.flow_status_code NOT IN ( ct_ln_status_closed, ct_ln_status_cancelled )
-    AND ooha.org_id = gn_org_id                                     -- 組織ID
+-- ********** 2009/10/16 1.16 M.Sano  DEL Start ************ --
+--    AND ooha.org_id = gn_org_id                                     -- 組織ID
+-- ********** 2009/10/16 1.16 M.Sano  DEL End   ************ --
     AND TRUNC( oola.request_date ) <= TRUNC( gd_process_date )      -- 受注明細.要求日≦業務日付
     AND ooha.sold_to_org_id = xca.customer_id                       -- 受注ヘッダ.顧客ID = ｱｶｳﾝﾄｱﾄﾞｵﾝﾏｽﾀ.顧客ID
     AND ooha.sold_to_org_id = xchv.ship_account_id                  -- 受注ヘッダ.顧客ID = 顧客階層VIEW.出荷先顧客ID
@@ -1478,21 +1542,26 @@ AS
               AND  otttl.name                  = NVL( flv.attribute3, otttl.name )
 -- ********** 2009/09/02 1.12 N.Maeda MOD  END  ************ --
         )
-/* 2009/07/09 Ver1.11 Add Start */
-    AND (
-          ooha.global_attribute3 IS NULL
-        OR
-          ooha.global_attribute3 IN ( cv_target_order_01, cv_target_order_02 )
-        )
-/* 2009/07/09 Ver1.11 Add End   */
+-- ********** 2009/10/16 1.16 M.Sano  DEL Start ************ --
+--/* 2009/07/09 Ver1.11 Add Start */
+--    AND (
+--          ooha.global_attribute3 IS NULL
+--        OR
+--          ooha.global_attribute3 IN ( cv_target_order_01, cv_target_order_02 )
+--        )
+--/* 2009/07/09 Ver1.11 Add End   */
+-- ********** 2009/10/16 1.16 M.Sano  DEL End   ************ --
     ORDER BY
       ooha.header_id                              -- 受注ﾍｯﾀﾞ.受注ﾍｯﾀﾞID
     , oola.request_date                           -- 受注明細.要求日
     , NVL( oola.attribute4, oola.request_date )   -- 受注明細.検収日(NULL時は、受注明細.要求日)
     , oola.line_id                                -- 受注明細.受注明細ID
-    FOR UPDATE OF
-      ooha.header_id
-    NOWAIT;
+-- ********** 2009/10/16 1.16 M.Sano  DEL Start ************ --
+--    FOR UPDATE OF
+--      ooha.header_id
+--    NOWAIT;
+    ;
+-- ********** 2009/10/16 1.16 M.Sano  DEL End   ************ --
 --
     --データが無い時は「対象データなしエラーメッセージ」
 /* 2009/07/09 Ver1.11 Mod Start */
