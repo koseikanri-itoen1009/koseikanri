@@ -7,7 +7,7 @@ AS
  * Description            : 生産バッチロット詳細画面データソースパッケージ(BODY)
  * MD.050                 : T_MD050_BPO_200_生産バッチ.doc
  * MD.070                 : T_MD070_BPO_20A_生産バッチ一覧画面.doc
- * Version                : 1.9
+ * Version                : 1.10
  *
  * Program List
  *  --------------------  ---- ----- -------------------------------------------------
@@ -31,6 +31,7 @@ AS
  *                                      本番障害#837対応（抽出箇所編集) 
  *  2009/01/05   1.8   D.Nihei          本番障害#912対応（抽出SQL追加) 
  *  2009/02/02   1.9   D.Nihei          本番障害#1112対応（総引当ベースロジック追加) 
+ *  2009/02/18   1.10  N.Yoshida        統合障害#701対応（条件追加) 
  *****************************************************************************************/
 --
   -- 定数宣言
@@ -1035,6 +1036,9 @@ AS
       wk_sql3 := wk_sql3 || '         WHERE  xvv.segment1           = ilm.attribute8 ';
       wk_sql3 := wk_sql3 || '         AND    xvv.start_date_active <= trunc( TO_DATE(''' || id_material_date || ''')) ';
       wk_sql3 := wk_sql3 || '         AND    xvv.end_date_active   >= trunc( TO_DATE(''' || id_material_date || ''')) ';
+-- 2009/02/18 N.Yoshida ADD START
+      wk_sql3 := wk_sql3 || '         AND    xvv.inactive_date IS NULL ';
+-- 2009/02/18 N.Yoshida ADD END
       wk_sql3 := wk_sql3 || '        )                                     orgn_name                '; -- 取引先名称
       wk_sql3 := wk_sql3 || '      , (SELECT xlvv_l05.meaning ';
       wk_sql3 := wk_sql3 || '         FROM   xxcmn_lookup_values_v xlvv_l05 ';
