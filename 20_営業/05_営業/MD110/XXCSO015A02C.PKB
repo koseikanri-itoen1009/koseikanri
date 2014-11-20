@@ -38,6 +38,7 @@ AS
  *  2009-03-10          K.Satomura       Œ‹‡áŠQ‘Î‰(•s‹ï‡‚h‚c51)
  *                                       EŒ»İ’uæŒÚ‹qî•ñ‚Ìæ“¾ğŒ‚ğC³
  *  2009-04-02    1.2   K.Satomura       ‚r‚sáŠQ‘Î‰(T1_0169‘Î‰)
+ *  2009-04-06    1.3   D.Abe            ‚r‚sáŠQ‘Î‰(T1_0306‘Î‰)
  *****************************************************************************************/
 --
 --#######################  ŒÅ’èƒOƒ[ƒoƒ‹’è”éŒ¾•” START   #######################
@@ -1749,32 +1750,38 @@ AS
 --  
     -- *** ì‹ÆˆË—Š/”­’î•ñ‚ÌŠi”[ ***
 --
-    -- “d˜b”Ô†•ÒW
-    ln_num1    := INSTR(lv_cur_phone_number, cv_hyphen);
-    ln_num2    := INSTR(lv_cur_phone_number, cv_hyphen, 1, 2);
+    /* 2009.04.06 D.Abe T1_0306‘Î‰ START */
+    IF (lv_cur_phone_number IS NOT NULL) THEN
+    /* 2009.04.06 D.Abe T1_0306‘Î‰ END */
+      -- “d˜b”Ô†•ÒW
+      ln_num1    := INSTR(lv_cur_phone_number, cv_hyphen);
+      ln_num2    := INSTR(lv_cur_phone_number, cv_hyphen, 1, 2);
 --
-    IF (lv_cur_phone_number IS NULL OR ln_num1 = 0 OR ln_num2 = 0) THEN
-      lv_cur_phone_number1 := NULL;
-      lv_cur_phone_number2 := NULL;
-      lv_cur_phone_number3 := NULL;
-    ELSE
-      lv_cur_phone_number1 := SUBSTR(lv_cur_phone_number, 1, (ln_num1-1));
-      lv_cur_phone_number2 := SUBSTR(lv_cur_phone_number, ln_num1 + 1, (ln_num2 - ln_num1 - 1));
-      lv_cur_phone_number3 := SUBSTR(lv_cur_phone_number, ln_num2 + 1);
+      IF (lv_cur_phone_number IS NULL OR ln_num1 = 0 OR ln_num2 = 0) THEN
+        lv_cur_phone_number1 := NULL;
+        lv_cur_phone_number2 := NULL;
+        lv_cur_phone_number3 := NULL;
+      ELSE
+        lv_cur_phone_number1 := SUBSTR(lv_cur_phone_number, 1, (ln_num1-1));
+        lv_cur_phone_number2 := SUBSTR(lv_cur_phone_number, ln_num1 + 1, (ln_num2 - ln_num1 - 1));
+        lv_cur_phone_number3 := SUBSTR(lv_cur_phone_number, ln_num2 + 1);
+      END IF;
+--
+      ln_num1    := INSTR(lv_new_phone_number, cv_hyphen);
+      ln_num2    := INSTR(lv_new_phone_number, cv_hyphen, 1, 2);
+--
+      IF (lv_new_phone_number IS NULL OR ln_num1 = 0 OR ln_num2 = 0) THEN
+        lv_new_phone_number1 := NULL;
+        lv_new_phone_number2 := NULL;
+        lv_new_phone_number3 := NULL;
+      ELSE
+        lv_new_phone_number1 := SUBSTR(lv_new_phone_number, 1, (ln_num1-1));
+        lv_new_phone_number2 := SUBSTR(lv_new_phone_number, ln_num1 + 1, (ln_num2 - ln_num1 - 1));
+        lv_new_phone_number3 := SUBSTR(lv_new_phone_number, ln_num2 + 1);
+      END IF;
+    /* 2009.04.06 D.Abe T1_0306‘Î‰ START */
     END IF;
---
-    ln_num1    := INSTR(lv_new_phone_number, cv_hyphen);
-    ln_num2    := INSTR(lv_new_phone_number, cv_hyphen, 1, 2);
---
-    IF (lv_new_phone_number IS NULL OR ln_num1 = 0 OR ln_num2 = 0) THEN
-      lv_new_phone_number1 := NULL;
-      lv_new_phone_number2 := NULL;
-      lv_new_phone_number3 := NULL;
-    ELSE
-      lv_new_phone_number1 := SUBSTR(lv_new_phone_number, 1, (ln_num1-1));
-      lv_new_phone_number2 := SUBSTR(lv_new_phone_number, ln_num1 + 1, (ln_num2 - ln_num1 - 1));
-      lv_new_phone_number3 := SUBSTR(lv_new_phone_number, ln_num2 + 1);
-    END IF;
+    /* 2009.04.06 D.Abe T1_0306‘Î‰ END */
 --
     -- •¨ŒƒR[ƒh‚P
     io_get_data_rec.install_code1          := REPLACE(lv_install_code1, cv_hyphen);
