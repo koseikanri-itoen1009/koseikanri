@@ -10,12 +10,14 @@
 * 2008-06-09 1.1  二瓶大輔     変更要求#42対応
 * 2009-02-16 1.2  二瓶大輔     本番障害#469対応
 * 2009-03-13 1.3  飯田  甫     本番障害#1300対応
+* 2009-11-26 1.4  吉元強樹     本稼動障害#59対応
 *============================================================================
 */
 package itoen.oracle.apps.xxpo.xxpo440001j.server;
 import com.sun.java.util.collections.HashMap;
 
 import itoen.oracle.apps.xxcmn.util.XxcmnUtility;
+import itoen.oracle.apps.xxpo.util.XxpoConstants;
 
 import java.util.ArrayList;
 
@@ -75,6 +77,50 @@ public class XxpoProvReqtResultVOImpl extends OAViewObjectImpl
 // 2009-03-13 H.Iida ADD END
     
     // 起動タイプ(必須)
+// 2009-11-26 v1.4 T.Yoshimoto Add Start 本稼動障害#59対応
+    parameters.add(exeType);  // VO内の起動タイプへのバインド
+    parameters.add(exeType);  // VO内の起動タイプへのバインド
+
+    // 起動タイプが「12：パッカー･外注工場用」の場合
+    if (XxpoConstants.EXE_TYPE_12.equals(exeType)) 
+    {
+      // セキュリティ情報VIEWを適用
+      whereClause.append(" EXISTS (");
+      whereClause.append("          SELECT 1 ");
+      whereClause.append("          FROM   xxpo_security_supply_v         xssv "  );
+      whereClause.append("                ,xxcmn_lookup_values_v          xlvvs " );
+      whereClause.append("          WHERE  xlvvs.attribute3                         = xssv.security_class " );
+      whereClause.append("          AND    xssv.vendor_code                         = vendor_code "         );
+      whereClause.append("          AND    NVL(xssv.vendor_site_code, ship_to_code) = ship_to_code "        );
+      whereClause.append("          AND    xssv.user_id                             = FND_GLOBAL.USER_ID "  );
+      whereClause.append("          AND    xlvvs.lookup_type                        = 'XXPO_START_UP_TYPE'" );
+      whereClause.append("          AND    xlvvs.lookup_code                        = " + bindCount++ );
+      whereClause.append("         ) ");
+      //起動タイプ
+      parameters.add(exeType);      
+    }
+    
+    // 起動タイプが「13：東洋埠頭用」「15：資材メーカー用」の場合
+    if (XxpoConstants.EXE_TYPE_13.equals(exeType)
+      || XxpoConstants.EXE_TYPE_15.equals(exeType))
+    {
+      // セキュリティ情報VIEWを適用
+      whereClause.append(" EXISTS (");
+      whereClause.append("          SELECT 1 ");
+      whereClause.append("          FROM   xxpo_security_supply_v         xssv "  );
+      whereClause.append("                ,xxcmn_lookup_values_v          xlvvs " );
+      whereClause.append("          WHERE  xlvvs.attribute3   = xssv.security_class "  );
+      whereClause.append("          AND    xssv.segment1      = ship_whse_code "       );
+      whereClause.append("          AND    xssv.user_id       = FND_GLOBAL.USER_ID "   );
+      whereClause.append("          AND    xlvvs.lookup_type  = 'XXPO_START_UP_TYPE' " );
+      whereClause.append("          AND    xlvvs.lookup_code  = " + bindCount++ );
+      whereClause.append("         ) ");
+      //起動タイプ
+      parameters.add(exeType);      
+    }
+
+// 2009-11-26 v1.4 T.Yoshimoto Add End 本稼動障害#59対応
+
     XxcmnUtility.andAppend(whereClause);
     whereClause.append("exe_type = :" + bindCount++);
     parameters.add(exeType);
