@@ -16,6 +16,7 @@
 * 2008-10-07 1.7  伊藤ひとみ   統合テスト指摘240対応
 * 2008-10-24 1.8  二瓶大輔     TE080_BPO_600 No22
 * 2008-12-05 1.9  伊藤ひとみ   本番障害#452対応
+* 2008-12-06 2.0  宮田         本番障害#484対応
 *============================================================================
 */
 package itoen.oracle.apps.xxwsh.util;
@@ -1557,9 +1558,11 @@ public class XxwshUtility
     sb.append("  AND   xola.order_line_id   = lt_in_param_order_line_id; "                      );
 
                  // 出荷実績計上済(04)かつ、出荷実績数量が違う値に更新する場合(出荷のデータのみ)
-    sb.append("  IF (((lt_shipped_quantity <> lt_in_param_quantity ) "                          );
-    sb.append("    OR (lt_shipped_quantity IS NULL)) "                                          );
-    sb.append("  AND (lt_req_status       =  '04'))                 THEN "                      );
+// 2008-12-06 T.Miyata Add Start 本番#484 実績未修正のデータについてもインターフェース済フラグをNにするひつようがある。
+//    sb.append("  IF (((lt_shipped_quantity <> lt_in_param_quantity ) "                          );
+//    sb.append("    OR (lt_shipped_quantity IS NULL)) "                                          );
+    sb.append("  IF (lt_req_status       =  '04')                 THEN "                      );
+// 2008-12-06 T.Miyata Add End 本番#484
                    // 出荷実績インタフェース済フラグをNに更新
     sb.append("    lt_shipping_result_if_flg := 'N'; "                                          );
     sb.append("  END IF; "                                                                      );
