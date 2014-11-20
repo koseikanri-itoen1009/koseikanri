@@ -3,7 +3,7 @@
  *
  * View Name   : XXCOK_001A01F_V
  * Description : 顧客移行入力画面（顧客単位）ビュー
- * Version     : 1.1
+ * Version     : 1.2
  *
  * Change Record
  * ------------- ----- ---------------- ---------------------------------
@@ -11,6 +11,7 @@
  * ------------- ----- ---------------- ---------------------------------
  *  2009/01/15    1.0   T.Osada          新規作成
  *  2011/02/03    1.1   M.Hirose         [E_本稼動_02010,06187]対応
+ *  2011/11/01    1.2   A.Shirakawa      [E_本稼動_08680]対応
  *
  **************************************************************************************/
 CREATE OR REPLACE VIEW apps.xxcok_001a01f_v(
@@ -83,7 +84,10 @@ FROM xxcok_cust_shift_info    xcsi
    , hz_parties               hp3
    , xxcmm_cust_accounts      xca
 -- 2011/02/03 Ver.1.1 [E_本稼動_02010,06187] SCS M.Hirose REPAIR START
-   , xxcff_aff_department_v   xadv
+-- 2011/11/01 Ver.1.2 [E_本稼動_08680] SCSK A.Shirakawa REPAIR START
+--   , xxcff_aff_department_v   xadv
+   , xxcok_aff_department_v   xadv
+-- 2011/11/01 Ver.1.2 [E_本稼動_08680] SCSK A.Shirakawa REPAIR END
 -- 2011/02/03 Ver.1.1 [E_本稼動_02010,06187] SCS M.Hirose REPAIR END
 WHERE xcsi.cust_code          = hca1.account_number
   AND xcsi.prev_base_code     = hca2.account_number
