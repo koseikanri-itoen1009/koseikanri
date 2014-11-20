@@ -1,5 +1,4 @@
-CREATE OR REPLACE
-PACKAGE BODY XXCOI006A08R
+CREATE OR REPLACE PACKAGE BODY XXCOI006A08R
 AS
 /*****************************************************************************************
  * Copyright(c)Sumisho Computer Systems Corporation, 2008. All rights reserved.
@@ -32,7 +31,7 @@ AS
  *  2009/02/18    1.2   N.Abe            [障害COI_019] 良品区分取得用コード修正対応
  *  2009/03/05    1.3   T.Nakamura       [障害COI_033] 件数出力の不具合対応
  *  2009/03/23    1.4   H.Sasaki         [障害T1_0107] 抽出条件の修正
- *  2009/04/30    1.5   T.Nakamura       [障害T1_0877] 最終行にバックスラッシュを追加
+ *  2009/04/30    1.5   T.Nakamura       最終行にバックスラッシュを追加
  *
  *****************************************************************************************/
 --

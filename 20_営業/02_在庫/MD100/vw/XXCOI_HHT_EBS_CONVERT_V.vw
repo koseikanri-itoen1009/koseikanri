@@ -3,15 +3,14 @@
  *
  * View Name     : XXCOI_HHT_EBS_CONVERT_V
  * Description   : 入出庫ジャーナルコード変換ビュー
- * Version       : 1.2
+ * Version       : 1.1
  *
  * Change Record
  * ------------- ----- ---------------- ---------------------------------
  *  Date         Ver.  Editor     Description
  * ------------- ----- ---------------- ---------------------------------
- *  2008-11-17   1.0   SCS H.Nakajima   新規作成
- *  2009-01-21   1.1   SCS H.Nakajima   有効日、無効日の追加
- *  2009/04/30   1.2   T.Nakamura       [障害T1_0877] セミコロンを追加
+ *  2008/11/17   1.0   SCS H.Nakajima   新規作成
+ *  2009/01/21   1.1   SCS H.Nakajima   有効日、無効日の追加
  *
  ************************************************************************/
 CREATE OR REPLACE VIEW xxcoi_hht_ebs_convert_v(
@@ -49,7 +48,7 @@ CREATE OR REPLACE VIEW xxcoi_hht_ebs_convert_v(
 FROM fnd_lookup_values flv
 WHERE flv.lookup_type  = 'XXCOI1_HHT_EBS_CONVERT_TABLE'
 AND   flv.language     = USERENV( 'LANG' )
-AND   flv.enabled_flag = 'Y';
+AND   flv.enabled_flag = 'Y'
 /
 COMMENT ON TABLE xxcoi_hht_ebs_convert_v IS '入出庫ジャーナルコード変換ビュー';
 /

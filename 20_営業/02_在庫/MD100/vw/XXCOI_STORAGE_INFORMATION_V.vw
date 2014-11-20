@@ -3,15 +3,14 @@
  *
  * View Name       : XXCOI_STORAGE_INFORMATION_V
  * Description     : 入庫確認／訂正入力画面ビュー
- * Version         : 1.2
+ * Version         : 1.1
  *
  * Change Record
  * ------------- ----- ---------------- ---------------------------------
  *  Date          Ver.  Editor           Description
  * ------------- ----- ---------------- ---------------------------------
- *  2008-12-05    1.0   S.Moriyama       新規作成
- *  2009-03-30    1.1   S.Moriyama       バラ茶区分を追加
- *  2009/04/30    1.2   T.Nakamura       [障害T1_0877] セミコロンを追加
+ *  2008/12/05    1.0   S.Moriyama       新規作成
+ *  2009/03/30    1.1   S.Moriyama       バラ茶区分を追加
  *
  ************************************************************************/
 CREATE OR REPLACE VIEW xxcoi_storage_information_v
@@ -80,7 +79,7 @@ AS
   AND      flv.lookup_code = xsi.slip_type
   AND      iimb.item_id = ximb.item_id
   AND      xsi.item_code = iimb.item_no
-  AND      iimb.item_id = xsib.item_id;
+  AND      iimb.item_id = xsib.item_id
 /
 COMMENT ON TABLE xxcoi_storage_information_v IS '入庫確認／訂正画面ビュー';
 /

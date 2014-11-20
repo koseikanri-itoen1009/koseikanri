@@ -3,15 +3,13 @@
  *
  * Sequence Name : XXCOI_REP_STORAGE_INFO_S01
  * Description   : 入庫未確認リスト帳票シーケンス
- * Version       : 1.1
+ * Version       : 1.0
  *
  * Change Record
  * ------------- ----- ---------------- ---------------------------------
  *  Date          Ver.  Editor           Description
  * ------------- ----- ---------------- ---------------------------------
  *  2009/01/31    1.0   H.Sasaki         新規作成
- *  2009/04/30    1.1   T.Nakamura       [障害T1_0877] ヘッダログ、バックスラッシュを追加
  *
  ************************************************************************/
 CREATE SEQUENCE XXCOI.XXCOI_REP_STORAGE_INFO_S01 MINVALUE 1 MAXVALUE 999999999999999 INCREMENT BY 1 START WITH 1 CACHE 20 NOORDER  NOCYCLE;
-/

@@ -10,7 +10,7 @@
  *  Date          Ver.  Editor           Description
  * ------------- ----- ---------------- ---------------------------------
  *  2008/11/28    1.0   U.Sai            新規作成
- *  2009/04/30    1.1   T.Nakamura       [障害T1_0877] カラムコメント、バックスラッシュを追加
+ *  2009/04/30    1.1   T.Nakamura       カラムコメント、バックスラッシュを追加
  *
  ************************************************************************/
 
@@ -33,7 +33,7 @@
   WHERE  hca.customer_class_code = '1'
   AND    hca.status = 'A'
   AND    hca.cust_account_id = xca.customer_id
-  AND    hca.account_number <> NVL(xca.management_base_code,'99999');
+  AND    hca.account_number <> NVL(xca.management_base_code,'99999')
 /
 COMMENT ON TABLE  XXCOI_BASE_INFO2_V                   IS '拠点情報ビュー2';
 /

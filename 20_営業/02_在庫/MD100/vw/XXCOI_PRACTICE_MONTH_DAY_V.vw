@@ -10,7 +10,7 @@
  *  Date          Ver.  Editor           Description
  * ------------- ----- ---------------- ---------------------------------
  *  2009/02/06    1.0   H.Sasaki         新規作成
- *  2009/04/30    1.1   T.Nakamura       [障害T1_0877] カラムコメント、バックスラッシュを追加
+ *  2009/04/30    1.1   T.Nakamura       カラムコメント、バックスラッシュを追加
  *
  ************************************************************************/
   CREATE OR REPLACE FORCE VIEW "APPS"."XXCOI_PRACTICE_MONTH_DAY_V" ("PRACTICE_DATE","INVENTORY_KBN") AS 
@@ -34,7 +34,7 @@ FROM  (SELECT TO_CHAR(practice_date,'YYYYMMDD')   practice_date
        WHERE  inventory_kbn = '2'
        AND    practice_date < xxccp_common_pkg2.get_process_date
        )      a
-ORDER BY a.practice_date;
+ORDER BY a.practice_date
 /
 COMMENT ON TABLE  XXCOI_PRACTICE_MONTH_DAY_V                 IS '棚卸年月日ビュー2';
 /

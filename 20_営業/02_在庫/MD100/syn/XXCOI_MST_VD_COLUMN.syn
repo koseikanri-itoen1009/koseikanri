@@ -3,15 +3,13 @@
  *
  * View Name   : XXCOI_MST_VD_COLUMN
  * Description : VDコラムマスタ（シノニム）
- * Version     : 1.1
+ * Version     : 1.0
  *
  * Change Record
  * ------------- ----- ---------------- ---------------------------------
  *  Date          Ver.  Editor           Description
  * ------------- ----- ---------------- ---------------------------------
  *  2009/03/31    1.0   H.Sasaki         新規作成
- *  2009/04/30    1.1   H.Sasaki         [T1_0877]ソース不備の修正（文末に/を追加）
  *
  ************************************************************************/
 CREATE OR REPLACE SYNONYM APPS.XXCOI_MST_VD_COLUMN FOR XXCOI.XXCOI_MST_VD_COLUMN;
-/

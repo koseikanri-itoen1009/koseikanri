@@ -3,14 +3,13 @@
  *
  * View Name       : XXCOI_SUBINVENTORY_INFO_V
  * Description     : •ÛŠÇêŠî•ñƒrƒ…[
- * Version         : 1.1
+ * Version         : 1.0
  *
  * Change Record
  * ------------- ----- ---------------- ---------------------------------
  *  Date          Ver.  Editor           Description
  * ------------- ----- ---------------- ---------------------------------
- *  2008-11-17    1.0   SCS S.Moriyama   V‹Kì¬
- *  2009/04/30    1.1   T.Nakamura       [áŠQT1_0877] ƒZƒ~ƒRƒƒ“‚ğ’Ç‰Á
+ *  2008/11/17    1.0   SCS S.Moriyama   V‹Kì¬
  *
  ************************************************************************/
 CREATE OR REPLACE VIEW XXCOI_SUBINVENTORY_INFO_V
@@ -61,7 +60,7 @@ SELECT msi.organization_id                                            -- İŒÉ‘g
       ,msi.attribute13                                                -- •ÛŠÇêŠ•ª—Ş
       ,msi.disable_date                                               -- –³Œø“ú
       ,msi.material_account                                           -- ’¼ÚŞ—¿”ïCCID 
-FROM   mtl_secondary_inventories msi;                                 -- •ÛŠÇêŠƒ}ƒXƒ^
+FROM   mtl_secondary_inventories msi                                  -- •ÛŠÇêŠƒ}ƒXƒ^
 /
 COMMENT ON TABLE xxcoi_subinventory_info_v IS '•ÛŠÇêŠî•ñƒrƒ…[';
 /

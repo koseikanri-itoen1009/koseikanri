@@ -9,8 +9,7 @@
  * ------------- ----- ---------------- ---------------------------------
  *  Date          Ver.  Editor           Description
  * ------------- ----- ---------------- ---------------------------------
- *  2008-12-03    1.0   SCS M.Yoshioka   新規作成
- *  2009/04/30    1.1   T.Nakamura       [障害T1_0877] セミコロンを追加
+ *  2008/12/03    1.0   SCS M.Yoshioka   新規作成
  *
  ************************************************************************/
 CREATE OR REPLACE VIEW XXCOI_RECEIPT_SHIP_INPUT_V
@@ -58,7 +57,7 @@ SELECT xhiw.rowid                                                     -- rowid
       ,xhiw.program_application_id                                    -- プログラムアプリケーションID
       ,xhiw.program_id                                                -- プログラムID
       ,xhiw.program_update_date                                       -- プログラム更新日
-FROM   xxcoi_hht_inv_transactions   xhiw;                             -- HHT入出庫一時表
+FROM   xxcoi_hht_inv_transactions   xhiw                              -- HHT入出庫一時表
 /
 COMMENT ON TABLE xxcoi_receipt_ship_input_v IS '入出庫入力画面ビュー';
 /

@@ -10,7 +10,7 @@
  *  Date          Ver.  Editor           Description
  * ------------- ----- ---------------- ---------------------------------
  *  2009-01-07    1.0   SCS H.Wada       新規作成
- *  2009/04/30    1.1   T.Nakamura       [障害T1_0877] バックスラッシュを追加
+ *  2009/04/30    1.1   T.Nakamura       バックスラッシュを追加
  *
  ************************************************************************/
 CREATE TABLE XXCOI.XXCOI_REP_VD_INVENTORY
@@ -371,7 +371,7 @@ CREATE TABLE XXCOI.XXCOI_REP_VD_INVENTORY
  ,PROGRAM_UPDATE_DATE           DATE              -- 326.プログラム更新日
  ,CONSTRAINT XXCOI_REP_VD_INVENTORY_PK PRIMARY KEY ( VD_INV_WK_ID )
   USING INDEX TABLESPACE xxidx2
-);
+)
 /
 --
 COMMENT ON COLUMN XXCOI.XXCOI_REP_VD_INVENTORY.VD_INV_WK_ID                  IS 'ベンダ機内在庫表ワークID';

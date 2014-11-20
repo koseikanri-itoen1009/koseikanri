@@ -3,7 +3,7 @@
  *
  * View Name       : xxcoi_vd_col_m_mtc_v
  * Description     : VDコラムマスタメンテナンス画面ビュー
- * Version         : 1.2
+ * Version         : 1.1
  *
  * Change Record
  * ------------- ----- ---------------- ---------------------------------
@@ -11,7 +11,6 @@
  * ------------- ----- ---------------- ---------------------------------
  *  2008/11/18    1.0   SCS H.Wada       新規作成
  *  2008/12/04    1.1   SCS H.Wada       修正（VDコラムマスタ名修正）
- *  2009/04/30    1.2   T.Nakamura       [障害T1_0877] セミコロンを追加
  *
  ************************************************************************/
 CREATE OR REPLACE VIEW XXCOI_VD_COL_M_MTC_V
@@ -92,7 +91,7 @@ FROM     xxcoi_mst_vd_column                 xmvc                             --
           AND    iimb.attribute26 = '1')     sub_query2                       -- 3.品目情報サブクエリー2
 WHERE    xmvc.item_id                        = sub_query1.item_id(+)
 AND      xmvc.last_month_item_id             = sub_query2.item_id(+)
-ORDER BY xmvc.customer_id, xmvc.column_no;
+ORDER BY xmvc.customer_id, xmvc.column_no
 /
 COMMENT ON TABLE xxcoi_vd_col_m_mtc_v IS 'VDコラムマスタメンテナンス画面ビュー'
 /

@@ -10,7 +10,7 @@
  *  Date          Ver.  Editor           Description
  * ------------- ----- ---------------- ---------------------------------
  *  2008/11/28    1.0   U.Sai            新規作成
- *  2009/04/30    1.1   T.Nakamura       [障害T1_0877] カラムコメント、バックスラッシュを追加
+ *  2009/04/30    1.1   T.Nakamura       カラムコメント、バックスラッシュを追加
  *
  ************************************************************************/
 
@@ -35,7 +35,7 @@ FROM  (SELECT TO_CHAR(PRACTICE_DATE,'YYYYMMDD') AS PRACTICE_DATE
        FROM   XXCOI_INV_RECEPTION_DAILY
        WHERE  PRACTICE_DATE < XXCCP_COMMON_PKG2.GET_PROCESS_DATE
        )      MD
-ORDER BY MD.PRACTICE_DATE;
+ORDER BY MD.PRACTICE_DATE
 /
 COMMENT ON TABLE  XXCOI_REC_DAILY_MONTHLY_V                   IS '受払年月日ビュー';
 /

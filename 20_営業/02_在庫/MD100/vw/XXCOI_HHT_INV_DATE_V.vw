@@ -10,7 +10,7 @@
  *  Date          Ver.  Editor           Description
  * ------------- ----- ---------------- ---------------------------------
  *  2008/12/09    1.0   U.Sai            新規作成
- *  2009/04/30    1.1   T.Nakamura       [障害T1_0877] カラムコメント、バックスラッシュを追加
+ *  2009/04/30    1.1   T.Nakamura       カラムコメント、バックスラッシュを追加
  *
  ************************************************************************/
 
@@ -30,7 +30,7 @@ FROM  (SELECT TO_CHAR(INVENTORY_DATE,'YYYYMMDD') AS INVENTORY_DATE
        WHERE  INVENTORY_KBN = '2'
        AND    INVENTORY_DATE < XXCCP_COMMON_PKG2.GET_PROCESS_DATE
        )      MD
-ORDER BY MD.INVENTORY_DATE;
+ORDER BY MD.INVENTORY_DATE
 /
 COMMENT ON TABLE  XXCOI_HHT_INV_DATE_V                   IS '棚卸年月日ビュー';
 /

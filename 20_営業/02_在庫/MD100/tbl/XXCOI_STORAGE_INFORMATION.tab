@@ -10,7 +10,7 @@
  *  Date          Ver.  Editor           Description
  * ------------- ----- ---------------- ---------------------------------
  *  2008-11-17    1.0   SCS S.Moriyama   新規作成
- *  2009/04/30    1.1   T.Nakamura       [障害T1_0877] バックスラッシュを追加
+ *  2009/04/30    1.1   T.Nakamura       バックスラッシュを追加
  *
  ************************************************************************/
 CREATE TABLE XXCOI.XXCOI_STORAGE_INFORMATION
@@ -52,7 +52,7 @@ CREATE TABLE XXCOI.XXCOI_STORAGE_INFORMATION
   PROGRAM_UPDATE_DATE                   DATE,
   CONSTRAINT XXCOI_STORAGE_INFORMATION_PK PRIMARY KEY (TRANSACTION_ID)
   USING INDEX TABLESPACE xxidx2
-  );
+  )
 /
 --
 COMMENT ON COLUMN XXCOI.XXCOI_STORAGE_INFORMATION.TRANSACTION_ID                    IS '取引ID ';

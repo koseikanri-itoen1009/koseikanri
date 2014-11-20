@@ -10,7 +10,7 @@
  *  Date          Ver.  Editor           Description
  * ------------- ----- ---------------- ---------------------------------
  *  2008/11/28    1.0   H.Sasaki         新規作成
- *  2009/04/30    1.1   T.Nakamura       [障害T1_0877] カラムコメント、バックスラッシュを追加
+ *  2009/04/30    1.1   T.Nakamura       カラムコメント、バックスラッシュを追加
  *
  ************************************************************************/
   CREATE OR REPLACE FORCE VIEW "APPS"."XXCOI_USER_BASE_INFO_V" ("ACCOUNT_ID", "ACCOUNT_NUMBER", "ACCOUNT_NAME", "MANAGEMENT_BASE_CODE", "MANAGEMENT_BASE_FLAG", "DEPT_HHT_DIV") AS 
@@ -74,7 +74,7 @@
       AND     hca1.customer_class_code      =   '1'           -- 拠点
       AND     hca1.status                   =   'A'           -- 有効
       AND     hca1.cust_account_id          =   xca1.customer_id
-      AND     hca1.account_number           =   hca2.management_base_code(+);
+      AND     hca1.account_number           =   hca2.management_base_code(+)
 /
 COMMENT ON TABLE  XXCOI_USER_BASE_INFO_V                         IS '自拠点情報ビュー';
 /

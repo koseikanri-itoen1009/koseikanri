@@ -9,9 +9,9 @@
  * ------------- ----- ---------------- ---------------------------------
  *  Date          Ver.  Editor           Description
  * ------------- ----- ---------------- ---------------------------------
- *  2008-12-03    1.0   SCS M.Yoshioka   新規作成
- *  2008-12-26    1.1   SCS H.Nakajima   Disc品目アドオンの結合条件を変更
- *  2009/04/30    1.1   T.Nakamura       [障害T1_0877] セミコロンを追加
+ *  2008/12/03    1.0   SCS M.Yoshioka   新規作成
+ *  2008/12/26    1.1   SCS H.Nakajima   Disc品目アドオンの結合条件を変更
+ *
  ************************************************************************/
 CREATE OR REPLACE VIEW XXCOI_TXN_ENABLE_ITEM_INFO_V
   (row_id
@@ -69,7 +69,7 @@ WHERE msib.segment1 = iimb.item_no
   AND msib.returnable_flag = 'Y'
   AND iimb.item_id = ximb.item_id
   AND iimb.item_id = xsib.item_id 
-  AND iimb.attribute26 = '1';
+  AND iimb.attribute26 = '1'
 /
 COMMENT ON TABLE xxcoi_txn_enable_item_info_v IS '在庫取引可能品目ビュー';
 /

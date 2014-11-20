@@ -10,7 +10,7 @@
  *  Date          Ver.  Editor           Description
  * ------------- ----- ---------------- ---------------------------------
  *  2009/01/15    1.0   N.Abe            新規作成
- *  2009/04/30    1.1   T.Nakamura       [障害T1_0877] カラムコメント、バックスラッシュを追加
+ *  2009/04/30    1.1   T.Nakamura       カラムコメント、バックスラッシュを追加
  *
  ************************************************************************/
 CREATE OR REPLACE FORCE VIEW "APPS"."XXCOI_USER_BASE_INFO2_V" ("ACCOUNT_NUMBER", "ACCOUNT_NAME") AS 
@@ -73,7 +73,7 @@ FROM    (SELECT  hca.account_number
            AND   paaf.person_id         = papf.person_id
          )
         ) a
-ORDER BY a.account_number;
+ORDER BY a.account_number
 /
 COMMENT ON TABLE  XXCOI_USER_BASE_INFO2_V                   IS '自拠点情報ビュー2';
 /
