@@ -18,12 +18,12 @@ CREATE TABLE xxcfr.xxcfr_rep_sales_rep_pay_sch
   output_date                 VARCHAR2(20)          ,     -- 出力日
   receipt_area_code           VARCHAR2(20)          ,     -- 入金拠点エリアコード
   receipt_dept_code           VARCHAR2(4)           ,     -- 入金拠点コード
-  receipt_dept_name           VARCHAR2(150)         ,     -- 入金拠点名
+  receipt_dept_name           VARCHAR2(360)         ,     -- 入金拠点名
   receipt_sales_rep_code      VARCHAR2(5)           ,     -- 営業担当者コード
-  receipt_sales_rep_name      VARCHAR2(150)         ,     -- 営業担当者名
+  receipt_sales_rep_name      VARCHAR2(300)         ,     -- 営業担当者名
   due_date                    DATE                  ,     -- 支払期日
   receipt_customer_code       VARCHAR2(10)          ,     -- 入金先顧客コード
-  receipt_customer_name       VARCHAR2(150)         ,     -- 入金先顧客名
+  receipt_customer_name       VARCHAR2(360)         ,     -- 入金先顧客名
   receipt_class_id            NUMBER                ,     -- 入金区分ID
   receipt_class_name          VARCHAR2(30)          ,     -- 入金区分名
   tax_class_code              VARCHAR2(30)          ,     -- 消費税区分
