@@ -11,6 +11,7 @@
  * ------------- ----- ---------------- ---------------------------------
  *  2009/1/26     1.0   T.Tyou           新規作成
  *  2009/5/12     1.1   S.Tomita         [T1_0964]カラムコメント間違い修正
+ *  2009/5/13     1.2   S.Tomita         [T1_0976]クイック受注オーガナイザセキュリティ対応
  *
  ************************************************************************/
 CREATE OR REPLACE VIEW xxcos_order_salesrep_info_v (
@@ -47,20 +48,24 @@ SELECT
       cust.sale_base_code,
       cust.past_sale_base_code,
       cust.delivery_base_code
-FROM  jtf_rs_salesreps          jrs
+FROM   jtf_rs_salesreps          jrs
       ,jtf_rs_resource_extns    jrre
       ,per_all_assignments_f    paaf
       ,per_all_people_f         papf
       ,per_person_types         pept
       ,(
-      SELECT xca.sale_base_code,
-        xca.past_sale_base_code,
-        xca.delivery_base_code,
-        hca.account_number
-      FROM   hz_cust_accounts     hca,                  
-        xxcmm_cust_accounts  xca
-      WHERE  hca.cust_account_id   = xca.customer_id
-      ) cust
+        SELECT xca.sale_base_code,
+               xca.past_sale_base_code,
+               xca.delivery_base_code,
+               hca.account_number
+        FROM   hz_cust_accounts     hca,
+               xxcmm_cust_accounts  xca
+        WHERE  hca.cust_account_id   = xca.customer_id
+       ) cust
+      ,(
+        SELECT TRUNC( xxccp_common_pkg2.get_process_date )     process_date        --業務日付
+        FROM   dual
+       ) pd
 WHERE
       jrre.category             =   'EMPLOYEE'
 AND   jrs.resource_id           =   jrre.resource_id
@@ -74,6 +79,8 @@ AND   nvl(jrs.org_id,   nvl(to_number(decode(substrb(userenv('CLIENT_INFO'),   1
         NULL,   substrb(userenv('CLIENT_INFO'),   1,   10))),   -99)) =
          nvl(to_number(decode(substrb(userenv('CLIENT_INFO'),   1,   1),   ' ',  
           NULL,   substrb(userenv('CLIENT_INFO'),   1,   10))),   -99)
+AND   NVL(TRUNC(papf.effective_start_date),pd.process_date) <= pd.process_date
+AND   NVL(TRUNC(papf.effective_end_date)  ,pd.process_date) >= pd.process_date
 ;
 COMMENT ON  COLUMN  xxcos_order_salesrep_info_v.name                  IS  '従業員名称';
 COMMENT ON  COLUMN  xxcos_order_salesrep_info_v.salesrep_id           IS  'セールスID';
