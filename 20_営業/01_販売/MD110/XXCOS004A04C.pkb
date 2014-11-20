@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCOS004A04C (body)
  * Description      : 消化ＶＤ納品データ作成
  * MD.050           : 消化ＶＤ納品データ作成 MD050_COS_004_A04
- * Version          : 1.8
+ * Version          : 1.10
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -38,6 +38,7 @@ AS
  *  2009/02/23   1.8   T.Miyashita       [COS_122]営業担当員コードセット不具合
  *  2009/03/23   1.9   T.Kitajima        [T1_0099]INV会計期による
  *                                                出荷元保管場所、納品形態、納品拠点取得方法修正
+ *  2009/03/30   1.10  T.Kitajima        [T1_0189]販売実績明細.納品明細番号の採番方法を変更
  *
  *****************************************************************************************/
 --
@@ -161,12 +162,12 @@ AS
                                       := 'APP-XXCOS1-11060';               --消化ＶＤ用消化計算データ取得エラー
   cv_msg_select_salesreps_err  CONSTANT  fnd_new_messages.message_name%TYPE
                                       := 'APP-XXCOS1-10911';               --営業担当員コード取得エラー
---**************************** 2009/03/23 1.9 T.kitajima ADD START ****************************
+--**************************** 2009/03/23 1.9  T.kitajima ADD START ****************************
   cv_msg_select_for_inv_err    CONSTANT  fnd_new_messages.message_name%TYPE
                                       := 'APP-XXCOS1-11065';               --出荷元保管場所取得エラーメッセージ
   cv_msg_select_ship_err       CONSTANT  fnd_new_messages.message_name%TYPE
                                       := 'APP-XXCOS1-11066';               --出荷拠点取得エラーメッセージ
---**************************** 2009/03/23 1.9 T.kitajima ADD  END  ****************************
+--**************************** 2009/03/23 1.9  T.kitajima ADD  END  ****************************
   --クイックコードタイプ
   ct_qct_regular_type          CONSTANT  fnd_lookup_types.lookup_type%TYPE
                                       := 'XXCOS1_REGULAR_ANY_CLASS';       --定期随時
@@ -293,11 +294,11 @@ AS
   cv_mm                        CONSTANT  VARCHAR2(2)  := 'MM';             --MM
   --登録区分
   cv_entry_class               CONSTANT  VARCHAR2(2)  := '5';              --消化VD
---**************************** 2009/03/23 1.9 T.kitajima ADD START ****************************
+--**************************** 2009/03/23 1.9  T.kitajima ADD START ****************************
   --棚卸対象区分
   ct_secondary_class_2         CONSTANT   mtl_secondary_inventories.attribute5%TYPE
                                           := '2';                     --消化
---**************************** 2009/03/23 1.9 T.kitajima ADD  END  ****************************
+--**************************** 2009/03/23 1.9  T.kitajima ADD  END  ****************************
   -- ===============================
   -- ユーザー定義グローバル型
   -- ===============================
@@ -1335,11 +1336,13 @@ AS
     ln_err_line_flag       NUMBER;        --エラー明細フラグ
     lt_performance_by_code xxcos_shop_digestion_hdrs.performance_by_code%TYPE; --成績者コード
     lt_resource_id         jtf_rs_resource_extns.resource_id%TYPE;             --リソースID
---**************************** 2009/03/23 1.9 T.kitajima ADD START ****************************
+--**************************** 2009/03/23 1.9  T.kitajima ADD START ****************************
     lt_ship_from_subinventory_code xxcos_vd_digestion_lns.ship_from_subinventory_code%TYPE; --出荷元保管場所
     lt_delivery_base_code          xxcos_vd_digestion_lns.delivery_base_code%TYPE;          --納品拠点コード
---**************************** 2009/03/23 1.9 T.kitajima ADD  END  ****************************
-
+--**************************** 2009/03/23 1.9  T.kitajima ADD  END  ****************************
+--**************************** 2009/03/30 1.10 T.kitajima ADD START ****************************
+    ln_line_index          NUMBER;        --納品明細番号
+--**************************** 2009/03/30 1.10 T.kitajima ADD  END  ****************************
 --
     -- *** ローカル・カーソル ***
 --
@@ -1368,6 +1371,7 @@ AS
     ln_index               := cn_1;
     ln_amount_work_max     := cn_0;
     ln_err_line_flag       := cn_0;
+    ln_line_index          := 1;
     --ヘッダシーケンス取得
     SELECT xxcos_sales_exp_headers_s01.nextval
     INTO   ln_header_id
@@ -1380,7 +1384,7 @@ AS
 --
       --正常時のみ納品形態、単位換算を行う。
       IF ( lv_err_work = cv_status_normal ) THEN
---**************************** 2009/03/23 1.9 T.kitajima MOD START ****************************
+--**************************** 2009/03/23 1.9  T.kitajima MOD START ****************************
 --        --納品形態取得
 --        xxcos_common_pkg.get_delivered_from(
 --          gt_tab_work_data(ln_i).ship_from_subinventory_code,  --出荷元保管場所(IN)
@@ -1902,7 +1906,7 @@ AS
             END IF;
           END IF;
         END IF;
---**************************** 2009/03/23 1.9 T.kitajima MOD  END  ****************************
+--**************************** 2009/03/23 1.9  T.kitajima MOD  END  ****************************
       END IF;
       --
       --正常時のみ設定する
@@ -1917,7 +1921,11 @@ AS
         gt_tab_sales_exp_lines(ln_m).sales_exp_line_id            := ln_line_id;                                         --販売実績明細ID
         gt_tab_sales_exp_lines(ln_m).sales_exp_header_id          := ln_header_id;                                       --販売実績ヘッダID
         gt_tab_sales_exp_lines(ln_m).dlv_invoice_number           := lv_deli_seq;                                        --納品伝票番号
-        gt_tab_sales_exp_lines(ln_m).dlv_invoice_line_number      := gt_tab_work_data(ln_i).vd_digestion_ln_id;          --納品明細番号
+--**************************** 2009/03/30 1.10 T.kitajima MOD START ****************************
+--        gt_tab_sales_exp_lines(ln_m).dlv_invoice_line_number      := gt_tab_work_data(ln_i).vd_digestion_ln_id;          --納品明細番号
+        gt_tab_sales_exp_lines(ln_m).dlv_invoice_line_number      := ln_line_index;                                      --納品明細番号
+        ln_line_index                                             := ln_line_index + 1;
+--**************************** 2009/03/30 1.10 T.kitajima MOD  END  ****************************
         gt_tab_sales_exp_lines(ln_m).order_invoice_line_number    := NULL;                                               --注文明細番号
         gt_tab_sales_exp_lines(ln_m).sales_class                  := cv_sales_class_vd;                                  --売上区分
         gt_tab_sales_exp_lines(ln_m).delivery_pattern_class       := lv_delivered_from;                                  --納品形態区分
@@ -1979,12 +1987,12 @@ AS
         END IF;
         --
         gt_tab_sales_exp_lines(ln_m).cash_and_card                := cn_0;                                               --現金/カード併用額
---**************************** 2009/03/23 1.9 T.kitajima MOD START ****************************
+--**************************** 2009/03/23 1.9  T.kitajima MOD START ****************************
 --        gt_tab_sales_exp_lines(ln_m).ship_from_subinventory_code  := gt_tab_work_data(ln_i).ship_from_subinventory_code; --出荷元保管場所
 --        gt_tab_sales_exp_lines(ln_m).delivery_base_code           := gt_tab_work_data(ln_i).delivery_base_code;          --納品拠点コード
         gt_tab_sales_exp_lines(ln_m).ship_from_subinventory_code  := lt_ship_from_subinventory_code;                     --出荷元保管場所
         gt_tab_sales_exp_lines(ln_m).delivery_base_code           := lt_delivery_base_code;                              --納品拠点コード
---**************************** 2009/03/23 1.9 T.kitajima MOD  END  ****************************
+--**************************** 2009/03/23 1.9  T.kitajima MOD  END  ****************************
         gt_tab_sales_exp_lines(ln_m).hot_cold_class               := gt_tab_work_data(ln_i).hot_cold_type;               --Ｈ＆Ｃ
         gt_tab_sales_exp_lines(ln_m).column_no                    := gt_tab_work_data(ln_i).column_no;                   --コラムNo
         gt_tab_sales_exp_lines(ln_m).sold_out_class               := gt_tab_work_data(ln_i).sold_out_class;              --売切区分
@@ -2133,6 +2141,10 @@ AS
           ln_difference_money    := cn_0;
           --ヘッダカウントUP
           ln_h := ln_h + cn_1;
+--**************************** 2009/03/30 1.10 T.kitajima ADD START ****************************
+          --納品明細番号初期化
+          ln_line_index := 1; 
+--**************************** 2009/03/30 1.10 T.kitajima ADD  END  ****************************
           --ヘッダシーケンス取得
           SELECT xxcos_sales_exp_headers_s01.nextval
           INTO   ln_header_id

@@ -28,6 +28,8 @@ AS
  *  2009/02/17    1.1   R.HAN            get_msgのパッケージ名修正
  *  2009/02/23    1.2   R.HAN            パラメータのログファイル出力対応
  *  2009/02/23    1.3   R.HAN            [COS_115]税コードの結合条件を追加
+ *  2009/03/26    1.4   T.Kitajima       [T1_0106]警告処理対応
+ *
  *****************************************************************************************/
 --
 --#######################  固定グローバル定数宣言部 START  ###############################
@@ -147,6 +149,9 @@ AS
   cv_tkn_segment6           CONSTANT  VARCHAR2(20) := 'SEGMENT6';        -- 企業コード
   cv_tkn_segment7           CONSTANT  VARCHAR2(20) := 'SEGMENT7';        -- 事業区分コード
   cv_tkn_segment8           CONSTANT  VARCHAR2(20) := 'SEGMENT8';        -- 予備
+--******************************** 2009/03/26 1.4 T.Kitajima ADD START *****************************
+  cv_tkn_segment9           CONSTANT  VARCHAR2(20) := 'SEGMENT9';        -- 
+--******************************** 2009/03/26 1.4 T.Kitajima ADD  END  *****************************
   cv_blank                  CONSTANT VARCHAR2(1)   := '';                -- ブランク
   cv_tkn_key_data           CONSTANT VARCHAR2(20)  := 'KEY_DATA';        -- キー項目
 --
@@ -245,12 +250,14 @@ AS
 --
   TYPE g_sales_h_ttype    IS TABLE OF ROWID                INDEX BY BINARY_INTEGER;
   gt_sales_h_tbl                      g_sales_h_ttype;                              -- 販売実績フラグ更新用
+  gt_sales_h_tbl2                     g_sales_h_ttype;                              -- 販売実績フラグ更新用
 --
   TYPE g_jour_cls_ttype   IS TABLE OF gr_jour_cls_rec      INDEX BY BINARY_INTEGER;
   gt_jour_cls_tbl                     g_jour_cls_ttype;                             -- 仕訳パターン
 --
   TYPE g_gl_oif_ttype     IS TABLE OF gl_interface%ROWTYPE INDEX BY BINARY_INTEGER;
   gt_gl_interface_tbl                 g_gl_oif_ttype;                               -- 一般会計OIF
+  gt_gl_interface_tbl2                g_gl_oif_ttype;                               -- 一般会計OIF
 --
   TYPE g_sel_ccid_ttype   IS TABLE OF gr_select_ccid       INDEX BY VARCHAR2( 200 );
   gt_sel_ccid_tbl                     g_sel_ccid_ttype;                             -- CCID
@@ -1046,24 +1053,51 @@ AS
         lv_errmsg  := xxccp_common_pkg.get_msg(
                           iv_application       => cv_xxcos_short_nm
                         , iv_name              => cv_ccid_nodata_msg
+--******************************** 2009/03/26 1.4 T.Kitajima MOD START *****************************
+--                        , iv_token_name1       => cv_tkn_segment1
+--                        , iv_token_value1      => gv_company_code
+--                        , iv_token_name2       => cv_tkn_segment2
+--                        , iv_token_value2      => NVL( gt_jour_cls_tbl( in_jcls_idx ).segment2,
+--                                                       gt_sales_exp_tbl( in_sale_idx ).sales_base_code )
+--                        , iv_token_name3       => cv_tkn_segment3
+--                        , iv_token_value3      => iv_gl_segment3
+--                        , iv_token_name4       => cv_tkn_segment4
+--                        , iv_token_value4      => gt_jour_cls_tbl( in_jcls_idx ).segment4
+--                        , iv_token_name5       => cv_tkn_segment5
+--                        , iv_token_value5      => gt_jour_cls_tbl( in_jcls_idx ).segment5
+--                        , iv_token_name6       => cv_tkn_segment6
+--                        , iv_token_value6      => gt_jour_cls_tbl( in_jcls_idx ).segment6
+--                        , iv_token_name7       => cv_tkn_segment7
+--                        , iv_token_value7      => gt_jour_cls_tbl( in_jcls_idx ).segment7
+--                        , iv_token_name8       => cv_tkn_segment8
+--                        , iv_token_value8      => gt_jour_cls_tbl( in_jcls_idx ).segment8
                         , iv_token_name1       => cv_tkn_segment1
-                        , iv_token_value1      => gv_company_code
+                        , iv_token_value1      => gt_sales_exp_tbl( in_sale_idx ).dlv_invoice_number
                         , iv_token_name2       => cv_tkn_segment2
-                        , iv_token_value2      => NVL( gt_jour_cls_tbl( in_jcls_idx ).segment2,
-                                                       gt_sales_exp_tbl( in_sale_idx ).sales_base_code )
+                        , iv_token_value2      => gv_company_code
                         , iv_token_name3       => cv_tkn_segment3
-                        , iv_token_value3      => iv_gl_segment3
+                        , iv_token_value3      => NVL( gt_jour_cls_tbl( in_jcls_idx ).segment2,
+                                                       gt_sales_exp_tbl( in_sale_idx ).sales_base_code )
                         , iv_token_name4       => cv_tkn_segment4
-                        , iv_token_value4      => gt_jour_cls_tbl( in_jcls_idx ).segment4
+                        , iv_token_value4      => iv_gl_segment3
                         , iv_token_name5       => cv_tkn_segment5
-                        , iv_token_value5      => gt_jour_cls_tbl( in_jcls_idx ).segment5
+                        , iv_token_value5      => gt_jour_cls_tbl( in_jcls_idx ).segment4
                         , iv_token_name6       => cv_tkn_segment6
-                        , iv_token_value6      => gt_jour_cls_tbl( in_jcls_idx ).segment6
+                        , iv_token_value6      => gt_jour_cls_tbl( in_jcls_idx ).segment5
                         , iv_token_name7       => cv_tkn_segment7
-                        , iv_token_value7      => gt_jour_cls_tbl( in_jcls_idx ).segment7
+                        , iv_token_value7      => gt_jour_cls_tbl( in_jcls_idx ).segment6
                         , iv_token_name8       => cv_tkn_segment8
-                        , iv_token_value8      => gt_jour_cls_tbl( in_jcls_idx ).segment8
+                        , iv_token_value8      => gt_jour_cls_tbl( in_jcls_idx ).segment7
+                        , iv_token_name9       => cv_tkn_segment9
+                        , iv_token_value9      => gt_jour_cls_tbl( in_jcls_idx ).segment8
+--******************************** 2009/03/26 1.4 T.Kitajima MOD  END  *****************************
                       );
+--******************************** 2009/03/26 1.4 T.Kitajima ADD START *****************************
+        FND_FILE.PUT_LINE(
+           which  => FND_FILE.OUTPUT
+          ,buff   => lv_errmsg
+        );
+--******************************** 2009/03/26 1.4 T.Kitajima ADD  END  *****************************
         lv_errbuf  := lv_errmsg;
         RAISE non_ccid_expt;
       END IF;
@@ -1182,7 +1216,11 @@ AS
     WHEN non_ccid_expt THEN
       ov_errmsg  := lv_errmsg;
       ov_errbuf  := SUBSTRB(cv_pkg_name||cv_msg_cont||cv_prg_name||cv_msg_part||lv_errbuf,1,5000);
-      ov_retcode := cv_status_error;
+--******************************** 2009/03/26 1.4 T.Kitajima MOD START *****************************
+--      ov_retcode := cv_status_error;
+      ov_retcode := cv_status_warn;
+--******************************** 2009/03/26 1.4 T.Kitajima MOD  END  *****************************
+--
 --
 --#################################  固定例外処理部 START   ####################################
 --
@@ -1251,6 +1289,12 @@ AS
     ln_card_pt         NUMBER DEFAULT 1;                                   -- カードレコードの現ポイント
     lv_ccid_idx        VARCHAR2(225);                                      -- CCID のインデックス
     ln_card_jour       NUMBER DEFAULT 1;                                   -- カードレコード仕訳用
+--******************************** 2009/03/26 1.4 T.Kitajima ADD START *****************************
+    ln_index_work      NUMBER;
+    ln_sale_idx        NUMBER;
+    ln_index           NUMBER;
+    sale_idx           NUMBER;
+--******************************** 2009/03/26 1.4 T.Kitajima ADD  END  *****************************
 --
     -- 集計キー(販売実績)
     lt_invoice_number  xxcos_sales_exp_headers.dlv_invoice_number%TYPE;    -- 集計キー：納品伝票番号
@@ -1276,6 +1320,10 @@ AS
     lv_cash_msg        VARCHAR2(225);                                      -- 現金(勘定科目用)
     lv_vd_msg          VARCHAR2(225);                                      -- VD未収金仮勘定(勘定科目用)
     lv_tax_msg         VARCHAR2(225);                                      -- 仮受消費税等(勘定科目用)
+    lv_err_code        VARCHAR2(1);
+--
+    lt_invoice_number_tmp  xxcos_sales_exp_headers.dlv_invoice_number%TYPE;-- 納品伝票番号
+--
 --
     -- *** ローカル・カーソル （仕訳パターン）***
     CURSOR jour_cls_cur
@@ -1479,6 +1527,17 @@ AS
     lt_goods_prod_cls   := gt_sales_exp_tbl( 1 ).goods_prod_cls;
     lt_gccs_segment3    := gt_sales_exp_tbl( 1 ).gccs_segment3;
     lt_tax_code         := gt_sales_exp_tbl( 1 ).tax_code;
+--******************************** 2009/03/26 1.4 T.Kitajima ADD START *****************************
+    -- 伝票No保持
+    lt_invoice_number_tmp := lt_invoice_number;
+    --スキップ件数初期化
+    gn_warn_cnt := 0;
+    -- INDEX保存
+    ln_index_work := 1;
+    ln_sale_idx   := 1;
+    lv_err_code   := cv_status_normal;
+
+--******************************** 2009/03/26 1.4 T.Kitajima ADD  END  *****************************
 --
     --データの集約
     <<gt_sales_exp_tbl_loop>>
@@ -1632,6 +1691,10 @@ AS
                           );
                 IF ( lv_retcode = cv_status_error ) THEN
                   RAISE edit_gl_expt;
+--******************************** 2009/03/26 1.4 T.Kitajima ADD START *****************************
+                ELSIF ( lv_retcode = cv_status_warn ) THEN
+                  lv_err_code := cv_status_warn;
+--******************************** 2009/03/26 1.4 T.Kitajima ADD  END  *****************************
                 END IF;
                 ln_gl_total := 0;
               END IF;
@@ -1654,6 +1717,10 @@ AS
                             );
                 IF ( lv_retcode = cv_status_error ) THEN
                   RAISE edit_gl_expt;
+--******************************** 2009/03/26 1.4 T.Kitajima ADD START *****************************
+                ELSIF ( lv_retcode = cv_status_warn ) THEN
+                  lv_err_code := cv_status_warn;
+--******************************** 2009/03/26 1.4 T.Kitajima ADD  END  *****************************
                 END IF;
                 ln_gl_total_card := 0;
               END IF;
@@ -1682,6 +1749,10 @@ AS
                           );
                 IF ( lv_retcode = cv_status_error ) THEN
                   RAISE edit_gl_expt;
+--******************************** 2009/03/26 1.4 T.Kitajima ADD START *****************************
+                ELSIF ( lv_retcode = cv_status_warn ) THEN
+                  lv_err_code := cv_status_warn;
+--******************************** 2009/03/26 1.4 T.Kitajima ADD  END  *****************************
                 END IF;
                 ln_gl_total := 0;
               END IF;
@@ -1704,6 +1775,10 @@ AS
                             );
                 IF ( lv_retcode = cv_status_error ) THEN
                   RAISE edit_gl_expt;
+--******************************** 2009/03/26 1.4 T.Kitajima ADD START *****************************
+                ELSIF ( lv_retcode = cv_status_warn ) THEN
+                  lv_err_code := cv_status_warn;
+--******************************** 2009/03/26 1.4 T.Kitajima ADD  END  *****************************
                 END IF;
                 ln_gl_total_card := 0;
               END IF;
@@ -1724,25 +1799,69 @@ AS
 --
       END IF;                                                           -- 集約キー毎にGL OIFデータの集約終了
 --
-        IF ( lv_sum_flag = cv_n_flag OR lv_sum_card_flag = cv_n_flag ) THEN   
-          -- 集約キーと集約金額のリセット
-          lt_invoice_number   := gt_sales_exp_tbl( sale_idx ).dlv_invoice_number;
-          lt_invoice_class    := gt_sales_exp_tbl( sale_idx ).dlv_invoice_class;
-          lt_card_sale_class  := gt_sales_exp_tbl( sale_idx ).card_sale_class;
-          lt_goods_prod_cls   := gt_sales_exp_tbl( sale_idx ).goods_prod_cls;
-          lt_gccs_segment3    := gt_sales_exp_tbl( sale_idx ).gccs_segment3;
-          lt_tax_code         := gt_sales_exp_tbl( sale_idx ).tax_code;
---
-          ln_gl_amount        := gt_sales_exp_tbl( sale_idx ).pure_amount;
-          IF ( gt_sales_exp_tbl( sale_idx ).consumption_tax_class != gt_no_tax_cls ) THEN
-            ln_gl_tax         := gt_sales_exp_tbl( sale_idx ).tax_amount;
-          END IF;
-        END IF;
---
+--******************************** 2009/03/26 1.4 T.Kitajima ADD START *****************************
       -- 販売実績ヘッダ更新のため：ROWIDの設定
       gt_sales_h_tbl( sale_idx )            := gt_sales_exp_tbl( sale_idx ).xseh_rowid;
+--******************************** 2009/03/26 1.4 T.Kitajima ADD  END  *****************************
+--
+      IF ( lv_sum_flag = cv_n_flag OR lv_sum_card_flag = cv_n_flag ) THEN   
+        -- 集約キーと集約金額のリセット
+        lt_invoice_number   := gt_sales_exp_tbl( sale_idx ).dlv_invoice_number;
+        lt_invoice_class    := gt_sales_exp_tbl( sale_idx ).dlv_invoice_class;
+        lt_card_sale_class  := gt_sales_exp_tbl( sale_idx ).card_sale_class;
+        lt_goods_prod_cls   := gt_sales_exp_tbl( sale_idx ).goods_prod_cls;
+        lt_gccs_segment3    := gt_sales_exp_tbl( sale_idx ).gccs_segment3;
+        lt_tax_code         := gt_sales_exp_tbl( sale_idx ).tax_code;
+--
+        ln_gl_amount        := gt_sales_exp_tbl( sale_idx ).pure_amount;
+        IF ( gt_sales_exp_tbl( sale_idx ).consumption_tax_class != gt_no_tax_cls ) THEN
+          ln_gl_tax         := gt_sales_exp_tbl( sale_idx ).tax_amount;
+        END IF;
+--
+--******************************** 2009/03/26 1.4 T.Kitajima ADD START *****************************
+        --ループ中にA-4処理がワーニングだった場合
+        IF ( lv_err_code = cv_status_warn ) THEN
+          gt_gl_interface_tbl.DELETE(ln_index_work,ln_gl_idx);
+          gt_sales_h_tbl.DELETE(ln_sale_idx,sale_idx);
+          IF ln_index_work = 1 THEN
+            gn_warn_cnt := ln_gl_idx;
+          ELSE
+            gn_warn_cnt   := gn_warn_cnt + ( ln_gl_idx - ln_index_work ) + 1;
+          END IF;
+          lv_err_code   := cv_status_normal;
+          ov_retcode    := cv_status_warn;
+        END IF;
+--
+        ln_index_work := ln_gl_idx + 1;
+        ln_sale_idx   := sale_idx + 1;
+--******************************** 2009/03/26 1.4 T.Kitajima ADD  END  *****************************
+--
+      END IF;
+--
+--******************************** 2009/03/26 1.4 T.Kitajima DEL START *****************************
+--      -- 販売実績ヘッダ更新のため：ROWIDの設定
+--      gt_sales_h_tbl( sale_idx )            := gt_sales_exp_tbl( sale_idx ).xseh_rowid;
+--******************************** 2009/03/26 1.4 T.Kitajima DEL  END  *****************************
 --
     END LOOP gt_sales_exp_tbl_loop;                                     -- 販売実績データループ終了
+--******************************** 2009/03/26 1.4 T.Kitajima ADD START *****************************
+    --コレクションの入れ替え
+    ln_index := 1;
+    FOR i IN 1 .. ln_gl_idx LOOP
+      IF ( gt_gl_interface_tbl.EXISTS(i) ) THEN
+        gt_gl_interface_tbl2(ln_index) := gt_gl_interface_tbl(i);
+        ln_index := ln_index + 1;
+      END IF;
+    END LOOP;
+--
+    ln_index := 1;
+    FOR i IN 1 .. gn_target_cnt LOOP
+      IF ( gt_sales_h_tbl.EXISTS(i) ) THEN
+        gt_sales_h_tbl2(ln_index) := gt_sales_h_tbl(i);
+        ln_index := ln_index + 1;
+      END IF;
+    END LOOP;
+--******************************** 2009/03/26 1.4 T.Kitajima ADD  END  *****************************
 --
   EXCEPTION
     WHEN non_jour_cls_expt THEN
@@ -1848,11 +1967,17 @@ AS
     -- 一般会計OIFテーブルへデータ登録
     --==============================================================
     BEGIN
-      FORALL i IN 1..gt_gl_interface_tbl.COUNT
+--******************************** 2009/03/26 1.4 T.Kitajima MOD START *****************************
+--      FORALL i IN 1..gt_gl_interface_tbl.COUNT
+      FORALL i IN 1..gt_gl_interface_tbl2.COUNT
+--******************************** 2009/03/26 1.4 T.Kitajima MOD  END  *****************************
         INSERT INTO
           gl_interface
         VALUES
-          gt_gl_interface_tbl(i)
+--******************************** 2009/03/26 1.4 T.Kitajima MOD START *****************************
+--          gt_gl_interface_tbl(i)
+          gt_gl_interface_tbl2(i)
+--******************************** 2009/03/26 1.4 T.Kitajima MOD  END  *****************************
         ;
     EXCEPTION
       WHEN OTHERS THEN
@@ -1950,7 +2075,10 @@ AS
     -- 処理対象データのインタフェース済フラグを一括更新する
     BEGIN
       <<update_interface_flag>>
-      FORALL i IN gt_sales_h_tbl.FIRST..gt_sales_h_tbl.LAST
+--******************************** 2009/03/26 1.4 T.Kitajima MOD START *****************************
+--      FORALL i IN gt_sales_h_tbl.FIRST..gt_sales_h_tbl.LAST
+      FORALL i IN gt_sales_h_tbl2.FIRST..gt_sales_h_tbl2.LAST
+--******************************** 2009/03/26 1.4 T.Kitajima MOD  END  *****************************
         UPDATE
           xxcos_sales_exp_headers      xseh
         SET
@@ -1963,7 +2091,10 @@ AS
           xseh.program_id             = cn_program_id,                       -- コンカレント・プログラムID
           xseh.program_update_date    = cd_program_update_date               -- プログラム更新日
         WHERE
-          xseh.rowid                  = gt_sales_h_tbl( i );                 -- 販売実績ROWID
+--******************************** 2009/03/26 1.4 T.Kitajima MOD START *****************************
+--          xseh.rowid                  = gt_sales_h_tbl( i );                 -- 販売実績ROWID
+          xseh.rowid                  = gt_sales_h_tbl2( i );                 -- 販売実績ROWID
+--******************************** 2009/03/26 1.4 T.Kitajima MOD  END  *****************************
 --
       EXCEPTION
         WHEN OTHERS THEN
@@ -2048,6 +2179,7 @@ AS
 --
     -- *** ローカル変数 ***
     lv_tbl_nm VARCHAR2(255);                -- テーブル名
+    lv_retcode_tmp VARCHAR2(1);
 --
     -- ===============================
     -- ローカル・カーソル
@@ -2113,6 +2245,8 @@ AS
         );
         IF ( lv_retcode = cv_status_error ) THEN
           RAISE global_process_expt;
+        ELSE
+          lv_retcode_tmp := lv_retcode;
         END IF;
 --
       -- ===============================
@@ -2142,7 +2276,11 @@ AS
       END IF;
 --
       -- 正常件数設定
-      gn_normal_cnt      := gt_gl_interface_tbl.COUNT;
+--      gn_normal_cnt      := gt_gl_interface_tbl.COUNT;
+      gn_normal_cnt      := gt_gl_interface_tbl2.COUNT;
+      IF ( lv_retcode_tmp = cv_status_warn ) THEN
+        ov_retcode := lv_retcode_tmp;
+      END IF;
 --
     ELSIF ( gn_target_cnt = 0 ) THEN
       -- 対象データ無しメッセージ
@@ -2222,14 +2360,15 @@ AS
     -- ===============================
     cv_prg_name        CONSTANT VARCHAR2(100) := 'main';             -- プログラム名
 --
-    cv_appl_short_name CONSTANT VARCHAR2(10) := 'XXCCP';             -- アドオン：共通・IF領域
-    cv_target_rec_msg  CONSTANT VARCHAR2(20) := 'APP-XXCCP1-90000';  -- 対象件数メッセージ
-    cv_success_rec_msg CONSTANT VARCHAR2(20) := 'APP-XXCCP1-90001';  -- 成功件数メッセージ
-    cv_error_rec_msg   CONSTANT VARCHAR2(20) := 'APP-XXCCP1-90002';  -- エラー件数メッセージ
-    cv_cnt_token       CONSTANT VARCHAR2(20) := 'COUNT';             -- 件数メッセージ用トークン名
-    cv_normal_msg      CONSTANT VARCHAR2(20) := 'APP-XXCCP1-90004';  -- 正常終了メッセージ
-    cv_warn_msg        CONSTANT VARCHAR2(20) := 'APP-XXCCP1-90005';  -- 警告終了メッセージ
-    cv_error_msg       CONSTANT VARCHAR2(20) := 'APP-XXCCP1-90006';  -- エラー終了全ロールバック
+    cv_appl_short_name CONSTANT VARCHAR2(10)  := 'XXCCP';             -- アドオン：共通・IF領域
+    cv_target_rec_msg  CONSTANT VARCHAR2(20)  := 'APP-XXCCP1-90000';  -- 対象件数メッセージ
+    cv_success_rec_msg CONSTANT VARCHAR2(20)  := 'APP-XXCCP1-90001';  -- 成功件数メッセージ
+    cv_error_rec_msg   CONSTANT VARCHAR2(20)  := 'APP-XXCCP1-90002';  -- エラー件数メッセージ
+    cv_skip_rec_msg    CONSTANT VARCHAR2(100) := 'APP-XXCCP1-90003'; -- スキップ件数メッセージ
+    cv_cnt_token       CONSTANT VARCHAR2(20)  := 'COUNT';             -- 件数メッセージ用トークン名
+    cv_normal_msg      CONSTANT VARCHAR2(20)  := 'APP-XXCCP1-90004';  -- 正常終了メッセージ
+    cv_warn_msg        CONSTANT VARCHAR2(20)  := 'APP-XXCCP1-90005';  -- 警告終了メッセージ
+    cv_error_msg       CONSTANT VARCHAR2(20)  := 'APP-XXCCP1-90006';  -- エラー終了全ロールバック
     -- ===============================
     -- ローカル変数
     -- ===============================
@@ -2323,6 +2462,19 @@ AS
       , buff  => gv_out_msg
     );
 --
+    --
+    --スキップ件数出力
+    gv_out_msg := xxccp_common_pkg.get_msg(
+                     iv_application  => cv_appl_short_name
+                    ,iv_name         => cv_skip_rec_msg
+                    ,iv_token_name1  => cv_cnt_token
+                    ,iv_token_value1 => TO_CHAR(gn_warn_cnt)
+                   );
+    FND_FILE.PUT_LINE(
+       which  => FND_FILE.OUTPUT
+      ,buff   => gv_out_msg
+    );
+    --
     --終了メッセージ
     IF ( lv_retcode    = cv_status_normal ) THEN
       lv_message_code := cv_normal_msg;
@@ -2364,4 +2516,3 @@ AS
 --###########################  固定部 END   #######################################################
 --
 END XXCOS013A03C;
-/

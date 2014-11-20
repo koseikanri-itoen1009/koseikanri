@@ -6,7 +6,7 @@ AS
  * Package Name           : xxcos_edi_common_pkg(body)
  * Description            :
  * MD.070                 : MD070_IPO_COS_共通関数
- * Version                : 1.1
+ * Version                : 1.2
  *
  * Program List
  *  ----------------------------- ---- ----- -----------------------------------------
@@ -20,6 +20,7 @@ AS
  * ------------ ----- ---------------- -----------------------------------------------
  *  2008/11/26   1.0   H.Fujimoto       新規作成
  *  2009/03/03   1.1   H.Fujimoto       結合不具合No152
+ *  2009/03/24   1.2   T.Miyata         ST障害：T1_0126
  *****************************************************************************************/
   -- ===============================
   -- グローバル変数
@@ -53,9 +54,14 @@ AS
     cv_cstm_class_customer  CONSTANT VARCHAR2(2)  := '10';      -- 顧客区分:顧客
     cv_cstm_class_chain     CONSTANT VARCHAR2(2)  := '18';      -- 顧客区分:チェーン店
     cv_flow_status_entry    CONSTANT VARCHAR2(6)  := 'BOOKED';  -- ステータス:記帳済み
-    cn_order_source         CONSTANT NUMBER       := 0;         -- 受注ソースID:画面入力
-    cn_order_type           CONSTANT NUMBER       := 1068;      -- 受注タイプID:通常受注
-    cn_line_type            CONSTANT NUMBER       := 1054;      -- 明細タイプID:通常出荷
+--*** 2009/03/24 Ver1.3 MODIFY START ***
+--  cn_order_source         CONSTANT NUMBER       := 0;         -- 受注ソースID:画面入力
+--  cn_order_type           CONSTANT NUMBER       := 1068;      -- 受注タイプID:通常受注
+--  cn_line_type            CONSTANT NUMBER       := 1054;      -- 明細タイプID:通常出荷
+    cv_xxcos_appl_short_nm  CONSTANT VARCHAR2(5)  := 'XXCOS';   -- 販物短縮アプリ名
+    cv_xxcos1_order_edi_common                                  -- EDI手入力特定マスタ
+                            CONSTANT VARCHAR2(23) := 'XXCOS1_ORDER_EDI_COMMON';
+--*** 2009/03/24 Ver1.3 MODIFY END   ***
     cv_tukzik_div_tuk       CONSTANT VARCHAR2(2)  := '11';      -- 通過在庫型区分:センター納品(通過型・受注)
     cv_tukzik_div_zik       CONSTANT VARCHAR2(2)  := '12';      -- 通過在庫型区分:センター納品(在庫型・受注)
     cv_tukzik_div_tnp       CONSTANT VARCHAR2(2)  := '24';      -- 通過在庫型区分:店舗納品
@@ -251,6 +257,10 @@ AS
          ,hz_cust_accounts      hca3  -- 顧客マスタ(拠点)
          ,hz_parties            hp3   -- パーティ(拠点)
          ,xxcos_edi_headers     xeh   -- EDIヘッダ情報
+--*** 2009/03/24 Ver1.3 ADD    START ***
+         ,oe_order_sources        oos   -- 受注ソーステーブル
+         ,oe_transaction_types_tl ottt  -- 受注タイプテーブル
+--*** 2009/03/24 Ver1.3 ADD    END   ***/
      WHERE ooha.sold_to_org_id         =  hca1.cust_account_id            -- 受注ヘッダ      ＝顧客マスタ(顧客)
      AND   hca1.cust_account_id        =  xca1.customer_id                -- 顧客マスタ(顧客)＝顧客追加(顧客)
      AND   hca1.party_id               =  hp1.party_id                    -- 顧客マスタ(顧客)＝パーティ(顧客)
@@ -266,8 +276,38 @@ AS
      AND   hca3.customer_class_code    =  cv_cstm_class_base       -- 顧客マスタ(拠点).顧客区分='1'(拠点)
      /* 受注ヘッダ抽出条件 */
      AND   ooha.flow_status_code       =  cv_flow_status_entry   -- ステータス  ＝記帳済み
-     AND   ooha.order_source_id        =  cn_order_source        -- 受注ソースID＝画面入力
-     AND   ooha.order_type_id          =  cn_order_type          -- 受注タイプID＝通常受注
+--*** 2009/03/24 Ver1.3 MODIFY START ***
+--   AND   ooha.order_source_id        =  cn_order_source        -- 受注ソースID＝画面入力
+--   AND   ooha.order_type_id          =  cn_order_type          -- 受注タイプID＝通常受注
+--
+     AND   ooha.order_source_id        =  oos.order_source_id      -- 受注ヘッダ.受注ソースID＝受注ソース.受注ソースID
+     AND   ooha.order_type_id          =  ottt.transaction_type_id -- 受注ヘッダ.受注タイプID＝受注タイプ.受注タイプID
+     AND   ottt.language               =  USERENV('LANG')          -- 受注タイプ.言語＝日本語
+     AND   EXISTS (
+                   SELECT 'X'
+                   FROM (
+                          SELECT
+                            flv.attribute1 AS order_source_name  -- 受注ソース
+                           ,flv.attribute2 AS order_h_type_name  -- 受注ヘッダタイプ
+                          FROM
+                             fnd_application               fa,
+                             fnd_lookup_types              flt,
+                             fnd_lookup_values             flv
+                           WHERE
+                               fa.application_id           = flt.application_id
+                           AND flt.lookup_type             = flv.lookup_type
+                           AND fa.application_short_name   = cv_xxcos_appl_short_nm
+                           AND flv.lookup_type             = cv_xxcos1_order_edi_common
+                           AND flv.start_date_active      <= TRUNC( ld_sysdate )
+                           AND TRUNC( ld_sysdate )        <= NVL( flv.end_date_active, TRUNC( ld_sysdate ) )
+                           AND flv.enabled_flag            = cv_flag_yes
+                           AND flv.language                = USERENV( 'LANG' )
+                        ) flvs
+                      WHERE
+                          oos.name       = flvs.order_source_name  -- 受注ソース．名前＝参照タイプ．受注ソース名
+                      AND ottt.name      = flvs.order_h_type_name  -- 受注タイプ．名前＝参照タイプ．受注ヘッダタイプ名
+                  )
+--*** 2009/03/24 Ver1.3 MODIFY END   ***/
      /* 通過型在庫区分 */
      AND   xca1.tsukagatazaiko_div     IN ( cv_tukzik_div_tuk    -- センター納品(通過型・受注)
                                           , cv_tukzik_div_zik    -- センター納品(在庫型・受注)
@@ -331,6 +371,9 @@ AS
             ,mtl_system_items_b    msib  -- Disc品目
             ,xxcmm_system_items_b  xsib  -- Disc品目アドオン
             ,fnd_lookup_values     flv   -- クイックコード
+--*** 2009/03/24 Ver1.3 ADD    START ***/
+            ,oe_transaction_types_tl ottt  -- 受注タイプテーブル
+--*** 2009/03/24 Ver1.3 ADD    END   ***/
         WHERE oola.header_id            = lt_head_tab(ln_head_cnt).header_id
         AND   oola.ordered_item         = iimb.item_no
         AND   iimb.item_id              = ximb.item_id
@@ -346,7 +389,33 @@ AS
         OR    flv.end_date_active      IS NULL )
         AND   flv.enabled_flag(+)       = cv_flag_yes
         AND   flv.language(+)           = lv_language
-        AND   oola.line_type_ID         = cn_line_type
+--*** 2009/03/24 Ver1.3 MODIFY START ***
+--      AND   oola.line_type_ID         = cn_line_type
+        AND   oola.line_type_id         = ottt.transaction_type_id -- 受注ヘッダ.受注タイプID＝受注タイプ.受注タイプID
+        AND   ottt.language             = USERENV('LANG')          -- 受注タイプ.言語＝日本語
+        AND   EXISTS (
+                      SELECT 'X'
+                      FROM (
+                             SELECT
+                               flv.attribute3 AS order_l_type_name -- 受注明細タイプ
+                             FROM
+                                fnd_application               fa,
+                                fnd_lookup_types              flt,
+                                fnd_lookup_values             flv
+                              WHERE
+                                  fa.application_id           = flt.application_id
+                              AND flt.lookup_type             = flv.lookup_type
+                              AND fa.application_short_name   = cv_xxcos_appl_short_nm
+                              AND flv.lookup_type             = cv_xxcos1_order_edi_common
+                              AND flv.start_date_active      <= TRUNC( ld_sysdate )
+                              AND TRUNC( ld_sysdate )        <= NVL( flv.end_date_active, TRUNC( ld_sysdate ) )
+                              AND flv.enabled_flag            = cv_flag_yes
+                              AND flv.language                = USERENV( 'LANG' )
+                           ) flvs
+                         WHERE
+                             ottt.name      = flvs.order_l_type_name  -- 受注タイプ．名前＝参照タイプ．受注明細タイプ名
+                     )
+--*** 2009/03/24 Ver1.3 MODIFY END   ***
         ;
 --
         -- 該当明細あり？

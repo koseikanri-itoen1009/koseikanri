@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCOS004A02C (body)
  * Description      : 商品別売上計算
  * MD.050           : 商品別売上計算 MD050_COS_004_A02
- * Version          : 1.1
+ * Version          : 1.7
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -34,6 +34,7 @@ AS
  *  2009/02/10    1.4   T.kitajima       [COS_047]差分明細の納品/基準単位(仕様漏れ)
  *  2009/02/19    1.5   T.kitajima       納品形態区分 メイン倉庫対応
  *  2009/02/24    1.6   T.kitajima       パラメータのログファイル出力対応
+ *  2009/03/30    1.7   T.kitajima       [T1_0189]販売実績明細.納品明細番号の採番方法変更
  *
  *****************************************************************************************/
 --
@@ -1180,6 +1181,9 @@ AS
     ln_difference_money    NUMBER;        --差異金額
     lv_deli_seq            VARCHAR2(12);  --納品伝票番号
     ln_make_flg            NUMBER;        --ヘッダ作成フラグ
+--******************************* 2009/03/30 1.7 T.kitajima ADD START ********************************************
+    ln_line_index          NUMBER;        --販売実績明細テーブルの納品明細番号
+--******************************* 2009/03/30 1.7 T.kitajima ADD  END  ********************************************
 --
     -- *** ローカル・カーソル ***
 --
@@ -1207,6 +1211,9 @@ AS
     lv_err_work            := cv_status_normal;
     ln_index               := 1;
     ln_make_flg            := 0;
+--******************************* 2009/03/30 1.7 T.kitajima ADD START ********************************************
+    ln_line_index          := 1;
+--******************************* 2009/03/30 1.7 T.kitajima ADD  END  ********************************************
     --ヘッダシーケンス取得
     SELECT xxcos_sales_exp_headers_s01.nextval
     INTO   ln_header_id
@@ -1271,7 +1278,11 @@ AS
         gt_tab_sales_exp_lines(ln_m).sales_exp_line_id            := ln_line_id;                                         --販売実績明細ID
         gt_tab_sales_exp_lines(ln_m).sales_exp_header_id          := ln_header_id;                                       --販売実績ヘッダID
         gt_tab_sales_exp_lines(ln_m).dlv_invoice_number           := lv_deli_seq;                                        --納品伝票番号
-        gt_tab_sales_exp_lines(ln_m).dlv_invoice_line_number      := gt_tab_work_data(ln_i).shop_digestion_ln_id;        --納品明細番号
+--******************************* 2009/03/30 1.7 T.kitajima MOD  END  ********************************************
+--        gt_tab_sales_exp_lines(ln_m).dlv_invoice_line_number      := gt_tab_work_data(ln_i).shop_digestion_ln_id;        --納品明細番号
+        gt_tab_sales_exp_lines(ln_m).dlv_invoice_line_number      := ln_line_index;                                      --納品明細番号
+        ln_line_index                                             := ln_line_index + 1; 
+--******************************* 2009/03/30 1.7 T.kitajima MOD  END  ********************************************
         gt_tab_sales_exp_lines(ln_m).order_invoice_line_number    := NULL;                                               --注文明細番号
         gt_tab_sales_exp_lines(ln_m).sales_class                  := gv_sales_class_vd;                                  --売上区分
         gt_tab_sales_exp_lines(ln_m).delivery_pattern_class       := gv_dvl_ptn_class;                                   --納品形態区分
@@ -1400,8 +1411,10 @@ AS
             gt_tab_sales_exp_lines(ln_m).sales_exp_line_id            := ln_line_id;                                       --販売実績明細ID
             gt_tab_sales_exp_lines(ln_m).sales_exp_header_id          := ln_header_id;                                     --販売実績ヘッダID
             gt_tab_sales_exp_lines(ln_m).dlv_invoice_number           := lv_deli_seq;                                      --納品伝票番号
-            gt_tab_sales_exp_lines(ln_m).dlv_invoice_line_number      := gt_tab_work_data(ln_i).shop_digestion_ln_id + 1;
-                                                                                                                           --納品明細番号
+--******************************* 2009/03/30 1.7 T.kitajima MOD  END  ********************************************
+--            gt_tab_sales_exp_lines(ln_m).dlv_invoice_line_number      := gt_tab_work_data(ln_i).shop_digestion_ln_id + 1;
+            gt_tab_sales_exp_lines(ln_m).dlv_invoice_line_number      := ln_line_index;                                    --納品明細番号
+--******************************* 2009/03/30 1.7 T.kitajima MOD  END  ********************************************
             gt_tab_sales_exp_lines(ln_m).order_invoice_line_number    := NULL;                                             --注文明細番号
             gt_tab_sales_exp_lines(ln_m).sales_class                  := gv_sales_class_vd;                                --売上区分
             gt_tab_sales_exp_lines(ln_m).delivery_pattern_class       := gv_dvl_ptn_class;                                 --納品形態区分
@@ -1451,6 +1464,10 @@ AS
           ln_h := ln_h + 1;
           --対象件数
           gn_target_cnt := gn_target_cnt +1;
+--******************************* 2009/03/30 1.7 T.kitajima ADD START ********************************************
+          --納品明細番号初期化
+          ln_line_index := 1; 
+--******************************* 2009/03/30 1.7 T.kitajima ADD  END  ********************************************
           --ヘッダシーケンス取得
           SELECT xxcos_sales_exp_headers_s01.nextval
           INTO   ln_header_id
