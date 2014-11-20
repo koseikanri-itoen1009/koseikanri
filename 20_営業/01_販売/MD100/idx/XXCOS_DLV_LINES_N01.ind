@@ -1,0 +1,2 @@
+CREATE INDEX xxcos.xxcos_dlv_lines_n01 ON xxcos.xxcos_dlv_lines ( order_no_hht , digestion_ln_number )
+TABLESPACE xxidx2;

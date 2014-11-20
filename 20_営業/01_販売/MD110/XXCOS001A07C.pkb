@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCOS001A07C (body)
  * Description      : 入出庫一時表、納品ヘッダ・明細テーブルのデータの抽出を行う
  * MD.050           : VDコラム別取引データ抽出 (MD050_COS_001_A07)
- * Version          : 1.11
+ * Version          : 1.12
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -39,6 +39,7 @@ AS
  *  2009/05/29    1.9   T.Kitajima       [T1_1120]org_id追加
  *  2009/06/02    1.10  N.Maeda          [T1_1192]端数処理(切上)の修正
  *  2009/07/17    1.11  N.Maeda          [T1_1438]ロック単位の変更
+ *  2009/08/10    1.12  N.Maeda          [0000425]PT対応
  *
  *****************************************************************************************/
 --
@@ -185,6 +186,9 @@ AS
 --****************************** 2009/04/22 1.7 T.Kitajima ADD START ******************************--
   cv_qck_input_type  CONSTANT VARCHAR2(30)  := 'XXCOS1_VD_COL_INPUT_CLASS';       -- 入力区分
 --****************************** 2009/04/22 1.7 T.Kitajima ADD START ******************************--
+-- *************** 2009/08/10 1.12 N.Maeda ADD START *****************************--
+  ct_user_lang       CONSTANT fnd_lookup_values.language%TYPE := USERENV( 'LANG' );
+-- *************** 2009/08/10 1.12 N.Maeda ADD  END  *****************************--
 --
   --フォーマット
   cv_fmt_date        CONSTANT VARCHAR2(10)  := 'RRRR/MM/DD';                      -- DATE形式
@@ -773,28 +777,40 @@ AS
              qck.cla       cla        -- 消費税区分
       FROM   ar_vat_tax_all_b tax,    -- 税コードマスタ
              (
+-- *************** 2009/08/10 1.12 N.Maeda MOD START *****************************--
                SELECT look_val.attribute2   code,   -- 消費税コード
                       look_val.attribute3   cla     -- 消費税区分
-               FROM   fnd_lookup_values     look_val,
-                      fnd_lookup_types_tl   types_tl,
-                      fnd_lookup_types      types,
-                      fnd_application_tl    appl,
-                      fnd_application       app
-               WHERE  app.application_short_name = cv_application       -- XXCOS
-               AND    look_val.lookup_type       = cv_qck_typ_tax       -- タイプ＝XXCOS1_CONSUMPTION_TAX_CLASS
+               FROM   fnd_lookup_values     look_val
+               WHERE  look_val.lookup_type       = cv_qck_typ_tax       -- タイプ＝XXCOS1_CONSUMPTION_TAX_CLASS
                AND    look_val.enabled_flag      = cv_tkn_yes           -- 使用可能＝Y
                AND    gd_process_date           >= NVL(look_val.start_date_active, gd_process_date)
                AND    gd_process_date           <= NVL(look_val.end_date_active, gd_max_date)
-               AND    types_tl.language          = USERENV( 'LANG' )    -- 言語＝JA
-               AND    look_val.language          = USERENV( 'LANG' )    -- 言語＝JA
-               AND    appl.language              = USERENV( 'LANG' )    -- 言語＝JA
-               AND    appl.application_id        = types.application_id
-               AND    app.application_id         = appl.application_id
-               AND    types_tl.lookup_type       = look_val.lookup_type
-               AND    types.lookup_type          = types_tl.lookup_type
-               AND    types.security_group_id    = types_tl.security_group_id
-               AND    types.view_application_id  = types_tl.view_application_id
+               AND    look_val.language          = ct_user_lang    -- 言語＝JA
                ORDER BY look_val.attribute3
+--
+--               SELECT look_val.attribute2   code,   -- 消費税コード
+--                      look_val.attribute3   cla     -- 消費税区分
+--               FROM   fnd_lookup_values     look_val,
+--                      fnd_lookup_types_tl   types_tl,
+--                      fnd_lookup_types      types,
+--                      fnd_application_tl    appl,
+--                      fnd_application       app
+--               WHERE  app.application_short_name = cv_application       -- XXCOS
+--               AND    look_val.lookup_type       = cv_qck_typ_tax       -- タイプ＝XXCOS1_CONSUMPTION_TAX_CLASS
+--               AND    look_val.enabled_flag      = cv_tkn_yes           -- 使用可能＝Y
+--               AND    gd_process_date           >= NVL(look_val.start_date_active, gd_process_date)
+--               AND    gd_process_date           <= NVL(look_val.end_date_active, gd_max_date)
+--               AND    types_tl.language          = USERENV( 'LANG' )    -- 言語＝JA
+--               AND    look_val.language          = USERENV( 'LANG' )    -- 言語＝JA
+--               AND    appl.language              = USERENV( 'LANG' )    -- 言語＝JA
+--               AND    appl.application_id        = types.application_id
+--               AND    app.application_id         = appl.application_id
+--               AND    types_tl.lookup_type       = look_val.lookup_type
+--               AND    types.lookup_type          = types_tl.lookup_type
+--               AND    types.security_group_id    = types_tl.security_group_id
+--               AND    types.view_application_id  = types_tl.view_application_id
+--               ORDER BY look_val.attribute3
+-- *************** 2009/08/10 1.12 N.Maeda MOD  END  *****************************--
              ) qck
       WHERE  tax.tax_code        = qck.code
       AND    tax.set_of_books_id = gl_id                -- GL会計帳簿ID
@@ -806,82 +822,121 @@ AS
     -- クイックコード：伝票区分
     CURSOR get_invoice_type_cur
     IS
+-- *************** 2009/08/10 1.12 N.Maeda MOD START *****************************--
       SELECT  look_val.lookup_code  lookup_code,  -- 伝票区分
               look_val.attribute1   form,         -- 伝票区分による形態
               look_val.attribute2   judge         -- 数量加工判定
       FROM    fnd_lookup_values     look_val
-             ,fnd_lookup_types_tl   types_tl
-             ,fnd_lookup_types      types
-             ,fnd_application_tl    appl
-             ,fnd_application       app
-      WHERE   app.application_short_name = cv_application
-      AND     look_val.lookup_type  = cv_qck_invo_type
+      WHERE   look_val.lookup_type  = cv_qck_invo_type
       AND     look_val.enabled_flag = cv_tkn_yes
       AND     gd_process_date      >= NVL(look_val.start_date_active, gd_process_date)
       AND     gd_process_date      <= NVL(look_val.end_date_active, gd_max_date)
-      AND     types_tl.language     = USERENV( 'LANG' )
-      AND     look_val.language     = USERENV( 'LANG' )
-      AND     appl.language         = USERENV( 'LANG' )
-      AND     appl.application_id   = types.application_id
-      AND     app.application_id    = appl.application_id
-      AND     types_tl.lookup_type  = look_val.lookup_type
-      AND     types.lookup_type     = types_tl.lookup_type
-      AND     types.security_group_id   = types_tl.security_group_id
-      AND     types.view_application_id = types_tl.view_application_id;
+      AND     look_val.language     = ct_user_lang;
+--
+--      SELECT  look_val.lookup_code  lookup_code,  -- 伝票区分
+--              look_val.attribute1   form,         -- 伝票区分による形態
+--              look_val.attribute2   judge         -- 数量加工判定
+--      FROM    fnd_lookup_values     look_val
+--             ,fnd_lookup_types_tl   types_tl
+--             ,fnd_lookup_types      types
+--             ,fnd_application_tl    appl
+--             ,fnd_application       app
+--      WHERE   app.application_short_name = cv_application
+--      AND     look_val.lookup_type  = cv_qck_invo_type
+--      AND     look_val.enabled_flag = cv_tkn_yes
+--      AND     gd_process_date      >= NVL(look_val.start_date_active, gd_process_date)
+--      AND     gd_process_date      <= NVL(look_val.end_date_active, gd_max_date)
+--      AND     types_tl.language     = USERENV( 'LANG' )
+--      AND     look_val.language     = USERENV( 'LANG' )
+--      AND     appl.language         = USERENV( 'LANG' )
+--      AND     appl.application_id   = types.application_id
+--      AND     app.application_id    = appl.application_id
+--      AND     types_tl.lookup_type  = look_val.lookup_type
+--      AND     types.lookup_type     = types_tl.lookup_type
+--      AND     types.security_group_id   = types_tl.security_group_id
+--      AND     types.view_application_id = types_tl.view_application_id;
+-- *************** 2009/08/10 1.12 N.Maeda MOD  END  *****************************--
 --
 --****************************** 2009/04/22 1.7 T.Kitajima ADD START ******************************--
     -- クイックコード：入力区分
     CURSOR get_input_type_cur
     IS
+-- *************** 2009/08/10 1.12 N.Maeda MOD START *****************************--
       SELECT  look_val.meaning      slip_class,         -- 伝票区分
               look_val.attribute1   input_class         -- 伝票区分による形態
       FROM    fnd_lookup_values     look_val
-             ,fnd_lookup_types_tl   types_tl
-             ,fnd_lookup_types      types
-             ,fnd_application_tl    appl
-             ,fnd_application       app
-      WHERE   app.application_short_name = cv_application
-      AND     look_val.lookup_type  = cv_qck_input_type
+      WHERE   look_val.lookup_type  = cv_qck_input_type
       AND     look_val.enabled_flag = cv_tkn_yes
       AND     gd_process_date      >= NVL(look_val.start_date_active, gd_process_date)
       AND     gd_process_date      <= NVL(look_val.end_date_active, gd_max_date)
-      AND     types_tl.language     = USERENV( 'LANG' )
-      AND     look_val.language     = USERENV( 'LANG' )
-      AND     appl.language         = USERENV( 'LANG' )
-      AND     appl.application_id   = types.application_id
-      AND     app.application_id    = appl.application_id
-      AND     types_tl.lookup_type  = look_val.lookup_type
-      AND     types.lookup_type     = types_tl.lookup_type
-      AND     types.security_group_id   = types_tl.security_group_id
-      AND     types.view_application_id = types_tl.view_application_id;
+      AND     look_val.language     = ct_user_lang;
+--
+--      SELECT  look_val.meaning      slip_class,         -- 伝票区分
+--              look_val.attribute1   input_class         -- 伝票区分による形態
+--      FROM    fnd_lookup_values     look_val
+--             ,fnd_lookup_types_tl   types_tl
+--             ,fnd_lookup_types      types
+--             ,fnd_application_tl    appl
+--             ,fnd_application       app
+--      WHERE   app.application_short_name = cv_application
+--      AND     look_val.lookup_type  = cv_qck_input_type
+--      AND     look_val.enabled_flag = cv_tkn_yes
+--      AND     gd_process_date      >= NVL(look_val.start_date_active, gd_process_date)
+--      AND     gd_process_date      <= NVL(look_val.end_date_active, gd_max_date)
+--      AND     types_tl.language     = USERENV( 'LANG' )
+--      AND     look_val.language     = USERENV( 'LANG' )
+--      AND     appl.language         = USERENV( 'LANG' )
+--      AND     appl.application_id   = types.application_id
+--      AND     app.application_id    = appl.application_id
+--      AND     types_tl.lookup_type  = look_val.lookup_type
+--      AND     types.lookup_type     = types_tl.lookup_type
+--      AND     types.security_group_id   = types_tl.security_group_id
+--      AND     types.view_application_id = types_tl.view_application_id;
+-- *************** 2009/08/10 1.12 N.Maeda MOD  END  *****************************--
 --****************************** 2009/04/22 1.7 T.Kitajima ADD  END  ******************************--
 --
     -- 入出庫一時表対象レコードロック
     CURSOR get_inv_lock_cur
     IS
-      SELECT  inv.last_updated_by         last_up  -- 最終更新者
+      SELECT  
+-- *************** 2009/08/10 1.12 N.Maeda ADD START *****************************--
+              /*+
+                INDEX (inv XXCOI_HHT_INV_TRANSACTIONS_N06 )
+              */
+-- *************** 2009/08/10 1.12 N.Maeda ADD  END  *****************************--
+              inv.last_updated_by         last_up  -- 最終更新者
       FROM    xxcoi_hht_inv_transactions  inv      -- 入出庫一時表
       WHERE   inv.invoice_type IN (
+-- *************** 2009/08/10 1.12 N.Maeda MOD START *****************************--
                                     SELECT  look_val.lookup_code  code
                                     FROM    fnd_lookup_values     look_val
-                                           ,fnd_lookup_types_tl   types_tl
-                                           ,fnd_lookup_types      types
-                                           ,fnd_application_tl    appl
-                                           ,fnd_application       app
-                                    WHERE   app.application_short_name = cv_application
-                                    AND     look_val.lookup_type  = cv_qck_invo_type
+                                    WHERE   look_val.lookup_type  = cv_qck_invo_type
                                     AND     look_val.enabled_flag = cv_tkn_yes
                                     AND     gd_process_date      >= NVL(look_val.start_date_active, gd_process_date)
                                     AND     gd_process_date      <= NVL(look_val.end_date_active, gd_max_date)
-                                    AND     types_tl.language     = USERENV( 'LANG' )
-                                    AND     look_val.language     = USERENV( 'LANG' )
-                                    AND     appl.language         = USERENV( 'LANG' )
-                                    AND     appl.application_id   = types.application_id
-                                    AND     app.application_id    = appl.application_id
-                                    AND     types_tl.lookup_type  = look_val.lookup_type
-                                    AND     types.lookup_type     = types_tl.lookup_type
-                                    AND     types.security_group_id   = types_tl.security_group_id
-                                    AND     types.view_application_id = types_tl.view_application_id
+                                    AND     look_val.language     = ct_user_lang
+--
+--                                    SELECT  look_val.lookup_code  code
+--                                    FROM    fnd_lookup_values     look_val
+--                                           ,fnd_lookup_types_tl   types_tl
+--                                           ,fnd_lookup_types      types
+--                                           ,fnd_application_tl    appl
+--                                           ,fnd_application       app
+--                                    WHERE   app.application_short_name = cv_application
+--                                    AND     look_val.lookup_type  = cv_qck_invo_type
+--                                    AND     look_val.enabled_flag = cv_tkn_yes
+--                                    AND     gd_process_date      >= NVL(look_val.start_date_active, gd_process_date)
+--                                    AND     gd_process_date      <= NVL(look_val.end_date_active, gd_max_date)
+--                                    AND     types_tl.language     = USERENV( 'LANG' )
+--                                    AND     look_val.language     = USERENV( 'LANG' )
+--                                    AND     appl.language         = USERENV( 'LANG' )
+--                                    AND     appl.application_id   = types.application_id
+--                                    AND     app.application_id    = appl.application_id
+--                                    AND     types_tl.lookup_type  = look_val.lookup_type
+--                                    AND     types.lookup_type     = types_tl.lookup_type
+--                                    AND     types.security_group_id   = types_tl.security_group_id
+--                                    AND     types.view_application_id = types_tl.view_application_id
+-- *************** 2009/08/10 1.12 N.Maeda MOD  END  *****************************--
                                   )                               -- 伝票区分＝4,5,6,7
       AND    inv.column_if_flag = cv_tkn_no                       -- コラム別転送フラグ＝N
       AND    inv.status         = cv_one                          -- 処理ステータス＝1
@@ -921,6 +976,11 @@ AS
 --****************************** 2009/04/17 1.6 T.Kitajima ADD  END  ******************************--
       FROM
         (
+-- *************** 2009/08/10 1.12 N.Maeda ADD START *****************************--
+             /*+
+               INDEX ( vd XXCOI_MST_VD_COLUMN_U01 )
+             */
+-- *************** 2009/08/10 1.12 N.Maeda ADD  END  *****************************--
           SELECT inv.base_code                 base_code                    -- 拠点コード
                 ,inv.employee_num              employee_num                 -- 営業員コード
                 ,inv.invoice_no                invoice_no                   -- 伝票No.
@@ -957,27 +1017,38 @@ AS
                 ,xxcoi_mst_vd_column           vd      -- VDコラムマスタ
                 ,xxcos_salesreps_v             xsv     -- 担当営業員view
                 ,(
+-- *************** 2009/08/10 1.12 N.Maeda MOD START *****************************--
                    SELECT  look_val.lookup_code  code
                    FROM    fnd_lookup_values     look_val
-                          ,fnd_lookup_types_tl   types_tl
-                          ,fnd_lookup_types      types
-                          ,fnd_application_tl    appl
-                          ,fnd_application       app
-                   WHERE   app.application_short_name = cv_application
-                   AND     look_val.lookup_type  = cv_qck_invo_type
+                   WHERE   look_val.lookup_type  = cv_qck_invo_type
                    AND     look_val.enabled_flag = cv_tkn_yes
                    AND     look_val.attribute1   = cv_tkn_out
                    AND     gd_process_date      >= NVL(look_val.start_date_active, gd_process_date)
                    AND     gd_process_date      <= NVL(look_val.end_date_active, gd_max_date)
-                   AND     types_tl.language     = USERENV( 'LANG' )
-                   AND     look_val.language     = USERENV( 'LANG' )
-                   AND     appl.language         = USERENV( 'LANG' )
-                   AND     appl.application_id   = types.application_id
-                   AND     app.application_id    = appl.application_id
-                   AND     types_tl.lookup_type  = look_val.lookup_type
-                   AND     types.lookup_type     = types_tl.lookup_type
-                   AND     types.security_group_id   = types_tl.security_group_id
-                   AND     types.view_application_id = types_tl.view_application_id
+                   AND     look_val.language     = ct_user_lang
+--
+--                   SELECT  look_val.lookup_code  code
+--                   FROM    fnd_lookup_values     look_val
+--                          ,fnd_lookup_types_tl   types_tl
+--                          ,fnd_lookup_types      types
+--                          ,fnd_application_tl    appl
+--                          ,fnd_application       app
+--                   WHERE   app.application_short_name = cv_application
+--                   AND     look_val.lookup_type  = cv_qck_invo_type
+--                   AND     look_val.enabled_flag = cv_tkn_yes
+--                   AND     look_val.attribute1   = cv_tkn_out
+--                   AND     gd_process_date      >= NVL(look_val.start_date_active, gd_process_date)
+--                   AND     gd_process_date      <= NVL(look_val.end_date_active, gd_max_date)
+--                   AND     types_tl.language     = USERENV( 'LANG' )
+--                   AND     look_val.language     = USERENV( 'LANG' )
+--                   AND     appl.language         = USERENV( 'LANG' )
+--                   AND     appl.application_id   = types.application_id
+--                   AND     app.application_id    = appl.application_id
+--                   AND     types_tl.lookup_type  = look_val.lookup_type
+--                   AND     types.lookup_type     = types_tl.lookup_type
+--                   AND     types.security_group_id   = types_tl.security_group_id
+--                   AND     types.view_application_id = types_tl.view_application_id
+-- *************** 2009/08/10 1.12 N.Maeda MOD  END  *****************************--
                  ) qck_invo    -- クイックコード：出庫側伝票区分
           WHERE  inv.invoice_type       = qck_invo.code           -- 伝票区分＝出庫側
           AND    inv.column_if_flag     = cv_tkn_no               -- コラム別転送フラグ＝N
@@ -1017,6 +1088,11 @@ AS
       UNION ALL
 --
       SELECT
+-- *************** 2009/08/10 1.12 N.Maeda ADD START *****************************--
+             /*+
+               INDEX ( vd XXCOI_MST_VD_COLUMN_U01 )
+             */
+-- *************** 2009/08/10 1.12 N.Maeda ADD  END  *****************************--
          base_code                 base_code                      -- 拠点コード
         ,employee_num              employee_num                   -- 営業員コード
         ,invoice_no                invoice_no                     -- 伝票No.
@@ -1083,27 +1159,38 @@ AS
                 ,xxcoi_mst_vd_column           vd      -- VDコラムマスタ
                 ,xxcos_salesreps_v             xsv     -- 担当営業員view
                 ,(
+-- *************** 2009/08/10 1.12 N.Maeda MOD START *****************************--
                    SELECT  look_val.lookup_code  code
                    FROM    fnd_lookup_values     look_val
-                          ,fnd_lookup_types_tl   types_tl
-                          ,fnd_lookup_types      types
-                          ,fnd_application_tl    appl
-                          ,fnd_application       app
-                   WHERE   app.application_short_name = cv_application
-                   AND     look_val.lookup_type  = cv_qck_invo_type
+                   WHERE   look_val.lookup_type  = cv_qck_invo_type
                    AND     look_val.enabled_flag = cv_tkn_yes
                    AND     look_val.attribute1   = cv_tkn_in
                    AND     gd_process_date      >= NVL(look_val.start_date_active, gd_process_date)
                    AND     gd_process_date      <= NVL(look_val.end_date_active, gd_max_date)
-                   AND     types_tl.language     = USERENV( 'LANG' )
-                   AND     look_val.language     = USERENV( 'LANG' )
-                   AND     appl.language         = USERENV( 'LANG' )
-                   AND     appl.application_id   = types.application_id
-                   AND     app.application_id    = appl.application_id
-                   AND     types_tl.lookup_type  = look_val.lookup_type
-                   AND     types.lookup_type     = types_tl.lookup_type
-                   AND     types.security_group_id   = types_tl.security_group_id
-                   AND     types.view_application_id = types_tl.view_application_id
+                   AND     look_val.language     = ct_user_lang
+--
+--                   SELECT  look_val.lookup_code  code
+--                   FROM    fnd_lookup_values     look_val
+--                          ,fnd_lookup_types_tl   types_tl
+--                          ,fnd_lookup_types      types
+--                          ,fnd_application_tl    appl
+--                          ,fnd_application       app
+--                   WHERE   app.application_short_name = cv_application
+--                   AND     look_val.lookup_type  = cv_qck_invo_type
+--                   AND     look_val.enabled_flag = cv_tkn_yes
+--                   AND     look_val.attribute1   = cv_tkn_in
+--                   AND     gd_process_date      >= NVL(look_val.start_date_active, gd_process_date)
+--                   AND     gd_process_date      <= NVL(look_val.end_date_active, gd_max_date)
+--                   AND     types_tl.language     = USERENV( 'LANG' )
+--                   AND     look_val.language     = USERENV( 'LANG' )
+--                   AND     appl.language         = USERENV( 'LANG' )
+--                   AND     appl.application_id   = types.application_id
+--                   AND     app.application_id    = appl.application_id
+--                   AND     types_tl.lookup_type  = look_val.lookup_type
+--                   AND     types.lookup_type     = types_tl.lookup_type
+--                   AND     types.security_group_id   = types_tl.security_group_id
+--                   AND     types.view_application_id = types_tl.view_application_id
+-- *************** 2009/08/10 1.12 N.Maeda MOD  END  *****************************--
                  ) qck_invo    -- クイックコード：入庫側伝票区分
           WHERE  inv.invoice_type       = qck_invo.code           -- 伝票区分＝入庫側
           AND    inv.column_if_flag     = cv_tkn_no               -- コラム別転送フラグ＝N
@@ -2057,7 +2144,12 @@ AS
     -- 対象伝票取得カーソル
     CURSOR get_inv_cur
     IS
-      SELECT DISTINCT
+      SELECT /*+
+               leading (head)
+               INDEX   ( HEAD XXCOS_DLV_HEADERS_N02 )
+               USE_NL  (LINE)
+             */
+             DISTINCT
              head.ROWID                      row_id                    -- 行ID
             ,head.order_no_hht               order_no_hht              -- 受注No.(HHT)
             ,head.digestion_ln_number        digestion_ln_number       -- 枝番
