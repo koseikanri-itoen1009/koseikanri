@@ -1,0 +1,1 @@
+CREATE INDEX xxpo.xxpo_rl_n01 ON xxpo.xxpo_requisition_lines (requisition_header_id,requisition_line_number) TABLESPACE xxidx ;

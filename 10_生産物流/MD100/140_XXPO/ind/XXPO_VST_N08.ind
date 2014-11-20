@@ -1,0 +1,1 @@
+CREATE INDEX xxpo.xxpo_vst_n08 ON xxpo.xxpo_vendor_supply_txns (TO_CHAR(txns_id)) TABLESPACE xxidx ;

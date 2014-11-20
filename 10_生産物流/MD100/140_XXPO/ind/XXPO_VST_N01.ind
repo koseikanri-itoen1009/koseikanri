@@ -1,0 +1,1 @@
+CREATE INDEX xxpo.xxpo_vst_n01 ON xxpo.xxpo_vendor_supply_txns (manufactured_date) TABLESPACE xxidx ;

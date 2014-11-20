@@ -1,0 +1,1 @@
+CREATE INDEX xxwip.xxwip_xdc_n01 ON xxwip.xxwip_deliverys_ctrl(concurrent_no) TABLESPACE xxidx ;

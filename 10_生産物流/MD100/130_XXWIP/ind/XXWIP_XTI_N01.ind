@@ -1,0 +1,1 @@
+CREATE INDEX xxwip.xxwip_xti_n01 ON xxwip.xxwip_transfer_inf(goods_classe,target_date,jurisdicyional_hub) TABLESPACE xxidx ;
