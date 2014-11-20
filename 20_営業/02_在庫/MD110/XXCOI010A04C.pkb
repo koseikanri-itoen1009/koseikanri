@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCOI010A04C(body)
  * Description      : 拠点で扱う品目の組合せ情報を抽出しCSVファイルを作成して連携する。
  * MD.050           : 拠点品目情報HHT連携 MD050_COI_010_A04
- * Version          : 1.0
+ * Version          : 1.1
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -24,6 +24,7 @@ AS
  *  Date          Ver.  Editor           Description
  * ------------- ----- ---------------- -------------------------------------------------
  *  2011/04/05    1.0   H.Sekine         main新規作成
+ *  2011/09/05    1.1   K.Nakamura       [E_本稼動_08224]管理元拠点の取得判定追加
  *
  *****************************************************************************************/
 --
@@ -122,6 +123,9 @@ AS
   cv_class_code_1            CONSTANT VARCHAR2(1)   := '1';                          -- 顧客区分:1（拠点）
   cv_shukka_shikyuu_kbn_1    CONSTANT VARCHAR2(1)   := '1';                          -- 出荷支給区分:1
   cv_zaiko_chousei_kbn_1     CONSTANT VARCHAR2(1)   := '1';                          -- 在庫調整区分:1
+-- == 2011/09/05 V1.1 Added START    ===============================================================
+  cv_dept_hht_div_1          CONSTANT VARCHAR2(1)   := '1';                          -- 百貨店HHT区分:1（拠点複）
+-- == 2011/09/05 V1.1 Added END      ===============================================================
   cv_date_mask_1             CONSTANT VARCHAR2(30)  := 'YYYY/MM/DD HH24:MI:SS';      -- 日付書式マスク(YYYY/MM/DD HH24:MM:SS)
   cv_date_mask_2             CONSTANT VARCHAR2(10)  := 'YYYYMM';                     -- 日付書式マスク(YYYYMM)
   cv_file_slash              CONSTANT VARCHAR2(1)   := '/';                          -- ファイル区切り用
@@ -187,21 +191,41 @@ AS
     CURSOR base_code_item_cur
     IS
       -- 月次在庫受払表(累計)
-      SELECT   xirs.base_code                  base_code              -- 拠点コード
+-- == 2011/09/05 V1.1 Modified START ===============================================================
+--      SELECT   xirs.base_code                  base_code              -- 拠点コード
+      SELECT   DECODE(xca.dept_hht_div, cv_dept_hht_div_1, xca.management_base_code, xirs.base_code)
+                                               base_code              -- 拠点コード
+-- == 2011/09/05 V1.1 Modified END   ===============================================================
              , msib.segment1                   item_no                -- 品目コード
       FROM     xxcoi_inv_reception_sum         xirs                   -- 月次在庫受払表（累計）
              , mtl_system_items_b              msib                   -- Disc品目マスタ
+-- == 2011/09/05 V1.1 Added START    ===============================================================
+             , hz_cust_accounts                hca                    -- 顧客マスタ
+             , xxcmm_cust_accounts             xca                    -- 顧客追加情報マスタ
+-- == 2011/09/05 V1.1 Added END      ===============================================================
       WHERE    msib.inventory_item_id = xirs.inventory_item_id
       AND      msib.organization_id   = xirs.organization_id
       AND      xirs.organization_id   = gt_org_id
       AND      xirs.practice_date     = TO_CHAR(gd_target_date, cv_date_mask_2 )
-      GROUP by xirs.base_code
+-- == 2011/09/05 V1.1 Added START    ===============================================================
+      AND      hca.cust_account_id     = xca.customer_id
+      AND      hca.customer_class_code = cv_class_code_1
+      AND      hca.account_number      = xirs.base_code
+-- == 2011/09/05 V1.1 Added END      ===============================================================
+-- == 2011/09/05 V1.1 Modified START ===============================================================
+--      GROUP by xirs.base_code
+      GROUP by DECODE(xca.dept_hht_div, cv_dept_hht_div_1, xca.management_base_code, xirs.base_code)
+-- == 2011/09/05 V1.1 Modified END   ===============================================================
              , msib.segment1
       --
       UNION
       --
       -- 出荷依頼/実績
-      SELECT  hca.account_number               base_code              -- 拠点コード
+-- == 2011/09/05 V1.1 Modified START ===============================================================
+--      SELECT  hca.account_number               base_code              -- 拠点コード
+      SELECT  DECODE(xca.dept_hht_div, cv_dept_hht_div_1, xca.management_base_code, hca.account_number)
+                                               base_code              -- 拠点コード
+-- == 2011/09/05 V1.1 Modified END   ===============================================================
             , imbp.item_no                     item_no                -- 品目コード
       FROM    xxwsh_order_headers_all          xoha                   -- 受注ヘッダアドオン
             , xxwsh_order_lines_all            xola                   -- 受注明細アドオン
@@ -210,6 +234,9 @@ AS
             , xxcmn_item_mst_b                 ximb                   -- OPM品目アドオンマスタ
             , mtl_system_items_b               msib                   -- Disc品目マスタ
             , hz_cust_accounts                 hca                    -- 顧客マスタ
+-- == 2011/09/05 V1.1 Added START    ===============================================================
+            , xxcmm_cust_accounts              xca                    -- 顧客追加情報マスタ
+-- == 2011/09/05 V1.1 Added END      ===============================================================
             , oe_transaction_types_all         otta                   -- 受注タイプマスタ
             , hz_party_sites                   hps                    -- パーティサイトマスタ
       WHERE  xoha.order_header_id   =   xola.order_header_id
@@ -245,7 +272,13 @@ AS
       AND     hca.customer_class_code      = cv_class_code_1
       AND     hca.status                   = cv_status_a
       AND     xoha.latest_external_flag    = cv_y
-      GROUP BY hca.account_number
+-- == 2011/09/05 V1.1 Added START    ===============================================================
+      AND     hca.cust_account_id          = xca.customer_id
+-- == 2011/09/05 V1.1 Added END      ===============================================================
+-- == 2011/09/05 V1.1 Modified START ===============================================================
+--      GROUP BY hca.account_number
+      GROUP BY DECODE(xca.dept_hht_div, cv_dept_hht_div_1, xca.management_base_code, hca.account_number)
+-- == 2011/09/05 V1.1 Modified END   ===============================================================
              , imbp.item_no
       ORDER BY base_code
              , item_no;
