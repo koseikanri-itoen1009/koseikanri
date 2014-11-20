@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCOS002A05R (body)
  * Description      : 納品書チェックリスト
  * MD.050           : 納品書チェックリスト MD050_COS_002_A05
- * Version          : 1.24
+ * Version          : 1.25
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -74,6 +74,7 @@ AS
  *  2011/07/07    1.22  S.Niki           [E_本稼動_07848]販売実績明細の集約条件修正
  *  2012/03/30    1.23  Y.Horikawa       [E_本稼動_09039]パフォーマンス改善対応
  *  2013/04/12    1.24  T.Ishiwata       [E_本稼動_10660]入金データ更新項目追加対応
+ *  2013/07/03    1.25  T.Shimoji        [E_本稼動_10904]消費税増税対応
  *
  *****************************************************************************************/
 --
@@ -1054,7 +1055,10 @@ AS
         ,infh.sale_amount_sum                      AS sudstance_total_amount          -- 売上額
         ,disc.sale_discount_amount                 AS sale_discount_amount            -- 売上値引額
         ,infh.tax_amount_sum                       AS consumption_tax_total_amount    -- 消費税金額合計
-        ,tacl.meaning                              AS consumption_tax_class_mst       -- 消費税区分（マスタ）
+-- 2013/07/03 Ver.1.25 Mod Start
+--        ,tacl.meaning                              AS consumption_tax_class_mst       -- 消費税区分（マスタ）
+        ,tacl.description                          AS consumption_tax_class_mst       -- 消費税区分（マスタ）
+-- 2013/07/03 Ver.1.25 Mod End
         ,infh.invoice_classification_code          AS invoice_classification_code     -- 伝票分類コード
         ,infh.invoice_class                        AS invoice_class                   -- 伝票区分
         ,sacl.meaning                              AS sale_class                      -- 売上区分
@@ -1068,7 +1072,10 @@ AS
         ,iimb.attribute6                           AS st_date                         -- 定価適用開始
         ,iimb.attribute5                           AS plice_new                       -- 定価(新)
         ,iimb.attribute4                           AS plice_old                       -- 旧定価
-        ,htcl.meaning                              AS consum_tax_calss_entered        -- 消費税区分（入力）
+-- 2013/07/03 Ver.1.25 Mod Start
+--        ,htcl.meaning                              AS consum_tax_calss_entered        -- 消費税区分（入力）
+        ,htcl.description                          AS consum_tax_calss_entered        -- 消費税区分（入力）
+-- 2013/07/03 Ver.1.25 Mod End
         ,infd.card_amount                          AS card_amount                     -- カード金額
         ,infd.column_no                            AS column_no                       -- コラム
         ,hccl.meaning                              AS h_and_c                         -- H/C
@@ -1421,7 +1428,10 @@ AS
          )  sacl    -- 売上区分
         ,(
             SELECT  look_val.lookup_code        lookup_code
-                   ,look_val.meaning            meaning
+-- 2009/07/03 Ver.1.25 Mod Start
+--                   ,look_val.meaning            meaning
+                   ,look_val.description        description
+-- 2009/07/03 Ver.1.25 Mod End
                    ,look_val.attribute3         attribute3
             FROM    fnd_lookup_values           look_val
             WHERE   look_val.lookup_type       = ct_qck_tax_class         -- XXCOS1_CONSUMPTION_TAX_CLASS
@@ -1448,7 +1458,10 @@ AS
          )  hccl    -- H/C区分
         ,(
             SELECT  look_val.lookup_code        lookup_code
-                   ,look_val.meaning            meaning
+-- 2009/07/03 Ver.1.25 Mod Start
+--                   ,look_val.meaning            meaning
+                   ,look_val.description          description
+-- 2009/07/03 Ver.1.25 Mod End
                    ,look_val.attribute3         attribute3
             FROM    fnd_lookup_values           look_val
             WHERE   look_val.lookup_type       = ct_qck_tax_class         -- XXCOS1_CONSUMPTION_TAX_CLASS
