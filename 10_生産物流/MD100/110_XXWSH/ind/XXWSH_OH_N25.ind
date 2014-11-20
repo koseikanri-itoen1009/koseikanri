@@ -1,0 +1,1 @@
+CREATE INDEX xxwsh.xxwsh_oh_n25 ON xxwsh.xxwsh_order_headers_all( deliver_to,deliver_from,order_type_id,schedule_ship_date ) TABLESPACE xxidx;

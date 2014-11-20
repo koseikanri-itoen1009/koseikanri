@@ -7,7 +7,7 @@ AS
  * Description      : トレーサビリティ
  * MD.050           : トレーサビリティ T_MD050_BPO_560
  * MD.070           : トレーサビリティ(56A) T_MD070_BPO_56A
- * Version          : 1.5
+ * Version          : 1.6
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -35,6 +35,7 @@ AS
  *  2008/08/18    1.4   ORACLE 椎名昭圭  TE080指摘事項#6対応
  *  2008/09/01    1.5   ORACLE 椎名昭圭  TE080指摘事項#7対応
  *                                       PT不具合修正
+ *  2008/09/03    1.6   ORACLE 丸下博宣  PT不具合修正 TYPE定義をVIEWのTYPEに修正
  *
  *****************************************************************************************/
 --
@@ -186,8 +187,11 @@ AS
 --
   -- 受入情報取得
   TYPE mst_rcv_rec IS RECORD(
+-- 2008/09/03 v1.6 UPDATE START
     p_item_id           ic_tran_pnd.item_id%TYPE,                         -- 親品目ID
-    p_lot_id            ic_tran_pnd.lot_id%TYPE,                          -- 親ロットID
+--    p_lot_id            ic_tran_pnd.lot_id%TYPE,                          -- 親ロットID
+    p_lot_id            ic_lots_mst.lot_id%TYPE,                          -- 親ロットID
+-- 2008/09/03 v1.6 UPDATE END
 -- 2008/09/01 v1.5 UPDATE START
 --    p_item_no           ic_item_mst_b.item_no%TYPE,                       -- 親品目コード
 --    p_item_name         xxcmn_item_mst_b.item_name%TYPE,                  -- 親品目名称
@@ -199,9 +203,14 @@ AS
     receipt_date        rcv_transactions.transaction_date%TYPE,           -- 受入日
     receipt_num         rcv_shipment_headers.receipt_num%TYPE,            -- 受入番号
     order_num           po_headers_all.segment1%TYPE,                     -- 発注番号
-    supp_name           xxcmn_vendors.vendor_name%TYPE,                   -- 仕入先名
-    supp_code           po_vendors.segment1%TYPE,                         -- 仕入先コード
-    trader_name         xxcmn_vendors.vendor_name%TYPE,                   -- 斡旋業者
+-- 2008/09/03 v1.6 UPDATE START
+--    supp_name           xxcmn_vendors.vendor_name%TYPE,                   -- 仕入先名
+--    supp_code           po_vendors.segment1%TYPE,                         -- 仕入先コード
+--    trader_name         xxcmn_vendors.vendor_name%TYPE,                   -- 斡旋業者
+    supp_name           xxcmn_vendors2_v.vendor_name%TYPE,                  -- 仕入先名
+    supp_code           xxcmn_vendors2_v.segment1%TYPE,                     -- 仕入先コード
+    trader_name         xxcmn_vendors2_v.vendor_name%TYPE,                  -- 斡旋業者
+-- 2008/09/03 v1.6 UPDATE END
     -- OPMロット情報
     lot_date            ic_lots_mst.attribute1%TYPE,                      -- 製造年月日
     lot_sign            ic_lots_mst.attribute2%TYPE,                      -- 固有記号
@@ -249,10 +258,14 @@ AS
   TYPE reg_lot_num                IS TABLE OF  ic_lots_mst.lot_no                     %TYPE INDEX BY BINARY_INTEGER;
   -- 子品目ID
   TYPE reg_trace_item_id          IS TABLE OF  ic_item_mst_b.item_id                  %TYPE INDEX BY BINARY_INTEGER;
+-- 2008/09/03 v1.6 UPDATE START
   -- 子品目コード
-  TYPE reg_trace_item_code        IS TABLE OF  ic_item_mst_b.item_no                  %TYPE INDEX BY BINARY_INTEGER;
+--  TYPE reg_trace_item_code        IS TABLE OF  ic_item_mst_b.item_no                  %TYPE INDEX BY BINARY_INTEGER;
+  TYPE reg_trace_item_code        IS TABLE OF  xxcmn_item_mst2_v.item_no              %TYPE INDEX BY BINARY_INTEGER;
   -- 子品目名称
-  TYPE reg_trace_item_name        IS TABLE OF  xxcmn_item_mst_b.item_name             %TYPE INDEX BY BINARY_INTEGER;
+--  TYPE reg_trace_item_name        IS TABLE OF  xxcmn_item_mst_b.item_name             %TYPE INDEX BY BINARY_INTEGER;
+  TYPE reg_trace_item_name        IS TABLE OF  xxcmn_item_mst2_v.item_name            %TYPE INDEX BY BINARY_INTEGER;
+-- 2008/09/03 v1.6 UPDATE END
   -- 子ロットID
   TYPE reg_trace_lot_id           IS TABLE OF  ic_lots_mst.lot_id                     %TYPE INDEX BY BINARY_INTEGER;
   -- 子ロットNo
@@ -275,12 +288,17 @@ AS
   TYPE reg_receipt_num            IS TABLE OF  rcv_shipment_headers.receipt_num       %TYPE INDEX BY BINARY_INTEGER;
   -- 発注番号
   TYPE reg_order_num              IS TABLE OF  po_headers_all.segment1                %TYPE INDEX BY BINARY_INTEGER;
+-- 2008/09/03 v1.6 UPDATE START
   -- 仕入先名
-  TYPE reg_supp_name              IS TABLE OF  xxcmn_vendors.vendor_name              %TYPE INDEX BY BINARY_INTEGER;
+--  TYPE reg_supp_name              IS TABLE OF  xxcmn_vendors.vendor_name              %TYPE INDEX BY BINARY_INTEGER;
+  TYPE reg_supp_name              IS TABLE OF  xxcmn_vendors2_v.vendor_name           %TYPE INDEX BY BINARY_INTEGER;
   -- 仕入先コード
-  TYPE reg_supp_code              IS TABLE OF  po_vendors.segment1                    %TYPE INDEX BY BINARY_INTEGER;
+--  TYPE reg_supp_code              IS TABLE OF  po_vendors.segment1                    %TYPE INDEX BY BINARY_INTEGER;
+  TYPE reg_supp_code              IS TABLE OF  xxcmn_vendors2_v.segment1              %TYPE INDEX BY BINARY_INTEGER;
   -- 斡旋業者
-  TYPE reg_trader_name            IS TABLE OF  xxcmn_vendors.vendor_name              %TYPE INDEX BY BINARY_INTEGER;
+--  TYPE reg_trader_name            IS TABLE OF  xxcmn_vendors.vendor_name              %TYPE INDEX BY BINARY_INTEGER;
+  TYPE reg_trader_name            IS TABLE OF  xxcmn_vendors2_v.vendor_name           %TYPE INDEX BY BINARY_INTEGER;
+-- 2008/09/03 v1.6 UPDATE END
   -- 製造年月日
   TYPE reg_lot_date               IS TABLE OF  ic_lots_mst.attribute1                 %TYPE INDEX BY BINARY_INTEGER;
   -- 固有記号
