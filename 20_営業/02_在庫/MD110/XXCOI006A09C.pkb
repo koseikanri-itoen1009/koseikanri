@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCOI006A09C(body)
  * Description      : 資材取引情報を元に月次在庫受払表（日次）を作成します
  * MD.050           : 日次在庫受払表作成<MD050_COI_006_A09>
- * Version          : 1.11
+ * Version          : 1.12
  *
  * Program List
  * ---------------------------- ----------------------------------------------------------
@@ -42,6 +42,8 @@ AS
  *  2009/08/31    1.9   H.Sasaki         [0001220]前日データ反映時の原価設定方法を修正
  *  2009/09/16    1.10  H.Sasaki         [0001384]PT対応（当日取引なしの場合、受払作成を行わない）
  *  2009/10/15    1.11  H.Sasaki         [E_最終移行リハ_00494]Ver1.10の修正
+ *  2010/01/25    1.12  N.Abe            [E_本稼動_01186]PT対応(起動パラメータによる処理分割)
+ *                                                       前回コピー時に帳簿0のデータは作成しない
  *
  *****************************************************************************************/
 --
@@ -176,11 +178,17 @@ AS
 -- == 2009/08/26 V1.8 Added START ===============================================================
   cn_control_id2        CONSTANT NUMBER       :=  80;                           -- データ連携制御ID（累計）
 -- == 2009/08/26 V1.8 Added END   ===============================================================
+-- == 2010/01/25 V1.12 Added START ===============================================================
+  cn_control_id3        CONSTANT NUMBER       :=  90;                           -- データ連携制御ID（繰越）
+-- == 2010/01/25 V1.12 Added END   ===============================================================
   cv_prf_name_orgcd     CONSTANT VARCHAR2(30) :=  'XXCOI1_ORGANIZATION_CODE';   -- プロファイル名（在庫組織コード）
   cv_pgsname_a09c       CONSTANT VARCHAR2(30) :=  'XXCOI006A09C';               -- データ連携制御テーブル用プログラム名
 -- == 2009/08/26 V1.8 Added START ===============================================================
   cv_pgsname_b09c       CONSTANT VARCHAR2(12) :=  'XXCOI006B09C';               -- プログラム名(累計)
 -- == 2009/08/26 V1.8 Added END   ===============================================================
+-- == 2010/01/25 V1.12 Added START ===============================================================
+  cv_pgsname_c09c       CONSTANT VARCHAR2(12) :=  'XXCOI006C09C';               -- プログラム名(繰越)
+-- == 2010/01/25 V1.12 Added END   ===============================================================
   cv_space              CONSTANT VARCHAR2(1)  :=  ' ';                          -- 半角スペース（ログ空行用）
   cv_inv_type_5         CONSTANT VARCHAR2(1)  :=  '5';                          -- 保管場所区分（自販機）
   cv_inv_type_8         CONSTANT VARCHAR2(1)  :=  '8';                          -- 保管場所区分（直送）
@@ -191,7 +199,9 @@ AS
   cv_0                  CONSTANT VARCHAR2(1)  :=  '0';        -- 起動フラグ：月次在庫受払表(日次)作成
   cv_1                  CONSTANT VARCHAR2(1)  :=  '1';        -- 起動フラグ：月次在庫受払表(累計)作成
 -- == 2009/08/26 V1.8 Added END   ===============================================================
---
+-- == 2010/01/25 V1.12 Added START ===============================================================
+  cv_2                  CONSTANT VARCHAR2(1)  :=  '2';        -- 起動フラグ：月次在庫受払表(繰越)作成
+-- == 2010/01/25 V1.12 Added END   ===============================================================
   -- ===============================
   -- ユーザー定義グローバル型
   -- ===============================
@@ -210,7 +220,7 @@ AS
   gn_f_max_transaction_id     NUMBER;             -- 最大取引ID
   gd_f_max_practice_date      DATE;               -- 日次データ最大年月日（前月）
 -- == 2009/08/26 V1.8 Added START ===============================================================
-  gv_exec_flag                VARCHAR2(1);        -- 起動フラグ(0:日次作成,1:累計作成)
+  gv_exec_flag                VARCHAR2(1);        -- 起動フラグ(0:日次作成,1:累計作成,2:前回繰越)
 -- == 2009/08/26 V1.8 Added END   ===============================================================
 -- == 2009/10/15 V1.11 Added START ===============================================================
   gn_material_flag            NUMBER;             -- 対象データ存在チェックフラグ
@@ -1521,6 +1531,9 @@ AS
 -- == 2009/08/26 V1.8 Modified START ===============================================================
 --        cn_control_id                   -- 01
         DECODE(gv_exec_flag, cv_0, cn_control_id
+-- == 2010/01/25 V1.12 Added START ===============================================================
+                           , cv_2, cn_control_id3
+-- == 2010/01/25 V1.12 Added END   ===============================================================
                                  , cn_control_id2)
                                         -- 01
 -- == 2009/08/26 V1.8 Modified END   ===============================================================
@@ -1529,6 +1542,9 @@ AS
 -- == 2009/08/26 V1.8 Modified START ===============================================================
 --       ,cv_pgsname_a09c                 -- 04
        ,DECODE(gv_exec_flag, cv_0, cv_pgsname_a09c
+-- == 2010/01/25 V1.12 Added START ===============================================================
+                           , cv_2, cv_pgsname_c09c
+-- == 2010/01/25 V1.12 Added END   ===============================================================
                                  , cv_pgsname_b09c)
                                         -- 04
 -- == 2009/08/26 V1.8 Modified END   ===============================================================
@@ -1558,8 +1574,14 @@ AS
 --      WHERE   control_id            =   cn_control_id
 --      AND     program_short_name    =   cv_pgsname_a09c;
       WHERE   control_id            =   DECODE(gv_exec_flag, cv_0, cn_control_id
+-- == 2010/01/25 V1.12 Added START ===============================================================
+                                                           , cv_2, cn_control_id3
+-- == 2010/01/25 V1.12 Added END   ===============================================================
                                                                  , cn_control_id2)
       AND     program_short_name    =   DECODE(gv_exec_flag, cv_0, cv_pgsname_a09c
+-- == 2010/01/25 V1.12 Added START ===============================================================
+                                                           , cv_2, cv_pgsname_c09c
+-- == 2010/01/25 V1.12 Added END   ===============================================================
                                                                  , cv_pgsname_b09c);
 -- == 2009/08/26 V1.8 Modified END   ===============================================================
       --
@@ -3551,32 +3573,102 @@ AS
     -- *** ローカル定数 ***
 --
     -- *** ローカル変数 ***
+-- == 2010/01/25 V1.12 Deleted START ===============================================================
 -- == 2009/08/31 V1.9 Added START ===============================================================
-    lt_standard_cost      xxcoi_inv_reception_daily.standard_cost%TYPE;
-    lt_operation_cost     xxcoi_inv_reception_daily.operation_cost%TYPE;
+--    lt_standard_cost      xxcoi_inv_reception_daily.standard_cost%TYPE;
+--    lt_operation_cost     xxcoi_inv_reception_daily.operation_cost%TYPE;
 -- == 2009/08/31 V1.9 Added START ===============================================================
+-- == 2010/01/25 V1.12 Deleted END   ===============================================================
+-- == 2010/01/25 V1.12 Modified START ===============================================================
+    ln_cnt    NUMBER;
+-- == 2010/01/25 V1.12 Modified END   ===============================================================
 --
     -- ===============================
     -- ローカル・カーソル
     -- ===============================
     -- <カーソル名>
+-- == 2010/01/25 V1.12 Modified START ===============================================================
     CURSOR  daily_data_cur
     IS
-      SELECT  xird.base_code                          -- 拠点コード
-             ,xird.organization_id                    -- 組織ID
-             ,xird.subinventory_code                  -- 保管場所
-             ,xird.practice_date                      -- 年月日
-             ,xird.inventory_item_id                  -- 品目ID
-             ,xird.subinventory_type                  -- 保管場所区分
-             ,xird.operation_cost                     -- 営業原価
-             ,xird.standard_cost                      -- 標準原価
-             ,xird.book_inventory_quantity            -- 帳簿在庫数
-      FROM    xxcoi_inv_reception_daily   xird        -- 前回最終処理分の日時受払
-      WHERE   xird.organization_id    =   gn_f_organization_id
-      AND     xird.practice_date      =   gd_f_last_cooperation_date;
+--      SELECT  xird.base_code                          -- 拠点コード
+--             ,xird.organization_id                    -- 組織ID
+--             ,xird.subinventory_code                  -- 保管場所
+--             ,xird.practice_date                      -- 年月日
+--             ,xird.inventory_item_id                  -- 品目ID
+--             ,xird.subinventory_type                  -- 保管場所区分
+--             ,xird.operation_cost                     -- 営業原価
+--             ,xird.standard_cost                      -- 標準原価
+--             ,xird.book_inventory_quantity            -- 帳簿在庫数
+--      FROM    xxcoi_inv_reception_daily   xird        -- 前回最終処理分の日時受払
+--      WHERE   xird.organization_id    =   gn_f_organization_id
+--      AND     xird.practice_date      =   gd_f_last_cooperation_date;
+      SELECT  xird.base_code                AS base_code                    -- 拠点コード
+             ,xird.organization_id          AS organization_id              -- 組織ID
+             ,xird.subinventory_code        AS subinventory_code            -- 保管場所
+             ,xird.subinventory_type        AS subinventory_type            -- 保管場所区分
+             ,gd_f_business_date            AS practice_date                -- 年月日
+             ,xird.inventory_item_id        AS inventory_item_id            -- 品目ID
+             ,xird.operation_cost           AS operation_cost               -- 営業原価
+             ,xird.standard_cost            AS standard_cost                -- 標準原価
+             ,xird.book_inventory_quantity  AS previous_inventory_quantity  -- 前日在庫
+             ,0                             AS sales_shipped                -- 売上出庫
+             ,0                             AS sales_shipped_b              -- 売上出庫振戻
+             ,0                             AS return_goods                 -- 返品
+             ,0                             AS return_goods_b               -- 返品振戻
+             ,0                             AS warehouse_ship               -- 倉庫へ返庫
+             ,0                             AS truck_ship                   -- 営業車へ出庫
+             ,0                             AS others_ship                  -- 入出庫＿その他出庫
+             ,0                             AS warehouse_stock              -- 倉庫より入庫
+             ,0                             AS truck_stock                  -- 営業車より入庫
+             ,0                             AS others_stock                 -- 入出庫＿その他入庫
+             ,0                             AS change_stock                 -- 倉替入庫
+             ,0                             AS change_ship                  -- 倉替出庫
+             ,0                             AS goods_transfer_old           -- 商品振替（旧商品）
+             ,0                             AS goods_transfer_new           -- 商品振替（新商品）
+             ,0                             AS sample_quantity              -- 見本出庫
+             ,0                             AS sample_quantity_b            -- 見本出庫振戻
+             ,0                             AS customer_sample_ship         -- 顧客見本出庫
+             ,0                             AS customer_sample_ship_b       -- 顧客見本出庫振戻
+             ,0                             AS customer_support_ss          -- 顧客協賛見本出庫
+             ,0                             AS customer_support_ss_b        -- 顧客協賛見本出庫振戻
+             ,0                             AS ccm_sample_ship              -- 顧客広告宣伝費A自社商品
+             ,0                             AS ccm_sample_ship_b            -- 顧客広告宣伝費A自社商品振戻
+             ,0                             AS vd_supplement_stock          -- 消化VD補充入庫
+             ,0                             AS vd_supplement_ship           -- 消化VD補充出庫
+             ,0                             AS inventory_change_in          -- 基準在庫変更入庫
+             ,0                             AS inventory_change_out         -- 基準在庫変更出庫
+             ,0                             AS factory_return               -- 工場返品
+             ,0                             AS factory_return_b             -- 工場返品振戻
+             ,0                             AS factory_change               -- 工場倉替
+             ,0                             AS factory_change_b             -- 工場倉替振戻
+             ,0                             AS removed_goods                -- 廃却
+             ,0                             AS removed_goods_b              -- 廃却振戻
+             ,0                             AS factory_stock                -- 工場入庫
+             ,0                             AS factory_stock_b              -- 工場入庫振戻
+             ,0                             AS wear_decrease                -- 棚卸減耗増
+             ,0                             AS wear_increase                -- 棚卸減耗減
+             ,0                             AS selfbase_ship                -- 保管場所移動＿自拠点出庫
+             ,0                             AS selfbase_stock               -- 保管場所移動＿自拠点入庫
+             ,xird.book_inventory_quantity  AS book_inventory_quantity      -- 帳簿在庫数
+             ,cn_created_by                 AS created_by                   -- 作成者
+             ,SYSDATE                       AS creation_date                -- 作成日
+             ,cn_last_updated_by            AS last_updated_by              -- 最終更新者
+             ,SYSDATE                       AS last_update_date             -- 最終更新日
+             ,cn_last_update_login          AS last_update_login            -- 最終更新ログイン
+             ,cn_request_id                 AS request_id                   -- 要求ID
+             ,cn_program_application_id     AS program_application_id       -- ｺﾝｶﾚﾝﾄ･ﾌﾟﾛｸﾞﾗﾑ･ｱﾌﾟﾘｹｰｼｮﾝID
+             ,cn_program_id                 AS program_id                   -- ｺﾝｶﾚﾝﾄ･ﾌﾟﾛｸﾞﾗﾑID
+             ,SYSDATE                       AS program_update_date          -- ﾌﾟﾛｸﾞﾗﾑ更新日
+      FROM    xxcoi_inv_reception_daily   xird                              -- 前回最終処理分の日時受払
+      WHERE   xird.organization_id          =   gn_f_organization_id
+      AND     xird.book_inventory_quantity <>   0                           -- 前回帳簿0以外
+      AND     xird.practice_date            =   gd_f_last_cooperation_date;
       --
     -- <カーソル名>レコード型
-    daily_data_rec    daily_data_cur%ROWTYPE;
+--    daily_data_rec    daily_data_cur%ROWTYPE;
+    TYPE t_daily_ttype IS TABLE OF daily_data_cur%ROWTYPE INDEX BY BINARY_INTEGER;
+    t_daily_tab                    t_daily_ttype;
+-- == 2010/01/25 V1.12 Modified END   ===============================================================
     --
   BEGIN
 --
@@ -3598,181 +3690,253 @@ AS
     -- ===============================
     --  当日未取引データ反映
     -- ===============================
-    -- 当日未取引で、以前に取引のあったデータを、業務処理日付で日時情報として登録
-    <<set_last_data_loop>>
-    FOR daily_data_rec  IN  daily_data_cur  LOOP
--- == 2009/08/31 V1.9 Added START ===============================================================
-      -- ===================================
-      --  2.標準原価取得
-      -- ===================================
-      xxcoi_common_pkg.get_cmpnt_cost(
-        in_item_id      =>  daily_data_rec.inventory_item_id                -- 品目ID
-       ,in_org_id       =>  gn_f_organization_id                            -- 組織ID
-       ,id_period_date  =>  gd_f_business_date                              -- 対象日
-       ,ov_cmpnt_cost   =>  lt_standard_cost                                -- 標準原価
-       ,ov_errbuf       =>  lv_errbuf                                       -- エラーメッセージ
-       ,ov_retcode      =>  lv_retcode                                      -- リターン・コード
-       ,ov_errmsg       =>  lv_errmsg                                       -- ユーザー・エラーメッセージ
-      );
-      -- 終了パラメータ判定
-      IF (lv_retcode = cv_status_error) THEN
-        lv_errmsg   := xxccp_common_pkg.get_msg(
-                         iv_application  => cv_short_name
-                        ,iv_name         => cv_msg_xxcoi1_10285
-                       );
-        lv_errbuf   := lv_errmsg;
-        RAISE global_api_expt;
-      END IF;
-      --
-      -- ===================================
-      --  2.営業原価取得
-      -- ===================================
-      xxcoi_common_pkg.get_discrete_cost(
-        in_item_id        =>  daily_data_rec.inventory_item_id                -- 品目ID
-       ,in_org_id         =>  gn_f_organization_id                            -- 組織ID
-       ,id_target_date    =>  gd_f_business_date                              -- 対象日
-       ,ov_discrete_cost  =>  lt_operation_cost                               -- 営業原価
-       ,ov_errbuf         =>  lv_errbuf                                       -- エラーメッセージ
-       ,ov_retcode        =>  lv_retcode                                      -- リターン・コード
-       ,ov_errmsg         =>  lv_errmsg                                       -- ユーザー・エラーメッセージ
-      );
-      -- 終了パラメータ判定
-      IF (lv_retcode = cv_status_error) THEN
-        lv_errmsg   := xxccp_common_pkg.get_msg(
-                         iv_application  => cv_short_name
-                        ,iv_name         => cv_msg_xxcoi1_10293
-                       );
-        lv_errbuf   := lv_errmsg;
-        RAISE global_api_expt;
-      END IF;
--- == 2009/08/31 V1.9 Added END   ===============================================================
+-- == 2010/01/25 V1.12 Modified START ===============================================================
+--    -- 当日未取引で、以前に取引のあったデータを、業務処理日付で日時情報として登録
+--    <<set_last_data_loop>>
+--    FOR daily_data_rec  IN  daily_data_cur  LOOP
+---- == 2009/08/31 V1.9 Added START ===============================================================
+--      -- ===================================
+--      --  2.標準原価取得
+--      -- ===================================
+--      xxcoi_common_pkg.get_cmpnt_cost(
+--        in_item_id      =>  daily_data_rec.inventory_item_id                -- 品目ID
+--       ,in_org_id       =>  gn_f_organization_id                            -- 組織ID
+--       ,id_period_date  =>  gd_f_business_date                              -- 対象日
+--       ,ov_cmpnt_cost   =>  lt_standard_cost                                -- 標準原価
+--       ,ov_errbuf       =>  lv_errbuf                                       -- エラーメッセージ
+--       ,ov_retcode      =>  lv_retcode                                      -- リターン・コード
+--       ,ov_errmsg       =>  lv_errmsg                                       -- ユーザー・エラーメッセージ
+--      );
+--      -- 終了パラメータ判定
+--      IF (lv_retcode = cv_status_error) THEN
+--        lv_errmsg   := xxccp_common_pkg.get_msg(
+--                         iv_application  => cv_short_name
+--                        ,iv_name         => cv_msg_xxcoi1_10285
+--                       );
+--        lv_errbuf   := lv_errmsg;
+--        RAISE global_api_expt;
+--      END IF;
+--      --
+--      -- ===================================
+--      --  2.営業原価取得
+--      -- ===================================
+--      xxcoi_common_pkg.get_discrete_cost(
+--        in_item_id        =>  daily_data_rec.inventory_item_id                -- 品目ID
+--       ,in_org_id         =>  gn_f_organization_id                            -- 組織ID
+--       ,id_target_date    =>  gd_f_business_date                              -- 対象日
+--       ,ov_discrete_cost  =>  lt_operation_cost                               -- 営業原価
+--       ,ov_errbuf         =>  lv_errbuf                                       -- エラーメッセージ
+--       ,ov_retcode        =>  lv_retcode                                      -- リターン・コード
+--       ,ov_errmsg         =>  lv_errmsg                                       -- ユーザー・エラーメッセージ
+--      );
+--      -- 終了パラメータ判定
+--      IF (lv_retcode = cv_status_error) THEN
+--        lv_errmsg   := xxccp_common_pkg.get_msg(
+--                         iv_application  => cv_short_name
+--                        ,iv_name         => cv_msg_xxcoi1_10293
+--                       );
+--        lv_errbuf   := lv_errmsg;
+--        RAISE global_api_expt;
+--      END IF;
+---- == 2009/08/31 V1.9 Added END   ===============================================================
+----
+--      INSERT INTO xxcoi_inv_reception_daily(
+--            base_code                                        -- 01.拠点コード
+--           ,organization_id                                  -- 02.組織ID
+--           ,subinventory_code                                -- 03.保管場所
+--           ,practice_date                                    -- 04.年月日
+--           ,inventory_item_id                                -- 05.品目ID
+--           ,subinventory_type                                -- 06.保管場所区分
+--           ,operation_cost                                   -- 07.営業原価
+--           ,standard_cost                                    -- 08.標準原価
+--           ,previous_inventory_quantity                      -- 09.前日在庫数
+--           ,sales_shipped                                    -- 10.売上出庫
+--           ,sales_shipped_b                                  -- 11.売上出庫振戻
+--           ,return_goods                                     -- 12.返品
+--           ,return_goods_b                                   -- 13.返品振戻
+--           ,warehouse_ship                                   -- 14.倉庫へ返庫
+--           ,truck_ship                                       -- 15.営業車へ出庫
+--           ,others_ship                                      -- 16.入出庫＿その他出庫
+--           ,warehouse_stock                                  -- 17.倉庫より入庫
+--           ,truck_stock                                      -- 18.営業車より入庫
+--           ,others_stock                                     -- 19.入出庫＿その他入庫
+--           ,change_stock                                     -- 20.倉替入庫
+--           ,change_ship                                      -- 21.倉替出庫
+--           ,goods_transfer_old                               -- 22.商品振替（旧商品）
+--           ,goods_transfer_new                               -- 23.商品振替（新商品）
+--           ,sample_quantity                                  -- 24.見本出庫
+--           ,sample_quantity_b                                -- 25.見本出庫振戻
+--           ,customer_sample_ship                             -- 26.顧客見本出庫
+--           ,customer_sample_ship_b                           -- 27.顧客見本出庫振戻
+--           ,customer_support_ss                              -- 28.顧客協賛見本出庫
+--           ,customer_support_ss_b                            -- 29.顧客協賛見本出庫振戻
+--           ,vd_supplement_stock                              -- 32.消化VD補充入庫
+--           ,vd_supplement_ship                               -- 33.消化VD補充出庫
+--           ,inventory_change_in                              -- 34.基準在庫変更入庫
+--           ,inventory_change_out                             -- 35.基準在庫変更出庫
+--           ,factory_return                                   -- 36.工場返品
+--           ,factory_return_b                                 -- 37.工場返品振戻
+--           ,factory_change                                   -- 38.工場倉替
+--           ,factory_change_b                                 -- 39.工場倉替振戻
+--           ,removed_goods                                    -- 40.廃却
+--           ,removed_goods_b                                  -- 41.廃却振戻
+--           ,factory_stock                                    -- 42.工場入庫
+--           ,factory_stock_b                                  -- 43.工場入庫振戻
+--           ,ccm_sample_ship                                  -- 30.顧客広告宣伝費A自社商品
+--           ,ccm_sample_ship_b                                -- 31.顧客広告宣伝費A自社商品振戻
+--           ,wear_decrease                                    -- 44.棚卸減耗増
+--           ,wear_increase                                    -- 45.棚卸減耗減
+--           ,selfbase_ship                                    -- 46.保管場所移動＿自拠点出庫
+--           ,selfbase_stock                                   -- 47.保管場所移動＿自拠点入庫
+--           ,book_inventory_quantity                          -- 48.帳簿在庫数
+--           ,last_update_date                                 -- 49.最終更新日
+--           ,last_updated_by                                  -- 50.最終更新者
+--           ,creation_date                                    -- 51.作成日
+--           ,created_by                                       -- 52.作成者
+--           ,last_update_login                                -- 53.最終更新ユーザ
+--           ,request_id                                       -- 54.要求ID
+--           ,program_application_id                           -- 55.プログラムアプリケーションID
+--           ,program_id                                       -- 56.プログラムID
+--           ,program_update_date                              -- 57.プログラム更新日
+--          )VALUES(
+--            daily_data_rec.base_code                         -- 01
+--           ,daily_data_rec.organization_id                   -- 02
+--           ,daily_data_rec.subinventory_code                 -- 03
+--           ,gd_f_business_date                               -- 04
+--           ,daily_data_rec.inventory_item_id                 -- 05
+--           ,daily_data_rec.subinventory_type                 -- 06
+---- == 2009/08/31 V1.9 Modified START ===============================================================
+----           ,daily_data_rec.operation_cost
+----           ,daily_data_rec.standard_cost
+--           ,lt_operation_cost                                -- 07
+--           ,lt_standard_cost                                 -- 08
+---- == 2009/08/31 V1.9 Modified END   ===============================================================
+--           ,daily_data_rec.book_inventory_quantity           -- 09
+--           ,0                                                -- 10
+--           ,0                                                -- 11
+--           ,0                                                -- 12
+--           ,0                                                -- 13
+--           ,0                                                -- 14
+--           ,0                                                -- 15
+--           ,0                                                -- 16
+--           ,0                                                -- 17
+--           ,0                                                -- 18
+--           ,0                                                -- 19
+--           ,0                                                -- 20
+--           ,0                                                -- 21
+--           ,0                                                -- 22
+--           ,0                                                -- 23
+--           ,0                                                -- 24
+--           ,0                                                -- 25
+--           ,0                                                -- 26
+--           ,0                                                -- 27
+--           ,0                                                -- 28
+--           ,0                                                -- 29
+--           ,0                                                -- 32
+--           ,0                                                -- 33
+--           ,0                                                -- 34
+--           ,0                                                -- 35
+--           ,0                                                -- 36
+--           ,0                                                -- 37
+--           ,0                                                -- 38
+--           ,0                                                -- 39
+--           ,0                                                -- 40
+--           ,0                                                -- 41
+--           ,0                                                -- 42
+--           ,0                                                -- 43
+--           ,0                                                -- 30
+--           ,0                                                -- 31
+--           ,0                                                -- 44
+--           ,0                                                -- 45
+--           ,0                                                -- 46
+--           ,0                                                -- 47
+--           ,daily_data_rec.book_inventory_quantity           -- 48
+--           ,SYSDATE                                          -- 49
+--           ,cn_last_updated_by                               -- 50
+--           ,SYSDATE                                          -- 51
+--           ,cn_created_by                                    -- 52
+--           ,cn_last_update_login                             -- 53
+--           ,cn_request_id                                    -- 54
+--           ,cn_program_application_id                        -- 55
+--           ,cn_program_id                                    -- 56
+--           ,SYSDATE                                          -- 57
+--          );
+--          --
+------ == 2009/08/26 V1.8 Added START ===============================================================
+--          gn_target_cnt := gn_target_cnt + 1;
+------ == 2009/08/26 V1.8 Added END   ===============================================================
+--    END LOOP set_last_data_loop;
+    -- ===============================
+    --  前回取引データ反映
+    -- ===============================
+    OPEN daily_data_cur;
 --
-      INSERT INTO xxcoi_inv_reception_daily(
-            base_code                                        -- 01.拠点コード
-           ,organization_id                                  -- 02.組織ID
-           ,subinventory_code                                -- 03.保管場所
-           ,practice_date                                    -- 04.年月日
-           ,inventory_item_id                                -- 05.品目ID
-           ,subinventory_type                                -- 06.保管場所区分
-           ,operation_cost                                   -- 07.営業原価
-           ,standard_cost                                    -- 08.標準原価
-           ,previous_inventory_quantity                      -- 09.前日在庫数
-           ,sales_shipped                                    -- 10.売上出庫
-           ,sales_shipped_b                                  -- 11.売上出庫振戻
-           ,return_goods                                     -- 12.返品
-           ,return_goods_b                                   -- 13.返品振戻
-           ,warehouse_ship                                   -- 14.倉庫へ返庫
-           ,truck_ship                                       -- 15.営業車へ出庫
-           ,others_ship                                      -- 16.入出庫＿その他出庫
-           ,warehouse_stock                                  -- 17.倉庫より入庫
-           ,truck_stock                                      -- 18.営業車より入庫
-           ,others_stock                                     -- 19.入出庫＿その他入庫
-           ,change_stock                                     -- 20.倉替入庫
-           ,change_ship                                      -- 21.倉替出庫
-           ,goods_transfer_old                               -- 22.商品振替（旧商品）
-           ,goods_transfer_new                               -- 23.商品振替（新商品）
-           ,sample_quantity                                  -- 24.見本出庫
-           ,sample_quantity_b                                -- 25.見本出庫振戻
-           ,customer_sample_ship                             -- 26.顧客見本出庫
-           ,customer_sample_ship_b                           -- 27.顧客見本出庫振戻
-           ,customer_support_ss                              -- 28.顧客協賛見本出庫
-           ,customer_support_ss_b                            -- 29.顧客協賛見本出庫振戻
-           ,vd_supplement_stock                              -- 32.消化VD補充入庫
-           ,vd_supplement_ship                               -- 33.消化VD補充出庫
-           ,inventory_change_in                              -- 34.基準在庫変更入庫
-           ,inventory_change_out                             -- 35.基準在庫変更出庫
-           ,factory_return                                   -- 36.工場返品
-           ,factory_return_b                                 -- 37.工場返品振戻
-           ,factory_change                                   -- 38.工場倉替
-           ,factory_change_b                                 -- 39.工場倉替振戻
-           ,removed_goods                                    -- 40.廃却
-           ,removed_goods_b                                  -- 41.廃却振戻
-           ,factory_stock                                    -- 42.工場入庫
-           ,factory_stock_b                                  -- 43.工場入庫振戻
-           ,ccm_sample_ship                                  -- 30.顧客広告宣伝費A自社商品
-           ,ccm_sample_ship_b                                -- 31.顧客広告宣伝費A自社商品振戻
-           ,wear_decrease                                    -- 44.棚卸減耗増
-           ,wear_increase                                    -- 45.棚卸減耗減
-           ,selfbase_ship                                    -- 46.保管場所移動＿自拠点出庫
-           ,selfbase_stock                                   -- 47.保管場所移動＿自拠点入庫
-           ,book_inventory_quantity                          -- 48.帳簿在庫数
-           ,last_update_date                                 -- 49.最終更新日
-           ,last_updated_by                                  -- 50.最終更新者
-           ,creation_date                                    -- 51.作成日
-           ,created_by                                       -- 52.作成者
-           ,last_update_login                                -- 53.最終更新ユーザ
-           ,request_id                                       -- 54.要求ID
-           ,program_application_id                           -- 55.プログラムアプリケーションID
-           ,program_id                                       -- 56.プログラムID
-           ,program_update_date                              -- 57.プログラム更新日
-          )VALUES(
-            daily_data_rec.base_code                         -- 01
-           ,daily_data_rec.organization_id                   -- 02
-           ,daily_data_rec.subinventory_code                 -- 03
-           ,gd_f_business_date                               -- 04
-           ,daily_data_rec.inventory_item_id                 -- 05
-           ,daily_data_rec.subinventory_type                 -- 06
--- == 2009/08/31 V1.9 Modified START ===============================================================
---           ,daily_data_rec.operation_cost
---           ,daily_data_rec.standard_cost
-           ,lt_operation_cost                                -- 07
-           ,lt_standard_cost                                 -- 08
--- == 2009/08/31 V1.9 Modified END   ===============================================================
-           ,daily_data_rec.book_inventory_quantity           -- 09
-           ,0                                                -- 10
-           ,0                                                -- 11
-           ,0                                                -- 12
-           ,0                                                -- 13
-           ,0                                                -- 14
-           ,0                                                -- 15
-           ,0                                                -- 16
-           ,0                                                -- 17
-           ,0                                                -- 18
-           ,0                                                -- 19
-           ,0                                                -- 20
-           ,0                                                -- 21
-           ,0                                                -- 22
-           ,0                                                -- 23
-           ,0                                                -- 24
-           ,0                                                -- 25
-           ,0                                                -- 26
-           ,0                                                -- 27
-           ,0                                                -- 28
-           ,0                                                -- 29
-           ,0                                                -- 32
-           ,0                                                -- 33
-           ,0                                                -- 34
-           ,0                                                -- 35
-           ,0                                                -- 36
-           ,0                                                -- 37
-           ,0                                                -- 38
-           ,0                                                -- 39
-           ,0                                                -- 40
-           ,0                                                -- 41
-           ,0                                                -- 42
-           ,0                                                -- 43
-           ,0                                                -- 30
-           ,0                                                -- 31
-           ,0                                                -- 44
-           ,0                                                -- 45
-           ,0                                                -- 46
-           ,0                                                -- 47
-           ,daily_data_rec.book_inventory_quantity           -- 48
-           ,SYSDATE                                          -- 49
-           ,cn_last_updated_by                               -- 50
-           ,SYSDATE                                          -- 51
-           ,cn_created_by                                    -- 52
-           ,cn_last_update_login                             -- 53
-           ,cn_request_id                                    -- 54
-           ,cn_program_application_id                        -- 55
-           ,cn_program_id                                    -- 56
-           ,SYSDATE                                          -- 57
-          );
-          --
----- == 2009/08/26 V1.8 Added START ===============================================================
-          gn_target_cnt := gn_target_cnt + 1;
----- == 2009/08/26 V1.8 Added END   ===============================================================
-    END LOOP set_last_data_loop;
+    -- 前回データ取得ループ
+    <<get_daily_loop>>
+    LOOP
+--
+      FETCH daily_data_cur BULK COLLECT INTO t_daily_tab LIMIT 50000;
+      EXIT WHEN t_daily_tab.COUNT = 0;
+      -- カウント
+      gn_target_cnt := gn_target_cnt + t_daily_tab.COUNT;
+      -- 前回日次データを、業務処理日付で日次に登録
+      <<set_last_data_loop>>
+      FOR ln_cnt IN 1 .. t_daily_tab.COUNT LOOP
+        -- ===================================
+        --  2.標準原価取得
+        -- ===================================
+        xxcoi_common_pkg.get_cmpnt_cost(
+          in_item_id      =>  t_daily_tab(ln_cnt).inventory_item_id           -- 品目ID
+         ,in_org_id       =>  gn_f_organization_id                            -- 組織ID
+         ,id_period_date  =>  gd_f_business_date                              -- 対象日
+         ,ov_cmpnt_cost   =>  t_daily_tab(ln_cnt).standard_cost               -- 標準原価
+         ,ov_errbuf       =>  lv_errbuf                                       -- エラーメッセージ
+         ,ov_retcode      =>  lv_retcode                                      -- リターン・コード
+         ,ov_errmsg       =>  lv_errmsg                                       -- ユーザー・エラーメッセージ
+        );
+        -- 終了パラメータ判定
+        IF (lv_retcode = cv_status_error) THEN
+          lv_errmsg   := xxccp_common_pkg.get_msg(
+                           iv_application  => cv_short_name
+                          ,iv_name         => cv_msg_xxcoi1_10285
+                         );
+          lv_errbuf   := lv_errmsg;
+          RAISE global_api_expt;
+        END IF;
+        --
+        -- ===================================
+        --  2.営業原価取得
+        -- ===================================
+        xxcoi_common_pkg.get_discrete_cost(
+          in_item_id        =>  t_daily_tab(ln_cnt).inventory_item_id           -- 品目ID
+         ,in_org_id         =>  gn_f_organization_id                            -- 組織ID
+         ,id_target_date    =>  gd_f_business_date                              -- 対象日
+         ,ov_discrete_cost  =>  t_daily_tab(ln_cnt).operation_cost              -- 営業原価
+         ,ov_errbuf         =>  lv_errbuf                                       -- エラーメッセージ
+         ,ov_retcode        =>  lv_retcode                                      -- リターン・コード
+         ,ov_errmsg         =>  lv_errmsg                                       -- ユーザー・エラーメッセージ
+        );
+        -- 終了パラメータ判定
+        IF (lv_retcode = cv_status_error) THEN
+          lv_errmsg   := xxccp_common_pkg.get_msg(
+                           iv_application  => cv_short_name
+                          ,iv_name         => cv_msg_xxcoi1_10293
+                         );
+          lv_errbuf   := lv_errmsg;
+          RAISE global_api_expt;
+        END IF;
+        --
+      END LOOP set_last_data_loop;
+--
+      FORALL ln_cnt IN 1 .. t_daily_tab.COUNT
+      --
+        INSERT INTO xxcoi_inv_reception_daily VALUES t_daily_tab(ln_cnt);
+--
+    END LOOP get_daily_loop;
+--
+    -- カーソルクローズ
+    CLOSE daily_data_cur;
+---- == 2010/01/25 V1.12 Modified END   ===============================================================
     --
   EXCEPTION
 --#################################  固定例外処理部 START   ####################################
@@ -3979,6 +4143,9 @@ AS
 -- == 2009/08/26 V1.8 Modified START ===============================================================
 --      WHERE   xcc.program_short_name  =   cv_pgsname_a09c;
       WHERE   xcc.program_short_name  =   DECODE(gv_exec_flag, cv_0, cv_pgsname_a09c
+-- == 2010/01/25 V1.12 Added START ===============================================================
+                                                             , cv_2, cv_pgsname_c09c
+-- == 2010/01/25 V1.12 Added END   ===============================================================
                                                                    , cv_pgsname_b09c);
 -- == 2009/08/26 V1.8 Modified END   ===============================================================
       --
@@ -4151,8 +4318,11 @@ AS
     END IF;
     --
 -- == 2009/08/26 V1.8 Added START ===============================================================
-    IF (gv_exec_flag = cv_0) THEN
-      --日次起動時のみ実施
+-- == 2010/01/25 V1.12 Modified START ===============================================================
+--    IF (gv_exec_flag = cv_0) THEN
+    --繰越作成起動時のみ実施
+    IF (gv_exec_flag = cv_2) THEN
+-- == 2010/01/25 V1.12 Modified END   ===============================================================
 -- == 2009/08/26 V1.8 Added END   ===============================================================
       -- ==============================================
       --  A-4, A-5.前回連携受払データ出力
@@ -4250,9 +4420,12 @@ AS
     END IF;
 -- == 2009/08/26 V1.8 Added END   ===============================================================
     --
+-- == 2010/01/25 V1.12 Modified START ===============================================================
 -- == 2009/08/26 V1.8 Added START ===============================================================
-    IF (gv_exec_flag IN (cv_0, cv_1)) THEN
+--    IF (gv_exec_flag IN (cv_0, cv_1)) THEN
+    IF (gv_exec_flag IN (cv_0, cv_1, cv_2)) THEN
 -- == 2009/08/26 V1.8 Added END   ===============================================================
+-- == 2010/01/25 V1.12 Modified END   ===============================================================
       -- ==============================================
       --  A-6.最終取引ID更新
       -- ==============================================
