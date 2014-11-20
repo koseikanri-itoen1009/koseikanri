@@ -35,6 +35,7 @@ AS
  *  2009/05/01    1.5   M.Ohtsuki       [障害T1_0861] 特殊品目の処理対象除外 
  *  2009/06/03    1.6   M.Ohtsuki       [障害T1_1174] センター納品の不具合の対応 
  *  2009/08/03    1.7   T.Tsukino       [障害管理番号0000479]性能改善対応
+ *  2009/09/11    1.8   T.Tsukino       [障害管理番号0001180]性能改善対応
  *****************************************************************************************/
 --
 --#######################  固定グローバル定数宣言部 START   #######################
@@ -96,6 +97,10 @@ AS
   cv_id_flex_code_mcat      CONSTANT VARCHAR2(30)  := 'MCAT';                         -- KFFコード（品目カテゴリ）
   cv_id_flex_str_code_sgum  CONSTANT VARCHAR2(30)  := 'XXCMN_SGUN_CODE';              -- 体系コード（政策群）
 --//+ADD END 2009/08/03 0000479 T.Tsukino
+--//+ADD START 2009/09/11 0001180 T.Tsukino
+  cv_sales_pl_item          CONSTANT VARCHAR2(20)  :='XXCSM1_SALES_PL_ITEM';           --政策群1群
+--//+ADD START 2009/09/11 0001180 T.Tsukino
+
 --
 --################################  固定部 END   ##################################
 --
@@ -1968,25 +1973,25 @@ AS
 --            ,xse.year_month;                                                                        -- 年月
 --//+DEL END 2009/08/03 0000479 T.Tsukino
 --↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓
-    SELECT  inn_v.year_month         year_month
-           ,inn_v.month              month
-           ,inn_v.sale_base_code     sale_base_code
-           ,inn_v.item_code          item_code
-           ,SUM(inn_v.qty)           month_sumary_qty
-           ,SUM(inn_v.pure_amount)   month_sumary_pure_amount
-           ,SUM(inn_v.trading_cost)  month_sumary_margin
+    SELECT  inn_v.year_month         year_month                                   --納品年月
+           ,inn_v.month              month                                        --納品月
+           ,inn_v.sale_base_code     sale_base_code                               --売上拠点コード
+           ,inn_v.item_code          item_code                                    --品目コード
+           ,SUM(inn_v.qty)           month_sumary_qty                             --基準数量
+           ,SUM(inn_v.pure_amount)   month_sumary_pure_amount                     --本体金額
+           ,SUM(inn_v.trading_cost)  month_sumary_margin                          --粗利益算出用
     FROM    (
              --------------------------------------
              -- 実績振替（売上拠点）
              --------------------------------------
              SELECT  /*+ LEADING(xtca) USE_NL(xca xsti) */
-                     TO_CHAR(xsti.selling_date,'YYYYMM')     year_month
-                    ,TO_CHAR(xsti.selling_date,'MM')         month
-                    ,xca.sale_base_code                      sale_base_code
-                    ,xsti.item_code                          item_code
-                    ,xsti.qty                                qty
-                    ,xsti.selling_amt                        pure_amount
-                    ,xsti.trading_cost                       trading_cost
+                     TO_CHAR(xsti.selling_date,'YYYYMM')     year_month           --納品年月
+                    ,TO_CHAR(xsti.selling_date,'MM')         month                --納品月
+                    ,xca.sale_base_code                      sale_base_code       --売上拠点コード
+                    ,xsti.item_code                          item_code            --品目コード
+                    ,xsti.qty                                qty                  --基準数量
+                    ,xsti.selling_amt                        pure_amount          --本体金額
+                    ,xsti.trading_cost                       trading_cost         --粗利益算出用
              FROM    xxcsm_tmp_cust_accounts  xtca
                     ,xxcmm_cust_accounts      xca
                     ,xxcok_selling_trns_info  xsti
@@ -1999,13 +2004,19 @@ AS
                AND   xsti.cust_code                  = xca.customer_code
                AND   xsti.selling_date  >= ADD_MONTHS(gt_start_date,-24)
                AND   xsti.selling_date   < gt_start_date
-               AND   xsti.selling_date   < cd_process_date
+--//+UPD START 2009/09/11 0001180 K.Kubo
+--               AND   xsti.selling_date   < cd_process_date
+               AND   xsti.selling_date   < TRUNC(cd_process_date,'MM')
+--//+UPD END   2009/09/11 0001180 K.Kubo
                AND   (
-                      (xsti.report_decision_flag   = cv_flg_on)
+                      (xsti.report_decision_flag   = cv_flg_on)                                --速報確定フラグ = 確定
                       OR
-                      (    (xsti.selling_date = (cd_process_date-1))
-                       AND (xsti.report_decision_flag     = cv_flg_off)
-                       AND (xsti.correction_flag          = cv_flg_off)
+--//+UPD START 2009/09/11 0001180 K.Kubo
+--                      (    (xsti.selling_date = (cd_process_date-1))
+                      (    (xsti.selling_date = TRUNC(ADD_MONTHS(cd_process_date, -1),'MM'))   --業務日付前月
+--//+UPD END   2009/09/11 0001180 K.Kubo
+                       AND (xsti.report_decision_flag     = cv_flg_off)                        --速報確定フラグ = 速報
+                       AND (xsti.correction_flag          = cv_flg_off)                        --振戻フラグ = 0 (最新のデータ)
                       )
                      )
                AND   (
@@ -2025,17 +2036,34 @@ AS
                       )
                      )
                AND   EXISTS (
-                       -- 値引用品目以外
-                       SELECT  /*+ LEADING(iimb) USE_NL(iimb gic mcb mcsb fifs) */
+--//+UPD START 2009/09/11 0001180 T.Tsukino
+--                       -- 値引用品目以外
+--                       SELECT  /*+ LEADING(iimb) USE_NL(iimb gic mcb mcsb fifs) */
+--                               'X'
+--                       FROM    ic_item_mst_b           iimb
+--                              ,fnd_lookup_values_vl    flvv
+--                              ,xxcmm_system_items_b    xsib
+--                              ,gmi_item_categories     gic
+--                              ,mtl_categories_b        mcb
+--                              ,mtl_category_sets_b     mcsb
+--                              ,fnd_id_flex_structures  fifs
+--                              ,xxcsm_item_group_1_nm_v   xig1v    --商品群1桁名称
+                       SELECT /*+ LEADING(iimb) 
+                                  ORDERED
+                                  USE_NL(fifs mcsb gic mcb)
+                                  USE_NL(iimb xsib fifs mcsb gic mcb)
+                                  INDEX(mcb MTL_CATEGORIES_B_U1) 
+                               */
                                'X'
                        FROM    ic_item_mst_b           iimb
-                              ,fnd_lookup_values_vl    flvv
                               ,xxcmm_system_items_b    xsib
+                              ,fnd_lookup_values_vl    flvv
+                              ,fnd_id_flex_structures  fifs
+                              ,mtl_category_sets_b     mcsb
                               ,gmi_item_categories     gic
                               ,mtl_categories_b        mcb
-                              ,mtl_category_sets_b     mcsb
-                              ,fnd_id_flex_structures  fifs
-                              ,xxcsm_item_group_1_nm_v   xig1v    --商品群1桁名称
+                              ,fnd_lookup_values       flv
+--//+UPD END 2009/09/11 0001180 T.Tsukino
                        WHERE   iimb.item_no                           = xsti.item_code
                          AND   flvv.lookup_type                       = cv_lookup_type_02
                          AND   flvv.enabled_flag                      = cv_flg_y
@@ -2055,7 +2083,15 @@ AS
                          AND   fifs.id_flex_code                      = cv_id_flex_code_mcat
                          AND   fifs.id_flex_structure_code            = cv_id_flex_str_code_sgum
                          AND   mcsb.structure_id                      = fifs.id_flex_num
-                         AND   mcb.segment1                           LIKE REPLACE(xig1v.item_group_cd,'*','_')
+--//+UPD START 2009/09/11 0001180 T.Tsukino
+--                         AND   mcb.segment1                           LIKE REPLACE(xig1v.item_group_cd,'*','_')
+                         AND   mcb.segment1           LIKE flv.lookup_code
+                         AND   flv.lookup_type        = cv_sales_pl_item
+                         AND   flv.language           = USERENV('LANG') 
+                         AND   flv.enabled_flag       = 'Y'             
+                         AND   NVL(flv.start_date_active,cd_process_date) <= cd_process_date    -- 適用開始日
+                         AND   NVL(flv.end_date_active,cd_process_date)   >= cd_process_date    -- 適用終了日
+--//+UPD END 2009/09/11 0001180 T.Tsukino
                          AND   ROWNUM                                 = 1
                      )
                AND   NOT EXISTS (
@@ -2089,13 +2125,19 @@ AS
                AND   xsti.cust_code                  = xca.customer_code
                AND   xsti.selling_date  >= ADD_MONTHS(gt_start_date,-24)
                AND   xsti.selling_date   < gt_start_date
-               AND   xsti.selling_date   < cd_process_date
+--//+UPD START 2009/09/11 0001180 K.Kubo
+--               AND   xsti.selling_date   < cd_process_date
+               AND   xsti.selling_date   < TRUNC(cd_process_date,'MM')
+--//+UPD END   2009/09/11 0001180 K.Kubo
                AND   (
-                      (xsti.report_decision_flag   = cv_flg_on)
+                      (xsti.report_decision_flag   = cv_flg_on)                                --速報確定フラグ = 確定
                       OR
-                      (    (xsti.selling_date = (cd_process_date-1))
-                       AND (xsti.report_decision_flag     = cv_flg_off)
-                       AND (xsti.correction_flag          = cv_flg_off)
+--//+UPD START 2009/09/11 0001180 K.Kubo
+--                      (    (xsti.selling_date = (cd_process_date-1))
+                      (    (xsti.selling_date = TRUNC(ADD_MONTHS(cd_process_date, -1),'MM'))   --業務日付前月
+--//+UPD END   2009/09/11 0001180 K.Kubo
+                       AND (xsti.report_decision_flag     = cv_flg_off)                        --速報確定フラグ = 速報
+                       AND (xsti.correction_flag          = cv_flg_off)                        --振戻フラグ = 0 (最新のデータ)
                       )
                      )
                AND   (
@@ -2116,16 +2158,33 @@ AS
                      )
                AND   EXISTS (
                        -- 値引用品目以外
-                       SELECT  /*+ LEADING(iimb) USE_NL(iimb gic mcb mcsb fifs) */
+--//+UPD START 2009/09/11 0001180 T.Tsukino
+--                       SELECT  /*+ LEADING(iimb) USE_NL(iimb gic mcb mcsb fifs) */
+--                               'X'
+--                       FROM    ic_item_mst_b           iimb
+--                              ,fnd_lookup_values_vl    flvv
+--                              ,xxcmm_system_items_b    xsib
+--                              ,gmi_item_categories     gic
+--                              ,mtl_categories_b        mcb
+--                              ,mtl_category_sets_b     mcsb
+--                              ,fnd_id_flex_structures  fifs
+--                              ,xxcsm_item_group_1_nm_v   xig1v    --商品群1桁名称
+                       SELECT /*+ LEADING(iimb) 
+                                  ORDERED
+                                  USE_NL(fifs mcsb gic mcb)
+                                  USE_NL(iimb xsib fifs mcsb gic mcb)
+                                  INDEX(mcb MTL_CATEGORIES_B_U1) 
+                               */
                                'X'
                        FROM    ic_item_mst_b           iimb
-                              ,fnd_lookup_values_vl    flvv
                               ,xxcmm_system_items_b    xsib
+                              ,fnd_lookup_values_vl    flvv
+                              ,fnd_id_flex_structures  fifs
+                              ,mtl_category_sets_b     mcsb
                               ,gmi_item_categories     gic
                               ,mtl_categories_b        mcb
-                              ,mtl_category_sets_b     mcsb
-                              ,fnd_id_flex_structures  fifs
-                              ,xxcsm_item_group_1_nm_v   xig1v    --商品群1桁名称
+                              ,fnd_lookup_values       flv
+--//+UPD END 2009/09/11 0001180 T.Tsukino
                        WHERE   iimb.item_no                           = xsti.item_code
                          AND   flvv.lookup_type                       = cv_lookup_type_02
                          AND   flvv.enabled_flag                      = cv_flg_y
@@ -2145,7 +2204,15 @@ AS
                          AND   fifs.id_flex_code                      = cv_id_flex_code_mcat
                          AND   fifs.id_flex_structure_code            = cv_id_flex_str_code_sgum
                          AND   mcsb.structure_id                      = fifs.id_flex_num
-                         AND   mcb.segment1                           LIKE REPLACE(xig1v.item_group_cd,'*','_')
+--//+UPD START 2009/09/11 0001180 T.Tsukino
+--                         AND   mcb.segment1                           LIKE REPLACE(xig1v.item_group_cd,'*','_')
+                         AND   mcb.segment1           LIKE flv.lookup_code
+                         AND   flv.lookup_type        = cv_sales_pl_item
+                         AND   flv.language           = USERENV('LANG') 
+                         AND   flv.enabled_flag       = 'Y'             
+                         AND   NVL(flv.start_date_active,cd_process_date) <= cd_process_date    -- 適用開始日
+                         AND   NVL(flv.end_date_active,cd_process_date)   >= cd_process_date    -- 適用終了日
+--//+UPD END 2009/09/11 0001180 T.Tsukino
                          AND   ROWNUM                                 = 1
                      )
                AND   NOT EXISTS (
@@ -2184,7 +2251,10 @@ AS
                AND   xseh.ship_to_customer_code       = xca.customer_code
                AND   xseh.delivery_date  >= ADD_MONTHS(gt_start_date,-24)
                AND   xseh.delivery_date   < gt_start_date
-               AND   xseh.delivery_date   < cd_process_date
+--//+UPD START 2009/09/11 0001180 K.Kubo
+--               AND   xseh.delivery_date   < cd_process_date
+               AND   xseh.delivery_date   < TRUNC(cd_process_date,'MM')                        --コンカレント起動年月前のデータを対象
+--//+UPD END   2009/09/11 0001180 K.Kubo
                AND   xsel.sales_exp_header_id         = xseh.sales_exp_header_id
                AND   (
                       (gv_location_cd IS NULL)
@@ -2204,16 +2274,33 @@ AS
                      )
                AND   EXISTS (
                        -- 値引用品目以外
-                       SELECT  /*+ LEADING(iimb) USE_NL(iimb gic mcb mcsb fifs) */
+--//+UPD START 2009/09/11 0001180 T.Tsukino
+--                       SELECT  /*+ LEADING(iimb) USE_NL(iimb gic mcb mcsb fifs) */
+--                               'X'
+--                       FROM    ic_item_mst_b           iimb
+--                              ,fnd_lookup_values_vl    flvv
+--                              ,xxcmm_system_items_b    xsib
+--                              ,gmi_item_categories     gic
+--                              ,mtl_categories_b        mcb
+--                              ,mtl_category_sets_b     mcsb
+--                              ,fnd_id_flex_structures  fifs
+--                              ,xxcsm_item_group_1_nm_v   xig1v    --商品群1桁名称
+                       SELECT /*+ LEADING(iimb) 
+                                  ORDERED
+                                  USE_NL(fifs mcsb gic mcb)
+                                  USE_NL(iimb xsib fifs mcsb gic mcb)
+                                  INDEX(mcb MTL_CATEGORIES_B_U1) 
+                               */
                                'X'
                        FROM    ic_item_mst_b           iimb
-                              ,fnd_lookup_values_vl    flvv
                               ,xxcmm_system_items_b    xsib
+                              ,fnd_lookup_values_vl    flvv
+                              ,fnd_id_flex_structures  fifs
+                              ,mtl_category_sets_b     mcsb
                               ,gmi_item_categories     gic
                               ,mtl_categories_b        mcb
-                              ,mtl_category_sets_b     mcsb
-                              ,fnd_id_flex_structures  fifs
-                              ,xxcsm_item_group_1_nm_v   xig1v    --商品群1桁名称
+                              ,fnd_lookup_values       flv
+--//+UPD END 2009/09/11 0001180 T.Tsukino
                        WHERE   iimb.item_no                           = xsel.item_code
                          AND   flvv.lookup_type                       = cv_lookup_type_02
                          AND   flvv.enabled_flag                      = cv_flg_y
@@ -2233,7 +2320,15 @@ AS
                          AND   fifs.id_flex_code                      = cv_id_flex_code_mcat
                          AND   fifs.id_flex_structure_code            = cv_id_flex_str_code_sgum
                          AND   mcsb.structure_id                      = fifs.id_flex_num
-                         AND   mcb.segment1                           LIKE REPLACE(xig1v.item_group_cd,'*','_')
+--//+UPD START 2009/09/11 0001180 T.Tsukino
+--                         AND   mcb.segment1                           LIKE REPLACE(xig1v.item_group_cd,'*','_')
+                         AND   mcb.segment1           LIKE flv.lookup_code
+                         AND   flv.lookup_type        = cv_sales_pl_item
+                         AND   flv.language           = USERENV('LANG') 
+                         AND   flv.enabled_flag       = 'Y'             
+                         AND   NVL(flv.start_date_active,cd_process_date) <= cd_process_date    -- 適用開始日
+                         AND   NVL(flv.end_date_active,cd_process_date)   >= cd_process_date    -- 適用終了日
+--//+UPD END 2009/09/11 0001180 T.Tsukino
                          AND   ROWNUM                                 = 1
                      )
                AND   NOT EXISTS (
@@ -2268,7 +2363,10 @@ AS
                AND   xseh.ship_to_customer_code       = xca.customer_code
                AND   xseh.delivery_date  >= ADD_MONTHS(gt_start_date,-24)
                AND   xseh.delivery_date   < gt_start_date
-               AND   xseh.delivery_date   < cd_process_date
+--//+UPD START 2009/09/11 0001180 K.Kubo
+--               AND   xseh.delivery_date   < cd_process_date
+               AND   xseh.delivery_date   < TRUNC(cd_process_date,'MM')                        --コンカレント起動年月前のデータを対象
+--//+UPD END   2009/09/11 0001180 K.Kubo
                AND   xsel.sales_exp_header_id         = xseh.sales_exp_header_id
                AND   (
                       (gv_location_cd IS NULL)
@@ -2288,16 +2386,33 @@ AS
                      )
                AND   EXISTS (
                        -- 値引用品目以外
-                       SELECT  /*+ LEADING(iimb) USE_NL(iimb gic mcb mcsb fifs) */
+--//+UPD START 2009/09/11 0001180 T.Tsukino
+--                       SELECT  /*+ LEADING(iimb) USE_NL(iimb gic mcb mcsb fifs) */
+--                               'X'
+--                       FROM    ic_item_mst_b           iimb
+--                              ,fnd_lookup_values_vl    flvv
+--                              ,xxcmm_system_items_b    xsib
+--                              ,gmi_item_categories     gic
+--                              ,mtl_categories_b        mcb
+--                              ,mtl_category_sets_b     mcsb
+--                              ,fnd_id_flex_structures  fifs
+--                              ,xxcsm_item_group_1_nm_v   xig1v    --商品群1桁名称
+                       SELECT /*+ LEADING(iimb) 
+                                  ORDERED
+                                  USE_NL(fifs mcsb gic mcb)
+                                  USE_NL(iimb xsib fifs mcsb gic mcb)
+                                  INDEX(mcb MTL_CATEGORIES_B_U1) 
+                               */
                                'X'
                        FROM    ic_item_mst_b           iimb
-                              ,fnd_lookup_values_vl    flvv
                               ,xxcmm_system_items_b    xsib
+                              ,fnd_lookup_values_vl    flvv
+                              ,fnd_id_flex_structures  fifs
+                              ,mtl_category_sets_b     mcsb
                               ,gmi_item_categories     gic
                               ,mtl_categories_b        mcb
-                              ,mtl_category_sets_b     mcsb
-                              ,fnd_id_flex_structures  fifs
-                              ,xxcsm_item_group_1_nm_v   xig1v    --商品群1桁名称
+                              ,fnd_lookup_values       flv
+--//+UPD END 2009/09/11 0001180 T.Tsukino
                        WHERE   iimb.item_no                           = xsel.item_code
                          AND   flvv.lookup_type                       = cv_lookup_type_02
                          AND   flvv.enabled_flag                      = cv_flg_y
@@ -2317,7 +2432,15 @@ AS
                          AND   fifs.id_flex_code                      = cv_id_flex_code_mcat
                          AND   fifs.id_flex_structure_code            = cv_id_flex_str_code_sgum
                          AND   mcsb.structure_id                      = fifs.id_flex_num
-                         AND   mcb.segment1                           LIKE REPLACE(xig1v.item_group_cd,'*','_')
+--//+UPD START 2009/09/11 0001180 T.Tsukino
+--                         AND   mcb.segment1                           LIKE REPLACE(xig1v.item_group_cd,'*','_')
+                         AND   mcb.segment1           LIKE flv.lookup_code
+                         AND   flv.lookup_type        = cv_sales_pl_item
+                         AND   flv.language           = USERENV('LANG') 
+                         AND   flv.enabled_flag       = 'Y'             
+                         AND   NVL(flv.start_date_active,cd_process_date) <= cd_process_date    -- 適用開始日
+                         AND   NVL(flv.end_date_active,cd_process_date)   >= cd_process_date    -- 適用終了日
+--//+UPD END 2009/09/11 0001180 T.Tsukino
                          AND   ROWNUM                                 = 1
                      )
                AND   NOT EXISTS (
