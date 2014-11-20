@@ -88,7 +88,7 @@ FROM po_headers_all pha           -- 発注ヘッダ
           ,xxcmn_item_mst_v xcimv1
       where pla1.item_id = xcimv1.inventory_item_id) pla
     ,ic_lots_mst ilm              -- OPMロットマスタ
-    ,xxcmn_item_categories3_v xcicv  -- 品目カテゴリ情報V3
+    ,xxcmn_item_categories5_v xcicv  -- 品目カテゴリ情報V5
 WHERE pha.po_header_id  = pla.po_header_id
   AND pla.attribute1    = ilm.lot_no(+)
   AND pla.x_item_id     = ilm.item_id(+)

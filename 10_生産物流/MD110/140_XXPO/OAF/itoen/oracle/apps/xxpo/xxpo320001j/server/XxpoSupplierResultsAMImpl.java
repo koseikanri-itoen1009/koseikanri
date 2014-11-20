@@ -1,7 +1,7 @@
 /*============================================================================
 * ファイル名 : XxpoSupplierResultsAMImpl
 * 概要説明   : 仕入先出荷実績入力:検索アプリケーションモジュール
-* バージョン : 1.1
+* バージョン : 1.3
 *============================================================================
 * 修正履歴
 * 日付       Ver. 担当者       修正内容
@@ -11,6 +11,7 @@
 * 2008-05-21 1.0  吉元強樹     不具合ログ#320_3
 * 2008-06-26 1.1  北寒寺正夫   ST不具合#17/結合指摘No3
 * 2008-07-11 1.2  伊藤ひとみ   内部変更#153 納入日の未来日チェック追加
+* 2008-10-22 1.3  吉元強樹     T_S_599対応
 *============================================================================
 */
 package itoen.oracle.apps.xxpo.xxpo320001j.server;
@@ -1274,15 +1275,22 @@ public class XxpoSupplierResultsAMImpl extends XxcmnOAApplicationModuleImpl
       (String)supplierResultsMakeHdrVORow.getAttribute("StatusCode"); // ステータスコード取得
     String statusDisp =
       (String)supplierResultsMakeHdrVORow.getAttribute("StatusDisp"); // ステータス名取得
-      
+// 2008-10-22 T.Yoshimoto Aod START
+    String headerNumber =
+      (String)supplierResultsMakeHdrVORow.getAttribute("HeaderNumber"); // 発注No取得
+// 2008-10-22 T.Yoshimoto Aod END      
     if (XxpoConstants.STATUS_FINISH_DECISION_MONEY.equals(statusCode))
     {
       exceptions.add( new OAAttrValException(
                             OAAttrValException.TYP_VIEW_OBJECT,          
                             supplierResultsMakeHdrVo.getName(),
                             supplierResultsMakeHdrVORow.getKey(),
-                            "StatusDisp",
-                            statusDisp,
+// 2008-10-22 T.Yoshimoto Mod START
+//                            "StatusDisp",
+//                            statusDisp,
+                            "HeaderNumber",
+                            headerNumber,
+// 2008-10-22 T.Yoshimoto Mod END
                             XxcmnConstants.APPL_XXPO, 
                             XxpoConstants.XXPO10141));      
     }
@@ -1378,6 +1386,10 @@ public class XxpoSupplierResultsAMImpl extends XxcmnOAApplicationModuleImpl
 
     String retCode = XxcmnConstants.STRING_TRUE;
     String updFlag = XxcmnConstants.STRING_N;
+// 2008-10-22 T.Yoshimoto ADD START
+    String requestNumber;
+    String dShipCode;
+// 2008-10-22 T.Yoshimoto ADD END
 
     OAViewObject makeHdrVO = getXxpoSupplierResultsMakeHdrVO1();
     OARow makeHdrVORow = (OARow)makeHdrVO.first();
@@ -1388,6 +1400,38 @@ public class XxpoSupplierResultsAMImpl extends XxcmnOAApplicationModuleImpl
     if (!XxcmnUtility.isEquals(makeHdrVORow.getAttribute("Description"),               
                                makeHdrVORow.getAttribute("BaseDescription")))    // 適用(ヘッダー)：適用(ヘッダー)(DB)
     {
+
+// 2008-10-22 T.Yoshimoto ADD START
+      // 支給Noを取得
+      requestNumber = (String)makeHdrVORow.getAttribute("RequestNumber");
+      // 直送区分コード
+      dShipCode     = (String)makeHdrVORow.getAttribute("DropshipCode");
+
+      // 直送区分が『支給』(3)且つ、支給No.が取得できる場合のみ実行
+      if(XxpoConstants.DSHIP_PROVISION.equals(dShipCode) 
+        && !XxcmnUtility.isBlankOrNull(requestNumber)) 
+      {
+        // ****************************************************** //
+        // * 有償金額確定チェック(確定済みの場合、処理を中断)   * //
+        // ****************************************************** //
+        if (XxpoUtility.chkAmountFixClass(getOADBTransaction(), requestNumber))
+        {
+
+          // ************************ //
+          // * エラーメッセージ出力 * //
+          // ************************ //
+          throw new OAAttrValException(
+                            OAAttrValException.TYP_VIEW_OBJECT,          
+                            makeHdrVO.getName(),
+                            makeHdrVORow.getKey(),
+                            "RequestNumber",
+                            requestNumber,
+                            XxcmnConstants.APPL_XXPO,         
+                            XxpoConstants.XXPO10141);
+        } 
+      }
+// 2008-10-22 T.Yoshimoto ADD END
+
       // 発注ヘッダー更新処理
       retCode = headerUpdate(makeHdrVORow);
 
@@ -1427,6 +1471,37 @@ public class XxpoSupplierResultsAMImpl extends XxcmnOAApplicationModuleImpl
         || (!XxcmnUtility.isEquals(makeDetailsVORow.getAttribute("Description"),               
                                  makeDetailsVORow.getAttribute("BaseDescription"))))    // 適用(明細)：適用(明細)(DB)
       {
+
+// 2008-10-22 T.Yoshimoto ADD START
+        // 支給Noを取得
+        requestNumber = (String)makeHdrVORow.getAttribute("RequestNumber");
+        // 直送区分コード
+        dShipCode     = (String)makeHdrVORow.getAttribute("DropshipCode");
+
+        // 直送区分が『支給』(3)且つ、支給No.が取得できる場合のみ実行
+        if(XxpoConstants.DSHIP_PROVISION.equals(dShipCode) 
+          && !XxcmnUtility.isBlankOrNull(requestNumber)) 
+        {
+          // ****************************************************** //
+          // * 有償金額確定チェック(確定済みの場合、処理を中断)   * //
+          // ****************************************************** //
+          if (XxpoUtility.chkAmountFixClass(getOADBTransaction(), requestNumber))
+          {
+
+            // ************************ //
+            // * エラーメッセージ出力 * //
+            // ************************ //
+            throw new OAAttrValException(
+                              OAAttrValException.TYP_VIEW_OBJECT,          
+                              makeHdrVO.getName(),
+                              makeHdrVORow.getKey(),
+                              "RequestNumber",
+                              requestNumber,
+                              XxcmnConstants.APPL_XXPO,         
+                              XxpoConstants.XXPO10141);
+          } 
+        }
+// 2008-10-22 T.Yoshimoto ADD END
 
         // 発注明細更新処理
         retCode = detailsUpdate2(makeHdrVORow, makeDetailsVORow);
@@ -1474,6 +1549,38 @@ public class XxpoSupplierResultsAMImpl extends XxcmnOAApplicationModuleImpl
           || (!XxcmnUtility.isEquals(makeDetailsVORow.getAttribute("Rank"),               
                                    makeDetailsVORow.getAttribute("BaseRank"))))           // ランク1：OPMロットMSTランク1(DB)
         {
+
+// 2008-10-22 T.Yoshimoto ADD START
+          // 支給Noを取得
+          requestNumber = (String)makeHdrVORow.getAttribute("RequestNumber");
+          // 直送区分コード
+          dShipCode     = (String)makeHdrVORow.getAttribute("DropshipCode");
+
+          // 直送区分が『支給』(3)且つ、支給No.が取得できる場合のみ実行
+          if(XxpoConstants.DSHIP_PROVISION.equals(dShipCode) 
+            && !XxcmnUtility.isBlankOrNull(requestNumber)) 
+          {
+            // ****************************************************** //
+            // * 有償金額確定チェック(確定済みの場合、処理を中断)   * //
+            // ****************************************************** //
+            if (XxpoUtility.chkAmountFixClass(getOADBTransaction(), requestNumber))
+            {
+
+              // ************************ //
+              // * エラーメッセージ出力 * //
+              // ************************ //
+              throw new OAAttrValException(
+                                OAAttrValException.TYP_VIEW_OBJECT,          
+                                makeHdrVO.getName(),
+                                makeHdrVORow.getKey(),
+                                "RequestNumber",
+                                requestNumber,
+                                XxcmnConstants.APPL_XXPO,         
+                                XxpoConstants.XXPO10141);
+            } 
+          }
+// 2008-10-22 T.Yoshimoto ADD END
+
           // OPMロットマスタ更新処理
           retCode = opmLotMstUpdate(makeHdrVORow, makeDetailsVORow);
   
