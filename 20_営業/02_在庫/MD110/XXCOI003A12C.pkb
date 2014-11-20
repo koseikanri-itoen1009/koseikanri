@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCOI003A12C(body)
  * Description      : HHT入出庫データ抽出
  * MD.050           : HHT入出庫データ抽出 MD050_COI_003_A12
- * Version          : 1.6
+ * Version          : 1.7
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -32,6 +32,7 @@ AS
  *  2009/06/01    1.4   H.Sasaki         [T1_1272]入庫側コード、出庫側コード編集
  *  2010/01/29    1.5   H.Sasaki         [E_本稼動_01372]在庫会計期間チェックのエラーハンドリング変更
  *  2010/03/23    1.6   Y.Goto           [E_本稼動_01943]拠点の有効チェックを追加
+ *  2010/04/19    1.7   H.Sasaki         [E_本稼動_02365]見本の拠点有効チェックを変更
  *
  *****************************************************************************************/
 --
@@ -137,6 +138,9 @@ AS
   cv_msg_get_aff_dept_date_err CONSTANT VARCHAR2(16) := 'APP-XXCOI1-10417';     -- AFF部門取得エラー
   cv_aff_dept_inactive_err     CONSTANT VARCHAR2(16) := 'APP-XXCOI1-10418';     -- AFF部門無効エラー
 -- == 2010/03/23 V1.6 Added END   ===============================================================
+-- == 2010/04/19 V1.7 Added START ===============================================================
+  cv_msg_xxcoi_10425           CONSTANT VARCHAR2(16) := 'APP-XXCOI1-10425';     -- 顧客売上拠点取得エラーメッセージ
+-- == 2010/04/19 V1.7 Added END   ===============================================================
 --
   -- トークン
   cv_tkn_pro                   CONSTANT VARCHAR2(20)  := 'PRO_TOK';              -- プロファイル名
@@ -156,6 +160,12 @@ AS
 -- == 2010/03/23 V1.6 Added START ===============================================================
   cv_tkn_slip_num              CONSTANT VARCHAR2(20)  := 'SLIP_NUM';             -- TKN：伝票番号
 -- == 2010/03/23 V1.6 Added END   ===============================================================
+-- == 2010/04/19 V1.7 Added START ===============================================================
+  cv_subinv_conv_f             CONSTANT VARCHAR2(1)   := 'F';                    -- 保管場所変換区分（顧客）
+  cv_cust_class_code_10        CONSTANT VARCHAR2(2)   := '10';                   -- 顧客区分（顧客）
+  cv_date_type_ym              CONSTANT VARCHAR2(6)   := 'YYYYMM';               -- 日付型（年月）
+  cv_n                         CONSTANT VARCHAR2(1)   := 'N';                    -- フラグ N
+-- == 2010/04/19 V1.7 Added END   ===============================================================
 --
   -- ===============================
   -- ユーザー定義グローバル型
@@ -1178,6 +1188,9 @@ AS
 -- == 2010/03/23 V1.6 Added START ===============================================================
     lt_start_date_active    fnd_flex_values.start_date_active%TYPE;                         -- AFF部門適用開始日
 -- == 2010/03/23 V1.6 Added END   ===============================================================
+-- == 2010/04/19 V1.7 Added START ===============================================================
+    lt_cust_base_code           xxcmm_cust_accounts.sale_base_code%TYPE;                    -- 売上拠点
+-- == 2010/04/19 V1.7 Added END   ===============================================================
     --
     -- *** ローカル・例外 ***
     cnv_subinv_expt             EXCEPTION;                                                  -- 保管場所変換例外
@@ -1333,42 +1346,103 @@ AS
       lv_errbuf := lv_errmsg;
       RAISE cnv_subinv_expt;
     END IF;
+-- == 2010/04/19 V1.7 Modified START ===============================================================
     -- 入庫側保管場所
-    xxcoi_common_pkg.get_subinv_aff_active_date(
-        in_organization_id     => gt_org_id                                         -- 在庫組織ID
-      , iv_subinv_code         => gt_inside_subinv_code                             -- 保管場所コード
-      , od_start_date_active   => lt_start_date_active                              -- 適用開始日
-      , ov_errbuf              => lv_errbuf
-      , ov_retcode             => lv_retcode
-      , ov_errmsg              => lv_errmsg
-    );
-    -- 適用開始日の取得に失敗した場合
-    IF ( lv_retcode != cv_status_normal ) THEN
-      lv_errmsg := xxccp_common_pkg.get_msg(
-                       iv_application  => cv_application_short_name
-                     , iv_name         => cv_msg_get_aff_dept_date_err
-                     , iv_token_name1  => cv_tkn_base_code
-                     , iv_token_value1 => gt_inside_base_code
-                     , iv_token_name2  => cv_tkn_slip_num
-                     , iv_token_value2 => g_hht_inv_if_tab( in_work_count ).invoice_no
-                   );
-      RAISE cnv_subinv_expt;
+--    xxcoi_common_pkg.get_subinv_aff_active_date(
+--        in_organization_id     => gt_org_id                                         -- 在庫組織ID
+--      , iv_subinv_code         => gt_inside_subinv_code                             -- 保管場所コード
+--      , od_start_date_active   => lt_start_date_active                              -- 適用開始日
+--      , ov_errbuf              => lv_errbuf
+--      , ov_retcode             => lv_retcode
+--      , ov_errmsg              => lv_errmsg
+--    );
+--    -- 適用開始日の取得に失敗した場合
+--    IF ( lv_retcode != cv_status_normal ) THEN
+--      lv_errmsg := xxccp_common_pkg.get_msg(
+--                       iv_application  => cv_application_short_name
+--                     , iv_name         => cv_msg_get_aff_dept_date_err
+--                     , iv_token_name1  => cv_tkn_base_code
+--                     , iv_token_value1 => gt_inside_base_code
+--                     , iv_token_name2  => cv_tkn_slip_num
+--                     , iv_token_value2 => g_hht_inv_if_tab( in_work_count ).invoice_no
+--                   );
+--      RAISE cnv_subinv_expt;
+--    END IF;
+--    -- 伝票日付がAFF部門適用開始日以前の場合
+--    IF ( g_hht_inv_if_tab( in_work_count ).invoice_date < NVL( lt_start_date_active
+--                                                             , g_hht_inv_if_tab( in_work_count ).invoice_date ) )
+--    THEN
+--      lv_errmsg := xxccp_common_pkg.get_msg(
+--                       iv_application  => cv_application_short_name
+--                     , iv_name         => cv_aff_dept_inactive_err
+--                     , iv_token_name1  => cv_tkn_base_code
+--                     , iv_token_value1 => gt_inside_base_code
+--                     , iv_token_name2  => cv_tkn_slip_num
+--                     , iv_token_value2 => g_hht_inv_if_tab( in_work_count ).invoice_no
+--                   );
+--      lv_errbuf := lv_errmsg;
+--      RAISE cnv_subinv_expt;
+--    END IF;
+--
+    IF  (gt_inside_subinv_code_conv = cv_subinv_conv_f) THEN
+      -- 入庫側保管場所変換区分がF（顧客）の場合、顧客に紐付く売上拠点を取得
+      BEGIN
+        SELECT  CASE  WHEN  TO_CHAR(g_hht_inv_if_tab( in_work_count ).invoice_date, cv_date_type_ym)
+                                                              = TO_CHAR(gd_process_date, cv_date_type_ym)
+                        THEN  xca.sale_base_code
+                        ELSE  xca.past_sale_base_code
+                END
+        INTO    lt_cust_base_code
+        FROM    hz_cust_accounts    hca
+              , xxcmm_cust_accounts xca
+        WHERE   hca.cust_account_id     =   xca.customer_id
+        AND     hca.account_number      =   g_hht_inv_if_tab( in_work_count ).inside_code
+        AND     hca.customer_class_code =   cv_cust_class_code_10;
+        --
+        IF (lt_cust_base_code IS NULL) THEN
+          RAISE NO_DATA_FOUND;
+        END IF;
+      EXCEPTION
+        WHEN NO_DATA_FOUND THEN
+          lv_errmsg := xxccp_common_pkg.get_msg(
+                           iv_application  => cv_application_short_name
+                         , iv_name         => cv_msg_xxcoi_10425
+                       );
+          lv_errbuf := lv_errmsg;
+          RAISE cnv_subinv_expt;
+      END;
     END IF;
-    -- 伝票日付がAFF部門適用開始日以前の場合
-    IF ( g_hht_inv_if_tab( in_work_count ).invoice_date < NVL( lt_start_date_active
-                                                             , g_hht_inv_if_tab( in_work_count ).invoice_date ) )
+    --
+    IF  (
+          xxcoi_common_pkg.chk_aff_active(
+              in_organization_id      =>  gt_org_id
+            , iv_base_code            =>  CASE WHEN gt_inside_subinv_code_conv = cv_subinv_conv_f
+                                                  THEN lt_cust_base_code
+                                                  ELSE NULL
+                                          END
+            , iv_subinv_code          =>  CASE WHEN gt_inside_subinv_code_conv = cv_subinv_conv_f
+                                                  THEN NULL
+                                                  ELSE gt_inside_subinv_code
+                                          END
+            , id_target_date          =>  g_hht_inv_if_tab( in_work_count ).invoice_date
+          )   =   cv_n
+        )
     THEN
+      -- AFF部門チェックで部門使用不可の場合
       lv_errmsg := xxccp_common_pkg.get_msg(
                        iv_application  => cv_application_short_name
                      , iv_name         => cv_aff_dept_inactive_err
                      , iv_token_name1  => cv_tkn_base_code
-                     , iv_token_value1 => gt_inside_base_code
+                     , iv_token_value1 => CASE WHEN gt_inside_subinv_code_conv = cv_subinv_conv_f THEN lt_cust_base_code
+                                               ELSE gt_inside_base_code
+                                          END
                      , iv_token_name2  => cv_tkn_slip_num
                      , iv_token_value2 => g_hht_inv_if_tab( in_work_count ).invoice_no
                    );
       lv_errbuf := lv_errmsg;
       RAISE cnv_subinv_expt;
     END IF;
+-- == 2010/04/19 V1.7 Modified END   ===============================================================
 --
 -- == 2010/03/23 V1.6 Added END   ===============================================================
     --==============================================================
