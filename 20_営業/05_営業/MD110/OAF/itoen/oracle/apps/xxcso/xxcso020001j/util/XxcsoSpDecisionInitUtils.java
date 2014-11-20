@@ -6,7 +6,8 @@
 * C³—š—ğ
 * “ú•t       Ver. ’S“–Ò       C³“à—e
 * ---------- ---- ------------ ----------------------------------------------
-* 2008-12-27 1.0  SCS¬ì_     V‹Kì¬
+* 2008-12-27 1.0  SCS¬ì_    V‹Kì¬
+* 2009-05-25 1.1  SCS–ö•½’¼l  [STáŠQT1_1136]LOVPK€–Úİ’è‘Î‰
 *============================================================================
 */
 package itoen.oracle.apps.xxcso.xxcso020001j.util;
@@ -45,6 +46,9 @@ import itoen.oracle.apps.xxcso.xxcso020001j.server.XxcsoSpDecisionSendInitVOImpl
 import itoen.oracle.apps.xxcso.xxcso020001j.server.XxcsoSpDecisionSendInitVORowImpl;
 import java.sql.CallableStatement;
 import java.sql.SQLException;
+// 2009-05-25 [STáŠQT1_1136] Add Start
+import oracle.jbo.domain.Number;
+// 2009-05-25 [STáŠQT1_1136] Add End
 
 /*******************************************************************************
  * SPêŒˆ‘‚ÌŠeí‰Šú‰»‚ğs‚¤‚½‚ß‚Ìƒ†[ƒeƒBƒŠƒeƒBƒNƒ‰ƒX‚Å‚·B
@@ -306,7 +310,12 @@ public class XxcsoSpDecisionInitUtils
       sendRow.setApprAuthLevelNumber(
         sendInitRow.getApprAuthLevelNumber()
       );
-      
+// 2009-05-25 [STáŠQT1_1136] Add Start
+      sendRow.setApproveUserId(
+        new Number(-1)
+      );
+// 2009-05-25 [STáŠQT1_1136] Add Start
+
       sendInitRow = (XxcsoSpDecisionSendInitVORowImpl)sendInitVo.next();
     }
   }
@@ -394,6 +403,9 @@ public class XxcsoSpDecisionInitUtils
     headerRow.setMakerCode(             headerRow2.getMakerCode()             );
     headerRow.setStandardType(          headerRow2.getStandardType()          );
     headerRow.setUnNumber(              headerRow2.getUnNumber()              );
+// 2009-05-25 [STáŠQT1_1136] Add Start
+    headerRow.setUnNumberId(            headerRow2.getUnNumberId()            );
+// 2009-05-25 [STáŠQT1_1136] Add End
     headerRow.setInstallDate(           headerRow2.getInstallDate()           );
     headerRow.setLeaseCompany(          headerRow2.getLeaseCompany()          );
     headerRow.setConditionBusinessType( headerRow2.getConditionBusinessType() );
@@ -730,6 +742,9 @@ public class XxcsoSpDecisionInitUtils
       sendRow.setApprovalStateType(XxcsoSpDecisionConstants.APPR_NONE);
       sendRow.setApproveBaseShortName(   sendRow2.getApproveBaseShortName()   );
       sendRow.setApproveUserName(        sendRow2.getApproveUserName()        );
+// 2009-05-25 [STáŠQT1_1136] Add Start
+      sendRow.setApproveUserId(          sendRow2.getApproveUserId()          );
+// 2009-05-25 [STáŠQT1_1136] Add End
 
       sendRow2 = (XxcsoSpDecisionSendFullVORowImpl)sendVo2.next();
     }

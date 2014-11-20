@@ -79,8 +79,11 @@ SELECT XxcsoSpDecisionHeadersVEO.SP_DECISION_HEADER_ID,
       ,XxcsoSpDecisionHeadersVEO.INSTALL_SUPPORT_AMT install_support_amt_view
       ,XxcsoSpDecisionHeadersVEO.PAYMENT_CYCLE payment_cycle_view
       ,XxcsoSpDecisionHeadersVEO.INSTALL_SUPPORT_AMT2 install_support_amt2_view
+      ,punv.un_number_id
 FROM XXCSO_SP_DECISION_HEADERS_V XxcsoSpDecisionHeadersVEO
+    ,po_un_numbers_vl punv
 WHERE XxcsoSpDecisionHeadersVEO.SP_DECISION_HEADER_ID = :1
+  AND punv.un_number(+)                               = XxcsoSpDecisionHeadersVEO.UN_NUMBER
    ]]></SQLQuery>
    <DesignTime>
       <Attr Name="_isCodegen" Value="true" />
@@ -590,6 +593,18 @@ WHERE XxcsoSpDecisionHeadersVEO.SP_DECISION_HEADER_ID = :1
       SQLType="VARCHAR" >
       <DesignTime>
          <Attr Name="_DisplaySize" Value="11" />
+      </DesignTime>
+   </ViewAttribute>
+   <ViewAttribute
+      Name="UnNumberId"
+      IsPersistent="false"
+      Type="oracle.jbo.domain.Number"
+      ColumnType="NUMBER"
+      AliasName="UN_NUMBER_ID"
+      Expression="UN_NUMBER_ID"
+      SQLType="NUMERIC" >
+      <DesignTime>
+         <Attr Name="_DisplaySize" Value="22" />
       </DesignTime>
    </ViewAttribute>
    <ViewLinkAccessor

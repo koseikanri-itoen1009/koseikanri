@@ -396,7 +396,7 @@ HISTORY
                                                 <lovMap id="UnNumberIdMap" lovItem="UnNumberId" resultTo="UnNumberId"/>
                                              </lovMappings>
                                           </oa:messageLovInput>
-                                          <oa:formValue id="UnNumberId" dataType="NUMBER"/>
+                                          <oa:formValue id="UnNumberId" dataType="NUMBER" viewName="XxcsoSpDecisionHeaderFullVO1" viewAttr="UnNumberId"/>
                                        </ui:contents>
                                     </oa:rowLayout>
                                  </ui:contents>
@@ -414,7 +414,7 @@ HISTORY
                                                 <lovMap id="UnNumberIdMap2" lovItem="UnNumberId" resultTo="UnNumberId2"/>
                                              </lovMappings>
                                           </oa:messageLovInput>
-                                          <oa:formValue id="UnNumberId2" dataType="NUMBER"/>
+                                          <oa:formValue id="UnNumberId2" dataType="NUMBER" viewName="XxcsoSpDecisionHeaderFullVO1" viewAttr="UnNumberId"/>
                                        </ui:contents>
                                     </oa:rowLayout>
                                  </ui:contents>
@@ -1923,13 +1923,13 @@ HISTORY
                                           <lovMap id="ApproveBaseShortNameMap" lovItem="WorkBaseShortName" resultTo="ApproveBaseShortNameValue" useForValidation="no"/>
                                           <lovMap id="ApprovalTypeCodeMap" lovItem="ApprovalTypeCode" criteriaFrom="ApprovalTypeCode"/>
                                           <lovMap id="RangeTypeMap" lovItem="RangeType" criteriaFrom="RangeType"/>
-                                          <lovMap id="UserIdMap" lovItem="UserId" useForValidation="default" resultTo="UserId"/>
+                                          <lovMap id="ApproveUserIdMap" lovItem="UserId" useForValidation="default" resultTo="ApproveUserId"/>
                                        </lovMappings>
                                     </oa:messageLovInput>
                                     <oa:formValue id="ApproveUserNameValue" viewAttr="ApproveUserName"/>
                                     <oa:formValue id="ApproveBaseShortNameValue" viewAttr="ApproveBaseShortName"/>
                                     <oa:formValue id="ApprovalTypeCode" viewAttr="ApprovalTypeCode"/>
-                                    <oa:formValue id="UserId" dataType="NUMBER" viewAttr="UserId"/>
+                                    <oa:formValue id="ApproveUserId" dataType="NUMBER" viewAttr="ApproveUserId"/>
                                  </ui:contents>
                               </oa:column>
                               <oa:column id="ApproveUserNameCol">

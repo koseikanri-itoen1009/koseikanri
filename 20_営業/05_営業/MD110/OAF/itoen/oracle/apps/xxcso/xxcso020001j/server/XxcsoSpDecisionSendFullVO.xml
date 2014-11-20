@@ -51,6 +51,12 @@ SELECT XxcsoSpDecisionSendsEO.SP_DECISION_SEND_ID,
        ) approve_base_short_name
       ,flvv.attribute1  approval_type_code
       ,TO_NUMBER(flvv.lookup_code) appr_auth_level_number
+      ,NVL(
+        (SELECT  xev.user_id
+         FROM    xxcso_employees_v2  xev
+         WHERE   xev.employee_number = XxcsoSpDecisionSendsEO.APPROVE_CODE
+        ), -1
+       ) applove_user_id
 FROM XXCSO_SP_DECISION_SENDS XxcsoSpDecisionSendsEO
     ,fnd_lookup_values_vl flvv
 WHERE flvv.lookup_type                                                              = 'XXCSO1_SP_DECISION_LEVEL'
@@ -283,8 +289,17 @@ AND   NVL(flvv.end_date_active, TRUNC(xxcso_util_common_pkg.get_online_sysdate))
       IsPersistent="false"
       Type="oracle.jbo.domain.Number"
       ColumnType="NUMBER"
-      AliasName="ApprAuthLevelNumber"
-      Expression="ApprAuthLevelNumber"
+      AliasName="APPR_AUTH_LEVEL_NUMBER"
+      Expression="APPR_AUTH_LEVEL_NUMBER"
+      SQLType="NUMERIC" >
+   </ViewAttribute>
+   <ViewAttribute
+      Name="ApproveUserId"
+      IsPersistent="false"
+      Type="oracle.jbo.domain.Number"
+      ColumnType="NUMBER"
+      AliasName="APPROVE_USER_ID"
+      Expression="APPROVE_USER_ID"
       SQLType="NUMERIC" >
    </ViewAttribute>
    <ViewAttribute
@@ -313,13 +328,5 @@ AND   NVL(flvv.end_date_active, TRUNC(xxcso_util_common_pkg.get_online_sysdate))
       ColumnType="$none$"
       AliasName="VIEW_ATTR"
       SQLType="BIT" >
-   </ViewAttribute>
-   <ViewAttribute
-      Name="UserId"
-      IsPersistent="false"
-      Type="oracle.jbo.domain.Number"
-      ColumnType="$none$"
-      AliasName="USER_ID"
-      SQLType="NUMERIC" >
    </ViewAttribute>
 </ViewObject>
