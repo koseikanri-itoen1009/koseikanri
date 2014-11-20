@@ -34,3 +34,4 @@ AS
     iv_customer_code14     IN      VARCHAR2          -- ”„Š|ŠÇ—æŒÚ‹q
   );
 END XXCFR003A18C;
+/
