@@ -3,13 +3,14 @@
  *
  * Index Name  : XXCOI_INV_RECEPTION_MONTH_N02
  * Description : 月次在庫受払表インデックスN02
- * Version     : 1.0
+ * Version     : 1.1
  *
  * Change Record
  * ------------- ----- ---------------- ---------------------------------
  *  Date          Ver.  Editor           Description
  * ------------- ----- ---------------- ---------------------------------
  *  2009/05/29    1.0   S.Moriyama       新規作成
+ *  2009/08/25    1.1   H.Sasaki         [0000956]項目順序を変更
  *
  ************************************************************************/
 CREATE INDEX XXCOI.XXCOI_INV_RECEPTION_MONTH_N02
@@ -17,5 +18,7 @@ ON XXCOI.XXCOI_INV_RECEPTION_MONTHLY
 (
   PRACTICE_MONTH
  ,INVENTORY_KBN
+ ,ORGANIZATION_ID
+ ,BASE_CODE
 )
 TABLESPACE XXIDX2;
