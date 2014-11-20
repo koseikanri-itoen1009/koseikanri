@@ -1,4 +1,4 @@
-CREATE OR REPLACE PACKAGE XXCSO019A10C
+CREATE OR REPLACE PACKAGE APPS.XXCSO019A10C
 AS
 /*****************************************************************************************
  * Copyright(c)Sumisho Computer Systems Corporation, 2008. All rights reserved.
@@ -19,6 +19,7 @@ AS
  *  Date          Ver.  Editor           Description
  * ------------- ----- ---------------- -------------------------------------------------
  *  2009-01-13    1.0   Tomoko.Mori      êVãKçÏê¨
+ *  2009-05-01    1.1   Tomoko.Mori      T1_0897ëŒâû
  *
  *****************************************************************************************/
 --

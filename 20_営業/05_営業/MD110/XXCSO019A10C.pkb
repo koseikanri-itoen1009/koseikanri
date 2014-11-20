@@ -1,4 +1,4 @@
-CREATE OR REPLACE PACKAGE BODY XXCSO019A10C
+CREATE OR REPLACE PACKAGE BODY APPS.XXCSO019A10C
 AS
 /*****************************************************************************************
  * Copyright(c)Sumisho Computer Systems Corporation, 2008. All rights reserved.
@@ -40,6 +40,7 @@ AS
  *                                       抽出条件変更
  *  2009-03-19    1.1   Tomoko.Mori      【障害対応073】
  *                                       日別顧客別売上計画情報（月別売上計画）取得の抽出条件不具合
+ *  2009-05-01    1.2   Tomoko.Mori      T1_0897対応
  *
  *****************************************************************************************/
 --
