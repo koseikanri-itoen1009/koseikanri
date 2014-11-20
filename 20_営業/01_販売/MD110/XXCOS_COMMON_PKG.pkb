@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCOS_COMMON_PKG(body)
  * Description      : 共通関数パッケージ(販売)
  * MD.070           : 共通関数    MD070_IPO_COS
- * Version          : 1.1
+ * Version          : 1.2
  *
  * Program List
  * --------------------------- ------ ---------- -----------------------------------------
@@ -27,6 +27,7 @@ AS
  * ------------- ----- ---------------- -------------------------------------------------
  *  2008/11/21    1.0   SCS              新規作成
  *  2009/04/30    1.1   T.Kitajima       [T1_0710]get_delivered_from 出荷拠点コード取得方法変更
+ *  2009/05/14    1.2   N.Maeda          [T1_0997]納品形態区分の導出方法修正
  *
  *****************************************************************************************/
 --
@@ -1770,25 +1771,50 @@ AS
         RAISE global_api_expt;
     END;
 --
+--****************************** 2009/05/14 1.2 N.Maeda MOD START ******************************--
+--    --==============================================================
+--    --3.納品形態返却
+--    --==============================================================
+--    IF ( lt_main_subinv_flag = ct_main_subinv_flag_yes ) THEN
+--        ov_delivered_from     :=  cv_delivered_from_main;             --メイン倉庫
+--    ELSE
+--      IF ( lt_subinv_type = ct_subinv_type_sales_car ) THEN
+--        ov_delivered_from     :=  cv_delivered_from_car;              --営業車
+--      ELSIF ( lt_subinv_type = ct_subinv_type_direct ) THEN
+--        ov_delivered_from     :=  cv_delivered_from_direct;           --工場直送
+----****************************** 2009/04/30 1.1 T.Kitajima MOD START ******************************--
+----      ELSIF ( iv_sales_base_code != iv_ship_base_code ) THEN
+--      ELSIF ( iv_sales_base_code != lt_ship_base_code ) THEN
+----****************************** 2009/04/30 1.1 T.Kitajima MOD  END  ******************************--
+--        ov_delivered_from     :=  cv_delivered_from_sales;            --他拠点倉庫売上
+--      ELSE
+--        ov_delivered_from     :=  cv_delivered_from_other;            --他倉庫
+--      END IF;
+--    END IF;
     --==============================================================
     --3.納品形態返却
     --==============================================================
-    IF ( lt_main_subinv_flag = ct_main_subinv_flag_yes ) THEN
-        ov_delivered_from     :=  cv_delivered_from_main;             --メイン倉庫
-    ELSE
-      IF ( lt_subinv_type = ct_subinv_type_sales_car ) THEN
-        ov_delivered_from     :=  cv_delivered_from_car;              --営業車
-      ELSIF ( lt_subinv_type = ct_subinv_type_direct ) THEN
-        ov_delivered_from     :=  cv_delivered_from_direct;           --工場直送
---****************************** 2009/04/30 1.1 T.Kitajima MOD START ******************************--
---      ELSIF ( iv_sales_base_code != iv_ship_base_code ) THEN
-      ELSIF ( iv_sales_base_code != lt_ship_base_code ) THEN
---****************************** 2009/04/30 1.1 T.Kitajima MOD  END  ******************************--
-        ov_delivered_from     :=  cv_delivered_from_sales;            --他拠点倉庫売上
+    -- 売上拠点 = 保管場所の拠点の場合
+    IF ( iv_sales_base_code = lt_ship_base_code )  THEN
+      --メイン倉庫の場合
+      IF ( lt_main_subinv_flag = ct_main_subinv_flag_yes ) THEN
+        ov_delivered_from  :=  cv_delivered_from_main;      --メイン倉庫
+      --営業車の場合
+      ELSIF ( lt_subinv_type = ct_subinv_type_sales_car ) THEN
+        ov_delivered_from  :=  cv_delivered_from_car;       --営業車
       ELSE
-        ov_delivered_from     :=  cv_delivered_from_other;            --他倉庫
+        ov_delivered_from  :=  cv_delivered_from_other;     --他倉庫
+      END IF;
+    -- 売上拠点 <> 保管場所の拠点の場合
+    ELSE
+      --直送の場合
+      IF ( lt_subinv_type = ct_subinv_type_direct ) THEN
+        ov_delivered_from  :=  cv_delivered_from_direct;    --工場直送
+      ELSE
+        ov_delivered_from  :=  cv_delivered_from_sales;    --他拠点倉庫売上
       END IF;
     END IF;
+--****************************** 2009/05/14 1.2 N.Maeda MOD  END  ******************************--
 --
   EXCEPTION
     -- 必須エラー
@@ -2788,3 +2814,4 @@ AS
 --
 END XXCOS_COMMON_PKG;
 /
+
