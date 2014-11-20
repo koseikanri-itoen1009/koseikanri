@@ -52,6 +52,7 @@ G_PKG_NAME  CONSTANT  VARCHAR2(30) := 'GMI_ITEM_PVT';
 --|    21-OCT-1999  H.Verdding   Added Addition Of Attribute Fields          |
 --|                              B1042722                                    |
 --|    11-NOV-2008  Y.Suzuki     Added Update Who Fields                     |
+--|    18-NOV-2008  Y.Suzuki     Modified Update Who Fields                  |
 --+==========================================================================+
 -- Func end of comments
 FUNCTION Insert_Ic_Item_Mst 
@@ -257,12 +258,20 @@ BEGIN
   );
   
 --2008/11/11 yutsuzuk add start
+--2008/11/18 yutsuzuk mod start
+--  UPDATE ic_item_mst_b
+--  SET program_application_id = p_ic_item_mst_rec.program_application_id
+--    , program_id             = p_ic_item_mst_rec.program_id
+--    , program_update_date    = p_ic_item_mst_rec.program_update_date
+--    , request_id             = p_ic_item_mst_rec.request_id
+--  WHERE  item_id = p_ic_item_mst_rec.item_id;
   UPDATE ic_item_mst_b
-  SET program_application_id = p_ic_item_mst_rec.program_application_id
-    , program_id             = p_ic_item_mst_rec.program_id
-    , program_update_date    = p_ic_item_mst_rec.program_update_date
-    , request_id             = p_ic_item_mst_rec.request_id
+  SET program_application_id = FND_GLOBAL.PROG_APPL_ID
+    , program_id             = FND_GLOBAL.CONC_PROGRAM_ID
+    , program_update_date    = SYSDATE
+    , request_id             = FND_GLOBAL.CONC_REQUEST_ID
   WHERE  item_id = p_ic_item_mst_rec.item_id;
+--2008/11/18 yutsuzuk mod end
 --2008/11/11 yutsuzuk add end
 
   RETURN TRUE;
