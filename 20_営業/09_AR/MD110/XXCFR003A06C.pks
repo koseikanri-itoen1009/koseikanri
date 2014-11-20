@@ -6,7 +6,7 @@ create or replace PACKAGE XXCFR003A06C AS
  * Description     : 汎用店別請求データ作成
  * MD.050          : MD050_CFR_003_A06_汎用店別請求データ作成
  * MD.070          : MD050_CFR_003_A06_汎用店別請求データ作成
- * Version         : 1.0
+ * Version         : 1.1
  * 
  * Program List
  * --------------- ---- ----- --------------------------------------------
@@ -19,7 +19,8 @@ create or replace PACKAGE XXCFR003A06C AS
  *  Date          Ver.  Editor        Description
  * ------------- ----- ------------- -------------------------------------
  *  2008-12-19    1.0  SCS 吉村 憲司  初回作成
- ************************************************************************/
+ *  2009-09-16    1.1  SCS 白砂 幸世  AR課題対応
+************************************************************************/
 
 --===============================================================
 -- コンカレント実行ファイル登録プロシージャ
@@ -28,7 +29,11 @@ create or replace PACKAGE XXCFR003A06C AS
     errbuf           OUT VARCHAR2,
     retcode          OUT VARCHAR2,
     iv_target_date   IN  VARCHAR2,    -- 締日
-    iv_ar_code1      IN  VARCHAR2     -- 売掛コード１(請求書)
+-- Modify 2009/09/16 Ver1.1 Start ----------------------------------------------
+--    iv_ar_code1      IN  VARCHAR2     -- 売掛コード１(請求書)
+    iv_cust_code     IN  VARCHAR2,    -- 顧客コード
+    iv_cust_class    IN  VARCHAR2     -- 顧客区分
+-- Modify 2009/09/16 Ver1.1 End   ----------------------------------------------
   );
 END  XXCFR003A06C;
 /

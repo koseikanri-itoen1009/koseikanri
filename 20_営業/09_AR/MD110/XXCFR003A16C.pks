@@ -7,7 +7,7 @@ AS
  * Description      : 標準請求書税込
  * MD.050           : MD050_CFR_003_A16_標準請求書税抜
  * MD.070           : MD050_CFR_003_A16_標準請求書税抜
- * Version          : 1.00
+ * Version          : 1.3
  *
  * Program List
  * -------------------- ------------------------------------------------------------
@@ -20,6 +20,7 @@ AS
  *  Date          Ver.  Editor           Description
  * ------------- ----- ---------------- -------------------------------------------------
  *  2008/12/11    1.00 SCS 大川 恵      初回作成
+ *  2009/09/25    1.3  SCS 廣瀬 真佐人  [共通課題IE535] 請求書問題対応
  *
  *****************************************************************************************/
 --
@@ -28,7 +29,12 @@ AS
     errbuf                 OUT     VARCHAR2,         -- エラーメッセージ #固定#
     retcode                OUT     VARCHAR2,         -- エラーコード     #固定#
     iv_target_date         IN      VARCHAR2,         -- 締日
-    iv_ar_code1            IN      VARCHAR2          -- 売掛コード１(請求書)
+-- Modify 2009.09.25 Ver1.3 Start
+--    iv_ar_code1            IN      VARCHAR2          -- 売掛コード１(請求書)
+    iv_custome_cd          IN      VARCHAR2,         -- 顧客番号(顧客)
+    iv_invoice_cd          IN      VARCHAR2,         -- 顧客番号(請求用)
+    iv_payment_cd          IN      VARCHAR2          -- 顧客番号(売掛管理先)
+-- Modify 2009.09.25 Ver1.3 End
   );
 END XXCFR003A16C;
 /

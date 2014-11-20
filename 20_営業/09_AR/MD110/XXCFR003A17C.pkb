@@ -7,7 +7,7 @@ AS
  * Description      : イセトー請求書データ作成
  * MD.050           : MD050_CFR_003_A17_イセトー請求書データ作成
  * MD.070           : MD050_CFR_003_A17_イセトー請求書データ作成
- * Version          : 1.00
+ * Version          : 1.10
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -19,6 +19,7 @@ AS
  *  chk_account_data       p 口座情報取得チェック                    (A-4)
  *  chk_line_cnt_limit     p 請求書明細件数チェック                  (A-5)
  *  csv_file_output        p ファイル出力処理                        (A-6)
+ *  put_account_warning    p 顧客紐付け警告出力                      (A-7)
  *  submain                p メイン処理プロシージャ
  *  main                   p コンカレント実行ファイル登録プロシージャ
  *
@@ -27,6 +28,7 @@ AS
  *  Date          Ver.  Editor           Description
  * ------------- ----- ---------------- -------------------------------------------------
  *  2009-02-23    1.00 SCS 白砂 幸世     新規作成
+ *  2009-09-29    1.10 SCS 安川 智博     共通課題「IE535」対応
  *
  *****************************************************************************************/
 --
@@ -102,6 +104,12 @@ AS
   cv_msg_xxcfr_00071  CONSTANT VARCHAR2(20)  := 'APP-XXCFR1-00071';            -- 請求書明細件数制限メッセージ
   cv_msg_xxcfr_00072  CONSTANT VARCHAR2(20)  := 'APP-XXCFR1-00072';            -- 請求書明細件数制限情報
   cv_msg_xxcfr_00056  CONSTANT VARCHAR2(20)  := 'APP-XXCFR1-00056';            -- システムエラーメッセージ
+-- Modify 2009-09-29 Ver1.10 Start  
+  cv_msg_xxcfr_00079  CONSTANT VARCHAR2(20)  := 'APP-XXCFR1-00079';            -- 請求書用顧客存在なしメッセージ
+  cv_msg_xxcfr_00080  CONSTANT VARCHAR2(20)  := 'APP-XXCFR1-00080';            -- 売掛管理先顧客存在なしメッセージ
+  cv_msg_xxcfr_00081  CONSTANT VARCHAR2(20)  := 'APP-XXCFR1-00081';            -- 顧客コード複数指定メッセージ
+  cv_msg_xxcfr_00082  CONSTANT VARCHAR2(20)  := 'APP-XXCFR1-00082';            -- 統括請求書用顧客存在なしメッセージ
+-- Modify 2009-09-29 Ver1.10 End
 --
 -- トークン
   cv_tkn_func         CONSTANT VARCHAR2(15)  := 'FUNC_NAME';                   -- 共通関数名
@@ -130,6 +138,9 @@ AS
 --
   --プロファイル
   cv_line_cnt_limit   CONSTANT VARCHAR2(30)  := 'XXCFR1_LINE_CNT_LIMIT';       -- 制限明細数
+-- Modify 2009-09-29 Ver1.10 Start
+  cv_line_cnt_limit2  CONSTANT VARCHAR2(30)  := 'XXCFR1_LINE_CNT_LIMIT2';      -- 制限明細数
+-- Modify 2009-09-29 Ver1.10 End
   cv_set_of_bks_id    CONSTANT VARCHAR2(30)  := 'GL_SET_OF_BKS_ID';            -- 会計帳簿ID
   cv_org_id           CONSTANT VARCHAR2(30)  := 'ORG_ID';                      -- 組織ID
 --
@@ -149,9 +160,55 @@ AS
   cv_status_yes       CONSTANT VARCHAR2(1)   := '1';                           -- 有効ステータス（1：有効）
   cv_status_no        CONSTANT VARCHAR2(1)   := '0';                           -- 有効ステータス（0：無効）
 --
-  cv_format_date_ymd  CONSTANT VARCHAR2(8)   := 'YY/MM/DD';                    -- 日付フォーマット（2桁年月日スラッシュ付）
+  cv_format_date_ymd      CONSTANT VARCHAR2(8)   := 'YY/MM/DD';                    -- 日付フォーマット（2桁年月日スラッシュ付）
+  cv_format_date_yyyymmdd CONSTANT VARCHAR2(8)   := 'YYYYMMDD';                    -- 日付フォーマット（YYYYMMDD）
 --
   cv_max_date_value   CONSTANT VARCHAR2(10)  := '9999/12/31';                  -- 最大日付値
+--
+-- Modify 2009-09-29 Ver1.10 Start
+  -- 顧客区分
+  cv_customer_class_code14 CONSTANT VARCHAR2(2) := '14';      -- 顧客区分14(売掛管理先)
+  cv_customer_class_code21 CONSTANT VARCHAR2(2) := '21';      -- 顧客区分21(統括請求書用)
+  cv_customer_class_code20 CONSTANT VARCHAR2(2) := '20';      -- 顧客区分20(請求書用)
+  cv_customer_class_code10 CONSTANT VARCHAR2(2) := '10';      -- 顧客区分10(顧客)
+--
+  -- 請求書印刷単位
+  cv_invoice_printing_unit_a1 CONSTANT VARCHAR2(2) := '9';    -- 請求書印刷単位:'A1'
+  cv_invoice_printing_unit_a2 CONSTANT VARCHAR2(2) := '8';    -- 請求書印刷単位:'A2'
+  cv_invoice_printing_unit_a3 CONSTANT VARCHAR2(2) := '6';    -- 請求書印刷単位:'A3'
+  cv_invoice_printing_unit_a4 CONSTANT VARCHAR2(2) := '7';    -- 請求書印刷単位:'A4'
+  cv_invoice_printing_unit_a5 CONSTANT VARCHAR2(2) := '5';    -- 請求書印刷単位:'A5'
+  cv_invoice_printing_unit_a6 CONSTANT VARCHAR2(2) := '4';    -- 請求書印刷単位:'A6'
+  cv_invoice_printing_unit_n1 CONSTANT VARCHAR2(2) := '2';    -- 請求書印刷単位:'N1'
+  cv_invoice_printing_unit_n2 CONSTANT VARCHAR2(2) := '3';    -- 請求書印刷単位:'N2'
+  cv_invoice_printing_unit_n3 CONSTANT VARCHAR2(2) := '1';    -- 請求書印刷単位:'N3'
+  cv_invoice_printing_unit_n4 CONSTANT VARCHAR2(2) := '0';    -- 請求書印刷単位:'N4'
+--
+  -- 使用目的
+  cv_site_use_code_bill_to CONSTANT VARCHAR(10) := 'BILL_TO';  -- 使用目的：「請求先」
+--
+  -- 顧客関連処理対象ステータス
+  cv_acct_relate_status    CONSTANT VARCHAR2(1) := 'A';
+--
+  -- 顧客関連
+  cv_acct_relate_type_bill CONSTANT VARCHAR2(1) := '1';     -- 請求関連
+--
+  -- AFF部門値セット名
+  cv_ffv_set_name_dept CONSTANT VARCHAR2(100) := 'XX03_DEPARTMENT';
+--
+  -- ヘッダ/明細区分
+  cv_header_kbn   VARCHAR2(1) := '1'; -- ヘッダ
+  cv_line_kbn     VARCHAR2(1) := '2'; -- 明細
+--
+  -- レコード区分
+  cv_record_kbn0  VARCHAR2(1) := '0'; -- ヘッダレコード
+  cv_record_kbn1  VARCHAR2(1) := '1'; -- 明細レコード
+  cv_record_kbn2  VARCHAR2(1) := '2'; -- 店舗計レコード
+--
+  -- レイアウト区分
+  cv_layout_kbn1  VARCHAR2(1) := '1'; -- 店舗別内訳なし
+  cv_layout_kbn2  VARCHAR2(1) := '2'; -- 店舗別内訳あり
+-- Modify 2009-09-29 Ver1.10 End
 --
   -- ===============================
   -- ユーザー定義グローバル型
@@ -162,12 +219,20 @@ AS
   -- ===============================
 --
   gd_target_date        DATE;                                      -- パラメータ．締日（データ型変換用）
-  gn_line_cnt_limit     NUMBER;                                    -- 請求書明細件数制限
+  gn_line_cnt_limit     NUMBER;                                    -- 請求書明細件数制限(店舗別内訳なし)
+-- Modify 2009-09-29 Ver1.10 Start
+  gn_line_cnt_limit2    NUMBER;                                    -- 請求書明細件数制限(店舗別内訳あり)
+-- Modify 2009-09-29 Ver1.10 End
   gn_org_id             NUMBER;                                    -- 組織ID
   gn_set_of_bks_id      NUMBER;                                    -- 会計帳簿ID
 --
   -- 最大日付
   gd_max_date           DATE DEFAULT TO_DATE(cv_max_date_value, cv_format_date_ymd);
+--
+-- Modify 2009-09-29 Ver1.10 Start
+  -- 顧客紐付け警告存在フラグ
+  gv_warning_flag       VARCHAR2(1) := cv_status_no;
+-- Modify 2009-09-29 Ver1.10 End
 --
   -- 日本語辞書用変数
   gv_format_date_jpymd4  VARCHAR2(25); -- 書式整形用：YYYY"年"MM"月"DD"日"
@@ -188,7 +253,10 @@ AS
    ***********************************************************************************/
   PROCEDURE init(
     iv_target_date         IN      VARCHAR2,         -- 締日
-    iv_bill_cust_code      IN      VARCHAR2,         -- 請求先顧客コード
+    iv_customer_code10     IN      VARCHAR2,         -- 顧客
+    iv_customer_code20     IN      VARCHAR2,         -- 請求書用顧客
+    iv_customer_code21     IN      VARCHAR2,         -- 統括請求書用顧客
+    iv_customer_code14     IN      VARCHAR2,         -- 売掛管理先顧客
     ov_errbuf              OUT     VARCHAR2,         -- エラー・メッセージ           --# 固定 #
     ov_retcode             OUT     VARCHAR2,         -- リターン・コード             --# 固定 #
     ov_errmsg              OUT     VARCHAR2)         -- ユーザー・エラー・メッセージ --# 固定 #
@@ -217,6 +285,8 @@ AS
 --
     -- *** ローカル・レコード ***
 --
+    -- *** ローカル例外 ***
+    param_expt EXCEPTION;  -- 顧客コード複数指定例外
 --
   BEGIN
 --
@@ -231,12 +301,15 @@ AS
     --==============================================================
 --
     -- ログ出力
-    xxcfr_common_pkg.put_log_param( iv_which        => cv_file_type_log  -- ログ出力
-                                   ,iv_conc_param1  => iv_target_date    -- コンカレントパラメータ１
-                                   ,iv_conc_param2  => iv_bill_cust_code -- コンカレントパラメータ２
-                                   ,ov_errbuf       => ov_errbuf         -- エラー・メッセージ
-                                   ,ov_retcode      => ov_retcode        -- リターン・コード
-                                   ,ov_errmsg       => ov_errmsg);       -- ユーザー・エラー・メッセージ 
+    xxcfr_common_pkg.put_log_param( iv_which        => cv_file_type_log   -- ログ出力
+                                   ,iv_conc_param1  => iv_target_date     -- コンカレントパラメータ１
+                                   ,iv_conc_param2  => iv_customer_code10 -- コンカレントパラメータ２
+                                   ,iv_conc_param3  => iv_customer_code20 -- コンカレントパラメータ３
+                                   ,iv_conc_param4  => iv_customer_code21 -- コンカレントパラメータ４
+                                   ,iv_conc_param5  => iv_customer_code14 -- コンカレントパラメータ５
+                                   ,ov_errbuf       => ov_errbuf          -- エラー・メッセージ
+                                   ,ov_retcode      => ov_retcode         -- リターン・コード
+                                   ,ov_errmsg       => ov_errmsg);        -- ユーザー・エラー・メッセージ 
 --
     -- パラメータ．締日をDATE型に変換する
     gd_target_date := TRUNC(xxcfr_common_pkg.get_date_param_trans(iv_target_date));
@@ -254,7 +327,34 @@ AS
       RAISE global_api_expt;
     END IF;
 --
+-- Modify 2009-09-29 Ver1.10 Start
+    -- パラメータ顧客コードの指定数チェック 顧客コードは１つのみ指定していることをチェック
+    IF (iv_customer_code14 IS NOT NULL) THEN
+      IF (iv_customer_code21 IS NOT NULL)
+      OR (iv_customer_code20 IS NOT NULL)
+      OR (iv_customer_code10 IS NOT NULL)
+      THEN
+        RAISE param_expt;
+      END IF;
+    ELSIF (iv_customer_code21 IS NOT NULL) THEN
+      IF (iv_customer_code20 IS NOT NULL)
+      OR (iv_customer_code10 IS NOT NULL)
+      THEN
+        RAISE param_expt;
+      END IF;
+    ELSIF (iv_customer_code20 IS NOT NULL)
+    AND   (iv_customer_code10 IS NOT NULL)
+    THEN
+      RAISE param_expt;
+    END IF;
+-- Modify 2009-09-29 Ver1.10 End
+--
   EXCEPTION
+    WHEN param_expt THEN
+      ov_errmsg := xxccp_common_pkg.get_msg( iv_application  => cv_msg_kbn_cfr
+                                            ,iv_name         => cv_msg_xxcfr_00081);
+      ov_errbuf  := SUBSTRB(cv_pkg_name||cv_msg_cont||cv_prg_name||cv_msg_part||lv_errbuf,1,5000);
+      ov_retcode := cv_status_error;
     -- *** 共通関数例外ハンドラ ***
     WHEN global_api_expt THEN
       ov_errmsg  := lv_errmsg;
@@ -331,6 +431,24 @@ AS
       RAISE global_api_expt;
     END IF;
 --
+-- Modify 2009-09-29 Ver1.10 Start
+    -- プロファイルから制限明細数を取得
+    gn_line_cnt_limit2 := TO_NUMBER(FND_PROFILE.VALUE(cv_line_cnt_limit2));
+--
+    IF (gn_line_cnt_limit2 IS NULL) THEN
+      -- 取得エラー時
+      lv_errmsg := SUBSTRB(xxccp_common_pkg.get_msg( cv_msg_kbn_cfr
+                                                    ,cv_msg_xxcfr_00004 -- プロファイル取得エラー
+                                                    ,cv_tkn_prof        -- トークン:プロファイル名
+                                                    ,xxcfr_common_pkg.get_user_profile_name(cv_line_cnt_limit2))
+                                                     -- 制限明細数
+                          ,1
+                          ,5000);
+      lv_errbuf := lv_errmsg;
+      RAISE global_api_expt;
+    END IF;
+-- Modify 2009-09-29 Ver1.10 End
+--
     -- プロファイルから会計帳簿ID取得
     gn_set_of_bks_id := TO_NUMBER(FND_PROFILE.VALUE(cv_set_of_bks_id));
 --
@@ -385,13 +503,123 @@ AS
 --
   END get_profile_value;
 --
+-- Modify 2009-09-29 Ver1.10 Start
+  /**********************************************************************************
+   * Procedure Name   : put_account_warning(A-7)
+   * Description      : 顧客紐付け警告出力 (A-7)
+   ***********************************************************************************/
+  PROCEDURE put_account_warning(
+    iv_customer_class_code  IN   VARCHAR2,            -- 顧客区分
+    iv_customer_code        IN   VARCHAR2,            -- 顧客コード
+    ov_errbuf               OUT  VARCHAR2,            -- エラー・メッセージ           --# 固定 #
+    ov_retcode              OUT  VARCHAR2,            -- リターン・コード             --# 固定 #
+    ov_errmsg               OUT  VARCHAR2)            -- ユーザー・エラー・メッセージ --# 固定 #
+  IS
+    -- ===============================
+    -- 固定ローカル定数
+    -- ===============================
+    cv_prg_name   CONSTANT VARCHAR2(100) := 'put_account_warning'; -- プログラム名
+--
+--#####################  固定ローカル変数宣言部 START   ########################
+--
+    lv_errbuf  VARCHAR2(5000);  -- エラー・メッセージ
+    lv_retcode VARCHAR2(1);     -- リターン・コード
+    lv_errmsg  VARCHAR2(5000);  -- ユーザー・エラー・メッセージ
+--
+--###########################  固定部 END   ####################################
+--
+    -- ===============================
+    -- ユーザー宣言部
+    -- ===============================
+    -- *** ローカル定数 ***
+--
+    -- *** ローカル変数 ***
+    lv_data_msg  VARCHAR2(5000);        -- ログ出力メッセージ
+--
+    -- *** ローカル・カーソル ***
+--
+    -- *** ローカル・レコード ***
+--
+    -- *** ローカル例外 ***
+--
+  BEGIN
+--
+--##################  固定ステータス初期化部 START   ###################
+--
+    ov_retcode := cv_status_normal;
+--
+    -- 売掛管理先顧客存在なしメッセージ出力
+    IF (iv_customer_class_code = cv_customer_class_code14) THEN
+      lv_data_msg := xxccp_common_pkg.get_msg(
+                       iv_application  => cv_msg_kbn_cfr
+                      ,iv_name         => cv_msg_xxcfr_00080
+                      ,iv_token_name1  => cv_tkn_ac_code
+                      ,iv_token_value1 => iv_customer_code);
+      fnd_file.put_line(
+        which => FND_FILE.LOG
+       ,buff  => lv_data_msg);
+    -- 統括請求書用顧客存在なしメッセージ出力
+    ELSIF (iv_customer_class_code = cv_customer_class_code21) THEN
+      lv_data_msg := xxccp_common_pkg.get_msg(
+                       iv_application  => cv_msg_kbn_cfr
+                      ,iv_name         => cv_msg_xxcfr_00082
+                      ,iv_token_name1  => cv_tkn_ac_code
+                      ,iv_token_value1 => iv_customer_code);
+      fnd_file.put_line(
+        which => FND_FILE.LOG
+       ,buff  => lv_data_msg);
+    -- 請求書用顧客存在なしメッセージ出力
+    ELSIF (iv_customer_class_code = cv_customer_class_code20) THEN
+      lv_data_msg := xxccp_common_pkg.get_msg(
+                       iv_application  => cv_msg_kbn_cfr
+                      ,iv_name         => cv_msg_xxcfr_00079
+                      ,iv_token_name1  => cv_tkn_ac_code
+                      ,iv_token_value1 => iv_customer_code);
+      fnd_file.put_line(
+        which => FND_FILE.LOG
+       ,buff  => lv_data_msg);
+    END IF;
+--
+    -- 顧客紐付け警告存在フラグを存在ありに変更する
+    gv_warning_flag := cv_status_yes;
+--
+--###########################  固定部 END   ############################
+--
+  EXCEPTION
+--
+--#################################  固定例外処理部 START   ####################################
+--
+    -- *** 共通関数例外ハンドラ ***
+    WHEN global_api_expt THEN
+      ov_errmsg  := lv_errmsg;
+      ov_errbuf  := SUBSTRB(cv_pkg_name||cv_msg_cont||cv_prg_name||cv_msg_part||lv_errbuf
+                           ,1
+                           ,5000);
+      ov_retcode := cv_status_error;
+    -- *** 共通関数OTHERS例外ハンドラ ***
+    WHEN global_api_others_expt THEN
+      ov_errbuf  := cv_pkg_name||cv_msg_cont||cv_prg_name||cv_msg_part||SQLERRM;
+      ov_retcode := cv_status_error;
+    -- *** OTHERS例外ハンドラ ***
+    WHEN OTHERS THEN
+      ov_errbuf  := cv_pkg_name||cv_msg_cont||cv_prg_name||cv_msg_part||SQLERRM;
+      ov_retcode := cv_status_error;
+--
+--#####################################  固定部 END   ##########################################
+--
+  END put_account_warning;
+-- Modify 2009-09-29 Ver1.10 End
+--
   /**********************************************************************************
    * Procedure Name   : insert_work_table
    * Description      : ワークテーブルデータ登録 (A-3)
    ***********************************************************************************/
   PROCEDURE insert_work_table(
     iv_target_date          IN   VARCHAR2,            -- 締日
-    iv_bill_cust_code       IN   VARCHAR2,            -- 請求先顧客コード
+    iv_customer_code10      IN   VARCHAR2,            -- 顧客
+    iv_customer_code20      IN   VARCHAR2,            -- 請求書用顧客
+    iv_customer_code21      IN   VARCHAR2,            -- 統括請求書用顧客
+    iv_customer_code14      IN   VARCHAR2,            -- 売掛管理先顧客
     ov_errbuf               OUT  VARCHAR2,            -- エラー・メッセージ           --# 固定 #
     ov_retcode              OUT  VARCHAR2,            -- リターン・コード             --# 固定 #
     ov_errmsg               OUT  VARCHAR2)            -- ユーザー・エラー・メッセージ --# 固定 #
@@ -423,6 +651,256 @@ AS
     lv_func_status  VARCHAR2(1);    -- SVF帳票共通関数(0件出力メッセージ)終了ステータス
 --
     -- *** ローカル・カーソル ***
+-- Modify 2009-09-29 Ver1.10 Start
+    -- 顧客取得カーソルタイプ
+    TYPE cursor_rec_type IS RECORD(customer_id           xxcmm_cust_accounts.customer_id%TYPE,           -- 顧客区分10顧客ID
+                                   customer_code         xxcmm_cust_accounts.customer_code%TYPE,         -- 顧客区分10顧客コード
+                                   invoice_printing_unit xxcmm_cust_accounts.invoice_printing_unit%TYPE, -- 顧客区分10請求書印刷単位
+                                   bill_base_code        xxcmm_cust_accounts.bill_base_code%TYPE);       -- 顧客区分10請求拠点コード
+    TYPE cursor_ref_type IS REF CURSOR;
+    get_all_account_cur cursor_ref_type;
+    all_account_rec cursor_rec_type;
+--
+    -- 顧客10取得カーソル文字列
+    cv_get_all_account_cur   CONSTANT VARCHAR2(3000) := 
+    'SELECT xxca.customer_id           AS customer_id, '||            -- 顧客ID
+    '       xxca.customer_code         AS customer_code, '||          -- 顧客コード
+    '        xxca.invoice_printing_unit AS invoice_printing_unit, '|| -- 請求書印刷単位
+    '        xxca.bill_base_code        AS bill_base_code '||         -- 請求拠点コード
+    ' FROM xxcmm_cust_accounts xxca, '||                                     -- 顧客追加情報
+    '      hz_cust_accounts    hzca '||                                      -- 顧客マスタ
+    ' WHERE hzca.customer_class_code = '''||cv_customer_class_code10||''' '||         -- 顧客区分:10
+    ' AND   xxca.customer_id = hzca.cust_account_id ';
+--
+    -- 顧客10取得カーソル文字列(売掛管理先顧客指定時)
+    cv_get_14account_cur   CONSTANT VARCHAR2(3000) := 
+    'SELECT xxca10.customer_id           AS customer_id, '||           -- 顧客ID
+    '       xxca10.customer_code         AS customer_code, '||         -- 顧客コード
+    '       xxca10.invoice_printing_unit AS invoice_printing_unit, '|| -- 請求書印刷単位
+    '       xxca10.bill_base_code        AS bill_base_code '||         -- 請求拠点コード
+    'FROM xxcmm_cust_accounts xxca10, '||                                     -- 顧客10顧客追加情報
+    '     hz_cust_accounts    hzca10, '||                                     -- 顧客10顧客マスタ
+    '     hz_cust_acct_sites  hasa10, '||                                     -- 顧客10顧客所在地
+    '     hz_cust_site_uses   hsua10, '||                                     -- 顧客10顧客使用目的
+    '     hz_cust_accounts    hzca14, '||                                     -- 顧客14顧客マスタ
+    '     hz_cust_acct_relate hcar14, '||                                     -- 顧客関連マスタ
+    '     hz_cust_acct_sites  hasa14, '||                                     -- 顧客14顧客所在地
+    '     hz_cust_site_uses   hsua14 '||                                      -- 顧客14顧客使用目的
+    'WHERE xxca10.invoice_printing_unit IN ('''||cv_invoice_printing_unit_a1||''','||
+                                           ''''||cv_invoice_printing_unit_a2||''','||
+                                           ''''||cv_invoice_printing_unit_a3||''','||
+                                           ''''||cv_invoice_printing_unit_a4||''','||
+                                           ''''||cv_invoice_printing_unit_a5||''','||
+                                           ''''||cv_invoice_printing_unit_a6||''','||
+                                           ''''||cv_invoice_printing_unit_n1||''','||
+                                           ''''||cv_invoice_printing_unit_n2||''','||
+                                           ''''||cv_invoice_printing_unit_n3||''') '|| -- 請求書印刷単位
+    'AND   hzca10.customer_class_code = '''||cv_customer_class_code10||''' '||         -- 顧客区分:10
+    'AND   xxca10.customer_id = hzca10.cust_account_id '||
+    'AND   hzca14.account_number = :iv_customer_code14 '||
+    'AND   hzca14.cust_account_id = hcar14.cust_account_id '||
+    'AND   hcar14.related_cust_account_id = hzca10.cust_account_id '||
+    'AND   hzca14.customer_class_code = '''||cv_customer_class_code14||''' '||
+    'AND   hcar14.status = '''||cv_acct_relate_status||''' '||
+    'AND   hcar14.attribute1 = '''||cv_acct_relate_type_bill||''' '||
+    'AND   hzca14.cust_account_id = hasa14.cust_account_id '||
+    'AND   hasa14.cust_acct_site_id = hsua14.cust_acct_site_id '||
+    'AND   hsua14.site_use_code = '''||cv_site_use_code_bill_to||''' '||
+    'AND   hzca10.cust_account_id = hasa10.cust_account_id '||
+    'AND   hasa10.cust_acct_site_id = hsua10.cust_acct_site_id '||
+    'AND   hsua10.bill_to_site_use_id = hsua14.site_use_id ';
+--
+    -- 顧客10取得カーソル文字列(統括請求書用顧客指定時)
+    cv_get_21account_cur   CONSTANT VARCHAR2(3000) := 
+    'SELECT xxca10.customer_id           AS customer_id, '||           -- 顧客ID
+    '       xxca10.customer_code         AS customer_code, '||         -- 顧客コード
+    '       xxca10.invoice_printing_unit AS invoice_printing_unit, '|| -- 請求書印刷単位
+    '       xxca10.bill_base_code        AS bill_base_code '||         -- 請求拠点コード
+    'FROM xxcmm_cust_accounts xxca10, '||                                     -- 顧客10顧客追加情報
+    '     xxcmm_cust_accounts xxca20, '||                                     -- 顧客20顧客追加情報
+    '     xxcmm_cust_accounts xxca21, '||                                     -- 顧客21顧客追加情報
+    '     hz_cust_accounts    hzca10 '||                                      -- 顧客10顧客マスタ
+    'WHERE xxca10.invoice_printing_unit IN ('''||cv_invoice_printing_unit_a2||''','||
+                                           ''''||cv_invoice_printing_unit_a4||''') '|| -- 請求書印刷単位
+    'AND   hzca10.customer_class_code = '''||cv_customer_class_code10||''' '||          -- 顧客区分:10
+    'AND   xxca10.customer_id = hzca10.cust_account_id '||
+    'AND   xxca10.invoice_code = xxca20.customer_code '||
+    'AND   xxca20.enclose_invoice_code = xxca21.customer_code '||
+    'AND   xxca21.customer_code = :iv_customer_code21 ';
+--
+    -- 顧客10取得カーソル文字列(請求書用顧客指定時)
+    cv_get_20account_cur   CONSTANT VARCHAR2(3000) := 
+    'SELECT xxca10.customer_id           AS customer_id, '||           -- 顧客ID
+    '       xxca10.customer_code         AS customer_code, '||         -- 顧客コード
+    '       xxca10.invoice_printing_unit AS invoice_printing_unit, '|| -- 請求書印刷単位
+    '       xxca10.bill_base_code        AS bill_base_code '||         -- 請求拠点コード
+    'FROM xxcmm_cust_accounts xxca10, '||                                     -- 顧客10顧客追加情報
+    '     xxcmm_cust_accounts xxca20, '||                                     -- 顧客20顧客追加情報
+    '     hz_cust_accounts    hzca10 '||                                      -- 顧客10顧客マスタ
+    'WHERE xxca10.invoice_printing_unit IN ('''||cv_invoice_printing_unit_a3||''','||
+                                           ''''||cv_invoice_printing_unit_a6||''','||
+                                           ''''||cv_invoice_printing_unit_n3||''') '||   -- 請求書印刷単位
+    'AND   hzca10.customer_class_code = '''||cv_customer_class_code10||''' '||           -- 顧客区分:10
+    'AND   xxca10.customer_id = hzca10.cust_account_id '||
+    'AND   xxca10.invoice_code = xxca20.customer_code '||
+    'AND   xxca20.customer_code = :iv_customer_code20 ';
+--
+    -- 顧客10取得カーソル文字列(顧客指定時)
+    cv_get_10account_cur   CONSTANT VARCHAR2(3000) := 
+    'SELECT xxca.customer_id           AS customer_id, '||           -- 顧客ID
+    '       xxca.customer_code         AS customer_code, '||         -- 顧客コード
+    '       xxca.invoice_printing_unit AS invoice_printing_unit, '|| -- 請求書印刷単位
+    '       xxca.bill_base_code        AS bill_base_code '||         -- 請求拠点コード
+    'FROM xxcmm_cust_accounts xxca, '||                                     -- 顧客追加情報
+    '     hz_cust_accounts    hzca '||                                      -- 顧客マスタ
+    'WHERE xxca.invoice_printing_unit = '''||cv_invoice_printing_unit_n4||''' '||       -- 請求書印刷単位
+    'AND   hzca.customer_class_code = '''||cv_customer_class_code10||''' '||            -- 顧客区分:10
+    'AND   xxca.customer_id = hzca.cust_account_id '||
+    'AND   xxca.customer_code = :iv_customer_code10 ';
+--
+    -- 顧客14取得カーソル
+    CURSOR get_14account_cur(
+      iv_customer_id IN NUMBER) -- 顧客区分10の顧客ID
+    IS
+     SELECT bill_hzca_1.cust_account_id         AS cash_account_id,         --顧客14ID
+            bill_hzca_1.account_number          AS cash_account_number,     --顧客14コード
+            bill_hzpa_1.party_name              AS cash_account_name,       --顧客14顧客名
+            ship_hzca_1.cust_account_id         AS ship_account_id,         --顧客10顧客ID        
+            ship_hzca_1.account_number          AS ship_account_number,     --顧客10顧客コード 
+            bill_hzad_1.bill_base_code          AS bill_base_code,          --顧客14請求拠点コード
+            bill_hzlo_1.postal_code             AS bill_postal_code,        --顧客14郵便番号            
+            bill_hzlo_1.state                   AS bill_state,              --顧客14都道府県            
+            bill_hzlo_1.city                    AS bill_city,               --顧客14市・区              
+            bill_hzlo_1.address1                AS bill_address1,           --顧客14住所1               
+            bill_hzlo_1.address2                AS bill_address2,           --顧客14住所2
+            bill_hzlo_1.address_lines_phonetic  AS phone_num,               --顧客14電話番号
+            bill_hzad_1.tax_div                 AS bill_tax_div,            --顧客14消費税区分
+            bill_hsua_1.attribute7              AS bill_invoice_type,       --顧客14請求書出力形式      
+            bill_hsua_1.payment_term_id         AS bill_payment_term_id,    --顧客14支払条件
+            bill_hzcp_1.cons_inv_flag           AS cons_inv_flag            --顧客14一括請求書発行フラグ
+     FROM hz_cust_accounts          bill_hzca_1,              --顧客14顧客マスタ
+          hz_cust_accounts          ship_hzca_1,              --顧客10顧客マスタ
+          xxcmm_cust_accounts       bill_hzad_1,              --顧客14顧客追加情報
+          hz_cust_acct_sites        bill_hasa_1,              --顧客14顧客所在地
+          hz_locations              bill_hzlo_1,              --顧客14顧客事業所
+          hz_cust_site_uses         bill_hsua_1,              --顧客14顧客使用目的
+          hz_customer_profiles      bill_hzcp_1,              --顧客14プロファイル
+          hz_cust_acct_relate       bill_hcar_1,              --顧客関連マスタ(請求関連)
+          hz_cust_acct_sites        ship_hasa_1,              --顧客10顧客所在地
+          hz_cust_site_uses         ship_hsua_1,              --顧客10顧客使用目的
+          hz_party_sites            bill_hzps_1,              --顧客14パーティサイト
+          hz_parties                bill_hzpa_1               --顧客14パーティ
+     WHERE ship_hzca_1.cust_account_id = iv_customer_id
+     AND   bill_hzca_1.cust_account_id = bill_hcar_1.cust_account_id         --顧客14顧客マスタ.顧客ID = 顧客関連マスタ.顧客ID
+     AND   bill_hcar_1.related_cust_account_id = ship_hzca_1.cust_account_id --顧客関連マスタ.関連先顧客ID = 顧客10顧客マスタ.顧客ID
+     AND   bill_hzca_1.customer_class_code = cv_customer_class_code14        --顧客14顧客マスタ.顧客区分 = '14'(売掛管理先顧客)
+     AND   bill_hcar_1.status = cv_acct_relate_status                        --顧客関連マスタ.ステータス = ‘A’
+     AND   bill_hcar_1.attribute1 = cv_acct_relate_type_bill                 --顧客関連マスタ.関連分類 = ‘1’ (請求)
+     AND   bill_hzca_1.cust_account_id = bill_hzad_1.customer_id             --顧客14顧客マスタ.顧客ID = 顧客14顧客追加情報.顧客ID
+     AND   bill_hzca_1.cust_account_id = bill_hasa_1.cust_account_id         --顧客14顧客マスタ.顧客ID = 顧客14顧客所在地.顧客ID
+     AND   bill_hasa_1.cust_acct_site_id = bill_hsua_1.cust_acct_site_id     --顧客14顧客所在地.顧客所在地ID = 顧客14顧客使用目的.顧客所在地ID
+     AND   bill_hsua_1.site_use_code = cv_site_use_code_bill_to              --顧客14顧客使用目的.使用目的 = 'BILL_TO'(請求先)
+     AND   bill_hzcp_1.cust_account_id = bill_hzca_1.cust_account_id         --顧客14プロファイル.顧客ID = 顧客14顧客マスタ.顧客ID
+     AND   bill_hzcp_1.site_use_id = bill_hsua_1.site_use_id                 --顧客14プロファイル.使用目的ID = 顧客14顧客使用目的.使用目的ID
+     AND   ship_hzca_1.cust_account_id = ship_hasa_1.cust_account_id         --顧客10顧客マスタ.顧客ID = 顧客10顧客所在地.顧客ID
+     AND   ship_hasa_1.cust_acct_site_id = ship_hsua_1.cust_acct_site_id     --顧客10顧客所在地.顧客所在地ID = 顧客10顧客使用目的.顧客所在地ID
+     AND   ship_hsua_1.bill_to_site_use_id = bill_hsua_1.site_use_id         --顧客10顧客使用目的.請求先事業所ID = 顧客14顧客使用目的.使用目的ID
+     AND   bill_hasa_1.party_site_id = bill_hzps_1.party_site_id             --顧客14顧客所在地.パーティサイトID = 顧客14パーティサイト.パーティサイトID  
+     AND   bill_hzps_1.location_id = bill_hzlo_1.location_id                 --顧客14パーティサイト.事業所ID = 顧客14顧客事業所.事業所ID                  
+     AND   bill_hzca_1.party_id = bill_hzpa_1.party_id;                      --顧客14顧客マスタ.パーティID = 顧客14.パーティID
+--
+    get_14account_rec get_14account_cur%ROWTYPE;
+--
+    -- 顧客21取得カーソル
+    CURSOR get_21account_cur(
+      iv_customer_id IN NUMBER) -- 顧客区分10の顧客ID
+    IS
+     SELECT xxca21.customer_id                  AS bill_account_id,         --顧客21ID
+            xxca21.customer_code                AS bill_account_number,     --顧客21コード
+            hzpa21.party_name                   AS bill_account_name,       --顧客21顧客名
+            xxca21.bill_base_code               AS bill_base_code21,        --顧客21請求拠点コード
+            hzlo21.postal_code                  AS bill_postal_code,        --顧客21郵便番号
+            hzlo21.state                        AS bill_state,              --顧客21都道府県
+            hzlo21.city                         AS bill_city,               --顧客21市・区
+            hzlo21.address1                     AS bill_address1,           --顧客21住所1
+            hzlo21.address2                     AS bill_address2,           --顧客21住所2
+            hzlo21.address_lines_phonetic       AS phone_num,               --顧客21電話番号
+            xxca20.bill_base_code               AS bill_base_code20         --顧客20請求拠点コード
+     FROM xxcmm_cust_accounts       xxca21,                   --顧客21顧客追加情報
+          xxcmm_cust_accounts       xxca20,                   --顧客20顧客追加情報
+          xxcmm_cust_accounts       xxca10,                   --顧客10顧客追加情報
+          hz_cust_accounts          hzca20,                   --顧客20顧客マスタ
+          hz_cust_accounts          hzca21,                   --顧客21顧客マスタ
+          hz_parties                hzpa21,                   --顧客21パーティ
+          hz_cust_acct_sites        hcas21,                   --顧客21顧客所在地
+          hz_party_sites            hzps21,                   --顧客21パーティサイト
+          hz_locations              hzlo21                    --顧客21顧客事業所
+     WHERE xxca10.customer_id = iv_customer_id
+     AND   xxca10.invoice_code = xxca20.customer_code                        --顧客10顧客追加情報.請求書用コード = 顧客20顧客追加情報.顧客コード
+     AND   xxca20.enclose_invoice_code = xxca21.customer_code                --顧客20顧客追加情報.統括請求書用コード = 顧客21顧客追加情報.顧客コード
+     AND   hzca20.customer_class_code = cv_customer_class_code20             --顧客20顧客マスタ.顧客区分 = '20'(請求書用)
+     AND   hzca20.cust_account_id = xxca20.customer_id                       --顧客20顧客マスタ.顧客ID = 顧客20顧客追加情報.顧客コード
+     AND   hzca21.customer_class_code = cv_customer_class_code21             --顧客21顧客マスタ.顧客区分 = '21'(統括請求書用)
+     AND   hzca21.cust_account_id = xxca21.customer_id                       --顧客21顧客マスタ.顧客ID = 顧客21顧客追加情報.顧客コード
+     AND   hzca21.party_id = hzpa21.party_id                                 --顧客21顧客マスタ.パーティID = 顧客21パーティ.パーティID
+     AND   hzca21.cust_account_id = hcas21.cust_account_id                   --顧客21顧客マスタ.顧客ID = 顧客21所在地.顧客ID
+     AND   hcas21.party_site_id = hzps21.party_site_id                       --顧客所在地21.パーティサイト = 顧客21パーティサイト.顧客21パーティサイトID
+     AND   hzps21.location_id = hzlo21.location_id;                          --顧客21パーティサイト.事業所ID = 顧客21顧客事業所.事業所ID
+--
+    get_21account_rec get_21account_cur%ROWTYPE;
+--
+    -- 顧客20取得カーソル
+    CURSOR get_20account_cur(
+      iv_customer_id IN NUMBER) -- 顧客区分10の顧客ID
+    IS
+     SELECT xxca20.customer_id                  AS bill_account_id,         --顧客20ID
+            xxca20.customer_code                AS bill_account_number,     --顧客20コード
+            hzpa20.party_name                   AS bill_account_name,       --顧客20顧客名
+            xxca20.bill_base_code               AS bill_base_code,          --顧客20請求拠点コード
+            hzlo20.postal_code                  AS bill_postal_code,        --顧客20郵便番号
+            hzlo20.state                        AS bill_state,              --顧客20都道府県
+            hzlo20.city                         AS bill_city,               --顧客20市・区
+            hzlo20.address1                     AS bill_address1,           --顧客20住所1
+            hzlo20.address2                     AS bill_address2,           --顧客20住所2
+            hzlo20.address_lines_phonetic       AS phone_num                --顧客20電話番号
+     FROM xxcmm_cust_accounts       xxca20,                   --顧客20顧客追加情報
+          xxcmm_cust_accounts       xxca10,                   --顧客10顧客追加情報
+          hz_cust_accounts          hzca20,                   --顧客20顧客マスタ
+          hz_parties                hzpa20,                   --顧客20パーティ
+          hz_cust_acct_sites        hcas20,                   --顧客20顧客所在地
+          hz_party_sites            hzps20,                   --顧客20パーティサイト
+          hz_locations              hzlo20                    --顧客20顧客事業所
+     WHERE xxca10.customer_id = iv_customer_id
+     AND   xxca10.invoice_code = xxca20.customer_code                        --顧客10顧客追加情報.請求書用コード = 顧客20顧客追加情報.顧客コード
+     AND   hzca20.customer_class_code = cv_customer_class_code20             --顧客20顧客マスタ.顧客区分 = '20'(請求書用)
+     AND   hzca20.cust_account_id = xxca20.customer_id                       --顧客20顧客マスタ.顧客ID = 顧客20顧客追加情報.顧客コード
+     AND   hzca20.party_id = hzpa20.party_id                                 --顧客20顧客マスタ.パーティID = 顧客20パーティ.パーティID
+     AND   hzca20.cust_account_id = hcas20.cust_account_id                   --顧客20顧客マスタ.顧客ID = 顧客20所在地.顧客ID
+     AND   hcas20.party_site_id = hzps20.party_site_id                       --顧客所在地20.パーティサイト = 顧客20パーティサイト.顧客20パーティサイトID
+     AND   hzps20.location_id = hzlo20.location_id;                          --顧客20パーティサイト.事業所ID = 顧客20顧客事業所.事業所ID
+--
+    get_20account_rec get_20account_cur%ROWTYPE;
+--
+    -- 単独店請求書出力形式取得カーソル
+    CURSOR get_10inv_type_cur(
+      iv_customer_id IN NUMBER) -- 顧客区分10の顧客ID
+    IS
+     SELECT hsua.attribute7    AS invoice_type, -- 請求書出力形式
+            hcpa.cons_inv_flag AS cons_inv_flag -- 一括請求書発行フラグ
+     FROM hz_cust_acct_sites      hasa,      -- 顧客10顧客所在地
+          hz_cust_site_uses       hsua,      -- 顧客10使用目的
+          hz_customer_profiles    hcpa       -- 顧客10プロファイル
+     WHERE hasa.cust_account_id = iv_customer_id
+       AND hsua.cust_acct_site_id = hasa.cust_acct_site_id  -- 顧客10使用目的.顧客所在地ID = 顧客10顧客所在地.顧客所在地ID
+       AND hsua.site_use_code = cv_site_use_code_bill_to    -- 顧客10顧客使用目的.使用目的 = 'BILL_TO'(請求先)
+       AND hsua.attribute7 = cv_inv_prt_type                -- 顧客10顧客使用目的.請求書出力形式 = '4'(業者委託)
+       AND hcpa.cons_inv_flag = cv_flag_yes                 -- 顧客10一括請求書発行フラグ = 'Y'
+       AND hcpa.cust_account_id = iv_customer_id
+       AND hcpa.site_use_id = hsua.site_use_id;             -- 顧客10プロファイル.使用目的ID = 顧客10使用目的.使用目的ID
+--
+    get_10inv_type_rec get_10inv_type_cur%ROWTYPE;
+--
+-- Modify 2009-09-29 Ver1.10 End
 --
   BEGIN
 --
@@ -495,6 +973,1993 @@ AS
     -- ====================================================
     BEGIN
 --
+-- Modify 2009-09-29 Ver1.10 Start
+      -- 売掛管理先顧客指定時
+      IF (iv_customer_code14 IS NOT NULL) THEN
+        OPEN get_all_account_cur FOR cv_get_14account_cur USING iv_customer_code14;
+      -- 統括請求書用顧客指定時
+      ELSIF (iv_customer_code21 IS NOT NULL) THEN
+        OPEN get_all_account_cur FOR cv_get_21account_cur USING iv_customer_code21;
+      -- 請求書用顧客指定時
+      ELSIF (iv_customer_code20 IS NOT NULL) THEN
+        OPEN get_all_account_cur FOR cv_get_20account_cur USING iv_customer_code20;
+      -- 顧客指定時
+      ELSIF (iv_customer_code10 IS NOT NULL) THEN
+        OPEN get_all_account_cur FOR cv_get_10account_cur USING iv_customer_code10;
+      -- パラメータ指定なし時
+      ELSE
+        OPEN get_all_account_cur FOR cv_get_all_account_cur;
+      END IF;
+--
+      <<get_account10_loop>>
+      LOOP
+        FETCH get_all_account_cur INTO all_account_rec;
+        EXIT WHEN get_all_account_cur%NOTFOUND;
+--
+        -- 請求書印刷単位が'N4'(単独店)以外の場合、
+        -- 顧客区分10の顧客に紐づく、顧客区分14の顧客を取得
+        IF (all_account_rec.invoice_printing_unit <> cv_invoice_printing_unit_n4) THEN
+          OPEN get_14account_cur(all_account_rec.customer_id);
+          FETCH get_14account_cur INTO get_14account_rec;
+--
+          -- 紐づく顧客区分14の顧客が存在しない場合
+          IF (get_14account_cur%NOTFOUND) THEN
+            -- 顧客区分14存在なしメッセージ出力
+            put_account_warning(iv_customer_class_code => cv_customer_class_code14
+                               ,iv_customer_code       => all_account_rec.customer_code
+                               ,ov_errbuf              => lv_errbuf
+                               ,ov_retcode             => lv_retcode
+                               ,ov_errmsg              => lv_errmsg);
+            IF (lv_retcode = cv_status_error) THEN
+              --(エラー処理)
+              RAISE global_process_expt;
+            END IF;
+          -- 請求書印刷単位 IN ('A1','A5') 売掛管理先顧客でまとめる
+          ELSIF (all_account_rec.invoice_printing_unit IN (cv_invoice_printing_unit_a1,cv_invoice_printing_unit_a5))
+            AND (get_14account_rec.bill_invoice_type = cv_inv_prt_type) -- 請求書出力形式 = 4.業者委託
+            AND (get_14account_rec.cons_inv_flag = cv_flag_yes)         -- 一括請求書発行フラグ = 'Y'
+          THEN
+            INSERT INTO xxcfr_csv_outs_temp(
+              request_id       -- 要求ID
+             ,seq              -- 出力順
+             ,col1             -- ヘッダ/明細区分
+             ,col2             -- レコード区分
+             ,col3             -- 発行日付
+             ,col4             -- 郵便番号
+             ,col5             -- 住所１
+             ,col6             -- 住所２
+             ,col7             -- 住所３
+             ,col8             -- 顧客コード
+             ,col9             -- 顧客名
+             ,col10            -- 担当拠点名
+             ,col11            -- 電話番号
+             ,col12            -- 対象年月
+             ,col13            -- 売掛管理コード連結文字列
+             ,col14            -- 請求書出力区分
+             ,col15            -- 当月お買い上げ額
+             ,col16            -- 消費税等
+             ,col17            -- 当月請求額
+             ,col18            -- 入金予定日
+             ,col19            -- 振込先銀行名
+             ,col20            -- 振込先銀行支店名
+             ,col21            -- 振込先口座種別
+             ,col22            -- 振込先口座番号
+             ,col23            -- 振込先口座名義人カナ名
+             ,col24            -- 店舗コード
+             ,col25            -- 店舗名
+             ,col26            -- 伝票日付
+             ,col27            -- 伝票No
+             ,col28            -- 伝票金額
+             ,col29            -- レイアウト区分
+             ,col101           -- 伝票税抜額(非出力項目)
+             ,col102           -- 伝票税額(非出力項目)
+             ,col103           -- 入金先顧客コード(非出力項目)
+             ,col104)          -- 入金先顧客名(非出力項目)
+            SELECT cn_request_id                                              request_id         -- 要求ID
+                  ,TO_NUMBER(NULL)                                            seq                -- 出力順
+                  ,cv_line_kbn                                                header_line_kbn    -- ヘッダ/明細区分
+                  ,cv_record_kbn1                                             record_kbn         -- レコード区分
+                  ,TO_CHAR(xih.inv_creation_date,cv_format_date_yyyymmdd)     issue_date         -- 発行日付
+                  ,NULL                                                       zip_code           -- 郵便番号
+                  ,NULL                                                       send_address1      -- 住所１
+                  ,NULL                                                       send_address2      -- 住所２
+                  ,NULL                                                       send_address3      -- 住所３
+                  ,get_14account_rec.cash_account_number                      bill_cust_code     -- 顧客コード
+                  ,NULL                                                       bill_cust_name     -- 顧客名
+                  ,NULL                                                       location_name      -- 拠点名
+                  ,NULL                                                       phone_num          -- 電話番号
+                  ,xih.object_month                                           object_month       -- 対象年月
+                  ,get_14account_rec.cash_account_number||' '||xih.term_name  ar_concat_text     -- 売掛管理コード連結文字列
+                  ,DECODE(get_14account_rec.bill_tax_div,cv_tax_div_excluded,cv_out_div_excluded
+                                                        ,cv_tax_div_nontax,cv_out_div_excluded
+                                                                          ,cv_out_div_included)
+                                                                              out_put_div        -- 請求書出力区分
+                  ,NULL                                                       inv_amount         -- 当月お買い上げ額
+                  ,NULL                                                       tax_amount         -- 消費税等
+                  ,NULL                                                       total_amount       -- 当月請求額
+                  ,TO_CHAR(xih.payment_date,cv_format_date_yyyymmdd)          payment_date       -- 入金予定日
+                  ,CASE WHEN bank.bank_account_num IS NULL THEN
+                     NULL
+                   ELSE
+                     DECODE(SUBSTR(bank.bank_number,1,1)
+                           ,gv_format_bank_dummy, NULL -- ダミー銀行の場合はNULL
+                           ,CASE WHEN TO_NUMBER(bank.bank_number) < 1000  THEN
+                              CASE WHEN INSTR(bank.bank_name
+                                             ,gv_format_bank) > 0
+                              THEN
+                                bank.bank_name
+                              ELSE
+                                bank.bank_name || gv_format_bank
+                              END
+                            ELSE
+                              bank.bank_name 
+                            END)
+                   END                                                        banc_number        -- 銀行名
+                  ,CASE WHEN bank.bank_account_num IS NULL THEN
+                     NULL
+                   ELSE
+                     DECODE(SUBSTR(bank.bank_number,1,1)
+                           ,gv_format_bank_dummy, NULL -- ダミー銀行の場合はNULL
+                           ,CASE WHEN INSTR(bank.bank_branch_name
+                                           ,gv_format_central) > 0
+                            THEN
+                              bank.bank_branch_name
+                            ELSE
+                              bank.bank_branch_name || gv_format_branch
+                            END)
+                   END                                                        bank_branch_number -- 支店名
+                  ,CASE WHEN bank.bank_account_num IS NULL THEN
+                     NULL
+                   ELSE
+                     DECODE(SUBSTR(bank.bank_number,1,1)
+                           ,gv_format_bank_dummy, NULL -- ダミー銀行の場合はNULL
+                           ,DECODE(bank.bank_account_type
+                                  ,1, gv_format_account
+                                  ,2, gv_format_current
+                                  ,bank.bank_account_type))
+                   END                                                        bank_account_type  -- 口座種別
+                  ,CASE WHEN bank.bank_account_num IS NULL THEN
+                     NULL
+                   ELSE
+                     DECODE(SUBSTR(bank.bank_number,1,1)
+                           ,gv_format_bank_dummy, NULL -- ダミー銀行の場合はNULL
+                           ,bank.bank_account_num)
+                   END                                                        bank_account_num   -- 口座番号
+                  ,CASE WHEN bank.bank_account_num IS NULL THEN
+                     NULL
+                   ELSE
+                     DECODE(SUBSTR(bank.bank_number,1,1)
+                           ,gv_format_bank_dummy, NULL -- ダミー銀行の場合はNULL
+                           ,bank.account_holder_name_alt)
+                   END                                                        bank_account_name  -- 口座名義人カナ名
+                  ,xil.ship_cust_code                                         ship_cust_code     -- 店舗コード
+                  ,hzp.party_name                                             ship_cust_name     -- 店舗名
+                  ,TO_CHAR(DECODE(xil.acceptance_date,NULL
+                                 ,xil.delivery_date
+                                 ,xil.acceptance_date)
+                                 ,cv_format_date_yyyymmdd)                          slip_date    -- 伝票日付
+                  ,xil.slip_num                                                     slip_num     -- 伝票番号
+                  ,SUM(CASE
+                       WHEN get_14account_rec.bill_tax_div IN (cv_tax_div_nontax
+                                                              ,cv_tax_div_excluded)
+                       THEN
+                            xil.ship_amount
+                       ELSE
+                            xil.tax_amount + xil.ship_amount
+                       END)                                                         slip_sum          -- 伝票金額
+                  ,cv_layout_kbn2                                                   layout_kbn        -- レイアウト区分
+                  ,SUM(xil.ship_amount)                                             slip_sum_ex_tax   -- 伝票税抜額
+                  ,SUM(xil.tax_amount)                                              slip_tax          -- 伝票税額
+                  ,get_14account_rec.cash_account_number                            payment_cust_code -- 入金先顧客コード
+                  ,get_14account_rec.cash_account_name                              payment_cust_name -- 入金先顧客名
+            FROM xxcfr_invoice_headers          xih  , -- 請求ヘッダ
+                 xxcfr_invoice_lines            xil  , -- 請求明細
+                 hz_cust_accounts               hzca , -- 顧客10顧客マスタ
+                 hz_parties                     hzp  , -- 顧客10パーティマスタ
+                 (SELECT all_account_rec.customer_code ship_cust_code
+                        ,rcrm.customer_id             customer_id
+                        ,abb.bank_number              bank_number
+                        ,abb.bank_name                bank_name
+                        ,abb.bank_branch_name         bank_branch_name
+                        ,abaa.bank_account_type       bank_account_type
+                        ,abaa.bank_account_num        bank_account_num
+                        ,abaa.account_holder_name     account_holder_name
+                        ,abaa.account_holder_name_alt account_holder_name_alt
+                  FROM   ra_cust_receipt_methods        rcrm                 --支払方法情報
+                        ,ar_receipt_method_accounts_all arma                 --AR支払方法口座
+                        ,ap_bank_accounts_all           abaa                 --銀行口座
+                        ,ap_bank_branches               abb                  --銀行支店
+                  WHERE  rcrm.primary_flag      = cv_flag_yes
+                    AND  get_14account_rec.cash_account_id = rcrm.customer_id
+                    AND  gd_target_date   BETWEEN rcrm.start_date
+                                              AND NVL(rcrm.end_date, gd_max_date)
+                    AND  rcrm.site_use_id      IS NOT NULL
+                    AND  rcrm.receipt_method_id = arma.receipt_method_id(+)
+                    AND  arma.bank_account_id   = abaa.bank_account_id(+)
+                    AND  abaa.bank_branch_id    = abb.bank_branch_id(+)
+                    AND  arma.org_id            = gn_org_id
+                    AND  abaa.org_id            = gn_org_id) bank            -- 銀行口座ビュー
+            WHERE xih.invoice_id = xil.invoice_id
+              AND xil.cutoff_date = gd_target_date
+              AND xil.ship_cust_code = bank.ship_cust_code(+)                -- 外部結合のためのダミー結合
+              AND xih.set_of_books_id = gn_set_of_bks_id
+              AND xih.org_id = gn_org_id
+              AND xil.ship_cust_code = all_account_rec.customer_code
+              AND hzca.cust_account_id = all_account_rec.customer_id
+              AND hzp.party_id = hzca.party_id
+            GROUP BY xih.inv_creation_date,                                               -- 発行日付
+                     xih.object_month,                                                    -- 対象年月
+                     xih.term_name,                                                       -- 支払条件
+                     xih.payment_date,                                                    -- 入金予定日
+                     CASE WHEN bank.bank_account_num IS NULL THEN
+                       NULL
+                     ELSE
+                       DECODE(SUBSTR(bank.bank_number,1,1)
+                             ,gv_format_bank_dummy, NULL -- ダミー銀行の場合はNULL
+                             ,CASE WHEN TO_NUMBER(bank.bank_number) < 1000  THEN
+                                CASE WHEN INSTR(bank.bank_name
+                                               ,gv_format_bank) > 0
+                                THEN
+                                  bank.bank_name
+                                ELSE
+                                  bank.bank_name || gv_format_bank
+                                END
+                              ELSE
+                                bank.bank_name 
+                              END)
+                     END,                                                                 -- 銀行名
+                     CASE WHEN bank.bank_account_num IS NULL THEN
+                       NULL
+                     ELSE
+                       DECODE(SUBSTR(bank.bank_number,1,1)
+                             ,gv_format_bank_dummy, NULL -- ダミー銀行の場合はNULL
+                             ,CASE WHEN INSTR(bank.bank_branch_name
+                                             ,gv_format_central) > 0
+                              THEN
+                                bank.bank_branch_name
+                              ELSE
+                                bank.bank_branch_name || gv_format_branch
+                              END)
+                     END,                                                                 -- 支店名
+                     CASE WHEN bank.bank_account_num IS NULL THEN
+                       NULL
+                     ELSE
+                       DECODE(SUBSTR(bank.bank_number,1,1)
+                             ,gv_format_bank_dummy, NULL -- ダミー銀行の場合はNULL
+                             ,DECODE(bank.bank_account_type
+                                    ,1, gv_format_account
+                                    ,2, gv_format_current
+                                    ,bank.bank_account_type))
+                     END,                                                                 -- 口座種別
+                     CASE WHEN bank.bank_account_num IS NULL THEN
+                       NULL
+                     ELSE
+                       DECODE(SUBSTR(bank.bank_number,1,1)
+                             ,gv_format_bank_dummy, NULL -- ダミー銀行の場合はNULL
+                             ,bank.bank_account_num)
+                     END,                                                                 -- 口座番号
+                     CASE WHEN bank.bank_account_num IS NULL THEN
+                       NULL
+                     ELSE
+                       DECODE(SUBSTR(bank.bank_number,1,1)
+                             ,gv_format_bank_dummy, NULL -- ダミー銀行の場合はNULL
+                             ,bank.account_holder_name_alt)
+                     END,                                                                 -- 口座名義人カナ名
+                     xil.ship_cust_code,                                                  -- 店舗コード
+                     hzp.party_name,                                                      -- 店舗名
+                     TO_CHAR(DECODE(xil.acceptance_date,NULL
+                                   ,xil.delivery_date
+                                   ,xil.acceptance_date)
+                                   ,cv_format_date_yyyymmdd),                             -- 伝票日付
+                     xil.slip_num;                                                        -- 伝票番号
+--
+            gn_target_cnt := gn_target_cnt + SQL%ROWCOUNT;
+--
+          -- 請求書印刷単位 IN ('A2','A4') 統括請求書用顧客でまとめる
+          ELSIF (all_account_rec.invoice_printing_unit IN (cv_invoice_printing_unit_a2,cv_invoice_printing_unit_a4))
+            AND (get_14account_rec.bill_invoice_type = cv_inv_prt_type) -- 請求書出力形式 = 4.業者委託
+            AND (get_14account_rec.cons_inv_flag = cv_flag_yes)         -- 一括請求書発行フラグ = 'Y'
+          THEN
+            OPEN get_21account_cur(all_account_rec.customer_id);
+            FETCH get_21account_cur INTO get_21account_rec;
+--
+            --顧客区分21の顧客が存在しない場合
+            IF get_21account_cur%NOTFOUND THEN
+              -- 顧客区分21存在なしメッセージ出力
+              put_account_warning(iv_customer_class_code => cv_customer_class_code21
+                                 ,iv_customer_code       => all_account_rec.customer_code
+                                 ,ov_errbuf              => lv_errbuf
+                                 ,ov_retcode             => lv_retcode
+                                 ,ov_errmsg              => lv_errmsg);
+              IF (lv_retcode = cv_status_error) THEN
+                --(エラー処理)
+                RAISE global_process_expt;
+              END IF;
+            ELSE
+              INSERT INTO xxcfr_csv_outs_temp(
+                request_id       -- 要求ID
+               ,seq              -- 出力順
+               ,col1             -- ヘッダ/明細区分
+               ,col2             -- レコード区分
+               ,col3             -- 発行日付
+               ,col4             -- 郵便番号
+               ,col5             -- 住所１
+               ,col6             -- 住所２
+               ,col7             -- 住所３
+               ,col8             -- 顧客コード
+               ,col9             -- 顧客名
+               ,col10            -- 担当拠点名
+               ,col11            -- 電話番号
+               ,col12            -- 対象年月
+               ,col13            -- 売掛管理コード連結文字列
+               ,col14            -- 請求書出力区分
+               ,col15            -- 当月お買い上げ額
+               ,col16            -- 消費税等
+               ,col17            -- 当月請求額
+               ,col18            -- 入金予定日
+               ,col19            -- 振込先銀行名
+               ,col20            -- 振込先銀行支店名
+               ,col21            -- 振込先口座種別
+               ,col22            -- 振込先口座番号
+               ,col23            -- 振込先口座名義人カナ名
+               ,col24            -- 店舗コード
+               ,col25            -- 店舗名
+               ,col26            -- 伝票日付
+               ,col27            -- 伝票No
+               ,col28            -- 伝票金額
+               ,col29            -- レイアウト区分
+               ,col101           -- 伝票税抜額(非出力項目)
+               ,col102           -- 伝票税額(非出力項目)
+               ,col103           -- 入金先顧客コード(非出力項目)
+               ,col104)          -- 入金先顧客名(非出力項目)
+              SELECT cn_request_id                                              request_id         -- 要求ID
+                    ,TO_NUMBER(NULL)                                            seq                -- 出力順
+                    ,cv_line_kbn                                                header_line_kbn    -- ヘッダ/明細区分
+                    ,cv_record_kbn1                                             record_kbn         -- レコード区分
+                    ,TO_CHAR(xih.inv_creation_date,cv_format_date_yyyymmdd)     issue_date         -- 発行日付
+                    ,NULL                                                       zip_code           -- 郵便番号
+                    ,NULL                                                       send_address1      -- 住所１
+                    ,NULL                                                       send_address2      -- 住所２
+                    ,NULL                                                       send_address3      -- 住所３
+                    ,get_21account_rec.bill_account_number                      bill_cust_code     -- 顧客コード
+                    ,NULL                                                       bill_cust_name     -- 顧客名
+                    ,NULL                                                       location_name      -- 拠点名
+                    ,NULL                                                       phone_num          -- 電話番号
+                    ,xih.object_month                                           object_month       -- 対象年月
+                    ,get_21account_rec.bill_account_number||' '||xih.term_name  ar_concat_text     -- 売掛管理コード連結文字列
+                    ,DECODE(get_14account_rec.bill_tax_div,cv_tax_div_excluded,cv_out_div_excluded
+                                                          ,cv_tax_div_nontax,cv_out_div_excluded
+                                                                            ,cv_out_div_included)
+                                                                                out_put_div        -- 請求書出力区分
+                    ,NULL                                                       inv_amount         -- 当月お買い上げ額
+                    ,NULL                                                       tax_amount         -- 消費税等
+                    ,NULL                                                       total_amount       -- 当月請求額
+                    ,TO_CHAR(xih.payment_date,cv_format_date_yyyymmdd)          payment_date       -- 入金予定日
+                    ,CASE WHEN bank.bank_account_num IS NULL THEN
+                       NULL
+                     ELSE
+                       DECODE(SUBSTR(bank.bank_number,1,1)
+                             ,gv_format_bank_dummy, NULL -- ダミー銀行の場合はNULL
+                             ,CASE WHEN TO_NUMBER(bank.bank_number) < 1000  THEN
+                                CASE WHEN INSTR(bank.bank_name
+                                               ,gv_format_bank) > 0
+                                THEN
+                                  bank.bank_name
+                                ELSE
+                                  bank.bank_name || gv_format_bank
+                                END
+                              ELSE
+                                bank.bank_name 
+                              END)
+                     END                                                        banc_number        -- 銀行名
+                    ,CASE WHEN bank.bank_account_num IS NULL THEN
+                       NULL
+                     ELSE
+                       DECODE(SUBSTR(bank.bank_number,1,1)
+                             ,gv_format_bank_dummy, NULL -- ダミー銀行の場合はNULL
+                             ,CASE WHEN INSTR(bank.bank_branch_name
+                                             ,gv_format_central) > 0
+                              THEN
+                                bank.bank_branch_name
+                              ELSE
+                                bank.bank_branch_name || gv_format_branch
+                              END)
+                     END                                                        bank_branch_number -- 支店名
+                    ,CASE WHEN bank.bank_account_num IS NULL THEN
+                       NULL
+                     ELSE
+                       DECODE(SUBSTR(bank.bank_number,1,1)
+                             ,gv_format_bank_dummy, NULL -- ダミー銀行の場合はNULL
+                             ,DECODE(bank.bank_account_type
+                                    ,1, gv_format_account
+                                    ,2, gv_format_current
+                                    ,bank.bank_account_type))
+                     END                                                        bank_account_type  -- 口座種別
+                    ,CASE WHEN bank.bank_account_num IS NULL THEN
+                       NULL
+                     ELSE
+                       DECODE(SUBSTR(bank.bank_number,1,1)
+                             ,gv_format_bank_dummy, NULL -- ダミー銀行の場合はNULL
+                             ,bank.bank_account_num)
+                     END                                                        bank_account_num   -- 口座番号
+                    ,CASE WHEN bank.bank_account_num IS NULL THEN
+                       NULL
+                     ELSE
+                       DECODE(SUBSTR(bank.bank_number,1,1)
+                             ,gv_format_bank_dummy, NULL -- ダミー銀行の場合はNULL
+                             ,bank.account_holder_name_alt)
+                     END                                                        bank_account_name  -- 口座名義人カナ名
+                    ,xxca.invoice_code                                          ship_cust_code     -- 店舗コード
+                    ,hzp.party_name                                             ship_cust_name     -- 店舗名
+                    ,TO_CHAR(DECODE(xil.acceptance_date,NULL
+                                   ,xil.delivery_date
+                                   ,xil.acceptance_date)
+                                   ,cv_format_date_yyyymmdd)                          slip_date    -- 伝票日付
+                    ,xil.slip_num                                                     slip_num     -- 伝票番号
+                    ,SUM(CASE
+                         WHEN get_14account_rec.bill_tax_div IN (cv_tax_div_nontax
+                                                                ,cv_tax_div_excluded)
+                         THEN
+                              xil.ship_amount
+                         ELSE
+                              xil.tax_amount + xil.ship_amount
+                         END)                                                         slip_sum          -- 伝票金額
+                    ,cv_layout_kbn2                                                   layout_kbn        -- レイアウト区分
+                    ,SUM(xil.ship_amount)                                             slip_sum_ex_tax   -- 伝票税抜額
+                    ,SUM(xil.tax_amount)                                              slip_tax          -- 伝票税額
+                    ,get_14account_rec.cash_account_number                            payment_cust_code -- 入金先顧客コード
+                    ,get_14account_rec.cash_account_name                              payment_cust_name -- 入金先顧客名
+              FROM xxcfr_invoice_headers          xih  , -- 請求ヘッダ
+                   xxcfr_invoice_lines            xil  , -- 請求明細
+                   hz_cust_accounts               hzca , -- 顧客20顧客マスタ
+                   hz_parties                     hzp  , -- 顧客20パーティマスタ
+                   xxcmm_cust_accounts            xxca , -- 顧客10追加情報
+                   (SELECT all_account_rec.customer_code ship_cust_code
+                          ,rcrm.customer_id             customer_id
+                          ,abb.bank_number              bank_number
+                          ,abb.bank_name                bank_name
+                          ,abb.bank_branch_name         bank_branch_name
+                          ,abaa.bank_account_type       bank_account_type
+                          ,abaa.bank_account_num        bank_account_num
+                          ,abaa.account_holder_name     account_holder_name
+                          ,abaa.account_holder_name_alt account_holder_name_alt
+                    FROM   ra_cust_receipt_methods        rcrm                 --支払方法情報
+                          ,ar_receipt_method_accounts_all arma                 --AR支払方法口座
+                          ,ap_bank_accounts_all           abaa                 --銀行口座
+                          ,ap_bank_branches               abb                  --銀行支店
+                    WHERE  rcrm.primary_flag      = cv_flag_yes
+                      AND  get_14account_rec.cash_account_id = rcrm.customer_id
+                      AND  gd_target_date   BETWEEN rcrm.start_date
+                                                AND NVL(rcrm.end_date, gd_max_date)
+                      AND  rcrm.site_use_id      IS NOT NULL
+                      AND  rcrm.receipt_method_id = arma.receipt_method_id(+)
+                      AND  arma.bank_account_id   = abaa.bank_account_id(+)
+                      AND  abaa.bank_branch_id    = abb.bank_branch_id(+)
+                      AND  arma.org_id            = gn_org_id
+                      AND  abaa.org_id            = gn_org_id) bank            -- 銀行口座ビュー
+              WHERE xih.invoice_id = xil.invoice_id
+                AND xil.cutoff_date = gd_target_date
+                AND xil.ship_cust_code = bank.ship_cust_code(+)                -- 外部結合のためのダミー結合
+                AND xih.set_of_books_id = gn_set_of_bks_id
+                AND xih.org_id = gn_org_id
+                AND xil.ship_cust_code = all_account_rec.customer_code
+                AND xxca.customer_id = all_account_rec.customer_id
+                AND hzca.account_number = xxca.invoice_code
+                AND hzp.party_id = hzca.party_id
+              GROUP BY xih.inv_creation_date,                                               -- 発行日付
+                       xih.object_month,                                                    -- 対象年月
+                       xih.term_name,                                                       -- 支払条件
+                       xih.payment_date,                                                    -- 入金予定日
+                       CASE WHEN bank.bank_account_num IS NULL THEN
+                         NULL
+                       ELSE
+                         DECODE(SUBSTR(bank.bank_number,1,1)
+                               ,gv_format_bank_dummy, NULL -- ダミー銀行の場合はNULL
+                               ,CASE WHEN TO_NUMBER(bank.bank_number) < 1000  THEN
+                                  CASE WHEN INSTR(bank.bank_name
+                                                 ,gv_format_bank) > 0
+                                  THEN
+                                    bank.bank_name
+                                  ELSE
+                                    bank.bank_name || gv_format_bank
+                                  END
+                                ELSE
+                                  bank.bank_name 
+                                END)
+                       END,                                                                 -- 銀行名
+                       CASE WHEN bank.bank_account_num IS NULL THEN
+                         NULL
+                       ELSE
+                         DECODE(SUBSTR(bank.bank_number,1,1)
+                               ,gv_format_bank_dummy, NULL -- ダミー銀行の場合はNULL
+                               ,CASE WHEN INSTR(bank.bank_branch_name
+                                               ,gv_format_central) > 0
+                                THEN
+                                  bank.bank_branch_name
+                                ELSE
+                                  bank.bank_branch_name || gv_format_branch
+                                END)
+                       END,                                                                 -- 支店名
+                       CASE WHEN bank.bank_account_num IS NULL THEN
+                         NULL
+                       ELSE
+                         DECODE(SUBSTR(bank.bank_number,1,1)
+                               ,gv_format_bank_dummy, NULL -- ダミー銀行の場合はNULL
+                               ,DECODE(bank.bank_account_type
+                                      ,1, gv_format_account
+                                      ,2, gv_format_current
+                                      ,bank.bank_account_type))
+                       END,                                                                 -- 口座種別
+                       CASE WHEN bank.bank_account_num IS NULL THEN
+                         NULL
+                       ELSE
+                         DECODE(SUBSTR(bank.bank_number,1,1)
+                               ,gv_format_bank_dummy, NULL -- ダミー銀行の場合はNULL
+                               ,bank.bank_account_num)
+                       END,                                                                 -- 口座番号
+                       CASE WHEN bank.bank_account_num IS NULL THEN
+                         NULL
+                       ELSE
+                         DECODE(SUBSTR(bank.bank_number,1,1)
+                               ,gv_format_bank_dummy, NULL -- ダミー銀行の場合はNULL
+                               ,bank.account_holder_name_alt)
+                       END,                                                                 -- 口座名義人カナ名
+                       xxca.invoice_code,                                                   -- 店舗コード
+                       hzp.party_name,                                                      -- 店舗名
+                       TO_CHAR(DECODE(xil.acceptance_date,NULL
+                                     ,xil.delivery_date
+                                     ,xil.acceptance_date)
+                                     ,cv_format_date_yyyymmdd),                             -- 伝票日付
+                       xil.slip_num;                                                        -- 伝票番号
+--
+              gn_target_cnt := gn_target_cnt + SQL%ROWCOUNT;
+--
+            END IF;
+--
+            CLOSE get_21account_cur;
+--
+          -- 請求書印刷単位 IN ('A3','A6') 請求書用顧客でまとめる
+          ELSIF (all_account_rec.invoice_printing_unit IN (cv_invoice_printing_unit_a3,cv_invoice_printing_unit_a6))
+            AND (get_14account_rec.bill_invoice_type = cv_inv_prt_type) -- 請求書出力形式 = 4.業者委託
+            AND (get_14account_rec.cons_inv_flag = cv_flag_yes)         -- 一括請求書発行フラグ
+          THEN
+            OPEN get_20account_cur(all_account_rec.customer_id);
+            FETCH get_20account_cur INTO get_20account_rec;
+            --顧客区分20の顧客が存在しない場合
+            IF get_20account_cur%NOTFOUND THEN
+              -- 顧客区分20存在なしメッセージ出力
+              put_account_warning(iv_customer_class_code => cv_customer_class_code20
+                                  ,iv_customer_code       => all_account_rec.customer_code
+                                  ,ov_errbuf              => lv_errbuf
+                                  ,ov_retcode             => lv_retcode
+                                  ,ov_errmsg              => lv_errmsg);
+              IF (lv_retcode = cv_status_error) THEN
+                --(エラー処理)
+                RAISE global_process_expt;
+              END IF;
+            ELSE
+              INSERT INTO xxcfr_csv_outs_temp(
+                request_id       -- 要求ID
+               ,seq              -- 出力順
+               ,col1             -- ヘッダ/明細区分
+               ,col2             -- レコード区分
+               ,col3             -- 発行日付
+               ,col4             -- 郵便番号
+               ,col5             -- 住所１
+               ,col6             -- 住所２
+               ,col7             -- 住所３
+               ,col8             -- 顧客コード
+               ,col9             -- 顧客名
+               ,col10            -- 担当拠点名
+               ,col11            -- 電話番号
+               ,col12            -- 対象年月
+               ,col13            -- 売掛管理コード連結文字列
+               ,col14            -- 請求書出力区分
+               ,col15            -- 当月お買い上げ額
+               ,col16            -- 消費税等
+               ,col17            -- 当月請求額
+               ,col18            -- 入金予定日
+               ,col19            -- 振込先銀行名
+               ,col20            -- 振込先銀行支店名
+               ,col21            -- 振込先口座種別
+               ,col22            -- 振込先口座番号
+               ,col23            -- 振込先口座名義人カナ名
+               ,col24            -- 店舗コード
+               ,col25            -- 店舗名
+               ,col26            -- 伝票日付
+               ,col27            -- 伝票No
+               ,col28            -- 伝票金額
+               ,col29            -- レイアウト区分
+               ,col101           -- 伝票税抜額(非出力項目)
+               ,col102           -- 伝票税額(非出力項目)
+               ,col103           -- 入金先顧客コード(非出力項目)
+               ,col104)          -- 入金先顧客名(非出力項目)
+              SELECT cn_request_id                                              request_id         -- 要求ID
+                    ,TO_NUMBER(NULL)                                            seq                -- 出力順
+                    ,cv_line_kbn                                                header_line_kbn    -- ヘッダ/明細区分
+                    ,cv_record_kbn1                                             record_kbn         -- レコード区分
+                    ,TO_CHAR(xih.inv_creation_date,cv_format_date_yyyymmdd)     issue_date         -- 発行日付
+                    ,NULL                                                       zip_code           -- 郵便番号
+                    ,NULL                                                       send_address1      -- 住所１
+                    ,NULL                                                       send_address2      -- 住所２
+                    ,NULL                                                       send_address3      -- 住所３
+                    ,get_20account_rec.bill_account_number                      bill_cust_code     -- 顧客コード
+                    ,NULL                                                       bill_cust_name     -- 顧客名
+                    ,NULL                                                       location_name      -- 拠点名
+                    ,NULL                                                       phone_num          -- 電話番号
+                    ,xih.object_month                                           object_month       -- 対象年月
+                    ,get_20account_rec.bill_account_number||' '||xih.term_name  ar_concat_text     -- 売掛管理コード連結文字列
+                    ,DECODE(get_14account_rec.bill_tax_div,cv_tax_div_excluded,cv_out_div_excluded
+                                                          ,cv_tax_div_nontax,cv_out_div_excluded
+                                                                            ,cv_out_div_included)
+                                                                                out_put_div        -- 請求書出力区分
+                    ,NULL                                                       inv_amount         -- 当月お買い上げ額
+                    ,NULL                                                       tax_amount         -- 消費税等
+                    ,NULL                                                       total_amount       -- 当月請求額
+                    ,TO_CHAR(xih.payment_date,cv_format_date_yyyymmdd)          payment_date       -- 入金予定日
+                    ,CASE WHEN bank.bank_account_num IS NULL THEN
+                       NULL
+                     ELSE
+                       DECODE(SUBSTR(bank.bank_number,1,1)
+                             ,gv_format_bank_dummy, NULL -- ダミー銀行の場合はNULL
+                             ,CASE WHEN TO_NUMBER(bank.bank_number) < 1000  THEN
+                                CASE WHEN INSTR(bank.bank_name
+                                               ,gv_format_bank) > 0
+                                THEN
+                                  bank.bank_name
+                                ELSE
+                                  bank.bank_name || gv_format_bank
+                                END
+                              ELSE
+                                bank.bank_name 
+                              END)
+                     END                                                        banc_number        -- 銀行名
+                    ,CASE WHEN bank.bank_account_num IS NULL THEN
+                       NULL
+                     ELSE
+                       DECODE(SUBSTR(bank.bank_number,1,1)
+                             ,gv_format_bank_dummy, NULL -- ダミー銀行の場合はNULL
+                             ,CASE WHEN INSTR(bank.bank_branch_name
+                                             ,gv_format_central) > 0
+                              THEN
+                                bank.bank_branch_name
+                              ELSE
+                                bank.bank_branch_name || gv_format_branch
+                              END)
+                     END                                                        bank_branch_number -- 支店名
+                    ,CASE WHEN bank.bank_account_num IS NULL THEN
+                       NULL
+                     ELSE
+                       DECODE(SUBSTR(bank.bank_number,1,1)
+                             ,gv_format_bank_dummy, NULL -- ダミー銀行の場合はNULL
+                             ,DECODE(bank.bank_account_type
+                                    ,1, gv_format_account
+                                    ,2, gv_format_current
+                                    ,bank.bank_account_type))
+                     END                                                        bank_account_type  -- 口座種別
+                    ,CASE WHEN bank.bank_account_num IS NULL THEN
+                       NULL
+                     ELSE
+                       DECODE(SUBSTR(bank.bank_number,1,1)
+                             ,gv_format_bank_dummy, NULL -- ダミー銀行の場合はNULL
+                             ,bank.bank_account_num)
+                     END                                                        bank_account_num   -- 口座番号
+                    ,CASE WHEN bank.bank_account_num IS NULL THEN
+                       NULL
+                     ELSE
+                       DECODE(SUBSTR(bank.bank_number,1,1)
+                             ,gv_format_bank_dummy, NULL -- ダミー銀行の場合はNULL
+                             ,bank.account_holder_name_alt)
+                     END                                                        bank_account_name  -- 口座名義人カナ名
+                    ,xil.ship_cust_code                                         ship_cust_code     -- 店舗コード
+                    ,hzp.party_name                                             ship_cust_name     -- 店舗名
+                    ,TO_CHAR(DECODE(xil.acceptance_date,NULL
+                                   ,xil.delivery_date
+                                   ,xil.acceptance_date)
+                                   ,cv_format_date_yyyymmdd)                          slip_date    -- 伝票日付
+                    ,xil.slip_num                                                     slip_num     -- 伝票番号
+                    ,SUM(CASE
+                         WHEN get_14account_rec.bill_tax_div IN (cv_tax_div_nontax
+                                                                ,cv_tax_div_excluded)
+                         THEN
+                              xil.ship_amount
+                         ELSE
+                              xil.tax_amount + xil.ship_amount
+                         END)                                                         slip_sum          -- 伝票金額
+                    ,cv_layout_kbn2                                                   layout_kbn        -- レイアウト区分
+                    ,SUM(xil.ship_amount)                                             slip_sum_ex_tax   -- 伝票税抜額
+                    ,SUM(xil.tax_amount)                                              slip_tax          -- 伝票税額
+                    ,get_14account_rec.cash_account_number                            payment_cust_code -- 入金先顧客コード
+                    ,get_14account_rec.cash_account_name                              payment_cust_name -- 入金先顧客名
+              FROM xxcfr_invoice_headers          xih  , -- 請求ヘッダ
+                   xxcfr_invoice_lines            xil  , -- 請求明細
+                   hz_cust_accounts               hzca , -- 顧客10顧客マスタ
+                   hz_parties                     hzp  , -- 顧客10パーティマスタ
+                   (SELECT all_account_rec.customer_code ship_cust_code
+                          ,rcrm.customer_id             customer_id
+                          ,abb.bank_number              bank_number
+                          ,abb.bank_name                bank_name
+                          ,abb.bank_branch_name         bank_branch_name
+                          ,abaa.bank_account_type       bank_account_type
+                          ,abaa.bank_account_num        bank_account_num
+                          ,abaa.account_holder_name     account_holder_name
+                          ,abaa.account_holder_name_alt account_holder_name_alt
+                    FROM   ra_cust_receipt_methods        rcrm                 --支払方法情報
+                          ,ar_receipt_method_accounts_all arma                 --AR支払方法口座
+                          ,ap_bank_accounts_all           abaa                 --銀行口座
+                          ,ap_bank_branches               abb                  --銀行支店
+                    WHERE  rcrm.primary_flag      = cv_flag_yes
+                      AND  get_14account_rec.cash_account_id = rcrm.customer_id
+                      AND  gd_target_date   BETWEEN rcrm.start_date
+                                                AND NVL(rcrm.end_date, gd_max_date)
+                      AND  rcrm.site_use_id      IS NOT NULL
+                      AND  rcrm.receipt_method_id = arma.receipt_method_id(+)
+                      AND  arma.bank_account_id   = abaa.bank_account_id(+)
+                      AND  abaa.bank_branch_id    = abb.bank_branch_id(+)
+                      AND  arma.org_id            = gn_org_id
+                      AND  abaa.org_id            = gn_org_id) bank            -- 銀行口座ビュー
+              WHERE xih.invoice_id = xil.invoice_id
+                AND xil.cutoff_date = gd_target_date
+                AND xil.ship_cust_code = bank.ship_cust_code(+)                -- 外部結合のためのダミー結合
+                AND xih.set_of_books_id = gn_set_of_bks_id
+                AND xih.org_id = gn_org_id
+                AND xil.ship_cust_code = all_account_rec.customer_code
+                AND hzca.cust_account_id = all_account_rec.customer_id
+                AND hzp.party_id = hzca.party_id
+              GROUP BY xih.inv_creation_date,                                               -- 発行日付
+                       xih.object_month,                                                    -- 対象年月
+                       xih.term_name,                                                       -- 支払条件
+                       xih.payment_date,                                                    -- 入金予定日
+                       CASE WHEN bank.bank_account_num IS NULL THEN
+                         NULL
+                       ELSE
+                         DECODE(SUBSTR(bank.bank_number,1,1)
+                               ,gv_format_bank_dummy, NULL -- ダミー銀行の場合はNULL
+                               ,CASE WHEN TO_NUMBER(bank.bank_number) < 1000  THEN
+                                  CASE WHEN INSTR(bank.bank_name
+                                                 ,gv_format_bank) > 0
+                                  THEN
+                                    bank.bank_name
+                                  ELSE
+                                    bank.bank_name || gv_format_bank
+                                  END
+                                ELSE
+                                  bank.bank_name 
+                                END)
+                       END,                                                                 -- 銀行名
+                       CASE WHEN bank.bank_account_num IS NULL THEN
+                         NULL
+                       ELSE
+                         DECODE(SUBSTR(bank.bank_number,1,1)
+                               ,gv_format_bank_dummy, NULL -- ダミー銀行の場合はNULL
+                               ,CASE WHEN INSTR(bank.bank_branch_name
+                                               ,gv_format_central) > 0
+                                THEN
+                                  bank.bank_branch_name
+                                ELSE
+                                  bank.bank_branch_name || gv_format_branch
+                                END)
+                       END,                                                                 -- 支店名
+                       CASE WHEN bank.bank_account_num IS NULL THEN
+                         NULL
+                       ELSE
+                         DECODE(SUBSTR(bank.bank_number,1,1)
+                               ,gv_format_bank_dummy, NULL -- ダミー銀行の場合はNULL
+                               ,DECODE(bank.bank_account_type
+                                      ,1, gv_format_account
+                                      ,2, gv_format_current
+                                      ,bank.bank_account_type))
+                       END,                                                                 -- 口座種別
+                       CASE WHEN bank.bank_account_num IS NULL THEN
+                         NULL
+                       ELSE
+                         DECODE(SUBSTR(bank.bank_number,1,1)
+                               ,gv_format_bank_dummy, NULL -- ダミー銀行の場合はNULL
+                               ,bank.bank_account_num)
+                       END,                                                                 -- 口座番号
+                       CASE WHEN bank.bank_account_num IS NULL THEN
+                         NULL
+                       ELSE
+                         DECODE(SUBSTR(bank.bank_number,1,1)
+                               ,gv_format_bank_dummy, NULL -- ダミー銀行の場合はNULL
+                               ,bank.account_holder_name_alt)
+                       END,                                                                 -- 口座名義人カナ名
+                       xil.ship_cust_code,                                                  -- 店舗コード
+                       hzp.party_name,                                                      -- 店舗名
+                       TO_CHAR(DECODE(xil.acceptance_date,NULL
+                                     ,xil.delivery_date
+                                     ,xil.acceptance_date)
+                                     ,cv_format_date_yyyymmdd),                             -- 伝票日付
+                       xil.slip_num;                                                        -- 伝票番号
+--
+              gn_target_cnt := gn_target_cnt + SQL%ROWCOUNT;
+--
+            END IF;
+--
+            CLOSE get_20account_cur;
+--
+          -- 請求書印刷単位 = 'N1' 顧客区分10単位で送付
+          ELSIF (all_account_rec.invoice_printing_unit = cv_invoice_printing_unit_n1)
+            AND (get_14account_rec.bill_invoice_type = cv_inv_prt_type) -- 請求書出力形式 = 4.業者委託
+            AND (get_14account_rec.cons_inv_flag = cv_flag_yes)         -- 一括請求書発行フラグ = 'Y'
+          THEN
+            INSERT INTO xxcfr_csv_outs_temp(
+              request_id       -- 要求ID
+             ,seq              -- 出力順
+             ,col1             -- ヘッダ/明細区分
+             ,col2             -- レコード区分
+             ,col3             -- 発行日付
+             ,col4             -- 郵便番号
+             ,col5             -- 住所１
+             ,col6             -- 住所２
+             ,col7             -- 住所３
+             ,col8             -- 顧客コード
+             ,col9             -- 顧客名
+             ,col10            -- 担当拠点名
+             ,col11            -- 電話番号
+             ,col12            -- 対象年月
+             ,col13            -- 売掛管理コード連結文字列
+             ,col14            -- 請求書出力区分
+             ,col15            -- 当月お買い上げ額
+             ,col16            -- 消費税等
+             ,col17            -- 当月請求額
+             ,col18            -- 入金予定日
+             ,col19            -- 振込先銀行名
+             ,col20            -- 振込先銀行支店名
+             ,col21            -- 振込先口座種別
+             ,col22            -- 振込先口座番号
+             ,col23            -- 振込先口座名義人カナ名
+             ,col24            -- 店舗コード
+             ,col25            -- 店舗名
+             ,col26            -- 伝票日付
+             ,col27            -- 伝票No
+             ,col28            -- 伝票金額
+             ,col29            -- レイアウト区分
+             ,col101           -- 伝票税抜額(非出力項目)
+             ,col102           -- 伝票税額(非出力項目)
+             ,col103           -- 入金先顧客コード(非出力項目)
+             ,col104)          -- 入金先顧客名(非出力項目)
+            SELECT cn_request_id                                              request_id         -- 要求ID
+                  ,TO_NUMBER(NULL)                                            seq                -- 出力順
+                  ,cv_line_kbn                                                header_line_kbn    -- ヘッダ/明細区分
+                  ,cv_record_kbn1                                             record_kbn         -- レコード区分
+                  ,TO_CHAR(xih.inv_creation_date,cv_format_date_yyyymmdd)     issue_date         -- 発行日付
+                  ,NULL                                                       zip_code           -- 郵便番号
+                  ,NULL                                                       send_address1      -- 住所１
+                  ,NULL                                                       send_address2      -- 住所２
+                  ,NULL                                                       send_address3      -- 住所３
+                  ,xil.ship_cust_code                                         bill_cust_code     -- 顧客コード
+                  ,NULL                                                       bill_cust_name     -- 顧客名
+                  ,NULL                                                       location_name      -- 拠点名
+                  ,NULL                                                       phone_num          -- 電話番号
+                  ,xih.object_month                                           object_month       -- 対象年月
+                  ,xil.ship_cust_code||' '||xih.term_name                     ar_concat_text     -- 売掛管理コード連結文字列
+                  ,DECODE(get_14account_rec.bill_tax_div,cv_tax_div_excluded,cv_out_div_excluded
+                                                        ,cv_tax_div_nontax,cv_out_div_excluded
+                                                                          ,cv_out_div_included)
+                                                                              out_put_div        -- 請求書出力区分
+                  ,NULL                                                       inv_amount         -- 当月お買い上げ額
+                  ,NULL                                                       tax_amount         -- 消費税等
+                  ,NULL                                                       total_amount       -- 当月請求額
+                  ,TO_CHAR(xih.payment_date,cv_format_date_yyyymmdd)          payment_date       -- 入金予定日
+                  ,CASE WHEN bank.bank_account_num IS NULL THEN
+                     NULL
+                   ELSE
+                     DECODE(SUBSTR(bank.bank_number,1,1)
+                           ,gv_format_bank_dummy, NULL -- ダミー銀行の場合はNULL
+                           ,CASE WHEN TO_NUMBER(bank.bank_number) < 1000  THEN
+                              CASE WHEN INSTR(bank.bank_name
+                                             ,gv_format_bank) > 0
+                              THEN
+                                bank.bank_name
+                              ELSE
+                                bank.bank_name || gv_format_bank
+                              END
+                            ELSE
+                              bank.bank_name 
+                            END)
+                   END                                                        banc_number        -- 銀行名
+                  ,CASE WHEN bank.bank_account_num IS NULL THEN
+                     NULL
+                   ELSE
+                     DECODE(SUBSTR(bank.bank_number,1,1)
+                           ,gv_format_bank_dummy, NULL -- ダミー銀行の場合はNULL
+                           ,CASE WHEN INSTR(bank.bank_branch_name
+                                           ,gv_format_central) > 0
+                            THEN
+                              bank.bank_branch_name
+                            ELSE
+                              bank.bank_branch_name || gv_format_branch
+                            END)
+                   END                                                        bank_branch_number -- 支店名
+                  ,CASE WHEN bank.bank_account_num IS NULL THEN
+                     NULL
+                   ELSE
+                     DECODE(SUBSTR(bank.bank_number,1,1)
+                           ,gv_format_bank_dummy, NULL -- ダミー銀行の場合はNULL
+                           ,DECODE(bank.bank_account_type
+                                  ,1, gv_format_account
+                                  ,2, gv_format_current
+                                  ,bank.bank_account_type))
+                   END                                                        bank_account_type  -- 口座種別
+                  ,CASE WHEN bank.bank_account_num IS NULL THEN
+                     NULL
+                   ELSE
+                     DECODE(SUBSTR(bank.bank_number,1,1)
+                           ,gv_format_bank_dummy, NULL -- ダミー銀行の場合はNULL
+                           ,bank.bank_account_num)
+                   END                                                        bank_account_num   -- 口座番号
+                  ,CASE WHEN bank.bank_account_num IS NULL THEN
+                     NULL
+                   ELSE
+                     DECODE(SUBSTR(bank.bank_number,1,1)
+                           ,gv_format_bank_dummy, NULL -- ダミー銀行の場合はNULL
+                           ,bank.account_holder_name_alt)
+                   END                                                        bank_account_name  -- 口座名義人カナ名
+                  ,NULL                                                       ship_cust_code     -- 店舗コード
+                  ,NULL                                                       ship_cust_name     -- 店舗名
+                  ,TO_CHAR(DECODE(xil.acceptance_date,NULL
+                                 ,xil.delivery_date
+                                 ,xil.acceptance_date)
+                                 ,cv_format_date_yyyymmdd)                          slip_date    -- 伝票日付
+                  ,xil.slip_num                                                     slip_num     -- 伝票番号
+                  ,SUM(CASE
+                       WHEN get_14account_rec.bill_tax_div IN (cv_tax_div_nontax
+                                                              ,cv_tax_div_excluded)
+                       THEN
+                            xil.ship_amount
+                       ELSE
+                            xil.tax_amount + xil.ship_amount
+                       END)                                                         slip_sum     -- 伝票金額
+                  ,cv_layout_kbn1                                                   layout_kbn   -- レイアウト区分
+                  ,SUM(xil.ship_amount)                                             slip_sum_ex_tax  -- 伝票税抜額
+                  ,SUM(xil.tax_amount)                                              slip_tax         -- 伝票税額
+                  ,get_14account_rec.cash_account_number                            payment_cust_code -- 入金先顧客コード
+                  ,get_14account_rec.cash_account_name                              payment_cust_name -- 入金先顧客名
+            FROM xxcfr_invoice_headers          xih  , -- 請求ヘッダ
+                 xxcfr_invoice_lines            xil  , -- 請求明細
+                 (SELECT all_account_rec.customer_code ship_cust_code
+                        ,rcrm.customer_id             customer_id
+                        ,abb.bank_number              bank_number
+                        ,abb.bank_name                bank_name
+                        ,abb.bank_branch_name         bank_branch_name
+                        ,abaa.bank_account_type       bank_account_type
+                        ,abaa.bank_account_num        bank_account_num
+                        ,abaa.account_holder_name     account_holder_name
+                        ,abaa.account_holder_name_alt account_holder_name_alt
+                  FROM   ra_cust_receipt_methods        rcrm                 --支払方法情報
+                        ,ar_receipt_method_accounts_all arma                 --AR支払方法口座
+                        ,ap_bank_accounts_all           abaa                 --銀行口座
+                        ,ap_bank_branches               abb                  --銀行支店
+                  WHERE  rcrm.primary_flag      = cv_flag_yes
+                    AND  get_14account_rec.cash_account_id = rcrm.customer_id
+                    AND  gd_target_date   BETWEEN rcrm.start_date
+                                              AND NVL(rcrm.end_date, gd_max_date)
+                    AND  rcrm.site_use_id      IS NOT NULL
+                    AND  rcrm.receipt_method_id = arma.receipt_method_id(+)
+                    AND  arma.bank_account_id   = abaa.bank_account_id(+)
+                    AND  abaa.bank_branch_id    = abb.bank_branch_id(+)
+                    AND  arma.org_id            = gn_org_id
+                    AND  abaa.org_id            = gn_org_id) bank            -- 銀行口座ビュー
+            WHERE xih.invoice_id = xil.invoice_id
+              AND xil.cutoff_date = gd_target_date
+              AND xil.ship_cust_code = bank.ship_cust_code(+)                -- 外部結合のためのダミー結合
+              AND xih.set_of_books_id = gn_set_of_bks_id
+              AND xih.org_id = gn_org_id
+              AND xil.ship_cust_code = all_account_rec.customer_code
+            GROUP BY xih.inv_creation_date,                                               -- 発行日付
+                     xil.ship_cust_code,                                                  -- 顧客コード
+                     xih.object_month,                                                    -- 対象年月
+                     xih.term_name,                                                       -- 支払条件
+                     xih.payment_date,                                                    -- 入金予定日
+                     CASE WHEN bank.bank_account_num IS NULL THEN
+                       NULL
+                     ELSE
+                       DECODE(SUBSTR(bank.bank_number,1,1)
+                             ,gv_format_bank_dummy, NULL -- ダミー銀行の場合はNULL
+                             ,CASE WHEN TO_NUMBER(bank.bank_number) < 1000  THEN
+                                CASE WHEN INSTR(bank.bank_name
+                                               ,gv_format_bank) > 0
+                                THEN
+                                  bank.bank_name
+                                ELSE
+                                  bank.bank_name || gv_format_bank
+                                END
+                              ELSE
+                                bank.bank_name 
+                              END)
+                     END,                                                                 -- 銀行名
+                     CASE WHEN bank.bank_account_num IS NULL THEN
+                       NULL
+                     ELSE
+                       DECODE(SUBSTR(bank.bank_number,1,1)
+                             ,gv_format_bank_dummy, NULL -- ダミー銀行の場合はNULL
+                             ,CASE WHEN INSTR(bank.bank_branch_name
+                                             ,gv_format_central) > 0
+                              THEN
+                                bank.bank_branch_name
+                              ELSE
+                                bank.bank_branch_name || gv_format_branch
+                              END)
+                     END,                                                                 -- 支店名
+                     CASE WHEN bank.bank_account_num IS NULL THEN
+                       NULL
+                     ELSE
+                       DECODE(SUBSTR(bank.bank_number,1,1)
+                             ,gv_format_bank_dummy, NULL -- ダミー銀行の場合はNULL
+                             ,DECODE(bank.bank_account_type
+                                    ,1, gv_format_account
+                                    ,2, gv_format_current
+                                    ,bank.bank_account_type))
+                     END,                                                                 -- 口座種別
+                     CASE WHEN bank.bank_account_num IS NULL THEN
+                       NULL
+                     ELSE
+                       DECODE(SUBSTR(bank.bank_number,1,1)
+                             ,gv_format_bank_dummy, NULL -- ダミー銀行の場合はNULL
+                             ,bank.bank_account_num)
+                     END,                                                                 -- 口座番号
+                     CASE WHEN bank.bank_account_num IS NULL THEN
+                       NULL
+                     ELSE
+                       DECODE(SUBSTR(bank.bank_number,1,1)
+                             ,gv_format_bank_dummy, NULL -- ダミー銀行の場合はNULL
+                             ,bank.account_holder_name_alt)
+                     END,                                                                 -- 口座名義人カナ名
+                     TO_CHAR(DECODE(xil.acceptance_date,NULL
+                                   ,xil.delivery_date
+                                   ,xil.acceptance_date)
+                                   ,cv_format_date_yyyymmdd),                             -- 伝票日付
+                     xil.slip_num;                                                        -- 伝票番号
+--
+            gn_target_cnt := gn_target_cnt + SQL%ROWCOUNT;
+--
+          -- 請求書印刷単位 = 'N2' 売掛管理先顧客に送付
+          ELSIF (all_account_rec.invoice_printing_unit = cv_invoice_printing_unit_n2)
+            AND (get_14account_rec.bill_invoice_type = cv_inv_prt_type) -- 請求書出力形式 = 4.業者委託
+            AND (get_14account_rec.cons_inv_flag = cv_flag_yes)         -- 一括請求書発行フラグ = 'Y'
+          THEN
+            INSERT INTO xxcfr_csv_outs_temp(
+              request_id       -- 要求ID
+             ,seq              -- 出力順
+             ,col1             -- ヘッダ/明細区分
+             ,col2             -- レコード区分
+             ,col3             -- 発行日付
+             ,col4             -- 郵便番号
+             ,col5             -- 住所１
+             ,col6             -- 住所２
+             ,col7             -- 住所３
+             ,col8             -- 顧客コード
+             ,col9             -- 顧客名
+             ,col10            -- 担当拠点名
+             ,col11            -- 電話番号
+             ,col12            -- 対象年月
+             ,col13            -- 売掛管理コード連結文字列
+             ,col14            -- 請求書出力区分
+             ,col15            -- 当月お買い上げ額
+             ,col16            -- 消費税等
+             ,col17            -- 当月請求額
+             ,col18            -- 入金予定日
+             ,col19            -- 振込先銀行名
+             ,col20            -- 振込先銀行支店名
+             ,col21            -- 振込先口座種別
+             ,col22            -- 振込先口座番号
+             ,col23            -- 振込先口座名義人カナ名
+             ,col24            -- 店舗コード
+             ,col25            -- 店舗名
+             ,col26            -- 伝票日付
+             ,col27            -- 伝票No
+             ,col28            -- 伝票金額
+             ,col29            -- レイアウト区分
+             ,col101           -- 伝票税抜額(非出力項目)
+             ,col102           -- 伝票税額(非出力項目)
+             ,col103           -- 入金先顧客コード(非出力項目)
+             ,col104)          -- 入金先顧客名(非出力項目)
+            SELECT cn_request_id                                              request_id         -- 要求ID
+                  ,TO_NUMBER(NULL)                                            seq                -- 出力順
+                  ,cv_line_kbn                                                header_line_kbn    -- ヘッダ/明細区分
+                  ,cv_record_kbn1                                             record_kbn         -- レコード区分
+                  ,TO_CHAR(xih.inv_creation_date,cv_format_date_yyyymmdd)     issue_date         -- 発行日付
+                  ,NULL                                                       zip_code           -- 郵便番号
+                  ,NULL                                                       send_address1      -- 住所１
+                  ,NULL                                                       send_address2      -- 住所２
+                  ,NULL                                                       send_address3      -- 住所３
+                  ,get_14account_rec.cash_account_number                      bill_cust_code     -- 顧客コード
+                  ,NULL                                                       bill_cust_name     -- 顧客名
+                  ,NULL                                                       location_name      -- 拠点名
+                  ,NULL                                                       phone_num          -- 電話番号
+                  ,xih.object_month                                           object_month       -- 対象年月
+                  ,get_14account_rec.cash_account_number||' '||xih.term_name  ar_concat_text     -- 売掛管理コード連結文字列
+                  ,DECODE(get_14account_rec.bill_tax_div,cv_tax_div_excluded,cv_out_div_excluded
+                                                        ,cv_tax_div_nontax,cv_out_div_excluded
+                                                                          ,cv_out_div_included)
+                                                                              out_put_div        -- 請求書出力区分
+                  ,NULL                                                       inv_amount         -- 当月お買い上げ額
+                  ,NULL                                                       tax_amount         -- 消費税等
+                  ,NULL                                                       total_amount       -- 当月請求額
+                  ,TO_CHAR(xih.payment_date,cv_format_date_yyyymmdd)          payment_date       -- 入金予定日
+                  ,CASE WHEN bank.bank_account_num IS NULL THEN
+                     NULL
+                   ELSE
+                     DECODE(SUBSTR(bank.bank_number,1,1)
+                           ,gv_format_bank_dummy, NULL -- ダミー銀行の場合はNULL
+                           ,CASE WHEN TO_NUMBER(bank.bank_number) < 1000  THEN
+                              CASE WHEN INSTR(bank.bank_name
+                                             ,gv_format_bank) > 0
+                              THEN
+                                bank.bank_name
+                              ELSE
+                                bank.bank_name || gv_format_bank
+                              END
+                            ELSE
+                              bank.bank_name 
+                            END)
+                   END                                                        banc_number        -- 銀行名
+                  ,CASE WHEN bank.bank_account_num IS NULL THEN
+                     NULL
+                   ELSE
+                     DECODE(SUBSTR(bank.bank_number,1,1)
+                           ,gv_format_bank_dummy, NULL -- ダミー銀行の場合はNULL
+                           ,CASE WHEN INSTR(bank.bank_branch_name
+                                           ,gv_format_central) > 0
+                            THEN
+                              bank.bank_branch_name
+                            ELSE
+                              bank.bank_branch_name || gv_format_branch
+                            END)
+                   END                                                        bank_branch_number -- 支店名
+                  ,CASE WHEN bank.bank_account_num IS NULL THEN
+                     NULL
+                   ELSE
+                     DECODE(SUBSTR(bank.bank_number,1,1)
+                           ,gv_format_bank_dummy, NULL -- ダミー銀行の場合はNULL
+                           ,DECODE(bank.bank_account_type
+                                  ,1, gv_format_account
+                                  ,2, gv_format_current
+                                  ,bank.bank_account_type))
+                   END                                                        bank_account_type  -- 口座種別
+                  ,CASE WHEN bank.bank_account_num IS NULL THEN
+                     NULL
+                   ELSE
+                     DECODE(SUBSTR(bank.bank_number,1,1)
+                           ,gv_format_bank_dummy, NULL -- ダミー銀行の場合はNULL
+                           ,bank.bank_account_num)
+                   END                                                        bank_account_num   -- 口座番号
+                  ,CASE WHEN bank.bank_account_num IS NULL THEN
+                     NULL
+                   ELSE
+                     DECODE(SUBSTR(bank.bank_number,1,1)
+                           ,gv_format_bank_dummy, NULL -- ダミー銀行の場合はNULL
+                           ,bank.account_holder_name_alt)
+                   END                                                        bank_account_name  -- 口座名義人カナ名
+                  ,NULL                                                       ship_cust_code     -- 店舗コード
+                  ,NULL                                                       ship_cust_name     -- 店舗名
+                  ,TO_CHAR(DECODE(xil.acceptance_date,NULL
+                                 ,xil.delivery_date
+                                 ,xil.acceptance_date)
+                                 ,cv_format_date_yyyymmdd)                          slip_date    -- 伝票日付
+                  ,xil.slip_num                                                     slip_num     -- 伝票番号
+                  ,SUM(CASE
+                       WHEN get_14account_rec.bill_tax_div IN (cv_tax_div_nontax
+                                                              ,cv_tax_div_excluded)
+                       THEN
+                            xil.ship_amount
+                       ELSE
+                            xil.tax_amount + xil.ship_amount
+                       END)                                                         slip_sum          -- 伝票金額
+                  ,cv_layout_kbn1                                                   layout_kbn        -- レイアウト区分
+                  ,SUM(xil.ship_amount)                                             slip_sum_ex_tax   -- 伝票税抜額
+                  ,SUM(xil.tax_amount)                                              slip_tax          -- 伝票税額
+                  ,get_14account_rec.cash_account_number                            payment_cust_code -- 入金先顧客コード
+                  ,get_14account_rec.cash_account_name                              payment_cust_name -- 入金先顧客名
+            FROM xxcfr_invoice_headers          xih  , -- 請求ヘッダ
+                 xxcfr_invoice_lines            xil  , -- 請求明細
+                 (SELECT all_account_rec.customer_code ship_cust_code
+                        ,rcrm.customer_id             customer_id
+                        ,abb.bank_number              bank_number
+                        ,abb.bank_name                bank_name
+                        ,abb.bank_branch_name         bank_branch_name
+                        ,abaa.bank_account_type       bank_account_type
+                        ,abaa.bank_account_num        bank_account_num
+                        ,abaa.account_holder_name     account_holder_name
+                        ,abaa.account_holder_name_alt account_holder_name_alt
+                  FROM   ra_cust_receipt_methods        rcrm                 --支払方法情報
+                        ,ar_receipt_method_accounts_all arma                 --AR支払方法口座
+                        ,ap_bank_accounts_all           abaa                 --銀行口座
+                        ,ap_bank_branches               abb                  --銀行支店
+                  WHERE  rcrm.primary_flag      = cv_flag_yes
+                    AND  get_14account_rec.cash_account_id = rcrm.customer_id
+                    AND  gd_target_date   BETWEEN rcrm.start_date
+                                              AND NVL(rcrm.end_date, gd_max_date)
+                    AND  rcrm.site_use_id      IS NOT NULL
+                    AND  rcrm.receipt_method_id = arma.receipt_method_id(+)
+                    AND  arma.bank_account_id   = abaa.bank_account_id(+)
+                    AND  abaa.bank_branch_id    = abb.bank_branch_id(+)
+                    AND  arma.org_id            = gn_org_id
+                    AND  abaa.org_id            = gn_org_id) bank            -- 銀行口座ビュー
+            WHERE xih.invoice_id = xil.invoice_id
+              AND xil.cutoff_date = gd_target_date
+              AND xil.ship_cust_code = bank.ship_cust_code(+)                -- 外部結合のためのダミー結合
+              AND xih.set_of_books_id = gn_set_of_bks_id
+              AND xih.org_id = gn_org_id
+              AND xil.ship_cust_code = all_account_rec.customer_code
+            GROUP BY xih.inv_creation_date,                                               -- 発行日付
+                     xih.object_month,                                                    -- 対象年月
+                     xih.term_name,                                                       -- 支払条件
+                     xih.payment_date,                                                    -- 入金予定日
+                     CASE WHEN bank.bank_account_num IS NULL THEN
+                       NULL
+                     ELSE
+                       DECODE(SUBSTR(bank.bank_number,1,1)
+                             ,gv_format_bank_dummy, NULL -- ダミー銀行の場合はNULL
+                             ,CASE WHEN TO_NUMBER(bank.bank_number) < 1000  THEN
+                                CASE WHEN INSTR(bank.bank_name
+                                               ,gv_format_bank) > 0
+                                THEN
+                                  bank.bank_name
+                                ELSE
+                                  bank.bank_name || gv_format_bank
+                                END
+                              ELSE
+                                bank.bank_name 
+                              END)
+                     END,                                                                 -- 銀行名
+                     CASE WHEN bank.bank_account_num IS NULL THEN
+                       NULL
+                     ELSE
+                       DECODE(SUBSTR(bank.bank_number,1,1)
+                             ,gv_format_bank_dummy, NULL -- ダミー銀行の場合はNULL
+                             ,CASE WHEN INSTR(bank.bank_branch_name
+                                             ,gv_format_central) > 0
+                              THEN
+                                bank.bank_branch_name
+                              ELSE
+                                bank.bank_branch_name || gv_format_branch
+                              END)
+                     END,                                                                 -- 支店名
+                     CASE WHEN bank.bank_account_num IS NULL THEN
+                       NULL
+                     ELSE
+                       DECODE(SUBSTR(bank.bank_number,1,1)
+                             ,gv_format_bank_dummy, NULL -- ダミー銀行の場合はNULL
+                             ,DECODE(bank.bank_account_type
+                                    ,1, gv_format_account
+                                    ,2, gv_format_current
+                                    ,bank.bank_account_type))
+                     END,                                                                 -- 口座種別
+                     CASE WHEN bank.bank_account_num IS NULL THEN
+                       NULL
+                     ELSE
+                       DECODE(SUBSTR(bank.bank_number,1,1)
+                             ,gv_format_bank_dummy, NULL -- ダミー銀行の場合はNULL
+                             ,bank.bank_account_num)
+                     END,                                                                 -- 口座番号
+                     CASE WHEN bank.bank_account_num IS NULL THEN
+                       NULL
+                     ELSE
+                       DECODE(SUBSTR(bank.bank_number,1,1)
+                             ,gv_format_bank_dummy, NULL -- ダミー銀行の場合はNULL
+                             ,bank.account_holder_name_alt)
+                     END,                                                                 -- 口座名義人カナ名
+                     TO_CHAR(DECODE(xil.acceptance_date,NULL
+                                   ,xil.delivery_date
+                                   ,xil.acceptance_date)
+                                   ,cv_format_date_yyyymmdd),                             -- 伝票日付
+                     xil.slip_num;                                                        -- 伝票番号
+--
+            gn_target_cnt := gn_target_cnt + SQL%ROWCOUNT;
+--
+          -- 請求書印刷単位 = 'N3' 請求書用顧客に送付
+          ELSIF (all_account_rec.invoice_printing_unit = cv_invoice_printing_unit_n3)
+            AND (get_14account_rec.bill_invoice_type = cv_inv_prt_type) -- 請求書出力形式 = 4.業者委託
+            AND (get_14account_rec.cons_inv_flag = cv_flag_yes)         -- 一括請求書発行フラグ
+          THEN
+            OPEN get_20account_cur(all_account_rec.customer_id);
+            FETCH get_20account_cur INTO get_20account_rec;
+            --顧客区分20の顧客が存在しない場合
+            IF get_20account_cur%NOTFOUND THEN
+              -- 顧客区分20存在なしメッセージ出力
+              put_account_warning(iv_customer_class_code => cv_customer_class_code20
+                                  ,iv_customer_code       => all_account_rec.customer_code
+                                  ,ov_errbuf              => lv_errbuf
+                                  ,ov_retcode             => lv_retcode
+                                  ,ov_errmsg              => lv_errmsg);
+              IF (lv_retcode = cv_status_error) THEN
+                --(エラー処理)
+                RAISE global_process_expt;
+              END IF;
+            ELSE
+              INSERT INTO xxcfr_csv_outs_temp(
+                request_id       -- 要求ID
+               ,seq              -- 出力順
+               ,col1             -- ヘッダ/明細区分
+               ,col2             -- レコード区分
+               ,col3             -- 発行日付
+               ,col4             -- 郵便番号
+               ,col5             -- 住所１
+               ,col6             -- 住所２
+               ,col7             -- 住所３
+               ,col8             -- 顧客コード
+               ,col9             -- 顧客名
+               ,col10            -- 担当拠点名
+               ,col11            -- 電話番号
+               ,col12            -- 対象年月
+               ,col13            -- 売掛管理コード連結文字列
+               ,col14            -- 請求書出力区分
+               ,col15            -- 当月お買い上げ額
+               ,col16            -- 消費税等
+               ,col17            -- 当月請求額
+               ,col18            -- 入金予定日
+               ,col19            -- 振込先銀行名
+               ,col20            -- 振込先銀行支店名
+               ,col21            -- 振込先口座種別
+               ,col22            -- 振込先口座番号
+               ,col23            -- 振込先口座名義人カナ名
+               ,col24            -- 店舗コード
+               ,col25            -- 店舗名
+               ,col26            -- 伝票日付
+               ,col27            -- 伝票No
+               ,col28            -- 伝票金額
+               ,col29            -- レイアウト区分
+               ,col101           -- 伝票税抜額(非出力項目)
+               ,col102           -- 伝票税額(非出力項目)
+               ,col103           -- 入金先顧客コード(非出力項目)
+               ,col104)          -- 入金先顧客名(非出力項目)
+              SELECT cn_request_id                                              request_id         -- 要求ID
+                    ,TO_NUMBER(NULL)                                            seq                -- 出力順
+                    ,cv_line_kbn                                                header_line_kbn    -- ヘッダ/明細区分
+                    ,cv_record_kbn1                                             record_kbn         -- レコード区分
+                    ,TO_CHAR(xih.inv_creation_date,cv_format_date_yyyymmdd)     issue_date         -- 発行日付
+                    ,NULL                                                       zip_code           -- 郵便番号
+                    ,NULL                                                       send_address1      -- 住所１
+                    ,NULL                                                       send_address2      -- 住所２
+                    ,NULL                                                       send_address3      -- 住所３
+                    ,get_20account_rec.bill_account_number                      bill_cust_code     -- 顧客コード
+                    ,NULL                                                       bill_cust_name     -- 顧客名
+                    ,NULL                                                       location_name      -- 拠点名
+                    ,NULL                                                       phone_num          -- 電話番号
+                    ,xih.object_month                                           object_month       -- 対象年月
+                    ,get_20account_rec.bill_account_number||' '||xih.term_name  ar_concat_text     -- 売掛管理コード連結文字列
+                    ,DECODE(get_14account_rec.bill_tax_div,cv_tax_div_excluded,cv_out_div_excluded
+                                                          ,cv_tax_div_nontax,cv_out_div_excluded
+                                                                            ,cv_out_div_included)
+                                                                                out_put_div        -- 請求書出力区分
+                    ,NULL                                                       inv_amount         -- 当月お買い上げ額
+                    ,NULL                                                       tax_amount         -- 消費税等
+                    ,NULL                                                       total_amount       -- 当月請求額
+                    ,TO_CHAR(xih.payment_date,cv_format_date_yyyymmdd)          payment_date       -- 入金予定日
+                    ,CASE WHEN bank.bank_account_num IS NULL THEN
+                       NULL
+                     ELSE
+                       DECODE(SUBSTR(bank.bank_number,1,1)
+                             ,gv_format_bank_dummy, NULL -- ダミー銀行の場合はNULL
+                             ,CASE WHEN TO_NUMBER(bank.bank_number) < 1000  THEN
+                                CASE WHEN INSTR(bank.bank_name
+                                               ,gv_format_bank) > 0
+                                THEN
+                                  bank.bank_name
+                                ELSE
+                                  bank.bank_name || gv_format_bank
+                                END
+                              ELSE
+                                bank.bank_name 
+                              END)
+                     END                                                        banc_number        -- 銀行名
+                    ,CASE WHEN bank.bank_account_num IS NULL THEN
+                       NULL
+                     ELSE
+                       DECODE(SUBSTR(bank.bank_number,1,1)
+                             ,gv_format_bank_dummy, NULL -- ダミー銀行の場合はNULL
+                             ,CASE WHEN INSTR(bank.bank_branch_name
+                                             ,gv_format_central) > 0
+                              THEN
+                                bank.bank_branch_name
+                              ELSE
+                                bank.bank_branch_name || gv_format_branch
+                              END)
+                     END                                                        bank_branch_number -- 支店名
+                    ,CASE WHEN bank.bank_account_num IS NULL THEN
+                       NULL
+                     ELSE
+                       DECODE(SUBSTR(bank.bank_number,1,1)
+                             ,gv_format_bank_dummy, NULL -- ダミー銀行の場合はNULL
+                             ,DECODE(bank.bank_account_type
+                                    ,1, gv_format_account
+                                    ,2, gv_format_current
+                                    ,bank.bank_account_type))
+                     END                                                        bank_account_type  -- 口座種別
+                    ,CASE WHEN bank.bank_account_num IS NULL THEN
+                       NULL
+                     ELSE
+                       DECODE(SUBSTR(bank.bank_number,1,1)
+                             ,gv_format_bank_dummy, NULL -- ダミー銀行の場合はNULL
+                             ,bank.bank_account_num)
+                     END                                                        bank_account_num   -- 口座番号
+                    ,CASE WHEN bank.bank_account_num IS NULL THEN
+                       NULL
+                     ELSE
+                       DECODE(SUBSTR(bank.bank_number,1,1)
+                             ,gv_format_bank_dummy, NULL -- ダミー銀行の場合はNULL
+                             ,bank.account_holder_name_alt)
+                     END                                                        bank_account_name  -- 口座名義人カナ名
+                    ,NULL                                                       ship_cust_code     -- 店舗コード
+                    ,NULL                                                       ship_cust_name     -- 店舗名
+                    ,TO_CHAR(DECODE(xil.acceptance_date,NULL
+                                   ,xil.delivery_date
+                                   ,xil.acceptance_date)
+                                   ,cv_format_date_yyyymmdd)                          slip_date    -- 伝票日付
+                    ,xil.slip_num                                                     slip_num     -- 伝票番号
+                    ,SUM(CASE
+                         WHEN get_14account_rec.bill_tax_div IN (cv_tax_div_nontax
+                                                                ,cv_tax_div_excluded)
+                         THEN
+                              xil.ship_amount
+                         ELSE
+                              xil.tax_amount + xil.ship_amount
+                         END)                                                         slip_sum          -- 伝票金額
+                    ,cv_layout_kbn1                                                   layout_kbn        -- レイアウト区分
+                    ,SUM(xil.ship_amount)                                             slip_sum_ex_tax   -- 伝票税抜額
+                    ,SUM(xil.tax_amount)                                              slip_tax          -- 伝票税額
+                    ,get_14account_rec.cash_account_number                            payment_cust_code -- 入金先顧客コード
+                    ,get_14account_rec.cash_account_name                              payment_cust_name -- 入金先顧客名
+              FROM xxcfr_invoice_headers          xih  , -- 請求ヘッダ
+                   xxcfr_invoice_lines            xil  , -- 請求明細
+                   (SELECT all_account_rec.customer_code ship_cust_code
+                          ,rcrm.customer_id             customer_id
+                          ,abb.bank_number              bank_number
+                          ,abb.bank_name                bank_name
+                          ,abb.bank_branch_name         bank_branch_name
+                          ,abaa.bank_account_type       bank_account_type
+                          ,abaa.bank_account_num        bank_account_num
+                          ,abaa.account_holder_name     account_holder_name
+                          ,abaa.account_holder_name_alt account_holder_name_alt
+                    FROM   ra_cust_receipt_methods        rcrm                 --支払方法情報
+                          ,ar_receipt_method_accounts_all arma                 --AR支払方法口座
+                          ,ap_bank_accounts_all           abaa                 --銀行口座
+                          ,ap_bank_branches               abb                  --銀行支店
+                    WHERE  rcrm.primary_flag      = cv_flag_yes
+                      AND  get_14account_rec.cash_account_id = rcrm.customer_id
+                      AND  gd_target_date   BETWEEN rcrm.start_date
+                                                AND NVL(rcrm.end_date, gd_max_date)
+                      AND  rcrm.site_use_id      IS NOT NULL
+                      AND  rcrm.receipt_method_id = arma.receipt_method_id(+)
+                      AND  arma.bank_account_id   = abaa.bank_account_id(+)
+                      AND  abaa.bank_branch_id    = abb.bank_branch_id(+)
+                      AND  arma.org_id            = gn_org_id
+                      AND  abaa.org_id            = gn_org_id) bank            -- 銀行口座ビュー
+              WHERE xih.invoice_id = xil.invoice_id
+                AND xil.cutoff_date = gd_target_date
+                AND xil.ship_cust_code = bank.ship_cust_code(+)                -- 外部結合のためのダミー結合
+                AND xih.set_of_books_id = gn_set_of_bks_id
+                AND xih.org_id = gn_org_id
+                AND xil.ship_cust_code = all_account_rec.customer_code
+              GROUP BY xih.inv_creation_date,                                               -- 発行日付
+                       xih.object_month,                                                    -- 対象年月
+                       xih.term_name,                                                       -- 支払条件
+                       xih.payment_date,                                                    -- 入金予定日
+                       CASE WHEN bank.bank_account_num IS NULL THEN
+                         NULL
+                       ELSE
+                         DECODE(SUBSTR(bank.bank_number,1,1)
+                               ,gv_format_bank_dummy, NULL -- ダミー銀行の場合はNULL
+                               ,CASE WHEN TO_NUMBER(bank.bank_number) < 1000  THEN
+                                  CASE WHEN INSTR(bank.bank_name
+                                                 ,gv_format_bank) > 0
+                                  THEN
+                                    bank.bank_name
+                                  ELSE
+                                    bank.bank_name || gv_format_bank
+                                  END
+                                ELSE
+                                  bank.bank_name 
+                                END)
+                       END,                                                                 -- 銀行名
+                       CASE WHEN bank.bank_account_num IS NULL THEN
+                         NULL
+                       ELSE
+                         DECODE(SUBSTR(bank.bank_number,1,1)
+                               ,gv_format_bank_dummy, NULL -- ダミー銀行の場合はNULL
+                               ,CASE WHEN INSTR(bank.bank_branch_name
+                                               ,gv_format_central) > 0
+                                THEN
+                                  bank.bank_branch_name
+                                ELSE
+                                  bank.bank_branch_name || gv_format_branch
+                                END)
+                       END,                                                                 -- 支店名
+                       CASE WHEN bank.bank_account_num IS NULL THEN
+                         NULL
+                       ELSE
+                         DECODE(SUBSTR(bank.bank_number,1,1)
+                               ,gv_format_bank_dummy, NULL -- ダミー銀行の場合はNULL
+                               ,DECODE(bank.bank_account_type
+                                      ,1, gv_format_account
+                                      ,2, gv_format_current
+                                      ,bank.bank_account_type))
+                       END,                                                                 -- 口座種別
+                       CASE WHEN bank.bank_account_num IS NULL THEN
+                         NULL
+                       ELSE
+                         DECODE(SUBSTR(bank.bank_number,1,1)
+                               ,gv_format_bank_dummy, NULL -- ダミー銀行の場合はNULL
+                               ,bank.bank_account_num)
+                       END,                                                                 -- 口座番号
+                       CASE WHEN bank.bank_account_num IS NULL THEN
+                         NULL
+                       ELSE
+                         DECODE(SUBSTR(bank.bank_number,1,1)
+                               ,gv_format_bank_dummy, NULL -- ダミー銀行の場合はNULL
+                               ,bank.account_holder_name_alt)
+                       END,                                                                 -- 口座名義人カナ名
+                       TO_CHAR(DECODE(xil.acceptance_date,NULL
+                                     ,xil.delivery_date
+                                     ,xil.acceptance_date)
+                                     ,cv_format_date_yyyymmdd),                             -- 伝票日付
+                       xil.slip_num;                                                        -- 伝票番号
+--
+              gn_target_cnt := gn_target_cnt + SQL%ROWCOUNT;
+--
+            END IF;
+--
+            CLOSE get_20account_cur;
+--
+          END IF;
+--
+          CLOSE get_14account_cur;
+--
+        -- 請求書印刷単位が'N4'(単独店)の場合、
+        ELSIF (all_account_rec.invoice_printing_unit = cv_invoice_printing_unit_n4) THEN
+          -- 請求書出力形式取得
+          OPEN get_10inv_type_cur(all_account_rec.customer_id);
+          FETCH get_10inv_type_cur INTO get_10inv_type_rec;
+          -- 請求書出力形式が'4'かつ、一括請求書発行フラグ = 'Y'の場合
+          IF  (get_10inv_type_cur%FOUND) THEN
+            INSERT INTO xxcfr_csv_outs_temp(
+              request_id       -- 要求ID
+             ,seq              -- 出力順
+             ,col1             -- ヘッダ/明細区分
+             ,col2             -- レコード区分
+             ,col3             -- 発行日付
+             ,col4             -- 郵便番号
+             ,col5             -- 住所１
+             ,col6             -- 住所２
+             ,col7             -- 住所３
+             ,col8             -- 顧客コード
+             ,col9             -- 顧客名
+             ,col10            -- 担当拠点名
+             ,col11            -- 電話番号
+             ,col12            -- 対象年月
+             ,col13            -- 売掛管理コード連結文字列
+             ,col14            -- 請求書出力区分
+             ,col15            -- 当月お買い上げ額
+             ,col16            -- 消費税等
+             ,col17            -- 当月請求額
+             ,col18            -- 入金予定日
+             ,col19            -- 振込先銀行名
+             ,col20            -- 振込先銀行支店名
+             ,col21            -- 振込先口座種別
+             ,col22            -- 振込先口座番号
+             ,col23            -- 振込先口座名義人カナ名
+             ,col24            -- 店舗コード
+             ,col25            -- 店舗名
+             ,col26            -- 伝票日付
+             ,col27            -- 伝票No
+             ,col28            -- 伝票金額
+             ,col29            -- レイアウト区分
+             ,col101           -- 伝票税抜額(非出力項目)
+             ,col102           -- 伝票税額(非出力項目)
+             ,col103           -- 入金先顧客コード(非出力項目)
+             ,col104)          -- 入金先顧客名(非出力項目)
+            SELECT cn_request_id                                              request_id         -- 要求ID
+                  ,TO_NUMBER(NULL)                                            seq                -- 出力順
+                  ,cv_line_kbn                                                header_line_kbn    -- ヘッダ/明細区分
+                  ,cv_record_kbn1                                             record_kbn         -- レコード区分
+                  ,TO_CHAR(xih.inv_creation_date,cv_format_date_yyyymmdd)     issue_date         -- 発行日付
+                  ,NULL                                                       zip_code           -- 郵便番号
+                  ,NULL                                                       send_address1      -- 住所１
+                  ,NULL                                                       send_address2      -- 住所２
+                  ,NULL                                                       send_address3      -- 住所３
+                  ,xil.ship_cust_code                                         bill_cust_code     -- 顧客コード
+                  ,NULL                                                       bill_cust_name     -- 顧客名
+                  ,NULL                                                       location_name      -- 拠点名
+                  ,NULL                                                       phone_num          -- 電話番号
+                  ,xih.object_month                                           object_month       -- 対象年月
+                  ,xil.ship_cust_code||' '||xih.term_name                     ar_concat_text     -- 売掛管理コード連結文字列
+                  ,DECODE(xxca.tax_div,cv_tax_div_excluded,cv_out_div_excluded
+                                      ,cv_tax_div_nontax,cv_out_div_excluded
+                                      ,cv_out_div_included)
+                                                                              out_put_div        -- 請求書出力区分
+                  ,NULL                                                       inv_amount         -- 当月お買い上げ額
+                  ,NULL                                                       tax_amount         -- 消費税等
+                  ,NULL                                                       total_amount       -- 当月請求額
+                  ,TO_CHAR(xih.payment_date,cv_format_date_yyyymmdd)          payment_date       -- 入金予定日
+                  ,CASE WHEN bank.bank_account_num IS NULL THEN
+                      NULL
+                    ELSE
+                      DECODE(SUBSTR(bank.bank_number,1,1)
+                            ,gv_format_bank_dummy, NULL -- ダミー銀行の場合はNULL
+                            ,CASE WHEN TO_NUMBER(bank.bank_number) < 1000  THEN
+                              CASE WHEN INSTR(bank.bank_name
+                                              ,gv_format_bank) > 0
+                              THEN
+                                bank.bank_name
+                              ELSE
+                                bank.bank_name || gv_format_bank
+                              END
+                            ELSE
+                              bank.bank_name 
+                            END)
+                    END                                                        banc_number        -- 銀行名
+                  ,CASE WHEN bank.bank_account_num IS NULL THEN
+                      NULL
+                    ELSE
+                      DECODE(SUBSTR(bank.bank_number,1,1)
+                            ,gv_format_bank_dummy, NULL -- ダミー銀行の場合はNULL
+                            ,CASE WHEN INSTR(bank.bank_branch_name
+                                            ,gv_format_central) > 0
+                            THEN
+                              bank.bank_branch_name
+                            ELSE
+                              bank.bank_branch_name || gv_format_branch
+                            END)
+                    END                                                        bank_branch_number -- 支店名
+                  ,CASE WHEN bank.bank_account_num IS NULL THEN
+                      NULL
+                    ELSE
+                      DECODE(SUBSTR(bank.bank_number,1,1)
+                            ,gv_format_bank_dummy, NULL -- ダミー銀行の場合はNULL
+                            ,DECODE(bank.bank_account_type
+                                  ,1, gv_format_account
+                                  ,2, gv_format_current
+                                  ,bank.bank_account_type))
+                    END                                                        bank_account_type  -- 口座種別
+                  ,CASE WHEN bank.bank_account_num IS NULL THEN
+                      NULL
+                    ELSE
+                      DECODE(SUBSTR(bank.bank_number,1,1)
+                            ,gv_format_bank_dummy, NULL -- ダミー銀行の場合はNULL
+                            ,bank.bank_account_num)
+                    END                                                        bank_account_num   -- 口座番号
+                  ,CASE WHEN bank.bank_account_num IS NULL THEN
+                      NULL
+                    ELSE
+                      DECODE(SUBSTR(bank.bank_number,1,1)
+                            ,gv_format_bank_dummy, NULL -- ダミー銀行の場合はNULL
+                            ,bank.account_holder_name_alt)
+                    END                                                        bank_account_name  -- 口座名義人カナ名
+                  ,NULL                                                        ship_cust_code     -- 店舗コード
+                  ,NULL                                                        ship_cust_name     -- 店舗名
+                  ,TO_CHAR(DECODE(xil.acceptance_date,NULL
+                                  ,xil.delivery_date
+                                  ,xil.acceptance_date)
+                                  ,cv_format_date_yyyymmdd)                          slip_date    -- 伝票日付
+                  ,xil.slip_num                                                      slip_num     -- 伝票番号
+                  ,SUM(CASE
+                        WHEN xxca.tax_div IN (cv_tax_div_nontax
+                                             ,cv_tax_div_excluded)
+                        THEN
+                            xil.ship_amount
+                        ELSE
+                            xil.tax_amount + xil.ship_amount
+                        END)                                                         slip_sum          -- 伝票金額
+                  ,cv_layout_kbn1                                                    layout_kbn        -- レイアウト区分
+                  ,SUM(xil.ship_amount)                                              slip_sum_ex_tax   -- 伝票税抜額
+                  ,SUM(xil.tax_amount)                                               slip_tax          -- 伝票税額
+                  ,NULL                                                              payment_cust_code -- 入金先顧客コード
+                  ,NULL                                                              payment_cust_name -- 入金先顧客名
+            FROM xxcfr_invoice_headers          xih  , -- 請求ヘッダ
+                  xxcfr_invoice_lines            xil  , -- 請求明細
+                  xxcmm_cust_accounts            xxca , -- 顧客10追加情報
+                  (SELECT all_account_rec.customer_code ship_cust_code
+                        ,rcrm.customer_id             customer_id
+                        ,abb.bank_number              bank_number
+                        ,abb.bank_name                bank_name
+                        ,abb.bank_branch_name         bank_branch_name
+                        ,abaa.bank_account_type       bank_account_type
+                        ,abaa.bank_account_num        bank_account_num
+                        ,abaa.account_holder_name     account_holder_name
+                        ,abaa.account_holder_name_alt account_holder_name_alt
+                  FROM   ra_cust_receipt_methods        rcrm                 --支払方法情報
+                        ,ar_receipt_method_accounts_all arma                 --AR支払方法口座
+                        ,ap_bank_accounts_all           abaa                 --銀行口座
+                        ,ap_bank_branches               abb                  --銀行支店
+                  WHERE  rcrm.primary_flag      = cv_flag_yes
+                    AND  all_account_rec.customer_id = rcrm.customer_id
+                    AND  gd_target_date   BETWEEN rcrm.start_date
+                                              AND NVL(rcrm.end_date, gd_max_date)
+                    AND  rcrm.site_use_id      IS NOT NULL
+                    AND  rcrm.receipt_method_id = arma.receipt_method_id(+)
+                    AND  arma.bank_account_id   = abaa.bank_account_id(+)
+                    AND  abaa.bank_branch_id    = abb.bank_branch_id(+)
+                    AND  arma.org_id            = gn_org_id
+                    AND  abaa.org_id            = gn_org_id) bank            -- 銀行口座ビュー
+            WHERE xih.invoice_id = xil.invoice_id
+              AND xil.cutoff_date = gd_target_date
+              AND xil.ship_cust_code = bank.ship_cust_code(+)                -- 外部結合のためのダミー結合
+              AND xih.set_of_books_id = gn_set_of_bks_id
+              AND xih.org_id = gn_org_id
+              AND xil.ship_cust_code = all_account_rec.customer_code
+              AND xxca.customer_code = all_account_rec.customer_code
+            GROUP BY xih.inv_creation_date,                                               -- 発行日付
+                     xil.ship_cust_code,                                                  -- 顧客コード
+                     xih.object_month,                                                    -- 対象年月
+                     xih.term_name,                                                       -- 支払条件
+                     xxca.tax_div,                                                        -- 消費税区分
+                     xih.payment_date,                                                    -- 入金予定日
+                     CASE WHEN bank.bank_account_num IS NULL THEN
+                       NULL
+                     ELSE
+                       DECODE(SUBSTR(bank.bank_number,1,1)
+                             ,gv_format_bank_dummy, NULL -- ダミー銀行の場合はNULL
+                             ,CASE WHEN TO_NUMBER(bank.bank_number) < 1000  THEN
+                               CASE WHEN INSTR(bank.bank_name
+                                               ,gv_format_bank) > 0
+                               THEN
+                                 bank.bank_name
+                               ELSE
+                                 bank.bank_name || gv_format_bank
+                               END
+                             ELSE
+                               bank.bank_name 
+                             END)
+                     END,                                                                 -- 銀行名
+                     CASE WHEN bank.bank_account_num IS NULL THEN
+                       NULL
+                     ELSE
+                       DECODE(SUBSTR(bank.bank_number,1,1)
+                             ,gv_format_bank_dummy, NULL -- ダミー銀行の場合はNULL
+                             ,CASE WHEN INSTR(bank.bank_branch_name
+                                             ,gv_format_central) > 0
+                             THEN
+                               bank.bank_branch_name
+                             ELSE
+                               bank.bank_branch_name || gv_format_branch
+                             END)
+                     END,                                                                 -- 支店名
+                     CASE WHEN bank.bank_account_num IS NULL THEN
+                       NULL
+                     ELSE
+                       DECODE(SUBSTR(bank.bank_number,1,1)
+                             ,gv_format_bank_dummy, NULL -- ダミー銀行の場合はNULL
+                             ,DECODE(bank.bank_account_type
+                                   ,1, gv_format_account
+                                   ,2, gv_format_current
+                                   ,bank.bank_account_type))
+                     END,                                                                 -- 口座種別
+                     CASE WHEN bank.bank_account_num IS NULL THEN
+                       NULL
+                     ELSE
+                       DECODE(SUBSTR(bank.bank_number,1,1)
+                             ,gv_format_bank_dummy, NULL -- ダミー銀行の場合はNULL
+                             ,bank.bank_account_num)
+                     END,                                                                 -- 口座番号
+                     CASE WHEN bank.bank_account_num IS NULL THEN
+                       NULL
+                     ELSE
+                       DECODE(SUBSTR(bank.bank_number,1,1)
+                             ,gv_format_bank_dummy, NULL -- ダミー銀行の場合はNULL
+                             ,bank.account_holder_name_alt)
+                     END,                                                                 -- 口座名義人カナ名
+                     TO_CHAR(DECODE(xil.acceptance_date,NULL
+                                   ,xil.delivery_date
+                                   ,xil.acceptance_date)
+                                   ,cv_format_date_yyyymmdd),                             -- 伝票日付
+                     xil.slip_num;                                                        -- 伝票番号
+--
+            gn_target_cnt := gn_target_cnt + SQL%ROWCOUNT;
+--
+          END IF;
+--
+          CLOSE get_10inv_type_cur;
+--
+        END IF;
+      END LOOP get_account10_loop;
+--
+      -- 店舗別小計レコード作成
+      INSERT INTO xxcfr_csv_outs_temp(
+        request_id       -- 要求ID
+        ,seq              -- 出力順
+        ,col1             -- ヘッダ/明細区分
+        ,col2             -- レコード区分
+        ,col3             -- 発行日付
+        ,col4             -- 郵便番号
+        ,col5             -- 住所１
+        ,col6             -- 住所２
+        ,col7             -- 住所３
+        ,col8             -- 顧客コード
+        ,col9             -- 顧客名
+        ,col10            -- 担当拠点名
+        ,col11            -- 電話番号
+        ,col12            -- 対象年月
+        ,col13            -- 売掛管理コード連結文字列
+        ,col14            -- 請求書出力区分
+        ,col15            -- 当月お買い上げ額
+        ,col16            -- 消費税等
+        ,col17            -- 当月請求額
+        ,col18            -- 入金予定日
+        ,col19            -- 振込先銀行名
+        ,col20            -- 振込先銀行支店名
+        ,col21            -- 振込先口座種別
+        ,col22            -- 振込先口座番号
+        ,col23            -- 振込先口座名義人カナ名
+        ,col24            -- 店舗コード
+        ,col25            -- 店舗名
+        ,col26            -- 伝票日付
+        ,col27            -- 伝票No
+        ,col28            -- 伝票金額
+        ,col29)           -- レイアウト区分
+      SELECT cn_request_id                                              request_id         -- 要求ID
+            ,TO_NUMBER(NULL)                                            seq                -- 出力順
+            ,cv_line_kbn                                                header_line_kbn    -- ヘッダ/明細区分
+            ,cv_record_kbn2                                             record_kbn         -- レコード区分
+            ,xxcot.col3                                                 issue_date         -- 発行日付
+            ,NULL                                                       zip_code           -- 郵便番号
+            ,NULL                                                       send_address1      -- 住所１
+            ,NULL                                                       send_address2      -- 住所２
+            ,NULL                                                       send_address3      -- 住所３
+            ,xxcot.col8                                                 bill_cust_code     -- 顧客コード
+            ,NULL                                                       bill_cust_name     -- 顧客名
+            ,NULL                                                       location_name      -- 拠点名
+            ,NULL                                                       phone_num          -- 電話番号
+            ,NULL                                                       object_month       -- 対象年月
+            ,NULL                                                       ar_concat_text     -- 売掛管理コード連結文字列
+            ,NULL                                                       out_put_div        -- 請求書出力区分
+            ,NULL                                                       inv_amount         -- 当月お買い上げ額
+            ,NULL                                                       tax_amount         -- 消費税等
+            ,NULL                                                       total_amount       -- 当月請求額
+            ,NULL                                                       payment_date       -- 入金予定日
+            ,NULL                                                       banc_number        -- 銀行名
+            ,NULL                                                       bank_branch_number -- 支店名
+            ,NULL                                                       bank_account_type  -- 口座種別
+            ,NULL                                                       bank_account_num   -- 口座番号
+            ,NULL                                                       bank_account_name  -- 口座名義人カナ名
+            ,xxcot.col24                                                ship_cust_code     -- 店舗コード
+            ,xxcot.col25                                                ship_cust_name     -- 店舗名
+            ,NULL                                                       slip_date          -- 伝票日付
+            ,NULL                                                       slip_num           -- 伝票番号
+            ,SUM(TO_NUMBER(xxcot.col28))                                slip_sum           -- 伝票金額
+            ,cv_layout_kbn2                                             layout_kbn         -- レイアウト区分
+      FROM xxcfr_csv_outs_temp          xxcot  -- CSV出力ワークテーブル
+      WHERE xxcot.request_id = cn_request_id
+        AND xxcot.col29 = cv_layout_kbn2       -- レイアウト区分 = '2'(店舗別内訳レイアウト)
+        AND xxcot.col2 = cv_record_kbn1        -- レコード区分 = '1'(店舗別明細レコード)
+      GROUP BY xxcot.col3,                                                                 -- 発行日付
+               xxcot.col8,                                                                 -- 顧客コード
+               xxcot.col24,                                                                -- 店舗コード
+               xxcot.col25;                                                                -- 店舗名
+--
+      gn_target_cnt := gn_target_cnt + SQL%ROWCOUNT;
+--
+      -- ヘッダレコード作成
+      INSERT INTO xxcfr_csv_outs_temp(
+        request_id       -- 要求ID
+        ,seq              -- 出力順
+        ,col1             -- ヘッダ/明細区分
+        ,col2             -- レコード区分
+        ,col3             -- 発行日付
+        ,col4             -- 郵便番号
+        ,col5             -- 住所１
+        ,col6             -- 住所２
+        ,col7             -- 住所３
+        ,col8             -- 顧客コード
+        ,col9             -- 顧客名
+        ,col10            -- 担当拠点名
+        ,col11            -- 電話番号
+        ,col12            -- 対象年月
+        ,col13            -- 売掛管理コード連結文字列
+        ,col14            -- 請求書出力区分
+        ,col15            -- 当月お買い上げ額
+        ,col16            -- 消費税等
+        ,col17            -- 当月請求額
+        ,col18            -- 入金予定日
+        ,col19            -- 振込先銀行名
+        ,col20            -- 振込先銀行支店名
+        ,col21            -- 振込先口座種別
+        ,col22            -- 振込先口座番号
+        ,col23            -- 振込先口座名義人カナ名
+        ,col24            -- 店舗コード
+        ,col25            -- 店舗名
+        ,col26            -- 伝票日付
+        ,col27            -- 伝票No
+        ,col28            -- 伝票金額
+        ,col29            -- レイアウト区分
+        ,col103           -- 入金先顧客コード(非出力項目)
+        ,col104)          -- 入金先顧客名(非出力項目)
+      SELECT cn_request_id                                              request_id         -- 要求ID
+            ,TO_NUMBER(NULL)                                            seq                -- 出力順
+            ,cv_header_kbn                                              header_line_kbn    -- ヘッダ/明細区分
+            ,cv_record_kbn0                                             record_kbn         -- レコード区分
+            ,xxcot.col3                                                 issue_date         -- 発行日付
+            ,hzlo.postal_code                                           zip_code           -- 郵便番号
+            ,hzlo.state||hzlo.city                                      send_address1      -- 住所１
+            ,hzlo.address1                                              send_address2      -- 住所２
+            ,hzlo.address2                                              send_address3      -- 住所３
+            ,xxcot.col8                                                 bill_cust_code     -- 顧客コード
+            ,hzpa.party_name                                            bill_cust_name     -- 顧客名
+            ,xffvv.description                                          location_name      -- 拠点名
+            ,xxcfr_common_pkg.get_base_target_tel_num(xxcot.col8)       phone_num          -- 電話番号
+            ,xxcot.col12                                                object_month       -- 対象年月
+            ,xxcot.col13                                                ar_concat_text     -- 売掛管理コード連結文字列
+            ,xxcot.col14                                                out_put_div        -- 請求書出力区分
+            ,SUM(TO_NUMBER(xxcot.col101))                               inv_amount         -- 当月お買い上げ額
+            ,SUM(TO_NUMBER(xxcot.col102))                               tax_amount         -- 消費税等
+            ,SUM(TO_NUMBER(xxcot.col101) + TO_NUMBER(xxcot.col102))     total_amount       -- 当月請求額
+            ,xxcot.col18                                                payment_date       -- 入金予定日
+            ,xxcot.col19                                                banc_number        -- 銀行名
+            ,xxcot.col20                                                bank_branch_number -- 支店名
+            ,xxcot.col21                                                bank_account_type  -- 口座種別
+            ,xxcot.col22                                                bank_account_num   -- 口座番号
+            ,xxcot.col23                                                bank_account_name  -- 口座名義人カナ名
+            ,NULL                                                       ship_cust_code     -- 店舗コード
+            ,NULL                                                       ship_cust_name     -- 店舗名
+            ,NULL                                                       slip_date          -- 伝票日付
+            ,NULL                                                       slip_num           -- 伝票番号
+            ,NULL                                                       slip_sum           -- 伝票金額
+            ,xxcot.col29                                                layout_kbn         -- レイアウト区分
+            ,NVL(xxcot.col103,xxcot.col8)                               payment_cust_code  -- 入金先顧客ビュー(単独店の場合顧客コードをセット)
+            ,NVL(xxcot.col104,hzpa.party_name)                          payment_cust_name  -- 入金先顧客名(単独店の場合顧客名をセット)
+      FROM xxcfr_csv_outs_temp          xxcot,  -- CSV出力ワークテーブル
+           xxcmm_cust_accounts          xxca,   -- 顧客追加情報
+           hz_cust_accounts             hzca,   -- 顧客マスタ
+           hz_parties                   hzpa,   -- パーティ
+           hz_cust_acct_sites           hcas,   -- 顧客所在地
+           hz_party_sites               hzps,   -- パーティサイト
+           hz_locations                 hzlo,   -- 顧客事業所
+           (SELECT flex_value,
+                   description
+            FROM   fnd_flex_values_vl ffv
+            WHERE  EXISTS
+                   (SELECT  'X'
+                    FROM    fnd_flex_value_sets
+                    WHERE   flex_value_set_name = cv_ffv_set_name_dept
+                    AND     flex_value_set_id   = ffv.flex_value_set_id)) xffvv  -- 部門値セット
+      WHERE xxcot.request_id = cn_request_id
+        AND xxcot.col2 = cv_record_kbn1                             -- レコード区分 = '1'(明細レコード)
+        AND xxca.customer_code = xxcot.col8                         -- 顧客追加情報.顧客コード = CSVワーク.顧客コード
+        AND hzca.cust_account_id = xxca.customer_id                 -- 顧客マスタ.顧客ID = 顧客追加情報.顧客ID
+        AND hzpa.party_id = hzca.party_id                           -- パーティ.パーティID = 顧客マスタ.パーティID
+        AND hcas.cust_account_id = hzca.cust_account_id             -- 顧客所在地.顧客ID = 顧客マスタ.顧客ID
+        AND hzps.party_site_id = hcas.party_site_id                 -- パーティサイト.パーティサイトID = 顧客所在地.パーティサイトID
+        AND hzlo.location_id = hzps.location_id                     -- 顧客事業所.事業所ID = パーティサイト.事業所ID
+        AND xffvv.flex_value = xxca.bill_base_code                  -- 部門値セット.コード = 顧客追加情報.請求拠点コード
+      GROUP BY xxcot.col3,                                                                 -- 発行日付
+               hzlo.postal_code,                                                           -- 郵便番号
+               hzlo.state||hzlo.city,                                                      -- 住所１
+               hzlo.address1,                                                              -- 住所２
+               hzlo.address2,                                                              -- 住所３
+               xxcot.col8,                                                                 -- 顧客コード
+               hzpa.party_name,                                                            -- 顧客名
+               xffvv.description,                                                          -- 拠点名
+               xxcot.col12,                                                                -- 対象年月
+               xxcot.col13,                                                                -- 売掛管理コード連結文字列
+               xxcot.col14,                                                                -- 請求書出力区分
+               xxcot.col18,                                                                -- 入金予定日
+               xxcot.col19,                                                                -- 銀行名
+               xxcot.col20,                                                                -- 支店名
+               xxcot.col21,                                                                -- 口座種別
+               xxcot.col22,                                                                -- 口座番号
+               xxcot.col23,                                                                -- 口座名義人カナ名
+               xxcot.col29,                                                                -- レイアウト区分
+               xxcot.col103,                                                               -- 入金先顧客コード
+               xxcot.col104;                                                               -- 入金先顧客名
+--
+      gn_target_cnt := gn_target_cnt + SQL%ROWCOUNT;
+--
+      -- 明細レコード更新(不要な項目値をクリアする)
+      UPDATE xxcfr_csv_outs_temp xxcot
+      SET col12 = NULL,                          -- 対象年月
+          col13 = NULL,                          -- 売掛管理コード連結文字列
+          col14 = NULL,                          -- 請求書出力区分
+          col18 = NULL,                          -- 入金予定日
+          col19 = NULL,                          -- 振込先銀行名
+          col20 = NULL,                          -- 振込先銀行支店名
+          col21 = NULL,                          -- 振込先口座種別
+          col22 = NULL,                          -- 振込先口座番号
+          col23 = NULL                           -- 振込先口座名義人カナ名
+      WHERE xxcot.request_id = cn_request_id
+        AND xxcot.col2 = cv_record_kbn1;         -- レコード区分 = '1'(明細レコード)
+--
+/*
       INSERT INTO xxcfr_csv_outs_temp(
         request_id       -- 要求ID
        ,seq              -- 出力順
@@ -736,6 +3201,8 @@ AS
 --
       gn_target_cnt := SQL%ROWCOUNT;
 --
+*/
+-- Modify 2009-09-29 Ver1.10 End
       -- 登録データが１件も存在しない場合、０件メッセージログ出力
       IF (gn_target_cnt = 0) THEN
 --
@@ -830,21 +3297,30 @@ AS
     -- *** ローカル・カーソル ***
 --
     -- 口座情報なし明細抽出
+-- Modify 2009-09-29 Ver1.10 Start
     CURSOR sel_no_account_data_cur
     IS
       SELECT
-             xcot.col6 bill_cust_code
-            ,xcot.col7 bill_cust_name
-            ,xcot.col8 bill_location_name
+            -- xcot.col6 bill_cust_code
+             xcot.col103 payment_cust_code   -- 入金先顧客コード
+            --,xcot.col7 bill_cust_name
+            ,xcot.col104 payment_cust_name   -- 入金先顧客名
+            --,xcot.col8 bill_location_name
       FROM
              xxcfr_csv_outs_temp  xcot
       WHERE
              xcot.request_id  = cn_request_id  -- 要求ID
-        AND  xcot.col17      IS NULL
-      GROUP BY xcot.col6,
-               xcot.col7,
-               xcot.col8
-      ORDER BY xcot.col6;
+        AND  xcot.col1 = cv_header_kbn         -- ヘッダ/明細区分 = '1'(ヘッダー)
+        --AND  xcot.col17      IS NULL
+        AND  xcot.col19 IS NULL                -- 振込先銀行名 IS NULL
+      GROUP BY --xcot.col6,
+               xcot.col103,
+               --xcot.col7,
+               xcot.col104
+               --xcot.col8
+      ORDER BY --xcot.col6;
+               xcot.col103;
+-- Modify 2009-09-29 Ver1.10 End
 --
   BEGIN
 --
@@ -886,11 +3362,13 @@ AS
                                       iv_application  => cv_msg_kbn_cfr
                                      ,iv_name         => cv_msg_xxcfr_00051
                                      ,iv_token_name1  => cv_tkn_ac_code
-                                     ,iv_token_value1 => l_sel_no_account_data_rec.bill_cust_code
+-- Modify 2009-09-29 Ver1.10 Start
+                                     --,iv_token_value1 => l_sel_no_account_data_rec.bill_cust_code
+                                     ,iv_token_value1 => l_sel_no_account_data_rec.payment_cust_code
                                      ,iv_token_name2  => cv_tkn_ac_name
-                                     ,iv_token_value2 => l_sel_no_account_data_rec.bill_cust_name
-                                     ,iv_token_name3  => cv_tkn_lc_name
-                                     ,iv_token_value3 => l_sel_no_account_data_rec.bill_location_name)
+                                     --,iv_token_value2 => l_sel_no_account_data_rec.bill_cust_name
+-- Modify 2009-09-29 Ver1.10 End
+                                     ,iv_token_value2 => l_sel_no_account_data_rec.payment_cust_name)
                                    ,1
                                    ,5000);
         fnd_file.put_line(
@@ -985,23 +3463,51 @@ AS
 --
     -- *** ローカル・カーソル ***
 --
-    -- 明細件数制限顧客情報抽出
+    -- 明細件数制限顧客情報抽出(店舗別内訳なし)
+-- Modify 2009-09-29 Ver1.10 Start
     CURSOR line_cnt_limit_cur
     IS
       SELECT
-             xcot.col6        bill_cust_code     -- 請求先顧客コード
-            ,xcot.col7        bill_cust_name     -- 請求先顧客名
-            ,xcot.col8        bill_location_name -- 担当拠点名
-            ,COUNT(xcot.col6) line_count         -- 明細件数
+            -- xcot.col6        bill_cust_code     -- 請求先顧客コード
+             xcot.col8        bill_cust_code     -- 請求先顧客コード
+            --,xcot.col7        bill_cust_name     -- 請求先顧客名
+            ,xcot.col9        bill_cust_name     -- 請求先顧客名
+            --,xcot.col8        bill_location_name -- 担当拠点名
+            ,xcot.col10       bill_location_name -- 担当拠点名
+            ,COUNT(xcot.col8) line_count         -- 明細件数
       FROM
              xxcfr_csv_outs_temp  xcot
       WHERE
              xcot.request_id  = cn_request_id  -- 要求ID
-      HAVING count(xcot.col6) > gn_line_cnt_limit
-      GROUP BY xcot.col6,
-               xcot.col7,
-               xcot.col8
-      ORDER BY xcot.col6;
+        AND  xcot.col29 = cv_layout_kbn1       -- レイアウト区分 = '1'(店舗別内訳なし)
+      HAVING count(xcot.col8) > gn_line_cnt_limit
+      GROUP BY --xcot.col6,
+               xcot.col8,
+               --xcot.col7,
+               xcot.col9,
+               --xcot.col8
+               xcot.col10
+      ORDER BY --xcot.col6;
+               xcot.col8;
+--
+    CURSOR line_cnt_limit2_cur
+    IS
+      SELECT
+             xcot.col8        bill_cust_code     -- 請求先顧客コード
+            ,xcot.col9        bill_cust_name     -- 請求先顧客名
+            ,xcot.col10       bill_location_name -- 担当拠点名
+            ,COUNT(xcot.col8) line_count         -- 明細件数
+      FROM
+             xxcfr_csv_outs_temp  xcot
+      WHERE
+             xcot.request_id  = cn_request_id  -- 要求ID
+        AND  xcot.col29 = cv_layout_kbn2       -- レイアウト区分 = '2'(店舗別内訳あり)
+      HAVING count(xcot.col8) > gn_line_cnt_limit2
+      GROUP BY xcot.col8,
+               xcot.col9,
+               xcot.col10
+      ORDER BY xcot.col8;
+-- Modify 2009-09-29 Ver1.10 End
 --
   BEGIN
 --
@@ -1013,7 +3519,7 @@ AS
 --
     -- 請求書発行対象データが存在する場合以下の処理を実行
     IF (gn_target_cnt > 0) THEN
-      -- 明細件数制限顧客情報抽出
+      -- 明細件数制限顧客情報抽出(店舗別内訳なし)
       <<sel_no_account_loop>>
       FOR l_line_cnt_limit_rec IN line_cnt_limit_cur LOOP
 --
@@ -1061,6 +3567,57 @@ AS
         ln_target_cnt := line_cnt_limit_cur%ROWCOUNT;
 --
       END LOOP sel_no_account_loop;
+--
+-- Modify 2009-09-29 Ver1.10 Start
+      -- 明細件数制限顧客情報抽出(店舗別内訳あり)
+      <<sel_no_account_loop2>>
+      FOR l_line_cnt_limit2_rec IN line_cnt_limit2_cur LOOP
+--
+        -- はじめに請求書明細件数制限メッセージを出力
+        IF (line_cnt_limit2_cur%ROWCOUNT = 1) THEN
+        --１行改行
+        fnd_file.put_line(
+          which  => FND_FILE.LOG
+         ,buff   => ''
+        );
+--
+        -- 請求書明細件数制限メッセージ出力
+        lv_warn_msg := SUBSTRB(xxccp_common_pkg.get_msg(
+                                 iv_application  => cv_msg_kbn_cfr
+                                ,iv_name         => cv_msg_xxcfr_00071
+                                ,iv_token_name1  => cv_tkn_rec_limit
+                                ,iv_token_value1 => TO_CHAR(gn_line_cnt_limit2))
+                              ,1
+                              ,5000);
+        fnd_file.put_line(
+           which  => FND_FILE.LOG
+          ,buff   => lv_warn_msg
+        );
+        END IF;
+--
+        -- 顧客コード・顧客名メッセージ出力
+        lv_cust_data_msg := SUBSTRB(xxccp_common_pkg.get_msg(
+                                      iv_application  => cv_msg_kbn_cfr
+                                     ,iv_name         => cv_msg_xxcfr_00072
+                                     ,iv_token_name1  => cv_tkn_ac_code
+                                     ,iv_token_value1 => l_line_cnt_limit2_rec.bill_cust_code
+                                     ,iv_token_name2  => cv_tkn_ac_name
+                                     ,iv_token_value2 => l_line_cnt_limit2_rec.bill_cust_name
+                                     ,iv_token_name3  => cv_tkn_lc_name
+                                     ,iv_token_value3 => l_line_cnt_limit2_rec.bill_location_name
+                                     ,iv_token_name4  => cv_tkn_count
+                                     ,iv_token_value4 => l_line_cnt_limit2_rec.line_count)
+                                   ,1
+                                   ,5000);
+        fnd_file.put_line(
+           which  => FND_FILE.LOG
+          ,buff   => lv_cust_data_msg
+        );
+--
+        ln_target_cnt := ln_target_cnt + line_cnt_limit2_cur%ROWCOUNT;
+--
+      END LOOP sel_no_account_loop2;
+-- Modify 2009-09-29 Ver1.10 End
 --
       -- 処理件数が1件以上合った場合
       IF (ln_target_cnt > 0) THEN
@@ -1179,7 +3736,10 @@ AS
    **********************************************************************************/
   PROCEDURE submain(
     iv_target_date         IN      VARCHAR2,         -- 締日
-    iv_bill_cust_code      IN      VARCHAR2,         -- 請求先顧客コード
+    iv_customer_code10     IN      VARCHAR2,         -- 顧客
+    iv_customer_code20     IN      VARCHAR2,         -- 請求書用顧客
+    iv_customer_code21     IN      VARCHAR2,         -- 統括請求書用顧客
+    iv_customer_code14     IN      VARCHAR2,         -- 売掛管理先顧客
     ov_errbuf              OUT     VARCHAR2,         -- エラー・メッセージ           --# 固定 #
     ov_retcode             OUT     VARCHAR2,         -- リターン・コード             --# 固定 #
     ov_errmsg              OUT     VARCHAR2)         -- ユーザー・エラー・メッセージ --# 固定 #
@@ -1233,7 +3793,10 @@ AS
     -- =====================================================
     init(
        iv_target_date         -- 締日
-      ,iv_bill_cust_code      -- 請求先顧客コード
+      ,iv_customer_code10     -- 顧客
+      ,iv_customer_code20     -- 請求書用顧客
+      ,iv_customer_code21     -- 統括請求書用顧客
+      ,iv_customer_code14     -- 売掛管理先顧客
       ,lv_errbuf              -- エラー・メッセージ           --# 固定 #
       ,lv_retcode             -- リターン・コード             --# 固定 #
       ,lv_errmsg);            -- ユーザー・エラー・メッセージ --# 固定 #
@@ -1259,7 +3822,10 @@ AS
     -- =====================================================
     insert_work_table(
        iv_target_date         -- 締日
-      ,iv_bill_cust_code      -- 請求先顧客コード
+      ,iv_customer_code10     -- 顧客
+      ,iv_customer_code20     -- 請求書用顧客
+      ,iv_customer_code21     -- 統括請求書用顧客
+      ,iv_customer_code14     -- 売掛管理先顧客
       ,lv_errbuf              -- エラー・メッセージ           --# 固定 #
       ,lv_retcode             -- リターン・コード             --# 固定 #
       ,lv_errmsg);            -- ユーザー・エラー・メッセージ --# 固定 #
@@ -1268,6 +3834,10 @@ AS
     ELSIF  (lv_retcode = cv_status_warn) THEN
       ov_retcode := cv_status_warn;
       ov_errmsg  := lv_errmsg;
+-- Modify 2009-09-29 Ver1.10 Start
+    ELSIF (gv_warning_flag = cv_status_yes) THEN  -- 顧客紐付け警告存在時
+      ov_retcode := cv_status_warn;
+-- Modify 2009-09-29 Ver1.10 End
     END IF;
 --
     -- =====================================================
@@ -1341,7 +3911,10 @@ AS
     errbuf                 OUT     VARCHAR2,         -- エラー・メッセージ  #固定#
     retcode                OUT     VARCHAR2,         -- エラーコード        #固定#
     iv_target_date         IN      VARCHAR2,         -- 締日
-    iv_bill_cust_code      IN      VARCHAR2          -- 請求先顧客
+    iv_customer_code10     IN      VARCHAR2,         -- 顧客
+    iv_customer_code20     IN      VARCHAR2,         -- 請求書用顧客
+    iv_customer_code21     IN      VARCHAR2,         -- 統括請求書用顧客
+    iv_customer_code14     IN      VARCHAR2          -- 売掛管理先顧客
   )
 --
 --
@@ -1399,11 +3972,14 @@ AS
     -- submainの呼び出し（実際の処理はsubmainで行う）
     -- ===============================================
     submain(
-       iv_target_date    -- 締日
-      ,iv_bill_cust_code -- 請求先顧客コード
-      ,lv_errbuf         -- エラー・メッセージ           --# 固定 #
-      ,lv_retcode        -- リターン・コード             --# 固定 #
-      ,lv_errmsg         -- ユーザー・エラー・メッセージ --# 固定 #
+       iv_target_date     -- 締日
+      ,iv_customer_code10 -- 顧客
+      ,iv_customer_code20 -- 請求書用顧客
+      ,iv_customer_code21 -- 統括請求書用顧客
+      ,iv_customer_code14 -- 売掛管理先顧客
+      ,lv_errbuf          -- エラー・メッセージ           --# 固定 #
+      ,lv_retcode         -- リターン・コード             --# 固定 #
+      ,lv_errmsg          -- ユーザー・エラー・メッセージ --# 固定 #
     );
 --
     -- =====================================================

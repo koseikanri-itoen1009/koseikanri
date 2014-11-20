@@ -19,6 +19,7 @@ create or replace PACKAGE XXCFR003A11C AS
  *  Date          Ver.  Editor         Description
  * ------------- ----- -------------- -------------------------------------
  *  2009-01-19    1.0  SCS 吉村 憲司   初回作成
+ *  2009-10-05    1.1  SCS 白砂 幸世   IE535対応 顧客区分追加対応
  ************************************************************************/
 
 --===============================================================
@@ -28,7 +29,11 @@ create or replace PACKAGE XXCFR003A11C AS
     errbuf           OUT VARCHAR2,
     retcode          OUT VARCHAR2,
     iv_target_date   IN  VARCHAR2,    -- 締日
-    iv_ar_code1      IN  VARCHAR2     -- 売掛コード１(請求書)
+-- Modify 2009/10/05 Ver1.3 Start ----------------------------------------------
+--    iv_ar_code1      IN  VARCHAR2     -- 売掛コード１(請求書)
+    iv_cust_code     IN  VARCHAR2,    -- 顧客コード
+    iv_cust_class    IN  VARCHAR2     -- 顧客区分
+-- Modify 2009/10/05 Ver1.3 End   ----------------------------------------------
   );
 END  XXCFR003A11C;
 /

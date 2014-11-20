@@ -6,7 +6,7 @@ CREATE OR REPLACE PACKAGE BODY XXCFR003A09C AS
  * Description     : 汎用商品（単品毎）請求データ作成
  * MD.050          : MD050_CFR_003_A09_汎用商品（単品毎）請求データ作成
  * MD.070          : MD050_CFR_003_A09_汎用商品（単品毎）請求データ作成
- * Version         : 1.0
+ * Version         : 1.1
  * 
  * Program List
  * --------------- ---- ----- --------------------------------------------
@@ -24,6 +24,7 @@ CREATE OR REPLACE PACKAGE BODY XXCFR003A09C AS
  *  Date          Ver.  Editor        Description
  * ------------- ----- ------------- -------------------------------------
  *  2008-12-10    1.0   SCS 寺内 真紀 初回作成
+ *  2009-10-02    1.1   SCS 萱原 伸哉 AR仕様変更IE535対応
  ************************************************************************/
 
 --
@@ -84,16 +85,193 @@ CREATE OR REPLACE PACKAGE BODY XXCFR003A09C AS
   -- 請求書全社出力権限設定値
   cv_enable_all   CONSTANT VARCHAR2(1) := '1';  -- 全社出力権限あり
   cv_disable_all  CONSTANT VARCHAR2(1) := '0';  -- 全社出力権限なし
-  
+-- Modify 2009/10/02 Ver1.1 Start ----------------------------------------------
+  cv_dict_cr_relate    CONSTANT VARCHAR2(12) := 'CFR003A02006'; -- 与信関連
+  cv_dict_ar           CONSTANT VARCHAR2(12) := 'CFR003A02007'; -- 売掛管理先
+  -- 顧客名称取得関数パラメータ(全角)
+  cv_get_acct_name_f  CONSTANT VARCHAR2(1)  := '0';      -- 正式名称
+  --
+  cv_bill_to          CONSTANT VARCHAR2(10) := 'BILL_TO';-- 顧客使用目的：請求
+  cv_rlt_class_bill   CONSTANT VARCHAR2(1)  := '1';      -- 顧客関連分類：請求
+  cv_rlt_stat_act     CONSTANT VARCHAR2(1)  := 'A';      -- 関連ステータス：有効
+  -- 顧客区分
+  cv_cust_class_base   CONSTANT VARCHAR2(2)  := '1';  -- 拠点
+  cv_cust_class_ar     CONSTANT VARCHAR2(2)  := '14'; -- 売掛管理先
+  cv_cust_class_encl   CONSTANT VARCHAR2(2)  := '21'; -- 統括請求書用
+  cv_cust_class_invo   CONSTANT VARCHAR2(2)  := '20'; -- 請求書用
+  cv_cust_class_ship   CONSTANT VARCHAR2(2)  := '10'; -- 出荷先
+-- Modify 2009/10/02 Ver1.1 End ----------------------------------------------
   --===============================================================
   -- グローバル変数
   --===============================================================
   gn_gl_set_of_bks_id       gl_sets_of_books.set_of_books_id%TYPE;     -- プロファイル会計帳簿ID
   gn_org_id                 xxcfr_bill_customers_v.org_id%TYPE;        -- プロファイル組織ID
   gv_user_dept_code         per_all_people_f.attribute28%TYPE;         -- ログインユーザ所属部門コード
-  gv_enable_all             VARCHAR2(1);                               -- 全社参照権限
+-- Modify 2009/10/02 Ver1.1 Start ----------------------------------------------
+--  gv_enable_all             VARCHAR2(1);                               -- 全社参照権限
+-- Modify 2009/10/02 Ver1.1 End ----------------------------------------------
   gn_rec_count              PLS_INTEGER := 0;                          -- 請求書情報取得件数
-  
+-- Modify 2009/10/02 Ver1.1 Start ----------------------------------------------
+  gv_party_ref_type         VARCHAR2(50);                              -- パーティ関連タイプ(与信関連)
+  gv_party_rev_code         VARCHAR2(50);                              -- パーティ関連(売掛管理先)
+  gt_bill_location_name     xxcfr_invoice_headers.bill_location_name%TYPE;
+                                                                       -- 請求拠点名
+  gt_agent_tel_num          xxcfr_invoice_headers.agent_tel_num%TYPE;  -- 担当電話番号
+  -- 税込請求金額算出用
+  gn_amount_inc_tax         NUMBER := 0;                               -- 税込請求金額 
+  gn_tax_sum                NUMBER := 0;                               -- うち消費税金額
+  -- 請求書出力形式
+  cv_inv_prt_type     CONSTANT VARCHAR2(1)  := '2';      -- 汎用請求書
+  --
+  -- 一括請求書発行フラグ
+  cv_cons_inv_flag    CONSTANT VARCHAR2(1)  := 'Y';      -- 有効
+  --
+  --===============================================================
+  -- グローバルカーソル
+  --===============================================================
+  -- 出荷先顧客情報取得
+  CURSOR get_ship_cust_cur(iv_target_date       DATE
+                          ,iv_cust_code_receipt VARCHAR2
+                          ,iv_cust_code_payment VARCHAR2
+                          ,iv_cust_code_bill    VARCHAR2
+                          ,iv_cust_code_ship    VARCHAR2)
+  IS
+    SELECT xca_ar.torihikisaki_code                         vender_code               -- 取引先コード
+          ,hca_cr.account_number                            credit_cust_code          -- 与信先顧客コード
+          ,xxcfr_common_pkg.get_cust_account_name(
+             hca_cr.account_number,
+             cv_get_acct_name_f)                            credit_cust_name          -- 与信先顧客名
+          ,hca_ar.account_number                            receipt_cust_code         -- 売掛管理先顧客コード
+          ,xxcfr_common_pkg.get_cust_account_name(
+             hca_ar.account_number,
+             cv_get_acct_name_f)                            receipt_cust_name         -- 売掛管理先顧客名
+          ,hca_encl.account_number                          payment_cust_code         -- 統括請求書用顧客コード
+          ,xxcfr_common_pkg.get_cust_account_name(
+             hca_encl.account_number,
+             cv_get_acct_name_f)                            payment_cust_name         -- 統括請求書用顧客名
+          ,hca_invo.account_number                          bill_cust_code            -- 請求書用顧客コード
+          ,xxcfr_common_pkg.get_cust_account_name(
+             hca_invo.account_number,
+             cv_get_acct_name_f)                            bill_cust_name            -- 請求書用顧客名
+          ,hca_ship.account_number                          ship_cust_code            -- 出荷先顧客コード
+          ,xca_ship.store_code                              ship_shop_code            -- 出荷先顧客店NO
+          ,(SELECT hcsu_ar.attribute5    
+            FROM   hz_cust_site_uses   hcsu_ar
+            WHERE  hcsu_ar.site_use_code       = cv_bill_to
+            AND    hcas_ship.cust_acct_site_id = hcsu_ar.cust_acct_site_id)   credit_receiv_code2 -- 売掛コード２（事業所）
+          ,(SELECT hcsu_ar.attribute6
+            FROM   hz_cust_site_uses   hcsu_ar
+            WHERE  hcsu_ar.site_use_code       = cv_bill_to
+            AND    hcas_ship.cust_acct_site_id = hcsu_ar.cust_acct_site_id)   credit_receiv_code3 -- 売掛コード３（その他）
+    FROM   hz_cust_accounts      hca_ship  -- 顧客マスタ(出荷先)
+          ,hz_cust_acct_sites    hcas_ship -- 顧客所在地(出荷先)
+          ,hz_cust_site_uses     hcsu_ship -- 顧客使用目的(出荷先)
+          ,hz_cust_acct_relate   hcar      -- 顧客関連
+          ,hz_cust_accounts      hca_ar    -- 顧客マスタ(売掛管理先)
+          ,hz_cust_acct_sites    hcas_ar   -- 顧客所在地(売掛管理先)
+          ,hz_cust_site_uses     hcsu_ar   -- 顧客使用目的(売掛管理先)
+          ,hz_customer_profiles  hcp_ar    -- 顧客プロファイル(売掛管理先)
+          ,xxcmm_cust_accounts   xca_ship  -- 顧客追加情報(出荷先)
+          ,xxcmm_cust_accounts   xca_ar    -- 顧客追加情報(売掛管理先)
+          ,hz_cust_accounts      hca_invo  -- 顧客マスタ(請求書用)
+          ,xxcmm_cust_accounts   xca_invo  -- 顧客追加情報(請求書用)
+          ,hz_cust_accounts      hca_encl  -- 顧客マスタ(統括請求書用)
+          ,xxcmm_cust_accounts   xca_encl  -- 顧客追加情報(統括請求書用)
+          ,hz_relationships      hzrl      -- パーティ関連
+          ,hz_cust_accounts      hca_cr    -- 与信先顧客マスタ
+    WHERE  hca_ship.cust_account_id      = hcas_ship.cust_account_id
+    AND    hcas_ship.cust_acct_site_id   = hcsu_ship.cust_acct_site_id
+    AND    hca_ship.cust_account_id      = hcar.related_cust_account_id
+    AND    hca_ship.customer_class_code  = cv_cust_class_ship
+    AND    hcar.status                   = cv_rlt_stat_act
+    AND    hcar.attribute1               = cv_rlt_class_bill
+    AND    hcar.cust_account_id          = hca_ar.cust_account_id
+    AND    hca_ar.cust_account_id        = hcas_ar.cust_account_id
+    AND    hca_ar.customer_class_code    = cv_cust_class_ar
+    AND    hcas_ar.cust_acct_site_id     = hcsu_ar.cust_acct_site_id
+    AND    hcsu_ar.site_use_code         = cv_bill_to
+    AND    hcsu_ar.attribute7            = cv_inv_prt_type
+    AND    hcsu_ship.bill_to_site_use_id = hcsu_ar.site_use_id
+    AND    hca_ar.cust_account_id        = hcp_ar.cust_account_id
+    AND    hcsu_ar.site_use_id           = hcp_ar.site_use_id
+    AND    hcp_ar.cons_inv_flag          = cv_cons_inv_flag
+    AND    hca_ar.cust_account_id        = xca_ar.customer_id(+)
+    AND    hca_ship.cust_account_id      = xca_ship.customer_id(+)
+    AND    xca_ship.invoice_code         = hca_invo.account_number(+)
+    AND    hca_invo.cust_account_id      = xca_invo.customer_id(+)
+    AND    hca_invo.customer_class_code(+) = cv_cust_class_invo
+    AND    xca_invo.enclose_invoice_code = hca_encl.account_number(+)
+    AND    hca_encl.cust_account_id      = xca_encl.customer_id(+)
+    AND    hca_encl.customer_class_code(+) = cv_cust_class_encl
+    AND    hca_ar.party_id               = hzrl.object_id(+)
+    AND    hzrl.status(+)                = cv_rlt_stat_act
+    AND    hzrl.relationship_type(+)     = gv_party_ref_type
+    AND    hzrl.relationship_code(+)     = gv_party_rev_code
+    AND    iv_target_date         BETWEEN TRUNC(NVL(hzrl.start_date(+), iv_target_date))
+                                       AND TRUNC(NVL(hzrl.end_date(+), iv_target_date))
+    AND    hzrl.subject_id               = hca_cr.party_id(+)
+    AND    (hca_ar.account_number        = iv_cust_code_receipt
+       OR   hca_encl.account_number      = iv_cust_code_payment
+       OR   hca_invo.account_number      = iv_cust_code_bill
+       OR   hca_ship.account_number      = iv_cust_code_ship)
+    UNION ALL
+    -- 単独店
+    SELECT NULL                                             vender_code               -- 取引先コード
+          ,NULL                                             credit_cust_code          -- 与信先顧客コード
+          ,NULL                                             credit_cust_name          -- 与信先顧客名
+          ,NULL                                             receipt_cust_code         -- 売掛管理先顧客コード
+          ,NULL                                             receipt_cust_name         -- 売掛管理先顧客名
+          ,hca_encl.account_number                          payment_cust_code         -- 統括請求書用顧客コード
+          ,xxcfr_common_pkg.get_cust_account_name(
+             hca_encl.account_number,
+             cv_get_acct_name_f)                            payment_cust_name         -- 統括請求書用顧客名
+          ,hca_invo.account_number                          bill_cust_code            -- 請求書用顧客コード
+          ,xxcfr_common_pkg.get_cust_account_name(
+             hca_invo.account_number,
+             cv_get_acct_name_f)                            bill_cust_name            -- 請求書用顧客名
+          ,hca_ship.account_number                          ship_cust_code            -- 出荷先顧客コード
+          ,xca_ship.store_code                              ship_shop_code            -- 出荷先顧客店NO
+          ,hcsu_ar.attribute5                             credit_receiv_code2       -- 売掛コード２（事業所）
+          ,hcsu_ar.attribute6                             credit_receiv_code3       -- 売掛コード３（その他）
+    FROM   hz_cust_accounts      hca_ship  -- 顧客マスタ(出荷先)
+          ,hz_cust_acct_sites    hcas_ship -- 顧客所在地(出荷先)
+          ,hz_cust_site_uses     hcsu_ship -- 顧客使用目的(出荷先)
+          ,hz_cust_site_uses     hcsu_ar   -- 顧客使用目的(請求先)
+          ,hz_customer_profiles  hcp_ship  -- 顧客プロファイル(出荷先)
+          ,xxcmm_cust_accounts   xca_ship  -- 顧客追加情報(出荷先)
+          ,hz_cust_accounts      hca_invo  -- 顧客マスタ(請求書用)
+          ,xxcmm_cust_accounts   xca_invo  -- 顧客追加情報(請求書用)
+          ,hz_cust_accounts      hca_encl  -- 顧客マスタ(統括請求書用)
+          ,xxcmm_cust_accounts   xca_encl  -- 顧客追加情報(統括請求書用)
+    WHERE  hca_ship.cust_account_id      = hcas_ship.cust_account_id
+    AND    hcas_ship.cust_acct_site_id   = hcsu_ship.cust_acct_site_id
+    AND    hcas_ship.cust_acct_site_id   = hcsu_ar.cust_acct_site_id
+    AND    hcsu_ar.attribute7            = cv_inv_prt_type
+    AND    hcsu_ar.site_use_code         = cv_bill_to
+    AND    hcsu_ship.bill_to_site_use_id = hcsu_ar.site_use_id
+    AND    hca_ship.cust_account_id      = hcp_ship.cust_account_id
+    AND    hca_ship.customer_class_code  = cv_cust_class_ship
+    AND    hcsu_ar.site_use_id           = hcp_ship.site_use_id
+    AND    hcp_ship.cons_inv_flag        = cv_cons_inv_flag
+    AND    hca_ship.cust_account_id      = xca_ship.customer_id(+)
+    AND    xca_ship.invoice_code         = hca_invo.account_number(+)
+    AND    hca_invo.cust_account_id      = xca_invo.customer_id(+)
+    AND    hca_invo.customer_class_code(+) = cv_cust_class_invo
+    AND    xca_invo.enclose_invoice_code = hca_encl.account_number(+)
+    AND    hca_encl.cust_account_id      = xca_encl.customer_id(+)
+    AND    hca_encl.customer_class_code(+) = cv_cust_class_encl
+    AND    (hca_encl.account_number      = iv_cust_code_payment
+       OR   hca_invo.account_number      = iv_cust_code_bill
+       OR   hca_ship.account_number      = iv_cust_code_ship);
+--
+  --===============================================================
+  -- グローバルタイプ
+  --===============================================================
+  TYPE get_ship_cust_ttype IS TABLE OF get_ship_cust_cur%ROWTYPE INDEX BY PLS_INTEGER;    -- 出荷先顧客情報
+  --
+  g_ship_cust_tab          get_ship_cust_ttype;                                           -- 出荷先顧客情報
+--
+-- Modify 2009/10/02 Ver1.1 End ----------------------------------------------  
   --===============================================================
   -- グローバル例外
   --===============================================================
@@ -108,7 +286,11 @@ CREATE OR REPLACE PACKAGE BODY XXCFR003A09C AS
    ***********************************************************************************/
   PROCEDURE init(
     iv_target_date   IN  VARCHAR2,    -- 締日
-    iv_ar_code1      IN  VARCHAR2,    -- 売掛コード１(請求書)
+-- Modify 2009/10/02 Ver1.1 Start --------------------------------------------
+--    iv_ar_code1      IN  VARCHAR2,    -- 売掛コード１(請求書)
+    iv_cust_code     IN  VARCHAR2,    -- 顧客コード
+    iv_cust_class    IN  VARCHAR2,    -- 顧客区分
+-- Modify 2009/10/02 Ver1.1 End --------------------------------------------
     ov_errbuf        OUT VARCHAR2,
     ov_retcode       OUT VARCHAR2,
     ov_errmsg        OUT VARCHAR2
@@ -160,7 +342,11 @@ CREATE OR REPLACE PACKAGE BODY XXCFR003A09C AS
     -- コンカレントパラメータログ出力
     xxcfr_common_pkg.put_log_param(iv_which => cv_log,
                                    iv_conc_param1 => iv_target_date,
-                                   iv_conc_param2 => iv_ar_code1,
+-- Modify 2009/10/02 Ver1.1 Start --------------------------------------------
+--                                   iv_conc_param2 => iv_ar_code1,
+                                   iv_conc_param2 => iv_cust_code,
+                                   iv_conc_param3 => iv_cust_class,
+-- Modify 2009/10/02 Ver1.1 End --------------------------------------------
                                    ov_errbuf => lv_errbuf,
                                    ov_retcode => lv_retcode,
                                    ov_errmsg => lv_errmsg
@@ -182,7 +368,41 @@ CREATE OR REPLACE PACKAGE BODY XXCFR003A09C AS
     IF (gv_user_dept_code IS NULL) THEN
       RAISE get_user_dept_expt;
     END IF;
-    
+
+-- Modify 2009/10/02 Ver1.1 Start   ----------------------------------------------
+    -- 所属部門名取得
+    gt_bill_location_name := xxcfr_common_pkg.get_cust_account_name(
+                               gv_user_dept_code,
+                               cv_get_acct_name_f);
+    -- 拠点電話番号取得
+    BEGIN
+      SELECT base_hzlo.address_lines_phonetic  base_tel_num    --電話番号
+      INTO   gt_agent_tel_num
+      FROM   hz_cust_accounts                  base_hzca,      --顧客マスタ(請求拠点)
+             hz_cust_acct_sites                base_hasa,      --顧客所在地ビュー(請求拠点)
+             hz_locations                      base_hzlo,      --顧客事業所(請求拠点)
+             hz_party_sites                    base_hzps       --パーティサイト(請求拠点)
+      WHERE  base_hzca.account_number      = gv_user_dept_code
+      AND    base_hzca.cust_account_id     = base_hasa.cust_account_id
+      AND    base_hasa.party_site_id       = base_hzps.party_site_id
+      AND    base_hzps.location_id         = base_hzlo.location_id
+      AND    base_hzca.customer_class_code = cv_cust_class_base
+      ;
+    EXCEPTION
+      WHEN NO_DATA_FOUND THEN
+        gt_agent_tel_num := NULL;
+    END;
+    --与信関連条件取得処理
+    -- パーティ関連タイプ(与信関連)取得
+    gv_party_ref_type := xxcfr_common_pkg.lookup_dictionary(
+                           iv_loopup_type_prefix => cv_xxcfr_app_name
+                          ,iv_keyword            => cv_dict_cr_relate);
+    -- パーティ関連(売掛管理先)取得
+    gv_party_rev_code := xxcfr_common_pkg.lookup_dictionary(
+                           iv_loopup_type_prefix => cv_xxcfr_app_name
+                          ,iv_keyword            => cv_dict_ar);
+--
+-- Modify 2009/10/02 Ver1.1 End   ----------------------------------------------   
   EXCEPTION
     -- *** 共通関数エラー発生時 ***
     WHEN global_api_expt THEN
@@ -225,7 +445,11 @@ CREATE OR REPLACE PACKAGE BODY XXCFR003A09C AS
    ***********************************************************************************/
   PROCEDURE get_invoice(
     iv_target_date   IN  DATE,        -- 締日
-    iv_ar_code1      IN  VARCHAR2,    -- 売掛コード１(請求書)
+-- Modify 2009/10/02 Ver1.1 Start --------------------------------------------
+--    iv_ar_code1      IN  VARCHAR2,    -- 売掛コード１(請求書)
+    iv_cust_code     IN  VARCHAR2,    -- 顧客コード
+    iv_cust_class    IN  VARCHAR2,    -- 顧客区分
+-- Modify 2009/10/02 Ver1.1 End --------------------------------------------
     ov_errbuf        OUT VARCHAR2,
     ov_retcode       OUT VARCHAR2,
     ov_errmsg        OUT VARCHAR2
@@ -267,7 +491,15 @@ CREATE OR REPLACE PACKAGE BODY XXCFR003A09C AS
     --===============================================================
     -- ローカル変数
     --===============================================================
-    
+-- Modify 2009/10/02 Ver1.1 Start   ---------------------------------------------    
+    --
+    -- カーソルパラメータ変数
+    lt_cust_code_receipt hz_cust_accounts.account_number%TYPE := NULL; -- 顧客コード（売掛管理先）
+    lt_cust_code_payment hz_cust_accounts.account_number%TYPE := NULL; -- 顧客コード（統括請求用）
+    lt_cust_code_bill    hz_cust_accounts.account_number%TYPE := NULL; -- 顧客コード (請求書用)
+    lt_cust_code_ship    hz_cust_accounts.account_number%TYPE := NULL; -- 顧客コード (出荷先)
+-- Modify 2009/10/02 Ver1.1 End   ---------------------------------------------- 
+
   BEGIN
 --
 --##################  固定ステータス初期化部 START   ###################
@@ -275,6 +507,44 @@ CREATE OR REPLACE PACKAGE BODY XXCFR003A09C AS
     ov_retcode := cv_status_normal;
 --
 --###########################  固定部 END   ############################
+--
+-- Modify 2009/10/02 Ver1.1 Start   ----------------------------------------------
+--
+    -- パラメータ：顧客区分が売掛管理先の場合
+    IF(iv_cust_class = cv_cust_class_ar)THEN
+      --
+      lt_cust_code_receipt := iv_cust_code;
+      --
+    -- パラメータ：顧客区分が統括請求書用の場合
+    ELSIF(iv_cust_class = cv_cust_class_encl)THEN
+      --
+      lt_cust_code_payment := iv_cust_code;
+      --
+    -- パラメータ：顧客区分が請求書用の場合
+    ELSIF(iv_cust_class = cv_cust_class_invo)THEN
+      --
+      lt_cust_code_bill    := iv_cust_code;
+      --
+    -- パラメータ：顧客区分が出荷先の場合
+    ELSIF(iv_cust_class = cv_cust_class_ship)THEN
+      --
+      lt_cust_code_ship    := iv_cust_code;
+    END IF;
+--
+    OPEN get_ship_cust_cur(iv_target_date
+                          ,lt_cust_code_receipt
+                          ,lt_cust_code_payment
+                          ,lt_cust_code_bill
+                          ,lt_cust_code_ship);
+    --
+        -- コレクション変数に代入
+    FETCH get_ship_cust_cur BULK COLLECT INTO g_ship_cust_tab;
+    --
+    CLOSE get_ship_cust_cur;
+    --
+    <<ship_cust_loop>>
+    FOR i IN 1..g_ship_cust_tab.COUNT LOOP
+-- Modify 2009/10/02 Ver1.1 End   ----------------------------------------------
 --
     -- CSV出力ワークテーブルへ挿入
     INSERT INTO xxcfr_csv_outs_temp(
@@ -339,8 +609,13 @@ CREATE OR REPLACE PACKAGE BODY XXCFR003A09C AS
       col57,
       col58,
       col59,
-      col60)
-    (SELECT conc_request_id,
+-- Modify 2009/10/02 Ver1.1 Start   ----------------------------------------------
+--      col60)
+--    (SELECT conc_request_id,
+      col60,
+      col100)
+      (SELECT conc_request_id * -1,
+-- Modify 2009/10/02 Ver1.1 End   ----------------------------------------------
             ROWNUM,
             itoen_name,
             inv_creation_date,
@@ -401,7 +676,10 @@ CREATE OR REPLACE PACKAGE BODY XXCFR003A09C AS
             vd_amount_claimed,
             electric_charges,
             slip_type,
-            classify_type
+            classify_type,
+-- Modify 2009/10/02 Ver1.1 Start   ----------------------------------------------
+            policy_group
+-- Modify 2009/10/02 Ver1.1 End   ----------------------------------------------
      FROM (SELECT FND_GLOBAL.CONC_REQUEST_ID                       conc_request_id,          -- 要求ID
                   ''                                               sort_num,                 -- 出力順
                   xih.itoen_name                                   itoen_name,               -- 取引先名
@@ -409,22 +687,40 @@ CREATE OR REPLACE PACKAGE BODY XXCFR003A09C AS
                   xih.object_month                                 object_month,             -- 対象年月
                   TO_CHAR(xih.object_date_from,'YYYY/MM/DD')       object_date_from,         -- 対象期間(自)
                   TO_CHAR(xih.object_date_to,'YYYY/MM/DD')         object_date_to,           -- 対象期間(至)
-                  xih.vender_code                                  vender_code,              -- 取引先コード
-                  xih.bill_location_code                           bill_location_code,       -- 請求担当拠点コード
-                  xih.bill_location_name                           bill_location_name,       -- 請求担当拠点名
-                  xih.agent_tel_num                                agent_tel_num,            -- 請求担当拠点電話番号
-                  xih.credit_cust_code                             credit_cust_code,         -- 与信先顧客コード
-                  xih.credit_cust_name                             credit_cust_name,         -- 与信先顧客名
-                  xih.receipt_cust_code                            receipt_cust_code,        -- 入金先顧客コード
-                  xih.receipt_cust_name                            receipt_cust_name,        -- 入金先顧客名
-                  xih.payment_cust_code                            payment_cust_code,        -- 売掛コード１（請求書）
-                  xih.payment_cust_name                            payment_cust_name,        -- 売掛コード１（請求書）名称
-                  xih.bill_cust_code                               bill_cust_code,           -- 請求先顧客コード
-                  xih.bill_cust_name                               bill_cust_name,           -- 請求先顧客名
-                  xih.credit_receiv_code2                          credit_receiv_code2,      -- 売掛コード２（事業所）
-                  xih.credit_receiv_name2                          credit_receiv_name2,      -- 売掛コード２（事業所）名称
-                  xih.credit_receiv_code3                          credit_receiv_code3,      -- 売掛コード３（その他）
-                  xih.credit_receiv_name3                          credit_receiv_name3,      -- 売掛コード３（その他）名称
+-- Modify 2009/10/02 Ver1.1 Start   ----------------------------------------------
+--                  xih.vender_code                                  vender_code,              -- 取引先コード
+--                  xih.bill_location_code                           bill_location_code,       -- 請求担当拠点コード
+--                  xih.bill_location_name                           bill_location_name,       -- 請求担当拠点名
+--                  xih.agent_tel_num                                agent_tel_num,            -- 請求担当拠点電話番号
+--                  xih.credit_cust_code                             credit_cust_code,         -- 与信先顧客コード
+--                  xih.credit_cust_name                             credit_cust_name,         -- 与信先顧客名
+--                  xih.receipt_cust_code                            receipt_cust_code,        -- 入金先顧客コード
+--                  xih.receipt_cust_name                            receipt_cust_name,        -- 入金先顧客名
+--                  xih.payment_cust_code                            payment_cust_code,        -- 売掛コード１（請求書）
+--                  xih.payment_cust_name                            payment_cust_name,        -- 売掛コード１（請求書）名称
+--                  xih.bill_cust_code                               bill_cust_code,           -- 請求先顧客コード
+--                  xih.bill_cust_name                               bill_cust_name,           -- 請求先顧客名
+--                  xih.credit_receiv_code2                          credit_receiv_code2,      -- 売掛コード２（事業所）
+--                  xih.credit_receiv_name2                          credit_receiv_name2,      -- 売掛コード２（事業所）名称
+--                  xih.credit_receiv_code3                          credit_receiv_code3,      -- 売掛コード３（その他）
+--                  xih.credit_receiv_name3                          credit_receiv_name3,      -- 売掛コード３（その他）名称
+                  g_ship_cust_tab(i).vender_code                   vender_code,              -- 取引先コード
+                  gv_user_dept_code                                bill_location_code,       -- 請求担当拠点コード
+                  gt_bill_location_name                            bill_location_name,       -- 請求担当拠点名
+                  gt_agent_tel_num                                 agent_tel_num,            -- 請求担当拠点電話番号
+                  g_ship_cust_tab(i).credit_cust_code              credit_cust_code,         -- 与信先顧客コード
+                  g_ship_cust_tab(i).credit_cust_name              credit_cust_name,         -- 与信先顧客名
+                  g_ship_cust_tab(i).receipt_cust_code             receipt_cust_code,        -- 入金先顧客コード
+                  g_ship_cust_tab(i).receipt_cust_name             receipt_cust_name,        -- 入金先顧客名
+                  g_ship_cust_tab(i).payment_cust_code             payment_cust_code,        -- 親請求先顧客コード
+                  g_ship_cust_tab(i).payment_cust_name             payment_cust_name,        -- 親請求先顧客名
+                  g_ship_cust_tab(i).bill_cust_code                bill_cust_code,           -- 請求先顧客コード
+                  g_ship_cust_tab(i).bill_cust_name                bill_cust_name,           -- 請求先顧客名
+                  g_ship_cust_tab(i).credit_receiv_code2           credit_receiv_code2,      -- 売掛コード２（事業所）
+                  NULL                                             credit_receiv_name2,      -- 売掛コード２（事業所）
+                  g_ship_cust_tab(i).credit_receiv_code3           credit_receiv_code3,      -- 売掛コード３（その他）
+                  NULL                                             credit_receiv_name3,      -- 売掛コード３（その他）
+-- Modify 2009/10/02 Ver1.1 End   ----------------------------------------------
                   NULL                                             sold_location_code,       -- 拠点コード
                   NULL                                             sold_location_name,       -- 拠点名
                   NULL                                             ship_cust_code,           -- 顧客コード
@@ -446,19 +742,29 @@ CREATE OR REPLACE PACKAGE BODY XXCFR003A09C AS
                          xil.vessel_type_name,
                          NULL
                         )                                          vessel,                   -- 容器
-                  SUM(xil.quantity)                                quantity,                 -- 数量
+-- Modify 2009/10/02 Ver1.1 Start   ----------------------------------------------
+--                  SUM(xil.quantity)                                quantity,                 -- 数量
+                  xil.quantity                                     quantity,                 -- 数量
+-- Modify 2009/10/02 Ver1.1 End   ----------------------------------------------
                   xil.unit_price                                   unit_price,               -- 卸単価
                   DECODE(xil.vd_cust_type,
                          cv_is_vd,
                          xil.unit_price,
                          NULL
                         )                                          ship_amount,              -- 売価
-                  SUM(xil.sold_amount)                             sold_amount,              -- 金額
+-- Modify 2009/10/02 Ver1.1 Start   ----------------------------------------------
+--                  SUM(xil.sold_amount)                             sold_amount,              -- 金額
+                  xil.sold_amount                                  sold_amount,              -- 金額
+-- Modify 2009/10/02 Ver1.1 Start   ----------------------------------------------
                   NULL                                             sold_amount_plus,         -- 金額（黒）
                   NULL                                             sold_amount_minus,        -- 金額（赤）
                   NULL                                             sold_amount_total,        -- 金額（計）
-                  AVG(xih.inv_amount_includ_tax)                   inv_amount_includ_tax,    -- 税込請求金額
-                  AVG(xih.tax_amount_sum)                          tax_amount_sum,           -- うち消費税金額
+-- Modify 2009/10/02 Ver1.1 Start   ----------------------------------------------
+--                  AVG(xih.inv_amount_includ_tax)                   inv_amount_includ_tax,    -- 税込請求金額
+--                  AVG(xih.tax_amount_sum)                          tax_amount_sum,           -- うち消費税金額
+                  xil.ship_amount + xil.tax_amount                 inv_amount_includ_tax,    -- 税込請求金額
+                  xil.tax_amount                                   tax_amount_sum,           -- うち消費税金額
+-- Modify 2009/10/02 Ver1.1 End   ----------------------------------------------
                   NULL                                             bm_unit_price1,           -- BM1単価
                   NULL                                             bm_rate1,                 -- BM1率
                   NULL                                             bm_price1,                -- BM1金額
@@ -471,67 +777,356 @@ CREATE OR REPLACE PACKAGE BODY XXCFR003A09C AS
                   NULL                                             vd_amount_claimed,        -- VD請求額
                   NULL                                             electric_charges,         -- 電気代
                   NULL                                             slip_type,                -- 伝票区分
-                  NULL                                             classify_type             -- 分類区分
+                  NULL                                             classify_type,            -- 分類区分
+-- Modify 2009/10/02 Ver1.1 Start   ----------------------------------------------
+                  xil.policy_group                                 policy_group              -- 政策群コード
+-- Modify 2009/10/02 Ver1.1 End   ----------------------------------------------
            FROM xxcfr_invoice_headers xih,
                 xxcfr_invoice_lines   xil
-           WHERE xih.invoice_id = xil.invoice_id
-             AND EXISTS (SELECT 'X'
-                         FROM xxcfr_bill_customers_v xbcv
-                         WHERE xih.bill_cust_code = xbcv.bill_customer_code
-                           AND ((cv_enable_all = gv_enable_all AND
-                                 xbcv.bill_base_code = xbcv.bill_base_code)
-                                OR
-                                (cv_disable_all = gv_enable_all AND
-                                 xbcv.bill_base_code = gv_user_dept_code))
-                           AND xbcv.receiv_code1 = iv_ar_code1
-                           AND xbcv.inv_prt_type = cv_inv_prt_type
-                           AND xbcv.cons_inv_flag = cv_cons_inv_flag
-                           AND xbcv.org_id = gn_org_id
-                        )
-             AND xih.cutoff_date = iv_target_date
+-- Modify 2009/10/02 Ver1.1 Start   ----------------------------------------------
+--           WHERE xih.invoice_id = xil.invoice_id
+--             AND EXISTS (SELECT 'X'
+--                         FROM xxcfr_bill_customers_v xbcv
+--                         WHERE xih.bill_cust_code = xbcv.bill_customer_code
+--                           AND ((cv_enable_all = gv_enable_all AND
+--                                 xbcv.bill_base_code = xbcv.bill_base_code)
+--                                OR
+--                                (cv_disable_all = gv_enable_all AND
+--                                 xbcv.bill_base_code = gv_user_dept_code))
+--                           AND xbcv.receiv_code1 = iv_ar_code1
+--                           AND xbcv.inv_prt_type = cv_inv_prt_type
+--                           AND xbcv.cons_inv_flag = cv_cons_inv_flag
+--                           AND xbcv.org_id = gn_org_id
+--                        )
+--             AND xih.cutoff_date = iv_target_date
+           WHERE xil.ship_cust_code  = g_ship_cust_tab(i).ship_cust_code
+             AND xil.cutoff_date     = iv_target_date
+             AND xih.invoice_id      = xil.invoice_id
+-- Modify 2009/10/02 Ver1.1 End   ----------------------------------------------
              AND xih.set_of_books_id = gn_gl_set_of_bks_id
              AND xih.org_id = gn_org_id
-           GROUP BY xih.itoen_name,
-                    TO_CHAR(xih.inv_creation_date,'YYYY/MM/DD'),
-                    xih.object_month,
-                    TO_CHAR(xih.object_date_from,'YYYY/MM/DD'),
-                    TO_CHAR(xih.object_date_to,'YYYY/MM/DD'),
-                    xih.vender_code,
-                    xih.bill_location_code,
-                    xih.bill_location_name,
-                    xih.agent_tel_num,
-                    xih.credit_cust_code,
-                    xih.credit_cust_name,
-                    xih.receipt_cust_code,
-                    xih.receipt_cust_name,
-                    xih.payment_cust_code,
-                    xih.payment_cust_name,
-                    xih.bill_cust_code,
-                    xih.bill_cust_name,
-                    xih.credit_receiv_code2,
-                    xih.credit_receiv_name2,
-                    xih.credit_receiv_code3,
-                    xih.credit_receiv_name3,
-                    xil.item_code,
-                    xil.jan_code,
-                    xil.item_name,
-                    DECODE(xil.vd_cust_type,
-                           cv_is_vd,
-                           xil.vessel_type_name,
-                           NULL
-                          ),
-                    xil.unit_price,
-                    DECODE(xil.vd_cust_type,
-                           cv_is_vd,
-                           xil.unit_price,
-                           NULL
-                          ),
-                    xil.policy_group
-           ORDER BY xih.bill_cust_code,                          -- 請求先顧客コード
-                    xil.policy_group,                            -- 政策群コード
-                    xil.item_code                                -- 商品コード
+-- Modify 2009/10/02 Ver1.1 Start   ----------------------------------------------
+--           GROUP BY xih.itoen_name,
+--                    TO_CHAR(xih.inv_creation_date,'YYYY/MM/DD'),
+--                    xih.object_month,
+--                    TO_CHAR(xih.object_date_from,'YYYY/MM/DD'),
+--                    TO_CHAR(xih.object_date_to,'YYYY/MM/DD'),
+--                    xih.vender_code,
+--                    xih.bill_location_code,
+--                    xih.bill_location_name,
+--                    xih.agent_tel_num,
+--                    xih.credit_cust_code,
+--                    xih.credit_cust_name,
+--                    xih.receipt_cust_code,
+--                    xih.receipt_cust_name,
+--                    xih.payment_cust_code,
+--                    xih.payment_cust_name,
+--                    xih.bill_cust_code,
+--                    xih.bill_cust_name,
+--                    xih.credit_receiv_code2,
+--                    xih.credit_receiv_name2,
+--                    xih.credit_receiv_code3,
+--                    xih.credit_receiv_name3,
+--                    xil.item_code,
+--                    xil.jan_code,
+--                    xil.item_name,
+--                    DECODE(xil.vd_cust_type,
+--                           cv_is_vd,
+--                           xil.vessel_type_name,
+--                           NULL
+--                          ),
+--                    xil.unit_price,
+--                    DECODE(xil.vd_cust_type,
+--                           cv_is_vd,
+--                           xil.unit_price,
+--                           NULL
+--                          ),
+--                    xil.policy_group
+--           ORDER BY xih.bill_cust_code,                          -- 請求先顧客コード
+--                    xil.policy_group,                            -- 政策群コード
+--                    xil.item_code                                -- 商品コード
+-- Modify 2009/10/02 Ver1.1 End   ----------------------------------------------
           )
     );
+-- Modify 2009/09/28 Ver1.1 Start   ----------------------------------------------
+    END LOOP ship_cust_loop;
+    --
+    -- 並び替えを行った上でCSV出力ワークテーブルへ再挿入
+    INSERT INTO xxcfr_csv_outs_temp(
+      request_id,
+      seq,
+      col1,
+      col2,
+      col3,
+      col4,
+      col5,
+      col6,
+      col7,
+      col8,
+      col9,
+      col10,
+      col11,
+      col12,
+      col13,
+      col14,
+      col15,
+      col16,
+      col17,
+      col18,
+      col19,
+      col20,
+      col21,
+      col22,
+      col23,
+      col24,
+      col25,
+      col26,
+      col27,
+      col28,
+      col29,
+      col30,
+      col31,
+      col32,
+      col33,
+      col34,
+      col35,
+      col36,
+      col37,
+      col38,
+      col39,
+      col40,
+      col41,
+      col42,
+      col43,
+      col44,
+      col45,
+      col46,
+      col47,
+      col48,
+      col49,
+      col50,
+      col51,
+      col52,
+      col53,
+      col54,
+      col55,
+      col56,
+      col57,
+      col58,
+      col59,
+      col60,
+      col100)
+      (SELECT FND_GLOBAL.CONC_REQUEST_ID,
+          ROWNUM,
+          col1,
+          col2,
+          col3,
+          col4,
+          col5,
+          col6,
+          col7,
+          col8,
+          col9,
+          col10,
+          col11,
+          col12,
+          col13,
+          col14,
+          col15,
+          col16,
+          col17,
+          col18,
+          col19,
+          col20,
+          col21,
+          col22,
+          col23,
+          col24,
+          col25,
+          col26,
+          col27,
+          col28,
+          col29,
+          col30,
+          col31,
+          col32,
+          col33,
+          col34,
+          col35,
+          col36,
+          col37,
+          col38,
+          col39,
+          col40,
+          col41,
+          col42,
+          col43,
+          col44,
+          col45,
+          col46,
+          col47,
+          col48,
+          col49,
+          col50,
+          col51,
+          col52,
+          col53,
+          col54,
+          col55,
+          col56,
+          col57,
+          col58,
+          col59,
+          col60,
+          col100
+       FROM (SELECT col1,
+               col2,
+               col3,
+               col4,
+               col5,
+               col6,
+               col7,
+               col8,
+               col9,
+               col10,
+               col11,
+               col12,
+               col13,
+               col14,
+               col15,
+               col16,
+               col17,
+               col18,
+               col19,
+               col20,
+               col21,
+               col22,
+               col23,
+               col24,
+               col25,
+               col26,
+               col27,
+               col28,
+               col29,
+               col30,
+               col31,
+               col32,
+               col33,
+               col34,
+               col35,
+               col36,
+               col37,
+               col38,
+               SUM(to_number(col39))  col39,
+               col40,
+               col41,
+               SUM(to_number(col42))  col42,
+               col43,
+               col44,
+               col45,
+               SUM(to_number(col46))  col46,
+               SUM(to_number(col47))  col47,
+               col48,
+               col49,
+               col50,
+               col51,
+               col52,
+               col53,
+               col54,
+               col55,
+               col56,
+               col57,
+               col58,
+               col59,
+               col60,
+               col100
+             FROM xxcfr_csv_outs_temp
+             WHERE request_id = FND_GLOBAL.CONC_REQUEST_ID * -1
+             GROUP BY
+                 col1                 -- 取引先名
+                ,col2                 -- 作成日
+                ,col3                 -- 対象年月
+                ,col4                 -- 対象期間(自)
+                ,col5                 -- 対象期間(至)
+                ,col6                 -- 取引先コード
+                ,col10                -- 与信先顧客コード
+                ,col11                -- 与信先顧客名
+                ,col12                -- 入金先顧客コード
+                ,col13                -- 入金先顧客名
+                ,col14                -- 親請求先顧客コード
+                ,col15                -- 親請求先顧客名
+                ,col16                -- 請求先顧客コード
+                ,col17                -- 請求先顧客名
+                ,col18                -- 売掛コード２（事業所）
+                ,col20                -- 売掛コード２（その他）
+                ,col35                -- 商品コード
+                ,col36                -- JANコード
+                ,col37                -- 商品名
+                ,col38                -- 容器
+                ,col40                -- 卸単価
+                ,col41                -- 売価
+                ,col100               -- 政策群コード
+                ,col7                 -- 以下、元ソースではGROUP BY対象外
+                ,col8
+                ,col9
+                ,col19
+                ,col21
+                ,col22
+                ,col23
+                ,col24
+                ,col25
+                ,col26
+                ,col27
+                ,col28
+                ,col29
+                ,col30
+                ,col31
+                ,col32
+                ,col33
+                ,col34
+                ,col35
+                ,col36
+                ,col37
+                ,col38
+                ,col40
+                ,col41
+                ,col43
+                ,col44
+                ,col45
+                ,col48
+                ,col49
+                ,col50
+                ,col51
+                ,col52
+                ,col53
+                ,col54
+                ,col55
+                ,col56
+                ,col57
+                ,col58
+                ,col59
+                ,col60
+                ,col100
+             ORDER BY
+                 col14                -- 親請求先顧客コード
+                ,col16                -- 請求先顧客コード
+                ,col100               -- 政策群コード
+                ,col35                -- 商品コード
+             )
+      );
+    -- 税込請求金額の算出
+    SELECT SUM(xcot.col46)
+          ,SUM(xcot.col47)
+    INTO gn_amount_inc_tax    -- 税込請求金額
+        ,gn_tax_sum           -- うち消費税金額
+    FROM xxcfr_csv_outs_temp xcot    
+    WHERE xcot.request_id = FND_GLOBAL.CONC_REQUEST_ID;
+    --      
+    UPDATE xxcfr_csv_outs_temp xcot
+    SET xcot.col46 = gn_amount_inc_tax   -- 税込請求金額
+       ,xcot.col47 = gn_tax_sum          -- うち消費税金額
+    WHERE xcot.request_id = FND_GLOBAL.CONC_REQUEST_ID;
+-- Modify 2009/09/28 Ver1.1 End   ----------------------------------------------
         -- 処理件数格納
         gn_rec_count := SQL%ROWCOUNT;
     
@@ -790,7 +1385,11 @@ CREATE OR REPLACE PACKAGE BODY XXCFR003A09C AS
    ***********************************************************************************/
   PROCEDURE submain(
     iv_target_date   IN  VARCHAR2,    -- 締日
-    iv_ar_code1      IN  VARCHAR2,    -- 売掛コード１(請求書)
+-- Modify 2009/10/02 Ver1.1 Start ----------------------------------------------
+--    iv_ar_code1      IN  VARCHAR2,    -- 売掛コード１(請求書)
+    iv_cust_code     IN  VARCHAR2,    -- 顧客コード
+    iv_cust_class    IN  VARCHAR2,    -- 顧客区分
+-- Modify 2009/10/02 Ver1.1 End ----------------------------------------------
     ov_errbuf        OUT VARCHAR2,
     ov_retcode       OUT VARCHAR2,
     ov_errmsg        OUT VARCHAR2
@@ -830,7 +1429,11 @@ CREATE OR REPLACE PACKAGE BODY XXCFR003A09C AS
     -- A-1．初期処理
     --===============================================================
     init(iv_target_date,
-         iv_ar_code1,
+-- Modify 2009/10/02 Ver1.1 Start --------------------------------------------
+--         iv_ar_code1,
+         iv_cust_code,
+         iv_cust_class,
+-- Modify 2009/10/02 Ver1.1 End --------------------------------------------
          lv_errbuf,
          lv_retcode,
          lv_errmsg
@@ -839,23 +1442,28 @@ CREATE OR REPLACE PACKAGE BODY XXCFR003A09C AS
       RAISE global_process_expt;
     END IF;
     
-    --===============================================================
-    -- A-2．出力セキュリティ判定
-    --===============================================================
-    gv_enable_all := xxcfr_common_pkg.chk_invoice_all_dept(iv_user_dept_code => gv_user_dept_code,
-                                                           iv_invoice_type => cv_invoice_type
-                                                          );
-    IF (gv_enable_all = cv_yes) THEN
-      gv_enable_all := cv_enable_all;
-    ELSE
-      gv_enable_all := cv_disable_all;
-    END IF;
-    
+-- Modify 2009/10/02 Ver1.1 Start ----------------------------------------------    
+--    --===============================================================
+--    -- A-2．出力セキュリティ判定
+--    --===============================================================
+--    gv_enable_all := xxcfr_common_pkg.chk_invoice_all_dept(iv_user_dept_code => gv_user_dept_code,
+--                                                           iv_invoice_type => cv_invoice_type
+--                                                          );
+--    IF (gv_enable_all = cv_yes) THEN
+--      gv_enable_all := cv_enable_all;
+--    ELSE
+--      gv_enable_all := cv_disable_all;
+--    END IF;
+-- Modify 2009/10/02 Ver1.1 End ----------------------------------------------    
     --===============================================================
     -- A-3．請求情報取得処理
     --===============================================================
     get_invoice(xxcfr_common_pkg.get_date_param_trans(iv_target_date),
-                iv_ar_code1,
+-- Modify 2009/10/02 Ver1.1 Start --------------------------------------------
+--                iv_ar_code1,
+                iv_cust_code,
+                iv_cust_class,
+-- Modify 2009/10/02 Ver1.1 End --------------------------------------------
                 lv_errbuf,
                 lv_retcode,
                 lv_errmsg
@@ -905,7 +1513,11 @@ CREATE OR REPLACE PACKAGE BODY XXCFR003A09C AS
     errbuf           OUT VARCHAR2,
     retcode          OUT VARCHAR2,
     iv_target_date   IN  VARCHAR2,    -- 締日
-    iv_ar_code1      IN  VARCHAR2     -- 売掛コード１(請求書)
+-- Modify 2009/10/02 Ver1.1 Start ----------------------------------------------
+--    iv_ar_code1      IN  VARCHAR2     -- 売掛コード１(請求書)
+    iv_cust_code     IN  VARCHAR2,    -- 顧客コード
+    iv_cust_class    IN  VARCHAR2     -- 顧客区分
+-- Modify 2009/10/02 Ver1.1 End ----------------------------------------------
   ) IS
     
 --
@@ -941,7 +1553,11 @@ CREATE OR REPLACE PACKAGE BODY XXCFR003A09C AS
     END IF;
     
     submain(iv_target_date,
-            iv_ar_code1,
+-- Modify 2009/10/02 Ver1.1 Start ----------------------------------------------
+--            iv_ar_code1,
+            iv_cust_code,
+            iv_cust_class,
+-- Modify 2009/10/02 Ver1.1 End ----------------------------------------------
             lv_errbuf,
             lv_retcode,
             lv_errmsg

@@ -5,7 +5,7 @@ CREATE TABLE xxcfr.xxcfr_invoice_lines
  * Description     : ¿‹–¾×î•ñƒe[ƒuƒ‹
  * MD.050          : MD.050_LDM_CFR_001
  * MD.070          : 
- * Version         : 1.1
+ * Version         : 1.2
  * 	
  * Change Record
  * ------------- ----- ------------ -------------------------------------
@@ -13,6 +13,7 @@ CREATE TABLE xxcfr.xxcfr_invoice_lines
  * ------------- ----- ------------ -------------------------------------
  *  2008/10/28    1.0  SCS ‘åì Œb    ‰‰ñì¬
  *  2009/07/21    1.1  SCS œA£ ^²l[0000792]áŠQ‘Î‰
+ *  2009/10/20    1.2  SCS œA£ ^²l[IE535]‹¤’Ê‰Û‘è‘Î‰
  ************************************************************************/
 ( 
   invoice_id                   NUMBER         NOT NULL  ,     -- ˆêŠ‡¿‹‘ID
@@ -78,6 +79,9 @@ CREATE TABLE xxcfr.xxcfr_invoice_lines
   program_application_id       NUMBER(15)               ,     -- ƒRƒ“ƒJƒŒƒ“ƒgEƒvƒƒOƒ‰ƒ€EƒAƒvƒŠƒP[ƒVƒ‡ƒ“ID
   program_id                   NUMBER(15)               ,     -- ƒRƒ“ƒJƒŒƒ“ƒgEƒvƒƒOƒ‰ƒ€ID
   program_update_date          DATE                     ,     -- ƒvƒƒOƒ‰ƒ€XV“ú
+  cutoff_date                  DATE                     ,     -- ’÷“ú
+  num_of_cases                 VARCHAR2(240)            ,     -- ƒP[ƒX“ü”
+  medium_class                 VARCHAR2(2)              ,     -- ó’ƒ\[ƒX
   CONSTRAINT xxcfr_invoice_lines_pk PRIMARY KEY ( invoice_id, invoice_detail_num )
   USING INDEX TABLESPACE xxidx2
 )
@@ -149,5 +153,8 @@ COMMENT ON COLUMN xxcfr.xxcfr_invoice_lines.request_id                   IS '—v‹
 COMMENT ON COLUMN xxcfr.xxcfr_invoice_lines.program_application_id       IS 'ƒRƒ“ƒJƒŒƒ“ƒgEƒvƒƒOƒ‰ƒ€EƒAƒvƒŠƒP[ƒVƒ‡ƒ“ID';
 COMMENT ON COLUMN xxcfr.xxcfr_invoice_lines.program_id                   IS 'ƒRƒ“ƒJƒŒƒ“ƒgEƒvƒƒOƒ‰ƒ€ID';
 COMMENT ON COLUMN xxcfr.xxcfr_invoice_lines.program_update_date          IS 'ƒvƒƒOƒ‰ƒ€XV“ú';
+COMMENT ON COLUMN xxcfr.xxcfr_invoice_lines.cutoff_date                  IS '’÷“ú';
+COMMENT ON COLUMN xxcfr.xxcfr_invoice_lines.num_of_cases                 IS 'ƒP[ƒX“ü”';
+COMMENT ON COLUMN xxcfr.xxcfr_invoice_lines.medium_class                 IS 'ó’ƒ\[ƒX';
 --
 COMMENT ON TABLE  xxcfr.xxcfr_invoice_lines IS '¿‹–¾×î•ñƒe[ƒuƒ‹';

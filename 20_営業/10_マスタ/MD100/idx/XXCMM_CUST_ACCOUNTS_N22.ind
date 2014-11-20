@@ -1,0 +1,15 @@
+/*************************************************************************
+ * 
+ * INDEX Name      : xxcmm_cust_accounts_n22
+ * Description     : éÂÇ…ÅuARêøãÅèëëSî Åvå¸ÇØ
+ * MD.070          : 
+ * Version         : 1.0
+ * 
+ * Change Record
+ * ------------- ----- ------------ -------------------------------------
+ *  Date          Ver.  Editor       Description
+ * ------------- ----- ------------ -------------------------------------
+ *  2009/10/14    1.0   M.Hirose     èââÒçÏê¨
+ ************************************************************************/
+CREATE INDEX xxcmm.xxcmm_cust_accounts_n22 ON xxcmm.xxcmm_cust_accounts (invoice_code) TABLESPACE apps_ts_tx_idx;
+

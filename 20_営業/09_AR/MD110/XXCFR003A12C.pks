@@ -6,7 +6,7 @@ CREATE OR REPLACE PACKAGE XXCFR003A12C AS
  * Description     : 汎用商品（店単価毎集計）請求データ作成
  * MD.050          : MD050_CFR_003_A12_汎用商品（店単価毎集計）請求データ作成
  * MD.070          : MD050_CFR_003_A12_汎用商品（店単価毎集計）請求データ作成
- * Version         : 1.0
+ * Version         : 1.1
  * 
  * Program List
  * --------------- ---- ----- --------------------------------------------
@@ -19,6 +19,7 @@ CREATE OR REPLACE PACKAGE XXCFR003A12C AS
  *  Date          Ver.  Editor        Description
  * ------------- ----- ------------- -------------------------------------
  *  2009-01-30    1.0  SCS 大川 恵   初回作成
+ *  2009-10-13    1.1  SCS 白砂 幸世 IE535 顧客区分追加対応
  ************************************************************************/
 
 --===============================================================
@@ -28,7 +29,11 @@ CREATE OR REPLACE PACKAGE XXCFR003A12C AS
     errbuf           OUT VARCHAR2,    -- エラーメッセージ
     retcode          OUT VARCHAR2,    -- エラーコード
     iv_target_date   IN  VARCHAR2,    -- 締日
-    iv_ar_code1      IN  VARCHAR2     -- 売掛コード１(請求書)
+-- Modify 2009/10/13 Ver1.4 Start ----------------------------------------------
+--    iv_ar_code1      IN  VARCHAR2     -- 売掛コード１(請求書)
+    iv_cust_code     IN  VARCHAR2,    -- 顧客コード
+    iv_cust_class    IN  VARCHAR2     -- 顧客区分
+-- Modify 2009/10/13 Ver1.4 End   ----------------------------------------------
   );
 END  XXCFR003A12C;
 /

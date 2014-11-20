@@ -1,0 +1,4 @@
+CREATE INDEX xxcfr.xxcfr_invoice_lines_n01 ON xxcfr.xxcfr_invoice_lines(
+  ship_cust_code
+ ,cutoff_date
+) TABLESPACE xxidx2;

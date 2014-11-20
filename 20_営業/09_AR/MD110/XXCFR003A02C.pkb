@@ -7,7 +7,7 @@ AS
  * Description      : 請求ヘッダデータ作成
  * MD.050           : MD050_CFR_003_A02_請求ヘッダデータ作成
  * MD.070           : MD050_CFR_003_A02_請求ヘッダデータ作成
- * Version          : 1.02
+ * Version          : 1.06
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -21,7 +21,9 @@ AS
  *  delete_last_data       p 前回処理データ削除処理                  (A-6)
  *  get_bill_info          p 請求対象取引データ取得処理              (A-7)
  *  ins_invoice_header     p 請求ヘッダ情報登録処理                  (A-8)
- *  update_tax_gap         p 税差額算出処理                          (A-9)
+-- Modify 2009.09.29 Ver1.06 start
+-- *  update_tax_gap         p 税差額算出処理                          (A-9)
+-- Modify 2009.09.29 Ver1.06 End
  *  submain                p メイン処理プロシージャ
  *  main                   p コンカレント実行ファイル登録プロシージャ
  *
@@ -35,6 +37,7 @@ AS
  *  2009/07/21    1.03 SCS 松尾 泰生    障害0000819対応 一意制約エラー対応
  *  2009/07/22    1.04 SCS 廣瀬 真佐人  障害0000827対応 パフォーマンス改善
  *  2009/08/03    1.05 SCS 廣瀬 真佐人  障害0000913対応 パフォーマンス改善
+ *  2009/09/29    1.06 SCS 廣瀬 真佐人  共通課題IE535対応 請求書問題
  *
  *****************************************************************************************/
 --
@@ -2444,398 +2447,400 @@ AS
 --
   END ins_invoice_header;
 --
-  /**********************************************************************************
-   * Procedure Name   : update_tax_gap
-   * Description      : 税差額算出処理(A-9)
-   ***********************************************************************************/
-  PROCEDURE update_tax_gap(
-    iv_cust_acct_code       IN  VARCHAR2,     -- 請求先顧客コード
-    id_cutoff_date          IN  DATE,         -- 締日
-    iv_cust_acct_name       IN  VARCHAR2,     -- 請求先顧客名
-    iv_cust_acct_id         IN  VARCHAR2,     -- 請求先顧客ID
-    ov_errbuf               OUT VARCHAR2,     -- エラー・メッセージ           --# 固定 #
-    ov_retcode              OUT VARCHAR2,     -- リターン・コード             --# 固定 #
-    ov_errmsg               OUT VARCHAR2      -- ユーザー・エラー・メッセージ --# 固定 #
-  )
-  IS
-    -- ===============================
-    -- 固定ローカル定数
-    -- ===============================
-    cv_prg_name   CONSTANT VARCHAR2(100) := 'update_tax_gap'; -- プログラム名
---
---#####################  固定ローカル変数宣言部 START   ########################
---
-    lv_errbuf  VARCHAR2(5000);  -- エラー・メッセージ
-    lv_retcode VARCHAR2(1);     -- リターン・コード
-    lv_errmsg  VARCHAR2(5000);  -- ユーザー・エラー・メッセージ
---
---###########################  固定部 END   ####################################
---
-    -- ===============================
-    -- ユーザー宣言部
-    -- ===============================
-    -- *** ローカル定数 ***
---
-    -- *** ローカル変数 ***
-    ln_target_cnt       NUMBER;                             -- 対象件数
-    ln_upd_target_cnt   NUMBER;                             -- 更新対象件数
-    ln_tax_gap_amount   NUMBER;                             -- 税差額
-    lt_segment3         gl_code_combinations.segment3%TYPE; -- 勘定科目
-    lt_segment4         gl_code_combinations.segment4%TYPE; -- 補助科目
-    lv_dict_err_code    VARCHAR2(20);                       -- 日本語辞書参照コード
-    lt_look_dict_word   fnd_lookup_values_vl.meaning%TYPE;  -- 日本語辞書ワード
---
-    -- *** ローカル・カーソル ***
---
-    -- 税コード単位の税差額データ抽出
-    CURSOR get_tax_gap_cur
-    IS
--- Modify 2009.07.13 Ver1.02 start
---      SELECT taxv.tax_rate                                       tax_rate,       -- 税率
---             taxv.vat_tax_id                                     vat_tax_id,     -- 税コードID
---             SUM(taxv.re_calc_tax_amount - taxv.sum_tax_amount)  tax_gap_amount, -- 税差額
---             taxv.tax_code                                       tax_code        -- 税コード
---      FROM   (
--- Modify 2009.07.13 Ver1.02 end
-        SELECT avta.tax_rate                        tax_rate,    -- 税率
-               avta.vat_tax_id                      vat_tax_id,  -- 税コードID
--- Modify 2009.07.13 Ver1.02 start
---               avta.tax_code                        tax_code,    -- 税コード
-----Modify 2009.04.20 Ver1.01 Start
+-- Modify 2009.09.29 Ver1.06 start
+--  /**********************************************************************************
+--   * Procedure Name   : update_tax_gap
+--   * Description      : 税差額算出処理(A-9)
+--   ***********************************************************************************/
+--  PROCEDURE update_tax_gap(
+--    iv_cust_acct_code       IN  VARCHAR2,     -- 請求先顧客コード
+--    id_cutoff_date          IN  DATE,         -- 締日
+--    iv_cust_acct_name       IN  VARCHAR2,     -- 請求先顧客名
+--    iv_cust_acct_id         IN  VARCHAR2,     -- 請求先顧客ID
+--    ov_errbuf               OUT VARCHAR2,     -- エラー・メッセージ           --# 固定 #
+--    ov_retcode              OUT VARCHAR2,     -- リターン・コード             --# 固定 #
+--    ov_errmsg               OUT VARCHAR2      -- ユーザー・エラー・メッセージ --# 固定 #
+--  )
+--  IS
+--    -- ===============================
+--    -- 固定ローカル定数
+--    -- ===============================
+--    cv_prg_name   CONSTANT VARCHAR2(100) := 'update_tax_gap'; -- プログラム名
+----
+----#####################  固定ローカル変数宣言部 START   ########################
+----
+--    lv_errbuf  VARCHAR2(5000);  -- エラー・メッセージ
+--    lv_retcode VARCHAR2(1);     -- リターン・コード
+--    lv_errmsg  VARCHAR2(5000);  -- ユーザー・エラー・メッセージ
+----
+----###########################  固定部 END   ####################################
+----
+--    -- ===============================
+--    -- ユーザー宣言部
+--    -- ===============================
+--    -- *** ローカル定数 ***
+----
+--    -- *** ローカル変数 ***
+--    ln_target_cnt       NUMBER;                             -- 対象件数
+--    ln_upd_target_cnt   NUMBER;                             -- 更新対象件数
+--    ln_tax_gap_amount   NUMBER;                             -- 税差額
+--    lt_segment3         gl_code_combinations.segment3%TYPE; -- 勘定科目
+--    lt_segment4         gl_code_combinations.segment4%TYPE; -- 補助科目
+--    lv_dict_err_code    VARCHAR2(20);                       -- 日本語辞書参照コード
+--    lt_look_dict_word   fnd_lookup_values_vl.meaning%TYPE;  -- 日本語辞書ワード
+----
+--    -- *** ローカル・カーソル ***
+----
+--    -- 税コード単位の税差額データ抽出
+--    CURSOR get_tax_gap_cur
+--    IS
+---- Modify 2009.07.13 Ver1.02 start
+----      SELECT taxv.tax_rate                                       tax_rate,       -- 税率
+----             taxv.vat_tax_id                                     vat_tax_id,     -- 税コードID
+----             SUM(taxv.re_calc_tax_amount - taxv.sum_tax_amount)  tax_gap_amount, -- 税差額
+----             taxv.tax_code                                       tax_code        -- 税コード
+----      FROM   (
+---- Modify 2009.07.13 Ver1.02 end
+--        SELECT avta.tax_rate                        tax_rate,    -- 税率
+--               avta.vat_tax_id                      vat_tax_id,  -- 税コードID
+---- Modify 2009.07.13 Ver1.02 start
+----               avta.tax_code                        tax_code,    -- 税コード
+------Modify 2009.04.20 Ver1.01 Start
+------               DECODE(gt_tax_round_rule,
+------                        'UP',      CEIL(ABS(SUM(rctl.taxable_amount) * avta.tax_rate / 100))
+------                                     * SIGN(SUM(rctl.taxable_amount)),
+------                        'DOWN',    TRUNC(SUM(rctl.taxable_amount) * avta.tax_rate / 100),
+------                        'NEAREST', ROUND(SUM(rctl.taxable_amount) * avta.tax_rate / 100, 0)
+------                     )                              re_calc_tax_amount,     -- 消費税額(再計算)
 ----               DECODE(gt_tax_round_rule,
-----                        'UP',      CEIL(ABS(SUM(rctl.taxable_amount) * avta.tax_rate / 100))
-----                                     * SIGN(SUM(rctl.taxable_amount)),
-----                        'DOWN',    TRUNC(SUM(rctl.taxable_amount) * avta.tax_rate / 100),
-----                        'NEAREST', ROUND(SUM(rctl.taxable_amount) * avta.tax_rate / 100, 0)
-----                     )                              re_calc_tax_amount,     -- 消費税額(再計算)
+----                        'UP',     CEIL(ABS(SUM(rlli.extended_amount) * avta.tax_rate / 100))
+----                                    * SIGN(SUM(rlli.extended_amount)),
+----                        'DOWN',    TRUNC(SUM(rlli.extended_amount) * avta.tax_rate / 100),
+----                        'NEAREST', ROUND(SUM(rlli.extended_amount) * avta.tax_rate / 100, 0)
+----                     )                              re_calc_tax_amount,     -- 消費税額(再計算)  
+------Modify 2009.04.20 Ver1.01 End        
+----               SUM(rctl.extended_amount)            sum_tax_amount          -- 消費税額合計
 --               DECODE(gt_tax_round_rule,
 --                        'UP',     CEIL(ABS(SUM(rlli.extended_amount) * avta.tax_rate / 100))
 --                                    * SIGN(SUM(rlli.extended_amount)),
 --                        'DOWN',    TRUNC(SUM(rlli.extended_amount) * avta.tax_rate / 100),
 --                        'NEAREST', ROUND(SUM(rlli.extended_amount) * avta.tax_rate / 100, 0)
---                     )                              re_calc_tax_amount,     -- 消費税額(再計算)  
-----Modify 2009.04.20 Ver1.01 End        
---               SUM(rctl.extended_amount)            sum_tax_amount          -- 消費税額合計
-               DECODE(gt_tax_round_rule,
-                        'UP',     CEIL(ABS(SUM(rlli.extended_amount) * avta.tax_rate / 100))
-                                    * SIGN(SUM(rlli.extended_amount)),
-                        'DOWN',    TRUNC(SUM(rlli.extended_amount) * avta.tax_rate / 100),
-                        'NEAREST', ROUND(SUM(rlli.extended_amount) * avta.tax_rate / 100, 0)
-               )
-             - SUM(rctl.extended_amount)            tax_gap_amount, -- 消費税額(再計算) - 消費税額合計
-               avta.tax_code                        tax_code        -- 税コード
--- Modify 2009.07.13 Ver1.02 end
-        FROM   ra_customer_trx_all        rcta,                -- 取引テーブル
-               ra_customer_trx_lines_all  rctl,                -- 取引明細テーブル
---Modify 2009.04.20 Ver1.01 Start
-               ra_customer_trx_lines_all  rlli,                -- 取引明細テーブル（LINE）
---Modify 2009.04.20 Ver1.01 End
-               ar_vat_tax_all_b           avta                 -- 税金マスタ
-        WHERE  rctl.line_type = cv_line_type_tax               -- 明細タイプ
---Modify 2009.04.20 Ver1.01 Start       
---        AND    rctl.taxable_amount IS NOT NULL                 -- 税金対象額
---        AND    rctl.taxable_amount != 0                        -- 税金対象額
-        AND    rlli.extended_amount IS NOT NULL                 -- 明細金額
-        AND    rlli.extended_amount != 0                        -- 明細金額
---Modify 2009.04.20 Ver1.01 End
-        AND    avta.tax_rate IS NOT NULL                       -- 税率
-        AND    avta.tax_rate != 0                              -- 税率
-        AND    rcta.trx_date <= id_cutoff_date                 -- 締日
-        AND    rcta.attribute7 IN (cv_inv_hold_status_o,
-                                   cv_inv_hold_status_r)       -- 請求書保留ステータス
-        AND    rcta.bill_to_customer_id = iv_cust_acct_id      -- 請求先顧客ID
-        AND    rcta.org_id          = gn_org_id                -- 組織ID
-        AND    rcta.set_of_books_id = gn_set_book_id           -- 会計帳簿ID
-        AND    rcta.customer_trx_id = rctl.customer_trx_id
-        AND    avta.vat_tax_id = rctl.vat_tax_id  
-        AND    avta.validate_flag = 'Y'           
-        AND    gd_process_date BETWEEN NVL(avta.start_date, gd_process_date)
-                                   AND NVL(avta.end_date,   gd_process_date)
---Modify 2009.04.20 Ver1.01 Start   
-        AND    rctl.link_to_cust_trx_line_id = rlli.customer_trx_line_id
---Modify 2009.04.20 Ver1.01 End                                
-        GROUP BY avta.tax_rate,                                -- 税率
-                 avta.vat_tax_id,                              -- 税コードID
-                 avta.tax_code                                 -- 税コード
--- Modify 2009.07.13 Ver1.02 start
---      ) taxv
---      HAVING SUM(taxv.sum_tax_amount - taxv.re_calc_tax_amount) != 0   -- 税差額
---      GROUP BY taxv.tax_rate,
---               taxv.vat_tax_id,
---               taxv.tax_code
-      HAVING SUM(rctl.extended_amount) <> DECODE(gt_tax_round_rule,
-                                             'UP',     CEIL(ABS(SUM(rlli.extended_amount) * avta.tax_rate / 100))
-                                                         * SIGN(SUM(rlli.extended_amount)),
-                                             'DOWN',    TRUNC(SUM(rlli.extended_amount) * avta.tax_rate / 100),
-                                             'NEAREST', ROUND(SUM(rlli.extended_amount) * avta.tax_rate / 100, 0)
-                                          )    -- 税差額
--- Modify 2009.07.13 Ver1.02 end
-      ;
---
-    TYPE l_get_tax_gap_rtype IS TABLE OF get_tax_gap_cur%ROWTYPE INDEX BY PLS_INTEGER;
-    lt_get_tax_gap_tab       l_get_tax_gap_rtype;
---
-    -- 税差額更新対象データ抽出
-    CURSOR upd_inv_tax_gap_cur
-    IS
-      SELECT xxih.ROWID       row_id
-      FROM   xxcfr_invoice_headers xxih
-      WHERE  xxih.cutoff_date = id_cutoff_date            -- 締日
-      AND    xxih.bill_cust_account_id = iv_cust_acct_id  -- 請求先顧客ID
-      AND    xxih.request_id = cn_request_id              -- コンカレント要求ID
-      AND    xxih.org_id = gn_org_id                      -- 組織ID
-      AND    xxih.set_of_books_id = gn_set_book_id        -- 会計帳簿ID
-      FOR UPDATE NOWAIT
-    ;
---
-    TYPE upd_inv_tax_gap_ttype IS TABLE OF ROWID INDEX BY PLS_INTEGER;
-    lt_upd_inv_tax_gap_tab    upd_inv_tax_gap_ttype;
---
-    -- *** ローカル・レコード ***
---
-    -- *** ローカル例外 ***
---
-  BEGIN
---
---##################  固定ステータス初期化部 START   ###################
---
-    ov_retcode := cv_status_normal;
---
---###########################  固定部 END   ############################
---
-    -- ローカル変数の初期化
-    ln_target_cnt     := 0;
-    ln_tax_gap_amount := 0;
-    lv_dict_err_code  := NULL;
-    lt_look_dict_word := NULL;
-    lt_segment3       := NULL;
-    lt_segment4       := NULL;
---
-    --==============================================================
-    --請求書単位の消費税額の再計算処理
-    --==============================================================
-    -- カーソルオープン
-    OPEN get_tax_gap_cur;
---
-    -- データの一括取得
-    FETCH get_tax_gap_cur BULK COLLECT INTO lt_get_tax_gap_tab;
---
-    -- 処理件数のセット
-    ln_target_cnt := lt_get_tax_gap_tab.COUNT;
---
-    -- カーソルクローズ
-    CLOSE get_tax_gap_cur;
---
-    -- 対象データありの場合は税差額を算出
-    IF (ln_target_cnt > 0) THEN
---
-      <<gap_tax_calc_loop>>
-      FOR ln_loop_cnt IN 1..ln_target_cnt LOOP
-        ln_tax_gap_amount := ln_tax_gap_amount + lt_get_tax_gap_tab(ln_loop_cnt).tax_gap_amount;
-      END LOOP gap_tax_calc_loop;
---
-    -- 対象データなしの場合(税差額なし)、移行の処理を行わない
-    ELSE
-      RETURN;
-    END IF;
---
-    --==============================================================
-    --税差額の更新処理
-    --==============================================================
-    -- 税差額が0ではない場合
-    IF (ln_tax_gap_amount != 0) THEN
-      -- 請求ヘッダ情報テーブルロック
-      -- カーソルオープン
-      OPEN upd_inv_tax_gap_cur;
---
-      -- データの一括取得
-      FETCH upd_inv_tax_gap_cur BULK COLLECT INTO lt_upd_inv_tax_gap_tab;
---
-      -- 処理件数のセット
-      ln_upd_target_cnt := lt_upd_inv_tax_gap_tab.COUNT;
---
-      -- カーソルクローズ
-      CLOSE upd_inv_tax_gap_cur;
---
-      -- 対象データが存在する場合レコードを更新する
-      IF (ln_upd_target_cnt > 0) THEN
-        BEGIN
-          <<upd_invoice_header_loop>>
-          FORALL ln_loop_cnt IN 1..ln_upd_target_cnt
-            UPDATE xxcfr_invoice_headers
-            SET    tax_gap_amount        = ln_tax_gap_amount,                         -- 税差額
-                   tax_amount_sum        = tax_amount_sum + ln_tax_gap_amount,        -- 税額合計
-                   inv_amount_includ_tax = inv_amount_includ_tax + ln_tax_gap_amount, -- 税込請求金額合計
-                   last_updated_by       = cn_last_updated_by,                        -- 最終更新者
-                   last_update_date      = cd_last_update_date,                       -- 最終更新日
-                   last_update_login     = cn_last_update_login                       -- 最終更新ログイン
-            WHERE  ROWID = lt_upd_inv_tax_gap_tab(ln_loop_cnt);
---
-        EXCEPTION
-          -- *** OTHERS例外ハンドラ ***
-          WHEN OTHERS THEN
-          lv_errmsg := SUBSTRB( xxcmn_common_pkg.get_msg(
-                                  iv_application  => cv_msg_kbn_cfr        -- 'XXCFR'
-                                 ,iv_name         => cv_msg_cfr_00017      -- テーブル更新エラー
-                                 ,iv_token_name1  => cv_tkn_table          -- トークン'TABLE'
-                                 ,iv_token_value1 => xxcfr_common_pkg.get_table_comment(cv_table_xxih))
-                                                                           -- 請求ヘッダ情報テーブル
-                               ,1
-                               ,5000);
-          lv_errbuf  := lv_errmsg ||cv_msg_part|| SQLERRM;
-          RAISE global_process_expt;
-        END;
-      END IF;
---
-      --==============================================================
-      --税差額取引作成テーブルの登録データ抽出処理
-      --==============================================================
-      --税差額取引用勘定科目・補助科目抽出
-      BEGIN
-        SELECT inlv.segment3                segment3,
-               inlv.segment4                segment4
-        INTO   lt_segment3,
-               lt_segment4
-        FROM   (
-          SELECT glcc.segment3              segment3,
-                 glcc.segment4              segment4,
-                 SUM(rctl.extended_amount)  amount
-          FROM   ra_customer_trx_all            rcta
-                ,ra_customer_trx_lines_all      rctl
-                ,ra_cust_trx_line_gl_dist_all   rgda
-                ,gl_code_combinations           glcc
-          WHERE  rgda.account_class = cv_account_class_rec       -- 勘定区分
-          AND    rcta.trx_date <= id_cutoff_date                 -- 締日
-          AND    rcta.attribute7 IN (cv_inv_hold_status_o,
-                                     cv_inv_hold_status_r)       -- 請求書保留ステータス
-          AND    rcta.bill_to_customer_id = iv_cust_acct_id      -- 請求先顧客ID
-          AND    rcta.org_id          = gn_org_id                -- 組織ID
-          AND    rcta.set_of_books_id = gn_set_book_id           -- 会計帳簿ID
-          AND    rcta.customer_trx_id = rctl.customer_trx_id
-          AND    rctl.customer_trx_id = rgda.customer_trx_id
-          AND    rgda.code_combination_id  = glcc.code_combination_id
-          GROUP BY glcc.segment3,
-                   glcc.segment4
-          ORDER BY amount DESC
-        ) inlv
-        WHERE  ROWNUM = 1
-        ;
---
-      EXCEPTION
-        -- *** OTHERS例外ハンドラ ***
-        WHEN OTHERS THEN
-          lt_look_dict_word := xxcfr_common_pkg.lookup_dictionary(
-                                 iv_loopup_type_prefix => cv_msg_kbn_cfr,
-                                 iv_keyword            => cv_dict_cfr_00302014);    -- 勘定科目・補助科目
-          lv_errmsg := SUBSTRB(xxccp_common_pkg.get_msg(
-                                 iv_application  => cv_msg_kbn_cfr,
-                                 iv_name         => cv_msg_cfr_00015,  
-                                 iv_token_name1  => cv_tkn_data,  
-                                 iv_token_value1 => lt_look_dict_word),
-                               1,
-                               5000);
-          lv_errbuf  := lv_errmsg ||cv_msg_part|| SQLERRM;
-          RAISE global_process_expt;
-      END;
---
-      --==============================================================
-      --税差額取引作成テーブルの登録処理
-      --==============================================================
-      --税差額取引作成テーブルの登録ループ
-      <<ins_gap_tax_trx_loop>>
-      FOR ln_loop_cnt IN 1..ln_target_cnt LOOP
---
-        --税差額取引作成テーブル登録処理
-        BEGIN
-          INSERT INTO xxcfr_tax_gap_trx_list(
-            invoice_id,                   -- 一括請求書ID
-            tax_code_id,                  -- 税金コードID
-            cutoff_date,                  -- 締日
-            bill_cust_code,               -- 請求先顧客コード
-            bill_cust_name,               -- 請求先顧客名
-            tax_code,                     -- 税コード
-            segment3,                     -- 勘定科目
-            segment4,                     -- 補助科目
-            tax_gap_amount,               -- 税差額
-            note,                         -- 注釈
-            created_by,                   -- 作成者
-            creation_date,                -- 作成日
-            last_updated_by,              -- 最終更新者
-            last_update_date,             -- 最終更新日
-            last_update_login,            -- 最終更新ログイン
-            request_id,                   -- 要求ID
-            program_application_id,       -- コンカレント・プログラム・アプリケーションID
-            program_id,                   -- コンカレント・プログラムID
-            program_update_date           -- プログラム更新日
-          )VALUES (
-            gt_invoice_id,                                                    -- 一括請求書ID
-            lt_get_tax_gap_tab(ln_loop_cnt).vat_tax_id,                       -- 税金コードID
-            id_cutoff_date,                                                   -- 締日
-            iv_cust_acct_code,                                                -- 請求先顧客コード
-            iv_cust_acct_name,                                                -- 請求先顧客名
-            lt_get_tax_gap_tab(ln_loop_cnt).tax_code,                         -- 税コード
-            lt_segment3,                                                      -- 勘定科目
-            lt_segment4,                                                      -- 補助科目
-            lt_get_tax_gap_tab(ln_loop_cnt).tax_gap_amount,                   -- 税差額
-            iv_cust_acct_name || '_' || TO_CHAR(id_cutoff_date, 'YYYY/MM/DD'),-- 注釈
-            cn_created_by,                                                    -- 作成者
-            cd_creation_date,                                                 -- 作成日
-            cn_last_updated_by,                                               -- 最終更新者
-            cd_last_update_date,                                              -- 最終更新日
-            cn_last_update_login,                                             -- 最終更新ログイン
-            cn_request_id,                                                    -- 要求ID
-            cn_program_application_id,                                        -- アプリケーションID
-            cn_program_id,                                                    -- プログラムID
-            cd_program_update_date                                            -- プログラム更新日
-          );
---
-        EXCEPTION
-        -- *** OTHERS例外ハンドラ ***
-          WHEN OTHERS THEN
-            lv_errmsg := SUBSTRB( xxcmn_common_pkg.get_msg(
-                                    iv_application  => cv_msg_kbn_cfr        -- 'XXCFR'
-                                   ,iv_name         => cv_msg_cfr_00016      -- データ挿入エラー
-                                   ,iv_token_name1  => cv_tkn_table          -- トークン'TABLE'
-                                   ,iv_token_value1 => xxcfr_common_pkg.get_table_comment(cv_table_xxgt))
-                                                                             -- 税差額取引作成テーブル
-                                 ,1
-                                 ,5000);
-            lv_errbuf  := lv_errmsg ||cv_msg_part|| SQLERRM;
-            RAISE global_process_expt;
-        END;
---
-      END LOOP ins_gap_tax_trx_loop;
---
-    END IF;
---
-  EXCEPTION
-    -- *** テーブルロックエラーハンドラ ***
-    WHEN lock_expt THEN
-      lv_errmsg := SUBSTRB( xxcmn_common_pkg.get_msg(
-                              iv_application  => cv_msg_kbn_cfr        -- 'XXCFR'
-                             ,iv_name         => cv_msg_cfr_00003      -- テーブルロックエラー
-                             ,iv_token_name1  => cv_tkn_table          -- トークン'TABLE'
-                             ,iv_token_value1 => xxcfr_common_pkg.get_table_comment(cv_table_xxih))
-                                                                       -- 請求ヘッダ情報テーブル
-                           ,1
-                           ,5000);
-      lv_errbuf  := lv_errmsg ||cv_msg_part|| SQLERRM;
-      ov_errmsg  := lv_errmsg;
-      ov_errbuf  := SUBSTRB(cv_pkg_name||cv_msg_cont||cv_prg_name||cv_msg_part||lv_errbuf,1,5000);
-      ov_retcode := cv_status_error;
-    -- *** 処理部共通例外ハンドラ ***
-    WHEN global_process_expt THEN
-      ov_errmsg  := lv_errmsg;
-      ov_errbuf  := SUBSTRB(cv_pkg_name||cv_msg_cont||cv_prg_name||cv_msg_part||lv_errbuf,1,5000);
-      ov_retcode := cv_status_error;
-    -- *** OTHERS例外ハンドラ ***
-    WHEN OTHERS THEN
-      ov_errbuf  := cv_pkg_name||cv_msg_cont||cv_prg_name||cv_msg_part||SQLERRM;
-      ov_retcode := cv_status_error;
---
---#####################################  固定部 END   ##########################################
---
-  END update_tax_gap;
+--               )
+--             - SUM(rctl.extended_amount)            tax_gap_amount, -- 消費税額(再計算) - 消費税額合計
+--               avta.tax_code                        tax_code        -- 税コード
+---- Modify 2009.07.13 Ver1.02 end
+--        FROM   ra_customer_trx_all        rcta,                -- 取引テーブル
+--               ra_customer_trx_lines_all  rctl,                -- 取引明細テーブル
+----Modify 2009.04.20 Ver1.01 Start
+--               ra_customer_trx_lines_all  rlli,                -- 取引明細テーブル（LINE）
+----Modify 2009.04.20 Ver1.01 End
+--               ar_vat_tax_all_b           avta                 -- 税金マスタ
+--        WHERE  rctl.line_type = cv_line_type_tax               -- 明細タイプ
+----Modify 2009.04.20 Ver1.01 Start       
+----        AND    rctl.taxable_amount IS NOT NULL                 -- 税金対象額
+----        AND    rctl.taxable_amount != 0                        -- 税金対象額
+--        AND    rlli.extended_amount IS NOT NULL                 -- 明細金額
+--        AND    rlli.extended_amount != 0                        -- 明細金額
+----Modify 2009.04.20 Ver1.01 End
+--        AND    avta.tax_rate IS NOT NULL                       -- 税率
+--        AND    avta.tax_rate != 0                              -- 税率
+--        AND    rcta.trx_date <= id_cutoff_date                 -- 締日
+--        AND    rcta.attribute7 IN (cv_inv_hold_status_o,
+--                                   cv_inv_hold_status_r)       -- 請求書保留ステータス
+--        AND    rcta.bill_to_customer_id = iv_cust_acct_id      -- 請求先顧客ID
+--        AND    rcta.org_id          = gn_org_id                -- 組織ID
+--        AND    rcta.set_of_books_id = gn_set_book_id           -- 会計帳簿ID
+--        AND    rcta.customer_trx_id = rctl.customer_trx_id
+--        AND    avta.vat_tax_id = rctl.vat_tax_id  
+--        AND    avta.validate_flag = 'Y'           
+--        AND    gd_process_date BETWEEN NVL(avta.start_date, gd_process_date)
+--                                   AND NVL(avta.end_date,   gd_process_date)
+----Modify 2009.04.20 Ver1.01 Start   
+--        AND    rctl.link_to_cust_trx_line_id = rlli.customer_trx_line_id
+----Modify 2009.04.20 Ver1.01 End                                
+--        GROUP BY avta.tax_rate,                                -- 税率
+--                 avta.vat_tax_id,                              -- 税コードID
+--                 avta.tax_code                                 -- 税コード
+---- Modify 2009.07.13 Ver1.02 start
+----      ) taxv
+----      HAVING SUM(taxv.sum_tax_amount - taxv.re_calc_tax_amount) != 0   -- 税差額
+----      GROUP BY taxv.tax_rate,
+----               taxv.vat_tax_id,
+----               taxv.tax_code
+--      HAVING SUM(rctl.extended_amount) <> DECODE(gt_tax_round_rule,
+--                                             'UP',     CEIL(ABS(SUM(rlli.extended_amount) * avta.tax_rate / 100))
+--                                                         * SIGN(SUM(rlli.extended_amount)),
+--                                             'DOWN',    TRUNC(SUM(rlli.extended_amount) * avta.tax_rate / 100),
+--                                             'NEAREST', ROUND(SUM(rlli.extended_amount) * avta.tax_rate / 100, 0)
+--                                          )    -- 税差額
+---- Modify 2009.07.13 Ver1.02 end
+--      ;
+----
+--    TYPE l_get_tax_gap_rtype IS TABLE OF get_tax_gap_cur%ROWTYPE INDEX BY PLS_INTEGER;
+--    lt_get_tax_gap_tab       l_get_tax_gap_rtype;
+----
+--    -- 税差額更新対象データ抽出
+--    CURSOR upd_inv_tax_gap_cur
+--    IS
+--      SELECT xxih.ROWID       row_id
+--      FROM   xxcfr_invoice_headers xxih
+--      WHERE  xxih.cutoff_date = id_cutoff_date            -- 締日
+--      AND    xxih.bill_cust_account_id = iv_cust_acct_id  -- 請求先顧客ID
+--      AND    xxih.request_id = cn_request_id              -- コンカレント要求ID
+--      AND    xxih.org_id = gn_org_id                      -- 組織ID
+--      AND    xxih.set_of_books_id = gn_set_book_id        -- 会計帳簿ID
+--      FOR UPDATE NOWAIT
+--    ;
+----
+--    TYPE upd_inv_tax_gap_ttype IS TABLE OF ROWID INDEX BY PLS_INTEGER;
+--    lt_upd_inv_tax_gap_tab    upd_inv_tax_gap_ttype;
+----
+--    -- *** ローカル・レコード ***
+----
+--    -- *** ローカル例外 ***
+----
+--  BEGIN
+----
+----##################  固定ステータス初期化部 START   ###################
+----
+--    ov_retcode := cv_status_normal;
+----
+----###########################  固定部 END   ############################
+----
+--    -- ローカル変数の初期化
+--    ln_target_cnt     := 0;
+--    ln_tax_gap_amount := 0;
+--    lv_dict_err_code  := NULL;
+--    lt_look_dict_word := NULL;
+--    lt_segment3       := NULL;
+--    lt_segment4       := NULL;
+----
+--    --==============================================================
+--    --請求書単位の消費税額の再計算処理
+--    --==============================================================
+--    -- カーソルオープン
+--    OPEN get_tax_gap_cur;
+----
+--    -- データの一括取得
+--    FETCH get_tax_gap_cur BULK COLLECT INTO lt_get_tax_gap_tab;
+----
+--    -- 処理件数のセット
+--    ln_target_cnt := lt_get_tax_gap_tab.COUNT;
+----
+--    -- カーソルクローズ
+--    CLOSE get_tax_gap_cur;
+----
+--    -- 対象データありの場合は税差額を算出
+--    IF (ln_target_cnt > 0) THEN
+----
+--      <<gap_tax_calc_loop>>
+--      FOR ln_loop_cnt IN 1..ln_target_cnt LOOP
+--        ln_tax_gap_amount := ln_tax_gap_amount + lt_get_tax_gap_tab(ln_loop_cnt).tax_gap_amount;
+--      END LOOP gap_tax_calc_loop;
+----
+--    -- 対象データなしの場合(税差額なし)、移行の処理を行わない
+--    ELSE
+--      RETURN;
+--    END IF;
+----
+--    --==============================================================
+--    --税差額の更新処理
+--    --==============================================================
+--    -- 税差額が0ではない場合
+--    IF (ln_tax_gap_amount != 0) THEN
+--      -- 請求ヘッダ情報テーブルロック
+--      -- カーソルオープン
+--      OPEN upd_inv_tax_gap_cur;
+----
+--      -- データの一括取得
+--      FETCH upd_inv_tax_gap_cur BULK COLLECT INTO lt_upd_inv_tax_gap_tab;
+----
+--      -- 処理件数のセット
+--      ln_upd_target_cnt := lt_upd_inv_tax_gap_tab.COUNT;
+----
+--      -- カーソルクローズ
+--      CLOSE upd_inv_tax_gap_cur;
+----
+--      -- 対象データが存在する場合レコードを更新する
+--      IF (ln_upd_target_cnt > 0) THEN
+--        BEGIN
+--          <<upd_invoice_header_loop>>
+--          FORALL ln_loop_cnt IN 1..ln_upd_target_cnt
+--            UPDATE xxcfr_invoice_headers
+--            SET    tax_gap_amount        = ln_tax_gap_amount,                         -- 税差額
+--                   tax_amount_sum        = tax_amount_sum + ln_tax_gap_amount,        -- 税額合計
+--                   inv_amount_includ_tax = inv_amount_includ_tax + ln_tax_gap_amount, -- 税込請求金額合計
+--                   last_updated_by       = cn_last_updated_by,                        -- 最終更新者
+--                   last_update_date      = cd_last_update_date,                       -- 最終更新日
+--                   last_update_login     = cn_last_update_login                       -- 最終更新ログイン
+--            WHERE  ROWID = lt_upd_inv_tax_gap_tab(ln_loop_cnt);
+----
+--        EXCEPTION
+--          -- *** OTHERS例外ハンドラ ***
+--          WHEN OTHERS THEN
+--          lv_errmsg := SUBSTRB( xxcmn_common_pkg.get_msg(
+--                                  iv_application  => cv_msg_kbn_cfr        -- 'XXCFR'
+--                                 ,iv_name         => cv_msg_cfr_00017      -- テーブル更新エラー
+--                                 ,iv_token_name1  => cv_tkn_table          -- トークン'TABLE'
+--                                 ,iv_token_value1 => xxcfr_common_pkg.get_table_comment(cv_table_xxih))
+--                                                                           -- 請求ヘッダ情報テーブル
+--                               ,1
+--                               ,5000);
+--          lv_errbuf  := lv_errmsg ||cv_msg_part|| SQLERRM;
+--          RAISE global_process_expt;
+--        END;
+--      END IF;
+----
+--      --==============================================================
+--      --税差額取引作成テーブルの登録データ抽出処理
+--      --==============================================================
+--      --税差額取引用勘定科目・補助科目抽出
+--      BEGIN
+--        SELECT inlv.segment3                segment3,
+--               inlv.segment4                segment4
+--        INTO   lt_segment3,
+--               lt_segment4
+--        FROM   (
+--          SELECT glcc.segment3              segment3,
+--                 glcc.segment4              segment4,
+--                 SUM(rctl.extended_amount)  amount
+--          FROM   ra_customer_trx_all            rcta
+--                ,ra_customer_trx_lines_all      rctl
+--                ,ra_cust_trx_line_gl_dist_all   rgda
+--                ,gl_code_combinations           glcc
+--          WHERE  rgda.account_class = cv_account_class_rec       -- 勘定区分
+--          AND    rcta.trx_date <= id_cutoff_date                 -- 締日
+--          AND    rcta.attribute7 IN (cv_inv_hold_status_o,
+--                                     cv_inv_hold_status_r)       -- 請求書保留ステータス
+--          AND    rcta.bill_to_customer_id = iv_cust_acct_id      -- 請求先顧客ID
+--          AND    rcta.org_id          = gn_org_id                -- 組織ID
+--          AND    rcta.set_of_books_id = gn_set_book_id           -- 会計帳簿ID
+--          AND    rcta.customer_trx_id = rctl.customer_trx_id
+--          AND    rctl.customer_trx_id = rgda.customer_trx_id
+--          AND    rgda.code_combination_id  = glcc.code_combination_id
+--          GROUP BY glcc.segment3,
+--                   glcc.segment4
+--          ORDER BY amount DESC
+--        ) inlv
+--        WHERE  ROWNUM = 1
+--        ;
+----
+--      EXCEPTION
+--        -- *** OTHERS例外ハンドラ ***
+--        WHEN OTHERS THEN
+--          lt_look_dict_word := xxcfr_common_pkg.lookup_dictionary(
+--                                 iv_loopup_type_prefix => cv_msg_kbn_cfr,
+--                                 iv_keyword            => cv_dict_cfr_00302014);    -- 勘定科目・補助科目
+--          lv_errmsg := SUBSTRB(xxccp_common_pkg.get_msg(
+--                                 iv_application  => cv_msg_kbn_cfr,
+--                                 iv_name         => cv_msg_cfr_00015,  
+--                                 iv_token_name1  => cv_tkn_data,  
+--                                 iv_token_value1 => lt_look_dict_word),
+--                               1,
+--                               5000);
+--          lv_errbuf  := lv_errmsg ||cv_msg_part|| SQLERRM;
+--          RAISE global_process_expt;
+--      END;
+----
+--      --==============================================================
+--      --税差額取引作成テーブルの登録処理
+--      --==============================================================
+--      --税差額取引作成テーブルの登録ループ
+--      <<ins_gap_tax_trx_loop>>
+--      FOR ln_loop_cnt IN 1..ln_target_cnt LOOP
+----
+--        --税差額取引作成テーブル登録処理
+--        BEGIN
+--          INSERT INTO xxcfr_tax_gap_trx_list(
+--            invoice_id,                   -- 一括請求書ID
+--            tax_code_id,                  -- 税金コードID
+--            cutoff_date,                  -- 締日
+--            bill_cust_code,               -- 請求先顧客コード
+--            bill_cust_name,               -- 請求先顧客名
+--            tax_code,                     -- 税コード
+--            segment3,                     -- 勘定科目
+--            segment4,                     -- 補助科目
+--            tax_gap_amount,               -- 税差額
+--            note,                         -- 注釈
+--            created_by,                   -- 作成者
+--            creation_date,                -- 作成日
+--            last_updated_by,              -- 最終更新者
+--            last_update_date,             -- 最終更新日
+--            last_update_login,            -- 最終更新ログイン
+--            request_id,                   -- 要求ID
+--            program_application_id,       -- コンカレント・プログラム・アプリケーションID
+--            program_id,                   -- コンカレント・プログラムID
+--            program_update_date           -- プログラム更新日
+--          )VALUES (
+--            gt_invoice_id,                                                    -- 一括請求書ID
+--            lt_get_tax_gap_tab(ln_loop_cnt).vat_tax_id,                       -- 税金コードID
+--            id_cutoff_date,                                                   -- 締日
+--            iv_cust_acct_code,                                                -- 請求先顧客コード
+--            iv_cust_acct_name,                                                -- 請求先顧客名
+--            lt_get_tax_gap_tab(ln_loop_cnt).tax_code,                         -- 税コード
+--            lt_segment3,                                                      -- 勘定科目
+--            lt_segment4,                                                      -- 補助科目
+--            lt_get_tax_gap_tab(ln_loop_cnt).tax_gap_amount,                   -- 税差額
+--            iv_cust_acct_name || '_' || TO_CHAR(id_cutoff_date, 'YYYY/MM/DD'),-- 注釈
+--            cn_created_by,                                                    -- 作成者
+--            cd_creation_date,                                                 -- 作成日
+--            cn_last_updated_by,                                               -- 最終更新者
+--            cd_last_update_date,                                              -- 最終更新日
+--            cn_last_update_login,                                             -- 最終更新ログイン
+--            cn_request_id,                                                    -- 要求ID
+--            cn_program_application_id,                                        -- アプリケーションID
+--            cn_program_id,                                                    -- プログラムID
+--            cd_program_update_date                                            -- プログラム更新日
+--          );
+----
+--        EXCEPTION
+--        -- *** OTHERS例外ハンドラ ***
+--          WHEN OTHERS THEN
+--            lv_errmsg := SUBSTRB( xxcmn_common_pkg.get_msg(
+--                                    iv_application  => cv_msg_kbn_cfr        -- 'XXCFR'
+--                                   ,iv_name         => cv_msg_cfr_00016      -- データ挿入エラー
+--                                   ,iv_token_name1  => cv_tkn_table          -- トークン'TABLE'
+--                                   ,iv_token_value1 => xxcfr_common_pkg.get_table_comment(cv_table_xxgt))
+--                                                                             -- 税差額取引作成テーブル
+--                                 ,1
+--                                 ,5000);
+--            lv_errbuf  := lv_errmsg ||cv_msg_part|| SQLERRM;
+--            RAISE global_process_expt;
+--        END;
+----
+--      END LOOP ins_gap_tax_trx_loop;
+----
+--    END IF;
+----
+--  EXCEPTION
+--    -- *** テーブルロックエラーハンドラ ***
+--    WHEN lock_expt THEN
+--      lv_errmsg := SUBSTRB( xxcmn_common_pkg.get_msg(
+--                              iv_application  => cv_msg_kbn_cfr        -- 'XXCFR'
+--                             ,iv_name         => cv_msg_cfr_00003      -- テーブルロックエラー
+--                             ,iv_token_name1  => cv_tkn_table          -- トークン'TABLE'
+--                             ,iv_token_value1 => xxcfr_common_pkg.get_table_comment(cv_table_xxih))
+--                                                                       -- 請求ヘッダ情報テーブル
+--                           ,1
+--                           ,5000);
+--      lv_errbuf  := lv_errmsg ||cv_msg_part|| SQLERRM;
+--      ov_errmsg  := lv_errmsg;
+--      ov_errbuf  := SUBSTRB(cv_pkg_name||cv_msg_cont||cv_prg_name||cv_msg_part||lv_errbuf,1,5000);
+--      ov_retcode := cv_status_error;
+--    -- *** 処理部共通例外ハンドラ ***
+--    WHEN global_process_expt THEN
+--      ov_errmsg  := lv_errmsg;
+--      ov_errbuf  := SUBSTRB(cv_pkg_name||cv_msg_cont||cv_prg_name||cv_msg_part||lv_errbuf,1,5000);
+--      ov_retcode := cv_status_error;
+--    -- *** OTHERS例外ハンドラ ***
+--    WHEN OTHERS THEN
+--      ov_errbuf  := cv_pkg_name||cv_msg_cont||cv_prg_name||cv_msg_part||SQLERRM;
+--      ov_retcode := cv_status_error;
+----
+----#####################################  固定部 END   ##########################################
+----
+--  END update_tax_gap;
+-- Modify 2009.09.29 Ver1.06 End
 --
   /**********************************************************************************
    * Procedure Name   : submain
@@ -3038,28 +3043,30 @@ AS
           RAISE global_process_expt;
         END IF;
 --
-        --請求ヘッダ情報テーブルに登録したかつ、
-        --消費税区分が外税の場合
-        IF (gt_invoice_id IS NOT NULL) AND
-           (gt_get_tax_div_tab(ln_loop_cnt) = cv_tax_div_outtax)
-        THEN
-          -- =====================================================
-          -- 税差額算出処理 (A-9)
-          -- =====================================================
-          update_tax_gap(
-             gt_get_acct_code_tab(ln_loop_cnt),      -- 請求先顧客コード
-             gt_get_cutoff_date_tab(ln_loop_cnt),    -- 締日
-             gt_get_cust_name_tab(ln_loop_cnt),      -- 請求先顧客名
-             gt_get_cust_acct_id_tab(ln_loop_cnt),   -- 請求先顧客ID
-             lv_errbuf,                              -- エラー・メッセージ           --# 固定 #
-             lv_retcode,                             -- リターン・コード             --# 固定 #
-             lv_errmsg                               -- ユーザー・エラー・メッセージ --# 固定 #
-          );
-          IF (lv_retcode = cv_status_error) THEN
-            --(エラー処理)
-            RAISE global_process_expt;
-          END IF;
-        END IF;
+-- Modify 2009.09.29 Ver1.06 start
+--        --請求ヘッダ情報テーブルに登録したかつ、
+--        --消費税区分が外税の場合
+--        IF (gt_invoice_id IS NOT NULL) AND
+--           (gt_get_tax_div_tab(ln_loop_cnt) = cv_tax_div_outtax)
+--        THEN
+--          -- =====================================================
+--          -- 税差額算出処理 (A-9)
+--          -- =====================================================
+--          update_tax_gap(
+--             gt_get_acct_code_tab(ln_loop_cnt),      -- 請求先顧客コード
+--             gt_get_cutoff_date_tab(ln_loop_cnt),    -- 締日
+--             gt_get_cust_name_tab(ln_loop_cnt),      -- 請求先顧客名
+--             gt_get_cust_acct_id_tab(ln_loop_cnt),   -- 請求先顧客ID
+--             lv_errbuf,                              -- エラー・メッセージ           --# 固定 #
+--             lv_retcode,                             -- リターン・コード             --# 固定 #
+--             lv_errmsg                               -- ユーザー・エラー・メッセージ --# 固定 #
+--          );
+--          IF (lv_retcode = cv_status_error) THEN
+--            --(エラー処理)
+--            RAISE global_process_expt;
+--          END IF;
+--        END IF;
+-- Modify 2009.09.29 Ver1.06 End
 --
       --請求対象取引データが存在しなかった場合
       ELSE

@@ -1,38 +1,6 @@
-CREATE OR REPLACE FORCE VIEW XXCFR_CUST_HIERARCHY_V (
-  cash_account_id,                           --入金先顧客ID        
-  cash_account_number,                       --入金先顧客コード    
-  cash_account_name,                         --入金先顧客名称
-  bill_account_id,                           --請求先顧客ID        
-  bill_account_number,                       --請求先顧客コード    
-  bill_account_name,                         --請求先顧客名称
-  ship_account_id,                           --出荷先顧客ID        
-  ship_account_number,                       --出荷先顧客コード    
-  ship_account_name,                         --出荷先顧客名称
-  cash_receiv_base_code,                     --入金拠点コード      
-  bill_party_id,                             --パーティID          
-  bill_bill_base_code,                       --請求拠点コード      
-  bill_postal_code,                          --郵便番号            
-  bill_state,                                --都道府県            
-  bill_city,                                 --市・区              
-  bill_address1,                             --住所1               
-  bill_address2,                             --住所2               
-  bill_tel_num,                              --電話番号            
-  bill_cons_inv_flag,                        --一括請求書発行フラグ
-  bill_torihikisaki_code,                    --取引先コード        
-  bill_store_code,                           --店舗コード          
-  bill_cust_store_name,                      --顧客店舗名称        
-  bill_tax_div,                              --消費税区分          
-  bill_cred_rec_code1,                       --売掛コード1(請求書) 
-  bill_cred_rec_code2,                       --売掛コード2(事業所) 
-  bill_cred_rec_code3,                       --売掛コード3(その他) 
-  bill_invoice_type,                         --請求書出力形式      
-  bill_payment_term_id,                      --支払条件            
-  bill_payment_term2,                        --第2支払条件         
-  bill_payment_term3,                        --第3支払条件         
-  bill_tax_round_rule,                       --税金－端数処理      
-  ship_sale_base_code                        --売上拠点コード      
-) AS 
-SELECT 
+
+  CREATE OR REPLACE FORCE VIEW "APPS"."XXCFR_CUST_HIERARCHY_V" ("CASH_ACCOUNT_ID", "CASH_ACCOUNT_NUMBER", "CASH_ACCOUNT_NAME", "BILL_ACCOUNT_ID", "BILL_ACCOUNT_NUMBER", "BILL_ACCOUNT_NAME", "SHIP_ACCOUNT_ID", "SHIP_ACCOUNT_NUMBER", "SHIP_ACCOUNT_NAME", "CASH_RECEIV_BASE_CODE", "BILL_PARTY_ID", "BILL_BILL_BASE_CODE", "BILL_POSTAL_CODE", "BILL_STATE", "BILL_CITY", "BILL_ADDRESS1", "BILL_ADDRESS2", "BILL_TEL_NUM", "BILL_CONS_INV_FLAG", "BILL_TORIHIKISAKI_CODE", "BILL_STORE_CODE", "BILL_CUST_STORE_NAME", "BILL_TAX_DIV", "BILL_CRED_REC_CODE1", "BILL_CRED_REC_CODE2", "BILL_CRED_REC_CODE3", "BILL_INVOICE_TYPE", "BILL_PAYMENT_TERM_ID", "BILL_PAYMENT_TERM2", "BILL_PAYMENT_TERM3", "BILL_TAX_ROUND_RULE", "SHIP_SALE_BASE_CODE") AS 
+  SELECT 
 -- Modify 2009.08.03 hirose start
 --  SELECT cash_account_id                                  --入金先顧客ID        
 --        ,cash_account_number                              --入金先顧客コード    
@@ -448,6 +416,9 @@ SELECT
 -- Modify 2009.06.26 kayahara start               
 --               AND    ex_hcar_4.org_id = fnd_profile.value('ORG_ID')                    --請求先顧客所在地.組織ID = ログインユーザの組織ID
 -- Modify 2009.06.26 kayahara end                    
+-- Modify 2009.10.13 hirose start
+               AND    ex_hcar_4.attribute1 = '2'                                        --顧客関連マスタ(請求関連).関連区分 = ‘2’(入金)
+-- Modify 2009.10.13 hirose End
                     )
     AND    ship_hzca_4.cust_account_id = bill_hzad_4.customer_id             --請求先顧客マスタ.顧客ID = 顧客追加情報.顧客ID
     AND    ship_hzca_4.cust_account_id = bill_hasa_4.cust_account_id         --請求先顧客マスタ.顧客ID = 請求先顧客所在地.顧客ID
@@ -461,40 +432,5 @@ SELECT
 -- Modify 2009.08.03 hirose start
 --)
 ) temp
--- Modify 2009.08.03 hirose end
-;
---
-COMMENT ON COLUMN xxcfr_cust_hierarchy_v.cash_account_id         IS '入金先顧客ID';
-COMMENT ON COLUMN xxcfr_cust_hierarchy_v.cash_account_number     IS '入金先顧客コード';
-COMMENT ON COLUMN xxcfr_cust_hierarchy_v.cash_account_name       IS '入金先顧客名称';
-COMMENT ON COLUMN xxcfr_cust_hierarchy_v.bill_account_id         IS '請求先顧客ID';
-COMMENT ON COLUMN xxcfr_cust_hierarchy_v.bill_account_number     IS '請求先顧客コード';
-COMMENT ON COLUMN xxcfr_cust_hierarchy_v.bill_account_name       IS '請求先顧客名称';
-COMMENT ON COLUMN xxcfr_cust_hierarchy_v.ship_account_id         IS '出荷先顧客ID';
-COMMENT ON COLUMN xxcfr_cust_hierarchy_v.ship_account_number     IS '出荷先顧客コード';
-COMMENT ON COLUMN xxcfr_cust_hierarchy_v.ship_account_name       IS '出荷先顧客名称';
-COMMENT ON COLUMN xxcfr_cust_hierarchy_v.cash_receiv_base_code   IS '入金拠点コード';
-COMMENT ON COLUMN xxcfr_cust_hierarchy_v.bill_party_id           IS 'パーティID';
-COMMENT ON COLUMN xxcfr_cust_hierarchy_v.bill_bill_base_code     IS '請求拠点コード';
-COMMENT ON COLUMN xxcfr_cust_hierarchy_v.bill_postal_code        IS '郵便番号';
-COMMENT ON COLUMN xxcfr_cust_hierarchy_v.bill_state              IS '都道府県';
-COMMENT ON COLUMN xxcfr_cust_hierarchy_v.bill_city               IS '市・区';
-COMMENT ON COLUMN xxcfr_cust_hierarchy_v.bill_address1           IS '住所1';
-COMMENT ON COLUMN xxcfr_cust_hierarchy_v.bill_address2           IS '住所2';
-COMMENT ON COLUMN xxcfr_cust_hierarchy_v.bill_tel_num            IS '電話番号';
-COMMENT ON COLUMN xxcfr_cust_hierarchy_v.bill_cons_inv_flag      IS '一括請求書発行フラグ';
-COMMENT ON COLUMN xxcfr_cust_hierarchy_v.bill_torihikisaki_code  IS '取引先コード';
-COMMENT ON COLUMN xxcfr_cust_hierarchy_v.bill_store_code         IS '店舗コード';
-COMMENT ON COLUMN xxcfr_cust_hierarchy_v.bill_cust_store_name    IS '顧客店舗名称';
-COMMENT ON COLUMN xxcfr_cust_hierarchy_v.bill_tax_div            IS '消費税区分';
-COMMENT ON COLUMN xxcfr_cust_hierarchy_v.bill_cred_rec_code1     IS '売掛コード1(請求書)';
-COMMENT ON COLUMN xxcfr_cust_hierarchy_v.bill_cred_rec_code2     IS '売掛コード2(事業所)';
-COMMENT ON COLUMN xxcfr_cust_hierarchy_v.bill_cred_rec_code3     IS '売掛コード3(その他)';
-COMMENT ON COLUMN xxcfr_cust_hierarchy_v.bill_invoice_type       IS '請求書出力形式';
-COMMENT ON COLUMN xxcfr_cust_hierarchy_v.bill_payment_term_id    IS '支払条件';
-COMMENT ON COLUMN xxcfr_cust_hierarchy_v.bill_payment_term2      IS '第2支払条件';
-COMMENT ON COLUMN xxcfr_cust_hierarchy_v.bill_payment_term3      IS '第3支払条件';
-COMMENT ON COLUMN xxcfr_cust_hierarchy_v.bill_tax_round_rule     IS '税金－端数処理';
-COMMENT ON COLUMN xxcfr_cust_hierarchy_v.ship_sale_base_code     IS '売上拠点コード';
---
-COMMENT ON TABLE  xxcfr_cust_hierarchy_v IS '顧客階層VIEW';
+-- Modify 2009.08.03 hirose end;
+ 

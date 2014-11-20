@@ -1,13 +1,13 @@
-CREATE OR REPLACE PACKAGE XXCFR003A17C
+create or replace PACKAGE XXCFR003A18C
 AS
 /*****************************************************************************************
  * Copyright(c)Sumisho Computer Systems Corporation, 2008. All rights reserved.
  *
- * Package Name     : XXCFR003A17C(spec)
- * Description      : イセトー請求書データ作成
- * MD.050           : MD050_CFR_003_A17_イセトー請求書データ作成
- * MD.070           : MD050_CFR_003_A17_イセトー請求書データ作成
- * Version          : 1.10
+ * Package Name     : XXCFR003A18C(spec)
+ * Description      : 標準請求書税抜(店舗別内訳)
+ * MD.050           : MD050_CFR_003_A18_標準請求書税込(店舗別内訳)
+ * MD.070           : MD050_CFR_003_A18_標準請求書税込(店舗別内訳)
+ * Version          : 1.00
  *
  * Program List
  * -------------------- ------------------------------------------------------------
@@ -19,8 +19,7 @@ AS
  * ------------- ----- ---------------- -------------------------------------------------
  *  Date          Ver.  Editor           Description
  * ------------- ----- ---------------- -------------------------------------------------
- *  2009-02-23    1.00  SCS 白砂 幸世     新規作成
- *  2009-09-29    1.10  SCS 安川 智博     共通課題「IE535」対応
+ *  2009/09/25    1.00 SCS 安川 智博  初回作成
  *
  *****************************************************************************************/
 --
@@ -29,12 +28,9 @@ AS
     errbuf                 OUT     VARCHAR2,         -- エラーメッセージ #固定#
     retcode                OUT     VARCHAR2,         -- エラーコード     #固定#
     iv_target_date         IN      VARCHAR2,         -- 締日
--- Modify 2009-09-29 Ver1.10 Start
     iv_customer_code10     IN      VARCHAR2,         -- 顧客
     iv_customer_code20     IN      VARCHAR2,         -- 請求書用顧客
     iv_customer_code21     IN      VARCHAR2,         -- 統括請求書用顧客
     iv_customer_code14     IN      VARCHAR2          -- 売掛管理先顧客
--- Modify 2009-09-29 Ver1.10 End
   );
-END XXCFR003A17C;
-/
+END XXCFR003A18C;

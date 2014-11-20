@@ -7,7 +7,7 @@ AS
  * Description      : 請求金額一覧表出力
  * MD.050           : MD050_CFR_003_A05_請求金額一覧表出力
  * MD.070           : MD050_CFR_003_A05_請求金額一覧表出力
- * Version          : 1.2
+ * Version          : 1.4
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -32,6 +32,7 @@ AS
  *                                      中間テーブルデータ削除処理コメントアウト削除対応
  *  2009/04/14    1.2  SCS 大川 恵      [障害T1_0533] 出力ファイル名変数文字列オーバーフロー対応
  *  2009/04/28    1.3  SCS 萱原 伸哉    [障害T1_0742] 伝票日付セット値修正対応
+ *  2009/10/02    1.4  SCS 安川 智博    共通課題「IE535」対応
  *
  *****************************************************************************************/
 --
@@ -630,18 +631,38 @@ AS
            gv_output_date,                                 -- 出力日
            xih.cutoff_date           cutoff_date,           -- 締日
            xih.payment_cust_code     payment_cust_code,     -- 親請求先顧客コード
-           xih.bill_location_code    bill_location_code,    -- 請求拠点コード
-           xih.bill_location_name    bill_location_name,    -- 請求拠点名
+-- Modify 2009.10.02 Ver1.4 Start
+           --xih.bill_location_code    bill_location_code,    -- 請求拠点コード
+           xxca.receiv_base_code     bill_location_code,    -- 入金拠点コード
+           --xih.bill_location_name    bill_location_name,    -- 請求拠点名
+           ffvb.description          bill_location_name,    -- 入金拠点名
+-- Modify 2009.10.02 Ver1.4 End
            flv.meaning               tax_type,              -- 消費税区分名
            xih.bill_cust_code        bill_cust_code,        -- 請求先顧客コード（ソート順４）
            xih.bill_cust_name        bill_cust_name,        -- 請求先顧客名
-           ffvb.attribute9           bill_area_code        ,-- 請求拠点本部コード
+-- Modify 2009.10.02 Ver1.4 Start
+           --ffvb.attribute9           bill_area_code        ,-- 請求拠点本部コード
+           CASE
+           WHEN NVL(TO_DATE(ffvb.attribute6,'YYYYMMDD'),gd_target_date) <= gd_target_date THEN
+             ffvb.attribute9
+           ELSE
+             ffvb.attribute7
+           END                       bill_area_code        ,-- 入金拠点本部コード
+-- Modify 2009.10.02 Ver1.4 End
            xih.inv_amount_includ_tax inv_amount_includ_tax, -- 請求額合計
            xih.tax_gap_amount        tax_gap_amount ,       -- 税差額
            xil.ship_shop_code        ship_shop_code,        -- 店舗コード（ソート順６）
            xil.sold_location_code    sold_location_code,    -- 売上拠点コード
            xil.sold_location_name    sold_location_name,    -- 売上拠点名
-           ffvs.attribute9           sold_area_code,        -- 売上拠点本部コード  
+-- Modify 2009.10.02 Ver1.4 Start
+           --ffvs.attribute9           sold_area_code,        -- 売上拠点本部コード  
+           CASE
+           WHEN NVL(TO_DATE(ffvs.attribute6,'YYYYMMDD'),gd_target_date) <= gd_target_date THEN
+             ffvs.attribute9
+           ELSE
+             ffvs.attribute7
+           END                       sold_area_code,        -- 売上拠点本部コード
+-- Modify 2009.10.02 Ver1.4 End
            xil.ship_cust_code        ship_cust_code,        -- 納品先顧客コード（ソート順７）
            xil.ship_cust_name        ship_cust_name,        -- 納品先顧客名
            xil.slip_num              slip_num,              -- 伝票no（ソート順９）
@@ -663,7 +684,15 @@ AS
            cd_program_update_date                          -- プログラム更新日
     FROM xxcfr_invoice_headers          xih,  -- 請求ヘッダ
          xxcfr_invoice_lines            xil,  -- 請求明細
+-- Modify 2009.10.02 Ver1.4 Start
+         xxcmm_cust_accounts            xxca, -- 顧客追加情報
+-- Modify 2009.10.02 Ver1.4 End
          (SELECT ffvv.flex_value flex_value
+-- Modify 2009.10.02 Ver1.4 Start
+                ,ffvv.description
+                ,ffvv.attribute6
+                ,ffvv.attribute7
+-- Modify 2009.10.02 Ver1.4 End
                 ,ffvv.attribute9 
           FROM fnd_flex_value_sets ffvs,
                fnd_flex_values_vl  ffvv
@@ -671,6 +700,10 @@ AS
             AND ffvs.flex_value_set_id = ffvv.flex_value_set_id
          )                               ffvb, -- 請求拠点値セット値ビュー
          (SELECT ffvv.flex_value flex_value
+-- Modify 2009.10.02 Ver1.4 Start
+                ,ffvv.attribute6
+                ,ffvv.attribute7
+-- Modify 2009.10.02 Ver1.4 Start
                 ,ffvv.attribute9 
           FROM fnd_flex_value_sets ffvs,
                fnd_flex_values_vl  ffvv
@@ -687,15 +720,28 @@ AS
     WHERE xih.invoice_id = xil.invoice_id  -- 一括請求書ID
       AND xih.cutoff_date = gd_target_date -- パラメータ．締日
       AND EXISTS (SELECT 'X'
-                  FROM xxcfr_bill_customers_v xb                      --請求先顧客ビュー
+                  FROM xxcfr_bill_customers_v xb,                      -- 請求先顧客ビュー
+-- Modify 2009.10.02 Ver1.4 Start
+                       xxcmm_cust_accounts    xca                      -- 顧客追加情報
+-- Modify 2009.10.02 Ver1.4 End
                   WHERE xih.bill_cust_code = xb.bill_customer_code
+-- Modify 2009.10.02 Ver1.4 Start
+                    AND xca.customer_code = xb.bill_customer_code
+-- Modify 2009.10.02 Ver1.4 End
                     AND xb.cons_inv_flag = cv_enabled_yes             -- 一括請求書発行フラグ＝有効
                     AND (xb.bill_customer_code = NVL(iv_bill_cust_code,xb.bill_customer_code ) ) -- 請求先顧客コード
                     AND ( (gv_inv_all_flag = cv_status_yes) OR
                           (gv_inv_all_flag = cv_status_no AND 
-                           xb.bill_base_code = gt_user_dept) ) )      -- 請求拠点コード
+-- Modify 2009.10.02 Ver1.4 Start
+                           --xb.bill_base_code = gt_user_dept) ) )      -- 請求拠点コード
+                           xca.receiv_base_code = gt_user_dept) ) )      -- 売掛管理先顧客の入金拠点コード
+-- Modify 2009.10.02 Ver1.4 End
       AND xih.tax_type                = flv.lookup_code
-      AND ffvb.flex_value(+) = xih.bill_location_code
+-- Modify 2009.10.02 Ver1.4 Start
+      AND xih.bill_cust_code = xxca.customer_code
+      AND ffvb.flex_value(+) = xxca.receiv_base_code
+      --AND ffvb.flex_value(+) = xih.bill_location_code
+-- Modify 2009.10.02 Ver1.4 End
       AND ffvs.flex_value(+) = xil.sold_location_code
       AND xih.set_of_books_id = gn_set_of_bks_id
       AND xih.org_id = gn_org_id
@@ -703,18 +749,38 @@ AS
               gv_output_date,
               xih.cutoff_date           , -- 締日
               xih.payment_cust_code     , -- 親請求先顧客コード
-              xih.bill_location_code    , -- 請求拠点コード
-              xih.bill_location_name    , -- 請求拠点名
+-- Modify 2009.10.02 Ver1.4 Start
+              --xih.bill_location_code    , -- 請求拠点コード
+              xxca.receiv_base_code     , -- 入金拠点コード
+              --xih.bill_location_name    , -- 請求拠点名
+              ffvb.description          , -- 入金拠点名
+-- Modify 2009.10.02 Ver1.4 End
               flv.meaning               , -- 消費税区分名
               xih.bill_cust_code        , -- 請求先顧客コード
               xih.bill_cust_name        , -- 請求先顧客名
-              ffvb.attribute9           , -- 請求拠点本部コード
+-- Modify 2009.10.02 Ver1.4 Start
+              --ffvb.attribute9           , -- 請求拠点本部コード
+              CASE
+              WHEN NVL(TO_DATE(ffvb.attribute6,'YYYYMMDD'),gd_target_date) <= gd_target_date THEN
+                ffvb.attribute9
+              ELSE
+                ffvb.attribute7
+              END                       , -- 入金拠点本部コード
+-- Modify 2009.10.02 Ver1.4 End
               xih.inv_amount_includ_tax , -- 請求額合計
               xih.tax_gap_amount        , -- 税差額
               xil.ship_shop_code        , -- 店舗コード
               xil.sold_location_code    , -- 売上拠点コード
               xil.sold_location_name    , -- 売上拠点名
-              ffvs.attribute9           , -- 売上拠点本部コード  
+-- Modify 2009.10.02 Ver1.4 Start
+              --ffvs.attribute9           , -- 売上拠点本部コード  
+              CASE
+              WHEN NVL(TO_DATE(ffvs.attribute6,'YYYYMMDD'),gd_target_date) <= gd_target_date THEN
+                ffvs.attribute9
+              ELSE
+                ffvs.attribute7
+              END                       , -- 売上拠点本部コード
+-- Modify 2009.10.02 Ver1.4 End
               xil.ship_cust_code        , -- 納品先顧客コード
               xil.ship_cust_name        , -- 納品先顧客名
               xil.slip_num              , -- 伝票no
