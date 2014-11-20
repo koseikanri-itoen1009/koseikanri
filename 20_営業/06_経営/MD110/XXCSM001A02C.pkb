@@ -7,7 +7,7 @@ AS
  * Description      : EBS(ファイルアップロードIF)に取込まれた年間計画データを
  *                  : 販売計画テーブル(アドオン)に取込みます。
  * MD.050           : 予算データチェック取込    MD050_CSM_001_A02
- * Version          : 1.4
+ * Version          : 1.5
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -42,6 +42,7 @@ AS
  *  2009/04/06    1.3   SCS M.Ohtsuki    [障害T1_0241]開始日取得NVL対応
  *  2009/04/06    1.3   SCS M.Ohtsuki    [障害T1_0250]項目順不具合の対応
  *  2009/04/09    1.4   SCS M.Ohtsuki    [障害T1_0416]業務日付とシステム日付比較の不具合
+ *  2009/08/19    1.5   SCS T.Tsukino    [障害0001111]警告終了のエラーメッセージログ出力の変更対応
  *****************************************************************************************/
 --
 --#######################  固定グローバル定数宣言部 START   #######################
@@ -63,6 +64,9 @@ AS
   cv_msg_part               CONSTANT VARCHAR2(3)   := ' : ';
   cv_msg_cont               CONSTANT VARCHAR2(3)   := '.';
   cv_msg_00111              CONSTANT VARCHAR2(100) := 'APP-XXCSM1-00111';                           -- 想定外エラーメッセージ
+--//+UPD START 2009/08/19 0001111 T.Tsukino
+  cd_process_date           CONSTANT DATE        := xxccp_common_pkg2.get_process_date;             -- 業務日付
+--//+UPD END 2009/08/19 0001111 T.Tsukino
 --
 --################################  固定部 END   ##################################
 --
@@ -296,7 +300,11 @@ AS
     --==============================================================
 --
     xxcsm_common_pkg.get_yearplan_calender(
-                                  id_comparison_date => cd_creation_date                            -- システム日付
+--//+UPD START 2009/08/19 0001111 T.Tsukino
+--//+DEL START 2009/08/19 0001111 T.Tsukino
+--                                  id_comparison_date => cd_creation_date                            -- システム日付
+                                  id_comparison_date => cd_process_date                               -- 業務日付
+--//+UPD END 2009/08/19 0001111 T.Tsukino
                                  ,ov_status          => ln_result                                   -- 処理結果
                                  ,on_active_year     => gn_object_year                              -- 対象年度
                                  ,ov_retcode         => lv_retcode
@@ -1070,6 +1078,14 @@ AS
 --
     -- *** 共通関数例外ハンドラ ***
     WHEN chk_warning_expt THEN
+--//+ADD START 2009/08/19 0001111 T.Tsukino
+      lv_errbuf := lv_errmsg;
+      ov_errbuf  := SUBSTRB(cv_pkg_name||cv_msg_cont||cv_prg_name||cv_msg_part||lv_errbuf,1,4000);
+      fnd_file.put_line(
+                     which  => FND_FILE.LOG                                                       -- ログに表示
+                    ,buff   => ov_errbuf                                                          -- ユーザー・エラーメッセージ
+                     );
+--//+ADD END 2009/08/19 0001111 T.Tsukino      
       ov_retcode := cv_status_warn;
 --
 --#################################  固定例外処理部 START   ####################################
@@ -1265,6 +1281,14 @@ AS
 --
     -- *** 共通関数例外ハンドラ ***
     WHEN chk_warning_expt THEN
+--//+ADD START 2009/08/19 0001111 T.Tsukino
+      lv_errbuf := lv_errmsg;
+      ov_errbuf  := SUBSTRB(cv_pkg_name||cv_msg_cont||cv_prg_name||cv_msg_part||lv_errbuf,1,4000);
+      fnd_file.put_line(
+                     which  => FND_FILE.LOG                                                       -- ログに表示
+                    ,buff   => ov_errbuf                                                          -- ユーザー・エラーメッセージ
+                     );
+--//+ADD END 2009/08/19 0001111 T.Tsukino      
       ov_retcode := cv_status_warn;
 --
 --#################################  固定例外処理部 START   ####################################

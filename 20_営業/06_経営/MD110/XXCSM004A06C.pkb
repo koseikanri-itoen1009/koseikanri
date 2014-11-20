@@ -7,7 +7,7 @@ AS
  * Description      : EBS(ファイルアップロードIF)に取込まれた什器ポイントデータを
  *                  : 新規獲得ポイント顧客別履歴テーブルに取込みます。
  * MD.050           : MD050_CSM_004_A06_什器ポイント一括取込
- * Version          : 1.3
+ * Version          : 1.4
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -40,6 +40,7 @@ AS
  *  2009/04/06    1.1   SCS M.Ohtsuki    [障害T1_0241]開始日取得NVL対応
  *  2009/04/09    1.2   SCS M.Ohtsuki    [障害T1_0416]業務日付とシステム日付比較の不具合
  *  2009/04/14    1.3   SCS M.Ohtsuki    [障害T1_0500]年月チェック条件の不具合対応
+ *  2009/08/19    1.4   SCS T.Tsukino    [障害0001111]警告終了のエラーメッセージログ出力の変更対応
  *****************************************************************************************/
 --
 --#######################  固定グローバル定数宣言部 START   #######################
@@ -1000,6 +1001,13 @@ AS
                             ,buff   => lv_errmsg                                                    -- ユーザー・エラーメッセージ
                             );
            gn_canncel_flg := 1;                                                                     -- 廃止拠点フラグ→ON
+--//+ADD START 2009/08/19 0001111 T.Tsukino
+          lv_errbuf  := SUBSTRB(cv_pkg_name||cv_msg_cont||cv_prg_name||cv_msg_part||lv_errmsg,1,4000);
+          fnd_file.put_line(
+                         which  => FND_FILE.LOG                                                       -- ログに表示
+                        ,buff   => lv_errbuf                                                          -- ユーザー・エラーメッセージ
+                         );
+--//+ADD END 2009/08/19 0001111 T.Tsukino
         END IF;
       EXCEPTION
         WHEN NO_DATA_FOUND THEN                                                                     -- 廃止拠点では無い場合
@@ -1089,6 +1097,14 @@ AS
 --
     -- *** 共通関数例外ハンドラ ***
     WHEN chk_warning_expt THEN
+--//+ADD START 2009/08/19 0001111 T.Tsukino
+      lv_errbuf := lv_errmsg;
+      ov_errbuf  := SUBSTRB(cv_pkg_name||cv_msg_cont||cv_prg_name||cv_msg_part||lv_errbuf,1,4000);
+      fnd_file.put_line(
+                     which  => FND_FILE.LOG                                                       -- ログに表示
+                    ,buff   => ov_errbuf                                                          -- ユーザー・エラーメッセージ
+                     );
+--//+ADD END 2009/08/19 0001111 T.Tsukino      
       ov_retcode := cv_status_warn;
 --
 --#################################  固定例外処理部 START   ####################################
@@ -1290,13 +1306,22 @@ AS
                           ,iv_token_name1  => cv_tkn_yyyymm                                         -- トークンコード1
                           ,iv_token_value1 => lv_year_month                                         -- 獲得年月
                           );
-            lv_errbuf := lv_errmsg;
+--//+UPD START 2009/08/19 0001111 T.Tsukino
+--            lv_errbuf := lv_errmsg;
+            lv_errbuf  := SUBSTRB(cv_pkg_name||cv_msg_cont||cv_prg_name||cv_msg_part||lv_errmsg,1,4000);
+--//+UPD END 2009/08/19 0001111 T.Tsukino
 --
             fnd_file.put_line(
                               which  => FND_FILE.OUTPUT                                             -- 出力に表示
                              ,buff   => lv_errmsg                                                   -- ユーザー・エラーメッセージ
                              );
 --
+--//+ADD START 2009/08/19 0001111 T.Tsukino
+            fnd_file.put_line(
+                           which  => FND_FILE.LOG                                                       -- ログに表示
+                          ,buff   => lv_errbuf                                                          -- ユーザー・エラーメッセージ
+                           );
+--//+ADD END 2009/08/19 0001111 T.Tsukino      
           ELSE
             ln_nodata_cnt := 0;                                                                     -- データ0件チェック用カウンターを初期化
           END IF;
@@ -1421,12 +1446,21 @@ AS
                     ,iv_token_name1  => cv_tkn_yyyymm                                               -- トークンコード1
                     ,iv_token_value1 => lv_year_month                                               -- 獲得年月
                     );
-      lv_errbuf := lv_errmsg;
+--//+UPD START 2009/08/19 0001111 T.Tsukino
+--      lv_errbuf := lv_errmsg;
+      lv_errbuf  := SUBSTRB(cv_pkg_name||cv_msg_cont||cv_prg_name||cv_msg_part||lv_errmsg,1,4000);
+--//+UPD END 2009/08/19 0001111 T.Tsukino
 --
       fnd_file.put_line(
                         which  => FND_FILE.OUTPUT                                                   -- 出力に表示
                        ,buff   => lv_errmsg                                                         -- ユーザー・エラーメッセージ
                        );
+--//+ADD START 2009/08/19 0001111 T.Tsukino
+      fnd_file.put_line(
+                     which  => FND_FILE.LOG                                                       -- ログに表示
+                    ,buff   => lv_errbuf                                                          -- ユーザー・エラーメッセージ
+                     );
+--//+ADD END 2009/08/19 0001111 T.Tsukino      
 --
     END IF;
 --
