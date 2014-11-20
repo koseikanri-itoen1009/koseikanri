@@ -1,0 +1,2 @@
+CREATE SYNONYM XXSKY.XXSKY_取引_ロット別原価_基本_V FOR APPS.XXSKY_取引_ロット別原価_基本_V
+/

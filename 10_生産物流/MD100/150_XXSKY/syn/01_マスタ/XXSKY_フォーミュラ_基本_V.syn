@@ -1,0 +1,2 @@
+CREATE SYNONYM XXSKY.XXSKY_フォーミュラ_基本_V FOR APPS.XXSKY_フォーミュラ_基本_V
+/

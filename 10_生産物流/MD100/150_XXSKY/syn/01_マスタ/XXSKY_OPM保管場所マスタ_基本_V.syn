@@ -1,0 +1,2 @@
+CREATE SYNONYM XXSKY.XXSKY_OPM保管場所マスタ_基本_V FOR APPS.XXSKY_OPM保管場所マスタ_基本_V
+/
