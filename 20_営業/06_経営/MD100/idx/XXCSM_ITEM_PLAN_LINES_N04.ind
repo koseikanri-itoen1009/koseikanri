@@ -1,0 +1,2 @@
+CREATE INDEX xxcsm.xxcsm_item_plan_lines_n04 ON xxcsm_item_plan_lines (year_month) TABLESPACE xxidx2
+/
