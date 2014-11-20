@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCOS011A03C (body)
  * Description      : 納品予定データの作成を行う
  * MD.050           : 納品予定データ作成 (MD050_COS_011_A03)
- * Version          : 1.23
+ * Version          : 1.24
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -71,6 +71,7 @@ AS
  *  2010/06/11    1.21  S.Niki           [E_本稼動_03075]拠点選択対応
  *  2010/07/08    1.22  S.Niki           [E_本稼動_02637]顧客品目重複登録対応
  *  2011/02/15    1.23  N.Horigome       [E_本稼動_02155]クイック受注の伝票番号の修正対応
+ *  2011/04/27    1.24  K.Kiriu          [E_本稼動_07182]納品予定データ作成処理遅延対応
  *
  *****************************************************************************************/
 --
@@ -1062,9 +1063,11 @@ AS
           ,xeh.price_list_header_id             price_list_header_id           -- EDIヘッダ情報.価格表ヘッダID
           ,xel.edi_line_info_id                 edi_line_info_id               -- EDI明細情報.EDI明細情報ID
           ,xel.line_no                          line_no                        -- EDI明細情報.行Ｎｏ
-          ,DECODE(flvv1.attribute1, cv_y, ore.reason_code,
-                                          cv_err_reason_code)
-                                                stockout_class                 -- 変更事由.欠品区分
+/* 2011/04/27 Ver1.24 Del Start */
+--          ,DECODE(flvv1.attribute1, cv_y, ore.reason_code,
+--                                          cv_err_reason_code)
+--                                                stockout_class                 -- 変更事由.欠品区分
+/* 2011/04/27 Ver1.24 Del End   */
           ,xel.stockout_reason                  stockout_reason                -- EDI明細情報.欠品理由
           ,oola.ordered_item                    ordered_item                   -- 受注明細.受注品目
           ,xel.product_code1                    product_code1                  -- EDI明細情報.商品コード１
@@ -1202,6 +1205,9 @@ AS
 --****************************** 2009/06/24 1.10 T.Kitajima ADD START ******************************--
           ,oola.order_quantity_uom              order_quantity_uom             -- 受注明細.単位
 --****************************** 2009/06/24 1.10 T.Kitajima ADD  END ******************************--
+/* 2011/04/26 Ver1.24 Add Start */
+          ,oola.line_id                         line_id                        -- 受注明細.内部ID
+/* 2011/04/26 Ver1.24 Add End   */
     FROM   xxcos_edi_headers                    xeh    -- EDIヘッダ情報
           ,xxcos_edi_lines                      xel    -- EDI明細情報
           ,oe_order_headers_all                 ooha   -- 受注ヘッダ
@@ -1233,24 +1239,26 @@ AS
 -- ******* 2009/09/03 1.12 N.Maeda DEL START ******* --
 --          ,xxcos_head_prod_class_v              xhpcv  -- 本社商品区分ビュー
 -- ******* 2009/09/03 1.12 N.Maeda DEL  END  ******* --
-          ,(SELECT ore1.reason_code             reason_code
-                  ,ore1.entity_id               entity_id
-            FROM   oe_reasons                   ore1
-/* 2009/08/10 Ver1.11 Mod Start */
---                  ,(SELECT ore2.entity_id           entity_id
-                  ,(SELECT /*+ INDEX( ore2 xxcos_oe_reasons_n04 ) */
-                           ore2.entity_id           entity_id
-/* 2009/08/10 Ver1.11 Mod Start */
-                          ,MAX(ore2.creation_date)  creation_date
-                    FROM   oe_reasons               ore2
-                    WHERE  ore2.reason_type = cv_reason_type
-                    AND    ore2.entity_code = cv_entity_code_line
-                    GROUP BY ore2.entity_id
-                   )                            ore_max
-            WHERE  ore1.entity_id     = ore_max.entity_id
-            AND    ore1.creation_date = ore_max.creation_date
-           )                                    ore    -- 変更事由
-          ,fnd_lookup_values_vl                 flvv1  -- 事由コードマスタ
+/* 2011/04/27 Ver1.24 Del Start */
+--          ,(SELECT ore1.reason_code             reason_code
+--                  ,ore1.entity_id               entity_id
+--            FROM   oe_reasons                   ore1
+--/* 2009/08/10 Ver1.11 Mod Start */
+----                  ,(SELECT ore2.entity_id           entity_id
+--                  ,(SELECT /*+ INDEX( ore2 xxcos_oe_reasons_n04 ) */
+--                           ore2.entity_id           entity_id
+--/* 2009/08/10 Ver1.11 Mod Start */
+--                          ,MAX(ore2.creation_date)  creation_date
+--                    FROM   oe_reasons               ore2
+--                    WHERE  ore2.reason_type = cv_reason_type
+--                    AND    ore2.entity_code = cv_entity_code_line
+--                    GROUP BY ore2.entity_id
+--                   )                            ore_max
+--            WHERE  ore1.entity_id     = ore_max.entity_id
+--            AND    ore1.creation_date = ore_max.creation_date
+--           )                                    ore    -- 変更事由
+--          ,fnd_lookup_values_vl                 flvv1  -- 事由コードマスタ
+/* 2011/04/27 Ver1.24 Del End   */
 -- ******* 2009/09/03 1.12 N.Maeda ADD START ******* --
           ,mtl_item_categories            mic
           ,mtl_categories_b               mcb
@@ -1367,13 +1375,15 @@ AS
     AND   cd_process_date BETWEEN NVL(msib.start_date_active, cd_process_date)
                                      AND  NVL(msib.end_date_active, cd_process_date)
 -- ******* 2009/09/03 1.12 N.Maeda MOD  END  ******* --
-    AND    ore.entity_id(+)               = oola.line_id                      -- 変更事由.ID=受注明細.明細ID
-    AND    flvv1.lookup_type(+)           = cv_reason_type                    -- 事由ｺｰﾄﾞﾏｽﾀ.ﾀｲﾌﾟ=変更事由
-    AND    flvv1.lookup_code(+)           = ore.reason_code                   -- 事由ｺｰﾄﾞﾏｽﾀ.ｺｰﾄﾞ=変更事由.理由ｺｰﾄﾞ
-    AND (( flvv1.start_date_active IS NULL )
-    OR   ( flvv1.start_date_active <= cd_process_date ))
-    AND (( flvv1.end_date_active   IS NULL )
-    OR   ( flvv1.end_date_active   >= cd_process_date ))                      -- 業務日付がFROM-TO内
+/* 2011/04/27 Ver1.24 Del Start */
+--    AND    ore.entity_id(+)               = oola.line_id                      -- 変更事由.ID=受注明細.明細ID
+--    AND    flvv1.lookup_type(+)           = cv_reason_type                    -- 事由ｺｰﾄﾞﾏｽﾀ.ﾀｲﾌﾟ=変更事由
+--    AND    flvv1.lookup_code(+)           = ore.reason_code                   -- 事由ｺｰﾄﾞﾏｽﾀ.ｺｰﾄﾞ=変更事由.理由ｺｰﾄﾞ
+--    AND (( flvv1.start_date_active IS NULL )
+--    OR   ( flvv1.start_date_active <= cd_process_date ))
+--    AND (( flvv1.end_date_active   IS NULL )
+--    OR   ( flvv1.end_date_active   >= cd_process_date ))                      -- 業務日付がFROM-TO内
+/* 2011/04/27 Ver1.24 Del End   */
 -- ***************************** 2009/07/10 1.10 N.Maeda    ADD START ******************************--
     AND (( ooha.global_attribute3 IS NULL )
     OR   ( ooha.global_attribute3 = '02' ) )
@@ -3598,6 +3608,10 @@ AS
 --****************************** 2009/06/12 1.10 T.Kitajima ADD START ******************************--
     ln_invoice_number  NUMBER;          -- 数値チェック用
 --****************************** 2009/06/12 1.10 T.Kitajima ADD  END  ******************************--
+/* 2011/04/27 Ver1.24 Add Start */
+    ln_reason_id      oe_reasons.reason_id%TYPE;          --事由コード取得用(ダミー)
+    lv_select_flag    fnd_lookup_values.attribute1%TYPE;  --事由コード取得用(選択可能フラグ)
+/* 2011/04/27 Ver1.24 Add End   */
 --
     -- *** ローカル・カーソル ***
     CURSOR dummy_item_cur
@@ -4257,7 +4271,29 @@ AS
       IF ( gt_data_tab(ln_data_cnt)(cv_sum_stkout_qty) = cn_0 ) THEN
         gt_data_tab(ln_data_cnt)(cv_stkout_class)           := cv_stockout_class_00;                                       -- 欠品区分
       ELSE
-        gt_data_tab(ln_data_cnt)(cv_stkout_class)           := gt_edi_order_tab(ln_loop_cnt).stockout_class;               -- 欠品区分
+/* 2011/04/27 Ver1.24 Mod Start */
+--        gt_data_tab(ln_data_cnt)(cv_stkout_class)           := gt_edi_order_tab(ln_loop_cnt).stockout_class;               -- 欠品区分
+        --初期化
+        ln_reason_id                              := NULL;
+        gt_data_tab(ln_data_cnt)(cv_stkout_class) := NULL;
+        lv_select_flag                            := NULL;
+        --事由コードマスタデータ取得共通関数より事由コードを取得する
+        xxcos_common2_pkg.get_reason_data(
+           gt_edi_order_tab(ln_loop_cnt).line_id      -- 受注明細ID
+          ,ln_reason_id                               -- 事由コードマスタ内部ID
+          ,gt_data_tab(ln_data_cnt)(cv_stkout_class)  -- 事由コード
+          ,lv_select_flag                             -- 選択可能フラグ
+          ,lv_errbuf                                  -- エラー・メッセージエラー     #固定#
+          ,lv_retcode                                 -- リターン・コード             #固定#
+          ,lv_errmsg                                  -- ユーザー・エラー・メッセージ #固定#
+        );
+--
+        --選択可能フラグが'N'(NULL)の場合は、事由コードはエラー取消事由
+        IF ( NVL(lv_select_flag, cv_n ) = cv_n ) THEN
+          gt_data_tab(ln_data_cnt)(cv_stkout_class) := cv_err_reason_code;
+        END IF;
+--
+/* 2011/04/27 Ver1.24 Mod End   */
       END IF;
 /* 2010/04/15 Ver1.20 Del Start */
 ---- 2009/05/22 Ver1.9 Mod Start

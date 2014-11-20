@@ -6,7 +6,7 @@ AS
  * Package Name           : xxcos_common2_pkg(spec)
  * Description            :
  * MD.070                 : MD070_IPO_COS_共通関数
- * Version                : 1.9
+ * Version                : 1.10
  *
  * Program List
  *  --------------------          ---- ----- --------------------------------------------------
@@ -23,6 +23,8 @@ AS
  *  get_deliv_slip_flag             F           納品書発行フラグ取得関数
  *  get_deliv_slip_flag_area        F           納品書発行フラグ全体取得関数
  *  get_salesrep_id                 P           担当営業員取得関数
+ *  get_reason_code                 F           事由コード取得関数
+ *  get_reason_data                 P           事由コードマスタデータ取得関数
  *
  * Change Record
  * ------------ ----- ---------------- -----------------------------------------------
@@ -39,6 +41,8 @@ AS
  *  2010/04/15    1.7  Y.Goto           [E_本稼動_01719]担当営業員取得関数追加
  *  2010/05/26    1.8  K.Kiriu          [E_本稼動_02853]convert_quantity 出荷数量null時の不具合対応
  *  2010/07/14    1.9  S.Niki           [E_本稼動_02637]顧客品目コード重複登録対応
+ *  2011/04/26    1.10 K.kiriu          [E_本稼動_07182]納品予定データ作成処理遅延対応
+ *                                      [E_本稼動_07218]納品予定プルーフリスト作成処理遅延対応
  *
  *****************************************************************************************/
 --#######################  固定グローバル定数宣言部 START   #######################
@@ -1968,6 +1972,186 @@ AS
   END get_salesrep_id;
   --
 /* 2010/04/15 Ver1.7 Add End */
+/* 2011/04/26 Ver1.10 Add Start */
+  /**********************************************************************************
+   * Procedure Name   : get_reason_code
+   * Description      : 事由コード取得関数
+   ***********************************************************************************/
+  FUNCTION get_reason_code(
+               in_line_id  IN NUMBER                --受注明細ID
+              )
+    RETURN VARCHAR2
+  IS
+    -- ===============================
+    -- ユーザー宣言部
+    -- ===============================
+    -- ===============================
+    -- ローカル定数
+    -- ===============================
+    cv_prg_name                               CONSTANT VARCHAR2(100) := 'get_reason_code'; --プログラム
+    cv_line                                   CONSTANT VARCHAR2(4)   := 'LINE';
+    cv_cancel_code                            CONSTANT VARCHAR2(11)  := 'CANCEL_CODE';
+    -- ===============================
+    -- ローカル・カーソル
+    -- ===============================
+    --事由コードマスタの事由コード取得
+    CURSOR cur_reason(
+      p_line_id NUMBER
+    )
+    IS
+      SELECT /*+
+               INDEX (ore oe_reasons_n2)
+             */
+             ore.reason_code AS reason_code
+      FROM   oe_reasons  ore
+      WHERE  ore.entity_code  = cv_line
+      AND    ore.entity_id    = p_line_id
+      AND    ore.reason_type  = cv_cancel_code
+      ORDER BY
+         ore.creation_date DESC
+        ,ore.reason_id     DESC  --最新の事由
+      ;
+    rec_reason cur_reason%ROWTYPE;
+    --
+--#####################  固定ローカル変数宣言部 START   ########################
+--
+    lv_errbuf  VARCHAR2(5000);  -- エラー・メッセージ
+    lv_retcode VARCHAR2(1);     -- リターン・コード
+    lv_errmsg  VARCHAR2(5000);  -- ユーザー・エラー・メッセージ
+--
+--###########################  固定部 END   ####################################
+  --
+--
+  BEGIN
+--
+    --初期化
+    rec_reason.reason_code := NULL;
+    --受注明細に紐付く事由コードの最新1件を取得する
+    OPEN cur_reason(
+      in_line_id
+    );
+    FETCH cur_reason INTO rec_reason.reason_code;
+    CLOSE cur_reason;
+--
+    RETURN rec_reason.reason_code;
+--
+  EXCEPTION
+--
+--###############################  固定例外処理部 START   ###################################
+--
+    WHEN OTHERS THEN
+--
+      IF ( cur_reason%ISOPEN ) THEN
+        CLOSE cur_reason;
+      END IF;
+--
+      RAISE_APPLICATION_ERROR
+        (-20000,SUBSTRB(gv_pkg_name||gv_cnst_period||cv_prg_name||gv_msg_part||SQLERRM,1,5000),TRUE);
+--
+--###################################  固定部 END   #########################################
+--
+  END get_reason_code;
+--
+  /**********************************************************************************
+   * Procedure Name  : get_reason_data
+   * Description     : 事由コードマスタデータ取得関数
+   ***********************************************************************************/
+  PROCEDURE get_reason_data(
+               in_line_id      IN  NUMBER                  --受注明細ID
+              ,on_reason_id    OUT NOCOPY NUMBER           --事由コードマスタ内部ID
+              ,ov_reason_code  OUT NOCOPY VARCHAR2         --事由コード
+              ,ov_select_flag  OUT NOCOPY VARCHAR2         --選択可能フラグ
+              ,ov_errbuf       OUT NOCOPY VARCHAR2         --エラー・メッセージエラー       #固定#
+              ,ov_retcode      OUT NOCOPY VARCHAR2         --リターン・コード               #固定#
+              ,ov_errmsg       OUT NOCOPY VARCHAR2         --ユーザー・エラー・メッセージ   #固定#
+  )
+  IS
+    -- ===============================
+    -- ユーザー宣言部
+    -- ===============================
+    -- ===============================
+    -- ローカル定数
+    -- ===============================
+    cv_prg_name                               CONSTANT VARCHAR2(100) := 'get_reason_data';  --プログラム
+    cv_line                                   CONSTANT VARCHAR2(4)   := 'LINE';
+    cv_cancel_code                            CONSTANT VARCHAR2(11)  := 'CANCEL_CODE';
+    cd_sysdate                                CONSTANT DATE          := TRUNC(SYSDATE);
+    -- ===============================
+    -- ローカル変数
+    -- ===============================
+    CURSOR cur_reason_data(
+      p_line_id NUMBER
+    )
+    IS
+      SELECT/*+
+              INDEX (ore oe_reasons_n2)
+              USE_NL(ore flvv1)
+            */
+             ore.reason_id     AS reason_id    --内部ID
+            ,ore.reason_code   AS reason_code  --事由コード
+            ,flvv1.attribute1  AS attribute1   --選択可能フラグ
+      FROM   oe_reasons            ore
+            ,fnd_lookup_values_vl  flvv1
+      WHERE  ore.entity_code         = cv_line
+      AND    ore.entity_id           = p_line_id
+      AND    ore.reason_type         = cv_cancel_code
+      AND    flvv1.lookup_type(+)    = cv_cancel_code     -- クイックコードタイプ='CANCEL_CODE'
+      AND    flvv1.lookup_code(+)    = ore.reason_code
+      AND    NVL( flvv1.start_date_active(+), cd_sysdate ) <= cd_sysdate
+      AND    NVL( flvv1.end_date_active(+), cd_sysdate )   >= cd_sysdate
+      ORDER BY
+        ore.creation_date DESC
+       ,ore.reason_id     DESC  --最新の事由
+      ;
+    rec_reason_data cur_reason_data%ROWTYPE;
+    --
+--#####################  固定ローカル変数宣言部 START   ########################
+--
+    lv_errbuf  VARCHAR2(5000);  -- エラー・メッセージ
+    lv_retcode VARCHAR2(1);     -- リターン・コード
+    lv_errmsg  VARCHAR2(5000);  -- ユーザー・エラー・メッセージ
+--
+--###########################  固定部 END   ####################################
+--
+  BEGIN
+--
+    --リターン・コード初期化
+    ov_retcode := cv_status_normal;
+    --初期化
+    rec_reason_data.reason_id    := NULL;
+    rec_reason_data.reason_code  := NULL;
+    rec_reason_data.attribute1   := NULL;
+    --受注明細に紐付く事由コードデータの最新1件を取得する
+    OPEN cur_reason_data(
+      in_line_id
+    );
+    FETCH cur_reason_data INTO rec_reason_data.reason_id
+                              ,rec_reason_data.reason_code
+                              ,rec_reason_data.attribute1;
+    CLOSE cur_reason_data;
+--
+    --アウトパラメータに設定する
+    on_reason_id   := rec_reason_data.reason_id;
+    ov_reason_code := rec_reason_data.reason_code;
+    ov_select_flag := rec_reason_data.attribute1;
+--
+  EXCEPTION
+--
+--###############################  固定例外処理部 START   ###################################
+--
+    WHEN OTHERS THEN
+--
+      IF ( cur_reason_data%ISOPEN ) THEN
+        CLOSE cur_reason_data;
+      END IF;
+--
+      RAISE_APPLICATION_ERROR
+        (-20000,SUBSTRB(gv_pkg_name||gv_cnst_period||cv_prg_name||gv_msg_part||SQLERRM,1,5000),TRUE);
+--
+--###################################  固定部 END   #########################################
+--
+  END get_reason_data;
+/* 2011/04/26 Ver1.10 Add End   */
 --
 END XXCOS_COMMON2_PKG;
 /

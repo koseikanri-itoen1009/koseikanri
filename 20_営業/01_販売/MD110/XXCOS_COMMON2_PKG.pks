@@ -6,7 +6,7 @@ AS
  * Package Name           : XXCOS_COMMON2_PKG(spec)
  * Description            : 
  * MD.070                 : MD070_IPO_COS_共通関数
- * Version                : 1.8
+ * Version                : 1.9
  *
  * Program List
  *  --------------------          ---- ----- --------------------------------------------------
@@ -23,6 +23,8 @@ AS
  *  get_deliv_slip_flag             F           納品書発行フラグ取得関数
  *  get_deliv_slip_flag_area        F           納品書発行フラグ全体取得関数
  *  get_salesrep_id                 P           担当営業員取得関数
+ *  get_reason_code                 F           事由コード取得関数
+ *  get_reason_data                 P           事由コードマスタデータ取得関数
  *
  * Change Record
  * ------------ ----- ---------------- -----------------------------------------------
@@ -38,6 +40,8 @@ AS
  *                                      [0001344]顧客品目検索エラー,JANコード検索エラーのパラメータ追加
  *  2010/04/15    1.7  Y.Goto           [E_本稼動_01719]担当営業員取得関数追加
  *  2010/07/12    1.8  S.Niki           [E_本稼動_02637]品目コード変換（EBS→EDI)パラメータ追加
+ *  2011/04/26    1.9  K.kiriu          [E_本稼動_07182]納品予定データ作成処理遅延対応
+ *                                      [E_本稼動_07218]納品予定プルーフリスト作成処理遅延対応
  *
  *****************************************************************************************/
 --
@@ -191,6 +195,30 @@ AS
               ,ov_errmsg                           OUT NOCOPY VARCHAR2         --ユーザー・エラー・メッセージ   #固定#
   );
   --
+/* 2011/04/26 Ver1.9 Add Start */
+  /************************************************************************
+   * Function Name   : get_reason_code
+   * Description     : 事由コード取得関数
+   ************************************************************************/
+  FUNCTION get_reason_code(
+               in_line_id                          IN  NUMBER                  --受注明細ID
+           )
+    RETURN VARCHAR2;
+  --
+  /************************************************************************
+   * Procedure Name  : get_reason_data
+   * Description     : 事由コードマスタデータ取得関数
+   ************************************************************************/
+  PROCEDURE get_reason_data(
+               in_line_id                          IN  NUMBER                  --受注明細ID
+              ,on_reason_id                        OUT NOCOPY NUMBER           --事由コードマスタ内部ID
+              ,ov_reason_code                      OUT NOCOPY VARCHAR2         --事由コード
+              ,ov_select_flag                      OUT NOCOPY VARCHAR2         --選択可能フラグ
+              ,ov_errbuf                           OUT NOCOPY VARCHAR2         --エラー・メッセージエラー       #固定#
+              ,ov_retcode                          OUT NOCOPY VARCHAR2         --リターン・コード               #固定#
+              ,ov_errmsg                           OUT NOCOPY VARCHAR2         --ユーザー・エラー・メッセージ   #固定#
+  );
+/* 2011/04/26 Ver1.9 Add End   */
 --
 END XXCOS_COMMON2_PKG;
 /
