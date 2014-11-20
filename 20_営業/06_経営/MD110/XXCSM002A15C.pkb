@@ -8,7 +8,7 @@ AS
  *                  : 商品計画データを抽出し、生産システムに連携するためのIFテーブルにデータを
  *                  : 登録します。
  * MD.050           : MD050_CSM_002_A15_年間商品計画生産システムIF
- * Version          : 1.2
+ * Version          : 1.3
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -31,6 +31,7 @@ AS
  *  2009-02-24    1.1   M.Ohtsuki        [CT_063]  数量0のレコードの不具合の対応
  *  2009-03-24    1.2   M.Ohtsuki        [T1_0117] バラ数生産連携不具合の対応
  *  2009-03-24    1.2   M.Ohtsuki        [T1_0097] パージ条件不具合の対応
+ *  2009-05-11    1.3   M.Ohtsuki        [T1_0942] 新商品を連携対象に含む対応
  *
  *****************************************************************************************/
 --
@@ -312,6 +313,9 @@ AS
     -- *** ローカル定数 ***
     cv_forecast_designator  CONSTANT VARCHAR2(2)   := '05';                                         -- Forecast分類 固定値：'05’ (販売計画)
     cv_item_kbn             CONSTANT VARCHAR2(1)   := '1';                                          -- 商品区分:'1'
+--//+ADD START 2009/05/11   T1_0942 M.Ohtsuki
+    cv_new_item             CONSTANT VARCHAR2(1)   := '2';                                          -- 商品区分('2'=新商品）
+--//+ADD END   2009/05/11   T1_0942 M.Ohtsuki
     -- *** ローカル・カーソル ***
     CURSOR del_existing_data_cur
     IS
@@ -324,7 +328,11 @@ AS
                      ,xxcsm_item_plan_lines    xxipl
                WHERE  xxiph.item_plan_header_id = xxipl.item_plan_header_id
                AND    xxiph.plan_year           = gn_active_year                                    -- 対象年度
-               AND    xxipl.item_kbn            = cv_item_kbn                                       -- 固定値:'1'（商品単品）
+--//+UPD START 2009/05/11   T1_0942 M.Ohtsuki
+--               AND    xxipl.item_kbn = cv_item_kbn                                                -- 固定値:'1'（商品単品）
+--↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓
+               AND    xxipl.item_kbn IN (cv_item_kbn,cv_new_item)                                   --（商品単品,新商品）
+--//+UPD END   2009/05/11   T1_0942 M.Ohtsuki
                AND    xxipl.item_no             = xxmfi.item_code                                   -- 商品コード
                AND    xxiph.location_cd         = xxmfi.base_code                                   -- 拠点コード
                AND    TRUNC(TO_DATE(xxipl.year_month,'YYYYMM'), 'MONTH') = xxmfi.forecast_date      -- 開始日付
@@ -358,7 +366,11 @@ AS
                       ,xxcsm_item_plan_lines    xxipl                                               -- 商品計画用販売実績明細
                 WHERE  xxiph.item_plan_header_id = xxipl.item_plan_header_id                        -- ヘッダID紐付け
                 AND    xxiph.plan_year           = gn_active_year                                   -- 対象年度
-                AND    xxipl.item_kbn            = cv_item_kbn                                      -- 固定値:'1'（商品単品）
+--//+UPD START 2009/05/11   T1_0942 M.Ohtsuki
+--                AND    xxipl.item_kbn = cv_item_kbn                                               -- 固定値:'1'（商品単品）
+--↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓
+                AND    xxipl.item_kbn IN (cv_item_kbn,cv_new_item)                                  --（商品単品,新商品）
+--//+UPD END   2009/05/11   T1_0942 M.Ohtsuki
                 AND    xxipl.item_no             = xxmfi.item_code                                  -- 商品コード
                 AND    xxiph.location_cd         = xxmfi.base_code                                  -- 拠点コード
                 AND    TRUNC(TO_DATE(xxipl.year_month,'YYYYMM'), 'MONTH') = xxmfi.forecast_date     -- 開始日付
@@ -425,6 +437,9 @@ AS
     cv_forecast_designator  CONSTANT VARCHAR2(2)   := '05';                      -- Forecast分類 固定値：'05’ (販売計画)
 --//+UPD END   2009/02/24   CT063 M.Ohtsuki
     cv_item_kbn             CONSTANT VARCHAR2(1)   := '1';                      -- 商品区分:'1'
+--//+ADD START 2009/05/11   T1_0942 M.Ohtsuki
+    cv_new_item             CONSTANT VARCHAR2(1)   := '2';                                          -- 商品区分('2'=新商品）
+--//+ADD END   2009/05/11   T1_0942 M.Ohtsuki
     -- *** ローカル・カーソル ***
     CURSOR del_forecast_firstif_cur
     IS    
@@ -435,7 +450,11 @@ AS
                   FROM   xxcsm_item_plan_headers  xxiph
                         ,xxcsm_item_plan_lines    xxipl
                   WHERE  xxiph.item_plan_header_id = xxipl.item_plan_header_id
-                  AND    xxipl.item_kbn = cv_item_kbn                               -- 固定値:'1'（商品単品）
+--//+UPD START 2009/05/11   T1_0942 M.Ohtsuki
+--                  AND    xxipl.item_kbn = cv_item_kbn                               -- 固定値:'1'（商品単品）
+--↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓
+                  AND    xxipl.item_kbn IN (cv_item_kbn,cv_new_item)                                --（商品単品,新商品）
+--//+UPD END   2009/05/11   T1_0942 M.Ohtsuki
                   AND    TRUNC(TO_DATE(xxipl.year_month,'YYYYMM'), 'MONTH') = xxmfi.forecast_date        --開始日付
                   AND    TRUNC(TO_DATE(xxipl.year_month,'YYYYMM'), 'MONTH') = xxmfi.forecast_end_date    --終了日付
                   AND    xxipl.item_no = xxmfi.item_code                            -- 商品コード
@@ -470,7 +489,11 @@ AS
                 FROM   xxcsm_item_plan_headers  xxiph
                       ,xxcsm_item_plan_lines    xxipl
                 WHERE  xxiph.item_plan_header_id = xxipl.item_plan_header_id
-                AND    xxipl.item_kbn = cv_item_kbn                               -- 固定値:'1'（商品単品）
+--//+UPD START 2009/05/11   T1_0942 M.Ohtsuki
+--                AND    xxipl.item_kbn = cv_item_kbn                               -- 固定値:'1'（商品単品）
+--↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓
+                AND    xxipl.item_kbn IN (cv_item_kbn,cv_new_item)                                  --（商品単品,新商品）
+--//+UPD END   2009/05/11   T1_0942 M.Ohtsuki
                 AND    TRUNC(TO_DATE(xxipl.year_month,'YYYYMM'), 'MONTH') = xxmfi.forecast_date        --開始日付
                 AND    TRUNC(TO_DATE(xxipl.year_month,'YYYYMM'), 'MONTH') = xxmfi.forecast_end_date    --終了日付
                 AND    xxipl.item_no = xxmfi.item_code                            -- 商品コード
@@ -731,6 +754,9 @@ AS
     cv_prg_name       CONSTANT VARCHAR2(100) := 'submain';                      -- プログラム名
     cv_year_bdgt_kbn  CONSTANT VARCHAR2(1)   := '0';                            -- 年間群予算区分‘0’(各月単位予算)
     cv_item_kbn       CONSTANT VARCHAR2(1)   := '1';                            -- 商品区分 ＝ ‘1’(商品単品)
+--//+ADD START 2009/05/11   T1_0942 M.Ohtsuki
+    cv_new_item       CONSTANT VARCHAR2(1)   := '2';                                                -- 商品区分('2'=新商品）
+--//+ADD END   2009/05/11   T1_0942 M.Ohtsuki
     cn_sts_normal     CONSTANT  NUMBER       :=  1;                              -- 無
     cn_sts_error      CONSTANT  NUMBER       :=  2;                              -- 有
 --
@@ -767,7 +793,11 @@ AS
       WHERE  xiph.item_plan_header_id = xipl.item_plan_header_id                 -- ヘッダIDで関連付け
         AND  xiph.plan_year = gn_active_year                                     -- 商品計画ヘッダテーブル．予算年度 ＝ A-1で取得した年度
         AND  xipl.year_bdgt_kbn = cv_year_bdgt_kbn                               -- 商品計画明細テーブル．年間群予算区分 ＝‘0’(各月単位予算)
-        AND  xipl.item_kbn = cv_item_kbn                                         -- 商品計画明細テーブル．商品区分 ＝ ‘1’(商品単品)
+--//+UPD START 2009/05/11   T1_0942 M.Ohtsuki
+--        AND    xipl.item_kbn = cv_item_kbn                                       -- 固定値:'1'（商品単品）
+--↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓
+        AND    xipl.item_kbn IN (cv_item_kbn,cv_new_item)                                          --（商品単品,新商品）
+--//+UPD END   2009/05/11   T1_0942 M.Ohtsuki
 --//+ADD START 2009/02/24   CT063 M.Ohtsuki
         AND  xipl.amount <> 0                                                    -- 商品計画明細テーブル. 数量 <> 0
 --//+ADD END   2009/02/24   CT063 M.Ohtsuki
