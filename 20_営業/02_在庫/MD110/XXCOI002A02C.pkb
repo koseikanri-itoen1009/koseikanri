@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCOI002A02C(body)
  * Description      : 倉替／返品情報の抽出
  * MD.050           : 倉替／返品情報の抽出 MD050_COI_002_A02
- * Version          : 1.1
+ * Version          : 1.2
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -28,6 +28,7 @@ AS
  * ------------- ----- ---------------- -------------------------------------------------
  *  2008/10/30    1.0   K.Nakamura       新規作成
  *  2009/05/13    1.1   H.Sasaki         [T1_0774]伝票番号の桁数を修正
+ *  2009/05/26    1.2   T.Nakamura       [T1_1215]伝票番号の桁数を修正
  *
  *****************************************************************************************/
 --
@@ -878,7 +879,10 @@ AS
       , gt_kuragae_henpin_tab( gn_kuragae_henpin_loop_cnt ).mmt_attribute2                            -- 相手拠点コード
       , gt_kuragae_henpin_tab( gn_kuragae_henpin_loop_cnt ).mtt_attribute2                            -- 伝区１
       , cv_invoice_class_2                                                                            -- 伝区２
-      , gt_kuragae_henpin_tab( gn_kuragae_henpin_loop_cnt ).mmt_transaction_date                      -- 計上日付（着日）
+-- == 2009/05/26 V1.2 Modified START ===============================================================
+--      , gt_kuragae_henpin_tab( gn_kuragae_henpin_loop_cnt ).mmt_transaction_date                      -- 計上日付（着日）
+      , TRUNC( gt_kuragae_henpin_tab( gn_kuragae_henpin_loop_cnt ).mmt_transaction_date )             -- 計上日付（着日）
+-- == 2009/05/26 V1.2 Modified END   ===============================================================
       , NULL                                                                                          -- 配送先コード
       , NULL                                                                                          -- 顧客コード
       , TO_CHAR( gt_kuragae_henpin_tab( gn_kuragae_henpin_loop_cnt ).mmt_transaction_set_id )         -- 伝票No
