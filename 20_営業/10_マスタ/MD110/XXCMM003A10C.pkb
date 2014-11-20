@@ -7,7 +7,7 @@ AS
  * Description     : 未取引客チェックリスト
  * MD.050          : MD050_CMM_003_A10_未取引客チェックリスト
  * MD.070          : MD050_CMM_003_A10_未取引客チェックリスト
- * Version         : 1.0
+ * Version         : 1.2
  * 
  * Program List
  * --------------- ---- ----- --------------------------------------------
@@ -26,9 +26,10 @@ AS
  * ------------- ----- -------------- ------------------------------------
  *  Date          Ver.  Editor         Description
  * ------------- ----- -------------- ------------------------------------
- *  2009-02-04    1.0  SCS K.Shirasuna  初回作成
- *  2009-03-09    1.1  Yutaka.Kuboshima ファイル出力先のプロファイルの削除
+ *  2009/02/04    1.0  SCS K.Shirasuna  初回作成
+ *  2009/03/09    1.1  Yutaka.Kuboshima ファイル出力先のプロファイルの削除
  *                                      物件マスタコード取得の抽出条件を変更
+ *  2010/02/12    1.2  Yutaka.Kuboshima 障害E_本稼動_01545 管理元拠点も出力するよう修正
  *
  ************************************************************************/
 --
@@ -86,6 +87,9 @@ AS
   cv_appl_short_name        CONSTANT VARCHAR2(5)   := 'XXCMM';                     -- アプリケーション短縮名
   cv_file_type_log          CONSTANT VARCHAR2(5)   := 'LOG';                       -- ログ出力
   cv_customer_class_cust    CONSTANT VARCHAR2(2)   := '10';                        -- 顧客区分：顧客
+-- 2010/02/12 Ver1.2 E_本稼動_01545 add start by Yutaka.Kuboshima
+  cv_customer_class_base    CONSTANT VARCHAR2(2)   := '1';                         -- 顧客区分：拠点
+-- 2010/02/12 Ver1.2 E_本稼動_01545 add end by Yutaka.Kuboshima
   cv_cust_status_mc_cand    CONSTANT VARCHAR2(2)   := '10';                        -- 顧客ステータス：MC候補
   cv_cust_status_mc         CONSTANT VARCHAR2(2)   := '20';                        -- 顧客ステータス：MC
   cv_cust_status_sp_appr    CONSTANT VARCHAR2(2)   := '25';                        -- 顧客ステータス：SP決裁済
@@ -284,10 +288,34 @@ AS
                                          ,cv_cust_status_except)
                OR hp.duns_number_c IS NULL)))
     AND   ((iv_sale_base_code IS NOT NULL
-            AND xca.sale_base_code = iv_sale_base_code)
+-- 2010/02/12 Ver1.2 E_本稼動_01545 modify start by Yutaka.Kuboshima
+--            AND xca.sale_base_code = iv_sale_base_code)
+            AND  (xca.sale_base_code = iv_sale_base_code
+               OR EXISTS (SELECT 'X'
+                          FROM   hz_cust_accounts    hca2
+                                ,xxcmm_cust_accounts xca2
+                          WHERE  hca2.cust_account_id      = xca2.customer_id
+                            AND  hca2.customer_class_code  = cv_customer_class_base
+                            AND  xca2.management_base_code = iv_sale_base_code
+                            AND  hca2.account_number       = xca.sale_base_code
+                         )
+                 ))
+-- 2010/02/12 Ver1.2 E_本稼動_01545 modify end by Yutaka.Kuboshima
        OR ((iv_sale_base_code IS NULL
             AND gt_responsibility_key  = gt_domestic_resp_key
-            AND xca.sale_base_code     = gt_sale_base_code)
+-- 2010/02/12 Ver1.2 E_本稼動_01545 modify start by Yutaka.Kuboshima
+--            AND xca.sale_base_code     = gt_sale_base_code)
+            AND  (xca.sale_base_code     = gt_sale_base_code
+               OR EXISTS (SELECT 'X'
+                          FROM   hz_cust_accounts    hca2
+                                ,xxcmm_cust_accounts xca2
+                          WHERE  hca2.cust_account_id      = xca2.customer_id
+                            AND  hca2.customer_class_code  = cv_customer_class_base
+                            AND  xca2.management_base_code = gt_sale_base_code
+                            AND  hca2.account_number       = xca.sale_base_code
+                         )
+                 ))
+-- 2010/02/12 Ver1.2 E_本稼動_01545 modify end by Yutaka.Kuboshima
        OR  (iv_sale_base_code IS NULL
             AND gt_responsibility_key <> gt_domestic_resp_key)))
     AND   ((xcgd.lookup_code  = cv_business_htype_vd
