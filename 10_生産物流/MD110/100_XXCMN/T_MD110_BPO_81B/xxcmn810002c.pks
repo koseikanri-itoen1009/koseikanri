@@ -7,7 +7,7 @@ AS
  * Description      : 品目マスタ更新(日次)
  * MD.050           : 品目マスタ T_MD050_BPO_810
  * MD.070           : 品目マスタ更新(日次)(81B) T_MD070_BPO_81B
- * Version          : 1.7
+ * Version          : 1.8
  *
  * Program List
  * -------------------- ------------------------------------------------------------
@@ -27,6 +27,7 @@ AS
  *  2008/09/29    1.5   Oracle 山根一浩  T_S_546,T_S_547対応
  *  2008/11/24    1.6   Oracle 大橋孝郎  本番環境問合せ_障害管理表220対応
  *  2009/01/28    1.7   Oracle 椎名昭圭  本番#1022対応
+ *  2009/02/27    1.8   Oracle 椎名昭圭  本番#1212対応
  *
  *****************************************************************************************/
 --
@@ -34,7 +35,11 @@ AS
   PROCEDURE main(
     errbuf          OUT    VARCHAR2,         --   エラーメッセージ #固定#
     retcode         OUT    VARCHAR2,         --   エラーコード     #固定#
-    iv_applied_date IN     VARCHAR2          -- 1.適用日付
+-- 2009/02/27 v1.8 UPDATE START
+--    iv_applied_date IN     VARCHAR2          -- 1.適用日付
+    iv_applied_date IN     VARCHAR2,         -- 1.適用日付
+    iv_start_class  IN     VARCHAR2          -- 2.起動区分
+-- 2009/02/27 v1.8 UPDATE END
   );
 END xxcmn810002c;
 /

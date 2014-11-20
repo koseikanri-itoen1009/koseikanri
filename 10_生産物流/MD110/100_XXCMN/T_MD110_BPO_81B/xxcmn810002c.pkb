@@ -7,7 +7,7 @@ AS
  * Description      : 品目マスタ更新(日次)
  * MD.050           : 品目マスタ T_MD050_BPO_810
  * MD.070           : 品目マスタ更新(日次)(81B) T_MD070_BPO_81B
- * Version          : 1.7
+ * Version          : 1.8
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -40,6 +40,7 @@ AS
  *  2008/09/29    1.5   Oracle 山根一浩  T_S_546,T_S_547対応
  *  2008/11/24    1.6   Oracle 大橋孝郎  本番環境問合せ_障害管理表220対応
  *  2009/01/28    1.7   Oracle 椎名昭圭  本番#1022対応
+ *  2009/02/27    1.8   Oracle 椎名昭圭  本番#1212対応
  *
  *****************************************************************************************/
 --
@@ -147,6 +148,10 @@ AS
   gv_factory_code       CONSTANT VARCHAR2(50) := '工場群コード';
 --2008/09/24 Add
 --
+-- 2009/02/27 v1.8 ADD START
+  gv_start_batch        CONSTANT VARCHAR2(1) := '0';                -- バッチ
+--
+-- 2009/02/27 v1.8 ADD END
   -- xxcmn共通関数リターン・コード：1(エラー)
   gn_rel_code         CONSTANT NUMBER       := 1;
 --
@@ -1876,6 +1881,9 @@ AS
    **********************************************************************************/
   PROCEDURE submain(
     iv_applied_date     IN     VARCHAR2,                -- 適用日付
+-- 2009/02/27 v1.8 ADD START
+    iv_start_class      IN     VARCHAR2,                -- 起動区分
+-- 2009/02/27 v1.8 ADD END
     ov_errbuf           OUT    VARCHAR2,                -- エラー・メッセージ           --# 固定 #
     ov_retcode          OUT    VARCHAR2,                -- リターン・コード             --# 固定 #
     ov_errmsg           OUT    VARCHAR2)                -- ユーザー・エラー・メッセージ --# 固定 #
@@ -2154,6 +2162,9 @@ AS
 */
 -- 2008/09/11 Del ↑
 --
+-- 2009/02/27 v1.8 ADD START
+   IF (iv_start_class = gv_start_batch) THEN
+-- 2009/02/27 v1.8 ADD END
     -- ===============================
     -- B-10.品目マスタ反映(予約可能)
     -- ===============================
@@ -2167,6 +2178,10 @@ AS
         lv_errmsg);             -- ユーザー・エラー・メッセージ --# 固定 #
     END IF;
 --
+-- 2009/02/27 v1.8 ADD START
+   END IF;
+--
+-- 2009/02/27 v1.8 ADD END
     -- 処理件数
     gn_normal_cnt := gn_target_cnt;
 --
@@ -2225,7 +2240,11 @@ AS
   PROCEDURE main(
     errbuf              OUT    VARCHAR2,                -- エラー・メッセージ           --# 固定 #
     retcode             OUT    VARCHAR2,                -- リターン・コード             --# 固定 #
-    iv_applied_date     IN     VARCHAR2)                -- 適用日付
+-- 2009/02/27 v1.8 UPDATE START
+--    iv_applied_date     IN     VARCHAR2)                -- 適用日付
+    iv_applied_date     IN     VARCHAR2,                -- 適用日付
+    iv_start_class      IN     VARCHAR2)                -- 起動区分
+-- 2009/02/27 v1.8 UPDATE END
 --
 --###########################  固定部 START   ###########################
 --
@@ -2280,6 +2299,9 @@ AS
     -- ===============================================
     submain(
       iv_applied_date,       -- 1.適用日付
+-- 2009/02/27 v1.8 ADD START
+      iv_start_class,        -- 2.起動区分
+-- 2009/02/27 v1.8 ADD END
       lv_errbuf,   -- エラー・メッセージ           --# 固定 #
       lv_retcode,  -- リターン・コード             --# 固定 #
       lv_errmsg);  -- ユーザー・エラー・メッセージ --# 固定 #
