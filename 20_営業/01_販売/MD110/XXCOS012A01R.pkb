@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCOS012A01R (body)
  * Description      : ピックリスト（チェーン・製品別トータル）
  * MD.050           : ピックリスト（チェーン・製品別トータル） MD050_COS_012_A01
- * Version          : 1.1
+ * Version          : 1.2
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -28,6 +28,8 @@ AS
  *  2008/11/25    1.0   K.Kakishita      新規作成
  *  2009/02/26    1.1   K.Kakishita      帳票コンカレント起動後のワークテーブル削除処理の
  *                                       コメント化を外す。
+ *  2009/04/03    1.2   N.Maeda          【ST障害No.T1_0086対応】
+ *                                       非在庫品目を抽出対象より除外するよう変更。
  *
  *****************************************************************************************/
 --
@@ -176,6 +178,8 @@ AS
                                      := 'XXCOS1_CUS_CLASS_MST_012_A01';
   ct_qct_edi_item_err_type  CONSTANT fnd_lookup_types.lookup_type%TYPE
                                      := 'XXCOS1_EDI_ITEM_ERR_TYPE';
+  ct_xxcos1_no_inv_item_code CONSTANT fnd_lookup_types.lookup_type%TYPE
+                                      := 'XXCOS1_NO_INV_ITEM_CODE';
   --クイックコード
   ct_qcc_order_type         CONSTANT fnd_lookup_values.lookup_code%TYPE
                                      := 'XXCOS_012_A01%';
@@ -880,6 +884,27 @@ AS
                 AND ROWNUM                    = 1
               )
           AND ooha.org_id                     = gn_org_id
+          AND msib.segment1                   NOT IN (
+                SELECT  look_val.lookup_code    -- 非在庫品目
+                FROM    fnd_lookup_values     look_val,
+                        fnd_lookup_types_tl   types_tl,
+                        fnd_lookup_types      types,
+                        fnd_application_tl    appl,
+                        fnd_application       app
+                WHERE   appl.application_id   = types.application_id
+                AND     app.application_id    = appl.application_id
+                AND     types_tl.lookup_type  = look_val.lookup_type
+                AND     types.lookup_type     = types_tl.lookup_type
+                AND     types.security_group_id   = types_tl.security_group_id
+                AND     types.view_application_id = types_tl.view_application_id
+                AND     types_tl.language = USERENV( 'LANG' )
+                AND     look_val.language = USERENV( 'LANG' )
+                AND     appl.language     = USERENV( 'LANG' )
+                AND     app.application_short_name = ct_xxcos_appl_short_name
+                AND     gd_process_date      >= look_val.start_date_active
+                AND     gd_process_date      <= NVL(look_val.end_date_active, gd_max_date)
+                AND     look_val.enabled_flag = ct_enabled_flag_yes
+                AND     look_val.lookup_type = ct_xxcos1_no_inv_item_code )
           UNION ALL
           SELECT
             xca1.delivery_base_code           base_code,                      --拠点コード
@@ -1040,6 +1065,48 @@ AS
           AND xeh.edi_header_info_id          = xel.edi_header_info_id
           AND xel.line_no                     = oola.line_number
           AND ooha.org_id                     = gn_org_id
+          AND msib.segment1         NOT IN (
+                SELECT  look_val.lookup_code    -- 非在庫品目
+                FROM    fnd_lookup_values     look_val,
+                        fnd_lookup_types_tl   types_tl,
+                        fnd_lookup_types      types,
+                        fnd_application_tl    appl,
+                        fnd_application       app
+                WHERE   appl.application_id   = types.application_id
+                AND     app.application_id    = appl.application_id
+                AND     types_tl.lookup_type  = look_val.lookup_type
+                AND     types.lookup_type     = types_tl.lookup_type
+                AND     types.security_group_id   = types_tl.security_group_id
+                AND     types.view_application_id = types_tl.view_application_id
+                AND     types_tl.language = USERENV( 'LANG' )
+                AND     look_val.language = USERENV( 'LANG' )
+                AND     appl.language     = USERENV( 'LANG' )
+                AND     app.application_short_name = ct_xxcos_appl_short_name
+                AND     gd_process_date      >= look_val.start_date_active
+                AND     gd_process_date      <= NVL(look_val.end_date_active, gd_max_date)
+                AND     look_val.enabled_flag = ct_enabled_flag_yes
+                AND     look_val.lookup_type = ct_xxcos1_no_inv_item_code
+                AND     look_val.lookup_code NOT IN (
+                          SELECT  look_val.lookup_code   --EDI品目エラータイプ
+                          FROM    fnd_lookup_values     look_val,
+                                  fnd_lookup_types_tl   types_tl,
+                                  fnd_lookup_types      types,
+                                  fnd_application_tl    appl,
+                                  fnd_application       app
+                          WHERE   appl.application_id   = types.application_id
+                          AND     app.application_id    = appl.application_id
+                          AND     types_tl.lookup_type  = look_val.lookup_type
+                          AND     types.lookup_type     = types_tl.lookup_type
+                          AND     types.security_group_id   = types_tl.security_group_id
+                          AND     types.view_application_id = types_tl.view_application_id
+                          AND     types_tl.language = USERENV( 'LANG' )
+                          AND     look_val.language = USERENV( 'LANG' )
+                          AND     appl.language     = USERENV( 'LANG' )
+                          AND     app.application_short_name = ct_xxcos_appl_short_name
+                          AND     gd_process_date      >= look_val.start_date_active
+                          AND     gd_process_date      <= NVL(look_val.end_date_active, gd_max_date)
+                          AND     look_val.enabled_flag = ct_enabled_flag_yes
+                          AND     look_val.lookup_type =  ct_qct_edi_item_err_type ))
       ) rpcpi
       WHERE
         mucc.inventory_item_id (+)            = rpcpi.inventory_item_id
