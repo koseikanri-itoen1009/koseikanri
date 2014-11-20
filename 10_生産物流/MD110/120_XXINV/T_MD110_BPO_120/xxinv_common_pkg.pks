@@ -6,7 +6,7 @@ AS
  * Package Name           : xxinv_common_pkg(SPEC)
  * Description            : 共通関数(SPEC)
  * MD.070(CMD.050)        : T_MD050_BPO_120_共通関数（補足資料）.xls
- * Version                : 1.0
+ * Version                : 1.1
  *
  * Program List
  *  -------------------- ---- ----- --------------------------------------------------
@@ -19,6 +19,7 @@ AS
  *  Date         Ver.  Editor           Description
  * ------------ ----- ---------------- -----------------------------------------------
  *  2008/02/14   1.0   marushita        新規作成
+ *  2008/10/10   1.1   Oracle 大橋 孝郎 T_S_621対応
  *
  *****************************************************************************************/
 --
@@ -52,9 +53,16 @@ AS
 --
   -- フォーミュラNO採番関数
   FUNCTION xxinv_get_formula_no(
-    iv_from_item_no   IN ic_item_mst_b.item_no%TYPE,   -- 振替元品目コード
+-- del start 1.1
+--    iv_from_item_no   IN ic_item_mst_b.item_no%TYPE,   -- 振替元品目コード
+-- del end 1.1
     iv_to_item_no     IN ic_item_mst_b.item_no%TYPE)   -- 振替先品目コード
     RETURN VARCHAR2;                                   -- フォーミュラNO
+--
+  -- レシピNO採番関数
+  FUNCTION xxinv_get_recipe_no(
+    iv_to_item_no     IN ic_item_mst_b.item_no%TYPE)   -- 振替先品目コード
+    RETURN VARCHAR2;                                   -- レシピNO
 --
 END xxinv_common_pkg;
 /

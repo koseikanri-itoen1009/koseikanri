@@ -7,7 +7,7 @@ AS
  * Description      : 品目振替
  * MD.050           : 品目振替 T_MD050_BPO_520
  * MD.070           : 品目振替 T_MD070_BPO_52A
- * Version          : 1.1
+ * Version          : 1.4
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -19,7 +19,7 @@ AS
  *  chk_formula            フォーミュラ有無チェックを行うプロシージャ(A-2)
  *  ins_formula            フォーミュラ登録を行うプロシージャ(A-3)
  *  chk_recipe             レシピ有無チェックを行うプロシージャ(A-4)
- *  upd_recipe             レシピ更新を行うプロシージャ
+ *  ins_recipe             レシピ登録を行うプロシージャ
  *  chk_lot                ロット有無チェックを行うプロシージャ(A-6)
  *  create_lot             ロット作成を行うプロシージャ(A-7)
  *  create_batch           バッチ作成を行うプロシージャ(A-8)
@@ -40,6 +40,7 @@ AS
  *  2008/04/28    1.1  Oracle 河野 優子   内部変更対応#63
  *  2008/05/22    1.2  Oracle 熊本 和郎   結合テスト障害対応(ステータスチェック・更新処理追加)
  *  2008/05/22    1.3  Oracle 熊本 和郎   結合テスト障害対応(同一パラメータによる実行時のエラー)
+ *  2008/10/09    1.4  Oracle 大橋 孝郎   T_S_621対応
  *
  *****************************************************************************************/
 --
@@ -137,7 +138,10 @@ AS
   gv_tkn_item_date   CONSTANT VARCHAR2(20) := '品目振替実績日';
   gv_tkn_item_aim    CONSTANT VARCHAR2(20) := '品目振替目的';
   gv_tkn_ins_formula CONSTANT VARCHAR2(20) := 'フォーミュラ登録';
-  gv_tkn_upd_recipe  CONSTANT VARCHAR2(20) := 'レシピ更新';
+-- mod start 1.4
+--  gv_tkn_upd_recipe  CONSTANT VARCHAR2(20) := 'レシピ更新';
+  gv_tkn_ins_recipe  CONSTANT VARCHAR2(20) := 'レシピ登録';
+-- mod end 1.4
   gv_tkn_create_lot  CONSTANT VARCHAR2(20) := 'ロット作成';
   gv_tkn_create_bat  CONSTANT VARCHAR2(20) := 'バッチ作成';
   gv_tkn_input_lot   CONSTANT VARCHAR2(20) := '入力ロット割当';
@@ -207,6 +211,10 @@ AS
     rework_type             fm_matl_dtl.rework_type%TYPE,      -- (必須項目)
     -- レシピマスタ
     recipe_id               gmd_recipes_b.recipe_id%TYPE,               -- レシピID
+-- add start 1.4
+    recipe_no               gmd_recipes_b.recipe_no%TYPE,               -- レシピNo
+    recipe_version          gmd_recipes_b.recipe_version%TYPE,          -- レシピバージョン
+-- add end 1.4
     recipe_status           gmd_recipes_b.recipe_status%TYPE,           -- レシピステータス
     calculate_step_quantity gmd_recipes_b.calculate_step_quantity%TYPE, -- ステップ数量の計算
     -- レシピ妥当性ルールテーブル
@@ -323,13 +331,16 @@ AS
     END IF;
 --
     -- フォーミュラNoの取得
-    ir_masters_rec.formula_no := xxinv_common_pkg.xxinv_get_formula_no(ir_masters_rec.from_item_no
-                                                                      ,ir_masters_rec.to_item_no);
+-- del start 1.4
+    --ir_masters_rec.formula_no := xxinv_common_pkg.xxinv_get_formula_no(ir_masters_rec.from_item_no
+--                                                                      ,ir_masters_rec.to_item_no);
     -- フォーミュラNoが取得できない場合
-    IF (ir_masters_rec.formula_no IS NULL) THEN
-      lv_errmsg := xxcmn_common_pkg.get_msg(gv_msg_kbn_inv, gv_msg_52a_11);
-      RAISE global_api_expt;
-    END IF;
+--    IF (ir_masters_rec.formula_no IS NULL) THEN
+--      lv_errmsg := xxcmn_common_pkg.get_msg(gv_msg_kbn_inv, gv_msg_52a_11);
+--      RAISE global_api_expt;
+--    END IF;
+-- del add 1.4
+--
 --
   EXCEPTION
 --
@@ -859,8 +870,11 @@ AS
     WHERE  ffmb.formula_id = fmd1.formula_id
     AND    ffmb.formula_id = fmd2.formula_id
     AND    fmd1.item_id    = ir_masters_rec.from_item_id
-    AND    fmd2.item_id    = ir_masters_rec.to_item_id
-    AND    ffmb.formula_no = ir_masters_rec.formula_no;
+-- mod start 1.4
+--    AND    fmd2.item_id    = ir_masters_rec.to_item_id
+    AND    fmd2.item_id    = ir_masters_rec.to_item_id;
+--    AND    ffmb.formula_no = ir_masters_rec.formula_no;
+-- mod end 1.4
 --
 --add start 1.2
     -- ステータスが「一般使用の承認」の場合
@@ -962,6 +976,8 @@ AS
     -- フォーミュラテーブル型変数
     lt_formula_header_tbl GMD_FORMULA_PUB.FORMULA_INSERT_HDR_TBL_TYPE;
 --
+    l_data            VARCHAR2(2000);
+--
   BEGIN
 --
 --##################  固定ステータス初期化部 START   ###################
@@ -969,6 +985,14 @@ AS
     ov_retcode := gv_status_normal;
 --
 --###########################  固定部 END   ############################
+--
+    -- フォーミュラNoの取得
+    ir_masters_rec.formula_no := xxinv_common_pkg.xxinv_get_formula_no(ir_masters_rec.to_item_no);
+    -- フォーミュラNoが取得できない場合
+    IF (ir_masters_rec.formula_no IS NULL) THEN
+      lv_errmsg := xxcmn_common_pkg.get_msg(gv_msg_kbn_inv, gv_msg_52a_11);
+      RAISE global_api_expt;
+    END IF;
 --
     -- ***************************************
     -- ***        実処理の記述             ***
@@ -1017,6 +1041,15 @@ AS
                                   );
     -- 登録処理が成功でない場合
     IF (lv_return_status <> gv_ret_sts_success) THEN
+      -- エラーメッセージログ出力
+      FND_FILE.PUT_LINE(FND_FILE.LOG, 'lv_return_status ='||lv_return_status);
+      IF (ln_message_count > 0) THEN
+        FOR i IN 1..ln_message_count LOOP
+          -- 次のメッセージの取得
+          l_data := FND_MSG_PUB.Get(i, FND_API.G_FALSE);
+          FND_FILE.PUT_LINE(FND_FILE.LOG, 'l_data = '|| l_data);
+        END LOOP;
+      END IF;
       lv_errmsg := xxcmn_common_pkg.get_msg(gv_msg_kbn_inv,  gv_msg_52a_00,
                                             gv_tkn_api_name, gv_tkn_ins_formula);
       RAISE global_api_expt;
@@ -1163,7 +1196,8 @@ AS
                                    AND    grct.routing_class_desc = gv_prf_dummy_val
                                    AND    grb.routing_id = ir_masters_rec.routing_id);
 --
---add start 1.2
+-- mod start 1.4
+/*--add start 1.2
     -- ステータスが「一般使用の承認」の場合
     IF (lv_recipe_status = gv_fml_sts_appr) THEN
       NULL;
@@ -1245,7 +1279,8 @@ AS
                                             gv_tkn_recipe, lv_recipe_no);
       RAISE global_api_expt;
     END IF;
---add end 1.2
+--add end 1.2*/
+-- mod end 1.4
   EXCEPTION
     WHEN NO_DATA_FOUND THEN   -- 処理対象レコードが1件もなかった場合
       ir_masters_rec.is_info_flg := FALSE;
@@ -1270,11 +1305,12 @@ AS
 --
   END chk_recipe;
 --
+-- mod start 1.4
   /**********************************************************************************
    * Procedure Name   : upd_recipe
    * Description      : レシピ更新
    ***********************************************************************************/
-  PROCEDURE upd_recipe(
+/*  PROCEDURE upd_recipe(
     ir_masters_rec IN OUT NOCOPY masters_rec, -- 1.処理対象レコード
     ov_errbuf      OUT    NOCOPY VARCHAR2,    -- エラー・メッセージ           --# 固定 #
     ov_retcode     OUT    NOCOPY VARCHAR2,    -- リターン・コード             --# 固定 #
@@ -1462,7 +1498,274 @@ AS
 --
 --#####################################  固定部 END   ##########################################
 --
-  END upd_recipe;
+  END upd_recipe;*/
+--
+  /**********************************************************************************
+   * Procedure Name   : ins_recipe
+   * Description      : レシピ登録
+   ***********************************************************************************/
+  PROCEDURE ins_recipe(
+    ir_masters_rec IN OUT NOCOPY masters_rec, -- 1.処理対象レコード
+    ov_errbuf      OUT    NOCOPY VARCHAR2,    -- エラー・メッセージ           --# 固定 #
+    ov_retcode     OUT    NOCOPY VARCHAR2,    -- リターン・コード             --# 固定 #
+    ov_errmsg      OUT    NOCOPY VARCHAR2)    -- ユーザー・エラー・メッセージ --# 固定 #
+  IS
+    -- ===============================
+    -- 固定ローカル定数
+    -- ===============================
+    cv_prg_name   CONSTANT VARCHAR2(100) := 'ins_recipe'; -- プログラム名
+--
+--#####################  固定ローカル変数宣言部 START   ########################
+--
+    lv_errbuf  VARCHAR2(5000);  -- エラー・メッセージ
+    lv_retcode VARCHAR2(1);     -- リターン・コード
+    lv_errmsg  VARCHAR2(5000);  -- ユーザー・エラー・メッセージ
+--
+--###########################  固定部 END   ####################################
+--
+    -- ===============================
+    -- ユーザー宣言部
+    -- ===============================
+    -- *** ローカル変数 ***
+    -- API用変数
+    lv_return_status VARCHAR2(2);
+    ln_message_count NUMBER;
+    lv_msg_date      VARCHAR2(4000);
+    -- MODIFY_STATUS API用変数
+    lv_msg_list      VARCHAR2(2000);
+--
+    -- レシピテーブル型変数
+    lt_recipe_hdr_tbl    GMD_RECIPE_HEADER.RECIPE_TBL;
+    lt_recipe_hdr_flex   GMD_RECIPE_HEADER.RECIPE_FLEX;
+    lt_recipe_vr_tbl     GMD_RECIPE_DETAIL.recipe_vr_tbl;
+    lt_recipe_vr_flex    GMD_RECIPE_DETAIL.recipe_flex;
+--
+    l_data            VARCHAR2(2000);
+--
+  BEGIN
+--
+--##################  固定ステータス初期化部 START   ###################
+--
+    ov_retcode := gv_status_normal;
+--
+--###########################  固定部 END   ############################
+--
+    -- ***************************************
+    -- ***        実処理の記述             ***
+    -- ***       共通関数の呼び出し        ***
+    -- ***************************************
+--
+    -- レシピバージョンをセット
+    ir_masters_rec.recipe_version := 1;  -- 固定値
+    -- レシピNoの取得
+    ir_masters_rec.recipe_no := xxinv_common_pkg.xxinv_get_recipe_no(ir_masters_rec.to_item_no);
+    -- レシピNoが取得できない場合
+    IF (ir_masters_rec.recipe_no IS NULL) THEN
+      lv_errmsg := xxcmn_common_pkg.get_msg(gv_msg_kbn_inv, gv_msg_52a_11);
+      RAISE global_api_expt;
+    END IF;
+    -- ===============================
+    -- 登録情報をセット
+    -- ===============================
+--
+    -- 所有者コード
+    lt_recipe_hdr_tbl(1).owner_orgn_code    := ir_masters_rec.orgn_code;
+    -- 作成組織コード
+    lt_recipe_hdr_tbl(1).creation_orgn_code := ir_masters_rec.orgn_code;
+    -- フォーミュラID
+    lt_recipe_hdr_tbl(1).formula_id         := ir_masters_rec.formula_id;
+    -- 工順ID
+    lt_recipe_hdr_tbl(1).routing_id         := ir_masters_rec.routing_id;
+    -- レシピバージョン
+    lt_recipe_hdr_tbl(1).recipe_version     := ir_masters_rec.recipe_version;
+    -- レシピNo
+    lt_recipe_hdr_tbl(1).recipe_no          := ir_masters_rec.recipe_no;
+    -- ステップ数量の計算
+    lt_recipe_hdr_tbl(1).calculate_step_quantity := 0;
+    -- 摘要
+    lt_recipe_hdr_tbl(1).recipe_description := ir_masters_rec.recipe_no;
+--
+    -- レシピ登録(EBS標準API)
+    GMD_RECIPE_HEADER.CREATE_RECIPE_HEADER(
+                         P_API_VERSION        => 1.0,                   -- APIバージョン番号
+                         P_INIT_MSG_LIST      => FND_API.G_FALSE,       -- メッセージ初期化フラグ
+                         P_COMMIT             => FND_API.G_FALSE,       -- 自動コミットフラグ
+                         P_CALLED_FROM_FORMS  => 'NO',
+                         X_RETURN_STATUS      => lv_return_status,      -- プロセス終了ステータス
+                         X_MSG_COUNT          => ln_message_count,      -- エラーメッセージ件数
+                         X_MSG_DATA           => lv_msg_date,           -- エラーメッセージ
+                         P_RECIPE_HEADER_TBL  => lt_recipe_hdr_tbl,
+                         P_RECIPE_HEADER_FLEX => lt_recipe_hdr_flex
+                                          );
+    -- 登録処理が成功でない場合
+    IF (lv_return_status <> gv_ret_sts_success) THEN
+      -- エラーメッセージログ出力
+      FND_FILE.PUT_LINE(FND_FILE.LOG, 'lv_return_status ='||lv_return_status);
+      IF (ln_message_count > 0) THEN
+        FOR i IN 1..ln_message_count LOOP
+          -- 次のメッセージの取得
+          l_data := FND_MSG_PUB.Get(i, FND_API.G_FALSE);
+          FND_FILE.PUT_LINE(FND_FILE.LOG, 'l_data = '|| l_data);
+        END LOOP;
+      END IF;
+      lv_errmsg := xxcmn_common_pkg.get_msg(gv_msg_kbn_inv,  gv_msg_52a_00,
+                                            gv_tkn_api_name, gv_tkn_ins_recipe);
+      RAISE global_api_expt;
+--
+    -- 登録処理が成功の場合
+    ELSIF (lv_return_status = gv_ret_sts_success) THEN
+--
+      -- レシピIDの取得
+      SELECT greb.recipe_id              -- レシピID
+      INTO   ir_masters_rec.recipe_id
+      FROM   gmd_recipes_b             greb, -- レシピマスタ
+             gmd_routings_b            grob  -- 工順マスタ
+      WHERE  greb.formula_id      = ir_masters_rec.formula_id
+      AND    greb.routing_id      = grob.routing_id
+      AND    grob.routing_no      = ir_masters_rec.routing_no
+      AND    grob.routing_class   = (SELECT grb.routing_class
+                                     FROM   gmd_routings_b        grb,  -- 工順マスタ
+                                            gmd_routing_class_b   grcb, -- 工順区分マスタ
+                                            gmd_routing_class_tl  grct  -- 工順区分マスタ日本語
+                                     WHERE  grb.routing_class       = grcb.routing_class
+                                     AND    grcb.routing_class      = grct.routing_class
+                                     AND    grct.language           = 'JA'
+                                     AND    grct.routing_class_desc = gv_prf_dummy_val
+                                     AND    grb.routing_id = ir_masters_rec.routing_id);
+--
+      -- レシピステータス変更(EBS標準API)
+      GMD_STATUS_PUB.MODIFY_STATUS(
+                                   P_API_VERSION    => 1.0,
+                                   P_INIT_MSG_LIST  => TRUE,
+                                   P_ENTITY_NAME    => 'RECIPE',
+                                   P_ENTITY_ID      => ir_masters_rec.recipe_id,
+                                   P_ENTITY_NO      => NULL,            -- (NULL固定)
+                                   P_ENTITY_VERSION => NULL,            -- (NULL固定)
+                                   P_TO_STATUS      => gv_fml_sts_appr,
+                                   P_IGNORE_FLAG    => FALSE,
+                                   X_MESSAGE_COUNT  => ln_message_count,
+                                   X_MESSAGE_LIST   => lv_msg_list,
+                                   X_RETURN_STATUS  => lv_return_status
+                                  );
+--
+      -- ステータス変更処理が成功でない場合
+      IF (lv_return_status <> gv_ret_sts_success) THEN
+        lv_errmsg := xxcmn_common_pkg.get_msg(gv_msg_kbn_inv,  gv_msg_52a_00,
+                                              gv_tkn_api_name, gv_tkn_ins_recipe);
+        RAISE global_api_expt;
+      END IF;
+--
+      -- レシピテーブル型変数初期化
+      lt_recipe_vr_tbl.DELETE;
+      -- ===============================
+      -- 登録情報をセット
+      -- ===============================
+--
+      -- レシピ番号
+      lt_recipe_vr_tbl(1).recipe_no            := ir_masters_rec.recipe_no;
+      -- レシピバージョン
+      lt_recipe_vr_tbl(1).recipe_version       := ir_masters_rec.recipe_version;
+      -- 品目
+      lt_recipe_vr_tbl(1).item_id              := ir_masters_rec.to_item_id;
+      -- 標準数量
+      lt_recipe_vr_tbl(1).std_qty              := ir_masters_rec.qty;
+      -- 単位
+      lt_recipe_vr_tbl(1).item_um              := ir_masters_rec.to_item_um;
+      -- 妥当性ルールステータス
+      lt_recipe_vr_tbl(1).validity_rule_status := gv_fml_sts_new;
+--
+      -- 妥当性ルール登録(EBS標準API)
+      GMD_RECIPE_DETAIL.CREATE_RECIPE_VR(
+                           P_API_VERSION        => 1.0,                   -- APIバージョン番号
+                           P_INIT_MSG_LIST      => FND_API.G_FALSE,       -- メッセージ初期化フラグ
+                           P_COMMIT             => FND_API.G_FALSE,       -- 自動コミットフラグ
+                           P_CALLED_FROM_FORMS  => 'NO',
+                           X_RETURN_STATUS      => lv_return_status,      -- プロセス終了ステータス
+                           X_MSG_COUNT          => ln_message_count,      -- エラーメッセージ件数
+                           X_MSG_DATA           => lv_msg_date,           -- エラーメッセージ
+                           P_RECIPE_VR_TBL      => lt_recipe_vr_tbl,
+                           P_RECIPE_VR_FLEX     => lt_recipe_vr_flex
+                                        );
+--
+      -- 妥当性ルール登録が成功でない場合
+      IF (lv_return_status <> gv_ret_sts_success) THEN
+        -- エラーメッセージログ出力
+        FND_FILE.PUT_LINE(FND_FILE.LOG, 'lv_return_status ='||lv_return_status);
+        IF (ln_message_count > 0) THEN
+          FOR i IN 1..ln_message_count LOOP
+            -- 次のメッセージの取得
+            l_data := FND_MSG_PUB.Get(i, FND_API.G_FALSE);
+            FND_FILE.PUT_LINE(FND_FILE.LOG, 'l_data = '|| l_data);
+          END LOOP;
+        END IF;
+        lv_errmsg := xxcmn_common_pkg.get_msg(gv_msg_kbn_inv,  gv_msg_52a_00,
+                                            gv_tkn_api_name, gv_tkn_ins_recipe);
+        RAISE global_api_expt;
+      -- 妥当性ルール登録が成功の場合
+      ELSIF (lv_return_status = gv_ret_sts_success) THEN
+--
+        -- 妥当性ルールIDの取得
+        SELECT grvr.recipe_validity_rule_id
+        INTO   ir_masters_rec.recipe_validity_rule_id
+        FROM   gmd_recipe_validity_rules grvr   -- レシピ妥当性ルールマスタ
+        WHERE  grvr.recipe_id = ir_masters_rec.recipe_id;
+--
+        -- 妥当性ルールステータス変更(EBS標準API)
+        GMD_STATUS_PUB.MODIFY_STATUS(
+                                     P_API_VERSION    => 1.0,
+                                     P_INIT_MSG_LIST  => TRUE,
+                                     P_ENTITY_NAME    => 'VALIDITY',
+                                     P_ENTITY_ID      => ir_masters_rec.recipe_validity_rule_id,
+                                     P_ENTITY_NO      => NULL,            -- (NULL固定)
+                                     P_ENTITY_VERSION => NULL,            -- (NULL固定)
+                                     P_TO_STATUS      => gv_fml_sts_appr,
+                                     P_IGNORE_FLAG    => FALSE,
+                                     X_MESSAGE_COUNT  => ln_message_count,
+                                     X_MESSAGE_LIST   => lv_msg_list,
+                                     X_RETURN_STATUS  => lv_return_status
+                                    );
+--
+        -- ステータス変更処理が成功でない場合
+        IF (lv_return_status <> gv_ret_sts_success) THEN
+          lv_errmsg := xxcmn_common_pkg.get_msg(gv_msg_kbn_inv,  gv_msg_52a_00,
+                                                gv_tkn_api_name, gv_tkn_ins_recipe);
+          RAISE global_api_expt;
+        -- ステータス変更処理が成功の場合
+        ELSIF (lv_return_status = gv_ret_sts_success) THEN
+          -- 確定処理
+          COMMIT;
+--
+        END IF;
+      END IF;
+    END IF;
+--
+  EXCEPTION
+--
+    WHEN NO_DATA_FOUND THEN
+      ov_errmsg  := xxcmn_common_pkg.get_msg(gv_msg_kbn_inv, gv_msg_52a_11);
+      ov_errbuf  := SUBSTRB(gv_pkg_name||gv_msg_cont||cv_prg_name||gv_msg_part||lv_errbuf,1,5000);
+      ov_retcode := gv_status_error;
+--
+--#################################  固定例外処理部 START   ####################################
+--
+    -- *** 共通関数例外ハンドラ ***
+    WHEN global_api_expt THEN
+      ov_errmsg  := lv_errmsg;
+      ov_errbuf  := SUBSTRB(gv_pkg_name||gv_msg_cont||cv_prg_name||gv_msg_part||lv_errbuf,1,5000);
+      ov_retcode := gv_status_error;
+    -- *** 共通関数OTHERS例外ハンドラ ***
+    WHEN global_api_others_expt THEN
+      ov_errbuf  := gv_pkg_name||gv_msg_cont||cv_prg_name||gv_msg_part||SQLERRM;
+      ov_retcode := gv_status_error;
+    -- *** OTHERS例外ハンドラ ***
+    WHEN OTHERS THEN
+      ov_errbuf  := gv_pkg_name||gv_msg_cont||cv_prg_name||gv_msg_part||SQLERRM;
+      ov_retcode := gv_status_error;
+--
+--#####################################  固定部 END   ##########################################
+--
+  END ins_recipe;
+-- mod end 1.4
 --
   /**********************************************************************************
    * Procedure Name   : chk_lot
@@ -2764,12 +3067,15 @@ AS
       gn_error_cnt := gn_error_cnt + 1;
       RAISE global_process_expt;
 --
-    -- レシピの工順が設定されていない場合
+    -- レシピが存在しない場合
     ELSIF (NOT(lr_masters_rec.is_info_flg)) THEN
       -- ===============================
-      -- レシピ更新
+      -- レシピ登録
       -- ===============================
-      upd_recipe(lr_masters_rec,
+-- mod start 1.4
+--      upd_recipe(lr_masters_rec,
+      ins_recipe(lr_masters_rec,
+-- mod end 1.4
                  lv_errbuf,  -- エラー・メッセージ           --# 固定 #
                  lv_retcode, -- リターン・コード             --# 固定 #
                  lv_errmsg); -- ユーザー・エラー・メッセージ --# 固定 #
