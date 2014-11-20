@@ -7,7 +7,7 @@ AS
  * Description      : 在庫（帳票）
  * MD.050/070       : 在庫（帳票）Issue1.0  (T_MD050_BPO_550)
  *                    受払残高リスト        (T_MD070_BPO_55A)
- * Version          : 1.32
+ * Version          : 1.33
  *
  * Program List
  * -------------------------- ----------------------------------------------------------
@@ -59,6 +59,7 @@ AS
  *  2008/12/09    1.30  Yasuhisa Yamamoto  統合指摘 #472対応
  *  2008/12/09    1.31  Yasuhisa Yamamoto  統合指摘 #472対応
  *  2008/12/10    1.32  Yasuhisa Yamamoto  統合指摘 #627対応
+ *  2008/12/16    1.33  Akiyoshi Shiina    統合指摘 #742対応
  *****************************************************************************************/
 --
 --#######################  固定グローバル定数宣言部 START   #######################
@@ -3762,6 +3763,8 @@ AS
             ln_stock_unit_price := 0;
         END;
 --
+-- 2008/12/16 v1.33 UPDATE START
+/*
         -- 論理在庫金額
         ln_logic_stock_amount  := ROUND( ln_logic_month_stock  * ln_stock_unit_price );
 --
@@ -3773,6 +3776,15 @@ AS
                                   ROUND( ln_invent_cargo_stock * ln_stock_unit_price );
 -- 08/12/10 Y.Yamamoto update v1.32 end
 --
+*/
+        -- 論理在庫金額
+        ln_logic_stock_amount  := ROUND( ( gt_main_data(i).month_stock_nw + gt_main_data(i).cargo_stock_nw ) * ln_stock_unit_price );
+        -- 実棚在庫金額
+        ln_invent_stock_amount := ROUND( gt_main_data(i).case_amt * ln_stock_unit_price ) +
+        -- 実棚積送在庫金額
+                                  ROUND( gt_main_data(i).cargo_stock_nw * ln_stock_unit_price );
+--
+-- 2008/12/16 v1.33 UPDATE END
         -- 差異金額
         ln_month_stock_amount  := ln_logic_stock_amount - ln_invent_stock_amount;
       END IF;
