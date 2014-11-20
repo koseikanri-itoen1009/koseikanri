@@ -172,6 +172,9 @@ AND    xcav.account_number         = xvv.customer_num
 --AND    ximv.inventory_item_id(+) = xoha.designated_item_id
 --OPM保管場所情報VIEW2
 AND    xilv.inventory_location_id  = xoha.deliver_from_id
+-- 2008-12-09 D.Nihei Add Start
+AND    xilv.customer_stock_whse    = 0 -- 相手先在庫以外
+-- 2008-12-09 D.Nihei Add End
 --受注明細アドオン(最終更新日取得用)
 AND    xola.order_header_id        = xoha.order_header_id
 --受注明細アドオン(実績入力確認用)

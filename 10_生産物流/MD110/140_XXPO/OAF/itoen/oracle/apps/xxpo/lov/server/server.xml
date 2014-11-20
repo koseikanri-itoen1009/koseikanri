@@ -1,4 +1,4 @@
-<?xml version="1.0" encoding='windows-31j'?>
+<?xml version="1.0" encoding='Windows-31J'?>
 <!DOCTYPE JboPackage SYSTEM "jbo_03_01.dtd">
 
 <JboPackage
@@ -122,6 +122,11 @@
    <Containee
       Name="ItemLocationCode2VO"
       FullName="itoen.oracle.apps.xxpo.lov.server.ItemLocationCode2VO"
+      ObjectType="ViewObject" >
+   </Containee>
+   <Containee
+      Name="ShipWhseCode2VO"
+      FullName="itoen.oracle.apps.xxpo.lov.server.ShipWhseCode2VO"
       ObjectType="ViewObject" >
    </Containee>
 </JboPackage>

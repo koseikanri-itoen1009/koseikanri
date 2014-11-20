@@ -1,4 +1,4 @@
-<?xml version="1.0" encoding='windows-31j'?>
+<?xml version="1.0" encoding='Windows-31J'?>
 <!DOCTYPE AppModule SYSTEM "jbo_03_01.dtd">
 
 <AppModule
@@ -96,5 +96,9 @@
    <ViewUsage
       Name="ItemLocationCode2VO1"
       ViewObjectName="itoen.oracle.apps.xxpo.lov.server.ItemLocationCode2VO" >
+   </ViewUsage>
+   <ViewUsage
+      Name="ShipWhseCode2VO1"
+      ViewObjectName="itoen.oracle.apps.xxpo.lov.server.ShipWhseCode2VO" >
    </ViewUsage>
 </AppModule>

@@ -73,6 +73,9 @@ AND    xvv.vendor_id                = xoha.vendor_id             --仕入先ID = 取
 AND    xvsv.vendor_site_id          = xoha.vendor_site_id        --仕入先サイトID = 取引先サイトID
        --OPM保管場所情報view2抽出条件
 AND    xilv.inventory_location_id   = xoha.deliver_from_id       --保管場所コード = 出荷元ID
+-- 2008-12-09 D.Nihei Add Start
+AND    xilv.customer_stock_whse     = 0 -- 相手先在庫以外
+-- 2008-12-09 D.Nihei Add End
        --セキュリティview抽出条件
 AND    xssv.user_id                                     = FND_GLOBAL.USER_ID    --ログインユーザID
 AND    NVL(xssv.vendor_code,xoha.vendor_code)           = xoha.vendor_code      --取引先

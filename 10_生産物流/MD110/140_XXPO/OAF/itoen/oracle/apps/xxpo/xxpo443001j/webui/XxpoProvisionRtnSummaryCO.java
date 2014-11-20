@@ -1,13 +1,14 @@
 /*============================================================================
 * ファイル名 : XxpoProvisionRtnSummaryCO
 * 概要説明   : 支給返品要約:検索コントローラ
-* バージョン : 1.0
+* バージョン : 1.1
 *============================================================================
 * 修正履歴
 * 日付       Ver. 担当者       修正内容
 * ---------- ---- ------------ ----------------------------------------------
 * 2008-03-17 1.0  熊本 和郎    新規作成
 * 2008-06-06 1.0  二瓶 大輔    内部変更要求#137対応
+* 2008-12-09 1.1  二瓶 大輔    本番障害#535対応
 *============================================================================
 */
 package itoen.oracle.apps.xxpo.xxpo443001j.webui;
@@ -36,7 +37,7 @@ import oracle.apps.fnd.framework.webui.beans.message.OAMessageTextInputBean;
 /***************************************************************************
  * 支給返品要約:検索コントローラクラスです。
  * @author  ORACLE 熊本 和郎
- * @version 1.0
+ * @version 1.1
  ***************************************************************************
  */
 public class XxpoProvisionRtnSummaryCO extends XxcmnOAControllerImpl
@@ -70,6 +71,12 @@ public class XxpoProvisionRtnSummaryCO extends XxcmnOAControllerImpl
       // 入力不可設定(入庫日To)
       OAMessageDateFieldBean arvlDateToTextInputBean = (OAMessageDateFieldBean)webBean.findChildRecursive("ShArvlDateTo");
       arvlDateToTextInputBean.setDisabled(true);
+
+// 2008-12-09 Add Start D.Nihei 本番障害#535
+      // 値リスト変更(出庫倉庫)
+      OAMessageLovInputBean shipWhseCodeTextInputBean = (OAMessageLovInputBean)webBean.findChildRecursive("ShShipWhseCode");
+      shipWhseCodeTextInputBean.setLovRegion(pageContext, "/itoen/oracle/apps/xxpo/lov/webui/ShipWhseCode2LovRN");
+// 2008-12-09 Add End D.Nihei
 
       // 入力不可設定(通知ステータス)
       OAMessageChoiceBean notifStatusChoiceBean = (OAMessageChoiceBean)webBean.findChildRecursive("ShNotifStatus");

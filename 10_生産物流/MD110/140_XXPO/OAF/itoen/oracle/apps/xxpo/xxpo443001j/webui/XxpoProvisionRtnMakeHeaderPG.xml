@@ -250,7 +250,7 @@
                         </oa:cellFormat>
                         <oa:cellFormat id="Cell802">
                            <ui:contents>
-                              <oa:messageLovInput id="ShipWhseCode" externalListOfValues="/itoen/oracle/apps/xxpo/lov/webui/ShipWhseCodeLovRN" maximumLength="4" viewName="XxpoProvisionRtnMakeHeaderVO1" viewAttr="ShipWhseCode" shortDesc="出庫倉庫" styleClass="LegendText" readOnly="${oa.XxpoProvisionRtnMakeHeaderPVO1.ShipWhseReadOnly}" columns="7">
+                              <oa:messageLovInput id="ShipWhseCode" externalListOfValues="/itoen/oracle/apps/xxpo/lov/webui/ShipWhseCode2LovRN" maximumLength="4" viewName="XxpoProvisionRtnMakeHeaderVO1" viewAttr="ShipWhseCode" shortDesc="出庫倉庫" styleClass="LegendText" readOnly="${oa.XxpoProvisionRtnMakeHeaderPVO1.ShipWhseReadOnly}" columns="7">
                                  <lovMappings>
                                     <lovMap id="FromShipWhseCode" lovItem="ShipWhseCode" criteriaFrom="ShipWhseCode"/>
                                     <lovMap id="ToShipWhseCode" lovItem="ShipWhseCode" resultTo="ShipWhseCode"/>
