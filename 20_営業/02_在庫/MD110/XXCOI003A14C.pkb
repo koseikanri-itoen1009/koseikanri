@@ -7,7 +7,7 @@ AS
  * Package Name     : XXCOI003A14C(body)
  * Description      : その他取引データOIF更新
  * MD.050           : その他取引データOIF更新（HHT入出庫データ） MD050_COI_003_A14 
- * Version          : 1.0
+ * Version          : 1.1
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -34,6 +34,7 @@ AS
  *  Date          Ver.  Editor           Description
  * ------------- ----- ---------------- -------------------------------------------------
  *  2009/01/19   1.0   H.Nakajima        新規作成
+ *  2009/11/24   1.1   N.Abe             [E_本稼動_00025]画面入力時VDコラム品目チェックの解除
  *
  *****************************************************************************************/
 --
@@ -1513,52 +1514,59 @@ AS
     ELSE
       lt_cust_code := gt_svd_data_tab( in_index ).inside_code;
     END IF;
-    -- -------------
-    -- (1)当月の場合
-    -- -------------
-    IF ( TRUNC(gt_svd_data_tab( in_index ).invoice_date,'MM') = TRUNC(gd_process_date,'MM') ) THEN
-    --
-      SELECT  COUNT(1)
-      INTO    ln_count
-      FROM    hz_cust_accounts hca,
-              xxcoi_mst_vd_column xmvc
-      WHERE   hca.cust_account_id = xmvc.customer_id 
-      AND     hca.account_number  = lt_cust_code
-      AND     xmvc.column_no      = gt_svd_data_tab( in_index ).column_no
-      AND     xmvc.item_id        = gt_svd_data_tab( in_index ).inventory_item_id
-      AND     ROWNUM <= 1;
-      -- 一致件数が0の場合
-      IF ln_count = 0 THEN
-        lv_errmsg := xxccp_common_pkg.get_msg(
-                         iv_application  => cv_application_short_name
-                       , iv_name         => cv_vd_item_err_msg );
-        lv_errbuf := lv_errmsg;
-        RAISE invalid_value_expt;
+-- == 2009/11/24 V1.1 Added START ===============================================================
+    --画面入力されたデータはVDコラムマスタとのチェックを行わない
+    IF (SUBSTRB(gt_svd_data_tab(in_index).invoice_no, 1, 1) <> 'E') THEN
+-- == 2009/11/24 V1.1 Added END   ===============================================================
+      -- -------------
+      -- (1)当月の場合
+      -- -------------
+      IF ( TRUNC(gt_svd_data_tab( in_index ).invoice_date,'MM') = TRUNC(gd_process_date,'MM') ) THEN
+      --
+        SELECT  COUNT(1)
+        INTO    ln_count
+        FROM    hz_cust_accounts hca,
+                xxcoi_mst_vd_column xmvc
+        WHERE   hca.cust_account_id = xmvc.customer_id 
+        AND     hca.account_number  = lt_cust_code
+        AND     xmvc.column_no      = gt_svd_data_tab( in_index ).column_no
+        AND     xmvc.item_id        = gt_svd_data_tab( in_index ).inventory_item_id
+        AND     ROWNUM <= 1;
+        -- 一致件数が0の場合
+        IF ln_count = 0 THEN
+          lv_errmsg := xxccp_common_pkg.get_msg(
+                           iv_application  => cv_application_short_name
+                         , iv_name         => cv_vd_item_err_msg );
+          lv_errbuf := lv_errmsg;
+          RAISE invalid_value_expt;
+        END IF;
+      -- -------------
+      -- (2)前月の場合
+      -- -------------
+      ELSE
+      --
+        SELECT  COUNT(1)
+        INTO    ln_count
+        FROM    hz_cust_accounts hca,
+                xxcoi_mst_vd_column xmvc
+        WHERE   hca.cust_account_id     = xmvc.customer_id 
+        AND     hca.account_number      = lt_cust_code
+        AND     xmvc.column_no          = gt_svd_data_tab( in_index ).column_no
+        AND     xmvc.last_month_item_id = gt_svd_data_tab( in_index ).inventory_item_id
+        AND     ROWNUM <= 1;
+        -- 一致件数が0の場合
+        IF ln_count = 0 THEN
+          lv_errmsg := xxccp_common_pkg.get_msg(
+                           iv_application  => cv_application_short_name
+                         , iv_name         => cv_vd_last_month_item_err_msg );
+          lv_errbuf := lv_errmsg;
+          RAISE invalid_value_expt;
+        END IF;
+      --
       END IF;
-    -- -------------
-    -- (2)前月の場合
-    -- -------------
-    ELSE
-    --
-      SELECT  COUNT(1)
-      INTO    ln_count
-      FROM    hz_cust_accounts hca,
-              xxcoi_mst_vd_column xmvc
-      WHERE   hca.cust_account_id     = xmvc.customer_id 
-      AND     hca.account_number      = lt_cust_code
-      AND     xmvc.column_no          = gt_svd_data_tab( in_index ).column_no
-      AND     xmvc.last_month_item_id = gt_svd_data_tab( in_index ).inventory_item_id
-      AND     ROWNUM <= 1;
-      -- 一致件数が0の場合
-      IF ln_count = 0 THEN
-        lv_errmsg := xxccp_common_pkg.get_msg(
-                         iv_application  => cv_application_short_name
-                       , iv_name         => cv_vd_last_month_item_err_msg );
-        lv_errbuf := lv_errmsg;
-        RAISE invalid_value_expt;
-      END IF;
-    --
+-- == 2009/11/24 V1.1 Added START ===============================================================
     END IF;
+-- == 2009/11/24 V1.1 Added END   ===============================================================
     --==============================================================
     --メッセージ出力をする必要がある場合は処理を記述
     --==============================================================
