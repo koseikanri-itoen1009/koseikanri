@@ -7,7 +7,7 @@ CREATE TABLE xxwsh.xxwsh_order_headers_all
   latest_external_flag          VARCHAR2(1)     NOT NULL,
   ordered_date                  DATE            NOT NULL,
   customer_id                   NUMBER,
-  customer_code                 VARCHAR2(4),
+  customer_code                 VARCHAR2(9),
   deliver_to_id                 NUMBER,
   deliver_to                    VARCHAR2(9),
   shipping_instructions         VARCHAR2(2000),
