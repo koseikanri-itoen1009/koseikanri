@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCOS011A03C (body)
  * Description      : 納品予定データの作成を行う
  * MD.050           : 納品予定データ作成 (MD050_COS_011_A03)
- * Version          : 1.19
+ * Version          : 1.20
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -67,6 +67,7 @@ AS
  *  2010/03/18    1.18  S.Karikomi       [E_本稼働_01903]売単価、売価金額取得先修正
  *                                                       対象件数0件時のステータス変更対応
  *  2010/03/19    1.19  S.Karikomi       [E_本稼動_01867]納品担当者取得変更対応
+ *  2010/04/15    1.20  N.Abe            [E_本稼動_01618]エラー品目時の数量取得元変更(Ver1.9の全コメント化)
  *
  *****************************************************************************************/
 --
@@ -159,9 +160,11 @@ AS
 -- ************ 2009/09/03 N.Maeda 1.12 ADD START ***************** --
   ct_item_div_h         CONSTANT fnd_profile_options.profile_option_name%TYPE := 'XXCOS1_ITEM_DIV_H'; -- XXCOS1:本社製品区分
 -- ************ 2009/09/03 N.Maeda 1.12 ADD  END  ***************** --
--- 2009/05/22 Ver1.9 Add Start
-  cv_prf_dum_stock_out  CONSTANT VARCHAR2(50)  := 'XXCOS1_EDI_DUMMY_STOCK_OUT';  -- XXCOS:EDI納品予定ダミー欠品区分
--- 2009/05/22 Ver1.9 Add End
+/* 2010/04/15 Ver1.20 Del Start */
+---- 2009/05/22 Ver1.9 Add Start
+--  cv_prf_dum_stock_out  CONSTANT VARCHAR2(50)  := 'XXCOS1_EDI_DUMMY_STOCK_OUT';  -- XXCOS:EDI納品予定ダミー欠品区分
+---- 2009/05/22 Ver1.9 Add End
+/* 2010/04/15 Ver1.20 Del End   */
   -- メッセージコード
   cv_msg_param_null     CONSTANT VARCHAR2(20)  := 'APP-XXCOS1-00006';  -- 必須入力パラメータ未設定エラーメッセージ
   cv_msg_param_err      CONSTANT VARCHAR2(20)  := 'APP-XXCOS1-00019';  -- 入力パラメータ不正エラーメッセージ
@@ -209,9 +212,11 @@ AS
 /* 2010/03/19 Ver1.19 Add  End  */
   cv_msg_tkn_prf12      CONSTANT VARCHAR2(20)  := 'APP-XXCOS1-00060';  -- GL会計帳簿ID
   cv_msg_tkn_prf13      CONSTANT VARCHAR2(20)  := 'APP-XXCOS1-00047';  -- 営業単位
--- 2009/05/22 Ver1.9 Add Start
-  cv_msg_tkn_prf14      CONSTANT VARCHAR2(20)  := 'APP-XXCOS1-12266';  -- XXCOS:EDI納品予定ダミー欠品区分
--- 2009/05/22 Ver1.9 Add End
+/* 2010/04/15 Ver1.20 Del Start */
+---- 2009/05/22 Ver1.9 Add Start
+--  cv_msg_tkn_prf14      CONSTANT VARCHAR2(20)  := 'APP-XXCOS1-12266';  -- XXCOS:EDI納品予定ダミー欠品区分
+---- 2009/05/22 Ver1.9 Add End
+/* 2010/04/15 Ver1.20 Del End   */
   cv_msg_tkn_column1    CONSTANT VARCHAR2(20)  := 'APP-XXCOS1-12261';  -- データ種コード
   cv_msg_l_meaning2     CONSTANT VARCHAR2(20)  := 'APP-XXCOS1-12263';  -- クイックコード取得条件(EDI媒体区分)
   cv_msg_tkn_column2    CONSTANT VARCHAR2(20)  := 'APP-XXCOS1-00110';  -- EDI媒体区分
@@ -739,9 +744,11 @@ AS
 /* 2010/03/19 Ver1.19 Add  End  */
   gn_bks_id             NUMBER;                                        -- 会計帳簿ID
   gn_org_id             NUMBER;                                        -- 営業単位
--- 2009/05/22 Ver1.9 Add Start
-  gn_dum_stock_out      VARCHAR2(3);                                   -- EDI納品予定ダミー欠品区分
--- 2009/05/22 Ver1.9 Add End
+/* 2010/04/15 Ver1.20 Del Start */
+---- 2009/05/22 Ver1.9 Add Start
+--  gn_dum_stock_out      VARCHAR2(3);                                   -- EDI納品予定ダミー欠品区分
+---- 2009/05/22 Ver1.9 Add End
+/* 2010/04/15 Ver1.20 Del End   */
 -- ************ 2009/09/03 N.Maeda 1.12 ADD START ***************** --
    gt_category_set_id      mtl_category_sets_tl.category_set_id%TYPE;          --カテゴリセットID
 -- ************ 2009/09/03 N.Maeda 1.12 ADD  END  ***************** --
@@ -2473,29 +2480,31 @@ AS
       );
       ln_err_chk := cn_1;  -- エラー有り
     END IF;
--- 2009/05/22 Ver1.9 Add Start
-    gn_dum_stock_out := TO_NUMBER( FND_PROFILE.VALUE( cv_prf_dum_stock_out ) );
-    IF ( gn_dum_stock_out IS NULL ) THEN
-      -- トークン取得
-      lv_tkn_value1 := xxccp_common_pkg.get_msg(
-                          iv_application  => cv_application    -- アプリケーション
-                         ,iv_name         => cv_msg_tkn_prf14  -- EDI納品予定ダミー欠品区分
-                       );
-      -- メッセージ取得
-      lv_err_msg := xxccp_common_pkg.get_msg(
-                       iv_application  => cv_application  -- アプリケーション
-                      ,iv_name         => cv_msg_prf_err  -- プロファイル取得エラー
-                      ,iv_token_name1  => cv_tkn_profile  -- トークンコード１
-                      ,iv_token_value1 => lv_tkn_value1   -- プロファイル名
-                    );
-      -- メッセージに出力
-      FND_FILE.PUT_LINE(
-         which  => FND_FILE.OUTPUT
-        ,buff   => lv_err_msg
-      );
-      ln_err_chk := cn_1;  -- エラー有り
-    END IF;
--- 2009/05/22 Ver1.9 Add End
+/* 2010/04/15 Ver1.20 Del Start */
+---- 2009/05/22 Ver1.9 Add Start
+--    gn_dum_stock_out := TO_NUMBER( FND_PROFILE.VALUE( cv_prf_dum_stock_out ) );
+--    IF ( gn_dum_stock_out IS NULL ) THEN
+--      -- トークン取得
+--      lv_tkn_value1 := xxccp_common_pkg.get_msg(
+--                          iv_application  => cv_application    -- アプリケーション
+--                         ,iv_name         => cv_msg_tkn_prf14  -- EDI納品予定ダミー欠品区分
+--                       );
+--      -- メッセージ取得
+--      lv_err_msg := xxccp_common_pkg.get_msg(
+--                       iv_application  => cv_application  -- アプリケーション
+--                      ,iv_name         => cv_msg_prf_err  -- プロファイル取得エラー
+--                      ,iv_token_name1  => cv_tkn_profile  -- トークンコード１
+--                      ,iv_token_value1 => lv_tkn_value1   -- プロファイル名
+--                    );
+--      -- メッセージに出力
+--      FND_FILE.PUT_LINE(
+--         which  => FND_FILE.OUTPUT
+--        ,buff   => lv_err_msg
+--      );
+--      ln_err_chk := cn_1;  -- エラー有り
+--    END IF;
+---- 2009/05/22 Ver1.9 Add End
+/* 2010/04/15 Ver1.20 Del End   */
     --==============================================================
     -- マスタ情報取得
     --==============================================================
@@ -4131,15 +4140,17 @@ AS
         RAISE global_api_expt;
       END IF;
 --****************************** 2009/06/24 1.10 T.Kitajima MOD  END  ******************************--
--- 2009/05/22 Ver1.9 Add Start
-      -- 商品コード(伊藤園)」が、ダミー品目の場合、全て"0"に変更
-      IF ( ln_dummy_item = cn_1) THEN
-        gt_data_tab(ln_data_cnt)(cv_indv_ship_qty)          := cn_0;                                                       -- 出荷数量(ﾊﾞﾗ)
-        gt_data_tab(ln_data_cnt)(cv_case_ship_qty)          := cn_0;                                                       -- 出荷数量(ｹｰｽ)
-        gt_data_tab(ln_data_cnt)(cv_ball_ship_qty)          := cn_0;                                                       -- 出荷数量(ﾎﾞｰﾙ)
-        gt_data_tab(ln_data_cnt)(cv_sum_ship_qty)           := cn_0;                                                       -- 出荷数量(合計､ﾊﾞﾗ)
-      END IF;
--- 2009/05/22 Ver1.9 Add End
+/* 2010/04/15 Ver1.20 Del Start */
+---- 2009/05/22 Ver1.9 Add Start
+--      -- 商品コード(伊藤園)」が、ダミー品目の場合、全て"0"に変更
+--      IF ( ln_dummy_item = cn_1) THEN
+--        gt_data_tab(ln_data_cnt)(cv_indv_ship_qty)          := cn_0;                                                       -- 出荷数量(ﾊﾞﾗ)
+--        gt_data_tab(ln_data_cnt)(cv_case_ship_qty)          := cn_0;                                                       -- 出荷数量(ｹｰｽ)
+--        gt_data_tab(ln_data_cnt)(cv_ball_ship_qty)          := cn_0;                                                       -- 出荷数量(ﾎﾞｰﾙ)
+--        gt_data_tab(ln_data_cnt)(cv_sum_ship_qty)           := cn_0;                                                       -- 出荷数量(合計､ﾊﾞﾗ)
+--      END IF;
+---- 2009/05/22 Ver1.9 Add End
+/* 2010/04/15 Ver1.20 Del End   */
       gt_data_tab(ln_data_cnt)(cv_pallet_ship_qty)          := NULL;                                                       -- 出荷数量(ﾊﾟﾚｯﾄ)
 --****************************** 2009/06/24 1.10 T.Kitajima DEL START ******************************--
 --/* 2009/02/25 Ver1.4 Mod Start */
@@ -4167,12 +4178,14 @@ AS
       ELSE
         gt_data_tab(ln_data_cnt)(cv_stkout_class)           := gt_edi_order_tab(ln_loop_cnt).stockout_class;               -- 欠品区分
       END IF;
--- 2009/05/22 Ver1.9 Mod Start
-      -- 商品コード(伊藤園)」が、ダミー品目の場合、プロファイル値に修正
-      IF ( ln_dummy_item = cn_1) THEN
-        gt_data_tab(ln_data_cnt)(cv_stkout_class)           := gn_dum_stock_out;                                           -- 欠品区分
-      END IF;
--- 2009/05/22 Ver1.9 Mod End
+/* 2010/04/15 Ver1.20 Del Start */
+---- 2009/05/22 Ver1.9 Mod Start
+--      -- 商品コード(伊藤園)」が、ダミー品目の場合、プロファイル値に修正
+--      IF ( ln_dummy_item = cn_1) THEN
+--        gt_data_tab(ln_data_cnt)(cv_stkout_class)           := gn_dum_stock_out;                                           -- 欠品区分
+--      END IF;
+---- 2009/05/22 Ver1.9 Mod End
+/* 2010/04/15 Ver1.20 Del End   */
       gt_data_tab(ln_data_cnt)(cv_stkout_reason)            := NULL;                                                       -- 欠品理由
       gt_data_tab(ln_data_cnt)(cv_case_qty)                 := gt_edi_order_tab(ln_loop_cnt).case_qty;                     -- ｹｰｽ個口数
       gt_data_tab(ln_data_cnt)(cv_fold_container_indv_qty)  := gt_edi_order_tab(ln_loop_cnt).fold_container_indv_qty;      -- ｵﾘｺﾝ(ﾊﾞﾗ)個口数
