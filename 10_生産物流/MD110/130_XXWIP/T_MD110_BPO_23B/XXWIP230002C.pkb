@@ -8,7 +8,7 @@ AS
  * Description      : 生産帳票機能（生産日報）
  * MD.050/070       : 生産帳票機能（生産日報）Issue1.0  (T_MD050_BPO_230)
  *                    生産帳票機能（生産日報）          (T_MD070_BPO_23B)
- * Version          : 1.10
+ * Version          : 1.11
  *
  * Program List
  * ---------------------------- ----------------------------------------------------------
@@ -51,6 +51,7 @@ AS
  *  2008/12/24    1.8   Akiyoshi Shiina     本番障害#849,#823対応
  *  2008/12/25    1.9   Akiyoshi Shiina     本番障害#823再対応
  *  2009/02/04    1.10  Yasuhisa Yamamoto   本番障害#4対応 ランク３出力対応
+ *  2009/11/24    1.11  Hitomi Itou         本番障害#1696対応 入力パラメータFROM-TO片方のみは不可
  *****************************************************************************************/
 --
 --#######################  固定グローバル定数宣言部 START   #######################
@@ -117,6 +118,12 @@ AS
   gv_err_make_date_to           CONSTANT VARCHAR2(20) := '生産日（TO）';           -- 生産日（TO）
   gv_err_input_date_from        CONSTANT VARCHAR2(20) := '入力日時（FROM）';       -- 入力日時（FROM）
   gv_err_input_date_to          CONSTANT VARCHAR2(20) := '入力日時（TO）';         -- 入力日時（TO）
+-- 2009/11/24 H.Itou Add Start 本番障害#1696
+  gv_err_tehai_no_from          CONSTANT VARCHAR2(20) := '手配No（FROM）';         -- 手配No（FROM）
+  gv_err_tehai_no_to            CONSTANT VARCHAR2(20) := '手配No（TO）';           -- 手配No（TO）
+  gv_err_make_date              CONSTANT VARCHAR2(20) := '生産日';                 -- 生産日
+  gv_err_tehai_no               CONSTANT VARCHAR2(20) := '手配No';                 -- 手配No
+-- 2009/11/24 H.Itou End
   -- メッセージアプリケーション
   gc_application_cmn            CONSTANT fnd_application.application_short_name%TYPE  := 'XXCMN' ;
   gc_application_wip            CONSTANT fnd_application.application_short_name%TYPE  := 'XXWIP' ;
@@ -126,6 +133,10 @@ AS
   gv_tkn_param2                 CONSTANT VARCHAR2(10) := 'PARAM2';
   gv_tkn_item                   CONSTANT VARCHAR2(10) := 'ITEM';
   gv_tkn_value                  CONSTANT VARCHAR2(10) := 'VALUE';
+-- 2009/11/24 H.Itou Add Start 本番障害#1696
+  gv_tkn_from                   CONSTANT VARCHAR2(10) := 'FROM';
+  gv_tkn_to                     CONSTANT VARCHAR2(10) := 'TO';
+-- 2009/11/24 H.Itou End
 --
   -- 「OPM品目マスタ.NET」未入力時のデフォルト値
   gv_net_default_val            CONSTANT NUMBER := NULL;
@@ -2414,9 +2425,12 @@ AS
           ,gmd.item_id                                             AS item_id          -- 生産原料詳細.品目ID
           ,xim2v.item_um                                           AS item_um          -- OPM品目情報VIEW2.単位
           ,NVL(TO_NUMBER(xim2v.net) , gv_net_default_val)          AS net              -- OPM品目情報VIEW2.NET(NULL時の対応込み)
--- Add 2008/05/29
-          ,xic2v.segment1                                          AS item_class       -- 品目区分
--- Add 2008/05/29
+-- 2009/11/24 H.Itou Mod Start 本番障害#1696 品目カテゴリ割当情報VIEW5に変更
+---- Add 2008/05/29
+--          ,xic2v.segment1                                          AS item_class       -- 品目区分
+---- Add 2008/05/29
+          ,xic2v.item_class_code                                   AS item_class       -- 品目区分
+-- 2009/11/24 H.Itou Mod End
            --以下データ用項目
           ,gbh.batch_no                                            AS tehai_no         -- 生産バッチヘッダ.バッチNO
           ,xlv1v1.meaning                                          AS den_kbn          -- 参照コード.摘要
@@ -2461,9 +2475,12 @@ AS
           ,ic_tran_pnd                itp     -- OPM保留在庫トランザクション
           ,ic_lots_mst                ilm     -- OPMロットマスタ
           ,xxcmn_item_mst2_v          xim2v   -- OPM品目情報VIEW2
--- Add 2008/05/29
-          , xxcmn_item_categories2_v  xic2v  -- OPM品目カテゴリ情報VIEW2
--- Add 2008/05/29
+-- 2009/11/24 H.Itou Mod Start 本番障害#1696 品目カテゴリ割当情報VIEW5に変更
+---- Add 2008/05/29
+--          , xxcmn_item_categories2_v  xic2v  -- OPM品目カテゴリ情報VIEW2
+---- Add 2008/05/29
+          , xxcmn_item_categories5_v  xic2v  -- OPM品目カテゴリ情報VIEW5
+-- 2009/11/24 H.Itou Mod End
     WHERE
     -- 以下固定条件
     ------------------------------------------------------------------------
@@ -2505,13 +2522,16 @@ AS
 -- 2008/10/28 v1.5 D.Nihei ADD START
     AND itp.doc_type                = gv_doc_type_prod
 -- 2008/10/28 v1.5 D.Nihei ADD END
-    -- 下記2条件でIS NULLの代替とする
-    AND   NOT EXISTS (SELECT 1
-                      FROM ic_tran_pnd itp2
-                      WHERE itp2.reverse_id = itp.trans_id)     -- 保留トランIDがリバースIDに存在しないもの
-    AND   NOT EXISTS (SELECT 1
-                      FROM ic_tran_pnd itp3
-                      WHERE itp3.trans_id = itp.reverse_id)     -- リバースIDが保留トランIDに存在しないもの
+-- 2009/11/24 H.Itou Mod Start 本番障害#1696 フルスキャンするので修正
+--    -- 下記2条件でIS NULLの代替とする
+--    AND   NOT EXISTS (SELECT 1
+--                      FROM ic_tran_pnd itp2
+--                      WHERE itp2.reverse_id = itp.trans_id)     -- 保留トランIDがリバースIDに存在しないもの
+--    AND   NOT EXISTS (SELECT 1
+--                      FROM ic_tran_pnd itp3
+--                      WHERE itp3.trans_id = itp.reverse_id)     -- リバースIDが保留トランIDに存在しないもの
+    AND   itp.reverse_id IS NULL
+-- 2009/11/24 H.Itou Mod End
     AND   itp.completed_ind         =  gv_comp_flag             -- 完了フラグ＝「完了」
     ------------------------------------------------------------------------
     -- OPMロットマスタ条件
@@ -2527,7 +2547,9 @@ AS
 -- Add 2008/05/29
     -- OPM品目カテゴリ情報view2条件
     AND   gmd.item_id               =  xic2v.item_id
-    AND   xic2v.category_set_name = FND_PROFILE.VALUE('XXCMN_ARTICLE_DIV')
+-- 2009/11/24 H.Itou Del Start 本番障害#1696 品目カテゴリ割当情報VIEW5に変更
+--    AND   xic2v.category_set_name = FND_PROFILE.VALUE('XXCMN_ARTICLE_DIV')
+-- 2009/11/24 H.Itou Del End
 -- Add 2008/05/29
     ------------------------------------------------------------------------
     ------------------------------------------------------------------------
@@ -2915,7 +2937,10 @@ AS
     FROM   gme_material_details       gmd     -- 生産原料詳細
           ,ic_lots_mst                ilm     -- OPMロットマスタ
           ,xxcmn_item_mst_v           ximv    -- OPM品目情報VIEW
-          ,xxcmn_item_categories_v    xic1v   -- OPM品目カテゴリ割当情報VIEW
+-- 2009/11/24 H.Itou Mod Start 本番障害#1696 品目カテゴリ割当情報VIEW5に変更
+--          ,xxcmn_item_categories_v    xic1v   -- OPM品目カテゴリ割当情報VIEW
+          ,xxcmn_item_categories5_v    xic1v   -- OPM品目カテゴリ割当情報VIEW5
+-- 2009/11/24 H.Itou Mod End
           ,ic_tran_pnd                itp     -- OPM保留在庫トランザクション
     WHERE
     --以下固定条件
@@ -2929,19 +2954,24 @@ AS
     ------------------------------------------------------------------------
     -- OPM品目カテゴリ割当情報VIEW条件
     AND   gmd.item_id               =  xic1v.item_id
-    AND   xic1v.category_set_name   =  gv_item_cat_name_item_kbn
+-- 2009/11/24 H.Itou Del Start 本番障害#1696 品目カテゴリ割当情報VIEW5に変更
+--    AND   xic1v.category_set_name   =  gv_item_cat_name_item_kbn
+-- 2009/11/24 H.Itou Del End
     ------------------------------------------------------------------------
     --  OPM保留在庫トランザクション条件
     AND   gmd.batch_id              =  itp.doc_id
     AND   gmd.material_detail_id    =  itp.line_id
     AND   gmd.line_type             =  itp.line_type
-    --下記2条件でIS NULLの代替とする
-    AND   NOT EXISTS (SELECT 1
-                      FROM ic_tran_pnd itp2
-                      WHERE itp2.reverse_id = itp.trans_id)     -- 保留トランidがリバースidに存在しないもの
-    AND   NOT EXISTS (SELECT 1
-                      FROM ic_tran_pnd itp3
-                      WHERE itp3.trans_id = itp.reverse_id)     -- リバースidが保留トランidに存在しないもの
+-- 2009/11/24 H.Itou Mod Start 本番障害#1696 フルスキャンするので修正
+--    --下記2条件でIS NULLの代替とする
+--    AND   NOT EXISTS (SELECT 1
+--                      FROM ic_tran_pnd itp2
+--                      WHERE itp2.reverse_id = itp.trans_id)     -- 保留トランidがリバースidに存在しないもの
+--    AND   NOT EXISTS (SELECT 1
+--                      FROM ic_tran_pnd itp3
+--                      WHERE itp3.trans_id = itp.reverse_id)     -- リバースidが保留トランidに存在しないもの
+    AND itp.reverse_id IS NULL
+-- 2009/11/24 H.Itou Mod End
     AND   itp.completed_ind    =  gv_comp_flag                  -- 完了フラグ＝「完了」
 -- 2008/10/28 v1.5 D.Nihei ADD START
     AND itp.doc_type           = gv_doc_type_prod
@@ -2957,7 +2987,10 @@ AS
     --生産原料詳細パラメータ条件
     AND   gmd.batch_id              =  iv_batch_id
     ------------------------------------------------------------------------
-    ORDER BY xic1v.segment1            -- OPM品目カテゴリ割当情報VIEW.品目カテゴリコード
+-- 2009/11/24 H.Itou Mod Start 本番障害#1696 品目カテゴリ割当情報VIEW5に変更
+--    ORDER BY xic1v.segment1            -- OPM品目カテゴリ割当情報VIEW.品目カテゴリコード
+    ORDER BY xic1v.item_class_code     -- OPM品目カテゴリ割当情報VIEW5.品目区分
+-- 2009/11/24 H.Itou Mod End
             ,TO_NUMBER(ximv.item_no)   -- OPM品目情報VIEW.品目コード
             ,TO_NUMBER(ilm.lot_no)     -- OPMロットマスタ.ロットno
     ;
@@ -3077,13 +3110,16 @@ AS
     AND   xmd.material_detail_id    =  itp.line_id
     AND   xmd.item_id               =  itp.item_id
     AND   xmd.lot_id                =  itp.lot_id
-    --下記2条件でIS NULLの代替とする
-    AND   NOT EXISTS (SELECT 1
-                      FROM ic_tran_pnd itp2
-                      WHERE itp2.reverse_id = itp.trans_id)     -- 保留トランidがリバースidに存在しないもの
-    AND   NOT EXISTS (SELECT 1
-                      FROM ic_tran_pnd itp3
-                      WHERE itp3.trans_id = itp.reverse_id)     -- リバースidが保留トランidに存在しないもの
+-- 2009/11/24 H.Itou Mod Start 本番障害#1696 フルスキャンするので修正
+--    -- 下記2条件でIS NULLの代替とする
+--    AND   NOT EXISTS (SELECT 1
+--                      FROM ic_tran_pnd itp2
+--                      WHERE itp2.reverse_id = itp.trans_id)     -- 保留トランIDがリバースIDに存在しないもの
+--    AND   NOT EXISTS (SELECT 1
+--                      FROM ic_tran_pnd itp3
+--                      WHERE itp3.trans_id = itp.reverse_id)     -- リバースIDが保留トランIDに存在しないもの
+    AND   itp.reverse_id IS NULL
+-- 2009/11/24 H.Itou Mod End
     AND   itp.completed_ind    =  gv_comp_flag                  -- 完了フラグ＝「完了」
 -- 2008/10/28 v1.5 D.Nihei ADD START
     AND   itp.doc_type              = gv_doc_type_prod
@@ -3221,13 +3257,16 @@ AS
 -- 2008/10/28 v1.5 D.Nihei ADD START
     AND itp.doc_type                = gv_doc_type_prod
 -- 2008/10/28 v1.5 D.Nihei ADD END
-    --下記2条件でIS NULLの代替とする
-    AND   NOT EXISTS (SELECT 1
-                      FROM ic_tran_pnd itp2
-                      WHERE itp2.reverse_id = itp.trans_id)     -- 保留トランIDがリバースIDに存在しないもの
-    AND   NOT EXISTS (SELECT 1
-                      FROM ic_tran_pnd itp3
-                      WHERE itp3.trans_id = itp.reverse_id)     -- リバースIDが保留トランIDに存在しないもの
+-- 2009/11/24 H.Itou Mod Start 本番障害#1696 フルスキャンするので修正
+--    -- 下記2条件でIS NULLの代替とする
+--    AND   NOT EXISTS (SELECT 1
+--                      FROM ic_tran_pnd itp2
+--                      WHERE itp2.reverse_id = itp.trans_id)     -- 保留トランIDがリバースIDに存在しないもの
+--    AND   NOT EXISTS (SELECT 1
+--                      FROM ic_tran_pnd itp3
+--                      WHERE itp3.trans_id = itp.reverse_id)     -- リバースIDが保留トランIDに存在しないもの
+    AND   itp.reverse_id IS NULL
+-- 2009/11/24 H.Itou Mod End
     AND   itp.completed_ind    =  gv_comp_flag                  -- 完了フラグ＝「完了」
     ------------------------------------------------------------------------
     -- OPM品目カテゴリ割当情報VIEW条件
@@ -3892,6 +3931,20 @@ AS
     -- ====================================================
     -- 妥当性チェック　生産日（FROM/TO）
     -- ====================================================
+-- 2009/11/24 H.Itou Add Start 本番障害#1696
+    -- FROMかTO片方の指定は不可
+    IF  (((or_param.id_make_date_from IS NOT NULL)
+      AND (or_param.id_make_date_to   IS NULL    )) 
+      OR ((or_param.id_make_date_from IS NULL    )
+      AND (or_param.id_make_date_to   IS NOT NULL))) THEN
+      -- メッセージセット
+      lv_errmsg := xxcmn_common_pkg.get_msg( gc_application_wip
+                                            ,'APP-XXWIP-10089'
+                                            ,gv_tkn_item
+                                            ,gv_err_make_date) ;
+      RAISE global_process_expt ;
+    END IF;
+-- 2009/11/24 H.Itou Add End
     IF (or_param.id_make_date_from > or_param.id_make_date_to) THEN
       -- メッセージセット
       lv_errmsg := xxcmn_common_pkg.get_msg( gc_application_wip
@@ -3903,6 +3956,35 @@ AS
       RAISE global_process_expt ;
     END IF;
 --
+-- 2009/11/24 H.Itou Add Start 本番障害#1696
+    -- ====================================================
+    -- 妥当性チェック　手配No（FROM/TO）
+    -- ====================================================
+    -- FROMかTO片方の指定は不可
+    IF  (((or_param.id_tehai_no_from IS NOT NULL)
+      AND (or_param.id_tehai_no_to   IS NULL    )) 
+      OR ((or_param.id_tehai_no_from IS NULL    )
+      AND (or_param.id_tehai_no_to   IS NOT NULL))) THEN
+      -- メッセージセット
+      lv_errmsg := xxcmn_common_pkg.get_msg( gc_application_wip
+                                            ,'APP-XXWIP-10089'
+                                            ,gv_tkn_item
+                                            ,gv_err_tehai_no) ;
+      RAISE global_process_expt ;
+    END IF;
+--
+    -- FROM>TOは不可
+    IF (or_param.id_tehai_no_from > or_param.id_tehai_no_to) THEN
+      -- メッセージセット
+      lv_errmsg := xxcmn_common_pkg.get_msg( gc_application_wip
+                                            ,'APP-XXWIP-10002'
+                                            ,gv_tkn_from
+                                            ,gv_err_tehai_no_from
+                                            ,gv_tkn_to
+                                            ,gv_err_tehai_no_to) ;
+      RAISE global_process_expt ;
+    END IF;
+-- 2009/11/24 H.Itou Add End
     -- ====================================================
     -- 妥当性チェック　入力日時（FROM/TO）
     -- ====================================================
