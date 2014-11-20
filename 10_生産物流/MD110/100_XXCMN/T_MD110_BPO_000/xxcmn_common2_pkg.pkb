@@ -6,7 +6,7 @@ AS
  * Package Name           : xxcmn_common2_pkg(BODY)
  * Description            : 共通関数2(BODY)
  * MD.070(CMD.050)        : T_MD050_BPO_000_引当可能数算出（補足資料）.doc
- * Version                : 1.15
+ * Version                : 1.16
  *
  * Program List
  *  ---------------------------- ---- ----- --------------------------------------------------
@@ -77,7 +77,8 @@ AS
  *  2008/09/17   1.12  oracle 椎名     PT 6-1_28 指摘73 追加修正
  *  2008/11/19   1.13  oracle 伊藤     統合障害#681修正
  *  2008/12/02   1.14  oracle 二瓶     本番障害#251対応（条件追加) 
- *  2008/12/15   1.15  oracle 伊藤     本番障害#645対応 予定日でなく実績日で取得する。
+ *  2008/12/15   1.15  oracle 伊藤     本番障害#645対応 D4,S4 予定日でなく実績日で取得する。
+ *  2008/12/18   1.16  oracle 伊藤     本番障害#648対応 I5,I6 訂正前数量 - 実績数量を返す。
  *****************************************************************************************/
 --
 --#######################  固定グローバル定数宣言部 START   #######################
@@ -700,9 +701,15 @@ AS
             NVL(SUM(CASE
 -- 2008/09/17 v1.12 UPDATE End 
                       WHEN (otta.order_category_code = cv_cate_order) THEN
-                        mld.actual_quantity
+-- 2008/12/18 H.Itou Mod Start 本番障害#648
+--                        mld.actual_quantity
+                        NVL(mld.actual_quantity, 0) - NVL(mld.before_actual_quantity, 0)
+-- 2008/12/18 H.Itou Mod End
                       WHEN (otta.order_category_code = cv_cate_return) THEN
-                        mld.actual_quantity * -1
+-- 2008/12/18 H.Itou Mod Start 本番障害#648
+--                        mld.actual_quantity * -1
+                       (NVL(mld.actual_quantity, 0) - NVL(mld.before_actual_quantity, 0)) * -1
+-- 2008/12/18 H.Itou Mod End
                     END), 0)
     INTO    on_qty
     FROM    xxwsh_order_headers_all    oha,  -- 受注ヘッダ（アドオン）
@@ -809,9 +816,15 @@ AS
             NVL(SUM(CASE
 -- 2008/09/17 v1.12 UPDATE End 
                       WHEN (otta.order_category_code = cv_cate_order) THEN
-                        mld.actual_quantity
+-- 2008/12/18 H.Itou Mod Start 本番障害#648
+--                        mld.actual_quantity
+                        NVL(mld.actual_quantity, 0) - NVL(mld.before_actual_quantity, 0)
+-- 2008/12/18 H.Itou Mod End
                       WHEN (otta.order_category_code = cv_cate_return) THEN
-                        mld.actual_quantity * -1
+-- 2008/12/18 H.Itou Mod Start 本番障害#648
+--                        mld.actual_quantity * -1
+                       (NVL(mld.actual_quantity, 0) - NVL(mld.before_actual_quantity, 0)) * -1
+-- 2008/12/18 H.Itou Mod End
                     END), 0)
     INTO    on_qty
     FROM    xxwsh_order_headers_all    oha,  -- 受注ヘッダ（アドオン）
@@ -2793,6 +2806,10 @@ AS
     cv_flag_off       CONSTANT VARCHAR2(1)  := 'N';       -- OFF
     cv_flag_on        CONSTANT VARCHAR2(1)  := 'Y';       -- ON
     cv_req_status     CONSTANT VARCHAR2(2)  := '04';      -- 出荷実績計上済
+-- 2008/12/18 H.Itou Add Start 本番障害#648
+    cv_doc_type       CONSTANT VARCHAR2(2)  := '10';      -- 出荷依頼
+    cv_rec_type       CONSTANT VARCHAR2(2)  := '20';      -- 出庫実績
+-- 2008/12/18 H.Itou Add End
     cv_ship_pro_type  CONSTANT VARCHAR2(1)  := '1';       -- 出荷依頼
     cv_warehouse_type CONSTANT VARCHAR2(1)  := '3';       -- 倉替
     cv_cate_order     CONSTANT VARCHAR2(10) := 'ORDER';   -- 受注
@@ -2810,29 +2827,56 @@ AS
     -- ***        実処理の記述             ***
     -- ***       共通関数の呼び出し        ***
     -- ***************************************
-    SELECT  NVL(SUM(CASE
+-- 2008/12/18 H.Itou Mod Start 本番障害#648
+--    SELECT  NVL(SUM(CASE
+--                      WHEN (otta.order_category_code = cv_cate_order) THEN
+--                        ola.shipped_quantity
+--                      WHEN (otta.order_category_code = cv_cate_return) THEN
+--                        ola.shipped_quantity * -1
+--                    END), 0)
+--    INTO    on_qty
+--    FROM    xxwsh_order_headers_all    oha,  -- 受注ヘッダ（アドオン）
+--            xxwsh_order_lines_all      ola,  -- 受注明細（アドオン）
+--            mtl_system_items_b        msib,  -- 品目マスタ
+--            oe_transaction_types_all  otta   -- 受注タイプ
+--    WHERE   msib.segment1             = iv_item_code
+--    AND     msib.organization_id      = FND_PROFILE.VALUE('XXCMN_MASTER_ORG_ID')
+--    AND     msib.inventory_item_id    = ola.shipping_inventory_item_id
+--    AND     oha.deliver_from_id       = in_whse_id
+--    AND     oha.req_status            = cv_req_status
+--    AND     oha.actual_confirm_class  = cv_flag_off
+--    AND     oha.latest_external_flag  = cv_flag_on
+--    AND     oha.order_header_id       = ola.order_header_id
+--    AND     ola.delete_flag           = cv_flag_off
+--    AND     otta.attribute1           IN (cv_ship_pro_type, cv_warehouse_type)
+--    AND     otta.transaction_type_id  = oha.order_type_id
+--
+    SELECT  /*+ leading(oha otta ola mld) */
+            NVL(SUM(CASE
                       WHEN (otta.order_category_code = cv_cate_order) THEN
-                        ola.shipped_quantity
+                        NVL(mld.actual_quantity, 0) - NVL(mld.before_actual_quantity, 0)
                       WHEN (otta.order_category_code = cv_cate_return) THEN
-                        ola.shipped_quantity * -1
+                       (NVL(mld.actual_quantity, 0) - NVL(mld.before_actual_quantity, 0)) * -1
                     END), 0)
     INTO    on_qty
     FROM    xxwsh_order_headers_all    oha,  -- 受注ヘッダ（アドオン）
             xxwsh_order_lines_all      ola,  -- 受注明細（アドオン）
-            mtl_system_items_b        msib,  -- 品目マスタ
+            xxinv_mov_lot_details      mld,  -- 移動ロット詳細（アドオン）
             oe_transaction_types_all  otta   -- 受注タイプ
-    WHERE   msib.segment1             = iv_item_code
-    AND     msib.organization_id      = FND_PROFILE.VALUE('XXCMN_MASTER_ORG_ID')
-    AND     msib.inventory_item_id    = ola.shipping_inventory_item_id
-    AND     oha.deliver_from_id       = in_whse_id
+    WHERE   oha.deliver_from_id       = in_whse_id
     AND     oha.req_status            = cv_req_status
     AND     oha.actual_confirm_class  = cv_flag_off
     AND     oha.latest_external_flag  = cv_flag_on
     AND     oha.order_header_id       = ola.order_header_id
     AND     ola.delete_flag           = cv_flag_off
+    AND     ola.order_line_id         = mld.mov_line_id
+    AND     mld.item_code             = iv_item_code
+    AND     mld.document_type_code    = cv_doc_type
+    AND     mld.record_type_code      = cv_rec_type
     AND     otta.attribute1           IN (cv_ship_pro_type, cv_warehouse_type)
     AND     otta.transaction_type_id  = oha.order_type_id
     ;
+-- 2008/12/18 H.Itou Mod End
     --==============================================================
     --メッセージ出力（エラー以外）をする必要がある場合は処理を記述
     --==============================================================
@@ -2891,6 +2935,10 @@ AS
     cv_flag_off       CONSTANT VARCHAR2(1)  := 'N';       -- OFF
     cv_flag_on        CONSTANT VARCHAR2(1)  := 'Y';       -- ON
     cv_req_status     CONSTANT VARCHAR2(2)  := '08';      -- 出荷実績計上済
+-- 2008/12/18 H.Itou Add Start 本番障害#648
+    cv_doc_type       CONSTANT VARCHAR2(2)  := '30';      -- 支給指示
+    cv_rec_type       CONSTANT VARCHAR2(2)  := '20';      -- 出庫実績
+-- 2008/12/18 H.Itou Add End
     cv_ship_pro_type  CONSTANT VARCHAR2(1)  := '2';       -- 支給依頼
     cv_cate_order     CONSTANT VARCHAR2(10) := 'ORDER';   -- 受注
     cv_cate_return    CONSTANT VARCHAR2(10) := 'RETURN';  -- 返品
@@ -2907,29 +2955,56 @@ AS
     -- ***        実処理の記述             ***
     -- ***       共通関数の呼び出し        ***
     -- ***************************************
-    SELECT  NVL(SUM(CASE
+-- 2008/12/18 H.Itou Mod Start 本番障害#648
+--    SELECT  NVL(SUM(CASE
+--                      WHEN (otta.order_category_code = cv_cate_order) THEN
+--                        ola.shipped_quantity
+--                      WHEN (otta.order_category_code = cv_cate_return) THEN
+--                        ola.shipped_quantity * -1
+--                    END), 0)
+--    INTO    on_qty
+--    FROM    xxwsh_order_headers_all    oha,  -- 受注ヘッダ（アドオン）
+--            xxwsh_order_lines_all      ola,  -- 受注明細（アドオン）
+--            mtl_system_items_b        msib,  -- 品目マスタ
+--            oe_transaction_types_all  otta   -- 受注タイプ
+--    WHERE   msib.segment1             = iv_item_code
+--    AND     msib.organization_id      = FND_PROFILE.VALUE('XXCMN_MASTER_ORG_ID')
+--    AND     msib.inventory_item_id    = ola.shipping_inventory_item_id
+--    AND     oha.deliver_from_id       = in_whse_id
+--    AND     oha.req_status            = cv_req_status
+--    AND     oha.actual_confirm_class  = cv_flag_off
+--    AND     oha.latest_external_flag  = cv_flag_on
+--    AND     oha.order_header_id       = ola.order_header_id
+--    AND     ola.delete_flag           = cv_flag_off
+--    AND     otta.attribute1           = cv_ship_pro_type
+--    AND     otta.transaction_type_id  = oha.order_type_id
+--
+    SELECT  /*+ leading(oha otta ola mld) */
+            NVL(SUM(CASE
                       WHEN (otta.order_category_code = cv_cate_order) THEN
-                        ola.shipped_quantity
+                        NVL(mld.actual_quantity, 0) - NVL(mld.before_actual_quantity, 0)
                       WHEN (otta.order_category_code = cv_cate_return) THEN
-                        ola.shipped_quantity * -1
+                       (NVL(mld.actual_quantity, 0) - NVL(mld.before_actual_quantity, 0)) * -1
                     END), 0)
     INTO    on_qty
     FROM    xxwsh_order_headers_all    oha,  -- 受注ヘッダ（アドオン）
             xxwsh_order_lines_all      ola,  -- 受注明細（アドオン）
-            mtl_system_items_b        msib,  -- 品目マスタ
+            xxinv_mov_lot_details      mld,  -- 移動ロット詳細（アドオン）
             oe_transaction_types_all  otta   -- 受注タイプ
-    WHERE   msib.segment1             = iv_item_code
-    AND     msib.organization_id      = FND_PROFILE.VALUE('XXCMN_MASTER_ORG_ID')
-    AND     msib.inventory_item_id    = ola.shipping_inventory_item_id
-    AND     oha.deliver_from_id       = in_whse_id
+    WHERE   oha.deliver_from_id       = in_whse_id
     AND     oha.req_status            = cv_req_status
     AND     oha.actual_confirm_class  = cv_flag_off
     AND     oha.latest_external_flag  = cv_flag_on
     AND     oha.order_header_id       = ola.order_header_id
     AND     ola.delete_flag           = cv_flag_off
+    AND     ola.order_line_id         = mld.mov_line_id
+    AND     mld.item_code             = iv_item_code
+    AND     mld.document_type_code    = cv_doc_type
+    AND     mld.record_type_code      = cv_rec_type
     AND     otta.attribute1           = cv_ship_pro_type
     AND     otta.transaction_type_id  = oha.order_type_id
     ;
+-- 2008/12/18 H.Itou Mod End
     --==============================================================
     --メッセージ出力（エラー以外）をする必要がある場合は処理を記述
     --==============================================================
