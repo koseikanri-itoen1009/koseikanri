@@ -8,7 +8,7 @@ AS
  *                    CSVファイルを作成します。
  * MD.050           : MD050_自販機-EBSインタフェース：（OUT）作業依頼／発注情報(iPro,PO)
  *                    2008/12/19 16:30
- * Version          : 1.16
+ * Version          : 1.17
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -52,6 +52,7 @@ AS
  *  2009-08-10    1.14  K.Satomura       SCS障害対応(0000662対応)
  *  2009-09-04    1.15  D.Abe            SCS障害対応(0001281対応)
  *  2009-09-15    1.16  D.Abe            SCS障害対応(0001358対応)
+ *  2009-09-25    1.17  D.Abe            共通課題IE534
  *****************************************************************************************/
 --
 --#######################  固定グローバル定数宣言部 START   #######################
@@ -2258,15 +2259,42 @@ AS
       ln_num1    := INSTR(lv_cur_phone_number, cv_hyphen);
       ln_num2    := INSTR(lv_cur_phone_number, cv_hyphen, 1, 2);
 --
-      IF (lv_cur_phone_number IS NULL OR ln_num1 = 0 OR ln_num2 = 0) THEN
-        lv_cur_phone_number1 := NULL;
-        lv_cur_phone_number2 := NULL;
-        lv_cur_phone_number3 := NULL;
+      /* 2009.09.25 D.Abe IE534対応 START */
+      --IF (lv_cur_phone_number IS NULL OR ln_num1 = 0 OR ln_num2 = 0) THEN
+      --  lv_cur_phone_number1 := NULL;
+      --  lv_cur_phone_number2 := NULL;
+      --  lv_cur_phone_number3 := NULL;
+      --ELSE
+      --  lv_cur_phone_number1 := SUBSTR(lv_cur_phone_number, 1, (ln_num1-1));
+      --  lv_cur_phone_number2 := SUBSTR(lv_cur_phone_number, ln_num1 + 1, (ln_num2 - ln_num1 - 1));
+      --  lv_cur_phone_number3 := SUBSTR(lv_cur_phone_number, ln_num2 + 1);
+      --END IF;
+      -- 一つ目のハイフン存在チェック
+      IF (ln_num1 = 0) THEN
+        lv_cur_phone_number1 := SUBSTR(lv_cur_phone_number, 1
+                                                          , cn_phone_num_max_legth);
+        lv_cur_phone_number2 := SUBSTR(lv_cur_phone_number, cn_phone_num_max_legth + 1
+                                                          , cn_phone_num_max_legth);
+        lv_cur_phone_number3 := SUBSTR(lv_cur_phone_number, cn_phone_num_max_legth + 1
+                                                            + cn_phone_num_max_legth
+                                                          , cn_phone_num_max_legth);
       ELSE
-        lv_cur_phone_number1 := SUBSTR(lv_cur_phone_number, 1, (ln_num1-1));
-        lv_cur_phone_number2 := SUBSTR(lv_cur_phone_number, ln_num1 + 1, (ln_num2 - ln_num1 - 1));
-        lv_cur_phone_number3 := SUBSTR(lv_cur_phone_number, ln_num2 + 1);
+        lv_cur_phone_number1 := SUBSTR(lv_cur_phone_number, 1
+                                                          , (ln_num1-1));
+        -- 二つ目のハイフン存在チェック
+        IF  (ln_num2 = 0) THEN
+          lv_cur_phone_number2 := SUBSTR(lv_cur_phone_number, ln_num1 + 1
+                                                            , cn_phone_num_max_legth);
+          lv_cur_phone_number3 := SUBSTR(lv_cur_phone_number, ln_num1 + 1
+                                                              + cn_phone_num_max_legth
+                                                            , cn_phone_num_max_legth);
+        ELSE
+          lv_cur_phone_number2 := SUBSTR(lv_cur_phone_number, ln_num1 + 1
+                                                            , (ln_num2 - ln_num1 - 1));
+          lv_cur_phone_number3 := SUBSTR(lv_cur_phone_number, ln_num2 + 1);
+        END IF;
       END IF;
+      /* 2009.09.25 D.Abe IE534対応 END   */
 --
       /* 2009.05.19 K.Satomura T1_1048対応 START */
       --ln_num1    := INSTR(lv_new_phone_number, cv_hyphen);
@@ -2291,20 +2319,47 @@ AS
       ln_num1 := INSTR(lv_new_phone_number, cv_hyphen);
       ln_num2 := INSTR(lv_new_phone_number, cv_hyphen, 1, 2);
       --
-      IF (lv_new_phone_number IS NULL
-        OR ln_num1 = 0
-        OR ln_num2 = 0)
-      THEN
-        lv_new_phone_number1 := NULL;
-        lv_new_phone_number2 := NULL;
-        lv_new_phone_number3 := NULL;
-        --
+      /* 2009.09.25 D.Abe IE534対応 START */
+      --IF (lv_new_phone_number IS NULL
+      --  OR ln_num1 = 0
+      --  OR ln_num2 = 0)
+      --THEN
+      --  lv_new_phone_number1 := NULL;
+      --  lv_new_phone_number2 := NULL;
+      --  lv_new_phone_number3 := NULL;
+      --  --
+      --ELSE
+      --  lv_new_phone_number1 := SUBSTR(lv_new_phone_number, 1, (ln_num1-1));
+      --  lv_new_phone_number2 := SUBSTR(lv_new_phone_number, ln_num1 + 1, (ln_num2 - ln_num1 - 1));
+      --  lv_new_phone_number3 := SUBSTR(lv_new_phone_number, ln_num2 + 1);
+      --  --
+      --END IF;
+      -- 一つ目のハイフン存在チェック
+      IF (ln_num1 = 0) THEN
+        lv_new_phone_number1 := SUBSTR(lv_new_phone_number, 1
+                                                          , cn_phone_num_max_legth);
+        lv_new_phone_number2 := SUBSTR(lv_new_phone_number, cn_phone_num_max_legth + 1
+                                                          , cn_phone_num_max_legth);
+        lv_new_phone_number3 := SUBSTR(lv_new_phone_number, cn_phone_num_max_legth + 1
+                                                            + cn_phone_num_max_legth
+                                                          , cn_phone_num_max_legth);
       ELSE
-        lv_new_phone_number1 := SUBSTR(lv_new_phone_number, 1, (ln_num1-1));
-        lv_new_phone_number2 := SUBSTR(lv_new_phone_number, ln_num1 + 1, (ln_num2 - ln_num1 - 1));
-        lv_new_phone_number3 := SUBSTR(lv_new_phone_number, ln_num2 + 1);
-        --
+        lv_new_phone_number1 := SUBSTR(lv_new_phone_number, 1
+                                                          , (ln_num1-1));
+        -- 二つ目のハイフン存在チェック
+        IF  (ln_num2 = 0) THEN
+          lv_new_phone_number2 := SUBSTR(lv_new_phone_number, ln_num1 + 1
+                                                            , cn_phone_num_max_legth);
+          lv_new_phone_number3 := SUBSTR(lv_new_phone_number, ln_num1 + 1
+                                                              + cn_phone_num_max_legth
+                                                            , cn_phone_num_max_legth);
+        ELSE
+          lv_new_phone_number2 := SUBSTR(lv_new_phone_number, ln_num1 + 1
+                                                            , (ln_num2 - ln_num1 - 1));
+          lv_new_phone_number3 := SUBSTR(lv_new_phone_number, ln_num2 + 1);
+        END IF;
       END IF;
+      /* 2009.09.25 D.Abe IE534対応 END   */
       --
     ELSE
       lv_new_phone_number1 := NULL;

@@ -11,7 +11,7 @@ AS
  *                    ます。
  * MD.050           : MD050_CSO_010_A02_マスタ連携機能
  *
- * Version          : 1.8
+ * Version          : 1.9
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -73,6 +73,7 @@ AS
  *  2009-04-28    1.6   Kazuo.Satomura   システムテスト障害(障害番号T1_0733)
  *  2009-05-01    1.7   Tomoko.Mori      T1_0897対応
  *  2009-05-15    1.8   Kazuo.Satomura   システムテスト障害(障害番号T1_1010)
+ *  2009-09-25    1.9   Daisuke.Abe      共通課題IE548
  *****************************************************************************************/
   --
   --#######################  固定グローバル定数宣言部 START   #######################
@@ -711,15 +712,18 @@ AS
       -- ===================
       -- 電話番号分割処理
       -- ===================
-      -- 電話番号のバイト数を取得
-      ln_phone_number_length := LENGTHB(it_mst_regist_info_rec.address_lines_phonetic);
-      --
-      -- 最初のハイフンのあるバイト数を取得
-      ln_work_count := INSTRB(it_mst_regist_info_rec.address_lines_phonetic, cv_hyphen, 1);
-      --
-      -- 電話番号を市外局番と市内局番に分割
-      lv_area_code    := SUBSTRB(it_mst_regist_info_rec.address_lines_phonetic, 1, ln_work_count);
-      lv_phone_number := SUBSTRB(it_mst_regist_info_rec.address_lines_phonetic, ln_work_count + 1, ln_phone_number_length);
+      /* 2009.09.25 D.Abe IE548対応 START */
+      ---- 電話番号のバイト数を取得
+      --ln_phone_number_length := LENGTHB(it_mst_regist_info_rec.address_lines_phonetic);
+      ----
+      ---- 最初のハイフンのあるバイト数を取得
+      --ln_work_count := INSTRB(it_mst_regist_info_rec.address_lines_phonetic, cv_hyphen, 1);
+      ----
+      ---- 電話番号を市外局番と市内局番に分割
+      --lv_area_code    := SUBSTRB(it_mst_regist_info_rec.address_lines_phonetic, 1, ln_work_count);
+      --lv_phone_number := SUBSTRB(it_mst_regist_info_rec.address_lines_phonetic, ln_work_count + 1, ln_phone_number_length);
+      lv_phone_number := it_mst_regist_info_rec.address_lines_phonetic;
+      /* 2009.09.25 D.Abe IE548対応 END   */
       --
       IF lt_customer_id IS NOT NULL THEN
         -- 取得した顧客ＩＤが入力されている場合

@@ -1,13 +1,14 @@
 /*============================================================================
 * ファイル名 : XxcsoValidateUtils
 * 概要説明   : 【アドオン：営業・営業領域】共通検証関数クラス
-* バージョン : 1.0
+* バージョン : 1.2
 *============================================================================
 * 修正履歴
 * 日付       Ver. 担当者       修正内容
 * ---------- ---- ------------ ----------------------------------------------
 * 2008-12-11 1.0  SCS小川浩    新規作成
 * 2009-06-15 1.1  SCS柳平直人  [ST障害T1_1068]禁則文字チェックリスト削除
+* 2009-09-25 1.2  SCS阿部大輔  [I_E_534,I_E_548]電話番号のハイフン対応
 *============================================================================
 */
 package itoen.oracle.apps.xxcso.common.util;
@@ -690,11 +691,13 @@ public class XxcsoValidateUtils
     {
       char checkChar = telNumber.charAt(i);
 
-      if ( ((i == 0) || i == (telNumber.length() - 1)) && (checkChar == '-') )
-      {
-        // 先頭もしくは最後が「-」の場合はNG
-        return false;
-      }
+// 2009-09-25 [I_E_534,I_E_548] Add Start
+//      if ( ((i == 0) || i == (telNumber.length() - 1)) && (checkChar == '-') )
+//      {
+//        // 先頭もしくは最後が「-」の場合はNG
+//        return false;
+//      }
+// 2009-09-25 [I_E_534,I_E_548] Add End
 
       if ( enableTelString.indexOf(checkChar) < 0 )
       {
@@ -702,27 +705,29 @@ public class XxcsoValidateUtils
         return false;
       }
 
-      if ( checkChar == '-' )
-      {
-        sepCount++;
-        if ( sepFlag )
-        {
-          // 「-」が続いていた場合NG
-          return false;
-        }
-        sepFlag = true;
-      }
-      else
-      {
-        sepFlag = false;
-      }
+// 2009-09-25 [I_E_534,I_E_548] Add Start
+//      if ( checkChar == '-' )
+//      {
+//        sepCount++;
+//        if ( sepFlag )
+//        {
+//          // 「-」が続いていた場合NG
+//          return false;
+//        }
+//        sepFlag = true;
+//      }
+//      else
+//      {
+//        sepFlag = false;
+//      }
     }
 
-    if ( sepCount != 2 )
-    {
-      // 「-」が2つない場合NG
-      return false;
-    }
+//    if ( sepCount != 2 )
+//    {
+//      // 「-」が2つない場合NG
+//      return false;
+//    }
+// 2009-09-25 [I_E_534,I_E_548] Add End
 
     // 全チェックを通ったら正常終了
     return true;
