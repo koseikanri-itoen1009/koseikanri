@@ -6,7 +6,7 @@ AS
  * Package Name           : XXCOS_COMMON2_PKG(spec)
  * Description            : 
  * MD.070                 : MD070_IPO_COS_共通関数
- * Version                : 1.7
+ * Version                : 1.8
  *
  * Program List
  *  --------------------          ---- ----- --------------------------------------------------
@@ -37,6 +37,7 @@ AS
  *  2009/10/02    1.6  M.Sano           [0001156]顧客品目抽出条件追加
  *                                      [0001344]顧客品目検索エラー,JANコード検索エラーのパラメータ追加
  *  2010/04/15    1.7  Y.Goto           [E_本稼動_01719]担当営業員取得関数追加
+ *  2010/07/12    1.8  S.Niki           [E_本稼動_02637]品目コード変換（EBS→EDI)パラメータ追加
  *
  *****************************************************************************************/
 --
@@ -101,6 +102,9 @@ AS
               ,ov_product_code2                    OUT NOCOPY VARCHAR2        --商品コード２
               ,ov_jan_code                         OUT NOCOPY VARCHAR2        --JANコード
               ,ov_case_jan_code                    OUT NOCOPY VARCHAR2        --ケースJANコード
+/* 2010/07/12 Ver1.8 Add Start */
+              ,ov_err_flag                         OUT NOCOPY VARCHAR2        --エラー種別
+/* 2010/07/12 Ver1.8 Add End */
               ,ov_errbuf                           OUT NOCOPY VARCHAR2        --エラー・メッセージエラー       #固定#
               ,ov_retcode                          OUT NOCOPY VARCHAR2        --リターン・コード               #固定#
               ,ov_errmsg                           OUT NOCOPY VARCHAR2        --ユーザー・エラー・メッセージ   #固定#

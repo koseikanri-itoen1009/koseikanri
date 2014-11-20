@@ -6,7 +6,7 @@ AS
  * Package Name           : xxcos_edi_common_pkg(spec)
  * Description            :
  * MD.070                 : MD070_IPO_COS_共通関数
- * Version                : 1.7
+ * Version                : 1.8
  *
  * Program List
  *  ----------------------------- ---- ----- -----------------------------------------
@@ -26,6 +26,7 @@ AS
  *  2009/07/13   1.5   K.Kiriu          [0000660]対応
  *  2009/07/14   1.6   K.Kiriu          [0000064]対応
  *  2009/08/11   1.7   K.Kiriu          [0000966]対応
+ *  2010/07/12   1.8   S.Niki           [E_本稼動_02637]対応
  *****************************************************************************************/
  --
   -- EDI受注手入力分取込
@@ -38,6 +39,10 @@ AS
               ,iv_area_code                IN VARCHAR2  DEFAULT NULL  -- 地区コード
               ,id_center_delivery_date     IN DATE      DEFAULT NULL  -- センター納品日
               ,in_organization_id          IN NUMBER    DEFAULT NULL  -- 在庫組織ID
+/* 2010/07/12 Ver1.8 Add Start */
+              ,iv_boot_flag                IN VARCHAR2  DEFAULT NULL  -- 起動種別(1：コンカレント、2：画面)
+              ,ov_err_flag                 OUT NOCOPY VARCHAR2        -- エラー種別
+/* 2010/07/12 Ver1.8 Add End */
               ,ov_errbuf                   OUT NOCOPY VARCHAR2        -- エラー・メッセージ           --# 固定 #
               ,ov_retcode                  OUT NOCOPY VARCHAR2        -- リターン・コード             --# 固定 #
               ,ov_errmsg                   OUT NOCOPY VARCHAR2        -- ユーザー・エラー・メッセージ --# 固定 #

@@ -6,7 +6,7 @@ AS
  * Package Name           : xxcos_edi_common_pkg(body)
  * Description            :
  * MD.070                 : MD070_IPO_COS_共通関数
- * Version                : 1.9
+ * Version                : 1.10
  *
  * Program List
  *  ----------------------------- ---- ----- -----------------------------------------
@@ -28,6 +28,7 @@ AS
  *  2009/08/11   1.7   K.Kiriu          [0000966]対応
  *  2010/03/09   1.8   S.Karikomi       [E_本稼働_01637]対応
  *  2010/04/15   1.9   S.Karikomi       [E_本稼動_02296]対応
+ *  2010/07/13   1.10  S.Niki           [E_本稼動_02637]対応
  *****************************************************************************************/
   -- ===============================
   -- グローバル変数
@@ -47,6 +48,10 @@ AS
               ,iv_area_code                IN VARCHAR2  DEFAULT NULL  -- 地区コード
               ,id_center_delivery_date     IN DATE      DEFAULT NULL  -- センター納品日
               ,in_organization_id          IN NUMBER    DEFAULT NULL  -- 在庫組織ID
+/* 2010/07/13 Ver1.10 Add Start */
+              ,iv_boot_flag                IN VARCHAR2  DEFAULT NULL  -- 起動種別(1:コンカレント、2:画面)
+              ,ov_err_flag                 OUT NOCOPY VARCHAR2        -- エラー種別
+/* 2010/07/13 Ver1.10 Add End */
               ,ov_errbuf                   OUT NOCOPY VARCHAR2        -- エラー・メッセージ           --# 固定 #
               ,ov_retcode                  OUT NOCOPY VARCHAR2        -- リターン・コード             --# 固定 #
               ,ov_errmsg                   OUT NOCOPY VARCHAR2        -- ユーザー・エラー・メッセージ --# 固定 #
@@ -65,6 +70,9 @@ AS
     cv_msg_prf_err          CONSTANT VARCHAR2(20) := 'APP-XXCOS1-00004';  --プロファイル取得エラー
     cv_msg_org_prf_name     CONSTANT VARCHAR2(20) := 'APP-XXCOS1-00047';  --MO:営業単位
 /* 2009/08/11 Ver1.7 Add End   */
+/* 2010/07/13 Ver1.10 Add Start */
+    cv_msg_cust_item_err    CONSTANT VARCHAR2(20) := 'APP-XXCOS1-13597';  --顧客品目チェックエラー
+/* 2010/07/13 Ver1.10 Add End */
     --トークン
     cv_tkn_order_no         CONSTANT VARCHAR2(20) := 'ORDER_NO';          --伝票番号
     cv_tkn_line_no          CONSTANT VARCHAR2(20) := 'LINE_NUMBER';       --明細番号
@@ -111,6 +119,14 @@ AS
     cv_ltype_sale_class     CONSTANT VARCHAR2(25) := 'XXCOS1_SALE_CLASS';  -- 参照タイプ・コード:売上区分
     cv_tbl_name_head        CONSTANT VARCHAR2(13) := 'EDIヘッダ情報';      -- テーブル名:EDIヘッダ情報
     cv_tbl_name_line        CONSTANT VARCHAR2(11) := 'EDI明細情報';        -- テーブル名:EDI明細情報
+/* 2010/07/13 Ver1.10 Add Start */
+    cv_flag_0               CONSTANT VARCHAR2(1)  := '0';       -- 0:初期値
+    cv_flag_1               CONSTANT VARCHAR2(1)  := '1';       -- 1:未登録
+    cv_flag_2               CONSTANT VARCHAR2(1)  := '2';       -- 2:複数件登録
+    cv_flag_3               CONSTANT VARCHAR2(1)  := '3';       -- 3:両方
+    cv_boot_flag_conc       CONSTANT VARCHAR2(1)  := '1';       -- 1:コンカレント起動
+    cv_boot_flag_form       CONSTANT VARCHAR2(1)  := '2';       -- 2:画面起動
+/* 2010/07/13 Ver1.10 Add End */
 /* 2009/08/11 Ver1.7 Add Start */
     --プロファイル名称
     ct_prof_org_id                CONSTANT  fnd_profile_options.profile_option_name%TYPE := 'ORG_ID'; --MO:営業単位
@@ -234,11 +250,20 @@ AS
     lv_product_code2     VARCHAR2(16);     -- 商品コード２
     lv_jan_code          VARCHAR2(13);     -- JANコード
     lv_case_jan_code     VARCHAR2(13);     -- ケースJANコード
+/* 2010/07/13 Ver1.10 Add Start */
+    lv_err_flag          VARCHAR2(1);      -- エラー種別(1:未登録、2:複数件登録、3:両方)
+    lv_err_flag_tmp      VARCHAR2(1);      -- エラー種別tmp
+/* 2010/07/13 Ver1.10 Add End */
     lv_table_name        VARCHAR2(15);     -- テーブル名
     lv_errbuf            VARCHAR2(5000);   -- エラー・メッセージエラー
     lv_retcode           VARCHAR2(1);      -- リターン・コード
     lv_errmsg            VARCHAR2(5000);   -- ユーザー・エラー・メッセージ
     lv_ret_normal        VARCHAR2(1);      -- リターン・コード:正常
+/* 2010/07/13 Ver1.10 Add Start */
+    lv_ret_warn          VARCHAR2(1);      -- リターン・コード:警告
+    lv_ret_error         VARCHAR2(1);      -- リターン・コード:エラー
+    lv_warn_flag         VARCHAR2(1);      -- 警告フラグ
+/* 2010/07/13 Ver1.10 Add End */
 /* 2009/08/11 Ver1.7 Add Start */
     ln_org_id            NUMBER;           -- ORG_ID
     lv_msg_string        VARCHAR2(5000);   -- メッセージ用文字列格納変数
@@ -257,6 +282,9 @@ AS
 /* 2009/08/11 Ver1.7 Add Start */
     org_id_expt        EXCEPTION;  -- ORG_ID取得例外
 /* 2009/08/11 Ver1.7 Add End   */
+/* 2010/07/13 Ver1.10 Add Start */
+    conv_err_expt      EXCEPTION;  -- 品目変換の例外
+/* 2010/07/13 Ver1.10 Add End   */
 --
     PRAGMA EXCEPTION_INIT(sale_class_expt,   -20000);
     PRAGMA EXCEPTION_INIT(outbound_expt,     -20001);
@@ -265,12 +293,15 @@ AS
 /* 2009/08/11 Ver1.7 Add Start */
     PRAGMA EXCEPTION_INIT(org_id_expt,       -20004);
 /* 2009/08/11 Ver1.7 Add End   */
+/* 2010/07/13 Ver1.10 Add Start */
+    PRAGMA EXCEPTION_INIT(conv_err_expt,     -20005);
+/* 2010/07/13 Ver1.10 Add End   */
 --
   BEGIN
 --
 --##################  固定ステータス初期化部 START   ###################
 --
-    ov_retcode := xxccp_common_pkg.set_status_normal;
+    ov_retcode  := xxccp_common_pkg.set_status_normal;
 --
 --###########################  固定部 END   ############################
 --
@@ -279,6 +310,10 @@ AS
     ld_sysdate     := TRUNC(SYSDATE);                      -- システム日付
     lv_language    := USERENV(cv_user_env_lang);           -- 言語
     lv_ret_normal  := xxccp_common_pkg.set_status_normal;  -- リターンコード:正常
+/* 2010/07/13 Ver1.10 Add Start */
+    lv_ret_warn    := xxccp_common_pkg.set_status_warn;    -- リターンコード:警告
+    lv_ret_error   := xxccp_common_pkg.set_status_error;   -- リターンコード:エラー
+/* 2010/07/13 Ver1.10 Add End */
 /* 2009/08/11 Ver1.7 Add Start */
     ld_shop_delivery_date_from  := TRUNC(id_shop_delivery_date_from);  -- 引数をTRUNC(店舗納品日Form)
     ld_shop_delivery_date_to    := TRUNC(id_shop_delivery_date_to);    -- 引数をTRUNC(店舗納品日To)
@@ -301,6 +336,12 @@ AS
       RAISE org_id_expt;
     END IF;
 /* 2009/08/11 Ver1.7 Add End   */
+--
+/* 2010/07/13 Ver1.10 Add Start */
+      -- フラグ初期化
+      lv_warn_flag    := cv_flag_no;
+      lv_err_flag_tmp := cv_flag_0;
+/* 2010/07/13 Ver1.10 Add End */
 --
     -- ヘッダ情報読込
     SELECT
@@ -705,17 +746,56 @@ AS
                  , lv_product_code2                             -- 商品コード２
                  , lv_jan_code                                  -- JANコード
                  , lv_case_jan_code                             -- ケースJANコード
+/* 2010/07/13 Ver1.10 Add Start */
+                 , lv_err_flag                                  -- エラー種別(1:未登録、2:複数件登録、3:両方)
+/* 2010/07/13 Ver1.10 Add End */
                  , lv_errbuf                                    -- エラー・メッセージエラー
                  , lv_retcode                                   -- リターン・コード
                  , lv_errmsg                                    -- ユーザー・エラー・メッセージ
               );
-              -- リターンコードが正常でない場合
-              IF ( lv_retcode <> lv_ret_normal ) THEN
-                ov_errbuf  := cv_prg_name || lv_errbuf;
-                ov_errmsg  := lv_errmsg;
+/* 2010/07/13 Ver1.10 Mod Start */
+--              -- リターンコードが正常でない場合
+--              IF ( lv_retcode <> lv_ret_normal ) THEN
+--                ov_errbuf  := cv_prg_name || lv_errbuf;
+--                ov_errmsg  := lv_errmsg;
+--                RAISE item_conv_expt;
+--              END IF;
+              -- リターンコードが警告の場合
+              IF ( lv_retcode = lv_ret_warn ) THEN
+                --コンカレント起動の場合
+                IF ( iv_boot_flag = cv_boot_flag_conc ) THEN
+                  -- 共通関数からのメッセージをログと出力に出力する
+                  FND_FILE.PUT_LINE(
+                     which  => FND_FILE.OUTPUT
+                    ,buff   => lv_errmsg
+                  );
+                  FND_FILE.PUT_LINE(
+                     which  => FND_FILE.LOG
+                    ,buff   => lv_errmsg
+                  );
+                END IF;
+                -- 警告フラグにYESをセット
+                lv_warn_flag := cv_flag_yes;
+                -- エラー種別の制御
+                IF ( lv_err_flag_tmp = cv_flag_0 ) THEN
+                  lv_err_flag_tmp := lv_err_flag;
+                  ov_err_flag     := lv_err_flag;
+                ELSIF ( lv_err_flag_tmp <> cv_flag_0 ) AND ( lv_err_flag_tmp <> lv_err_flag ) THEN
+                  lv_err_flag := cv_flag_3;
+                  ov_err_flag := cv_flag_3;
+                END IF;
+              END IF;
+              -- リターンコードがエラーの場合
+              IF ( lv_retcode = lv_ret_error ) THEN
+                ov_errbuf    := cv_prg_name || lv_errbuf;
+                ov_errmsg    := lv_errmsg;
                 RAISE item_conv_expt;
               END IF;
---
+/* 2010/07/13 Ver1.10 Mod End */
+/* 2010/07/13 Ver1.10 Add Start */
+              -- 警告フラグがYES以外の場合
+              IF (  lv_warn_flag <> cv_flag_yes ) THEN
+/* 2010/07/13 Ver1.10 Add End */
               -- EDI明細情報テーブル挿入
               BEGIN
                 INSERT INTO xxcos_edi_lines
@@ -947,11 +1027,29 @@ AS
                   RAISE table_insert_expt;
               END;
 --
+/* 2010/07/13 Ver1.10 Add Start */
+              END IF;   -- 警告フラグがYES以外の場合？
+/* 2010/07/13 Ver1.10 Add End */
             END LOOP line_insert_loop;
           END IF;      -- 売上区分対象？
         END IF;        -- 該当明細あり？
       END IF;          -- 取り込み済み？
     END LOOP head_proc_loop;
+--
+/* 2010/07/13 Ver1.10 Add Start */
+    --警告フラグが'Yの場合は処理終了
+    IF ( lv_warn_flag = cv_flag_yes ) THEN
+      --コンカレント起動の場合
+      IF ( iv_boot_flag = cv_boot_flag_conc ) THEN
+        -- エラーメッセージを設定
+        lv_errmsg := xxccp_common_pkg.get_msg(
+                      iv_application  => cv_xxcos_appl_short_nm
+                     ,iv_name         => cv_msg_cust_item_err
+                   );
+      END IF;
+      RAISE conv_err_expt;
+    END IF;
+/* 2010/07/13 Ver1.10 Add End */
 --
     ln_invoice_cnt := 1;
     <<head_insert_loop>>
@@ -963,6 +1061,10 @@ AS
           ln_invoice_cnt := ln_invoice_cnt + 1;
         END IF;
 --
+/* 2010/07/13 Ver1.10 Add Start */
+        -- 警告フラグがYES以外の場合
+        IF (  lv_warn_flag <> cv_flag_yes ) THEN
+/* 2010/07/13 Ver1.10 Add End */
         -- EDIヘッダ情報テーブル挿入
         BEGIN
           INSERT INTO xxcos_edi_headers
@@ -1528,6 +1630,9 @@ AS
             lv_table_name := cv_tbl_name_head;
             RAISE table_insert_expt;
         END;
+/* 2010/07/13 Ver1.10 Add Start */
+        END IF;   -- 警告フラグがYES以外の場合？
+/* 2010/07/13 Ver1.10 Add End */
       END IF;  -- ヘッダ処理対象？
     END LOOP head_insert_loop;
 --
@@ -1572,6 +1677,14 @@ AS
     -- *** 品目変換例外ハンドラ ***
     WHEN item_conv_expt THEN
       ov_retcode := xxccp_common_pkg.set_status_error;
+--
+/* 2010/07/13 Ver1.10 Add Start */
+    -- *** 品目変換例外ハンドラ ***
+    WHEN conv_err_expt THEN
+      ov_retcode := xxccp_common_pkg.set_status_error;
+      ov_errbuf  := SUBSTRB( cv_prg_name || gv_msg_part || lv_errmsg, 1, 5000);
+      ov_errmsg  := lv_errmsg;
+/* 2010/07/13 Ver1.10 Add End */
 --
 --#################################  固定例外処理部 START   ####################################
 --

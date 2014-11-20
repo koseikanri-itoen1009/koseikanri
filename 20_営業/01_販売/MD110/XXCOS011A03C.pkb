@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCOS011A03C (body)
  * Description      : 納品予定データの作成を行う
  * MD.050           : 納品予定データ作成 (MD050_COS_011_A03)
- * Version          : 1.21
+ * Version          : 1.22
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -69,6 +69,7 @@ AS
  *  2010/03/19    1.19  S.Karikomi       [E_本稼動_01867]納品担当者取得変更対応
  *  2010/04/15    1.20  N.Abe            [E_本稼動_01618]エラー品目時の数量取得元変更(Ver1.9の全コメント化)
  *  2010/06/11    1.21  S.Niki           [E_本稼動_03075]拠点選択対応
+ *  2010/07/08    1.22  S.Niki           [E_本稼動_02637]顧客品目重複登録対応
  *
  *****************************************************************************************/
 --
@@ -134,6 +135,9 @@ AS
   global_number_err_expt    EXCEPTION;
   PRAGMA EXCEPTION_INIT( global_number_err_expt, -6502 );
 --****************************** 2009/06/12 1.10 T.Kitajima ADD  END  ******************************--
+/* 2010/07/08 Ver1.22 Add Start */
+  global_item_conv_expt     EXCEPTION;      -- 顧客品目チェックエラー
+/* 2010/07/08 Ver1.22 Add End */
 --
   -- ===============================
   -- ユーザー定義グローバル定数
@@ -302,6 +306,9 @@ AS
   cv_entity_code_line   CONSTANT VARCHAR2(4)   := 'LINE';              -- エンティティコード:LINE
   cv_reason_type        CONSTANT VARCHAR2(11)  := 'CANCEL_CODE';       -- 事由タイプ:取消
   cv_err_reason_code    CONSTANT VARCHAR2(2)   := 'XX';                -- エラー取消事由
+/* 2010/07/08 Ver1.22 Add Start */
+  cv_boot_para          CONSTANT VARCHAR2(1)   := '1';                 -- 起動種別（1:コンカレント、2:画面）
+/* 2010/07/08 Ver1.22 Add End */
   -- クイックコードタイプ
   cv_edi_shipping_exp_t CONSTANT VARCHAR2(28)  := 'XXCOS1_EDI_SHIPPING_EXP_TYPE';  -- 作成区分
   cv_edi_media_class_t  CONSTANT VARCHAR2(22)  := 'XXCOS1_EDI_MEDIA_CLASS';        -- EDI媒体区分
@@ -1576,9 +1583,12 @@ AS
 --
 --#####################  固定ローカル変数宣言部 START   ########################
 --
-    lv_errbuf  VARCHAR2(5000);  -- エラー・メッセージ
-    lv_retcode VARCHAR2(1);     -- リターン・コード
-    lv_errmsg  VARCHAR2(5000);  -- ユーザー・エラー・メッセージ
+/* 2010/07/08 Ver1.22 Add Start */
+    lv_err_flag  VARCHAR2(1);     -- エラー種別
+/* 2010/07/08 Ver1.22 Add End */
+    lv_errbuf    VARCHAR2(5000);  -- エラー・メッセージ
+    lv_retcode   VARCHAR2(1);     -- リターン・コード
+    lv_errmsg    VARCHAR2(5000);  -- ユーザー・エラー・メッセージ
 --
 --###########################  固定部 END   ####################################
 --
@@ -2812,9 +2822,12 @@ AS
 --
 --#####################  固定ローカル変数宣言部 START   ########################
 --
-    lv_errbuf  VARCHAR2(5000);  -- エラー・メッセージ
-    lv_retcode VARCHAR2(1);     -- リターン・コード
-    lv_errmsg  VARCHAR2(5000);  -- ユーザー・エラー・メッセージ
+/* 2010/07/08 Ver1.22 Add Start */
+    lv_err_flag VARCHAR2(1);     -- エラー種別
+/* 2010/07/08 Ver1.22 Add End */
+    lv_errbuf   VARCHAR2(5000);  -- エラー・メッセージ
+    lv_retcode  VARCHAR2(1);     -- リターン・コード
+    lv_errmsg   VARCHAR2(5000);  -- ユーザー・エラー・メッセージ
 --
 --###########################  固定部 END   ####################################
 --
@@ -2856,20 +2869,30 @@ AS
       ,iv_area_code               => iv_area_code                                -- 地区コード
       ,id_center_delivery_date    => NULL                                        -- センター納品日
       ,in_organization_id         => gn_organization_id                          -- 在庫組織ID
+/* 2010/07/08 Ver1.22 Add Start */
+      ,iv_boot_flag               => cv_boot_para                                -- 起動種別(1：コンカレント)
+      ,ov_err_flag                => lv_err_flag                                 -- エラー種別
+/* 2010/07/08 Ver1.22 Add End */
       ,ov_errbuf                  => lv_errbuf                                   -- エラー・メッセージ
       ,ov_retcode                 => lv_retcode                                  -- リターン・コード
       ,ov_errmsg                  => lv_errmsg                                   -- ユーザー・エラー・メッセージ
     );
+/* 2010/07/08 Ver1.22 Mod Start */
+--    IF ( lv_retcode <> cv_status_normal ) THEN
+--      -- メッセージ取得
+--      ov_errmsg := xxccp_common_pkg.get_msg(
+--                      iv_application  => cv_application       -- アプリケーション
+--                     ,iv_name         => cv_msg_com_fnuc_err  -- EDI共通関数エラーメッセージ
+--                     ,iv_token_name1  => cv_tkn_err_msg       -- トークンコード１
+--                     ,iv_token_value1 => lv_errmsg            -- エラー・メッセージ
+--                   );
+--      RAISE global_api_others_expt;
+--    END IF;
+    -- リターンコードが正常以外の場合
     IF ( lv_retcode <> cv_status_normal ) THEN
-      -- メッセージ取得
-      ov_errmsg := xxccp_common_pkg.get_msg(
-                      iv_application  => cv_application       -- アプリケーション
-                     ,iv_name         => cv_msg_com_fnuc_err  -- EDI共通関数エラーメッセージ
-                     ,iv_token_name1  => cv_tkn_err_msg       -- トークンコード１
-                     ,iv_token_value1 => lv_errmsg            -- エラー・メッセージ
-                   );
-      RAISE global_api_others_expt;
+      RAISE global_item_conv_expt;
     END IF;
+/* 2010/07/08 Ver1.22 Mod End */
 --
   EXCEPTION
 --
@@ -2880,6 +2903,13 @@ AS
       ov_errmsg  := lv_errmsg;
       ov_errbuf  := SUBSTRB(cv_pkg_name||cv_msg_cont||cv_prg_name||cv_msg_part||lv_errbuf,1,5000);
       ov_retcode := cv_status_error;
+/* 2010/07/08 Ver1.22 Add Start */
+    -- *** 顧客品目チェック例外ハンドラ ***
+    WHEN global_item_conv_expt THEN
+      ov_errmsg  := lv_errmsg;
+      ov_errbuf  := SUBSTRB(cv_pkg_name||cv_msg_cont||cv_prg_name||cv_msg_part||lv_errbuf,1,5000);
+      ov_retcode := cv_status_error;
+/* 2010/07/08 Ver1.22 Add End */
     -- *** 共通関数OTHERS例外ハンドラ ***
     WHEN global_api_others_expt THEN
       ov_errbuf  := cv_pkg_name||cv_msg_cont||cv_prg_name||cv_msg_part||SQLERRM;
@@ -3551,6 +3581,9 @@ AS
     lv_product_code    VARCHAR2(16);    -- 商品コード
     lv_jan_code        VARCHAR2(16);    -- JANコード
     lv_case_jan_code   VARCHAR2(16);    -- ケースJANコード
+/* 2010/07/08 Ver1.22 Add Start */
+    lv_err_flag        VARCHAR2(1);     -- エラーフラグ
+/* 2010/07/08 Ver1.22 Add End */
     ln_dummy_item      NUMBER;          -- DUMMY品目
     lt_invoice_number  xxcos_edi_headers.invoice_number%TYPE;              -- 伝票番号
     lt_header_id       xxcos_edi_headers.edi_header_info_id%TYPE;          -- EDIヘッダ情報ID
@@ -4008,20 +4041,29 @@ AS
           ,ov_product_code2    =>  lv_product_code                               -- 商品コード２
           ,ov_jan_code         =>  lv_jan_code                                   -- JANコード
           ,ov_case_jan_code    =>  lv_case_jan_code                              -- ケースJANコード
+/* 2010/07/08 Ver1.22 Add Start */
+          ,ov_err_flag         =>  lv_err_flag                                   -- エラー種別
+/* 2010/07/08 Ver1.22 Add End */
           ,ov_errbuf           =>  lv_errbuf                                     -- エラーメッセージ
           ,ov_retcode          =>  lv_retcode                                    -- リターンコード
           ,ov_errmsg           =>  lv_errmsg                                     -- ユーザー・エラー・メッセージ
         );
+/* 2010/07/08 Ver1.22 Mod Start */
+--        IF ( lv_retcode <> cv_status_normal ) THEN
+--          -- メッセージ取得
+--          ov_errmsg := xxccp_common_pkg.get_msg(
+--                          iv_application  => cv_application       -- アプリケーション
+--                         ,iv_name         => cv_msg_com_fnuc_err  -- EDI共通関数エラーメッセージ
+--                         ,iv_token_name1  => cv_tkn_err_msg       -- トークンコード１
+--                         ,iv_token_value1 => lv_errmsg            -- エラー・メッセージ
+--                       );
+--          RAISE global_api_others_expt;
+--        END IF;
+        -- リターンコードが正常以外の場合
         IF ( lv_retcode <> cv_status_normal ) THEN
-          -- メッセージ取得
-          ov_errmsg := xxccp_common_pkg.get_msg(
-                          iv_application  => cv_application       -- アプリケーション
-                         ,iv_name         => cv_msg_com_fnuc_err  -- EDI共通関数エラーメッセージ
-                         ,iv_token_name1  => cv_tkn_err_msg       -- トークンコード１
-                         ,iv_token_value1 => lv_errmsg            -- エラー・メッセージ
-                       );
-          RAISE global_api_others_expt;
+          RAISE global_item_conv_expt;
         END IF;
+/* 2010/07/08 Ver1.22 Mod End */
         -- 取得した商品コードが、NULLの場合
         IF ( lv_product_code IS NULL ) THEN
           -- メッセージ取得
@@ -4496,6 +4538,13 @@ AS
       ov_errmsg  := lv_errmsg;
       ov_errbuf  := SUBSTRB(cv_pkg_name||cv_msg_cont||cv_prg_name||cv_msg_part||lv_errbuf,1,5000);
       ov_retcode := cv_status_error;
+/* 2010/07/08 Ver1.22 Add Start */
+    -- *** 顧客品目チェック例外ハンドラ ***
+    WHEN global_item_conv_expt THEN
+      ov_errmsg  := lv_errmsg;
+      ov_errbuf  := SUBSTRB(cv_pkg_name||cv_msg_cont||cv_prg_name||cv_msg_part||lv_errbuf,1,5000);
+      ov_retcode := cv_status_error;
+/* 2010/07/08 Ver1.22 Add End */
     -- *** 共通関数OTHERS例外ハンドラ ***
     WHEN global_api_others_expt THEN
       ov_errbuf  := cv_pkg_name||cv_msg_cont||cv_prg_name||cv_msg_part||SQLERRM;

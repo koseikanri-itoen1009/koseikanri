@@ -6,7 +6,7 @@ AS
  * Package Name           : xxcos_common2_pkg(spec)
  * Description            :
  * MD.070                 : MD070_IPO_COS_共通関数
- * Version                : 1.8
+ * Version                : 1.9
  *
  * Program List
  *  --------------------          ---- ----- --------------------------------------------------
@@ -38,6 +38,7 @@ AS
  *                                      [0001344]顧客品目検索エラー,JANコード検索エラーのパラメータ追加
  *  2010/04/15    1.7  Y.Goto           [E_本稼動_01719]担当営業員取得関数追加
  *  2010/05/26    1.8  K.Kiriu          [E_本稼動_02853]convert_quantity 出荷数量null時の不具合対応
+ *  2010/07/14    1.9  S.Niki           [E_本稼動_02637]顧客品目コード重複登録対応
  *
  *****************************************************************************************/
 --#######################  固定グローバル定数宣言部 START   #######################
@@ -109,6 +110,11 @@ AS
   --
   cv_number_null                              CONSTANT VARCHAR2(1) := '0';       --数値NULL
   cv_date_null                                CONSTANT VARCHAR2(8) := '00000000';--時間NULL
+/* 2010/07/14 Ver1.9 Add Start */
+  cv_flag_0                                   CONSTANT VARCHAR2(1) := '0';       --0:初期値
+  cv_flag_1                                   CONSTANT VARCHAR2(1) := '1';       --1:未登録
+  cv_flag_2                                   CONSTANT VARCHAR2(1) := '2';       --2:複数件登録
+/* 2010/07/14 Ver1.9 Add End */
 --
   --レコード識別子
   gv_record_kb_d                              CONSTANT VARCHAR2(1) := 'D';    --データ
@@ -161,7 +167,10 @@ AS
                                                         := 'APP-XXCOS1-13594';              -- 担当営業員拠点最上位者設定メッセージ
   ct_msg_unset_employee                       CONSTANT  fnd_new_messages.message_name%TYPE
                                                         := 'APP-XXCOS1-13595';              -- 担当営業員拠点最上位者取得エラー
-/* 2010/04/15 Ver1.7 Add End   */
+/* 2010/07/14 Ver1.9 Add Start */
+  ct_msg_c_item_code_too_many                 CONSTANT  fnd_new_messages.message_name%TYPE
+                                                        := 'APP-XXCOS1-13596';              -- 顧客品目TOO_MANYエラー
+/* 2010/07/14 Ver1.9 Add End */
  -- トークン
   gv_token_name_layout                        CONSTANT VARCHAR2(6)  := 'LAYOUT';
   gv_token_name_in_param                      CONSTANT VARCHAR2(8)  := 'IN_PARAM';
@@ -266,7 +275,7 @@ AS
            qll.operand           unit_price     -- 単価
         FROM
            qp_list_headers_b     qphb           -- 価格表ヘッダ
-          ,qp_qualifiers         qpqr           -- クオリフィア
+          ,qp_qualifiers         qpqr           -- クオリファイア
           ,qp_list_lines         qll            -- 価格表明細
           ,qp_pricing_attributes qpa            -- 価格表詳細
         WHERE
@@ -534,6 +543,9 @@ AS
               ,ov_product_code2                    OUT NOCOPY VARCHAR2        --商品コード２
               ,ov_jan_code                         OUT NOCOPY VARCHAR2        --JANコード
               ,ov_case_jan_code                    OUT NOCOPY VARCHAR2        --ケースJANコード
+/* 2010/07/14 Ver1.9 Add Start */
+              ,ov_err_flag                         OUT NOCOPY VARCHAR2        --エラー種別
+/* 2010/07/14 Ver1.9 Add End */
               ,ov_errbuf                           OUT NOCOPY VARCHAR2        --エラーメッセージ              #固定#
               ,ov_retcode                          OUT NOCOPY VARCHAR2        --リターンコード                #固定#
               ,ov_errmsg                           OUT NOCOPY VARCHAR2        --ユーザー・エラー・メッセージ  #固定#
@@ -555,10 +567,17 @@ AS
     lv_case_uom_code                                   mtl_units_of_measure_tl.uom_code%TYPE; -- ケース単位コード
     --
     lv_uom_code                                        mtl_units_of_measure_tl.uom_code%TYPE; -- 単位コード
+/* 2010/07/14 Ver1.9 Add Start */
+    lv_account_number                                  hz_cust_accounts.account_number%TYPE;  -- 顧客コード
+/* 2010/07/14 Ver1.9 Add End */
     -- ================
     -- ユーザー定義例外
     -- ================
     lv_err_expt                                        EXCEPTION;             --マスタデータ無し
+/* 2010/07/14 Ver1.9 Add Start */
+    lv_err_no_data_found_expt                          EXCEPTION;             --NO_DATA_FOUNDエラー
+    lv_err_too_many_expt                               EXCEPTION;             --TOO_MANY_ROWSエラー
+/* 2010/07/14 Ver1.9 Add End */
     iv_param_expt                                      EXCEPTION;             --引数エラー
     --
 --#####################  固定ローカル変数宣言部 START   ########################
@@ -574,6 +593,9 @@ AS
 --
     --出力引数初期化
     ov_retcode  := xxccp_common_pkg.set_status_normal;
+/* 2010/07/14 Ver1.9 Add Start */
+    ov_err_flag := cv_flag_0;
+/* 2010/07/14 Ver1.9 Add End */
 --
     --入力引数チェック<EDIチェーン店コード:商品コード２:在庫組織ID>
     IF  (( iv_edi_chain_code   IS NULL )
@@ -588,10 +610,18 @@ AS
     BEGIN
       SELECT
         xca.edi_item_code_div,                                                --EDI連携品目コード区分
-        xca.customer_id                                                       --顧客ID
+/* 2010/07/14 Ver1.9 Mod Start */
+--        xca.customer_id                                                       --顧客ID
+        xca.customer_id,                                                       --顧客ID
+        hca.account_number                                                     --顧客コード
+/* 2010/07/14 Ver1.9 Mod End */
       INTO
         lv_edi_item_code_div,
-        ln_customer_id
+/* 2010/07/14 Ver1.9 Mod Start */
+--        ln_customer_id
+        ln_customer_id,
+        lv_account_number
+/* 2010/07/14 Ver1.9 Mod End */
       FROM
         hz_cust_accounts hca,                                                 --顧客マスタ
         xxcmm_cust_accounts xca                                               --顧客追加情報
@@ -616,7 +646,7 @@ AS
       WHEN gv_edi_district_code_no1 THEN
         BEGIN
           SELECT
-            mci.customer_item_number                                            --顧客コード
+            mci.customer_item_number                                            --顧客品目コード
           INTO
             ov_product_code2
           FROM
@@ -660,13 +690,43 @@ AS
 /* 2009/10/02 Ver1.6 Mod Start */
 --                             iv_token_name2        => cv_tkn_uom_code,
 --                             iv_token_value2       => iv_uom_code
-                             iv_token_name2        => cv_tkn_item_code,
-                             iv_token_value2       => iv_item_code,
-                             iv_token_name3        => cv_tkn_uom_code,
-                             iv_token_value3       => iv_uom_code
+/* 2010/07/14 Ver1.9 Mod Start */
+--                             iv_token_name2        => cv_tkn_item_code,
+--                             iv_token_value2       => iv_item_code,
+--                             iv_token_name3        => cv_tkn_uom_code,
+--                             iv_token_value3       => iv_uom_code
+                             iv_token_name2        => cv_tkn_cust,
+                             iv_token_value2       => lv_account_number,
+                             iv_token_name3        => cv_tkn_item_code,
+                             iv_token_value3       => iv_item_code,
+                             iv_token_name4        => cv_tkn_uom_code,
+                             iv_token_value4       => iv_uom_code
+/* 2010/07/14 Ver1.9 Mod End */
 /* 2009/10/02 Ver1.6 Mod  End  */
                            );
-            RAISE lv_err_expt;
+/* 2010/07/14 Ver1.9 Mod Start */
+--            RAISE lv_err_expt;
+            ov_err_flag := cv_flag_1;
+            RAISE lv_err_no_data_found_expt;
+/* 2010/07/14 Ver1.9 Mod End */
+/* 2010/07/14 Ver1.9 Add Start */
+          WHEN TOO_MANY_ROWS THEN
+            -- 複数レコード取得時エラー
+            lv_message1 := xxccp_common_pkg.get_msg(
+                             iv_application        => ct_xxcos_appl_short_name,
+                             iv_name               => ct_msg_c_item_code_too_many,
+                             iv_token_name1        => cv_tkn_edi_chain_code,
+                             iv_token_value1       => iv_edi_chain_code,
+                             iv_token_name2        => cv_tkn_cust,
+                             iv_token_value2       => lv_account_number,
+                             iv_token_name3        => cv_tkn_item_code,
+                             iv_token_value3       => iv_item_code,
+                             iv_token_name4        => cv_tkn_uom_code,
+                             iv_token_value4       => iv_uom_code
+                           );
+            ov_err_flag := cv_flag_2;
+            RAISE lv_err_too_many_expt;
+/* 2010/07/14 Ver1.9 Add End */
         END;
       -- JANコードの場合
       WHEN gv_edi_district_code_no2 THEN
@@ -785,6 +845,18 @@ AS
       ov_errmsg  := lv_message1;
       ov_errbuf  := SUBSTRB(gv_pkg_name||gv_msg_cont||cv_prg_name||gv_msg_part||lv_errbuf,1,5000);
       ov_retcode := xxccp_common_pkg.set_status_error;
+/* 2010/07/14 Ver1.9 Add Start */
+    -- *** NO_DATA_FOUNDエラー ***
+    WHEN lv_err_no_data_found_expt    THEN
+      ov_errmsg  := lv_message1;
+      ov_errbuf  := SUBSTRB(gv_pkg_name||gv_msg_cont||cv_prg_name||gv_msg_part||lv_message1,1,5000);
+      ov_retcode := xxccp_common_pkg.set_status_warn;
+    -- *** TOO_MANY_ROWSエラー ***
+    WHEN lv_err_too_many_expt    THEN
+      ov_errmsg  := lv_message1;
+      ov_errbuf  := SUBSTRB(gv_pkg_name||gv_msg_cont||cv_prg_name||gv_msg_part||lv_message1,1,5000);
+      ov_retcode := xxccp_common_pkg.set_status_warn;
+/* 2010/07/14 Ver1.9 Add End */
 --
 --###############################  固定例外処理部 START   ###################################
 --
