@@ -1,0 +1,5 @@
+ALTER TABLE xxcok.xxcok_cond_bm_support
+MODIFY(
+  CSH_RCPT_DISCOUNT_AMT     NUMBER( 8,0 )
+, CSH_RCPT_DISCOUNT_AMT_TAX NUMBER( 8,0 )
+);
