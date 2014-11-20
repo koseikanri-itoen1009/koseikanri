@@ -6,7 +6,7 @@ AS
  * Package Name           : xxwsh_common910_pkg(BODY)
  * Description            : 共通関数(BODY)
  * MD.070(CMD.050)        : なし
- * Version                : 1.35
+ * Version                : 1.36
  *
  * Program List
  *  -------------------- ---- ----- --------------------------------------------------
@@ -77,6 +77,9 @@ AS
  *                                      [配送区分検索用入出庫場所取得関数] 本番障害#1336対応
  *                                      [積載効率チェック(積載効率算出)] 本番障害#1336対応
  *  2009/07/28   1.35  SCS   伊藤ひとみ [積載効率チェック(積載効率算出)] 本番障害#1336再対応
+ *  2009/07/30   1.36  SCS   伊藤ひとみ [配送区分優先順取得関数] 本番障害#1336再対応
+ *                                      [配送区分検索用入出庫場所取得関数] 本番障害#1336再対応
+ *                                      [積載効率チェック(積載効率算出)] 本番障害#1336再対応
  *****************************************************************************************/
 --
 --#######################  固定グローバル定数宣言部 START   #######################
@@ -156,7 +159,10 @@ AS
    ,it_prod_class                 IN  xxcmn_item_categories_v.segment1               %TYPE        -- 05.商品区分
    ,it_weight_capacity_class      IN  xxcmn_item_mst_v.weight_capacity_class         %TYPE        -- 06.重量容積区分
    ,id_standard_date              IN  DATE                                                        -- 07.基準日
-   ,iv_where_zero_flg             IN  VARCHAR2                                                    -- 08.0:重量容積>0を条件に追加 1:重量容積>0を条件に追加しない
+-- 2009/07/30 H.Itou Mod Start 本番障害#1336
+--   ,iv_where_zero_flg             IN  VARCHAR2                                                    -- 08.0:重量容積>0を条件に追加 1:重量容積>0を条件に追加しない
+   ,iv_auto_process_type          IN  VARCHAR2                                                    -- 08.自動配車対象区分
+-- 2009/07/30 H.Itou Mod End
   ) RETURN VARCHAR2 -- 優先順を返す
   IS
     -- ===============================
@@ -185,9 +191,15 @@ AS
     cv_weight         CONSTANT VARCHAR2(1) := '1';          -- 重量容積区分：重量
     cv_capacity       CONSTANT VARCHAR2(1) := '2';          -- 重量容積区分：容積
 --
-    -- 0条件追加フラグ
-    cv_where_zero_add CONSTANT VARCHAR2(1) := '0';          -- 0条件追加フラグ：重量容積>0を条件に追加
-    cv_where_zero_no  CONSTANT VARCHAR2(1) := '1';          -- 0条件追加フラグ：重量容積>0を条件に追加しない
+-- 2009/07/30 H.Itou Del Start 本番障害#1336
+--    -- 0条件追加フラグ
+--    cv_where_zero_add CONSTANT VARCHAR2(1) := '0';          -- 0条件追加フラグ：重量容積>0を条件に追加
+--    cv_where_zero_no  CONSTANT VARCHAR2(1) := '1';          -- 0条件追加フラグ：重量容積>0を条件に追加しない
+-- 2009/07/30 H.Itou Del End
+-- 2009/07/30 H.Itou Add Start 本番障害#1336
+    cv_auto           CONSTANT VARCHAR2(1) := '1';          -- 自動配車対象区分:YES
+    cv_manual         CONSTANT VARCHAR2(1) := '0';          -- 自動配車対象区分:NO
+-- 2009/07/30 H.Itou Add End
 --
     -- RETURN値 優先順
     cv_precedence_1   CONSTANT VARCHAR2(1) := '1';          -- 優先順:倉庫(個別コード)－配送先(個別コード)
@@ -233,6 +245,9 @@ AS
     lv_sql := 
      'SELECT COUNT(1)
       FROM   xxcmn_delivery_lt2_v xdlv2                                      -- 配送L/T情報VIEW2
+-- 2009/07/30 H.Itou Add Start 本番障害#1336
+            ,xxwsh_ship_method2_v  xsmv2                                     -- 配送区分情報VIEW2
+-- 2009/07/30 H.Itou Add End
       WHERE  xdlv2.code_class1                = :code_class1                 -- コード区分１
       AND    xdlv2.entering_despatching_code1 = :entering_despatching_code1  -- 入出庫場所１
       AND    xdlv2.code_class2                = :code_class2                 -- コード区分２
@@ -246,39 +261,59 @@ AS
         OR  (xdlv2.sm_start_date_active      IS NULL))
       AND  ((xdlv2.sm_end_date_active        >= TRUNC(:standard_date))
         OR  (xdlv2.sm_end_date_active        IS NULL))
+-- 2009/07/30 H.Itou Add Start 本番障害#1336
+      AND    xdlv2.ship_method                = xsmv2.ship_method_code
+      AND  ((xsmv2.start_date_active         <= TRUNC(:standard_date))
+        OR  (xsmv2.start_date_active         IS NULL))
+      AND  ((xsmv2.end_date_active           >= TRUNC(:standard_date))
+        OR  (xsmv2.end_date_active           IS NULL))
+      AND    xsmv2.mixed_class                = ''0''                        -- 混載区分=0(混載なし)
+-- 2009/07/30 H.Itou Add End
      ';
+-- 2009/07/30 H.Itou Add Start 本番障害#1336
+    -- 自動配車対象区分に値があれば、条件に追加。
+    IF (iv_auto_process_type IS NOT NULL) THEN
+      lv_sql := lv_sql || 
+      'AND    NVL( xsmv2.auto_process_type, ''' || cv_manual || ''' ) = ''' || iv_auto_process_type || ''' -- 自動配車対象区分
+      ';
+    END IF;
+-- 2009/07/30 H.Itou Add End
 --
-    -- 0条件追加フラグが「0」の場合、重量容積>0を条件に追加
-    IF (iv_where_zero_flg = cv_where_zero_add) THEN
-      -- リーフ重量の場合
-      IF ((it_prod_class            = cv_prod_leaf)
-      AND (it_weight_capacity_class = cv_weight))         THEN
-        lv_sql := lv_sql || 
+-- 2009/07/30 H.Itou Del Start 本番障害#1336 常に条件に追加する。
+--    -- 0条件追加フラグが「0」の場合、重量容積>0を条件に追加
+--    IF (iv_where_zero_flg = cv_where_zero_add) THEN
+-- 2009/07/30 H.Itou Del End
+    -- リーフ重量の場合
+    IF ((it_prod_class            = cv_prod_leaf)
+    AND (it_weight_capacity_class = cv_weight))         THEN
+      lv_sql := lv_sql || 
      'AND    xdlv2.leaf_deadweight            > 0                            -- リーフ積載重量＞0
      ';
 --
-      -- ドリンク重量の場合
-      ELSIF ((it_prod_class            = cv_prod_drink)
-      AND    (it_weight_capacity_class = cv_weight))      THEN
-        lv_sql := lv_sql || 
+    -- ドリンク重量の場合
+    ELSIF ((it_prod_class            = cv_prod_drink)
+    AND    (it_weight_capacity_class = cv_weight))      THEN
+      lv_sql := lv_sql || 
      'AND    xdlv2.drink_deadweight           > 0                            -- ドリンク積載重量＞0
      ';
 --
-      -- リーフ容積の場合
-      ELSIF ((it_prod_class            = cv_prod_leaf)
-      AND    (it_weight_capacity_class = cv_capacity))    THEN
-        lv_sql := lv_sql || 
+    -- リーフ容積の場合
+    ELSIF ((it_prod_class            = cv_prod_leaf)
+    AND    (it_weight_capacity_class = cv_capacity))    THEN
+      lv_sql := lv_sql || 
      'AND    xdlv2.leaf_loading_capacity      > 0                            -- リーフ積載容積＞0
      ';
 --
-      -- ドリンク容積の場合
-      ELSIF ((it_prod_class            = cv_prod_drink)
-      AND    (it_weight_capacity_class = cv_capacity))    THEN
-        lv_sql := lv_sql || 
+    -- ドリンク容積の場合
+    ELSIF ((it_prod_class            = cv_prod_drink)
+    AND    (it_weight_capacity_class = cv_capacity))    THEN
+      lv_sql := lv_sql || 
      'AND    xdlv2.drink_loading_capacity     > 0                            -- ドリンク積載容積＞0
      ';
-      END IF;
     END IF;
+-- 2009/07/30 H.Itou Del Start 本番障害#1336 常に条件に追加する。
+--    END IF;
+-- 2009/07/30 H.Itou Del End
 --
     -- ============================================================
     -- 1. 倉庫(個別コード)－配送先(個別コード) があるかチェック
@@ -292,6 +327,10 @@ AS
          ,id_standard_date                -- 適用日
          ,id_standard_date                -- 適用日
          ,id_standard_date                -- 適用日
+-- 2009/07/30 H.Itou Add Start 本番障害#1336
+         ,id_standard_date                -- 適用日
+         ,id_standard_date                -- 適用日
+-- 2009/07/30 H.Itou Add End
     ;
 --
     -- 倉庫(個別コード)－配送先(個別コード)があれば、優先順1
@@ -311,6 +350,10 @@ AS
          ,id_standard_date                -- 適用日
          ,id_standard_date                -- 適用日
          ,id_standard_date                -- 適用日
+-- 2009/07/30 H.Itou Add Start 本番障害#1336
+         ,id_standard_date                -- 適用日
+         ,id_standard_date                -- 適用日
+-- 2009/07/30 H.Itou Add End
     ;
 --
     -- 倉庫(ALL値)－配送先(個別コード)があれば、優先順2
@@ -330,6 +373,10 @@ AS
          ,id_standard_date                -- 適用日
          ,id_standard_date                -- 適用日
          ,id_standard_date                -- 適用日
+-- 2009/07/30 H.Itou Add Start 本番障害#1336
+         ,id_standard_date                -- 適用日
+         ,id_standard_date                -- 適用日
+-- 2009/07/30 H.Itou Add End
     ;
 --
     -- 倉庫(個別コード)－配送先(ALL値)があれば、優先順3
@@ -349,6 +396,10 @@ AS
          ,id_standard_date                -- 適用日
          ,id_standard_date                -- 適用日
          ,id_standard_date                -- 適用日
+-- 2009/07/30 H.Itou Add Start 本番障害#1336
+         ,id_standard_date                -- 適用日
+         ,id_standard_date                -- 適用日
+-- 2009/07/30 H.Itou Add End
     ;
 --
     -- 倉庫(ALL値)－配送先(ALL値)があれば、優先順4
@@ -393,7 +444,10 @@ AS
    ,it_prod_class                 IN  xxcmn_item_categories_v.segment1               %TYPE        -- 05.商品区分
    ,it_weight_capacity_class      IN  xxcmn_item_mst_v.weight_capacity_class         %TYPE        -- 06.重量容積区分
    ,id_standard_date              IN  DATE                                                        -- 07.基準日
-   ,iv_where_zero_flg             IN  VARCHAR2                                                    -- 08.0:重量容積>0を条件に追加 1:重量容積>0を条件に追加しない
+-- 2009/07/30 H.Itou Mod Start 本番障害#1336
+--   ,iv_where_zero_flg             IN  VARCHAR2                                                    -- 08.0:重量容積>0を条件に追加 1:重量容積>0を条件に追加しない
+   ,iv_auto_process_type          IN  VARCHAR2                                                    -- 08.自動配車対象区分
+-- 2009/07/30 H.Itou Mod End
    ,ov_retcode                    OUT NOCOPY VARCHAR2                                             -- 09.リターンコード
    ,ov_errmsg                     OUT NOCOPY VARCHAR2                                             -- 10.エラーメッセージ
    ,ot_entering_despatching_code1 OUT NOCOPY xxcmn_delivery_lt2_v.entering_despatching_code1%TYPE -- 11.配送区分検索用入出庫場所１
@@ -468,7 +522,10 @@ AS
        ,it_prod_class                 => it_prod_class                 -- 05.商品区分
        ,it_weight_capacity_class      => it_weight_capacity_class      -- 06.重量容積区分
        ,id_standard_date              => id_standard_date              -- 07.基準日
-       ,iv_where_zero_flg             => iv_where_zero_flg             -- 08.0:重量容積>0を条件に追加 1:重量容積>0を条件に追加しない
+-- 2009/07/30 H.Itou Mod Start 本番障害#1336
+--       ,iv_where_zero_flg             => iv_where_zero_flg             -- 08.0:重量容積>0を条件に追加 1:重量容積>0を条件に追加しない
+       ,iv_auto_process_type          => iv_auto_process_type          -- 08.自動配車対象区分
+-- 2009/07/30 H.Itou Mod End
       );
 --
     -- 配送区分優先順5(データなし)かエラー終了の場合
@@ -2306,13 +2363,16 @@ AS
                                            ELSE                                  cv_capacity -- 容積に値がある場合、2
                                          END
        ,id_standard_date              => ld_standard_date              -- 07.基準日
--- 2009/07/28 H.Itou Add Start 本番障害#1336
---       ,iv_where_zero_flg             => CASE                          -- 08.0条件追加フラグ
---                                           WHEN (lv_ship_method IS NULL) THEN cv_where_zero_add  -- 出荷方法に値がない場合、重量容積>0を条件に追加する
---                                           ELSE                               cv_where_zero_no   -- 出荷方法に値がある場合、重量容積>0を条件に追加しない
---                                         END
-       ,iv_where_zero_flg             => cv_where_zero_add             -- 08.0条件追加フラグ 重量容積>0を条件に追加する
--- 2009/07/28 H.Itou Add End
+-- 2009/07/30 H.Itou Mod Start 本番障害#1336
+---- 2009/07/28 H.Itou Add Start 本番障害#1336
+----       ,iv_where_zero_flg             => CASE                          -- 08.0条件追加フラグ
+----                                           WHEN (lv_ship_method IS NULL) THEN cv_where_zero_add  -- 出荷方法に値がない場合、重量容積>0を条件に追加する
+----                                           ELSE                               cv_where_zero_no   -- 出荷方法に値がある場合、重量容積>0を条件に追加しない
+----                                         END
+--       ,iv_where_zero_flg             => cv_where_zero_add             -- 08.0条件追加フラグ 重量容積>0を条件に追加する
+---- 2009/07/28 H.Itou Add End
+       ,iv_auto_process_type          => lv_auto_process_type          -- 08.自動配車対象区分
+-- 2009/07/30 H.Itou Mod End
        ,ov_retcode                    => lv_retcode                    -- 08.リターンコード
        ,ov_errmsg                     => lv_errmsg                     -- 10.エラーメッセージ
        ,ot_entering_despatching_code1 => lv_entering_despatching_code1 -- 11.配送区分検索用入出庫場所１

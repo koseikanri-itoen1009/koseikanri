@@ -7,7 +7,7 @@ AS
  * Description      : 生産物流共通（出荷・移動チェック）
  * MD.050           : 生産物流共通（出荷・移動チェック）T_MD050_BPO_910
  * MD.070           : なし
- * Version          : 1.35
+ * Version          : 1.36
  *
  * Program List
  *  -------------------- ---- ----- --------------------------------------------------
@@ -77,6 +77,9 @@ AS
  *                                      [配送区分検索用入出庫場所取得関数] 本番障害#1336対応
  *                                      [積載効率チェック(積載効率算出)] 本番障害#1336対応
  *  2009/07/28   1.35  SCS   伊藤ひとみ [積載効率チェック(積載効率算出)] 本番障害#1336再対応
+ *  2009/07/30   1.36  SCS   伊藤ひとみ [配送区分優先順取得関数] 本番障害#1336再対応
+ *                                      [配送区分検索用入出庫場所取得関数] 本番障害#1336再対応
+ *                                      [積載効率チェック(積載効率算出)] 本番障害#1336再対応
  *****************************************************************************************/
 --
 -- 2009/07/21 H.Itou Add Start 本番障害#1336
@@ -89,7 +92,10 @@ AS
    ,it_prod_class                 IN  xxcmn_item_categories_v.segment1               %TYPE        -- 05.商品区分
    ,it_weight_capacity_class      IN  xxcmn_item_mst_v.weight_capacity_class         %TYPE        -- 06.重量容積区分
    ,id_standard_date              IN  DATE                                                        -- 07.基準日
-   ,iv_where_zero_flg             IN  VARCHAR2                                                    -- 08.0:重量容積>0を条件に追加 1:重量容積>0を条件に追加しない
+-- 2009/07/30 H.Itou Mod Start 本番障害#1336
+--   ,iv_where_zero_flg             IN  VARCHAR2                                                    -- 08.0:重量容積>0を条件に追加 1:重量容積>0を条件に追加しない
+   ,iv_auto_process_type          IN  VARCHAR2                                                    -- 08.自動配車対象区分
+-- 2009/07/30 H.Itou Mod End
   ) RETURN VARCHAR2;
 --
   -- 配送区分検索用入出庫場所取得関数
@@ -101,7 +107,10 @@ AS
    ,it_prod_class                 IN  xxcmn_item_categories_v.segment1               %TYPE        -- 05.商品区分
    ,it_weight_capacity_class      IN  xxcmn_item_mst_v.weight_capacity_class         %TYPE        -- 06.重量容積区分
    ,id_standard_date              IN  DATE                                                        -- 07.基準日
-   ,iv_where_zero_flg             IN  VARCHAR2                                                    -- 08.0:重量容積>0を条件に追加 1:重量容積>0を条件に追加しない
+-- 2009/07/30 H.Itou Mod Start 本番障害#1336
+--   ,iv_where_zero_flg             IN  VARCHAR2                                                    -- 08.0:重量容積>0を条件に追加 1:重量容積>0を条件に追加しない
+   ,iv_auto_process_type          IN  VARCHAR2                                                    -- 08.自動配車対象区分
+-- 2009/07/30 H.Itou Mod End
    ,ov_retcode                    OUT NOCOPY VARCHAR2                                             -- 09.リターンコード
    ,ov_errmsg                     OUT NOCOPY VARCHAR2                                             -- 10.エラーメッセージ
    ,ot_entering_despatching_code1 OUT NOCOPY xxcmn_delivery_lt2_v.entering_despatching_code1%TYPE -- 11.配送区分検索用入出庫場所１
