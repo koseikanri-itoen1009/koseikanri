@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCOS005A09C (body)
  * Description      : CSVファイルのデータアップロード
  * MD.050           : CSVファイルのデータアップロード MD050_COS_005_A09
- * Version          : 1.8
+ * Version          : 1.9
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -40,6 +40,9 @@ AS
  *  2009/2/20     1.5   T.Miyashita      パラメータのログファイル出力対応
  *  2009/07/01    1.7   T.Tominaga       [0000137]Interval,Max_waitをFND_PROFILEより取得
  *  2009/09/10    1.8   N.Maeda          [0001326]顧客品目相互参照重複チェックの修正
+ *  2010/01/07    1.9   M.Sano           [E_本稼動_00739]指定顧客以外で保管場所を設定時はエラーにするように修正。
+ *                                       [E_本稼動_00740]子品目コードを設定時はエラーにするように修正。
+ *                                                       品目ステータスが20,30,40以外の品目はエラーにするように修正。
  *
  *****************************************************************************************/
 --
@@ -144,6 +147,12 @@ AS
                                           := 'XXCOS1_CUS_STATUS_MST_005_A09';   --顧客ステータス特定マスタ
   ct_lookup_type_edi_item        CONSTANT fnd_lookup_values.lookup_type%TYPE
                                           := 'XXCOS1_EDI_ITEM_MST_005_A09';     --EDI連携品目コード特定マスタ
+--*********** 2010/01/07 1.9 M.Sano ADD Start ********** --
+  ct_lookup_type_item_chain      CONSTANT fnd_lookup_values.lookup_type%TYPE
+                                          := 'XXCOS1_CUST_ITEM_CHAIN_CODE';     --顧客品目対象チェーン店コード
+  ct_lookup_type_item_status     CONSTANT fnd_lookup_values.lookup_type%TYPE
+                                          := 'XXCOS1_CUST_ITEM_ITEM_STATUS';    --顧客品目対象品目ステータス
+--*********** 2010/01/07 1.9 M.Sano ADD End   ********** --
   ct_file_up_load_name           CONSTANT fnd_lookup_values.lookup_type%TYPE
                                           := 'XXCCP1_FILE_UPLOAD_OBJ';          --ファイルアップロード名マスタ
   --クイックコード
@@ -190,6 +199,13 @@ AS
   cv_character_n                 CONSTANT VARCHAR2(10) := 'N';
   cn_min_2                       CONSTANT NUMBER       := 2;
   cv_character_3                 CONSTANT VARCHAR2(1)  := '3';
+--*********** 2010/01/07 1.9 M.Sano ADD Start ********** --
+  ct_lang                        CONSTANT fnd_lookup_values.language%TYPE
+                                                       := USERENV('LANG');      --言語コード
+  ct_inactive_ind_1              CONSTANT VARCHAR2(1)  := '1';                  --無効フラグ
+--
+  cv_customer_class_code_18      CONSTANT VARCHAR2(2)  := '18';                 --顧客区分:18(EDIチェーン店)
+--*********** 2010/01/07 1.9 M.Sano ADD Start ********** --
 --
 --****************************** 2009/07/01 1.7 T.Tominaga DEL START ******************************
 --  cn_interval                    CONSTANT NUMBER       := 15;                   -- Interval
@@ -309,6 +325,14 @@ AS
   ct_msg_get_max_wait            CONSTANT fnd_new_messages.message_name%TYPE
                                           := 'APP-XXCOS1-11326'; --XXCOS:最大待機時間
 --****************************** 2009/07/01 1.7 T.Tominaga ADD END   ******************************
+--*********** 2010/01/07 1.9 M.Sano ADD Start ********** --
+  ct_msg_child_item_code_err     CONSTANT fnd_new_messages.message_name%TYPE
+                                          := 'APP-XXCOS1-11328'; --子品目エラー
+  ct_msg_ship_from_subinv_err    CONSTANT fnd_new_messages.message_name%TYPE
+                                          := 'APP-XXCOS1-11329'; --保管場所設定不可エラー
+  ct_msg_item_status_err         CONSTANT fnd_new_messages.message_name%TYPE
+                                          := 'APP-XXCOS1-11330'; --品目ステータスエラー
+--*********** 2010/01/07 1.9 M.Sano ADD END   ********** --
   --
   --トークン
   cv_tkn_profile                 CONSTANT VARCHAR2(512) := 'PROFILE';            --・プロファイル名
@@ -335,6 +359,11 @@ AS
   cv_tkn_dev_status              CONSTANT VARCHAR2(512) := 'STATUS';             --・ステータス
   cv_tkn_message                 CONSTANT VARCHAR2(512) := 'MESSAGE';            --・メッセージ
   cv_tkn_org_code                CONSTANT VARCHAR2(512) := 'ORG_CODE';           --・在庫組織コード
+--*********** 2010/01/07 1.9 M.Sano ADD Start ********** --
+  cv_tkn_parent_item_code        CONSTANT VARCHAR2(512) := 'PARENT_ITEM_CODE';   --・親品目コード
+  cv_tkn_item_status             CONSTANT VARCHAR2(512) := 'ITEM_STATUS';        --・品目ステータス
+  cv_tkn_edi_chain_code          CONSTANT VARCHAR2(512) := 'EDI_CHAIN_CODE';     --・EDIチェーン店コード
+--*********** 2010/01/07 1.9 M.Sano ADD End   ********** --
 --
   -- ===============================
   -- ユーザー定義グローバル型
@@ -1712,6 +1741,12 @@ AS
     lv_segment1                     VARCHAR2(30);    --品目コード
     lv_uom_code                     VARCHAR2(30);    --UOMコード
     lv_secondary_inventory_name     VARCHAR2(128);   --保管場所コード
+--*********** 2010/01/07 1.9 M.Sano ADD START ********** --
+    lt_parent_item_no               ic_item_mst_b.item_no%TYPE;
+    lt_edi_chain_code               xxcmm_cust_accounts.edi_chain_code%TYPE;  -- EDIチェーン店コード
+    lv_exists_flag                  VARCHAR2(1);     --存在チェック用一時変数
+    lt_item_status                  xxcmm_system_items_b.item_status%TYPE;   -- 品目ステータス
+--*********** 2010/01/07 1.9 M.Sano ADD End   ********** --
 --
     -- *** ローカル・カーソル ***
     -- *** ローカル・レコード ***
@@ -1736,12 +1771,18 @@ AS
         hca.account_number            account_number,               --顧客コード
         hca.customer_class_code       customer_class_code,          --顧客区分
         hp.duns_number_c              duns_number_c,                --顧客ステータス
+--*********** 2010/01/07 1.9 M.Sano ADD START ********** --
+        xac.edi_chain_code            edi_chain_code,               --EDIチェーン店コード
+--*********** 2010/01/07 1.9 M.Sano ADD End   ********** --
         xac.edi_item_code_div         edi_item_code_div             --EDI連携品目コード区分
       INTO
         on_cust_account_id,
         ov_account_number,
         lv_customer_class_code,
         lv_duns_number_c,
+--*********** 2010/01/07 1.9 M.Sano ADD START ********** --
+        lt_edi_chain_code,
+--*********** 2010/01/07 1.9 M.Sano ADD End   ********** --
         lv_edi_item_code_div
       FROM
         xxcmm_cust_accounts       xac,  --顧客追加情報
@@ -1919,8 +1960,121 @@ AS
         RAISE global_api_others_expt;
     END;
 --
+--*********** 2010/01/07 1.9 M.Sano ADD START ********** --
     ------------------------------------
-    -- 3.単位マスタのチェック
+    -- 3.子品目コード有無チェック
+    ------------------------------------
+    IF ( on_inventory_item_id IS NOT NULL ) THEN
+      BEGIN
+        SELECT
+            iimb2.item_no
+        INTO
+            lt_parent_item_no
+        FROM
+            mtl_system_items_b      msib
+          , ic_item_mst_b           iimb
+          , xxcmn_item_mst_b        ximb
+          , ic_item_mst_b           iimb2
+        WHERE
+            msib.inventory_item_id = on_inventory_item_id                         -- 品目ID
+        AND msib.organization_id   = gn_get_stock_id_ret                          -- 組織ID
+        AND iimb.item_no           = msib.segment1
+        AND ximb.item_id           = iimb.item_id
+        AND ximb.parent_item_id   <> iimb.item_id
+        AND gd_process_date  BETWEEN NVL(ximb.start_date_active, gd_process_date) 
+                                 AND NVL(ximb.end_date_active, gd_process_date)
+        AND iimb2.item_id          = ximb.parent_item_id
+        AND iimb2.inactive_ind    <> ct_inactive_ind_1
+        ;
+        -- 子品目コード存在チェック（エラー）
+        lv_errmsg := xxccp_common_pkg.get_msg(
+                       iv_application  => ct_xxcos_appl_short_name,
+                       iv_name         => ct_msg_child_item_code_err,
+                       iv_token_name1  => cv_tkn_line_no,
+                       iv_token_value1 => TO_CHAR( in_line_no, cv_format ),                     -- 行No
+                       iv_token_name2  => cv_tkn_cust_code,
+                       iv_token_value2 => g_cust_item_work_tab(in_line_no)(cn_cust_code),       -- 顧客コード
+                       iv_token_name3  => cv_tkn_cust_item_code,
+                       iv_token_value3 => g_cust_item_work_tab(in_line_no)(cn_cust_item_code),  -- 顧客品目コード
+                       iv_token_name4  => cv_tkn_item_code,
+                       iv_token_value4 => g_cust_item_work_tab(in_line_no)(cn_item_code),       -- 品目コード
+                       iv_token_name5  => cv_tkn_parent_item_code,
+                       iv_token_value5 => lt_parent_item_no                                     -- 親品目コード
+                     );
+        FND_FILE.PUT_LINE(
+          which  => FND_FILE.OUTPUT,
+          buff   => lv_errmsg --ユーザー・エラーメッセージ
+        );
+        ov_retcode := cv_status_warn;
+      EXCEPTION
+        WHEN NO_DATA_FOUND THEN
+          NULL;
+        WHEN OTHERS THEN
+          RAISE global_api_others_expt;
+      END;
+    END IF;
+--
+    ------------------------------------
+    -- 4.品目ステータスチェック
+    ------------------------------------
+    IF ( on_inventory_item_id IS NOT NULL ) THEN
+      BEGIN
+        SELECT
+            xsib.item_status
+        INTO
+            lt_item_status
+        FROM
+            mtl_system_items_b      msib
+          , xxcmm_system_items_b    xsib
+        WHERE
+            msib.inventory_item_id = on_inventory_item_id     -- 品目ID
+        AND msib.organization_id   = gn_get_stock_id_ret      -- 組織ID
+        AND xsib.item_code         = msib.segment1
+        AND NOT EXISTS (
+              SELECT
+                  cv_exists_flag_yes
+              FROM
+                  fnd_lookup_values flv
+              WHERE
+                  flv.lookup_type        = ct_lookup_type_item_status
+              AND flv.meaning            = xsib.item_status
+              AND flv.language           = ct_lang
+              AND flv.enabled_flag       = cv_enabled_flag_y
+              AND gd_process_date  BETWEEN NVL(flv.start_date_active, gd_process_date) 
+                                       AND NVL(flv.end_date_active, gd_process_date) 
+            )
+        ;
+        -- 品目ステータスチェック
+        lv_errmsg := xxccp_common_pkg.get_msg(
+                       iv_application  => ct_xxcos_appl_short_name,
+                       iv_name         => ct_msg_item_status_err,
+                       iv_token_name1  => cv_tkn_line_no,
+                       iv_token_value1 => TO_CHAR( in_line_no, cv_format ),                     -- 行No
+                       iv_token_name2  => cv_tkn_cust_code,
+                       iv_token_value2 => g_cust_item_work_tab(in_line_no)(cn_cust_code),       -- 顧客コード
+                       iv_token_name3  => cv_tkn_cust_item_code,
+                       iv_token_value3 => g_cust_item_work_tab(in_line_no)(cn_cust_item_code),  -- 顧客品目コード
+                       iv_token_name4  => cv_tkn_item_code,
+                       iv_token_value4 => g_cust_item_work_tab(in_line_no)(cn_item_code),       -- 品目コード
+                       iv_token_name5  => cv_tkn_item_status,
+                       iv_token_value5 => lt_item_status                                        -- 品目ステータス
+                     );
+        FND_FILE.PUT_LINE(
+          which  => FND_FILE.OUTPUT,
+          buff   => lv_errmsg --ユーザー・エラーメッセージ
+        );
+        ov_retcode := cv_status_warn;
+      EXCEPTION
+        WHEN NO_DATA_FOUND THEN
+          NULL;
+        WHEN OTHERS THEN
+          RAISE global_api_others_expt;
+      END;
+    END IF;
+--
+--*********** 2010/01/07 1.9 M.Sano ADD End   ********** --
+    ------------------------------------
+    -- 5.単位マスタのチェック
     ------------------------------------
     -- 発注単位がNULLの場合、「本」を設定する。
     IF ( g_cust_item_work_tab(in_line_no)(cn_ordering_unit) IS NULL ) THEN
@@ -1982,7 +2136,7 @@ AS
     END;
 --
     ------------------------------------
-    -- 4.保管場所マスタのチェック
+    -- 6.保管場所マスタのチェック
     ------------------------------------
     IF ( g_cust_item_work_tab(in_line_no)(cn_ship_from_space) IS NOT NULL ) THEN
       BEGIN
@@ -2039,6 +2193,64 @@ AS
           RAISE global_api_others_expt;
       END;
     END IF;
+--*********** 2010/01/07 1.9 M.Sano ADD START ********** --
+    ---------------------------------------------------
+    -- 7.保管場所設定可否チェック
+    ---------------------------------------------------
+    -- チェック条件：出荷元保管場所が入力済、顧客区分が18
+    IF (    g_cust_item_work_tab(in_line_no)(cn_ship_from_space) IS NOT NULL
+        AND lv_customer_class_code = cv_customer_class_code_18
+    ) THEN
+      BEGIN
+        -- EDIチェーン店コードがNULLの場合はエラー
+        IF ( lt_edi_chain_code IS NULL ) THEN
+          RAISE NO_DATA_FOUND;
+        END IF;
+        -- 保管場所の設定可能なチェーン店かチェック
+        SELECT
+            cv_exists_flag_yes
+        INTO
+            lv_exists_flag
+        FROM
+            fnd_lookup_values flv
+        WHERE
+            flv.lookup_type        = ct_lookup_type_item_chain
+        AND flv.language           = ct_lang
+        AND flv.enabled_flag       = cv_enabled_flag_y
+        AND gd_process_date  BETWEEN NVL(flv.start_date_active, gd_process_date)
+                                 AND NVL(flv.end_date_active, gd_process_date)
+        AND flv.meaning            = lt_edi_chain_code  -- EDIチェーン店コード
+        ;
+      EXCEPTION
+        -- 保管場所設定可否チェック
+        WHEN NO_DATA_FOUND THEN
+          lv_errmsg := xxccp_common_pkg.get_msg(
+                         iv_application  => ct_xxcos_appl_short_name,
+                         iv_name         => ct_msg_ship_from_subinv_err,
+                         iv_token_name1  => cv_tkn_line_no,
+                         iv_token_value1 => TO_CHAR( in_line_no, cv_format ),                     -- 行No
+                         iv_token_name2  => cv_tkn_cust_code,
+                         iv_token_value2 => g_cust_item_work_tab(in_line_no)(cn_cust_code),       -- 顧客コード
+                         iv_token_name3  => cv_tkn_cust_item_code,
+                         iv_token_value3 => g_cust_item_work_tab(in_line_no)(cn_cust_item_code),  -- 顧客品目コード
+                         iv_token_name4  => cv_tkn_item_code,
+                         iv_token_value4 => g_cust_item_work_tab(in_line_no)(cn_item_code),       -- 品目コード
+                         iv_token_name5  => cv_tkn_ship_from_subinv,
+                         iv_token_value5 => g_cust_item_work_tab(in_line_no)(cn_ship_from_space), -- 出荷元保管場所
+                         iv_token_name6  => cv_tkn_edi_chain_code,
+                         iv_token_value6 => lt_edi_chain_code                                     -- EDIチェーン店コード
+                       );
+          FND_FILE.PUT_LINE(
+            which  => FND_FILE.OUTPUT,
+            buff   => lv_errmsg --ユーザー・エラーメッセージ
+          );
+          ov_retcode := cv_status_warn;
+        WHEN OTHERS THEN
+          RAISE global_api_others_expt;
+      END;
+    END IF;
+--
+--*********** 2010/01/07 1.9 M.Sano ADD End   ********** --
 --
   EXCEPTION
 --
