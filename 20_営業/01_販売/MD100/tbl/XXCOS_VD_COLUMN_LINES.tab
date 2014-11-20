@@ -3,13 +3,15 @@
  *
  * Table Name  : XXCOS_VD_COLUMN_LINES
  * Description : VDコラム別取引明細テーブル
- * Version     : 1.0
+ * Version     : 1.1
  *
  * Change Record
  * ------------- ----- ---------------- ---------------------------------
  *  Date          Ver.  Editor           Description
  * ------------- ----- ---------------- ---------------------------------
- *  2009/01/30    1.0   SCS S.Miyakoshi新規作成
+ *  2009/01/30    1.0   SCS S.Miyakoshi 新規作成
+ *  2009/04/13    1.1   SCS N.Maeda     [ST障害No.T1_0496対応]
+ *                                      補充数の桁数をNUMBER(2)⇒NUMBERに修正
  *
  ****************************************************************************************/
 CREATE TABLE XXCOS.XXCOS_VD_COLUMN_LINES
@@ -32,7 +34,7 @@ CREATE TABLE XXCOS.XXCOS_VD_COLUMN_LINES
   H_AND_C                         VARCHAR2(1),                             --H/C
   SOLD_OUT_CLASS                  VARCHAR2(1),                             --売切区分
   SOLD_OUT_TIME                   VARCHAR2(3),                             --売切時間
-  REPLENISH_NUMBER                NUMBER(2),                               --補充数
+  REPLENISH_NUMBER                NUMBER,                                  --補充数
   CASH_AND_CARD                   NUMBER(11),                              --現金・カード併用額
   CREATED_BY                      NUMBER(15)    NOT NULL,                  --作成者
   CREATION_DATE                   DATE          NOT NULL,                  --作成日
