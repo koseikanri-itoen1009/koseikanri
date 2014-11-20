@@ -149,6 +149,28 @@ WHERE   (
                           AND   ROWNUM                          = 1
                        )
               )
+              OR
+              (
+                ( xsdh.status = '3' )
+                AND
+                ( EXISTS ( SELECT 1
+                          FROM   xxcso_employees_v2    xev
+                                ,fnd_lookup_values_vl  flvv
+                          WHERE  1=1
+                          AND    xev.user_id        = fnd_global.user_id
+                          AND    flvv.lookup_type   = 'XXCSO1_SP_ACTING_PO_BASE_CODE'
+                          AND    flvv.enabled_flag  = 'Y'
+                          AND    NVL(flvv.start_date_active, TRUNC(xxcso_util_common_pkg.get_online_sysdate)) <= TRUNC(xxcso_util_common_pkg.get_online_sysdate)
+                          AND    NVL(flvv.end_date_active,   TRUNC(xxcso_util_common_pkg.get_online_sysdate)) >= TRUNC(xxcso_util_common_pkg.get_online_sysdate)
+                          AND    flvv.lookup_code   =  xxcso_util_common_pkg.get_emp_parameter(
+                                                         xev.work_base_code_new
+                                                        ,xev.work_base_code_old
+                                                        ,xev.issue_date
+                                                        ,TRUNC(xxcso_util_common_pkg.get_online_sysdate)
+                                                       )
+                        )
+                )
+              )
             )
           )
         )

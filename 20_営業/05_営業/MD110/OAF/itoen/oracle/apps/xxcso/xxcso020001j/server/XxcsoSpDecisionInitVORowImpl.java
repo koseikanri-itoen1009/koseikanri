@@ -1,12 +1,13 @@
 /*============================================================================
 * ファイル名 : XxcsoSpDecisionInitVORowImpl
 * 概要説明   : SP専決初期化用ビュー行クラス
-* バージョン : 1.0
+* バージョン : 1.1
 *============================================================================
 * 修正履歴
 * 日付       Ver. 担当者       修正内容
 * ---------- ---- ------------ ----------------------------------------------
 * 2008-12-27 1.0  SCS小川浩     新規作成
+* 2011-04-25 1.1  SCS桐生和幸   [E_本稼動_07224]SP専決参照権限変更対応
 *============================================================================
 */
 package itoen.oracle.apps.xxcso.xxcso020001j.server;
@@ -259,6 +260,7 @@ public class XxcsoSpDecisionInitVORowImpl extends OAViewRowImpl
   protected static final int ELECTRICITYAMTMONTHVIEWRENDER = 232;
   protected static final int ELECTRICITYAMTMONTHRENDER = 233;
   protected static final int ATTACHACTIONFLRNRENDER = 234;
+  protected static final int ACTPOBASECODE = 235;
   /**
    * 
    * This is the default constructor (do not remove)
@@ -832,6 +834,8 @@ public class XxcsoSpDecisionInitVORowImpl extends OAViewRowImpl
         return getElectricityAmtMonthRender();
       case ATTACHACTIONFLRNRENDER:
         return getAttachActionFlRNRender();
+      case ACTPOBASECODE:
+        return getActPoBaseCode();
       default:
         return super.getAttrInvokeAccessor(index, attrDef);
       }
@@ -1546,6 +1550,9 @@ public class XxcsoSpDecisionInitVORowImpl extends OAViewRowImpl
         return;
       case ATTACHACTIONFLRNRENDER:
         setAttachActionFlRNRender((Boolean)value);
+        return;
+      case ACTPOBASECODE:
+        setActPoBaseCode((String)value);
         return;
       default:
         super.setAttrInvokeAccessor(index, value, attrDef);
@@ -5741,6 +5748,24 @@ public class XxcsoSpDecisionInitVORowImpl extends OAViewRowImpl
   public void setBm3VendorNumber2Render(Boolean value)
   {
     setAttributeInternal(BM3VENDORNUMBER2RENDER, value);
+  }
+
+  /**
+   * 
+   * Gets the attribute value for the calculated attribute ActPoBaseCode
+   */
+  public String getActPoBaseCode()
+  {
+    return (String)getAttributeInternal(ACTPOBASECODE);
+  }
+
+  /**
+   * 
+   * Sets <code>value</code> as the attribute value for the calculated attribute ActPoBaseCode
+   */
+  public void setActPoBaseCode(String value)
+  {
+    setAttributeInternal(ACTPOBASECODE, value);
   }
 
 

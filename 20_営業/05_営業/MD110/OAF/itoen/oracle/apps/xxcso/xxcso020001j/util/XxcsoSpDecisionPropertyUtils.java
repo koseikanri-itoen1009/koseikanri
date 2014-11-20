@@ -1,7 +1,7 @@
 /*============================================================================
 * ファイル名 : XxcsoSpDecisionPropertyUtils
 * 概要説明   : SP専決表示属性プロパティ設定ユーティリティクラス
-* バージョン : 1.5
+* バージョン : 1.6
 *============================================================================
 * 修正履歴
 * 日付       Ver. 担当者       修正内容
@@ -12,6 +12,7 @@
 * 2009-07-16 1.3  SCS阿部大輔   [SCS障害0000385]否決ボタン時の提出ボタン対応
 * 2009-08-04 1.4  SCS小川浩     [SCS障害0000820]転勤時の適用・提出ボタン対応
 * 2009-10-14 1.5  SCS阿部大輔   [共通課題IE554,IE573]住所対応
+* 2011-04-25 1.6  SCS桐生和幸   [E_本稼動_07224]SP専決参照権限変更対応
 *============================================================================
 */
 package itoen.oracle.apps.xxcso.xxcso020001j.util;
@@ -1519,6 +1520,10 @@ public class XxcsoSpDecisionPropertyUtils
     /////////////////////////////////////
     String publishBaseCode = installRow.getPublishBaseCode();
     boolean requestEnabledFlag = false;
+    // 2011-04-25 [E_本稼動_07224] Add Start
+    // 発注依頼のみ可能な発注代行拠点取得
+    String actpobase_code  = initRow.getActPoBaseCode();
+    // 2011-04-25 [E_本稼動_07224] Add End
     
     if ( XxcsoSpDecisionConstants.STATUS_ENABLE.equals(status) )
     {
@@ -1539,6 +1544,15 @@ public class XxcsoSpDecisionPropertyUtils
           // 発注依頼ボタンは表示
           requestEnabledFlag = true;
         }
+        // 2011-04-25 [E_本稼動_07224] Add Start
+        if ( loginBaseCode.equals(actpobase_code) )
+        {
+          // ステータスが有効で、
+          // ログインユーザーの拠点コードと発注代行拠点が同じ場合は、
+          // 発注依頼ボタンは表示
+          requestEnabledFlag = true;
+        }
+        // 2011-04-25 [E_本稼動_07224] Add End
       }
     }
 

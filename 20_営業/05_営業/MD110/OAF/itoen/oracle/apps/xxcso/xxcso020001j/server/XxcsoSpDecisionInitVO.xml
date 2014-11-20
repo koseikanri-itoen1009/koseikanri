@@ -29,6 +29,19 @@ SELECT  xev.employee_number
        ,xxcso_util_common_pkg.get_online_sysdate current_date
        ,NULL attach_file_up
        ,NULL attach_file_up_excerpt
+       ,(SELECT flvv.lookup_code
+         FROM   fnd_lookup_values_vl  flvv
+         WHERE  flvv.lookup_type   = 'XXCSO1_SP_ACTING_PO_BASE_CODE'
+         AND    flvv.enabled_flag  = 'Y'
+         AND    NVL(flvv.start_date_active, TRUNC(xxcso_util_common_pkg.get_online_sysdate)) <= TRUNC(xxcso_util_common_pkg.get_online_sysdate)
+         AND    NVL(flvv.end_date_active,   TRUNC(xxcso_util_common_pkg.get_online_sysdate)) >= TRUNC(xxcso_util_common_pkg.get_online_sysdate)
+         AND    flvv.lookup_code   =  xxcso_util_common_pkg.get_emp_parameter(
+                                        xev.work_base_code_new
+                                       ,xev.work_base_code_old
+                                       ,xev.issue_date
+                                       ,TRUNC(xxcso_util_common_pkg.get_online_sysdate)
+                                      )
+        ) act_po_base_code
 FROM    xxcso_employees_v2   xev
 WHERE   xev.user_id = fnd_global.user_id
    ]]></SQLQuery>
@@ -2184,5 +2197,15 @@ WHERE   xev.user_id = fnd_global.user_id
       ColumnType="$none$"
       AliasName="VIEW_ATTR"
       SQLType="BIT" >
+   </ViewAttribute>
+   <ViewAttribute
+      Name="ActPoBaseCode"
+      IsPersistent="false"
+      Precision="30"
+      Type="java.lang.String"
+      ColumnType="VARCHAR2"
+      AliasName="ACT_PO_BASE_CODE"
+      Expression="ACT_PO_BASE_CODE"
+      SQLType="VARCHAR" >
    </ViewAttribute>
 </ViewObject>

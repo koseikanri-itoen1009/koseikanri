@@ -1,7 +1,7 @@
 /*============================================================================
 * ファイル名 : XxcsoSpDecisionSearchAMImpl
 * 概要説明   : SP専決書検索画面アプリケーション・モジュールクラス
-* バージョン : 1.3
+* バージョン : 1.4
 *============================================================================
 * 修正履歴
 * 日付       Ver. 担当者       修正内容
@@ -10,6 +10,7 @@
 * 2009-04-20 1.1  SCS柳平直人   [ST障害T1_0619]消去ボタン初期化不正対応
 * 2009-08-04 1.2  SCS小川浩     [SCS障害0000821]承認用画面のコピーボタン表示対応
 * 2009-09-02 1.3  SCS阿部大輔   [SCS障害0001265]検索条件の修正対応
+* 2011-04-25 1.4  SCS桐生和幸   [E_本稼動_07224]SP専決参照権限変更対応
 *============================================================================
 */
 package itoen.oracle.apps.xxcso.xxcso020001j.server;
@@ -130,6 +131,9 @@ public class XxcsoSpDecisionSearchAMImpl extends OAApplicationModuleImpl
 /* 20090902_abe_0001265 START*/
     Boolean btnFlag = initRow.getCopyButtonRender();
 /* 20090902_abe_0001265 END*/
+// 2011-04-25 [E_本稼動_07224] Add Start
+    Boolean btnFlag2 = initRow.getDetailButtonRender();
+// 2011-04-25 [E_本稼動_07224] Add End
 
     initRow = (XxcsoSpDecisionSearchInitVORowImpl)initVo.first();
     initRow.setEmployeeNumber(null);
@@ -156,17 +160,30 @@ public class XxcsoSpDecisionSearchAMImpl extends OAApplicationModuleImpl
     {
       initRow.setCopyButtonRender(Boolean.TRUE);
 /* 20090902_abe_0001265 END*/
-      initRow.setDetailButtonRender(Boolean.TRUE);
+// 2011-04-25 [E_本稼動_07224] Del Start
+//      initRow.setDetailButtonRender(Boolean.TRUE);
+// 2011-04-25 [E_本稼動_07224] Del End
 /* 20090902_abe_0001265 START*/
     }
     else
     {
       initRow.setCopyButtonRender(Boolean.FALSE);
-      initRow.setDetailButtonRender(Boolean.FALSE);
+// 2011-04-25 [E_本稼動_07224] Del Start
+//      initRow.setDetailButtonRender(Boolean.FALSE);
+// 2011-04-25 [E_本稼動_07224] Del End
     }
 /* 20090902_abe_0001265 END*/
 // 2009-04-20 [ST障害T1_0302] Add End
-
+// 2011-04-25 [E_本稼動_07224] Add Start
+    if ( Boolean.TRUE.equals(btnFlag2) )
+    {
+      initRow.setDetailButtonRender(Boolean.TRUE);
+    }
+    else
+    {
+      initRow.setDetailButtonRender(Boolean.FALSE);
+    }
+// 2011-04-25 [E_本稼動_07224] Add End
     XxcsoUtils.debug(txn, "[END]");
   }
 
@@ -226,7 +243,18 @@ public class XxcsoSpDecisionSearchAMImpl extends OAApplicationModuleImpl
       {
 // 2009-08-04 [障害0000821] Mod Start
 //      initRow.setCopyButtonRender(Boolean.FALSE);
-        initRow.setCopyButtonRender(Boolean.TRUE);
+// 2011-04-25 [E_本稼動_07224] Mod Start
+//        initRow.setCopyButtonRender(Boolean.TRUE);
+        if ( initRow.getInitActPoBaseCode() == null )
+        {
+          initRow.setCopyButtonRender(Boolean.TRUE);
+        }
+        else
+        {
+          //発注代行拠点の場合、コピーの使用は不可
+          initRow.setCopyButtonRender(Boolean.FALSE);
+        }
+// 2011-04-25 [E_本稼動_07224] Mod End
 // 2009-08-04 [障害0000821] Mod End
       }
       else
