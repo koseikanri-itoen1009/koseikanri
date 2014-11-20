@@ -3,13 +3,14 @@
  *
  * Table Name  : XXCOS_REP_DIG_DV_LIST
  * Description : è¡âªVDï ä|ó¶É`ÉFÉbÉNÉäÉXÉgí†ï[ÉèÅ[ÉNÉeÅ[ÉuÉã
- * Version     : 1.0
+ * Version     : 1.1
  *
  * Change Record
  * ------------- ----- ---------------- ---------------------------------
  *  Date          Ver.  Editor           Description
  * ------------- ----- ---------------- ---------------------------------
  *  2009/01/30    1.0   SCS K.Kin      êVãKçÏê¨
+ *  2009/09/25    1.1   SCS N.Maeda    ã‡äzçÄñ⁄ÇÃåÖêîèCê≥
  *
  ****************************************************************************************/
 CREATE TABLE XXCOS.XXCOS_REP_DIG_DV_LIST
@@ -22,9 +23,9 @@ CREATE TABLE XXCOS.XXCOS_REP_DIG_DV_LIST
     EMPLOYEE_NAME                 VARCHAR2 (30),                     --âcã∆àıéÅñº
     PARTY_NUM                     VARCHAR2 (9),                      --å⁄ãqÉRÅ[Éh
     CUSTOMER_NAME                 VARCHAR2 (30),                     --å⁄ãqñº
-    DLV_INVOICE_AMOUNT            NUMBER (10,0),                     --î[ïiì`ï[ã‡äz
-    DIGEST_SALE_AMOUNT            NUMBER (10,0),                     --ê›íËä|ó¶ã‡äz
-    BALANCE                       NUMBER (11,0),                     --ç∑äz
+    DLV_INVOICE_AMOUNT            NUMBER,                            --î[ïiì`ï[ã‡äz
+    DIGEST_SALE_AMOUNT            NUMBER,                            --ê›íËä|ó¶ã‡äz
+    BALANCE                       NUMBER,                            --ç∑äz
     SETTING_ACCOUNT_RATE          VARCHAR2 (8),                      --ê›íËä|ó¶
     ACCOUNT_RATE                  VARCHAR2 (8),                      --ç°âÒä|ó¶
     CONFIRMATION_MESSAGE          VARCHAR2 (40),                     --ämîFÉÅÉbÉZÅ[ÉW

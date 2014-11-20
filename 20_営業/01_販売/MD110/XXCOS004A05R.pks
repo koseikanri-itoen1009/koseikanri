@@ -1,4 +1,4 @@
-CREATE OR REPLACE PACKAGE XXCOS004A05R
+CREATE OR REPLACE PACKAGE APPS.XXCOS004A05R
 AS
 /*****************************************************************************************
  * Copyright(c)Sumisho Computer Systems Corporation, 2008. All rights reserved.
@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCOS004A05R (spec)
  * Description      : 消化VD別掛率チェックリスト
  * MD.050           : 消化VD別掛率チェックリスト MD050_COS_004_A05
- * Version          : 1.5
+ * Version          : 1.6
  *
  * Program List
  * -------------------- ------------------------------------------------------------
@@ -24,6 +24,7 @@ AS
  *  2009/02/26    1.3   K.Kin            削除処理のコメント削除
  *  2009/04/20    1.4   T.Kitajima       [T1_0662]従業員マスタとの外部結合
  *  2009/06/19    1.5   K.Kiriu          [T1_1437]データパージ不具合対応
+ *  2009/09/25    1.6   N.Maeda          [0001155]設定掛率金額の設定値修正
  *
  *****************************************************************************************/
 --

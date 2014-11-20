@@ -1,4 +1,4 @@
-CREATE OR REPLACE PACKAGE BODY XXCOS004A05R
+CREATE OR REPLACE PACKAGE BODY APPS.XXCOS004A05R
 AS
 /*****************************************************************************************
  * Copyright(c)Sumisho Computer Systems Corporation, 2008. All rights reserved.
@@ -31,6 +31,8 @@ AS
  *  2009/02/26    1.3   K.Kin            削除処理のコメント削除
  *  2009/04/20    1.4   T.Kitajima       [T1_0662]従業員マスタとの外部結合
  *  2009/06/19    1.5   K.Kiriu          [T1_1437]データパージ不具合対応
+ *  2009/09/25    1.6   N.Maeda          [0001155]設定掛率金額の設定値修正
+ *                                       [0001378]出力桁数修正対応
  *
  *****************************************************************************************/
 --
@@ -196,6 +198,9 @@ AS
   cn_base_name_length       CONSTANT NUMBER        := 30;
   cn_party_name_length      CONSTANT NUMBER        := 30;
   cn_employee_name_length   CONSTANT NUMBER        := 30;
+-- ******************** 2009/09/25 1.6 N.Maeda ADD START ********************* --
+  ct_user_lang              CONSTANT fnd_lookup_values.language%TYPE := USERENV( 'LANG' );
+-- ******************** 2009/09/25 1.6 N.Maeda ADD  END  ********************* --
 --
   -- ===============================
   -- ユーザー定義グローバル型
@@ -509,37 +514,51 @@ AS
              hz_parties                           hpb,     --パーティマスタ_拠点
              hz_cust_accounts                     hcaec,   --顧客マスタ_顧客
              hz_parties                           hpc,     --パーティマスタ_顧客
-             fnd_application                      fa,      --アプリケーションマスタ
-             fnd_lookup_types                     flt,     --クイックコードタイプマスタ
+-- ******************** 2009/09/25 1.6 N.Maeda DEL START ********************* --
+--             fnd_application                      fa,      --アプリケーションマスタ
+--             fnd_lookup_types                     flt,     --クイックコードタイプマスタ
+-- ******************** 2009/09/25 1.6 N.Maeda DEL  END  ********************* --
              fnd_lookup_values                    flv,     --クイックコード値マスタ
              per_all_people_f                     papf     --従業員マスタ
       WHERE  xsvdh.sales_base_code = hcaeb.account_number
       AND    hcaeb.party_id                       = hpb.party_id
       AND    EXISTS (SELECT flv.meaning meaning
-                     FROM   fnd_application               fa,
-                            fnd_lookup_types              flt,
-                            fnd_lookup_values             flv
-                     WHERE  fa.application_id                             = flt.application_id
-                     AND    flt.lookup_type                               = flv.lookup_type
-                     AND    fa.application_short_name                     = ct_xxcos_appl_short_name
-                     AND    flv.lookup_type                               = ct_qct_cust_type
+-- ******************** 2009/09/25 1.6 N.Maeda MOD START ********************* --
+--                     FROM   fnd_application               fa,
+--                            fnd_lookup_types              flt,
+--                            fnd_lookup_values             flv
+                     FROM   fnd_lookup_values             flv
+--                     WHERE  fa.application_id                             = flt.application_id
+--                     AND    flt.lookup_type                               = flv.lookup_type
+--                     AND    fa.application_short_name                     = ct_xxcos_appl_short_name
+--                     AND    flv.lookup_type                               = ct_qct_cust_type
+                     WHERE  flv.lookup_type                               = ct_qct_cust_type
+-- ******************** 2009/09/25 1.6 N.Maeda MOD  END  ********************* --
                      AND    flv.lookup_code                               LIKE ct_qcc_cust_type
                      AND    flv.start_date_active                         <= xsvdh.digestion_due_date
                      AND    NVL( flv.end_date_active, gd_max_date )       >= xsvdh.digestion_due_date
                      AND    flv.enabled_flag                              = ct_enabled_flag_yes
-                     AND    flv.language                                  = USERENV( 'LANG' )
+-- ******************** 2009/09/25 1.6 N.Maeda MOD START ********************* --
+--                     AND    flv.language                                  = USERENV( 'LANG' )
+                     AND    flv.language                                  = ct_user_lang
+-- ******************** 2009/09/25 1.6 N.Maeda MOD  END  ********************* --
                      AND    flv.meaning                                   = hcaeb.customer_class_code
                     ) --顧客マスタ.顧客区分 = 1(拠点)
       AND    xsvdh.cust_account_id                         = hcaec.cust_account_id
       AND    hcaec.party_id                                = hpc.party_id
-      AND    fa.application_id                             = flt.application_id
-      AND    flt.lookup_type                               = flv.lookup_type
-      AND    fa.application_short_name                     = ct_xxcos_appl_short_name
+-- ******************** 2009/09/25 1.6 N.Maeda DEL START ********************* --
+--      AND    fa.application_id                             = flt.application_id
+--      AND    flt.lookup_type                               = flv.lookup_type
+--      AND    fa.application_short_name                     = ct_xxcos_appl_short_name
+-- ******************** 2009/09/25 1.6 N.Maeda DEL  END  ********************* --
       AND    flv.lookup_type                               = ct_sct_cust_type
       AND    flv.lookup_code                               = xsvdh.uncalculate_class
       AND    flv.start_date_active                         <= xsvdh.digestion_due_date
       AND    NVL( flv.end_date_active, gd_max_date )       >= xsvdh.digestion_due_date
-      AND    flv.language                                  = USERENV( 'LANG' )
+-- ******************** 2009/09/25 1.6 N.Maeda MOD START ********************* --
+--      AND    flv.language                                  = USERENV( 'LANG' )
+      AND    flv.language                                  = ct_user_lang
+-- ******************** 2009/09/25 1.6 N.Maeda MOD  END  ********************* --
       AND    flv.enabled_flag                              = ct_enabled_flag_yes
       AND    xsvdh.sales_result_creation_flag              = ct_make_flag_no
       AND    xsvdh.sales_base_code IN(
@@ -553,18 +572,25 @@ AS
                            xxcmm_cust_accounts xcae
                     WHERE  hcae.cust_account_id = xcae.customer_id --顧客マスタ.顧客ID =顧客アドオン.顧客ID
                     AND    EXISTS (SELECT flv.meaning
-                                    FROM   fnd_application               fa,
-                                           fnd_lookup_types              flt,
-                                           fnd_lookup_values             flv
-                                    WHERE  fa.application_id                             = flt.application_id
-                                    AND    flt.lookup_type                               = flv.lookup_type
-                                    AND    fa.application_short_name                     = ct_xxcos_appl_short_name
-                                    AND    flv.lookup_type                               = ct_qct_cust_type
+-- ******************** 2009/09/25 1.6 N.Maeda MOD START ********************* --
+--                                    FROM   fnd_application               fa,
+--                                           fnd_lookup_types              flt,
+--                                           fnd_lookup_values             flv
+                                    FROM   fnd_lookup_values             flv
+--                                    WHERE  fa.application_id                             = flt.application_id
+--                                    AND    flt.lookup_type                               = flv.lookup_type
+--                                    AND    fa.application_short_name                     = ct_xxcos_appl_short_name
+--                                    AND    flv.lookup_type                               = ct_qct_cust_type
+                                    WHERE  flv.lookup_type                               = ct_qct_cust_type
+-- ******************** 2009/09/25 1.6 N.Maeda MOD  END  ********************* --
                                     AND    flv.lookup_code                               LIKE ct_qcc_cust_type
                                     AND    flv.start_date_active                         <= xsvdh.digestion_due_date
                                     AND    NVL( flv.end_date_active, gd_max_date )       >= xsvdh.digestion_due_date
                                     AND    flv.enabled_flag                              = ct_enabled_flag_yes
-                                    AND    flv.language                                  = USERENV( 'LANG' )
+-- ******************** 2009/09/25 1.6 N.Maeda MOD START ********************* --
+--                                    AND    flv.language                                  = USERENV( 'LANG' )
+                                    AND    flv.language                                  = ct_user_lang
+-- ******************** 2009/09/25 1.6 N.Maeda MOD  END  ********************* --
                                     AND    flv.meaning                                   = hcae.customer_class_code
                                    ) --顧客マスタ.顧客区分 = 1(拠点)
                     AND    xcae.management_base_code = gv_sales_base_code
@@ -624,19 +650,42 @@ AS
       g_rpt_data_tab(ln_idx).customer_name                := SUBSTRB( l_data_rec.party_name,
                                                           cn_pos_star, cn_party_name_length ); --顧客名称
       g_rpt_data_tab(ln_idx).dlv_invoice_amount           := l_data_rec.ar_sales_amount;       --納品伝票金額
-      g_rpt_data_tab(ln_idx).digest_sale_amount           := l_data_rec.sales_amount;          --設定掛率金額
-      g_rpt_data_tab(ln_idx).balance                      := l_data_rec.balance_amount;        --差額
+-- ******************** 2009/09/25 1.6 N.Maeda DEL START ********************* --
+--      g_rpt_data_tab(ln_idx).digest_sale_amount           := l_data_rec.sales_amount;          --設定掛率金額
+--      g_rpt_data_tab(ln_idx).balance                      := l_data_rec.balance_amount;        --差額
+-- ******************** 2009/09/25 1.6 N.Maeda DEL  END  ********************* --
       IF ( l_data_rec.uncalculate_class  = ct_uncalculate_class_normal ) THEN
-        g_rpt_data_tab(ln_idx).account_rate               := TO_CHAR( l_data_rec.digestion_calc_rate, cv_fmt_tax )
-                                                          || cv_pr_tax;
+-- ******************** 2009/09/25 1.6 N.Maeda MOD START ********************* --
+        g_rpt_data_tab(ln_idx).account_rate               :=  SUBSTRB( ( TO_CHAR( l_data_rec.digestion_calc_rate, cv_fmt_tax )
+                                                                      || cv_pr_tax),1,8);
+--        g_rpt_data_tab(ln_idx).account_rate               := TO_CHAR( l_data_rec.digestion_calc_rate, cv_fmt_tax )
+--                                                          || cv_pr_tax;
+-- ******************** 2009/09/25 1.6 N.Maeda MOD  END  ********************* --
+-- ******************** 2009/09/25 1.6 N.Maeda ADD START ********************* --
+        g_rpt_data_tab(ln_idx).balance                    := l_data_rec.balance_amount;                --差額
+-- ******************** 2009/09/25 1.6 N.Maeda ADD  END  ********************* --
       ELSE
         g_rpt_data_tab(ln_idx).account_rate               := gv_no_add;                         --消化計算掛率
+-- ******************** 2009/09/25 1.6 N.Maeda ADD START ********************* --
+        g_rpt_data_tab(ln_idx).balance                    := cn_amount_zero;                    --差額
+-- ******************** 2009/09/25 1.6 N.Maeda ADD  END  ********************* --
       END IF;
-      g_rpt_data_tab(ln_idx).setting_account_rate         := TO_CHAR( l_data_rec.master_rate, cv_fmt_tax )
-                                                          || cv_pr_tax;
+-- ******************** 2009/09/25 1.6 N.Maeda MOD START ********************* --
+-- ******************** 2009/09/25 1.6 N.Maeda ADD START ********************* --
+      g_rpt_data_tab(ln_idx).digest_sale_amount         := ROUND( l_data_rec.sales_amount 
+                                                                    * ( l_data_rec.master_rate / 100 ) ); --設定掛率金額
+-- ******************** 2009/09/25 1.6 N.Maeda ADD  END  ********************* --
+      g_rpt_data_tab(ln_idx).setting_account_rate         := SUBSTRB( ( TO_CHAR( l_data_rec.master_rate, cv_fmt_tax )
+                                                                      || cv_pr_tax ),1,8);
+--      g_rpt_data_tab(ln_idx).setting_account_rate         := TO_CHAR( l_data_rec.master_rate, cv_fmt_tax )
+--                                                          || cv_pr_tax;
+-- ******************** 2009/09/25 1.6 N.Maeda MOD  END  ********************* --
       g_rpt_data_tab(ln_idx).uncalculate_class            := l_data_rec.uncalculate_class;     --未計算区分
       IF ( l_data_rec.uncalculate_class  <> ct_uncalculate_class_normal ) THEN
-        g_rpt_data_tab(ln_idx).confirmation_message       := l_data_rec.confirmation_message;  --確認メッセージ
+-- ******************** 2009/09/25 1.6 N.Maeda MOD START ********************* --
+        g_rpt_data_tab(ln_idx).confirmation_message       := SUBSTRB(l_data_rec.confirmation_message,1,40);  --確認メッセージ
+--        g_rpt_data_tab(ln_idx).confirmation_message       := l_data_rec.confirmation_message;  --確認メッセージ
+-- ******************** 2009/09/25 1.6 N.Maeda MOD  END  ********************* --
       END IF;
       g_rpt_data_tab(ln_idx).created_by                   := cn_created_by;
       g_rpt_data_tab(ln_idx).creation_date                := cd_creation_date;
