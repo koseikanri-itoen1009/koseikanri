@@ -1,0 +1,175 @@
+CREATE TABLE xxcmm.xxcmm_wk_item_batch_regist
+(
+    file_id                        NUMBER NOT NULL,
+    file_seq                       NUMBER NOT NULL,
+    line_no                        VARCHAR2(100),
+    item_code                      VARCHAR2(100),
+    item_name                      VARCHAR2(100),
+    item_short_name                VARCHAR2(100),
+    item_name_alt                  VARCHAR2(100),
+    item_status                    VARCHAR2(100),
+    sales_target_flag              VARCHAR2(100),
+    parent_item_code               VARCHAR2(100),
+    case_inc_num                   VARCHAR2(100),
+    item_um                        VARCHAR2(100),
+    item_product_class             VARCHAR2(100),
+    rate_class                     VARCHAR2(100),
+    net                            VARCHAR2(100),
+    weight_volume_class            VARCHAR2(100),
+    weight_volume                  VARCHAR2(100),
+    jan_code                       VARCHAR2(100),
+    nets                           VARCHAR2(100),
+    nets_uom_code                  VARCHAR2(100),
+    inc_num                        VARCHAR2(100),
+    case_jan_code                  VARCHAR2(100),
+    hon_product_class              VARCHAR2(100),
+    baracha_div                    VARCHAR2(100),
+    itf_code                       VARCHAR2(100),
+    product_class                  VARCHAR2(100),
+    palette_max_cs_qty             VARCHAR2(100),
+    palette_max_step_qty           VARCHAR2(100),
+    bowl_inc_num                   VARCHAR2(100),
+    sale_start_date                VARCHAR2(100),
+    vessel_group                   VARCHAR2(100),
+    new_item_div                   VARCHAR2(100),
+    acnt_group                     VARCHAR2(100),
+    acnt_vessel_group              VARCHAR2(100),
+    brand_group                    VARCHAR2(100),
+    policy_group                   VARCHAR2(100),
+    list_price                     VARCHAR2(100),
+    standard_price_1               VARCHAR2(100),
+    standard_price_2               VARCHAR2(100),
+    standard_price_3               VARCHAR2(100),
+    standard_price_4               VARCHAR2(100),
+    standard_price_5               VARCHAR2(100),
+    standard_price_6               VARCHAR2(100),
+    standard_price_7               VARCHAR2(100),
+    business_price                 VARCHAR2(100),
+    renewal_item_code              VARCHAR2(100),
+    sp_supplier_code               VARCHAR2(100),
+    created_by                     NUMBER(15,0) NOT NULL,
+    creation_date                  DATE NOT NULL,
+    last_updated_by                NUMBER(15,0) NOT NULL,
+    last_update_date               DATE NOT NULL,
+    last_update_login              NUMBER(15,0),
+    request_id                     NUMBER(15,0),
+    program_application_id         NUMBER(15,0),
+    program_id                     NUMBER(15,0),
+    program_update_date            DATE
+)
+TABLESPACE xxdata2
+/
+COMMENT ON TABLE xxcmm.xxcmm_wk_item_batch_regist                         IS '品目一括登録ワーク'
+/
+COMMENT ON COLUMN xxcmm.xxcmm_wk_item_batch_regist.file_id                IS 'ファイルID'
+/
+COMMENT ON COLUMN xxcmm.xxcmm_wk_item_batch_regist.file_seq               IS 'ファイルシーケンス'
+/
+COMMENT ON COLUMN xxcmm.xxcmm_wk_item_batch_regist.line_no                IS '行番号'
+/
+COMMENT ON COLUMN xxcmm.xxcmm_wk_item_batch_regist.item_code              IS '品名コード'
+/
+COMMENT ON COLUMN xxcmm.xxcmm_wk_item_batch_regist.item_name              IS '正式名'
+/
+COMMENT ON COLUMN xxcmm.xxcmm_wk_item_batch_regist.item_short_name        IS '略称'
+/
+COMMENT ON COLUMN xxcmm.xxcmm_wk_item_batch_regist.item_name_alt          IS 'カナ名'
+/
+COMMENT ON COLUMN xxcmm.xxcmm_wk_item_batch_regist.item_status            IS '品目ステータス'
+/
+COMMENT ON COLUMN xxcmm.xxcmm_wk_item_batch_regist.sales_target_flag      IS '売上対象区分'
+/
+COMMENT ON COLUMN xxcmm.xxcmm_wk_item_batch_regist.parent_item_code       IS '親商品コード'
+/
+COMMENT ON COLUMN xxcmm.xxcmm_wk_item_batch_regist.case_inc_num           IS 'ケース入数'
+/
+COMMENT ON COLUMN xxcmm.xxcmm_wk_item_batch_regist.item_um                IS '基準単位'
+/
+COMMENT ON COLUMN xxcmm.xxcmm_wk_item_batch_regist.item_product_class     IS '商品製品区分'
+/
+COMMENT ON COLUMN xxcmm.xxcmm_wk_item_batch_regist.rate_class             IS '率区分'
+/
+COMMENT ON COLUMN xxcmm.xxcmm_wk_item_batch_regist.net                    IS 'NET'
+/
+COMMENT ON COLUMN xxcmm.xxcmm_wk_item_batch_regist.weight_volume_class    IS '重量容積区分'
+/
+COMMENT ON COLUMN xxcmm.xxcmm_wk_item_batch_regist.weight_volume          IS '重量／体積'
+/
+COMMENT ON COLUMN xxcmm.xxcmm_wk_item_batch_regist.jan_code               IS 'JANコード'
+/
+COMMENT ON COLUMN xxcmm.xxcmm_wk_item_batch_regist.nets                   IS '内容量'
+/
+COMMENT ON COLUMN xxcmm.xxcmm_wk_item_batch_regist.nets_uom_code          IS '内容量単位'
+/
+COMMENT ON COLUMN xxcmm.xxcmm_wk_item_batch_regist.inc_num                IS '内訳入数'
+/
+COMMENT ON COLUMN xxcmm.xxcmm_wk_item_batch_regist.case_jan_code          IS 'ケースJANコード'
+/
+COMMENT ON COLUMN xxcmm.xxcmm_wk_item_batch_regist.hon_product_class      IS '本社商品区分'
+/
+COMMENT ON COLUMN xxcmm.xxcmm_wk_item_batch_regist.baracha_div            IS 'バラ茶区分'
+/
+COMMENT ON COLUMN xxcmm.xxcmm_wk_item_batch_regist.itf_code               IS 'ITFコード'
+/
+COMMENT ON COLUMN xxcmm.xxcmm_wk_item_batch_regist.product_class          IS '商品分類'
+/
+COMMENT ON COLUMN xxcmm.xxcmm_wk_item_batch_regist.palette_max_cs_qty     IS '配数'
+/
+COMMENT ON COLUMN xxcmm.xxcmm_wk_item_batch_regist.palette_max_step_qty   IS '段数'
+/
+COMMENT ON COLUMN xxcmm.xxcmm_wk_item_batch_regist.bowl_inc_num           IS 'ボール入数'
+/
+COMMENT ON COLUMN xxcmm.xxcmm_wk_item_batch_regist.sale_start_date        IS '発売開始日'
+/
+COMMENT ON COLUMN xxcmm.xxcmm_wk_item_batch_regist.vessel_group           IS '容器群'
+/
+COMMENT ON COLUMN xxcmm.xxcmm_wk_item_batch_regist.new_item_div           IS '新商品区分'
+/
+COMMENT ON COLUMN xxcmm.xxcmm_wk_item_batch_regist.acnt_group             IS '経理群'
+/
+COMMENT ON COLUMN xxcmm.xxcmm_wk_item_batch_regist.acnt_vessel_group      IS '経理容器群'
+/
+COMMENT ON COLUMN xxcmm.xxcmm_wk_item_batch_regist.brand_group            IS 'ブランド群'
+/
+COMMENT ON COLUMN xxcmm.xxcmm_wk_item_batch_regist.policy_group           IS '政策群'
+/
+COMMENT ON COLUMN xxcmm.xxcmm_wk_item_batch_regist.list_price             IS '定価'
+/
+COMMENT ON COLUMN xxcmm.xxcmm_wk_item_batch_regist.standard_price_1       IS '原料(標準原価)'
+/
+COMMENT ON COLUMN xxcmm.xxcmm_wk_item_batch_regist.standard_price_2       IS '再製費(標準原価)'
+/
+COMMENT ON COLUMN xxcmm.xxcmm_wk_item_batch_regist.standard_price_3       IS '資材費(標準原価)'
+/
+COMMENT ON COLUMN xxcmm.xxcmm_wk_item_batch_regist.standard_price_4       IS '包装費(標準原価)'
+/
+COMMENT ON COLUMN xxcmm.xxcmm_wk_item_batch_regist.standard_price_5       IS '外注管理費(標準原価)'
+/
+COMMENT ON COLUMN xxcmm.xxcmm_wk_item_batch_regist.standard_price_6       IS '保管費(標準原価)'
+/
+COMMENT ON COLUMN xxcmm.xxcmm_wk_item_batch_regist.standard_price_7       IS 'その他経費(標準原価)'
+/
+COMMENT ON COLUMN xxcmm.xxcmm_wk_item_batch_regist.business_price         IS '営業原価'
+/
+COMMENT ON COLUMN xxcmm.xxcmm_wk_item_batch_regist.renewal_item_code      IS 'リニューアル元商品コード'
+/
+COMMENT ON COLUMN xxcmm.xxcmm_wk_item_batch_regist.sp_supplier_code       IS '専門店仕入先コード'
+/
+COMMENT ON COLUMN xxcmm.xxcmm_wk_item_batch_regist.created_by             IS '作成者'
+/
+COMMENT ON COLUMN xxcmm.xxcmm_wk_item_batch_regist.creation_date          IS '作成日'
+/
+COMMENT ON COLUMN xxcmm.xxcmm_wk_item_batch_regist.last_updated_by        IS '最終更新者'
+/
+COMMENT ON COLUMN xxcmm.xxcmm_wk_item_batch_regist.last_update_date       IS '最終更新日'
+/
+COMMENT ON COLUMN xxcmm.xxcmm_wk_item_batch_regist.last_update_login      IS '最終更新ログインID'
+/
+COMMENT ON COLUMN xxcmm.xxcmm_wk_item_batch_regist.request_id             IS '要求ID'
+/
+COMMENT ON COLUMN xxcmm.xxcmm_wk_item_batch_regist.program_application_id IS 'コンカレント・プログラムのアプリケーションID'
+/
+COMMENT ON COLUMN xxcmm.xxcmm_wk_item_batch_regist.program_id             IS 'コンカレント・プログラムID'
+/
+COMMENT ON COLUMN xxcmm.xxcmm_wk_item_batch_regist.program_update_date    IS 'プログラムによる更新日'
+/

@@ -1,0 +1,2 @@
+CREATE SYNONYM apps.xxcmm_out_people_d_dispenser FOR xxcmm.xxcmm_out_people_d_dispenser
+/

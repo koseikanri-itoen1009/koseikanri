@@ -1,0 +1,34 @@
+CREATE TABLE xxcmm.xxcmm_wk_people_resp (
+  employee_number           VARCHAR2(5),
+  responsibility_id         NUMBER(15,0),
+  user_id                   NUMBER(15,0),
+  employee_kbn              VARCHAR2(1),
+  responsibility_key        VARCHAR2(30),
+  application_id            NUMBER(15,0),
+  application_short_name    VARCHAR2(50),
+  start_date                DATE,
+  end_date                  DATE,
+  CONSTRAINT xxcmm_wk_people_resp_pk PRIMARY KEY (employee_number, responsibility_id)
+  USING INDEX TABLESPACE xxidx2
+  ) TABLESPACE xxdata2
+/
+COMMENT ON TABLE  xxcmm.xxcmm_wk_people_resp                      IS '自動職責割当ワーク'
+/
+COMMENT ON COLUMN xxcmm.xxcmm_wk_people_resp.employee_number      IS '社員番号'
+/
+COMMENT ON COLUMN xxcmm.xxcmm_wk_people_resp.user_id              IS '入社年月日'
+/
+COMMENT ON COLUMN xxcmm.xxcmm_wk_people_resp.responsibility_id    IS '職責'
+/
+COMMENT ON COLUMN xxcmm.xxcmm_wk_people_resp.employee_kbn         IS '社員状態 I:新規社員 U:既存社員'
+/
+COMMENT ON COLUMN xxcmm.xxcmm_wk_people_resp.responsibility_key   IS '職責キー'
+/
+COMMENT ON COLUMN xxcmm.xxcmm_wk_people_resp.application_id       IS 'アプリケーションID'
+/
+COMMENT ON COLUMN xxcmm.xxcmm_wk_people_resp.application_short_name  IS 'アプリケーション名'
+/
+COMMENT ON COLUMN xxcmm.xxcmm_wk_people_resp.start_date           IS '入社年月日'
+/
+COMMENT ON COLUMN xxcmm.xxcmm_wk_people_resp.end_date             IS '退職年月日'
+/ 

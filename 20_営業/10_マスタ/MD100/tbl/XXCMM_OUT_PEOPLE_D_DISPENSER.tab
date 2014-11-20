@@ -1,0 +1,25 @@
+CREATE TABLE xxcmm.xxcmm_out_people_d_dispenser (
+  person_id                NUMBER(10),
+  employee_number          VARCHAR2(30),
+  effective_start_date     DATE,
+  per_information18        VARCHAR2(150),
+  per_information19        VARCHAR2(150),
+  last_name                VARCHAR2(150),
+  first_name               VARCHAR2(150),
+  location_code            VARCHAR2(150),
+  announce_date            VARCHAR2(150),
+  out_flag                 VARCHAR2(1),
+  CONSTRAINT xxcmm_out_dispenser_pk PRIMARY KEY (person_id)
+  USING INDEX TABLESPACE xxidx2
+  ) TABLESPACE xxdata2;
+  COMMENT ON TABLE  xxcmm.xxcmm_out_people_d_dispenser                      IS '自販機差分連携用社員データ';
+  COMMENT ON COLUMN xxcmm.xxcmm_out_people_d_dispenser.person_id            IS '従業員ID';
+  COMMENT ON COLUMN xxcmm.xxcmm_out_people_d_dispenser.employee_number      IS '従業員番号';
+  COMMENT ON COLUMN xxcmm.xxcmm_out_people_d_dispenser.effective_start_date IS '入社年月日';
+  COMMENT ON COLUMN xxcmm.xxcmm_out_people_d_dispenser.per_information18    IS '漢字姓';
+  COMMENT ON COLUMN xxcmm.xxcmm_out_people_d_dispenser.per_information19    IS '漢字名';
+  COMMENT ON COLUMN xxcmm.xxcmm_out_people_d_dispenser.last_name            IS 'カナ姓';
+  COMMENT ON COLUMN xxcmm.xxcmm_out_people_d_dispenser.first_name           IS 'カナ名';
+  COMMENT ON COLUMN xxcmm.xxcmm_out_people_d_dispenser.location_code        IS '起票部門';
+  COMMENT ON COLUMN xxcmm.xxcmm_out_people_d_dispenser.announce_date        IS '発令日';
+  COMMENT ON COLUMN xxcmm.xxcmm_out_people_d_dispenser.out_flag             IS '連携フラグ';

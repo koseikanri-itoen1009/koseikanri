@@ -1,0 +1,65 @@
+CREATE TABLE xxcmm.xxcmm_system_items_b_hst
+(
+    item_hst_id                    NUMBER NOT NULL,
+    item_id                        NUMBER NOT NULL,
+    item_code                      VARCHAR2(40) NOT NULL,
+    apply_date                     DATE  NOT NULL,
+    apply_flag                     VARCHAR2(1)  NOT NULL,
+    item_status                    NUMBER(2,0),
+    policy_group                   VARCHAR2(4),
+    fixed_price                    NUMBER,
+    discrete_cost                  NUMBER,
+    first_apply_flag               VARCHAR2(1)  NOT NULL,
+    created_by                     NUMBER(15,0) NOT NULL,
+    creation_date                  DATE NOT NULL,
+    last_updated_by                NUMBER(15,0) NOT NULL,
+    last_update_date               DATE NOT NULL,
+    last_update_login              NUMBER(15,0),
+    request_id                     NUMBER(15,0),
+    program_application_id         NUMBER(15,0),
+    program_id                     NUMBER(15,0),
+    program_update_date            DATE,
+    CONSTRAINT xxcmm_system_items_b_hst_pk PRIMARY KEY (item_hst_id)
+    USING INDEX TABLESPACE xxidx2
+)
+/
+COMMENT ON TABLE xxcmm.xxcmm_system_items_b_hst                         IS 'Disc品目変更履歴アドオン'
+/
+COMMENT ON COLUMN xxcmm.xxcmm_system_items_b_hst.item_hst_id            IS '品目変更履歴ID'
+/
+COMMENT ON COLUMN xxcmm.xxcmm_system_items_b_hst.item_id                IS '品目ID'
+/
+COMMENT ON COLUMN xxcmm.xxcmm_system_items_b_hst.item_code              IS '品目コード'
+/
+COMMENT ON COLUMN xxcmm.xxcmm_system_items_b_hst.apply_date             IS '適用日（適用開始日）'
+/
+COMMENT ON COLUMN xxcmm.xxcmm_system_items_b_hst.apply_flag             IS '適用有無'
+/
+COMMENT ON COLUMN xxcmm.xxcmm_system_items_b_hst.item_status            IS '品目ステータス'
+/
+COMMENT ON COLUMN xxcmm.xxcmm_system_items_b_hst.policy_group           IS '群コード（政策群コード）'
+/
+COMMENT ON COLUMN xxcmm.xxcmm_system_items_b_hst.fixed_price            IS '定価'
+/
+COMMENT ON COLUMN xxcmm.xxcmm_system_items_b_hst.discrete_cost          IS '営業原価'
+/
+COMMENT ON COLUMN xxcmm.xxcmm_system_items_b_hst.first_apply_flag       IS '初回適用フラグ'
+/
+COMMENT ON COLUMN xxcmm.xxcmm_system_items_b_hst.created_by             IS '作成者'
+/
+COMMENT ON COLUMN xxcmm.xxcmm_system_items_b_hst.creation_date          IS '作成日'
+/
+COMMENT ON COLUMN xxcmm.xxcmm_system_items_b_hst.last_updated_by        IS '最終更新者'
+/
+COMMENT ON COLUMN xxcmm.xxcmm_system_items_b_hst.last_update_date       IS '最終更新日'
+/
+COMMENT ON COLUMN xxcmm.xxcmm_system_items_b_hst.last_update_login      IS '最終更新ログイン'
+/
+COMMENT ON COLUMN xxcmm.xxcmm_system_items_b_hst.request_id             IS '要求ID'
+/
+COMMENT ON COLUMN xxcmm.xxcmm_system_items_b_hst.program_application_id IS 'コンカレント・プログラムのアプリケーションID'
+/
+COMMENT ON COLUMN xxcmm.xxcmm_system_items_b_hst.program_id             IS 'コンカレント・プログラムID'
+/
+COMMENT ON COLUMN xxcmm.xxcmm_system_items_b_hst.program_update_date    IS 'プログラムによる更新日'
+/

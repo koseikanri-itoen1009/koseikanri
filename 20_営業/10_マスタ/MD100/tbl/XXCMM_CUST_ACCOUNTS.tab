@@ -1,0 +1,269 @@
+CREATE TABLE xxcmm.xxcmm_cust_accounts 
+(
+    customer_id                 NUMBER          NOT NULL, 
+    customer_code               VARCHAR2(9)     NOT NULL, 
+    cust_update_flag            VARCHAR2(1), 
+    business_low_type           VARCHAR2(2), 
+    industry_div                VARCHAR2(2), 
+    selling_transfer_div        VARCHAR2(1), 
+    torihiki_form               VARCHAR2(1), 
+    delivery_form               VARCHAR2(1), 
+    wholesale_ctrl_code         VARCHAR2(9), 
+    ship_storage_code           VARCHAR2(10), 
+    start_tran_date             DATE, 
+    final_tran_date             DATE, 
+    past_final_tran_date        DATE, 
+    final_call_date             DATE, 
+    stop_approval_date          DATE, 
+    stop_approval_reason        VARCHAR2(1), 
+    vist_untarget_date          DATE, 
+    vist_target_div             VARCHAR2(1), 
+    party_representative_name   VARCHAR2(20), 
+    party_emp_name              VARCHAR2(20), 
+    sale_base_code              VARCHAR2(4), 
+    past_sale_base_code         VARCHAR2(4), 
+    rsv_sale_base_act_date      DATE, 
+    rsv_sale_base_code          VARCHAR2(4), 
+    delivery_base_code          VARCHAR2(4), 
+    sales_head_base_code        VARCHAR2(4), 
+    chain_store_code            VARCHAR2(4), 
+    store_code                  VARCHAR2(10), 
+    cust_store_name             VARCHAR2(30), 
+    torihikisaki_code           VARCHAR2(8), 
+    sales_chain_code            VARCHAR2(9), 
+    delivery_chain_code         VARCHAR2(9), 
+    policy_chain_code           VARCHAR2(30), 
+    intro_chain_code1           VARCHAR2(30), 
+    intro_chain_code2           VARCHAR2(30), 
+    tax_div                     VARCHAR2(1), 
+    rate                        NUMBER(3,2), 
+    receiv_discount_rate        NUMBER(3,2), 
+    conclusion_day1             NUMBER(2,0), 
+    conclusion_day2             NUMBER(2,0), 
+    conclusion_day3             NUMBER(2,0), 
+    contractor_supplier_code    VARCHAR2(9), 
+    bm_pay_supplier_code1       VARCHAR2(9), 
+    bm_pay_supplier_code2       VARCHAR2(9), 
+    delivery_order              VARCHAR2(14), 
+    edi_district_code           VARCHAR2(8), 
+    edi_district_name           VARCHAR2(40), 
+    edi_district_kana           VARCHAR2(20), 
+    center_edi_div              VARCHAR2(1), 
+    tsukagatazaiko_div          VARCHAR2(2), 
+    establishment_location      VARCHAR2(2), 
+    open_close_div              VARCHAR2(1), 
+    operation_div               VARCHAR2(1), 
+    change_amount               NUMBER(11,0), 
+    vendor_machine_number       VARCHAR2(30), 
+    established_site_name       VARCHAR2(30), 
+    cnvs_date                   DATE, 
+    cnvs_base_code              VARCHAR2(4), 
+    cnvs_business_person        VARCHAR2(5), 
+    new_point_div               VARCHAR2(1), 
+    new_point                   NUMBER(3,0), 
+    intro_base_code             VARCHAR2(4), 
+    intro_business_person       VARCHAR2(5), 
+    edi_chain_code              VARCHAR2(4), 
+    latitude                    VARCHAR2(20), 
+    longitude                   VARCHAR2(20), 
+    management_base_code        VARCHAR2(4), 
+    edi_item_code_div           VARCHAR2(1), 
+    edi_forward_number          VARCHAR2(2), 
+    handwritten_slip_div        VARCHAR2(1), 
+    deli_center_code            VARCHAR2(8), 
+    deli_center_name            VARCHAR2(20), 
+    dept_hht_div                VARCHAR2(1), 
+    bill_base_code              VARCHAR2(4), 
+    receiv_base_code            VARCHAR2(4), 
+    child_dept_shop_code        VARCHAR2(3), 
+    parnt_dept_shop_code        VARCHAR2(3), 
+    past_customer_status        VARCHAR2(2), 
+    created_by                  NUMBER(15,0)    NOT NULL, 
+    creation_date               DATE            NOT NULL, 
+    last_updated_by             NUMBER(15,0)    NOT NULL, 
+    last_update_date            DATE            NOT NULL, 
+    last_update_login           NUMBER(15,0), 
+    request_id                  NUMBER(15,0), 
+    program_application_id      NUMBER(15,0), 
+    program_id                  NUMBER(15,0), 
+    program_update_date         DATE, 
+    CONSTRAINT xxcmm_cust_accounts_pk PRIMARY KEY (customer_id)
+    USING INDEX TABLESPACE xxidx2
+)
+/
+COMMENT ON TABLE xxcmm.xxcmm_cust_accounts                              IS '顧客追加情報'
+/
+COMMENT ON COLUMN xxcmm.xxcmm_cust_accounts.customer_id                 IS '顧客ID'
+/
+COMMENT ON COLUMN xxcmm.xxcmm_cust_accounts.customer_code               IS '顧客コード'
+/
+COMMENT ON COLUMN xxcmm.xxcmm_cust_accounts.cust_update_flag            IS '新規／更新フラグ'
+/
+COMMENT ON COLUMN xxcmm.xxcmm_cust_accounts.business_low_type           IS '業態（小分類）'
+/
+COMMENT ON COLUMN xxcmm.xxcmm_cust_accounts.industry_div                IS '業種'
+/
+COMMENT ON COLUMN xxcmm.xxcmm_cust_accounts.selling_transfer_div        IS '売上実績振替'
+/
+COMMENT ON COLUMN xxcmm.xxcmm_cust_accounts.torihiki_form               IS '取引形態'
+/
+COMMENT ON COLUMN xxcmm.xxcmm_cust_accounts.delivery_form               IS '配送形態'
+/
+COMMENT ON COLUMN xxcmm.xxcmm_cust_accounts.wholesale_ctrl_code         IS '問屋管理コード'
+/
+COMMENT ON COLUMN xxcmm.xxcmm_cust_accounts.ship_storage_code           IS '出荷元保管場所(EDI)'
+/
+COMMENT ON COLUMN xxcmm.xxcmm_cust_accounts.start_tran_date             IS '初回取引日'
+/
+COMMENT ON COLUMN xxcmm.xxcmm_cust_accounts.final_tran_date             IS '最終取引日'
+/
+COMMENT ON COLUMN xxcmm.xxcmm_cust_accounts.past_final_tran_date        IS '前月最終取引日'
+/
+COMMENT ON COLUMN xxcmm.xxcmm_cust_accounts.final_call_date             IS '最終訪問日'
+/
+COMMENT ON COLUMN xxcmm.xxcmm_cust_accounts.stop_approval_date          IS '中止決裁日'
+/
+COMMENT ON COLUMN xxcmm.xxcmm_cust_accounts.stop_approval_reason        IS '中止理由'
+/
+COMMENT ON COLUMN xxcmm.xxcmm_cust_accounts.vist_untarget_date          IS '顧客対象外変更日'
+/
+COMMENT ON COLUMN xxcmm.xxcmm_cust_accounts.vist_target_div             IS '訪問対象区分'
+/
+COMMENT ON COLUMN xxcmm.xxcmm_cust_accounts.party_representative_name   IS '代表者名（相手先）'
+/
+COMMENT ON COLUMN xxcmm.xxcmm_cust_accounts.party_emp_name              IS '担当者（相手先）'
+/
+COMMENT ON COLUMN xxcmm.xxcmm_cust_accounts.sale_base_code              IS '売上拠点コード'
+/
+COMMENT ON COLUMN xxcmm.xxcmm_cust_accounts.past_sale_base_code         IS '前月売上拠点コード'
+/
+COMMENT ON COLUMN xxcmm.xxcmm_cust_accounts.rsv_sale_base_act_date      IS '予約売上拠点有効開始日'
+/
+COMMENT ON COLUMN xxcmm.xxcmm_cust_accounts.rsv_sale_base_code          IS '予約売上拠点コード'
+/
+COMMENT ON COLUMN xxcmm.xxcmm_cust_accounts.delivery_base_code          IS '納品拠点コード'
+/
+COMMENT ON COLUMN xxcmm.xxcmm_cust_accounts.sales_head_base_code        IS '販売先本部担当拠点'
+/
+COMMENT ON COLUMN xxcmm.xxcmm_cust_accounts.chain_store_code            IS 'チェーン店コード（EDI）'
+/
+COMMENT ON COLUMN xxcmm.xxcmm_cust_accounts.store_code                  IS '店舗コード'
+/
+COMMENT ON COLUMN xxcmm.xxcmm_cust_accounts.cust_store_name             IS '顧客店舗名称'
+/
+COMMENT ON COLUMN xxcmm.xxcmm_cust_accounts.torihikisaki_code           IS '取引先コード'
+/
+COMMENT ON COLUMN xxcmm.xxcmm_cust_accounts.sales_chain_code            IS '販売先チェーンコード'
+/
+COMMENT ON COLUMN xxcmm.xxcmm_cust_accounts.delivery_chain_code         IS '納品先チェーンコード'
+/
+COMMENT ON COLUMN xxcmm.xxcmm_cust_accounts.policy_chain_code           IS '政策用チェーンコード'
+/
+COMMENT ON COLUMN xxcmm.xxcmm_cust_accounts.intro_chain_code1           IS '紹介者チェーンコード１'
+/
+COMMENT ON COLUMN xxcmm.xxcmm_cust_accounts.intro_chain_code2           IS '紹介者チェーンコード２'
+/
+COMMENT ON COLUMN xxcmm.xxcmm_cust_accounts.tax_div                     IS '消費税区分'
+/
+COMMENT ON COLUMN xxcmm.xxcmm_cust_accounts.rate                        IS '消化計算用掛率'
+/
+COMMENT ON COLUMN xxcmm.xxcmm_cust_accounts.receiv_discount_rate        IS '入金値引率'
+/
+COMMENT ON COLUMN xxcmm.xxcmm_cust_accounts.conclusion_day1             IS '消化計算締め日１'
+/
+COMMENT ON COLUMN xxcmm.xxcmm_cust_accounts.conclusion_day2             IS '消化計算締め日２'
+/
+COMMENT ON COLUMN xxcmm.xxcmm_cust_accounts.conclusion_day3             IS '消化計算締め日３'
+/
+COMMENT ON COLUMN xxcmm.xxcmm_cust_accounts.contractor_supplier_code    IS '契約者仕入先コード'
+/
+COMMENT ON COLUMN xxcmm.xxcmm_cust_accounts.bm_pay_supplier_code1       IS '紹介者BM支払仕入先コード１'
+/
+COMMENT ON COLUMN xxcmm.xxcmm_cust_accounts.bm_pay_supplier_code2       IS '紹介者BM支払仕入先コード２'
+/
+COMMENT ON COLUMN xxcmm.xxcmm_cust_accounts.delivery_order              IS '配送順（EDI)'
+/
+COMMENT ON COLUMN xxcmm.xxcmm_cust_accounts.edi_district_code           IS 'EDI地区コード（EDI)'
+/
+COMMENT ON COLUMN xxcmm.xxcmm_cust_accounts.edi_district_name           IS 'EDI地区名（EDI)'
+/
+COMMENT ON COLUMN xxcmm.xxcmm_cust_accounts.edi_district_kana           IS 'EDI地区名カナ（EDI)'
+/
+COMMENT ON COLUMN xxcmm.xxcmm_cust_accounts.center_edi_div              IS 'センターEDI区分'
+/
+COMMENT ON COLUMN xxcmm.xxcmm_cust_accounts.tsukagatazaiko_div          IS '通過在庫型区分（EDI）'
+/
+COMMENT ON COLUMN xxcmm.xxcmm_cust_accounts.establishment_location      IS '設置ロケーション'
+/
+COMMENT ON COLUMN xxcmm.xxcmm_cust_accounts.open_close_div              IS '物件オープン・クローズ区分'
+/
+COMMENT ON COLUMN xxcmm.xxcmm_cust_accounts.operation_div               IS 'オペレーション区分'
+/
+COMMENT ON COLUMN xxcmm.xxcmm_cust_accounts.change_amount               IS '釣銭'
+/
+COMMENT ON COLUMN xxcmm.xxcmm_cust_accounts.vendor_machine_number       IS '自動販売機番号（相手先）'
+/
+COMMENT ON COLUMN xxcmm.xxcmm_cust_accounts.established_site_name       IS '設置先名（相手先）'
+/
+COMMENT ON COLUMN xxcmm.xxcmm_cust_accounts.cnvs_date                   IS '顧客獲得日'
+/
+COMMENT ON COLUMN xxcmm.xxcmm_cust_accounts.cnvs_base_code              IS '獲得拠点コード'
+/
+COMMENT ON COLUMN xxcmm.xxcmm_cust_accounts.cnvs_business_person        IS '獲得営業員'
+/
+COMMENT ON COLUMN xxcmm.xxcmm_cust_accounts.new_point_div               IS '新規ポイント区分'
+/
+COMMENT ON COLUMN xxcmm.xxcmm_cust_accounts.new_point                   IS '新規ポイント'
+/
+COMMENT ON COLUMN xxcmm.xxcmm_cust_accounts.intro_base_code             IS '紹介拠点コード'
+/
+COMMENT ON COLUMN xxcmm.xxcmm_cust_accounts.intro_business_person       IS '紹介営業員'
+/
+COMMENT ON COLUMN xxcmm.xxcmm_cust_accounts.edi_chain_code              IS 'チェーン店コード(EDI)【親レコード用】'
+/
+COMMENT ON COLUMN xxcmm.xxcmm_cust_accounts.latitude                    IS '緯度'
+/
+COMMENT ON COLUMN xxcmm.xxcmm_cust_accounts.longitude                   IS '経度'
+/
+COMMENT ON COLUMN xxcmm.xxcmm_cust_accounts.management_base_code        IS '管理元拠点コード'
+/
+COMMENT ON COLUMN xxcmm.xxcmm_cust_accounts.edi_item_code_div           IS 'EDI連携品目コード区分'
+/
+COMMENT ON COLUMN xxcmm.xxcmm_cust_accounts.edi_forward_number          IS 'EDI伝送追番'
+/
+COMMENT ON COLUMN xxcmm.xxcmm_cust_accounts.handwritten_slip_div        IS 'EDI手書伝票伝送区分'
+/
+COMMENT ON COLUMN xxcmm.xxcmm_cust_accounts.deli_center_code            IS 'EDI納品センターコード'
+/
+COMMENT ON COLUMN xxcmm.xxcmm_cust_accounts.deli_center_name            IS 'EDI納品センター名'
+/
+COMMENT ON COLUMN xxcmm.xxcmm_cust_accounts.dept_hht_div                IS '百貨店用HHT区分'
+/
+COMMENT ON COLUMN xxcmm.xxcmm_cust_accounts.bill_base_code              IS '請求拠点コード'
+/
+COMMENT ON COLUMN xxcmm.xxcmm_cust_accounts.receiv_base_code            IS '入金拠点コード'
+/
+COMMENT ON COLUMN xxcmm.xxcmm_cust_accounts.child_dept_shop_code        IS '百貨店伝区コード'
+/
+COMMENT ON COLUMN xxcmm.xxcmm_cust_accounts.parnt_dept_shop_code        IS '百貨店伝区コード【親レコード用】'
+/
+COMMENT ON COLUMN xxcmm.xxcmm_cust_accounts.past_customer_status        IS '前月顧客ステータス'
+/
+COMMENT ON COLUMN xxcmm.xxcmm_cust_accounts.created_by                  IS '作成者'
+/
+COMMENT ON COLUMN xxcmm.xxcmm_cust_accounts.creation_date               IS '作成日'
+/
+COMMENT ON COLUMN xxcmm.xxcmm_cust_accounts.last_updated_by             IS '最終更新者'
+/
+COMMENT ON COLUMN xxcmm.xxcmm_cust_accounts.last_update_date            IS '最終更新日'
+/
+COMMENT ON COLUMN xxcmm.xxcmm_cust_accounts.last_update_login           IS '最終更新ﾛｸﾞｲﾝ'
+/
+COMMENT ON COLUMN xxcmm.xxcmm_cust_accounts.request_id                  IS '要求ID'
+/
+COMMENT ON COLUMN xxcmm.xxcmm_cust_accounts.program_application_id      IS 'ｺﾝｶﾚﾝﾄ･ﾌﾟﾛｸﾞﾗﾑ･ｱﾌﾟﾘｹｰｼｮﾝID'
+/
+COMMENT ON COLUMN xxcmm.xxcmm_cust_accounts.program_id                  IS 'ｺﾝｶﾚﾝﾄ･ﾌﾟﾛｸﾞﾗﾑID'
+/
+COMMENT ON COLUMN xxcmm.xxcmm_cust_accounts.program_update_date         IS 'ﾌﾟﾛｸﾞﾗﾑ更新日'
+/

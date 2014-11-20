@@ -1,0 +1,5 @@
+CREATE INDEX xxcmm.xxcmm_system_items_b_hst_n01
+ON xxcmm.xxcmm_system_items_b_hst
+(item_code, apply_date, apply_flag)
+TABLESPACE xxidx2
+/

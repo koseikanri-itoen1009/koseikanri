@@ -1,0 +1,5 @@
+CREATE UNIQUE INDEX xxcmm.xxcmm_system_items_b_u01
+ON xxcmm.xxcmm_system_items_b
+(item_code)
+TABLESPACE xxidx2
+/

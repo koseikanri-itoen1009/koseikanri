@@ -1,0 +1,2 @@
+CREATE SYNONYM apps.xxcmm_system_items_b_hst FOR xxcmm.xxcmm_system_items_b_hst
+/

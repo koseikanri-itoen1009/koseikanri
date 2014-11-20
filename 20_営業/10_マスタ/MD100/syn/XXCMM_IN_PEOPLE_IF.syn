@@ -1,0 +1,2 @@
+CREATE SYNONYM apps.xxcmm_in_people_if FOR xxcmm.xxcmm_in_people_if
+/

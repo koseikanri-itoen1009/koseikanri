@@ -1,0 +1,93 @@
+CREATE TABLE xxcmm.xxcmm_system_items_b
+(
+    item_id                        NUMBER NOT NULL,
+    item_code                      VARCHAR2(40) NOT NULL,
+    tax_rate                       NUMBER(2,0),
+    baracha_div                    NUMBER(1,0),
+    nets                           NUMBER(4,1),
+    nets_uom_code                  VARCHAR2(1),
+    inc_num                        NUMBER(4,1),
+    vessel_group                   VARCHAR2(4),
+    acnt_group                     VARCHAR2(4),
+    acnt_vessel_group              VARCHAR2(4),
+    brand_group                    VARCHAR2(4),
+    sp_supplier_code               VARCHAR2(9),
+    case_jan_code                  VARCHAR2(13),
+    new_item_div                   VARCHAR2(1),
+    bowl_inc_num                   NUMBER(5,0),
+    item_status_apply_date         DATE,
+    item_status                    NUMBER(2,0),
+    renewal_item_code              VARCHAR2(40),
+    search_update_date             DATE,
+    created_by                     NUMBER(15,0) NOT NULL,
+    creation_date                  DATE NOT NULL,
+    last_updated_by                NUMBER(15,0) NOT NULL,
+    last_update_date               DATE NOT NULL,
+    last_update_login              NUMBER(15,0),
+    request_id                     NUMBER(15,0),
+    program_application_id         NUMBER(15,0),
+    program_id                     NUMBER(15,0),
+    program_update_date            DATE,
+    CONSTRAINT xxcmm_system_items_b_pk PRIMARY KEY (item_id)
+    USING INDEX TABLESPACE xxidx2
+)
+TABLESPACE xxdata2
+/
+COMMENT ON TABLE xxcmm.xxcmm_system_items_b                         IS 'Disc品目アドオン'
+/
+COMMENT ON COLUMN xxcmm.xxcmm_system_items_b.item_id                IS '品目ID'
+/
+COMMENT ON COLUMN xxcmm.xxcmm_system_items_b.item_code              IS '品目コード'
+/
+COMMENT ON COLUMN xxcmm.xxcmm_system_items_b.tax_rate               IS '消費税率'
+/
+COMMENT ON COLUMN xxcmm.xxcmm_system_items_b.baracha_div            IS 'バラ茶区分'
+/
+COMMENT ON COLUMN xxcmm.xxcmm_system_items_b.nets                   IS '内容量'
+/
+COMMENT ON COLUMN xxcmm.xxcmm_system_items_b.nets_uom_code          IS '内容量単位'
+/
+COMMENT ON COLUMN xxcmm.xxcmm_system_items_b.inc_num                IS '内訳入数'
+/
+COMMENT ON COLUMN xxcmm.xxcmm_system_items_b.vessel_group           IS '容器群'
+/
+COMMENT ON COLUMN xxcmm.xxcmm_system_items_b.acnt_group             IS '経理群'
+/
+COMMENT ON COLUMN xxcmm.xxcmm_system_items_b.acnt_vessel_group      IS '経理容器群'
+/
+COMMENT ON COLUMN xxcmm.xxcmm_system_items_b.brand_group            IS 'ブランド群'
+/
+COMMENT ON COLUMN xxcmm.xxcmm_system_items_b.sp_supplier_code       IS '専門店仕入先コード'
+/
+COMMENT ON COLUMN xxcmm.xxcmm_system_items_b.case_jan_code          IS 'ケースJANコード'
+/
+COMMENT ON COLUMN xxcmm.xxcmm_system_items_b.new_item_div           IS '新商品区分'
+/
+COMMENT ON COLUMN xxcmm.xxcmm_system_items_b.bowl_inc_num           IS 'ボール入数'
+/
+COMMENT ON COLUMN xxcmm.xxcmm_system_items_b.item_status_apply_date IS '品目ステータス適用日'
+/
+COMMENT ON COLUMN xxcmm.xxcmm_system_items_b.item_status            IS '品目ステータス'
+/
+COMMENT ON COLUMN xxcmm.xxcmm_system_items_b.renewal_item_code      IS 'リニューアル元商品コード'
+/
+COMMENT ON COLUMN xxcmm.xxcmm_system_items_b.search_update_date     IS '検索対象更新日'
+/
+COMMENT ON COLUMN xxcmm.xxcmm_system_items_b.created_by             IS '作成者'
+/
+COMMENT ON COLUMN xxcmm.xxcmm_system_items_b.creation_date          IS '作成日'
+/
+COMMENT ON COLUMN xxcmm.xxcmm_system_items_b.last_updated_by        IS '最終更新者'
+/
+COMMENT ON COLUMN xxcmm.xxcmm_system_items_b.last_update_date       IS '最終更新日'
+/
+COMMENT ON COLUMN xxcmm.xxcmm_system_items_b.last_update_login      IS '最終更新ログイン'
+/
+COMMENT ON COLUMN xxcmm.xxcmm_system_items_b.request_id             IS '要求ID'
+/
+COMMENT ON COLUMN xxcmm.xxcmm_system_items_b.program_application_id IS 'コンカレント・プログラムのアプリケーションID'
+/
+COMMENT ON COLUMN xxcmm.xxcmm_system_items_b.program_id             IS 'コンカレント・プログラムID'
+/
+COMMENT ON COLUMN xxcmm.xxcmm_system_items_b.program_update_date    IS 'プログラムによる更新日'
+/

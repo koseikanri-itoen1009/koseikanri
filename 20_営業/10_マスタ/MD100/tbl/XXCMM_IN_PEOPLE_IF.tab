@@ -1,0 +1,128 @@
+CREATE TABLE xxcmm.xxcmm_in_people_if (
+  employee_number          VARCHAR2(5),
+  hire_date                DATE,
+  actual_termination_date  DATE,
+  last_name_kanji          VARCHAR2(10),
+  first_name_kanji         VARCHAR2(10),
+  last_name                VARCHAR2(10),
+  first_name               VARCHAR2(10),
+  sex                      VARCHAR2(1),
+  employee_division        VARCHAR2(1),
+  location_code            VARCHAR2(4),
+  change_code              VARCHAR2(2),
+  announce_date            VARCHAR2(8),
+  office_location_code     VARCHAR2(4),
+  license_code             VARCHAR2(3),
+  license_name             VARCHAR2(20),
+  job_post                 VARCHAR2(3),
+  job_post_name            VARCHAR2(20),
+  job_duty                 VARCHAR2(3),
+  job_duty_name            VARCHAR2(20),
+  job_type                 VARCHAR2(2),
+  job_type_name            VARCHAR2(20),
+  job_system               VARCHAR2(2),
+  job_system_name          VARCHAR2(30),
+  job_post_order           VARCHAR2(2),
+  consent_division         VARCHAR2(7),
+  agent_division           VARCHAR2(7),
+  location_code_old        VARCHAR2(4),
+  office_location_code_old VARCHAR2(4),
+  license_code_old         VARCHAR2(3),
+  license_code_name_old    VARCHAR2(20),
+  job_post_old             VARCHAR2(3),
+  job_post_name_old        VARCHAR2(20),
+  job_duty_old             VARCHAR2(3),
+  job_duty_name_old        VARCHAR2(20),
+  job_type_old             VARCHAR2(2),
+  job_type_name_old        VARCHAR2(20),
+  job_system_old           VARCHAR2(2),
+  job_system_name_old      VARCHAR2(30),
+  job_post_order_old       VARCHAR2(2),
+  consent_division_old     VARCHAR2(7),
+  agent_division_old       VARCHAR2(7)
+  )  TABLESPACE xxdata2
+/
+  COMMENT ON TABLE  xxcmm.xxcmm_in_people_if                         IS '社員インターフェース'
+/
+  COMMENT ON COLUMN xxcmm.xxcmm_in_people_if.employee_number         IS '社員番号'
+/
+  COMMENT ON COLUMN xxcmm.xxcmm_in_people_if.hire_date               IS '入社年月日'
+/
+  COMMENT ON COLUMN xxcmm.xxcmm_in_people_if.actual_termination_date IS '退職年月日'
+/
+  COMMENT ON COLUMN xxcmm.xxcmm_in_people_if.last_name_kanji         IS '漢字姓'
+/
+  COMMENT ON COLUMN xxcmm.xxcmm_in_people_if.first_name_kanji        IS '漢字名'
+/
+  COMMENT ON COLUMN xxcmm.xxcmm_in_people_if.last_name               IS 'カナ姓'
+/
+  COMMENT ON COLUMN xxcmm.xxcmm_in_people_if.first_name              IS 'カナ名'
+/
+  COMMENT ON COLUMN xxcmm.xxcmm_in_people_if.sex                     IS '性別 M:男 F:女'
+/
+  COMMENT ON COLUMN xxcmm.xxcmm_in_people_if.employee_division       IS '社員外部委託区分 1:社員 2:外部委託'
+/
+  COMMENT ON COLUMN xxcmm.xxcmm_in_people_if.location_code           IS '所属コード（新）'
+/
+  COMMENT ON COLUMN xxcmm.xxcmm_in_people_if.change_code             IS '異動事由コード'
+/
+  COMMENT ON COLUMN xxcmm.xxcmm_in_people_if.announce_date           IS '発令日'
+/
+  COMMENT ON COLUMN xxcmm.xxcmm_in_people_if.office_location_code    IS '勤務地拠点コード（新）'
+/
+  COMMENT ON COLUMN xxcmm.xxcmm_in_people_if.license_code            IS '資格コード（新）'
+/
+  COMMENT ON COLUMN xxcmm.xxcmm_in_people_if.license_name            IS '資格名（新）'
+/
+  COMMENT ON COLUMN xxcmm.xxcmm_in_people_if.job_post                IS '職位コード（新）'
+/
+  COMMENT ON COLUMN xxcmm.xxcmm_in_people_if.job_post_name           IS '職位名（新）'
+/
+  COMMENT ON COLUMN xxcmm.xxcmm_in_people_if.job_duty                IS '職務コード（新）'
+/
+  COMMENT ON COLUMN xxcmm.xxcmm_in_people_if.job_duty_name           IS '職務名（新）'
+/
+  COMMENT ON COLUMN xxcmm.xxcmm_in_people_if.job_type                IS '職種コード（新）'
+/
+  COMMENT ON COLUMN xxcmm.xxcmm_in_people_if.job_type_name           IS '職種名（新）'
+/
+  COMMENT ON COLUMN xxcmm.xxcmm_in_people_if.job_system              IS '適用労働時間制コード（新）'
+/
+  COMMENT ON COLUMN xxcmm.xxcmm_in_people_if.job_system_name         IS '適用労働名（新）'
+/
+  COMMENT ON COLUMN xxcmm.xxcmm_in_people_if.job_post_order          IS '職位並順コード（新）'
+/
+  COMMENT ON COLUMN xxcmm.xxcmm_in_people_if.consent_division        IS '承認区分（新）'
+/
+  COMMENT ON COLUMN xxcmm.xxcmm_in_people_if.agent_division          IS '代行区分（新）'
+/
+  COMMENT ON COLUMN xxcmm.xxcmm_in_people_if.location_code_old       IS '所属コード（旧）'
+/
+  COMMENT ON COLUMN xxcmm.xxcmm_in_people_if.office_location_code_old IS '勤務地拠点コード（旧）'
+/
+  COMMENT ON COLUMN xxcmm.xxcmm_in_people_if.license_code_old        IS '資格コード（旧）'
+/
+  COMMENT ON COLUMN xxcmm.xxcmm_in_people_if.license_code_name_old   IS '資格名（旧）'
+/
+  COMMENT ON COLUMN xxcmm.xxcmm_in_people_if.job_post_old            IS '職位コード（旧）'
+/
+  COMMENT ON COLUMN xxcmm.xxcmm_in_people_if.job_post_name_old       IS '職位名（旧）'
+/
+  COMMENT ON COLUMN xxcmm.xxcmm_in_people_if.job_duty_old            IS '職務コード（旧）'
+/
+  COMMENT ON COLUMN xxcmm.xxcmm_in_people_if.job_duty_name_old       IS '職務名（旧）'
+/
+  COMMENT ON COLUMN xxcmm.xxcmm_in_people_if.job_type_old            IS '職種コード（旧）'
+/
+  COMMENT ON COLUMN xxcmm.xxcmm_in_people_if.job_type_name_old       IS '職種名（旧）'
+/
+  COMMENT ON COLUMN xxcmm.xxcmm_in_people_if.job_system_old          IS '適用労働時間制コード（旧）'
+/
+  COMMENT ON COLUMN xxcmm.xxcmm_in_people_if.job_system_name_old     IS '適用労働名（旧）'
+/
+  COMMENT ON COLUMN xxcmm.xxcmm_in_people_if.job_post_order_old      IS '職位並順コード（旧）'
+/
+  COMMENT ON COLUMN xxcmm.xxcmm_in_people_if.consent_division_old    IS '承認区分（旧）'
+/
+  COMMENT ON COLUMN xxcmm.xxcmm_in_people_if.agent_division_old      IS '代行区分（旧）'
+/

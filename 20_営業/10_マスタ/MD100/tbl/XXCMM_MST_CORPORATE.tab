@@ -1,0 +1,62 @@
+CREATE TABLE xxcmm.xxcmm_mst_corporate
+(
+    customer_id                 NUMBER          NOT NULL,
+    tdb_code                    VARCHAR2(12),
+    base_code                   VARCHAR2(4),
+    credit_limit                NUMBER(11,0),
+    decide_div                  VARCHAR2(1),
+    approval_date               DATE,
+    enterprise_group_code       VARCHAR2(9),
+    representative_name         VARCHAR2(20),
+    applicant_base_code         VARCHAR2(4),
+    created_by                  NUMBER(15,0)    NOT NULL,
+    creation_date               DATE            NOT NULL,
+    last_updated_by             NUMBER(15,0)    NOT NULL,
+    last_update_date            DATE            NOT NULL,
+    last_update_login           NUMBER(15,0),
+    request_id                  NUMBER(15,0),
+    program_application_id      NUMBER(15,0),
+    program_id                  NUMBER(15,0),
+    program_update_date         DATE,
+    CONSTRAINT xxcmm_mst_corporate_pk PRIMARY KEY (customer_id)
+    USING INDEX TABLESPACE xxidx2
+)
+/
+COMMENT ON TABLE xxcmm.xxcmm_mst_corporate                          IS '顧客法人情報'
+/
+COMMENT ON COLUMN xxcmm.xxcmm_mst_corporate.customer_id             IS '顧客ID'
+/
+COMMENT ON COLUMN xxcmm.xxcmm_mst_corporate.tdb_code                IS 'TDBコード'
+/
+COMMENT ON COLUMN xxcmm.xxcmm_mst_corporate.base_code               IS '本部担当拠点'
+/
+COMMENT ON COLUMN xxcmm.xxcmm_mst_corporate.credit_limit            IS '与信限度額'
+/
+COMMENT ON COLUMN xxcmm.xxcmm_mst_corporate.decide_div              IS '判定区分'
+/
+COMMENT ON COLUMN xxcmm.xxcmm_mst_corporate.approval_date           IS '決裁日付'
+/
+COMMENT ON COLUMN xxcmm.xxcmm_mst_corporate.enterprise_group_code   IS '企業グループコード'
+/
+COMMENT ON COLUMN xxcmm.xxcmm_mst_corporate.representative_name     IS '代表者名'
+/
+COMMENT ON COLUMN xxcmm.xxcmm_mst_corporate.applicant_base_code     IS '申請拠点'
+/
+COMMENT ON COLUMN xxcmm.xxcmm_mst_corporate.created_by              IS '作成者'
+/
+COMMENT ON COLUMN xxcmm.xxcmm_mst_corporate.creation_date           IS '作成日'
+/
+COMMENT ON COLUMN xxcmm.xxcmm_mst_corporate.last_updated_by         IS '最終更新者'
+/
+COMMENT ON COLUMN xxcmm.xxcmm_mst_corporate.last_update_date        IS '最終更新日'
+/
+COMMENT ON COLUMN xxcmm.xxcmm_mst_corporate.last_update_login       IS '最終更新ﾛｸﾞｲﾝ'
+/
+COMMENT ON COLUMN xxcmm.xxcmm_mst_corporate.request_id              IS '要求ID'
+/
+COMMENT ON COLUMN xxcmm.xxcmm_mst_corporate.program_application_id  IS 'ｺﾝｶﾚﾝﾄ･ﾌﾟﾛｸﾞﾗﾑ･ｱﾌﾟﾘｹｰｼｮﾝID'
+/
+COMMENT ON COLUMN xxcmm.xxcmm_mst_corporate.program_id              IS 'ｺﾝｶﾚﾝﾄ･ﾌﾟﾛｸﾞﾗﾑID'
+/
+COMMENT ON COLUMN xxcmm.xxcmm_mst_corporate.program_update_date     IS 'ﾌﾟﾛｸﾞﾗﾑ更新日'
+/
