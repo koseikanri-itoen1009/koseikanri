@@ -3,13 +3,14 @@
  *
  * View Name       : XXCOP_ITEM_CATEGORIES1_V
  * Description     : 計画_品目カテゴリビュー1
- * Version         : 1.0
+ * Version         : 1.1
  *
  * Change Record
  * ------------- ----- ---------------- ---------------------------------
  *  Date          Ver.  Editor           Description
  * ------------- ----- ---------------- ---------------------------------
  *  2008-10-30    1.0   SCS.Kikuchi     新規作成
+ *  2009-06-10    1.1   SCS.Kikuchi     抽出条件：カテゴリ名称修正(障害T1_1386)
  *
  ************************************************************************/
 CREATE OR REPLACE FORCE VIEW XXCOP_ITEM_CATEGORIES1_V
@@ -77,7 +78,10 @@ SELECT msib.inventory_item_id					-- INV品目ID
   AND  gic_s.category_id        = mcb_s.category_id
   AND  mcst_s.source_lang       = USERENV('LANG')
   AND  mcst_s.language          = USERENV('LANG')
-  AND  mcst_s.category_set_name = '商品区分'
+--20090610_Ver1.1_T1_1386_SCS.Kikuchi_MOD_START
+--  AND  mcst_s.category_set_name = '商品区分'
+  AND  mcst_s.category_set_name = '本社商品区分'
+--20090610_Ver1.1_T1_1386_SCS.Kikuchi_MOD_END
   AND  mcsb_s.category_set_id   = mcst_s.category_set_id
   AND  gic_s.category_set_id    = mcsb_s.category_set_id
   AND  gic_s.item_id            = gic_h.item_id
@@ -88,7 +92,10 @@ SELECT msib.inventory_item_id					-- INV品目ID
   AND  gic_h.category_id        = mcb_h.category_id
   AND  mcst_h.source_lang       = USERENV('LANG')
   AND  mcst_h.language          = USERENV('LANG')
-  AND  mcst_h.category_set_name = '群コード'
+--20090610_Ver1.1_T1_1386_SCS.Kikuchi_MOD_START
+--  AND  mcst_h.category_set_name = '群コード'
+  AND  mcst_h.category_set_name = '政策群コード'
+--20090610_Ver1.1_T1_1386_SCS.Kikuchi_MOD_END
   AND  mcsb_h.category_set_id   = mcst_h.category_set_id
   AND  gic_h.category_set_id    = mcsb_h.category_set_id
   AND  iimb_p.item_id           = ximb.parent_item_id
