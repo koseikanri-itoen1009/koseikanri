@@ -1,0 +1,1119 @@
+CREATE OR REPLACE
+PACKAGE BODY xxinv550004c
+AS
+/*****************************************************************************************
+ * Copyright(c)Oracle Corporation Japan, 2008. All rights reserved.
+ *
+ * Package Name     : xxinv550004c(body)
+ * Description      : 棚卸スナップショット作成
+ * MD.050           : 在庫(帳票)               T_MD050_BPO_550
+ * MD.070           : 棚卸スナップショット作成 T_MD070_BPO_55D
+ * Version          : 1.1
+ *
+ * Program List
+ * -------------------- ------------------------------------------------------------
+ *  Name                 Description
+ * -------------------- ------------------------------------------------------------
+ *  create_snapshot      棚卸スナップショット作成ファンクション
+ *
+ * Change Record
+ * ------------- ----- ---------------- -------------------------------------------------
+ *  Date          Ver.  Editor           Description
+ * ------------- ----- ---------------- -------------------------------------------------
+ *  2008/01/10    1.0   R.Matusita       新規作成
+ *  2008/05/07    1.1   S.Nakamura       内部変更要求#47,#62
+ *  2008/05/20    1.2   K.Kumamoto       結合テスト障害(User-Defined Exception)対応
+ *
+ *****************************************************************************************/
+--  
+--#######################  固定グローバル定数宣言部 START   #######################
+--
+  gv_status_normal CONSTANT VARCHAR2(1) := '0';
+  gv_status_warn   CONSTANT VARCHAR2(1) := '1';
+  gv_status_error  CONSTANT VARCHAR2(1) := '2';
+  gv_sts_cd_normal CONSTANT VARCHAR2(1) := 'C';
+  gv_sts_cd_warn   CONSTANT VARCHAR2(1) := 'G';
+  gv_sts_cd_error  CONSTANT VARCHAR2(1) := 'E';
+  gv_msg_part      CONSTANT VARCHAR2(3) := ' : ';
+  gv_msg_cont      CONSTANT VARCHAR2(3) := '.';
+--
+--################################  固定部 END   ##################################
+--
+--#######################  固定グローバル変数宣言部 START   #######################
+--
+  -- ===============================
+  -- ユーザー定義グローバル型
+  -- ===============================
+--
+-- 手持数量情報を格納するテーブル型の定義
+  TYPE  invent_monthly_stock_id   IS TABLE OF  NUMBER               INDEX BY BINARY_INTEGER;  -- 棚卸月末在庫ID
+  TYPE  whse_code_type   IS TABLE OF  ic_loct_inv.whse_code%TYPE    INDEX BY BINARY_INTEGER;  -- OPM手持数量  倉庫コード
+  TYPE  item_id_type     IS TABLE OF  ic_item_mst_b.item_id%TYPE    INDEX BY BINARY_INTEGER;  -- OPM品目マスタ  品目ID
+  TYPE  item_no_type     IS TABLE OF  ic_item_mst_b.item_no%TYPE    INDEX BY BINARY_INTEGER;  -- OPM品目マスタ  品目コード
+  TYPE  lot_id_type      IS TABLE OF  ic_lots_mst.lot_id%TYPE       INDEX BY BINARY_INTEGER;  -- OPMロットマスタ  ロットID
+  TYPE  lot_no_type      IS TABLE OF  ic_lots_mst.lot_no%TYPE       INDEX BY BINARY_INTEGER;  -- OPMロットマスタ  ロットNo
+  TYPE  lot_ctl_type     IS TABLE OF  ic_item_mst_b.lot_ctl%TYPE    INDEX BY BINARY_INTEGER;  -- OPM品目マスタ  ロット管理区分
+  TYPE  loct_onhand_type IS TABLE OF  ic_loct_inv.loct_onhand%TYPE  INDEX BY BINARY_INTEGER;  -- OPM手持数量  手持数量
+--
+  -- ===============================
+  -- ユーザー定義グローバル変数
+  -- ===============================
+--
+  curr_invent_monthly_stock_id invent_monthly_stock_id; -- 棚卸月末在庫ID
+  curr_whse_code_tbl      whse_code_type;             -- OPM手持数量  倉庫コード
+  curr_item_id_tbl        item_id_type;               -- OPM品目マスタ  品目ID
+  curr_item_no_tbl        item_no_type;               -- OPM品目マスタ  品目コード
+  curr_lot_id_tbl         lot_id_type;                -- OPMロットマスタ  ロットID
+  curr_lot_no_tbl         lot_no_type;                -- OPMロットマスタ  ロットNo
+  curr_lot_ctl_tbl        lot_ctl_type;               -- OPM品目マスタ  ロット管理区分
+  curr_loct_onhand_tbl    loct_onhand_type;           -- OPM手持数量  手持数量
+--
+  -- 前月用
+  pre_invent_monthly_stock_id invent_monthly_stock_id; -- 棚卸月末在庫ID
+  pre_whse_code_tbl      whse_code_type;             -- OPM手持数量  倉庫コード
+  pre_item_id_tbl        item_id_type;               -- OPM品目マスタ  品目ID
+  pre_item_no_tbl        item_no_type;               -- OPM品目マスタ  品目コード
+  pre_lot_id_tbl         lot_id_type;                -- OPMロットマスタ  ロットID
+  pre_lot_no_tbl         lot_no_type;                -- OPMロットマスタ  ロットNo
+  pre_lot_ctl_tbl        lot_ctl_type;               -- OPM品目マスタ  ロット管理区分
+  pre_loct_onhand_tbl    loct_onhand_type;           -- OPM手持数量  手持数量
+--
+  i                  NUMBER;                     -- ループカウンター
+--
+  gn_ret_nomal       CONSTANT NUMBER :=  0;      -- 正常
+  gn_ret_error       CONSTANT NUMBER :=  1;      -- 初期処理エラー,日付チェックエラー
+  gn_ret_lock_error  CONSTANT NUMBER :=  2;      -- ロックエラー
+  gn_ret_other_error CONSTANT NUMBER := -1;      -- その他のエラー
+--
+  gv_pkg_name        CONSTANT VARCHAR2(100) := 'xxinv550004c'; -- パッケージ名
+--
+  lv_errbuf  VARCHAR2(5000);  -- エラー・メッセージ
+  lv_retcode VARCHAR2(1);     -- リターン・コード
+  lv_errmsg  VARCHAR2(5000);  -- ユーザー・エラー・メッセージ
+--
+--################################  固定部 END   ##################################
+--
+--##########################  固定共通例外宣言部 START  ###########################
+--
+  --*** 処理部共通例外 ***
+  global_process_expt       EXCEPTION;
+  --*** 共通関数例外 ***
+  global_api_expt           EXCEPTION;
+  --*** 共通関数OTHERS例外 ***
+  global_api_others_expt    EXCEPTION;
+  -- *** 削除・登録エラーハンドラ ***
+  global_del_ins_expt       EXCEPTION;
+--
+--################################  固定部 END   ##################################
+--
+   /**********************************************************************************
+   * Function Name    : create_snapshot
+   * Description      : 棚卸スナップショット作成関数
+   ***********************************************************************************/
+  FUNCTION create_snapshot(
+    iv_invent_ym        IN  VARCHAR2,               -- 対象年月(YYYYMM)
+    iv_whse_code1       IN  VARCHAR2 DEFAULT NULL,  -- 倉庫コード１
+    iv_whse_code2       IN  VARCHAR2 DEFAULT NULL,  -- 倉庫コード２
+    iv_whse_code3       IN  VARCHAR2 DEFAULT NULL,  -- 倉庫コード３
+    iv_whse_department1 IN  VARCHAR2 DEFAULT NULL,  -- 倉庫管理部署１
+    iv_whse_department2 IN  VARCHAR2 DEFAULT NULL,  -- 倉庫管理部署２
+    iv_whse_department3 IN  VARCHAR2 DEFAULT NULL,  -- 倉庫管理部署３
+    iv_block1           IN  VARCHAR2 DEFAULT NULL,  -- ブロック１
+    iv_block2           IN  VARCHAR2 DEFAULT NULL,  -- ブロック２
+    iv_block3           IN  VARCHAR2 DEFAULT NULL,  -- ブロック３
+    iv_arti_div_code    IN  VARCHAR2,               -- 商品区分
+    iv_item_class_code  IN  VARCHAR2)               -- 品目区分
+    RETURN NUMBER
+  IS
+--
+    -- ===============================
+    -- 固定ローカル定数
+    -- ===============================
+    cv_prg_name   CONSTANT VARCHAR2(100) := 'create_snapshot'; --プログラム名
+    -- ===============================
+    -- ユーザー宣言部
+    -- ===============================
+    -- *** ローカル変数 ***
+--    
+    lv_pre_invent_ym           VARCHAR2(6);-- 起動パラメータの対象年月の前月
+    ld_invent_begin_ymd        DATE;       -- 月初日
+    ld_invent_end_ymd          DATE;       -- 月末日
+    ld_pre_invent_begin_ymd    DATE;       -- 前月の月初日
+    ld_pre_invent_end_ymd      DATE;       -- 前月の月末日
+--
+    ln_whse_code_nullflg       NUMBER;     -- 倉庫コードNULLチェックフラグ
+    ln_whse_department_nullflg NUMBER;     -- 倉庫管理部署NULLチェックフラグ
+    ln_block_nullflg           NUMBER;     -- ブロックNULLチェックフラグ
+--
+    TYPE ary_quantity IS TABLE OF NUMBER INDEX BY BINARY_INTEGER;-- 数量配列
+--
+    ln_d3_itp_trans_qty ary_quantity;      -- D-3 OPM保留在庫トランザクション 数量
+    ln_d3_itc_trans_qty ary_quantity;      -- D-3 OPM完了在庫トランザクション 数量
+    ln_d4_quantity ary_quantity;           -- D-4. 移動積送分情報抽出 数量
+    ln_d5_quantity ary_quantity;           -- D-5. 出荷・有償積送分情報抽出 数量
+    ln_d7_quantity ary_quantity;           -- D-7. 移動積送分情報抽出（前月分） 数量
+    ln_d8_quantity ary_quantity;           -- D-8. 出荷・有償積送分情報抽出（前月分） 数量
+--
+    ln_user_id          NUMBER;            -- ログインしているユーザー
+    ln_login_id         NUMBER;            -- 最終更新ログイン
+    ln_conc_request_id  NUMBER;            -- 要求ID
+    ln_prog_appl_id     NUMBER;            -- コンカレント・プログラム・アプリケーションID
+    ln_conc_program_id  NUMBER;            -- コンカレント・プログラムID
+--
+    lv_item_div     VARCHAR2(100);         -- プロファイル'商品区分'
+    lv_article_div  VARCHAR2(100);         -- プロファイル'品目区分'
+    lv_orgid_div    NUMBER;                -- プロファイル'マスタ組織ID'
+--
+    lv_item_cd      VARCHAR2(40);          -- 品目マスタ形式置換え用品目コード
+--
+    ln_invent_monthly_stock_id NUMBER;     -- 棚卸月末在庫ID
+--
+    lv_sysdate_ym   VARCHAR2(6);           -- 現在日付
+--
+    -- D-2. 手持数量情報抽出カーソル
+    CURSOR current_cargo_cur IS
+    SELECT iiim.whse_code whse_code,               -- OPM手持数量  倉庫コード (※D-6と違う)
+           iiim.item_id   item_id,                 -- OPM品目マスタ  品目ID
+           iiim.item_no   item_no,                 -- OPM品目マスタ  品目コード
+           iiim.lot_id    lot_id,                  -- OPMロットマスタ  ロットID
+           iiim.lot_no    lot_no,                  -- OPMロットマスタ  ロットNo
+           iiim.lot_ctl   lot_ctl,                 -- OPM品目マスタ  ロット管理区分
+           SUM(NVL(ili.loct_onhand,0)) loct_onhand -- OPM手持数量  手持数量
+    FROM   ic_loct_inv ili,                        -- OPM手持数量 (※D-6と違う)
+           (SELECT xilv.whse_code,
+                   xilv.segment1,                  -- add 2008/05/07 #47対応
+                   ximv.item_id,
+                   ximv.item_no, 
+                   ilm.lot_id, 
+                   ximv.lot_ctl,
+                   ilm.lot_no
+            FROM   xxcmn_item_mst_v ximv,         -- OPM品目マスタ情報VIEW
+                   ic_lots_mst ilm,               -- OPMロットマスタ
+                   xxcmn_item_locations_v xilv,   -- OPM保管場所情報VIEW
+                   xxcmn_item_categories_v xicv1, -- OPM品目カテゴリ割当情報VIEW1
+                   xxcmn_item_categories_v xicv2  -- OPM品目カテゴリ割当情報VIEW2
+                   --org_acct_periods oap         -- 在庫会計期間  -- del 2008/5/8 #47対応
+            WHERE  ximv.item_id = ilm.item_id     -- OPM品目マスタ.品目ID   = OPMロットマスタ.品目ID
+            AND   (
+                    (((0 = ln_whse_code_nullflg) AND (1 = ln_block_nullflg))  -- フラグが0なら倉庫コード１-３を行う
+                       AND (xilv.whse_code IN (iv_whse_code1, iv_whse_code2, iv_whse_code3))
+                    )
+                  OR
+                    (((1 = ln_whse_code_nullflg) AND (0 = ln_block_nullflg))  -- フラグが0ならブロック１-３を行う
+                       AND xilv.distribution_block IN (iv_block1, iv_block2, iv_block3)
+                    )
+                  OR
+                    (((0 = ln_whse_code_nullflg) AND (0 = ln_block_nullflg))  -- 倉庫コード、ブロック両方指定した場合
+                       AND
+                         (((xilv.whse_code IN (iv_whse_code1, iv_whse_code2, iv_whse_code3))
+                         OR
+                         (xilv.distribution_block IN (iv_block1, iv_block2, iv_block3))))
+                    )
+                  OR 
+                     ((1 = ln_whse_code_nullflg) AND (1 = ln_block_nullflg))  -- 指定しない場合
+                  )
+            AND
+                  (
+                   ((0 = ln_whse_department_nullflg) -- フラグが0なら倉庫管理部署１-３を行う
+                     AND (xilv.whse_department IN (iv_whse_department1, iv_whse_department2, iv_whse_department3)))
+                   OR
+                    (1 = ln_whse_department_nullflg)
+                  )
+            AND    xicv1.category_set_name = lv_item_div    -- 商品区分
+            AND    xicv1.segment1          = iv_arti_div_code
+            AND    xicv1.item_id           = ximv.item_id
+            AND    xicv2.item_id           = ximv.item_id
+            AND    xicv2.category_set_name = lv_article_div -- 品目区分
+            AND    xicv2.segment1          = iv_item_class_code
+            -- AND    xilv.mtl_organization_id= oap.organization_id  -- #47対応
+           ) iiim
+    WHERE  iiim.item_id            = ili.item_id(+)
+    AND    iiim.whse_code          = ili.whse_code(+)
+    AND    iiim.lot_id             = ili.lot_id(+)
+    AND    iiim.segment1           = ili.location(+)   -- add 2008/05/07 #47対応
+    -- mod start 2008/05/07 #47対応
+    -- GROUP BY iiim.whse_code, iiim.item_no, iiim.lot_no, iiim.item_id, iiim.lot_id, iiim.lot_ctl,ili.loct_onhand;
+    GROUP BY 
+       iiim.whse_code
+      ,iiim.item_id
+      ,iiim.item_no
+      ,iiim.lot_id
+      ,iiim.lot_no
+      ,iiim.lot_ctl
+      ;
+    -- mod end 2008/05/07 #47対応
+--
+--
+    -- D-6. 手持数量情報抽出（前月分）カーソル
+    CURSOR  pre_cargo_cur (ld_cur_pre_invent_begin_ymd DATE) IS
+    SELECT iiim.whse_code whse_code,               -- OPM手持数量  倉庫コード (※D-6と違う)
+           iiim.item_id item_id,                   -- OPM品目マスタ  品目ID
+           iiim.item_no item_no,                   -- OPM品目マスタ  品目コード
+           iiim.lot_id   lot_id,                   -- OPMロットマスタ  ロットID
+           iiim.lot_no   lot_no,                   -- OPMロットマスタ  ロットNo
+           iiim.lot_ctl lot_ctl,                   -- OPM品目マスタ  ロット管理区分
+           SUM(NVL(ipb.loct_onhand,0)) loct_onhand -- OPMロット別月次在庫  手持数量
+    FROM   ic_perd_bal ipb,                        -- OPMロット別月次在庫 (※D-2と違う)
+           (SELECT xilv.whse_code,
+                   xilv.segment1,                  -- add 2008/05/07 #47対応
+                   ximv.item_id,
+                   ximv.item_no, 
+                   ilm.lot_id, 
+                   ximv.lot_ctl,
+                   ilm.lot_no,
+                   oap.period_year,
+                   oap.period_num
+            FROM   xxcmn_item_mst_v ximv,         -- OPM品目マスタ情報VIEW
+                   ic_lots_mst ilm,               -- OPMロットマスタ
+                   xxcmn_item_locations_v xilv,   -- OPM保管場所情報VIEW
+                   xxcmn_item_categories_v xicv1, -- OPM品目カテゴリ割当情報VIEW1
+                   xxcmn_item_categories_v xicv2, -- OPM品目カテゴリ割当情報VIEW2
+                   org_acct_periods oap           -- 在庫会計期間
+            WHERE  ximv.item_id = ilm.item_id     -- OPM品目マスタ.品目ID   = OPMロットマスタ.品目ID
+            AND   (
+                    (((0 = ln_whse_code_nullflg) AND (1 = ln_block_nullflg))  -- フラグが0なら倉庫コード１-３を行う
+                       AND (xilv.whse_code IN (iv_whse_code1, iv_whse_code2, iv_whse_code3))
+                    )
+                  OR
+                    (((1 = ln_whse_code_nullflg) AND (0 = ln_block_nullflg))  -- フラグが0ならブロック１-３を行う
+                       AND xilv.distribution_block IN (iv_block1, iv_block2, iv_block3)
+                    )
+                  OR
+                    (((0 = ln_whse_code_nullflg) AND (0 = ln_block_nullflg))  -- 倉庫コード、ブロック両方指定した場合
+                       AND
+                         (((xilv.whse_code IN (iv_whse_code1, iv_whse_code2, iv_whse_code3))
+                         OR
+                         (xilv.distribution_block IN (iv_block1, iv_block2, iv_block3))))
+                    )
+                  OR 
+                     ((1 = ln_whse_code_nullflg) AND (1 = ln_block_nullflg))  -- 指定しない場合
+                  )
+            AND
+                  (
+                   ((0 = ln_whse_department_nullflg) -- フラグが0なら倉庫管理部署１-３を行う
+                     AND (xilv.whse_department IN (iv_whse_department1, iv_whse_department2, iv_whse_department3)))
+                   OR
+                    (1 = ln_whse_department_nullflg)
+                  )
+            AND    xicv1.category_set_name = lv_item_div    -- 商品区分
+            AND    xicv1.segment1          = iv_arti_div_code
+            AND    xicv1.item_id           = ximv.item_id
+            AND    xicv2.item_id           = ximv.item_id
+            AND    xicv2.category_set_name = lv_article_div -- 品目区分
+            AND    xicv2.segment1          = iv_item_class_code
+            AND    oap.period_start_date   = ld_cur_pre_invent_begin_ymd -- OPMロット別月次在庫.在庫期間= 起動パラメータの対象年月の前月
+            AND    xilv.mtl_organization_id= oap.organization_id
+           ) iiim
+    WHERE  iiim.item_id               = ipb.item_id(+)
+    AND    iiim.whse_code             = ipb.whse_code(+)
+    AND    iiim.lot_id                = ipb.lot_id(+)
+    -- AND    iiim.period_year           = TO_NUMBER(ipb.fiscal_year(+)) -- mod 2008/05/07 #62対応
+    AND    to_char(iiim.period_year)  = ipb.fiscal_year(+)               -- mod 2008/05/07 #62対応
+    AND    iiim.period_num            = ipb.period(+)
+    AND    iiim.segment1              = ipb.location(+)                  -- add 2008/05/07 #47対応
+    --mod start 2008/05/07 #47対応
+    -- GROUP BY iiim.whse_code, iiim.item_no, iiim.lot_no, iiim.item_id, iiim.lot_id, iiim.lot_ctl,ipb.loct_onhand;--#47対応
+    GROUP BY 
+      iiim.whse_code
+     ,iiim.item_id
+     ,iiim.item_no
+     ,iiim.lot_id
+     ,iiim.lot_no
+     ,iiim.lot_ctl
+     ;
+    --mod end 2008/05/07 #47対応
+--
+    -- *** ローカル・レコード ***
+    lr_curr_cargo_rec   current_cargo_cur%ROWTYPE;
+    lr_pre_cargo_rec    pre_cargo_cur%ROWTYPE;
+
+  BEGIN
+--add start 2008/05/12 #47対応
+    curr_invent_monthly_stock_id.delete;   -- 棚卸月末在庫ID
+    curr_whse_code_tbl.delete;             -- OPM手持数量  倉庫コード
+    curr_item_id_tbl.delete;               -- OPM品目マスタ  品目ID
+    curr_item_no_tbl.delete;               -- OPM品目マスタ  品目コード
+    curr_lot_id_tbl.delete;                -- OPMロットマスタ  ロットID
+    curr_lot_no_tbl.delete;                -- OPMロットマスタ  ロットNo
+    curr_lot_ctl_tbl.delete;               -- OPM品目マスタ  ロット管理区分
+    curr_loct_onhand_tbl.delete;           -- OPM手持数量  手持数量
+    pre_invent_monthly_stock_id.delete;    -- 棚卸月末在庫ID
+    pre_whse_code_tbl.delete;              -- OPM手持数量  倉庫コード
+    pre_item_id_tbl.delete;                -- OPM品目マスタ  品目ID
+    pre_item_no_tbl.delete;                -- OPM品目マスタ  品目コード
+    pre_lot_id_tbl.delete;                 -- OPMロットマスタ  ロットID
+    pre_lot_no_tbl.delete;                 -- OPMロットマスタ  ロットNo
+    pre_lot_ctl_tbl.delete;                -- OPM品目マスタ  ロット管理区分
+    pre_loct_onhand_tbl.delete;            -- OPM手持数量  手持数量
+--add end 2008/05/12 #47対応
+--
+    lv_sysdate_ym := TO_CHAR(SYSDATE,'YYYYMM');
+--
+    -- 共通更新情報の取得
+    ln_user_id         := FND_GLOBAL.USER_ID;         -- ログインしているユーザーのID取得
+    ln_login_id        := FND_GLOBAL.LOGIN_ID;        -- 最終更新ログイン
+    ln_conc_request_id := FND_GLOBAL.CONC_REQUEST_ID; -- 要求ID
+    ln_prog_appl_id    := FND_GLOBAL.PROG_APPL_ID;    -- コンカレント・プログラム・アプリケーションID
+    ln_conc_program_id := FND_GLOBAL.CONC_PROGRAM_ID; -- コンカレント・プログラムID
+--
+    -- プロファイル値の取得 (商品区分)
+    lv_item_div := FND_PROFILE.VALUE('XXCMN_ITEM_DIV');
+--
+    -- 取得できなかった場合はエラー
+    IF (lv_item_div IS NULL) THEN
+      RETURN gn_ret_other_error;
+    END IF;
+--
+    -- プロファイル値の取得 (品目区分)
+    lv_article_div := FND_PROFILE.VALUE('XXCMN_ARTICLE_DIV');
+--
+    -- 取得できなかった場合はエラー
+    IF (lv_article_div IS NULL) THEN
+      RETURN gn_ret_other_error;
+    END IF;
+--
+    -- プロファイル値の取得 (マスタ組織ID)
+    lv_orgid_div := FND_PROFILE.VALUE('XXCMN_MASTER_ORG_ID');
+--
+    -- 取得できなかった場合はエラー
+    IF (lv_orgid_div IS NULL) THEN
+      RETURN gn_ret_other_error;
+    END IF;
+--
+    -- D-1.初期処理
+    -- 必須入力パラメータ、日付型チェック
+    IF ((iv_invent_ym IS NULL) OR (iv_arti_div_code IS NULL) OR (iv_item_class_code IS NULL)) THEN 
+      -- 対象年月、商品区分、品目区分が指定されてない場合、エラーを返す
+      RETURN gn_ret_error;
+    ELSIF (gn_ret_error = xxcmn_common_pkg.check_param_date_yyyymm(iv_invent_ym)) THEN
+      -- 対象年月がYYYYMMでない場合、エラーを返す
+      RETURN gn_ret_error;
+    END IF;
+--
+    -- 起動パラメータの対象年月の前月を取得
+    lv_pre_invent_ym := TO_CHAR(ADD_MONTHS(FND_DATE.STRING_TO_DATE(iv_invent_ym,'YYYY/MM'),-1),'YYYYMM');
+--
+    -- パラメータ倉庫コードNULLチェック
+    IF  (iv_whse_code1 IS NULL)
+    AND (iv_whse_code2 IS NULL)
+    AND (iv_whse_code3 IS NULL) THEN
+      -- 倉庫コード１～３がすべてNULLの場合
+      ln_whse_code_nullflg := 1;
+    ELSE
+      ln_whse_code_nullflg := 0;
+    END IF;
+--
+    -- パラメータ倉庫管理部署NULLチェック
+    IF  (iv_whse_department1 IS NULL)
+    AND (iv_whse_department2 IS NULL)
+    AND (iv_whse_department3 IS NULL) THEN
+      -- 倉庫管理部署１～３がすべてNULLの場合
+      ln_whse_department_nullflg := 1;
+    ELSE
+      ln_whse_department_nullflg := 0;
+    END IF;
+--
+    -- パラメータブロックNULLチェック
+    IF  (iv_block1 IS NULL)
+    AND (iv_block2 IS NULL)
+    AND (iv_block3 IS NULL) THEN
+      -- ブロック１～３がすべてNULLの場合
+      ln_block_nullflg := 1;
+    ELSE
+      ln_block_nullflg := 0;
+    END IF;
+--
+    ld_invent_begin_ymd := FND_DATE.STRING_TO_DATE(iv_invent_ym || '01','YYYY/MM/DD'); -- 月初日の取得
+    ld_invent_end_ymd   := ADD_MONTHS(ld_invent_begin_ymd,1) - 1;                      -- 月末日の取得
+--
+    ld_pre_invent_begin_ymd := FND_DATE.STRING_TO_DATE(lv_pre_invent_ym || '01','YYYY/MM/DD'); -- 前月の月初日の取得
+    ld_pre_invent_end_ymd   := ADD_MONTHS(ld_pre_invent_begin_ymd,1) - 1;                      -- 前月の月末日の取得
+--
+    -- 当月分始まり
+    -- 手持数量情報が取得できている場合
+    -- D-2を実行
+--
+    BEGIN
+--
+      OPEN current_cargo_cur;-- カーソルオープン
+--
+        i := 0;
+        LOOP
+          -- レコード読込
+          FETCH current_cargo_cur INTO lr_curr_cargo_rec;
+          EXIT WHEN current_cargo_cur%NOTFOUND;
+--
+          i := i + 1;
+          curr_whse_code_tbl(i)   := lr_curr_cargo_rec.whse_code;   -- OPM手持数量  倉庫コード
+          curr_item_id_tbl(i)     := lr_curr_cargo_rec.item_id;     -- OPM品目マスタ  品目ID
+          curr_item_no_tbl(i)     := lr_curr_cargo_rec.item_no;     -- OPM品目マスタ  品目コード
+          curr_lot_id_tbl(i)      := lr_curr_cargo_rec.lot_id;      -- OPMロットマスタ  ロットID
+          curr_lot_no_tbl(i)      := lr_curr_cargo_rec.lot_no;      -- OPMロットマスタ  ロットNo
+          curr_lot_ctl_tbl(i)     := lr_curr_cargo_rec.lot_ctl;     -- OPM品目マスタ  ロット管理区分
+          curr_loct_onhand_tbl(i) := lr_curr_cargo_rec.loct_onhand; -- OPM手持数量  手持数量
+--
+          ln_d3_itp_trans_qty(i):=0;
+          ln_d3_itc_trans_qty(i):=0;
+          ln_d4_quantity(i):=0;
+--
+          -- 月跨ぎの確認
+          IF (iv_invent_ym < lv_sysdate_ym) THEN
+--
+            BEGIN
+              -- 実行日が対象年月の翌月以降である場合、D-2. 手持数量情報抽出
+              -- D-3.月次取引情報抽出処理
+              -- OPM保留在庫トランザクション
+              SELECT SUM(NVL(itp.trans_qty,0) * -1)                   -- 数量（数値を反転させる）
+              INTO   ln_d3_itp_trans_qty(i)
+              FROM   ic_tran_pnd itp                                  -- OPM保留在庫トランザクション
+              WHERE  itp.whse_code = curr_whse_code_tbl(i)            -- 倉庫コード
+              AND    itp.item_id = curr_item_id_tbl(i)                -- 品目ID
+              AND    (0 = curr_lot_ctl_tbl(i)                         -- ロット管理品目の場合(0:なし、1:あり)
+                      OR (itp.lot_id = curr_lot_id_tbl(i))            -- OPM品目マスタ  ロットID
+                     )
+              --AND itp.trans_date > ld_invent_end_ymd                  -- 取引日の年月
+              AND TRUNC(itp.trans_date) > TRUNC(ld_invent_end_ymd)      -- 取引日の年月   -- 2008/05/07 mod
+              AND itp.completed_ind = 1                               -- 完了フラグ
+              GROUP BY itp.whse_code, itp.item_id, itp.lot_id;
+--
+            EXCEPTION
+              WHEN NO_DATA_FOUND THEN
+                ln_d3_itp_trans_qty(i) := 0;
+            END;
+--
+            BEGIN
+              -- OPM完了在庫トランザクション
+              SELECT SUM(NVL(itc.trans_qty,0) * -1)                       -- 数量（数値を反転させる）
+              INTO   ln_d3_itc_trans_qty(i)
+              FROM   ic_tran_cmp itc                                  -- OPM完了在庫トランザクション
+              WHERE  itc.whse_code = curr_whse_code_tbl(i)            -- 倉庫コード
+              AND    itc.item_id = curr_item_id_tbl(i)                -- 品目ID
+              AND    (0 = curr_lot_ctl_tbl(i)                         -- ロット管理品目の場合(0:なし、1:あり)
+                       OR (itc.lot_id = curr_lot_id_tbl(i))           -- OPM品目マスタ  ロットID
+                     )
+              --AND itc.trans_date > ld_invent_end_ymd                  -- 取引日の年月
+              AND TRUNC(itc.trans_date) > TRUNC(ld_invent_end_ymd)      -- 取引日の年月    -- 2008/05/07 mod
+              GROUP BY itc.whse_code, itc.item_id, itc.lot_id;
+--
+            EXCEPTION
+              WHEN NO_DATA_FOUND THEN
+                ln_d3_itc_trans_qty(i) := 0;
+            END;
+--
+          --ELSE   -- 2008/05/07 mod
+          END IF;  -- 2008/05/07 mod 
+--
+            BEGIN
+              -- D-4. 移動積送分情報抽出
+              IF (1 = curr_lot_ctl_tbl(i)) THEN
+--
+                -- ロット管理品目の場合
+                SELECT SUM(NVL(xmld.actual_quantity,0))                           --③移動ロット詳細(アドオン)の実績数量
+                INTO   ln_d4_quantity(i)
+                FROM   xxinv_mov_req_instr_headers xmrih,                         --①移動依頼/指示ヘッダ(アドオン)
+                       xxinv_mov_req_instr_lines xmril,                           --②移動依頼/指示明細(アドオン)
+                       xxinv_mov_lot_details xmld,                                --③移動ロット詳細(アドオン)
+                       xxcmn_item_locations_v xilv                                --④⑤OPM保管場所情報VIEW
+                WHERE  xmrih.mov_hdr_id          = xmril.mov_hdr_id               --①の移動ヘッダid =②の移動ヘッダid
+                AND    xmril.mov_line_id         = xmld.mov_line_id               --②の移動明細id=③の明細id
+                AND    xmrih.shipped_locat_id    = xilv.inventory_location_id     --①の出庫元id=⑤の保管倉庫id
+                AND    xilv.whse_code             = curr_whse_code_tbl(i)         --④の倉庫コード= d-2で取得した倉庫コード
+                AND    xmril.item_id             = curr_item_id_tbl(i)            --②の品目id= d-2で取得した品目id
+                AND    xmrih.status              IN ('04','05')                   --①のステータス=  "出庫報告有"または"入出庫報告有"
+                AND    xmril.delete_flg          = 'N'                            --②の取消フラグ= "off"
+                AND    xmld.document_type_code   = '20'                           --③の文書タイプ= "移動"
+                AND    xmld.record_type_code     = '20'                           --③のレコードタイプ= "出庫実績"
+                -- 2008/05/07 mod 日付TRUNC対応 start
+                --AND    xmrih.actual_ship_date    BETWEEN ld_invent_begin_ymd
+                --                                 AND     ld_invent_end_ymd        --①の出庫実績日の年月=起動パラメータの対象年月
+                --AND   (xmrih.actual_arrival_date > ld_invent_end_ymd              --①の入庫実績日の年月＞起動パラメータの対象年月
+                --           OR xmrih.actual_arrival_date IS NULL                   --①の入庫実績日= 指定なし  
+                --      )
+                AND    TRUNC(xmrih.actual_ship_date) BETWEEN TRUNC(ld_invent_begin_ymd)
+                                                     AND TRUNC(ld_invent_end_ymd)     --①の出庫実績日の年月=起動パラメータの対象年月
+                AND   (TRUNC(xmrih.actual_arrival_date) > TRUNC(ld_invent_end_ymd)    --①の入庫実績日の年月＞起動パラメータの対象年月
+                           OR xmrih.actual_arrival_date IS NULL                   --①の入庫実績日= 指定なし  
+                      )
+                -- 2008/05/07 mod 日付TRUNC対応 end
+                AND    xmld.lot_id               = curr_lot_id_tbl(i)             --③のロットid = d-2で取得したロットid
+                GROUP BY xilv.whse_code, xmld.item_code, xmld.lot_no;
+--
+              ELSE
+--
+                -- ロット管理品目以外の場合
+                SELECT SUM(NVL(xmril.shipped_quantity,0))                         --②移動依頼/指示明細(アドオン)の出庫実績数量
+                INTO   ln_d4_quantity(i)
+                FROM   xxinv_mov_req_instr_headers xmrih,                         --①移動依頼/指示ヘッダ(アドオン)
+                       xxinv_mov_req_instr_lines xmril,                           --②移動依頼/指示明細(アドオン)
+                       xxcmn_item_locations_v xilv                                --④⑤OPM保管場所情報VIEW
+                WHERE  xmrih.mov_hdr_id          = xmril.mov_hdr_id               --①の移動ヘッダid =②の移動ヘッダid
+                AND    xmrih.shipped_locat_id    = xilv.inventory_location_id     --①の出庫元id=⑤の保管倉庫id
+                AND    xilv.whse_code             = curr_whse_code_tbl(i)         --④の倉庫コード= d-2で取得した倉庫コード
+                AND    xmril.item_id             = curr_item_id_tbl(i)            --②の品目id= d-2で取得した品目id
+                AND    xmrih.status              IN ('04','05')                   --①のステータス=  "出庫報告有"または"入出庫報告有"
+                AND    xmril.delete_flg          = 'N'                            --②の取消フラグ= "off"
+                -- 2008/05/07 mod 日付TRUNC対応 start
+                --AND    xmrih.actual_ship_date    BETWEEN ld_invent_begin_ymd
+                --                                 AND     ld_invent_end_ymd        --①の出庫実績日の年月=起動パラメータの対象年月
+                --AND   (xmrih.actual_arrival_date > ld_invent_end_ymd              --①の入庫実績日の年月＞起動パラメータの対象年月
+                --       OR xmrih.actual_arrival_date IS NULL                       --①の入庫実績日= 指定なし
+                --      )
+                AND    TRUNC(xmrih.actual_ship_date) BETWEEN TRUNC(ld_invent_begin_ymd)
+                                                 AND TRUNC(ld_invent_end_ymd)      --①の出庫実績日の年月=起動パラメータの対象年月
+                AND   (TRUNC(xmrih.actual_arrival_date) > TRUNC(ld_invent_end_ymd)              --①の入庫実績日の年月＞起動パラメータの対象年月
+                       OR xmrih.actual_arrival_date IS NULL                        --①の入庫実績日= 指定なし
+                      )
+                -- 2008/05/07 mod 日付TRUNC対応 end
+                GROUP BY xilv.whse_code, xmril.item_code;
+--
+              END IF;
+--
+            EXCEPTION
+              WHEN NO_DATA_FOUND THEN
+                ln_d4_quantity(i):=0;
+            END;
+--
+--          END IF;  -- 2008/05/07 mod
+--
+          BEGIN
+--              
+            -- D-5. 出荷・有償積送分情報抽出
+            lv_item_cd := TO_CHAR(curr_item_no_tbl(i));
+--
+            IF (1 = curr_lot_ctl_tbl(i)) THEN
+--
+              -- ロット管理品目の場合
+              SELECT SUM(NVL(xmld.actual_quantity,0))                             -- ③移動ロット詳細(アドオン)の実績数量
+              INTO  ln_d5_quantity(i)
+              FROM  xxwsh_order_headers_all xoha,                                 -- ①受注ヘッダアドオン
+                    xxwsh_order_lines_all xola,                                   -- ②受注明細アドオン
+                    xxinv_mov_lot_details xmld,                                   -- ③移動ロット詳細(アドオン)
+                    xxcmn_item_locations_v xilv,                                  -- ④⑤OPM保管場所情報VIEW
+                    mtl_system_items_b msib                                       -- ⑥品目マスタ
+              WHERE xoha.order_header_id         = xola.order_header_id           -- ①の受注ヘッダアドオンID= ②の受注ヘッダアドオンID
+              AND   xola.order_line_id           = xmld.mov_line_id               -- ②の受注明細アドオンID    = ③の明細ID
+              AND   xoha.deliver_from_id         = xilv.inventory_location_id     -- ①の出荷元ID= ⑤の保管倉庫ID
+              AND   xilv.whse_code                = curr_whse_code_tbl(i)         -- ④の倉庫コード= D-2で取得した倉庫コード
+              AND   xola.shipping_inventory_item_id = msib.inventory_item_id      -- ②の出荷品目ID= ⑥の品目ID
+              AND   msib.segment1                = lv_item_cd                     -- ⑥の品目コード= D-2で取得した品目コード
+              AND   xoha.req_status              IN ('04','08')                   -- ①のステータス= "出荷実績計上済"
+              AND   xoha.latest_external_flag    = 'Y'                            -- ①の最新フラグ= "ON"
+              AND   xola.delete_flag             = 'N'                            -- ②の削除フラグ= "OFF"
+              AND   xmld.document_type_code      IN ('10','30')                   -- ③の文書タイプ= "出荷依頼" または "支給指示"
+              AND   xmld.record_type_code        = '20'                           -- ③のレコードタイプ = "出庫実績"
+              -- 2008/05/07 mod 日付TRUNC対応 start
+              --AND   xoha.shipped_date            BETWEEN ld_invent_begin_ymd
+              --                                   AND     ld_invent_end_ymd        -- ①の出庫実績日の年月=起動パラメータの対象年月
+              --AND  (xoha.arrival_date            > ld_invent_end_ymd              -- ①の入庫実績日の年月＞起動パラメータの対象年月
+              --      OR xoha.arrival_date IS NULL                                  -- ①の着荷日=指定なし
+              --     )
+              AND   TRUNC(xoha.shipped_date) BETWEEN TRUNC(ld_invent_begin_ymd)
+                                             AND     TRUNC(ld_invent_end_ymd)     -- ①の出庫実績日の年月=起動パラメータの対象年月
+              AND  (TRUNC(xoha.arrival_date) > TRUNC(ld_invent_end_ymd)           -- ①の入庫実績日の年月＞起動パラメータの対象年月
+                    OR xoha.arrival_date IS NULL                                  -- ①の着荷日=指定なし
+                   )
+              -- 2008/05/07 mod 日付TRUNC対応 end
+              AND   xmld.lot_id = curr_lot_id_tbl(i)                              -- ③のロットid = d-2で取得したロットid
+              AND   msib.organization_id         = lv_orgid_div                   -- ⑥組織ID = プロファイル：マスタ組織ID
+              GROUP BY xilv.whse_code, xmld.item_code, xmld.lot_no;
+--
+            ELSE
+--
+              -- ロット管理品目以外の場合
+              SELECT SUM(NVL(xola.shipped_quantity,0))                            -- ②受注明細アドオン(アドオン)の出庫実績数量
+              INTO  ln_d5_quantity(i)
+              FROM  xxwsh_order_headers_all xoha,                                 -- ①受注ヘッダアドオン
+                    xxwsh_order_lines_all xola,                                   -- ②受注明細アドオン
+                    xxcmn_item_locations_v xilv,                                  -- ④⑤OPM保管場所情報VIEW      
+                    mtl_system_items_b msib,                                      -- ⑥品目マスタ
+	                  xxcmn_item_mst_v ximv                                         -- OPM品目情報VIEW
+              WHERE xoha.order_header_id         = xola.order_header_id           -- ①の受注ヘッダアドオンID= ②の受注ヘッダアドオンID
+              AND   xoha.deliver_from_id         = xilv.inventory_location_id     -- ①の出荷元ID= ⑤の保管倉庫ID
+              AND   msib.segment1                = ximv.item_no
+              AND   xilv.whse_code               = curr_whse_code_tbl(i)          -- ④の倉庫コード= D-2で取得した倉庫コード
+              AND   xola.shipping_inventory_item_id = msib.inventory_item_id      -- ②の出荷品目ID= ⑥の品目ID
+              AND   msib.segment1                = lv_item_cd                     -- ⑥の品目コード= D-2で取得した品目コード
+              AND   xoha.req_status              IN ('04','08')                   -- ①のステータス= "出荷実績計上済"
+              AND   xoha.latest_external_flag    = 'Y'                            -- ①の最新フラグ= "ON"
+              AND   xola.delete_flag             = 'N'                            -- ②の削除フラグ= "OFF"
+              -- 2008/05/07 mod 日付TRUNC対応 start
+              --AND   xoha.shipped_date            BETWEEN ld_invent_begin_ymd
+              --                                   AND     ld_invent_end_ymd        -- ①の出庫実績日の年月=起動パラメータの対象年月
+              --AND  (xoha.arrival_date            > ld_invent_end_ymd              -- ①の入庫実績日の年月＞起動パラメータの対象年月
+              --      OR xoha.arrival_date IS NULL                                  -- ①の着荷日=指定なし
+              --     )
+              AND   TRUNC(xoha.shipped_date) BETWEEN TRUNC(ld_invent_begin_ymd)
+                                                 AND TRUNC(ld_invent_end_ymd)        -- ①の出庫実績日の年月=起動パラメータの対象年月
+              AND  (TRUNC(xoha.arrival_date) > TRUNC(ld_invent_end_ymd)           -- ①の入庫実績日の年月＞起動パラメータの対象年月
+                    OR xoha.arrival_date IS NULL                                  -- ①の着荷日=指定なし
+                   )
+              -- 2008/05/07 mod 日付TRUNC対応 end
+              AND   msib.organization_id         = lv_orgid_div                   -- ⑥組織ID = プロファイル：マスタ組織ID
+              GROUP BY xilv.whse_code, ximv.item_id;
+--
+            END IF;
+--
+          EXCEPTION
+            WHEN NO_DATA_FOUND THEN
+              ln_d5_quantity(i):=0;
+          END;
+--
+        END LOOP current_cargo_cur;
+--
+        CLOSE current_cargo_cur; -- カーソルのクローズ
+--
+      EXCEPTION
+        -- *** 複数行返戻ハンドラ ***
+        WHEN TOO_MANY_ROWS THEN
+           CLOSE current_cargo_cur; -- カーソルのクローズ
+--mod start 1.2
+--           RAISE global_process_expt;
+             RAISE;
+--mod end 1.2
+        -- *** 値エラーハンドラ ***
+        WHEN VALUE_ERROR THEN
+           CLOSE current_cargo_cur; -- カーソルのクローズ
+--mod start 1.2
+--           RAISE global_process_expt;
+             RAISE;
+--mod end 1.2
+        -- *** ゼロ除算エラーハンドラ ***
+        WHEN ZERO_DIVIDE THEN
+           CLOSE current_cargo_cur; -- カーソルのクローズ
+--mod start 1.2
+--           RAISE global_process_expt;
+             RAISE;
+--mod end 1.2
+        -- *** OTHERS例外ハンドラ ***
+        WHEN OTHERS THEN
+           CLOSE current_cargo_cur; -- カーソルのクローズ
+--mod start 1.2
+--           RAISE global_process_expt;
+             RAISE;
+--mod end 1.2
+    END;
+    -- 当月分終わり
+--
+    -- 前月始まり
+    -- 手持数量情報（前月分）が取得できている場合
+    -- D-6を実行
+--
+    BEGIN
+--
+      OPEN pre_cargo_cur(ld_pre_invent_begin_ymd);-- カーソルオープン
+--
+        i := 0;
+        LOOP
+         -- レコード読込
+          FETCH pre_cargo_cur INTO lr_pre_cargo_rec;
+          EXIT WHEN pre_cargo_cur%NOTFOUND;
+--
+          i := i + 1;
+          pre_whse_code_tbl(i)   := lr_pre_cargo_rec.whse_code;    -- OPM手持数量  倉庫コード
+          pre_item_id_tbl(i)     := lr_pre_cargo_rec.item_id;      -- OPM品目マスタ  品目ID
+          pre_item_no_tbl(i)     := lr_pre_cargo_rec.item_no;      -- OPM品目マスタ  品目コード
+          pre_lot_id_tbl(i)      := lr_pre_cargo_rec.lot_id;       -- OPMロットマスタ  ロットID
+          pre_lot_no_tbl(i)      := lr_pre_cargo_rec.lot_no;       -- OPMロットマスタ  ロットNo
+          pre_lot_ctl_tbl(i)     := lr_pre_cargo_rec.lot_ctl;      -- OPM品目マスタ  ロット管理区分
+          pre_loct_onhand_tbl(i)  := lr_pre_cargo_rec.loct_onhand; -- OPM手持数量  手持数量
+--
+          ln_d7_quantity(i):=0;
+          ln_d8_quantity(i):=0;
+--
+          BEGIN
+            -- D-7. 移動積送分情報抽出（前月分）
+            IF (1 = pre_lot_ctl_tbl(i)) THEN
+--
+              -- ロット管理品目の場合
+              SELECT SUM(NVL(xmld.actual_quantity,0))                             --③移動ロット詳細(アドオン)の実績数量
+              INTO  ln_d7_quantity(i)
+              FROM  xxinv_mov_req_instr_headers xmrih,                            --①移動依頼/指示ヘッダ(アドオン)
+                    xxinv_mov_req_instr_lines xmril,                              --②移動依頼/指示明細(アドオン)
+                    xxinv_mov_lot_details xmld,                                   --③移動ロット詳細(アドオン)
+                    xxcmn_item_locations_v xilv                                   --④⑤OPM保管場所情報VIEW 
+              WHERE xmrih.mov_hdr_id             = xmril.mov_hdr_id               --①の移動ヘッダid =②の移動ヘッダid
+              AND   xmril.mov_line_id            = xmld.mov_line_id               --②の移動明細id=③の明細id
+              AND   xmrih.shipped_locat_id       = xilv.inventory_location_id     --①の出庫元id=⑤の保管倉庫id
+              AND   xilv.whse_code               = pre_whse_code_tbl(i)           --④の倉庫コード= d-6で取得した倉庫コード
+              AND   xmril.item_id                = pre_item_id_tbl(i)             --②の品目id= d-6で取得した品目id
+              AND   xmrih.status                 IN ('04','05')                   --①のステータス=  "出庫報告有"または"入出庫報告有"
+              AND   xmril.delete_flg             = 'N'                            --②の取消フラグ= "off"
+              AND   xmld.document_type_code      = '20'                           --③の文書タイプ= "移動"
+              AND   xmld.record_type_code        = '20'                           --③のレコードタイプ= "出庫実績"
+              -- 2008/05/07 mod 日付TRUNC対応 start
+              --AND   xmrih.actual_ship_date       BETWEEN ld_pre_invent_begin_ymd
+              --                                   AND     ld_pre_invent_end_ymd    --①の出庫実績日の年月=起動パラメータの対象年月の前月
+              --AND  (xmrih.actual_arrival_date    > ld_pre_invent_end_ymd          --①の入庫実績日の年月＞起動パラメータの対象年月の前月
+              --      OR xmrih.actual_arrival_date IS NULL                          --①の入庫実績日= 指定なし  
+              --     )
+              AND   TRUNC(xmrih.actual_ship_date) BETWEEN TRUNC(ld_pre_invent_begin_ymd)
+                                                  AND     TRUNC(ld_pre_invent_end_ymd)  --①の出庫実績日の年月=起動パラメータの対象年月の前月
+              AND  (TRUNC(xmrih.actual_arrival_date) > TRUNC(ld_pre_invent_end_ymd)     --①の入庫実績日の年月＞起動パラメータの対象年月の前月
+                    OR xmrih.actual_arrival_date IS NULL                          --①の入庫実績日= 指定なし  
+                   )
+              -- 2008/05/07 mod 日付TRUNC対応 end
+              AND   xmld.lot_id = pre_lot_id_tbl(i)                               --③のロットid = d-6で取得したロットid
+              GROUP BY xilv.whse_code, xmld.item_code, xmld.lot_no;
+--
+            ELSE
+--
+              -- ロット管理品目以外の場合
+              SELECT SUM(NVL(xmril.shipped_quantity,0))                           --②移動依頼/指示明細(アドオン)の出庫実績数量
+              INTO ln_d7_quantity(i)
+              FROM  xxinv_mov_req_instr_headers xmrih,                            --①移動依頼/指示ヘッダ(アドオン)
+                    xxinv_mov_req_instr_lines xmril,                              --②移動依頼/指示明細(アドオン)
+                    xxcmn_item_locations_v xilv                                   --④⑤OPM保管場所情報VIEW 
+              WHERE xmrih.mov_hdr_id             = xmril.mov_hdr_id               --①の移動ヘッダid =②の移動ヘッダid
+              AND   xmrih.shipped_locat_id       = xilv.inventory_location_id     --①の出庫元id=⑤の保管倉庫id
+              AND   xilv.whse_code               = pre_whse_code_tbl(i)           --④の倉庫コード= d-6で取得した倉庫コード
+              AND   xmril.item_id                = pre_item_id_tbl(i)             --②の品目id= d-6で取得した品目id
+              AND   xmrih.status                 IN ('04','05')                   --①のステータス=  "出庫報告有"または"入出庫報告有"
+              AND   xmril.delete_flg             = 'N'                            --②の取消フラグ= "off"
+              -- 2008/05/07 mod 日付TRUNC対応 start
+              --AND   xmrih.actual_ship_date       BETWEEN ld_pre_invent_begin_ymd
+              --                                   AND     ld_pre_invent_end_ymd    --①の出庫実績日の年月=起動パラメータの対象年月の前月
+              --AND  (xmrih.actual_arrival_date    > ld_pre_invent_end_ymd          --①の入庫実績日の年月＞起動パラメータの対象年月の前月
+              --      OR xmrih.actual_arrival_date IS NULL                          --①の入庫実績日= 指定なし
+              --     )
+              AND   TRUNC(xmrih.actual_ship_date) BETWEEN TRUNC(ld_pre_invent_begin_ymd)
+                                                  AND TRUNC(ld_pre_invent_end_ymd)    --①の出庫実績日の年月=起動パラメータの対象年月の前月
+              AND  (TRUNC(xmrih.actual_arrival_date) > TRUNC(ld_pre_invent_end_ymd)   --①の入庫実績日の年月＞起動パラメータの対象年月の前月
+                    OR xmrih.actual_arrival_date IS NULL                              --①の入庫実績日= 指定なし
+                   )
+              -- 2008/05/07 mod 日付TRUNC対応 end
+              GROUP BY xilv.whse_code, xmril.item_code;
+--
+            END IF;
+--
+          EXCEPTION
+            WHEN NO_DATA_FOUND THEN
+              ln_d7_quantity(i):=0;
+          END;
+--
+          BEGIN
+--
+            -- D-8. 出荷・有償積送分情報抽出（前月分）
+            lv_item_cd := TO_CHAR(pre_item_no_tbl(i));
+--
+            IF (1 = pre_lot_ctl_tbl(i)) THEN
+--
+              -- ロット管理品目の場合
+              SELECT SUM(NVL(xmld.actual_quantity,0))                             -- ③移動ロット詳細(アドオン)の実績数量
+              INTO  ln_d8_quantity(i)
+              FROM  xxwsh_order_headers_all xoha,                                 -- ①受注ヘッダアドオン
+                    xxwsh_order_lines_all xola,                                   -- ②受注明細アドオン
+                    xxinv_mov_lot_details xmld,                                   -- ③移動ロット詳細(アドオン)
+                    xxcmn_item_locations_v xilv,                                  -- ④⑤OPM保管場所情報VIEW   
+                    mtl_system_items_b msib                                       -- ⑥品目マスタ
+              WHERE xoha.order_header_id         = xola.order_header_id           -- ①の受注ヘッダアドオンID= ②の受注ヘッダアドオンID
+              AND   xola.order_line_id           = xmld.mov_line_id               -- ②の受注明細アドオンID    = ③の明細ID
+              AND   xoha.deliver_from_id         = xilv.inventory_location_id     -- ①の出荷元ID= ⑤の保管倉庫ID
+              AND   xilv.whse_code                = pre_whse_code_tbl(i)          -- ④の倉庫コード= D-2で取得した倉庫コード
+              AND   xola.shipping_inventory_item_id = msib.inventory_item_id      -- ②の出荷品目ID= ⑥の品目ID
+              AND   msib.segment1                = lv_item_cd                     -- ⑥の品目コード= D-2で取得した品目コード
+              AND   xoha.req_status              IN ('04','08')                   -- ①のステータス= "出荷実績計上済"
+              AND   xoha.latest_external_flag    = 'Y'                            -- ①の最新フラグ= "ON"
+              AND   xola.delete_flag             = 'N'                            -- ②の削除フラグ= "OFF"
+              AND   xmld.document_type_code      IN ('10','30')                   -- ③の文書タイプ= "出荷依頼" または "支給指示"
+              AND   xmld.record_type_code        = '20'                           -- ③のレコードタイプ = "出庫実績"
+              -- 2008/05/07 mod 日付TRUNC対応 start
+              --AND   xoha.shipped_date            BETWEEN ld_pre_invent_begin_ymd 
+              --                                   AND     ld_pre_invent_end_ymd    -- ①の出荷日の年月=起動パラメータの対象年月の前月
+              --AND  (xoha.arrival_date            > ld_pre_invent_end_ymd          -- ①の着荷日の年月＞起動パラメータの対象年月の前月
+              --      OR xoha.arrival_date IS NULL                                  -- ①の着荷日=指定なし
+              --     )
+              AND   TRUNC(xoha.shipped_date) BETWEEN TRUNC(ld_pre_invent_begin_ymd)
+                                                 AND TRUNC(ld_pre_invent_end_ymd)   -- ①の出荷日の年月=起動パラメータの対象年月の前月
+              AND  (TRUNC(xoha.arrival_date) > TRUNC(ld_pre_invent_end_ymd)         -- ①の着荷日の年月＞起動パラメータの対象年月の前月
+                    OR xoha.arrival_date IS NULL                                    -- ①の着荷日=指定なし
+                   )
+              -- 2008/05/07 mod 日付TRUNC対応 end
+              AND   xmld.lot_id = pre_lot_id_tbl(i)                               -- ③のロットid = d-2で取得したロットid
+              AND   msib.organization_id         = lv_orgid_div                   -- ⑥組織ID = プロファイル：マスタ組織ID
+              GROUP BY xilv.whse_code, xmld.item_code, xmld.lot_no;
+--
+            ELSE
+--
+              -- ロット管理品目以外の場合
+              SELECT SUM(NVL(xola.shipped_quantity,0))                            -- ②受注明細アドオンの出庫実績数量
+              INTO  ln_d8_quantity(i)
+              FROM  xxwsh_order_headers_all xoha,                                 -- ①受注ヘッダアドオン
+                    xxwsh_order_lines_all xola,                                   -- ②受注明細アドオン
+                    xxcmn_item_locations_v xilv,                                  -- ④⑤OPM保管場所情報VIEW   
+                    mtl_system_items_b msib,                                      -- ⑥品目マスタ
+	                  xxcmn_item_mst_v ximv                                       -- OPM品目情報VIEW
+              WHERE xoha.order_header_id         = xola.order_header_id           -- ①の受注ヘッダアドオンID= ②の受注ヘッダアドオンID
+              AND   xoha.deliver_from_id         = xilv.inventory_location_id     -- ①の出荷元ID= ⑤の保管倉庫ID
+              AND   msib.segment1                = ximv.item_no
+              AND   xilv.whse_code                = pre_whse_code_tbl(i)          -- ④の倉庫コード= D-2で取得した倉庫コード
+              AND   xola.shipping_inventory_item_id = msib.inventory_item_id      -- ②の出荷品目ID= ⑥の品目ID
+              AND   msib.segment1                = lv_item_cd                     -- ⑥の品目コード= D-2で取得した品目コード
+              AND   xoha.req_status              IN ('04','08')                   -- ①のステータス= "出荷実績計上済"
+              AND   xoha.latest_external_flag    = 'Y'                            -- ①の最新フラグ= "ON"
+              AND   xola.delete_flag             = 'N'                            -- ②の削除フラグ= "OFF"
+              -- 2008/05/07 mod 日付TRUNC対応 start
+              --AND   xoha.shipped_date            BETWEEN ld_pre_invent_begin_ymd 
+              --                                   AND     ld_pre_invent_end_ymd    -- ①の出荷日の年月=起動パラメータの対象年月の前月
+              --AND  (xoha.arrival_date            > ld_pre_invent_end_ymd          -- ①の着荷日の年月＞起動パラメータの対象年月の前月
+              --      OR xoha.arrival_date IS NULL                                  -- ①の着荷日=指定なし
+              --     )
+              AND   TRUNC(xoha.shipped_date) BETWEEN TRUNC(ld_pre_invent_begin_ymd)
+                                                 AND TRUNC(ld_pre_invent_end_ymd)    -- ①の出荷日の年月=起動パラメータの対象年月の前月
+              AND  (TRUNC(xoha.arrival_date) > TRUNC(ld_pre_invent_end_ymd)       -- ①の着荷日の年月＞起動パラメータの対象年月の前月
+                    OR xoha.arrival_date IS NULL                                  -- ①の着荷日=指定なし
+                   )
+              -- 2008/05/07 mod 日付TRUNC対応 start
+              AND   msib.organization_id         = lv_orgid_div                   -- ⑥組織ID = プロファイル：マスタ組織ID
+              GROUP BY xilv.whse_code, ximv.item_id;
+--
+            END IF;
+--
+          EXCEPTION
+            WHEN NO_DATA_FOUND THEN
+              ln_d8_quantity(i):=0;
+          END;
+--
+        END LOOP pre_cargo_cur;
+--      
+      CLOSE pre_cargo_cur; -- カーソルのクローズ
+--
+    EXCEPTION
+      -- *** 複数行返戻ハンドラ ***
+      WHEN TOO_MANY_ROWS THEN
+         CLOSE pre_cargo_cur; -- カーソルのクローズ
+--mod start 1.2
+--         RAISE global_process_expt;
+           RAISE;
+--mod end 1.2
+      -- *** 値エラーハンドラ ***
+      WHEN VALUE_ERROR THEN
+         CLOSE pre_cargo_cur; -- カーソルのクローズ
+--mod start 1.2
+--         RAISE global_process_expt;
+           RAISE;
+--mod end 1.2
+      -- *** ゼロ除算エラーハンドラ ***
+      WHEN ZERO_DIVIDE THEN
+         CLOSE pre_cargo_cur; -- カーソルのクローズ
+--mod start 1.2
+--         RAISE global_process_expt;
+           RAISE;
+--mod end 1.2
+      -- *** OTHERS例外ハンドラ ***
+      WHEN OTHERS THEN
+         CLOSE pre_cargo_cur; -- カーソルのクローズ
+--mod start 1.2
+--         RAISE global_process_expt;
+           RAISE;
+--mod end 1.2
+    END;
+    -- 前月分終わり
+--
+    -- D-9. 棚卸月末在庫テーブルロック処理
+    -- テーブルロック関数呼び出し
+    IF NOT (xxcmn_common_pkg.get_tbl_lock('XXINV','XXINV_STC_INVENTORY_MONTH_STCK')) THEN
+      -- リターン・コードにFALSEが返された場合はエラー
+      RAISE global_api_expt;
+    END IF;
+--
+    BEGIN
+      -- D-10. 棚卸月末在庫情報出力（削除）
+--
+      -- D-2を実行
+      FORALL i IN 1 .. curr_whse_code_tbl.COUNT
+        DELETE FROM xxinv_stc_inventory_month_stck
+        WHERE whse_code = curr_whse_code_tbl(i) -- OPM手持数量  倉庫コード
+        AND   item_id   = curr_item_id_tbl(i)   -- 品目ID
+        AND   invent_ym = iv_invent_ym;         --  起動パラメータの対象年月
+--
+      -- D-6を実行
+      FORALL i IN 1 .. pre_whse_code_tbl.COUNT
+        DELETE FROM xxinv_stc_inventory_month_stck
+        WHERE whse_code = pre_whse_code_tbl(i) -- OPM手持数量  倉庫コード
+        AND   item_id   = pre_item_id_tbl(i)   -- 品目ID
+        AND   invent_ym = lv_pre_invent_ym;    -- 起動パラメータの対象年月の前年
+--
+      -- 棚卸月末在庫IDの取得
+      FOR i IN 1..curr_whse_code_tbl.COUNT LOOP
+        SELECT xxinv_stc_invt_most_s1.NEXTVAL      -- シーケンス
+        INTO   curr_invent_monthly_stock_id(i)
+        FROM   dual;
+      END LOOP;
+--
+      -- D-11. 棚卸月末在庫情報出力（登録）
+      -- D-2を実行
+      FORALL i IN 1 .. curr_whse_code_tbl.COUNT
+        INSERT INTO xxinv_stc_inventory_month_stck
+          (invent_monthly_stock_id
+          ,whse_code
+          ,item_id
+          ,item_code
+          ,lot_id
+          ,lot_no
+          ,monthly_stock
+          ,cargo_stock
+          ,invent_ym
+          ,created_by
+          ,creation_date
+          ,last_updated_by
+          ,last_update_date
+          ,last_update_login
+          ,request_id
+          ,program_application_id
+          ,program_id
+          ,program_update_date)
+        VALUES (
+           curr_invent_monthly_stock_id(i)       -- 棚卸月末在庫ID
+          ,curr_whse_code_tbl(i)                 -- OPM手持数量  倉庫コード
+          ,curr_item_id_tbl(i)                   -- OPM品目マスタ 品目ID
+          ,curr_item_no_tbl(i)                   -- OPM品目マスタ  品目コード
+          ,curr_lot_id_tbl(i)                    -- OPMロットマスタ  ロットID
+          ,curr_lot_no_tbl(i)                    -- OPMロットマスタ  ロットNo
+          ,NVL(curr_loct_onhand_tbl(i),0) 
+           + NVL(ln_d3_itp_trans_qty(i),0) 
+           + NVL(ln_d3_itc_trans_qty(i),0)       -- 月末在庫数  計（OPM手持数量  手持数量＋D-3. 数量）
+          ,ln_d4_quantity(i) + ln_d5_quantity(i) -- 積送中在庫数（D-4の数量＋D-5の数量）
+          ,iv_invent_ym                          -- パラメータの対象年月
+          ,ln_user_id
+          ,SYSDATE
+          ,ln_user_id
+          ,SYSDATE
+          ,ln_login_id
+          ,ln_conc_request_id
+          ,ln_prog_appl_id
+          ,ln_conc_program_id
+          ,SYSDATE);
+--
+      -- 棚卸月末在庫IDの取得
+      FOR i IN 1..pre_whse_code_tbl.COUNT LOOP
+        SELECT xxinv_stc_invt_most_s1.NEXTVAL      -- シーケンス
+        INTO   pre_invent_monthly_stock_id(i)
+        FROM   dual;
+      END LOOP;
+--
+      -- D-6を実行
+      FORALL i IN 1 .. pre_whse_code_tbl.COUNT
+        INSERT INTO xxinv_stc_inventory_month_stck
+          (invent_monthly_stock_id
+          ,whse_code
+          ,item_id
+          ,item_code
+          ,lot_id
+          ,lot_no
+          ,monthly_stock
+          ,cargo_stock
+          ,invent_ym
+          ,created_by
+          ,creation_date
+          ,last_updated_by
+          ,last_update_date
+          ,last_update_login
+          ,request_id
+          ,program_application_id
+          ,program_id
+          ,program_update_date)
+        VALUES (
+           pre_invent_monthly_stock_id(i)        -- 棚卸月末在庫ID
+          ,pre_whse_code_tbl(i)                  -- OPM手持数量  倉庫コード
+          ,pre_item_id_tbl(i)                    -- OPM品目マスタ 品目ID
+          ,pre_item_no_tbl(i)                    -- OPM品目マスタ  品目コード
+          ,pre_lot_id_tbl(i)                     -- OPMロットマスタ  ロットID
+          ,pre_lot_no_tbl(i)                     -- OPMロットマスタ  ロットNo
+          ,pre_loct_onhand_tbl(i)                -- 月末在庫数  計（OPM手持数量  手持数量）
+          ,NVL(ln_d7_quantity(i),0) 
+           + NVL(ln_d8_quantity(i),0)            -- 積送中在庫数（D-7の数量＋D-8の数量）
+          ,lv_pre_invent_ym                      -- パラメータの対象年月の前月
+          ,ln_user_id
+          ,SYSDATE
+          ,ln_user_id
+          ,SYSDATE
+          ,ln_login_id
+          ,ln_conc_request_id
+          ,ln_prog_appl_id
+          ,ln_conc_program_id
+          ,SYSDATE);
+--
+        COMMIT; -- コミット
+--
+    EXCEPTION
+      -- *** 重複エラーハンドラ ***
+      WHEN DUP_VAL_ON_INDEX THEN
+--mod start 1.2
+--         RAISE global_process_expt;
+           RAISE;
+--mod end 1.2
+      -- *** 値エラーハンドラ ***
+      WHEN VALUE_ERROR THEN
+--mod start 1.2
+--         RAISE global_process_expt;
+           RAISE;
+--mod end 1.2
+      -- *** 数値変換エラーハンドラ ***
+      WHEN INVALID_NUMBER THEN
+--mod start 1.2
+--         RAISE global_process_expt;
+           RAISE;
+--mod end 1.2
+      -- *** OTHERS例外ハンドラ ***
+      WHEN OTHERS THEN
+--add start 1.2
+        ROLLBACK;
+--add end 1.2
+--mod start 1.2
+--         RAISE global_del_ins_expt;
+           RAISE;
+--mod end 1.2
+    END;
+--
+    RETURN gn_ret_nomal;
+--
+  EXCEPTION
+    -- *** 処理部共通例外ハンドラ ***
+--del start 1.2
+/*
+    WHEN global_process_expt THEN
+      RAISE_APPLICATION_ERROR
+        (-20000,SUBSTRB(gv_pkg_name||gv_msg_cont||cv_prg_name||gv_msg_part||SQLERRM,1,5000),TRUE);
+      RETURN gn_ret_other_error;
+     -- *** 削除・登録エラーハンドラ ***
+    WHEN global_del_ins_expt THEN
+      ROLLBACK;-- ロールバック
+      RAISE_APPLICATION_ERROR
+        (-20000,SUBSTRB(gv_pkg_name||gv_msg_cont||cv_prg_name||gv_msg_part||SQLERRM,1,5000),TRUE);
+      RETURN gn_ret_other_error;
+    -- *** 共通api関数例外ハンドラ ***
+*/
+--del end 1.2
+    WHEN global_api_expt THEN
+      RAISE_APPLICATION_ERROR
+--mod start 1.2
+--        (-20000,SUBSTRB(gv_pkg_name||gv_msg_cont||cv_prg_name||gv_msg_part||SQLERRM,1,5000),TRUE);
+        (-20001,SUBSTRB(gv_pkg_name||gv_msg_cont||cv_prg_name||gv_msg_part||'棚卸月末在庫テーブルロック処理に失敗しました。',1,5000),TRUE);
+      RETURN gn_ret_lock_error;
+--mod end 1.2
+--del start 1.2
+/*
+    -- *** 共通関数OTHERS例外ハンドラ ***
+    WHEN global_api_others_expt THEN
+      RAISE_APPLICATION_ERROR
+        (-20000,SUBSTRB(gv_pkg_name||gv_msg_cont||cv_prg_name||gv_msg_part||SQLERRM,1,5000),TRUE);
+      RETURN gn_ret_other_error;
+*/
+--del end 1.2
+--
+--#################################  固定例外処理部 START   ####################################
+--
+    -- *** OTHERS例外ハンドラ ***
+    WHEN OTHERS THEN
+      RAISE_APPLICATION_ERROR
+--mod start 1.2
+--        (-20000,SUBSTRB(gv_pkg_name||gv_msg_cont||cv_prg_name||gv_msg_part||SQLERRM,1,5000),TRUE);
+        (-20001,SUBSTRB(gv_pkg_name||gv_msg_cont||cv_prg_name||gv_msg_part||SQLERRM,1,5000),TRUE);
+--mod end 1.2
+      RETURN gn_ret_other_error;
+   END create_snapshot;
+--
+--#####################################  固定部 END   ##########################################
+--
+END xxinv550004c;
+/
