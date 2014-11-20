@@ -6,7 +6,7 @@ AS
  * Package Name           : xxwsh_common2_pkg(BODY)
  * Description            : 共通関数(OAF用)(BODY)
  * MD.070(CMD.050)        : なし
- * Version                : 1.2
+ * Version                : 1.3
  *
  * Program List
  *  -------------------- ---- ----- --------------------------------------------------
@@ -21,6 +21,7 @@ AS
  *  2008/04/08   1.0   H.Itou          新規作成
  *  2008/12/06   1.1   T.Miyata        コピー作成時、出荷実績インタフェース済フラグをN(固定)とする。
  *  2008/12/16   1.2   D.Nihei         追加対象：実績計上済区分を追加。
+ *  2008/12/19   1.3   M.Hokkanji      移動ロット詳細複写時に訂正前実績数量を追加
  *****************************************************************************************/
 --
 --#######################  固定グローバル定数宣言部 START   #######################
@@ -90,6 +91,11 @@ AS
     -- ===============================
     -- ユーザー宣言部
     -- ===============================
+-- Ver1.3 M.Hokkanji Start
+    -- *** ローカル定数 ***
+    cv_document_type_code_10  CONSTANT VARCHAR2(2) := '10';     -- 出荷
+    cv_document_type_code_30  CONSTANT VARCHAR2(2) := '30';     -- 移動
+-- Ver1.3 M.Hokkanji End
     -- *** ローカル変数 ***
     lt_header_id xxwsh_order_headers_all.order_header_id%TYPE;  -- 受注ヘッダID
     lt_line_id   xxwsh_order_headers_all.order_header_id%TYPE;  -- 受注明細ID
@@ -114,7 +120,7 @@ AS
             ,xoha.price_list_id               price_list_id               -- 価格表
             ,xoha.request_no                  request_no                  -- 依頼No
 -- 2008/12/16 D.Nihei Add Start 本番障害#759対応
-            ,xoha.base_request_no             base_request_no             -- 実績計上済区分
+            ,xoha.base_request_no             base_request_no             -- 元依頼No
 -- 2008/12/16 D.Nihei Add End
             ,xoha.req_status                  req_status                  -- ステータス
             ,xoha.delivery_no                 delivery_no                 -- 配送No
@@ -244,7 +250,12 @@ AS
             ,xmld.actual_quantity           actual_quantity           -- 実績数量
             ,xmld.automanual_reserve_class  automanual_reserve_class  -- 自動手動引当区分
       FROM   xxinv_mov_lot_details          xmld                      -- 移動ロット詳細アドオン
-      WHERE  xmld.mov_line_id = ln_line_id;                           -- 受注明細アドオンID
+-- Ver1.3 M.Hokkanji Start
+     WHERE   xmld.mov_line_id = ln_line_id                            -- 受注明細アドオンID
+       AND   xmld.document_type_code IN (cv_document_type_code_10
+                                        ,cv_document_type_code_30);   -- 文書タイプ
+--      WHERE  xmld.mov_line_id = ln_line_id;                           -- 受注明細アドオンID
+-- Ver1.3 M.Hokkanji End
 --
     -- *** ローカル・レコード ***
     order_header_rec  order_header_cur%ROWTYPE;
@@ -286,7 +297,7 @@ AS
       ,xoha.price_list_id                -- 価格表
       ,xoha.request_no                   -- 依頼No
 -- 2008/12/16 D.Nihei Add Start 本番障害#759対応
-      ,xoha.base_request_no              -- 実績計上済区分
+      ,xoha.base_request_no              -- 元依頼No
 -- 2008/12/16 D.Nihei Add End
       ,xoha.req_status                   -- ステータス
       ,xoha.delivery_no                  -- 配送No
@@ -384,7 +395,7 @@ AS
       ,order_header_rec.price_list_id                -- 価格表
       ,order_header_rec.request_no                   -- 依頼No
 -- 2008/12/16 D.Nihei Add Start 本番障害#759対応
-      ,order_header_rec.base_request_no              -- 実績計上済区分
+      ,order_header_rec.base_request_no              -- 元依頼No
 -- 2008/12/16 D.Nihei Add End
       ,order_header_rec.req_status                   -- ステータス
       ,order_header_rec.delivery_no                  -- 配送No
@@ -594,6 +605,9 @@ AS
           ,xmld.lot_no                      -- ロットNo
           ,xmld.actual_date                 -- 実績日
           ,xmld.actual_quantity             -- 実績数量
+-- Ver1.3 M.Hokkanji Start
+          ,xmld.before_actual_quantity      -- 訂正前実績数量
+-- Ver1.3 M.Hokkanji End
           ,xmld.automanual_reserve_class    -- 自動手動引当区分
           ,xmld.created_by                  -- 作成者
           ,xmld.creation_date               -- 作成日
@@ -611,6 +625,10 @@ AS
           ,mov_lot_dtl_rec.lot_no                      -- ロットNo
           ,mov_lot_dtl_rec.actual_date                 -- 実績日
           ,mov_lot_dtl_rec.actual_quantity             -- 実績数量
+-- Ver1.3 M.Hokkanji Start
+-- EBSに登録されているデータを打ち消すため実績数量をセット
+          ,mov_lot_dtl_rec.actual_quantity             -- 訂正前実績数量
+-- Ver1.3 M.Hokkanji End
           ,mov_lot_dtl_rec.automanual_reserve_class    -- 自動手動引当区分
           ,FND_GLOBAL.USER_ID          -- 作成者
           ,SYSDATE                     -- 作成日
