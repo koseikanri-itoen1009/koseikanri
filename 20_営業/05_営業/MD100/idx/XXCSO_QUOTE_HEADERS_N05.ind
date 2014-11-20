@@ -3,12 +3,14 @@
  * INDEX Name      : xxcso_quote_headers_n05
  * Description     : 
  * MD.070          : 
- * Version         : 1.0
+ * Version         : 1.1
  * 
  * Change Record
  * ------------- ----- ------------ -------------------------------------
  *  Date          Ver.  Editor       Description
  * ------------- ----- ------------ -------------------------------------
  *  2009/06/25    1.0  K.Satomura    èââÒçÏê¨
+ *  2009/08/07    1.1  M.Maruyama    è·äQî‘çÜ[0000853]ëŒâû UPPERïtó^
  ************************************************************************/
-CREATE INDEX xxcso.xxcso_quote_headers_n05 ON xxcso.xxcso_quote_headers (quote_submit_name) TABLESPACE xxidx2;
+CREATE INDEX xxcso.xxcso_quote_headers_n05 ON xxcso.xxcso_quote_headers (UPPER(quote_submit_name)) TABLESPACE xxidx2;
+/
