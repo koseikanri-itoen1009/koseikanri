@@ -478,7 +478,7 @@
                         </oa:cellFormat>
                         <oa:cellFormat id="Cell1402" columnSpan="7">
                            <ui:contents>
-                              <oa:messageTextInput id="ShippingInstructions" shortDesc="摘要" styleClass="LegendText" viewName="XxpoProvisionInstMakeHeaderVO1" viewAttr="ShippingInstructions" maximumLength="60" columns="63" readOnly="${oa.XxpoProvisionInstMakeHeaderPVO1.ShippingInstructionsReadOnly}"/>
+                              <oa:messageTextInput id="ShippingInstructions" shortDesc="摘要" styleClass="LegendText" viewName="XxpoProvisionInstMakeHeaderVO1" viewAttr="ShippingInstructions" maximumLength="60" columns="130" readOnly="${oa.XxpoProvisionInstMakeHeaderPVO1.ShippingInstructionsReadOnly}"/>
                            </ui:contents>
                         </oa:cellFormat>
                      </ui:contents>

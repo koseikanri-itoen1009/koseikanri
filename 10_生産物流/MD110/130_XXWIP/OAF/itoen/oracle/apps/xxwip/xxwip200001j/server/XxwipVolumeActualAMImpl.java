@@ -1,7 +1,7 @@
 /*============================================================================
 * ファイル名 : XxwipVolumeActualAMImpl
 * 概要説明   : 出来高実績入力アプリケーションモジュール
-* バージョン : 1.4
+* バージョン : 1.5
 *============================================================================
 * 修正履歴
 * 日付       Ver. 担当者       修正内容
@@ -12,6 +12,7 @@
 * 2008-06-27 1.2  二瓶大輔     結合テスト指摘対応
 * 2008-07-29 1.3  二瓶大輔     ST不具合対応(#498)
 * 2008-09-10 1.4  二瓶大輔     結合テスト指摘対応No30
+* 2008-10-31 1.5  二瓶大輔     統合障害#405
 *============================================================================
 */
 package itoen.oracle.apps.xxwip.xxwip200001j.server;
@@ -46,7 +47,7 @@ import oracle.jbo.domain.Number;
 /***************************************************************************
  * 出来高実績入力画面のアプリケーションモジュールクラスです。
  * @author  ORACLE 二瓶 大輔
- * @version 1.4
+ * @version 1.5
  ***************************************************************************
  */
 public class XxwipVolumeActualAMImpl extends XxcmnOAApplicationModuleImpl 
@@ -528,10 +529,18 @@ public class XxwipVolumeActualAMImpl extends XxcmnOAApplicationModuleImpl
     if (exceptions.size() > 0)
     {
       OAException.raiseBundledOAException(exceptions);
+    }
+    getOADBTransaction().executeCommand("SAVEPOINT " + XxwipConstants.SAVE_POINT_XXWIP200001J);
+// 2008-10-31 v.1.5 D.Nihei Add Start 統合障害#405
+    // 生産日を取得する
+    Date productDate = (Date)row.getAttribute("ProductDate"); // 生産日
+    // 在庫会計期間クローズチェックを行う。
+    XxwipUtility.chkStockClose(getOADBTransaction(), productDate);
+// 2008-10-31 v.1.5 D.Nihei Add End
 // 2008-09-10 v.1.4 D.Nihei Add Start
     // 出来高総数が0の場合
-    } else if ( XxcmnUtility.chkCompareNumeric(3, actualQty, XxcmnConstants.STRING_ZERO)
-            && !XxcmnUtility.isEquals(actualQty, baseActualQty))
+    if ( XxcmnUtility.chkCompareNumeric(3, actualQty, XxcmnConstants.STRING_ZERO)
+     && !XxcmnUtility.isEquals(actualQty, baseActualQty))
     {
       // 副産物情報VO取得
       XxwipBatchCoProdVOImpl cpVo  = getXxwipBatchCoProdVO1();
@@ -603,7 +612,6 @@ public class XxwipVolumeActualAMImpl extends XxcmnOAApplicationModuleImpl
 // 2008-09-10 v.1.4 D.Nihei Add End
     } else
     {
-      getOADBTransaction().executeCommand("SAVEPOINT " + XxwipConstants.SAVE_POINT_XXWIP200001J);
       // ロック取得処理
       getRowLock(batchId);
       // 排他制御

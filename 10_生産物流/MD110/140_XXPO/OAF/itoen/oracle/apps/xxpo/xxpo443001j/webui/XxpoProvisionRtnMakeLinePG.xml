@@ -325,7 +325,7 @@
                                        <ui:contents>
                                           <oa:switcher id="desc_switcher" viewAttr="DescSwitcher">
                                              <ui:case name="LineDescription">
-                                                <oa:messageTextInput id="LineDescription" maximumLength="20" viewAttr="LineDescription" shortDesc="備考" styleClass="LegendText" columns="25"/>
+                                                <oa:messageTextInput id="LineDescription" maximumLength="20" viewAttr="LineDescription" shortDesc="備考" styleClass="LegendText" columns="40"/>
                                              </ui:case>
                                              <ui:case name="LineDescriptionDisable">
                                                 <oa:messageStyledText id="LineDescriptionDisable" viewAttr="LineDescription" shortDesc="備考" styleClass="LegendText"/>

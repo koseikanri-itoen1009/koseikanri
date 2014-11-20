@@ -1,7 +1,7 @@
 /*============================================================================
 * ファイル名 : XxwipInvestActualAMImpl
 * 概要説明   : 投入実績入力アプリケーションモジュール
-* バージョン : 1.3
+* バージョン : 1.4
 *============================================================================
 * 修正履歴
 * 日付       Ver. 担当者       修正内容
@@ -10,6 +10,7 @@
 * 2008-06-27 1.1  二瓶大輔     結合テスト指摘事項対応(明細入力チェック修正)
 * 2008-09-10 1.2  二瓶大輔     結合テスト指摘対応No30
 * 2008-09-29 1.3  二瓶大輔     結合テスト指摘対応No15
+* 2008-10-31 1.4  二瓶大輔     統合障害#405
 *============================================================================
 */
 package itoen.oracle.apps.xxwip.xxwip200002j.server;
@@ -40,7 +41,7 @@ import oracle.jbo.domain.Number;
 /***************************************************************************
  * 投入実績入力アプリケーションモジュールクラスです。
  * @author  ORACLE 二瓶 大輔
- * @version 1.3
+ * @version 1.4
  ***************************************************************************
  */
 public class XxwipInvestActualAMImpl extends XxcmnOAApplicationModuleImpl 
@@ -304,6 +305,12 @@ public class XxwipInvestActualAMImpl extends XxcmnOAApplicationModuleImpl
     XxwipBatchHeaderVOImpl xbhvo = getXxwipBatchHeaderVO1();
     OARow  hdrRow  = (OARow)xbhvo.first();
     String batchId = String.valueOf(hdrRow.getAttribute("BatchId"));
+// 2008-10-31 v.1.4 D.Nihei Add Start 統合障害#405
+    // 生産日を取得する
+    Date productDate = (Date)hdrRow.getAttribute("ProductDate"); // 生産日
+    // 在庫会計期間クローズチェックを行う。
+    XxwipUtility.chkStockClose(getOADBTransaction(), productDate);
+// 2008-10-31 v.1.4 D.Nihei Add End
 
     // ロック取得処理
     getRowLock(batchId);

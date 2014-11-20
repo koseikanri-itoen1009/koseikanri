@@ -1,13 +1,14 @@
 /*============================================================================
 * ファイル名 : XxwipUtility
 * 概要説明   : 生産共通関数
-* バージョン : 1.1
+* バージョン : 1.2
 *============================================================================
 * 修正履歴
 * 日付       Ver. 担当者       修正内容
 * ---------- ---- ------------ ----------------------------------------------
 * 2007-11-09 1.0  二瓶大輔     新規作成
 * 2008-06-27 1.1  二瓶大輔     addメソッド追加
+* 2008-10-31 1.2  二瓶大輔     在庫会計クローズ関数追加
 *============================================================================
 */
 package itoen.oracle.apps.xxwip.util;
@@ -31,7 +32,7 @@ import oracle.jbo.domain.Number;
 /***************************************************************************
  * 生産共通関数クラスです。
  * @author  ORACLE 二瓶 大輔
- * @version 1.1
+ * @version 1.2
  ***************************************************************************
  */
 public class XxwipUtility 
@@ -2172,4 +2173,98 @@ public class XxwipUtility
     }
     return retHashMap;
   } // getStockValue
+
+// 2008-10-31 v.1.2 D.Nihei Add Start 統合障害#405
+  /*****************************************************************************
+   * 在庫クローズチェックを行います。
+   * @param trans   - トランザクション
+   * @param chkDate - 比較日付
+   * @throws OAException - OA例外
+   ****************************************************************************/
+  public static void chkStockClose(
+    OADBTransaction trans,
+    Date chkDate
+  ) throws OAException
+  {
+    String apiName = "chkStockClose"; // API名
+    
+    // PL/SQL作成
+    StringBuffer sb = new StringBuffer(100);
+    sb.append("DECLARE ");
+    sb.append("  lv_close_date VARCHAR2(6); "); // クローズ日付
+    sb.append("BEGIN ");
+    sb.append("  lv_close_date := xxcmn_common_pkg.get_opminv_close_period; "); // OPM在庫会計期間CLOSE年月取得
+    sb.append("  IF ( lv_close_date >= TO_CHAR(:1, 'YYYYMM') ) THEN "); 
+    sb.append("    :2 := 'N'; ");
+    sb.append("  ELSE ");
+    sb.append("    :2 := 'Y'; ");
+    sb.append("  END IF; "); 
+    sb.append("END; ");
+
+    //PL/SQL設定
+    CallableStatement cstmt
+      = trans.createCallableStatement(sb.toString(), OADBTransaction.DEFAULT);
+
+    try
+    {
+      // パラメータ設定(INパラメータ)
+      cstmt.setDate(1, XxcmnUtility.dateValue(chkDate)); // 日付
+      
+      // パラメータ設定(OUTパラメータ)
+      cstmt.registerOutParameter(2, Types.VARCHAR); // 戻り値
+      
+      //PL/SQL実行
+      cstmt.execute();
+      
+      // 戻り値取得
+      String plSqlRet  = cstmt.getString(2);
+
+      // クローズしている場合
+      if (XxcmnConstants.STRING_N.equals(plSqlRet))
+      {
+        // 在庫会計期間チェックエラー
+        // エラーメッセージ出力
+        throw new OAException(
+          XxcmnConstants.APPL_XXCMN, 
+          XxcmnConstants.XXCMN10601);  
+      }
+    // PL/SQL実行時例外の場合
+    } catch(SQLException s)
+    {
+        // ロールバック
+        rollBack(trans, XxwipConstants.SAVE_POINT_XXWIP200001J);
+        // ログ出力
+        XxcmnUtility.writeLog(
+          trans,
+          XxwipConstants.CLASS_XXWIP_UTILITY + XxcmnConstants.DOT + apiName,
+          s.toString(),
+          6);
+        // エラーメッセージ出力
+        throw new OAException(
+          XxcmnConstants.APPL_XXCMN, 
+          XxcmnConstants.XXCMN10123);
+    } finally
+    {
+      try
+      {
+        //処理中にエラーが発生した場合を想定する
+        cstmt.close();
+      } catch(SQLException s)
+      {
+        // ロールバック
+        rollBack(trans, XxwipConstants.SAVE_POINT_XXWIP200001J);
+        // ログ出力
+        XxcmnUtility.writeLog(
+          trans,
+          XxwipConstants.CLASS_XXWIP_UTILITY + XxcmnConstants.DOT + apiName,
+          s.toString(),
+          6);
+        // エラーメッセージ出力
+        throw new OAException(
+          XxcmnConstants.APPL_XXCMN, 
+          XxcmnConstants.XXCMN10123);
+      }
+    } 
+  } // chkStockClose
+// 2008-10-31 D.Nihei Add End
 }
