@@ -22,6 +22,8 @@ AS
  *  Date          Ver.  Editor           Description
  * ------------- ----- ---------------- -------------------------------------------------
  *  2009-01-05    1.0   Koji.Oomata      main新規作成
+ *  2009-04-01    1.1   Masayuki.Sano    [障害番号：T1-0521]
+ *                                       ・更新処理の検索条件の変更(列名変更)
  *****************************************************************************************/
 --
 --#######################  固定グローバル定数宣言部 START   #######################
@@ -207,7 +209,8 @@ AS
           ,xijs.program_application_id = cn_program_application_id  --コンカレント・プログラム・アプリケーションID
           ,xijs.program_id             = cn_program_id              --コンカレント・プログラムID
           ,xijs.program_update_date    = cd_program_update_date     --プログラム更新日
-    WHERE  xijs.pk_request_id_val = iv_pk_request_id_val  --処理順付要求ID
+--    WHERE  xijs.pk_request_id_val = iv_pk_request_id_val  --処理順付要求ID
+    WHERE  xijs.request_id_val = iv_pk_request_id_val  --処理順付要求ID
     ;
 --
   EXCEPTION

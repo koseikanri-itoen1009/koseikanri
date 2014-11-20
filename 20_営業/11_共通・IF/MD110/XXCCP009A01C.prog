@@ -5,7 +5,7 @@
 ## Program Name     : XXCCP009A01C                                              ##
 ## Description      : ‰æ–Ê‹N“®ƒWƒ‡ƒuƒlƒbƒg‘Î‰                                  ##
 ## MD.050           : ‰æ–Ê‹N“®ƒWƒ‡ƒuƒlƒbƒg‘Î‰ <MD050_CCP_009_A01>              ##
-## Version          : 1.2                                                       ##
+## Version          : 1.4                                                       ##
 ##                                                                              ##
 ## Parameter List                                                               ##
 ## -------- ----------------------------------------------------------          ##
@@ -50,6 +50,24 @@
 ##                                         ajsentryƒRƒ}ƒ“ƒh‚ÌƒIƒvƒVƒ‡ƒ“’l‚É     ##
 ##                                         -c‚ğ’Ç‰Á  ¨  ’P‘Ì–¢À{‰ÓŠ‚Ìˆ×A   ##
 ##                                                       C³ƒRƒƒ“ƒg‚È‚µB     ##
+##  2009/03/19    1.3   Koji.Oomata      [áŠQCOS_157]                          ##
+##                                         SQLÀsŒ‹‰Ê‚Ì•¶š—ñ‚ğ"‚©‚ç'‚É•ÏXB  ##
+##                                         fnd_concurrent_requests‚Ìrequest_id  ##
+##                                         ‚Æ•Ï”‚ğWHEREğŒ‚Æ‚·‚é‚ÉTO_NUMBER ##
+##                                         ‚ğ’Ç‰ÁB                             ##
+##                                         APP-XXCCP1-10008‚ÌƒƒbƒZ[ƒW‚ğ“ñd‚É ##
+##                                         æ“¾‚µ‚Ä‚¢‚½‚Ì‚Å•s—v•ª‚ğíœB       ##
+##                                         ¨  C³—š—ğ‚È‚µ                     ##
+##  2009/04/02    1.4   Masayuki.Sano    [áŠQT1-0521]*‘½d§Œä‘Î‰*"           ##
+##                                         ŠÄ‹Å‘åŠÔAŠÄ‹ŠÔŠuŠÔAƒWƒ‡ƒuƒl ##
+##                                         ƒbƒg–¼(––”ö)‚Ìæ“¾ˆ—•ÏXB         ##
+##                                         ƒXƒe[ƒ^ƒXŠÄ‹ˆ—‚ğˆê“x‚É‚·‚×‚Ä‚Ì   ##
+##                                         ƒtƒ@ƒCƒ‹‚ğŠÄ‹‚·‚é‚æ‚¤‚É•ÏX         ##
+##                                         apps/appsË$1‚É•ÏXB                ##
+##                                         ‘¼‚Å“¯ˆêƒtƒ@ƒCƒ‹‚Ìˆ—‚ªÀs’†‚©@   ##
+##                                         Šm”F‚·‚é•û–@‚ğ•ÏXB                 ##
+##                                         ƒXƒe[ƒ^ƒXƒe[ƒuƒ‹ì¬ˆÊ’u•ÏXB@   ##
+##                                         ƒXƒe[ƒ^ƒXƒe[ƒuƒ‹XVˆ—’Ç‰ÁB     ##
 ##                                                                              ##
 ##################################################################################
 
@@ -85,8 +103,10 @@ C_prof_report_que3="XXCCP1_REPORT_QUE3"                 #ƒvƒƒtƒ@ƒCƒ‹|XXCCP:’ •[
 C_prof_report_host1="XXCCP1_REPORT_HOST1"               #ƒvƒƒtƒ@ƒCƒ‹|XXCCP:’ •[ÀsæƒzƒXƒg–¼1
 C_prof_report_host2="XXCCP1_REPORT_HOST2"               #ƒvƒƒtƒ@ƒCƒ‹|XXCCP:’ •[ÀsæƒzƒXƒg–¼2
 C_prof_report_host3="XXCCP1_REPORT_HOST3"               #ƒvƒƒtƒ@ƒCƒ‹|XXCCP:’ •[ÀsæƒzƒXƒg–¼3
-C_prof_status_max="XXCCP1_STATUS_MAX"                   #ƒvƒƒtƒ@ƒCƒ‹|XXCCP:ŠÄ‹Å‘åŠÔ
-C_prof_status_interval="XXCCP1_STATUS_INTERVAL"         #ƒvƒƒtƒ@ƒCƒ‹|XXCCP:ŠÄ‹ŠÔŠuŠÔ
+# 2009/04/02 Ver.1.4 Masayuki.Sano delete START
+#C_prof_status_max="XXCCP1_STATUS_MAX"                   #ƒvƒƒtƒ@ƒCƒ‹|XXCCP:ŠÄ‹Å‘åŠÔ
+#C_prof_status_interval="XXCCP1_STATUS_INTERVAL"         #ƒvƒƒtƒ@ƒCƒ‹|XXCCP:ŠÄ‹ŠÔŠuŠÔ
+# 2009/04/02 Ver.1.4 Masayuki.Sano delete END
 C_prof_if_file_1place="XXCCP1_IF_FILE_1PLACE"           #ƒvƒƒtƒ@ƒCƒ‹|XXCCP:ŠÂ‹«’l
 C_prof_if_file_6place="XXCCP1_IF_FILE_6PLACE"           #ƒvƒƒtƒ@ƒCƒ‹|XXCCP:‹æ•ª’l
 C_prof_edi_job_gr_comm="XXCCP1_EDI_JOB_GR_COMM"         #ƒvƒƒtƒ@ƒCƒ‹|XXCCP:EDIƒWƒ‡ƒuƒOƒ‹[ƒv–¼(‹¤’Ê)
@@ -94,7 +114,9 @@ C_prof_edi_job_gr_21="XXCCP1_EDI_JOB_GR_21"             #ƒvƒƒtƒ@ƒCƒ‹|XXCCP:EDIƒ
 C_prof_edi_job_gr_22="XXCCP1_EDI_JOB_GR_22"             #ƒvƒƒtƒ@ƒCƒ‹|XXCCP:EDIƒWƒ‡ƒuƒOƒ‹[ƒv–¼(22)
 C_prof_report_job_gr_comm="XXCCP1_REPORT_JOB_GR_COMM"   #ƒvƒƒtƒ@ƒCƒ‹|XXCCP:’ •[ƒWƒ‡ƒuƒOƒ‹[ƒv–¼(‹¤’Ê)
 C_prof_report_job_gr_last="XXCCP1_REPORT_JOB_GR_LAST"   #ƒvƒƒtƒ@ƒCƒ‹|XXCCP:’ •[ƒWƒ‡ƒuƒOƒ‹[ƒv–¼(––”ö)
-C_prof_jobnet_last="XXCCP1_JOBNET_LAST"                 #ƒvƒƒtƒ@ƒCƒ‹|XXCCP:ƒWƒ‡ƒuƒlƒbƒg–¼(––”ö)
+# 2009/04/02 Ver.1.4 Masayuki.Sano delete START
+#C_prof_jobnet_last="XXCCP1_JOBNET_LAST"                 #ƒvƒƒtƒ@ƒCƒ‹|XXCCP:ƒWƒ‡ƒuƒlƒbƒg–¼(––”ö)
+# 2009/04/02 Ver.1.4 Masayuki.Sano delete END
 C_prof_request_char="XXCCP1_REQUEST_CHAR"               #ƒvƒƒtƒ@ƒCƒ‹|XXCCP:—v‹IDæ“¾—p
 C_prof_edi_serv="XXCCP1_EDI_SERV"                       #ƒvƒƒtƒ@ƒCƒ‹|XXCCP:EDIƒXƒPƒWƒ…[ƒ‰ƒT[ƒrƒX–¼
 C_prof_report_serv="XXCCP1_REPORT_SERV"                 #ƒvƒƒtƒ@ƒCƒ‹|XXCCP:’ •[ƒXƒPƒWƒ…[ƒ‰ƒT[ƒrƒX–¼
@@ -103,12 +125,23 @@ C_prof_sts_updt_path="XXCCP1_STS_UPDT_PATH"             #ƒvƒƒtƒ@ƒCƒ‹|XXCCP:ƒXƒe
 C_prof_edi_esc_bk_num="XXCCP1_EDI_ESC_BK_NUM"           #ƒvƒƒtƒ@ƒCƒ‹|XXCCP:‰æ–Ê‹N“®ƒWƒ‡ƒuƒlƒbƒg—pEDI‘Ş”ğ¢‘ã”
 C_prof_report_esc_bk_num="XXCCP1_REPORT_ESC_BK_NUM"     #ƒvƒƒtƒ@ƒCƒ‹|XXCCP:‰æ–Ê‹N“®ƒWƒ‡ƒuƒlƒbƒg—p’ •[‘Ş”ğ¢‘ã”
 # 2009/02/25 Ver.1.2 Koji.Oomata add END
+# 2009/04/02 Ver.1.4 Masayuki.Sano add START
+C_prof_edi_status_max="XXCCP1_EDI_STATUS_MAX"               #ƒvƒƒtƒ@ƒCƒ‹|XXCCP:EDIŠÄ‹Å‘åŠÔ
+C_prof_edi_status_interval="XXCCP1_EDI_STATUS_INTERVAL"     #ƒvƒƒtƒ@ƒCƒ‹|XXCCP:EDIŠÄ‹ŠÔŠuŠÔ
+C_prof_edi_jobnet_last="XXCCP1_EDI_JOBNET_LAST"             #ƒvƒƒtƒ@ƒCƒ‹|XXCCP:EDIƒWƒ‡ƒuƒlƒbƒg–¼(––”ö)
+C_prof_rep_status_max="XXCCP1_REPORT_STATUS_MAX"            #ƒvƒƒtƒ@ƒCƒ‹|XXCCP:’ •[ŠÄ‹Å‘åŠÔ
+C_prof_rep_status_interval="XXCCP1_REPORT_STATUS_INTERVAL"  #ƒvƒƒtƒ@ƒCƒ‹|XXCCP:’ •[ŠÄ‹ŠÔŠuŠÔ
+C_prof_rep_jobnet_last="XXCCP1_REPORT_JOBNET_LAST"          #ƒvƒƒtƒ@ƒCƒ‹|XXCCP:’ •[ƒWƒ‡ƒuƒlƒbƒg–¼(––”ö)
+# 2009/04/02 Ver.1.4 Masayuki.Sano add END
 
 C_ofil=$APPLCSF/$APPLOUT/o$4.out   #ƒŒƒ|[ƒgo—Íƒtƒ@ƒCƒ‹–¼(ƒpƒX•t‚«)
 
 C_date=`date +"%Y/%m/%d %H:%M:%S"`  #‹N“®ŠÔ
 C_date2=`date +"%Y%m%d%H%M%S"`      #‹N“®ŠÔ(‹l‚ß)
 C_date3=`date +"%Y/%m/%d"`          #‹N“®“ú•t
+# 2009/04/02 Ver.1.4 Masayuki.Sano add START
+C_ora_login=$1   #ORACLE‚Ö‚Ìƒ†[ƒU/ƒpƒXƒ[ƒh
+# 2009/04/02 Ver.1.4 Masayuki.Sano add End
 
 L_target_cnt=0
 L_success_cnt=0
@@ -117,6 +150,75 @@ L_error_cnt=0
 ################################################################################
 ##                                 ŠÖ”’è‹`                                   ##
 ################################################################################
+# 2009/04/02 Ver.1.4 Masayuki.Sano add START
+##*****************************************************************************
+## Function Name   : update_job_process
+## Description     : ‘ÎŒüƒVƒXƒeƒ€ƒWƒ‡ƒuó‹µƒe[ƒuƒ‹‚ÌƒWƒ‡ƒuó‹µƒXƒe[ƒ^ƒX‚ğ
+##                 : XV‚·‚éB(‹¤’Ê)
+## Parameter List
+## -------- ----------------------------------------------------------
+##  No.      Description
+## -------- ----------------------------------------------------------
+##  $1`     ˆ—‘ÎÛ‚Ì‘ÎŒüƒVƒXƒeƒ€ƒWƒ‡ƒuó‹µƒe[ƒuƒ‹ID
+##*****************************************************************************
+update_job_process()
+{
+  # ** •Ï”’è‹` **
+  L_return=0
+  L_if_job_status_id=""  # ‘ÎŒüƒVƒXƒeƒ€ƒWƒ‡ƒuó‹µƒe[ƒuƒ‹ID
+  # ** ˆ—’è‹` **
+  for L_if_job_status_id in "${@}"
+  do
+    # ¡ ‘ÎŒüƒVƒXƒeƒ€ó‹µƒe[ƒuƒ‹‚ÌƒWƒ‡ƒuó‹µƒXƒe[ƒ^ƒX‚ÌXV‚ğs‚¢‚Ü‚·
+    sqlplus -s ${C_ora_login} <<EOF >${C_std_out2}
+      WHENEVER OSERROR EXIT FAILURE ROLLBACK
+      WHENEVER SQLERROR EXIT FAILURE ROLLBACK
+      UPDATE xxccp_if_job_status xijs
+      SET    xijs.job_process            = 'E'   -- ƒWƒ‡ƒuó‹µƒXƒe[ƒ^ƒX
+            ,xijs.last_updated_by        = TO_NUMBER('${C_requested_by}')
+            ,xijs.last_update_date       = TO_DATE('${C_date2}','YYYYMMDDHH24MISS')
+            ,xijs.last_update_login      = TO_NUMBER('${C_last_update_login}')
+            ,xijs.request_id             = TO_NUMBER('${C_request_id}')
+            ,xijs.program_application_id = TO_NUMBER('${C_program_application_id}')
+            ,xijs.program_id             = TO_NUMBER('${C_concurrent_program_id}')
+            ,xijs.program_update_date    = TO_DATE('${C_date2}','YYYYMMDDHH24MISS')
+      WHERE  xijs.if_job_status_id = $L_if_job_status_id
+      ;
+      EXIT SUCCESS COMMIT
+EOF
+    L_return=${?}
+    # ¡ ƒGƒ‰[ƒ`ƒFƒbƒN
+    if [ ${L_return} -ne 0 ]
+    then
+      #(SQL‚ğÀs‚µAƒƒbƒZ[ƒW‚ğæ“¾‚·‚éB)
+      sqlplus -s ${C_ora_login} <<EOF >>${C_std_out}
+      SET HEADING OFF
+      SET LINES 240
+      SELECT 'C_10061_msg=''' || xxccp_common_pkg.get_msg('${C_appl_name}'
+                                                         ,'APP-XXCCP1-10061'
+                                                         ,'SYSTEM_NAME'
+                                                         ,xijs.if_system_name
+                                                         ,'FILE_NAME'
+                                                         ,xijs.if_file_name) || ''''
+      FROM   xxccp_if_job_status xijs
+      WHERE  xijs.if_job_status_id = ${L_if_job_status_id}
+      ;
+      EXIT
+EOF
+      . $C_std_out
+      #(ƒGƒ‰[ƒƒbƒZ[ƒW‚ğƒZƒbƒg)
+      if [ -z "${L_status_err}" ]
+      then
+        L_status_err="${C_10061_msg}"
+      else
+        L_status_err="${L_status_err}\n${C_10061_msg}"
+      fi
+      #(XVˆ—:ˆÙíI—¹)
+      shell_end ${L_status_err}
+    fi
+  done
+}
+# 2009/04/02 Ver.1.4 Masayuki.Sano add END
 #ƒXƒe[ƒ^ƒXƒGƒ‰[‚Ìƒtƒ@ƒCƒ‹íœˆ—(A-12)
 file_delete()
 {
@@ -131,25 +233,26 @@ file_delete()
 #•Ï“®•K{ƒƒbƒZ[ƒWEI—¹ƒXƒe[ƒ^ƒX’læ“¾(A-13)
 shell_end()
 {
-  sqlplus -s apps/apps <<EOF >>${C_std_out}
+# 2009/03/19 Ver.1.3 Koji.Oomata mod START
+  sqlplus -s ${C_ora_login} <<EOF >${C_std_out}  # 2009/04/02 Ver.1.4 Masayuki.Sano update
   SET HEADING OFF
   SET LINES 240
-  SELECT 'L_00006_msg="'||xxccp_common_pkg.get_msg('${C_appl_name}','APP-XXCCP1-00006','REQ_ID','${L_exec_req_id}')||'"'
-        ,'L_00007_msg="'||xxccp_common_pkg.get_msg('${C_appl_name}','APP-XXCCP1-00007','REQ_ID','${L_succes_req_id}')||'"'
-        ,'L_00009_msg="'||xxccp_common_pkg.get_msg('${C_appl_name}','APP-XXCCP1-00009','REQ_ID','${L_error_req_id}')||'"'
-        ,'L_00020_msg="'||xxccp_common_pkg.get_msg('${C_appl_name}','APP-XXCCP1-00020','FILE_NAME','${L_file_nam_all}')||'"'
-        ,'L_90000_msg="'||xxccp_common_pkg.get_msg('${C_appl_name}','APP-XXCCP1-90000','COUNT','${L_target_cnt}')||'"'
-        ,'L_90001_msg="'||xxccp_common_pkg.get_msg('${C_appl_name}','APP-XXCCP1-90001','COUNT','${L_success_cnt}')||'"'
-        ,'L_90002_msg="'||xxccp_common_pkg.get_msg('${C_appl_name}','APP-XXCCP1-90002','COUNT','${L_error_cnt}')||'"'
-        ,'L_90004_msg="'||xxccp_common_pkg.get_msg('${C_appl_name}','APP-XXCCP1-90004')||'"'
-        ,'L_10008_msg="'||xxccp_common_pkg.get_msg('${C_appl_name}','APP-XXCCP1-10008')||'"'
-        ,'L_10008_msg="'||xxccp_common_pkg.get_msg('${C_appl_name}','APP-XXCCP1-10008')||'"'
-        ,'C_exit_norm="'||xxccp_common_pkg.set_status_normal||'"'
-        ,'C_exit_error="'||xxccp_common_pkg.set_status_error||'"'
+  SELECT 'L_00006_msg='''||xxccp_common_pkg.get_msg('${C_appl_name}','APP-XXCCP1-00006','REQ_ID','${L_exec_req_id}')||''''
+        ,'L_00007_msg='''||xxccp_common_pkg.get_msg('${C_appl_name}','APP-XXCCP1-00007','REQ_ID','${L_succes_req_id}')||''''
+        ,'L_00009_msg='''||xxccp_common_pkg.get_msg('${C_appl_name}','APP-XXCCP1-00009','REQ_ID','${L_error_req_id}')||''''
+        ,'L_00020_msg='''||xxccp_common_pkg.get_msg('${C_appl_name}','APP-XXCCP1-00020','FILE_NAME','${L_file_nam_all}')||''''
+        ,'L_90000_msg='''||xxccp_common_pkg.get_msg('${C_appl_name}','APP-XXCCP1-90000','COUNT','${L_target_cnt}')||''''
+        ,'L_90001_msg='''||xxccp_common_pkg.get_msg('${C_appl_name}','APP-XXCCP1-90001','COUNT','${L_success_cnt}')||''''
+        ,'L_90002_msg='''||xxccp_common_pkg.get_msg('${C_appl_name}','APP-XXCCP1-90002','COUNT','${L_error_cnt}')||''''
+        ,'L_90004_msg='''||xxccp_common_pkg.get_msg('${C_appl_name}','APP-XXCCP1-90004')||''''
+        ,'L_10008_msg='''||xxccp_common_pkg.get_msg('${C_appl_name}','APP-XXCCP1-10008')||''''
+        ,'C_exit_norm='''||xxccp_common_pkg.set_status_normal||''''
+        ,'C_exit_error='''||xxccp_common_pkg.set_status_error||''''
   FROM DUAL
   ;
   EXIT
 EOF
+# 2009/03/19 Ver.1.3 Koji.Oomata mod End
   . $C_std_out
   #•K{€–ÚƒŒƒ|[ƒgo—Í
   echo "${L_00006_msg}" >>`echo ${C_ofil}`     #‹N“®‘ÎÛ—v‹IDƒƒbƒZ[ƒW
@@ -198,108 +301,121 @@ EOF
 ##                                   Main                                     ##
 ################################################################################
 #ŒÅ’èƒƒbƒZ[ƒWEƒvƒƒtƒ@ƒCƒ‹’lEƒRƒ“ƒJƒŒƒ“ƒgƒpƒ‰ƒ[ƒ^”æ“¾(A-1)
-sqlplus -s apps/apps <<EOF >${C_std_out}
+# 2009/03/19 Ver.1.3 Koji.Oomata mod START
+sqlplus -s ${C_ora_login} <<EOF >>${C_std_out}  # 2009/04/02 Ver.1.4 Masayuki.Sano update
 SET HEADING OFF
 SET LINES 240
 SELECT --ŒÅ’èo—ÍƒƒbƒZ[ƒW
-       'C_00002_msg="'||xxccp_common_pkg.get_msg('${C_appl_name}','APP-XXCCP1-00002','AP_SHORT_NAME','${5}')||'"'
-      ,'C_00003_msg="'||xxccp_common_pkg.get_msg('${C_appl_name}','APP-XXCCP1-00003','CONC_SHORT_NAME','${6}')||'"'
-      ,'C_00010_msg="'||xxccp_common_pkg.get_msg('${C_appl_name}','APP-XXCCP1-00010','COOPE_DIV','${7}')||'"'
-      ,'C_00011_msg="'||xxccp_common_pkg.get_msg('${C_appl_name}','APP-XXCCP1-00011','SYSTEM_NAME','${8}')||'"'
-      ,'C_00012_msg="'||xxccp_common_pkg.get_msg('${C_appl_name}','APP-XXCCP1-00012','DATA_TYPE','${9}')||'"'
-      ,'C_00013_msg="'||xxccp_common_pkg.get_msg('${C_appl_name}','APP-XXCCP1-00013','GEN_NUM','${10}')||'"'
-      ,'C_00014_msg="'||xxccp_common_pkg.get_msg('${C_appl_name}','APP-XXCCP1-00014','SVF_NUM','${11}')||'"'
-      ,'C_00015_msg="'||xxccp_common_pkg.get_msg('${C_appl_name}','APP-XXCCP1-00015','EBS_BUSI_CODE','${12}')||'"'
-      ,'C_00016_msg="'||xxccp_common_pkg.get_msg('${C_appl_name}','APP-XXCCP1-00016','IF_BUSI_CODE','${13}')||'"'
-      ,'C_00017_msg="'||xxccp_common_pkg.get_msg('${C_appl_name}','APP-XXCCP1-00017','USER_NAME','${14}')||'"'
-      ,'C_00018_msg="'||xxccp_common_pkg.get_msg('${C_appl_name}','APP-XXCCP1-00018','RESP_APPL_NAME','${15}')||'"'
-      ,'C_00019_msg="'||xxccp_common_pkg.get_msg('${C_appl_name}','APP-XXCCP1-00019','RESP_NAME','${16}')||'"'
-      ,'C_10016_msg="'||xxccp_common_pkg.get_msg('${C_appl_name}','APP-XXCCP1-10016')||'"'
-      ,'C_10020_msg="'||xxccp_common_pkg.get_msg('${C_appl_name}','APP-XXCCP1-10020')||'"'
-      ,'C_10021_msg="'||xxccp_common_pkg.get_msg('${C_appl_name}','APP-XXCCP1-10021')||'"'
-      ,'C_10041_msg="'||xxccp_common_pkg.get_msg('${C_appl_name}','APP-XXCCP1-10041')||'"'
-      ,'C_10042_msg="'||xxccp_common_pkg.get_msg('${C_appl_name}','APP-XXCCP1-10042')||'"'
-      ,'C_10043_msg="'||xxccp_common_pkg.get_msg('${C_appl_name}','APP-XXCCP1-10043')||'"'
-      ,'C_10044_msg="'||xxccp_common_pkg.get_msg('${C_appl_name}','APP-XXCCP1-10044')||'"'
-      ,'C_10045_msg="'||xxccp_common_pkg.get_msg('${C_appl_name}','APP-XXCCP1-10045')||'"'
-      ,'C_10046_msg="'||xxccp_common_pkg.get_msg('${C_appl_name}','APP-XXCCP1-10046')||'"'
-      ,'C_10047_msg="'||xxccp_common_pkg.get_msg('${C_appl_name}','APP-XXCCP1-10047')||'"'
-      ,'C_10048_msg="'||xxccp_common_pkg.get_msg('${C_appl_name}','APP-XXCCP1-10048')||'"'
-      ,'C_10049_msg="'||xxccp_common_pkg.get_msg('${C_appl_name}','APP-XXCCP1-10049')||'"'
-      ,'C_00005_1_msg="'||xxccp_common_pkg.get_msg('${C_appl_name}','APP-XXCCP1-00005','NUMBER','1','PARAM_VALUE','${17}')||'"'
-      ,'C_00005_2_msg="'||xxccp_common_pkg.get_msg('${C_appl_name}','APP-XXCCP1-00005','NUMBER','2','PARAM_VALUE','${18}')||'"'
-      ,'C_00005_3_msg="'||xxccp_common_pkg.get_msg('${C_appl_name}','APP-XXCCP1-00005','NUMBER','3','PARAM_VALUE','${19}')||'"'
-      ,'C_00005_4_msg="'||xxccp_common_pkg.get_msg('${C_appl_name}','APP-XXCCP1-00005','NUMBER','4','PARAM_VALUE','${20}')||'"'
-      ,'C_00005_5_msg="'||xxccp_common_pkg.get_msg('${C_appl_name}','APP-XXCCP1-00005','NUMBER','5','PARAM_VALUE','${21}')||'"'
-      ,'C_00005_6_msg="'||xxccp_common_pkg.get_msg('${C_appl_name}','APP-XXCCP1-00005','NUMBER','6','PARAM_VALUE','${22}')||'"'
-      ,'C_00005_7_msg="'||xxccp_common_pkg.get_msg('${C_appl_name}','APP-XXCCP1-00005','NUMBER','7','PARAM_VALUE','${23}')||'"'
-      ,'C_00005_8_msg="'||xxccp_common_pkg.get_msg('${C_appl_name}','APP-XXCCP1-00005','NUMBER','8','PARAM_VALUE','${24}')||'"'
-      ,'C_00005_9_msg="'||xxccp_common_pkg.get_msg('${C_appl_name}','APP-XXCCP1-00005','NUMBER','9','PARAM_VALUE','${25}')||'"'
-      ,'C_00005_10_msg="'||xxccp_common_pkg.get_msg('${C_appl_name}','APP-XXCCP1-00005','NUMBER','10','PARAM_VALUE','${26}')||'"'
-      ,'C_00005_11_msg="'||xxccp_common_pkg.get_msg('${C_appl_name}','APP-XXCCP1-00005','NUMBER','11','PARAM_VALUE','${27}')||'"'
-      ,'C_00005_12_msg="'||xxccp_common_pkg.get_msg('${C_appl_name}','APP-XXCCP1-00005','NUMBER','12','PARAM_VALUE','${28}')||'"'
-      ,'C_00005_13_msg="'||xxccp_common_pkg.get_msg('${C_appl_name}','APP-XXCCP1-00005','NUMBER','13','PARAM_VALUE','${29}')||'"'
-      ,'C_00005_14_msg="'||xxccp_common_pkg.get_msg('${C_appl_name}','APP-XXCCP1-00005','NUMBER','14','PARAM_VALUE','${30}')||'"'
-      ,'C_00005_15_msg="'||xxccp_common_pkg.get_msg('${C_appl_name}','APP-XXCCP1-00005','NUMBER','15','PARAM_VALUE','${31}')||'"'
-      ,'C_00005_16_msg="'||xxccp_common_pkg.get_msg('${C_appl_name}','APP-XXCCP1-00005','NUMBER','16','PARAM_VALUE','${32}')||'"'
-      ,'C_00005_17_msg="'||xxccp_common_pkg.get_msg('${C_appl_name}','APP-XXCCP1-00005','NUMBER','17','PARAM_VALUE','${33}')||'"'
-      ,'C_00005_18_msg="'||xxccp_common_pkg.get_msg('${C_appl_name}','APP-XXCCP1-00005','NUMBER','18','PARAM_VALUE','${34}')||'"'
-      ,'C_00005_19_msg="'||xxccp_common_pkg.get_msg('${C_appl_name}','APP-XXCCP1-00005','NUMBER','19','PARAM_VALUE','${35}')||'"'
-      ,'C_00005_20_msg="'||xxccp_common_pkg.get_msg('${C_appl_name}','APP-XXCCP1-00005','NUMBER','20','PARAM_VALUE','${36}')||'"'
-      ,'C_00005_21_msg="'||xxccp_common_pkg.get_msg('${C_appl_name}','APP-XXCCP1-00005','NUMBER','21','PARAM_VALUE','${37}')||'"'
-      ,'C_00005_22_msg="'||xxccp_common_pkg.get_msg('${C_appl_name}','APP-XXCCP1-00005','NUMBER','22','PARAM_VALUE','${38}')||'"'
-      ,'C_00005_23_msg="'||xxccp_common_pkg.get_msg('${C_appl_name}','APP-XXCCP1-00005','NUMBER','23','PARAM_VALUE','${39}')||'"'
-      ,'C_00005_24_msg="'||xxccp_common_pkg.get_msg('${C_appl_name}','APP-XXCCP1-00005','NUMBER','24','PARAM_VALUE','${40}')||'"'
-      ,'C_00005_25_msg="'||xxccp_common_pkg.get_msg('${C_appl_name}','APP-XXCCP1-00005','NUMBER','25','PARAM_VALUE','${41}')||'"'
-      ,'C_00005_26_msg="'||xxccp_common_pkg.get_msg('${C_appl_name}','APP-XXCCP1-00005','NUMBER','26','PARAM_VALUE','${42}')||'"'
-      ,'C_00005_27_msg="'||xxccp_common_pkg.get_msg('${C_appl_name}','APP-XXCCP1-00005','NUMBER','27','PARAM_VALUE','${43}')||'"'
-      ,'C_00005_28_msg="'||xxccp_common_pkg.get_msg('${C_appl_name}','APP-XXCCP1-00005','NUMBER','28','PARAM_VALUE','${44}')||'"'
-      ,'C_00005_29_msg="'||xxccp_common_pkg.get_msg('${C_appl_name}','APP-XXCCP1-00005','NUMBER','29','PARAM_VALUE','${45}')||'"'
-      ,'C_00005_30_msg="'||xxccp_common_pkg.get_msg('${C_appl_name}','APP-XXCCP1-00005','NUMBER','30','PARAM_VALUE','${46}')||'"'
+       'C_00002_msg='''||xxccp_common_pkg.get_msg('${C_appl_name}','APP-XXCCP1-00002','AP_SHORT_NAME','${5}')||''''
+      ,'C_00003_msg='''||xxccp_common_pkg.get_msg('${C_appl_name}','APP-XXCCP1-00003','CONC_SHORT_NAME','${6}')||''''
+      ,'C_00010_msg='''||xxccp_common_pkg.get_msg('${C_appl_name}','APP-XXCCP1-00010','COOPE_DIV','${7}')||''''
+      ,'C_00011_msg='''||xxccp_common_pkg.get_msg('${C_appl_name}','APP-XXCCP1-00011','SYSTEM_NAME','${8}')||''''
+      ,'C_00012_msg='''||xxccp_common_pkg.get_msg('${C_appl_name}','APP-XXCCP1-00012','DATA_TYPE','${9}')||''''
+      ,'C_00013_msg='''||xxccp_common_pkg.get_msg('${C_appl_name}','APP-XXCCP1-00013','GEN_NUM','${10}')||''''
+      ,'C_00014_msg='''||xxccp_common_pkg.get_msg('${C_appl_name}','APP-XXCCP1-00014','SVF_NUM','${11}')||''''
+      ,'C_00015_msg='''||xxccp_common_pkg.get_msg('${C_appl_name}','APP-XXCCP1-00015','EBS_BUSI_CODE','${12}')||''''
+      ,'C_00016_msg='''||xxccp_common_pkg.get_msg('${C_appl_name}','APP-XXCCP1-00016','IF_BUSI_CODE','${13}')||''''
+      ,'C_00017_msg='''||xxccp_common_pkg.get_msg('${C_appl_name}','APP-XXCCP1-00017','USER_NAME','${14}')||''''
+      ,'C_00018_msg='''||xxccp_common_pkg.get_msg('${C_appl_name}','APP-XXCCP1-00018','RESP_APPL_NAME','${15}')||''''
+      ,'C_00019_msg='''||xxccp_common_pkg.get_msg('${C_appl_name}','APP-XXCCP1-00019','RESP_NAME','${16}')||''''
+      ,'C_10016_msg='''||xxccp_common_pkg.get_msg('${C_appl_name}','APP-XXCCP1-10016')||''''
+      ,'C_10020_msg='''||xxccp_common_pkg.get_msg('${C_appl_name}','APP-XXCCP1-10020')||''''
+      ,'C_10021_msg='''||xxccp_common_pkg.get_msg('${C_appl_name}','APP-XXCCP1-10021')||''''
+      ,'C_10041_msg='''||xxccp_common_pkg.get_msg('${C_appl_name}','APP-XXCCP1-10041')||''''
+      ,'C_10042_msg='''||xxccp_common_pkg.get_msg('${C_appl_name}','APP-XXCCP1-10042')||''''
+      ,'C_10043_msg='''||xxccp_common_pkg.get_msg('${C_appl_name}','APP-XXCCP1-10043')||''''
+      ,'C_10044_msg='''||xxccp_common_pkg.get_msg('${C_appl_name}','APP-XXCCP1-10044')||''''
+      ,'C_10045_msg='''||xxccp_common_pkg.get_msg('${C_appl_name}','APP-XXCCP1-10045')||''''
+      ,'C_10046_msg='''||xxccp_common_pkg.get_msg('${C_appl_name}','APP-XXCCP1-10046')||''''
+      ,'C_10047_msg='''||xxccp_common_pkg.get_msg('${C_appl_name}','APP-XXCCP1-10047')||''''
+      ,'C_10048_msg='''||xxccp_common_pkg.get_msg('${C_appl_name}','APP-XXCCP1-10048')||''''
+      ,'C_10049_msg='''||xxccp_common_pkg.get_msg('${C_appl_name}','APP-XXCCP1-10049')||''''
+      ,'C_00005_1_msg='''||xxccp_common_pkg.get_msg('${C_appl_name}','APP-XXCCP1-00005','NUMBER','1','PARAM_VALUE','${17}')||''''
+      ,'C_00005_2_msg='''||xxccp_common_pkg.get_msg('${C_appl_name}','APP-XXCCP1-00005','NUMBER','2','PARAM_VALUE','${18}')||''''
+      ,'C_00005_3_msg='''||xxccp_common_pkg.get_msg('${C_appl_name}','APP-XXCCP1-00005','NUMBER','3','PARAM_VALUE','${19}')||''''
+      ,'C_00005_4_msg='''||xxccp_common_pkg.get_msg('${C_appl_name}','APP-XXCCP1-00005','NUMBER','4','PARAM_VALUE','${20}')||''''
+      ,'C_00005_5_msg='''||xxccp_common_pkg.get_msg('${C_appl_name}','APP-XXCCP1-00005','NUMBER','5','PARAM_VALUE','${21}')||''''
+      ,'C_00005_6_msg='''||xxccp_common_pkg.get_msg('${C_appl_name}','APP-XXCCP1-00005','NUMBER','6','PARAM_VALUE','${22}')||''''
+      ,'C_00005_7_msg='''||xxccp_common_pkg.get_msg('${C_appl_name}','APP-XXCCP1-00005','NUMBER','7','PARAM_VALUE','${23}')||''''
+      ,'C_00005_8_msg='''||xxccp_common_pkg.get_msg('${C_appl_name}','APP-XXCCP1-00005','NUMBER','8','PARAM_VALUE','${24}')||''''
+      ,'C_00005_9_msg='''||xxccp_common_pkg.get_msg('${C_appl_name}','APP-XXCCP1-00005','NUMBER','9','PARAM_VALUE','${25}')||''''
+      ,'C_00005_10_msg='''||xxccp_common_pkg.get_msg('${C_appl_name}','APP-XXCCP1-00005','NUMBER','10','PARAM_VALUE','${26}')||''''
+      ,'C_00005_11_msg='''||xxccp_common_pkg.get_msg('${C_appl_name}','APP-XXCCP1-00005','NUMBER','11','PARAM_VALUE','${27}')||''''
+      ,'C_00005_12_msg='''||xxccp_common_pkg.get_msg('${C_appl_name}','APP-XXCCP1-00005','NUMBER','12','PARAM_VALUE','${28}')||''''
+      ,'C_00005_13_msg='''||xxccp_common_pkg.get_msg('${C_appl_name}','APP-XXCCP1-00005','NUMBER','13','PARAM_VALUE','${29}')||''''
+      ,'C_00005_14_msg='''||xxccp_common_pkg.get_msg('${C_appl_name}','APP-XXCCP1-00005','NUMBER','14','PARAM_VALUE','${30}')||''''
+      ,'C_00005_15_msg='''||xxccp_common_pkg.get_msg('${C_appl_name}','APP-XXCCP1-00005','NUMBER','15','PARAM_VALUE','${31}')||''''
+      ,'C_00005_16_msg='''||xxccp_common_pkg.get_msg('${C_appl_name}','APP-XXCCP1-00005','NUMBER','16','PARAM_VALUE','${32}')||''''
+      ,'C_00005_17_msg='''||xxccp_common_pkg.get_msg('${C_appl_name}','APP-XXCCP1-00005','NUMBER','17','PARAM_VALUE','${33}')||''''
+      ,'C_00005_18_msg='''||xxccp_common_pkg.get_msg('${C_appl_name}','APP-XXCCP1-00005','NUMBER','18','PARAM_VALUE','${34}')||''''
+      ,'C_00005_19_msg='''||xxccp_common_pkg.get_msg('${C_appl_name}','APP-XXCCP1-00005','NUMBER','19','PARAM_VALUE','${35}')||''''
+      ,'C_00005_20_msg='''||xxccp_common_pkg.get_msg('${C_appl_name}','APP-XXCCP1-00005','NUMBER','20','PARAM_VALUE','${36}')||''''
+      ,'C_00005_21_msg='''||xxccp_common_pkg.get_msg('${C_appl_name}','APP-XXCCP1-00005','NUMBER','21','PARAM_VALUE','${37}')||''''
+      ,'C_00005_22_msg='''||xxccp_common_pkg.get_msg('${C_appl_name}','APP-XXCCP1-00005','NUMBER','22','PARAM_VALUE','${38}')||''''
+      ,'C_00005_23_msg='''||xxccp_common_pkg.get_msg('${C_appl_name}','APP-XXCCP1-00005','NUMBER','23','PARAM_VALUE','${39}')||''''
+      ,'C_00005_24_msg='''||xxccp_common_pkg.get_msg('${C_appl_name}','APP-XXCCP1-00005','NUMBER','24','PARAM_VALUE','${40}')||''''
+      ,'C_00005_25_msg='''||xxccp_common_pkg.get_msg('${C_appl_name}','APP-XXCCP1-00005','NUMBER','25','PARAM_VALUE','${41}')||''''
+      ,'C_00005_26_msg='''||xxccp_common_pkg.get_msg('${C_appl_name}','APP-XXCCP1-00005','NUMBER','26','PARAM_VALUE','${42}')||''''
+      ,'C_00005_27_msg='''||xxccp_common_pkg.get_msg('${C_appl_name}','APP-XXCCP1-00005','NUMBER','27','PARAM_VALUE','${43}')||''''
+      ,'C_00005_28_msg='''||xxccp_common_pkg.get_msg('${C_appl_name}','APP-XXCCP1-00005','NUMBER','28','PARAM_VALUE','${44}')||''''
+      ,'C_00005_29_msg='''||xxccp_common_pkg.get_msg('${C_appl_name}','APP-XXCCP1-00005','NUMBER','29','PARAM_VALUE','${45}')||''''
+      ,'C_00005_30_msg='''||xxccp_common_pkg.get_msg('${C_appl_name}','APP-XXCCP1-00005','NUMBER','30','PARAM_VALUE','${46}')||''''
       --ƒvƒƒtƒ@ƒCƒ‹
-      ,'C_ouput_request_id="'||FND_PROFILE.VALUE('${C_prof_request_id}')||'"'
-      ,'C_concurrent_name="'||FND_PROFILE.VALUE('${C_prof_concurrent_name}')||'"'
-      ,'C_user_name="'||FND_PROFILE.VALUE('${C_prof_user_name}')||'"'
-      ,'C_resp_name="'||FND_PROFILE.VALUE('${C_prof_resp_name}')||'"'
-      ,'C_actual_start_date="'||FND_PROFILE.VALUE('${C_prof_actual_start_date}')||'"'
-      ,'C_nas_main_dir="'||FND_PROFILE.VALUE('${C_prof_nas_main_dir}')||'"'
-      ,'C_san_main_dir="'||FND_PROFILE.VALUE('${C_prof_san_main_dir}')||'"'
-      ,'C_edi_que="'||FND_PROFILE.VALUE('${C_prof_edi_que}')||'"'
-      ,'C_edi_host="'||FND_PROFILE.VALUE('${C_prof_edi_host}')||'"'
-      ,'C_report_que1="'||FND_PROFILE.VALUE('${C_prof_report_que1}')||'"'
-      ,'C_report_que2="'||FND_PROFILE.VALUE('${C_prof_report_que2}')||'"'
-      ,'C_report_que3="'||FND_PROFILE.VALUE('${C_prof_report_que3}')||'"'
-      ,'C_report_host1="'||FND_PROFILE.VALUE('${C_prof_report_host1}')||'"'
-      ,'C_report_host2="'||FND_PROFILE.VALUE('${C_prof_report_host2}')||'"'
-      ,'C_report_host3="'||FND_PROFILE.VALUE('${C_prof_report_host3}')||'"'
-      ,'C_status_max="'||FND_PROFILE.VALUE('${C_prof_status_max}')||'"'
-      ,'C_status_interval="'||FND_PROFILE.VALUE('${C_prof_status_interval}')||'"'
-      ,'C_if_file_1place="'||FND_PROFILE.VALUE('${C_prof_if_file_1place}')||'"'
-      ,'C_if_file_6place="'||FND_PROFILE.VALUE('${C_prof_if_file_6place}')||'"'
-      ,'C_edi_job_gr_comm="'||FND_PROFILE.VALUE('${C_prof_edi_job_gr_comm}')||'"'
-      ,'C_edi_job_gr_21="'||FND_PROFILE.VALUE('${C_prof_edi_job_gr_21}')||'"'
-      ,'C_edi_job_gr_22="'||FND_PROFILE.VALUE('${C_prof_edi_job_gr_22}')||'"'
-      ,'C_rep_job_gr_comm="'||FND_PROFILE.VALUE('${C_prof_report_job_gr_comm}')||'"'
-      ,'C_rep_job_gr_last="'||FND_PROFILE.VALUE('${C_prof_report_job_gr_last}')||'"'
-      ,'C_jobnet_last="'||FND_PROFILE.VALUE('${C_prof_jobnet_last}')||'"'
-      ,'C_request_char="'||FND_PROFILE.VALUE('${C_prof_request_char}')||'"'
-      ,'C_edi_serv="'||FND_PROFILE.VALUE('${C_prof_edi_serv}')||'"'
-      ,'C_report_serv="'||FND_PROFILE.VALUE('${C_prof_report_serv}')||'"'
-      ,'C_sts_updt_path="'||FND_PROFILE.VALUE('${C_prof_sts_updt_path}')||'"'
-      ,'C_edi_esc_bk_num="'||FND_PROFILE.VALUE('${C_prof_edi_esc_bk_num}')||'"'
-      ,'C_report_esc_bk_num="'||FND_PROFILE.VALUE('${C_prof_report_esc_bk_num}')||'"'
+      ,'C_ouput_request_id='''||FND_PROFILE.VALUE('${C_prof_request_id}')||''''
+      ,'C_concurrent_name='''||FND_PROFILE.VALUE('${C_prof_concurrent_name}')||''''
+      ,'C_user_name='''||FND_PROFILE.VALUE('${C_prof_user_name}')||''''
+      ,'C_resp_name='''||FND_PROFILE.VALUE('${C_prof_resp_name}')||''''
+      ,'C_actual_start_date='''||FND_PROFILE.VALUE('${C_prof_actual_start_date}')||''''
+      ,'C_nas_main_dir='''||FND_PROFILE.VALUE('${C_prof_nas_main_dir}')||''''
+      ,'C_san_main_dir='''||FND_PROFILE.VALUE('${C_prof_san_main_dir}')||''''
+      ,'C_edi_que='''||FND_PROFILE.VALUE('${C_prof_edi_que}')||''''
+      ,'C_edi_host='''||FND_PROFILE.VALUE('${C_prof_edi_host}')||''''
+      ,'C_report_que1='''||FND_PROFILE.VALUE('${C_prof_report_que1}')||''''
+      ,'C_report_que2='''||FND_PROFILE.VALUE('${C_prof_report_que2}')||''''
+      ,'C_report_que3='''||FND_PROFILE.VALUE('${C_prof_report_que3}')||''''
+      ,'C_report_host1='''||FND_PROFILE.VALUE('${C_prof_report_host1}')||''''
+      ,'C_report_host2='''||FND_PROFILE.VALUE('${C_prof_report_host2}')||''''
+      ,'C_report_host3='''||FND_PROFILE.VALUE('${C_prof_report_host3}')||''''
+-- 2009/04/02 Ver.1.4 Masayuki.Sano Delete Start
+--      ,'C_status_max='''||FND_PROFILE.VALUE('${C_prof_status_max}')||''''
+--      ,'C_status_interval='''||FND_PROFILE.VALUE('${C_prof_status_interval}')||''''
+-- 2009/04/02 Ver.1.4 Masayuki.Sano Delete End
+      ,'C_if_file_1place='''||FND_PROFILE.VALUE('${C_prof_if_file_1place}')||''''
+      ,'C_if_file_6place='''||FND_PROFILE.VALUE('${C_prof_if_file_6place}')||''''
+      ,'C_edi_job_gr_comm='''||FND_PROFILE.VALUE('${C_prof_edi_job_gr_comm}')||''''
+      ,'C_edi_job_gr_21='''||FND_PROFILE.VALUE('${C_prof_edi_job_gr_21}')||''''
+      ,'C_edi_job_gr_22='''||FND_PROFILE.VALUE('${C_prof_edi_job_gr_22}')||''''
+      ,'C_rep_job_gr_comm='''||FND_PROFILE.VALUE('${C_prof_report_job_gr_comm}')||''''
+      ,'C_rep_job_gr_last='''||FND_PROFILE.VALUE('${C_prof_report_job_gr_last}')||''''
+-- 2009/04/02 Ver.1.4 Masayuki.Sano Delete Start
+--      ,'C_jobnet_last='''||FND_PROFILE.VALUE('${C_prof_jobnet_last}')||''''
+-- 2009/04/02 Ver.1.4 Masayuki.Sano Delete End
+      ,'C_request_char='''||FND_PROFILE.VALUE('${C_prof_request_char}')||''''
+      ,'C_edi_serv='''||FND_PROFILE.VALUE('${C_prof_edi_serv}')||''''
+      ,'C_report_serv='''||FND_PROFILE.VALUE('${C_prof_report_serv}')||''''
+      ,'C_sts_updt_path='''||FND_PROFILE.VALUE('${C_prof_sts_updt_path}')||''''
+      ,'C_edi_esc_bk_num='''||FND_PROFILE.VALUE('${C_prof_edi_esc_bk_num}')||''''
+      ,'C_report_esc_bk_num='''||FND_PROFILE.VALUE('${C_prof_report_esc_bk_num}')||''''
+-- 2009/04/02 Ver.1.4 Masayuki.Sano ADD Start
+      ,'C_edi_status_max='''||FND_PROFILE.VALUE('${C_prof_edi_status_max}')||''''
+      ,'C_edi_status_interval='''||FND_PROFILE.VALUE('${C_prof_edi_status_interval}')||''''
+      ,'C_edi_jobnet_last='''||FND_PROFILE.VALUE('${C_prof_edi_jobnet_last}')||''''
+      ,'C_rep_status_max='''||FND_PROFILE.VALUE('${C_prof_rep_status_max}')||''''
+      ,'C_rep_status_interval='''||FND_PROFILE.VALUE('${C_prof_rep_status_interval}')||''''
+      ,'C_rep_jobnet_last='''||FND_PROFILE.VALUE('${C_prof_rep_jobnet_last}')||''''
+-- 2009/04/02 Ver.1.4 Masayuki.Sano ADD End
       --WHOƒJƒ‰ƒ€’l
-      ,'C_requested_by="'||fcr.requested_by||'"'                                    --—v‹Ò(USER_ID)
-      ,'C_last_update_login="'||fcr.conc_login_id||'"'                              --ÅIXVƒƒOƒCƒ“(LOGIN_ID)
-      ,'C_program_application_id="'||fcr.program_application_id||'"'                --ƒRƒ“ƒJƒŒƒ“ƒgEƒAƒvƒŠƒP[ƒVƒ‡ƒ“ID
-      ,'C_concurrent_program_id="'||fcr.concurrent_program_id||'"'                  --ƒRƒ“ƒJƒŒƒ“ƒgEƒvƒƒOƒ‰ƒ€ID
+      ,'C_requested_by='''||fcr.requested_by||''''                                    --—v‹Ò(USER_ID)
+      ,'C_last_update_login='''||fcr.conc_login_id||''''                              --ÅIXVƒƒOƒCƒ“(LOGIN_ID)
+      ,'C_program_application_id='''||fcr.program_application_id||''''                --ƒRƒ“ƒJƒŒƒ“ƒgEƒAƒvƒŠƒP[ƒVƒ‡ƒ“ID
+      ,'C_concurrent_program_id='''||fcr.concurrent_program_id||''''                  --ƒRƒ“ƒJƒŒƒ“ƒgEƒvƒƒOƒ‰ƒ€ID
 FROM  dual
      ,fnd_concurrent_requests fcr
-WHERE fcr.request_id = '${C_request_id}'
+WHERE fcr.request_id = TO_NUMBER('${C_request_id}')
 ;
-SELECT 'C_application_id="'||NVL(fdfc.application_id,-1)||'"'
-      ,'C_flexfield_name="'||NVL(fdfc.descriptive_flexfield_name,-1)||'"'
-      ,'C_para_count="'||count(*)||'"'
+SELECT 'C_application_id='''||NVL(fdfc.application_id,-1)||''''
+      ,'C_flexfield_name='''||NVL(fdfc.descriptive_flexfield_name,-1)||''''
+      ,'C_para_count='''||count(*)||''''
 FROM   fnd_concurrent_programs_vl  fcpv
       ,fnd_descr_flex_col_usage_vl fdfc
       ,fnd_application_vl          fav
@@ -315,6 +431,7 @@ group by fdfc.application_id,
 EXIT
 EOF
 
+# 2009/03/19 Ver.1.3 Koji.Oomata mod End
 #SQLŒ‹‰Ê“Ç‚İ‚İˆ—
 . $C_std_out
 
@@ -456,14 +573,16 @@ REPORT)
   #ˆ—‚È‚µ
   ;;
 *)
-  sqlplus -s apps/apps <<EOF >${C_std_out}
+# 2009/03/19 Ver.1.3 Koji.Oomata mod START
+  sqlplus -s ${C_ora_login} <<EOF >>${C_std_out}  # 2009/04/02 Ver.1.4 Masayuki.Sano update
   SET HEADING OFF
   SET LINES 240
-  SELECT 'C_10039_msg="'||xxccp_common_pkg.get_msg('${C_appl_name}','APP-XXCCP1-10039')||'"'
+  SELECT 'C_10039_msg='''||xxccp_common_pkg.get_msg('${C_appl_name}','APP-XXCCP1-10039')||''''
   FROM DUAL
   ;
   EXIT
 EOF
+# 2009/03/19 Ver.1.3 Koji.Oomata mod End
   . $C_std_out
   #ƒGƒ‰[ƒƒbƒZ[ƒWo—Í
   shell_end "${C_10039_msg}"
@@ -594,16 +713,18 @@ if [ -z "${C_report_host3}" ]
 then
   shell_end "${C_10016_msg}( ${C_prof_report_host3} )"
 fi
-#XXCCP:ŠÄ‹Å‘åŠÔ
-if [ -z "${C_status_max}" ]
-then
-  shell_end "${C_10016_msg}( ${C_prof_status_max} )"
-fi
-#XXCCP:ŠÄ‹ŠÔŠuŠÔ
-if [ -z "${C_status_interval}" ]
-then
-  shell_end "${C_10016_msg}( ${C_prof_status_interval} )"
-fi
+# 2009/04/02 Ver.1.4 Masayuki.Sano delete START
+##XXCCP:ŠÄ‹Å‘åŠÔ
+#if [ -z "${C_status_max}" ]
+#then
+#  shell_end "${C_10016_msg}( ${C_prof_status_max} )"
+#fi
+##XXCCP:ŠÄ‹ŠÔŠuŠÔ
+#if [ -z "${C_status_interval}" ]
+#then
+#  shell_end "${C_10016_msg}( ${C_prof_status_interval} )"
+#fi
+## 2009/04/02 Ver.1.4 Masayuki.Sano delete END
 #XXCCP:ŠÂ‹«’l
 if [ -z "${C_if_file_1place}" ]
 then
@@ -639,11 +760,13 @@ if [ -z "${C_rep_job_gr_last}" ]
 then
   shell_end "${C_10016_msg}( ${C_prof_report_job_gr_last} )"
 fi
+# 2009/04/02 Ver.1.4 Masayuki.Sano delete START
 #XXCCP:ƒWƒ‡ƒuƒlƒbƒg–¼(––”ö)
-if [ -z "${C_jobnet_last}" ]
-then
-  shell_end "${C_10016_msg}( ${C_prof_jobnet_last} )"
-fi
+#if [ -z "${C_jobnet_last}" ]
+#then
+#  shell_end "${C_10016_msg}( ${C_prof_jobnet_last} )"
+#fi
+# 2009/04/02 Ver.1.4 Masayuki.Sano delete END
 #XXCCP:—v‹IDæ“¾—p
 if [ -z "${C_request_char}" ]
 then
@@ -676,6 +799,38 @@ then
   shell_end "${C_10016_msg}( ${C_prof_report_esc_bk_num} )"
 fi
 # 2009/02/25 Ver.1.2 Koji.Oomata add END
+# 2009/04/02 Ver.1.4 Masayuki.Sano add START
+#XXCCP:EDIŠÄ‹Å‘åŠÔ
+if [ -z "${C_edi_status_max}" ]
+then
+  shell_end "${C_10016_msg}( ${C_prof_edi_status_max} )"
+fi
+#XXCCP:EDIŠÄ‹ŠÔŠuŠÔ
+if [ -z "${C_edi_status_interval}" ]
+then
+  shell_end "${C_10016_msg}( ${C_prof_edi_status_interval} )"
+fi
+#XXCCP:EDIƒWƒ‡ƒuƒlƒbƒg–¼(––”ö)
+if [ -z "${C_edi_jobnet_last}" ]
+then
+  shell_end "${C_10016_msg}( ${C_prof_edi_jobnet_last} )"
+fi
+#XXCCP:’ •[ŠÄ‹Å‘åŠÔ
+if [ -z "${C_rep_status_max}" ]
+then
+  shell_end "${C_10016_msg}( ${C_prof_rep_status_max} )"
+fi
+#XXCCP:’ •[ŠÄ‹ŠÔŠuŠÔ
+if [ -z "${C_rep_status_interval}" ]
+then
+  shell_end "${C_10016_msg}( ${C_prof_rep_status_interval} )"
+fi
+#XXCCP:’ •[ƒWƒ‡ƒuƒlƒbƒg–¼(––”ö)
+if [ -z "${C_rep_jobnet_last}" ]
+then
+  shell_end "${C_10016_msg}( ${C_prof_rep_jobnet_last} )"
+fi
+# 2009/04/02 Ver.1.4 Masayuki.Sano add END
 
 #ƒfƒBƒŒƒNƒgƒŠî•ñæ“¾(A-2)
 #‹Æ–±Œn—ñƒR[ƒh‚ğ¬•¶š•ÏŠ·
@@ -747,14 +902,16 @@ do
   #ƒtƒ@ƒCƒ‹‘¶İƒ`ƒFƒbƒN(A-4)
   if [ -f ${L_file_dir_to} ]
   then
-    sqlplus -s apps/apps <<EOF >${C_std_out}
+# 2009/03/19 Ver.1.3 Koji.Oomata mod START
+    sqlplus -s ${C_ora_login} <<EOF >>${C_std_out}  # 2009/04/02 Ver.1.4 Masayuki.Sano update
     SET HEADING OFF
     SET LINES 240
-    SELECT 'C_10010_msg="'||xxccp_common_pkg.get_msg('${C_appl_name}','APP-XXCCP1-10010','FILE_NAME','${L_file_dir_to}')||'"'
+    SELECT 'C_10010_msg='''||xxccp_common_pkg.get_msg('${C_appl_name}','APP-XXCCP1-10010','FILE_NAME','${L_file_dir_to}')||''''
     FROM DUAL
     ;
     EXIT
 EOF
+# 2009/03/19 Ver.1.3 Koji.Oomata mod End
     . $C_std_out
     if [ -z "${L_status_err}" ]
     then
@@ -762,6 +919,48 @@ EOF
     else
       L_status_err="${L_status_err}\n${C_10010_msg}"
     fi
+# 2009/04/02 Ver.1.4 Masayuki.Sano add START
+  # ¦ ƒtƒ@ƒCƒ‹‚ª‘¶İ‚µ‚È‚¢ê‡A‰º‹Lƒ`ƒFƒbƒNˆ—‚ğÀs‚·‚éB
+  else
+    #A-4D‘½d§ŒäƒXƒe[ƒ^ƒXŠm”F
+    #[ “¯ˆêƒtƒ@ƒCƒ‹‚ÅƒWƒ‡ƒuó‹µƒXƒe[ƒ^ƒX‚ª'Às’†'‚Å‚ ‚é‚à‚Ì‚ğ’Šo]
+    sqlplus -s ${C_ora_login} <<EOF >>${C_std_out}  # 2009/04/02 Ver.1.4 Masayuki.Sano update
+    SET HEADING OFF
+    SET LINES 240
+    SELECT 'L_cnt=''' || COUNT(1) || ''''
+    FROM   xxccp_if_job_status xijs
+    WHERE  xijs.if_system_name = '${8}'          -- IF˜AŒgƒVƒXƒeƒ€–¼
+    AND    xijs.if_file_name   = '${L_file_nam}' -- ƒtƒ@ƒCƒ‹–¼
+    AND    xijs.job_process    = 'R'             -- Às’†
+    ;
+    EXIT
+EOF
+    . ${C_std_out}
+    #[ æ“¾‚Å‚«‚½Œ”‚ª0ŒˆÈŠO‚Ìê‡AƒGƒ‰[ƒƒbƒZ[ƒWƒZƒbƒg]
+    if [ "${L_cnt}" != "0" ]
+    then
+      # Às’†ƒXƒe[ƒ^ƒXŠm”FƒGƒ‰[ƒƒbƒZ[ƒW‚ğæ“¾
+      sqlplus -s ${C_ora_login} <<EOF >>${C_std_out}
+      SET HEADING OFF
+      SET LINES 240
+      SELECT 'C_10062_msg='''||xxccp_common_pkg.get_msg('${C_appl_name}'
+                                                       ,'APP-XXCCP1-10062'
+                                                       ,'FILE_NAME'
+                                                       ,'${L_file_dir_to}')||''''
+      FROM DUAL
+      ;
+      EXIT
+EOF
+      . $C_std_out
+      # ƒGƒ‰[ƒƒbƒZ[ƒW‚ÉƒZƒbƒg
+      if [ -z "${L_status_err}" ]
+      then
+        L_status_err="${C_10062_msg}"
+      else
+        L_status_err="${L_status_err}\n${C_10062_msg}"
+      fi
+    fi
+# 2009/04/02 Ver.1.4 Masayuki.Sano add END
   fi
 
   #ƒ‹[ƒvƒJƒEƒ“ƒg +1
@@ -774,6 +973,115 @@ then
   shell_end ${L_status_err}
 fi
 
+# 2009/04/02 Ver.1.4 Masayuki.Sano add START
+#ƒXƒe[ƒ^ƒX‰Šúƒf[ƒ^ì¬ˆ—(A-14)
+L_if_job_status_id_all=""
+loop_cnt=1
+while test ${7} -ge ${loop_cnt}
+do
+  #‘ÎÛƒtƒ@ƒCƒ‹–¼(ƒfƒBƒŒƒNƒgƒŠ–³‚µ)
+  L_file_nam=`printf "$L_file_nam_all" | cut -d " " -f $loop_cnt`
+  #‡@ ƒV[ƒPƒ“ƒX‚ğÀs‚µ‚ÄAID‚ğæ“¾‚·‚é
+  sqlplus -s ${C_ora_login} <<EOF >>${C_std_out}
+  SET HEADING OFF
+  SET LINES 240
+  SELECT 'L_if_job_status_id=''' || xxccp_if_job_status_s01.nextval || ''''
+  FROM   DUAL
+  ;
+  EXIT
+EOF
+  . ${C_std_out}
+  #‡A ƒf[ƒ^‚ğì¬‚·‚éB
+  sqlplus -s ${C_ora_login} <<EOF >${C_std_out2}
+    WHENEVER OSERROR EXIT FAILURE ROLLBACK
+    WHENEVER SQLERROR EXIT FAILURE ROLLBACK
+    -- ‘}“ü
+    INSERT INTO xxccp_if_job_status(
+       if_job_status_id
+      ,request_id_val
+      ,exec_request_id
+      ,status_code
+      ,if_system_name
+      ,if_file_name
+      ,jobnet_name
+      ,first_request_id
+      ,job_process
+      ,created_by
+      ,creation_date
+      ,last_updated_by
+      ,last_update_date
+      ,last_update_login
+      ,request_id
+      ,program_application_id
+      ,program_id
+      ,program_update_date
+    ) VALUES (
+       '${L_if_job_status_id}'
+      ,NULL
+      ,NULL
+      ,'i'
+      ,'${8}'
+      ,'${L_file_nam}'
+      ,NULL
+      ,TO_NUMBER('${C_request_id}')
+      ,'R'
+      ,TO_NUMBER('${C_requested_by}')
+      ,TO_DATE('${C_date2}','YYYYMMDDHH24MISS')
+      ,TO_NUMBER('${C_requested_by}')
+      ,TO_DATE('${C_date2}','YYYYMMDDHH24MISS')
+      ,TO_NUMBER('${C_last_update_login}')
+      ,TO_NUMBER('${C_request_id}')
+      ,TO_NUMBER('${C_program_application_id}')
+      ,TO_NUMBER('${C_concurrent_program_id}')
+      ,TO_DATE('${C_date2}','YYYYMMDDHH24MISS')
+    );
+    EXIT SUCCESS COMMIT
+EOF
+  L_return=${?}
+  # ¡ ƒGƒ‰[ƒ`ƒFƒbƒN
+  if [ ${L_return} -ne 0 ]
+  then
+    #(SQL‚ğÀs‚µAƒƒbƒZ[ƒW‚ğæ“¾‚·‚éB)
+    sqlplus -s ${C_ora_login} <<EOF >>${C_std_out}
+    SET HEADING OFF
+    SET LINES 240
+    SELECT 'C_10060_msg=''' || xxccp_common_pkg.get_msg('${C_appl_name}'
+                                                       ,'APP-XXCCP1-10060'
+                                                       ,'SYSTEM_NAME'
+                                                       ,'${8}'
+                                                       ,'FILE_NAME'
+                                                       ,'${L_file_nam}') || ''''
+    FROM   DUAL
+    ;
+    EXIT
+EOF
+    . $C_std_out
+    #(ƒGƒ‰[ƒƒbƒZ[ƒW‚ÉƒZƒbƒg)
+    if [ -z "${L_status_err}" ]
+    then
+      L_status_err="${C_10060_msg}"
+    else
+      L_status_err="${L_status_err}\n${C_10060_msg}"
+    fi
+    #(I—¹ˆ—)
+    if [ -n "${L_if_job_status_id_all}" ]
+    then
+      update_job_process ${L_if_job_status_id_all}
+    fi
+    shell_end ${L_status_err}
+  fi
+  #¡ ‘ÎŒüƒVƒXƒeƒ€ƒWƒ‡ƒuó‹µƒe[ƒuƒ‹IDˆê——‚É’Ç‰Á
+  if [ -z "${L_if_job_status_id_all}" ]
+  then
+    L_if_job_status_id_all="${L_if_job_status_id}"
+  else
+    L_if_job_status_id_all="${L_if_job_status_id_all} ${L_if_job_status_id}"
+  fi
+  #ƒ‹[ƒvƒJƒEƒ“ƒg +1
+  loop_cnt=`expr $loop_cnt + 1`
+done
+# 2009/04/02 Ver.1.4 Masayuki.Sano add END
+
 #‹N“®‘ÎÛƒRƒ“ƒJƒŒƒ“ƒg”­sˆ—(A-5)
 L_resp_appl=${15}
 L_resp_name=${16}
@@ -782,7 +1090,10 @@ L_conc_appl=${5}
 L_conc_name=${6}
 
 #concsubƒpƒ‰ƒ[ƒ^•ÒW
-L_conc_args="APPS/APPS"
+# 2009/04/02 Ver.1.4 Masayuki.Sano update START
+#L_conc_args="APPS/APPS"
+L_conc_args="${C_ora_login}"
+# 2009/04/02 Ver.1.4 Masayuki.Sano update END
 L_conc_args="${L_conc_args} \"${L_resp_appl}\""
 L_conc_args="${L_conc_args} \"${L_resp_name}\""
 L_conc_args="${L_conc_args} \"${L_user_name}\""
@@ -925,18 +1236,33 @@ ${FND_TOP}/bin/CONCSUB ${L_conc_args} ${L_param_args} >${C_std_out2}
 L_return_code=${?}
 if [ ${L_return_code} -ne 0 ]
 then
-  sqlplus -s apps/apps <<EOF >${C_std_out}
+# 2009/03/19 Ver.1.3 Koji.Oomata mod START
+  sqlplus -s ${C_ora_login} <<EOF >>${C_std_out}  # 2009/04/02 Ver.1.4 Masayuki.Sano update
   SET HEADING OFF
   SET LINES 240
-  SELECT 'C_10022_msg="'||xxccp_common_pkg.get_msg('${C_appl_name}','APP-XXCCP1-10022')||'"'
+  SELECT 'C_10022_msg='''||xxccp_common_pkg.get_msg('${C_appl_name}','APP-XXCCP1-10022')||''''
   FROM DUAL
   ;
   EXIT
 EOF
+# 2009/03/19 Ver.1.3 Koji.Oomata mod End
   . $C_std_out
   L_conc_log=`cat $C_std_out2`
   #ƒGƒ‰[ƒƒbƒZ[ƒWo—Í
-  shell_end "${C_10022_msg}\n(${L_conc_log})"
+# 2009/04/02 Ver.1.4 Masayuki.Sano update START
+#  shell_end "${C_10022_msg}\n(${L_conc_log})"
+  #(ƒƒbƒZ[ƒW‚ğƒZƒbƒg)
+  if [ -z "${L_status_err}" ]
+  then
+    L_status_err="${C_10022_msg}\n(${L_conc_log})"
+  else
+    L_status_err="${L_status_err}\n${C_10022_msg}\n(${L_conc_log})"
+  fi
+  #(ƒWƒ‡ƒuó‹µƒXƒe[ƒ^ƒX‚ğI—¹‚ÉXV)
+  update_job_process ${L_if_job_status_id_all}
+  #(ˆ—I—¹)
+  shell_end ${L_status_err}
+# 2009/04/02 Ver.1.4 Masayuki.Sano update END
 fi
 
 #—v‹ID‚Ìæ“¾
@@ -946,15 +1272,17 @@ L_reqid=`printf $L_req_str | cut -d " " -f 1`
 L_exec_req_id="${L_reqid}"
 
 #‹N“®‘ÎÛƒRƒ“ƒJƒŒƒ“ƒg‚ÌI—¹ƒXƒe[ƒ^ƒX‚ğæ“¾
-sqlplus -s apps/apps <<EOF >${C_std_out}
+# 2009/03/19 Ver.1.3 Koji.Oomata mod START
+sqlplus -s ${C_ora_login} <<EOF >>${C_std_out}  # 2009/04/02 Ver.1.4 Masayuki.Sano update
 SET HEADING OFF
 SET LINES 240
-SELECT 'L_phase_code="'||fr.phase_code||'"'
-      ,'L_status_code="'||fr.status_code||'"'
+SELECT 'L_phase_code='''||fr.phase_code||''''
+      ,'L_status_code='''||fr.status_code||''''
 FROM fnd_concurrent_requests fr
-WHERE fr.request_id = '${L_reqid}';
+WHERE fr.request_id = TO_NUMBER('${L_reqid}');
 EXIT
 EOF
+# 2009/03/19 Ver.1.3 Koji.Oomata mod End
 
 #SQLŒ‹‰Ê“Ç‚İ‚İˆ—
 . $C_std_out
@@ -997,6 +1325,32 @@ G)
     if [ -f ${L_esp_file_dir} ]
     then
       mv ${L_esp_file_dir} ${L_new_file_dir}
+      L_return=${?}
+# 2009/04/02 Ver.1.4 Masayuki.Sano add START
+      if [ ${L_return} -ne 0 ]
+      then
+        sqlplus -s ${C_ora_login} <<EOF >>${C_std_out}  # 2009/04/02 Ver.1.4 Masayuki.Sano update
+        SET HEADING OFF
+        SET LINES 240
+        SELECT 'C_10063_msg='''||xxccp_common_pkg.get_msg('${C_appl_name}','APP-XXCCP1-10063')||''''
+        FROM DUAL
+        ;
+        EXIT
+EOF
+        . $C_std_out
+        #(ƒƒbƒZ[ƒW‚ğƒZƒbƒg)
+        if [ -z "${L_status_err}" ]
+        then
+          L_status_err="${C_10063_msg}"
+        else
+          L_status_err="${L_status_err}\n${C_10063_msg}"
+        fi
+        #(ƒWƒ‡ƒuó‹µƒXƒe[ƒ^ƒX‚ğI—¹‚ÉXV)
+        update_job_process ${L_if_job_status_id_all}
+        #(ˆ—I—¹)
+        shell_end ${L_status_err}
+      fi
+# 2009/04/02 Ver.1.4 Masayuki.Sano add END
 # 2009/02/25 Ver.1.2 Koji.Oomata add START
       #‘Ş”ğƒtƒHƒ‹ƒ_‚ÉˆÚ“®
       cd "${L_if_esc_to}"
@@ -1017,17 +1371,32 @@ G)
     loop_cnt=`expr $loop_cnt + 1`
   done
   #ƒGƒ‰[ƒƒbƒZ[ƒW‚Ìæ“¾
-  sqlplus -s apps/apps <<EOF >${C_std_out}
+# 2009/03/19 Ver.1.3 Koji.Oomata mod START
+sqlplus -s ${C_ora_login} <<EOF >>${C_std_out}  # 2009/04/02 Ver.1.4 Masayuki.Sano update
   SET HEADING OFF
   SET LINES 240
-  SELECT 'C_10040_msg="'||xxccp_common_pkg.get_msg('${C_appl_name}','APP-XXCCP1-10040')||'"'
+  SELECT 'C_10040_msg='''||xxccp_common_pkg.get_msg('${C_appl_name}','APP-XXCCP1-10040')||''''
   FROM DUAL
   ;
   EXIT
 EOF
+# 2009/03/19 Ver.1.3 Koji.Oomata mod End
   . $C_std_out
   #ƒGƒ‰[ƒƒbƒZ[ƒWo—Í
-  shell_end "${C_10040_msg}"
+# 2009/04/02 Ver.1.4 Masayuki.Sano update START
+#  shell_end "${C_10040_msg}"
+  #(ƒƒbƒZ[ƒW‚ğƒZƒbƒg)
+  if [ -z "${L_status_err}" ]
+  then
+    L_status_err="${C_10040_msg}"
+  else
+    L_status_err="${L_status_err}\n${C_10040_msg}"
+  fi
+  #(ƒWƒ‡ƒuó‹µƒXƒe[ƒ^ƒX‚ğI—¹‚ÉXV)
+  update_job_process ${L_if_job_status_id_all}
+  #(ˆ—I—¹)
+  shell_end ${L_status_err}
+# 2009/04/02 Ver.1.4 Masayuki.Sano update END
   ;;
 esac
 
@@ -1038,6 +1407,32 @@ do
   #ˆÚ“®Œ³ƒtƒ@ƒCƒ‹(ƒfƒBƒŒƒNƒgƒŠ•t‚«)
   L_cm_file_dir=`printf "$L_file_dir_all" | cut -d " " -f $loop_cnt`
   cp -p ${L_cm_file_dir} ${L_if_mov_to}
+  L_return=${?}
+# 2009/04/02 Ver.1.4 Masayuki.Sano add START
+  if [ ${L_return} -ne 0 ]
+  then
+    sqlplus -s ${C_ora_login} <<EOF >>${C_std_out}  # 2009/04/02 Ver.1.4 Masayuki.Sano update
+    SET HEADING OFF
+    SET LINES 240
+    SELECT 'C_10064_msg='''||xxccp_common_pkg.get_msg('${C_appl_name}','APP-XXCCP1-10064')||''''
+    FROM DUAL
+    ;
+    EXIT
+EOF
+    . $C_std_out
+    #(ƒƒbƒZ[ƒW‚ğƒZƒbƒg)
+    if [ -z "${L_status_err}" ]
+    then
+      L_status_err="${C_10064_msg}"
+    else
+      L_status_err="${L_status_err}\n${C_10064_msg}"
+    fi
+    #(ƒWƒ‡ƒuó‹µƒXƒe[ƒ^ƒX‚ğI—¹‚ÉXV)
+    update_job_process ${L_if_job_status_id_all}
+    #(ˆ—I—¹)
+    shell_end ${L_status_err}
+  fi
+# 2009/04/02 Ver.1.4 Masayuki.Sano add END
   #ƒoƒbƒNƒAƒbƒvˆ—(A-8)
   #ƒoƒbƒNƒAƒbƒvŒ³ƒtƒ@ƒCƒ‹(Šg’£q‚È‚µ)
   L_bkup_file_nam_pre=`printf "$L_file_nam_pre_all" | cut -d " " -f $loop_cnt`
@@ -1054,6 +1449,32 @@ do
   L_new_file_dir="${L_if_bkup_to}/${L_new_file_name}"
   #ƒtƒ@ƒCƒ‹ˆÚ“®ˆ—
   mv ${L_cm_file_dir} ${L_new_file_dir}
+  L_return=${?}
+# 2009/04/02 Ver.1.4 Masayuki.Sano add START
+  if [ ${L_return} -ne 0 ]
+  then
+    sqlplus -s ${C_ora_login} <<EOF >>${C_std_out}  # 2009/04/02 Ver.1.4 Masayuki.Sano update
+    SET HEADING OFF
+    SET LINES 240
+    SELECT 'C_10065_msg='''||xxccp_common_pkg.get_msg('${C_appl_name}','APP-XXCCP1-10065')||''''
+    FROM DUAL
+    ;
+    EXIT
+EOF
+    . $C_std_out
+    #(ƒƒbƒZ[ƒW‚ğƒZƒbƒg)
+    if [ -z "${L_status_err}" ]
+    then
+      L_status_err="${C_10065_msg}"
+    else
+      L_status_err="${L_status_err}\n${C_10065_msg}"
+    fi
+    #(ƒWƒ‡ƒuó‹µƒXƒe[ƒ^ƒX‚ğI—¹‚ÉXV)
+    update_job_process ${L_if_job_status_id_all}
+    #(ˆ—I—¹)
+    shell_end ${L_status_err}
+  fi
+# 2009/04/02 Ver.1.4 Masayuki.Sano add END
 
   #ƒoƒbƒNƒAƒbƒvƒfƒBƒŒƒNƒgƒŠ‚ÉˆÚ“®
   cd "${L_if_bkup_to}"
@@ -1084,7 +1505,10 @@ do
       L_job_group="${C_edi_job_gr_comm}${C_edi_job_gr_22}"
     fi
     #EDIƒWƒ‡ƒuƒlƒbƒg–¼’è‹`
-    L_jobnet_nam="${13}_${19}-${9}${20}_${C_jobnet_last}"
+# 2009/04/02 Ver.1.4 Masayuki.Sano update START
+    #L_jobnet_nam="${13}_${19}-${9}${20}_${C_jobnet_last}"
+    L_jobnet_nam="${13}_${19}-${9}${20}_${C_edi_jobnet_last}"
+# 2009/04/02 Ver.1.4 Masayuki.Sano update END
   elif [ "${8}" = 'REPORT' ]
   then
     #’ •[ƒR[ƒh(ˆø”3)‚ğ”¼ŠpƒXƒy[ƒX‹æØ‚è‚ÅA•ªŠ„
@@ -1092,7 +1516,10 @@ do
     #ƒWƒ‡ƒuƒOƒ‹[ƒv–¼Zo
     L_job_group="${C_rep_job_gr_comm}${C_rep_job_gr_last}"
     #’ •[ƒWƒ‡ƒuƒlƒbƒg–¼’è‹`
-    L_jobnet_nam="${13}_${18}${9}${L_report_code}_${C_jobnet_last}"
+# 2009/04/02 Ver.1.4 Masayuki.Sano update START
+    #L_jobnet_nam="${13}_${18}${9}${L_report_code}_${C_jobnet_last}"
+    L_jobnet_nam="${13}_${18}${9}${L_report_code}_${C_rep_jobnet_last}"
+# 2009/04/02 Ver.1.4 Masayuki.Sano update END
   fi
 
   #ƒWƒ‡ƒuƒlƒbƒgŠ®‘S–¼
@@ -1110,48 +1537,102 @@ do
   #ˆÚ“®Œ³ƒtƒ@ƒCƒ‹–¼
   L_file=`printf "$L_file_nam_all" | cut -d " " -f $loop_cnt`
 
-  #‰Šúƒf[ƒ^ì¬
-  #INSERTˆ—
-  sqlplus -s apps/apps <<EOF >${C_std_out2}
-  SET HEADING OFF
-  SET LINES 240
-  INSERT INTO xxccp_if_job_status(
-     pk_request_id_val
-    ,exec_request_id
-    ,status_code
-    ,if_system_name
-    ,if_file_name
-    ,jobnet_name
-    ,first_request_id
-    ,created_by
-    ,creation_date
-    ,last_updated_by
-    ,last_update_date
-    ,last_update_login
-    ,request_id
-    ,program_application_id
-    ,program_id
-    ,program_update_date
-  ) VALUES (
-     '${L_request_id_val}'
-    ,TO_NUMBER('${L_exec_req_id}')
-    ,'0'
-    ,'${8}'
-    ,'${L_file}'
-    ,'${L_jobnet_parf}'
-    ,TO_NUMBER('${C_request_id}')
-    ,TO_NUMBER('${C_requested_by}')
-    ,TO_DATE('${C_date2}','YYYYMMDDHH24MISS')
-    ,TO_NUMBER('${C_requested_by}')
-    ,TO_DATE('${C_date2}','YYYYMMDDHH24MISS')
-    ,TO_NUMBER('${C_last_update_login}')
-    ,TO_NUMBER('${C_request_id}')
-    ,TO_NUMBER('${C_program_application_id}')
-    ,TO_NUMBER('${C_concurrent_program_id}')
-    ,TO_DATE('${C_date2}','YYYYMMDDHH24MISS')
-  );
-  EXIT
+# 2009/04/02 Ver.1.4 Masayuki.Sano update START
+#  #‰Šúƒf[ƒ^ì¬
+#  #INSERTˆ—
+#  sqlplus -s apps/apps <<EOF >${C_std_out2}
+#  SET HEADING OFF
+#  SET LINES 240
+#  INSERT INTO xxccp_if_job_status(
+#     pk_request_id_val
+#    ,exec_request_id
+#    ,status_code
+#    ,if_system_name
+#    ,if_file_name
+#    ,jobnet_name
+#    ,first_request_id
+#    ,created_by
+#    ,creation_date
+#    ,last_updated_by
+#    ,last_update_date
+#    ,last_update_login
+#    ,request_id
+#    ,program_application_id
+#    ,program_id
+#    ,program_update_date
+#  ) VALUES (
+#     '${L_request_id_val}'
+#    ,TO_NUMBER('${L_exec_req_id}')
+#    ,'0'
+#    ,'${8}'
+#    ,'${L_file}'
+#    ,'${L_jobnet_parf}'
+#    ,TO_NUMBER('${C_request_id}')
+#    ,TO_NUMBER('${C_requested_by}')
+#    ,TO_DATE('${C_date2}','YYYYMMDDHH24MISS')
+#    ,TO_NUMBER('${C_requested_by}')
+#    ,TO_DATE('${C_date2}','YYYYMMDDHH24MISS')
+#    ,TO_NUMBER('${C_last_update_login}')
+#    ,TO_NUMBER('${C_request_id}')
+#    ,TO_NUMBER('${C_program_application_id}')
+#    ,TO_NUMBER('${C_concurrent_program_id}')
+#    ,TO_DATE('${C_date2}','YYYYMMDDHH24MISS')
+#  );
+#  EXIT
+#EOF
+  #‘ÎŒüƒVƒXƒeƒ€ƒWƒ‡ƒuó‹µƒe[ƒuƒ‹ID‚ğæ“¾‚·‚éB
+  L_if_job_status_id=`printf "$L_if_job_status_id_all" | cut -d " " -f $loop_cnt`
+  #ƒXƒe[ƒ^ƒXE–¢“ü—Í€–Ú‚ğXV‚·‚éB
+  sqlplus -s ${C_ora_login} <<EOF >${C_std_out2}
+    WHENEVER OSERROR EXIT FAILURE ROLLBACK
+    WHENEVER SQLERROR EXIT FAILURE ROLLBACK
+    -- XV
+    UPDATE xxccp_if_job_status xijs
+    SET    xijs.request_id_val         = '${L_request_id_val}'
+          ,xijs.exec_request_id        = TO_NUMBER('${L_exec_req_id}')
+          ,xijs.status_code            = '0'
+          ,xijs.jobnet_name            = '${L_jobnet_parf}'
+          ,xijs.last_updated_by        = TO_NUMBER('${C_requested_by}')
+          ,xijs.last_update_date       = TO_DATE('${C_date2}','YYYYMMDDHH24MISS')
+          ,xijs.last_update_login      = TO_NUMBER('${C_last_update_login}')
+          ,xijs.request_id             = TO_NUMBER('${C_request_id}')
+          ,xijs.program_application_id = TO_NUMBER('${C_program_application_id}')
+          ,xijs.program_id             = TO_NUMBER('${C_concurrent_program_id}')
+          ,xijs.program_update_date    = TO_DATE('${C_date2}','YYYYMMDDHH24MISS')
+    WHERE  xijs.if_job_status_id = ${L_if_job_status_id}
+    ;
+    EXIT SUCCESS COMMIT
 EOF
+  L_return=${?}
+  # ¡ ƒGƒ‰[ƒ`ƒFƒbƒN
+  if [ ${L_return} -ne 0 ]
+  then
+    #(SQL‚ğÀs‚µAƒƒbƒZ[ƒW‚ğæ“¾‚·‚éB)
+    sqlplus -s ${C_ora_login} <<EOF >>${C_std_out}
+    SET HEADING OFF
+    SET LINES 240
+    SELECT 'C_10061_msg=''' || xxccp_common_pkg.get_msg('${C_appl_name}'
+                                                       ,'APP-XXCCP1-10061'
+                                                       ,'SYSTEM_NAME'
+                                                       ,'${8}'
+                                                       ,'FILE_NAME'
+                                                       ,'${L_file}') || ''''
+    FROM   DUAL
+    ;
+    EXIT
+EOF
+    . $C_std_out
+    #(ƒGƒ‰[ƒƒbƒZ[ƒW‚ÉƒZƒbƒg)
+    if [ -z "${L_status_err}" ]
+    then
+      L_status_err="${C_10061_msg}"
+    else
+      L_status_err="${L_status_err}\n${C_10061_msg}"
+    fi
+    #(I—¹ˆ—)
+    break 1
+  fi
+# 2009/04/02 Ver.1.4 Masayuki.Sano update END
 
   #‘ÎÛŒ”‚É+1ƒJƒEƒ“ƒg
   L_target_cnt=`expr $L_target_cnt + 1`
@@ -1188,14 +1669,16 @@ EOF
   L_ret_code=${?}
   if [ ${L_ret_code} -ne 0 ]
   then
-    sqlplus -s apps/apps <<EOF >${C_std_out}
+# 2009/03/19 Ver.1.3 Koji.Oomata mod START
+    sqlplus -s ${C_ora_login} <<EOF >>${C_std_out}  # 2009/04/02 Ver.1.4 Masayuki.Sano update
     SET HEADING OFF
     SET LINES 240
-    SELECT 'C_10050_msg="'||xxccp_common_pkg.get_msg('${C_appl_name}','APP-XXCCP1-10050','REQUEST_ID_VAL','${L_request_id_val}')||'"'
+    SELECT 'C_10050_msg='''||xxccp_common_pkg.get_msg('${C_appl_name}','APP-XXCCP1-10050','REQUEST_ID_VAL','${L_request_id_val}')||''''
     FROM DUAL
     ;
     EXIT
 EOF
+# 2009/03/19 Ver.1.3 Koji.Oomata mod End
     . $C_std_out
     if [ -z "${L_status_err}" ]
     then
@@ -1212,6 +1695,9 @@ EOF
     else
       L_error_req_id="${L_error_req_id} ${L_request_id_val}"
     fi
+# 2009/04/02 Ver.1.4 Masayuki.Sano add Start
+    break 1
+# 2009/04/02 Ver.1.4 Masayuki.Sano add END
   fi
 
   #ƒ‹[ƒvƒJƒEƒ“ƒg +1
@@ -1221,8 +1707,100 @@ done
 #ƒGƒ‰[ƒƒbƒZ[ƒWo—Í
 if [ -n "${L_status_err}" ]
 then
+# 2009/04/02 Ver.1.4 Masayuki.Sano add Start
+  #ƒtƒ@ƒCƒ‹íœˆ—(A-12)
+  loop_cnt=1
+  while test ${7} -ge ${loop_cnt}
+  do
+    #‘ÎÛƒtƒ@ƒCƒ‹–¼(ƒfƒBƒŒƒNƒgƒŠ–³‚µ)
+    L_file_nam=`printf "$L_file_nam_all" | cut -d " " -f $loop_cnt`
+    L_del_file="${L_if_mov_to}/${L_file_nam}"
+    file_delete ${L_del_file}
+    #ƒ‹[ƒvƒJƒEƒ“ƒg +1
+    loop_cnt=`expr $loop_cnt + 1`
+  done
+  #I—¹ˆ—(A-13)
+  update_job_process ${L_if_job_status_id_all}
+# 2009/04/02 Ver.1.4 Masayuki.Sano add END
   shell_end ${L_status_err}
 fi
+
+# 2009/04/02 Ver.1.4 Masayuki.Sano add Start
+#==============================================================================
+#ƒXƒe[ƒ^ƒXŠÄ‹ˆ—(A-11)
+#==============================================================================
+#(ŠÄ‹Å‘å“úAŠÄ‹ŠÔŠuŠÔ‚ğæ“¾‚·‚éB)
+if [ "${8}" = 'EDI' ]
+then
+  #IF˜AŒgƒVƒXƒeƒ€:EDI‚Ìê‡
+  #(ŠÄ‹Å‘å“ú)
+  sqlplus -s ${C_ora_login} <<EOF >>${C_std_out}
+  SET HEADING OFF
+  SET LINES 240
+  SELECT 'L_time_out='''||TO_CHAR(sysdate + '${C_edi_status_max}' / 86400,'YYYYMMDDHH24MISS')||''''
+  FROM  DUAL
+  ;
+  EXIT
+EOF
+  . ${C_std_out}
+  L_status_max="${C_edi_status_max}"
+  #(ŠÄ‹ŠÔŠuŠÔ)
+  L_status_interval="${C_edi_status_interval}"
+else
+  #IF˜AŒgƒVƒXƒeƒ€:’ •[‚Ìê‡
+  #(ŠÄ‹Å‘å“ú)
+  sqlplus -s ${C_ora_login} <<EOF >>${C_std_out}
+  SET HEADING OFF
+  SET LINES 240
+  SELECT 'L_time_out='''||TO_CHAR(sysdate + '${C_rep_status_max}' / 86400,'YYYYMMDDHH24MISS')||''''
+  FROM  DUAL
+  ;
+  EXIT
+EOF
+  . ${C_std_out}
+  L_status_max="${C_rep_status_max}"
+  #(ŠÄ‹ŠÔŠuŠÔ)
+  L_status_interval="${C_rep_status_interval}"
+fi
+#(g—p‚·‚éŠÄ‹Å‘åŠÔAŠÄ‹ŠÔŠuŠÔ‚ğŠm”F‚·‚é)
+echo "status_max_time:${L_time_out}(${L_status_max})"
+echo "status_interval:${L_status_interval}"
+#(ŠÄ‹ŠJnŠÔ‚ğo—Í)
+L_time=`date +"%Y%m%d%H%M%S"`
+echo "Status Watch Start  Time : ${L_time}"
+
+# ¡ ƒWƒ‡ƒu‚ªŠ®—¹‚µ‚½‚©‚Ç‚¤‚©‚ğŠm”F‚·‚éB
+while test ${L_time_out} -gt ${L_time}
+do
+  #1) Às’†‚Å‚ ‚éƒXƒe[ƒ^ƒX‚ÌŒ”‚ğæ“¾‚·‚éB
+  sqlplus -s ${C_ora_login} <<EOF >>${C_std_out}
+  SET HEADING OFF
+  SET LINES 240
+  SELECT 'L_execute_cnt='''|| COUNT(1) ||''''
+  FROM   xxccp_if_job_status xijs
+  WHERE  xijs.exec_request_id = TO_NUMBER('${L_exec_req_id}')
+  AND    xijs.status_code = 0
+  AND    xijs.job_process = 'R'
+  ;
+  EXIT
+EOF
+  . $C_std_out
+  #2) Œ”‚ª0Œ‚Ìê‡Aƒ‹[ƒvˆ—‚ğI—¹‚µA0ŒˆÈŠO‚Ìê‡‚ÍA‘Ò‹@‚·‚éB
+  if [ "${L_execute_cnt}" = "0" ]
+  then
+    break 1
+  else
+    #‘Ò‹@ˆ—
+    sleep ${L_status_interval}
+  fi
+  #3) Ÿ‚Ì“ú‚ğæ“¾‚·‚éB
+  L_time=`date +"%Y%m%d%H%M%S"`
+done
+
+#(ŠÄ‹I—¹ŠÔ‚ğo—Í)
+echo "Status Watch END    Time : ${L_time}"
+
+# 2009/04/02 Ver.1.4 Masayuki.Sano add END
 
 loop_cnt=1
 while test ${7} -ge ${loop_cnt}
@@ -1230,38 +1808,50 @@ do
   #ƒXƒe[ƒ^ƒXŠÄ‹ˆ—(A-11)
   #ˆ—‡•t—v‹ID
   L_pk_request_id_val="${L_exec_req_id}_${loop_cnt}"
-  #ˆ—’†ŠÔ
-  L_time=1
-  #ƒ^ƒCƒ€ƒAƒEƒgŠÔ
-  L_time_out=2
-  L_cnt=1
+# 2009/04/02 Ver.1.4 Masayuki.Sano delete Start
+#  #ˆ—’†ŠÔ
+#  L_time=1
+#  #ƒ^ƒCƒ€ƒAƒEƒgŠÔ
+#  L_time_out=2
+#  L_cnt=1
+#
+#  #ŠÄ‹ŠJnŠÔ
+#  L_start_time=`date +"%Y%m%d%H%M%S"`
+#  echo "Status Watch Start  Time : ${L_start_time}"
+#  while test ${L_time_out} -gt ${L_time}
+#  do
+# 2009/04/02 Ver.1.4 Masayuki.Sano delete END
 
-  #ŠÄ‹ŠJnŠÔ
-  L_start_time=`date +"%Y%m%d%H%M%S"`
-  echo "Status Watch Start  Time : ${L_start_time}"
-  while test ${L_time_out} -gt ${L_time}
-  do
-
-    sqlplus -s apps/apps <<EOF >${C_std_out}
+# 2009/03/19 Ver.1.3 Koji.Oomata mod START
+    sqlplus -s ${C_ora_login} <<EOF >>${C_std_out}  # 2009/04/02 Ver.1.4 Masayuki.Sano update
     SET HEADING OFF
     SET LINES 240
-    SELECT 'L_time_out_tmp="'||TO_CHAR(sysdate + '${C_status_max}' / 86400,'YYYYMMDDHH24MISS')||'"'
-          ,'L_status_code="'||xijs.status_code||'"'
-          ,'L_jobnet_name="'||xijs.jobnet_name||'"'
-          ,'L_if_file_name="'||xijs.if_file_name||'"'
+-- 2009/04/02 Ver.1.4 Masayuki.Sano update Start
+--    SELECT 'L_time_out_tmp='''||TO_CHAR(sysdate + '${C_status_max}' / 86400,'YYYYMMDDHH24MISS')||''''
+--          ,'L_status_code='''||xijs.status_code||''''
+    SELECT 'L_status_code='''||xijs.status_code||''''
+-- 2009/04/02 Ver.1.4 Masayuki.Sano update END
+          ,'L_jobnet_name='''||xijs.jobnet_name||''''
+          ,'L_if_file_name='''||xijs.if_file_name||''''
     FROM  DUAL
          ,xxccp_if_job_status xijs
-    WHERE xijs.pk_request_id_val = '${L_pk_request_id_val}'
+-- 2009/04/02 Ver.1.4 Masayuki.Sano update Start
+--    WHERE xijs.pk_request_id_val = '${L_pk_request_id_val}'
+    WHERE xijs.request_id_val = '${L_pk_request_id_val}'
+-- 2009/04/02 Ver.1.4 Masayuki.Sano update END
     ;
     EXIT
 EOF
+# 2009/03/19 Ver.1.3 Koji.Oomata mod End
     . $C_std_out
-    #ƒ^ƒCƒ€ƒAƒEƒgŠÔæ“¾
-    if [ "${L_cnt}" = '1' ]
-    then
-      L_time_out="${L_time_out_tmp}"
-      echo "Time of TimeOut  :  ${L_time_out}"
-    fi
+# 2009/04/02 Ver.1.4 Masayuki.Sano delete Start
+#    #ƒ^ƒCƒ€ƒAƒEƒgŠÔæ“¾
+#    if [ "${L_cnt}" = '1' ]
+#    then
+#      L_time_out="${L_time_out_tmp}"
+#      echo "Time of TimeOut  :  ${L_time_out}"
+#    fi
+# 2009/04/02 Ver.1.4 Masayuki.Sano delete END
 
     #ƒXƒe[ƒ^ƒX”»’è
     #¢³ív‚ÉXV
@@ -1276,7 +1866,9 @@ EOF
       else
         L_succes_req_id="${L_succes_req_id} ${L_pk_request_id_val}"
       fi
-      break 1
+# 2009/04/02 Ver.1.4 Masayuki.Sano delete Start
+#      break 1
+# 2009/04/02 Ver.1.4 Masayuki.Sano delete END
     elif [ "${L_status_code}" = '8' ]
     then
       #ƒGƒ‰[Œ”‚ğ+1ƒJƒEƒ“ƒg
@@ -1289,14 +1881,16 @@ EOF
         L_error_req_id="${L_error_req_id} ${L_pk_request_id_val}"
       fi
       #ƒGƒ‰[ƒƒbƒZ[ƒWæ“¾
-      sqlplus -s apps/apps <<EOF >>${C_std_out}
+# 2009/03/19 Ver.1.3 Koji.Oomata mod START
+      sqlplus -s ${C_ora_login} <<EOF >>${C_std_out}  # 2009/04/02 Ver.1.4 Masayuki.Sano update
       SET HEADING OFF
       SET LINES 240
-      SELECT 'C_10018_msg="'||xxccp_common_pkg.get_msg('${C_appl_name}','APP-XXCCP1-10018','JOBNET_NAME','${L_jobnet_name}')||'"'
+      SELECT 'C_10018_msg='''||xxccp_common_pkg.get_msg('${C_appl_name}','APP-XXCCP1-10018','JOBNET_NAME','${L_jobnet_name}')||''''
       FROM  DUAL
       ;
       EXIT
 EOF
+# 2009/03/19 Ver.1.3 Koji.Oomata mod End
       . $C_std_out
       if [ -z "${L_status_err}" ]
       then
@@ -1307,7 +1901,9 @@ EOF
       #ƒtƒ@ƒCƒ‹íœˆ—(A-12)
       L_del_file="${L_if_mov_to}/${L_if_file_name}"
       file_delete ${L_del_file}
-      break 1
+# 2009/04/02 Ver.1.4 Masayuki.Sano delete Start
+#      break 1
+# 2009/04/02 Ver.1.4 Masayuki.Sano delete END
     elif [ "${L_status_code}" = '9' ]
     then
       #ƒGƒ‰[Œ”‚ğ+1ƒJƒEƒ“ƒg
@@ -1320,14 +1916,16 @@ EOF
         L_error_req_id="${L_error_req_id} ${L_pk_request_id_val}"
       fi
       #ƒGƒ‰[ƒƒbƒZ[ƒWæ“¾
-      sqlplus -s apps/apps <<EOF >>${C_std_out}
+# 2009/03/19 Ver.1.3 Koji.Oomata mod START
+      sqlplus -s ${C_ora_login} <<EOF >>${C_std_out}  # 2009/04/02 Ver.1.4 Masayuki.Sano update
       SET HEADING OFF
       SET LINES 240
-      SELECT 'C_10019_msg="'||xxccp_common_pkg.get_msg('${C_appl_name}','APP-XXCCP1-10019','JOBNET_NAME','${L_jobnet_name}')||'"'
+      SELECT 'C_10019_msg='''||xxccp_common_pkg.get_msg('${C_appl_name}','APP-XXCCP1-10019','JOBNET_NAME','${L_jobnet_name}')||''''
       FROM  DUAL
       ;
       EXIT
 EOF
+# 2009/03/19 Ver.1.3 Koji.Oomata mod End
       . $C_std_out
       if [ -z "${L_status_err}" ]
       then
@@ -1338,58 +1936,139 @@ EOF
       #ƒtƒ@ƒCƒ‹íœˆ—(A-12)
       L_del_file="${L_if_mov_to}/${L_if_file_name}"
       file_delete ${L_del_file}
-      break 1
+# 2009/04/02 Ver.1.4 Masayuki.Sano delete Start
+#      break 1
+# 2009/04/02 Ver.1.4 Masayuki.Sano delete END
+# 2009/04/02 Ver.1.4 Masayuki.Sano add START
+    elif [ "${L_status_code}" = '0' ]
+    then
+      #ƒGƒ‰[Œ”‚ğ+1ƒJƒEƒ“ƒg
+      L_error_cnt=`expr $L_error_cnt + 1`
+      #ƒGƒ‰[I—¹—v‹ID‚Éˆ—‡•t—v‹ID‚ğ’Ç‰Á
+      if [ -z "${L_error_req_id}" ]
+      then
+        L_error_req_id="${L_pk_request_id_val}"
+      else
+        L_error_req_id="${L_error_req_id} ${L_pk_request_id_val}"
+      fi
+      #ƒGƒ‰[ƒƒbƒZ[ƒWæ“¾
+      sqlplus -s ${C_ora_login} <<EOF >>${C_std_out}
+      SET HEADING OFF
+      SET LINES 240
+      SELECT 'C_10009_msg='''||xxccp_common_pkg.get_msg('${C_appl_name}'
+                                                       ,'APP-XXCCP1-10009'
+                                                       ,'LIMIT'
+                                                       ,'${L_status_max}'
+                                                       ,'JOBNET_NAME'
+                                                       ,'${L_jobnet_name}')||''''
+      FROM  DUAL
+      ;
+      EXIT
+EOF
+      . $C_std_out
+      if [ -z "${L_status_err}" ]
+      then
+        L_status_err="${C_10009_msg}"
+      else
+        L_status_err="${L_status_err}\n${C_10009_msg}"
+      fi
+      #ƒtƒ@ƒCƒ‹íœˆ—(A-12)
+      L_del_file="${L_if_mov_to}/${L_if_file_name}"
+      file_delete ${L_del_file}
+# 2009/04/02 Ver.1.4 Masayuki.Sano add END
     #ƒXƒe[ƒ^ƒX’l‚ª1,8,9‚¢‚¸‚ê‚Å‚à‚È‚¢ê‡
     else
-      #‘Ò‹@ˆ—
-      sleep ${C_status_interval}
-      #ˆ—’†ŠÔæ“¾
-      L_time=`date +"%Y%m%d%H%M%S"`
-      echo "Sleep_Time ${loop_cnt}-${L_cnt} :  ${C_status_interval}"
-      echo "  Sleep_End Time  :  ${L_time}"
-    fi
-    #ƒ‹[ƒvƒJƒEƒ“ƒg +1
-    L_cnt=`expr $L_cnt + 1`
-  done
-  #ƒ^ƒCƒ€ƒAƒEƒg‚µ‚½ê‡
-  if [ "${L_status_code}" = '0' ]
-  then
-    #ƒGƒ‰[Œ”‚ğ+1ƒJƒEƒ“ƒg
-    L_error_cnt=`expr $L_error_cnt + 1`
-    #ƒGƒ‰[I—¹—v‹ID‚Éˆ—‡•t—v‹ID‚ğ’Ç‰Á
-    if [ -z "${L_error_req_id}" ]
-    then
-      L_error_req_id="${L_pk_request_id_val}"
-    else
-      L_error_req_id="${L_error_req_id} ${L_pk_request_id_val}"
-    fi
-    #ƒGƒ‰[ƒƒbƒZ[ƒWæ“¾
-    sqlplus -s apps/apps <<EOF >>${C_std_out}
-    SET HEADING OFF
-    SET LINES 240
-    SELECT 'C_10009_msg="'||xxccp_common_pkg.get_msg('${C_appl_name}','APP-XXCCP1-10009','LIMIT','${C_status_max}','JOBNET_NAME','${L_jobnet_name}')||'"'
-    FROM  DUAL
-    ;
-    EXIT
+# 2009/04/02 Ver.1.4 Masayuki.Sano update Start
+#      #‘Ò‹@ˆ—
+#      sleep ${C_status_interval}
+#      #ˆ—’†ŠÔæ“¾
+#      L_time=`date +"%Y%m%d%H%M%S"`
+#      echo "Sleep_Time ${loop_cnt}-${L_cnt} :  ${C_status_interval}"
+#      echo "  Sleep_End Time  :  ${L_time}"
+      #ƒGƒ‰[Œ”‚ğ+1ƒJƒEƒ“ƒg
+      L_error_cnt=`expr $L_error_cnt + 1`
+      #ƒGƒ‰[I—¹—v‹ID‚Éˆ—‡•t—v‹ID‚ğ’Ç‰Á
+      if [ -z "${L_error_req_id}" ]
+      then
+        L_error_req_id="${L_pk_request_id_val}"
+      else
+        L_error_req_id="${L_error_req_id} ${L_pk_request_id_val}"
+      fi
+      #ƒGƒ‰[ƒƒbƒZ[ƒWæ“¾
+      sqlplus -s ${C_ora_login} <<EOF >>${C_std_out}
+      SET HEADING OFF
+      SET LINES 240
+      SELECT 'C_10066_msg='''||xxccp_common_pkg.get_msg('${C_appl_name}'
+                                                       ,'APP-XXCCP1-10066'
+                                                       ,'JOBNET_NAME'
+                                                       ,'${L_jobnet_name}')||''''
+      FROM  DUAL
+      ;
+      EXIT
 EOF
-    . $C_std_out
-    if [ -z "${L_status_err}" ]
-    then
-      L_status_err="${C_10009_msg}"
-    else
-      L_status_err="${L_status_err}\n${C_10009_msg}"
+      . $C_std_out
+      if [ -z "${L_status_err}" ]
+      then
+        L_status_err="${C_10066_msg}"
+      else
+        L_status_err="${L_status_err}\n${C_10066_msg}"
+      fi
+      #ƒtƒ@ƒCƒ‹íœˆ—(A-12)
+      L_del_file="${L_if_mov_to}/${L_if_file_name}"
+      file_delete ${L_del_file}
+# 2009/04/02 Ver.1.4 Masayuki.Sano update END
     fi
-    #ƒtƒ@ƒCƒ‹íœˆ—(A-12)
-    L_del_file="${L_if_mov_to}/${L_if_file_name}"
-    file_delete ${L_del_file}
-  fi
+# 2009/04/02 Ver.1.4 Masayuki.Sano delete Start
+#    #ƒ‹[ƒvƒJƒEƒ“ƒg +1
+#    L_cnt=`expr $L_cnt + 1`
+#  done
+#  #ƒ^ƒCƒ€ƒAƒEƒg‚µ‚½ê‡
+#  if [ "${L_status_code}" = '0' ]
+#  then
+#    #ƒGƒ‰[Œ”‚ğ+1ƒJƒEƒ“ƒg
+#    L_error_cnt=`expr $L_error_cnt + 1`
+#    #ƒGƒ‰[I—¹—v‹ID‚Éˆ—‡•t—v‹ID‚ğ’Ç‰Á
+#    if [ -z "${L_error_req_id}" ]
+#    then
+#      L_error_req_id="${L_pk_request_id_val}"
+#    else
+#      L_error_req_id="${L_error_req_id} ${L_pk_request_id_val}"
+#    fi
+#    #ƒGƒ‰[ƒƒbƒZ[ƒWæ“¾
+## 2009/03/19 Ver.1.3 Koji.Oomata mod START
+#    sqlplus -s apps/apps <<EOF >>${C_std_out}
+#    SET HEADING OFF
+#    SET LINES 240
+#    SELECT 'C_10009_msg='''||xxccp_common_pkg.get_msg('${C_appl_name}','APP-XXCCP1-10009','LIMIT','${C_status_max}','JOBNET_NAME','${L_jobnet_name}')||''''
+#    FROM  DUAL
+#    ;
+#    EXIT
+#EOF
+## 2009/03/19 Ver.1.3 Koji.Oomata mod End
+#    . $C_std_out
+#    if [ -z "${L_status_err}" ]
+#    then
+#      L_status_err="${C_10009_msg}"
+#    else
+#      L_status_err="${L_status_err}\n${C_10009_msg}"
+#    fi
+#    #ƒtƒ@ƒCƒ‹íœˆ—(A-12)
+#    L_del_file="${L_if_mov_to}/${L_if_file_name}"
+#    file_delete ${L_del_file}
+#  fi
+# 2009/04/02 Ver.1.4 Masayuki.Sano delete END
   #ƒ‹[ƒvƒJƒEƒ“ƒg +1
   loop_cnt=`expr $loop_cnt + 1`
 done
 
-echo "Status Watch End"
+# 2009/04/02 Ver.1.4 Masayuki.Sano delete START
+#echo "Status Watch End"
+# 2009/04/02 Ver.1.4 Masayuki.Sano delete END
 
 #I—¹”»’èˆ—(A-13)
+# 2009/04/02 Ver.1.4 Masayuki.Sano add Start
+update_job_process ${L_if_job_status_id_all}
+# 2009/04/02 Ver.1.4 Masayuki.Sano add END
 if [ ${L_error_cnt} -ge 1 ]
 then
   shell_end ${L_status_err}

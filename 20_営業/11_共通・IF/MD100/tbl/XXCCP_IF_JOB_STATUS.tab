@@ -10,17 +10,33 @@
  *  Date          Ver.  Editor           Description
  * ------------- ----- ---------------- ---------------------------------
  *  2009/01/14    1.0   SCS K.Oomata     新規作成
+ *  2009/04/03    1.1   Masayuki.Sano    [障害番号:T1_0521]多重起動制御対応
+ *                                       ・IF_JOB_STATUS_ID,JOB_PROCESS追加
+ *                                       ・NOT NULL削除
+ *                                       (REQUEST_ID_VAL,EXEC_REQUEST_ID,JOBNET_NAME)
+ *                                       ・PRIMARY KEY変更
  *
  ****************************************************************************************/
 CREATE TABLE XXCCP.XXCCP_IF_JOB_STATUS
 (
-   PK_REQUEST_ID_VAL            VARCHAR2(20)    NOT NULL            --処理順付要求ID
-  ,EXEC_REQUEST_ID              NUMBER(15)      NOT NULL            --起動対象要求ID
+-- 2009/04/03 update Ver1.1 Masayuki.Sano START
+--   PK_REQUEST_ID_VAL            VARCHAR2(20)    NOT NULL            --処理順付要求ID
+--  ,EXEC_REQUEST_ID              NUMBER(15)      NOT NULL            --起動対象要求ID
+   IF_JOB_STATUS_ID             NUMBER(15)      NOT NULL            --対向システムジョブ状況テーブルID
+  ,REQUEST_ID_VAL               VARCHAR2(20)                        --処理順付要求ID
+  ,EXEC_REQUEST_ID              NUMBER(15)                          --起動対象要求ID
+-- 2009/04/03 update Ver1.1 Masayuki.Sano END
   ,STATUS_CODE                  VARCHAR2(1)     NOT NULL            --ステータス
   ,IF_SYSTEM_NAME               VARCHAR2(10)    NOT NULL            --対向システム名
   ,IF_FILE_NAME                 VARCHAR2(30)    NOT NULL            --ファイル名
-  ,JOBNET_NAME                  VARCHAR2(100)   NOT NULL            --ジョブネット完全名
+-- 2009/04/03 update Ver1.1 Masayuki.Sano START
+--  ,JOBNET_NAME                  VARCHAR2(100)   NOT NULL            --ジョブネット完全名
+  ,JOBNET_NAME                  VARCHAR2(100)                       --ジョブネット完全名
+-- 2009/04/03 update Ver1.1 Masayuki.Sano END
   ,FIRST_REQUEST_ID             NUMBER(15)      NOT NULL            --初期データ作成要求ID
+-- 2009/04/03 add Ver1.1 Masayuki.Sano START
+  ,JOB_PROCESS                  VARCHAR2(1)     NOT NULL            --ジョブ状況ステータス
+-- 2009/04/03 add Ver1.1 Masayuki.Sano END
   ,CREATED_BY                   NUMBER(15)      NOT NULL            --作成者
   ,CREATION_DATE                DATE            NOT NULL            --作成日
   ,LAST_UPDATED_BY              NUMBER(15)      NOT NULL            --最終更新者
@@ -30,17 +46,27 @@ CREATE TABLE XXCCP.XXCCP_IF_JOB_STATUS
   ,PROGRAM_APPLICATION_ID       NUMBER(15)      NOT NULL            --ｺﾝｶﾚﾝﾄ･ﾌﾟﾛｸﾞﾗﾑ･ｱﾌﾟﾘｹｰｼｮﾝID
   ,PROGRAM_ID                   NUMBER(15)      NOT NULL            --ｺﾝｶﾚﾝﾄ･ﾌﾟﾛｸﾞﾗﾑID
   ,PROGRAM_UPDATE_DATE          DATE            NOT NULL            --ﾌﾟﾛｸﾞﾗﾑ更新日
-  ,CONSTRAINT XXCCP_IF_JOB_STATUS_PK PRIMARY KEY ( PK_REQUEST_ID_VAL )
+-- 2009/04/03 update Ver1.1 Masayuki.Sano START
+--  ,CONSTRAINT XXCCP_IF_JOB_STATUS_PK PRIMARY KEY ( PK_REQUEST_ID_VAL )
+  ,CONSTRAINT XXCCP_IF_JOB_STATUS_PK PRIMARY KEY ( IF_JOB_STATUS_ID )
+-- 2009/04/03 update Ver1.1 Masayuki.Sano END
   USING INDEX TABLESPACE xxidx2
   ) ;
 --
-COMMENT ON COLUMN XXCCP.XXCCP_IF_JOB_STATUS.PK_REQUEST_ID_VAL      IS '処理順付要求ID';
+-- 2009/04/03 update Ver1.1 Masayuki.Sano START
+--COMMENT ON COLUMN XXCCP.XXCCP_IF_JOB_STATUS.PK_REQUEST_ID_VAL      IS '処理順付要求ID';
+COMMENT ON COLUMN XXCCP.XXCCP_IF_JOB_STATUS.IF_JOB_STATUS_ID       IS '対向システムジョブ状況テーブルID';
+COMMENT ON COLUMN XXCCP.XXCCP_IF_JOB_STATUS.REQUEST_ID_VAL         IS '処理順付要求ID';
+-- 2009/04/03 update Ver1.1 Masayuki.Sano END
 COMMENT ON COLUMN XXCCP.XXCCP_IF_JOB_STATUS.EXEC_REQUEST_ID        IS '起動対象要求ID';
 COMMENT ON COLUMN XXCCP.XXCCP_IF_JOB_STATUS.STATUS_CODE            IS 'ステータス';
 COMMENT ON COLUMN XXCCP.XXCCP_IF_JOB_STATUS.IF_SYSTEM_NAME         IS '対向システム名';
 COMMENT ON COLUMN XXCCP.XXCCP_IF_JOB_STATUS.IF_FILE_NAME           IS 'ファイル名';
 COMMENT ON COLUMN XXCCP.XXCCP_IF_JOB_STATUS.JOBNET_NAME            IS 'ジョブネット完全名';
 COMMENT ON COLUMN XXCCP.XXCCP_IF_JOB_STATUS.FIRST_REQUEST_ID       IS '初期データ作成要求ID';
+-- 2009/04/03 add Ver1.1 Masayuki.Sano START
+COMMENT ON COLUMN XXCCP.XXCCP_IF_JOB_STATUS.JOB_PROCESS            IS 'ジョブ状況ステータス';
+-- 2009/04/03 add Ver1.1 Masayuki.Sano END
 COMMENT ON COLUMN XXCCP.XXCCP_IF_JOB_STATUS.CREATED_BY             IS '作成者';
 COMMENT ON COLUMN XXCCP.XXCCP_IF_JOB_STATUS.CREATION_DATE          IS '作成日';
 COMMENT ON COLUMN XXCCP.XXCCP_IF_JOB_STATUS.LAST_UPDATED_BY        IS '最終更新者';

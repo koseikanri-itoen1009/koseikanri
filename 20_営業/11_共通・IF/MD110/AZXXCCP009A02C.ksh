@@ -28,6 +28,8 @@
 ##                                         ファイル名変更 (AXXXCCP009A02C.sh    ##
 ##                                                         →AZXXCCP009A02C.ksh)##
 ##                                         変更履歴のフォーマット変更           ##
+##  2009/04/01    1.2   Masayuki.Sano    画面起動ジョブネットの多重制御対応     ##
+##                                         外部シェル名変更対応                 ##
 ##################################################################################
 
 ################################################################################
@@ -52,8 +54,10 @@ L_execdate=`/bin/date "+%Y%m%d%H%M%S"`
 L_logfile="${L_logpath}/"`/bin/basename ${L_cmdname} .ksh`"_${L_hostname}_${1}_${L_execdate}_$$.log"
 
 #外部シェル
-L_envfile=${L_cmddir}/AZBZZAPPS.env
-
+# 2009/03/04 Ver.1.2 Masayuki.Sano add START
+#L_envfile=${L_cmddir}/AZBZZAPPS.env
+L_envfile=${L_cmddir}/AZZZAPPS.env
+# 2009/03/04 Ver.1.2 Masayuki.Sano add END
 #終了ステータス
 C_ret_code_err=8
 C_ret_code_normal=0
