@@ -1,13 +1,14 @@
 /*============================================================================
 * ファイル名 : XxwshReserveLotVOImpl
 * 概要説明   : 手持数・引当可能数一覧(ロット管理品)リージョンビューオブジェクト
-* バージョン : 1.1
+* バージョン : 1.2
 *============================================================================
 * 修正履歴
 * 日付       Ver. 担当者       修正内容
 * ---------- ---- ------------ ----------------------------------------------
 * 2008-12-25 1.0  二瓶　大輔     新規作成 本番#771対応
 * 2009-12-04 1.1  伊藤  ひとみ   本稼動障害#11対応
+* 2010-01-05 1.2  伊藤  ひとみ   本稼動障害#861対応
 *============================================================================
 */
 package itoen.oracle.apps.xxwsh.xxwsh920002j.server;
@@ -21,7 +22,7 @@ import com.sun.java.util.collections.HashMap;
 /***************************************************************************
  * 手持数・引当可能数一覧(ロット管理品)リージョンビューオブジェクトクラスです。
  * @author  ORACLE 二瓶　大輔
- * @version 1.0
+ * @version 1.2
  ***************************************************************************
  */
 public class XxwshReserveLotVOImpl extends OAViewObjectImpl
@@ -109,13 +110,17 @@ public class XxwshReserveLotVOImpl extends OAViewObjectImpl
       setWhereClauseParam(i++, itemId);                     // 24:品目ID
       setWhereClauseParam(i++, itemId);                     // 25:品目ID
       setWhereClauseParam(i++, openDate);                   // 26:オープン日付
-      setWhereClauseParam(i++, lineId);                     // 27:明細ID
-      setWhereClauseParam(i++, documentTypeCode);           // 28:文書タイプ
+// 2010-01-05 H.Itou Add Start 本稼動障害#861
+      setWhereClauseParam(i++, itemId);                     // 27:品目ID
+      setWhereClauseParam(i++, openDate);                   // 28:オープン日付
+// 2010-01-05 H.Itou Add End 本稼動障害#861
+      setWhereClauseParam(i++, lineId);                     // 29:明細ID
+      setWhereClauseParam(i++, documentTypeCode);           // 30:文書タイプ
 // 2009-12-04 H.Itou Add End 本稼動障害#11
-      setWhereClauseParam(i++, itemId);                     // 29:品目ID
-      setWhereClauseParam(i++, prodClass);                  // 30:商品区分
-      setWhereClauseParam(i++, lineId);                     // 31:明細ID
-      setWhereClauseParam(i++, documentTypeCode);           // 32:文書タイプ
+      setWhereClauseParam(i++, itemId);                     // 31:品目ID
+      setWhereClauseParam(i++, prodClass);                  // 32:商品区分
+      setWhereClauseParam(i++, lineId);                     // 33:明細ID
+      setWhereClauseParam(i++, documentTypeCode);           // 34:文書タイプ
 // 2009-12-04 H.Itou Del Start 本稼動障害#11 上に移動。
 //      setWhereClauseParam(i++, scheduleShipDate);           // 21:出庫予定日
 //      setWhereClauseParam(i++, scheduleShipDate);           // 22:出庫予定日

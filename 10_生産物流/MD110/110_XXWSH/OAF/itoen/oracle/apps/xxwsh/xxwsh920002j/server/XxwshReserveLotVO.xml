@@ -285,35 +285,66 @@ SELECT ilm.lot_no                            lot_no,                            
          AND     mld.item_id             = TO_NUMBER(:24)
          AND     mld.document_type_code  = '20'
          AND     mld.record_type_code    = '20'
-         AND     mld.actual_quantity     > 0
+--         AND     mld.actual_quantity     > 0  -- 2010/01/05 Del 訂正の場合、取得しなくてはいけないので、条件からはずす。
          UNION
          -- I1)実績未取在庫数  移動入庫（入出庫報告有）
          -- I2)実績未取在庫数  移動入庫（入庫報告有）
          -- I7)実績未取在庫数  移動入庫訂正（入出庫報告有）
+         -- I8)実績未取在庫数  移動出庫訂正（入出庫報告有） -- 2010/01/05 Add 訂正の場合、出庫でも在庫が＋になる場合があるので、取得する。
          SELECT  mld.lot_id   lot_id
                 ,mld.item_id  item_id
          FROM    xxinv_mov_req_instr_headers mrih    -- 移動依頼/指示ヘッダ（アドオン）
                 ,xxinv_mov_req_instr_lines   mril    -- 移動依頼/指示明細（アドオン）
                 ,xxinv_mov_lot_details       mld     -- 移動ロット詳細（アドオン）
-         WHERE (((mrih.comp_actual_flg    = 'N'))
-           OR   ((mrih.comp_actual_flg    = 'Y')
-             AND (mrih.correct_actual_flg = 'Y')))
+         WHERE (((mrih.comp_actual_flg    = 'N')   -- 2010/01/05 Add 本稼動障害#861 I1,I2 入庫は常に取得
+             AND (mld.record_type_code    = '30')  -- 2010/01/05 Add 本稼動障害#861
+             AND (mld.actual_quantity     > 0))    -- 2010/01/05 Add 本稼動障害#861
+           OR   ((mrih.comp_actual_flg    = 'Y')   -- 2010/01/05 Add 本稼動障害#861 I7 入庫訂正はプラス訂正のみ取得
+             AND (mrih.correct_actual_flg = 'Y')   -- 2010/01/05 Add 本稼動障害#861
+             AND (mld.record_type_code    = '30')  -- 2010/01/05 Add 本稼動障害#861
+             AND (mld.actual_quantity - NVL(mld.before_actual_quantity, 0) > 0)) -- 2010/01/05 Add 本稼動障害#861
+           OR   ((mrih.comp_actual_flg    = 'Y')   -- 2010/01/05 Add 本稼動障害#861 I8 出庫訂正はマイナス訂正のみ取得
+             AND (mrih.correct_actual_flg = 'Y')   -- 2010/01/05 Add 本稼動障害#861
+             AND (mld.record_type_code    = '20')  -- 2010/01/05 Add 本稼動障害#861
+             AND (NVL(mld.before_actual_quantity, 0) - mld.actual_quantity > 0))) -- 2010/01/05 Add 本稼動障害#861
          AND     mrih.status            IN ('05','06')
          AND     mrih.mov_hdr_id         = mril.mov_hdr_id
          AND     mril.mov_line_id        = mld.mov_line_id
          AND     mril.delete_flg         = 'N'
          AND     mld.item_id             = TO_NUMBER(:25)
          AND     mld.document_type_code  = '20'
-         AND     mld.record_type_code    = '30'
+--         AND     mld.record_type_code    = '30'        -- 2010/01/05 Del 本稼動障害#861
+         AND     mld.record_type_code   IN ('20','30')   -- 2010/01/05 Add 本稼動障害#861
          AND     mld.actual_date        >= TO_DATE(:26, 'YYYY/MM/DD')  -- 実績計上前なのでOPEN日付のデータのみ対象。
-         AND     mld.actual_quantity     > 0
+--         AND     mld.actual_quantity     > 0           -- 2010/01/05 Del 訂正の場合、取得しなくてはいけないので、条件からはずす。
+-- 2010/01/05 H.Itou 本稼動障害#861 Add Start 出庫マイナス訂正の場合、在庫が＋になるので、取得する。
+         UNION
+         -- I5)実績未取在庫数  出荷
+         -- I6)実績未取在庫数  支給
+         SELECT  mld.lot_id   lot_id
+                ,mld.item_id  item_id
+         FROM    xxwsh_order_headers_all    oha  -- 受注ヘッダ（アドオン）
+                ,xxwsh_order_lines_all      ola  -- 受注明細（アドオン）
+                ,xxinv_mov_lot_details      mld  -- 移動ロット詳細（アドオン）
+         WHERE   oha.req_status           IN ('04','08')
+         AND     oha.actual_confirm_class  = 'N'
+         AND     oha.latest_external_flag  = 'Y'
+         AND     oha.order_header_id       = ola.order_header_id
+         AND     ola.delete_flag           = 'N'
+         AND     ola.order_line_id         = mld.mov_line_id
+         AND     mld.item_id               = TO_NUMBER(:27)
+         AND     mld.document_type_code   IN ('10','30')
+         AND     mld.record_type_code      = '20'
+         AND     mld.actual_date          >= TO_DATE(:28, 'YYYY/MM/DD')     -- 実績計上前なのでOPEN日付のデータのみ対象。
+         AND     NVL(mld.before_actual_quantity, 0) - mld.actual_quantity > 0 -- 出庫訂正はマイナス訂正のみ取得
+-- 2010/01/05 H.Itou 本稼動障害#861 Add End
          UNION
          -- 引当済ロット
          SELECT xmld.lot_id   lot_id
                ,xmld.item_id  item_id
          FROM   xxinv_mov_lot_details xmld    -- 移動ロット詳細(アドオン)
-         WHERE  xmld.mov_line_id        = TO_NUMBER(:27)
-         AND    xmld.document_type_code = :28
+         WHERE  xmld.mov_line_id        = TO_NUMBER(:29)
+         AND    xmld.document_type_code = :30
          AND    xmld.record_type_code   = '10'
        )                     enable_lot,
 -- 2009/12/04 H.Itou 本稼動障害#11 Add End
@@ -326,15 +357,15 @@ SELECT ilm.lot_no                            lot_no,                            
 --       xxcmn_vendors2_v      xvv,     -- 仕入先情報VIEW2
 -- 2009/12/04 H.Itou 本稼動障害#11 Del End
        xxcmn_lot_status_v    xlsv     -- ロットステータスビュー
-WHERE  ilm.item_id                = TO_NUMBER(:29)
+WHERE  ilm.item_id                = TO_NUMBER(:31)
 -- 2009/12/04 H.Itou 本稼動障害#11 Add Start 有効数のあるロットのみ抽出。
   AND  ilm.item_id                = enable_lot.item_id
   AND  ilm.lot_id                 = enable_lot.lot_id
 -- 2009/12/04 H.Itou 本稼動障害#11 Add End
   AND  xlsv.lot_status(+)         = ilm.attribute23
-  AND  xlsv.prod_class_code(+)    = :30
-  AND  xmld.mov_line_id(+)        = TO_NUMBER(:31)
-  AND  xmld.document_type_code(+) = :32
+  AND  xlsv.prod_class_code(+)    = :32
+  AND  xmld.mov_line_id(+)        = TO_NUMBER(:33)
+  AND  xmld.document_type_code(+) = :34
   AND  xmld.record_type_code(+)   = '10'
   AND  xmld.item_id(+)            = ilm.item_id
   AND  xmld.lot_id(+)             = ilm.lot_id
