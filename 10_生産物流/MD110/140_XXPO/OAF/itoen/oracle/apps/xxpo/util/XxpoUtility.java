@@ -26,6 +26,7 @@
 * 2008-11-04 1.16 二瓶大輔     統合障害#51,103、104対応
 * 2008-12-05 1.17 伊藤ひとみ   本番障害#481対応
 * 2008-12-06 1.18 吉元強樹     本番障害#788対応
+* 2008-12-24 1.19 二瓶大輔     本番障害#743対応
 *============================================================================
 */
 package itoen.oracle.apps.xxpo.util;
@@ -1333,6 +1334,10 @@ public class XxpoUtility
     sb.append("  lr_lot_in.item_no          := :1; "                            ); // 品目
     sb.append("  lr_lot_in.lot_no           := :2; "                            ); // ロット番号
     sb.append("  lr_lot_in.lot_created      := SYSDATE; "                       ); // 作成日
+// 2008-12-24 v.1.6 D.Nihei Add Start 本番障害#743
+    sb.append("  lr_lot_in.expaction_date   := TO_DATE('2099/12/31', 'YYYY/MM/DD'); "); // 再テスト日付
+    sb.append("  lr_lot_in.expire_date      := TO_DATE('2099/12/31', 'YYYY/MM/DD'); "); // 失効日付
+// 2008-12-24 v.1.6 D.Nihei Add End
     sb.append("  lr_lot_in.attribute1       := TO_CHAR(:3,'YYYY/MM/DD'); "      ); // 製造年月日
     sb.append("  lr_lot_in.attribute2       := :4; "                            ); // 固有記号
     sb.append("  lr_lot_in.attribute3       := TO_CHAR(:5,'YYYY/MM/DD'); "      ); // 賞味期限

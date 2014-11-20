@@ -1,13 +1,14 @@
 /*============================================================================
 * ファイル名 : XxpoInspectLotSearchAMImpl
 * 概要説明   : 検査ロット情報検索・登録アプリケーションモジュール
-* バージョン : 1.0
+* バージョン : 1.2
 *============================================================================
 * 修正履歴
 * 日付       Ver. 担当者       修正内容
 * ---------- ---- ------------ ----------------------------------------------
 * 2008-01-29 1.0  戸谷田 大輔    新規作成
 * 2008-05-09 1.1  熊本 和郎      内部変更要求#28,41,43対応
+* 2008-12-24 1.2  二瓶大輔       本番障害#743対応
 *============================================================================
 */
 package itoen.oracle.apps.xxpo.xxpo370001j.server;
@@ -45,7 +46,7 @@ import oracle.jbo.domain.Number;
 /***************************************************************************
  * 検査ロット情報検索・登録画面のアプリケーションモジュールクラスです。
  * @author  ORACLE SCS
- * @version 1.0
+ * @version 1.2
  ***************************************************************************
  */
 public class XxpoInspectLotSearchAMImpl extends XxcmnOAApplicationModuleImpl 
@@ -900,6 +901,10 @@ public class XxpoInspectLotSearchAMImpl extends XxcmnOAApplicationModuleImpl
     sb.append("  lr_create_lot.item_no      := :1; "); // 品目コード
     sb.append("  lr_create_lot.lot_no       := :2; "); // ロットNo
     sb.append("  lr_create_lot.lot_created  := TRUNC(SYSDATE); "); // 作成日
+// 2008-12-24 v.1.6 D.Nihei Add Start 本番障害#743
+    sb.append("  lr_create_lot.expaction_date := TO_DATE('2099/12/31', 'YYYY/MM/DD'); "); // 再テスト日付
+    sb.append("  lr_create_lot.expire_date    := TO_DATE('2099/12/31', 'YYYY/MM/DD'); "); // 失効日付
+// 2008-12-24 v.1.6 D.Nihei Add End
     sb.append("  lr_create_lot.inactive_ind := 0; "); // 有効
     sb.append("  lr_create_lot.origination_type := '0'; "); // 元タイプ
     sb.append("  lr_create_lot.attribute1   := :3; "); // 製造日/仕入日
@@ -913,8 +918,7 @@ public class XxpoInspectLotSearchAMImpl extends XxcmnOAApplicationModuleImpl
     sb.append("  lr_create_lot.attribute21  := :11; "); // 製造ロット番号
     sb.append("  lr_create_lot.attribute23  := :12; "); // ロットステータス
     sb.append("  lr_create_lot.attribute24  := :13; "); // 作成区分
-    sb.append("  lr_create_lot.user_name    := 'OPM'; "); // ユーザー名
-    sb.append("  gmipapi.create_lot ( ");
+    sb.append("  GMIPAPI.CREATE_LOT ( ");
     sb.append("    ln_api_version_number ");
     sb.append("   ,FND_API.G_FALSE ");
     sb.append("   ,FND_API.G_FALSE ");
