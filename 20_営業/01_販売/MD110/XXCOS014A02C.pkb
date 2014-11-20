@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCOS014A02C (body)
  * Description      : 納品書用データ作成(EDI)
  * MD.050           : 納品書用データ作成(EDI) MD050_COS_014_A02
- * Version          : 1.17
+ * Version          : 1.18
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -51,6 +51,7 @@ AS
  *  2010/04/20    1.16  H.Sasaki         [E_本稼動_01900] 原価金額の取得元を変更
  *                                       [E_本稼動_02042] 商品名の取得元を変更
  *  2010/06/11    1.17  S.Miyakoshi      [E_本稼動_03075] 拠点選択対応
+ *  2010/10/15    1.18  K.Kiriu          [E_本稼動_04783] 地区コード、地区名(漢字)、地区コード(カナ)出力変更対応
  *****************************************************************************************/
 --
 --#######################  固定グローバル定数宣言部 START   #######################
@@ -2395,9 +2396,14 @@ AS
             ,xeh_l.xeh_route_sales                                             route_sales                   --ルートセールス
             ,xeh_l.xeh_corporate_code                                          corporate_code                --法人コード
             ,xeh_l.xeh_maker_name                                              maker_name                    --メーカー名
-            ,xeh_l.xeh_area_code                                               area_code                     --地区コード
-            ,NVL2(xeh_l.xeh_area_code,xeh_l.xca_edi_district_name,NULL)        area_name                     --地区名（漢字）
-            ,NVL2(xeh_l.xeh_area_code,xeh_l.xca_edi_district_kana,NULL)        area_name_alt                 --地区名（カナ）
+/* 2010/10/15 Ver1.18 Mod Start */
+--            ,xeh_l.xeh_area_code                                               area_code                     --地区コード
+--            ,NVL2(xeh_l.xeh_area_code,xeh_l.xca_edi_district_name,NULL)        area_name                     --地区名（漢字）
+--            ,NVL2(xeh_l.xeh_area_code,xeh_l.xca_edi_district_kana,NULL)        area_name_alt                 --地区名（カナ）
+              ,NVL(xeh_l.xeh_area_code, xeh_l.xca_edi_district_code )                                        --地区コード
+              ,NVL2(xeh_l.xeh_area_code, xeh_l.xeh_area_name, xeh_l.xca_edi_district_name)                   --地区名（漢字）
+              ,NVL2(xeh_l.xeh_area_code, xeh_l.xeh_area_name_alt, xeh_l.xca_edi_district_kana)               --地区名（カナ）
+/* 2010/10/15 Ver1.18 Mod End   */
             ,NVL(xeh_l.xeh_vendor_code,xeh_l.xca_torihikisaki_code)            vendor_code                   --取引先コード
             ,xeh_l.cdm_vendor_name                                             vendor_name                   --取引先名（漢字）
             ,CASE
@@ -3131,6 +3137,9 @@ AS
                     ,xca.cust_store_name                xca_cust_store_name             -- 店名（漢字）
                     ,xca.deli_center_code               xca_deli_center_code            -- 納入センターコード
                     ,xca.deli_center_name               xca_deli_center_name            -- 納入センター名（漢字）
+/* 2010/10/15 Ver1.18 Add Start */
+                    ,xca.edi_district_code              xca_edi_district_code           -- 地区コード
+/* 2010/10/15 Ver1.18 Add End   */
                     ,xca.edi_district_name              xca_edi_district_name           -- 地区名（漢字）
                     ,xca.edi_district_kana              xca_edi_district_kana           -- 地区名（カナ）
                     ,xca.torihikisaki_code              xca_torihikisaki_code           -- 取引先コード
@@ -3633,6 +3642,9 @@ AS
                     ,NULL                               xca_cust_store_name             -- 店名（漢字）
                     ,NULL                               xca_deli_center_code            -- 納入センターコード
                     ,NULL                               xca_deli_center_name            -- 納入センター名（漢字）
+/* 2010/10/15 Ver1.18 Add Start */
+                    ,NULL                               xca_edi_district_code           -- 地区コード
+/* 2010/10/15 Ver1.18 Add End   */
                     ,NULL                               xca_edi_district_name           -- 地区名（漢字）
                     ,NULL                               xca_edi_district_kana           -- 地区名（カナ）
                     ,NULL                               xca_torihikisaki_code           -- 取引先コード
