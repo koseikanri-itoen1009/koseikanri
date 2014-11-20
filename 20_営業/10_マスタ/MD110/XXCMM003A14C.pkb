@@ -34,6 +34,8 @@ AS
  *  2009/02/29    1.1   Yutaka.Kuboshima 顧客ステータス更新処理を変更
  *  2009/03/18    1.2   Yuuki.Nakamura   タスクステータス名定義テーブル．名称の取得条件を「クローズ」に変更
  *  2009/05/20    1.3   Yutaka.Kuboshima 障害T1_0476,T1_1098の対応
+ *  2009/08/27    1.4   Yutaka.Kuboshima 障害0001193の対応 担当営業員の取得条件を修正
+ *                                       (アサイメント番号 -> 従業員番号)
  *
  *****************************************************************************************/
 --
@@ -445,9 +447,18 @@ AS
         hz_organization_profiles    opro,   -- 組織プロファイルテーブル
         ego_resource_agv            eres,   -- 組織プロファイル拡張テーブル
         per_all_assignments_f       pasi    -- アサインメントマスタテーブル
+-- 2009/08/27 Ver1.4 add start by Yutaka.Kuboshima
+       ,per_all_people_f            papf    -- 従業員マスタテーブル
+-- 2009/08/27 Ver1.4 add end by Yutaka.Kuboshima
       WHERE
             opro.organization_profile_id  = eres.organization_profile_id
-        AND eres.resource_no              = pasi.assignment_number
+-- 2009/08/27 Ver1.4 modify start by Yutaka.Kuboshima
+--        AND eres.resource_no              = pasi.assignment_number
+        AND eres.resource_no              = papf.employee_number
+        AND papf.person_id                = pasi.person_id
+        AND gd_now_proc_date BETWEEN
+              papf.effective_start_date AND papf.effective_end_date
+-- 2009/08/27 Ver1.4 modify end by Yutaka.Kuboshima
         AND gd_now_proc_date BETWEEN
               opro.effective_start_date AND NVL(opro.effective_end_date, gd_now_proc_date)
         AND gd_now_proc_date BETWEEN
