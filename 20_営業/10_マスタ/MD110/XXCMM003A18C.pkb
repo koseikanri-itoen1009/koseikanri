@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCMM003A18C(body)
  * Description      : 情報系連携IFデータ作成
  * MD.050           : MD050_CMM_003_A18_情報系連携IFデータ作成
- * Version          : 1.6
+ * Version          : 1.7
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -29,6 +29,7 @@ AS
  *  2009/05/21    1.4   Yutaka.Kuboshima 障害T1_1131の対応
  *  2009/05/29    1.5   Yutaka.Kuboshima 障害T1_1263の対応
  *  2009/06/09    1.6   Yutaka.Kuboshima 障害T1_1364の対応
+ *  2009/09/30    1.7   Yutaka.Kuboshima 障害0001350の対応
  *
  *****************************************************************************************/
 --
@@ -469,7 +470,10 @@ AS
               xca.policy_chain_code                          policy_chain_code,           --営業政策用
               xca.store_code                                 store_code,                  --店舗コード
               xca.tax_div                                    tax_div,                     --消費税区分
-              hcsu.attribute1                                invoice_class,               --請求書発行区分
+-- 2009/10/01 Ver1.7 障害0001350 modify start by Yutaka.Kuboshima
+--              hcsu.attribute1                                invoice_class,               --請求書発行区分
+              xca.invoice_printing_unit                      invoice_printing_unit,       --請求書印刷単位
+-- 2009/10/01 Ver1.7 障害0001350 modify end by Yutaka.Kuboshima
               hcsu.attribute7                                invoice_process_class,       --請求処理区分
               hca.account_number                             corporate_number,            --法人コード
               xmc.base_code                                  base_code,                   --本部担当拠点コード
@@ -566,8 +570,12 @@ AS
               xca.edi_chain_code                             edi_chain_code,              --チェーン店コード(EDI)【親レコード用】
               xca.parnt_dept_shop_code                       parnt_dept_shop_code,        --百貨店伝区コード【親レコード用】
               xca.card_company_div                           card_company_div,            --カード会社区分
-              xca.card_company                               card_company                 --カード会社コード
+              xca.card_company                               card_company,                --カード会社コード
 -- 2009/05/12 Ver1.3 障害T1_0831 add end by Yutaka.Kuboshima
+-- 2009/09/30 Ver1.7 障害0001350 add start by Yutaka.Kuboshima
+              xca.invoice_code                               invoice_code,                --請求書用コード
+              xca.enclose_invoice_code                       enclose_invoice_code         --統括請求書用コード
+-- 2009/09/30 Ver1.7 障害0001350 add end by Yutaka.Kuboshima
       FROM    hz_cust_accounts              hca,                      --顧客マスタ
               hz_locations                  hl,                       --顧客事業所マスタ
               hz_cust_site_uses             hcsu,                     --顧客使用目的マスタ
@@ -1024,7 +1032,10 @@ AS
       lv_output_str := lv_output_str || cv_comma || cv_dqu || SUBSTRB(cust_data_rec.policy_chain_code, 1, 30)          || cv_dqu;  --営業政策用
       lv_output_str := lv_output_str || cv_comma || cv_dqu || SUBSTRB(cust_data_rec.store_code, 1, 10)                 || cv_dqu;  --店舗コード
       lv_output_str := lv_output_str || cv_comma || cv_dqu || SUBSTRB(cust_data_rec.tax_div, 1, 1)                     || cv_dqu;  --消費税区分
-      lv_output_str := lv_output_str || cv_comma || cv_dqu || SUBSTRB(cust_data_rec.invoice_class, 1, 1)               || cv_dqu;  --請求書発行区分
+-- 2009/10/01 Ver1.7 障害0001350 modify start by Yutaka.Kuboshima
+--      lv_output_str := lv_output_str || cv_comma || cv_dqu || SUBSTRB(cust_data_rec.invoice_class, 1, 1)               || cv_dqu;  --請求書発行区分
+      lv_output_str := lv_output_str || cv_comma || cv_dqu || SUBSTRB(cust_data_rec.invoice_printing_unit, 1, 1) || cv_dqu;        --請求書印刷単位
+-- 2009/10/01 Ver1.7 障害0001350 modify end by Yutaka.Kuboshima
       lv_output_str := lv_output_str || cv_comma || cv_dqu || SUBSTRB(cust_data_rec.invoice_process_class, 1, 1)       || cv_dqu;  --請求処理区分
       lv_output_str := lv_output_str || cv_comma || SUBSTRB(cust_data_rec.corporate_number, 1, 9);                                 --法人コード
       lv_output_str := lv_output_str || cv_comma || cv_dqu || SUBSTRB(cust_data_rec.base_code, 1, 4)                   || cv_dqu;  --本部担当拠点コード
@@ -1142,6 +1153,10 @@ AS
       lv_output_str := lv_output_str || cv_comma || cv_dqu || SUBSTRB(cust_data_rec.card_company_div, 1, 1) || cv_dqu;             --カード会社区分
       lv_output_str := lv_output_str || cv_comma || cv_dqu || SUBSTRB(cust_data_rec.card_company, 1, 9) || cv_dqu;                 --カード会社コード
 -- 2009/05/12 Ver1.3 障害T1_0176 add end by Yutaka.Kuboshima
+-- 2009/09/30 Ver1.7 障害0001350 add start by Yutaka.Kuboshima
+      lv_output_str := lv_output_str || cv_comma || cv_dqu || SUBSTRB(cust_data_rec.invoice_code, 1, 9) || cv_dqu;                 --請求書用コード
+      lv_output_str := lv_output_str || cv_comma || cv_dqu || SUBSTRB(cust_data_rec.enclose_invoice_code, 1, 9) || cv_dqu;         --統括請求書用コード
+-- 2009/09/30 Ver1.7 障害0001350 add end by Yutaka.Kuboshima
       lv_output_str := lv_output_str || cv_comma || lv_coordinated_date;                                                           --連携日時
 --
       --文字列出力
