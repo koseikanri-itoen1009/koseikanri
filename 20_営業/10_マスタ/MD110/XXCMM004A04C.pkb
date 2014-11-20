@@ -7,7 +7,7 @@ AS
  * Description      : Disc品目変更履歴アドオンマスタにて変更予約管理されている項目を
  *                  : 適用日が到来したタイミングで各品目情報に反映します。
  * MD.050           : 変更予約適用    MD050_CMM_004_A04
- * Version          : Issue3.9
+ * Version          : Issue3.10
  *
  * Program List
  * ------------------------- ------------------------------------------------------------
@@ -68,6 +68,10 @@ AS
  *                                                              標準原価継承条件を変更
  *  2009/12/24    1.14  Shigeto.Niki     障害対応(本稼動_00577) 新規品目登録時は、保管棚管理に『1:管理なし』を設定
  *                                                              既存品目更新時は、保管棚管理に『組織レベル値』を設定
+ *  2010/01/06    1.15  Y.Kuboshima      障害対応(本稼動_00602) ボール入数が入力されている場合、単位換算を作成するよう修正
+ *                                       障害対応(本稼動_00614) 親子継承項目の削除
+ *                                                              (重量/体積、ITFコード、配数、段数、商品分類、ボール入数)
+ *                                                              重量/体積、配数、段数の必須チェックを子品目時も実施するよう修正
  *
  *****************************************************************************************/
 --
@@ -478,6 +482,10 @@ AS
                ,xoiv.inc_num                                            -- 内訳入数        （Disc品目アドオン）
                ,xoiv.baracha_div                                        -- バラ茶区分      （Disc品目アドオン）
                ,xoiv.sp_supplier_code                                   -- 専門店仕入先    （Disc品目アドオン）
+-- 2010/01/06 Ver1.15 障害E_本稼動_00602 add start by Y.Kuboshima
+               -- ボール入数追加
+               ,xoiv.bowl_inc_num                                       -- ボール入数       (Disc品目アドオン)
+-- 2010/01/06 Ver1.15 障害E_本稼動_00602 add end by Y.Kuboshima
                ,xsibh.apply_date                                        -- 適用日（適用開始日）
                ,xsibh.apply_flag                                        -- 適用有無
                ,xsibh.item_status                                       -- 品目ステータス
@@ -531,6 +539,10 @@ AS
                ,xoiv.inc_num                                            -- 内訳入数        （Disc品目アドオン）
                ,xoiv.baracha_div                                        -- バラ茶区分      （Disc品目アドオン）
                ,xoiv.sp_supplier_code                                   -- 専門店仕入先    （Disc品目アドオン）
+-- 2010/01/06 Ver1.15 障害E_本稼動_00602 add start by Y.Kuboshima
+               -- ボール入数追加
+               ,xoiv.bowl_inc_num                                       -- ボール入数       (Disc品目アドオン)
+-- 2010/01/06 Ver1.15 障害E_本稼動_00602 add end by Y.Kuboshima
                ,xsibh.apply_date                                        -- 適用日（適用開始日）
                ,xsibh.apply_flag                                        -- 適用有無
                ,xsibh.item_status                                       -- 品目ステータス
@@ -699,7 +711,10 @@ AS
                    ,inc_num                         -- 内訳入数
                    ,baracha_div                     -- バラ茶区分
                    ,case_jan_code                   -- ケースJAN
-                   ,bowl_inc_num                    -- ボール入数
+-- 2010/01/06 Ver1.15 E_本稼動_00614 delete start by Y.Kuboshima
+-- 親子継承項目から削除
+--                   ,bowl_inc_num                    -- ボール入数
+-- 2010/01/06 Ver1.15 E_本稼動_00614 delete end by Y.Kuboshima
                    ,vessel_group                    -- 容器群
                    ,acnt_group                      -- 経理群
                    ,acnt_vessel_group               -- 経理容器群
@@ -731,7 +746,10 @@ AS
                                ,parent_xsib.inc_num                   -- 内訳入数
                                ,parent_xsib.baracha_div               -- バラ茶区分
                                ,parent_xsib.case_jan_code             -- ケースJAN
-                               ,parent_xsib.bowl_inc_num              -- ボール入数
+-- 2010/01/06 Ver1.15 E_本稼動_00614 delete start by Y.Kuboshima
+-- 親子継承項目から削除
+--                               ,parent_xsib.bowl_inc_num              -- ボール入数
+-- 2010/01/06 Ver1.15 E_本稼動_00614 delete end by Y.Kuboshima
                                ,parent_xsib.vessel_group              -- 容器群
                                ,parent_xsib.acnt_group                -- 経理群
                                ,parent_xsib.acnt_vessel_group         -- 経理容器群
@@ -1051,17 +1069,29 @@ AS
                  ,iimb.attribute15
 -- Ver1.6 2009/03/23 MOD  障害No37対応 重量/容積・重量容積区分の設定を追加
 --                 ,iimb.attribute16
-                 ,parent_iimb.attribute16           -- 容積(親品目から取得)
+-- 2010/01/06 Ver1.15 E_本稼動_00614 modify start by Y.Kuboshima
+-- 子品目から取得する
+--                 ,parent_iimb.attribute16           -- 容積(親品目から取得)
+                 ,iimb.attribute16                  -- 容積(子品目から取得)
+-- 2010/01/06 Ver1.15 E_本稼動_00614 modify end by Y.Kuboshima
 -- Ver1.6 MOD END
                  ,iimb.attribute17
                  ,iimb.attribute18
                  ,iimb.attribute19
                  ,iimb.attribute20
                  ,parent_iimb.attribute21           -- JAN(親品目から取得)
-                 ,parent_iimb.attribute22           -- ITF
+-- 2010/01/06 Ver1.15 E_本稼動_00614 modify start by Y.Kuboshima
+-- 子品目から取得する
+--                 ,parent_iimb.attribute22           -- ITF
+                 ,iimb.attribute22                  -- ITF
+-- 2010/01/06 Ver1.15 E_本稼動_00614 modify end by Y.Kuboshima
                  ,iimb.attribute23
                  ,iimb.attribute24
-                 ,parent_iimb.attribute25           -- 重量/体積(親品目から取得)
+-- 2010/01/06 Ver1.15 E_本稼動_00614 modify start by Y.Kuboshima
+-- 子品目から取得する
+--                 ,parent_iimb.attribute25           -- 重量/体積(親品目から取得)
+                 ,iimb.attribute25                  -- 重量/体積(子品目から取得)
+-- 2010/01/06 Ver1.15 E_本稼動_00614 modify end by Y.Kuboshima
                  ,iimb.attribute26
                  ,iimb.attribute27
                  ,iimb.attribute28
@@ -2885,13 +2915,14 @@ AS
                                            , cn_itm_status_trn_only ) ) THEN    -- Ｄ’
       --=====================================================================================
       -- 変更適用反映が可能かチェック
-      -- ・仮登録以降：子品目 カナ、売上対象、親商品 必須
+      -- ・仮登録以降：子品目 カナ、売上対象、親商品、重量/体積 必須
       --                      ※親商品が設定されていれば他項目も設定されている想定。
       -- ・仮登録以降：親品目 定価（変更適用）
       --                      カナ、売上対象、親商品
       --                      ケース入数、基準単位、商品製品区分
       --                      NET、重量/体積、内容量、内容量単位
       --                      内訳入数、本社商品区分、バラ茶区分
+      -- ・本登録以降：子品目 配数(ドリンクの場合のみ)、段数(ドリンクの場合のみ)
       -- ・本登録以降：親品目 営業原価、政策群コード（変更適用）
       --                      標準原価、専門店仕入先(商品の場合のみ)
       --                      配数(ドリンクの場合のみ)、段数(ドリンクの場合のみ)
@@ -2920,6 +2951,54 @@ AS
         RAISE data_validate_expt;
       END IF;
       --
+-- 2010/01/06 Ver1.15 E_本稼動_00614 add start by Y.Kuboshima
+-- 重量/体積の必須チェックを追加
+      -- 重量/体積
+      lv_step := 'STEP-07360';
+      IF ( i_update_item_rec.unit IS NULL ) THEN
+        lv_msg_token := cv_unit;
+        RAISE data_validate_expt;
+      END IF;
+      --
+      lv_step := 'STEP-07220';
+      BEGIN
+        -- 本社商品区分
+        SELECT      mcv.segment1             head_product                 -- 本社商品区分
+        INTO        lv_head_product                                       -- 本社商品区分
+        FROM        gmi_item_categories      gic                          -- OPM品目カテゴリ割当（本社商品区分）
+                   ,mtl_category_sets_vl     mcsv                         -- カテゴリセットビュー（本社商品区分）
+                   ,mtl_categories_vl        mcv                          -- カテゴリビュー（本社商品区分）
+        WHERE       mcsv.category_set_name = cv_categ_set_hon_prod        -- 本社商品区分
+        AND         gic.item_id            = i_update_item_rec.item_id    -- 品目
+        AND         gic.category_set_id    = mcsv.category_set_id         -- カテゴリセットID
+        AND         gic.category_id        = mcv.category_id;             -- カテゴリID
+        --
+      EXCEPTION
+        WHEN OTHERS THEN
+          lv_head_product := NULL;
+      END;
+      --
+      -- 変更後ステータスが『仮登録』以外(本登録, 廃, Ｄ’)の場合
+      -- 本登録時のチェックを実施する。
+      IF ( i_update_item_rec.item_status != cn_itm_status_pre_reg ) THEN
+        -- 本社商品区分 = 「ドリンク」の場合必須
+        IF ( lv_head_product = cv_head_product_drink ) THEN
+          -- 配数
+          lv_step := 'STEP-07550';
+          IF ( i_update_item_rec.palette_max_cs_qty IS NULL ) THEN
+            lv_msg_token := cv_palette_max_cs_qty;
+            RAISE data_validate_expt;
+          END IF;
+          --
+          -- 段数
+          lv_step := 'STEP-07560';
+          IF ( i_update_item_rec.palette_max_step_qty IS NULL ) THEN
+            lv_msg_token := cv_palette_max_step_qty;
+            RAISE data_validate_expt;
+          END IF;
+        END IF;
+      END IF;
+-- 2010/01/06 Ver1.15 E_本稼動_00614 add end by Y.Kuboshima
       -- 親品目の場合
       IF ( i_update_item_rec.item_id = i_update_item_rec.parent_item_id ) THEN
         --
@@ -2941,23 +3020,26 @@ AS
             lv_item_product := NULL;
         END;
         --
-        lv_step := 'STEP-07220';
-        BEGIN
-          -- 本社商品区分
-          SELECT      mcv.segment1             head_product                 -- 本社商品区分
-          INTO        lv_head_product                                       -- 本社商品区分
-          FROM        gmi_item_categories      gic                          -- OPM品目カテゴリ割当（本社商品区分）
-                     ,mtl_category_sets_vl     mcsv                         -- カテゴリセットビュー（本社商品区分）
-                     ,mtl_categories_vl        mcv                          -- カテゴリビュー（本社商品区分）
-          WHERE       mcsv.category_set_name = cv_categ_set_hon_prod        -- 本社商品区分
-          AND         gic.item_id            = i_update_item_rec.item_id    -- 品目
-          AND         gic.category_set_id    = mcsv.category_set_id         -- カテゴリセットID
-          AND         gic.category_id        = mcv.category_id;             -- カテゴリID
-          --
-        EXCEPTION
-          WHEN OTHERS THEN
-            lv_head_product := NULL;
-        END;
+-- 2010/01/06 Ver1.15 E_本稼動_00614 delete start by Y.Kuboshima
+-- 子品目時も取得するため削除
+--        lv_step := 'STEP-07220';
+--        BEGIN
+--          -- 本社商品区分
+--          SELECT      mcv.segment1             head_product                 -- 本社商品区分
+--          INTO        lv_head_product                                       -- 本社商品区分
+--          FROM        gmi_item_categories      gic                          -- OPM品目カテゴリ割当（本社商品区分）
+--                     ,mtl_category_sets_vl     mcsv                         -- カテゴリセットビュー（本社商品区分）
+--                     ,mtl_categories_vl        mcv                          -- カテゴリビュー（本社商品区分）
+--          WHERE       mcsv.category_set_name = cv_categ_set_hon_prod        -- 本社商品区分
+--          AND         gic.item_id            = i_update_item_rec.item_id    -- 品目
+--          AND         gic.category_set_id    = mcsv.category_set_id         -- カテゴリセットID
+--          AND         gic.category_id        = mcv.category_id;             -- カテゴリID
+--          --
+--        EXCEPTION
+--          WHEN OTHERS THEN
+--            lv_head_product := NULL;
+--        END;
+-- 2010/01/06 Ver1.15 E_本稼動_00614 delete end by Y.Kuboshima
         --
         -- 変更前ステータスは、NULL、仮採番、仮登録、Ｄのみ
         -- 変更後ステータスは、仮登録、本登録、廃、Ｄ’のみ
@@ -3027,11 +3109,14 @@ AS
           END IF;
           --
           -- 重量/体積
-          lv_step := 'STEP-07360';
-          IF ( i_update_item_rec.unit IS NULL ) THEN
-            lv_msg_token := cv_unit;
-            RAISE data_validate_expt;
-          END IF;
+-- 2010/01/06 Ver1.15 E_本稼動_00614 delete start by Y.Kuboshima
+-- 子品目時も必須のため削除
+--          lv_step := 'STEP-07360';
+--          IF ( i_update_item_rec.unit IS NULL ) THEN
+--            lv_msg_token := cv_unit;
+--            RAISE data_validate_expt;
+--          END IF;
+-- 2010/01/06 Ver1.15 E_本稼動_00614 delete end by Y.Kuboshima
           --
           -- 内容量
           lv_step := 'STEP-07370';
@@ -3137,22 +3222,25 @@ AS
             RAISE data_validate_expt;
           END IF;
           --
-          -- 本社商品区分 = 「ドリンク」の場合必須
-          IF ( lv_head_product = cv_head_product_drink ) THEN
-            -- 配数
-            lv_step := 'STEP-07550';
-            IF ( i_update_item_rec.palette_max_cs_qty IS NULL ) THEN
-              lv_msg_token := cv_palette_max_cs_qty;
-              RAISE data_validate_expt;
-            END IF;
-            --
-            -- 段数
-            lv_step := 'STEP-07560';
-            IF ( i_update_item_rec.palette_max_step_qty IS NULL ) THEN
-              lv_msg_token := cv_palette_max_step_qty;
-              RAISE data_validate_expt;
-            END IF;
-          END IF;
+-- 2010/01/06 Ver1.15 E_本稼動_00614 delete start by Y.Kuboshima
+-- 子品目時も必須のため削除
+--          -- 本社商品区分 = 「ドリンク」の場合必須
+--          IF ( lv_head_product = cv_head_product_drink ) THEN
+--            -- 配数
+--            lv_step := 'STEP-07550';
+--            IF ( i_update_item_rec.palette_max_cs_qty IS NULL ) THEN
+--              lv_msg_token := cv_palette_max_cs_qty;
+--              RAISE data_validate_expt;
+--            END IF;
+--            --
+--            -- 段数
+--            lv_step := 'STEP-07560';
+--            IF ( i_update_item_rec.palette_max_step_qty IS NULL ) THEN
+--              lv_msg_token := cv_palette_max_step_qty;
+--              RAISE data_validate_expt;
+--            END IF;
+--          END IF;
+-- 2010/01/06 Ver1.15 E_本稼動_00614 delete end by Y.Kuboshima
         END IF;
       END IF;
     END IF;
@@ -3388,6 +3476,11 @@ AS
 -- 2009/09/11 Ver1.12 障害0000948 add start by Y.Kuboshima
     cv_uom_class_conv_to         CONSTANT VARCHAR2(10) := 'CS';
 -- 2009/09/11 Ver1.12 障害0000948 add end by Y.Kuboshima
+--
+-- 2010/01/06 Ver1.15 E_本稼動_00602 add start by Y.Kuboshima
+    cv_uom_class_conv_bl         CONSTANT VARCHAR2(10) := 'BL';
+-- 2010/01/06 Ver1.15 E_本稼動_00602 add start by Y.Kuboshima
+--
     -- ===============================
     -- 固定ローカル変数
     -- ===============================
@@ -3635,9 +3728,12 @@ AS
           UPDATE      xxcmn_item_mst_b
           SET       ( obsolete_class           -- 廃止区分
                      ,obsolete_date            -- 廃止日
-                     ,product_class            -- 商品分類
-                     ,palette_max_cs_qty       -- 配数
-                     ,palette_max_step_qty     -- 段数
+-- 2010/01/06 Ver1.15 E_本稼動_00614 delete start by Y.Kuboshima
+-- 親子継承項目から削除
+--                     ,product_class            -- 商品分類
+--                     ,palette_max_cs_qty       -- 配数
+--                     ,palette_max_step_qty     -- 段数
+-- 2010/01/06 Ver1.15 E_本稼動_00614 delete end by Y.Kuboshima
                      ,last_updated_by
                      ,last_update_date
                      ,last_update_login
@@ -3650,12 +3746,15 @@ AS
                                   -- 廃止日
                                  ,DECODE( i_update_item_rec.item_status
                                          ,cn_itm_status_no_use, i_update_item_rec.apply_date, NULL )
-                                  -- 商品分類
-                                 ,ximb.product_class
-                                  -- 配数
-                                 ,ximb.palette_max_cs_qty
-                                  -- 段数
-                                 ,ximb.palette_max_step_qty
+-- 2010/01/06 Ver1.15 E_本稼動_00614 delete start by Y.Kuboshima
+-- 親子継承項目から削除
+--                                  -- 商品分類
+--                                 ,ximb.product_class
+--                                  -- 配数
+--                                 ,ximb.palette_max_cs_qty
+--                                  -- 段数
+--                                 ,ximb.palette_max_step_qty
+-- 2010/01/06 Ver1.15 E_本稼動_00614 delete end by Y.Kuboshima
                                  ,cn_last_updated_by
                                  ,cd_last_update_date
                                  ,cn_last_update_login
@@ -3913,6 +4012,39 @@ AS
         END IF;
       END IF;
 -- 2009/09/11 Ver1.12 障害0000948 add end by Y.Kuboshima
+--
+-- 2010/01/06 Ver1.15 障害E_本稼動_00602 add start by Y.Kuboshima
+      -- 区分間換算登録判定
+      -- 単位換算作成フラグが'Y'の場合かつ、品目ステータスが'30'(本登録)の場合かつ、ボール入数がNOT NULLの場合、単位換算を作成する
+      IF  ( l_units_of_measure_rec.attribute1 = cv_yes ) 
+        AND ( i_update_item_rec.item_status = cn_itm_status_regist)
+        AND ( i_update_item_rec.bowl_inc_num IS NOT NULL)
+      THEN
+        --==============================================================
+        --A-5.6 区分間換算の登録
+        --==============================================================
+        lv_step := 'STEP-05060';
+        l_uom_class_conv_rec.inventory_item_id := i_update_item_rec.inventory_item_id;
+        l_uom_class_conv_rec.from_uom_code     := i_update_item_rec.item_um;
+        l_uom_class_conv_rec.to_uom_code       := cv_uom_class_conv_bl;                   -- BL
+        l_uom_class_conv_rec.conversion_rate   := i_update_item_rec.bowl_inc_num;
+        --
+        -- 区分間換算登録API
+        lv_step := 'STEP-04030';
+        xxcmm_004common_pkg.proc_uom_class_ref(
+          i_uom_class_conv_rec  =>  l_uom_class_conv_rec  -- 区分間換算反映用レコードタイプ
+         ,ov_errbuf             =>  lv_errbuf             -- エラー・メッセージ           --# 固定 #
+         ,ov_retcode            =>  lv_retcode            -- リターン・コード             --# 固定 #
+         ,ov_errmsg             =>  lv_errmsg             -- ユーザー・エラー・メッセージ --# 固定 #
+        );
+        --
+        IF ( lv_retcode = cv_status_error ) THEN
+          --
+          lv_msg_token := cv_tkn_val_uon_conv;
+          RAISE data_insert_err_expt;
+        END IF;
+      END IF;
+-- 2010/01/06 Ver1.15 障害E_本稼動_00602 add end by Y.Kuboshima
       --
     END IF;
     --
