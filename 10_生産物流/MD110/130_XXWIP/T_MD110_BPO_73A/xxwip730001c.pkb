@@ -7,7 +7,7 @@ AS
  * Description      : 支払運賃データ自動作成
  * MD.050           : 運賃計算（トランザクション） T_MD050_BPO_730
  * MD.070           : 支払運賃データ自動作成 T_MD070_BPO_73A
- * Version          : 1.12
+ * Version          : 1.13
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -105,6 +105,7 @@ AS
  *  2008/10/27    1.10 Oracle 野村       統合#436対応
  *  2008/10/31    1.11 Oracle 野村       統合#531対応
  *  2008/11/07    1.12 Oracle 野村       統合#584対応
+ *  2008/11/25    1.13 Oracle 吉田       本番#104対応
  *
  *****************************************************************************************/
 --
@@ -1338,8 +1339,10 @@ AS
     -- ***       共通関数の呼び出し        ***
     -- ***************************************
 --
+
+-- ##### 20081125 Ver.1.13 本番#104対応 START #####
     -- 受注実績情報 抽出
-    SELECT  xoha.order_header_id                  -- 受注ヘッダアドオンID
+    /*SELECT  xoha.order_header_id                  -- 受注ヘッダアドオンID
           , xoha.request_no                       -- 依頼No
           , xoha.slip_number                      -- 送り状No
           , xoha.delivery_no                      -- 配送No
@@ -1351,9 +1354,7 @@ AS
             WHEN gv_shikyu   THEN gv_code_shikyu  --                2：取引先
             END
 -- ##### 20080625 Ver.1.2 支給配送先対応 START #####
-/***
-          , xoha.result_deliver_to                -- 出荷先_実績
-***/
+--          , xoha.result_deliver_to                -- 出荷先_実績
           , CASE xotv.shipping_shikyu_class       -- 配送コード区分
             WHEN gv_shipping THEN xoha.result_deliver_to  -- 出荷先_実績
             WHEN gv_shikyu   THEN xoha.vendor_site_code   -- 取引先サイト
@@ -1431,9 +1432,7 @@ AS
           )
     AND (
 -- ##### 20080625 Ver.1.2 支給配送先対応 START #####
-/***
-          (xotv.shipping_shikyu_class  = gv_shipping)         -- 出荷依頼
-***/
+--          (xotv.shipping_shikyu_class  = gv_shipping)         -- 出荷依頼
           ((xotv.shipping_shikyu_class  = gv_shipping)         -- 出荷依頼
           AND  (xoha.result_deliver_to  IS NOT NULL))          -- 出荷先_実績
 -- ##### 20080625 Ver.1.2 支給配送先対応 END   #####
@@ -1448,7 +1447,307 @@ AS
                               FROM xxwsh_order_lines_all xola    -- 受注明細アドオン
                               WHERE (xola.last_update_date > gd_last_process_date)  -- 受注明細：前回処理日付
                               AND   (xola.last_update_date <= gd_sysdate)))
-        );
+        );*/
+        
+    -- 受注実績情報 抽出
+    SELECT
+      order_info.order_header_id
+     ,order_info.request_no
+     ,order_info.slip_number
+     ,order_info.delivery_no
+     ,order_info.result_freight_carrier_code
+     ,order_info.deliver_from
+     ,order_info.result_shipping_method_code
+     ,order_info.deliver_to_code_class
+     ,order_info.result_deliver_to
+     ,order_info.payments_judgment_classe
+     ,order_info.shipped_date
+     ,order_info.arrival_date
+     ,order_info.judgement_date
+     ,order_info.prod_class
+     ,order_info.weight_capacity_class
+     ,order_info.small_quantity
+     ,order_info.order_type
+     ,order_info.no_cont_freight_class
+     ,order_info.transfer_location_code
+     ,order_info.shipping_instructions
+     ,order_info.small_amount_class
+     ,order_info.mixed_class
+     ,order_info.ref_small_amount_class
+     ,order_info.post_distance
+     ,order_info.small_distance
+     ,order_info.consolid_add_distance
+     ,order_info.actual_distance
+     ,order_info.small_weight
+     ,order_info.pay_picking_amount
+     ,order_info.qty
+     ,order_info.delivery_weight
+    BULK COLLECT INTO gt_order_inf_tab
+    FROM (
+      -- 着日基準_支給依頼
+      SELECT /*+ leading(xoha otta xdec) use_nl(xoha otta xdec) */
+              xoha.order_header_id                order_header_id              -- 受注ヘッダアドオンID
+            , xoha.request_no                     request_no                   -- 依頼No
+            , xoha.slip_number                    slip_number                  -- 送り状No
+            , xoha.delivery_no                    delivery_no                  -- 配送No
+            , xoha.result_freight_carrier_code    result_freight_carrier_code  -- 運送業者_実績
+            , xoha.deliver_from                   deliver_from                 -- 出荷元保管場所
+            , xoha.result_shipping_method_code    result_shipping_method_code  -- 配送区分_実績
+            , gv_code_shikyu                      deliver_to_code_class        -- 配送先コード区分
+            , xoha.vendor_site_code               result_deliver_to            -- 出荷先_実績
+            , xdec.payments_judgment_classe       payments_judgment_classe     -- 支払判断区分(運賃)
+            , xoha.shipped_date                   shipped_date                 -- 出荷日
+            , NVL(xoha.arrival_date, xoha.schedule_arrival_date) arrival_date  -- 着荷日(着荷予定日)
+            , NVL(xoha.arrival_date, xoha.schedule_arrival_date) judgement_date  -- 判断日
+            , xoha.prod_class                     prod_class                   -- 商品区分
+            , xoha.weight_capacity_class          weight_capacity_class        -- 重量容積区分
+            , xoha.small_quantity                 small_quantity               -- 小口個数
+            , gv_type_shikyu                      order_type                   -- タイプ
+            , xoha.no_cont_freight_class          no_cont_freight_class        -- 契約外運賃区分
+            , xoha.transfer_location_code         transfer_location_code       -- 振替先
+            , SUBSTRB(xoha.shipping_instructions, 1, 40) shipping_instructions -- 出荷指示(40)
+            , NULL                                small_amount_class           -- 小口区分
+            , NULL                                mixed_class                  -- 混載区分
+            , NULL                                ref_small_amount_class       -- リーフ小口区分
+            , NULL                                post_distance                -- 配送距離：車立距離
+            , NULL                                small_distance               -- 配送距離：小口距離
+            , NULL                                consolid_add_distance        -- 配送距離：混載割増距離
+            , NULL                                actual_distance              -- 配送距離：実際距離
+            , NULL                                small_weight                 -- 小口重量
+            , NULL                                pay_picking_amount           -- 支払ピッキング単価
+            , NULL                                qty                          -- 個数
+            , NULL                                delivery_weight              -- 重量
+      FROM  xxwsh_order_headers_all        xoha,      -- 受注ヘッダアドオン
+            oe_transaction_types_all       otta,    -- 受注タイプ情報VIEW2
+            xxwip_delivery_company         xdec     -- 運賃用運送業者アドオンマスタ
+      WHERE xoha.latest_external_flag = 'Y'                 -- 最新フラグ 'Y'
+      AND   xoha.shipped_date IS NOT NULL                   -- 出荷日
+--    着荷日が設定されていなくても、抽出対象とする。
+--   （着荷予定日もしくは着荷日が設定されていることが前提）
+      AND   (xoha.arrival_date           IS NOT NULL    -- 着荷日
+        OR   xoha.schedule_arrival_date  IS NOT NULL)   -- 着荷予定日
+      AND   xoha.result_shipping_method_code IS NOT NULL    -- 配送区分_実績
+      AND   xoha.result_freight_carrier_code IS NOT NULL    -- 運送業者_実績
+      AND   xoha.delivery_no  IS NOT NULL                   -- 配送No
+      AND   xoha.prod_class = xdec.goods_classe                             -- 商品区分
+      AND   xoha.result_freight_carrier_code = xdec.delivery_company_code   -- 運送業者
+      AND   xdec.start_date_active  <= TRUNC(gd_sysdate)                    -- 適用開始日
+      AND   xdec.end_date_active    >= TRUNC(gd_sysdate)                    -- 適用終了日
+      AND   xoha.order_type_id       = otta.transaction_type_id -- 受注タイプID
+      AND   xdec.payments_judgment_classe = gv_pay_judg_c    -- 支払判断区分（着日）
+      AND   NVL(xoha.arrival_date, xoha.schedule_arrival_date)
+                                               >=  gd_target_date -- 着荷日(着荷予定日)
+      AND   otta.attribute1  = gv_shikyu             -- 支給依頼
+      AND   otta.attribute3 = '0'                     -- 自動作成発注区分「NO」
+      AND (
+            ((xoha.last_update_date > gd_last_process_date)  -- 受注ヘッダ：前回処理日付
+            AND  (xoha.last_update_date <= gd_sysdate))
+          OR ( EXISTS (SELECT 1
+                       FROM   xxwsh_order_lines_all xola    -- 受注明細アドオン
+                       WHERE  xola.order_header_id = xoha.order_header_id
+                       AND    xola.last_update_date > gd_last_process_date -- 受注明細：前回処理日付
+                       AND    xola.last_update_date <= gd_sysdate
+                       AND    ROWNUM = 1))
+          )
+      UNION ALL
+      -- 着日基準_出荷依頼
+      SELECT  /*+ leading(xoha otta xdec) use_nl(xoha otta xdec) */
+              xoha.order_header_id                order_header_id              -- 受注ヘッダアドオンID
+            , xoha.request_no                     request_no                   -- 依頼No
+            , xoha.slip_number                    slip_number                  -- 送り状No
+            , xoha.delivery_no                    delivery_no                  -- 配送No
+            , xoha.result_freight_carrier_code    result_freight_carrier_code  -- 運送業者_実績
+            , xoha.deliver_from                   deliver_from                 -- 出荷元保管場所
+            , xoha.result_shipping_method_code    result_shipping_method_code  -- 配送区分_実績
+            , gv_code_ship                        deliver_to_code_class        -- 配送先コード区分
+            , xoha.result_deliver_to              result_deliver_to-- 出荷先_実績
+            , xdec.payments_judgment_classe       payments_judgment_classe     -- 支払判断区分(運賃)
+            , xoha.shipped_date                   shipped_date                 -- 出荷日
+            , NVL(xoha.arrival_date, xoha.schedule_arrival_date) arrival_date  -- 着荷日(着荷予定日)
+            , NVL(xoha.arrival_date, xoha.schedule_arrival_date) judgement_date   -- 判断日
+            , xoha.prod_class                     prod_class                   -- 商品区分
+            , xoha.weight_capacity_class          weight_capacity_class        -- 重量容積区分
+            , xoha.small_quantity                 small_quantity               -- 小口個数
+            , gv_type_ship                        order_type                   -- タイプ
+            , xoha.no_cont_freight_class          no_cont_freight_class        -- 契約外運賃区分
+            , xoha.transfer_location_code         transfer_location_code       -- 振替先
+            , SUBSTRB(xoha.shipping_instructions, 1, 40) shipping_instructions -- 出荷指示(40)
+            , NULL                                small_amount_class           -- 小口区分
+            , NULL                                mixed_class                  -- 混載区分
+            , NULL                                ref_small_amount_class       -- リーフ小口区分
+            , NULL                                post_distance                -- 配送距離：車立距離
+            , NULL                                small_distance               -- 配送距離：小口距離
+            , NULL                                consolid_add_distance        -- 配送距離：混載割増距離
+            , NULL                                actual_distance              -- 配送距離：実際距離
+            , NULL                                small_weight                 -- 小口重量
+            , NULL                                pay_picking_amount           -- 支払ピッキング単価
+            , NULL                                qty                          -- 個数
+            , NULL                                delivery_weight              -- 重量
+      FROM  xxwsh_order_headers_all        xoha,      -- 受注ヘッダアドオン
+            oe_transaction_types_all       otta,    -- 受注タイプ情報VIEW2
+            xxwip_delivery_company         xdec     -- 運賃用運送業者アドオンマスタ
+      WHERE xoha.latest_external_flag = 'Y'                 -- 最新フラグ 'Y'
+      AND   xoha.shipped_date IS NOT NULL                   -- 出荷日
+--    着荷日が設定されていなくても、抽出対象とする。
+--   （着荷予定日もしくは着荷日が設定されていることが前提）
+      AND   (xoha.arrival_date           IS NOT NULL    -- 着荷日
+        OR   xoha.schedule_arrival_date  IS NOT NULL)   -- 着荷予定日
+      AND   xoha.result_shipping_method_code IS NOT NULL    -- 配送区分_実績
+      AND   xoha.result_freight_carrier_code IS NOT NULL    -- 運送業者_実績
+      AND   xoha.delivery_no  IS NOT NULL                   -- 配送No
+      AND   xoha.prod_class = xdec.goods_classe                             -- 商品区分
+      AND   xoha.result_freight_carrier_code = xdec.delivery_company_code   -- 運送業者
+      AND   xdec.start_date_active  <= TRUNC(gd_sysdate)                    -- 適用開始日
+      AND   xdec.end_date_active    >= TRUNC(gd_sysdate)                    -- 適用終了日
+      AND   xoha.order_type_id       = otta.transaction_type_id             -- 受注タイプID
+      AND   xdec.payments_judgment_classe = gv_pay_judg_c    -- 支払判断区分（着日）
+      AND   NVL(xoha.arrival_date, xoha.schedule_arrival_date)
+                                               >=  gd_target_date -- 着荷日(着荷予定日)
+      AND   otta.attribute1   = gv_shipping                       -- 出荷依頼
+      AND   xoha.result_deliver_to  IS NOT NULL                             -- 出荷先_実績
+      AND (
+            ((xoha.last_update_date > gd_last_process_date)  -- 受注ヘッダ：前回処理日付
+            AND  (xoha.last_update_date <= gd_sysdate))
+          OR ( EXISTS (SELECT 1
+                       FROM   xxwsh_order_lines_all xola    -- 受注明細アドオン
+                       WHERE  xola.order_header_id = xoha.order_header_id
+                       AND    xola.last_update_date > gd_last_process_date -- 受注明細：前回処理日付
+                       AND    xola.last_update_date <= gd_sysdate
+                       AND    ROWNUM = 1))
+          )
+      UNION ALL
+      -- 発日基準_支給依頼
+      SELECT  /*+ leading(xoha otta xdec) use_nl(xoha otta xdec) */
+              xoha.order_header_id                order_header_id              -- 受注ヘッダアドオンID
+            , xoha.request_no                     request_no                   -- 依頼No
+            , xoha.slip_number                    slip_number                  -- 送り状No
+            , xoha.delivery_no                    delivery_no                  -- 配送No
+            , xoha.result_freight_carrier_code    result_freight_carrier_code  -- 運送業者_実績
+            , xoha.deliver_from                   deliver_from                 -- 出荷元保管場所
+            , xoha.result_shipping_method_code    result_shipping_method_code  -- 配送区分_実績
+            , gv_code_shikyu                      deliver_to_code_class        -- 配送先コード区分
+            , xoha.vendor_site_code               result_deliver_to            -- 出荷先_実績
+            , xdec.payments_judgment_classe       payments_judgment_classe     -- 支払判断区分(運賃)
+            , xoha.shipped_date                   shipped_date                 -- 出荷日
+            , NVL(xoha.arrival_date, xoha.schedule_arrival_date) arrival_date  -- 着荷日(着荷予定日)
+            ,xoha.shipped_date                    judgement_date               -- 判断日
+            , xoha.prod_class                     prod_class                   -- 商品区分
+            , xoha.weight_capacity_class          weight_capacity_class        -- 重量容積区分
+            , xoha.small_quantity                 small_quantity               -- 小口個数
+            , gv_type_shikyu                      order_type                   -- タイプ
+            , xoha.no_cont_freight_class          no_cont_freight_class        -- 契約外運賃区分
+            , xoha.transfer_location_code         transfer_location_code       -- 振替先
+            , SUBSTRB(xoha.shipping_instructions, 1, 40) shipping_instructions -- 出荷指示(40)
+            , NULL                                small_amount_class           -- 小口区分
+            , NULL                                mixed_class                  -- 混載区分
+            , NULL                                ref_small_amount_class       -- リーフ小口区分
+            , NULL                                post_distance                -- 配送距離：車立距離
+            , NULL                                small_distance               -- 配送距離：小口距離
+            , NULL                                consolid_add_distance        -- 配送距離：混載割増距離
+            , NULL                                actual_distance              -- 配送距離：実際距離
+            , NULL                                small_weight                 -- 小口重量
+            , NULL                                pay_picking_amount           -- 支払ピッキング単価
+            , NULL                                qty                          -- 個数
+            , NULL                                delivery_weight              -- 重量
+      FROM  xxwsh_order_headers_all        xoha,      -- 受注ヘッダアドオン
+            oe_transaction_types_all       otta,    -- 受注タイプ情報VIEW2
+            xxwip_delivery_company         xdec     -- 運賃用運送業者アドオンマスタ
+      WHERE xoha.latest_external_flag = 'Y'                 -- 最新フラグ 'Y'
+      AND   xoha.shipped_date IS NOT NULL                   -- 出荷日
+--    着荷日が設定されていなくても、抽出対象とする。
+--   （着荷予定日もしくは着荷日が設定されていることが前提）
+      AND   (xoha.arrival_date           IS NOT NULL    -- 着荷日
+        OR   xoha.schedule_arrival_date  IS NOT NULL)   -- 着荷予定日
+      AND   xoha.result_shipping_method_code IS NOT NULL    -- 配送区分_実績
+      AND   xoha.result_freight_carrier_code IS NOT NULL    -- 運送業者_実績
+      AND   xoha.delivery_no  IS NOT NULL                   -- 配送No
+      AND   xoha.prod_class = xdec.goods_classe                             -- 商品区分
+      AND   xoha.result_freight_carrier_code = xdec.delivery_company_code   -- 運送業者
+      AND   xdec.start_date_active  <= TRUNC(gd_sysdate)                    -- 適用開始日
+      AND   xdec.end_date_active    >= TRUNC(gd_sysdate)                    -- 適用終了日
+      AND   xoha.order_type_id       = otta.transaction_type_id -- 受注タイプID
+      AND   xdec.payments_judgment_classe = gv_pay_judg_g    -- 支払判断区分（発日）
+      AND   xoha.shipped_date >=  gd_target_date             -- 出荷日
+      AND   otta.attribute1  = gv_shikyu          -- 支給依頼
+      AND   otta.attribute3 = '0'                  -- 自動作成発注区分「NO」
+      AND (
+            ((xoha.last_update_date > gd_last_process_date)  -- 受注ヘッダ：前回処理日付
+            AND  (xoha.last_update_date <= gd_sysdate))
+          OR ( EXISTS (SELECT 1
+                       FROM   xxwsh_order_lines_all xola    -- 受注明細アドオン
+                       WHERE  xola.order_header_id = xoha.order_header_id
+                       AND    xola.last_update_date > gd_last_process_date -- 受注明細：前回処理日付
+                       AND    xola.last_update_date <= gd_sysdate
+                       AND    ROWNUM = 1))
+          )
+      UNION ALL
+      -- 発日基準_出荷依頼
+      SELECT  /*+ leading(xoha otta xdec) use_nl(xoha otta xdec) */
+              xoha.order_header_id                order_header_id              -- 受注ヘッダアドオンID
+            , xoha.request_no                     request_no                   -- 依頼No
+            , xoha.slip_number                    slip_number                  -- 送り状No
+            , xoha.delivery_no                    delivery_no                  -- 配送No
+            , xoha.result_freight_carrier_code    result_freight_carrier_code  -- 運送業者_実績
+            , xoha.deliver_from                   deliver_from                 -- 出荷元保管場所
+            , xoha.result_shipping_method_code    result_shipping_method_code  -- 配送区分_実績
+            , gv_code_ship                        deliver_to_code_class        -- 配送先コード区分
+            , xoha.result_deliver_to              result_deliver_to            -- 出荷先_実績
+            , xdec.payments_judgment_classe       payments_judgment_classe     -- 支払判断区分(運賃)
+            , xoha.shipped_date                   shipped_date                 -- 出荷日
+            , NVL(xoha.arrival_date, xoha.schedule_arrival_date) arrival_date  -- 着荷日(着荷予定日)
+            , xoha.shipped_date                   judgement_date               -- 判断日
+            , xoha.prod_class                     prod_class                   -- 商品区分
+            , xoha.weight_capacity_class          weight_capacity_class        -- 重量容積区分
+            , xoha.small_quantity                 small_quantity               -- 小口個数
+            ,gv_type_ship                         order_type                   -- タイプ
+            , xoha.no_cont_freight_class          no_cont_freight_class        -- 契約外運賃区分
+            , xoha.transfer_location_code         transfer_location_code       -- 振替先
+            , SUBSTRB(xoha.shipping_instructions, 1, 40) shipping_instructions -- 出荷指示(40)
+            , NULL                                small_amount_class           -- 小口区分
+            , NULL                                mixed_class                  -- 混載区分
+            , NULL                                ref_small_amount_class       -- リーフ小口区分
+            , NULL                                post_distance                -- 配送距離：車立距離
+            , NULL                                small_distance               -- 配送距離：小口距離
+            , NULL                                consolid_add_distance        -- 配送距離：混載割増距離
+            , NULL                                actual_distance              -- 配送距離：実際距離
+            , NULL                                small_weight                 -- 小口重量
+            , NULL                                pay_picking_amount           -- 支払ピッキング単価
+            , NULL                                qty                          -- 個数
+            , NULL                                delivery_weight              -- 重量
+      FROM  xxwsh_order_headers_all        xoha,      -- 受注ヘッダアドオン
+            oe_transaction_types_all       otta,    -- 受注タイプ情報VIEW2
+            xxwip_delivery_company         xdec     -- 運賃用運送業者アドオンマスタ
+      WHERE xoha.latest_external_flag = 'Y'                 -- 最新フラグ 'Y'
+      AND   xoha.shipped_date IS NOT NULL                   -- 出荷日
+--    着荷日が設定されていなくても、抽出対象とする。
+--   （着荷予定日もしくは着荷日が設定されていることが前提）
+      AND   (xoha.arrival_date           IS NOT NULL    -- 着荷日
+        OR   xoha.schedule_arrival_date  IS NOT NULL)   -- 着荷予定日
+      AND   xoha.result_shipping_method_code IS NOT NULL    -- 配送区分_実績
+      AND   xoha.result_freight_carrier_code IS NOT NULL    -- 運送業者_実績
+      AND   xoha.delivery_no  IS NOT NULL                   -- 配送No
+      AND   xoha.prod_class = xdec.goods_classe                             -- 商品区分
+      AND   xoha.result_freight_carrier_code = xdec.delivery_company_code   -- 運送業者
+      AND   xdec.start_date_active  <= TRUNC(gd_sysdate)                    -- 適用開始日
+      AND   xdec.end_date_active    >= TRUNC(gd_sysdate)                    -- 適用終了日
+      AND   xoha.order_type_id       = otta.transaction_type_id -- 受注タイプID
+      AND   xdec.payments_judgment_classe = gv_pay_judg_g    -- 支払判断区分（発日）
+      AND   xoha.shipped_date >=  gd_target_date             -- 出荷日
+      AND   otta.attribute1  = gv_shipping        -- 出荷依頼
+      AND   xoha.result_deliver_to  IS NOT NULL              -- 出荷先_実績
+      AND (
+            ((xoha.last_update_date > gd_last_process_date)  -- 受注ヘッダ：前回処理日付
+            AND  (xoha.last_update_date <= gd_sysdate))
+          OR ( EXISTS (SELECT 1
+                       FROM   xxwsh_order_lines_all xola    -- 受注明細アドオン
+                       WHERE  xola.order_header_id = xoha.order_header_id
+                       AND    xola.last_update_date > gd_last_process_date -- 受注明細：前回処理日付
+                       AND    xola.last_update_date <= gd_sysdate
+                       AND    ROWNUM = 1))
+          )
+      ) order_info
+      ;
+-- ##### 20081125 Ver.1.13 本番#104対応 END #####
 --
 --<><><><><><><><><><><><><><><><><> DEBUG START <><><><><><><><><><><><><><><><><><><><><><><>
     IF (gv_debug_flg = gv_debug_on) THEN
@@ -2422,8 +2721,9 @@ AS
     -- ***       共通関数の呼び出し        ***
     -- ***************************************
 --
+-- ##### 20081125 Ver.1.13 本番#104対応 START #####
     -- 移動実績情報 抽出
-    SELECT    xmrih.mov_hdr_id                                    -- 移動ヘッダID
+    /*SELECT    xmrih.mov_hdr_id                                    -- 移動ヘッダID
             , xmrih.mov_num                                       -- 移動番号
             , xmrih.slip_number                                   -- 送り状No
             , xmrih.delivery_no                                   -- 配送No
@@ -2502,7 +2802,165 @@ AS
                               FROM xxinv_mov_req_instr_lines  xmril                 -- 移動依頼/指示明細(アドオン)
                               WHERE (xmril.last_update_date > gd_last_process_date) -- 移動明細：前回処理日付
                               AND   (xmril.last_update_date <= gd_sysdate)))
-        );
+        )*/
+--
+    -- 移動実績情報 抽出
+    SELECT
+      move_info.mov_hdr_id
+     ,move_info.mov_num
+     ,move_info.slip_number
+     ,move_info.delivery_no
+     ,move_info.actual_freight_carrier_code
+     ,move_info.shipped_locat_code
+     ,move_info.shipping_method_code
+     ,move_info.deliver_to_code_class
+     ,move_info.ship_to_locat_code
+     ,move_info.payments_judgment_classe
+     ,move_info.actual_ship_date
+     ,move_info.actual_arrival_date
+     ,move_info.judgement_date
+     ,move_info.item_class
+     ,move_info.weight_capacity_class
+     ,move_info.small_quantity
+     ,move_info.sum_quantity
+     ,move_info.order_type
+     ,move_info.no_cont_freight_class
+     ,move_info.transfer_location_code
+     ,move_info.description
+     ,move_info.small_amount_class
+     ,move_info.mixed_class
+     ,move_info.ref_small_amount_class
+     ,move_info.post_distance
+     ,move_info.small_distance
+     ,move_info.consolid_add_distance
+     ,move_info.actual_distance
+     ,move_info.small_weight
+     ,move_info.pay_picking_amount
+     ,move_info.qty
+     ,move_info.delivery_weight
+    BULK COLLECT INTO gt_move_inf_tab
+    FROM (
+      -- 着日
+      SELECT /*+ leading (xmrih xdec) use_nl (xmrih xdec) */
+                xmrih.mov_hdr_id                                  mov_hdr_id                 -- 移動ヘッダID
+              , xmrih.mov_num                                     mov_num                    -- 移動番号
+              , xmrih.slip_number                                 slip_number                -- 送り状No
+              , xmrih.delivery_no                                 delivery_no                -- 配送No
+              , xmrih.actual_freight_carrier_code                 actual_freight_carrier_code  -- 運送業者_実績
+              , xmrih.shipped_locat_code                          shipped_locat_code         -- 出庫元保管場所
+              , xmrih.actual_shipping_method_code                 shipping_method_code       -- 配送区分
+              , gv_code_move                                      deliver_to_code_class      -- 配送先コード区分（３：倉庫）
+              , xmrih.ship_to_locat_code                          ship_to_locat_code         -- 入庫先保管場所
+              , xdec.payments_judgment_classe                     payments_judgment_classe   -- 支払判断区分(運賃)
+              , xmrih.actual_ship_date                            actual_ship_date           -- 出庫実績日
+              , NVL(xmrih.actual_arrival_date, xmrih.schedule_arrival_date) actual_arrival_date -- 入庫実績日(入庫予定日)
+              , NVL(xmrih.actual_arrival_date, xmrih.schedule_arrival_date) judgement_date   -- 判断日
+              , xmrih.item_class                                  item_class                 -- 商品区分
+              , xmrih.weight_capacity_class                       weight_capacity_class      -- 重量容積区分
+              , xmrih.small_quantity                              small_quantity             -- 小口個数
+              , xmrih.sum_quantity                                sum_quantity               -- 合計数量
+              , gv_type_move                                      order_type                 -- タイプ（３：移動）
+              , xmrih.no_cont_freight_class                       no_cont_freight_class      -- 契約外運賃区分
+              , NULL                                              transfer_location_code     -- 振替先
+              , SUBSTRB(xmrih.description, 1, 40)                 description                -- 摘要（40）
+              , NULL                                              small_amount_class         -- 配送区分：小口区分
+              , NULL                                              mixed_class                -- 配送区分：混載区分
+              , NULL                                              ref_small_amount_class     -- 配送区分：リーフ小口区分
+              , NULL                                              post_distance              -- 配送距離：車立距離
+              , NULL                                              small_distance             -- 配送距離：小口距離
+              , NULL                                              consolid_add_distance      -- 配送距離：混載割増距離
+              , NULL                                              actual_distance            -- 配送距離：実際距離
+              , NULL                                              small_weight               -- 運送業者：小口重量
+              , NULL                                              pay_picking_amount         -- 運送業者：支払ピッキング単価
+              , NULL                                              qty                        -- 個数
+              , NULL                                              delivery_weight            -- 重量
+      FROM  xxinv_mov_req_instr_headers    xmrih,   -- 移動依頼/指示ヘッダ(アドオン)
+            xxwip_delivery_company         xdec     -- 運賃用運送業者アドオンマスタ
+      WHERE xmrih.actual_ship_date IS NOT NULL            -- 出庫実績日
+      AND  (xmrih.actual_arrival_date IS NOT NULL           -- 入庫実績日
+        OR  xmrih.schedule_arrival_date  IS NOT NULL)       -- 入庫予定日
+      AND   xmrih.actual_shipping_method_code IS NOT NULL -- 配送区分_実績
+      AND   xmrih.actual_freight_carrier_code IS NOT NULL -- 運送業者_実績
+      AND   xmrih.delivery_no IS NOT NULL                 -- 配送No
+      AND   xmrih.item_class = xdec.goods_classe                              -- 商品区分
+      AND   xmrih.actual_freight_carrier_code = xdec.delivery_company_code    -- 運送業者
+      AND   xdec.start_date_active  <= TRUNC(gd_sysdate)                      -- 適用開始日
+      AND   xdec.end_date_active    >= TRUNC(gd_sysdate)                      -- 適用終了日
+      AND   xdec.payments_judgment_classe = gv_pay_judg_c                     -- 支払判断区分（着日）
+      AND   NVL(xmrih.actual_arrival_date, xmrih.schedule_arrival_date) 
+                                                >=  gd_target_date          -- 入庫実績日(入庫予定日)
+      AND (
+            ((xmrih.last_update_date    > gd_last_process_date)   -- 移動ヘッダ：前回処理日付
+            AND (xmrih.last_update_date <= gd_sysdate))
+          OR (EXISTS (SELECT 1
+                      FROM   xxinv_mov_req_instr_lines  xmril                 -- 移動依頼/指示明細(アドオン)
+                      WHERE  xmril.mov_hdr_id = xmrih.mov_hdr_id
+                      AND    xmril.last_update_date > gd_last_process_date -- 移動明細：前回処理日付
+                      AND    xmril.last_update_date <= gd_sysdate
+                      AND    ROWNUM = 1))
+          )
+      UNION ALL
+      -- 発日
+      SELECT /*+ leading (xmrih xdec) use_nl (xmrih xdec) */
+                xmrih.mov_hdr_id                                  mov_hdr_id                 -- 移動ヘッダID
+              , xmrih.mov_num                                     mov_num                    -- 移動番号
+              , xmrih.slip_number                                 slip_number                -- 送り状No
+              , xmrih.delivery_no                                 delivery_no                -- 配送No
+              , xmrih.actual_freight_carrier_code                 actual_freight_carrier_code  -- 運送業者_実績
+              , xmrih.shipped_locat_code                          shipped_locat_code         -- 出庫元保管場所
+              , xmrih.actual_shipping_method_code                 shipping_method_code       -- 配送区分
+              , gv_code_move                                      deliver_to_code_class      -- 配送先コード区分（３：倉庫）
+              , xmrih.ship_to_locat_code                          ship_to_locat_code         -- 入庫先保管場所
+              , xdec.payments_judgment_classe                     payments_judgment_classe   -- 支払判断区分(運賃)
+              , xmrih.actual_ship_date                            actual_ship_date           -- 出庫実績日
+              , NVL(xmrih.actual_arrival_date, xmrih.schedule_arrival_date) actual_arrival_date -- 入庫実績日(入庫予定日)
+              , xmrih.actual_ship_date                            judgement_date             -- 判断日
+              , xmrih.item_class                                  item_class                 -- 商品区分
+              , xmrih.weight_capacity_class                       weight_capacity_class      -- 重量容積区分
+              , xmrih.small_quantity                              small_quantity             -- 小口個数
+              , xmrih.sum_quantity                                sum_quantity               -- 合計数量
+              , gv_type_move                                      order_type                 -- タイプ（３：移動）
+              , xmrih.no_cont_freight_class                       no_cont_freight_class      -- 契約外運賃区分
+              , NULL                                              transfer_location_code     -- 振替先
+              , SUBSTRB(xmrih.description, 1, 40)                 description                -- 摘要（40）
+              , NULL                                              small_amount_class         -- 配送区分：小口区分
+              , NULL                                              mixed_class                -- 配送区分：混載区分
+              , NULL                                              ref_small_amount_class     -- 配送区分：リーフ小口区分
+              , NULL                                              post_distance              -- 配送距離：車立距離
+              , NULL                                              small_distance             -- 配送距離：小口距離
+              , NULL                                              consolid_add_distance      -- 配送距離：混載割増距離
+              , NULL                                              actual_distance            -- 配送距離：実際距離
+              , NULL                                              small_weight               -- 運送業者：小口重量
+              , NULL                                              pay_picking_amount         -- 運送業者：支払ピッキング単価
+              , NULL                                              qty                        -- 個数
+              , NULL                                              delivery_weight            -- 重量
+      FROM  xxinv_mov_req_instr_headers    xmrih,   -- 移動依頼/指示ヘッダ(アドオン)
+            xxwip_delivery_company         xdec     -- 運賃用運送業者アドオンマスタ
+      WHERE xmrih.actual_ship_date IS NOT NULL            -- 出庫実績日
+      AND  (xmrih.actual_arrival_date IS NOT NULL           -- 入庫実績日
+        OR  xmrih.schedule_arrival_date  IS NOT NULL)       -- 入庫予定日
+      AND   xmrih.actual_shipping_method_code IS NOT NULL -- 配送区分_実績
+      AND   xmrih.actual_freight_carrier_code IS NOT NULL -- 運送業者_実績
+      AND   xmrih.delivery_no IS NOT NULL                 -- 配送No
+      AND   xmrih.item_class = xdec.goods_classe                              -- 商品区分
+      AND   xmrih.actual_freight_carrier_code = xdec.delivery_company_code    -- 運送業者
+      AND   xdec.start_date_active  <= TRUNC(gd_sysdate)                      -- 適用開始日
+      AND   xdec.end_date_active    >= TRUNC(gd_sysdate)                      -- 適用終了日
+      AND   xdec.payments_judgment_classe = gv_pay_judg_g                     -- 支払判断区分（発日）
+      AND   xmrih.actual_ship_date    >=  gd_target_date                      -- 出庫実績日
+      AND (
+            ((xmrih.last_update_date    > gd_last_process_date)   -- 移動ヘッダ：前回処理日付
+            AND (xmrih.last_update_date <= gd_sysdate))
+          OR (EXISTS (SELECT 1
+                      FROM   xxinv_mov_req_instr_lines  xmril                 -- 移動依頼/指示明細(アドオン)
+                      WHERE  xmril.mov_hdr_id = xmrih.mov_hdr_id
+                      AND    xmril.last_update_date > gd_last_process_date -- 移動明細：前回処理日付
+                      AND    xmril.last_update_date <= gd_sysdate
+                      AND    ROWNUM = 1))
+          )
+      ) move_info
+      ;
+-- ##### 20081125 Ver.1.13 本番#104対応 END #####
 --
 --<><><><><><><><><><><><><><><><><> DEBUG START <><><><><><><><><><><><><><><><><><><><><><><>
     IF (gv_debug_flg = gv_debug_on) THEN
@@ -3867,7 +4325,8 @@ AS
     -- * 〔対象データ〕
     -- * 実績項目が設定されていて、配送NoがNULLのデータ
     -- **************************************************
-    SELECT  carcan.results_type         -- タイプ
+-- ##### 20081125 Ver.1.13 本番#104対応 START #####
+    /*SELECT  carcan.results_type         -- タイプ
           , carcan.request_no           -- 依頼No（移動番号）
     BULK COLLECT INTO gt_carcan_info_tab
     FROM
@@ -3967,7 +4426,229 @@ AS
                                   WHERE (xmril.last_update_date > gd_last_process_date) -- 移動明細：前回処理日付
                                   AND   (xmril.last_update_date <= gd_sysdate)))
             )
+      ) carcan;*/
+--
+    SELECT  carcan.results_type         -- タイプ
+          , carcan.request_no           -- 依頼No（移動番号）
+    BULK COLLECT INTO gt_carcan_info_tab
+    FROM
+      (
+        -- ==================================================
+        -- 配車解除された受注実績、支給実績情報 抽出
+        -- ==================================================
+        -- 着日_支給依頼
+        SELECT  /*+ leading(xoha otta xdec) use_nl(xoha otta xdec) */
+                gv_type_shikyu        AS results_type
+              , xoha.request_no       AS request_no   -- 依頼No
+        FROM  xxwsh_order_headers_all        xoha,    -- 受注ヘッダアドオン
+              oe_transaction_types_all       otta,    -- 受注タイプ情報VIEW2
+              xxwip_delivery_company         xdec     -- 運賃用運送業者アドオンマスタ
+        WHERE xoha.latest_external_flag = 'Y'                 -- 最新フラグ 'Y'
+        AND   xoha.shipped_date IS NOT NULL                   -- 出荷日
+-- （着荷予定日もしくは着荷日が設定されていることが前提）
+        AND   (xoha.arrival_date           IS NOT NULL    -- 着荷日
+          OR   xoha.schedule_arrival_date  IS NOT NULL)   -- 着荷予定日
+        AND   xoha.result_shipping_method_code IS NOT NULL    -- 配送区分_実績
+        AND   xoha.result_freight_carrier_code IS NOT NULL    -- 運送業者_実績
+        AND   xoha.delivery_no  IS NULL                       -- 配送No
+        -- 運賃用運送業者
+        AND   xoha.prod_class = xdec.goods_classe                             -- 商品区分
+        AND   xoha.result_freight_carrier_code = xdec.delivery_company_code   -- 運送業者
+        AND   xdec.start_date_active  <= TRUNC(gd_sysdate)                    -- 適用開始日
+        AND   xdec.end_date_active    >= TRUNC(gd_sysdate)                    -- 適用終了日
+        AND   xdec.payments_judgment_classe = gv_pay_judg_c    -- 支払判断区分（着日）
+        AND   NVL(xoha.arrival_date, xoha.schedule_arrival_date)
+                                                 >=  gd_target_date -- 着荷日(着荷予定日)
+        -- 受注タイプ情報VIEW2
+        AND   xoha.order_type_id       = otta.transaction_type_id -- 受注タイプID
+        AND   otta.attribute1  = gv_shikyu            -- 支給依頼
+        AND   otta.attribute3  = '0'                -- 自動作成発注区分「NO」
+        AND (
+              ((xoha.last_update_date > gd_last_process_date)  -- 受注ヘッダ：前回処理日付
+              AND  (xoha.last_update_date <= gd_sysdate))
+            OR ( EXISTS (SELECT 1
+                         FROM   xxwsh_order_lines_all xola    -- 受注明細アドオン
+                         WHERE  xola.order_header_id = xoha.order_header_id
+                         AND    xola.last_update_date > gd_last_process_date -- 受注明細：前回処理日付
+                         AND    xola.last_update_date <= gd_sysdate
+                         AND    ROWNUM = 1))
+            )
+        UNION ALL
+        -- 着日_出荷依頼
+        SELECT  /*+ leading(xoha otta xdec) use_nl(xoha otta xdec) */
+                gv_type_ship          AS results_type
+              , xoha.request_no       AS request_no   -- 依頼No
+        FROM  xxwsh_order_headers_all        xoha,    -- 受注ヘッダアドオン
+              oe_transaction_types_all       otta,    -- 受注タイプ情報VIEW2
+              xxwip_delivery_company         xdec     -- 運賃用運送業者アドオンマスタ
+        WHERE xoha.latest_external_flag = 'Y'                 -- 最新フラグ 'Y'
+        AND   xoha.shipped_date IS NOT NULL                   -- 出荷日
+-- （着荷予定日もしくは着荷日が設定されていることが前提）
+        AND   (xoha.arrival_date           IS NOT NULL    -- 着荷日
+          OR   xoha.schedule_arrival_date  IS NOT NULL)   -- 着荷予定日
+        AND   xoha.result_shipping_method_code IS NOT NULL    -- 配送区分_実績
+        AND   xoha.result_freight_carrier_code IS NOT NULL    -- 運送業者_実績
+        AND   xoha.delivery_no  IS NULL                       -- 配送No
+        -- 運賃用運送業者
+        AND   xoha.prod_class = xdec.goods_classe                             -- 商品区分
+        AND   xoha.result_freight_carrier_code = xdec.delivery_company_code   -- 運送業者
+        AND   xdec.start_date_active  <= TRUNC(gd_sysdate)                    -- 適用開始日
+        AND   xdec.end_date_active    >= TRUNC(gd_sysdate)                    -- 適用終了日
+        AND   xdec.payments_judgment_classe = gv_pay_judg_c                   -- 支払判断区分（着日）
+        AND   NVL(xoha.arrival_date, xoha.schedule_arrival_date)
+                                                 >=  gd_target_date           -- 着荷日(着荷予定日)
+        -- 受注タイプ情報VIEW2
+        AND   xoha.order_type_id       = otta.transaction_type_id   -- 受注タイプID
+        AND   otta.attribute1  = gv_shipping             -- 出荷依頼
+        AND   xoha.result_deliver_to  IS NOT NULL                   -- 出荷先_実績
+        AND (
+              ((xoha.last_update_date > gd_last_process_date)  -- 受注ヘッダ：前回処理日付
+              AND  (xoha.last_update_date <= gd_sysdate))
+            OR ( EXISTS (SELECT 1
+                         FROM   xxwsh_order_lines_all xola    -- 受注明細アドオン
+                         WHERE  xola.order_header_id = xoha.order_header_id
+                         AND    xola.last_update_date > gd_last_process_date -- 受注明細：前回処理日付
+                         AND    xola.last_update_date <= gd_sysdate
+                         AND    ROWNUM = 1))
+            )
+        UNION ALL
+        -- 発日_支給依頼
+        SELECT  /*+ leading(xoha otta xdec) use_nl(xoha otta xdec) */
+                gv_type_shikyu        AS results_type
+              , xoha.request_no       AS request_no   -- 依頼No
+        FROM  xxwsh_order_headers_all        xoha,    -- 受注ヘッダアドオン
+              oe_transaction_types_all       otta,    -- 受注タイプ情報VIEW2
+              xxwip_delivery_company         xdec     -- 運賃用運送業者アドオンマスタ
+        WHERE xoha.latest_external_flag = 'Y'                 -- 最新フラグ 'Y'
+        AND   xoha.shipped_date IS NOT NULL                   -- 出荷日
+-- （着荷予定日もしくは着荷日が設定されていることが前提）
+        AND   (xoha.arrival_date           IS NOT NULL    -- 着荷日
+          OR   xoha.schedule_arrival_date  IS NOT NULL)   -- 着荷予定日
+        AND   xoha.result_shipping_method_code IS NOT NULL    -- 配送区分_実績
+        AND   xoha.result_freight_carrier_code IS NOT NULL    -- 運送業者_実績
+        AND   xoha.delivery_no  IS NULL                       -- 配送No
+        -- 運賃用運送業者
+        AND   xoha.prod_class = xdec.goods_classe                             -- 商品区分
+        AND   xoha.result_freight_carrier_code = xdec.delivery_company_code   -- 運送業者
+        AND   xdec.start_date_active  <= TRUNC(gd_sysdate)                    -- 適用開始日
+        AND   xdec.end_date_active    >= TRUNC(gd_sysdate)                    -- 適用終了日
+        AND   xdec.payments_judgment_classe = gv_pay_judg_g                   -- 支払判断区分（発日）
+        AND   xoha.shipped_date >=  gd_target_date                            -- 出荷日
+        -- 受注タイプ情報VIEW2
+        AND   xoha.order_type_id       = otta.transaction_type_id -- 受注タイプID
+        AND   otta.attribute1  = gv_shikyu            -- 支給依頼
+        AND   otta.attribute3 = '0'                -- 自動作成発注区分「NO」
+        AND (
+              ((xoha.last_update_date > gd_last_process_date)  -- 受注ヘッダ：前回処理日付
+              AND  (xoha.last_update_date <= gd_sysdate))
+            OR ( EXISTS (SELECT 1
+                         FROM   xxwsh_order_lines_all xola    -- 受注明細アドオン
+                         WHERE  xola.order_header_id = xoha.order_header_id
+                         AND    xola.last_update_date > gd_last_process_date -- 受注明細：前回処理日付
+                         AND    xola.last_update_date <= gd_sysdate
+                         AND    ROWNUM = 1))
+            )
+        UNION ALL
+        -- 発日_出荷依頼
+        SELECT  /*+ leading(xoha otta xdec) use_nl(xoha otta xdec) */
+                gv_type_ship          AS results_type
+              , xoha.request_no       AS request_no   -- 依頼No
+        FROM  xxwsh_order_headers_all        xoha,    -- 受注ヘッダアドオン
+              oe_transaction_types_all       otta,    -- 受注タイプ情報VIEW2
+              xxwip_delivery_company         xdec     -- 運賃用運送業者アドオンマスタ
+        WHERE xoha.latest_external_flag = 'Y'                 -- 最新フラグ 'Y'
+        AND   xoha.shipped_date IS NOT NULL                   -- 出荷日
+-- （着荷予定日もしくは着荷日が設定されていることが前提）
+        AND   (xoha.arrival_date           IS NOT NULL    -- 着荷日
+          OR   xoha.schedule_arrival_date  IS NOT NULL)   -- 着荷予定日
+        AND   xoha.result_shipping_method_code IS NOT NULL    -- 配送区分_実績
+        AND   xoha.result_freight_carrier_code IS NOT NULL    -- 運送業者_実績
+        AND   xoha.delivery_no  IS NULL                       -- 配送No
+        -- 運賃用運送業者
+        AND   xoha.prod_class = xdec.goods_classe                             -- 商品区分
+        AND   xoha.result_freight_carrier_code = xdec.delivery_company_code   -- 運送業者
+        AND   xdec.start_date_active  <= TRUNC(gd_sysdate)                    -- 適用開始日
+        AND   xdec.end_date_active    >= TRUNC(gd_sysdate)                    -- 適用終了日
+        AND   xdec.payments_judgment_classe = gv_pay_judg_g                   -- 支払判断区分（発日）
+        AND   xoha.shipped_date >=  gd_target_date                            -- 出荷日
+        -- 受注タイプ情報VIEW2
+        AND   xoha.order_type_id       = otta.transaction_type_id -- 受注タイプID
+        AND   otta.attribute1  = gv_shipping           -- 出荷依頼
+        AND   xoha.result_deliver_to  IS NOT NULL                 -- 出荷先_実績
+        AND (
+              ((xoha.last_update_date > gd_last_process_date)  -- 受注ヘッダ：前回処理日付
+              AND  (xoha.last_update_date <= gd_sysdate))
+            OR ( EXISTS (SELECT 1
+                         FROM   xxwsh_order_lines_all xola    -- 受注明細アドオン
+                         WHERE  xola.order_header_id = xoha.order_header_id
+                         AND    xola.last_update_date > gd_last_process_date -- 受注明細：前回処理日付
+                         AND    xola.last_update_date <= gd_sysdate
+                         AND    ROWNUM = 1))
+            )
+        UNION ALL
+        -- ==================================================
+        -- 配車解除された移動実績情報 抽出
+        -- ==================================================
+        -- 着日
+        SELECT /*+ leading (xmrih xdec) use_nl (xmrih xdec) */
+                  gv_type_move        AS results_type   -- タイプ（移動）
+                , xmrih.mov_num       AS request_no     -- 移動番号
+        FROM  xxinv_mov_req_instr_headers    xmrih,     -- 移動依頼/指示ヘッダ(アドオン)
+              xxwip_delivery_company         xdec       -- 運賃用運送業者アドオンマスタ
+        WHERE xmrih.actual_ship_date IS NOT NULL            -- 出庫実績日
+        AND  (xmrih.actual_arrival_date IS NOT NULL           -- 入庫実績日
+          OR  xmrih.schedule_arrival_date  IS NOT NULL)       -- 入庫予定日
+        AND   xmrih.actual_shipping_method_code IS NOT NULL -- 配送区分_実績
+        AND   xmrih.actual_freight_carrier_code IS NOT NULL -- 運送業者_実績
+        AND   xmrih.delivery_no IS NULL                     -- 配送No
+        AND   xmrih.item_class = xdec.goods_classe                              -- 商品区分
+        AND   xmrih.actual_freight_carrier_code = xdec.delivery_company_code    -- 運送業者
+        AND   xdec.start_date_active  <= TRUNC(gd_sysdate)                      -- 適用開始日
+        AND   xdec.end_date_active    >= TRUNC(gd_sysdate)                      -- 適用終了日
+        AND   xdec.payments_judgment_classe = gv_pay_judg_c                     -- 支払判断区分（着日）
+        AND   NVL(xmrih.actual_arrival_date, xmrih.schedule_arrival_date) 
+                                                  >=  gd_target_date            -- 入庫実績日(入庫予定日)
+       AND (
+              ((xmrih.last_update_date    > gd_last_process_date)   -- 移動ヘッダ：前回処理日付
+              AND (xmrih.last_update_date <= gd_sysdate))
+            OR (EXISTS (SELECT 1
+                        FROM   xxinv_mov_req_instr_lines  xmril                 -- 移動依頼/指示明細(アドオン)
+                        WHERE  xmril.mov_hdr_id = xmrih.mov_hdr_id
+                        AND    xmril.last_update_date > gd_last_process_date -- 移動明細：前回処理日付
+                        AND    xmril.last_update_date <= gd_sysdate
+                        AND    ROWNUM = 1))
+            )
+        UNION ALL
+        -- 発日
+        SELECT  /*+ leading (xmrih xdec) use_nl (xmrih xdec) */
+                  gv_type_move        AS results_type   -- タイプ（移動）
+                , xmrih.mov_num       AS request_no     -- 移動番号
+        FROM  xxinv_mov_req_instr_headers    xmrih,     -- 移動依頼/指示ヘッダ(アドオン)
+              xxwip_delivery_company         xdec       -- 運賃用運送業者アドオンマスタ
+        WHERE xmrih.actual_ship_date IS NOT NULL            -- 出庫実績日
+        AND  (xmrih.actual_arrival_date IS NOT NULL           -- 入庫実績日
+          OR  xmrih.schedule_arrival_date  IS NOT NULL)       -- 入庫予定日
+        AND   xmrih.actual_shipping_method_code IS NOT NULL -- 配送区分_実績
+        AND   xmrih.actual_freight_carrier_code IS NOT NULL -- 運送業者_実績
+        AND   xmrih.delivery_no IS NULL                     -- 配送No
+        AND   xmrih.item_class = xdec.goods_classe                              -- 商品区分
+        AND   xmrih.actual_freight_carrier_code = xdec.delivery_company_code    -- 運送業者
+        AND   xdec.start_date_active  <= TRUNC(gd_sysdate)                      -- 適用開始日
+        AND   xdec.end_date_active    >= TRUNC(gd_sysdate)                      -- 適用終了日
+        AND   xdec.payments_judgment_classe = gv_pay_judg_g                     -- 支払判断区分（発日）
+        AND   xmrih.actual_ship_date    >=  gd_target_date                      -- 出庫実績日
+       AND (
+              ((xmrih.last_update_date    > gd_last_process_date)   -- 移動ヘッダ：前回処理日付
+              AND (xmrih.last_update_date <= gd_sysdate))
+            OR (EXISTS (SELECT 1
+                        FROM   xxinv_mov_req_instr_lines  xmril                 -- 移動依頼/指示明細(アドオン)
+                        WHERE  xmril.mov_hdr_id = xmrih.mov_hdr_id
+                        AND    xmril.last_update_date > gd_last_process_date -- 移動明細：前回処理日付
+                        AND    xmril.last_update_date <= gd_sysdate
+                        AND    ROWNUM = 1))
+            )
       ) carcan;
+-- ##### 20081125 Ver.1.13 本番#104対応 END #####
 --
 --<><><><><><><><><><><><><><><><><> DEBUG START <><><><><><><><><><><><><><><><><><><><><><><>
     IF (gv_debug_flg = gv_debug_on) THEN
@@ -4307,7 +4988,10 @@ AS
     FOR ln_index IN  carcan_deliv_no_tab.FIRST.. carcan_deliv_no_tab.LAST LOOP
 --
       -- 運賃明細アドオンに配送Noが存在するか確認
-      SELECT  COUNT(*)
+-- ##### 20081125 MOD 本番#104 START #####
+      --SELECT  COUNT(*)
+      SELECT  COUNT(1)
+-- ##### 20081125 MOD 本番#104 END #####
       INTO    ln_deliv_no_cnt
       FROM    xxwip_delivery_lines
       WHERE   DELIVERY_NO = carcan_deliv_no_tab(ln_index);
@@ -4848,7 +5532,10 @@ AS
       -- * 運賃明細混載数算出（A-28）
       -- **************************************************
       BEGIN
-        SELECT COUNT(*)
+-- ##### 20081125 Ver.1.13 本番#104対応 START   #####
+        --SELECT COUNT(*)
+        SELECT COUNT(1)
+-- ##### 20081125 Ver.1.13 本番#104対応 START   #####
         INTO   ln_deliv_no_cnt
         FROM
           (
@@ -5497,7 +6184,7 @@ AS
     -- ***************************************
 --
     -- 配車配送計画 抽出
-    SELECT    xcs.result_freight_carrier_code       -- 運送業者
+    /*SELECT    xcs.result_freight_carrier_code       -- 運送業者
             , xcs.delivery_no                       -- 配送No
             , xcs.shipped_date                      -- 出庫日
             , xcs.arrival_date                      -- 到着日
@@ -5552,7 +6239,112 @@ AS
             AND (xcs.arrival_date >=  gd_target_date))            -- 着荷日
           )
     AND ((xcs.last_update_date > gd_last_process_date)            -- 前回処理日付
-          AND  (xcs.last_update_date <= gd_sysdate));
+          AND  (xcs.last_update_date <= gd_sysdate));*/   
+--
+    SELECT
+      car_info.result_freight_carrier_code
+     ,car_info.delivery_no
+     ,car_info.shipped_date
+     ,car_info.arrival_date
+     ,car_info.result_shipping_method_code
+     ,car_info.deliver_from
+     ,car_info.deliver_to_code_class
+     ,car_info.deliver_to
+     ,car_info.weight_capacity_class
+     ,car_info.payments_judgment_classe
+     ,car_info.judgment_date
+     ,car_info.mixed_class
+     ,car_info.transaction_type
+     ,car_info.prod_class
+     ,car_info.non_slip_class
+     ,car_info.slip_number
+     ,car_info.small_quantity
+     ,car_info.small_amount_class
+    BULK COLLECT INTO gt_carriers_schedule_tab
+    FROM (
+      -- 着日
+      SELECT    xcs.result_freight_carrier_code      result_freight_carrier_code -- 運送業者
+              , xcs.delivery_no                      delivery_no -- 配送No
+              , xcs.shipped_date                     shipped_date -- 出庫日
+              , xcs.arrival_date                     arrival_date -- 到着日
+              , xcs.result_shipping_method_code      result_shipping_method_code -- 配送区分
+              , xcs.deliver_from                     deliver_from -- 代表出庫倉庫コード
+              , xcs.deliver_to_code_class            deliver_to_code_class -- 代表配送先コード区分
+              , xcs.deliver_to                       deliver_to -- 代表配送先コード
+              , xcs.weight_capacity_class            weight_capacity_class -- 重量容積区分
+              , xdec.payments_judgment_classe        payments_judgment_classe -- 支払判断区分
+              , xcs.arrival_date                     judgment_date -- 判断日
+              , xott2v.mixed_class                   mixed_class -- 混載区分
+              , xcs.transaction_type                 transaction_type -- 処理種別
+              , xcs.prod_class                       prod_class -- 商品区分
+              , xcs.non_slip_class                   non_slip_class -- 伝票なし配車区分
+              , xcs.slip_number                      slip_number -- 送り状No
+              , NVL(xcs.small_quantity, 0)           small_quantity -- 小口個数
+              , xott2v.small_amount_class            small_amount_class -- 小口区分
+      FROM  xxwsh_carriers_schedule       xcs,        -- 配車配送計画（アドオン）
+            xxwsh_ship_method2_v          xott2v,     -- 配送区分情報VIEW2
+            xxwip_delivery_company        xdec        -- 運賃用運送業者アドオンマスタ
+      WHERE xcs.shipped_date IS NOT NULL              -- 出荷日        -- 商品区分（リーフ固定）
+      AND   xcs.arrival_date                IS NOT NULL -- 着荷日
+      AND   xcs.result_freight_carrier_code IS NOT NULL -- 運送業者_実績
+      AND   xcs.result_shipping_method_code IS NOT NULL -- 配送区分_実績
+      AND   xcs.non_slip_class IN ( gv_non_slip_slp     --  伝票なし配車
+                                  , gv_non_slip_can)    --  伝票なし配車解除
+      AND   xcs.prod_class          = xdec.goods_classe                   -- 商品区分
+      AND   xcs.result_freight_carrier_code = xdec.delivery_company_code  -- 運送業者
+      AND   xdec.start_date_active  <= TRUNC(gd_sysdate)                  -- 適用開始日
+      AND   xdec.end_date_active    >= TRUNC(gd_sysdate)                  -- 適用終了日
+      AND   xcs.result_shipping_method_code = xott2v.ship_method_code     -- 配送区分
+      AND   xott2v.start_date_active  <= TRUNC(gd_sysdate)                -- 有効開始日
+      AND   NVL(xott2v.end_date_active,TO_DATE('99991231','YYYYMMDD'))
+                                       >= TRUNC(gd_sysdate)                -- 有効終了日
+      AND   xdec.payments_judgment_classe = gv_pay_judg_c      -- 支払判断区分（着日）
+      AND   xcs.arrival_date >=  gd_target_date                -- 着荷日
+      AND ((xcs.last_update_date > gd_last_process_date)            -- 前回処理日付
+            AND  (xcs.last_update_date <= gd_sysdate))
+      UNION ALL
+      -- 発日
+      SELECT    xcs.result_freight_carrier_code      result_freight_carrier_code -- 運送業者
+              , xcs.delivery_no                      delivery_no -- 配送No
+              , xcs.shipped_date                     shipped_date -- 出庫日
+              , xcs.arrival_date                     arrival_date -- 到着日
+              , xcs.result_shipping_method_code      result_shipping_method_code -- 配送区分
+              , xcs.deliver_from                     deliver_from -- 代表出庫倉庫コード
+              , xcs.deliver_to_code_class            deliver_to_code_class -- 代表配送先コード区分
+              , xcs.deliver_to                       deliver_to -- 代表配送先コード
+              , xcs.weight_capacity_class            weight_capacity_class -- 重量容積区分
+              , xdec.payments_judgment_classe        payments_judgment_classe -- 支払判断区分
+              , xcs.shipped_date                     judgment_date-- 判断日
+              , xott2v.mixed_class                   mixed_class -- 混載区分
+              , xcs.transaction_type                 transaction_type -- 処理種別
+              , xcs.prod_class                       prod_class -- 商品区分
+              , xcs.non_slip_class                   non_slip_class -- 伝票なし配車区分
+              , xcs.slip_number                      slip_number -- 送り状No
+              , NVL(xcs.small_quantity, 0)           small_quantity -- 小口個数
+              , xott2v.small_amount_class            small_amount_class -- 小口区分
+      FROM  xxwsh_carriers_schedule       xcs,        -- 配車配送計画（アドオン）
+            xxwsh_ship_method2_v          xott2v,     -- 配送区分情報VIEW2
+            xxwip_delivery_company        xdec        -- 運賃用運送業者アドオンマスタ
+      WHERE xcs.shipped_date IS NOT NULL              -- 出荷日        -- 商品区分（リーフ固定）
+      AND   xcs.arrival_date                IS NOT NULL -- 着荷日
+      AND   xcs.result_freight_carrier_code IS NOT NULL -- 運送業者_実績
+      AND   xcs.result_shipping_method_code IS NOT NULL -- 配送区分_実績
+      AND   xcs.non_slip_class IN ( gv_non_slip_slp     --  伝票なし配車
+                                  , gv_non_slip_can)    --  伝票なし配車解除
+      AND   xcs.prod_class          = xdec.goods_classe                   -- 商品区分
+      AND   xcs.result_freight_carrier_code = xdec.delivery_company_code  -- 運送業者
+      AND   xdec.start_date_active  <= TRUNC(gd_sysdate)                  -- 適用開始日
+      AND   xdec.end_date_active    >= TRUNC(gd_sysdate)                  -- 適用終了日
+      AND   xcs.result_shipping_method_code = xott2v.ship_method_code     -- 配送区分
+      AND   xott2v.start_date_active  <= TRUNC(gd_sysdate)                -- 有効開始日
+      AND   NVL(xott2v.end_date_active,TO_DATE('99991231','YYYYMMDD'))
+                                       >= TRUNC(gd_sysdate)                -- 有効終了日
+      AND   xdec.payments_judgment_classe = gv_pay_judg_g      -- 支払判断区分（発日）
+      AND   xcs.shipped_date >=  gd_target_date                -- 出荷日
+      AND ((xcs.last_update_date > gd_last_process_date)            -- 前回処理日付
+            AND  (xcs.last_update_date <= gd_sysdate))
+      ) car_info
+    ;
 --
 --<><><><><><><><><><><><><><><><><> DEBUG START <><><><><><><><><><><><><><><><><><><><><><><>
     IF (gv_debug_flg = gv_debug_on) THEN
