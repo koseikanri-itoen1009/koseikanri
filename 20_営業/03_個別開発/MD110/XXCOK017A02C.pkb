@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCOK017A02C (body)
  * Description      : BM–{U©Ğ•‰’S‹âsè”—¿‚ÌU‘Ö
  * MD.050           : BM–{U©Ğ•‰’S‹âsè”—¿‚ÌU‘Ö (MD050_COK_017A02)
- * Version          : 1.0
+ * Version          : 1.1
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -25,6 +25,7 @@ AS
  *  Date          Ver.  Editor           Description
  * ------------- ----- ---------------- -------------------------------------------------
  *  2012/06/13    1.0   T.Ishiwata       mainV‹Kì¬
+ *  2013/07/17    1.1   K.Nakamura       [E_–{‰Ò“®_10887] Á”ïÅ‘Å‘Î‰
  *
  *****************************************************************************************/
 --
@@ -1111,6 +1112,10 @@ AS
                   AND ( bank_charge_rec.p_amt_tax_sum  < abcl.trans_amount_to )
                   ) 
                )
+/* 2013/07/17 Ver1.1 Add Start */
+          AND  abcl.start_date                     <= gd_gl_date
+          AND  NVL( abcl.end_date, gd_gl_date + 1 ) > gd_gl_date
+/* 2013/07/17 Ver1.1 Add End   */
         ;
         --
       EXCEPTION
