@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCOS002A032C (body)
  * Description      : 営業成績表集計
  * MD.050           : 営業成績表集計 MD050_COS_002_A03
- * Version          : 1.3
+ * Version          : 1.4
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -43,6 +43,9 @@ AS
  *                                       パラメータのログファイル出力対応
  *  2009/02/26    1.3   T.Nakabayashi    MD050課題No153対応 従業員、アサインメント適用日判断追加
  *                                       共通ログヘッダ出力処理 組み込み漏れ対応
+ *  2009/04/28    1.4   K.Kiriu          [T1_0482]訪問データ抽出条件統一対応
+ *                                       [T1_0718]新規獲得ポイント条件追加対応
+ *                                       [T1_1146]群コード取得条件不正対応
  *
  *****************************************************************************************/
 --
@@ -363,6 +366,11 @@ AS
   ct_point_data_cls_new_cust    CONSTANT  xxcsm_new_cust_point_hst.data_kbn%TYPE := '1';
   --  什器（Fixture and furniture）
   ct_point_data_cls_f_and_f     CONSTANT  xxcsm_new_cust_point_hst.data_kbn%TYPE := '2';
+/* 2009/04/28 Ver1.4 Add Start */
+  --  新規評価対象区分(新規獲得ポイント顧客別履歴テーブル)
+  --  達成
+  ct_evaluration_kbn_acvmt      CONSTANT  xxcsm_new_cust_point_hst.evaluration_kbn%TYPE := '0';
+/* 2009/04/28 Ver1.4 Add End   */
 --
   --  件数区分
   --  顧客軒数
@@ -2027,7 +2035,10 @@ AS
                       saeh.sales_base_code                      AS  sale_base_code,
                       saeh.results_employee_code                AS  results_employee_code,
                       CASE
-                        WHEN  iimb.attribute3 >=  TO_CHAR(saeh.delivery_date, cv_fmt_date_profile)
+/* 2009/04/28 Ver1.4 Mod Start */
+--                        WHEN  iimb.attribute3 >=  TO_CHAR(saeh.delivery_date, cv_fmt_date_profile)
+                        WHEN  iimb.attribute3 <=  TO_CHAR(saeh.delivery_date, cv_fmt_date_profile)
+/* 2009/04/28 Ver1.4 Mod End   */
                         OR    iimb.attribute3 IS  NULL
                           THEN  iimb.attribute2
                         ELSE    iimb.attribute1
@@ -2057,7 +2068,10 @@ AS
                       saeh.sales_base_code,
                       saeh.results_employee_code,
                       CASE
-                        WHEN  iimb.attribute3 >=  TO_CHAR(saeh.delivery_date, cv_fmt_date_profile)
+/* 2009/04/28 Ver1.4 Mod Start */
+--                        WHEN  iimb.attribute3 >=  TO_CHAR(saeh.delivery_date, cv_fmt_date_profile)
+                        WHEN  iimb.attribute3 <=  TO_CHAR(saeh.delivery_date, cv_fmt_date_profile)
+/* 2009/04/28 Ver1.4 Mod End   */
                         OR    iimb.attribute3 IS  NULL
                           THEN  iimb.attribute2
                         ELSE    iimb.attribute1
@@ -2310,7 +2324,10 @@ AS
                       xsti.selling_emp_code                     AS  results_employee_code,
                       CASE
 --                        WHEN  iimb.attribute3 >=  TO_CHAR(xsti.selling_date, cv_fmt_date)
-                        WHEN  iimb.attribute3 >=  TO_CHAR(xsti.selling_date, cv_fmt_date_profile)
+/* 2009/04/28 Ver1.4 Mod Start */
+--                        WHEN  iimb.attribute3 >=  TO_CHAR(xsti.selling_date, cv_fmt_date_profile)
+                        WHEN  iimb.attribute3 <=  TO_CHAR(xsti.selling_date, cv_fmt_date_profile)
+/* 2009/04/28 Ver1.4 Mod End   */
                         OR    iimb.attribute3 IS  NULL
                                                   THEN  iimb.attribute2
                         ELSE                            iimb.attribute1
@@ -2338,7 +2355,10 @@ AS
                       xsti.selling_emp_code,
                       CASE
 --                        WHEN  iimb.attribute3 >=  TO_CHAR(xsti.selling_date, cv_fmt_date)
-                        WHEN  iimb.attribute3 >=  TO_CHAR(xsti.selling_date, cv_fmt_date_profile)
+/* 2009/04/28 Ver1.4 Mod Start */
+--                        WHEN  iimb.attribute3 >=  TO_CHAR(xsti.selling_date, cv_fmt_date_profile)
+                        WHEN  iimb.attribute3 <=  TO_CHAR(xsti.selling_date, cv_fmt_date_profile)
+/* 2009/04/28 Ver1.4 Mod End   */
                         OR    iimb.attribute3 IS  NULL
                                                   THEN  iimb.attribute2
                         ELSE                            iimb.attribute1
@@ -2886,14 +2906,23 @@ AS
                                                                                        ,  xcac.past_customer_status)
               AND     xlva.attribute6             =       cv_yes
               AND NOT EXISTS  (
-                              SELECT  task.ROWID
-                              FROM    jtf_tasks_b                   task
+/* 2009/04/28 Ver1.4 Mod Start */
+--                              SELECT  task.ROWID
+--                              FROM    jtf_tasks_b                   task
+                              SELECT  task.task_id
+                              FROM    xxcso_visit_actual_v task
+/* 2009/04/28 Ver1.4 Mod End   */
                               WHERE   task.actual_end_date          >=      it_account_info.from_date
                               AND     task.actual_end_date          <       it_account_info.base_date + 1
-                              AND     task.source_object_type_code  =       ct_task_obj_type_party
-                              AND     task.owner_type_code          =       ct_task_own_type_employee
-                              AND     task.deleted_flag             =       cv_no
-                              AND     task.source_object_id         =       xsal.party_id
+/* 2009/04/28 Ver1.4 Del Start */
+--                              AND     task.source_object_type_code  =       ct_task_obj_type_party
+--                              AND     task.owner_type_code          =       ct_task_own_type_employee
+--                              AND     task.deleted_flag             =       cv_no
+/* 2009/04/28 Ver1.4 Del End   */
+/* 2009/04/28 Ver1.4 Mod Start */
+--                              AND     task.source_object_id         =       xsal.party_id
+                              AND     task.party_id                 =       xsal.party_id
+/* 2009/04/28 Ver1.4 Mod End   */
 --                              AND     task.owner_id                 =       xsal.resource_id
                               AND     ROWNUM                        =       1
                               )
@@ -3358,7 +3387,10 @@ AS
               SELECT
                       xrsi.base_code                            AS  base_code,
                       xrsi.employee_number                      AS  employee_num,
-                      COUNT(task.ROWID)                         AS  total_visit,
+/* 2009/04/28 Ver1.4 Mod Start */
+--                      COUNT(task.ROWID)                         AS  total_visit,
+                      COUNT(task.task_id)                         AS  total_visit,
+/* 2009/04/28 Ver1.4 Mod End   */
                       SUM(
                           CASE  task.attribute11
                             WHEN  cv_task_dff11_valid
@@ -3375,13 +3407,18 @@ AS
                           )                                     AS  total_mc_visit
               FROM    xxcos_rs_info_v               xrsi,
                       xxcos_salesreps_v             xsal,
-                      jtf_tasks_b                   task,
+/* 2009/04/28 Ver1.4 Mod Start */
+--                      jtf_tasks_b                   task,
+                      xxcso_visit_actual_v          task,
+/* 2009/04/28 Ver1.4 Mod End   */
                       xxcos_lookup_values_v         xlvm
               WHERE   task.actual_end_date          >=      it_account_info.from_date
               AND     task.actual_end_date          <       it_account_info.base_date + 1
-              AND     task.source_object_type_code  =       ct_task_obj_type_party
-              AND     task.owner_type_code          =       ct_task_own_type_employee
-              AND     task.deleted_flag             =       cv_no
+/* 2009/04/28 Ver1.4 Del Start */
+--              AND     task.source_object_type_code  =       ct_task_obj_type_party
+--              AND     task.owner_type_code          =       ct_task_own_type_employee
+--              AND     task.deleted_flag             =       cv_no
+/* 2009/04/28 Ver1.4 Del End   */
               AND     xrsi.resource_id              =       task.owner_id
               AND     xrsi.effective_start_date     <=      TRUNC(task.actual_end_date)
               AND     xrsi.effective_end_date       >=      TRUNC(task.actual_end_date)
@@ -3390,7 +3427,10 @@ AS
               AND     xrsi.paa_effective_start_date <=      TRUNC(task.actual_end_date)
               AND     xrsi.paa_effective_end_date   >=      TRUNC(task.actual_end_date)
               AND     xsal.resource_id              =       task.owner_id
-              AND     xsal.party_id                 =       task.source_object_id
+/* 2009/04/28 Ver1.4 Mod Start */
+--              AND     xsal.party_id                 =       task.source_object_id
+              AND     xsal.party_id                 =       task.party_id
+/* 2009/04/28 Ver1.4 Mod End   */
               AND     NVL(xsal.effective_start_date,  TRUNC(task.actual_end_date))
                                                     <=      TRUNC(task.actual_end_date)
               AND     NVL(xsal.effective_end_date,    TRUNC(task.actual_end_date))
@@ -3555,15 +3595,23 @@ AS
               SELECT
                       xrsi.base_code                            AS  base_code,
                       xrsi.employee_number                      AS  employee_num,
-                      COUNT(DISTINCT  task.source_object_id)    AS  count_valid
+/* 2009/04/28 Ver1.4 Mod Start */
+--                      COUNT(DISTINCT  task.source_object_id)    AS  count_valid
+                      COUNT(DISTINCT  task.party_id)            AS  count_valid
+/* 2009/04/28 Ver1.4 Mod End   */
               FROM    xxcos_rs_info_v               xrsi,
                       xxcos_salesreps_v             xsal,
-                      jtf_tasks_b                   task
+/* 2009/04/28 Ver1.4 Mod Start */
+--                      jtf_tasks_b                   task
+                      xxcso_visit_actual_v          task
+/* 2009/04/28 Ver1.4 Mod End   */
               WHERE   task.actual_end_date          >=      it_account_info.from_date
               AND     task.actual_end_date          <       it_account_info.base_date + 1
-              AND     task.source_object_type_code  =       ct_task_obj_type_party
-              AND     task.owner_type_code          =       ct_task_own_type_employee
-              AND     task.deleted_flag             =       cv_no
+/* 2009/04/28 Ver1.4 Del Start */
+--              AND     task.source_object_type_code  =       ct_task_obj_type_party
+--              AND     task.owner_type_code          =       ct_task_own_type_employee
+--              AND     task.deleted_flag             =       cv_no
+/* 2009/04/28 Ver1.4 Del End   */
               AND     task.attribute11              =       cv_task_dff11_valid
               AND     xrsi.resource_id              =       task.owner_id
               AND     xrsi.effective_start_date     <=      TRUNC(task.actual_end_date)
@@ -3573,7 +3621,10 @@ AS
               AND     xrsi.paa_effective_start_date <=      TRUNC(task.actual_end_date)
               AND     xrsi.paa_effective_end_date   >=      TRUNC(task.actual_end_date)
               AND     xsal.resource_id              =       task.owner_id
-              AND     xsal.party_id                 =       task.source_object_id
+/* 2009/04/28 Ver1.4 Mod Start */
+--              AND     xsal.party_id                 =       task.source_object_id
+              AND     xsal.party_id                 =       task.party_id
+/* 2009/04/28 Ver1.4 Mod End   */
               AND     NVL(xsal.effective_start_date,  TRUNC(task.actual_end_date))
                                                     <=      TRUNC(task.actual_end_date)
               AND     NVL(xsal.effective_end_date,    TRUNC(task.actual_end_date))
@@ -4065,8 +4116,15 @@ AS
                       ncph.employee_number                      AS  employee_num,
                       SUM(
                           CASE
-                            WHEN  ncph.data_kbn = ct_point_data_cls_new_cust
-                            OR    ncph.data_kbn = ct_point_data_cls_f_and_f
+/* 2009/04/28 Ver1.4 Mod Start */
+--                            WHEN  ncph.data_kbn = ct_point_data_cls_new_cust
+--                            OR    ncph.data_kbn = ct_point_data_cls_f_and_f
+                            WHEN  ncph.evaluration_kbn = ct_evaluration_kbn_acvmt
+                            AND   (
+                                     ncph.data_kbn = ct_point_data_cls_new_cust
+                                  OR ncph.data_kbn = ct_point_data_cls_f_and_f
+                                  )
+/* 2009/04/28 Ver1.4 Mod End   */
                               THEN  ncph.point
                             ELSE    0
                           END

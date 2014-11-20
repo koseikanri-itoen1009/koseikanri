@@ -7,7 +7,7 @@ AS
  * Description      : SQL-LOADERによってEDI在庫情報ワークテーブルに取込まれたEDI在庫情報データを
  *                     EDI在庫情報テーブルにそれぞれ登録します。
  * MD.050           : 在庫情報データ取込（MD050_COS_011_A02）
- * Version          : 1.2
+ * Version          : 1.3
  *
  * Program List
  * ----------------------------------- ----------------------------------------------------------
@@ -41,6 +41,7 @@ AS
  *                                      [COS_090]顧客品目の取得ロジック修正
  *  2009/05/19    1.2   T.Kitajima      [T1_0242]品目取得時、OPM品目マスタ.発売（製造）開始日条件追加
  *                                      [T1_0243]品目取得時、子品目対象外条件追加
+ *  2009/05/28    1.3   T.Kitajima      [T1_0711]処理後件数対応
  *
  *****************************************************************************************/
 --
@@ -4690,13 +4691,20 @@ AS
     --==============================================================
     -- コンカレントステータス、件数の設定
     --==============================================================
+--****************************** 2009/05/28 1.3 T.Kitajima MOD START ******************************--
+--    IF ( gv_err_ediinv_work_flag IS NOT NULL ) THEN
+--      ov_retcode    :=  cv_status_error;  --ステータス：エラー
+--      gn_normal_cnt :=  0;                --正常件数：0
+--      gn_warn_cnt   :=  0;                --警告件数：0
+--    ELSIF ( gv_status_work  =  cv_status_warn ) THEN
+--      ov_retcode    :=  gv_status_work;   --ステータス：警告
+--    END IF;
     IF ( gv_err_ediinv_work_flag IS NOT NULL ) THEN
       ov_retcode    :=  cv_status_error;  --ステータス：エラー
-      gn_normal_cnt :=  0;                --正常件数：0
-      gn_warn_cnt   :=  0;                --警告件数：0
     ELSIF ( gv_status_work  =  cv_status_warn ) THEN
       ov_retcode    :=  gv_status_work;   --ステータス：警告
     END IF;
+--****************************** 2009/05/28 1.3 T.Kitajima MOD START ******************************--
 --
   EXCEPTION
 --#################################  固定例外処理部 START   ###################################
@@ -4793,6 +4801,15 @@ AS
       lv_errmsg           -- ユーザー・エラー・メッセージ --# 固定 #
     );
 --
+--****************************** 2009/05/28 1.3 T.Kitajima MOD START ******************************--
+    IF ( lv_retcode = cv_status_error ) THEN
+      gn_normal_cnt :=  0;                --正常件数：0
+      gn_warn_cnt   :=  0;                --警告件数：0
+      gn_error_cnt  :=  1;                --エラー件数：1
+    ELSIF ( gv_status_work  =  cv_status_warn ) THEN
+      gn_normal_cnt :=  gn_normal_cnt - gn_warn_cnt;
+    END IF;
+--****************************** 2009/05/28 1.3 T.Kitajima MOD START ******************************--
     --エラー出力
     IF (lv_retcode = cv_status_error) THEN
       FND_FILE.PUT_LINE(

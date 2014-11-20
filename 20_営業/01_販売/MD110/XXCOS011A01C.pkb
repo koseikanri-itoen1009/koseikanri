@@ -7,7 +7,7 @@ AS
  * Description      : SQL-LOADERによってEDI納品返品情報ワークテーブルに取込まれたEDI返品確定データを
  *                    EDIヘッダ情報テーブル、EDI明細情報テーブルにそれぞれ登録します。
  * MD.050           : 返品確定データ取込（MD050_COS_011_A01）
- * Version          : 1.0
+ * Version          : 1.3
  *
  * Program List
  * ----------------------------------- ----------------------------------------------------------
@@ -46,6 +46,8 @@ AS
  *  2009/05/19    1.2   T.Kitajima      [T1_0242]品目取得時、OPM品目マスタ.発売（製造）開始日条件追加
  *                                      [T1_0243]品目取得時、子品目対象外条件追加
  *                                      [T1_1055]価格表、単価取得ロジック変更
+ *  2009/05/28    1.3   T.Kitajima      [T1_0711]処理後件数対応
+ *                                      [T1_1164]oracleエラー対応
  *
  *****************************************************************************************/
 --
@@ -3193,6 +3195,10 @@ AS
                   );
           gt_req_cust_acc_data(in_line_cnt).account_number := NULL; --警告時に参照し添字エラーとなる為、初期化
       END;
+--****************************** 2009/05/28 1.3 T.Kitajima ADD START ******************************--
+    ELSE
+      gt_req_cust_acc_data(in_line_cnt).account_number := NULL; --警告時に参照し添字エラーとなる為、初期化
+--****************************** 2009/05/28 1.3 T.Kitajima ADD  END  ******************************--
     END IF;
     --* -------------------------------------------------------------
     -- 上記までの処理でエラーがない場合
@@ -6430,16 +6436,24 @@ AS
       END IF;
     END IF;
 --
-    --==============================================================
-    -- コンカレントステータス、件数の設定
-    --==============================================================
-    IF ( gv_status_work_err = cv_status_error ) THEN
-      ov_retcode    := cv_status_error;  --ステータス：エラー
-      gn_warn_cnt   := 0;                --警告件数：0
-      gn_normal_cnt := 0;                --正常件数：0
-    ELSIF ( gv_status_work_warn =  cv_status_warn ) THEN
-      ov_retcode    := cv_status_warn;   --ステータス：警告
-    END IF;
+--****************************** 2009/05/28 1.3 T.Kitajima MOD START ******************************--
+--    --==============================================================
+--    -- コンカレントステータス、件数の設定
+--    --==============================================================
+--    IF ( gv_status_work_err = cv_status_error ) THEN
+--     ov_retcode    := cv_status_error;  --ステータス：エラー
+--      gn_warn_cnt   := 0;                --警告件数：0
+--     gn_normal_cnt := 0;                --正常件数：0
+--      gn_error_cnt  := 1;
+--    ELSIF ( gv_status_work_warn =  cv_status_warn ) THEN
+--      ov_retcode    := cv_status_warn;   --ステータス：警告
+--    END IF;
+      IF ( gv_status_work_err = cv_status_error ) THEN
+        ov_retcode    := cv_status_error;  --ステータス：エラー
+      ELSIF ( gn_warn_cnt != 0 ) THEN
+        ov_retcode    := cv_status_warn;   --ステータス：警告
+      END IF;
+--****************************** 2009/05/28 1.3 T.Kitajima MOD  END  ******************************--
 --
   EXCEPTION
 --#################################  固定例外処理部 START   ###################################
@@ -6536,6 +6550,19 @@ AS
       lv_errmsg           -- ユーザー・エラー・メッセージ --# 固定 #
     );
 --
+--****************************** 2009/05/28 1.3 T.Kitajima ADD START ******************************--
+    --==============================================================
+    -- コンカレントステータス、件数の設定
+    --==============================================================
+    IF ( lv_retcode = cv_status_error ) THEN
+      gn_warn_cnt   := 0;                --警告件数：0
+      gn_normal_cnt := 0;                --正常件数：0
+      gn_error_cnt  := 1;
+    ELSIF ( lv_retcode = cv_status_warn ) THEN
+      gn_normal_cnt := gn_normal_cnt - gn_warn_cnt;
+    END IF;
+--****************************** 2009/05/28 1.3 T.Kitajima ADD  END  ******************************--
+
     --エラー出力
     IF (lv_retcode = cv_status_error) THEN
       FND_FILE.PUT_LINE(
