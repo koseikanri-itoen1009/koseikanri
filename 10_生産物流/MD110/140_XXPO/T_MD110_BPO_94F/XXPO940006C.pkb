@@ -2123,6 +2123,11 @@ AS
 --
         END;
 --
+-- 2008/07/30 v1.6 Start
+      ELSE
+        gt_carriers_party_id_tbl(gn_i) := NULL;
+--
+-- 2008/07/30 v1.6 End
       END IF;
 --
       -- ｢製造品目コード｣
