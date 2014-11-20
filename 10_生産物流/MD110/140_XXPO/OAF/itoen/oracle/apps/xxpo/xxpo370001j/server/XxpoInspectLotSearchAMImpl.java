@@ -1,7 +1,7 @@
 /*============================================================================
 * ファイル名 : XxpoInspectLotSearchAMImpl
 * 概要説明   : 検査ロット情報検索・登録アプリケーションモジュール
-* バージョン : 1.3
+* バージョン : 1.4
 *============================================================================
 * 修正履歴
 * 日付       Ver. 担当者       修正内容
@@ -10,6 +10,7 @@
 * 2008-05-09 1.1  熊本 和郎      内部変更要求#28,41,43対応
 * 2008-12-24 1.2  二瓶大輔       本番障害#743対応
 * 2009-02-06 1.3  伊藤ひとみ     本番障害#1147対応
+* 2009-02-13 1.4  伊藤ひとみ     本番障害#1147対応
 *============================================================================
 */
 package itoen.oracle.apps.xxpo.xxpo370001j.server;
@@ -47,7 +48,7 @@ import oracle.jbo.domain.Number;
 /***************************************************************************
  * 検査ロット情報検索・登録画面のアプリケーションモジュールクラスです。
  * @author  ORACLE SCS
- * @version 1.3
+ * @version 1.4
  ***************************************************************************
  */
 public class XxpoInspectLotSearchAMImpl extends XxcmnOAApplicationModuleImpl 
@@ -407,6 +408,20 @@ public class XxpoInspectLotSearchAMImpl extends XxcmnOAApplicationModuleImpl
     }
     // 例外の出力
     OAException.raiseBundledOAException(exceptions);
+
+// 2009-02-06 H.Itou Mod Start 本番障害#1147
+    // 品目未取得エラーチェック
+    Date productedDate = (Date)row.getAttribute("Attribute1");
+    Number itemId = (Number)row.getAttribute("ItemId");
+    String itemCode = (String)row.getAttribute("ItemNo");
+
+    XxpoUtility.getUseByDate(
+                         getOADBTransaction(),  // トランザクション
+                         itemId,                // 品目ID
+                         productedDate,         // 製造日
+                         itemCode
+                         );
+// 2009-02-06 H.Itou Mod End
 
   }
 

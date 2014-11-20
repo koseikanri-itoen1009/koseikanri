@@ -7,7 +7,7 @@ AS
  * Description      : 受払台帳作成
  * MD.050/070       : 在庫(帳票)Draft2A (T_MD050_BPO_550)
  *                    受払台帳Draft1A   (T_MD070_BPO_55B)
- * Version          : 1.35
+ * Version          : 1.36
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -63,6 +63,7 @@ AS
  *  2009/01/05    1.33  Akiyoshi Shiina  本番障害#916対応
  *  2009/02/04    1.34 Yasuhisa Yamamoto 本番障害#1120対応
  *  2009/02/05    1.35 Yasuhisa Yamamoto 本番障害#1120対応(追加対応)
+ *  2009/02/13    1.36 Yasuhisa Yamamoto 本番障害#1189対応
  *****************************************************************************************/
 --
 --#######################  固定グローバル定数宣言部 START   #######################
@@ -2704,7 +2705,9 @@ AS
         AND   grct.language     = gv_lang                                             -- 言語
         AND   grct.source_lang  = gv_source_lang                                      -- 言語
         --OPM保管場所マスタ抽出条件
-        AND   mil.segment1 = grb.attribute9
+-- 2009/02/13 Y.Yamamoto #1189 delete start
+--        AND   mil.segment1 = grb.attribute9
+-- 2009/02/13 Y.Yamamoto #1189 delete end
         AND   iwm.mtl_organization_id = mil.organization_id                       -- OPM保留在庫トランザクション抽出条件
         AND   itp.line_id             = gmd.material_detail_id                    -- ラインID
         AND   itp.item_id             = gmd.item_id                               -- 品目ID
@@ -4554,7 +4557,9 @@ AS
         AND   grct.language     = gv_lang                                             -- 言語
         AND   grct.source_lang  = gv_source_lang                                      -- 言語
         --OPM保管場所マスタ抽出条件
-        AND   mil.segment1 = grb.attribute9
+-- 2009/02/13 Y.Yamamoto #1189 delete start
+--        AND   mil.segment1 = grb.attribute9
+-- 2009/02/13 Y.Yamamoto #1189 delete end
         AND   iwm.mtl_organization_id = mil.organization_id                       -- OPM保留在庫トランザクション抽出条件
         AND   itp.line_id             = gmd.material_detail_id                    -- ラインID
         AND   itp.item_id             = gmd.item_id                               -- 品目ID

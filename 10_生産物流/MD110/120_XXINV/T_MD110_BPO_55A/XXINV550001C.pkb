@@ -7,7 +7,7 @@ AS
  * Description      : 在庫（帳票）
  * MD.050/070       : 在庫（帳票）Issue1.0  (T_MD050_BPO_550)
  *                    受払残高リスト        (T_MD070_BPO_55A)
- * Version          : 1.41
+ * Version          : 1.42
  *
  * Program List
  * -------------------------- ----------------------------------------------------------
@@ -68,6 +68,7 @@ AS
  *  2008/01/07    1.39  Yasuhisa Yamamoto  本番指摘 #945対応
  *  2008/01/08    1.40  Yasuhisa Yamamoto  本番指摘 #957対応
  *  2008/02/10    1.41  Yukari Kanami      本番指摘 #1168対応
+ *  2009/02/13    1.42  Yasuhisa Yamamoto  本番指摘 #1186対応
  *****************************************************************************************/
 --
 --#######################  固定グローバル定数宣言部 START   #######################
@@ -1295,6 +1296,9 @@ AS
                     AND    itp_prod.completed_ind           = gc_completed_ind_1
                     AND    itp_prod.trans_date        BETWEEN gd_date_ymt_first
                                                           AND gd_date_ymt_last
+-- 2009/02/13 Y.Yamamoto #1186 add start
+                    AND    itp_prod.reverse_id             IS NULL
+-- 2009/02/13 Y.Yamamoto #1186 add end
                     AND    xrpm2v.use_div_invent            = gc_use_div_invent_y
                     AND    xrpm2v.doc_type                  = itp_prod.doc_type
                     AND    xrpm2v.doc_id                    = itp_prod.doc_id
@@ -1320,6 +1324,9 @@ AS
                     WHERE  itp_porc.doc_type                = gc_doc_type_porc
                     AND    itp_porc.trans_date            BETWEEN gd_date_ymt_first
                                                           AND gd_date_ymt_last
+-- 2009/02/13 Y.Yamamoto #1186 add start
+                    AND    itp_porc.reverse_id             IS NULL
+-- 2009/02/13 Y.Yamamoto #1186 add end
                     AND    xrpm8v.use_div_invent            = gc_use_div_invent_y
                     AND    xrpm8v.doc_type                  = itp_porc.doc_type
                     AND    xrpm8v.doc_id                    = itp_porc.doc_id
@@ -1898,6 +1905,9 @@ AS
                     AND    itp_prod.completed_ind           = gc_completed_ind_1
                     AND    itp_prod.trans_date        BETWEEN gd_date_ymt_first
                                                           AND gd_date_ymt_last
+-- 2009/02/13 Y.Yamamoto #1186 add start
+                    AND    itp_prod.reverse_id             IS NULL
+-- 2009/02/13 Y.Yamamoto #1186 add end
                     AND    xrpm2v.use_div_invent            = gc_use_div_invent_y
                     AND    xrpm2v.doc_type                  = itp_prod.doc_type
                     AND    xrpm2v.doc_id                    = itp_prod.doc_id
@@ -1923,6 +1933,9 @@ AS
                     WHERE  itp_porc.doc_type                = gc_doc_type_porc
                     AND    itp_porc.trans_date            BETWEEN gd_date_ymt_first
                                                           AND gd_date_ymt_last
+-- 2009/02/13 Y.Yamamoto #1186 add start
+                    AND    itp_porc.reverse_id             IS NULL
+-- 2009/02/13 Y.Yamamoto #1186 add end
                     AND    xrpm8v.use_div_invent            = gc_use_div_invent_y
                     AND    xrpm8v.doc_type                  = itp_porc.doc_type
                     AND    xrpm8v.doc_id                    = itp_porc.doc_id

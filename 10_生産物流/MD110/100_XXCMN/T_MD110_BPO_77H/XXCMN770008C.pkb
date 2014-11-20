@@ -7,7 +7,7 @@ AS
  * Description      : 返品原料原価差異表
  * MD.050/070       : 月次〆切処理（経理）Issue1.0(T_MD050_BPO_770)
  *                    月次〆切処理（経理）Issue1.0(T_MD070_BPO_77H)
- * Version          : 1.9
+ * Version          : 1.10
  *
  * Program List
  * -------------------- ------------------------------------------------------------
@@ -35,6 +35,7 @@ AS
  *  2008/08/26    1.7   A.Shiina         T_TE080_BPO_770 指摘17対応
  *  2008/10/15    1.8   N.Yoshida        T_S_524対応(PT対応)
  *  2008/11/11    1.9   N.Yoshida        移行データ検証時不具合対応
+ *  2009/02/13    1.10  A.Shiina         本番#1190対応
  *
  *****************************************************************************************/
 --
@@ -428,9 +429,16 @@ AS
     || '            ,TO_NUMBER(NVL('
     || '               (SELECT fmd2.attribute5'
     || '                FROM   fm_matl_dtl               fmd2'     -- フォーミュラディテール
+-- 2009/02/13 v1.10 UPDATE START
+/*
     || '                WHERE  fmd2.formula_id = gbh2.formula_id'  -- 外部結合を解除
     || '                AND    fmd2.line_type  = xrpm2.line_type'  -- 外部結合を解除
     || '                AND    fmd2.line_no    = gmd2.line_no'     -- 外部結合を解除
+*/
+    || '                WHERE  fmd2.formula_id = gbh1.formula_id'  -- 外部結合を解除
+    || '                AND    fmd2.line_type  = xrpm1.line_type'  -- 外部結合を解除
+    || '                AND    fmd2.line_no    = gmd1.line_no'     -- 外部結合を解除
+-- 2009/02/13 v1.10 UPDATE END
     || '               )'
     || '             ,0))       turn_price'         -- 基準単価
     || '      FROM   ic_tran_pnd              itp1'    -- 保留在庫トランザクション(原料用)
