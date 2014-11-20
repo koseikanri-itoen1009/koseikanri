@@ -1,7 +1,7 @@
 /*============================================================================
 * ファイル名 : XxpoUtility
 * 概要説明   : 仕入共通関数
-* バージョン : 1.17
+* バージョン : 1.18
 *============================================================================
 * 修正履歴
 * 日付       Ver. 担当者       修正内容
@@ -25,6 +25,7 @@
 * 2008-10-23 1.15 伊藤ひとみ   T_TE080_BPO_340 指摘5
 * 2008-11-04 1.16 二瓶大輔     統合障害#51,103、104対応
 * 2008-12-05 1.17 伊藤ひとみ   本番障害#481対応
+* 2008-12-06 1.18 吉元強樹     本番障害#788対応
 *============================================================================
 */
 package itoen.oracle.apps.xxpo.util;
@@ -7105,6 +7106,9 @@ public class XxpoUtility
     sb.append("   INTO ln_count1 "                  );
     sb.append("   FROM po_lines_all pla "           );
     sb.append("   WHERE pla.po_header_id = :1 "     );
+// 2008-12-18 v1.18 T.Yoshimoto Add Start 本番#788
+    sb.append("   AND   pla.cancel_flag  = 'N' "    );
+// 2008-12-18 v1.18 T.Yoshimoto Add End 本番#788
     sb.append("   ORDER BY pla.po_header_id; "      );
 
     // 発注ヘッダIDに紐付き、数量確定フラグ(ATTRIBUTE13)が'Y'である、
@@ -7114,6 +7118,9 @@ public class XxpoUtility
     sb.append("   FROM po_lines_all pla "           );
     sb.append("   WHERE pla.po_header_id = :1 "     );
     sb.append("   AND   pla.attribute13 = 'Y' "     );
+// 2008-12-18 v1.18 T.Yoshimoto Add Start 本番#788
+    sb.append("   AND   pla.cancel_flag  = 'N' "    );
+// 2008-12-18 v1.18 T.Yoshimoto Add End 本番#788
     sb.append("   ORDER BY pla.po_header_id; "      );
 
     // 発注明細の総数と、数量確定フラグ(ATTRIBUTE13)が'Y'である発注明細の総数が
