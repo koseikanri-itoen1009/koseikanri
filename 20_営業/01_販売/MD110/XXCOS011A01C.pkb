@@ -1,4 +1,4 @@
-CREATE OR REPLACE PACKAGE BODY XXCOS011A01C
+CREATE OR REPLACE PACKAGE BODY APPS.XXCOS011A01C
 AS
 /*****************************************************************************************
  * Copyright(c)Sumisho Computer Systems Corporation, 2008. All rights reserved.
@@ -50,6 +50,9 @@ AS
  *                                      [T1_1164]oracleエラー対応
  *  2009/06/04    1.4   T.Kitajima      [T1_1289]処理後件数対応
  *  2009/06/15    1.5   M.Sano          [T1_0700]「gt_err_edideli_work_data」配列の初期化対応
+ *  2009/06/29    1.5   T.Tominaga      [T1_0022, T1_0023, T1_0024, T1_0042, T1_0201]
+ *                                      ・ブレイク条件に店舗コードを追加
+ *                                      ・各種チェック処理でエラーにしない対応
  *
  *****************************************************************************************/
 --
@@ -224,7 +227,10 @@ AS
   cv_msg_none               CONSTANT   VARCHAR2(20)  := 'APP-XXCOS1-12167';  -- なし
   --トークン プロファイル
   cv_msg_in_file_name1      CONSTANT   VARCHAR2(20)  := 'APP-XXCOS1-12172';  -- インターフェースファイル名
-
+--****************************** 2009/06/29 1.5 T.Tominaga ADD START ******************************
+  cv_data_type_32           CONSTANT   VARCHAR2(10)  := '32';                -- データ種コード：出庫確定
+  cv_data_type_33           CONSTANT   VARCHAR2(10)  := '33';                -- データ種コード：返品確定
+--****************************** 2009/06/29 1.5 T.Tominaga ADD END   ******************************
   --* -------------------------------------------------------------------------------------------
 --****************************** 2009/05/19 1.2 T.Kitajima ADD START ******************************--
   cv_format_yyyymmdd        CONSTANT   VARCHAR2(20)  := 'YYYY/MM/DD';        -- 日付フォーマット
@@ -1037,6 +1043,9 @@ AS
   gv_prf_orga_id            VARCHAR2(50) DEFAULT NULL;  -- XXCOS:在庫組織ID
   gt_head_invoice_number_key VARCHAR2(12) DEFAULT NULL;  -- 伝票番号
   gt_edi_header_info_id      NUMBER       DEFAULT 0;     -- EDIヘッダ情報ID
+--****************************** 2009/06/29 1.5 T.Tominaga ADD START ******************************
+  gt_head_shop_invoice_key  VARCHAR2(50) DEFAULT NULL;  -- 店コード・伝票番号 ブレイク用変数
+--****************************** 2009/06/29 1.5 T.Tominaga ADD  END  ******************************
 --
   --* -------------------------------------------------------------------------------------------
   -- EDIヘッダ情報テーブルデータ登録用変数(xxcos_edi_headers)
@@ -3091,62 +3100,72 @@ AS
     gt_req_edi_lines_data(in_line_cnt).product_code2    := gt_edideli_work_data(in_line_cnt).product_code2;
     -- 原単価(発注)
     gt_req_edi_lines_data(in_line_cnt).order_unit_price := gt_edideli_work_data(in_line_cnt).order_unit_price;
+--****************************** 2009/06/29 1.5 T.Tominaga ADD START ******************************
+    -- 品目ID
+    gt_req_mtl_sys_items(in_line_cnt).inventory_item_id := NULL;
+    -- 品目コード
+    gt_req_mtl_sys_items(in_line_cnt).segment1          := NULL;
+    -- 基準単価
+    gt_req_mtl_sys_items(in_line_cnt).unit_of_measure   := NULL;
+--****************************** 2009/06/29 1.5 T.Tominaga ADD END   ******************************
     --==============================================================
-    --==============================================================
-    -- 店コードチェック
-    --==============================================================
-    IF  ( gt_req_edi_headers_data(in_line_cnt).shop_code IS NULL )  THEN
-      --* -------------------------------------------------------------
-      --必須エラーメッセージ  gv_msg_in_none_err
-      --* -------------------------------------------------------------
-      lv_process_flag :=  cv_status_error;
-      ov_retcode      :=  cv_status_warn;
-      -- 納品返品ワークID(error)
-      gt_err_edideli_work_data(in_line_cnt).delivery_return_work_id :=
-              gt_edideli_work_data(in_line_cnt).delivery_return_work_id;
-      --ステータス(error)
-      gt_err_edideli_work_data(in_line_cnt).err_status1 := cv_status_warn;
-      -- トークン取得(店コード)
-      gv_tkn_shop_code :=  xxccp_common_pkg.get_msg(
-                       iv_application        =>  cv_application,
-                       iv_name               =>  cv_msg_shop_code
-                       );
-      -- ユーザー・エラー・メッセージ
-      gt_err_edideli_work_data(in_line_cnt).errmsg1  :=  xxccp_common_pkg.get_msg(
-                                                     iv_application  =>  cv_application,
-                                                     iv_name         =>  gv_msg_in_none_err,
-                                                     iv_token_name1  =>  cv_tkn_item,
-                                                     iv_token_value1 =>  gv_tkn_shop_code
-                                                     );
-    END IF;
-    --==============================================================
-    -- 発注数量（合計、バラ）チェック
-    --==============================================================
-    IF  ( NVL(gt_req_edi_lines_data(in_line_cnt).sum_order_qty, 0) = 0 )
-    THEN
-      --* -------------------------------------------------------------
-      --必須エラーメッセージ  gv_msg_in_none_err
-      --* -------------------------------------------------------------
-      lv_process_flag := cv_status_error;
-      ov_retcode      :=  cv_status_warn;
-      -- 納品返品ワークID(error)
-      gt_err_edideli_work_data(in_line_cnt).delivery_return_work_id :=
-              gt_edideli_work_data(in_line_cnt).delivery_return_work_id;
-      --ステータス(error)
-      gt_err_edideli_work_data(in_line_cnt).err_status2 := cv_status_warn;
-      --トークン(発注数量（合計、バラ）)
-      gv_sum_order_qty :=  xxccp_common_pkg.get_msg(
-                       iv_application  =>  cv_application,
-                       iv_name         =>  cv_msg_sum_order_qty
-                       );
-      -- ユーザー・エラー・メッセージ
-      gt_err_edideli_work_data(in_line_cnt).errmsg2 :=  xxccp_common_pkg.get_msg(
-                                                    iv_application        =>  cv_application,
-                                                    iv_name               =>  gv_msg_in_none_err,
-                                                    iv_token_name1        =>  cv_tkn_item,
-                                                    iv_token_value1       =>  gv_sum_order_qty
-                                                    );
-    END IF;
+--****************************** 2009/06/29 1.5 T.Tominaga DEL START ******************************
+--      --==============================================================
+--      -- 店コードチェック
+--      --==============================================================
+--      IF  ( gt_req_edi_headers_data(in_line_cnt).shop_code IS NULL )  THEN
+--        --* -------------------------------------------------------------
+--        --必須エラーメッセージ  gv_msg_in_none_err
+--        --* -------------------------------------------------------------
+--        lv_process_flag :=  cv_status_error;
+--        ov_retcode      :=  cv_status_warn;
+--        -- 納品返品ワークID(error)
+--        gt_err_edideli_work_data(in_line_cnt).delivery_return_work_id :=
+--                gt_edideli_work_data(in_line_cnt).delivery_return_work_id;
+--        --ステータス(error)
+--        gt_err_edideli_work_data(in_line_cnt).err_status1 := cv_status_warn;
+--        -- トークン取得(店コード)
+--        gv_tkn_shop_code :=  xxccp_common_pkg.get_msg(
+--                         iv_application        =>  cv_application,
+--                         iv_name               =>  cv_msg_shop_code
+--                         );
+--        -- ユーザー・エラー・メッセージ
+--        gt_err_edideli_work_data(in_line_cnt).errmsg1  :=  xxccp_common_pkg.get_msg(
+--                                                       iv_application  =>  cv_application,
+--                                                       iv_name         =>  gv_msg_in_none_err,
+--                                                       iv_token_name1  =>  cv_tkn_item,
+--                                                       iv_token_value1 =>  gv_tkn_shop_code
+--                                                       );
+--      END IF;
+--      --==============================================================
+--      -- 発注数量（合計、バラ）チェック
+--      --==============================================================
+--      IF  ( NVL(gt_req_edi_lines_data(in_line_cnt).sum_order_qty, 0) = 0 )
+--      THEN
+--        --* -------------------------------------------------------------
+--        --必須エラーメッセージ  gv_msg_in_none_err
+--        --* -------------------------------------------------------------
+--        lv_process_flag := cv_status_error;
+--        ov_retcode      :=  cv_status_warn;
+--        -- 納品返品ワークID(error)
+--        gt_err_edideli_work_data(in_line_cnt).delivery_return_work_id :=
+--                gt_edideli_work_data(in_line_cnt).delivery_return_work_id;
+--        --ステータス(error)
+--        gt_err_edideli_work_data(in_line_cnt).err_status2 := cv_status_warn;
+--        --トークン(発注数量（合計、バラ）)
+--        gv_sum_order_qty :=  xxccp_common_pkg.get_msg(
+--                         iv_application  =>  cv_application,
+--                         iv_name         =>  cv_msg_sum_order_qty
+--                         );
+--        -- ユーザー・エラー・メッセージ
+--        gt_err_edideli_work_data(in_line_cnt).errmsg2 :=  xxccp_common_pkg.get_msg(
+--                                                      iv_application        =>  cv_application,
+--                                                      iv_name               =>  gv_msg_in_none_err,
+--                                                      iv_token_name1        =>  cv_tkn_item,
+--                                                      iv_token_value1       =>  gv_sum_order_qty
+--                                                      );
+--      END IF;
+--****************************** 2009/06/29 1.5 T.Tominaga DEL END   ******************************
     --==============================================================
     -- 上記までの処理でエラーがない場合
     --==============================================================
@@ -3188,33 +3207,33 @@ AS
         -- 価格表ID
         lt_head_price_list_id := gt_req_cust_acc_data(in_line_cnt).price_list_id;
       EXCEPTION
-         WHEN NO_DATA_FOUND THEN  -- （対象データ無しエラー）
-          --* -------------------------------------------------------------
-          --顧客コード変換エラーメッセージ  gv_msg_cust_num_chg_err
-          --* -------------------------------------------------------------
-          lv_process_flag :=  cv_status_error;
-          ov_retcode      :=  cv_status_warn;
-          -- 納品返品ワークID(error)
-          gt_err_edideli_work_data(in_line_cnt).delivery_return_work_id :=
-                gt_edideli_work_data(in_line_cnt).delivery_return_work_id;
-          --ステータス(error)
-          gt_err_edideli_work_data(in_line_cnt).err_status1 := cv_status_warn;
-          -- ユーザー・エラー・メッセージ
-          gt_err_edideli_work_data(in_line_cnt).errmsg1 :=
-                xxccp_common_pkg.get_msg(
-                  iv_application  =>  cv_application,
-                  iv_name         =>  gv_msg_cust_num_chg_err,
-                  iv_token_name1  =>  cv_chain_shop_code,
-                  iv_token_name2  =>  cv_shop_code,
-                  iv_token_value1 =>  gt_req_edi_headers_data(in_line_cnt).edi_chain_code,
-                  iv_token_value2 =>  gt_req_edi_headers_data(in_line_cnt).shop_code
-                  );
+        WHEN NO_DATA_FOUND THEN  -- （対象データ無しエラー）
+--****************************** 2009/06/29 1.5 T.Tominaga DEL START ******************************
+--            --* -------------------------------------------------------------
+--            --顧客コード変換エラーメッセージ  gv_msg_cust_num_chg_err
+--            --* -------------------------------------------------------------
+--            lv_process_flag :=  cv_status_error;
+--            ov_retcode      :=  cv_status_warn;
+--            -- 納品返品ワークID(error)
+--            gt_err_edideli_work_data(in_line_cnt).delivery_return_work_id :=
+--                  gt_edideli_work_data(in_line_cnt).delivery_return_work_id;
+--            --ステータス(error)
+--            gt_err_edideli_work_data(in_line_cnt).err_status1 := cv_status_warn;
+--            -- ユーザー・エラー・メッセージ
+--            gt_err_edideli_work_data(in_line_cnt).errmsg1 :=
+--                  xxccp_common_pkg.get_msg(
+--                    iv_application  =>  cv_application,
+--                   iv_name         =>  gv_msg_cust_num_chg_err,
+--                    iv_token_name1  =>  cv_chain_shop_code,
+--                    iv_token_name2  =>  cv_shop_code,
+--                    iv_token_value1 =>  gt_req_edi_headers_data(in_line_cnt).edi_chain_code,
+--                    iv_token_value2 =>  gt_req_edi_headers_data(in_line_cnt).shop_code
+--                    );
+--****************************** 2009/05/28 1.3 T.Kitajima DEL  END  ******************************--
           gt_req_cust_acc_data(in_line_cnt).account_number := NULL; --警告時に参照し添字エラーとなる為、初期化
       END;
---****************************** 2009/05/28 1.3 T.Kitajima ADD START ******************************--
     ELSE
       gt_req_cust_acc_data(in_line_cnt).account_number := NULL; --警告時に参照し添字エラーとなる為、初期化
---****************************** 2009/05/28 1.3 T.Kitajima ADD  END  ******************************--
     END IF;
     --* -------------------------------------------------------------
     -- 上記までの処理でエラーがない場合
@@ -3240,24 +3259,27 @@ AS
         ;                                                   -- 顧客マスタ.顧客区分 = '18'(チェーン店)
       EXCEPTION
         WHEN NO_DATA_FOUND THEN
-          --* -------------------------------------------------------------
-          --EDI連携品目コード区分エラーメッセージ  gv_msg_item_code_err
-          --* -------------------------------------------------------------
-          lv_process_flag :=  cv_status_error;
-          ov_retcode      :=  cv_status_warn;
-          -- 納品返品ワークID(error)
-          gt_err_edideli_work_data(in_line_cnt).delivery_return_work_id :=
-                gt_edideli_work_data(in_line_cnt).delivery_return_work_id;
-          --ステータス(error)
-          gt_err_edideli_work_data(in_line_cnt).err_status1 := cv_status_warn;
-          -- ユーザー・エラー・メッセージ
-          gt_err_edideli_work_data(in_line_cnt).errmsg1 :=
-                xxccp_common_pkg.get_msg(
-                  iv_application   =>  cv_application,
-                  iv_name          =>  gv_msg_item_code_err,
-                  iv_token_name1   =>  cv_chain_shop_code,
-                  iv_token_value1  =>  gt_req_edi_headers_data(in_line_cnt).edi_chain_code
-                  );
+--****************************** 2009/06/29 1.5 T.Tominaga MOD START ******************************
+--            --* -------------------------------------------------------------
+--            --EDI連携品目コード区分エラーメッセージ  gv_msg_item_code_err
+--            --* -------------------------------------------------------------
+--            lv_process_flag :=  cv_status_error;
+--            ov_retcode      :=  cv_status_warn;
+--            -- 納品返品ワークID(error)
+--            gt_err_edideli_work_data(in_line_cnt).delivery_return_work_id :=
+--                  gt_edideli_work_data(in_line_cnt).delivery_return_work_id;
+--            --ステータス(error)
+--            gt_err_edideli_work_data(in_line_cnt).err_status1 := cv_status_warn;
+--            -- ユーザー・エラー・メッセージ
+--            gt_err_edideli_work_data(in_line_cnt).errmsg1 :=
+--                  xxccp_common_pkg.get_msg(
+--                    iv_application   =>  cv_application,
+--                    iv_name          =>  gv_msg_item_code_err,
+--                    iv_token_name1   =>  cv_chain_shop_code,
+--                    iv_token_value1  =>  gt_req_edi_headers_data(in_line_cnt).edi_chain_code
+--                    );
+          NULL;
+--****************************** 2009/06/29 1.5 T.Tominaga MOD END   ******************************
       END;
     END IF;
     --* -------------------------------------------------------------
@@ -3270,24 +3292,27 @@ AS
       IF  (( lt_head_edi_item_code_div  IS NULL )
       OR   ( lt_head_edi_item_code_div  = cv_0 ))
       THEN
-        --* -------------------------------------------------------------
-        --EDI連携品目コード区分エラーメッセージ  gv_msg_item_code_err
-        --* -------------------------------------------------------------
-        lv_process_flag :=  cv_status_error;
-        ov_retcode      :=  cv_status_warn;
-        -- 納品返品ワークID(error)
-        gt_err_edideli_work_data(in_line_cnt).delivery_return_work_id :=
-                gt_edideli_work_data(in_line_cnt).delivery_return_work_id;
-        --ステータス(error)
-        gt_err_edideli_work_data(in_line_cnt).err_status1 := cv_status_warn;
-        -- ユーザー・エラー・メッセージ
-        gt_err_edideli_work_data(in_line_cnt).errmsg1 :=
-                xxccp_common_pkg.get_msg(
-                  iv_application   =>  cv_application,
-                  iv_name          =>  gv_msg_item_code_err,
-                  iv_token_name1   =>  cv_chain_shop_code,
-                  iv_token_value1  =>  gt_req_edi_headers_data(in_line_cnt).edi_chain_code
-                  );
+--****************************** 2009/06/29 1.5 T.Tominaga DEL START ******************************
+--          --* -------------------------------------------------------------
+--          --EDI連携品目コード区分エラーメッセージ  gv_msg_item_code_err
+--          --* -------------------------------------------------------------
+--          lv_process_flag :=  cv_status_error;
+--          ov_retcode      :=  cv_status_warn;
+--          -- 納品返品ワークID(error)
+--          gt_err_edideli_work_data(in_line_cnt).delivery_return_work_id :=
+--                  gt_edideli_work_data(in_line_cnt).delivery_return_work_id;
+--          --ステータス(error)
+--          gt_err_edideli_work_data(in_line_cnt).err_status1 := cv_status_warn;
+--          -- ユーザー・エラー・メッセージ
+--          gt_err_edideli_work_data(in_line_cnt).errmsg1 :=
+--                  xxccp_common_pkg.get_msg(
+--                    iv_application   =>  cv_application,
+--                    iv_name          =>  gv_msg_item_code_err,
+--                    iv_token_name1   =>  cv_chain_shop_code,
+--                    iv_token_value1  =>  gt_req_edi_headers_data(in_line_cnt).edi_chain_code
+--                    );
+        NULL;
+--****************************** 2009/06/29 1.5 T.Tominaga DEL END   ******************************
       --* -------------------------------------------------------------
       -- 「EDI連携品目コード区分」が「2：JANコード」の場合
       --  品目マスタチェック (3-1)
@@ -3407,44 +3432,47 @@ AS
             --
             EXCEPTION
               WHEN NO_DATA_FOUND THEN
-                --* -------------------------------------------------------------
-                -- 商品コード変換エラーメッセージ  gv_msg_product_code_err
-                --* -------------------------------------------------------------
-                lv_process_flag :=  cv_status_warn;
-                ov_retcode      :=  cv_status_warn;
-                -- 納品返品ワークID(error)
-                gt_err_edideli_work_data(in_line_cnt).delivery_return_work_id :=
-                       gt_edideli_work_data(in_line_cnt).delivery_return_work_id;
-                --ステータス(error)
-                gt_err_edideli_work_data(in_line_cnt).err_status1 := cv_status_warn;
-                --トークン(JANコード)
-                gv_jan_code    :=  xxccp_common_pkg.get_msg(
-                               iv_application        =>  cv_application,
-                               iv_name               =>  cv_msg_jan_code
-                             );
-                -- ユーザー・エラー・メッセージ
-                gt_err_edideli_work_data(in_line_cnt).errmsg1 :=
-                       xxccp_common_pkg.get_msg(
-                         iv_application   =>  cv_application,
-                         iv_name          =>  gv_msg_product_code_err,
-                         iv_token_name1   =>  cv_prod_code,
-                         iv_token_name2   =>  cv_prod_type,
-                         iv_token_value1  =>  gt_req_edi_lines_data(in_line_cnt).product_code2,
-                         iv_token_value2  =>  gv_jan_code
-                         );
-                --* -------------------------------------------------------------
-                --* JAN、ケースJANコードが存在しない場合、ダミー品目コードを取得
-                --* -------------------------------------------------------------
-                SELECT  flvv.lookup_code        -- コード
-                INTO    gt_req_mtl_sys_items(in_line_cnt).segment1
-                FROM    fnd_lookup_values_vl  flvv          -- ルックアップマスタ
-                WHERE   flvv.lookup_type  = cv_lookup_type  -- ルックアップ.タイプ
-                  AND   flvv.enabled_flag       = cv_y                -- 有効
-                  AND   flvv.attribute1         = cv_1
-                  AND (( flvv.start_date_active IS NULL )
-                  OR   ( flvv.start_date_active <= cd_process_date ))
-                  AND (( flvv.end_date_active   IS NULL )
-                  OR   ( flvv.end_date_active   >= cd_process_date ));  -- 業務日付がFROM-TO内
+--****************************** 2009/06/29 1.5 T.Tominaga MOD START ******************************
+--                  --* -------------------------------------------------------------
+--                  -- 商品コード変換エラーメッセージ  gv_msg_product_code_err
+--                  --* -------------------------------------------------------------
+--                  lv_process_flag :=  cv_status_warn;
+--                  ov_retcode      :=  cv_status_warn;
+--                  -- 納品返品ワークID(error)
+--                  gt_err_edideli_work_data(in_line_cnt).delivery_return_work_id :=
+--                         gt_edideli_work_data(in_line_cnt).delivery_return_work_id;
+--                  --ステータス(error)
+--                  gt_err_edideli_work_data(in_line_cnt).err_status1 := cv_status_warn;
+--                  --トークン(JANコード)
+--                  gv_jan_code    :=  xxccp_common_pkg.get_msg(
+--                                 iv_application        =>  cv_application,
+--                                 iv_name               =>  cv_msg_jan_code
+--                               );
+--                  -- ユーザー・エラー・メッセージ
+--                  gt_err_edideli_work_data(in_line_cnt).errmsg1 :=
+--                         xxccp_common_pkg.get_msg(
+--                           iv_application   =>  cv_application,
+--                           iv_name          =>  gv_msg_product_code_err,
+--                           iv_token_name1   =>  cv_prod_code,
+--                           iv_token_name2   =>  cv_prod_type,
+--                           iv_token_value1  =>  gt_req_edi_lines_data(in_line_cnt).product_code2,
+--                           iv_token_value2  =>  gv_jan_code
+--                           );
+--                  --* -------------------------------------------------------------
+--                  --* JAN、ケースJANコードが存在しない場合、ダミー品目コードを取得
+--                  --* -------------------------------------------------------------
+--                  SELECT  flvv.lookup_code        -- コード
+--                  INTO    gt_req_mtl_sys_items(in_line_cnt).segment1
+--                  FROM    fnd_lookup_values_vl  flvv          -- ルックアップマスタ
+--                  WHERE   flvv.lookup_type  = cv_lookup_type  -- ルックアップ.タイプ
+--                    AND   flvv.enabled_flag       = cv_y                -- 有効
+--                    AND   flvv.attribute1         = cv_1
+--                    AND (( flvv.start_date_active IS NULL )
+--                    OR   ( flvv.start_date_active <= cd_process_date ))
+--                    AND (( flvv.end_date_active   IS NULL )
+--                    OR   ( flvv.end_date_active   >= cd_process_date ));  -- 業務日付がFROM-TO内
+                NULL;
+--****************************** 2009/06/29 1.5 T.Tominaga MOD END   ******************************
             END;
         END;
       --* -------------------------------------------------------------
@@ -3489,45 +3517,48 @@ AS
             ;
         EXCEPTION
           WHEN NO_DATA_FOUND THEN
-            --* -------------------------------------------------------------
-            --== 顧客品目が存在しない場合、ダミー品目コードを取得
-            --* -------------------------------------------------------------
-            SELECT  flvv.lookup_code        -- コード
-            INTO    gt_req_mtl_sys_items(in_line_cnt).segment1
-            FROM    fnd_lookup_values_vl  flvv        -- ルックアップマスタ
-            WHERE   flvv.lookup_type  = cv_lookup_type  -- ルックアップ.タイプ
-              AND   flvv.enabled_flag       = cv_y                -- 有効
-              AND   flvv.attribute1         = cv_1
-              AND (( flvv.start_date_active IS NULL )
-              OR   ( flvv.start_date_active <= cd_process_date ))
-              AND (( flvv.end_date_active   IS NULL )
-              OR   ( flvv.end_date_active   >= cd_process_date ))  -- 業務日付がFROM-TO内
-            ;
-            --* -------------------------------------------------------------
-            -- 商品コード変換エラーメッセージ  gv_msg_product_code_err
-            --* -------------------------------------------------------------
-            lv_process_flag :=  cv_status_warn;
-            ov_retcode      :=  cv_status_warn;
-            -- 納品返品ワークID(error)
-            gt_err_edideli_work_data(in_line_cnt).delivery_return_work_id :=
-                    gt_edideli_work_data(in_line_cnt).delivery_return_work_id;
-            --ステータス(error)
-            gt_err_edideli_work_data(in_line_cnt).err_status1 := cv_status_warn;
-            --トークン(顧客品目)
-            gv_tkn_mtl_cust_items  :=  xxccp_common_pkg.get_msg(
-                                   iv_application  =>  cv_application,
-                                   iv_name         =>  cv_msg_mtl_cust_items
-                                   );
-            -- ユーザー・エラー・メッセージ
-            gt_err_edideli_work_data(in_line_cnt).errmsg1 :=
-                    xxccp_common_pkg.get_msg(
-                      iv_application   =>  cv_application,
-                      iv_name          =>  gv_msg_product_code_err,
-                      iv_token_name1   =>  cv_prod_code,
-                      iv_token_name2   =>  cv_prod_type,
-                      iv_token_value1  =>  gt_req_edi_lines_data(in_line_cnt).product_code2,
-                      iv_token_value2  =>  gv_tkn_mtl_cust_items
-                      );
+--****************************** 2009/06/29 1.5 T.Tominaga MOD START ******************************
+--              --* -------------------------------------------------------------
+--              --== 顧客品目が存在しない場合、ダミー品目コードを取得
+--              --* -------------------------------------------------------------
+--              SELECT  flvv.lookup_code        -- コード
+--              INTO    gt_req_mtl_sys_items(in_line_cnt).segment1
+--              FROM    fnd_lookup_values_vl  flvv        -- ルックアップマスタ
+--              WHERE   flvv.lookup_type  = cv_lookup_type  -- ルックアップ.タイプ
+--                AND   flvv.enabled_flag       = cv_y                -- 有効
+--                AND   flvv.attribute1         = cv_1
+--                AND (( flvv.start_date_active IS NULL )
+--                OR   ( flvv.start_date_active <= cd_process_date ))
+--                AND (( flvv.end_date_active   IS NULL )
+--                OR   ( flvv.end_date_active   >= cd_process_date ))  -- 業務日付がFROM-TO内
+--              ;
+--              --* -------------------------------------------------------------
+--              -- 商品コード変換エラーメッセージ  gv_msg_product_code_err
+--              --* -------------------------------------------------------------
+--              lv_process_flag :=  cv_status_warn;
+--              ov_retcode      :=  cv_status_warn;
+--              -- 納品返品ワークID(error)
+--              gt_err_edideli_work_data(in_line_cnt).delivery_return_work_id :=
+--                      gt_edideli_work_data(in_line_cnt).delivery_return_work_id;
+--              --ステータス(error)
+--              gt_err_edideli_work_data(in_line_cnt).err_status1 := cv_status_warn;
+--              --トークン(顧客品目)
+--              gv_tkn_mtl_cust_items  :=  xxccp_common_pkg.get_msg(
+--                                     iv_application  =>  cv_application,
+--                                     iv_name         =>  cv_msg_mtl_cust_items
+--                                     );
+--              -- ユーザー・エラー・メッセージ
+--              gt_err_edideli_work_data(in_line_cnt).errmsg1 :=
+--                      xxccp_common_pkg.get_msg(
+--                        iv_application   =>  cv_application,
+--                        iv_name          =>  gv_msg_product_code_err,
+--                        iv_token_name1   =>  cv_prod_code,
+--                       iv_token_name2   =>  cv_prod_type,
+--                        iv_token_value1  =>  gt_req_edi_lines_data(in_line_cnt).product_code2,
+--                        iv_token_value2  =>  gv_tkn_mtl_cust_items
+--                        );
+            NULL;
+--****************************** 2009/06/29 1.5 T.Tominaga MOD END   ******************************
         END;
       END IF;
     END IF;
@@ -3617,43 +3648,49 @@ AS
           IF ( lt_unit_price >= cn_0 ) THEN
             gt_req_edi_lines_data(in_line_cnt).order_unit_price := lt_unit_price;
           ELSE
-           --* -------------------------------------------------------------
-           --単価取得エラーメッセージ  cv_msg_price_err
-           --* -------------------------------------------------------------
-            lv_process_flag :=  cv_status_warn;
-            ov_retcode      :=  cv_status_warn;
-            -- 納品返品ワークID(error)
-            gt_err_edideli_work_data(in_line_cnt).delivery_return_work_id :=
-                    gt_edideli_work_data(in_line_cnt).delivery_return_work_id;
-            --ステータス(error)
-            gt_err_edideli_work_data(in_line_cnt).err_status2 := cv_status_warn;
-            -- ユーザー・エラー・メッセージ
-            gt_err_edideli_work_data(in_line_cnt).errmsg2 :=
-                   xxccp_common_pkg.get_msg( cv_application, 
-                                             cv_msg_price_err 
-                                           );
+--****************************** 2009/06/29 1.5 T.Tominaga MOD START ******************************
+--              --* -------------------------------------------------------------
+--              --単価取得エラーメッセージ  cv_msg_price_err
+--              --* -------------------------------------------------------------
+--              lv_process_flag :=  cv_status_warn;
+--              ov_retcode      :=  cv_status_warn;
+--              -- 納品返品ワークID(error)
+--              gt_err_edideli_work_data(in_line_cnt).delivery_return_work_id :=
+--                      gt_edideli_work_data(in_line_cnt).delivery_return_work_id;
+--              --ステータス(error)
+--              gt_err_edideli_work_data(in_line_cnt).err_status2 := cv_status_warn;
+--              -- ユーザー・エラー・メッセージ
+--              gt_err_edideli_work_data(in_line_cnt).errmsg2 :=
+--                     xxccp_common_pkg.get_msg( cv_application, 
+--                                               cv_msg_price_err 
+--                                             );
+            NULL;
+--****************************** 2009/06/29 1.5 T.Tominaga MOD END   ******************************
           END IF;
         ELSE
-          --* -------------------------------------------------------------
-          --価格表未設定エラーメッセージ  gv_msg_price_list_err
-          --* -------------------------------------------------------------
-          lv_process_flag :=  cv_status_warn;
-          ov_retcode      :=  cv_status_warn;
-          -- 納品返品ワークID(error)
-          gt_err_edideli_work_data(in_line_cnt).delivery_return_work_id :=
-                  gt_edideli_work_data(in_line_cnt).delivery_return_work_id;
-          --ステータス(error)
-          gt_err_edideli_work_data(in_line_cnt).err_status2 := cv_status_warn;
-          -- ユーザー・エラー・メッセージ
-          gt_err_edideli_work_data(in_line_cnt).errmsg2 :=
-                  xxccp_common_pkg.get_msg(
-                    iv_application   =>  cv_application,
-                    iv_name          =>  gv_msg_price_list_err,
-                    iv_token_name1   =>  cv_chain_shop_code,
-                    iv_token_name2   =>  cv_shop_code,
-                    iv_token_value1  =>  gt_req_edi_headers_data(in_line_cnt).edi_chain_code,
-                    iv_token_value2  =>  gt_req_edi_headers_data(in_line_cnt).shop_code
-                    );
+--****************************** 2009/06/29 1.5 T.Tominaga MOD START ******************************
+--            --* -------------------------------------------------------------
+--            --価格表未設定エラーメッセージ  gv_msg_price_list_err
+--            --* -------------------------------------------------------------
+--            lv_process_flag :=  cv_status_warn;
+--            ov_retcode      :=  cv_status_warn;
+--            -- 納品返品ワークID(error)
+--            gt_err_edideli_work_data(in_line_cnt).delivery_return_work_id :=
+--                    gt_edideli_work_data(in_line_cnt).delivery_return_work_id;
+--            --ステータス(error)
+--            gt_err_edideli_work_data(in_line_cnt).err_status2 := cv_status_warn;
+--            -- ユーザー・エラー・メッセージ
+--            gt_err_edideli_work_data(in_line_cnt).errmsg2 :=
+--                    xxccp_common_pkg.get_msg(
+--                      iv_application   =>  cv_application,
+--                      iv_name          =>  gv_msg_price_list_err,
+--                      iv_token_name1   =>  cv_chain_shop_code,
+--                      iv_token_name2   =>  cv_shop_code,
+--                      iv_token_value1  =>  gt_req_edi_headers_data(in_line_cnt).edi_chain_code,
+--                      iv_token_value2  =>  gt_req_edi_headers_data(in_line_cnt).shop_code
+--                      );
+          NULL;
+--****************************** 2009/06/29 1.5 T.Tominaga MOD END   ******************************
         END IF;
 --****************************** 2009/05/19 1.2 T.Kitajima MOD  END  ******************************--
       END IF;
@@ -3675,8 +3712,12 @@ AS
     --* -------------------------------------------------------------
     --  ヘッダキーブレイク編集
     --* -------------------------------------------------------------
-    IF (( gt_head_invoice_number_key IS NULL )
-    OR  ( gt_head_invoice_number_key <> gt_req_edi_headers_data(in_line_cnt).invoice_number ))
+--****************************** 2009/06/29 1.5 T.Tominaga MOD START ******************************
+--    IF (( gt_head_invoice_number_key IS NULL )
+--    OR  ( gt_head_invoice_number_key <> gt_req_edi_headers_data(in_line_cnt).invoice_number ))
+    IF (( gt_head_shop_invoice_key IS NULL )
+    OR  ( gt_head_shop_invoice_key <> gt_req_edi_headers_data(in_line_cnt).shop_code || gt_req_edi_headers_data(in_line_cnt).invoice_number ))
+--****************************** 2009/06/29 1.5 T.Tominaga MOD END   ******************************
     THEN
       gn_normal_headers_cnt := gn_normal_headers_cnt + 1;  --ヘッダの添字インクリメント
       --* -------------------------------------------------------------
@@ -3761,6 +3802,10 @@ AS
 --
     -- 伝票番号のセット
     gt_head_invoice_number_key  := gt_req_edi_headers_data(in_line_cnt).invoice_number;
+--****************************** 2009/06/29 1.5 T.Tominaga ADD START ******************************
+    -- ブレイクキー（店コード＋伝票番号）のセット
+    gt_head_shop_invoice_key  := gt_req_edi_headers_data(in_line_cnt).shop_code || gt_req_edi_headers_data(in_line_cnt).invoice_number;
+--****************************** 2009/06/29 1.5 T.Tominaga ADD END   ******************************
 --
   EXCEPTION
 --
@@ -4888,7 +4933,10 @@ AS
       DELETE FROM xxcos_edi_delivery_work edideliwk
        WHERE  edideliwk.if_file_name     = iv_file_name           -- インタフェースファイル名
          AND  edideliwk.err_status       = iv_run_class           -- 実行区分
-         AND  edideliwk.data_type_code   = gv_run_data_type_code  -- データ種コード
+-- ******************** 2009/06/29 Var.1.5 T.Tominaga MOD START  ******************************************
+--         AND  edideliwk.data_type_code   = gv_run_data_type_code  -- データ種コード
+         AND  edideliwk.data_type_code   IN ( cv_data_type_32, cv_data_type_33 )  -- データ種コード
+-- ******************** 2009/06/29 Var.1.5 T.Tominaga MOD END    ******************************************
          AND (( iv_edi_chain_code IS NOT NULL
          AND   edideliwk.edi_chain_code  =  iv_edi_chain_code )   -- EDIチェーン店コード
          OR  ( iv_edi_chain_code IS NULL ));
@@ -4974,11 +5022,17 @@ AS
     -- 情報削除期間が過ぎたデータ
     -- (店舗納入日、センター納入日、発注日、データ作成日)
     -- ===============================
-    CURSOR headers_lock_cur( lv_param1 IN CHAR )
+-- ******************** 2009/06/29 Var.1.5 T.Tominaga MOD START  ******************************************
+--    CURSOR headers_lock_cur( lv_param1 IN CHAR )
+    CURSOR headers_lock_cur
+-- ******************** 2009/06/29 Var.1.5 T.Tominaga MOD End    ******************************************
     IS
       SELECT head.edi_header_info_id
       FROM   xxcos_edi_headers  head
-      WHERE  head.data_type_code = lv_param1
+-- ******************** 2009/06/29 Var.1.5 T.Tominaga MOD START  ******************************************
+--      WHERE  head.data_type_code = lv_param1
+      WHERE  head.data_type_code IN ( cv_data_type_32, cv_data_type_33 )
+-- ******************** 2009/06/29 Var.1.5 T.Tominaga MOD END    ******************************************
         AND  NVL(head.shop_delivery_date,
              NVL(head.center_delivery_date,
              NVL(head.order_date, TRUNC(head.data_creation_date_edi_data))))
@@ -5003,7 +5057,10 @@ AS
     -- テーブルロック(EDIヘッダ情報ＴＢＬカーソル)
     --==============================================================
     --カーソルオープン(ロックのチェック)
-    OPEN  headers_lock_cur( gv_run_data_type_code );
+-- ******************** 2009/06/29 Var.1.5 T.Tominaga MOD START  ******************************************
+--    OPEN  headers_lock_cur( gv_run_data_type_code );
+    OPEN  headers_lock_cur;
+-- ******************** 2009/06/29 Var.1.5 T.Tominaga MOD END    ******************************************
     --カーソルクローズ
     CLOSE headers_lock_cur;
 --
@@ -5089,11 +5146,17 @@ AS
     -- 情報削除期間が過ぎたデータ
     -- (店舗納入日、センター納入日、発注日、データ作成日)
     -- ===============================
-    CURSOR headers_cur( lv_param1 IN CHAR )
+-- ******************** 2009/06/29 Var.1.5 T.Tominaga MOD START  ******************************************
+--    CURSOR headers_cur( lv_param1 IN CHAR )
+    CURSOR headers_cur
+-- ******************** 2009/06/29 Var.1.5 T.Tominaga MOD END    ******************************************
     IS
       SELECT head.edi_header_info_id
       FROM   xxcos_edi_headers  head
-      WHERE  head.data_type_code  = lv_param1
+-- ******************** 2009/06/29 Var.1.5 T.Tominaga MOD START  ******************************************
+--      WHERE  head.data_type_code  = lv_param1
+      WHERE  head.data_type_code  IN ( cv_data_type_32, cv_data_type_33 )
+-- ******************** 2009/06/29 Var.1.5 T.Tominaga MOD END    ******************************************
         AND  NVL(head.shop_delivery_date,
              NVL(head.center_delivery_date,
              NVL(head.order_date, TRUNC(head.data_creation_date_edi_data))))
@@ -5128,7 +5191,10 @@ AS
     --==============================================================
     -- EDIヘッダ情報ＴＢＬカーソル検索
     --==============================================================
-    OPEN headers_cur( gv_run_data_type_code );
+-- ******************** 2009/06/29 Var.1.5 T.Tominaga MOD START  ******************************************
+--    OPEN headers_cur( gv_run_data_type_code );
+    OPEN headers_cur;
+-- ******************** 2009/06/29 Var.1.5 T.Tominaga MOD END    ******************************************
     <<header_loop>>
     LOOP
       FETCH headers_cur INTO lt_edi_header_info_id;
@@ -5241,7 +5307,10 @@ AS
       -- EDIヘッダ情報ＴＢＬ削除 (店舗納入日、センター納入日、発注日、データ作成日)
       --==============================================================
       DELETE FROM   xxcos_edi_headers  head
-      WHERE  head.data_type_code  = gv_run_data_type_code
+-- ******************** 2009/06/29 Var.1.5 T.Tominaga MOD START  ******************************************
+--      WHERE  head.data_type_code  = gv_run_data_type_code
+      WHERE  head.data_type_code  IN ( cv_data_type_32, cv_data_type_33 )
+-- ******************** 2009/06/29 Var.1.5 T.Tominaga MOD END    ******************************************
         AND  NVL(head.shop_delivery_date,
              NVL(head.center_delivery_date,
              NVL(head.order_date, TRUNC(head.data_creation_date_edi_data))))
@@ -5327,11 +5396,17 @@ AS
     -- 情報削除期間が過ぎたデータ
     -- (店舗納入日、センター納入日、発注日、データ作成日)
     -- ===============================
-    CURSOR headers_lock_cur(lv_param1 IN NUMBER)
+-- ******************** 2009/06/29 Var.1.5 T.Tominaga MOD START  ******************************************
+--    CURSOR headers_lock_cur(lv_param1 IN NUMBER)
+    CURSOR headers_lock_cur
+-- ******************** 2009/06/29 Var.1.5 T.Tominaga MOD END    ******************************************
     IS
       SELECT head.edi_header_info_id
       FROM   xxcos_edi_headers  head
-      WHERE  head.data_type_code  = lv_param1
+-- ******************** 2009/06/29 Var.1.5 T.Tominaga MOD START  ******************************************
+--      WHERE  head.data_type_code  = lv_param1
+      WHERE  head.data_type_code  IN ( cv_data_type_32, cv_data_type_33 )
+-- ******************** 2009/06/29 Var.1.5 T.Tominaga MOD END    ******************************************
         AND  NVL(head.shop_delivery_date,
              NVL(head.center_delivery_date,
              NVL(head.order_date, TRUNC(head.data_creation_date_edi_data))))
@@ -5358,7 +5433,10 @@ AS
       --==============================================================
       -- EDIヘッダ情報ＴＢＬカーソル
       --==============================================================
-      OPEN  headers_lock_cur( gv_run_data_type_code );
+-- ******************** 2009/06/29 Var.1.5 T.Tominaga MOD START  ******************************************
+--      OPEN  headers_lock_cur( gv_run_data_type_code );
+      OPEN  headers_lock_cur;
+-- ******************** 2009/06/29 Var.1.5 T.Tominaga MOD END    ******************************************
       <<header_loop>>
       LOOP
         FETCH headers_lock_cur INTO lt_edi_header_info_id;
@@ -5580,7 +5658,10 @@ AS
     -- *** ローカル・カーソル ***
     --* -------------------------------------------------------------------------------------------
     -- EDI納品返品情報ワークテーブルデータ抽出
-    CURSOR get_edideli_work_data_cur( lv_cur_param1 CHAR, lv_cur_param2 CHAR, lv_cur_param3 CHAR, lv_cur_param4 CHAR )
+-- ******************** 2009/06/29 Var.1.5 T.Tominaga MOD START  ******************************************
+--    CURSOR get_edideli_work_data_cur( lv_cur_param1 CHAR, lv_cur_param2 CHAR, lv_cur_param3 CHAR, lv_cur_param4 CHAR )
+    CURSOR get_edideli_work_data_cur( lv_cur_param1 CHAR, lv_cur_param3 CHAR, lv_cur_param4 CHAR )
+-- ******************** 2009/06/29 Var.1.5 T.Tominaga MOD END    ******************************************
     IS
     SELECT
       edideliwk.delivery_return_work_id       delivery_return_work_id,     -- 納品返品ワークID
@@ -5937,11 +6018,19 @@ AS
     FROM    xxcos_edi_delivery_work    edideliwk                           -- ED納品返品情報ワークテーブル
     WHERE   edideliwk.if_file_name     = lv_cur_param4          -- インタフェースファイル名
       AND   edideliwk.err_status       =    lv_cur_param1                  -- ステータス
-      AND   edideliwk.data_type_code   = lv_cur_param2          -- データ種コード
+-- ******************** 2009/06/29 Var.1.5 T.Tominaga MOD START  ******************************************
+--      AND   edideliwk.data_type_code   = lv_cur_param2          -- データ種コード
+      AND   edideliwk.data_type_code   IN ( cv_data_type_32, cv_data_type_33 )  -- データ種コード
+-- ******************** 2009/06/29 Var.1.5 T.Tominaga MOD END    ******************************************
       AND (( lv_cur_param3 IS NOT NULL
         AND   edideliwk.edi_chain_code   =    lv_cur_param3 )              -- EDIチェーン店コード
         OR ( lv_cur_param3 IS NULL ))
-    ORDER BY edideliwk.invoice_number,edideliwk.line_no                    -- ソート条件（伝票番号、行NO）
+-- ******************** 2009/06/29 Var.1.5 T.Tominaga MOD START  ******************************************
+--    ORDER BY edideliwk.invoice_number,edideliwk.line_no                    -- ソート条件（伝票番号、行NO）
+    ORDER BY edideliwk.shop_code,                                          -- ソート条件（店コード）
+             edideliwk.invoice_number,                                     -- ソート条件（伝票番号）
+             edideliwk.line_no                                             -- ソート条件（行NO）
+-- ******************** 2009/06/29 Var.1.5 T.Tominaga MOD END    ******************************************
     FOR UPDATE OF
             edideliwk.delivery_return_work_id NOWAIT;
     -- *** ローカル・レコード ***
@@ -5965,10 +6054,14 @@ AS
     --
     IF  ( iv_run_class  =  gv_run_class_name1 )  THEN     -- 実行区分：「新規」
       lv_cur_param1 := gv_run_class_name1;       -- 抽出カーソル用引渡しパラメタ１
-      lv_cur_param2 := gv_run_data_type_code;    -- 抽出カーソル用引渡しパラメタ２
+-- ******************** 2009/06/29 Var.1.5 T.Tominaga DEL START  ******************************************
+--      lv_cur_param2 := gv_run_data_type_code;    -- 抽出カーソル用引渡しパラメタ２
+-- ******************** 2009/06/29 Var.1.5 T.Tominaga DEL END    ******************************************
     ELSIF  ( iv_run_class  =  gv_run_class_name2 )  THEN   -- 実行区分：「再実施」
       lv_cur_param1 := gv_run_class_name2;       -- 抽出カーソル用引渡しパラメタ１
-      lv_cur_param2 := gv_run_data_type_code;    -- 抽出カーソル用引渡しパラメタ２
+-- ******************** 2009/06/29 Var.1.5 T.Tominaga DEL START  ******************************************
+--      lv_cur_param2 := gv_run_data_type_code;    -- 抽出カーソル用引渡しパラメタ２
+-- ******************** 2009/06/29 Var.1.5 T.Tominaga DEL END    ******************************************
     END IF;
     --
     lv_cur_param3 := iv_edi_chain_code;          -- 抽出カーソル用引渡しパラメタ３
@@ -5979,7 +6072,10 @@ AS
     --==============================================================
     BEGIN
       -- カーソルOPEN
-      OPEN  get_edideli_work_data_cur( lv_cur_param1, lv_cur_param2, lv_cur_param3, lv_cur_param4 );
+-- ******************** 2009/06/29 Var.1.5 T.Tominaga MOD START  ******************************************
+--      OPEN  get_edideli_work_data_cur( lv_cur_param1, lv_cur_param2, lv_cur_param3, lv_cur_param4 );
+      OPEN  get_edideli_work_data_cur( lv_cur_param1, lv_cur_param3, lv_cur_param4 );
+-- ******************** 2009/06/29 Var.1.5 T.Tominaga MOD END    ******************************************
       --
       -- バルクフェッチ
       FETCH get_edideli_work_data_cur BULK COLLECT INTO gt_edideli_work_data;
@@ -6309,24 +6405,26 @@ AS
        AND (( xlvv.end_date_active   IS NULL )
        OR   ( xlvv.end_date_active   >= cd_process_date ))  -- 業務日付がFROM-TO内
        AND  rownum = 1;
-    --* --------------------------------------------------------------
-    -- データ種コード：「返品確定」
-    --* --------------------------------------------------------------
-    gv_run_data_type_code :=  xxccp_common_pkg.get_msg(
-                          iv_application        =>  cv_application,
-                          iv_name               =>  cv_msg_data_type_code
-                          );
---
-    SELECT  xlvv.meaning
-      INTO  gv_run_data_type_code
-      FROM  xxcos_lookup_values_v  xlvv
-     WHERE  xlvv.lookup_type   = cv_lookup_type3 -- ルックアップ.タイプ
-       AND  xlvv.description   = gv_run_data_type_code
-       AND (( xlvv.start_date_active IS NULL )
-       OR   ( xlvv.start_date_active <= cd_process_date ))
-       AND (( xlvv.end_date_active   IS NULL )
-       OR   ( xlvv.end_date_active   >= cd_process_date ))  -- 業務日付がFROM-TO内
-       ;
+-- ******************** 2009/06/29 Var.1.5 T.Tominaga DEL START  ******************************************
+--    --* --------------------------------------------------------------
+--    -- データ種コード：「返品確定」
+--    --* --------------------------------------------------------------
+--    gv_run_data_type_code :=  xxccp_common_pkg.get_msg(
+--                         iv_application        =>  cv_application,
+--                          iv_name               =>  cv_msg_data_type_code
+--                          );
+----
+--    SELECT  xlvv.meaning
+--      INTO  gv_run_data_type_code
+--      FROM  xxcos_lookup_values_v  xlvv
+--     WHERE  xlvv.lookup_type   = cv_lookup_type3 -- ルックアップ.タイプ
+--       AND  xlvv.description   = gv_run_data_type_code
+--       AND (( xlvv.start_date_active IS NULL )
+--       OR   ( xlvv.start_date_active <= cd_process_date ))
+--       AND (( xlvv.end_date_active   IS NULL )
+--       OR   ( xlvv.end_date_active   >= cd_process_date ))  -- 業務日付がFROM-TO内
+--       ;
+-- ******************** 2009/06/29 Var.1.5 T.Tominaga DEL END    ******************************************
 --
     --==============================================================
     -- プログラム初期処理(A-0) (コンカレントプログラム入力項目を出力)

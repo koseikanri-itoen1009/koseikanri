@@ -1,4 +1,4 @@
-CREATE OR REPLACE PACKAGE XXCOS011A01C
+CREATE OR REPLACE PACKAGE APPS.XXCOS011A01C
 AS
 /*****************************************************************************************
  * Copyright(c)Sumisho Computer Systems Corporation, 2008. All rights reserved.
@@ -32,6 +32,9 @@ AS
  *                                      [T1_1164]oracleエラー対応
  *  2009/06/04    1.4   T.Kitajima      [T1_1289]処理後件数対応
  *  2009/06/15    1.5   M.Sano          [T1_0700]「gt_err_edideli_work_data」配列の初期化対応
+ *  2009/06/29    1.5   T.Tominaga      [T1_0022, T1_0023, T1_0024, T1_0042, T1_0201]
+ *                                      ・ブレイク条件に店舗コードを追加
+ *                                      ・各種チェック処理でエラーにしない対応
  *
  *****************************************************************************************/
 --
