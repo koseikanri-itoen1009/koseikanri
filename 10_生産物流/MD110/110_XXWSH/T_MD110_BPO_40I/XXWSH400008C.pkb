@@ -7,7 +7,7 @@ AS
  * Description      : 生産物流（出荷）
  * MD.050           : 出荷依頼 T_MD050_BPO_401
  * MD.070           : 出荷調整表 T_MD070_BPO_40I
- * Version          : 1.0
+ * Version          : 1.1
  *
  * Program List
  * ---------------------------- ----------------------------------------------------------
@@ -40,6 +40,7 @@ AS
  *  Date          Ver.  Editor                Description
  * ------------- ----- --------------------- -------------------------------------------------
  *  2008/04/10    1.0   Masakazu Yamashita    新規作成
+ *  2008/06/19    1.1   Yasuhisa Yamamoto     システムテスト障害対応
  *
  *****************************************************************************************/
 --
@@ -780,12 +781,17 @@ AS
             gt_xml_data_table(gl_xml_idx).tag_type  := 'D' ;
             gt_xml_data_table(gl_xml_idx).tag_value := ln_plan_monthly_total
                                                                   - ln_confirm_monthly_total ;
+-- 2008/06/19 Y.Yamamoto V1.1 Update Start
+-- 0除算対応
             -- 拠点計達成率（月間）
+          IF (ln_plan_monthly_total <> 0) THEN
             gl_xml_idx := gt_xml_data_table.COUNT + 1 ;
             gt_xml_data_table(gl_xml_idx).tag_name  := 'tassei_ritu_total' ;
             gt_xml_data_table(gl_xml_idx).tag_type  := 'D' ;
             gt_xml_data_table(gl_xml_idx).tag_value := TRUNC(ln_confirm_monthly_total /
                                                                   ln_plan_monthly_total * 100, 2) ;
+          END IF;
+-- 2008/06/19 Y.Yamamoto V1.1 Update End
           END IF;
           -- -----------------------------------------------------
           -- 集計値クリア処理

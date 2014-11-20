@@ -1,12 +1,14 @@
 /*============================================================================
 * ファイル名 : XxinvMovementResultsAMImpl
 * 概要説明   : 入出庫実績要約:検索アプリケーションモジュール
-* バージョン : 1.0
+* バージョン : 1.3
 *============================================================================
 * 修正履歴
 * 日付       Ver. 担当者       修正内容
 * ---------- ---- ------------ ----------------------------------------------
 * 2008-03-12 1.0  大橋孝郎     新規作成
+* 2008-06-11 1.2  大橋孝郎     不具合指摘事項修正
+* 2008-06-18 1.3  大橋孝郎     不具合指摘事項修正
 *============================================================================
 */
 package itoen.oracle.apps.xxinv.xxinv510001j.server;
@@ -36,7 +38,7 @@ import itoen.oracle.apps.xxinv.util.XxinvConstants;
 /***************************************************************************
  * 入出庫実績要約:検索アプリケーションモジュールです。
  * @author  ORACLE 大橋 孝郎
- * @version 1.0
+ * @version 1.3
  ***************************************************************************
  */
 public class XxinvMovementResultsAMImpl extends XxcmnOAApplicationModuleImpl 
@@ -981,8 +983,8 @@ public class XxinvMovementResultsAMImpl extends XxcmnOAApplicationModuleImpl
     Date actualArrivalDate = (Date)row.getAttribute("ActualArrivalDate"); // 着日(実績)
 
     
-    // 実績日未入力チェック
-    String retCode = (String)chkActualDateUninput(vo, row, exeType, exceptions);
+    // 未入力チェック
+    String retCode = (String)chkUninput(vo, row, exeType, exceptions);
 
     // 未入力チェックが正常終了の場合
     if (XxcmnConstants.STRING_TRUE.equals(retCode))
@@ -1061,8 +1063,9 @@ public class XxinvMovementResultsAMImpl extends XxcmnOAApplicationModuleImpl
     String weightCapacityClass  = (String)row.getAttribute("WeightCapacityClass");  // 重力容積区分
     Date actualShipDate    = (Date)row.getAttribute("ActualShipDate");    // 出庫日(実績)
 
+    // mod start ver1.3
     // 指示あり新規登録の場合
-    if (XxinvConstants.INPUT_FLAG_1.equals(exeType))
+    /*if (XxinvConstants.INPUT_FLAG_1.equals(exeType))
     {
       // 実績データ区分VO取得
       OAViewObject actualVo = getXxinvMovResultsSearchVO1();
@@ -1106,13 +1109,14 @@ public class XxinvMovementResultsAMImpl extends XxcmnOAApplicationModuleImpl
                                 null));
         }
         
-      }
+      }*/
 
     // 指示なし新規登録の場合
-    } else if (XxinvConstants.INPUT_FLAG_2.equals(exeType))
+    //} else if (XxinvConstants.INPUT_FLAG_2.equals(exeType))
+    if (XxinvConstants.INPUT_FLAG_2.equals(exeType))
     {
       // 出庫元保管場所が未入力の場合
-      if (XxcmnUtility.isBlankOrNull(shippedLocat))
+      /*if (XxcmnUtility.isBlankOrNull(shippedLocat))
       {
         // メッセージ取得
         exceptions.add( new OAAttrValException(
@@ -1138,9 +1142,11 @@ public class XxinvMovementResultsAMImpl extends XxcmnOAApplicationModuleImpl
                               XxcmnConstants.APPL_XXINV,
                               XxinvConstants.XXINV10064,
                               null));
-      }
+      }*/
       // 出庫元、入庫先どちらも入力済かつ運賃区分ONの場合
-      if ((exceptions.size() == 0) && ("1".equals(freightChargeClass)))
+      //if ((exceptions.size() == 0) && ("1".equals(freightChargeClass)))
+      if ("1".equals(freightChargeClass))
+      // mod start ver1.3
       {
         // 最大配送区分を算出する
         HashMap paramsRet = XxinvUtility.getMaxShipMethod(
@@ -1179,7 +1185,7 @@ public class XxinvMovementResultsAMImpl extends XxcmnOAApplicationModuleImpl
   } // chkLocat
 
   /***************************************************************************
-   * 入出庫実績ヘッダ画面の出庫日(実績)、着日(実績)の未入力チェックを行います。
+   * 入出庫実績必須項目の未入力チェックを行います。
    * @param vo         チェック対象VO
    * @param row        チェック対象行
    * @param exeType    指示あり:1、指示無し:2
@@ -1188,7 +1194,7 @@ public class XxinvMovementResultsAMImpl extends XxcmnOAApplicationModuleImpl
    * @throws OAException - OA例外
    ***************************************************************************
    */
-  public String chkActualDateUninput(
+  public String chkUninput(
     OAViewObject vo,
     OARow row,
     String exeType,
@@ -1199,6 +1205,11 @@ public class XxinvMovementResultsAMImpl extends XxcmnOAApplicationModuleImpl
     // 実績日を取得
     Date actualShipDate    = (Date)row.getAttribute("ActualShipDate");    // 出庫日(実績)
     Date actualArrivalDate = (Date)row.getAttribute("ActualArrivalDate"); // 着日(実績)
+    // add start ver1.3
+    // 保管場所を取得
+    String shippedLocat    = (String)row.getAttribute("ShippedLocatCode"); // 出庫元保管場所
+    String shipToLocat     = (String)row.getAttribute("ShipToLocatCode");  // 入庫先保管場所
+    // add end ver1.3
     
 
     // 指示あり新規登録の場合
@@ -1213,6 +1224,23 @@ public class XxinvMovementResultsAMImpl extends XxcmnOAApplicationModuleImpl
       // 出庫実績メニューから起動した場合
       if ("1".equals(actualFlg))
       {
+        // add start ver1.3
+        // 出庫元保管場所が未入力の場合
+        if (XxcmnUtility.isBlankOrNull(shippedLocat))
+        {
+          // メッセージ取得
+          exceptions.add( new OAAttrValException(
+                                OAAttrValException.TYP_VIEW_OBJECT,
+                                vo.getName(),
+                                row.getKey(),
+                                "ShippedLocatCode",
+                                shippedLocat,
+                                XxcmnConstants.APPL_XXINV,
+                                XxinvConstants.XXINV10064,
+                                null));
+          retCode = XxcmnConstants.STRING_FALSE;
+        }
+        // add end ver1.3
         // 出庫日(実績)が未入力の場合
         if (XxcmnUtility.isBlankOrNull(actualShipDate))
         {
@@ -1234,6 +1262,23 @@ public class XxinvMovementResultsAMImpl extends XxcmnOAApplicationModuleImpl
       // 入庫実績メニューから起動した場合
       } else if ("2".equals(actualFlg))
       {
+        // add start ver1.3
+        // 入庫先保管場所が未入力の場合
+        if (XxcmnUtility.isBlankOrNull(shipToLocat))
+        {
+          // メッセージ取得
+          exceptions.add( new OAAttrValException(
+                                OAAttrValException.TYP_VIEW_OBJECT,
+                                vo.getName(),
+                                row.getKey(),
+                                "ShipToLocatCode",
+                                shipToLocat,
+                                XxcmnConstants.APPL_XXINV,
+                                XxinvConstants.XXINV10064,
+                                null));
+          retCode = XxcmnConstants.STRING_FALSE;
+        }
+        // add end ver1.3
         // 着日(実績)が未入力の場合
         if (XxcmnUtility.isBlankOrNull(actualArrivalDate))
         {
@@ -1251,12 +1296,44 @@ public class XxinvMovementResultsAMImpl extends XxcmnOAApplicationModuleImpl
                                 tokens));
           retCode = XxcmnConstants.STRING_FALSE;
         }
-        
       }
       
     // 指示なし新規登録の場合
     } else
     {
+      // add start ver1.3
+      // 出庫元保管場所が未入力の場合
+      if (XxcmnUtility.isBlankOrNull(shippedLocat))
+      {
+        // メッセージ取得
+        exceptions.add( new OAAttrValException(
+                              OAAttrValException.TYP_VIEW_OBJECT,
+                              vo.getName(),
+                              row.getKey(),
+                              "ShippedLocatCode",
+                              shippedLocat,
+                              XxcmnConstants.APPL_XXINV,
+                              XxinvConstants.XXINV10064,
+                              null));
+        retCode = XxcmnConstants.STRING_FALSE;
+
+      }
+      // 入庫先保管場所が未入力の場合
+      if (XxcmnUtility.isBlankOrNull(shipToLocat))
+      {
+        // メッセージ取得
+        exceptions.add( new OAAttrValException(
+                              OAAttrValException.TYP_VIEW_OBJECT,
+                              vo.getName(),
+                              row.getKey(),
+                              "ShipToLocatCode",
+                              shipToLocat,
+                              XxcmnConstants.APPL_XXINV,
+                              XxinvConstants.XXINV10064,
+                              null));
+        retCode = XxcmnConstants.STRING_FALSE;
+      }
+      // add end ver1.3
       // 出庫日(実績)が未入力の場合
       if (XxcmnUtility.isBlankOrNull(actualShipDate))
       {
@@ -1275,7 +1352,11 @@ public class XxinvMovementResultsAMImpl extends XxcmnOAApplicationModuleImpl
         retCode = XxcmnConstants.STRING_FALSE;
 
       // 着日(実績)が未入力の場合
-      } else if (XxcmnUtility.isBlankOrNull(actualArrivalDate))
+      // mod start ver1.3
+      //} else if (XxcmnUtility.isBlankOrNull(actualArrivalDate))
+      }
+      if (XxcmnUtility.isBlankOrNull(actualArrivalDate))
+      // mod end ver1.3
       {
         // エラーメッセージトークン取得
         MessageToken[] tokens = new MessageToken[1];
@@ -1294,7 +1375,7 @@ public class XxinvMovementResultsAMImpl extends XxcmnOAApplicationModuleImpl
     }
 
     return retCode;
-  } // chkActualDateUninput
+  } // chkUninput
 
   /***************************************************************************
    * 入出庫実績ヘッダ画面の未来日のチェックを行います。
@@ -2037,7 +2118,7 @@ public class XxinvMovementResultsAMImpl extends XxcmnOAApplicationModuleImpl
     } else
     {
       OARow resultsSearchRow = (OARow)resultsSearchVo.first();
-      resultsSearchRow.setAttribute("ExeFlag", null);
+      resultsSearchRow.setAttribute("ExeFlag", "1");
     }
   } // initializeLine
 
@@ -2228,12 +2309,24 @@ public class XxinvMovementResultsAMImpl extends XxcmnOAApplicationModuleImpl
         {
           i++;
           row.setAttribute("LineNumber", new Number(i));
-          
         }
       }
   
       vo.next();
     }
+    // mod start ver1.3
+    // 品目未入力チェック
+    if (i == 0)
+    {
+      // トークン生成
+      MessageToken[] tokens = { new MessageToken(XxinvConstants.TOKEN_ITEM, XxinvConstants.TOKEN_NAME_ITEM) };
+      // エラーメッセージ出力
+      throw new OAException(
+                  XxcmnConstants.APPL_XXINV,
+                  XxinvConstants.XXINV10061,
+                  tokens);
+    }
+    // mod end ver1.3
   } // checkLine
 
   /***************************************************************************

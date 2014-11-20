@@ -127,8 +127,8 @@
                                     </oa:cellFormat>
                                     <oa:cellFormat id="MovCell0502" columnSpan="2">
                                        <ui:contents>
-                                          <oa:messageStyledText id="TxtshippedLocatName" styleClass="LegendText" viewName="XxinvMovResultsHdSearchVO1" viewAttr="ShipLocationName" shortDesc="出庫元名称"/>
-                                          <oa:formValue id="fTxtshippedLocatName" viewName="XxinvMovResultsHdSearchVO1" viewAttr="ShipLocationName"/>
+                                          <oa:messageStyledText id="TxtshippedLocatName" styleClass="LegendText" viewName="XxinvMovementResultsHdVO1" viewAttr="Description1" shortDesc="出庫元名称"/>
+                                          <oa:formValue id="fTxtshippedLocatName" viewName="XxinvMovementResultsHdVO1" viewAttr="Description1"/>
                                        </ui:contents>
                                     </oa:cellFormat>
                                  </ui:contents>
@@ -155,8 +155,8 @@
                                     </oa:cellFormat>
                                     <oa:cellFormat id="MovCell0602" columnSpan="2">
                                        <ui:contents>
-                                          <oa:messageStyledText id="TxtShipToLocatName" viewName="XxinvMovResultsHdSearchVO1" viewAttr="ArrivalLocationName" styleClass="LegendText" shortDesc="入庫先名称"/>
-                                          <oa:formValue id="fTxtShipToLocatName" viewName="XxinvMovResultsHdSearchVO1" viewAttr="ArrivalLocationName"/>
+                                          <oa:messageStyledText id="TxtShipToLocatName" viewName="XxinvMovementResultsHdVO1" viewAttr="Description2" styleClass="LegendText" shortDesc="入庫先名称"/>
+                                          <oa:formValue id="fTxtShipToLocatName" viewName="XxinvMovementResultsHdVO1" viewAttr="Description2"/>
                                        </ui:contents>
                                     </oa:cellFormat>
                                  </ui:contents>
@@ -400,8 +400,10 @@
                                           <oa:messageLovInput id="TxtWeightCapacityCode" externalListOfValues="/itoen/oracle/apps/xxinv/lov/webui/WeightCapacityClassLovRN" styleClass="LegendText" viewName="XxinvMovementResultsHdVO1" viewAttr="WeightCapacityClassName" readOnly="${oa.XxinvMovementResultsHdPVO1.WeightCapacityClassReadOnly}" shortDesc="重量容積区分">
                                              <lovMappings>
                                                 <lovMap id="WeightCapacityLovMap" lovItem="WeightCapacityClass" resultTo="TxtWeightCapacityCode" criteriaFrom="TxtWeightCapacityCode"/>
+                                                <lovMap id="WeightCapacityCodeLovMap" lovItem="WeightCapacityClassCode" resultTo="WeightCapacityCode"/>
                                              </lovMappings>
                                           </oa:messageLovInput>
+                                          <oa:formValue id="WeightCapacityCode" viewName="XxinvMovementResultsHdVO1" viewAttr="WeightCapacityClass"/>
                                        </ui:contents>
                                     </oa:cellFormat>
                                  </ui:contents>

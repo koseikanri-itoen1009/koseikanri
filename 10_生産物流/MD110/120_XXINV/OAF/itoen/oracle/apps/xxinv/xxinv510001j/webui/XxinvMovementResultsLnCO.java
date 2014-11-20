@@ -1,12 +1,14 @@
 /*============================================================================
 * ファイル名 : XxinvMovementResultsLnCO
 * 概要説明   : 入出庫実績明細:検索コントローラ
-* バージョン : 1.0
+* バージョン : 1.3
 *============================================================================
 * 修正履歴
 * 日付       Ver. 担当者       修正内容
 * ---------- ---- ------------ ----------------------------------------------
 * 2008-03-18 1.0  大橋孝郎     新規作成
+* 2008-06-11 1.2  大橋孝郎     不具合指摘事項修正
+* 2008-06-18 1.3  大橋孝郎     不具合指摘事項修正
 *============================================================================
 */
 package itoen.oracle.apps.xxinv.xxinv510001j.webui;
@@ -33,7 +35,7 @@ import itoen.oracle.apps.xxcmn.util.XxcmnConstants;
 /***************************************************************************
  * 入出庫実績明細:検索コントローラです。
  * @author  ORACLE 大橋 孝郎
- * @version 1.0
+ * @version 1.3
  ***************************************************************************
  */
 public class XxinvMovementResultsLnCO extends XxcmnOAControllerImpl
@@ -63,47 +65,49 @@ public class XxinvMovementResultsLnCO extends XxcmnOAControllerImpl
       // 前画面URL取得
       String prevUrl = pageContext.getParameter(XxinvConstants.URL_PARAM_PREV_URL);
 
+      // mod start ver1.3
       // 前画面が出庫ロット明細、入庫ロット明細以外の場合、初期化を実施
-      if (!XxinvConstants.URL_XXINV510002J_1.equals(prevUrl)
-             && !XxinvConstants.URL_XXINV510002J_2.equals(prevUrl))
+      //if (!XxinvConstants.URL_XXINV510002J_1.equals(prevUrl)
+             //&& !XxinvConstants.URL_XXINV510002J_2.equals(prevUrl))
+      //{
+      // 前画面の値取得
+      String peopleCode  = pageContext.getParameter(XxinvConstants.URL_PARAM_PEOPLE_CODE);   // 従業員区分
+      String actualFlag  = pageContext.getParameter(XxinvConstants.URL_PARAM_ACTUAL_FLAG);   // 実績データ区分
+      String productFlag = pageContext.getParameter(XxinvConstants.URL_PARAM_PRODUCT_FLAG); // 製品識別区分
+      String searchHdrId = pageContext.getParameter(XxinvConstants.URL_PARAM_SEARCH_MOV_ID); // ヘッダID
+      String updateFlag  = pageContext.getParameter(XxinvConstants.URL_PARAM_UPDATE_FLAG); // 更新フラグ
+
+      // パラメータ用HashMap設定
+      HashMap searchParams = new HashMap();
+      searchParams.put(XxinvConstants.URL_PARAM_PEOPLE_CODE, peopleCode);
+      searchParams.put(XxinvConstants.URL_PARAM_ACTUAL_FLAG, actualFlag);
+      searchParams.put(XxinvConstants.URL_PARAM_PRODUCT_FLAG, productFlag);
+      searchParams.put(XxinvConstants.URL_PARAM_SEARCH_MOV_ID, searchHdrId);
+      searchParams.put(XxinvConstants.URL_PARAM_UPDATE_FLAG, updateFlag);
+
+      // 引数設定
+      Serializable setParams[] = { searchParams };
+      // initializeの引数型設定
+      Class[] parameterTypes = { HashMap.class };
+
+      // 適用ボタン押下時
+      if (pageContext.getParameter("Go") != null)
       {
-        // 前画面の値取得
-        String peopleCode  = pageContext.getParameter(XxinvConstants.URL_PARAM_PEOPLE_CODE);   // 従業員区分
-        String actualFlag  = pageContext.getParameter(XxinvConstants.URL_PARAM_ACTUAL_FLAG);   // 実績データ区分
-        String productFlag = pageContext.getParameter(XxinvConstants.URL_PARAM_PRODUCT_FLAG); // 製品識別区分
-        String searchHdrId = pageContext.getParameter(XxinvConstants.URL_PARAM_SEARCH_MOV_ID); // ヘッダID
-        String updateFlag  = pageContext.getParameter(XxinvConstants.URL_PARAM_UPDATE_FLAG); // 更新フラグ
-
-        // パラメータ用HashMap設定
-        HashMap searchParams = new HashMap();
-        searchParams.put(XxinvConstants.URL_PARAM_PEOPLE_CODE, peopleCode);
-        searchParams.put(XxinvConstants.URL_PARAM_ACTUAL_FLAG, actualFlag);
-        searchParams.put(XxinvConstants.URL_PARAM_PRODUCT_FLAG, productFlag);
-        searchParams.put(XxinvConstants.URL_PARAM_SEARCH_MOV_ID, searchHdrId);
-        searchParams.put(XxinvConstants.URL_PARAM_UPDATE_FLAG, updateFlag);
-
-        // 引数設定
-        Serializable setParams[] = { searchParams };
-        // initializeの引数型設定
-        Class[] parameterTypes = { HashMap.class };
-
-        // 適用ボタン押下時
-        if (pageContext.getParameter("Go") != null)
-        {
-          // 何も処理しない
-        } else
-        {
-          // VO初期化処理
-          am.invokeMethod("initializeLine", setParams, parameterTypes);
-        }
-
-        // 更新フラグがNULL以外の場合
-        if (!XxcmnUtility.isBlankOrNull(updateFlag))
-        {
-          // 検索処理
-          am.invokeMethod("doSearchLine", setParams, parameterTypes);
-        }
+        // 何も処理しない
+      } else
+      {
+        // VO初期化処理
+        am.invokeMethod("initializeLine", setParams, parameterTypes);
       }
+
+      // 更新フラグがNULL以外の場合
+      if (!XxcmnUtility.isBlankOrNull(updateFlag))
+      {
+        // 検索処理
+        am.invokeMethod("doSearchLine", setParams, parameterTypes);
+      }
+      //}
+      // mod start ver1.3
 
     // 【共通処理】ブラウザ「戻る」ボタンチェック　戻るボタンを押下した場合
     } else

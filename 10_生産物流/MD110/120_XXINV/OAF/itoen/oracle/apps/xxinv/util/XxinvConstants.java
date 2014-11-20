@@ -1,12 +1,13 @@
 /*============================================================================
 * ファイル名 : XxinvConstants
 * 概要説明   : INV共通定数
-* バージョン : 1.0
+* バージョン : 1.1
 *============================================================================
 * 修正履歴
 * 日付       Ver. 担当者       修正内容
 * ---------- ---- ------------ ----------------------------------------------
 * 2008-02-21 1.0  高梨雅史     新規作成
+* 2008-06-18 1.1  大橋孝郎     不具合指摘事項修正
 *============================================================================
 */
 package itoen.oracle.apps.xxinv.util;
@@ -14,7 +15,7 @@ import oracle.jbo.domain.Number;
 /***************************************************************************
  * INV共通定数クラスです。
  * @author  ORACLE 高梨雅史
- * @version 1.0
+ * @version 1.1
  ***************************************************************************
  */
 public class XxinvConstants 
@@ -165,6 +166,10 @@ public class XxinvConstants
   public static final String XXINV10161   = "APP-XXINV-10161";
   /** メッセージ：APP-XXINV-10165 ロットステータスエラーメッセージ */
   public static final String XXINV10165 = "APP-XXINV-10165";
+  // add start ver1.1
+  /** メッセージ：APP-XXINV-10061 必須チェックエラーメッセージ */
+  public static final String XXINV10061 = "APP-XXINV-10061";
+  // add end ver1.1
   /** トークン：SHIP_DATE */
   public static final String TOKEN_SHIP_DATE       = "SHIP_DATE";
   /** トークン：ARRIVAL_DATE */
@@ -195,6 +200,10 @@ public class XxinvConstants
   public static final String TOKEN_NAME_MOV_ACTUAL_MAKE = "移動入出庫実績登録処理";
   /** トークン名称：最大配送区分 */
   public static final String TOKEN_NAME_MAX_SHIP_METHOD = "最大配送区分";
+  // add start ver1.1
+  /** トークン名称：品目 */
+  public static final String TOKEN_NAME_ITEM = "品目";
+  // add end ver1.1
   /** ページタイトルの固定部分 (「ファイルアップロード：　」)*/
   public static final String DISP_TEXT = "ファイルアップロード：";
   /** 参照タイプ タイプ名称 */

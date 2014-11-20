@@ -4,6 +4,7 @@
    <ui:contents>
       <oa:table id="WeightCapacityClassVO1" shortDesc="重量容積区分" amDefName="itoen.oracle.apps.xxinv.lov.server.LovAM" name="WeightCapacityClassLovRN">
          <ui:contents>
+            <oa:messageStyledText id="WeightCapacityClassCode" viewName="WeightCapacityClassVO1" viewAttr="LookupCode"/>
             <oa:messageStyledText id="WeightCapacityClass" viewName="WeightCapacityClassVO1" viewAttr="Meaning" prompt="重量容積区分名称" queryable="true"/>
          </ui:contents>
       </oa:table>
