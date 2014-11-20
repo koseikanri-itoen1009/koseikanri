@@ -1,0 +1,2 @@
+CREATE INDEX mrp.xxcop_mrp_schedule_dates_n07 ON mrp_schedule_dates (schedule_date,schedule_level) TABLESPACE apps_ts_tx_idx
+/
