@@ -33,6 +33,7 @@ AS
  *  2008/05/26   1.4   Kazuo.Kumamoto   変更要求##119対応
  *  2008/06/13   1.5   Yuko.Kawano      結合テスト不具合対応
  *  2008/06/25   1.6   S.Takemoto       変更要求##93対応
+ *  2008/09/03   1.7   N.Yoshida        PT対応(起票なし)
  *
  *****************************************************************************************/
 --
@@ -7346,7 +7347,8 @@ AS
     -- 検索条件.品目区分値              ⇒ 製品
     --===============================================================
     CURSOR cur_data_d2 IS
-      SELECT iiim.segment1,                                            -- 保管倉庫コード
+      -- 2008/09/03 PT対応(起票なし) N.Yoshida start
+      /*SELECT iiim.segment1,                                            -- 保管倉庫コード
              iiim.short_name,                                          -- 保管倉庫名
              iiim.inventory_location_id,                               -- 保管倉庫ID
              iiim.item_id,                                             -- 品目ID
@@ -7572,7 +7574,230 @@ AS
       AND    iiim.inventory_location_id = NVL(in_inventory_location_id, iiim.inventory_location_id)
       ORDER BY TO_NUMBER(iiim.item_no),
                iiim.attribute1,
+               iiim.attribute2;*/
+      SELECT iiim.segment1,                                            -- 保管倉庫コード
+             iiim.short_name,                                          -- 保管倉庫名
+             iiim.inventory_location_id,                               -- 保管倉庫ID
+             iiim.item_id,                                             -- 品目ID
+             iiim.item_no,                                             -- 品目コード
+             iiim.item_short_name,                                     -- 品目名
+             NVL(iiim.num_of_cases, 0),                                -- ケース入数
+             DECODE(iiim.lot_ctl, cv_lot_code0, NULL, iiim.lot_no),    -- ロットNo
+             iiim.lot_id,                                              -- ロットID
+             FND_DATE.STRING_TO_DATE(iiim.attribute1, 'YYYY/MM/DD'),   -- 製造年月日(DFF1)
+             FND_DATE.STRING_TO_DATE(iiim.attribute3, 'YYYY/MM/DD'),   -- 賞味期限(DFF3)
+             iiim.attribute2,                                          -- 固有記号(DFF2)
+             FND_DATE.STRING_TO_DATE(iiim.attribute4, 'YYYY/MM/DD'),   -- 初回納入日(DFF4)
+             FND_DATE.STRING_TO_DATE(iiim.attribute5, 'YYYY/MM/DD'),   -- 最終納入日(DFF5)
+             TO_NUMBER(iiim.attribute6),                               -- 在庫入数(DFF6)
+             TO_NUMBER(iiim.attribute7),                               -- 在庫単価(DFF7)
+             iiim.attribute8,                                          -- 受払先(DFF8)
+             iiim.vendor_short_name,                                   -- 受払先名
+             iiim.attribute9,                                          -- 仕入形態(DFF9)
+             iiim.meaning5,                                            -- 仕入形態内容
+             iiim.attribute10,                                         -- 茶期区分(DFF10)
+             iiim.meaning6,                                            -- 茶期区分内容
+             iiim.attribute11,                                         -- 年度(DFF11)
+             iiim.attribute12,                                         -- 産地(DFF12)
+             iiim.meaning7,                                            -- 産地内容
+             iiim.attribute13,                                         -- タイプ(DFF13)
+             iiim.meaning8,                                            -- タイプ内容
+             iiim.attribute14,                                         -- ランク1(DFF14)
+             iiim.attribute15,                                         -- ランク2(DFF15)
+             iiim.attribute19,                                         -- ランク3(DFF19)
+             iiim.attribute16,                                         -- 生産伝票区分(DFF16)
+             iiim.meaning3,                                            -- 生産伝票区分内容
+             iiim.attribute17,                                         -- ラインNo(DFF17)
+             iiim.routing_desc,                                        -- 工順摘要
+             iiim.attribute18,                                         -- 摘要(DFF18)
+             iiim.meaningxls,                                          -- ロットステータス内容
+             iiim.qt_inspect_req_no,                                   -- 品質検査依頼情報
+             iiim.meaningxqs,                                          -- 品質結果内容
+             NVL(ili.loct_onhand, 0),                                  -- 手持数量
+             get_inv_stock_vol(
+               iiim.inventory_location_id,
+               iiim.item_no,
+               iiim.item_id,
+               iiim.lot_id,
+               NVL(ili.loct_onhand, cn_zero)),                         -- 手持在庫数
+             0,                                                        -- 引当可能数
+             get_supply_stock_plan(
+               iiim.segment1,
+               iiim.inventory_location_id,
+               iiim.item_no,
+               iiim.item_id,
+               iiim.lot_no,
+               iiim.lot_id,
+               id_effective_date,
+               NVL(ili.loct_onhand, cn_zero)),                         -- 入庫予定数
+             get_take_stock_plan(
+               iiim.segment1,
+               iiim.inventory_location_id,
+               iiim.item_no,
+               iiim.item_id,
+               iiim.lot_id,
+               id_effective_date,
+               NVL(ili.loct_onhand, cn_zero)),                         -- 出庫予定数
+             iiim.created_by,                                          -- 作成者
+             iiim.creation_date,                                       -- 作成日
+             iiim.last_updated_by,                                     -- 最終更新者
+             iiim.last_update_date,                                    -- 最終更新日
+             iiim.last_update_login,                                   -- 最終更新ログイン
+             iiim.frequent_whse                                       -- 代表倉庫
+      FROM   ic_loct_inv                ili,     -- OPM手持数量
+             (SELECT xilv.segment1,              -- 保管倉庫
+                     xilv.short_name,            -- 保管倉庫名
+                     xilv.inventory_location_id, -- 保管倉庫ID
+                     xilv.mtl_organization_id,   -- 在庫組織ID
+                     xilv.frequent_whse,         -- 代表倉庫
+                     xilv.customer_stock_whse,   -- 倉庫名義
+                     ximv.item_id,               -- 品目ID
+                     ximv.item_short_name,       -- 品目略称
+                     ximv.parent_item_id,        -- 親品目ID
+                     ximv.item_no,               -- 品目コード
+                     ximv.lot_ctl,               -- ロット管理区分
+                     ximv.num_of_cases,          -- ケース入数
+                     ilm.lot_id,                 -- ロットID
+                     ilm.lot_no,                 -- ロットNo
+                     ilm.attribute1,
+                     ilm.attribute2,
+                     ilm.attribute3,
+                     ilm.attribute4,
+                     ilm.attribute5,
+                     ilm.attribute6,
+                     ilm.attribute7,
+                     ilm.attribute8,
+                     ilm.attribute9,
+                     ilm.attribute10,
+                     ilm.attribute11,
+                     ilm.attribute12,
+                     ilm.attribute13,
+                     ilm.attribute14,
+                     ilm.attribute15,
+                     ilm.attribute16,
+                     ilm.attribute17,
+                     ilm.attribute18,
+                     ilm.attribute19,
+                     ilm.attribute22,
+                     ilm.attribute23,
+                     xlvv_xl5.meaning meaning5,
+                     xlvv_xl6.meaning meaning6,
+                     xlvv_xl7.meaning meaning7,
+                     xlvv_xl8.meaning meaning8,
+                     xlvv_xl3.meaning meaning3,
+                     xvv.vendor_short_name,
+                     gr.routing_desc,
+                     xlvv_xls.meaning meaningxls,
+                     xqi.qt_inspect_req_no,
+                     xlvv_xqs.meaning meaningxqs,
+                     ilm.created_by,
+                     ilm.creation_date,
+                     ilm.last_updated_by,
+                     ilm.last_update_date,
+                     ilm.last_update_login
+              FROM   xxcmn_item_mst_v ximv,         -- OPM品目マスタ情報VIEW
+                     ic_lots_mst ilm,               -- OPMロットマスタ
+                     xxcmn_item_locations_v  xilv,  -- OPM保管場所情報VIEW
+                     xxcmn_item_categories5_v xicv,
+                     (SELECT xlvv.lookup_code,
+                             xlvv.meaning
+                      FROM   xxcmn_lookup_values_v xlvv
+                      WHERE  xlvv.lookup_type = cv_type_xxcmn_l05) xlvv_xl5,
+                                                    -- クイックコード(仕入形態内容)
+                     (SELECT xlvv.lookup_code,
+                             xlvv.meaning
+                      FROM   xxcmn_lookup_values_v xlvv
+                      WHERE  xlvv.lookup_type = cv_type_xxcmn_l06) xlvv_xl6,
+                                                    -- クイックコード(茶期区分内容)
+                     (SELECT xlvv.lookup_code,
+                             xlvv.meaning
+                     FROM   xxcmn_lookup_values_v xlvv
+                     WHERE  xlvv.lookup_type = cv_type_xxcmn_l07) xlvv_xl7,
+                                                    -- クイックコード(産地内容)
+                     (SELECT xlvv.lookup_code,
+                             xlvv.meaning
+                     FROM   xxcmn_lookup_values_v xlvv
+                     WHERE  xlvv.lookup_type = cv_type_xxcmn_l08) xlvv_xl8,
+                                                    -- クイックコード(タイプ内容)
+                     (SELECT xlvv.lookup_code,
+                             xlvv.meaning
+                     FROM   xxcmn_lookup_values_v xlvv
+                     WHERE  xlvv.lookup_type = cv_type_xxcmn_l03) xlvv_xl3,
+                                                    -- クイックコード(生産伝票区分内容)
+                     (SELECT xlvv.lookup_code,
+                             xlvv.meaning
+                     FROM   xxcmn_lookup_values_v xlvv
+                     WHERE  xlvv.lookup_type = cv_type_xxwip_qt_status) xlvv_xqs,
+                                                    -- クイックコード(品質結果内容)
+                     (SELECT xlvv.lookup_code,
+                             xlvv.meaning
+                     FROM   xxcmn_lookup_values_v xlvv
+                     WHERE  xlvv.lookup_type = cv_type_xxcmn_lotstatus) xlvv_xls,
+                                                    -- クイックコード(ロットステータス)
+                     (SELECT xq.qt_inspect_req_no,
+                        CASE
+                          WHEN xq.test_date3 IS NOT NULL THEN  -- 検査日3
+                            xq.qt_effect3                      -- 結果3
+                          WHEN xq.test_date2 IS NOT NULL THEN  -- 検査日2
+                            xq.qt_effect2                      -- 結果2
+                          WHEN xq.test_date1 IS NOT NULL THEN  -- 検査日1
+                            xq.qt_effect1                      -- 結果1
+                          ELSE
+                            NULL
+                        END  qt_effect
+                     FROM   xxwip_qt_inspection xq) xqi,    -- 品質検査依頼情報*/
+                     xxcmn_vendors_v            xvv,        -- 仕入先情報
+                     (SELECT grb.routing_no,
+                             grt.routing_desc
+                     FROM   gmd_routings_b  grb,            -- 工順マスタ
+                             gmd_routings_tl grt             -- 工順マスタ名称
+                     WHERE  grb.routing_id = grt.routing_id
+                     AND    grt.language   = cv_lang_ja) gr
+              WHERE  ximv.item_id               = ilm.item_id
+              AND    xicv.item_class_code       = iv_item_div_code
+              AND    xicv.item_id               = ximv.item_id
+              AND    xilv.customer_stock_whse   = iv_register_code
+              AND    xicv.prod_class_code          = NVL(iv_prod_div_code, xicv.prod_class_code)
+              AND  ((ximv.lot_ctl            = cv_lot_code1
+                AND  ilm.lot_id             <> cn_zero)
+                OR   ximv.lot_ctl            = cv_lot_code0)
+              -- 名称取得
+              AND    ilm.attribute9             = xlvv_xl5.lookup_code(+)
+              AND    ilm.attribute10            = xlvv_xl6.lookup_code(+)
+              AND    ilm.attribute12            = xlvv_xl7.lookup_code(+)
+              AND    ilm.attribute13            = xlvv_xl8.lookup_code(+)
+              AND    ilm.attribute16            = xlvv_xl3.lookup_code(+)
+              AND    ilm.attribute8             = xvv.segment1(+)
+              AND    xqi.qt_effect              = xlvv_xqs.lookup_code(+)
+              AND    ilm.attribute23            = xlvv_xls.lookup_code(+)
+              AND    ilm.attribute17            = gr.routing_no(+)
+              AND    TO_NUMBER(ilm.attribute22) = xqi.qt_inspect_req_no(+)
+              -- 抽出条件(画面検索値)
+              -- 画面検索パターン別に異なる、カーソル毎の抽出、ソート条件
+              AND    ximv.item_id               = NVL(in_item_id, ximv.item_id)
+              AND    xilv.inventory_location_id = in_inventory_location_id
+              AND    NVL(xqi.qt_effect, cn_dummy)
+                       =  NVL(NVL(iv_qt_status_code, xqi.qt_effect), cn_dummy)
+              AND    NVL(ilm.attribute3, cv_min_date)
+                       >= NVL(TO_CHAR(id_consume_from, cv_date_format), cv_min_date)
+              AND    NVL(ilm.attribute3, cv_max_date)
+                       <= NVL(TO_CHAR(id_consume_to, cv_date_format), cv_max_date)
+              AND    NVL(ilm.lot_no, cv_dummy)  = NVL(NVL(iv_lot_no, ilm.lot_no), cv_dummy)
+              AND    NVL(ilm.attribute1, cv_min_date)
+                       >= NVL(TO_CHAR(id_manu_date_from, cv_date_format), cv_min_date)
+              AND    NVL(ilm.attribute1, cv_max_date)
+                       <= NVL(TO_CHAR(id_manu_date_to, cv_date_format), cv_max_date)
+              AND    NVL(ilm.attribute2, cv_dummy) = NVL(NVL(iv_prop_sign, ilm.attribute2), cv_dummy)) iiim
+      -- 品目(保管場所)と手持数量の関連付け
+      WHERE  iiim.item_id                = ili.item_id(+)
+      AND    iiim.segment1               = ili.location(+)
+      AND    iiim.lot_id                 = ili.lot_id(+)
+      -- 手持数量.最終更新日：在庫がない場合(EBS標準のマスタ未反映分)はシステム日付とする
+      AND    NVL(ili.last_update_date, SYSDATE) >= ld_target_date
+      ORDER BY TO_NUMBER(iiim.item_no),
+               iiim.attribute1,
                iiim.attribute2;
+      -- 2008/09/03 PT対応(起票なし) N.Yoshida end
     --
     --===============================================================
     -- 検索条件.親コード区分値          ⇒ 'N'
@@ -7817,7 +8042,8 @@ AS
     -- 検索条件.品目区分値              ⇒ 製品
     --===============================================================
     CURSOR cur_data_d4 IS
-      SELECT iiim.segment1,                                            -- 保管倉庫コード
+      -- 2008/09/03 PT対応(起票なし) N.Yoshida start
+      /*SELECT iiim.segment1,                                            -- 保管倉庫コード
              iiim.short_name,                                          -- 保管倉庫名
              iiim.inventory_location_id,                               -- 保管倉庫ID
              iiim.item_id,                                             -- 品目ID
@@ -8043,7 +8269,229 @@ AS
       AND    iiim.inventory_location_id = NVL(in_inventory_location_id, iiim.inventory_location_id)
       ORDER BY TO_NUMBER(iiim.segment1),
                iiim.attribute1,
+               iiim.attribute2;*/
+      SELECT iiim.segment1,                                            -- 保管倉庫コード
+             iiim.short_name,                                          -- 保管倉庫名
+             iiim.inventory_location_id,                               -- 保管倉庫ID
+             iiim.item_id,                                             -- 品目ID
+             iiim.item_no,                                             -- 品目コード
+             iiim.item_short_name,                                     -- 品目名
+             NVL(iiim.num_of_cases, 0),                                -- ケース入数
+             DECODE(iiim.lot_ctl, cv_lot_code0, NULL, iiim.lot_no),    -- ロットNo
+             iiim.lot_id,                                              -- ロットID
+             FND_DATE.STRING_TO_DATE(iiim.attribute1, 'YYYY/MM/DD'),   -- 製造年月日(DFF1)
+             FND_DATE.STRING_TO_DATE(iiim.attribute3, 'YYYY/MM/DD'),   -- 賞味期限(DFF3)
+             iiim.attribute2,                                          -- 固有記号(DFF2)
+             FND_DATE.STRING_TO_DATE(iiim.attribute4, 'YYYY/MM/DD'),   -- 初回納入日(DFF4)
+             FND_DATE.STRING_TO_DATE(iiim.attribute5, 'YYYY/MM/DD'),   -- 最終納入日(DFF5)
+             TO_NUMBER(iiim.attribute6),                               -- 在庫入数(DFF6)
+             TO_NUMBER(iiim.attribute7),                               -- 在庫単価(DFF7)
+             iiim.attribute8,                                          -- 受払先(DFF8)
+             iiim.vendor_short_name,                                   -- 受払先名
+             iiim.attribute9,                                          -- 仕入形態(DFF9)
+             iiim.meaning5,                                            -- 仕入形態内容
+             iiim.attribute10,                                         -- 茶期区分(DFF10)
+             iiim.meaning6,                                            -- 茶期区分内容
+             iiim.attribute11,                                         -- 年度(DFF11)
+             iiim.attribute12,                                         -- 産地(DFF12)
+             iiim.meaning7,                                            -- 産地内容
+             iiim.attribute13,                                         -- タイプ(DFF13)
+             iiim.meaning8,                                            -- タイプ内容
+             iiim.attribute14,                                         -- ランク1(DFF14)
+             iiim.attribute15,                                         -- ランク2(DFF15)
+             iiim.attribute19,                                         -- ランク3(DFF19)
+             iiim.attribute16,                                         -- 生産伝票区分(DFF16)
+             iiim.meaning3,                                            -- 生産伝票区分内容
+             iiim.attribute17,                                         -- ラインNo(DFF17)
+             iiim.routing_desc,                                        -- 工順摘要
+             iiim.attribute18,                                         -- 摘要(DFF18)
+             iiim.meaningxls,                                          -- ロットステータス内容
+             iiim.qt_inspect_req_no,                                   -- 品質検査依頼情報
+             iiim.meaningxqs,                                          -- 品質結果内容
+             NVL(ili.loct_onhand, 0),                                  -- 手持数量
+             get_inv_stock_vol(
+               iiim.inventory_location_id,
+               iiim.item_no,
+               iiim.item_id,
+               iiim.lot_id,
+               NVL(ili.loct_onhand, cn_zero)),                         -- 手持在庫数
+             0,                                                        -- 引当可能数
+             get_supply_stock_plan(
+               iiim.segment1,
+               iiim.inventory_location_id,
+               iiim.item_no,
+               iiim.item_id,
+               iiim.lot_no,
+               iiim.lot_id,
+               id_effective_date,
+               NVL(ili.loct_onhand, cn_zero)),                         -- 入庫予定数
+             get_take_stock_plan(
+               iiim.segment1,
+               iiim.inventory_location_id,
+               iiim.item_no,
+               iiim.item_id,
+               iiim.lot_id,
+               id_effective_date,
+               NVL(ili.loct_onhand, cn_zero)),                         -- 出庫予定数
+             iiim.created_by,                                          -- 作成者
+             iiim.creation_date,                                       -- 作成日
+             iiim.last_updated_by,                                     -- 最終更新者
+             iiim.last_update_date,                                    -- 最終更新日
+             iiim.last_update_login,                                   -- 最終更新ログイン
+             iiim.frequent_whse                                       -- 代表倉庫
+      FROM   ic_loct_inv                ili,     -- OPM手持数量
+             (SELECT xilv.segment1,              -- 保管倉庫
+                     xilv.short_name,            -- 保管倉庫名
+                     xilv.inventory_location_id, -- 保管倉庫ID
+                     xilv.mtl_organization_id,   -- 在庫組織ID
+                     xilv.frequent_whse,         -- 代表倉庫
+                     xilv.customer_stock_whse,   -- 倉庫名義
+                     ximv.item_id,               -- 品目ID
+                     ximv.item_short_name,       -- 品目略称
+                     ximv.parent_item_id,        -- 親品目ID
+                     ximv.item_no,               -- 品目コード
+                     ximv.lot_ctl,               -- ロット管理区分
+                     ximv.num_of_cases,          -- ケース入数
+                     ilm.lot_id,                 -- ロットID
+                     ilm.lot_no,                 -- ロットNo
+                     ilm.attribute1,
+                     ilm.attribute2,
+                     ilm.attribute3,
+                     ilm.attribute4,
+                     ilm.attribute5,
+                     ilm.attribute6,
+                     ilm.attribute7,
+                     ilm.attribute8,
+                     ilm.attribute9,
+                     ilm.attribute10,
+                     ilm.attribute11,
+                     ilm.attribute12,
+                     ilm.attribute13,
+                     ilm.attribute14,
+                     ilm.attribute15,
+                     ilm.attribute16,
+                     ilm.attribute17,
+                     ilm.attribute18,
+                     ilm.attribute19,
+                     ilm.attribute22,
+                     ilm.attribute23,
+                     xlvv_xl5.meaning meaning5,
+                     xlvv_xl6.meaning meaning6,
+                     xlvv_xl7.meaning meaning7,
+                     xlvv_xl8.meaning meaning8,
+                     xlvv_xl3.meaning meaning3,
+                     xvv.vendor_short_name,
+                     gr.routing_desc,
+                     xlvv_xls.meaning meaningxls,
+                     xqi.qt_inspect_req_no,
+                     xlvv_xqs.meaning meaningxqs,
+                     ilm.created_by,
+                     ilm.creation_date,
+                     ilm.last_updated_by,
+                     ilm.last_update_date,
+                     ilm.last_update_login
+              FROM   xxcmn_item_mst_v ximv,         -- OPM品目マスタ情報VIEW
+                     ic_lots_mst ilm,               -- OPMロットマスタ
+                     xxcmn_item_locations_v  xilv,  -- OPM保管場所情報VIEW
+                     xxcmn_item_categories5_v xicv,
+                     (SELECT xlvv.lookup_code,
+                             xlvv.meaning
+                      FROM   xxcmn_lookup_values_v xlvv
+                      WHERE  xlvv.lookup_type = cv_type_xxcmn_l05) xlvv_xl5,
+                                                    -- クイックコード(仕入形態内容)
+                     (SELECT xlvv.lookup_code,
+                             xlvv.meaning
+                      FROM   xxcmn_lookup_values_v xlvv
+                      WHERE  xlvv.lookup_type = cv_type_xxcmn_l06) xlvv_xl6,
+                                                    -- クイックコード(茶期区分内容)
+                     (SELECT xlvv.lookup_code,
+                             xlvv.meaning
+                     FROM   xxcmn_lookup_values_v xlvv
+                     WHERE  xlvv.lookup_type = cv_type_xxcmn_l07) xlvv_xl7,
+                                                    -- クイックコード(産地内容)
+                     (SELECT xlvv.lookup_code,
+                             xlvv.meaning
+                     FROM   xxcmn_lookup_values_v xlvv
+                     WHERE  xlvv.lookup_type = cv_type_xxcmn_l08) xlvv_xl8,
+                                                    -- クイックコード(タイプ内容)
+                     (SELECT xlvv.lookup_code,
+                             xlvv.meaning
+                     FROM   xxcmn_lookup_values_v xlvv
+                     WHERE  xlvv.lookup_type = cv_type_xxcmn_l03) xlvv_xl3,
+                                                    -- クイックコード(生産伝票区分内容)
+                     (SELECT xlvv.lookup_code,
+                             xlvv.meaning
+                     FROM   xxcmn_lookup_values_v xlvv
+                     WHERE  xlvv.lookup_type = cv_type_xxwip_qt_status) xlvv_xqs,
+                                                    -- クイックコード(品質結果内容)
+                     (SELECT xlvv.lookup_code,
+                             xlvv.meaning
+                     FROM   xxcmn_lookup_values_v xlvv
+                     WHERE  xlvv.lookup_type = cv_type_xxcmn_lotstatus) xlvv_xls,
+                                                    -- クイックコード(ロットステータス)
+                     (SELECT xq.qt_inspect_req_no,
+                        CASE
+                          WHEN xq.test_date3 IS NOT NULL THEN  -- 検査日3
+                            xq.qt_effect3                      -- 結果3
+                          WHEN xq.test_date2 IS NOT NULL THEN  -- 検査日2
+                            xq.qt_effect2                      -- 結果2
+                          WHEN xq.test_date1 IS NOT NULL THEN  -- 検査日1
+                            xq.qt_effect1                      -- 結果1
+                          ELSE
+                            NULL
+                        END  qt_effect
+                     FROM   xxwip_qt_inspection xq) xqi,    -- 品質検査依頼情報*/
+                     xxcmn_vendors_v            xvv,        -- 仕入先情報
+                     (SELECT grb.routing_no,
+                             grt.routing_desc
+                     FROM   gmd_routings_b  grb,            -- 工順マスタ
+                             gmd_routings_tl grt             -- 工順マスタ名称
+                     WHERE  grb.routing_id = grt.routing_id
+                     AND    grt.language   = cv_lang_ja) gr
+              WHERE  ximv.item_id               = ilm.item_id
+              AND    xicv.item_class_code       = iv_item_div_code
+              AND    xicv.item_id               = ximv.item_id
+              AND    xilv.customer_stock_whse   = iv_register_code
+              AND    xicv.prod_class_code          = NVL(iv_prod_div_code, xicv.prod_class_code)
+              AND  ((ximv.lot_ctl            = cv_lot_code1
+                AND  ilm.lot_id             <> cn_zero)
+                OR   ximv.lot_ctl            = cv_lot_code0)
+              -- 名称取得
+              AND    ilm.attribute9             = xlvv_xl5.lookup_code(+)
+              AND    ilm.attribute10            = xlvv_xl6.lookup_code(+)
+              AND    ilm.attribute12            = xlvv_xl7.lookup_code(+)
+              AND    ilm.attribute13            = xlvv_xl8.lookup_code(+)
+              AND    ilm.attribute16            = xlvv_xl3.lookup_code(+)
+              AND    ilm.attribute8             = xvv.segment1(+)
+              AND    xqi.qt_effect              = xlvv_xqs.lookup_code(+)
+              AND    ilm.attribute23            = xlvv_xls.lookup_code(+)
+              AND    ilm.attribute17            = gr.routing_no(+)
+              AND    TO_NUMBER(ilm.attribute22) = xqi.qt_inspect_req_no(+)
+              -- 抽出条件(画面検索値)
+              -- 画面検索パターン別に異なる、カーソル毎の抽出、ソート条件
+              AND    ximv.item_id               = in_item_id
+              AND    NVL(xqi.qt_effect, cn_dummy)
+                       =  NVL(NVL(iv_qt_status_code, xqi.qt_effect), cn_dummy)
+              AND    NVL(ilm.attribute3, cv_min_date)
+                       >= NVL(TO_CHAR(id_consume_from, cv_date_format), cv_min_date)
+              AND    NVL(ilm.attribute3, cv_max_date)
+                       <= NVL(TO_CHAR(id_consume_to, cv_date_format), cv_max_date)
+              AND    NVL(ilm.lot_no, cv_dummy)  = NVL(NVL(iv_lot_no, ilm.lot_no), cv_dummy)
+              AND    NVL(ilm.attribute1, cv_min_date)
+                       >= NVL(TO_CHAR(id_manu_date_from, cv_date_format), cv_min_date)
+              AND    NVL(ilm.attribute1, cv_max_date)
+                       <= NVL(TO_CHAR(id_manu_date_to, cv_date_format), cv_max_date)
+              AND    NVL(ilm.attribute2, cv_dummy) = NVL(NVL(iv_prop_sign, ilm.attribute2), cv_dummy)) iiim
+      -- 品目(保管場所)と手持数量の関連付け
+      WHERE  iiim.item_id                = ili.item_id(+)
+      AND    iiim.segment1               = ili.location(+)
+      AND    iiim.lot_id                 = ili.lot_id(+)
+      -- 手持数量.最終更新日：在庫がない場合(EBS標準のマスタ未反映分)はシステム日付とする
+      AND    NVL(ili.last_update_date, SYSDATE) >= ld_target_date
+      ORDER BY TO_NUMBER(iiim.segment1),
+               iiim.attribute1,
                iiim.attribute2;
+    -- 2008/09/03 PT対応(起票なし) N.Yoshida end
     --
     --===============================================================
     -- 検索条件.親コード区分値          ⇒ 'N'
@@ -11869,6 +12317,12 @@ AS
         ior_ilm_data(ln_cnt).rec_no := ln_cnt;
         ior_ilm_data(ln_cnt).ximv_num_of_cases := ln_num_of_cases;
 --
+      -- 2008/09/03 PT対応(起票なし) N.Yoshida start
+        ior_ilm_data(ln_cnt).subtractable := ior_ilm_data(ln_cnt).inv_stock_vol
+                                           + ior_ilm_data(ln_cnt).supply_stock_plan
+                                           - ior_ilm_data(ln_cnt).take_stock_plan;
+      -- 2008/09/03 PT対応(起票なし) N.Yoshida end
+--
         -- 在庫有だけ表示による抽出レコードの選定
         IF ((NVL(iv_ext_show, cv_no) = cv_yes)
           AND ((ior_ilm_data(ln_cnt).inv_stock_vol = cn_zero)
@@ -12056,6 +12510,12 @@ AS
 --
         ior_ilm_data(ln_cnt).rec_no := ln_cnt;
         ior_ilm_data(ln_cnt).ximv_num_of_cases := ln_num_of_cases;
+--
+      -- 2008/09/03 PT対応(起票なし) N.Yoshida start
+        ior_ilm_data(ln_cnt).subtractable := ior_ilm_data(ln_cnt).inv_stock_vol
+                                           + ior_ilm_data(ln_cnt).supply_stock_plan
+                                           - ior_ilm_data(ln_cnt).take_stock_plan;
+      -- 2008/09/03 PT対応(起票なし) N.Yoshida end
 --
         -- 在庫有だけ表示による抽出レコードの選定
         IF ((NVL(iv_ext_show, cv_no) = cv_yes)
