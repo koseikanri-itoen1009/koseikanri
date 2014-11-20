@@ -8,6 +8,7 @@
 * ---------- ---- ------------ ----------------------------------------------
 * 2008-04-17 1.0  北寒寺正夫     新規作成
 * 2008-08-07 1.1  二瓶　大輔     内部変更要求#183
+* 2008-09-10 1.2  大橋　孝郎     PT 6-2_35 指摘35
 *============================================================================
 */
 package itoen.oracle.apps.xxwsh.xxwsh920002j.server;
@@ -65,24 +66,14 @@ public class XxwshStockCanEncQtyVOImpl extends OAViewObjectImpl
       setWhereClause(null);
       // バインド変数に値をセット
       int i = 0;
-      setWhereClauseParam(i++, lotCtl);                   // ロット管理     
-      setWhereClauseParam(i++, inputInventoryLocationId); // 入力保管倉庫ID
-      setWhereClauseParam(i++, lotCtl);                   // ロット管理
-      setWhereClauseParam(i++, scheduleShipDate);         // 出庫予定日
-      setWhereClauseParam(i++, inputInventoryLocationId); // 入力保管倉庫ID
-      setWhereClauseParam(i++, lotCtl);                   // ロット管理
       setWhereClauseParam(i++, convUnitUseKbn);           // 入出庫換算単位使用区分
-      setWhereClauseParam(i++, inputInventoryLocationId); // 入力保管倉庫ID
-      setWhereClauseParam(i++, lotCtl);                   // ロット管理
-      setWhereClauseParam(i++, scheduleShipDate);         // 出庫予定日
       setWhereClauseParam(i++, numOfCases);               // ケース入数
-      setWhereClauseParam(i++, inputInventoryLocationId); // 入力保管倉庫ID
-      setWhereClauseParam(i++, lotCtl);                   // ロット管理
-      setWhereClauseParam(i++, scheduleShipDate);         // 出庫予定日
       setWhereClauseParam(i++, convUnitUseKbn);           // 入出庫換算単位使用区分
+      setWhereClauseParam(i++, numOfCases);               // ケース入数
+      setWhereClauseParam(i++, lotCtl);                   // ロット管理
       setWhereClauseParam(i++, inputInventoryLocationId); // 入力保管倉庫ID
       setWhereClauseParam(i++, lotCtl);                   // ロット管理
-      setWhereClauseParam(i++, numOfCases);               // ケース入数
+      setWhereClauseParam(i++, scheduleShipDate);         // 出庫予定日
       setWhereClauseParam(i++, inputInventoryLocationId); // 入力保管倉庫ID
       setWhereClauseParam(i++, lotCtl);                   // ロット管理
       setWhereClauseParam(i++, convUnitUseKbn);           // 入出庫換算単位使用区分
@@ -91,9 +82,6 @@ public class XxwshStockCanEncQtyVOImpl extends OAViewObjectImpl
       setWhereClauseParam(i++, prodClass);                // 商品区分
       setWhereClauseParam(i++, lineId);                   // 明細ID
       setWhereClauseParam(i++, documentTypeCode);         // 文書タイプ
-      setWhereClauseParam(i++, inputInventoryLocationId); // 入力保管倉庫ID
-      setWhereClauseParam(i++, lotCtl);                   // ロット管理
-      setWhereClauseParam(i++, scheduleShipDate);         // 出庫予定日
       setWhereClauseParam(i++, scheduleShipDate);         // 出庫予定日
       setWhereClauseParam(i++, scheduleShipDate);         // 出庫予定日
       // ロット管理品の場合条件をセット

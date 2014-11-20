@@ -10,8 +10,49 @@
    MsgBundleClass="oracle.jbo.common.JboResourceBundle"
    UseGlueCode="false" >
    <SQLQuery><![CDATA[
+SELECT lm.lot_no
+      ,lm.show_lot_no
+      ,lm.lot_id
+      ,lm.production_date
+      ,lm.expiration_date
+      ,lm.uniqe_sign
+      ,lm.memo
+      ,lm.lot_status
+      ,lm.stock_ins_amount
+      ,lm.year
+      ,lm.manufacturers_lot_no
+      ,lm.rank1
+      ,lm.rank2
+      ,lm.rank3
+      ,lm.memo1
+      ,lm.memo2
+      ,lm.memo3
+      ,lm.type
+      ,lm.product_home
+      ,lm.tea_period_dev
+      ,lm.stock_form
+      ,lm.manufacturers_factory
+      ,lm.vendor_short_name
+      ,lm.can_enc_qty
+      ,lm.stock_qty
+      ,lm.actual_quantity
+      ,lm.automanual_reserve_class
+      ,lm.lot_status_name
+      ,lm.mov_lot_dtl_id
+      ,lm.created_by
+      ,lm.creation_date
+      ,lm.last_updated_by
+      ,lm.last_update_date
+      ,lm.last_update_login
+      ,TO_CHAR(DECODE(:0, 1,lm.can_enc_qty / :1,lm.can_enc_qty),'FM999,999,990.000') show_can_enc_qty -- 引当可能数(表示用)
+      ,TO_CHAR(DECODE(:2, 1,lm.stock_qty / :3,lm.stock_qty),'FM999,999,990.000')     show_stock_qty   -- 手持在庫数(表示用)
+      ,lm.show_actual_quantity
+      ,lm.pay_provision_m_reserve
+      ,lm.move_inst_m_reserve
+      ,lm.ship_req_m_reserve
+FROM (
 SELECT ilm.lot_no                            lot_no,                                 -- ロットNo
-       DECODE(:0,1,ilm.lot_no,NULL)          show_lot_no,                            -- ロットNo(表示用)
+       DECODE(:4,1,ilm.lot_no,NULL)          show_lot_no,                            -- ロットNo(表示用)
        ilm.lot_id                            lot_id,                                 -- ロットID
        TO_CHAR(TO_DATE(ilm.attribute1,'YYYY/MM/DD'),'YYYY/MM/DD')  production_date,  -- 製造年月日
        TO_CHAR(TO_DATE(ilm.attribute3,'YYYY/MM/DD'),'YYYY/MM/DD')  expiration_date,  -- 賞味期限
@@ -59,15 +100,15 @@ SELECT ilm.lot_no                            lot_no,                            
        ilm.attribute20                       manufacturers_factory,                  -- 原料製造工場
        SUBSTRB(xvv.vendor_short_name,1,10)   vendor_short_name,                      -- 取引先
        xxcmn_common_pkg.get_can_enc_qty(
-            :1,
+            :5,
             ilm.item_id,
-            DECODE(:2,1,ilm.lot_id,NULL),
-            :3
+            DECODE(:6,1,ilm.lot_id,NULL),
+            :7
        )                                     can_enc_qty,                            -- 引当可能数
        xxcmn_common_pkg.get_stock_qty(
-            :4,
+            :8,
             ilm.item_id,
-            DECODE(:5,1,ilm.lot_id,NULL)
+            DECODE(:9,1,ilm.lot_id,NULL)
        )                                     stock_qty,                              -- 手持在庫数
        NVL(xmld.actual_quantity,0)           actual_quantity,                        -- 引当数量
        xlv5.meaning                          automanual_reserve_class,               -- 自動手動引当区分
@@ -78,34 +119,8 @@ SELECT ilm.lot_no                            lot_no,                            
        xmld.last_updated_by                  last_updated_by,                        -- 最終更新者
        xmld.last_update_date                 last_update_date,                       -- 最終更新日
        xmld.last_update_login                last_update_login,                      -- 最終更新ログイン
-       TO_CHAR(DECODE(:6, 1,
-         xxcmn_common_pkg.get_can_enc_qty(
-              :7,
-              ilm.item_id,
-            DECODE(:8, 1, ilm.lot_id, NULL),
-              :9
-         ) / :10,
-         xxcmn_common_pkg.get_can_enc_qty(
-              :11,
-              ilm.item_id,
-            DECODE(:12,1,ilm.lot_id,NULL),
-              :13
-         )
-       ),'FM999,999,990.000')                      show_can_enc_qty,                   --引当可能数(表示用)
-       TO_CHAR(DECODE(:14,1,
-          xxcmn_common_pkg.get_stock_qty(
-              :15,
-              ilm.item_id,
-            DECODE(:16,1,ilm.lot_id,NULL)
-          ) / :17,
-          xxcmn_common_pkg.get_stock_qty(
-              :18,
-              ilm.item_id,
-            DECODE(:19,1,ilm.lot_id,NULL)
-          )
-       ),'FM999,999,990.000')                    show_stock_qty,                       -- 手持在庫数(表示用)
-       TO_CHAR(DECODE(:20,1,
-         NVL(xmld.actual_quantity,0) / :21,
+       TO_CHAR(DECODE(:10,1,
+         NVL(xmld.actual_quantity,0) / :11,
          NVL(xmld.actual_quantity,0)
        ),'FM999999990.000')                    show_actual_quantity,                    -- 引当数量(表示用)
        xlsv.pay_provision_m_reserve            pay_provision_m_reserve,                 -- 有償支給(手動引当)
@@ -120,11 +135,11 @@ SELECT ilm.lot_no                            lot_no,                            
        xxcmn_lookup_values_v xlv5,    -- クイックコード情報VIEW(自動手動引当区分用)
        xxcmn_vendors2_v      xvv,     -- 仕入先情報VIEW2
        xxcmn_lot_status_v    xlsv     -- ロットステータスビュー
-WHERE  ilm.item_id                = :22
+WHERE  ilm.item_id                = :12
   AND  xlsv.lot_status(+)         = ilm.attribute23
-  AND  xlsv.prod_class_code(+)    = :23
-  AND  xmld.mov_line_id(+)        = :24
-  AND  xmld.document_type_code(+) = :25
+  AND  xlsv.prod_class_code(+)    = :13
+  AND  xmld.mov_line_id(+)        = :14
+  AND  xmld.document_type_code(+) = :15
   AND  xmld.record_type_code(+)   = '10'
   AND  xmld.item_id(+)            = ilm.item_id
   AND  xmld.lot_id(+)             = ilm.lot_id
@@ -139,15 +154,10 @@ WHERE  ilm.item_id                = :22
   AND  xlv5.lookup_type(+)        = 'XXINV_AM_RESERVE_CLASS'
   AND  xlv5.lookup_code(+)        = xmld.automanual_reserve_class
   AND  xvv.segment1(+)            = ilm.attribute8
-  AND  ((NVL(xmld.actual_quantity,0) > 0) OR
-        (xxcmn_common_pkg.get_can_enc_qty(
-            :26,
-            ilm.item_id,
-            DECODE(:27,1,ilm.lot_id,NULL),
-            :28
-         ) > 0))
-  AND  :29   BETWEEN xvv.start_date_active(+)
-             AND     NVL(xvv.end_date_active(+), :30)
+  AND  :16   BETWEEN xvv.start_date_active(+)
+             AND     NVL(xvv.end_date_active(+), :17)
+) lm
+WHERE (((NVL(lm.actual_quantity,0) > 0) OR (lm.can_enc_qty > 0)))
    ]]></SQLQuery>
    <DesignTime>
       <Attr Name="_version" Value="9.0.3.14.00" />
