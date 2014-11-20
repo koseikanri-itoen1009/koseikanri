@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCFF017A03C(body)
  * Description      : 自販機情報FA連携処理リース(FA)
  * MD.050           : MD050_CFF_017_A03_自販機情報FA連携処理
- * Version          : 1.0
+ * Version          : 1.1
  *
  * Program List
  * ----------------------------- ----------------------------------------------------------
@@ -31,7 +31,8 @@ AS
  * ------------- ----- ---------------- -------------------------------------------------
  *  Date          Ver.  Editor           Description
  * ------------- ----- ---------------- -------------------------------------------------
- *  2014/08/01    1.0   SCSK小路         新規作成
+ *  2014/06/06    1.0   SCSK小路         新規作成
+ *  2014/08/06    1.1   SCSK小路         E_本稼働_12263対応
  *****************************************************************************************/
 --
 --#######################  固定グローバル定数宣言部 START   #######################
@@ -143,7 +144,7 @@ AS
   cv_msg_017a03_t_025 CONSTANT VARCHAR2(20) := 'APP-XXCFF1-50261'; -- メーカー名 機種 年式
   cv_msg_017a03_t_026 CONSTANT VARCHAR2(20) := 'APP-XXCFF1-50240'; -- 機器区分
   cv_msg_017a03_t_027 CONSTANT VARCHAR2(20) := 'APP-XXCFF1-50262'; -- 事業供用日
-  cv_msg_017a03_t_028 CONSTANT VARCHAR2(20) := 'APP-XXCFF1-50263'; -- 取得価格
+  cv_msg_017a03_t_028 CONSTANT VARCHAR2(20) := 'APP-XXCFF1-50263'; -- 購入価格
   cv_msg_017a03_t_029 CONSTANT VARCHAR2(20) := 'APP-XXCFF1-50181'; -- 数量
   cv_msg_017a03_t_030 CONSTANT VARCHAR2(20) := 'APP-XXCFF1-50264'; -- 移動日
   cv_msg_017a03_t_031 CONSTANT VARCHAR2(20) := 'APP-XXCFF1-50246'; -- 申告地
@@ -208,10 +209,17 @@ AS
   TYPE g_fixed_assets_units_ttype      IS TABLE OF xxcff_vd_object_headers.quantity%TYPE INDEX BY PLS_INTEGER;
   TYPE g_transaction_units_ttype       IS TABLE OF xxcff_vd_object_headers.quantity%TYPE INDEX BY PLS_INTEGER;
   TYPE g_date_placed_in_service_ttype  IS TABLE OF xxcff_vd_object_headers.date_placed_in_service%TYPE INDEX BY PLS_INTEGER;
-  TYPE g_assets_cost_ttype             IS TABLE OF xxcff_vd_object_headers.assets_cost%TYPE INDEX BY PLS_INTEGER;
-  TYPE g_cost_ttype                    IS TABLE OF xxcff_vd_object_headers.assets_cost%TYPE INDEX BY PLS_INTEGER;
-  TYPE g_payables_cost_ttype           IS TABLE OF xxcff_vd_object_headers.assets_cost%TYPE INDEX BY PLS_INTEGER;
-  TYPE g_original_cost_ttype           IS TABLE OF xxcff_vd_object_headers.assets_cost%TYPE INDEX BY PLS_INTEGER;
+-- 2014/08/06 Ver.1.1 Y.Shouji DEL START
+--  TYPE g_assets_cost_ttype             IS TABLE OF xxcff_vd_object_headers.assets_cost%TYPE INDEX BY PLS_INTEGER;
+-- 2014/08/06 Ver.1.1 Y.Shouji DEL END
+-- 2014/08/06 Ver.1.1 Y.Shouji MOD START
+--  TYPE g_cost_ttype                    IS TABLE OF xxcff_vd_object_headers.assets_cost%TYPE INDEX BY PLS_INTEGER;
+--  TYPE g_payables_cost_ttype           IS TABLE OF xxcff_vd_object_headers.assets_cost%TYPE INDEX BY PLS_INTEGER;
+--  TYPE g_original_cost_ttype           IS TABLE OF xxcff_vd_object_headers.assets_cost%TYPE INDEX BY PLS_INTEGER;
+  TYPE g_cost_ttype                    IS TABLE OF xxcff_vd_object_headers.cash_price%TYPE INDEX BY PLS_INTEGER;
+  TYPE g_payables_cost_ttype           IS TABLE OF xxcff_vd_object_headers.cash_price%TYPE INDEX BY PLS_INTEGER;
+  TYPE g_original_cost_ttype           IS TABLE OF xxcff_vd_object_headers.cash_price%TYPE INDEX BY PLS_INTEGER;
+-- 2014/08/06 Ver.1.1 Y.Shouji MOD END
   TYPE g_assets_date_ttype             IS TABLE OF xxcff_vd_object_headers.assets_date%TYPE INDEX BY PLS_INTEGER;
   TYPE g_cat_attribute2_ttype          IS TABLE OF xxcff_vd_object_headers.assets_date%TYPE INDEX BY PLS_INTEGER;
   TYPE g_moved_date_ttype              IS TABLE OF xxcff_vd_object_headers.moved_date%TYPE INDEX BY PLS_INTEGER;
@@ -242,7 +250,9 @@ AS
   g_fixed_assets_units_tab       g_fixed_assets_units_ttype;     -- 単位数量
   g_transaction_units_tab        g_transaction_units_ttype;      -- 単位
   g_date_placed_in_service_tab   g_date_placed_in_service_ttype; -- 事業供用日
-  g_assets_cost_tab              g_assets_cost_ttype;            -- 取得価格
+-- 2014/08/06 Ver.1.1 Y.Shouji DEL START
+--  g_assets_cost_tab              g_assets_cost_ttype;            -- 取得価格
+-- 2014/08/06 Ver.1.1 Y.Shouji DEL END
   g_cost_tab                     g_cost_ttype;                   -- 取得価額
   g_payables_cost_tab            g_payables_cost_ttype;          -- 資産当初取得価額
   g_original_cost_tab            g_original_cost_ttype;          -- 当初取得価額
@@ -362,7 +372,9 @@ AS
     g_fixed_assets_units_tab.DELETE;
     g_transaction_units_tab.DELETE;
     g_date_placed_in_service_tab.DELETE;
-    g_assets_cost_tab.DELETE;
+-- 2014/08/06 Ver.1.1 Y.Shouji DEL START
+--    g_assets_cost_tab.DELETE;
+-- 2014/08/06 Ver.1.1 Y.Shouji DEL END
     g_cost_tab.DELETE;
     g_payables_cost_tab.DELETE;
     g_original_cost_tab.DELETE;
@@ -471,6 +483,9 @@ AS
      ,assets_cost            -- 取得価格
      ,month_lease_charge     -- 月額リース料
      ,re_lease_charge        -- 再リース料
+-- 2014/08/06 Ver.1.1 Y.Shouji ADD START
+     ,cash_price             -- 購入価格
+-- 2014/08/06 Ver.1.1 Y.Shouji ADD END
      ,assets_date            -- 取得日
      ,moved_date             -- 移動日
      ,installation_place     -- 設置先
@@ -515,8 +530,15 @@ AS
      ,voh.quantity                -- 数量
      ,voh.date_placed_in_service  -- 事業供用日
      ,voh.assets_cost             -- 取得価格
-     ,month_lease_charge          -- 月額リース料
-     ,re_lease_charge             -- 再リース料
+-- 2014/08/06 Ver.1.1 Y.Shouji MOD START
+--     ,month_lease_charge          -- 月額リース料
+--     ,re_lease_charge             -- 再リース料
+     ,voh.month_lease_charge      -- 月額リース料
+     ,voh.re_lease_charge         -- 再リース料
+-- 2014/08/06 Ver.1.1 Y.Shouji MOD END
+-- 2014/08/06 Ver.1.1 Y.Shouji ADD START
+     ,voh.cash_price              -- 購入価格
+-- 2014/08/06 Ver.1.1 Y.Shouji ADD END
      ,voh.assets_date             -- 取得日
      ,voh.moved_date              -- 移動日
      ,voh.installation_place      -- 設置先
@@ -1570,8 +1592,12 @@ AS
             ,vohe.age_type                AS age_type                -- 年式
             ,vohe.quantity                AS quantity                -- 数量
             ,vohe.assets_date             AS assets_date             -- 取得日
-            ,vohe.assets_cost             AS assets_cost1            -- 取得価格
-            ,vohe.assets_cost             AS assets_cost2            -- 取得価格
+-- 2014/08/06 Ver.1.1 Y.Shouji MOD START
+--            ,vohe.assets_cost             AS assets_cost1            -- 取得価格
+--            ,vohe.assets_cost             AS assets_cost2            -- 取得価格
+            ,vohe.cash_price              AS cost                    -- 取得価額
+            ,vohe.cash_price              AS original_cost           -- 当初取得価額
+-- 2014/08/06 Ver.1.1 Y.Shouji MOD END
       FROM
             xxcff_vd_object_headers  vohe
       WHERE
@@ -1751,7 +1777,7 @@ AS
         );
       END IF;
 --
-      -- 4.取得価格（取得価額）の存在チェックをする
+      -- 4.購入価格（取得価額）の存在チェックをする
       IF ( g_cost_tab(ln_loop_cnt) IS NULL ) THEN
         -- 警告フラグがNの場合
         IF ( lv_warn_flg = cv_no ) THEN
@@ -2954,7 +2980,10 @@ AS
             ,vohe.age_type                            AS age_type                -- 年式
             ,vohe.machine_type                        AS machine_type            -- 機器区分
             ,vohe.date_placed_in_service              AS date_placed_in_service  -- 事業供用日
-            ,vohe.assets_cost                         AS assets_cost             -- 取得価額
+-- 2014/08/06 Ver.1.1 Y.Shouji MOD START
+--            ,vohe.assets_cost                         AS assets_cost             -- 取得価額
+            ,vohe.cash_price                          AS cost                    -- 取得価額
+-- 2014/08/06 Ver.1.1 Y.Shouji MOD END
             ,vohe.quantity                            AS payables_units          -- AP数量
             ,vohe.quantity                            AS fixed_assets_units      -- 単位数量
             ,vohe.dclr_place                          AS dclr_place              -- 申告地
@@ -2962,7 +2991,10 @@ AS
             ,vohe.location                            AS location                -- 事業所
             ,substrb(vohe.installation_address,1,30)  AS installation_address    -- 設置場所
             ,vohe.owner_company_type                  AS owner_company_type      -- 本社工場区分
-            ,vohe.assets_cost                         AS payables_cost           -- 資産当初取得価額
+-- 2014/08/06 Ver.1.1 Y.Shouji MOD START
+--            ,vohe.assets_cost                         AS payables_cost           -- 資産当初取得価額
+            ,vohe.cash_price                          AS payables_cost           -- 資産当初取得価額
+-- 2014/08/06 Ver.1.1 Y.Shouji MOD END
             ,vohe.assets_date                         AS attribute2              -- DFF02（取得日）
             ,vohe.object_header_id                    AS attribute14             -- DFF14（自販機物件内部ID）
       FROM
@@ -3017,7 +3049,10 @@ AS
                       ,g_age_type_tab                -- 年式
                       ,g_machine_type_tab            -- 機器区分
                       ,g_date_placed_in_service_tab  -- 事業供用日
-                      ,g_assets_cost_tab             -- 取得価額
+-- 2014/08/06 Ver.1.1 Y.Shouji MOD START
+--                      ,g_assets_cost_tab             -- 取得価額
+                      ,g_cost_tab                    -- 取得価額
+-- 2014/08/06 Ver.1.1 Y.Shouji MOD END
                       ,g_payables_units_tab          -- AP数量
                       ,g_fixed_assets_units_tab      -- 単位数量
                       ,g_dclr_place_tab              -- 申告地
@@ -3149,8 +3184,11 @@ AS
         );
       END IF;
 --
-      -- 4.取得価格（取得価額）の存在チェックをする
-      IF ( g_assets_cost_tab(ln_loop_cnt) IS NULL ) THEN
+-- 2014/08/06 Ver.1.1 Y.Shouji MOD START
+      -- 4.購入価格（取得価額）の存在チェックをする
+--      IF ( g_assets_cost_tab(ln_loop_cnt) IS NULL ) THEN
+      IF ( g_cost_tab(ln_loop_cnt) IS NULL ) THEN
+-- 2014/08/06 Ver.1.1 Y.Shouji MOD END
         -- 警告フラグがNの場合
         IF ( lv_warn_flg = cv_no ) THEN
           -- 警告フラグに'Y'をセット
@@ -3355,14 +3393,20 @@ AS
           ,g_category_ccid_tab(ln_loop_cnt)          -- 資産カテゴリCCID
           ,gv_fixed_asset_register                   -- 台帳
           ,g_date_placed_in_service_tab(ln_loop_cnt) -- 事業供用日
-          ,g_assets_cost_tab(ln_loop_cnt)            -- 取得価額
+-- 2014/08/06 Ver.1.1 Y.Shouji MOD START
+--          ,g_assets_cost_tab(ln_loop_cnt)            -- 取得価額
+          ,g_cost_tab(ln_loop_cnt)                   -- 取得価額
+-- 2014/08/06 Ver.1.1 Y.Shouji MOD END
           ,g_payables_units_tab(ln_loop_cnt)         -- AP数量
           ,g_fixed_assets_units_tab(ln_loop_cnt)     -- 単位数量
           ,g_deprn_ccid_tab(ln_loop_cnt)             -- 減価償却費勘定CCID
           ,g_location_ccid_tab(ln_loop_cnt)          -- 事業所フレックスフィールドCCID
           ,cv_posting_status                         -- 転記ステータス
           ,cv_queue_name                             -- キュー名
-          ,g_assets_cost_tab(ln_loop_cnt)            -- 資産当初取得価額
+-- 2014/08/06 Ver.1.1 Y.Shouji MOD START
+--          ,g_assets_cost_tab(ln_loop_cnt)            -- 資産当初取得価額
+          ,g_payables_cost_tab(ln_loop_cnt)          -- 資産当初取得価額
+-- 2014/08/06 Ver.1.1 Y.Shouji MOD END
           ,cv_depreciate_flag                        -- 償却費計上フラグ
           ,cv_asset_type                             -- 資産タイプ
           ,lv_attribute2                             -- DFF02（取得日）

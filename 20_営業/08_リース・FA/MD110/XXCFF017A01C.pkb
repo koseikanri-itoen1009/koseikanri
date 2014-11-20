@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCFF017A01C(body)
  * Description      : 自販機情報連携
  * MD.050           : MD050_CFF_017_A01_自販機情報連携
- * Version          : 1.0
+ * Version          : 1.1
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -26,6 +26,7 @@ AS
  *  Date          Ver.  Editor           Description
  * ------------- ----- ---------------- -------------------------------------------------
  *  2014-07-17    1.0   SCSK 山下 翔太   新規作成
+ *  2014-08-06    1.1   SCSK 山下 翔太   E_本稼動_12263対応
  *
  *****************************************************************************************/
 --
@@ -173,6 +174,9 @@ AS
     xvoh_moved_date             xxcff_vd_object_headers.moved_date%TYPE,            -- 移動日
     xvoh_month_lease_charge     xxcff_vd_object_headers.month_lease_charge%TYPE,    -- 月額リース料
     xvoh_re_lease_charge        xxcff_vd_object_headers.re_lease_charge%TYPE,       -- 再リース料
+-- 2014-08-06 S.Yamashita ADD Start --
+    xvoh_cash_price             xxcff_vd_object_headers.cash_price%TYPE,            -- 購入価格
+-- 2014-08-06 S.Yamashita ADD End --
     xvoh_assets_date            xxcff_vd_object_headers.assets_date%TYPE,           -- 取得日
     xvoh_installation_place     xxcff_vd_object_headers.installation_place%TYPE,    -- 設置先
     xvoh_installation_address   xxcff_vd_object_headers.installation_address%TYPE,  -- 設置場所
@@ -364,6 +368,9 @@ AS
              xvoh.moved_date                  xvoh_moved_date,             -- 移動日
              xvoh.month_lease_charge          xvoh_month_lease_charge,     -- 月額リース料
              xvoh.re_lease_charge             xvoh_re_lease_charge,        -- 再リース料
+-- 2014-08-06 S.Yamashita ADD Start --
+             xvoh.cash_price                  xvoh_cash_price,             -- 購入価格
+-- 2014-08-06 S.Yamashita ADD End --
              xvoh.assets_date                 xvoh_assets_date,            -- 取得日
              xvoh.installation_place          xvoh_installation_place,     -- 設置先
              xvoh.installation_address        xvoh_installation_address,   -- 設置場所
@@ -744,6 +751,9 @@ AS
          , assets_cost             -- 取得価格
          , month_lease_charge      -- 月額リース料
          , re_lease_charge         -- 再リース料
+-- 2014-08-06 S.Yamashita ADD Start --
+         , cash_price              -- 購入価格
+-- 2014-08-06 S.Yamashita ADD End --
          , assets_date             -- 取得日
          , moved_date              -- 移動日
          , installation_place      -- 設置先
@@ -786,6 +796,9 @@ AS
          , g_vd_object_tab(in_rec_no).assets_cost             -- 取得価格
          , g_vd_object_tab(in_rec_no).xvoh_month_lease_charge -- 月額リース料
          , g_vd_object_tab(in_rec_no).xvoh_re_lease_charge    -- 再リース料
+-- 2014-08-06 S.Yamashita ADD Start --
+         , g_vd_object_tab(in_rec_no).xvoh_cash_price         -- 購入価格
+-- 2014-08-06 S.Yamashita ADD End --
          , g_vd_object_tab(in_rec_no).xvoh_assets_date        -- 取得日
          , g_vd_object_tab(in_rec_no).moved_date              -- 移動日
          , g_vd_object_tab(in_rec_no).installation_place      -- 設置先
@@ -1018,6 +1031,9 @@ AS
              xvoh.quantity               = g_vd_object_tab(in_rec_no).quantity,              -- 数量
              xvoh.date_placed_in_service = g_vd_object_tab(in_rec_no).date_placed_in_service,-- 事業供用日
              xvoh.assets_cost            = g_vd_object_tab(in_rec_no).assets_cost,           -- 取得価格
+-- 2014-08-06 S.Yamashita ADD Start --
+             xvoh.cash_price             = g_vd_object_tab(in_rec_no).xvoh_cash_price,       -- 購入価格
+-- 2014-08-06 S.Yamashita ADD End --
              xvoh.assets_date            = g_vd_object_tab(in_rec_no).xvoh_assets_date,      -- 取得日
              xvoh.moved_date             = g_vd_object_tab(in_rec_no).moved_date,            -- 移動日
              xvoh.installation_place     = g_vd_object_tab(in_rec_no).installation_place,    -- 設置先
@@ -1053,6 +1069,9 @@ AS
              xvohi.quantity               = g_vd_object_tab(in_rec_no).quantity,              -- 数量
              xvohi.date_placed_in_service = g_vd_object_tab(in_rec_no).date_placed_in_service,-- 事業供用日
              xvohi.assets_cost            = g_vd_object_tab(in_rec_no).assets_cost,           -- 取得価格
+-- 2014-08-06 S.Yamashita ADD Start --
+             xvohi.cash_price             = g_vd_object_tab(in_rec_no).xvoh_cash_price,       -- 購入価格
+-- 2014-08-06 S.Yamashita ADD End --
              xvohi.assets_date            = g_vd_object_tab(in_rec_no).xvoh_assets_date,      -- 取得日
              xvohi.moved_date             = g_vd_object_tab(in_rec_no).moved_date,            -- 移動日
              xvohi.installation_place     = g_vd_object_tab(in_rec_no).installation_place,    -- 設置先

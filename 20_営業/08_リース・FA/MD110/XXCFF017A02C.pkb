@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCFF017A02C (body)
  * Description      : 自販機物件CSV出力
  * MD.050           : 自販機物件CSV出力 (MD050_CFF_017A02)
- * Version          : 1.0
+ * Version          : 1.1
  *
  * Program List
  * -------------------- ------------------------------------------------------------
@@ -23,9 +23,7 @@ AS
  *  Date          Ver.  Editor           Description
  * ------------- ----- ---------------- -------------------------------------------------
  *  2014/06/23    1.0   T.Kobori         main新規作成
- *  2014/06/30    1.1   T.Kobori         項目削除  1.月額リース料 2.再リース料
- *  2014/07/04    1.2   T.Kobori         項目追加  1.仕入先コード(出力ファイル)
- *  2014/07/09    1.3   T.Kobori         項目追加  1.仕入先コード(入力パラメータ)
+ *  2014/08/07    1.1   Y.Shouji         E_本稼働_12263  項目追加  1.購入価格（出力ファイル）
  *
  *****************************************************************************************/
 --
@@ -169,9 +167,7 @@ AS
        ,vohd.owner_company_type                       AS  owner_company_type      -- 本社/工場区分
        ,vohd.department_code                          AS  department_code         -- 管理部門
        ,vohd.machine_type                             AS  machine_type            -- 機器区分
- -- 2014/07/04 ADD START
        ,vohd.vendor_code                              AS  vendor_code             -- 仕入先コード
- -- 2014/07/04 ADD END
        ,vohd.manufacturer_name                        AS  manufacturer_name       -- メーカ名
        ,vohd.model                                    AS  model                   -- 機種
        ,vohd.age_type                                 AS  age_type                -- 年式
@@ -179,10 +175,9 @@ AS
        ,vohd.quantity                                 AS  quantity                -- 数量
        ,vohd.date_placed_in_service                   AS  date_placed_in_service  -- 事業供用日
        ,vohd.assets_cost                              AS  assets_cost             -- 取得価格
- -- 2014/06/30 DEL START
- --      ,vohd.month_lease_charge                       AS  month_lease_charge      -- 月額リース料
- --      ,vohd.re_lease_charge                          AS  re_lease_charge         -- 再リース料
- -- 2014/06/30 DEL END
+ -- 2014/08/06 ADD START
+       ,vohd.cash_price                               AS  cash_price              -- 購入価格
+ -- 2014/08/06 ADD END
        ,NVL(vohd.assets_date,vohd.date_placed_in_service)  AS  assets_date        -- NVL(取得日,事業供用日)
        ,vohd.moved_date                               AS  moved_date              -- 移動日
        ,vohd.installation_place                       AS  installation_place      -- 設置先
@@ -215,11 +210,9 @@ AS
         OR (vohd.date_retired             >= NVL(gd_date_retired_from,vohd.date_retired)                 -- 除売却日 FROM
         AND vohd.date_retired             <= NVL(gd_date_retired_to,vohd.date_retired))                  -- 除売却日 TO
         )
- -- 2014/07/09 ADD START
     AND (  gt_vendor_code IS NULL
         OR vohd.vendor_code           = gt_vendor_code                                                   -- 仕入先コード
         )
- -- 2014/07/09 ADD END
     AND gv_search_type           = cv_search_type_1                                            -- 検索区分(最新)
     UNION
     SELECT
@@ -231,9 +224,7 @@ AS
        ,vohi.owner_company_type                       AS  owner_company_type      -- 本社/工場区分
        ,vohi.department_code                          AS  department_code         -- 管理部門
        ,vohi.machine_type                             AS  machine_type            -- 機器区分
- -- 2014/07/04 ADD START
        ,NULL                                          AS  vendor_code             -- 仕入先コード
- -- 2014/07/04 ADD END
        ,vohi.manufacturer_name                        AS  manufacturer_name       -- メーカ名
        ,vohi.model                                    AS  model                   -- 機種
        ,vohi.age_type                                 AS  age_type                -- 年式
@@ -241,10 +232,9 @@ AS
        ,vohi.quantity                                 AS  quantity                -- 数量
        ,vohi.date_placed_in_service                   AS  date_placed_in_service  -- 事業供用日
        ,vohi.assets_cost                              AS  assets_cost             -- 取得価格
- -- 2014/06/30 DEL START
- --      ,vohi.month_lease_charge                       AS  month_lease_charge      -- 月額リース料
- --      ,vohi.re_lease_charge                          AS  re_lease_charge         -- 再リース料
- -- 2014/06/30 DEL END
+ -- 2014/08/06 ADD START
+       ,vohi.cash_price                               AS  cash_price              -- 購入価格
+ -- 2014/08/06 ADD END
        ,NVL(vohi.assets_date,vohi.date_placed_in_service)  AS  assets_date             -- NVL(取得日,事業供用日)
        ,vohi.moved_date                               AS  moved_date              -- 移動日
        ,vohi.installation_place                       AS  installation_place      -- 設置先
@@ -310,9 +300,7 @@ AS
    ,iv_process_type                 IN  VARCHAR2      -- 13.履歴処理区分
    ,iv_process_date_from            IN  DATE          -- 14.履歴処理日 FROM
    ,iv_process_date_to              IN  DATE          -- 15.履歴処理日 TO
- -- 2014/07/09 ADD START
    ,iv_vendor_code                  IN  VARCHAR2      -- 16.仕入先コード
- -- 2014/07/09 ADD END
    ,ov_errbuf                       OUT VARCHAR2      --   エラー・メッセージ           --# 固定 #
    ,ov_retcode                      OUT VARCHAR2      --   リターン・コード             --# 固定 #
    ,ov_errmsg                       OUT VARCHAR2      --   ユーザー・エラー・メッセージ --# 固定 #
@@ -352,9 +340,7 @@ AS
     lv_param_name13                 VARCHAR2(1000);  -- 入力パラメータ名13
     lv_param_name14                 VARCHAR2(1000);  -- 入力パラメータ名14
     lv_param_name15                 VARCHAR2(1000);  -- 入力パラメータ名15
- -- 2014/07/09 ADD START
     lv_param_name16                 VARCHAR2(1000);  -- 入力パラメータ名16
- -- 2014/07/09 ADD END
     lv_search_type                  VARCHAR2(1000);  -- 1.検索区分 
     lv_machine_type                 VARCHAR2(1000);  -- 2.機器区分
     lv_object_code                  VARCHAR2(1000);  -- 3.物件コード
@@ -370,9 +356,7 @@ AS
     lv_process_type                 VARCHAR2(1000);  -- 13.履歴処理区分
     lv_process_date_from            VARCHAR2(1000);  -- 14.履歴処理日 FROM
     lv_process_date_to              VARCHAR2(1000);  -- 15.履歴処理日 TO
- -- 2014/07/09 ADD START
     lv_vendor_code                  VARCHAR2(1000);  -- 16.仕入先コード
- -- 2014/07/09 ADD END
     lv_csv_header                   VARCHAR2(5000);  -- CSVヘッダ項目出力用
 --
     -- *** ローカル・カーソル ***
@@ -422,9 +406,7 @@ AS
     gv_process_type                 := iv_process_type;                                        --13.履歴処理区分
     gd_process_date_from            := iv_process_date_from;                                   --14.履歴処理日 FROM
     gd_process_date_to              := iv_process_date_to;                                     --15.履歴処理日 TO
- -- 2014/07/09 ADD START
     gt_vendor_code                  := iv_vendor_code;                                         --16.仕入先コード
- -- 2014/07/09 ADD END
 --
     --==============================================================
     -- 1.入力パラメータ出力
@@ -638,7 +620,6 @@ AS
                        ,iv_token_name2  => cv_tkn_param_value             -- トークンコード2
                        ,iv_token_value2 => TO_DATE(iv_process_date_to,cv_format_YMD)             -- トークン値2
                       );
- -- 2014/07/09 ADD START
     -- 16.仕入先コード
     lv_param_name16 := xxccp_common_pkg.get_msg(
                         iv_application  => cv_appl_name_xxcff             -- アプリケーション短縮名
@@ -652,7 +633,6 @@ AS
                        ,iv_token_name2  => cv_tkn_param_value             -- トークンコード2
                        ,iv_token_value2 => iv_vendor_code                 -- トークン値2
                       );
- -- 2014/07/09 ADD END
 --
     -- ログに出力
     FND_FILE.PUT_LINE(
@@ -672,11 +652,8 @@ AS
                  lv_date_retired_to             || CHR(10) ||      -- 12.除売却日 TO
                  lv_process_type                || CHR(10) ||      -- 13.履歴処理区分
                  lv_process_date_from           || CHR(10) ||      -- 14.履歴処理日 FROM
- -- 2014/07/09 MOD START
- --                lv_process_date_to             || CHR(10)         -- 15.履歴処理日 TO
                  lv_process_date_to             || CHR(10) ||      -- 15.履歴処理日 TO
                  lv_vendor_code                 || CHR(10)         -- 16.仕入先コード
- -- 2014/07/09 ADD END
     );
 --
     --==================================================
@@ -797,9 +774,7 @@ AS
       lv_op_str := lv_op_str || cv_comma || cv_dqu || get_vd_object_info_rec.owner_company_type     || cv_dqu ;   -- 本社/工場区分
       lv_op_str := lv_op_str || cv_comma || cv_dqu || get_vd_object_info_rec.department_code        || cv_dqu ;   -- 管理部門
       lv_op_str := lv_op_str || cv_comma || cv_dqu || get_vd_object_info_rec.machine_type           || cv_dqu ;   -- 機器区分
- -- 2014/07/04 ADD START
       lv_op_str := lv_op_str || cv_comma || cv_dqu || get_vd_object_info_rec.vendor_code            || cv_dqu ;   -- 仕入先コード
- -- 2014/07/04 ADD END
       lv_op_str := lv_op_str || cv_comma || cv_dqu || get_vd_object_info_rec.manufacturer_name      || cv_dqu ;   -- メーカ名
       lv_op_str := lv_op_str || cv_comma || cv_dqu || get_vd_object_info_rec.model                  || cv_dqu ;   -- 機種
       lv_op_str := lv_op_str || cv_comma || cv_dqu || get_vd_object_info_rec.age_type               || cv_dqu ;   -- 年式
@@ -807,10 +782,9 @@ AS
       lv_op_str := lv_op_str || cv_comma || cv_dqu || get_vd_object_info_rec.quantity               || cv_dqu ;   -- 数量
       lv_op_str := lv_op_str || cv_comma || cv_dqu || get_vd_object_info_rec.date_placed_in_service || cv_dqu ;   -- 事業供用日
       lv_op_str := lv_op_str || cv_comma || cv_dqu || get_vd_object_info_rec.assets_cost            || cv_dqu ;   -- 取得価格
- -- 2014/06/30 DEL START
- --     lv_op_str := lv_op_str || cv_comma || cv_dqu || get_vd_object_info_rec.month_lease_charge     || cv_dqu ;   -- 月額リース料
- --     lv_op_str := lv_op_str || cv_comma || cv_dqu || get_vd_object_info_rec.re_lease_charge        || cv_dqu ;   -- 再リース料
- -- 2014/06/30 DEL END
+ -- 2014/08/06 ADD START
+      lv_op_str := lv_op_str || cv_comma || cv_dqu || get_vd_object_info_rec.cash_price             || cv_dqu ;   -- 購入価格
+ -- 2014/08/06 ADD END
       lv_op_str := lv_op_str || cv_comma || cv_dqu || get_vd_object_info_rec.assets_date            || cv_dqu ;   -- 取得日
       lv_op_str := lv_op_str || cv_comma || cv_dqu || get_vd_object_info_rec.moved_date             || cv_dqu ;   -- 移動日
       lv_op_str := lv_op_str || cv_comma || cv_dqu || get_vd_object_info_rec.installation_place     || cv_dqu ;   -- 設置先
@@ -895,9 +869,7 @@ AS
    ,iv_process_type                 IN  VARCHAR2     -- 13.履歴処理区分
    ,iv_process_date_from            IN  DATE         -- 14.履歴処理日 FROM
    ,iv_process_date_to              IN  DATE         -- 15.履歴処理日 TO
- -- 2014/07/09 ADD START
    ,iv_vendor_code                  IN  VARCHAR2     -- 16.仕入先コード
- -- 2014/07/09 ADD END
    ,ov_errbuf                       OUT VARCHAR2     -- エラー・メッセージ           --# 固定 #
    ,ov_retcode                      OUT VARCHAR2     -- リターン・コード             --# 固定 #
    ,ov_errmsg                       OUT VARCHAR2     -- ユーザー・エラー・メッセージ --# 固定 #
@@ -965,9 +937,7 @@ AS
      ,iv_process_type                => iv_process_type                -- 13.履歴処理区分
      ,iv_process_date_from           => iv_process_date_from           -- 14.履歴処理日 FROM
      ,iv_process_date_to             => iv_process_date_to             -- 15.履歴処理日 TO
- -- 2014/07/09 ADD START
      ,iv_vendor_code                 => iv_vendor_code                 -- 16.仕入先コード
- -- 2014/07/09 ADD END
      ,ov_errbuf                      => lv_errbuf                      -- エラー・メッセージ           --# 固定 #
      ,ov_retcode                     => lv_retcode                     -- リターン・コード             --# 固定 #
      ,ov_errmsg                      => lv_errmsg                      -- ユーザー・エラー・メッセージ --# 固定 #
@@ -1045,9 +1015,7 @@ AS
    ,iv_process_type                 IN  VARCHAR2     -- 13.履歴処理区分
    ,iv_process_date_from            IN  VARCHAR2     -- 14.履歴処理日 FROM
    ,iv_process_date_to              IN  VARCHAR2     -- 15.履歴処理日 TO
- -- 2014/07/09 ADD START
    ,iv_vendor_code                  IN  VARCHAR2     -- 16.仕入先コード
- -- 2014/07/09 ADD END
   )
 --
 --###########################  固定部 START   ###########################
@@ -1106,9 +1074,7 @@ AS
       ,iv_process_type                => iv_process_type                -- 13.履歴処理区分
       ,iv_process_date_from           => TO_DATE(iv_process_date_from,cv_format_std)           -- 14.履歴処理日 FROM
       ,iv_process_date_to             => TO_DATE(iv_process_date_to,cv_format_std)             -- 15.履歴処理日 TO
- -- 2014/07/09 ADD START
       ,iv_vendor_code                 => iv_vendor_code                 -- 16.仕入先コード
- -- 2014/07/09 ADD END
       ,ov_errbuf                      => lv_errbuf                      -- エラー・メッセージ           --# 固定 #
       ,ov_retcode                     => lv_retcode                     -- リターン・コード             --# 固定 #
       ,ov_errmsg                      => lv_errmsg                      -- ユーザー・エラー・メッセージ --# 固定 #

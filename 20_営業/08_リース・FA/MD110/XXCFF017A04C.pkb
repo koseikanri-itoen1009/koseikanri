@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCFF017A04C(body)
  * Description      : ©”Ì‹@•¨Œî•ñƒAƒbƒvƒ[ƒh
  * MD.050           : MD050_CFF_017_A04_©”Ì‹@•¨Œî•ñƒAƒbƒvƒ[ƒh
- * Version          : 1.0
+ * Version          : 1.1
  *
  * Program List
  * ---------------------------- ------------------------------------------------------------
@@ -30,6 +30,7 @@ AS
  *  Date          Ver.  Editor           Description
  * ------------- ----- ---------------- -------------------------------------------------
  *  2014/07/14    1.0  SCSK R‰º         V‹Kì¬
+ *  2014/08/06    1.1  SCSK R‰º         E_–{‰Ò“®_12263‘Î‰
  *
  *****************************************************************************************/
 --
@@ -221,6 +222,9 @@ AS
     assets_cost              xxcff_vd_object_info_upload_wk.assets_cost%TYPE,            -- æ“¾‰¿Ši
 --    month_lease_charge       xxcff_vd_object_info_upload_wk.month_lease_charge%TYPE,     -- ŒŠzƒŠ[ƒX—¿
 --    re_lease_charge          xxcff_vd_object_info_upload_wk.re_lease_charge%TYPE,        -- ÄƒŠ[ƒX—¿
+-- 2014-08-06 S.Yamashita Add Start --
+    cash_price               xxcff_vd_object_info_upload_wk.cash_price%TYPE,             -- w“ü‰¿Ši
+-- 2014-08-06 S.Yamashita Add End --
     date_retired             xxcff_vd_object_info_upload_wk.date_retired%TYPE,           -- œE”„‹p“ú
     proceeds_of_sale         xxcff_vd_object_info_upload_wk.proceeds_of_sale%TYPE,       -- ”„‹p‰¿Ši
     cost_of_removal          xxcff_vd_object_info_upload_wk.cost_of_removal%TYPE,        -- “P‹”ï—p
@@ -241,6 +245,9 @@ AS
     xvoh_assets_cost              xxcff_vd_object_headers.assets_cost%TYPE,                -- æ“¾‰¿Ši
 --    xvoh_month_lease_charge       xxcff_vd_object_headers.month_lease_charge%TYPE,         -- ŒŠzƒŠ[ƒX—¿
 --    xvoh_re_lease_charge          xxcff_vd_object_headers.re_lease_charge%TYPE,            -- ÄƒŠ[ƒX—¿
+-- 2014-08-06 S.Yamashita Add Start --
+    xvoh_cash_price               xxcff_vd_object_headers.cash_price%TYPE,                 -- w“ü‰¿Ši
+-- 2014-08-06 S.Yamashita Add End --
     xvoh_date_retired             xxcff_vd_object_headers.date_retired%TYPE,               -- œE”„‹p“ú
     xvoh_proceeds_of_sale         xxcff_vd_object_headers.proceeds_of_sale%TYPE,           -- ”„‹p‰¿Ši
     xvoh_cost_of_removal          xxcff_vd_object_headers.cost_of_removal%TYPE,            -- “P‹”ï—p
@@ -949,6 +956,9 @@ AS
      ,assets_cost               -- æ“¾‰¿Ši
 --     ,month_lease_charge        -- ŒŠzƒŠ[ƒX—¿
 --     ,re_lease_charge           -- ÄƒŠ[ƒX—¿
+-- 2014-08-06 S.Yamashita Add Start --
+     ,cash_price                -- w“ü‰¿Ši
+-- 2014-08-06 S.Yamashita Add End --
      ,assets_date               -- æ“¾“ú
      ,moved_date                -- ˆÚ“®“ú
      ,installation_place        -- İ’uæ
@@ -993,19 +1003,20 @@ AS
      ,g_load_data_tab(17)       -- æ“¾‰¿Ši
 --     ,g_load_data_tab(17)       -- ŒŠzƒŠ[ƒX—¿
 --     ,g_load_data_tab(18)       -- ÄƒŠ[ƒX—¿
-     ,g_load_data_tab(18)       -- æ“¾“ú
-     ,g_load_data_tab(19)       -- ˆÚ“®“ú
-     ,g_load_data_tab(20)       -- İ’uæ
-     ,g_load_data_tab(21)       -- İ’uêŠ
-     ,g_load_data_tab(22)       -- \’n
-     ,g_load_data_tab(23)       -- –‹ÆŠ
-     ,g_load_data_tab(24)       -- œ¥”„‹p“ú
-     ,g_load_data_tab(25)       -- ”„‹p‰¿Šz
-     ,g_load_data_tab(26)       -- “P‹”ï—p
-     ,g_load_data_tab(27)       -- œ”„‹pŠm’èƒtƒ‰ƒO
-     ,g_load_data_tab(28)       -- İ’uƒx[ƒXî•ñ˜AŒg“ú
-     ,g_load_data_tab(29)       -- FAî•ñ˜AŒg“ú
-     ,g_load_data_tab(30)       -- •¨ŒŠÇ—_ÅIXVÒ
+     ,g_load_data_tab(18)       -- w“ü‰¿Ši
+     ,g_load_data_tab(19)       -- æ“¾“ú
+     ,g_load_data_tab(20)       -- ˆÚ“®“ú
+     ,g_load_data_tab(21)       -- İ’uæ
+     ,g_load_data_tab(22)       -- İ’uêŠ
+     ,g_load_data_tab(23)       -- \’n
+     ,g_load_data_tab(24)       -- –‹ÆŠ
+     ,g_load_data_tab(25)       -- œ¥”„‹p“ú
+     ,g_load_data_tab(26)       -- ”„‹p‰¿Šz
+     ,g_load_data_tab(27)       -- “P‹”ï—p
+     ,g_load_data_tab(28)       -- œ”„‹pŠm’èƒtƒ‰ƒO
+     ,g_load_data_tab(29)       -- İ’uƒx[ƒXî•ñ˜AŒg“ú
+     ,g_load_data_tab(30)       -- FAî•ñ˜AŒg“ú
+     ,g_load_data_tab(31)       -- •¨ŒŠÇ—_ÅIXVÒ
      ,cn_created_by             -- ì¬Ò
      ,cd_creation_date          -- ì¬“ú
      ,cn_last_updated_by        -- ÅIXVÒ
@@ -1095,6 +1106,9 @@ AS
              ,xvoiu.assets_cost             AS assets_cost           -- æ“¾‰¿Ši
 --             ,xvoiu.month_lease_charge      AS month_lease_charge    -- ŒŠzƒŠ[ƒX—¿
 --             ,xvoiu.re_lease_charge         AS re_lease_charge       -- ÄƒŠ[ƒX—¿
+-- 2014-08-06 S.Yamashita Add Start --
+             ,xvoiu.cash_price              AS cash_price            -- w“ü‰¿Ši
+-- 2014-08-06 S.Yamashita Add End --
              ,xvoiu.date_retired            AS date_retired          -- œE”„‹p“ú
              ,xvoiu.proceeds_of_sale        AS proceeds_of_sale      -- ”„‹p‰¿Ši
              ,xvoiu.cost_of_removal         AS cost_of_removal       -- “P‹”ï—p
@@ -1115,6 +1129,9 @@ AS
              ,xvoh.assets_cost              AS xvoh_assets_cost            -- æ“¾‰¿Ši(•¨ŒŠÇ—)
 --             ,xvoh.month_lease_charge       AS xvoh_month_lease_charge     -- ŒŠzƒŠ[ƒX—¿(•¨ŒŠÇ—)
 --             ,xvoh.re_lease_charge          AS xvoh_re_lease_charge        -- ÄƒŠ[ƒX—¿(•¨ŒŠÇ—)
+-- 2014-08-06 S.Yamashita Add Start --
+             ,xvoh.cash_price               AS xvoh_cash_price             -- w“ü‰¿Ši(•¨ŒŠÇ—)
+-- 2014-08-06 S.Yamashita Add End --
              ,xvoh.date_retired             AS xvoh_date_retired           -- œE”„‹p“ú(•¨ŒŠÇ—)
              ,xvoh.proceeds_of_sale         AS xvoh_proceeds_of_sale       -- ”„‹p‰¿Ši(•¨ŒŠÇ—)
              ,xvoh.cost_of_removal          AS xvoh_cost_of_removal        -- “P‹”ï—p(•¨ŒŠÇ—)
@@ -1348,6 +1365,9 @@ AS
              ,TO_CHAR(g_vd_object_tab(in_rec_no).assets_cost)                           -- æ“¾‰¿Ši
 --             ,TO_CHAR(g_vd_object_tab(in_rec_no).month_lease_charge)                    -- ŒŠzƒŠ[ƒX—¿
 --             ,TO_CHAR(g_vd_object_tab(in_rec_no).re_lease_charge)                       -- ÄƒŠ[ƒX—¿
+-- 2014-08-06 S.Yamashita Add Start --
+             ,TO_CHAR(g_vd_object_tab(in_rec_no).cash_price)                            -- w“ü‰¿Ši
+-- 2014-08-06 S.Yamashita Add End --
            ) IS NULL 
       )
       THEN
@@ -1681,6 +1701,9 @@ AS
     lv_nvl_date_placed_in_service  xxcff_vd_object_info_upload_wk.date_placed_in_service%TYPE; -- –‹Æ‹Ÿ—p“ú
     lv_nvl_assets_date             xxcff_vd_object_info_upload_wk.assets_date%TYPE;            -- æ“¾“ú
     lv_nvl_assets_cost             xxcff_vd_object_info_upload_wk.assets_cost%TYPE;            -- æ“¾‰¿Ši
+-- 2014-08-06 S.Yamashita Add Start --
+    lv_nvl_cash_price              xxcff_vd_object_info_upload_wk.cash_price%TYPE;             -- w“ü‰¿Ši
+-- 2014-08-06 S.Yamashita Add End --
     lv_nvl_date_retired            xxcff_vd_object_info_upload_wk.date_retired%TYPE;           -- œE”„‹p“ú
     lv_nvl_proceeds_of_sale        xxcff_vd_object_info_upload_wk.proceeds_of_sale%TYPE;       -- ”„‹p‰¿Ši
     lv_nvl_cost_of_removal         xxcff_vd_object_info_upload_wk.cost_of_removal%TYPE;        -- “P‹”ï—p
@@ -1803,6 +1826,10 @@ AS
 --                                             ,g_vd_object_tab(in_rec_no).xvoh_month_lease_charge ),     -- ŒŠzƒŠ[ƒX—¿
 --             xvoh.re_lease_charge        = NVL( g_vd_object_tab(in_rec_no).re_lease_charge
 --                                             ,g_vd_object_tab(in_rec_no).xvoh_re_lease_charge ),        -- ÄƒŠ[ƒX—¿
+-- 2014-08-06 S.Yamashita Add Start --
+             xvoh.cash_price             = NVL( g_vd_object_tab(in_rec_no).cash_price
+                                             ,g_vd_object_tab(in_rec_no).xvoh_cash_price ),             -- w“ü‰¿Ši
+-- 2014-08-06 S.Yamashita Add End --
              xvoh.last_updated_by        = cn_last_updated_by,                              -- ÅIXVÒ
              xvoh.last_update_date       = cd_last_update_date,                             -- ÅIXV“ú
              xvoh.last_update_login      = cn_last_update_login,                            -- ÅIXVƒƒOƒCƒ“
@@ -1885,6 +1912,10 @@ AS
                                                ,g_vd_object_tab(in_rec_no).xvoh_assets_date ),            -- æ“¾“ú
                xvohi.assets_cost            = NVL( g_vd_object_tab(in_rec_no).assets_cost
                                                ,g_vd_object_tab(in_rec_no).xvoh_assets_cost ),            -- æ“¾‰¿Ši
+-- 2014-08-06 S.Yamashita Add Start --
+               xvohi.cash_price             = NVL( g_vd_object_tab(in_rec_no).cash_price
+                                               ,g_vd_object_tab(in_rec_no).xvoh_cash_price ),             -- w“ü‰¿Ši
+-- 2014-08-06 S.Yamashita Add End --
 --               xvohi.month_lease_charge     = NVL( g_vd_object_tab(in_rec_no).month_lease_charge
 --                                               ,g_vd_object_tab(in_rec_no).xvoh_month_lease_charge ),     -- ŒŠzƒŠ[ƒX—¿
 --               xvohi.re_lease_charge        = NVL( g_vd_object_tab(in_rec_no).re_lease_charge
@@ -1938,6 +1969,9 @@ AS
         lv_nvl_date_placed_in_service := g_vd_object_tab(in_rec_no).xvoh_date_placed_in_service;        -- –‹Æ‹Ÿ—p“ú
         lv_nvl_assets_date            := g_vd_object_tab(in_rec_no).xvoh_assets_date;                   -- æ“¾“ú
         lv_nvl_assets_cost            := g_vd_object_tab(in_rec_no).xvoh_assets_cost;                   -- æ“¾‰¿Ši
+-- 2014-08-06 S.Yamashita Add Start --
+        lv_nvl_cash_price             := g_vd_object_tab(in_rec_no).xvoh_cash_price;                    -- w“ü‰¿Ši
+-- 2014-08-06 S.Yamashita Add End --
         lv_nvl_date_retired           := g_vd_object_tab(in_rec_no).xvoh_date_retired;                  -- œE”„‹p“ú
         lv_nvl_proceeds_of_sale       := g_vd_object_tab(in_rec_no).xvoh_proceeds_of_sale;              -- ”„‹p‰¿Ši
         lv_nvl_cost_of_removal        := g_vd_object_tab(in_rec_no).xvoh_cost_of_removal;               -- “P‹”ï—p
@@ -1968,6 +2002,10 @@ AS
                                                  ,g_vd_object_tab(in_rec_no).xvoh_assets_date );  -- æ“¾“ú
         lv_nvl_assets_cost            := NVL( g_vd_object_tab(in_rec_no).assets_cost
                                                  ,g_vd_object_tab(in_rec_no).xvoh_assets_cost );  -- æ“¾‰¿Ši
+-- 2014-08-06 S.Yamashita Add Start --
+        lv_nvl_cash_price             := NVL( g_vd_object_tab(in_rec_no).cash_price
+                                                 ,g_vd_object_tab(in_rec_no).xvoh_cash_price );   -- w“ü‰¿Ši
+-- 2014-08-06 S.Yamashita Add End --
         lv_nvl_date_retired           := g_vd_object_tab(in_rec_no).xvoh_date_retired;             -- œE”„‹p“ú
         lv_nvl_proceeds_of_sale       := g_vd_object_tab(in_rec_no).xvoh_proceeds_of_sale;         -- ”„‹p‰¿Ši
         lv_nvl_cost_of_removal        := g_vd_object_tab(in_rec_no).xvoh_cost_of_removal;          -- “P‹”ï—p
@@ -1991,6 +2029,9 @@ AS
         lv_nvl_date_placed_in_service := g_vd_object_tab(in_rec_no).xvoh_date_placed_in_service;        -- –‹Æ‹Ÿ—p“ú
         lv_nvl_assets_date            := g_vd_object_tab(in_rec_no).xvoh_assets_date;                   -- æ“¾“ú
         lv_nvl_assets_cost            := g_vd_object_tab(in_rec_no).xvoh_assets_cost;                   -- æ“¾‰¿Ši
+-- 2014-08-06 S.Yamashita Add Start --
+        lv_nvl_cash_price             := g_vd_object_tab(in_rec_no).xvoh_cash_price;                    -- w“ü‰¿Ši
+-- 2014-08-06 S.Yamashita Add End --
         lv_nvl_date_retired           := NVL( g_vd_object_tab(in_rec_no).date_retired
                                                  ,g_vd_object_tab(in_rec_no).xvoh_date_retired );  -- œE”„‹p“ú
         lv_nvl_proceeds_of_sale       := NVL( g_vd_object_tab(in_rec_no).proceeds_of_sale
@@ -2021,6 +2062,9 @@ AS
            , assets_cost             -- æ“¾‰¿Ši
 --           , month_lease_charge      -- ŒŠzƒŠ[ƒX—¿
 --           , re_lease_charge         -- ÄƒŠ[ƒX—¿
+-- 2014-08-06 S.Yamashita Add Start --
+           , cash_price              -- w“ü‰¿Ši
+-- 2014-08-06 S.Yamashita Add End --
            , assets_date             -- æ“¾“ú
            , moved_date              -- ˆÚ“®“ú
            , installation_place      -- İ’uæ
@@ -2065,6 +2109,9 @@ AS
 --               ,g_vd_object_tab(in_rec_no).xvoh_month_lease_charge ) -- ŒŠzƒŠ[ƒX—¿
 --           , NVL( g_vd_object_tab(in_rec_no).re_lease_charge
 --               ,g_vd_object_tab(in_rec_no).xvoh_re_lease_charge )    -- ÄƒŠ[ƒX—¿
+-- 2014-08-06 S.Yamashita Add Start --
+           , lv_nvl_cash_price                                       -- w“ü‰¿Ši
+-- 2014-08-06 S.Yamashita Add End --
            , lv_nvl_assets_date                                      -- æ“¾“ú
            , lv_nvl_moved_date                                       -- ˆÚ“®“ú
            , lv_nvl_installation_place                               -- İ’uæ
