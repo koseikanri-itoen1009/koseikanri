@@ -7,7 +7,7 @@ AS
  * Description      : 顧客マスタから新規獲得した顧客を抽出し、新規獲得ポイント顧客別履歴テーブル
  *                  : にデータを登録します。
  * MD.050           : 新規獲得ポイント集計（新規獲得ポイント集計処理）MD050_CSM_004_A04
- * Version          : 1.2
+ * Version          : 1.3
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -46,6 +46,7 @@ AS
  *  2009/04/09    1.1   M.Ohtsuki      ［障害T1_0416］業務日付とシステム日付比較の不具合
  *  2009/04/22    1.2   M.Ohtsuki      ［障害T1_0704］コード定義書の不具合
  *  2009/04/22    1.2   M.Ohtsuki      ［障害T1_0713］情報確定判定処理の不具合
+ *  2009/07/07    1.3   M.Ohtsuki      ［SCS障害管理番号0000254］部署コード取得条件の不具合
  *****************************************************************************************/
 --
 --#######################  固定グローバル定数宣言部 START   #######################
@@ -135,7 +136,9 @@ AS
   cv_appl_short_name_ar     CONSTANT VARCHAR2(2)   := 'AR';                                         -- ARアプリケーション短縮名
   cv_appl_short_name        CONSTANT VARCHAR2(5)   := 'XXCCP';                                      -- アドオン：共通管理
   cv_point_custom_status    CONSTANT VARCHAR2(30)  := 'XXCSM1_POINT_CUSTOM_STATUS';                 -- 顧客ステータスルックアップタイプ
-  cv_post_level_name        CONSTANT VARCHAR2(100) := 'XXCSM1_CALC_POINT_POST_LEVEL';               -- ポイント算出用部署階層
+--//+DEL START 2009/07/07 0000254 M.Ohtsuki
+--  cv_post_level_name        CONSTANT VARCHAR2(100) := 'XXCSM1_CALC_POINT_POST_LEVEL';               -- ポイント算出用部署階層
+--//+DEL END   2009/07/07 0000254 M.Ohtsuki
   cv_set_of_bks_id_name     CONSTANT VARCHAR2(100) := 'GL_SET_OF_BKS_ID';                           -- 会計帳簿ID
   cv_closing_status_o       CONSTANT VARCHAR2(1)   := 'O';                                          -- 会計期間ステータス(オープン)
 --//+DEL START 2009/04/27 T1_0713 M.Ohtsuki
@@ -184,7 +187,7 @@ AS
   cv_error_off              CONSTANT VARCHAR2(1)   := '0';                                          -- エラーオフ
   cv_customer_class_cust    CONSTANT VARCHAR2(2)   := '10';                                         -- 顧客区分（顧客）
   cv_flg_y                  CONSTANT VARCHAR2(1)   := 'Y';                                          -- フラグ'Y'
---//+ADD END   2009/04/27 T1_0713 M.Ohtsuki
+--//+ADD START 2009/04/27 T1_0713 M.Ohtsuki
   cv_flg_n                  CONSTANT VARCHAR2(1)   := 'N';                                          -- フラグ'N'
 --//+ADD END   2009/04/27 T1_0713 M.Ohtsuki
   cv_kyousan                CONSTANT VARCHAR2(1)   := '5';                                          -- 売上区分'協賛'
@@ -196,16 +199,25 @@ AS
   -- ===============================
   -- ユーザー定義グローバル型
   -- ===============================
---
+--//+ADD START   2009/07/07 0000254 M.Ohtsuki
+  TYPE gt_loc_lv_ttype IS TABLE OF VARCHAR2(10)                                                     -- テーブル型の宣言
+    INDEX BY BINARY_INTEGER;
+--//+ADD END     2009/07/07 0000254 M.Ohtsuki
   -- ===============================
   -- ユーザー定義グローバル変数
   -- ===============================
   gd_process_date           DATE;                                                                   -- 業務日付
-  gv_post_level             VARCHAR2(100);                                                          -- ポイント算出用部署階層
+--//+DEL START   2009/07/07 0000254 M.Ohtsuki
+--  gv_post_level             VARCHAR2(100);                                                          -- ポイント算出用部署階層
+--//+DEL END     2009/07/07 0000254 M.Ohtsuki
   gt_set_of_bks_id          gl_period_statuses.set_of_books_id%TYPE;                                -- 会計帳簿ID
   gt_ar_appl_id             fnd_application.application_id%TYPE;                                    -- ARアプリケーションID
   gv_intro_umu_flg          VARCHAR2(1);                                                            -- 紹介者有無フラグ
 --
+--//+ADD START   2009/07/07 0000254 M.Ohtsuki
+  gt_loc_lv_tab             gt_loc_lv_ttype;                                                        -- テーブル型変数の宣言
+  ln_loc_lv_cnt             NUMBER;                                                                 -- カウンタ
+--//+ADD END     2009/07/07 0000254 M.Ohtsuki
   -- ===============================
   -- ユーザー定義例外
   -- ===============================
@@ -242,10 +254,24 @@ AS
     -- ユーザー宣言部
     -- ===============================
     -- *** ローカル定数 ***
---
+--//+ADD START   2009/07/07 0000254 M.Ohtsuki
+    cv_location_level       CONSTANT VARCHAR2(100) := 'XXCSM1_CALC_POINT_LEVEL';                    -- ポイント算出用部署階層
+--//+ADD END     2009/07/07 0000254 M.Ohtsuki
     -- *** ローカル変数 ***
     lv_tkn_value            VARCHAR2(4000);                                                         -- トークン値
-    -- *** ローカル・カーソル ***
+    -- *** ローカル・カーソル **
+--//+ADD START   2009/07/07 0000254 M.Ohtsuki
+    CURSOR get_loc_lv_cur
+    IS
+          SELECT   flv.lookup_code        lookup_code
+          FROM     fnd_lookup_values      flv                                                       -- クイックコード値
+          WHERE    flv.lookup_type        = cv_location_level                                       -- ポイント算出用部署階層
+            AND    flv.language           = USERENV('LANG')                                         -- 言語('JA')
+            AND    flv.enabled_flag       = cv_flg_y                                                -- 使用可能フラグ
+            AND    NVL(flv.start_date_active,gd_process_date) <= gd_process_date                    -- 適用開始日
+            AND    NVL(flv.end_date_active,gd_process_date)   >= gd_process_date                    -- 適用終了日
+          ORDER BY flv.lookup_code   DESC;                                                          -- ルックアップコード
+--//+ADD END     2009/07/07 0000254 M.Ohtsuki
 --
   BEGIN
 --
@@ -284,15 +310,23 @@ AS
     -- ②プロファイル値取得
     --==============================================================
 --
-    FND_PROFILE.GET(name => cv_post_level_name
-                   ,val  => gv_post_level);                                                         -- ポイント算出用部署階層
+--//+DEL START   2009/07/07 0000254 M.Ohtsuki
+--    FND_PROFILE.GET(name => cv_post_level_name
+--                   ,val  => gv_post_level);                                                         -- ポイント算出用部署階層
+--//+DEL END     2009/07/07 0000254 M.Ohtsuki
     FND_PROFILE.GET(name => cv_set_of_bks_id_name
                    ,val  => gt_set_of_bks_id);                                                      -- 会計帳簿ID
-    IF ( gv_post_level IS NULL) THEN                                                                -- ポイント算出用部署階層の場合
-      lv_tkn_value    := cv_post_level_name;
-    ELSIF ( gt_set_of_bks_id IS NULL) THEN                                                          -- 会計帳簿IDの場合
+--//+UPD START   2009/07/07 0000254 M.Ohtsuki
+--    IF ( gv_post_level IS NULL) THEN                                                                -- ポイント算出用部署階層の場合
+--      lv_tkn_value    := cv_post_level_name;
+--    ELSIF ( gt_set_of_bks_id IS NULL) THEN                                                          -- 会計帳簿IDの場合
+--      lv_tkn_value    := cv_set_of_bks_id_name;
+--    END IF;
+--↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓
+    IF ( gt_set_of_bks_id IS NULL) THEN  
       lv_tkn_value    := cv_set_of_bks_id_name;
     END IF;
+--//+UPD START   2009/07/07 0000254 M.Ohtsuki
     IF (lv_tkn_value IS NOT NULL) THEN                                                              -- 取得に失敗した場合
       lv_errmsg := xxccp_common_pkg.get_msg(
                                             iv_application  => cv_appl_short_name_csm               -- アプリケーション短縮名
@@ -316,6 +350,18 @@ AS
     --④ 業務日付の取得
     --==============================================================
     gd_process_date := xxccp_common_pkg2.get_process_date;                                          -- 業務日付取得
+--
+--//+ADD START   2009/07/07 0000254 M.Ohtsuki
+--  --==============================================================
+    --⑤ 拠点階層の取得
+    --==============================================================
+    ln_loc_lv_cnt := 0;                                                                             -- 変数の初期化
+    <<get_loc_lv_cur_loop>>                                                                        -- 拠点階層取得LOOP
+    FOR rec IN get_loc_lv_cur LOOP
+      ln_loc_lv_cnt := ln_loc_lv_cnt + 1;
+      gt_loc_lv_tab(ln_loc_lv_cnt)   := rec.lookup_code;                                            -- 拠点階層
+    END LOOP get_loc_lv_cur_loop;
+--//+ADD END     2009/07/07 0000254 M.Ohtsuki
   EXCEPTION
 --
 --#################################  固定例外処理部 START   ####################################
@@ -487,6 +533,10 @@ AS
     lv_duties_cd      VARCHAR2(100);                                                                -- 職務コード
     lv_job_type_cd    VARCHAR2(100);                                                                -- 職種コード
     lv_new_old_type   VARCHAR2(1);                                                                  -- 新旧フラグ
+--//+ADD START   2009/07/07 0000254 M.Ohtsuki
+    ln_check_cnt         NUMBER;                                                                    -- 部署チェック用カウンタ
+--//+ADD END     2009/07/07 0000254 M.Ohtsuki
+
     -- *** ローカル・カーソル ***
 --
   BEGIN
@@ -536,26 +586,52 @@ AS
     -- 3.拠点コード、カスタムプロファイルの階層を基に、xxcsm:部門ビューから部署コードを取得します。
     --   取得できない場合、顧客単位でスキップします。
     BEGIN
-      SELECT DECODE(gv_post_level,'L6',xlllv.cd_level6 
-                                 ,'L5',xlllv.cd_level5 
-                                 ,'L4',xlllv.cd_level4 
-                                 ,'L3',xlllv.cd_level3 
-                                 ,'L2',xlllv.cd_level2 
-                                 ,'L1',xlllv.cd_level1 
-                                 ,                NULL
-                    ) cd_post
-        INTO lt_post_cd            
-        FROM xxcsm_loc_level_list_v xlllv
-       WHERE DECODE(xlllv.location_level ,'L6',xlllv.cd_level6
-                                         ,'L5',xlllv.cd_level5
-                                         ,'L4',xlllv.cd_level4
-                                         ,'L3',xlllv.cd_level3
-                                         ,'L2',xlllv.cd_level2
-                                         ,'L1',xlllv.cd_level1
-                                         ,                NULL
-                    ) = lt_location_cd
-         AND ROWNUM = 1
-      ;
+--//+ADD START  2009/07/07 0000254 M.Ohtsuki
+      ln_check_cnt := 0;                                                                            -- 変数の初期化
+      lt_post_cd := NULL;                                                                           -- 変数の初期化
+      LOOP
+        EXIT WHEN ln_check_cnt >= ln_loc_lv_cnt                                                     -- ポイント算出用部署階層の件数分
+              OR  lt_post_cd IS NOT NULL;                                                           -- 部署コードが取得できるまで
+        ln_check_cnt := ln_check_cnt + 1;
+--//+ADD END    2009/07/07 0000254 M.Ohtsuki
+--//+UPD START  2009/07/07 0000254 M.Ohtsuki
+--        SELECT DECODE(gv_post_level,'L6',xlllv.cd_level6 
+--↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓
+         SELECT DECODE(gt_loc_lv_tab(ln_check_cnt),'L6',xlllv.cd_level6 
+--//+UPD END    2009/07/07 0000254 M.Ohtsuki
+                                   ,'L5',xlllv.cd_level5 
+                                   ,'L4',xlllv.cd_level4 
+                                   ,'L3',xlllv.cd_level3 
+                                   ,'L2',xlllv.cd_level2 
+                                   ,'L1',xlllv.cd_level1 
+                                   ,                NULL
+                      ) cd_post
+          INTO lt_post_cd            
+          FROM xxcsm_loc_level_list_v xlllv
+         WHERE DECODE(xlllv.location_level ,'L6',xlllv.cd_level6
+                                           ,'L5',xlllv.cd_level5
+                                           ,'L4',xlllv.cd_level4
+                                           ,'L3',xlllv.cd_level3
+                                           ,'L2',xlllv.cd_level2
+                                           ,'L1',xlllv.cd_level1
+                                           ,                NULL
+                      ) = lt_location_cd
+           AND ROWNUM = 1;
+--//+ADD START  2009/07/07 0000254 M.Ohtsuki
+      END LOOP;
+      IF (lt_post_cd IS NULL) THEN                                                                  -- 部署コードが抽出できなかった場合
+        lv_errmsg := xxccp_common_pkg.get_msg(
+                     iv_application  => cv_appl_short_name_csm                                      -- アプリケーション短縮名
+                    ,iv_name         => cv_err_post_msg                                             -- 部署コード取得エラー
+                    ,iv_token_name1  => cv_account_tkn                                              -- 顧客コードトークン名
+                    ,iv_token_value1 => it_account_number                                           -- 顧客コード
+                    ,iv_token_name2  => cv_loca_tkn                                                 -- 拠点コードトークン名
+                    ,iv_token_value2 => lt_location_cd                                              -- 拠点コード
+                   );
+        lv_errbuf := lv_errmsg;
+        RAISE global_process_expt;
+      END IF;
+--//+ADD END    2009/07/07 0000254 M.Ohtsuki
     EXCEPTION
       WHEN NO_DATA_FOUND THEN
         lv_errmsg := xxccp_common_pkg.get_msg(
