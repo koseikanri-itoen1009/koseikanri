@@ -1,0 +1,2 @@
+CREATE OR REPLACE DIRECTORY XXCFR1_SALES_DATA_FILEPATH
+  AS '/ebsif/outbound/ca_iffile/kb/';

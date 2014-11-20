@@ -1,0 +1,2 @@
+CREATE OR REPLACE DIRECTORY XXCFR1_PAYMENT_NOTE_FILEPATH
+  AS '/ebsif/inbound/ca_iffile/jx/';
