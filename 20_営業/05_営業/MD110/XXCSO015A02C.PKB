@@ -8,7 +8,7 @@ AS
  *                    CSVファイルを作成します。
  * MD.050           : MD050_自販機-EBSインタフェース：（OUT）作業依頼／発注情報(iPro,PO)
  *                    2008/12/19 16:30
- * Version          : 1.12
+ * Version          : 1.14
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -48,6 +48,8 @@ AS
  *  2009-05-22    1.10  K.Satomura       ＳＴ障害対応(T1_1152対応)
  *  2009-05-27    1.11  M.Maruyama       ＳＴ障害対応(T1_1218対応)
  *  2009-07-09    1.12  D.Abe            SCS障害対応(0000465対応)
+ *  2009-08-05    1.13  K.Satomura       SCS障害対応(0000778対応)
+ *  2009-08-10    1.14  K.Satomura       SCS障害対応(0000662対応)
  *****************************************************************************************/
 --
 --#######################  固定グローバル定数宣言部 START   #######################
@@ -576,6 +578,9 @@ AS
                          location   => iv_csv_dir
                         ,filename   => iv_csv_nm
                         ,open_mode  => cv_w
+                        /* 2009.08.05 K.Satomura 0000778対応 START */
+                        ,max_linesize => 3000
+                        /* 2009.08.05 K.Satomura 0000778対応 END */
                       );
       -- *** DEBUG_LOG ***
       -- ファイルオープンしたことをログ出力
@@ -764,6 +769,10 @@ AS
     cv_salebase_info   CONSTANT VARCHAR2(100) := '顧客マスタビューの売上拠点コード';
     cv_emplbase_info   CONSTANT VARCHAR2(100) := '従業員マスタビューの勤務地拠点コード';
     cv_syozokum_info   CONSTANT VARCHAR2(100) := '所属マスタの事業所電話番号';
+    /* 2009.08.10 K.Satomura 0000662対応 START */
+    cv_new_eigyoin_info CONSTANT VARCHAR2(100) := '新設置先顧客担当営業員';
+    cv_now_eigyoin_info CONSTANT VARCHAR2(100) := '現設置先顧客担当営業員';
+    /* 2009.08.10 K.Satomura 0000662対応 END */
     /* 2009.05.22 K.Satomura T1_1142対応 START */
     cn_phone_num_max_legth CONSTANT NUMBER        := 6; -- 電話番号最大桁数
     cv_phone_old           CONSTANT VARCHAR2(100) := '現設置先';
@@ -1071,7 +1080,9 @@ AS
         SELECT casv.sale_base_code
               ,casv.sale_base_code
               ,casv.organization_name_phonetic
-              ,empv.last_name || cv_zenspace || empv.first_name
+              /* 2009.08.10 K.Satomura 0000662対応 START */
+              --,empv.last_name || cv_zenspace || empv.first_name
+              /* 2009.08.10 K.Satomura 0000662対応 END */
               ,casv.phone_number
               ,casv.postal_code
               ,casv.state
@@ -1084,7 +1095,9 @@ AS
         INTO   lv_sale_base_code
               ,lv_reqst_base_code
               ,lv_new_organization_name
-              ,lv_new_full_name
+              /* 2009.08.10 K.Satomura 0000662対応 START */
+              --,lv_new_full_name
+              /* 2009.08.10 K.Satomura 0000662対応 END */
               ,lv_new_phone_number
               ,lv_new_postal_code
               ,lv_new_est_site_adress1
@@ -1092,27 +1105,31 @@ AS
               ,lv_new_est_site_adress3
               ,lv_new_est_site_adress4
         FROM   xxcso_cust_acct_sites_v casv
-              ,xxcso_employees_v       empv
-              ,xxcso_cust_resources_v  crsv
+              /* 2009.08.10 K.Satomura 0000662対応 START */
+              --,xxcso_employees_v       empv
+              --,xxcso_cust_resources_v  crsv
+              /* 2009.08.10 K.Satomura 0000662対応 END */
         WHERE  casv.account_number    = lv_new_customer_code1
           AND  casv.account_status    = 'A'
           AND  casv.acct_site_status  = 'A'
           AND  casv.party_status      = 'A'
           AND  casv.party_site_status = 'A'
-          AND  casv.account_number    = crsv.account_number
-          AND  ld_date 
-                 BETWEEN TRUNC(NVL(crsv.start_date_active, ld_date)) 
-                     AND TRUNC(NVL(crsv.end_date_active, ld_date))
-          AND  crsv.employee_number   = empv.employee_number
-          AND  ld_date 
-                 BETWEEN TRUNC(NVL(empv.start_date, ld_date)) 
-                     AND TRUNC(NVL(empv.end_date, ld_date))
-          AND  ld_date 
-                 BETWEEN TRUNC(NVL(empv.employee_start_date, ld_date)) 
-                     AND TRUNC(NVL(empv.employee_end_date, ld_date))
-          AND  ld_date 
-                 BETWEEN TRUNC(NVL(empv.assign_start_date, ld_date)) 
-                     AND TRUNC(NVL(empv.assign_end_date, ld_date))
+          /* 2009.08.10 K.Satomura 0000662対応 START */
+          --AND  casv.account_number    = crsv.account_number
+          --AND  ld_date 
+          --       BETWEEN TRUNC(NVL(crsv.start_date_active, ld_date)) 
+          --           AND TRUNC(NVL(crsv.end_date_active, ld_date))
+          ----AND  crsv.employee_number   = empv.employee_number
+          --AND  ld_date 
+          --       BETWEEN TRUNC(NVL(empv.start_date, ld_date)) 
+          --           AND TRUNC(NVL(empv.end_date, ld_date))
+          --AND  ld_date 
+          --       BETWEEN TRUNC(NVL(empv.employee_start_date, ld_date)) 
+          --           AND TRUNC(NVL(empv.employee_end_date, ld_date))
+          --AND  ld_date 
+          --       BETWEEN TRUNC(NVL(empv.assign_start_date, ld_date)) 
+          --           AND TRUNC(NVL(empv.assign_end_date, ld_date))
+          /* 2009.08.10 K.Satomura 0000662対応 END */
         ;
       EXCEPTION
         WHEN NO_DATA_FOUND THEN
@@ -1158,6 +1175,116 @@ AS
           lv_errbuf := lv_errmsg;
           RAISE global_process_expt;
       END;
+      /* 2009.08.10 K.Satomura 0000662対応 START */
+      -- ==================
+      -- 新設置先営業員情報
+      -- ==================
+      BEGIN
+        SELECT xev.last_name || cv_zenspace || xev.first_name
+        INTO   lv_new_full_name
+        FROM   xxcso_cust_acct_sites_v xca
+              ,xxcso_employees_v       xev
+              ,xxcso_cust_resources_v  xcr
+        WHERE  xca.account_number    = lv_new_customer_code1
+        AND    xca.account_number    = xcr.account_number
+        AND    ld_date BETWEEN TRUNC(NVL(xcr.start_date_active, ld_date))
+        AND    TRUNC(NVL(xcr.end_date_active, ld_date))
+        AND    xcr.employee_number   = xev.employee_number
+        AND    ld_date BETWEEN TRUNC(NVL(xev.start_date, ld_date)) 
+        AND    TRUNC(NVL(xev.end_date, ld_date))
+        AND    ld_date BETWEEN TRUNC(NVL(xev.employee_start_date, ld_date)) 
+        AND    TRUNC(NVL(xev.employee_end_date, ld_date))
+        AND    ld_date BETWEEN TRUNC(NVL(xev.assign_start_date, ld_date))
+        AND    TRUNC(NVL(xev.assign_end_date, ld_date))
+        ;
+        --
+      EXCEPTION
+        WHEN NO_DATA_FOUND THEN
+          -- データが存在しない場合
+          BEGIN
+            SELECT xev.last_name || cv_zenspace || xev.first_name
+            INTO   lv_new_full_name
+            FROM   xxcmm_cust_accounts xca
+                  ,xxcso_employees_v   xev
+            WHERE  xca.customer_code        = lv_new_customer_code1
+            AND    xca.cnvs_business_person = xev.employee_number
+            ;
+            --
+          EXCEPTION
+            WHEN NO_DATA_FOUND THEN
+              lv_errmsg := xxccp_common_pkg.get_msg(
+                              iv_application  => cv_app_name           -- アプリケーション短縮名
+                             ,iv_name         => cv_tkn_number_06      -- メッセージコード
+                             ,iv_token_name1  => cv_tkn_task_nm        -- トークンコード1
+                             ,iv_token_value1 => cv_new_eigyoin_info   -- トークン値1
+                             ,iv_token_name2  => cv_tkn_po_num         -- トークンコード2
+                             ,iv_token_value2 => lv_log_po_head_num    -- トークン値2
+                             ,iv_token_name3  => cv_tkn_po_line_num    -- トークンコード3
+                             ,iv_token_value3 => lv_log_po_line_num    -- トークン値3
+                             ,iv_token_name4  => cv_tkn_po_distr_num   -- トークンコード4
+                             ,iv_token_value4 => lv_log_po_dist_num    -- トークン値4
+                             ,iv_token_name5  => cv_tkn_reqst_num      -- トークンコード5
+                             ,iv_token_value5 => lv_log_rq_head_num    -- トークン値5
+                             ,iv_token_name6  => cv_tkn_reqst_line_num -- トークンコード6
+                             ,iv_token_value6 => lv_log_rq_line_num    -- トークン値6
+                           );
+              --
+              lv_errbuf := lv_errmsg;
+              RAISE global_skip_expt;
+              --
+            WHEN OTHERS THEN
+              -- 抽出に失敗した場合
+              lv_errmsg := xxccp_common_pkg.get_msg(
+                              iv_application  => cv_app_name           -- アプリケーション短縮名
+                             ,iv_name         => cv_tkn_number_07      -- メッセージコード
+                             ,iv_token_name1  => cv_tkn_task_nm        -- トークンコード1
+                             ,iv_token_value1 => cv_new_eigyoin_info   -- トークン値1
+                             ,iv_token_name2  => cv_tkn_po_num         -- トークンコード2
+                             ,iv_token_value2 => lv_log_po_head_num    -- トークン値2
+                             ,iv_token_name3  => cv_tkn_po_line_num    -- トークンコード3
+                             ,iv_token_value3 => lv_log_po_line_num    -- トークン値3
+                             ,iv_token_name4  => cv_tkn_po_distr_num   -- トークンコード4
+                             ,iv_token_value4 => lv_log_po_dist_num    -- トークン値4
+                             ,iv_token_name5  => cv_tkn_reqst_num      -- トークンコード5
+                             ,iv_token_value5 => lv_log_rq_head_num    -- トークン値5
+                             ,iv_token_name6  => cv_tkn_reqst_line_num -- トークンコード6
+                             ,iv_token_value6 => lv_log_rq_line_num    -- トークン値6
+                             ,iv_token_name7  => cv_tkn_errmsg         -- トークンコード7
+                             ,iv_token_value7 => SQLERRM               -- トークン値7
+                           );
+              --
+              lv_errbuf := lv_errmsg;
+              RAISE global_process_expt;
+              --
+          END;
+          --
+        WHEN OTHERS THEN
+          -- 抽出に失敗した場合
+          lv_errmsg := xxccp_common_pkg.get_msg(
+                          iv_application  => cv_app_name           -- アプリケーション短縮名
+                         ,iv_name         => cv_tkn_number_07      -- メッセージコード
+                         ,iv_token_name1  => cv_tkn_task_nm        -- トークンコード1
+                         ,iv_token_value1 => cv_new_eigyoin_info   -- トークン値1
+                         ,iv_token_name2  => cv_tkn_po_num         -- トークンコード2
+                         ,iv_token_value2 => lv_log_po_head_num    -- トークン値2
+                         ,iv_token_name3  => cv_tkn_po_line_num    -- トークンコード3
+                         ,iv_token_value3 => lv_log_po_line_num    -- トークン値3
+                         ,iv_token_name4  => cv_tkn_po_distr_num   -- トークンコード4
+                         ,iv_token_value4 => lv_log_po_dist_num    -- トークン値4
+                         ,iv_token_name5  => cv_tkn_reqst_num      -- トークンコード5
+                         ,iv_token_value5 => lv_log_rq_head_num    -- トークン値5
+                         ,iv_token_name6  => cv_tkn_reqst_line_num -- トークンコード6
+                         ,iv_token_value6 => lv_log_rq_line_num    -- トークン値6
+                         ,iv_token_name7  => cv_tkn_errmsg         -- トークンコード7
+                         ,iv_token_value7 => SQLERRM               -- トークン値7
+                       );
+          --
+          lv_errbuf := lv_errmsg;
+          RAISE global_process_expt;
+          --
+      END;
+      --
+      /* 2009.08.10 K.Satomura 0000662対応 END */
     END IF;
 --    
     -- 作業区分が新台代替、旧台代替、引揚の時
@@ -1170,7 +1297,9 @@ AS
       -- 現設置先顧客情報
       BEGIN
         SELECT casv.organization_name_phonetic
-              ,empv.last_name || cv_zenspace || empv.first_name
+              /* 2009.08.10 K.Satomura 0000662対応 START */
+              --,empv.last_name || cv_zenspace || empv.first_name
+              /* 2009.08.10 K.Satomura 0000662対応 END */
               ,casv.phone_number
               ,casv.postal_code
               ,casv.state
@@ -1184,7 +1313,9 @@ AS
               ,casv.account_number
               /* 2009.04.10 K.Satomura T1_0408対応 END */
         INTO   lv_cur_organization_name
-              ,lv_cur_full_name
+              /* 2009.08.10 K.Satomura 0000662対応 START */
+              --,lv_cur_full_name
+              /* 2009.08.10 K.Satomura 0000662対応 END */
               ,lv_cur_phone_number
               ,lv_cur_postal_code
               ,lv_cur_est_site_adress1
@@ -1195,8 +1326,10 @@ AS
               ,lv_cur_customer_code2
               /* 2009.04.10 K.Satomura T1_0408対応 END */
         FROM   xxcso_cust_acct_sites_v casv
-              ,xxcso_employees_v       empv
-              ,xxcso_cust_resources_v  crsv
+              /* 2009.08.10 K.Satomura 0000662対応 START */
+              --,xxcso_employees_v       empv
+              --,xxcso_cust_resources_v  crsv
+              /* 2009.08.10 K.Satomura 0000662対応 END */
               ,csi_item_instances      cii
         WHERE  cii.external_reference     = lv_install_code2
           AND  cii.owner_party_account_id = casv.cust_account_id
@@ -1204,20 +1337,22 @@ AS
           AND  casv.acct_site_status      = 'A'
           AND  casv.party_status          = 'A'
           AND  casv.party_site_status     = 'A'
-          AND  casv.account_number        = crsv.account_number
-          AND  ld_date 
-                 BETWEEN TRUNC(NVL(crsv.start_date_active, ld_date)) 
-                     AND TRUNC(NVL(crsv.end_date_active, ld_date))
-          AND  crsv.employee_number   = empv.employee_number
-          AND  ld_date 
-                 BETWEEN TRUNC(NVL(empv.start_date, ld_date)) 
-                     AND TRUNC(NVL(empv.end_date, ld_date))
-          AND  ld_date 
-                 BETWEEN TRUNC(NVL(empv.employee_start_date, ld_date)) 
-                     AND TRUNC(NVL(empv.employee_end_date, ld_date))
-          AND  ld_date 
-                 BETWEEN TRUNC(NVL(empv.assign_start_date, ld_date)) 
-                     AND TRUNC(NVL(empv.assign_end_date, ld_date))
+          /* 2009.08.10 K.Satomura 0000662対応 START */
+          --AND  casv.account_number        = crsv.account_number
+          --AND  ld_date 
+          --       BETWEEN TRUNC(NVL(crsv.start_date_active, ld_date)) 
+          --           AND TRUNC(NVL(crsv.end_date_active, ld_date))
+          --AND  crsv.employee_number   = empv.employee_number
+          --AND  ld_date 
+          --       BETWEEN TRUNC(NVL(empv.start_date, ld_date)) 
+          --           AND TRUNC(NVL(empv.end_date, ld_date))
+          --AND  ld_date 
+          --       BETWEEN TRUNC(NVL(empv.employee_start_date, ld_date)) 
+          --           AND TRUNC(NVL(empv.employee_end_date, ld_date))
+          --AND  ld_date 
+          --       BETWEEN TRUNC(NVL(empv.assign_start_date, ld_date)) 
+          --           AND TRUNC(NVL(empv.assign_end_date, ld_date))
+          /* 2009.08.10 K.Satomura 0000662対応 END */
         ;
 --        
       EXCEPTION
@@ -1265,6 +1400,120 @@ AS
           RAISE global_process_expt;
       END;
 --
+      /* 2009.08.10 K.Satomura 0000662対応 START */
+      -- ==================
+      -- 現設置先営業員情報
+      -- ==================
+      BEGIN
+        SELECT xev.last_name || cv_zenspace || xev.first_name
+        INTO   lv_cur_full_name
+        FROM   xxcso_cust_acct_sites_v xca
+              ,xxcso_employees_v       xev
+              ,xxcso_cust_resources_v  xcr
+              ,csi_item_instances      cii
+        WHERE  cii.external_reference     = lv_install_code2
+        AND    cii.owner_party_account_id = xca.cust_account_id
+        AND    xca.account_number         = xcr.account_number
+        AND    ld_date BETWEEN TRUNC(NVL(xcr.start_date_active, ld_date))
+        AND    TRUNC(NVL(xcr.end_date_active, ld_date))
+        AND    xcr.employee_number   = xev.employee_number
+        AND    ld_date BETWEEN TRUNC(NVL(xev.start_date, ld_date))
+        AND    TRUNC(NVL(xev.end_date, ld_date))
+        AND    ld_date BETWEEN TRUNC(NVL(xev.employee_start_date, ld_date))
+        AND    TRUNC(NVL(xev.employee_end_date, ld_date))
+        AND    ld_date BETWEEN TRUNC(NVL(xev.assign_start_date, ld_date))
+        AND    TRUNC(NVL(xev.assign_end_date, ld_date))
+        ;
+        --
+      EXCEPTION
+        WHEN NO_DATA_FOUND THEN
+          -- データが存在しない場合
+          BEGIN
+            SELECT xev.last_name || cv_zenspace || xev.first_name
+            INTO   lv_cur_full_name
+            FROM   csi_item_instances      cii
+                  ,xxcso_cust_acct_sites_v cas
+                  ,xxcmm_cust_accounts     cac
+                  ,xxcso_employees_v       xev
+            WHERE  cii.external_reference     = lv_install_code2
+            AND    cii.owner_party_account_id = cas.cust_account_id
+            AND    cas.account_number         = cac.customer_code
+            AND    cac.cnvs_business_person   = xev.employee_number
+            ;
+            --
+          EXCEPTION
+            WHEN NO_DATA_FOUND THEN
+              lv_errmsg := xxccp_common_pkg.get_msg(
+                              iv_application  => cv_app_name           -- アプリケーション短縮名
+                             ,iv_name         => cv_tkn_number_06      -- メッセージコード
+                             ,iv_token_name1  => cv_tkn_task_nm        -- トークンコード1
+                             ,iv_token_value1 => cv_now_eigyoin_info   -- トークン値1
+                             ,iv_token_name2  => cv_tkn_po_num         -- トークンコード2
+                             ,iv_token_value2 => lv_log_po_head_num    -- トークン値2
+                             ,iv_token_name3  => cv_tkn_po_line_num    -- トークンコード3
+                             ,iv_token_value3 => lv_log_po_line_num    -- トークン値3
+                             ,iv_token_name4  => cv_tkn_po_distr_num   -- トークンコード4
+                             ,iv_token_value4 => lv_log_po_dist_num    -- トークン値4
+                             ,iv_token_name5  => cv_tkn_reqst_num      -- トークンコード5
+                             ,iv_token_value5 => lv_log_rq_head_num    -- トークン値5
+                             ,iv_token_name6  => cv_tkn_reqst_line_num -- トークンコード6
+                             ,iv_token_value6 => lv_log_rq_line_num    -- トークン値6
+                           );
+              --
+              lv_errbuf := lv_errmsg;
+              RAISE global_skip_expt;
+              --
+            WHEN OTHERS THEN
+              -- 抽出に失敗した場合
+              lv_errmsg := xxccp_common_pkg.get_msg(
+                              iv_application  => cv_app_name           -- アプリケーション短縮名
+                             ,iv_name         => cv_tkn_number_07      -- メッセージコード
+                             ,iv_token_name1  => cv_tkn_task_nm        -- トークンコード1
+                             ,iv_token_value1 => cv_now_eigyoin_info   -- トークン値1
+                             ,iv_token_name2  => cv_tkn_po_num         -- トークンコード2
+                             ,iv_token_value2 => lv_log_po_head_num    -- トークン値2
+                             ,iv_token_name3  => cv_tkn_po_line_num    -- トークンコード3
+                             ,iv_token_value3 => lv_log_po_line_num    -- トークン値3
+                             ,iv_token_name4  => cv_tkn_po_distr_num   -- トークンコード4
+                             ,iv_token_value4 => lv_log_po_dist_num    -- トークン値4
+                             ,iv_token_name5  => cv_tkn_reqst_num      -- トークンコード5
+                             ,iv_token_value5 => lv_log_rq_head_num    -- トークン値5
+                             ,iv_token_name6  => cv_tkn_reqst_line_num -- トークンコード6
+                             ,iv_token_value6 => lv_log_rq_line_num    -- トークン値6
+                             ,iv_token_name7  => cv_tkn_errmsg         -- トークンコード7
+                             ,iv_token_value7 => SQLERRM               -- トークン値7
+                           );
+              --
+              lv_errbuf := lv_errmsg;
+              RAISE global_process_expt;
+              --
+          END;
+          --
+        WHEN OTHERS THEN
+          -- 抽出に失敗した場合
+          lv_errmsg := xxccp_common_pkg.get_msg(
+                          iv_application  => cv_app_name           -- アプリケーション短縮名
+                         ,iv_name         => cv_tkn_number_07      -- メッセージコード
+                         ,iv_token_name1  => cv_tkn_task_nm        -- トークンコード1
+                         ,iv_token_value1 => cv_now_eigyoin_info   -- トークン値1
+                         ,iv_token_name2  => cv_tkn_po_num         -- トークンコード2
+                         ,iv_token_value2 => lv_log_po_head_num    -- トークン値2
+                         ,iv_token_name3  => cv_tkn_po_line_num    -- トークンコード3
+                         ,iv_token_value3 => lv_log_po_line_num    -- トークン値3
+                         ,iv_token_name4  => cv_tkn_po_distr_num   -- トークンコード4
+                         ,iv_token_value4 => lv_log_po_dist_num    -- トークン値4
+                         ,iv_token_name5  => cv_tkn_reqst_num      -- トークンコード5
+                         ,iv_token_value5 => lv_log_rq_head_num    -- トークン値5
+                         ,iv_token_name6  => cv_tkn_reqst_line_num -- トークンコード6
+                         ,iv_token_value6 => lv_log_rq_line_num    -- トークン値6
+                         ,iv_token_name7  => cv_tkn_errmsg         -- トークンコード7
+                         ,iv_token_value7 => SQLERRM               -- トークン値7
+                       );
+          lv_errbuf := lv_errmsg;
+          RAISE global_process_expt;
+      END;
+      --
+      /* 2009.08.10 K.Satomura 0000662対応 END */
       -- ================
       -- 新設置先顧客情報
       -- ================
@@ -1273,7 +1522,9 @@ AS
       IF (ln_job_kbn <> cn_work_kbn5) THEN
         BEGIN
           SELECT casv.organization_name_phonetic
-                ,empv.last_name || cv_zenspace || empv.first_name
+                /* 2009.08.10 K.Satomura 0000662対応 START */
+                --,empv.last_name || cv_zenspace || empv.first_name
+                /* 2009.08.10 K.Satomura 0000662対応 END */
                 ,casv.phone_number
                 ,casv.postal_code
                 ,casv.state
@@ -1285,7 +1536,9 @@ AS
                 /* 2009.05.22 K.Satomura T1_1152対応 END */
                 ,casv.account_number
           INTO   lv_new_organization_name
-                ,lv_new_full_name
+                /* 2009.08.10 K.Satomura 0000662対応 START */
+                --,lv_new_full_name
+                /* 2009.08.10 K.Satomura 0000662対応 END */
                 ,lv_new_phone_number
                 ,lv_new_postal_code
                 ,lv_new_est_site_adress1
@@ -1295,28 +1548,32 @@ AS
                 ,lv_new_customer_code1
           FROM   xxcso_cust_acct_sites_v casv
                 ,csi_item_instances      ciins
-                ,xxcso_employees_v       empv
-                ,xxcso_cust_resources_v  crsv
+                /* 2009.08.10 K.Satomura 0000662対応 START */
+                --,xxcso_employees_v       empv
+                --,xxcso_cust_resources_v  crsv
+                /* 2009.08.10 K.Satomura 0000662対応 END */
           WHERE  ciins.external_reference = lv_install_code2
             AND  ciins.owner_party_account_id    = casv.cust_account_id
             AND  casv.account_status    = 'A'
             AND  casv.acct_site_status  = 'A'
             AND  casv.party_status      = 'A'
             AND  casv.party_site_status = 'A'
-            AND  casv.account_number    = crsv.account_number
-            AND  ld_date 
-                   BETWEEN TRUNC(NVL(crsv.start_date_active, ld_date)) 
-                       AND TRUNC(NVL(crsv.end_date_active, ld_date))
-            AND  crsv.employee_number   = empv.employee_number
-            AND  ld_date 
-                   BETWEEN TRUNC(NVL(empv.start_date, ld_date)) 
-                       AND TRUNC(NVL(empv.end_date, ld_date))
-            AND  ld_date 
-                   BETWEEN TRUNC(NVL(empv.employee_start_date, ld_date)) 
-                       AND TRUNC(NVL(empv.employee_end_date, ld_date))
-            AND  ld_date 
-                   BETWEEN TRUNC(NVL(empv.assign_start_date, ld_date)) 
-                       AND TRUNC(NVL(empv.assign_end_date, ld_date))
+            /* 2009.08.10 K.Satomura 0000662対応 START */
+            --AND  casv.account_number    = crsv.account_number
+            --AND  ld_date 
+            --       BETWEEN TRUNC(NVL(crsv.start_date_active, ld_date)) 
+            --           AND TRUNC(NVL(crsv.end_date_active, ld_date))
+            --AND  crsv.employee_number   = empv.employee_number
+            --AND  ld_date 
+            --       BETWEEN TRUNC(NVL(empv.start_date, ld_date)) 
+            --           AND TRUNC(NVL(empv.end_date, ld_date))
+            --AND  ld_date 
+            --       BETWEEN TRUNC(NVL(empv.employee_start_date, ld_date)) 
+            --           AND TRUNC(NVL(empv.employee_end_date, ld_date))
+            --AND  ld_date 
+            --       BETWEEN TRUNC(NVL(empv.assign_start_date, ld_date)) 
+            --           AND TRUNC(NVL(empv.assign_end_date, ld_date))
+            /* 2009.08.10 K.Satomura 0000662対応 END */
           ;
           -- 顧客コード１(新設置先)を格納
           io_get_data_rec.new_customer_code1 := lv_new_customer_code1;
@@ -1366,6 +1623,13 @@ AS
             RAISE global_process_expt;
         END;
 --
+        /* 2009.08.10 K.Satomura 0000662対応 START */
+        -- ==================
+        -- 新設置先営業員情報
+        -- ==================
+        lv_new_full_name := lv_cur_full_name;
+        --
+        /* 2009.08.10 K.Satomura 0000662対応 END */
         -- 売上拠点コードの格納
         BEGIN
           SELECT casv.sale_base_code
@@ -1504,7 +1768,9 @@ AS
       -- ================
       BEGIN
         SELECT casv.organization_name_phonetic
-              ,empv.last_name || cv_zenspace || empv.first_name
+              /* 2009.08.10 K.Satomura 0000662対応 START */
+              --,empv.last_name || cv_zenspace || empv.first_name
+              /* 2009.08.10 K.Satomura 0000662対応 END */
               ,casv.phone_number
               ,casv.postal_code
               ,casv.state
@@ -1516,7 +1782,9 @@ AS
               /* 2009.05.22 K.Satomura T1_1152対応 END */
               ,casv.account_number
         INTO   lv_cur_organization_name
-              ,lv_cur_full_name
+              /* 2009.08.10 K.Satomura 0000662対応 START */
+              --,lv_cur_full_name
+              /* 2009.08.10 K.Satomura 0000662対応 END */
               ,lv_cur_phone_number
               ,lv_cur_postal_code
               ,lv_cur_est_site_adress1
@@ -1526,28 +1794,32 @@ AS
               ,lv_cur_customer_code2
         FROM   xxcso_cust_acct_sites_v casv
               ,csi_item_instances      ciins
-              ,xxcso_employees_v       empv
-              ,xxcso_cust_resources_v  crsv
+              /* 2009.08.10 K.Satomura 0000662対応 START */
+              --,xxcso_employees_v       empv
+              --,xxcso_cust_resources_v  crsv
+              /* 2009.08.10 K.Satomura 0000662対応 END */
         WHERE  ciins.external_reference    = lv_install_code1
           AND  ciins.owner_party_account_id = casv.cust_account_id
           AND  casv.account_status    = 'A'
           AND  casv.acct_site_status  = 'A'
           AND  casv.party_status      = 'A'
           AND  casv.party_site_status = 'A'
-          AND  casv.account_number    = crsv.account_number
-          AND  ld_date 
-                 BETWEEN TRUNC(NVL(crsv.start_date_active, ld_date)) 
-                     AND TRUNC(NVL(crsv.end_date_active, ld_date))
-          AND  crsv.employee_number   = empv.employee_number
-          AND  ld_date 
-                 BETWEEN TRUNC(NVL(empv.start_date, ld_date)) 
-                     AND TRUNC(NVL(empv.end_date, ld_date))
-          AND  ld_date 
-                 BETWEEN TRUNC(NVL(empv.employee_start_date, ld_date)) 
-                     AND TRUNC(NVL(empv.employee_end_date, ld_date))
-          AND  ld_date 
-                 BETWEEN TRUNC(NVL(empv.assign_start_date, ld_date)) 
-                     AND TRUNC(NVL(empv.assign_end_date, ld_date))
+          /* 2009.08.10 K.Satomura 0000662対応 START */
+          --AND  casv.account_number    = crsv.account_number
+          --AND  ld_date 
+          --       BETWEEN TRUNC(NVL(crsv.start_date_active, ld_date)) 
+          --           AND TRUNC(NVL(crsv.end_date_active, ld_date))
+          --AND  crsv.employee_number   = empv.employee_number
+          --AND  ld_date 
+          --       BETWEEN TRUNC(NVL(empv.start_date, ld_date)) 
+          --           AND TRUNC(NVL(empv.end_date, ld_date))
+          --AND  ld_date 
+          --       BETWEEN TRUNC(NVL(empv.employee_start_date, ld_date)) 
+          --           AND TRUNC(NVL(empv.employee_end_date, ld_date))
+          --AND  ld_date 
+          --       BETWEEN TRUNC(NVL(empv.assign_start_date, ld_date)) 
+          --           AND TRUNC(NVL(empv.assign_end_date, ld_date))
+          /* 2009.08.10 K.Satomura 0000662対応 END */
         ;
 --
       -- ================
@@ -1555,7 +1827,9 @@ AS
       -- ================
       -- 現設置先顧客情報と同一
       lv_new_organization_name := lv_cur_organization_name;
-      lv_new_full_name         := lv_cur_full_name;
+      /* 2009.08.10 K.Satomura 0000662対応 START */
+      --lv_new_full_name         := lv_cur_full_name;
+      /* 2009.08.10 K.Satomura 0000662対応 END */
       lv_new_phone_number      := lv_cur_phone_number;
       lv_new_postal_code       := lv_cur_postal_code;
       lv_new_est_site_adress1  := lv_cur_est_site_adress1;
@@ -1609,6 +1883,131 @@ AS
           RAISE global_process_expt;
       END;
 --
+      /* 2009.08.10 K.Satomura 0000662対応 START */
+      -- ==================
+      -- 現設置先営業員情報
+      -- ==================
+      BEGIN
+        SELECT emp.last_name || cv_zenspace || emp.first_name
+        INTO   lv_cur_full_name
+        FROM   xxcso_cust_acct_sites_v cas
+              ,csi_item_instances      cii
+              ,xxcso_employees_v       emp
+              ,xxcso_cust_resources_v  cre
+        WHERE  cii.external_reference     = lv_install_code1
+        AND    cii.owner_party_account_id = cas.cust_account_id
+        AND    cas.account_number    = cre.account_number
+        AND    ld_date BETWEEN TRUNC(NVL(cre.start_date_active, ld_date))
+        AND    TRUNC(NVL(cre.end_date_active, ld_date))
+        AND    cre.employee_number   = emp.employee_number
+        AND    ld_date BETWEEN TRUNC(NVL(emp.start_date, ld_date))
+        AND    TRUNC(NVL(emp.end_date, ld_date))
+        AND    ld_date BETWEEN TRUNC(NVL(emp.employee_start_date, ld_date))
+        AND    TRUNC(NVL(emp.employee_end_date, ld_date))
+        AND    ld_date BETWEEN TRUNC(NVL(emp.assign_start_date, ld_date))
+        AND    TRUNC(NVL(emp.assign_end_date, ld_date))
+        ;
+        --
+        -- ==================
+        -- 新設置先営業員情報
+        -- ==================
+        -- 新設置先営業員情報と同一
+        lv_new_full_name := lv_cur_full_name;
+        --
+      EXCEPTION
+        WHEN NO_DATA_FOUND THEN
+            -- データが存在しない場合
+            BEGIN
+              SELECT emp.last_name || cv_zenspace || emp.first_name
+              INTO   lv_cur_full_name
+              FROM   csi_item_instances      cii
+                    ,xxcso_cust_acct_sites_v cas
+                    ,xxcmm_cust_accounts     cac
+                    ,xxcso_employees_v       emp
+              WHERE  cii.external_reference     = lv_install_code1
+              AND    cii.owner_party_account_id = cas.cust_account_id
+              AND    cas.account_number         = cac.customer_code
+              AND    cac.cnvs_business_person   = emp.employee_number
+              ;
+              --
+              -- ==================
+              -- 新設置先営業員情報
+              -- ==================
+              -- 新設置先営業員情報と同一
+              lv_new_full_name := lv_cur_full_name;
+              --
+            EXCEPTION
+              WHEN NO_DATA_FOUND THEN
+                lv_errmsg := xxccp_common_pkg.get_msg(
+                                iv_application  => cv_app_name           -- アプリケーション短縮名
+                               ,iv_name         => cv_tkn_number_06      -- メッセージコード
+                               ,iv_token_name1  => cv_tkn_task_nm        -- トークンコード1
+                               ,iv_token_value1 => cv_now_eigyoin_info   -- トークン値1
+                               ,iv_token_name2  => cv_tkn_po_num         -- トークンコード2
+                               ,iv_token_value2 => lv_log_po_head_num    -- トークン値2
+                               ,iv_token_name3  => cv_tkn_po_line_num    -- トークンコード3
+                               ,iv_token_value3 => lv_log_po_line_num    -- トークン値3
+                               ,iv_token_name4  => cv_tkn_po_distr_num   -- トークンコード4
+                               ,iv_token_value4 => lv_log_po_dist_num    -- トークン値4
+                               ,iv_token_name5  => cv_tkn_reqst_num      -- トークンコード5
+                               ,iv_token_value5 => lv_log_rq_head_num    -- トークン値5
+                               ,iv_token_name6  => cv_tkn_reqst_line_num -- トークンコード6
+                               ,iv_token_value6 => lv_log_rq_line_num    -- トークン値6
+                             );
+                --
+                lv_errbuf := lv_errmsg;
+                RAISE global_skip_expt;
+                --
+              WHEN OTHERS THEN
+                -- 抽出に失敗した場合
+                lv_errmsg := xxccp_common_pkg.get_msg(
+                                iv_application  => cv_app_name           -- アプリケーション短縮名
+                               ,iv_name         => cv_tkn_number_07      -- メッセージコード
+                               ,iv_token_name1  => cv_tkn_task_nm        -- トークンコード1
+                               ,iv_token_value1 => cv_now_eigyoin_info   -- トークン値1
+                               ,iv_token_name2  => cv_tkn_po_num         -- トークンコード2
+                               ,iv_token_value2 => lv_log_po_head_num    -- トークン値2
+                               ,iv_token_name3  => cv_tkn_po_line_num    -- トークンコード3
+                               ,iv_token_value3 => lv_log_po_line_num    -- トークン値3
+                               ,iv_token_name4  => cv_tkn_po_distr_num   -- トークンコード4
+                               ,iv_token_value4 => lv_log_po_dist_num    -- トークン値4
+                               ,iv_token_name5  => cv_tkn_reqst_num      -- トークンコード5
+                               ,iv_token_value5 => lv_log_rq_head_num    -- トークン値5
+                               ,iv_token_name6  => cv_tkn_reqst_line_num -- トークンコード6
+                               ,iv_token_value6 => lv_log_rq_line_num    -- トークン値6
+                               ,iv_token_name7  => cv_tkn_errmsg         -- トークンコード7
+                               ,iv_token_value7 => SQLERRM               -- トークン値7
+                             );
+                --
+                lv_errbuf := lv_errmsg;
+                RAISE global_process_expt;
+                --
+            END;
+            --
+        WHEN OTHERS THEN
+          -- 抽出に失敗した場合
+          lv_errmsg := xxccp_common_pkg.get_msg(
+                          iv_application  => cv_app_name           -- アプリケーション短縮名
+                         ,iv_name         => cv_tkn_number_07      -- メッセージコード
+                         ,iv_token_name1  => cv_tkn_task_nm        -- トークンコード1
+                         ,iv_token_value1 => cv_now_eigyoin_info   -- トークン値1
+                         ,iv_token_name2  => cv_tkn_po_num         -- トークンコード2
+                         ,iv_token_value2 => lv_log_po_head_num    -- トークン値2
+                         ,iv_token_name3  => cv_tkn_po_line_num    -- トークンコード3
+                         ,iv_token_value3 => lv_log_po_line_num    -- トークン値3
+                         ,iv_token_name4  => cv_tkn_po_distr_num   -- トークンコード4
+                         ,iv_token_value4 => lv_log_po_dist_num    -- トークン値4
+                         ,iv_token_name5  => cv_tkn_reqst_num      -- トークンコード5
+                         ,iv_token_value5 => lv_log_rq_head_num    -- トークン値5
+                         ,iv_token_name6  => cv_tkn_reqst_line_num -- トークンコード6
+                         ,iv_token_value6 => lv_log_rq_line_num    -- トークン値6
+                         ,iv_token_name7  => cv_tkn_errmsg         -- トークンコード7
+                         ,iv_token_value7 => SQLERRM               -- トークン値7
+                       );
+          lv_errbuf := lv_errmsg;
+          RAISE global_process_expt;
+      END;
+      /* 2009.08.10 K.Satomura 0000662対応 END */
       -- 売上拠点コードの格納
       BEGIN
         SELECT casv.sale_base_code
@@ -3550,7 +3949,11 @@ AS
     -- *** ローカル・カーソル ***
     CURSOR get_ipro_po_data_cur
     IS
-      SELECT   prlv.requisition_line_id         requisition_line_id              -- 発注依頼明細ID
+      /* 2009.08.05 K.Satomura 0000778対応 START */
+      --SELECT   prlv.requisition_line_id         requisition_line_id              -- 発注依頼明細ID
+      SELECT   /*+ first_rows leading(wrp) use_nl(prlv prh prd pd pl ph cev) */
+               prlv.requisition_line_id         requisition_line_id              -- 発注依頼明細ID
+      /* 2009.08.05 K.Satomura 0000778対応 END */
               ,cn_branch_no                     slip_branch_no                   -- 伝票枝番
               ,cn_work_kbn1                     job_kbn                          -- 作業区分
               ,null                             install_code1                    -- 物件コード1
@@ -3640,8 +4043,13 @@ AS
                  TRUNC(NVL(prlv.lookup_end_date, TRUNC(ld_process_date))))
         AND    (TRUNC(ld_process_date) BETWEEN(NVL(prlv.category_start_date, TRUNC(ld_process_date))) AND
                  TRUNC(NVL(prlv.category_end_date, TRUNC(ld_process_date))))
-      UNION
-      SELECT   prlv.requisition_line_id         requisition_line_id              -- 発注依頼明細ID
+      /* 2009.08.05 K.Satomura 0000778対応 START */
+      --UNION
+      --SELECT   prlv.requisition_line_id         requisition_line_id              -- 発注依頼明細ID
+      UNION ALL
+      SELECT   /*+ first_rows leading(wrp) use_nl(prlv prh prd pd pl ph cev) */
+               prlv.requisition_line_id         requisition_line_id              -- 発注依頼明細ID
+      /* 2009.08.05 K.Satomura 0000778対応 END */
               ,cn_branch_no                     slip_branch_no                   -- 伝票枝番
               ,cn_work_kbn3                     job_kbn                          -- 作業区分
               ,null                             install_code1                    -- 物件コード1
@@ -3731,8 +4139,13 @@ AS
                  TRUNC(NVL(prlv.lookup_end_date, TRUNC(ld_process_date))))
         AND    (TRUNC(ld_process_date) BETWEEN(NVL(prlv.category_start_date, TRUNC(ld_process_date))) AND
                  TRUNC(NVL(prlv.category_end_date, TRUNC(ld_process_date))))
-      UNION
-      SELECT   prlv.requisition_line_id         requisition_line_id              -- 発注依頼明細ID
+      /* 2009.08.05 K.Satomura 0000778対応 START */
+      --UNION
+      --SELECT   prlv.requisition_line_id         requisition_line_id              -- 発注依頼明細ID
+      UNION ALL
+      SELECT   /*+ first_rows leading(wrp) use_nl(prlv prh cev) */
+               prlv.requisition_line_id         requisition_line_id              -- 発注依頼明細ID
+      /* 2009.08.05 K.Satomura 0000778対応 END */
               ,cn_branch_no                     slip_branch_no                   -- 伝票枝番
               ,cn_work_kbn2                     job_kbn                          -- 作業区分
               ,prlv.install_code                install_code1                    -- 物件コード1
@@ -3805,8 +4218,13 @@ AS
                  TRUNC(NVL(prlv.lookup_end_date, TRUNC(ld_process_date))))
         AND    (TRUNC(ld_process_date) BETWEEN(NVL(prlv.category_start_date, TRUNC(ld_process_date))) AND
                  TRUNC(NVL(prlv.category_end_date, TRUNC(ld_process_date))))
-      UNION
-      SELECT   prlv.requisition_line_id         requisition_line_id              -- 発注依頼明細ID
+      /* 2009.08.05 K.Satomura 0000778対応 START */
+      --UNION
+      --SELECT   prlv.requisition_line_id         requisition_line_id              -- 発注依頼明細ID
+      UNION ALL
+      SELECT   /*+ first_rows leading(wrp) use_nl(prlv prh cev) */
+               prlv.requisition_line_id         requisition_line_id              -- 発注依頼明細ID
+      /* 2009.08.05 K.Satomura 0000778対応 END */
               ,cn_branch_no                     slip_branch_no                   -- 伝票枝番
               ,cn_work_kbn4                     job_kbn                          -- 作業区分
               ,prlv.install_code                install_code1                    -- 物件コード1
@@ -3879,8 +4297,13 @@ AS
                  TRUNC(NVL(prlv.lookup_end_date, TRUNC(ld_process_date))))
         AND    (TRUNC(ld_process_date) BETWEEN(NVL(prlv.category_start_date, TRUNC(ld_process_date))) AND
                  TRUNC(NVL(prlv.category_end_date, TRUNC(ld_process_date))))
-      UNION
-      SELECT   prlv.requisition_line_id         requisition_line_id              -- 発注依頼明細ID
+      /* 2009.08.05 K.Satomura 0000778対応 START */
+      --UNION
+      --SELECT   prlv.requisition_line_id         requisition_line_id              -- 発注依頼明細ID
+      UNION ALL
+      SELECT   /*+ first_rows leading(wrp) use_nl(prlv prh cev) */
+               prlv.requisition_line_id         requisition_line_id              -- 発注依頼明細ID
+      /* 2009.08.05 K.Satomura 0000778対応 END */
               ,cn_branch_no                     slip_branch_no                   -- 伝票枝番
               ,cn_work_kbn5                     job_kbn                          -- 作業区分
               ,null                             install_code1                    -- 物件コード1
@@ -3953,8 +4376,13 @@ AS
                  TRUNC(NVL(prlv.lookup_end_date, TRUNC(ld_process_date))))
         AND    (TRUNC(ld_process_date) BETWEEN(NVL(prlv.category_start_date, TRUNC(ld_process_date))) AND
                  TRUNC(NVL(prlv.category_end_date, TRUNC(ld_process_date))))
-      UNION
-      SELECT   prlv.requisition_line_id         requisition_line_id              -- 発注依頼明細ID
+      /* 2009.08.05 K.Satomura 0000778対応 START */
+      --UNION
+      --SELECT   prlv.requisition_line_id         requisition_line_id              -- 発注依頼明細ID
+      UNION ALL
+      SELECT   /*+ first_rows leading(wrp) use_nl(prlv prh cev) */
+               prlv.requisition_line_id         requisition_line_id              -- 発注依頼明細ID
+      /* 2009.08.05 K.Satomura 0000778対応 END */
               ,cn_branch_no                     slip_branch_no                   -- 伝票枝番
               ,cn_work_kbn6                     job_kbn                          -- 作業区分
               ,prlv.install_code                install_code1                    -- 物件コード1
