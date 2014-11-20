@@ -48,6 +48,7 @@ AS
   AND    xoha.latest_external_flag        = 'Y'
   AND    xoha.req_status                 IN ('04','08')
   AND    xola.order_header_id             = xoha.order_header_id
+  AND    xola.delete_flag                 = 'N'
   AND    xmld.mov_line_id                 = xola.order_line_id
   AND    xmld.document_type_code         IN ('10','30')
   AND    xmld.record_type_code            = '20'
