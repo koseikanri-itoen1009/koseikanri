@@ -43,7 +43,8 @@ AS
                                                        レコード順序修正
                                                        請求金額合計,値引き合計,返品合計,返品合計の集計単位修正 
                                                        取引先レコード通番設定処理修正   
-                                                       税差額レコード出力処理修正                           
+                                                       税差額レコード出力処理修正
+ *  2009/06/23    1.6   SCS 萱原 伸哉    [障害T1_1379] EDI請求書の伝票番号チェック処理対応                           
  *****************************************************************************************/
 --
 --#######################  固定グローバル定数宣言部 START   #######################
@@ -128,7 +129,11 @@ AS
 -- Modify 2009.05.07 Ver1.3 Start
   cv_msg_003a04_023  CONSTANT VARCHAR2(20) := 'APP-XXCFR1-00073'; -- エラー売掛コード1(請求書)設定顧客ヘッダメッセージ
   cv_msg_003a04_024  CONSTANT VARCHAR2(20) := 'APP-XXCFR1-00074'; -- エラー売掛コード1(請求書)設定顧客明細メッセージ
--- Modify 2009.05.07 Ver1.3 End  
+-- Modify 2009.05.07 Ver1.3 End
+-- Modify 2009.06.23 Ver1.6 Start
+  cv_msg_003a04_025  CONSTANT VARCHAR2(20) := 'APP-XXCFR1-00075'; -- エラー伝票番号メッセージ
+  cv_msg_003a04_026  CONSTANT VARCHAR2(20) := 'APP-XXCFR1-00076'; -- ファイル出力なしメッセージ  
+-- Modify 2009.06.23 Ver1.6 End
 --
 -- トークン
   cv_tkn_prof        CONSTANT VARCHAR2(15) := 'PROF_NAME';        -- プロファイル名
@@ -203,6 +208,9 @@ AS
     -- 消費税区分
     cv_syohizei_kbn_te  CONSTANT VARCHAR2(1)  := '1';                      -- 外税
 --
+-- Modify 2009.06.23 Ver1.6 Start
+  cv_slip_no_chk_i      CONSTANT VARCHAR2(1)  := 'I';                      -- 納品伝票番号チェック用
+-- Modify 2009.06.23 Ver1.6 End
   -- ===============================
   -- ユーザー定義グローバル型
   -- ===============================
@@ -884,6 +892,17 @@ AS
 -- Modify 2009.06.15 Ver1.5 Start
     lv_tax_gap_out_flg     VARCHAR2(1);     -- 税差額取引出力フラグ
 -- Modify 2009.06.15 Ver1.5 End
+-- Modify 2009.06.23 Ver1.6 Start
+    -- 伝票番号チェック用変数
+    lv_chk_bef_slip        VARCHAR2(300);   -- 伝票番号
+    ln_chk_slip_buf        NUMBER;
+    lv_chk_err_flg         VARCHAR(1);
+    lv_slip_warn_msg       VARCHAR2(5000) := NULL; -- 伝票番号不正警告メッセージ
+--
+    num_err_expt           EXCEPTION;     -- 数値無効エラー
+--
+    PRAGMA EXCEPTION_INIT(num_err_expt, -06502);
+-- Modify 2009.06.23 Ver1.6 End
     -- *** ローカル・カーソル ***
 --
     -- EDI請求データ抽出
@@ -1051,6 +1070,96 @@ AS
     -- カーソルクローズ
     CLOSE get_edi_data_cur;
 --
+-- Modify 2009.06.23 Ver1.6 Start
+    -- エラーチェック用のフラグを初期化
+    lv_chk_err_flg := cv_flag_no;
+--
+    <<check_loop>>
+    FOR i IN 1..(ln_target_cnt) LOOP
+      -- 前回レコードと伝票番号が異なる場合にエラーチェックを実行
+      IF (i = 1) OR 
+         (lt_get_edi_data_tbl1(i).slip_num != NVL(lv_chk_bef_slip,cv_end_slip_num)) OR
+         (lt_get_edi_data_tbl1(i).slip_num != NULL)
+      THEN
+        -- 伝票番号が一桁で"I"の場合、エラー
+        IF (lt_get_edi_data_tbl1(i).slip_num = cv_slip_no_chk_i) THEN
+--
+          --エラー伝票番号メッセージ
+          lv_slip_warn_msg := SUBSTRB(xxccp_common_pkg.get_msg(
+                                        cv_msg_kbn_cfr         -- 'XXCFR'
+                                       ,cv_msg_003a04_025      -- エラー伝票番号メッセージ
+                                       ,cv_tkn_slip_num        -- トークン'SLIP_NUM'
+                                       ,lt_get_edi_data_tbl1(i).slip_num)
+                                     ,1
+                                     ,5000);
+          FND_FILE.PUT_LINE(
+           which  => FND_FILE.OUTPUT
+          ,buff   => lv_slip_warn_msg
+          );
+--
+          -- エラーチェック用のフラグをセット
+          lv_chk_err_flg := cv_flag_yes;
+--        
+        -- 伝票番号の一桁目が"I"の場合
+        ELSIF (SUBSTRB(lt_get_edi_data_tbl1(i).slip_num, 1, 1) = cv_slip_no_chk_i) THEN
+--
+          BEGIN
+            ln_chk_slip_buf := TO_NUMBER(SUBSTRB(lt_get_edi_data_tbl1(i).slip_num, 2));
+          EXCEPTION
+            -- *** 数値変換エラー ***  
+            WHEN num_err_expt THEN
+              -- エラー伝票番号メッセージ
+              lv_slip_warn_msg := SUBSTRB(xxccp_common_pkg.get_msg(
+                                            cv_msg_kbn_cfr         -- 'XXCFR'
+                                           ,cv_msg_003a04_025      -- エラー伝票番号メッセージ
+                                           ,cv_tkn_slip_num        -- トークン'SLIP_NUM'
+                                           ,lt_get_edi_data_tbl1(i).slip_num)
+                                         ,1
+                                         ,5000);
+              FND_FILE.PUT_LINE(
+               which  => FND_FILE.OUTPUT
+              ,buff   => lv_slip_warn_msg
+              );
+--
+              -- エラーチェック用のフラグをセット
+              lv_chk_err_flg := cv_flag_yes;
+--
+           END;
+--
+         -- 伝票番号の一桁目が"I"以外の場合
+         ELSE
+--
+           BEGIN
+             ln_chk_slip_buf := TO_NUMBER(lt_get_edi_data_tbl1(i).slip_num);
+           EXCEPTION
+            -- *** 数値変換エラー ***
+            WHEN num_err_expt THEN
+              -- エラー伝票番号メッセージ
+              lv_slip_warn_msg := SUBSTRB(xxccp_common_pkg.get_msg(
+                                            cv_msg_kbn_cfr         -- 'XXCFR'
+                                           ,cv_msg_003a04_025      -- エラー伝票番号メッセージ
+                                           ,cv_tkn_slip_num        -- トークン'SLIP_NUM'
+                                           ,lt_get_edi_data_tbl1(i).slip_num)
+                                         ,1
+                                         ,5000);
+              FND_FILE.PUT_LINE(
+               which  => FND_FILE.OUTPUT
+              ,buff   => lv_slip_warn_msg
+              );
+--
+              -- エラーチェック用のフラグをセット
+              lv_chk_err_flg := cv_flag_yes;
+--
+          END;
+--
+        END IF;
+      END IF;
+--
+      -- 伝票番号を保管
+      lv_chk_bef_slip := lt_get_edi_data_tbl1(i).slip_num;
+--
+    END LOOP check_loop;
+-- Modify 2009.06.23 Ver1.6 End     
     -- 変数の初期化
     ln_vend_cnt := 1;
     ln_data_cnt := 1;
@@ -1068,7 +1177,13 @@ AS
     ln_inv_point  := 1;
     ln_vend_point := 1;
 --
-    IF (ln_target_cnt > 0) THEN
+-- Modify 2009.06.23 Ver1.6 Start
+--    IF (ln_target_cnt > 0) THEN
+    -- 対象件数が存在するかつ、伝票番号チェックでエラーが存在しなかった場合
+    IF (ln_target_cnt > 0)           AND
+       (lv_chk_err_flg = cv_flag_no)
+    THEN
+-- Modify 2009.06.23 Ver1.6 End
 --
       <<invoice_loop>>
       FOR i IN 1..(ln_target_cnt + 1) LOOP
@@ -2314,6 +2429,10 @@ AS
                       || pad_edi_char(CASE
                                         WHEN lt_set_edi_data_tbl1(ln_loop_cnt).slip_num = cv_nul_slip_num THEN
                                           NULL
+-- Modify 2009.06.23 Ver1.6 Start
+                                        WHEN SUBSTRB(lt_set_edi_data_tbl1(ln_loop_cnt).slip_num, 1, 1) = cv_slip_no_chk_i THEN
+                                          SUBSTRB(lt_set_edi_data_tbl1(ln_loop_cnt).slip_num, 2)
+-- Modify 2009.06.23 Ver1.6 End
                                         ELSE
                                           lt_set_edi_data_tbl1(ln_loop_cnt).slip_num
                                         END
@@ -2486,6 +2605,29 @@ AS
 --
     END IF;
 --
+-- Modify 2009.06.23 Ver1.6 Start
+    -- 伝票番号チェックエラーが存在した場合
+    IF (lv_chk_err_flg != cv_flag_no) THEN
+      -- ファイル出力なしメッセージを出力
+      lv_slip_warn_msg := SUBSTRB(xxccp_common_pkg.get_msg(
+                                    cv_msg_kbn_cfr         -- 'XXCFR'
+                                   ,cv_msg_003a04_026      -- ファイル出力なしメッセージ
+                                   ,cv_tkn_code            -- トークン'CODE'
+                                   ,iv_ar_code1            -- 売掛コード１（請求書）
+                                   ,cv_tkn_name            -- トークン'NAME'
+                                   ,gv_ar_code_name )      -- 売掛コード１（請求書）名称)
+                                 ,1
+                                 ,5000);
+      FND_FILE.PUT_LINE(
+       which  => FND_FILE.OUTPUT
+      ,buff   => lv_slip_warn_msg
+      );
+--
+      -- 戻り値に警告のステータスをセット
+      ov_retcode := cv_status_warn;
+--
+    END IF;
+-- Modify 2009.06.23 Ver1.6 End
   EXCEPTION
     -- *** EDIヘッダ付与関数エラー ***
     WHEN edi_func_h_expt THEN
