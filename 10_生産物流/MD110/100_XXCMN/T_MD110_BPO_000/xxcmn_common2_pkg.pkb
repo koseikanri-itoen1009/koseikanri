@@ -6,7 +6,7 @@ AS
  * Package Name           : xxcmn_common2_pkg(BODY)
  * Description            : 共通関数2(BODY)
  * MD.070(CMD.050)        : T_MD050_BPO_000_引当可能数算出（補足資料）.doc
- * Version                : 1.4
+ * Version                : 1.5
  *
  * Program List
  *  ---------------------------- ---- ----- --------------------------------------------------
@@ -61,6 +61,7 @@ AS
  *  2008/06/19   1.3   oracle 吉田     結合テスト不具合対応(D6 引数設定の変数(品目コード)変更)
  *  2008/06/24   1.4   oracle 竹本     結合テスト不具合対応(I5,I6 引数設定の変数(品目コード)変更)
  *  2008/06/24   1.4   oracle 新藤     システムテスト不具合対応#75(D5)
+ *  2008/07/16   1.5   oracle 北寒寺   変更要求#93対応
  *
  *****************************************************************************************/
 --
@@ -4216,6 +4217,7 @@ AS
     ln_enc_qty          NUMBER;     -- 引当可能数
     ln_ref_all_enc_qty      NUMBER; -- 対象親や子の総引当可能数
     ln_ref_in_time_enc_qty  NUMBER; -- 対象親や子の有効日ベース引当可能数
+    lt_inventory_location_id mtl_item_locations.inventory_location_id%TYPE; -- 保管倉庫ID
 --
     -- ===============================
     -- ユーザー定義例外
@@ -4278,21 +4280,66 @@ AS
       ln_all_enc_qty      := ln_all_enc_qty     + ln_ref_all_enc_qty;
       ln_in_time_enc_qty  := ln_in_time_enc_qty + ln_ref_in_time_enc_qty;
 --
-    -- 代表倉庫（子）の場合
-    ELSE
-      -- 代表倉庫（親）を取得
-      SELECT  NVL(SUM(get_can_enc_in_time_qty(mil.inventory_location_id,
+      -- 代表倉庫(子)(倉庫・品目単位)の合計を取得
+       SELECT  NVL(SUM(get_can_enc_in_time_qty(xfil.item_location_id,
                                               in_item_id,
                                               in_lot_id)),0),
-              NVL(SUM(get_can_enc_in_time_qty(mil.inventory_location_id,
+               NVL(SUM(get_can_enc_in_time_qty(xfil.item_location_id,
                                               in_item_id,
                                               in_lot_id,
                                               in_active_date)),0)
-      INTO    ln_ref_all_enc_qty,
-              ln_ref_in_time_enc_qty
-      FROM    mtl_item_locations  mil    -- 保管場所
-      WHERE   mil.attribute5            = lv_rep_whse -- 代表倉庫
-      AND     mil.segment1              = mil.attribute5;
+       INTO    ln_ref_all_enc_qty,
+               ln_ref_in_time_enc_qty
+       FROM    xxwsh_frq_item_locations xfil
+       WHERE   xfil.frq_item_location_code = lv_rep_whse -- 代表倉庫コード
+       AND     xfil.item_id = in_item_id;                -- OPM品目ID
+--
+      -- 足し込み
+      ln_all_enc_qty      := ln_all_enc_qty     + ln_ref_all_enc_qty;
+      ln_in_time_enc_qty  := ln_in_time_enc_qty + ln_ref_in_time_enc_qty;
+--
+    -- 代表倉庫（子）の場合
+    ELSE
+      -- 代表倉庫存在チェック
+      BEGIN
+        -- 代表倉庫（親）を取得
+        SELECT  xilv.inventory_location_id
+        INTO    lt_inventory_location_id
+        FROM    xxcmn_item_locations2_v xilv-- 保管場所
+        WHERE   xilv.segment1 = lv_rep_whse -- 代表倉庫
+        AND     xilv.segment1 = xilv.frequent_whse -- 代表倉庫の場合は保管場所と代表倉庫が等しい
+        AND     in_active_date BETWEEN xilv.date_from
+                                   AND NVL(xilv.date_to,in_active_date);
+        -- 代表倉庫（親）を取得
+        SELECT  NVL(SUM(get_can_enc_in_time_qty(mil.inventory_location_id,
+                                                in_item_id,
+                                                in_lot_id)),0),
+                NVL(SUM(get_can_enc_in_time_qty(mil.inventory_location_id,
+                                                in_item_id,
+                                                in_lot_id,
+                                                in_active_date)),0)
+        INTO    ln_ref_all_enc_qty,
+                ln_ref_in_time_enc_qty
+        FROM    mtl_item_locations  mil    -- 保管場所
+        WHERE   mil.attribute5            = lv_rep_whse -- 代表倉庫
+        AND     mil.segment1              = mil.attribute5;
+      EXCEPTION
+        WHEN NO_DATA_FOUND THEN
+          -- 代表倉庫取得に失敗した場合は倉庫-品目単位の代表管理のため
+          -- 倉庫品目マスタを参照
+          SELECT  NVL(SUM(get_can_enc_in_time_qty(xfil.frq_item_location_id,
+                                                  in_item_id,
+                                                  in_lot_id)),0),
+                  NVL(SUM(get_can_enc_in_time_qty(xfil.frq_item_location_id,
+                                                  in_item_id,
+                                                  in_lot_id,
+                                                  in_active_date)),0)
+          INTO    ln_ref_all_enc_qty,
+                  ln_ref_in_time_enc_qty
+          FROM    xxwsh_frq_item_locations xfil
+          WHERE   xfil.item_location_code = lv_whse_code         -- 元倉庫
+          AND     xfil.item_id = in_item_id;                     -- OPM品目ID
+      END;
 --
       -- 親単体の引当可能数がマイナスの場合のみ足し込む
       IF (ln_ref_all_enc_qty < 0) THEN
