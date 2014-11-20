@@ -7,7 +7,7 @@ AS
  * Description      : 出荷依頼確認表
  * MD.050           : 出荷依頼       T_MD050_BPO_401
  * MD.070           : 出荷依頼確認表 T_MD070_BPO_40J
- * Version          : 1.5
+ * Version          : 1.6
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -31,7 +31,8 @@ AS
  *  2008/06/13    1.2   石渡  賢和       不具合対応
  *  2008/06/23    1.3   石渡  賢和       ST不具合対応#106
  *  2008/07/01    1.4   福田  直樹       ST不具合対応#331 商品区分は入力パラメータから取得
- *  2008/07/02    1.5   Satoshi Yunba    禁則文字「'」「"」「<」「>」「&」対応
+ *  2008/07/02    1.5   Satoshi Yunba    禁則文字「'」「"」「<」「>」「＆」対応
+ *  2008/07/03    1.6   椎名  昭圭       ST不具合対応#344･357･406対応
  *
  *****************************************************************************************/
 --
@@ -113,6 +114,9 @@ AS
   gv_order_category_code       CONSTANT VARCHAR2(5)  := 'ORDER';
   gv_shipping_shikyu_class     CONSTANT VARCHAR2(1)  := '1';
   gv_yes                       CONSTANT VARCHAR2(1)  := 'Y';
+-- 2008/07/03 ST不具合対応#344 Start
+  gv_cancel                    CONSTANT VARCHAR2(2)  := '99';
+-- 2008/07/03 ST不具合対応#344 End
 --
   ------------------------------
   -- 項目編集関連
@@ -139,7 +143,7 @@ AS
       iv_request_no              VARCHAR2(12),      --   10.依頼No.
       iv_req_status              VARCHAR2(20),      --   11.出荷依頼ステータス
       iv_confirm_request_class   VARCHAR2(20),      --   12.物流担当確認依頼区分
-      iv_prod_class              VARCHAR2(20)       --   13.商品区分
+      iv_prod_class              VARCHAR2(20)       --   13.商品区分 2008/07/01 ST不具合対応#331
     ) ;
 --
   -- データ格納用レコード変数
@@ -348,7 +352,7 @@ AS
     -- プロファイルから商品区分取得
     ------------------------------------------
     --商品区分はプロファイルからではなく入力パラメータから取得する
-    --ST不具合対応#331
+    -- 2008/07/01 ST不具合対応#331
     --
     --gv_name_prod_class_code := SUBSTRB(FND_PROFILE.VALUE(gv_prf_prod_class_code), 1, 2);
     ---- 取得エラー時
@@ -560,7 +564,7 @@ AS
         iv_request_no                VARCHAR2,      --   10.依頼No.
         iv_req_status                VARCHAR2,      --   11.出荷依頼ステータス
         iv_confirm_request_class     VARCHAR2,      --   12.物流担当確認依頼区分
-        iv_prod_class                VARCHAR2       --   13.商品区分
+        iv_prod_class                VARCHAR2       --   13.商品区分  2008/07/01 ST不具合対応#331
       )
     IS
       SELECT xoha.request_no                                            -- 依頼no
@@ -651,7 +655,9 @@ AS
           ,xxcmn_cust_accounts2_v         xca2v                       -- 顧客情報VIEW2(顧客情報)
           ,xxcmn_cust_accounts2_v         xca2v2                      -- 顧客情報VIEW2(管轄拠点)
           ,xxcmn_item_mst2_v              xim2v                       -- OPM品目アドオンマスタ
-          ,xxcmn_item_categories4_v       xic4v                       -- 品目カテゴリマスタ
+-- 2008/07/04 ST不具合対応#406 Start
+--          ,xxcmn_item_categories4_v       xic4v                       -- 品目カテゴリマスタ
+-- 2008/07/04 ST不具合対応#406 End
           ,xxcmn_lookup_values2_v         xlv2v                       -- クイックコード(依頼区分)
           ,xxcmn_lookup_values2_v         xlv2v2                      -- クイックコード(ステータス)
           ,xxcmn_lookup_values2_v         xlv2v3                      -- クイックコード(物流区分)
@@ -749,10 +755,14 @@ AS
             -- 受注ヘッダアドオン.受注ヘッダアドオンID＝受注明細アドオン.受注ヘッダアドオンID
         AND xola.request_item_code           = xim2v.item_no
                                        -- 受注明細アドオン.依頼品目＝OPM品目マスタ.品目コード
-        AND xim2v.item_id                    = xic4v.item_id
+-- 2008/07/04 ST不具合対応#406 Start
+--        AND xim2v.item_id                    = xic4v.item_id
                                        -- OPM品目マスタ.品目ID＝OPM品目カテゴリマスタ.品目ID
-        --AND xic4v.prod_class_code            = gv_name_prod_class_code
-        AND xic4v.prod_class_code            = iv_prod_class    --ST不具合対応#331
+        --AND xic4v.prod_class_code            = gv_name_prod_class_code  -- 2008/07/01 ST不具合対応#331
+--        AND xic4v.prod_class_code            = iv_prod_class              -- 2008/07/01 ST不具合対応#331
+        AND xoha.prod_class                  = iv_prod_class
+                       -- 受注ヘッダアドオン.商品区分＝プロファイル（商品区分）:1=リーフ,2=ドリンク
+-- 2008/07/04 ST不具合対応#406 End
             -- 品目カテゴリマスタ. 商品区分＝プロファイル（商品区分）:1=リーフ,2=ドリンク
         AND xim2v.start_date_active          <= 
             NVL(FND_DATE.STRING_TO_DATE(iv_ship_date_from,gc_char_d_format),
@@ -768,11 +778,24 @@ AS
                                        -- クイックコード(依頼区分).タイプ＝出荷区分
         AND xlv2v.attribute5                 = xott2v.transaction_type_name
                       -- クイックコード(依頼区分)．DFF5(受注タイプ)＝受注タイプ.受注タイプ
-        AND xlv2v.attribute4(+)              = xca2v.customer_class_code
-            -- クイックコード(依頼区分).顧客区分(DFF)(+) ＝顧客情報VIEW2(顧客情報)．顧客区分
+-- 2008/07/04 ST不具合対応#406 Start
+--        AND xlv2v.attribute4(+)              = xca2v.customer_class_code
+--            -- クイックコード(依頼区分).顧客区分(DFF)(+) ＝顧客情報VIEW2(顧客情報)．顧客区分
+        AND NVL(xlv2v.attribute4, xca2v.customer_class_code) = xca2v.customer_class_code
+            -- クイックコード(依頼区分).顧客区分(DFF)＝顧客情報VIEW2(顧客情報)．顧客区分
+-- 2008/07/04 SST不具合対応#406 End
         AND xoha.shipping_method_code        = xsm2v.ship_method_code
                       -- 受注ヘッダアドオン.配送区分=配送区分情報VIEW.配送区分コード
-      ORDER BY xoha.request_no         -- 依頼no
+-- 2008/07/03 ST不具合対応#357 Start
+        AND xoha.req_status                  <> gv_cancel
+                                       -- 受注ヘッダアドオン.ステータス <> 取消
+-- 2008/07/03 ST不具合対応#357 End
+-- 2008/07/03 ST不具合対応#344 Start
+--      ORDER BY xoha.request_no         -- 依頼no
+--               ,xola.order_line_number -- 明細番号
+      ORDER BY xca2v2.party_short_name -- 管轄拠点
+               ,xoha.request_no        -- 依頼no
+-- 2008/07/03 ST不具合対応#344 End
                ,xola.order_line_number -- 明細番号
     ;
 --
@@ -802,7 +825,7 @@ AS
        ,ir_param.iv_request_no                -- 依頼No.
        ,ir_param.iv_req_status                -- 出荷依頼ステータス
        ,ir_param.iv_confirm_request_class     -- 物流担当確認依頼区分
-       ,ir_param.iv_prod_class                -- 商品区分
+       ,ir_param.iv_prod_class                -- 商品区分  2008/07/01 ST不具合対応#331
       ) ;
     -- バルクフェッチ
     FETCH cur_main_data BULK COLLECT INTO ot_data_rec ;
@@ -890,6 +913,10 @@ AS
     ld_now_date             DATE DEFAULT SYSDATE;
     -- 前回依頼No.
     pre_req_no              xxwsh_order_headers_all.request_no%TYPE DEFAULT '*';
+-- 2008/07/03 ST不具合対応#344 Start
+    -- 前回管轄拠点
+    pre_add_l_name          xxcmn_cust_accounts2_v.party_short_name%TYPE DEFAULT '*';
+-- 2008/07/03 ST不具合対応#344 End
     -- 取得レコード表  
     lt_main_data            tab_data_type_dtl ;
 --
@@ -928,7 +955,7 @@ AS
     -- *** ローカル・レコード ***
 --
     ELSE
-    --
+--
       <<lg_irai_info>>
       FOR get_user_rec IN 1..lt_main_data.COUNT LOOP
 --
@@ -950,6 +977,16 @@ AS
 --
             --データグループ名終了タグセット
             insert_xml_plsql_table(iox_xml_data, '/g_irai',NULL,'T','C');
+-- 2008/07/03 ST不具合対応#344 Start
+            IF ( pre_add_l_name <> lt_main_data(get_user_rec).address_line_name ) THEN
+              --データグループ名終了タグセット
+              insert_xml_plsql_table(iox_xml_data, '/lg_irai_info',NULL,'T','C');
+--
+              --データグループ名開始タグセット
+              insert_xml_plsql_table(iox_xml_data, 'lg_irai_info', NULL, 'T', 'C');
+--
+            END IF;
+-- 2008/07/03 ST不具合対応#344 End
           END IF;
 --
           --データグループ名開始タグセット
@@ -1013,7 +1050,10 @@ AS
           --データグループ名開始タグセット
           insert_xml_plsql_table(iox_xml_data, 'lg_mei', NULL, 'T', 'C');
 --
-          pre_req_no := lt_main_data(get_user_rec).request_no;
+          pre_req_no      := lt_main_data(get_user_rec).request_no;
+-- 2008/07/03 ST不具合対応#344 Start
+          pre_add_l_name      := lt_main_data(get_user_rec).address_line_name;
+-- 2008/07/03 ST不具合対応#344 End
 --
         END IF;
 --
@@ -1037,7 +1077,10 @@ AS
         insert_xml_plsql_table(iox_xml_data, 'in_num', 
                                 lt_main_data(get_user_rec).num_of_cases, 'D', 'C');
         insert_xml_plsql_table(iox_xml_data, 'total_weight', 
-                                lt_main_data(get_user_rec).weight, 'D', 'C');
+-- 2008/07/03 ST不具合対応#344 Start
+--                                lt_main_data(get_user_rec).weight, 'D', 'C');
+                                CEIL(TRUNC(lt_main_data(get_user_rec).weight, 1)), 'D', 'C');
+-- 2008/07/03 ST不具合対応#344 End
         insert_xml_plsql_table(iox_xml_data, 'unit_total', 
                                 lt_main_data(get_user_rec).weight_capacity_class, 'D', 'C');
 --
@@ -1053,7 +1096,10 @@ AS
       insert_xml_plsql_table(iox_xml_data, 'sum_palette', 
                               lt_main_data(lt_main_data.COUNT).pallet_sum_quantity,'D','C');
       insert_xml_plsql_table(iox_xml_data, 'sum_weight', 
-                              lt_main_data(lt_main_data.COUNT).sum_weight, 'D', 'C');
+-- 2008/07/03 ST不具合対応#344 Start
+--                              lt_main_data(lt_main_data.COUNT).sum_weight, 'D', 'C');
+                             CEIL(TRUNC(lt_main_data(lt_main_data.COUNT).sum_weight, 1)), 'D', 'C');
+-- 2008/07/03 ST不具合対応#344 End
       insert_xml_plsql_table(iox_xml_data, 'unit_sum2', 
                               lt_main_data(lt_main_data.COUNT).sum_weight_capacity_class, 'D', 'C');
       insert_xml_plsql_table(iox_xml_data, 'carry_rate', 
@@ -1110,7 +1156,7 @@ AS
     iv_request_no              IN  VARCHAR2,      --   10.依頼No.
     iv_req_status              IN  VARCHAR2,      --   11.出荷依頼ステータス
     iv_confirm_request_class   IN  VARCHAR2,      --   12.物流担当確認依頼区分
-    iv_prod_class              IN  VARCHAR2,      --   13.商品区分
+    iv_prod_class              IN  VARCHAR2,      --   13.商品区分  2008/07/01 ST不具合対応#331
     ov_errbuf                  OUT VARCHAR2,      --   エラー・メッセージ           --# 固定 #
     ov_retcode                 OUT VARCHAR2,      --   リターン・コード             --# 固定 #
     ov_errmsg                  OUT VARCHAR2)      --   ユーザー・エラー・メッセージ --# 固定 #
@@ -1167,7 +1213,7 @@ AS
     lr_param_rec.iv_request_no            := iv_request_no;             -- 10.依頼No.
     lr_param_rec.iv_req_status            := iv_req_status;             -- 11.出荷依頼ステータス
     lr_param_rec.iv_confirm_request_class := iv_confirm_request_class;  -- 12.物流担当確認依頼区分
-    lr_param_rec.iv_prod_class            := iv_prod_class;             -- 13.商品区分
+    lr_param_rec.iv_prod_class            := iv_prod_class;             -- 13.商品区分  2008/07/01 ST不具合対応#331
 --
     -- =====================================================
     --  関連データ取得
@@ -1289,7 +1335,7 @@ AS
     iv_request_no              IN  VARCHAR2,      --   10.依頼No.
     iv_req_status              IN  VARCHAR2,      --   11.出荷依頼ステータス
     iv_confirm_request_class   IN  VARCHAR2,      --   12.物流担当確認依頼区分
-    iv_prod_class              IN  VARCHAR2       --   13.商品区分
+    iv_prod_class              IN  VARCHAR2       --   13.商品区分 2008/07/01 ST不具合対応#331
   )
 --
 --###########################  固定部 START   ###########################
@@ -1327,7 +1373,7 @@ AS
       iv_request_no            => iv_request_no,            --   10.依頼No.
       iv_req_status            => iv_req_status,            --   11.出荷依頼ステータス
       iv_confirm_request_class => iv_confirm_request_class, --   12.物流担当確認依頼区分
-      iv_prod_class            => iv_prod_class,            --   13.商品区分
+      iv_prod_class            => iv_prod_class,            --   13.商品区分 2008/07/01 ST不具合対応#331
       ov_errbuf                => lv_errbuf,      --   エラー・メッセージ           --# 固定 #
       ov_retcode               => lv_retcode,     --   リターン・コード             --# 固定 #
       ov_errmsg                => lv_errmsg);     --   ユーザー・エラー・メッセージ --# 固定 #

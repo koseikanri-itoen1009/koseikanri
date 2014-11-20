@@ -7,7 +7,7 @@ AS
  * Description      : ŒÚ‹q”­’‚©‚ç‚Ìo‰×ˆË—Š©“®ì¬
  * MD.050/070       : o‰×ˆË—Š                        (T_MD050_BPO_400)
  *                    ŒÚ‹q”­’‚©‚ç‚Ìo‰×ˆË—Š©“®ì¬  (T_MD070_BPO_40B)
- * Version          : 1.12
+ * Version          : 1.13
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -53,6 +53,7 @@ AS
  *  2008/06/24    1.10  Î“n  Œ«˜a       ST•s‹ï‡#247A#284‘Î‰
  *  2008/06/27    1.11  Î“n  Œ«˜a       ST•s‹ï‡#318‘Î‰
  *  2008/07/01    1.12  ’Å–¼  ºŒ\       ST•s‹ï‡#247‡C‘Î‰
+ *  2008/07/04    1.13  ãŒ´  ³D       ST•s‹ï‡#392‘Î‰
  *
  *****************************************************************************************/
 --
@@ -3782,6 +3783,7 @@ AS
     ord_h_all.schedule_arrival_date        := gt_head_line(gn_i).arr_date;     -- ’…‰×—\’è“ú
     ord_h_all.confirm_request_class        := gv_0;                            -- •¨—¬’S“–Šm”FˆË—Š‹æ•ª
     ord_h_all.freight_charge_class         := gv_1;                            -- ‰^’À‹æ•ª
+    ord_h_all.no_cont_freight_class        := gv_0;                            -- Œ_–ñŠO‰^’À‹æ•ª
     ord_h_all.deliver_from_id              := gr_ship_id;                      -- o‰×Œ³ID
     ord_h_all.deliver_from                 := gt_head_line(gn_i).lo_code;      -- o‰×Œ³•ÛŠÇêŠ
     ord_h_all.Head_sales_branch            := gt_head_line(gn_i).h_s_branch;   -- ŠÇŠ‹’“_
@@ -4014,6 +4016,7 @@ AS
        ,schedule_arrival_date
        ,confirm_request_class
        ,freight_charge_class
+       ,no_cont_freight_class
        ,deliver_from_id
        ,deliver_from
        ,head_sales_branch
@@ -4067,6 +4070,7 @@ AS
        ,ord_h_all.schedule_arrival_date
        ,ord_h_all.confirm_request_class
        ,ord_h_all.freight_charge_class
+       ,ord_h_all.no_cont_freight_class
        ,ord_h_all.deliver_from_id
        ,ord_h_all.deliver_from
        ,ord_h_all.Head_sales_branch

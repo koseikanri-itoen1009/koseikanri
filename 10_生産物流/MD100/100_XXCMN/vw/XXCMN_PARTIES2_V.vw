@@ -23,6 +23,8 @@ CREATE OR REPLACE VIEW xxcmn_parties2_v
   order_auto_code,
   drop_ship_div,
   shift_judg_flg,
+  drink_base_category,
+  leaf_base_category,
   sale_base_code,
   res_sale_base_code,
   chain_store,
@@ -69,10 +71,12 @@ AS
           hca.attribute10,
           hca.attribute11,
           hca.attribute12,
-          hca.attribute13,
+          NULL,
           hca.attribute14,
           hca.attribute15,
           hca.attribute16,
+          hca.attribute13,
+          hca.attribute13,
           hca.attribute17,
           hca.attribute18,
           hca.attribute19,
@@ -126,6 +130,8 @@ COMMENT ON COLUMN xxcmn_parties2_v.block_name              IS '地区名';
 COMMENT ON COLUMN xxcmn_parties2_v.order_auto_code         IS '出荷依頼自動作成区分';
 COMMENT ON COLUMN xxcmn_parties2_v.drop_ship_div           IS '直送区分';
 COMMENT ON COLUMN xxcmn_parties2_v.shift_judg_flg          IS '移行判定フラグ';
+COMMENT ON COLUMN xxcmn_parties2_v.drink_base_category     IS 'ドリンク拠点カテゴリ';
+COMMENT ON COLUMN xxcmn_parties2_v.leaf_base_category      IS 'リーフ拠点カテゴリ';
 COMMENT ON COLUMN xxcmn_parties2_v.sale_base_code          IS '当月売上拠点コード';
 COMMENT ON COLUMN xxcmn_parties2_v.res_sale_base_code      IS '予約(翌月)売上拠点コード';
 COMMENT ON COLUMN xxcmn_parties2_v.chain_store             IS '売上チェーン店';

@@ -41,6 +41,8 @@ AS
  *                                       xxwsh_common910_pkgの帰り値判定を修正
  *  2008/06/19    1.5   Y.Shindou        内部変更要求#143対応
  *  2008/06/27    1.6   石渡  賢和       不具合修正(着荷日がずれる、TRUNC対応）
+ *  2008/07/04    1.7   上原  正好       ST不具合#392対応(運賃区分、物流担当確認依頼区分、
+ *                                       契約外運賃区分のデフォルト値設定)
  *
  *****************************************************************************************/
 --
@@ -277,6 +279,17 @@ AS
   -- 画面更新日時
   TYPE h_screen_update_date          IS TABLE OF
                 xxwsh_order_headers_all.screen_update_date%TYPE INDEX BY BINARY_INTEGER;
+-- add start 1.7 uehara
+  -- 物流担当確認依頼区分
+  TYPE h_confirm_request_class       IS TABLE OF
+                xxwsh_order_headers_all.confirm_request_class%TYPE INDEX BY BINARY_INTEGER;
+  -- 運賃区分
+  TYPE h_freight_charge_class        IS TABLE OF
+                xxwsh_order_headers_all.freight_charge_class%TYPE INDEX BY BINARY_INTEGER;
+  -- 契約外運賃区分
+  TYPE h_no_cont_freight_class       IS TABLE OF
+                xxwsh_order_headers_all.no_cont_freight_class%TYPE INDEX BY BINARY_INTEGER;
+-- add end 1.7 uehara
   TYPE h_created_by                  IS TABLE OF
                 xxwsh_order_headers_all.created_by%TYPE INDEX BY BINARY_INTEGER;
   TYPE h_creation_date               IS TABLE OF
@@ -554,6 +567,11 @@ AS
   gt_h_new_modify_flg          h_new_modify_flg;         -- 新規修正フラグ
   gt_h_per_management_dept     h_per_management_dept;    -- 成績管理部署
   gt_h_screen_update_date      h_screen_update_date;     -- 画面更新日時
+-- add start 1.7 uehara
+  gt_h_confirm_request_class   h_confirm_request_class;  -- 物流担当確認依頼区分
+  gt_h_freight_charge_class    h_freight_charge_class;   -- 運賃区分
+  gt_h_no_cont_freight_class   h_no_cont_freight_class;  -- 契約外運賃区分
+-- add end 1.7 uehara
   gt_h_created_by              h_created_by;
   gt_h_creation_date           h_creation_date;
   gt_h_last_updated_by         h_last_updated_by;
@@ -2700,6 +2718,11 @@ AS
     gt_h_new_modify_flg(gn_h_cnt)          := gv_no;                       -- 新規修正フラグ
     gt_h_per_management_dept(gn_h_cnt)     := NULL;                        -- 成績管理部署
     gt_h_screen_update_date(gn_h_cnt)      := NULL;                        -- 画面更新日時
+-- add start 1.7 uehara
+    gt_h_confirm_request_class(gn_h_cnt)   := gv_0;                        -- 物流担当確認依頼区分
+    gt_h_freight_charge_class(gn_h_cnt)    := gv_1;                        -- 運賃区分
+    gt_h_no_cont_freight_class(gn_h_cnt)   := gv_0;                        -- 契約外運賃区分
+-- add end 1.7 uehara
     gt_h_created_by(gn_h_cnt)              := gn_created_by;               -- 作成者
     gt_h_creation_date(gn_h_cnt)           := gd_creation_date;            -- 作成日
     gt_h_last_updated_by(gn_h_cnt)         := gn_last_upd_by;              -- 最終更新者
@@ -2812,6 +2835,11 @@ AS
          ,new_modify_flg
          ,performance_management_dept
          ,screen_update_date
+-- add start 1.7 uehara
+         ,confirm_request_class
+         ,freight_charge_class
+         ,no_cont_freight_class
+-- add end 1.7 uehara
          ,created_by
          ,creation_date
          ,last_updated_by
@@ -2857,6 +2885,11 @@ AS
          ,gt_h_new_modify_flg(i)
          ,gt_h_per_management_dept(i)
          ,gt_h_screen_update_date(i)
+-- add start 1.7 uehara
+         ,gt_h_confirm_request_class(i)
+         ,gt_h_freight_charge_class(i)
+         ,gt_h_no_cont_freight_class(i)
+-- add end 1.7 uehara
          ,gt_h_created_by(i)
          ,gt_h_creation_date(i)
          ,gt_h_last_updated_by(i)
