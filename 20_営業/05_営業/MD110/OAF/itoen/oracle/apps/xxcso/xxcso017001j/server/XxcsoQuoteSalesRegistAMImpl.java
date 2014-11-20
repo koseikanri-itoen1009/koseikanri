@@ -12,6 +12,7 @@
 * 2009-03-24 1.2  SCSˆ¢•”‘å•ã  yT1_0138zƒ{ƒ^ƒ“§Œä‚ğC³
 * 2009-04-13 1.3  SCSˆ¢•”‘å•ã  yT1_0299zCSVo—Í§Œä
 * 2009-04-14 1.4  SCSˆ¢•”‘å•ã  yT1_0442zŒ©Ï‘ˆóü§Œä
+* 2009-04-16 1.5  SCSˆ¢•”‘å•ã  yT1_0462zƒRƒs[‚ÌŒÚ‹q–¼‚ğ’Ç‰Á
 *============================================================================
 */
 package itoen.oracle.apps.xxcso.xxcso017001j.server;
@@ -270,6 +271,11 @@ public class XxcsoQuoteSalesRegistAMImpl extends OAApplicationModuleImpl
     headerRow.setSpecialNote(         
       headerRow2.getSpecialNote()       
     );
+    /* 20090416_abe_T1_0462 START*/
+    headerRow.setPartyName(         
+      headerRow2.getPartyName()       
+    );
+    /* 20090416_abe_T1_0462 END*/
 
     
     // –¾×‚ÌƒRƒs[
