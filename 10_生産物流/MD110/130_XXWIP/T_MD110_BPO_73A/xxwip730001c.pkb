@@ -7,7 +7,7 @@ AS
  * Description      : 支払運賃データ自動作成
  * MD.050           : 運賃計算（トランザクション） T_MD050_BPO_730
  * MD.070           : 支払運賃データ自動作成 T_MD070_BPO_73A
- * Version          : 1.25
+ * Version          : 1.26
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -120,6 +120,7 @@ AS
  *  2009/04/07    1.23 Oracle 野村       本番#432対応
  *  2009/04/30    1.24 Oracle 野村       本番#432対応
  *  2009/05/07    1.25 Oracle 野村       本番#432対応
+ *  2009/05/14    1.26 Oracle 野村       本番#432対応
  *
  *****************************************************************************************/
 --
@@ -10681,38 +10682,54 @@ AS
       -- **************************************************
       -- * 運賃アドオンマスタ抽出
       -- **************************************************
-      -- 商品区分 = 「ドリンク」且つ、混載区分 = 「混載」の場合
-      IF  ((gt_exch_deliv_tab(ln_index).goods_classe = gv_prod_class_drk)
-        AND(gt_exch_deliv_tab(ln_index).mixed_code   = gv_target_y      )) THEN
-        -- 車立距離＋混載割増距離
-        lt_actual_distance := gt_exch_deliv_tab(ln_index).post_distance +
-                                                gt_exch_deliv_tab(ln_index).consolid_add_distance;
-      ELSE
+-- *----------* 2009/05/14 Ver.1.26 本番#432対応 start *----------*
+      -- 変更フラグがON、明細が更新されている場合のみ、
+      --   運賃マスタより取得する条件の距離を配送距離マスタより設定する。
+      IF  ((gt_exch_deliv_tab(ln_index).distance_change_flg = gv_target_y)
+        OR (gt_exch_deliv_tab(ln_index).last_update_date    = gd_sysdate )) THEN
+-- *----------* 2009/05/14 Ver.1.26 本番#432対応 end   *----------*
 --
-        -- 伝票なし配車（リーフ小口）の場合
-        IF (gt_exch_deliv_tab(ln_index).dispatch_type = gv_carcan_target_y) THEN
-          lt_actual_distance := gt_exch_deliv_tab(ln_index).distance;
---
-        -- 伝票なし配車（リーフ小口以外）の場合
-        ELSIF (gt_exch_deliv_tab(ln_index).dispatch_type = gv_carcan_target_n) THEN
---
-          -- 小口区分 =「小口」の場合
-          IF (gt_exch_deliv_tab(ln_index).small_amount_class = gv_small_sum_yes) THEN
-            -- 小口距離を設定
-            lt_actual_distance := gt_exch_deliv_tab(ln_index).small_distance;
---
-          -- 小口区分 =「車立」の場合
-          ELSE
-            -- 車立距離を設定
-            lt_actual_distance := gt_exch_deliv_tab(ln_index).post_distance;
-          END IF;
---
-        -- 通常配車の場合
+        -- 商品区分 = 「ドリンク」且つ、混載区分 = 「混載」の場合
+        IF  ((gt_exch_deliv_tab(ln_index).goods_classe = gv_prod_class_drk)
+          AND(gt_exch_deliv_tab(ln_index).mixed_code   = gv_target_y      )) THEN
+          -- 車立距離＋混載割増距離
+          lt_actual_distance := gt_exch_deliv_tab(ln_index).post_distance +
+                                                  gt_exch_deliv_tab(ln_index).consolid_add_distance;
         ELSE
-          -- 変更無の為、取得した最長距離を設定
-          lt_actual_distance := gt_exch_deliv_tab(ln_index).distance;
+--
+          -- 伝票なし配車（リーフ小口）の場合
+          IF (gt_exch_deliv_tab(ln_index).dispatch_type = gv_carcan_target_y) THEN
+-- *----------* 2009/05/14 Ver.1.26 本番#432対応 start *----------*
+--          lt_actual_distance := gt_exch_deliv_tab(ln_index).distance;
+            lt_actual_distance := gt_exch_deliv_tab(ln_index).small_distance;
+-- *----------* 2009/05/14 Ver.1.26 本番#432対応 end   *----------*
+--
+          -- 伝票なし配車（リーフ小口以外）の場合
+          ELSIF (gt_exch_deliv_tab(ln_index).dispatch_type = gv_carcan_target_n) THEN
+--
+            -- 小口区分 =「小口」の場合
+            IF (gt_exch_deliv_tab(ln_index).small_amount_class = gv_small_sum_yes) THEN
+              -- 小口距離を設定
+              lt_actual_distance := gt_exch_deliv_tab(ln_index).small_distance;
+--
+            -- 小口区分 =「車立」の場合
+            ELSE
+              -- 車立距離を設定
+              lt_actual_distance := gt_exch_deliv_tab(ln_index).post_distance;
+            END IF;
+--
+          -- 通常配車の場合
+          ELSE
+            -- 変更無の為、取得した最長距離を設定
+            lt_actual_distance := gt_exch_deliv_tab(ln_index).distance;
+          END IF;
         END IF;
+-- *----------* 2009/05/14 Ver.1.26 本番#432対応 start *----------*
+      ELSE
+        -- 変更無の為、取得した最長距離を設定
+        lt_actual_distance := gt_exch_deliv_tab(ln_index).distance;
       END IF;
+-- *----------* 2009/05/14 Ver.1.26 本番#432対応 end   *----------*
 --
       xxwip_common3_pkg.get_delivery_charges(
         gt_exch_deliv_tab(ln_index).p_b_classe,             -- 支払請求区分
