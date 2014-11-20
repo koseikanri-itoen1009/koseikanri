@@ -7,7 +7,7 @@ AS
  * Description      : SQL-LOADERによってEDI納品返品情報ワークテーブルに取込まれたEDI返品確定データを
  *                    EDIヘッダ情報テーブル、EDI明細情報テーブルにそれぞれ登録します。
  * MD.050           : 返品確定データ取込（MD050_COS_011_A01）
- * Version          : 1.4
+ * Version          : 1.5
  *
  * Program List
  * ----------------------------------- ----------------------------------------------------------
@@ -49,6 +49,7 @@ AS
  *  2009/05/28    1.3   T.Kitajima      [T1_0711]処理後件数対応
  *                                      [T1_1164]oracleエラー対応
  *  2009/06/04    1.4   T.Kitajima      [T1_1289]処理後件数対応
+ *  2009/06/15    1.5   M.Sano          [T1_0700]「gt_err_edideli_work_data」配列の初期化対応
  *
  *****************************************************************************************/
 --
@@ -6027,6 +6028,10 @@ AS
     -- ループ開始：
     <<xxcos_in_edi_headers_set>>
     FOR  ln_no  IN  1..gn_target_cnt  LOOP
+-- 2009/06/15 Ver.1.5 M.Sano Add Start
+      gt_err_edideli_work_data(ln_no).err_status1 := cv_status_normal;
+      gt_err_edideli_work_data(ln_no).err_status2 := cv_status_normal;
+-- 2009/06/15 Ver.1.5 M.Sano Add End
       --==============================================================
       -- * Procedure Name   : data_check
       -- * Description      : データ妥当性チェック(A-3)
