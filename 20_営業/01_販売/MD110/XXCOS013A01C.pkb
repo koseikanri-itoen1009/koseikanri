@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCOS013A01C (body)
  * Description      : 販売実績情報より仕訳情報を作成し、AR請求取引に連携する処理
  * MD.050           : ARへの販売実績データ連携 MD050_COS_013_A01
- * Version          : 1.28
+ * Version          : 1.29
  * Program List
  * ----------------------------------------------------------------------------------------
  *  Name                   Description
@@ -68,6 +68,7 @@ AS
  *  2010/03/08    1.27  K.Atsushiba      [E_本稼動_01400]値引の仕訳、対象データなしのステイタス対応
  *  2010/07/12    1.28  S.Miyakoshi      [E_本稼動_01608]大手量販店ロジックの廃止
  *                                       [E_本稼動_02000]請求OIFへの項目追加
+ *  2010/08/11    1.29  M.Hirose         [E_本稼動_02863]内税顧客の売上値引
  *
  *****************************************************************************************/
 --
@@ -632,6 +633,10 @@ AS
   gv_trx_number_ar_brk                VARCHAR2(20);                                     -- AR取引番号(ブレーク処理用)
   gn_amount_ar                        NUMBER DEFAULT 0;                                 -- 本体金額(集約)
   gn_tax_ar                           NUMBER DEFAULT 0;                                 -- 後消費税額(集約)
+--**/* 2010/08/11 Ver1.29 Mod Start */
+  gt_item_code_ar_brk3                xxcos_sales_exp_lines.item_code%TYPE;                -- 品目コード(ブレーク処理用)
+  gt_prod_cls_ar_brk3                 xxcos_good_prod_class_v.goods_prod_class_code%TYPE;  -- 品目区分（製品・商品）(ブレーク処理用)
+--**/* 2010/08/11 Ver1.29 Mod End   */
 /* 2010/07/12 Ver1.28 Del Start */
 --  --出荷先顧客チェック用(大手のみ)
 --  gn_key_trx_number                   ra_interface_lines_all.trx_number%TYPE;                   --AR取引番号(収益行)
@@ -3678,6 +3683,12 @@ AS
       -- 納品伝票番号＋シーケンスの採番
       IF (   NVL( gv_trx_number_brk , 'X' )  <> gv_trx_number                                           -- AR取引番号
          OR  gt_header_id_brk                <> gt_sales_norm_tbl( sale_norm_idx ).sales_exp_header_id  -- 販売実績ヘッダID
+--**/* 2010/08/11 Ver1.29 Mod Start */
+         -- 内税顧客で、品目区分(製品、商品、売上値引)が変化したときは採番しなおす
+         OR (  NVL( gt_prod_cls_ar_brk3, 'X' ) <> NVL( gt_sales_norm_tbl( sale_norm_idx ).goods_prod_cls, 'X' )  -- 品目区分が前回と一緒
+           AND gt_sales_norm_tbl( sale_norm_idx ).tax_code = gt_in_tax_cls  -- 消費税コードが内税
+            )
+--**/* 2010/08/11 Ver1.29 Mod End   */
          )
 /* 2009/10/02 Ver1.24 Mod End   */
       THEN
@@ -3757,6 +3768,10 @@ AS
       -- 納品伝票番号＋シーケンスの採番の集約キーの値セット
       gv_trx_number_brk       := gv_trx_number;
       gt_header_id_brk        := gt_sales_norm_tbl( sale_norm_idx ).sales_exp_header_id;
+--**/* 2010/08/11 Ver1.29 Mod Start */
+      gt_prod_cls_ar_brk3     := gt_sales_norm_tbl( sale_norm_idx ).goods_prod_cls;  -- 品目区分（製品・商品）
+      gt_item_code_ar_brk3    := gt_sales_norm_tbl( sale_norm_idx ).item_code;       -- 品目コード
+--**/* 2010/08/11 Ver1.29 Mod End   */
 --
       -- AR取引番号
       gt_sales_norm_tbl( sale_norm_idx ).oif_trx_number   := gv_trx_number;
@@ -3896,6 +3911,36 @@ AS
       --AR取引番号、販売実績ヘッダIDで集約
       IF (   gv_trx_number_brk2 = gt_sales_norm_tbl( sale_norm_idx ).oif_trx_number
          AND gt_header_id_brk2  = gt_sales_norm_tbl( sale_norm_idx ).sales_exp_header_id
+--**/* 2010/08/11 Ver1.29 Mod Start */
+         -- 消費税コードによって集約キーを考慮する。
+         AND (
+               -- 消費税コードが内税のときは品目区分（製品・商品）を集約キーとして考慮する。
+               (
+                 ( gt_sales_norm_tbl( sale_norm_idx ).tax_code = gt_in_tax_cls )  -- 消費税区コードが内税
+             AND (
+                   -- 前回が商品か製品だったとき
+                   (
+                     (  NVL( gt_prod_cls_brk2, 'X' ) = cv_goods_prod_syo  -- 品目区分：商品= 1
+                     OR NVL( gt_prod_cls_brk2, 'X' ) = cv_goods_prod_sei  -- 品目区分：製品= 2
+                     )
+                   -- 前回の品目区分（製品・商品）と同じであること
+                   AND NVL( gt_prod_cls_brk2, 'X' ) = NVL( gt_sales_norm_tbl( sale_norm_idx ).goods_prod_cls, 'X' )
+                   )
+                   -- 前回が商品、製品以外だったとき(売上値引)
+                OR (
+                     (   NVL( gt_prod_cls_brk2, 'X' ) <> cv_goods_prod_syo  -- 品目区分：商品= 1
+                     AND NVL( gt_prod_cls_brk2, 'X' ) <> cv_goods_prod_sei  -- 品目区分：製品= 2
+                     )
+                   -- 前回の品目コードと同じであること
+                   AND gt_item_code_brk2 = gt_sales_norm_tbl( sale_norm_idx ).item_code  -- 品目コード
+                   )
+                 )
+               )
+               -- 消費税コードが外税、非課税のときは品目区分（製品・商品）を集約キーとして考慮しない。
+            OR ( gt_sales_norm_tbl( sale_norm_idx ).tax_code <> gt_in_tax_cls  -- 消費税コードが内税じゃない
+               )
+             )
+--**/* 2010/08/11 Ver1.29 Mod End   */
          )
       THEN
 --
@@ -4887,6 +4932,10 @@ AS
         gv_trx_number_brk2 := gt_sales_norm_tbl( sale_norm_idx ).oif_trx_number;        -- AR取引番号
         gt_header_id_brk2  := gt_sales_norm_tbl( sale_norm_idx ).sales_exp_header_id;   -- 販売実績ヘッダID
         gn_amount          := gt_sales_norm_tbl( sale_norm_idx ).pure_amount;           -- 本体金額
+--**/* 2010/08/11 Ver1.29 Mod Start */
+        gt_prod_cls_brk2   := gt_sales_norm_tbl( sale_norm_idx ).goods_prod_cls;  -- 品目区分（商品・製品）
+        gt_item_code_brk2  := gt_sales_norm_tbl( sale_norm_idx ).item_code;       -- 品目コード
+--**/* 2010/08/11 Ver1.29 Mod End   */
         --非課税の場合、消費税は0
         IF ( gt_sales_norm_tbl( sale_norm_idx ).consumption_tax_class != gt_no_tax_cls ) THEN
           gn_tax  := gt_sales_norm_tbl( sale_norm_idx ).tax_amount;
