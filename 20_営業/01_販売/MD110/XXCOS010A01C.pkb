@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCOS010A01C (body)
  * Description      : 受注データ取込機能
  * MD.050           : 受注データ取込(MD050_COS_010_A01)
- * Version          : 1.11
+ * Version          : 1.12
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -62,6 +62,8 @@ AS
  *  2009/09/02    1.9   M.Sano           [0001067]PT追加対応
  *  2009/10/02    1.10  M.Sano           [0001156]顧客品目抽出条件追加
  *  2009/11/19    1.11  M.Sano           [I_E_688]ブレイクキーにチェーン店コードを追加
+ *  2009/11/25    1.12  K.Atsushiba      [E_本稼動_00098]ブレイクキーに店舗納品日追加、ブレイク条件にNULL考慮
+ *                                       顧客チェックにOTHERS例外追加
  *
  *****************************************************************************************/
 --
@@ -143,6 +145,9 @@ AS
   cv_msg_nodata          CONSTANT VARCHAR2(20)  := 'APP-XXCOS1-00003';          -- 対象データなしメッセージ
   cv_msg_required        CONSTANT VARCHAR2(20)  := 'APP-XXCOS1-00015';          -- 必須未入力エラーメッセージ
   cv_msg_cust_conv       CONSTANT VARCHAR2(20)  := 'APP-XXCOS1-00020';          -- 顧客コード変換エラーメッセージ
+-- 2009/11/25 K.Atsushiba Ver.1.12 Add Start
+  cv_msg_many_cust_conv  CONSTANT VARCHAR2(20)  := 'APP-XXCOS1-00197';          -- 顧客コード変換エラーメッセージ
+-- 2009/11/25 K.Atsushiba Ver.1.12 Add End
   cv_msg_price_list      CONSTANT VARCHAR2(20)  := 'APP-XXCOS1-00022';          -- 価格表未設定エラーメッセージ
   cv_msg_edi_item        CONSTANT VARCHAR2(20)  := 'APP-XXCOS1-00023';          -- EDI連携品目コード区分エラーメッセージ
   cv_msg_item_conv       CONSTANT VARCHAR2(20)  := 'APP-XXCOS1-00024';          -- 商品コード変換エラーメッセージ
@@ -622,6 +627,9 @@ AS
     AND     edi.data_type_code               = iv_data_type_code                -- データ種コード
     AND     edi.err_status                   = iv_status                        -- ステータス
     ORDER BY
+-- 2009/11/25 K.Atsushiba Ver.1.12 Add Start
+            shop_delivery_date,
+-- 2009/11/25 K.Atsushiba Ver.1.12 Add Start
 -- 2009/11/19 M.Sano Ver.1.11 add Start
             edi_chain_code,
 -- 2009/11/19 M.Sano Ver.1.11 add End
@@ -3073,6 +3081,46 @@ AS
           ot_cust_info_rec.price_list_id  := NULL;
         END IF;
 -- 2009/06/29 M.Sano Ver.1.6 mod End
+-- 2009/11/25 K.Atsushiba Ver.1.12 Add Start
+      WHEN TOO_MANY_ROWS THEN
+        IF ( gn_check_record_flag = cn_check_record_yes ) THEN
+          -- 顧客コード変換エラーを出力
+          lv_errmsg := xxccp_common_pkg.get_msg( cv_application,
+                                                 cv_msg_many_cust_conv,
+                                                 cv_tkn_chain_shop_code,
+                                                 it_edi_work.edi_chain_code,
+                                                 cv_tkn_shop_code,
+                                                 it_edi_work.shop_code
+                                               );
+          lv_errbuf := lv_errmsg;
+          -- ログ出力
+          proc_msg_output( cv_prg_name, lv_errbuf );
+          -- 警告ステータス設定
+          ov_check_status := cv_edi_status_warning;
+          -- EDIエラー情報追加
+          proc_set_edi_errors( it_edi_work, NULL, NULL, cv_msg_rep_cust_conv );
+          -- 伝票エラーフラグ設定
+          gn_invoice_err_flag := 1;
+        ELSE
+          ot_cust_info_rec.conv_cust_code := NULL;
+          ot_cust_info_rec.price_list_id  := NULL;
+        END IF;
+      WHEN OTHERS THEN
+        IF ( gn_check_record_flag = cn_check_record_yes ) THEN
+          -- 警告ステータス設定
+          ov_check_status := cv_edi_status_warning;
+          -- EDIエラー情報追加
+          proc_set_edi_errors( it_edi_work, NULL, NULL, cv_msg_rep_cust_conv );
+          -- 伝票エラーフラグ設定
+          gn_invoice_err_flag := 1;
+        ELSE
+          ot_cust_info_rec.conv_cust_code := NULL;
+          ot_cust_info_rec.price_list_id  := NULL;
+        END IF;
+        ov_errbuf  := cv_pkg_name||cv_msg_cont||cv_prg_name||cv_msg_part||SQLERRM;
+        -- ログ出力
+        proc_msg_output( cv_prg_name, ov_errbuf );
+-- 2009/11/25 K.Atsushiba Ver.1.12 Add End
 --
     END;
 --
@@ -6986,6 +7034,9 @@ AS
 -- 2009/11/19 M.Sano Ver.1.11 add Start
     lv_edi_chain_code         xxcos_edi_order_work.edi_chain_code%TYPE := NULL;  -- EDIチェーン店コード
 -- 2009/11/19 M.Sano Ver.1.11 add End
+-- 2009/11/25 K.Atsushiba Ver.1.12 Add Start
+    lt_shop_delivery_date     xxcos_edi_order_work.shop_delivery_date%TYPE := NULL;  -- 店舗納品日
+-- 2009/11/25 K.Atsushiba Ver.1.12 Add End
 --
 --
   BEGIN
@@ -7010,6 +7061,10 @@ AS
       -- EDIチェーン店コードを保持する
       lv_edi_chain_code := gt_edi_order_work(ln_idx).edi_chain_code;
 -- 2009/11/19 M.Sano Ver.1.11 add End
+-- 2009/11/25 K.Atsushiba Ver.1.12 Add Start
+      -- 店舗納品日を保持する
+      lt_shop_delivery_date := gt_edi_order_work(ln_idx).shop_delivery_date;
+-- 2009/11/25 K.Atsushiba Ver.1.12 Add END
 --
       -- ============================================
       -- EDI受注情報ワーク変数格納(A-5)
@@ -7026,16 +7081,40 @@ AS
         RAISE global_process_expt;
       END IF;
 --
-      -- 伝票番号が変わったら
-      IF ( ( ln_idx = gt_edi_order_work.COUNT )
--- 2009/11/19 M.Sano Ver.1.11 add Start
-      OR ( lv_edi_chain_code != gt_edi_order_work(ln_idx + 1).edi_chain_code )
--- 2009/11/19 M.Sano Ver.1.11 add End
--- 2009/06/29 M.Sano Ver.1.6 add Start
-      OR ( lv_shop_code      != gt_edi_order_work(ln_idx + 1).shop_code )
--- 2009/06/29 M.Sano Ver.1.6 add End
-      OR ( lv_invoice_number != gt_edi_order_work(ln_idx + 1).invoice_number ) ) THEN
+-- 2009/11/25 K.Atsushiba Ver.1.12 Mod Start
+--      -- 伝票番号が変わったら
+--      IF ( ( ln_idx = gt_edi_order_work.COUNT )
+---- 2009/11/19 M.Sano Ver.1.11 add Start
+--      OR ( lv_edi_chain_code != gt_edi_order_work(ln_idx + 1).edi_chain_code )
+---- 2009/11/19 M.Sano Ver.1.11 add End
+---- 2009/06/29 M.Sano Ver.1.6 add Start
+--      OR ( lv_shop_code      != gt_edi_order_work(ln_idx + 1).shop_code )
+---- 2009/06/29 M.Sano Ver.1.6 add End
+--      OR ( lv_invoice_number != gt_edi_order_work(ln_idx + 1).invoice_number ) ) THEN
 --
+      -- EDIヘッダキーチェック
+      IF ( ( ln_idx != gt_edi_order_work.COUNT )
+           AND
+           ( ( lv_edi_chain_code = gt_edi_order_work(ln_idx + 1).edi_chain_code )
+             AND
+             ( lv_invoice_number = gt_edi_order_work(ln_idx + 1).invoice_number )
+             AND
+             ( ( ( lv_shop_code IS NULL ) AND ( gt_edi_order_work(ln_idx + 1).shop_code IS NULL ) )
+               OR
+               ( lv_shop_code = gt_edi_order_work(ln_idx + 1).shop_code )
+             )
+             AND
+             ( ( ( lt_shop_delivery_date IS NULL ) AND ( gt_edi_order_work(ln_idx + 1).shop_delivery_date IS NULL ) )
+               OR
+               ( lt_shop_delivery_date = gt_edi_order_work(ln_idx + 1).shop_delivery_date )
+             )
+           )
+      ) THEN
+        -- EDIヘッダが同じ場合
+        NULL;
+      ELSE
+        -- EDIヘッダが変わった場合
+-- 2009/11/25 K.Atsushiba Ver.1.12 Mod End
         -- 伝票エラーフラグ初期化
         gn_invoice_err_flag := 0;
         -- ヘッダ重複エラーフラグ初期化
