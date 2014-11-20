@@ -1,0 +1,1 @@
+CREATE INDEX xxwip.xxwip_adj_charges_n01 ON xxwip.xxwip_adj_charges( billing_code,billing_date ) TABLESPACE xxidx;

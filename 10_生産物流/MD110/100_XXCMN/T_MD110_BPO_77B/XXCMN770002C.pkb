@@ -7,7 +7,7 @@ AS
  * Description      : 受払残高表（Ⅰ）製品
  * MD.050/070       : 月次〆切処理帳票Issue1.0 (T_MD050_BPO_770)
  *                    月次〆切処理帳票Issue1.0 (T_MD070_BPO_77B)
- * Version          : 1.10
+ * Version          : 1.11
  *
  * Program List
  * -------------------------- ----------------------------------------------------------
@@ -44,6 +44,7 @@ AS
  *  2008/08/22    1.8   A.Shiina         T_TE080_BPO_770 指摘14対応
  *  2008/08/27    1.9   A.Shiina         T_TE080_BPO_770 指摘20対応
  *  2008/08/28    1.10  A.Shiina         取引数量は取得時に受払区分を掛ける。
+ *  2008/08/28    1.11  A.Shiina         振替項目の+-表示修正。
  *
  *****************************************************************************************/
 --
@@ -2668,9 +2669,13 @@ AS
         -- 項目判定初期化
         lb_trnsfr   := FALSE;
         lb_payout   := FALSE;
+-- 2008/09/02 v1.11 UPDATE START
+/*
 -- 2008/08/22 v1.8 ADD START
         lb_revi     := FALSE;
 -- 2008/08/22 v1.8 ADD END
+*/
+-- 2008/09/02 v1.11 UPDATE END
       END IF ;
 --
       -- =====================================================
@@ -2694,30 +2699,46 @@ AS
         WHEN gc_col_no_trnsfr THEN
           lv_col_name := 'trnsfr';
           lb_trnsfr   := TRUE;
+-- 2008/09/02 v1.11 UPDATE START
+/*
 -- 2008/08/27 v1.9 ADD START
           lb_revi     := TRUE;
 -- 2008/08/27 v1.9 ADD END
+*/
+-- 2008/09/02 v1.11 UPDATE START
         -- 緑営１
         WHEN gc_col_no_acct_1 THEN
           lv_col_name := 'acct_1';
           lb_trnsfr   := TRUE;
+-- 2008/09/02 v1.11 UPDATE START
+/*
 -- 2008/08/22 v1.8 ADD START
           lb_revi     := TRUE;
 -- 2008/08/22 v1.8 ADD END
+*/
+-- 2008/09/02 v1.11 UPDATE START
         -- 緑営２
         WHEN gc_col_no_acct_2 THEN
           lv_col_name := 'acct_2';
           lb_trnsfr   := TRUE;
+-- 2008/09/02 v1.11 UPDATE START
+/*
 -- 2008/08/22 v1.8 ADD START
           lb_revi     := TRUE;
 -- 2008/08/22 v1.8 ADD END
+*/
+-- 2008/09/02 v1.11 UPDATE START
         -- ドリンクギフト
         WHEN gc_col_no_guift THEN
           lv_col_name := 'guift';
           lb_trnsfr   := TRUE;
+-- 2008/09/02 v1.11 UPDATE START
+/*
 -- 2008/08/27 v1.9 ADD START
           lb_revi     := TRUE;
 -- 2008/08/27 v1.9 ADD END
+*/
+-- 2008/09/02 v1.11 UPDATE START
         -- 倉替
         WHEN gc_col_no_locat_chg THEN
           lv_col_name := 'locat_chg';
@@ -2768,6 +2789,8 @@ AS
 --
       -- 項目名が初期値以外
       IF (lv_col_name <> lc_break_init) THEN
+-- 2008/09/02 v1.11 UPDATE START
+/*
         -- 振替項目の場合
         IF (lb_trnsfr = TRUE) THEN
           -- 数量加算
@@ -2788,6 +2811,15 @@ AS
                                       * NVL(gt_main_data(i).actual_unit_price,0));
           END IF;
         END IF;
+*/
+        -- 数量加算
+        ln_quantity := ln_quantity + NVL( gt_main_data(i).trans_qty, 0 );
+        -- 金額加算（原価管理区分が「実際原価」の場合）
+        IF (lv_cost_kbn = gc_cost_ac ) THEN
+          ln_amount := ln_amount + (NVL(gt_main_data(i).trans_qty,0)
+                                    * NVL(gt_main_data(i).actual_unit_price,0));
+        END IF;
+-- 2008/09/02 v1.11 UPDATE END
       END IF;
 --
     END LOOP main_data_loop ;
@@ -2807,12 +2839,16 @@ AS
 --      ln_amount   := ln_amount * -1;
 --    END IF;
 -- 2008/08/28 v1.10 UPDATE END
+-- 2008/09/02 v1.11 UPDATE START
+/*
 -- 2008/08/22 v1.8 ADD START
     IF (lb_revi = TRUE) THEN
       ln_quantity := ln_quantity * -1;
       ln_amount   := ln_amount * -1;
     END IF;
 -- 2008/08/22 v1.8 ADD END
+*/
+-- 2008/09/02 v1.11 UPDATE END
     -- 数量
     prc_set_xml('Z', lv_col_name || '_qty' ,TO_CHAR(ROUND(ln_quantity, gn_quantity_decml)));
     -- 金額

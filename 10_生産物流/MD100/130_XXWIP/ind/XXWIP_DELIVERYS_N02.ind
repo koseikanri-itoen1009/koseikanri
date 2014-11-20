@@ -1,0 +1,1 @@
+CREATE INDEX xxwip.xxwip_deliverys_n02 ON xxwip.xxwip_deliverys( p_b_classe,judgement_date ) TABLESPACE xxidx;

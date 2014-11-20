@@ -7,7 +7,7 @@ AS
  * Description      : 出庫実績表
  * MD.050/070       : 月次〆処理(経理)Issue1.0 (T_MD050_BPO_770)
  *                    月次〆処理(経理)Issue1.0 (T_MD070_BPO_77F)
- * Version          : 1.7
+ * Version          : 1.8
  *
  * Program List
  * -------------------------- ----------------------------------------------------------
@@ -40,6 +40,7 @@ AS
  *  2008/07/18    1.6   T.Ikehara        出力件数カウントタグ追加
  *  2008/08/07    1.7   T.Endou          参照ビューの変更「xxcmn_rcv_pay_mst_porc_rma_v」→
  *                                                       「xxcmn_rcv_pay_mst_porc_rma26_v」
+ *  2008/09/02    1.8   A.Shiina         仕様不備障害#T_S_475対応
  *
  *****************************************************************************************/
 --
@@ -575,8 +576,11 @@ AS
               || ' ,xleiv.item_short_name'      || ' AS item_name'          -- 品目名称
               || ' ,itp.trans_um'               || ' AS trans_um'           -- 取引単位
 --
-              || ' ,NVL2(xrpm.item_id, itp.trans_qty'
-              ||                    ', itp.trans_qty * TO_NUMBER(xrpm.rcv_pay_div))'
+-- 2008/09/02 v1.8 UPDATE START
+--              || ' ,NVL2(xrpm.item_id, itp.trans_qty'
+--              ||                    ', itp.trans_qty * TO_NUMBER(xrpm.rcv_pay_div))'
+              || ' , itp.trans_qty * TO_NUMBER(xrpm.rcv_pay_div)'
+-- 2008/09/02 v1.8 UPDATE END
                                                 || ' AS trans_qty'          -- 取引数量
 --
               || ' ,('
@@ -596,19 +600,28 @@ AS
               || '          WHERE xlc.item_id = ximv.item_id )'
               || '       ,xsupv.stnd_unit_price)'
               || '    END)'
-              || '     * NVL2(xrpm.item_id, itp.trans_qty'
-              ||                         ', itp.trans_qty * TO_NUMBER(xrpm.rcv_pay_div))'
+-- 2008/09/02 v1.8 UPDATE START
+--              || '     * NVL2(xrpm.item_id, itp.trans_qty'
+--              ||                         ', itp.trans_qty * TO_NUMBER(xrpm.rcv_pay_div))'
+              || '     * (itp.trans_qty * TO_NUMBER(xrpm.rcv_pay_div))'
+-- 2008/09/02 v1.8 UPDATE END
               ||  ' )'                          || ' AS actual_price'       -- 実際金額
 --
               || ' ,(xsupv.stnd_unit_price'
-              ||     ' * NVL2(xrpm.item_id, itp.trans_qty'
-              ||                         ', itp.trans_qty * TO_NUMBER(xrpm.rcv_pay_div))'
+-- 2008/09/02 v1.8 UPDATE START
+--              ||     ' * NVL2(xrpm.item_id, itp.trans_qty'
+--              ||                         ', itp.trans_qty * TO_NUMBER(xrpm.rcv_pay_div))'
+              ||     ' * (itp.trans_qty * TO_NUMBER(xrpm.rcv_pay_div))'
+-- 2008/09/02 v1.8 UPDATE END
               ||  ' )'                          || ' AS stnd_price'         -- 標準金額
 --
               || ' ,( CASE xleiv.lot_ctl'
               ||         ' WHEN  0 THEN ( xrpm.unit_price'
-              ||                ' * NVL2(xrpm.item_id, itp.trans_qty'
-              ||                                    ', itp.trans_qty * TO_NUMBER(xrpm.rcv_pay_div))'
+-- 2008/09/02 v1.8 UPDATE START
+--              ||                ' * NVL2(xrpm.item_id, itp.trans_qty'
+--              ||                                    ', itp.trans_qty * TO_NUMBER(xrpm.rcv_pay_div))'
+              ||                ' * (itp.trans_qty * TO_NUMBER(xrpm.rcv_pay_div))'
+-- 2008/09/02 v1.8 UPDATE END
               ||                       ' )'
               ||         ' ELSE'
               ||              ' ( '
@@ -619,8 +632,11 @@ AS
               ||                              ' )'
               ||                ' FROM  xxcmn_lot_cost xlc'
               ||                ' WHERE xlc.item_id = itp.item_id )'
-              ||                ' * NVL2(xrpm.item_id, itp.trans_qty'
-              ||                                    ', itp.trans_qty * TO_NUMBER(xrpm.rcv_pay_div))'
+-- 2008/09/02 v1.8 UPDATE START
+--              ||                ' * NVL2(xrpm.item_id, itp.trans_qty'
+--              ||                                    ', itp.trans_qty * TO_NUMBER(xrpm.rcv_pay_div))'
+              ||                ' * (itp.trans_qty * TO_NUMBER(xrpm.rcv_pay_div))'
+-- 2008/09/02 v1.8 UPDATE END
               ||              ' )'
               ||     ' END )'                   || ' AS price'              -- 有償金額
               || ' ,xlvv2.lookup_code'          || ' AS tax'                -- 消費税率
