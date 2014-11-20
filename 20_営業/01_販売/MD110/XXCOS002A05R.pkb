@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCOS002A05R (body)
  * Description      : 納品書チェックリスト
  * MD.050           : 納品書チェックリスト MD050_COS_002_A05
- * Version          : 1.14
+ * Version          : 1.15
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -61,6 +61,8 @@ AS
  *                                       税処理を行う対象を変更（VD以外⇒VD）、確認項目の処理をVD,VD以外の両方で行うように変更
  *  2009/08/24    1.14  M.Sano           障害[0001162]対応
  *                                       従業員マスタの抽出条件の追加
+ *  2009/09/01    1.15  M.Sano           障害[0000900]対応
+ *                                       MainSQL,INSERT文にヒント句の追加、検索条件の最適化
  *
  *****************************************************************************************/
 --
@@ -233,6 +235,10 @@ AS
 -- ******************** 2009/06/05 Var.1.9 T.Tominaga ADD START  ******************************************
   cv_obsolete_class_one         CONSTANT VARCHAR2(1)   := '1';
 -- ******************** 2009/06/05 Var.1.9 T.Tominaga ADD END    ******************************************
+-- 2009/09/01 Ver.1.15 M.Sano Add Start
+  -- 言語コード
+  ct_lang                       CONSTANT fnd_lookup_values.language%TYPE := USERENV( 'LANG' );
+-- 2009/09/01 Ver.1.15 M.Sano Add End
 --
   -- ===============================
   -- ユーザー定義グローバル型
@@ -895,6 +901,31 @@ AS
                             )
     IS
       SELECT
+-- 2009/09/01 Ver.1.15 M.Sano Add Start
+         /*+
+           LEADING ( riv.jrrx_n )
+           INDEX   ( riv.jrgm_n jtf_rs_group_members_n2)
+           INDEX   ( riv.jrgb_n jtf_rs_groups_b_u1 )
+           INDEX   ( riv.jrrx_n xxcso_jrre_n02 )
+           USE_NL  ( riv.papf_n )
+           USE_NL  ( riv.pept_n )
+           USE_NL  ( riv.paaf_n )
+           USE_NL  ( riv.jrgm_n )
+           USE_NL  ( riv.jrgb_n )
+           LEADING ( riv.jrrx_o )
+           INDEX   ( riv.jrrx_o xxcso_jrre_n02 )
+           INDEX   ( riv.jrgm_o jtf_rs_group_members_n2)
+           INDEX   ( riv.jrgb_o jtf_rs_groups_b_u1 )
+           USE_NL  ( riv.papf_o )
+           USE_NL  ( riv.pept_o )
+           USE_NL  ( riv.paaf_o )
+           USE_NL  ( riv.jrgm_o )
+           USE_NL  ( riv.jrgb_o )
+           USE_NL  ( riv )
+           USE_NL  ( disc )
+           USE_NL  ( infd )
+         */
+-- 2009/09/01 Ver.1.15 M.Sano Add End
          infh.delivery_date                        AS target_date                     -- 対象日付
         ,infh.sales_base_code                      AS base_code                       -- 拠点コード
         ,SUBSTRB( parb.party_name, 1, 40 )         AS base_name                       -- 拠点名称
@@ -946,10 +977,10 @@ AS
         ,xxcmm_cust_accounts      cuac          -- 顧客追加情報
         ,hz_parties               parb          -- パーティ_拠点
         ,hz_parties               parc          -- パーティ_顧客
--- 2009/08/24 Ver.1.14 M.Sano Start
+-- 2009/08/24 Ver.1.14 M.Sano Mod Start
 --        ,per_people_f             ppf           -- 従業員マスタ_成績者名
         ,per_all_people_f         ppf           -- 従業員マスタ_成績者名
--- 2009/08/24 Ver.1.14 M.Sano End
+-- 2009/08/24 Ver.1.14 M.Sano Mod End
         ,ic_item_mst_b            iimb          -- OPM品目
         ,xxcmn_item_mst_b         ximb          -- OPM品目アドオン
         ,xxcos_rs_info_v          riv           -- 営業員情報view
@@ -986,13 +1017,21 @@ AS
                 AND     look_val.enabled_flag      = cv_yes                     -- Y
                 AND     icp_delivery_date         >= NVL( look_val.start_date_active, icp_delivery_date )
                 AND     icp_delivery_date         <= NVL( look_val.end_date_active, icp_delivery_date )
-                AND     look_val.language          = USERENV( 'LANG' )
+-- 2009/09/01 Ver.1.15 M.Sano Mod Start
+--                AND     look_val.language          = USERENV( 'LANG' )
+                AND     look_val.language          = ct_lang
+-- 2009/09/01 Ver.1.15 M.Sano Mod End
               ) diit    -- 値引品目
            WHERE
                seh.delivery_date         = icp_delivery_date                                    -- パラメータの納品日
            AND seh.sales_base_code       = icp_delivery_base_code                               -- パラメータの拠点
            AND seh.dlv_by_code           = NVL( icp_dlv_by_code, seh.dlv_by_code )              -- パラメータの営業員
-           AND seh.dlv_invoice_number    = NVL( icp_hht_invoice_no, seh.dlv_invoice_number )    -- パラメータの伝票番号
+-- 2009/09/01 Ver.1.15 M.Sano Mod Start
+--           AND seh.dlv_invoice_number    = NVL( icp_hht_invoice_no, seh.dlv_invoice_number )    -- パラメータの伝票番号
+           AND (   (    icp_hht_invoice_no    IS NOT NULL
+                    AND seh.dlv_invoice_number = icp_hht_invoice_no )
+                OR (    icp_hht_invoice_no    IS NULL ) )                                       -- パラメータの伝票番号
+-- 2009/09/01 Ver.1.15 M.Sano Mod End
            AND seh.sales_exp_header_id   = sel.sales_exp_header_id
            AND sel.item_code             = diit.lookup_code(+)
            GROUP BY
@@ -1034,7 +1073,12 @@ AS
                seh.delivery_date         = icp_delivery_date                                   -- パラメータの納品日
            AND seh.sales_base_code       = icp_delivery_base_code                              -- パラメータの拠点
            AND seh.dlv_by_code           = NVL( icp_dlv_by_code, seh.dlv_by_code )             -- パラメータの営業員
-           AND seh.dlv_invoice_number    = NVL( icp_hht_invoice_no, seh.dlv_invoice_number )   -- パラメータの伝票番号
+-- 2009/09/01 Ver.1.15 M.Sano Mod Start
+--           AND seh.dlv_invoice_number    = NVL( icp_hht_invoice_no, seh.dlv_invoice_number )   -- パラメータの伝票番号
+           AND (   (    icp_hht_invoice_no    IS NOT NULL
+                    AND seh.dlv_invoice_number = icp_hht_invoice_no )
+                OR (    icp_hht_invoice_no    IS NULL ) )                                      -- パラメータの伝票番号
+-- 2009/09/01 Ver.1.15 M.Sano Mod End
            GROUP BY
               seh.delivery_date                      -- 納品日
              ,seh.sales_base_code                    -- 拠点コード
@@ -1110,14 +1154,22 @@ AS
                   AND     look_val.enabled_flag      = cv_yes                       -- Y
                   AND     icp_delivery_date         >= NVL( look_val.start_date_active, icp_delivery_date )
                   AND     icp_delivery_date         <= NVL( look_val.end_date_active, icp_delivery_date )
-                  AND     look_val.language          = USERENV( 'LANG' )
+-- 2009/09/01 Ver.1.15 M.Sano Mod Start
+--                  AND     look_val.language          = USERENV( 'LANG' )
+                  AND     look_val.language          = ct_lang
+-- 2009/09/01 Ver.1.15 M.Sano Mod End
                )  gysm     -- 業態小分類特定マスタ
            WHERE
                seh.sales_exp_header_id   = sel.sales_exp_header_id                  -- 販売実績ヘッダ＆明細.販売実績ヘッダID
            AND seh.delivery_date         = icp_delivery_date                        -- パラメータの納品日
            AND seh.sales_base_code       = icp_delivery_base_code                   -- パラメータの拠点
            AND seh.dlv_by_code           = NVL( icp_dlv_by_code, seh.dlv_by_code )  -- パラメータの営業員
-           AND seh.dlv_invoice_number    = NVL( icp_hht_invoice_no, seh.dlv_invoice_number )   -- パラメータの伝票番号
+-- 2009/09/01 Ver.1.15 M.Sano Mod Start
+--           AND seh.dlv_invoice_number    = NVL( icp_hht_invoice_no, seh.dlv_invoice_number )   -- パラメータの伝票番号
+           AND (   (    icp_hht_invoice_no    IS NOT NULL
+                    AND seh.dlv_invoice_number = icp_hht_invoice_no )
+                OR (    icp_hht_invoice_no    IS NULL ) )                           -- パラメータの伝票番号
+-- 2009/09/01 Ver.1.15 M.Sano Mod End
            AND seh.ship_to_customer_code = cust.account_number                      -- 販売実績ヘッダ＝顧客マスタ_顧客
            AND cust.customer_class_code  IN ( ct_cust_class_customer , ct_cust_class_customer_u )  
                                                                                     -- 顧客区分IN 顧客,上様顧客
@@ -1153,7 +1205,10 @@ AS
             AND     look_val.enabled_flag      = cv_yes                   -- Y
             AND     icp_delivery_date         >= NVL( look_val.start_date_active, icp_delivery_date )
             AND     icp_delivery_date         <= NVL( look_val.end_date_active, icp_delivery_date )
-            AND     look_val.language          = USERENV( 'LANG' )
+-- 2009/09/01 Ver.1.15 M.Sano Mod Start
+--            AND     look_val.language          = USERENV( 'LANG' )
+            AND     look_val.language          = ct_lang
+-- 2009/09/01 Ver.1.15 M.Sano Mod End
          )  orct    -- 作成元区分
         ,(
             SELECT  look_val.lookup_code        lookup_code
@@ -1163,7 +1218,10 @@ AS
             AND     look_val.enabled_flag      = cv_yes                   -- Y
             AND     icp_delivery_date         >= NVL( look_val.start_date_active, icp_delivery_date )
             AND     icp_delivery_date         <= NVL( look_val.end_date_active, icp_delivery_date )
-            AND     look_val.language          = USERENV( 'LANG' )
+-- 2009/09/01 Ver.1.15 M.Sano Mod Start
+--            AND     look_val.language          = USERENV( 'LANG' )
+            AND     look_val.language          = ct_lang
+-- 2009/09/01 Ver.1.15 M.Sano Mod End
          )  incl    -- 入力区分
         ,(
             SELECT  look_val.lookup_code        lookup_code
@@ -1173,7 +1231,10 @@ AS
             AND     look_val.enabled_flag      = cv_yes                   -- Y
             AND     icp_delivery_date         >= NVL( look_val.start_date_active, icp_delivery_date )
             AND     icp_delivery_date         <= NVL( look_val.end_date_active, icp_delivery_date )
-            AND     look_val.language          = USERENV( 'LANG' )
+-- 2009/09/01 Ver.1.15 M.Sano Mod Start
+--            AND     look_val.language          = USERENV( 'LANG' )
+            AND     look_val.language          = ct_lang
+-- 2009/09/01 Ver.1.15 M.Sano Mod End
          )  cscl    -- カード売区分
         ,(
             SELECT  look_val.lookup_code        lookup_code
@@ -1183,7 +1244,10 @@ AS
             AND     look_val.enabled_flag      = cv_yes                   -- Y
             AND     icp_delivery_date         >= NVL( look_val.start_date_active, icp_delivery_date )
             AND     icp_delivery_date         <= NVL( look_val.end_date_active, icp_delivery_date )
-            AND     look_val.language          = USERENV( 'LANG' )
+-- 2009/09/01 Ver.1.15 M.Sano Mod Start
+--            AND     look_val.language          = USERENV( 'LANG' )
+            AND     look_val.language          = ct_lang
+-- 2009/09/01 Ver.1.15 M.Sano Mod End
          )  sacl    -- 売上区分
         ,(
             SELECT  look_val.lookup_code        lookup_code
@@ -1194,7 +1258,10 @@ AS
             AND     look_val.enabled_flag      = cv_yes                   -- Y
             AND     icp_delivery_date         >= NVL( look_val.start_date_active, icp_delivery_date )
             AND     icp_delivery_date         <= NVL( look_val.end_date_active, icp_delivery_date )
-            AND     look_val.language          = USERENV( 'LANG' )
+-- 2009/09/01 Ver.1.15 M.Sano Mod Start
+--            AND     look_val.language          = USERENV( 'LANG' )
+            AND     look_val.language          = ct_lang
+-- 2009/09/01 Ver.1.15 M.Sano Mod End
          )  htcl    -- HHT消費税区分
         ,(
             SELECT  look_val.lookup_code        lookup_code
@@ -1204,7 +1271,10 @@ AS
             AND     look_val.enabled_flag      = cv_yes                   -- Y
             AND     icp_delivery_date         >= NVL( look_val.start_date_active, icp_delivery_date )
             AND     icp_delivery_date         <= NVL( look_val.end_date_active, icp_delivery_date )
-            AND     look_val.language          = USERENV( 'LANG' )
+-- 2009/09/01 Ver.1.15 M.Sano Mod Start
+--            AND     look_val.language          = USERENV( 'LANG' )
+            AND     look_val.language          = ct_lang
+-- 2009/09/01 Ver.1.15 M.Sano Mod End
          )  hccl    -- H/C区分
         ,(
             SELECT  look_val.lookup_code        lookup_code
@@ -1215,7 +1285,10 @@ AS
             AND     look_val.enabled_flag      = cv_yes                   -- Y
             AND     icp_delivery_date         >= NVL( look_val.start_date_active, icp_delivery_date )
             AND     icp_delivery_date         <= NVL( look_val.end_date_active, icp_delivery_date )
-            AND     look_val.language          = USERENV( 'LANG' )
+-- 2009/09/01 Ver.1.15 M.Sano Mod Start
+--            AND     look_val.language          = USERENV( 'LANG' )
+            AND     look_val.language          = ct_lang
+-- 2009/09/01 Ver.1.15 M.Sano Mod End
          )  tacl    -- 消費税区分
         ,(
             SELECT  look_val.lookup_code        lookup_code
@@ -1226,7 +1299,10 @@ AS
             AND     look_val.enabled_flag      = cv_yes                   -- Y
             AND     icp_delivery_date         >= NVL( look_val.start_date_active, icp_delivery_date )
             AND     icp_delivery_date         <= NVL( look_val.end_date_active, icp_delivery_date )
-            AND     look_val.language          = USERENV( 'LANG' )
+-- 2009/09/01 Ver.1.15 M.Sano Mod Start
+--            AND     look_val.language          = USERENV( 'LANG' )
+            AND     look_val.language          = ct_lang
+-- 2009/09/01 Ver.1.15 M.Sano Mod End
          )  gysm    -- 業態小分類特定マスタ
         ,(
             SELECT  look_val.meaning            meaning
@@ -1236,7 +1312,10 @@ AS
             AND     look_val.enabled_flag      = cv_yes                   -- Y
             AND     icp_delivery_date         >= NVL( look_val.start_date_active, icp_delivery_date )
             AND     icp_delivery_date         <= NVL( look_val.end_date_active, icp_delivery_date )
-            AND     look_val.language          = USERENV( 'LANG' )
+-- 2009/09/01 Ver.1.15 M.Sano Mod Start
+--            AND     look_val.language          = USERENV( 'LANG' )
+            AND     look_val.language          = ct_lang
+-- 2009/09/01 Ver.1.15 M.Sano Mod End
          )  gysm1   -- 業態小分類特定マスタ
       WHERE
           infh.delivery_date                            = disc.delivery_date                             -- [ヘッダ=値引] 対象日付
@@ -1276,10 +1355,10 @@ AS
       AND cust.party_id              = parc.party_id                                                     -- 顧客マスタ_顧客＝パーティ_顧客
       AND infh.create_class IN ( orct.meaning )                                                          -- 作成元区分＝クイックコード
       AND infh.results_employee_code = ppf.employee_number(+)
--- 2009/08/24 Ver.1.14 M.Sano Start
+-- 2009/08/24 Ver.1.14 M.Sano Mod Start
       AND infh.delivery_date        >= ppf.effective_start_date(+)
       AND infh.delivery_date        <= ppf.effective_end_date(+)
--- 2009/08/24 Ver.1.14 M.Sano End
+-- 2009/08/24 Ver.1.14 M.Sano Mod End
       AND infd.item_code             = iimb.item_no
       AND iimb.item_id               = ximb.item_id
       AND ximb.obsolete_class       <> cv_obsolete_class_one
@@ -1287,7 +1366,13 @@ AS
       AND ximb.end_date_active      >= infh.delivery_date
       AND infh.sales_base_code       = riv.base_code
       AND riv.employee_number        = infh.dlv_by_code
-      AND riv.employee_number        = NVL( icp_dlv_by_code, riv.employee_number )
+-- 2009/09/01 Ver.1.15 M.Sano Mod Start
+--      AND riv.employee_number        = NVL( icp_dlv_by_code, riv.employee_number )
+      AND (   (    icp_dlv_by_code     IS NOT NULL
+               AND riv.employee_number = icp_dlv_by_code )
+           OR (    icp_dlv_by_code     IS NULL )
+          )
+-- 2009/09/01 Ver.1.15 M.Sano Mod End
       AND infh.delivery_date        >= NVL( riv.effective_start_date, infh.delivery_date )
       AND infh.delivery_date        <= NVL( riv.effective_end_date, infh.delivery_date )
       AND infh.delivery_date        >= riv.per_effective_start_date
@@ -1927,6 +2012,28 @@ AS
              ,program_update_date                 -- ﾌﾟﾛｸﾞﾗﾑ更新日
           )
         SELECT
+-- 2009/09/01 Ver.1.15 M.Sano Add Start
+           /*+
+             leading ( riv.jrrx_n )
+             index   ( riv.jrgm_n jtf_rs_group_members_n2)
+             index   ( riv.jrgb_n jtf_rs_groups_b_u1 )
+             index   ( riv.jrrx_n xxcso_jrre_n02 )
+             use_nl  ( riv.papf_n )
+             use_nl  ( riv.pept_n )
+             use_nl  ( riv.paaf_n )
+             use_nl  ( riv.jrgm_n )
+             use_nl  ( riv.jrgb_n )
+             leading ( riv.jrrx_o )
+             index   ( riv.jrrx_o xxcso_jrre_n02 )
+             index   ( riv.jrgm_o jtf_rs_group_members_n2)
+             index   ( riv.jrgb_o jtf_rs_groups_b_u1 )
+             use_nl  ( riv.papf_o )
+             use_nl  ( riv.pept_o )
+             use_nl  ( riv.paaf_o )
+             use_nl  ( riv.jrgm_o )
+             use_nl  ( riv.jrgb_o )
+           */
+-- 2009/09/01 Ver.1.15 M.Sano Add End
            xxcos_rep_dlv_chk_list_s01.nextval   -- レコードID
           ,pay.payment_date                       -- 対象日付
           ,pay.base_code                          -- 拠点コード
@@ -1984,24 +2091,30 @@ AS
             SELECT  look_val.lookup_code        lookup_code
                    ,look_val.meaning            meaning
             FROM    fnd_lookup_values           look_val
-                   ,fnd_lookup_types_tl         types_tl
-                   ,fnd_lookup_types            types
-                   ,fnd_application_tl          appl
-                   ,fnd_application             app
-            WHERE   app.application_short_name = cv_application          -- XXCOS
-            AND     look_val.lookup_type       = ct_qck_money_class      -- XXCOS1_RECEIPT_MONEY_CLASS
+-- 2009/09/01 Ver.1.15 M.Sano Mod Start
+--                   ,fnd_lookup_types_tl         types_tl
+--                   ,fnd_lookup_types            types
+--                   ,fnd_application_tl          appl
+--                   ,fnd_application             app
+--            WHERE   app.application_short_name = cv_application          -- XXCOS
+--            AND     look_val.lookup_type       = ct_qck_money_class      -- XXCOS1_RECEIPT_MONEY_CLASS
+            WHERE   look_val.lookup_type       = ct_qck_money_class      -- XXCOS1_RECEIPT_MONEY_CLASS
+-- 2009/09/01 Ver.1.15 M.Sano Mod End
             AND     look_val.enabled_flag      = cv_yes                  -- Y
             AND     ld_delivery_date          >= NVL( look_val.start_date_active, ld_delivery_date )
             AND     ld_delivery_date          <= NVL( look_val.end_date_active, ld_delivery_date )
-            AND     types_tl.language          = USERENV( 'LANG' )
-            AND     look_val.language          = USERENV( 'LANG' )
-            AND     appl.language              = USERENV( 'LANG' )
-            AND     appl.application_id        = types.application_id
-            AND     app.application_id         = appl.application_id
-            AND     types_tl.lookup_type       = look_val.lookup_type
-            AND     types.lookup_type          = types_tl.lookup_type
-            AND     types.security_group_id    = types_tl.security_group_id
-            AND     types.view_application_id  = types_tl.view_application_id
+-- 2009/09/01 Ver.1.15 M.Sano Mod Start
+--            AND     types_tl.language          = USERENV( 'LANG' )
+--            AND     look_val.language          = USERENV( 'LANG' )
+--            AND     appl.language              = USERENV( 'LANG' )
+--            AND     appl.application_id        = types.application_id
+--            AND     app.application_id         = appl.application_id
+--            AND     types_tl.lookup_type       = look_val.lookup_type
+--            AND     types.lookup_type          = types_tl.lookup_type
+--            AND     types.security_group_id    = types_tl.security_group_id
+--            AND     types.view_application_id  = types_tl.view_application_id
+            AND     look_val.language          = ct_lang
+-- 2009/09/01 Ver.1.15 M.Sano Mod End
            )  pacl   -- 入金区分
         WHERE
           pay.payment_date       = ld_delivery_date
@@ -2050,7 +2163,10 @@ AS
              AND     look_val.enabled_flag      = cv_yes                  -- Y
              AND     ld_delivery_date          >= NVL( look_val.start_date_active, ld_delivery_date )
              AND     ld_delivery_date          <= NVL( look_val.end_date_active, ld_delivery_date )
-             AND     look_val.language          = USERENV( 'LANG' )
+-- 2009/09/01 Ver.1.15 M.Sano Mod Start
+--             AND     look_val.language          = USERENV( 'LANG' )
+             AND     look_val.language          = ct_lang
+-- 2009/09/01 Ver.1.15 M.Sano Mod End
              AND     look_val.meaning           = cuac.business_low_type
           )  -- 業態小分類特定マスタ
         ;
