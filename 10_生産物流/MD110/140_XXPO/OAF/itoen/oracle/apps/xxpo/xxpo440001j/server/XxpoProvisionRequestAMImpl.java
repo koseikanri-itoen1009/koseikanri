@@ -1,7 +1,7 @@
 /*============================================================================
 * ファイル名 : XxpoProvisionRequestAMImpl
 * 概要説明   : 支給依頼要約アプリケーションモジュール
-* バージョン : 1.15
+* バージョン : 1.16
 *============================================================================
 * 修正履歴
 * 日付       Ver. 担当者       修正内容
@@ -25,6 +25,7 @@
 * 2009-01-22 1.13 吉元強樹     本番障害#739,985対応(第2段階:ヘッダ・明細)
 * 2009-02-03 1.14 二瓶大輔     本番障害#739,985対応(修正漏れ対応)
 * 2009-02-13 1.15 伊藤ひとみ   本番障害#863,1184対応
+* 2009-03-06 1.16 飯田　甫     本番障害#1131対応
 *============================================================================
 */
 package itoen.oracle.apps.xxpo.xxpo440001j.server;
@@ -58,7 +59,7 @@ import oracle.jbo.RowSetIterator;
 /***************************************************************************
  * 支給依頼要約画面のアプリケーションモジュールクラスです。
  * @author  ORACLE 二瓶 大輔
- * @version 1.15
+ * @version 1.16
  ***************************************************************************
  */
 public class XxpoProvisionRequestAMImpl extends XxcmnOAApplicationModuleImpl 
@@ -3535,6 +3536,27 @@ public class XxpoProvisionRequestAMImpl extends XxcmnOAApplicationModuleImpl
           
     }
 // 2008-10-21 D.Nihei ADD END
+// 2009-03-06 H.Iida ADD START 本番障害#1131
+    // 仕入有償のみ明細全ての指示数が0かどうかチェックを行います
+    if ("1".equals(autoCreatePoClass))
+    {
+      String requestNo = (String)row.getAttribute("RequestNo");    // 依頼No
+      Number orderType = (Number)row.getAttribute("OrderTypeId");  // 発生区分
+      if (chkRcvCntQuantity(getOADBTransaction(),
+                            requestNo))
+      {
+        exceptions.add( new OAAttrValException(
+                              OAAttrValException.TYP_VIEW_OBJECT,
+                              vo.getName(),
+                              row.getKey(),
+                              "OrderTypeId",
+                              orderType,
+                              XxcmnConstants.APPL_XXPO, 
+                              XxpoConstants.XXPO10286));
+
+      }
+    }
+// 2009-03-06 H.Iida ADD END
   } // chkRcv
 
   /***************************************************************************
@@ -5398,6 +5420,104 @@ public class XxpoProvisionRequestAMImpl extends XxcmnOAApplicationModuleImpl
     }
   } // updateSummaryInfo
 // 2009-02-13 H.Itou Add End
+// 2009-03-06 H.Iida ADD START 本番障害#1131
+ /*****************************************************************************
+   * 受領ボタン押下時に、明細全ての指示数が0かどうかチェックをするメソッドです。
+   * @param trans      - トランザクション
+   * @param requestNo  - 依頼No
+   * @return boolean   - true :明細全ての指示数が0の場合
+   *                   - false:指示数が0以外の明細が存在する場合
+   * @throws OAException - OA例外
+   ****************************************************************************/
+  public static boolean chkRcvCntQuantity(
+    OADBTransaction trans,
+    String requestNo
+  ) throws OAException
+  {
+
+    String apiName   = "chkRcvCntQuantity";
+
+    Number cntQuantity;  // 指示数が0でない明細件数
+
+    // PL/SQLの作成
+    StringBuffer sb = new StringBuffer(1000);
+    sb.append("BEGIN "                                 );
+    // 依頼Noをキーに指示数が0以外の明細件数を取得
+    sb.append("  SELECT COUNT(xola.quantity)         " );
+    sb.append("  INTO   :1                           " );
+    sb.append("  FROM   xxwsh_order_lines_all   xola " );
+    sb.append("  WHERE  xola.request_no = :2         " );
+    sb.append("  AND    xola.delete_flag = 'N'       " );
+    sb.append("  AND    NVL(xola.quantity, 0) > 0    " );
+    sb.append("  AND    ROWNUM = 1;                  " );
+    sb.append("END;                                  " );
+
+    //PL/SQLの設定を行います
+    CallableStatement cstmt
+      = trans.createCallableStatement(sb.toString(), OADBTransaction.DEFAULT);
+
+    try
+    {
+      // パラメータ設定(INパラメータ)
+      cstmt.setString(2, requestNo);                    // 依頼No
+
+      // パラメータ設定(OUTパラメータ)
+      cstmt.registerOutParameter(1, Types.INTEGER);     // 戻り値:指示数が0以外の明細件数
+
+      // PL/SQL実行
+      cstmt.execute();
+
+      // 明細全ての指示数が0の場合、trueを返す
+      if (cstmt.getInt(1) == 0)
+      {
+        return true;
+
+      // 指示数が0以外の明細が存在する場合、falseを返す
+      } else
+      {
+        return false;
+      }
+
+    // PL/SQL実行時例外の場合
+    } catch(SQLException s)
+    {
+      // ロールバック
+      XxpoUtility.rollBack(trans);
+
+      // ログ出力
+      XxcmnUtility.writeLog(trans,
+                            XxpoConstants.CLASS_AM_XXPO440001J + XxcmnConstants.DOT + apiName,
+                            s.toString(),
+                            6);
+
+      // エラーメッセージ出力
+      throw new OAException(XxcmnConstants.APPL_XXCMN, 
+                            XxcmnConstants.XXCMN10123);
+
+    } finally
+    {
+      try
+      {
+        //処理中にエラーが発生した場合を想定する
+        cstmt.close();
+      } catch(SQLException s)
+      {
+        // ロールバック
+        XxpoUtility.rollBack(trans);
+
+        // ログ出力
+        XxcmnUtility.writeLog(trans,
+                              XxpoConstants.CLASS_AM_XXPO440001J + XxcmnConstants.DOT + apiName,
+                              s.toString(),
+                              6);
+
+        // エラーメッセージ出力
+        throw new OAException(XxcmnConstants.APPL_XXCMN, 
+                              XxcmnConstants.XXCMN10123);
+      }
+    }
+  } // chkRcvCntQuantity
+// 2009-03-06 H.Iida ADD END
   /**
    * 
    * Sample main for debugging Business Components code using the tester.
