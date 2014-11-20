@@ -47,6 +47,7 @@ AS
  *  2009-10-07    1.8   Daisuke.Abe      障害対応(0001454)
  *  2009-10-23    1.9   Daisuke.Abe      障害対応(E_T4_00056)
  *  2009-11-24    1.10  Daisuke.Abe      障害対応(E_本稼動_00026)
+ *  2009-12-02    1.11  T.Maruyama       障害対応(E_本稼動_00081)
  *****************************************************************************************/
 --
 --#######################  固定グローバル定数宣言部 START   #######################
@@ -186,6 +187,9 @@ AS
 /* 2009.10.23 D.Abe E_T4_00056対応 START */
   cv_debug_msg_skip2     CONSTANT VARCHAR2(200) := '<< タスク更新失敗のためスキップしました >>';
 /* 2009.10.23 D.Abe E_T4_00056対応 END */
+/* 2009.12.02 T.Maruyama E_本稼動_00081対応 START */
+  cv_debug_msg_skip3     CONSTANT VARCHAR2(200) := '<< 顧客マスタ不備のためスキップしました >>';
+/* 2009.12.02 T.Maruyama E_本稼動_00081対応 END */
 --
   cv_w                   CONSTANT VARCHAR2(1)   := 'w';  -- CSVファイルオープンモード
   -- ===============================
@@ -984,8 +988,14 @@ AS
            ,lv_base_code
       FROM  hz_cust_accounts      hca -- 顧客マスタ
            ,xxcmm_cust_accounts   xca -- 顧客アドオンマスタ
+           /* 2009.12.02 T.Maruyama E_本稼動_00081対応 START */
+           ,hz_cust_acct_sites    hcas --顧客アカウントサイト
+           /* 2009.12.02 T.Maruyama E_本稼動_00081対応 END */
       WHERE  hca.party_id        = io_get_data_rec.source_object_id
         AND  hca.cust_account_id = xca.customer_id
+        /* 2009.12.02 T.Maruyama E_本稼動_00081対応 START */
+        AND  hcas.cust_account_id = hca.cust_account_id
+        /* 2009.12.02 T.Maruyama E_本稼動_00081対応 END */
       ;
     EXCEPTION
       WHEN NO_DATA_FOUND OR 
@@ -2258,6 +2268,9 @@ AS
     /* 2009.10.23 D.Abe E_T4_00056対応 START */
     update_skip_data_expt          EXCEPTION;   -- 更新例外
     /* 2009.10.23 D.Abe E_T4_00056対応 END */
+    /* 2009.12.02 T.Maruyama E_本稼動_00081対応 START */
+    cust_error_skip_expt           EXCEPTION;   --  顧客マスタ不備スキップ
+    /* 2009.12.02 T.Maruyama E_本稼動_00081対応 END */
 --
   BEGIN
 --
@@ -2457,7 +2470,10 @@ AS
         );
 --
         IF (lv_retcode = cv_status_warn) THEN
-          RAISE error_skip_data_expt;
+          /* 2009.12.02 T.Maruyama E_本稼動_00081対応 START */
+          --RAISE error_skip_data_expt;
+          RAISE cust_error_skip_expt;
+          /* 2009.12.02 T.Maruyama E_本稼動_00081対応 END */
         ELSIF (lv_retcode = cv_status_error) THEN
           RAISE global_process_expt;
         END IF;
@@ -2659,6 +2675,32 @@ AS
                      ''
         );
         /* 2009.10.07 D.Abe 0001454対応 END */
+--      
+        /* 2009.12.02 T.Maruyama E_本稼動_00081対応 START */
+        -- 顧客マスタ不備のためスキップ
+        WHEN cust_error_skip_expt THEN
+          -- エラー件数カウント
+          gn_error_cnt := gn_error_cnt + 1;
+          -- エラー出力
+          fnd_file.put_line(
+             which  => FND_FILE.OUTPUT
+            ,buff   => lv_errmsg                  -- ユーザー・エラーメッセージ
+          );
+          -- *** DEBUG_LOG ***
+          -- データスキップしたことをログ出力
+          fnd_file.put_line(
+             which  => FND_FILE.LOG
+            ,buff   => cv_debug_msg_skip3 || CHR(10) ||
+                     cv_debug_msg18 || l_get_vst_rslt_dt_rec.task_id || CHR(10) ||
+                     cv_debug_msg19 || l_get_vst_rslt_dt_rec.source_object_id || CHR(10) ||
+                     cv_debug_msg20 || l_get_vst_rslt_dt_rec.attribute14 || CHR(10) ||
+                     cv_debug_msg21 || TO_CHAR(l_get_vst_rslt_dt_rec.actual_end_date ,'yyyymmdd')|| CHR(10) ||
+                     ''
+          );
+          -- 全体の処理ステータスに警告セット
+          ov_retcode := cv_status_warn;
+        /* 2009.12.02 T.Maruyama E_本稼動_00081対応 END */
+--
         /* 2009.10.23 D.Abe E_T4_00056対応 START */
 --
         -- タスク更新エラーのためスキップ
