@@ -7,7 +7,7 @@ AS
  * Description      : 受払台帳作成
  * MD.050/070       : 在庫(帳票)Draft2A (T_MD050_BPO_550)
  *                    受払台帳Draft1A   (T_MD070_BPO_55B)
- * Version          : 1.32
+ * Version          : 1.33
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -60,6 +60,7 @@ AS
  *  2008/12/24    1.30  Natsuki Yoshida  本番障害#842対応(履歴は全て削除)
  *  2008/12/29    1.31  Natsuki Yoshida  本番障害#809,#899対応
  *  2008/12/30    1.32  Natsuki Yoshida  本番障害#705対応
+ *  2009/01/05    1.33  Akiyoshi Shiina  本番障害#916対応
  *****************************************************************************************/
 --
 --#######################  固定グローバル定数宣言部 START   #######################
@@ -2152,27 +2153,48 @@ AS
         ----------------------------------------------------------------------------------------
         FROM (
           SELECT /*+ leading(xoha ooha otta rsl itp gic1 mcb1 gic2 mcb2) use_nl(xoha ooha otta rsl itp gic1 mcb1 gic2 mcb2) */
-            xoha.header_id                                    header_id           --受注ヘッダID
-           ,itp.whse_code                                     whse_code           --倉庫コード
+-- 2009/01/05 v1.33 UPDATE START
+--            xoha.header_id                                    header_id           --受注ヘッダID
+--           ,itp.whse_code                                     whse_code           --倉庫コード
+            xoha.order_header_id                              header_id           --受注ヘッダID
+           ,iwm.whse_code                                     whse_code           --倉庫コード
+-- 2009/01/05 v1.33 UPDATE END
            ,iwm.whse_name                                     whse_name           --倉庫名
-           ,itp.item_id                                       item_id             --品目ID
-           ,itp.lot_id                                        lot_id              --ロットID
-           ,itp.location                                      location            --保管倉庫コード
+-- 2009/01/05 v1.33 UPDATE START
+--           ,itp.item_id                                       item_id             --品目ID
+--           ,itp.lot_id                                        lot_id              --ロットID
+--           ,itp.location                                      location            --保管倉庫コード
+           ,xmld.item_id                                      item_id             --品目ID
+           ,xmld.lot_id                                       lot_id              --ロットID
+           ,xoha.deliver_from                                 location            --保管倉庫コード
+-- 2009/01/05 v1.33 UPDATE END
            ,mil.description                                   description         --保管倉庫名
            ,mil.inventory_location_id                         inventory_location_id --保管倉庫ID
            ,xrpm.new_div_invent                               reason_code         --新区分
            ,mil.attribute6                                    distribution_block  --ブロック
            ,xrpm.rcv_pay_div                                  rcv_pay_div         --受払区分
-           ,SUM(NVL(itp.trans_qty,0))                         in_qty_sum          --数量合計
+-- 2009/01/05 v1.33 UPDATE START
+--           ,SUM(NVL(itp.trans_qty,0))                         in_qty_sum          --数量合計
+           ,SUM(NVL(xmld.actual_quantity,0))                  in_qty_sum          --数量合計
+-- 2009/01/05 v1.33 UPDATE END
           FROM
-            ic_tran_pnd                                       itp                 --OPM保留在庫トランザクション
+-- 2009/01/05 v1.33 UPDATE START
+--            ic_tran_pnd                                       itp                 --OPM保留在庫トランザクション
            --------------------------------------------------------
-           ,ic_whse_mst                                       iwm                 --保管場所情報VIEW2
+--           ,ic_whse_mst                                       iwm                 --保管場所情報VIEW2
+            ic_whse_mst                                       iwm                 --保管場所情報VIEW2
+-- 2009/01/05 v1.33 UPDATE END
            ,mtl_item_locations                                mil
            --------------------------------------------------------
-           ,rcv_shipment_lines                                rsl                 --受入明細
-           ,oe_order_headers_all                              ooha                --受注ヘッダ
+-- 2009/01/05 v1.33 DELETE START
+--           ,rcv_shipment_lines                                rsl                 --受入明細
+--           ,oe_order_headers_all                              ooha                --受注ヘッダ
+-- 2009/01/05 v1.33 DELETE END
            ,xxwsh_order_headers_all                           xoha                --受注ヘッダ(アドオン)
+-- 2009/01/05 v1.33 ADD START
+           ,xxwsh_order_lines_all                             xola                --受注明細(アドオン)
+           ,xxinv_mov_lot_details                             xmld                --移動ロット詳細(アドオン)
+-- 2009/01/05 v1.33 ADD END
            ,oe_transaction_types_all                          otta                --受注タイプ
            ,xxcmn_rcv_pay_mst                                 xrpm                --受払区分アドオンマスタ
            --------------------------------------------------------
@@ -2180,27 +2202,39 @@ AS
            ,mtl_categories_b                                  mcb1
            ,gmi_item_categories                               gic2
            ,mtl_categories_b                                  mcb2
+-- 2009/01/05 DELETE START
           --OPM保留在庫トランザクション抽出
-          WHERE itp.completed_ind = gv_tran_cmp                                   --完了フラグ
-          AND itp.doc_type = 'PORC'                                               --文書タイプ
+--          WHERE itp.completed_ind = gv_tran_cmp                                   --完了フラグ
+--          AND itp.doc_type = 'PORC'                                               --文書タイプ
+-- 2009/01/05 DELETE END
           --保管場所情報VIEW2抽出
-          AND itp.location = mil.segment1                                         --保管倉庫コード
+-- 2009/01/05 v1.33 UPDATE START
+--          AND itp.location = mil.segment1                                         --保管倉庫コード
+          WHERE xoha.deliver_from = mil.segment1                                    --保管倉庫コード
+-- 2009/01/05 v1.33 UPDATE END
+-- 2009/01/05 v1.33 DELETE START
           --受入明細抽出
-          AND itp.doc_id = rsl.shipment_header_id                                 --受入ヘッダID
-          AND itp.doc_line = rsl.line_num                                         --明細番号
-          AND rsl.source_document_code = 'RMA'                                    --ソース文書
+--          AND itp.doc_id = rsl.shipment_header_id                                 --受入ヘッダID
+--          AND itp.doc_line = rsl.line_num                                         --明細番号
+--          AND rsl.source_document_code = 'RMA'                                    --ソース文書
           --受注ヘッダ抽出
-          AND rsl.oe_order_header_id = ooha.header_id                             --受注ヘッダID
+--          AND rsl.oe_order_header_id = ooha.header_id                             --受注ヘッダID
           --受注ヘッダアドオン抽出
-          AND ooha.header_id = xoha.header_id                                     --受注ヘッダID
+--          AND ooha.header_id = xoha.header_id                                     --受注ヘッダID
+-- 2009/01/05 v1.33 DELETE END
           AND xoha.req_status IN (gv_recsts_shipped,gv_recsts_shipped2)           --ステータス
-          AND xoha.actual_confirm_class = gv_confirm_yes                          --実績計上区分
+-- 2009/01/05 v1.33 DELETE START
+--          AND xoha.actual_confirm_class = gv_confirm_yes                          --実績計上区分
+-- 2009/01/05 v1.33 DELETE END
           AND xoha.latest_external_flag = gv_latest_yes                           --最新フラグ
           AND xoha.deliver_from_id = mil.inventory_location_id                    --出荷元ID
           AND xoha.arrival_date                                                   --着荷日
               BETWEEN TO_DATE(civ_ymd_from,gv_fmt_ymd) AND TO_DATE(civ_ymd_to,gv_fmt_ymd)
           --受注タイプ抽出
-          AND ooha.order_type_id = otta.transaction_type_id                       --受注タイプID
+-- 2009/01/05 v1.33 UPDATE START
+--          AND ooha.order_type_id = otta.transaction_type_id                       --受注タイプID
+          AND xoha.order_type_id = otta.transaction_type_id                       --受注タイプID
+-- 2009/01/05 v1.33 UPDATE END
           AND otta.attribute1 = '3'                                               --出荷支給区分
           --受払区分アドオンマスタ抽出
           AND otta.attribute1 = xrpm.shipment_provision_div                       --出荷支給区分
@@ -2210,23 +2244,44 @@ AS
           AND xrpm.source_document_code = 'RMA'                                   --ソース文書
           AND xrpm.dealings_div IN ('201','203')
           -----------------------------------------------------------
-          AND gic1.item_id            = itp.item_id
+-- 2009/01/05 v1.33 UPDATE START
+--          AND gic1.item_id            = itp.item_id
+          AND gic1.item_id            = xmld.item_id
+-- 2009/01/05 v1.33 UPDATE END
           AND gic1.category_set_id    = cn_item_class_id
           AND gic1.category_id        = mcb1.category_id
           AND mcb1.segment1           = civ_item_div
-          AND gic2.item_id            = itp.item_id
+-- 2009/01/05 v1.33 UPDATE START
+--          AND gic2.item_id            = itp.item_id
+          AND gic2.item_id            = xmld.item_id
+-- 2009/01/05 v1.33 UPDATE END
           AND gic2.category_set_id    = cn_prod_class_id
           AND gic2.category_id        = mcb2.category_id
           AND mcb2.segment1           = civ_prod_div
           -----------------------------------------------------------
           AND iwm.mtl_organization_id = mil.organization_id
+-- 2009/01/05 v1.33 ADD START
+          AND xoha.order_header_id    = xola.order_header_id
+          AND xmld.mov_line_id        = xola.order_line_id
+          AND xmld.document_type_code = gv_dctype_shipped
+          AND xmld.record_type_code   = gv_rectype_out
+-- 2009/01/05 v1.33 ADD END
           GROUP BY
-            xoha.header_id                                                        --受注ヘッダID
-           ,itp.whse_code                                                         --倉庫コード
+-- 2009/01/05 v1.33 UPDATE START
+--            xoha.header_id                                                        --受注ヘッダID
+--           ,itp.whse_code                                                         --倉庫コード
+            xoha.order_header_id                                                  --受注ヘッダID
+           ,iwm.whse_code                                                         --倉庫コード
+-- 2009/01/05 v1.33 UPDATE END
            ,iwm.whse_name                                                         --倉庫名
-           ,itp.item_id                                                           --品目ID
-           ,itp.lot_id                                                            --ロットID
-           ,itp.location                                                          --保管倉庫コード
+-- 2009/01/05 v1.33 UPDATE START
+--           ,itp.item_id                                                           --品目ID
+--           ,itp.lot_id                                                            --ロットID
+--           ,itp.location                                                          --保管倉庫コード
+           ,xmld.item_id                                                          --品目ID
+           ,xmld.lot_id                                                           --ロットID
+           ,xoha.deliver_from                                                     --保管倉庫コード
+-- 2009/01/05 v1.33 UPDATE END
            ,mil.description                                                       --保管倉庫名
            ,mil.inventory_location_id                                             --保管倉庫ID
            ,xrpm.new_div_invent                                                   --新区分
@@ -2240,7 +2295,10 @@ AS
         ,xxcmn_parties                                        xp
         ----------------------------------------------
         --受注ヘッダ(アドオン)抽出
-        WHERE rt_info.header_id = xoha.header_id                                  --受注ヘッダID
+-- 2009/01/05 v1.33 UPDATE START
+--        WHERE rt_info.header_id = xoha.header_id                                  --受注ヘッダID
+        WHERE rt_info.header_id = xoha.order_header_id                                  --受注ヘッダID
+-- 2009/01/05 v1.33 UPDATE END
           AND xoha.head_sales_branch = hca.account_number                         --顧客番号
           AND hca.customer_class_code = '1'                                       --顧客区分(拠点)
           AND hp.party_id = hca.party_id
@@ -3932,27 +3990,48 @@ AS
         ----------------------------------------------------------------------------------------
         FROM (
           SELECT /*+ leading(xoha ooha otta rsl itp gic1 mcb1 gic2 mcb2) use_nl(xoha ooha otta rsl itp gic1 mcb1 gic2 mcb2) */
-            xoha.header_id                                    header_id           --受注ヘッダID
-           ,itp.whse_code                                     whse_code           --倉庫コード
+-- 2009/01/05 v1.33 UPDATE START
+--            xoha.header_id                                    header_id           --受注ヘッダID
+--           ,itp.whse_code                                     whse_code           --倉庫コード
+            xoha.order_header_id                              header_id           --受注ヘッダID
+           ,iwm.whse_code                                     whse_code           --倉庫コード
+-- 2009/01/05 v1.33 UPDATE END
            ,iwm.whse_name                                     whse_name           --倉庫名
-           ,itp.item_id                                       item_id             --品目ID
-           ,itp.lot_id                                        lot_id              --ロットID
-           ,itp.location                                      location            --保管倉庫コード
+-- 2009/01/05 v1.33 UPDATE START
+--           ,itp.item_id                                       item_id             --品目ID
+--           ,itp.lot_id                                        lot_id              --ロットID
+--           ,itp.location                                      location            --保管倉庫コード
+           ,xmld.item_id                                      item_id             --品目ID
+           ,xmld.lot_id                                       lot_id              --ロットID
+           ,xoha.deliver_from                                 location            --保管倉庫コード
+-- 2009/01/05 v1.33 UPDATE END
            ,mil.description                                   description         --保管倉庫名
            ,mil.inventory_location_id                         inventory_location_id --保管倉庫ID
            ,xrpm.new_div_invent                               reason_code         --新区分
            ,mil.attribute6                                    distribution_block  --ブロック
            ,xrpm.rcv_pay_div                                  rcv_pay_div         --受払区分
-           ,SUM(NVL(itp.trans_qty,0))                         in_qty_sum          --数量合計
+-- 2009/01/05 v1.33 UPDATE START
+--           ,SUM(NVL(itp.trans_qty,0))                         in_qty_sum          --数量合計
+           ,SUM(NVL(xmld.actual_quantity,0))                  in_qty_sum          --数量合計
+-- 2009/01/05 v1.33 UPDATE END
           FROM
-            ic_tran_pnd                                       itp                 --OPM保留在庫トランザクション
+-- 2009/01/05 v1.33 UPDATE START
+--            ic_tran_pnd                                       itp                 --OPM保留在庫トランザクション
            --------------------------------------------------------
-           ,ic_whse_mst                                       iwm                 --保管場所情報VIEW2
+--           ,ic_whse_mst                                       iwm                 --保管場所情報VIEW2
+            ic_whse_mst                                       iwm                 --保管場所情報VIEW2
+-- 2009/01/05 v1.33 UPDATE END
            ,mtl_item_locations                                mil
            --------------------------------------------------------
-           ,rcv_shipment_lines                                rsl                 --受入明細
-           ,oe_order_headers_all                              ooha                --受注ヘッダ
+-- 2009/01/05 v1.33 DELETE START
+--           ,rcv_shipment_lines                                rsl                 --受入明細
+--           ,oe_order_headers_all                              ooha                --受注ヘッダ
+-- 2009/01/05 v1.33 DELETE END
            ,xxwsh_order_headers_all                           xoha                --受注ヘッダ(アドオン)
+-- 2009/01/05 v1.33 ADD START
+           ,xxwsh_order_lines_all                             xola                --受注明細(アドオン)
+           ,xxinv_mov_lot_details                             xmld                --移動ロット詳細(アドオン)
+-- 2009/01/05 v1.33 ADD END
            ,oe_transaction_types_all                          otta                --受注タイプ
            ,xxcmn_rcv_pay_mst                                 xrpm                --受払区分アドオンマスタ
            --------------------------------------------------------
@@ -3960,27 +4039,39 @@ AS
            ,mtl_categories_b                                  mcb1
            ,gmi_item_categories                               gic2
            ,mtl_categories_b                                  mcb2
+-- 2009/01/05 DELETE START
           --OPM保留在庫トランザクション抽出
-          WHERE itp.completed_ind = gv_tran_cmp                                   --完了フラグ
-          AND itp.doc_type = 'PORC'                                               --文書タイプ
+--          WHERE itp.completed_ind = gv_tran_cmp                                   --完了フラグ
+--          AND itp.doc_type = 'PORC'                                               --文書タイプ
+-- 2009/01/05 DELETE END
           --保管場所情報VIEW2抽出
-          AND itp.location = mil.segment1                                         --保管倉庫コード
+-- 2009/01/05 v1.33 UPDATE START
+--          AND itp.location = mil.segment1                                         --保管倉庫コード
+          WHERE xoha.deliver_from = mil.segment1                                    --保管倉庫コード
+-- 2009/01/05 v1.33 UPDATE END
+-- 2009/01/05 v1.33 DELETE START
           --受入明細抽出
-          AND itp.doc_id = rsl.shipment_header_id                                 --受入ヘッダID
-          AND itp.doc_line = rsl.line_num                                         --明細番号
-          AND rsl.source_document_code = 'RMA'                                    --ソース文書
+--          AND itp.doc_id = rsl.shipment_header_id                                 --受入ヘッダID
+--          AND itp.doc_line = rsl.line_num                                         --明細番号
+--          AND rsl.source_document_code = 'RMA'                                    --ソース文書
           --受注ヘッダ抽出
-          AND rsl.oe_order_header_id = ooha.header_id                             --受注ヘッダID
+--          AND rsl.oe_order_header_id = ooha.header_id                             --受注ヘッダID
           --受注ヘッダアドオン抽出
-          AND ooha.header_id = xoha.header_id                                     --受注ヘッダID
+--          AND ooha.header_id = xoha.header_id                                     --受注ヘッダID
+-- 2009/01/05 v1.33 DELETE END
           AND xoha.req_status IN (gv_recsts_shipped,gv_recsts_shipped2)           --ステータス
-          AND xoha.actual_confirm_class = gv_confirm_yes                          --実績計上区分
+-- 2009/01/05 v1.33 DELETE START
+--          AND xoha.actual_confirm_class = gv_confirm_yes                          --実績計上区分
+-- 2009/01/05 v1.33 DELETE END
           AND xoha.latest_external_flag = gv_latest_yes                           --最新フラグ
           AND xoha.deliver_from_id = mil.inventory_location_id                    --出荷元ID
           AND xoha.shipped_date                                                   --着荷日
               BETWEEN TO_DATE(civ_ymd_from,gv_fmt_ymd) AND TO_DATE(civ_ymd_to,gv_fmt_ymd)
           --受注タイプ抽出
-          AND ooha.order_type_id = otta.transaction_type_id                       --受注タイプID
+-- 2009/01/05 v1.33 UPDATE START
+--          AND ooha.order_type_id = otta.transaction_type_id                       --受注タイプID
+          AND xoha.order_type_id = otta.transaction_type_id                       --受注タイプID
+-- 2009/01/05 v1.33 UPDATE END
           AND otta.attribute1 = '3'                                               --出荷支給区分
           --受払区分アドオンマスタ抽出
           AND otta.attribute1 = xrpm.shipment_provision_div                       --出荷支給区分
@@ -3990,23 +4081,44 @@ AS
           AND xrpm.source_document_code = 'RMA'                                   --ソース文書
           AND xrpm.dealings_div IN ('201','203')
           -----------------------------------------------------------
-          AND gic1.item_id            = itp.item_id
+-- 2009/01/05 v1.33 UPDATE START
+--          AND gic1.item_id            = itp.item_id
+          AND gic1.item_id            = xmld.item_id
+-- 2009/01/05 v1.33 UPDATE END
           AND gic1.category_set_id    = cn_item_class_id
           AND gic1.category_id        = mcb1.category_id
           AND mcb1.segment1           = civ_item_div
-          AND gic2.item_id            = itp.item_id
+-- 2009/01/05 v1.33 UPDATE START
+--          AND gic2.item_id            = itp.item_id
+          AND gic2.item_id            = xmld.item_id
+-- 2009/01/05 v1.33 UPDATE END
           AND gic2.category_set_id    = cn_prod_class_id
           AND gic2.category_id        = mcb2.category_id
           AND mcb2.segment1           = civ_prod_div
           -----------------------------------------------------------
           AND iwm.mtl_organization_id = mil.organization_id
+-- 2009/01/05 v1.33 ADD START
+          AND xoha.order_header_id    = xola.order_header_id
+          AND xmld.mov_line_id        = xola.order_line_id
+          AND xmld.document_type_code = gv_dctype_shipped
+          AND xmld.record_type_code   = gv_rectype_out
+-- 2009/01/05 v1.33 ADD END
           GROUP BY
-            xoha.header_id                                                        --受注ヘッダID
-           ,itp.whse_code                                                         --倉庫コード
+-- 2009/01/05 v1.33 UPDATE START
+--            xoha.header_id                                                        --受注ヘッダID
+--           ,itp.whse_code                                                         --倉庫コード
+            xoha.order_header_id                                                  --受注ヘッダID
+           ,iwm.whse_code                                                         --倉庫コード
+-- 2009/01/05 v1.33 UPDATE END
            ,iwm.whse_name                                                         --倉庫名
-           ,itp.item_id                                                           --品目ID
-           ,itp.lot_id                                                            --ロットID
-           ,itp.location                                                          --保管倉庫コード
+-- 2009/01/05 v1.33 UPDATE START
+--           ,itp.item_id                                                           --品目ID
+--           ,itp.lot_id                                                            --ロットID
+--           ,itp.location                                                          --保管倉庫コード
+           ,xmld.item_id                                                          --品目ID
+           ,xmld.lot_id                                                           --ロットID
+           ,xoha.deliver_from                                                     --保管倉庫コード
+-- 2009/01/05 v1.33 UPDATE END
            ,mil.description                                                       --保管倉庫名
            ,mil.inventory_location_id                                             --保管倉庫ID
            ,xrpm.new_div_invent                                                   --新区分
@@ -4020,7 +4132,10 @@ AS
         ,xxcmn_parties                                        xp
         ----------------------------------------------
         --受注ヘッダ(アドオン)抽出
-        WHERE rt_info.header_id = xoha.header_id                                  --受注ヘッダID
+-- 2009/01/05 v1.33 UPDATE START
+--        WHERE rt_info.header_id = xoha.header_id                                  --受注ヘッダID
+        WHERE rt_info.header_id = xoha.order_header_id                                  --受注ヘッダID
+-- 2009/01/05 v1.33 UPDATE END
           AND xoha.head_sales_branch = hca.account_number                         --顧客番号
           AND hca.customer_class_code = '1'                                       --顧客区分(拠点)
           AND hp.party_id = hca.party_id
