@@ -1,7 +1,7 @@
 /*============================================================================
 * ファイル名 : XxinvMovementResultsAMImpl
 * 概要説明   : 入出庫実績要約:検索アプリケーションモジュール
-* バージョン : 1.12
+* バージョン : 1.13
 *============================================================================
 * 修正履歴
 * 日付       Ver. 担当者       修正内容
@@ -18,6 +18,7 @@
 * 2008-12-25 1.10 伊藤ひとみ   本番障害#797,821対応
 * 2009-02-09 1.11 伊藤ひとみ   本番障害#1143対応
 * 2009-02-26 1.12 二瓶大輔     本番障害#885対応
+* 2009-03-11 1.13 伊藤ひとみ   本番障害#885対応(再対応)
 *============================================================================
 */
 package itoen.oracle.apps.xxinv.xxinv510001j.server;
@@ -47,7 +48,7 @@ import itoen.oracle.apps.xxinv.util.XxinvConstants;
 /***************************************************************************
  * 入出庫実績要約:検索アプリケーションモジュールです。
  * @author  ORACLE 大橋 孝郎
- * @version 1.12
+ * @version 1.13
  ***************************************************************************
  */
 public class XxinvMovementResultsAMImpl extends XxcmnOAApplicationModuleImpl 
@@ -2476,6 +2477,9 @@ public class XxinvMovementResultsAMImpl extends XxcmnOAApplicationModuleImpl
     // パラメータ取得
     String searchHdrId = (String)searchParams.get(XxinvConstants.URL_PARAM_SEARCH_MOV_ID);
     String productFlg  = (String)searchParams.get(XxinvConstants.URL_PARAM_PRODUCT_FLAG);
+// 2009-03-11 H.Itou Add Start 本番障害#885
+    String peopleCode  = (String)searchParams.get(XxinvConstants.URL_PARAM_PEOPLE_CODE);   // 従業員区分
+// 2009-03-11 H.Itou Add End
 
     // 入出庫実績明細:登録VO取得
     XxinvMovementResultsLnVOImpl movementResultsLnVo = getXxinvMovementResultsLnVO1();
@@ -2569,6 +2573,13 @@ public class XxinvMovementResultsAMImpl extends XxcmnOAApplicationModuleImpl
         movementResultsLnRow.setAttribute("ProcessFlag",      XxinvConstants.PROCESS_FLAG_U);
         // 品目の入力項目制御
         movementResultsLnRow.setAttribute("ItemCodeReadOnly", Boolean.TRUE);
+// 2009-03-11 H.Itou Add Start 本番障害#885
+        // 外部ユーザの場合
+        if (XxinvConstants.PEOPLE_CODE_O.equals(peopleCode))
+        {
+          movementResultsLnRow.setAttribute("DeleteSwitcher",      "DeleteDisable"); // 削除アイコン：押下不可   
+        }
+// 2009-03-11 H.Itou Add End
         
         // 実績データ区分が:1(出庫実績)の場合
         if ("1".equals(actualFlg))
