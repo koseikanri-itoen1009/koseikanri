@@ -10,6 +10,7 @@
             <oa:formValue id="ItemUm" viewName="ItemNoCoProdVO1" viewAttr="ItemUm"/>
             <oa:formValue id="DestinationType" viewName="ItemNoCoProdVO1" viewAttr="DestinationType"/>
             <oa:formValue id="EntityInner" viewName="ItemNoCoProdVO1" viewAttr="EntityInner"/>
+            <oa:formValue id="QtType" viewName="ItemNoCoProdVO1" viewAttr="QtType"/>
          </ui:contents>
       </oa:table>
    </ui:contents>

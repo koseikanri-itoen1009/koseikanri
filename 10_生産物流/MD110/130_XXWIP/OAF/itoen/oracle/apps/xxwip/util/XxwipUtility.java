@@ -1,12 +1,13 @@
 /*============================================================================
 * ファイル名 : XxwipUtility
 * 概要説明   : 生産共通関数
-* バージョン : 1.0
+* バージョン : 1.1
 *============================================================================
 * 修正履歴
 * 日付       Ver. 担当者       修正内容
 * ---------- ---- ------------ ----------------------------------------------
 * 2007-11-09 1.0  二瓶大輔     新規作成
+* 2008-06-27 1.1  二瓶大輔     addメソッド追加
 *============================================================================
 */
 package itoen.oracle.apps.xxwip.util;
@@ -30,7 +31,7 @@ import oracle.jbo.domain.Number;
 /***************************************************************************
  * 生産共通関数クラスです。
  * @author  ORACLE 二瓶 大輔
- * @version 1.0
+ * @version 1.1
  ***************************************************************************
  */
 public class XxwipUtility 
@@ -150,6 +151,9 @@ public class XxwipUtility
     String  slit        = (String)params.get("slit");
     String  utkType     = (String)params.get("utkType");
     Number  mtlDtlId    = null; 
+    Date    productDate    = (Date)params.get("productDate");
+    Date    makerDate      = (Date)params.get("makerDate");
+    Date    expirationDate = (Date)params.get("expirationDate");
 
     //PL/SQLの作成を行います
     StringBuffer sb = new StringBuffer(1000);
@@ -167,18 +171,21 @@ public class XxwipUtility
     sb.append("  lr_material_detail_in.attribute1 := :8;  ");// タイプ     
     sb.append("  lr_material_detail_in.attribute2 := :9;  ");// ランク１     
     sb.append("  lr_material_detail_in.attribute3 := :10; ");// ランク２    
+    sb.append("  lr_material_detail_in.attribute10:= TO_CHAR(:11,'YYYY/MM/DD'); "); // 賞味期限日
+    sb.append("  lr_material_detail_in.attribute11:= TO_CHAR(:12,'YYYY/MM/DD'); "); // 生産日
+    sb.append("  lr_material_detail_in.attribute17:= TO_CHAR(:13,'YYYY/MM/DD'); "); // 製造日
     sb.append("  xxwip_common_pkg.insert_material_line (  ");
     sb.append("    lr_material_detail_in  ");
     sb.append("   ,lr_material_detail_out ");
-    sb.append("   ,:11  ");
-    sb.append("   ,:12  ");
-    sb.append("   ,:13  ");
+    sb.append("   ,:14  ");
+    sb.append("   ,:15  ");
+    sb.append("   ,:16  ");
     sb.append("  ); ");
-    sb.append("  :14 := lr_material_detail_out.attribute6; ");
-    sb.append("  :15 := lr_material_detail_out.material_detail_id; ");
-    sb.append("  :16 := lr_material_detail_out.attribute1; ");
-    sb.append("  :17 := lr_material_detail_out.attribute2; ");
-    sb.append("  :18 := lr_material_detail_out.attribute3; ");
+    sb.append("  :17 := lr_material_detail_out.attribute6; ");
+    sb.append("  :18 := lr_material_detail_out.material_detail_id; ");
+    sb.append("  :19 := lr_material_detail_out.attribute1; ");
+    sb.append("  :20 := lr_material_detail_out.attribute2; ");
+    sb.append("  :21 := lr_material_detail_out.attribute3; ");
     sb.append("END; ");
     //PL/SQLの設定を行います
     CallableStatement cstmt = trans.createCallableStatement(
@@ -198,6 +205,19 @@ public class XxwipUtility
       cstmt.setString(i++, type);
       cstmt.setString(i++, rank1);
       cstmt.setString(i++, rank2);
+      // 副産物の場合
+      if (XxwipConstants.LINE_TYPE_CO_PROD.equals(lineType.stringValue())) 
+      {
+        cstmt.setDate(i++, XxcmnUtility.dateValue(expirationDate));
+        cstmt.setDate(i++, XxcmnUtility.dateValue(productDate));
+        cstmt.setDate(i++, XxcmnUtility.dateValue(makerDate));
+      // 投入品の場合
+      } else 
+      {
+        cstmt.setNull(i++, Types.DATE);
+        cstmt.setNull(i++, Types.DATE);
+        cstmt.setNull(i++, Types.DATE);
+      }      
       cstmt.registerOutParameter(i++, Types.VARCHAR, 5000); 
       cstmt.registerOutParameter(i++, Types.VARCHAR, 1); 
       cstmt.registerOutParameter(i++, Types.VARCHAR, 5000); 
@@ -209,16 +229,16 @@ public class XxwipUtility
 
       cstmt.execute();
 
-      if (XxcmnConstants.API_RETURN_NORMAL.equals(cstmt.getString(12))) 
+      if (XxcmnConstants.API_RETURN_NORMAL.equals(cstmt.getString(15))) 
       {
         insertFlag = true;
         if (XxwipConstants.TAB_TYPE_CO_PROD.equals(tabType)) 
         {
-          entityInner = cstmt.getString(14);
-          mtlDtlId    = new Number(cstmt.getInt(15));
-          type  = cstmt.getString(16);
-          rank1 = cstmt.getString(17);
-          rank2 = cstmt.getString(18);
+          entityInner = cstmt.getString(17);
+          mtlDtlId    = new Number(cstmt.getInt(18));
+          type  = cstmt.getString(19);
+          rank1 = cstmt.getString(20);
+          rank2 = cstmt.getString(21);
           row.setAttribute("EntityInner", entityInner);  
           row.setAttribute("MaterialDetailId", mtlDtlId);  
           row.setAttribute("Type",  type);  
@@ -232,7 +252,7 @@ public class XxwipUtility
         // APIエラーを出力する。
         XxcmnUtility.writeLog(trans,
                               XxwipConstants.CLASS_XXWIP_UTILITY + XxcmnConstants.DOT + apiName,
-                              cstmt.getString(11) + cstmt.getString(13),
+                              cstmt.getString(14) + cstmt.getString(16),
                               6);
         //トークンを生成します。
         MessageToken[] tokens = { new MessageToken(XxwipConstants.TOKEN_API_NAME,
@@ -2077,6 +2097,8 @@ public class XxwipUtility
     sb.append("  FROM   sy_orgn_mst_vl     somv ");  // OPMプラントマスタビュー
     sb.append("        ,xxpo_price_headers xph  ");  // 仕入・標準単価ヘッダ(アドオン)
     sb.append("  WHERE  somv.attribute1   = xph.vendor_code(+) ");
+    sb.append("  AND    somv.attribute1       = xph.factory_code(+)");
+    sb.append("  AND    xph.supply_to_code(+) IS NULL              ");
     sb.append("  AND    xph.item_id(+)    = :1                 ");
     sb.append("  AND    somv.orgn_code    = :2                 ");
     sb.append("  AND    xph.futai_code(+) = '9'                ");

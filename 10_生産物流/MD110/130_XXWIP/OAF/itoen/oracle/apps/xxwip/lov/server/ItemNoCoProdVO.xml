@@ -17,7 +17,10 @@ SELECT ximv.item_id         item_id
       ,ximv.item_um         item_um
       ,ximv.destination_div destination_type
       ,TO_CHAR(DECODE(xicv.item_class_code, 5, ximv.num_of_cases, ximv.frequent_qty), 'FM990.000')
-                            entity_inner           
+                            entity_inner
+-- 2008/06/25 H.Itou ADD START
+      ,ximv.test_code       qt_type  -- 試験有無区分
+-- 2008/06/25 H.Itou ADD END
 FROM   xxcmn_item_mst_v         ximv -- OPM品目マスタ情報ビュー
       ,xxcmn_item_categories4_v xicv -- 品目カテゴリ情報VIEW4
 WHERE  ximv.cost_manage_code = '1'
@@ -109,6 +112,19 @@ AND    xicv.item_class_code <> '2'
       SQLType="VARCHAR" >
       <DesignTime>
          <Attr Name="_DisplaySize" Value="8" />
+      </DesignTime>
+   </ViewAttribute>
+   <ViewAttribute
+      Name="QtType"
+      IsPersistent="false"
+      Precision="240"
+      Type="java.lang.String"
+      ColumnType="VARCHAR2"
+      AliasName="QT_TYPE"
+      Expression="QT_TYPE"
+      SQLType="VARCHAR" >
+      <DesignTime>
+         <Attr Name="_DisplaySize" Value="240" />
       </DesignTime>
    </ViewAttribute>
 </ViewObject>

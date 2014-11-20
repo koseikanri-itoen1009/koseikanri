@@ -1,12 +1,13 @@
 /*============================================================================
 * ファイル名 : XxwipInvestActualAMImpl
 * 概要説明   : 投入実績入力アプリケーションモジュール
-* バージョン : 1.0
+* バージョン : 1.1
 *============================================================================
 * 修正履歴
 * 日付       Ver. 担当者       修正内容
 * ---------- ---- ------------ ----------------------------------------------
 * 2008-01-22 1.0  二瓶大輔     新規作成
+* 2008-06-27 1.1  二瓶大輔     結合テスト指摘事項対応(明細入力チェック修正)
 *============================================================================
 */
 package itoen.oracle.apps.xxwip.xxwip200002j.server;
@@ -37,7 +38,7 @@ import oracle.jbo.domain.Number;
 /***************************************************************************
  * 投入実績入力アプリケーションモジュールクラスです。
  * @author  ORACLE 二瓶 大輔
- * @version 1.0
+ * @version 1.1
  ***************************************************************************
  */
 public class XxwipInvestActualAMImpl extends XxcmnOAApplicationModuleImpl 
@@ -372,6 +373,15 @@ public class XxwipInvestActualAMImpl extends XxcmnOAApplicationModuleImpl
           totalCheckFlag = true;
           // 実績総数
           Object investedQty = row.getAttribute("InvestedQty");
+          // 戻入総数
+          Object returnQty = row.getAttribute("ReturnQty");
+          // 製造不良総数
+          Object mtlProdQty = row.getAttribute("MtlProdQty");
+          // 業者不良総数
+          Object mtlMfgQty = row.getAttribute("MtlMfgQty");
+          /* -------------------
+           * 実績総数チェック
+           * -------------------*/
           // 必須チェック
           if (XxcmnUtility.isBlankOrNull(investedQty))
           {
@@ -399,7 +409,7 @@ public class XxwipInvestActualAMImpl extends XxcmnOAApplicationModuleImpl
                                     XxwipConstants.XXWIP10061));
               totalCheckFlag = false;
             // 数量チェック
-            } else if (!XxcmnUtility.chkCompareNumeric(2, investedQty, XxcmnConstants.STRING_ZERO))
+            } else if (XxcmnUtility.chkCompareNumeric(1, XxcmnConstants.STRING_ZERO, investedQty))
             {
               exceptions.add( new OAAttrValException(
                                     OAAttrValException.TYP_VIEW_OBJECT,          
@@ -412,8 +422,9 @@ public class XxwipInvestActualAMImpl extends XxcmnOAApplicationModuleImpl
               totalCheckFlag = false;
             }
           }
-          // 戻入総数
-          Object returnQty = row.getAttribute("ReturnQty");
+          /* -------------------
+           * 戻入総数チェック
+           * -------------------*/
           // 入力されている場合、チェックを行う。
           if (!XxcmnUtility.isBlankOrNull(returnQty))
           {
@@ -428,44 +439,66 @@ public class XxwipInvestActualAMImpl extends XxcmnOAApplicationModuleImpl
                                     returnQty,
                                     XxcmnConstants.APPL_XXWIP,         
                                     XxwipConstants.XXWIP10061));
-              returnQty = XxcmnConstants.STRING_ZERO;
-            }
-          }
-          // 合計値チェック
-          if (totalCheckFlag) 
-          {
-            String actualQty = XxwipUtility.subtract(getOADBTransaction(), investedQty, returnQty);
-            if (!XxcmnUtility.chkCompareNumeric(3, investedQty, XxcmnConstants.STRING_ZERO)
-             && !XxcmnUtility.chkCompareNumeric(3, returnQty,   XxcmnConstants.STRING_ZERO)
-             && !XxcmnUtility.chkCompareNumeric(1, actualQty,   XxcmnConstants.STRING_ZERO)) 
+              totalCheckFlag = false;
+            // 数量チェック
+            } else if (XxcmnUtility.chkCompareNumeric(1, XxcmnConstants.STRING_ZERO, returnQty))
             {
               exceptions.add( new OAAttrValException(
                                     OAAttrValException.TYP_VIEW_OBJECT,          
                                     vo.getName(),
                                     row.getKey(),
-                                    "InvestedQty",
-                                    investedQty,
+                                    "ReturnQty",
+                                    returnQty,
                                     XxcmnConstants.APPL_XXWIP,         
-                                    XxwipConstants.XXWIP10064));
-            } else 
+                                    XxwipConstants.XXWIP10063));
+              totalCheckFlag = false;
+            }
+          } else
+          {
+            returnQty = XxcmnConstants.STRING_ZERO;
+          }
+          /* -------------------
+           * 合計値チェック
+           * -------------------*/
+          if (totalCheckFlag) 
+          {
+            // 実績総数・戻入総数が両方とも０以外の場合
+            if (!(XxcmnUtility.chkCompareNumeric(3, XxcmnConstants.STRING_ZERO, investedQty)
+               && XxcmnUtility.chkCompareNumeric(3, XxcmnConstants.STRING_ZERO, returnQty))) 
             {
-              String stockQty  = (String)row.getAttribute("StockQty");
-              stockQty  = stockQty.replaceAll(",","");
-              if (XxcmnUtility.chkCompareNumeric(1, actualQty, stockQty)) 
+              // 実績総数
+              String actualQty = XxwipUtility.subtract(getOADBTransaction(), investedQty, returnQty);
+              if (XxcmnUtility.chkCompareNumeric(2, XxcmnConstants.STRING_ZERO, actualQty)) 
               {
                 exceptions.add( new OAAttrValException(
-                                      OAAttrValException.TYP_VIEW_OBJECT,
+                                      OAAttrValException.TYP_VIEW_OBJECT,          
                                       vo.getName(),
                                       row.getKey(),
                                       "InvestedQty",
                                       investedQty,
-                                      XxcmnConstants.APPL_XXWIP,
-                                      XxwipConstants.XXWIP10065));
+                                      XxcmnConstants.APPL_XXWIP,         
+                                      XxwipConstants.XXWIP10064));
+              } else 
+              {
+                String stockQty  = (String)row.getAttribute("StockQty");
+                stockQty  = XxcmnUtility.commaRemoval(stockQty);
+                if (XxcmnUtility.chkCompareNumeric(1, actualQty, stockQty)) 
+                {
+                  exceptions.add( new OAAttrValException(
+                                        OAAttrValException.TYP_VIEW_OBJECT,
+                                        vo.getName(),
+                                        row.getKey(),
+                                        "InvestedQty",
+                                        investedQty,
+                                        XxcmnConstants.APPL_XXWIP,
+                                        XxwipConstants.XXWIP10065));
+                }
               }
             }
           }
-          // 製造不良総数
-          Object mtlProdQty = row.getAttribute("MtlProdQty");
+          /* -------------------
+           * 製造不良総数チェック
+           * -------------------*/
           // 入力されている場合、チェックを行う。
           if (!XxcmnUtility.isBlankOrNull(mtlProdQty))
           {
@@ -480,10 +513,22 @@ public class XxwipInvestActualAMImpl extends XxcmnOAApplicationModuleImpl
                                     mtlProdQty,
                                     XxcmnConstants.APPL_XXWIP,         
                                     XxwipConstants.XXWIP10061));
+            // 数量チェック
+            } else if (XxcmnUtility.chkCompareNumeric(1, XxcmnConstants.STRING_ZERO, mtlProdQty))
+            {
+              exceptions.add( new OAAttrValException(
+                                    OAAttrValException.TYP_VIEW_OBJECT,          
+                                    vo.getName(),
+                                    row.getKey(),
+                                    "MtlProdQty",
+                                    mtlProdQty,
+                                    XxcmnConstants.APPL_XXWIP,         
+                                    XxwipConstants.XXWIP10063));
             }
           }
-          // 業者不良総数
-          Object mtlMfgQty = row.getAttribute("MtlMfgQty");
+          /* -------------------
+           * 業者不良総数チェック
+           * -------------------*/
           // 入力されている場合、チェックを行う。
           if (!XxcmnUtility.isBlankOrNull(mtlMfgQty))
           {
@@ -498,23 +543,18 @@ public class XxwipInvestActualAMImpl extends XxcmnOAApplicationModuleImpl
                                     mtlMfgQty,
                                     XxcmnConstants.APPL_XXWIP,         
                                     XxwipConstants.XXWIP10061));
+            // 数量チェック
+            } else if (XxcmnUtility.chkCompareNumeric(1, XxcmnConstants.STRING_ZERO, mtlMfgQty))
+            {
+              exceptions.add( new OAAttrValException(
+                                    OAAttrValException.TYP_VIEW_OBJECT,          
+                                    vo.getName(),
+                                    row.getKey(),
+                                    "MtlMfgQty",
+                                    mtlMfgQty,
+                                    XxcmnConstants.APPL_XXWIP,         
+                                    XxwipConstants.XXWIP10063));
             }
-          }
-          // ロットステータスチェック
-          Number lotId = (Number)row.getAttribute("LotId"); // ロットID
-          if (!XxcmnUtility.isBlankOrNull(investedQty)
-           && !XxcmnUtility.chkCompareNumeric(3, investedQty, XxcmnConstants.STRING_ZERO)
-           && !XxwipConstants.ITEM_TYPE_SHZ.equals(row.getAttribute("ItemClassCode"))
-           && !XxwipUtility.checkLotStatus(getOADBTransaction(), lotId)) 
-          {
-            exceptions.add( new OAAttrValException(
-                                  OAAttrValException.TYP_VIEW_OBJECT,
-                                  vo.getName(),
-                                  row.getKey(),
-                                  "LotNo",
-                                  row.getAttribute("LotNo"),
-                                  XxcmnConstants.APPL_XXWIP,
-                                  XxwipConstants.XXWIP10081));
           }
         }
       }
@@ -528,6 +568,15 @@ public class XxwipInvestActualAMImpl extends XxcmnOAApplicationModuleImpl
           totalCheckFlag = true;
           // 実績総数
           Object investedQty = row.getAttribute("InvestedQty");
+          // 戻入総数
+          Object returnQty = row.getAttribute("ReturnQty");
+          // 製造不良総数
+          Object mtlProdQty = row.getAttribute("MtlProdQty");
+          // 業者不良総数
+          Object mtlMfgQty = row.getAttribute("MtlMfgQty");
+          /* -------------------
+           * 実績総数チェック
+           * -------------------*/
           // 入力されている場合、チェックを行う。
           if (XxcmnUtility.isBlankOrNull(investedQty))
           {
@@ -547,7 +596,7 @@ public class XxwipInvestActualAMImpl extends XxcmnOAApplicationModuleImpl
                                     XxwipConstants.XXWIP10061));
               totalCheckFlag = false;
             // 数量チェック
-            } else if (!XxcmnUtility.chkCompareNumeric(2, investedQty, XxcmnConstants.STRING_ZERO))
+            } else if (XxcmnUtility.chkCompareNumeric(1, XxcmnConstants.STRING_ZERO, investedQty))
             {
               exceptions.add( new OAAttrValException(
                                     OAAttrValException.TYP_VIEW_OBJECT,          
@@ -560,8 +609,9 @@ public class XxwipInvestActualAMImpl extends XxcmnOAApplicationModuleImpl
               totalCheckFlag = false;
             }
           }
-          // 戻入総数
-          Object returnQty = row.getAttribute("ReturnQty");
+          /* -------------------
+           * 戻入総数チェック
+           * -------------------*/
           // 入力されている場合、チェックを行う。
           if (!XxcmnUtility.isBlankOrNull(returnQty))
           {
@@ -576,44 +626,62 @@ public class XxwipInvestActualAMImpl extends XxcmnOAApplicationModuleImpl
                                     returnQty,
                                     XxcmnConstants.APPL_XXWIP,         
                                     XxwipConstants.XXWIP10061));
-              returnQty = XxcmnConstants.STRING_ZERO;
-            }
-          }
-          // 合計値チェック
-          if (totalCheckFlag) 
-          {
-            String actualQty = XxwipUtility.subtract(getOADBTransaction(), investedQty, returnQty);
-            if (!XxcmnUtility.chkCompareNumeric(3, investedQty, XxcmnConstants.STRING_ZERO)
-             && !XxcmnUtility.chkCompareNumeric(3, returnQty,   XxcmnConstants.STRING_ZERO)
-             && !XxcmnUtility.chkCompareNumeric(1, actualQty,   XxcmnConstants.STRING_ZERO)) 
+              totalCheckFlag = false;
+            // 数量チェック
+            } else if (XxcmnUtility.chkCompareNumeric(1, XxcmnConstants.STRING_ZERO, returnQty))
             {
               exceptions.add( new OAAttrValException(
                                     OAAttrValException.TYP_VIEW_OBJECT,          
                                     vo.getName(),
                                     row.getKey(),
-                                    "InvestedQty",
-                                    investedQty,
+                                    "ReturnQty",
+                                    returnQty,
                                     XxcmnConstants.APPL_XXWIP,         
-                                    XxwipConstants.XXWIP10064));
-            } else 
+                                    XxwipConstants.XXWIP10063));
+              totalCheckFlag = false;
+            }
+          }
+          /* -------------------
+           * 合計値チェック
+           * -------------------*/
+          if (totalCheckFlag) 
+          {
+            // 実績総数・戻入総数が両方とも０以外の場合
+            if (!(XxcmnUtility.chkCompareNumeric(3, XxcmnConstants.STRING_ZERO, investedQty)
+               && XxcmnUtility.chkCompareNumeric(3, XxcmnConstants.STRING_ZERO, returnQty))) 
             {
-              String stockQty  = (String)row.getAttribute("StockQty");
-              stockQty  = stockQty.replaceAll(",","");
-              if (XxcmnUtility.chkCompareNumeric(1, actualQty, stockQty)) 
+              String actualQty = XxwipUtility.subtract(getOADBTransaction(), investedQty, returnQty);
+              if (XxcmnUtility.chkCompareNumeric(2, XxcmnConstants.STRING_ZERO, actualQty)) 
               {
                 exceptions.add( new OAAttrValException(
-                                      OAAttrValException.TYP_VIEW_OBJECT,
+                                      OAAttrValException.TYP_VIEW_OBJECT,          
                                       vo.getName(),
                                       row.getKey(),
                                       "InvestedQty",
                                       investedQty,
-                                      XxcmnConstants.APPL_XXWIP,
-                                      XxwipConstants.XXWIP10065));
+                                      XxcmnConstants.APPL_XXWIP,         
+                                      XxwipConstants.XXWIP10064));
+              } else 
+              {
+                String stockQty  = (String)row.getAttribute("StockQty");
+                stockQty  = XxcmnUtility.commaRemoval(stockQty);
+                if (XxcmnUtility.chkCompareNumeric(1, actualQty, stockQty)) 
+                {
+                  exceptions.add( new OAAttrValException(
+                                        OAAttrValException.TYP_VIEW_OBJECT,
+                                        vo.getName(),
+                                        row.getKey(),
+                                        "InvestedQty",
+                                        investedQty,
+                                        XxcmnConstants.APPL_XXWIP,
+                                        XxwipConstants.XXWIP10065));
+                }
               }
             }
           }
-          // 製造不良総数
-          Object mtlProdQty = row.getAttribute("MtlProdQty");
+          /* -------------------
+           * 製造不良総数チェック
+           * -------------------*/
           // 入力されている場合、チェックを行う。
           if (!XxcmnUtility.isBlankOrNull(mtlProdQty))
           {
@@ -628,10 +696,22 @@ public class XxwipInvestActualAMImpl extends XxcmnOAApplicationModuleImpl
                                     mtlProdQty,
                                     XxcmnConstants.APPL_XXWIP,         
                                     XxwipConstants.XXWIP10061));
+            // 数量チェック
+            } else if (XxcmnUtility.chkCompareNumeric(1, XxcmnConstants.STRING_ZERO, mtlProdQty))
+            {
+              exceptions.add( new OAAttrValException(
+                                    OAAttrValException.TYP_VIEW_OBJECT,          
+                                    vo.getName(),
+                                    row.getKey(),
+                                    "MtlProdQty",
+                                    mtlProdQty,
+                                    XxcmnConstants.APPL_XXWIP,         
+                                    XxwipConstants.XXWIP10063));
             }
           }
-          // 業者不良総数
-          Object mtlMfgQty = row.getAttribute("MtlMfgQty");
+          /* -------------------
+           * 業者不良総数チェック
+           * -------------------*/
           // 入力されている場合、チェックを行う。
           if (!XxcmnUtility.isBlankOrNull(mtlMfgQty))
           {
@@ -646,9 +726,22 @@ public class XxwipInvestActualAMImpl extends XxcmnOAApplicationModuleImpl
                                     mtlMfgQty,
                                     XxcmnConstants.APPL_XXWIP,         
                                     XxwipConstants.XXWIP10061));
+            // 数量チェック
+            } else if (XxcmnUtility.chkCompareNumeric(1, XxcmnConstants.STRING_ZERO, mtlMfgQty))
+            {
+              exceptions.add( new OAAttrValException(
+                                    OAAttrValException.TYP_VIEW_OBJECT,          
+                                    vo.getName(),
+                                    row.getKey(),
+                                    "MtlMfgQty",
+                                    mtlMfgQty,
+                                    XxcmnConstants.APPL_XXWIP,         
+                                    XxwipConstants.XXWIP10063));
             }
           }
-          // ロットステータスチェック
+          /* -------------------
+           * ロットステータスチェック
+           * -------------------*/
           Number lotId = (Number)row.getAttribute("LotId"); // ロットID
           if (!XxcmnUtility.isBlankOrNull(investedQty)
            && !XxcmnUtility.chkCompareNumeric(3, investedQty, XxcmnConstants.STRING_ZERO)
@@ -681,6 +774,11 @@ public class XxwipInvestActualAMImpl extends XxcmnOAApplicationModuleImpl
           totalCheckFlag = true;
           // 実績総数
           Object investedQty = row.getAttribute("InvestedQty");
+          // 戻入総数
+          Object returnQty = row.getAttribute("ReturnQty");
+          /* -------------------
+           * 実績総数チェック
+           * -------------------*/
           // 必須チェック
           if (XxcmnUtility.isBlankOrNull(investedQty))
           {
@@ -708,7 +806,7 @@ public class XxwipInvestActualAMImpl extends XxcmnOAApplicationModuleImpl
                                     XxwipConstants.XXWIP10061));
               totalCheckFlag = false;
             // 数量チェック
-            } else if (!XxcmnUtility.chkCompareNumeric(2, investedQty, XxcmnConstants.STRING_ZERO))
+            } else if (XxcmnUtility.chkCompareNumeric(1, XxcmnConstants.STRING_ZERO, investedQty))
             {
               exceptions.add( new OAAttrValException(
                                     OAAttrValException.TYP_VIEW_OBJECT,          
@@ -721,8 +819,9 @@ public class XxwipInvestActualAMImpl extends XxcmnOAApplicationModuleImpl
               totalCheckFlag = false;
             }
           }
-          // 戻入総数
-          Object returnQty = row.getAttribute("ReturnQty");
+          /* -------------------
+           * 戻入総数チェック
+           * -------------------*/
           // 入力されている場合、チェックを行う。
           if (!XxcmnUtility.isBlankOrNull(returnQty))
           {
@@ -737,57 +836,76 @@ public class XxwipInvestActualAMImpl extends XxcmnOAApplicationModuleImpl
                                     returnQty,
                                     XxcmnConstants.APPL_XXWIP,         
                                     XxwipConstants.XXWIP10061));
-              returnQty = XxcmnConstants.STRING_ZERO;
-            }
-          }
-          // 合計値チェック
-          if (totalCheckFlag) 
-          {
-            String actualQty = XxwipUtility.subtract(getOADBTransaction(), investedQty, returnQty);
-            if (!XxcmnUtility.chkCompareNumeric(3, investedQty, XxcmnConstants.STRING_ZERO)
-             && !XxcmnUtility.chkCompareNumeric(3, returnQty,   XxcmnConstants.STRING_ZERO)
-             && !XxcmnUtility.chkCompareNumeric(1, actualQty,   XxcmnConstants.STRING_ZERO)) 
+              totalCheckFlag = false;
+            // 数量チェック
+            } else if (XxcmnUtility.chkCompareNumeric(1, XxcmnConstants.STRING_ZERO, returnQty))
             {
               exceptions.add( new OAAttrValException(
                                     OAAttrValException.TYP_VIEW_OBJECT,          
                                     vo.getName(),
                                     row.getKey(),
-                                    "InvestedQty",
-                                    investedQty,
+                                    "ReturnQty",
+                                    returnQty,
                                     XxcmnConstants.APPL_XXWIP,         
-                                    XxwipConstants.XXWIP10064));
-            } else 
+                                    XxwipConstants.XXWIP10063));
+              totalCheckFlag = false;
+            }
+          }
+          /* -------------------
+           * 合計値チェック
+           * -------------------*/
+          if (totalCheckFlag) 
+          {
+            // 実績総数・戻入総数が両方とも０以外の場合
+            if (!(XxcmnUtility.chkCompareNumeric(3, XxcmnConstants.STRING_ZERO, investedQty)
+               && XxcmnUtility.chkCompareNumeric(3, XxcmnConstants.STRING_ZERO, returnQty))) 
             {
-              String stockQty  = (String)row.getAttribute("StockQty");
-              stockQty  = stockQty.replaceAll(",", "");
-              if (XxcmnUtility.chkCompareNumeric(1, actualQty, stockQty)) 
+              String actualQty = XxwipUtility.subtract(getOADBTransaction(), investedQty, returnQty);
+              if (XxcmnUtility.chkCompareNumeric(2, XxcmnConstants.STRING_ZERO, actualQty)) 
               {
                 exceptions.add( new OAAttrValException(
-                                      OAAttrValException.TYP_VIEW_OBJECT,
+                                      OAAttrValException.TYP_VIEW_OBJECT,          
                                       vo.getName(),
                                       row.getKey(),
                                       "InvestedQty",
                                       investedQty,
-                                      XxcmnConstants.APPL_XXWIP,
-                                      XxwipConstants.XXWIP10065));
+                                      XxcmnConstants.APPL_XXWIP,         
+                                      XxwipConstants.XXWIP10064));
+              } else 
+              {
+                String stockQty  = (String)row.getAttribute("StockQty");
+                stockQty  = XxcmnUtility.commaRemoval(stockQty);
+                if (XxcmnUtility.chkCompareNumeric(1, actualQty, stockQty)) 
+                {
+                  exceptions.add( new OAAttrValException(
+                                        OAAttrValException.TYP_VIEW_OBJECT,
+                                        vo.getName(),
+                                        row.getKey(),
+                                        "InvestedQty",
+                                        investedQty,
+                                        XxcmnConstants.APPL_XXWIP,
+                                        XxwipConstants.XXWIP10065));
+                }
               }
             }
-            // ロットステータスチェック
-            Number lotId = (Number)row.getAttribute("LotId"); // ロットID
-            if (!XxcmnUtility.isBlankOrNull(investedQty)
-             && !XxcmnUtility.chkCompareNumeric(3, investedQty, XxcmnConstants.STRING_ZERO)
-             && !XxwipConstants.ITEM_TYPE_SHZ.equals(row.getAttribute("ItemClassCode"))
-             && !XxwipUtility.checkLotStatus(getOADBTransaction(), lotId)) 
-            {
-              exceptions.add( new OAAttrValException(
-                                    OAAttrValException.TYP_VIEW_OBJECT,
-                                    vo.getName(),
-                                    row.getKey(),
-                                    "LotNo",
-                                    row.getAttribute("LotNo"),
-                                    XxcmnConstants.APPL_XXWIP,
-                                    XxwipConstants.XXWIP10081));
-            }
+          }
+          /* -------------------
+           * ロットステータスチェック
+           * -------------------*/
+          Number lotId = (Number)row.getAttribute("LotId"); // ロットID
+          if (!XxcmnUtility.isBlankOrNull(investedQty)
+           && !XxcmnUtility.chkCompareNumeric(3, investedQty, XxcmnConstants.STRING_ZERO)
+           && !XxwipConstants.ITEM_TYPE_SHZ.equals(row.getAttribute("ItemClassCode"))
+           && !XxwipUtility.checkLotStatus(getOADBTransaction(), lotId)) 
+          {
+            exceptions.add( new OAAttrValException(
+                                  OAAttrValException.TYP_VIEW_OBJECT,
+                                  vo.getName(),
+                                  row.getKey(),
+                                  "LotNo",
+                                  row.getAttribute("LotNo"),
+                                  XxcmnConstants.APPL_XXWIP,
+                                  XxwipConstants.XXWIP10081));
           }
         }
       }
@@ -801,6 +919,11 @@ public class XxwipInvestActualAMImpl extends XxcmnOAApplicationModuleImpl
           totalCheckFlag = true;
           // 実績総数
           Object investedQty = row.getAttribute("InvestedQty");
+          // 戻入総数
+          Object returnQty = row.getAttribute("ReturnQty");
+          /* -------------------
+           * 実績総数チェック
+           * -------------------*/
           // 入力されている場合、チェックを行う。
           if (XxcmnUtility.isBlankOrNull(investedQty))
           {
@@ -833,8 +956,9 @@ public class XxwipInvestActualAMImpl extends XxcmnOAApplicationModuleImpl
               totalCheckFlag = false;
             }
           }
-          // 戻入総数
-          Object returnQty = row.getAttribute("ReturnQty");
+          /* -------------------
+           * 戻入総数チェック
+           * -------------------*/
           // 入力されている場合、チェックを行う。
           if (!XxcmnUtility.isBlankOrNull(returnQty))
           {
@@ -849,43 +973,61 @@ public class XxwipInvestActualAMImpl extends XxcmnOAApplicationModuleImpl
                                     returnQty,
                                     XxcmnConstants.APPL_XXWIP,         
                                     XxwipConstants.XXWIP10061));
-              returnQty = XxcmnConstants.STRING_ZERO;
-            }
-          }
-          // 合計値チェック
-          if (totalCheckFlag) 
-          {
-            String actualQty = XxwipUtility.subtract(getOADBTransaction(), investedQty, returnQty);
-            if (!XxcmnUtility.chkCompareNumeric(3, investedQty, XxcmnConstants.STRING_ZERO)
-             && !XxcmnUtility.chkCompareNumeric(3, returnQty,   XxcmnConstants.STRING_ZERO)
-             && !XxcmnUtility.chkCompareNumeric(1, actualQty,   XxcmnConstants.STRING_ZERO)) 
+            // 数量チェック
+            } else if (XxcmnUtility.chkCompareNumeric(1, XxcmnConstants.STRING_ZERO, returnQty))
             {
               exceptions.add( new OAAttrValException(
                                     OAAttrValException.TYP_VIEW_OBJECT,          
                                     vo.getName(),
                                     row.getKey(),
-                                    "InvestedQty",
-                                    investedQty,
+                                    "ReturnQty",
+                                    returnQty,
                                     XxcmnConstants.APPL_XXWIP,         
-                                    XxwipConstants.XXWIP10064));
-            } else 
+                                    XxwipConstants.XXWIP10063));
+              totalCheckFlag = false;
+            }
+          }
+          /* -------------------
+           * 合計値チェック
+           * -------------------*/
+          if (totalCheckFlag) 
+          {
+            // 実績総数・戻入総数が両方とも０以外の場合
+            if (!(XxcmnUtility.chkCompareNumeric(3, XxcmnConstants.STRING_ZERO, investedQty)
+               && XxcmnUtility.chkCompareNumeric(3, XxcmnConstants.STRING_ZERO, returnQty))) 
             {
-              String stockQty  = (String)row.getAttribute("StockQty");
-              stockQty  = stockQty.replaceAll(",","");
-              if (XxcmnUtility.chkCompareNumeric(1, actualQty, stockQty)) 
+              String actualQty = XxwipUtility.subtract(getOADBTransaction(), investedQty, returnQty);
+              if (XxcmnUtility.chkCompareNumeric(2, XxcmnConstants.STRING_ZERO, actualQty)) 
               {
                 exceptions.add( new OAAttrValException(
-                                      OAAttrValException.TYP_VIEW_OBJECT,
+                                      OAAttrValException.TYP_VIEW_OBJECT,          
                                       vo.getName(),
                                       row.getKey(),
                                       "InvestedQty",
                                       investedQty,
-                                      XxcmnConstants.APPL_XXWIP,
-                                      XxwipConstants.XXWIP10065));
+                                      XxcmnConstants.APPL_XXWIP,         
+                                      XxwipConstants.XXWIP10064));
+              } else 
+              {
+                String stockQty  = (String)row.getAttribute("StockQty");
+                stockQty  = XxcmnUtility.commaRemoval(stockQty);
+                if (XxcmnUtility.chkCompareNumeric(1, actualQty, stockQty)) 
+                {
+                  exceptions.add( new OAAttrValException(
+                                        OAAttrValException.TYP_VIEW_OBJECT,
+                                        vo.getName(),
+                                        row.getKey(),
+                                        "InvestedQty",
+                                        investedQty,
+                                        XxcmnConstants.APPL_XXWIP,
+                                        XxwipConstants.XXWIP10065));
+                }
               }
             }
           }
-          // ロットステータスチェック
+          /* -------------------
+           * ロットステータスチェック
+           * -------------------*/
           Number lotId = (Number)row.getAttribute("LotId"); // ロットID
           if (!XxcmnUtility.isBlankOrNull(investedQty)
            && !XxcmnUtility.chkCompareNumeric(3, investedQty, XxcmnConstants.STRING_ZERO)

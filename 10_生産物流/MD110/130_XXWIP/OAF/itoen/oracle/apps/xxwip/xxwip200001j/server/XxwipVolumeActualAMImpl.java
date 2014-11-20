@@ -1,7 +1,7 @@
 /*============================================================================
 * ファイル名 : XxwipVolumeActualAMImpl
 * 概要説明   : 出来高実績入力アプリケーションモジュール
-* バージョン : 1.1
+* バージョン : 1.2
 *============================================================================
 * 修正履歴
 * 日付       Ver. 担当者       修正内容
@@ -9,6 +9,7 @@
 * 2007-11-09 1.0  二瓶大輔     新規作成
 * 2008-05-12      二瓶大輔     変更要求対応(#75)
 * 2008-06-12 1.1  二瓶大輔     ST不具合対応(#78)
+* 2008-06-27 1.2  二瓶大輔     結合テスト指摘対応
 *============================================================================
 */
 package itoen.oracle.apps.xxwip.xxwip200001j.server;
@@ -43,7 +44,7 @@ import oracle.jbo.domain.Number;
 /***************************************************************************
  * 出来高実績入力画面のアプリケーションモジュールクラスです。
  * @author  ORACLE 二瓶 大輔
- * @version 1.0
+ * @version 1.2
  ***************************************************************************
  */
 public class XxwipVolumeActualAMImpl extends XxcmnOAApplicationModuleImpl 
@@ -728,6 +729,7 @@ public class XxwipVolumeActualAMImpl extends XxcmnOAApplicationModuleImpl
                             XxwipConstants.XXWIP10058));
     } else
     {
+      // 数値チェック
       if (!XxcmnUtility.chkNumeric(actualQty, 9, 3)) 
       {
         exceptions.add( new OAAttrValException(
@@ -738,6 +740,17 @@ public class XxwipVolumeActualAMImpl extends XxcmnOAApplicationModuleImpl
                               actualQty,
                               XxcmnConstants.APPL_XXWIP,         
                               XxwipConstants.XXWIP10061));
+      // 数量チェック
+      } else if (XxcmnUtility.chkCompareNumeric(1, XxcmnConstants.STRING_ZERO, actualQty))
+      {
+        exceptions.add( new OAAttrValException(
+                              OAAttrValException.TYP_VIEW_OBJECT,          
+                              vo.getName(),
+                              row.getKey(),
+                              "ActualQty",
+                              actualQty,
+                              XxcmnConstants.APPL_XXWIP,         
+                              XxwipConstants.XXWIP10063));
       }
     }
     // 在庫入数
@@ -949,6 +962,7 @@ public class XxwipVolumeActualAMImpl extends XxcmnOAApplicationModuleImpl
                                   XxwipConstants.XXWIP10058));
           } else
           {
+            // 数値チェック
             if (!XxcmnUtility.chkNumeric(actualQty, 9, 3)) 
             {
               exceptions.add( new OAAttrValException(
@@ -959,6 +973,17 @@ public class XxwipVolumeActualAMImpl extends XxcmnOAApplicationModuleImpl
                                     actualQty,
                                     XxcmnConstants.APPL_XXWIP,         
                                     XxwipConstants.XXWIP10061));
+            // 数量チェック
+            } else if (XxcmnUtility.chkCompareNumeric(1, XxcmnConstants.STRING_ZERO, actualQty))
+            {
+              exceptions.add( new OAAttrValException(
+                                    OAAttrValException.TYP_VIEW_OBJECT,          
+                                    vo.getName(),
+                                    row.getKey(),
+                                    "ActualQty",
+                                    actualQty,
+                                    XxcmnConstants.APPL_XXWIP,         
+                                    XxwipConstants.XXWIP10063));
             }
           }
         }
@@ -1049,6 +1074,7 @@ public class XxwipVolumeActualAMImpl extends XxcmnOAApplicationModuleImpl
                                 XxwipConstants.XXWIP10058));
         } else
         {
+          // 数値チェック
           if (!XxcmnUtility.chkNumeric(actualQty, 9, 3)) 
           {
             exceptions.add( new OAAttrValException(
@@ -1059,6 +1085,17 @@ public class XxwipVolumeActualAMImpl extends XxcmnOAApplicationModuleImpl
                                   actualQty,
                                   XxcmnConstants.APPL_XXWIP,         
                                   XxwipConstants.XXWIP10061));
+          // 数量チェック
+          } else if (XxcmnUtility.chkCompareNumeric(1, XxcmnConstants.STRING_ZERO, actualQty))
+          {
+            exceptions.add( new OAAttrValException(
+                                  OAAttrValException.TYP_VIEW_OBJECT,          
+                                  vo.getName(),
+                                  row.getKey(),
+                                  "ActualQty",
+                                  actualQty,
+                                  XxcmnConstants.APPL_XXWIP,         
+                                  XxwipConstants.XXWIP10063));
           }
         }
       }    
@@ -1380,7 +1417,10 @@ public class XxwipVolumeActualAMImpl extends XxcmnOAApplicationModuleImpl
     XxwipBatchHeaderVOImpl hdrVo  = getXxwipBatchHeaderVO1();
     OARow hdrRow = (OARow)hdrVo.first();
     // バッチID
-    Number batchId = (Number)hdrRow.getAttribute("BatchId");
+    Number batchId      = (Number)hdrRow.getAttribute("BatchId");
+    Date expirationDate = null;
+    Date productDate    = null;
+    Date makerDate      = null;
     // 投入情報
     if (XxwipConstants.TAB_TYPE_INVEST.equals(tabType)) 
     {
@@ -1399,6 +1439,10 @@ public class XxwipVolumeActualAMImpl extends XxcmnOAApplicationModuleImpl
     {
       vo  = getXxwipBatchCoProdVO1();
       row = (OARow)vo.getFirstFilteredRow("ItemNoSwitcher", "ItemNoCoProdEnable");
+      expirationDate = (Date)hdrRow.getAttribute("ExpirationDate");
+      productDate    = (Date)hdrRow.getAttribute("ProductDate");
+      makerDate      = (Date)hdrRow.getAttribute("MakerDate");
+      row.setAttribute("BatchId", batchId);
     }
     if (row != null) 
     {
@@ -1432,7 +1476,10 @@ public class XxwipVolumeActualAMImpl extends XxcmnOAApplicationModuleImpl
       params.put("slit",     slit);
       params.put("utkType",  utkType);
       params.put("lineType", lineType);
-      params.put("entityInner", entityInner);
+      params.put("entityInner",    entityInner);
+      params.put("productDate",    productDate);
+      params.put("makerDate",      makerDate);
+      params.put("expirationDate", expirationDate);
       exeFlag = XxwipUtility.insertMaterialLine(
                   getOADBTransaction(),
                   row,

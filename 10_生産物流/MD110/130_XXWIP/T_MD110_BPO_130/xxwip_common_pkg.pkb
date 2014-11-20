@@ -6,7 +6,7 @@ AS
  * Package Name           : xxwip_common_pkg(BODY)
  * Description            : 共通関数(XXWIP)(BODY)
  * MD.070(CMD.050)        : なし
- * Version                : 1.4
+ * Version                : 1.5
  *
  * Program List
  *  --------------------   ---- ----- --------------------------------------------------
@@ -48,6 +48,7 @@ AS
  *  2008/06/02   1.2   Oracle 二瓶 大輔 内部変更要求#130(委託加工費更新関数修正)
  *  2008/06/12   1.3   Oracle 二瓶 大輔 システムテスト不具合対応#78(委託加工費更新関数修正)
  *  2008/06/25   1.4   Oracle 二瓶 大輔 システムテスト不具合対応#75
+ *  2008/06/27   1.5   Oracle 二瓶 大輔 結合テスト不具合対応(原料追加関数修正)
  *****************************************************************************************/
 --
 --###############################  固定グローバル定数宣言部 START   ###############################
@@ -602,27 +603,29 @@ AS
     -- 副産物の場合
     ELSIF ( lr_material_detail_in.line_type = gn_co_prod ) THEN
 --
-      -- ***********************************************
-      -- ***  完成品の生産日、賞味期限を取得します。 ***
-      -- ***********************************************
-      BEGIN
-        SELECT gmd.attribute10 -- 賞味期限日
-              ,gmd.attribute11 -- 生産日
-              ,gmd.attribute17 -- 製造日
-        INTO   lr_material_detail_in.attribute10
-              ,lr_material_detail_in.attribute11
-              ,lr_material_detail_in.attribute17
-        FROM   gme_material_details gmd  -- 生産原料詳細
-        WHERE  gmd.line_type = gn_prod -- 完成品
-        AND    gmd.batch_id  = lr_material_detail_in.batch_id
-        AND    ROWNUM        = 1
-        ;
-      EXCEPTION
-        WHEN NO_DATA_FOUND THEN
-          lr_material_detail_in.attribute10 := NULL; -- 賞味期限日
-          lr_material_detail_in.attribute11 := NULL; -- 生産日
-          lr_material_detail_in.attribute17 := NULL; -- 製造日
-      END;
+-- 2008/06/27 D.Nihei DEL START
+--      -- ***********************************************
+--      -- ***  完成品の生産日、賞味期限を取得します。 ***
+--      -- ***********************************************
+--      BEGIN
+--        SELECT gmd.attribute10 -- 賞味期限日
+--              ,gmd.attribute11 -- 生産日
+--              ,gmd.attribute17 -- 製造日
+--        INTO   lr_material_detail_in.attribute10
+--              ,lr_material_detail_in.attribute11
+--              ,lr_material_detail_in.attribute17
+--        FROM   gme_material_details gmd  -- 生産原料詳細
+--        WHERE  gmd.line_type = gn_prod -- 完成品
+--        AND    gmd.batch_id  = lr_material_detail_in.batch_id
+--        AND    ROWNUM        = 1
+--        ;
+--      EXCEPTION
+--        WHEN NO_DATA_FOUND THEN
+--          lr_material_detail_in.attribute10 := NULL; -- 賞味期限日
+--          lr_material_detail_in.attribute11 := NULL; -- 生産日
+--          lr_material_detail_in.attribute17 := NULL; -- 製造日
+--      END;
+-- 2008/06/27 D.Nihei DEL START
 --
       -- ***********************************************
       -- ***  各種情報を設定します。                 ***
@@ -2417,6 +2420,9 @@ AS
       AND    xph.vendor_code(+)    = lt_vendor_code
       AND    xph.factory_code(+)   = lt_vendor_code
 -- 2008/06/12 D.Nihei ADD END
+-- 2008/06/25 D.Nihei ADD START
+      AND    xph.supply_to_code(+)    IS NULL
+-- 2008/06/25 D.Nihei ADD END
       AND    gmd.batch_id          = it_batch_id
       AND    gmd.line_type         = gn_prod
       ;

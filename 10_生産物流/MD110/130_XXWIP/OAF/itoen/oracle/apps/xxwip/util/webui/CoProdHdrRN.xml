@@ -20,6 +20,7 @@
                               <lovMap id="ToItemNameCoProdFv" lovItem="ItemName" resultTo="ItemNameCoProdFv"/>
                               <lovMap id="ToItemUmInvestFv" lovItem="ItemUm" resultTo="ItemUmCoProdFv"/>
                               <lovMap id="ToEntityInner" lovItem="EntityInner" resultTo="EntityInnerCoProd"/>
+                              <lovMap id="ToQtType" lovItem="QtType" resultTo="QtType"/>
                            </lovMappings>
                         </oa:messageLovInput>
                      </ui:case>
@@ -28,6 +29,7 @@
                      </ui:case>
                   </oa:switcher>
                   <oa:formValue id="ItemIdCoProd" viewAttr="ItemId"/>
+                  <oa:formValue id="QtType" viewAttr="QtType"/>
                </ui:contents>
             </oa:column>
             <oa:column id="colitemNameCoProd">
