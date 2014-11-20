@@ -7,7 +7,7 @@ AS
  * Description      : EBS(ファイルアップロードIF)に取込まれた標準原価データを
  *                  : OPM標準原価テーブルに反映します。
  * MD.050           : 標準原価一括改定    MD050_CMM_004_A08
- * Version          : Draft2B
+ * Version          : Issue3.1
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -48,6 +48,7 @@ AS
  *  2009/02/03    1.1   N.Nishimura      ファイル内重複チェック修正
  *                                       OPM標準原価 ロック取得エラー修正
  *  2009/05/14    1.2   H.Yoshikawa      障害T1_0569 対応
+ *  2009/07/07    1.3   H.Yoshikawa      障害0000364対応(未設定標準原価0円登録、08～10の登録を追加)
  *
  *****************************************************************************************/
 --
@@ -442,8 +443,8 @@ AS
       -- 親品目抽出
       SELECT    xoiv.item_id
       FROM      xxcmm_opmmtl_items_v      xoiv                             -- 品目ビュー
-      WHERE     xoiv.item_id            = p_item_id                        -- 品目ID
-      AND       xoiv.parent_item_id     = xoiv.item_id                     -- 親品目であること
+      WHERE     xoiv.parent_item_id     = p_item_id                        -- 品目ID
+      AND       xoiv.item_id            = xoiv.parent_item_id              -- 親品目であること
       AND       xoiv.start_date_active <= TRUNC( SYSDATE )                 -- 適用開始日
       AND       xoiv.end_date_active   >= TRUNC( SYSDATE )                 -- 適用終了日
 -- 2009/01/16 Mod
@@ -463,7 +464,11 @@ AS
       AND       xoiv.item_id           != xoiv.parent_item_id              -- 親品目でないこと
       AND       xoiv.start_date_active <= TRUNC( SYSDATE )                 -- 適用開始日
       AND       xoiv.end_date_active   >= TRUNC( SYSDATE )                 -- 適用終了日
-      AND       xoiv.item_status       IN ( cn_itm_status_regist           -- 本登録
+--Ver1.3  2009/07/07  Add  0000364対応  標準原価の子品目継承は仮登録以降Ｄ’までに変更
+--      AND       xoiv.item_status       IN ( cn_itm_status_regist           -- 本登録
+      AND       xoiv.item_status       IN ( cn_itm_status_pre_reg          -- 仮登録
+                                           ,cn_itm_status_regist           -- 本登録
+--End1.3
                                            ,cn_itm_status_no_sch           -- 廃
                                            ,cn_itm_status_trn_only );      -- Ｄ’
     --
@@ -555,6 +560,11 @@ AS
           WHEN cv_cost_cmpnt_07kei THEN    -- '07KEI'
             -- その他経費
             ln_cmpnt_cost := i_opm_cost_rec.cmpntcost_07kei;
+--Ver1.3  2009/07/07  Add  0000364対応
+          ELSE
+            -- 予備1～予備3
+            ln_cmpnt_cost := 0;
+--End1.3
         END CASE;
         --
         -- 原価設定判断
@@ -854,20 +864,37 @@ AS
       -- 各項目に格納
       l_opm_cost_rec.item_id         := TO_NUMBER( i_opm_cost_rec.item_id );
       l_opm_cost_rec.apply_date      := fnd_date.canonical_to_date( i_opm_cost_rec.apply_date );
-      l_opm_cost_rec.cmpntcost_01gen := TO_NUMBER( i_opm_cost_rec.cmpntcost_01gen );
-      l_opm_cost_rec.cmpntcost_02sai := TO_NUMBER( i_opm_cost_rec.cmpntcost_02sai );
-      l_opm_cost_rec.cmpntcost_03szi := TO_NUMBER( i_opm_cost_rec.cmpntcost_03szi );
-      l_opm_cost_rec.cmpntcost_04hou := TO_NUMBER( i_opm_cost_rec.cmpntcost_04hou );
-      l_opm_cost_rec.cmpntcost_05gai := TO_NUMBER( i_opm_cost_rec.cmpntcost_05gai );
-      l_opm_cost_rec.cmpntcost_06hkn := TO_NUMBER( i_opm_cost_rec.cmpntcost_06hkn );
-      l_opm_cost_rec.cmpntcost_07kei := TO_NUMBER( i_opm_cost_rec.cmpntcost_07kei );
-      l_opm_cost_rec.cmpntcost_total := NVL( l_opm_cost_rec.cmpntcost_01gen, 0 ) +
-                                        NVL( l_opm_cost_rec.cmpntcost_02sai, 0 ) +
-                                        NVL( l_opm_cost_rec.cmpntcost_03szi, 0 ) +
-                                        NVL( l_opm_cost_rec.cmpntcost_04hou, 0 ) +
-                                        NVL( l_opm_cost_rec.cmpntcost_05gai, 0 ) +
-                                        NVL( l_opm_cost_rec.cmpntcost_06hkn, 0 ) +
-                                        NVL( l_opm_cost_rec.cmpntcost_07kei, 0 );
+--Ver1.3  2009/07/07  Mod  0000364対応
+--      l_opm_cost_rec.cmpntcost_01gen := TO_NUMBER( i_opm_cost_rec.cmpntcost_01gen );
+--      l_opm_cost_rec.cmpntcost_02sai := TO_NUMBER( i_opm_cost_rec.cmpntcost_02sai );
+--      l_opm_cost_rec.cmpntcost_03szi := TO_NUMBER( i_opm_cost_rec.cmpntcost_03szi );
+--      l_opm_cost_rec.cmpntcost_04hou := TO_NUMBER( i_opm_cost_rec.cmpntcost_04hou );
+--      l_opm_cost_rec.cmpntcost_05gai := TO_NUMBER( i_opm_cost_rec.cmpntcost_05gai );
+--      l_opm_cost_rec.cmpntcost_06hkn := TO_NUMBER( i_opm_cost_rec.cmpntcost_06hkn );
+--      l_opm_cost_rec.cmpntcost_07kei := TO_NUMBER( i_opm_cost_rec.cmpntcost_07kei );
+--      l_opm_cost_rec.cmpntcost_total := NVL( l_opm_cost_rec.cmpntcost_01gen, 0 ) +
+--                                        NVL( l_opm_cost_rec.cmpntcost_02sai, 0 ) +
+--                                        NVL( l_opm_cost_rec.cmpntcost_03szi, 0 ) +
+--                                        NVL( l_opm_cost_rec.cmpntcost_04hou, 0 ) +
+--                                        NVL( l_opm_cost_rec.cmpntcost_05gai, 0 ) +
+--                                        NVL( l_opm_cost_rec.cmpntcost_06hkn, 0 ) +
+--                                        NVL( l_opm_cost_rec.cmpntcost_07kei, 0 );
+      --
+      l_opm_cost_rec.cmpntcost_01gen := TO_NUMBER( NVL( i_opm_cost_rec.cmpntcost_01gen, 0 ) );
+      l_opm_cost_rec.cmpntcost_02sai := TO_NUMBER( NVL( i_opm_cost_rec.cmpntcost_02sai, 0 ) );
+      l_opm_cost_rec.cmpntcost_03szi := TO_NUMBER( NVL( i_opm_cost_rec.cmpntcost_03szi, 0 ) );
+      l_opm_cost_rec.cmpntcost_04hou := TO_NUMBER( NVL( i_opm_cost_rec.cmpntcost_04hou, 0 ) );
+      l_opm_cost_rec.cmpntcost_05gai := TO_NUMBER( NVL( i_opm_cost_rec.cmpntcost_05gai, 0 ) );
+      l_opm_cost_rec.cmpntcost_06hkn := TO_NUMBER( NVL( i_opm_cost_rec.cmpntcost_06hkn, 0 ) );
+      l_opm_cost_rec.cmpntcost_07kei := TO_NUMBER( NVL( i_opm_cost_rec.cmpntcost_07kei, 0 ) );
+      l_opm_cost_rec.cmpntcost_total := l_opm_cost_rec.cmpntcost_01gen +
+                                        l_opm_cost_rec.cmpntcost_02sai +
+                                        l_opm_cost_rec.cmpntcost_03szi +
+                                        l_opm_cost_rec.cmpntcost_04hou +
+                                        l_opm_cost_rec.cmpntcost_05gai +
+                                        l_opm_cost_rec.cmpntcost_06hkn +
+                                        l_opm_cost_rec.cmpntcost_07kei;
+--End1.3
       --
       --==============================================================
       --A-4.3 親品目チェック

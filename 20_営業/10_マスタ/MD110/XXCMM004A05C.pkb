@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCMM004A05C(body)
  * Description      : 品目一括登録ワークテーブルに取込まれた品目一括登録データを品目テーブルに登録します。
  * MD.050           : 品目一括登録 CMM_004_A05
- * Version          : Draft2B
+ * Version          : Issue3.6
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -57,6 +57,7 @@ AS
  *                                                   品名コードの半角数値チェックを追加
  *                                       障害T1_1323 品名コードの１桁目が５、６の場合、「ロット」を０に設定する(プロファイルから)
  *  2009/06/11    1.11  N.Nishimura      障害T1_1366 品目カテゴリ割当(バラ茶区分、マーケ用群コード、群コード)追加
+ *  2009/07/07    1.12  H.Yoshikawa      障害0000364 未設定標準原価0円登録、08～10の登録を追加
  *
  *****************************************************************************************/
 --
@@ -153,6 +154,9 @@ AS
 -- Ver1.8  2009/05/18 Add  T1_0322 子品目で商品製品区分導出時に親品目の商品製品区分と比較処理を追加
   cv_msg_xxcmm_00431     CONSTANT VARCHAR2(20)  := 'APP-XXCMM1-00431';                              -- 商品製品区分エラー
 -- End
+--Ver1.12  2009/07/07  Mod  0000364対応
+  cv_msg_xxcmm_00434     CONSTANT VARCHAR2(20)  := 'APP-XXCMM1-00434';                              -- 営業エラー
+--End1.12
 -- Ver.1.5 20090224 Add START
   cv_msg_xxcmm_00435     CONSTANT VARCHAR2(20)  := 'APP-XXCMM1-00435';                              -- 取得失敗エラー
 -- Ver.1.5 20090224 Add END
@@ -183,6 +187,9 @@ AS
   cv_tkn_cs_qty          CONSTANT VARCHAR2(20)  := 'PALETTE_MAX_CS_QTY';                            -- 配数
   cv_tkn_step_qty        CONSTANT VARCHAR2(20)  := 'PALETTE_MAX_STEP_QTY';                          -- 段数
   cv_tkn_sp_supplier     CONSTANT VARCHAR2(20)  := 'SP_SUPPLIER_CODE';                              -- 専門店仕入先
+--Ver1.12  2009/07/07  Mod  0000364対応
+  cv_tkn_disc_cost       CONSTANT VARCHAR2(20)  := 'DISC_COST';                                     -- 営業原価
+--End1.12  
   cv_tkn_opm_cost        CONSTANT VARCHAR2(20)  := 'OPM_COST';                                      -- 標準原価(合計値)
   cv_tkn_msg             CONSTANT VARCHAR2(20)  := 'MSG';                                           -- コンカレント終了メッセージ
 -- Ver1.7  2009/04/10  Add  障害T1_0219 対応
@@ -1785,27 +1792,54 @@ AS
       FOR opmcost_cmpnt_rec IN opmcost_cmpnt_cur( gd_process_date ) LOOP
         -- 原価の取得
         CASE opmcost_cmpnt_rec.cost_cmpntcls_code
+--Ver1.12  2009/07/07  Mod  0000364対応
+--          WHEN cv_cost_cmpnt_01gen THEN    -- '01GEN'
+--            -- 原料
+--            ln_cmpnt_cost := TO_NUMBER(i_wk_item_rec.standard_price_1);
+--          WHEN cv_cost_cmpnt_02sai THEN    -- '02SAI'
+--            -- 再製費
+--            ln_cmpnt_cost := TO_NUMBER(i_wk_item_rec.standard_price_2);
+--          WHEN cv_cost_cmpnt_03szi THEN    -- '03SZI'
+--            -- 資材費
+--            ln_cmpnt_cost := TO_NUMBER(i_wk_item_rec.standard_price_3);
+--          WHEN cv_cost_cmpnt_04hou THEN    -- '04HOU'
+--            -- 包装費
+--            ln_cmpnt_cost := TO_NUMBER(i_wk_item_rec.standard_price_4);
+--          WHEN cv_cost_cmpnt_05gai THEN    -- '05GAI'
+--            -- 外注管理費
+--            ln_cmpnt_cost := TO_NUMBER(i_wk_item_rec.standard_price_5);
+--          WHEN cv_cost_cmpnt_06hkn THEN    -- '06HKN'
+--            -- 保管費
+--            ln_cmpnt_cost := TO_NUMBER(i_wk_item_rec.standard_price_6);
+--          WHEN cv_cost_cmpnt_07kei THEN    -- '07KEI'
+--            -- その他経費
+--            ln_cmpnt_cost := TO_NUMBER(i_wk_item_rec.standard_price_7);
+          --
           WHEN cv_cost_cmpnt_01gen THEN    -- '01GEN'
             -- 原料
-            ln_cmpnt_cost := TO_NUMBER(i_wk_item_rec.standard_price_1);
+            ln_cmpnt_cost := TO_NUMBER( NVL( i_wk_item_rec.standard_price_1, 0) );
           WHEN cv_cost_cmpnt_02sai THEN    -- '02SAI'
             -- 再製費
-            ln_cmpnt_cost := TO_NUMBER(i_wk_item_rec.standard_price_2);
+            ln_cmpnt_cost := TO_NUMBER( NVL( i_wk_item_rec.standard_price_2, 0) );
           WHEN cv_cost_cmpnt_03szi THEN    -- '03SZI'
             -- 資材費
-            ln_cmpnt_cost := TO_NUMBER(i_wk_item_rec.standard_price_3);
+            ln_cmpnt_cost := TO_NUMBER( NVL( i_wk_item_rec.standard_price_3, 0) );
           WHEN cv_cost_cmpnt_04hou THEN    -- '04HOU'
             -- 包装費
-            ln_cmpnt_cost := TO_NUMBER(i_wk_item_rec.standard_price_4);
+            ln_cmpnt_cost := TO_NUMBER( NVL( i_wk_item_rec.standard_price_4, 0) );
           WHEN cv_cost_cmpnt_05gai THEN    -- '05GAI'
             -- 外注管理費
-            ln_cmpnt_cost := TO_NUMBER(i_wk_item_rec.standard_price_5);
+            ln_cmpnt_cost := TO_NUMBER( NVL( i_wk_item_rec.standard_price_5, 0) );
           WHEN cv_cost_cmpnt_06hkn THEN    -- '06HKN'
             -- 保管費
-            ln_cmpnt_cost := TO_NUMBER(i_wk_item_rec.standard_price_6);
+            ln_cmpnt_cost := TO_NUMBER( NVL( i_wk_item_rec.standard_price_6, 0) );
           WHEN cv_cost_cmpnt_07kei THEN    -- '07KEI'
             -- その他経費
-            ln_cmpnt_cost := TO_NUMBER(i_wk_item_rec.standard_price_7);
+            ln_cmpnt_cost := TO_NUMBER( NVL( i_wk_item_rec.standard_price_7, 0) );
+          ELSE
+            -- 予備1～予備3
+            ln_cmpnt_cost := 0;
+--End1.12
         END CASE;
         --
         -- 原価設定判断
@@ -3381,6 +3415,34 @@ AS
             );
             lv_check_flag := cv_status_error;
           END IF;
+          --
+--Ver1.12  2009/07/07  Add  標準原価計と営業原価の比較処理を追加
+          -- 営業原価計 >= 営業原価の場合
+          IF ( ln_opm_cost_total > TO_NUMBER( NVL( i_wk_item_rec.business_price, 0 ))) THEN
+            -- 標準原価エラー
+            lv_errmsg := xxccp_common_pkg.get_msg(
+                           iv_application  => cv_appl_name_xxcmm                          -- アプリケーション短縮名
+                          ,iv_name         => cv_msg_xxcmm_00434                          -- メッセージコード
+                          ,iv_token_name1  => cv_tkn_disc_cost                            -- トークンコード1
+                          ,iv_token_value1 => i_wk_item_rec.business_price                -- トークン値1
+                          ,iv_token_name2  => cv_tkn_opm_cost                             -- トークンコード2
+                          ,iv_token_value2 => TO_CHAR( ln_opm_cost_total )                -- トークン値2
+                          ,iv_token_name3  => cv_tkn_input_line_no                        -- トークンコード3
+                          ,iv_token_value3 => i_wk_item_rec.line_no                       -- トークン値3
+                          ,iv_token_name4  => cv_tkn_input_item_code                      -- トークンコード4
+                          ,iv_token_value4 => i_wk_item_rec.item_code                     -- トークン値4
+                         );
+            -- メッセージ出力
+            xxcmm_004common_pkg.put_message(
+              iv_message_buff => lv_errmsg
+             ,ov_errbuf       => lv_errbuf
+             ,ov_retcode      => lv_retcode
+             ,ov_errmsg       => lv_errmsg
+            );
+            lv_check_flag := cv_status_error;
+          END IF;
+--End1.12
+          --
         END IF;
 -- Ver1.8  2009/05/18 Add  T1_0322 子品目で商品製品区分導出時に親品目の商品製品区分との比較処理を追加
       ELSE
