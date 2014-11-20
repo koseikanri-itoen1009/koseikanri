@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCOS010A01C (body)
  * Description      : 受注データ取込機能
  * MD.050           : 受注データ取込(MD050_COS_010_A01)
- * Version          : 1.10
+ * Version          : 1.11
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -61,6 +61,7 @@ AS
  *  2009/08/06    1.8   M.Sano           [0000644]レビュー指摘対応
  *  2009/09/02    1.9   M.Sano           [0001067]PT追加対応
  *  2009/10/02    1.10  M.Sano           [0001156]顧客品目抽出条件追加
+ *  2009/11/19    1.11  M.Sano           [I_E_688]ブレイクキーにチェーン店コードを追加
  *
  *****************************************************************************************/
 --
@@ -621,6 +622,9 @@ AS
     AND     edi.data_type_code               = iv_data_type_code                -- データ種コード
     AND     edi.err_status                   = iv_status                        -- ステータス
     ORDER BY
+-- 2009/11/19 M.Sano Ver.1.11 add Start
+            edi_chain_code,
+-- 2009/11/19 M.Sano Ver.1.11 add End
 -- 2009/06/29 M.Sano Ver.1.6 add Start
             shop_code,
 -- 2009/06/29 M.Sano Ver.1.6 add End
@@ -6979,6 +6983,9 @@ AS
 -- 2009/06/29 M.Sano Ver.1.6 add Start
     lv_shop_code              xxcos_edi_order_work.shop_code%TYPE      := NULL;  -- 店コード
 -- 2009/06/29 M.Sano Ver.1.6 add End
+-- 2009/11/19 M.Sano Ver.1.11 add Start
+    lv_edi_chain_code         xxcos_edi_order_work.edi_chain_code%TYPE := NULL;  -- EDIチェーン店コード
+-- 2009/11/19 M.Sano Ver.1.11 add End
 --
 --
   BEGIN
@@ -6999,6 +7006,10 @@ AS
       -- 店コードを保持する
       lv_shop_code      := gt_edi_order_work(ln_idx).shop_code;
 -- 2009/06/29 M.Sano Ver.1.6 add End
+-- 2009/11/19 M.Sano Ver.1.11 add Start
+      -- EDIチェーン店コードを保持する
+      lv_edi_chain_code := gt_edi_order_work(ln_idx).edi_chain_code;
+-- 2009/11/19 M.Sano Ver.1.11 add End
 --
       -- ============================================
       -- EDI受注情報ワーク変数格納(A-5)
@@ -7017,6 +7028,9 @@ AS
 --
       -- 伝票番号が変わったら
       IF ( ( ln_idx = gt_edi_order_work.COUNT )
+-- 2009/11/19 M.Sano Ver.1.11 add Start
+      OR ( lv_edi_chain_code != gt_edi_order_work(ln_idx + 1).edi_chain_code )
+-- 2009/11/19 M.Sano Ver.1.11 add End
 -- 2009/06/29 M.Sano Ver.1.6 add Start
       OR ( lv_shop_code      != gt_edi_order_work(ln_idx + 1).shop_code )
 -- 2009/06/29 M.Sano Ver.1.6 add End

@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCOS010A03C (body)
  * Description      : 納品確定データ取込機能
  * MD.050           : 納品確定データ取込(MD050_COS_010_A03)
- * Version          : 1.12
+ * Version          : 1.13
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -62,6 +62,7 @@ AS
  *  2009/09/10    1.10  K.Kiriu          [0001308]エラー処理実行の判定を情報区分から通過在庫型区分に変更
  *  2009/09/17    1.11  N.Maeda          [0001361]PT再対応
  *  2009/10/13    1.12  K.Satomura       [0001156]顧客品目ランク考慮
+ *  2009/11/19    1.13  N.Maeda          [共通課題I_E_688] 集約条件追加
  *
  *****************************************************************************************/
 --
@@ -624,6 +625,9 @@ AS
     AND     edi.err_status                   = iv_status                        -- ステータス
     ORDER BY
             data_type_code,
+-- ************* 2009/11/19 1.13 N.Maeda ADD START ************* --
+            edi.edi_chain_code,
+-- ************* 2009/11/19 1.13 N.Maeda ADD  END  ************* --
 -- **************************** 2009/06/26 N.Maeda ADD Ver1.6 START ************************************************ --
             edi.shop_code,
 -- **************************** 2009/06/26 N.Maeda ADD Ver1.6  END  ************************************************ --
@@ -7112,6 +7116,9 @@ AS
 --    lv_data_type_code         xxcos_edi_delivery_work.data_type_code%TYPE := NULL;
     lt_shop_code              xxcos_edi_delivery_work.shop_code%TYPE := NULL;
 -- **************************** 2009/06/26 N.Maeda MOD Ver1.6  END  ************************************************ --
+-- *********** 2009/11/19 1.13 N.Maeda ADD START *********** --
+    lt_edi_chain_code             xxcos_edi_delivery_work.edi_chain_code%TYPE := NULL;
+-- *********** 2009/11/19 1.13 N.Maeda ADD  END  *********** --
     lv_invoice_number         xxcos_edi_delivery_work.invoice_number%TYPE := NULL;
     ln_edi_head_ins_flag      NUMBER(1) := 0;          -- EDIヘッダ情報登録フラグ
     ln_head_duplicate_err     NUMBER := 0;             -- ヘッダ重複エラーフラグ
@@ -7131,7 +7138,10 @@ AS
     FOR ln_idx IN 1..gt_edi_delivery_work.COUNT LOOP
 --
 -- **************************** 2009/06/26 N.Maeda MOD Ver1.6 START ************************************************ --
-      -- キー情報（データ種コード、伝票番号）を保持する
+      -- キー情報（EDIチェーン店コード、店舗コード、伝票番号）を保持する
+-- *********** 2009/11/19 1.13 N.Maeda ADD START *********** --
+      lt_edi_chain_code     := gt_edi_delivery_work(ln_idx).edi_chain_code;
+-- *********** 2009/11/19 1.13 N.Maeda ADD  END  *********** --
       lt_shop_code      := gt_edi_delivery_work(ln_idx).shop_code;
       lv_invoice_number := gt_edi_delivery_work(ln_idx).invoice_number;
 --      -- キー情報（データ種コード、伝票番号）を保持する
@@ -7155,11 +7165,18 @@ AS
       END IF;
 --
 -- **************************** 2009/06/26 N.Maeda MOD Ver1.6 START ************************************************ --
-      -- 店舗コード、伝票番号が変わったら
-      IF ( ln_idx = gt_edi_delivery_work.COUNT )
-      OR ( ( TO_CHAR(lt_shop_code)||TO_CHAR(lv_invoice_number)) 
-         != ((TO_CHAR(gt_edi_delivery_work(ln_idx + 1).shop_code ))
-              ||TO_CHAR(gt_edi_delivery_work(ln_idx + 1).invoice_number )))THEN
+-- *********** 2009/11/19 1.13 N.Maeda MOD START *********** --
+      -- EDIチェーン店コード、店舗コード、伝票番号が変わったら
+      IF ( ( ln_idx = gt_edi_delivery_work.COUNT )
+      OR ( TO_CHAR(lt_edi_chain_code) != TO_CHAR( gt_edi_delivery_work(ln_idx + 1).edi_chain_code ) )
+      OR ( TO_CHAR(lt_shop_code)      != TO_CHAR( gt_edi_delivery_work(ln_idx + 1).shop_code ) )
+      OR ( TO_CHAR(lv_invoice_number) != TO_CHAR( gt_edi_delivery_work(ln_idx + 1).invoice_number ) ) )THEN
+--      -- 店舗コード、伝票番号が変わったら
+--      IF ( ln_idx = gt_edi_delivery_work.COUNT )
+--      OR ( ( TO_CHAR(lt_shop_code)||TO_CHAR(lv_invoice_number)) 
+--         != ((TO_CHAR(gt_edi_delivery_work(ln_idx + 1).shop_code ))
+--              ||TO_CHAR(gt_edi_delivery_work(ln_idx + 1).invoice_number )))THEN
+-- *********** 2009/11/19 1.13 N.Maeda MOD  END  *********** --
 --      -- データ種コード、伝票番号が変わったら
 --      IF ( ( ln_idx = gt_edi_delivery_work.COUNT )
 --      OR ( lv_data_type_code != gt_edi_delivery_work(ln_idx + 1).data_type_code )
