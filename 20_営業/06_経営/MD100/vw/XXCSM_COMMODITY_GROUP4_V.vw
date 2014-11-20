@@ -1,7 +1,6 @@
 CREATE OR REPLACE VIEW XXCSM_COMMODITY_GROUP4_V
 (
   opm_item_id
- ,disc_item_id
  ,item_cd
  ,item_nm
  ,group4_cd
@@ -15,7 +14,6 @@ CREATE OR REPLACE VIEW XXCSM_COMMODITY_GROUP4_V
 )
 AS
 SELECT iimb.item_id                                                opm_item_id          --OPM品目ID
-      ,xsib.item_id                                                disc_item_id         --Disc品目ID
       ,iimb.item_no                                                item_cd              --品目コード
       ,iimb.item_desc1                                             item_nm              --品目名称
       ,xicv4.segment1                                              group4_cd            --政策群コード(4桁)
@@ -61,7 +59,6 @@ AND    xsib.item_status = iv_is.item_status
 ;
 --
 COMMENT ON COLUMN xxcsm_commodity_group4_v.opm_item_id           IS 'OPM品目ID';
-COMMENT ON COLUMN xxcsm_commodity_group4_v.disc_item_id          IS 'Disc品目ID';
 COMMENT ON COLUMN xxcsm_commodity_group4_v.item_cd               IS '品目コード';
 COMMENT ON COLUMN xxcsm_commodity_group4_v.item_nm               IS '品目名称';
 COMMENT ON COLUMN xxcsm_commodity_group4_v.group4_cd             IS '商品群コード４';
@@ -74,3 +71,4 @@ COMMENT ON COLUMN xxcsm_commodity_group4_v.now_unit_price        IS '定価(現時点
 COMMENT ON COLUMN xxcsm_commodity_group4_v.unit_of_issue         IS '単位';
 --
 COMMENT ON TABLE  xxcsm_commodity_group4_v IS '商品群４ビュー';
+/
