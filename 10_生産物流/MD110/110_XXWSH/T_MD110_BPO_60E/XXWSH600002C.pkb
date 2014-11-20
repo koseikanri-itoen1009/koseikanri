@@ -7,7 +7,7 @@ AS
  * Description      : 入出庫配送計画情報抽出処理
  * MD.050           : T_MD050_BPO_601_配車配送計画
  * MD.070           : T_MD070_BPO_60E_入出庫配送計画情報抽出処理
- * Version          : 1.31
+ * Version          : 1.32
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -74,6 +74,7 @@ AS
  *  2009/01/13    1.29  H.Itou           本番971対応
  *  2009/01/26    1.30  N.Yoshida        本番1017対応
  *  2009/02/09    1.31  M.Nomura         本番1082対応
+ *  2009/04/23    1.32  H.Itou           本番1398対応
  *
  *****************************************************************************************/
 --
@@ -225,6 +226,11 @@ AS
   -- ロットマスタ：削除フラグ
   gc_delete_mark_y        CONSTANT VARCHAR2(1) := '0' ;     -- 未削除
 --
+-- ##### 2009/04/23 Ver.1.32 本番#1398対応 START #####
+  -- マスタステータス
+  gc_status_active        CONSTANT VARCHAR2(1) := 'A' ;     -- 有効
+  gc_status_inactive      CONSTANT VARCHAR2(1) := 'I' ;     -- 無効
+-- ##### 2009/04/23 Ver.1.32 本番#1398対応 END   #####
   --------------------------------------------------
   -- 登録値
   --------------------------------------------------
@@ -1619,7 +1625,11 @@ AS
       AND   xcas.base_code      = xca.party_number
       AND   gd_effective_date  BETWEEN xcas.start_date_active
                                AND     NVL( xcas.end_date_active, gd_effective_date )
-      AND   xoha.deliver_to_id = xcas.party_site_id
+-- ##### 2009/04/23 Ver.1.32 本番#1398対応 START #####
+--      AND   xoha.deliver_to_id = xcas.party_site_id
+      AND   xoha.deliver_to        = xcas.party_site_number  -- IDは付け替わる可能性があるので、コードで参照
+      AND   xcas.party_site_status = gc_status_active        -- サイトステータスが有効なもの
+-- ##### 2009/04/23 Ver.1.32 本番#1398対応 END   #####
       -- 2008/09/10 参照View変更 Add End --------------------------------
       ----------------------------------------------------------------------------------------------
       -- 運送業者
@@ -2194,7 +2204,11 @@ AS
       AND   xcas.base_code      = xca.party_number
       AND   gd_effective_date  BETWEEN xcas.start_date_active
                                AND     NVL( xcas.end_date_active, gd_effective_date )
-      AND   xoha.deliver_to_id = xcas.party_site_id
+-- ##### 2009/04/23 Ver.1.32 本番#1398対応 START #####
+--      AND   xoha.deliver_to_id = xcas.party_site_id
+      AND   xoha.deliver_to        = xcas.party_site_number  -- IDは付け替わる可能性があるので、コードで参照
+      AND   xcas.party_site_status = gc_status_active        -- サイトステータスが有効なもの
+-- ##### 2009/04/23 Ver.1.32 本番#1398対応 END   #####
       -- 2008/09/10 参照View変更 Add End ----------------------------------
       ----------------------------------------------------------------------------------------------
       -- 運送業者

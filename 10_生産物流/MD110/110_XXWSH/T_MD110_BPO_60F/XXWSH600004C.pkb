@@ -7,7 +7,7 @@ AS
  * Description      : ＨＨＴ入出庫配車確定情報抽出処理
  * MD.050           : T_MD050_BPO_601_配車配送計画
  * MD.070           : T_MD070_BPO_60F_ＨＨＴ入出庫配車確定情報抽出処理
- * Version          : 1.18
+ * Version          : 1.19
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -56,7 +56,8 @@ AS
  *  2008/10/07    1.15  M.Nomura         TE080_600指摘#27対応
  *  2008/11/07    1.16  N.Fukuda         統合指摘#143対応
  *  2009/01/26    1.17  N.Yoshida        本番1017対応、本番#1044対応
- *  2009/02/09    1.18  M.Nomura        本番#1082対応
+ *  2009/02/09    1.18  M.Nomura         本番#1082対応
+ *  2009/04/24    1.19  H.Itou           本番#1398対応
  *****************************************************************************************/
 --
 --#######################  固定グローバル定数宣言部 START   #######################
@@ -221,6 +222,11 @@ AS
   -- ロットマスタ：削除フラグ
   gc_delete_mark_y        CONSTANT VARCHAR2(1) := '0' ;     -- 未削除
 --
+-- ##### 2009/04/24 Ver.1.19 本番#1398対応 START #####
+  -- マスタステータス
+  gc_status_active        CONSTANT VARCHAR2(1) := 'A' ;     -- 有効
+  gc_status_inactive      CONSTANT VARCHAR2(1) := 'I' ;     -- 無効
+-- ##### 2009/04/24 Ver.1.19 本番#1398対応 END   #####
   --------------------------------------------------
   -- 登録値
   --------------------------------------------------
@@ -1115,7 +1121,11 @@ AS
         AND   xcas.base_code      = xca.party_number
         AND   gd_effective_date  BETWEEN xcas.start_date_active
                                  AND     NVL( xcas.end_date_active, gd_effective_date )
-        AND   xoha.deliver_to_id = xcas.party_site_id
+-- ##### 2009/04/24 Ver.1.19 本番#1398対応 START #####
+--        AND   xoha.deliver_to_id = xcas.party_site_id
+        AND   xoha.deliver_to        = xcas.party_site_number  -- IDは付け替わる可能性があるので、コードで参照
+        AND   xcas.party_site_status = gc_status_active        -- サイトステータスが有効なもの
+-- ##### 2009/04/24 Ver.1.19 本番#1398対応 END   #####
         -- 2008/09/10 参照View変更 Add End -------------------------------
         -------------------------------------------------------------------------------------------
         -- 運送業者
@@ -1146,7 +1156,7 @@ AS
                 ( SELECT 1
                   FROM xxwsh_order_lines_all      xola_w  -- 受注明細アドオン
                       ,xxcmn_item_mst2_v          xim_w   -- OPM品目情報VIEW2
-                      ,xxcmn_item_categories4_v   xic_w   -- OPM品目カテゴリ割当VIEW4
+                      ,xxcmn_item_categories5_v   xic_w   -- OPM品目カテゴリ割当VIEW4
                   WHERE xola_w.order_header_id = xoha.order_header_id
                   AND   xim_w.item_no          = xola_w.shipping_item_code
                   AND   gd_effective_date      BETWEEN xim_w.start_date_active
@@ -1377,7 +1387,7 @@ AS
                 ( SELECT 1
                   FROM xxinv_mov_req_instr_lines  xmril_w   -- 受注明細アドオン
                       ,xxcmn_item_mst2_v          xim_w     -- OPM品目情報VIEW2
-                      ,xxcmn_item_categories4_v   xic_w     -- OPM品目カテゴリ割当VIEW4
+                      ,xxcmn_item_categories5_v   xic_w     -- OPM品目カテゴリ割当VIEW4
                   WHERE xmril_w.mov_hdr_id     = xmrih.mov_hdr_id
                   AND   xim_w.item_id          = xmril_w.item_id
                   AND   gd_effective_date      BETWEEN xim_w.start_date_active
@@ -3092,7 +3102,7 @@ AS
           FROM xxwsh_order_headers_all    xoha      -- 受注ヘッダアドオン
               ,xxwsh_order_lines_all      xola    -- 受注明細アドオン
               ,xxcmn_item_mst2_v          xim     -- OPM品目情報VIEW2
-              ,xxcmn_item_categories4_v   xic     -- OPM品目カテゴリ割当VIEW4
+              ,xxcmn_item_categories5_v   xic     -- OPM品目カテゴリ割当VIEW4
           WHERE
           -----------------------------------------------------------------------------------------
           -- 品目
