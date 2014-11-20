@@ -1,0 +1,2 @@
+CREATE OR REPLACE SYNONYM apps.xxcmn_oe_order_headers_all_arc FOR xxcmn.xxcmn_oe_order_headers_all_arc
+/

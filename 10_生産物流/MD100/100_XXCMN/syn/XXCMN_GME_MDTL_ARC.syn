@@ -1,0 +1,2 @@
+CREATE OR REPLACE SYNONYM apps.xxcmn_gme_material_details_arc FOR xxcmn.xxcmn_gme_material_details_arc
+/

@@ -1,0 +1,2 @@
+CREATE OR REPLACE SYNONYM apps.xxcmn_ic_loct_inv_arc FOR xxcmn.xxcmn_ic_loct_inv_arc
+/

@@ -1,0 +1,2 @@
+CREATE OR REPLACE SYNONYM apps.xxcmn_rcv_shipment_headers_arc FOR xxcmn.xxcmn_rcv_shipment_headers_arc
+/

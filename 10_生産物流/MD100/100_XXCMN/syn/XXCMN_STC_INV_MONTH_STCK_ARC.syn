@@ -1,0 +1,2 @@
+CREATE OR REPLACE SYNONYM apps.xxcmn_stc_inv_month_stck_arc FOR xxcmn.xxcmn_stc_inv_month_stck_arc
+/

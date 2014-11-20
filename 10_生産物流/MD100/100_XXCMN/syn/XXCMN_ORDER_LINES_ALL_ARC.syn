@@ -1,0 +1,2 @@
+CREATE OR REPLACE SYNONYM apps.xxcmn_order_lines_all_arc FOR xxcmn.xxcmn_order_lines_all_arc
+/

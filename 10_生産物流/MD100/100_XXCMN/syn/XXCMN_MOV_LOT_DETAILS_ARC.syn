@@ -1,0 +1,2 @@
+CREATE OR REPLACE SYNONYM apps.xxcmn_mov_lot_details_arc FOR xxcmn.xxcmn_mov_lot_details_arc
+/
