@@ -7,7 +7,7 @@ AS
  * Description      : 振替運賃情報更新
  * MD.050           : 運賃計算（振替） T_MD050_BPO_750
  * MD.070           : 振替運賃情報更新 T_MD070_BPO_75C
- * Version          : 1.3
+ * Version          : 1.4
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -44,6 +44,7 @@ AS
  *  2008/05/01    1.1  Oracle 野村 正幸  内部変更要求#59、#75対応
  *  2008/06/09    1.2  Oracle 野村 正幸  TE080指摘事項対応
  *  2008/06/27    1.3  Oracle 丸下 博宣  内部変更要求144
+ *  2008/07/29    1.4  Oracle 山根 一浩  ST障害No484対応
  *
  *****************************************************************************************/
 --
@@ -92,7 +93,11 @@ AS
   -- ===============================
   lock_expt                  EXCEPTION;  -- ロック取得例外
 --
+  func_inv_expt              EXCEPTION;
+--
   PRAGMA EXCEPTION_INIT(lock_expt, -54); -- ロック取得例外
+--
+  PRAGMA EXCEPTION_INIT(func_inv_expt, -20001);    -- ファンクションエラー
 --
   -- ===============================
   -- ユーザー定義グローバル定数
@@ -792,7 +797,12 @@ AS
            xoha.prod_class,                      -- 10.商品区分
            TO_CHAR(xoha.arrival_date, 'YYYYMM'), -- 11.対象年月(形式:YYYYMM)
            xola.shipping_item_code,              -- 12.出荷品目
+-- 2008/07/29 Mod ↓
+/*
            xola.shipped_quantity,                -- 13.出荷実績数量
+*/
+           NVL(xola.shipped_quantity,0),         -- 13.出荷実績数量
+-- 2008/07/29 Mod ↑
            ximv.product_class,                   -- 14.商品分類
            ximv.conv_unit,                       -- 15.入出庫換算単位
            ximv.num_of_cases,                    -- 16.ケース入数
@@ -1129,11 +1139,21 @@ AS
         -- 受注データ抽出処理.商品区分 = 「リーフ」の場合
         ELSIF (gt_order_inf_tbl(ln_index).prod_class = gv_prod_class_lef) THEN
           -- 受注データ抽出処理.小口区分 = 「車立」の場合
+-- 2008/07/29 Mod ↓
+/*
           IF (gt_order_inf_tbl(ln_index).prod_class = gv_small_sum_no) THEN
+*/
+          IF (gt_order_inf_tbl(ln_index).small_amount_class = gv_small_sum_no) THEN
+-- 2008/07/29 Mod ↑
             -- 固定で「1」を設定
             i_trn_calc_qry_tab(gn_ins_order_inf_cnt) := 1;
           -- 受注データ抽出処理.小口区分 = 「小口」の場合
+-- 2008/07/29 Mod ↓
+/*
           ELSIF (gt_order_inf_tbl(ln_index).prod_class = gv_small_sum_yes) THEN
+*/
+          ELSIF (gt_order_inf_tbl(ln_index).small_amount_class = gv_small_sum_yes) THEN
+-- 2008/07/29 Mod ↑
             -- 受注データ抽出処理.小口個数を設定
             i_trn_calc_qry_tab(gn_ins_order_inf_cnt) := gt_order_inf_tbl(ln_index).small_quantity;
           END IF;
@@ -1219,12 +1239,22 @@ AS
 --
         -- 受注データ抽出処理.商品区分 = 「リーフ」の場合
         ELSIF (gt_order_inf_tbl(ln_index).prod_class = gv_prod_class_lef) THEN
-          -- 受注データ抽出処理.商品区分 = 「車立」の場合
+          -- 受注データ抽出処理.小口区分 = 「車立」の場合
+-- 2008/07/29 Mod ↓
+/*
           IF (gt_order_inf_tbl(ln_index).prod_class = gv_small_sum_no) THEN
+*/
+          IF (gt_order_inf_tbl(ln_index).small_amount_class = gv_small_sum_no) THEN
+-- 2008/07/29 Mod ↑
             -- 固定で「1」を設定
             u_trn_calc_qry_tab(gn_upd_order_inf_cnt) := 1;
-          -- 受注データ抽出処理.商品区分 = 「小口」の場合
+          -- 受注データ抽出処理.小口区分 = 「小口」の場合
+-- 2008/07/29 Mod ↓
+/*
           ELSIF (gt_order_inf_tbl(ln_index).prod_class = gv_small_sum_yes) THEN
+*/
+          ELSIF (gt_order_inf_tbl(ln_index).small_amount_class = gv_small_sum_yes) THEN
+-- 2008/07/29 Mod ↑
             -- 受注データ抽出処理.小口個数を設定
             u_trn_calc_qry_tab(gn_upd_order_inf_cnt) := gt_order_inf_tbl(ln_index).small_quantity;
           END IF;
@@ -1254,6 +1284,9 @@ AS
     END LOOP gt_order_inf_tbl_loop;
 --
   EXCEPTION
+    WHEN func_inv_expt THEN
+      ov_errbuf  := gv_pkg_name||gv_msg_cont||cv_prg_name||gv_msg_part||SQLERRM;
+      ov_retcode := gv_status_error;
 --
 --#################################  固定例外処理部 START   ####################################
 --
