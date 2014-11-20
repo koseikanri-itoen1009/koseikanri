@@ -7,7 +7,7 @@ AS
  * Description      : 顧客発注からの出荷依頼自動作成
  * MD.050/070       : 出荷依頼                        (T_MD050_BPO_400)
  *                    顧客発注からの出荷依頼自動作成  (T_MD070_BPO_40B)
- * Version          : 1.16
+ * Version          : 1.17
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -60,7 +60,10 @@ AS
  *  2008/07/09    1.15  Oracle 山根一浩  I_S_192対応
  *  2008/08/05    1.16  二瓶  大輔       ST不具合#489対応
  *                                       カテゴリ情報VIEW変更
- *
+ *  2008/08/11    1.17  伊藤  ひとみ     結合テスト指摘#74 売上対象区分チェックは親品目の時のみ行う
+ *                                       T_S_476,変更要求#178 品目廃止区分 「廃止」を「1」に変更
+ *                                       内部課題#32 出荷単位換算数の換算ロジック変更
+ *                                       変更要求#166 出荷単位換算数を明細単位で切り上げるように変更
  *****************************************************************************************/
 --
 --#######################  固定グローバル定数宣言部 START   #######################
@@ -190,7 +193,10 @@ AS
   gv_10              CONSTANT VARCHAR2(2)  := '10';
   gv_01              CONSTANT VARCHAR2(2)  := '01';
   gv_99              CONSTANT VARCHAR2(2)  := '99';
-  gv_delete          CONSTANT VARCHAR2(1)  := 'D';
+-- 2008/08/11 H.Itou MOD START 変更要求#178
+--  gv_delete          CONSTANT VARCHAR2(1)  := 'D';
+  gv_delete          CONSTANT VARCHAR2(1)  := '1';
+-- 2008/08/11 H.Itou MOD END
 --
   gv_ship_st         CONSTANT VARCHAR2(6)  := '入力中';
   gv_notice_st       CONSTANT VARCHAR2(6)  := '未通知';
@@ -238,7 +244,10 @@ AS
   gv_msg_22          CONSTANT VARCHAR2(30) := '品目マスタに登録されていません';
   gv_msg_23          CONSTANT VARCHAR2(26) := '出荷可能品目ではありません';
   gv_msg_24          CONSTANT VARCHAR2(48) := '『売上対象区分』に「1」以外がセットされています';
-  gv_msg_25          CONSTANT VARCHAR2(40) := '『廃止区分』に「D」がセットされています';
+-- 2008/08/11 H.Itou MOD START 変更要求#178
+--  gv_msg_25          CONSTANT VARCHAR2(40) := '『廃止区分』に「D」がセットされています';
+  gv_msg_25          CONSTANT VARCHAR2(40) := '『廃止区分』に「1」がセットされています';
+-- 2008/08/11 H.Itou MOD END
   gv_msg_26          CONSTANT VARCHAR2(42) := '『率区分』に「0」以外がセットされています';
   gv_msg_27          CONSTANT VARCHAR2(52) := '品目マスタにパレット当り最大段数が登録されていません';
   gv_msg_28          CONSTANT VARCHAR2(36) := '品目マスタに配数が登録されていません';
@@ -380,7 +389,10 @@ AS
   gr_sale_kbn      xxcmn_item_mst2_v.sales_div%TYPE;                       -- 売上対象区分
   gr_end_kbn       xxcmn_item_mst2_v.obsolete_class%TYPE;                  -- 廃止区分
   gr_rit_kbn       xxcmn_item_mst2_v.rate_class%TYPE;                      -- 率区分
---
+-- 2008/08/11 H.Itou ADD START 結合指摘#74
+  gr_parent_item_id xxcmn_item_mst2_v.parent_item_id%TYPE;                 -- 親品目ID
+  gr_item_id        xxcmn_item_mst2_v.item_id%TYPE;                        -- OPM品目ID
+-- 2008/08/11 H.Itou ADD END
   gr_ord_he_id     xxwsh_order_headers_all.order_header_id%TYPE;           -- 受注ヘッダアドオンID
   gr_req_status    xxwsh_order_headers_all.req_status%TYPE;                -- ステータス
 --
@@ -1579,7 +1591,7 @@ AS
         INTO   gr_skbn
               ,gr_wei_kbn
         FROM   xxcmn_item_mst_v          ximv        -- OPM品目情報VIEW
-              ,xxcmn_item_categories5_v  xicv        -- OPM品目カテゴリ割当情報VIEW4
+              ,xxcmn_item_categories5_v  xicv        -- OPM品目カテゴリ割当情報VIEW5
         WHERE  ximv.item_id = xicv.item_id                   -- 品目ID
         AND    ximv.item_no = gt_head_line(gn_i).ord_i_code  -- 品目
         ;
@@ -2129,6 +2141,10 @@ AS
           ,ximv.sales_div                -- 売上対象区分
           ,ximv.obsolete_class           -- 廃止区分
           ,ximv.rate_class               -- 率区分
+-- 2008/08/11 H.Itou ADD START 結合指摘#74
+          ,ximv.parent_item_id parent_item_id -- 親品目ID
+          ,ximv.item_id        item_id        -- OPM品目ID
+-- 2008/08/11 H.Itou ADD END
     INTO   gr_i_item_id
           ,gr_item_um
           ,gr_conv_unit
@@ -2144,8 +2160,12 @@ AS
           ,gr_sale_kbn
           ,gr_end_kbn
           ,gr_rit_kbn
+-- 2008/08/11 H.Itou ADD START 結合指摘#74
+          ,gr_parent_item_id
+          ,gr_item_id
+-- 2008/08/11 H.Itou ADD END
     FROM  xxcmn_item_mst2_v         ximv     -- OPM品目情報VIEW
-         ,xxcmn_item_categories5_v  xicv     -- OPM品目カテゴリ割当情報VIEW
+         ,xxcmn_item_categories5_v  xicv     -- OPM品目カテゴリ割当情報VIEW5
     WHERE ximv.item_no            = gt_head_line(gn_i).ord_i_code -- 品目
     AND   ximv.item_id            = xicv.item_id                  -- 品目ID
     AND   ximv.start_date_active <= gd_sysdate
@@ -2183,7 +2203,12 @@ AS
     END IF;
 --
     -- 「売上対象区分」が「1」以外の場合。ワーニング
-    IF (gr_sale_kbn <> gv_1) THEN
+-- 2008/08/11 H.Itou ADD START 結合指摘#74
+      -- 売上対象区分チェックは親品目の場合のみ。
+--    IF (gr_sale_kbn <> gv_1) THEN
+      IF ((gr_sale_kbn <> gv_1) 
+      AND (gr_parent_item_id = gr_item_id)) THEN
+-- 2008/08/11 H.Itou ADD END
       pro_err_list_make
         (
           iv_kind         => gv_msg_war                     --  in 種別   '警告'
@@ -3334,14 +3359,19 @@ AS
     ------------------------------------------------------
     -- 3.出荷単位換算数の算出                           --
     ------------------------------------------------------
-    -- (1).｢出荷入数｣が設定されている場合、「数量」/「出荷入数」(小数点以下四捨五入)
-    IF (gr_ship_am IS NOT NULL) THEN
-      -- 0除算判定
-      IF (gr_ship_am = 0) THEN
-        gn_ship_amount := 0;
-      ELSE
-        gn_ship_amount := ROUND(gn_item_amount / gr_ship_am,0);
-      END IF;
+-- 2008/08/11 H.Itou MOD START 内部課題#32
+--    -- (1).｢出荷入数｣が設定されている場合、「数量」/「出荷入数」(小数点以下四捨五入)
+--    IF (gr_ship_am IS NOT NULL) THEN
+--      -- 0除算判定
+--      IF (gr_ship_am = 0) THEN
+--        gn_ship_amount := 0;
+--      ELSE
+--        gn_ship_amount := ROUND(gn_item_amount / gr_ship_am,0);
+--      END IF;
+    -- (1).｢出荷入数｣が0より大きい場合、「数量」/「出荷入数」
+    IF (gr_ship_am > 0) THEN
+        gn_ship_amount := gn_item_amount / gr_ship_am;
+-- 2008/08/11 H.Itou MOD END
 --
       -- ｢数量｣が｢出荷入数｣の整数倍ではない場合、ワーニング
       ln_mod_chk := MOD(gn_item_amount,gr_ship_am);
@@ -3374,14 +3404,19 @@ AS
         END IF;
       END IF;
 --
-    -- (2).(1)以外、｢入数｣が設定されている場合、「数量」/「入数」(小数点以下四捨五入)
-    ELSIF (gr_case_am IS NOT NULL) THEN
-      -- 0除算判定
-      IF (gr_case_am = 0) THEN
-        gn_ship_amount := 0;
-      ELSE
-        gn_ship_amount := ROUND(gn_item_amount / gr_case_am,0);
-      END IF;
+-- 2008/08/11 H.Itou MOD START 内部課題#32
+--    -- (2).(1)以外、｢入数｣が設定されている場合、「数量」/「入数」(小数点以下四捨五入)
+--    ELSIF (gr_case_am IS NOT NULL) THEN
+--      -- 0除算判定
+--      IF (gr_case_am = 0) THEN
+--        gn_ship_amount := 0;
+--      ELSE
+--        gn_ship_amount := ROUND(gn_item_amount / gr_case_am,0);
+--      END IF;
+    -- (2).(1)以外、｢入数｣が設定されている場合、「数量」/「入数」
+    ELSIF (gr_conv_unit IS NOT NULL) THEN
+        gn_ship_amount := gn_item_amount / gr_case_am;
+-- 2008/08/11 H.Itou MOD END
 --
       -- ｢数量｣が｢入数｣の整数倍ではない場合。ワーニング
       ln_mod_chk := MOD(gn_item_amount,gr_case_am);
@@ -3429,7 +3464,10 @@ AS
     END IF;
 --
     -- 受注ヘッダアドオン項目用変数 加算
-    gn_ttl_ship_am  := gn_ttl_ship_am  + gn_ship_amount;             -- 出荷単位換算数
+-- 2008/08/11 H.Itou MOD START 変更要求#166 切り上げてから合計する。
+--    gn_ttl_ship_am  := gn_ttl_ship_am  + gn_ship_amount;             -- 出荷単位換算数
+    gn_ttl_ship_am  := gn_ttl_ship_am  + CEIL(gn_ship_amount);       -- 出荷単位換算数
+-- 2008/08/11 H.Itou MOD END
     gn_h_ttl_weight := gn_h_ttl_weight + NVL(gn_ttl_we,0);           -- 積載重量合計
     gn_h_ttl_capa   := gn_h_ttl_capa   + NVL(gn_ttl_ca,0);           -- 積載容積合計
     gn_h_ttl_pallet := gn_h_ttl_pallet + NVL(gn_ttl_prt_we,0);       -- 合計パレット重量
