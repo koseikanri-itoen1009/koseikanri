@@ -7,7 +7,7 @@ AS
  * Description      : 品目マスタインターフェース(Outbound)
  * MD.050           : マスタインタフェース T_MD050_BPO_800
  * MD.070           : 品目マスタインタフェース T_MD070_BPO_80D
- * Version          : 1.3
+ * Version          : 1.4
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -29,6 +29,7 @@ AS
  *  2008/06/12    1.2  Oracle 丸下       日付項目書式変更
  *  2008/07/11    1.3  Oracle 椎名 昭圭  仕様不備障害#I_S_001.2対応
  *                                       仕様不備障害#I_S_192.1.2対応
+ *  2008/09/18    1.4  Oracle 山根 一浩  T_S_460,T_S_453,T_S_575,T_S_559,変更#232対応
  *
  *****************************************************************************************/
 --
@@ -120,7 +121,12 @@ AS
     attribute16           ic_item_mst_b.attribute16%TYPE,                   -- 容積
     attribute12           ic_item_mst_b.attribute12%TYPE,                   -- NET
     price                 VARCHAR2(240),                                    -- 定価
+--2008/09/18 Mod ↓
+/*
     shelf_life            xxcmn_item_mst_b.shelf_life%TYPE,                 -- 賞味期間
+*/
+    expiration_day        xxcmn_item_mst_b.expiration_day%TYPE,             -- 賞味期間
+--2008/09/18 Mod ↑
     palette_max_cs_qty    VARCHAR2(2),                                      -- 配数
     palette_max_step_qty  VARCHAR2(2),                                      -- パレット当り最大段数
     palette_step_qty      VARCHAR2(2),                                      -- パレット段
@@ -271,7 +277,12 @@ AS
               ELSE
                 iimb.attribute4                           -- 旧・定価
             END,
+--2008/09/18 Mod ↓
+/*
             ximb.shelf_life,                              -- 賞味期間
+*/
+            ximb.expiration_day,                          -- 賞味期間
+--2008/09/18 Mod ↑
             TO_CHAR(LPAD(ximb.palette_max_cs_qty,2,0)),   -- 配数
             TO_CHAR(LPAD(ximb.palette_max_step_qty,2,0)), -- パレット当り最大段数
             TO_CHAR(LPAD(ximb.palette_step_qty,2,0)),     -- パレット段
@@ -389,6 +400,9 @@ AS
     cv_drink        CONSTANT VARCHAR2(1)   := '2';
     cv_leaf         CONSTANT VARCHAR2(1)   := '1';
     cv_item         CONSTANT VARCHAR2(100) := '商品区分';
+--2008/09/18 Add ↓
+    lv_crlf           CONSTANT VARCHAR2(1)  := CHR(13); -- 改行コード
+--2008/09/18 Add ↑
 --
     -- *** ローカル変数 ***
     lf_file_hand    UTL_FILE.FILE_TYPE;    -- ファイル・ハンドルの宣言
@@ -470,7 +484,12 @@ AS
                            END                                      || cv_sep_com   -- 情報12
                         || gt_item_mst_tbl(i).attribute12           || cv_sep_com   -- 情報13
                         || gt_item_mst_tbl(i).price                 || cv_sep_com   -- 情報14
+--2008/09/18 Mod ↓
+/*
                         || gt_item_mst_tbl(i).shelf_life            || cv_sep_com   -- 情報15
+*/
+                        || gt_item_mst_tbl(i).expiration_day        || cv_sep_com   -- 情報15
+--2008/09/18 Mod ↑
                                                                     || cv_sep_com   -- 情報16
                                                                     || cv_sep_com   -- 情報17
                                                                     || cv_sep_com   -- 情報18
@@ -499,7 +518,10 @@ AS
                         || TO_CHAR(gt_item_mst_tbl(i).start_date_active, 'YYYY/MM/DD')
                                                                     || cv_sep_com   -- 適用開始日
                         || TO_CHAR(gt_item_mst_tbl(i).last_update_date, 'YYYY/MM/DD HH24:MI:SS')
-                        ;                                                           -- 更新日時
+--2008/09/18 Add ↓
+                        || lv_crlf                                                  -- 更新日時
+--2008/09/18 Add ↑
+                        ;
 --
           -- CSVファイルへ出力する場合
           IF (iv_file_type = gv_csv_file) THEN
@@ -928,20 +950,27 @@ AS
       RAISE global_process_expt;
     END IF;
 --
-    -- ===============================
-    -- Workflow通知 (D-4)
-    -- ===============================
-    wf_notif(
-      iv_wf_ope_div,     -- 処理区分
-      iv_wf_class,       -- 対象
-      iv_wf_notification,-- 宛先
-      lv_errbuf,         -- エラー・メッセージ           --# 固定 #
-      lv_retcode,        -- リターン・コード             --# 固定 #
-      lv_errmsg);        -- ユーザー・エラー・メッセージ --# 固定 #
+--2008/09/18 Add ↓
+    IF (gn_target_cnt > 0) THEN
+--2008/09/18 Add ↑
 --
-    IF (lv_retcode = gv_status_error) THEN
-      RAISE global_process_expt;
+      -- ===============================
+      -- Workflow通知 (D-4)
+      -- ===============================
+      wf_notif(
+        iv_wf_ope_div,     -- 処理区分
+        iv_wf_class,       -- 対象
+        iv_wf_notification,-- 宛先
+        lv_errbuf,         -- エラー・メッセージ           --# 固定 #
+        lv_retcode,        -- リターン・コード             --# 固定 #
+        lv_errmsg);        -- ユーザー・エラー・メッセージ --# 固定 #
+--
+      IF (lv_retcode = gv_status_error) THEN
+        RAISE global_process_expt;
+      END IF;
+--2008/09/18 Add ↓
     END IF;
+--2008/09/18 Add ↑
 --
   EXCEPTION
 --

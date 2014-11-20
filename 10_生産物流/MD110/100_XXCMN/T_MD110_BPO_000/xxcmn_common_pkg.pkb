@@ -6,7 +6,7 @@ AS
  * Package Name           : xxcmn_common_pkg(BODY)
  * Description            : 共通関数(BODY)
  * MD.070(CMD.050)        : T_MD050_BPO_000_共通関数（補足資料）.xls
- * Version                : 1.1
+ * Version                : 1.2
  *
  * Program List
  *  --------------------        ---- ----- --------------------------------------------------
@@ -44,6 +44,7 @@ AS
  * ------------ ----- ---------------- -----------------------------------------------
  *  2007/12/07   1.0   marushita       新規作成
  *  2008/05/07   1.1   marushita       WF起動関数のWF起動時パラメータにWFオーナーを追加
+ *  2008/09/18   1.2   Oracle 山根 一浩T_S_453対応(WFファイルコピー)
  *
  *****************************************************************************************/
 --
@@ -1785,10 +1786,15 @@ AS
     -- ユーザー宣言部
     -- ===============================
     -- *** ローカル定数 ***
+    lv_joint_word     CONSTANT VARCHAR2(4)   := '_';
+    lv_extend_word    CONSTANT VARCHAR2(4)   := '.csv';
 --
     -- *** ローカル変数 ***
     lv_itemkey VARCHAR2(30);
     lr_outbound_rec           outbound_rec; -- outbound関連データ
+--
+    lv_file_name   VARCHAR2(300);       --2009/09/18 Add
+    ln_len         NUMBER;
 --
     -- *** ローカル・カーソル ***
 --
@@ -1826,6 +1832,25 @@ AS
     IF (lv_retcode = gv_status_error) THEN
       RAISE no_wf_info_expt;
     END IF;
+--
+--2008/09/18 Add ↓
+    ln_len := LENGTH(lr_outbound_rec.file_name);
+--
+    -- ファイル名称加工(ファイル名 - '.CSV'+'_'+'YYYYMMDDHH24MISS'+'.CSV')
+    lv_file_name := SUBSTR(lr_outbound_rec.file_name,1,ln_len-4)
+                    || lv_joint_word
+                    || TO_CHAR(SYSDATE,'YYYYMMDDHH24MISS')
+                    || lv_extend_word;
+--
+    -- ファイルコピー
+    UTL_FILE.FCOPY(lr_outbound_rec.directory,     -- コピー元_DIR
+                   lr_outbound_rec.file_name,     -- コピー元_FILE
+                   lr_outbound_rec.directory,     -- コピー先_DIR
+                   lv_file_name                   -- コピー先_FILE
+                  );
+--
+    lr_outbound_rec.file_name := lv_file_name;
+--2008/09/18 Add ↑
 --
     --WFタイプで一意となるWFキーを取得
     SELECT TO_CHAR(xxcmn_wf_key_s1.NEXTVAL)
