@@ -34,6 +34,7 @@ AS
  *  2009/06/15    1.5   SCS.Goto         T1_1193,T1_1194対応
  *  2009/06/29    1.6   SCS.Fukada       統合テスト障害:0000169対応
  *  2009/07/07    1.7   SCS.Sasaki       統合テスト障害:0000482対応
+ *  2009/07/21    1.8   SCS.Fukada       統合テスト障害:0000800対応
  *
  *****************************************************************************************/
 --
@@ -135,6 +136,9 @@ AS
   cv_chr_2                  CONSTANT VARCHAR2(1)   := '2';
   cv_order_categ_ord        CONSTANT VARCHAR2(5)   := 'ORDER';
   cv_order_categ_ret        CONSTANT VARCHAR2(6)   := 'RETURN';
+--20090721_Ver1.8_0000800_SCS.Fukada_MOD_START
+  cv_orgn_code              CONSTANT VARCHAR2(4)   := 'ITOE';
+--20090721_Ver1.8_0000800_SCS.Fukada_MOD_START
 --
   -- ===============================
   -- ユーザー定義グローバル変数
@@ -329,19 +333,31 @@ AS
                       );
 --
     BEGIN
+--20090721_Ver1.8_0000800_SCS.Fukada_MOD_START
+--      -- 現在会計年度の取得
+--      SELECT TO_NUMBER( icd.fiscal_year )
+--      INTO   ln_fiscal_year
+--      FROM   ic_cldr_dtl icd    -- OPM在庫カレンダ詳細
+--            ,ic_whse_sts iws    -- OPM倉庫別カレンダ
+----20090629_Ver1.6_0000169_SCS.Fukada_ADD_START
+----    業務日付で倉個別カレンダを参照
+----      WHERE  TO_CHAR( icd.period_end_date, cv_date_format1 ) = TO_CHAR( SYSDATE, cv_date_format1 )
+--      WHERE  TO_CHAR( icd.period_end_date, cv_date_format1 ) = TO_CHAR( ADD_MONTHS(gd_process_date,-1), cv_date_format1 )
+----20090629_Ver1.6_0000169_SCS.Fukada_ADD_END
+--      AND    icd.period_id = iws.period_id
+--      AND    iws.whse_code = gv_whse_code
+--      ;
+      --
       -- 現在会計年度の取得
-      SELECT TO_NUMBER( icd.fiscal_year )
+      SELECT MAX( icd.fiscal_year )
       INTO   ln_fiscal_year
       FROM   ic_cldr_dtl icd    -- OPM在庫カレンダ詳細
-            ,ic_whse_sts iws    -- OPM倉庫別カレンダ
---20090629_Ver1.6_0000169_SCS.Fukada_ADD_START
---    業務日付で倉個別カレンダを参照
---      WHERE  TO_CHAR( icd.period_end_date, cv_date_format1 ) = TO_CHAR( SYSDATE, cv_date_format1 )
-      WHERE  TO_CHAR( icd.period_end_date, cv_date_format1 ) = TO_CHAR( ADD_MONTHS(gd_process_date,-1), cv_date_format1 )
---20090629_Ver1.6_0000169_SCS.Fukada_ADD_END
-      AND    icd.period_id = iws.period_id
-      AND    iws.whse_code = gv_whse_code
+      -- 業務日付で倉個別カレンダを参照
+      WHERE  orgn_code = cv_orgn_code
+      AND    icd.period_end_date <= gd_process_date
       ;
+      --
+--20090721_Ver1.8_0000800_SCS.Fukada_MOD_END
 --
     EXCEPTION
       WHEN OTHERS THEN
