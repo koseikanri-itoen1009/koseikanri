@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCOS004A02C (body)
  * Description      : 商品別売上計算
  * MD.050           : 商品別売上計算 MD050_COS_004_A02
- * Version          : 1.9
+ * Version          : 1.10
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -37,6 +37,8 @@ AS
  *  2009/03/30    1.7   T.kitajima       [T1_0189]販売実績明細.納品明細番号の採番方法変更
  *  2009/04/20    1.8   T.kitajima       [T1_0657]データ取得0件エラー→警告終了へ
  *  2009/04/28    1.9   N.Maeda          [T1_0769]数量系、金額系の算出方法の修正
+ *  2009/05/07    1.10  T.kitajima       [T1_0888]納品拠点取得方法変更
+ *                                       [T1_0714]在庫品目数量0除外対応
  *
  *****************************************************************************************/
 --
@@ -105,6 +107,9 @@ AS
   global_quick_inv_err_expt   EXCEPTION; --棚卸ステータス
   global_select_err_expt      EXCEPTION; --SQL SELECTエラー
   global_call_api_expt        EXCEPTION; --APIエラー
+--****************************** 2009/05/07 1.10 T.Kitajima ADD START ******************************--
+  global_quick_not_inv_expt   EXCEPTION; --非在庫品目取得エラー
+--****************************** 2009/05/07 1.10 T.Kitajima ADD  END  ******************************--
 --
   -- ===============================
   -- ユーザー定義グローバル定数
@@ -157,6 +162,10 @@ AS
                                       := 'APP-XXCOS1-10969';               --在庫組織ID取得エラーメッセージ
   ct_msg_dvl_ptn_calss_err  CONSTANT fnd_new_messages.message_name%TYPE
                                       := 'APP-XXCOS1-10971';               --商品別売上計算用納品形態区分取得エラーメッセージ
+--****************************** 2009/05/07 1.10 T.Kitajima ADD START ******************************--
+  ct_msg_delivery_base_err  CONSTANT fnd_new_messages.message_name%TYPE
+                                      := 'APP-XXCOS1-10973';               --納品拠点取得エラーメッセージ
+--****************************** 2009/05/07 1.10 T.Kitajima ADD  END  ******************************--
   --クイックコードタイプ
   ct_qct_regular_type       CONSTANT  fnd_lookup_types.lookup_type%TYPE
                                       := 'XXCOS1_REGULAR_ANY_CLASS';       --定期随時
@@ -172,6 +181,10 @@ AS
                                       := 'XXCOS1_SALE_CLASS_MST_004_A02';  --売上区分特定マスタ
   ct_qct_inv_type           CONSTANT  fnd_lookup_types.lookup_type%TYPE
                                       := 'XXCOS1_INV_STATUS_MST_004_A02';  --棚卸ステータス特定マスタ
+--******************************* 2009/05/07 1.10 T.Kitajima ADD START ******************************--
+  ct_qct_not_inv_type       CONSTANT  fnd_lookup_types.lookup_type%TYPE
+                                      := 'XXCOS1_NO_INV_ITEM_CODE';        --非在庫品目コード
+--******************************* 2009/05/07 1.10 T.Kitajima ADD  END  ******************************--
   --クイックコード
   ct_qcc_sales_code         CONSTANT  fnd_lookup_values.lookup_code%TYPE
                                       := 'XXCOS_004_A02_01';               --消化計算（百貨店専門店）
@@ -264,6 +277,9 @@ AS
   cn_quantity_num           CONSTANT  NUMBER := 1;                         --数量系固定値(1)
   cn_differ_business_cost   CONSTANT  NUMBER := 0;                         --差異品目営業原価(0)
 --******************************* 2009/04/28 1.9 N.Maeda ADD  END  **************************************************************
+--******************************* 2009/05/07 1.10 T.Kitajima ADD START ******************************--
+  cn_sales_zero             CONSTANT  NUMBER := 0;                         --在庫0
+--******************************* 2009/05/07 1.10 T.Kitajima ADD  END  ******************************--
   -- ===============================
   -- ユーザー定義グローバル型
   -- ===============================
@@ -338,8 +354,8 @@ AS
   gt_tab_shop_digestion_hdr_id    g_tab_shop_digestion_hdr_id;           --店舗別用消化計算ヘッダID
   gt_tab_invent_seq               g_tab_invent_seq;                      --棚卸SEQ
   gt_tab_invent_seq_up            g_tab_invent_seq;                      --棚卸SEQ
-  gt_organization_code            mtl_parameters.organization_code%TYPE; -- 在庫組織コード
-  gt_organization_id              mtl_parameters.organization_id%TYPE;   -- 在庫組織ID
+  gt_organization_code            mtl_parameters.organization_code%TYPE; --在庫組織コード
+  gt_organization_id              mtl_parameters.organization_id%TYPE;   --在庫組織ID
 --
   /**********************************************************************************
    * Procedure Name   : init
@@ -1065,7 +1081,25 @@ AS
       AND    avta.start_date                          <=    gd_last_month_date      --AR税金マスタ.有効日自      <= 消化計算締日
       AND    NVL( avta.end_date, gd_last_month_date ) >=    gd_last_month_date      --AR税金マスタ.有効日至      >= 消化計算締日
       AND    xsdh.cust_account_id                      = xchv.ship_account_id       --ヘッダ.顧客ID               = 顧客階層VIEW.出荷先顧客ID
+--****************************** 2009/05/07 1.10 T.Kitajima ADD START ******************************--
+      AND    xsdl.sales_quantity                      != cn_sales_zero
+      AND   NOT EXISTS(
+                        SELECT flv.lookup_code               not_inv_code
+                        FROM   fnd_application               fa,
+                               fnd_lookup_types              flt,
+                               fnd_lookup_values             flv
+                        WHERE  fa.application_id                               = flt.application_id
+                        AND    flt.lookup_type                                 = flv.lookup_type
+                        AND    fa.application_short_name                       = ct_xxcos_appl_short_name
+                        AND    flv.lookup_type                                 = ct_qct_not_inv_type
+                        AND    flv.start_date_active                          <= gd_last_month_date
+                        AND    NVL( flv.end_date_active, gd_last_month_date ) >= gd_last_month_date
+                        AND    flv.enabled_flag                                = ct_enabled_flag_yes
+                        AND    flv.language                                    = USERENV( 'LANG' )
+                        AND    flv.lookup_code                                 = xsdl.item_code
+                      )
       ORDER BY xsdh.shop_digestion_hdr_id,xsdl.shop_digestion_ln_id
+--****************************** 2009/05/07 1.10 T.Kitajima ADD  END  ******************************--
     ;
     -- *** ローカル・レコード ***
 --
@@ -1194,6 +1228,9 @@ AS
 --******************************* 2009/03/30 1.7 T.kitajima ADD START ********************************************
     ln_line_index          NUMBER;        --販売実績明細テーブルの納品明細番号
 --******************************* 2009/03/30 1.7 T.kitajima ADD  END  ********************************************
+--******************************* 2009/05/07 1.10 T.Kitajima ADD START ******************************--
+    lt_delivery_base_code  xxcos_sales_exp_lines.delivery_base_code%TYPE;
+--******************************* 2009/05/07 1.10 T.Kitajima ADD  END  ******************************--
 --
     -- *** ローカル・カーソル ***
 --
@@ -1273,6 +1310,37 @@ AS
               ,buff   => ov_errmsg
             );
           END IF;
+--******************************* 2009/05/07 1.10 T.Kitajima ADD START ******************************--
+          --納品拠点コード取得
+          BEGIN
+            lt_delivery_base_code := NULL;
+            --
+            SELECT msi.attribute7
+              INTO lt_delivery_base_code
+              FROM mtl_secondary_inventories msi
+             --保管場所マスタ.出荷元保管場所コード = 出荷元保管場所コード
+             WHERE msi.secondary_inventory_name    = gt_tab_work_data(ln_i).ship_from_subinventory_code
+               --保管場所マスタ.組織ID             = 在庫組織ID
+               AND msi.organization_id             = gt_organization_id
+            ;
+          EXCEPTION
+            WHEN OTHERS THEN
+              --取得エラー
+              lv_err_work   := cv_status_warn;
+              ov_errmsg     := xxccp_common_pkg.get_msg(
+                                 iv_application        => ct_xxcos_appl_short_name,
+                                 iv_name               => ct_msg_delivery_base_err,
+                                 iv_token_name1        => cv_tkn_parm_data1,
+                                 iv_token_value1       => gt_tab_work_data(ln_i).customer_number,
+                                 iv_token_name2        => cv_tkn_parm_data2,
+                                 iv_token_value2       => gt_tab_work_data(ln_i).ship_from_subinventory_code
+                               );
+              FND_FILE.PUT_LINE(
+                which  => FND_FILE.OUTPUT,
+                buff   => ov_errmsg
+              );
+          END;
+--******************************* 2009/05/07 1.10 T.Kitajima ADD  END  ******************************--
       END IF;
       --
       --正常時のみ.単位換算にてエラーになった場合は、設定処理スルー
@@ -1326,7 +1394,10 @@ AS
         gt_tab_sales_exp_lines(ln_m).tax_amount                   := 0;                                                  --消費税金額
         gt_tab_sales_exp_lines(ln_m).cash_and_card                := 0;                                                  --現金/カード併用額
         gt_tab_sales_exp_lines(ln_m).ship_from_subinventory_code  := gt_tab_work_data(ln_i).ship_from_subinventory_code; --出荷元保管場所
-        gt_tab_sales_exp_lines(ln_m).delivery_base_code           := gt_tab_work_data(ln_i).delivery_base_code;          --納品拠点コード
+--******************************* 2009/05/07 1.10 T.Kitajima MOD START ******************************--
+--        gt_tab_sales_exp_lines(ln_m).delivery_base_code           := gt_tab_work_data(ln_i).delivery_base_code;          --納品拠点コード
+        gt_tab_sales_exp_lines(ln_m).delivery_base_code           := lt_delivery_base_code;                              --納品拠点コード
+--******************************* 2009/05/07 1.10 T.Kitajima MOD  END  ******************************--
         gt_tab_sales_exp_lines(ln_m).hot_cold_class               := NULL;                                               --Ｈ＆Ｃ
         gt_tab_sales_exp_lines(ln_m).column_no                    := NULL;                                               --コラムNo
         gt_tab_sales_exp_lines(ln_m).sold_out_class               := NULL;                                               --売切区分
@@ -1521,7 +1592,10 @@ AS
           gt_tab_sales_exp_lines.DELETE(ln_index,ln_m);
           gt_tab_invent_seq.DELETE(ln_index,ln_m);
           --スキップ件数
-          gn_warn_cnt := gn_warn_cnt + ( ln_m - ln_index );
+--****************************** 2009/05/07 1.10 T.Kitajima MOD START ******************************--
+--          gn_warn_cnt := gn_warn_cnt + ( ln_m - ln_index );
+          gn_warn_cnt := gn_warn_cnt + 1;
+--****************************** 2009/05/07 1.10 T.Kitajima MOD  END ******************************--
           --対象件数
           gn_target_cnt := gn_target_cnt +1;
           --次のINDEX値を保管
@@ -1713,7 +1787,11 @@ AS
       FORALL ln_i in 1..gt_tab_sales_exp_headers.COUNT SAVE EXCEPTIONS
         INSERT INTO xxcos_sales_exp_headers VALUES gt_tab_sales_exp_headers(ln_i);
       --対象件数を正常件数に
-      gn_normal_cnt := SQL%ROWCOUNT;
+--****************************** 2009/05/07 1.10 T.Kitajima MOD START ******************************--
+--      gn_normal_cnt := SQL%ROWCOUNT;
+      gn_normal_cnt := gt_tab_sales_exp_headers.COUNT;
+--****************************** 2009/05/07 1.10 T.Kitajima MOD  END  ******************************--
+
     EXCEPTION
 --
       -- エラー処理（データ追加エラー）

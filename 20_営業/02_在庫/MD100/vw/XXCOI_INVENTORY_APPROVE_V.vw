@@ -3,7 +3,7 @@
  *
  * View Name   : XXCOI_INVENTORY_APPROVE_V
  * Description : ’I‰µ³”F‰æ–Êƒrƒ…[
- * Version     : 1.1
+ * Version     : 1.2
  *
  * Change Record
  * ------------- ----- ---------------- ---------------------------------
@@ -11,6 +11,7 @@
  * ------------- ----- ---------------- ---------------------------------
  *  2008/11/28    1.0   H.Sasaki         V‹Kì¬
  *  2009/05/13    1.1   T.Nakamura       [T1_0877]CREATE•¶‚ÌƒZƒ~ƒRƒƒ“‚ğíœ
+ *  2009/05/22    1.2   T.Nakamura       [T1_1150]‹’“_ƒR[ƒh‚É‚æ‚éiğŒ‚ğíœ
  *
  ************************************************************************/
 CREATE OR REPLACE FORCE VIEW XXCOI_INVENTORY_APPROVE_V(
@@ -64,13 +65,17 @@ FROM     mtl_secondary_inventories        msi                       -- •ÛŠÇêŠƒ
            FROM    xxcoi_inv_control                  xic                 -- ’I‰µŠÇ—ƒe[ƒuƒ‹
                   ,mtl_secondary_inventories          msi_in              -- •ÛŠÇêŠƒ}ƒXƒ^
            WHERE   msi_in.organization_id             =   xxcoi_common_pkg.get_organization_id('S01')
-           AND     msi_in.attribute7                  =   xic.base_code(+)
+-- == 2009/05/22 V1.2 Deleted START =============================================================
+--           AND     msi_in.attribute7                  =   xic.base_code(+)
+-- == 2009/05/22 V1.2 Deleted END   =============================================================
            AND     msi_in.secondary_inventory_name    =   xic.subinventory_code(+)
          )                                ici                       -- ’I‰µŠÇ—î•ñ
 WHERE   msi.organization_id             = ici.organization_id
 AND     msi.attribute7                  = hca.account_number
 AND     hca.customer_class_code         = '1'
-AND     msi.attribute7                  = ici.base_code
+-- == 2009/05/22 V1.2 Deleted START =============================================================
+--AND     msi.attribute7                  = ici.base_code
+-- == 2009/05/22 V1.2 Deleted END   =============================================================
 AND     msi.secondary_inventory_name    = ici.subinventory_code
 AND     (   ici.inventory_kbn  = '2'
          OR ici.inventory_kbn IS NULL
