@@ -50,6 +50,7 @@ AS
  *  2008/09/03    1.5  Oracle 野村 正幸  内部変更要求201_203
  *  2008/09/22    1.6  Oracle 山根 一浩  T_S_552,T_TE080_BPO_750 指摘4対応
  *  2008/10/16    1.7  Oracle 野村 正幸  内部変更#225
+ *  2008/10/17    1.8  Oracle 野村 正幸  T_S_465対応
  *
  *****************************************************************************************/
 --
@@ -141,6 +142,9 @@ AS
   gv_tkn_req_no              CONSTANT VARCHAR2(10) := 'REQ_NO';
 --
   -- トークン値
+-- ##### 20081017 Ver.1.8 T_S_465対応 start #####
+  gv_iv_prod_div_name        CONSTANT VARCHAR2(30) := '商品区分';
+-- ##### 20081017 Ver.1.8 T_S_465対応 end   #####
   gv_exchange_type_name      CONSTANT VARCHAR2(30) := '洗替区分';
   gv_party_view_name         CONSTANT VARCHAR2(30) := 'パーティ情報VIEW2';
   gv_deli_ctrl_name          CONSTANT VARCHAR2(30) := '運賃計算用コントロール';
@@ -155,7 +159,11 @@ AS
   gv_ktg_no                  CONSTANT VARCHAR2(1) := 'N';
 --
   -- コンカレントNo(運賃計算用コントロール)
+-- ##### 20081017 Ver.1.8 T_S_465対応 start #####
+/***** 使用しなくなったため、コメントアウト
   gv_con_no_deli             CONSTANT VARCHAR2(1) := '3';   -- 3:振替運賃情報更新
+*****/
+-- ##### 20081017 Ver.1.8 T_S_465対応 end   #####
   -- 商品区分
   gv_prod_class_lef          CONSTANT VARCHAR2(1) := '1';   -- 1:リーフ
   gv_prod_class_drk          CONSTANT VARCHAR2(1) := '2';   -- 2:ドリンク
@@ -168,6 +176,12 @@ AS
   -- 入出庫換算関数 変換方法
   gv_rcv_to_inout            CONSTANT VARCHAR2(1)  := '1';  -- 入出庫換算単位から第1単位へ変換
   gv_rcv_to_first            CONSTANT VARCHAR2(1)  := '2';  -- 第1単位から入出庫換算単位へ変換
+--
+-- ##### 20081017 Ver.1.8 T_S_465対応 start #####
+  -- コンカレントNO
+  gv_con_lef                 CONSTANT VARCHAR2(1) := '3';   -- 1:リーフ
+  gv_con_drk                 CONSTANT VARCHAR2(1) := '4';   -- 2:ドリンク
+-- ##### 20081017 Ver.1.8 T_S_465対応 end   #####
 --
   -- ===============================
   -- ユーザー定義グローバル型
@@ -534,6 +548,11 @@ AS
   gn_order_sum_cnt       NUMBER DEFAULT 0; -- 振替運賃情報サマリーアドオン 登録/更新成功件数
   gn_trans_inf_cnt       NUMBER DEFAULT 0; -- 振替情報アドオン             登録/更新成功件数
 --
+-- ##### 20081017 Ver.1.8 T_S_465対応 start #####
+  gv_prod_div           xxwip_transfer_fare_inf.goods_classe%TYPE; -- 商品区分
+  gv_concurrent_no      xxwip_deliverys_ctrl.concurrent_no%TYPE;   -- コンカレントNO
+-- ##### 20081017 Ver.1.8 T_S_465対応 end   #####
+--
 -- ##### 20081016 Ver.1.7 内部変更#225 start #####
 --
   /**********************************************************************************
@@ -625,6 +644,9 @@ AS
    ***********************************************************************************/
   PROCEDURE chk_param_proc(
     iv_exchange_type   IN         VARCHAR2,     -- 洗い替え区分
+-- ##### 20081017 Ver.1.8 T_S_465対応 start #####
+    iv_prod_div        IN         VARCHAR2,     -- 商品区分
+-- ##### 20081017 Ver.1.8 T_S_465対応 end   #####
     ov_errbuf          OUT NOCOPY VARCHAR2,     -- エラー・メッセージ           --# 固定 #
     ov_retcode         OUT NOCOPY VARCHAR2,     -- リターン・コード             --# 固定 #
     ov_errmsg          OUT NOCOPY VARCHAR2)     -- ユーザー・エラー・メッセージ --# 固定 #
@@ -686,6 +708,36 @@ AS
       lv_errbuf := lv_errmsg;
       RAISE global_api_expt;
     END IF;
+--
+-- ##### 20081017 Ver.1.8 T_S_465対応 start #####
+--
+  -- 商品区分 コード存在確認
+    SELECT COUNT(1) CNT             -- カウント
+    INTO   ln_count
+    FROM   xxcmn_categories_v xcv   -- カテゴリ情報VIEW
+    WHERE  xcv.category_set_name = '商品区分'
+    AND    xcv.segment1 = iv_prod_div
+    AND    ROWNUM = 1;
+--
+    -- 商品区分が存在しない場合
+    IF (ln_count < 1) THEN
+      lv_errmsg := xxcmn_common_pkg.get_msg(gv_cmn_msg_kbn,
+                                            gv_cmn_msg_75c_010,
+                                            gv_tkn_parameter,
+                                            gv_iv_prod_div_name,
+                                            gv_tkn_value,
+                                            iv_prod_div);
+      lv_errbuf := lv_errmsg;
+      RAISE global_api_expt;
+    END IF;
+--
+    -- ==================================================
+    -- パラメータチェックOKであれば、商品区分を設定
+    -- ==================================================
+    gv_prod_div := iv_prod_div;
+--
+-- ##### 20081017 Ver.1.8 T_S_465対応 end   #####
+--
 --
   EXCEPTION
 --
@@ -765,6 +817,19 @@ AS
     gn_prog_appl_id     := FND_GLOBAL.PROG_APPL_ID;    -- ｺﾝｶﾚﾝﾄ・ﾌﾟﾛｸﾞﾗﾑ・ｱﾌﾟﾘｹｰｼｮﾝID
     gn_conc_program_id  := FND_GLOBAL.CONC_PROGRAM_ID; -- コンカレント・プログラムID
 --
+-- ##### 20081017 Ver.1.8 T_S_465対応 start #####
+--
+    -- 運賃計算用コントロールのコンカレントNO設定
+    -- リーフの場合
+    IF (gv_prod_div = gv_prod_class_lef) THEN
+      gv_concurrent_no := gv_con_lef ;
+--
+    -- ドリンクの場合
+    ELSE
+      gv_concurrent_no := gv_con_drk ;
+    END IF;
+-- ##### 20081017 Ver.1.8 T_S_465対応 end   #####
+--
     -- 入力パラメータ.洗い替え区分 = NO の場合
     IF (iv_exchange_type = gv_ktg_no) THEN
 --
@@ -773,14 +838,27 @@ AS
         SELECT xdc.last_process_date    -- 前回処理日付
         INTO   gd_last_process_date
         FROM   xxwip_deliverys_ctrl xdc -- 運賃計算用コントロールアドオン
-        WHERE  xdc.concurrent_no = gv_con_no_deli
+-- ##### 20081017 Ver.1.8 T_S_465対応 start #####
+--        WHERE  xdc.concurrent_no = gv_con_no_deli
+        WHERE  xdc.concurrent_no = gv_concurrent_no
+-- ##### 20081017 Ver.1.8 T_S_465対応 end   #####
         FOR UPDATE NOWAIT;
 --
       EXCEPTION
         WHEN NO_DATA_FOUND THEN   --*** データ取得エラー ***
+-- ##### 20081017 Ver.1.8 T_S_465対応 start #####
+/*****
           lv_errmsg := xxcmn_common_pkg.get_msg(gv_cmn_msg_kbn, gv_cmn_msg_75c_001,
                                                 gv_tkn_table,   gv_deli_ctrl_name,
                                                 gv_tkn_key,     gv_con_no_deli);
+*****/
+          lv_errmsg := xxcmn_common_pkg.get_msg(gv_cmn_msg_kbn,
+                                                gv_cmn_msg_75c_001,
+                                                gv_tkn_table,
+                                                gv_deli_ctrl_name,
+                                                gv_tkn_key,
+                                                gv_concurrent_no);
+-- ##### 20081017 Ver.1.8 T_S_465対応 end   #####
           lv_errbuf := lv_errmsg;
           RAISE global_api_expt;
 --
@@ -932,6 +1010,9 @@ AS
     WHERE  xoha.order_header_id       = xola.order_header_id
     AND    xoha.order_type_id         = xotv.transaction_type_id
     AND    xoha.latest_external_flag  = gv_ktg_yes
+-- ##### 20081017 Ver.1.8 T_S_465対応 start #####
+    AND    xoha.prod_class            = gv_prod_div -- 商品区分
+-- ##### 20081017 Ver.1.8 T_S_465対応 end   #####
 -- ##### 20080903 Ver.1.5 内部変更要求201_203 start #####
     AND    xoha.result_deliver_to           IS NOT NULL   -- 出荷先_実績
     AND    xoha.result_shipping_method_code IS NOT NULL   -- 配送先_実績
@@ -1800,6 +1881,9 @@ AS
            OR ((gv_closed_day = gv_ktg_yes)   -- 前月運賃締日前の場合
              AND (xtfi.target_date  = TO_CHAR(gd_sysdate, 'YYYYMM'))
              OR  (xtfi.target_date  = TO_CHAR(ADD_MONTHS(gd_sysdate, -1), 'YYYYMM'))))
+-- ##### 20081017 Ver.1.8 T_S_465対応 start #####
+    AND    xtfi.goods_classe  = gv_prod_div   -- 商品区分
+-- ##### 20081017 Ver.1.8 T_S_465対応 end   #####
     GROUP BY xtfi.target_date,
              xtfi.request_no,
              xtfi.goods_classe,
@@ -2264,6 +2348,9 @@ AS
            OR ((gv_closed_day = gv_ktg_yes)  -- 前月運賃締日前の場合
              AND (xtfs.target_date = TO_CHAR(gd_sysdate, 'YYYYMM'))
              OR  (xtfs.target_date = TO_CHAR(ADD_MONTHS(gd_sysdate, -1), 'YYYYMM'))))
+-- ##### 20081017 Ver.1.8 T_S_465対応 start #####
+    AND   xtfs.goods_classe = gv_prod_div   -- 商品区分
+-- ##### 20081017 Ver.1.8 T_S_465対応 end   #####
     GROUP BY xtfs.target_date,
              xtfs.goods_classe,
              xtfs.jurisdicyional_hub;
@@ -2792,7 +2879,10 @@ AS
             ,xdc.program_application_id = gn_prog_appl_id    -- ｺﾝｶﾚﾝﾄ・ﾌﾟﾛｸﾞﾗﾑ・ｱﾌﾟﾘｹｰｼｮﾝID
             ,xdc.program_id             = gn_conc_program_id -- コンカレント・プログラムID
             ,xdc.program_update_date    = gd_sysdate         -- プログラム更新日
-      WHERE  xdc.concurrent_no          = gv_con_no_deli;
+-- ##### 20081017 Ver.1.8 T_S_465対応 start #####
+--      WHERE  xdc.concurrent_no          = gv_con_no_deli;
+      WHERE  xdc.concurrent_no          = gv_concurrent_no;   -- コンカレントNO
+-- ##### 20081017 Ver.1.8 T_S_465対応 end   #####
 --
     END IF;
 --
@@ -2824,6 +2914,9 @@ AS
    **********************************************************************************/
   PROCEDURE submain(
     iv_exchange_type  IN         VARCHAR2,     -- 洗い替え区分
+-- ##### 20081017 Ver.1.8 T_S_465対応 start #####
+    iv_prod_div       IN         VARCHAR2,     -- 商品区分
+-- ##### 20081017 Ver.1.8 T_S_465対応 end   #####
     ov_errbuf         OUT NOCOPY VARCHAR2,     -- エラー・メッセージ           --# 固定 #
     ov_retcode        OUT NOCOPY VARCHAR2,     -- リターン・コード             --# 固定 #
     ov_errmsg         OUT NOCOPY VARCHAR2)     -- ユーザー・エラー・メッセージ --# 固定 #
@@ -2878,6 +2971,9 @@ AS
     -- =========================================
     chk_param_proc(
       iv_exchange_type,  -- 洗い替え区分
+-- ##### 20081017 Ver.1.8 T_S_465対応 start #####
+      iv_prod_div,       -- 商品区分
+-- ##### 20081017 Ver.1.8 T_S_465対応 end   #####
       lv_errbuf,         -- エラー・メッセージ           --# 固定 #
       lv_retcode,        -- リターン・コード             --# 固定 #
       lv_errmsg);        -- ユーザー・エラー・メッセージ --# 固定 #
@@ -3087,7 +3183,10 @@ AS
   PROCEDURE main(
     errbuf            OUT NOCOPY VARCHAR2,      --   エラー・メッセージ  --# 固定 #
     retcode           OUT NOCOPY VARCHAR2,      --   リターン・コード    --# 固定 #
-    iv_exchange_type  IN         VARCHAR2       --   荒い替え区分
+    iv_exchange_type  IN         VARCHAR2,      --   洗替区分
+-- ##### 20081017 Ver.1.8 T_S_465対応 start #####
+    iv_prod_div       IN         VARCHAR2       --   商品区分
+-- ##### 20081017 Ver.1.8 T_S_465対応 end   #####
   )
 --
 --###########################  固定部 START   ###########################
@@ -3150,6 +3249,9 @@ AS
     -- ===============================================
     submain(
       iv_exchange_type,  -- 洗い替え区分
+-- ##### 20081017 Ver.1.8 T_S_465対応 start #####
+      iv_prod_div,       -- 商品区分
+-- ##### 20081017 Ver.1.8 T_S_465対応 end   #####
       lv_errbuf,         -- エラー・メッセージ           --# 固定 #
       lv_retcode,        -- リターン・コード             --# 固定 #
       lv_errmsg);        -- ユーザー・エラー・メッセージ --# 固定 #
@@ -3171,7 +3273,10 @@ AS
     -- 入力パラメータ
     -------------------------------------------------------
     FND_FILE.PUT_LINE( FND_FILE.OUTPUT, '入力パラメータ' );
-    FND_FILE.PUT_LINE( FND_FILE.OUTPUT, '洗い替え区分：' || iv_exchange_type ) ;
+    FND_FILE.PUT_LINE( FND_FILE.OUTPUT, '洗替区分：' || iv_exchange_type ) ;
+-- ##### 20081017 Ver.1.8 T_S_465対応 start #####
+    FND_FILE.PUT_LINE( FND_FILE.OUTPUT, '商品区分：' || iv_prod_div ) ;
+-- ##### 20081017 Ver.1.8 T_S_465対応 end   #####
 --2008/09/22 Add ↑
 --
     -- ==================================
