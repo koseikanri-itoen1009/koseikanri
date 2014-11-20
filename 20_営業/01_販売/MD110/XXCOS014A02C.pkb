@@ -41,6 +41,8 @@ AS
  *  2009/06/11    1.10  K.Kiriu          [T1_1352] 納品書(受注情報)出力障害対応
  *  2009/06/18    1.10  N.Maeda          [T1_1158] 対象データ抽出条件変更
  *  2009/07/03    1.10  M.Sano           [T1_1158] 対象データ抽出条件変更(レビュー指摘修正)
+ *  2009/08/12    1.11  N.Maeda          [0000441] PT対応
+ *  2009/08/13    1.11  N.Maeda          [0000441] レビュー指摘対応
  *
  *****************************************************************************************/
 --
@@ -125,6 +127,9 @@ AS
 -- 2009/02/16 T.Nakamura Ver.1.3 add start
   ct_prf_org_id                   CONSTANT fnd_profile_options.profile_option_name%TYPE := 'ORG_ID';                              --ORG_ID
 -- 2009/02/16 T.Nakamura Ver.1.3 add end
+-- ************ 2009/08/12 N.Maeda 1.11 ADD START ***************** --
+  ct_item_div_h                   CONSTANT fnd_profile_options.profile_option_name%TYPE := 'XXCOS1_ITEM_DIV_H';
+-- ************ 2009/08/12 N.Maeda 1.11 ADD  END  ***************** --
   --
   --メッセージ
   ct_msg_if_header                CONSTANT fnd_new_messages.message_name%TYPE := 'APP-XXCOS1-00094';                    --XXCCP:ヘッダレコード識別子
@@ -169,6 +174,10 @@ AS
 -- 2009/02/16 T.Nakamura Ver.1.3 add start
   ct_msg_mo_org_id                CONSTANT fnd_new_messages.message_name%TYPE := 'APP-XXCOS1-00047';                    --メッセージ用文字列.MO:営業単位
 -- 2009/02/16 T.Nakamura Ver.1.3 add end
+-- ************ 2009/08/12 N.Maeda 1.11 ADD START ***************** --
+  cv_msg_category_err             CONSTANT  VARCHAR2(100) := 'APP-XXCOS1-12954';     --カテゴリセットID取得エラーメッセージ
+  cv_msg_item_div_h               CONSTANT  VARCHAR2(100) := 'APP-XXCOS1-12955';     --本社商品区分
+-- ************ 2009/08/12 N.Maeda 1.11 ADD  END  ***************** --
 --
   --トークン
   cv_tkn_data                     CONSTANT VARCHAR2(4) := 'DATA';                                 --データ
@@ -215,6 +224,9 @@ AS
   cv_cust_class_chain_store       CONSTANT VARCHAR2(2)  := '10';                                  --顧客区分.店舗
   cv_cust_class_uesama            CONSTANT VARCHAR2(2)  := '12';                                  --顧客区分.上様
   cv_space                        CONSTANT VARCHAR2(2)  := '　';                                  --全角スペース
+-- ************ 2009/08/12 N.Maeda 1.11 ADD START ***************** --
+  ct_user_lang                    CONSTANT mtl_category_sets_tl.language%TYPE := userenv('LANG'); --LANG
+-- ************ 2009/08/12 N.Maeda 1.11 ADD  END  ***************** --
 --
   -- ===============================
   -- ユーザー定義グローバル型
@@ -295,6 +307,9 @@ AS
    ,organization_id          NUMBER                                              --在庫組織ID
    ,csv_header               VARCHAR2(32767)                                     --CSVヘッダ
    ,process_date             DATE                                                --業務日付
+-- ************ 2009/08/12 N.Maeda 1.11 ADD START ***************** --
+   ,category_set_id          mtl_category_sets_tl.category_set_id%TYPE          --カテゴリセットID
+-- ************ 2009/08/12 N.Maeda 1.11 ADD  END  ***************** --
   );
   -- ===============================
   -- ユーザー定義グローバル変数
@@ -535,6 +550,9 @@ AS
     lv_errbuf_all                            VARCHAR2(32767);                                       --ログ出力メッセージ格納変数
 -- 2009/02/19 T.Nakamura Ver.1.5 add end
 --
+-- ************ 2009/08/13 N.Maeda 1.11 ADD START ***************** --
+    lt_item_div_h                           fnd_profile_option_values.profile_option_value%TYPE;
+-- ************ 2009/08/13 N.Maeda 1.11 ADD  END  ***************** --
     -- *** ローカル・カーソル ***
 --
     -- *** ローカル・レコード ***
@@ -947,6 +965,54 @@ AS
                                     ,lt_tkn
                                    );
 --
+-- ************ 2009/08/13 N.Maeda 1.11 ADD START ***************** --
+    -- =============================================================
+    -- プロファイル「XXCOS:本社商品区分」取得
+    -- =============================================================
+    lt_item_div_h := FND_PROFILE.VALUE(ct_item_div_h);
+--
+    IF ( lt_item_div_h IS NULL ) THEN
+        lb_error := TRUE;
+        lt_tkn := xxccp_common_pkg.get_msg(cv_apl_name, cv_msg_item_div_h);
+        lv_errmsg := xxccp_common_pkg.get_msg(
+                       cv_apl_name
+                      ,ct_msg_prf
+                      ,cv_tkn_prf
+                      ,lt_tkn
+                     );
+        lv_errbuf_all := lv_errmsg;
+        RAISE global_api_expt;
+-- ************ 2009/08/13 N.Maeda 1.11 ADD  END  ***************** --
+--
+-- ************ 2009/08/12 N.Maeda 1.11 ADD START ***************** --
+    ELSE
+    -- =============================================================
+    -- カテゴリセットID取得
+    -- =============================================================
+      BEGIN
+-- ************ 2009/08/13 N.Maeda 1.11 MOD START ***************** --
+        SELECT  mcst.category_set_id
+        INTO    l_other_rec.category_set_id
+        FROM    mtl_category_sets_tl   mcst
+        WHERE   mcst.category_set_name = lt_item_div_h
+        AND     mcst.language          = ct_user_lang;
+--      SELECT  mcst.category_set_id
+--      INTO    l_other_rec.category_set_id
+--      FROM    mtl_category_sets_tl   mcst
+--      WHERE   mcst.category_set_name = FND_PROFILE.VALUE(ct_item_div_h)
+--      AND     mcst.language          = ct_user_lang;
+-- ************ 2009/08/13 N.Maeda 1.11 MOD  END  ***************** --
+      EXCEPTION
+        WHEN NO_DATA_FOUND THEN
+          lv_errmsg  :=  xxccp_common_pkg.get_msg(
+                           iv_application  =>  cv_apl_name,
+                           iv_name         =>  cv_msg_category_err
+                           );
+          lv_errbuf_all := lv_errmsg;
+          RAISE global_api_expt;
+      END;
+    END IF;
+-- ************ 2009/08/12 N.Maeda 1.11 ADD  END  ***************** --
     --==============================================================
     --グローバル変数のセット
     --==============================================================
@@ -2499,7 +2565,31 @@ AS
             ,xeh_l.xel_case_product_code                                       case_product_code             --ケース商品コード
             ,xeh_l.xel_ball_product_code                                       ball_product_code             --ボール商品コード
             ,xeh_l.xel_product_code_item_type                                  product_code_item_type        --商品コード品種
-            ,xhpc.item_div_h_code                                              prod_class                    --商品区分
+-- ************ 2009/08/12 N.Maeda 1.11 MOD START ***************** --
+--            ,xhpc.item_div_h_code                                              prod_class                    --商品区分
+              ,( 
+                SELECT
+                  mcb.segment1
+                FROM
+                  mtl_system_items_b msib,
+                  mtl_item_categories mic,
+                  mtl_categories_b mcb
+                WHERE
+                    msib.organization_id = i_other_rec.organization_id
+                AND msib.segment1 = iimb.item_no
+                AND msib.organization_id = mic.organization_id
+                AND msib.inventory_item_id = mic.inventory_item_id
+                AND mic.category_set_id = i_other_rec.category_set_id
+                AND mic.category_id = mcb.category_id
+                AND ( mcb.disable_date IS NULL OR mcb.disable_date > i_other_rec.process_date )
+                AND   mcb.enabled_flag   = 'Y'      -- カテゴリ有効フラグ
+                AND   i_other_rec.process_date BETWEEN NVL(mcb.start_date_active, i_other_rec.process_date)
+                                                 AND   NVL(mcb.end_date_active, i_other_rec.process_date)
+                AND   msib.enabled_flag  = 'Y'      -- 品目マスタ有効フラグ
+                AND   i_other_rec.process_date BETWEEN NVL(msib.start_date_active, i_other_rec.process_date)
+                                                 AND  NVL(msib.end_date_active, i_other_rec.process_date)
+             ) PROD_CLASS
+-- ************ 2009/08/12 N.Maeda 1.11 MOD  END  ***************** --
             ,NVL(ximb.item_name,i_msg_rec.item_notfound)                       product_name                  --商品名（漢字）
             ,xeh_l.xel_product_name1_alt                                       product_name1_alt             --商品名１（カナ）
             ,xeh_l.xel_product_name2_alt                                       product_name2_alt             --商品名２（カナ）
@@ -3087,10 +3177,20 @@ AS
                AND     NVL( avtab.end_date   ,i_other_rec.process_date )
              --
              AND xca.delivery_base_code = cdm.account_number
+-- ************ 2009/08/12 N.Maeda 1.11 ADD START ***************** --
+             AND xeh.data_type_code = i_input_rec.data_type_code
+-- ************ 2009/08/12 N.Maeda 1.11 ADD  END  ***************** --
 --
              UNION ALL
 --
-             SELECT '2'                                 select_block
+             SELECT 
+-- ************ 2009/08/12 N.Maeda 1.11 ADD START ***************** --
+                    /*+
+                      INDEX ( XEL XXCOS_EDI_LINES_N01 )
+                      USE_NL ( OTTT_H )
+                    */
+-- ************ 2009/08/12 N.Maeda 1.11 ADD  END  ***************** --
+                    '2'                                 select_block
                     -------------------- ヘッダデータ -------------------------------------------------------------------------------
                     ,xeh.edi_header_info_id              xeh_edi_header_info_id     -- EDIヘッダ情報ID
                     ,xeh.medium_class                   xeh_medium_class           -- 媒体区分
@@ -3483,12 +3583,22 @@ AS
              WHERE  xel.edi_header_info_id = xeh.edi_header_info_id
              AND    xeh.edi_chain_code = i_input_rec.ssm_store_code                     -- EDIチェーン店コード
              AND    xeh.conv_customer_code IS NULL
+-- ************ 2009/08/12 N.Maeda 1.11 ADD START ***************** --
+             AND xeh.data_type_code = i_input_rec.data_type_code
+-- ************ 2009/08/12 N.Maeda 1.11 ADD  END  ***************** --
               --店舗コードがNULLの物(顧客マスタにマスタデータが存在しないもの)
               --AND INパラメータの店舗コード IS NULL
               ) xeh_l
                     ,(
                       --受注が存在するデータ
-                      SELECT  xeh.edi_header_info_id   edi_header_info_id  --EDIヘッダID
+                      SELECT 
+-- ************ 2009/08/12 N.Maeda 1.11 ADD START ***************** --
+                             /*+
+                               INDEX ( XEL XXCOS_EDI_LINES_N01 )
+                               USE_NL ( OOS OTTT_H )
+                             */
+-- ************ 2009/08/12 N.Maeda 1.11 ADD  END  ***************** --
+                             xeh.edi_header_info_id   edi_header_info_id  --EDIヘッダID
                              ,xel.edi_line_info_id     edi_line_info_id    --EDI明細ID
                              ,ooha.order_number        order_number        --受注番号
                              ,ooha.request_date        request_date        --納品日
@@ -3527,6 +3637,10 @@ AS
                       AND     i_other_rec.process_date
                                 BETWEEN NVL(xlvv.start_date_active,i_other_rec.process_date)
                                 AND     NVL(xlvv.end_date_active,i_other_rec.process_date)
+-- ************ 2009/08/12 N.Maeda 1.11 ADD START ***************** --
+                      AND     xeh.data_type_code = i_input_rec.data_type_code
+                      AND     xeh.edi_chain_code = i_input_rec.ssm_store_code
+-- ************ 2009/08/12 N.Maeda 1.11 ADD  END  ***************** --
                       UNION ALL
                       --受注が存在しないデータ
                       SELECT  xeh.edi_header_info_id   edi_header_info_id  --EDIヘッダID
@@ -3539,18 +3653,30 @@ AS
                              ,xxcos_edi_lines          xel         --EDI明細
                       WHERE   xeh.order_forward_flag        = 'N'                        --受注未連携
                       AND     xeh.edi_header_info_id        = xel.edi_header_info_id
+-- ************ 2009/08/12 N.Maeda 1.11 ADD START ***************** --
+                      AND     xeh.data_type_code = i_input_rec.data_type_code
+                      AND     xeh.edi_chain_code = i_input_rec.ssm_store_code
+-- ************ 2009/08/12 N.Maeda 1.11 ADD  END  ***************** --
                      )                                      ixe                           --対象データ判定
             ,ic_item_mst_b                                                      iimb                          --OPM品目マスタ
             ,xxcmn_item_mst_b                                                   ximb                          --OPM品目マスタアドオン
             ,mtl_system_items_b                                                 msib                          --DISC品目マスタ
             ,xxcmm_system_items_b                                               xsib                          --DISC品目マスタアドオン
-            ,xxcos_head_prod_class_v                                            xhpc                          --本社商品区分ビュー
+-- ************ 2009/08/12 N.Maeda 1.11 DEL START ***************** --
+--            ,xxcos_head_prod_class_v                                            xhpc                          --本社商品区分ビュー
+-- ************ 2009/08/12 N.Maeda 1.11 DEL  END  ***************** --
 --
-      WHERE  xeh_l.xeh_data_type_code = i_input_rec.data_type_code                                            --データ種コード
-      AND (
+-- ************ 2009/08/12 N.Maeda 1.11 MOD START ***************** --
+--      WHERE  xeh_l.xeh_data_type_code = i_input_rec.data_type_code                                            --データ種コード
+--      AND (
+--                 i_input_rec.info_div IS NULL                                                                     --情報区分
+--            OR   i_input_rec.info_div IS NOT NULL AND xeh_l.xeh_info_class = i_input_rec.info_div
+--          )
+      WHERE (
                  i_input_rec.info_div IS NULL                                                                     --情報区分
             OR   i_input_rec.info_div IS NOT NULL AND xeh_l.xeh_info_class = i_input_rec.info_div
-          )
+            )
+-- ************ 2009/08/12 N.Maeda 1.11 MOD  END  ***************** --
       AND    NVL(TRUNC(xeh_l.xeh_shop_delivery_date)
                 ,NVL(TRUNC(xeh_l.xeh_center_delivery_date)
                     ,NVL(TRUNC(xeh_l.xeh_order_date)
@@ -3593,8 +3719,10 @@ AS
       AND    msib.organization_id(+) = i_other_rec.organization_id                                     --在庫組織ID
       --DISC品目アドオン抽出条件
       AND    xsib.item_code(+) = msib.segment1                                                         --INV品目ID
-      --本社商品区分ビュー抽出条件
-      AND    xhpc.segment1(+) = iimb.item_no                                                           --品目コード
+-- ************ 2009/08/12 N.Maeda 1.11 DEL START ***************** --
+--      --本社商品区分ビュー抽出条件
+--      AND    xhpc.segment1(+) = iimb.item_no                                                           --品目コード
+-- ************ 2009/08/12 N.Maeda 1.11 DEL  END  ***************** --
       -- 抽出対象条件      
       AND    xeh_l.xeh_edi_header_info_id  = ixe.edi_header_info_id
       AND    xeh_l.xel_edi_line_info_id    = ixe.edi_line_info_id
