@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCMM003A19C(body)
  * Description      : HHT連携IFデータ作成
  * MD.050           : MD050_CMM_003_A19_HHT系連携IFデータ作成
- * Version          : 1.9
+ * Version          : 1.10
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -31,7 +31,8 @@ AS
  *  2009/11/23    1.6   Yutaka.Kuboshima 障害E_本番_00329の対応
  *  2009/12/06    1.7   Yutaka.Kuboshima 障害E_本稼動_00327の対応
  *  2009/12/09    1.8   Yutaka.Kuboshima 障害E_本稼動_00371の対応
- *  2011/03/07    1.9   Naoki.Horigome   障害E_本稼動_05329の対応 
+ *  2011/03/07    1.9   Naoki.Horigome   障害E_本稼動_05329の対応
+ *  2011/05/16    1.10  Shigeto.Niki     障害E_本稼動_07429の対応 
  *
  *****************************************************************************************/
 --
@@ -853,6 +854,9 @@ AS
              xca.final_call_date                                         final_call_date,             --最終訪問日
              DECODE( xca.business_low_type, cv_in_21, cv_on_sts, cv_vd_27, cv_tw_sts, cv_null_sts, cv_date_null, cv_zr_sts )  entrust_dest_flg, --預け先判定フラグ
              DECODE( flvgs.attribute1, cv_vd_11, cv_on_sts, cv_null_sts, cv_date_null, cv_zr_sts )  vd_cust_class_cd,   --VD顧客区分
+-- 2011/05/16 Ver1.10 E_本稼動_07429 add start by Shigeto.Niki
+             xca.longitude                                               vendor_offset_time,          --自販機オフセット時刻
+-- 2011/05/16 Ver1.10 E_本稼動_07429 add end by Shigeto.Niki
              hp.duns_number_c                                            duns_number_c,               --顧客ステータスコード
              xca.change_amount                                           change_amount,               --つり銭
              hp.organization_name_phonetic                               org_name_phonetic,           --顧客名カナ
@@ -1353,6 +1357,9 @@ AS
         lv_output_str := lv_output_str || cv_comma || NVL(TO_CHAR(cust_data_rec.next_route_s_date, cv_fnd_month), cv_null_code);                    --予約ルートコード適用月
         lv_output_str := lv_output_str || cv_comma || cv_dqu || NVL(SUBSTRB(cust_data_rec.customer_class_code, 1, 2), cv_date_null)     || cv_dqu;  --顧客区分
         lv_output_str := lv_output_str || cv_comma || cv_dqu || NVL(lv_coordinated_date, cv_date_null)                                  || cv_dqu;  --更新日時
+-- 2011/05/16 Ver1.10 E_本稼動_07429 add start by Shigeto.Niki
+        lv_output_str := lv_output_str || cv_comma || cv_dqu || NVL(SUBSTRB(cust_data_rec.vendor_offset_time, 1, 4), cv_date_null)      || cv_dqu;  --自販機オフセット時刻
+-- 2011/05/16 Ver1.10 E_本稼動_07429 add end by Shigeto.Niki
 --
         --文字列出力
         BEGIN
