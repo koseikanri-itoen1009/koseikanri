@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCOS001A03C (body)
  * Description      : VD納品データ作成
  * MD.050           : VD納品データ作成(MD050_COS_001_A03)
- * Version          : 1.14
+ * Version          : 1.15
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -54,9 +54,12 @@ AS
  *                                         [T1_1122] 端数処理区分切上時の処理修正
  *                                         [T1_0384] 登録件数カウント処理の変更、ログ出力追加
  *                                         [T1_1269] 消費税区分｢内税(単価込み)(3)｣時、税抜き基準単価算出方法変更
- *  2009/06/01    1.14    N.Maeda          [T1_1279] ログ出力件数項目追加件数修正
+ *  2009/06/01    1.14    N.Maeda          [T1_1279] ログ出力件数項目追加、件数修正
  *                                         [T1_1332] 消費税区分:外税、内税(伝票課税)の時の消費税端数処理修正
  *                                         [T1_1333] 消費税区分:内税(単価込み)の時の消費税算出方法修正
+ *  2009/07/24    1.15    N.Maeda          [0000831] 顧客付帯情報取得条件変更
+ *  2009/07/29            N.Maeda          [0000831] レビュー指摘対応
+ *  2009/07/31            N.Maeda          [0000831] レビュー再指摘対応
  *
  *****************************************************************************************/
 --
@@ -537,10 +540,10 @@ AS
   gt_head_dlv_invoice_class       g_tab_head_dlv_invoice_class;   -- 納品伝票区分(導出)
   gt_head_cancel_cor_cls          g_tab_head_cancel_cor_cls;      -- 取消・訂正区分(導出)
   gt_head_system_class            g_tab_head_system_class;        -- 業態区分(業態小分類)
---******************************* 2009/05/18 N.Maeda Var1.15 ADD START ***************************************
+--******************************* 2009/05/20 N.Maeda Var1.14 ADD START ***************************************
   gt_head_open_dlv_date           g_tab_head_dlv_date;             -- 納品日
   gt_head_open_inspect_date       g_tab_head_inspect_date;         -- 検収日(売上計上日)
---******************************* 2009/05/18 N.Maeda Var1.15 ADD END   ***************************************
+--******************************* 2009/05/20 N.Maeda Var1.14 ADD END   ***************************************
   gt_head_dlv_date                g_tab_head_dlv_date;            -- オリジナル納品日
   gt_head_inspect_date            g_tab_head_inspect_date;        -- オリジナル検収日(売上計上日)
   gt_head_customer_number         g_tab_head_customer_number;     -- 顧客コード(顧客【納品先】)
@@ -660,9 +663,9 @@ AS
     iv_div                  IN  VARCHAR2,     -- 会計区分
     id_base_date            IN  DATE,         -- 基準日
     od_open_date            OUT DATE,         -- 有効会計期間FROM
-    ov_errbuf               OUT VARCHAR2,     -- エラー・メッセージ           --# 固定 #
-    ov_retcode              OUT VARCHAR2,     -- リターン・コード             --# 固定 #
-    ov_errmsg               OUT VARCHAR2)     -- ユーザー・エラー・メッセージ --# 固定 #
+    ov_errbuf               OUT NOCOPY VARCHAR2,     -- エラー・メッセージ           --# 固定 #
+    ov_retcode              OUT NOCOPY VARCHAR2,     -- リターン・コード             --# 固定 #
+    ov_errmsg               OUT NOCOPY VARCHAR2)     -- ユーザー・エラー・メッセージ --# 固定 #
   IS
 --#####################  固定ローカル定数変数宣言部 START   ####################
 --
@@ -776,9 +779,9 @@ AS
    * Description      : 取得元テーブルフラグ更新(A-5)
    ***********************************************************************************/
   PROCEDURE proc_data_update(
-    ov_errbuf     OUT VARCHAR2,     --   エラー・メッセージ           --# 固定 #
-    ov_retcode    OUT VARCHAR2,     --   リターン・コード             --# 固定 #
-    ov_errmsg     OUT VARCHAR2)     --   ユーザー・エラー・メッセージ   --# 固定 #
+    ov_errbuf     OUT NOCOPY VARCHAR2,     --   エラー・メッセージ           --# 固定 #
+    ov_retcode    OUT NOCOPY VARCHAR2,     --   リターン・コード             --# 固定 #
+    ov_errmsg     OUT NOCOPY VARCHAR2)     --   ユーザー・エラー・メッセージ   --# 固定 #
   IS
     -- ===============================
     -- 固定ローカル定数
@@ -890,9 +893,9 @@ AS
    * Description      : 販売実績データ登録処理(明細)(A-4-2)
    ***********************************************************************************/
   PROCEDURE proc_data_insert_line(
-    ov_errbuf     OUT VARCHAR2,     --   エラー・メッセージ           --# 固定 #
-    ov_retcode    OUT VARCHAR2,     --   リターン・コード             --# 固定 #
-    ov_errmsg     OUT VARCHAR2 )     --   ユーザー・エラー・メッセージ --# 固定 #
+    ov_errbuf     OUT NOCOPY VARCHAR2,     --   エラー・メッセージ           --# 固定 #
+    ov_retcode    OUT NOCOPY VARCHAR2,     --   リターン・コード             --# 固定 #
+    ov_errmsg     OUT NOCOPY VARCHAR2 )     --   ユーザー・エラー・メッセージ --# 固定 #
   IS
     -- ===============================
     -- 固定ローカル定数
@@ -915,7 +918,7 @@ AS
 --
 --###########################  固定部 END   ############################
 --
---******************************* 2009/05/18 N.Maeda Var1.15 MOD START ***************************************
+--******************************* 2009/06/01 N.Maeda Var1.14 MOD START ***************************************
     --== データ登録 ==--
 --    -- 明細データ作成件数セット
 --    gn_line_cnt := gt_line_sales_exp_line_id.COUNT;
@@ -923,7 +926,7 @@ AS
     BEGIN
 --      FORALL i IN 1..gn_line_cnt
       FORALL i IN 1..gt_line_sales_exp_line_id.COUNT
---******************************* 2009/05/18 N.Maeda Var1.15 MOD  END  ***************************************
+--******************************* 2009/06/01 N.Maeda Var1.14 MOD  END  ***************************************
         INSERT INTO xxcos_sales_exp_lines            --販売実績明細テーブル
                       (
                         sales_exp_line_id,             --1.販売実績明細ID
@@ -1007,19 +1010,19 @@ AS
                         cd_program_update_date );           --39.ﾌﾟﾛｸﾞﾗﾑ更新日
     EXCEPTION
       WHEN OTHERS THEN
---******************************* 2009/05/18 N.Maeda Var1.15 MOD START ***************************************
+--******************************* 2009/06/01 N.Maeda Var1.14 MOD START ***************************************
         lv_errbuf  := SQLERRM;
---******************************* 2009/05/18 N.Maeda Var1.15 MOD  END  ***************************************
+--******************************* 2009/06/01 N.Maeda Var1.14 MOD  END  ***************************************
         gv_tkn1 := xxccp_common_pkg.get_msg( cv_application, cv_msg_tab_xxcos_sal_exp_line );
         gv_tkn2 := xxccp_common_pkg.get_msg( cv_application, cv_msg_tab_ins_err,
                                              cv_tkn_table_na, gv_tkn1 );
         RAISE insert_err_expt;
     END;
 --
---******************************* 2009/05/18 N.Maeda Var1.15 ADD START ***************************************
+--******************************* 2009/06/01 N.Maeda Var1.14 ADD START ***************************************
       -- 明細データ作成件数セット
       gn_line_cnt := SQL%ROWCOUNT;
---******************************* 2009/05/18 N.Maeda Var1.15 ADD  END  ***************************************
+--******************************* 2009/06/01 N.Maeda Var1.14 ADD  END  ***************************************
 --
   EXCEPTION
     WHEN insert_err_expt THEN
@@ -1043,9 +1046,9 @@ AS
    * Description      : 販売実績データ登録処理(ヘッダ)(A-4-1)
    ***********************************************************************************/
   PROCEDURE proc_data_insert_head(
-    ov_errbuf     OUT VARCHAR2,     --   エラー・メッセージ           --# 固定 #
-    ov_retcode    OUT VARCHAR2,     --   リターン・コード             --# 固定 #
-    ov_errmsg     OUT VARCHAR2 )     --   ユーザー・エラー・メッセージ --# 固定 #
+    ov_errbuf     OUT NOCOPY VARCHAR2,     --   エラー・メッセージ           --# 固定 #
+    ov_retcode    OUT NOCOPY VARCHAR2,     --   リターン・コード             --# 固定 #
+    ov_errmsg     OUT NOCOPY VARCHAR2 )     --   ユーザー・エラー・メッセージ --# 固定 #
   IS
     -- ===============================
     -- 固定ローカル定数
@@ -1069,14 +1072,14 @@ AS
 --###########################  固定部 END   ############################
 --
     --== データ登録 ==--
---******************************* 2009/05/18 N.Maeda Var1.15 MOD START ***************************************
+--******************************* 2009/06/01 N.Maeda Var1.14 MOD START ***************************************
 --    -- ヘッダデータ作成件数セット
 --    gn_normal_cnt := gt_head_id.COUNT;
 --
     BEGIN
 --      FORALL i IN 1..gn_normal_cnt
       FORALL i IN 1..gt_head_id.COUNT
---******************************* 2009/05/18 N.Maeda Var1.15 MOD  END  ***************************************
+--******************************* 2009/06/01 N.Maeda Var1.14 MOD  END  ***************************************
         INSERT INTO xxcos_sales_exp_headers          --販売実績ヘッダテーブル
                       (
                         sales_exp_header_id,           --1.販売実績ヘッダID
@@ -1190,19 +1193,19 @@ AS
                         cd_program_update_date );      --49.ﾌﾟﾛｸﾞﾗﾑ更新日
     EXCEPTION
       WHEN OTHERS THEN
---******************************* 2009/05/18 N.Maeda Var1.15 MOD START ***************************************
+--******************************* 2009/06/01 N.Maeda Var1.14 MOD START ***************************************
         lv_errbuf  := SQLERRM;
---******************************* 2009/05/18 N.Maeda Var1.15 MOD  END  ***************************************
+--******************************* 2009/06/01 N.Maeda Var1.14 MOD  END  ***************************************
         gv_tkn1 := xxccp_common_pkg.get_msg( cv_application, cv_msg_tab_xxcos_sal_exp_head);
         gv_tkn2 := xxccp_common_pkg.get_msg( cv_application, cv_msg_tab_ins_err,
                                              cv_tkn_table_na,gv_tkn1 );
         RAISE insert_err_expt;
     END;
 --
---******************************* 2009/05/18 N.Maeda Var1.15 ADD START ***************************************
+--******************************* 2009/06/01 N.Maeda Var1.14 ADD START ***************************************
       -- 明細データ作成件数セット
       gn_normal_cnt := SQL%ROWCOUNT;
---******************************* 2009/05/18 N.Maeda Var1.15 ADD  END  ***************************************
+--******************************* 2009/06/01 N.Maeda Var1.14 ADD  END  ***************************************
 --
   EXCEPTION
     WHEN insert_err_expt THEN
@@ -1225,9 +1228,9 @@ AS
    * Description      : VD納品データ作成成型処理(A-3)
    ***********************************************************************************/
   PROCEDURE proc_molded(
-    ov_errbuf     OUT VARCHAR2,     --   エラー・メッセージ           --# 固定 #
-    ov_retcode    OUT VARCHAR2,     --   リターン・コード             --# 固定 #
-    ov_errmsg     OUT VARCHAR2)     --   ユーザー・エラー・メッセージ --# 固定 #
+    ov_errbuf     OUT NOCOPY VARCHAR2,     --   エラー・メッセージ           --# 固定 #
+    ov_retcode    OUT NOCOPY VARCHAR2,     --   リターン・コード             --# 固定 #
+    ov_errmsg     OUT NOCOPY VARCHAR2)     --   ユーザー・エラー・メッセージ --# 固定 #
   IS
     -- ===============================
     -- 固定ローカル定数
@@ -1464,27 +1467,51 @@ AS
       --顧客マスタ付帯情報の導出
       --=========================
       BEGIN
-        SELECT  xca.sale_base_code, --売上拠点コード
--- ************** 2009/04/16 1.10 N.Maeda ADD START ****************************************************************
-                xch.cash_receiv_base_code,  --入金拠点コード
--- ************** 2009/04/16 1.10 N.Maeda ADD  END  ****************************************************************
-                xch.bill_tax_round_rule -- 税金-端数処理(サイト)
-        INTO    lt_sale_base_code,
--- ************** 2009/04/16 1.10 N.Maeda ADD START ****************************************************************
-                lt_cash_receiv_base_code,
--- ************** 2009/04/16 1.10 N.Maeda ADD  END  ****************************************************************
-                lt_tax_odd
-        FROM    hz_cust_accounts hca,      -- 顧客マスタ
-                xxcmm_cust_accounts xca,   -- 顧客追加情報
-                xxcos_cust_hierarchy_v xch -- 顧客階層ビュー
-        WHERE   hca.cust_account_id = xca.customer_id
-        AND     xch.ship_account_id = hca.cust_account_id
-        AND     xch.ship_account_id = xca.customer_id
-        AND     hca.account_number = TO_CHAR( lt_customer_number )
+-- ************** 2009/07/31 1.15 N.Maeda MOD START ****************************************************************
+--
+        SELECT  /*+ leading(xch) */
+                xca.sale_base_code         sale_base_code        -- 売上拠点コード
+                ,xch.cash_receiv_base_code cash_receiv_base_code -- 入金拠点コード
+                ,xch.bill_tax_round_rule   bill_tax_round_rule   -- 税金-端数処理(サイト)
+        INTO    lt_sale_base_code
+                ,lt_cash_receiv_base_code
+                ,lt_tax_odd
+        FROM    hz_cust_accounts       hca    -- 顧客マスタ
+                ,xxcmm_cust_accounts    xca   -- 顧客追加情報
+                ,xxcos_cust_hierarchy_v xch   -- 顧客階層ビュー
+                ,hz_parties             hpt   -- パーティーマスタ
+        WHERE   hca.cust_account_id     = xca.customer_id
+        AND     xch.ship_account_number = xca.customer_code
+        AND     hca.account_number      =  lt_customer_number
+        AND     hca.party_id            =  hpt.party_id
         AND     hca.customer_class_code IN ( cv_customer_type_c, cv_customer_type_u )
-        AND     hca.party_id IN ( SELECT  hpt.party_id
-                                  FROM    hz_parties hpt
-                                  WHERE   hpt.duns_number_c   IN ( cv_cust_s , cv_cust_v , cv_cost_p ) );
+        AND     hpt.duns_number_c       IN ( cv_cust_s , cv_cust_v , cv_cost_p );
+--
+--        SELECT  xca.sale_base_code, --売上拠点コード
+---- ************** 2009/04/16 1.10 N.Maeda ADD START ****************************************************************
+--                xch.cash_receiv_base_code,  --入金拠点コード
+---- ************** 2009/04/16 1.10 N.Maeda ADD  END  ****************************************************************
+--                xch.bill_tax_round_rule -- 税金-端数処理(サイト)
+--        INTO    lt_sale_base_code,
+---- ************** 2009/04/16 1.10 N.Maeda ADD START ****************************************************************
+--                lt_cash_receiv_base_code,
+---- ************** 2009/04/16 1.10 N.Maeda ADD  END  ****************************************************************
+--                lt_tax_odd
+--        FROM    hz_cust_accounts hca,      -- 顧客マスタ
+--                xxcmm_cust_accounts xca,   -- 顧客追加情報
+--                xxcos_cust_hierarchy_v xch -- 顧客階層ビュー
+--        WHERE   hca.cust_account_id = xca.customer_id
+---- ************** 2009/07/24 1.15 N.Maeda MOD START ****************************************************************
+----        AND     xch.ship_account_id = hca.cust_account_id
+----        AND     xch.ship_account_id = xca.customer_id
+--        AND     xch.ship_account_number = xca.customer_code
+---- ************** 2009/07/24 1.15 N.Maeda ADD  END  ****************************************************************
+--        AND     hca.account_number = TO_CHAR( lt_customer_number )
+--        AND     hca.customer_class_code IN ( cv_customer_type_c, cv_customer_type_u )
+--        AND     hca.party_id IN ( SELECT  hpt.party_id
+--                                  FROM    hz_parties hpt
+--                                  WHERE   hpt.duns_number_c   IN ( cv_cust_s , cv_cust_v , cv_cost_p ) );
+-- ************** 2009/07/31 1.15 N.Maeda MOD  END  ****************************************************************
       EXCEPTION
         WHEN NO_DATA_FOUND THEN
           -- ログ出力
@@ -2887,10 +2914,10 @@ AS
         gt_head_edi_send_date( gn_header_ck_no )           := cv_head_edi_send_date;        -- EDI送信日時(NULL設定)
         gt_head_create_class( gn_header_ck_no )            := cv_head_create_class_vd_d_c;  -- 作成元区分(｢3｣設定)
         gt_head_input_class( gn_header_ck_no )             := lt_input_class;               -- 入力区分
---******************************* 2009/05/18 N.Maeda Var1.15 ADD START ***************************************
+--******************************* 2009/06/01 N.Maeda Var1.14 ADD START ***************************************
         gt_head_open_dlv_date( gn_header_ck_no )           := lt_open_dlv_date;
         gt_head_open_inspect_date( gn_header_ck_no )       := lt_open_inspect_date;
---******************************* 2009/05/18 N.Maeda Var1.15 ADD END   ***************************************
+--******************************* 2009/06/01 N.Maeda Var1.14 ADD END   ***************************************
         gn_header_ck_no := gn_header_ck_no + 1;
         ln_header_ck_no := ln_header_ck_no + 1;
 --******************************* 2009/04/16 N.Maeda Var1.10 ADD START ***************************************
@@ -3030,9 +3057,9 @@ AS
    * Description      : 対象データ抽出(A-2)
    ***********************************************************************************/
   PROCEDURE proc_extract(
-    ov_errbuf     OUT VARCHAR2,     --   エラー・メッセージ           --# 固定 #
-    ov_retcode    OUT VARCHAR2,     --   リターン・コード             --# 固定 #
-    ov_errmsg     OUT VARCHAR2)     --   ユーザー・エラー・メッセージ --# 固定 #
+    ov_errbuf     OUT NOCOPY VARCHAR2,     --   エラー・メッセージ           --# 固定 #
+    ov_retcode    OUT NOCOPY VARCHAR2,     --   リターン・コード             --# 固定 #
+    ov_errmsg     OUT NOCOPY VARCHAR2)     --   ユーザー・エラー・メッセージ --# 固定 #
   IS
     -- ===============================
     -- 固定ローカル定数
@@ -3089,34 +3116,48 @@ AS
            vch.digestion_vd_rate_maked_date,  -- 消化VD掛率作成済年月日
            vch.red_black_flag,                -- 赤黒フラグ
            vch.cancel_correct_class           -- 取消・訂正区分
---******************************* 2009/04/16 N.Maeda Var1.10 MOD START ***************************************
-    FROM   xxcos_vd_column_headers vch,        -- VDコラム別取引情報ヘッダ情報
-           xxcos_vd_column_lines vcl
-    WHERE  vch.order_no_hht = vcl.order_no_hht
-    AND    vch.digestion_ln_number = vcl.digestion_ln_number
-    AND    vch.system_class  IN ( cv_system_class_fs_vd, cv_system_class_fs_vd_s )
+---- ****************************** 2009/07/29 N.Maeda Var1.15 MOD START ***************************************
+    FROM   xxcos_vd_column_headers vch        -- VDコラム別取引情報ヘッダ情報
+    WHERE  vch.system_class  IN ( cv_system_class_fs_vd, cv_system_class_fs_vd_s )
     AND    vch.input_class   =  cv_input_class_fs_vd_at
     AND    vch.forward_flag  =  cv_forward_flag_no
-    GROUP BY vch.ROWID,vch.order_no_hht,vch.digestion_ln_number,vch.order_no_ebs,vch.base_code,
-             vch.performance_by_code,vch.dlv_by_code,vch.hht_invoice_no,vch.dlv_date,
-             vch.inspect_date,vch.sales_classification,vch.sales_invoice,vch.card_sale_class,
-             vch.dlv_time,vch.change_out_time_100,vch.change_out_time_10,vch.customer_number,
-             vch.dlv_form,vch.system_class,vch.invoice_type,vch.input_class,vch.consumption_tax_class,
-             vch.total_amount,vch.sale_discount_amount,vch.sales_consumption_tax,vch.tax_include,
-             vch.keep_in_code,vch.department_screen_class,vch.digestion_vd_rate_maked_date,vch.red_black_flag,
-             vch.cancel_correct_class
+    AND    EXISTS
+            (
+              SELECT 'Y'
+              FROM   xxcos_vd_column_lines vcl -- VDコラム別取引情報明細情報
+              WHERE  vch.order_no_hht = vcl.order_no_hht
+              AND    vch.digestion_ln_number = vcl.digestion_ln_number
+            )
     ORDER BY vch.order_no_hht,vch.digestion_ln_number;
---    FROM   xxcos_vd_column_headers vch        -- VDコラム別取引情報ヘッダ情報
---    WHERE  vch.order_no_hht IN ( SELECT vcl.order_no_hht
---                                 FROM   xxcos_vd_column_lines vcl )
---    AND    vch.digestion_ln_number IN ( SELECT vcl.digestion_ln_number
---                                        FROM   xxcos_vd_column_lines vcl)
+----******************************* 2009/04/16 N.Maeda Var1.10 MOD START ***************************************
+--    FROM   xxcos_vd_column_headers vch,        -- VDコラム別取引情報ヘッダ情報
+--           xxcos_vd_column_lines vcl
+--    WHERE  vch.order_no_hht = vcl.order_no_hht
+--    AND    vch.digestion_ln_number = vcl.digestion_ln_number
 --    AND    vch.system_class  IN ( cv_system_class_fs_vd, cv_system_class_fs_vd_s )
 --    AND    vch.input_class   =  cv_input_class_fs_vd_at
 --    AND    vch.forward_flag  =  cv_forward_flag_no
---    ORDER BY vch.order_no_hht,vch.digestion_ln_number
---  FOR UPDATE NOWAIT;
---******************************* 2009/04/16 N.Maeda Var1.10 MOD END   ***************************************
+--    GROUP BY vch.ROWID,vch.order_no_hht,vch.digestion_ln_number,vch.order_no_ebs,vch.base_code,
+--             vch.performance_by_code,vch.dlv_by_code,vch.hht_invoice_no,vch.dlv_date,
+--             vch.inspect_date,vch.sales_classification,vch.sales_invoice,vch.card_sale_class,
+--             vch.dlv_time,vch.change_out_time_100,vch.change_out_time_10,vch.customer_number,
+--             vch.dlv_form,vch.system_class,vch.invoice_type,vch.input_class,vch.consumption_tax_class,
+--             vch.total_amount,vch.sale_discount_amount,vch.sales_consumption_tax,vch.tax_include,
+--             vch.keep_in_code,vch.department_screen_class,vch.digestion_vd_rate_maked_date,vch.red_black_flag,
+--             vch.cancel_correct_class
+--    ORDER BY vch.order_no_hht,vch.digestion_ln_number;
+----    FROM   xxcos_vd_column_headers vch        -- VDコラム別取引情報ヘッダ情報
+----    WHERE  vch.order_no_hht IN ( SELECT vcl.order_no_hht
+----                                 FROM   xxcos_vd_column_lines vcl )
+----    AND    vch.digestion_ln_number IN ( SELECT vcl.digestion_ln_number
+----                                        FROM   xxcos_vd_column_lines vcl)
+----    AND    vch.system_class  IN ( cv_system_class_fs_vd, cv_system_class_fs_vd_s )
+----    AND    vch.input_class   =  cv_input_class_fs_vd_at
+----    AND    vch.forward_flag  =  cv_forward_flag_no
+----    ORDER BY vch.order_no_hht,vch.digestion_ln_number
+----  FOR UPDATE NOWAIT;
+----******************************* 2009/04/16 N.Maeda Var1.10 MOD END   ***************************************
+-- ****************************** 2009/07/29 N.Maeda Var1.15 MOD START ***************************************
 --
   -- VDコラム別取引明細情報
   CURSOR get_lines_data_cur
@@ -3295,9 +3336,9 @@ AS
    * Description      : 初期処理(A-1)
    ***********************************************************************************/
   PROCEDURE proc_init(
-    ov_errbuf     OUT VARCHAR2,     --   エラー・メッセージ           --# 固定 #
-    ov_retcode    OUT VARCHAR2,     --   リターン・コード             --# 固定 #
-    ov_errmsg     OUT VARCHAR2)     --   ユーザー・エラー・メッセージ --# 固定 #
+    ov_errbuf     OUT NOCOPY VARCHAR2,     --   エラー・メッセージ           --# 固定 #
+    ov_retcode    OUT NOCOPY VARCHAR2,     --   リターン・コード             --# 固定 #
+    ov_errmsg     OUT NOCOPY VARCHAR2)     --   ユーザー・エラー・メッセージ --# 固定 #
   IS
     -- ===============================
     -- 固定ローカル定数
@@ -3412,9 +3453,9 @@ AS
    * Description      : メイン処理プロシージャ
    **********************************************************************************/
   PROCEDURE submain(
-    ov_errbuf     OUT VARCHAR2,     --   エラー・メッセージ           --# 固定 #
-    ov_retcode    OUT VARCHAR2,     --   リターン・コード             --# 固定 #
-    ov_errmsg     OUT VARCHAR2)     --   ユーザー・エラー・メッセージ --# 固定 #
+    ov_errbuf     OUT NOCOPY VARCHAR2,     --   エラー・メッセージ           --# 固定 #
+    ov_retcode    OUT NOCOPY VARCHAR2,     --   リターン・コード             --# 固定 #
+    ov_errmsg     OUT NOCOPY VARCHAR2)     --   ユーザー・エラー・メッセージ --# 固定 #
   IS
 --
 --#####################  固定ローカル定数変数宣言部 START   ####################
@@ -3642,13 +3683,13 @@ AS
       ,lv_errmsg   -- ユーザー・エラー・メッセージ --# 固定 #
     );
 --
---******************************* 2009/05/18 N.Maeda Var1.15 ADD START ***************************************
+--******************************* 2009/06/01 N.Maeda Var1.14 ADD START ***************************************
     IF ( lv_retcode = cv_status_error) THEN
       -- エラー時登録件数初期化
       gn_normal_cnt := 0;
       gn_line_cnt   := 0;
     END IF;
---******************************* 2009/05/18 N.Maeda Var1.15 ADD  END  ***************************************
+--******************************* 2009/06/01 N.Maeda Var1.14 ADD  END  ***************************************
 --
     --エラー出力：「警告」かつ「mainでメッセージを出力」する要件のある場合
     IF (lv_retcode <> cv_status_normal) THEN
@@ -3738,7 +3779,7 @@ AS
 --    );
 --    --
 --******************************* 2009/06/01 N.Maeda Var1.14 DEL END *****************************************
---******************************* 2009/05/18 N.Maeda Var1.15 ADD START ***************************************
+--******************************* 2009/06/01 N.Maeda Var1.14 ADD START ***************************************
     --ヘッダスキップ件数
     gv_out_msg := xxccp_common_pkg.get_msg(
                      iv_application  => cv_application
@@ -3764,7 +3805,7 @@ AS
 --    );
 --******************************* 2009/06/01 N.Maeda Var1.14 DEL END *****************************************
     --
---******************************* 2009/05/18 N.Maeda Var1.15 ADD END   ***************************************
+--******************************* 2009/06/01 N.Maeda Var1.14 ADD END   ***************************************
     IF ( lv_retcode = cv_status_error ) THEN
       gn_error_cnt := 1;
     END IF;
