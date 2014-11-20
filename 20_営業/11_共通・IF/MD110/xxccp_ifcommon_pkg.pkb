@@ -6,7 +6,7 @@ AS
  * Package Name           : xxccp_ifcommon_pkg(body)
  * Description            : 
  * MD.070                 : MD070_IPO_CCP_共通関数
- * Version                : 1.0
+ * Version                : 1.2
  *
  * Program List
  *  --------------------      ---- -----   --------------------------------------------------
@@ -21,6 +21,8 @@ AS
  * ------------ ----- ---------------- -----------------------------------------------
  *  2008-10-16    1.0  Naoki.Watanabe   新規作成
  *  2009-02-10    1.1  Shinya.Kayahara  日付フォーマット修正
+ *  2009-04-24    1.2  Masayuki.Sano    障害番号T1_0524,T1_0755対応
+ *                                      ・可変長⇒固定長へ変更。
  *****************************************************************************************/
 --  
   /**********************************************************************************
@@ -47,10 +49,26 @@ AS
     -- ローカル定数
     -- ===============================
     cv_prg_name   CONSTANT VARCHAR2(100) := 'xxccp_ifcommon_pkg.add_edi_header_footer';
+-- 2009-04-24 Ver.1.2 Add By Masayuki.Sano Start
+    -- プロファイル：EDIヘッダ・フッダのレコード長(データ種コード)
+    cv_data_kind_21       CONSTANT VARCHAR2(2) := '21';   -- データ種コード:21
+    cv_data_kind_22       CONSTANT VARCHAR2(2) := '22';   -- データ種コード:22
+    cv_data_kind_51       CONSTANT VARCHAR2(2) := '51';   -- データ種コード:51
+    cv_data_kind_81       CONSTANT VARCHAR2(2) := '81';   -- データ種コード:81
+    cv_len_of_record_21   CONSTANT NUMBER      := '4500'; -- 21のレコード長
+    cv_len_of_record_22   CONSTANT NUMBER      := '4500'; -- 22のレコード長
+    cv_len_of_record_51   CONSTANT NUMBER      := '1000'; -- 51のレコード長
+    cv_len_of_record_81   CONSTANT NUMBER      := '775';  -- 81のレコード長
+    cv_len_of_record_def  CONSTANT NUMBER      := '4500'; -- C1,その他のレコード長
+-- 2009-04-24 Ver.1.2 Add By Masayuki.Sano End
     -- ================                                                           -- プログラム名
     -- ローカル変数定義
     -- ================
-    lv_out_put         VARCHAR2(1000);                          --出力値格納用変数
+-- 2009-04-24 Ver.1.2 Update By Masayuki.Sano Start
+--    lv_out_put         VARCHAR2(1000);                          --出力値格納用変数
+    lv_out_put         VARCHAR2(5000);                          --出力値格納用変数
+    ln_length_rec      NUMBER;                                  --1レコードの長さ(byte)_文字列
+-- 2009-04-24 Ver.1.2 Update By Masayuki.Sano End
     ln_length_val      NUMBER := LENGTH(in_num_of_records) - 7; --下8桁を出力する際に使用する変数
     lv_error_parameter VARCHAR2(1000);                          --トークン用変数
     -- ================
@@ -159,9 +177,27 @@ AS
       RAISE add_area_expt;
     END IF;
     --
+-- 2009-04-24 Ver.1.2 Add By Masayuki.Sano Start
+    CASE iv_data_kind
+      WHEN cv_data_kind_21 THEN
+        ln_length_rec := cv_len_of_record_21;   -- データ種コード"21"の場合のレコード長
+      WHEN cv_data_kind_22 THEN
+        ln_length_rec := cv_len_of_record_22;   -- データ種コード"22"の場合のレコード長
+      WHEN cv_data_kind_51 THEN
+        ln_length_rec := cv_len_of_record_51;   -- データ種コード"51"の場合のレコード長
+      WHEN cv_data_kind_81 THEN
+        ln_length_rec := cv_len_of_record_81;   -- データ種コード"81"の場合のレコード長
+      ELSE
+        ln_length_rec := cv_len_of_record_def;  -- 上記以外の場合はデータ種コード"C1"と同一
+    END CASE;
+--
+-- 2009-04-24 Ver.1.2 Add By Masayuki.Sano End
     --正常終了時
     ov_retcode := xxccp_common_pkg.set_status_normal;
-    ov_output  := lv_out_put; --アウトパラメータに出力値を格納
+-- 2009-04-24 Ver.1.2 Add By Masayuki.Sano Start
+--    ov_output  := lv_out_put; --アウトパラメータに出力値を格納
+    ov_output  := RPAD(lv_out_put, TO_NUMBER(ln_length_rec), ' '); --アウトパラメータに出力値を格納
+-- 2009-04-24 Ver.1.2 Add By Masayuki.Sano End
     ov_errbuf  := NULL;
     ov_errmsg  := NULL;
     --
