@@ -7,7 +7,7 @@ AS
  * Description      : 引取計画からのリーフ出荷依頼自動作成
  * MD.050/070       : 出荷依頼                              (T_MD050_BPO_400)
  *                    引取計画からのリーフ出荷依頼自動作成  (T_MD070_BPO_40A)
- * Version          : 1.11
+ * Version          : 1.12
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -47,6 +47,7 @@ AS
  *  2008/07/30    1.9   Oracle 山根一浩  ST指摘28,課題No32,変更要求178,T_S_476対応
  *  2008/08/06    1.10  Oracle 山根一浩  出荷追加_2
  *  2008/08/13    1.11  Oracle 伊藤ひとみ出荷追加_1
+ *  2008/08/18    1.12  Oracle 伊藤ひとみ出荷追加_1のバグ エラー出力順を明細順に変更
  *****************************************************************************************/
 --
 --#######################  固定グローバル定数宣言部 START   #######################
@@ -99,6 +100,10 @@ AS
      ,no_flg      xxcmn_cust_accounts_v.cust_enable_flag%TYPE        -- 中止客申請フラグ
      ,conv_unit   xxcmn_item_mst2_v.conv_unit%TYPE                   -- 入出庫換算単位
      ,a_p_flg     xxcmn_item_locations_v.allow_pickup_flag%TYPE      -- 出荷引当対象フラグ
+-- 2008/08/18 H.Itou Add Start
+     ,we_loading_msg_seq NUMBER                                   -- 積載効率(重量)メッセージ格納SEQ
+     ,ca_loading_msg_seq NUMBER                                   -- 積載効率(容積)メッセージ格納SEQ
+-- 2008/08/18 H.Itou Add End
     );
   TYPE tab_data_to_plan IS TABLE OF rec_to_plan INDEX BY PLS_INTEGER;
 --
@@ -625,6 +630,9 @@ AS
      ,iv_arrival_date  IN VARCHAR2     --   着日
      ,iv_err_msg       IN VARCHAR2     --   エラーメッセージ
      ,iv_err_clm       IN VARCHAR2     --   エラー項目
+-- 2008/08/18 H.Itou Add Start
+     ,in_calc_load_eff_msg_seq IN NUMBER DEFAULT NULL-- -- 積載効率メッセージ格納SEQ
+-- 2008/08/18 H.Itou Add End
      ,ov_errbuf       OUT VARCHAR2     --   エラー・メッセージ           --# 固定 #
      ,ov_retcode      OUT VARCHAR2     --   リターン・コード             --# 固定 #
      ,ov_errmsg       OUT VARCHAR2     --   ユーザー・エラー・メッセージ --# 固定 #
@@ -668,16 +676,31 @@ AS
     ---------------------------------
     -- 共通エラーメッセージの作成  --
     ---------------------------------
-    -- テーブルカウント
-    gn_cut := gn_cut + 1;
+-- 2008/08/18 H.Itou Del Start エラーメッセージ格納直前に移動
+--    -- テーブルカウント
+--    gn_cut := gn_cut + 1;
+-- 2008/08/18 H.Itou Del End
 --
     lv_err_msg := iv_kind         || CHR(9) || iv_dec     || CHR(9) || iv_req_no    || CHR(9) ||
                   iv_kyoten       || CHR(9) || iv_item    || CHR(9) ||
                   TO_CHAR(ln_qty,'FM999,999,990.000') || CHR(9) || iv_ship_date || CHR(9) ||
                   iv_arrival_date || CHR(9) || iv_err_msg || CHR(9) || iv_err_clm;
 --
-    -- 共通エラーメッセージ格納
-    gt_err_msg(gn_cut).err_msg  := lv_err_msg;
+-- 2008/08/18 H.Itou Add Start
+    -- 積載効率メッセージ格納SEQに値がある場合、積載効率エラーなので、指定箇所にセット
+    IF (in_calc_load_eff_msg_seq IS NOT NULL) THEN
+      gt_err_msg(in_calc_load_eff_msg_seq).err_msg  := lv_err_msg;
+--
+    -- それ以外は、テーブルカウントを進めてセット
+    ELSE
+      -- テーブルカウント
+      gn_cut := gn_cut + 1;
+-- 2008/08/18 H.Itou Add End
+      -- 共通エラーメッセージ格納
+      gt_err_msg(gn_cut).err_msg  := lv_err_msg;
+-- 2008/08/18 H.Itou Add Start
+    END IF;
+-- 2008/08/18 H.Itou Add End
 --
   EXCEPTION
 --
@@ -1069,6 +1092,10 @@ AS
             ,xcav.cust_enable_flag          AS no_flg     -- 中止客申請フラグ
             ,ximv.conv_unit                 AS conv_unit  -- 入出庫換算単位
             ,xilv.allow_pickup_flag         AS a_p_flg    -- 出荷引当対象フラグ
+-- 2008/08/18 H.Itou Add Start
+            ,NULL                                         -- 積載効率(重量)メッセージ格納SEQ
+            ,NULL                                         -- 積載効率(容積)メッセージ格納SEQ
+-- 2008/08/18 H.Itou Add End
       FROM  mrp_forecast_designators  mfds   -- フォーキャスト名        T
            ,mrp_forecast_items        mfi    -- フォーキャスト品目      T
            ,mrp_forecast_dates        mfd    -- フォーキャスト日付      T
@@ -2483,6 +2510,18 @@ AS
       END IF;
     END IF;
 --
+-- 2008/08/18 H.Itou Add Start 積載効率(重量)・積載効率(容積)メッセージ用にダミーエラーメッセージ作成。
+    -- テーブルカウント
+    gn_cut := gn_cut + 1;
+    gt_err_msg(gn_cut).err_msg  := NULL;
+    gt_to_plan(gn_i).we_loading_msg_seq := gn_cut; -- 積載効率(重量)メッセージ格納SEQ
+--
+    -- テーブルカウント
+    gn_cut := gn_cut + 1;
+    gt_err_msg(gn_cut).err_msg  := NULL;
+    gt_to_plan(gn_i).ca_loading_msg_seq := gn_cut; -- 積載効率(容積)メッセージ格納SEQ
+--
+-- 2008/08/18 H.Itou Add End
 /*
     ---------------------------------------------------
     -- 3.出荷単位換算数の算出                        --
@@ -2750,6 +2789,10 @@ AS
                                                                   --  in 着日
            ,iv_err_msg      => gv_tkn_msg_20                      --  in エラーメッセージ
            ,iv_err_clm      => gt_to_plan(i).amount               --  in エラー項目  [数量]
+-- 2008/08/18 H.Itou Add Start 積載効率メッセージを格納するSEQ番号
+           ,in_calc_load_eff_msg_seq => gt_to_plan(i).we_loading_msg_seq -- 積載効率(重量)メッセージ格納SEQ
+--
+-- 2008/08/18 H.Itou Add End
            ,ov_errbuf       => lv_errbuf                          -- out エラー・メッセージ
            ,ov_retcode      => lv_retcode                         -- out リターン・コード
            ,ov_errmsg       => lv_errmsg                          -- out ユーザー・エラー・メッセージ
@@ -2827,6 +2870,9 @@ AS
                                                                   --  in 着日
            ,iv_err_msg      => gv_tkn_msg_20                      --  in エラーメッセージ
            ,iv_err_clm      => gt_to_plan(i).amount               --  in エラー項目  [数量]
+-- 2008/08/18 H.Itou Add Start 積載効率メッセージを格納するSEQ番号
+           ,in_calc_load_eff_msg_seq => gt_to_plan(i).we_loading_msg_seq -- 積載効率(重量)メッセージ格納SEQ
+-- 2008/08/18 H.Itou Add End
            ,ov_errbuf       => lv_errbuf                          -- out エラー・メッセージ
            ,ov_retcode      => lv_retcode                         -- out リターン・コード
            ,ov_errmsg       => lv_errmsg                          -- out ユーザー・エラー・メッセージ
@@ -2926,6 +2972,9 @@ AS
                                                                   --  in 着日
            ,iv_err_msg      => gv_tkn_msg_20                      --  in エラーメッセージ
            ,iv_err_clm      => gt_to_plan(i).amount               --  in エラー項目  [数量]
+-- 2008/08/18 H.Itou Add Start 積載効率メッセージを格納するSEQ番号
+           ,in_calc_load_eff_msg_seq => gt_to_plan(i).ca_loading_msg_seq -- 積載効率(容積)メッセージ格納SEQ
+-- 2008/08/18 H.Itou Add End
            ,ov_errbuf       => lv_errbuf                          -- out エラー・メッセージ
            ,ov_retcode      => lv_retcode                         -- out リターン・コード
            ,ov_errmsg       => lv_errmsg                          -- out ユーザー・エラー・メッセージ
@@ -3004,6 +3053,9 @@ AS
                                                                   --  in 着日
            ,iv_err_msg      => gv_tkn_msg_20                      --  in エラーメッセージ
            ,iv_err_clm      => gt_to_plan(i).amount               --  in エラー項目  [数量]
+-- 2008/08/18 H.Itou Add Start 積載効率メッセージを格納するSEQ番号
+           ,in_calc_load_eff_msg_seq => gt_to_plan(i).ca_loading_msg_seq -- 積載効率(容積)メッセージ格納SEQ
+-- 2008/08/18 H.Itou Add End
            ,ov_errbuf       => lv_errbuf                          -- out エラー・メッセージ
            ,ov_retcode      => lv_retcode                         -- out リターン・コード
            ,ov_errmsg       => lv_errmsg                          -- out ユーザー・エラー・メッセージ
@@ -3894,7 +3946,16 @@ AS
       -- エラーリスト内容出力
       <<err_report_loop>>
       FOR i IN 1..gt_err_msg.COUNT LOOP
-        FND_FILE.PUT_LINE(FND_FILE.OUTPUT,gt_err_msg(i).err_msg);
+-- 2008/08/18 H.Itou Add Start
+        -- 積載効率エラーメッセージ用ダミーエラーメッセージ（NULL）は出力しない
+        IF (gt_err_msg(i).err_msg IS NOT NULL) THEN
+-- 2008/08/18 H.Itou Add End
+-- 2008/08/18 H.Itou Mod Start
+          FND_FILE.PUT_LINE(FND_FILE.OUTPUT,gt_err_msg(i).err_msg);
+-- 2008/08/18 H.Itou Mod End
+-- 2008/08/18 H.Itou Add Start
+        END IF;
+-- 2008/08/18 H.Itou Add End
       END LOOP err_report_loop;
 --
       --区切り文字列出力
