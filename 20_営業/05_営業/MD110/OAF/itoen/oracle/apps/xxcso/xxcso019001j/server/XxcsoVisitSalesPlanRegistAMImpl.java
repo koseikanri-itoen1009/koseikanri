@@ -6,7 +6,8 @@
 * 修正履歴
 * 日付       Ver. 担当者       修正内容
 * ---------- ---- ------------ ----------------------------------------------
-* 2009-01-07 1.0  SCS朴邦彦　  新規作成
+* 2009-01-07 1.0  SCS朴邦彦    新規作成
+* 2009-06-05 1.1  SCS柳平直人  [ST障害T1_1245]項目更新方法の修正
 *============================================================================
 */
 package itoen.oracle.apps.xxcso.xxcso019001j.server;
@@ -205,7 +206,7 @@ public class XxcsoVisitSalesPlanRegistAMImpl extends OAApplicationModuleImpl
     XxcsoRtnRsrcFullVORowImpl rtnRow
       = (XxcsoRtnRsrcFullVORowImpl)rtnVo.first();
     
-    XxcsoAcctMonthlyPlanFullVOImpl monthlyVo = getXxcsoAcctMonthlyPlanFullVO1();    
+    XxcsoAcctMonthlyPlanFullVOImpl monthlyVo = getXxcsoAcctMonthlyPlanFullVO1();
     if ( monthlyVo == null )
     {
       throw
@@ -215,7 +216,7 @@ public class XxcsoVisitSalesPlanRegistAMImpl extends OAApplicationModuleImpl
     XxcsoAcctMonthlyPlanFullVORowImpl monthlyRow
       = (XxcsoAcctMonthlyPlanFullVORowImpl)monthlyVo.first();
 
-    XxcsoAcctWeeklyPlanFullVOImpl weeklyVo = getXxcsoAcctWeeklyPlanFullVO1();    
+    XxcsoAcctWeeklyPlanFullVOImpl weeklyVo = getXxcsoAcctWeeklyPlanFullVO1();
     if ( weeklyVo == null )
     {
       throw
@@ -248,7 +249,7 @@ public class XxcsoVisitSalesPlanRegistAMImpl extends OAApplicationModuleImpl
      ,weeklyRow
     );
     
-    XxcsoUtils.debug(txn, "[END]");    
+    XxcsoUtils.debug(txn, "[END]");
   }
 
   /*****************************************************************************
@@ -275,7 +276,7 @@ public class XxcsoVisitSalesPlanRegistAMImpl extends OAApplicationModuleImpl
 
     XxcsoAcctSalesSummaryVORowImpl acctSumRow
       = (XxcsoAcctSalesSummaryVORowImpl)acctSumVo.first();
-      
+
     XxcsoRtnRsrcFullVOImpl rtnVo = getXxcsoRtnRsrcFullVO1();
     if ( rtnVo == null )
     {
@@ -284,8 +285,8 @@ public class XxcsoVisitSalesPlanRegistAMImpl extends OAApplicationModuleImpl
 
     XxcsoRtnRsrcFullVORowImpl rtnRow
       = (XxcsoRtnRsrcFullVORowImpl)rtnVo.first();
-    
-    XxcsoAcctMonthlyPlanFullVOImpl monthlyVo = getXxcsoAcctMonthlyPlanFullVO1();    
+
+    XxcsoAcctMonthlyPlanFullVOImpl monthlyVo = getXxcsoAcctMonthlyPlanFullVO1();
     if ( monthlyVo == null )
     {
       throw
@@ -294,7 +295,7 @@ public class XxcsoVisitSalesPlanRegistAMImpl extends OAApplicationModuleImpl
 
     XxcsoAcctMonthlyPlanFullVORowImpl monthlyRow
       = (XxcsoAcctMonthlyPlanFullVORowImpl)monthlyVo.first();
-    
+
     XxcsoAcctWeeklyPlanFullVOImpl weeklyVo = getXxcsoAcctWeeklyPlanFullVO1();
     if ( weeklyVo == null )
     {
@@ -386,6 +387,10 @@ public class XxcsoVisitSalesPlanRegistAMImpl extends OAApplicationModuleImpl
     // ルートNo情報更新するため適用開始日を設定
     reSetDateRouteNoResourece(rtnRow);
     
+// 2009-06-05 [ST障害T1_1245] Add Start
+    reflectWeeklyPlan( weeklyVo );
+// 2009-06-05 [ST障害T1_1245] Add End
+
     commit();
 
     XxcsoUtils.debug(txn, "[END]");
@@ -407,7 +412,11 @@ public class XxcsoVisitSalesPlanRegistAMImpl extends OAApplicationModuleImpl
 
     XxcsoUtils.debug(txn, "[END]");
   }
-  
+
+  /*****************************************************************************
+   * コミット処理を行います。
+   *****************************************************************************
+   */
   private void commit()
   {
     OADBTransaction txn = getOADBTransaction();
@@ -419,6 +428,10 @@ public class XxcsoVisitSalesPlanRegistAMImpl extends OAApplicationModuleImpl
     XxcsoUtils.debug(txn, "[END]");
   }
 
+  /*****************************************************************************
+   * ロールバック処理を行います。
+   *****************************************************************************
+   */
   private void rollback()
   {
     OADBTransaction txn = getOADBTransaction();
@@ -473,7 +486,8 @@ public class XxcsoVisitSalesPlanRegistAMImpl extends OAApplicationModuleImpl
     XxcsoAcctSalesSummaryVOImpl acctSumVo = getXxcsoAcctSalesSummaryVO1();
     if ( acctSumVo == null )
     {
-      throw XxcsoMessage.createInstanceLostError("XxcsoAcctSalesSummaryVOImpl");
+      throw
+        XxcsoMessage.createInstanceLostError("XxcsoAcctSalesSummaryVOImpl");
     }
     
     acctSumVo.initQuery(
@@ -491,7 +505,8 @@ public class XxcsoVisitSalesPlanRegistAMImpl extends OAApplicationModuleImpl
     XxcsoRtnRsrcFullVOImpl rtnVo = getXxcsoRtnRsrcFullVO1();
     if ( rtnVo == null )
     {
-      throw XxcsoMessage.createInstanceLostError("XxcsoRtnRsrcFullVOImpl");
+      throw
+        XxcsoMessage.createInstanceLostError("XxcsoRtnRsrcFullVOImpl");
     }
     
     rtnVo.initQuery(accountNumber);
@@ -530,7 +545,8 @@ public class XxcsoVisitSalesPlanRegistAMImpl extends OAApplicationModuleImpl
     XxcsoAcctWeeklyPlanFullVOImpl weeklyVo = getXxcsoAcctWeeklyPlanFullVO1();
     if ( weeklyVo == null )
     {
-      throw XxcsoMessage.createInstanceLostError("XxcsoAcctWeeklyPlanFullVOImpl");
+      throw
+        XxcsoMessage.createInstanceLostError("XxcsoAcctWeeklyPlanFullVOImpl");
     }
 
     weeklyVo.initQuery(
@@ -551,7 +567,7 @@ public class XxcsoVisitSalesPlanRegistAMImpl extends OAApplicationModuleImpl
       }
       else
       {
-        weeklyRow.setMondayRender(Boolean.TRUE);        
+        weeklyRow.setMondayRender(Boolean.TRUE);
       }
       if (  weeklyRow.getTuesdayColumn() == null            ||
             "".equals(weeklyRow.getTuesdayColumn().trim())
@@ -561,7 +577,7 @@ public class XxcsoVisitSalesPlanRegistAMImpl extends OAApplicationModuleImpl
       }
       else
       {
-        weeklyRow.setTuesdayRender(Boolean.TRUE);        
+        weeklyRow.setTuesdayRender(Boolean.TRUE);
       }
       if (  weeklyRow.getWednesdayColumn() == null            ||
             "".equals(weeklyRow.getWednesdayColumn().trim())
@@ -571,7 +587,7 @@ public class XxcsoVisitSalesPlanRegistAMImpl extends OAApplicationModuleImpl
       }
       else
       {
-        weeklyRow.setWednesdayRender(Boolean.TRUE);        
+        weeklyRow.setWednesdayRender(Boolean.TRUE);
       }
       if (  weeklyRow.getThursdayColumn() == null            ||
             "".equals(weeklyRow.getThursdayColumn().trim())
@@ -581,7 +597,7 @@ public class XxcsoVisitSalesPlanRegistAMImpl extends OAApplicationModuleImpl
       }
       else
       {
-        weeklyRow.setThursdayRender(Boolean.TRUE);        
+        weeklyRow.setThursdayRender(Boolean.TRUE);
       }
       if (  weeklyRow.getFridayColumn() == null            ||
             "".equals(weeklyRow.getFridayColumn().trim())
@@ -591,7 +607,7 @@ public class XxcsoVisitSalesPlanRegistAMImpl extends OAApplicationModuleImpl
       }
       else
       {
-        weeklyRow.setFridayRender(Boolean.TRUE);        
+        weeklyRow.setFridayRender(Boolean.TRUE);
       }
       if (  weeklyRow.getSaturdayColumn() == null            ||
             "".equals(weeklyRow.getSaturdayColumn().trim())
@@ -601,7 +617,7 @@ public class XxcsoVisitSalesPlanRegistAMImpl extends OAApplicationModuleImpl
       }
       else
       {
-        weeklyRow.setSaturdayRender(Boolean.TRUE);        
+        weeklyRow.setSaturdayRender(Boolean.TRUE);
       }
       if (  weeklyRow.getSundayColumn() == null            ||
             "".equals(weeklyRow.getSundayColumn().trim())
@@ -611,7 +627,7 @@ public class XxcsoVisitSalesPlanRegistAMImpl extends OAApplicationModuleImpl
       }
       else
       {
-        weeklyRow.setSundayRender(Boolean.TRUE);        
+        weeklyRow.setSundayRender(Boolean.TRUE);
       }
 
       weeklyRow = (XxcsoAcctWeeklyPlanFullVORowImpl)weeklyVo.next();
@@ -797,7 +813,6 @@ public class XxcsoVisitSalesPlanRegistAMImpl extends OAApplicationModuleImpl
         )
       );
     }
-
     else
     {
       // パーティID、訪問対象区分のセット
@@ -1114,6 +1129,7 @@ public class XxcsoVisitSalesPlanRegistAMImpl extends OAApplicationModuleImpl
    * 顧客別売上計画日別のバリデーションチェック処理
    * @param weeklyVo    顧客別売上計画日別VO
    * @param weeklyRow   顧客別売上計画日別行VO
+   * @return true:いずれかのレコードが編集,false:未編集
    *****************************************************************************
    */
   private boolean getWeeklyState(
@@ -1422,6 +1438,82 @@ public class XxcsoVisitSalesPlanRegistAMImpl extends OAApplicationModuleImpl
 
     XxcsoUtils.debug(txn, "[END]");
   }
+
+// 2009-06-05 [ST障害T1_1245] Add Start
+  /*****************************************************************************
+   * 顧客別売上計画日別再設定処理
+   * ※rowへの値を全て再設定する
+   * @param weeklyVo      顧客別売上計画日別VO
+   *****************************************************************************
+   */
+  private void reflectWeeklyPlan(
+    XxcsoAcctWeeklyPlanFullVOImpl weeklyVo
+  )
+  {
+    XxcsoAcctWeeklyPlanFullVORowImpl weeklyRow
+      = (XxcsoAcctWeeklyPlanFullVORowImpl)weeklyVo.first();
+
+    while ( weeklyRow != null )
+    {
+      // 月曜日
+      if ( weeklyRow.getMondayColumn() != null
+           && !"".equals(weeklyRow.getMondayColumn()) )
+      {
+        String mondayValue = weeklyRow.getMondayValue();
+        weeklyRow.setMondayValue(mondayValue);
+      }
+
+      // 火曜日
+      if ( weeklyRow.getTuesdayColumn() != null
+           && !"".equals(weeklyRow.getTuesdayColumn()) )
+      {
+        String tuesdayValue = weeklyRow.getTuesdayValue();
+        weeklyRow.setTuesdayValue(tuesdayValue);
+      }
+
+      // 水曜日
+      if ( weeklyRow.getWednesdayColumn() != null
+           && !"".equals(weeklyRow.getWednesdayColumn()) )
+      {
+        String wednesdayValue = weeklyRow.getWednesdayValue();
+        weeklyRow.setWednesdayValue(wednesdayValue);
+      }
+
+      // 木曜日
+      if ( weeklyRow.getThursdayColumn() != null
+           && !"".equals(weeklyRow.getThursdayColumn()) )
+      {
+        String thursdayValue = weeklyRow.getThursdayValue();
+        weeklyRow.setThursdayValue(thursdayValue);
+      }
+
+      // 金曜日
+      if ( weeklyRow.getFridayColumn() != null
+           && !"".equals(weeklyRow.getFridayColumn()) )
+      {
+        String fridayValue = weeklyRow.getFridayValue();
+        weeklyRow.setFridayValue(fridayValue);
+      }
+
+      // 土曜日
+      if ( weeklyRow.getSaturdayColumn() != null
+           && !"".equals(weeklyRow.getSaturdayColumn()) )
+      {
+        String saturdayValue = weeklyRow.getSaturdayValue();
+        weeklyRow.setSaturdayValue(saturdayValue);
+      }
+
+      // 日曜日
+      if ( weeklyRow.getSundayColumn() != null
+           && !"".equals(weeklyRow.getSundayColumn()) )
+      {
+        String sundayValue = weeklyRow.getSundayValue();
+        weeklyRow.setSundayValue(sundayValue);
+      }
+      weeklyRow = (XxcsoAcctWeeklyPlanFullVORowImpl)weeklyVo.next();
+    }
+  }
+// 2009-06-05 [ST障害T1_1245] Add End
 
   /**
    * 

@@ -6,7 +6,8 @@
 * C³—š—ğ
 * “ú•t       Ver. ’S“–Ò       C³“à—e
 * ---------- ---- ------------ ----------------------------------------------
-* 2009-01-05 1.0  SCS¬ì_     V‹Kì¬
+* 2009-01-05 1.0  SCS¬ì_    V‹Kì¬
+* 2009-06-05 1.1  SCS–ö•½’¼l  [STáŠQT1_1245]€–ÚXV•û–@‚ÌC³
 *============================================================================
 */
 package itoen.oracle.apps.xxcso.common.schema.server;
@@ -195,9 +196,12 @@ public class XxcsoAcctWeeklyPlansVEOImpl extends OAPlsqlEntityImpl
     Number partyId = getPartyId();
     
     // Œ—j“ú‚ÌXVŠm”F
-    if ( super.isAttributeChanged(MONDAYVALUE)
-         && getMondayColumn() != null
-         && !"".equals(getMondayColumn()) )
+// 2009-06-05 [STáŠQT1_1245] Mod Start
+//    if ( super.isAttributeChanged(MONDAYVALUE)
+//         && getMondayColumn() != null
+//         && !"".equals(getMondayColumn()) )
+    if ( getMondayColumn() != null && ! "".equals( getMondayColumn() ) )
+// 2009-06-05 [STáŠQT1_1245] Mod End
     {
       String planAmt = getMondayValue();
       if ( planAmt != null)
@@ -210,9 +214,12 @@ public class XxcsoAcctWeeklyPlansVEOImpl extends OAPlsqlEntityImpl
     }
     
     // ‰Î—j“ú‚ÌXVŠm”F
-    if ( super.isAttributeChanged(TUESDAYVALUE)
-         && getTuesdayColumn() != null
-         && !"".equals(getTuesdayColumn()) )
+// 2009-06-05 [STáŠQT1_1245] Mod Start
+//    if ( super.isAttributeChanged(TUESDAYVALUE)
+//         && getTuesdayColumn() != null
+//         && !"".equals(getTuesdayColumn()) )
+    if ( getTuesdayColumn() != null && ! "".equals( getTuesdayColumn() ) )
+// 2009-06-05 [STáŠQT1_1245] Mod End
     {
       String planAmt = getTuesdayValue();
       if ( planAmt != null)
@@ -225,9 +232,12 @@ public class XxcsoAcctWeeklyPlansVEOImpl extends OAPlsqlEntityImpl
     }
     
     // …—j“ú‚ÌXVŠm”F
-    if ( super.isAttributeChanged(WEDNESDAYVALUE)
-         && getWednesdayColumn() != null
-         && !"".equals(getWednesdayColumn()) )
+// 2009-06-05 [STáŠQT1_1245] Mod Start
+//    if ( super.isAttributeChanged(WEDNESDAYVALUE)
+//         && getWednesdayColumn() != null
+//         && !"".equals(getWednesdayColumn()) )
+    if ( getWednesdayColumn() != null && ! "".equals( getWednesdayColumn() ) )
+// 2009-06-05 [STáŠQT1_1245] Mod End
     {
       String planAmt = getWednesdayValue();
       if ( planAmt != null)
@@ -240,9 +250,12 @@ public class XxcsoAcctWeeklyPlansVEOImpl extends OAPlsqlEntityImpl
     }
     
     // –Ø—j“ú‚ÌXVŠm”F
-    if ( super.isAttributeChanged(THURSDAYVALUE)
-         && getThursdayColumn() != null
-         && !"".equals(getThursdayColumn()) )
+// 2009-06-05 [STáŠQT1_1245] Mod Start
+//    if ( super.isAttributeChanged(THURSDAYVALUE)
+//         && getThursdayColumn() != null
+//         && !"".equals(getThursdayColumn()) )
+    if ( getThursdayColumn() != null && ! "".equals( getThursdayColumn() ) )
+// 2009-06-05 [STáŠQT1_1245] Mod End
     {
       String planAmt = getThursdayValue();
       if ( planAmt != null)
@@ -255,9 +268,12 @@ public class XxcsoAcctWeeklyPlansVEOImpl extends OAPlsqlEntityImpl
     }
     
     // ‹à—j“ú‚ÌXVŠm”F
-    if ( super.isAttributeChanged(FRIDAYVALUE)
-         && getFridayColumn() != null
-         && !"".equals(getFridayColumn()) )
+// 2009-06-05 [STáŠQT1_1245] Mod Start
+//    if ( super.isAttributeChanged(FRIDAYVALUE)
+//         && getFridayColumn() != null
+//         && !"".equals(getFridayColumn()) )
+    if ( getFridayColumn() != null && ! "".equals( getFridayColumn() ) )
+// 2009-06-05 [STáŠQT1_1245] Mod End
     {
       String planAmt = getFridayValue();
       if ( planAmt != null)
@@ -270,9 +286,12 @@ public class XxcsoAcctWeeklyPlansVEOImpl extends OAPlsqlEntityImpl
     }
     
     // “y—j“ú‚ÌXVŠm”F
-    if ( super.isAttributeChanged(SATURDAYVALUE)
-         && getSaturdayColumn() != null
-         && !"".equals(getSaturdayColumn()) )
+// 2009-06-05 [STáŠQT1_1245] Mod Start
+//    if ( super.isAttributeChanged(SATURDAYVALUE)
+//         && getSaturdayColumn() != null
+//         && !"".equals(getSaturdayColumn()) )
+    if ( getSaturdayColumn() != null && ! "".equals( getSaturdayColumn() ) )
+// 2009-06-05 [STáŠQT1_1245] Mod End
     {
       String planAmt = getSaturdayValue();
       if ( planAmt != null)
@@ -285,9 +304,12 @@ public class XxcsoAcctWeeklyPlansVEOImpl extends OAPlsqlEntityImpl
     }
     
     // “ú—j“ú‚ÌXVŠm”F
-    if ( super.isAttributeChanged(SUNDAYVALUE)
-         && getSundayColumn() != null
-         && !"".equals(getSundayColumn()) )
+// 2009-06-05 [STáŠQT1_1245] Mod Start
+//    if ( super.isAttributeChanged(SUNDAYVALUE)
+//         && getSundayColumn() != null
+//         && !"".equals(getSundayColumn()) )
+    if ( getSundayColumn() != null && ! "".equals( getSundayColumn() ) )
+// 2009-06-05 [STáŠQT1_1245] Mod End
     {
       String planAmt = getSundayValue();
       if ( planAmt != null)
