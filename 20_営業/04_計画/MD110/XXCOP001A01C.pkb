@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCOP001A01C(body)
  * Description      : アップロードファイルからの登録（基準計画）
  * MD.050           : アップロードファイルからの登録（基準計画） MD050_COP_001_A01
- * Version          : ver1.00
+ * Version          : ver1.1
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -27,7 +27,8 @@ AS
  * ------------- ----- ---------------- -------------------------------------------------
  *  Date          Ver.  Editor           Description
  * ------------- ----- ---------------- -------------------------------------------------
- *  2008/11/21    1.00 SCS.Uchida       新規作成
+ *  2008/11/21    1.0  SCS.Uchida       新規作成
+ *  2009/04/03    1.1  SCS.Goto         T1_0237、T1_0270対応
  *
  *****************************************************************************************/
 --#######################  固定グローバル定数宣言部 START   #######################
@@ -142,6 +143,9 @@ AS
   gv_table_name_item  CONSTANT VARCHAR2(100) := 'Disc品目マスタ';
   gv_table_name_org   CONSTANT VARCHAR2(100) := '組織パラメータ';
   gv_table_name_ift   CONSTANT VARCHAR2(100) := '基準計画IF表';
+--20090403_Ver1.1_T1_0270_SCS.Goto_ADD_START
+  gv_table_name_opm   CONSTANT VARCHAR2(100) := 'OPM品目マスタ';
+--20090403_Ver1.1_T1_0270_SCS.Goto_ADD_END
   --プロファイル名
   gv_p_base_date      CONSTANT VARCHAR2(100) := 'XXCOP1_SCHEDULE_BASELINE' ;  -- 確定日基準日数
   --フォーマットパターン
@@ -183,16 +187,29 @@ AS
   gv_ymd_out_format   CONSTANT VARCHAR2(10)  := 'YYYY/MM/DD';         -- 年月日（出力用）
   --基準計画レコード型
   TYPE xm_schedule_if_rtype IS RECORD (
-    schedule_designator     xxcop.xxcop_mrp_schedule_interface.schedule_designator%TYPE
-  , schedule_description    xxcop.xxcop_mrp_schedule_interface.schedule_description%TYPE
-  , organization_code       xxcop.xxcop_mrp_schedule_interface.organization_code%TYPE
-  , schedule_type           xxcop.xxcop_mrp_schedule_interface.schedule_type%TYPE
-  , item_code               xxcop.xxcop_mrp_schedule_interface.item_code%TYPE
-  , schedule_date           xxcop.xxcop_mrp_schedule_interface.schedule_date%TYPE
-  , schedule_quantity       xxcop.xxcop_mrp_schedule_interface.schedule_quantity%TYPE
-  , deliver_from            xxcop.xxcop_mrp_schedule_interface.deliver_from%TYPE
-  , shipment_date           xxcop.xxcop_mrp_schedule_interface.shipment_date%TYPE
-  , schedule_prod_flg       xxcop.xxcop_mrp_schedule_interface.schedule_prod_flg%TYPE
+--20090403_Ver1.1_T1_0237_SCS.Goto_MOD_START
+--    schedule_designator     xxcop.xxcop_mrp_schedule_interface.schedule_designator%TYPE
+--  , schedule_description    xxcop.xxcop_mrp_schedule_interface.schedule_description%TYPE
+--  , organization_code       xxcop.xxcop_mrp_schedule_interface.organization_code%TYPE
+--  , schedule_type           xxcop.xxcop_mrp_schedule_interface.schedule_type%TYPE
+--  , item_code               xxcop.xxcop_mrp_schedule_interface.item_code%TYPE
+--  , schedule_date           xxcop.xxcop_mrp_schedule_interface.schedule_date%TYPE
+--  , schedule_quantity       xxcop.xxcop_mrp_schedule_interface.schedule_quantity%TYPE
+--  , deliver_from            xxcop.xxcop_mrp_schedule_interface.deliver_from%TYPE
+--  , shipment_date           xxcop.xxcop_mrp_schedule_interface.shipment_date%TYPE
+--  , schedule_prod_flg       xxcop.xxcop_mrp_schedule_interface.schedule_prod_flg%TYPE
+    schedule_designator     xxcop_mrp_schedule_interface.schedule_designator%TYPE
+  , schedule_description    xxcop_mrp_schedule_interface.schedule_description%TYPE
+  , organization_code       xxcop_mrp_schedule_interface.organization_code%TYPE
+  , schedule_type           xxcop_mrp_schedule_interface.schedule_type%TYPE
+  , item_code               xxcop_mrp_schedule_interface.item_code%TYPE
+  , schedule_date           xxcop_mrp_schedule_interface.schedule_date%TYPE
+  , schedule_quantity       xxcop_mrp_schedule_interface.schedule_quantity%TYPE
+  , deliver_from            xxcop_mrp_schedule_interface.deliver_from%TYPE
+  , shipment_date           xxcop_mrp_schedule_interface.shipment_date%TYPE
+  , schedule_prod_flg       xxcop_mrp_schedule_interface.schedule_prod_flg%TYPE
+  , num_of_cases            NUMBER
+--20090403_Ver1.1_T1_0237_SCS.Goto_MOD_END
   );
   --基準計画コレクション型
   TYPE xm_schedule_if_ttype IS TABLE OF xm_schedule_if_rtype
@@ -823,7 +840,10 @@ AS
     ln_user_rec_cnt   NUMBER;                                                    -- ユーザー件数
     l_item_id         mtl_system_items_b.inventory_item_id%TYPE;                 -- 品目ID
     l_org_id          mtl_parameters.organization_id%TYPE;                       -- 組織ID
-    l_org_code        xxcop.xxcop_mrp_schedule_interface.organization_code%TYPE; -- 組織コード
+--20090403_Ver1.1_T1_0237_SCS.Goto_MOD_START
+--    l_org_code        xxcop.xxcop_mrp_schedule_interface.organization_code%TYPE; -- 組織コード
+    l_org_code        xxcop_mrp_schedule_interface.organization_code%TYPE;       -- 組織コード
+--20090403_Ver1.1_T1_0237_SCS.Goto_MOD_END
     lv_case_flg       VARCHAR2(4);                                               -- 条件付必須項目判別用
     l_date_flg        bom_calendar_dates.seq_num%TYPE;                           -- 稼働日フラグ（非稼働日はNULL）
     lv_one_chk_flg    VARCHAR2(1);                                               -- 一意性キーチェックフラグ
@@ -1254,48 +1274,50 @@ AS
             null;
         END;
         --
-        -- ===============================
-        -- 8.起動ユーザーチェック
-        -- ===============================
-        SELECT count(fu.user_id)
-        INTO   ln_user_rec_cnt
-        FROM   fnd_user                  fu                     -- ユーザーマスタ
-              ,per_all_people_f          papf                   -- 従業員マスタ
-              ,mtl_item_locations        mil                    -- OPM保管場所マスタ
-              ,mrp_schedule_designators  msd                    -- 基準計画名テーブル
-              ,po_vendors                pv                     -- 仕入先マスタ
-              ,mtl_parameters            mp                     -- 組織パラメータ
-        WHERE  fu.employee_id       = papf.person_id
-        AND    papf.attribute4      = pv.segment1                                    --従業員.仕入先コード = 仕入先.仕入先コード
-        AND    pv.segment1          = mil.attribute13                                --仕入先.仕入先コード = OPM保管場所.仕入先コード
-        AND    mil.organization_id  = msd.organization_id                            --OPM保管場所.在庫組織ID = 基準計画名.在庫組織ID
-        AND    msd.organization_id  = mp.organization_id                             --基準計画名.在庫組織ID = 組織パラメータ.組織ID
-        AND    mp.organization_code = o_scdl_tab(ln_srd_idx).organization_code       --組織パラメータ.組織コード = CSVファイル.組織コード
-        AND    fu.user_id           = gn_user_id                                     --コンカレント起動ユーザー
-        AND    cd_sysdate BETWEEN NVL(papf.effective_start_date,cd_sysdate)          --従業員マスタの有効日チェック
-                              AND NVL(papf.effective_end_date  ,cd_sysdate)
-        AND    msd.schedule_designator = o_scdl_tab(ln_srd_idx).schedule_designator  --CSVファイル.MDS/MPS名
-        AND    pv.enabled_flag         = 'Y'                                         --仕入先マスタの有効フラグチェック
-        AND    NVL(mil.disable_date , cd_sysdate) >= cd_sysdate                      --OPM保管場所マスタの有効日チェック
-        AND    NVL(msd.disable_date , cd_sysdate + 1) > cd_sysdate                   --基準計画名テーブルの有効日チェック
-        ;
-        --
-        IF ( ln_user_rec_cnt = 0 ) THEN
-          lv_errmsg := xxccp_common_pkg.get_msg(
-                          iv_application  => gv_xxcop
-                         ,iv_name         => gv_m_e_user_chk
-                         ,iv_token_name1  => gv_t_row_num
-                         ,iv_token_value1 => ln_srd_idx
-                         ,iv_token_name2  => gv_t_schedule_name
-                         ,iv_token_value2 => l_csv_tab(1)
-                       );
-          output_disp(
-             iv_errmsg  => lv_errmsg
-            ,iv_errbuf  => lv_errbuf
-          );
-          lv_invalid_flag := gv_status_error;
-        END IF;
-        --
+--20090403_Ver1.1_T1_0237_SCS.Goto_DEL_START
+--        -- ===============================
+--        -- 8.起動ユーザーチェック
+--        -- ===============================
+--        SELECT count(fu.user_id)
+--        INTO   ln_user_rec_cnt
+--        FROM   fnd_user                  fu                     -- ユーザーマスタ
+--              ,per_all_people_f          papf                   -- 従業員マスタ
+--              ,mtl_item_locations        mil                    -- OPM保管場所マスタ
+--              ,mrp_schedule_designators  msd                    -- 基準計画名テーブル
+--              ,po_vendors                pv                     -- 仕入先マスタ
+--              ,mtl_parameters            mp                     -- 組織パラメータ
+--        WHERE  fu.employee_id       = papf.person_id
+--        AND    papf.attribute4      = pv.segment1                                    --従業員.仕入先コード = 仕入先.仕入先コード
+--        AND    pv.segment1          = mil.attribute13                                --仕入先.仕入先コード = OPM保管場所.仕入先コード
+--        AND    mil.organization_id  = msd.organization_id                            --OPM保管場所.在庫組織ID = 基準計画名.在庫組織ID
+--        AND    msd.organization_id  = mp.organization_id                             --基準計画名.在庫組織ID = 組織パラメータ.組織ID
+--        AND    mp.organization_code = o_scdl_tab(ln_srd_idx).organization_code       --組織パラメータ.組織コード = CSVファイル.組織コード
+--        AND    fu.user_id           = gn_user_id                                     --コンカレント起動ユーザー
+--        AND    cd_sysdate BETWEEN NVL(papf.effective_start_date,cd_sysdate)          --従業員マスタの有効日チェック
+--                              AND NVL(papf.effective_end_date  ,cd_sysdate)
+--        AND    msd.schedule_designator = o_scdl_tab(ln_srd_idx).schedule_designator  --CSVファイル.MDS/MPS名
+--        AND    pv.enabled_flag         = 'Y'                                         --仕入先マスタの有効フラグチェック
+--        AND    NVL(mil.disable_date , cd_sysdate) >= cd_sysdate                      --OPM保管場所マスタの有効日チェック
+--        AND    NVL(msd.disable_date , cd_sysdate + 1) > cd_sysdate                   --基準計画名テーブルの有効日チェック
+--        ;
+--        --
+--        IF ( ln_user_rec_cnt = 0 ) THEN
+--          lv_errmsg := xxccp_common_pkg.get_msg(
+--                          iv_application  => gv_xxcop
+--                         ,iv_name         => gv_m_e_user_chk
+--                         ,iv_token_name1  => gv_t_row_num
+--                         ,iv_token_value1 => ln_srd_idx
+--                         ,iv_token_name2  => gv_t_schedule_name
+--                         ,iv_token_value2 => l_csv_tab(1)
+--                       );
+--          output_disp(
+--             iv_errmsg  => lv_errmsg
+--            ,iv_errbuf  => lv_errbuf
+--          );
+--          lv_invalid_flag := gv_status_error;
+--        END IF;
+--        --
+--20090403_Ver1.1_T1_0237_SCS.Goto_DEL_END
         -- ===============================
         -- 9.基準計画分類存在チェック
         -- ===============================
@@ -1501,6 +1523,39 @@ AS
       --★デバッグログ（開発用）
       xxcop_common_pkg.put_debug_message(ln_srd_idx || '行目' || ':8:' || 'b',gv_debug_mode);
       --
+--20090403_Ver1.1_T1_0270_SCS.Goto_ADD_START
+        -- ===============================
+        -- 11.OPM品目マスタチェック
+        -- ===============================
+        BEGIN
+          SELECT NVL(TO_NUMBER(iimb.attribute11), 1)
+          INTO   o_scdl_tab(ln_srd_idx).num_of_cases
+          FROM   ic_item_mst_b             iimb               -- OPM品目マスタ
+          WHERE  iimb.item_no          = o_scdl_tab(ln_srd_idx).item_code
+          ;
+        EXCEPTION
+          WHEN NO_DATA_FOUND THEN
+            lv_errmsg := xxccp_common_pkg.get_msg(
+                            iv_application  => gv_xxcop
+                           ,iv_name         => gv_m_e_not_exist
+                           ,iv_token_name1  => gv_t_row_num
+                           ,iv_token_value1 => ln_srd_idx
+                           ,iv_token_name2  => gv_t_column
+                           ,iv_token_value2 => gv_column_name_05
+                           ,iv_token_name3  => gv_t_value1
+                           ,iv_token_value3 => l_csv_tab(5)
+                           ,iv_token_name4  => gv_t_table
+                           ,iv_token_value4 => gv_table_name_opm
+                           ,iv_token_name5  => gv_t_item
+                           ,iv_token_value5 => i_fuid_tab(ln_row_idx)
+                         );
+            output_disp(
+               iv_errmsg  => lv_errmsg
+              ,iv_errbuf  => lv_errbuf
+            );
+            lv_invalid_flag := gv_status_error;
+        END;
+--20090403_Ver1.1_T1_0270_SCS.Goto_ADD_END
         --
         -- ===============================
         -- 12.計画日付・稼働日チェック
@@ -1813,7 +1868,10 @@ AS
     ELSE
       --レコード登録
       INSERT
-      INTO   xxcop.xxcop_mrp_schedule_interface(      -- 基準計画IF表
+--20090403_Ver1.1_T1_0237_SCS.Goto_MOD_START
+--      INTO   xxcop.xxcop_mrp_schedule_interface(      -- 基準計画IF表
+      INTO   xxcop_mrp_schedule_interface(            -- 基準計画IF表
+--20090403_Ver1.1_T1_0237_SCS.Goto_MOD_END
                --IF制御情報
                transaction_id
               ,file_id
@@ -1844,7 +1902,10 @@ AS
               ,program_update_date
              )
       VALUES ( --IF制御情報
-               XXCOP.XXCOP_MRP_SCHEDULE_IF_S1.NEXTVAL       -- 取引ID（ｼｰｹﾝｽ）
+--20090403_Ver1.1_T1_0237_SCS.Goto_MOD_START
+--               XXCOP.XXCOP_MRP_SCHEDULE_IF_S1.NEXTVAL       -- 取引ID（ｼｰｹﾝｽ）
+               XXCOP_MRP_SCHEDULE_IF_S1.NEXTVAL             -- 取引ID（ｼｰｹﾝｽ）
+--20090403_Ver1.1_T1_0237_SCS.Goto_MOD_END
               ,in_file_id                                   -- ファイルID
               ,iv_file_name                                 -- ファイル名
               ,ln_row_idx                                   -- 行No
@@ -1857,7 +1918,11 @@ AS
               ,i_scdl_tab(ln_row_idx).item_code             -- 品目コード
                --日付詳細情報
               ,i_scdl_tab(ln_row_idx).schedule_date         -- 計画日付
-              ,i_scdl_tab(ln_row_idx).schedule_quantity     -- 計画数量
+--20090403_Ver1.1_T1_0270_SCS.Goto_MOD_START
+--              ,i_scdl_tab(ln_row_idx).schedule_quantity     -- 計画数量
+              ,i_scdl_tab(ln_row_idx).schedule_quantity
+                * i_scdl_tab(ln_row_idx).num_of_cases       -- 計画数量
+--20090403_Ver1.1_T1_0270_SCS.Goto_MOD_END
               ,i_scdl_tab(ln_row_idx).deliver_from          -- 出荷元倉庫コード
               ,i_scdl_tab(ln_row_idx).shipment_date         -- 出荷日
               ,i_scdl_tab(ln_row_idx).schedule_prod_flg     -- 計画商品フラグ
