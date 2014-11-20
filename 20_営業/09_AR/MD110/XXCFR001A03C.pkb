@@ -7,7 +7,7 @@ AS
  * Description      : 入金情報データ連携
  * MD.050           : MD050_CFR_001_A03_入金情報データ連携
  * MD.070           : MD050_CFR_001_A03_入金情報データ連携
- * Version          : 1.1
+ * Version          : 1.2
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -27,6 +27,7 @@ AS
  * ------------- ----- ---------------- -------------------------------------------------
  *  2008/11/13    1.00 SCS 中村 博      初回作成
  *  2009/02/27    1.1  SCS T.KANEDA     [障害CFR_001] 金額取得不具合対応
+ *  2010/01/06    1.2  SCS 安川 智博    障害「E_本稼動_00753」対応
  *
  *****************************************************************************************/
 --
@@ -202,7 +203,10 @@ AS
                AND (( jzabv.begin_bal_entered_dr - jzabv.begin_bal_entered_cr <> 0 )
                    OR jzabv.period_net_entered_dr <> 0
                    OR jzabv.period_net_entered_cr <> 0 )
-               AND jzabv.customer_id          = hca_b.cust_account_id(+)
+-- Modify 2010.01.06 Ver1.2 Start
+--               AND jzabv.customer_id          = hca_b.cust_account_id(+)
+               AND jzabv.customer_id          = hca_b.cust_account_id
+-- Modify 2010.01.06 Ver1.2 Start
                AND jzabv.code_combination_id  = gcc.code_combination_id
              GROUP BY
                gcc.segment1,
