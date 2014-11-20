@@ -6,7 +6,7 @@ AS
  * Package Name           : xxwsh_common910_pkg(BODY)
  * Description            : 共通関数(BODY)
  * MD.070(CMD.050)        : なし
- * Version                : 1.20
+ * Version                : 1.22
  *
  * Program List
  *  -------------------- ---- ----- --------------------------------------------------
@@ -54,6 +54,8 @@ AS
  *  2008/09/11   1.18  ORACLE椎名昭圭   [ロット逆転防止チェック] PT 6-1_28 指摘#73対応
  *  2008/09/17   1.19  ORACLE椎名昭圭   [ロット逆転防止チェック] PT 6-1_28 指摘#73追加修正
  *  2008/10/06   1.20  ORACLE伊藤ひとみ [積載効率チェック(合計値算出)] 統合テスト指摘240対応 積載効率チェック(合計値算出)基準日ありを追加
+ *  2008/10/15   1.21  ORACLE伊藤ひとみ [積載効率チェック(積載効率算出)] 統合テスト指摘298対応
+ *  2008/10/15   1.22  ORACLE伊藤ひとみ [鮮度条件チェック] 統合テスト指摘379対応
  *****************************************************************************************/
 --
 --#######################  固定グローバル定数宣言部 START   #######################
@@ -1279,7 +1281,13 @@ AS
     lv_entering_despatching_code1 := iv_entering_despatching_code1;  -- 入出庫場所コード１
     lv_code_class2                := iv_code_class2;                 -- コード区分２
     lv_entering_despatching_code2 := iv_entering_despatching_code2;  -- 入出庫場所コード２
-    lv_ship_method                := iv_ship_method;                 -- 出荷方法
+-- 2008/10/15 H.Itou Mod Start 統合テスト指摘298
+--    lv_ship_method                := iv_ship_method;                 -- 出荷方法
+    -- 出荷方法を混載なしの出荷方法に変換
+    lv_ship_method := xxwsh_common_pkg.convert_mixed_ship_method(
+                        it_ship_method_code => iv_ship_method
+                      );
+-- 2008/10/15 H.Itou Mod End
     lv_prod_class                 := iv_prod_class;                  -- 商品区分
     ld_standard_date              := NVL(id_standard_date, SYSDATE); -- 基準日(適用日基準日)
 -- 2008/09/05 H.Itou Add Start PT 6-2_34 指摘#34対応 動的SQLに変更
@@ -1846,7 +1854,19 @@ AS
     END IF;
     --
     -- 混載配送区分
-    ov_mixed_ship_method           :=  ln_mixed_ship_method_code;
+-- 2008/10/15 H.Itou Add Start 統合テスト指摘298
+    -- INパラメータ.出荷方法に指定ありかつ、混載配送区分の場合
+    IF ((iv_ship_method IS NOT NULL)
+    AND (iv_ship_method <> lv_ship_method)) THEN
+      ov_mixed_ship_method           :=  NULL;
+--
+    -- 上記以外の場合
+    ELSE
+-- 2008/10/15 H.Itou Add End
+      ov_mixed_ship_method           :=  ln_mixed_ship_method_code;
+-- 2008/10/15 H.Itou Add Start 統合テスト指摘298
+    END IF;
+-- 2008/10/15 H.Itou Add End
 --
     --==============================================================
     --メッセージ出力（エラー以外）をする必要がある場合は処理を記述
@@ -2785,8 +2805,13 @@ AS
       --
     END IF;
     --
-    -- 賞味期間＝ゼロの場合
-    IF ( ln_expiration_days = 0 ) THEN
+-- 2008/10/15 H.Itou Mod Start 統合テスト指摘379
+--    -- 賞味期間＝ゼロの場合
+--    IF ( ln_expiration_days = 0 ) THEN
+    -- 賞味期間＝ゼロまたは、製造年月日と賞味期限が同じ場合
+    IF (( ln_expiration_days = 0 )
+    OR  ( ld_manufact_date   = ld_limit_expiration_date)) THEN
+-- 2008/10/15 H.Itou Mod End
       RAISE expiration_days_zero_expt;
     END IF;
     --
