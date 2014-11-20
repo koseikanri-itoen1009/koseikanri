@@ -3,7 +3,7 @@
  *
  * Table Name      : XXCOI_HHT_INV_TRANSACTIONS
  * Description     : HHT入出庫一時表
- * Version         : 1.1
+ * Version         : 1.2
  *
  * Change Record
  * ------------- ----- ---------------- ---------------------------------
@@ -11,6 +11,7 @@
  * ------------- ----- ---------------- ---------------------------------
  *  2008-11-17    1.0   SCS H.Nakajima   新規作成
  *  2009/04/30    1.1   T.Nakamura       [T1_0877]バックスラッシュ、テーブルコメントを追加
+ *  2009/05/25    1.2   T.Nakamura       [T1_0267]インデックスを表領域xxidx2に割当
  *
  ************************************************************************/
   CREATE TABLE "XXCOI"."XXCOI_HHT_INV_TRANSACTIONS" 
@@ -70,6 +71,9 @@
     "PROGRAM_ID"                    NUMBER,
     "PROGRAM_UPDATE_DATE"           DATE,
      CONSTRAINT "XXCOI_HHT_INV_TRANSACTIONS_PK" PRIMARY KEY ("TRANSACTION_ID")
+-- == 2009/05/25 V1.2 Added START ===============================================================
+     USING INDEX TABLESPACE xxidx2
+-- == 2009/05/25 V1.2 Added END   ===============================================================
     )
 /
    COMMENT ON TABLE "XXCOI"."XXCOI_HHT_INV_TRANSACTIONS" IS 'HHT入出庫一時表';

@@ -3,14 +3,15 @@
  *
  * Table Name  : XXCOI_MST_VD_COLUMN
  * Description : VDコラムマスタ
- * Version     : 1.1
+ * Version     : 1.2
  *
  * Change Record
  * ------------- ----- ---------------- ---------------------------------
  *  Date          Ver.  Editor           Description
  * ------------- ----- ---------------- ---------------------------------
  *  2008/12/03    1.0   H.Wada           新規作成
- *  2009/04/30    1.1   T.Nakamura       バックスラッシュを追加
+ *  2009/04/30    1.1   T.Nakamura       [T1_0877]バックスラッシュを追加
+ *  2009/05/25    1.2   T.Nakamura       [T1_0267]インデックスを表領域xxidx2に割当
  *
  ************************************************************************/
 CREATE TABLE XXCOI.XXCOI_MST_VD_COLUMN
@@ -38,6 +39,9 @@ CREATE TABLE XXCOI.XXCOI_MST_VD_COLUMN
  ,PROGRAM_ID                        NUMBER                                -- 21.プログラムID
  ,PROGRAM_UPDATE_DATE               DATE                                  -- 22.プログラム更新日
  ,CONSTRAINT XXCOI_MST_VD_COLUMN_PK PRIMARY KEY ( VD_COLUMN_MST_ID )
+-- == 2009/05/25 V1.2 Added START ===============================================================
+  USING INDEX TABLESPACE xxidx2
+-- == 2009/05/25 V1.2 Added END   ===============================================================
 )
 /
 COMMENT ON COLUMN XXCOI.XXCOI_MST_VD_COLUMN.VD_COLUMN_MST_ID               IS 'VDコラムマスタID';
