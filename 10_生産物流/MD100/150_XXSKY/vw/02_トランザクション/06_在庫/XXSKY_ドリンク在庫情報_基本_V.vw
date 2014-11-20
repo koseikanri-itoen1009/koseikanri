@@ -40,6 +40,12 @@ CREATE OR REPLACE VIEW APPS.XXSKY_ドリンク在庫情報_基本_V
 ,不良品バラ在庫数
 ,不良品ケース出庫指示数
 ,不良品バラ出庫指示数
+-- ***** 2009/09/24 #1634 S *****
+,保留ケース在庫数
+,保留バラ在庫数
+,保留ケース出庫指示数
+,保留バラ出庫指示数
+-- ***** 2009/09/24 #1634 E *****
 )
 AS
 SELECT
@@ -110,6 +116,15 @@ SELECT
         ,NVL( TRUNC( STRN.ng_out_qty   / ITEM.num_of_cases ), 0 )
                                                             ng_out_case_qty     --不良品ケース出庫指示数
         ,NVL( STRN.ng_out_qty  , 0 )                        ng_out_qty          --不良品バラ出庫指示数
+-- ***** 2009/09/24 #1634 S *****
+         --保留
+        ,NVL( TRUNC( STRN.hold_qty       / ITEM.num_of_cases ), 0 )
+                                                            hold_case_qty       --保留ケース在庫数
+        ,NVL( STRN.hold_qty      , 0 )                      hold_qty            --保留バラ在庫数
+        ,NVL( TRUNC( STRN.hold_out_qty   / ITEM.num_of_cases ), 0 )
+                                                            hold_out_case_qty   --保留ケース出庫指示数
+        ,NVL( STRN.hold_out_qty  , 0 )                      hold_out_qty        --保留バラ出庫指示数
+-- ***** 2009/09/24 #1634 E *****
   FROM
         (
           --************************************************************************
@@ -130,6 +145,10 @@ SELECT
                   ,SUM( CASE WHEN NVL( ILM.attribute23,'10' ) = '30' THEN TRAN.out_qty    END )  term_out_qty  --条件付良品バラ出庫指示数
                   ,SUM( CASE WHEN NVL( ILM.attribute23,'10' ) = '60' THEN TRAN.onhand_qty END )  ng_qty        --不良品バラ在庫数
                   ,SUM( CASE WHEN NVL( ILM.attribute23,'10' ) = '60' THEN TRAN.out_qty    END )  ng_out_qty    --不良品バラ出庫指示数
+-- ***** 2009/09/24 #1634 S *****
+                  ,SUM( CASE WHEN NVL( ILM.attribute23,'10' ) = '70' THEN TRAN.onhand_qty END )  hold_qty      --保留品バラ在庫数
+                  ,SUM( CASE WHEN NVL( ILM.attribute23,'10' ) = '70' THEN TRAN.out_qty    END )  hold_out_qty  --保留品バラ出庫指示数
+-- ***** 2009/09/24 #1634 E *****
              FROM
                    (
                     --======================================================================
@@ -525,6 +544,10 @@ SELECT
                   ,0                                                                          term_out_qty  --条件付良品バラ出庫指示数
                   ,SUM( CASE WHEN NVL( ILM.attribute23,'10' ) = '60' THEN ITRAN.in_qty END )  ng_qty        --不良品バラ在庫数
                   ,0                                                                          ng_out_qty    --不良品バラ出庫指示数
+-- ***** 2009/09/24 #1634 S *****
+                  ,SUM( CASE WHEN NVL( ILM.attribute23,'10' ) = '70' THEN ITRAN.in_qty END )  hold_qty      --保留バラ在庫数
+                  ,0                                                                          hold_out_qty  --保留バラ出庫指示数
+-- ***** 2009/09/24 #1634 E *****
              FROM
                   (
                     --======================================================================
@@ -764,3 +787,14 @@ COMMENT ON COLUMN APPS.XXSKY_ドリンク在庫情報_基本_V.不良品ケース出庫指示数     
 /
 COMMENT ON COLUMN APPS.XXSKY_ドリンク在庫情報_基本_V.不良品バラ出庫指示数       IS '不良品バラ出庫指示数'
 /
+-- ***** 2009/09/24 #1634 S *****
+COMMENT ON COLUMN APPS.XXSKY_ドリンク在庫情報_基本_V.保留ケース在庫数           IS '保留ケース在庫数'
+/
+COMMENT ON COLUMN APPS.XXSKY_ドリンク在庫情報_基本_V.保留バラ在庫数             IS '保留バラ在庫数'
+/
+COMMENT ON COLUMN APPS.XXSKY_ドリンク在庫情報_基本_V.保留ケース出庫指示数       IS '保留ケース出庫指示数'
+/
+COMMENT ON COLUMN APPS.XXSKY_ドリンク在庫情報_基本_V.保留バラ出庫指示数         IS '保留バラ出庫指示数'
+/
+-- ***** 2009/09/24 #1634 E *****
+

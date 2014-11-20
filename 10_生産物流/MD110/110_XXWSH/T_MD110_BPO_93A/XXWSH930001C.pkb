@@ -7,7 +7,7 @@ AS
  * Description      : 生産物流(引当、配車)
  * MD.050           : 出荷・移動インタフェース         T_MD050_BPO_930
  * MD.070           : 外部倉庫入出庫実績インタフェース T_MD070_BPO_93A
- * Version          : 1.57
+ * Version          : 1.58
  *
  * Program List
  * ------------------------------------ -------------------------------------------------
@@ -156,6 +156,7 @@ AS
  *  2009/06/04    1.56 SCS    伊藤ひとみ 本番障害対応#1520 運賃区分に関係なく品目重複チェックを行うよう修正
  *                                                         配送NoがNULLの場合、配送No単位エラーは依頼Noごとのエラーとなるよう修正
  *  2009/06/08    1.57 SCS    伊藤ひとみ 本番障害対応#1369 1回の取込で実績を二重上げてしまった場合、品目重複エラーとなるよう修正
+ *  2009/10/02    1.58 SCS    伊藤ひとみ 本番障害対応#1144 ロット管理外品で黒データ作成時に出荷実績IF済フラグを常にNに設定するよう修正
  *****************************************************************************************/
 --
 --#######################  固定グローバル定数宣言部 START   #######################
@@ -13699,17 +13700,20 @@ AS
         -- 2008/09/22 TE080_400指摘#76 Add Start ----------------------------------------------------------------
         IF (gr_interface_info_rec(in_idx).lot_ctl = gv_lotkr_kbn_cd_0) THEN  -- ロット管理外品の場合
 --
-          IF (gb_shipping_result_if_flg = TRUE) THEN  -- 受注ヘッダレベルの項目変更があった場合
-            gr_order_l_rec.shipping_result_if_flg := gv_yesno_n; -- 受注明細レベルの項目変更に関わらず全受注明細を'N'に更新
---
-          ELSE  -- 受注ヘッダレベルの項目変更がない場合
-            IF (ln_shipped_quantity <> gr_order_l_rec.shipped_quantity) THEN   -- 受注明細レベルで実績数量の変更があれば
-              gr_order_l_rec.shipping_result_if_flg := gv_yesno_n;  -- 該当受注明細の出荷実績I/F済フラグを'N'で更新
---
-            ELSE  -- 受注明細レベルで実績数量の変更がなければ訂正前の値を引き継ぐ
-              gr_order_l_rec.shipping_result_if_flg  := lv_shipping_result_if_flg;  -- 出荷実績I/F済フラグ
-            END IF;
-          END IF;
+-- 2009/10/02 H.Itou Mod Start 本番障害#1144
+--          IF (gb_shipping_result_if_flg = TRUE) THEN  -- 受注ヘッダレベルの項目変更があった場合
+--            gr_order_l_rec.shipping_result_if_flg := gv_yesno_n; -- 受注明細レベルの項目変更に関わらず全受注明細を'N'に更新
+----
+--          ELSE  -- 受注ヘッダレベルの項目変更がない場合
+--            IF (ln_shipped_quantity <> gr_order_l_rec.shipped_quantity) THEN   -- 受注明細レベルで実績数量の変更があれば
+--              gr_order_l_rec.shipping_result_if_flg := gv_yesno_n;  -- 該当受注明細の出荷実績I/F済フラグを'N'で更新
+----
+--            ELSE  -- 受注明細レベルで実績数量の変更がなければ訂正前の値を引き継ぐ
+--              gr_order_l_rec.shipping_result_if_flg  := lv_shipping_result_if_flg;  -- 出荷実績I/F済フラグ
+--            END IF;
+--          END IF;
+          gr_order_l_rec.shipping_result_if_flg  := gv_yesno_n; -- 出荷実績I/F済フラグは常にNで作成する。
+-- 2009/10/02 H.Itou Mod End
 --
         ELSE  -- ロット管理品の場合は訂正前の値を引き継ぐ
           gr_order_l_rec.shipped_quantity        := ln_shipped_quantity;        -- 出荷実績数量
