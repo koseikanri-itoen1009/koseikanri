@@ -7,7 +7,7 @@ AS
  * Description     : 情報系システムへのデータ連携（部門別損益予算）
  * MD.050          : MD050_CFO_014_A01_情報系システムへのデータ連携（部門別損益予算）
  * MD.070          : MD050_CFO_014_A01_情報系システムへのデータ連携（部門別損益予算）
- * Version         : 1.0
+ * Version         : 1.1
  * 
  * Program List
  * --------------- ---- ----- --------------------------------------------
@@ -27,6 +27,7 @@ AS
  *  Date          Ver.  Editor        Description
  * ------------- ----- ------------- -------------------------------------
  *  2008-11-20    1.0  SCS 加藤 忠   初回作成
+ *  2009-07-03    1.1  SCS 佐々木    [0000020]パフォーマンス改善
  ************************************************************************/
 --
 --#######################  固定グローバル定数宣言部 START   #######################
@@ -497,26 +498,39 @@ AS
              SUM(DECODE( glcc.account_type,cv_account_type_e,
                           glbl.period_net_dr - glbl.period_net_cr,
                           glbl.period_net_cr - glbl.period_net_dr )) period_net_sum
-      FROM gl_budgets           glbg,
-           gl_budget_versions   glbv,
-           gl_period_statuses   glps,
-           gl_balances          glbl,
-           gl_code_combinations glcc
-      WHERE glbg.set_of_books_id     = gn_set_of_bks_id
-        AND glbg.attribute1          = cv_budgets_att1_y
-        AND glbg.status              = cv_budgets_stat_f
-        AND glbv.budget_type         = glbg.budget_type
-        AND glbv.budget_name         = glbg.budget_name
-        AND glps.set_of_books_id     = glbg.set_of_books_id
-        AND glps.application_id      = gn_appl_id_gl
-        AND glbl.actual_flag         = cv_actual_flag_b
-        AND glbl.currency_code       = cv_currency_code
-        AND glbl.budget_version_id   = glbv.budget_version_id
-        AND glbl.set_of_books_id     = glbg.set_of_books_id
-        AND glbl.period_name         = glps.period_name
-        AND glcc.account_type        IN ( cv_account_type_e,
-                                          cv_account_type_r )
-        AND glcc.code_combination_id = glbl.code_combination_id
+      FROM gl_budgets               glbg,
+           gl_budget_versions       glbv,
+           gl_period_statuses       glps,
+           gl_balances              glbl,
+           gl_code_combinations     glcc
+-- == 2009/07/03 V1.1 Added START ===============================================================
+          ,gl_sets_of_books         gsob
+          ,gl_budget_period_ranges  gbpr
+-- == 2009/07/03 V1.1 Added END   ===============================================================
+      WHERE glbg.set_of_books_id        =   gn_set_of_bks_id
+        AND glbg.attribute1             =   cv_budgets_att1_y
+        AND glbg.status                 =   cv_budgets_stat_f
+        AND glbv.budget_type            =   glbg.budget_type
+        AND glbv.budget_name            =   glbg.budget_name
+        AND glps.set_of_books_id        =   glbg.set_of_books_id
+        AND glps.application_id         =   gn_appl_id_gl
+        AND glbl.actual_flag            =   cv_actual_flag_b
+        AND glbl.currency_code          =   cv_currency_code
+        AND glbl.budget_version_id      =   glbv.budget_version_id
+        AND glbl.set_of_books_id        =   glbg.set_of_books_id
+        AND glbl.period_name            =   glps.period_name
+        AND glcc.account_type           IN ( cv_account_type_e,
+                                             cv_account_type_r )
+        AND glcc.code_combination_id    =   glbl.code_combination_id
+-- == 2009/07/03 V1.1 Added START ===============================================================
+        AND glcc.chart_of_accounts_id   =   gsob.chart_of_accounts_id
+        AND gsob.set_of_books_id        =   gn_set_of_bks_id
+        AND glps.set_of_books_id        =   gn_set_of_bks_id
+        AND glbv.budget_version_id      =   gbpr.budget_version_id
+        AND gbpr.period_year            =   glps.period_year
+        AND glps.period_num   BETWEEN gbpr.start_period_num 
+                              AND     gbpr.end_period_num 
+-- == 2009/07/03 V1.1 Added END   ===============================================================
       GROUP BY glcc.segment1,
                glbl.period_year,
                TO_CHAR( glps.start_date,'YYYYMM' ),

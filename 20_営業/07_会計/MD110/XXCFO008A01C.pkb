@@ -7,7 +7,7 @@ AS
  * Description     : 顧客マスタVD釣銭基準額の更新
  * MD.050          : MD050_CFO_008_A01_顧客マスタVD釣銭基準額の更新
  * MD.070          : MD050_CFO_008_A01_顧客マスタVD釣銭基準額の更新
- * Version         : 1.0
+ * Version         : 1.1
  * 
  * Program List
  * --------------- ---- ----- --------------------------------------------
@@ -32,6 +32,7 @@ AS
  *  Date          Ver.  Editor        Description
  * ------------- ----- ------------- -------------------------------------
  *  2008-11-07    1.0  SCS 加藤 忠   初回作成
+ *  2009-06-26    1.1  SCS 佐々木    [0000018]パフォーマンス改善
  ************************************************************************/
 --
 --#######################  固定グローバル定数宣言部 START   #######################
@@ -571,28 +572,35 @@ AS
                   glbl.begin_balance_cr +
                   glbl.period_net_dr -
                   glbl.period_net_cr )    change_balance    -- 当月末釣銭残高
-      FROM gl_code_combinations glcc,
-           gl_balances          glbl,
-           fnd_lookup_values    fnac,                       -- クイックコード(釣銭勘定科目コード)
-           fnd_lookup_values    fnlt,                       -- クイックコード(業態分類(小分類))
-           hz_cust_accounts     hzca,
-           xxcmm_cust_accounts  xxca
-      WHERE glbl.set_of_books_id     = gn_set_of_bks_id
-        AND glbl.period_name         = gv_this_period_name
-        AND glbl.actual_flag         = cv_actual_flag_a
-        AND glbl.currency_code       = cv_currency_code
-        AND glcc.code_combination_id = glbl.code_combination_id
-        AND fnac.lookup_type         = cv_type_change_account
-        AND fnac.language            = USERENV( 'LANG' )
-        AND fnac.enabled_flag        = cv_enabled_flag_y
+      FROM  gl_code_combinations glcc
+           ,gl_balances          glbl
+           ,fnd_lookup_values    fnac                       -- クイックコード(釣銭勘定科目コード)
+           ,fnd_lookup_values    fnlt                       -- クイックコード(業態分類(小分類))
+           ,hz_cust_accounts     hzca
+           ,xxcmm_cust_accounts  xxca
+-- == 2009/06/26 V1.1 Added START ===============================================================
+           ,gl_sets_of_books     gsob
+-- == 2009/06/26 V1.1 Added END   ===============================================================
+      WHERE glbl.set_of_books_id      = gn_set_of_bks_id
+        AND glbl.period_name          = gv_this_period_name
+        AND glbl.actual_flag          = cv_actual_flag_a
+        AND glbl.currency_code        = cv_currency_code
+        AND glcc.code_combination_id  = glbl.code_combination_id
+-- == 2009/06/26 V1.1 Added START ===============================================================
+        AND glcc.chart_of_accounts_id = gsob.chart_of_accounts_id
+        AND gsob.set_of_books_id      = gn_set_of_bks_id
+-- == 2009/06/26 V1.1 Added END   ===============================================================
+        AND fnac.lookup_type          = cv_type_change_account
+        AND fnac.language             = USERENV( 'LANG' )
+        AND fnac.enabled_flag         = cv_enabled_flag_y
         AND NVL( fnac.start_date_active,gd_operation_date ) <= gd_operation_date
         AND NVL( fnac.end_date_active,gd_operation_date )   >= gd_operation_date
-        AND glcc.segment3            = fnac.lookup_code
-        AND glcc.segment5            = hzca.account_number
-        AND xxca.customer_id         = hzca.cust_account_id
-        AND fnlt.lookup_type         = cv_type_cust_gyotai_sho
-        AND fnlt.language            = USERENV( 'LANG' )
-        AND fnlt.enabled_flag        = cv_enabled_flag_y
+        AND glcc.segment3             = fnac.lookup_code
+        AND glcc.segment5             = hzca.account_number
+        AND xxca.customer_id          = hzca.cust_account_id
+        AND fnlt.lookup_type          = cv_type_cust_gyotai_sho
+        AND fnlt.language             = USERENV( 'LANG' )
+        AND fnlt.enabled_flag         = cv_enabled_flag_y
         AND NVL( fnlt.start_date_active,gd_operation_date ) <= gd_operation_date
         AND NVL( fnlt.end_date_active,gd_operation_date )   >= gd_operation_date
         AND xxca.business_low_type   = fnlt.lookup_code
@@ -715,6 +723,9 @@ AS
            gl_je_headers        gljh,
            gl_je_lines          gljl,
            ap_invoices_all      apia
+-- == 2009/06/26 V1.1 Added START ===============================================================
+          ,gl_sets_of_books     gsob
+-- == 2009/06/26 V1.1 Added END   ===============================================================
       WHERE gljh.set_of_books_id        = gn_set_of_bks_id
         AND gljh.period_name            IN ( gv_this_period_name,
                                              gv_last_period_name )
@@ -743,6 +754,12 @@ AS
                 WHERE apipa.invoice_id = apia.invoice_id
                   AND apca.check_id    = apipa.check_id
                   AND apca.check_date  > gd_operation_date )))
+-- == 2009/06/26 V1.1 Added START ===============================================================
+        AND glcc.chart_of_accounts_id   = gsob.chart_of_accounts_id
+        AND gsob.set_of_books_id        = gn_set_of_bks_id
+        AND gljl.period_name            IN ( gv_this_period_name,
+                                             gv_last_period_name )
+-- == 2009/06/26 V1.1 Added END   ===============================================================
       ;
 --
     EXCEPTION
@@ -824,6 +841,9 @@ AS
            fnd_lookup_values    fnac,
            gl_je_headers        gljh,
            gl_je_lines          gljl
+-- == 2009/06/26 V1.1 Added START ===============================================================
+          ,gl_sets_of_books     gsob
+-- == 2009/06/26 V1.1 Added END   ===============================================================
       WHERE gljh.set_of_books_id     = gn_set_of_bks_id
         AND gljh.period_name         = gv_this_period_name
         AND gljh.je_source           <> cv_je_source_pay      -- 買掛管理
@@ -841,6 +861,12 @@ AS
         AND glcc.segment5            = gt_segment5( in_loop_cnt )
         AND gljl.code_combination_id = glcc.code_combination_id
         AND gljl.effective_date      > gd_operation_date
+-- == 2009/06/26 V1.1 Added START ===============================================================
+        AND glcc.chart_of_accounts_id   = gsob.chart_of_accounts_id
+        AND gsob.set_of_books_id        = gn_set_of_bks_id
+        AND gljl.period_name            IN ( gv_this_period_name,
+                                             gv_last_period_name )
+-- == 2009/06/26 V1.1 Added END   ===============================================================
       ;
 --
     EXCEPTION
