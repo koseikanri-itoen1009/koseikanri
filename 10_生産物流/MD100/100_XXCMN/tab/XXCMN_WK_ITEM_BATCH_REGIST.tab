@@ -3,13 +3,14 @@
  *
  * Table Name  : XXCMN_WK_ITEM_BATCH_REGIST
  * Description : 品目マスタ一括アップロードワーク(テーブル)
- * Version     : 1.0
+ * Version     : 1.1
  *
  * Change Record
  * ------------- ----- ---------------- ---------------------------------
  *  Date          Ver.  Editor           Description
  * ------------- ----- ---------------- ---------------------------------
  *  2013/01/24    1.0   K.Boku           [E_本稼動_08443]新規作成
+ *  2013/04/17    1.1   S.Niki           [E_本稼動_10588]代表入数の桁数変更
  *
  ****************************************************************************************/
 CREATE TABLE xxcmn.xxcmn_wk_item_batch_regist
@@ -43,7 +44,10 @@ CREATE TABLE xxcmn.xxcmn_wk_item_batch_regist
  ,destination_class                 VARCHAR2(1)
  ,cost_management_class             VARCHAR2(1)
  ,vendor_price_deriday_ty           VARCHAR2(1)
- ,represent_num                     NUMBER(12,0)
+-- Ver.1.1 S.Niki MOD START
+-- ,represent_num                     NUMBER(12,0)
+ ,represent_num                     NUMBER(11,3)
+-- Ver.1.1 S.Niki MOD END
  ,mtl_units_of_measure_tl           VARCHAR2(2)
  ,need_test_class                   VARCHAR2(1)
  ,inspection_lt                     NUMBER(4,0)

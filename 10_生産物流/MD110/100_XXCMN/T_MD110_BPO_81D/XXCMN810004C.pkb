@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCMN810004C(body)
  * Description      : CSVアップロードから品目マスタを一括登録します。
  * MD.050           : 品目マスタ一括アップロード T_MD050_BPO_810
- * Version          : Issue1.0
+ * Version          : Issue1.1
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -41,6 +41,7 @@ AS
  *  Date          Ver.  Editor           Description
  * ------------- ----- ---------------- -------------------------------------------------
  *  2012/11/20    1.0   K.Boku           main新規作成
+ *  2013/04/18    1.1   S.Niki           [E_本稼動_10588]  倉庫品目チェック、設定値修正
  *
  *****************************************************************************************/
 --
@@ -134,6 +135,9 @@ AS
   cv_msg_xxcmn_10638       CONSTANT VARCHAR2(20)  := 'APP-XXCMN-10638';  -- 項目数エラー
   cv_msg_xxcmn_10639       CONSTANT VARCHAR2(20)  := 'APP-XXCMN-10639';  -- ファイル項目チェックエラー
   cv_msg_xxcmn_10640       CONSTANT VARCHAR2(20)  := 'APP-XXCMN-10640';  -- BLOBデータ変換エラー
+-- Ver.1.1 S.Niki ADD START
+  cv_msg_xxcmn_10641       CONSTANT VARCHAR2(20)  := 'APP-XXCMN-10641';  -- 倉庫品目コード存在チェックエラー
+-- Ver.1.1 S.Niki ADD END
 --
   -- トークン
   cv_tkn_value             CONSTANT VARCHAR2(20)  := 'VALUE';            -- 値
@@ -237,6 +241,10 @@ AS
 --
   cv_prog_opmitem_trigger  CONSTANT VARCHAR2(20)  := 'XXCMN810003C';      -- OPM品目トリガー起動
 --
+-- Ver.1.1 S.Niki ADD START
+  -- 品目コード桁数
+  cn_item_code_length      CONSTANT NUMBER        := 7;     -- 品目コード桁数
+-- Ver.1.1 S.Niki ADD END
   -- 基準単位
   cv_item_um_0             CONSTANT VARCHAR2(2)   := '0';   -- 基準単位チェック条件
   cv_item_um_space         CONSTANT VARCHAR2(2)   := ' ';   -- 基準単位チェック条件
@@ -361,6 +369,9 @@ AS
   gn_master_org_id      mtl_parameters.master_organization_id%TYPE;           -- マスター在庫組織ID
   g_item_def_tab        g_item_def_ttype;                                     -- テーブル型変数の宣言
   gv_format             VARCHAR2(100);                                        -- パラメータ格納用変数
+-- Ver.1.1 S.Niki ADD START
+  gt_whse_item_id       ic_item_mst_b.whse_item_id%TYPE;                      -- 倉庫品目ID
+-- Ver.1.1 S.Niki ADD END
 --
   -- 処理件数カウント用
   gn_get_normal_cnt     NUMBER;                                               -- 型/サイズ/必須チェックOK件数
@@ -852,6 +863,9 @@ AS
     l_opm_category_rec        xxcmm_004common_pkg.opmitem_category_rtype;  -- OPM品目カテゴリ割当登録用
     ln_item_id                ic_item_mst_b.item_id%TYPE;                  -- シーケンスGET用品目ID
     lv_tkn_table              VARCHAR2(60);
+-- Ver.1.1 S.Niki ADD START
+    lt_whse_item_id           ic_item_mst_b.whse_item_id%TYPE;             -- 倉庫品目ID
+-- Ver.1.1 S.Niki ADD END
 --
     -- *** ローカル・カーソル ***
     --
@@ -878,6 +892,19 @@ AS
     INTO   ln_item_id
     FROM   DUAL
     ;
+-- Ver.1.1 S.Niki ADD START
+    --==============================================================
+    -- 倉庫品目ID取得
+    --==============================================================
+    -- 品目コードと倉庫品目の値が異なる場合
+    IF ( i_wk_item_rec.item_no <> i_wk_item_rec.warehouse_item ) THEN
+      -- D-4で取得した倉庫品目IDをセット
+      lt_whse_item_id := gt_whse_item_id;
+    ELSE
+      -- 上記で取得したOPM品目IDをセット
+      lt_whse_item_id := ln_item_id;
+    END IF;
+-- Ver.1.1 S.Niki ADD END
     --
     --==============================================================
     -- D-5.2 OPM品目マスタ登録用の値を設定
@@ -908,7 +935,10 @@ AS
     l_opm_item_rec.fill_qty                 := cv_0;                                     --
     l_opm_item_rec.expaction_interval       := cv_0;                                     --
     l_opm_item_rec.phantom_type             := cv_0;                                     --
-    l_opm_item_rec.whse_item_id             := l_opm_item_rec.item_id;                   --
+-- Ver.1.1 S.Niki MOD START
+--    l_opm_item_rec.whse_item_id             := l_opm_item_rec.item_id;                   --
+    l_opm_item_rec.whse_item_id             := lt_whse_item_id;                          -- 倉庫品目
+-- Ver.1.1 S.Niki MOD END
     l_opm_item_rec.experimental_ind         := cv_0;                                     -- 試作
     l_opm_item_rec.exported_date            := gd_process_date;                          --
     l_opm_item_rec.delete_mark              := cv_0;                                     --
@@ -1731,7 +1761,10 @@ AS
     -- D-4.3 品目コード7桁チェック
     --==============================================================
     -- 品目コード7桁チェック
-    IF ( LENGTHB( i_wk_item_rec.item_no ) <> 7 ) THEN
+-- Ver.1.1 S.Niki MOD START
+--    IF ( LENGTHB( i_wk_item_rec.item_no ) <> 7 ) THEN
+    IF ( LENGTHB( i_wk_item_rec.item_no ) <> cn_item_code_length ) THEN
+-- Ver.1.1 S.Niki ADD END
       -- 品目コード7桁必須エラー
       lv_errmsg := xxcmn_common_pkg.get_msg(
                      iv_application  => cv_appl_name_xxcmn             -- アプリケーション短縮名
@@ -1747,12 +1780,19 @@ AS
       lv_val_check_flag := cv_status_error;
     END IF;
     --
+-- Ver.1.1 S.Niki MOD START
+--    --==============================================================
+--    -- D-4.4 倉庫品目コード7桁チェック
+--    --==============================================================
+--    -- 倉庫品目コード7桁チェック
+--    IF ( LENGTHB( i_wk_item_rec.warehouse_item ) <> 7 ) THEN
+--
     --==============================================================
-    -- D-4.4 倉庫品目コード7桁チェック
+    -- D-4.4 倉庫品目チェック
     --==============================================================
-    -- 倉庫品目コード7桁チェック
-    IF ( LENGTHB( i_wk_item_rec.warehouse_item ) <> 7 ) THEN
-      -- 倉庫品目コード7桁必須エラー
+    IF ( LENGTHB( i_wk_item_rec.warehouse_item ) <> cn_item_code_length ) THEN
+-- Ver.1.1 S.Niki MOD END
+      -- 倉庫品目7桁必須エラー
       lv_errmsg := xxcmn_common_pkg.get_msg(
                      iv_application  => cv_appl_name_xxcmn             -- アプリケーション短縮名
                     ,iv_name         => cv_msg_xxcmn_10620             -- メッセージコード
@@ -1765,8 +1805,37 @@ AS
       FND_FILE.PUT_LINE(FND_FILE.OUTPUT,lv_errmsg);
       FND_FILE.PUT_LINE(FND_FILE.LOG,lv_errmsg);
       lv_val_check_flag := cv_status_error;
+-- Ver.1.1 S.Niki ADD START
+    -- 品目コードおよび倉庫品目ともに7桁かつ、値が異なる場合
+    ELSIF ( ( LENGTHB( i_wk_item_rec.item_no )        = cn_item_code_length )
+      AND   ( LENGTHB( i_wk_item_rec.warehouse_item ) = cn_item_code_length )
+      AND   ( i_wk_item_rec.item_no <> i_wk_item_rec.warehouse_item ) ) THEN
+        BEGIN
+          -- 倉庫品目存在チェック
+          SELECT  item_id            AS whse_item_id
+          INTO    gt_whse_item_id
+          FROM    ic_item_mst_b iimb
+          WHERE   iimb.item_no = i_wk_item_rec.warehouse_item  -- 倉庫品目
+          ;
+        EXCEPTION
+          -- 取得エラー時
+          WHEN NO_DATA_FOUND THEN
+            -- 倉庫品目コード存在チェックエラー
+            lv_errmsg := xxcmn_common_pkg.get_msg(
+                           iv_application  => cv_appl_name_xxcmn             -- アプリケーション短縮名
+                          ,iv_name         => cv_msg_xxcmn_10641             -- メッセージコード
+                          ,iv_token_name1  => cv_tkn_input_line_no           -- トークンコード1
+                          ,iv_token_value1 => i_wk_item_rec.line_no          -- トークン値1
+                          ,iv_token_name2  => cv_tkn_input_item_code         -- トークンコード2
+                          ,iv_token_value2 => i_wk_item_rec.warehouse_item   -- トークン値2
+                         );
+            -- メッセージ出力
+            FND_FILE.PUT_LINE(FND_FILE.OUTPUT,lv_errmsg);
+            FND_FILE.PUT_LINE(FND_FILE.LOG,lv_errmsg);
+            lv_val_check_flag := cv_status_error;
+        END;
+-- Ver.1.1 S.Niki ADD END
     END IF;
-    --
     --==============================================================
     -- D-4.5 単位（在庫単位）チェック
     --==============================================================
