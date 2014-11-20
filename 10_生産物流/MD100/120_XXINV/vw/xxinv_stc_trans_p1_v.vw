@@ -2066,6 +2066,80 @@ AS
   AND    xp_in_po_e_rma.start_date_active            <= TRUNC(SYSDATE)
   AND    xp_in_po_e_rma.end_date_active              >= TRUNC(SYSDATE)
 -- 2008/12/01 Upd Y.Kawano End
+-- 2009/01/30 Add Y.Kawano Start
+  UNION ALL
+  -- 倉替返品取消 入庫実績
+  SELECT NULL                                           AS po_trans_id
+        ,iwm_in_po_e_rma.attribute1                    AS ownership_code
+        ,mil_in_po_e_rma.inventory_location_id         AS inventory_location_id
+        ,xmld_in_po_e_rma.item_id                      AS item_id
+        ,ilm_in_po_e_rma.lot_no                        AS lot_no
+        ,ilm_in_po_e_rma.attribute1                    AS manufacture_date
+        ,ilm_in_po_e_rma.attribute2                    AS uniqe_sign
+        ,ilm_in_po_e_rma.attribute3                    AS expiration_date -- <---- ここまで共通
+        ,TRUNC(xoha_in_po_e_rma.arrival_date)          AS arrival_date
+        ,TRUNC(xoha_in_po_e_rma.shipped_date)          AS leaving_date
+        ,'2'                                           AS status              -- 実績
+        ,xrpm.new_div_invent                           AS reason_code
+        ,xrpm.meaning                                  AS reason_code_name
+        ,xoha_in_po_e_rma.request_no                   AS voucher_no
+        ,xp_in_po_e_rma.party_name                     AS ukebaraisaki_name
+        ,xpas_in_po_e_rma.party_site_name              AS deliver_to_name
+        ,xmld_in_po_e_rma.actual_quantity*-1           AS stock_quantity
+        ,0                                             AS leaving_quantity
+  FROM   xxwsh_order_headers_all      xoha_in_po_e_rma                 -- 受注ヘッダ(アドオン)
+        ,xxwsh_order_lines_all        xola_in_po_e_rma                 -- 受注明細(アドオン)
+        ,xxinv_mov_lot_details        xmld_in_po_e_rma                 -- 移動ロット詳細(アドオン)
+        ,ic_whse_mst                  iwm_in_po_e_rma                  -- OPM倉庫マスタ
+        ,mtl_item_locations           mil_in_po_e_rma                  -- OPM保管場所マスタ
+        ,ic_lots_mst                  ilm_in_po_e_rma                  -- OPMロットマスタ
+        ,oe_transaction_types_all     otta_in_po_e_rma                 -- 受注タイプ
+        ,hz_cust_accounts             hcsa_in_po_e_rma
+        ,hz_party_sites               hpas_in_po_e_rma
+        ,xxcmn_party_sites            xpas_in_po_e_rma
+        ,(SELECT xrpm_in_po_e_rma.new_div_invent
+                ,flv_in_po_e_rma.meaning
+                ,xrpm_in_po_e_rma.shipment_provision_div
+                ,xrpm_in_po_e_rma.ship_prov_rcv_pay_category
+          FROM   fnd_lookup_values flv_in_po_e_rma                      -- クイックコード
+                ,xxcmn_rcv_pay_mst xrpm_in_po_e_rma                    -- 受払区分アドオンマスタ
+          WHERE  flv_in_po_e_rma.lookup_type                  = 'XXCMN_NEW_DIVISION'
+          AND    flv_in_po_e_rma.language                     = 'JA'
+          AND    flv_in_po_e_rma.lookup_code                  = xrpm_in_po_e_rma.new_div_invent
+          AND    xrpm_in_po_e_rma.doc_type                    = 'OMSO'
+          AND    xrpm_in_po_e_rma.use_div_invent              = 'Y'
+          AND    xrpm_in_po_e_rma.rcv_pay_div                 = '1'            -- 受入
+         ) xrpm
+        ,xxcmn_parties                xp_in_po_e_rma
+  WHERE  xoha_in_po_e_rma.order_header_id             = xola_in_po_e_rma.order_header_id
+  AND    xola_in_po_e_rma.order_line_id               = xmld_in_po_e_rma.mov_line_id
+  AND    xoha_in_po_e_rma.deliver_from_id             = mil_in_po_e_rma.inventory_location_id
+  AND    mil_in_po_e_rma.organization_id              = iwm_in_po_e_rma.mtl_organization_id
+  AND    xmld_in_po_e_rma.item_id                     = ilm_in_po_e_rma.item_id
+  AND    xmld_in_po_e_rma.lot_id                      = ilm_in_po_e_rma.lot_id
+  AND    xmld_in_po_e_rma.document_type_code          = '10'           -- 出荷依頼
+  AND    xmld_in_po_e_rma.record_type_code            = '20'           -- 出庫実績
+  AND    xoha_in_po_e_rma.order_type_id               = otta_in_po_e_rma.transaction_type_id
+  AND    otta_in_po_e_rma.attribute1                  = '3'            -- 倉替返品
+  AND    otta_in_po_e_rma.attribute1                  = xrpm.shipment_provision_div
+  AND    xoha_in_po_e_rma.req_status                  = '04'           -- 出荷実績計上済
+  AND    xrpm.ship_prov_rcv_pay_category              = otta_in_po_e_rma.attribute11
+                                                                        -- 受払区分アドオンを複数読まない為
+  AND    otta_in_po_e_rma.attribute11                 in  ('03','04')
+  AND    otta_in_po_e_rma.order_category_code         = 'ORDER'
+  AND    xoha_in_po_e_rma.latest_external_flag        = 'Y'            -- ON
+  AND    xola_in_po_e_rma.delete_flag                 = 'N'            -- OFF
+  AND    xoha_in_po_e_rma.head_sales_branch           = hcsa_in_po_e_rma.account_number
+  AND    xoha_in_po_e_rma.result_deliver_to_id        = hpas_in_po_e_rma.party_site_id
+  AND    hpas_in_po_e_rma.party_site_id               = xpas_in_po_e_rma.party_site_id
+  AND    hpas_in_po_e_rma.party_id                    = xpas_in_po_e_rma.party_id
+  AND    hpas_in_po_e_rma.location_id                 = xpas_in_po_e_rma.location_id
+  AND    xpas_in_po_e_rma.start_date_active          <= TRUNC(SYSDATE)
+  AND    xpas_in_po_e_rma.end_date_active            >= TRUNC(SYSDATE)
+  AND    hcsa_in_po_e_rma.party_id                    = xp_in_po_e_rma.party_id
+  AND    xp_in_po_e_rma.start_date_active            <= TRUNC(SYSDATE)
+  AND    xp_in_po_e_rma.end_date_active              >= TRUNC(SYSDATE)
+-- 2009/01/30 Add Y.Kawano End
   UNION ALL
   -- 在庫調整 入庫実績(相手先在庫)
 -- 2008/12/07 N.Yoshida start
