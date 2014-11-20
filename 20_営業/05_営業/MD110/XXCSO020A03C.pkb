@@ -9,7 +9,7 @@ AS
  *                    画面にて変更された既存顧客情報を顧客マスタに反映します。
  * MD.050           : MD050_CSO_020_A03_各種マスタ反映処理機能
  *
- * Version          : 1.2
+ * Version          : 1.3
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -42,6 +42,7 @@ AS
  *  2009-04-21          Kazuo.Satomura   システムテスト障害対応(T1_0685)
  *  2009-05-01    1.1   Tomoko.Mori      T1_0897対応
  *  2009-05-08    1.2   Kazuo.Satomura   システムテスト障害対応(T1_0913)
+ *  2009-05-21    1.3   Kazuo.Satomura   システムテスト障害対応(T1_1092)
  *****************************************************************************************/
   --
   --#######################  固定グローバル定数宣言部 START   #######################
@@ -1507,13 +1508,22 @@ AS
     cv_bill_to_site_code CONSTANT VARCHAR2(30) := 'BILL_TO';
     /* 2009.05.08 K.Satomura T1_0913対応 START */
     cv_payment_name_promptly  CONSTANT VARCHAR2(8)  := '00_00_00';
-    cv_tkn_value_payment_term CONSTANT VARCHAR2(50) := '00_00_00（即時払い）';
+    /* 2009.05.21 K.Satomura T1_1092対応 START */
+    --cv_tkn_value_payment_term CONSTANT VARCHAR2(50) := '00_00_00（即時払い）';
+    cv_tkn_value_payment_term CONSTANT VARCHAR2(50) := '支払条件：00_00_00（即時払い）';
+    cv_tkn_item_name          CONSTANT VARCHAR2(50) := 'アカウントサイトＩＤ';
+    cv_tkn_table_name_use     CONSTANT VARCHAR2(50) := '顧客使用目的マスタ';
+    cv_business_cond_fv       CONSTANT VARCHAR2(50) := '25'; -- 業態（小分類）= フルサービスＶＤ
+    /* 2009.05.21 K.Satomura T1_1092対応 END */
     cv_tkn_value_table_name   CONSTANT VARCHAR2(50) := '支払条件ビュー';
     /* 2009.05.08 K.Satomura T1_0913対応 END */
     --
     -- トークン用定数
     cv_tkn_value_site_use_ship CONSTANT VARCHAR2(40) := '顧客使用目的マスタ登録（出荷先）';
     cv_tkn_value_site_use_bill CONSTANT VARCHAR2(40) := '顧客使用目的マスタ登録（請求先）';
+    /* 2009.05.21 K.Satomura T1_1092対応 START */
+    cv_tkn_value_use_bill_upd  CONSTANT VARCHAR2(40) := '顧客使用目的マスタ更新（請求先）';
+    /* 2009.05.21 K.Satomura T1_1092対応 END */
     --
     -- *** ローカル変数 ***
     -- 顧客使用目的用ＡＰＩ変数
@@ -1523,6 +1533,9 @@ AS
     lv_return_status        VARCHAR2(1);
     ln_msg_count            NUMBER;
     lv_msg_data             VARCHAR2(5000);
+    /* 2009.05.08 K.Satomura T1_0913対応 START */
+    ln_object_version_number NUMBER;
+    /* 2009.05.08 K.Satomura T1_0913対応 END */
     --
     ln_count NUMBER;
     --
@@ -1540,9 +1553,12 @@ AS
       SELECT COUNT(1)
       INTO   ln_count
       FROM   hz_cust_site_uses  hcs -- 顧客使用目的マスタビュー
-            ,hz_cust_acct_sites hca -- 顧客所在地マスタビュー
-      WHERE  hca.cust_account_id   = it_mst_regist_info_rec.customer_id
-      AND    hca.cust_acct_site_id = hcs.cust_acct_site_id
+      /* 2009.05.21 K.Satomura T1_1092対応 START */
+            --,hz_cust_acct_sites hca -- 顧客所在地マスタビュー
+      --WHERE  hca.cust_account_id   = it_mst_regist_info_rec.customer_id
+      --AND    hca.cust_acct_site_id = hcs.cust_acct_site_id
+      WHERE  hcs.cust_acct_site_id = it_cust_acct_site_id
+      /* 2009.05.21 K.Satomura T1_1092対応 END */
       AND    hcs.site_use_code     = cv_ship_to_site_code
       ;
       --
@@ -1604,28 +1620,19 @@ AS
       SELECT COUNT(1)
       INTO   ln_count
       FROM   hz_cust_site_uses  hcs -- 顧客使用目的マスタビュー
-            ,hz_cust_acct_sites hca -- 顧客所在地マスタビュー
-      WHERE  hca.cust_account_id   = it_mst_regist_info_rec.customer_id
-      AND    hca.cust_acct_site_id = hcs.cust_acct_site_id
+      /* 2009.05.21 K.Satomura T1_1092対応 START */
+            --,hz_cust_acct_sites hca -- 顧客所在地マスタビュー
+      --WHERE  hca.cust_account_id   = it_mst_regist_info_rec.customer_id
+      --AND    hca.cust_acct_site_id = hcs.cust_acct_site_id
+      WHERE  hcs.cust_acct_site_id = it_cust_acct_site_id
+      /* 2009.05.21 K.Satomura T1_1092対応 END */
       AND    hcs.site_use_code     = cv_bill_to_site_code
       ;
       --
     END IF;
     --
-    IF ((iv_proc_type = cv_proc_type_create)
-      OR ((ln_count <= 0)
-      AND (iv_proc_type = cv_proc_type_update)))
-    THEN
-      -- 処理区分がC又は、顧客使用目的(BILL_TO)が存在しない場合の場合
-      -- ===============================
-      -- 顧客使用目的(BILL_TO)マスタ新規
-      -- ===============================
-      -- 請求先の登録
-      lt_cust_site_use_rec.cust_acct_site_id := it_cust_acct_site_id; -- 顧客所在地ＩＤ
-      lt_cust_site_use_rec.site_use_code     := cv_bill_to_site_code; -- 使用目的
-      lt_cust_site_use_rec.created_by_module := SUBSTRB(cv_pkg_name, 1, 150);
-      --
-      /* 2009.05.08 K.Satomura T1_0913対応 START */
+    /* 2009.05.21 K.Satomura T1_1092対応 START */
+    IF (it_mst_regist_info_rec.business_condition_type = cv_business_cond_fv) THEN
       -- 支払条件ＩＤの取得
       BEGIN
         SELECT rtv.term_id
@@ -1665,7 +1672,65 @@ AS
           --
       END;
       --
-      /* 2009.05.08 K.Satomura T1_0913対応 END */
+    END IF;
+    --
+    /* 2009.05.21 K.Satomura T1_1092対応 END */
+    IF ((iv_proc_type = cv_proc_type_create)
+      OR ((ln_count <= 0)
+      AND (iv_proc_type = cv_proc_type_update)))
+    THEN
+      -- 処理区分がC又は、顧客使用目的(BILL_TO)が存在しない場合の場合
+      -- ===============================
+      -- 顧客使用目的(BILL_TO)マスタ新規
+      -- ===============================
+      -- 請求先の登録
+      lt_cust_site_use_rec.cust_acct_site_id := it_cust_acct_site_id; -- 顧客所在地ＩＤ
+      lt_cust_site_use_rec.site_use_code     := cv_bill_to_site_code; -- 使用目的
+      lt_cust_site_use_rec.created_by_module := SUBSTRB(cv_pkg_name, 1, 150);
+      --
+      /* 2009.05.21 K.Satomura T1_1092対応 START */
+      --/* 2009.05.08 K.Satomura T1_0913対応 START */
+      ---- 支払条件ＩＤの取得
+      --BEGIN
+      --  SELECT rtv.term_id
+      --  INTO   lt_cust_site_use_rec.payment_term_id
+      --  FROM   ra_terms_vl rtv
+      --  WHERE  rtv.name = cv_payment_name_promptly
+      --  ;
+      --  --
+      --EXCEPTION
+      --  WHEN NO_DATA_FOUND THEN
+      --    -- データが存在しない場合
+      --    lv_errbuf := xxccp_common_pkg.get_msg(
+      --                    iv_application  => cv_sales_appl_short_name  -- アプリケーション短縮名
+      --                   ,iv_name         => cv_tkn_number_03          -- メッセージコード
+      --                   ,iv_token_name1  => cv_tkn_item               -- トークンコード1
+      --                   ,iv_token_value1 => cv_tkn_value_payment_term -- トークン値1
+      --                   ,iv_token_name2  => cv_tkn_table              -- トークンコード2
+      --                   ,iv_token_value2 => cv_tkn_value_table_name   -- トークン値2
+      --                );
+      --    --
+      --    RAISE global_api_expt;
+      --    --
+      --  WHEN OTHERS THEN
+      --    -- その他の例外の場合
+      --    lv_errbuf := xxccp_common_pkg.get_msg(
+      --                    iv_application  => cv_sales_appl_short_name  -- アプリケーション短縮名
+      --                   ,iv_name         => cv_tkn_number_04          -- メッセージコード
+      --                   ,iv_token_name1  => cv_tkn_table              -- トークンコード1
+      --                   ,iv_token_value1 => cv_tkn_value_table_name   -- トークン値1
+      --                   ,iv_token_name2  => cv_tkn_key                -- トークンコード2
+      --                   ,iv_token_value2 => cv_tkn_value_payment_term -- トークン値2
+      --                   ,iv_token_name3  => cv_tkn_err_msg            -- トークンコード3
+      --                   ,iv_token_value3 => SQLERRM                   -- トークン値3
+      --                );
+      --    --
+      --    RAISE global_api_expt;
+      --    --
+      --END;
+      ----
+      --/* 2009.05.08 K.Satomura T1_0913対応 END */
+      /* 2009.05.21 K.Satomura T1_1092対応 END */
       hz_cust_account_site_v2pub.create_cust_site_use(
          p_init_msg_list        => fnd_api.g_true
         ,p_cust_site_use_rec    => lt_cust_site_use_rec
@@ -1701,6 +1766,83 @@ AS
         --
       END IF;
       --
+    /* 2009.05.21 K.Satomura T1_1092対応 START */
+    ELSE
+      BEGIN
+        SELECT hcs.site_use_id           -- 顧客使用目的ＩＤ
+              ,hcs.object_version_number -- オブジェクトバージョン番号
+        INTO   lt_cust_site_use_rec.site_use_id
+              ,ln_object_version_number
+        FROM   hz_cust_site_uses  hcs -- 顧客使用目的マスタビュー
+        WHERE  hcs.cust_acct_site_id = it_cust_acct_site_id
+        AND    hcs.site_use_code     = cv_bill_to_site_code
+        ;
+      EXCEPTION
+        WHEN NO_DATA_FOUND THEN
+          -- データが存在しない場合
+          lv_errbuf := xxccp_common_pkg.get_msg(
+                          iv_application  => cv_sales_appl_short_name -- アプリケーション短縮名
+                         ,iv_name         => cv_tkn_number_03         -- メッセージコード
+                         ,iv_token_name1  => cv_tkn_item              -- トークンコード1
+                         ,iv_token_value1 => cv_tkn_item_name ||
+                                             cv_msg_part      ||
+                                             it_cust_acct_site_id     -- トークン値1
+                         ,iv_token_name2  => cv_tkn_table             -- トークンコード2
+                         ,iv_token_value2 => cv_tkn_table_name_use    -- トークン値2
+                       );
+          --
+          RAISE global_api_expt;
+          --
+        WHEN OTHERS THEN
+          -- その他のエラーの場合
+          lv_errbuf := xxccp_common_pkg.get_msg(
+                          iv_application  => cv_sales_appl_short_name -- アプリケーション短縮名
+                         ,iv_name         => cv_tkn_number_04         -- メッセージコード
+                         ,iv_token_name1  => cv_tkn_table             -- トークンコード1
+                         ,iv_token_value1 => cv_tkn_table_name_use    -- トークン値1
+                         ,iv_token_name2  => cv_tkn_key               -- トークンコード2
+                         ,iv_token_value2 => it_cust_acct_site_id     -- トークン値2
+                         ,iv_token_name3  => cv_tkn_err_msg           -- トークンコード3
+                         ,iv_token_value3 => SQLERRM                  -- トークン値3
+                      );
+          --
+          RAISE global_api_expt;
+          --
+      END;
+      --
+      hz_cust_account_site_v2pub.update_cust_site_use(
+         p_init_msg_list         => fnd_api.g_true
+        ,p_cust_site_use_rec     => lt_cust_site_use_rec
+        ,p_object_version_number => ln_object_version_number
+        ,x_return_status         => lv_return_status
+        ,x_msg_count             => ln_msg_count
+        ,x_msg_data              => lv_msg_data
+      );
+      --
+      IF (lv_return_status <> fnd_api.g_ret_sts_success) THEN
+        -- リターンコードがS以外の場合
+        IF (ln_msg_count > 1) THEN
+          lv_msg_data := fnd_msg_pub.get(
+                            p_msg_index => cn_number_one
+                           ,p_encoded   => fnd_api.g_true
+                         );
+          --
+        END IF;
+        --
+        lv_errbuf := xxccp_common_pkg.get_msg(
+                        iv_application  => cv_sales_appl_short_name  -- アプリケーション短縮名
+                       ,iv_name         => cv_tkn_number_07          -- メッセージコード
+                       ,iv_token_name1  => cv_tkn_api_name           -- トークンコード1
+                       ,iv_token_value1 => cv_tkn_value_use_bill_upd -- トークン値1
+                       ,iv_token_name2  => cv_tkn_api_msg            -- トークンコード2
+                       ,iv_token_value2 => lv_msg_data               -- トークン値2
+                    );
+        --
+        RAISE global_api_expt;
+        --
+      END IF;
+      --
+    /* 2009.05.21 K.Satomura T1_1092対応 END */
     END IF;
     --
   EXCEPTION
