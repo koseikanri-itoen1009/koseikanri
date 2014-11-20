@@ -7,7 +7,7 @@ AS
  * Description      : 出来高実績アップロード
  * MD.050           : 生産バッチ T_MD050_BPO_202
  * MD.070           : 出来高実績アップロード T_MD070_BPO_20F
- * Version          : 1.3
+ * Version          : 1.4
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -27,13 +27,14 @@ AS
  *  main                   コンカレント実行ファイル登録プロシージャ
  *
  * Change Record
- * ------------- ----- ---------------- -------------------------------------------------
- *  Date          Ver.  Editor           Description
- * ------------- ----- ---------------- -------------------------------------------------
- *  2008/02/06    1.0   Oracle 山根 一浩 初回作成
- *  2008/05/27    1.1   Oracle 二瓶 大輔 結合テスト不具合対応(割当関数実行時に倉庫コード指定追加)
- *  2008/06/12    1.2   Oracle 二瓶 大輔 STテスト不具合対応#81
- *  2008/07/09    1.3   Oracle 山根一浩  I_S_192対応
+ * ------------- ----- ------------------- -------------------------------------------------
+ *  Date          Ver.  Editor              Description
+ * ------------- ----- ------------------- -------------------------------------------------
+ *  2008/02/06    1.0   Oracle 山根 一浩    初回作成
+ *  2008/05/27    1.1   Oracle 二瓶 大輔    結合テスト不具合対応(割当関数実行時に倉庫コード指定追加)
+ *  2008/06/12    1.2   Oracle 二瓶 大輔    STテスト不具合対応#81
+ *  2008/07/09    1.3   Oracle 山根 一浩    I_S_192対応
+ *  2009/02/05    1.4   SCS    伊藤 ひとみ  本番障害#32対応
  *****************************************************************************************/
 --
 --#######################  固定グローバル定数宣言部 START   #######################
@@ -108,6 +109,9 @@ AS
   gv_division_prod    CONSTANT VARCHAR2(1)   := '1';
   gv_disposal_div_add CONSTANT VARCHAR2(1)   := '1';
   gv_disposal_div_upd CONSTANT VARCHAR2(1)   := '2';
+-- 2009/02/05 H.Itou ADD START 本番障害#32対応
+  gv_create_lot_div_p CONSTANT VARCHAR2(1)   := '5'; -- 作成区分:生産出来高
+-- 2009/02/05 H.Itou ADD END
 --
   gv_prf_master_org_name    CONSTANT VARCHAR2(100) := 'XXCMN_MASTER_ORG_ID';
 --
@@ -149,6 +153,9 @@ AS
     lot_id                ic_tran_pnd.lot_id%TYPE,                           -- ロットID
     lot_no                ic_lots_mst.lot_no%TYPE,                           -- ロットNO
     attribute22           ic_lots_mst.attribute22%TYPE,                      -- 品質検査依頼NO
+-- 2009/02/05 H.Itou ADD START 本番障害#32対応
+    create_lot_div        ic_lots_mst.attribute24%TYPE,                      -- 作成区分
+-- 2009/02/05 H.Itou ADD END
     batch_status          gme_batch_header.batch_status%TYPE,                -- バッチステータス
 --
     in_data               VARCHAR2(5000),                                    -- 入力データ
@@ -166,6 +173,9 @@ AS
   gv_prf_master_org_id      VARCHAR2(100);
   gt_mast_tb                masters_tbl; -- 各マスタへ登録するデータ
   gv_batch_no               xxwip_volume_actual_if.batch_no%TYPE;
+-- 2009/02/05 H.Itou ADD START
+  gv_plant_code             xxwip_volume_actual_if.plant_code%TYPE;
+-- 2009/02/05 H.Itou ADD END
 --
   gd_sysdate               DATE;
   gn_user_id               NUMBER(15);
@@ -180,6 +190,9 @@ AS
       SELECT gbh.batch_id
       FROM   gme_batch_header gbh
       WHERE  gbh.batch_no = gv_batch_no
+-- 2009/02/05 H.Itou ADD START
+      AND    gbh.plant_code = gv_plant_code
+-- 2009/02/05 H.Itou ADD END
       AND    ROWNUM = 1
       FOR UPDATE OF gbh.batch_id NOWAIT;
 --
@@ -192,6 +205,9 @@ AS
         SELECT gbh.batch_id
         FROM   gme_batch_header gbh
         WHERE  gbh.batch_no = gv_batch_no
+-- 2009/02/05 H.Itou ADD START
+        AND    gbh.plant_code = gv_plant_code
+-- 2009/02/05 H.Itou ADD END
         AND    gmd.batch_id = gbh.batch_id
         AND    ROWNUM = 1)
       FOR UPDATE OF gmd.batch_id NOWAIT;
@@ -205,8 +221,14 @@ AS
         SELECT gbh.batch_id
         FROM   gme_batch_header gbh
         WHERE  gbh.batch_no = gv_batch_no
+-- 2009/02/05 H.Itou ADD START
+        AND    gbh.plant_code = gv_plant_code
+-- 2009/02/05 H.Itou ADD END
         AND    itp.doc_id   = gbh.batch_id
         AND    ROWNUM = 1)
+-- 2009/02/05 H.Itou ADD START
+      AND    itp.doc_type   = 'PROD'
+-- 2009/02/05 H.Itou ADD END
       FOR UPDATE OF itp.trans_id NOWAIT;
 --
   /***********************************************************************************
@@ -508,8 +530,11 @@ AS
     -- ***************************************
 --
     gv_batch_no := ir_masters_rec.batch_no;
+-- 2009/02/05 H.Itou ADD START
+    gv_plant_code := ir_masters_rec.plant_code;
+-- 2009/02/05 H.Itou ADD END
 --
-    -- 生産バッチヘッダ
+    -- 生産原料詳細
     BEGIN
       OPEN gc_gmd_cur;
 --
@@ -526,7 +551,7 @@ AS
         RAISE global_api_expt;
     END;
 --
-    -- 生産原料詳細
+    -- 生産バッチヘッダ
     BEGIN
       OPEN gc_gbh_cur;
 --
@@ -660,6 +685,9 @@ AS
             ,itp.lot_id                                                 -- ロットID
             ,ilm.lot_no                                                 -- ロットNO
             ,ilm.attribute22                                            -- 品質検査依頼NO
+-- 2009/02/05 H.Itou ADD START 本番障害#32対応
+            ,ilm.attribute24                                            -- 作成区分
+-- 2009/02/05 H.Itou ADD END
             ,gbh.batch_status                                           -- バッチステータス
       INTO   ir_masters_rec.batch_id
             ,ir_masters_rec.routing_no
@@ -682,6 +710,9 @@ AS
             ,ir_masters_rec.lot_id
             ,ir_masters_rec.lot_no
             ,ir_masters_rec.attribute22
+-- 2009/02/05 H.Itou ADD START 本番障害#32対応
+            ,ir_masters_rec.create_lot_div
+-- 2009/02/05 H.Itou ADD END
             ,ir_masters_rec.batch_status
       FROM   gme_batch_header gbh                               -- 生産バッチヘッダ
             ,gme_material_details gmd                           -- 生産原料詳細
@@ -690,7 +721,7 @@ AS
             ,ic_lots_mst ilm                                    -- OPMロットマスタ
             ,xxcmn_item_locations_v xilv                        -- OPM保管場所情報VIEW
             ,xxcmn_item_mst2_v ximv                             -- OPM品目情報VIEW2
-            ,xxcmn_item_categories3_v xicv                      -- OPM品目カテゴリ割当情報VIEW3
+            ,xxcmn_item_categories5_v xicv                      -- OPM品目カテゴリ割当情報VIEW3
       WHERE gbh.batch_id      = gmd.batch_id
       AND   gbh.routing_id    = grb.routing_id
       AND   xilv.segment1     = grb.attribute9
@@ -852,13 +883,21 @@ AS
 --
     -- 試験有無区分が無
     IF (ir_masters_rec.test_code = gv_test_code_off) THEN
-      -- ロットステータスに’１０’
-      lr_in_lot_mst.attribute23 := gv_test_code_mi;
+-- 2009/02/05 H.Itou MOD START 本番障害#32対応
+--      -- ロットステータスに’１０’
+--      lr_in_lot_mst.attribute23 := gv_test_code_mi;
+      -- ロットステータスに’５０’
+      lr_in_lot_mst.attribute23 := gv_test_code_ok;
+-- 2009/02/05 H.Itou MOD END
 --
     -- 試験有無区分が有
     ELSIF (ir_masters_rec.test_code = gv_test_code_on) THEN
-      -- ロットステータスに’５０’
-      lr_in_lot_mst.attribute23 := gv_test_code_ok;
+-- 2009/02/05 H.Itou MOD START 本番障害#32対応
+--      -- ロットステータスに’５０’
+--      lr_in_lot_mst.attribute23 := gv_test_code_ok;
+      -- ロットステータスに’１０’
+      lr_in_lot_mst.attribute23 := gv_test_code_mi;
+-- 2009/02/05 H.Itou MOD END
     END IF;
 --
     -- ロット追加・更新関数
@@ -886,6 +925,9 @@ AS
 --
     ir_masters_rec.lot_id := lr_out_lot_mst.lot_id;
     ir_masters_rec.attribute22 := lr_out_lot_mst.attribute22;
+-- 2009/02/05 H.Itou ADD START 本番障害#32対応
+    ir_masters_rec.create_lot_div := lr_out_lot_mst.attribute24; -- 作成区分
+-- 2009/02/05 H.Itou ADD END
 --
     --==============================================================
     --メッセージ出力(エラー以外)をする必要がある場合は処理を記述
@@ -976,15 +1018,22 @@ AS
     -- ***       共通関数の呼び出し        ***
     -- ***************************************
 --
-    -- 試験有無区分が有かつ検査依頼NOがNULL
+    -- 試験有無区分が有かつ検査依頼NOがNULLかつ作成区分が生産実績計上の場合
     IF ((ir_masters_rec.test_code = gv_test_code_on)
-    AND (ir_masters_rec.attribute22 IS NULL)) THEN
+-- 2009/02/05 H.Itou MOD START 本番障害#32対応
+--    AND (ir_masters_rec.attribute22 IS NULL)) THEN
+    AND (ir_masters_rec.attribute22 IS NULL)
+    AND (ir_masters_rec.create_lot_div = gv_create_lot_div_p)) THEN
+-- 2009/02/05 H.Itou MOD END
 --
       lv_division     := gv_division_prod;                    -- 区分：生産
       lv_disposal_div := gv_disposal_div_add;                 -- 処理区分：追加
       ln_batch_id     := ir_masters_rec.batch_id;             -- 生産バッチID
       ln_lot_id       := ir_masters_rec.lot_id;               -- ロットID
       ln_item_id      := ir_masters_rec.item_id;              -- 品目ID
+-- 2009/02/05 H.Itou ADD START 本番障害#32対応
+      ln_qty          := ir_masters_rec.volume_actual_qty;    -- 出来高実績数量
+-- 2009/02/05 H.Itou ADD END
 --
       -- 品質検査依頼情報作成
       xxwip_common_pkg.make_qt_inspection(
@@ -1014,6 +1063,50 @@ AS
                                               ir_masters_rec.in_data);
         RAISE check_proc_make_qt_expt;
       END IF;
+--
+-- 2009/02/05 H.Itou ADD START 本番障害#32対応
+    -- 試験有無区分が有かつ検査依頼NO有かつ作成区分が生産実績計上の場合
+    ELSIF ((ir_masters_rec.test_code = gv_test_code_on)
+    AND    (ir_masters_rec.attribute22 IS NOT NULL)
+    AND    (ir_masters_rec.create_lot_div = gv_create_lot_div_p)) THEN
+--
+      lv_division     := gv_division_prod;                    -- 区分：生産
+      lv_disposal_div := gv_disposal_div_upd;                 -- 処理区分：更新
+      ln_batch_id     := ir_masters_rec.batch_id;             -- 生産バッチID
+      ln_lot_id       := ir_masters_rec.lot_id;               -- ロットID
+      ln_item_id      := ir_masters_rec.item_id;              -- 品目ID
+      ln_qty          := ir_masters_rec.volume_actual_qty;    -- 出来高実績数量
+      ln_in_req_no    := ir_masters_rec.attribute22;          -- 検査依頼NO
+--
+      -- 品質検査依頼情報作成
+      xxwip_common_pkg.make_qt_inspection(
+         it_division          => lv_division
+        ,iv_disposal_div      => lv_disposal_div
+        ,it_lot_id            => ln_lot_id
+        ,it_item_id           => ln_item_id
+        ,iv_qt_object         => lv_qt_object
+        ,it_batch_id          => ln_batch_id
+        ,it_batch_po_id       => ln_batch_po_id
+        ,it_qty               => ln_qty
+        ,it_prod_dely_date    => ld_prod_dely_date
+        ,it_vendor_line       => lv_vendor_line
+        ,it_qt_inspect_req_no => ln_in_req_no
+        ,ot_qt_inspect_req_no => ln_out_req_no
+        ,ov_errbuf            => lv_errbuf
+        ,ov_retcode           => lv_retcode
+        ,ov_errmsg            => lv_errmsg
+      );
+--
+      IF (lv_retcode = gv_status_error) THEN
+        lv_errmsg := xxcmn_common_pkg.get_msg('XXWIP',
+                                              'APP-XXWIP-10050',
+                                              'API_NAME',
+                                              '品質検査依頼情報作成',
+                                              'DATA',
+                                              ir_masters_rec.in_data);
+        RAISE check_proc_make_qt_expt;
+      END IF;
+-- 2009/02/05 H.Itou ADD END
     END IF;
 --
     --==============================================================

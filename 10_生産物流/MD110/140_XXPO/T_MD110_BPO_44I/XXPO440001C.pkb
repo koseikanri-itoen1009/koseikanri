@@ -7,7 +7,7 @@ AS
  * Description      : —LoŒÉw¦‘
  * MD.050/070       : —Lx‹‹’ •[Issue1.0(T_MD050_BPO_444)
  *                    —Lx‹‹’ •[Issue1.0(T_MD070_BPO_44I)
- * Version          : 1.8
+ * Version          : 1.9
  *
  * Program List
  * -------------------- ------------------------------------------------------------
@@ -47,6 +47,7 @@ AS
  *  2008/09/19    1.6   OracleRªˆê_   T_S_439‘Î‰
  *  2008/10/22    1.7   Oracle‘å‹´F˜Y   w“E361‘Î‰
  *  2008/11/21    1.8   Oracle‘å‹´F˜Y   w“E699‘Î‰
+ *  2009/02/13    1.9   Oracle‰Á”g—R—¢ –{”ÔáŠQ#24‘Î‰
  *
  *****************************************************************************************/
 --
@@ -1330,6 +1331,11 @@ AS
       || ',xoha.schedule_ship_date'
       || ',xola.order_line_number'
     ;
+-- 2009/02/13 Y.Kanami –{”ÔáŠQ#24‘Î‰ Start --
+    IF (gr_param.use_purpose <> gc_use_purpose_irai) THEN
+      lv_order_by := lv_order_by || ',ilm.lot_id';
+    END IF;
+-- 2009/02/13 Y.Kanami –{”ÔáŠQ#24‘Î‰ End   --
 --
     gv_sql := lv_select || lv_from || lv_where || lv_order_by;
 --

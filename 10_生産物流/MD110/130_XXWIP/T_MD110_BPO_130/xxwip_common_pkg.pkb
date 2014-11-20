@@ -6,7 +6,7 @@ AS
  * Package Name           : xxwip_common_pkg(BODY)
  * Description            : 共通関数(XXWIP)(BODY)
  * MD.070(CMD.050)        : なし
- * Version                : 1.20
+ * Version                : 1.21
  *
  * Program List
  *  --------------------   ---- ----- --------------------------------------------------
@@ -66,6 +66,7 @@ AS
  *  2009/01/30   1.19  Oracle 二瓶 大輔   本番障害#4対応(ランク3追加)
  *                                        本番障害#666対応(実績開始日修正)
  *  2009/02/16   1.20  Oracle 二瓶 大輔   本番障害#1198対応
+ *  2009/02/16   1.21  Oracle 伊藤 ひとみ 本番障害#32,1096対応(品質検査依頼情報作成 数量加算 ロットステータス初期化)
  *****************************************************************************************/
 --
 --###############################  固定グローバル定数宣言部 START   ###############################
@@ -1459,6 +1460,9 @@ AS
     ir_ic_lots_mst_out.attribute19 := lr_ic_lots_mst.attribute19;
 -- 2009/01/30 D.Nihei ADD END
     ir_ic_lots_mst_out.attribute22 := lr_ic_lots_mst.attribute22;
+-- 2009/02/16 H.Itou ADD 本番障害#32対応 作成区分追加
+    ir_ic_lots_mst_out.attribute24 := lr_ic_lots_mst.attribute24;
+-- 2009/02/16 H.Itou ADD END
   EXCEPTION
     --*** API例外 ***
     WHEN api_expt THEN
@@ -2269,7 +2273,7 @@ AS
       INTO   ln_co_prod_price
       FROM   gme_material_details gmd  -- 生産原料詳細
             ,ic_tran_pnd          itp  -- OPM保留在庫トランザクション
--- 2008/07/10 D.Nihei MOD START 
+-- 2008/07/10 D.Nihei MOD START
 --            ,cm_cmpt_dtl          ccd  -- 品目原価マスタ
 --            ,cm_cmpt_mst_b        ccmb -- コンポーネント区分マスタ
             ,(SELECT cc.calendar_code          calendar_code
@@ -2278,23 +2282,23 @@ AS
               FROM  cm_cmpt_dtl cc
               WHERE cc.whse_code =   fnd_profile.value(gv_prof_cost_price)
               GROUP BY calendar_code,item_id ) ccd          -- 標準原価マスタ
--- 2008/07/10 D.Nihei MOD START 
+-- 2008/07/10 D.Nihei MOD START
             ,cm_cldr_dtl          ccdt -- 原価カレンダ
       WHERE  gmd.material_detail_id  = itp.line_id
       AND    itp.reverse_id          IS NULL
       AND    itp.delete_mark         = gn_delete_mark_off
       AND    itp.lot_id              > gn_default_lot_id
       AND    itp.line_type           = gn_co_prod
--- 2008/07/10 D.Nihei DEL START 
+-- 2008/07/10 D.Nihei DEL START
 --      AND    ccd.cost_cmpntcls_id    = ccmb.cost_cmpntcls_id
 --      AND    ccmb.cost_cmpntcls_code = gv_cmpnt_code_gen
--- 2008/07/10 D.Nihei DEL END 
+-- 2008/07/10 D.Nihei DEL END
       AND    ccd.calendar_code       = ccdt.calendar_code
       AND    ccdt.start_date        <= NVL(FND_DATE.STRING_TO_DATE(gmd.attribute11, 'YYYY/MM/DD') , TRUNC(SYSDATE))
       AND    ccdt.end_date          >= NVL(FND_DATE.STRING_TO_DATE(gmd.attribute11, 'YYYY/MM/DD') , TRUNC(SYSDATE))
--- 2008/07/10 D.Nihei DEL START 
+-- 2008/07/10 D.Nihei DEL START
 --      AND    ccd.whse_code           = fnd_profile.value(gv_prof_cost_price)
--- 2008/07/10 D.Nihei DEL END 
+-- 2008/07/10 D.Nihei DEL END
       AND    itp.item_id             = ccd.item_id
       AND    itp.doc_id              = it_batch_id
       AND    itp.completed_ind       = gv_flg_on
@@ -2351,11 +2355,11 @@ AS
     IF (ln_prod_price = 0) THEN
       RAISE skip_expt;
     ELSE
--- 2008/07/10 D.Nihei MOD START 
+-- 2008/07/10 D.Nihei MOD START
 --      lr_lot_mst.attribute7 := NVL(TO_CHAR(ROUND((NVL(ln_invest_price, 0) + NVL(ln_co_prod_price, 0)) / NVL(ln_prod_price, 0), 2)), '0');
       -- 在庫単価 = 投入計 - 副産物 / 出来高数
       lr_lot_mst.attribute7 := NVL(TO_CHAR(ROUND((NVL(ln_invest_price, 0) - NVL(ln_co_prod_price, 0)) / NVL(ln_prod_price, 0), 2)), '0');
--- 2008/07/10 D.Nihei MOD END 
+-- 2008/07/10 D.Nihei MOD END
     END IF;
 --
     update_lot_dff_api(
@@ -2458,7 +2462,7 @@ AS
     -- ***********************************************
     BEGIN
 -- 2008/06/02 D.Nihei MOD START
---      SELECT SUM(gmd.actual_qty) invest_actual_qty 
+--      SELECT SUM(gmd.actual_qty) invest_actual_qty
 --      INTO   ln_invest_actual_qty
 --      FROM   gme_material_details      gmd
 --            ,xxcmn_item_categories3_v  xicv -- 品目カテゴリ情報VIEW3
@@ -2469,7 +2473,7 @@ AS
 --                                     ,gv_item_type_harf_prod
 --                                     ,gv_item_type_prod)
 --      AND    gmd.attribute24       IS NULL
-      SELECT SUM(xmd.invested_qty) invest_actual_qty 
+      SELECT SUM(xmd.invested_qty) invest_actual_qty
       INTO   ln_invest_actual_qty
       FROM   xxwip_material_detail     xmd  -- 生産原料詳細アドオン
             ,xxcmn_item_categories3_v  xicv -- 品目カテゴリ情報VIEW3
@@ -2935,9 +2939,9 @@ AS
     it_lot_id               IN  xxwip_qt_inspection.lot_id%TYPE,        -- IN  2.ロットID
     it_item_id              IN  xxwip_qt_inspection.item_id%TYPE,       -- IN  3.品目ID
     iv_disposal_div         IN  VARCHAR2,                               -- IN  4.処理区分
-
-
-
+-- 2009/02/16 H.Itou Add Start 本番障害#32対応 生産は数量をINパラメータから取得する。
+    it_qty                  IN  xxwip_qt_inspection.qty%TYPE,           -- IN  4.数量
+-- 2009/02/16 H.Itou Add End
     ir_xxwip_qt_inspection  IN  xxwip_qt_inspection%ROWTYPE,            -- IN  5.xxwip_qt_inspectionレコード型
     or_xxwip_qt_inspection  OUT NOCOPY xxwip_qt_inspection%ROWTYPE,            -- OUT 1.xxwip_qt_inspectionレコード型
     ov_errbuf               OUT NOCOPY VARCHAR2,                               -- エラー・メッセージ           --# 固定 #
@@ -2978,10 +2982,13 @@ AS
     -- データ取得
     --================================
     SELECT grb.routing_no           vendor_line          -- 仕入先コード/ラインNo
-          ,gmd.actual_qty           qty                  -- 数量
-
-
-          ,FND_DATE.STRING_TO_DATE(gmd.attribute17,'YYYY/MM/DD')
+-- 2009/02/16 H.Itou Del Start 本番障害#32対応 生産は数量をINパラメータから取得する。
+--          ,gmd.actual_qty           qty                  -- 数量
+-- 2009/02/16 H.Itou Del End
+-- 2009/02/16 H.Itou Mod Start 本番障害#32対応 ロットマスタの製造日を参照する
+--          ,FND_DATE.STRING_TO_DATE(gmd.attribute17,'YYYY/MM/DD')
+          ,FND_DATE.STRING_TO_DATE(ilm.attribute1,'YYYY/MM/DD')
+-- 2009/02/16 H.Itou Mod End
                                     product_date         -- 製造日
           ,TO_NUMBER(ximv.inspect_lot)
                                     inspect_period       -- 検査L/T
@@ -2989,9 +2996,9 @@ AS
                                     use_by_date          -- 賞味期限
           ,ilm.attribute2           unique_sign          -- 固有記号
     INTO   lr_xxwip_qt_inspection.vendor_line            -- 仕入先コード/ラインNo
-          ,lr_xxwip_qt_inspection.qty                    -- 数量
-
-
+-- 2009/02/16 H.Itou Del Start 本番障害#32対応 生産は数量をINパラメータから取得する。
+--          ,lr_xxwip_qt_inspection.qty                    -- 数量
+-- 2009/02/16 H.Itou Del End
           ,lr_xxwip_qt_inspection.product_date           -- 製造日
           ,lr_xxwip_qt_inspection.inspect_period         -- 検査L/T
           ,lr_xxwip_qt_inspection.use_by_date            -- 賞味期限
@@ -3026,6 +3033,9 @@ AS
     lr_xxwip_qt_inspection.lot_id         := it_lot_id;                            -- ロットID
     lr_xxwip_qt_inspection.prod_dely_date := lr_xxwip_qt_inspection.product_date;  -- 生産/納入日
     lr_xxwip_qt_inspection.batch_po_id    := it_batch_id;                          -- 番号
+-- 2009/02/16 H.Itou Add Start 本番障害#32対応 生産は数量をINパラメータから取得する。
+    lr_xxwip_qt_inspection.qty            := it_qty;                               -- 数量
+-- 2009/02/16 H.Itou Add End
 --
     -- 処理区分が2:更新の場合
     -- 登録済の品質検査依頼情報の検査日のいづれかに入力がある場合
@@ -3674,7 +3684,19 @@ AS
             ,xqi.lot_id                  = lr_xxwip_qt_inspection.lot_id                 -- ロットID
             ,xqi.vendor_line             = lr_xxwip_qt_inspection.vendor_line            -- 仕入先コード/ラインNo
             ,xqi.product_date            = lr_xxwip_qt_inspection.product_date           -- 製造日
-            ,xqi.qty                     = lr_xxwip_qt_inspection.qty                    -- 数量
+-- 2009/02/16 H.Itou Mod Start 本番障害#32対応
+--            ,xqi.qty                     = lr_xxwip_qt_inspection.qty                    -- 数量
+            ,xqi.qty
+               = CASE
+                   --  1:生産、2:発注、3:ロット情報の場合は、前回登録との差分が渡されるので、数量加算
+                   WHEN (it_division IN (gt_division_gme, gt_division_po, gt_division_lot)) THEN
+                     xqi.qty + lr_xxwip_qt_inspection.qty          -- 前回数量＋今回数量
+--
+                   -- 上記以外は実数が渡されるので、そのまま更新
+                   ELSE
+                     lr_xxwip_qt_inspection.qty                    -- 今回数量
+                 END
+-- 2009/02/16 H.Itou Mod End
             ,xqi.prod_dely_date          = lr_xxwip_qt_inspection.prod_dely_date         -- 生産/納入日
 -- 2008/07/14 H.Itou DEL START 検査予定日・結果は更新不要
 --            ,xqi.inspect_due_date1       = lr_xxwip_qt_inspection.inspect_due_date1      -- 検査予定日１
@@ -3732,6 +3754,9 @@ AS
   /*********************************************************************************/
   PROCEDURE qt_update_lot_dff_api(
     ir_xxwip_qt_inspection  IN xxwip_qt_inspection%ROWTYPE, -- IN 1.xxwip_qt_inspectionレコード型
+-- 2009/02/16 H.Itou Add Start 本番障害#1096対応 ロットステータスを初期化するかを判断するため、処理区分をパラメータに追加
+    iv_disposal_div         IN  VARCHAR2,                                  -- IN 2.処理区分
+-- 2009/02/16 H.Itou Add End
     ov_errbuf               OUT NOCOPY VARCHAR2,                   -- エラー・メッセージ           --# 固定 #
     ov_retcode              OUT NOCOPY VARCHAR2,                   -- リターン・コード             --# 固定 #
     ov_errmsg               OUT NOCOPY VARCHAR2                    -- ユーザー・エラー・メッセージ --# 固定 #
@@ -3812,7 +3837,18 @@ AS
           ,ilm.attribute20                           attribute20
           ,ilm.attribute21                           attribute21
           ,lr_xxwip_qt_inspection.qt_inspect_req_no  attribute22
-          ,ilm.attribute23                           attribute23
+-- 2009/02/16 H.Itou Mod Start 本番障害#1096対応 新規の場合、ロットステータスを10:未判定に初期化。
+--          ,ilm.attribute23                           attribute23
+          ,CASE
+             -- 新規の場合･･･ロットステータスを未判定に初期化
+             WHEN (iv_disposal_div = gv_disposal_div_ins) THEN
+               gt_qt_status_mi
+--
+             -- 新規でない場合･･･変更しない。
+             ELSE
+               ilm.attribute23
+           END                                       attribute23
+-- 2009/02/16 H.Itou Mod End
           ,ilm.attribute24                           attribute24
           ,ilm.attribute25                           attribute25
           ,ilm.attribute26                           attribute26
@@ -4048,7 +4084,7 @@ AS
     iv_qt_object         IN  VARCHAR2,                                  -- IN  5.対象先       区分:5のみ必須（1:荒茶品目 2:副産物１ 3:副産物２ 4:副産物３）
     it_batch_id          IN  xxwip_qt_inspection.batch_po_id%TYPE,      -- IN  6.生産バッチID 処理区分3以外かつ区分:1のみ必須
     it_batch_po_id       IN  xxwip_qt_inspection.batch_po_id%TYPE,      -- IN  7.明細番号     処理区分3以外かつ区分:2のみ必須
-    it_qty               IN  xxwip_qt_inspection.qty%TYPE,              -- IN  8.数量         処理区分3以外かつ区分:2のみ必須
+    it_qty               IN  xxwip_qt_inspection.qty%TYPE,              -- IN  8.数量         処理区分3以外かつ区分:1,2必須
     it_prod_dely_date    IN  xxwip_qt_inspection.prod_dely_date%TYPE,   -- IN  9.納入日       処理区分3以外かつ区分:2のみ必須
     it_vendor_line       IN  xxwip_qt_inspection.vendor_line%TYPE,      -- IN 10.仕入先コード 処理区分3以外かつ区分:2のみ必須
     it_qt_inspect_req_no IN  xxwip_qt_inspection.qt_inspect_req_no%TYPE,-- IN 11.検査依頼No   処理区分:2、3のみ必須
@@ -4191,6 +4227,9 @@ AS
          ,it_lot_id               => it_lot_id                  -- IN  2.ロットID
          ,it_item_id              => it_item_id                 -- IN  3.品目ID
          ,iv_disposal_div         => iv_disposal_div            -- IN  4.処理区分
+-- 2009/02/16 H.Itou Add Start 本番障害#32対応 生産は数量をINパラメータから取得する。
+         ,it_qty                  => it_qty                     -- IN  4.数量
+-- 2009/02/16 H.Itou Add End
          ,ir_xxwip_qt_inspection  => lr_xxwip_qt_inspection_now -- IN  5.xxwip_qt_inspectionレコード型
          ,or_xxwip_qt_inspection  => lr_xxwip_qt_inspection     -- OUT 1.xxwip_qt_inspectionレコード型
          ,ov_errbuf               => lv_errbuf                  -- エラー・メッセージ           --# 固定 #
@@ -4313,13 +4352,16 @@ AS
 --
     -- 処理区分が3:削除の場合
     ELSE
-      -- =============================
-      -- A-10.品質検査依頼情報削除
-      -- =============================
---
-      DELETE xxwip_qt_inspection   xqi   -- 品質検査依頼情報
-      WHERE  xqi.qt_inspect_req_no  = it_qt_inspect_req_no    -- 検査依頼No
-      ;
+-- 2009/02/16 H.Itou Mod Start 本番障害#32対応 削除は廃止する。
+--      -- =============================
+--      -- A-10.品質検査依頼情報削除
+--      -- =============================
+----
+--      DELETE xxwip_qt_inspection   xqi   -- 品質検査依頼情報
+--      WHERE  xqi.qt_inspect_req_no  = it_qt_inspect_req_no    -- 検査依頼No
+--      ;
+      lr_xxwip_qt_inspection.qt_inspect_req_no := it_qt_inspect_req_no;  -- 検査依頼No;
+-- 2009/02/16 H.Itou Mod End
 --
     END IF;
 --
@@ -4328,6 +4370,9 @@ AS
     -- =============================
     qt_update_lot_dff_api(
       ir_xxwip_qt_inspection  => lr_xxwip_qt_inspection -- IN 1.xxwip_qt_inspectionレコード型
+-- 2009/02/16 H.Itou Add Start 本番障害#1096対応 ロットステータスを初期化するかを判断するため、処理区分をパラメータに追加
+     ,iv_disposal_div         => iv_disposal_div        -- IN  2.処理区分
+-- 2009/02/16 H.Itou Add End
      ,ov_errbuf               => lv_errbuf              -- エラー・メッセージ           --# 固定 #
      ,ov_retcode              => lv_retcode             -- リターン・コード             --# 固定 #
      ,ov_errmsg               => lv_errmsg              -- ユーザー・エラー・メッセージ --# 固定 #
@@ -4423,7 +4468,7 @@ AS
 --
     ln_total_qty := xxcmn_common_pkg.get_stock_qty(in_whse_id, in_item_id, in_lot_id);
 --
--- 2008/12/25 D.Nihei DEL START 
+-- 2008/12/25 D.Nihei DEL START
 --    -- **************************************************
 --    -- ***  他の生産バッチで使用されている数量を取得  ***
 --    -- **************************************************
@@ -4603,11 +4648,11 @@ AS
     -- *************************************************
     -- ***  移動ロット詳細の実績日を更新します。     ***
     -- *************************************************
-    UPDATE xxinv_mov_lot_details xmld 
+    UPDATE xxinv_mov_lot_details xmld
     SET    xmld.actual_date       = lt_trans_date
-          ,xmld.last_updated_by   = FND_GLOBAL.USER_ID  
-          ,xmld.last_update_date  = SYSDATE             
-          ,xmld.last_update_login = FND_GLOBAL.LOGIN_ID 
+          ,xmld.last_updated_by   = FND_GLOBAL.USER_ID
+          ,xmld.last_update_date  = SYSDATE
+          ,xmld.last_update_login = FND_GLOBAL.LOGIN_ID
     WHERE  xmld.record_type_code   = '40' -- レコードタイプ
     AND    xmld.document_type_code = '40' -- 文書タイプ
     AND    xmld.actual_date       <> lt_trans_date

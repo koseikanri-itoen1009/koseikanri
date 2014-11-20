@@ -120,6 +120,10 @@ AS
 -- 2008/07/24 H.Itou MOD END
     AND ilm.lot_id                   = xqi.lot_id
     AND xqi.inspect_class            = '1'
+-- 2009/02/05 H.Itou ADD START 本番障害#32対応 数量が0以下の品質検査は表示しない。
+    AND ((xqi.qty IS NULL) -- 数量がNULL
+      OR (xqi.qty > 0 ))   -- 数量が0より大きい
+-- 2009/02/05 H.Itou ADD END
 --
   UNION ALL
 --
@@ -219,4 +223,8 @@ AS
 -- 2008/07/24 H.Itou MOD END
     AND ilm.lot_id                   = xqi.lot_id
     AND xqi.inspect_class            = '2'
+-- 2009/02/05 H.Itou ADD START 本番障害#32対応 数量が0以下の品質検査は表示しない。
+    AND ((xqi.qty IS NULL) -- 数量がNULL
+      OR (xqi.qty > 0 ))   -- 数量が0より大きい
+-- 2009/02/05 H.Itou ADD END
 /
