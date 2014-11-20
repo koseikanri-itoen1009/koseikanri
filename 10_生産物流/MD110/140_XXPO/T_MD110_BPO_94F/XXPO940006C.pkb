@@ -390,7 +390,10 @@ AS
     xxwsh_order_lines_all.order_line_id%TYPE INDEX BY BINARY_INTEGER;
   -- 品目ID
   TYPE l_item_id_tbl IS TABLE OF
-    xxwsh_order_lines_all.shipping_inventory_item_id%TYPE INDEX BY BINARY_INTEGER;
+-- 2008/07/30 v1.6 Start
+--    xxwsh_order_lines_all.shipping_inventory_item_id%TYPE INDEX BY BINARY_INTEGER;
+    xxcmn_item_mst2_v.inventory_item_id%TYPE INDEX BY BINARY_INTEGER;
+-- 2008/07/30 v1.6 End
   -- 単位
   TYPE item_um_tbl IS TABLE OF
     xxwsh_order_lines_all.uom_code%TYPE INDEX BY BINARY_INTEGER;
@@ -2081,14 +2084,20 @@ AS
         INTO    gt_inventory_location_id_tbl(gn_i),
                 gt_leaf_calender_tbl(gn_i),
                 gt_drink_calender_tbl(gn_i)
-        FROM    xxcmn_item_locations2_v   xilv  -- OPM保管場所情報VIEW
+-- 2008/07/30 v1.6 Start
+--        FROM    xxcmn_item_locations2_v   xilv  -- OPM保管場所情報VIEW
+        FROM    xxcmn_item_locations_v   xilv -- OPM保管場所情報VIEW
+-- 2008/07/30 v1.6 End
         WHERE   xilv.segment1             =  gt_shipped_locat_code_tbl(gn_i)
-        AND     xilv.date_from            <= gd_standard_date
-        AND     (
-                  (xilv.date_to >= gd_standard_date)
-                  OR
-                  (xilv.date_to IS NULL)
-                );
+-- 2008/07/30 v1.6 Start
+--        AND     xilv.date_from            <= gd_standard_date
+--        AND     (
+--                  (xilv.date_to >= gd_standard_date)
+--                  OR
+--                  (xilv.date_to IS NULL)
+--                );
+        ;
+-- 2008/07/30 v1.6 Start
 --
       EXCEPTION
         WHEN NO_DATA_FOUND THEN
@@ -2203,7 +2212,10 @@ AS
 -- 2008/07/17 v1.3 End
       -- ｢品目コード｣
       BEGIN
-        SELECT  ximv.item_id,                         -- 品目ID
+-- 2008/07/30 v1.6 Start
+--        SELECT  ximv.item_id,                         -- 品目ID
+        SELECT  ximv.inventory_item_id,               -- INV品目ID
+-- 2008/07/30 v1.6 End
                 ximv.item_um,                         -- 単位
                 ximv.num_of_deliver,                  -- 出荷入数
                 ximv.conv_unit,                       -- 入出庫換算単位
