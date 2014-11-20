@@ -8,7 +8,7 @@ AS
  * Description      : 棚卸スナップショット作成
  * MD.050           : 在庫(帳票)               T_MD050_BPO_550
  * MD.070           : 棚卸スナップショット作成 T_MD070_BPO_55D
- * Version          : 1.3
+ * Version          : 1.5
  *
  * Program List
  * -------------------- ------------------------------------------------------------
@@ -26,6 +26,7 @@ AS
  *  2008/05/20    1.2   K.Kumamoto       結合テスト障害(User-Defined Exception)対応
  *  2008/06/23    1.3   K.Kumamoto       システムテスト障害#260(受払残高リストが終了しない)対応
  *  2008/08/28    1.4   Oracle 山根 一浩 PT 2_1_12 #33,T_S_503対応
+ *  2008/09/16    1.5   Y.Yamamoto       PT 2-1_12 #63
  *
  *****************************************************************************************/
 --  
@@ -107,6 +108,42 @@ AS
   lv_errbuf  VARCHAR2(5000);  -- エラー・メッセージ
   lv_retcode VARCHAR2(1);     -- リターン・コード
   lv_errmsg  VARCHAR2(5000);  -- ユーザー・エラー・メッセージ
+--
+-- 2008/09/16 v1.5 Y.Yamamoto ADD Start
+  -------------------------------------------------------------------------------------------------
+  -- 「D-2. 手持数量情報」構造体
+  -------------------------------------------------------------------------------------------------
+  TYPE D_2_rec IS RECORD(
+    whse_code   xxcmn_item_locations_v.whse_code%TYPE, -- OPM手持数量  倉庫コード (※D-6と違う)
+    item_id     xxcmn_item_mst_v.item_id%TYPE,         -- OPM品目マスタ  品目ID
+    item_no     xxcmn_item_mst_v.item_no%TYPE,         -- OPM品目マスタ  品目コード
+    lot_id      ic_lots_mst.lot_id%TYPE,               -- OPMロットマスタ  ロットID
+    lot_no      ic_lots_mst.lot_no%TYPE,               -- OPMロットマスタ  ロットNo
+    lot_ctl     xxcmn_item_mst_v.lot_ctl%TYPE,         -- OPM品目マスタ  ロット管理区分
+    loct_onhand NUMBER);                               -- OPM手持数量  手持数量
+  --レコード型生成
+  TYPE D_2_tab IS TABLE OF D_2_rec;
+   lr_curr_cargo_rec D_2_tab;
+--
+  -------------------------------------------------------------------------------------------------
+  -- 「D-6. 手持数量情報（前月分）」構造体
+  -------------------------------------------------------------------------------------------------
+  TYPE D_6_rec IS RECORD(
+    whse_code   xxcmn_item_locations_v.whse_code%TYPE, -- OPM手持数量  倉庫コード (※D-6と違う)
+    item_id     xxcmn_item_mst_v.item_id%TYPE,         -- OPM品目マスタ  品目ID
+    item_no     xxcmn_item_mst_v.item_no%TYPE,         -- OPM品目マスタ  品目コード
+    lot_id      ic_lots_mst.lot_id%TYPE,               -- OPMロットマスタ  ロットID
+    lot_no      ic_lots_mst.lot_no%TYPE,               -- OPMロットマスタ  ロットNo
+    lot_ctl     xxcmn_item_mst_v.lot_ctl%TYPE,         -- OPM品目マスタ  ロット管理区分
+    loct_onhand NUMBER);                               -- OPM手持数量  手持数量
+  --レコード型生成
+  TYPE D_6_tab IS TABLE OF D_6_rec;
+   lr_pre_cargo_rec D_6_tab;
+--
+  -- *** グローバル・カーソル ***
+  TYPE cursor_D2rec IS REF CURSOR;--棚卸データインターフェーステーブルの対象データ取得用
+  TYPE cursor_D6rec IS REF CURSOR;--棚卸データインターフェーステーブルの対象データ取得用
+-- 2008/09/16 v1.5 Y.Yamamoto ADD End
 --
 --################################  固定部 END   ##################################
 --
@@ -228,12 +265,25 @@ AS
 --
     lv_sysdate_ym   VARCHAR2(6);           -- 現在日付
 --
+-- 2008/09/16 v1.5 Y.Yamamoto ADD Start
+    lv_D2sql            VARCHAR2(15000) DEFAULT NULL; -- 動的SQL文字列 D-2. 手持数量情報
+    lv_D6sql            VARCHAR2(15000) DEFAULT NULL; -- 動的SQL文字列 D-6. 手持数量情報（前月分）
+    lv_where_whsecode   VARCHAR2(100)   DEFAULT NULL; -- 動的SQL文字列 入力パラメータ：倉庫コード
+    lv_where_block      VARCHAR2(100)   DEFAULT NULL; -- 動的SQL文字列 入力パラメータ：ブロック
+    lv_where_department VARCHAR2(100)   DEFAULT NULL; -- 動的SQL文字列 入力パラメータ：倉庫管理部署
+    lv_loc_where        VARCHAR2(300)   DEFAULT NULL; -- 動的SQL文字列 入力パラメータ
+--
+    lrec_D2data cursor_D2rec;  -- 棚卸データインタフェースカーソル
+    lrec_D6data cursor_D6rec;  -- 棚卸データインタフェースカーソル
+-- 2008/09/16 v1.5 Y.Yamamoto ADD End
+--
 --add start 1.3
     TYPE refcursor IS REF CURSOR;
     cur_del refcursor;
 --add end 1.3
+-- 2008/09/16 v1.5 Y.Yamamoto Delete Start
     -- D-2. 手持数量情報抽出カーソル
-    CURSOR current_cargo_cur IS
+/*    CURSOR current_cargo_cur IS
     SELECT iiim.whse_code whse_code,               -- OPM手持数量  倉庫コード (※D-6と違う)
            iiim.item_id   item_id,                 -- OPM品目マスタ  品目ID
            iiim.item_no   item_no,                 -- OPM品目マスタ  品目コード
@@ -302,12 +352,12 @@ AS
       ,iiim.lot_id
       ,iiim.lot_no
       ,iiim.lot_ctl
-      ;
+      ;*/
     -- mod end 2008/05/07 #47対応
 --
 --
     -- D-6. 手持数量情報抽出（前月分）カーソル
-    CURSOR  pre_cargo_cur (ld_cur_pre_invent_begin_ymd DATE) IS
+/*    CURSOR  pre_cargo_cur (ld_cur_pre_invent_begin_ymd DATE) IS
     SELECT iiim.whse_code whse_code,               -- OPM手持数量  倉庫コード (※D-6と違う)
            iiim.item_id item_id,                   -- OPM品目マスタ  品目ID
            iiim.item_no item_no,                   -- OPM品目マスタ  品目コード
@@ -382,12 +432,13 @@ AS
      ,iiim.lot_id
      ,iiim.lot_no
      ,iiim.lot_ctl
-     ;
+     ;*/
     --mod end 2008/05/07 #47対応
 --
     -- *** ローカル・レコード ***
-    lr_curr_cargo_rec   current_cargo_cur%ROWTYPE;
-    lr_pre_cargo_rec    pre_cargo_cur%ROWTYPE;
+--    lr_curr_cargo_rec   current_cargo_cur%ROWTYPE;
+--    lr_pre_cargo_rec    pre_cargo_cur%ROWTYPE;
+-- 2008/09/16 v1.5 Y.Yamamoto Delete End
 
   BEGIN
 --add start 2008/05/12 #47対応
@@ -498,29 +549,236 @@ AS
     -- 手持数量情報が取得できている場合
     -- D-2を実行
 --
+-- 2008/09/16 v1.5 Y.Yamamoto ADD Start
+    -- 入力パラメータ：倉庫コード編集
+    IF (iv_whse_code1 IS NOT NULL) AND
+       (iv_whse_code2 IS NOT NULL) AND
+       (iv_whse_code3 IS NOT NULL) THEN
+      lv_where_whsecode :=
+        'xilv.whse_code IN (''' || iv_whse_code1 || ''', ''' || iv_whse_code2 || ''', ''' || iv_whse_code3 || ''')';
+    ELSIF (iv_whse_code1 IS NOT NULL) AND
+          (iv_whse_code2 IS NOT NULL) AND
+          (iv_whse_code3 IS NULL)     THEN
+      lv_where_whsecode :=
+        'xilv.whse_code IN (''' || iv_whse_code1 || ''', ''' || iv_whse_code2 || ''')';
+    ELSIF (iv_whse_code1 IS NOT NULL) AND
+          (iv_whse_code2 IS NULL)     AND
+          (iv_whse_code3 IS NOT NULL) THEN
+      lv_where_whsecode :=
+        'xilv.whse_code IN (''' || iv_whse_code1 || ''', ''' || iv_whse_code3 || ''')';
+    ELSIF (iv_whse_code1 IS NULL)     AND
+          (iv_whse_code2 IS NOT NULL) AND
+          (iv_whse_code3 IS NOT NULL) THEN
+      lv_where_whsecode :=
+        'xilv.whse_code IN (''' || iv_whse_code2 || ''', ''' || iv_whse_code3 || ''')';
+    ELSIF (iv_whse_code1 IS NOT NULL) AND
+          (iv_whse_code2 IS NULL)     AND
+          (iv_whse_code3 IS NULL)     THEN
+      lv_where_whsecode :=
+        'xilv.whse_code = ''' || iv_whse_code1 || '''';
+    ELSIF (iv_whse_code1 IS NULL)     AND
+          (iv_whse_code2 IS NOT NULL) AND
+          (iv_whse_code3 IS NULL)     THEN
+      lv_where_whsecode :=
+        'xilv.whse_code = ''' || iv_whse_code2 || '''';
+    ELSIF (iv_whse_code1 IS NULL)     AND
+          (iv_whse_code2 IS NULL)     AND
+          (iv_whse_code3 IS NOT NULL) THEN
+      lv_where_whsecode :=
+        'xilv.whse_code = ''' || iv_whse_code3 || '''';
+    ELSE
+      lv_where_whsecode := NULL;
+    END IF;
+--
+    -- 入力パラメータ：ブロック編集
+    IF    (iv_block1 IS NOT NULL) AND
+          (iv_block2 IS NOT NULL) AND
+          (iv_block3 IS NOT NULL) THEN
+      lv_where_block :=
+        'xilv.distribution_block IN (''' || iv_block1 || ''', ''' || iv_block2 || ''', ''' || iv_block3 || ''')';
+    ELSIF (iv_block1 IS NOT NULL) AND
+          (iv_block2 IS NOT NULL) AND
+          (iv_block3 IS NULL)     THEN
+      lv_where_block :=
+        'xilv.distribution_block IN (''' || iv_block1 || ''', ''' || iv_block2 || ''')';
+    ELSIF (iv_block1 IS NOT NULL) AND
+          (iv_block2 IS NULL)     AND
+          (iv_block3 IS NOT NULL) THEN
+      lv_where_block :=
+        'xilv.distribution_block IN (''' || iv_block1 || ''', ''' || iv_block3 || ''')';
+    ELSIF (iv_block1 IS NULL)     AND
+          (iv_block2 IS NOT NULL) AND
+          (iv_block3 IS NOT NULL) THEN
+      lv_where_block :=
+        'xilv.distribution_block IN (''' || iv_block2 || ''', ''' || iv_block3 || ''')';
+    ELSIF (iv_block1 IS NOT NULL) AND
+          (iv_block2 IS NULL)     AND
+          (iv_block3 IS NULL)     THEN
+      lv_where_block :=
+        'xilv.distribution_block = ''' || iv_block1 || '''';
+    ELSIF (iv_block1 IS NULL)     AND
+          (iv_block2 IS NOT NULL) AND
+          (iv_block3 IS NULL)     THEN
+      lv_where_block :=
+        'xilv.distribution_block = ''' || iv_block2 || '''';
+    ELSIF (iv_block1 IS NULL)     AND
+          (iv_block2 IS NULL)     AND
+          (iv_block3 IS NOT NULL) THEN
+      lv_where_block :=
+        'xilv.distribution_block = ''' || iv_block3 || '''';
+    ELSE
+      lv_where_block := NULL;
+    END IF;
+--
+    -- 入力パラメータ：倉庫管理部署編集
+    IF    (iv_whse_department1 IS NOT NULL) AND
+          (iv_whse_department2 IS NOT NULL) AND
+          (iv_whse_department3 IS NOT NULL) THEN
+      lv_where_department :=
+        'xilv.whse_department IN (''' || iv_whse_department1 || ''', ''' || iv_whse_department2 || ''', ''' || iv_whse_department3 || ''')' ;
+    ELSIF (iv_whse_department1 IS NOT NULL) AND
+          (iv_whse_department2 IS NOT NULL) AND
+          (iv_whse_department3 IS NULL)     THEN
+      lv_where_department :=
+        'xilv.whse_department IN (''' || iv_whse_department1 || ''', ''' || iv_whse_department2 || ''')';
+    ELSIF (iv_whse_department1 IS NOT NULL) AND
+          (iv_whse_department2 IS NULL)     AND
+          (iv_whse_department3 IS NOT NULL) THEN
+      lv_where_department :=
+        'xilv.whse_department IN (''' || iv_whse_department1 || ''', ''' || iv_whse_department3 || ''')';
+    ELSIF (iv_whse_department1 IS NULL)     AND
+          (iv_whse_department2 IS NOT NULL) AND
+          (iv_whse_department3 IS NOT NULL) THEN
+      lv_where_department :=
+        'xilv.whse_department IN (''' || iv_whse_department2 || ''', ''' || iv_whse_department3 || ''')';
+    ELSIF (iv_whse_department1 IS NOT NULL) AND
+          (iv_whse_department2 IS NULL)     AND
+          (iv_whse_department3 IS NULL)     THEN
+      lv_where_department :=
+        'xilv.whse_department = ''' || iv_whse_department1 || '''';
+    ELSIF (iv_whse_department1 IS NULL)     AND
+          (iv_whse_department2 IS NOT NULL) AND
+          (iv_whse_department3 IS NULL)     THEN
+      lv_where_department :=
+        'xilv.whse_department = ''' || iv_whse_department2 || '''';
+    ELSIF (iv_whse_department1 IS NULL)     AND
+          (iv_whse_department2 IS NULL)     AND
+          (iv_whse_department3 IS NOT NULL) THEN
+      lv_where_department :=
+        'xilv.whse_department = ''' || iv_whse_department3 || '''';
+    ELSE
+      lv_where_department := NULL;
+    END IF;
+--
+    -- パラメータ編集
+    IF    (ln_whse_code_nullflg = 0) AND
+          (ln_block_nullflg     = 1) THEN   -- 倉庫コードを指定した場合
+      lv_loc_where := lv_where_whsecode;
+    ELSIF (ln_whse_code_nullflg = 1) AND
+          (ln_block_nullflg     = 0) THEN   -- ブロックを指定した場合
+      lv_loc_where := lv_where_block;
+    ELSIF (ln_whse_code_nullflg = 0) AND
+          (ln_block_nullflg     = 0) THEN   -- 倉庫コード、ブロック両方指定した場合
+      lv_loc_where := lv_where_whsecode
+        || '       OR '
+        || lv_where_block;
+    ELSE                                    -- 指定しない場合
+      lv_loc_where := NULL;
+    END IF;
+--
+    -- 倉庫管理部署編集
+    IF (ln_whse_department_nullflg = 0) THEN
+      IF (lv_loc_where IS NOT NULL) THEN
+        -- すでに編集済
+        lv_loc_where := lv_loc_where
+          || '       AND '
+          || lv_where_department;
+      ELSE
+        -- 未編集
+        lv_loc_where := lv_where_department;
+      END IF;
+    END IF;
+-- 2008/09/16 v1.5 Y.Yamamoto ADD End
+--
     BEGIN
 --
-      OPEN current_cargo_cur;-- カーソルオープン
+-- 2008/09/16 v1.5 Y.Yamamoto Update Start
+      --SQL作成開始
+      lv_D2sql := 
+           'SELECT xilv.whse_code              whse_code '   -- OPM手持数量  倉庫コード (※D-6と違う)
+        || '      ,iimb.item_id                item_id '     -- OPM品目マスタ  品目ID
+        || '      ,iimb.item_no                item_no '     -- OPM品目マスタ  品目コード
+        || '      ,ilm.lot_id                  lot_id '      -- OPMロットマスタ  ロットID
+        || '      ,ilm.lot_no                  lot_no '      -- OPMロットマスタ  ロットNo
+        || '      ,iimb.lot_ctl                lot_ctl '     -- OPM品目マスタ  ロット管理区分
+        || '      ,SUM(NVL(ili.loct_onhand,0)) loct_onhand ' -- OPM手持数量  手持数量
+        || 'FROM   ic_loct_inv              ili '            -- OPM手持数量 (※D-6と違う)
+        || '      ,xxcmn_item_locations_v   xilv '           -- OPM保管場所情報VIEW
+        || '      ,ic_item_mst_b            iimb '           -- OPM品目マスタ
+        || '      ,xxcmn_item_mst_b         ximb '           -- OPM品目アドオンマスタ
+        || '      ,ic_lots_mst              ilm '            -- OPMロットマスタ
+        || '      ,xxcmn_item_categories5_v xicv '           -- OPM品目カテゴリ割当情報VIEW1
+        || 'WHERE xicv.prod_class_code    = :arti_div_code '
+        || 'AND   xicv.item_class_code    = :item_class_code '
+        || 'AND   iimb.item_id            = ximb.item_id '
+        || 'AND   iimb.inactive_ind      <> ''1'' '
+        || 'AND   ximb.obsolete_class    <> ''1'' '
+        || 'AND   ximb.start_date_active <= TRUNC(SYSDATE) '
+        || 'AND   ximb.end_date_active   >= TRUNC(SYSDATE) '
+        || 'AND   iimb.item_id            = xicv.item_id '
+        || 'AND   ilm.item_id             = iimb.item_id ';    -- OPMロットマスタ.品目ID   = OPM品目マスタ.品目ID
 --
-        i := 0;
-        LOOP
+      -- SQL本体とパラメータを合流
+      IF (lv_loc_where IS NOT NULL) THEN
+        -- 倉庫コード、ブロック、倉庫管理部署が指定された
+        lv_D2sql := lv_D2sql
+          || 'AND '
+          || lv_loc_where;
+      END IF;
+      -- 指定されなかったらWHERE句は作成しない
+--
+      lv_D2sql := lv_D2sql
+        || 'AND   ili.item_id   = iimb.item_id '
+        || 'AND   ili.lot_id    = ilm.lot_id '
+        || 'AND   ili.whse_code = xilv.whse_code '
+        || 'AND   ili.location  = xilv.segment1 '   -- add 2008/05/07 #47対応
+        || 'GROUP BY '
+        || '      xilv.whse_code '
+        || '     ,iimb.item_id '
+        || '     ,iimb.item_no '
+        || '     ,ilm.lot_id '
+        || '     ,ilm.lot_no '
+        || '     ,iimb.lot_ctl ';
+--
+--      OPEN current_cargo_cur;-- カーソルオープン
+        OPEN  lrec_D2data FOR lv_D2sql
+        USING iv_arti_div_code
+             ,iv_item_class_code;
+        FETCH lrec_D2data BULK COLLECT INTO lr_curr_cargo_rec;
+        CLOSE lrec_D2data;
+--
+--        i := 0;
+--        LOOP
           -- レコード読込
-          FETCH current_cargo_cur INTO lr_curr_cargo_rec;
-          EXIT WHEN current_cargo_cur%NOTFOUND;
+--          FETCH current_cargo_cur INTO lr_curr_cargo_rec;
+--          EXIT WHEN current_cargo_cur%NOTFOUND;
+        <<D2_loop>>
+        FOR i IN 1 .. lr_curr_cargo_rec.COUNT LOOP
 --
-          i := i + 1;
-          curr_whse_code_tbl(i)   := lr_curr_cargo_rec.whse_code;   -- OPM手持数量  倉庫コード
-          curr_item_id_tbl(i)     := lr_curr_cargo_rec.item_id;     -- OPM品目マスタ  品目ID
-          curr_item_no_tbl(i)     := lr_curr_cargo_rec.item_no;     -- OPM品目マスタ  品目コード
-          curr_lot_id_tbl(i)      := lr_curr_cargo_rec.lot_id;      -- OPMロットマスタ  ロットID
-          curr_lot_no_tbl(i)      := lr_curr_cargo_rec.lot_no;      -- OPMロットマスタ  ロットNo
-          curr_lot_ctl_tbl(i)     := lr_curr_cargo_rec.lot_ctl;     -- OPM品目マスタ  ロット管理区分
-          curr_loct_onhand_tbl(i) := lr_curr_cargo_rec.loct_onhand; -- OPM手持数量  手持数量
+--          i := i + 1;
+-- 2008/09/16 v1.5 Y.Yamamoto Update End
+          curr_whse_code_tbl(i)   := lr_curr_cargo_rec(i).whse_code;   -- OPM手持数量  倉庫コード
+          curr_item_id_tbl(i)     := lr_curr_cargo_rec(i).item_id;     -- OPM品目マスタ  品目ID
+          curr_item_no_tbl(i)     := lr_curr_cargo_rec(i).item_no;     -- OPM品目マスタ  品目コード
+          curr_lot_id_tbl(i)      := lr_curr_cargo_rec(i).lot_id;      -- OPMロットマスタ  ロットID
+          curr_lot_no_tbl(i)      := lr_curr_cargo_rec(i).lot_no;      -- OPMロットマスタ  ロットNo
+          curr_lot_ctl_tbl(i)     := lr_curr_cargo_rec(i).lot_ctl;     -- OPM品目マスタ  ロット管理区分
+          curr_loct_onhand_tbl(i) := lr_curr_cargo_rec(i).loct_onhand; -- OPM手持数量  手持数量
 --
 --add start 1.3
           add_del_info(
-            lr_curr_cargo_rec.whse_code
-           ,lr_curr_cargo_rec.item_id
+            lr_curr_cargo_rec(i).whse_code
+           ,lr_curr_cargo_rec(i).item_id
            ,iv_invent_ym
           );
 --add end 1.3
@@ -734,35 +992,46 @@ AS
               ln_d5_quantity(i):=0;
           END;
 --
-        END LOOP current_cargo_cur;
+-- 2008/09/16 v1.5 Y.Yamamoto Update Start
+--        END LOOP current_cargo_cur;
+        END LOOP D2_loop;
 --
-        CLOSE current_cargo_cur; -- カーソルのクローズ
+--        CLOSE current_cargo_cur; -- カーソルのクローズ
+-- 2008/09/16 v1.5 Y.Yamamoto Update End
 --
       EXCEPTION
         -- *** 複数行返戻ハンドラ ***
         WHEN TOO_MANY_ROWS THEN
-           CLOSE current_cargo_cur; -- カーソルのクローズ
+-- 2008/09/16 v1.5 Y.Yamamoto Delete Start
+--           CLOSE current_cargo_cur; -- カーソルのクローズ
+-- 2008/09/16 v1.5 Y.Yamamoto Delete End
 --mod start 1.2
 --           RAISE global_process_expt;
              RAISE;
 --mod end 1.2
         -- *** 値エラーハンドラ ***
         WHEN VALUE_ERROR THEN
-           CLOSE current_cargo_cur; -- カーソルのクローズ
+-- 2008/09/16 v1.5 Y.Yamamoto Delete Start
+--           CLOSE current_cargo_cur; -- カーソルのクローズ
+-- 2008/09/16 v1.5 Y.Yamamoto Delete End
 --mod start 1.2
 --           RAISE global_process_expt;
              RAISE;
 --mod end 1.2
         -- *** ゼロ除算エラーハンドラ ***
         WHEN ZERO_DIVIDE THEN
-           CLOSE current_cargo_cur; -- カーソルのクローズ
+-- 2008/09/16 v1.5 Y.Yamamoto Delete Start
+--           CLOSE current_cargo_cur; -- カーソルのクローズ
+-- 2008/09/16 v1.5 Y.Yamamoto Delete End
 --mod start 1.2
 --           RAISE global_process_expt;
              RAISE;
 --mod end 1.2
         -- *** OTHERS例外ハンドラ ***
         WHEN OTHERS THEN
-           CLOSE current_cargo_cur; -- カーソルのクローズ
+-- 2008/09/16 v1.5 Y.Yamamoto Delete Start
+--           CLOSE current_cargo_cur; -- カーソルのクローズ
+-- 2008/09/16 v1.5 Y.Yamamoto Delete End
 --mod start 1.2
 --           RAISE global_process_expt;
              RAISE;
@@ -776,27 +1045,88 @@ AS
 --
     BEGIN
 --
-      OPEN pre_cargo_cur(ld_pre_invent_begin_ymd);-- カーソルオープン
+-- 2008/09/16 v1.5 Y.Yamamoto Update Start
+      <<D6_loop>>
+      lv_D6sql := 
+           'SELECT xilv.whse_code              whse_code '   -- OPM手持数量  倉庫コード
+        || '      ,iimb.item_id                item_id '     -- OPM品目マスタ  品目ID
+        || '      ,iimb.item_no                item_no '     -- OPM品目マスタ  品目コード
+        || '      ,ilm.lot_id                  lot_id '      -- OPMロットマスタ  ロットID
+        || '      ,ilm.lot_no                  lot_no '      -- OPMロットマスタ  ロットNo
+        || '      ,iimb.lot_ctl                lot_ctl '     -- OPM品目マスタ  ロット管理区分
+        || '      ,SUM(NVL(ipb.loct_onhand,0)) loct_onhand ' -- OPM手持数量  手持数量
+        || 'FROM   ic_perd_bal ipb '                         -- OPMロット別月次在庫 (※D-2と違う)
+        || '      ,xxcmn_item_locations_v   xilv '           -- OPM保管場所情報VIEW
+        || '      ,org_acct_periods         oap '            -- 在庫会計期間
+        || '      ,ic_item_mst_b            iimb '           -- OPM品目マスタ
+        || '      ,xxcmn_item_mst_b         ximb '           -- OPM品目アドオンマスタ
+        || '      ,ic_lots_mst              ilm '            -- OPMロットマスタ
+        || '      ,xxcmn_item_categories5_v xicv '           -- OPM品目カテゴリ割当情報VIEW1
+        || 'WHERE  xicv.prod_class_code     = :arti_div_code '
+        || 'AND    xicv.item_class_code     = :item_class_code '
+        || 'AND    iimb.item_id             = xicv.item_id '
+        || 'AND    iimb.item_id             = ximb.item_id '
+        || 'AND    iimb.inactive_ind       <> ''1'' '
+        || 'AND    ximb.obsolete_class     <> ''1'' '
+        || 'AND    ximb.start_date_active  <= TRUNC(SYSDATE) '
+        || 'AND    ximb.end_date_active    >= TRUNC(SYSDATE) '
+        || 'AND    ilm.item_id              = iimb.item_id '    -- OPMロットマスタ.品目ID   = OPM品目マスタ.品目ID
+        || 'AND    oap.period_start_date    = to_date(''' || ld_pre_invent_begin_ymd || ''',''YYYY/MM/DD HH24:MI:SS'')'
+        || 'AND    xilv.mtl_organization_id = oap.organization_id ';
 --
-        i := 0;
-        LOOP
+      -- SQL本体とパラメータを合流
+      IF (lv_loc_where IS NOT NULL) THEN
+        -- 倉庫コード、ブロック、倉庫管理部署が指定された
+        lv_D6sql := lv_D6sql
+          || ' AND '
+          || lv_loc_where;
+      END IF;
+      -- 指定されなかったらWHERE句は作成しない
+--
+      lv_D6sql := lv_D6sql
+        || 'AND    ipb.item_id     = iimb.item_id '
+        || 'AND    ipb.whse_code   = xilv.whse_code '
+        || 'AND    ipb.lot_id      = ilm.lot_id '
+        || 'AND    ipb.location    = xilv.segment1 '            -- add 2008/05/07 #47対応
+        || 'AND    ipb.fiscal_year = to_char(oap.period_year) ' -- mod 2008/05/07 #62対応
+        || 'AND    ipb.period      = oap.period_num '
+        || 'GROUP BY '
+        || '      xilv.whse_code '
+        || '     ,iimb.item_id '
+        || '     ,iimb.item_no '
+        || '     ,ilm.lot_id '
+        || '     ,ilm.lot_no '
+        || '     ,iimb.lot_ctl ';
+--
+--      OPEN pre_cargo_cur(ld_pre_invent_begin_ymd);-- カーソルオープン
+        OPEN  lrec_D6data FOR lv_D6sql
+        USING iv_arti_div_code
+             ,iv_item_class_code;
+        FETCH lrec_D6data BULK COLLECT INTO lr_pre_cargo_rec;
+        CLOSE lrec_D6data;
+--
+--        i := 0;
+--        LOOP
          -- レコード読込
-          FETCH pre_cargo_cur INTO lr_pre_cargo_rec;
-          EXIT WHEN pre_cargo_cur%NOTFOUND;
+--          FETCH pre_cargo_cur INTO lr_pre_cargo_rec;
+--          EXIT WHEN pre_cargo_cur%NOTFOUND;
+        <<D2_loop>>
+        FOR i IN 1 .. lr_pre_cargo_rec.COUNT LOOP
 --
-          i := i + 1;
-          pre_whse_code_tbl(i)   := lr_pre_cargo_rec.whse_code;    -- OPM手持数量  倉庫コード
-          pre_item_id_tbl(i)     := lr_pre_cargo_rec.item_id;      -- OPM品目マスタ  品目ID
-          pre_item_no_tbl(i)     := lr_pre_cargo_rec.item_no;      -- OPM品目マスタ  品目コード
-          pre_lot_id_tbl(i)      := lr_pre_cargo_rec.lot_id;       -- OPMロットマスタ  ロットID
-          pre_lot_no_tbl(i)      := lr_pre_cargo_rec.lot_no;       -- OPMロットマスタ  ロットNo
-          pre_lot_ctl_tbl(i)     := lr_pre_cargo_rec.lot_ctl;      -- OPM品目マスタ  ロット管理区分
-          pre_loct_onhand_tbl(i)  := lr_pre_cargo_rec.loct_onhand; -- OPM手持数量  手持数量
+--          i := i + 1;
+-- 2008/09/16 v1.5 Y.Yamamoto Update End
+          pre_whse_code_tbl(i)   := lr_pre_cargo_rec(i).whse_code;    -- OPM手持数量  倉庫コード
+          pre_item_id_tbl(i)     := lr_pre_cargo_rec(i).item_id;      -- OPM品目マスタ  品目ID
+          pre_item_no_tbl(i)     := lr_pre_cargo_rec(i).item_no;      -- OPM品目マスタ  品目コード
+          pre_lot_id_tbl(i)      := lr_pre_cargo_rec(i).lot_id;       -- OPMロットマスタ  ロットID
+          pre_lot_no_tbl(i)      := lr_pre_cargo_rec(i).lot_no;       -- OPMロットマスタ  ロットNo
+          pre_lot_ctl_tbl(i)     := lr_pre_cargo_rec(i).lot_ctl;      -- OPM品目マスタ  ロット管理区分
+          pre_loct_onhand_tbl(i)  := lr_pre_cargo_rec(i).loct_onhand; -- OPM手持数量  手持数量
 --
 --add start 1.3
           add_del_info(
-            lr_pre_cargo_rec.whse_code
-           ,lr_pre_cargo_rec.item_id
+            lr_pre_cargo_rec(i).whse_code
+           ,lr_pre_cargo_rec(i).item_id
            ,lv_pre_invent_ym
           );
 --add end 1.3
@@ -960,35 +1290,46 @@ AS
               ln_d8_quantity(i):=0;
           END;
 --
-        END LOOP pre_cargo_cur;
+-- 2008/09/16 v1.5 Y.Yamamoto Update Start
+--        END LOOP pre_cargo_cur;
+        END LOOP D6_loop;
 --      
-      CLOSE pre_cargo_cur; -- カーソルのクローズ
+--      CLOSE pre_cargo_cur; -- カーソルのクローズ
+-- 2008/09/16 v1.5 Y.Yamamoto Update End
 --
     EXCEPTION
       -- *** 複数行返戻ハンドラ ***
       WHEN TOO_MANY_ROWS THEN
-         CLOSE pre_cargo_cur; -- カーソルのクローズ
+-- 2008/09/16 v1.5 Y.Yamamoto Delete Start
+--           CLOSE pre_cargo_cur; -- カーソルのクローズ
+-- 2008/09/16 v1.5 Y.Yamamoto Delete End
 --mod start 1.2
 --         RAISE global_process_expt;
            RAISE;
 --mod end 1.2
       -- *** 値エラーハンドラ ***
       WHEN VALUE_ERROR THEN
-         CLOSE pre_cargo_cur; -- カーソルのクローズ
+-- 2008/09/16 v1.5 Y.Yamamoto Delete Start
+--           CLOSE pre_cargo_cur; -- カーソルのクローズ
+-- 2008/09/16 v1.5 Y.Yamamoto Delete End
 --mod start 1.2
 --         RAISE global_process_expt;
            RAISE;
 --mod end 1.2
       -- *** ゼロ除算エラーハンドラ ***
       WHEN ZERO_DIVIDE THEN
-         CLOSE pre_cargo_cur; -- カーソルのクローズ
+-- 2008/09/16 v1.5 Y.Yamamoto Delete Start
+--           CLOSE pre_cargo_cur; -- カーソルのクローズ
+-- 2008/09/16 v1.5 Y.Yamamoto Delete End
 --mod start 1.2
 --         RAISE global_process_expt;
            RAISE;
 --mod end 1.2
       -- *** OTHERS例外ハンドラ ***
       WHEN OTHERS THEN
-         CLOSE pre_cargo_cur; -- カーソルのクローズ
+-- 2008/09/16 v1.5 Y.Yamamoto Delete Start
+--           CLOSE pre_cargo_cur; -- カーソルのクローズ
+-- 2008/09/16 v1.5 Y.Yamamoto Delete End
 --mod start 1.2
 --         RAISE global_process_expt;
            RAISE;

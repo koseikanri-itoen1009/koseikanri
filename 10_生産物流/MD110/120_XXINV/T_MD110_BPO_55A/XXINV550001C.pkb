@@ -7,7 +7,7 @@ AS
  * Description      : 在庫（帳票）
  * MD.050/070       : 在庫（帳票）Issue1.0  (T_MD050_BPO_550)
  *                    受払残高リスト        (T_MD070_BPO_55A)
- * Version          : 1.16
+ * Version          : 1.17
  *
  * Program List
  * -------------------------- ----------------------------------------------------------
@@ -43,6 +43,7 @@ AS
  *  2008/07/08    1.14  Yasuhisa Yamamoto  結合テスト障害対応(ADJI文書IDのNULL対応、入出庫数量0の出力対応)
  *  2008/08/28    1.15  Oracle 山根 一浩   PT 2_1_12 #33,T_S_503対応
  *  2008/09/05    1.16  Yasuhisa Yamamoto  PT 2_1_12 再改修
+ *  2008/09/17    1.17  Yasuhisa Yamamoto  PT 2_1_12 #63
  *
  *****************************************************************************************/
 --
@@ -140,6 +141,10 @@ AS
   gc_char_dt_format            CONSTANT VARCHAR2(21)  := 'YYYY/MM/DD HH24:MI:SS' ;
   gc_max_date_d                CONSTANT VARCHAR2(10)  := '4712/12/31';
   gc_min_date_d                CONSTANT VARCHAR2(10)  := '1900/01/01';
+-- 2008/09/17 Y.Yamamoto v1.17 ADD Start
+  gc_max_time                  CONSTANT VARCHAR2(9)   := ' 23:59:59';
+  gc_min_time                  CONSTANT VARCHAR2(9)   := ' 00:00:00';
+-- 2008/09/17 Y.Yamamoto v1.17 ADD End
 --
   -- ===============================
   -- ユーザー定義グローバル型
@@ -210,6 +215,10 @@ AS
   gd_max_date                  DATE ;                                             -- 最大日チェック用
   gd_date_ym_first             DATE ;                                             -- パラメータの対象年月の月初日
   gd_date_ym_last              DATE ;                                             -- パラメータの対象年月の月末日
+-- 2008/09/17 Y.Yamamoto v1.17 ADD Start
+  gd_date_ymt_first            DATE ;                                             -- パラメータの対象年月の月初日 時刻つき
+  gd_date_ymt_last             DATE ;                                             -- パラメータの対象年月の月末日 時刻つき
+-- 2008/09/17 Y.Yamamoto v1.17 ADD End
   gv_date_ym_before            VARCHAR2(6) ;                                      -- パラメータの対象年月の前月
   gv_department_code           VARCHAR2(10) ;                                     -- 担当部署
   gv_department_name           VARCHAR2(14) ;                                     -- 担当者
@@ -387,6 +396,10 @@ AS
     gd_date_ym_last   := LAST_DAY( gd_date_ym_first );
     -- 対象年月の前月
     gv_date_ym_before := TO_CHAR( ADD_MONTHS( gd_date_ym_first, -1 ), gc_char_ym_format );
+-- 2008/09/17 Y.Yamamoto v1.17 ADD Start
+    gd_date_ymt_first := FND_DATE.STRING_TO_DATE( TO_CHAR(gd_date_ym_first, gc_char_d_format) || gc_min_time, gc_char_dt_format );
+    gd_date_ymt_last  := FND_DATE.STRING_TO_DATE( TO_CHAR(gd_date_ym_last , gc_char_d_format) || gc_max_time, gc_char_dt_format );
+-- 2008/09/17 Y.Yamamoto v1.17 ADD End
 --
     -- ====================================================
     -- 品目コードチェック
@@ -1028,10 +1041,14 @@ AS
                            ) xx_data                                    -- 各アドオンに存在するデータ
                     WHERE  itc_adji.doc_type                 = gc_doc_type_adji
                     AND    xrpm6v.use_div_invent             = gc_use_div_invent_y
+-- 08/09/17 Y.Yamamoto Update v1.17 Start
 -- 08/09/05 Y.Yamamoto ADD v1.16 Start
-                    AND    itc_adji.trans_date         BETWEEN gd_date_ym_first
-                                                           AND gd_date_ym_last
+--                    AND    itc_adji.trans_date         BETWEEN gd_date_ym_first
+--                                                           AND gd_date_ym_last
+                    AND    itc_adji.trans_date         BETWEEN gd_date_ymt_first
+                                                           AND gd_date_ymt_last
 -- 08/09/05 Y.Yamamoto ADD v1.16 End
+-- 08/09/17 Y.Yamamoto Update v1.17 End
                     AND    iaj_adji.journal_id               = ijm_adji.journal_id
 -- 08/07/22 Y.Yamamoto Update v1.14 Start
 --                    AND    itc_adji.reason_code              = xx_data.reason_code
@@ -1091,10 +1108,14 @@ AS
                     WHERE  itc_trni.doc_type                = gc_doc_type_trni
                     AND    xrpm9v.doc_type                  = gc_doc_type_trni
                     AND    xrpm9v.use_div_invent            = gc_use_div_invent_y
+-- 08/09/17 Y.Yamamoto Update v1.17 Start
 -- 08/09/05 Y.Yamamoto ADD v1.16 Start
-                    AND    itc_trni.trans_date        BETWEEN gd_date_ym_first
-                                                          AND gd_date_ym_last
+--                    AND    itc_trni.trans_date        BETWEEN gd_date_ym_first
+--                                                          AND gd_date_ym_last
+                    AND    itc_trni.trans_date        BETWEEN gd_date_ymt_first
+                                                          AND gd_date_ymt_last
 -- 08/09/05 Y.Yamamoto ADD v1.16 End
+-- 08/09/17 Y.Yamamoto Update v1.17 End
                     AND    iaj_trni.journal_id              = ijm_trni.journal_id
                     AND    TO_NUMBER( ijm_trni.attribute1 ) = xmril_trni.mov_line_id
                     AND    itc_trni.doc_type                = iaj_trni.trans_type
@@ -1148,10 +1169,14 @@ AS
                     AND    itp_xfer.completed_ind           = gc_completed_ind_1
                     AND    xrpm9v.doc_type                  = gc_doc_type_xfer
                     AND    xrpm9v.use_div_invent            = gc_use_div_invent_y
+-- 08/09/17 Y.Yamamoto Update v1.17 Start
 -- 08/09/05 Y.Yamamoto ADD v1.16 Start
-                    AND    itp_xfer.trans_date        BETWEEN gd_date_ym_first
-                                                          AND gd_date_ym_last
+--                    AND    itp_xfer.trans_date        BETWEEN gd_date_ym_first
+--                                                          AND gd_date_ym_last
+                    AND    itp_xfer.trans_date        BETWEEN gd_date_ymt_first
+                                                          AND gd_date_ymt_last
 -- 08/09/05 Y.Yamamoto ADD v1.16 End
+-- 08/09/17 Y.Yamamoto Update v1.17 End
                     AND    TO_NUMBER( ixm_xfer.attribute1 ) = xmril_xfer.mov_line_id
                     AND    itp_xfer.doc_id                  = ixm_xfer.transfer_id
                     AND    xrpm9v.doc_type                  = itp_xfer.doc_type
@@ -1192,10 +1217,14 @@ AS
 -- 08/07/08 Y.Yamamoto ADD v1.14 End
                     WHERE  itp_omso.doc_type                = gc_doc_type_omso
                     AND    itp_omso.completed_ind           = gc_completed_ind_1
+-- 08/09/17 Y.Yamamoto Update v1.17 Start
 -- 08/09/05 Y.Yamamoto ADD v1.16 Start
-                    AND    itp_omso.trans_date        BETWEEN gd_date_ym_first
-                                                          AND gd_date_ym_last
+--                    AND    itp_omso.trans_date        BETWEEN gd_date_ym_first
+--                                                          AND gd_date_ym_last
+                    AND    itp_omso.trans_date        BETWEEN gd_date_ymt_first
+                                                          AND gd_date_ymt_last
 -- 08/09/05 Y.Yamamoto ADD v1.16 End
+-- 08/09/17 Y.Yamamoto Update v1.17 End
                     AND    xrpm7v.use_div_invent            = gc_use_div_invent_y
                     AND    xrpm7v.doc_type                  = itp_omso.doc_type
                     AND    xrpm7v.line_id                   = itp_omso.line_id
@@ -1230,10 +1259,14 @@ AS
                           ,ic_tran_pnd               itp_prod   -- OPM保留在庫トランザクション
                     WHERE  itp_prod.doc_type                = gc_doc_type_prod
                     AND    itp_prod.completed_ind           = gc_completed_ind_1
+-- 08/09/17 Y.Yamamoto Update v1.17 Start
 -- 08/09/05 Y.Yamamoto ADD v1.16 Start
-                    AND    itp_prod.trans_date        BETWEEN gd_date_ym_first
-                                                          AND gd_date_ym_last
+--                    AND    itp_prod.trans_date        BETWEEN gd_date_ym_first
+--                                                          AND gd_date_ym_last
+                    AND    itp_prod.trans_date        BETWEEN gd_date_ymt_first
+                                                          AND gd_date_ymt_last
 -- 08/09/05 Y.Yamamoto ADD v1.16 End
+-- 08/09/17 Y.Yamamoto Update v1.17 End
                     AND    xrpm2v.use_div_invent            = gc_use_div_invent_y
                     AND    xrpm2v.doc_type                  = itp_prod.doc_type
                     AND    xrpm2v.doc_id                    = itp_prod.doc_id
@@ -1265,10 +1298,14 @@ AS
                           ,ic_tran_pnd               itp_porc   -- OPM保留在庫トランザクション
                     WHERE  itp_porc.doc_type                = gc_doc_type_porc
                     AND    itp_porc.completed_ind           = gc_completed_ind_1
+-- 08/09/17 Y.Yamamoto Update v1.17 Start
 -- 08/09/05 Y.Yamamoto ADD v1.16 Start
-                    AND    itp_porc.trans_date        BETWEEN gd_date_ym_first
-                                                          AND gd_date_ym_last
+--                    AND    itp_porc.trans_date        BETWEEN gd_date_ym_first
+--                                                          AND gd_date_ym_last
+                    AND    itp_porc.trans_date        BETWEEN gd_date_ymt_first
+                                                          AND gd_date_ymt_last
 -- 08/09/05 Y.Yamamoto ADD v1.16 End
+-- 08/09/17 Y.Yamamoto Update v1.17 End
                     AND    xrpm8v.use_div_invent            = gc_use_div_invent_y
                     AND    xrpm8v.doc_type                  = itp_porc.doc_type
                     AND    xrpm8v.doc_id                    = itp_porc.doc_id
@@ -1371,8 +1408,12 @@ AS
 -- 08/07/09 Y.Yamamoto ADD v1.14 End
                     FROM   xxinv_stc_inventory_result xsir                     -- 棚卸結果テーブル
                           ,xxcmn_item_locations_v xilv_sir
-                    WHERE  xsir.invent_date      BETWEEN gd_date_ym_first      -- パラメータの対象年月の１日から
-                                                 AND     gd_date_ym_last       -- 月末日で取得
+-- 08/09/17 Y.Yamamoto Update v1.17 Start
+--                    WHERE  xsir.invent_date      BETWEEN gd_date_ym_first      -- パラメータの対象年月の１日から
+--                                                 AND     gd_date_ym_last       -- 月末日で取得
+                    WHERE  xsir.invent_date      BETWEEN gd_date_ymt_first      -- パラメータの対象年月の１日から
+                                                 AND     gd_date_ymt_last       -- 月末日で取得
+-- 08/09/17 Y.Yamamoto Update v1.17 End
                     AND    xilv_sir.whse_code = xsir.invent_whse_code
                     AND    xilv_sir.segment1 = ( SELECT MIN( z.segment1 )
                                                  FROM   xxcmn_item_locations_v z
@@ -1725,10 +1766,14 @@ AS
                            ) xx_data                                    -- 各アドオンに存在するデータ
                     WHERE  itc_adji.doc_type                 = gc_doc_type_adji
                     AND    xrpm6v.use_div_invent             = gc_use_div_invent_y
+-- 08/09/17 Y.Yamamoto Update v1.17 Start
 -- 08/09/05 Y.Yamamoto ADD v1.16 Start
-                    AND    itc_adji.trans_date         BETWEEN gd_date_ym_first
-                                                           AND gd_date_ym_last
+--                    AND    itc_adji.trans_date         BETWEEN gd_date_ym_first
+--                                                           AND gd_date_ym_last
+                    AND    itc_adji.trans_date         BETWEEN gd_date_ymt_first
+                                                           AND gd_date_ymt_last
 -- 08/09/05 Y.Yamamoto ADD v1.16 End
+-- 08/09/17 Y.Yamamoto Update v1.17 End
                     AND    iaj_adji.journal_id               = ijm_adji.journal_id
 -- 08/07/22 Y.Yamamoto Update v1.14 Start
 --                    AND    itc_adji.reason_code              = xx_data.reason_code
@@ -1788,10 +1833,14 @@ AS
                     WHERE  itc_trni.doc_type                = gc_doc_type_trni
                     AND    xrpm9v.doc_type                  = gc_doc_type_trni
                     AND    xrpm9v.use_div_invent            = gc_use_div_invent_y
+-- 08/09/17 Y.Yamamoto Update v1.17 Start
 -- 08/09/05 Y.Yamamoto ADD v1.16 Start
-                    AND    itc_trni.trans_date        BETWEEN gd_date_ym_first
-                                                          AND gd_date_ym_last
+--                    AND    itc_trni.trans_date        BETWEEN gd_date_ym_first
+--                                                          AND gd_date_ym_last
+                    AND    itc_trni.trans_date        BETWEEN gd_date_ymt_first
+                                                          AND gd_date_ymt_last
 -- 08/09/05 Y.Yamamoto ADD v1.16 End
+-- 08/09/17 Y.Yamamoto Update v1.17 End
                     AND    iaj_trni.journal_id              = ijm_trni.journal_id
                     AND    TO_NUMBER( ijm_trni.attribute1 ) = xmril_trni.mov_line_id
                     AND    itc_trni.doc_type                = iaj_trni.trans_type
@@ -1845,10 +1894,14 @@ AS
                     AND    itp_xfer.completed_ind           = gc_completed_ind_1
                     AND    xrpm9v.doc_type                  = gc_doc_type_xfer
                     AND    xrpm9v.use_div_invent            = gc_use_div_invent_y
+-- 08/09/17 Y.Yamamoto Update v1.17 Start
 -- 08/09/05 Y.Yamamoto ADD v1.16 Start
-                    AND    itp_xfer.trans_date        BETWEEN gd_date_ym_first
-                                                          AND gd_date_ym_last
+--                    AND    itp_xfer.trans_date        BETWEEN gd_date_ym_first
+--                                                          AND gd_date_ym_last
+                    AND    itp_xfer.trans_date        BETWEEN gd_date_ymt_first
+                                                          AND gd_date_ymt_last
 -- 08/09/05 Y.Yamamoto ADD v1.16 End
+-- 08/09/17 Y.Yamamoto Update v1.17 End
                     AND    TO_NUMBER( ixm_xfer.attribute1 ) = xmril_xfer.mov_line_id
                     AND    itp_xfer.doc_id                  = ixm_xfer.transfer_id
                     AND    xrpm9v.doc_type                  = itp_xfer.doc_type
@@ -1889,10 +1942,14 @@ AS
 -- 08/07/08 Y.Yamamoto ADD v1.14 End
                     WHERE  itp_omso.doc_type                = gc_doc_type_omso
                     AND    itp_omso.completed_ind           = gc_completed_ind_1
+-- 08/09/17 Y.Yamamoto Update v1.17 Start
 -- 08/09/05 Y.Yamamoto ADD v1.16 Start
-                    AND    itp_omso.trans_date        BETWEEN gd_date_ym_first
-                                                          AND gd_date_ym_last
+--                    AND    itp_omso.trans_date        BETWEEN gd_date_ym_first
+--                                                          AND gd_date_ym_last
+                    AND    itp_omso.trans_date        BETWEEN gd_date_ymt_first
+                                                          AND gd_date_ymt_last
 -- 08/09/05 Y.Yamamoto ADD v1.16 End
+-- 08/09/17 Y.Yamamoto Update v1.17 End
                     AND    xrpm7v.use_div_invent            = gc_use_div_invent_y
                     AND    xrpm7v.doc_type                  = itp_omso.doc_type
                     AND    xrpm7v.line_id                   = itp_omso.line_id
@@ -1927,10 +1984,14 @@ AS
                           ,ic_tran_pnd               itp_prod   -- OPM保留在庫トランザクション
                     WHERE  itp_prod.doc_type                = gc_doc_type_prod
                     AND    itp_prod.completed_ind           = gc_completed_ind_1
+-- 08/09/17 Y.Yamamoto Update v1.17 Start
 -- 08/09/05 Y.Yamamoto ADD v1.16 Start
-                    AND    itp_prod.trans_date        BETWEEN gd_date_ym_first
-                                                          AND gd_date_ym_last
+--                    AND    itp_prod.trans_date        BETWEEN gd_date_ym_first
+--                                                          AND gd_date_ym_last
+                    AND    itp_prod.trans_date        BETWEEN gd_date_ymt_first
+                                                          AND gd_date_ymt_last
 -- 08/09/05 Y.Yamamoto ADD v1.16 End
+-- 08/09/17 Y.Yamamoto Update v1.17 End
                     AND    xrpm2v.use_div_invent            = gc_use_div_invent_y
                     AND    xrpm2v.doc_type                  = itp_prod.doc_type
                     AND    xrpm2v.doc_id                    = itp_prod.doc_id
@@ -1962,10 +2023,14 @@ AS
                           ,ic_tran_pnd               itp_porc   -- OPM保留在庫トランザクション
                     WHERE  itp_porc.doc_type                = gc_doc_type_porc
                     AND    itp_porc.completed_ind           = gc_completed_ind_1
+-- 08/09/17 Y.Yamamoto Update v1.17 Start
 -- 08/09/05 Y.Yamamoto ADD v1.16 Start
-                    AND    itp_porc.trans_date        BETWEEN gd_date_ym_first
-                                                          AND gd_date_ym_last
+--                    AND    itp_porc.trans_date        BETWEEN gd_date_ym_first
+--                                                          AND gd_date_ym_last
+                    AND    itp_porc.trans_date        BETWEEN gd_date_ymt_first
+                                                          AND gd_date_ymt_last
 -- 08/09/05 Y.Yamamoto ADD v1.16 End
+-- 08/09/17 Y.Yamamoto Update v1.17 End
                     AND    xrpm8v.use_div_invent            = gc_use_div_invent_y
                     AND    xrpm8v.doc_type                  = itp_porc.doc_type
                     AND    xrpm8v.doc_id                    = itp_porc.doc_id
@@ -2068,8 +2133,12 @@ AS
 -- 08/07/09 Y.Yamamoto ADD v1.14 End
                     FROM   xxinv_stc_inventory_result xsir                     -- 棚卸結果テーブル
                           ,xxcmn_item_locations_v xilv_sir
-                    WHERE  xsir.invent_date      BETWEEN gd_date_ym_first      -- パラメータの対象年月の１日から
-                                                 AND     gd_date_ym_last       -- 月末日で取得
+-- 08/09/17 Y.Yamamoto Update v1.17 Start
+--                    WHERE  xsir.invent_date      BETWEEN gd_date_ym_first      -- パラメータの対象年月の１日から
+--                                                 AND     gd_date_ym_last       -- 月末日で取得
+                    WHERE  xsir.invent_date      BETWEEN gd_date_ymt_first      -- パラメータの対象年月の１日から
+                                                 AND     gd_date_ymt_last       -- 月末日で取得
+-- 08/09/17 Y.Yamamoto Update v1.17 End
                     AND    xilv_sir.whse_code = xsir.invent_whse_code
                     AND    xilv_sir.segment1 = ( SELECT MIN( z.segment1 )
                                                  FROM   xxcmn_item_locations_v z
