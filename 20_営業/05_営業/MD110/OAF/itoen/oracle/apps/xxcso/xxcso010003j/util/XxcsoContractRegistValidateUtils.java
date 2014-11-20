@@ -9,6 +9,8 @@
 * 2009-01-27 1.0  SCS柳平直人  新規作成
 * 2009-02-16 1.1  SCS柳平直人  [CT1-005]送付先必須チェック削除
 *                              [CT1障害]BM口座名義カナ半角カナチェック修正
+* 2009-04-08 1.2  SCS柳平直人  [ST障害T1_0364]仕入先重複チェック修正対応
+* 2009-04-09 1.3  SCS柳平直人  [ST障害T1_0327]月末締翌20日払チェック処理修正
 *============================================================================
 */
 package itoen.oracle.apps.xxcso.xxcso010003j.util;
@@ -45,6 +47,11 @@ import oracle.jbo.domain.Number;
 import oracle.jbo.domain.Date;
 import oracle.jdbc.OracleCallableStatement;
 import oracle.jdbc.OracleTypes;
+// 2009-04-08 [ST障害T1_0364] Add Start
+import oracle.sql.NUMBER;
+import com.sun.java.util.collections.HashMap;
+import com.sun.java.util.collections.Iterator;
+// 2009-04-08 [ST障害T1_0364] Add End
 
 /*******************************************************************************
  * 自販機設置契約情報登録検証ユーティリティクラス。
@@ -2060,6 +2067,7 @@ public class XxcsoContractRegistValidateUtils
    * @param bm2BankAccVo BM2銀行口座アドオンマスタ情報用ビューインスタンス
    * @param bm3DestVo    BM3送付先テーブル情報用ビューインスタンス
    * @param bm3BankAccVo BM3銀行口座アドオンマスタ情報用ビューインスタンス
+   * @param fixedFrag    確定ボタン押下フラグ
    * @return OAException エラー
    *****************************************************************************
    */
@@ -2073,6 +2081,9 @@ public class XxcsoContractRegistValidateUtils
    ,XxcsoBm2BankAccountFullVOImpl       bm2BankAccVo
    ,XxcsoBm3DestinationFullVOImpl       bm3DestVo
    ,XxcsoBm3BankAccountFullVOImpl       bm3BankAccVo
+// 2009-04-08 [ST障害T1_0364] Add Start
+   ,boolean                             fixedFrag
+// 2009-04-08 [ST障害T1_0364] Add End
   )
   {
     OAException oaeMsg = null;
@@ -2229,27 +2240,56 @@ public class XxcsoContractRegistValidateUtils
     // ***********************************
     // 仕入先名重複チェック（）
     // ***********************************
-    retCheck
-      = isDuplicateVendorName(
+// 2009-04-08 [ST障害T1_0364] Mod Start
+//    retCheck
+//      = isDuplicateVendorName(
+//          txn
+//         ,bm1PaymentName
+//         ,bm2PaymentName
+//         ,bm3PaymentName
+//         ,contMngVoRow.getContractManagementId()
+//         ,bm1SupplierId
+//         ,bm2SupplierId
+//         ,bm3SupplierId
+//        );
+//    if (retCheck)
+//    {
+//      oaeMsg
+//        = XxcsoMessage.createErrorMessage(
+//            duplicateErrId
+//           ,XxcsoConstants.TOKEN_ITEM
+//           ,XxcsoContractRegistConstants.TOKEN_VALUE_BM_VENDOR_NAME
+//          );
+//      return oaeMsg;
+//    }
+    String operationValue = null;
+    if ( fixedFrag )
+    {
+      // 確定ボタン押下時
+      operationValue = XxcsoContractRegistConstants.OPERATION_SUBMIT;
+    }
+    else
+    {
+      // 提出ボタン押下時
+      operationValue = XxcsoContractRegistConstants.OPERATION_APPLY;
+    }
+
+    oaeMsg
+      = chkDuplicateVendorName(
           txn
          ,bm1PaymentName
          ,bm2PaymentName
          ,bm3PaymentName
-         ,contMngVoRow.getContractManagementId()
          ,bm1SupplierId
          ,bm2SupplierId
          ,bm3SupplierId
+         ,operationValue
         );
-    if (retCheck)
+    if ( oaeMsg != null)
     {
-      oaeMsg
-        = XxcsoMessage.createErrorMessage(
-            XxcsoConstants.APP_XXCSO1_00449
-           ,XxcsoConstants.TOKEN_ITEM
-           ,XxcsoContractRegistConstants.TOKEN_VALUE_BM_VENDOR_NAME
-          );
       return oaeMsg;
     }
+// 2009-04-08 [ST障害T1_0364] Mod End
 
     // ***********************************
     // 銀行口座情報整合性チェック
@@ -2568,7 +2608,10 @@ public class XxcsoContractRegistValidateUtils
       {
         if ( ! bmBellingDetailsTranceferFlag )
         {
-          returnValue = false;
+// 2009-04-09 [ST障害T1_0327] Mod Start
+//          returnValue = false;
+          returnValue = true;
+// 2009-04-09 [ST障害T1_0327] Mod Start
         }
       }
       else
@@ -2887,68 +2930,281 @@ public class XxcsoContractRegistValidateUtils
     return returnValue;
   }
 
+// 2009-04-08 [ST障害T1_0364] Del Start
+//  /*****************************************************************************
+//   * 送付先名マスタ存在チェック
+//   * @param txn                 OADBTransactionインスタンス
+//   * @param dm1VendorName       DM1送付先名
+//   * @param dm2VendorName       DM2送付先名
+//   * @param dm3VendorName       DM3送付先名
+//   * @param dm1SupplierId       DM1仕入先ID
+//   * @param dm2SupplierId       DM2仕入先ID
+//   * @param dm3SupplierId       DM3仕入先ID
+//   * @return boolean            検証結果
+//   *****************************************************************************
+//   */
+//  private static boolean isDuplicateVendorName(
+//    OADBTransaction   txn
+//   ,String            dm1VendorName
+//   ,String            dm2VendorName
+//   ,String            dm3VendorName
+//   ,Number            contMngId
+//   ,Number            dm1SupplierId
+//   ,Number            dm2SupplierId
+//   ,Number            dm3SupplierId
+//  )
+//  {
+//    OracleCallableStatement stmt = null;
+//    boolean returnValue = true;
+//    
+//    try
+//    {
+//      StringBuffer sql = new StringBuffer(100);
+//      sql.append("BEGIN");
+//      sql.append("  :1 := xxcso_010003j_pkg.");
+//      sql.append("chk_duplicate_vendor_name(:2, :3, :4, :5, :6, :7, :8);");
+//      sql.append("END;");
+//
+//      // パラメータの自動販売機設置契約書IDのマイナス値考慮
+//      Number paramContMngId = null;
+//      if (contMngId != null && (contMngId.intValue() > 0) )
+//      {
+//        paramContMngId = contMngId;
+//      }
+//
+//      stmt
+//        = (OracleCallableStatement)
+//            txn.createCallableStatement(sql.toString(), 0);
+//
+//      int idx = 1;
+//      stmt.registerOutParameter(idx++, OracleTypes.VARCHAR);
+//      stmt.setString(idx++, dm1VendorName);
+//      stmt.setString(idx++, dm2VendorName);
+//      stmt.setString(idx++, dm3VendorName);
+//      stmt.setNUMBER(idx++, paramContMngId);
+//      stmt.setNUMBER(idx++, dm1SupplierId);
+//      stmt.setNUMBER(idx++, dm2SupplierId);
+//      stmt.setNUMBER(idx++, dm3SupplierId);
+//
+//      stmt.execute();
+//
+//      String returnString = stmt.getString(1);
+//      if ( ! "1".equals(returnString) )
+//      {
+//        returnValue = false;
+//      }
+//    }
+//    catch ( SQLException e )
+//    {
+//      XxcsoUtils.unexpected(txn, e);
+//      throw
+//        XxcsoMessage.createSqlErrorMessage(
+//          e
+//         ,XxcsoContractRegistConstants.TOKEN_VALUE_DUPLICATE_VENDOR_NAME_CHK
+//        );
+//    }
+//    finally
+//    {
+//      try
+//      {
+//        if ( stmt != null )
+//        {
+//          stmt.close();
+//        }
+//      }
+//      catch ( SQLException e )
+//      {
+//        XxcsoUtils.unexpected(txn, e);
+//      }
+//    }
+//
+//    return returnValue;
+//  }
+// 2009-04-08 [ST障害T1_0364] Del End
+// 2009-04-08 [ST障害T1_0364] Add Start
   /*****************************************************************************
    * 送付先名マスタ存在チェック
    * @param txn                 OADBTransactionインスタンス
-   * @param dm1VendorName       DM1送付先名
-   * @param dm2VendorName       DM2送付先名
-   * @param dm3VendorName       DM3送付先名
-   * @param contMngId           自動販売機設置契約書ID
-   * @param dm1SupplierId       DM1仕入先ID
-   * @param dm2SupplierId       DM2仕入先ID
-   * @param dm3SupplierId       DM3仕入先ID
-   * @return boolean            検証結果
+   * @param bm1VendorName       DM1送付先名
+   * @param bm2VendorName       DM2送付先名
+   * @param bm3VendorName       DM3送付先名
+   * @param bm1SupplierId       DM1仕入先ID
+   * @param bm2SupplierId       DM2仕入先ID
+   * @param bm3SupplierId       DM3仕入先ID
+   * @param operationValue      押下ボタン判別値
+   * @return OAException        エラーメッセージ
    *****************************************************************************
    */
-  private static boolean isDuplicateVendorName(
+   private static OAException chkDuplicateVendorName(
     OADBTransaction   txn
-   ,String            dm1VendorName
-   ,String            dm2VendorName
-   ,String            dm3VendorName
-   ,Number            contMngId
-   ,Number            dm1SupplierId
-   ,Number            dm2SupplierId
-   ,Number            dm3SupplierId
-  )
+   ,String            bm1VendorName
+   ,String            bm2VendorName
+   ,String            bm3VendorName
+   ,Number            bm1SupplierId
+   ,Number            bm2SupplierId
+   ,Number            bm3SupplierId
+   ,String            operationValue
+   )
   {
-    OracleCallableStatement stmt = null;
-    boolean returnValue = true;
+    OracleCallableStatement stmt        = null;
+    OAException             returnMsg   = null;
+    ArrayList               bmList      = null;
+    ArrayList               cntNumList  = null;
     
     try
     {
-      StringBuffer sql = new StringBuffer(100);
+      StringBuffer sql = new StringBuffer(300);
       sql.append("BEGIN");
-      sql.append("  :1 := xxcso_010003j_pkg.");
-      sql.append("chk_duplicate_vendor_name(:2, :3, :4, :5, :6, :7, :8);");
+      sql.append("  xxcso_010003j_pkg.chk_duplicate_vendor_name(");
+      sql.append("     iv_bm1_vendor_name     => :1");
+      sql.append("    ,iv_bm2_vendor_name     => :2");
+      sql.append("    ,iv_bm3_vendor_name     => :3");
+      sql.append("    ,in_bm1_supplier_id     => :4");
+      sql.append("    ,in_bm2_supplier_id     => :5");
+      sql.append("    ,in_bm3_supplier_id     => :6");
+      sql.append("    ,iv_operation_mode      => :7");
+      sql.append("    ,on_bm1_dup_count       => :8");
+      sql.append("    ,on_bm2_dup_count       => :9");
+      sql.append("    ,on_bm3_dup_count       => :10");
+      sql.append("    ,ov_bm1_contract_number => :11");
+      sql.append("    ,ov_bm2_contract_number => :12");
+      sql.append("    ,ov_bm3_contract_number => :13");
+      sql.append("    ,ov_errbuf              => :14");
+      sql.append("    ,ov_retcode             => :15");
+      sql.append("    ,ov_errmsg              => :16");
+      sql.append("  );");
       sql.append("END;");
-
-      // パラメータの自動販売機設置契約書IDのマイナス値考慮
-      Number paramContMngId = null;
-      if (contMngId != null && (contMngId.intValue() > 0) )
-      {
-        paramContMngId = contMngId;
-      }
 
       stmt
         = (OracleCallableStatement)
             txn.createCallableStatement(sql.toString(), 0);
 
-      int idx = 1;
-      stmt.registerOutParameter(idx++, OracleTypes.VARCHAR);
-      stmt.setString(idx++, dm1VendorName);
-      stmt.setString(idx++, dm2VendorName);
-      stmt.setString(idx++, dm3VendorName);
-      stmt.setNUMBER(idx++, paramContMngId);
-      stmt.setNUMBER(idx++, dm1SupplierId);
-      stmt.setNUMBER(idx++, dm2SupplierId);
-      stmt.setNUMBER(idx++, dm3SupplierId);
+      stmt.setString(1, bm1VendorName);
+      stmt.setString(2, bm2VendorName);
+      stmt.setString(3, bm3VendorName);
+      stmt.setNUMBER(4, bm1SupplierId);
+      stmt.setNUMBER(5, bm2SupplierId);
+      stmt.setNUMBER(6, bm3SupplierId);
+      stmt.setString(7, operationValue);
+      stmt.registerOutParameter(8,  OracleTypes.NUMBER);
+      stmt.registerOutParameter(9,  OracleTypes.NUMBER);
+      stmt.registerOutParameter(10, OracleTypes.NUMBER);
+      stmt.registerOutParameter(11, OracleTypes.VARCHAR);
+      stmt.registerOutParameter(12, OracleTypes.VARCHAR);
+      stmt.registerOutParameter(13, OracleTypes.VARCHAR);
+      stmt.registerOutParameter(14, OracleTypes.VARCHAR);
+      stmt.registerOutParameter(15, OracleTypes.VARCHAR);
+      stmt.registerOutParameter(16, OracleTypes.VARCHAR);
 
+      XxcsoUtils.debug(txn, "execute stored start");
       stmt.execute();
+      XxcsoUtils.debug(txn, "execute stored end");
 
-      String returnString = stmt.getString(1);
-      if ( ! "1".equals(returnString) )
+      NUMBER bm1DupCnt    = stmt.getNUMBER(8);
+      NUMBER bm2DupCnt    = stmt.getNUMBER(9);
+      NUMBER bm3DupCnt    = stmt.getNUMBER(10);
+      String bm1CntrctNum = stmt.getString(11);
+      String bm2CntrctNum = stmt.getString(12);
+      String bm3CntrctNum = stmt.getString(13);
+      String errBuf       = stmt.getString(14);
+      String retCode      = stmt.getString(15);
+      String errMsg       = stmt.getString(16);
+
+      XxcsoUtils.debug(txn, "bm1DupCnt    = " + bm1DupCnt.stringValue());
+      XxcsoUtils.debug(txn, "bm2DupCnt    = " + bm2DupCnt.stringValue());
+      XxcsoUtils.debug(txn, "bm2DupCnt    = " + bm3DupCnt.stringValue());
+      XxcsoUtils.debug(txn, "bm1CntrctNum = " + bm1CntrctNum);
+      XxcsoUtils.debug(txn, "bm2CntrctNum = " + bm2CntrctNum);
+      XxcsoUtils.debug(txn, "bm2CntrctNum = " + bm3CntrctNum);
+      XxcsoUtils.debug(txn, "errbuf       = " + errBuf);
+      XxcsoUtils.debug(txn, "retCode      = " + retCode);
+      XxcsoUtils.debug(txn, "errmsg       = " + errMsg);
+
+      if ( ! "0".equals(retCode) )
       {
-        returnValue = false;
+        // ////////////////////////////////
+        // BM送付先エラー箇所の設定
+        // ////////////////////////////////
+        bmList = new ArrayList(3);
+        if ( ! "0".equals(bm1DupCnt.stringValue()) )
+        {
+          bmList.add(
+            XxcsoContractRegistConstants.TOKEN_VALUE_BM1
+            + XxcsoContractRegistConstants.TOKEN_VALUE_PAYMENT_NAME
+          );
+        }
+        if ( ! "0".equals(bm2DupCnt.stringValue()) )
+        {
+          bmList.add(
+            XxcsoContractRegistConstants.TOKEN_VALUE_BM2
+            + XxcsoContractRegistConstants.TOKEN_VALUE_PAYMENT_NAME
+          );
+        }
+        if ( ! "0".equals(bm3DupCnt.stringValue()) )
+        {
+          bmList.add(
+            XxcsoContractRegistConstants.TOKEN_VALUE_BM3
+            + XxcsoContractRegistConstants.TOKEN_VALUE_PAYMENT_NAME
+          );
+        }
+
+        StringBuffer sbTokenItem = new StringBuffer();
+        int listCnt = bmList.size();
+        for (int i = 0; i < listCnt; i++)
+        {
+          if (i != 0)
+          {
+            sbTokenItem.append(XxcsoConstants.TOKEN_VALUE_DELIMITER2);
+          }
+          sbTokenItem.append( (String) bmList.get(i) );
+        }
+
+        // ////////////////////////////////
+        // 契約書番号の設定
+        // ////////////////////////////////
+        HashMap cntrctNumErrMap = new HashMap();
+        cntrctNumErrMap.put(bm1CntrctNum, bm1CntrctNum);
+        cntrctNumErrMap.put(bm2CntrctNum, bm2CntrctNum);
+        cntrctNumErrMap.put(bm3CntrctNum, bm3CntrctNum);
+        cntrctNumErrMap.remove(null);
+        cntrctNumErrMap.remove("");
+
+        StringBuffer sbTokenRecord = new StringBuffer();
+        Iterator ite = cntrctNumErrMap.keySet().iterator();
+        int mapCnt = 0;
+        while( ite.hasNext() )
+        {
+          String contractNumber = (String)ite.next();
+          if (mapCnt != 0)
+          {
+            sbTokenRecord.append(XxcsoConstants.TOKEN_VALUE_DELIMITER2);
+          }
+          sbTokenRecord.append(contractNumber);
+          mapCnt++;
+        }
+
+        if ( "1".equals(retCode) )
+        {
+          // 仕入先マスタ重複エラー
+          returnMsg
+            = XxcsoMessage.createErrorMessage(
+                XxcsoConstants.APP_XXCSO1_00558
+               ,XxcsoConstants.TOKEN_ITEM
+               ,new String(sbTokenItem)
+              );
+        }
+        else
+        {
+          // 送付先テーブル重複エラー
+          returnMsg
+            = XxcsoMessage.createErrorMessage(
+                XxcsoConstants.APP_XXCSO1_00559
+               ,XxcsoConstants.TOKEN_ITEM
+               ,new String(sbTokenItem)
+               ,XxcsoConstants.TOKEN_RECORD
+               ,new String(sbTokenRecord)
+              );
+        }
       }
     }
     catch ( SQLException e )
@@ -2975,8 +3231,9 @@ public class XxcsoContractRegistValidateUtils
       }
     }
 
-    return returnValue;
+    return returnMsg;
   }
+// 2009-04-08 [ST障害T1_0364] Add End
 
 
 }

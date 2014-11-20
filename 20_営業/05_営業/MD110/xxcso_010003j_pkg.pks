@@ -31,6 +31,7 @@ AS
  *  2009/02/17    1.1   N.Yanagitaira    [CT1-012]decode_cont_manage_info追加
  *  2009/02/23    1.1   N.Yanagitaira    [内部障害-028]全角カナチェック処理不正修正
  *  2009/03/12    1.1   N.Yanagitaira    [CT2-058]get_sales_charge追加
+ *  2009/04/08    1.2   N.Yanagitaira    [障害T1_0364]chk_duplicate_vendor_name修正
  *****************************************************************************************/
 --
   -- BM情報分岐取得
@@ -64,15 +65,35 @@ AS
   ) RETURN VARCHAR2;
 --
   -- 送付先名重複チェック
-  FUNCTION chk_duplicate_vendor_name(
-    iv_dm1_vendor_name             IN  VARCHAR2
-   ,iv_dm2_vendor_name             IN  VARCHAR2
-   ,iv_dm3_vendor_name             IN  VARCHAR2
-   ,in_contract_management_id      IN  NUMBER
-   ,in_dm1_supplier_id             IN  NUMBER
-   ,in_dm2_supplier_id             IN  NUMBER
-   ,in_dm3_supplier_id             IN  NUMBER
-  ) RETURN VARCHAR2;
+-- 20090408_N.Yanagitaira T1_0364 Mod START
+--  FUNCTION chk_duplicate_vendor_name(
+--    iv_dm1_vendor_name             IN  VARCHAR2
+--   ,iv_dm2_vendor_name             IN  VARCHAR2
+--   ,iv_dm3_vendor_name             IN  VARCHAR2
+--   ,in_contract_management_id      IN  NUMBER
+--   ,in_dm1_supplier_id             IN  NUMBER
+--   ,in_dm2_supplier_id             IN  NUMBER
+--   ,in_dm3_supplier_id             IN  NUMBER
+--  ) RETURN VARCHAR2;
+  PROCEDURE chk_duplicate_vendor_name(
+    iv_bm1_vendor_name             IN  VARCHAR2
+   ,iv_bm2_vendor_name             IN  VARCHAR2
+   ,iv_bm3_vendor_name             IN  VARCHAR2
+   ,in_bm1_supplier_id             IN  NUMBER
+   ,in_bm2_supplier_id             IN  NUMBER
+   ,in_bm3_supplier_id             IN  NUMBER
+   ,iv_operation_mode              IN  VARCHAR2
+   ,on_bm1_dup_count               OUT NUMBER
+   ,on_bm2_dup_count               OUT NUMBER
+   ,on_bm3_dup_count               OUT NUMBER
+   ,ov_bm1_contract_number         OUT VARCHAR2
+   ,ov_bm2_contract_number         OUT VARCHAR2
+   ,ov_bm3_contract_number         OUT VARCHAR2
+   ,ov_errbuf                      OUT VARCHAR2
+   ,ov_retcode                     OUT VARCHAR2
+   ,ov_errmsg                      OUT VARCHAR2
+  );
+-- 20090408_N.Yanagitaira T1_0364 Mod END
 --
    -- 権限判定関数
   FUNCTION get_authority(

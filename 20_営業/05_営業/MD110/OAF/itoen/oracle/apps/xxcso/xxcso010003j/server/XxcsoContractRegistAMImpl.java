@@ -10,6 +10,7 @@
 * 2009-02-16 1.1  SCS柳平直人  [CT1-008]BM指定チェックボックス不正対応
 * 2009-02-23 1.1  SCS柳平直人  [CT1-021]送付先コード取得不正対応
 *                              [CT1-022]口座情報取得不正対応
+* 2009-04-08 1.2  SCS柳平直人  [ST障害T1_0364]仕入先重複チェック修正対応
 *============================================================================
 */
 package itoen.oracle.apps.xxcso.xxcso010003j.server;
@@ -1577,6 +1578,9 @@ public class XxcsoContractRegistAMImpl extends OAApplicationModuleImpl
          ,bank2Vo
          ,dest3Vo
          ,bank3Vo
+// 2009-04-08 [ST障害T1_0364] Add Start
+         ,fixedFlag
+// 2009-04-08 [ST障害T1_0364] Add End
         );
     if (oaeMsg != null)
     {

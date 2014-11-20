@@ -408,117 +408,336 @@ AS
    * Function Name    : chk_duplicate_vendor_name
    * Description      : 送付先名重複チェック
    ***********************************************************************************/
-  FUNCTION chk_duplicate_vendor_name(
-    iv_dm1_vendor_name             IN  VARCHAR2
-   ,iv_dm2_vendor_name             IN  VARCHAR2
-   ,iv_dm3_vendor_name             IN  VARCHAR2
-   ,in_contract_management_id      IN  NUMBER
-   ,in_dm1_supplier_id             IN  NUMBER
-   ,in_dm2_supplier_id             IN  NUMBER
-   ,in_dm3_supplier_id             IN  NUMBER
-
-  ) RETURN VARCHAR2
+-- 20090408_N.Yanagitaira T1_0364 Mod START
+--  FUNCTION chk_duplicate_vendor_name(
+--    iv_dm1_vendor_name             IN  VARCHAR2
+--   ,iv_dm2_vendor_name             IN  VARCHAR2
+--   ,iv_dm3_vendor_name             IN  VARCHAR2
+--   ,in_contract_management_id      IN  NUMBER
+--   ,in_dm1_supplier_id             IN  NUMBER
+--   ,in_dm2_supplier_id             IN  NUMBER
+--   ,in_dm3_supplier_id             IN  NUMBER
+--
+--  ) RETURN VARCHAR2
+--  IS
+--    -- ===============================
+--    -- 固定ローカル定数
+--    -- ===============================
+--    cv_prg_name                  CONSTANT VARCHAR2(100)   := 'chk_duplicate_vendor_name';
+--    -- ===============================
+--    -- ローカル変数
+--    -- ===============================
+--    lv_return_value              VARCHAR2(1);
+--    ln_cnt                       NUMBER;
+----
+--  BEGIN
+----
+--    lv_return_value := 0;
+----
+--    ln_cnt := 0;
+----
+--    BEGIN
+----
+--      -- 送付先テーブル重複チェック
+--      SELECT    COUNT(delivery_id)
+--      INTO      ln_cnt
+--      FROM      xxcso_destinations xd
+--      WHERE     xd.payment_name IN (iv_dm1_vendor_name, iv_dm2_vendor_name, iv_dm3_vendor_name)
+---- 20090403_N.Yanagitaira T1_0223 Mod START
+----        AND     xd.supplier_id NOT IN (in_dm1_supplier_id, in_dm2_supplier_id, in_dm3_supplier_id)
+----        AND     (
+----                  (
+----                    ( in_contract_management_id IS NOT NULL ) AND (xd.contract_management_id <> in_contract_management_id)
+----                  )
+----                  OR
+----                  (
+----                    ( in_contract_management_id IS NULL) AND (1 = 1)
+----                  )
+----                )
+--        AND     NOT EXISTS
+--                (
+--                  SELECT  1
+--                  FROM    xxcso_destinations xd2
+--                  WHERE   xd2.contract_management_id = xd.contract_management_id
+--                    AND   xd2.contract_management_id = NVL(in_contract_management_id, fnd_api.g_miss_num)
+--                )
+--        AND     NOT EXISTS
+--                (
+--                  SELECT  1
+--                  FROM    xxcso_destinations xd2
+--                  WHERE   xd2.contract_management_id = xd.contract_management_id
+--                    AND   xd2.supplier_id IN
+--                            (
+--                              NVL(in_dm1_supplier_id, fnd_api.g_miss_num)
+--                             ,NVL(in_dm2_supplier_id, fnd_api.g_miss_num)
+--                             ,NVL(in_dm3_supplier_id, fnd_api.g_miss_num)
+--                            )
+--                )
+---- 20090403_N.Yanagitaira T1_0223 Mod END
+--        AND      ROWNUM = 1
+--      ;
+----
+--      IF ( ln_cnt <> 0) THEN
+--        lv_return_value := '1';
+--        RETURN lv_return_value;
+--      END IF;
+----
+--    END;
+----
+--    ln_cnt := 0;
+----
+--    BEGIN
+----
+--      -- 仕入先マスタ重複チェック
+--      SELECT    COUNT(vendor_id)
+--      INTO      ln_cnt
+--      FROM      po_vendors pv
+--      WHERE     pv.vendor_name IN (iv_dm1_vendor_name, iv_dm2_vendor_name, iv_dm3_vendor_name)
+---- 20090403_N.Yanagitaira T1_0223 Mod START
+----        AND     pv.vendor_id NOT IN (in_dm1_supplier_id, in_dm2_supplier_id, in_dm3_supplier_id)
+--        AND     NOT EXISTS
+--                (
+--                  SELECT  1
+--                  FROM    po_vendors pv2
+--                  WHERE   pv2.vendor_id = pv.vendor_id
+--                    AND   pv2.vendor_id IN
+--                            (
+--                              NVL(in_dm1_supplier_id, fnd_api.g_miss_num)
+--                             ,NVL(in_dm2_supplier_id, fnd_api.g_miss_num)
+--                             ,NVL(in_dm3_supplier_id, fnd_api.g_miss_num)
+--                            )
+--                )
+---- 20090403_N.Yanagitaira T1_0223 Mod END
+--        AND     ROWNUM = 1
+--      ;
+----
+--      IF ( ln_cnt <> 0) THEN
+--        lv_return_value := '1';
+--        RETURN lv_return_value;
+--      END IF;
+----
+--    END;
+----
+--    RETURN lv_return_value;
+----
+  PROCEDURE chk_duplicate_vendor_name(
+    iv_bm1_vendor_name             IN  VARCHAR2
+   ,iv_bm2_vendor_name             IN  VARCHAR2
+   ,iv_bm3_vendor_name             IN  VARCHAR2
+   ,in_bm1_supplier_id             IN  NUMBER
+   ,in_bm2_supplier_id             IN  NUMBER
+   ,in_bm3_supplier_id             IN  NUMBER
+   ,iv_operation_mode              IN  VARCHAR2
+   ,on_bm1_dup_count               OUT NUMBER
+   ,on_bm2_dup_count               OUT NUMBER
+   ,on_bm3_dup_count               OUT NUMBER
+   ,ov_bm1_contract_number         OUT VARCHAR2
+   ,ov_bm2_contract_number         OUT VARCHAR2
+   ,ov_bm3_contract_number         OUT VARCHAR2
+   ,ov_errbuf                      OUT VARCHAR2
+   ,ov_retcode                     OUT VARCHAR2
+   ,ov_errmsg                      OUT VARCHAR2
+  )
   IS
     -- ===============================
     -- 固定ローカル定数
     -- ===============================
     cv_prg_name                  CONSTANT VARCHAR2(100)   := 'chk_duplicate_vendor_name';
+    cv_operation_apply           CONSTANT VARCHAR2(30)    := 'APPLY';
+    cv_operation_submit          CONSTANT VARCHAR2(30)    := 'SUBMIT';
+    cv_contract_status_submit    CONSTANT VARCHAR2(1)     := '1';
+    cv_cooperate_none            CONSTANT VARCHAR2(1)     := '0';
+    cv_err_vendor_duplicate      CONSTANT VARCHAR2(1)     := '1';
+    cv_err_cooperate             CONSTANT VARCHAR2(1)     := '2';
     -- ===============================
     -- ローカル変数
     -- ===============================
-    lv_return_value              VARCHAR2(1);
-    ln_cnt                       NUMBER;
+    ln_bm1_dup_count             NUMBER;
+    ln_bm2_dup_count             NUMBER;
+    ln_bm3_dup_count             NUMBER;
+    lv_bm1_contract_number       xxcso_contract_managements.contract_number%TYPE;
+    lv_bm2_contract_number       xxcso_contract_managements.contract_number%TYPE;
+    lv_bm3_contract_number       xxcso_contract_managements.contract_number%TYPE;
 --
   BEGIN
 --
-    lv_return_value := 0;
---
-    ln_cnt := 0;
---
-    BEGIN
---
-      -- 送付先テーブル重複チェック
-      SELECT    COUNT(delivery_id)
-      INTO      ln_cnt
-      FROM      xxcso_destinations xd
-      WHERE     xd.payment_name IN (iv_dm1_vendor_name, iv_dm2_vendor_name, iv_dm3_vendor_name)
--- 20090403_N.Yanagitaira T1_0223 Mod START
---        AND     xd.supplier_id NOT IN (in_dm1_supplier_id, in_dm2_supplier_id, in_dm3_supplier_id)
---        AND     (
---                  (
---                    ( in_contract_management_id IS NOT NULL ) AND (xd.contract_management_id <> in_contract_management_id)
---                  )
---                  OR
---                  (
---                    ( in_contract_management_id IS NULL) AND (1 = 1)
---                  )
---                )
-        AND     NOT EXISTS
-                (
-                  SELECT  1
-                  FROM    xxcso_destinations xd2
-                  WHERE   xd2.contract_management_id = xd.contract_management_id
-                    AND   xd2.contract_management_id = NVL(in_contract_management_id, fnd_api.g_miss_num)
-                )
-        AND     NOT EXISTS
-                (
-                  SELECT  1
-                  FROM    xxcso_destinations xd2
-                  WHERE   xd2.contract_management_id = xd.contract_management_id
-                    AND   xd2.supplier_id IN
-                            (
-                              NVL(in_dm1_supplier_id, fnd_api.g_miss_num)
-                             ,NVL(in_dm2_supplier_id, fnd_api.g_miss_num)
-                             ,NVL(in_dm3_supplier_id, fnd_api.g_miss_num)
-                            )
-                )
--- 20090403_N.Yanagitaira T1_0223 Mod END
-        AND      ROWNUM = 1
-      ;
---
-      IF ( ln_cnt <> 0) THEN
-        lv_return_value := '1';
-        RETURN lv_return_value;
-      END IF;
---
-    END;
---
-    ln_cnt := 0;
+    -- 初期化
+    ln_bm1_dup_count       := 0;
+    ln_bm2_dup_count       := 0;
+    ln_bm3_dup_count       := 0;
+    lv_bm1_contract_number := NULL;
+    lv_bm2_contract_number := NULL;
+    lv_bm3_contract_number := NULL;
+    on_bm1_dup_count       := 0;
+    on_bm2_dup_count       := 0;
+    on_bm3_dup_count       := 0;
+    ov_bm1_contract_number := NULL;
+    ov_bm2_contract_number := NULL;
+    ov_bm3_contract_number := NULL;
+    ov_retcode             := xxcso_common_pkg.gv_status_normal;
+    ov_errbuf              := NULL;
+    ov_errmsg              := NULL;
 --
     BEGIN
 --
       -- 仕入先マスタ重複チェック
-      SELECT    COUNT(vendor_id)
-      INTO      ln_cnt
-      FROM      po_vendors pv
-      WHERE     pv.vendor_name IN (iv_dm1_vendor_name, iv_dm2_vendor_name, iv_dm3_vendor_name)
--- 20090403_N.Yanagitaira T1_0223 Mod START
---        AND     pv.vendor_id NOT IN (in_dm1_supplier_id, in_dm2_supplier_id, in_dm3_supplier_id)
-        AND     NOT EXISTS
-                (
-                  SELECT  1
-                  FROM    po_vendors pv2
-                  WHERE   pv2.vendor_id = pv.vendor_id
-                    AND   pv2.vendor_id IN
-                            (
-                              NVL(in_dm1_supplier_id, fnd_api.g_miss_num)
-                             ,NVL(in_dm2_supplier_id, fnd_api.g_miss_num)
-                             ,NVL(in_dm3_supplier_id, fnd_api.g_miss_num)
-                            )
-                )
--- 20090403_N.Yanagitaira T1_0223 Mod END
-        AND     ROWNUM = 1
+      SELECT   (
+                 SELECT    COUNT('X')
+                 FROM      po_vendors pv
+                 WHERE     pv.vendor_name = iv_bm1_vendor_name
+                 AND       NOT EXISTS
+                           (
+                             SELECT  1
+                             FROM    po_vendors pv1
+                             WHERE   pv1.vendor_id = pv.vendor_id
+                               AND   pv1.vendor_id = NVL(in_bm1_supplier_id, fnd_api.g_miss_num)
+                           )
+                 AND       ROWNUM = 1
+               ) AS bm1_count
+              ,(
+                 SELECT    COUNT('X')
+                 FROM      po_vendors pv
+                 WHERE     pv.vendor_name = iv_bm2_vendor_name
+                 AND       NOT EXISTS
+                           (
+                             SELECT  1
+                             FROM    po_vendors pv2
+                             WHERE   pv2.vendor_id = pv.vendor_id
+                               AND   pv2.vendor_id = NVL(in_bm2_supplier_id, fnd_api.g_miss_num)
+                           )
+                 AND       ROWNUM = 1
+               ) AS bm2_count
+              ,(
+                 SELECT    COUNT('X')
+                 FROM      po_vendors pv
+                 WHERE     pv.vendor_name = iv_bm3_vendor_name
+                 AND       NOT EXISTS
+                           (
+                             SELECT  1
+                             FROM    po_vendors pv3
+                             WHERE   pv3.vendor_id = pv.vendor_id
+                               AND   pv3.vendor_id = NVL(in_bm3_supplier_id, fnd_api.g_miss_num)
+                           )
+                 AND       ROWNUM = 1
+               ) AS bm3_count
+      INTO     ln_bm1_dup_count
+              ,ln_bm2_dup_count
+              ,ln_bm3_dup_count
+      FROM     DUAL
       ;
---
-      IF ( ln_cnt <> 0) THEN
-        lv_return_value := '1';
-        RETURN lv_return_value;
-      END IF;
---
     END;
 --
-    RETURN lv_return_value;
+    -- 重複チェック判定 BM1～3に1件でも存在する場合はエラーとする
+    IF ( ( ln_bm1_dup_count <> 0) OR ( ln_bm2_dup_count <> 0) OR ( ln_bm3_dup_count <> 0) ) THEN
+        on_bm1_dup_count := ln_bm1_dup_count;
+        on_bm2_dup_count := ln_bm2_dup_count;
+        on_bm3_dup_count := ln_bm3_dup_count;
+        ov_retcode       := cv_err_vendor_duplicate;
+      RETURN;
+    END IF;
 --
+    -- 確定ボタンの場合のみチェック
+    IF ( iv_operation_mode = cv_operation_submit ) THEN
+--
+      ln_bm1_dup_count := 0;
+      ln_bm2_dup_count := 0;
+      ln_bm3_dup_count := 0;
+--
+      BEGIN
+--
+        -- 送付先テーブル重複チェック
+        SELECT    (
+                    SELECT    xcm.contract_number
+                    FROM      xxcso_contract_managements xcm
+                             ,xxcso_destinations xd
+                    WHERE     xcm.status                 = cv_contract_status_submit
+                    AND       xcm.cooperate_flag         = cv_cooperate_none
+                    AND       xd.contract_management_id  = xcm.contract_management_id
+                    AND       xd.payment_name            = iv_bm1_vendor_name
+                    AND       NOT EXISTS
+                              (
+                                SELECT  1
+                                FROM    xxcso_destinations xd1
+                                WHERE   xd1.contract_management_id = xd.contract_management_id
+                                  AND   xd1.supplier_id            = NVL(in_bm1_supplier_id, fnd_api.g_miss_num)
+                              )
+                    AND       ROWNUM = 1
+                  ) AS bm1_dup_number
+                 ,(
+                    SELECT    xcm.contract_number
+                    FROM      xxcso_contract_managements xcm
+                             ,xxcso_destinations xd
+                    WHERE     xcm.status                 = cv_contract_status_submit
+                    AND       xcm.cooperate_flag         = cv_cooperate_none
+                    AND       xd.contract_management_id  = xcm.contract_management_id
+                    AND       xd.payment_name            = iv_bm2_vendor_name
+                    AND       NOT EXISTS
+                              (
+                                SELECT  1
+                                FROM    xxcso_destinations xd2
+                                WHERE   xd2.contract_management_id = xd.contract_management_id
+                                  AND   xd2.supplier_id            = NVL(in_bm2_supplier_id, fnd_api.g_miss_num)
+                              )
+                    AND       ROWNUM = 1
+                  ) AS bm2_dup_number
+                 ,(
+                    SELECT    xcm.contract_number
+                    FROM      xxcso_contract_managements xcm
+                             ,xxcso_destinations xd
+                    WHERE     xcm.status                 = cv_contract_status_submit
+                    AND       xcm.cooperate_flag         = cv_cooperate_none
+                    AND       xd.contract_management_id  = xcm.contract_management_id
+                    AND       xd.payment_name            = iv_bm3_vendor_name
+                    AND       NOT EXISTS
+                              (
+                                SELECT  1
+                                FROM    xxcso_destinations xd3
+                                WHERE   xd3.contract_management_id = xd.contract_management_id
+                                  AND   xd3.supplier_id            = NVL(in_bm3_supplier_id, fnd_api.g_miss_num)
+                              )
+                    AND       ROWNUM = 1
+                  ) AS bm3_dup_number
+        INTO      lv_bm1_contract_number
+                 ,lv_bm2_contract_number
+                 ,lv_bm3_contract_number
+        FROM      DUAL
+        ;
+      EXCEPTION
+        WHEN NO_DATA_FOUND THEN
+          lv_bm1_contract_number := NULL;
+          lv_bm2_contract_number := NULL;
+          lv_bm3_contract_number := NULL;
+      END;
+--
+      -- 画面でのBM1～3判定のため件数の設定
+      IF ( lv_bm1_contract_number IS NOT NULL) THEN
+        ln_bm1_dup_count := 1;
+      END IF;
+      IF ( lv_bm2_contract_number IS NOT NULL) THEN
+        ln_bm2_dup_count := 1;
+      END IF;
+      IF ( lv_bm3_contract_number IS NOT NULL) THEN
+        ln_bm3_dup_count := 1;
+      END IF;
+--
+      -- 重複チェック判定 BM1～3に1件でも存在する場合はエラーとする
+      IF (    ( lv_bm1_contract_number IS NOT NULL )
+           OR ( lv_bm2_contract_number IS NOT NULL )
+           OR ( lv_bm3_contract_number IS NOT NULL )
+         ) THEN
+         on_bm1_dup_count         := ln_bm1_dup_count;
+         on_bm2_dup_count         := ln_bm2_dup_count;
+         on_bm3_dup_count         := ln_bm3_dup_count;
+         ov_bm1_contract_number   := lv_bm1_contract_number;
+         ov_bm2_contract_number   := lv_bm2_contract_number;
+         ov_bm3_contract_number   := lv_bm3_contract_number;
+         ov_retcode               := cv_err_cooperate;
+        RETURN;
+      END IF;
+--
+    END IF;
+--
+-- 20090408_N.Yanagitaira T1_0364 Mod End
   EXCEPTION
 --#################################  固定例外処理部 START   ####################################
 --

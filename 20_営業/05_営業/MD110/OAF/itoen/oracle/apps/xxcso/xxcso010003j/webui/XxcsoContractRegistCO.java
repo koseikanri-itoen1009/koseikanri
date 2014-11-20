@@ -7,6 +7,7 @@
 * 日付       Ver. 担当者       修正内容
 * ---------- ---- ------------ ----------------------------------------------
 * 2009-01-27 1.0  SCS小川浩    新規作成
+* 2009-04-09 1.1  SCS柳平直人  [ST障害T1_0327]レイアウト調整処理修正
 *============================================================================
 */
 package itoen.oracle.apps.xxcso.xxcso010003j.webui;
@@ -67,6 +68,14 @@ public class XxcsoContractRegistCO extends OAControllerImpl
     // ダイアログページからの遷移時は即終了
     if ( pageContext.getParameter(XxcsoConstants.TOKEN_ACTION) != null)
     {
+// 2009-04-09 [ST障害T1_0327] Add Start
+      adjustLayout(pageContext, webBean);
+
+      OAMessageTextInputBean bean
+        = (OAMessageTextInputBean)webBean.findChildRecursive("OtherContent");
+      bean.setReadOnlyTextArea(true);
+      bean.setReadOnly(true);
+// 2009-04-09 [ST障害T1_0327] Add End
       return;
     }
 
