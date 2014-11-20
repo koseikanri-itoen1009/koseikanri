@@ -1,7 +1,7 @@
 /*============================================================================
 * ファイル名 : XxcsoSpDecisionValidateUtils
 * 概要説明   : SP専決登録画面用検証ユーティリティクラス
-* バージョン : 1.10
+* バージョン : 1.11
 *============================================================================
 * 修正履歴
 * 日付       Ver. 担当者       修正内容
@@ -18,6 +18,7 @@
 * 2009-10-14 1.8  SCS阿部大輔  [共通課題IE554,IE573]住所対応
 * 2009-11-29 1.9  SCS阿部大輔  [E_本稼動_00106]アカウント複数対応
 * 2009-12-17 1.10 SCS阿部大輔  [E_本稼動_00514]郵便番号対応
+* 2010-01-08 1.11 SCS阿部大輔  [E_本稼動_01030]承認権限チェック対応
 *============================================================================
 */
 package itoen.oracle.apps.xxcso.xxcso020001j.util;
@@ -3254,37 +3255,45 @@ public class XxcsoSpDecisionValidateUtils
     }
 
 // 2009-08-06 [障害0000887] Add Start
-    if ( currentAuthLevel != null )
+// 2010-01-08 [E_本稼動_01030] Add Start
+    // ステータスが承認依頼中の場合
+    if ( XxcsoSpDecisionConstants.STATUS_APPROVE.equals(headerRow.getStatus()) )
     {
-      sendRow = (XxcsoSpDecisionSendFullVORowImpl)sendVo.first();
-      boolean checkFlag = false;
-
-      while ( sendRow != null )
+// 2010-01-08 [E_本稼動_01030] Add End
+      if ( currentAuthLevel != null )
       {
-        Number checkAuthNumber = sendRow.getApprAuthLevelNumber();
-        if ( checkAuthNumber.compareTo(currentAuthLevel) == 0 )
-        {
-          checkFlag = true;
-        }
+        sendRow = (XxcsoSpDecisionSendFullVORowImpl)sendVo.first();
+        boolean checkFlag = false;
 
-        if ( checkFlag )
+        while ( sendRow != null )
         {
-          String workRequestType = sendRow.getWorkRequestType();
-          if ( XxcsoSpDecisionConstants.REQ_APPROVE.equals(workRequestType) )
+          Number checkAuthNumber = sendRow.getApprAuthLevelNumber();
+          if ( checkAuthNumber.compareTo(currentAuthLevel) == 0 )
           {
-            int checkValue = checkAuthNumber.compareTo(lastApprAuthLevel);
-            if ( checkValue > 0 )
-            {
-              lastApprAuthLevel = checkAuthNumber;
-            }
-
-            break;
+            checkFlag = true;
           }
-        }
 
-        sendRow = (XxcsoSpDecisionSendFullVORowImpl)sendVo.next();
+          if ( checkFlag )
+          {
+            String workRequestType = sendRow.getWorkRequestType();
+            if ( XxcsoSpDecisionConstants.REQ_APPROVE.equals(workRequestType) )
+            {
+              int checkValue = checkAuthNumber.compareTo(lastApprAuthLevel);
+              if ( checkValue > 0 )
+              {
+                lastApprAuthLevel = checkAuthNumber;
+              }
+
+              break;
+            }
+          }
+
+          sendRow = (XxcsoSpDecisionSendFullVORowImpl)sendVo.next();
+        }
       }
+// 2010-01-08 [E_本稼動_01030] Add Start
     }
+// 2010-01-08 [E_本稼動_01030] Add End
 // 2009-08-06 [障害0000887] Add End
 
     XxcsoUtils.debug(

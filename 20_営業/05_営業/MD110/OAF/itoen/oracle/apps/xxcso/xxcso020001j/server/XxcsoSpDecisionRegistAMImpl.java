@@ -1,7 +1,7 @@
 /*============================================================================
 * ファイル名 : XxcsoSpDecisionRegistAMImpl
 * 概要説明   : SP専決登録画面アプリケーション・モジュールクラス
-* バージョン : 1.8
+* バージョン : 1.9
 *============================================================================
 * 修正履歴
 * 日付       Ver. 担当者       修正内容
@@ -15,6 +15,7 @@
 * 2009-08-24 1.6  SCS阿部大輔   [SCS障害0001104]申請区分チェック対応
 * 2009-10-14 1.7  SCS阿部大輔   [共通課題IE554,IE573]住所対応
 * 2009-11-29 1.8  SCS阿部大輔   [E_本稼動_00106]アカウント複数対応
+* 2010-01-08 1.9  SCS阿部大輔   [E_本稼動_01031]取引条件チェック対応
 *============================================================================
 */
 package itoen.oracle.apps.xxcso.xxcso020001j.server;
@@ -3202,12 +3203,26 @@ public class XxcsoSpDecisionRegistAMImpl extends OAApplicationModuleImpl
          XxcsoSpDecisionConstants.COND_SALES_CONTRIBUTE.equals(condBizType)
        )
     {
-      XxcsoSpDecisionValidateUtils.validateScLine(
-        txn
-       ,headerVo
-       ,scVo
-       ,submitFlag
+// 2010-01-08 [E_本稼動_01031] Add Start
+      errorList.addAll(
+// 2010-01-08 [E_本稼動_01031] Add End
+        XxcsoSpDecisionValidateUtils.validateScLine(
+          txn
+         ,headerVo
+         ,scVo
+// 2010-01-08 [E_本稼動_01031] Add Start
+         //,submitFlag
+         ,true
+        )
+// 2010-01-08 [E_本稼動_01031] Add End
       );
+// 2010-01-08 [E_本稼動_01031] Add Start
+      // エラーの場合は処理終了
+      if ( errorList.size() > 0 )
+      {
+        OAException.raiseBundledOAException(errorList);
+      }
+// 2010-01-08 [E_本稼動_01031] Add End
       
       if ( XxcsoSpDecisionConstants.COND_SALES_CONTRIBUTE.equals(condBizType) )
       {
@@ -3298,13 +3313,26 @@ public class XxcsoSpDecisionRegistAMImpl extends OAApplicationModuleImpl
       
       if ( XxcsoSpDecisionConstants.CNTNR_ALL.equals(allContainerType) )
       {
-        XxcsoSpDecisionValidateUtils.validateAllCcLine(
-          txn
-         ,headerVo
-         ,allCcVo
-         ,submitFlag
+// 2010-01-08 [E_本稼動_01031] Add Start
+        errorList.addAll(
+// 2010-01-08 [E_本稼動_01031] Add End
+          XxcsoSpDecisionValidateUtils.validateAllCcLine(
+            txn
+           ,headerVo
+           ,allCcVo
+// 2010-01-08 [E_本稼動_01031] Add Start
+           //,submitFlag
+           ,true
+          )
+// 2010-01-08 [E_本稼動_01031] Add End
         );
-      
+// 2010-01-08 [E_本稼動_01031] Add Start
+        // エラーの場合は処理終了
+        if ( errorList.size() > 0 )
+        {
+          OAException.raiseBundledOAException(errorList);
+        }
+// 2010-01-08 [E_本稼動_01031] Add End
         allCcRow = (XxcsoSpDecisionAllCcLineFullVORowImpl)allCcVo.first();
         while ( allCcRow != null )
         {
@@ -3378,13 +3406,26 @@ public class XxcsoSpDecisionRegistAMImpl extends OAApplicationModuleImpl
       }
       else
       {
-        XxcsoSpDecisionValidateUtils.validateSelCcLine(
-          txn
-         ,headerVo
-         ,selCcVo
-         ,submitFlag
+// 2010-01-08 [E_本稼動_01031] Add Start
+        errorList.addAll(
+// 2010-01-08 [E_本稼動_01031] Add End
+          XxcsoSpDecisionValidateUtils.validateSelCcLine(
+            txn
+           ,headerVo
+           ,selCcVo
+// 2010-01-08 [E_本稼動_01031] Add Start
+           //,submitFlag
+           ,true
+          )
+// 2010-01-08 [E_本稼動_01031] Add End
         );
-        
+// 2010-01-08 [E_本稼動_01031] Add Start
+        // エラーの場合は処理終了
+        if ( errorList.size() > 0 )
+        {
+          OAException.raiseBundledOAException(errorList);
+        }
+// 2010-01-08 [E_本稼動_01031] Add End
         selCcRow = (XxcsoSpDecisionSelCcLineFullVORowImpl)selCcVo.first();
         while ( selCcRow != null )
         {
