@@ -14,6 +14,7 @@
  *                                                             WHOLESALE_UNIT_PLOCE(NUMBER(9,2)→NUMBER(13,2))
  *                                                             PLOCE(NUMBER(9,2)→NUMBER(13,2))
  *                                                             CARD_AMOUNT(NUMBER(9,2)→NUMBER(13,2))
+ *  2009/12/12    1.2   SCS N.Maeda      [E_本稼動_000140]     VISIT_TIME,DLV_INVOICE_LINE_NUMBERの追加
  *
  ****************************************************************************************/
 CREATE TABLE XXCOS.XXCOS_REP_DLV_CHK_LIST
@@ -53,6 +54,8 @@ CREATE TABLE XXCOS.XXCOS_REP_DLV_CHK_LIST
     H_AND_C                       VARCHAR2(4),                                 --HC
     PAYMENT_CLASS                 VARCHAR2(12),                                --入金区分
     PAYMENT_AMOUNT                NUMBER(15,0),                                --入金額
+    VISIT_TIME                    VARCHAR2(5),                                 --訪問時間
+    DLV_INVOICE_LINE_NUMBER       NUMBER,                                      --納品明細番号
     CREATED_BY                    NUMBER(15,0)    NOT NULL,                    --作成者
     CREATION_DATE                 DATE            NOT NULL,                    --作成日
     LAST_UPDATED_BY               NUMBER(15,0)    NOT NULL,                    --最終更新者
@@ -101,6 +104,8 @@ COMMENT ON COLUMN XXCOS.XXCOS_REP_DLV_CHK_LIST.COLUMN_NO                       I
 COMMENT ON COLUMN XXCOS.XXCOS_REP_DLV_CHK_LIST.H_AND_C                         IS 'HC';
 COMMENT ON COLUMN XXCOS.XXCOS_REP_DLV_CHK_LIST.PAYMENT_CLASS                   IS '入金区分';
 COMMENT ON COLUMN XXCOS.XXCOS_REP_DLV_CHK_LIST.PAYMENT_AMOUNT                  IS '入金額';
+COMMENT ON COLUMN XXCOS.XXCOS_REP_DLV_CHK_LIST.VISIT_TIME                      IS '訪問時間';
+COMMENT ON COLUMN XXCOS.XXCOS_REP_DLV_CHK_LIST.DLV_INVOICE_LINE_NUMBER         IS '納品明細番号';
 COMMENT ON COLUMN XXCOS.XXCOS_REP_DLV_CHK_LIST.CREATED_BY                      IS '作成者';
 COMMENT ON COLUMN XXCOS.XXCOS_REP_DLV_CHK_LIST.CREATION_DATE                   IS '作成日';
 COMMENT ON COLUMN XXCOS.XXCOS_REP_DLV_CHK_LIST.LAST_UPDATED_BY                 IS '最終更新者';
