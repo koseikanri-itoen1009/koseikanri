@@ -7,7 +7,7 @@ AS
  * Description      : ファイルアップロードIFに取込まれたデータを
  *                    物件マスタ情報(IB)に登録します。
  * MD.050           : MD050_CSO_012_A02_自動販売機データ格納
- * Version          : 1.3
+ * Version          : 1.4
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -33,6 +33,7 @@ AS
  *  2009-03-26    1.1   T.Matsunaka      【ST障害対応183】自動販売機データ格納でIB拡張属性値テーブル登録不正
  *  2009-05-01    1.2   Tomoko.Mori      T1_0897対応
  *  2009-05-22    1.3   M.Ohtsuki        T1_1141対応      廃棄フラグに0を設定
+ *  2009-01-13    1.4   K.Hosoi          E_本稼動_00443対応
  *
  *****************************************************************************************/
 --
@@ -175,7 +176,10 @@ AS
   gn_locatoin_id          xxcso_cust_acct_sites_v.location_id%TYPE;            -- ロケーションID
   gn_party_id             xxcso_cust_acct_sites_v.party_id%TYPE;               -- パーティID
   gn_party_site_id        xxcso_cust_acct_sites_v.party_site_id%TYPE;          -- パーティサイトID
-  gv_established_site     xxcso_cust_acct_sites_v.established_site_name%TYPE;  -- 設置先名
+  /* 2010.01.13 K.Hosoi E_本稼動_00443対応 START */
+  --gv_established_site     xxcso_cust_acct_sites_v.established_site_name%TYPE;  -- 設置先名
+  gv_established_site     xxcso_cust_acct_sites_v.party_name%TYPE;             -- 設置先名
+  /* 2010.01.13 K.Hosoi E_本稼動_00443対応 END */
   gv_address              VARCHAR2(1000);                                      -- 設置先住所
   gv_address3             VARCHAR2(1000);                                      -- 地区コード
   gv_file_name            VARCHAR2(1000);                                      -- 入力ファイル名
@@ -2575,7 +2579,10 @@ AS
             ,casv.location_id                                       -- ロケーションID
             ,casv.party_id                                          -- パーティID
             ,casv.party_site_id                                     -- パーティサイトID
-            ,casv.established_site_name                             -- 設置先名
+            /* 2010.01.13 K.Hosoi E_本稼動_00443対応 START */
+            --,casv.established_site_name                             -- 設置先名
+            ,casv.party_name                                        -- 設置先名
+            /* 2010.01.13 K.Hosoi E_本稼動_00443対応 END */
             ,casv.state||casv.city||casv.address1||casv.address2    -- 設置先住所
             ,casv.area_code                                         -- 地区コード
       INTO   gn_account_id

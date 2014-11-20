@@ -8,7 +8,7 @@ AS
  *                      物件の情報を物件マスタに登録します。
  * MD.050           : MD050_自販機-EBSインタフェース：（IN）物件マスタ情報(IB)
  *                    2009/01/13 16:30
- * Version          : 1.22
+ * Version          : 1.24
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -67,6 +67,7 @@ AS
  *                                       設定、顧客ステータス更新処理時の更新する値を変更
  *  2010-01-06    1.23  K.Hosoi          E_本稼動_00825 リース区分に関わらず物件情報履歴データ
  *                                       を作成するよう変更。（後で自社リースに変更するケースを考慮）
+ *  2010-01-13    1.24  K.Hosoi          E_本稼動_00443対応
  *****************************************************************************************/
 --
 --#######################  固定グローバル定数宣言部 START   #######################
@@ -3136,7 +3137,10 @@ AS
     lv_un_number               VARCHAR2(20);            -- 機種
     lv_install_number          VARCHAR2(20);            -- 機番
     lv_base_code               VARCHAR2(4);             -- 拠点コード
-    lv_install_name            VARCHAR2(30);            -- 設置先名
+    /* 2010.01.13 K.Hosoi E_本稼動_00443対応 START */
+    --lv_install_name            VARCHAR2(30);            -- 設置先名
+    lv_install_name            xxcso_cust_acct_sites_v.party_name%TYPE; -- 設置先名
+    /* 2010.01.13 K.Hosoi E_本稼動_00443対応 END */
     /*20090325_yabuki_ST147 START*/
     --lv_install_address         VARCHAR2(540);           -- 設置先住所
     lv_install_address         VARCHAR2(600);           -- 設置先住所
@@ -3930,7 +3934,10 @@ AS
                 ELSE casv.past_sale_base_code
                 END) sale_base_code                                  -- 売上拠点コード
         /*2009.09.03 M.Maruyama 0001192対応 END*/
-              ,casv.established_site_name                                 -- 設置先名
+              /* 2010.01.13 K.Hosoi E_本稼動_00443対応 START */
+              --,casv.established_site_name                                 -- 設置先名
+              ,casv.party_name                                       -- 設置先名
+              /* 2010.01.13 K.Hosoi E_本稼動_00443対応 END */
               ,casv.state || casv.city || casv.address1 || casv.address2  -- 設置先住所
         INTO   lv_base_code
               ,lv_install_name

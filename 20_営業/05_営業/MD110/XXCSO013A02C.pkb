@@ -7,7 +7,7 @@ AS
  * Description      : 自販機管理システムから連携されたリース物件に関連する作業の情報を、
  *                    リースアドオンに反映します。
  * MD.050           :  MD050_CSO_013_A02_CSI→FAインタフェース：（OUT）リース資産情報
- * Version          : 1.15
+ * Version          : 1.16
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -48,6 +48,7 @@ AS
  *  2009-07-02    1.13  Kazuo.Satomura   統合テスト障害対応(0000229,0000334)
  *  2009-07-17    1.14  Hiroshi.Ogawa    0000781対応
  *  2009-08-19    1.15  Kazuo.Satomura   統合テスト障害対応(0001051)
+ *  2010-01-13    1.16  Kazuyo.Hosoi     E_本稼動_00443対応
  *****************************************************************************************/
 --
 --#######################  固定グローバル定数宣言部 START   #######################
@@ -276,8 +277,12 @@ AS
   gv_age_type             po_un_numbers_vl.attribute3%TYPE;    -- 新_年式
   gv_department_code      xxcso_cust_acct_sites_v.customer_class_code%TYPE;
                                                                -- 新_拠点コード
-  gv_installation_place   xxcso_cust_acct_sites_v.customer_class_name%TYPE;
+  /* 2010.01.13 K.Hosoi E_本稼動_00443対応 START */
+  --gv_installation_place   xxcso_cust_acct_sites_v.customer_class_name%TYPE;
+  --                                                             -- 新_設置先名
+  gv_installation_place   hz_parties.party_name%TYPE;
                                                                -- 新_設置先名
+  /* 2010.01.13 K.Hosoi E_本稼動_00443対応 END */
   gv_installation_address VARCHAR2(600);                       -- 新_設置先住所
   gv_customer_code        xxcso_cust_acct_sites_v.account_number%TYPE;
                                                                -- 新_顧客コード
@@ -367,7 +372,10 @@ AS
 --        ,xca.account_number            new_customer_code        -- 新_顧客コード
 --        ,xca.customer_class_code       new_customer_class_code  -- 新_顧客区分コード
           ,xca.sale_base_code            new_department_code      -- 新_拠点コード
-          ,xca.established_site_name     new_installation_place   -- 新_設置先名
+          /* 2010.01.13 K.Hosoi E_本稼動_00443対応 START */
+          --,xca.established_site_name     new_installation_place   -- 新_設置先名
+          ,hp.party_name                 new_installation_place   -- 新_設置先名
+          /* 2010.01.13 K.Hosoi E_本稼動_00443対応 END */
           ,hl.state    ||
            hl.city     ||
            hl.address1 ||
@@ -558,7 +566,10 @@ AS
                             )
                            )                                                                   -- 顧客コードチェック
                        OR  NVL(xca.sale_base_code,' ')        <> NVL(xiih.base_code,' ')       -- 売上拠点チェック
-                       OR  NVL(xca.established_site_name,' ') <> NVL(xiih.install_name,' ')    -- 設置先名チェック
+                       /* 2010.01.13 K.Hosoi E_本稼動_00443対応 START */
+                       --OR  NVL(xca.established_site_name,' ') <> NVL(xiih.install_name,' ')    -- 設置先名チェック
+                       OR  NVL(hp.party_name,' ') <> NVL(xiih.install_name,' ')                -- 設置先名チェック
+                       /* 2010.01.13 K.Hosoi E_本稼動_00443対応 END */
                        OR  NVL(hl.state || hl.city || hl.address1 || hl.address2,' ')          -- 住所チェック
                                                               <> NVL(xiih.install_address,' ')
                        OR  NVL(xiih.un_number,' ')            <> NVL(cii.attribute1,' ')       -- 機種チェック
@@ -653,7 +664,10 @@ AS
                      ,hz_cust_acct_sites    hcas
                      ,hz_party_sites        hps
                      ,hz_locations          hl
-              WHERE   NVL(cii.attribute5,cv_no)          = cv_no                               -- 新古台以外
+              /* 2010.01.13 K.Hosoi E_本稼動_00443対応 START */
+              --WHERE   NVL(cii.attribute5,cv_no)          = cv_no                               -- 新古台以外
+              WHERE   NVL(cii.attribute5,cv_no)          = cv_yes                               -- 新古台
+              /* 2010.01.13 K.Hosoi E_本稼動_00443対応 END */
                 AND   xiih.install_code                  = cii.external_reference
                 AND   xiih.history_creation_date         < gd_process_date
                 AND   xiih.interface_flag                = cv_yes
@@ -681,7 +695,10 @@ AS
                             )
                            )                                                                   -- 顧客コードチェック
                        OR  NVL(xca.sale_base_code,' ')        <> NVL(xiih.base_code,' ')       -- 売上拠点チェック
-                       OR  NVL(xca.established_site_name,' ') <> NVL(xiih.install_name,' ')    -- 設置先名チェック
+                       /* 2010.01.13 K.Hosoi E_本稼動_00443対応 START */
+                       --OR  NVL(xca.established_site_name,' ') <> NVL(xiih.install_name,' ')    -- 設置先名チェック
+                       OR  NVL(hp.party_name,' ') <> NVL(xiih.install_name,' ')                -- 設置先名チェック
+                       /* 2010.01.13 K.Hosoi E_本稼動_00443対応 END */
                        OR  NVL(hl.state || hl.city || hl.address1 || hl.address2,' ')          -- 住所チェック
                                                               <> NVL(xiih.install_address,' ')
                        OR  NVL(xiih.un_number,' ')            <> NVL(cii.attribute1,' ')       -- 機種チェック
@@ -845,7 +862,10 @@ AS
                             )
                            )                                                                   -- 顧客コードチェック
                        OR  NVL(xca.sale_base_code,' ')        <> NVL(xiih.base_code,' ')       -- 売上拠点チェック
-                       OR  NVL(xca.established_site_name,' ') <> NVL(xiih.install_name,' ')    -- 設置先名チェック
+                       /* 2010.01.13 K.Hosoi E_本稼動_00443対応 START */
+                       --OR  NVL(xca.established_site_name,' ') <> NVL(xiih.install_name,' ')    -- 設置先名チェック
+                       OR  NVL(hp.party_name,' ') <> NVL(xiih.install_name,' ')                -- 設置先名チェック
+                       /* 2010.01.13 K.Hosoi E_本稼動_00443対応 END */
                        OR  NVL(hl.state || hl.city || hl.address1 || hl.address2,' ')          -- 住所チェック
                                                               <> NVL(xiih.install_address,' ')
                        OR  NVL(xiih.un_number,' ')            <> NVL(cii.attribute1,' ')       -- 機種チェック
@@ -940,7 +960,10 @@ AS
                      ,hz_cust_acct_sites    hcas
                      ,hz_party_sites        hps
                      ,hz_locations          hl
-              WHERE   NVL(cii.attribute5,cv_no)          = cv_no                               -- 新古台以外
+              /* 2010.01.13 K.Hosoi E_本稼動_00443対応 START */
+              --WHERE   NVL(cii.attribute5,cv_no)          = cv_no                               -- 新古台以外
+              WHERE   NVL(cii.attribute5,cv_no)          = cv_yes                               -- 新古台
+              /* 2010.01.13 K.Hosoi E_本稼動_00443対応 START */
                 AND   xiih.install_code                  = cii.external_reference
                 AND   hca.cust_account_id                = cii.owner_party_account_id
                 AND   hp.party_id                        = hca.party_id
@@ -966,7 +989,10 @@ AS
                             )
                            )                                                                   -- 顧客コードチェック
                        OR  NVL(xca.sale_base_code,' ')        <> NVL(xiih.base_code,' ')       -- 売上拠点チェック
-                       OR  NVL(xca.established_site_name,' ') <> NVL(xiih.install_name,' ')    -- 設置先名チェック
+                       /* 2010.01.13 K.Hosoi E_本稼動_00443対応 START */
+                       --OR  NVL(xca.established_site_name,' ') <> NVL(xiih.install_name,' ')    -- 設置先名チェック
+                       OR  NVL(hp.party_name,' ') <> NVL(xiih.install_name,' ')                -- 設置先名チェック
+                       /* 2010.01.13 K.Hosoi E_本稼動_00443対応 END */
                        OR  NVL(hl.state || hl.city || hl.address1 || hl.address2,' ')          -- 住所チェック
                                                               <> NVL(xiih.install_address,' ')
                        OR  NVL(xiih.un_number,' ')            <> NVL(cii.attribute1,' ')       -- 機種チェック
@@ -2620,7 +2646,10 @@ AS
         ,g_get_xxcso_ib_info_h_rec.new_quantity      -- 数量
         ,gv_department_code                          -- 管理部門コード
         ,gv_owner_company                            -- 本社工場区分
-        ,gv_installation_place                       -- 現設置先
+        /* 2010.01.13 K.Hosoi E_本稼動_00443対応 START */
+        --,gv_installation_place                       -- 現設置先
+        ,SUBSTRB(gv_installation_place, 1, 50)       -- 現設置先
+        /* 2010.01.13 K.Hosoi E_本稼動_00443対応 END */
         ,gv_installation_address                     -- 現設置場所
         /* 2009.04.01 K.Satomura T1_0149対応 START */
         --,g_get_xxcso_ib_info_h_rec.new_active_flag   -- 物件有効フラグ
