@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCOS001A08C (spec)
  * Description      : 返品実績データ作成（ＨＨＴ）
  * MD.050           : 返品実績データ作成（ＨＨＴ）(MD050_COS_001_A08)
- * Version          : 1.23
+ * Version          : 1.24
  *
  * Program List
  * -------------------- ------------------------------------------------------------
@@ -59,13 +59,18 @@ AS
  *  2010/02/02    1.22  Y.Kuboshima      [E_T4_00195] 会計カレンダをAR ⇒ INVに修正
  *  2010/03/01    1.23  N.Maeda          [E_本稼動_01601] 受注取込納品伝票入力画面以外からのデータに対して
  *                                                 INVカレンダのチェック処理追加
+ *  2010/09/10    1.24  S.Arizumi        [E_本稼動_02635] 汎用エラーリスト出力対応
  *
  *****************************************************************************************/
 --
   --コンカレント実行ファイル登録プロシージャ
   PROCEDURE main(
     errbuf        OUT    VARCHAR2,         --   エラーメッセージ #固定#
-    retcode       OUT    VARCHAR2          --   エラーコード     #固定#
+-- 2010/09/10 Ver.1.24 S.Arizumi Mod Start --
+--    retcode       OUT    VARCHAR2          --   エラーコード     #固定#
+    retcode             OUT VARCHAR2,      --   エラーコード     #固定#
+    iv_gen_err_out_flag IN  VARCHAR2       --   汎用エラーリスト出力フラグ
+-- 2010/09/10 Ver.1.24 S.Arizumi Mod End   --
   );
 END XXCOS001A08C;
 /

@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCOS001A03C (body)
  * Description      : VD納品データ作成
  * MD.050           : VD納品データ作成(MD050_COS_001_A03)
- * Version          : 1.21
+ * Version          : 1.22
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -67,6 +67,7 @@ AS
  *  2009/10/30    1.19    M.Sano           [0001373] 参照View変更[xxcos_rs_info_v ⇒ xxcos_rs_info2_v]
  *  2010/02/01    1.20    M.Hokkanji       [E_T4_00195] 会計期間情報取得関数パラメータ修正[AR → INV]
  *  2010/05/10    1.21    Y.Kuboshima      [E_本稼動_02625] 営業原価の取得基準日修正[業務日付 → 納品日]
+ *  2010/09/09    1.22    H.Sasaki         [E_本稼動_02635] エラー出力の追加（汎用エラーリスト）
  *
  *****************************************************************************************/
 --
@@ -135,6 +136,11 @@ AS
   insert_err_expt          EXCEPTION;
   -- 更新エラー
   updata_err_expt          EXCEPTION;
+-- == 2010/09/09 V1.22 Added START ===============================================================
+  global_ins_key_expt       EXCEPTION;                        --  汎用エラーリスト登録例外（submainハンドリング用）
+  global_bulk_ins_expt      EXCEPTION;                        --  汎用エラーリスト登録例外
+  PRAGMA EXCEPTION_INIT(global_bulk_ins_expt, -24381);
+-- == 2010/09/09 V1.22 Added END   ===============================================================
 --
   -- ===============================
   -- ユーザー定義グローバル定数
@@ -226,6 +232,12 @@ AS
 --******************************* 2009/08/12 N.Maeda Ver1.16 ADD START ***************************************
   ct_user_lang                  CONSTANT  fnd_lookup_values.language%TYPE :=  USERENV( 'LANG' );
 --******************************* 2009/08/12 N.Maeda Ver1.16 ADD END *****************************************
+-- == 2010/09/09 V1.22 Added START ===============================================================
+  cv_cons_num_01            CONSTANT  VARCHAR2(3)   :=  '_01';
+  cv_cons_num_02            CONSTANT  VARCHAR2(3)   :=  '_02';
+  cv_status_error_ins       CONSTANT  VARCHAR2(1)   :=  '3';
+  cv_no                     CONSTANT  VARCHAR2(1)   :=  'N';
+-- == 2010/09/09 V1.22 Added END   ===============================================================
   --エラーコード
   cv_msg_pro         CONSTANT VARCHAR2(20)  := 'APP-XXCOS1-00004';         -- プロファイル取得エラー
   cv_msg_max_date    CONSTANT VARCHAR2(20)  := 'APP-XXCOS1-00056';         -- XXCOS:MAX日付
@@ -268,7 +280,10 @@ AS
   cv_msg_update_err             CONSTANT VARCHAR2(20)  := 'APP-XXCOS1-12303'; -- 更新エラー
   cv_msg_delivered_from_err     CONSTANT VARCHAR2(20)  := 'APP-XXCOS1-10104'; -- 納品形態区分エラー
   cv_msg_extract_err            CONSTANT VARCHAR2(20)  := 'APP-XXCOS1-10001'; -- 抽出エラー
-  cv_msg_target_no_data         CONSTANT VARCHAR2(20)  := 'APP-XXCOS1-00083'; -- 入力対象データなしメッセージ
+-- == 2010/09/09 V1.22 Modified START ===============================================================
+--  cv_msg_target_no_data         CONSTANT VARCHAR2(20)  := 'APP-XXCOS1-00083'; -- 入力対象データなしメッセージ
+  cv_msg_target_no_data         CONSTANT VARCHAR2(20)  := 'APP-XXCOS1-00003'; -- 対象データ無しエラーメッセージ
+-- == 2010/09/09 V1.22 Modified START ===============================================================
   cv_msg_tab_name_colum_line    CONSTANT VARCHAR2(20)  := 'APP-XXCOS1-00084'; -- VDコラム別取引情報明細
   cv_msg_tab_name_colum_head    CONSTANT VARCHAR2(20)  := 'APP-XXCOS1-00085'; -- VDコラム別取引情報ヘッダ
 --******************************* 2009/04/16 N.Maeda Var1.10 ADD START ***************************************
@@ -316,6 +331,17 @@ AS
   cv_msg_order_num_hht    CONSTANT VARCHAR2(20)  := 'APP-XXCOS1-00191';
   cv_msg_digestion_number CONSTANT VARCHAR2(20)  := 'APP-XXCOS1-00192';
 -- ************ 2009/09/03 1.18 N.Maeda MOD  END  ************ --
+-- == 2010/09/09 V1.22 Added START ===============================================================
+  cv_msg_xxcos_00010        CONSTANT  VARCHAR2(30)  :=  'APP-XXCOS1-00010';
+  cv_msg_xxcos_00053        CONSTANT  VARCHAR2(30)  :=  'APP-XXCOS1-00053';
+  cv_msg_xxcos_00131        CONSTANT  VARCHAR2(30)  :=  'APP-XXCOS1-00131';
+  cv_msg_xxcos_00213        CONSTANT  VARCHAR2(30)  :=  'APP-XXCOS1-00213';
+  cv_msg_xxcos_00216        CONSTANT  VARCHAR2(30)  :=  'APP-XXCOS1-00216';
+  cv_msg_xxcos_00217        CONSTANT  VARCHAR2(30)  :=  'APP-XXCOS1-00217';
+  cv_msg_xxcos_10260        CONSTANT  VARCHAR2(30)  :=  'APP-XXCOS1-10260';
+  cv_tkn_invoice_no         CONSTANT  VARCHAR2(30)  :=  'INVOICE_NO';
+  cv_tkn_xxcos_10260        CONSTANT  VARCHAR2(30)  :=  'GEN_ERR_OUT_FLAG';
+-- == 2010/09/09 V1.22 Added END   ===============================================================
 --
   -- ===============================
   -- ユーザー定義グローバル型
@@ -566,6 +592,10 @@ AS
 --******************************* 2009/04/16 N.Maeda Var1.10 ADD START *************************************
   TYPE g_tab_msg_war_data     IS TABLE OF VARCHAR2(500) INDEX BY PLS_INTEGER;
 --******************************* 2009/04/16 N.Maeda Var1.10 ADD END ***************************************
+-- == 2010/09/09 V1.22 Added START ===============================================================
+  TYPE  g_err_key_ttype IS  TABLE OF xxcos_gen_err_list%ROWTYPE INDEX BY BINARY_INTEGER;
+  gt_err_key_msg_tab        g_err_key_ttype;                  --  汎用エラーリスト用keyメッセージ
+-- == 2010/09/09 V1.22 Added END   ===============================================================
 --
   --ヘッダデータ格納変数
   gt_head_row_id                  g_tab_head_row_id;              -- ヘッダ行ID
@@ -688,7 +718,142 @@ AS
 --******************************* 2009/05/12 N.Maeda Var1.12 ADD START ***************************************
   gn_wae_data_count   NUMBER := 0;                       -- 警告件数カウント
 --******************************* 2009/05/12 N.Maeda Var1.12 ADD  END  ***************************************
+-- == 2010/09/09 V1.22 Added START ===============================================================
+  gv_prm_gen_err_out_flag   VARCHAR2(1);                      --  汎用エラーリスト出力フラグ
+  gn_msg_cnt                NUMBER;                           --  汎用エラーリスト用メッセージ件数
+-- == 2010/09/09 V1.22 Added END   ===============================================================
 --
+-- == 2010/09/09 V1.22 Added START ===============================================================
+  /**********************************************************************************
+   * Procedure Name   : ins_err_msg
+   * Description      : エラー情報登録処理(A-8)
+   ***********************************************************************************/
+--
+  PROCEDURE ins_err_msg(
+    ov_errbuf       OUT     VARCHAR2,     -- エラー・メッセージ           --# 固定 #
+    ov_retcode      OUT     VARCHAR2,     -- リターン・コード             --# 固定 #
+    ov_errmsg       OUT     VARCHAR2)     -- ユーザー・エラー・メッセージ --# 固定 #
+  IS
+    -- ===============================
+    -- 固定ローカル定数
+    -- ===============================
+    cv_prg_name   CONSTANT VARCHAR2(100) := 'ins_err_msg'; -- プログラム名
+--
+--#####################  固定ローカル変数宣言部 START   ########################
+--
+    lv_errbuf  VARCHAR2(5000);  -- エラー・メッセージ
+    lv_retcode VARCHAR2(1);     -- リターン・コード
+    lv_errmsg  VARCHAR2(5000);  -- ユーザー・エラー・メッセージ
+--
+--###########################  固定部 END   ####################################
+--
+    -- ===============================
+    -- ユーザー宣言部
+    -- ===============================
+    -- *** ローカル定数 ***
+--
+    -- *** ローカル変数 ***
+    lv_outmsg       VARCHAR2(5000);   --  エラーメッセージ
+    lv_table_name   VARCHAR2(100);    --  テーブル名称
+--
+    -- *** ローカル・カーソル ***
+--
+    -- *** ローカル・レコード ***
+--
+  BEGIN
+--
+--##################  固定ステータス初期化部 START   ###################
+--
+    ov_retcode := cv_status_normal;
+--
+--###########################  固定部 END   ############################
+--
+    FOR ln_set_cnt  IN  1 .. gn_msg_cnt LOOP
+      -- ===============================
+      --  キー情報以外の設定
+      -- ===============================
+      --  汎用エラーリストID
+      SELECT  xxcos_gen_err_list_s01.NEXTVAL
+      INTO    gt_err_key_msg_tab(ln_set_cnt).gen_err_list_id
+      FROM    dual;
+      --
+      gt_err_key_msg_tab(ln_set_cnt).concurrent_program_name  :=  cv_pkg_name;                  --  コンカレント名
+      gt_err_key_msg_tab(ln_set_cnt).business_date            :=  gd_process_date;              --  登録業務日付
+      gt_err_key_msg_tab(ln_set_cnt).created_by               :=  cn_created_by;                --  作成者
+      gt_err_key_msg_tab(ln_set_cnt).creation_date            :=  SYSDATE;                      --  作成日
+      gt_err_key_msg_tab(ln_set_cnt).last_updated_by          :=  cn_last_updated_by;           --  最終更新者
+      gt_err_key_msg_tab(ln_set_cnt).last_update_date         :=  SYSDATE;                      --  最終更新日
+      gt_err_key_msg_tab(ln_set_cnt).last_update_login        :=  cn_last_update_login;         --  最終更新ログイン
+      gt_err_key_msg_tab(ln_set_cnt).request_id               :=  cn_request_id;                --  要求ID
+      gt_err_key_msg_tab(ln_set_cnt).program_application_id   :=  cn_program_application_id;    --  コンカレント・プログラム・アプリケーションID
+      gt_err_key_msg_tab(ln_set_cnt).program_id               :=  cn_program_id;                --  コンカレント・プログラムID
+      gt_err_key_msg_tab(ln_set_cnt).program_update_date      :=  SYSDATE;                      --  プログラム更新日
+    END LOOP;
+    --
+    -- ===============================
+    --  汎用エラーリスト登録
+    -- ===============================
+    FORALL ln_cnt IN 1 .. gn_msg_cnt  SAVE EXCEPTIONS
+      INSERT  INTO  xxcos_gen_err_list VALUES gt_err_key_msg_tab(ln_cnt);
+--
+  EXCEPTION
+    -- *** バルクインサート例外処理 ***
+    WHEN global_bulk_ins_expt THEN
+      gn_error_cnt  :=  SQL%BULK_EXCEPTIONS.COUNT;        --  エラー件数
+      ov_retcode    :=  cv_status_error_ins;              --  ステータス（エラー）
+      ov_errmsg     :=  NULL;                             --  ユーザー・エラー・メッセージ
+      ov_errbuf     :=  NULL;                             --  エラー・メッセージ
+      --
+      --  テーブル名称
+      lv_table_name :=  xxccp_common_pkg.get_msg(
+                            iv_application  =>  cv_application
+                          , iv_name         =>  cv_msg_xxcos_00213
+                        );
+      --
+      <<output_error_loop>>
+      FOR ln_cnt IN 1 .. gn_error_cnt  LOOP
+        -- エラーメッセージ生成
+        lv_outmsg :=  SUBSTRB(
+                        xxccp_common_pkg.get_msg(
+                            iv_application    =>  cv_application
+                          , iv_name           =>  cv_msg_xxcos_00010
+                          , iv_token_name1    =>  cv_tkn_table
+                          , iv_token_value1   =>  lv_table_name
+                          , iv_token_name2    =>  cv_key_data
+                          , iv_token_value2   =>  cv_prg_name||cv_msg_part||SQLERRM(-SQL%BULK_EXCEPTIONS(ln_cnt).ERROR_CODE)
+                        ), 1, 5000
+                      );
+        -- エラーメッセージ出力
+        fnd_file.put_line(
+            which   =>  FND_FILE.OUTPUT
+          , buff    =>  lv_outmsg
+        );
+        FND_FILE.PUT_LINE(
+            which   =>  FND_FILE.LOG
+          , buff    =>  lv_outmsg
+        );
+      END LOOP output_error_loop;
+      --
+--#################################  固定例外処理部 START   ####################################
+--
+    -- *** 共通関数例外ハンドラ ***
+    WHEN global_api_expt THEN
+      ov_errmsg  := lv_errmsg;
+      ov_errbuf  := SUBSTRB(cv_pkg_name||cv_msg_cont||cv_prg_name||cv_msg_part||lv_errbuf,1,5000);
+      ov_retcode := cv_status_error;
+    -- *** 共通関数OTHERS例外ハンドラ ***
+    WHEN global_api_others_expt THEN
+      ov_errbuf  := cv_pkg_name||cv_msg_cont||cv_prg_name||cv_msg_part||SQLERRM;
+      ov_retcode := cv_status_error;
+    -- *** OTHERS例外ハンドラ ***
+    WHEN OTHERS THEN
+      ov_errbuf  := cv_pkg_name||cv_msg_cont||cv_prg_name||cv_msg_part||SQLERRM;
+      ov_retcode := cv_status_error;
+--
+--#####################################  固定部 END   ##########################################
+--
+  END ins_err_msg;
+-- == 2010/09/09 V1.22 Added END   ===============================================================
 --******************************* 2009/05/20 N.Maeda Var1.13 ADD START ***************************************
   /************************************************************************
    * Function Name   : get_fiscal_period_from
@@ -1512,18 +1677,34 @@ AS
       IF ( lv_retcode != cv_status_normal ) THEN
         lv_state_flg    := cv_status_warn;
         gn_wae_data_num := gn_wae_data_num + 1 ;
+-- == 2010/09/09 V1.22 Modified START ===============================================================
+--        gt_msg_war_data(gn_wae_data_num) := xxccp_common_pkg.get_msg(
+--                                              iv_application   => cv_application,    --アプリケーション短縮名
+--                                              iv_name          => ct_msg_fiscal_period_err,    --メッセージコード
+--                                              iv_token_name1   => cv_tkn_account_name,         --トークンコード1
+---- ************************************* 2010/02/01 1.20 M.Hokkanji MOD START *************************************
+----                                              iv_token_value1  => cv_fiscal_period_ar,         --トークン値1
+--                                              iv_token_value1  => cv_fiscal_period_tkn_inv,        --トークン値(INV)
+---- ************************************* 2010/02/01 1.20 M.Hokkanji MOD END   *************************************
+--                                              iv_token_name2   => cv_tkn_order_number,         --トークンコード2
+--                                              iv_token_value2  => lt_order_no_hht,
+--                                              iv_token_name3   => cv_tkn_base_date,
+--                                              iv_token_value3  => TO_CHAR( lt_dlv_date,cv_stand_date ) );
         gt_msg_war_data(gn_wae_data_num) := xxccp_common_pkg.get_msg(
-                                              iv_application   => cv_application,    --アプリケーション短縮名
-                                              iv_name          => ct_msg_fiscal_period_err,    --メッセージコード
-                                              iv_token_name1   => cv_tkn_account_name,         --トークンコード1
--- ************************************* 2010/02/01 1.20 M.Hokkanji MOD START *************************************
---                                              iv_token_value1  => cv_fiscal_period_ar,         --トークン値1
-                                              iv_token_value1  => cv_fiscal_period_tkn_inv,        --トークン値(INV)
--- ************************************* 2010/02/01 1.20 M.Hokkanji MOD END   *************************************
-                                              iv_token_name2   => cv_tkn_order_number,         --トークンコード2
-                                              iv_token_value2  => lt_order_no_hht,
-                                              iv_token_name3   => cv_tkn_base_date,
-                                              iv_token_value3  => TO_CHAR( lt_dlv_date,cv_stand_date ) );
+                                                iv_application    =>  cv_application                          --  アプリケーション短縮名
+                                              , iv_name           =>  cv_msg_xxcos_00217                      --  メッセージコード
+                                              , iv_token_name1    =>  cv_tkn_account_name
+                                              , iv_token_value1   =>  cv_fiscal_period_tkn_inv                --  INV
+                                              , iv_token_name2    =>  cv_tkn_order_number
+                                              , iv_token_value2   =>  lt_order_no_hht                         --  受注No.(HHT)
+                                              , iv_token_name3    =>  cv_tkn_base_date
+                                              , iv_token_value3   =>  TO_CHAR( lt_dlv_date, cv_stand_date )   --  納品日
+                                              , iv_token_name4    =>  cv_tkn_invoice_no
+                                              , iv_token_value4   =>  lt_hht_invoice_no                       --  HHT伝票No.
+                                              , iv_token_name5    =>  cv_cust_code
+                                              , iv_token_value5   =>  lt_customer_number                      --  顧客コード
+                                            );
+-- == 2010/09/09 V1.22 Modified END   ===============================================================
       END IF;
 --
 --
@@ -1544,18 +1725,61 @@ AS
       IF ( lv_retcode != cv_status_normal ) THEN
         lv_state_flg    := cv_status_warn;
         gn_wae_data_num := gn_wae_data_num + 1 ;
+-- == 2010/09/09 V1.22 Modified START ===============================================================
+--        gt_msg_war_data(gn_wae_data_num) := xxccp_common_pkg.get_msg(
+--                                              iv_application   => cv_application,    --アプリケーション短縮名
+--                                              iv_name          => ct_msg_fiscal_period_err,    --メッセージコード
+--                                              iv_token_name1   => cv_tkn_account_name,         --トークンコード1
+---- ************************************* 2010/02/01 1.20 M.Hokkanji MOD START *************************************
+----                                              iv_token_value1  => cv_fiscal_period_ar,         --トークン値1
+--                                              iv_token_value1  => cv_fiscal_period_tkn_inv,      --トークン値(INV)
+---- ************************************* 2010/02/01 1.20 M.Hokkanji MOD END   *************************************
+--                                              iv_token_name2   => cv_tkn_order_number,         --トークンコード2
+--                                              iv_token_value2  => lt_order_no_hht,
+--                                              iv_token_name3   => cv_tkn_base_date,
+--                                              iv_token_value3  => TO_CHAR( lt_inspect_date,cv_stand_date ) );
         gt_msg_war_data(gn_wae_data_num) := xxccp_common_pkg.get_msg(
-                                              iv_application   => cv_application,    --アプリケーション短縮名
-                                              iv_name          => ct_msg_fiscal_period_err,    --メッセージコード
-                                              iv_token_name1   => cv_tkn_account_name,         --トークンコード1
--- ************************************* 2010/02/01 1.20 M.Hokkanji MOD START *************************************
---                                              iv_token_value1  => cv_fiscal_period_ar,         --トークン値1
-                                              iv_token_value1  => cv_fiscal_period_tkn_inv,      --トークン値(INV)
--- ************************************* 2010/02/01 1.20 M.Hokkanji MOD END   *************************************
-                                              iv_token_name2   => cv_tkn_order_number,         --トークンコード2
-                                              iv_token_value2  => lt_order_no_hht,
-                                              iv_token_name3   => cv_tkn_base_date,
-                                              iv_token_value3  => TO_CHAR( lt_inspect_date,cv_stand_date ) );
+                                                iv_application    =>  cv_application                              --  アプリケーション短縮名
+                                              , iv_name           =>  cv_msg_xxcos_00217                          --  メッセージコード
+                                              , iv_token_name1    =>  cv_tkn_account_name
+                                              , iv_token_value1   =>  cv_fiscal_period_tkn_inv                    --  INV
+                                              , iv_token_name2    =>  cv_tkn_order_number
+                                              , iv_token_value2   =>  lt_order_no_hht                             --  受注No.(HHT)
+                                              , iv_token_name3    =>  cv_tkn_base_date
+                                              , iv_token_value3   =>  TO_CHAR( lt_inspect_date, cv_stand_date )   --  納品日
+                                              , iv_token_name4    =>  cv_tkn_invoice_no
+                                              , iv_token_value4   =>  lt_hht_invoice_no                           --  HHT伝票No.
+                                              , iv_token_name5    =>  cv_cust_code
+                                              , iv_token_value5   =>  lt_customer_number                          --  顧客コード
+                                            );
+-- == 2010/09/09 V1.22 Modified END   ===============================================================
+-- == 2010/09/09 V1.22 Added START ===============================================================
+        IF (gv_prm_gen_err_out_flag = cv_tkn_yes) THEN
+          --  汎用エラーリスト出力要の場合
+          gn_msg_cnt  :=  gn_msg_cnt + 1;
+          --  汎用エラーリスト用キー情報
+          --  納品拠点
+          gt_err_key_msg_tab(gn_msg_cnt).base_code      :=  lt_base_code;
+          --  エラーメッセージ名
+          gt_err_key_msg_tab(gn_msg_cnt).message_name   :=  cv_msg_xxcos_00217;
+          --  キーメッセージ
+          gt_err_key_msg_tab(gn_msg_cnt).message_text
+                          :=  SUBSTRB(
+                                xxccp_common_pkg.get_msg(
+                                    iv_application    =>  cv_application
+                                  , iv_name           =>  cv_msg_xxcos_00216
+                                  , iv_token_name1    =>  cv_tkn_order_number
+                                  , iv_token_value1   =>  lt_order_no_hht                             --  受注No.(HHT)
+                                  , iv_token_name2    =>  cv_tkn_base_date
+                                  , iv_token_value2   =>  TO_CHAR( lt_inspect_date, cv_stand_date )   --  納品日
+                                  , iv_token_name3    =>  cv_tkn_invoice_no
+                                  , iv_token_value3   =>  lt_hht_invoice_no                           --  HHT伝票No.
+                                  , iv_token_name4    =>  cv_cust_code
+                                  , iv_token_value4   =>  lt_customer_number                          --  顧客コード
+                                ), 1, 2000
+                              );
+        END IF;
+-- == 2010/09/09 V1.22 Added END   ===============================================================
       END IF;
 -- ****************** 2009/09/03 1.18 N.Maeda ADD  END  ************** --
 --
@@ -1944,21 +2168,39 @@ AS
 --          RAISE no_data_extract;
             lv_state_flg    := cv_status_warn;
             gn_wae_data_num := gn_wae_data_num + 1 ;
+-- == 2010/09/09 V1.22 Modified START ===============================================================
+--            xxcos_common_pkg.makeup_key_info(
+--              iv_item_name1  => xxccp_common_pkg.get_msg( cv_application, cv_msg_bace_code ),     -- 項目名称１
+--              iv_item_name2  => xxccp_common_pkg.get_msg( cv_application, cv_msg_location_type ), -- 項目名称２
+----******************************* 2009/04/16 N.Maeda Var1.10 ADD START ***************************************
+--              iv_item_name3  => xxccp_common_pkg.get_msg( cv_application, ct_msg_dlv_by_code ), -- 項目名称3
+--              iv_data_value1 => lt_base_code,         -- データの値１
+----              iv_data_value2 => cv_xxcos_001_a05_05,       -- データの値２
+--              iv_data_value2 => lt_location_type_code,       -- データの値２
+--              iv_data_value3 => lt_dlv_by_code,
+----******************************* 2009/04/16 N.Maeda Var1.10 ADD END *****************************************
+----******************************* 2009/04/16 N.Maeda Var1.10 MOD END *****************************************
+--              ov_key_info    => gv_tkn2,              -- キー情報
+--              ov_errbuf      => lv_errbuf,            -- エラー・メッセージエラー
+--              ov_retcode     => lv_retcode,           -- リターン・コード
+--              ov_errmsg      => lv_errmsg);            -- ユーザー・エラー・メッセージ
             xxcos_common_pkg.makeup_key_info(
-              iv_item_name1  => xxccp_common_pkg.get_msg( cv_application, cv_msg_bace_code ),     -- 項目名称１
-              iv_item_name2  => xxccp_common_pkg.get_msg( cv_application, cv_msg_location_type ), -- 項目名称２
---******************************* 2009/04/16 N.Maeda Var1.10 ADD START ***************************************
-              iv_item_name3  => xxccp_common_pkg.get_msg( cv_application, ct_msg_dlv_by_code ), -- 項目名称3
-              iv_data_value1 => lt_base_code,         -- データの値１
---              iv_data_value2 => cv_xxcos_001_a05_05,       -- データの値２
-              iv_data_value2 => lt_location_type_code,       -- データの値２
-              iv_data_value3 => lt_dlv_by_code,
---******************************* 2009/04/16 N.Maeda Var1.10 ADD END *****************************************
---******************************* 2009/04/16 N.Maeda Var1.10 MOD END *****************************************
-              ov_key_info    => gv_tkn2,              -- キー情報
-              ov_errbuf      => lv_errbuf,            -- エラー・メッセージエラー
-              ov_retcode     => lv_retcode,           -- リターン・コード
-              ov_errmsg      => lv_errmsg);            -- ユーザー・エラー・メッセージ
+                iv_item_name1     =>  xxccp_common_pkg.get_msg( cv_application, cv_msg_bace_code )      --  項目名称１
+              , iv_item_name2     =>  xxccp_common_pkg.get_msg( cv_application, cv_msg_location_type )  --  項目名称２
+              , iv_item_name3     =>  xxccp_common_pkg.get_msg( cv_application, ct_msg_dlv_by_code )    --  項目名称３
+              , iv_item_name4     =>  xxccp_common_pkg.get_msg( cv_application, cv_msg_xxcos_00131 )    --  項目名称４
+              , iv_item_name5     =>  xxccp_common_pkg.get_msg( cv_application, cv_msg_xxcos_00053 )    --  項目名称５
+              , iv_data_value1    =>  lt_base_code                    --  拠点コード
+              , iv_data_value2    =>  lt_location_type_code           --  保管場所分類
+              , iv_data_value3    =>  lt_dlv_by_code                  --  納品者コード
+              , iv_data_value4    =>  lt_hht_invoice_no               --  HHT伝票No.
+              , iv_data_value5    =>  lt_customer_number              --  顧客コード
+              , ov_key_info       =>  gv_tkn2                         --  キー情報
+              , ov_errbuf         =>  lv_errbuf                       --  エラー・メッセージエラー
+              , ov_retcode        =>  lv_retcode                      --  リターン・コード
+              , ov_errmsg         =>  lv_errmsg                       --  ユーザー・エラー・メッセージ
+            );
+-- == 2010/09/09 V1.22 Modified END   ===============================================================
             gt_msg_war_data(gn_wae_data_num) := xxccp_common_pkg.get_msg(
                                                   iv_application   => cv_application,    --アプリケーション短縮名
                                                   iv_name          => cv_msg_no_data,    --メッセージコード
@@ -1967,6 +2209,19 @@ AS
                                                   iv_token_name2   => cv_key_data,       --トークンコード2
                                                   iv_token_value2  => gv_tkn2 );         --トークン値2
 --******************************* 2009/04/16 N.Maeda Var1.10 MOD END *****************************************
+-- == 2010/09/09 V1.22 Added START ===============================================================
+            IF (gv_prm_gen_err_out_flag = cv_tkn_yes) THEN
+              --  汎用エラーリスト出力要の場合
+              gn_msg_cnt  :=  gn_msg_cnt + 1;
+              --  汎用エラーリスト用キー情報
+              --  納品拠点
+              gt_err_key_msg_tab(gn_msg_cnt).base_code      :=  lt_base_code;
+              --  エラーメッセージ名
+              gt_err_key_msg_tab(gn_msg_cnt).message_name   :=  cv_msg_no_data || cv_cons_num_01;
+              --  キーメッセージ
+              gt_err_key_msg_tab(gn_msg_cnt).message_text   :=  SUBSTRB(gv_tkn2, 1, 2000);
+            END IF;
+-- == 2010/09/09 V1.22 Added END   ===============================================================
           END;
 --
 /*--==============2009/2/3-START=========================--*/
@@ -2044,20 +2299,38 @@ AS
 --            RAISE no_data_extract;
               lv_state_flg    := cv_status_warn;
               gn_wae_data_num := gn_wae_data_num + 1 ;
+-- == 2010/09/09 V1.22 Modified START ===============================================================
+--              xxcos_common_pkg.makeup_key_info(
+--                iv_item_name1  => xxccp_common_pkg.get_msg( cv_application, cv_msg_bace_code ), -- 項目名称１
+--                iv_item_name2  => xxccp_common_pkg.get_msg( cv_application, cv_msg_location_type ), -- 項目名称２
+----******************************* 2009/04/16 N.Maeda Var1.10 MOD START ***************************************
+--                iv_item_name3  => xxccp_common_pkg.get_msg( cv_application, ct_msg_keep_in_code ), -- 項目名称3
+--                iv_data_value1 => lt_base_code,         -- データの値１
+----                iv_data_value2 => cv_xxcos_001_a05_09,       -- データの値２
+--                iv_data_value2 => lt_depart_location_type_code,       -- データの値２
+--                iv_data_value3 => lt_keep_in_code,
+----******************************* 2009/04/16 N.Maeda Var1.10 MOD END *****************************************
+--                ov_key_info    => gv_tkn2,              -- キー情報
+--                ov_errbuf      => lv_errbuf,            -- エラー・メッセージエラー
+--                ov_retcode     => lv_retcode,           -- リターン・コード
+--                ov_errmsg      => lv_errmsg);            -- ユーザー・エラー・メッセージ
               xxcos_common_pkg.makeup_key_info(
-                iv_item_name1  => xxccp_common_pkg.get_msg( cv_application, cv_msg_bace_code ), -- 項目名称１
-                iv_item_name2  => xxccp_common_pkg.get_msg( cv_application, cv_msg_location_type ), -- 項目名称２
---******************************* 2009/04/16 N.Maeda Var1.10 MOD START ***************************************
-                iv_item_name3  => xxccp_common_pkg.get_msg( cv_application, ct_msg_keep_in_code ), -- 項目名称3
-                iv_data_value1 => lt_base_code,         -- データの値１
---                iv_data_value2 => cv_xxcos_001_a05_09,       -- データの値２
-                iv_data_value2 => lt_depart_location_type_code,       -- データの値２
-                iv_data_value3 => lt_keep_in_code,
---******************************* 2009/04/16 N.Maeda Var1.10 MOD END *****************************************
-                ov_key_info    => gv_tkn2,              -- キー情報
-                ov_errbuf      => lv_errbuf,            -- エラー・メッセージエラー
-                ov_retcode     => lv_retcode,           -- リターン・コード
-                ov_errmsg      => lv_errmsg);            -- ユーザー・エラー・メッセージ
+                  iv_item_name1     =>  xxccp_common_pkg.get_msg( cv_application, cv_msg_bace_code )      --  項目名称１
+                , iv_item_name2     =>  xxccp_common_pkg.get_msg( cv_application, cv_msg_location_type )  --  項目名称２
+                , iv_item_name3     =>  xxccp_common_pkg.get_msg( cv_application, ct_msg_keep_in_code )   --  項目名称３
+                , iv_item_name4     =>  xxccp_common_pkg.get_msg( cv_application, cv_msg_xxcos_00131 )    --  項目名称４
+                , iv_item_name5     =>  xxccp_common_pkg.get_msg( cv_application, cv_msg_xxcos_00053 )    --  項目名称５
+                , iv_data_value1    =>  lt_base_code                    --  拠点コード
+                , iv_data_value2    =>  lt_depart_location_type_code    --  保管場所分類
+                , iv_data_value3    =>  lt_keep_in_code                 --  預け先コード
+                , iv_data_value4    =>  lt_hht_invoice_no               --  HHT伝票No.
+                , iv_data_value5    =>  lt_customer_number              --  顧客コード
+                , ov_key_info       =>  gv_tkn2                         --  キー情報
+                , ov_errbuf         =>  lv_errbuf                       --  エラー・メッセージエラー
+                , ov_retcode        =>  lv_retcode                      --  リターン・コード
+                , ov_errmsg         =>  lv_errmsg                       --  ユーザー・エラー・メッセージ
+              );
+-- == 2010/09/09 V1.22 Modified END   ===============================================================
               gt_msg_war_data(gn_wae_data_num) := xxccp_common_pkg.get_msg(
                                                   iv_application   => cv_application,    --アプリケーション短縮名
                                                   iv_name          => cv_msg_no_data,    --メッセージコード
@@ -2066,6 +2339,19 @@ AS
                                                   iv_token_name2   => cv_key_data,       --トークンコード2
                                                   iv_token_value2  => gv_tkn2 );         --トークン値2
 --******************************* 2009/04/16 N.Maeda Var1.10 MOD END *****************************************
+-- == 2010/09/09 V1.22 Added START ===============================================================
+              IF (gv_prm_gen_err_out_flag = cv_tkn_yes) THEN
+                --  汎用エラーリスト出力要の場合
+                gn_msg_cnt  :=  gn_msg_cnt + 1;
+                --  汎用エラーリスト用キー情報
+                --  納品拠点
+                gt_err_key_msg_tab(gn_msg_cnt).base_code      :=  lt_base_code;
+                --  エラーメッセージ名
+                gt_err_key_msg_tab(gn_msg_cnt).message_name   :=  cv_msg_no_data || cv_cons_num_01;
+                --  キーメッセージ
+                gt_err_key_msg_tab(gn_msg_cnt).message_text   :=  SUBSTRB(gv_tkn2, 1, 2000);
+              END IF;
+-- == 2010/09/09 V1.22 Added END   ===============================================================
           END;
         END IF;
 --******************************* 2009/04/16 N.Maeda Var1.10 ADD START ***************************************
@@ -2136,13 +2422,27 @@ AS
 --          RAISE no_data_extract;
             lv_state_flg    := cv_status_warn;
             gn_wae_data_num := gn_wae_data_num + 1 ;
+-- == 2010/09/09 V1.22 Modified START ===============================================================
+--            xxcos_common_pkg.makeup_key_info(
+--              iv_item_name1  => xxccp_common_pkg.get_msg( cv_application, cv_msg_dlv ), -- 項目名称１
+--              iv_data_value1 => lt_dlv_by_code,         -- データの値１
+--              ov_key_info    => gv_tkn2,              -- キー情報
+--              ov_errbuf      => lv_errbuf,            -- エラー・メッセージエラー
+--              ov_retcode     => lv_retcode,           -- リターン・コード
+--              ov_errmsg      => lv_errmsg);            -- ユーザー・エラー・メッセージ
             xxcos_common_pkg.makeup_key_info(
-              iv_item_name1  => xxccp_common_pkg.get_msg( cv_application, cv_msg_dlv ), -- 項目名称１
-              iv_data_value1 => lt_dlv_by_code,         -- データの値１
-              ov_key_info    => gv_tkn2,              -- キー情報
-              ov_errbuf      => lv_errbuf,            -- エラー・メッセージエラー
-              ov_retcode     => lv_retcode,           -- リターン・コード
-              ov_errmsg      => lv_errmsg);            -- ユーザー・エラー・メッセージ
+                iv_item_name1     =>  xxccp_common_pkg.get_msg( cv_application, cv_msg_dlv )            --  項目名称１
+              , iv_item_name2     =>  xxccp_common_pkg.get_msg( cv_application, cv_msg_xxcos_00131 )    --  項目名称２
+              , iv_item_name3     =>  xxccp_common_pkg.get_msg( cv_application, cv_msg_xxcos_00053 )    --  項目名称３
+              , iv_data_value1    =>  lt_dlv_by_code                  --  納品者コード
+              , iv_data_value2    =>  lt_hht_invoice_no               --  HHT伝票No.
+              , iv_data_value3    =>  lt_customer_number              --  顧客コード
+              , ov_key_info       =>  gv_tkn2                         --  キー情報
+              , ov_errbuf         =>  lv_errbuf                       --  エラー・メッセージエラー
+              , ov_retcode        =>  lv_retcode                      --  リターン・コード
+              , ov_errmsg         =>  lv_errmsg                       --  ユーザー・エラー・メッセージ
+            );
+-- == 2010/09/09 V1.22 Modified END   ===============================================================
             gt_msg_war_data(gn_wae_data_num) := xxccp_common_pkg.get_msg(
                                                 iv_application   => cv_application,    --アプリケーション短縮名
                                                 iv_name          => cv_msg_no_data,    --メッセージコード
@@ -2151,6 +2451,19 @@ AS
                                                 iv_token_name2   => cv_key_data,       --トークンコード2
                                                 iv_token_value2  => gv_tkn2 );         --トークン値2
 --******************************* 2009/04/16 N.Maeda Var1.10 MOD END *****************************************
+-- == 2010/09/09 V1.22 Added START ===============================================================
+            IF (gv_prm_gen_err_out_flag = cv_tkn_yes) THEN
+              --  汎用エラーリスト出力要の場合
+              gn_msg_cnt  :=  gn_msg_cnt + 1;
+              --  汎用エラーリスト用キー情報
+              --  納品拠点
+              gt_err_key_msg_tab(gn_msg_cnt).base_code      :=  lt_base_code;
+              --  エラーメッセージ名
+              gt_err_key_msg_tab(gn_msg_cnt).message_name   :=  cv_msg_no_data || cv_cons_num_02;
+              --  キーメッセージ
+              gt_err_key_msg_tab(gn_msg_cnt).message_text   :=  SUBSTRB(gv_tkn2, 1, 2000);
+            END IF;
+-- == 2010/09/09 V1.22 Added END   ===============================================================
       END;
 --
 --******************************* 2009/04/16 N.Maeda Var1.10 DEL START ***************************************
@@ -3592,6 +3905,9 @@ AS
 --###########################  固定部 END   ####################################
 --
     lv_max_date      VARCHAR2(50);      -- MAX日付
+-- == 2010/09/09 V1.22 Added START ===============================================================
+    lv_para_msg     VARCHAR2(100);      --  パラメータ出力
+-- == 2010/09/09 V1.22 Added END   ===============================================================
 --
   BEGIN
 --
@@ -3666,6 +3982,40 @@ AS
 --      lv_errbuf := lv_errmsg;
       RAISE global_api_expt;
     END IF;
+-- == 2010/09/09 V1.22 Added START ===============================================================
+    --==================================
+    -- パラメータ出力
+    --==================================
+    lv_para_msg  :=  xxccp_common_pkg.get_msg(
+                         iv_application   =>  cv_application
+                       , iv_name          =>  cv_msg_xxcos_10260
+                       , iv_token_name1   =>  cv_tkn_xxcos_10260
+                       , iv_token_value1  =>  gv_prm_gen_err_out_flag
+                     );
+--
+    FND_FILE.PUT_LINE(
+        which   =>  FND_FILE.OUTPUT
+      , buff    =>  lv_para_msg
+    );
+--
+    --1行空白
+    FND_FILE.PUT_LINE(
+        which   =>  FND_FILE.OUTPUT
+      , buff    =>  NULL
+    );
+--
+    -- 空行出力
+    FND_FILE.PUT_LINE(
+        which   =>  FND_FILE.LOG
+      , buff    =>  NULL
+    );
+--
+    -- メッセージログ
+    FND_FILE.PUT_LINE(
+        which   =>  FND_FILE.LOG
+      , buff    =>  lv_para_msg
+    );
+-- == 2010/09/09 V1.22 Added END   ===============================================================
 --
   EXCEPTION
 --#################################  固定例外処理部 START   ####################################
@@ -3691,9 +4041,16 @@ AS
    * Description      : メイン処理プロシージャ
    **********************************************************************************/
   PROCEDURE submain(
-    ov_errbuf     OUT NOCOPY VARCHAR2,     --   エラー・メッセージ           --# 固定 #
-    ov_retcode    OUT NOCOPY VARCHAR2,     --   リターン・コード             --# 固定 #
-    ov_errmsg     OUT NOCOPY VARCHAR2)     --   ユーザー・エラー・メッセージ --# 固定 #
+-- == 2010/09/09 V1.22 Modified START ===============================================================
+--    ov_errbuf     OUT NOCOPY VARCHAR2,     --   エラー・メッセージ           --# 固定 #
+--    ov_retcode    OUT NOCOPY VARCHAR2,     --   リターン・コード             --# 固定 #
+--    ov_errmsg     OUT NOCOPY VARCHAR2)     --   ユーザー・エラー・メッセージ --# 固定 #
+      iv_gen_err_out_flag   IN  VARCHAR2            --  汎用エラーリスト出力フラグ
+    , ov_errbuf             OUT NOCOPY VARCHAR2     --  エラー・メッセージ           --# 固定 #
+    , ov_retcode            OUT NOCOPY VARCHAR2     --  リターン・コード             --# 固定 #
+    , ov_errmsg             OUT NOCOPY VARCHAR2     --  ユーザー・エラー・メッセージ --# 固定 #
+  )
+-- == 2010/09/09 V1.22 Modified END   ===============================================================
   IS
 --
 --#####################  固定ローカル定数変数宣言部 START   ####################
@@ -3726,6 +4083,10 @@ AS
     gn_warn_cnt   := 0;
     gn_target_lines_cnt := 0;
     gn_line_cnt   := 0;
+-- == 2010/09/09 V1.22 Added START ===============================================================
+    gn_msg_cnt                :=  0;                                --  汎用エラーリスト出力件数
+    gv_prm_gen_err_out_flag   :=  iv_gen_err_out_flag;              --  汎用エラーリスト出力フラグ
+-- == 2010/09/09 V1.22 Added END   ===============================================================
 --
     -- ===============================
     -- proc_init(初期処理)
@@ -3822,6 +4183,27 @@ AS
       END LOOP war_msg_loop;
     END IF;
 --******************************* 2009/04/16 N.Maeda Var1.10 ADD END   ***************************************
+-- == 2010/09/09 V1.22 Added START ===============================================================
+      IF (gn_msg_cnt <> 0) THEN
+        --  汎用エラーリスト出力対象有りの場合
+        --  ===============================
+        --    A-8.エラー情報登録処理
+        --  ===============================
+        ins_err_msg(
+            ov_errbuf       =>  lv_errbuf     -- エラー・メッセージ           --# 固定 #
+          , ov_retcode      =>  lv_retcode    -- リターン・コード             --# 固定 #
+          , ov_errmsg       =>  lv_errmsg     -- ユーザー・エラー・メッセージ --# 固定 #
+        );
+        --
+        IF (lv_retcode = cv_status_error_ins) THEN
+          -- INSERT時エラー
+          RAISE global_ins_key_expt;
+        ELSIF (lv_retcode = cv_status_error) THEN
+          RAISE global_process_expt;
+        END IF;
+        --
+      END IF;
+-- == 2010/09/09 V1.22 Added END   ===============================================================
 --
     ELSIF ( lv_retcode <> cv_status_error) 
       AND ( gn_target_cnt = 0 ) 
@@ -3833,6 +4215,13 @@ AS
   EXCEPTION
       -- *** 任意で例外処理を記述する ****
       -- カーソルのクローズをここに記述する
+-- == 2010/09/09 V1.22 Added START ===============================================================
+    --*** エラーリスト追加例外ハンドラ ***
+    WHEN global_ins_key_expt THEN
+      ov_errmsg  := NULL;
+      ov_errbuf  := NULL;
+      ov_retcode := cv_status_error;
+-- == 2010/09/09 V1.22 Added END   ===============================================================
 --
 --#################################  固定例外処理部 START   ###################################
 --
@@ -3862,6 +4251,9 @@ AS
   PROCEDURE main(
     errbuf        OUT VARCHAR2,      --   エラー・メッセージ  --# 固定 #
     retcode       OUT VARCHAR2       --   リターン・コード    --# 固定 #
+-- == 2010/09/09 V1.22 Added START ===============================================================
+  , iv_gen_err_out_flag   IN  VARCHAR2      --  汎用エラーリスト出力フラグ
+-- == 2010/09/09 V1.22 Added END   ===============================================================
   )
 --
 --###########################  固定部 START   ###########################
@@ -3915,11 +4307,19 @@ AS
     -- ===============================================
     -- submainの呼び出し（実際の処理はsubmainで行う）
     -- ===============================================
+-- == 2010/09/09 V1.22 Modified START ===============================================================
+--    submain(
+--       lv_errbuf   -- エラー・メッセージ           --# 固定 #
+--      ,lv_retcode  -- リターン・コード             --# 固定 #
+--      ,lv_errmsg   -- ユーザー・エラー・メッセージ --# 固定 #
+--    );
     submain(
-       lv_errbuf   -- エラー・メッセージ           --# 固定 #
-      ,lv_retcode  -- リターン・コード             --# 固定 #
-      ,lv_errmsg   -- ユーザー・エラー・メッセージ --# 固定 #
+        iv_gen_err_out_flag   =>  NVL(iv_gen_err_out_flag, cv_no)         --  汎用エラーリスト出力フラグ
+      , ov_errbuf             =>  lv_errbuf                               -- エラー・メッセージ           --# 固定 #
+      , ov_retcode            =>  lv_retcode                              -- リターン・コード             --# 固定 #
+      , ov_errmsg             =>  lv_errmsg                               -- ユーザー・エラー・メッセージ --# 固定 #
     );
+-- == 2010/09/09 V1.22 Modified END   ===============================================================
 --
 --******************************* 2009/06/01 N.Maeda Var1.14 ADD START ***************************************
     IF ( lv_retcode = cv_status_error) THEN

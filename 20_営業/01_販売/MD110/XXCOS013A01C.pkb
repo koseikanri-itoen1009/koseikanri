@@ -6,11 +6,12 @@ AS
  * Package Name     : XXCOS013A01C (body)
  * Description      : 販売実績情報より仕訳情報を作成し、AR請求取引に連携する処理
  * MD.050           : ARへの販売実績データ連携 MD050_COS_013_A01
- * Version          : 1.29
+ * Version          : 1.30
  * Program List
  * ----------------------------------------------------------------------------------------
  *  Name                   Description
  * ----------------------------------------------------------------------------------------
+ *  set_gen_err_list       汎用エラーリスト出力情報設定(A-11)
  *  init                   初期処理(A-1)
  *  get_data               販売実績データ取得(A-2-1)
  *  edit_sum_data          請求取引集約処理（非大手量販店）(A-3)
@@ -21,6 +22,7 @@ AS
  *  insert_ardis_data      AR会計配分OIF登録処理(A-8)
  *  upd_data               販売実績ヘッダ更新処理(A-9)
  *  del_data               販売実績AR用ワーク削除処理(A-10)
+ *  proc_ins_gen_err_list  汎用エラーリスト作成(A-12)
  *  submain                メイン処理プロシージャ(A-2-2を含む)
  *  main                   コンカレント実行ファイル登録プロシージャ(終了処理A-10を含む)
  *
@@ -69,6 +71,7 @@ AS
  *  2010/07/12    1.28  S.Miyakoshi      [E_本稼動_01608]大手量販店ロジックの廃止
  *                                       [E_本稼動_02000]請求OIFへの項目追加
  *  2010/08/11    1.29  M.Hirose         [E_本稼動_02863]内税顧客の売上値引
+ *  2010/09/17    1.30  K.Kiriu          [E_本稼動_02635] 汎用エラーリスト出力対応
  *
  *****************************************************************************************/
 --
@@ -203,6 +206,10 @@ AS
   cv_no_cate_set_id_msg     CONSTANT VARCHAR2(20) := 'APP-XXCOS1-12792'; -- カテゴリセットID取得エラー
   cv_no_cate_id_msg         CONSTANT VARCHAR2(20) := 'APP-XXCOS1-12793'; -- カテゴリID取得エラーメッセージ
 /* 2009/07/30 Ver1.21 Add End   */
+/* 2010/09/17 Ver1.30 Add Start */
+  cv_tkn_gen_msg            CONSTANT VARCHAR2(20) := 'APP-XXCOS1-00213'; -- 汎用エラーリスト
+  cv_msg_xxcos_00218        CONSTANT VARCHAR2(20) := 'APP-XXCOS1-00218'; -- キー項目（伝票番号、顧客コード、納品予定日）
+/* 2010/09/17 Ver1.30 Add End   */
 /* 2009/10/02 Ver1.24 Add Start */
   cv_msg_param              CONSTANT VARCHAR2(20) := 'APP-XXCOS1-12794'; -- パラメーター出力
 /* 2010/07/12 Ver1.28 Del Start */
@@ -257,6 +264,9 @@ AS
   cv_tkn_red_black_flag     CONSTANT  VARCHAR2(20) := 'RED_BLACK_FLAG';  -- 赤黒フラグ
   cv_tkn_header_id          CONSTANT  VARCHAR2(20) := 'HEADER_ID';       -- ヘッダID
   cv_tkn_order_no           CONSTANT  VARCHAR2(20) := 'ORDER_NO';        -- 伝票番号
+/* 2010/09/17 Ver1.30 Add Start */
+  cv_tkn_dlv_date           CONSTANT  VARCHAR2(20) := 'DLV_DATE';        -- 納品予定日
+/* 2010/09/17 Ver1.30 Add End   */
 /* 2009/10/02 Ver1.24 Add Start */
   cv_tkn_param1             CONSTANT  VARCHAR2(20) := 'PARAM1';          -- パラメータ1
   cv_tkn_param2             CONSTANT  VARCHAR2(20) := 'PARAM2';          -- パラメータ2
@@ -537,6 +547,10 @@ AS
   TYPE g_discount_item_ttype   IS TABLE OF VARCHAR2(9) INDEX BY VARCHAR2( 9 );
   gt_discount_item_tbl            g_discount_item_ttype;                               -- 値引品目
 /* 2010/03/08 Ver1.27 Add End   */
+/* 2010/09/17 Ver1.30 Add Start */
+  TYPE g_gen_err_list_ttype IS TABLE OF xxcos_gen_err_list%ROWTYPE INDEX BY BINARY_INTEGER;   -- 汎用エラーリスト用
+  gt_gen_err_list_tab             g_gen_err_list_ttype;           -- 汎用エラーリスト
+/* 2010/09/17 Ver1.30 Add End   */
 --
   -- ===============================
   -- ユーザー定義グローバルレコード
@@ -664,6 +678,9 @@ AS
   gn_skip_cnt                         NUMBER DEFAULT 0;                             -- スキップ件数
   gv_skip_flag                        VARCHAR2(1);                                  -- スキップフラグ
   gt_exp_tax_cls                      fnd_lookup_values.meaning%TYPE;               -- 消費税区分(対象外)
+/* 2010/09/17 Ver1.30 Add Start */
+  gn_gen_err_count                    NUMBER DEFAULT 0;                             -- 汎用エラー出力件数
+/* 2010/09/17 Ver1.30 Add End   */
 --
   -- ===============================
   -- ユーザー定義グローバルカーソル
@@ -842,6 +859,158 @@ AS
 /* 2009/07/27 Ver1.21 Mod End   */
       AND   gd_process_date BETWEEN   NVL( flvl.start_date_active, gd_process_date )
                             AND       NVL( flvl.end_date_active,   gd_process_date );
+--
+/* 2010/09/17 Ver1.30 Add Start */
+--
+  /**********************************************************************************
+   * Procedure Name   : set_gen_err_list
+   * Description      : 汎用エラーリスト出力情報設定(A-11)
+   ***********************************************************************************/
+  PROCEDURE set_gen_err_list(
+    it_base_code                IN  xxcos_gen_err_list.base_code%TYPE,     -- 納品拠点コード
+    it_message_name             IN  xxcos_gen_err_list.message_name%TYPE,  -- エラーメッセージ名
+    it_message_text             IN  xxcos_gen_err_list.message_text%TYPE,  -- エラーメッセージ
+    iv_output_msg_name_branch   IN  VARCHAR2 DEFAULT NULL,                 -- エラーメッセージ名枝番
+    iv_output_msg_application   IN  VARCHAR2 DEFAULT NULL,                 -- アプリケーション短縮名
+    iv_output_msg_name          IN  VARCHAR2 DEFAULT NULL,                 -- メッセージコード
+    iv_output_msg_token_name1   IN  VARCHAR2 DEFAULT NULL,                 -- トークンコード1
+    iv_output_msg_token_value1  IN  VARCHAR2 DEFAULT NULL,                 -- トークン値1
+    iv_output_msg_token_name2   IN  VARCHAR2 DEFAULT NULL,                 -- トークンコード2
+    iv_output_msg_token_value2  IN  VARCHAR2 DEFAULT NULL,                 -- トークン値2
+    iv_output_msg_token_name3   IN  VARCHAR2 DEFAULT NULL,                 -- トークンコード3
+    iv_output_msg_token_value3  IN  VARCHAR2 DEFAULT NULL,                 -- トークン値4
+    iv_output_msg_token_name4   IN  VARCHAR2 DEFAULT NULL,                 -- トークンコード4
+    iv_output_msg_token_value4  IN  VARCHAR2 DEFAULT NULL,                 -- トークン値4
+    iv_output_msg_token_name5   IN  VARCHAR2 DEFAULT NULL,                 -- トークンコード5
+    iv_output_msg_token_value5  IN  VARCHAR2 DEFAULT NULL,                 -- トークン値5
+    iv_output_msg_token_name6   IN  VARCHAR2 DEFAULT NULL,                 -- トークンコード6
+    iv_output_msg_token_value6  IN  VARCHAR2 DEFAULT NULL,                 -- トークン値6
+    iv_output_msg_token_name7   IN  VARCHAR2 DEFAULT NULL,                 -- トークンコード7
+    iv_output_msg_token_value7  IN  VARCHAR2 DEFAULT NULL,                 -- トークン値7
+    iv_output_msg_token_name8   IN  VARCHAR2 DEFAULT NULL,                 -- トークンコード8
+    iv_output_msg_token_value8  IN  VARCHAR2 DEFAULT NULL,                 -- トークン値8
+    iv_output_msg_token_name9   IN  VARCHAR2 DEFAULT NULL,                 -- トークンコード9
+    iv_output_msg_token_value9  IN  VARCHAR2 DEFAULT NULL,                 -- トークン値9
+    iv_output_msg_token_name10  IN  VARCHAR2 DEFAULT NULL,                 -- トークンコード10
+    iv_output_msg_token_value10 IN  VARCHAR2 DEFAULT NULL,                 -- トークン値10
+    ov_errbuf                   OUT VARCHAR2,                              -- エラー・メッセージ           --# 固定 #
+    ov_retcode                  OUT VARCHAR2,                              -- リターン・コード             --# 固定 #
+    ov_errmsg                   OUT VARCHAR2                               -- ユーザー・エラー・メッセージ --# 固定 #
+  )
+  IS
+    -- ===============================
+    -- 固定ローカル定数
+    -- ===============================
+    cv_prg_name CONSTANT VARCHAR2(100)  := 'set_gen_err_list';  -- プログラム名
+--
+--#####################  固定ローカル変数宣言部 START  #####################
+    lv_errbuf   VARCHAR2(5000); -- エラー・メッセージ
+    lv_retcode  VARCHAR2(1);    -- リターン・コード
+    lv_errmsg   VARCHAR2(5000); -- ユーザー・エラー・メッセージ
+--#####################  固定ローカル変数宣言部 END    #####################
+--
+    -- ===============================
+    -- ユーザー宣言部
+    -- ===============================
+    -- *** ローカル定数 ***
+    lv_under_bar CONSTANT VARCHAR2(1) := '_';
+--
+    -- *** ローカル変数 ***
+    lv_out_name xxcos_gen_err_list.message_name%TYPE; -- 汎用エラーリストエラーメッセージ名
+    lv_out_msg  xxcos_gen_err_list.message_text%TYPE; -- 汎用エラーリストエラーメッセージ
+--
+    -- *** ローカル・カーソル ***
+--
+    -- *** ローカル・レコード ***
+--
+  BEGIN
+--#####################  固定ステータス初期化部 START  #####################
+    ov_retcode  := cv_status_normal;
+--#####################  固定ステータス初期化部 END    #####################
+--
+    -- 枝番がある場合はメッセージ名を編集
+    IF ( iv_output_msg_name_branch IS NOT NULL ) THEN
+      lv_out_name := it_message_name || lv_under_bar || iv_output_msg_name_branch;
+    ELSE
+      lv_out_name := it_message_name;
+    END IF;
+--
+    -- メッセージコードがある場合はメッセージを編集する
+    IF ( iv_output_msg_name IS NOT NULL ) THEN
+       lv_out_msg  := xxccp_common_pkg.get_msg(
+                          iv_application   => iv_output_msg_application
+                        , iv_name          => iv_output_msg_name
+                        , iv_token_name1   => iv_output_msg_token_name1
+                        , iv_token_value1  => iv_output_msg_token_value1
+                        , iv_token_name2   => iv_output_msg_token_name2
+                        , iv_token_value2  => iv_output_msg_token_value2
+                        , iv_token_name3   => iv_output_msg_token_name3
+                        , iv_token_value3  => iv_output_msg_token_value3
+                        , iv_token_name4   => iv_output_msg_token_name4
+                        , iv_token_value4  => iv_output_msg_token_value4
+                        , iv_token_name5   => iv_output_msg_token_name5
+                        , iv_token_value5  => iv_output_msg_token_value5
+                        , iv_token_name6   => iv_output_msg_token_name6
+                        , iv_token_value6  => iv_output_msg_token_value6
+                        , iv_token_name7   => iv_output_msg_token_name7
+                        , iv_token_value7  => iv_output_msg_token_value7
+                        , iv_token_name8   => iv_output_msg_token_name8
+                        , iv_token_value8  => iv_output_msg_token_value8
+                        , iv_token_name9   => iv_output_msg_token_name9
+                        , iv_token_value9  => iv_output_msg_token_value9
+                        , iv_token_name10  => iv_output_msg_token_name10
+                        , iv_token_value10 => iv_output_msg_token_value10
+                      );
+    --トークンの編集が必要ない場合
+    ELSE
+      lv_out_msg := it_message_text;
+    END IF;
+--
+    -- 汎用エラー出力件数をインクリメント
+    gn_gen_err_count  := gn_gen_err_count + 1;
+--
+    --シーケンスより汎用エラーリストIDを取得
+    SELECT  xxcos_gen_err_list_s01.nextval  gen_err_list_id
+    INTO    gt_gen_err_list_tab( gn_gen_err_count ).gen_err_list_id
+    FROM    DUAL
+    ;
+--
+    --レコード型の配列にデータを格納する
+    gt_gen_err_list_tab( gn_gen_err_count ).base_code                := it_base_code;              -- 売上拠点コード
+    gt_gen_err_list_tab( gn_gen_err_count ).concurrent_program_name  := cv_pkg_name;               -- コンカレント名
+    gt_gen_err_list_tab( gn_gen_err_count ).business_date            := gd_process_date;           -- 登録業務日付
+    gt_gen_err_list_tab( gn_gen_err_count ).message_name             := lv_out_name;               -- エラーメッセージ名
+    gt_gen_err_list_tab( gn_gen_err_count ).message_text             := lv_out_msg;                -- エラーメッセージ
+    gt_gen_err_list_tab( gn_gen_err_count ).created_by               := cn_created_by;             -- 作成者
+    gt_gen_err_list_tab( gn_gen_err_count ).creation_date            := cd_creation_date;          -- 作成日
+    gt_gen_err_list_tab( gn_gen_err_count ).last_updated_by          := cn_last_updated_by;        -- 最終更新者
+    gt_gen_err_list_tab( gn_gen_err_count ).last_update_date         := cd_last_update_date;       -- 最終更新日
+    gt_gen_err_list_tab( gn_gen_err_count ).last_update_login        := cn_last_update_login;      -- 最終更新ログイン
+    gt_gen_err_list_tab( gn_gen_err_count ).request_id               := cn_request_id;             -- 要求ID
+    gt_gen_err_list_tab( gn_gen_err_count ).program_application_id   := cn_program_application_id; -- コンカレント・プログラム・アプリケーションID
+    gt_gen_err_list_tab( gn_gen_err_count ).program_id               := cn_program_id;             -- コンカレント・プログラムID
+    gt_gen_err_list_tab( gn_gen_err_count ).program_update_date      := cd_program_update_date;    -- プログラム更新日
+--
+  EXCEPTION
+--#################################  固定例外処理部 START  #################################
+--
+    -- *** 共通関数例外ハンドラ ***
+    WHEN global_api_expt THEN
+      ov_errmsg  := lv_errmsg;
+      ov_errbuf  := SUBSTRB( cv_pkg_name || cv_msg_cont || cv_prg_name || cv_msg_part || lv_errbuf, 1, 5000 );
+      ov_retcode := cv_status_error;
+    -- *** 共通関数OTHERS例外ハンドラ ***
+    WHEN global_api_others_expt THEN
+      ov_errbuf  := SUBSTRB( cv_pkg_name || cv_msg_cont || cv_prg_name || cv_msg_part || SQLERRM  , 1, 5000 );
+      ov_retcode := cv_status_error;
+    -- *** OTHERS例外ハンドラ ***
+    WHEN OTHERS THEN
+      ov_errbuf  := SUBSTRB( cv_pkg_name || cv_msg_cont || cv_prg_name || cv_msg_part || SQLERRM  , 1, 5000 );
+      ov_retcode := cv_status_error;
+--
+  END set_gen_err_list;
+--
+/* 2010/09/17 Ver1.30 Add End  */
 --
   /**********************************************************************************
    * Procedure Name   : init
@@ -2831,12 +3000,21 @@ AS
             lv_errmsg := xxccp_common_pkg.get_msg(
                             iv_application   => cv_xxcos_short_nm
                           , iv_name          => cv_receipt_id_msg
-                          , iv_token_name1   => cv_tkn_header_id
-                          , iv_token_value1  => gt_sales_exp_tbl2( sale_idx ).sales_exp_header_id
-                          , iv_token_name2   => cv_tkn_order_no
-                          , iv_token_value2  => gt_sales_exp_tbl2( sale_idx ).dlv_invoice_number
-                          , iv_token_name3   => cv_tkn_cust_code
-                          , iv_token_value3  => gt_sales_exp_tbl2( sale_idx ).ship_to_customer_code
+/* 2010/09/17 Ver1.30 Mod Start */
+--                          , iv_token_name1   => cv_tkn_header_id
+--                          , iv_token_value1  => gt_sales_exp_tbl2( sale_idx ).sales_exp_header_id
+--                          , iv_token_name2   => cv_tkn_order_no
+--                          , iv_token_value2  => gt_sales_exp_tbl2( sale_idx ).dlv_invoice_number
+--                          , iv_token_name3   => cv_tkn_cust_code
+--                          , iv_token_value3  => gt_sales_exp_tbl2( sale_idx ).ship_to_customer_code
+
+                          , iv_token_name1   => cv_tkn_order_no
+                          , iv_token_value1  => gt_sales_exp_tbl2( sale_idx ).dlv_invoice_number
+                          , iv_token_name2   => cv_tkn_cust_code
+                          , iv_token_value2  => gt_sales_exp_tbl2( sale_idx ).ship_to_customer_code
+                          , iv_token_name3   => cv_tkn_dlv_date
+                          , iv_token_value3  => TO_CHAR( gt_sales_exp_tbl2( sale_idx ).delivery_date, cv_date_format_on_sep )
+/* 2010/09/17 Ver1.30 Mod End   */
                         );
             gn_warn_flag := cv_y_flag;
 /* 2009/10/02 Ver1.24 Add Start */
@@ -2879,6 +3057,26 @@ AS
               ,buff   => cv_blank
             );
 /* 2009/08/20 Ver1.22 Add Start */
+/* 2010/09/17 Ver1.30 Add Start */
+            --汎用エラーリスト出力情報設定(A-11)
+            set_gen_err_list(
+               it_base_code                => gt_sales_exp_tbl2( sale_idx ).sales_base_code        --拠点コード
+             , it_message_name             => cv_receipt_id_msg                                    --エラーメッセージ名
+             , it_message_text             => NULL                                                 --エラーメッセージ
+             , iv_output_msg_name_branch   => NULL                                                 --エラーメッセージ名枝番
+             , iv_output_msg_application   => cv_xxcos_short_nm                                    --アプリケーション名
+             , iv_output_msg_name          => cv_msg_xxcos_00218                                   --メッセージコード
+             , iv_output_msg_token_name1   => cv_tkn_order_no                                      --トークンコード1
+             , iv_output_msg_token_value1  => gt_sales_exp_tbl2( sale_idx ).dlv_invoice_number     --トークン値1：伝票番号
+             , iv_output_msg_token_name2   => cv_tkn_cust_code                                     --トークンコード2
+             , iv_output_msg_token_value2  => gt_sales_exp_tbl2( sale_idx ).ship_to_customer_code  --トークン値2：顧客コード
+             , iv_output_msg_token_name3   => cv_tkn_dlv_date                                      --トークンコード3
+             , iv_output_msg_token_value3  => TO_CHAR( gt_sales_exp_tbl2( sale_idx ).delivery_date, cv_date_format_on_sep ) --トークン値3：納品日
+             , ov_errbuf                   => lv_errbuf
+             , ov_retcode                  => lv_retcode
+             , ov_errmsg                   => lv_errmsg
+            );
+/* 2010/09/17 Ver1.30 Add End   */
 --
           END IF;  --ヘッダ単位チェックEND
 --
@@ -9261,6 +9459,96 @@ AS
 --
   END del_data;
 /* 2009/10/02 Ver1.24 Add End   */
+/* 2010/09/17 Ver1.30 Add Start */
+--
+  /**********************************************************************************
+   * Procedure Name   : proc_ins_gen_err_list
+   * Description      : 汎用エラーリスト作成(A-12)
+   ***********************************************************************************/
+  PROCEDURE proc_ins_gen_err_list(
+      ov_errbuf   OUT VARCHAR2  -- エラー・メッセージ           --# 固定 #
+    , ov_retcode  OUT VARCHAR2  -- リターン・コード             --# 固定 #
+    , ov_errmsg   OUT VARCHAR2  -- ユーザー・エラー・メッセージ --# 固定 #
+  )
+  IS
+    -- ===============================
+    -- 固定ローカル定数
+    -- ===============================
+    cv_prg_name CONSTANT VARCHAR2(100)  := 'proc_ins_gen_err_list'; -- プログラム名
+--
+--#####################  固定ローカル変数宣言部 START  #####################
+    lv_errbuf   VARCHAR2(5000); -- エラー・メッセージ
+    lv_retcode  VARCHAR2(1);    -- リターン・コード
+    lv_errmsg   VARCHAR2(5000); -- ユーザー・エラー・メッセージ
+--#####################  固定ローカル変数宣言部 END    #####################
+--
+    -- ===============================
+    -- ユーザー宣言部
+    -- ===============================
+    -- *** ローカル定数 ***
+--
+    -- *** ローカル変数 ***
+    lv_tbl_nm     VARCHAR2(255);  -- テーブル名
+--
+    -- *** ローカル・カーソル ***
+--
+    -- *** ローカル・レコード ***
+--
+  BEGIN
+--#####################  固定ステータス初期化部 START  #####################
+    ov_retcode  := cv_status_normal;
+--#####################  固定ステータス初期化部 END    #####################
+--
+    BEGIN
+--
+      --汎用エラーリスト作成
+      FORALL i IN 1..gt_gen_err_list_tab.COUNT
+      INSERT INTO xxcos_gen_err_list VALUES gt_gen_err_list_tab( i );
+--
+    EXCEPTION
+      WHEN OTHERS THEN
+        lv_errbuf  := SQLERRM;
+        lv_tbl_nm  := xxccp_common_pkg.get_msg(
+                          iv_application  => cv_xxcos_short_nm
+                        , iv_name         => cv_tkn_gen_msg
+                      );
+        lv_errmsg  := xxccp_common_pkg.get_msg(
+                          iv_application  => cv_xxcos_short_nm
+                        , iv_name         => cv_data_insert_msg
+                        , iv_token_name1  => cv_tkn_tbl_nm
+                        , iv_token_value1 => lv_tbl_nm
+                        , iv_token_name2  => cv_tkn_key_data
+                        , iv_token_value2 => cv_blank
+                      );
+        RAISE global_insert_data_expt;
+    END;
+--
+  EXCEPTION
+    --*** データ登録例外ハンドラ ***
+    WHEN global_insert_data_expt THEN
+      ov_errmsg  := lv_errmsg;
+      ov_errbuf  := SUBSTRB( cv_pkg_name || cv_msg_cont || cv_prg_name || cv_msg_part || lv_errbuf, 1, 5000 );
+      ov_retcode := cv_status_error;
+--
+--#################################  固定例外処理部 START  #################################
+--
+    -- *** 共通関数例外ハンドラ ***
+    WHEN global_api_expt THEN
+      ov_errmsg  := lv_errmsg;
+      ov_errbuf  := SUBSTRB( cv_pkg_name || cv_msg_cont || cv_prg_name || cv_msg_part || lv_errbuf, 1, 5000 );
+      ov_retcode := cv_status_error;
+    -- *** 共通関数OTHERS例外ハンドラ ***
+    WHEN global_api_others_expt THEN
+      ov_errbuf  := SUBSTRB( cv_pkg_name || cv_msg_cont || cv_prg_name || cv_msg_part || SQLERRM  , 1, 5000 );
+      ov_retcode := cv_status_error;
+    -- *** OTHERS例外ハンドラ ***
+    WHEN OTHERS THEN
+      ov_errbuf  := SUBSTRB( cv_pkg_name || cv_msg_cont || cv_prg_name || cv_msg_part || SQLERRM  , 1, 5000 );
+      ov_retcode := cv_status_error;
+--
+  END proc_ins_gen_err_list;
+--
+/* 2010/09/17 Ver1.30 Add End   */
 --
   /**********************************************************************************
    * Procedure Name   : submain
@@ -9736,6 +10024,21 @@ AS
     END IF;
 /* 2009/10/02 Ver1.24 Add End   */
 --
+/* 2010/09/17 Ver1.30 Add Start */
+    IF ( gt_gen_err_list_tab.COUNT > 0 ) THEN
+      -- ===============================
+      -- 汎用エラーリスト作成(A-12)
+      -- ===============================
+      proc_ins_gen_err_list(
+        ov_errbuf   => lv_errbuf,  -- エラー・メッセージ           --# 固定 #
+        ov_retcode  => lv_retcode, -- リターン・コード             --# 固定 #
+        ov_errmsg   => lv_errmsg   -- ユーザー・エラー・メッセージ --# 固定 #
+      );
+      IF (lv_retcode <> cv_status_normal) THEN
+        RAISE global_process_expt;
+      END IF;
+    END IF;
+/* 2010/09/17 Ver1.30 Add End   */
     -- 成功件数をセット
 /* 2009/10/02 Ver1.24 Mod Start */
 --    gn_aroif_cnt  := gt_ar_interface_tbl1.COUNT;                      -- AR請求取引OIF登録件数
