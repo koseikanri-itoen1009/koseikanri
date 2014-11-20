@@ -40,6 +40,7 @@ AS
  *  2009/02/16    1.6   K.Ito            OUTBOUND用CSVファイル作成場所、ファイル名共通化
  *                                       ファイル名を出力するように修正
  *                                       コンカレントパラメータの値セット変更(XXCMN_S_10_DATE -> XXCMN_YYYYMMDD) パラメータ結果に時分秒除外
+ *  2009/04/02    1.7   Y.Kuboshima      障害T1_0153,T1_0154の対応
  *
  *****************************************************************************************/
 --
@@ -678,11 +679,14 @@ AS
       lv_message_token := '品目コード';
 --      l_csv_item_tab( ln_data_index ).item_code            := TO_CHAR( TO_NUMBER( l_csv_item_rec.item_no , cv_number_fmt) );
                                                                                                     -- 品目コード
-      IF SUBSTRB( l_csv_item_rec.item_no , 1 , 2 ) = cv_item_code_cut THEN
-        l_csv_item_tab( ln_data_index ).item_code            := SUBSTRB( l_csv_item_rec.item_no , 3 );
-      ELSE
-        l_csv_item_tab( ln_data_index ).item_code            := l_csv_item_rec.item_no;
-      END IF;
+-- Ver1.7 Mod 先頭２桁(00)をカットをしない 2009/04/02 by Y.Kuboshima
+--      IF SUBSTRB( l_csv_item_rec.item_no , 1 , 2 ) = cv_item_code_cut THEN
+--        l_csv_item_tab( ln_data_index ).item_code            := SUBSTRB( l_csv_item_rec.item_no , 3 );
+--      ELSE
+--        l_csv_item_tab( ln_data_index ).item_code            := l_csv_item_rec.item_no;
+--      END IF;
+      l_csv_item_tab( ln_data_index ).item_code            := l_csv_item_rec.item_no;
+--End1.7 by Y.Kuboshima
 --End
       lv_step := 'A-2.item_short_name';
       lv_message_token := '略称';
@@ -744,11 +748,14 @@ AS
       lv_step := 'A-2.parent_item_code';
       lv_message_token := '親商品コード';
 --      l_csv_item_tab( ln_data_index ).parent_item_code     := l_csv_item_rec.parent_item_code;       -- 親商品コード
-      IF SUBSTRB( l_csv_item_rec.item_no , 1 , 2 ) = cv_item_code_cut THEN
-          l_csv_item_tab( ln_data_index ).parent_item_code            := SUBSTRB( l_csv_item_rec.parent_item_code , 3 );
-      ELSE
-        l_csv_item_tab( ln_data_index ).parent_item_code            := l_csv_item_rec.parent_item_code;
-      END IF;
+-- Ver1.7 Mod 先頭２桁(00)をカットしない 2009/04/02 by Y.Kuboshima
+--      IF SUBSTRB( l_csv_item_rec.item_no , 1 , 2 ) = cv_item_code_cut THEN
+--          l_csv_item_tab( ln_data_index ).parent_item_code            := SUBSTRB( l_csv_item_rec.parent_item_code , 3 );
+--      ELSE
+--        l_csv_item_tab( ln_data_index ).parent_item_code            := l_csv_item_rec.parent_item_code;
+--      END IF;
+      l_csv_item_tab( ln_data_index ).parent_item_code            := l_csv_item_rec.parent_item_code;
+--End1.7
 --End1.5
 --End1.3
       lv_step := 'A-2.search_update_date';
@@ -814,11 +821,15 @@ AS
         -- バラ茶区分
 -- Ver1.5 Mod 2009/2/12
         lv_step := 'A-3.baracha_div';
+-- Ver1.7 Mod バラ茶区分はダブルコーテーションで括る 2009/04/02 by Y.Kuboshima
 --        lv_out_csv_line := lv_out_csv_line || cv_sep || cv_dqu ||
-        lv_out_csv_line := lv_out_csv_line || cv_sep ||
+--        lv_out_csv_line := lv_out_csv_line || cv_sep ||
+        lv_out_csv_line := lv_out_csv_line || cv_sep || cv_dqu ||
 --          TO_CHAR( l_csv_item_tab( ln_index ).baracha_div || cv_dqu );
-          l_csv_item_tab( ln_index ).baracha_div;
+--          l_csv_item_tab( ln_index ).baracha_div;
+          TO_CHAR( l_csv_item_tab( ln_index ).baracha_div ) || cv_dqu;
 -- End1.5
+-- End1.7 by Y.Kuboshima
         -- 発売開始日【YYYYMMDD】
         lv_step := 'A-3.sell_start_date';
         lv_out_csv_line := lv_out_csv_line || cv_sep ||
@@ -879,9 +890,13 @@ AS
           l_csv_item_tab( ln_index ).parent_item_code || cv_dqu;
 --End1.3
         -- 更新日時【YYYY/MM/DD HH:MM:SS】
+-- Ver1.7 Mod 更新日時はダブルコーテーションで括る 2009/04/02 by Y.Kuboshima
         lv_step := 'A-3.search_update_date';
-        lv_out_csv_line := lv_out_csv_line || cv_sep ||
-          TO_CHAR( l_csv_item_tab( ln_index ).search_update_date , cv_date_format_all );
+--        lv_out_csv_line := lv_out_csv_line || cv_sep ||
+        lv_out_csv_line := lv_out_csv_line || cv_sep || cv_dqu ||
+--          TO_CHAR( l_csv_item_tab( ln_index ).search_update_date , cv_date_format_all );
+          TO_CHAR( l_csv_item_tab( ln_index ).search_update_date , cv_date_format_all ) || cv_dqu;
+--End1.7 by Y.Kuboshima
         --
         -- CSVファイル出力
         lv_step := 'A-3.1b';
