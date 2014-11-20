@@ -7,7 +7,7 @@ AS
  * Description      : Žó•¥Žc‚•\i‡Tj»•i
  * MD.050/070       : ŒŽŽŸYØˆ—’ •[Issue1.0 (T_MD050_BPO_770)
  *                    ŒŽŽŸYØˆ—’ •[Issue1.0 (T_MD070_BPO_77B)
- * Version          : 1.24
+ * Version          : 1.25
  *
  * Program List
  * -------------------------- ----------------------------------------------------------
@@ -59,6 +59,7 @@ AS
  *  2008/12/08    1.22  A.Shiina         –{”ÔáŠQ565‘Î‰ž
  *  2008/12/09    1.23  H.Marushita      –{”ÔáŠQ565‘Î‰ž
  *  2008/12/10    1.24  A.Shiina         –{”ÔáŠQ617,636‘Î‰ž
+ *  2008/12/11    1.25  N.Yoshida        –{”ÔáŠQ580‘Î‰ž
  *
  *****************************************************************************************/
 --
@@ -1091,7 +1092,10 @@ AS
             ,iwm.whse_name                    h_whse_name
             ,itc.item_id                      item_id
             ,itc.lot_id                       lot_id
-            ,ABS(itc.trans_qty) * TO_NUMBER(gc_rcv_pay_div_adj) trans_qty
+-- 2008/12/11 v1.25 N.Yoshida mod start
+--            ,ABS(itc.trans_qty) * TO_NUMBER(gc_rcv_pay_div_adj) trans_qty
+            ,NVL(itc.trans_qty,0)             trans_qty
+-- 2008/12/11 v1.25 N.Yoshida mod end
             ,iimb.attribute15                 cost_mng_clss
             ,iimb.lot_ctl                     lot_ctl
             ,xlc.unit_ploce                   actual_unit_price
@@ -1157,10 +1161,14 @@ AS
       AND    gic3.item_id            = itc.item_id
       AND    gic3.category_set_id    = ln_crowd_code_id
       AND    gic3.category_id        = mcb3.category_id
+-- 2008/12/11 v1.26 N.Yoshida mod start
       AND    xrpm.rcv_pay_div        = CASE
-                                       WHEN itc.trans_qty >= 0 THEN 1
-                                       ELSE -1
+--                                       WHEN itc.trans_qty >= 0 THEN 1
+--                                       ELSE -1
+                                       WHEN itc.trans_qty >= 0 THEN -1
+                                       ELSE 1
                                        END
+-- 2008/12/11 v1.26 N.Yoshida mod end
       AND    xrpm.doc_type           = itc.doc_type
       AND    xrpm.reason_code        = itc.reason_code
       AND    xrpm.break_col_02       IS NOT NULL
@@ -3471,7 +3479,10 @@ AS
             ,iwm.whse_name                    h_whse_name
             ,itc.item_id                      item_id
             ,itc.lot_id                       lot_id
-            ,ABS(itc.trans_qty) * TO_NUMBER(gc_rcv_pay_div_adj) trans_qty
+-- 2008/12/11 v1.25 N.Yoshida mod start
+--            ,ABS(itc.trans_qty) * TO_NUMBER(gc_rcv_pay_div_adj) trans_qty
+            ,NVL(itc.trans_qty,0)             trans_qty
+-- 2008/12/11 v1.25 N.Yoshida mod end
             ,iimb.attribute15                 cost_mng_clss
             ,iimb.lot_ctl                     lot_ctl
             ,xlc.unit_ploce                   actual_unit_price
@@ -3537,10 +3548,14 @@ AS
       AND    gic3.item_id            = itc.item_id
       AND    gic3.category_set_id    = ln_crowd_code_id
       AND    gic3.category_id        = mcb3.category_id
+-- 2008/12/11 v1.26 N.Yoshida mod start
       AND    xrpm.rcv_pay_div        = CASE
-                                       WHEN itc.trans_qty >= 0 THEN 1
-                                       ELSE -1
+--                                       WHEN itc.trans_qty >= 0 THEN 1
+--                                       ELSE -1
+                                       WHEN itc.trans_qty >= 0 THEN -1
+                                       ELSE 1
                                        END
+-- 2008/12/11 v1.26 N.Yoshida mod end
       AND    xrpm.doc_type           = itc.doc_type
       AND    xrpm.reason_code        = itc.reason_code
       AND    xrpm.break_col_02       IS NOT NULL
@@ -5872,7 +5887,10 @@ AS
             ,iwm.whse_name                    h_whse_name
             ,itc.item_id                      item_id
             ,itc.lot_id                       lot_id
-            ,ABS(itc.trans_qty) * TO_NUMBER(gc_rcv_pay_div_adj) trans_qty
+-- 2008/12/11 v1.25 N.Yoshida mod start
+--            ,ABS(itc.trans_qty) * TO_NUMBER(gc_rcv_pay_div_adj) trans_qty
+            ,NVL(itc.trans_qty,0)             trans_qty
+-- 2008/12/11 v1.25 N.Yoshida mod end
             ,iimb.attribute15                 cost_mng_clss
             ,iimb.lot_ctl                     lot_ctl
             ,xlc.unit_ploce                   actual_unit_price
@@ -5938,10 +5956,14 @@ AS
       AND    gic3.item_id            = itc.item_id
       AND    gic3.category_set_id    = ln_crowd_code_id
       AND    gic3.category_id        = mcb3.category_id
+-- 2008/12/11 v1.26 N.Yoshida mod start
       AND    xrpm.rcv_pay_div        = CASE
-                                       WHEN itc.trans_qty >= 0 THEN 1
-                                       ELSE -1
+--                                       WHEN itc.trans_qty >= 0 THEN 1
+--                                       ELSE -1
+                                       WHEN itc.trans_qty >= 0 THEN -1
+                                       ELSE 1
                                        END
+-- 2008/12/11 v1.26 N.Yoshida mod end
       AND    xrpm.doc_type           = itc.doc_type
       AND    xrpm.reason_code        = itc.reason_code
       AND    xrpm.break_col_02       IS NOT NULL
@@ -8278,7 +8300,10 @@ AS
             ,iwm.whse_name                    h_whse_name
             ,itc.item_id                      item_id
             ,itc.lot_id                       lot_id
-            ,ABS(itc.trans_qty) * TO_NUMBER(gc_rcv_pay_div_adj) trans_qty
+-- 2008/12/11 v1.25 N.Yoshida mod start
+--            ,ABS(itc.trans_qty) * TO_NUMBER(gc_rcv_pay_div_adj) trans_qty
+            ,NVL(itc.trans_qty,0)             trans_qty
+-- 2008/12/11 v1.25 N.Yoshida mod end
             ,iimb.attribute15                 cost_mng_clss
             ,iimb.lot_ctl                     lot_ctl
             ,xlc.unit_ploce                   actual_unit_price
@@ -8344,10 +8369,14 @@ AS
       AND    gic3.item_id            = itc.item_id
       AND    gic3.category_set_id    = ln_crowd_code_id
       AND    gic3.category_id        = mcb3.category_id
+-- 2008/12/11 v1.26 N.Yoshida mod start
       AND    xrpm.rcv_pay_div        = CASE
-                                       WHEN itc.trans_qty >= 0 THEN 1
-                                       ELSE -1
+--                                       WHEN itc.trans_qty >= 0 THEN 1
+--                                       ELSE -1
+                                       WHEN itc.trans_qty >= 0 THEN -1
+                                       ELSE 1
                                        END
+-- 2008/12/11 v1.26 N.Yoshida mod end
       AND    xrpm.doc_type           = itc.doc_type
       AND    xrpm.reason_code        = itc.reason_code
       AND    xrpm.break_col_02       IS NOT NULL
@@ -10685,7 +10714,10 @@ AS
             ,NULL                             h_whse_name
             ,itc.item_id                      item_id
             ,itc.lot_id                       lot_id
-            ,ABS(itc.trans_qty) * TO_NUMBER(gc_rcv_pay_div_adj) trans_qty
+-- 2008/12/11 v1.25 N.Yoshida mod start
+--            ,ABS(itc.trans_qty) * TO_NUMBER(gc_rcv_pay_div_adj) trans_qty
+            ,NVL(itc.trans_qty,0)             trans_qty
+-- 2008/12/11 v1.25 N.Yoshida mod end
             ,iimb.attribute15                 cost_mng_clss
             ,iimb.lot_ctl                     lot_ctl
             ,xlc.unit_ploce                   actual_unit_price
@@ -10750,10 +10782,14 @@ AS
       AND    gic3.item_id            = itc.item_id
       AND    gic3.category_set_id    = ln_crowd_code_id
       AND    gic3.category_id        = mcb3.category_id
+-- 2008/12/11 v1.26 N.Yoshida mod start
       AND    xrpm.rcv_pay_div        = CASE
-                                       WHEN itc.trans_qty >= 0 THEN 1
-                                       ELSE -1
+--                                       WHEN itc.trans_qty >= 0 THEN 1
+--                                       ELSE -1
+                                       WHEN itc.trans_qty >= 0 THEN -1
+                                       ELSE 1
                                        END
+-- 2008/12/11 v1.26 N.Yoshida mod end
       AND    xrpm.doc_type           = itc.doc_type
       AND    xrpm.reason_code        = itc.reason_code
       AND    xrpm.break_col_02       IS NOT NULL
@@ -13016,7 +13052,10 @@ AS
             ,NULL                             h_whse_name
             ,itc.item_id                      item_id
             ,itc.lot_id                       lot_id
-            ,ABS(itc.trans_qty) * TO_NUMBER(gc_rcv_pay_div_adj) trans_qty
+-- 2008/12/11 v1.25 N.Yoshida mod start
+--            ,ABS(itc.trans_qty) * TO_NUMBER(gc_rcv_pay_div_adj) trans_qty
+            ,NVL(itc.trans_qty,0)             trans_qty
+-- 2008/12/11 v1.25 N.Yoshida mod end
             ,iimb.attribute15                 cost_mng_clss
             ,iimb.lot_ctl                     lot_ctl
             ,xlc.unit_ploce                   actual_unit_price
@@ -13081,10 +13120,14 @@ AS
       AND    gic3.item_id            = itc.item_id
       AND    gic3.category_set_id    = ln_crowd_code_id
       AND    gic3.category_id        = mcb3.category_id
+-- 2008/12/11 v1.26 N.Yoshida mod start
       AND    xrpm.rcv_pay_div        = CASE
-                                       WHEN itc.trans_qty >= 0 THEN 1
-                                       ELSE -1
+--                                       WHEN itc.trans_qty >= 0 THEN 1
+--                                       ELSE -1
+                                       WHEN itc.trans_qty >= 0 THEN -1
+                                       ELSE 1
                                        END
+-- 2008/12/11 v1.26 N.Yoshida mod end
       AND    xrpm.doc_type           = itc.doc_type
       AND    xrpm.reason_code        = itc.reason_code
       AND    xrpm.break_col_02       IS NOT NULL

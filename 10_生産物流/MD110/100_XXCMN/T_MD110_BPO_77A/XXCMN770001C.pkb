@@ -7,7 +7,7 @@ AS
  * Description      : 受払残高表（Ⅰ）原料・資材・半製品
  * MD.050/070       : 月次〆切処理（経理）Issue1.0(T_MD050_BPO_770)
  *                    月次〆切処理（経理）Issue1.0(T_MD070_BPO_77A)
- * Version          : 1.25
+ * Version          : 1.26
  *
  * Program List
  * -------------------------- ----------------------------------------------------------
@@ -63,6 +63,7 @@ AS
  *  2008/12/08    1.23  A.Shiina         本番障害565対応
  *  2008/12/09    1.24  H.Marushita      本番障害565対応
  *  2008/12/10    1.25  A.Shiina         本番障害617,636対応
+ *  2008/12/11    1.26  N.Yoshida        本番障害580対応
  *****************************************************************************************/
 --
 --#######################  固定グローバル定数宣言部 START   #######################
@@ -1158,7 +1159,10 @@ AS
             ,itc.reason_code                      reason_code
             ,itc.trans_date                       trans_date
             ,TO_CHAR(itc.trans_date, 'YYYYMM')  trans_ym
-            ,gc_rcv_pay_div_adj                   rcv_pay_div
+-- 2008/12/11 v1.26 N.Yoshida mod start
+--            ,gc_rcv_pay_div_adj                   rcv_pay_div
+            ,xrpm.rcv_pay_div                     rcv_pay_div
+-- 2008/12/11 v1.26 N.Yoshida mod end
             ,xrpm.dealings_div                    dealings_div
             ,itc.doc_type                         doc_type
             ,ir_param.item_class                  item_div
@@ -1169,7 +1173,10 @@ AS
             ,SUBSTR(mcb3.segment1, 1, 1)          crowd_high
             ,itc.item_id                          item_id
             ,itc.lot_id                           lot_id
-            ,ABS(NVL(itc.trans_qty, 0))           trans_qty
+-- 2008/12/11 v1.26 N.Yoshida mod start
+--            ,ABS(NVL(itc.trans_qty, 0))           trans_qty
+            ,NVL(itc.trans_qty, 0)                trans_qty
+-- 2008/12/11 v1.26 N.Yoshida mod end
             ,xmrh.actual_arrival_date             arrival_date
             ,TO_CHAR(xmrh.actual_arrival_date, gc_char_ym_format) arrival_ym
             ,iimb.item_no                         item_code
@@ -1220,10 +1227,14 @@ AS
       AND    gic3.item_id            = itc.item_id
       AND    gic3.category_set_id    = ln_crowd_code_id
       AND    gic3.category_id        = mcb3.category_id
+-- 2008/12/11 v1.26 N.Yoshida mod start
       AND    xrpm.rcv_pay_div        = CASE
-                                       WHEN itc.trans_qty >= 0 THEN 1
-                                       ELSE -1
+--                                       WHEN itc.trans_qty >= 0 THEN 1
+--                                       ELSE -1
+                                       WHEN itc.trans_qty >= 0 THEN -1
+                                       ELSE 1
                                        END
+-- 2008/12/11 v1.26 N.Yoshida mod end
       AND    xrpm.doc_type           = itc.doc_type
       AND    xrpm.reason_code        = itc.reason_code
       AND    xrpm.break_col_01       IS NOT NULL
@@ -2980,7 +2991,10 @@ AS
             ,itc.reason_code                      reason_code
             ,itc.trans_date                       trans_date
             ,TO_CHAR(itc.trans_date, 'YYYYMM')  trans_ym
-            ,gc_rcv_pay_div_adj                   rcv_pay_div
+-- 2008/12/11 v1.26 N.Yoshida mod start
+--            ,gc_rcv_pay_div_adj                   rcv_pay_div
+            ,xrpm.rcv_pay_div                     rcv_pay_div
+-- 2008/12/11 v1.26 N.Yoshida mod end
             ,xrpm.dealings_div                    dealings_div
             ,itc.doc_type                         doc_type
             ,ir_param.item_class                  item_div
@@ -2991,7 +3005,10 @@ AS
             ,SUBSTR(mcb3.segment1, 1, 1)          crowd_high
             ,itc.item_id                          item_id
             ,itc.lot_id                           lot_id
-            ,ABS(NVL(itc.trans_qty, 0))           trans_qty
+-- 2008/12/11 v1.26 N.Yoshida mod start
+--            ,ABS(NVL(itc.trans_qty, 0))           trans_qty
+            ,NVL(itc.trans_qty, 0)                trans_qty
+-- 2008/12/11 v1.26 N.Yoshida mod end
             ,xmrh.actual_arrival_date             arrival_date
             ,TO_CHAR(xmrh.actual_arrival_date, gc_char_ym_format) arrival_ym
             ,iimb.item_no                         item_code
@@ -3042,10 +3059,14 @@ AS
       AND    gic3.item_id            = itc.item_id
       AND    gic3.category_set_id    = ln_crowd_code_id
       AND    gic3.category_id        = mcb3.category_id
+-- 2008/12/11 v1.26 N.Yoshida mod start
       AND    xrpm.rcv_pay_div        = CASE
-                                       WHEN itc.trans_qty >= 0 THEN 1
-                                       ELSE -1
+--                                       WHEN itc.trans_qty >= 0 THEN 1
+--                                       ELSE -1
+                                       WHEN itc.trans_qty >= 0 THEN -1
+                                       ELSE 1
                                        END
+-- 2008/12/11 v1.26 N.Yoshida mod end
       AND    xrpm.doc_type           = itc.doc_type
       AND    xrpm.reason_code        = itc.reason_code
       AND    xrpm.break_col_01       IS NOT NULL
@@ -4798,7 +4819,10 @@ AS
             ,itc.reason_code                      reason_code
             ,itc.trans_date                       trans_date
             ,TO_CHAR(itc.trans_date, 'YYYYMM')  trans_ym
-            ,gc_rcv_pay_div_adj                   rcv_pay_div
+-- 2008/12/11 v1.26 N.Yoshida mod start
+--            ,gc_rcv_pay_div_adj                   rcv_pay_div
+            ,xrpm.rcv_pay_div                     rcv_pay_div
+-- 2008/12/11 v1.26 N.Yoshida mod end
             ,xrpm.dealings_div                    dealings_div
             ,itc.doc_type                         doc_type
             ,ir_param.item_class                  item_div
@@ -4809,7 +4833,10 @@ AS
             ,SUBSTR(mcb3.segment1, 1, 1)          crowd_high
             ,itc.item_id                          item_id
             ,itc.lot_id                           lot_id
-            ,ABS(NVL(itc.trans_qty, 0))           trans_qty
+-- 2008/12/11 v1.26 N.Yoshida mod start
+--            ,ABS(NVL(itc.trans_qty, 0))           trans_qty
+            ,NVL(itc.trans_qty, 0)                trans_qty
+-- 2008/12/11 v1.26 N.Yoshida mod end
             ,xmrh.actual_arrival_date             arrival_date
             ,TO_CHAR(xmrh.actual_arrival_date, gc_char_ym_format) arrival_ym
             ,iimb.item_no                         item_code
@@ -4860,10 +4887,14 @@ AS
       AND    gic3.item_id            = itc.item_id
       AND    gic3.category_set_id    = ln_crowd_code_id
       AND    gic3.category_id        = mcb3.category_id
+-- 2008/12/11 v1.26 N.Yoshida mod start
       AND    xrpm.rcv_pay_div        = CASE
-                                       WHEN itc.trans_qty >= 0 THEN 1
-                                       ELSE -1
+--                                       WHEN itc.trans_qty >= 0 THEN 1
+--                                       ELSE -1
+                                       WHEN itc.trans_qty >= 0 THEN -1
+                                       ELSE 1
                                        END
+-- 2008/12/11 v1.26 N.Yoshida mod end
       AND    xrpm.doc_type           = itc.doc_type
       AND    xrpm.reason_code        = itc.reason_code
       AND    xrpm.break_col_01       IS NOT NULL
@@ -6639,7 +6670,10 @@ AS
             ,itc.reason_code                      reason_code
             ,itc.trans_date                       trans_date
             ,TO_CHAR(itc.trans_date, 'YYYYMM')  trans_ym
-            ,gc_rcv_pay_div_adj                   rcv_pay_div
+-- 2008/12/11 v1.26 N.Yoshida mod start
+--            ,gc_rcv_pay_div_adj                   rcv_pay_div
+            ,xrpm.rcv_pay_div                     rcv_pay_div
+-- 2008/12/11 v1.26 N.Yoshida mod end
             ,xrpm.dealings_div                    dealings_div
             ,itc.doc_type                         doc_type
             ,ir_param.item_class                  item_div
@@ -6650,7 +6684,10 @@ AS
             ,SUBSTR(mcb3.segment1, 1, 1)          crowd_high
             ,itc.item_id                          item_id
             ,itc.lot_id                           lot_id
-            ,ABS(NVL(itc.trans_qty, 0))           trans_qty
+-- 2008/12/11 v1.26 N.Yoshida mod start
+--            ,ABS(NVL(itc.trans_qty, 0))           trans_qty
+            ,NVL(itc.trans_qty, 0)                trans_qty
+-- 2008/12/11 v1.26 N.Yoshida mod end
             ,xmrh.actual_arrival_date             arrival_date
             ,TO_CHAR(xmrh.actual_arrival_date, gc_char_ym_format) arrival_ym
             ,iimb.item_no                         item_code
@@ -6701,10 +6738,14 @@ AS
       AND    gic3.item_id            = itc.item_id
       AND    gic3.category_set_id    = ln_crowd_code_id
       AND    gic3.category_id        = mcb3.category_id
+-- 2008/12/11 v1.26 N.Yoshida mod start
       AND    xrpm.rcv_pay_div        = CASE
-                                       WHEN itc.trans_qty >= 0 THEN 1
-                                       ELSE -1
+--                                       WHEN itc.trans_qty >= 0 THEN 1
+--                                       ELSE -1
+                                       WHEN itc.trans_qty >= 0 THEN -1
+                                       ELSE 1
                                        END
+-- 2008/12/11 v1.26 N.Yoshida mod end
       AND    xrpm.doc_type           = itc.doc_type
       AND    xrpm.reason_code        = itc.reason_code
       AND    xrpm.break_col_01       IS NOT NULL
@@ -8456,7 +8497,10 @@ AS
             ,itc.reason_code                      reason_code
             ,itc.trans_date                       trans_date
             ,TO_CHAR(itc.trans_date, 'YYYYMM')  trans_ym
-            ,gc_rcv_pay_div_adj                   rcv_pay_div
+-- 2008/12/11 v1.26 N.Yoshida mod start
+--            ,gc_rcv_pay_div_adj                   rcv_pay_div
+            ,xrpm.rcv_pay_div                     rcv_pay_div
+-- 2008/12/11 v1.26 N.Yoshida mod end
             ,xrpm.dealings_div                    dealings_div
             ,itc.doc_type                         doc_type
             ,ir_param.item_class                  item_div
@@ -8467,7 +8511,10 @@ AS
             ,SUBSTR(mcb3.segment1, 1, 1)          crowd_high
             ,itc.item_id                          item_id
             ,itc.lot_id                           lot_id
-            ,ABS(NVL(itc.trans_qty, 0))           trans_qty
+-- 2008/12/11 v1.26 N.Yoshida mod start
+--            ,ABS(NVL(itc.trans_qty, 0))           trans_qty
+            ,NVL(itc.trans_qty, 0)                trans_qty
+-- 2008/12/11 v1.26 N.Yoshida mod end
             ,xmrh.actual_arrival_date             arrival_date
             ,TO_CHAR(xmrh.actual_arrival_date, gc_char_ym_format) arrival_ym
             ,iimb.item_no                         item_code
@@ -8517,10 +8564,14 @@ AS
       AND    gic3.item_id            = itc.item_id
       AND    gic3.category_set_id    = ln_crowd_code_id
       AND    gic3.category_id        = mcb3.category_id
+-- 2008/12/11 v1.26 N.Yoshida mod start
       AND    xrpm.rcv_pay_div        = CASE
-                                       WHEN itc.trans_qty >= 0 THEN 1
-                                       ELSE -1
+--                                       WHEN itc.trans_qty >= 0 THEN 1
+--                                       ELSE -1
+                                       WHEN itc.trans_qty >= 0 THEN -1
+                                       ELSE 1
                                        END
+-- 2008/12/11 v1.26 N.Yoshida mod end
       AND    xrpm.doc_type           = itc.doc_type
       AND    xrpm.reason_code        = itc.reason_code
       AND    xrpm.break_col_01       IS NOT NULL
@@ -10243,7 +10294,10 @@ AS
             ,itc.reason_code                      reason_code
             ,itc.trans_date                       trans_date
             ,TO_CHAR(itc.trans_date, 'YYYYMM')  trans_ym
-            ,gc_rcv_pay_div_adj                   rcv_pay_div
+-- 2008/12/11 v1.26 N.Yoshida mod start
+--            ,gc_rcv_pay_div_adj                   rcv_pay_div
+            ,xrpm.rcv_pay_div                     rcv_pay_div
+-- 2008/12/11 v1.26 N.Yoshida mod end
             ,xrpm.dealings_div                    dealings_div
             ,itc.doc_type                         doc_type
             ,ir_param.item_class                  item_div
@@ -10254,7 +10308,10 @@ AS
             ,SUBSTR(mcb3.segment1, 1, 1)          crowd_high
             ,itc.item_id                          item_id
             ,itc.lot_id                           lot_id
-            ,ABS(NVL(itc.trans_qty, 0))           trans_qty
+-- 2008/12/11 v1.26 N.Yoshida mod start
+--            ,ABS(NVL(itc.trans_qty, 0))           trans_qty
+            ,NVL(itc.trans_qty, 0)                trans_qty
+-- 2008/12/11 v1.26 N.Yoshida mod end
             ,xmrh.actual_arrival_date             arrival_date
             ,TO_CHAR(xmrh.actual_arrival_date, gc_char_ym_format) arrival_ym
             ,iimb.item_no                         item_code
@@ -10304,10 +10361,14 @@ AS
       AND    gic3.item_id            = itc.item_id
       AND    gic3.category_set_id    = ln_crowd_code_id
       AND    gic3.category_id        = mcb3.category_id
+-- 2008/12/11 v1.26 N.Yoshida mod start
       AND    xrpm.rcv_pay_div        = CASE
-                                       WHEN itc.trans_qty >= 0 THEN 1
-                                       ELSE -1
+--                                       WHEN itc.trans_qty >= 0 THEN 1
+--                                       ELSE -1
+                                       WHEN itc.trans_qty >= 0 THEN -1
+                                       ELSE 1
                                        END
+-- 2008/12/11 v1.26 N.Yoshida mod end
       AND    xrpm.doc_type           = itc.doc_type
       AND    xrpm.reason_code        = itc.reason_code
       AND    xrpm.break_col_01       IS NOT NULL
