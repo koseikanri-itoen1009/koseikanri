@@ -7,7 +7,7 @@ AS
  * Description      : 「本振用FBデータ作成」にて支払対象となった
  *                     自販機販売手数料に関する仕訳を作成し、GLモジュールへ連携
  * MD.050           : GLインターフェイス（GL I/F） MD050_COK_017_A01
- * Version          : 1.1
+ * Version          : 1.2
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -29,6 +29,7 @@ AS
  * ------------- ----- ---------------- -------------------------------------------------
  *  2008/11/14    1.0   A.Yano           新規作成
  *  2009/03/03    1.1   A.Yano           [障害COK_071] GL記帳日の不具合対応
+ *  2009/05/13    1.2   M.Hiruta         [障害T1_0867] GLへ連携するデータの顧客コードにダミーを設定しないよう変更
  *
  *****************************************************************************************/
 --
@@ -1344,8 +1345,12 @@ AS
             ,it_sub_account               => lt_sub_account               -- 補助科目
             ,it_accounting_date           => lt_accounting_date           -- 仕訳有効日付
             ,it_currency_code             => lt_currency_code             -- 通貨コード
-            ,it_customer_code             => lt_customer_code             -- 顧客コード
-            ,it_corp_code                 => lt_corp_code                 -- 企業コード
+-- Start 2009/05/13 Ver_1.2 T1_0867 M.Hiruta
+--            ,it_customer_code             => lt_customer_code             -- 顧客コード
+--            ,it_corp_code                 => lt_corp_code                 -- 企業コード
+            ,it_customer_code             => g_gl_interface_rec.cust_code -- 顧客コード
+            ,it_corp_code                 => iv_corp_code                 -- 企業コード
+-- End   2009/05/13 Ver_1.2 T1_0867 M.Hiruta
             ,it_gl_name                   => lt_gl_name                   -- 仕訳名
             ,it_period_name               => lt_period_name               -- 会計期間名
             ,it_tax_code                  => lt_tax_code                  -- 税区分
@@ -1549,8 +1554,12 @@ AS
             ,it_sub_account               => lt_sub_account               -- 補助科目
             ,it_accounting_date           => lt_accounting_date           -- 仕訳有効日付
             ,it_currency_code             => lt_currency_code             -- 通貨コード
-            ,it_customer_code             => lt_customer_code             -- 顧客コード
-            ,it_corp_code                 => lt_corp_code                 -- 企業コード
+-- Start 2009/05/13 Ver_1.2 T1_0867 M.Hiruta
+--            ,it_customer_code             => lt_customer_code             -- 顧客コード
+--            ,it_corp_code                 => lt_corp_code                 -- 企業コード
+            ,it_customer_code             => g_gl_interface_rec.cust_code -- 顧客コード
+            ,it_corp_code                 => iv_corp_code                 -- 企業コード
+-- End   2009/05/13 Ver_1.2 T1_0867 M.Hiruta
             ,it_gl_name                   => lt_gl_name                   -- 仕訳名
             ,it_period_name               => lt_period_name               -- 会計期間名
             ,it_tax_code                  => lt_tax_code                  -- 税区分
