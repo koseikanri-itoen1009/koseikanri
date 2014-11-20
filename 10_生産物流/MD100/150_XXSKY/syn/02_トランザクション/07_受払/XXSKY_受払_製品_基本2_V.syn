@@ -1,0 +1,2 @@
+CREATE SYNONYM XXSKY.XXSKY_受払_製品_基本2_V FOR APPS.XXSKY_受払_製品_基本2_V
+/
