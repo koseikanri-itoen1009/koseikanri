@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCOP006A01C(body)
  * Description      : 横持計画
  * MD.050           : 横持計画 MD050_COP_006_A01
- * Version          : 1.3
+ * Version          : 1.4
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -39,6 +39,7 @@ AS
  *  2009/04/07    1.1   Y.Goto           T1_0273,T1_0274,T1_0289,T1_0366,T1_0367対応
  *  2009/04/14    1.2   Y.Goto           T1_0539,T1_0541対応
  *  2009/04/28    1.3   Y.Goto           T1_0846,T1_0920対応
+ *  2009/06/12    1.4   Y.Goto           T1_1394対応
  *
  *****************************************************************************************/
 --
@@ -420,6 +421,9 @@ AS
 --20090407_Ver1.1_T1_0289_SCS.Goto_ADD_START
     ,num_of_case             NUMBER
 --20090407_Ver1.1_T1_0289_SCS.Goto_ADD_END
+--20090612_Ver1.4_T1_1394_SCS.Goto_ADD_START
+    ,group_safty_stock       NUMBER
+--20090612_Ver1.4_T1_1394_SCS.Goto_ADD_END
   );
   --横持計画出力ワークテーブルCSV出力コレクション型
   TYPE g_xwypo_csv_ttype IS TABLE OF g_xwypo_csv_rtype
@@ -5504,6 +5508,14 @@ AS
 --20090407_Ver1.1_T1_0289_SCS.Goto_ADD_START
           ,NVL(TO_NUMBER(iimb.attribute11), 1)         num_of_case
 --20090407_Ver1.1_T1_0289_SCS.Goto_ADD_END
+--20090612_Ver1.4_T1_1394_SCS.Goto_ADD_START
+          ,MIN( xwypo.before_stock - xwypo.safety_days * xwypo.shipping_pace )
+            OVER ( PARTITION BY xwypo.group_id
+                               ,xwypo.ship_org_code
+                               ,xwypo.receipt_org_code
+                               ,xwypo.item_no
+                 )                                     group_safty_stock
+--20090612_Ver1.4_T1_1394_SCS.Goto_ADD_END
     BULK COLLECT INTO l_xwypo_csv_tab
     FROM xxcop_wk_yoko_plan_output xwypo
         ,fnd_lookup_values         flv1
@@ -5541,7 +5553,9 @@ AS
     --対象件数をセット
 --20090507_Ver1.3_T1_0846_SCS.Goto_MOD_START
 --    gn_target_cnt := l_xwypo_csv_tab.COUNT;
-    gn_target_cnt := gn_target_cnt + l_xwypo_csv_tab.COUNT;
+--20090612_Ver1.4_T1_1394_SCS.Goto_DEL_START
+--    gn_target_cnt := gn_target_cnt + l_xwypo_csv_tab.COUNT;
+--20090612_Ver1.4_T1_1394_SCS.Goto_DEL_END
 --20090507_Ver1.3_T1_0846_SCS.Goto_MOD_END
     --CSVファイルヘッダ出力
     lv_csvbuff := cv_csv_char_bracket || cv_put_column_01 || cv_csv_char_bracket || cv_csv_delimiter
@@ -5577,109 +5591,118 @@ AS
     FOR l_xwypo_idx IN l_xwypo_csv_tab.FIRST .. l_xwypo_csv_tab.LAST LOOP
       --初期化
       lv_csvbuff := NULL;
-      --移動元保管倉庫の取得
-      xxcop_common_pkg2.get_loct_info(
-         iv_organization_code => l_xwypo_csv_tab(l_xwypo_idx).ship_org_code
-        ,ov_loct_code         => lv_ship_loct_code
-        ,ov_loct_name         => lv_ship_loct_desc
-        ,ov_errbuf            => lv_errbuf
-        ,ov_retcode           => lv_retcode
-        ,ov_errmsg            => lv_errmsg
-      );
-      --移動先保管倉庫の取得
-      xxcop_common_pkg2.get_loct_info(
-         iv_organization_code => l_xwypo_csv_tab(l_xwypo_idx).receipt_org_code
-        ,ov_loct_code         => lv_receipt_loct_code
-        ,ov_loct_name         => lv_receipt_loct_desc
-        ,ov_errbuf            => lv_errbuf
-        ,ov_retcode           => lv_retcode
-        ,ov_errmsg            => lv_errmsg
-      );
-      --項目の編集
-      lv_csvbuff := cv_csv_char_bracket || TO_CHAR(l_xwypo_csv_tab(l_xwypo_idx).shipping_date, cv_csv_date_format)
-                 || cv_csv_char_bracket || cv_csv_delimiter
-                 || cv_csv_char_bracket || TO_CHAR(l_xwypo_csv_tab(l_xwypo_idx).receipt_date, cv_csv_date_format)
-                 || cv_csv_char_bracket || cv_csv_delimiter
-                 || cv_csv_char_bracket || lv_ship_loct_code
-                 || cv_csv_char_bracket || cv_csv_delimiter
-                 || cv_csv_char_bracket || lv_ship_loct_desc
-                 || cv_csv_char_bracket || cv_csv_delimiter
-                 || cv_csv_char_bracket || lv_receipt_loct_code
-                 || cv_csv_char_bracket || cv_csv_delimiter
-                 || cv_csv_char_bracket || lv_receipt_loct_desc
-                 || cv_csv_char_bracket || cv_csv_delimiter
-                 || cv_csv_char_bracket || l_xwypo_csv_tab(l_xwypo_idx).item_no
-                 || cv_csv_char_bracket || cv_csv_delimiter
-                 || cv_csv_char_bracket || l_xwypo_csv_tab(l_xwypo_idx).item_name
-                 || cv_csv_char_bracket || cv_csv_delimiter
-                 || cv_csv_char_bracket || l_xwypo_csv_tab(l_xwypo_idx).freshness_condition
-                 || cv_csv_char_bracket || cv_csv_delimiter
-                 || cv_csv_char_bracket || TO_CHAR(l_xwypo_csv_tab(l_xwypo_idx).manu_date, cv_csv_date_format)
-                 || cv_csv_char_bracket || cv_csv_delimiter
-                 || cv_csv_char_bracket || l_xwypo_csv_tab(l_xwypo_idx).quality_type
-                 || cv_csv_char_bracket || cv_csv_delimiter
+--20090612_Ver1.4_T1_1394_SCS.Goto_ADD_START
+      IF ( l_xwypo_csv_tab(l_xwypo_idx).group_safty_stock < 0 ) THEN
+--20090612_Ver1.4_T1_1394_SCS.Goto_ADD_END
+        --移動元保管倉庫の取得
+        xxcop_common_pkg2.get_loct_info(
+           iv_organization_code => l_xwypo_csv_tab(l_xwypo_idx).ship_org_code
+          ,ov_loct_code         => lv_ship_loct_code
+          ,ov_loct_name         => lv_ship_loct_desc
+          ,ov_errbuf            => lv_errbuf
+          ,ov_retcode           => lv_retcode
+          ,ov_errmsg            => lv_errmsg
+        );
+        --移動先保管倉庫の取得
+        xxcop_common_pkg2.get_loct_info(
+           iv_organization_code => l_xwypo_csv_tab(l_xwypo_idx).receipt_org_code
+          ,ov_loct_code         => lv_receipt_loct_code
+          ,ov_loct_name         => lv_receipt_loct_desc
+          ,ov_errbuf            => lv_errbuf
+          ,ov_retcode           => lv_retcode
+          ,ov_errmsg            => lv_errmsg
+        );
+        --項目の編集
+        lv_csvbuff := cv_csv_char_bracket || TO_CHAR(l_xwypo_csv_tab(l_xwypo_idx).shipping_date, cv_csv_date_format)
+                   || cv_csv_char_bracket || cv_csv_delimiter
+                   || cv_csv_char_bracket || TO_CHAR(l_xwypo_csv_tab(l_xwypo_idx).receipt_date, cv_csv_date_format)
+                   || cv_csv_char_bracket || cv_csv_delimiter
+                   || cv_csv_char_bracket || lv_ship_loct_code
+                   || cv_csv_char_bracket || cv_csv_delimiter
+                   || cv_csv_char_bracket || lv_ship_loct_desc
+                   || cv_csv_char_bracket || cv_csv_delimiter
+                   || cv_csv_char_bracket || lv_receipt_loct_code
+                   || cv_csv_char_bracket || cv_csv_delimiter
+                   || cv_csv_char_bracket || lv_receipt_loct_desc
+                   || cv_csv_char_bracket || cv_csv_delimiter
+                   || cv_csv_char_bracket || l_xwypo_csv_tab(l_xwypo_idx).item_no
+                   || cv_csv_char_bracket || cv_csv_delimiter
+                   || cv_csv_char_bracket || l_xwypo_csv_tab(l_xwypo_idx).item_name
+                   || cv_csv_char_bracket || cv_csv_delimiter
+                   || cv_csv_char_bracket || l_xwypo_csv_tab(l_xwypo_idx).freshness_condition
+                   || cv_csv_char_bracket || cv_csv_delimiter
+                   || cv_csv_char_bracket || TO_CHAR(l_xwypo_csv_tab(l_xwypo_idx).manu_date, cv_csv_date_format)
+                   || cv_csv_char_bracket || cv_csv_delimiter
+                   || cv_csv_char_bracket || l_xwypo_csv_tab(l_xwypo_idx).quality_type
+                   || cv_csv_char_bracket || cv_csv_delimiter
 --20090407_Ver1.1_T1_0289_SCS.Goto_ADD_START
---                 || cv_csv_char_bracket || TO_CHAR(l_xwypo_csv_tab(l_xwypo_idx).plan_min_qty)
-                 || cv_csv_char_bracket || TO_CHAR(TRUNC(l_xwypo_csv_tab(l_xwypo_idx).plan_min_qty
+--                   || cv_csv_char_bracket || TO_CHAR(l_xwypo_csv_tab(l_xwypo_idx).plan_min_qty)
+                   || cv_csv_char_bracket || TO_CHAR(TRUNC(l_xwypo_csv_tab(l_xwypo_idx).plan_min_qty
+                                                         / l_xwypo_csv_tab(l_xwypo_idx).num_of_case))
+--20090407_Ver1.1_T1_0289_SCS.Goto_ADD_END
+                   || cv_csv_char_bracket || cv_csv_delimiter
+--20090407_Ver1.1_T1_0289_SCS.Goto_ADD_START
+--                   || cv_csv_char_bracket || TO_CHAR(l_xwypo_csv_tab(l_xwypo_idx).plan_max_qty)
+                   || cv_csv_char_bracket || TO_CHAR(TRUNC(l_xwypo_csv_tab(l_xwypo_idx).plan_max_qty
                                                        / l_xwypo_csv_tab(l_xwypo_idx).num_of_case))
 --20090407_Ver1.1_T1_0289_SCS.Goto_ADD_END
-                 || cv_csv_char_bracket || cv_csv_delimiter
+                   || cv_csv_char_bracket || cv_csv_delimiter
 --20090407_Ver1.1_T1_0289_SCS.Goto_ADD_START
---                 || cv_csv_char_bracket || TO_CHAR(l_xwypo_csv_tab(l_xwypo_idx).plan_max_qty)
-                 || cv_csv_char_bracket || TO_CHAR(TRUNC(l_xwypo_csv_tab(l_xwypo_idx).plan_max_qty
+--                   || cv_csv_char_bracket || TO_CHAR(l_xwypo_csv_tab(l_xwypo_idx).plan_bal_qty)
+                   || cv_csv_char_bracket || TO_CHAR(TRUNC(l_xwypo_csv_tab(l_xwypo_idx).plan_bal_qty
                                                        / l_xwypo_csv_tab(l_xwypo_idx).num_of_case))
 --20090407_Ver1.1_T1_0289_SCS.Goto_ADD_END
-                 || cv_csv_char_bracket || cv_csv_delimiter
+                   || cv_csv_char_bracket || cv_csv_delimiter
+                   || cv_csv_char_bracket || l_xwypo_csv_tab(l_xwypo_idx).delivery_unit
+                   || cv_csv_char_bracket || cv_csv_delimiter
 --20090407_Ver1.1_T1_0289_SCS.Goto_ADD_START
---                 || cv_csv_char_bracket || TO_CHAR(l_xwypo_csv_tab(l_xwypo_idx).plan_bal_qty)
-                 || cv_csv_char_bracket || TO_CHAR(TRUNC(l_xwypo_csv_tab(l_xwypo_idx).plan_bal_qty
-                                                       / l_xwypo_csv_tab(l_xwypo_idx).num_of_case))
+--                   || cv_csv_char_bracket || TO_CHAR(l_xwypo_csv_tab(l_xwypo_idx).before_stock)
+                   || cv_csv_char_bracket || TO_CHAR(TRUNC(l_xwypo_csv_tab(l_xwypo_idx).before_stock
+                                                         / l_xwypo_csv_tab(l_xwypo_idx).num_of_case))
 --20090407_Ver1.1_T1_0289_SCS.Goto_ADD_END
-                 || cv_csv_char_bracket || cv_csv_delimiter
-                 || cv_csv_char_bracket || l_xwypo_csv_tab(l_xwypo_idx).delivery_unit
-                 || cv_csv_char_bracket || cv_csv_delimiter
+                   || cv_csv_char_bracket || cv_csv_delimiter
 --20090407_Ver1.1_T1_0289_SCS.Goto_ADD_START
---                 || cv_csv_char_bracket || TO_CHAR(l_xwypo_csv_tab(l_xwypo_idx).before_stock)
-                 || cv_csv_char_bracket || TO_CHAR(TRUNC(l_xwypo_csv_tab(l_xwypo_idx).before_stock
-                                                       / l_xwypo_csv_tab(l_xwypo_idx).num_of_case))
+--                   || cv_csv_char_bracket || TO_CHAR(l_xwypo_csv_tab(l_xwypo_idx).after_stock)
+                   || cv_csv_char_bracket || TO_CHAR(TRUNC(l_xwypo_csv_tab(l_xwypo_idx).after_stock
+                                                         / l_xwypo_csv_tab(l_xwypo_idx).num_of_case))
 --20090407_Ver1.1_T1_0289_SCS.Goto_ADD_END
-                 || cv_csv_char_bracket || cv_csv_delimiter
+                   || cv_csv_char_bracket || cv_csv_delimiter
 --20090407_Ver1.1_T1_0289_SCS.Goto_ADD_START
---                 || cv_csv_char_bracket || TO_CHAR(l_xwypo_csv_tab(l_xwypo_idx).after_stock)
-                 || cv_csv_char_bracket || TO_CHAR(TRUNC(l_xwypo_csv_tab(l_xwypo_idx).after_stock
-                                                       / l_xwypo_csv_tab(l_xwypo_idx).num_of_case))
+--                   || cv_csv_char_bracket || TO_CHAR(l_xwypo_csv_tab(l_xwypo_idx).safety_stock)
+                   || cv_csv_char_bracket || TO_CHAR(TRUNC(l_xwypo_csv_tab(l_xwypo_idx).safety_stock
+                                                         / l_xwypo_csv_tab(l_xwypo_idx).num_of_case))
 --20090407_Ver1.1_T1_0289_SCS.Goto_ADD_END
-                 || cv_csv_char_bracket || cv_csv_delimiter
+                   || cv_csv_char_bracket || cv_csv_delimiter
 --20090407_Ver1.1_T1_0289_SCS.Goto_ADD_START
---                 || cv_csv_char_bracket || TO_CHAR(l_xwypo_csv_tab(l_xwypo_idx).safety_stock)
-                 || cv_csv_char_bracket || TO_CHAR(TRUNC(l_xwypo_csv_tab(l_xwypo_idx).safety_stock
-                                                       / l_xwypo_csv_tab(l_xwypo_idx).num_of_case))
+--                   || cv_csv_char_bracket || TO_CHAR(l_xwypo_csv_tab(l_xwypo_idx).max_stock)
+                   || cv_csv_char_bracket || TO_CHAR(TRUNC(l_xwypo_csv_tab(l_xwypo_idx).max_stock
+                                                         / l_xwypo_csv_tab(l_xwypo_idx).num_of_case))
 --20090407_Ver1.1_T1_0289_SCS.Goto_ADD_END
-                 || cv_csv_char_bracket || cv_csv_delimiter
+                   || cv_csv_char_bracket || cv_csv_delimiter
 --20090407_Ver1.1_T1_0289_SCS.Goto_ADD_START
---                 || cv_csv_char_bracket || TO_CHAR(l_xwypo_csv_tab(l_xwypo_idx).max_stock)
-                 || cv_csv_char_bracket || TO_CHAR(TRUNC(l_xwypo_csv_tab(l_xwypo_idx).max_stock
-                                                       / l_xwypo_csv_tab(l_xwypo_idx).num_of_case))
+--                   || cv_csv_char_bracket || TO_CHAR(l_xwypo_csv_tab(l_xwypo_idx).shipping_pace)
+                   || cv_csv_char_bracket || TO_CHAR(TRUNC(l_xwypo_csv_tab(l_xwypo_idx).shipping_pace
+                                                         / l_xwypo_csv_tab(l_xwypo_idx).num_of_case))
 --20090407_Ver1.1_T1_0289_SCS.Goto_ADD_END
-                 || cv_csv_char_bracket || cv_csv_delimiter
---20090407_Ver1.1_T1_0289_SCS.Goto_ADD_START
---                 || cv_csv_char_bracket || TO_CHAR(l_xwypo_csv_tab(l_xwypo_idx).shipping_pace)
-                 || cv_csv_char_bracket || TO_CHAR(TRUNC(l_xwypo_csv_tab(l_xwypo_idx).shipping_pace
-                                                       / l_xwypo_csv_tab(l_xwypo_idx).num_of_case))
---20090407_Ver1.1_T1_0289_SCS.Goto_ADD_END
-                 || cv_csv_char_bracket || cv_csv_delimiter
-                 || cv_csv_char_bracket || l_xwypo_csv_tab(l_xwypo_idx).special_yoko_type
-                 || cv_csv_char_bracket || cv_csv_delimiter
-                 || cv_csv_char_bracket || l_xwypo_csv_tab(l_xwypo_idx).supp_bad_type
-                 || cv_csv_char_bracket || cv_csv_delimiter
-                 || cv_csv_char_bracket || l_xwypo_csv_tab(l_xwypo_idx).lot_revers_type
-                 || cv_csv_char_bracket;
-      --処理結果レポートに出力
-      fnd_file.put_line(
-         which  => FND_FILE.OUTPUT
-        ,buff   => lv_csvbuff
-      );
-      gn_normal_cnt := gn_normal_cnt + 1;
+                   || cv_csv_char_bracket || cv_csv_delimiter
+                   || cv_csv_char_bracket || l_xwypo_csv_tab(l_xwypo_idx).special_yoko_type
+                   || cv_csv_char_bracket || cv_csv_delimiter
+                   || cv_csv_char_bracket || l_xwypo_csv_tab(l_xwypo_idx).supp_bad_type
+                   || cv_csv_char_bracket || cv_csv_delimiter
+                   || cv_csv_char_bracket || l_xwypo_csv_tab(l_xwypo_idx).lot_revers_type
+                   || cv_csv_char_bracket;
+        --処理結果レポートに出力
+        fnd_file.put_line(
+           which  => FND_FILE.OUTPUT
+          ,buff   => lv_csvbuff
+        );
+--20090612_Ver1.4_T1_1394_SCS.Goto_ADD_START
+        gn_target_cnt := gn_target_cnt + 1;
+--20090612_Ver1.4_T1_1394_SCS.Goto_ADD_END
+        gn_normal_cnt := gn_normal_cnt + 1;
+--20090612_Ver1.4_T1_1394_SCS.Goto_ADD_START
+      END IF;
+--20090612_Ver1.4_T1_1394_SCS.Goto_ADD_END
     END LOOP xwypo_loop;
 --
   EXCEPTION
