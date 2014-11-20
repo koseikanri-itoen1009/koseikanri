@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCSM002A05C(body)
  * Description      : 商品計画単品別按分処理
  * MD.050           : 商品計画単品別按分処理 MD050_CSM_002_A05
- * Version          : 1.5
+ * Version          : 1.6
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -39,6 +39,7 @@ AS
  *  2009/03/02    1.3   M.Ohtsuki       ［障害CT_073］ 値引き用品目不具合の対応
  *  2009/05/07    1.4   T.Tsukino       ［障害T1_0792］チェックリストに出力される新商品予算の粗利益額が不正
  *  2009/05/19    1.5   T.Tsukino       ［障害T1_1069］T1_0792対応不良の対応
+ *  2009/05/27    1.6   A.Sakawa         [障害T1_1173] T1_0069対応不良(0除算)対応
  *
   *****************************************************************************************/
 --
@@ -2898,12 +2899,30 @@ AS
             --③新商品計画値算出
             ln_new_plan_sales := ln_new_sales_budget - NVL(ln_month_sales_sum,0);
             ln_new_plan_gross := ln_new_gross_budget - NVL(ln_month_gross_sum,0);
---//UPD START 2009/05/19 T1_1069 T.Tsukino
-            -- 数量 = ( ( 売上 - 粗利益額 ) / 原価(1つあたり) )
-            ln_new_plan_amount :=  ROUND(((ln_new_plan_sales - ln_new_plan_gross) / lv_new_item_cost),0);
-            -- 掛率 = ( 売上 / ( 数量 * 定価) ) * 100        
-            ln_new_plan_credit :=  ROUND((ln_new_plan_sales / (ln_new_plan_amount * lv_new_item_price)) * 100,2);
---//UPD END 2009/05/19 T1_1069 T.Tsukino
+            --//ADD START 2009/05/27 T1_1173 A.Sakawa
+            IF ( lv_new_item_cost = 0 ) THEN
+              -- 数量に0をセット
+              ln_new_plan_amount := 0;
+            ELSE
+            --//ADD END 2009/05/27 T1_1173 A.Sakawa
+              --//UPD START 2009/05/19 T1_1069 T.Tsukino
+              -- 数量 = ( ( 売上 - 粗利益額 ) / 原価(1つあたり) )
+              ln_new_plan_amount :=  ROUND(((ln_new_plan_sales - ln_new_plan_gross) / lv_new_item_cost),0);
+              --//UPD END 2009/05/19 T1_1069 T.Tsukino
+            --//ADD START 2009/05/27 T1_1173 A.Sakawa
+            END IF;
+            IF ( ln_new_plan_amount * lv_new_item_price = 0 ) THEN
+              -- 掛率に0をセット
+              ln_new_plan_credit := 0;
+            ELSE
+            --//ADD END 2009/05/27 T1_1173 A.Sakawa
+              --//UPD START 2009/05/19 T1_1069 T.Tsukino
+              -- 掛率 = ( 売上 / ( 数量 * 定価) ) * 100        
+              ln_new_plan_credit :=  ROUND((ln_new_plan_sales / (ln_new_plan_amount * lv_new_item_price)) * 100,2);
+              --//UPD END 2009/05/19 T1_1069 T.Tsukino
+            --//ADD START 2009/05/27 T1_1173 A.Sakawa
+            END IF;
+            --//ADD END 2009/05/27 T1_1173 A.Sakawa
             --新商品登録値保存
             lr_new_plan_rec.item_plan_header_id    := lt_item_plan_header_id;         --商品計画ヘッダID
             lr_new_plan_rec.item_plan_lines_id     := NULL;
@@ -2913,16 +2932,16 @@ AS
             lr_new_plan_rec.item_kbn               := '2';                            --商品区分(2：新商品)
             lr_new_plan_rec.item_no                := lv_new_item_no;                 --商品コード
             lr_new_plan_rec.item_group_no          := lt_item_group_no;               --商品群コード
---//UPD START 2009/05/07 T1_0792 T.Tsukino
+            --//UPD START 2009/05/07 T1_0792 T.Tsukino
             --lr_new_plan_rec.amount                 := 0;                              --数量
             lr_new_plan_rec.amount                 := ln_new_plan_amount;               --数量
---//UPD END 2009/05/07 T1_0792 T.Tsukino
+            --//UPD END 2009/05/07 T1_0792 T.Tsukino
             lr_new_plan_rec.sales_budget           := ln_new_plan_sales;              --売上金額
             lr_new_plan_rec.amount_gross_margin    := ln_new_plan_gross;              --粗利益(新)
---//UPD START 2009/05/07 T1_0792 T.Tsukino
+            --//UPD START 2009/05/07 T1_0792 T.Tsukino
             --lr_new_plan_rec.credit_rate            := 0;                              --掛率
             lr_new_plan_rec.credit_rate            := ln_new_plan_credit;             --掛率
---//UPD END 2009/05/07 T1_0792 T.Tsukino
+            --//UPD END 2009/05/07 T1_0792 T.Tsukino
             lr_new_plan_rec.margin_rate            := 0;                              --粗利益率(新)
             lr_new_plan_rec.created_by             := cn_created_by;                  --作成者
             lr_new_plan_rec.creation_date          := cd_creation_date;               --作成日
