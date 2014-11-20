@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCOS002A031R(body)
  * Description      : 営業成績表
  * MD.050           : 営業成績表 MD050_COS_002_A03
- * Version          : 1.4
+ * Version          : 1.5
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -42,6 +42,7 @@ AS
  *  2009/02/26    1.2   T.Nakabayashi    MD050課題No153対応 従業員、アサインメント適用日判断追加
  *  2009/02/27    1.3   T.Nakabayashi    帳票ワークテーブル削除処理 コメントアウト解除
  *  2009/06/09    1.4   T.Tominaga       帳票ワークテーブル削除処理"delete_rpt_wrk_data" コメントアウト解除
+ *  2009/06/18    1.5   K.Kiriu          [T1_1446]PT対応
  *
  *****************************************************************************************/
 --
@@ -3165,17 +3166,32 @@ AS
     --  パラメータ．出力単位に「1：全て（各営業員、課集計、拠点集計）」、「2：課集計（各営業員、課集計）」が
     --  指定された場合は課(グループ)が共通データ．ダミー営業グループコードと一致する個人別成績表のみ削除します。
     BEGIN
-      DELETE
-      FROM      xxcos_rep_bus_perf            xrbp
-      WHERE (   iv_unit_of_output             IN      (cv_para_unit_base_only, cv_para_unit_section_only)
-            AND xrbp.sum_data_class           =       ct_sum_data_cls_employee
-            AND xrbp.request_id               =       cn_request_id
-            )
-      OR    (   iv_unit_of_output             IN      (cv_para_unit_all, cv_para_unit_section_sum)
-            AND xrbp.section_code             =       gt_prof_dummy_sales_group
-            AND xrbp.request_id               =       cn_request_id
-            )
-      ;
+/* 2009/06/18 Ver1.5 Mod Start */
+--      DELETE
+--      FROM      xxcos_rep_bus_perf            xrbp
+--      WHERE (   iv_unit_of_output             IN      (cv_para_unit_base_only, cv_para_unit_section_only)
+--            AND xrbp.sum_data_class           =       ct_sum_data_cls_employee
+--            AND xrbp.request_id               =       cn_request_id
+--            )
+--      OR    (   iv_unit_of_output             IN      (cv_para_unit_all, cv_para_unit_section_sum)
+--            AND xrbp.section_code             =       gt_prof_dummy_sales_group
+--            AND xrbp.request_id               =       cn_request_id
+--            )
+--      ;
+      IF ( iv_unit_of_output IN ( cv_para_unit_base_only, cv_para_unit_section_only ) ) THEN
+        DELETE
+        FROM   xxcos_rep_bus_perf  xrbp
+        WHERE  xrbp.sum_data_class  = ct_sum_data_cls_employee
+        AND    xrbp.request_id      = cn_request_id
+        ;
+      ELSIF ( iv_unit_of_output IN ( cv_para_unit_all, cv_para_unit_section_sum ) ) THEN
+        DELETE
+        FROM   xxcos_rep_bus_perf  xrbp
+        WHERE  xrbp.section_code    = gt_prof_dummy_sales_group
+        AND    xrbp.request_id      = cn_request_id
+        ;
+      END IF;
+/* 2009/06/18 Ver1.5 Mod End */
     EXCEPTION
       WHEN OTHERS THEN
         lt_table_name := xxccp_common_pkg.get_msg(

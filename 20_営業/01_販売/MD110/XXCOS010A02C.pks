@@ -1,4 +1,4 @@
-CREATE OR REPLACE PACKAGE XXCOS010A02C
+CREATE OR REPLACE PACKAGE APPS.XXCOS010A02C
 AS
 /*****************************************************************************************
  * Copyright(c)Sumisho Computer Systems Corporation, 2008. All rights reserved.
@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCOS010A02C(spec)
  * Description      : 受注OIFへの取込機能
  * MD.050           : 受注OIFへの取込(MD050_COS_010_A02) 
- * Version          : 1.5
+ * Version          : 1.6
  *
  * Program List
  * -------------------- ------------------------------------------------------------
@@ -26,6 +26,7 @@ AS
  *  2009/04/15    1.4   T.Kitajima       [T1_0484]検索用拠点取得方法変更
  *                                       [T1_0469]受注明細 顧客発注番号の編集修正
  *  2009/05/08    1.5   T.Kitajima       [T1_0780]価格計算フラグ設定方法変更
+ *  2009/06/17    1.6   K.Kiriu          [T1_1462]ロック不備対応
  *
  *****************************************************************************************/
 --
