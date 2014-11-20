@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCFO019A08C(body)
  * Description      : 電子帳簿自販機販売手数料の情報系システム連携
  * MD.050           : 電子帳簿自販機販売手数料の情報系システム連携 <MD050_CFO_019_A08>
- * Version          : 1.2
+ * Version          : 1.3
  *
  * Program List
  * ---------------------------- ----------------------------------------------------------
@@ -16,13 +16,18 @@ AS
  *  get_bm_balance_control       管理テーブルデータ取得処理(A-2)
  *  get_bm_rtn_info              組み戻し管理データ未連携テーブル追加(A-3)
  *  get_bm_balance_wait          未連携データ取得処理(A-4)
- *  get_bm_balance_rtn_info      組み戻し情報取得処理(A-6)
+-- 2013/01/31 Ver.1.3 T.Nakano Del Start
+-- *  get_bm_balance_rtn_info      組み戻し情報取得処理(A-6)
+-- 2013/01/31 Ver.1.3 T.Nakano Del End
  *  chk_item                     項目チェック処理(A-7)
  *  out_csv                      ＣＳＶ出力処理(A-8)
  *  ins_bm_balance_wait_coop     未連携テーブル登録処理(A-9)
  *  get_bm_balance               対象データ抽出(A-5)
  *  upd_bm_balance_control       管理テーブル登録・更新処理(A-10)
  *  del_bm_balance_wait          未連携テーブル削除処理(A-11)
+-- 2013/01/31 Ver.1.3 T.Nakano Add Start
+ *  upd_bm_balance_rtn_info      組み戻し情報更新処理(A-13)
+-- 2013/01/31 Ver.1.3 T.Nakano Add End
  *  main                         コンカレント実行ファイル登録プロシージャ
  *                               終了処理(A-12)
  *
@@ -33,6 +38,7 @@ AS
  *  2012/09/24    1.0   T.Osawa          新規作成
  *  2012/11/28    1.1   T.Osawa          管理テーブル更新対応、手動実行時（ＧＬ未連携対応）
  *  2012/12/18    1.2   T.Ishiwata       性能改善対応
+ *  2013/01/31    1.3   T.Nakano         障害「E_本稼動_10425」対応
  *
  *****************************************************************************************/
 --
@@ -134,6 +140,9 @@ AS
   cv_msg_cfo_11112                      CONSTANT VARCHAR2(500) := 'APP-XXCFO1-11112';   --販手残高テーブル
   cv_msg_cfo_11121                      CONSTANT VARCHAR2(500) := 'APP-XXCFO1-11121';   --未連携件数（組み戻しデータ追加分）
   cv_msg_coi_00029                      CONSTANT VARCHAR2(500) := 'APP-XXCOI1-00029';   --ディレクトリフルパス取得エラーメッセージ
+-- 2013/01/31 Ver.1.3 T.Nakano Add Start
+  cv_msg_cfo_10036                      CONSTANT VARCHAR2(500) := 'APP-XXCFO1-10036';   --対象件数（組み戻し分）メッセージ
+-- 2013/01/31 Ver.1.3 T.Nakano Add End
   --  
   --トークン
   cv_token_info                         CONSTANT VARCHAR2(10)  := 'INFO';               --トークン名(INFO)
@@ -189,6 +198,9 @@ AS
   --データタイプ
   cv_data_type_bm_balance               CONSTANT VARCHAR2(1)   := '1';                    --販手残高テーブル
   cv_data_type_coop                     CONSTANT VARCHAR2(1)   := '2';                    --自販機販売手数料未連携テーブル
+-- 2013/01/31 Ver.1.3 T.Nakano Add Start
+  cv_data_type_bm_balance_rtn           CONSTANT VARCHAR2(1)   := '3';                    --自販機販売手数料組み戻し管理テーブル
+-- 2013/01/31 Ver.1.3 T.Nakano Add End
   --追加更新区分
   cv_ins_upd_0                          CONSTANT VARCHAR2(1)   := '0';                    --追加
   cv_ins_upd_1                          CONSTANT VARCHAR2(1)   := '1';                    --更新
@@ -245,6 +257,14 @@ AS
                                         INDEX BY PLS_INTEGER;
   TYPE g_control_rowid_ttype            IS TABLE OF UROWID
                                         INDEX BY PLS_INTEGER;
+-- 2013/01/31 Ver.1.3 T.Nakano Add Start
+  -- 組み戻し管理テーブルrowid
+  TYPE g_rtn_info_rowid_ttype           IS TABLE OF UROWID
+                                        INDEX BY PLS_INTEGER;
+  TYPE g_rtn_info_rowid_vttype          IS TABLE OF UROWID
+                                        INDEX BY VARCHAR2(40);
+-- 2013/01/31 Ver.1.3 T.Nakano Add End
+--
   --共通関数チェック用
   gt_item_name                          g_item_name_ttype;                                --項目名称
   gt_item_len                           g_item_len_ttype;                                 --項目の長さ
@@ -259,7 +279,11 @@ AS
   gt_control_rowid_tbl                  g_control_rowid_ttype;                            --管理テーブルROWID 
   gt_control_header_id_tbl              g_control_bm_balance_id_ttype;                    --管理テーブルID
   --自販機販売手数料組み戻し管理テーブル
-  gt_rtn_info_rowid_tbl                 g_bm_balance_rowid_ttype;                         --組み戻し管理テーブルROWID
+-- 2013/01/31 Ver.1.3 T.Nakano Mod Start
+--  gt_rtn_info_rowid_tbl                 g_bm_balance_rowid_ttype;                         --組み戻し管理テーブルROWID
+  gt_rtn_info_rowid_tbl                 g_rtn_info_rowid_ttype;                           --組み戻し管理テーブルROWID
+  gt_rtn_info_err_rowid                 g_rtn_info_rowid_vttype;                          --組み戻し管理テーブルROWID(エラー分)
+-- 2013/01/31 Ver.1.3 T.Nakano Mod Start
 --
   -- ===============================
   -- ユーザー定義グローバル変数
@@ -298,6 +322,9 @@ AS
   gn_target_coop_cnt                    NUMBER;                                           --未連携テーブル対象件数
   gn_out_coop_cnt                       NUMBER;                                           --未連携テーブル出力件数
   gn_out_rtn_coop_cnt                   NUMBER;                                           --未連携テーブル出力件数（組み戻し）
+-- 2013/01/31 Ver.1.3 T.Nakano Add Start
+  gn_target_rtn_cnt                     NUMBER;                                           --組み戻しテーブル対象件数
+-- 2013/01/31 Ver.1.3 T.Nakano Add End
   --
   gd_business_date                      DATE;                                             --業務日付
   gb_status_warn                        BOOLEAN := FALSE;                                 --警告発生
@@ -1198,6 +1225,9 @@ AS
     -- *** ローカル変数 ***
     lt_bm_balance_id                    xxcfo_bm_balance_wait_coop.bm_balance_id%TYPE;
     ln_upd_idx                          NUMBER;
+-- 2013/01/31 Ver.1.3 T.Nakano Add Start
+    lt_dencho_interface_flag            xxcok_bm_balance_rtn_info.dencho_interface_flag%TYPE;
+-- 2013/01/31 Ver.1.3 T.Nakano Add End
 --
     -- *** ローカル・カーソル ***
     --自販機販売手数料組み戻し管理テーブル取得用カーソル
@@ -1230,6 +1260,10 @@ AS
    ov_retcode := cv_status_normal;
 --
 --###########################  固定部 END   ############################
+-- 2013/01/31 Ver.1.3 T.Nakano Add Start
+    --ローカル変数の初期化
+    lt_dencho_interface_flag := cv_flag_n;
+-- 2013/01/31 Ver.1.3 T.Nakano Add End
 --
     -- ***************************************
     -- ***        実処理の記述             ***
@@ -1240,6 +1274,11 @@ AS
     --定期実行の場合
     --==============================================================
     IF ( gv_exec_kbn = cv_exec_fixed_period )  THEN
+-- 2013/01/31 Ver.1.3 T.Nakano Add Start
+      --更新処理を行う為、ロックカーソルをオープンにする
+      OPEN bm_balance_rtn_info_lock_cur;
+--
+-- 2013/01/31 Ver.1.3 T.Nakano Add End
       --==============================================================
       -- 1.1  自販機販売手数料組み戻し管理テーブルのデータ取得
       --==============================================================
@@ -1262,7 +1301,22 @@ AS
               , ov_errmsg               =>        lv_errmsg
               );
             --
+-- 2013/01/31 Ver.1.3 T.Nakano Add Start
+            --自販機販売手数料未連携テーブルにレコードが存在しない場合、電子帳簿送信済フラグを'Y'に更新する
+            lt_dencho_interface_flag := cv_flag_y;
+-- 2013/01/31 Ver.1.3 T.Nakano Add End
+--
         END;
+--
+-- 2013/01/31 Ver.1.3 T.Nakano Add Start
+        --自販機販売手数料組み戻し管理テーブルの電子帳簿送信済フラグを更新する
+        UPDATE    xxcok_bm_balance_rtn_info         xbbri
+        SET       xbbri.dencho_interface_flag  =  lt_dencho_interface_flag
+        WHERE     xbbri.bm_balance_id   =   bm_balance_rtn_info_rec.bm_balance_id
+        AND       xbbri.eb_status IS NULL
+        ;
+-- 2013/01/31 Ver.1.3 T.Nakano Add End
+--
       END LOOP;
       --
       gn_out_rtn_coop_cnt   :=  gn_out_coop_cnt ;
@@ -1271,7 +1325,9 @@ AS
       --==============================================================
       -- 1.2  自販機販売手数料組み戻し管理テーブルの更新
       --==============================================================
-      OPEN bm_balance_rtn_info_lock_cur;
+-- 2013/01/31 Ver.1.3 T.Nakano Del Start
+--      OPEN bm_balance_rtn_info_lock_cur;
+-- 2013/01/31 Ver.1.3 T.Nakano Del End
       FETCH bm_balance_rtn_info_lock_cur BULK COLLECT INTO gt_rtn_info_rowid_tbl;
       CLOSE bm_balance_rtn_info_lock_cur;
       --更新
@@ -1447,139 +1503,142 @@ AS
       --
   END get_bm_balance_wait;
 --
-  /**********************************************************************************
-   * Procedure Name   : get_bm_balance_rtn_info
-   * Description      : 組み戻し情報取得処理(A-6)
-   ***********************************************************************************/
-  PROCEDURE get_bm_balance_rtn_info(
-    ov_errbuf           OUT VARCHAR2,             --エラー・メッセージ                  --# 固定 #
-    ov_retcode          OUT VARCHAR2,             --リターン・コード                    --# 固定 #
-    ov_errmsg           OUT VARCHAR2)             --ユーザー・エラー・メッセージ        --# 固定 #
-  IS
-    -- ===============================
-    -- 固定ローカル定数
-    -- ===============================
-    cv_prg_name   CONSTANT VARCHAR2(100) := 'get_bm_balance_rtn_info'; -- プログラム名
+-- 2013/01/31 Ver.1.3 T.Nakano Del Start
+--  /**********************************************************************************
+--   * Procedure Name   : get_bm_balance_rtn_info
+--   * Description      : 組み戻し情報取得処理(A-6)
+--   ***********************************************************************************/
+--  PROCEDURE get_bm_balance_rtn_info(
+--    ov_errbuf           OUT VARCHAR2,             --エラー・メッセージ                  --# 固定 #
+--    ov_retcode          OUT VARCHAR2,             --リターン・コード                    --# 固定 #
+--    ov_errmsg           OUT VARCHAR2)             --ユーザー・エラー・メッセージ        --# 固定 #
+--  IS
+--    -- ===============================
+--    -- 固定ローカル定数
+--    -- ===============================
+--    cv_prg_name   CONSTANT VARCHAR2(100) := 'get_bm_balance_rtn_info'; -- プログラム名
+----
+----#######################  固定ローカル変数宣言部 START   ######################
+----
+--    lv_errbuf  VARCHAR2(5000);  -- エラー・メッセージ
+--    lv_retcode VARCHAR2(1);     -- リターン・コード
+--    lv_errmsg  VARCHAR2(5000);  -- ユーザー・エラー・メッセージ
+----
+----###########################  固定部 END   ####################################
+----
+--    -- ===============================
+--    -- ユーザー宣言部
+--    -- ===============================
+--    -- *** ローカル定数 ***
+----
+--    -- *** ローカル変数 ***
+--    ln_rtn_info_cnt           NUMBER    :=  0;
+----
+--    -- *** カーソル ***
+--    CURSOR bm_balance_rtn_info_cur 
+--    IS
+--      SELECT    TO_CHAR(xbbri.expect_payment_amt_tax)      
+--                                                  AS  expect_payment_amt_tax    --支払予定額（税込）
+--              , TO_CHAR(xbbri.payment_amt_tax)    AS  payment_amt_tax           --支払額（税込）
+--              , TO_CHAR(xbbri.balance_cancel_date, cv_date_format1)
+--                                                  AS  balance_cancel_date       --残高取消日
+--              , xbbri.return_flag                 AS  return_flag               --組み戻しフラグ
+--              , TO_CHAR(xbbri.publication_date, cv_date_format1)
+--                                                  AS  publication_date          --案内書発行日
+--              , xbbri.org_slip_number             AS  org_slip_number           --元伝票番号
+--      FROM      xxcok_bm_balance_rtn_info         xbbri                         --自販機販売手数料組み戻し管理テーブル
+--      WHERE     xbbri.bm_balance_id               =         gt_data_tab(1)
+--      ORDER BY  xbbri.publication_date            DESC                          --案内書発行日
+--      ;
+--    --
+--    bm_balance_rtn_info_rec             bm_balance_rtn_info_cur%ROWTYPE;
+----
+--  BEGIN
+----
+----##################  固定ステータス初期化部 START   ###################
+----
+--    ov_retcode := cv_status_normal;
+----
+----###########################  固定部 END   ############################
+----
+--    -- ***************************************
+--    -- ***        ループ処理の記述         ***
+--    -- ***       処理部の呼び出し          ***
+--    -- ***************************************
+----
+--    --==============================================================
+--    -- 1  組み戻し情報取得
+--    --==============================================================
+--    <<bm_balance_rtn_info_loop>>
+--    FOR bm_balance_rtn_info_rec IN bm_balance_rtn_info_cur LOOP
+--      --
+--      ln_rtn_info_cnt   :=  ln_rtn_info_cnt   +   1;
+--      --
+--      gt_data_tab(21)   :=  bm_balance_rtn_info_rec.expect_payment_amt_tax;
+--      gt_data_tab(22)   :=  bm_balance_rtn_info_rec.payment_amt_tax;
+--      gt_data_tab(23)   :=  bm_balance_rtn_info_rec.balance_cancel_date;
+--      gt_data_tab(25)   :=  bm_balance_rtn_info_rec.return_flag;
+--      gt_data_tab(26)   :=  bm_balance_rtn_info_rec.publication_date;
+--      gt_data_tab(27)   :=  bm_balance_rtn_info_rec.org_slip_number;
+--      --
+--      EXIT bm_balance_rtn_info_loop;
+--      --
+--    END LOOP bm_balance_rtn_info_loop;
+--    --
+--    IF ( ln_rtn_info_cnt = 0 ) THEN
+--      lv_errbuf :=  xxccp_common_pkg.get_msg(
+--                      iv_application  => cv_xxcff_appl_name
+--                    , iv_name         => cv_msg_cff_00101
+--                    , iv_token_name1  => cv_token_table_name
+--                    , iv_token_name2  => cv_token_info
+--                    , iv_token_value1 => gv_bm_balance_rtn_info
+--                    , iv_token_value2 => gv_bm_balance_id_name || cv_msg_part ||gt_data_tab(1)
+--                    );
+--      --
+--      lv_errmsg  := lv_errbuf;
+--      --
+--      gb_status_warn        :=  TRUE;           --警告終了に
+--      --
+--      FND_FILE.PUT_LINE(
+--         which  => cv_file_type_log
+--        ,buff   => lv_errbuf
+--        );
+--      --
+--      FND_FILE.PUT_LINE(
+--         which  => cv_file_type_out
+--        ,buff   => lv_errbuf
+--        );
+--      --
+--    END IF;
+----
+--  EXCEPTION
+----
+----#################################  固定例外処理部 START   ####################################
+----
+--    -- *** 処理部共通例外ハンドラ ***
+--    WHEN global_process_expt THEN
+--      ov_errmsg  := lv_errmsg;
+--      ov_errbuf  := SUBSTRB(cv_pkg_name||cv_msg_cont||cv_prg_name||cv_msg_part||lv_errbuf,1,5000);
+--      ov_retcode := cv_status_error;
+--    -- *** 共通関数例外ハンドラ ***
+--    WHEN global_api_expt THEN
+--      ov_errmsg  := lv_errmsg;
+--      ov_errbuf  := SUBSTRB(cv_pkg_name||cv_msg_cont||cv_prg_name||cv_msg_part||lv_errbuf,1,5000);
+--      ov_retcode := cv_status_error;
+--    -- *** 共通関数OTHERS例外ハンドラ ***
+--    WHEN global_api_others_expt THEN
+--      ov_errbuf  := cv_pkg_name||cv_msg_cont||cv_prg_name||cv_msg_part||SQLERRM;
+--      ov_retcode := cv_status_error;
+--    -- *** OTHERS例外ハンドラ ***
+--    WHEN OTHERS THEN
+--      ov_errbuf  := cv_pkg_name||cv_msg_cont||cv_prg_name||cv_msg_part||SQLERRM;
+--      ov_retcode := cv_status_error;
+----
+----#####################################  固定部 END   ##########################################
+----
+--  END get_bm_balance_rtn_info;
 --
---#######################  固定ローカル変数宣言部 START   ######################
---
-    lv_errbuf  VARCHAR2(5000);  -- エラー・メッセージ
-    lv_retcode VARCHAR2(1);     -- リターン・コード
-    lv_errmsg  VARCHAR2(5000);  -- ユーザー・エラー・メッセージ
---
---###########################  固定部 END   ####################################
---
-    -- ===============================
-    -- ユーザー宣言部
-    -- ===============================
-    -- *** ローカル定数 ***
---
-    -- *** ローカル変数 ***
-    ln_rtn_info_cnt           NUMBER    :=  0;
---
-    -- *** カーソル ***
-    CURSOR bm_balance_rtn_info_cur 
-    IS
-      SELECT    TO_CHAR(xbbri.expect_payment_amt_tax)      
-                                                  AS  expect_payment_amt_tax    --支払予定額（税込）
-              , TO_CHAR(xbbri.payment_amt_tax)    AS  payment_amt_tax           --支払額（税込）
-              , TO_CHAR(xbbri.balance_cancel_date, cv_date_format1)
-                                                  AS  balance_cancel_date       --残高取消日
-              , xbbri.return_flag                 AS  return_flag               --組み戻しフラグ
-              , TO_CHAR(xbbri.publication_date, cv_date_format1)
-                                                  AS  publication_date          --案内書発行日
-              , xbbri.org_slip_number             AS  org_slip_number           --元伝票番号
-      FROM      xxcok_bm_balance_rtn_info         xbbri                         --自販機販売手数料組み戻し管理テーブル
-      WHERE     xbbri.bm_balance_id               =         gt_data_tab(1)
-      ORDER BY  xbbri.publication_date            DESC                          --案内書発行日
-      ;
-    --
-    bm_balance_rtn_info_rec             bm_balance_rtn_info_cur%ROWTYPE;
---
-  BEGIN
---
---##################  固定ステータス初期化部 START   ###################
---
-    ov_retcode := cv_status_normal;
---
---###########################  固定部 END   ############################
---
-    -- ***************************************
-    -- ***        ループ処理の記述         ***
-    -- ***       処理部の呼び出し          ***
-    -- ***************************************
---
-    --==============================================================
-    -- 1  組み戻し情報取得
-    --==============================================================
-    <<bm_balance_rtn_info_loop>>
-    FOR bm_balance_rtn_info_rec IN bm_balance_rtn_info_cur LOOP
-      --
-      ln_rtn_info_cnt   :=  ln_rtn_info_cnt   +   1;
-      --
-      gt_data_tab(21)   :=  bm_balance_rtn_info_rec.expect_payment_amt_tax;
-      gt_data_tab(22)   :=  bm_balance_rtn_info_rec.payment_amt_tax;
-      gt_data_tab(23)   :=  bm_balance_rtn_info_rec.balance_cancel_date;
-      gt_data_tab(25)   :=  bm_balance_rtn_info_rec.return_flag;
-      gt_data_tab(26)   :=  bm_balance_rtn_info_rec.publication_date;
-      gt_data_tab(27)   :=  bm_balance_rtn_info_rec.org_slip_number;
-      --
-      EXIT bm_balance_rtn_info_loop;
-      --
-    END LOOP bm_balance_rtn_info_loop;
-    --
-    IF ( ln_rtn_info_cnt = 0 ) THEN
-      lv_errbuf :=  xxccp_common_pkg.get_msg(
-                      iv_application  => cv_xxcff_appl_name
-                    , iv_name         => cv_msg_cff_00101
-                    , iv_token_name1  => cv_token_table_name
-                    , iv_token_name2  => cv_token_info
-                    , iv_token_value1 => gv_bm_balance_rtn_info
-                    , iv_token_value2 => gv_bm_balance_id_name || cv_msg_part ||gt_data_tab(1)
-                    );
-      --
-      lv_errmsg  := lv_errbuf;
-      --
-      gb_status_warn        :=  TRUE;           --警告終了に
-      --
-      FND_FILE.PUT_LINE(
-         which  => cv_file_type_log
-        ,buff   => lv_errbuf
-        );
-      --
-      FND_FILE.PUT_LINE(
-         which  => cv_file_type_out
-        ,buff   => lv_errbuf
-        );
-      --
-    END IF;
---
-  EXCEPTION
---
---#################################  固定例外処理部 START   ####################################
---
-    -- *** 処理部共通例外ハンドラ ***
-    WHEN global_process_expt THEN
-      ov_errmsg  := lv_errmsg;
-      ov_errbuf  := SUBSTRB(cv_pkg_name||cv_msg_cont||cv_prg_name||cv_msg_part||lv_errbuf,1,5000);
-      ov_retcode := cv_status_error;
-    -- *** 共通関数例外ハンドラ ***
-    WHEN global_api_expt THEN
-      ov_errmsg  := lv_errmsg;
-      ov_errbuf  := SUBSTRB(cv_pkg_name||cv_msg_cont||cv_prg_name||cv_msg_part||lv_errbuf,1,5000);
-      ov_retcode := cv_status_error;
-    -- *** 共通関数OTHERS例外ハンドラ ***
-    WHEN global_api_others_expt THEN
-      ov_errbuf  := cv_pkg_name||cv_msg_cont||cv_prg_name||cv_msg_part||SQLERRM;
-      ov_retcode := cv_status_error;
-    -- *** OTHERS例外ハンドラ ***
-    WHEN OTHERS THEN
-      ov_errbuf  := cv_pkg_name||cv_msg_cont||cv_prg_name||cv_msg_part||SQLERRM;
-      ov_retcode := cv_status_error;
---
---#####################################  固定部 END   ##########################################
---
-  END get_bm_balance_rtn_info;
+-- 2013/01/31 Ver.1.3 T.Nakano Del End
 --
   /**********************************************************************************
    * Procedure Name   : chk_item
@@ -1917,6 +1976,9 @@ AS
     lv_errlevel               VARCHAR2(10);
     lv_data_type              VARCHAR2(1);        -- データタイプ
     lt_gl_interface_status    xxcok_backmargin_balance.gl_interface_status%TYPE;          --連携ステータス（GL）
+-- 2013/01/31 Ver.1.3 T.Nakano Add Start
+    lt_bm_balance_fixed_rowid UROWID;             -- rowid
+-- 2013/01/31 Ver.1.3 T.Nakano Add End
 --
     -- ===============================
     -- ローカル・カーソル
@@ -1966,6 +2028,9 @@ AS
               , xbb.org_slip_number               AS  org_slip_number                     --元伝票番号
               , xbb.proc_type                     AS  proc_type                           --処理区分
               , xbb.gl_interface_status           AS  gl_interface_status                 --連携ステータス（GL）
+-- 2013/01/31 Ver.1.3 T.Nakano Add Start
+              , NULL                              AS  xbb_rowid                           --rowid
+-- 2013/01/31 Ver.1.3 T.Nakano Add End
       FROM      xxcok_backmargin_balance          xbb                                     --販手残高テーブル
               ,(SELECT    pv.vendor_id            AS  vendor_id                           --仕入先ID
                         , pv.vendor_name          AS  vendor_name                         --仕入先名称
@@ -2039,6 +2104,9 @@ AS
               , xbb.org_slip_number               AS  org_slip_number                     --元伝票番号
               , xbb.proc_type                     AS  proc_type                           --処理区分
               , xbb.gl_interface_status           AS  gl_interface_status                 --連携ステータス（GL）
+-- 2013/01/31 Ver.1.3 T.Nakano Add Start
+              , NULL                              AS  xbb_rowid                           --rowid
+-- 2013/01/31 Ver.1.3 T.Nakano Add End
       FROM      xxcok_backmargin_balance          xbb                                     --販手残高テーブル
               , xxcfo_bm_balance_wait_coop        xbbwc                                   --自販機販売手数料未連携テーブル
               ,(SELECT    pv.vendor_id            AS  vendor_id                           --仕入先ID
@@ -2068,6 +2136,79 @@ AS
       --顧客マスタ（拠点）
       AND       xbb.base_code                     =         hca2.account_number(+)
       AND       hca2.party_id                     =         hp2.party_id (+)               
+-- 2013/01/31 Ver.1.3 T.Nakano Add Start
+      --自販機販売手数料組み戻し管理テーブルから、電子帳簿未送信のデータを取得する
+      UNION ALL
+      SELECT  /*+ LEADING(xbbri) 
+                  USE_NL(hca1 hp1 xca hca2 hp2 pva)
+               */
+                cv_data_type_bm_balance_rtn       AS  data_type                           --データタイプ
+              , xbbri.bm_balance_id               AS  bm_balance_id                       --販手残高ID
+              , xbbri.base_code                   AS  base_code                           --拠点コード
+              , hp2.party_name                    AS  base_name                           --拠点名
+              , xbbri.supplier_code               AS  supplier_code                       --仕入先コード
+              , pva.vendor_name                   AS  vendor_name                         --仕入先名称
+              , xbbri.supplier_site_code          AS  supplier_site_code                  --仕入先サイトコード
+              , pva.attribute4                    AS  bm_payment_type                     --BM支払区分
+              , pva.attribute5                    AS  request_charge_base                 --問合せ担当拠点コード
+              , DECODE(pva.bank_charge_bearer, cv_bank_charge_bearer_i, gv_bank_charge_bearer_toho, gv_bank_charge_bearer_aite)
+                                                  AS  bank_charge_bearer_mir              --振込手数料負担
+              , xbbri.cust_code                   AS  cust_code                           --顧客コード
+              , hp1.party_name                    AS  cust_name                           --顧客名
+              , xca.business_low_type             AS  business_low_type                   --業態（小分類）
+              , TO_CHAR(xbbri.closing_date, cv_date_format1)              
+                                                  AS  closing_date                        --締め日
+              , TO_CHAR(xbbri.selling_amt_tax)    AS  selling_amt_tax                     --販売金額（税込）
+              , TO_CHAR(xbbri.backmargin)         AS  backmargin                          --販売手数料
+              , TO_CHAR(xbbri.backmargin_tax)     AS  backmargin_tax                      --販売手数料（消費税額）
+              , TO_CHAR(xbbri.electric_amt)       AS  electric_amt                        --電気料
+              , TO_CHAR(xbbri.electric_amt_tax)   AS  electric_amt_tax                    --電気料（消費税額）
+              , xbbri.tax_code                    AS  tax_code                            --税金コード
+              , TO_CHAR(xbbri.expect_payment_date, cv_date_format1)
+                                                  AS  expect_payment_date                 --支払予定日
+              , TO_CHAR(xbbri.expect_payment_amt_tax)
+                                                  AS  expect_payment_amt_tax              --支払予定額（税込）
+              , TO_CHAR(xbbri.payment_amt_tax)    AS  payment_amt_tax                     --支払額（税込）
+              , TO_CHAR(xbbri.balance_cancel_date, cv_date_format1)
+                                                  AS  balance_cancel_date                 --残高取消日
+              , xbbri.resv_flag                   AS  resv_flag                           --保留フラグ
+              , xbbri.return_flag                 AS  return_flag                         --組み戻しフラグ
+              , TO_CHAR(xbbri.publication_date,cv_date_format1)
+                                                  AS  publication_date                    --案内書発効日
+              , xbbri.org_slip_number             AS  org_slip_number                     --元伝票番号
+              , xbbri.proc_type                   AS  proc_type                           --処理区分
+              , xbbri.gl_interface_status         AS  gl_interface_status                 --連携ステータス（GL）
+              , xbbri.rowid                       AS  xbb_rowid                           --rowid
+      FROM      xxcok_bm_balance_rtn_info         xbbri                                   --自販機販売手数料組み戻し管理テーブル
+              ,(SELECT    pv.vendor_id            AS  vendor_id                           --仕入先ID
+                        , pv.vendor_name          AS  vendor_name                         --仕入先名称
+                        , pv.segment1             AS  segment1                            --仕入先コード
+                        , pvsa.vendor_site_code   AS  vendor_site_code                    --仕入先サイトコード
+                        , pvsa.bank_charge_bearer AS  bank_charge_bearer                  --振込手数料負担
+                        , pvsa.attribute4         AS  attribute4                          --BM支払区分
+                        , pvsa.attribute5         AS  attribute5                          --問合せ担当拠点コード
+                FROM      po_vendors              pv                                      --仕入先マスタ
+                        , po_vendor_sites_all     pvsa                                    --仕入先サイトマスタ
+                WHERE     pvsa.vendor_id(+)       =         pv.vendor_id
+                AND       pvsa.org_id             =         gt_org_id )  pva              --仕入先
+              , hz_cust_accounts                  hca1                                    --顧客マスタ（顧客）
+              , hz_parties                        hp1                                     --パーティマスタ（顧客）
+              , xxcmm_cust_accounts               xca                                     --顧客追加情報
+              , hz_cust_accounts                  hca2                                    --顧客マスタ（拠点）
+              , hz_parties                        hp2                                     --パーティマスタ（拠点）
+      --仕入先マスタ
+      WHERE     xbbri.supplier_code                 =         pva.segment1(+)
+      AND       xbbri.supplier_site_code            =         pva.vendor_site_code(+)
+      --顧客マスタ（顧客）
+      AND       xbbri.cust_code                     =         hca1.account_number(+)
+      AND       hca1.party_id                       =         hp1.party_id (+)
+      AND       hca1.cust_account_id                =         xca.customer_id(+)
+      --顧客マスタ（拠点）
+      AND       xbbri.base_code                     =         hca2.account_number(+)
+      AND       hca2.party_id                       =         hp2.party_id (+)
+      --電子帳簿送信済フラグが'N'
+      AND       xbbri.dencho_interface_flag         =         cv_flag_n
+-- 2013/01/31 Ver.1.3 T.Nakano Add End
       --
       ORDER BY  bm_balance_id
     ;
@@ -2198,6 +2339,9 @@ AS
           , gt_data_tab(27)                       --元伝票番号
           , gt_data_tab(28)                       --処理区分
           , lt_gl_interface_status                --連携ステータス（GL）
+-- 2013/01/31 Ver.1.3 T.Nakano Add Start
+          , lt_bm_balance_fixed_rowid             --rowid
+-- 2013/01/31 Ver.1.3 T.Nakano Add End
           ;
         EXIT WHEN get_bm_balance_fixed_cur%NOTFOUND;        
         --未連携テーブル出力対象
@@ -2205,26 +2349,37 @@ AS
         --
         IF ( lv_data_type = cv_data_type_bm_balance ) THEN
           gn_target_cnt       :=  gn_target_cnt       +   1;
-        ELSE
+-- 2013/01/31 Ver.1.3 T.Nakano Mod Start
+--        ELSE
+        ELSIF ( lv_data_type = cv_data_type_coop ) THEN
+-- 2013/01/31 Ver.1.3 T.Nakano Mod End
           gn_target_coop_cnt  :=  gn_target_coop_cnt  +   1;
+-- 2013/01/31 Ver.1.3 T.Nakano Add Start
+        ELSE
+          gn_target_rtn_cnt   :=  gn_target_rtn_cnt   +   1;
+          --組み戻し管理テーブルからは未連携テーブルに出力しない
+          gb_coop_out         :=  FALSE;
+-- 2013/01/31 Ver.1.3 T.Nakano Add End
         END IF;
         --
         BEGIN
-          --組み戻しフラグが'Y'の場合、組み戻し情報の取得を行う。
-          IF ( gt_data_tab(25) = cv_flag_y ) THEN
-            --==============================================================
-            -- 組み戻し情報取得処理(A-5)
-            --==============================================================
-            get_bm_balance_rtn_info (
-                ov_errbuf               =>        lv_errbuf
-              , ov_retcode              =>        lv_retcode
-              , ov_errmsg               =>        lv_errmsg
-              );
-            --
-            IF ( lv_retcode = cv_status_error ) THEN
-              RAISE   global_process_expt;
-            END IF;          
-          END IF;
+-- 2013/01/31 Ver.1.3 T.Nakano Del Start
+--          --組み戻しフラグが'Y'の場合、組み戻し情報の取得を行う。
+--          IF ( gt_data_tab(25) = cv_flag_y ) THEN
+--            --==============================================================
+--            -- 組み戻し情報取得処理(A-5)
+--            --==============================================================
+--            get_bm_balance_rtn_info (
+--                ov_errbuf               =>        lv_errbuf
+--              , ov_retcode              =>        lv_retcode
+--              , ov_errmsg               =>        lv_errmsg
+--              );
+--            --
+--            IF ( lv_retcode = cv_status_error ) THEN
+--              RAISE   global_process_expt;
+--            END IF;          
+--          END IF;
+-- 2013/01/31 Ver.1.3 T.Nakano Del End
           --==============================================================
           -- 項目チェック処理(A-6)
           --==============================================================
@@ -2265,6 +2420,13 @@ AS
                 );
               --
             END IF;
+-- 2013/01/31 Ver.1.3 T.Nakano Add Start
+            -- 組み戻し管理テーブルの場合は、退避する
+            IF ( lv_data_type = cv_data_type_bm_balance_rtn ) THEN
+              gt_rtn_info_err_rowid( TO_CHAR(gn_target_rtn_cnt) ) := lt_bm_balance_fixed_rowid;
+              --
+            END IF;
+-- 2013/01/31 Ver.1.3 T.Nakano Add End
             --
             gb_status_warn  :=  TRUE;           --警告終了に
             --
@@ -2272,7 +2434,10 @@ AS
         --
       END LOOP get_bm_balance_fixed_loop;
       --
-      IF ( gn_target_cnt = 0 ) AND ( gn_target_coop_cnt = 0 ) THEN
+-- 2013/01/31 Ver.1.3 T.Nakano Mod Start
+--      IF ( gn_target_cnt = 0 ) AND ( gn_target_coop_cnt = 0 ) THEN
+      IF ( gn_target_cnt = 0 ) AND ( gn_target_coop_cnt = 0 ) AND ( gn_target_rtn_cnt = 0 ) THEN
+-- 2013/01/31 Ver.1.3 T.Nakano Mod End
         --
         ov_retcode  :=  cv_status_warn ;
         --
@@ -2342,20 +2507,22 @@ AS
         gn_target_cnt   :=  gn_target_cnt   +   1;
         --
         BEGIN
-          IF ( gt_data_tab(25) = cv_flag_y ) THEN
-            --==============================================================
-            -- 組み戻し情報取得処理(A-5)
-            --==============================================================
-            get_bm_balance_rtn_info (
-                ov_errbuf               =>        lv_errbuf
-              , ov_retcode              =>        lv_retcode
-              , ov_errmsg               =>        lv_errmsg
-              );
-            --
-            IF ( lv_retcode = cv_status_error ) THEN
-              RAISE   global_process_expt;
-            END IF;          
-          END IF;
+-- 2013/01/31 Ver.1.3 T.Nakano Del Start
+--          IF ( gt_data_tab(25) = cv_flag_y ) THEN
+--            --==============================================================
+--            -- 組み戻し情報取得処理(A-5)
+--            --==============================================================
+--            get_bm_balance_rtn_info (
+--                ov_errbuf               =>        lv_errbuf
+--              , ov_retcode              =>        lv_retcode
+--              , ov_errmsg               =>        lv_errmsg
+--              );
+--            --
+--            IF ( lv_retcode = cv_status_error ) THEN
+--              RAISE   global_process_expt;
+--            END IF;          
+--          END IF;
+-- 2013/01/31 Ver.1.3 T.Nakano Del End
           --==============================================================
           -- 項目チェック処理(A-6)
           --==============================================================
@@ -2695,6 +2862,130 @@ AS
 --
   END del_bm_balance_wait;
 --
+-- 2013/01/31 Ver.1.3 T.Nakano Add Start
+  /**********************************************************************************
+   * Procedure Name   : upd_bm_balance_rtn_info
+   * Description      : 組み戻し情報更新処理(A-13)
+   ***********************************************************************************/
+  PROCEDURE upd_bm_balance_rtn_info (
+    ov_errbuf           OUT VARCHAR2,             --エラー・メッセージ           --# 固定 #
+    ov_retcode          OUT VARCHAR2,             --リターン・コード             --# 固定 #
+    ov_errmsg           OUT VARCHAR2)             --ユーザー・エラー・メッセージ --# 固定 #
+  IS
+    -- ===============================
+    -- 固定ローカル定数
+    -- ===============================
+    cv_prg_name   CONSTANT VARCHAR2(100) := 'upd_bm_balance_rtn_info'; -- プログラム名
+--
+--#######################  固定ローカル変数宣言部 START   ######################
+--
+    lv_errbuf  VARCHAR2(5000);  -- エラー・メッセージ
+    lv_retcode VARCHAR2(1);     -- リターン・コード
+    lv_errmsg  VARCHAR2(5000);  -- ユーザー・エラー・メッセージ
+--
+--###########################  固定部 END   ####################################
+--
+    -- ===============================
+    -- ユーザー宣言部
+    -- ===============================
+    -- *** ローカル定数 ***
+--
+    -- *** ローカル変数 ***
+--
+    --更新対象の自販機販売手数料組み戻し管理テーブルロック用カーソル
+    CURSOR  upd_rtn_info_lock_cur
+    IS
+      SELECT    xbbri.ROWID                       AS        row_id    --ROWID
+      FROM      xxcok_bm_balance_rtn_info         xbbri               --自販機販売手数料組み戻し管理テーブル
+      WHERE     xbbri.dencho_interface_flag = cv_flag_n
+      ORDER BY  xbbri.bm_balance_id
+      FOR UPDATE NOWAIT
+      ;
+--
+    TYPE upd_rtn_info_lock_ttype IS TABLE OF ROWID INDEX BY PLS_INTEGER;
+    lt_upd_rtn_info_lock_tab    upd_rtn_info_lock_ttype;
+    lv_update_index             VARCHAR2(40);
+--
+  BEGIN
+--
+--##################  固定ステータス初期化部 START   ###################
+--
+   ov_retcode := cv_status_normal;
+--
+--###########################  固定部 END   ############################
+--
+    --更新処理を行う為、ロックカーソルをオープンにする
+    OPEN upd_rtn_info_lock_cur;
+    --データの一括取得
+    FETCH upd_rtn_info_lock_cur BULK COLLECT INTO lt_upd_rtn_info_lock_tab;
+    --カーソルクローズ
+    CLOSE upd_rtn_info_lock_cur;
+--
+    --自販機販売手数料組み戻し管理テーブルの電子帳簿送信済フラグを更新
+    FORALL ln_loop_cnt IN 1..lt_upd_rtn_info_lock_tab.COUNT
+      UPDATE    xxcok_bm_balance_rtn_info         xbbri
+      SET       xbbri.dencho_interface_flag       =     cv_flag_y                         --電子帳簿送信済フラグ
+              , xbbri.last_updated_by             =     cn_last_updated_by                --最終更新者
+              , xbbri.last_update_date            =     cd_last_update_date               --最終更新日
+              , xbbri.last_update_login           =     cn_last_update_login              --最終更新ログイン
+              , xbbri.request_id                  =     cn_request_id                     --要求ID
+              , xbbri.program_application_id      =     cn_program_application_id         --プログラムアプリケーションID
+              , xbbri.program_id                  =     cn_program_id                     --プログラムID
+              , xbbri.program_update_date         =     cd_program_update_date            --プログラム更新日
+      WHERE     xbbri.ROWID                       =     lt_upd_rtn_info_lock_tab(ln_loop_cnt)
+      ;
+    --
+    -- エラー分をNに戻します。
+    -- 最初のインデックスを取得します。
+    lv_update_index  :=  gt_rtn_info_err_rowid.FIRST;
+    <<update_loop>>
+    WHILE lv_update_index IS NOT NULL LOOP
+      UPDATE    xxcok_bm_balance_rtn_info         xbbri
+      SET       xbbri.dencho_interface_flag       =     cv_flag_n                         --電子帳簿送信済フラグ
+              , xbbri.last_updated_by             =     cn_last_updated_by                --最終更新者
+              , xbbri.last_update_date            =     cd_last_update_date               --最終更新日
+              , xbbri.last_update_login           =     cn_last_update_login              --最終更新ログイン
+              , xbbri.request_id                  =     cn_request_id                     --要求ID
+              , xbbri.program_application_id      =     cn_program_application_id         --プログラムアプリケーションID
+              , xbbri.program_id                  =     cn_program_id                     --プログラムID
+              , xbbri.program_update_date         =     cd_program_update_date            --プログラム更新日
+      WHERE     xbbri.ROWID                       =     gt_rtn_info_err_rowid(lv_update_index)
+      ;
+      -- 次のインデックスを取得
+      lv_update_index := gt_rtn_info_err_rowid.next(lv_update_index);
+    END LOOP update_loop;
+--
+  EXCEPTION
+    -- *** ロックの取得エラー ***
+    WHEN global_lock_fail THEN
+      lv_errbuf :=  xxccp_common_pkg.get_msg(
+                      iv_application  => cv_xxcfo_appl_name
+                    , iv_name         => cv_msg_cfo_00019
+                    , iv_token_name1  => cv_token_table
+                    , iv_token_value1 => gv_bm_balance_rtn_info
+                    );
+      ov_errmsg  := lv_errbuf;
+      ov_errbuf  := SUBSTRB(cv_pkg_name||cv_msg_cont||cv_prg_name||cv_msg_part||lv_errbuf,1,5000);
+      ov_retcode := cv_status_error;
+--
+--#################################  固定例外処理部 START   ####################################
+--
+    -- *** OTHERS例外ハンドラ ***
+    WHEN OTHERS THEN
+      ov_errbuf  := cv_pkg_name||cv_msg_cont||cv_prg_name||cv_msg_part||SQLERRM;
+      ov_retcode := cv_status_error;
+--
+--#####################################  固定部 END   ##########################################
+--
+      --例外発生時、カーソルがオープンされていた場合、カーソルをクローズする。
+      IF ( upd_rtn_info_lock_cur%ISOPEN ) THEN
+        CLOSE   upd_rtn_info_lock_cur;
+      END IF;
+      --
+  END upd_bm_balance_rtn_info;
+--
+-- 2013/01/31 Ver.1.3 T.Nakano Add End
+--
   /**********************************************************************************
    * Procedure Name   : submain
    * Description      : メイン処理プロシージャ
@@ -2745,6 +3036,9 @@ AS
     gn_error_cnt        :=  0;          --エラー件数
     gn_warn_cnt         :=  0;          --警告件数
     gn_target_coop_cnt  :=  0;          --未連携データ対象件数
+-- 2013/01/31 Ver.1.3 T.Nakano Add Start
+    gn_target_rtn_cnt   :=  0;          --組み戻しデータ対象件数
+-- 2013/01/31 Ver.1.3 T.Nakano Add End
     gn_out_rtn_coop_cnt :=  0;          --未連係出力件数（組み戻し追加分）
     gn_out_coop_cnt     :=  0;          --未連携出力件数
     gb_fileopen         :=  FALSE;      --ファイルオープンフラグ
@@ -2857,6 +3151,23 @@ AS
       IF ( lv_retcode = cv_status_error ) THEN
         RAISE global_process_expt;
       END IF;
+--
+-- 2013/01/31 Ver.1.3 T.Nakano Add Start
+    --==============================================================
+    -- 組み戻し情報更新処理(A-13)
+    --==============================================================
+    --定期実行の場合、自販機販売手数料組み戻し管理テーブルの更新を行う
+      upd_bm_balance_rtn_info (
+          ov_errbuf           =>        lv_errbuf           -- エラー・メッセージ           --# 固定 #
+        , ov_retcode          =>        lv_retcode          -- リターン・コード             --# 固定 #
+        , ov_errmsg           =>        lv_errmsg           -- ユーザー・エラー・メッセージ --# 固定 #
+        );
+      --
+      IF ( lv_retcode = cv_status_error ) THEN
+        RAISE global_process_expt;
+      END IF;
+-- 2013/01/31 Ver.1.3 T.Nakano Add End
+--
     END IF;
 --
   EXCEPTION
@@ -3008,6 +3319,9 @@ AS
       gn_normal_cnt       :=  0;    --出力件数を0件にする
       gn_target_cnt       :=  0;    --抽出件数を0件にする
       gn_target_coop_cnt  :=  0;    --自販機販売手数料未連携件数を0件に
+-- 2013/01/31 Ver.1.3 T.Nakano Add Start
+      gn_target_rtn_cnt   :=  0;    --自販機販売手数料組み戻し件数を0件に
+-- 2013/01/31 Ver.1.3 T.Nakano Add End
       gn_out_coop_cnt     :=  0;    --CSV出力件数
       gn_out_rtn_coop_cnt :=  0;    --自販機販売手数料未連携件数（組み戻し分）を0件に
       --
@@ -3052,6 +3366,20 @@ AS
       ,buff   => gv_out_msg
     );
     --
+-- 2013/01/31 Ver.1.3 T.Nakano Add Start
+    --対象件数出力（自販機販売手数料組み戻し管理テーブル）
+    gv_out_msg := xxccp_common_pkg.get_msg(
+                     iv_application  => cv_xxcfo_appl_name
+                    ,iv_name         => cv_msg_cfo_10036
+                    ,iv_token_name1  => cv_cnt_token
+                    ,iv_token_value1 => TO_CHAR(gn_target_rtn_cnt)
+                   );
+    FND_FILE.PUT_LINE(
+       which  => cv_file_type_out
+      ,buff   => gv_out_msg
+    );
+    --
+-- 2013/01/31 Ver.1.3 T.Nakano Add End
     --成功件数出力
     gv_out_msg := xxccp_common_pkg.get_msg(
                      iv_application  => cv_appl_short_name
