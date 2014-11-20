@@ -7,7 +7,7 @@ AS
  * Description      : 生産物流(引当、配車)
  * MD.050           : 出荷・移動インタフェース         T_MD050_BPO_930
  * MD.070           : ＨＨＴ入出庫実績インタフェース   T_MD070_BPO_93B
- * Version          : 1.26
+ * Version          : 1.27
  *
  * Program List
  * ------------------------------------ -------------------------------------------------
@@ -112,6 +112,7 @@ AS
  *  2008/11/21    1.25 Oracle 福田 直樹  統合指摘#702対応(ロットが存在しない場合エラーでなく保留にする)
  *  2008/11/27    1.26 Oracle 福田 直樹  本番障害#179対応(実績訂正時に実績計上済区分に'Y'ではなく'N'をセットする)
  *  2008/11/27    1.26 Oracle 福田 直樹  本番障害対応(最大配送区分算出関数・最大パレット枚数算出関数はエラーにせずROLLBACKもしない)
+ *  2008/11/28    1.27 Oracle 福田 直樹  本番障害対応(重量容積小口個数更新関数はエラーにせずROLLBACKもしない)
  *****************************************************************************************/
 --
 --#######################  固定グローバル定数宣言部 START   #######################
@@ -2355,11 +2356,13 @@ AS
       lv_errmsg := SUBSTRB( xxcmn_common_pkg.get_msg(
            gv_msg_kbn                 -- 'XXWSH'
           ,gv_msg_93a_308             -- 重量容積小口個数更新関数エラーメッセージ
-          )
+          ,gv_param1_token                                  --2008/11/28 Add 本番障害対応(重量容積小口個数更新関数はエラーにせずROLLBACKもしない)
+          ,gr_interface_info_rec(in_idx).order_source_ref)  --2008/11/28 Add 本番障害対応(重量容積小口個数更新関数はエラーにせずROLLBACKもしない)
           ,1
           ,5000);
 --
-      RAISE global_api_expt;
+      --RAISE global_api_expt;                       --2008/11/28 Del 本番障害対応(重量容積小口個数更新関数はエラーにせずROLLBACKもしない)
+      FND_FILE.PUT_LINE(FND_FILE.OUTPUT, lv_errmsg); --2008/11/28 Add 本番障害対応(重量容積小口個数更新関数はエラーにせずROLLBACKもしない)
 --
     END IF;
 --
@@ -9559,6 +9562,7 @@ AS
                         ,5000);
 --
           --RAISE global_api_expt;   -- 最大配送区分算出関数エラーの場合はABENDさせてすべてROLLBACKする --2008/11/27 Del 本番障害対応(最大配送区分算出関数・最大パレット枚数算出関数はエラーにせずROLLBACKもしない)
+          FND_FILE.PUT_LINE(FND_FILE.OUTPUT, lv_errmsg);  --2008/11/27 Add 本番障害対応(最大配送区分算出関数・最大パレット枚数算出関数はエラーにせずROLLBACKもしない)
 --
         END IF;
 --
@@ -9608,6 +9612,7 @@ AS
                       ,5000);
 --
         --RAISE global_api_expt;   -- 最大パレット枚数算出関数エラーの場合はABENDさせてすべてROLLBACKする --2008/11/27 Del 本番障害対応(最大配送区分算出関数・最大パレット枚数算出関数はエラーにせずROLLBACKもしない)
+        FND_FILE.PUT_LINE(FND_FILE.OUTPUT, lv_errmsg);  --2008/11/27 Add 本番障害対応(最大配送区分算出関数・最大パレット枚数算出関数はエラーにせずROLLBACKもしない)
 --
       ELSIF ((ln_ret_code = gn_normal) AND (gr_interface_info_rec(in_index).prod_kbn_cd = gv_prod_kbn_cd_2))
       THEN
@@ -10045,6 +10050,7 @@ AS
                         ,5000);
 --
           --RAISE global_api_expt;   -- 最大配送区分算出関数エラーの場合はABENDさせてすべてROLLBACKする --2008/11/27 Del 本番障害対応(最大配送区分算出関数・最大パレット枚数算出関数はエラーにせずROLLBACKもしない)
+          FND_FILE.PUT_LINE(FND_FILE.OUTPUT, lv_errmsg);  --2008/11/27 Add 本番障害対応(最大配送区分算出関数・最大パレット枚数算出関数はエラーにせずROLLBACKもしない)
 --
         END IF;
 --
@@ -10094,6 +10100,7 @@ AS
                       ,5000);
 --
         --RAISE global_api_expt;    -- 最大パレット枚数算出関数エラーの場合はABENDさせてすべてROLLBACKする --2008/11/27 Del 本番障害対応(最大配送区分算出関数・最大パレット枚数算出関数はエラーにせずROLLBACKもしない)
+        FND_FILE.PUT_LINE(FND_FILE.OUTPUT, lv_errmsg);  --2008/11/27 Add 本番障害対応(最大配送区分算出関数・最大パレット枚数算出関数はエラーにせずROLLBACKもしない)
 --
       ELSIF ((ln_ret_code = gn_normal) AND (gr_interface_info_rec(in_index).prod_kbn_cd = gv_prod_kbn_cd_2))
       THEN
@@ -12108,6 +12115,7 @@ AS
                         ,5000);
 --
           --RAISE global_api_expt;   -- 最大配送区分算出関数エラーの場合はABENDさせてすべてROLLBACKする --2008/11/27 Del 本番障害対応(最大配送区分算出関数・最大パレット枚数算出関数はエラーにせずROLLBACKもしない)
+          FND_FILE.PUT_LINE(FND_FILE.OUTPUT, lv_errmsg);  --2008/11/27 Add 本番障害対応(最大配送区分算出関数・最大パレット枚数算出関数はエラーにせずROLLBACKもしない)
 --
         END IF;
 --
@@ -12157,6 +12165,7 @@ AS
                       ,5000);
 --
         --RAISE global_api_expt;   -- 最大パレット枚数算出関数エラーの場合はABENDさせてすべてROLLBACKする --2008/11/27 Del 本番障害対応(最大配送区分算出関数・最大パレット枚数算出関数はエラーにせずROLLBACKもしない)
+        FND_FILE.PUT_LINE(FND_FILE.OUTPUT, lv_errmsg);  --2008/11/27 Add 本番障害対応(最大配送区分算出関数・最大パレット枚数算出関数はエラーにせずROLLBACKもしない)
 --
       ELSIF ((ln_ret_code = gn_normal) AND (gr_interface_info_rec(in_index).prod_kbn_cd = gv_prod_kbn_cd_2))
       THEN
@@ -12564,6 +12573,7 @@ AS
                         ,5000);
 --
           --RAISE global_api_expt;   -- 最大配送区分算出関数エラーの場合はABENDさせてすべてROLLBACKする --2008/11/27 Del 本番障害対応(最大配送区分算出関数・最大パレット枚数算出関数はエラーにせずROLLBACKもしない)
+          FND_FILE.PUT_LINE(FND_FILE.OUTPUT, lv_errmsg);  --2008/11/27 Add 本番障害対応(最大配送区分算出関数・最大パレット枚数算出関数はエラーにせずROLLBACKもしない)
 --
         END IF;
 --
@@ -12613,6 +12623,7 @@ AS
                       ,5000);
 --
         --RAISE global_api_expt;   -- 最大パレット枚数算出関数エラーの場合はABENDさせてすべてROLLBACKする --2008/11/27 Del 本番障害対応(最大配送区分算出関数・最大パレット枚数算出関数はエラーにせずROLLBACKもしない)
+        FND_FILE.PUT_LINE(FND_FILE.OUTPUT, lv_errmsg);  --2008/11/27 Add 本番障害対応(最大配送区分算出関数・最大パレット枚数算出関数はエラーにせずROLLBACKもしない)
 --
       ELSIF ((ln_ret_code = gn_normal) AND (gr_interface_info_rec(in_index).prod_kbn_cd = gv_prod_kbn_cd_2))
       THEN
@@ -12903,6 +12914,7 @@ AS
                         ,5000);
 --
           --RAISE global_api_expt;   -- 最大配送区分算出関数エラーの場合はABENDさせてすべてROLLBACKする --2008/11/27 Del 本番障害対応(最大配送区分算出関数・最大パレット枚数算出関数はエラーにせずROLLBACKもしない)
+          FND_FILE.PUT_LINE(FND_FILE.OUTPUT, lv_errmsg);  --2008/11/27 Add 本番障害対応(最大配送区分算出関数・最大パレット枚数算出関数はエラーにせずROLLBACKもしない)
 --
         END IF;
 --
@@ -12950,6 +12962,7 @@ AS
                       ,5000);
 --
         --RAISE global_api_expt;  -- 最大パレット枚数算出関数エラーの場合はABENDさせてすべてROLLBACKする --2008/11/27 Del 本番障害対応(最大配送区分算出関数・最大パレット枚数算出関数はエラーにせずROLLBACKもしない)
+        FND_FILE.PUT_LINE(FND_FILE.OUTPUT, lv_errmsg);  --2008/11/27 Add 本番障害対応(最大配送区分算出関数・最大パレット枚数算出関数はエラーにせずROLLBACKもしない)
 --
       ELSIF ((ln_ret_code = gn_normal) AND (gr_interface_info_rec(in_index).prod_kbn_cd = gv_prod_kbn_cd_2))
       THEN
