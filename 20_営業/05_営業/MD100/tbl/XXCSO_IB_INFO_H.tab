@@ -3,7 +3,7 @@
  * TABLE Name      : xxcso_ib_info_h
  * Description     : 物件関連情報変更履歴テーブル
  * MD.070          : 
- * Version         : 1.2
+ * Version         : 1.3
  * 
  * Change Record
  * ------------- ----- ------------ -------------------------------------
@@ -13,6 +13,7 @@
  *  2009/03/02    1.1  H.Ogawa       STORAGE句を追加
  *  2010/01/13    1.2  K.Hosoi       E_本稼動_00443対応(install_nameの桁数を)
  *                                   VARCHAR2(30)からVARCHAR2(360)へ変更
+ *  2014/05/09    1.3  K.Nakamura    E_本稼動_11853対応 ベンダー購入対応
  ************************************************************************/
 CREATE TABLE xxcso.xxcso_ib_info_h
 (
@@ -34,6 +35,10 @@ CREATE TABLE xxcso.xxcso_ib_info_h
   install_address                 VARCHAR2(600),
   logical_delete_flag             VARCHAR2(1)       NOT NULL,
   account_number                  VARCHAR2(9),
+  /* 2014/05/09 E_本稼動_11853対応 START */
+  declaration_place               VARCHAR2(5),
+  disposal_intaface_flag          VARCHAR2(1),
+  /* 2014/05/09 E_本稼動_11853対応 END */
   created_by                      NUMBER(15)        NOT NULL,
   creation_date                   DATE              NOT NULL,
   last_updated_by                 NUMBER(15)        NOT NULL,
@@ -66,6 +71,10 @@ COMMENT ON COLUMN xxcso.xxcso_ib_info_h.install_name                           I
 COMMENT ON COLUMN xxcso.xxcso_ib_info_h.install_address                        IS '設置先住所';
 COMMENT ON COLUMN xxcso.xxcso_ib_info_h.logical_delete_flag                    IS '論理削除フラグ';
 COMMENT ON COLUMN xxcso.xxcso_ib_info_h.account_number                         IS '顧客コード';
+/* 2014/05/09 E_本稼動_11853対応 START */
+COMMENT ON COLUMN xxcso.xxcso_ib_info_h.declaration_place                      IS '申告地';
+COMMENT ON COLUMN xxcso.xxcso_ib_info_h.disposal_intaface_flag                 IS '廃棄連携フラグ';
+/* 2014/05/09 E_本稼動_11853対応 END */
 COMMENT ON COLUMN xxcso.xxcso_ib_info_h.created_by                             IS '作成者';
 COMMENT ON COLUMN xxcso.xxcso_ib_info_h.creation_date                          IS '作成日';
 COMMENT ON COLUMN xxcso.xxcso_ib_info_h.last_updated_by                        IS '最終更新者';
