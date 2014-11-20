@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCOS014A09C (body)
  * Description      : 百貨店送り状データ作成 
  * MD.050           : 百貨店送り状データ作成 MD050_COS_014_A09
- * Version          : 1.5
+ * Version          : 1.6
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -32,6 +32,7 @@ AS
  *  2009/04/17    1.3   T.Kitajima       [T1_0375] エラーメッセージ受注番号修正(伝票番号→受注No)
  *  2009/09/07    1.4   N.Maeda          [0000403] 検索キー項目の任意化に伴い枝番毎のループ処理追加
  *  2009/11/05    1.5   N.Maeda          [E_T4_00123]社コードセット内容修正
+ *  2014/02/14    1.6   D.Sugahara       [E_本稼動_11565]仕入伝票データにEBS受注Noを設定 
  *
 *** 開発中の変更内容 ***
 *****************************************************************************************/
@@ -2633,6 +2634,9 @@ AS
         l_data_tab_supply('DELIVERY_CENTER_NAME')           := g_depart_rec.delivery_place;                           --納入センター名（漢字）
         l_data_tab_supply('SHOP_DELIVERY_DATE')             := TO_CHAR( rec_main.shop_delivery_date, cv_date_fmt );   --店舗納品日
         l_data_tab_supply('INVOICE_NUMBER')                 := rec_main.invoice_number;                               --伝票番号
+-- 2014/02/14 V1.6 Add Start E_本稼動_11565--
+        l_data_tab_supply('ORDER_NO_EBS')                   := rec_main.order_no_ebs;                                 --受注Ｎｏ（ＥＢＳ）
+-- 2014/02/14 V1.6 Add End --
         l_data_tab_supply('VENDOR_CODE')                    := l_cust_shop_rec.torihikisaki_code;                     --取引先コード
         l_data_tab_supply('VENDOR_NAME')                    := g_prf_rec.company_name;                                --取引先名（漢字）
         l_data_tab_supply('DELIVER_TO')                     := g_depart_rec.display_place;                            --届け先（漢字）
