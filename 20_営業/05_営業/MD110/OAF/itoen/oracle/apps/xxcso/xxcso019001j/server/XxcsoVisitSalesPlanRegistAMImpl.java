@@ -8,6 +8,7 @@
 * ---------- ---- ------------ ----------------------------------------------
 * 2009-01-07 1.0  SCS–p–M•F    V‹Kì¬
 * 2009-06-05 1.1  SCS–ö•½’¼l  [STáŠQT1_1245]€–ÚXV•û–@‚ÌC³
+* 2009-06-30 1.2  SCSˆ¢•”‘å•ã  [áŠQ0000281]æ‚Rƒ–Œ‚Ìƒ`ƒFƒbƒNC³
 *============================================================================
 */
 package itoen.oracle.apps.xxcso.xxcso019001j.server;
@@ -688,7 +689,10 @@ public class XxcsoVisitSalesPlanRegistAMImpl extends OAApplicationModuleImpl
     
     // Œv‰æ”NŒ‚ª“–Œ`æ‚Rƒ–Œ
     String planYM = initRow.getPlanYear() + initRow.getPlanMonth();
-    Date nowDate = txn.getCurrentUserDate();
+// 2009-06-30 [áŠQ0000281] Add Start
+    //Date nowDate = txn.getCurrentUserDate();
+    Date nowDate =  XxcsoAcctSalesPlansUtils.getOnlineSysdate(txn);
+// 2009-06-30 [áŠQ0000281] Add End
     String nowYM = 
       nowDate.toString().substring(0, 4) 
       + nowDate.toString().substring(5, 7);

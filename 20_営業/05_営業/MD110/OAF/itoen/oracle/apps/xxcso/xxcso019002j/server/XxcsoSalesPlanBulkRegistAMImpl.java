@@ -8,6 +8,7 @@
 * ---------- ---- ------------ ----------------------------------------------
 * 2009-01-27 1.0  SCS–p–M•F    V‹Kì¬
 * 2009-04-22 1.1  SCS–ö•½’¼l  [STáŠQT1_0585]‰æ–Ê‘JˆÚƒZƒLƒ…ƒŠƒeƒB•s³‘Î‰
+* 2009-06-30 1.2  SCSˆ¢•”‘å•ã  [áŠQ0000281]æ‚Rƒ–Œ‚Ìƒ`ƒFƒbƒNC³
 *============================================================================
 */
 package itoen.oracle.apps.xxcso.xxcso019002j.server;
@@ -23,6 +24,9 @@ import itoen.oracle.apps.xxcso.common.util.XxcsoValidateUtils;
 // 2009/04/22 [STáŠQT1_0585] Del Start
 //import itoen.oracle.apps.xxcso.common.util.XxcsoAcctSalesPlansUtils;
 // 2009/04/22 [STáŠQT1_0585] Del End
+// 2009-06-30 [áŠQ0000281] Add Start
+import itoen.oracle.apps.xxcso.common.util.XxcsoAcctSalesPlansUtils;
+// 2009-06-30 [áŠQ0000281] Add End
 
 import oracle.apps.fnd.framework.OAException;
 import oracle.apps.fnd.framework.server.OAApplicationModuleImpl;
@@ -400,7 +404,10 @@ public class XxcsoSalesPlanBulkRegistAMImpl extends OAApplicationModuleImpl
     
     // ‘ÎÛ”NŒ…æ‚Qƒ–Œ‚Å‚ ‚é‚±‚Æ
     String targetYM = initRow.getTargetYear() + initRow.getTargetMonth();
-    Date nowDate = txn.getCurrentUserDate();
+// 2009-06-30 [áŠQ0000281] Add Start
+    //Date nowDate = txn.getCurrentUserDate();
+    Date nowDate = XxcsoAcctSalesPlansUtils.getOnlineSysdate(txn);
+// 2009-06-30 [áŠQ0000281] Add End    
     String next2YM = 
       nowDate.addMonths(2).toString().substring(0, 4) 
       + nowDate.toString().substring(5, 7);
