@@ -3,7 +3,7 @@
  * VIEW Name       : xxcso_sales_v
  * Description     : 共通用：売上実績ビュー
  * MD.070          : 
- * Version         : 1.2
+ * Version         : 1.3
  * 
  * Change Record
  * ------------- ----- ------------ -------------------------------------
@@ -13,6 +13,7 @@
  *  2009/03/03    1.1  K.Boku        売上実績振替情報テーブル取得する
  *  2009/03/09    1.1  M.Maruyama    販売実績ヘッダ.取消・訂正区分追加
  *  2009/04/22    1.2  K.Satomura    システムテスト障害対応(T1_0743)
+ *  2009/05/21    1.3  K.Satomura    システムテスト障害対応(T1_1036)
  ************************************************************************/
 CREATE OR REPLACE VIEW apps.xxcso_sales_v
 (
@@ -29,6 +30,9 @@ CREATE OR REPLACE VIEW apps.xxcso_sales_v
 /* 2009.04.22 K.Satomura T1_0743対応 START */
 ,dlv_invoice_number
 /* 2009.04.22 K.Satomura T1_0743対応 END */
+/* 2009.04.22 K.Satomura T1_1036対応 START */
+,digestion_ln_number
+/* 2009.04.22 K.Satomura T1_1036対応 END */
 )
 AS
 SELECT  seh.ship_to_customer_code      -- 顧客【納品先】
@@ -44,8 +48,11 @@ SELECT  seh.ship_to_customer_code      -- 顧客【納品先】
        /* 2009.04.22 K.Satomura T1_0743対応 START */
        ,seh.dlv_invoice_number         -- 納品伝票番号
        /* 2009.04.22 K.Satomura T1_0743対応 END */
-FROM    xxcos_sales_exp_headers  seh   -- 販売実績ヘッダー
-       ,xxcos_sales_exp_lines  sel     -- 販売実績明細
+       /* 2009.04.22 K.Satomura T1_1036対応 START */
+       ,seh.digestion_ln_number        -- 受注No（HHT）枝番
+       /* 2009.04.22 K.Satomura T1_1036対応 END */
+FROM    xxcos_sales_exp_headers seh -- 販売実績ヘッダー
+       ,xxcos_sales_exp_lines   sel -- 販売実績明細
 WHERE  seh.sales_exp_header_id = sel.sales_exp_header_id  -- 販売実績ヘッダID
 AND    NOT EXISTS
        ( -- 品目コード<>変動電気料品目コード
@@ -67,6 +74,9 @@ SELECT  xsti.cust_code                 -- 顧客コード
        /* 2009.04.22 K.Satomura T1_0743対応 START */
        ,NULL                           -- 納品伝票番号
        /* 2009.04.22 K.Satomura T1_0743対応 END */
+       /* 2009.04.22 K.Satomura T1_1036対応 START */
+       ,NULL                           -- 受注No（HHT）枝番
+       /* 2009.04.22 K.Satomura T1_1036対応 END */
 FROM    xxcok_selling_trns_info xsti   -- 売上実績振替情報テーブル
 WHERE  NOT EXISTS 
        ( -- 品目コード<>変動電気料品目コード

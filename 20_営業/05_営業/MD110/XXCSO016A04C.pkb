@@ -8,7 +8,7 @@ AS
  *                    CSVファイルを作成します。
  * MD.050           :  MD050_CSO_016_A04_情報系-EBSインターフェース：
  *                     (OUT)訪問実績データ
- * Version          : 1.2
+ * Version          : 1.4
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -39,6 +39,7 @@ AS
  *                                       データ抽出条件変更対応
  *  2009-04-22    1.2   Kazuo.Satomura   システムテスト障害対応(T1_0478,T1_0740)
  *  2009-05-01    1.3   Tomoko.Mori      T1_0897対応
+ *  2009-05-21    1.4   Kazuo.Satomura   システムテスト障害対応(T1_1036)
  *****************************************************************************************/
 --
 --#######################  固定グローバル定数宣言部 START   #######################
@@ -1182,24 +1183,33 @@ AS
               FROM   xxcso_sales_v xsv1  -- 売上実績ビュー
               WHERE  xsv1.sold_out_class = cv_sld_out_clss1
               AND    xsv1.order_no_hht = TO_NUMBER(io_get_data_rec.attribute13)
-              AND    xsv1.cancel_correct_class IS NULL
+              /* 2009.05.21 K.Satomura T1_1036対応 START */
+              --AND    xsv1.cancel_correct_class IS NULL
+              AND    xsv1.digestion_ln_number = 0
+              /* 2009.05.21 K.Satomura T1_1036対応 END */
               ) missing_column_number                            -- 欠品コラム数
-             ,(SELECT COUNT(xsv2.sold_out_class) sold_out_class2
-               FROM   xxcso_sales_v xsv2  -- 売上実績ビュー
-               WHERE  xsv2.sold_out_class = cv_sld_out_clss2
-               AND    xsv2.order_no_hht = TO_NUMBER(io_get_data_rec.attribute13)
-               AND    xsv2.cancel_correct_class IS NULL
+            ,(SELECT COUNT(xsv2.sold_out_class) sold_out_class2
+              FROM   xxcso_sales_v xsv2  -- 売上実績ビュー
+              WHERE  xsv2.sold_out_class = cv_sld_out_clss2
+              AND    xsv2.order_no_hht = TO_NUMBER(io_get_data_rec.attribute13)
+              /* 2009.05.21 K.Satomura T1_1036対応 START */
+              --AND    xsv2.cancel_correct_class IS NULL
+              AND    xsv2.digestion_ln_number = 0
+              /* 2009.05.21 K.Satomura T1_1036対応 END */
               ) active_column_number                             -- 有効コラム数
               /* 2009.04.22 K.Satomrua T1_0478対応 START */
-              --,(SELECT SUM(xsv3.sold_out_time) sold_out_time
-              ,(SELECT SUM(NVL(xsv3.sold_out_time, 0)) sold_out_time
+             --,(SELECT SUM(xsv3.sold_out_time) sold_out_time
+            ,(SELECT SUM(NVL(xsv3.sold_out_time, 0)) sold_out_time
               /* 2009.04.22 K.Satomrua T1_0478対応 END */
-                FROM   xxcso_sales_v  xsv3  -- 売上実績ビュー
-                WHERE  xsv3.order_no_hht = TO_NUMBER(io_get_data_rec.attribute13)
-                AND    xsv3.cancel_correct_class IS NULL
+              FROM   xxcso_sales_v  xsv3  -- 売上実績ビュー
+              WHERE  xsv3.order_no_hht = TO_NUMBER(io_get_data_rec.attribute13)
+              /* 2009.05.21 K.Satomura T1_1036対応 START */
+              --AND    xsv3.cancel_correct_class IS NULL
+              AND    xsv3.digestion_ln_number = 0
+              /* 2009.05.21 K.Satomura T1_1036対応 END */
               ) missing_part_time                                -- 欠品時間
-              ,xsv.change_out_time_100  change_out_time_100      -- つり銭切れ時間(100円)
-              ,xsv.change_out_time_10   change_out_time_10       -- つり銭切れ時間(10円)
+             ,xsv.change_out_time_100  change_out_time_100      -- つり銭切れ時間(100円)
+             ,xsv.change_out_time_10   change_out_time_10       -- つり銭切れ時間(10円)
       INTO  ln_missing_column_number
            ,ln_active_column_number
            ,ln_missing_part_time
@@ -1207,7 +1217,10 @@ AS
            ,lt_change_out_time_10
       FROM  xxcso_sales_v  xsv   -- 売上実績ビュー
       WHERE xsv.order_no_hht = TO_NUMBER(io_get_data_rec.attribute13)
-        AND xsv.cancel_correct_class IS NULL
+        /* 2009.05.21 K.Satomura T1_1036対応 START */
+        --AND xsv.cancel_correct_class IS NULL
+        AND xsv.digestion_ln_number = 0
+        /* 2009.05.21 K.Satomura T1_1036対応 END */
         AND ROWNUM = 1;
 --
     EXCEPTION
