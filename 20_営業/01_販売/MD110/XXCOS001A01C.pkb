@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCOS001A01C (body)
  * Description      : 納品データの取込を行う
  * MD.050           : HHT納品データ取込 (MD050_COS_001_A01)
- * Version          : 1.4
+ * Version          : 1.6
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -33,6 +33,9 @@ AS
  *  2009/02/05    1.2   S.Miyakoshi      [COS_034]品目IDの抽出項目を変更
  *  2009/02/20    1.3   S.Miyakoshi      パラメータのログファイル出力対応
  *  2009/02/26    1.4   S.Miyakoshi      従業員の履歴管理対応(xxcos_rs_info_v)
+ *  2009/04/03    1.5   T.Kitajima       [T1_0247]HHTエラーリスト登録データ不正対応
+ *                                       [T1_0256]保管場所取得方法修正対応
+ *  2009/04/06    1.6   T.Kitajima       [T1_0329]TASK登録エラー対応
  *
  *****************************************************************************************/
 --
@@ -270,6 +273,9 @@ AS
       past_sale_base  xxcmm_cust_accounts.past_sale_base_code%TYPE,    -- 前月売上拠点コード
       cus_status      hz_parties.duns_number_c%TYPE,                   -- 顧客ステータス
       charge_person   jtf_rs_resource_extns.source_number%TYPE,        -- 担当営業員
+--****************************** 2009/04/06 1.6 T.Kitajima ADD START ******************************--
+      resource_id     jtf_rs_resource_extns.resource_id%TYPE,          -- リソースID
+--****************************** 2009/04/06 1.6 T.Kitajima ADD  END  ******************************--
       bus_low_type    xxcmm_cust_accounts.business_low_type%TYPE,      -- 業態（小分類）
       base_name       hz_cust_accounts.account_name%TYPE,              -- 拠点名称
       dept_hht_div    xxcmm_cust_accounts.dept_hht_div%TYPE,           -- 百貨店用HHT区分
@@ -1730,6 +1736,22 @@ AS
       --==============================================================
 --
       BEGIN
+--
+        --変数の初期化
+        lt_customer_name   := NULL;
+        lt_customer_id     := NULL;
+        lt_party_id        := NULL;
+        lt_sale_base       := NULL;
+        lt_past_sale_base  := NULL;
+        lt_cus_status      := NULL;
+        lt_charge_person   := NULL;
+        lt_resource_id     := NULL;
+        lt_bus_low_type    := NULL;
+        lt_base_name       := NULL;
+        lt_hht_class       := NULL;
+        lt_base_perf       := NULL;
+        lt_base_dlv        := NULL;
+--
         --== 顧客マスタデータ抽出 ==--
         -- 既に取得済みの値であるかを確認する。
         IF ( gt_select_cus.EXISTS(lt_customer_number) ) THEN
@@ -1740,6 +1762,9 @@ AS
           lt_past_sale_base := gt_select_cus(lt_customer_number).past_sale_base;  -- 前月売上拠点コード
           lt_cus_status     := gt_select_cus(lt_customer_number).cus_status;      -- 顧客ステータス
           lt_charge_person  := gt_select_cus(lt_customer_number).charge_person;   -- 担当営業員
+--****************************** 2009/04/06 1.6 T.Kitajima ADD START ******************************--
+          lt_resource_id    := gt_select_cus(lt_customer_number).resource_id;     -- リソースID
+--****************************** 2009/04/06 1.6 T.Kitajima ADD  END  ******************************--
           lt_bus_low_type   := gt_select_cus(lt_customer_number).bus_low_type;    -- 業態（小分類）
           lt_base_name      := gt_select_cus(lt_customer_number).base_name;       -- 拠点名称
           lt_hht_class      := gt_select_cus(lt_customer_number).dept_hht_div;    -- 百貨店用HHT区分
@@ -1878,6 +1903,9 @@ AS
           gt_select_cus(lt_customer_number).past_sale_base := lt_past_sale_base;  -- 前月売上拠点コード
           gt_select_cus(lt_customer_number).cus_status     := lt_cus_status;      -- 顧客ステータス
           gt_select_cus(lt_customer_number).charge_person  := lt_charge_person;   -- 担当営業員
+--****************************** 2009/04/06 1.6 T.Kitajima ADD START ******************************--
+          gt_select_cus(lt_customer_number).resource_id    := lt_resource_id;     -- リソースID
+--****************************** 2009/04/06 1.6 T.Kitajima ADD  END  ******************************--
           gt_select_cus(lt_customer_number).bus_low_type   := lt_bus_low_type;    -- 業態（小分類）
           gt_select_cus(lt_customer_number).base_name      := lt_base_name;       -- 拠点名称
           gt_select_cus(lt_customer_number).dept_hht_div   := lt_hht_class;       -- 百貨店用HHT区分
@@ -2165,10 +2193,12 @@ AS
       IF ( lt_hht_class IS NOT NULL ) THEN
   /*-----2009/02/03-----END---------------------------------------------------------------------------------*/
 --
-        --==============================================================
-        -- 預け先コードに顧客コードをセット（ヘッダ部）
-        --==============================================================
-        lt_keep_in_code := lt_customer_number;
+--****************************** 2009/04/03 1.5 T.Kitajima DEL START ******************************--
+--        --==============================================================
+--        -- 預け先コードに顧客コードをセット（ヘッダ部）
+--        --==============================================================
+--        lt_keep_in_code := lt_customer_number;
+--****************************** 2009/04/03 1.5 T.Kitajima DEL START ******************************--
 --
         --==============================================================
         -- 百貨店画面種別の妥当性チェック（ヘッダ部）

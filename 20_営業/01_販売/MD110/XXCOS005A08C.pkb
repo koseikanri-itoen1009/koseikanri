@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCOS005A08C (body)
  * Description      : CSVファイルの受注取込
  * MD.050           : CSVファイルの受注取込 MD050_COS_005_A08
- * Version          : 1.4
+ * Version          : 1.5
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -49,6 +49,8 @@ AS
  *  2009/02/19    1.3   T.kitajima       受注インポート呼び出し対応
  *                                       get_msgのパッケージ名修正
  *  2009/2/20     1.4   T.Miyashita      パラメータのログファイル出力対応
+ *  2009/04/06    1.5   T.Kitajima       [T1_313]配送先番号のデータ型修正
+ *                                       [T1_314]出荷元保管場所取得修正
  *
  *****************************************************************************************/
 --
@@ -2035,13 +2037,19 @@ AS
     iv_organization_id         IN  VARCHAR2, -- 組織ID
     in_line_no                 IN  NUMBER,   -- 行NO.
     iv_chain_store_code        IN  VARCHAR2, -- チェーン店コード
-    iv_central_code            IN  NUMBER,   -- センターコード
+--****************************** 2009/04/06 1.5 T.Kitajima MOD START ******************************--
+--    iv_central_code            IN  NUMBER,   -- センターコード
+    iv_central_code            IN  VARCHAR2, -- センターコード
+--****************************** 2009/04/06 1.5 T.Kitajima MOD  END  ******************************--
     iv_case_jan_code           IN  VARCHAR2, -- ケースJANコード
     iv_delivery                IN  VARCHAR2, -- 納品先(国際)
     iv_sej_item_code           IN  VARCHAR2, -- SEJ商品コード
     id_order_date              IN  DATE,     -- 発注日
     ov_account_number          OUT VARCHAR2, -- 顧客コード
-    on_delivery_code           OUT NUMBER,   -- 配送先コード
+--****************************** 2009/04/06 1.5 T.Kitajima MOD START ******************************--
+--    on_delivery_code           OUT NUMBER,   -- 配送先コード
+    ov_delivery_code           OUT VARCHAR2, -- 配送先コード
+--****************************** 2009/04/06 1.5 T.Kitajima MOD  END  ******************************--
     ov_delivery_base_code      OUT VARCHAR2, -- 納品拠点コード
     ov_salse_base_code         OUT VARCHAR2, -- 売上 or 前月 拠点コード
     ov_item_no                 OUT VARCHAR2, -- 品目コード
@@ -2132,7 +2140,10 @@ AS
         --
         IF ( ov_account_number IS NOT NULL ) THEN
           SELECT  hl.province                                                       -- 配送先コード
-          INTO    on_delivery_code
+--****************************** 2009/04/06 1.5 T.Kitajima MOD START ******************************--
+--          INTO    on_delivery_code
+          INTO    ov_delivery_code
+--****************************** 2009/04/06 1.5 T.Kitajima MOD  END  ******************************--
           FROM    hz_cust_accounts               accounts,                          -- 顧客マスタ
                   hz_cust_acct_sites_all         sites,                             -- 顧客所在地
                   hz_cust_site_uses_all          uses,                              -- 顧客使用目的
@@ -2150,7 +2161,10 @@ AS
           ;
         END IF;
         -- 顧客追加情報マスタのチェックのエラー編集
-        IF ( on_delivery_code IS NULL ) OR ( ov_delivery_base_code IS NULL ) THEN
+--****************************** 2009/04/06 1.5 T.Kitajima MOD START ******************************--
+--        IF ( on_delivery_code IS NULL ) OR ( ov_delivery_base_code IS NULL ) THEN
+        IF ( ov_delivery_code IS NULL ) OR ( ov_delivery_base_code IS NULL ) THEN
+--****************************** 2009/04/06 1.5 T.Kitajima MOD  END  ******************************--
           RAISE global_cust_check_expt; --マスタ情報の取得
         END IF;
       EXCEPTION
@@ -2225,7 +2239,10 @@ AS
        --
         IF ( ov_account_number IS NOT NULL ) THEN
           SELECT  hl.province                                                       -- 配送先コード
-          INTO    on_delivery_code
+--****************************** 2009/04/06 1.5 T.Kitajima MOD START ******************************--
+--          INTO    on_delivery_code
+          INTO    ov_delivery_code
+--****************************** 2009/04/06 1.5 T.Kitajima MOD  END  ******************************--
           FROM    hz_cust_accounts               accounts,                          -- 顧客マスタ
                   hz_cust_acct_sites_all         sites,                             -- 顧客所在地
                   hz_cust_site_uses_all          uses,                              -- 顧客使用目的
@@ -2243,7 +2260,10 @@ AS
           ;
         END IF;
         -- 顧客追加情報マスタのチェックのエラー編集
-        IF ( on_delivery_code IS NULL ) OR ( ov_delivery_base_code IS NULL ) THEN
+--****************************** 2009/04/06 1.5 T.Kitajima MOD START ******************************--
+--        IF ( on_delivery_code IS NULL ) OR ( ov_delivery_base_code IS NULL ) THEN
+        IF ( ov_delivery_code IS NULL ) OR ( ov_delivery_base_code IS NULL ) THEN
+--****************************** 2009/04/06 1.5 T.Kitajima MOD  END  ******************************--
           lv_key_info := in_line_no;
           RAISE global_item_delivery_mst_expt; --マスタ情報の取得
         END IF;
@@ -2757,6 +2777,10 @@ AS
     -- ***************************************
     -- ***   出荷予定日の導出処理          ***
     -- ***************************************
+--****************************** 2009/04/06 1.5 T.Kitajima ADD START ******************************--
+    --変数の初期化
+    gt_base_code  :=  NULL;
+--****************************** 2009/04/06 1.5 T.Kitajima ADD  END  ******************************--
     ---------------------------
     --1.物流構成アドオンマスタ
     --配送先コード
@@ -3037,7 +3061,10 @@ AS
       on_lead_time                  => ln_lead_time,
       on_delivery_lt                => ln_delivery_lt
     );
-    IF ( lv_errbuf != cv_status_normal ) THEN
+--****************************** 2009/04/06 1.5 T.Kitajima MOD START ******************************--
+--    IF ( lv_errbuf != cv_status_normal ) THEN
+    IF ( lv_retcode != cv_status_normal ) THEN
+--****************************** 2009/04/06 1.5 T.Kitajima MOD  END  ******************************--
       RAISE global_delivery_lt_err_expt;
     END IF;
 --
@@ -3885,7 +3912,10 @@ AS
           iv_sej_item_code           => lv_sej_article_code,        -- SEJ商品コード
           id_order_date              => ld_order_date,              -- 発注日
           ov_account_number          => lv_account_number,          -- 顧客コード
-          on_delivery_code           => lv_delivery_code,           -- 配送先コード
+--****************************** 2009/04/06 1.5 T.Kitajima MOD START ******************************--
+--          on_delivery_code           => lv_delivery_code,           -- 配送先コード
+          ov_delivery_code           => lv_delivery_code,           -- 配送先コード
+--****************************** 2009/04/06 1.5 T.Kitajima MOD  END  ******************************--
           ov_delivery_base_code      => lv_delivery_base_code,      -- 納品拠点コード
           ov_salse_base_code         => lv_salse_base_code,         -- 拠点コード
           ov_item_no                 => lv_item_no,                 -- 品目コード
