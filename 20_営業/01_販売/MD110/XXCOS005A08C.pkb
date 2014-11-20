@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCOS005A08C (body)
  * Description      : CSVファイルの受注取込
  * MD.050           : CSVファイルの受注取込 MD050_COS_005_A08
- * Version          : 1.15
+ * Version          : 1.18
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -67,6 +67,7 @@ AS
  *  2009/12/07          N.Maeda          [E_本稼動_00086] 出荷予定日の導出条件修正
  *  2009/12/16    1.16  N.Maeda          [E_本稼動_00495] 締め時間のNULL判定用IF文設定箇所修正
  *  2009/12/28    1.17  N.Maeda          [E_本稼動_00683]出荷予定日取得関数による翌稼働日算出の追加。
+ *  2010/01/12    1.18  M.Uehara         [E_本稼動_01011]問屋CSV取込時「出荷日」が登録されている場合、受注の出荷予定日に登録。
  *
  *****************************************************************************************/
 --
@@ -1965,44 +1966,47 @@ AS
         ov_delivery             := gr_order_work_data(in_cnt)(cn_delivery);-- 12.<納品先>
       END IF;
 --
-      --出荷日
-      xxccp_common_pkg2.upload_item_check(
-        iv_item_name    => gr_order_work_data(cn_item_header)(cn_shipping_date), -- 1.項目名称(日本語名)         -- 必須
-        iv_item_value   => gr_order_work_data(in_cnt)(cn_shipping_date),         -- 2.項目の値                   -- 任意
-        in_item_len     => cn_ship_date_dlength,                                 -- 3.項目の長さ                 -- 必須
-        in_item_decimal => NULL,                                                 -- 4.項目の長さ(小数点以下)     -- 条件付必須
--- *********** 2009/12/04 1.15 N.Maeda MOD START ***********--
-        iv_item_nullflg => xxccp_common_pkg2.gv_null_ok,                         -- 5.必須フラグ(上記定数を設定) -- 必須
+-- ********************* 2010/01/12 1.18 M.Uehara DEL START ********************* --
+-- 出荷日のチェックを問屋CSV／国際CSV共通の項目チェック部に移動
+--      --出荷日
+--      xxccp_common_pkg2.upload_item_check(
+--        iv_item_name    => gr_order_work_data(cn_item_header)(cn_shipping_date), -- 1.項目名称(日本語名)         -- 必須
+--        iv_item_value   => gr_order_work_data(in_cnt)(cn_shipping_date),         -- 2.項目の値                   -- 任意
+--        in_item_len     => cn_ship_date_dlength,                                 -- 3.項目の長さ                 -- 必須
+--        in_item_decimal => NULL,                                                 -- 4.項目の長さ(小数点以下)     -- 条件付必須
+---- *********** 2009/12/04 1.15 N.Maeda MOD START ***********--
+--        iv_item_nullflg => xxccp_common_pkg2.gv_null_ok,                         -- 5.必須フラグ(上記定数を設定) -- 必須
 --        iv_item_nullflg => xxccp_common_pkg2.gv_null_ng,                         -- 5.必須フラグ(上記定数を設定) -- 必須
--- *********** 2009/12/04 1.15 N.Maeda MOD  END  ***********--
-        iv_item_attr    => xxccp_common_pkg2.gv_attr_dat,                        -- 6.項目属性(上記定数を設定)   -- 必須
-        ov_errbuf       => lv_errbuf,   -- 1.エラー・メッセージ           --# 固定 #
-        ov_retcode      => lv_retcode,  -- 2.リターン・コード             --# 固定 #
-        ov_errmsg       => lv_errmsg    -- 3.ユーザー・エラー・メッセージ --# 固定 #
-      );
-      --ワーニング
-      IF ( lv_retcode = cv_status_warn ) THEN
-        --ワーニングメッセージ作成
-        lv_err_msg := lv_err_msg || xxccp_common_pkg.get_msg(
-                        iv_application   => ct_xxcos_appl_short_name,
-                        iv_name          => ct_msg_get_format_err,
-                        iv_token_name1   => cv_tkn_param1,                                                   --パラメータ1(トークン)
-                        iv_token_value1  => gv_temp_line_no,                                                 --行番号
-                        iv_token_name2   => cv_tkn_param2,                                                   --パラメータ2(トークン)
-                        iv_token_value2  => gr_order_work_data(in_cnt)(cn_order_number),                     --オーダーNO
-                        iv_token_name3   => cv_tkn_param3,                                                   --パラメータ3(トークン)
-                        iv_token_value3  => gr_order_work_data(in_cnt)(cn_line_number),                      --行No
-                        iv_token_name4   => cv_tkn_err_msg ,                                                 --エラーメッセージ(トークン)
-                        iv_token_value4  => gr_order_work_data(cn_item_header)(cn_shipping_date)             --項目名
-                      ) || cv_line_feed;
-        --
-      --共通関数エラー
-      ELSIF ( lv_retcode = cv_status_error ) THEN
-        RAISE global_api_expt;
-      --正常終了
-      ELSIF ( lv_retcode = cv_status_normal ) THEN
-        od_shipping_date        :=  TO_DATE(gr_order_work_data(in_cnt)(cn_shipping_date),cv_yyyymmdd_format);-- 13.<出荷日>
-      END IF;
+---- *********** 2009/12/04 1.15 N.Maeda MOD  END  ***********--
+--        iv_item_attr    => xxccp_common_pkg2.gv_attr_dat,                        -- 6.項目属性(上記定数を設定)   -- 必須
+--        ov_errbuf       => lv_errbuf,   -- 1.エラー・メッセージ           --# 固定 #
+--        ov_retcode      => lv_retcode,  -- 2.リターン・コード             --# 固定 #
+--        ov_errmsg       => lv_errmsg    -- 3.ユーザー・エラー・メッセージ --# 固定 #
+--      );
+--      --ワーニング
+--      IF ( lv_retcode = cv_status_warn ) THEN
+--        --ワーニングメッセージ作成
+--        lv_err_msg := lv_err_msg || xxccp_common_pkg.get_msg(
+--                        iv_application   => ct_xxcos_appl_short_name,
+--                        iv_name          => ct_msg_get_format_err,
+--                        iv_token_name1   => cv_tkn_param1,                                                   --パラメータ1(トークン)
+--                        iv_token_value1  => gv_temp_line_no,                                                 --行番号
+--                        iv_token_name2   => cv_tkn_param2,                                                   --パラメータ2(トークン)
+--                        iv_token_value2  => gr_order_work_data(in_cnt)(cn_order_number),                     --オーダーNO
+--                        iv_token_name3   => cv_tkn_param3,                                                   --パラメータ3(トークン)
+--                        iv_token_value3  => gr_order_work_data(in_cnt)(cn_line_number),                      --行No
+--                        iv_token_name4   => cv_tkn_err_msg ,                                                 --エラーメッセージ(トークン)
+--                        iv_token_value4  => gr_order_work_data(cn_item_header)(cn_shipping_date)             --項目名
+--                      ) || cv_line_feed;
+--        --
+--      --共通関数エラー
+--      ELSIF ( lv_retcode = cv_status_error ) THEN
+--        RAISE global_api_expt;
+--      --正常終了
+--      ELSIF ( lv_retcode = cv_status_normal ) THEN
+--        od_shipping_date        :=  TO_DATE(gr_order_work_data(in_cnt)(cn_shipping_date),cv_yyyymmdd_format);-- 13.<出荷日>
+--      END IF;
+-- ********************* 2010/01/12 1.18 M.Uehara DEL END ********************* --
 -- ********************* 2009/11/18 1.14 N.Maeda ADD START ********************* --
       --出荷依頼No.
       xxccp_common_pkg2.upload_item_check(
@@ -2421,6 +2425,46 @@ AS
       RAISE global_item_check_expt;
     END IF;
 --
+-- ********************* 2010/01/12 1.18 M.Uehara ADD START ********************* --
+      --出荷日
+      xxccp_common_pkg2.upload_item_check(
+        iv_item_name    => gr_order_work_data(cn_item_header)(cn_shipping_date), -- 1.項目名称(日本語名)         -- 必須
+        iv_item_value   => gr_order_work_data(in_cnt)(cn_shipping_date),         -- 2.項目の値                   -- 任意
+        in_item_len     => cn_ship_date_dlength,                                 -- 3.項目の長さ                 -- 必須
+        in_item_decimal => NULL,                                                 -- 4.項目の長さ(小数点以下)     -- 条件付必須
+-- *********** 2009/12/04 1.15 N.Maeda MOD START ***********--
+        iv_item_nullflg => xxccp_common_pkg2.gv_null_ok,                         -- 5.必須フラグ(上記定数を設定) -- 必須
+--        iv_item_nullflg => xxccp_common_pkg2.gv_null_ng,                         -- 5.必須フラグ(上記定数を設定) -- 必須
+-- *********** 2009/12/04 1.15 N.Maeda MOD  END  ***********--
+        iv_item_attr    => xxccp_common_pkg2.gv_attr_dat,                        -- 6.項目属性(上記定数を設定)   -- 必須
+        ov_errbuf       => lv_errbuf,   -- 1.エラー・メッセージ           --# 固定 #
+        ov_retcode      => lv_retcode,  -- 2.リターン・コード             --# 固定 #
+        ov_errmsg       => lv_errmsg    -- 3.ユーザー・エラー・メッセージ --# 固定 #
+      );
+      --ワーニング
+      IF ( lv_retcode = cv_status_warn ) THEN
+        --ワーニングメッセージ作成
+        lv_err_msg := lv_err_msg || xxccp_common_pkg.get_msg(
+                        iv_application   => ct_xxcos_appl_short_name,
+                        iv_name          => ct_msg_get_format_err,
+                        iv_token_name1   => cv_tkn_param1,                                                   --パラメータ1(トークン)
+                        iv_token_value1  => gv_temp_line_no,                                                 --行番号
+                        iv_token_name2   => cv_tkn_param2,                                                   --パラメータ2(トークン)
+                        iv_token_value2  => gr_order_work_data(in_cnt)(cn_order_number),                     --オーダーNO
+                        iv_token_name3   => cv_tkn_param3,                                                   --パラメータ3(トークン)
+                        iv_token_value3  => gr_order_work_data(in_cnt)(cn_line_number),                      --行No
+                        iv_token_name4   => cv_tkn_err_msg ,                                                 --エラーメッセージ(トークン)
+                        iv_token_value4  => gr_order_work_data(cn_item_header)(cn_shipping_date)             --項目名
+                      ) || cv_line_feed;
+        --
+      --共通関数エラー
+      ELSIF ( lv_retcode = cv_status_error ) THEN
+        RAISE global_api_expt;
+      --正常終了
+      ELSIF ( lv_retcode = cv_status_normal ) THEN
+        od_shipping_date        :=  TO_DATE(gr_order_work_data(in_cnt)(cn_shipping_date),cv_yyyymmdd_format);-- 13.<出荷日>
+      END IF;
+-- ********************* 2010/01/12 1.18 M.Uehara ADD END  ********************* --
   EXCEPTION
     WHEN global_item_check_expt THEN
       ov_errmsg := RTRIM(lv_err_msg, cv_line_feed);
@@ -4840,7 +4884,11 @@ AS
         IF ( iv_get_format_pat = cv_tonya_format )THEN
             lv_customer_number       := lv_account_number;          -- 9.<顧客番号（コード) (顧客コード(SEJ))>
             lv_inventory_item        := lv_item_no;                 -- 13.<在庫品目         (品目コード(SEJ))>
-            ld_schedule_ship_date    := ld_ship_due_date;           -- 14.<予定出荷日       (出荷予定日(SEJ))>
+-- ********************* 2010/01/12 1.18 M.Uehara MOD START ********************* --
+--            ld_schedule_ship_date    := ld_ship_due_date;           -- 14.<予定出荷日       (出荷予定日(SEJ))>
+            -- 出荷日が入力されている場合は出荷日、出荷日がnullの場合は出荷予定日をセット
+            ld_schedule_ship_date    := NVL( ld_shipping_date , ld_ship_due_date);  -- 14.<予定出荷日       (出荷予定日(SEJ))>
+-- ********************* 2010/01/12 1.18 M.Uehara MOD END   ********************* --
             ln_ordered_quantity      := ln_order_roses_quantity;    -- 15.<受注数量         (発注バラ数(SEJ)>
             lv_order_quantity_uom    := lv_primary_unit_of_measure; -- 16.<受注数量単位     (基準単位(SEJ))>
 -- ********************* 2009/11/18 1.14 N.Maeda ADD START ********************* --
