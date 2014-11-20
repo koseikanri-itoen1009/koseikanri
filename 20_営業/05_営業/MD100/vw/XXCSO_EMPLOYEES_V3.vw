@@ -3,7 +3,7 @@
  * VIEW Name       : XXCSO_EMPLOYEES_V3
  * Description     : 共通用：従業員マスタ（最新）ビュー3
  * MD.070          : 
- * Version         : 1.1
+ * Version         : 1.2
  * 
  * Change Record
  * ------------- ----- ------------ -------------------------------------
@@ -11,6 +11,7 @@
  * ------------- ----- ------------ -------------------------------------
  *  2009/05/29    1.0  M.Ohtsuki    初回作成
  *  2009/06/09    1.1  K.Satomura   システムテスト対応(T1_1207)
+ *  2009/09/11    1.2  K.Satomura   統合テスト対応(0001349)
  ************************************************************************/
 CREATE OR REPLACE VIEW APPS.XXCSO_EMPLOYEES_V3
 (
@@ -96,18 +97,32 @@ FROM
  fnd_user fu
 ,per_people_f ppf
 ,per_assignments_f paf
-WHERE
-fu.start_date <= TRUNC(xxcso_util_common_pkg.get_online_sysdate) AND
-NVL(ADD_MONTHS(fu.end_date,1), TRUNC(xxcso_util_common_pkg.get_online_sysdate)) >= TRUNC(xxcso_util_common_pkg.get_online_sysdate) AND
-ppf.person_id = fu.employee_id AND
-ppf.effective_start_date <= TRUNC(xxcso_util_common_pkg.get_online_sysdate) AND
-ADD_MONTHS(ppf.effective_end_date,1) >= TRUNC(xxcso_util_common_pkg.get_online_sysdate) AND
-paf.person_id = ppf.person_id AND
-paf.effective_start_date <= TRUNC(xxcso_util_common_pkg.get_online_sysdate) AND
-ADD_MONTHS(paf.effective_end_date,1) >= TRUNC(xxcso_util_common_pkg.get_online_sysdate)
-/* 2009.06.09 K.Satomura T1_1207対応 START */
-AND ppf.effective_start_date = paf.effective_start_date
-/* 2009.06.09 K.Satomura T1_1207対応 END */
+/* 2009.09.11 K.Satomura 0001349対応 START */
+--WHERE
+--fu.start_date <= TRUNC(xxcso_util_common_pkg.get_online_sysdate) AND
+--NVL(ADD_MONTHS(fu.end_date,1), TRUNC(xxcso_util_common_pkg.get_online_sysdate)) >= TRUNC(xxcso_util_common_pkg.get_online_sysdate) AND
+--ppf.person_id = fu.employee_id AND
+--ppf.effective_start_date <= TRUNC(xxcso_util_common_pkg.get_online_sysdate) AND
+--ADD_MONTHS(ppf.effective_end_date,1) >= TRUNC(xxcso_util_common_pkg.get_online_sysdate) AND
+--paf.person_id = ppf.person_id AND
+--paf.effective_start_date <= TRUNC(xxcso_util_common_pkg.get_online_sysdate) AND
+--ADD_MONTHS(paf.effective_end_date,1) >= TRUNC(xxcso_util_common_pkg.get_online_sysdate)
+--/* 2009.06.09 K.Satomura T1_1207対応 START */
+--AND ppf.effective_start_date = paf.effective_start_date
+--/* 2009.06.09 K.Satomura T1_1207対応 END */
+WHERE fu.start_date <= TRUNC(xxcso_util_common_pkg.get_online_sysdate)
+AND   NVL(ADD_MONTHS(fu.end_date,NVL(TO_NUMBER(fnd_profile.value('XXCSO1_ADMIN_EXTENSION_MONTHS')),0)), TRUNC(xxcso_util_common_pkg.get_online_sysdate)) >=
+        TRUNC(xxcso_util_common_pkg.get_online_sysdate)
+AND   ppf.person_id             = fu.employee_id
+AND   ppf.effective_start_date <= TRUNC(xxcso_util_common_pkg.get_online_sysdate)
+AND   ADD_MONTHS(ppf.effective_end_date,NVL(TO_NUMBER(fnd_profile.value('XXCSO1_ADMIN_EXTENSION_MONTHS')),0)) >=
+      TRUNC(xxcso_util_common_pkg.get_online_sysdate)
+AND   paf.person_id             = ppf.person_id
+AND   paf.effective_start_date <= TRUNC(xxcso_util_common_pkg.get_online_sysdate)
+AND   ADD_MONTHS(paf.effective_end_date,NVL(TO_NUMBER(fnd_profile.value('XXCSO1_ADMIN_EXTENSION_MONTHS')),0)) >=
+      TRUNC(xxcso_util_common_pkg.get_online_sysdate)
+AND   ppf.effective_start_date = paf.effective_start_date
+/* 2009.09.11 K.Satomura 0001349対応 END */
 WITH READ ONLY
 ;
 /* 2009.06.09 K.Satomura T1_1207対応 START */
