@@ -1,7 +1,7 @@
 /*============================================================================
 * ファイル名 : XxwshUtility
 * 概要説明   : 出荷・引当/配車共通関数
-* バージョン : 1.5
+* バージョン : 1.6
 *============================================================================
 * 修正履歴
 * 日付       Ver. 担当者       修正内容
@@ -12,6 +12,7 @@
 * 2008-07-23 1.3  伊藤ひとみ   内部課題#32 checkNumOfCases、getItemCode追加
 * 2008-08-01 1.4  伊藤ひとみ   内部変更要求#176対応
 * 2008-08-07 1.5  二瓶大輔　   内部変更要求#166対応
+* 2008-09-19 1.6  伊藤ひとみ   T_TE080_BPO_400指摘76対応
 *============================================================================
 */
 package itoen.oracle.apps.xxwsh.util;
@@ -33,7 +34,7 @@ import oracle.jbo.domain.Number;
 /***************************************************************************
  * 出荷・引当/配車共通関数クラスです。
  * @author  ORACLE 伊藤ひとみ
- * @version 1.5
+ * @version 1.6
  ***************************************************************************
  */
 public class XxwshUtility 
@@ -1523,14 +1524,51 @@ public class XxwshUtility
 
     // PL/SQLの作成
     StringBuffer sb = new StringBuffer(1000);
-    sb.append("BEGIN "                                                 );
-    sb.append("  UPDATE xxwsh_order_lines_all xola "                   ); // 受注明細アドオン
-    sb.append("  SET    xola.shipped_quantity  = TO_NUMBER(:1) "       ); // 1.出荷実績数量
-    sb.append("        ,xola.last_updated_by   = FND_GLOBAL.USER_ID "  ); // 最終更新者
-    sb.append("        ,xola.last_update_date  = SYSDATE "             ); // 最終更新日
-    sb.append("        ,xola.last_update_login = FND_GLOBAL.LOGIN_ID " ); // 最終更新ログイン
-    sb.append("  WHERE xola.order_line_id = :2; "                      ); // 2.受注明細アドオンID
-    sb.append("END; "                                       );
+// 2008-09-19 H.Itou Add Start
+    sb.append("DECLARE "                                                                        );
+    sb.append("  lt_in_param_quantity      xxwsh_order_lines_all.shipped_quantity%TYPE; "       ); // INパラメータ.更新する出荷実績数量
+    sb.append("  lt_in_param_order_line_id xxwsh_order_lines_all.order_line_id%TYPE; "          ); // INパラメータ.受注明細ID
+    sb.append("  lt_shipped_quantity       xxwsh_order_lines_all.shipped_quantity%TYPE; "       ); // DB出荷実績数量
+    sb.append("  lt_shipping_result_if_flg xxwsh_order_lines_all.shipping_result_if_flg%TYPE; " ); // DB出荷実績インタフェース済フラグ
+    sb.append("  lt_req_status             xxwsh_order_headers_all.req_status%TYPE; "           ); // DBステータス
+// 2008-09-19 H.Itou Add End
+    sb.append("BEGIN "                                                                          );
+// 2008-09-19 H.Itou Add Start
+                 // INパラメータ取得
+    sb.append("  lt_in_param_quantity := TO_NUMBER(:1); "                                       ); // INパラメータ.更新する出荷実績数量
+    sb.append("  lt_in_param_order_line_id := :2; "                                             ); // INパラメータ.受注明細ID
+
+                 // 更新前の出荷実績数量とステータスを取得
+    sb.append("  SELECT xola.shipped_quantity       shipped_quantity "                          ); // DB出荷実績数量
+    sb.append("        ,xola.shipping_result_if_flg shipping_result_if_flg "                    ); // DB出荷実績インタフェース済フラグ
+    sb.append("        ,xoha.req_status             req_status "                                ); // DBステータス
+    sb.append("  INTO   lt_shipped_quantity "                                                   );
+    sb.append("        ,lt_shipping_result_if_flg "                                             );
+    sb.append("        ,lt_req_status "                                                         );
+    sb.append("  FROM   xxwsh_order_headers_all xoha "                                          ); // 受注ヘッダアドオン
+    sb.append("        ,xxwsh_order_lines_all   xola "                                          ); // 受注明細アドオン
+    sb.append("  WHERE xoha.order_header_id = xola.order_header_id "                            );
+    sb.append("  AND   xola.order_line_id   = lt_in_param_order_line_id; "                      );
+
+                 // 出荷実績計上済(04)かつ、出荷実績数量が違う値に更新する場合(出荷のデータのみ)
+    sb.append("  IF (((lt_shipped_quantity <> lt_in_param_quantity ) "                          );
+    sb.append("    OR (lt_shipped_quantity IS NULL)) "                                          );
+    sb.append("  AND (lt_req_status       =  '04'))                 THEN "                      );
+                   // 出荷実績インタフェース済フラグをNに更新
+    sb.append("    lt_shipping_result_if_flg := 'N'; "                                          );
+    sb.append("  END IF; "                                                                      );
+// 2008-09-19 H.Itou Add End
+
+    sb.append("  UPDATE xxwsh_order_lines_all xola "                                            ); // 受注明細アドオン
+    sb.append("  SET    xola.shipped_quantity  = lt_in_param_quantity "                         ); // 1.出荷実績数量
+    sb.append("        ,xola.last_updated_by   = FND_GLOBAL.USER_ID "                           ); // 最終更新者
+    sb.append("        ,xola.last_update_date  = SYSDATE "                                      ); // 最終更新日
+    sb.append("        ,xola.last_update_login = FND_GLOBAL.LOGIN_ID "                          ); // 最終更新ログイン
+// 2008-09-19 H.Itou Add Start
+    sb.append("        ,xola.shipping_result_if_flg = lt_shipping_result_if_flg "               ); // 出荷実績インタフェース済フラグ
+// 2008-09-19 H.Itou Add End
+    sb.append("  WHERE  xola.order_line_id = lt_in_param_order_line_id; "                       ); // 2.受注明細アドオンID
+    sb.append("END; "                                                                           );
   
     //PL/SQLの設定を行います
     CallableStatement cstmt
