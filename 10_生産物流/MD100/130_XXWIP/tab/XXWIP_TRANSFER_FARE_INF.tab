@@ -2,7 +2,7 @@ CREATE TABLE xxwip.xxwip_transfer_fare_inf
 (
   transfer_fare_inf_id    NUMBER(10,0)    NOT NULL,
   target_date             VARCHAR2(6)     NOT NULL,
-  request_no              VARCHAR2(9)     NOT NULL,
+  request_no              VARCHAR2(12)    NOT NULL,
   goods_classe            VARCHAR2(1)     NOT NULL,
   delivery_date           DATE,
   jurisdicyional_hub      VARCHAR2(4)     NOT NULL,
