@@ -6,7 +6,7 @@ AS
  * Package Name     : xxcfr_common_pkg(body)
  * Description      : 
  * MD.050           : なし
- * Version          : 1.1
+ * Version          : 1.2
  *
  * Program List
  * --------------------      ---- ----- --------------------------------------------------
@@ -23,6 +23,7 @@ AS
  *  get_date_param_trans      F    VAR    日付パラメータ変換関数
  *  csv_out                   P           OUTファイル出力処理
  *  get_base_target_tel_num   F    VAR    請求拠点担当電話番号取得関数
+ *  get_receive_updatable     F    VAR    入金画面 顧客変更可能判定
  *
  * Change Record
  * ------------- ----- ---------------- -------------------------------------------------
@@ -38,6 +39,8 @@ AS
  *  2008-11-18   1.0    SCS 吉村 憲司    OUTファイル出力処理追加
  *  2008-12-22   1.0    SCS 松尾 泰生    請求拠点担当電話番号取得関数追加
  *  2009-03-31   1.1    SCS 大川 恵      [障害T1_0210] 請求拠点担当電話番号取得関数 複数組織対応
+ *  2010-03-31   1.2    SCS 安川 智博    障害「E_本稼動_02092」対応
+ *                                       新規function「get_receive_updatable」を追加
  *
  *****************************************************************************************/
 --
@@ -1099,6 +1102,87 @@ AS
       RETURN NULL;
   END get_base_target_tel_num;
 --
+  /**********************************************************************************
+   * Function Name    : get_receive_updatable
+   * Description      : 入金画面 顧客変更可能判定
+   ***********************************************************************************/
+  FUNCTION get_receive_updatable(
+    in_cash_receipt_id IN NUMBER,
+    iv_gl_date IN VARCHAR2
+  )
+  RETURN VARCHAR2
+  IS
+    -- ===============================
+    -- 固定ローカル定数
+    -- ===============================
+    cv_prg_name                CONSTANT VARCHAR2(100) := 'xxcfr_common_pkg.get_receive_updatable'; -- PRG名
+    cv_appl_short_name_ar      CONSTANT fnd_application.application_short_name%TYPE := 'AR'; -- ARアプリケーション短縮名
+    cv_prof_name_gl_bks_id     CONSTANT VARCHAR2(100) := 'GL_SET_OF_BKS_ID'; -- プロファイル帳簿ID
+    cv_date_format             CONSTANT VARCHAR2(100) := 'DD-MON-RRRR'; -- 入金日 日付フォーマット
+    cv_return_value_y          CONSTANT VARCHAR2(1) := 'Y'; -- 戻り値'Y'
+    cv_return_value_n          CONSTANT VARCHAR2(1) := 'N'; -- 戻り値'N'
+    cv_receivable_status_unapp CONSTANT ar_receivable_applications_all.status%TYPE := 'UNAPP'; -- 未消込ステータス
+    -- ===============================
+    -- ローカル変数
+    -- ===============================
+    ld_in_gl_date DATE;
+    lv_closing_status gl_period_statuses.closing_status%TYPE;
+    lv_return_value VARCHAR2(1);
+    ln_receivable_app_cnt NUMBER;
+    -- ===============================
+    -- ローカルカーソル
+    CURSOR cur_get_closing_status(
+      id_gl_date IN DATE
+    )
+    IS
+    SELECT gps.closing_status AS closing_status
+    FROM fnd_application fap
+        ,gl_period_statuses gps
+    WHERE fap.application_short_name = cv_appl_short_name_ar
+      AND gps.set_of_books_id = fnd_profile.value(cv_prof_name_gl_bks_id)
+      AND ld_in_gl_date BETWEEN gps.start_date AND gps.end_date
+      AND gps.adjustment_period_flag = 'N'
+      AND fap.application_id = gps.application_id
+    ;
+--
+  BEGIN
+--
+    ld_in_gl_date := TO_DATE(iv_gl_date,cv_date_format);
+    OPEN cur_get_closing_status(ld_in_gl_date);
+    FETCH cur_get_closing_status INTO lv_closing_status;
+    IF iv_gl_date IS NULL THEN
+      lv_return_value := cv_return_value_y;
+    ELSIF cur_get_closing_status%NOTFOUND THEN
+      lv_return_value := cv_return_value_y;
+    ELSIF lv_closing_status = 'O' THEN
+      lv_return_value := cv_return_value_y;
+    ELSE 
+      SELECT COUNT('X') AS cnt
+      INTO ln_receivable_app_cnt
+      FROM ar_receivable_applications_all araa
+      WHERE araa.cash_receipt_id = in_cash_receipt_id
+      AND araa.status = cv_receivable_status_unapp;
+      IF ln_receivable_app_cnt = 0 THEN
+        lv_return_value := cv_return_value_y;
+      ELSE
+        lv_return_value := cv_return_value_n;
+      END IF;
+    END IF;
+    CLOSE cur_get_closing_status;
+    RETURN lv_return_value;
+--
+  EXCEPTION
+--
+--###############################  固定例外処理部 START   ###################################
+--
+    WHEN OTHERS THEN
+      RAISE_APPLICATION_ERROR
+        (-20000,SUBSTRB(cv_prg_name||gv_msg_part||SQLERRM,1,5000),TRUE);
+--
+--###################################  固定部 END   #########################################
+--
+      RETURN NULL;
+  END get_receive_updatable;
 --
 END xxcfr_common_pkg;
 /

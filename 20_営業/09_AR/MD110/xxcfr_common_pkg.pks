@@ -6,7 +6,7 @@ AS
  * Package Name     : xxcfr_common_pkg(spec)
  * Description      : 
  * MD.050           : なし
- * Version          : 1.0
+ * Version          : 1.1
  *
  * Program List
  *  --------------------      ---- ----- --------------------------------------------------
@@ -23,6 +23,7 @@ AS
  *  get_date_param_trans      F    VAR    日付パラメータ変換関数
  *  csv_out                   P           OUTファイル出力処理
  *  get_base_target_tel_num   F    VAR    請求拠点担当電話番号取得関数
+ *  get_receive_updatable     F    VAR    入金画面 顧客変更可能判定
  *
  * Change Record
  * ------------- ----- ---------------- -------------------------------------------------
@@ -37,6 +38,8 @@ AS
  *  2008-11-13   1.0    SCS 松尾 泰生    日付パラメータ変換関数追加
  *  2008-11-18   1.0    SCS 吉村 憲司    OUTファイル出力処理追加
  *  2008-12-22   1.0    SCS 松尾 泰生    請求拠点担当電話番号取得関数追加
+ *  2010-03-31   1.1    SCS 安川 智博    障害「E_本稼動_02092」対応
+ *                                       新規function「get_receive_updatable」を追加
  *
  *****************************************************************************************/
 --
@@ -115,6 +118,13 @@ AS
   --請求拠点担当電話番号取得関数
   FUNCTION get_base_target_tel_num(
     iv_bill_acct_code  IN   VARCHAR2          -- 1.請求先顧客コード
+  )
+  RETURN VARCHAR2;
+  --
+  --入金顧客変更可能判定
+  FUNCTION get_receive_updatable(
+    in_cash_receipt_id IN NUMBER,   -- 1.入金ID
+    iv_gl_date IN VARCHAR2          -- 2.GL記帳日
   )
   RETURN VARCHAR2;
 --
