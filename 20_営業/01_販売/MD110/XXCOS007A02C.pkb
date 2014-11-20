@@ -7,7 +7,7 @@ AS
  * Description      : 返品予定日の到来した拠点出荷の返品受注に対して販売実績を作成し、
  *                    販売実績を作成した受注をクローズします。
  * MD.050           : 返品実績データ作成（ＨＨＴ以外）  MD050_COS_007_A02
- * Version          : 1.16
+ * Version          : 1.17
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -61,6 +61,7 @@ AS
  *  2010/03/09    1.15  N.Maeda          [E_本稼動_01725] 販売実績連携時売上拠点-前月売上拠点判定条件修正
  *  2010/08/25    1.16  S.Arizumi        [E_本稼動_01763] INV締め日当日のINV連携日中化
  *                                       [E_本稼動_02635] クローズされない受注のエラーリスト出力
+ *  2011/02/07    1.17  Y.Nishino        [E_本稼動_01010] 販売単価0円の受注データをクローズしないように修正
  *
  *****************************************************************************************/
 --
@@ -143,6 +144,11 @@ AS
   --*** API呼び出しエラー例外ハンドラ ***
   global_api_err_expt           EXCEPTION;
 --
+-- ************ 2011/02/07 1.17 Y.Nishino ADD START ************ --
+  --*** 単価0円チェックエラー例外ハンドラ ***
+  global_price_err_expt   EXCEPTION;
+-- ************ 2011/02/07 1.17 Y.Nishino ADD END   ************ --
+--
   PRAGMA EXCEPTION_INIT(global_lock_err_expt, -54);
 --
 --
@@ -213,6 +219,13 @@ AS
   ct_msg_xxcos_00207        CONSTANT  fnd_new_messages.message_name%TYPE
                                        :=  'APP-XXCOS1-00207';    -- キー項目（受注番号、明細番号、日付）
 -- 2010/08/25 Ver.1.16 S.Arizumi Add End   --
+--
+-- ************ 2011/02/07 1.17 Y.Nishino ADD START ************ --
+  -- 単価0円チェック エラー
+  ct_price0_line_type_err   CONSTANT  fnd_new_messages.message_name%TYPE := 'APP-XXCOS1-11542';
+  -- 単価0円チェック 汎用エラーリスト
+  ct_line_type_err_lst      CONSTANT  fnd_new_messages.message_name%TYPE := 'APP-XXCOS1-11542';
+-- ************ 2011/02/07 1.17 Y.Nishino ADD END   ************ --
 --
   --トークン
   cv_tkn_para_date        CONSTANT  VARCHAR2(100)  :=  'PARA_DATE';      -- 処理日付
@@ -2230,6 +2243,17 @@ AS
 /* 2009/09/11 Ver1.10 Mod End   */
 --
 --
+-- ************ 2011/02/07 1.17 Y.Nishino ADD START ************ --
+    --==================================
+    -- 単価0円チェック
+    --==================================
+    IF( io_order_rec.unit_selling_price = 0 ) THEN
+      -- 販売単価が0円の場合は該当データをクローズしない
+      ld_base_date := io_order_rec.org_dlv_date; -- オリジナル納品日
+      RAISE global_price_err_expt;
+    END IF;
+-- ************ 2011/02/07 1.17 Y.Nishino ADD END   ************ --
+--
     --==================================
     -- 5.基準単価算出
     --==================================
@@ -2759,6 +2783,41 @@ AS
         , iv_output_msg_token_value2  => TO_CHAR( io_order_rec.line_number )          -- 値02      ：受注明細番号
       );
 -- 2010/08/25 Ver.1.16 S.Arizumi Add End   --
+--
+-- ************ 2011/02/07 1.17 Y.Nishino ADD START ************ --
+    WHEN global_price_err_expt THEN
+    -- *** 単価0円例外ハンドラ ***
+      ov_errmsg := xxccp_common_pkg.get_msg(
+                    iv_application  => cv_xxcos_appl_short_nm,
+                    iv_name         => ct_price0_line_type_err,
+                    iv_token_name1  => cv_tkn_order_number,
+                    iv_token_value1 => io_order_rec.order_number,  -- 受注番号
+                    iv_token_name2  => cv_tkn_line_number,
+                    iv_token_value2 => io_order_rec.line_number    -- 受注明細番号
+                    );
+      ov_errbuf  := SUBSTRB( cv_pkg_name || cv_msg_cont || cv_prg_name ||
+                             cv_msg_part || ov_errmsg , 1 , 5000 );
+      ov_retcode := cv_status_warn;
+      io_order_rec.check_status := cn_check_status_error;
+--
+      set_gen_err_list(
+          ov_errbuf                   => lv_errbuf
+        , ov_retcode                  => lv_retcode
+        , ov_errmsg                   => lv_errmsg
+        , it_base_code                => io_order_rec.delivery_base_code
+        , it_message_name             => ct_line_type_err_lst
+        , it_message_text             => NULL
+        , iv_output_msg_application   => cv_xxcos_appl_short_nm
+        , iv_output_msg_name          => ct_msg_xxcos_00207
+        , iv_output_msg_token_name1   => cv_tkn_order_number                          -- トークン01：受注番号
+        , iv_output_msg_token_value1  => TO_CHAR( io_order_rec.order_number )         -- 値01      ：受注番号
+        , iv_output_msg_token_name2   => cv_tkn_line_number                           -- トークン02：受注明細番号
+        , iv_output_msg_token_value2  => TO_CHAR( io_order_rec.line_number )          -- 値02      ：受注明細番号
+        , iv_output_msg_token_name3   => cv_tkn_base_date                             -- トークン03：基準日
+        , iv_output_msg_token_value3  => TO_CHAR( ld_base_date, cv_fmt_date )         -- 値03      ：基準日
+      );
+--
+-- ************ 2011/02/07 1.17 Y.Nishino ADD END   ************ --
 --
 --#################################  固定例外処理部 START   ####################################
 --

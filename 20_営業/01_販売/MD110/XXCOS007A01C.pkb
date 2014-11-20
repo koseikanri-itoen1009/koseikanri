@@ -7,7 +7,7 @@ AS
  * Description      : 納品予定日の到来した拠点出荷の受注に対して販売実績を作成し、
  *                    販売実績を作成した受注をクローズします。
  * MD.050           : 出荷確認（納品予定日）  MD050_COS_007_A01
- * Version          : 1.20
+ * Version          : 1.21
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -71,6 +71,8 @@ AS
  *                                       [E_本稼動_02635] 夜間起動時のエラーログを各拠点にて確認可能とする
  *  2010/10/12    1.19  K.Kiriu          [E_本稼動_01763] 販売実績の日中連携化再対応
  *  2010/12/17    1.20  H.Sekine         [E_本稼動_05950] 随時実行の場合の受注データの抽出条件の変更(A-4)
+ *  2011/02/03    1.21  Y.Nishino        [E_本稼動_01010] 単価0円が可能な受注明細タイプを除いた
+ *                                                        販売単価0円の受注データをクローズしないように修正
  *
  *****************************************************************************************/
 --
@@ -160,6 +162,11 @@ AS
   global_ins_key_expt           EXCEPTION;
 -- ************ 2010/08/20 1.18 M.Watanabe ADD END   ************ --
 --
+-- ************ 2011/02/03 1.21 Y.Nishino ADD START ************ --
+  --*** 単価0円チェックエラー例外ハンドラ ***
+  global_price_err_expt   EXCEPTION;
+-- ************ 2011/02/03 1.21 Y.Nishino ADD END   ************ --
+--
   PRAGMA EXCEPTION_INIT(global_lock_err_expt, -54);
 --
 --
@@ -244,6 +251,13 @@ AS
   -- 受注明細WFクローズ起動 警告
   ct_msg_order_close_warn   CONSTANT  fnd_new_messages.message_name%TYPE := 'APP-XXCOS1-11541';
 -- ************ 2010/08/20 1.18 M.Watanabe ADD END   ************ --
+--
+-- ************ 2011/02/03 1.21 Y.Nishino ADD START ************ --
+  -- 単価0円チェック エラー
+  ct_price0_line_type_err   CONSTANT  fnd_new_messages.message_name%TYPE := 'APP-XXCOS1-11542';
+  -- 単価0円チェック 汎用エラーリスト
+  ct_line_type_err_lst      CONSTANT  fnd_new_messages.message_name%TYPE := 'APP-XXCOS1-11542';
+-- ************ 2011/02/03 1.21 Y.Nishino ADD END   ************ --
 --
   --トークン
   cv_tkn_para_date        CONSTANT  VARCHAR2(100)  :=  'PARA_DATE';      -- 処理日付
@@ -343,6 +357,9 @@ AS
   cv_err_list_table                CONSTANT VARCHAR2(100) := 'APP-XXCOS1-00213';  -- 汎用エラーリストワーク
   cv_fnd_user_table                CONSTANT VARCHAR2(100) := 'APP-XXCOS1-00214';  -- ユーザマスタ
 -- ************ 2010/08/20 1.18 M.Watanabe ADD END   ************ --
+-- ************ 2011/02/03 1.21 Y.Nishino ADD START ************ --
+  cv_price0_line_type              CONSTANT VARCHAR2(100) := 'APP-XXCOS1-00219';  -- 単価０円可能受注明細タイプ
+-- ************ 2011/02/03 1.21 Y.Nishino ADD END   ************ --
 --
   --プロファイル名称
   --MO:営業単位
@@ -383,6 +400,10 @@ AS
   ct_qct_no_inv_item_code_type  CONSTANT  fnd_lookup_types.lookup_type%TYPE :=  'XXCOS1_NO_INV_ITEM_CODE';
   -- 消費税区分特定情報
   ct_qct_tax_class_type         CONSTANT  fnd_lookup_types.lookup_type%TYPE :=  'XXCOS1_CONSUMPT_TAX_CLS_MST';
+-- ************ 2011/02/03 1.21 Y.Nishino ADD START ************ --
+  -- 単価０円可能受注明細タイプ
+  ct_price0_line_type           CONSTANT  fnd_lookup_types.lookup_type%TYPE :=  'XXCOS1_PRICE0_LINE_TYPE';
+-- ************ 2011/02/03 1.21 Y.Nishino ADD END   ************ --
 --
   --クイックコード
   -- 出荷確認（納品予定日）抽出対象条件
@@ -682,6 +703,12 @@ AS
     , tax_slip                    xxcos_sales_exp_headers.consumption_tax_class%TYPE  -- 内税(伝票課税)
     , tax_included                xxcos_sales_exp_headers.consumption_tax_class%TYPE  -- 内税(単価込み)
    );
+-- ************ 2011/02/03 1.21 Y.Nishino ADD START ************ --
+  -- 受注明細タイプ
+  TYPE price0_line_type_rtype IS RECORD(
+    price0_line_type              fnd_lookup_values_vl.meaning%type         -- 取引タイプ
+  );
+-- ************ 2011/02/03 1.21 Y.Nishino ADD END   ************ --
 --
   -- ===============================
   -- ユーザー定義グローバルレコード宣言
@@ -731,6 +758,13 @@ AS
   TYPE g_err_key_ttype IS  TABLE OF xxcos_gen_err_list%ROWTYPE INDEX BY BINARY_INTEGER;
 -- ************ 2010/08/20 1.18 M.Watanabe ADD END   ************ --
 --
+-- ************ 2011/02/03 1.21 Y.Nishino ADD START ************ --
+  TYPE g_price0_line_type_ttype
+        IS TABLE OF price0_line_type_rtype INDEX BY fnd_lookup_values.meaning%TYPE;
+  TYPE g_price0_line_type_sub_ttype
+        IS TABLE OF price0_line_type_rtype INDEX BY BINARY_INTEGER;
+-- ************ 2011/02/03 1.21 Y.Nishino ADD END   ************ --
+--
   -- ===============================
   -- ユーザー定義グローバルPL/SQL表
   -- ===============================
@@ -759,6 +793,11 @@ AS
 -- ************ 2010/08/20 1.18 M.Watanabe ADD START ************ --
   gt_err_key_msg_tab          g_err_key_ttype;                --  汎用エラーリスト用keyメッセージ
 -- ************ 2010/08/20 1.18 M.Watanabe ADD END   ************ --
+--
+-- ************ 2011/02/03 1.21 Y.Nishino ADD START ************ --
+  g_price0_line_type_tab      g_price0_line_type_ttype;       -- 受注明細タイプ
+  g_price0_line_type_sub_tab  g_price0_line_type_sub_ttype;   -- 受注明細タイプ
+-- ************ 2011/02/03 1.21 Y.Nishino ADD END   ************ --
 --
 -- ************ 2010/08/20 1.18 M.Watanabe ADD START ************ --
   /**********************************************************************************
@@ -1643,6 +1682,43 @@ AS
                           );
         RAISE global_select_data_expt;
     END;
+--
+-- ************ 2011/02/03 1.21 Y.Nishino ADD START ************ --
+    --==================================
+    -- 単価０円可能受注明細タイプ
+    --==================================
+    BEGIN
+      SELECT
+        flv.meaning       AS line_type  -- 取引タイプ
+      BULK COLLECT INTO
+        g_price0_line_type_sub_tab      -- 取引タイプ
+      FROM
+        fnd_lookup_values flv
+      WHERE
+          flv.lookup_type  = ct_price0_line_type
+      AND flv.language     = gt_lang
+      AND gd_process_date  BETWEEN flv.start_date_active
+                               AND NVL( flv.end_date_active , gd_max_date ) 
+      AND flv.enabled_flag = ct_yes_flg
+      ;
+--
+      IF( g_price0_line_type_sub_tab.COUNT = 0) THEN
+        RAISE NO_DATA_FOUND;
+      END IF; 
+--
+    EXCEPTION
+      WHEN OTHERS THEN
+        lv_table_name := xxccp_common_pkg.get_msg(
+                           iv_application => cv_xxcos_appl_short_nm,
+                           iv_name        => cv_price0_line_type
+                          );
+        RAISE global_select_data_expt;
+    END;
+--
+    FOR i IN 1..g_price0_line_type_sub_tab.COUNT LOOP
+      g_price0_line_type_tab( g_price0_line_type_sub_tab(i).price0_line_type ) := g_price0_line_type_sub_tab( i );
+    END LOOP;
+-- ************ 2011/02/03 1.21 Y.Nishino ADD END   ************ --
 --
   EXCEPTION
     -- *** プロファイル例外ハンドラ ***
@@ -2719,6 +2795,21 @@ AS
     END LOOP;
 /* 2009/09/14 Ver1.10 Mod End   */
 --
+-- ************ 2011/02/03 1.21 Y.Nishino ADD START ************ --
+    --==================================
+    -- 単価0円チェック
+    --==================================
+    IF ( g_price0_line_type_tab.EXISTS( io_order_rec.line_type ) ) THEN
+      NULL;
+    ELSE
+      -- 単価０円可能受注明細タイプではなく
+      IF( io_order_rec.unit_selling_price = 0 ) THEN
+        -- 販売単価が0円の場合は該当データをクローズしない
+        ld_base_date := io_order_rec.org_dlv_date;  -- オリジナル納品日
+        RAISE global_price_err_expt;
+      END IF;
+    END IF;
+-- ************ 2011/02/03 1.21 Y.Nishino ADD END   ************ --
 --
     --==================================
     -- 5.基準単価算出
@@ -3256,6 +3347,47 @@ AS
       ov_errbuf  := SUBSTRB(cv_pkg_name||cv_msg_cont||cv_prg_name||cv_msg_part||ov_errmsg,1,5000);
       ov_retcode := cv_status_warn;
       io_order_rec.check_status := cn_check_status_error;
+--
+-- ************ 2011/02/03 1.21 Y.Nishino ADD START ************ --
+    WHEN global_price_err_expt THEN
+    -- *** 単価0円例外ハンドラ ***
+      ov_errmsg := xxccp_common_pkg.get_msg(
+                    iv_application  => cv_xxcos_appl_short_nm,
+                    iv_name         => ct_price0_line_type_err,
+                    iv_token_name1  => cv_tkn_order_number,
+                    iv_token_value1 => io_order_rec.order_number,  -- 受注番号
+                    iv_token_name2  => cv_tkn_line_number,
+                    iv_token_value2 => io_order_rec.line_number    -- 受注明細番号
+                    );
+      ov_errbuf  := SUBSTRB( cv_pkg_name || cv_msg_cont || cv_prg_name ||
+                             cv_msg_part || lv_errbuf , 1 , 5000 );
+      ov_retcode := cv_status_warn;
+      io_order_rec.check_status := cn_check_status_error;
+--
+      IF ( gv_exec_type = cv_proc_teiki ) THEN
+        --  定期実行の場合
+        gn_msg_cnt  :=  gn_msg_cnt + 1;
+        --  汎用エラーリスト用キー情報
+        --  納品拠点
+        gt_err_key_msg_tab( gn_msg_cnt ).base_code      :=  io_order_rec.delivery_base_code;
+        --  エラーメッセージ名
+        gt_err_key_msg_tab( gn_msg_cnt ).message_name   :=  ct_line_type_err_lst;
+        --  キーメッセージ
+        gt_err_key_msg_tab( gn_msg_cnt ).message_text
+                        :=  SUBSTRB(
+                              xxccp_common_pkg.get_msg(
+                                  iv_application  => cv_xxcos_appl_short_nm
+                                , iv_name         => ct_msg_key_info2
+                                , iv_token_name1  => cv_tkn_order_number
+                                , iv_token_value1 => io_order_rec.order_number                      -- 受注番号
+                                , iv_token_name2  => cv_tkn_line_number
+                                , iv_token_value2 => io_order_rec.line_number                       -- 受注明細番号
+                                , iv_token_name3  => cv_tkn_base_date
+                                , iv_token_value3 => TO_CHAR( ld_base_date , cv_fmt_date )          -- 基準日
+                              ), 1, 2000
+                            );
+      END IF;
+-- ************ 2011/02/03 1.21 Y.Nishino ADD END   ************ --
 --
 --#################################  固定例外処理部 START   ####################################
 --
