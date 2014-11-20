@@ -7,7 +7,7 @@ AS
  * Description      : 返品予定日の到来した拠点出荷の返品受注に対して販売実績を作成し、
  *                    販売実績を作成した受注をクローズします。
  * MD.050           : 返品実績データ作成（ＨＨＴ以外）  MD050_COS_007_A02
- * Version          : 1.4
+ * Version          : 1.5
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -34,10 +34,13 @@ AS
  *  2008/02/18    1.1   K.Nakamura       get_msgのパッケージ名修正
  *  2009/02/19    1.2   K.Nakamura       [COS_101] 保管場所が直送の時の納品伝票番号の設定値を修正
  *                                                 販売実績ヘッダを作成する単位に納品伝票番号を追加
- *  2008/02/20    1.3   K.Nakamura       パラメータのログファイル出力対応
+ *  2009/02/20    1.3   K.Nakamura       パラメータのログファイル出力対応
  *                                       税コードマスタの参照方法を修正
- *  2008/02/26    1.4   K.Nakamura       [COS_143] 受注データ取得時に、納品予定日と検収予定日の時分秒を削除
- *
+ *  2009/02/26    1.4   K.Nakamura       [COS_143] 受注データ取得時に、納品予定日と検収予定日の時分秒を削除
+ *  2009/05/18    1.5   S.Kayahara       [T1_0815] ヘッダ単位で一番大きい本体金額の条件を絶対値に修正
+ *                      K.Kiriu          [T1_1067] ヘッダの消費税額の端数処理を追加
+ *                                       [T1_1121] 本体金額、消費税額計算方法の修正
+ *                                       [T1_1122] 端数処理区分が切上時の計算の修正
  *****************************************************************************************/
 --
 --#######################  固定グローバル定数宣言部 START   #######################
@@ -1459,7 +1462,12 @@ AS
 --
       -- 切上
       IF ( io_order_rec.bill_tax_round_rule = cv_amount_up ) THEN
-        ln_tax := TRUNC( ln_tax ) + 1;
+/* 2009/05/18 Ver1.5 Mod Start */
+        --小数点が存在する場合
+        IF ( ln_tax - TRUNC( ln_tax ) <> 0 ) THEN
+          ln_tax := TRUNC( ln_tax ) + 1;
+        END IF;
+/* 2009/05/18 Ver1.5 Mod End   */
       -- 切捨て
       ELSIF ( io_order_rec.bill_tax_round_rule = cv_amount_down ) THEN
         ln_tax := TRUNC( ln_tax );
@@ -1486,36 +1494,9 @@ AS
     io_order_rec.sale_amount := TRUNC( io_order_rec.ordered_quantity * io_order_rec.unit_selling_price );
 --
 --
+/* 2009/05/18 Ver1.5 Add Start */
     --==================================
-    -- 8.本体金額
-    --==================================
-    -- 消費税区分 ＝ 内税(単価込み)
-    IF ( io_order_rec.consumption_tax_class = g_tax_class_rec.tax_included ) THEN
---
-      -- 本体金額 ＝ 売上金額 × 100 ÷ ( 100 + 税率 )
-      ln_pure_amount := io_order_rec.sale_amount * 100 / ( 100 + io_order_rec.tax_rate );
---
-      -- 切上
-      IF ( io_order_rec.bill_tax_round_rule = cv_amount_up ) THEN
-        io_order_rec.pure_amount := TRUNC( ln_pure_amount ) + 1;
-      -- 切捨て
-      ELSIF ( io_order_rec.bill_tax_round_rule = cv_amount_down ) THEN
-        io_order_rec.pure_amount := TRUNC( ln_pure_amount );
-      -- 四捨五入
-      ELSIF ( io_order_rec.bill_tax_round_rule = cv_amount_nearest ) THEN
-        io_order_rec.pure_amount := ROUND( ln_pure_amount );
-      END IF;
---
-    ELSE
---
-      -- 本体金額 ＝ 売上金額
-      io_order_rec.pure_amount := io_order_rec.sale_amount;
---
-    END IF;
---
---
-    --==================================
-    -- 9.消費税算出
+    -- 8.消費税算出
     --==================================
     -- 消費税区分 ＝ 非課税
     IF ( io_order_rec.consumption_tax_class = g_tax_class_rec.tax_free ) THEN
@@ -1526,15 +1507,98 @@ AS
     -- 消費税区分 ＝ 内税(単価込み)
     ELSIF ( io_order_rec.consumption_tax_class = g_tax_class_rec.tax_included ) THEN
 --
-      -- 消費税 ＝ 売上金額 － 本体金額
-      io_order_rec.tax_amount := io_order_rec.sale_amount - io_order_rec.pure_amount;
+      -- 消費税 ＝ (受注数量 × 販売単価) - (受注数量 × 販売単価 × 100÷(消費税率＋100))
+      io_order_rec.tax_amount := ( io_order_rec.ordered_quantity * io_order_rec.unit_selling_price )
+                                   - ( io_order_rec.ordered_quantity * io_order_rec.unit_selling_price
+                                       * 100 / ( io_order_rec.tax_rate + 100 ) );
+--
+      -- 切上(金額はマイナスなので-1で切上とする)
+      IF ( io_order_rec.bill_tax_round_rule = cv_amount_up ) THEN
+--
+        -- 小数点以下が存在する場合
+        IF ( io_order_rec.tax_amount - TRUNC( io_order_rec.tax_amount ) <> 0 ) THEN
+--
+          io_order_rec.tax_amount := TRUNC( io_order_rec.tax_amount ) - 1;
+--
+        END IF;
+--
+      -- 切捨て
+      ELSIF ( io_order_rec.bill_tax_round_rule = cv_amount_down ) THEN
+--
+        io_order_rec.tax_amount := TRUNC( io_order_rec.tax_amount );
+--
+      -- 四捨五入
+      ELSIF ( io_order_rec.bill_tax_round_rule = cv_amount_nearest ) THEN
+--
+        io_order_rec.tax_amount := ROUND( io_order_rec.tax_amount );
+--
+      END IF;
 --
     ELSE
 --
-      -- 消費税 ＝ 本体金額 × 税率 ÷ 100
-      io_order_rec.tax_amount := ROUND( io_order_rec.pure_amount * ( io_order_rec.tax_rate / 100 ) );
+      -- 消費税 ＝ 受注数量 × 販売単価 × （消費税率÷100）※小数点以下四捨五入
+      io_order_rec.tax_amount := ROUND( io_order_rec.ordered_quantity * io_order_rec.unit_selling_price
+                                   * ( io_order_rec.tax_rate / 100 ) );
 --
     END IF;
+/* 2009/05/18 Ver1.5 Add End   */
+--
+--
+    --==================================
+    -- 9.本体金額
+    --==================================
+    -- 消費税区分 ＝ 内税(単価込み)
+    IF ( io_order_rec.consumption_tax_class = g_tax_class_rec.tax_included ) THEN
+--
+/* 2009/05/18 Ver1.5 Mod Start */
+--      -- 本体金額 ＝ 売上金額 × 100 ÷ ( 100 + 税率 )
+--      ln_pure_amount := io_order_rec.sale_amount * 100 / ( 100 + io_order_rec.tax_rate );
+--
+--      -- 切上
+--      IF ( io_order_rec.bill_tax_round_rule = cv_amount_up ) THEN
+--        io_order_rec.pure_amount := TRUNC( ln_pure_amount ) + 1;
+--      -- 切捨て
+--      ELSIF ( io_order_rec.bill_tax_round_rule = cv_amount_down ) THEN
+--        io_order_rec.pure_amount := TRUNC( ln_pure_amount );
+--      -- 四捨五入
+--      ELSIF ( io_order_rec.bill_tax_round_rule = cv_amount_nearest ) THEN
+--        io_order_rec.pure_amount := ROUND( ln_pure_amount );
+--      END IF;
+      -- 本体金額 ＝ 売上金額－消費税額
+      io_order_rec.pure_amount := io_order_rec.sale_amount - io_order_rec.tax_amount;
+/* 2009/05/19 Ver1.5 Mod End   */
+--
+    ELSE
+--
+      -- 本体金額 ＝ 売上金額
+      io_order_rec.pure_amount := io_order_rec.sale_amount;
+--
+    END IF;
+--
+--
+/* 2009/05/18 Ver1.5 Del Start */
+--    --==================================
+--    -- 9.消費税算出
+--    --==================================
+--    -- 消費税区分 ＝ 非課税
+--    IF ( io_order_rec.consumption_tax_class = g_tax_class_rec.tax_free ) THEN
+--
+--      -- 消費税 ＝ 0
+--      io_order_rec.tax_amount := 0;
+--
+--    -- 消費税区分 ＝ 内税(単価込み)
+--    ELSIF ( io_order_rec.consumption_tax_class = g_tax_class_rec.tax_included ) THEN
+--
+--      -- 消費税 ＝ 売上金額 － 本体金額
+--      io_order_rec.tax_amount := io_order_rec.sale_amount - io_order_rec.pure_amount;
+--
+--    ELSE
+--
+--      -- 消費税 ＝ 本体金額 × 税率 ÷ 100
+--      io_order_rec.tax_amount := ROUND( io_order_rec.pure_amount * ( io_order_rec.tax_rate / 100 ) );
+--
+--    END IF;
+/* 2009/05/18 Ver1.5 Del End   */
 --
 --
     --==================================
@@ -2025,12 +2089,37 @@ AS
 --
           -- 消費税金額合計 ＝ 本体金額合計 × 税率
           g_sale_hdr_tab(j).tax_amount_sum := g_sale_hdr_tab(j).pure_amount_sum * g_sale_hdr_tab(j).tax_rate / 100;
+/* 2009/05/18 Ver1.5 Add Start */
+          --切上(金額はマイナスなので-1で切上とする)
+          IF ( g_order_data_sort_tab( ln_bfr_index ).bill_tax_round_rule = cv_amount_up ) THEN
+--
+            -- 小数点以下が存在する場合
+            IF ( g_sale_hdr_tab(j).tax_amount_sum - TRUNC( g_sale_hdr_tab(j).tax_amount_sum ) <> 0 ) THEN
+--
+              g_sale_hdr_tab(j).tax_amount_sum := TRUNC( g_sale_hdr_tab(j).tax_amount_sum ) - 1;
+--
+            END IF;
+--
+          --切捨て
+          ELSIF ( g_order_data_sort_tab( ln_bfr_index ).bill_tax_round_rule = cv_amount_down ) THEN
+--
+            g_sale_hdr_tab(j).tax_amount_sum := TRUNC( g_sale_hdr_tab(j).tax_amount_sum );
+--
+          --四捨五入
+          ELSIF ( g_order_data_sort_tab( ln_bfr_index ).bill_tax_round_rule = cv_amount_nearest ) THEN
+--
+            g_sale_hdr_tab(j).tax_amount_sum := ROUND( g_sale_hdr_tab(j).tax_amount_sum, 0 );
+--
+          END IF;
+/* 2009/05/18 Ver1.5 Add End */
         ELSE
           -- 消費税金額合計 ＝ 売上金額合計 － 本体金額合計
           g_sale_hdr_tab(j).tax_amount_sum := g_sale_hdr_tab(j).sale_amount_sum - g_sale_hdr_tab(j).pure_amount_sum;
         END IF;
+/* 2009/05/18 Ver1.5 Del Start */
         -- 消費税金額合計を四捨五入（端数なし）
-        g_sale_hdr_tab(j).tax_amount_sum := ROUND( g_sale_hdr_tab(j).tax_amount_sum, 0);        
+--        g_sale_hdr_tab(j).tax_amount_sum := ROUND( g_sale_hdr_tab(j).tax_amount_sum, 0);        
+/* 2009/05/18 Ver1.5 Del End   */
         -- 差額分 ＝  ヘッダ単位の消費税金額 － 明細の消費税金額の積み上げ合計金額
         ln_diff_amount := g_sale_hdr_tab(j).tax_amount_sum - ln_tax_amount;
         -- 消費税金額 ＝ 消費税金額 － 差額
@@ -2267,7 +2356,10 @@ AS
 --
 --
       -- 現在処理中の販売実績明細の本体金額が、ヘッダ単位の明細内より金額が多い時
-      IF ( g_sale_line_tab(k).pure_amount > ln_max_amount ) THEN
+--Modify 2009.05.18 Ver1.5 Start
+--      IF ( g_sale_line_tab(k).pure_amount > ln_max_amount ) THEN
+      IF ( ABS(g_sale_line_tab(k).pure_amount) > ABS(ln_max_amount )) THEN
+--Modify 2009.05.18 Ver1.5 End
         -- ヘッダ単位の本体金額を保持
         ln_max_amount := g_sale_line_tab(k).pure_amount;
         -- ヘッダ単位の最大本体金額のレコードの添え字を保持
@@ -2288,12 +2380,29 @@ AS
 --
       -- 消費税金額合計 ＝ 本体金額合計 × 税率
       g_sale_hdr_tab(j).tax_amount_sum := g_sale_hdr_tab(j).pure_amount_sum * g_sale_hdr_tab(j).tax_rate / 100;
+/* 2009/05/18 Ver1.5 Add Start */
+      --切上(金額はマイナスなので-1で切上とする)
+      IF ( g_order_data_sort_tab( ln_bfr_index ).bill_tax_round_rule = cv_amount_up ) THEN
+        -- 小数点以下が存在する場合
+        IF ( g_sale_hdr_tab(j).tax_amount_sum - TRUNC( g_sale_hdr_tab(j).tax_amount_sum ) <> 0 ) THEN
+          g_sale_hdr_tab(j).tax_amount_sum := TRUNC( g_sale_hdr_tab(j).tax_amount_sum ) - 1;
+        END IF;
+      --切捨て
+      ELSIF ( g_order_data_sort_tab( ln_bfr_index ).bill_tax_round_rule = cv_amount_down ) THEN
+        g_sale_hdr_tab(j).tax_amount_sum := TRUNC( g_sale_hdr_tab(j).tax_amount_sum );
+      --四捨五入
+      ELSIF ( g_order_data_sort_tab( ln_bfr_index ).bill_tax_round_rule = cv_amount_nearest ) THEN
+        g_sale_hdr_tab(j).tax_amount_sum := ROUND( g_sale_hdr_tab(j).tax_amount_sum, 0 );
+      END IF;
+/* 2009/05/18 Ver1.5 Add End */
     ELSE
       -- 消費税金額合計 ＝ 売上金額合計 － 本体金額合計
       g_sale_hdr_tab(j).tax_amount_sum := g_sale_hdr_tab(j).sale_amount_sum - g_sale_hdr_tab(j).pure_amount_sum;
     END IF;
+/* 2009/05/18 Ver1.5 Del Start */
     -- 消費税金額合計を四捨五入（端数なし）
-    g_sale_hdr_tab(j).tax_amount_sum := ROUND( g_sale_hdr_tab(j).tax_amount_sum, 0);  
+--    g_sale_hdr_tab(j).tax_amount_sum := ROUND( g_sale_hdr_tab(j).tax_amount_sum, 0);  
+/* 2009/05/18 Ver1.5 Del End   */
     -- 差額分 ＝  ヘッダ単位の消費税金額 － 明細の消費税金額の積み上げ合計金額
     ln_diff_amount := g_sale_hdr_tab(j).tax_amount_sum - ln_tax_amount;
     -- 消費税金額 ＝ 消費税金額 － 差額
