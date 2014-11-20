@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCOS001A08C (body)
  * Description      : 返品実績データ作成（ＨＨＴ）
  * MD.050           : 返品実績データ作成（ＨＨＴ）(MD050_COS_001_A08)
- * Version          : 1.25
+ * Version          : 1.26
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -69,6 +69,7 @@ AS
  *                                                 INVカレンダのチェック処理追加
  *  2010/09/10    1.24  S.Arizumi        [E_本稼動_02635] 汎用エラーリスト出力対応
  *  2011/03/24    1.25  Y.Nishino        [E_本稼動_06590] オーダーNo連携対応
+ *  2011/10/12    1.26  T.Ishiwata       [E_本稼動_08455] オーダーNoのTRIM対応
  *
  *****************************************************************************************/
 --
@@ -1341,7 +1342,10 @@ AS
                       VALUES(
                         gt_head_id( i ),                    -- 1.販売実績ヘッダID
                         gt_head_hht_invoice_no( i ),        -- 2.HHT伝票番号
-                        gt_head_order_invoice_number( i ),  -- 3.注文伝票番号
+-- 2011/10/12 1.26 T.Ishiwata MOD START
+--                        gt_head_order_invoice_number( i ),  -- 3.注文伝票番号
+                        TRIM(gt_head_order_invoice_number( i )),  -- 3.注文伝票番号
+-- 2011/10/12 1.26 T.Ishiwata MOD END
                         gt_head_order_no_ebs( i ),          -- 4.受注番号
                         gt_head_order_no_hht( i ),          -- 5.受注No(HHT)
                         gt_head_digestion_ln_number( i ),   -- 6.受注No(HHT)枝番
