@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCSO_TASK_COMMON_PKG(BODY)
  * Description      : 共通関数(XXCSOタスク）
  * MD.050/070       :
- * Version          : 1.0
+ * Version          : 1.2
  *
  * Program List
  *  ------------------------- ---- ----- --------------------------------------------------
@@ -24,8 +24,8 @@ AS
  *  2008/12/16    1.0   T.maruyama       訪問タスク削除関数
  *  2008/12/25    1.0   M.maruyama       API起動処理のOUTパラメータ'gx_return_status'の正常終了
  *                                       判定値を'S'から'fnd_api.g_ret_sts_success'へ変更
- *  2009-05-01    1.1   Tomoko.Mori      T1_0897対応
- *
+ *  2009/05/01    1.1   Tomoko.Mori      T1_0897対応
+ *  2009/05/22    1.2   K.Satomura       T1_1080対応
  *****************************************************************************************/
 --
   -- ===============================
@@ -207,6 +207,9 @@ AS
       ,p_task_status_id          => ln_task_status_id        -- タスクステータス
       ,p_owner_type_code         => 'RS_EMPLOYEE'            -- タスク所有者タイプコード
       ,p_owner_id                => in_resource_id           -- タスク所有者ID
+      /* 2009.05.22 K.Satomura T1_1080対応 START */
+      ,p_customer_id             => in_party_id              -- パーティーID
+      /* 2009.05.22 K.Satomura T1_1080対応 END */
       ,p_scheduled_end_date      => TRUNC(id_visit_date)     -- 予定終了日時
       ,p_actual_end_date         => id_visit_date            -- 実績終了日時
       ,p_source_object_type_code => 'PARTY'                  -- ソースオブジェクトコード
@@ -444,6 +447,9 @@ AS
       ,p_task_status_id          => ln_task_status_id        -- タスクステータス
       ,p_owner_type_code         => 'RS_EMPLOYEE'            -- タスク所有者タイプコード
       ,p_owner_id                => in_resource_id           -- タスク所有者ID
+      /* 2009.05.22 K.Satomura T1_1080対応 START */
+      ,p_customer_id             => in_party_id              -- パーティーID
+      /* 2009.05.22 K.Satomura T1_1080対応 END */
       ,p_scheduled_end_date      => TRUNC(id_visit_date)     -- 予定終了日時
       ,p_actual_end_date         => id_visit_date            -- 実績終了日時
       ,p_source_object_type_code => 'PARTY'                  -- ソースオブジェクトコード
