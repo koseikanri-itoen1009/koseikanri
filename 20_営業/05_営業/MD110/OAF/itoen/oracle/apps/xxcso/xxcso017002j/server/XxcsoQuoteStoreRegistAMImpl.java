@@ -1,7 +1,7 @@
 /*============================================================================
 * ファイル名 : XxcsoQuoteStoreRegistAMImpl
 * 概要説明   : 帳合問屋用見積入力画面アプリケーション・モジュールクラス
-* バージョン : 1.0
+* バージョン : 1.6
 *============================================================================
 * 修正履歴
 * 日付       Ver. 担当者       修正内容
@@ -15,6 +15,7 @@
 * 2009-04-13 1.3  SCS阿部大輔  【T1_0299】CSV出力制御
 * 2009-04-14 1.4  SCS阿部大輔  【T1_0461】見積書印刷制御
 * 2009-05-18 1.5  SCS阿部大輔  【T1_1023】見積明細の原価割れチェックを修正
+* 2009-06-16 1.6  SCS阿部大輔  【T1_1257】マージン額の変更修正
 *============================================================================
 */
 package itoen.oracle.apps.xxcso.xxcso017002j.server;
@@ -951,6 +952,12 @@ public class XxcsoQuoteStoreRegistAMImpl extends OAApplicationModuleImpl
 
       if( "Y".equals(lineRow.getSelectFlag()) )
       {
+/* 20090616_abe_T1_1257 START*/
+        handleMarginCalculation(
+          lineRow.getQuoteLineId().toString()
+        );
+/* 20090616_abe_T1_1257 END*/
+
         //DB反映チェック      
         errorList
           = validateLine(
@@ -1898,6 +1905,20 @@ public class XxcsoQuoteStoreRegistAMImpl extends OAApplicationModuleImpl
 
     XxcsoUtils.debug(txn, "[START]");
 
+    /* 20090616_abe_T1_1257 START*/
+    // XxcsoQuoteHeadersFullVO1インスタンスの取得
+    XxcsoQuoteHeadersFullVOImpl headerVo = getXxcsoQuoteHeadersFullVO1();
+    if ( headerVo == null )
+    {
+      throw
+        XxcsoMessage.createInstanceLostError("XxcsoQuoteHeadersFullVO1");
+    }
+
+    XxcsoQuoteHeadersFullVORowImpl headerRow
+      = (XxcsoQuoteHeadersFullVORowImpl)headerVo.first();
+    /* 20090616_abe_T1_1257 END*/
+
+
     // XxcsoQuoteLinesStoreFullVO1インスタンスの取得
     XxcsoQuoteLinesStoreFullVOImpl lineVo = getXxcsoQuoteLinesStoreFullVO1();
     if ( lineVo == null )
@@ -1905,6 +1926,7 @@ public class XxcsoQuoteStoreRegistAMImpl extends OAApplicationModuleImpl
       throw
         XxcsoMessage.createInstanceLostError("XxcsoQuoteLinesStoreFullVO1");
     }
+
       XxcsoQuoteLinesStoreFullVORowImpl lineRow
         = (XxcsoQuoteLinesStoreFullVORowImpl)lineVo.first();
 
@@ -1940,14 +1962,108 @@ public class XxcsoQuoteStoreRegistAMImpl extends OAApplicationModuleImpl
                 lineRow.getUsuallyDelivPrice().replaceAll(",","")
               );
             BigDecimal Price2 = new BigDecimal(netPrice.replaceAll(",",""));
-            BigDecimal PriceSubtract = Price1.subtract(Price2);
+            /* 20090616_abe_T1_1257 START*/
+            //BigDecimal PriceSubtract = Price1.subtract(Price2);
+            BigDecimal PriceSalesSubtract;
+            BigDecimal PriceStoreSubtract;
+            BigDecimal PriceSubtract = BigDecimal.valueOf(0);
+
+            BigDecimal DecCase_num = BigDecimal.valueOf(0);
+            BigDecimal DecBowl_num = BigDecimal.valueOf(0);
+            
+            //入数チェック(販売単価区分)
+            if(((lineRow.getCaseIncNum().compareTo(0) == 0) &&
+                (XxcsoQuoteConstants.DEF_UNIT_TYPE2.equals(
+                 headerRow.getSalesUnitType()))) || 
+                ((lineRow.getBowlIncNum().compareTo(0)== 0) &&
+                (XxcsoQuoteConstants.DEF_UNIT_TYPE3.equals(
+                 headerRow.getSalesUnitType())))
+              )
+            {
+              PriceSalesSubtract = BigDecimal.valueOf(0);
+            }
+            else
+            {
+              //販売単価区分が本数の場合
+              if(XxcsoQuoteConstants.DEF_UNIT_TYPE1.equals(
+              headerRow.getSalesUnitType()))
+              {
+                PriceSalesSubtract = Price1;
+              }
+              //販売単価区分がC/Sの場合
+              else if(XxcsoQuoteConstants.DEF_UNIT_TYPE2.equals(
+              headerRow.getSalesUnitType()))
+              {
+                DecCase_num = 
+                   lineRow.getCaseIncNum().bigDecimalValue();
+                PriceSalesSubtract = Price1.divide(
+                DecCase_num,0,BigDecimal.ROUND_HALF_UP);
+              }
+              //販売単価区分がボールの場合
+              else
+              {
+                DecBowl_num =
+                   lineRow.getBowlIncNum().bigDecimalValue();
+                PriceSalesSubtract = Price1.divide(
+                DecBowl_num,0,BigDecimal.ROUND_HALF_UP);
+              }
+            }
+            //入数チェック(問屋単価区分)
+            if(((lineRow.getCaseIncNum().compareTo(0) == 0) &&
+                (XxcsoQuoteConstants.DEF_UNIT_TYPE2.equals(
+                 headerRow.getUnitType()))) || 
+                ((lineRow.getBowlIncNum().compareTo(0)== 0) &&
+                (XxcsoQuoteConstants.DEF_UNIT_TYPE3.equals(
+                 headerRow.getUnitType())))
+              )
+            {
+              PriceStoreSubtract = BigDecimal.valueOf(0);
+            }
+            else
+            {
+              //単価区分が本数の場合
+              if(XxcsoQuoteConstants.DEF_UNIT_TYPE1.equals(
+              headerRow.getUnitType()))
+              {
+                PriceStoreSubtract = Price2;
+              }
+              //単価区分がC/Sの場合
+              else if(XxcsoQuoteConstants.DEF_UNIT_TYPE2.equals(
+              headerRow.getUnitType()))
+              {
+                DecCase_num = 
+                  lineRow.getCaseIncNum().bigDecimalValue();
+                PriceStoreSubtract = Price2.divide(
+                DecCase_num,0,BigDecimal.ROUND_HALF_UP);
+              }
+              //単価区分がボールの場合
+              else
+              {
+                DecBowl_num =
+                   lineRow.getBowlIncNum().bigDecimalValue();
+                PriceStoreSubtract = Price2.divide(
+                DecBowl_num,0,BigDecimal.ROUND_HALF_UP);
+              }
+            }
+
+            //マージ額計算
+            PriceSubtract = PriceSalesSubtract.subtract(PriceStoreSubtract);
+            /* 20090616_abe_T1_1257 END*/
 
             // マージン額に計算結果を反映します。
             lineRow.setAmountOfMargin(String.valueOf(PriceSubtract));
 
             // マージン率を算出
-            BigDecimal PriceDivide = PriceSubtract.divide(
-              Price1,6,BigDecimal.ROUND_HALF_UP);
+            /* 20090616_abe_T1_1257 START*/
+            //BigDecimal PriceDivide = PriceSubtract.divide(
+            //  Price1,6,BigDecimal.ROUND_HALF_UP);
+            BigDecimal PriceDivide = BigDecimal.valueOf(0);
+            if (PriceSalesSubtract.doubleValue() != 0)
+            {
+              PriceDivide = PriceSubtract.divide(
+                PriceSalesSubtract,6,BigDecimal.ROUND_HALF_UP);
+            }
+            /* 20090616_abe_T1_1257 END*/
 
             BigDecimal PriceMultiply = PriceDivide.multiply(defRate);
 
@@ -1999,14 +2115,108 @@ public class XxcsoQuoteStoreRegistAMImpl extends OAApplicationModuleImpl
                 lineRow.getThisTimeDelivPrice().replaceAll(",","")
               );
             BigDecimal Price2 = new BigDecimal(netPrice.replaceAll(",",""));
-            BigDecimal PriceSubtract = Price1.subtract(Price2);
+
+            /* 20090616_abe_T1_1257 START*/
+            //BigDecimal PriceSubtract = Price1.subtract(Price2);
+            BigDecimal PriceSalesSubtract;
+            BigDecimal PriceStoreSubtract;
+            BigDecimal PriceSubtract = BigDecimal.valueOf(0);
+
+            BigDecimal DecCase_num = BigDecimal.valueOf(0);
+            BigDecimal DecBowl_num = BigDecimal.valueOf(0);
+            
+            //入数チェック(販売単価区分)
+            if(((lineRow.getCaseIncNum().compareTo(0) == 0) &&
+                (XxcsoQuoteConstants.DEF_UNIT_TYPE2.equals(
+                 headerRow.getSalesUnitType()))) || 
+                ((lineRow.getBowlIncNum().compareTo(0) == 0) &&
+                (XxcsoQuoteConstants.DEF_UNIT_TYPE3.equals(
+                 headerRow.getSalesUnitType())))
+              )
+            {
+              PriceSalesSubtract = BigDecimal.valueOf(0);
+            }
+            else
+            {
+              //販売単価区分が本数の場合
+              if(XxcsoQuoteConstants.DEF_UNIT_TYPE1.equals(
+              headerRow.getSalesUnitType()))
+              {
+                PriceSalesSubtract = Price1;
+              }
+              //販売単価区分がC/Sの場合
+              else if(XxcsoQuoteConstants.DEF_UNIT_TYPE2.equals(
+              headerRow.getSalesUnitType()))
+              {
+                DecCase_num = 
+                   lineRow.getCaseIncNum().bigDecimalValue();
+                PriceSalesSubtract = Price1.divide(
+                DecCase_num,0,BigDecimal.ROUND_HALF_UP);
+              }
+              //販売単価区分がボールの場合
+              else
+              {
+                DecBowl_num =
+                   lineRow.getBowlIncNum().bigDecimalValue();
+                PriceSalesSubtract = Price1.divide(
+                DecBowl_num,0,BigDecimal.ROUND_HALF_UP);
+              }
+            }
+            //入数チェック(問屋単価区分)
+            if(((lineRow.getCaseIncNum().compareTo(0) == 0) &&
+                (XxcsoQuoteConstants.DEF_UNIT_TYPE2.equals(
+                 headerRow.getUnitType()))) || 
+                ((lineRow.getBowlIncNum().compareTo(0) == 0) &&
+                (XxcsoQuoteConstants.DEF_UNIT_TYPE3.equals(
+                 headerRow.getUnitType())))
+              )
+            {
+              PriceStoreSubtract = BigDecimal.valueOf(0);
+            }
+            else
+            {
+              //単価区分が本数の場合
+              if(XxcsoQuoteConstants.DEF_UNIT_TYPE1.equals(
+              headerRow.getUnitType()))
+              {
+                PriceStoreSubtract = Price2;
+              }
+              //単価区分がC/Sの場合
+              else if(XxcsoQuoteConstants.DEF_UNIT_TYPE2.equals(
+              headerRow.getUnitType()))
+              {
+                DecCase_num = 
+                   lineRow.getCaseIncNum().bigDecimalValue();
+                PriceStoreSubtract = Price2.divide(
+                DecCase_num,0,BigDecimal.ROUND_HALF_UP);
+              }
+              //単価区分がボールの場合
+              else
+              {
+                DecBowl_num =
+                   lineRow.getBowlIncNum().bigDecimalValue();
+                PriceStoreSubtract = Price2.divide(
+                DecBowl_num,BigDecimal.ROUND_HALF_UP);
+              }
+            }
+            //マージ額計算
+            PriceSubtract = PriceSalesSubtract.subtract(PriceStoreSubtract);
+            /* 20090616_abe_T1_1257 END*/
 
             // マージン額に計算結果を反映します。
             lineRow.setAmountOfMargin(String.valueOf(PriceSubtract));
 
             // マージン率を算出
-            BigDecimal PriceDivide = PriceSubtract.divide(
-              Price1,6,BigDecimal.ROUND_HALF_UP);
+            /* 20090616_abe_T1_1257 START*/
+            //BigDecimal PriceDivide = PriceSubtract.divide(
+            //  Price1,6,BigDecimal.ROUND_HALF_UP);
+            BigDecimal PriceDivide = BigDecimal.valueOf(0);
+            if (PriceSalesSubtract.doubleValue() != 0)
+            {
+              PriceDivide = PriceSubtract.divide(
+                PriceSalesSubtract,6,BigDecimal.ROUND_HALF_UP);
+            }
+            /* 20090616_abe_T1_1257 END*/
 
             BigDecimal PriceMultiply = PriceDivide.multiply(defRate);
 
@@ -2044,7 +2254,9 @@ public class XxcsoQuoteStoreRegistAMImpl extends OAApplicationModuleImpl
 
       lineRow = (XxcsoQuoteLinesStoreFullVORowImpl)lineVo.next();
     }
-    lineVo.first();
+/* 20090616_abe_T1_1257 START*/
+    //lineVo.first();
+/* 20090616_abe_T1_1257 END*/
 
     XxcsoUtils.debug(txn, "[END]");
   }
@@ -2296,6 +2508,11 @@ public class XxcsoQuoteStoreRegistAMImpl extends OAApplicationModuleImpl
       lineRow.setQuoteEndDate(salesLineRow.getQuoteEndDate());
       lineRow.setSelectFlag("N");
 
+/* 20090616_abe_T1_1257 START*/
+      lineRow.setCaseIncNum(salesLineRow.getCaseIncNum());
+      lineRow.setBowlIncNum(salesLineRow.getBowlIncNum());
+/* 20090616_abe_T1_1257 END*/
+
       salesLineRow = (XxcsoQuoteLineSalesSumVORowImpl)salesLineVo.next();
     }
 
@@ -2363,6 +2580,12 @@ public class XxcsoQuoteStoreRegistAMImpl extends OAApplicationModuleImpl
       if( "Y".equals(lineRow.getSelectFlag()) )
       {
         index++;
+
+/* 20090616_abe_T1_1257 START*/
+        handleMarginCalculation(
+          lineRow.getQuoteLineId().toString()
+        );
+/* 20090616_abe_T1_1257 END*/
         validateLine(
           errorList
          ,lineRow
@@ -2714,85 +2937,109 @@ public class XxcsoQuoteStoreRegistAMImpl extends OAApplicationModuleImpl
       }
     }
     
-    if ( XxcsoQuoteConstants.QUOTE_DIV_USUALLY.equals(lineRow.getQuoteDiv()) ||
-         XxcsoQuoteConstants.QUOTE_DIV_BARGAIN.equals(lineRow.getQuoteDiv())
-       )
+/* 20090616_abe_T1_1257 START*/
+    // 入数のチェック
+    double caseincnum      = lineRow.getCaseIncNum().doubleValue();
+    double bowlincnum      = lineRow.getBowlIncNum().doubleValue();
+
+    if(((caseincnum == 0) &&
+        (headerRow.getUnitType().equals("2"))) ||
+       ((bowlincnum == 0) &&
+        (headerRow.getUnitType().equals("3")))
+      )
     {
-      // 通常か特売の場合は、NET価格の原価割れチェック
-      String usuallNetPriceRep 
-        = lineRow.getUsuallNetPrice().replaceAll(",", "");
-      String thisTimeNetPriceRep 
-        = lineRow.getThisTimeNetPrice().replaceAll(",", "");
-
-      /* 20090518_abe_T1_1023 START*/
-      String unittype        = headerRow.getUnitType();
-      double caseincnum      = lineRow.getCaseIncNum().doubleValue();
-      double bowlincnum      = lineRow.getBowlIncNum().doubleValue();
-      /* 20090518_abe_T1_1023 END*/
-      double businessPrice      = lineRow.getBusinessPrice().doubleValue();
-
-      try
-      {
-        double usuallNetPrice  = Double.parseDouble(usuallNetPriceRep);
-
-        // 通常NET価格
-        /* 20090518_abe_T1_1023 START*/
-        if ( (usuallNetPrice <= businessPrice && unittype.equals("1") ) ||
-             ((usuallNetPrice / caseincnum <= businessPrice ||
-              caseincnum == 0) && unittype.equals("2") ) || 
-             ((usuallNetPrice / bowlincnum <= businessPrice ||
-              bowlincnum == 0) && unittype.equals("3"))
-           )
-        //if ( usuallNetPrice <= businessPrice )
-        /* 20090518_abe_T1_1023 END*/
-        {
-          OAException error
-            = XxcsoMessage.createErrorMessage(
-                XxcsoConstants.APP_XXCSO1_00498,
-                XxcsoConstants.TOKEN_COLUMN,
-                XxcsoQuoteConstants.TOKEN_VALUE_USUALLY,
-                XxcsoConstants.TOKEN_INDEX,
-                String.valueOf(index)
-              );
-          errorList.add(error);
-        }
-      }
-      catch ( NumberFormatException e )
-      {
-        XxcsoUtils.debug(txn, "NumberFormatException");
-      }
-
-      try
-      {
-        double thisTimeNetPrice = Double.parseDouble(thisTimeNetPriceRep);
-
-        // 今回NET価格
-        /* 20090518_abe_T1_1023 START*/
-        if ( (thisTimeNetPrice <= businessPrice && unittype.equals("1") ) ||
-             ((thisTimeNetPrice / caseincnum <= businessPrice ||
-              caseincnum == 0) && unittype.equals("2") ) || 
-             ((thisTimeNetPrice / bowlincnum <= businessPrice ||
-              bowlincnum == 0) && unittype.equals("3"))
-           )
-        //if ( thisTimeNetPrice <= businessPrice )
-        /* 20090518_abe_T1_1023 END*/
-        {
-          OAException error
-            = XxcsoMessage.createErrorMessage(
-                XxcsoConstants.APP_XXCSO1_00498,
-                XxcsoConstants.TOKEN_COLUMN,
-                XxcsoQuoteConstants.TOKEN_VALUE_THIS_TIME,
-                XxcsoConstants.TOKEN_INDEX,
-                String.valueOf(index)
-              );
-          errorList.add(error);
-        }
-      }
-      catch ( NumberFormatException e )
-      {
-        XxcsoUtils.debug(txn, "NumberFormatException");
-      }
+        OAException error
+          = XxcsoMessage.createErrorMessage(
+              XxcsoConstants.APP_XXCSO1_00574,
+              XxcsoConstants.TOKEN_INDEX,
+              String.valueOf(index)
+            );
+        errorList.add(error);
     }
+    else
+    {        
+      if ( XxcsoQuoteConstants.QUOTE_DIV_USUALLY.equals(lineRow.getQuoteDiv()) ||
+         XxcsoQuoteConstants.QUOTE_DIV_BARGAIN.equals(lineRow.getQuoteDiv())
+         )
+      {
+        // 通常か特売の場合は、NET価格の原価割れチェック
+        String usuallNetPriceRep 
+          = lineRow.getUsuallNetPrice().replaceAll(",", "");
+        String thisTimeNetPriceRep 
+          = lineRow.getThisTimeNetPrice().replaceAll(",", "");
+        /* 20090518_abe_T1_1023 START*/
+        String unittype        = headerRow.getUnitType();
+        //double caseincnum      = lineRow.getCaseIncNum().doubleValue();
+        //double bowlincnum      = lineRow.getBowlIncNum().doubleValue();
+        /* 20090518_abe_T1_1023 END*/      
+/* 20090616_abe_T1_1257 END*/
+        double businessPrice      = lineRow.getBusinessPrice().doubleValue();
+
+        try
+        {
+          double usuallNetPrice  = Double.parseDouble(usuallNetPriceRep);
+
+          // 通常NET価格
+          /* 20090518_abe_T1_1023 START*/
+          if ( (usuallNetPrice <= businessPrice && unittype.equals("1") ) ||
+               ((usuallNetPrice / caseincnum <= businessPrice ||
+                caseincnum == 0) && unittype.equals("2") ) || 
+               ((usuallNetPrice / bowlincnum <= businessPrice ||
+                bowlincnum == 0) && unittype.equals("3"))
+             )
+          //if ( usuallNetPrice <= businessPrice )
+          /* 20090518_abe_T1_1023 END*/
+          {
+            OAException error
+              = XxcsoMessage.createErrorMessage(
+                  XxcsoConstants.APP_XXCSO1_00498,
+                  XxcsoConstants.TOKEN_COLUMN,
+                  XxcsoQuoteConstants.TOKEN_VALUE_USUALLY,
+                  XxcsoConstants.TOKEN_INDEX,
+                  String.valueOf(index)
+                );
+            errorList.add(error);
+          }
+        }
+        catch ( NumberFormatException e )
+        {
+          XxcsoUtils.debug(txn, "NumberFormatException");
+        }
+
+        try
+        {
+          double thisTimeNetPrice = Double.parseDouble(thisTimeNetPriceRep);
+
+          // 今回NET価格
+          /* 20090518_abe_T1_1023 START*/
+          if ( (thisTimeNetPrice <= businessPrice && unittype.equals("1") ) ||
+               ((thisTimeNetPrice / caseincnum <= businessPrice ||
+                caseincnum == 0) && unittype.equals("2") ) || 
+               ((thisTimeNetPrice / bowlincnum <= businessPrice ||
+                bowlincnum == 0) && unittype.equals("3"))
+             )
+          //if ( thisTimeNetPrice <= businessPrice )
+          /* 20090518_abe_T1_1023 END*/
+          {
+            OAException error
+              = XxcsoMessage.createErrorMessage(
+                  XxcsoConstants.APP_XXCSO1_00498,
+                  XxcsoConstants.TOKEN_COLUMN,
+                  XxcsoQuoteConstants.TOKEN_VALUE_THIS_TIME,
+                  XxcsoConstants.TOKEN_INDEX,
+                  String.valueOf(index)
+                );
+            errorList.add(error);
+          }
+        }
+        catch ( NumberFormatException e )
+        {
+          XxcsoUtils.debug(txn, "NumberFormatException");
+        }
+      }
+/* 20090616_abe_T1_1257 START*/
+    }
+/* 20090616_abe_T1_1257 END*/
 
     XxcsoUtils.debug(txn, "[END]");
 

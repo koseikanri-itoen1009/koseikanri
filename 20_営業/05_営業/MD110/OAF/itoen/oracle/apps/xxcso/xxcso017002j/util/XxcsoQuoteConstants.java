@@ -1,7 +1,7 @@
 /*============================================================================
 * ファイル名 : XxcsoQuoteConstants
 * 概要説明   : 帳合問屋用見積入力画面共通固定値クラス
-* バージョン : 1.0
+* バージョン : 1.2
 *============================================================================
 * 修正履歴
 * 日付       Ver. 担当者       修正内容
@@ -9,6 +9,7 @@
 * 2009-01-07 1.0  SCS及川領  新規作成
 * 2009-03-24 1.1  SCS阿部大輔  【課題77対応】プロファイル値を追加
 * 2009-03-24 1.1  SCS阿部大輔  【T1_0138】ボタン制御を修正
+* 2009-06-16 1.2  SCS阿部大輔  【T1_1257】マージン額の変更修正
 *============================================================================
 */
 package itoen.oracle.apps.xxcso.xxcso017002j.util;
@@ -136,7 +137,13 @@ public class XxcsoQuoteConstants
   public static final String DEF_DELIV_PLACE             = "貴社指定場所";
   public static final String DEF_PAYMENT_CONDITION       = "基本契約どおり";
   public static final String DEF_DELIV_PRICE_TAX_TYPE    = "1";
-  public static final String DEF_UNIT_TYPE               = "2";
+  /* 20090616_abe_T1_1257 START*/
+  //public static final String DEF_UNIT_TYPE               = "2";
+  public static final String DEF_UNIT_TYPE               = "1";
+  public static final String DEF_UNIT_TYPE1              = "1";
+  public static final String DEF_UNIT_TYPE2              = "2";
+  public static final String DEF_UNIT_TYPE3              = "3";
+  /* 20090616_abe_T1_1257 END*/
   public static final String DEF_PRICE                   = "0";
   public static final String DEF_RATE                    = "100";
 
