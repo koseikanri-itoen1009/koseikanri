@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCOS015A01C(body)
  * Description      : 情報系システム向け販売実績データの作成を行う
  * MD.050           : 情報系システム向け販売実績データの作成 MD050_COS_015_A01
- * Version          : 2.2
+ * Version          : 2.3
  *
  * Program List
  * --------------------------- ----------------------------------------------------------
@@ -56,6 +56,12 @@ AS
  *                                         Ｈ／Ｃ,売上拠点コード,成績者コード,カード売り区分,
  *                                         納品拠点コード,売上返品区分,売上区分,納品形態区分,
  *                                         コラムNo,消費税区分(税コード?),請求先顧客コード,
+ *  2009/04/23    2.3   T.Kitajima       [T1_0727]1.H/CのNULL⇒[1]の変換対応
+ *                                                2.売上金額、消費税金額端数処理
+ *                                                3.コラムNoのNULL⇒[00]の変換
+ *                                                4.納品単価変換
+ *                                                5.請求先顧客コードを["]で括る(カード)。
+ *                                                6.コンカレント出力の件数
  *
  *****************************************************************************************/
 --
@@ -145,6 +151,9 @@ AS
   cv_msg_non_item             CONSTANT VARCHAR2(20) := 'APP-XXCOS1-13318';    -- 非在庫品目
   cv_msg_book_id              CONSTANT VARCHAR2(20) := 'APP-XXCOS1-13319';    -- 会計帳簿ID
   cv_msg_dlv_ptn_cls          CONSTANT VARCHAR2(20) := 'APP-XXCOS1-13320';    -- 納品形態区分
+--****************************** 2009/04/23 2.3 6 T.Kitajima ADD START ******************************--
+  cv_msg_count                CONSTANT VARCHAR2(20) := 'APP-XXCOS1-13321';    -- 件数メッセージ
+--****************************** 2009/04/23 2.3 6 T.Kitajima ADD  END  ******************************--
   -- メッセージトークン
   cv_tkn_pro_tok              CONSTANT VARCHAR2(20) := 'PROFILE';             -- プロファイル名
   cv_tkn_table                CONSTANT VARCHAR2(20) := 'TABLE';               -- テーブル名
@@ -159,6 +168,11 @@ AS
   cv_tkn_attribute3           CONSTANT VARCHAR2(20) := 'ATTRIBUTE3';          -- 属性3
   cv_tkn_account_name         CONSTANT VARCHAR2(20) := 'ACCOUNT_NAME';        -- 顧客名
   cv_tkn_account_id           CONSTANT VARCHAR2(20) := 'ACCOUNT_ID';          -- 顧客ID
+--****************************** 2009/04/23 2.3 6 T.Kitajima ADD START ******************************--
+  cv_tkn_count_1              CONSTANT VARCHAR2(20) := 'COUNT1';              -- 件数1
+  cv_tkn_count_2              CONSTANT VARCHAR2(20) := 'COUNT2';              -- 件数2
+  cv_tkn_count_3              CONSTANT VARCHAR2(20) := 'COUNT3';              -- 件数3
+--****************************** 2009/04/23 2.3 6 T.Kitajima ADD  END  ******************************--
   -- プロファイル
   cv_pf_output_directory      CONSTANT VARCHAR2(50) := 'XXCOS1_OUTBOUND_ZYOHO_DIR';        -- ディレクトリパス
   cv_pf_company_code          CONSTANT VARCHAR2(50) := 'XXCOI1_COMPANY_CODE';              -- 会社コード
@@ -192,7 +206,7 @@ AS
   cv_def_article_code         CONSTANT VARCHAR2(10) := '0000000000';   -- 物件コード
   cv_def_results_employee_cd  CONSTANT VARCHAR2(10) := '00000';        -- 成績者コード
   cv_def_card_sale_class      CONSTANT VARCHAR2(1)  := '0';            -- カード売上区分
-  cv_def_column_no            CONSTANT VARCHAR2(2)  := '00';           -- カラムNo
+  cv_def_column_no            CONSTANT VARCHAR2(2)  := '00';           -- コラムNo
   cv_def_delivery_base_code   CONSTANT VARCHAR2(4)  := '0000';         -- 納品拠点コード
   cn_non_sales_quantity       CONSTANT NUMBER  := 0;                   -- 売上数量
   cn_non_std_unit_price       CONSTANT NUMBER  := 0;                   -- 納品単価
@@ -211,6 +225,15 @@ AS
   -- 使用目的
   cv_site_ship_to             CONSTANT VARCHAR2(10) := 'SHIP_TO';      -- 出荷先
   cv_site_bill_to             CONSTANT VARCHAR2(10) := 'BILL_TO';      -- 請求先
+--****************************** 2009/04/23 2.3 1 T.Kitajima ADD START ******************************--
+  -- H/C
+  cv_h_c_cold                 CONSTANT VARCHAR2(1) := '1';             -- COLD
+  cv_h_c_hot                  CONSTANT VARCHAR2(1) := '3';             -- HOT
+--****************************** 2009/04/23 2.3 1 T.Kitajima ADD  END  ******************************--
+--****************************** 2009/04/23 2.3 4 T.Kitajima ADD START ******************************--
+  cn_sub_1                    CONSTANT NUMBER      := 1;               -- 
+  cv_zero                     CONSTANT VARCHAR2(1) := '0';             -- 
+--****************************** 2009/04/23 2.3 4 T.Kitajima ADD  END  ******************************--
 --
   -- ===============================
   -- ユーザー定義グローバル変数
@@ -229,6 +252,9 @@ AS
   gn_sales_h_count      NUMBER DEFAULT 0;                                         -- 内部TBL用カウンタ(売上実績)
   gt_card_sale_class    fnd_lookup_values.lookup_code%TYPE;                       -- カード売区分
   gt_hc_class           fnd_lookup_values.meaning%TYPE;                           -- H/C区分
+--****************************** 2009/04/23 2.3 6 T.Kitajima ADD START ******************************--
+  gn_card_count         NUMBER;                                                   -- カード分カウント
+--****************************** 2009/04/23 2.3 6 T.Kitajima ADD  END  ******************************--
 --
   -- ===============================
   -- ユーザー定義グローバルカーソル
@@ -259,7 +285,18 @@ AS
            ,xsel.standard_uom_code              xsel_standard_uom_code         -- 基準単位
            ,xseh.tax_rate                       xseh_tax_rate                  -- 消費税率
            ,xseh.tax_code                       xseh_tax_code                  -- 税コード
-           ,xsel.standard_unit_price_excluded   xsel_std_unit_price_excluded   -- 税抜基準単価
+--****************************** 2009/04/23 2.3 4 T.Kitajima MOD START ******************************--
+--           ,xsel.standard_unit_price_excluded   xsel_std_unit_price_excluded   -- 税抜基準単価
+           ,DECODE(
+                       SUBSTR(   TO_CHAR( xsel.standard_unit_price_excluded )
+                              , cn_sub_1
+                              , cn_sub_1
+                             )
+                      ,cv_msg_cont
+                      ,cv_zero || TO_CHAR( xsel.standard_unit_price_excluded )
+                      ,TO_CHAR( xsel.standard_unit_price_excluded )
+                   )                            xsel_std_unit_price_excluded   -- 税抜基準単価
+--****************************** 2009/04/23 2.3 4 T.Kitajima MOD  END  ******************************--
            ,xchv.bill_account_number            xchv_bill_account_number       -- 請求先顧客コード
            ,xchv.cash_account_number            xchv_cash_account_number       -- 入金先顧客コード
            ,NVL(xsel.cash_and_card,
@@ -590,10 +627,16 @@ AS
     -- 少数点判定
     IF ( ln_amount = 0 ) THEN
       -- 少数点がない場合
-      RETURN TO_CHAR(ROUND(in_amount));
+--****************************** 2009/04/23 2.3 2 T.Kitajima MOD START ******************************--
+--      RETURN TO_CHAR(ROUND(in_amount));
+      RETURN TO_CHAR( in_amount );
+--****************************** 2009/04/23 2.3 2 T.Kitajima MOD  END  ******************************--
     ELSE
       -- 少数点がある場合
-      RETURN TO_CHAR(in_amount);
+--****************************** 2009/04/23 2.3 2 T.Kitajima MOD START ******************************--
+--      RETURN TO_CHAR(in_amount);
+      RETURN TO_CHAR( ROUND( in_amount ) );
+--****************************** 2009/04/23 2.3 2 T.Kitajima MOD  END  ******************************--
     END IF;
 --
   EXCEPTION
@@ -1335,45 +1378,75 @@ AS
     IF ( ( it_sales_actual.xseh_card_sale_class = gt_card_sale_class )
         AND ( it_sales_actual.xsel_cash_and_card > 0 ) )
     THEN
+--****************************** 2009/04/23 2.3 2 T.Kitajima MOD START ******************************--
+--      -- *** 併用の場合  ***
+--      -- ===============================
+--      -- 売上金額の編集
+--      -- ===============================
+--      -- カードレコードの計算
+--      ln_sales_amount_card := it_sales_actual.xsel_cash_and_card / (1 + (it_sales_actual.xseh_tax_rate / 100));
+----
+--      -- 端数処理
+--      IF ( it_sales_actual.xchv_bill_tax_round_rule = cv_round_rule_up ) THEN
+--        -- 切り上げの場合
+--        ln_sales_amount_card := CEIL(ln_sales_amount_card);
+----
+--      ELSIF ( it_sales_actual.xchv_bill_tax_round_rule = cv_round_rule_down ) THEN
+--        -- 切り下げの場合
+--        ln_sales_amount_card := FLOOR(ln_sales_amount_card);
+----
+--      ELSIF ( it_sales_actual.xchv_bill_tax_round_rule = cv_round_rule_nearest ) THEN
+--        -- 四捨五入の場合
+--        ln_sales_amount_card := ROUND(ln_sales_amount_card);
+--      END IF;
+----
+--      -- 現金レコードの計算
+--      ln_sales_amount_cash := it_sales_actual.xsel_pure_amount - ln_sales_amount_card;
+--
+--      -- ===============================
+--      -- 売上数量の編集
+--      -- ===============================
+--      -- 現金レコードの計算
+--      ln_sales_quantity_cash := it_sales_actual.xsel_standard_qty;
+----
+--      -- ===============================
+--      -- 消費税額の編集
+--      -- ===============================
+--      -- カードレコードの計算
+--      ln_tax_card := it_sales_actual.xsel_cash_and_card - ln_sales_amount_card;
+----
+--      -- 現金レコードの計算
+--      ln_tax_cash := it_sales_actual.xsel_tax_amount - ln_tax_card;
+----
+--
       -- *** 併用の場合  ***
       -- ===============================
       -- 売上金額の編集
       -- ===============================
-      -- カードレコードの計算
-      ln_sales_amount_card := it_sales_actual.xsel_cash_and_card / (1 + (it_sales_actual.xseh_tax_rate / 100));
---
-      -- 端数処理
+      --カード消費税計算(現金・カード併用額*消費税率)
+      ln_tax_card             := it_sales_actual.xsel_cash_and_card * (it_sales_actual.xseh_tax_rate / 100);
+      --消費税額の端数処理
       IF ( it_sales_actual.xchv_bill_tax_round_rule = cv_round_rule_up ) THEN
         -- 切り上げの場合
-        ln_sales_amount_card := CEIL(ln_sales_amount_card);
+        ln_tax_card           := CEIL(ln_tax_card);
 --
       ELSIF ( it_sales_actual.xchv_bill_tax_round_rule = cv_round_rule_down ) THEN
         -- 切り下げの場合
-        ln_sales_amount_card := FLOOR(ln_sales_amount_card);
+        ln_tax_card           := FLOOR(ln_tax_card);
 --
       ELSIF ( it_sales_actual.xchv_bill_tax_round_rule = cv_round_rule_nearest ) THEN
         -- 四捨五入の場合
-        ln_sales_amount_card := ROUND(ln_sales_amount_card);
+        ln_tax_card           := ROUND(ln_tax_card);
       END IF;
---
-      -- 現金レコードの計算
-      ln_sales_amount_cash := it_sales_actual.xsel_pure_amount - ln_sales_amount_card;
---
-      -- ===============================
-      -- 売上数量の編集
-      -- ===============================
-      -- 現金レコードの計算
-      ln_sales_quantity_cash := it_sales_actual.xsel_standard_qty;
---
-      -- ===============================
-      -- 消費税額の編集
-      -- ===============================
-      -- カードレコードの計算
-      ln_tax_card := it_sales_actual.xsel_cash_and_card - ln_sales_amount_card;
---
-      -- 現金レコードの計算
-      ln_tax_cash := it_sales_actual.xsel_tax_amount - ln_tax_card;
---
+      --カード売上金額計算(現金・カード併用額-端数処理のカード消費税)
+      ln_sales_amount_card    := it_sales_actual.xsel_cash_and_card - ln_tax_card;
+      --現金売上金額計算(本体金額-カード売上金額)
+      ln_sales_amount_cash    := it_sales_actual.xsel_pure_amount   - ln_sales_amount_card;
+      --現金消費税額計算(消費税-端数処理のカード消費税)
+      ln_tax_cash             := it_sales_actual.xsel_tax_amount    - ln_tax_card;
+      --売上数量
+      ln_sales_quantity_cash  := it_sales_actual.xsel_standard_qty;
+--****************************** 2009/04/23 2.3 2 T.Kitajima MOD  END  ******************************--
       -- カードレコードをCSVに出力
       ln_card_rec_flag := cn_output_flag_on;
     ELSE
@@ -1392,7 +1465,7 @@ AS
       -- 非在庫品目の場合
       ln_sales_quantity_cash := cn_non_sales_quantity;        -- 売上数量
     END IF;
---
+----
     -- ===============================
     -- CSVファイル出力
     -- ===============================
@@ -1504,7 +1577,10 @@ AS
         -- 納品単価
         || cv_d_cot || it_sales_actual.xseh_tax_code || cv_d_cot                      || cv_delimiter 
         -- 税コード
-        || it_sales_actual.xchv_cash_account_number                                   || cv_delimiter 
+--****************************** 2009/04/23 2.3 5 T.Kitajima MOD START ******************************--
+--        || it_sales_actual.xchv_cash_account_number                                   || cv_delimiter 
+        || cv_d_cot || it_sales_actual.xchv_cash_account_number || cv_d_cot           || cv_delimiter 
+--****************************** 2009/04/23 2.3 5 T.Kitajima MOD  END  ******************************--
         -- 入金先顧客コード
         || TO_CHAR(gd_system_date,cv_datetime_format);
         -- 連携日時
@@ -1515,7 +1591,11 @@ AS
         ,buffer  => lv_buffer
       );
       -- 出力件数カウント
-      gn_normal_cnt := gn_normal_cnt + 1;
+--****************************** 2009/04/23 2.3 6 T.Kitajima MOD START ******************************--
+--      gn_normal_cnt := gn_normal_cnt + 1;
+      gn_card_count := gn_card_count + 1;
+--****************************** 2009/04/23 2.3 6 T.Kitajima MOD  END  ******************************--
+
     END IF;
 --
   EXCEPTION
@@ -1768,7 +1848,10 @@ AS
         || cv_d_cot || it_sales_rec.xseh_ship_to_customer_code || cv_d_cot       || cv_delimiter    -- 顧客コード
         || cv_d_cot || gt_ar_deal_tbl(ln_idx).puroduct_code || cv_d_cot          || cv_delimiter    -- 商品コード
         || cv_d_cot || get_external_code(it_sales_rec.hca_cust_account_id) || cv_d_cot || cv_delimiter -- 物件コード
-        || cv_d_cot || gt_hc_class || cv_d_cot                                   || cv_delimiter    -- H/C
+--****************************** 2009/04/23 2.3 1 T.Kitajima MOD START ******************************--
+--        || cv_d_cot || gt_hc_class || cv_d_cot                                   || cv_delimiter    -- H/C
+        || cv_d_cot || NVL( gt_hc_class, cv_h_c_cold ) || cv_d_cot               || cv_delimiter    -- H/C
+--****************************** 2009/04/23 2.3 1 T.Kitajima MOD  END  ******************************--
         || cv_d_cot || gt_ar_deal_tbl(ln_idx).delivery_base_code || cv_d_cot     || cv_delimiter    -- 売上拠点コード
         || cv_d_cot || cv_def_results_employee_cd || cv_d_cot                    || cv_delimiter    -- 成績者コード
         || cv_d_cot || cv_def_card_sale_class || cv_d_cot                        || cv_delimiter    -- カード売上区分
@@ -1779,7 +1862,10 @@ AS
         || cv_d_cot || lt_dlv_invoice_class || cv_d_cot                          || cv_delimiter    -- 売上返品区分
         || cv_d_cot || it_sales_rec.xsel_sales_class || cv_d_cot                 || cv_delimiter    -- 売上区分
         || cv_d_cot || gt_dlv_ptn_cls || cv_d_cot                                || cv_delimiter    -- 納品形態区分
-        || cv_def_column_no                                                      || cv_delimiter    -- カラムNo
+--****************************** 2009/04/23 2.3 3 T.Kitajima MOD START ******************************--
+--        || cv_def_column_no                                                      || cv_delimiter    -- コラムNo
+        || cv_d_cot || cv_def_column_no || cv_d_cot                              || cv_delimiter    -- コラムNo
+--****************************** 2009/04/23 2.3 3 T.Kitajima MOD  END  ******************************--
         || cv_blank                                                              || cv_delimiter    -- 検収予定日
         || cn_non_std_unit_price                                                 || cv_delimiter    -- 納品単価
         || cv_d_cot || gt_ar_deal_tbl(ln_idx).avtab_tax_code || cv_d_cot         || cv_delimiter    -- 税コード
@@ -2094,6 +2180,9 @@ AS
     gn_normal_cnt := 0;
     gn_error_cnt  := 0;
     gn_warn_cnt   := 0;
+--****************************** 2009/04/23 2.3 6 T.Kitajima ADD START ******************************--
+    gn_card_count := 0;
+--****************************** 2009/04/23 2.3 6 T.Kitajima ADD  END  ******************************--
 --
     BEGIN
       -- ===============================
@@ -2376,25 +2465,38 @@ AS
       ,buff   => ''
     );
 --
-    --対象件数出力
-    gv_out_msg := xxccp_common_pkg.get_msg(
-                     iv_application  => cv_appl_short_name
-                    ,iv_name         => cv_target_rec_msg
-                    ,iv_token_name1  => cv_cnt_token
-                    ,iv_token_value1 => TO_CHAR(gn_target_cnt)
-                   );
-    FND_FILE.PUT_LINE(
-       which  => FND_FILE.OUTPUT
-      ,buff   => gv_out_msg
-    );
-    --
+--****************************** 2009/04/23 2.3 6 T.Kitajima MOD START ******************************--
+--    --対象件数出力
+--    gv_out_msg := xxccp_common_pkg.get_msg(
+--                     iv_application  => cv_appl_short_name
+--                    ,iv_name         => cv_target_rec_msg
+--                    ,iv_token_name1  => cv_cnt_token
+--                    ,iv_token_value1 => TO_CHAR(gn_target_cnt)
+--                   );
+--    FND_FILE.PUT_LINE(
+--       which  => FND_FILE.OUTPUT
+--      ,buff   => gv_out_msg
+--    );
+--    --
+--    --成功件数出力
+--    gv_out_msg := xxccp_common_pkg.get_msg(
+--                     iv_application  => cv_appl_short_name
+--                    ,iv_name         => cv_success_rec_msg
+--                    ,iv_token_name1  => cv_cnt_token
+--                    ,iv_token_value1 => TO_CHAR(gn_normal_cnt)
+--                   );
     --成功件数出力
     gv_out_msg := xxccp_common_pkg.get_msg(
-                     iv_application  => cv_appl_short_name
-                    ,iv_name         => cv_success_rec_msg
-                    ,iv_token_name1  => cv_cnt_token
-                    ,iv_token_value1 => TO_CHAR(gn_normal_cnt)
+                     iv_application  => cv_xxcos_short_name
+                    ,iv_name         => cv_msg_count
+                    ,iv_token_name1  => cv_tkn_count_1
+                    ,iv_token_value1 => TO_CHAR(gn_target_cnt)
+                    ,iv_token_name2  => cv_tkn_count_2
+                    ,iv_token_value2 => TO_CHAR(gn_normal_cnt)
+                    ,iv_token_name3  => cv_tkn_count_3
+                    ,iv_token_value3 => TO_CHAR(gn_card_count)
                    );
+--****************************** 2009/04/23 2.3 6 T.Kitajima MOD  END  ******************************--
     FND_FILE.PUT_LINE(
        which  => FND_FILE.OUTPUT
       ,buff   => gv_out_msg
