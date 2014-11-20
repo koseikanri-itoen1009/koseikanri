@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCOS014A03C (body)
  * Description      : 納品確定情報データ作成(EDI)
  * MD.050           : 納品確定情報データ作成(EDI) MD050_COS_014_A03
- * Version          : 1.12
+ * Version          : 1.13
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -44,6 +44,7 @@ AS
  *  2009/08/10    1.10  M.Sano           [0000442] 『返品確定情報データ作成』PTの考慮
  *  2009/08/13    1.11  M.Sano           [0001043] 売上区分混在チェック削除
  *  2009/09/09    1.12  M.Sano           [0001211] 税関連項目取得基準日修正
+ *  2009/10/02    1.13  M.Sano           [0001306] 売上区分混在チェックのIF条件修正
  *
  *****************************************************************************************/
 --
@@ -1403,6 +1404,9 @@ AS
 -- 2009/07/29 M.Sano Ver.1.9 add Start
     lt_line_uom             xxcos_edi_lines.line_uom%TYPE;         --明細単位
 -- 2009/07/29 M.Sano Ver.1.9 add End
+-- 2009/10/02 M.Sano Ver.1.13 add Start
+    lt_last_edi_header_info_id  xxcos_edi_headers.edi_header_info_id%TYPE;  --前回EDIヘッダ情報ID  
+-- 2009/10/02 M.Sano Ver.1.13 add End
 --
     -- *** ローカル・カーソル ***
     CURSOR cur_data_record(i_input_rec    g_input_rtype
@@ -3687,7 +3691,12 @@ AS
             BETWEEN NVL(xlvv.start_date_active,i_other_rec.process_date)
             AND     NVL(xlvv.end_date_active,i_other_rec.process_date)
         AND xe.delivery_base_code            = cdm.account_number(+)
-      ORDER BY xe.invoice_number,xe.line_no
+-- 2009/10/02 M.Sano Ver.1.13 mod start
+--      ORDER BY xe.invoice_number,xe.line_no
+      ORDER BY xe.invoice_number
+              ,xe.edi_header_info_id
+              ,xe.line_no
+-- 2009/10/02 M.Sano Ver.1.13 mod end
 --******************************************* 2009/06/17 1.9 T.Kitajima MOD  END  *************************************
       ;
 --
@@ -4434,7 +4443,10 @@ AS
       --==============================================================
       --売上区分混在チェック
       --==============================================================
-      IF (lt_last_invoice_number = l_data_tab('INVOICE_NUMBER')) AND cur_data_record%ROWCOUNT > 1 THEN
+-- 2009/10/02 M.Sano Ver.1.13 mod start
+--      IF (lt_last_invoice_number = l_data_tab('INVOICE_NUMBER')) AND cur_data_record%ROWCOUNT > 1 THEN
+      IF (lt_last_edi_header_info_id = lt_edi_header_info_id) AND cur_data_record%ROWCOUNT > 1 THEN
+-- 2009/10/02 M.Sano Ver.1.13 mod end
 -- 2009/08/13 Ver1.11 M.Sano Mod Start
 ----        IF (lt_last_bargain_class != lt_bargain_class) THEN
 --        IF (lt_last_bargain_class != lt_bargain_class AND lb_mix_error_order = FALSE) THEN
@@ -4459,7 +4471,10 @@ AS
 -- 2009/08/13 Ver1.11 M.Sano Mod End
       ELSE
         --前回伝票番号≠今回伝票番号の場合
-        lt_last_invoice_number  := l_data_tab('INVOICE_NUMBER');
+-- 2009/10/02 M.Sano Ver.1.13 add Start
+--        lt_last_invoice_number  := l_data_tab('INVOICE_NUMBER');
+        lt_last_edi_header_info_id := lt_edi_header_info_id;
+-- 2009/10/02 M.Sano Ver.1.13 add End
         lt_last_bargain_class   := lt_bargain_class;
         lb_mix_error_order      := FALSE;
         lb_out_flag_error_order := FALSE;
