@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCOS002A05R (body)
  * Description      : 納品書チェックリスト
  * MD.050           : 納品書チェックリスト MD050_COS_002_A05
- * Version          : 1.10
+ * Version          : 1.11
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -53,6 +53,8 @@ AS
  *                                       delete_rpt_wrk_dataコール部分のコメント削除
  *  2009/06/10    1.10  T.Tominaga       障害[T1_1404]対応
  *                                       メインカーソルの変更（端数処理区分の取得先変更）
+ *  2009/06/11    1.11  T.Tominaga       障害[T1_1420]対応
+ *                                       税処理において、消費税区分が"2","3"以外の場合の条件を"3"以外に変更
  *
  *****************************************************************************************/
 --
@@ -1437,8 +1439,11 @@ AS
             lt_tax_amount := ROUND( lt_tax_amount );
           END IF;
           IF ( lt_get_sale_data(in_no).consumption_tax_class IS NULL
-             OR ( lt_get_sale_data(in_no).consumption_tax_class <> cn_two 
-             AND lt_get_sale_data(in_no).consumption_tax_class <> cn_thr ) ) THEN
+-- ******************** 2009/06/11 Var.1.11 T.Tominaga MOD START  *****************************************
+--             OR ( lt_get_sale_data(in_no).consumption_tax_class <> cn_two 
+--             AND lt_get_sale_data(in_no).consumption_tax_class <> cn_thr ) ) THEN
+            OR lt_get_sale_data(in_no).consumption_tax_class <> cn_thr ) THEN
+-- ******************** 2009/06/11 Var.1.11 T.Tominaga MOD END    *****************************************
             lt_tax_amount := 0;
           END IF;
           lt_business_cost  := lt_business_cost + lt_tax_amount;
@@ -1459,8 +1464,11 @@ AS
             lt_tax_amount := ROUND( lt_tax_amount );
           END IF;
           IF ( lt_get_sale_data(in_no).consumption_tax_class IS NULL
-             OR ( lt_get_sale_data(in_no).consumption_tax_class <> cn_two 
-             AND lt_get_sale_data(in_no).consumption_tax_class <> cn_thr ) ) THEN
+-- ******************** 2009/06/11 Var.1.11 T.Tominaga MOD START  *****************************************
+--             OR ( lt_get_sale_data(in_no).consumption_tax_class <> cn_two 
+--             AND lt_get_sale_data(in_no).consumption_tax_class <> cn_thr ) ) THEN
+            OR lt_get_sale_data(in_no).consumption_tax_class <> cn_thr ) THEN
+-- ******************** 2009/06/11 Var.1.11 T.Tominaga MOD END    *****************************************
               lt_tax_amount := 0;
           END IF;
           lt_plice_new  := lt_plice_new + lt_tax_amount;
@@ -1481,8 +1489,11 @@ AS
             lt_tax_amount := ROUND( lt_tax_amount );
           END IF;
           IF ( lt_get_sale_data(in_no).consumption_tax_class IS NULL
-             OR ( lt_get_sale_data(in_no).consumption_tax_class <> cn_two 
-             AND lt_get_sale_data(in_no).consumption_tax_class <> cn_thr ) ) THEN
+-- ******************** 2009/06/11 Var.1.11 T.Tominaga MOD START  *****************************************
+--             OR ( lt_get_sale_data(in_no).consumption_tax_class <> cn_two 
+--             AND lt_get_sale_data(in_no).consumption_tax_class <> cn_thr ) ) THEN
+            OR lt_get_sale_data(in_no).consumption_tax_class <> cn_thr ) THEN
+-- ******************** 2009/06/11 Var.1.11 T.Tominaga MOD END    *****************************************
               lt_tax_amount := 0;
           END IF;
           lt_plice_old  := lt_plice_old + lt_tax_amount;
