@@ -4,11 +4,11 @@
 # システム名     :
 # ファイル名     :AZZZGETSVFFILE.prog
 # 処理概要       :ファイル転送(取得)と転送元ファイルの削除
-# バージョン     :$Revision: 1.1 $
+# バージョン     :$Revision: 1.2 $
 # 作成日         :2009/01/22 16:00:00 $
 # 作成者         :SCS Common-I/F T.Matsumoto
-# 最終更新日時   :2009/05/29 16:00:00 $
-# 最終更新者     :SCS Common-I/F M.Sano
+# 最終更新日時   :2013/06/05 15:00:00 $
+# 最終更新者     :SCSK S.Niki
 #
 # $History: AZZZGETSVFFILE.prog $
 # 
@@ -22,6 +22,8 @@
 # 内容
 # 2009/05/29    M.Sano
 # [T1_0628]FTPログインユーザ・パスワード・ホスト名をSQLにて取得するように修正。
+# 2013/06/05    S.Niki
+# [E_本稼動_10617]ディレクトリ存在チェック時のコマンドにオプション追加
 #
 #################################################################### $NoKeywords:$
 # Execute parameter(For EBS CONCURRENT)
@@ -386,7 +388,10 @@ MSG_OUT prm07
 procStep="STEP.002"
 
 # ファイル移動先ディレクトリの存在確認
-ls ${LocalFileDir} > /dev/null 2>&1
+#Ver1.2 Mod S.Niki Start
+#ls ${LocalFileDir} > /dev/null 2>&1
+ls -d ${LocalFileDir} > /dev/null 2>&1
+#Ver1.2 Mod S.Niki End
 Ret=${?}
 case ${Ret} in
   # コマンドがエラーになった場合
@@ -401,7 +406,10 @@ esac
 
 procStep="STEP.003"
 # 一時ログファイル用ディレクトリの存在確認
-ls ${ftpLogFileDir} > /dev/null 2>&1
+#Ver1.2 Mod S.Niki Start
+#ls ${ftpLogFileDir} > /dev/null 2>&1
+ls -d ${ftpLogFileDir} > /dev/null 2>&1
+#Ver1.2 Mod S.Niki End
 Ret=${?}
 case ${Ret} in
   # コマンドがエラーになった場合
