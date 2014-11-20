@@ -7,7 +7,7 @@ AS
  * Description      : 在庫（帳票）
  * MD.050/070       : 在庫（帳票）Issue1.0  (T_MD050_BPO_550)
  *                    受払残高リスト        (T_MD070_BPO_55A)
- * Version          : 1.23
+ * Version          : 1.24
  *
  * Program List
  * -------------------------- ----------------------------------------------------------
@@ -50,6 +50,7 @@ AS
  *  2008/10/22    1.21  Yasuhisa Yamamoto  仕様不備障害 T_S_492
  *  2008/11/10    1.22  Yasuhisa Yamamoto  統合指摘 #536、#547対応
  *  2008/11/17    1.23  Yasuhisa Yamamoto  統合指摘 #659対応
+ *  2008/12/02    1.24  Yasuhisa Yamamoto  本番指摘 #321対応
  *
  *****************************************************************************************/
 --
@@ -205,7 +206,10 @@ AS
     ,cargo_stock_be            xxinv_stc_inventory_month_stck.cargo_stock%TYPE    -- 前月末積送中在庫
     ,month_stock_nw            xxinv_stc_inventory_month_stck.monthly_stock%TYPE  -- 当月末在庫
     ,cargo_stock_nw            xxinv_stc_inventory_month_stck.cargo_stock%TYPE    -- 当月末積送中在庫
-    ,case_amt                  xxinv_stc_inventory_result.case_amt%TYPE           -- 棚卸ケース数
+-- 08/12/02 Y.Yamamoto update v1.24 start
+--    ,case_amt                  xxinv_stc_inventory_result.case_amt%TYPE           -- 棚卸ケース数
+    ,case_amt                  NUMBER                                             -- 棚卸ケース数
+-- 08/12/02 Y.Yamamoto update v1.24 end
     ,loose_amt                 xxinv_stc_inventory_result.loose_amt%TYPE          -- 棚卸バラ
 -- 08/07/16 Y.Yamamoto ADD v1.14 Start
     ,trans_cnt                 NUMBER                                             -- トランザクション系データの抽出件数
