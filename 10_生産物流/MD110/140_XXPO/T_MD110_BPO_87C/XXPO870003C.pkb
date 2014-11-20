@@ -7,7 +7,7 @@ AS
  * Description      : 発注単価洗替処理
  * MD.050           : 仕入単価／標準原価マスタ登録 Issue1.0  T_MD050_BPO_870
  * MD.070           : 仕入単価／標準原価マスタ登録 Issue1.0  T_MD070_BPO_870
- * Version          : 1.5
+ * Version          : 1.6
  *
  * Program List
  * --------------------------- ----------------------------------------------------------
@@ -46,6 +46,9 @@ AS
  *  2008/06/03    1.5   Y.Ishikawa       仕入単価マスタの支給先コードが登録されていない場合は
  *                                       条件に含めない。
  *                                       粉引後単価がNULLの場合は、0として計算する。
+ *  2008/07/01    1.6   Y.Ishikawa       発注ヘッダの配送先コードより仕入先コードを導出し
+ *                                       発注単価マスタの支給先に対して、同仕入先コードを
+ *                                       条件にして抽出する。
  *
  *****************************************************************************************/
 --
@@ -1500,24 +1503,27 @@ AS
       -- ===============================
       -- 仕入/標準単価ヘッダの取得
       -- ===============================
-      lv_sql :=
-        '   SELECT xph.price_header_id price_header_id,'            -- ヘッダID
-        || '       xph.total_amount    total_amount'                -- 内訳合計
-        || '  FROM xxpo_price_headers xph'                          -- 仕入/標準単価ヘッダ
-        || ' WHERE xph.item_id             = :item_id'              -- 品目ID
-        || '   AND xph.price_type          = :type'                 -- マスタ区分
-        || '   AND xph.vendor_id           = :vendor_id'            -- 取引先ID
-        || '   AND (xph.start_date_active <= :start_date_active'    -- 適用開始日
-        || '   AND xph.end_date_active    >= :end_date_active)'     -- 適用終了日
-        || '   AND xph.record_change_flg   = :change_y'             -- 変更処理フラグ
-        || '   AND xph.factory_code        = :factory_code'         -- 工場コード
-        || '   AND xph.futai_code          = :futai_code';          -- 付帯コード
 --
       -- 直送区分が支給(3)の場合は支給先コードを条件にする
       IF (ir_po_data.direct_sending_type = gv_provision) THEN
 --
-        lv_sql := lv_sql
-          || '   AND (xph.supply_to_code      = :supply_to_code'    -- 支給先コード
+        lv_sql :=
+          '   SELECT xph.price_header_id price_header_id,'            -- ヘッダID
+          || '       xph.total_amount    total_amount'                -- 内訳合計
+          || '  FROM xxpo_price_headers xph'                          -- 仕入/標準単価ヘッダ
+          || '      ,xxcmn_vendors_v xvv'                             -- 仕入先ビュー
+          || '      ,xxcmn_vendor_sites_v xvsv'                       -- 仕入先サイトビュー
+          || ' WHERE xph.item_id             = :item_id'              -- 品目ID
+          || '   AND xph.price_type          = :type'                 -- マスタ区分
+          || '   AND xph.vendor_id           = :vendor_id'            -- 取引先ID
+          || '   AND (xph.start_date_active <= :start_date_active'    -- 適用開始日
+          || '   AND xph.end_date_active    >= :end_date_active)'     -- 適用終了日
+          || '   AND xph.record_change_flg   = :change_y'             -- 変更処理フラグ
+          || '   AND xph.factory_code        = :factory_code'         -- 工場コード
+          || '   AND xph.futai_code          = :futai_code'           -- 付帯コード
+          || '   AND xvsv.vendor_site_code   = :supply_to_code'       -- 仕入先サイトコード
+          || '   AND xvv.vendor_id           = xvsv.vendor_id'        -- 仕入先コード
+          || '   AND (xph.supply_to_code     = xvv.segment1'          -- 支給先コード
           || '        OR xph.supply_to_code   IS NULL)'
           || ' FOR UPDATE NOWAIT';
 --
@@ -1535,7 +1541,18 @@ AS
                 ir_po_data.delivery_code;
       ELSE
 --
-        lv_sql := lv_sql
+        lv_sql :=
+           '   SELECT xph.price_header_id price_header_id,'            -- ヘッダID
+          || '       xph.total_amount    total_amount'                -- 内訳合計
+          || '  FROM xxpo_price_headers xph'                          -- 仕入/標準単価ヘッダ
+          || ' WHERE xph.item_id             = :item_id'              -- 品目ID
+          || '   AND xph.price_type          = :type'                 -- マスタ区分
+          || '   AND xph.vendor_id           = :vendor_id'            -- 取引先ID
+          || '   AND (xph.start_date_active <= :start_date_active'    -- 適用開始日
+          || '   AND xph.end_date_active    >= :end_date_active)'     -- 適用終了日
+          || '   AND xph.record_change_flg   = :change_y'             -- 変更処理フラグ
+          || '   AND xph.factory_code        = :factory_code'         -- 工場コード
+          || '   AND xph.futai_code          = :futai_code'           -- 付帯コード
           || ' FOR UPDATE NOWAIT';
 --
         EXECUTE IMMEDIATE lv_sql

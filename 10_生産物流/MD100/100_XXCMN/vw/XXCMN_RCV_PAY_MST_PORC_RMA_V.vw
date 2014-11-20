@@ -3,7 +3,7 @@
  *
  * View Name       : XXCMN_RCV_PAY_MST_PORC_RMA_V
  * Description     : Œo—ó•¥‹æ•ªî•ñVIEW_w”ƒŠÖ˜A_o‰×
- * Version         : 1.5
+ * Version         : 1.6
  *
  * Change Record
  * ------------- ----- ---------------- ---------------------------------
@@ -17,6 +17,8 @@
  *  2008-06-12    1.3   Y.Ishikawa       €–Ú‚Éæˆø‹æ•ª–¼‚ğ’Ç‰Á
  *  2008-06-12    1.4   Y.Ishikawa       €–Ú‚Éd“üæID‚ğ’Ç‰Á
  *  2008-06-13    1.5   Y.Ishikawa       ƒJƒeƒSƒŠæ“¾•”•ª‚ÅGROUP BY‚Ì—˜—p‚ğ‚â‚ß‚é
+ *  2008-07-01    1.6   Y.Ishikawa       o‰×x‹‹‹æ•ª‚É‚æ‚Á‚Äó’ƒwƒbƒ_[‚Ì’ŠoğŒ
+ *                                       ‚ªo‰×ÀÑ‚©x‹‹ÀÑ‚ğ”»’f‚·‚é‚æ‚¤•ÏX‚·‚é
  *
  ************************************************************************/
 CREATE OR REPLACE VIEW XXCMN_RCV_PAY_MST_PORC_RMA_V
@@ -48,7 +50,9 @@ SELECT  xrpm.new_div_account            AS new_div_account            -- VŒo—
        ,ooha.attribute11                AS result_post                -- ¬Ñ•”
        ,xola.unit_price                 AS unit_price                 -- ”Ì”„’P‰¿
        ,oola.attribute3                 AS request_item_code          -- ˆË—Š•i–ÚƒR[ƒh
-       ,xoha.deliver_to_id              AS deliver_to_id              -- o‰×æID
+       ,DECODE(xrpm.shipment_provision_div,'1',
+               xoha.result_deliver_to_id,  '2',
+               xoha.deliver_to_id)      AS deliver_to_id              -- o‰×æID
        ,NULL                            AS item_id                    -- •i–ÚID
        ,mcb_o2.segment1                 AS item_div                   -- •i–Ú‹æ•ª
        ,mcb_o1.segment1                 AS prod_div                   -- ¤•i‹æ•ª
@@ -95,6 +99,7 @@ WHERE xrpm.doc_type             = 'PORC'
   AND xlvv.lookup_type          = 'XXCMN_DEALINGS_DIV'
   AND xlvv.meaning              IN ('»•io‰×','—L')
   AND xrpm.dealings_div         = xlvv.lookup_code
+  AND xoha.req_status           = DECODE(xrpm.shipment_provision_div,'1','04','2','08')
   AND ooha.header_id            = rsl.oe_order_header_id
   AND otta.transaction_type_id  = ooha.order_type_id
   AND xoha.header_id            = ooha.header_id
@@ -196,7 +201,9 @@ SELECT  xrpm.new_div_account            AS new_div_account            -- VŒo—
        ,ooha.attribute11                AS result_post                -- ¬Ñ•”
        ,xola.unit_price                 AS unit_price                 -- ”Ì”„’P‰¿
        ,oola.attribute3                 AS request_item_code          -- ˆË—Š•i–ÚƒR[ƒh
-       ,xoha.deliver_to_id              AS deliver_to_id              -- o‰×æID
+       ,DECODE(xrpm.shipment_provision_div,'1',
+               xoha.result_deliver_to_id,  '2',
+               xoha.deliver_to_id)      AS deliver_to_id              -- o‰×æID
        ,NULL                            AS item_id                    -- •i–ÚID
        ,mcb_o2.segment1                 AS item_div                   -- •i–Ú‹æ•ª
        ,mcb_o1.segment1                 AS prod_div                   -- ¤•i‹æ•ª
@@ -243,6 +250,7 @@ WHERE xrpm.doc_type             = 'PORC'
   AND xlvv.lookup_type          = 'XXCMN_DEALINGS_DIV'
   AND xlvv.meaning              IN ('‘Şo‰×','—L')
   AND xrpm.dealings_div         = xlvv.lookup_code
+  AND xoha.req_status           = DECODE(xrpm.shipment_provision_div,'1','04','2','08')
   AND ooha.header_id            = rsl.oe_order_header_id
   AND otta.transaction_type_id  = ooha.order_type_id
   AND xoha.header_id            = ooha.header_id
@@ -344,7 +352,9 @@ SELECT  xrpm.new_div_account            AS new_div_account            -- VŒo—
        ,ooha.attribute11                AS result_post                -- ¬Ñ•”
        ,xola.unit_price                 AS unit_price                 -- ”Ì”„’P‰¿
        ,oola.attribute3                 AS request_item_code          -- ˆË—Š•i–ÚƒR[ƒh
-       ,xoha.deliver_to_id              AS deliver_to_id              -- o‰×æID
+       ,DECODE(xrpm.shipment_provision_div,'1',
+               xoha.result_deliver_to_id,  '2',
+               xoha.deliver_to_id)      AS deliver_to_id              -- o‰×æID
        ,DECODE(xlvv.meaning,
                  'U‘Ö—L_ó“ü',iimb_a.item_id,                      -- U‘Öæ•i–ÚID
                  'U‘Ö—L_o‰×',iimb_a.item_id,                      -- U‘Öæ•i–ÚID
@@ -406,6 +416,7 @@ WHERE xrpm.doc_type               = 'PORC'
   AND xlvv.lookup_type            = 'XXCMN_DEALINGS_DIV'
   AND xlvv.meaning                IN ('U‘Ö—L_ó“ü','U‘Ö—L_o‰×','U‘Ö—L_•¥o')
   AND xrpm.dealings_div           = xlvv.lookup_code
+  AND xoha.req_status           = DECODE(xrpm.shipment_provision_div,'1','04','2','08')
   AND ooha.header_id              = rsl.oe_order_header_id
   AND otta.transaction_type_id    = ooha.order_type_id
   AND xoha.header_id              = ooha.header_id
@@ -505,7 +516,9 @@ SELECT  xrpm.new_div_account            AS new_div_account            -- VŒo—
        ,ooha.attribute11                AS result_post                -- ¬Ñ•”
        ,xola.unit_price                 AS unit_price                 -- ”Ì”„’P‰¿
        ,oola.attribute3                 AS request_item_code          -- ˆË—Š•i–ÚƒR[ƒh
-       ,xoha.deliver_to_id              AS deliver_to_id              -- o‰×æID
+       ,DECODE(xrpm.shipment_provision_div,'1',
+               xoha.result_deliver_to_id,  '2',
+               xoha.deliver_to_id)      AS deliver_to_id              -- o‰×æID
        ,DECODE(xlvv.meaning,
                  '¤•iU‘Ö—L_ó“ü',iimb_a.item_id,                     -- U‘Öæ•i–ÚID
                  '¤•iU‘Ö—L_o‰×',iimb_a.item_id,                     -- U‘Öæ•i–ÚID
@@ -567,6 +580,7 @@ WHERE xrpm.doc_type             = 'PORC'
   AND xlvv.lookup_type          = 'XXCMN_DEALINGS_DIV'
   AND xlvv.meaning              IN ('¤•iU‘Ö—L_ó“ü','¤•iU‘Ö—L_o‰×','¤•iU‘Ö—L_•¥o')
   AND xrpm.dealings_div           = xlvv.lookup_code
+  AND xoha.req_status           = DECODE(xrpm.shipment_provision_div,'1','04','2','08')
   AND ooha.header_id              = rsl.oe_order_header_id
   AND otta.transaction_type_id    = ooha.order_type_id
   AND xoha.header_id              = ooha.header_id
@@ -668,7 +682,9 @@ SELECT  xrpm.new_div_account            AS new_div_account            -- VŒo—
        ,ooha.attribute11                AS result_post                -- ¬Ñ•”
        ,xola.unit_price                 AS unit_price                 -- ”Ì”„’P‰¿
        ,oola.attribute3                 AS request_item_code          -- ˆË—Š•i–ÚƒR[ƒh
-       ,xoha.deliver_to_id              AS deliver_to_id              -- o‰×æID
+       ,DECODE(xrpm.shipment_provision_div,'1',
+               xoha.result_deliver_to_id,  '2',
+               xoha.deliver_to_id)      AS deliver_to_id              -- o‰×æID
        ,DECODE(xlvv.meaning,
                  'U‘Öo‰×_ó“ü_Œ´',iimb_a.item_id,                  -- U‘Öæ•i–ÚID
                  'U‘Öo‰×_ó“ü_”¼',iimb_a.item_id,                  -- U‘Öæ•i–ÚID
@@ -736,6 +752,7 @@ WHERE xrpm.doc_type             = 'PORC'
   AND xlvv.meaning              IN ('U‘Öo‰×_ó“ü_Œ´','U‘Öo‰×_ó“ü_”¼',
                                     'U‘Öo‰×_o‰×','U‘Öo‰×_•¥o')
   AND xrpm.dealings_div           = xlvv.lookup_code
+  AND xoha.req_status             = DECODE(xrpm.shipment_provision_div,'1','04','2','08')
   AND ooha.header_id              = rsl.oe_order_header_id
   AND otta.transaction_type_id    = ooha.order_type_id
   AND xoha.header_id              = ooha.header_id
@@ -834,7 +851,9 @@ SELECT  xrpm.new_div_account            AS new_div_account            -- VŒo—
        ,ooha.attribute11                AS result_post                -- ¬Ñ•”
        ,xola.unit_price                 AS unit_price                 -- ”Ì”„’P‰¿
        ,oola.attribute3                 AS request_item_code          -- ˆË—Š•i–ÚƒR[ƒh
-       ,xoha.deliver_to_id              AS deliver_to_id              -- o‰×æID
+       ,DECODE(xrpm.shipment_provision_div,'1',
+               xoha.result_deliver_to_id,  '2',
+               xoha.deliver_to_id)      AS deliver_to_id              -- o‰×æID
        ,DECODE(xlvv.meaning,
                  'U‘Öo‰×_ó“ü_Œ´',iimb_a.item_id,                   -- U‘Öæ•i–ÚID
                  'U‘Öo‰×_ó“ü_”¼',iimb_a.item_id,                   -- U‘Öæ•i–ÚID
@@ -902,6 +921,7 @@ WHERE xrpm.doc_type             = 'PORC'
   AND xlvv.meaning              IN ('U‘Öo‰×_ó“ü_Œ´','U‘Öo‰×_ó“ü_”¼',
                                     'U‘Öo‰×_o‰×','U‘Öo‰×_•¥o')
   AND xrpm.dealings_div           = xlvv.lookup_code
+  AND xoha.req_status             = DECODE(xrpm.shipment_provision_div,'1','04','2','08')
   AND ooha.header_id              = rsl.oe_order_header_id
   AND otta.transaction_type_id    = ooha.order_type_id
   AND xoha.header_id              = ooha.header_id
