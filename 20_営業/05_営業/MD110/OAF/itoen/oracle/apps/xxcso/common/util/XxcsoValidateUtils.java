@@ -7,6 +7,7 @@
 * “ú•t       Ver. ’S“–Ò       C³“à—e
 * ---------- ---- ------------ ----------------------------------------------
 * 2008-12-11 1.0  SCS¬ì_    V‹Kì¬
+* 2009-06-15 1.1  SCS–ö•½’¼l  [STáŠQT1_1068]‹Ö‘¥•¶šƒ`ƒFƒbƒNƒŠƒXƒgíœ
 *============================================================================
 */
 package itoen.oracle.apps.xxcso.common.util;
@@ -753,19 +754,23 @@ public class XxcsoValidateUtils
     OADBTransaction txn
   )
   {
-    illegalStringList.add("~");
-    illegalStringList.add("\\");
-    illegalStringList.add("P");
-    illegalStringList.add("\");
-    illegalStringList.add("_");
+// 2009-06-15 [STáŠQT1_1068] Del Start
+//    illegalStringList.add("~");
+//    illegalStringList.add("\\");
+//    illegalStringList.add("P");
+//    illegalStringList.add("\");
+//    illegalStringList.add("_");
+// 2009-06-15 [STáŠQT1_1068] Del End
     illegalStringList.add("`");
-    illegalStringList.add("a");
-    illegalStringList.add("c");
-    illegalStringList.add("|");
-    illegalStringList.add("");
-    illegalStringList.add("‘");
-    illegalStringList.add("’");
-    illegalStringList.add("Ê");    
+// 2009-06-15 [STáŠQT1_1068] Del Start
+//    illegalStringList.add("a");
+//    illegalStringList.add("c");
+//    illegalStringList.add("|");
+//    illegalStringList.add("");
+//    illegalStringList.add("‘");
+//    illegalStringList.add("’");
+//    illegalStringList.add("Ê");
+// 2009-06-15 [STáŠQT1_1068] Del End
   }
 
   /*****************************************************************************
