@@ -7,7 +7,7 @@ AS
  * Description      : 発注単価洗替処理
  * MD.050           : 仕入単価／標準原価マスタ登録 Issue1.0  T_MD050_BPO_870
  * MD.070           : 仕入単価／標準原価マスタ登録 Issue1.0  T_MD070_BPO_870
- * Version          : 1.8
+ * Version          : 1.9
  *
  * Program List
  * --------------------------- ----------------------------------------------------------
@@ -52,6 +52,7 @@ AS
  *  2008/07/02    1.7   Y.Ishikawa       口銭区分及び配賦金区分が率以外の時
  *                                       発注納入明細の粉引後単価が更新されない。
  *  2008/09/24    1.8   Oracle山根一浩   変更#193対応
+ *  2008/12/04    1.9   Oracle二瓶大輔   本番障害#381対応(TRUNC削除)
  *
  *****************************************************************************************/
 --
@@ -1376,22 +1377,36 @@ AS
     END IF;
 */
     IF (ir_po_data.status > gv_po_stats) THEN
-      ln_quantity := TRUNC(TO_NUMBER(ir_po_data.rcv_quantity));
+-- 2008/12/04 v1.9 D.Nihei Mod Start 本番障害#381対応
+--      ln_quantity := TRUNC(TO_NUMBER(ir_po_data.rcv_quantity));
+      ln_quantity := TO_NUMBER(ir_po_data.rcv_quantity);
+-- 2008/12/04 v1.9 D.Nihei Mod End
     ELSE
-      ln_quantity := TRUNC(TO_NUMBER(ir_po_data.po_quantity));
+-- 2008/12/04 v1.9 D.Nihei Mod Start 本番障害#381対応
+--      ln_quantity := TRUNC(TO_NUMBER(ir_po_data.po_quantity));
+      ln_quantity := TO_NUMBER(ir_po_data.po_quantity);
+-- 2008/12/04 v1.9 D.Nihei Mod End
     END IF;
 --2008/09/24 Mod ↑
 --
     -- 品目がドリンク製品の場合(単位と発注単位が異なる場合)は 数量 = 数量 * ケース入数
     IF (ir_po_data.base_uom <> ir_po_data.po_uom) THEN
-      ln_quantity := TRUNC(ln_quantity * TO_NUMBER(ir_po_data.num_of_cases));
+-- 2008/12/04 v1.9 D.Nihei Mod Start 本番障害#381対応
+--      ln_quantity := TRUNC(ln_quantity * TO_NUMBER(ir_po_data.num_of_cases));
+      ln_quantity := ln_quantity * TO_NUMBER(ir_po_data.num_of_cases);
+-- 2008/12/04 v1.9 D.Nihei Mod End
     END IF;
 --
     -- ===============================
     -- 粉引後単価の計算
     -- ===============================
+-- 2008/12/04 v1.9 D.Nihei Mod Start 本番障害#381対応
+--    on_cohi_unit_price := TRUNC(in_total_amount * (gn_100 - TO_NUMBER(ir_po_data.powde_lead))
+--                          / gn_100);
+    -- 小数第二位まで
     on_cohi_unit_price := TRUNC(in_total_amount * (gn_100 - TO_NUMBER(ir_po_data.powde_lead))
-                          / gn_100);
+                          / gn_100, 2);
+-- 2008/12/04 v1.9 D.Nihei Mod End
 --
     -- ===============================
     -- 預り口銭金額の計算
