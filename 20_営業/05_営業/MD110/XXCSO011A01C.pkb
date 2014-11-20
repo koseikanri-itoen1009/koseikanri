@@ -8,7 +8,7 @@ AS
  *                    その結果を発注依頼に返します。
  * MD.050           : MD050_CSO_011_A01_作業依頼（発注依頼）時のインストールベースチェック機能
  *
- * Version          : 1.26
+ * Version          : 1.27
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -18,6 +18,7 @@ AS
  *  get_requisition_info      発注依頼情報抽出(A-2)
  *  input_check               入力チェック処理(A-3)
  *  check_ib_existence        物件マスタ存在チェック処理(A-4)
+ *  chk_authorization_status  購買依頼ステータスチェック処理(A-5-0)
  *  check_ib_info             設置用物件情報チェック処理(A-5)
  *  check_withdraw_ib_info    引揚用物件情報チェック処理(A-6)
  *  check_ablsh_appl_ib_info  廃棄申請用物件情報チェック処理(A-7)
@@ -88,6 +89,11 @@ AS
  *                                        をATTRIBUTE8に設定する処理を追加。また、顧客の業態小分類が24～27以外且つ、顧客の
  *                                        顧客区分が10で且つ、機種の機器区分が自販機の場合には購買依頼が実施できないように
  *                                        修正。
+ *  2010-03-08    1.27  K.Hosoi          【E_本稼動_01838,01839】
+ *                                        ・作業依頼中フラグが「Y」の依頼が、「差戻」「取消」の場合は申請可能となるよう修正
+ *                                        ・新台代替／旧台代替／引揚の場合に、引揚先（搬入先）妥当性チェックを追加
+ *                                        ・作業会社CD妥当性チェックを追加
+ *                                        ・作業希望日妥当性チェックを追加。
  *****************************************************************************************/
   --
   --#######################  固定グローバル定数宣言部 START   #######################
@@ -242,6 +248,11 @@ AS
   cv_tkn_number_61  CONSTANT VARCHAR2(100) := 'APP-XXCSO1-00243';  -- データ抽出エラーメッセージ
   cv_tkn_number_62  CONSTANT VARCHAR2(100) := 'APP-XXCSO1-00592';  -- 業態(小分類)チェックエラーメッセージ
   /* 2010.01.25 K.Hosoi E_本稼動_00533,00319対応 END */
+  /* 2010.03.08 K.Hosoi E_本稼動_01838,01839対応 START */
+  cv_tkn_number_63  CONSTANT VARCHAR2(100) := 'APP-XXCSO1-00598';  -- 引揚先(搬入先)妥当性チェックエラーメッセージ
+  cv_tkn_number_64  CONSTANT VARCHAR2(100) := 'APP-XXCSO1-00599';  -- 作業会社妥当性チェックエラーメッセージ
+  cv_tkn_number_65  CONSTANT VARCHAR2(100) := 'APP-XXCSO1-00600';  -- 作業希望日妥当性チェックエラーメッセージ
+  /* 2010.03.08 K.Hosoi E_本稼動_01838,01839対応 START */
   --
   -- トークンコード
   cv_tkn_param_nm       CONSTANT VARCHAR2(20) := 'PARAM_NAME';
@@ -287,6 +298,12 @@ AS
   cv_tkn_base_val       CONSTANT VARCHAR2(20) := 'BASE_VALUE';
   cv_tkn_kisyucd        CONSTANT VARCHAR2(20) := 'KISYUCD';
   /* 2010.01.25 K.Hosoi E_本稼動_00533,00319対応 END */
+  /* 2010.03.08 K.Hosoi E_本稼動_01838,01839対応 START */
+  cv_tkn_prefix         CONSTANT VARCHAR2(20) := 'PREFIX';
+  cv_tkn_prefix1        CONSTANT VARCHAR2(20) := 'PREFIX1';
+  cv_tkn_prefix2        CONSTANT VARCHAR2(20) := 'PREFIX2';
+  cv_tkn_date           CONSTANT VARCHAR2(20) := 'DATE';
+  /* 2010.03.08 K.Hosoi E_本稼動_01838,01839対応 END */
   --
   cv_machinery_status       CONSTANT VARCHAR2(100) := '物件データワークテーブルの機器状態'; 
 /* 20090511_abe_ST965 END*/
@@ -360,6 +377,10 @@ AS
 /* 2009.12.24 K.Hosoi E_本稼動_00563対応 START */
   cv_input_chk_kbn_13  CONSTANT VARCHAR2(2) := '13';  -- 顧客関連情報入力チェック
 /* 2009.12.24 K.Hosoi E_本稼動_00563対応 END */
+/* 2010.03.08 K.Hosoi E_本稼動_01838,01839対応 START */
+  cv_input_chk_kbn_14  CONSTANT VARCHAR2(2) := '14';  -- 引揚先(搬入先)妥当性チェック
+  cv_input_chk_kbn_15  CONSTANT VARCHAR2(2) := '15';  -- 作業会社妥当性チェック
+/* 2010.03.08 K.Hosoi E_本稼動_01838,01839対応 END */
   --
   -- リース物件ステータスチェック処理内のチェック区分番号
   cv_obj_sts_chk_kbn_01  CONSTANT VARCHAR2(2) := '01';  -- チェック対象：設置用物件
@@ -402,6 +423,10 @@ AS
 /*20090413_yabuki_ST198 START*/
   cv_own_company_lease      CONSTANT VARCHAR2(1) := '1';  -- リース区分「自社リース」
 /*20090413_yabuki_ST198 END*/
+/* 2010.03.08 K.Hosoi E_本稼動_01838,01839対応 START */
+  cb_true                   CONSTANT BOOLEAN     := TRUE;
+  cb_false                  CONSTANT BOOLEAN     := FALSE;
+/* 2010.03.08 K.Hosoi E_本稼動_01838,01839対応 END */
   --
   -- ===============================
   -- ユーザー定義グローバル変数
@@ -1218,6 +1243,9 @@ AS
   PROCEDURE input_check(
       iv_chk_kbn         IN         VARCHAR2             -- チェック区分
     , i_requisition_rec  IN         g_requisition_rtype  -- 発注依頼情報
+    /* 2010.03.08 K.Hosoi E_本稼動_01838,01839対応 START */
+    , id_process_date    IN         DATE                 -- 業務処理日付
+    /* 2010.03.08 K.Hosoi E_本稼動_01838,01839対応 END */
     , ov_errbuf          OUT NOCOPY VARCHAR2             -- エラー・メッセージ --# 固定 #
     , ov_retcode         OUT NOCOPY VARCHAR2             -- リターン・コード   --# 固定 #
   ) IS
@@ -1252,6 +1280,12 @@ AS
 /*20090413_yabuki_ST171 START*/
     cv_inst_place_type_exterior  CONSTANT VARCHAR2(1) := '1';  -- 設置場所区分=「屋外」
 /*20090413_yabuki_ST171 END*/
+    /* 2010.03.08 K.Hosoi E_本稼動_01838,01839対応 START */
+    cv_working_day               CONSTANT VARCHAR2(100) := 'XXCSO1_WORKING_DAY'; -- プロファイル「XXCSO:営業日数」
+    cv_zero                      CONSTANT VARCHAR2(2)   := '0';
+    cv_maker_prefix2             CONSTANT VARCHAR2(2)   := '10'; -- 作業会社CDの頭2桁メーカーを表す
+    cv_base_prefix               CONSTANT VARCHAR2(2)   := '02'; -- 作業会社CDの頭2桁拠点を表す
+    /* 2010.03.08 K.Hosoi E_本稼動_01838,01839対応 END */
     --
     -- トークン用定数
     cv_tkn_val_un_number         CONSTANT VARCHAR2(100) := '機種コード';
@@ -1306,6 +1340,10 @@ AS
     /* 2009.11.25 K.Satomura E_本稼動_00119対応 START */
     ld_wk_date     DATE;
     /* 2009.11.25 K.Satomura E_本稼動_00119対応 END */
+    /* 2010.03.08 K.Hosoi E_本稼動_01838,01839対応 START */
+    lv_working_day VARCHAR2(2000);
+    ld_working_day DATE;
+    /* 2010.03.08 K.Hosoi E_本稼動_01838,01839対応 END */
     /* 2009.12.24 K.Hosoi E_本稼動_00563対応 START */
     ln_num1                      NUMBER;            -- 1回目のハイフンの位置
     ln_num2                      NUMBER;            -- 2回目のハイフンの位置
@@ -1502,6 +1540,42 @@ AS
             ov_retcode := cv_status_warn;
             --
           END IF;
+          /* 2010.03.08 K.Hosoi E_本稼動_01838,01839対応 START */
+          -- 3.３営業日より後かどうかチェック
+          --
+          -- プロファイル値取得（XXCSO:営業日数）
+          FND_PROFILE.GET(
+                          cv_working_day
+                         ,lv_working_day
+                         );
+          -- 取得できなかった場合は「0」を設定
+          IF (lv_working_day IS NULL) THEN
+            lv_working_day := cv_zero;
+          END IF;
+          --
+          -- 業務処理日＋３営業日を取得
+          ld_working_day := xxccp_common_pkg2.get_working_day(id_process_date,TO_NUMBER(lv_working_day));
+          -- 作業希望日が、業務処理日＋３営業日以前の場合はエラー
+          IF (ld_wk_date <= ld_working_day) THEN
+            --
+            lv_errbuf2 := xxccp_common_pkg.get_msg(
+                              iv_application  => cv_sales_appl_short_name -- アプリケーション短縮名
+                            , iv_name         => cv_tkn_number_65         -- メッセージコード
+                            , iv_token_name1  => cv_tkn_date              -- トークンコード1
+                            , iv_token_value1 => lv_working_day           -- トークン値1
+                          );
+            --
+            lv_errbuf  := CASE
+                            WHEN (lv_errbuf IS NULL) THEN
+                              lv_errbuf2
+                            ELSE
+                              SUBSTRB(lv_errbuf || cv_msg_comma ||  lv_errbuf2, 1, 5000)
+                          END;
+            --
+            ov_retcode := cv_status_warn;
+            --
+          END IF;
+          /* 2010.03.08 K.Hosoi E_本稼動_01838,01839対応 END */
           --
         EXCEPTION
           WHEN OTHERS THEN
@@ -1885,6 +1959,42 @@ AS
             ov_retcode := cv_status_warn;
             --
           END IF;
+          /* 2010.03.08 K.Hosoi E_本稼動_01838,01839対応 START */
+          -- 3.３営業日より後かどうかチェック
+          --
+          -- プロファイル値取得（XXCSO:営業日数）
+          FND_PROFILE.GET(
+                          cv_working_day
+                         ,lv_working_day
+                         );
+          -- 取得できなかった場合は「0」を設定
+          IF (lv_working_day IS NULL) THEN
+            lv_working_day := cv_zero;
+          END IF;
+          --
+          -- 業務処理日＋３営業日を取得
+          ld_working_day := xxccp_common_pkg2.get_working_day(id_process_date,TO_NUMBER(lv_working_day));
+          -- 作業希望日が、業務処理日＋３営業日以前の場合はエラー
+          IF (ld_wk_date <= ld_working_day) THEN
+            --
+            lv_errbuf2 := xxccp_common_pkg.get_msg(
+                              iv_application  => cv_sales_appl_short_name -- アプリケーション短縮名
+                            , iv_name         => cv_tkn_number_65         -- メッセージコード
+                            , iv_token_name1  => cv_tkn_date              -- トークンコード1
+                            , iv_token_value1 => lv_working_day           -- トークン値1
+                          );
+            --
+            lv_errbuf  := CASE
+                            WHEN (lv_errbuf IS NULL) THEN
+                              lv_errbuf2
+                            ELSE
+                              SUBSTRB(lv_errbuf || cv_msg_comma ||  lv_errbuf2, 1, 5000)
+                          END;
+            --
+            ov_retcode := cv_status_warn;
+            --
+          END IF;
+          /* 2010.03.08 K.Hosoi E_本稼動_01838,01839対応 END */
           --
         EXCEPTION
           WHEN OTHERS THEN
@@ -2456,6 +2566,40 @@ AS
         --
       END IF;
     /* 2009.12.24 K.Hosoi E_本稼動_00563対応 END */
+    /* 2010.03.08 K.Hosoi E_本稼動_01838,01839対応 START */
+    -- チェック区分が「引揚先(搬入先)妥当性チェック」の場合
+    ELSIF (iv_chk_kbn = cv_input_chk_kbn_14) THEN
+      -- 新台代替/旧台代替/引揚の場合に実施
+      -- 引揚先(搬入先)に入力されたCDの頭2桁が「10」、「02」でない場合はエラー
+      IF (SUBSTRB(i_requisition_rec.withdraw_company_code,1,2) <> cv_maker_prefix2) 
+        AND (SUBSTRB(i_requisition_rec.withdraw_company_code,1,2) <> cv_base_prefix)
+      THEN
+        lv_errbuf  := xxccp_common_pkg.get_msg(
+                         iv_application  => cv_sales_appl_short_name -- アプリケーション短縮名
+                        ,iv_name         => cv_tkn_number_63         -- メッセージコード
+                        ,iv_token_name1  => cv_tkn_prefix1           -- トークンコード1
+                        ,iv_token_value1 => cv_maker_prefix2         -- トークン値1
+                        ,iv_token_name2  => cv_tkn_prefix2           -- トークンコード2
+                        ,iv_token_value2 => cv_base_prefix           -- トークン値2
+                      );
+        ov_retcode := cv_status_warn;
+        --
+      END IF;
+    -- チェック区分が「作業会社妥当性チェック」の場合
+    ELSIF (iv_chk_kbn = cv_input_chk_kbn_15) THEN
+      --
+      -- 作業会社CDの頭2桁が「02」の場合はエラー
+      IF (SUBSTRB(i_requisition_rec.work_company_code,1,2) = cv_base_prefix) THEN
+        lv_errbuf  := xxccp_common_pkg.get_msg(
+                         iv_application  => cv_sales_appl_short_name -- アプリケーション短縮名
+                        ,iv_name         => cv_tkn_number_64         -- メッセージコード
+                        ,iv_token_name1  => cv_tkn_prefix            -- トークンコード1
+                        ,iv_token_value1 => cv_base_prefix           -- トークン値1
+                      );
+        ov_retcode := cv_status_warn;
+        --
+      END IF;
+    /* 2010.03.08 K.Hosoi E_本稼動_01838,01839対応 END */
     END IF;
     --
     ov_errbuf := lv_errbuf;
@@ -2616,6 +2760,100 @@ AS
     --
   END check_ib_existence;
   --
+/* 2010.03.08 K.Hosoi E_本稼動_01838,01839対応 START */
+  --
+  /**********************************************************************************
+   * Procedure Name   : chk_authorization_status
+   * Description      : 購買依頼ステータスチェック処理(A-5-0)
+   ***********************************************************************************/
+  PROCEDURE chk_authorization_status(
+      iv_op_req_num    IN         VARCHAR2                                -- 作業依頼中購買依頼番号
+    , ob_stts_chk_flg  OUT NOCOPY BOOLEAN                                 -- 購買依頼ステータスチェックフラグ
+    , ov_errbuf        OUT NOCOPY VARCHAR2                                -- エラー・メッセージ --# 固定 #
+    , ov_retcode       OUT NOCOPY VARCHAR2                                -- リターン・コード   --# 固定 #
+  ) IS
+    --
+    -- ===============================
+    -- 固定ローカル定数
+    -- ===============================
+    cv_prg_name    CONSTANT VARCHAR2(100) := 'chk_authorization_status';  -- プロシージャ名
+    --
+    --#######################  固定ローカル変数宣言部 START   ######################
+    --
+    lv_errbuf     VARCHAR2(5000);  -- エラー・メッセージ
+    lv_retcode    VARCHAR2(1);     -- リターン・コード
+    --
+    --###########################  固定部 END   ####################################
+    --
+    -- ===============================
+    -- ユーザー宣言部
+    -- ===============================
+    -- *** ローカル定数 ***
+    cv_status_returned        CONSTANT VARCHAR2(10) := 'RETURNED';         -- 購買依頼ステータス「差戻」
+    cv_status_cancelled       CONSTANT VARCHAR2(10) := 'CANCELLED';        -- 購買依頼ステータス「取消済」
+    --
+    -- *** ローカル変数 ***
+    lv_errbuf2     VARCHAR2(5000);  -- エラー・メッセージ
+    lv_retcode2    VARCHAR2(1);     -- リターン・コード
+    lt_authorization_status  po_requisition_headers.authorization_status%TYPE;
+    --
+    -- *** ローカル例外 ***
+    chk_authrztn_stts_expt       EXCEPTION;
+    --
+  BEGIN
+    --
+    --##################  固定ステータス初期化部 START   ###################
+    --
+    ov_retcode := cv_status_normal;
+    --
+    --###########################  固定部 END   ############################
+    --
+    BEGIN
+      SELECT prh.authorization_status  authorization_status -- 購買依頼ステータス
+      INTO   lt_authorization_status
+      FROM   po_requisition_headers prh
+      WHERE  prh.segment1 = iv_op_req_num
+      ;
+    EXCEPTION
+      WHEN OTHERS THEN
+        RAISE chk_authrztn_stts_expt;
+    END;
+    -- 購買依頼ステータスが「差戻」、「取消済」の場合はTRUE
+    IF ((lt_authorization_status = cv_status_returned)
+         OR (lt_authorization_status = cv_status_cancelled)) THEN
+      --
+      ob_stts_chk_flg := cb_true;
+    ELSE
+    -- 購買依頼ステータスが「差戻」、「取消済」以外の場合はFALSE
+      ob_stts_chk_flg := cb_false;
+    END IF;
+      --
+    --
+  EXCEPTION
+    WHEN chk_authrztn_stts_expt THEN
+      -- *** SQLデータ抽出例外 ***
+      -- 購買依頼ステータスが抽出できなかったはFALSE
+      ob_stts_chk_flg := cb_false;
+    --
+    --#################################  固定例外処理部 START   ####################################
+    --
+    WHEN global_api_others_expt THEN
+      -- *** 共通関数OTHERS例外ハンドラ ***
+      ov_errbuf  := cv_pkg_name || cv_msg_cont || cv_prg_name || cv_msg_part || SQLERRM;
+      ov_retcode := cv_status_error;
+      --
+    WHEN OTHERS THEN
+      -- *** OTHERS例外ハンドラ ***
+      ov_errbuf  := cv_pkg_name || cv_msg_cont || cv_prg_name || cv_msg_part || SQLERRM;
+      ov_retcode := cv_status_error;
+      --
+    --
+    --#####################################  固定部 END   ##########################################
+    --
+  END chk_authorization_status;
+  --
+  --
+/* 2010.03.08 K.Hosoi E_本稼動_01838,01839対応 END */
   --
   /**********************************************************************************
    * Procedure Name   : check_ib_info
@@ -2651,8 +2889,14 @@ AS
     -- *** ローカル変数 ***
     lv_errbuf2     VARCHAR2(5000);  -- エラー・メッセージ
     lv_retcode2    VARCHAR2(1);     -- リターン・コード
+    /* 2010.03.08 K.Hosoi E_本稼動_01838,01839対応 START */
+    lb_stts_chk_flg BOOLEAN;        -- 購買依頼ステータスチェック処理 戻り値
+    /* 2010.03.08 K.Hosoi E_本稼動_01838,01839対応 END */
     --
     -- *** ローカル例外 ***
+    /* 2010.03.08 K.Hosoi E_本稼動_01838,01839対応 START */
+    chk_status_expt       EXCEPTION;
+    /* 2010.03.08 K.Hosoi E_本稼動_01838,01839対応 END */
     --
   BEGIN
     --
@@ -2668,24 +2912,47 @@ AS
     /* 2009.12.09 K.Satomura E_本稼動_00341対応 END */
       IF ( i_instance_rec.op_req_flag = cv_op_req_flag_on ) THEN
         -- 作業依頼中フラグ_設置用がＯＮの場合
-        lv_errbuf2 := xxccp_common_pkg.get_msg(
-                          iv_application  => cv_sales_appl_short_name  -- アプリケーション短縮名
-                        , iv_name         => cv_tkn_number_17          -- メッセージコード
-                        , iv_token_name1  => cv_tkn_bukken             -- トークンコード1
-                        , iv_token_value1 => iv_install_code           -- トークン値1
-                        /* 2010.01.25 K.Hosoi E_本稼動_00533,00319対応 START */
-                        , iv_token_name2  => cv_tkn_req_num                                -- トークンコード2
-                        , iv_token_value2 => SUBSTRB( i_instance_rec.op_req_number_account_number
-                                                     ,1,( INSTRB(i_instance_rec.op_req_number_account_number,'/')-1 ) ) -- トークン値2
-                        , iv_token_name3  => cv_tkn_kokyaku                                -- トークンコード3
-                        , iv_token_value3 => SUBSTRB( i_instance_rec.op_req_number_account_number
-                                                     ,( INSTRB(i_instance_rec.op_req_number_account_number,'/')+1) ) -- トークン値3
-                        /* 2010.01.25 K.Hosoi E_本稼動_00533,00319対応 END */
-                      );
+        /* 2010.03.08 K.Hosoi E_本稼動_01838,01839対応 START */
+        -- ========================================
+        -- A-5-0. 購買依頼ステータスチェック処理
+        -- ========================================
+        chk_authorization_status(
+            iv_op_req_num    => SUBSTRB( i_instance_rec.op_req_number_account_number
+                                  ,1,( INSTRB(i_instance_rec.op_req_number_account_number,'/')-1 ) )  -- 作業依頼中購買依頼番号
+          , ob_stts_chk_flg  => lb_stts_chk_flg                -- 購買依頼ステータスチェックフラグ
+          , ov_errbuf        => lv_errbuf                      -- エラー・メッセージ  --# 固定 #
+          , ov_retcode       => lv_retcode                     -- リターン・コード    --# 固定 #
+        );
         --
-        lv_errbuf  := lv_errbuf2;
-        ov_retcode := cv_status_error;
+        IF ( lv_retcode <> cv_status_normal ) THEN
+          RAISE chk_status_expt;
+          --
+        END IF;
         --
+        -- 購買依頼ステータスチェックフラグがFALSEの場合、チェックエラーとする
+        IF ( lb_stts_chk_flg = cb_false ) THEN
+        /* 2010.03.08 K.Hosoi E_本稼動_01838,01839対応 END */
+          lv_errbuf2 := xxccp_common_pkg.get_msg(
+                            iv_application  => cv_sales_appl_short_name  -- アプリケーション短縮名
+                          , iv_name         => cv_tkn_number_17          -- メッセージコード
+                          , iv_token_name1  => cv_tkn_bukken             -- トークンコード1
+                          , iv_token_value1 => iv_install_code           -- トークン値1
+                          /* 2010.01.25 K.Hosoi E_本稼動_00533,00319対応 START */
+                          , iv_token_name2  => cv_tkn_req_num                                -- トークンコード2
+                          , iv_token_value2 => SUBSTRB( i_instance_rec.op_req_number_account_number
+                                                       ,1,( INSTRB(i_instance_rec.op_req_number_account_number,'/')-1 ) ) -- トークン値2
+                          , iv_token_name3  => cv_tkn_kokyaku                                -- トークンコード3
+                          , iv_token_value3 => SUBSTRB( i_instance_rec.op_req_number_account_number
+                                                       ,( INSTRB(i_instance_rec.op_req_number_account_number,'/')+1) ) -- トークン値3
+                          /* 2010.01.25 K.Hosoi E_本稼動_00533,00319対応 END */
+                        );
+          --
+          lv_errbuf  := lv_errbuf2;
+          ov_retcode := cv_status_error;
+          --
+        /* 2010.03.08 K.Hosoi E_本稼動_01838,01839対応 START */
+        END IF;
+        /* 2010.03.08 K.Hosoi E_本稼動_01838,01839対応 END */
       END IF;
       --
     /* 2009.12.09 K.Satomura E_本稼動_00341対応 START */
@@ -2765,6 +3032,12 @@ AS
     END IF;
     --
   EXCEPTION
+    /* 2010.03.08 K.Hosoi E_本稼動_01838,01839対応 START */
+    WHEN chk_status_expt THEN
+      -- *** SQLデータ抽出例外 ***
+      ov_errbuf  := SUBSTRB( cv_pkg_name || cv_msg_cont || cv_prg_name || cv_msg_part || lv_errbuf, 1, 5000 );
+      ov_retcode := cv_status_error;    
+    /* 2010.03.08 K.Hosoi E_本稼動_01838,01839対応 END */
     --
     --#################################  固定例外処理部 START   ####################################
     --
@@ -2818,8 +3091,14 @@ AS
     -- *** ローカル変数 ***
     lv_errbuf2     VARCHAR2(5000);  -- エラー・メッセージ
     lv_retcode2    VARCHAR2(1);     -- リターン・コード
+    /* 2010.03.08 K.Hosoi E_本稼動_01838,01839対応 START */
+    lb_stts_chk_flg BOOLEAN;        -- 購買依頼ステータスチェック処理 戻り値
+    /* 2010.03.08 K.Hosoi E_本稼動_01838,01839対応 END */
     --
     -- *** ローカル例外 ***
+    /* 2010.03.08 K.Hosoi E_本稼動_01838,01839対応 START */
+    chk_status_expt       EXCEPTION;
+    /* 2010.03.08 K.Hosoi E_本稼動_01838,01839対応 END */
     --
   BEGIN
     --
@@ -2835,24 +3114,47 @@ AS
     /* 2009.12.09 K.Satomura E_本稼動_00341対応 END */
       IF ( i_instance_rec.op_req_flag = cv_op_req_flag_on ) THEN
         -- 作業依頼中フラグがＯＮの場合
-        lv_errbuf2 := xxccp_common_pkg.get_msg(
-                          iv_application  => cv_sales_appl_short_name  -- アプリケーション短縮名
-                        , iv_name         => cv_tkn_number_20          -- メッセージコード
-                        , iv_token_name1  => cv_tkn_bukken             -- トークンコード1
-                        , iv_token_value1 => iv_install_code           -- トークン値1
-                        /* 2010.01.25 K.Hosoi E_本稼動_00533,00319対応 START */
-                        , iv_token_name2  => cv_tkn_req_num                                -- トークンコード2
-                        , iv_token_value2 => SUBSTRB( i_instance_rec.op_req_number_account_number
-                                                     ,1,( INSTRB(i_instance_rec.op_req_number_account_number,'/')-1 ) ) -- トークン値2
-                        , iv_token_name3  => cv_tkn_kokyaku                                -- トークンコード3
-                        , iv_token_value3 => SUBSTRB( i_instance_rec.op_req_number_account_number
-                                                     ,( INSTRB(i_instance_rec.op_req_number_account_number,'/')+1) ) -- トークン値3
-                        /* 2010.01.25 K.Hosoi E_本稼動_00533,00319対応 END */
-                      );
+        /* 2010.03.08 K.Hosoi E_本稼動_01838,01839対応 START */
+        -- ========================================
+        -- A-5-0. 購買依頼ステータスチェック処理
+        -- ========================================
+        chk_authorization_status(
+            iv_op_req_num    => SUBSTRB( i_instance_rec.op_req_number_account_number
+                                  ,1,( INSTRB(i_instance_rec.op_req_number_account_number,'/')-1 ) )  -- 作業依頼中購買依頼番号
+          , ob_stts_chk_flg  => lb_stts_chk_flg                -- 購買依頼ステータスチェックフラグ
+          , ov_errbuf        => lv_errbuf                      -- エラー・メッセージ  --# 固定 #
+          , ov_retcode       => lv_retcode                     -- リターン・コード    --# 固定 #
+        );
         --
-        lv_errbuf  := lv_errbuf2;
-        ov_retcode := cv_status_error;
+        IF ( lv_retcode <> cv_status_normal ) THEN
+          RAISE chk_status_expt;
+          --
+        END IF;
         --
+        -- 購買依頼ステータスチェックフラグがFALSEの場合、チェックエラーとする
+        IF ( lb_stts_chk_flg = cb_false ) THEN
+        /* 2010.03.08 K.Hosoi E_本稼動_01838,01839対応 END */
+          lv_errbuf2 := xxccp_common_pkg.get_msg(
+                            iv_application  => cv_sales_appl_short_name  -- アプリケーション短縮名
+                          , iv_name         => cv_tkn_number_20          -- メッセージコード
+                          , iv_token_name1  => cv_tkn_bukken             -- トークンコード1
+                          , iv_token_value1 => iv_install_code           -- トークン値1
+                          /* 2010.01.25 K.Hosoi E_本稼動_00533,00319対応 START */
+                          , iv_token_name2  => cv_tkn_req_num                                -- トークンコード2
+                          , iv_token_value2 => SUBSTRB( i_instance_rec.op_req_number_account_number
+                                                       ,1,( INSTRB(i_instance_rec.op_req_number_account_number,'/')-1 ) ) -- トークン値2
+                          , iv_token_name3  => cv_tkn_kokyaku                                -- トークンコード3
+                          , iv_token_value3 => SUBSTRB( i_instance_rec.op_req_number_account_number
+                                                       ,( INSTRB(i_instance_rec.op_req_number_account_number,'/')+1) ) -- トークン値3
+                          /* 2010.01.25 K.Hosoi E_本稼動_00533,00319対応 END */
+                        );
+          --
+          lv_errbuf  := lv_errbuf2;
+          ov_retcode := cv_status_error;
+          --
+        /* 2010.03.08 K.Hosoi E_本稼動_01838,01839対応 START */
+        END IF;
+        /* 2010.03.08 K.Hosoi E_本稼動_01838,01839対応 END */
       END IF;
       --
     /* 2009.12.09 K.Satomura E_本稼動_00341対応 START */
@@ -2906,6 +3208,12 @@ AS
     END IF;
     --
   EXCEPTION
+    /* 2010.03.08 K.Hosoi E_本稼動_01838,01839対応 START */
+    WHEN chk_status_expt THEN
+      -- *** SQLデータ抽出例外 ***
+      ov_errbuf  := SUBSTRB( cv_pkg_name || cv_msg_cont || cv_prg_name || cv_msg_part || lv_errbuf, 1, 5000 );
+      ov_retcode := cv_status_error;    
+    /* 2010.03.08 K.Hosoi E_本稼動_01838,01839対応 END */
     --
     --#################################  固定例外処理部 START   ####################################
     --
@@ -2959,8 +3267,14 @@ AS
     -- *** ローカル変数 ***
     lv_errbuf2     VARCHAR2(5000);  -- エラー・メッセージ
     lv_retcode2    VARCHAR2(1);     -- リターン・コード
+    /* 2010.03.08 K.Hosoi E_本稼動_01838,01839対応 START */
+    lb_stts_chk_flg BOOLEAN;        -- 購買依頼ステータスチェック処理 戻り値
+    /* 2010.03.08 K.Hosoi E_本稼動_01838,01839対応 END */
     --
     -- *** ローカル例外 ***
+    /* 2010.03.08 K.Hosoi E_本稼動_01838,01839対応 START */
+    chk_status_expt       EXCEPTION;
+    /* 2010.03.08 K.Hosoi E_本稼動_01838,01839対応 END */
     --
   BEGIN
     --
@@ -2976,24 +3290,47 @@ AS
     /* 2009.12.09 K.Satomura E_本稼動_00341対応 END */
       -- 作業依頼中フラグがＯＮの場合
       IF ( i_instance_rec.op_req_flag = cv_op_req_flag_on ) THEN
-        lv_errbuf2 := xxccp_common_pkg.get_msg(
-                          iv_application  => cv_sales_appl_short_name  -- アプリケーション短縮名
-                        , iv_name         => cv_tkn_number_22          -- メッセージコード
-                        , iv_token_name1  => cv_tkn_bukken             -- トークンコード1
-                        , iv_token_value1 => iv_install_code           -- トークン値1
-                        /* 2010.01.25 K.Hosoi E_本稼動_00533,00319対応 START */
-                        , iv_token_name2  => cv_tkn_req_num                                -- トークンコード2
-                        , iv_token_value2 => SUBSTRB( i_instance_rec.op_req_number_account_number
-                                                     ,1,( INSTRB(i_instance_rec.op_req_number_account_number,'/')-1 ) ) -- トークン値2
-                        , iv_token_name3  => cv_tkn_kokyaku                                -- トークンコード3
-                        , iv_token_value3 => SUBSTRB( i_instance_rec.op_req_number_account_number
-                                                     ,( INSTRB(i_instance_rec.op_req_number_account_number,'/')+1) ) -- トークン値3
-                        /* 2010.01.25 K.Hosoi E_本稼動_00533,00319対応 END */
-                      );
+        /* 2010.03.08 K.Hosoi E_本稼動_01838,01839対応 START */
+        -- ========================================
+        -- A-5-0. 購買依頼ステータスチェック処理
+        -- ========================================
+        chk_authorization_status(
+            iv_op_req_num    => SUBSTRB( i_instance_rec.op_req_number_account_number
+                                  ,1,( INSTRB(i_instance_rec.op_req_number_account_number,'/')-1 ) )  -- 作業依頼中購買依頼番号
+          , ob_stts_chk_flg  => lb_stts_chk_flg                -- 購買依頼ステータスチェックフラグ
+          , ov_errbuf        => lv_errbuf                      -- エラー・メッセージ  --# 固定 #
+          , ov_retcode       => lv_retcode                     -- リターン・コード    --# 固定 #
+        );
         --
-        lv_errbuf  := lv_errbuf2;
-        ov_retcode := cv_status_error;
+        IF ( lv_retcode <> cv_status_normal ) THEN
+          RAISE chk_status_expt;
+          --
+        END IF;
         --
+        -- 購買依頼ステータスチェックフラグがFALSEの場合、チェックエラーとする
+        IF ( lb_stts_chk_flg = cb_false ) THEN
+        /* 2010.03.08 K.Hosoi E_本稼動_01838,01839対応 END */
+          lv_errbuf2 := xxccp_common_pkg.get_msg(
+                            iv_application  => cv_sales_appl_short_name  -- アプリケーション短縮名
+                          , iv_name         => cv_tkn_number_22          -- メッセージコード
+                          , iv_token_name1  => cv_tkn_bukken             -- トークンコード1
+                          , iv_token_value1 => iv_install_code           -- トークン値1
+                          /* 2010.01.25 K.Hosoi E_本稼動_00533,00319対応 START */
+                          , iv_token_name2  => cv_tkn_req_num                                -- トークンコード2
+                          , iv_token_value2 => SUBSTRB( i_instance_rec.op_req_number_account_number
+                                                       ,1,( INSTRB(i_instance_rec.op_req_number_account_number,'/')-1 ) ) -- トークン値2
+                          , iv_token_name3  => cv_tkn_kokyaku                                -- トークンコード3
+                          , iv_token_value3 => SUBSTRB( i_instance_rec.op_req_number_account_number
+                                                       ,( INSTRB(i_instance_rec.op_req_number_account_number,'/')+1) ) -- トークン値3
+                          /* 2010.01.25 K.Hosoi E_本稼動_00533,00319対応 END */
+                        );
+          --
+          lv_errbuf  := lv_errbuf2;
+          ov_retcode := cv_status_error;
+          --
+        /* 2010.03.08 K.Hosoi E_本稼動_01838,01839対応 START */
+        END IF;
+        /* 2010.03.08 K.Hosoi E_本稼動_01838,01839対応 END */
       END IF;
     /* 2009.12.09 K.Satomura E_本稼動_00341対応 START */
     END IF;
@@ -3096,6 +3433,12 @@ AS
     END IF;
     --
   EXCEPTION
+    /* 2010.03.08 K.Hosoi E_本稼動_01838,01839対応 START */
+    WHEN chk_status_expt THEN
+      -- *** SQLデータ抽出例外 ***
+      ov_errbuf  := SUBSTRB( cv_pkg_name || cv_msg_cont || cv_prg_name || cv_msg_part || lv_errbuf, 1, 5000 );
+      ov_retcode := cv_status_error;    
+    /* 2010.03.08 K.Hosoi E_本稼動_01838,01839対応 END */
     --
     --#################################  固定例外処理部 START   ####################################
     --
@@ -3149,8 +3492,14 @@ AS
     -- *** ローカル変数 ***
     lv_errbuf2     VARCHAR2(5000);  -- エラー・メッセージ
     lv_retcode2    VARCHAR2(1);     -- リターン・コード
+    /* 2010.03.08 K.Hosoi E_本稼動_01838,01839対応 START */
+    lb_stts_chk_flg BOOLEAN;        -- 購買依頼ステータスチェック処理 戻り値
+    /* 2010.03.08 K.Hosoi E_本稼動_01838,01839対応 END */
     --
     -- *** ローカル例外 ***
+    /* 2010.03.08 K.Hosoi E_本稼動_01838,01839対応 START */
+    chk_status_expt       EXCEPTION;
+    /* 2010.03.08 K.Hosoi E_本稼動_01838,01839対応 END */
     --
   BEGIN
     --
@@ -3167,22 +3516,45 @@ AS
       -- 処理区分が「発注依頼申請」の場合
       -- 作業依頼中フラグがＯＮの場合
       IF ( i_instance_rec.op_req_flag = cv_op_req_flag_on ) THEN
-        lv_errbuf2 := xxccp_common_pkg.get_msg(
-                          iv_application  => cv_sales_appl_short_name  -- アプリケーション短縮名
-                        , iv_name         => cv_tkn_number_22          -- メッセージコード
-                        , iv_token_name1  => cv_tkn_bukken             -- トークンコード1
-                        , iv_token_value1 => iv_install_code           -- トークン値1
-                        , iv_token_name2  => cv_tkn_req_num                                -- トークンコード2
-                        , iv_token_value2 => SUBSTRB( i_instance_rec.op_req_number_account_number
-                                                     ,1,( INSTRB(i_instance_rec.op_req_number_account_number,'/')-1 ) ) -- トークン値2
-                        , iv_token_name3  => cv_tkn_kokyaku                                -- トークンコード3
-                        , iv_token_value3 => SUBSTRB( i_instance_rec.op_req_number_account_number
-                                                     ,( INSTRB(i_instance_rec.op_req_number_account_number,'/')+1) ) -- トークン値3
-                      );
+        /* 2010.03.08 K.Hosoi E_本稼動_01838,01839対応 START */
+        -- ========================================
+        -- A-5-0. 購買依頼ステータスチェック処理
+        -- ========================================
+        chk_authorization_status(
+            iv_op_req_num    => SUBSTRB( i_instance_rec.op_req_number_account_number
+                                  ,1,( INSTRB(i_instance_rec.op_req_number_account_number,'/')-1 ) )  -- 作業依頼中購買依頼番号
+          , ob_stts_chk_flg  => lb_stts_chk_flg                -- 購買依頼ステータスチェックフラグ
+          , ov_errbuf        => lv_errbuf                      -- エラー・メッセージ  --# 固定 #
+          , ov_retcode       => lv_retcode                     -- リターン・コード    --# 固定 #
+        );
         --
-        lv_errbuf  := lv_errbuf2;
-        ov_retcode := cv_status_error;
+        IF ( lv_retcode <> cv_status_normal ) THEN
+          RAISE chk_status_expt;
+          --
+        END IF;
         --
+        -- 購買依頼ステータスチェックフラグがFALSEの場合、チェックエラーとする
+        IF ( lb_stts_chk_flg = cb_false ) THEN
+        /* 2010.03.08 K.Hosoi E_本稼動_01838,01839対応 END */
+          lv_errbuf2 := xxccp_common_pkg.get_msg(
+                            iv_application  => cv_sales_appl_short_name  -- アプリケーション短縮名
+                          , iv_name         => cv_tkn_number_22          -- メッセージコード
+                          , iv_token_name1  => cv_tkn_bukken             -- トークンコード1
+                          , iv_token_value1 => iv_install_code           -- トークン値1
+                          , iv_token_name2  => cv_tkn_req_num                                -- トークンコード2
+                          , iv_token_value2 => SUBSTRB( i_instance_rec.op_req_number_account_number
+                                                       ,1,( INSTRB(i_instance_rec.op_req_number_account_number,'/')-1 ) ) -- トークン値2
+                          , iv_token_name3  => cv_tkn_kokyaku                                -- トークンコード3
+                          , iv_token_value3 => SUBSTRB( i_instance_rec.op_req_number_account_number
+                                                       ,( INSTRB(i_instance_rec.op_req_number_account_number,'/')+1) ) -- トークン値3
+                        );
+          --
+          lv_errbuf  := lv_errbuf2;
+          ov_retcode := cv_status_error;
+          --
+        /* 2010.03.08 K.Hosoi E_本稼動_01838,01839対応 START */
+        END IF;
+        /* 2010.03.08 K.Hosoi E_本稼動_01838,01839対応 END */
       END IF;
     END IF;
     --
@@ -3253,6 +3625,12 @@ AS
     END IF;
     --
   EXCEPTION
+    /* 2010.03.08 K.Hosoi E_本稼動_01838,01839対応 START */
+    WHEN chk_status_expt THEN
+      -- *** SQLデータ抽出例外 ***
+      ov_errbuf  := SUBSTRB( cv_pkg_name || cv_msg_cont || cv_prg_name || cv_msg_part || lv_errbuf, 1, 5000 );
+      ov_retcode := cv_status_error;    
+    /* 2010.03.08 K.Hosoi E_本稼動_01838,01839対応 END */
     --
     --#################################  固定例外処理部 START   ####################################
     --
@@ -3307,8 +3685,14 @@ AS
     /* 2009.12.09 K.Satomura E_本稼動_00341対応 START */
     lv_errbuf2     VARCHAR2(5000);  -- エラー・メッセージ
     /* 2009.12.09 K.Satomura E_本稼動_00341対応 END */
+    /* 2010.03.08 K.Hosoi E_本稼動_01838,01839対応 START */
+    lb_stts_chk_flg BOOLEAN;        -- 購買依頼ステータスチェック処理 戻り値
+    /* 2010.03.08 K.Hosoi E_本稼動_01838,01839対応 END */
     --
     -- *** ローカル例外 ***
+    /* 2010.03.08 K.Hosoi E_本稼動_01838,01839対応 START */
+    chk_status_expt       EXCEPTION;
+    /* 2010.03.08 K.Hosoi E_本稼動_01838,01839対応 END */
     --
   BEGIN
     --
@@ -3324,24 +3708,47 @@ AS
     /* 2009.12.09 K.Satomura E_本稼動_00341対応 END */
       -- 作業依頼中フラグがＯＮの場合
       IF ( i_instance_rec.op_req_flag = cv_op_req_flag_on ) THEN
-        lv_errbuf := xxccp_common_pkg.get_msg(
-                         iv_application  => cv_sales_appl_short_name  -- アプリケーション短縮名
-                       , iv_name         => cv_tkn_number_17          -- メッセージコード
-                       , iv_token_name1  => cv_tkn_bukken             -- トークンコード1
-                       , iv_token_value1 => iv_install_code           -- トークン値1
-                        /* 2010.01.25 K.Hosoi E_本稼動_00533,00319対応 START */
-                        , iv_token_name2  => cv_tkn_req_num                                -- トークンコード2
-                        , iv_token_value2 => SUBSTRB( i_instance_rec.op_req_number_account_number
-                                                     ,1,( INSTRB(i_instance_rec.op_req_number_account_number,'/')-1 ) ) -- トークン値2
-                        , iv_token_name3  => cv_tkn_kokyaku                                -- トークンコード3
-                        , iv_token_value3 => SUBSTRB( i_instance_rec.op_req_number_account_number
-                                                     ,( INSTRB(i_instance_rec.op_req_number_account_number,'/')+1) ) -- トークン値3
-                        /* 2010.01.25 K.Hosoi E_本稼動_00533,00319対応 END */
-                     );
+        /* 2010.03.08 K.Hosoi E_本稼動_01838,01839対応 START */
+        -- ========================================
+        -- A-5-0. 購買依頼ステータスチェック処理
+        -- ========================================
+        chk_authorization_status(
+            iv_op_req_num    => SUBSTRB( i_instance_rec.op_req_number_account_number
+                                  ,1,( INSTRB(i_instance_rec.op_req_number_account_number,'/')-1 ) )  -- 作業依頼中購買依頼番号
+          , ob_stts_chk_flg  => lb_stts_chk_flg                -- 購買依頼ステータスチェックフラグ
+          , ov_errbuf        => lv_errbuf                      -- エラー・メッセージ  --# 固定 #
+          , ov_retcode       => lv_retcode                     -- リターン・コード    --# 固定 #
+        );
         --
-        ov_errbuf  := SUBSTRB( cv_pkg_name || cv_msg_cont || cv_prg_name || cv_msg_part || lv_errbuf, 1, 5000 );
-        ov_retcode := cv_status_error;
+        IF ( lv_retcode <> cv_status_normal ) THEN
+          RAISE chk_status_expt;
+          --
+        END IF;
         --
+        -- 購買依頼ステータスチェックフラグがFALSEの場合、チェックエラーとする
+        IF ( lb_stts_chk_flg = cb_false ) THEN
+        /* 2010.03.08 K.Hosoi E_本稼動_01838,01839対応 END */
+          lv_errbuf := xxccp_common_pkg.get_msg(
+                           iv_application  => cv_sales_appl_short_name  -- アプリケーション短縮名
+                         , iv_name         => cv_tkn_number_17          -- メッセージコード
+                         , iv_token_name1  => cv_tkn_bukken             -- トークンコード1
+                         , iv_token_value1 => iv_install_code           -- トークン値1
+                          /* 2010.01.25 K.Hosoi E_本稼動_00533,00319対応 START */
+                          , iv_token_name2  => cv_tkn_req_num                                -- トークンコード2
+                          , iv_token_value2 => SUBSTRB( i_instance_rec.op_req_number_account_number
+                                                       ,1,( INSTRB(i_instance_rec.op_req_number_account_number,'/')-1 ) ) -- トークン値2
+                          , iv_token_name3  => cv_tkn_kokyaku                                -- トークンコード3
+                          , iv_token_value3 => SUBSTRB( i_instance_rec.op_req_number_account_number
+                                                       ,( INSTRB(i_instance_rec.op_req_number_account_number,'/')+1) ) -- トークン値3
+                          /* 2010.01.25 K.Hosoi E_本稼動_00533,00319対応 END */
+                       );
+          --
+          ov_errbuf  := SUBSTRB( cv_pkg_name || cv_msg_cont || cv_prg_name || cv_msg_part || lv_errbuf, 1, 5000 );
+          ov_retcode := cv_status_error;
+          --
+        /* 2010.03.08 K.Hosoi E_本稼動_01838,01839対応 START */
+        END IF;
+        /* 2010.03.08 K.Hosoi E_本稼動_01838,01839対応 END */
       END IF;
     --
     /* 2009.12.09 K.Satomura E_本稼動_00341対応 START */
@@ -3369,6 +3776,12 @@ AS
     END IF;
     /* 2009.12.09 K.Satomura E_本稼動_00341対応 END */
   EXCEPTION
+    /* 2010.03.08 K.Hosoi E_本稼動_01838,01839対応 START */
+    WHEN chk_status_expt THEN
+      -- *** SQLデータ抽出例外 ***
+      ov_errbuf  := SUBSTRB( cv_pkg_name || cv_msg_cont || cv_prg_name || cv_msg_part || lv_errbuf, 1, 5000 );
+      ov_retcode := cv_status_error;    
+    /* 2010.03.08 K.Hosoi E_本稼動_01838,01839対応 END */
     --
     --#################################  固定例外処理部 START   ####################################
     --
@@ -6523,6 +6936,9 @@ AS
         input_check(
             iv_chk_kbn        => cv_input_chk_kbn_01  -- チェック区分
           , i_requisition_rec => l_requisition_rec    -- 発注依頼情報
+          /* 2010.03.08 K.Hosoi E_本稼動_01838,01839対応 START */
+          , id_process_date   => ld_process_date      -- 業務処理日付
+          /* 2010.03.08 K.Hosoi E_本稼動_01838,01839対応 END */
           , ov_errbuf         => lv_errbuf2           -- エラー・メッセージ  --# 固定 #
           , ov_retcode        => lv_retcode2          -- リターン・コード    --# 固定 #
         );
@@ -6545,6 +6961,9 @@ AS
         input_check(
             iv_chk_kbn        => cv_input_chk_kbn_04  -- チェック区分
           , i_requisition_rec => l_requisition_rec    -- 発注依頼情報
+          /* 2010.03.08 K.Hosoi E_本稼動_01838,01839対応 START */
+          , id_process_date   => ld_process_date      -- 業務処理日付
+          /* 2010.03.08 K.Hosoi E_本稼動_01838,01839対応 END */
           , ov_errbuf         => lv_errbuf2           -- エラー・メッセージ  --# 固定 #
           , ov_retcode        => lv_retcode2          -- リターン・コード    --# 固定 #
         );
@@ -6569,6 +6988,9 @@ AS
         input_check(
             iv_chk_kbn        => cv_input_chk_kbn_06  -- チェック区分
           , i_requisition_rec => l_requisition_rec    -- 発注依頼情報
+          /* 2010.03.08 K.Hosoi E_本稼動_01838,01839対応 START */
+          , id_process_date   => ld_process_date      -- 業務処理日付
+          /* 2010.03.08 K.Hosoi E_本稼動_01838,01839対応 END */
           , ov_errbuf         => lv_errbuf2           -- エラー・メッセージ  --# 固定 #
           , ov_retcode        => lv_retcode2          -- リターン・コード    --# 固定 #
         );
@@ -6593,6 +7015,9 @@ AS
         input_check(
             iv_chk_kbn        => cv_input_chk_kbn_07  -- チェック区分
           , i_requisition_rec => l_requisition_rec    -- 発注依頼情報
+          /* 2010.03.08 K.Hosoi E_本稼動_01838,01839対応 START */
+          , id_process_date   => ld_process_date      -- 業務処理日付
+          /* 2010.03.08 K.Hosoi E_本稼動_01838,01839対応 END */
           , ov_errbuf         => lv_errbuf2           -- エラー・メッセージ  --# 固定 #
           , ov_retcode        => lv_retcode2          -- リターン・コード    --# 固定 #
         );
@@ -6618,14 +7043,23 @@ AS
         input_check(
            iv_chk_kbn        => cv_input_chk_kbn_11 -- チェック区分
           ,i_requisition_rec => l_requisition_rec   -- 発注依頼情報
+          /* 2010.03.08 K.Hosoi E_本稼動_01838,01839対応 START */
+          ,id_process_date   => ld_process_date     -- 業務処理日付
+          /* 2010.03.08 K.Hosoi E_本稼動_01838,01839対応 END */
           ,ov_errbuf         => lv_errbuf2          -- エラー・メッセージ  --# 固定 #
           ,ov_retcode        => lv_retcode2         -- リターン・コード    --# 固定 #
         );
         --
         -- 正常終了でない場合
         IF (lv_retcode2 <> cv_status_normal) THEN
-          lv_errbuf  := lv_errbuf2;
+          /* 2010.03.08 K.Hosoi E_本稼動_01838,01839対応 START */
+          --lv_errbuf  := lv_errbuf2;
+          --lv_retcode := lv_retcode2;
+          lv_errbuf  := CASE WHEN ( lv_errbuf IS NULL )
+                             THEN lv_errbuf2
+                             ELSE SUBSTRB( lv_errbuf || cv_msg_comma ||  lv_errbuf2, 1, 5000 ) END;
           lv_retcode := lv_retcode2;
+          /* 2010.03.08 K.Hosoi E_本稼動_01838,01839対応 END */
           --
           -- 異常終了の場合
           IF (lv_retcode2 = cv_status_error) THEN
@@ -6642,14 +7076,23 @@ AS
         input_check(
            iv_chk_kbn        => cv_input_chk_kbn_12 -- チェック区分
           ,i_requisition_rec => l_requisition_rec   -- 発注依頼情報
+          /* 2010.03.08 K.Hosoi E_本稼動_01838,01839対応 START */
+          ,id_process_date   => ld_process_date     -- 業務処理日付
+          /* 2010.03.08 K.Hosoi E_本稼動_01838,01839対応 END */
           ,ov_errbuf         => lv_errbuf2          -- エラー・メッセージ  --# 固定 #
           ,ov_retcode        => lv_retcode2         -- リターン・コード    --# 固定 #
         );
         --
         -- 正常終了でない場合
         IF (lv_retcode2 <> cv_status_normal) THEN
-          lv_errbuf  := lv_errbuf2;
+          /* 2010.03.08 K.Hosoi E_本稼動_01838,01839対応 START */
+          --lv_errbuf  := lv_errbuf2;
+          --lv_retcode := lv_retcode2;
+          lv_errbuf  := CASE WHEN ( lv_errbuf IS NULL )
+                             THEN lv_errbuf2
+                             ELSE SUBSTRB( lv_errbuf || cv_msg_comma ||  lv_errbuf2, 1, 5000 ) END;
           lv_retcode := lv_retcode2;
+          /* 2010.03.08 K.Hosoi E_本稼動_01838,01839対応 END */
           --
           -- 異常終了の場合
           IF (lv_retcode2 = cv_status_error) THEN
@@ -6666,6 +7109,9 @@ AS
         input_check(
            iv_chk_kbn        => cv_input_chk_kbn_13 -- チェック区分
           ,i_requisition_rec => l_requisition_rec   -- 発注依頼情報
+          /* 2010.03.08 K.Hosoi E_本稼動_01838,01839対応 START */
+          ,id_process_date   => ld_process_date     -- 業務処理日付
+          /* 2010.03.08 K.Hosoi E_本稼動_01838,01839対応 END */
           ,ov_errbuf         => lv_errbuf2          -- エラー・メッセージ  --# 固定 #
           ,ov_retcode        => lv_retcode2         -- リターン・コード    --# 固定 #
         );
@@ -6685,6 +7131,33 @@ AS
           --
         END IF;
         /* 2009.12.24 K.Hosoi E_本稼動_00563対応 END */
+        /* 2010.03.08 K.Hosoi E_本稼動_01838,01839対応 START */
+        ------------------------------
+        -- 作業会社妥当性チェック
+        ------------------------------
+        input_check(
+           iv_chk_kbn        => cv_input_chk_kbn_15 -- チェック区分
+          ,i_requisition_rec => l_requisition_rec   -- 発注依頼情報
+          ,id_process_date   => ld_process_date     -- 業務処理日付
+          ,ov_errbuf         => lv_errbuf2          -- エラー・メッセージ  --# 固定 #
+          ,ov_retcode        => lv_retcode2         -- リターン・コード    --# 固定 #
+        );
+        --
+        -- 正常終了でない場合
+        IF (lv_retcode2 <> cv_status_normal) THEN
+          lv_errbuf  := CASE WHEN ( lv_errbuf IS NULL )
+                             THEN lv_errbuf2
+                             ELSE SUBSTRB( lv_errbuf || cv_msg_comma ||  lv_errbuf2, 1, 5000 ) END;
+          lv_retcode := lv_retcode2;
+          --
+          -- 異常終了の場合
+          IF (lv_retcode2 = cv_status_error) THEN
+            RAISE input_check_expt;
+            --
+          END IF;
+          --
+        END IF;
+        /* 2010.03.08 K.Hosoi E_本稼動_01838,01839対応 END */
         -- 入力チェック処理が警告終了（チェックエラーあり）の場合
         IF ( lv_retcode = cv_status_warn ) THEN
           -- リターンコードに「異常」を設定
@@ -6774,6 +7247,9 @@ AS
         input_check(
             iv_chk_kbn        => cv_input_chk_kbn_01  -- チェック区分
           , i_requisition_rec => l_requisition_rec    -- 発注依頼情報
+          /* 2010.03.08 K.Hosoi E_本稼動_01838,01839対応 START */
+          ,id_process_date    => ld_process_date      -- 業務処理日付
+          /* 2010.03.08 K.Hosoi E_本稼動_01838,01839対応 END */
           , ov_errbuf         => lv_errbuf2           -- エラー・メッセージ  --# 固定 #
           , ov_retcode        => lv_retcode2          -- リターン・コード    --# 固定 #
         );
@@ -6796,6 +7272,9 @@ AS
         input_check(
             iv_chk_kbn        => cv_input_chk_kbn_05  -- チェック区分
           , i_requisition_rec => l_requisition_rec    -- 発注依頼情報
+          /* 2010.03.08 K.Hosoi E_本稼動_01838,01839対応 START */
+          ,id_process_date    => ld_process_date      -- 業務処理日付
+          /* 2010.03.08 K.Hosoi E_本稼動_01838,01839対応 END */
           , ov_errbuf         => lv_errbuf2           -- エラー・メッセージ  --# 固定 #
           , ov_retcode        => lv_retcode2          -- リターン・コード    --# 固定 #
         );
@@ -6820,6 +7299,9 @@ AS
         input_check(
             iv_chk_kbn        => cv_input_chk_kbn_07  -- チェック区分
           , i_requisition_rec => l_requisition_rec    -- 発注依頼情報
+          /* 2010.03.08 K.Hosoi E_本稼動_01838,01839対応 START */
+          ,id_process_date    => ld_process_date      -- 業務処理日付
+          /* 2010.03.08 K.Hosoi E_本稼動_01838,01839対応 END */
           , ov_errbuf         => lv_errbuf2           -- エラー・メッセージ  --# 固定 #
           , ov_retcode        => lv_retcode2          -- リターン・コード    --# 固定 #
         );
@@ -6845,13 +7327,22 @@ AS
         input_check(
            iv_chk_kbn        => cv_input_chk_kbn_11 -- チェック区分
           ,i_requisition_rec => l_requisition_rec   -- 発注依頼情報
+          /* 2010.03.08 K.Hosoi E_本稼動_01838,01839対応 START */
+          ,id_process_date    => ld_process_date      -- 業務処理日付
+          /* 2010.03.08 K.Hosoi E_本稼動_01838,01839対応 END */
           ,ov_errbuf         => lv_errbuf2          -- エラー・メッセージ  --# 固定 #
           ,ov_retcode        => lv_retcode2         -- リターン・コード    --# 固定 #
         );
         -- 正常終了でない場合
         IF (lv_retcode2 <> cv_status_normal) THEN
-          lv_errbuf  := lv_errbuf2;
+          /* 2010.03.08 K.Hosoi E_本稼動_01838,01839対応 START */
+          --lv_errbuf  := lv_errbuf2;
+          --lv_retcode := lv_retcode2;
+          lv_errbuf  := CASE WHEN ( lv_errbuf IS NULL )
+                             THEN lv_errbuf2
+                             ELSE SUBSTRB( lv_errbuf || cv_msg_comma ||  lv_errbuf2, 1, 5000 ) END;
           lv_retcode := lv_retcode2;
+          /* 2010.03.08 K.Hosoi E_本稼動_01838,01839対応 END */
           --
           -- 異常終了の場合
           IF (lv_retcode2 = cv_status_error) THEN
@@ -6867,6 +7358,9 @@ AS
         input_check(
             iv_chk_kbn        => cv_input_chk_kbn_08  -- チェック区分
           , i_requisition_rec => l_requisition_rec    -- 発注依頼情報
+          /* 2010.03.08 K.Hosoi E_本稼動_01838,01839対応 START */
+          ,id_process_date    => ld_process_date      -- 業務処理日付
+          /* 2010.03.08 K.Hosoi E_本稼動_01838,01839対応 END */
           , ov_errbuf         => lv_errbuf2           -- エラー・メッセージ  --# 固定 #
           , ov_retcode        => lv_retcode2          -- リターン・コード    --# 固定 #
         );
@@ -6891,6 +7385,9 @@ AS
         input_check(
            iv_chk_kbn        => cv_input_chk_kbn_13 -- チェック区分
           ,i_requisition_rec => l_requisition_rec   -- 発注依頼情報
+          /* 2010.03.08 K.Hosoi E_本稼動_01838,01839対応 START */
+          ,id_process_date    => ld_process_date      -- 業務処理日付
+          /* 2010.03.08 K.Hosoi E_本稼動_01838,01839対応 END */
           ,ov_errbuf         => lv_errbuf2          -- エラー・メッセージ  --# 固定 #
           ,ov_retcode        => lv_retcode2         -- リターン・コード    --# 固定 #
         );
@@ -6910,6 +7407,58 @@ AS
           --
         END IF;
         /* 2009.12.24 K.Hosoi E_本稼動_00563対応 END */
+        /* 2010.03.08 K.Hosoi E_本稼動_01838,01839対応 START */
+        ------------------------------
+        -- 引揚先(搬入先)妥当性チェック
+        ------------------------------
+        input_check(
+           iv_chk_kbn        => cv_input_chk_kbn_14 -- チェック区分
+          ,i_requisition_rec => l_requisition_rec   -- 発注依頼情報
+          ,id_process_date   => ld_process_date     -- 業務処理日付
+          ,ov_errbuf         => lv_errbuf2          -- エラー・メッセージ  --# 固定 #
+          ,ov_retcode        => lv_retcode2         -- リターン・コード    --# 固定 #
+        );
+        --
+        -- 正常終了でない場合
+        IF (lv_retcode2 <> cv_status_normal) THEN
+          lv_errbuf  := CASE WHEN ( lv_errbuf IS NULL )
+                             THEN lv_errbuf2
+                             ELSE SUBSTRB( lv_errbuf || cv_msg_comma ||  lv_errbuf2, 1, 5000 ) END;
+          lv_retcode := lv_retcode2;
+          --
+          -- 異常終了の場合
+          IF (lv_retcode2 = cv_status_error) THEN
+            RAISE input_check_expt;
+            --
+          END IF;
+          --
+        END IF;
+        ------------------------------
+        -- 作業会社妥当性チェック
+        ------------------------------
+        input_check(
+           iv_chk_kbn        => cv_input_chk_kbn_15 -- チェック区分
+          ,i_requisition_rec => l_requisition_rec   -- 発注依頼情報
+          ,id_process_date   => ld_process_date     -- 業務処理日付
+          ,ov_errbuf         => lv_errbuf2          -- エラー・メッセージ  --# 固定 #
+          ,ov_retcode        => lv_retcode2         -- リターン・コード    --# 固定 #
+        );
+        --
+        -- 正常終了でない場合
+        IF (lv_retcode2 <> cv_status_normal) THEN
+          lv_errbuf  := CASE WHEN ( lv_errbuf IS NULL )
+                             THEN lv_errbuf2
+                             ELSE SUBSTRB( lv_errbuf || cv_msg_comma ||  lv_errbuf2, 1, 5000 ) END;
+          lv_retcode := lv_retcode2;
+          --
+          -- 異常終了の場合
+          IF (lv_retcode2 = cv_status_error) THEN
+            RAISE input_check_expt;
+            --
+          END IF;
+          --
+        END IF;
+        /* 2010.03.08 K.Hosoi E_本稼動_01838,01839対応 END */
         --
         -- 入力チェック処理が警告終了（チェックエラーあり）の場合
         IF ( lv_retcode = cv_status_warn ) THEN
@@ -7073,6 +7622,9 @@ AS
         input_check(
             iv_chk_kbn        => cv_input_chk_kbn_02  -- チェック区分
           , i_requisition_rec => l_requisition_rec    -- 発注依頼情報
+          /* 2010.03.08 K.Hosoi E_本稼動_01838,01839対応 START */
+          , id_process_date   => ld_process_date      -- 業務処理日付
+          /* 2010.03.08 K.Hosoi E_本稼動_01838,01839対応 END */
           , ov_errbuf         => lv_errbuf2           -- エラー・メッセージ  --# 固定 #
           , ov_retcode        => lv_retcode2          -- リターン・コード    --# 固定 #
         );
@@ -7095,6 +7647,9 @@ AS
         input_check(
             iv_chk_kbn        => cv_input_chk_kbn_04  -- チェック区分
           , i_requisition_rec => l_requisition_rec    -- 発注依頼情報
+          /* 2010.03.08 K.Hosoi E_本稼動_01838,01839対応 START */
+          , id_process_date   => ld_process_date      -- 業務処理日付
+          /* 2010.03.08 K.Hosoi E_本稼動_01838,01839対応 END */
           , ov_errbuf         => lv_errbuf2           -- エラー・メッセージ  --# 固定 #
           , ov_retcode        => lv_retcode2          -- リターン・コード    --# 固定 #
         );
@@ -7119,6 +7674,9 @@ AS
         input_check(
             iv_chk_kbn        => cv_input_chk_kbn_06  -- チェック区分
           , i_requisition_rec => l_requisition_rec    -- 発注依頼情報
+          /* 2010.03.08 K.Hosoi E_本稼動_01838,01839対応 START */
+          , id_process_date   => ld_process_date      -- 業務処理日付
+          /* 2010.03.08 K.Hosoi E_本稼動_01838,01839対応 END */
           , ov_errbuf         => lv_errbuf2           -- エラー・メッセージ  --# 固定 #
           , ov_retcode        => lv_retcode2          -- リターン・コード    --# 固定 #
         );
@@ -7143,6 +7701,9 @@ AS
         input_check(
             iv_chk_kbn        => cv_input_chk_kbn_07  -- チェック区分
           , i_requisition_rec => l_requisition_rec    -- 発注依頼情報
+          /* 2010.03.08 K.Hosoi E_本稼動_01838,01839対応 START */
+          , id_process_date   => ld_process_date      -- 業務処理日付
+          /* 2010.03.08 K.Hosoi E_本稼動_01838,01839対応 END */
           , ov_errbuf         => lv_errbuf2           -- エラー・メッセージ  --# 固定 #
           , ov_retcode        => lv_retcode2          -- リターン・コード    --# 固定 #
         );
@@ -7167,14 +7728,23 @@ AS
         input_check(
            iv_chk_kbn        => cv_input_chk_kbn_12 -- チェック区分
           ,i_requisition_rec => l_requisition_rec   -- 発注依頼情報
+          /* 2010.03.08 K.Hosoi E_本稼動_01838,01839対応 START */
+          ,id_process_date   => ld_process_date     -- 業務処理日付
+          /* 2010.03.08 K.Hosoi E_本稼動_01838,01839対応 END */
           ,ov_errbuf         => lv_errbuf2          -- エラー・メッセージ  --# 固定 #
           ,ov_retcode        => lv_retcode2         -- リターン・コード    --# 固定 #
         );
         --
         -- 正常終了でない場合
         IF (lv_retcode2 <> cv_status_normal) THEN
-          lv_errbuf  := lv_errbuf2;
+          /* 2010.03.08 K.Hosoi E_本稼動_01838,01839対応 START */
+          --lv_errbuf  := lv_errbuf2;
+          --lv_retcode := lv_retcode2;
+          lv_errbuf  := CASE WHEN ( lv_errbuf IS NULL )
+                             THEN lv_errbuf2
+                             ELSE SUBSTRB( lv_errbuf || cv_msg_comma ||  lv_errbuf2, 1, 5000 ) END;
           lv_retcode := lv_retcode2;
+          /* 2010.03.08 K.Hosoi E_本稼動_01838,01839対応 END */
           --
           -- 異常終了の場合
           IF (lv_retcode2 = cv_status_error) THEN
@@ -7191,6 +7761,9 @@ AS
         input_check(
            iv_chk_kbn        => cv_input_chk_kbn_13 -- チェック区分
           ,i_requisition_rec => l_requisition_rec   -- 発注依頼情報
+          /* 2010.03.08 K.Hosoi E_本稼動_01838,01839対応 START */
+          ,id_process_date   => ld_process_date     -- 業務処理日付
+          /* 2010.03.08 K.Hosoi E_本稼動_01838,01839対応 END */
           ,ov_errbuf         => lv_errbuf2          -- エラー・メッセージ  --# 固定 #
           ,ov_retcode        => lv_retcode2         -- リターン・コード    --# 固定 #
         );
@@ -7210,6 +7783,33 @@ AS
           --
         END IF;
         /* 2009.12.24 K.Hosoi E_本稼動_00563対応 END */
+        /* 2010.03.08 K.Hosoi E_本稼動_01838,01839対応 START */
+        ------------------------------
+        -- 作業会社妥当性チェック
+        ------------------------------
+        input_check(
+           iv_chk_kbn        => cv_input_chk_kbn_15 -- チェック区分
+          ,i_requisition_rec => l_requisition_rec   -- 発注依頼情報
+          ,id_process_date   => ld_process_date     -- 業務処理日付
+          ,ov_errbuf         => lv_errbuf2          -- エラー・メッセージ  --# 固定 #
+          ,ov_retcode        => lv_retcode2         -- リターン・コード    --# 固定 #
+        );
+        --
+        -- 正常終了でない場合
+        IF (lv_retcode2 <> cv_status_normal) THEN
+          lv_errbuf  := CASE WHEN ( lv_errbuf IS NULL )
+                             THEN lv_errbuf2
+                             ELSE SUBSTRB( lv_errbuf || cv_msg_comma ||  lv_errbuf2, 1, 5000 ) END;
+          lv_retcode := lv_retcode2;
+          --
+          -- 異常終了の場合
+          IF (lv_retcode2 = cv_status_error) THEN
+            RAISE input_check_expt;
+            --
+          END IF;
+          --
+        END IF;
+        /* 2010.03.08 K.Hosoi E_本稼動_01838,01839対応 END */
         --
         -- 入力チェック処理が警告終了（チェックエラーあり）の場合
         IF ( lv_retcode = cv_status_warn ) THEN
@@ -7309,6 +7909,22 @@ AS
           --
         END IF;
         --
+        /* 2010.03.08 K.Hosoi E_本稼動_01838,01839対応 START */
+        -- ========================================
+        -- A-25. 業態(小分類)チェック処理
+        -- ========================================
+        check_business_low_type(
+            i_requisition_rec     => l_requisition_rec    -- 発注依頼情報
+          , ov_errbuf             => lv_errbuf            -- エラー・メッセージ  --# 固定 #
+          , ov_retcode            => lv_retcode           -- リターン・コード    --# 固定 #
+        );
+        --
+        IF ( lv_retcode <> cv_status_normal ) THEN
+          RAISE global_process_expt;
+          --
+        END IF;
+        --
+        /* 2010.03.08 K.Hosoi E_本稼動_01838,01839対応 START */
         -- ========================================
         -- A-13. 設置用物件更新処理
         -- ========================================
@@ -7342,6 +7958,9 @@ AS
         input_check(
             iv_chk_kbn        => cv_input_chk_kbn_02  -- チェック区分
           , i_requisition_rec => l_requisition_rec    -- 発注依頼情報
+          /* 2010.03.08 K.Hosoi E_本稼動_01838,01839対応 START */
+          , id_process_date   => ld_process_date      -- 業務処理日付
+          /* 2010.03.08 K.Hosoi E_本稼動_01838,01839対応 END */
           , ov_errbuf         => lv_errbuf2           -- エラー・メッセージ  --# 固定 #
           , ov_retcode        => lv_retcode2          -- リターン・コード    --# 固定 #
         );
@@ -7364,6 +7983,9 @@ AS
         input_check(
             iv_chk_kbn        => cv_input_chk_kbn_05  -- チェック区分
           , i_requisition_rec => l_requisition_rec    -- 発注依頼情報
+          /* 2010.03.08 K.Hosoi E_本稼動_01838,01839対応 START */
+          , id_process_date   => ld_process_date      -- 業務処理日付
+          /* 2010.03.08 K.Hosoi E_本稼動_01838,01839対応 END */
           , ov_errbuf         => lv_errbuf2           -- エラー・メッセージ  --# 固定 #
           , ov_retcode        => lv_retcode2          -- リターン・コード    --# 固定 #
         );
@@ -7388,6 +8010,9 @@ AS
         input_check(
             iv_chk_kbn        => cv_input_chk_kbn_07  -- チェック区分
           , i_requisition_rec => l_requisition_rec    -- 発注依頼情報
+          /* 2010.03.08 K.Hosoi E_本稼動_01838,01839対応 START */
+          , id_process_date   => ld_process_date      -- 業務処理日付
+          /* 2010.03.08 K.Hosoi E_本稼動_01838,01839対応 END */
           , ov_errbuf         => lv_errbuf2           -- エラー・メッセージ  --# 固定 #
           , ov_retcode        => lv_retcode2          -- リターン・コード    --# 固定 #
         );
@@ -7412,6 +8037,9 @@ AS
         input_check(
             iv_chk_kbn        => cv_input_chk_kbn_08  -- チェック区分
           , i_requisition_rec => l_requisition_rec    -- 発注依頼情報
+          /* 2010.03.08 K.Hosoi E_本稼動_01838,01839対応 START */
+          , id_process_date   => ld_process_date      -- 業務処理日付
+          /* 2010.03.08 K.Hosoi E_本稼動_01838,01839対応 END */
           , ov_errbuf         => lv_errbuf2           -- エラー・メッセージ  --# 固定 #
           , ov_retcode        => lv_retcode2          -- リターン・コード    --# 固定 #
         );
@@ -7436,6 +8064,9 @@ AS
         input_check(
            iv_chk_kbn        => cv_input_chk_kbn_13 -- チェック区分
           ,i_requisition_rec => l_requisition_rec   -- 発注依頼情報
+          /* 2010.03.08 K.Hosoi E_本稼動_01838,01839対応 START */
+          ,id_process_date   => ld_process_date     -- 業務処理日付
+          /* 2010.03.08 K.Hosoi E_本稼動_01838,01839対応 END */
           ,ov_errbuf         => lv_errbuf2          -- エラー・メッセージ  --# 固定 #
           ,ov_retcode        => lv_retcode2         -- リターン・コード    --# 固定 #
         );
@@ -7455,6 +8086,58 @@ AS
           --
         END IF;
         /* 2009.12.24 K.Hosoi E_本稼動_00563対応 END */
+        /* 2010.03.08 K.Hosoi E_本稼動_01838,01839対応 START */
+        ------------------------------
+        -- 引揚先(搬入先)妥当性チェック
+        ------------------------------
+        input_check(
+           iv_chk_kbn        => cv_input_chk_kbn_14 -- チェック区分
+          ,i_requisition_rec => l_requisition_rec   -- 発注依頼情報
+          ,id_process_date   => ld_process_date     -- 業務処理日付
+          ,ov_errbuf         => lv_errbuf2          -- エラー・メッセージ  --# 固定 #
+          ,ov_retcode        => lv_retcode2         -- リターン・コード    --# 固定 #
+        );
+        --
+        -- 正常終了でない場合
+        IF (lv_retcode2 <> cv_status_normal) THEN
+          lv_errbuf  := CASE WHEN ( lv_errbuf IS NULL )
+                             THEN lv_errbuf2
+                             ELSE SUBSTRB( lv_errbuf || cv_msg_comma ||  lv_errbuf2, 1, 5000 ) END;
+          lv_retcode := lv_retcode2;
+          --
+          -- 異常終了の場合
+          IF (lv_retcode2 = cv_status_error) THEN
+            RAISE input_check_expt;
+            --
+          END IF;
+          --
+        END IF;
+        ------------------------------
+        -- 作業会社妥当性チェック
+        ------------------------------
+        input_check(
+           iv_chk_kbn        => cv_input_chk_kbn_15 -- チェック区分
+          ,i_requisition_rec => l_requisition_rec   -- 発注依頼情報
+          ,id_process_date   => ld_process_date     -- 業務処理日付
+          ,ov_errbuf         => lv_errbuf2          -- エラー・メッセージ  --# 固定 #
+          ,ov_retcode        => lv_retcode2         -- リターン・コード    --# 固定 #
+        );
+        --
+        -- 正常終了でない場合
+        IF (lv_retcode2 <> cv_status_normal) THEN
+          lv_errbuf  := CASE WHEN ( lv_errbuf IS NULL )
+                             THEN lv_errbuf2
+                             ELSE SUBSTRB( lv_errbuf || cv_msg_comma ||  lv_errbuf2, 1, 5000 ) END;
+          lv_retcode := lv_retcode2;
+          --
+          -- 異常終了の場合
+          IF (lv_retcode2 = cv_status_error) THEN
+            RAISE input_check_expt;
+            --
+          END IF;
+          --
+        END IF;
+        /* 2010.03.08 K.Hosoi E_本稼動_01838,01839対応 END */
         --
         -- 入力チェック処理が警告終了（チェックエラーあり）の場合
         IF ( lv_retcode = cv_status_warn ) THEN
@@ -7609,6 +8292,22 @@ AS
         END IF;
         --
 /*20090427_yabuki_ST505_517 END*/
+        /* 2010.03.08 K.Hosoi E_本稼動_01838,01839対応 START */
+        -- ========================================
+        -- A-25. 業態(小分類)チェック処理
+        -- ========================================
+        check_business_low_type(
+            i_requisition_rec     => l_requisition_rec    -- 発注依頼情報
+          , ov_errbuf             => lv_errbuf            -- エラー・メッセージ  --# 固定 #
+          , ov_retcode            => lv_retcode           -- リターン・コード    --# 固定 #
+        );
+        --
+        IF ( lv_retcode <> cv_status_normal ) THEN
+          RAISE global_process_expt;
+          --
+        END IF;
+        --
+        /* 2010.03.08 K.Hosoi E_本稼動_01838,01839対応 START */
         --
         -- ========================================
         -- A-13. 設置用物件更新処理
@@ -7663,6 +8362,9 @@ AS
         input_check(
             iv_chk_kbn        => cv_input_chk_kbn_03  -- チェック区分
           , i_requisition_rec => l_requisition_rec    -- 発注依頼情報
+          /* 2010.03.08 K.Hosoi E_本稼動_01838,01839対応 START */
+          , id_process_date   => ld_process_date      -- 業務処理日付
+          /* 2010.03.08 K.Hosoi E_本稼動_01838,01839対応 END */
           , ov_errbuf         => lv_errbuf2           -- エラー・メッセージ  --# 固定 #
           , ov_retcode        => lv_retcode2          -- リターン・コード    --# 固定 #
         );
@@ -7685,6 +8387,9 @@ AS
         input_check(
             iv_chk_kbn        => cv_input_chk_kbn_05  -- チェック区分
           , i_requisition_rec => l_requisition_rec    -- 発注依頼情報
+          /* 2010.03.08 K.Hosoi E_本稼動_01838,01839対応 START */
+          , id_process_date   => ld_process_date      -- 業務処理日付
+          /* 2010.03.08 K.Hosoi E_本稼動_01838,01839対応 END */
           , ov_errbuf         => lv_errbuf2           -- エラー・メッセージ  --# 固定 #
           , ov_retcode        => lv_retcode2          -- リターン・コード    --# 固定 #
         );
@@ -7712,6 +8417,9 @@ AS
 --            iv_chk_kbn        => cv_input_chk_kbn_08  -- チェック区分
 /*20090413_yabuki_ST170_171 END*/
           , i_requisition_rec => l_requisition_rec    -- 発注依頼情報
+          /* 2010.03.08 K.Hosoi E_本稼動_01838,01839対応 START */
+          , id_process_date   => ld_process_date      -- 業務処理日付
+          /* 2010.03.08 K.Hosoi E_本稼動_01838,01839対応 END */
           , ov_errbuf         => lv_errbuf2           -- エラー・メッセージ  --# 固定 #
           , ov_retcode        => lv_retcode2          -- リターン・コード    --# 固定 #
         );
@@ -7736,6 +8444,9 @@ AS
         input_check(
            iv_chk_kbn        => cv_input_chk_kbn_13 -- チェック区分
           ,i_requisition_rec => l_requisition_rec   -- 発注依頼情報
+          /* 2010.03.08 K.Hosoi E_本稼動_01838,01839対応 START */
+          ,id_process_date   => ld_process_date     -- 業務処理日付
+          /* 2010.03.08 K.Hosoi E_本稼動_01838,01839対応 END */
           ,ov_errbuf         => lv_errbuf2          -- エラー・メッセージ  --# 固定 #
           ,ov_retcode        => lv_retcode2         -- リターン・コード    --# 固定 #
         );
@@ -7755,6 +8466,58 @@ AS
           --
         END IF;
         /* 2009.12.24 K.Hosoi E_本稼動_00563対応 END */
+        /* 2010.03.08 K.Hosoi E_本稼動_01838,01839対応 START */
+        ------------------------------
+        -- 引揚先(搬入先)妥当性チェック
+        ------------------------------
+        input_check(
+           iv_chk_kbn        => cv_input_chk_kbn_14 -- チェック区分
+          ,i_requisition_rec => l_requisition_rec   -- 発注依頼情報
+          ,id_process_date   => ld_process_date     -- 業務処理日付
+          ,ov_errbuf         => lv_errbuf2          -- エラー・メッセージ  --# 固定 #
+          ,ov_retcode        => lv_retcode2         -- リターン・コード    --# 固定 #
+        );
+        --
+        -- 正常終了でない場合
+        IF (lv_retcode2 <> cv_status_normal) THEN
+          lv_errbuf  := CASE WHEN ( lv_errbuf IS NULL )
+                             THEN lv_errbuf2
+                             ELSE SUBSTRB( lv_errbuf || cv_msg_comma ||  lv_errbuf2, 1, 5000 ) END;
+          lv_retcode := lv_retcode2;
+          --
+          -- 異常終了の場合
+          IF (lv_retcode2 = cv_status_error) THEN
+            RAISE input_check_expt;
+            --
+          END IF;
+          --
+        END IF;
+        ------------------------------
+        -- 作業会社妥当性チェック
+        ------------------------------
+        input_check(
+           iv_chk_kbn        => cv_input_chk_kbn_15 -- チェック区分
+          ,i_requisition_rec => l_requisition_rec   -- 発注依頼情報
+          ,id_process_date   => ld_process_date     -- 業務処理日付
+          ,ov_errbuf         => lv_errbuf2          -- エラー・メッセージ  --# 固定 #
+          ,ov_retcode        => lv_retcode2         -- リターン・コード    --# 固定 #
+        );
+        --
+        -- 正常終了でない場合
+        IF (lv_retcode2 <> cv_status_normal) THEN
+          lv_errbuf  := CASE WHEN ( lv_errbuf IS NULL )
+                             THEN lv_errbuf2
+                             ELSE SUBSTRB( lv_errbuf || cv_msg_comma ||  lv_errbuf2, 1, 5000 ) END;
+          lv_retcode := lv_retcode2;
+          --
+          -- 異常終了の場合
+          IF (lv_retcode2 = cv_status_error) THEN
+            RAISE input_check_expt;
+            --
+          END IF;
+          --
+        END IF;
+        /* 2010.03.08 K.Hosoi E_本稼動_01838,01839対応 END */
         --
         -- 入力チェック処理が警告終了（チェックエラーあり）の場合
         IF ( lv_retcode = cv_status_warn ) THEN
@@ -7890,6 +8653,9 @@ AS
         input_check(
             iv_chk_kbn        => cv_input_chk_kbn_03  -- チェック区分
           , i_requisition_rec => l_requisition_rec    -- 発注依頼情報
+          /* 2010.03.08 K.Hosoi E_本稼動_01838,01839対応 START */
+          , id_process_date   => ld_process_date      -- 業務処理日付
+          /* 2010.03.08 K.Hosoi E_本稼動_01838,01839対応 END */
           , ov_errbuf         => lv_errbuf2           -- エラー・メッセージ  --# 固定 #
           , ov_retcode        => lv_retcode2          -- リターン・コード    --# 固定 #
         );
@@ -7911,6 +8677,9 @@ AS
         input_check(
             iv_chk_kbn        => cv_input_chk_kbn_04  -- チェック区分
           , i_requisition_rec => l_requisition_rec    -- 発注依頼情報
+          /* 2010.03.08 K.Hosoi E_本稼動_01838,01839対応 START */
+          , id_process_date   => ld_process_date      -- 業務処理日付
+          /* 2010.03.08 K.Hosoi E_本稼動_01838,01839対応 END */
           , ov_errbuf         => lv_errbuf2           -- エラー・メッセージ  --# 固定 #
           , ov_retcode        => lv_retcode2          -- リターン・コード    --# 固定 #
         );
@@ -7935,6 +8704,9 @@ AS
         input_check(
             iv_chk_kbn        => cv_input_chk_kbn_09  -- チェック区分
           , i_requisition_rec => l_requisition_rec    -- 発注依頼情報
+          /* 2010.03.08 K.Hosoi E_本稼動_01838,01839対応 START */
+          , id_process_date   => ld_process_date      -- 業務処理日付
+          /* 2010.03.08 K.Hosoi E_本稼動_01838,01839対応 END */
           , ov_errbuf         => lv_errbuf2           -- エラー・メッセージ  --# 固定 #
           , ov_retcode        => lv_retcode2          -- リターン・コード    --# 固定 #
         );
@@ -8025,6 +8797,9 @@ AS
         input_check(
             iv_chk_kbn        => cv_input_chk_kbn_03  -- チェック区分
           , i_requisition_rec => l_requisition_rec    -- 発注依頼情報
+          /* 2010.03.08 K.Hosoi E_本稼動_01838,01839対応 START */
+          , id_process_date   => ld_process_date      -- 業務処理日付
+          /* 2010.03.08 K.Hosoi E_本稼動_01838,01839対応 END */
           , ov_errbuf         => lv_errbuf2           -- エラー・メッセージ  --# 固定 #
           , ov_retcode        => lv_retcode2          -- リターン・コード    --# 固定 #
         );
@@ -8047,6 +8822,9 @@ AS
         input_check(
             iv_chk_kbn        => cv_input_chk_kbn_04  -- チェック区分
           , i_requisition_rec => l_requisition_rec    -- 発注依頼情報
+          /* 2010.03.08 K.Hosoi E_本稼動_01838,01839対応 START */
+          , id_process_date   => ld_process_date      -- 業務処理日付
+          /* 2010.03.08 K.Hosoi E_本稼動_01838,01839対応 END */
           , ov_errbuf         => lv_errbuf2           -- エラー・メッセージ  --# 固定 #
           , ov_retcode        => lv_retcode2          -- リターン・コード    --# 固定 #
         );
@@ -8071,6 +8849,9 @@ AS
         input_check(
             iv_chk_kbn        => cv_input_chk_kbn_09  -- チェック区分
           , i_requisition_rec => l_requisition_rec    -- 発注依頼情報
+          /* 2010.03.08 K.Hosoi E_本稼動_01838,01839対応 START */
+          , id_process_date   => ld_process_date      -- 業務処理日付
+          /* 2010.03.08 K.Hosoi E_本稼動_01838,01839対応 END */
           , ov_errbuf         => lv_errbuf2           -- エラー・メッセージ  --# 固定 #
           , ov_retcode        => lv_retcode2          -- リターン・コード    --# 固定 #
         );
@@ -8184,6 +8965,9 @@ AS
         input_check(
             iv_chk_kbn        => cv_input_chk_kbn_02  -- チェック区分
           , i_requisition_rec => l_requisition_rec    -- 発注依頼情報
+          /* 2010.03.08 K.Hosoi E_本稼動_01838,01839対応 START */
+          , id_process_date   => ld_process_date      -- 業務処理日付
+          /* 2010.03.08 K.Hosoi E_本稼動_01838,01839対応 END */
           , ov_errbuf         => lv_errbuf2           -- エラー・メッセージ  --# 固定 #
           , ov_retcode        => lv_retcode2          -- リターン・コード    --# 固定 #
         );
@@ -8206,6 +8990,9 @@ AS
         input_check(
             iv_chk_kbn        => cv_input_chk_kbn_04  -- チェック区分
           , i_requisition_rec => l_requisition_rec    -- 発注依頼情報
+          /* 2010.03.08 K.Hosoi E_本稼動_01838,01839対応 START */
+          , id_process_date   => ld_process_date      -- 業務処理日付
+          /* 2010.03.08 K.Hosoi E_本稼動_01838,01839対応 END */
           , ov_errbuf         => lv_errbuf2           -- エラー・メッセージ  --# 固定 #
           , ov_retcode        => lv_retcode2          -- リターン・コード    --# 固定 #
         );
@@ -8230,6 +9017,9 @@ AS
         input_check(
             iv_chk_kbn        => cv_input_chk_kbn_07  -- チェック区分
           , i_requisition_rec => l_requisition_rec    -- 発注依頼情報
+          /* 2010.03.08 K.Hosoi E_本稼動_01838,01839対応 START */
+          , id_process_date   => ld_process_date      -- 業務処理日付
+          /* 2010.03.08 K.Hosoi E_本稼動_01838,01839対応 END */
           , ov_errbuf         => lv_errbuf2           -- エラー・メッセージ  --# 固定 #
           , ov_retcode        => lv_retcode2          -- リターン・コード    --# 固定 #
         );
@@ -8254,14 +9044,23 @@ AS
         input_check(
            iv_chk_kbn        => cv_input_chk_kbn_12 -- チェック区分
           ,i_requisition_rec => l_requisition_rec   -- 発注依頼情報
+          /* 2010.03.08 K.Hosoi E_本稼動_01838,01839対応 START */
+          ,id_process_date   => ld_process_date     -- 業務処理日付
+          /* 2010.03.08 K.Hosoi E_本稼動_01838,01839対応 END */
           ,ov_errbuf         => lv_errbuf2          -- エラー・メッセージ  --# 固定 #
           ,ov_retcode        => lv_retcode2         -- リターン・コード    --# 固定 #
         );
         --
         -- 正常終了でない場合
         IF (lv_retcode2 <> cv_status_normal) THEN
-          lv_errbuf  := lv_errbuf2;
+          /* 2010.03.08 K.Hosoi E_本稼動_01838,01839対応 START */
+          --lv_errbuf  := lv_errbuf2;
+          --lv_retcode := lv_retcode2;
+          lv_errbuf  := CASE WHEN ( lv_errbuf IS NULL )
+                             THEN lv_errbuf2
+                             ELSE SUBSTRB( lv_errbuf || cv_msg_comma ||  lv_errbuf2, 1, 5000 ) END;
           lv_retcode := lv_retcode2;
+          /* 2010.03.08 K.Hosoi E_本稼動_01838,01839対応 END */
           --
           -- 異常終了の場合
           IF (lv_retcode2 = cv_status_error) THEN
@@ -8278,6 +9077,9 @@ AS
         input_check(
            iv_chk_kbn        => cv_input_chk_kbn_13 -- チェック区分
           ,i_requisition_rec => l_requisition_rec   -- 発注依頼情報
+          /* 2010.03.08 K.Hosoi E_本稼動_01838,01839対応 START */
+          ,id_process_date   => ld_process_date     -- 業務処理日付
+          /* 2010.03.08 K.Hosoi E_本稼動_01838,01839対応 END */
           ,ov_errbuf         => lv_errbuf2          -- エラー・メッセージ  --# 固定 #
           ,ov_retcode        => lv_retcode2         -- リターン・コード    --# 固定 #
         );
@@ -8297,6 +9099,33 @@ AS
           --
         END IF;
         /* 2009.12.24 K.Hosoi E_本稼動_00563対応 END */
+        /* 2010.03.08 K.Hosoi E_本稼動_01838,01839対応 START */
+        ------------------------------
+        -- 作業会社妥当性チェック
+        ------------------------------
+        input_check(
+           iv_chk_kbn        => cv_input_chk_kbn_15 -- チェック区分
+          ,i_requisition_rec => l_requisition_rec   -- 発注依頼情報
+          ,id_process_date   => ld_process_date     -- 業務処理日付
+          ,ov_errbuf         => lv_errbuf2          -- エラー・メッセージ  --# 固定 #
+          ,ov_retcode        => lv_retcode2         -- リターン・コード    --# 固定 #
+        );
+        --
+        -- 正常終了でない場合
+        IF (lv_retcode2 <> cv_status_normal) THEN
+          lv_errbuf  := CASE WHEN ( lv_errbuf IS NULL )
+                             THEN lv_errbuf2
+                             ELSE SUBSTRB( lv_errbuf || cv_msg_comma ||  lv_errbuf2, 1, 5000 ) END;
+          lv_retcode := lv_retcode2;
+          --
+          -- 異常終了の場合
+          IF (lv_retcode2 = cv_status_error) THEN
+            RAISE input_check_expt;
+            --
+          END IF;
+          --
+        END IF;
+        /* 2010.03.08 K.Hosoi E_本稼動_01838,01839対応 END */
         --
         -- 入力チェック処理が警告終了（チェックエラーあり）の場合
         IF ( lv_retcode = cv_status_warn ) THEN

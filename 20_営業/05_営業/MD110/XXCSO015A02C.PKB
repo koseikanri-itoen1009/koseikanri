@@ -8,7 +8,7 @@ AS
  *                    CSVファイルを作成します。
  * MD.050           : MD050_自販機-EBSインタフェース：（OUT）作業依頼／発注情報(iPro,PO)
  *                    2008/12/19 16:30
- * Version          : 1.22
+ * Version          : 1.25
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -62,6 +62,7 @@ AS
  *  2010-02-01    1.23  T.Maruyama       E_本稼動_01018 電話番号１～３が6バイトを超える場合は
  *                                                      6バイトで切捨てする
  *  2010-02-17    1.24  T.Maruyama       E_本稼動_01603
+ *  2010-03-08    1.25  K.Hosoi          E_本稼動_01838対応
  *****************************************************************************************/
 --
 --#######################  固定グローバル定数宣言部 START   #######################
@@ -140,6 +141,9 @@ AS
   /* 2009.05.22 K.Satomura T1_1142対応 START */
   cv_tkn_number_18        CONSTANT VARCHAR2(100) := 'APP-XXCSO1-00570';  -- 電話番号桁数エラー
   /* 2009.05.22 K.Satomura T1_1142対応 END */
+  /* 2010.03.08 K.Hosoi E_本稼動_01838対応 START */
+  cv_tkn_number_19        CONSTANT VARCHAR2(100) := 'APP-XXCSO1-00253';  -- 参照タイプなしエラーメッセージ
+  /* 2010.03.08 K.Hosoi E_本稼動_01838対応 END */
 --
   -- トークンコード
   cv_tkn_errmsg           CONSTANT VARCHAR2(20) := 'ERR_MSG';
@@ -162,6 +166,9 @@ AS
   cv_tkn_new_old          CONSTANT VARCHAR2(20) := 'NEW_OLD';
   cv_tkn_phone_num        CONSTANT VARCHAR2(20) := 'PHONE_NUM';
   /* 2009.05.22 K.Satomura T1_1142対応 END */
+  /* 2010.03.08 K.Hosoi E_本稼動_01838対応 START */
+  cv_tkn_lookup_type_name CONSTANT VARCHAR2(20) := 'LOOKUP_TYPE_NAME';
+  /* 2010.03.08 K.Hosoi E_本稼動_01838対応 END */
 --
   -- 作業区分
   cn_work_kbn1            CONSTANT NUMBER       := 1;                -- 新台設置
@@ -857,6 +864,18 @@ AS
     cv_inst_at_phn         CONSTANT VARCHAR2(100) :=  'INSTALL_AT_PHONE';           -- 設置先電話番号
     cv_inst_at_emply_nm    CONSTANT VARCHAR2(100) :=  'INSTALL_AT_EMPLOYEE_NAME';   -- 設置先担当者名
     /* 2009.12.21 K.Hosoi E_本稼動_00563対応 END */
+    /* 2010.03.08 K.Hosoi E_本稼動_01838対応 START */
+    cv_yes                    CONSTANT VARCHAR2(1)   :=  'Y';
+    -- プロファイル名
+    -- XXCSO:作業依頼IF作業会社自動設定フラグ
+    cv_wkcmp_auto_flg         CONSTANT VARCHAR2(100) :=  'XXCSO1_WKCMP_AUTO_FLG';
+    -- XXCSO:自拠点作業時作業会社CD
+    cv_zikyoten_wkcmp_full_cd CONSTANT VARCHAR2(100) :=  'XXCSO1_ZIKYOTEN_WKCMP_FULL_CD';
+    -- 参照タイプ
+    cv_wkcmp_auto_mst         CONSTANT VARCHAR2(100) :=  'XXCSO1_WKCMP_AUTO_MST';
+    -- 参照タイプなしエラーメッセージ用トークン値
+    cv_tkn_value_task_name    CONSTANT VARCHAR2(100) :=  '作業依頼IF自動設定作業会社マスタの';
+    /* 2010.03.08 K.Hosoi E_本稼動_01838対応 END */
 --
     -- *** ローカル変数 ***
     lv_instance_type_code      VARCHAR2(30);            -- インスタンスタイプコード
@@ -961,6 +980,13 @@ AS
     lt_inst_at_phone           xxcso_requisition_lines_v.install_at_phone%TYPE;         -- 設置先電話番号
     lt_inst_at_emp_name        xxcso_requisition_lines_v.install_at_employee_name%TYPE; -- 設置先担当者名
     /* 2009.12.21 K.Hosoi E_本稼動_00563対応 END */
+    /* 2010.03.08 K.Hosoi E_本稼動_01838対応 START */
+    -- プロファイル値取得戻り値
+    lv_wkcmp_at_flg            VARCHAR2(2000);
+    lv_zktn_wkcmp_fll_cd       VARCHAR2(2000);
+    --
+    lv_sale_base_code2         xxcso_cust_acct_sites_v.sale_base_code%TYPE;             -- 売上拠点コード
+    /* 2010.03.08 K.Hosoi E_本稼動_01838対応 END */
     lv_code                    VARCHAR2(20);            -- 編集用参照コード
     ld_date                    DATE;                    -- 業務処理日付格納用('yyyymmdd'形式)
     lv_log_po_head_num         VARCHAR2(20);            -- ログ用発注番号
@@ -2629,6 +2655,149 @@ AS
     -- ================
     -- 所属マスタ情報
     -- ================
+    /* 2010.03.08 K.Hosoi E_本稼動_01838対応 START */
+    -- 作業区分が旧台設置、旧台代替、引揚、店内移動の場合
+    IF (ln_job_kbn = cn_work_kbn2
+      OR ln_job_kbn = cn_work_kbn4
+      OR ln_job_kbn = cn_work_kbn5
+      OR ln_job_kbn = cn_work_kbn6) THEN
+      --
+      -- ===================
+      -- プロファイル値取得
+      -- ===================
+      -- XXCSO:旧台作業依頼IF作業会社自動設定フラグ
+      FND_PROFILE.GET(
+                      cv_wkcmp_auto_flg
+                     ,lv_wkcmp_at_flg
+                     );
+      --
+      -- XXCSO:自拠点作業時作業会社CD
+      FND_PROFILE.GET(
+                      cv_zikyoten_wkcmp_full_cd
+                     ,lv_zktn_wkcmp_fll_cd
+                     );
+      --
+      -- 取得したプロファイル値「自動設定フラグ」がNULLの場合は'N'を設定する
+      IF (lv_wkcmp_at_flg IS NULL) THEN
+        lv_wkcmp_at_flg := cv_no;
+      END IF;
+      --
+      -- ===================
+      -- 作業会社自動設定
+      -- ===================
+      -- 取得したプロファイル値「自動設定フラグ」が'N'の場合
+      IF (lv_wkcmp_at_flg = cv_no) THEN
+        --
+        NULL;
+      -- 取得したプロファイル値「自動設定フラグ」が'Y'の場合
+      ELSIF (lv_wkcmp_at_flg = cv_yes) THEN
+        --
+        -- 取得したプロファイル値「自拠点作業時作業会社CD」が当該データの作業会社＋事業所コードと等しい場合
+        IF (lv_zktn_wkcmp_fll_cd = lv_work_company_code || lv_work_location_code) THEN
+          --
+          NULL;
+        --
+        -- 取得したプロファイル値「自拠点作業時作業会社CD」が当該データの作業会社＋事業所コードと異なる場合
+        ELSIF (lv_zktn_wkcmp_fll_cd <> lv_work_company_code || lv_work_location_code) THEN
+          -- 作業区分が引揚の場合、売上担当拠点を導出
+          IF (ln_job_kbn = cn_work_kbn5) THEN
+            BEGIN
+              SELECT casv.sale_base_code
+              INTO   lv_sale_base_code2
+              FROM   xxcso_cust_accounts_v   casv
+                    ,csi_item_instances      ciins
+              WHERE  ciins.external_reference = lv_install_code2
+                AND  ciins.owner_party_account_id    = casv.cust_account_id
+                AND  casv.account_status    = 'A'
+                AND  casv.party_status      = 'A'
+              ;
+--
+            EXCEPTION
+              WHEN NO_DATA_FOUND THEN
+                -- データが存在しない場合
+                lv_errmsg := xxccp_common_pkg.get_msg(
+                                iv_application  => cv_app_name                  -- アプリケーション短縮名
+                               ,iv_name         => cv_tkn_number_06             -- メッセージコード
+                               ,iv_token_name1  => cv_tkn_task_nm               -- トークンコード1
+                               ,iv_token_value1 => cv_salebase_info             -- トークン値1
+                               ,iv_token_name2  => cv_tkn_po_num                -- トークンコード2
+                               ,iv_token_value2 => lv_log_po_head_num           -- トークン値2
+                               ,iv_token_name3  => cv_tkn_po_line_num           -- トークンコード3
+                               ,iv_token_value3 => lv_log_po_line_num           -- トークン値3
+                               ,iv_token_name4  => cv_tkn_po_distr_num          -- トークンコード4
+                               ,iv_token_value4 => lv_log_po_dist_num           -- トークン値4
+                               ,iv_token_name5  => cv_tkn_reqst_num             -- トークンコード5
+                               ,iv_token_value5 => lv_log_rq_head_num           -- トークン値5
+                               ,iv_token_name6  => cv_tkn_reqst_line_num        -- トークンコード6
+                               ,iv_token_value6 => lv_log_rq_line_num           -- トークン値6
+                             );
+                lv_errbuf := lv_errmsg;
+                RAISE global_skip_expt;
+                -- 抽出に失敗した場合
+              WHEN OTHERS THEN
+                lv_errmsg := xxccp_common_pkg.get_msg(
+                                iv_application  => cv_app_name                  -- アプリケーション短縮名
+                               ,iv_name         => cv_tkn_number_07             -- メッセージコード
+                               ,iv_token_name1  => cv_tkn_task_nm               -- トークンコード1
+                               ,iv_token_value1 => cv_salebase_info             -- トークン値1
+                               ,iv_token_name2  => cv_tkn_po_num                -- トークンコード2
+                               ,iv_token_value2 => lv_log_po_head_num           -- トークン値2
+                               ,iv_token_name3  => cv_tkn_po_line_num           -- トークンコード3
+                               ,iv_token_value3 => lv_log_po_line_num           -- トークン値3
+                               ,iv_token_name4  => cv_tkn_po_distr_num          -- トークンコード4
+                               ,iv_token_value4 => lv_log_po_dist_num           -- トークン値4
+                               ,iv_token_name5  => cv_tkn_reqst_num             -- トークンコード5
+                               ,iv_token_value5 => lv_log_rq_head_num           -- トークン値5
+                               ,iv_token_name6  => cv_tkn_reqst_line_num        -- トークンコード6
+                               ,iv_token_value6 => lv_log_rq_line_num           -- トークン値6
+                               ,iv_token_name7  => cv_tkn_errmsg               -- トークンコード7
+                               ,iv_token_value7 => SQLERRM                      -- トークン値7
+                             );
+                lv_errbuf := lv_errmsg;
+                RAISE global_process_expt;
+            END;
+          ELSE
+            lv_sale_base_code2 := lv_sale_base_code;
+          END IF;
+          --
+          --参照タイプより作業会社・事業所コードを取得し設定
+          BEGIN
+            SELECT  flv.attribute1        work_company_code      -- 作業会社CD
+                   ,flv.attribute2        work_location_code     -- 作業会社事業所CD
+            INTO    lv_work_company_code
+                   ,lv_work_location_code
+            FROM   fnd_lookup_values_vl flv -- 参照コード
+            WHERE  flv.lookup_type                            =  cv_wkcmp_auto_mst
+            AND    flv.lookup_code                            =  lv_sale_base_code2
+            AND    TRUNC(NVL(flv.start_date_active, ld_date)) <= ld_date
+            AND    TRUNC(NVL(flv.end_date_active, ld_date))   >= ld_date
+            AND    flv.enabled_flag                           =  cv_yes
+            ;
+            --
+            io_get_data_rec.work_company_code    := lv_work_company_code;  -- 作業会社CD
+            io_get_data_rec.work_location_code   := lv_work_location_code; -- 作業会社事業所CD
+          EXCEPTION
+            WHEN NO_DATA_FOUND THEN
+              NULL;
+            WHEN OTHERS THEN
+              lv_errbuf := xxccp_common_pkg.get_msg(
+                              iv_application  => cv_app_name              -- アプリケーション短縮名
+                             ,iv_name         => cv_tkn_number_19         -- メッセージコード
+                             ,iv_token_name1  => cv_tkn_task_nm           -- トークンコード1
+                             ,iv_token_value1 => cv_tkn_value_task_name   -- トークン値1
+                             ,iv_token_name2  => cv_tkn_lookup_type_name  -- トークンコード2
+                             ,iv_token_value2 => cv_wkcmp_auto_mst        -- トークン値2
+                             ,iv_token_name3  => cv_tkn_errmsg            -- トークンコード2
+                             ,iv_token_value3 => SQLERRM                  -- トークン値2
+                           );
+              --
+              RAISE global_process_expt;
+              --
+          END;
+        END IF;
+      END IF;
+    END IF;
+    /* 2010.03.08 K.Hosoi E_本稼動_01838対応 END */
 --
     BEGIN
       -- コード
