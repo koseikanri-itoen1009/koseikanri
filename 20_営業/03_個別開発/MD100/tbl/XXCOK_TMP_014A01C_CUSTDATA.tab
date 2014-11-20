@@ -3,13 +3,14 @@
  *
  * Table Name  : XXCOK_TMP_014A01C_CUSTDATA
  * Description : èåèï îÃéËîÃã¶åvéZå⁄ãqèÓïÒàÍéûï\
- * Version     : 1.0
+ * Version     : 1.1
  *
  * Change Record
  * ------------- ----- ---------------- ---------------------------------
  *  Date          Ver.  Editor           Description
  * ------------- ----- ---------------- ---------------------------------
  *  2009/06/05    1.0   M.Hiruta         êVãKçÏê¨
+ *  2009/10/27    1.1   K.Yamaguchi      [è·äQE_T4_00094] ë¶éûï•Ç¢ÇÃèÍçáÇ…ARòAågÇçsÇ§ÇÊÇ§Ç…èCê≥
  *
  **************************************************************************************/
 CREATE GLOBAL TEMPORARY TABLE XXCOK.XXCOK_TMP_014A01C_CUSTDATA
@@ -32,7 +33,10 @@ CREATE GLOBAL TEMPORARY TABLE XXCOK.XXCOK_TMP_014A01C_CUSTDATA
     TAX_CODE                 VARCHAR2(50),
     TAX_RATE                 NUMBER,
     TAX_ROUNDING_RULE        VARCHAR2(30),
-    RECEIV_DISCOUNT_RATE     NUMBER(3,2),
+-- 2009/10/27 Ver.1.1 [è·äQE_T4_00094] SCS K.Yamaguchi REPAIR START
+--    RECEIV_DISCOUNT_RATE     NUMBER(3,2),
+    RECEIV_DISCOUNT_RATE     NUMBER,
+-- 2009/10/27 Ver.1.1 [è·äQE_T4_00094] SCS K.Yamaguchi REPAIR END
     TERM_NAME                VARCHAR2(8),
     CLOSING_DATE             DATE,
     EXPECT_PAYMENT_DATE      DATE,

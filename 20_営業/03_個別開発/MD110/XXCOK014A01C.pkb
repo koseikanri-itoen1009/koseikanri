@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCOK014A01C(body)
  * Description      : 販売実績情報・手数料計算条件からの販売手数料計算処理
  * MD.050           : 条件別販手販協計算処理 MD050_COK_014_A01
- * Version          : 3.2
+ * Version          : 3.3
  *
  * Program List
  * -------------------- ------------------------------------------------------------
@@ -62,6 +62,7 @@ AS
  *  2009/08/06    3.0   K.Yamaguchi      [障害0000940] パフォーマンスを向上させるためSQLを修正・修正履歴の削除
  *  2009/10/02    3.1   K.Yamaguchi      [仕様変更I_E_566] 納品VD・消化VDを処理対象に追加
  *  2009/10/19    3.2   K.Yamaguchi      [障害E_T3_00631] 消費税コード取得方法を変更
+ *  2009/10/27    3.3   K.Yamaguchi      [障害E_T4_00094] 即時払いの場合にAR連携を行うように修正
  *
  *****************************************************************************************/
   --==================================================
@@ -2817,22 +2818,28 @@ END insert_xcbs;
     --==================================================
     -- 4.各連携ステータス
     --==================================================
--- 2009/10/02 Ver.3.1 [仕様変更I_E_566] SCS K.Yamaguchi ADD START
-    -- 支払条件が即時払い
-    IF( i_get_sales_data_rec.term_name = gv_instantly_term_name ) THEN
-      lv_cond_bm_interface_status := cv_xcbs_if_status_off;    -- 条件別販手販協 不要
-      lv_bm_interface_status      := cv_xcbs_if_status_off;    -- 販手残高       不要
-      lv_ar_interface_status      := cv_xcbs_if_status_off;    -- AR             不要
--- 2009/10/02 Ver.3.1 [仕様変更I_E_566] SCS K.Yamaguchi ADD END
--- 2009/10/02 Ver.3.1 [仕様変更I_E_566] SCS K.Yamaguchi REPAIR START
---    IF(     ( i_get_sales_data_rec.ship_gyotai_sho  = cv_gyotai_sho_25 )
---        AND ( i_get_sales_data_rec.amount_fix_date <> gd_process_date  )
+-- 2009/10/27 Ver.3.3 [障害E_T4_00094] SCS K.Yamaguchi REPAIR START
+---- 2009/10/02 Ver.3.1 [仕様変更I_E_566] SCS K.Yamaguchi ADD START
+--    -- 支払条件が即時払い
+--    IF( i_get_sales_data_rec.term_name = gv_instantly_term_name ) THEN
+--      lv_cond_bm_interface_status := cv_xcbs_if_status_off;    -- 条件別販手販協 不要
+--      lv_bm_interface_status      := cv_xcbs_if_status_off;    -- 販手残高       不要
+--      lv_ar_interface_status      := cv_xcbs_if_status_off;    -- AR             不要
+---- 2009/10/02 Ver.3.1 [仕様変更I_E_566] SCS K.Yamaguchi ADD END
+---- 2009/10/02 Ver.3.1 [仕様変更I_E_566] SCS K.Yamaguchi REPAIR START
+----    IF(     ( i_get_sales_data_rec.ship_gyotai_sho  = cv_gyotai_sho_25 )
+----        AND ( i_get_sales_data_rec.amount_fix_date <> gd_process_date  )
+----    ) THEN
+--    -- 販売実績情報の業態(小分類)が '25'：フルサービスVD、かつ業務日付が販売実績情報の計算対象期間(TO)と一致しない
+--    ELSIF(     ( i_get_sales_data_rec.ship_gyotai_sho  = cv_gyotai_sho_25 )
+--           AND ( i_get_sales_data_rec.amount_fix_date <> gd_process_date  )
 --    ) THEN
+---- 2009/10/02 Ver.3.1 [仕様変更I_E_566] SCS K.Yamaguchi REPAIR END
     -- 販売実績情報の業態(小分類)が '25'：フルサービスVD、かつ業務日付が販売実績情報の計算対象期間(TO)と一致しない
-    ELSIF(     ( i_get_sales_data_rec.ship_gyotai_sho  = cv_gyotai_sho_25 )
+    IF(     ( i_get_sales_data_rec.ship_gyotai_sho  = cv_gyotai_sho_25 )
            AND ( i_get_sales_data_rec.amount_fix_date <> gd_process_date  )
     ) THEN
--- 2009/10/02 Ver.3.1 [仕様変更I_E_566] SCS K.Yamaguchi REPAIR END
+-- 2009/10/27 Ver.3.3 [障害E_T4_00094] SCS K.Yamaguchi REPAIR END
       lv_cond_bm_interface_status := cv_xcbs_if_status_off;    -- 条件別販手販協 不要
       lv_bm_interface_status      := cv_xcbs_if_status_no;     -- 販手残高       未処理
       lv_ar_interface_status      := cv_xcbs_if_status_off;    -- AR             不要
