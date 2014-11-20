@@ -10,6 +10,10 @@ CREATE TABLE xxcmm.xxcmm_rep_undeal_list (
 --  base_cd_name            VARCHAR2(30),
   base_cd_name            VARCHAR2(40),
 -- 2009/08/16 障害0001096 modify end
+-- 2011/04/13 E_本稼動_01956,01961,05192 Add start
+  employee_number         VARCHAR2(30) ,
+  employee_name           VARCHAR2(20) ,
+-- 2011/04/13 E_本稼動_01956,01961,05192 Add end
   customer_code           VARCHAR2(9)  NOT NULL,
   customer_name           VARCHAR2(360),
   customer_status         VARCHAR2(2),
@@ -18,9 +22,15 @@ CREATE TABLE xxcmm.xxcmm_rep_undeal_list (
   business_high_type_name VARCHAR2(10),
   final_call_date         VARCHAR2(10),
   final_tran_date         VARCHAR2(10),
-  install_code            VARCHAR2(10),
+-- 2011/04/05 E_本稼動_01956,01961,05192 Mod start
+--  install_code            VARCHAR2(10),
+  install_code            VARCHAR2(12),
+-- 2011/04/05 E_本稼動_01956,01961,05192 Mod end
   inventory_quantity      NUMBER(6,0),
-  change_amount           NUMBER(6,0),
+-- 2011/04/05 E_本稼動_01956,01961,05192 Mod start
+--  change_amount           NUMBER(6,0),
+  change_amount           NUMBER(9,0),
+-- 2011/04/05 E_本稼動_01956,01961,05192 Mod end
   balance_amount          NUMBER(9,0),
   balance_month           VARCHAR2(7),
   undeal_reason           VARCHAR2(30),
@@ -45,6 +55,12 @@ COMMENT ON COLUMN xxcmm.xxcmm_rep_undeal_list.base_code               IS '拠点コ
 /
 COMMENT ON COLUMN xxcmm.xxcmm_rep_undeal_list.base_cd_name            IS '拠点名'
 /
+-- 2011/04/13 E_本稼動_01956,01961,05192 Add start
+COMMENT ON COLUMN xxcmm.xxcmm_rep_undeal_list.employee_number         IS '担当営業員コード'
+/
+COMMENT ON COLUMN xxcmm.xxcmm_rep_undeal_list.employee_name           IS '担当営業員'
+/
+-- 2011/04/13 E_本稼動_01956,01961,05192 Add end
 COMMENT ON COLUMN xxcmm.xxcmm_rep_undeal_list.customer_code           IS '顧客コード'
 /
 COMMENT ON COLUMN xxcmm.xxcmm_rep_undeal_list.customer_name           IS '顧客名'
