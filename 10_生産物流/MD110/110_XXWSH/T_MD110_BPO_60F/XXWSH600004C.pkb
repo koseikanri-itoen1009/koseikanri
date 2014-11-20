@@ -7,7 +7,7 @@ AS
  * Description      : ＨＨＴ入出庫配車確定情報抽出処理
  * MD.050           : T_MD050_BPO_601_配車配送計画
  * MD.070           : T_MD070_BPO_60F_ＨＨＴ入出庫配車確定情報抽出処理
- * Version          : 1.17
+ * Version          : 1.18
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -56,6 +56,7 @@ AS
  *  2008/10/07    1.15  M.Nomura         TE080_600指摘#27対応
  *  2008/11/07    1.16  N.Fukuda         統合指摘#143対応
  *  2009/01/26    1.17  N.Yoshida        本番1017対応、本番#1044対応
+ *  2009/02/09    1.18  M.Nomura        本番#1082対応
  *****************************************************************************************/
 --
 --#######################  固定グローバル定数宣言部 START   #######################
@@ -2726,7 +2727,10 @@ AS
                   || re_out_data.item_uom_code            || ','  -- 品目単位
 --2008/08/08 Mod ↓
 --                  || re_out_data.item_quantity            || ','  -- 品目数量
-                  || CEIL(TRUNC(re_out_data.item_quantity,3))            || ','  -- 品目数量
+-- ##### 20090209 Ver.1.18 本番1082対応 START #####
+--                  || CEIL(TRUNC(re_out_data.item_quantity,3))            || ','  -- 品目数量
+                  || TRUNC(re_out_data.item_quantity + 0.0009 ,3)      || ','  -- 品目数量（小数点以下3位まで有効（第四位を切上））
+-- ##### 20090209 Ver.1.18 本番1082対応 END   #####
 --2008/08/08 Mod ↑
                   || re_out_data.lot_no                   || ','                -- ロット番号
 -- M.Hokkanji Ver1.4 START
@@ -2738,7 +2742,10 @@ AS
 --                  || TO_CHAR( re_out_data.best_bfr_date, 'YYYY/MM/DD' ) || ','  -- 賞味期限
 --2008/08/08 Mod ↓
 --                  || re_out_data.lot_quantity             || ','                -- ロット数量
-                  || CEIL(TRUNC(re_out_data.lot_quantity,3)) || ','                -- ロット数量
+-- ##### 20090209 Ver.1.18 本番1082対応 START #####
+--                  || CEIL(TRUNC(re_out_data.lot_quantity,3)) || ','                -- ロット数量
+                  || TRUNC(re_out_data.lot_quantity + 0.0009, 3) || ',' -- ロット数量（小数点以下3位まで有効（第四位を切上））
+-- ##### 20090209 Ver.1.18 本番1082対応 END   #####
 --2008/08/08 Mod ↑
 -- M.Hokkanji Ver1.4 END
 -- M.Hokkanji Ver1.2 START
