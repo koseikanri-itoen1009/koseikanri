@@ -1,7 +1,7 @@
 /*============================================================================
 * ファイル名 : XxcsoSpDecisionReflectUtils
 * 概要説明   : SP専決反映ユーティリティクラス
-* バージョン : 1.4
+* バージョン : 1.5
 *============================================================================
 * 修正履歴
 * 日付       Ver. 担当者       修正内容
@@ -11,6 +11,7 @@
 * 2009-05-19 1.2  SCS柳平直人   [ST障害T1_1058]reflectAll時契約先反映処理追加
 * 2009-05-28 1.3  SCS柳平直人   [ST障害T1_1216]設置先反映処理不具合対応
 * 2009-10-14 1.4  SCS阿部大輔   [共通課題IE554,IE573]住所対応
+* 2010-05-26 1.16 SCS阿部大輔   [E_本稼動_02799]文字数対応
 *============================================================================
 */
 package itoen.oracle.apps.xxcso.xxcso020001j.util;
@@ -411,7 +412,18 @@ public class XxcsoSpDecisionReflectUtils
         if (Address.length() > 17 )
         {
           Address1 = Address.substring(0,17);
-          Address2 = Address.substring(17);
+          // 2010-05-26 [E_本稼動_02799] Add Start
+          if (Address.length() > 34 )
+          {
+            Address2 = Address.substring(17,34);
+          }
+          else
+          {
+          // 2010-05-26 [E_本稼動_02799] Add End
+            Address2 = Address.substring(17);
+          // 2010-05-26 [E_本稼動_02799] Add Start
+          }
+          // 2010-05-26 [E_本稼動_02799] Add End
         }
         else
         {
@@ -540,7 +552,18 @@ public class XxcsoSpDecisionReflectUtils
         if (Address.length() > 17 )
         {
           Address1 = Address.substring(0,17);
-          Address2 = Address.substring(17);
+          // 2010-05-26 [E_本稼動_02799] Add Start
+          if (Address.length() > 34 )
+          {
+            Address2 = Address.substring(17,34);
+          }
+          else
+          {
+          // 2010-05-26 [E_本稼動_02799] Add End
+            Address2 = Address.substring(17);
+          // 2010-05-26 [E_本稼動_02799] Add Start
+          }
+          // 2010-05-26 [E_本稼動_02799] Add End
         }
         else
         {

@@ -165,10 +165,10 @@ SELECT XxcsoSpDecisionCustsVEO.SP_DECISION_CUSTOMER_ID,
           ,cntr.same_install_account_flag
           ,XxcsoSpDecisionCustsVEO.ADDRESS2
           ,pvs.address_line2
-          ,SUBSTR(inst.state || inst.city || inst.address1 || inst.address2,18)
-          ,SUBSTR(xcasv.state || xcasv.city || xcasv.address1 || xcasv.address2,18)
-          ,SUBSTR(cntr.state || cntr.city || cntr.address1 || cntr.address2,18)
-          ,SUBSTR(xcc.prefectures || xcc.city_ward || xcc.address_1 || xcc.address_2,18)
+          ,SUBSTR(inst.state || inst.city || inst.address1 || inst.address2,18,17)
+          ,SUBSTR(xcasv.state || xcasv.city || xcasv.address1 || xcasv.address2,18,17)
+          ,SUBSTR(cntr.state || cntr.city || cntr.address1 || cntr.address2,18,17)
+          ,SUBSTR(xcc.prefectures || xcc.city_ward || xcc.address_1 || xcc.address_2,18,17)
          )
         ,1
         ,35
