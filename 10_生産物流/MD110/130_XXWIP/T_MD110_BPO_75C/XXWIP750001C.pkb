@@ -7,7 +7,7 @@ AS
  * Description      : 振替運賃情報更新
  * MD.050           : 運賃計算（振替） T_MD050_BPO_750
  * MD.070           : 振替運賃情報更新 T_MD070_BPO_75C
- * Version          : 1.15
+ * Version          : 1.16
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -59,6 +59,7 @@ AS
  *  2008/12/15    1.13 野村 正幸         本番#712対応
  *  2009/01/08    1.14 野村 正幸         本番#961対応
  *  2009/01/19    1.15 椎名 昭圭         本番#1003対応
+ *  2009/01/27    1.16 野村 正幸         本番#1078対応
  *
  *****************************************************************************************/
 --
@@ -1267,6 +1268,10 @@ AS
               -- 小口個数によって設定金額を取得
               SELECT 
                 CASE
+-- ##### 20090127 Ver.1.16 本番#1078対応 start #####
+                  -- 小口個数＝０の場合、単価を０に設定する
+                  WHEN (gt_order_inf_tbl(ln_index).small_quantity = 0) THEN 0
+-- ##### 20090127 Ver.1.16 本番#1078対応 end   #####
                   WHEN (gt_order_inf_tbl(ln_index).small_quantity <= xltdc.upper_limit_number1) THEN
                     xltdc.setting_amount1
                   WHEN (gt_order_inf_tbl(ln_index).small_quantity <= xltdc.upper_limit_number2) THEN
