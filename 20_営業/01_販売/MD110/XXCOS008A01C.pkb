@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCOS008A01C(body)
  * Description      : 工場直送出荷依頼IF作成を行う
  * MD.050           : 工場直送出荷依頼IF作成 MD050_COS_008_A01
- * Version          : 1.2
+ * Version          : 1.4
  *
  * Program List
  * --------------------------- ----------------------------------------------------------
@@ -34,6 +34,7 @@ AS
  *  2009/02/05    1.1   K.Atsushiba      COS_035対応  出荷依頼I/Fヘッダーの依頼区分に「4」を設定。
  *  2009/02/18    1.2   K.Atsushiba      get_msgのパッケージ名修正
  *  2009/02/23    1.3   K.Atsushiba      パラメータのログファイル出力対応
+ *  2009/04/06    1.4   T.Kitajima       [T1_0175]出荷依頼No採番ルール変更
  *
  *****************************************************************************************/
 --
@@ -2133,9 +2134,15 @@ AS
     -- *** ローカル定数 ***
     cv_data_type                CONSTANT VARCHAR2(2) := '10';    -- データタイプ
     cv_cust_po_number_first     CONSTANT VARCHAR2(1) := 'I';     -- 顧客発注の先頭文字
-    cv_order_source             CONSTANT VARCHAR2(1) := '9';     -- 受注ソース参照の先頭文字
+--****************************** 2009/04/06 1.4 T.kitajima MOD START ******************************--
+--    cv_order_source             CONSTANT VARCHAR2(1) := '9';     -- 受注ソース参照の先頭文字
+    cv_order_source             CONSTANT VARCHAR2(2) := '97';    -- 受注ソース参照の先頭文字
+--****************************** 2009/04/06 1.4 T.kitajima MOD  END  ******************************--
     cv_pad_char                 CONSTANT VARCHAR2(1) := '0';     -- PAD関数で埋め込む文字
-    cn_pad_num_char             CONSTANT NUMBER := 11;           -- PAD関数で埋め込む文字数
+--****************************** 2009/04/06 1.4 T.kitajima MOD START ******************************--
+--    cn_pad_num_char             CONSTANT NUMBER := 11;           -- PAD関数で埋め込む文字数
+    cn_pad_num_char             CONSTANT NUMBER := 10;           -- PAD関数で埋め込む文字数
+--****************************** 2009/04/06 1.4 T.kitajima MOD  END  ******************************--
 --
     -- *** ローカル変数 ***
     lv_index                    VARCHAR2(1000);                        -- PL/SQL表用インデックス文字列
