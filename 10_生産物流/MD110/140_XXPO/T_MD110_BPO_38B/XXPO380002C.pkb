@@ -7,7 +7,7 @@ AS
  * Description      : 発注依頼書
  * MD.050/070       : 発注依頼作成Issue1.0  (T_MD050_BPO_380)
  *                    発注依頼作成Issue1.0  (T_MD070_BPO_38B)
- * Version          : 1.4
+ * Version          : 1.5
  *
  * Program List
  * -------------------------- ----------------------------------------------------------
@@ -32,6 +32,7 @@ AS
  *                                       合計が次ページに表示される現象を修正
  *  2008/07/04    1.4   I.Higa           TEMP領域エラー回避のため、xxcmn_item_categories4_vを
  *                                       使用しないようにする
+ *  2010/03/31    1.5   M.Hokkanji       [E_本稼働_02089]対応
  *
  *****************************************************************************************/
 --
@@ -83,6 +84,12 @@ AS
   -- 商品カテゴリ関連
   ------------------------------
   gc_cat_set_prod_class         CONSTANT VARCHAR2(100) := '商品区分' ;
+-- Ver1.5 M.Hokkanji Start
+  ------------------------------
+  -- パーティサイト
+  ------------------------------
+  gc_status_a                   CONSTANT VARCHAR2(1) := 'A' ;
+-- Ver1.5 M.Hokkanji End
 --
   ------------------------------
   -- エラーメッセージ関連
@@ -475,6 +482,11 @@ AS
       || ' AND FND_DATE.STRING_TO_DATE(''' || gr_param.iv_promised_date_f || ''','''
                                            || gc_char_dt_format || ''')'
       || '     BETWEEN xpsv.start_date_active(+) AND xpsv.end_date_active(+)'
+-- Ver1.5 M.Hokkanji Start
+      || ' AND xpsv.party_site_status(+) = ''' || gc_status_a || ''''
+      || ' AND xpsv.cust_acct_site_status(+) = ''' || gc_status_a || ''''
+      || ' AND xpsv.cust_site_uses_status(+) = ''' || gc_status_a || ''''
+-- Ver1.5 M.Hokkanji End
       || ' AND xrh.delivery_code                  = xvsv.vendor_site_code(+)'
       || ' AND FND_DATE.STRING_TO_DATE(''' || gr_param.iv_promised_date_f || ''','''
                                            || gc_char_dt_format || ''')'
