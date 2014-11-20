@@ -8,7 +8,7 @@ AS
  *                    その結果を発注依頼に返します。
  * MD.050           : MD050_CSO_011_A01_作業依頼（発注依頼）時のインストールベースチェック機能
  *
- * Version          : 1.8
+ * Version          : 1.12
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -36,6 +36,7 @@ AS
  *  update_wk_req_proc        作業依頼／発注情報連携対象テーブル更新処理(A-20)
  *  start_approval_wf_proc    承認ワークフロー起動(エラー通知)(A-21)
  *  verifyauthority           承認者権限（製品）チェック(A-22)
+ *  update_po_req_line        発注依頼明細更新処理(A-23)
  *  submain                   メイン処理プロシージャ
  *  main_for_application      メイン処理（発注依頼申請用）
  *  main_for_approval         メイン処理（発注依頼承認用）
@@ -63,6 +64,7 @@ AS
  *  2009-05-01    1.9   Tomoko.Mori      T1_0897対応
  *  2009-05-11    1.10  D.Abe            【ST障害対応965】廃棄申請時の機器状態３、廃棄フラグ更新処理のタイミング変更
  *  2009-05-15    1.11  D.Abe            【ST障害対応669】承認者権限（製品）チェックを追加
+ *  2009-07-01    1.12  D.Abe            【ST障害対応529】発注明細の取引性質を更新するように変更
  *****************************************************************************************/
   --
   --#######################  固定グローバル定数宣言部 START   #######################
@@ -192,6 +194,9 @@ AS
 /* 20090511_abe_ST965 START*/
   cv_tkn_number_52  CONSTANT VARCHAR2(100) := 'APP-XXCSO1-00193';  -- 物件ワークテーブルの機器状態不正
 /* 20090511_abe_ST965 END*/
+/* 20090701_abe_ST529 START*/
+  cv_tkn_number_53  CONSTANT VARCHAR2(100) := 'APP-XXCSO1-00576';  -- 発注依頼明細更新エラー
+/* 20090701_abe_ST529 END*/
 
   --
   -- トークンコード
@@ -4631,6 +4636,101 @@ AS
        return('F');
   END VerifyAuthority;
 /* 20090515_abe_ST669 END*/
+/*20090701_abe_ST529 START*/
+  --
+  /**********************************************************************************
+   * Procedure Name   : update_po_req_line
+   * Description      : 発注依頼明細更新処理(A-23)
+   ***********************************************************************************/
+  PROCEDURE update_po_req_line(
+      i_requisition_rec  IN         g_requisition_rtype  -- 発注依頼情報
+    , ov_errbuf          OUT NOCOPY VARCHAR2             -- エラー・メッセージ --# 固定 #
+    , ov_retcode         OUT NOCOPY VARCHAR2             -- リターン・コード   --# 固定 #
+  ) IS
+    --
+    -- ===============================
+    -- 固定ローカル定数
+    -- ===============================
+    cv_prg_name    CONSTANT VARCHAR2(100) := 'update_po_req_line';  -- プロシージャ名
+    --
+    --#######################  固定ローカル変数宣言部 START   ######################
+    --
+    lv_errbuf     VARCHAR2(5000);  -- エラー・メッセージ
+    lv_retcode    VARCHAR2(1);     -- リターン・コード
+    --
+    --###########################  固定部 END   ####################################
+    --
+    -- ===============================
+    -- ユーザー宣言部
+    -- ===============================
+    -- *** ローカル定数 ***
+    -- トークン用定数
+    cv_tkn_val_update_proc    CONSTANT VARCHAR2(100) := '更新';
+    --
+    -- *** ローカルデータ型 ***
+    --
+    -- *** ローカル変数 ***
+    --
+    -- *** ローカル例外 ***
+    sql_expt      EXCEPTION;
+    --
+  BEGIN
+    --
+    --##################  固定ステータス初期化部 START   ###################
+    --
+    ov_retcode := cv_status_normal;
+    --
+    --###########################  固定部 END   ############################
+    --
+    --------------------------------------------------
+    -- 発注依頼明細更新処理
+    --------------------------------------------------
+    BEGIN
+      UPDATE po_requisition_lines_all
+      SET    transaction_reason_code = i_requisition_rec.un_number
+      WHERE  requisition_line_id     = i_requisition_rec.requisition_line_id
+      ;
+    EXCEPTION
+      WHEN OTHERS THEN
+        lv_errbuf := xxccp_common_pkg.get_msg(
+                         iv_application  => cv_sales_appl_short_name                   -- アプリケーション短縮名
+                       , iv_name         => cv_tkn_number_53                           -- メッセージコード
+                       , iv_token_name1  => cv_tkn_req_num                             -- トークンコード1
+                       , iv_token_value1 => i_requisition_rec.requisition_number       -- トークン値1
+                       , iv_token_name2  => cv_tkn_req_line_num                        -- トークンコード2
+                       , iv_token_value2 => i_requisition_rec.requisition_line_number  -- トークン値2
+                       , iv_token_name3  => cv_tkn_err_msg                             -- トークンコード3
+                       , iv_token_value3 => SQLERRM                                    -- トークン値3
+                     );
+        --
+        RAISE sql_expt;
+        --
+    END;
+    --
+  EXCEPTION
+    --
+    WHEN sql_expt THEN
+      -- *** SQL例外ハンドラ ***
+      ov_errbuf  := SUBSTRB( cv_pkg_name || cv_msg_cont || cv_prg_name || cv_msg_part || lv_errbuf, 1, 5000 );
+      ov_retcode := cv_status_error;
+      --
+    --#################################  固定例外処理部 START   ####################################
+    --
+    WHEN global_api_others_expt THEN
+      -- *** 共通関数OTHERS例外ハンドラ ***
+      ov_errbuf  := cv_pkg_name || cv_msg_cont || cv_prg_name || cv_msg_part || SQLERRM;
+      ov_retcode := cv_status_error;
+      --
+    WHEN OTHERS THEN
+      -- *** OTHERS例外ハンドラ ***
+      ov_errbuf  := cv_pkg_name || cv_msg_cont || cv_prg_name || cv_msg_part || SQLERRM;
+      ov_retcode := cv_status_error;
+      --
+    --
+    --#####################################  固定部 END   ##########################################
+    --
+  END update_po_req_line;
+/*20090701_abe_ST529 END*/
   --
   /**********************************************************************************
    * Procedure Name   : submain
@@ -6419,6 +6519,22 @@ AS
       END IF;
       --
 /*20090406_yabuki_ST101 END*/
+/* 20090701_abe_ST529 START*/
+      -- ========================================
+      -- A-23. 発注依頼明細更新処理
+      -- ========================================
+      update_po_req_line(
+          i_requisition_rec => l_requisition_rec  -- 発注依頼情報
+        , ov_errbuf         => lv_errbuf          -- エラー・メッセージ  --# 固定 #
+        , ov_retcode        => lv_retcode         -- リターン・コード    --# 固定 #
+      );
+      --
+      IF ( lv_retcode <> cv_status_normal ) THEN
+        RAISE reg_upd_process_expt;
+        --
+      END IF;
+      --
+/* 20090701_abe_ST529 END*/
       --
 /*20090416_yabuki_ST398 START*/
     ----------------------------------------------------------------------
