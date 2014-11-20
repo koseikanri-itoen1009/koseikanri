@@ -7,7 +7,7 @@ AS
  * Description      : 支給依頼取込処理
  * MD.050           : 取引先オンライン T_MD050_BPO_940
  * MD.070           : 支給依頼取込処理 T_MD070_BPO_94F
- * Version          : 1.11
+ * Version          : 1.12
  *
  * Program List
  * -------------------------- ------------------------------------------------------------
@@ -45,6 +45,7 @@ AS
  *  2008/10/31    1.9   Oracle 伊藤ひとみ  統合テスト指摘528対応
  *  2009/02/09    1.10  SCS    吉田 夏樹   本番#15対応
  *  2009/06/08    1.11  SCS    伊藤ひとみ  本番#1526対応
+ *  2009/09/03    1.12  SCS    伊藤ひとみ  本番#1635対応
  *****************************************************************************************/
 --
 --#######################  固定グローバル定数宣言部 START   #######################
@@ -2329,6 +2330,9 @@ AS
           RAISE global_api_expt;
 --
         END IF;
+-- 2009/09/03 H.Itou Add Start 本番障害#1635 品目がNULLでない場合も前レコードの品目コードは必要。
+        gv_before_item_no := gt_item_code_tbl(gn_j);
+-- 2009/09/03 H.Itou Add End
 --
       ELSE
         gv_before_item_no := gt_item_code_tbl(gn_j);
@@ -4015,7 +4019,7 @@ AS
     <<normal_request_no>>
     FOR ln_loop_cnt IN 1..gt_ph_request_no_tbl.COUNT
     LOOP
-      FND_FILE.PUT_LINE(FND_FILE.LOG, '作成依頼No：' || gt_ph_request_no_tbl(gn_i));
+      FND_FILE.PUT_LINE(FND_FILE.LOG, '作成依頼No：' || gt_ph_request_no_tbl(ln_loop_cnt));
     END LOOP normal_request_no;
 -- 2009/06/08 v.1.11 Add End
 --
