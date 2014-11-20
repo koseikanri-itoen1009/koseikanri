@@ -27,6 +27,7 @@ AS
  *  Date          Ver.  Editor           Description
  * ------------- ----- ---------------- -------------------------------------------------
  *  2008/06/18    1.0   Oracle 大橋 孝郎 初回作成
+ *  2008/08/01    1.1   Oracle 吉田 夏樹 ST不具合対応&PT対応
  *****************************************************************************************/
 --
 --#######################  固定グローバル定数宣言部 START   #######################
@@ -785,6 +786,11 @@ AS
     lv_target_flg        VARCHAR2(1);         -- 対象データフラグ
     ln_stock_vol         NUMBER;              -- 手持在庫数
     ln_supply_stock_plan NUMBER;              -- 入庫予定数
+-- 2008/08/01 PT対応 1.1 modify start
+    ln_vendor_code       VARCHAR2(4);         -- 取引先コード(ブレイク用)
+    ln_item_no           VARCHAR2(7);         -- 品目コード(ブレイク用)
+    ln_lot_no            VARCHAR2(10);        -- ロットNo.(ブレイク用)
+-- 2008/08/01 PT対応 1.1 modify end
 --
     -- *** ローカル・カーソル ***
     CURSOR mst_data_cur
@@ -847,19 +853,14 @@ AS
               FROM   xxcmn_item_mst_v ximv,          -- OPM品目マスタ情報VIEW
                      ic_lots_mst ilm,                -- OPMロットマスタ
                      xxcmn_item_locations_v  xilv,   -- OPM保管場所情報VIEW
-                     xxcmn_item_categories5_v xicv1, -- OPM品目カテゴリ割当情報VIEW5
-                     xxcmn_item_categories5_v xicv2  -- OPM品目カテゴリ割当情報VIEW5
+                     xxcmn_item_categories5_v xicv   -- OPM品目カテゴリ割当情報VIEW5
+-- 2008/08/01 PT対応 1.1 modify(カテゴリVIEW削除)
               WHERE  ximv.item_id            = ilm.item_id
               -- 品目区分(必須)
-              AND    xicv1.item_class_code   = gv_item_class
+              AND    xicv.item_class_code    = gv_item_class
               -- 商品区分(必須)
-              AND    xicv1.prod_class_code   = gv_prod_class
-              -- 品目区分(必須)
-              AND    xicv2.item_class_code   = gv_item_class
-              -- 商品区分(必須)
-              AND    xicv2.prod_class_code   = gv_prod_class
-              AND    xicv1.item_id           = ximv.item_id
-              AND    xicv2.item_id           = ximv.item_id
+              AND    xicv.prod_class_code    = gv_prod_class
+              AND    xicv.item_id            = ximv.item_id
               AND  ((ximv.lot_ctl            = gv_lot_code1
                 AND  ilm.lot_id             <> cn_zero)
                 OR   ximv.lot_ctl            = gv_lot_code0)) iiim,
@@ -899,7 +900,10 @@ AS
                             )
                           )
                         -- 検索条件：倉庫が未入力
-                        OR (gv_whse IS NULL)
+                        OR (gv_whse IS NULL
+-- 2008/08/01 PT対応 1.1 modify start
+                        AND xilv_fr.segment1 = iiim.segment1)
+-- 2008/08/01 PT対応 1.1 modify end)
                         )
                    )
       -- 仕入先ユーザータイプ
@@ -918,9 +922,15 @@ AS
                     AND (
                           -- 検索条件：倉庫が入力済
                           (gv_whse IS NOT NULL
-                      AND xilv_fr.segment1 = gv_whse)
+                      AND xilv_fr.segment1 = gv_whse
+-- 2008/08/01 PT対応 1.1 modify start
+                      AND xilv_fr.segment1 = iiim.segment1)
+-- 2008/08/01 PT対応 1.1 modify end
                       -- 検索条件：倉庫が未入力
-                      OR (gv_whse IS NULL)
+                      OR (gv_whse IS NULL
+-- 2008/08/01 PT対応 1.1 modify start
+                      AND xilv_fr.segment1 = iiim.segment1)
+-- 2008/08/01 PT対応 1.1 modify end
                         )
                    )
       -- 外部倉庫ユーザータイプ
@@ -976,7 +986,10 @@ AS
                               )
                             )
                          -- 検索条件：倉庫が未入力
-                          OR( gv_whse IS NULL )
+                          OR( gv_whse IS NULL
+-- 2008/08/01 PT対応 1.1 modify start
+                          AND xilv_fr.segment1 = iiim.segment1)
+-- 2008/08/01 PT対応 1.1 modify end
                         )
                    )
       -- 東洋埠頭ユーザータイプ
@@ -1013,9 +1026,15 @@ AS
                           -- 検索条件：倉庫が入力済
                           (gv_whse IS NOT NULL
                       AND xilv_fr.segment1 = gv_whse
+-- 2008/08/01 PT対応 1.1 modify start
+                      AND xilv_fr.segment1 = iiim.segment1
+-- 2008/08/01 PT対応 1.1 modify end
                           )
                       -- 検索条件：倉庫が未入力
-                      OR (gv_whse IS NULL)
+                      OR (gv_whse IS NULL
+-- 2008/08/01 PT対応 1.1 modify start
+                      AND xilv_fr.segment1 = iiim.segment1)
+-- 2008/08/01 PT対応 1.1 modify end
                         )
                    )
              )
@@ -1044,7 +1063,10 @@ AS
       AND   ((gv_r2 IS NULL) OR (iiim.attribute15 = gv_r2))
       ORDER BY TO_NUMBER(iiim.attribute8),
                iiim.item_no,
-               TO_NUMBER(iiim.lot_id);
+-- 2008/08/01 PT対応 1.1 modify start
+               --TO_NUMBER(iiim.lot_id);
+               TO_NUMBER(DECODE(iiim.lot_ctl, gv_lot_code0, '0', iiim.lot_no));
+-- 2008/08/01 PT対応 1.1 modify end
 --
     -- *** ローカル・レコード ***
     lr_mst_data_rec mst_data_cur%ROWTYPE;
@@ -1064,6 +1086,11 @@ AS
     -- ***************************************
 --
     ln_cnt := 1;
+-- 2008/08/01 PT対応 1.1 modify start
+    ln_vendor_code := NULL;
+    ln_item_no := NULL;
+    ln_lot_no := NULL;
+-- 2008/08/01 PT対応 1.1 modify end
     -- プロファイル値取得
 --
     gn_user_id             := FND_GLOBAL.USER_ID;
@@ -1081,37 +1108,47 @@ AS
       FETCH mst_data_cur INTO lr_mst_data_rec;
       EXIT WHEN mst_data_cur%NOTFOUND;
 --
-      ln_stock_vol := 0;
-      ln_supply_stock_plan := 0;
-      lv_target_flg := '0';
+-- 2008/08/01 PT対応 1.1 modify start
+      IF ( (ln_vendor_code IS NULL AND ln_item_no IS NULL AND ln_lot_no IS NULL)
+        OR (NOT (ln_vendor_code = lr_mst_data_rec.vendor_code
+        AND ln_item_no     = lr_mst_data_rec.item_no
+        AND ln_lot_no      = lr_mst_data_rec.lot_no))) THEN
 --
-      -- 手持在庫数、入庫予定数チェック処理
-      IF ((gv_sec_class IN(gv_sec_class_home,gv_sec_class_vend,gv_sec_class_quay)
-             AND (gv_whse IS NOT NULL))
-           OR (gv_sec_class = gv_sec_class_extn)) THEN
-        -- 手持在庫数チェック
-        ln_stock_vol := get_inv_stock_vol(
-                          lr_mst_data_rec.inventory_location_id,
-                          lr_mst_data_rec.item_no,
-                          lr_mst_data_rec.item_id,
-                          lr_mst_data_rec.lot_id,
-                          lr_mst_data_rec.loct_onhand);
+        ln_stock_vol := 0;
+        ln_supply_stock_plan := 0;
+        lv_target_flg := '0';
 --
-        -- 手持在庫数が0以外の場合
-        IF (ln_stock_vol = 0) THEN
+        -- 手持在庫数、入庫予定数チェック処理
+        IF ((gv_sec_class IN(gv_sec_class_home,gv_sec_class_vend,gv_sec_class_quay)
+               AND (gv_whse IS NOT NULL))
+             OR (gv_sec_class = gv_sec_class_extn)) THEN
+          -- 手持在庫数チェック
+          ln_stock_vol := get_inv_stock_vol(
+                            lr_mst_data_rec.inventory_location_id,
+                            lr_mst_data_rec.item_no,
+                            lr_mst_data_rec.item_id,
+                            lr_mst_data_rec.lot_id,
+                            lr_mst_data_rec.loct_onhand);
 --
-          -- 入庫予定数チェック
-          ln_supply_stock_plan := get_supply_stock_plan(
-                                    lr_mst_data_rec.segment1,
-                                    lr_mst_data_rec.inventory_location_id,
-                                    lr_mst_data_rec.item_no,
-                                    lr_mst_data_rec.item_id,
-                                    lr_mst_data_rec.lot_no,
-                                    lr_mst_data_rec.lot_id,
-                                    lr_mst_data_rec.loct_onhand);
+          -- 手持在庫数が0以外の場合
+          IF (ln_stock_vol = 0) THEN
 --
-          -- 入庫予定数が0以外の場合
-          IF (ln_supply_stock_plan != 0) THEN
+            -- 入庫予定数チェック
+            ln_supply_stock_plan := get_supply_stock_plan(
+                                      lr_mst_data_rec.segment1,
+                                      lr_mst_data_rec.inventory_location_id,
+                                      lr_mst_data_rec.item_no,
+                                      lr_mst_data_rec.item_id,
+                                      lr_mst_data_rec.lot_no,
+                                      lr_mst_data_rec.lot_id,
+                                      lr_mst_data_rec.loct_onhand);
+--
+            -- 入庫予定数が0以外の場合
+            IF (ln_supply_stock_plan != 0) THEN
+              -- 対象データ区分に'1'(対象)を設定
+              lv_target_flg := '1';
+            END IF;
+          ELSE
             -- 対象データ区分に'1'(対象)を設定
             lv_target_flg := '1';
           END IF;
@@ -1119,46 +1156,49 @@ AS
           -- 対象データ区分に'1'(対象)を設定
           lv_target_flg := '1';
         END IF;
-      ELSE
-        -- 対象データ区分に'1'(対象)を設定
-        lv_target_flg := '1';
+--
+        -- 対象データ区分が'1'(対象)の場合
+        IF (lv_target_flg = '1') THEN
+          mst_rec.segment1          := lr_mst_data_rec.segment1;           -- 保管倉庫コード
+          mst_rec.vendor_code       := lr_mst_data_rec.vendor_code;        -- 取引先
+          mst_rec.vendor_full_name  := lr_mst_data_rec.vendor_full_name;   -- 正式名(仕入先)
+          mst_rec.vendor_short_name := lr_mst_data_rec.vendor_short_name;  -- 略称(仕入先)
+          mst_rec.item_id           := lr_mst_data_rec.item_id;            -- 品目ID
+          mst_rec.item_no           := lr_mst_data_rec.item_no;            -- 品目コード
+          mst_rec.item_name         := lr_mst_data_rec.item_name;          -- 品名・正式名
+          mst_rec.item_short_name   := lr_mst_data_rec.item_short_name;    -- 品名・略称
+          mst_rec.lot_id            := lr_mst_data_rec.lot_id;             -- ロットID
+          mst_rec.lot_no            := lr_mst_data_rec.lot_no;             -- ロットNo
+          mst_rec.product_date      := lr_mst_data_rec.product_date;       -- 製造年月日
+          mst_rec.use_by_date       := lr_mst_data_rec.use_by_date;        -- 賞味期限
+          mst_rec.original_char     := lr_mst_data_rec.original_char;      -- 固有記号
+          mst_rec.manu_factory      := lr_mst_data_rec.manu_factory;       -- 製造工場
+          mst_rec.manu_lot          := lr_mst_data_rec.manu_lot;           -- 製造ロット
+          mst_rec.home              := lr_mst_data_rec.home;               -- 産地
+          mst_rec.rank1             := lr_mst_data_rec.rank1;              -- ランク1
+          mst_rec.rank2             := lr_mst_data_rec.rank2;              -- ランク2
+          mst_rec.description       := lr_mst_data_rec.description;        -- 摘要
+          mst_rec.qt_inspect_req_no := lr_mst_data_rec.qt_inspect_req_no;  -- 検査依頼番号
+          mst_rec.inspect_due_date1 := lr_mst_data_rec.inspect_due_date1;  -- 検査予定日1
+          mst_rec.test_date1        := lr_mst_data_rec.test_date1;         -- 検査日1
+          mst_rec.qt_effect1        := lr_mst_data_rec.qt_effect1;         -- 結果1
+          mst_rec.inspect_due_date2 := lr_mst_data_rec.inspect_due_date2;  -- 検査予定日2
+          mst_rec.test_date2        := lr_mst_data_rec.test_date2;         -- 検査日2
+          mst_rec.qt_effect2        := lr_mst_data_rec.qt_effect2;         -- 結果2
+          mst_rec.inspect_due_date3 := lr_mst_data_rec.inspect_due_date3;  -- 検査予定日3
+          mst_rec.test_date3        := lr_mst_data_rec.test_date3;         -- 検査日3
+          mst_rec.qt_effect3        := lr_mst_data_rec.qt_effect3;         -- 結果3
+--
+          gt_master_tbl(ln_cnt) := mst_rec;
+          ln_cnt := ln_cnt + 1;
+        END IF;
+--
       END IF;
 --
-      -- 対象データ区分が'1'(対象)の場合
-      IF (lv_target_flg = '1') THEN
-        mst_rec.segment1          := lr_mst_data_rec.segment1;           -- 保管倉庫コード
-        mst_rec.vendor_code       := lr_mst_data_rec.vendor_code;        -- 取引先
-        mst_rec.vendor_full_name  := lr_mst_data_rec.vendor_full_name;   -- 正式名(仕入先)
-        mst_rec.vendor_short_name := lr_mst_data_rec.vendor_short_name;  -- 略称(仕入先)
-        mst_rec.item_id           := lr_mst_data_rec.item_id;            -- 品目ID
-        mst_rec.item_no           := lr_mst_data_rec.item_no;            -- 品目コード
-        mst_rec.item_name         := lr_mst_data_rec.item_name;          -- 品名・正式名
-        mst_rec.item_short_name   := lr_mst_data_rec.item_short_name;    -- 品名・略称
-        mst_rec.lot_id            := lr_mst_data_rec.lot_id;             -- ロットID
-        mst_rec.lot_no            := lr_mst_data_rec.lot_no;             -- ロットNo
-        mst_rec.product_date      := lr_mst_data_rec.product_date;       -- 製造年月日
-        mst_rec.use_by_date       := lr_mst_data_rec.use_by_date;        -- 賞味期限
-        mst_rec.original_char     := lr_mst_data_rec.original_char;      -- 固有記号
-        mst_rec.manu_factory      := lr_mst_data_rec.manu_factory;       -- 製造工場
-        mst_rec.manu_lot          := lr_mst_data_rec.manu_lot;           -- 製造ロット
-        mst_rec.home              := lr_mst_data_rec.home;               -- 産地
-        mst_rec.rank1             := lr_mst_data_rec.rank1;              -- ランク1
-        mst_rec.rank2             := lr_mst_data_rec.rank2;              -- ランク2
-        mst_rec.description       := lr_mst_data_rec.description;        -- 摘要
-        mst_rec.qt_inspect_req_no := lr_mst_data_rec.qt_inspect_req_no;  -- 検査依頼番号
-        mst_rec.inspect_due_date1 := lr_mst_data_rec.inspect_due_date1;  -- 検査予定日1
-        mst_rec.test_date1        := lr_mst_data_rec.test_date1;         -- 検査日1
-        mst_rec.qt_effect1        := lr_mst_data_rec.qt_effect1;         -- 結果1
-        mst_rec.inspect_due_date2 := lr_mst_data_rec.inspect_due_date2;  -- 検査予定日2
-        mst_rec.test_date2        := lr_mst_data_rec.test_date2;         -- 検査日2
-        mst_rec.qt_effect2        := lr_mst_data_rec.qt_effect2;         -- 結果2
-        mst_rec.inspect_due_date3 := lr_mst_data_rec.inspect_due_date3;  -- 検査予定日3
-        mst_rec.test_date3        := lr_mst_data_rec.test_date3;         -- 検査日3
-        mst_rec.qt_effect3        := lr_mst_data_rec.qt_effect3;         -- 結果3
---
-        gt_master_tbl(ln_cnt) := mst_rec;
-        ln_cnt := ln_cnt + 1;
-      END IF;
+      ln_vendor_code := lr_mst_data_rec.vendor_code;
+      ln_item_no     := lr_mst_data_rec.item_no;
+      ln_lot_no      := lr_mst_data_rec.lot_no;
+-- 2008/08/01 PT対応 1.1 modify end
 --
     END LOOP mst_data_loop;
 --

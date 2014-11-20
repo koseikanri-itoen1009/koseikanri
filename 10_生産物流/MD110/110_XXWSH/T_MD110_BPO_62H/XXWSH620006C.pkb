@@ -7,7 +7,7 @@ AS
  * Description      : 出庫調整表
  * MD.050           : 引当/配車(帳票) T_MD050_BPO_621
  * MD.070           : 出庫調整表 T_MD070_BPO_62H
- * Version          : 1.2
+ * Version          : 1.4
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -32,6 +32,11 @@ AS
  *  2008/04/18    1.0   Nozomi Kashiwagi 新規作成
  *  2008/06/04    1.1   Jun Nakada       クイックコード警告区分の結合を外部結合に変更(出荷移動)
  *  2008/6/20     1.2   Y.Shindo         配送区分情報VIEW2の結合を外部結合に変更
+ *  2008/07/03    1.3   Akiyoshi Shiina  変更要求対応#92
+ *                                       禁則文字「'」「"」「<」「>」「＆」対応
+ *  2008/07/10    1.4   Naoki Fukuda     移動の換算単位不具合対応
+ *  2008/07/16    1.5   Kazuo Kumamoto   結合テスト障害対応(配送No未設定時は依頼No毎に運送業者情報を出力)
+ *
  *****************************************************************************************/
 --
 --#######################  固定グローバル定数宣言部 START   #######################
@@ -252,6 +257,10 @@ AS
     -- 明細部(配送No単位合計項目)
     ,deli_eff_weight                xcs.loading_efficiency_weight%TYPE    -- 重量積載効率
     ,deli_eff_capacity              xcs.loading_efficiency_capacity%TYPE  -- 容積積載効率
+-- 2008/07/03 A.Shiina v1.3 ADD Start
+    ,freight_charge_code            xlv.lookup_code%TYPE                  -- 運賃区分(コード)
+    ,complusion_output_kbn          xcv.complusion_output_code%TYPE       -- 強制出力区分
+-- 2008/07/03 A.Shiina v1.3 ADD Start
   );
   type_report_data      rec_report_data;
   TYPE list_report_data IS TABLE OF rec_report_data INDEX BY BINARY_INTEGER ;
@@ -599,6 +608,10 @@ AS
         ,xoha.loading_efficiency_capacity  AS  req_eff_capacity      -- 容積積載効率(依頼No単位)
         ,xcs.loading_efficiency_weight     AS  deli_eff_weight       -- 重量積載効率(配送No単位)
         ,xcs.loading_efficiency_capacity   AS  deli_eff_capacity     -- 容積積載効率(配送No単位)
+-- 2008/07/03 A.Shiina v1.3 ADD Start
+        ,xlv1.lookup_code                  AS  freight_charge_code   -- 運賃区分(コード)
+        ,xcv.complusion_output_code        AS  complusion_output_kbn -- 強制出力区分
+-- 2008/07/03 A.Shiina v1.3 ADD End
       FROM
          xxwsh_order_headers_all        xoha    -- 01:受注ヘッダアドオン
         ,xxwsh_order_lines_all          xola    -- 02:受注明細アドオン
@@ -814,12 +827,24 @@ AS
            )
            ELSE  xmril.instruct_qty
          END                     AS  qty --数量
+        -- 2008/07/10 Fukuda Start --------------------------------------
+        --,CASE
+        --  -- 入出庫換算単位が未設定の場合
+        --  WHEN ximv.conv_unit IS NULL THEN ximv.item_um
+        --  -- 入出庫換算単位が設定済の場合
+        --  ELSE ximv.conv_unit
+        -- END                     AS  qty_tani            --数量_単位
+        --
         ,CASE
-          -- 入出庫換算単位が未設定の場合
-          WHEN ximv.conv_unit IS NULL THEN ximv.item_um
-          -- 入出庫換算単位が設定済の場合
-          ELSE ximv.conv_unit
+           -- 入出庫換算単位が設定済み かつ ドリンク製品の場合
+           WHEN (ximv.conv_unit IS NOT NULL
+              AND  xicv.item_class_code = gc_item_cd_prdct
+              AND  xicv.prod_class_code = gc_prod_cd_drink
+           ) THEN ximv.conv_unit
+           ELSE ximv.item_um
          END                     AS  qty_tani            --数量_単位
+        -- 2008/07/10 Fukuda END --------------------------------------------
+        --
         ,xmril.pallet_quantity   AS  pallet_quantity     --パレット枚数
         ,xmril.layer_quantity    AS  layer_quantity      --段数
         ,xmril.case_quantity     AS  case_quantity       --ケース数
@@ -854,6 +879,10 @@ AS
         ,xmrih.loading_efficiency_capacity  AS  req_eff_capacity      -- 容積積載効率(依頼No単位)
         ,xcs.loading_efficiency_weight      AS  deli_eff_weight       -- 重量積載効率(配送No単位)
         ,xcs.loading_efficiency_capacity    AS  deli_eff_capacity     -- 容積積載効率(配送No単位)
+-- 2008/07/03 A.Shiina v1.3 ADD Start
+        ,xlv1.lookup_code                   AS  freight_charge_code   -- 運賃区分(コード)
+        ,xcv.complusion_output_code         AS  complusion_output_kbn -- 強制出力区分
+-- 2008/07/03 A.Shiina v1.3 ADD End
       FROM
              xxinv_mov_req_instr_headers    xmrih     -- 01:移動依頼/指示ヘッダ(アドオン)
             ,xxinv_mov_req_instr_lines      xmril     -- 02:移動依頼/指示明細(アドオン)
@@ -1157,8 +1186,13 @@ AS
         prc_set_tag_data('arrive_date'    , TO_CHAR(it_data(i).arrive_date, gc_date_fmt_ymd));
         prc_set_tag_data('delivery_kbn'   , it_data(i).shipping_method_code);
         prc_set_tag_data('delivery_nm'    , it_data(i).shipping_method_name);
+-- 2008/07/03 A.Shiina v1.3 Update Start
+       IF  ((it_data(i).freight_charge_code  = '1')
+        OR (it_data(i).complusion_output_kbn = '1')) THEN
         prc_set_tag_data('carrier_cd'     , it_data(i).career_code);
         prc_set_tag_data('carrier_nm'     , it_data(i).career_name);
+       END IF;
+-- 2008/07/03 A.Shiina v1.3 Update End
         prc_set_tag_data('freight_kbn_nm' , it_data(i).freight_charge_name);
         prc_set_tag_data('lg_req_move_info');
       END IF ;
@@ -1230,9 +1264,19 @@ AS
         END IF ;
 --
         -- 配送No
-        IF (NVL(lv_tmp_delivery_no,'NULL') = NVL(it_data(i + 1).delivery_no,'NULL')) THEN
+--mod start 1.5
+--        IF (NVL(lv_tmp_delivery_no,'NULL') = NVL(it_data(i + 1).delivery_no,'NULL')) THEN
+        IF (lv_tmp_delivery_no = it_data(i + 1).delivery_no) THEN
+--mod end 1.5
+          --配送Noが設定されており、前レコードと同じ場合は同一グループ
           lb_dispflg_delivery_no := FALSE ;
+--add start 1.5
+        ELSIF (it_data(i + 1).delivery_no IS NULL AND lb_dispflg_req_move_no = FALSE) THEN
+          --配送Noが未設定で、依頼Noが前レコードと同じ場合は同一グループ
+          lb_dispflg_delivery_no := FALSE ;
+--add end 1.5
         ELSE
+          --上記以外(配送Noが異なる、配送Noが未設定で依頼Noが前レコードと同じ)は別グループ
           lb_dispflg_delivery_no := TRUE ;
           lb_dispflg_req_move_no := TRUE ;
         END IF ;
@@ -1473,7 +1517,8 @@ AS
 --
     --データの場合
     IF (ir_xml.tag_type = 'D') THEN
-      lv_data := '<'|| ir_xml.tag_name || '>' || ir_xml.tag_value || '</' || ir_xml.tag_name || '>';
+      lv_data :=
+    '<'|| ir_xml.tag_name || '><![CDATA[' || ir_xml.tag_value || ']]></' || ir_xml.tag_name || '>';
     ELSE
       lv_data := '<' || ir_xml.tag_name || '>';
     END IF ;

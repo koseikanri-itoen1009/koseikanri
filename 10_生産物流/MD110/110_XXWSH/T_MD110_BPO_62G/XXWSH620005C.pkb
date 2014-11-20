@@ -7,7 +7,7 @@ AS
  * Description      : 出庫指示確認表
  * MD.050           : 引当/配車(帳票) T_MD050_BPO_621
  * MD.070           : 出庫指示確認表 T_MD070_BPO_62G
- * Version          : 1.4
+ * Version          : 1.6
  *
  * Program List
  * ---------------------------- ----------------------------------------------------------
@@ -32,6 +32,9 @@ AS
  *  2008/06/17    1.2   Masao Hokkanji        システムテスト不具合No150対応
  *  2008/06/18    1.3   Kazuo Kumamoto        事業所情報VIEWの結合を外部結合に変更
  *  2008/06/19    1.4   SCS yamane            配車配送情報VIEWの結合を外部結合に変更
+ *  2008/07/02    1.5   Akiyoshi Shiina       変更要求対応#92
+ *                                            禁則文字「'」「"」「<」「>」「＆」対応
+ *  2008/07/11    1.6   Kazuo Kumamoto        結合テスト障害対応(単位出力制御)
  *
  *****************************************************************************************/
 --
@@ -267,6 +270,12 @@ AS
     ,loading_efficiency               NUMBER
     -- 引当区分
     ,reserved_kbn                     xxcmn_lookup_values2_v.meaning%TYPE
+-- 2008/07/02 A.Shiina v1.5 ADD Start
+    -- 運賃区分(コード)
+    ,freight_charge_code              xxcmn_lookup_values2_v.lookup_code%TYPE
+    -- 強制出力区分
+    ,complusion_output_kbn            xxcmn_carriers2_v.complusion_output_code%TYPE
+-- 2008/07/02 A.Shiina v1.5 ADD End
   );
   TYPE type_report_data_tbl IS TABLE OF type_report_data_rec INDEX BY PLS_INTEGER ;
 --
@@ -326,7 +335,7 @@ AS
 --
     --データの場合
     IF (ic_type = 'D') THEN
-      lv_convert_data := '<'||iv_name||'>'||iv_value||'</'||iv_name||'>' ;
+      lv_convert_data := '<'||iv_name||'><![CDATA['||iv_value||']]></'||iv_name||'>' ;
     ELSE
       lv_convert_data := '<'||iv_name||'>' ;
     END IF ;
@@ -666,6 +675,10 @@ AS
         gt_xml_data_table(gl_xml_idx).tag_type  := 'D' ;
         gt_xml_data_table(gl_xml_idx).tag_value := it_report_data(l_cnt).shipping_method_name;
 --
+-- 2008/07/02 A.Shiina v1.5 Update Start
+   -- 運賃区分もしくは、強制出力区分が「対象」のときに、運送会社情報を出力する。
+   IF  (it_report_data(l_cnt).freight_charge_code   = '1')
+    OR (it_report_data(l_cnt).complusion_output_kbn = '1') THEN
         -- 【データ】運送業者（コード）
         gl_xml_idx := gt_xml_data_table.COUNT + 1 ;
         gt_xml_data_table(gl_xml_idx).tag_name  := 'freight_carrier_code';
@@ -677,6 +690,8 @@ AS
         gt_xml_data_table(gl_xml_idx).tag_name  := 'freight_carrier_name';
         gt_xml_data_table(gl_xml_idx).tag_type  := 'D' ;
         gt_xml_data_table(gl_xml_idx).tag_value := it_report_data(l_cnt).freight_carrier_name;
+   END IF;
+-- 2008/07/02 A.Shiina v1.5 Update End
 --
         -- 【データ】運賃区分（名称）
         gl_xml_idx := gt_xml_data_table.COUNT + 1 ;
@@ -821,7 +836,14 @@ AS
         gl_xml_idx := gt_xml_data_table.COUNT + 1 ;
         gt_xml_data_table(gl_xml_idx).tag_name  := 'request_quantity_unit';
         gt_xml_data_table(gl_xml_idx).tag_type  := 'D' ;
-        gt_xml_data_table(gl_xml_idx).tag_value := it_report_data(l_cnt).request_quantity_unit;
+--mod start 1.5
+--        gt_xml_data_table(gl_xml_idx).tag_value := it_report_data(l_cnt).request_quantity_unit;
+        IF (it_report_data(l_cnt).request_quantity IS NOT NULL) THEN
+          gt_xml_data_table(gl_xml_idx).tag_value := it_report_data(l_cnt).request_quantity_unit;
+        ELSE
+          gt_xml_data_table(gl_xml_idx).tag_value := NULL;
+        END IF;
+--mod end 1.5
 --
         IF (it_report_data(l_cnt).request_quantity = it_report_data(l_cnt).quantity) THEN
           NULL;
@@ -839,7 +861,14 @@ AS
           gl_xml_idx := gt_xml_data_table.COUNT + 1 ;
           gt_xml_data_table(gl_xml_idx).tag_name  := 'quantity_unit';
           gt_xml_data_table(gl_xml_idx).tag_type  := 'D' ;
-          gt_xml_data_table(gl_xml_idx).tag_value := it_report_data(l_cnt).request_quantity_unit;
+--mod start 1.5
+--          gt_xml_data_table(gl_xml_idx).tag_value := it_report_data(l_cnt).request_quantity_unit;
+          IF (it_report_data(l_cnt).quantity IS NOT NULL) THEN
+            gt_xml_data_table(gl_xml_idx).tag_value := it_report_data(l_cnt).request_quantity_unit;
+          ELSE
+            gt_xml_data_table(gl_xml_idx).tag_value := NULL;
+          END IF;
+--mod end 1.5
 --
         END IF;
 --
@@ -990,7 +1019,14 @@ AS
         gl_xml_idx := gt_xml_data_table.COUNT + 1 ;
         gt_xml_data_table(gl_xml_idx).tag_name  := 'req_weight_volume_unit' ;
         gt_xml_data_table(gl_xml_idx).tag_type  := 'D' ;
-        gt_xml_data_table(gl_xml_idx).tag_value := it_report_data(l_cnt).req_weight_volume_unit ;
+--mod start 1.5
+--        gt_xml_data_table(gl_xml_idx).tag_value := it_report_data(l_cnt).req_weight_volume_unit ;
+        IF (it_report_data(l_cnt).req_weight_volume_total IS NOT NULL) THEN
+          gt_xml_data_table(gl_xml_idx).tag_value := it_report_data(l_cnt).req_weight_volume_unit ;
+        ELSE
+          gt_xml_data_table(gl_xml_idx).tag_value := NULL ;
+        END IF;
+--mod end 1.5
 --
         -- 【データ】積載効率（依頼No単位）
         gl_xml_idx := gt_xml_data_table.COUNT + 1 ;
@@ -1177,6 +1213,10 @@ AS
     || ' ,req_weight_volume_unit '          -- 依頼重量体積（単位）
     || ' ,loading_efficiency '              -- 積載効率
     || ' ,reserved_kbn '                    -- 引当区分
+-- 2008/07/02 A.Shiina v1.5 ADD Start
+    || ' ,freight_charge_code '             -- 運賃区分(コード)
+    || ' ,complusion_output_kbn '           -- 強制出力区分
+-- 2008/07/02 A.Shiina v1.5 ADD End
     ;
 --
     IF ( gr_param.gyoumu_kbn = gv_biz_type_cd_ship OR gr_param.gyoumu_kbn IS NULL ) THEN
@@ -1341,6 +1381,10 @@ AS
       || '    THEN xoha.loading_efficiency_capacity'
       || '    END                            AS  loading_efficiency'      -- 積載効率
       || ' ,xlv2v6.attribute1                AS  reserved_kbn'            -- 引当区分
+-- 2008/07/02 A.Shiina v1.5 ADD Start
+      || ' ,xlv2v1.lookup_code               AS  freight_charge_code'     -- 運賃区分(コード)
+      || ' ,xc2v.complusion_output_code      AS  complusion_output_kbn'   -- 強制出力区分
+-- 2008/07/02 A.Shiina v1.5 ADD End
       ;
 --
       -- ================================================================================
@@ -1735,6 +1779,10 @@ AS
       || '    THEN xmrih.loading_efficiency_capacity'
       || '    END                                 AS loading_efficiency'       -- 積載効率
       || ' ,xlv2v6.attribute1                     AS reserved_kbn'             -- 引当区分
+-- 2008/07/02 A.Shiina v1.5 ADD Start
+      || ' ,xlv2v1.lookup_code                    AS  freight_charge_code'     -- 運賃区分(コード)
+      || ' ,xc2v.complusion_output_code           AS complusion_output_kbn'    -- 強制出力区分
+-- 2008/07/02 A.Shiina v1.5 ADD End
       ;
 --
       -- ================================================================================
