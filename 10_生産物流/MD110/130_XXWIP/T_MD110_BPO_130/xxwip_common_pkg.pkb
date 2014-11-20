@@ -6,7 +6,7 @@ AS
  * Package Name           : xxwip_common_pkg(BODY)
  * Description            : 共通関数(XXWIP)(BODY)
  * MD.070(CMD.050)        : なし
- * Version                : 1.12
+ * Version                : 1.13
  *
  * Program List
  *  --------------------   ---- ----- --------------------------------------------------
@@ -57,6 +57,7 @@ AS
  *  2008/09/03   1.10  Oracle 二瓶 大輔   統合障害#46対応(処理日付更新関数修正)
  *  2008/09/10   1.11  Oracle 二瓶 大輔   統合障害#112対応(ロット追加・更新関数)
  *  2008/09/10   1.12  Oracle 二瓶 大輔   結合テスト指摘対応No30
+ *  2008/10/09   1.13  Oracle 二瓶 大輔   統合障害#169対応(手持在庫数量算出API(投入実績用))
  *****************************************************************************************/
 --
 --###############################  固定グローバル定数宣言部 START   ###############################
@@ -4332,10 +4333,17 @@ AS
       INTO   ln_other_qty
       FROM   ic_tran_pnd            itp
             ,xxcmn_item_locations_v xilv
-      WHERE  itp.whse_code     = xilv.whse_code
+-- 2008/10/09 v1.13 D.Nihei MOD START
+--      WHERE  itp.whse_code     = xilv.whse_code
+      WHERE  itp.location     = xilv.segment1
+-- 2008/10/09 v1.13 D.Nihei MOD END
       AND    itp.doc_id        <>in_batch_id
       AND    itp.item_id       = in_item_id
-      AND    itp.lot_id        = in_lot_id
+-- 2008/10/09 v1.13 D.Nihei MOD START
+--      AND    itp.lot_id        = in_lot_id
+      AND    itp.lot_id        = NVL(in_lot_id, 0)
+      AND    itp.doc_type      = 'PROD'
+-- 2008/10/09 v1.13 D.Nihei MOD END
       AND    itp.completed_ind = 0
       AND    itp.reverse_id    IS NULL
       AND    xilv.inventory_location_id = in_whse_id

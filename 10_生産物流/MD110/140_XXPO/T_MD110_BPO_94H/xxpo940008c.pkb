@@ -7,7 +7,7 @@ AS
  * Description      : ロット引当情報取込処理
  * MD.050           : 取引先オンライン T_MD050_BPO_940
  * MD.070           : ロット引当情報取込処理 T_MD070_BPO_94H
- * Version          : 1.3
+ * Version          : 1.4
  * Program List
  * --------------------------- ----------------------------------------------------------
  *  Name                        Description
@@ -36,7 +36,7 @@ AS
  *  2008/07/22    1.1  Oracle 吉田夏樹   内部課題#32、#66、内部変更#166対応
  *  2008/07/29    1.2  Oracle 吉田夏樹   ST不具合対応(採番なし)
  *  2008/08/22    1.3  Oracle 山根一浩   T_TE080_BPO_940 指摘4,指摘5,指摘17対応
- *
+ *  2008/10/08    1.4  Oracle 伊藤ひとみ 統合テスト指摘240対応
  *****************************************************************************************/
 --
 --#######################  固定グローバル定数宣言部 START   #######################
@@ -1898,7 +1898,10 @@ AS
                              lv_errmsg,                            -- エラーメッセージ
                              gt_pl_weight_tbl(gn_j),               -- 合計重量
                              gt_pl_capacity_tbl(gn_j),             -- 合計容積
-                             gt_pl_pallet_weight_tbl(gn_j)         -- 合計パレット重量
+                             gt_pl_pallet_weight_tbl(gn_j),        -- 合計パレット重量
+-- 2008/10/08 H.Itou Add Start 統合テスト指摘240
+                             TRUNC(SYSDATE)
+-- 2008/10/08 H.Itou Add End
                             );
 --
       -- 共通関数でエラーの場合
@@ -1920,6 +1923,10 @@ AS
         lv_errbuf := lv_errmsg;
         RAISE global_api_expt;
       END IF;
+--
+      gt_pl_weight_tbl(gn_j)        := NVL(gt_pl_weight_tbl(gn_j), 0);
+      gt_pl_capacity_tbl(gn_j)      := NVL(gt_pl_capacity_tbl(gn_j), 0);
+      gt_pl_pallet_weight_tbl(gn_j) := NVL(gt_pl_pallet_weight_tbl(gn_j), 0);
 --
       -- 総合計重量
       gt_ph_sum_weight_tbl(gn_k) :=

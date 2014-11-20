@@ -7,7 +7,7 @@ AS
  * Description      : 支給依頼取込処理
  * MD.050           : 取引先オンライン T_MD050_BPO_940
  * MD.070           : 支給依頼取込処理 T_MD070_BPO_94F
- * Version          : 1.7
+ * Version          : 1.8
  *
  * Program List
  * -------------------------- ------------------------------------------------------------
@@ -41,6 +41,7 @@ AS
  *  2008/07/29    1.5   Oracle 椎名      ST不具合対応
  *  2008/07/30    1.6   Oracle 椎名      ST不具合対応
  *  2008/08/28    1.7   Oracle 山根一浩  T_TE080_BPO_940 指摘16対応
+ *  2008/10/08    1.8   Oracle 伊藤ひとみ統合テスト指摘240対応
  *****************************************************************************************/
 --
 --#######################  固定グローバル定数宣言部 START   #######################
@@ -2602,7 +2603,10 @@ AS
                              lv_errmsg,                           -- エラーメッセージ
                              gt_l_sum_weight_tbl(gn_j),           -- 合計重量
                              gt_l_sum_capacity_tbl(gn_j),         -- 合計容積
-                             ln_sum_pallet_weight                 -- 合計パレット重量
+                             ln_sum_pallet_weight,                -- 合計パレット重量
+-- 2008/10/08 H.Itou Add Start 統合テスト指摘240
+                             TRUNC(gd_standard_date)              -- 基準日
+-- 2008/10/08 H.Itou Add End
                             );
 --
       -- 共通関数でエラーの場合
@@ -2616,6 +2620,9 @@ AS
 -- 2008/07/24 v1.4 End
         RAISE global_api_expt;
       END IF;
+--
+      gt_l_sum_weight_tbl(gn_j)   := NVL(gt_l_sum_weight_tbl(gn_j), 0);
+      gt_l_sum_capacity_tbl(gn_j) := NVL(gt_l_sum_capacity_tbl(gn_j), 0);
 --
       -- 総合計重量
       gt_h_sum_weight_tbl(gn_i) :=
