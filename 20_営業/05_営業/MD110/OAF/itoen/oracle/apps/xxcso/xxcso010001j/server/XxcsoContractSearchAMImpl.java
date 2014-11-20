@@ -7,6 +7,7 @@
 * 日付       Ver. 担当者       修正内容
 * ---------- ---- ------------ ----------------------------------------------
 * 2008-10-31 1.0  SCS及川領    新規作成
+* 2009-05-26 1.1  SCS柳平直人  [ST障害T1_1165]明細チェック障害対応
 *============================================================================
 */
 package itoen.oracle.apps.xxcso.xxcso010001j.server;
@@ -24,6 +25,9 @@ import oracle.apps.fnd.framework.server.OADBTransaction;
 import java.sql.SQLException;
 import com.sun.java.util.collections.List;
 import com.sun.java.util.collections.ArrayList;
+// 2009-05-26 [ST障害T1_1165] Add Start
+import oracle.jbo.domain.Number;
+// 2009-05-26 [ST障害T1_1165] Add End
 
 /*******************************************************************************
  * 契約書を検索するためのアプリケーション・モジュールクラスです。
@@ -253,145 +257,375 @@ public class XxcsoContractSearchAMImpl extends OAApplicationModuleImpl
    */
   public Boolean selCheck(String mode)
   {
+// 2009-05-26 [ST障害T1_1165] Del Start
+//    Boolean returnValue = Boolean.TRUE;
+//
+//    //検索結果から選択されているレコードを判定し、パラメータとして返す
+//    XxcsoContractSummaryVOImpl summaryVo = getXxcsoContractSummaryVO1();
+//    if ( summaryVo == null )
+//    {
+//      throw XxcsoMessage.createInstanceLostError("XxcsoContractSummaryVOImpl");
+//    }
+//
+//    XxcsoContractSummaryVORowImpl summaryRow
+//      = (XxcsoContractSummaryVORowImpl)summaryVo.first();
+//
+//    if ( summaryRow == null )
+//    {
+//      throw
+//        XxcsoMessage.createInstanceLostError("XxcsoContractSummaryVORowImpl");
+//    }
+//
+//    //ループカウント用
+//    int i = 0;
+//    //権限エラー番号
+//    String errorno = null;
+//
+//    //明細選択チェック
+//    while ( summaryRow != null )
+//    {
+//      if ( "Y".equals(summaryRow.getSelectFlag()) )
+//      {
+//        //チェックカウント
+//        i = ++i;
+//
+//        // XxcsoContractAuthorityCheckVO1インスタンスの取得
+//        XxcsoContractAuthorityCheckVOImpl checkVo
+//          = getXxcsoContractAuthorityCheckVO1();
+//        if ( checkVo == null )
+//        {
+//          throw XxcsoMessage.createInstanceLostError
+//            ("XxcsoContractAuthorityCheckVOImpl");
+//        }
+//
+//        //権限チェックパッケージCALL
+//        checkVo.getAuthority(
+//          summaryRow.getSpDecisionHeaderId()
+//        );
+//
+//        XxcsoContractAuthorityCheckVORowImpl checkRow
+//          = (XxcsoContractAuthorityCheckVORowImpl)checkVo.first();
+//
+//        if ( checkRow == null )
+//        {
+//          throw XxcsoMessage.createInstanceLostError
+//            ("XxcsoContractAuthorityCheckVORowImpl");
+//        }
+//        //エラーとなったSP専決ヘッダIDを退避
+//        if ( XxcsoContractConstants.CONSTANT_COM_KBN0.equals(
+//               checkRow.getAuthority()) )
+//        {
+//          errorno = summaryRow.getSpDecisionHeaderNum();
+//        }
+//
+//        // PDF作成時のエラーチェック
+//        if ( XxcsoContractConstants.CONSTANT_COM_KBN3.equals(mode) )
+//        {
+//          // フォーマットチェック
+//          if ( XxcsoContractConstants.CONSTANT_COM_KBN1.equals(
+//                 summaryRow.getContractFormat())
+//             )
+//          {
+//            mMessage
+//              = XxcsoMessage.createErrorMessage(
+//                  XxcsoConstants.APP_XXCSO1_00448
+//                );
+//            returnValue = Boolean.FALSE;
+//          }
+//        }
+//        // コピー作成ボタンのマスタ連携チェック
+//        if ( XxcsoContractConstants.CONSTANT_COM_KBN1.equals(mode) &&
+//             XxcsoContractConstants.CONSTANT_COM_KBN1.equals(
+//               summaryRow.getStatuscd()) &&
+//             XxcsoContractConstants.CONSTANT_COM_KBN0.equals(
+//               summaryRow.getCooperateFlag())
+//             )
+//        {
+//          mMessage
+//            = XxcsoMessage.createErrorMessage(
+//                XxcsoConstants.APP_XXCSO1_00397
+//              );
+//          returnValue = Boolean.FALSE;
+//        }
+//      }
+//      summaryRow = (XxcsoContractSummaryVORowImpl)summaryVo.next();
+//    }
+//
+//    //mode＝コピー作成:1,詳細:2,PDF作成:3
+//    // PDF作成選択で未選択の場合
+//    if ( ( i == 0 ) &&
+//         ( XxcsoContractConstants.CONSTANT_COM_KBN3.equals(mode) ) )
+//    {
+//      mMessage
+//        = XxcsoMessage.createErrorMessage(
+//            XxcsoConstants.APP_XXCSO1_00039,
+//            XxcsoConstants.TOKEN_PARAM2,
+//            XxcsoContractConstants.MSG_CONTRACT
+//          );
+//      returnValue = Boolean.FALSE;
+//    }
+//    // 未選択or複数行選択の場合
+//    else if ( ( i == 0 ) || ( i > 1 ) )
+//    {
+//      // コピー作成
+//      if ( XxcsoContractConstants.CONSTANT_COM_KBN1.equals(mode) )
+//      {
+//        mMessage
+//          = XxcsoMessage.createErrorMessage(
+//              XxcsoConstants.APP_XXCSO1_00037,
+//              XxcsoConstants.TOKEN_BUTTON,
+//              XxcsoContractConstants.MSG_COPY_CREATE
+//            );
+//        returnValue = Boolean.FALSE;
+//      }
+//      // 詳細
+//      else if ( XxcsoContractConstants.CONSTANT_COM_KBN2.equals(mode) )
+//      {
+//        mMessage
+//          = XxcsoMessage.createErrorMessage(
+//              XxcsoConstants.APP_XXCSO1_00037,
+//              XxcsoConstants.TOKEN_BUTTON,
+//              XxcsoContractConstants.MSG_DETAILS
+//            );
+//        returnValue = Boolean.FALSE;
+//      }
+//    }
+//
+//    //権限エラー
+//    if ( ( i == 1 ) && ( errorno != null  ) )
+//    {
+//      // コピー作成
+//      if ( XxcsoContractConstants.CONSTANT_COM_KBN1.equals(mode) )
+//      {
+//        mMessage
+//          = XxcsoMessage.createErrorMessage(
+//              XxcsoConstants.APP_XXCSO1_00232,
+//              XxcsoConstants.TOKEN_REF_OBJECT,
+//              XxcsoContractConstants.MSG_SP_DECISION,
+//              XxcsoConstants.TOKEN_CRE_OBJECT,
+//              XxcsoContractConstants.MSG_CONTRACT
+//            );
+//        returnValue = Boolean.FALSE;
+//      }
+//      // PDF作成
+//      else if ( XxcsoContractConstants.CONSTANT_COM_KBN3.equals(mode) )
+//      {
+//        mMessage
+//          = XxcsoMessage.createErrorMessage(
+//              XxcsoConstants.APP_XXCSO1_00232,
+//              XxcsoConstants.TOKEN_REF_OBJECT,
+//              XxcsoContractConstants.MSG_CONTRACT,
+//              XxcsoConstants.TOKEN_CRE_OBJECT,
+//              XxcsoContractConstants.MSG_PDF_CREATE
+//            );
+//        returnValue = Boolean.FALSE;
+//      }
+//    }
+//
+//    //先頭行にカーソルを戻す
+//    summaryVo.first();
+//
+//    return returnValue;
+// 2009-05-26 [ST障害T1_1165] Del End
+// 2009-05-26 [ST障害T1_1165] Add Start
+    // メソッド内リテラル値
+    final String CONTRACT_NUMBER       = "CONTRACT_NUBMER";
+    final String CONTRACT_FORMAT       = "CONTRACT_FORMAT";
+    final String SP_DECISION_HEADER_ID = "SP_DECISION_HEADER_ID";
+    final String SP_DECISION_NUMBER    = "SP_DECISION_NUMBER";
+    final String STATUS_CODE           = "STATUS_CODE";
+    final String COOPERATE_FLAG        = "COOPERATE_FLAG";
+
     Boolean returnValue = Boolean.TRUE;
 
-    //検索結果から選択されているレコードを判定し、パラメータとして返す
-    XxcsoContractSummaryVOImpl summaryVo = getXxcsoContractSummaryVO1();
-    if ( summaryVo == null )
+    XxcsoContractSummaryVOImpl sumVo = getXxcsoContractSummaryVO1();
+    if ( sumVo == null )
     {
-      throw XxcsoMessage.createInstanceLostError("XxcsoContractSummaryVOImpl");
+      throw
+        XxcsoMessage.createInstanceLostError("XxcsoContractSummaryVOImpl");
     }
 
-    XxcsoContractSummaryVORowImpl summaryRow
-      = (XxcsoContractSummaryVORowImpl)summaryVo.first();
-
-    if ( summaryRow == null )
+    XxcsoContractSummaryVORowImpl sumRow
+      = (XxcsoContractSummaryVORowImpl) sumVo.first();
+    if ( sumRow == null )
     {
       throw
         XxcsoMessage.createInstanceLostError("XxcsoContractSummaryVORowImpl");
     }
 
-    //ループカウント用
-    int i = 0;
-    //権限エラー番号
-    String errorno = null;
-
-    //明細選択チェック
-    while ( summaryRow != null )
+    // 選択行のListを作成
+    List selList = new ArrayList();
+    while ( sumRow != null )
     {
-      if ( "Y".equals(summaryRow.getSelectFlag()) )
+      if ( "Y".equals( sumRow.getSelectFlag() ) )
       {
-        //チェックカウント
-        i = ++i;
+        HashMap map = new HashMap(3);
+        map.put( CONTRACT_NUMBER,       sumRow.getContractNumber()            );
+        map.put( CONTRACT_FORMAT,       sumRow.getContractFormat()            );
+        map.put( SP_DECISION_HEADER_ID, sumRow.getSpDecisionHeaderId()        );
+        map.put( SP_DECISION_NUMBER,    sumRow.getSpDecisionHeaderNum()       );
+        map.put( STATUS_CODE,           sumRow.getStatuscd()                  );
+        map.put( COOPERATE_FLAG,        sumRow.getCooperateFlag()             );
+        selList.add( map );
+      }
+      sumRow = (XxcsoContractSummaryVORowImpl) sumVo.next();
+    }
 
-        // XxcsoContractAuthorityCheckVO1インスタンスの取得
-        XxcsoContractAuthorityCheckVOImpl checkVo
-          = getXxcsoContractAuthorityCheckVO1();
-        if ( checkVo == null )
+    // 先頭行にカーソルを戻す
+    sumVo.first();
+
+    ////////////////////
+    // 明細選択チェック
+    ////////////////////
+    int listSize = selList.size();
+    // 明細選択が0件
+    if ( listSize == 0
+      && XxcsoContractConstants.CONSTANT_COM_KBN3.equals(mode)
+    )
+    {
+      // PDF作成ボタン
+      mMessage
+        = XxcsoMessage.createErrorMessage(
+            XxcsoConstants.APP_XXCSO1_00039
+           ,XxcsoConstants.TOKEN_PARAM2
+           ,XxcsoContractConstants.MSG_CONTRACT
+          );
+      returnValue = Boolean.FALSE;
+    }
+    // 明細が0件、または複数選択の場合
+    else if ( listSize == 0 || listSize > 1 )
+    {
+      if ( XxcsoContractConstants.CONSTANT_COM_KBN1.equals(mode) )
+      {
+        // コピー作成
+        mMessage
+          = XxcsoMessage.createErrorMessage(
+              XxcsoConstants.APP_XXCSO1_00037
+             ,XxcsoConstants.TOKEN_BUTTON
+             ,XxcsoContractConstants.MSG_COPY_CREATE
+            );
+        returnValue = Boolean.FALSE;
+      }
+      else if ( XxcsoContractConstants.CONSTANT_COM_KBN2.equals(mode) )
+      {
+        // 詳細
+        mMessage
+          = XxcsoMessage.createErrorMessage(
+              XxcsoConstants.APP_XXCSO1_00037
+             ,XxcsoConstants.TOKEN_BUTTON
+             ,XxcsoContractConstants.MSG_DETAILS
+            );
+        returnValue = Boolean.FALSE;
+      }
+    }
+
+    // 明細選択部分までで一旦エラー処理を終了
+    // ※詳細ボタン押下については別途マスタ連携チェックを行うため終了
+    if ( ! returnValue.booleanValue()
+      ||   XxcsoContractConstants.CONSTANT_COM_KBN2.equals( mode )
+    )
+    {
+      return returnValue;
+    }
+
+    ////////////////////
+    // マスタ連携チェック、フォーマットチェック
+    ////////////////////
+    List authErrList = new ArrayList();
+
+    for (int i = 0; i < listSize; i++ )
+    {
+      HashMap map = (HashMap) selList.get(i);
+      String contractNumber     = (String) map.get( CONTRACT_NUMBER           );
+      String contractFormat     = (String) map.get( CONTRACT_FORMAT           );
+      Number spDecisionHeaderId = (Number) map.get( SP_DECISION_HEADER_ID     );
+      String spDecisionNumber   = (String) map.get( SP_DECISION_NUMBER        );
+      String statusCode         = (String) map.get( STATUS_CODE               );
+      String cooperateFlag      = (String) map.get( COOPERATE_FLAG            );
+
+      ////////////////////
+      // 権限チェック
+      ////////////////////
+      XxcsoContractAuthorityCheckVOImpl checkVo
+        = getXxcsoContractAuthorityCheckVO1();
+      if ( checkVo == null )
+      {
+        throw
+          XxcsoMessage.createInstanceLostError(
+            "XxcsoContractAuthorityCheckVOImpl"
+          );
+      }
+
+      //権限チェックパッケージCALL
+      checkVo.getAuthority( spDecisionHeaderId );
+
+      XxcsoContractAuthorityCheckVORowImpl checkRow
+        = (XxcsoContractAuthorityCheckVORowImpl) checkVo.first();
+
+      if ( checkRow == null )
+      {
+        throw XxcsoMessage.createInstanceLostError
+          ("XxcsoContractAuthorityCheckVORowImpl");
+      }
+
+      // 権限エラーチェック
+      if ( XxcsoContractConstants.CONSTANT_COM_KBN0.equals(
+            checkRow.getAuthority() ) )
+      {
+        //エラーとなった契約書番号を退避(List)
+        authErrList.add( contractNumber );
+      }
+
+      ////////////////////
+      // 契約書フォーマットチェック
+      ////////////////////
+      if ( XxcsoContractConstants.CONSTANT_COM_KBN3.equals(mode) )
+      {
+        // PDF作成ボタン押下時のみフォーマットチェック
+        if ( XxcsoContractConstants.CONSTANT_COM_KBN1.equals( contractFormat ) )
         {
-          throw XxcsoMessage.createInstanceLostError
-            ("XxcsoContractAuthorityCheckVOImpl");
+          mMessage
+            = XxcsoMessage.createErrorMessage(
+                XxcsoConstants.APP_XXCSO1_00448
+              );
+          returnValue = Boolean.FALSE;
         }
+      }
 
-        //権限チェックパッケージCALL
-        checkVo.getAuthority(
-          summaryRow.getSpDecisionHeaderId()
-        );
-
-        XxcsoContractAuthorityCheckVORowImpl checkRow
-          = (XxcsoContractAuthorityCheckVORowImpl)checkVo.first();
-
-        if ( checkRow == null )
-        {
-          throw XxcsoMessage.createInstanceLostError
-            ("XxcsoContractAuthorityCheckVORowImpl");
-        }
-        //エラーとなったSP専決ヘッダIDを退避
-        if ( XxcsoContractConstants.CONSTANT_COM_KBN0.equals(
-               checkRow.getAuthority()) )
-        {
-          errorno = summaryRow.getSpDecisionHeaderNum();
-        }
-
-        // PDF作成時のエラーチェック
-        if ( XxcsoContractConstants.CONSTANT_COM_KBN3.equals(mode) )
-        {
-          // フォーマットチェック
-          if ( XxcsoContractConstants.CONSTANT_COM_KBN1.equals(
-                 summaryRow.getContractFormat())
-             )
-          {
-            mMessage
-              = XxcsoMessage.createErrorMessage(
-                  XxcsoConstants.APP_XXCSO1_00448
-                );
-            returnValue = Boolean.FALSE;
-          }
-        }
-        // コピー作成ボタンのマスタ連携チェック
-        if ( XxcsoContractConstants.CONSTANT_COM_KBN1.equals(mode) &&
-             XxcsoContractConstants.CONSTANT_COM_KBN1.equals(
-               summaryRow.getStatuscd()) &&
-             XxcsoContractConstants.CONSTANT_COM_KBN0.equals(
-               summaryRow.getCooperateFlag())
-             )
+      ////////////////////
+      // マスタ連携チェック
+      ////////////////////
+      if ( XxcsoContractConstants.CONSTANT_COM_KBN1.equals(mode) )
+      {
+      // コピーボタン押下時のみマスタ連携チェック
+        if ( XxcsoContractConstants.CONSTANT_COM_KBN1.equals( statusCode )
+          && XxcsoContractConstants.CONSTANT_COM_KBN0.equals( cooperateFlag )
+        )
         {
           mMessage
             = XxcsoMessage.createErrorMessage(
                 XxcsoConstants.APP_XXCSO1_00397
               );
           returnValue = Boolean.FALSE;
-        }
-      }
-      summaryRow = (XxcsoContractSummaryVORowImpl)summaryVo.next();
-    }
-
-    //mode＝コピー作成:1,詳細:2,PDF作成:3
-    // PDF作成選択で未選択の場合
-    if ( ( i == 0 ) &&
-         ( XxcsoContractConstants.CONSTANT_COM_KBN3.equals(mode) ) )
-    {
-      mMessage
-        = XxcsoMessage.createErrorMessage(
-            XxcsoConstants.APP_XXCSO1_00039,
-            XxcsoConstants.TOKEN_PARAM2,
-            XxcsoContractConstants.MSG_CONTRACT
-          );
-      returnValue = Boolean.FALSE;
-    }
-    // 未選択or複数行選択の場合
-    else if ( ( i == 0 ) || ( i > 1 ) )
-    {
-      // コピー作成
-      if ( XxcsoContractConstants.CONSTANT_COM_KBN1.equals(mode) )
-      {
-        mMessage
-          = XxcsoMessage.createErrorMessage(
-              XxcsoConstants.APP_XXCSO1_00037,
-              XxcsoConstants.TOKEN_BUTTON,
-              XxcsoContractConstants.MSG_COPY_CREATE
-            );
-        returnValue = Boolean.FALSE;
-      }
-      // 詳細
-      else if ( XxcsoContractConstants.CONSTANT_COM_KBN2.equals(mode) )
-      {
-        mMessage
-          = XxcsoMessage.createErrorMessage(
-              XxcsoConstants.APP_XXCSO1_00037,
-              XxcsoConstants.TOKEN_BUTTON,
-              XxcsoContractConstants.MSG_DETAILS
-            );
-        returnValue = Boolean.FALSE;
+       }
       }
     }
 
-    //権限エラー
-    if ( ( i == 1 ) && ( errorno != null  ) )
+    if ( ! returnValue.booleanValue() )
     {
-      // コピー作成
+      return returnValue;
+    }
+
+    ////////////////////
+    // 権限エラーチェック
+    ////////////////////
+    if ( authErrList.size() > 0 )
+    {
       if ( XxcsoContractConstants.CONSTANT_COM_KBN1.equals(mode) )
       {
+        // コピー作成
+        // ※複数選択は権限チェック前の処理にて起こりえない
+        //   発生する場合は1件選択時のみ
         mMessage
           = XxcsoMessage.createErrorMessage(
               XxcsoConstants.APP_XXCSO1_00232,
@@ -402,25 +636,26 @@ public class XxcsoContractSearchAMImpl extends OAApplicationModuleImpl
             );
         returnValue = Boolean.FALSE;
       }
-      // PDF作成
       else if ( XxcsoContractConstants.CONSTANT_COM_KBN3.equals(mode) )
       {
+        String tokenRecord = getContractNumMsg( authErrList );
+        // PDF作成
+        // ※複数選択時は発生明細の契約書番号をメッセージに付加
         mMessage
           = XxcsoMessage.createErrorMessage(
-              XxcsoConstants.APP_XXCSO1_00232,
-              XxcsoConstants.TOKEN_REF_OBJECT,
-              XxcsoContractConstants.MSG_CONTRACT,
-              XxcsoConstants.TOKEN_CRE_OBJECT,
-              XxcsoContractConstants.MSG_PDF_CREATE
+              XxcsoConstants.APP_XXCSO1_00571
+             ,XxcsoConstants.TOKEN_REF_OBJECT
+             ,XxcsoContractConstants.MSG_CONTRACT
+             ,XxcsoConstants.TOKEN_CRE_OBJECT
+             ,XxcsoContractConstants.MSG_PDF_CREATE
+             ,XxcsoConstants.TOKEN_RECORD
+             ,tokenRecord
             );
         returnValue = Boolean.FALSE;
       }
     }
-
-    //先頭行にカーソルを戻す
-    summaryVo.first();
-
     return returnValue;
+// 2009-05-26 [ST障害T1_1165] Add End
   }
 
   /*****************************************************************************
@@ -866,6 +1101,32 @@ public class XxcsoContractSearchAMImpl extends OAApplicationModuleImpl
     XxcsoUtils.debug(txn, "[END]");
   }
 
+// 2009-05-26 [ST障害T1_1165] Add Start
+  /*****************************************************************************
+   * エラー対象契約書番号取得
+   *****************************************************************************
+   */
+  private String getContractNumMsg(List list)
+  {
+    // エラーメッセージ付加メッセージの生成（契約書番号）
+    StringBuffer sbNumber = new StringBuffer();
+    sbNumber.append( XxcsoContractConstants.MSG_CONTRACT_NUMBER );
+    sbNumber.append( XxcsoConstants.TOKEN_VALUE_DELIMITER3 );
+
+    int listSize = list.size();
+    for (int i = 0; i < listSize; i++)
+    {
+      String contractNumber = (String) list.get(i);
+      if ( i != 0 )
+      {
+        sbNumber.append( XxcsoConstants.TOKEN_VALUE_DELIMITER2 );
+      }
+      sbNumber.append( contractNumber );
+    }
+
+    return new String( sbNumber );
+  }
+// 2009-05-26 [ST障害T1_1165] Add End
 
   /**
    * 

@@ -24,18 +24,18 @@ public class XxcsoContractSummaryVORowImpl extends OAViewRowImpl
 {
 
 
-  protected static final int SPDECISIONHEADERNUM = 0;
+  protected static final int CONTRACTMANAGEMENTID = 0;
   protected static final int CONTRACTNUMBER = 1;
-  protected static final int LASTUPDATEDATE = 2;
-  protected static final int INSTALLACCOUNTNUMBER = 3;
-  protected static final int INSTALLPARTYNAME = 4;
-  protected static final int STATUS = 5;
-  protected static final int SPDECISIONHEADERID = 6;
-  protected static final int SELECTFLAG = 7;
-  protected static final int CONTRACTMANAGEMENTID = 8;
-  protected static final int CONTRACTFORMAT = 9;
-  protected static final int COOPERATEFLAG = 10;
-  protected static final int STATUSCD = 11;
+  protected static final int CONTRACTFORMAT = 2;
+  protected static final int STATUSCD = 3;
+  protected static final int STATUS = 4;
+  protected static final int INSTALLACCOUNTNUMBER = 5;
+  protected static final int INSTALLPARTYNAME = 6;
+  protected static final int COOPERATEFLAG = 7;
+  protected static final int LASTUPDATEDATE = 8;
+  protected static final int SPDECISIONHEADERID = 9;
+  protected static final int SPDECISIONHEADERNUM = 10;
+  protected static final int SELECTFLAG = 11;
   /**
    * 
    * This is the default constructor (do not remove)
@@ -80,23 +80,7 @@ public class XxcsoContractSummaryVORowImpl extends OAViewRowImpl
     setAttributeInternal(CONTRACTNUMBER, value);
   }
 
-  /**
-   * 
-   * Gets the attribute value for the calculated attribute LastUpdateDate
-   */
-  public Date getLastUpdateDate()
-  {
-    return (Date)getAttributeInternal(LASTUPDATEDATE);
-  }
 
-  /**
-   * 
-   * Sets <code>value</code> as the attribute value for the calculated attribute LastUpdateDate
-   */
-  public void setLastUpdateDate(Date value)
-  {
-    setAttributeInternal(LASTUPDATEDATE, value);
-  }
 
   /**
    * 
@@ -152,53 +136,37 @@ public class XxcsoContractSummaryVORowImpl extends OAViewRowImpl
     setAttributeInternal(STATUS, value);
   }
 
-  /**
-   * 
-   * Gets the attribute value for the calculated attribute SpDecisionHeaderId
-   */
-  public Number getSpDecisionHeaderId()
-  {
-    return (Number)getAttributeInternal(SPDECISIONHEADERID);
-  }
 
-  /**
-   * 
-   * Sets <code>value</code> as the attribute value for the calculated attribute SpDecisionHeaderId
-   */
-  public void setSpDecisionHeaderId(Number value)
-  {
-    setAttributeInternal(SPDECISIONHEADERID, value);
-  }
   //  Generated method. Do not modify.
 
   protected Object getAttrInvokeAccessor(int index, AttributeDefImpl attrDef) throws Exception
   {
     switch (index)
       {
-      case SPDECISIONHEADERNUM:
-        return getSpDecisionHeaderNum();
+      case CONTRACTMANAGEMENTID:
+        return getContractManagementId();
       case CONTRACTNUMBER:
         return getContractNumber();
-      case LASTUPDATEDATE:
-        return getLastUpdateDate();
+      case CONTRACTFORMAT:
+        return getContractFormat();
+      case STATUSCD:
+        return getStatuscd();
+      case STATUS:
+        return getStatus();
       case INSTALLACCOUNTNUMBER:
         return getInstallAccountNumber();
       case INSTALLPARTYNAME:
         return getInstallPartyName();
-      case STATUS:
-        return getStatus();
-      case SPDECISIONHEADERID:
-        return getSpDecisionHeaderId();
-      case SELECTFLAG:
-        return getSelectFlag();
-      case CONTRACTMANAGEMENTID:
-        return getContractManagementId();
-      case CONTRACTFORMAT:
-        return getContractFormat();
       case COOPERATEFLAG:
         return getCooperateFlag();
-      case STATUSCD:
-        return getStatuscd();
+      case LASTUPDATEDATE:
+        return getLastUpdateDate();
+      case SPDECISIONHEADERID:
+        return getSpDecisionHeaderId();
+      case SPDECISIONHEADERNUM:
+        return getSpDecisionHeaderNum();
+      case SELECTFLAG:
+        return getSelectFlag();
       default:
         return super.getAttrInvokeAccessor(index, attrDef);
       }
@@ -209,14 +177,20 @@ public class XxcsoContractSummaryVORowImpl extends OAViewRowImpl
   {
     switch (index)
       {
-      case SPDECISIONHEADERNUM:
-        setSpDecisionHeaderNum((String)value);
+      case CONTRACTMANAGEMENTID:
+        setContractManagementId((Number)value);
         return;
       case CONTRACTNUMBER:
         setContractNumber((String)value);
         return;
-      case LASTUPDATEDATE:
-        setLastUpdateDate((Date)value);
+      case CONTRACTFORMAT:
+        setContractFormat((String)value);
+        return;
+      case STATUSCD:
+        setStatuscd((String)value);
+        return;
+      case STATUS:
+        setStatus((String)value);
         return;
       case INSTALLACCOUNTNUMBER:
         setInstallAccountNumber((String)value);
@@ -224,26 +198,20 @@ public class XxcsoContractSummaryVORowImpl extends OAViewRowImpl
       case INSTALLPARTYNAME:
         setInstallPartyName((String)value);
         return;
-      case STATUS:
-        setStatus((String)value);
+      case COOPERATEFLAG:
+        setCooperateFlag((String)value);
+        return;
+      case LASTUPDATEDATE:
+        setLastUpdateDate((Date)value);
         return;
       case SPDECISIONHEADERID:
         setSpDecisionHeaderId((Number)value);
         return;
+      case SPDECISIONHEADERNUM:
+        setSpDecisionHeaderNum((String)value);
+        return;
       case SELECTFLAG:
         setSelectFlag((String)value);
-        return;
-      case CONTRACTMANAGEMENTID:
-        setContractManagementId((Number)value);
-        return;
-      case CONTRACTFORMAT:
-        setContractFormat((String)value);
-        return;
-      case COOPERATEFLAG:
-        setCooperateFlag((String)value);
-        return;
-      case STATUSCD:
-        setStatuscd((String)value);
         return;
       default:
         super.setAttrInvokeAccessor(index, value, attrDef);
@@ -269,23 +237,7 @@ public class XxcsoContractSummaryVORowImpl extends OAViewRowImpl
     setAttributeInternal(SELECTFLAG, value);
   }
 
-  /**
-   * 
-   * Gets the attribute value for the calculated attribute ContractManagementId
-   */
-  public Number getContractManagementId()
-  {
-    return (Number)getAttributeInternal(CONTRACTMANAGEMENTID);
-  }
 
-  /**
-   * 
-   * Sets <code>value</code> as the attribute value for the calculated attribute ContractManagementId
-   */
-  public void setContractManagementId(Number value)
-  {
-    setAttributeInternal(CONTRACTMANAGEMENTID, value);
-  }
 
   /**
    * 
@@ -339,6 +291,60 @@ public class XxcsoContractSummaryVORowImpl extends OAViewRowImpl
   public void setStatuscd(String value)
   {
     setAttributeInternal(STATUSCD, value);
+  }
+
+  /**
+   * 
+   * Gets the attribute value for the calculated attribute ContractManagementId
+   */
+  public Number getContractManagementId()
+  {
+    return (Number)getAttributeInternal(CONTRACTMANAGEMENTID);
+  }
+
+  /**
+   * 
+   * Sets <code>value</code> as the attribute value for the calculated attribute ContractManagementId
+   */
+  public void setContractManagementId(Number value)
+  {
+    setAttributeInternal(CONTRACTMANAGEMENTID, value);
+  }
+
+  /**
+   * 
+   * Gets the attribute value for the calculated attribute LastUpdateDate
+   */
+  public Date getLastUpdateDate()
+  {
+    return (Date)getAttributeInternal(LASTUPDATEDATE);
+  }
+
+  /**
+   * 
+   * Sets <code>value</code> as the attribute value for the calculated attribute LastUpdateDate
+   */
+  public void setLastUpdateDate(Date value)
+  {
+    setAttributeInternal(LASTUPDATEDATE, value);
+  }
+
+  /**
+   * 
+   * Gets the attribute value for the calculated attribute SpDecisionHeaderId
+   */
+  public Number getSpDecisionHeaderId()
+  {
+    return (Number)getAttributeInternal(SPDECISIONHEADERID);
+  }
+
+  /**
+   * 
+   * Sets <code>value</code> as the attribute value for the calculated attribute SpDecisionHeaderId
+   */
+  public void setSpDecisionHeaderId(Number value)
+  {
+    setAttributeInternal(SPDECISIONHEADERID, value);
   }
 
 

@@ -11,19 +11,22 @@
    MsgBundleClass="oracle.jbo.common.JboResourceBundle"
    UseGlueCode="false" >
    <SQLQuery><![CDATA[
-SELECT xsdh.sp_decision_number sp_decision_header_num
-      ,xcm.contract_number contract_number
-      ,xcm.last_update_date last_update_date
-      ,xcm.install_account_number install_account_number
-      ,xcm.install_party_name install_party_name
+SELECT xcm.contract_management_id   AS contract_management_id
+      ,xcm.contract_number          AS contract_number
+      ,xcm.contract_format          AS contract_format
+      ,xcm.status                   AS statuscd
       ,xxcso_util_common_pkg.get_lookup_meaning(
-                 'XXCSO1_CONTRACT_STATUS',xcm.status,TRUNC(xxcso_util_common_pkg.get_online_sysdate)) status
-      ,xsdh.sp_decision_header_id sp_decision_header_id
-      ,NULL select_flag
-      ,xcm.contract_management_id contract_management_id
-      ,xcm.contract_format contract_format
-      ,xcm.cooperate_flag cooperate_flag
-      ,xcm.status statuscd
+         'XXCSO1_CONTRACT_STATUS'
+        ,xcm.status
+        ,TRUNC(xxcso_util_common_pkg.get_online_sysdate)
+       )                            AS status
+      ,xcm.install_account_number   AS install_account_number
+      ,xcm.install_party_name       AS install_party_name
+      ,xcm.cooperate_flag           AS cooperate_flag
+      ,xcm.last_update_date         AS last_update_date
+      ,xsdh.sp_decision_header_id   AS sp_decision_header_id
+      ,xsdh.sp_decision_number      AS sp_decision_header_num
+      ,NULL                         AS select_flag
 FROM   xxcso_contract_managements xcm
       ,xxcso_sp_decision_headers xsdh
 WHERE  (
@@ -61,7 +64,7 @@ WHERE  (
          (:9 IS NULL)
         )
        )
-AND  xcm.sp_decision_header_id = xsdh.sp_decision_header_id
+AND  xsdh.sp_decision_header_id = xcm.sp_decision_header_id
    ]]></SQLQuery>
    <DesignTime>
       <Attr Name="_isCodegen" Value="true" />
@@ -69,121 +72,23 @@ AND  xcm.sp_decision_header_id = xsdh.sp_decision_header_id
       <Attr Name="_CodeGenFlagNew" Value="36" />
    </DesignTime>
    <ViewAttribute
-      Name="SpDecisionHeaderNum"
+      Name="ContractManagementId"
       IsPersistent="false"
-      IsNotNull="true"
-      Precision="30"
-      Type="java.lang.String"
-      ColumnType="VARCHAR2"
-      AliasName="SP_DECISION_HEADER_NUM"
-      Expression="SP_DECISION_HEADER_NUM"
-      SQLType="VARCHAR" >
-      <DesignTime>
-         <Attr Name="_DisplaySize" Value="22" />
-      </DesignTime>
+      Type="oracle.jbo.domain.Number"
+      ColumnType="NUMBER"
+      AliasName="CONTRACT_MANAGEMENT_ID"
+      Expression="CONTRACT_MANAGEMENT_ID"
+      SQLType="NUMERIC" >
    </ViewAttribute>
    <ViewAttribute
       Name="ContractNumber"
       IsPersistent="false"
-      IsNotNull="true"
       Precision="12"
       Type="java.lang.String"
       ColumnType="VARCHAR2"
       AliasName="CONTRACT_NUMBER"
       Expression="CONTRACT_NUMBER"
       SQLType="VARCHAR" >
-      <DesignTime>
-         <Attr Name="_DisplaySize" Value="12" />
-      </DesignTime>
-   </ViewAttribute>
-   <ViewAttribute
-      Name="LastUpdateDate"
-      IsPersistent="false"
-      IsNotNull="true"
-      Type="oracle.jbo.domain.Date"
-      ColumnType="DATE"
-      AliasName="LAST_UPDATE_DATE"
-      Expression="LAST_UPDATE_DATE"
-      SQLType="DATE" >
-      <DesignTime>
-         <Attr Name="_DisplaySize" Value="7" />
-      </DesignTime>
-   </ViewAttribute>
-   <ViewAttribute
-      Name="InstallAccountNumber"
-      IsPersistent="false"
-      Precision="30"
-      Type="java.lang.String"
-      ColumnType="VARCHAR2"
-      AliasName="INSTALL_ACCOUNT_NUMBER"
-      Expression="INSTALL_ACCOUNT_NUMBER"
-      SQLType="VARCHAR" >
-      <DesignTime>
-         <Attr Name="_DisplaySize" Value="30" />
-      </DesignTime>
-   </ViewAttribute>
-   <ViewAttribute
-      Name="InstallPartyName"
-      IsPersistent="false"
-      Precision="240"
-      Type="java.lang.String"
-      ColumnType="VARCHAR2"
-      AliasName="INSTALL_PARTY_NAME"
-      Expression="INSTALL_PARTY_NAME"
-      SQLType="VARCHAR" >
-      <DesignTime>
-         <Attr Name="_DisplaySize" Value="240" />
-      </DesignTime>
-   </ViewAttribute>
-   <ViewAttribute
-      Name="Status"
-      IsPersistent="false"
-      Precision="80"
-      Type="java.lang.String"
-      ColumnType="VARCHAR2"
-      AliasName="STATUS"
-      Expression="STATUS"
-      SQLType="VARCHAR" >
-      <DesignTime>
-         <Attr Name="_DisplaySize" Value="6" />
-      </DesignTime>
-   </ViewAttribute>
-   <ViewAttribute
-      Name="SpDecisionHeaderId"
-      IsPersistent="false"
-      IsNotNull="true"
-      Type="oracle.jbo.domain.Number"
-      ColumnType="NUMBER"
-      AliasName="SP_DECISION_HEADER_ID"
-      Expression="SP_DECISION_HEADER_ID"
-      SQLType="NUMERIC" >
-      <DesignTime>
-         <Attr Name="_DisplaySize" Value="22" />
-      </DesignTime>
-   </ViewAttribute>
-   <ViewAttribute
-      Name="SelectFlag"
-      IsPersistent="false"
-      Precision="1"
-      Type="java.lang.String"
-      ColumnType="VARCHAR2"
-      AliasName="SELECTFLAG"
-      Passivate="true"
-      Expression="SELECTFLAG"
-      SQLType="VARCHAR" >
-   </ViewAttribute>
-   <ViewAttribute
-      Name="ContractManagementId"
-      IsPersistent="false"
-      IsNotNull="true"
-      Type="oracle.jbo.domain.Number"
-      ColumnType="NUMBER"
-      AliasName="CONTRACT_MANAGEMENT_ID"
-      Expression="CONTRACT_MANAGEMENT_ID"
-      SQLType="NUMERIC" >
-      <DesignTime>
-         <Attr Name="_DisplaySize" Value="22" />
-      </DesignTime>
    </ViewAttribute>
    <ViewAttribute
       Name="ContractFormat"
@@ -194,22 +99,6 @@ AND  xcm.sp_decision_header_id = xsdh.sp_decision_header_id
       AliasName="CONTRACT_FORMAT"
       Expression="CONTRACT_FORMAT"
       SQLType="VARCHAR" >
-      <DesignTime>
-         <Attr Name="_DisplaySize" Value="1" />
-      </DesignTime>
-   </ViewAttribute>
-   <ViewAttribute
-      Name="CooperateFlag"
-      IsPersistent="false"
-      Precision="1"
-      Type="java.lang.String"
-      ColumnType="VARCHAR2"
-      AliasName="COOPERATE_FLAG"
-      Expression="COOPERATE_FLAG"
-      SQLType="VARCHAR" >
-      <DesignTime>
-         <Attr Name="_DisplaySize" Value="1" />
-      </DesignTime>
    </ViewAttribute>
    <ViewAttribute
       Name="Statuscd"
@@ -220,8 +109,83 @@ AND  xcm.sp_decision_header_id = xsdh.sp_decision_header_id
       AliasName="STATUSCD"
       Expression="STATUSCD"
       SQLType="VARCHAR" >
-      <DesignTime>
-         <Attr Name="_DisplaySize" Value="1" />
-      </DesignTime>
+   </ViewAttribute>
+   <ViewAttribute
+      Name="Status"
+      IsPersistent="false"
+      Precision="4000"
+      Type="java.lang.String"
+      ColumnType="VARCHAR2"
+      AliasName="STATUS"
+      Expression="STATUS"
+      SQLType="VARCHAR" >
+   </ViewAttribute>
+   <ViewAttribute
+      Name="InstallAccountNumber"
+      IsPersistent="false"
+      Precision="9"
+      Type="java.lang.String"
+      ColumnType="VARCHAR2"
+      AliasName="INSTALL_ACCOUNT_NUMBER"
+      Expression="INSTALL_ACCOUNT_NUMBER"
+      SQLType="VARCHAR" >
+   </ViewAttribute>
+   <ViewAttribute
+      Name="InstallPartyName"
+      IsPersistent="false"
+      Precision="360"
+      Type="java.lang.String"
+      ColumnType="VARCHAR2"
+      AliasName="INSTALL_PARTY_NAME"
+      Expression="INSTALL_PARTY_NAME"
+      SQLType="VARCHAR" >
+   </ViewAttribute>
+   <ViewAttribute
+      Name="CooperateFlag"
+      IsPersistent="false"
+      Precision="1"
+      Type="java.lang.String"
+      ColumnType="VARCHAR2"
+      AliasName="COOPERATE_FLAG"
+      Expression="COOPERATE_FLAG"
+      SQLType="VARCHAR" >
+   </ViewAttribute>
+   <ViewAttribute
+      Name="LastUpdateDate"
+      IsPersistent="false"
+      Type="oracle.jbo.domain.Date"
+      ColumnType="DATE"
+      AliasName="LAST_UPDATE_DATE"
+      Expression="LAST_UPDATE_DATE"
+      SQLType="DATE" >
+   </ViewAttribute>
+   <ViewAttribute
+      Name="SpDecisionHeaderId"
+      IsPersistent="false"
+      Type="oracle.jbo.domain.Number"
+      ColumnType="NUMBER"
+      AliasName="SP_DECISION_HEADER_ID"
+      Expression="SP_DECISION_HEADER_ID"
+      SQLType="NUMERIC" >
+   </ViewAttribute>
+   <ViewAttribute
+      Name="SpDecisionHeaderNum"
+      IsPersistent="false"
+      Precision="30"
+      Type="java.lang.String"
+      ColumnType="VARCHAR2"
+      AliasName="SP_DECISION_HEADER_NUM"
+      Expression="SP_DECISION_HEADER_NUM"
+      SQLType="VARCHAR" >
+   </ViewAttribute>
+   <ViewAttribute
+      Name="SelectFlag"
+      IsPersistent="false"
+      Precision="255"
+      Type="java.lang.String"
+      ColumnType="VARCHAR2"
+      AliasName="SELECT_FLAG"
+      Expression="SELECT_FLAG"
+      SQLType="VARCHAR" >
    </ViewAttribute>
 </ViewObject>

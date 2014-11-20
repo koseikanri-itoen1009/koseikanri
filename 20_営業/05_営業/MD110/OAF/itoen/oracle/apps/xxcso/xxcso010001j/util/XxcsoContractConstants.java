@@ -7,6 +7,7 @@
 * “ú•t       Ver. ’S“–Ò       C³“à—e
 * ---------- ---- ------------ ----------------------------------------------
 * 2008-11-20 1.0  SCS‹yì—Ì    V‹Kì¬
+* 2009-05-26 1.1  SCS–ö•½’¼l  [STáŠQT1_1165]–¾×ƒ`ƒFƒbƒNáŠQ‘Î‰
 *============================================================================
 */
 package itoen.oracle.apps.xxcso.xxcso010001j.util;
@@ -30,6 +31,9 @@ public class XxcsoContractConstants
   public static final String MSG_COPY_CREATE           = "ƒRƒs[ì¬";
   public static final String MSG_PDF_CREATE            = "‚o‚c‚e";
   public static final String MSG_DETAILS               = "Ú×";
+// 2009-05-26 [STáŠQT1_1165] Add Start
+  public static final String MSG_CONTRACT_NUMBER       = "Œ_–ñ‘”Ô†";
+// 2009-05-26 [STáŠQT1_1165] Add End
 
   /*****************************************************************************
    * ‰æ–Ê‹¤’Ê‹æ•ª
