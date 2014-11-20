@@ -8,7 +8,7 @@ AS
  *                    その結果を発注依頼に返します。
  * MD.050           : MD050_CSO_011_A01_作業依頼（発注依頼）時のインストールベースチェック機能
  *
- * Version          : 1.7
+ * Version          : 1.8
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -57,6 +57,8 @@ AS
  *                                       【ST障害対応527】引揚時の設置作業会社、事業所のチェックを削除
  *  2009-04-16    1.7   N.Yabuki         【ST障害対応398】否認時にIBの作業依頼中フラグをOFFにする処理を追加
  *                                       【ST障害対応549】廃棄申請時の機器状態３、廃棄フラグ更新処理のタイミング変更
+ *  2009-04-27    1.8   N.Yabuki         【ST障害対応505】引揚物件、店内移動物件と設置先_顧客コードの紐付けチェックを追加
+ *                                       【ST障害対応517】顧客マスタ存在チェック処理を修正
  *****************************************************************************************/
   --
   --#######################  固定グローバル定数宣言部 START   #######################
@@ -179,6 +181,10 @@ AS
   cv_tkn_number_48  CONSTANT VARCHAR2(100) := 'APP-XXCSO1-00563';  -- ステータスID取得エラー
   cv_tkn_number_49  CONSTANT VARCHAR2(100) := 'APP-XXCSO1-00564';  -- ステータスID抽出エラー
 /*20090416_yabuki_ST549 END*/
+/*20090427_yabuki_ST505_517 START*/
+  cv_tkn_number_50  CONSTANT VARCHAR2(100) := 'APP-XXCSO1-00566';  -- 設置物件・顧客関連性チェックエラー
+  cv_tkn_number_51  CONSTANT VARCHAR2(100) := 'APP-XXCSO1-00567';  -- 引揚物件・顧客関連性チェックエラー
+/*20090427_yabuki_ST505_517 END*/
   --
   -- トークンコード
   cv_tkn_param_nm       CONSTANT VARCHAR2(20) := 'PARAM_NAME';
@@ -346,6 +352,9 @@ AS
     , work_hope_day             xxcso_requisition_lines_v.work_hope_day%TYPE             -- 作業希望日
     , request_date              xxcso_requisition_lines_v.creation_date%TYPE             -- 依頼日
 /*20090413_yabuki_ST170 END*/
+/*20090427_yabuki_ST505_517 START*/
+    , created_by                po_requisition_headers.created_by%TYPE                   -- 作成日
+/*20090427_yabuki_ST505_517 END*/
   );
   --
   -- 物件情報
@@ -358,6 +367,9 @@ AS
 /*20090413_yabuki_ST198 START*/
     , lease_kbn    xxcso_install_base_v.lease_kbn%TYPE              -- リース区分
 /*20090413_yabuki_ST198 END*/
+/*20090427_yabuki_ST505_517 START*/
+    , owner_account_id  xxcso_install_base_v.install_account_id%TYPE  -- 設置先アカウントID
+/*20090427_yabuki_ST505_517 END*/
   );
   --
   -- ===============================
@@ -804,6 +816,9 @@ AS
            , xrlv.work_hope_day             work_hope_day             -- 作業希望日
            , xrlv.creation_date             request_date              -- 依頼日（作成日）
            /*20090413_yabuki_ST170 END*/
+           /*20090427_yabuki_ST505_517 START*/
+           , prh.created_by                 created_by                -- 作成者
+           /*20090427_yabuki_ST505_517 END*/
       INTO   o_requisition_rec.requisition_header_id     -- 発注依頼ヘッダID
            , o_requisition_rec.requisition_line_id       -- 発注依頼明細ID
            , o_requisition_rec.requisition_number        -- 発注依頼番号
@@ -833,6 +848,9 @@ AS
            , o_requisition_rec.work_hope_day             -- 作業希望日
            , o_requisition_rec.request_date              -- 依頼日
            /*20090413_yabuki_ST170 END*/
+           /*20090427_yabuki_ST505_517 START*/
+           , o_requisition_rec.created_by                -- 作成者
+           /*20090427_yabuki_ST505_517 END*/
       FROM   po_requisition_headers     prh
            , xxcso_requisition_lines_v  xrlv
       WHERE  prh.segment1               = iv_requisition_number
@@ -1458,6 +1476,9 @@ AS
            /*20090413_yabuki_ST198 START*/
            , xibv.lease_kbn                    lease_kbn              -- リース区分
            /*20090413_yabuki_ST198 END*/
+           /*20090427_yabuki_ST505_517 START*/
+           , xibv.install_account_id           owner_account_id       -- 設置先アカウントID
+           /*20090427_yabuki_ST505_517 END*/
       INTO   o_instance_rec.instance_id  -- インスタンスID
            , o_instance_rec.op_req_flag  -- 作業依頼中フラグ
            , o_instance_rec.jotai_kbn1   -- 機器状態１（稼動状態）
@@ -1466,6 +1487,9 @@ AS
            /*20090413_yabuki_ST198 START*/
            , o_instance_rec.lease_kbn    -- リース区分
            /*20090413_yabuki_ST198 END*/
+           /*20090427_yabuki_ST505_517 START*/
+           , o_instance_rec.owner_account_id  -- 設置先アカウントID
+           /*20090427_yabuki_ST505_517 END*/
       FROM   xxcso_install_base_v  xibv
       WHERE  xibv.install_code = iv_install_code
       ;
@@ -2316,6 +2340,12 @@ AS
    ***********************************************************************************/
   PROCEDURE check_cust_mst(
       iv_account_number   IN         VARCHAR2    -- 顧客コード
+/*20090427_yabuki_ST505_517 START*/
+    , id_process_date           IN   DATE        -- 業務処理日付
+    , iv_install_code           IN   VARCHAR2    -- 設置用物件コード
+    , iv_withdraw_install_code  IN   VARCHAR2    -- 引揚用物件コード
+    , in_owner_account_id       IN   NUMBER      -- 設置先アカウントID
+/*20090427_yabuki_ST505_517 END*/
     , ov_errbuf           OUT NOCOPY VARCHAR2    -- エラー・メッセージ --# 固定 #
     , ov_retcode          OUT NOCOPY VARCHAR2    -- リターン・コード   --# 固定 #
   ) IS
@@ -2338,15 +2368,27 @@ AS
     -- *** ローカル定数 ***
     cv_party_sts_active    CONSTANT VARCHAR2(1) := 'A';   -- パーティステータス「有効」
     cv_account_sts_active  CONSTANT VARCHAR2(1) := 'A';   -- アカウントステータス「有効」
+    /*20090427_yabuki_ST0505_0517 START*/
+    cv_acct_site_sts_active   CONSTANT VARCHAR2(1) := 'A';   -- 顧客所在地ステータス「有効」
+    cv_party_site_sts_active  CONSTANT VARCHAR2(1) := 'A';   -- パーティサイトステータス「有効」
+    /*20090427_yabuki_ST0505_0517 END*/
     cv_cust_sts_approved   CONSTANT VARCHAR2(2) := '30';  -- 顧客ステータス「承認済」
     cv_cust_sts_customer   CONSTANT VARCHAR2(2) := '40';  -- 顧客ステータス「顧客」
     cv_cust_sts_abeyance   CONSTANT VARCHAR2(2) := '50';  -- 顧客ステータス「休止」
     /*20090402_yabuki_ST177 START*/
     cv_cust_sts_sp_aprvd   CONSTANT VARCHAR2(2) := '25';  -- 顧客ステータス「SP承認済」
     /*20090402_yabuki_ST177 END*/
+    /*20090427_yabuki_ST0505_0517 START*/
+    cv_cust_resources_v    CONSTANT VARCHAR2(30) := '顧客担当営業員情報';
+    cv_tkn_val_cust_cd     CONSTANT VARCHAR2(30) := '顧客コード';
+    /*20090427_yabuki_ST0505_0517 END*/
     --
     -- *** ローカル変数 ***
     lv_customer_status    xxcso_cust_accounts_v.customer_status%TYPE;  -- 顧客ステータス
+    /*20090427_yabuki_ST0505_0517 START*/
+    lt_cust_acct_id       xxcso_cust_accounts_v.cust_account_id%TYPE;  -- アカウントID
+    ln_cnt_rec            NUMBER;                                      -- レコード件数
+    /*20090427_yabuki_ST0505_0517 END*/
     --
     -- *** ローカル例外 ***
     sql_expt      EXCEPTION;
@@ -2363,13 +2405,26 @@ AS
     -- 顧客マスタ抽出
     -- ========================================
     BEGIN
-      SELECT xcav.customer_status  customer_status
+/*20090427_yabuki_ST505_517 START*/
+--      SELECT xcav.customer_status  customer_status
+--      INTO   lv_customer_status
+--      FROM   xxcso_cust_accounts_v  xcav
+--      WHERE  xcav.account_number = iv_account_number
+--      AND    xcav.account_status = cv_party_sts_active
+--      AND    xcav.party_status   = cv_account_sts_active
+--      ;
+      SELECT casv.customer_status  customer_status    -- 顧客ステータス
+           , casv.cust_account_id  cust_account_id    -- アカウントID
       INTO   lv_customer_status
-      FROM   xxcso_cust_accounts_v  xcav
-      WHERE  xcav.account_number = iv_account_number
-      AND    xcav.account_status = cv_party_sts_active
-      AND    xcav.party_status   = cv_account_sts_active
+           , lt_cust_acct_id
+      FROM   xxcso_cust_acct_sites_v  casv    -- 顧客マスタサイトビュー
+      WHERE casv.account_number    = iv_account_number
+      AND   casv.account_status    = cv_account_sts_active
+      AND   casv.acct_site_status  = cv_acct_site_sts_active
+      AND   casv.party_status      = cv_party_sts_active
+      AND   casv.party_site_status = cv_party_site_sts_active
       ;
+/*20090427_yabuki_ST505_517 END*/
       --
     EXCEPTION
       WHEN NO_DATA_FOUND THEN
@@ -2416,6 +2471,103 @@ AS
       RAISE sql_expt;
       --
     END IF;
+    --
+/*20090427_yabuki_ST505_517 START*/
+    BEGIN
+      SELECT COUNT(1)
+      INTO   ln_cnt_rec
+      FROM   xxcso_employees_v       empv    -- 従業員マスタビュー
+           , xxcso_cust_resources_v  crsv    -- 顧客担当営業員ビュー
+      WHERE crsv.account_number    = iv_account_number
+      AND   id_process_date
+              BETWEEN TRUNC( NVL( crsv.start_date_active, id_process_date ) )
+                  AND TRUNC( NVL( crsv.end_date_active, id_process_date ) )
+      AND   crsv.employee_number   = empv.employee_number
+      AND   id_process_date
+              BETWEEN TRUNC( NVL( empv.start_date, id_process_date ) )
+                  AND TRUNC( NVL( empv.end_date, id_process_date ) )
+      AND   id_process_date
+              BETWEEN TRUNC( NVL( empv.employee_start_date, id_process_date ) )
+                  AND TRUNC( NVL( empv.employee_end_date, id_process_date ) )
+      AND   id_process_date
+              BETWEEN TRUNC( NVL( empv.assign_start_date, id_process_date ) )
+                  AND TRUNC( NVL( empv.assign_end_date, id_process_date ) )
+      ;
+    EXCEPTION
+      WHEN OTHERS THEN
+        -- その他の例外の場合
+        lv_errbuf := xxccp_common_pkg.get_msg(
+                         iv_application  => cv_sales_appl_short_name  -- アプリケーション短縮名
+                       , iv_name         => cv_tkn_number_49          -- メッセージコード
+                       , iv_token_name1  => cv_tkn_task_nm            -- トークンコード1
+                       , iv_token_value1 => cv_cust_resources_v       -- トークン値1
+                       , iv_token_name2  => cv_tkn_item               -- トークンコード2
+                       , iv_token_value2 => cv_tkn_val_cust_cd        -- トークン値2
+                       , iv_token_name3  => cv_tkn_value              -- トークンコード3
+                       , iv_token_value3 => iv_account_number         -- トークン値3
+                       , iv_token_name4  => cv_tkn_err_msg            -- トークンコード4
+                       , iv_token_value4 => SQLERRM                   -- トークン値4
+                     );
+        --
+        RAISE sql_expt;
+        --
+    END;
+    --
+    -- 該当データが存在しない場合
+    IF ( ln_cnt_rec = 0 ) THEN
+      lv_errbuf := xxccp_common_pkg.get_msg(
+                       iv_application  => cv_sales_appl_short_name  -- アプリケーション短縮名
+                     , iv_name         => cv_tkn_number_48          -- メッセージコード
+                     , iv_token_name1  => cv_tkn_task_nm            -- トークンコード1
+                     , iv_token_value1 => cv_cust_resources_v       -- トークン値1
+                     , iv_token_name2  => cv_tkn_item               -- トークンコード2
+                     , iv_token_value2 => cv_tkn_val_cust_cd        -- トークン値2
+                     , iv_token_name3  => cv_tkn_value              -- トークンコード3
+                     , iv_token_value3 => iv_account_number         -- トークン値3
+                   );
+      --
+      RAISE sql_expt;
+      --
+    END IF;
+    --
+    -- 設置用物件コードが設定されている場合
+    IF ( iv_install_code IS NOT NULL ) THEN
+      -- 設置用物件の設置先アカウントIDと設置先_顧客コードのアカウントIDが異なる場合
+      IF ( in_owner_account_id <> lt_cust_acct_id ) THEN
+        lv_errbuf := xxccp_common_pkg.get_msg(
+                         iv_application  => cv_sales_appl_short_name    -- アプリケーション短縮名
+                       , iv_name         => cv_tkn_number_50            -- メッセージコード
+                       , iv_token_name1  => cv_tkn_bukken               -- トークンコード1
+                       , iv_token_value1 => iv_install_code             -- トークン値1
+                       , iv_token_name2  => cv_tkn_kokyaku              -- トークンコード2
+                       , iv_token_value2 => iv_account_number           -- トークン値2
+                     );
+        --
+        RAISE sql_expt;
+        --
+      END IF;
+      --
+    END IF;
+    --
+    -- 引揚用物件コードが設定されている場合
+    IF ( iv_withdraw_install_code IS NOT NULL ) THEN
+      -- 設置用物件の設置先アカウントIDと設置先_顧客コードのアカウントIDが異なる場合
+      IF ( in_owner_account_id <> lt_cust_acct_id ) THEN
+        lv_errbuf := xxccp_common_pkg.get_msg(
+                         iv_application  => cv_sales_appl_short_name    -- アプリケーション短縮名
+                       , iv_name         => cv_tkn_number_51            -- メッセージコード
+                       , iv_token_name1  => cv_tkn_bukken               -- トークンコード1
+                       , iv_token_value1 => iv_withdraw_install_code    -- トークン値1
+                       , iv_token_name2  => cv_tkn_kokyaku              -- トークンコード2
+                       , iv_token_value2 => iv_account_number           -- トークン値2
+                     );
+        --
+        RAISE sql_expt;
+        --
+      END IF;
+      --
+    END IF;
+/*20090427_yabuki_ST505_517 END*/
     --
   EXCEPTION
     --
@@ -4361,6 +4513,12 @@ AS
         -- ========================================
         check_cust_mst(
             iv_account_number => l_requisition_rec.install_at_customer_code  -- 顧客コード（設置先_顧客コード）
+/*20090427_yabuki_ST505_517 START*/
+          , id_process_date          => ld_process_date                      -- 業務処理日付
+          , iv_install_code          => NULL                                 -- 設置用物件コード
+          , iv_withdraw_install_code => NULL                                 -- 引揚用物件コード
+          , in_owner_account_id      => NULL                                 -- 設置先アカウントID
+/*20090427_yabuki_ST505_517 END*/
           , ov_errbuf         => lv_errbuf                                   -- エラー・メッセージ  --# 固定 #
           , ov_retcode        => lv_retcode                                  -- リターン・コード    --# 固定 #
         );
@@ -4541,6 +4699,28 @@ AS
           RAISE global_process_expt;
           --
         END IF;
+        --
+/*20090427_yabuki_ST505_517 START*/
+        --
+        -- ========================================
+        -- A-12. 顧客マスタ存在チェック処理
+        -- ========================================
+        check_cust_mst(
+            iv_account_number        => l_requisition_rec.install_at_customer_code  -- 顧客コード（設置先_顧客コード）
+          , id_process_date          => ld_process_date                             -- 業務処理日付
+          , iv_install_code          => NULL                                        -- 設置用物件コード
+          , iv_withdraw_install_code => l_requisition_rec.withdraw_install_code     -- 引揚用物件コード
+          , in_owner_account_id      => l_withdraw_instance_rec.owner_account_id    -- 設置先アカウントID
+          , ov_errbuf                => lv_errbuf                                   -- エラー・メッセージ  --# 固定 #
+          , ov_retcode               => lv_retcode                                  -- リターン・コード    --# 固定 #
+        );
+        --
+        IF ( lv_retcode <> cv_status_normal ) THEN
+          RAISE global_process_expt;
+          --
+        END IF;
+        --
+/*20090427_yabuki_ST505_517 END*/
         --
         -- ========================================
         -- A-15. 引揚用物件更新処理
@@ -4743,6 +4923,12 @@ AS
         -- ========================================
         check_cust_mst(
             iv_account_number => l_requisition_rec.install_at_customer_code  -- 顧客コード（設置先_顧客コード）
+/*20090427_yabuki_ST505_517 START*/
+          , id_process_date          => ld_process_date                      -- 業務処理日付
+          , iv_install_code          => NULL                                 -- 設置用物件コード
+          , iv_withdraw_install_code => NULL                                 -- 引揚用物件コード
+          , in_owner_account_id      => NULL                                 -- 設置先アカウントID
+/*20090427_yabuki_ST505_517 END*/
           , ov_errbuf         => lv_errbuf                                   -- エラー・メッセージ  --# 固定 #
           , ov_retcode        => lv_retcode                                  -- リターン・コード    --# 固定 #
         );
@@ -4999,6 +5185,28 @@ AS
           --
         END IF;
         --
+/*20090427_yabuki_ST505_517 START*/
+        --
+        -- ========================================
+        -- A-12. 顧客マスタ存在チェック処理
+        -- ========================================
+        check_cust_mst(
+            iv_account_number        => l_requisition_rec.install_at_customer_code  -- 顧客コード（設置先_顧客コード）
+          , id_process_date          => ld_process_date                             -- 業務処理日付
+          , iv_install_code          => NULL                                        -- 設置用物件コード
+          , iv_withdraw_install_code => l_requisition_rec.withdraw_install_code     -- 引揚用物件コード
+          , in_owner_account_id      => l_withdraw_instance_rec.owner_account_id    -- 設置先アカウントID
+          , ov_errbuf                => lv_errbuf                                   -- エラー・メッセージ  --# 固定 #
+          , ov_retcode               => lv_retcode                                  -- リターン・コード    --# 固定 #
+        );
+        --
+        IF ( lv_retcode <> cv_status_normal ) THEN
+          RAISE global_process_expt;
+          --
+        END IF;
+        --
+/*20090427_yabuki_ST505_517 END*/
+        --
         -- ========================================
         -- A-13. 設置用物件更新処理
         -- ========================================
@@ -5191,6 +5399,28 @@ AS
           RAISE global_process_expt;
           --
         END IF;
+        --
+/*20090427_yabuki_ST505_517 START*/
+        --
+        -- ========================================
+        -- A-12. 顧客マスタ存在チェック処理
+        -- ========================================
+        check_cust_mst(
+            iv_account_number        => l_requisition_rec.install_at_customer_code  -- 顧客コード（設置先_顧客コード）
+          , id_process_date          => ld_process_date                             -- 業務処理日付
+          , iv_install_code          => NULL                                        -- 設置用物件コード
+          , iv_withdraw_install_code => l_requisition_rec.withdraw_install_code     -- 引揚用物件コード
+          , in_owner_account_id      => l_withdraw_instance_rec.owner_account_id    -- 設置先アカウントID
+          , ov_errbuf                => lv_errbuf                                   -- エラー・メッセージ  --# 固定 #
+          , ov_retcode               => lv_retcode                                  -- リターン・コード    --# 固定 #
+        );
+        --
+        IF ( lv_retcode <> cv_status_normal ) THEN
+          RAISE global_process_expt;
+          --
+        END IF;
+        --
+/*20090427_yabuki_ST505_517 END*/
         --
         -- ========================================
         -- A-15. 引揚用物件更新処理
@@ -5622,6 +5852,28 @@ AS
           RAISE global_process_expt;
           --
         END IF;
+        --
+/*20090427_yabuki_ST505_517 START*/
+        --
+        -- ========================================
+        -- A-12. 顧客マスタ存在チェック処理
+        -- ========================================
+        check_cust_mst(
+            iv_account_number        => l_requisition_rec.install_at_customer_code  -- 顧客コード（設置先_顧客コード）
+          , id_process_date          => ld_process_date                             -- 業務処理日付
+          , iv_install_code          => l_requisition_rec.install_code              -- 設置用物件コード
+          , iv_withdraw_install_code => NULL                                        -- 引揚用物件コード
+          , in_owner_account_id      => l_instance_rec.owner_account_id             -- 設置先アカウントID
+          , ov_errbuf                => lv_errbuf                                   -- エラー・メッセージ  --# 固定 #
+          , ov_retcode               => lv_retcode                                  -- リターン・コード    --# 固定 #
+        );
+        --
+        IF ( lv_retcode <> cv_status_normal ) THEN
+          RAISE global_process_expt;
+          --
+        END IF;
+        --
+/*20090427_yabuki_ST505_517 END*/
         --
         -- ========================================
         -- A-13. 設置用物件更新処理

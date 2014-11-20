@@ -8,7 +8,7 @@ AS
  *                    CSVファイルを作成します。
  * MD.050           : MD050_自販機-EBSインタフェース：（OUT）作業依頼／発注情報(iPro,PO)
  *                    2008/12/19 16:30
- * Version          : 1.4
+ * Version          : 1.5
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -40,6 +40,7 @@ AS
  *  2009-04-02    1.2   K.Satomura       ＳＴ障害対応(T1_0169対応)
  *  2009-04-06    1.3   D.Abe            ＳＴ障害対応(T1_0306対応)
  *  2009-04-10    1.4   K.Satomura       ＳＴ障害対応(T1_0408,0492対応)
+ *  2009-04-30    1.5   K.Satomura       ＳＴ障害対応(T1_0517対応)
  *****************************************************************************************/
 --
 --#######################  固定グローバル定数宣言部 START   #######################
@@ -1729,29 +1730,31 @@ AS
                                ,lv_code
                                ,5
                                ,ld_date);
-      IF (lv_work_locatn_tel1 IS NULL
-            OR lv_work_locatn_tel2 IS NULL
-            OR lv_work_locatn_tel2 IS NULL) THEN
-            -- データが存在しない場合
-        lv_errmsg := xxccp_common_pkg.get_msg(
-                        iv_application  => cv_app_name                  -- アプリケーション短縮名
-                       ,iv_name         => cv_tkn_number_06             -- メッセージコード
-                       ,iv_token_name1  => cv_tkn_task_nm               -- トークンコード1
-                       ,iv_token_value1 => cv_syozokum_info             -- トークン値1
-                       ,iv_token_name2  => cv_tkn_po_num                -- トークンコード2
-                       ,iv_token_value2 => lv_log_po_head_num           -- トークン値2
-                       ,iv_token_name3  => cv_tkn_po_line_num           -- トークンコード3
-                       ,iv_token_value3 => lv_log_po_line_num           -- トークン値3
-                       ,iv_token_name4  => cv_tkn_po_distr_num          -- トークンコード4
-                       ,iv_token_value4 => lv_log_po_dist_num           -- トークン値4
-                       ,iv_token_name5  => cv_tkn_reqst_num             -- トークンコード5
-                       ,iv_token_value5 => lv_log_rq_head_num           -- トークン値5
-                       ,iv_token_name6  => cv_tkn_reqst_line_num        -- トークンコード6
-                       ,iv_token_value6 => lv_log_rq_line_num           -- トークン値6
-                     );
-        lv_errbuf := lv_errmsg;
-        RAISE global_skip_expt;
-      END IF; 
+      /* 2009.04.30 K.Satomura T1_0517対応 START */
+      --IF (lv_work_locatn_tel1 IS NULL
+      --      OR lv_work_locatn_tel2 IS NULL
+      --      OR lv_work_locatn_tel2 IS NULL) THEN
+      --      -- データが存在しない場合
+      --  lv_errmsg := xxccp_common_pkg.get_msg(
+      --                  iv_application  => cv_app_name                  -- アプリケーション短縮名
+      --                 ,iv_name         => cv_tkn_number_06             -- メッセージコード
+      --                 ,iv_token_name1  => cv_tkn_task_nm               -- トークンコード1
+      --                 ,iv_token_value1 => cv_syozokum_info             -- トークン値1
+      --                 ,iv_token_name2  => cv_tkn_po_num                -- トークンコード2
+      --                 ,iv_token_value2 => lv_log_po_head_num           -- トークン値2
+      --                 ,iv_token_name3  => cv_tkn_po_line_num           -- トークンコード3
+      --                 ,iv_token_value3 => lv_log_po_line_num           -- トークン値3
+      --                 ,iv_token_name4  => cv_tkn_po_distr_num          -- トークンコード4
+      --                 ,iv_token_value4 => lv_log_po_dist_num           -- トークン値4
+      --                 ,iv_token_name5  => cv_tkn_reqst_num             -- トークンコード5
+      --                 ,iv_token_value5 => lv_log_rq_head_num           -- トークン値5
+      --                 ,iv_token_name6  => cv_tkn_reqst_line_num        -- トークンコード6
+      --                 ,iv_token_value6 => lv_log_rq_line_num           -- トークン値6
+      --               );
+      --  lv_errbuf := lv_errmsg;
+      --  RAISE global_skip_expt;
+      --END IF; 
+      /* 2009.04.30 K.Satomura T1_0517対応 END */
 --
     EXCEPTION
       WHEN global_skip_expt THEN 
