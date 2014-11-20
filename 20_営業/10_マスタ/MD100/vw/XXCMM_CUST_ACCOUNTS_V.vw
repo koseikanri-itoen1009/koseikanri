@@ -1,4 +1,4 @@
-CREATE OR REPLACE FORCE VIEW APPS.XXCMM_CUST_ACCOUNTS_V (customer_id,party_id,customer_code,customer_status,cust_update_flag,business_low_type,industry_div,selling_transfer_div,torihiki_form,delivery_form,wholesale_ctrl_code,ship_storage_code,start_tran_date,final_tran_date,past_final_tran_date,final_call_date,stop_approval_date,stop_approval_reason,vist_untarget_date,vist_target_div,party_representative_name,party_emp_name,sale_base_code,past_sale_base_code,rsv_sale_base_act_date,rsv_sale_base_code,delivery_base_code,sales_head_base_code,chain_store_code,store_code,cust_store_name,torihikisaki_code,sales_chain_code,delivery_chain_code,policy_chain_code,intro_chain_code1,intro_chain_code2,tax_div,rate,receiv_discount_rate,conclusion_day1,conclusion_day2,conclusion_day3,contractor_supplier_code,bm_pay_supplier_code1,bm_pay_supplier_code2,delivery_order,edi_district_code,edi_district_name,edi_district_kana,center_edi_div,tsukagatazaiko_div,establishment_location,open_close_div,operation_div,change_amount,vendor_machine_number,established_site_name,cnvs_date,cnvs_base_code,cnvs_business_person,new_point_div,new_point,intro_base_code,intro_business_person,edi_chain_code,latitude,longitude,management_base_code,edi_item_code_div,edi_forward_number,handwritten_slip_div,deli_center_code,deli_center_name,dept_hht_div,bill_base_code,receiv_base_code,child_dept_shop_code,parnt_dept_shop_code,past_customer_status,created_by,creation_date,last_updated_by,last_update_date,last_update_date_hp,last_update_date_hca,last_update_login,request_id,program_application_id,program_id,program_update_date) AS
+CREATE OR REPLACE FORCE VIEW APPS.XXCMM_CUST_ACCOUNTS_V (customer_id,party_id,customer_code,customer_status,cust_update_flag,business_low_type,industry_div,selling_transfer_div,torihiki_form,delivery_form,wholesale_ctrl_code,ship_storage_code,start_tran_date,final_tran_date,past_final_tran_date,final_call_date,stop_approval_date,stop_approval_reason,vist_untarget_date,vist_target_div,party_representative_name,party_emp_name,sale_base_code,past_sale_base_code,rsv_sale_base_act_date,rsv_sale_base_code,delivery_base_code,sales_head_base_code,chain_store_code,store_code,cust_store_name,torihikisaki_code,sales_chain_code,delivery_chain_code,policy_chain_code,intro_chain_code1,intro_chain_code2,tax_div,rate,receiv_discount_rate,conclusion_day1,conclusion_day2,conclusion_day3,contractor_supplier_code,bm_pay_supplier_code1,bm_pay_supplier_code2,delivery_order,edi_district_code,edi_district_name,edi_district_kana,center_edi_div,tsukagatazaiko_div,establishment_location,open_close_div,operation_div,change_amount,vendor_machine_number,established_site_name,cnvs_date,cnvs_base_code,cnvs_business_person,new_point_div,new_point,intro_base_code,intro_business_person,edi_chain_code,latitude,longitude,management_base_code,edi_item_code_div,edi_forward_number,handwritten_slip_div,deli_center_code,deli_center_name,dept_hht_div,bill_base_code,receiv_base_code,child_dept_shop_code,parnt_dept_shop_code,past_customer_status,card_company_div,card_company,created_by,creation_date,last_updated_by,last_update_date,last_update_date_hp,last_update_date_hca,last_update_login,request_id,program_application_id,program_id,program_update_date) AS
 SELECT xca.customer_id customer_id,
        hp.party_id party_id,
        xca.customer_code customer_code,
@@ -79,6 +79,8 @@ SELECT xca.customer_id customer_id,
        xca.child_dept_shop_code child_dept_shop_code,
        xca.parnt_dept_shop_code parnt_dept_shop_code,
        xca.past_customer_status past_customer_status,
+       xca.card_company_div card_company_div,
+       xca.card_company card_company,
        xca.created_by created_by,
        xca.creation_date creation_date,
        xca.last_updated_by last_updated_by,
@@ -257,6 +259,10 @@ COMMENT ON COLUMN apps.xxcmm_cust_accounts_v.child_dept_shop_code IS '百貨店伝区
 COMMENT ON COLUMN apps.xxcmm_cust_accounts_v.parnt_dept_shop_code IS '百貨店伝区コード【親レコード用】'
 /
 COMMENT ON COLUMN apps.xxcmm_cust_accounts_v.past_customer_status IS '前月顧客ステータス'
+/
+COMMENT ON COLUMN apps.xxcmm_cust_accounts_v.card_company_div IS 'カード会社区分'
+/
+COMMENT ON COLUMN apps.xxcmm_cust_accounts_v.card_company IS 'カード会社コード'
 /
 COMMENT ON COLUMN apps.xxcmm_cust_accounts_v.created_by IS '作成者'
 /

@@ -78,6 +78,8 @@ CREATE TABLE xxcmm.xxcmm_cust_accounts
     child_dept_shop_code        VARCHAR2(3), 
     parnt_dept_shop_code        VARCHAR2(3), 
     past_customer_status        VARCHAR2(2), 
+    card_company_div            VARCHAR2(1), 
+    card_company                VARCHAR2(9), 
     created_by                  NUMBER(15,0)    NOT NULL, 
     creation_date               DATE            NOT NULL, 
     last_updated_by             NUMBER(15,0)    NOT NULL, 
@@ -248,6 +250,10 @@ COMMENT ON COLUMN xxcmm.xxcmm_cust_accounts.child_dept_shop_code        IS '百貨
 COMMENT ON COLUMN xxcmm.xxcmm_cust_accounts.parnt_dept_shop_code        IS '百貨店伝区コード【親レコード用】'
 /
 COMMENT ON COLUMN xxcmm.xxcmm_cust_accounts.past_customer_status        IS '前月顧客ステータス'
+/
+COMMENT ON COLUMN xxcmm.xxcmm_cust_accounts.card_company_div            IS 'カード会社区分'
+/
+COMMENT ON COLUMN xxcmm.xxcmm_cust_accounts.card_company                IS 'カード会社コード'
 /
 COMMENT ON COLUMN xxcmm.xxcmm_cust_accounts.created_by                  IS '作成者'
 /
