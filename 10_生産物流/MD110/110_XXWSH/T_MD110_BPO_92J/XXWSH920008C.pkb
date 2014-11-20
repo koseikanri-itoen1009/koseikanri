@@ -7,7 +7,7 @@ AS
  * Description      : 生産物流(引当、配車)
  * MD.050           : 出荷・引当/配車：生産物流共通（出荷・移動仮引当） T_MD050_BPO_920
  * MD.070           : 出荷・引当/配車：生産物流共通（出荷・移動仮引当） T_MD070_BPO_92J
- * Version          : 1.12
+ * Version          : 1.13
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -50,6 +50,7 @@ AS
  *  2009/03/17   1.10  SCS北寒寺         本番障害#1323対応
  *  2009/10/16   1.11  SCS菅原           本番障害#1611対応
  *  2010/01/08   1.12  SCS北寒寺         本番稼働障害#701対応
+ *  2010/01/28   1.13  SCS北寒寺         本番稼働障害#1320対応
  *****************************************************************************************/
 --
 --#######################  固定グローバル定数宣言部 START   #######################
@@ -4461,6 +4462,11 @@ AS
     cv_record_type_code_30   CONSTANT VARCHAR2(2) := '30';
     cn_zero                  CONSTANT NUMBER      := 0;
 -- 2010/01/08 M.Hokkanji Ver1.12 END
+-- 2010/01/28 M.Hokkanji Ver1.13 Start
+    cv_ship_shikyu_class_1 CONSTANT VARCHAR2(1) := '1';
+    cv_ship_shikyu_class_2 CONSTANT VARCHAR2(1) := '2';
+    cv_ship_shikyu_class_3 CONSTANT VARCHAR2(1) := '3';
+-- 2010/01/28 M.Hokkanji Ver1.13 End
     -- *** ローカル変数 ***
     ln_cnt         NUMBER := 0;
     ln_supply_cnt  NUMBER := 0;
@@ -4555,6 +4561,9 @@ AS
               FROM    xxwsh_order_headers_all    oha  -- 受注ヘッダ（アドオン）
                      ,xxwsh_order_lines_all      ola  -- 受注明細（アドオン）
                      ,xxinv_mov_lot_details      mld  -- 移動ロット詳細（アドオン）
+-- 2010/01/28 M.Hokkanji Ver1.13 Start
+                     ,oe_transaction_types_all   otta   -- 受注タイプ
+-- 2010/01/28 M.Hokkanji Ver1.13 End
               WHERE   oha.req_status           IN (cv_status_04,cv_status_08)
               AND     oha.actual_confirm_class  = gv_cons_flg_no
               AND     oha.latest_external_flag  = gv_cons_flg_yes
@@ -4565,7 +4574,21 @@ AS
               AND     mld.item_id               = in_opm_item_id
               AND     mld.document_type_code   IN (cv_document_type_code_10,cv_document_type_code_30)
               AND     mld.record_type_code      = cv_record_type_code_20
-              AND     NVL(mld.before_actual_quantity, cn_zero) - mld.actual_quantity > cn_zero
+-- 2010/01/28 M.Hokkanji Ver1.13 Start
+              AND     otta.transaction_type_id  = oha.order_type_id  
+              AND     otta.attribute1           IN (cv_ship_shikyu_class_1
+                                                   ,cv_ship_shikyu_class_2
+                                                   ,cv_ship_shikyu_class_3)
+              --AND     NVL(mld.before_actual_quantity, cn_zero) - mld.actual_quantity > cn_zero
+              AND     (
+                        (otta.order_category_code = 'ORDER'
+                          AND NVL(mld.before_actual_quantity, cn_zero) - mld.actual_quantity > cn_zero -- 出庫訂正はマイナス訂正のみ取得
+                        ) OR
+                        (otta.order_category_code = 'RETURN'
+                          AND mld.actual_quantity - NVL(mld.before_actual_quantity, cn_zero) > cn_zero
+                        )
+                      )
+-- 2010/01/28 M.Hokkanji Ver1.13 End
             ) enable_lot
 -- 2010/01/08 M.Hokkanji Ver1.12 END
       WHERE  lm.item_id           = in_opm_item_id          -- 需要情報.OPM品目ID
