@@ -6,7 +6,7 @@ AS
  * Package Name           : xxcos_edi_common_pkg(body)
  * Description            :
  * MD.070                 : MD070_IPO_COS_共通関数
- * Version                : 1.10
+ * Version                : 1.11
  *
  * Program List
  *  ----------------------------- ---- ----- -----------------------------------------
@@ -29,6 +29,7 @@ AS
  *  2010/03/09   1.8   S.Karikomi       [E_本稼働_01637]対応
  *  2010/04/15   1.9   S.Karikomi       [E_本稼動_02296]対応
  *  2010/07/13   1.10  S.Niki           [E_本稼動_02637]対応
+ *  2012/08/24   1.11  K.Onotsuka       [E_本稼動_09938]対応
  *****************************************************************************************/
   -- ===============================
   -- グローバル変数
@@ -79,6 +80,9 @@ AS
 /* 2009/07/13 Ver1.5 Add End   */
 /* 2009/08/11 Ver1.7 Add Start */
     cv_tkn_profile          CONSTANT VARCHAR2(20) := 'PROFILE';           --プロファイル
+/* 2012/08/24 Ver1.11 Add Start */
+    cv_tkn_invoice_number   CONSTANT VARCHAR2(14) := 'INVOICE_NUMBER';    -- 伝票番号
+/* 2012/08/24 Ver1.11 Add End */
 /* 2009/08/11 Ver1.7 Add End   */
     cv_cstm_class_base      CONSTANT VARCHAR2(2)  := '1';       -- 顧客区分:拠点
 /* 2010/04/15 Ver1.9 Add Start */
@@ -127,6 +131,10 @@ AS
     cv_boot_flag_conc       CONSTANT VARCHAR2(1)  := '1';       -- 1:コンカレント起動
     cv_boot_flag_form       CONSTANT VARCHAR2(1)  := '2';       -- 2:画面起動
 /* 2010/07/13 Ver1.10 Add End */
+/* 2012/08/24 Ver1.11 Add Start */
+    cv_invoice_number       CONSTANT VARCHAR2(16) := ' 、伝票コード： '; -- 固定値:伝票コード：(品目例外エラーメッセージ用)
+    cv_message_end          CONSTANT VARCHAR2(2)  := ' )';               -- 固定値:)(品目例外エラーメッセージ用)
+/* 2012/08/24 Ver1.11 Add End */
 /* 2009/08/11 Ver1.7 Add Start */
     --プロファイル名称
     ct_prof_org_id                CONSTANT  fnd_profile_options.profile_option_name%TYPE := 'ORG_ID'; --MO:営業単位
@@ -764,6 +772,15 @@ AS
               IF ( lv_retcode = lv_ret_warn ) THEN
                 --コンカレント起動の場合
                 IF ( iv_boot_flag = cv_boot_flag_conc ) THEN
+/* 2012/08/24 Ver1.11 Add Start */
+                  -- エラーメッセージの末尾に該当の伝票番号を表示する
+                  lv_errbuf := REPLACE(lv_errbuf
+                                     , cv_message_end
+                                     , cv_invoice_number || lt_head_tab(ln_head_cnt).cust_po_number || cv_message_end);
+                  lv_errmsg := REPLACE(lv_errmsg
+                                     , cv_message_end
+                                     , cv_invoice_number || lt_head_tab(ln_head_cnt).cust_po_number || cv_message_end);
+/* 2012/08/24 Ver1.11 Add End */
                   -- 共通関数からのメッセージをログと出力に出力する
                   FND_FILE.PUT_LINE(
                      which  => FND_FILE.OUTPUT

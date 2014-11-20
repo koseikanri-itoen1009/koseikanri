@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCOS011A03C (body)
  * Description      : 納品予定データの作成を行う
  * MD.050           : 納品予定データ作成 (MD050_COS_011_A03)
- * Version          : 1.26
+ * Version          : 1.27
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -75,6 +75,7 @@ AS
  *  2011/09/03    1.25  K.Kiriu          [E_本稼動_07906]流通BMS対応
  *  2011/12/15    1.26  T.Yoshimoto      [E_本稼動_02817]パラメータ(解除拠点コード)追加対応
  *                                       [E_本稼動_07554]受注明細の単位項目へのNVL対応
+ *  2012/08/24    1.27  K.Onotsuka       [E_本稼動_09938]品目エラーメッセージのパラメータ追加対応
  *
  *****************************************************************************************/
 --
@@ -282,6 +283,9 @@ AS
 /* 2010/06/11 Ver1.21 Add Start */
   cv_tkn_param13        CONSTANT VARCHAR2(8)   := 'PARAME13';          -- 入力パラメータ値
 /* 2010/06/11 Ver1.21 Add End */
+/* 2012/08/20 Ver1.27 Add Start */
+  cv_tkn_invoice_number CONSTANT VARCHAR2(14)  := 'INVOICE_NUMBER';    -- 伝票番号
+/* 2012/08/20 Ver1.27 Add End */
 -- ******* 2009/10/05 1.14 N.Maeda ADD START ******* --
   cv_order_source            CONSTANT VARCHAR2(20) := 'ORDER_SOURCE';
 -- ******* 2009/10/05 1.14 N.Maeda ADD  END  ******* --
@@ -350,7 +354,10 @@ AS
 /* 2011/12/15 Ver1.26 T.Yoshimoto Add Start E_本稼動_02871 */
   cv_comma              CONSTANT VARCHAR2(1)   := ',';                 -- 固定値:,
 /* 2011/12/15 Ver1.26 T.Yoshimoto Add End */
-
+/* 2012/08/23 Ver1.27 Add Start */
+  cv_invoice_number     CONSTANT VARCHAR2(16)  := ' 、伝票コード： ';  -- 固定値:伝票コード：(顧客品目エラーメッセージ用)
+  cv_message_end        CONSTANT VARCHAR2(2)   := ' )';                -- 固定値:)(顧客品目エラーメッセージ用)
+/* 2012/08/23 Ver1.27 Add End */
 -- ************ 2009/09/03 N.Maeda 1.12 ADD START ***************** --
   ct_user_lang                    CONSTANT mtl_category_sets_tl.language%TYPE := USERENV('LANG'); --LANG
 -- ************ 2009/09/03 N.Maeda 1.12 ADD  END  ***************** --
@@ -4110,6 +4117,15 @@ AS
 --        END IF;
         -- リターンコードが正常以外の場合
         IF ( lv_retcode <> cv_status_normal ) THEN
+/* 2012/08/23 Ver1.27 Add Start */
+          -- エラーメッセージの末尾に該当の伝票番号を表示する
+          lv_errbuf := REPLACE(lv_errbuf
+                             , cv_message_end
+                             , cv_invoice_number || gt_edi_order_tab(ln_loop_cnt).invoice_number || cv_message_end);
+          lv_errmsg := REPLACE(lv_errmsg
+                             , cv_message_end
+                             , cv_invoice_number || gt_edi_order_tab(ln_loop_cnt).invoice_number || cv_message_end);
+/* 2012/08/23 Ver1.27 Add End */
           RAISE global_item_conv_expt;
         END IF;
 /* 2010/07/08 Ver1.22 Mod End */
@@ -4123,6 +4139,10 @@ AS
                           ,iv_token_value1 => gt_edi_order_tab(ln_loop_cnt).edi_chain_code  -- EDIチェーン店コード
                           ,iv_token_name2  => cv_tkn_item_code    -- トークンコード２
                           ,iv_token_value2 => gt_edi_order_tab(ln_loop_cnt).item_code       -- 品目コード
+/* 2012/08/20 Ver1.27 Add Start */
+                          ,iv_token_name3  => cv_tkn_invoice_number -- トークンコード３
+                          ,iv_token_value3 => gt_edi_order_tab(ln_loop_cnt).invoice_number  -- 伝票番号
+/* 2012/08/20 Ver1.27 Add End */
                         );
           -- メッセージに出力
           FND_FILE.PUT_LINE(
