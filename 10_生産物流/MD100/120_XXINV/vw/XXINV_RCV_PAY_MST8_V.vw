@@ -16,6 +16,9 @@ CREATE OR REPLACE VIEW xxinv_rcv_pay_mst8_v
 -- 08/12/07 v1.6 Y.Yamamoto update start
  ,category_code
 -- 08/12/07 v1.6 Y.Yamamoto update end
+-- 08/12/09 v1.7 Y.Yamamoto update start
+ ,arrival_date
+-- 08/12/09 v1.7 Y.Yamamoto update end
 )
 AS
   SELECT xrpm.new_div_invent
@@ -34,6 +37,9 @@ AS
 -- 08/12/07 v1.6 Y.Yamamoto update start
         ,otta.order_category_code AS category_code
 -- 08/12/07 v1.6 Y.Yamamoto update end
+-- 08/12/09 v1.7 Y.Yamamoto update start
+        ,xoha.arrival_date
+-- 08/12/09 v1.7 Y.Yamamoto update end
   FROM   xxcmn_rcv_pay_mst         xrpm
         ,rcv_shipment_lines        rsl
         ,oe_order_headers_all      ooha
@@ -166,6 +172,9 @@ UNION ALL
 -- 08/12/07 v1.6 Y.Yamamoto update start
         ,'ORDER'                AS category_code
 -- 08/12/07 v1.6 Y.Yamamoto update end
+-- 08/12/09 v1.7 Y.Yamamoto update start
+        ,NULL                   AS arrival_date
+-- 08/12/09 v1.7 Y.Yamamoto update end
   FROM   xxcmn_rcv_pay_mst         xrpm
         ,rcv_shipment_lines        rsl
         ,rcv_transactions          rt
@@ -196,6 +205,9 @@ COMMENT ON COLUMN xxinv_rcv_pay_mst8_v.doc_line             IS '取引明細番号' ;
 COMMENT ON COLUMN xxinv_rcv_pay_mst8_v.line_id              IS 'ラインID' ;
 COMMENT ON COLUMN xxinv_rcv_pay_mst8_v.category_code        IS 'カテゴリーコード' ;
 -- 08/12/07 v1.6 Y.Yamamoto update end
+-- 08/12/09 v1.7 Y.Yamamoto update start
+COMMENT ON COLUMN xxinv_rcv_pay_mst8_v.arrival_date         IS '着日' ;
+-- 08/12/09 v1.7 Y.Yamamoto update end
 --
 COMMENT ON TABLE  xxinv_rcv_pay_mst8_v IS '受払区分情報VIEW_PORC' ;
 /

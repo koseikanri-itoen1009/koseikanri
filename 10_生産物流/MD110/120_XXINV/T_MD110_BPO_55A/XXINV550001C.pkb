@@ -7,7 +7,7 @@ AS
  * Description      : 在庫（帳票）
  * MD.050/070       : 在庫（帳票）Issue1.0  (T_MD050_BPO_550)
  *                    受払残高リスト        (T_MD070_BPO_55A)
- * Version          : 1.29
+ * Version          : 1.30
  *
  * Program List
  * -------------------------- ----------------------------------------------------------
@@ -56,6 +56,7 @@ AS
  *  2008/12/07    1.27  Yasuhisa Yamamoto  統合指摘 #503,509対応
  *  2008/12/07    1.28  Yasuhisa Yamamoto  統合指摘 #509対応
  *  2008/12/07    1.29  Yasuhisa Yamamoto  統合指摘 #466対応
+ *  2008/12/09    1.30  Yasuhisa Yamamoto  統合指摘 #472対応
  *****************************************************************************************/
 --
 --#######################  固定グローバル定数宣言部 START   #######################
@@ -1362,7 +1363,10 @@ AS
                           ,xmld_out.item_id              item_id          -- 品目ID
                           ,xmld_out.lot_id               lot_id           -- ロットID
                           ,xmrih_out.actual_ship_date    trans_date       -- 出庫日
-                          ,xmld_out.actual_quantity      trans_qty        -- 数量
+-- 08/12/09 Y.Yamamoto Update v1.30 start
+--                          ,xmld_out.actual_quantity      trans_qty        -- 数量
+                          ,xmld_out.actual_quantity * (-1) trans_qty        -- 数量
+-- 08/12/09 Y.Yamamoto Update v1.30 end
                           ,gc_rcv_pay_div_harai          rcv_pay_div      -- 受払区分:払出(固定)
                           ,0                             month_stock_be   -- 前月末在庫数
                           ,0                             cargo_stock_be   -- 前月積送中在庫数
@@ -1386,7 +1390,10 @@ AS
                     AND    xmrih_out.comp_actual_flg              = gc_y                                   -- 実績計上済フラグ：計上済
                     AND    NVL(xmrih_out.correct_actual_flg,gc_n) = gc_n                                   -- 実績訂正済フラグ：訂正なし
                     AND    xmrih_out.status                       = gc_status_finish                       -- ステータス：入出庫報告有
-                    AND    xmrih_out.actual_ship_date       BETWEEN gd_date_ym_first                       -- 日付
+-- 08/12/09 Y.Yamamoto Update v1.30 start
+--                    AND    xmrih_out.actual_ship_date       BETWEEN gd_date_ym_first                       -- 日付
+                    AND    xmrih_out.actual_arrival_date    BETWEEN gd_date_ym_first                       -- 日付
+-- 08/12/09 Y.Yamamoto Update v1.30 end
                                                             AND     gd_date_ym_last
                     AND    xilv_shipped_out.whse_code            <> xilv_ship_to_out.whse_code             -- 出庫保管場所と入庫保管場所の倉庫コードが違うもの
 -- 08/12/04 H.Itou Update v1.25 End
@@ -1403,13 +1410,16 @@ AS
                           ,itp_omso.trans_date
 -- 08/12/07 Y.Yamamoto ADD v1.29 start
 --                          ,itp_omso.trans_qty
-                          ,CASE
-                           WHEN (xrpm7v.new_div_invent = '104'
-                             AND xrpm7v.category_code = 'RETURN' ) THEN
-                             ABS( itp_omso.trans_qty ) * -1
-                           ELSE
-                             itp_omso.trans_qty
-                           END                       trans_qty
+-- 08/12/09 Y.Yamamoto update v1.30 start
+                          ,itp_omso.trans_qty
+--                          ,CASE
+--                           WHEN (xrpm7v.new_div_invent = '104'
+--                             AND xrpm7v.category_code = 'RETURN' ) THEN
+--                             ABS( itp_omso.trans_qty ) * -1
+--                           ELSE
+--                             itp_omso.trans_qty
+--                           END                       trans_qty
+-- 08/12/09 Y.Yamamoto update v1.30 end
 -- 08/12/07 Y.Yamamoto ADD v1.29 end
                           ,xrpm7v.rcv_pay_div
 -- 08/05/07 Y.Yamamoto ADD v1.1 Start
@@ -1434,7 +1444,10 @@ AS
 -- 08/09/05 Y.Yamamoto ADD v1.16 Start
 --                    AND    itp_omso.trans_date        BETWEEN gd_date_ym_first
 --                                                          AND gd_date_ym_last
-                    AND    itp_omso.trans_date        BETWEEN gd_date_ymt_first
+-- 08/12/09 Y.Yamamoto ADD v1.30 start
+--                    AND    itp_omso.trans_date        BETWEEN gd_date_ymt_first
+                    AND    xrpm7v.arrival_date        BETWEEN gd_date_ymt_first
+-- 08/12/09 Y.Yamamoto ADD v1.30 end
                                                           AND gd_date_ymt_last
 -- 08/09/05 Y.Yamamoto ADD v1.16 End
 -- 08/09/17 Y.Yamamoto Update v1.17 End
@@ -1502,13 +1515,16 @@ AS
                           ,itp_porc.trans_date
 -- 08/12/07 Y.Yamamoto ADD v1.29 start
 --                          ,itp_porc.trans_qty
-                          ,CASE
-                           WHEN (xrpm8v.new_div_invent = '104'
-                             AND xrpm8v.category_code = 'RETURN' ) THEN
-                             ABS( itp_porc.trans_qty ) * -1
-                           ELSE
-                             itp_porc.trans_qty
-                           END                       trans_qty
+-- 08/12/09 Y.Yamamoto update v1.30 start
+                          ,itp_porc.trans_qty
+--                          ,CASE
+--                           WHEN (xrpm8v.new_div_invent = '104'
+--                             AND xrpm8v.category_code = 'RETURN' ) THEN
+--                             ABS( itp_porc.trans_qty ) * -1
+--                           ELSE
+--                             itp_porc.trans_qty
+--                           END                       trans_qty
+-- 08/12/09 Y.Yamamoto update v1.30 end
 -- 08/12/07 Y.Yamamoto ADD v1.29 end
                           ,xrpm8v.rcv_pay_div
 -- 08/05/07 Y.Yamamoto ADD v1.1 Start
@@ -1530,7 +1546,11 @@ AS
 -- 08/09/05 Y.Yamamoto ADD v1.16 Start
 --                    AND    itp_porc.trans_date        BETWEEN gd_date_ym_first
 --                                                          AND gd_date_ym_last
-                    AND    itp_porc.trans_date        BETWEEN gd_date_ymt_first
+-- 08/12/09 N.Yoshida ADD v1.30 start
+--                    AND    itp_porc.trans_date        BETWEEN gd_date_ymt_first
+                    AND    NVL(xrpm8v.arrival_date, itp_porc.trans_date)
+                                                      BETWEEN gd_date_ymt_first
+-- 08/12/09 N.Yoshida ADD v1.30 end
                                                           AND gd_date_ymt_last
 -- 08/09/05 Y.Yamamoto ADD v1.16 End
 -- 08/09/17 Y.Yamamoto Update v1.17 End
@@ -2347,7 +2367,10 @@ AS
                           ,xmld_out.item_id              item_id          -- 品目ID
                           ,xmld_out.lot_id               lot_id           -- ロットID
                           ,xmrih_out.actual_ship_date    trans_date       -- 出庫日
-                          ,xmld_out.actual_quantity      trans_qty        -- 数量
+-- 08/12/09 Y.Yamamoto Update v1.30 start
+--                          ,xmld_out.actual_quantity      trans_qty        -- 数量
+                          ,xmld_out.actual_quantity * (-1) trans_qty        -- 数量
+-- 08/12/09 Y.Yamamoto Update v1.30 end
                           ,gc_rcv_pay_div_harai          rcv_pay_div      -- 受払区分:払出(固定)
                           ,0                             month_stock_be   -- 前月末在庫数
                           ,0                             cargo_stock_be   -- 前月積送中在庫数
@@ -2371,7 +2394,10 @@ AS
                     AND    xmrih_out.comp_actual_flg              = gc_y                                   -- 実績計上済フラグ：計上済
                     AND    NVL(xmrih_out.correct_actual_flg,gc_n) = gc_n                                   -- 実績訂正済フラグ：訂正なし
                     AND    xmrih_out.status                       = gc_status_finish                       -- ステータス：入出庫報告有
-                    AND    xmrih_out.actual_ship_date       BETWEEN gd_date_ym_first                       -- 日付
+-- 08/12/09 Y.Yamamoto Update v1.30 start
+--                    AND    xmrih_out.actual_ship_date       BETWEEN gd_date_ym_first                       -- 日付
+                    AND    xmrih_out.actual_arrival_date    BETWEEN gd_date_ym_first                       -- 日付
+-- 08/12/09 Y.Yamamoto Update v1.30 end
                                                             AND     gd_date_ym_last
                     AND    xilv_shipped_out.whse_code            <> xilv_ship_to_out.whse_code             -- 出庫保管場所と入庫保管場所の倉庫コードが違うもの
 -- 08/12/04 H.Itou Update v1.25 End
@@ -2388,7 +2414,19 @@ AS
                           ,itp_omso.item_id
                           ,itp_omso.lot_id
                           ,itp_omso.trans_date
+-- 08/12/07 Y.Yamamoto ADD v1.29 start
+--                          ,itp_omso.trans_qty
+-- 08/12/09 Y.Yamamoto update v1.30 start
                           ,itp_omso.trans_qty
+--                          ,CASE
+--                           WHEN (xrpm7v.new_div_invent = '104'
+--                             AND xrpm7v.category_code = 'RETURN' ) THEN
+--                             ABS( itp_omso.trans_qty ) * -1
+--                           ELSE
+--                             itp_omso.trans_qty
+--                           END                       trans_qty
+-- 08/12/09 Y.Yamamoto update v1.30 end
+-- 08/12/07 Y.Yamamoto ADD v1.29 end
                           ,xrpm7v.rcv_pay_div
 -- 08/05/07 Y.Yamamoto ADD v1.1 Start
                           ,0  AS month_stock_be                 -- 前月末在庫数
@@ -2412,7 +2450,10 @@ AS
 -- 08/09/05 Y.Yamamoto ADD v1.16 Start
 --                    AND    itp_omso.trans_date        BETWEEN gd_date_ym_first
 --                                                          AND gd_date_ym_last
-                    AND    itp_omso.trans_date        BETWEEN gd_date_ymt_first
+-- 08/12/09 Y.Yamamoto ADD v1.30 start
+--                    AND    itp_omso.trans_date        BETWEEN gd_date_ymt_first
+                    AND    xrpm7v.arrival_date        BETWEEN gd_date_ymt_first
+-- 08/12/09 Y.Yamamoto ADD v1.30 end
                                                           AND gd_date_ymt_last
 -- 08/09/05 Y.Yamamoto ADD v1.16 End
 -- 08/09/17 Y.Yamamoto Update v1.17 End
@@ -2478,7 +2519,19 @@ AS
                           ,itp_porc.item_id
                           ,itp_porc.lot_id
                           ,itp_porc.trans_date
+-- 08/12/07 Y.Yamamoto ADD v1.29 start
+--                          ,itp_porc.trans_qty
+-- 08/12/09 Y.Yamamoto update v1.30 start
                           ,itp_porc.trans_qty
+--                          ,CASE
+--                           WHEN (xrpm8v.new_div_invent = '104'
+--                             AND xrpm8v.category_code = 'RETURN' ) THEN
+--                             ABS( itp_porc.trans_qty ) * -1
+--                           ELSE
+--                             itp_porc.trans_qty
+--                           END                       trans_qty
+-- 08/12/09 Y.Yamamoto update v1.30 end
+-- 08/12/07 Y.Yamamoto ADD v1.29 end
                           ,xrpm8v.rcv_pay_div
 -- 08/05/07 Y.Yamamoto ADD v1.1 Start
                           ,0  AS month_stock_be                 -- 前月末在庫数
@@ -2499,7 +2552,11 @@ AS
 -- 08/09/05 Y.Yamamoto ADD v1.16 Start
 --                    AND    itp_porc.trans_date        BETWEEN gd_date_ym_first
 --                                                          AND gd_date_ym_last
-                    AND    itp_porc.trans_date        BETWEEN gd_date_ymt_first
+-- 08/12/09 N.Yoshida ADD v1.30 start
+--                    AND    itp_porc.trans_date        BETWEEN gd_date_ymt_first
+                    AND    NVL(xrpm8v.arrival_date, itp_porc.trans_date)
+                                                      BETWEEN gd_date_ymt_first
+-- 08/12/09 N.Yoshida ADD v1.30 end
                                                           AND gd_date_ymt_last
 -- 08/09/05 Y.Yamamoto ADD v1.16 End
 -- 08/09/17 Y.Yamamoto Update v1.17 End

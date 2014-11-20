@@ -15,6 +15,9 @@ CREATE OR REPLACE VIEW xxinv_rcv_pay_mst7_v
 -- 08/12/07 v1.4 Y.Yamamoto update start
  ,category_code
 -- 08/12/07 v1.4 Y.Yamamoto update end
+-- 08/12/09 v1.7 Y.Yamamoto update start
+ ,arrival_date
+-- 08/12/09 v1.7 Y.Yamamoto update end
 )
 AS
   SELECT xrpm.new_div_invent
@@ -32,6 +35,9 @@ AS
 -- 08/12/07 v1.6 Y.Yamamoto update start
         ,otta.order_category_code AS category_code
 -- 08/12/07 v1.6 Y.Yamamoto update end
+-- 08/12/09 v1.7 Y.Yamamoto update start
+        ,xoha.arrival_date
+-- 08/12/09 v1.7 Y.Yamamoto update end
   FROM  xxcmn_rcv_pay_mst          xrpm
        ,wsh_delivery_details       wdd
        ,oe_order_headers_all       ooha
@@ -155,6 +161,9 @@ COMMENT ON COLUMN xxinv_rcv_pay_mst7_v.lot_number           IS 'ロットNo' ;
 -- 08/12/07 v1.4 Y.Yamamoto update start
 COMMENT ON COLUMN xxinv_rcv_pay_mst7_v.category_code        IS 'カテゴリーコード' ;
 -- 08/12/07 v1.4 Y.Yamamoto update end
+-- 08/12/09 v1.7 Y.Yamamoto update start
+COMMENT ON COLUMN xxinv_rcv_pay_mst7_v.arrival_date         IS '着日' ;
+-- 08/12/09 v1.7 Y.Yamamoto update end
 --
 COMMENT ON TABLE  xxinv_rcv_pay_mst7_v IS '受払区分情報VIEW_OMSO' ;
 /
