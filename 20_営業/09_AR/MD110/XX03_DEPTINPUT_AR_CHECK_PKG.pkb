@@ -7,7 +7,7 @@ AS
  * Package Name           : xx03_deptinput_ar_check_pkg(body)
  * Description            : 部門入力(AR)において入力チェックを行う共通関数
  * MD.070                 : 部門入力(AR)共通関数 OCSJ/BFAFIN/MD070/F702
- * Version                : 11.5.10.2.16
+ * Version                : 11.5.10.2.17
  *
  * Program List
  *  -------------------------- ---- ----- --------------------------------------------------
@@ -53,6 +53,7 @@ AS
  *  2010/12/24   11.5.10.2.14   障害「E_本稼動_02004」対応
  *  2011/11/29   11.5.10.2.15   障害「E_本稼動_07768」対応
  *  2012/01/10   11.5.10.2.16   障害「E_本稼動_08887」対応
+ *  2012/03/27   11.5.10.2.17   障害「E_本稼動_09336」対応
  *
  *****************************************************************************************/
 --
@@ -769,27 +770,43 @@ AS
       AND   rctta.attribute6 IS NOT NULL;
 --
     -- 取消対象伝票消し込みチェックカーソル
-    CURSOR xx03_cancel_chk_cur
-    IS
-      SELECT xrs.orig_invoice_num                          AS orig_invoice_num,
+-- ver 11.5.10.2.17 Mod Start
+--    CURSOR xx03_cancel_chk_cur
+--    IS
+--      SELECT xrs.orig_invoice_num                          AS orig_invoice_num,
+    CURSOR xx03_cancel_chk_cur(
+      iv_orig_invoice_num    IN VARCHAR2                 -- 修正元伝票番号
+     ,iv_orig_invoice_num_s  IN VARCHAR2                 -- 修正元伝票番号(％つき）
+    ) IS
+      SELECT /*+ LEADING( rcta ) 
+                 USE_NL( rcta xrs_orig acrv araa ) */
+             xrs_orig.receivable_num                       AS orig_invoice_num,
+-- ver 11.5.10.2.17 Mod End
              acrv.receipt_number                           AS receipt_number,
              acrv.payment_method_dsp                       AS payment_method_dsp,
              acrv.receipt_date                             AS receipt_date,
              acrv.customer_number||':'||acrv.customer_name AS customer,
              acrv.amount                                   AS amount,
              acrv.document_number                          AS document_number
-      FROM xx03_receivable_slips xrs
-          ,ra_customer_trx_all rcta
+-- ver 11.5.10.2.17 Mod Start
+--      FROM xx03_receivable_slips xrs
+--          ,ra_customer_trx_all rcta
+      FROM ra_customer_trx_all rcta
+-- ver 11.5.10.2.17 Mod End
           ,ar_receivable_applications_all araa
           ,ar_cash_receipts_v acrv
 -- ver 11.5.10.2.15 Add Start
           ,xx03_receivable_slips xrs_orig
--- ver 11.5.10.2.15 Add ENd
-      WHERE xrs.receivable_id = in_receivable_id
--- ver 11.5.10.2.15 Mod Start
---      AND   rcta.trx_number = xrs.orig_invoice_num
-      AND   rcta.trx_number LIKE xrs.orig_invoice_num || cn_percent_char
--- ver 11.5.10.2.15 Mod End
+-- ver 11.5.10.2.17 Mod Start
+---- ver 11.5.10.2.15 Add ENd
+--      WHERE xrs.receivable_id = in_receivable_id
+---- ver 11.5.10.2.15 Mod Start
+----      AND   rcta.trx_number = xrs.orig_invoice_num
+--      AND   rcta.trx_number LIKE xrs.orig_invoice_num || cn_percent_char
+---- ver 11.5.10.2.15 Mod End
+      WHERE 
+            rcta.trx_number LIKE iv_orig_invoice_num_s
+-- ver 11.5.10.2.17 Mod END
       AND   rcta.org_id = FND_PROFILE.VALUE('ORG_ID')
       AND   rcta.set_of_books_id = FND_PROFILE.VALUE('GL_SET_OF_BKS_ID')
       AND   araa.applied_customer_trx_id = rcta.customer_trx_id
@@ -799,7 +816,10 @@ AS
 -- ver 11.5.10.2.15 Mod Start
 --      AND   acrv.cash_receipt_id = araa.cash_receipt_id;
       AND   acrv.cash_receipt_id   = araa.cash_receipt_id
-      AND   xrs_orig.receivable_num = xrs.orig_invoice_num
+-- ver 11.5.10.2.17 Mod Start
+--      AND   xrs_orig.receivable_num = xrs.orig_invoice_num
+      AND   xrs_orig.receivable_num = iv_orig_invoice_num
+-- ver 11.5.10.2.17 Mod End
       AND   rcta.cust_trx_type_id  = xrs_orig.trans_type_id
       ;
 -- ver 11.5.10.2.15 Mod End
@@ -1480,31 +1500,44 @@ AS
         END IF;
         CLOSE xx03_cust_office_cur;
 --
--- ver 11.5.10.2.11 Add Start
-        --取消伝票消し込みチェック
-        OPEN xx03_cancel_chk_cur;
-        FETCH xx03_cancel_chk_cur INTO xx03_cancel_chk_rec;
-        IF xx03_cancel_chk_cur%FOUND THEN
-          errflg_tbl(ln_err_cnt) := 'E';
-          errmsg_tbl(ln_err_cnt) := xx00_message_pkg.get_msg('XXCFR',
-                                                             'APP-XXCFR1-00088',
-                                                             'TRX_NUMBER',
-                                                             xx03_cancel_chk_rec.orig_invoice_num,
-                                                             'RECEIPT_NUMBER',
-                                                             xx03_cancel_chk_rec.receipt_number,
-                                                             'PAYMENT_METHOD_DSP',
-                                                             xx03_cancel_chk_rec.payment_method_dsp,
-                                                             'RECEIPT_DATE',
-                                                             xx03_cancel_chk_rec.receipt_date,
-                                                             'CUSTOMER',
-                                                             xx03_cancel_chk_rec.customer,
-                                                             'AMOUNT',
-                                                             xx03_cancel_chk_rec.amount,
-                                                             'DOCUMENT_NUMBER',
-                                                             xx03_cancel_chk_rec.document_number);
-          ln_err_cnt := ln_err_cnt + 1;
+-- ver 11.5.10.2.17 Add Start
+        -- 修正元伝票番号入力時のみチェックする
+        IF lv_chk_orig_invoice_num is not NULL THEN
+-- ver 11.5.10.2.17 Add End
+  -- ver 11.5.10.2.11 Add Start
+          --取消伝票消し込みチェック
+  -- ver 11.5.10.2.17 Mod Start
+  --        OPEN xx03_cancel_chk_cur;
+          OPEN xx03_cancel_chk_cur(
+                 lv_chk_orig_invoice_num                         -- 修正元伝票番号
+                ,lv_chk_orig_invoice_num || cn_percent_char      -- 修正元伝票番号(%記号つき)
+               );
+  -- ver 11.5.10.2.17 Mod End
+          FETCH xx03_cancel_chk_cur INTO xx03_cancel_chk_rec;
+          IF xx03_cancel_chk_cur%FOUND THEN
+            errflg_tbl(ln_err_cnt) := 'E';
+            errmsg_tbl(ln_err_cnt) := xx00_message_pkg.get_msg('XXCFR',
+                                                               'APP-XXCFR1-00088',
+                                                               'TRX_NUMBER',
+                                                               xx03_cancel_chk_rec.orig_invoice_num,
+                                                               'RECEIPT_NUMBER',
+                                                               xx03_cancel_chk_rec.receipt_number,
+                                                               'PAYMENT_METHOD_DSP',
+                                                               xx03_cancel_chk_rec.payment_method_dsp,
+                                                               'RECEIPT_DATE',
+                                                               xx03_cancel_chk_rec.receipt_date,
+                                                               'CUSTOMER',
+                                                               xx03_cancel_chk_rec.customer,
+                                                               'AMOUNT',
+                                                               xx03_cancel_chk_rec.amount,
+                                                               'DOCUMENT_NUMBER',
+                                                               xx03_cancel_chk_rec.document_number);
+            ln_err_cnt := ln_err_cnt + 1;
+          END IF;
+          CLOSE xx03_cancel_chk_cur;
+-- ver 11.5.10.2.17 Add Start
         END IF;
-        CLOSE xx03_cancel_chk_cur;
+-- ver 11.5.10.2.17 Add End
 --
         -- 勘定科目チェック
         OPEN xx03_account_chk_cur;
