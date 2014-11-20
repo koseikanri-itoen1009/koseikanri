@@ -3,7 +3,7 @@
  *
  * View Name   : XXCOI_USER_BASE_INFO2_V
  * Description : 自拠点情報ビュー2
- * Version     : 1.1
+ * Version     : 1.2
  *
  * Change Record
  * ------------- ----- ---------------- ---------------------------------
@@ -11,6 +11,7 @@
  * ------------- ----- ---------------- ---------------------------------
  *  2009/01/15    1.0   N.Abe            新規作成
  *  2009/04/30    1.1   T.Nakamura       カラムコメント、バックスラッシュを追加
+ *  2009/06/02    1.2   H.Wada           障害番号：T1_1299
  *
  ************************************************************************/
 CREATE OR REPLACE FORCE VIEW "APPS"."XXCOI_USER_BASE_INFO2_V" ("ACCOUNT_NUMBER", "ACCOUNT_NAME") AS 
@@ -38,6 +39,7 @@ FROM    (SELECT  hca.account_number
            WHERE fu.user_id             = fnd_global.user_id
            AND   papf.person_id         = fu.employee_id
            AND   TRUNC(SYSDATE) BETWEEN TRUNC(papf.effective_start_date) AND TRUNC(papf.effective_end_date)
+           AND   TRUNC(SYSDATE) BETWEEN TRUNC(paaf.effective_start_date) AND TRUNC(paaf.effective_end_date)
            AND   ppt.business_group_id  = fnd_global.per_business_group_id
            AND   ppt.system_person_type = 'EMP'
            AND   ppt.active_flag        = 'Y'
@@ -66,6 +68,7 @@ FROM    (SELECT  hca.account_number
            WHERE fu.user_id = fnd_global.user_id
            AND   papf.person_id         = fu.employee_id
            AND   TRUNC(SYSDATE) BETWEEN TRUNC(papf.effective_start_date) AND TRUNC(papf.effective_end_date)
+           AND   TRUNC(SYSDATE) BETWEEN TRUNC(paaf.effective_start_date) AND TRUNC(paaf.effective_end_date)
            AND   ppt.business_group_id  = fnd_global.per_business_group_id
            AND   ppt.system_person_type = 'EMP'
            AND   ppt.active_flag        = 'Y'

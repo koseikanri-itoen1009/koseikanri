@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCOI006A21C(body)
  * Description      : 棚卸結果作成
  * MD.050           : HHT棚卸結果データ取込 <MD050_COI_A21>
- * Version          : 1.4
+ * Version          : 1.5
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -36,6 +36,7 @@ AS
  *  2009/02/18    1.2   N.Abe            [障害COI_018] 良品区分値の不備対応
  *  2009/04/21    1.3   H.Sasaki         [T1_0654]取込データの前後スペース削除
  *  2009/05/07    1.4   T.Nakamura       [T1_0556]品目存在チェックエラー処理を追加
+ *  2009/06/02    1.5   H.Sasaki         [T1_1300]棚卸場所の編集処理を追加
  *
  *****************************************************************************************/
 --
@@ -121,9 +122,9 @@ AS
   -- ===============================
   -- ユーザー定義グローバル定数
   -- ===============================
-  cv_pkg_name         CONSTANT VARCHAR2(100) := 'XXCOI006A21C'; -- パッケージ名
+  cv_pkg_name         CONSTANT VARCHAR2(100)  := 'XXCOI006A21C'; -- パッケージ名
 --
-  cv_xxcoi_short_name CONSTANT VARCHAR2(10)  := 'XXCOI';        -- アドオン：共通・IF領域
+  cv_xxcoi_short_name CONSTANT VARCHAR2(10)   := 'XXCOI';        -- アドオン：共通・IF領域
 --
   -- ===============================
   -- ユーザー定義グローバル型
@@ -1253,7 +1254,6 @@ AS
     ln_loop_cnt             NUMBER          DEFAULT 0;      --LOOPカウンタ
     ln_length               NUMBER;                         --カンマの位置
     lb_file_data            BLOB;                           --ファイルデータ
-    
 --
     -- *** ローカル・カーソル ***
 --
@@ -1443,6 +1443,7 @@ AS
       -- =======================
       -- 5.一時表へ取り込む
       -- =======================
+      --
       INSERT INTO xxcoi_tmp_inv_result(
          sort_no              -- 1.取込順
         ,base_code            -- 2.拠点コード
@@ -2220,6 +2221,10 @@ AS
     --メッセージ
     cv_xxcoi1_msg_00008     CONSTANT  VARCHAR2(16)  := 'APP-XXCOI1-00008';            --0件メッセージ
     cv_xxcoi1_msg_10141     CONSTANT  VARCHAR2(16)  := 'APP-XXCOI1-10141';            --棚卸結果ファイルIFロックエラー
+-- == 2009/06/02 V1.5 Added START ===============================================================
+    cv_1                    CONSTANT  VARCHAR2(1)   := '1';
+    cv_2                    CONSTANT  VARCHAR2(1)   := '2';
+-- == 2009/06/02 V1.5 Added END   ===============================================================
 --
     -- *** ローカル変数 ***
     ln_organization_id      NUMBER;                                                   --在庫組織ID
@@ -2239,51 +2244,100 @@ AS
     --棚卸結果ファイルIF抽出
     CURSOR get_inv_data_cur
     IS
-      SELECT    xirfi.interface_id                  -- 1.インターフェースID
-               ,xirfi.input_order                   -- 2.取込順
-               ,xirfi.base_code                     -- 3.拠点コード
-               ,xirfi.inventory_kbn                 -- 4.棚卸区分
-               ,xirfi.inventory_date                -- 5.棚卸日
-               ,xirfi.warehouse_kbn                 -- 6.倉庫区分
-               ,xirfi.inventory_place               -- 7.棚卸場所
-               ,xirfi.item_code                     -- 8.品目コード
-               ,xirfi.case_qty                      -- 9.ケース数
-               ,xirfi.case_in_qty                   --10.入数
-               ,xirfi.quantity                      --11.本数
-               ,xirfi.slip_no                       --12.伝票№
-               ,xirfi.quality_goods_kbn             --13.良品区分
-               ,xirfi.receive_date                  --14.受信日時
-               ,xic.inventory_seq                   --15.棚卸SEQ
-               ,xic.inventory_status                --16.棚卸ステータス
-      FROM      xxcoi_in_inv_result_file_if  xirfi  --棚卸結果ファイルIF
-               ,xxcoi_inv_control         xic       --棚卸管理
-      WHERE     xirfi.base_code       = xic.base_code(+)          --拠点コード
-      AND       xirfi.inventory_place = xic.inventory_place(+)    --棚卸場所
-      AND       xirfi.inventory_date  = xic.inventory_date(+)     --棚卸日
-      AND       xirfi.inventory_kbn   = xic.inventory_kbn(+)      --棚卸区分
-      ORDER BY  xirfi.base_code
-               ,xirfi.inventory_place
-               ,xirfi.inventory_date
-               ,xirfi.inventory_kbn
-      FOR UPDATE OF xirfi.interface_id NOWAIT
+-- == 2009/06/02 V1.5 Modified START ===============================================================
+--      SELECT    xirfi.interface_id                  -- 1.インターフェースID
+--               ,xirfi.input_order                   -- 2.取込順
+--               ,xirfi.base_code                     -- 3.拠点コード
+--               ,xirfi.inventory_kbn                 -- 4.棚卸区分
+--               ,xirfi.inventory_date                -- 5.棚卸日
+--               ,xirfi.warehouse_kbn                 -- 6.倉庫区分
+--               ,xirfi.inventory_place               -- 7.棚卸場所
+--               ,xirfi.item_code                     -- 8.品目コード
+--               ,xirfi.case_qty                      -- 9.ケース数
+--               ,xirfi.case_in_qty                   --10.入数
+--               ,xirfi.quantity                      --11.本数
+--               ,xirfi.slip_no                       --12.伝票№
+--               ,xirfi.quality_goods_kbn             --13.良品区分
+--               ,xirfi.receive_date                  --14.受信日時
+--               ,xic.inventory_seq                   --15.棚卸SEQ
+--               ,xic.inventory_status                --16.棚卸ステータス
+--      FROM      xxcoi_in_inv_result_file_if  xirfi  --棚卸結果ファイルIF
+--               ,xxcoi_inv_control         xic       --棚卸管理
+--      WHERE     xirfi.base_code       = xic.base_code(+)          --拠点コード
+--      AND       xirfi.inventory_place = xic.inventory_place(+)    --棚卸場所
+--      AND       xirfi.inventory_date  = xic.inventory_date(+)     --棚卸日
+--      AND       xirfi.inventory_kbn   = xic.inventory_kbn(+)      --棚卸区分
+--      ORDER BY  xirfi.base_code
+--               ,xirfi.inventory_place
+--               ,xirfi.inventory_date
+--               ,xirfi.inventory_kbn
+--      FOR UPDATE OF xirfi.interface_id NOWAIT
+--      ;
+--
+      SELECT    ilv.interface_id                  --  1.インターフェースID
+               ,ilv.input_order                   --  2.取込順
+               ,ilv.base_code                     --  3.拠点コード
+               ,ilv.inventory_kbn                 --  4.棚卸区分
+               ,ilv.inventory_date                --  5.棚卸日
+               ,ilv.warehouse_kbn                 --  6.倉庫区分
+               ,ilv.inventory_place               --  7.棚卸場所
+               ,ilv.item_code                     --  8.品目コード
+               ,ilv.case_qty                      --  9.ケース数
+               ,ilv.case_in_qty                   -- 10.入数
+               ,ilv.quantity                      -- 11.本数
+               ,ilv.slip_no                       -- 12.伝票№
+               ,ilv.quality_goods_kbn             -- 13.良品区分
+               ,ilv.receive_date                  -- 14.受信日時
+               ,xic.inventory_seq                 -- 15.棚卸SEQ
+               ,xic.inventory_status              -- 16.棚卸ステータス
+      FROM      (SELECT   xirfi.interface_id                    -- インターフェースID
+                         ,xirfi.input_order                     -- 取込順
+                         ,xirfi.base_code                       -- 拠点コード
+                         ,xirfi.inventory_kbn                   -- 棚卸区分
+                         ,xirfi.inventory_date                  -- 棚卸日
+                         ,xirfi.warehouse_kbn                   -- 倉庫区分
+                         ,DECODE(xirfi.warehouse_kbn, cv_1, SUBSTRB(xirfi.inventory_place, -2, 2)
+                                                    , cv_2, SUBSTRB(xirfi.inventory_place, -5, 5)
+                                                         , xirfi.inventory_place
+                          )               inventory_place       -- 棚卸場所
+                         ,xirfi.item_code                       -- 品目コード
+                         ,xirfi.case_qty                        -- ケース数
+                         ,xirfi.case_in_qty                     -- 入数
+                         ,xirfi.quantity                        -- 本数
+                         ,xirfi.slip_no                         -- 伝票№
+                         ,xirfi.quality_goods_kbn               -- 良品区分
+                         ,xirfi.receive_date                    -- 受信日時
+                 FROM     xxcoi_in_inv_result_file_if  xirfi    -- 棚卸結果ファイルIF
+                )                         ilv                   -- 棚卸結果ファイルIF情報
+               ,xxcoi_inv_control         xic                   -- 棚卸管理
+      WHERE     ilv.base_code       = xic.base_code(+)          -- 拠点コード
+      AND       ilv.inventory_place = xic.inventory_place(+)    -- 棚卸場所
+      AND       ilv.inventory_date  = xic.inventory_date(+)     -- 棚卸日
+      AND       ilv.inventory_kbn   = xic.inventory_kbn(+)      -- 棚卸区分
+      ORDER BY  ilv.base_code
+               ,ilv.inventory_place
+               ,ilv.inventory_date
+               ,ilv.inventory_kbn
+      FOR UPDATE OF ilv.interface_id NOWAIT
       ;
+-- == 2009/06/02 V1.5 Modified END   ===============================================================
 --
     --ファイルアップロード一時表データ抽出
     CURSOR get_tmp_cur(in_file_id IN NUMBER)
     IS
-      SELECT    xirt.sort_no                -- 1.取込順
-               ,xirt.base_code              -- 2.拠点コード
-               ,xirt.inventory_kbn          -- 3.棚卸区分
-               ,xirt.inventory_date         -- 4.棚卸日
-               ,xirt.warehouse_kbn          -- 5.倉庫区分
-               ,xirt.inventory_place        -- 6.棚卸場所
-               ,xirt.item_code              -- 7.品目コード
-               ,xirt.case_qty               -- 8.ケース数
-               ,xirt.case_in_qty            -- 9.入数
-               ,xirt.quantity               --10.本数
-               ,xirt.slip_no                --11.伝票№
-               ,xirt.quality_goods_kbn      --12.良品区分
-               ,xirt.receive_date           --13.受信日時
+      SELECT    xirt.sort_no            sort_no             -- 1.取込順
+               ,xirt.base_code          base_code           -- 2.拠点コード
+               ,xirt.inventory_kbn      inventory_kbn       -- 3.棚卸区分
+               ,xirt.inventory_date     inventory_date      -- 4.棚卸日
+               ,xirt.warehouse_kbn      warehouse_kbn       -- 5.倉庫区分
+               ,xirt.inventory_place    inventory_place     -- 6.棚卸場所
+               ,xirt.item_code          item_code           -- 7.品目コード
+               ,xirt.case_qty           case_qty            -- 8.ケース数
+               ,xirt.case_in_qty        case_in_qty         -- 9.入数
+               ,xirt.quantity           quantity            --10.本数
+               ,xirt.slip_no            slip_no             --11.伝票№
+               ,xirt.quality_goods_kbn  quality_goods_kbn   --12.良品区分
+               ,xirt.receive_date       receive_date        --13.受信日時
       FROM      xxcoi_tmp_inv_result  xirt  --ファイルアップロード一時表
       WHERE     xirt.file_id = in_file_id
       ORDER BY  xirt.sort_no
