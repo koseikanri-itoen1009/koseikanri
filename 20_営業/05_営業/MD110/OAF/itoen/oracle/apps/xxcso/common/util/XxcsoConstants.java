@@ -1,7 +1,7 @@
 /*============================================================================
 * ファイル名 : XxcsoConstants
 * 概要説明   : 【アドオン：営業・営業領域】共通固定値クラス
-* バージョン : 1.15
+* バージョン : 1.16
 *============================================================================
 * 修正履歴
 * 日付       Ver. 担当者       修正内容
@@ -25,6 +25,7 @@
 * 2011-01-06 1.13 SCS桐生和幸  [E_本稼動_02498]銀行支店マスタチェック対応
 * 2011-04-04 1.14 SCS吉元強樹  [E_本稼動_02496]SP専決回送先承認者必須チェック対応
 * 2011-05-17 1.15 SCS桐生和幸  [E_本稼動_02500]原価割れチェック方法の変更対応
+* 2011-06-06 1.16 SCS桐生和幸  [E_本稼動_01963]新規仕入先作成チェック対応
 *============================================================================
 */
 package itoen.oracle.apps.xxcso.common.util;
@@ -222,6 +223,10 @@ public class XxcsoConstants
 // 2011-05-17 Ver1.15 [E_本稼動_02500] Add Start
   public static final String APP_XXCSO1_00613    = "APP-XXCSO1-00613";
 // 2011-05-17 Ver1.15 [E_本稼動_02500] Add Start
+// 2011-06-06 Ver1.16 [E_本稼動_01963] Add Start
+  public static final String APP_XXCSO1_00614    = "APP-XXCSO1-00614";
+  public static final String APP_XXCSO1_00615    = "APP-XXCSO1-00615";
+// 2011-06-06 Ver1.16 [E_本稼動_01963] Add End
 
   /*****************************************************************************
    * トークン名
@@ -271,7 +276,9 @@ public class XxcsoConstants
   public static final String TOKEN_BANK_NUM      = "BANK_NUM";
   public static final String TOKEN_BRANCH_NUM    = "BRANCH_NUM";
 // 2011-01-06 Ver1.13 [E_本稼動_02498] Add End
-
+// 2011-06-06 Ver1.16 [E_本稼動_01963] Add Start
+  public static final String TOKEN_BM_INFO       = "BM_INFO";
+// 2011-06-06 Ver1.16 [E_本稼動_01963] Add End
   /*****************************************************************************
    * トークン値
    *****************************************************************************
@@ -288,6 +295,16 @@ public class XxcsoConstants
     TOKEN_VALUE_SAVE                   = "保存";
   public static final String
     TOKEN_VALUE_DECISION               = "確定";
+// 2011-06-06 Ver1.16 [E_本稼動_01963] Add Start
+  public static final String
+    TOKEN_VALUE_SAVE2                  = "保存2";
+  public static final String
+    TOKEN_VALUE_DECISION2              = "確定2";
+  public static final String
+    TOKEN_VALUE_SAVE3                  = "保存3";
+  public static final String
+    TOKEN_VALUE_DECISION3              = "確定3";
+// 2011-06-06 Ver1.16 [E_本稼動_01963] Add End
   public static final String
     TOKEN_VALUE_CSV_CREATE             = "CSVファイル作成";
   public static final String
@@ -362,7 +379,12 @@ public class XxcsoConstants
     TOKEN_VALUE_CONTRACT_REGIST        = "自動販売機設置契約書";
   public static final String
     TOKEN_VALUE_SET_MODULE             = "モジュールの登録";
-
+// 2011-06-06 Ver1.16 [E_本稼動_01963] Add Start
+  public static final String
+    TOKEN_VALUE_DELIMITER4             = "／";
+  public static final String
+    TOKEN_VALUE_DELIMITER5             = " ";
+// 2011-06-06 Ver1.16 [E_本稼動_01963] Add End
   /*****************************************************************************
    * 機能ID
    *****************************************************************************

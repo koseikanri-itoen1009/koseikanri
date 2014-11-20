@@ -1,7 +1,7 @@
 /*============================================================================
 * ファイル名 : XxcsoContractRegistAMImpl
 * 概要説明   : 自販機設置契約情報登録画面アプリケーション・モジュールクラス
-* バージョン : 1.6
+* バージョン : 1.7
 *============================================================================
 * 修正履歴
 * 日付       Ver. 担当者       修正内容
@@ -15,6 +15,7 @@
 * 2010-01-20 1.4  SCS阿部大輔  [E_本稼動_01176]口座種別対応
 * 2010-02-09 1.5  SCS阿部大輔  [E_本稼動_01538]契約書の複数確定対応
 * 2010-03-01 1.6  SCS阿部大輔  [E_本稼動_01678]現金支払対応
+* 2011-06-06 1.7  SCS桐生和幸  [E_本稼動_01963]新規仕入先作成チェック対応
 *============================================================================
 */
 package itoen.oracle.apps.xxcso.xxcso010003j.server;
@@ -2039,6 +2040,494 @@ public class XxcsoContractRegistAMImpl extends OAApplicationModuleImpl
     return confirmMsg;
   }
 // 2010-02-09 [E_本稼動_01538] Mod End
+// 2011-06-06 Ver1.7 [E_本稼動_01963] Add Start
+  /*****************************************************************************
+   * 支払先作成済みチェック処理
+   *****************************************************************************
+   */
+  public void supplierCheck()
+  {
+    OADBTransaction txn = getOADBTransaction();
+
+    XxcsoUtils.debug(txn, "[START]");
+
+    mMessage = this.validateSupplierInfo();
+
+    XxcsoUtils.debug(txn, "[END]");
+  }
+
+  /*****************************************************************************
+   * 支払先作成済みチェック
+   * @return OAException 
+   *****************************************************************************
+   */
+  private OAException validateSupplierInfo()
+  {
+    OADBTransaction txn = getOADBTransaction();
+
+    XxcsoUtils.debug(txn, "[START]");
+
+    OAException confirmMsg = null;
+
+    StringBuffer sbMsg = new StringBuffer();
+
+    String vendorCode = null;
+
+    //インスタンス取得
+    XxcsoPageRenderVOImpl pageRenderVo
+      = getXxcsoPageRenderVO1();
+    if ( pageRenderVo == null )
+    {
+      throw
+        XxcsoMessage.createInstanceLostError("XxcsoPageRenderVOImpl");
+    }
+
+    XxcsoContractManagementFullVOImpl mngVo
+      = getXxcsoContractManagementFullVO1();
+    if ( mngVo == null )
+    {
+      throw
+        XxcsoMessage.createInstanceLostError("XxcsoContractManagementFullVO1");
+    }
+
+    XxcsoBm1DestinationFullVOImpl dest1Vo
+      = getXxcsoBm1DestinationFullVO1();
+    if ( dest1Vo == null )
+    {
+      throw
+        XxcsoMessage.createInstanceLostError("XxcsoBm1DestinationFullVO1");
+    }
+
+    XxcsoBm2DestinationFullVOImpl dest2Vo
+      = getXxcsoBm2DestinationFullVO1();
+    if ( dest2Vo == null )
+    {
+      throw
+        XxcsoMessage.createInstanceLostError("XxcsoBm2DestinationFullVO1");
+    }
+
+    XxcsoBm3DestinationFullVOImpl dest3Vo
+      = getXxcsoBm3DestinationFullVO1();
+    if ( dest3Vo == null )
+    {
+      throw
+        XxcsoMessage.createInstanceLostError("XxcsoBm3DestinationFullVO1");
+    }
+
+    // 行インスタンス取得
+    XxcsoPageRenderVORowImpl pageRenderRow
+      = (XxcsoPageRenderVORowImpl) pageRenderVo.first();
+
+    XxcsoContractManagementFullVORowImpl mngRow
+      = (XxcsoContractManagementFullVORowImpl) mngVo.first();
+
+    XxcsoBm1DestinationFullVORowImpl dest1Row
+      = (XxcsoBm1DestinationFullVORowImpl)dest1Vo.first();
+
+    XxcsoBm2DestinationFullVORowImpl dest2Row
+      = (XxcsoBm2DestinationFullVORowImpl) dest2Vo.first();
+
+    XxcsoBm3DestinationFullVORowImpl dest3Row
+      = (XxcsoBm3DestinationFullVORowImpl) dest3Vo.first();
+
+    /////////////////////////////////////
+    // BM1送付先コード変更チェック
+    /////////////////////////////////////
+    // BM1指定がONの場合
+    if ( XxcsoContractRegistValidateUtils.isChecked(
+           pageRenderRow.getBm1ExistFlag() ) )
+    {
+
+      //BM1仕入先新規作成チェック
+      vendorCode = XxcsoContractRegistValidateUtils.SuppllierMstCheck(
+                         txn
+                         ,mngRow.getContractNumber()
+                         ,mngRow.getInstallAccountNumber()
+                         ,dest1Row.getDeliveryDiv()
+                         ,dest1Row.getSupplierId()
+                       );
+
+      //戻り値がNULL以外の場合
+      if (  !( vendorCode == null || "".equals(vendorCode.trim()) ) )
+      {
+
+        //BM1トークン設定
+        sbMsg.append( XxcsoContractRegistConstants.TOKEN_VALUE_BM1 );
+        sbMsg.append( XxcsoConstants.TOKEN_VALUE_DELIMITER3 );
+
+        //別契約が新規作成でない場合
+        if ( !XxcsoContractRegistConstants.CREATE_VENDOR.equals(vendorCode) )
+        {
+          //取得した過去契約の仕入先コードを設定
+          sbMsg.append( vendorCode );
+        }
+        else
+        {
+          //過去契約が仕入先を新規作成するトークン設定
+          sbMsg.append(
+            XxcsoContractRegistConstants.TOKEN_CREATE_VENDOR_BEFORE_CONT );
+        }
+
+      }
+
+    }
+
+    /////////////////////////////////////
+    // BM2送付先コード変更チェック
+    /////////////////////////////////////
+    //初期化
+    vendorCode = null;
+    // BM2指定がONの場合
+    if ( XxcsoContractRegistValidateUtils.isChecked(
+           pageRenderRow.getBm2ExistFlag() ) )
+    {
+      //BM2仕入先新規作成チェック
+      vendorCode = XxcsoContractRegistValidateUtils.SuppllierMstCheck(
+                         txn
+                        ,mngRow.getContractNumber()
+                        ,mngRow.getInstallAccountNumber()
+                        ,dest2Row.getDeliveryDiv()
+                        ,dest2Row.getSupplierId()
+                       );
+      //戻り値がNULL以外の場合
+      if ( !( vendorCode == null || "".equals(vendorCode.trim()) ) )
+      {
+        //BM1のメッセージが生成されている場合、区切り文字設定
+        if (sbMsg.length() > 0) 
+        {
+          sbMsg.append(XxcsoConstants.TOKEN_VALUE_DELIMITER5);
+          sbMsg.append(XxcsoConstants.TOKEN_VALUE_DELIMITER4);
+          sbMsg.append(XxcsoConstants.TOKEN_VALUE_DELIMITER5);
+        }
+
+        //BM2トークン設定
+        sbMsg.append( XxcsoContractRegistConstants.TOKEN_VALUE_BM2 );
+        sbMsg.append( XxcsoConstants.TOKEN_VALUE_DELIMITER3 );
+
+        //別契約が新規作成でない場合
+        if ( !XxcsoContractRegistConstants.CREATE_VENDOR.equals(vendorCode) )
+        {
+          //取得した過去契約の仕入先コードを設定
+          sbMsg.append( vendorCode );
+        }
+        else
+        {
+          //過去契約が仕入先を新規作成するトークン設定
+          sbMsg.append(
+            XxcsoContractRegistConstants.TOKEN_CREATE_VENDOR_BEFORE_CONT );
+        }
+        
+      }
+
+    }
+
+    /////////////////////////////////////
+    // BM3送付先コード変更チェック
+    /////////////////////////////////////
+    //初期化
+    vendorCode = null;
+    // BM3指定がONの場合
+    if ( XxcsoContractRegistValidateUtils.isChecked(
+           pageRenderRow.getBm3ExistFlag() ) )
+    {
+      //BM3仕入先新規作成チェック
+      vendorCode = XxcsoContractRegistValidateUtils.SuppllierMstCheck(
+                         txn
+                        ,mngRow.getContractNumber()
+                        ,mngRow.getInstallAccountNumber()
+                        ,dest3Row.getDeliveryDiv()
+                        ,dest3Row.getSupplierId()
+                       );
+      //戻り値がNULL以外の場合
+      if ( !( vendorCode == null || "".equals(vendorCode.trim()) ) )
+      {
+        //BM1もしくはBM2のメッセージが生成されている場合、区切り文字設定
+        if (sbMsg.length() > 0)
+        {
+          sbMsg.append(XxcsoConstants.TOKEN_VALUE_DELIMITER5);
+          sbMsg.append(XxcsoConstants.TOKEN_VALUE_DELIMITER4);
+          sbMsg.append(XxcsoConstants.TOKEN_VALUE_DELIMITER5);
+        }
+
+        //BM3トークン設定
+        sbMsg.append( XxcsoContractRegistConstants.TOKEN_VALUE_BM3 );
+        sbMsg.append( XxcsoConstants.TOKEN_VALUE_DELIMITER3 );
+      
+        //別契約が新規作成でない場合
+        if ( !XxcsoContractRegistConstants.CREATE_VENDOR.equals(vendorCode) )
+        {
+          //取得した過去契約の仕入先コードを設定
+          sbMsg.append( vendorCode );
+        }
+        else
+        {
+          //過去契約が仕入先を新規作成するトークン設定
+          sbMsg.append(
+            XxcsoContractRegistConstants.TOKEN_CREATE_VENDOR_BEFORE_CONT );
+        }
+        
+      }
+
+    }
+
+    // 送付先コードが変更された場合、確認画面を表示する
+    if (sbMsg.length() > 0) 
+    {
+
+      confirmMsg
+        = XxcsoMessage.createConfirmMessage(
+            XxcsoConstants.APP_XXCSO1_00614
+           ,XxcsoConstants.TOKEN_BM_INFO
+           ,new String(sbMsg)
+          );
+    }
+
+    XxcsoUtils.debug(txn, "[END]");
+
+    return confirmMsg;
+  }
+
+  /*****************************************************************************
+   * 銀行口座作成済みチェック処理
+   *****************************************************************************
+   */
+  public void bankAccountCheck()
+  {
+    OADBTransaction txn = getOADBTransaction();
+
+    XxcsoUtils.debug(txn, "[START]");
+
+    mMessage = this.validatebankAccountInfo();
+
+    XxcsoUtils.debug(txn, "[END]");
+  }
+
+  /*****************************************************************************
+   * 銀行口座作成済みチェック
+   * @return OAException 
+   *****************************************************************************
+   */
+  private OAException validatebankAccountInfo()
+  {
+    OADBTransaction txn = getOADBTransaction();
+
+    XxcsoUtils.debug(txn, "[START]");
+
+    OAException confirmMsg = null;
+
+    StringBuffer sbMsg = new StringBuffer();
+
+    String vendorCode = null;
+
+    //インスタンス取得
+    XxcsoPageRenderVOImpl pageRenderVo
+      = getXxcsoPageRenderVO1();
+    if ( pageRenderVo == null )
+    {
+      throw
+        XxcsoMessage.createInstanceLostError("XxcsoPageRenderVOImpl");
+    }
+
+    XxcsoBm1DestinationFullVOImpl dest1Vo
+      = getXxcsoBm1DestinationFullVO1();
+    if ( dest1Vo == null )
+    {
+      throw
+        XxcsoMessage.createInstanceLostError("XxcsoBm1DestinationFullVO1");
+    }
+
+    XxcsoBm2DestinationFullVOImpl dest2Vo
+      = getXxcsoBm2DestinationFullVO1();
+    if ( dest2Vo == null )
+    {
+      throw
+        XxcsoMessage.createInstanceLostError("XxcsoBm2DestinationFullVO1");
+    }
+
+    XxcsoBm3DestinationFullVOImpl dest3Vo
+      = getXxcsoBm3DestinationFullVO1();
+    if ( dest3Vo == null )
+    {
+      throw
+        XxcsoMessage.createInstanceLostError("XxcsoBm3DestinationFullVO1");
+    }
+
+    XxcsoBm1BankAccountFullVOImpl bank1Vo
+      = getXxcsoBm1BankAccountFullVO1();
+    if ( bank1Vo == null )
+    {
+      throw
+        XxcsoMessage.createInstanceLostError("XxcsoBm1BankAccountFullVO1");
+    }
+
+    XxcsoBm2BankAccountFullVOImpl bank2Vo
+      = getXxcsoBm2BankAccountFullVO1();
+    if ( bank2Vo == null )
+    {
+      throw
+        XxcsoMessage.createInstanceLostError("XxcsoBm2BankAccountFullVO1");
+    }
+
+    XxcsoBm3BankAccountFullVOImpl bank3Vo
+      = getXxcsoBm3BankAccountFullVO1();
+    if ( bank3Vo == null )
+    {
+      throw
+        XxcsoMessage.createInstanceLostError("XxcsoBm3BankAccountFullVO1");
+    }
+
+    // 行インスタンス取得
+    XxcsoPageRenderVORowImpl pageRenderRow
+      = (XxcsoPageRenderVORowImpl) pageRenderVo.first();
+
+    XxcsoBm1DestinationFullVORowImpl dest1Row
+      = (XxcsoBm1DestinationFullVORowImpl)dest1Vo.first();
+
+    XxcsoBm2DestinationFullVORowImpl dest2Row
+      = (XxcsoBm2DestinationFullVORowImpl) dest2Vo.first();
+
+    XxcsoBm3DestinationFullVORowImpl dest3Row
+      = (XxcsoBm3DestinationFullVORowImpl) dest3Vo.first();
+
+    XxcsoBm1BankAccountFullVORowImpl bank1Row
+      = (XxcsoBm1BankAccountFullVORowImpl)bank1Vo.first();
+
+    XxcsoBm2BankAccountFullVORowImpl bank2Row
+      = (XxcsoBm2BankAccountFullVORowImpl)bank2Vo.first();
+
+    XxcsoBm3BankAccountFullVORowImpl bank3Row
+      = (XxcsoBm3BankAccountFullVORowImpl)bank3Vo.first();
+
+    /////////////////////////////////////
+    // BM1銀行口座チェック
+    /////////////////////////////////////
+    // BM1指定がONの場合
+    if ( XxcsoContractRegistValidateUtils.isChecked(
+           pageRenderRow.getBm1ExistFlag() ) )
+    {
+
+      //BM1送付先が指定されていない場合
+      if ( dest1Row.getSupplierId() == null )
+      {
+      
+        //BM1銀行口座新規作成チェック
+        vendorCode = XxcsoContractRegistValidateUtils.BankAccountMstCheck(
+                           txn
+                           ,bank1Row.getBankNumber()
+                           ,bank1Row.getBranchNumber()
+                           ,bank1Row.getBankAccountNumber()
+                         );
+
+        //戻り値がNULL以外の場合
+        if ( !( vendorCode == null || "".equals(vendorCode.trim()) ) )
+        {
+          //BM1トークン設定
+          sbMsg.append( XxcsoContractRegistConstants.TOKEN_VALUE_BM1 );
+          sbMsg.append( XxcsoConstants.TOKEN_VALUE_DELIMITER3 );
+          sbMsg.append( vendorCode );
+        }
+      }
+    }
+
+    /////////////////////////////////////
+    // BM2銀行口座チェック
+    /////////////////////////////////////
+    //初期化
+    vendorCode = null;
+    // BM2指定がONの場合
+    if ( XxcsoContractRegistValidateUtils.isChecked(
+           pageRenderRow.getBm2ExistFlag() ) )
+    {
+    
+      //BM2送付先が指定されていない場合
+      if ( dest2Row.getSupplierId() == null )
+      {
+
+        //BM2銀行口座新規作成チェック
+        vendorCode = XxcsoContractRegistValidateUtils.BankAccountMstCheck(
+                           txn
+                           ,bank2Row.getBankNumber()
+                           ,bank2Row.getBranchNumber()
+                           ,bank2Row.getBankAccountNumber()
+                         );
+
+        //戻り値がNULL以外の場合
+        if ( !( vendorCode == null || "".equals(vendorCode.trim()) ) )
+        {
+          //BM1のメッセージが生成されている場合、区切り文字設定
+          if (sbMsg.length() > 0)
+          {
+            sbMsg.append(XxcsoConstants.TOKEN_VALUE_DELIMITER5);
+            sbMsg.append(XxcsoConstants.TOKEN_VALUE_DELIMITER4);
+            sbMsg.append(XxcsoConstants.TOKEN_VALUE_DELIMITER5);
+          }
+
+          //BM2トークン設定
+          sbMsg.append( XxcsoContractRegistConstants.TOKEN_VALUE_BM2 );
+          sbMsg.append( XxcsoConstants.TOKEN_VALUE_DELIMITER3 );
+          sbMsg.append( vendorCode );
+        }
+      }
+    }
+
+    /////////////////////////////////////
+    // BM3銀行口座チェック
+    /////////////////////////////////////
+    //初期化
+    vendorCode = null;
+    // BM3指定がONの場合
+    if ( XxcsoContractRegistValidateUtils.isChecked(
+           pageRenderRow.getBm3ExistFlag() ) )
+    {
+
+      //BM3送付先が指定されていない場合
+      if ( dest3Row.getSupplierId() == null )
+      {
+      
+        //BM3銀行口座新規作成チェック
+        vendorCode = XxcsoContractRegistValidateUtils.BankAccountMstCheck(
+                           txn
+                           ,bank3Row.getBankNumber()
+                           ,bank3Row.getBranchNumber()
+                           ,bank3Row.getBankAccountNumber()
+                         );
+
+        //戻り値がNULL以外の場合
+        if ( !( vendorCode == null || "".equals(vendorCode.trim()) ) )
+        {
+          //BM1もしくはBM2のメッセージが生成されている場合、区切り文字設定
+          if (sbMsg.length() > 0)
+          {
+            sbMsg.append(XxcsoConstants.TOKEN_VALUE_DELIMITER5);
+            sbMsg.append(XxcsoConstants.TOKEN_VALUE_DELIMITER4);
+            sbMsg.append(XxcsoConstants.TOKEN_VALUE_DELIMITER5);
+          }
+
+          //BM3トークン設定
+          sbMsg.append( XxcsoContractRegistConstants.TOKEN_VALUE_BM3 );
+          sbMsg.append( XxcsoConstants.TOKEN_VALUE_DELIMITER3 );
+          sbMsg.append( vendorCode );
+        }
+      }
+    }
+
+    // 銀行口座が存在する場合、確認画面を表示する
+    if (sbMsg.length() > 0) 
+    {
+
+      confirmMsg
+        = XxcsoMessage.createConfirmMessage(
+            XxcsoConstants.APP_XXCSO1_00615
+           ,XxcsoConstants.TOKEN_BM_INFO
+           ,new String(sbMsg)
+          );
+    }
+
+    XxcsoUtils.debug(txn, "[END]");
+
+    return confirmMsg;
+  }
+// 2011-06-06 Ver1.7 [E_本稼動_01963] Add End
   /**
    * 
    * Container's getter for XxcsoContractManagementFullVO1

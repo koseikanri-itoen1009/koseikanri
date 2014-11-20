@@ -1,7 +1,7 @@
 /*============================================================================
 * ファイル名 : XxcsoContractRegistValidateUtils
 * 概要説明   : 自販機設置契約情報登録検証ユーティリティクラス
-* バージョン : 1.11
+* バージョン : 1.12
 *============================================================================
 * 修正履歴
 * 日付       Ver. 担当者       修正内容
@@ -20,6 +20,7 @@
 * 2010-03-01 1.10 SCS阿部大輔  [E_本稼動_01678]現金支払対応
 * 2010-03-01 1.10 SCS阿部大輔  [E_本稼動_01868]物件コード対応
 * 2011-01-06 1.11 SCS桐生和幸  [E_本稼動_02498]銀行支店マスタチェック対応
+* 2011-06-06 1.12 SCS桐生和幸  [E_本稼動_01963]新規仕入先作成チェック対応
 *============================================================================
 */
 package itoen.oracle.apps.xxcso.xxcso010003j.util;
@@ -3600,7 +3601,10 @@ public class XxcsoContractRegistValidateUtils
    * @return boolean true:ON false:OFF
    *****************************************************************************
    */
-  private static boolean isChecked(String existFlag)
+// 2011-06-06 Ver1.12 [E_本稼動_01963] Mod Start
+//  private static boolean isChecked(String existFlag)
+  public static boolean isChecked(String existFlag)
+// 2011-06-06 Ver1.12 [E_本稼動_01963] Mod End
   {
     return
       XxcsoContractRegistConstants.BM_EXIST_FLAG_ON.equals(existFlag);
@@ -4599,5 +4603,176 @@ public class XxcsoContractRegistValidateUtils
     return returnValue;
  }
 // 2011-01-06 Ver1.11 [E_本稼動_02498] Add End
+// 2011-06-06 Ver1.12 [E_本稼動_01963] Add Start
+  /*****************************************************************************
+   * 仕入先マスタチェック
+   * @param  OADBTransaction OADBTransactionインスタンス
+   * @param  ContractNumber  契約番号
+   * @param  CustomerCode    設置先顧客コード
+   * @param  DeliveryDiv     送付先区分
+   * @param  SupplierId      送付先ID
+   * @return String          仕入先コード
+   *****************************************************************************
+   */
+  public static String SuppllierMstCheck(
+    OADBTransaction   txn
+   ,String ContractNumber
+   ,String CustomerCode
+   ,String DeliveryDiv
+   ,Number SupplierId
+  )
+  {
 
+    XxcsoUtils.debug(txn, "[START]");
+
+    OAException confirmMsg = null;
+
+    OracleCallableStatement stmt = null;
+
+    String retVal = null;
+
+    try
+    {
+      StringBuffer sql = new StringBuffer(300);
+      // 仕入先マスタチェック呼び出し
+      sql.append("BEGIN");
+      sql.append("  :1 := xxcso_010003j_pkg.chk_supplier(");
+      sql.append("        iv_customer_code    => :2");        // 設置先顧客コード
+      sql.append("       ,in_supplier_id      => :3");        // 仕入先ID
+      sql.append("       ,iv_contract_number  => :4");        // 契約書番号
+      sql.append("       ,iv_delivery_div     => :5");        // 送付区分
+      sql.append("        );");
+      sql.append("END;");
+
+      stmt
+        = (OracleCallableStatement)
+            txn.createCallableStatement(sql.toString(), 0);
+
+      stmt.registerOutParameter(1, OracleTypes.VARCHAR);
+      stmt.setString(2, CustomerCode);
+      stmt.setNUMBER(3, SupplierId);
+      stmt.setString(4, ContractNumber);
+      stmt.setString(5, DeliveryDiv);
+
+      stmt.execute();
+
+      retVal = stmt.getString(1);
+
+    }
+    catch ( SQLException e )
+    {
+      XxcsoUtils.unexpected(txn, e);
+      throw
+        XxcsoMessage.createSqlErrorMessage(
+          e
+         ,XxcsoContractRegistConstants.TOKEN_VALUE_SUPLLIER_MST_CHK
+        );
+    }
+    finally
+    {
+      try
+      {
+        if ( stmt != null )
+        {
+          stmt.close();
+        }
+      }
+      catch ( SQLException e )
+      {
+        XxcsoUtils.unexpected(txn, e);
+      }
+    }
+
+    XxcsoUtils.debug(txn, "[END]");
+
+    return retVal;
+  }
+
+  /*****************************************************************************
+   * 銀行口座マスタチェック
+   * @param  OADBTransaction OADBTransactionインスタンス
+   * @param  BankNumber      銀行番号
+   * @param  BankNum         支店番号
+   * @param  BankAccountNum  口座番号
+   * @return String          検証結果
+   *****************************************************************************
+   */
+  public static String BankAccountMstCheck(
+    OADBTransaction   txn
+   ,String BankNumber
+   ,String BankNum
+   ,String BankAccountNum
+  )
+  {
+
+    XxcsoUtils.debug(txn, "[START]");
+
+    OAException confirmMsg = null;
+
+    OracleCallableStatement stmt = null;
+
+    String retVal = null;
+
+    if ( BankNumber == null || "".equals(BankNumber.trim()) )
+    {
+      // null空文字時はチェック不要
+      return retVal;
+    }
+
+    try
+    {
+
+      StringBuffer sql = new StringBuffer(300);
+      // 銀行口座マスタチェック呼び出し
+      sql.append("BEGIN");
+      sql.append("  :1 := xxcso_010003j_pkg.chk_bank_account(");
+      sql.append("        iv_bank_number       => :2");          // 銀行番号
+      sql.append("       ,iv_bank_num          => :3");          // 支店番号
+      sql.append("       ,iv_bank_account_num  => :4");          // 口座番号
+      sql.append("        );");
+      sql.append("END;");
+
+      stmt
+        = (OracleCallableStatement)
+            txn.createCallableStatement(sql.toString(), 0);
+
+      stmt.registerOutParameter(1, OracleTypes.VARCHAR);
+      stmt.setString(2, BankNumber);
+      stmt.setString(3, BankNum);
+      stmt.setString(4, BankAccountNum);
+
+      stmt.execute();
+
+      retVal = stmt.getString(1);
+
+    }
+    catch ( SQLException e )
+    {
+      XxcsoUtils.unexpected(txn, e);
+      throw
+        XxcsoMessage.createSqlErrorMessage(
+          e
+         ,XxcsoContractRegistConstants.TOKEN_VALUE_BUNK_ACCOUNT_MST_CHK
+        );
+    }
+    finally
+    {
+      try
+      {
+        if ( stmt != null )
+        {
+          stmt.close();
+        }
+      }
+      catch ( SQLException e )
+      {
+        XxcsoUtils.unexpected(txn, e);
+      }
+    }
+
+    XxcsoUtils.debug(txn, "[END]");
+
+    return retVal;
+  }
+// 2011-06-06 Ver1.12 [E_本稼動_01963] Add End
 }

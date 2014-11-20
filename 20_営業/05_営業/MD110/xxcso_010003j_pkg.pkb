@@ -6,7 +6,7 @@ AS
  * Package Name     : xxcso_010003j_pkg(BODY)
  * Description      : 自動販売機設置契約情報登録更新_共通関数
  * MD.050/070       : 
- * Version          : 1.10
+ * Version          : 1.11
  *
  * Program List
  *  ------------------------- ---- ----- --------------------------------------------------
@@ -30,6 +30,8 @@ AS
  *  chk_cash_payment          F    V      現金支払チェック
  *  chk_install_code          F    V      物件コードチェック
  *  chk_bank_branch           F    V      銀行支店マスタチェック
+ *  chk_supplier              F    V      仕入先マスタチェック
+ *  chk_bank_account          F    V      銀行口座マスタチェック
  *
  * Change Record
  * ------------- ----- ---------------- -------------------------------------------------
@@ -51,6 +53,7 @@ AS
  *  2010/03/01    1.8   D.Abe            E_本稼動_01678,E_本稼動_01868対応
  *  2010/11/17    1.9   S.Arizumi        E_本稼動_01954対応
  *  2011/01/06    1.10  K.Kiriu          E_本稼動_02498対応
+ *  2011/06/06    1.11  K.Kiriu          E_本稼動_01963対応
  *****************************************************************************************/
 --
   -- ===============================
@@ -1631,6 +1634,225 @@ AS
 --#####################################  固定部 END   ##########################################
   END chk_bank_branch;
 /* 2011/01/07 Ver1.10 K.Kiriu E_本稼動_02498対応 END */
+/* 2011/06/06 Ver1.11 K.Kiriu E_本稼動_01963対応 START */
+  /**********************************************************************************
+   * Function Name    : chk_supplier
+   * Description      : 仕入先マスタチェック
+   ***********************************************************************************/
+  FUNCTION chk_supplier(
+    iv_customer_code    IN  VARCHAR2                   -- 顧客コード
+   ,in_supplier_id      IN  NUMBER                     -- 仕入先ID
+   ,iv_contract_number  IN  VARCHAR2                   -- 契約書番号
+   ,iv_delivery_div     IN  VARCHAR2                   -- 送付区分
+  ) RETURN VARCHAR2
+  IS
+    -- ===============================
+    -- 固定ローカル定数
+    -- ===============================
+    cv_prg_name                  CONSTANT VARCHAR2(100)   := 'chk_supplier';
+    -- ===============================
+    -- ローカル定数
+    -- ===============================
+    cv_contract_status_submit CONSTANT VARCHAR2(1)   := '1';      -- ステータス＝確定済
+    cv_finish_cooperate       CONSTANT VARCHAR2(1)   := '1';      -- マスタ連携フラグ＝連携済
+    cv_create_vendor          CONSTANT VARCHAR2(6)   := 'CREATE'; -- 前回契約が仕入先作成予定
+    -- ===============================
+    -- ローカル変数
+    -- ===============================
+    lt_vendor_code            po_vendors.segment1%TYPE;      -- 戻り値用
+    -- ===============================
+    -- ローカル・カーソル
+    -- ===============================
+    CURSOR cur_bef_supplier
+    IS
+      SELECT  bfct.cooperate_flag   cooperate_flag
+             ,bfct.supplier_id      supplier_id
+             ,bfct.delivery_id      delivery_id
+             ,( SELECT pv.segment1 vendor_code
+                FROM   po_vendors pv
+                WHERE  pv.vendor_id = bfct.supplier_id
+              )                     vendor_code
+      FROM    (
+                SELECT  /*+ LEADING(xcm) */
+                        xcm.cooperate_flag  cooperate_flag  -- マスタ連携済フラグ
+                       ,xcd.delivery_id     delivery_id     -- 送付先ID
+                       ,xcd.supplier_id     supplier_id     -- 仕入先ID
+                FROM    xxcso_contract_managements xcm   -- 契約管理マスタ
+                       ,xxcso_destinations         xcd   -- 送付先マスタ
+                WHERE   xcm.install_account_number = iv_customer_code           -- 同一の顧客
+                AND     xcm.status                 = cv_contract_status_submit  -- 確定済
+                AND     xcm.contract_management_id = xcd.contract_management_id(+)
+                AND     xcd.delivery_div(+)        = iv_delivery_div            -- BM1,BM2,BM3のいずれか
+                AND     xcm.contract_number NOT IN (
+                          SELECT xcms.contract_number
+                          FROM   xxcso_contract_managements xcms
+                          WHERE  xcms.contract_number = iv_contract_number
+                        )                                                       -- 自分自身以外
+                ORDER BY
+                        xcm.contract_number DESC
+              ) bfct
+      WHERE   ROWNUM < 3  --過去直近の２契約のみ(最大で未連携と連携済の２伝票をチェックする為)
+      ;
+--
+    rec_bef_supplier cur_bef_supplier%ROWTYPE;
+--
+  BEGIN
+--
+    --戻り値の初期化
+    lt_vendor_code := NULL;
+--
+    OPEN  cur_bef_supplier;
+--
+    <<chk_supplier>>
+    LOOP
+--
+      FETCH cur_bef_supplier INTO rec_bef_supplier;
+      EXIT WHEN cur_bef_supplier%NOTFOUND;
+--
+      --過去契約が未連携、かつ、対象の送付先マスタが存在する場合
+      IF ( rec_bef_supplier.cooperate_flag <> cv_finish_cooperate )
+        AND ( rec_bef_supplier.delivery_id IS NOT NULL ) THEN
+--
+        --過去契約・今回契約のいずれかが新規に仕入先を作成する状態の場合
+        IF ( rec_bef_supplier.supplier_id IS NULL OR in_supplier_id IS NULL ) THEN
+          --過去契約に仕入先が設定されている場合
+          IF ( rec_bef_supplier.supplier_id IS NOT NULL ) THEN
+            --戻り値に前回の仕入先コードを設定
+            lt_vendor_code := rec_bef_supplier.vendor_code;
+          ELSE
+            --戻り値に過去契約が仕入先作成予定であると判定する値を設定
+            lt_vendor_code := cv_create_vendor;
+          END IF;
+          EXIT;  --ループ終了
+        END IF;
+--
+      --過去契約が連携済、かつ、対象の送付先マスタが存在する場合
+      ELSIF ( rec_bef_supplier.cooperate_flag = cv_finish_cooperate )
+        AND ( rec_bef_supplier.delivery_id IS NOT NULL ) THEN
+--
+        --今回契約が仕入先を新規に作成する場合
+        IF ( in_supplier_id IS NULL ) THEN
+          --戻り値に前回の仕入先コードを設定
+          lt_vendor_code := rec_bef_supplier.vendor_code;
+          EXIT;  --ループ終了
+        END IF;
+--
+      END IF;
+--
+      --直近の１契約目が確定済の場合は1伝票のみチェックする為、ループ終了
+      IF ( rec_bef_supplier.cooperate_flag = cv_contract_status_submit ) THEN
+        EXIT;  --ループ終了
+      END IF;
+--
+    END LOOP chk_supplier;
+--
+    CLOSE cur_bef_supplier;
+--
+    RETURN lt_vendor_code;
+--
+  EXCEPTION
+--#################################  固定例外処理部 START   ####################################
+--
+    -- *** OTHERS例外ハンドラ ***
+    WHEN OTHERS THEN
+      -- カーソルクローズ
+      IF ( cur_bef_supplier%ISOPEN ) THEN
+        CLOSE cur_bef_supplier;
+      END IF;
+      xxcso_common_pkg.raise_api_others_expt(gv_pkg_name, cv_prg_name);
+--
+--#####################################  固定部 END   ##########################################
+  END chk_supplier;
+--
+  /**********************************************************************************
+   * Function Name    : chk_bank_account
+   * Description      : 銀行口座マスタチェック
+   ***********************************************************************************/
+  FUNCTION chk_bank_account(
+    iv_bank_number         IN  VARCHAR2         -- 銀行番号
+   ,iv_bank_num            IN  VARCHAR2         -- 支店番号
+   ,iv_bank_account_num    IN  VARCHAR2         -- 口座番号
+  ) RETURN VARCHAR2
+  IS
+    -- ===============================
+    -- 固定ローカル定数
+    -- ===============================
+    cv_prg_name                  CONSTANT VARCHAR2(100)   := 'chk_bank_account';
+    -- ===============================
+    -- ローカル定数
+    -- ===============================
+    cv_flag_yes                  CONSTANT VARCHAR2(1)     := 'Y';
+    cd_process_date              CONSTANT DATE            := TRUNC(xxccp_common_pkg2.get_process_date);  -- 業務処理日付
+    cv_separate                  CONSTANT VARCHAR2(3)     := ' , ';                                      -- 区切文字
+    -- ===============================
+    -- ローカル変数
+    -- ===============================
+    lv_return_value              VARCHAR2(32767);
+    ln_count                     NUMBER;
+    -- ===============================
+    -- ローカル・カーソル
+    -- ===============================
+    CURSOR cur_bank_supplier
+    IS
+      SELECT pv.segment1  vendor_number -- 仕入先コード
+      FROM   ap_bank_branches     bbr   -- 銀行マスタ
+            ,ap_bank_accounts     bac   -- 口座マスタビュー
+            ,ap_bank_account_uses bau   -- 口座割当マスタビュー
+            ,po_vendors           pv    -- 仕入先マスタ
+      WHERE  bbr.bank_number                             =  iv_bank_number       -- 銀行番号
+      AND    bbr.bank_num                                =  iv_bank_num          -- 支店番号
+      AND    bbr.bank_branch_id                          =  bac.bank_branch_id
+      AND    bac.bank_account_num                        =  iv_bank_account_num  -- 口座番号
+      AND    bac.bank_account_id                         =  bau.external_bank_account_id
+      AND    bau.primary_flag                            =  cv_flag_yes
+      AND    TRUNC(NVL(bau.start_date, cd_process_date)) <= cd_process_date      -- 営業日
+      AND    bau.end_date                                IS NULL                 -- 終了日の設定がない
+      AND    bau.vendor_id                               =  pv.vendor_id
+      ORDER BY
+             pv.segment1 DESC
+      ;
+--
+    rec_bank_supplier cur_bank_supplier%ROWTYPE;
+--
+  BEGIN
+--
+    --初期化
+    ln_count        := 0;
+    lv_return_value := NULL;
+--
+    OPEN  cur_bank_supplier;
+--
+    <<chk_bank_supplier>>
+    LOOP
+--
+      FETCH cur_bank_supplier INTO rec_bank_supplier;
+      EXIT WHEN cur_bank_supplier%NOTFOUND;
+--
+      -- 件数カウント
+      ln_count := ln_count + 1;
+--
+      IF ( ln_count = 1) THEN
+        -- 仕入先コードを設定する
+        lv_return_value := rec_bank_supplier.vendor_number;
+      ELSE
+        -- 仕入先コードを設定する(区切文字で前仕入先コードと連結)
+        lv_return_value := lv_return_value || cv_separate || rec_bank_supplier.vendor_number;
+      END IF;
+--
+    END LOOP chk_bank_supplier;
+--
+    RETURN lv_return_value;
+--
+  EXCEPTION
+--#################################  固定例外処理部 START   ####################################
+--
+    -- *** OTHERS例外ハンドラ ***
+    WHEN OTHERS THEN
+      xxcso_common_pkg.raise_api_others_expt(gv_pkg_name, cv_prg_name);
+--
+--#####################################  固定部 END   ##########################################
+  END chk_bank_account;
+/* 2011/06/06 Ver1.11 K.Kiriu E_本稼動_01963対応 END */
 --
 END xxcso_010003j_pkg;
 /

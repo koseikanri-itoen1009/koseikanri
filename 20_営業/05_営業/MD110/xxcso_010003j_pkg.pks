@@ -6,7 +6,7 @@ AS
  * Package Name     : xxcso_010003j_pkg(BODY)
  * Description      : 自動販売機設置契約情報登録更新_共通関数
  * MD.050/070       : 
- * Version          : 1.7
+ * Version          : 1.8
  *
  * Program List
  *  ------------------------- ---- ----- --------------------------------------------------
@@ -30,7 +30,8 @@ AS
  *  chk_cash_payment          F    V      現金支払チェック
  *  chk_install_code          F    V      物件コードチェック
  *  chk_bank_branch           F    V      銀行支店マスタチェック
- *
+ *  chk_supplier              F    V      仕入先マスタチェック
+ *  chk_bank_account          F    V      銀行口座マスタチェック
  * Change Record
  * ------------- ----- ---------------- -------------------------------------------------
  *  Date          Ver.  Editor           Description
@@ -48,6 +49,7 @@ AS
  *  2010/02/10    1.5   D.Abe            E_本稼動_01538対応
  *  2010/03/01    1.6   D.Abe            E_本稼動_01678,E_本稼動_01868対応
  *  2011/01/06    1.7   K.Kiriu          E_本稼動_02498対応
+ *  2011/06/06    1.8   K.Kiriu          E_本稼動_01963対応
  *****************************************************************************************/
 --
   -- BM情報分岐取得
@@ -197,6 +199,21 @@ AS
    ,iv_bank_num     IN  VARCHAR2                       -- 支店番号
   ) RETURN VARCHAR2;
 /* 2011/01/06 Ver1.7 K.kiriu E_本稼動_02498対応 END */
+/* 2011/06/06 Ver1.8 K.kiriu E_本稼動_01963対応 START */
+  -- 仕入先マスタチェック
+  FUNCTION chk_supplier(
+    iv_customer_code              IN  VARCHAR2         -- 顧客コード
+   ,in_supplier_id                IN  NUMBER           -- 仕入先ID
+   ,iv_contract_number            IN  VARCHAR2         -- 契約書番号
+   ,iv_delivery_div               IN  VARCHAR2         -- 送付区分
+  ) RETURN VARCHAR2;
+  -- 銀行口座マスタチェック
+  FUNCTION chk_bank_account(
+    iv_bank_number                IN  VARCHAR2         -- 銀行番号
+   ,iv_bank_num                   IN  VARCHAR2         -- 支店番号
+   ,iv_bank_account_num           IN  VARCHAR2         -- 口座番号
+  ) RETURN VARCHAR2;
+/* 2011/06/06 Ver1.8 K.kiriu E_本稼動_01963対応 END */
 --
 END xxcso_010003j_pkg;
 /

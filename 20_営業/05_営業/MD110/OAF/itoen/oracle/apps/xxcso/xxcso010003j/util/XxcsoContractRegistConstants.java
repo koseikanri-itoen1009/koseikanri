@@ -1,7 +1,7 @@
 /*============================================================================
 * ファイル名 : XxcsoContractRegistConstants
 * 概要説明   : 自販機設置契約情報登録共通固定値クラス
-* バージョン : 1.6
+* バージョン : 1.7
 *============================================================================
 * 修正履歴
 * 日付       Ver. 担当者       修正内容
@@ -15,6 +15,7 @@
 * 2010-03-01 1.5  SCS阿部大輔  [E_本稼動_01678]現金支払対応
 * 2010-03-01 1.5  SCS阿部大輔  [E_本稼動_01868]物件対応
 * 2010-01-06 1.6  SCS桐生和幸  [E_本稼動_02498]銀行支店マスタチェック対応
+* 2011-06-06 1.7  SCS桐生和幸  [E_本稼動_01963]新規仕入先作成チェック対応
 *============================================================================
 */
 package itoen.oracle.apps.xxcso.xxcso010003j.util;
@@ -218,6 +219,13 @@ public class XxcsoContractRegistConstants
   public static final String OPERATION_APPLY  = "APPLY";
   public static final String OPERATION_SUBMIT = "SUBMIT";
 // 2009-04-08 [ST障害T1_0364] Add End
+// 2011-06-06 Ver1.7 [E_本稼動_01963] Add Start
+  /*****************************************************************************
+   * BM送付先新規作成判定
+   *****************************************************************************
+   */
+  public static final String CREATE_VENDOR    = "CREATE";
+// 2011-06-06 Ver1.7 [E_本稼動_01963] Add End
 
   /*****************************************************************************
    * トークン値
@@ -376,6 +384,14 @@ public class XxcsoContractRegistConstants
   public static final String 
     TOKEN_VALUE_BANK_BRANCH_CHK         = "銀行支店マスタチェック";
 // 2011-01-06 Ver1.6 [E_本稼動_02498] Add End
+// 2011-06-06 Ver1.7 [E_本稼動_01963] Add Start
+  public static final String
+    TOKEN_VALUE_SUPLLIER_MST_CHK        = "仕入先マスタチェック";
+  public static final String
+    TOKEN_CREATE_VENDOR_BEFORE_CONT     = "作成中";
+  public static final String
+    TOKEN_VALUE_BUNK_ACCOUNT_MST_CHK    = "銀行口座マスタチェック";
+// 2011-06-06 Ver1.7 [E_本稼動_01963] Add End
 
   // PDF出力時付加文言
   public static final String
