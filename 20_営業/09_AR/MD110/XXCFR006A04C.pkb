@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCFR006A04C(body)
  * Description      : 入金一括消込アップロード
  * MD.050           : MD050_CFR_006_A04_入金一括消込アップロード
- * Version          : 1.1
+ * Version          : 1.2
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -21,6 +21,7 @@ AS
  *  get_cash_rec_data      p 入金情報設定                            (A-7)
  *  ecxec_apply_api        p 入金消込API起動処理                     (A-8)
  *  proc_end               p 終了処理                                (A-9)
+ *  check_data_lock        p 入金情報排他チェック                    (A-10)
  *  submain                p メイン処理プロシージャ
  *  main                   p コンカレント実行ファイル登録プロシージャ
  *
@@ -30,7 +31,7 @@ AS
  * ------------- ----- ---------------- -------------------------------------------------
  *  2010/05/26    1.0   SCS 苅込 周平    新規作成
  *  2010/09/02    1.1   SCS 渡辺 学      E_本稼動_00390 追加対応
- *                                       
+ *  2011/08/11    1.2   SCS 白川 篤史    E_本稼動_07667 追加対応
  *
  *****************************************************************************************/
 --
@@ -85,6 +86,11 @@ AS
 ---- ===============================
   -- ユーザー定義例外
   -- ===============================
+-- 2011/08/11 Ver.1.2 A.Shirakawa ADD Start
+  lock_expt             EXCEPTION;      -- ロック(ビジー)エラー
+--
+  PRAGMA EXCEPTION_INIT(lock_expt, -54);
+-- 2011/08/11 Ver.1.2 A.Shirakawa ADD End
 --
   -- ===============================
   -- ユーザー定義グローバル定数
@@ -95,6 +101,9 @@ AS
   cv_yyyy_mm_dd        CONSTANT VARCHAR2(10)  := 'YYYY-MM-DD';       -- フォーマット
 --
   cv_set_of_bks_id     CONSTANT VARCHAR2(30)  := 'GL_SET_OF_BKS_ID'; -- 会計帳簿ID
+-- 2011/08/11 Ver.1.2 A.Shirakawa ADD Start
+  cv_upl_limit_of_count  CONSTANT VARCHAR2(30) := 'XXCFR1_UPL_LIMIT_OF_COUNT'; -- アップロード用対象件数閾値
+-- 2011/08/11 Ver.1.2 A.Shirakawa ADD End
 --
   cv_appl_name_cfr     CONSTANT VARCHAR2(10)  := 'XXCFR';            -- アドオン：AR
   cv_appl_name_cmn     CONSTANT VARCHAR2(10)  := 'XXCCP';            -- アドオン：共通・IF領域
@@ -120,7 +129,19 @@ AS
   cv_msg_006a04_010    CONSTANT VARCHAR2(20) := 'APP-XXCFR1-00102'; -- 文書番号存在なしエラー
   cv_msg_006a04_011    CONSTANT VARCHAR2(20) := 'APP-XXCFR1-00103'; -- 消込金額エラー
   cv_msg_006a04_012    CONSTANT VARCHAR2(20) := 'APP-XXCFR1-00104'; -- APIエラーメッセージ
+-- 2011/08/11 Ver.1.2 A.Shirakawa ADD Start
+  cv_msg_006a04_013    CONSTANT VARCHAR2(20) := 'APP-XXCFR1-00138'; -- 消込済み文書番号エラー
+  cv_msg_006a04_014    CONSTANT VARCHAR2(20) := 'APP-XXCFR1-00139'; -- ファイルフォーマットエラー
+  cv_msg_006a04_015    CONSTANT VARCHAR2(20) := 'APP-XXCFR1-00140'; -- 債権閾値チェックエラー(大口)
+  cv_msg_006a04_016    CONSTANT VARCHAR2(20) := 'APP-XXCFR1-00141'; -- 債権閾値チェックエラー(小口)
+  cv_msg_006a04_017    CONSTANT VARCHAR2(20) := 'APP-XXCFR1-00003'; -- テーブルロックエラー
+-- 2011/08/11 Ver.1.2 A.Shirakawa ADD End
 --
+-- 2011/08/11 Ver.1.2 A.Shirakawa ADD Start
+  -- 日本語辞書参照コード
+  cv_dict_cfr_00604001  CONSTANT VARCHAR2(20) := 'CFR006A04001'; -- 入金テーブル
+--
+-- 2011/08/11 Ver.1.2 A.Shirakawa ADD End
   -- トークン
   cv_tkn_006a04_001_1  CONSTANT VARCHAR2(30) := 'FILE_NAME';             -- アップロードファイル名
   cv_tkn_006a04_001_2  CONSTANT VARCHAR2(30) := 'CSV_NAME';              -- CSVファイル名
@@ -152,6 +173,13 @@ AS
   cv_tkn_006a04_011_2  CONSTANT VARCHAR2(30) := 'AMOUNT_DUE_REMAINING';  -- 未回収残高
   cv_tkn_006a04_011_3  CONSTANT VARCHAR2(30) := 'TRX_AMOUNT';            -- 消込金額
   cv_tkn_006a04_012_1  CONSTANT VARCHAR2(30) := 'TRX_NUMBER';            -- 取引番号
+-- 2011/08/11 Ver.1.2 A.Shirakawa ADD Start
+  cv_tkn_006a04_012_2  CONSTANT VARCHAR2(30) := 'RECEIPT_NUMBER';        -- 入金番号
+  cv_tkn_006a04_013_1  CONSTANT VARCHAR2(30) := 'RECEIPT_NUMBER';        -- 入金番号
+  cv_tkn_006a04_013_2  CONSTANT VARCHAR2(30) := 'DOC_SEQUENCE_VALUE';    -- 文書番号
+  cv_tkn_006a04_014_1  CONSTANT VARCHAR2(30) := 'FILE_FORMAT';           -- ファイルフォーマット
+  cv_tkn_006a04_017_1  CONSTANT VARCHAR2(30) := 'TABLE';                 -- テーブル名
+-- 2011/08/11 Ver.1.2 A.Shirakawa ADD End
 --
   cv_tkn_val_006a04_001_1  CONSTANT VARCHAR2(30) := 'APP_XXCFR1_30001';  -- アップロードファイル名
 --
@@ -193,6 +221,13 @@ AS
   gd_receipt_gl_date  ar_cash_receipt_history_all.gl_date%TYPE;      -- 入金GL記帳日
   gd_min_open_date    gl_period_statuses.start_date%TYPE;            -- 最小オープン日
   gb_flag             BOOLEAN := FALSE;  -- 業務チェック用フラグ(チェックに該当すればTRUEとなりエラー終了)
+-- 2011/08/11 Ver.1.2 A.Shirakawa ADD Start
+  gn_normal_trx_amount_sum  xxcfr_apply_upload_work.trx_amount%TYPE;  -- 消込済金額総額
+  gn_error_trx_amount_sum   xxcfr_apply_upload_work.trx_amount%TYPE;  -- 未消込金額総額
+  gv_threshold_type         fnd_lookup_values.attribute1%TYPE;        -- 閾値区分
+  gn_upl_limit_of_count     NUMBER;                                   -- アップロード用対象件数閾値
+  gb_warn_flag              BOOLEAN := FALSE;                         -- 警告終了フラグ
+-- 2011/08/11 Ver.1.2 A.Shirakawa ADD End
 --
   /***********************************************************************************
    * Procedure Name   : init
@@ -222,9 +257,18 @@ AS
     -- ユーザー宣言部
     -- ===============================
     -- *** ローカル定数 ***
+-- 2011/08/11 Ver.1.2 A.Shirakawa ADD Start
+    cv_lookup_ulobj CONSTANT fnd_lookup_values.lookup_type%TYPE := 'XXCCP1_FILE_UPLOAD_OBJ'; -- ファイルアップロードオブジェクト
+    cv_lookup_ulfmt CONSTANT fnd_lookup_values.lookup_type%TYPE := 'XXCFR1_UPLOAD_FORMAT'; -- 入金消込アップロード・ファイルフォーマット
+--
+    cv_y            CONSTANT VARCHAR2(1)                        := 'Y';
+-- 2011/08/11 Ver.1.2 A.Shirakawa ADD End
 --
     -- *** ローカル変数 ***
     lv_file_name  xxccp_mrp_file_ul_interface.file_name%TYPE;  -- エラー・メッセージ
+-- 2011/08/11 Ver.1.2 A.Shirakawa ADD Start
+    lv_format_name  fnd_lookup_values.meaning%TYPE;            -- ファイルフォーマット名
+-- 2011/08/11 Ver.1.2 A.Shirakawa ADD End
 --
     -- *** ローカル・カーソル ***
 --
@@ -289,13 +333,67 @@ AS
     WHERE  xmfui.file_id = gn_file_id         -- ファイルID
     ;
 --
+-- 2011/08/11 Ver.1.2 A.Shirakawa ADD Start
+    --==============================================================
+    --ファイルフォーマット名の取得
+    --==============================================================
+    BEGIN
+      -- アップロードファイルフォーマット名取得
+      SELECT flv1.meaning     AS meaning                 -- ファイルフォーマット名
+            ,flv2.attribute1  AS attribute1              -- 閾値区分
+      INTO   lv_format_name
+            ,gv_threshold_type
+      FROM   fnd_lookup_values flv1                      -- 参照タイプマスタ1
+            ,fnd_lookup_values flv2                      -- 参照タイプマスタ2
+      WHERE  flv1.lookup_type  = cv_lookup_ulobj         -- 参照タイプ(ファイルアップロードオブジェクト)
+      AND    flv1.lookup_code  = iv_file_format          -- 参照コード(ファイルフォーマット)
+      AND    flv1.enabled_flag = cv_y                    -- 有効フラグ
+      AND    flv1.language     = USERENV('LANG')         -- 言語(JA)
+      AND    ( flv1.start_date_active <= TRUNC(SYSDATE)  -- 摘要開始日
+            OR flv1.start_date_active IS NULL
+             )
+      AND    ( flv1.end_date_active   >= TRUNC(SYSDATE)  -- 摘要終了日
+            OR flv1.end_date_active   IS NULL
+             )
+      AND    flv2.lookup_type  = cv_lookup_ulfmt         -- 参照タイプ(入金消込アップロード・ファイルフォーマット)
+      AND    flv2.lookup_code  = flv1.lookup_code        -- 参照コード
+      AND    flv2.enabled_flag = cv_y                    -- 有効フラグ
+      AND    flv2.language     = USERENV('LANG')         -- 言語(JA)
+      AND    ( flv2.start_date_active <= TRUNC(SYSDATE)  -- 摘要開始日
+            OR flv2.start_date_active IS NULL
+             )
+      AND    ( flv2.end_date_active   >= TRUNC(SYSDATE)  -- 摘要終了日
+            OR flv2.end_date_active   IS NULL
+             )
+      ;
+--
+    EXCEPTION
+      WHEN OTHERS THEN
+        lv_errmsg := SUBSTRB(xxccp_common_pkg.get_msg( iv_application  => cv_appl_name_cfr     -- 'XXCFR'
+                                                      ,iv_name         => cv_msg_006a04_014    -- ファイルフォーマットエラー
+                                                      ,iv_token_name1  => cv_tkn_006a04_014_1  -- トークン'ファイルフォーマット'
+                                                      ,iv_token_value1 => iv_file_format
+                             )
+                            ,1
+                            ,5000
+        );
+        RAISE global_api_expt;
+    END;
+--
+-- 2011/08/11 Ver.1.2 A.Shirakawa ADD End
     -- アップロードCSVファイル名出力(出力ファイル)
     FND_FILE.PUT_LINE(which => FND_FILE.OUTPUT
                      ,buff  => xxccp_common_pkg.get_msg(
                                   iv_application  => cv_appl_name_cfr         -- 'XXCFR'
                                  ,iv_name         => cv_msg_006a04_001        -- アップロード初期出力メッセージ
-                                 ,iv_token_name1  => cv_tkn_006a04_001_2      --「CSV_NAME」
-                                 ,iv_token_value1 => lv_file_name             -- CSVファイル名
+-- 2011/08/11 Ver.1.2 A.Shirakawa MOD Start
+--                                 ,iv_token_name1  => cv_tkn_006a04_001_2      --「CSV_NAME」
+--                                 ,iv_token_value1 => lv_file_name             -- CSVファイル名
+                                 ,iv_token_name1  => cv_tkn_006a04_001_1      --「FILE_NAME」
+                                 ,iv_token_value1 => lv_format_name           -- アップロードファイル名
+                                 ,iv_token_name2  => cv_tkn_006a04_001_2      --「CSV_NAME」
+                                 ,iv_token_value2 => lv_file_name             -- CSVファイル名
+-- 2011/08/11 Ver.1.2 A.Shirakawa MOD End
                                 )
     );
     -- アップロードCSVファイル名出力(ログファイル)
@@ -303,8 +401,14 @@ AS
                      ,buff  => xxccp_common_pkg.get_msg(
                                   iv_application  => cv_appl_name_cfr         -- 'XXCFR'
                                  ,iv_name         => cv_msg_006a04_001        -- アップロード初期出力メッセージ
-                                 ,iv_token_name1  => cv_tkn_006a04_001_2      --「CSV_NAME」
-                                 ,iv_token_value1 => lv_file_name             -- CSVファイル名
+-- 2011/08/11 Ver.1.2 A.Shirakawa MOD Start
+--                                 ,iv_token_name1  => cv_tkn_006a04_001_2      --「CSV_NAME」
+--                                 ,iv_token_value1 => lv_file_name             -- CSVファイル名
+                                 ,iv_token_name1  => cv_tkn_006a04_001_1      --「FILE_NAME」
+                                 ,iv_token_value1 => lv_format_name           -- アップロードファイル名
+                                 ,iv_token_name2  => cv_tkn_006a04_001_2      --「CSV_NAME」
+                                 ,iv_token_value2 => lv_file_name             -- CSVファイル名
+-- 2011/08/11 Ver.1.2 A.Shirakawa MOD End
                                )
     );
 --
@@ -339,6 +443,26 @@ AS
     AND    gps.closing_status         = cv_closing_status_o   -- ステータス(オープン)
     ;
 --
+-- 2011/08/11 Ver.1.2 A.Shirakawa ADD Start
+    --==============================================================
+    --アップロード用対象件数閾値の取得
+    --==============================================================
+    -- プロファイルからアップロード用対象件数閾値取得
+    gn_upl_limit_of_count := TO_NUMBER(FND_PROFILE.VALUE(cv_upl_limit_of_count));
+    -- 取得エラー時
+    IF (gn_upl_limit_of_count IS NULL) THEN
+      lv_errmsg := SUBSTRB(xxccp_common_pkg.get_msg( iv_application  => cv_appl_name_cfr     -- 'XXCFR'
+                                                    ,iv_name         => cv_msg_006a04_002    -- プロファイル取得エラー
+                                                    ,iv_token_name1  => cv_tkn_006a04_002_1  -- トークン'PROF_NAME'
+                                                    ,iv_token_value1 => xxcfr_common_pkg.get_user_profile_name(cv_upl_limit_of_count)
+                           )
+                          ,1
+                          ,5000
+      );
+      RAISE global_api_expt;
+    END IF;
+--
+-- 2011/08/11 Ver.1.2 A.Shirakawa ADD End
   EXCEPTION
 --
 --#################################  固定例外処理部 START  ####################################
@@ -837,6 +961,10 @@ AS
     cv_status_unapp   CONSTANT ar_cash_receipts_all.status%TYPE       := 'UNAPP';                    -- ステータス：未消込
     cv_lookup_secu    CONSTANT fnd_lookup_values.lookup_type%TYPE     := 'XXCFR1_RECEIPT_SECURITY';  -- ALL権限部門
     cv_lookup_cash    CONSTANT fnd_lookup_values.lookup_type%TYPE     := 'CHECK_STATUS';             -- 入金ステータス
+-- 2011/08/11 Ver.1.2 A.Shirakawa ADD Start
+    cv_threshold_type_large  CONSTANT fnd_lookup_values.attribute1%TYPE := '1';                     -- 閾値区分(大口)
+    cv_threshold_type_small  CONSTANT fnd_lookup_values.attribute1%TYPE := '0';                     -- 閾値区分(小口)
+-- 2011/08/11 Ver.1.2 A.Shirakawa ADD End
 --
     cv_y              CONSTANT VARCHAR2(1)                            := 'Y';
 --
@@ -959,6 +1087,24 @@ AS
               )
      ;
 --
+-- 2011/08/11 Ver.1.2 A.Shirakawa ADD Start
+    -- 消込済み取引情報の存在チェック
+    CURSOR  check_apply_trx_cur(
+              in_cash_receipt_id  ar_cash_receipts.cash_receipt_id%TYPE  -- 入金ID
+            )
+    IS
+      SELECT  xauw.doc_sequence_value AS doc_sequence_value          -- 文書番号
+      FROM    xxcfr_apply_upload_work        xauw                    -- 入金消込アップロードワーク
+             ,ra_customer_trx                rct                     -- 取引テーブル
+             ,ar_receivable_applications_all araa                    -- 消込テーブル
+      WHERE   xauw.file_id                 = gn_file_id              -- ファイルID
+        AND   xauw.request_id              = cn_request_id           -- 要求ID
+        AND   xauw.doc_sequence_value      = rct.doc_sequence_value  -- 文書番号
+        AND   araa.applied_customer_trx_id = rct.customer_trx_id     -- 取引ID
+        AND   araa.display                 = cv_y                    -- 表示フラグ
+        AND   araa.cash_receipt_id         = in_cash_receipt_id      -- 入金ID
+     ;
+-- 2011/08/11 Ver.1.2 A.Shirakawa ADD End
     -- *** ローカル・レコード ***
 --
     TYPE ttype_cash_unique     IS TABLE OF cash_unique_cur%ROWTYPE
@@ -982,6 +1128,12 @@ AS
                                   INDEX BY PLS_INTEGER;
     lt_cash_not_unapp           ttype_cash_not_unapp;
 -- ************ 2010/09/02 1.1 M.Watanabe ADD END   ************ --
+-- 2011/08/11 Ver.1.2 A.Shirakawa ADD Start
+--
+    TYPE ttype_check_apply_trx  IS TABLE OF check_apply_trx_cur%ROWTYPE
+                                  INDEX BY PLS_INTEGER;
+    lt_check_apply_trx          ttype_check_apply_trx;
+-- 2011/08/11 Ver.1.2 A.Shirakawa ADD End
 ------------
   BEGIN
 --
@@ -1342,6 +1494,82 @@ AS
 --
     END;
 --
+-- 2011/08/11 Ver.1.2 A.Shirakawa ADD Start
+    -- 消込済み取引情報の存在をチェックする
+    BEGIN
+--
+      IF ( lt_cash_unique.COUNT > 0 ) THEN
+--
+        OPEN check_apply_trx_cur(
+               lt_cash_unique(1).cash_receipt_id  -- 入金ID
+             );
+        FETCH check_apply_trx_cur BULK COLLECT INTO lt_check_apply_trx;
+        CLOSE check_apply_trx_cur;
+--
+        -- 消込済み取引が存在する文書番号の場合エラー
+        IF ( lt_check_apply_trx.COUNT > 0 ) THEN
+--
+          <<error_msg_loop>>
+          FOR ln_count IN 1..lt_check_apply_trx.COUNT LOOP
+--
+            FND_FILE.PUT_LINE(which => FND_FILE.OUTPUT
+                             ,buff  => xxccp_common_pkg.get_msg(
+                                         iv_application  => cv_appl_name_cfr     -- 'XXCFR'
+                                        ,iv_name         => cv_msg_006a04_013    -- 消込済み文書番号エラー
+                                        ,iv_token_name1  => cv_tkn_006a04_013_1  --「RECEIPT_NUMBER」
+                                        ,iv_token_value1 => gv_receipt_number    -- 入金番号
+                                        ,iv_token_name2  => cv_tkn_006a04_013_2  --「DOC_SEQUENCE_VALUE」
+                                        ,iv_token_value2 => lt_check_apply_trx(ln_count).doc_sequence_value -- 文書番号
+                                       )
+            );
+--
+          END LOOP err_msg_loop;
+--
+          gb_flag := TRUE;
+--
+        END IF;
+--
+      END IF;
+--
+    EXCEPTION
+--
+      WHEN OTHERS THEN
+--
+        gb_flag := TRUE;
+--
+    END;
+--
+    -- 大口の場合の消込対象件数とアップロード用対象件数閾値を比較する
+    IF (  ( gv_threshold_type = cv_threshold_type_large )  -- 閾値区分が大口
+      AND ( gn_target_cnt < gn_upl_limit_of_count ) )      -- 消込対象件数 ＜ アップロード用対象件数閾値
+      THEN
+      FND_FILE.PUT_LINE(which => FND_FILE.OUTPUT
+                       ,buff  => xxccp_common_pkg.get_msg(
+                                   iv_application  => cv_appl_name_cfr     -- 'XXCFR'
+                                  ,iv_name         => cv_msg_006a04_015    -- 債権閾値チェックエラー(大口)
+                                  )
+      );
+--
+      gb_flag := TRUE;
+--
+    END IF;
+--
+    -- 小口の場合の消込対象件数とアップロード用対象件数閾値を比較する
+    IF (  ( gv_threshold_type = cv_threshold_type_small )  -- 閾値区分が小口
+      AND ( gn_target_cnt >= gn_upl_limit_of_count ) )     -- 消込対象件数 ≧ アップロード用対象件数閾値
+      THEN
+      FND_FILE.PUT_LINE(which => FND_FILE.OUTPUT
+                       ,buff  => xxccp_common_pkg.get_msg(
+                                   iv_application  => cv_appl_name_cfr     -- 'XXCFR'
+                                  ,iv_name         => cv_msg_006a04_016    -- 債権閾値チェックエラー(小口)
+                                  )
+      );
+--
+      gb_flag := TRUE;
+--
+    END IF;
+--
+-- 2011/08/11 Ver.1.2 A.Shirakawa ADD End
   EXCEPTION
 --
 --#################################  固定例外処理部 START  ####################################
@@ -1374,6 +1602,11 @@ AS
       IF ( check_trx_exist_cur%ISOPEN ) THEN
         CLOSE check_trx_exist_cur;
       END IF;
+-- 2011/08/11 Ver.1.2 A.Shirakawa ADD Start
+      IF ( check_apply_trx_cur%ISOPEN ) THEN
+        CLOSE check_apply_trx_cur;
+      END IF;
+-- 2011/08/11 Ver.1.2 A.Shirakawa ADD End
       ov_errbuf  := cv_pkg_name||cv_msg_cont||cv_prg_name||cv_msg_part||SQLERRM;
       ov_retcode := cv_status_error;
 --
@@ -1714,6 +1947,137 @@ AS
 --
   END get_cash_rec_data;
 --
+-- 2011/08/11 Ver.1.2 A.Shirakawa ADD Start
+  /**********************************************************************************
+   * Procedure Name   : check_data_lock
+   * Description      : 入金情報排他チェック(A-10)
+   ***********************************************************************************/
+  PROCEDURE check_data_lock(
+    ov_errbuf     OUT NOCOPY VARCHAR2          -- エラー・メッセージ           --# 固定 #
+   ,ov_retcode    OUT NOCOPY VARCHAR2          -- リターン・コード             --# 固定 #
+   ,ov_errmsg     OUT NOCOPY VARCHAR2          -- ユーザー・エラー・メッセージ --# 固定 #
+  )
+  IS
+    -- ===============================
+    -- 固定ローカル定数
+    -- ===============================
+    cv_prg_name   CONSTANT VARCHAR2(100) := 'check_data_lock'; -- プログラム名
+--
+--#####################  固定ローカル変数宣言部 START   ########################
+--
+    lv_errbuf  VARCHAR2(5000);  -- エラー・メッセージ
+    lv_retcode VARCHAR2(1);     -- リターン・コード
+    lv_errmsg  VARCHAR2(5000);  -- ユーザー・エラー・メッセージ
+--
+--###########################  固定部 END   ####################################
+--
+    -- ===============================
+    -- ユーザー宣言部
+    -- ===============================
+    -- *** ローカル定数 ***
+--
+    -- *** ローカル変数 ***
+--
+    -- *** ローカル・カーソル ***
+--
+    CURSOR lock_cash_receipt_cur
+    IS
+      SELECT  xauw.receipt_number  AS receipt_number         -- 入金番号
+      FROM    xxcfr_apply_upload_work   xauw                 -- 入金消込アップロードワーク
+             ,ar_cash_receipts_all      acra                 -- 入金テーブル
+             ,ar_payment_schedules_all  apsa                 -- 支払計画テーブル
+      WHERE   xauw.request_id      = cn_request_id           -- 要求ID
+        AND   xauw.cash_receipt_id = acra.cash_receipt_id    -- 入金内部ID
+        AND   (xauw.cash_receipt_id = apsa.cash_receipt_id   -- 入金内部ID
+          OR   xauw.customer_trx_id = apsa.customer_trx_id)  -- 取引内部ID
+        FOR UPDATE OF acra.cash_receipt_id                   -- ロック対象：入金テーブル
+                     ,apsa.payment_schedule_id               -- ロック対象：支払計画テーブル
+                      NOWAIT
+     ;
+--
+    -- *** ローカル・レコード ***
+--
+    lock_cash_receipt_rec  lock_cash_receipt_cur%ROWTYPE;
+--
+  BEGIN
+--
+--##################  固定ステータス初期化部 START   ###################
+--
+    ov_errbuf  := NULL;
+    ov_retcode := cv_status_normal;
+    ov_errmsg  := NULL;
+--
+--###########################  固定部 END   ############################
+--
+    -- ***************************************
+    -- ***        実処理の記述             ***
+    -- ***       共通関数の呼び出し        ***
+    -- ***************************************
+--
+--  ロックを取得する。
+    BEGIN
+      -- カーソルオープン
+      OPEN lock_cash_receipt_cur;
+--
+      -- データの取得
+      FETCH lock_cash_receipt_cur INTO lock_cash_receipt_rec;
+--
+      -- カーソルクローズ
+      CLOSE lock_cash_receipt_cur;
+--
+    EXCEPTION
+--
+      WHEN lock_expt THEN  -- テーブルロックできなかった
+--
+        IF ( lock_cash_receipt_cur%ISOPEN ) THEN
+          CLOSE lock_cash_receipt_cur;
+        END IF;
+--
+        FND_FILE.PUT_LINE(which => FND_FILE.OUTPUT
+                         ,buff  => SUBSTRB(xxccp_common_pkg.get_msg(
+                                             iv_application  => cv_appl_name_cfr     -- 'XXCFR'
+                                            ,iv_name         => cv_msg_006a04_017    -- テーブルロックエラー
+                                            ,iv_token_name1  => cv_tkn_006a04_017_1  -- トークン'PROF_NAME'
+                                            ,iv_token_value1 => xxcfr_common_pkg.lookup_dictionary(
+                                                                  cv_appl_name_cfr
+                                                                 ,cv_dict_cfr_00604001
+                                                                 )
+                                          )
+                                         ,1
+                                         ,5000
+                                   )
+        );
+--
+        gb_flag := TRUE;
+--
+    END;
+--
+  EXCEPTION
+--
+--#################################  固定例外処理部 START  ####################################
+--
+    -- *** 共通関数例外ハンドラ ***
+    WHEN global_api_expt THEN
+      ov_errmsg  := lv_errmsg;
+      ov_errbuf  := SUBSTRB(cv_pkg_name||cv_msg_cont||cv_prg_name||cv_msg_part||lv_errbuf,1,5000);
+      ov_retcode := cv_status_error;
+    -- *** 共通関数OTHERS例外ハンドラ ***
+    WHEN global_api_others_expt THEN
+      ov_errbuf  := cv_pkg_name||cv_msg_cont||cv_prg_name||cv_msg_part||SQLERRM;
+      ov_retcode := cv_status_error;
+    -- *** OTHERS例外ハンドラ ***
+    WHEN OTHERS THEN
+      IF ( lock_cash_receipt_cur%ISOPEN ) THEN
+        CLOSE lock_cash_receipt_cur;
+      END IF;
+      ov_errbuf  := cv_pkg_name||cv_msg_cont||cv_prg_name||cv_msg_part||SQLERRM;
+      ov_retcode := cv_status_error;
+--
+--#####################################  固定部 END  ##########################################
+--
+  END check_data_lock;
+--
+-- 2011/08/11 Ver.1.2 A.Shirakawa ADD End
   /***********************************************************************************
    * Procedure Name   : ecxec_apply_api
    * Description      : 入金消込API起動処理 (A-8)
@@ -1805,6 +2169,9 @@ AS
       ar_receipt_api_pub.apply(
          p_api_version     =>  1.0                 -- バージョン
         ,p_init_msg_list   =>  FND_API.G_TRUE
+-- 2011/08/11 Ver.1.2 A.Shirakawa ADD Start
+        ,p_commit          =>  FND_API.G_FALSE
+-- 2011/08/11 Ver.1.2 A.Shirakawa ADD End
         ,x_return_status   =>  lv_return_status    -- ステータス
         ,x_msg_count       =>  ln_msg_count        -- 対象件数
         ,x_msg_data        =>  lv_msg_data         -- メッセージ
@@ -1822,12 +2189,20 @@ AS
                         xxccp_common_pkg.get_msg(
                            iv_application  => cv_appl_name_cfr      -- 'XXCFR'
                           ,iv_name         => cv_msg_006a04_012     -- APIエラーメッセージ
-                          ,iv_token_name1  => cv_tkn_006a04_012_1   --「TRX_NUMBER」
-                          ,iv_token_value1 => lt_get_work_table(ln_count).trx_number  -- 取引番号
--- ************ 2010/09/02 1.1 M.Watanabe ADD START ************ --
+-- 2011/08/11 Ver.1.2 A.Shirakawa MOD Start
+--                          ,iv_token_name1  => cv_tkn_006a04_012_1   --「TRX_NUMBER」
+--                          ,iv_token_value1 => lt_get_work_table(ln_count).trx_number  -- 取引番号
+---- ************ 2010/09/02 1.1 M.Watanabe ADD START ************ --
+--                          ,iv_token_name2  => cv_tkn_006a04_010_1                             --「DOC_SEQUENCE_VALUE」
+--                          ,iv_token_value2 => lt_get_work_table(ln_count).doc_sequence_value  -- 文書番号
+---- ************ 2010/09/02 1.1 M.Watanabe ADD END   ************ --
+                          ,iv_token_name1  => cv_tkn_006a04_012_2  --「RECEIPT_NUMBER」
+                          ,iv_token_value1 => gv_receipt_number    -- 入金番号
                           ,iv_token_name2  => cv_tkn_006a04_010_1                             --「DOC_SEQUENCE_VALUE」
                           ,iv_token_value2 => lt_get_work_table(ln_count).doc_sequence_value  -- 文書番号
--- ************ 2010/09/02 1.1 M.Watanabe ADD END   ************ --
+                          ,iv_token_name3  => cv_tkn_006a04_012_1                     --「TRX_NUMBER」
+                          ,iv_token_value3 => lt_get_work_table(ln_count).trx_number  -- 請求書番号(取引番号)
+-- 2011/08/11 Ver.1.2 A.Shirakawa MOD End
                         )
                        ,1
                        ,5000
@@ -1843,7 +2218,10 @@ AS
         IF (ln_msg_count = 1) THEN
 --
           FND_FILE.PUT_LINE(
-             which  => FND_FILE.OUTPUT
+-- 2011/08/11 Ver.1.2 A.Shirakawa MOD Start
+--             which  => FND_FILE.OUTPUT
+             which  => FND_FILE.LOG
+-- 2011/08/11 Ver.1.2 A.Shirakawa MOD End
             ,buff   => '・' || lv_msg_data
           );
 --
@@ -1851,7 +2229,10 @@ AS
         ELSE
 --
           FND_FILE.PUT_LINE(
-             which  => FND_FILE.OUTPUT
+-- 2011/08/11 Ver.1.2 A.Shirakawa MOD Start
+--             which  => FND_FILE.OUTPUT
+             which  => FND_FILE.LOG
+-- 2011/08/11 Ver.1.2 A.Shirakawa MOD End
             ,buff   => '・' || SUBSTRB( FND_MSG_PUB.GET(FND_MSG_PUB.G_FIRST, FND_API.G_FALSE)
                                          ,1
                                          ,5000
@@ -1864,7 +2245,10 @@ AS
           WHILE ln_msg_count > 0 LOOP
 --
             FND_FILE.PUT_LINE(
-               which  => FND_FILE.OUTPUT
+-- 2011/08/11 Ver.1.2 A.Shirakawa MOD Start
+--               which  => FND_FILE.OUTPUT
+               which  => FND_FILE.LOG
+-- 2011/08/11 Ver.1.2 A.Shirakawa MOD End
               ,buff   => '・' || SUBSTRB( FND_MSG_PUB.GET(FND_MSG_PUB.G_NEXT, FND_API.G_FALSE)
                                            ,1
                                            ,5000
@@ -1878,9 +2262,27 @@ AS
         END IF;
 --
         gb_flag := TRUE;
+-- 2011/08/11 Ver.1.2 A.Shirakawa ADD Start
+        gb_warn_flag := TRUE;
+--
+        -- エラーならばロールバック
+        ROLLBACK;
+--
+-- 2011/08/11 Ver.1.2 A.Shirakawa ADD End
         EXIT;
 --
-      END IF;  -- 'S'以外
+-- 2011/08/11 Ver.1.2 A.Shirakawa MOD Start
+--      END IF;  -- 'S'以外
+      ELSE
+        -- 正常ならばコミット
+        COMMIT;
+--
+        gn_normal_cnt := gn_normal_cnt + 1;
+--
+        gn_normal_trx_amount_sum := gn_normal_trx_amount_sum + lt_get_work_table(ln_count).trx_amount;
+--
+      END IF;
+-- 2011/08/11 Ver.1.2 A.Shirakawa MOD End
 --
     END LOOP exe_api_loop;
 --
@@ -1963,8 +2365,10 @@ AS
     --***      分岐と処理部の呼び出しを行う     ***
     --*********************************************
 --
-    -- 正常終了時はワークテーブル明示削除(異常時はロールバックされる)
-    IF NOT( gb_flag ) THEN
+-- 2011/08/11 Ver.1.2 A.Shirakawa DEL Start
+--    -- 正常終了時はワークテーブル明示削除(異常時はロールバックされる)
+--    IF NOT( gb_flag ) THEN
+-- 2011/08/11 Ver.1.2 A.Shirakawa DEL End
 --
       -- ワークテーブル削除
       DELETE FROM  xxcfr_apply_upload_work  xauw
@@ -1972,13 +2376,15 @@ AS
       AND   xauw.request_id = cn_request_id
       ;
 --
-    END IF;
+-- 2011/08/11 Ver.1.2 A.Shirakawa DEL Start
+--    END IF;
+----
+--    -- 異常終了時は入金消込APIを戻す為にROLLBACK実行
+--    IF ( gb_flag ) THEN
+--      ROLLBACK;
+--    END IF;
 --
-    -- 異常終了時は入金消込APIを戻す為にROLLBACK実行
-    IF ( gb_flag ) THEN
-      ROLLBACK;
-    END IF;
---
+-- 2011/08/11 Ver.1.2 A.Shirakawa DEL End
     -- ファイルアップロードIFテーブル削除
     DELETE FROM  xxccp_mrp_file_ul_interface  xmfui
     WHERE xmfui.file_id = gn_file_id
@@ -2252,6 +2658,27 @@ AS
         RAISE global_process_expt;
       END IF;
 --
+-- 2011/08/11 Ver.1.2 A.Shirakawa ADD Start
+      -- 業務チェック(A-5～A-7)エラー時は入金情報排他チェック(A-10)は行わない
+      IF ( gb_flag = FALSE ) THEN
+--
+        -- =====================================================
+        --  入金情報排他チェック(A-10)
+        -- =====================================================
+        check_data_lock(
+           ov_retcode    => lv_retcode     -- エラー・メッセージ           --# 固定 #
+          ,ov_errbuf     => lv_errbuf      -- リターン・コード             --# 固定 #
+          ,ov_errmsg     => lv_errmsg      -- ユーザー・エラー・メッセージ --# 固定 #
+        );
+--
+        IF (lv_retcode <> cv_status_normal) THEN
+          RAISE global_process_expt;
+        END IF;
+--
+      END IF;
+--
+      -- 入金情報排他チェック(A-10)エラー時は入金消込API起動処理(A-8)は行わない
+-- 2011/08/11 Ver.1.2 A.Shirakawa ADD End
       -- 業務チェック(A-5～A-7)エラー時は入金消込API起動処理(A-8)は行わない
       IF ( gb_flag = FALSE ) THEN
 --
@@ -2329,14 +2756,25 @@ AS
     cv_prg_name        CONSTANT VARCHAR2(100) := 'main';             -- プログラム名
 --
     cv_target_rec_msg  CONSTANT VARCHAR2(100) := 'APP-XXCCP1-90000'; -- 対象件数メッセージ
-    cv_success_rec_msg CONSTANT VARCHAR2(100) := 'APP-XXCCP1-90001'; -- 成功件数メッセージ
-    cv_error_rec_msg   CONSTANT VARCHAR2(100) := 'APP-XXCCP1-90002'; -- エラー件数メッセージ
-    cv_skip_rec_msg    CONSTANT VARCHAR2(100) := 'APP-XXCCP1-90003'; -- スキップ件数メッセージ
+-- 2011/08/11 Ver.1.2 A.Shirakawa MOD Start
+--    cv_success_rec_msg CONSTANT VARCHAR2(100) := 'APP-XXCCP1-90001'; -- 成功件数メッセージ
+--    cv_error_rec_msg   CONSTANT VARCHAR2(100) := 'APP-XXCCP1-90002'; -- エラー件数メッセージ
+--    cv_skip_rec_msg    CONSTANT VARCHAR2(100) := 'APP-XXCCP1-90003'; -- スキップ件数メッセージ
+    cv_app_rec_msg     CONSTANT VARCHAR2(100) := 'APP-XXCFR1-00136'; -- 消込済件数金額メッセージ
+    cv_unapp_rec_msg   CONSTANT VARCHAR2(100) := 'APP-XXCFR1-00137'; -- 未消込件数金額メッセージ
+    cv_app_process_no_msg  CONSTANT VARCHAR2(100) := 'APP-XXCFR1-00142'; -- 消込処理Noメッセージ
+    cv_rec_header_msg  CONSTANT VARCHAR2(100) := 'APP-XXCFR1-00143'; -- 処理結果ヘッダメッセージ
+-- 2011/08/11 Ver.1.2 A.Shirakawa MOD End
     cv_normal_msg      CONSTANT VARCHAR2(100) := 'APP-XXCCP1-90004'; -- 正常終了メッセージ
     cv_warn_msg        CONSTANT VARCHAR2(100) := 'APP-XXCCP1-90005'; -- 警告終了メッセージ
     cv_error_msg       CONSTANT VARCHAR2(100) := 'APP-XXCCP1-90006'; -- エラー終了全ロールバック
 --
     cv_cnt_token       CONSTANT VARCHAR2(10)  := 'COUNT';            -- 件数メッセージ用トークン名
+-- 2011/08/11 Ver.1.2 A.Shirakawa ADD Start
+    cv_amt_token       CONSTANT VARCHAR2(10)  := 'AMOUNT';           -- 金額メッセージ用トークン名
+    cv_app_count_token    CONSTANT VARCHAR2(10)  := 'APP_COUNT';     -- 消込処理Noメッセージ用トークン名(消込済件数)
+    cv_unapp_count_token  CONSTANT VARCHAR2(11)  := 'UNAPP_COUNT';   -- 消込処理Noメッセージ用トークン名(未消込件数)
+-- 2011/08/11 Ver.1.2 A.Shirakawa ADD End
     -- ===============================
     -- ローカル変数
     -- ===============================
@@ -2357,6 +2795,10 @@ AS
     gn_normal_cnt := 0;
     gn_error_cnt  := 0;
     gn_warn_cnt   := 0;
+-- 2011/08/11 Ver.1.2 A.Shirakawa ADD Start
+    gn_normal_trx_amount_sum := 0;
+    gn_error_trx_amount_sum  := 0;
+-- 2011/08/11 Ver.1.2 A.Shirakawa ADD End
 --
     -- コンカレントヘッダメッセージ出力関数の呼び出し
     xxccp_common_pkg.put_log_header(
@@ -2385,12 +2827,17 @@ AS
       ,ov_errmsg      => lv_errmsg       -- ユーザー・エラー・メッセージ --# 固定 #
     );
 --
-    -- 業務チェックエラーの時は、エラー件数を処理対象件数と同値にする。(全件消込出来なかったの意味)
-    IF ( gb_flag ) THEN
-      gn_error_cnt := gn_target_cnt;
-    ELSE
-      gn_normal_cnt := gn_target_cnt;
-    END IF;
+-- 2011/08/11 Ver.1.2 A.Shirakawa MOD Start
+--    -- 業務チェックエラーの時は、エラー件数を処理対象件数と同値にする。(全件消込出来なかったの意味)
+--    IF ( gb_flag ) THEN
+--      gn_error_cnt := gn_target_cnt;
+--    ELSE
+--      gn_normal_cnt := gn_target_cnt;
+--    END IF;
+    gn_error_cnt := gn_target_cnt - gn_normal_cnt;
+--
+    gn_error_trx_amount_sum := gn_trx_amount_sum - gn_normal_trx_amount_sum;
+-- 2011/08/11 Ver.1.2 A.Shirakawa MOD End
 --
     --エラー時は関数から返却されたメッセージを出力
     IF (lv_retcode = cv_status_error) THEN
@@ -2410,6 +2857,19 @@ AS
       ,buff   => ''
     );
 --
+-- 2011/08/11 Ver.1.2 A.Shirakawa ADD Start
+    --処理結果ヘッダ出力
+    gv_out_msg := xxccp_common_pkg.get_msg(
+                     iv_application  => cv_appl_name_cfr
+                    ,iv_name         => cv_rec_header_msg
+                   );
+--
+    FND_FILE.PUT_LINE(
+       which  => FND_FILE.OUTPUT
+      ,buff   => gv_out_msg
+    );
+--
+-- 2011/08/11 Ver.1.2 A.Shirakawa ADD End
     --対象件数出力
     gv_out_msg := xxccp_common_pkg.get_msg(
                      iv_application  => cv_appl_name_cmn
@@ -2423,40 +2883,85 @@ AS
       ,buff   => gv_out_msg
     );
 --
-    --成功件数出力
+-- 2011/08/11 Ver.1.2 A.Shirakawa MOD Start
+--    --成功件数出力
+--    gv_out_msg := xxccp_common_pkg.get_msg(
+--                     iv_application  => cv_appl_name_cmn
+--                    ,iv_name         => cv_success_rec_msg
+--                    ,iv_token_name1  => cv_cnt_token
+--                    ,iv_token_value1 => TO_CHAR(gn_normal_cnt)
+--                   );
+    --消込済件数金額出力
     gv_out_msg := xxccp_common_pkg.get_msg(
-                     iv_application  => cv_appl_name_cmn
-                    ,iv_name         => cv_success_rec_msg
+                     iv_application  => cv_appl_name_cfr
+                    ,iv_name         => cv_app_rec_msg
                     ,iv_token_name1  => cv_cnt_token
                     ,iv_token_value1 => TO_CHAR(gn_normal_cnt)
+                    ,iv_token_name2  => cv_amt_token
+                    ,iv_token_value2 => TO_CHAR(gn_normal_trx_amount_sum)
                    );
+-- 2011/08/11 Ver.1.2 A.Shirakawa MOD End
 --
     FND_FILE.PUT_LINE(
        which  => FND_FILE.OUTPUT
       ,buff   => gv_out_msg
     );
 --
-    --エラー件数出力
+-- 2011/08/11 Ver.1.2 A.Shirakawa MOD Start
+--    --エラー件数出力
+--    gv_out_msg := xxccp_common_pkg.get_msg(
+--                     iv_application  => cv_appl_name_cmn
+--                    ,iv_name         => cv_error_rec_msg
+--                    ,iv_token_name1  => cv_cnt_token
+--                    ,iv_token_value1 => TO_CHAR(gn_error_cnt)
+--                   );
+    --未消込件数金額メッセージ
     gv_out_msg := xxccp_common_pkg.get_msg(
-                     iv_application  => cv_appl_name_cmn
-                    ,iv_name         => cv_error_rec_msg
+                     iv_application  => cv_appl_name_cfr
+                    ,iv_name         => cv_unapp_rec_msg
                     ,iv_token_name1  => cv_cnt_token
                     ,iv_token_value1 => TO_CHAR(gn_error_cnt)
+                    ,iv_token_name2  => cv_amt_token
+                    ,iv_token_value2 => TO_CHAR(gn_error_trx_amount_sum)
                    );
+-- 2011/08/11 Ver.1.2 A.Shirakawa MOD End
 --
     FND_FILE.PUT_LINE(
        which  => FND_FILE.OUTPUT
       ,buff   => gv_out_msg
     );
 --
-    lv_message_code := cv_normal_msg;
---
-    --エラーがあれば、エラー終了に上書き
-    IF ( gn_error_cnt > 0) THEN
-      lv_message_code := cv_error_msg;
-      retcode := cv_status_error;
+-- 2011/08/11 Ver.1.2 A.Shirakawa MOD Start
+--    lv_message_code := cv_normal_msg;
+----
+--    --エラーがあれば、エラー終了に上書き
+--    IF ( gn_error_cnt > 0) THEN
+--      lv_message_code := cv_error_msg;
+--      retcode := cv_status_error;
+--    END IF;
+----
+    IF ( gb_warn_flag ) THEN
+      lv_retcode := cv_status_warn;
+    ELSIF ( gb_flag ) THEN
+      lv_retcode := cv_status_error;
     END IF;
 --
+    --終了メッセージ
+    IF ( lv_retcode = cv_status_normal ) THEN
+      lv_message_code := cv_normal_msg;
+    ELSIF ( lv_retcode = cv_status_warn ) THEN
+      lv_message_code := cv_warn_msg;
+    ELSIF ( lv_retcode = cv_status_error ) THEN
+      lv_message_code := cv_error_msg;
+    END IF;
+--
+    --１行改行
+    fnd_file.put_line(
+       which  => FND_FILE.OUTPUT
+      ,buff   => ''
+    );
+--
+-- 2011/08/11 Ver.1.2 A.Shirakawa MOD End
     gv_out_msg := xxccp_common_pkg.get_msg(
                      iv_application  => cv_appl_name_cmn
                     ,iv_name         => lv_message_code
@@ -2467,8 +2972,38 @@ AS
       ,buff   => gv_out_msg
     );
 --
+-- 2011/08/11 Ver.1.2 A.Shirakawa ADD Start
+    --警告終了の場合
+    IF ( lv_retcode = cv_status_warn ) THEN
+      --１行改行
+      fnd_file.put_line(
+         which  => FND_FILE.OUTPUT
+        ,buff   => ''
+      );
+--
+      --消込処理Noメッセージ
+      gv_out_msg := xxccp_common_pkg.get_msg(
+                       iv_application  => cv_appl_name_cfr
+                      ,iv_name         => cv_app_process_no_msg
+                      ,iv_token_name1  => cv_app_count_token
+                      ,iv_token_value1 => TO_CHAR(gn_normal_cnt)
+                      ,iv_token_name2  => cv_unapp_count_token
+                      ,iv_token_value2 => TO_CHAR(gn_error_cnt)
+                     );
+--
+      FND_FILE.PUT_LINE(
+         which  => FND_FILE.OUTPUT
+        ,buff   => gv_out_msg
+      );
+--
+  END IF;
+--
+-- 2011/08/11 Ver.1.2 A.Shirakawa ADD End
     --ステータスセット
-    errbuf := lv_errbuf;
+-- 2011/08/11 Ver.1.2 A.Shirakawa MOD Start
+--    errbuf := lv_errbuf;
+    retcode := lv_retcode;
+-- 2011/08/11 Ver.1.2 A.Shirakawa MOD End
 --
     --終了ステータスがエラーの場合はROLLBACKする
     IF (retcode = cv_status_error) THEN
