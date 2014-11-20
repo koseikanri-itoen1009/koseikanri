@@ -7,7 +7,7 @@ AS
  * Package Name     : XXCOI009A02R(body)
  * Description      : 倉替出庫明細リスト
  * MD.050           : 倉替出庫明細リスト MD050_COI_009_A02
- * Version          : 1.0
+ * Version          : 1.3
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -264,7 +264,7 @@ AS
    * Procedure Name   : svf_request
    * Description      : SVF起動(A-10)
    ***********************************************************************************/
-  /*PROCEDURE svf_request(
+  PROCEDURE svf_request(
     ov_errbuf     OUT VARCHAR2,     --   エラー・メッセージ           --# 固定 #
     ov_retcode    OUT VARCHAR2,     --   リターン・コード             --# 固定 #
     ov_errmsg     OUT VARCHAR2)     --   ユーザー・エラー・メッセージ --# 固定 #
@@ -286,10 +286,10 @@ AS
     -- ユーザー宣言部
     -- ===============================
     -- *** ローカル定数 ***
-    cv_output_mode  CONSTANT VARCHAR2(1) := '1';                    -- 出力区分(PDF出力)
-    cv_frm_file     CONSTANT VARCHAR2(?) := 'XXCOI009A02S.xml';     -- フォーム様式ファイル名
-    cv_vrq_file     CONSTANT VARCHAR2(?) := 'XXCOI009A02S.vrq';     -- クエリー様式ファイル名
-    cv_api_name     CONSTANT VARCHAR2(7) := 'SVF起動';              -- SVF起動API名
+    cv_output_mode  CONSTANT VARCHAR2(1)  := '1';                    -- 出力区分(PDF出力)
+    cv_frm_file     CONSTANT VARCHAR2(30) := 'XXCOI009A02S.xml';     -- フォーム様式ファイル名
+    cv_vrq_file     CONSTANT VARCHAR2(30) := 'XXCOI009A02S.vrq';     -- クエリー様式ファイル名
+    cv_api_name     CONSTANT VARCHAR2(7)  := 'SVF起動';              -- SVF起動API名
 --
     -- エラーコード
     cv_msg_xxcoi00010  CONSTANT VARCHAR2(16) := 'APP-XXCOI1-00010';   -- APIエラー
@@ -298,6 +298,8 @@ AS
     cv_token_name_1  CONSTANT VARCHAR2(30) := 'API_NAME';
 --
     -- *** ローカル変数 ***
+    ld_date       VARCHAR2(8);   -- 日付
+    lv_file_name  VARCHAR2(100); -- 出力ファイル名
 --
     -- *** ローカル・カーソル ***
 --
@@ -317,6 +319,12 @@ AS
     -- ***       共通関数の呼び出し        ***
     -- ***************************************
 --
+    -- 日付書式変換
+    ld_date := TO_CHAR( cd_creation_date, 'YYYYMMDD' );
+--
+    -- 出力ファイル名
+    lv_file_name := cv_pkg_name || ld_date || TO_CHAR(cn_request_id);
+--
     --SVF起動処理
       xxccp_svfcommon_pkg.submit_svf_request(
       ov_retcode      => lv_retcode             -- リターンコード
@@ -324,7 +332,7 @@ AS
      ,ov_errmsg       => lv_errmsg              -- ユーザー・エラーメッセージ
      ,iv_conc_name    => cv_pkg_name            -- コンカレント名
      ,iv_file_name    => cv_frm_file            -- 出力ファイル名
-     ,iv_file_id      => cv_file_id             -- 帳票ID
+     ,iv_file_id      => cv_pkg_name            -- 帳票ID
      ,iv_output_mode  => cv_output_mode         -- 出力区分
      ,iv_frm_file     => cv_frm_file            -- フォーム様式ファイル名
      ,iv_vrq_file     => cv_vrq_file            -- クエリー様式ファイル名
@@ -334,7 +342,7 @@ AS
      ,iv_doc_name     => NULL                   -- 文書名
      ,iv_printer_name => NULL                   -- プリンタ名
      ,iv_request_id   => cn_request_id          -- 要求ID
-     ,iv_nodata_msg   => cv_nodata_msg          -- データなしメッセージ
+     ,iv_nodata_msg   => NULL                   -- データなしメッセージ
     );
 --
     --==============================================================
@@ -352,9 +360,9 @@ AS
     -- *** SVF起動APIエラー ***
     WHEN svf_request_err_expt THEN
       lv_errmsg  := xxccp_common_pkg.get_msg(
-                      iv_application  => cv_application_short_name
-                    , iv_name         => cv_msg_code2
-                    , iv_token_name1  => cv_token_name
+                      iv_application  => cv_app_name
+                    , iv_name         => cv_msg_xxcoi00010
+                    , iv_token_name1  => cv_token_name_1
                     , iv_token_value1 => cv_api_name
                    );
       ov_errmsg  := lv_errmsg;
@@ -1507,7 +1515,7 @@ AS
       END IF;
 --
       -- 営業原価額の符号変換
-      ln_discrete_cost := TO_NUMBER(lv_discrete_cost)*lr_info_kuragae_rec.transaction_qty*-1;
+      ln_discrete_cost := TO_NUMBER(lv_discrete_cost)*lr_info_kuragae_rec.transaction_qty;
 --
       -- =====================================================
       -- 品目マスタ情報抽出処理(A-4)
@@ -1625,7 +1633,7 @@ AS
          ,lr_info_kuragae_rec.item_short_name           -- 略称
          ,lr_info_kuragae_rec.slip_no                   -- 伝票No
          ,NVL(lr_info_kuragae_rec.transaction_qty,0)*-1 -- 取引数量
-         ,ln_discrete_cost                              -- 営業原価額
+         ,ln_discrete_cost*-1                           -- 営業原価額
          ,NVL(ln_dlv_cost_budget_amt,0)*-1              -- 振替運送費
          ,NULL                                          -- ０件メッセージ
          ,lv_errbuf            -- エラー・メッセージ           --# 固定 #
@@ -2285,15 +2293,15 @@ AS
          END IF;
     END IF;
 --
-/*    -- =====================================================
+    -- =====================================================
     -- SVF起動(A-5)
     -- =====================================================
     svf_request(
-       ,ov_errbuf         => lv_errbuf          -- エラー・メッセージ           --# 固定 #
+        ov_errbuf         => lv_errbuf          -- エラー・メッセージ           --# 固定 #
        ,ov_retcode        => lv_retcode         -- リターン・コード             --# 固定 #
        ,ov_errmsg         => lv_errmsg          -- ユーザー・エラー・メッセージ --# 固定 #
       );
-    IF ( lv_retcode = gv_status_error ) THEN
+    IF ( lv_retcode = cv_status_error ) THEN
       RAISE global_process_expt ;
     END IF;
 --
@@ -2301,14 +2309,14 @@ AS
     -- ワークテーブルデータ削除(A-6)
     -- =====================================================
     del_work(
-       ,ov_errbuf         => lv_errbuf          -- エラー・メッセージ           --# 固定 #
+        ov_errbuf         => lv_errbuf          -- エラー・メッセージ           --# 固定 #
        ,ov_retcode        => lv_retcode         -- リターン・コード             --# 固定 #
        ,ov_errmsg         => lv_errmsg          -- ユーザー・エラー・メッセージ --# 固定 #
       );
-    IF ( lv_retcode = gv_status_error ) THEN
+    IF ( lv_retcode = cv_status_error ) THEN
       RAISE global_process_expt ;
     END IF;
-*/
+--
     -- 正常終了件数
     gn_normal_cnt := gn_target_cnt - gn_warn_cnt;
 --
@@ -2527,4 +2535,3 @@ AS
 --###########################  固定部 END   #######################################################
 --
 END XXCOI009A02R;
-/
