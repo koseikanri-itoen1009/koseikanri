@@ -7,7 +7,7 @@ AS
  * Description      : HHT受入実績計上
  * MD.050           : 受入実績            T_MD050_BPO_310
  * MD.070           : HHT受入実績計上     T_MD070_BPO_31G
- * Version          : 1.5
+ * Version          : 1.6
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -45,6 +45,7 @@ AS
  *  2008/05/23    1.3   Oracle 山根 一浩 結合テスト不具合ログ対応
  *  2008/06/26    1.4   Oracle 山根 一浩 結合テスト不具合No84,86対応
  *  2008/07/09    1.5   Oracle 山根一浩  I_S_192対応
+ *  2008/08/06    1.6   Oracle 山根 一浩 課題#32対応
  *****************************************************************************************/
 --
 --#######################  固定グローバル定数宣言部 START   #######################
@@ -234,6 +235,10 @@ AS
     organization_id       mtl_item_locations.organization_id%TYPE,
     subinventory_code     mtl_item_locations.subinventory_code%TYPE,
     inventory_location_id mtl_item_locations.inventory_location_id%TYPE,
+--
+    -- 2008/08/06 Add ↓
+    conv_unit          xxcmn_item_mst_v.conv_unit%TYPE,                       -- 入出庫換算単位
+    -- 2008/08/06 Add ↑
 --
     def4_date          DATE,                                                  -- 納入日(初回)
     def5_date          DATE,                                                  -- 納入日(最終)
@@ -1231,6 +1236,9 @@ AS
             ,xsv.vendor_stock_whse         -- 相手先在庫入庫先
             ,xicv.prod_class_code          -- 商品区分
             ,xvv.segment1                  -- 仕入先番号
+--2008/08/06 Add ↓
+            ,xivv.conv_unit                -- 入出庫換算単位
+--2008/08/06 Add ↑
       FROM   xxpo_rcv_txns_interface xrti                 -- 受入実績IF(アドオン)
             ,xxcmn_vendors_v xvv                          -- 仕入先情報VIEW
             ,xxcmn_vendor_sites_v xsv                     -- 仕入先サイト情報VIEW
@@ -1265,6 +1273,9 @@ AS
                     ,xiv.num_of_cases                  -- ケース入数
                     ,xiv.lot_ctl                       -- ロット
                     ,xiv.item_id as opm_item_id        -- OPM品目ID
+--2008/08/06 Add ↓
+                    ,xiv.conv_unit                     -- 入出庫換算単位
+--2008/08/06 Add ↑
                     ,ilm.lot_no                        -- ロットNo
                     ,ilm.lot_id                        -- ロットID
                     ,ilm.item_id as item_idv           -- 品目ID
@@ -1354,6 +1365,10 @@ AS
       mst_rec.prod_class_code    := lr_mst_data_rec.prod_class_code;
       mst_rec.vendor_no          := lr_mst_data_rec.segment1;
 --
+      -- 2008/08/06 Add ↓
+      mst_rec.conv_unit          := lr_mst_data_rec.conv_unit;
+      -- 2008/08/06 Add ↑
+--
       mst_rec.def4_date          := FND_DATE.STRING_TO_DATE(mst_rec.attribute4,'YYYY/MM/DD');
       mst_rec.def5_date          := FND_DATE.STRING_TO_DATE(mst_rec.attribute5,'YYYY/MM/DD');
 --
@@ -1403,12 +1418,23 @@ AS
       gt_conversion_factor(ln_cnt) := 1;
       ln_qty := mst_rec.rcv_quantity;
 --
+/* 2008/08/06 Mod ↓
       -- ドリンク製品(入出庫換算単位あり) の場合
       IF ((mst_rec.prod_class_code = gv_prod_class_code) 
        AND (mst_rec.unit_code <> mst_rec.attribute10)) THEN
         ln_qty := ln_qty * NVL(mst_rec.num_of_cases,1);
         gt_conversion_factor(ln_cnt) := NVL(mst_rec.num_of_cases,1);
+--
       END IF;
+2008/08/06 Mod ↑ */
+--
+      -- ドリンク製品(入出庫換算単位あり) の場合
+      IF ((mst_rec.prod_class_code = gv_prod_class_code)
+       AND (mst_rec.conv_unit IS NOT NULL)) THEN
+        ln_qty := ln_qty * mst_rec.num_of_cases;
+        gt_conversion_factor(ln_cnt) := mst_rec.num_of_cases;
+      END IF;
+--
       gt_calc_quantity(ln_cnt) := ln_qty;
       gt_rtn_quantity(ln_cnt) := ln_qty;
 --
@@ -2452,9 +2478,17 @@ AS
 --
     -- ドリンク製品(入出庫換算単位あり) の場合
     IF ((ir_mst_rec.prod_class_code = gv_prod_class_code)
+     AND (ir_mst_rec.conv_unit IS NOT NULL)) THEN
+      ln_qty := ln_qty * ir_mst_rec.num_of_cases;
+    END IF;
+--
+/* 2008/08/06 Mod ↓
+    -- ドリンク製品(入出庫換算単位あり) の場合
+    IF ((ir_mst_rec.prod_class_code = gv_prod_class_code)
      AND (ir_mst_rec.unit_code <> ir_mst_rec.attribute10)) THEN
       ln_qty := ln_qty * NVL(ir_mst_rec.num_of_cases,1);
     END IF;
+2008/08/06 Mod ↑ */
 --
     lr_qty_rec.trans_qty := ln_qty * (-1);
 --
