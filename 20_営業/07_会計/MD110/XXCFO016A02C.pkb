@@ -7,7 +7,7 @@ AS
  * Description     : 発注書データ出力処理
  * MD.050          : MD050_CFO_016_A02_発注書データ出力処理
  * MD.070          : MD050_CFO_016_A02_発注書データ出力処理
- * Version         : 1.7
+ * Version         : 1.8
  * 
  * Program List
  * --------------- ---- ----- --------------------------------------------
@@ -38,6 +38,7 @@ AS
  *  2009-03-23    1.5  SCS 開原拓也  [障害T1_0059]機種コードの変更対応
  *  2009-11-25    1.6  SCS 寺内真紀  [障害E_本稼動_00063]顧客情報取得エラー対応
  *  2009-12-24    1.7  SCS 寺内真紀  [障害E_本稼動_00592]納品場所変更対応
+ *  2010-01-19    1.8  SCS 寺内真紀  [障害E_本稼動_01183]従業員マスタ抽出条件変更対応
   ************************************************************************/
 --
 --#######################  固定グローバル定数宣言部 START   #######################
@@ -300,7 +301,13 @@ AS
                AND prla.requisition_line_id     = prda.requisition_line_id
                AND prla.org_id                  = prda.org_id
                AND prda.set_of_books_id         = gn_set_of_bks_id
-               AND papf2.current_employee_flag  = gv_flag_y
+--DEL_Ver.1.8_2010/01/19_START------------------------------------------------------------------------------
+--               AND papf2.current_employee_flag  = gv_flag_y
+--DEL_Ver.1.8_2010/01/19_END------------------------------------------------------------------------------
+--ADD_Ver.1.8_2010/01/19_START------------------------------------------------------------------------------
+               AND TRUNC( SYSDATE ) BETWEEN TRUNC( papf2.effective_start_date )
+                                        AND TRUNC( papf2.effective_end_date ) 
+--ADD_Ver.1.8_2010/01/19_END------------------------------------------------------------------------------
                AND papf2.person_id              = prla.to_person_id
                AND papf2.attribute28            = hl.location_code
                AND hl.location_id               = xla.location_id
@@ -338,7 +345,13 @@ AS
                                 AND TRUNC( NVL( l_xla.end_date_active, SYSDATE ) )
        AND pha.agent_id                =  pa.agent_id
        AND pa.agent_id                 =  papf1.person_id
-       AND papf1.current_employee_flag =  gv_flag_y
+--DEL_Ver.1.8_2010/01/19_START------------------------------------------------------------------------------
+--       AND papf1.current_employee_flag =  gv_flag_y
+--DEL_Ver.1.8_2010/01/19_END------------------------------------------------------------------------------
+--ADD_Ver.1.8_2010/01/19_START------------------------------------------------------------------------------
+               AND TRUNC( SYSDATE ) BETWEEN TRUNC( papf1.effective_start_date )
+                                        AND TRUNC( papf1.effective_end_date ) 
+--ADD_Ver.1.8_2010/01/19_END------------------------------------------------------------------------------
        AND pla.category_id             =  mcb.category_id
        AND papf1.attribute28           =  d_hl.location_code
        AND d_hl.location_id            =  d_xla.location_id
