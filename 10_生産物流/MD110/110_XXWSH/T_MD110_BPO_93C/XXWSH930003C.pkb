@@ -7,7 +7,7 @@ AS
  * Description      : 入出庫情報差異リスト（出庫基準）
  * MD.050/070       : 生産物流共通（出荷・移動インタフェース）Issue1.0(T_MD050_BPO_930)
  *                    生産物流共通（出荷・移動インタフェース）Issue1.0(T_MD070_BPO_93C)
- * Version          : 1.10
+ * Version          : 1.11
  *
  * Program List
  * ---------------------------- ----------------------------------------------------------
@@ -44,6 +44,7 @@ AS
  *  2008/10/20    1.9   Naoki    Fukuda  統合テスト障害#394(1)対応
  *  2008/10/20    1.9   Naoki    Fukuda  統合テスト障害#394(2)対応
  *  2008/10/31    1.10  Naoki    Fukuda  統合指摘#461対応
+ *  2008/11/13    1.11  Naoki    Fukuda  統合指摘#603対応
  *****************************************************************************************/
 --
 --#######################  固定グローバル定数宣言部 START   #######################
@@ -2301,6 +2302,7 @@ AS
     -- 指示・実績データ取得カーソル
     CURSOR cu_main
     IS
+-- 指示
 -- mod start ver1.1
 --      SELECT xil.segment1                 AS location_code      -- 出庫倉庫コード
       SELECT xoha.deliver_from            AS location_code      -- 出庫倉庫コード
@@ -2465,6 +2467,7 @@ AS
       -- 2008/10/31 統合指摘#461 Add End ---------------------------------------
 --
       UNION
+-- 実績
 -- mod start ver1.1
       SELECT xoha.deliver_from                  AS location_code    -- 出庫倉庫コード
 --      SELECT xil.segment1                       AS location_code    -- 出庫倉庫コード
@@ -2612,9 +2615,17 @@ AS
       -- パラメータ条件．出庫元
       AND   xoha.deliver_from     = NVL( gr_param.deliver_from, xoha.deliver_from )
 -- add end ver1.1
+--
+      -- 2008/11/13 統合指摘#603 Del Start ---------------------------------------------
+      ---- パラメータ条件．出庫日FromTo
+      --AND   xoha.schedule_ship_date BETWEEN gr_param.date_from
+      --                              AND     NVL( gr_param.date_to, xoha.schedule_ship_date )
+      -- 2008/11/13 統合指摘#603 Del End ------------------------------------------------
+      -- 2008/11/13 統合指摘#603 Add Start ---------------------------------------------
       -- パラメータ条件．出庫日FromTo
-      AND   xoha.schedule_ship_date BETWEEN gr_param.date_from
-                                    AND     NVL( gr_param.date_to, xoha.schedule_ship_date )
+      AND   xoha.shipped_date BETWEEN gr_param.date_from
+                                    AND     NVL( gr_param.date_to, xoha.shipped_date )
+      -- 2008/11/13 統合指摘#603 Add End ------------------------------------------------
 --
       -- 2008/10/31 統合指摘#461 Del Start -------------------------------------
       -- 2008/07/07 A.Shiina v1.5 ADD Start ------------------------------------
@@ -2628,8 +2639,8 @@ AS
 --
       -- 2008/10/31 統合指摘#461 Add Start -------------------------------------
       AND   NVL(xoha.career_id,gn_nvl_null_num)  =   xcv.party_id(+)
-      AND   xoha.schedule_ship_date             >=   xcv.start_date_active(+)
-      AND   xoha.schedule_ship_date             <=   xcv.end_date_active(+)
+      AND   xoha.shipped_date             >=   xcv.start_date_active(+)
+      AND   xoha.shipped_date             <=   xcv.end_date_active(+)
       -- 2008/10/31 統合指摘#461 Add End ---------------------------------------
     ;
 --
@@ -2989,6 +3000,7 @@ AS
     -- 指示・実績データ取得カーソル
     CURSOR cu_main
     IS
+-- 指示
       SELECT xil.segment1                 AS location_code    -- 出庫倉庫コード
             --,xil.description              AS location_name    -- 出庫倉庫名称 2008/10/10 統合テスト障害#338 Del
             ,SUBSTRB(xil.description,1,20) AS location_name    -- 出庫倉庫名称  2008/10/10 統合テスト障害#338 Add
@@ -3145,6 +3157,7 @@ AS
       -- 2008/10/31 統合指摘#461 Add End ---------------------------------------
 --
       UNION
+-- 実績
       SELECT xil.segment1                       AS location_code    -- 出庫倉庫コード
             --,xil.description                    AS location_name    -- 出庫倉庫名称 2008/10/10 統合テスト障害#338 Del
             ,SUBSTRB(xil.description,1,20)      AS location_name    -- 出庫倉庫名称   2008/10/10 統合テスト障害#338 Add
@@ -3284,9 +3297,17 @@ AS
       -- パラメータ条件．出庫元
       AND   xmrih.shipped_locat_code    = NVL( gr_param.deliver_from, xmrih.shipped_locat_code )
 -- add end ver1.1
+--
+      -- 2008/11/13 統合指摘#603 Del Start ---------------------------------------------
+      ---- パラメータ条件．出庫日FromTo
+      --AND   xmrih.schedule_ship_date    BETWEEN gr_param.date_from
+      --                                  AND     NVL( gr_param.date_to, xmrih.schedule_ship_date )
+      -- 2008/11/13 統合指摘#603 Del End -----------------------------------------------
+      -- 2008/11/13 統合指摘#603 Add Start ---------------------------------------------
       -- パラメータ条件．出庫日FromTo
-      AND   xmrih.schedule_ship_date    BETWEEN gr_param.date_from
-                                        AND     NVL( gr_param.date_to, xmrih.schedule_ship_date )
+      AND   xmrih.actual_ship_date    BETWEEN gr_param.date_from
+                                        AND     NVL( gr_param.date_to, xmrih.actual_ship_date )
+      -- 2008/11/13 統合指摘#603 Add End -----------------------------------------------
 --
       -- 2008/10/31 統合指摘#461 Del Start -------------------------------------
       -- 2008/07/07 A.Shiina v1.5 ADD Start ------------------------------------
@@ -3300,8 +3321,8 @@ AS
 --
       -- 2008/10/31 統合指摘#461 Add Start -------------------------------------
       AND   NVL(xmrih.career_id,gn_nvl_null_num) =   xcv.party_id(+)
-      AND   xmrih.schedule_ship_date    >=   xcv.start_date_active(+)
-      AND   xmrih.schedule_ship_date    <=   xcv.end_date_active(+)
+      AND   xmrih.actual_ship_date    >=   xcv.start_date_active(+)
+      AND   xmrih.actual_ship_date    <=   xcv.end_date_active(+)
       -- 2008/10/31 統合指摘#461 Add End ---------------------------------------
     ;
 --
