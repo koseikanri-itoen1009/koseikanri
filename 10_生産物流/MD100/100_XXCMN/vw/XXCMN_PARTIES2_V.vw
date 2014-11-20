@@ -43,18 +43,7 @@ CREATE OR REPLACE VIEW xxcmn_parties2_v
   leaf_transfer_std,
   transfer_group,
   distribution_block,
-  base_major_division,
-  department,
-  billing_department,
-  payment_term_id,
-  tax_rounding_rule,
-  consumption_tax_code,
-  eos_control_type,
-  eos_detination,
-  carriage_due_date,
-  carriage_rounding_rule,
-  carriage_tax_code,
-  pay_judgement_code
+  base_major_division
 )
 AS
   SELECT  hp.party_id,
@@ -104,18 +93,7 @@ AS
           xp.leaf_transfer_std,
           xp.transfer_group,
           xp.distribution_block,
-          xp.base_major_division,
-          xp.department,
-          xp.billing_department,
-          xp.payment_term_id,
-          xp.tax_rounding_rule,
-          xp.consumption_tax_code,
-          xp.eos_control_type,
-          xp.eos_detination,
-          xp.carriage_due_date,
-          xp.carriage_rounding_rule,
-          xp.carriage_tax_code,
-          xp.pay_judgement_code
+          xp.base_major_division
   FROM    hz_parties        hp,
           hz_cust_accounts  hca,
           wsh_carriers      wc,
@@ -169,16 +147,5 @@ COMMENT ON COLUMN xxcmn_parties2_v.leaf_transfer_std       IS 'ƒŠ[ƒt‰^’ÀU‘ÖŠî
 COMMENT ON COLUMN xxcmn_parties2_v.transfer_group          IS 'U‘ÖƒOƒ‹[ƒv';
 COMMENT ON COLUMN xxcmn_parties2_v.distribution_block      IS '•¨—¬ƒuƒƒbƒN';
 COMMENT ON COLUMN xxcmn_parties2_v.base_major_division     IS '‹’“_‘å•ª—Ş';
-COMMENT ON COLUMN xxcmn_parties2_v.department              IS '•”';
-COMMENT ON COLUMN xxcmn_parties2_v.billing_department      IS '¿‹ŠÇ—•”';
-COMMENT ON COLUMN xxcmn_parties2_v.payment_term_id         IS 'x•¥ğŒ';
-COMMENT ON COLUMN xxcmn_parties2_v.tax_rounding_rule       IS 'lÌŒÜ“ü‹æ•ª';
-COMMENT ON COLUMN xxcmn_parties2_v.consumption_tax_code    IS 'Á”ïÅ‹æ•ª';
-COMMENT ON COLUMN xxcmn_parties2_v.eos_control_type        IS 'EOSŠÇ—‹æ•ª';
-COMMENT ON COLUMN xxcmn_parties2_v.eos_detination          IS 'EOSˆ¶æ';
-COMMENT ON COLUMN xxcmn_parties2_v.carriage_due_date       IS '‰^‘—”ï - ’÷“ú';
-COMMENT ON COLUMN xxcmn_parties2_v.carriage_rounding_rule  IS '‰^‘—”ï - lÌŒÜ“ü‹æ•ª';
-COMMENT ON COLUMN xxcmn_parties2_v.carriage_tax_code       IS '‰^‘—”ï - Á”ïÅ‹æ•ª';
-COMMENT ON COLUMN xxcmn_parties2_v.pay_judgement_code      IS 'x•¥”»’f‹æ•ª';
 --
 COMMENT ON TABLE  xxcmn_parties2_v IS 'ƒp[ƒeƒBî•ñVIEW2';

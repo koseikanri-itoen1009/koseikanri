@@ -14,7 +14,6 @@ CREATE TABLE xxcmn.xxcmn_party_sites
   address_line2          VARCHAR2(30), 
   phone                  VARCHAR2(15), 
   fax                    VARCHAR2(15), 
-  invoice_report_id      VARCHAR2(10), 
   freshness_condition    VARCHAR2(2), 
   created_by             NUMBER(15,0) NOT NULL ENABLE, 
   creation_date          DATE         NOT NULL ENABLE, 
@@ -43,7 +42,6 @@ COMMENT ON COLUMN xxcmn.xxcmn_party_sites.address_line1          IS '住所１';
 COMMENT ON COLUMN xxcmn.xxcmn_party_sites.address_line2          IS '住所２';
 COMMENT ON COLUMN xxcmn.xxcmn_party_sites.phone                  IS '電話番号';
 COMMENT ON COLUMN xxcmn.xxcmn_party_sites.fax                    IS 'FAX番号';
-COMMENT ON COLUMN xxcmn.xxcmn_party_sites.invoice_report_id      IS '送り状レポートID';
 COMMENT ON COLUMN xxcmn.xxcmn_party_sites.freshness_condition    IS '鮮度条件';
 COMMENT ON COLUMN xxcmn.xxcmn_party_sites.created_by             IS '作成者';
 COMMENT ON COLUMN xxcmn.xxcmn_party_sites.creation_date          IS '作成日';

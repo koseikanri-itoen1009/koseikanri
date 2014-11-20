@@ -42,7 +42,6 @@ CREATE OR REPLACE VIEW xxcmn_party_sites_v
   address_line2,
   phone,
   fax,
-  invoice_report_id,
   freshness_condition
 )
 AS
@@ -88,7 +87,6 @@ AS
           xps.address_line2,
           xps.phone,
           xps.fax,
-          xps.invoice_report_id,
           xps.freshness_condition
   FROM    hz_party_sites          hps,
           hz_cust_acct_sites_all  hcas,
@@ -150,7 +148,6 @@ COMMENT ON COLUMN xxcmn_party_sites_v.address_line1           IS '住所１';
 COMMENT ON COLUMN xxcmn_party_sites_v.address_line2           IS '住所２';
 COMMENT ON COLUMN xxcmn_party_sites_v.phone                   IS '電話番号';
 COMMENT ON COLUMN xxcmn_party_sites_v.fax                     IS 'FAX番号';
-COMMENT ON COLUMN xxcmn_party_sites_v.invoice_report_id       IS '送り状レポートID';
 COMMENT ON COLUMN xxcmn_party_sites_v.freshness_condition     IS '鮮度条件';
 --
 COMMENT ON TABLE  xxcmn_party_sites_v IS 'パーティサイト情報VIEW';

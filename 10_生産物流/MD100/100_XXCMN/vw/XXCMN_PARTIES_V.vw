@@ -39,18 +39,7 @@ CREATE OR REPLACE VIEW xxcmn_parties_v
   leaf_transfer_std,
   transfer_group,
   distribution_block,
-  base_major_division,
-  department,
-  billing_department,
-  payment_term_id,
-  tax_rounding_rule,
-  consumption_tax_code,
-  eos_control_type,
-  eos_detination,
-  carriage_due_date,
-  carriage_rounding_rule,
-  carriage_tax_code,
-  pay_judgement_code
+  base_major_division
 )
 AS
   SELECT  hp.party_id,
@@ -100,18 +89,7 @@ AS
           xp.leaf_transfer_std,
           xp.transfer_group,
           xp.distribution_block,
-          xp.base_major_division,
-          xp.department,
-          xp.billing_department,
-          xp.payment_term_id,
-          xp.tax_rounding_rule,
-          xp.consumption_tax_code,
-          xp.eos_control_type,
-          xp.eos_detination,
-          xp.carriage_due_date,
-          xp.carriage_rounding_rule,
-          xp.carriage_tax_code,
-          xp.pay_judgement_code
+          xp.base_major_division
   FROM    hz_parties        hp,
           hz_cust_accounts  hca,
           wsh_carriers      wc,
@@ -165,16 +143,5 @@ COMMENT ON COLUMN xxcmn_parties_v.leaf_transfer_std      IS 'リーフ運賃振替基準'
 COMMENT ON COLUMN xxcmn_parties_v.transfer_group         IS '振替グループ';
 COMMENT ON COLUMN xxcmn_parties_v.distribution_block     IS '物流ブロック';
 COMMENT ON COLUMN xxcmn_parties_v.base_major_division    IS '拠点大分類';
-COMMENT ON COLUMN xxcmn_parties_v.department             IS '部署';
-COMMENT ON COLUMN xxcmn_parties_v.billing_department     IS '請求管理部署';
-COMMENT ON COLUMN xxcmn_parties_v.payment_term_id        IS '支払条件';
-COMMENT ON COLUMN xxcmn_parties_v.tax_rounding_rule      IS '四捨五入区分';
-COMMENT ON COLUMN xxcmn_parties_v.consumption_tax_code   IS '消費税区分';
-COMMENT ON COLUMN xxcmn_parties_v.eos_control_type       IS 'EOS管理区分';
-COMMENT ON COLUMN xxcmn_parties_v.eos_detination         IS 'EOS宛先';
-COMMENT ON COLUMN xxcmn_parties_v.carriage_due_date      IS '運送費 - 締日';
-COMMENT ON COLUMN xxcmn_parties_v.carriage_rounding_rule IS '運送費 - 四捨五入区分';
-COMMENT ON COLUMN xxcmn_parties_v.carriage_tax_code      IS '運送費 - 消費税区分';
-COMMENT ON COLUMN xxcmn_parties_v.pay_judgement_code     IS '支払判断区分';
 --
 COMMENT ON TABLE  xxcmn_parties_v IS 'パーティ情報VIEW';
