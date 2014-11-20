@@ -11,7 +11,7 @@
 * 2008-10-07 1.2  伊藤ひとみ     統合テスト指摘240対応
 * 2008-10-22 1.3  二瓶　大輔     統合テスト指摘194対応
 * 2008-10-24 1.4  二瓶　大輔     TE080_BPO_600 No22
-* 2008-12-09 1.5  伊藤ひとみ     本番#587対応
+* 2008-12-10 1.5  伊藤ひとみ     本番#587対応
 *============================================================================
 */
 package itoen.oracle.apps.xxwsh.xxwsh920002j.server;
@@ -549,7 +549,7 @@ public class XxwshReserveLotAMImpl extends XxcmnOAApplicationModuleImpl
     OARow row                     = null;
     String showActualQuantity     = null;                                        // 引当数量(換算後)
     BigDecimal setActualQuantity  = null;                                        // 引当数量(VOセット用)
-// 2008-12-08 H.Itou Mod Start
+// 2008-12-10 H.Itou Mod Start
 //    double actualQuantity        = 0;                                            // 引当数量
 //    double sumActualQuantity     = 0;                                            // 引当数量合計(換算後)
 //    double sumActualQuantityItem = 0;                                            // 引当数量合計
@@ -614,36 +614,36 @@ public class XxwshReserveLotAMImpl extends XxcmnOAApplicationModuleImpl
         if (XxwshConstants.CONV_UNIT_USE_KBN_INCLUDE.equals(convUnitUseKbn))
         {
           // 引当数量に引当数量(換算後) * ケース入数をセット
-// 2008-12-08 H.Itou Mod Start
+// 2008-12-10 H.Itou Mod Start
 //          actualQuantity = Double.parseDouble(showActualQuantity) * Double.parseDouble(numOfCases);
-          actualQuantity = new BigDecimal(showActualQuantity); // 引当数量
-          actualQuantity = actualQuantity.multiply(new BigDecimal(numOfCases));
-// 2008-12-08 H.Itou Mod End
+          actualQuantity = XxcmnUtility.bigDecimalValue(showActualQuantity); // 引当数量
+          actualQuantity = actualQuantity.multiply(XxcmnUtility.bigDecimalValue(numOfCases));
+// 2008-12-10 H.Itou Mod End
         } else
         {
           // 引当数量に引当数量(換算後)をセット
-// 2008-12-08 H.Itou Mod Start
+// 2008-12-10 H.Itou Mod Start
 //          actualQuantity = Double.parseDouble(showActualQuantity);
-          actualQuantity = new BigDecimal(showActualQuantity); // 引当数量
-// 2008-12-08 H.Itou Mod End
+          actualQuantity = XxcmnUtility.bigDecimalValue(showActualQuantity); // 引当数量
+// 2008-12-10 H.Itou Mod End
         }
-// 2008-12-08 H.Itou Mod Start
+// 2008-12-10 H.Itou Mod Start
 //        // 手持在庫数・引当可能数一覧リージョンに換算解除した値をセットするため、BigDecimalに一時的にセット
 //        setActualQuantity =  new BigDecimal(String.valueOf(actualQuantity));
         // 手持在庫数・引当可能数一覧リージョン.引当数量にセット
 //        row.setAttribute("ActualQuantity",setActualQuantity);
         row.setAttribute("ActualQuantity",actualQuantity);
-// 2008-12-08 H.Itou Mod Start
+// 2008-12-10 H.Itou Mod Start
         // 引当数量(換算後)の合計値を算出
-// 2008-12-08 H.Itou Mod Start
+// 2008-12-10 H.Itou Mod Start
 //        sumActualQuantity     = sumActualQuantity + Double.parseDouble(showActualQuantity);
-        sumActualQuantity = sumActualQuantity.add(new BigDecimal(showActualQuantity));
-// 2008-12-08 H.Itou Mod End
+        sumActualQuantity = sumActualQuantity.add(XxcmnUtility.bigDecimalValue(showActualQuantity));
+// 2008-12-10 H.Itou Mod End
         // 引当数量の合計値を算出
-// 2008-12-08 H.Itou Mod Start
+// 2008-12-10 H.Itou Mod Start
 //        sumActualQuantityItem = sumActualQuantityItem + actualQuantity;
         sumActualQuantityItem = sumActualQuantityItem.add(actualQuantity);
-// 2008-12-08 H.Itou Mod End
+// 2008-12-10 H.Itou Mod End
       }
       // 次の行に移動
       vo.next();
@@ -659,10 +659,10 @@ public class XxwshReserveLotAMImpl extends XxcmnOAApplicationModuleImpl
     } else
     {
       // 検索条件表示リージョンに引当数量合計(換算後)をセット
-// 2008-12-08 H.Itou Mod Start
+// 2008-12-10 H.Itou Mod Start
 //      hrow.setAttribute("SumReservedQuantity",    XxcmnUtility.formConvNumber(new Double(sumActualQuantity), 9, 3, true));
       hrow.setAttribute("SumReservedQuantity",  String.valueOf(sumActualQuantity));
-// 2008-12-08 H.Itou Mod End
+// 2008-12-10 H.Itou Mod End
       // 検索条件表示リージョンに引当数量合計をセット
       hrow.setAttribute("SumReservedQuantityItem",String.valueOf(sumActualQuantityItem));
     }
@@ -1184,10 +1184,10 @@ public class XxwshReserveLotAMImpl extends XxcmnOAApplicationModuleImpl
 
     // 検索条件表示リージョンの項目を取得
     String itemCode                  = (String)hrow.getAttribute("ItemCode");                // 品目コード
-// 2008-12-08 H.Itou Mod Start
+// 2008-12-10 H.Itou Mod Start
 //    Number sumReservedQuantityItem   = (Number)hrow.getAttribute("SumReservedQuantityItem"); // 引当数量合計(品目単位)
-    BigDecimal sumReservedQuantityItem = new BigDecimal(XxcmnUtility.stringValue((Number)hrow.getAttribute("SumReservedQuantityItem"))); // 引当数量合計(品目単位)
-// 2008-12-08 H.Itou Mod End
+    BigDecimal sumReservedQuantityItem = XxcmnUtility.bigDecimalValue(XxcmnUtility.stringValue((Number)hrow.getAttribute("SumReservedQuantityItem"))); // 引当数量合計(品目単位)
+// 2008-12-10 H.Itou Mod End
     String callPictureKbn            = (String)hrow.getAttribute("CallPictureKbn");          // 呼出画面区分
     String numOfCases                = (String)hrow.getAttribute("NumOfCases");              // ケース入数
     String numOfDeliver              = (String)hrow.getAttribute("NumOfDeliver");            // 出荷入数
@@ -1208,7 +1208,7 @@ public class XxwshReserveLotAMImpl extends XxcmnOAApplicationModuleImpl
     String freightChargeClass         = (String)lrow.getAttribute("FreightChargeClass");         // 運賃区分
 
     // 配車関連情報を格納する変数を宣言
-// 2008-12-08 H.Itou Mod Start
+// 2008-12-10 H.Itou Mod Start
 //    double weight                    = 0;     // 重量
 //    double capacity                  = 0;     // 容積
 //    double sumWeight                 = 0;     // 積載重量合計
@@ -1232,7 +1232,7 @@ public class XxwshReserveLotAMImpl extends XxcmnOAApplicationModuleImpl
     BigDecimal labelQuantity             = new BigDecimal(0);     // ラベル枚数
     BigDecimal palletWeight              = new BigDecimal(0);     // パレット重量
     BigDecimal sumPalletWeight           = new BigDecimal(0);     // 合計パレット重量
-// 2008-12-08 H.Itou Mod End
+// 2008-12-10 H.Itou Mod End
     String retCode                    = null; // リターンコード
     String errMsg                     = null; // エラーメッセージ
     String systemMsg                  = null; // システムエラーメッセージ
@@ -1256,7 +1256,7 @@ public class XxwshReserveLotAMImpl extends XxcmnOAApplicationModuleImpl
     // 取得した重量がNULL以外の場合
     if (!XxcmnUtility.isBlankOrNull((String)paramsRet.get("sumWeight")))
     {
-// 2008-12-08 H.Itou Mod Start
+// 2008-12-10 H.Itou Mod Start
 //      // 重量をセット
 //      weight                 = Double.parseDouble((String)paramsRet.get("sumWeight"));
 //      // 検索条件表示リージョンにセットするため型変換
@@ -1266,18 +1266,18 @@ public class XxwshReserveLotAMImpl extends XxcmnOAApplicationModuleImpl
 //      // ヘッダにセットする合計重量に加算
 //      sumWeight              = sumWeight + weight;
       // 重量をセット
-      weight = new BigDecimal((String)paramsRet.get("sumWeight"));
+      weight = XxcmnUtility.bigDecimalValue((String)paramsRet.get("sumWeight"));
       // 明細の更新に使用するため検索条件表示リージョンにセット
       hrow.setAttribute("Weight", (String)paramsRet.get("sumWeight"));
       // ヘッダにセットする合計重量に加算
       sumWeight = sumWeight.add(weight);
-// 2008-12-08 H.Itou Mod End
+// 2008-12-10 H.Itou Mod End
     }
 
     // 取得した容積がNULL以外の場合
     if (!XxcmnUtility.isBlankOrNull((String)paramsRet.get("sumCapacity")))
     {
-// 2008-12-08 H.Itou Mod Start
+// 2008-12-10 H.Itou Mod Start
 //      // 容積をセット
 //      capacity                = Double.parseDouble((String)paramsRet.get("sumCapacity"));
 //      // 検索条件表示リージョンにセットするため型変換
@@ -1287,19 +1287,19 @@ public class XxwshReserveLotAMImpl extends XxcmnOAApplicationModuleImpl
 //      // ヘッダにセットする合計容積に加算
 //      sumCapacity             = sumCapacity + capacity;
       // 容積をセット
-      capacity = new BigDecimal((String)paramsRet.get("sumCapacity"));
+      capacity = XxcmnUtility.bigDecimalValue((String)paramsRet.get("sumCapacity"));
       // 明細の更新に使用するため検索条件表示リージョンにセット
       hrow.setAttribute("Capacity", (String)paramsRet.get("sumCapacity"));
       // ヘッダにセットする合計容積に加算
       sumCapacity = sumCapacity.add(capacity);
-// 2008-12-08 H.Itou Mod End
+// 2008-12-10 H.Itou Mod End
     }
 
     // 取得したパレット重量がNULL以外で呼出画面区分が支給指示作成画面起動以外の場合
     if (!XxcmnUtility.isBlankOrNull((String)paramsRet.get("sumPalletWeigh"))
       && !XxwshConstants.CALL_PIC_KBN_PROD_CREATE.equals(callPictureKbn))
     {
-// 2008-12-08 H.Itou Mod Start
+// 2008-12-10 H.Itou Mod Start
 //      // パレット重量をセット
 //      palletWeight                = Double.parseDouble((String)paramsRet.get("sumPalletWeigh"));
 //      // 検索条件表示リージョンにセットするため型変換
@@ -1309,18 +1309,18 @@ public class XxwshReserveLotAMImpl extends XxcmnOAApplicationModuleImpl
 //      // ヘッダにセットする合計パレット重量に加算
 //      sumPalletWeight             = sumPalletWeight + palletWeight;
       // パレット重量をセット
-      palletWeight = new BigDecimal((String)paramsRet.get("sumPalletWeigh"));
+      palletWeight = XxcmnUtility.bigDecimalValue((String)paramsRet.get("sumPalletWeigh"));
       // 明細の更新に使用するため検索条件表示リージョンにセット
       hrow.setAttribute("PalletWeight", (String)paramsRet.get("sumPalletWeigh"));
       // ヘッダにセットする合計パレット重量に加算
       sumPalletWeight = sumPalletWeight.add(palletWeight);
-// 2008-12-08 H.Itou Mod End
+// 2008-12-10 H.Itou Mod End
     }
     // 合計数量に明細の数量を加算します。
-// 2008-12-08 H.Itou Mod Start
+// 2008-12-10 H.Itou Mod Start
 //    sumQuantity = sumQuantity + sumReservedQuantityItem.doubleValue();
     sumQuantity = sumQuantity.add(sumReservedQuantityItem);
-// 2008-12-08 H.Itou Mod End
+// 2008-12-10 H.Itou Mod End
     if (sumReservedQuantityItem.doubleValue() == 0 )
     {
       // 処理を行いません。
@@ -1329,60 +1329,60 @@ public class XxwshReserveLotAMImpl extends XxcmnOAApplicationModuleImpl
     } else if (!XxcmnUtility.isBlankOrNull(numOfDeliver))
     {
       // 小口個数に引当数量合計を出荷入数で割った値を加算します。
-// 2008-12-08 H.Itou Mod Start
+// 2008-12-10 H.Itou Mod Start
 //// 2008/08/07 D.Nihei Mod Start
 ////      smallQuantity = smallQuantity + Math.round((sumReservedQuantityItem.doubleValue() / Double.parseDouble(numOfDeliver)));
 //      smallQuantity = smallQuantity + Math.ceil(sumReservedQuantityItem.doubleValue() / Double.parseDouble(numOfDeliver));
 //// 2008/08/07 D.Nihei Mod End
-      smallQuantity = smallQuantity.add(sumReservedQuantityItem.divide(new BigDecimal(numOfDeliver), 0, BigDecimal.ROUND_CEILING));
-// 2008-12-08 H.Itou Mod End
+      smallQuantity = smallQuantity.add(sumReservedQuantityItem.divide(XxcmnUtility.bigDecimalValue(numOfDeliver), 0, BigDecimal.ROUND_CEILING));
+// 2008-12-10 H.Itou Mod End
       // ラベル枚数に引当数量合計を出荷入数で割った値を加算します。
-// 2008-12-08 H.Itou Mod Start
+// 2008-12-10 H.Itou Mod Start
 //// 2008/08/07 D.Nihei Mod Start
 ////      labelQuantity = labelQuantity + Math.round((sumReservedQuantityItem.doubleValue() / Double.parseDouble(numOfDeliver)));
 //      labelQuantity = labelQuantity + Math.ceil(sumReservedQuantityItem.doubleValue() / Double.parseDouble(numOfDeliver));
 //// 2008/08/07 D.Nihei Mod End
-      labelQuantity = labelQuantity.add(sumReservedQuantityItem.divide(new BigDecimal(numOfDeliver), 0, BigDecimal.ROUND_CEILING));
-// 2008-12-08 H.Itou Mod End
+      labelQuantity = labelQuantity.add(sumReservedQuantityItem.divide(XxcmnUtility.bigDecimalValue(numOfDeliver), 0, BigDecimal.ROUND_CEILING));
+// 2008-12-10 H.Itou Mod End
 
     // ケース入数が設定されている場合
     } else if (!XxcmnUtility.isBlankOrNull(numOfCases))
     {
       // 小口個数に引当数量合計をケース入数で割った値を加算します。
-// 2008-12-08 H.Itou Mod Start
+// 2008-12-10 H.Itou Mod Start
 //// 2008/08/07 D.Nihei Mod Start
 ////      smallQuantity = smallQuantity + Math.round((sumReservedQuantityItem.doubleValue() / Double.parseDouble(numOfCases)));
 //      smallQuantity = smallQuantity + Math.ceil(sumReservedQuantityItem.doubleValue() / Double.parseDouble(numOfCases));
 //// 2008/08/07 D.Nihei Mod End
-      smallQuantity = smallQuantity.add(sumReservedQuantityItem.divide(new BigDecimal(numOfCases), 0, BigDecimal.ROUND_CEILING));
-// 2008-12-08 H.Itou Mod End
+      smallQuantity = smallQuantity.add(sumReservedQuantityItem.divide(XxcmnUtility.bigDecimalValue(numOfCases), 0, BigDecimal.ROUND_CEILING));
+// 2008-12-10 H.Itou Mod End
       // ラベル枚数に引当数量合計をケース入数で割った値を加算します。
-// 2008-12-08 H.Itou Mod Start
+// 2008-12-10 H.Itou Mod Start
 //// 2008/08/07 D.Nihei Mod Start
 ////      labelQuantity = labelQuantity + Math.round((sumReservedQuantityItem.doubleValue() / Double.parseDouble(numOfCases)));
 //      labelQuantity = labelQuantity + Math.ceil(sumReservedQuantityItem.doubleValue() / Double.parseDouble(numOfCases));
 //// 2008/08/07 D.Nihei Mod End
-      labelQuantity = labelQuantity.add(sumReservedQuantityItem.divide(new BigDecimal(numOfCases), 0, BigDecimal.ROUND_CEILING));
-// 2008-12-08 H.Itou Mod End
+      labelQuantity = labelQuantity.add(sumReservedQuantityItem.divide(XxcmnUtility.bigDecimalValue(numOfCases), 0, BigDecimal.ROUND_CEILING));
+// 2008-12-10 H.Itou Mod End
     // 上記以外の場合
     } else
     {
       // 小口個数に引当数量合計を加算します。
-// 2008-12-08 H.Itou Mod Start
+// 2008-12-10 H.Itou Mod Start
 //// 2008/08/07 D.Nihei Mod Start
 ////      smallQuantity = smallQuantity + sumReservedQuantityItem.doubleValue();
 //      smallQuantity = smallQuantity + Math.ceil(sumReservedQuantityItem.doubleValue());
 //// 2008/08/07 D.Nihei Mod End
       smallQuantity = smallQuantity.add(sumReservedQuantityItem.divide(new BigDecimal(1), 0, BigDecimal.ROUND_CEILING));
-// 2008-12-08 H.Itou Mod Start
+// 2008-12-10 H.Itou Mod Start
       // ラベル枚数に引当数量合計を加算します。
-// 2008-12-08 H.Itou Mod Start
+// 2008-12-10 H.Itou Mod Start
 //// 2008/08/07 D.Nihei Mod Start
 ////      labelQuantity = labelQuantity + sumReservedQuantityItem.doubleValue();
 //      labelQuantity = labelQuantity + Math.ceil(sumReservedQuantityItem.doubleValue());
 //// 2008/08/07 D.Nihei Mod End
       labelQuantity = labelQuantity.add(sumReservedQuantityItem.divide(new BigDecimal(1), 0, BigDecimal.ROUND_CEILING));
-// 2008-12-08 H.Itou Mod End
+// 2008-12-10 H.Itou Mod End
     }
 
     // ********************************************************** //
@@ -1406,77 +1406,70 @@ public class XxwshReserveLotAMImpl extends XxcmnOAApplicationModuleImpl
                      lineId,
                      scheduleShipDate);
     }
-// 2008-12-08 H.Itou Mod Start
-//    String returnSumQty             = (String)lineParams.get("sumQuantity");       // 数量
-//    String returnSumWeight          = (String)lineParams.get("sumWeight");         // 重量
-//    String returnSumCapacity        = (String)lineParams.get("sumCapacity");       // 容積
-//    String returnSumPalletWeight    = (String)lineParams.get("sumPalletWeight");   // パレット重量
-//    String returnSumSmallQuantity   = (String)lineParams.get("sumSmallQuantity");  // 小口個数
-//    String returnSumLabelQuantity   = (String)lineParams.get("sumLabelQuantity");  // ラベル枚数
-    BigDecimal returnSumQty             = new BigDecimal((String)lineParams.get("sumQuantity"));       // 数量
-    BigDecimal returnSumWeight          = new BigDecimal((String)lineParams.get("sumWeight"));         // 重量
-    BigDecimal returnSumCapacity        = new BigDecimal((String)lineParams.get("sumCapacity"));       // 容積
-    BigDecimal returnSumPalletWeight    = new BigDecimal((String)lineParams.get("sumPalletWeight"));   // パレット重量
-    BigDecimal returnSumSmallQuantity   = new BigDecimal((String)lineParams.get("sumSmallQuantity"));  // 小口個数
-    BigDecimal returnSumLabelQuantity   = new BigDecimal((String)lineParams.get("sumLabelQuantity"));  // ラベル枚数
-// 2008-12-08 H.Itou Mod End
+    String returnSumQty             = (String)lineParams.get("sumQuantity");       // 数量
+    String returnSumWeight          = (String)lineParams.get("sumWeight");         // 重量
+    String returnSumCapacity        = (String)lineParams.get("sumCapacity");       // 容積
+    String returnSumPalletWeight    = (String)lineParams.get("sumPalletWeight");   // パレット重量
+    String returnSumSmallQuantity   = (String)lineParams.get("sumSmallQuantity");  // 小口個数
+    String returnSumLabelQuantity   = (String)lineParams.get("sumLabelQuantity");  // ラベル枚数
+
     // 取得した数量がNULL以外の場合
     if (!XxcmnUtility.isBlankOrNull(returnSumQty))
     {
       // 取得した数量を合計数量に加算
-// 2008-12-08 H.Itou Mod Start
+// 2008-12-10 H.Itou Mod Start
 //      sumQuantity      = sumQuantity + Double.parseDouble(returnSumQty);
-      sumQuantity      = sumQuantity.add(returnSumQty);
-// 2008-12-08 H.Itou Mod End
+      sumQuantity      = sumQuantity.add(XxcmnUtility.bigDecimalValue(returnSumQty));
+// 2008-12-10 H.Itou Mod End
     }
     // 取得した重量がNULL以外の場合
     if (!XxcmnUtility.isBlankOrNull(returnSumWeight))
     {
       // 取得した重量を合計重量に加算
-// 2008-12-08 H.Itou Mod Start
+// 2008-12-10 H.Itou Mod Start
 //      sumWeight        = sumWeight + Double.parseDouble(returnSumWeight);
-      sumWeight        = sumWeight.add(returnSumWeight);
-// 2008-12-08 H.Itou Mod End
+      sumWeight        = sumWeight.add(XxcmnUtility.bigDecimalValue(returnSumWeight));
+// 2008-12-10 H.Itou Mod End
     }
     // 取得した容積がNULL以外の場合
     if (!XxcmnUtility.isBlankOrNull(returnSumCapacity))
     {
       // 取得した容積を合計容積に加算
-// 2008-12-08 H.Itou Mod Start
+// 2008-12-10 H.Itou Mod Start
 //      sumCapacity      = sumCapacity + Double.parseDouble(returnSumCapacity);
-      sumCapacity      = sumCapacity.add(returnSumCapacity);
-// 2008-12-08 H.Itou Mod End
+      sumCapacity        = sumCapacity.add(XxcmnUtility.bigDecimalValue(returnSumCapacity));
+// 2008-12-10 H.Itou Mod End
     }
     // 取得したパレット重量がNULL以外の場合
     if (!XxcmnUtility.isBlankOrNull(returnSumPalletWeight))
     {
-// 2008-12-08 H.Itou Mod Start
       // 取得したパレット重量を合計パレット重量に加算
+// 2008-12-10 H.Itou Mod Start
 //      sumPalletWeight  = sumPalletWeight + Double.parseDouble(returnSumPalletWeight);
-      sumPalletWeight  = sumPalletWeight.add(returnSumPalletWeight);
-// 2008-12-08 H.Itou Mod End
+      sumPalletWeight  = sumPalletWeight.add(XxcmnUtility.bigDecimalValue(returnSumPalletWeight));
+// 2008-12-10 H.Itou Mod End
     }
     // 取得した小口個数がNULL以外の場合
     if (!XxcmnUtility.isBlankOrNull(returnSumSmallQuantity))
     {
-// 2008-12-08 H.Itou Mod Start
+// 2008-12-10 H.Itou Mod Start
       // 取得した小口個数を小口個数に加算
 //      smallQuantity    = smallQuantity + Double.parseDouble(returnSumSmallQuantity);
-      smallQuantity    = smallQuantity.add(returnSumSmallQuantity.divide(new BigDecimal(1), 0, BigDecimal.ROUND_CEILING));
-// 2008-12-08 H.Itou Mod End
+      smallQuantity    = smallQuantity.add(XxcmnUtility.bigDecimalValue(returnSumSmallQuantity).divide(new BigDecimal(1), 0, BigDecimal.ROUND_CEILING));
+// 2008-12-10 H.Itou Mod End
     }
     // 取得したラベル枚数がNULL以外の場合
     if (!XxcmnUtility.isBlankOrNull(returnSumLabelQuantity))
     {
       // 取得したラベル枚数をラベル枚数に加算
-// 2008-12-08 H.Itou Mod Start
+// 2008-12-10 H.Itou Mod Start
 //      labelQuantity    = labelQuantity + Double.parseDouble(returnSumLabelQuantity);
-      labelQuantity    = labelQuantity.add(returnSumLabelQuantity.divide(new BigDecimal(1), 0, BigDecimal.ROUND_CEILING));
-// 2008-12-08 H.Itou Mod End
+      labelQuantity    = labelQuantity.add(XxcmnUtility.bigDecimalValue(returnSumLabelQuantity).divide(new BigDecimal(1), 0, BigDecimal.ROUND_CEILING));
+// 2008-12-10 H.Itou Mod End
     }
 
     // 検索条件表示リージョンにセットするため一時的に型変換
-// 2008-12-08 H.Itou Mod Start
+// 2008-12-10 H.Itou Mod Start
 //    BigDecimal setSumQuantity     = new BigDecimal(String.valueOf(sumQuantity));      // 合計数量
 //    BigDecimal setSumWeight       = new BigDecimal(String.valueOf(sumWeight));        // 合計重量
 //    BigDecimal setSumCapacity     = new BigDecimal(String.valueOf(sumCapacity));      // 合計容積
@@ -1489,7 +1482,7 @@ public class XxwshReserveLotAMImpl extends XxcmnOAApplicationModuleImpl
     BigDecimal setSumPalletWeight = sumPalletWeight;  // 合計パレット重量
     BigDecimal setSmallQuantity   = smallQuantity;    // 小口個数
     BigDecimal setLabelQuantity   = labelQuantity;    // ラベル枚数
-// 2008-12-08 H.Itou Mod End
+// 2008-12-10 H.Itou Mod End
 
     // ヘッダの更新に使用するため検索条件表示リージョンにセット
     hrow.setAttribute("SumQuantity"    ,XxcmnUtility.stringValue(setSumQuantity));     // 合計数量
@@ -1587,26 +1580,35 @@ public class XxwshReserveLotAMImpl extends XxcmnOAApplicationModuleImpl
         // 呼出画面区分が支給の場合
         if (XxwshConstants.CALL_PIC_KBN_PROD_CREATE.equals(callPictureKbn))
         {
-          setSumWeight = new BigDecimal(String.valueOf(sumWeight)); // 合計重量
+// 2008-12-10 H.Itou Mod Start
+//          setSumWeight = new BigDecimal(String.valueOf(sumWeight)); // 合計重量
+          setSumWeight = sumWeight; // 合計重量
+// 2008-12-10 H.Itou Mod End
 
         // 小口区分が対象の場合
         } else if (XxwshConstants.INCLUDE_EXCLUD_INCLUDE.equals(smallAmountClass))
         {
-          setSumWeight = new BigDecimal(String.valueOf(sumWeight)); // 合計重量
+// 2008-12-10 H.Itou Mod Start
+//          setSumWeight = new BigDecimal(String.valueOf(sumWeight)); // 合計重量
+          setSumWeight = sumWeight; // 合計重量
+// 2008-12-10 H.Itou Mod End
 
         } else
         {
-// 2008-12-08 H.Itou Mod Start
+// 2008-12-10 H.Itou Mod Start
 //          setSumWeight = new BigDecimal(String.valueOf(sumWeight + sumPalletWeight)); // 合計重量 + パレット重量    
           setSumWeight = sumWeight.add(sumPalletWeight); // 合計重量 + パレット重量    
-// 2008-12-08 H.Itou Mod End
+// 2008-12-10 H.Itou Mod End
         }
 
         setSumCapacity = null; // 合計容積はNULLをセット
       // 重量容積区分が容積の場合      
       } else if (XxwshConstants.WGHT_CAPA_CLASS_CAPACITY.equals(weightCapacityClass))
       {
-        setSumCapacity = new BigDecimal(String.valueOf(sumCapacity)); // 合計容積
+// 2008-12-10 H.Itou Mod Start
+//        setSumCapacity = new BigDecimal(String.valueOf(sumCapacity)); // 合計容積
+        setSumCapacity = sumCapacity; // 合計容積
+// 2008-12-10 H.Itou Mod End
         setSumWeight = null; // 合計
       }
       // 最大積載効率チェック
@@ -1680,19 +1682,24 @@ public class XxwshReserveLotAMImpl extends XxcmnOAApplicationModuleImpl
       // 呼出画面区分が支給の場合
       if (XxwshConstants.CALL_PIC_KBN_PROD_CREATE.equals(callPictureKbn))
       {
-        setSumWeight = new BigDecimal(String.valueOf(sumWeight)); // 合計重量
+// 2008-12-10 H.Itou Mod Start
+//        setSumWeight = new BigDecimal(String.valueOf(sumWeight)); // 合計重量
+        setSumWeight = sumWeight; // 合計重量
+// 2008-12-10 H.Itou Mod End
 
       // 小口区分が対象の場合
       } else if (XxwshConstants.INCLUDE_EXCLUD_INCLUDE.equals(smallAmountClass))
       {
-        setSumWeight = new BigDecimal(String.valueOf(sumWeight)); // 合計重量
-
+// 2008-12-10 H.Itou Mod Start
+//        setSumWeight = new BigDecimal(String.valueOf(sumWeight)); // 合計重量
+        setSumWeight = sumWeight; // 合計重量
+// 2008-12-10 H.Itou Mod End
       } else
       {
-// 2008-12-08 H.Itou Mod Start
+// 2008-12-10 H.Itou Mod Start
 //        setSumWeight = new BigDecimal(String.valueOf(sumWeight + sumPalletWeight)); // 合計重量 + パレット重量    
         setSumWeight = sumWeight.add(sumPalletWeight); // 合計重量 + パレット重量    
-// 2008-12-08 H.Itou Mod End 
+// 2008-12-10 H.Itou Mod End 
       }
 
       setSumCapacity = null; // 合計容積はNULLをセット
@@ -1727,7 +1734,10 @@ public class XxwshReserveLotAMImpl extends XxcmnOAApplicationModuleImpl
 //      if (sumCapacity > 0)
 //      {
 // 2008/08/07 D.Nihei Del End
-      setSumCapacity = new BigDecimal(String.valueOf(sumCapacity)); // 合計容積
+// 2008-12-10 H.Itou Mod Start
+//      setSumCapacity = new BigDecimal(String.valueOf(sumCapacity)); // 合計容積
+      setSumCapacity = sumCapacity; // 合計容積
+// 2008-12-10 H.Itou Mod End
       setSumWeight = null; // 重量合計
       // 最大積載効率チェック
       HashMap capParams = XxwshUtility.calcLoadEfficiency(
@@ -1806,9 +1816,16 @@ public class XxwshReserveLotAMImpl extends XxcmnOAApplicationModuleImpl
     // 手持在庫数・引当可能数一覧リージョンのデータ格納用変数
     OARow row                        = null;
     double canEncQty                 = 0;                                                    // 画面表示時引当可能数
+// 2008-12-10 H.Itou Add Start
+    BigDecimal canEncQtyBigD         = new BigDecimal(0);                                   // 画面表示時引当可能数
+// 2008-12-10 H.Itou Add End
     Number lotId                     = null;                                                 // ロットID
     double actualQuantity            = 0;                                                    // 引当数量(換算後)
     double actualQuantityBk          = 0;                                                    // 画面表示時引当数量(換算後)
+// 2008-12-10 H.Itou Add Start
+    BigDecimal actualQuantityBigD        = new BigDecimal(0);                                   // 引当数量(換算後)
+    BigDecimal actualQuantityBkBigD      = new BigDecimal(0);                                   // 画面表示時引当数量(換算後)
+// 2008-12-10 H.Itou Add End
     String showLotNo                 = null;                                                 // 表示用ロットNo
     String productionDate            = null;                                                 // 製造年月日
 
@@ -1846,9 +1863,16 @@ public class XxwshReserveLotAMImpl extends XxcmnOAApplicationModuleImpl
 
       // 手持在庫数・引当可能数一覧リージョンの現在のデータを取得
       canEncQty        = ((Number)row.getAttribute("CanEncQty")).doubleValue();        // 画面表示時引当可能数
+// 2008-12-10 H.Itou Mod Start
+      canEncQtyBigD        = XxcmnUtility.bigDecimalValue((Number)row.getAttribute("CanEncQty")); // 画面表示時引当可能数
+// 2008-12-10 H.Itou Mod End
       lotId            = (Number)row.getAttribute("LotId");                            // ロットID
+// 2008-12-10 H.Itou Mod Start
       actualQuantity   = ((Number)row.getAttribute("ActualQuantity")).doubleValue();   // 引当数量
       actualQuantityBk = ((Number)row.getAttribute("ActualQuantityBk")).doubleValue(); // 画面表示時引当数量
+      actualQuantityBigD   = XxcmnUtility.bigDecimalValue((Number)row.getAttribute("ActualQuantity"));   // 引当数量
+      actualQuantityBkBigD = XxcmnUtility.bigDecimalValue((Number)row.getAttribute("ActualQuantityBk")); // 画面表示時引当数量
+// 2008-12-10 H.Itou Mod End
       showLotNo        = (String)row.getAttribute("ShowLotNo");                        // 表示用ロットNo
       productionDate   = (String)row.getAttribute("ProductionDate");                   // 製造年月日
 
@@ -2024,19 +2048,33 @@ public class XxwshReserveLotAMImpl extends XxcmnOAApplicationModuleImpl
                               lotId,                    // ロットID
                               lotCtl.toString(),        // ロット管理
                               scheduleArrivalDate);     // 着荷予定日
+// 2008-12-10 H.Itou Add Start
+          BigDecimal temp = XxcmnUtility.bigDecimalValue(shipToCanEncQty);
+          // 入庫先引当可能数 - (画面表示時引当数 - 引当数)
+          temp = temp.subtract(actualQuantityBkBigD).subtract(actualQuantityBigD);
+// 2008-12-10 H.Itou Add End
           // 入庫先引当可能数 - (画面表示時引当数 - 引当数) < 0 の場合
-          if ((shipToCanEncQty.doubleValue() - (actualQuantityBk - actualQuantity)) < 0)
+// 2008-12-10 H.Itou Mod Start
+//          if ((shipToCanEncQty.doubleValue() - (actualQuantityBk - actualQuantity)) < 0)
+          if (temp.compareTo(new BigDecimal(0)) == -1)
+// 2008-12-10 H.Itou Mod End
           {
             // 引当可能数減数チェックエラーフラグをYに設定
             shortageErrFlgRow[vo.getCurrentRowIndex()]  = XxcmnConstants.STRING_Y;
           }
         } // 減数チェック
-
         // *********************** // 
         // * 引当可能数超過チェック  *//
         // *********************** //
         // 引当可能数 + 画面表示時引当数 < 引当数の場合
-        if ((canEncQty + actualQuantityBk) < actualQuantity)
+// 2008-12-10 H.Itou Add Start
+          // 引当可能数 + 画面表示時引当数
+          BigDecimal temp2 = canEncQtyBigD.add(actualQuantityBkBigD);
+// 2008-12-10 H.Itou Add End
+// 2008-12-10 H.Itou Mod Start
+//        if ((canEncQty + actualQuantityBk) < actualQuantity)
+        if (temp2.compareTo(actualQuantityBigD) == -1)
+// 2008-12-10 H.Itou Mod End
         {
             // 引当可能数超過チェックエラーフラグをYに設定
             exceedErrFlgRow[vo.getCurrentRowIndex()]  = XxcmnConstants.STRING_Y;

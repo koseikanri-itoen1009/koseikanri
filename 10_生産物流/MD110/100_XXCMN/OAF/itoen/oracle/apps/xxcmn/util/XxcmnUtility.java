@@ -1,13 +1,14 @@
 /*============================================================================
 * ファイル名 : XxcmnUtility
 * 概要説明   : 全体共通関数
-* バージョン : 1.1
+* バージョン : 1.2
 *============================================================================
 * 修正履歴
 * 日付       Ver. 担当者       修正内容
 * ---------- ---- ------------ ----------------------------------------------
 * 2007-12-10 1.0  二瓶大輔     新規作成
 * 2008-08-13 1.1  二瓶大輔     chkNumericメソッド不具合修正
+* 2008-12-10 1.2  伊藤ひとみ   本番障害#587対応
 *============================================================================
 */
 package itoen.oracle.apps.xxcmn.util;
@@ -34,7 +35,7 @@ import oracle.jbo.domain.Number;
 /***************************************************************************
  * 全体共通関数クラスです。
  * @author  ORACLE 二瓶 大輔
- * @version 1.1
+ * @version 1.2
  ***************************************************************************
  */
 public class XxcmnUtility 
@@ -834,5 +835,20 @@ public class XxcmnUtility
     formConvNumber = nf.format(targetNumber.doubleValue());
     return formConvNumber;
   }
-
+// 2008-12-10 H.Itou Add Start
+  /***************************************************************************
+   * String型の値をBigDecimal型にキャストします。
+   * @param value - String型の値
+   * @return String - BigDecimal型の値
+   ***************************************************************************
+   */
+  public static BigDecimal bigDecimalValue(String value)
+  {
+    if (isBlankOrNull(value))
+    {
+      return new BigDecimal(0);
+    }
+    return new BigDecimal(value);
+  } // bigDecimalValue
+// 2008-12-10 H.Itou Add End
 }
