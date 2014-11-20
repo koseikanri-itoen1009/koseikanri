@@ -9,7 +9,7 @@ CREATE OR REPLACE VIEW XXCSM_LOC_LEVEL_LIST_V
  ,location_level
 )
 AS
-  SELECT DISTINCT
+  SELECT
          ffv_l1.flex_value AS cd_level1
         ,ffv_l2.flex_value AS cd_level2
         ,ffv_l3.flex_value AS cd_level3

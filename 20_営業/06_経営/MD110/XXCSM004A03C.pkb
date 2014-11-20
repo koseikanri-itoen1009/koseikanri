@@ -7,7 +7,7 @@ AS
  * Description      : 従業員マスタと資格ポイントマスタから各営業員の資格ポイントを算出し、
  *                  : 新規獲得ポイント顧客別履歴テーブルに登録します。
  * MD.050           : MD050_CSM_004_A03_新規獲得ポイント集計（資格ポイント集計処理）
- * Version          : 1.4
+ * Version          : 1.5
  *
  * Program List
  * -------------------- ------------------------------------------------------------
@@ -32,6 +32,7 @@ AS
  *  2009-07-01    1.2   M.Ohtsuki       ［SCS障害管理番号0000253］対応
  *  2009/07/07    1.3   M.Ohtsuki       ［SCS障害管理番号0000254］部署コード取得条件の不具合
  *  2009/07/14    1.4   M.Ohtsuki       ［SCS障害管理番号0000663］想定外エラー発生時の不具合
+ *  2009/07/27    1.5   T.Tsukino       ［SCS障害管理番号0000786］パフォーマンス障害
  *****************************************************************************************/
 --
 --#######################  固定グローバル定数宣言部 START   #######################
@@ -927,7 +928,12 @@ AS
      )
     IS
       --従業員の職種が旧部署のみで営業員のケース
-      SELECT
+--//+DEL  START  2009/07/27 0000786 T.Tsukino
+--      SELECT
+--//+DEL  END  2009/07/27 0000786 T.Tsukino
+--//+ADD  START  2009/07/27 0000786 T.Tsukino
+        SELECT /*+ LEADING(ippf.ippf.pap) INDEX(ppf.pap PER_PEOPLE_F_PK) */
+--//+ADD  END  2009/07/27 0000786 T.Tsukino
                ppf.employee_number                            employee_number     --従業員コード
               ,SUBSTRB(paaf.ass_attribute2,1,6)               hatsureibi          --発令日(YYYYMMDD⇒YYYYMM）
               ,ppf.attribute7                                 new_shikaku_cd      --資格コード（新）
@@ -978,7 +984,12 @@ AS
                       AND    SUBSTRB(paaf.ass_attribute2,1,6) >= TO_CHAR(gd_process_date,'YYYYMM')) --前月以前に営業員でなくなった従業員を除外
       UNION ALL
       --従業員の職種が新部署のみで営業員のケース
-      SELECT
+--//+DEL  START  2009/07/27 0000786 T.Tsukino
+--      SELECT
+--//+DEL  END  2009/07/27 0000786 T.Tsukino
+--//+ADD  START  2009/07/27 0000786 T.Tsukino
+        SELECT /*+ LEADING(ippf.ippf.pap) INDEX(ppf.pap PER_PEOPLE_F_PK) */
+--//+ADD  END  2009/07/27 0000786 T.Tsukino
                ppf.employee_number                            employee_number     --従業員コード
               ,SUBSTRB(paaf.ass_attribute2,1,6)               hatsureibi          --発令日(YYYYMMDD⇒YYYYMM）
               ,ppf.attribute7                                 new_shikaku_cd      --資格コード（新）
