@@ -542,7 +542,7 @@ public class XxccpUtility2
     // PL/SQLの作成を行います
     StringBuffer sb = new StringBuffer(1000);
     sb.append("BEGIN ");
-    sb.append("    XXCCP_MRP_FILE_UL_S1.get_seq_no( ");
+    sb.append("    XXCCP_MRP_FILE_UL_S01.get_seq_no( ");
     sb.append("    iv_seq_class =>  '1'  "); // 採番区分
     sb.append("   ,ov_seq_no    =>  :1   "); // 採番した固定長12桁の番号
     sb.append("   ,ov_errbuf    =>  :2   "); // エラー・メッセージ

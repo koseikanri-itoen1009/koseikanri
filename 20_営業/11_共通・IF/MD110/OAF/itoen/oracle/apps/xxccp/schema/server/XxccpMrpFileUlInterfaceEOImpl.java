@@ -80,7 +80,7 @@ public class XxccpMrpFileUlInterfaceEOImpl extends OAEntityImpl
     super.create(attributeList);
     // シーケンスよりファイルIDを取得する。
     OADBTransaction transaction = getOADBTransaction();
-    Number fileId = transaction.getSequenceValue("XXCCP_MRP_FILE_UL_S1");
+    Number fileId = transaction.getSequenceValue("XXCCP_MRP_FILE_UL_S01");
     setFileId(fileId);
     // ファイルフォーマット情報を設定する。
     setFileFormat(XxccpConstants.CSV_NM);
