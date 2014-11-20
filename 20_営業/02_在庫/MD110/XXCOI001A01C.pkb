@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCOI001A01C(body)
  * Description      : 生産物流システムから営業システムへの出荷依頼データの抽出・データ連携を行う
  * MD.050           : 入庫情報取得 MD050_COI_001_A01
- * Version          : 1.3
+ * Version          : 1.4
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -44,6 +44,8 @@ AS
  *  2009/04/16    1.3   H.Sasaki         [T1_0386]データ抽出条件の変更（配送先番号）
  *                                                抽出情報の変更（配送先番号）
  *                                       [T1_0387]データ抽出条件の変更（レコードタイプ）
+ *  2009/05/01    1.4   T.Nakamura       [T1_0485]サマリ、詳細抽出条件の追加、詳細の取得情報の変更
+ *                                                出荷依頼ステータス04対象のサマリ、詳細の更新情報の変更
  *
  *****************************************************************************************/
 --
@@ -597,19 +599,19 @@ AS
 --                  SUM(xola.shipped_quantity)
                   SUM( ROUND( xola.shipped_quantity, 2 ) )
 -- == 2009/04/02 V1.2 Moded END   ===============================================================
-                     WHEN otta.order_category_code = 'RETURN' THEN
+                     WHEN otta.order_category_code = cv_return_type THEN
 -- == 2009/04/02 V1.2 Moded START ===============================================================
 --                  SUM(xola.shipped_quantity) * -1
                   SUM( ROUND( xola.shipped_quantity, 2 ) * -1 )
 -- == 2009/04/02 V1.2 Moded END   ===============================================================
                 END
               ELSE
-                CASE WHEN otta.order_category_code = 'ORDER' THEN
+                CASE WHEN otta.order_category_code = cv_order_type THEN
 -- == 2009/04/02 V1.2 Moded START ===============================================================
 --                  SUM(xola.quantity)
                   SUM( ROUND( xola.quantity, 2 ) )
 -- == 2009/04/02 V1.2 Moded END   ===============================================================
-                     WHEN otta.order_category_code = 'RETURN' THEN
+                     WHEN otta.order_category_code = cv_return_type THEN
 -- == 2009/04/02 V1.2 Moded START ===============================================================
 --                  SUM(xola.quantity) * -1
                   SUM( ROUND( xola.quantity, 2 ) * -1 )
@@ -697,6 +699,9 @@ AS
       AND     hps.location_id             = hl.location_id
       AND     SUBSTRB(hl.province, 1, 1)  = cv_0
 -- == 2009/04/16 V1.3 Modified END   ===============================================================
+-- == 2009/05/01 V1.4 Added START ==================================================================
+      AND     xoha.latest_external_flag   = cv_y_flag
+-- == 2009/05/01 V1.4 Added END   ==================================================================
       GROUP BY  xoha.req_status
               , xoha.request_no
               , hca.account_number
@@ -850,30 +855,36 @@ AS
                                                                       -- 固有記号
             , xola.order_header_id             AS order_header_id     -- 受注ヘッダID
             , xola.order_line_id               AS order_line_id       -- 受注明細ID
-            , CASE WHEN xoha.req_status = gt_ship_status_result THEN
-                CASE WHEN otta.order_category_code = cv_order_type THEN
--- == 2009/04/02 V1.2 Moded START ===============================================================
---                  SUM(xola.shipped_quantity)
-                  SUM( ROUND( xola.shipped_quantity, 2 ) )
--- == 2009/04/02 V1.2 Moded END   ===============================================================
-                     WHEN otta.order_category_code = 'RETURN' THEN
--- == 2009/04/02 V1.2 Moded START ===============================================================
---                  SUM(xola.shipped_quantity) * -1
-                  SUM( ROUND( xola.shipped_quantity, 2 ) * -1 )
--- == 2009/04/02 V1.2 Moded END   ===============================================================
-                END
-              ELSE
-                CASE WHEN otta.order_category_code = 'ORDER' THEN
--- == 2009/04/02 V1.2 Moded START ===============================================================
---                  SUM(xola.quantity)
-                  SUM( ROUND( xola.quantity, 2 ) )
--- == 2009/04/02 V1.2 Moded END   ===============================================================
-                     WHEN otta.order_category_code = 'RETURN' THEN
--- == 2009/04/02 V1.2 Moded START ===============================================================
---                  SUM(xola.quantity) * -1
-                  SUM( ROUND( xola.quantity, 2 ) * -1 )
--- == 2009/04/02 V1.2 Moded END   ===============================================================
-                END
+-- == 2009/05/01 V1.4 Modified START ===============================================================
+--            , CASE WHEN xoha.req_status = gt_ship_status_result THEN
+--                CASE WHEN otta.order_category_code = cv_order_type THEN
+---- == 2009/04/02 V1.2 Moded START ===============================================================
+----                  SUM(xola.shipped_quantity)
+--                  SUM( ROUND( xola.shipped_quantity, 2 ) )
+---- == 2009/04/02 V1.2 Moded END   ===============================================================
+--                     WHEN otta.order_category_code = cv_return_type THEN
+---- == 2009/04/02 V1.2 Moded START ===============================================================
+----                  SUM(xola.shipped_quantity) * -1
+--                  SUM( ROUND( xola.shipped_quantity, 2 ) * -1 )
+---- == 2009/04/02 V1.2 Moded END   ===============================================================
+--                END
+--              ELSE
+--                CASE WHEN otta.order_category_code = cv_order_type THEN
+---- == 2009/04/02 V1.2 Moded START ===============================================================
+----                  SUM(xola.quantity)
+--                  SUM( ROUND( xola.quantity, 2 ) )
+---- == 2009/04/02 V1.2 Moded END   ===============================================================
+--                     WHEN otta.order_category_code = cv_return_type THEN
+---- == 2009/04/02 V1.2 Moded START ===============================================================
+----                  SUM(xola.quantity) * -1
+--                  SUM( ROUND( xola.quantity, 2 ) * -1 )
+---- == 2009/04/02 V1.2 Moded END   ===============================================================
+--                END
+            , CASE WHEN otta.order_category_code = cv_order_type THEN
+                SUM( ROUND( xmld.actual_quantity, 2 ) )
+                   WHEN otta.order_category_code = cv_return_type THEN
+                SUM( ROUND( xmld.actual_quantity, 2 ) * -1 )
+-- == 2009/05/01 V1.4 Modified END   ===============================================================
               END                              AS shipped_quantity    -- 出荷実績数量
       FROM    xxwsh_order_headers_all          xoha                   -- 受注ヘッダアドオン
             , xxwsh_order_lines_all            xola                   -- 受注明細アドオン
@@ -978,6 +989,9 @@ AS
               AND xoha.arrival_date      = g_summary_tab ( in_slip_cnt ) .slip_date
             )
           )
+-- == 2009/05/01 V1.4 Added START ==================================================================
+      AND     xoha.latest_external_flag   = cv_y_flag
+-- == 2009/05/01 V1.4 Added END   ==================================================================
       GROUP BY  xoha.req_status
               , xoha.request_no
               , hca.account_number
@@ -1978,13 +1992,22 @@ AS
       -- 入庫情報サマリの更新
       UPDATE xxcoi_storage_information xsi
       SET     ship_case_qty          = DECODE ( g_summary_tab ( in_slip_cnt ) .delete_flag , cv_y_flag , 0 ,
-                                         ship_case_qty + TRUNC ( g_summary_tab ( in_slip_cnt ) .shipped_qty
+-- == 2009/05/01 V1.4 Modified START ===============================================================
+--                                         ship_case_qty + TRUNC ( g_summary_tab ( in_slip_cnt ) .shipped_qty
+                                         TRUNC ( g_summary_tab ( in_slip_cnt ) .shipped_qty
+-- == 2009/05/01 V1.4 Modified END   ===============================================================
                                                            / g_summary_tab ( in_slip_cnt ) .case_in_qty ) )
             , ship_singly_qty        = DECODE ( g_summary_tab ( in_slip_cnt ) .delete_flag , cv_y_flag , 0 ,
-                                         ship_singly_qty + MOD ( g_summary_tab ( in_slip_cnt ) .shipped_qty ,
+-- == 2009/05/01 V1.4 Modified START ===============================================================
+--                                         ship_singly_qty + MOD ( g_summary_tab ( in_slip_cnt ) .shipped_qty ,
+                                         MOD ( g_summary_tab ( in_slip_cnt ) .shipped_qty ,
+-- == 2009/05/01 V1.4 Modified END   ===============================================================
                                                            NVL ( g_summary_tab ( in_slip_cnt ) .case_in_qty , 0 ) ) )
             , ship_summary_qty       = DECODE( g_summary_tab ( in_slip_cnt ) .delete_flag , cv_y_flag , 0 ,
-                                         ship_summary_qty + g_summary_tab ( in_slip_cnt ) .shipped_qty )
+-- == 2009/05/01 V1.4 Modified START ===============================================================
+--                                         ship_summary_qty + g_summary_tab ( in_slip_cnt ) .shipped_qty )
+                                         g_summary_tab ( in_slip_cnt ) .shipped_qty )
+-- == 2009/05/01 V1.4 Modified END   ===============================================================
             , ship_base_code         = g_summary_tab ( in_slip_cnt ) .deliver_from
             , last_updated_by        = cn_last_updated_by
             , last_update_date       = SYSDATE
@@ -2428,13 +2451,22 @@ AS
       SET     req_status                    = g_detail_tab ( in_line_cnt ) .req_status
             , case_in_qty                   = g_detail_tab ( in_line_cnt ) .case_in_qty
             , ship_case_qty                 = DECODE ( g_detail_tab ( in_line_cnt ) .delete_flag , cv_y_flag , 0 ,
-                                                ship_case_qty + TRUNC ( g_detail_tab ( in_line_cnt ) .shipped_qty
+-- == 2009/05/01 V1.4 Modified START ===============================================================
+--                                                ship_case_qty + TRUNC ( g_detail_tab ( in_line_cnt ) .shipped_qty
+                                                TRUNC ( g_detail_tab ( in_line_cnt ) .shipped_qty
+-- == 2009/05/01 V1.4 Modified END   ===============================================================
                                                                       / g_detail_tab ( in_line_cnt ) .case_in_qty ) )
             , ship_singly_qty               = DECODE ( g_detail_tab ( in_line_cnt ) .delete_flag , cv_y_flag , 0 ,
-                                                ship_singly_qty + MOD ( g_detail_tab ( in_line_cnt ) .shipped_qty ,
+-- == 2009/05/01 V1.4 Modified START ===============================================================
+--                                                ship_singly_qty + MOD ( g_detail_tab ( in_line_cnt ) .shipped_qty ,
+                                                MOD ( g_detail_tab ( in_line_cnt ) .shipped_qty ,
+-- == 2009/05/01 V1.4 Modified END   ===============================================================
                                                                   NVL ( g_detail_tab ( in_line_cnt ) .case_in_qty , 0 ) ) )
             , ship_summary_qty              = DECODE( g_detail_tab ( in_line_cnt ) .delete_flag , cv_y_flag , 0 ,
-                                                ship_summary_qty + g_detail_tab ( in_line_cnt ) .shipped_qty )
+-- == 2009/05/01 V1.4 Modified START ===============================================================
+--                                                ship_summary_qty + g_detail_tab ( in_line_cnt ) .shipped_qty )
+                                                g_detail_tab ( in_line_cnt ) .shipped_qty )
+-- == 2009/05/01 V1.4 Modified END   ===============================================================
             , ship_warehouse_code           = DECODE ( g_detail_tab ( in_line_cnt ) .dept_hht_div , cv_hht_kbn , iv_shop_code , NULL )
             , check_warehouse_code          = iv_store_code
             , ship_base_code                = g_detail_tab(in_line_cnt).deliver_from
