@@ -8,7 +8,7 @@ AS
  *                    CSVファイルを作成します。
  * MD.050           : MD050_自販機-EBSインタフェース：（OUT）作業依頼／発注情報(iPro,PO)
  *                    2008/12/19 16:30
- * Version          : 1.30
+ * Version          : 1.31
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -68,6 +68,7 @@ AS
  *  2011-02-02    1.28  N.Horigome       E_本稼動_02369対応
  *  2011-06-23    1.29  K.Kiriu          E_本稼動_07712対応
  *  2011-07-01    1.30  K.Kiriu          E_本稼動_07712対応(対応変更分)
+ *  2011-07-08    1.31  K.Kiriu          E_本稼動_07712対応(担当営業取得変更)
  *****************************************************************************************/
 --
 --#######################  固定グローバル定数宣言部 START   #######################
@@ -193,7 +194,10 @@ AS
   cv_debug_msg5           CONSTANT VARCHAR2(200) := '<< プロファイル値取得処理 >>';
   cv_debug_msg6           CONSTANT VARCHAR2(200) := 'lv_csv_dir    = ';
   cv_debug_msg7           CONSTANT VARCHAR2(200) := 'lv_csv_nm     = ';
-  cv_debug_msg8           CONSTANT VARCHAR2(200) := 'lv_wdrw_base_code = ';
+  /* 2011-7-08 K.Kiriu E_本稼動_07712対応 MOD START */
+--  cv_debug_msg8           CONSTANT VARCHAR2(200) := 'lv_wdrw_base_code = ';
+  cv_debug_msg8           CONSTANT VARCHAR2(200) := 'ln_org_id     = ';
+  /* 2011-7-08 K.Kiriu E_本稼動_07712対応 MOD END */
   cv_debug_msg9           CONSTANT VARCHAR2(200) := '<< CSVファイルをオープンしました >>' ;
   cv_debug_msg10          CONSTANT VARCHAR2(200) := '<< CSVファイルをクローズしました >>' ;
   cv_debug_msg11          CONSTANT VARCHAR2(200) := '<< ロールバックしました >>' ;
@@ -347,6 +351,10 @@ AS
     ,requisition_line_id     NUMBER                                                    -- 発注依頼明細ID
     ,created_by              NUMBER                                                    -- 作成者
   );
+  /* 2011-07-08 K.Kiriu E_本稼動_07712対応 ADD START */
+  TYPE g_higher_emp_ttype    IS TABLE OF xxcso_employees_v.employee_number%TYPE INDEX BY VARCHAR2( 4 );
+  gt_higher_emp_tab          g_higher_emp_ttype;                                       -- 最上位従業員
+  /* 2011-07-08 K.Kiriu E_本稼動_07712対応 ADD END */
 --
   -- *** ユーザー定義グローバル例外 ***
   global_skip_expt           EXCEPTION;
@@ -364,6 +372,9 @@ AS
     ,ov_csv_dir           OUT NOCOPY VARCHAR2      -- CSVファイル出力先
     ,ov_csv_nm            OUT NOCOPY VARCHAR2      -- CSVファイル名
     ,ov_wdrw_base_code    OUT NOCOPY VARCHAR2      -- 引揚拠点コード
+    /* 2011-07-08 K.Kiriu E_本稼動_07712対応 ADD START */
+    ,on_org_id            OUT NOCOPY NUMBER        -- 営業単位
+    /* 2011-07-08 K.Kiriu E_本稼動_07712対応 ADD END */
     ,ov_errbuf            OUT NOCOPY VARCHAR2      -- エラー・メッセージ           --# 固定 #
     ,ov_retcode           OUT NOCOPY VARCHAR2      -- リターン・コード             --# 固定 #
     ,ov_errmsg            OUT NOCOPY VARCHAR2)     -- ユーザー・エラー・メッセージ --# 固定 #
@@ -395,12 +406,21 @@ AS
     cv_wdrw_base_code  CONSTANT VARCHAR(30)    := 'XXCSO1_WITHDRAW_BASE_CODE';
     -- アプリケーション短縮名
     cv_appl_short_name CONSTANT VARCHAR2(10)   := 'XXCCP';
+    /* 2011-07-08 K.Kiriu E_本稼動_07712対応 ADD START */
+    -- プロファイル MO:営業単位
+    cv_prf_org_id      CONSTANT VARCHAR2(6)    := 'ORG_ID';
+    /* 2011-07-08 K.Kiriu E_本稼動_07712対応 ADD END */
 --
     -- *** ローカル変数 ***
     -- プロファイル値取得戻り値
     lv_csv_dir                VARCHAR2(2000);             -- CSVファイル出力先
     lv_csv_nm                 VARCHAR2(2000);             -- CSVファイル名
-    lv_wdrw_base_code         VARCHAR2(2000);             -- 引揚拠点コード
+    /* 2011-07-08 K.Kiriu E_本稼動_07712対応 DEL START */
+--    lv_wdrw_base_code         VARCHAR2(2000);             -- 引揚拠点コード
+    /* 2011-07-08 K.Kiriu E_本稼動_07712対応 DEL END */
+    /* 2011-07-08 K.Kiriu E_本稼動_07712対応 ADD START */
+    ln_org_id                 VARCHAR2(2000);             -- 営業単位
+    /* 2011-07-08 K.Kiriu E_本稼動_07712対応 ADD END */
     lv_noprm_msg              VARCHAR2(5000);  -- コンカレント入力パラメータなしメッセージ格納用
     -- プロファイル値取得失敗時 トークン値格納用
     lv_tkn_value              VARCHAR2(1000);
@@ -485,6 +505,12 @@ AS
     --               ,lv_wdrw_base_code
     --               ); -- 引揚拠点コード
     /* 2009.09.15 D.Abe 0001358対応 END   */
+/* 2011-07-08 K.Kiriu E_本稼動_07712対応 ADD START */
+    FND_PROFILE.GET(
+                    cv_prf_org_id
+                   ,ln_org_id
+                   ); -- 営業単位
+/* 2011-07-08 K.Kiriu E_本稼動_07712対応 ADD END */
     -- *** DEBUG_LOG ***
     -- 取得したプロファイル値をログ出力
     fnd_file.put_line(
@@ -495,6 +521,9 @@ AS
                  /* 2009.09.15 D.Abe 0001358対応 START */
                  --cv_debug_msg8  || lv_wdrw_base_code || CHR(10) ||
                  /* 2009.09.15 D.Abe 0001358対応 END   */
+                 /* 2011-07-08 K.Kiriu E_本稼動_07712対応 ADD START */
+                 cv_debug_msg8  || ln_org_id         || CHR(10) ||
+                 /* 2011-07-08 K.Kiriu E_本稼動_07712対応 ADD END */
                  ''
     );
 --
@@ -524,6 +553,11 @@ AS
     --ELSIF (lv_wdrw_base_code IS NULL) THEN
     --  lv_tkn_value := cv_wdrw_base_code;
     /* 2009.09.15 D.Abe 0001358対応 END   */
+    /* 2011-07-08 K.Kiriu E_本稼動_07712対応 ADD START */
+    -- 営業単位
+    ELSIF ( ln_org_id IS NULL ) THEN
+      lv_tkn_value := cv_prf_org_id;
+    /* 2011-07-08 K.Kiriu E_本稼動_07712対応 ADD END */
     END IF;
     -- エラーメッセージ取得
     IF (lv_tkn_value) IS NOT NULL THEN
@@ -543,6 +577,9 @@ AS
     /* 2009.09.15 D.Abe 0001358対応 START */
     --ov_wdrw_base_code   :=  lv_wdrw_base_code;   -- 引揚拠点コード
     /* 2009.09.15 D.Abe 0001358対応 END   */
+    /* 2011-07-08 K.Kiriu E_本稼動_07712対応 ADD START */
+    on_org_id           := TO_NUMBER( ln_org_id );  --営業単位
+    /* 2011-07-08 K.Kiriu E_本稼動_07712対応 ADD END */
 --
   EXCEPTION
 --
@@ -802,6 +839,9 @@ AS
      io_get_data_rec         IN OUT NOCOPY g_get_data_rtype -- 作業依頼/発注情報
     ,id_process_date         IN     DATE                    -- 業務処理日付
     ,iv_wdrw_base_code       IN     VARCHAR2                -- 引揚拠点コード
+    /* 2011-07-08 K.Kiriu E_本稼動_07712対応 ADD START */
+    ,iv_org_id               IN     NUMBER                  -- 営業単位
+    /* 2011-07-08 K.Kiriu E_本稼動_07712対応 ADD END */
     ,ov_errbuf               OUT    NOCOPY VARCHAR2         -- エラー・メッセージ            --# 固定 #
     ,ov_retcode              OUT    NOCOPY VARCHAR2         -- リターン・コード              --# 固定 #
     ,ov_errmsg               OUT    NOCOPY VARCHAR2         -- ユーザー・エラー・メッセージ    --# 固定 #
@@ -853,7 +893,10 @@ AS
 --    cv_new_eigyoin_info CONSTANT VARCHAR2(100) := '新設置先顧客担当営業員';
 --    cv_now_eigyoin_info CONSTANT VARCHAR2(100) := '現設置先顧客担当営業員';
 --    /* 2009.08.10 K.Satomura 0000662対応 END */
-    cv_account_emp_info CONSTANT VARCHAR2(100) := '営業員担当顧客ビューの従業員番号';
+    /* 2011-07-08 K.Kiriu E_本稼動_07712対応 MOD START */
+--    cv_account_emp_info CONSTANT VARCHAR2(100) := '営業員担当顧客ビューの従業員番号';
+    cv_account_emp_info    CONSTANT VARCHAR2(100) := '最上位の従業員番号';
+    /* 2011-07-08 K.Kiriu E_本稼動_07712対応 MOD END */
     /* 2011-06-23 K.Kiriu E_本稼動_07712対応 Mod END */
     /* 2009.05.22 K.Satomura T1_1142対応 START */
     cn_phone_num_max_legth CONSTANT NUMBER        := 6; -- 電話番号最大桁数
@@ -890,6 +933,12 @@ AS
     -- 参照タイプなしエラーメッセージ用トークン値
     cv_tkn_value_task_name    CONSTANT VARCHAR2(100) :=  '作業依頼IF自動設定作業会社マスタの';
     /* 2010.03.08 K.Hosoi E_本稼動_01838対応 END */
+    /* 2011-07-08 K.Kiriu E_本稼動_07712対応 ADD START */
+    --最上位従業員取得用
+    cv_category_employee      CONSTANT VARCHAR2(8)   :=  'EMPLOYEE';
+    cv_resource_group_number  CONSTANT VARCHAR2(15)  :=  'RS_GROUP_MEMBER';
+    cv_person_type            CONSTANT VARCHAR2( 3)  :=  'EMP';
+    /* 2011-07-08 K.Kiriu E_本稼動_07712対応 ADD END */
 --
     -- *** ローカル変数 ***
     lv_instance_type_code      VARCHAR2(30);            -- インスタンスタイプコード
@@ -977,8 +1026,10 @@ AS
 --    ln_created_by              NUMBER;                  -- 作成者
     /* 2011-06-23 K.Kiriu E_本稼動_07712対応 Del END */
     /* 2011-06-23 K.Kiriu E_本稼動_07712対応 Add START */
-    lt_empoyee_number          xxcso_employees_v.employee_number%TYPE;                  -- 顧客担当営業員
-    lt_emp_customer_code       xxcso_cust_acct_sites_v.account_number%TYPE;             -- 顧客コード(顧客営業担当取得用)
+    lt_empoyee_number          xxcso_employees_v.employee_number%TYPE;                  -- 設置先顧客売上拠点の最上位従業員
+    /* 2011-07-08 K.Kiriu E_本稼動_07712対応 DEL START */
+--    lt_emp_customer_code       xxcso_cust_acct_sites_v.account_number%TYPE;             -- 顧客コード(顧客営業担当取得用)
+    /* 2011-07-08 K.Kiriu E_本稼動_07712対応 DEL END */
     /* 2011-06-23 K.Kiriu E_本稼動_07712対応 Add END */
     /* 2009.04.10 K.Satomura T1_0492対応 START */
     --lv_cur_phone_number        VARCHAR2(20);            -- 編集用電話番号
@@ -1019,6 +1070,55 @@ AS
     lv_log_rq_line_num         VARCHAR2(20);            -- ログ用発注依頼明細番号
     ln_num1                    NUMBER;                  -- 1回目のハイフンの位置
     ln_num2                    NUMBER;                  -- 2回目のハイフンの位置
+/* 2011-07-08 K.Kiriu E_本稼動_07712対応 ADD START */
+    -- *** ローカル・カーソル ***
+    -- 拠点最上位従業員取得
+    CURSOR
+      cur_employee_number(
+         iv_sale_base_code  VARCHAR2  -- 売上拠点
+        ,id_target_date     DATE      -- 依頼日
+      )
+    IS
+    SELECT papf.employee_number  AS employee_number   --従業員番号
+    FROM   per_person_types          ppt              --従業員タイプ
+          ,per_periods_of_service    ppos             --従業員サービス
+          ,per_all_assignments_f     paaf             --アサイメント
+          ,per_all_people_f          papf             --従業員
+          ,jtf_rs_resource_extns     jrre             --リソース
+          ,jtf_rs_group_members      jrgm             --グループメンバー
+          ,jtf_rs_groups_b           jrgb             --リソースグループ
+          ,jtf_rs_role_relations     jrrr             --役割
+          ,jtf_rs_salesreps          jrs              --営業担当
+    WHERE jrgb.attribute1              = iv_sale_base_code
+    AND   jrgb.group_id                = jrgm.group_id
+    AND   jrgm.delete_flag             = cv_no
+    AND   jrgm.resource_id             = jrre.resource_id
+    AND   jrre.category                = cv_category_employee
+    AND   jrrr.role_resource_id        = jrgm.group_member_id
+    AND   jrrr.role_resource_type      = cv_resource_group_number
+    AND   jrrr.delete_flag             = cv_no
+    AND   jrrr.start_date_active      <= id_target_date
+    AND   NVL( jrrr.end_date_active, id_target_date ) >= id_target_date
+    AND   jrre.source_id               = papf.person_id
+    AND   papf.person_id               = paaf.person_id
+    AND   paaf.period_of_service_id    = ppos.period_of_service_id
+    AND   ppos.actual_termination_date IS NULL
+    AND   papf.person_type_id          = ppt.person_type_id
+    AND   id_target_date BETWEEN papf.effective_start_date
+                             AND papf.effective_end_date
+    AND   ppt.system_person_type       = cv_person_type
+    AND   ppt.active_flag              = cv_yes
+    AND   jrre.resource_id             = jrs.resource_id
+    AND   jrs.org_id                   = iv_org_id
+    AND    TRUNC( jrs.start_date_active ) <= id_target_date
+    AND    TRUNC( NVL( jrs.end_date_active, id_target_date ) )
+                                          >= id_target_date
+    ORDER BY
+          paaf.ass_attribute11   -- 職位順
+         ,ppos.date_start        -- 入社日
+         ,papf.employee_number   -- 従業員番号
+    ;
+/* 2011-07-08 K.Kiriu E_本稼動_07712対応 ADD END */
   BEGIN
 --
 --##################  固定ステータス初期化部 START   ###################
@@ -1061,6 +1161,9 @@ AS
   lv_log_rq_head_num     := TO_CHAR(io_get_data_rec.req_header_num);
   -- ログ用発注依頼明細番号
   lv_log_rq_line_num     := TO_CHAR(io_get_data_rec.req_line_num);
+  /* 2011-07-08 K.Kiriu E_本稼動_07712対応 ADD START */
+  lt_empoyee_number      := NULL;
+  /* 2011-07-08 K.Kiriu E_本稼動_07712対応 ADD END */
 --
     /* 2009.12.21 K.Hosoi E_本稼動_00563対応 START */
     -- =================
@@ -1692,10 +1795,12 @@ AS
       --
       /* 2009.08.10 K.Satomura 0000662対応 END */
       /* 2009.12.21 K.Hosoi E_本稼動_00563対応 END */
-      /* 2011-06-23 K.Kiriu E_本稼動_07712対応 Add START */
-      -- 顧客営業担当員取得用の顧客コード取得
-      lt_emp_customer_code := lv_new_customer_code1; --新設置先顧客コード
-      /* 2011-06-23 K.Kiriu E_本稼動_07712対応 Add END */
+      /* 2011-07-08 K.Kiriu E_本稼動_07712対応 DEL START */
+--      /* 2011-06-23 K.Kiriu E_本稼動_07712対応 Add START */
+--      -- 顧客営業担当員取得用の顧客コード取得
+--      lt_emp_customer_code := lv_new_customer_code1; --新設置先顧客コード
+--      /* 2011-06-23 K.Kiriu E_本稼動_07712対応 Add END */
+      /* 2011-07-08 K.Kiriu E_本稼動_07712対応 DEL END */
     END IF;
 --    
     -- 作業区分が新台代替、旧台代替、引揚の時
@@ -1987,10 +2092,12 @@ AS
       --
       /* 2009.08.10 K.Satomura 0000662対応 END */
       /* 2009.12.21 K.Hosoi E_本稼動_00563対応 END */
-      /* 2011-06-23 K.Kiriu E_本稼動_07712対応 Add START */
-      -- 顧客営業担当員取得用の顧客コード取得
-      lt_emp_customer_code := lv_cur_customer_code2; --現設置先顧客コード(引揚の場合)
-      /* 2011-06-23 K.Kiriu E_本稼動_07712対応 Add END */
+      /* 2011-07-08 K.Kiriu E_本稼動_07712対応 DEL START */
+--      /* 2011-06-23 K.Kiriu E_本稼動_07712対応 Add START */
+--      -- 顧客営業担当員取得用の顧客コード取得
+--      lt_emp_customer_code := lv_cur_customer_code2; --現設置先顧客コード(引揚の場合)
+--      /* 2011-06-23 K.Kiriu E_本稼動_07712対応 Add END */
+      /* 2011-07-08 K.Kiriu E_本稼動_07712対応 DEL END */
       -- ================
       -- 新設置先顧客情報
       -- ================
@@ -2209,10 +2316,12 @@ AS
             RAISE global_process_expt;
         END;
 --
-        /* 2011-06-23 K.Kiriu E_本稼動_07712対応 Add START */
-        -- 顧客営業担当員取得用の顧客コード取得
-        lt_emp_customer_code := lv_new_customer_code1; --新設置先顧客コード(引揚以外場合)
-        /* 2011-06-23 K.Kiriu E_本稼動_07712対応 Add END */
+        /* 2011-07-08 K.Kiriu E_本稼動_07712対応 DEL START */
+--        /* 2011-06-23 K.Kiriu E_本稼動_07712対応 Add START */
+--        -- 顧客営業担当員取得用の顧客コード取得
+--        lt_emp_customer_code := lv_new_customer_code1; --新設置先顧客コード(引揚以外場合)
+--        /* 2011-06-23 K.Kiriu E_本稼動_07712対応 Add END */
+        /* 2011-07-08 K.Kiriu E_本稼動_07712対応 DEL END */
       END IF;
 --
       /* 2011-06-23 K.Kiriu E_本稼動_07712対応 Del START */
@@ -2774,39 +2883,109 @@ AS
 --          RAISE global_process_expt;
 --      END;
         /* 2011-06-23 K.Kiriu E_本稼動_07712対応 Del End */
-      /* 2011-06-23 K.Kiriu E_本稼動_07712対応 Add START */
-      -- 顧客営業担当員取得用の顧客コード取得
-      lt_emp_customer_code := lv_cur_customer_code2; --現設置先顧客コード
-      /* 2011-06-23 K.Kiriu E_本稼動_07712対応 Add END */
+      /* 2011-07-08 K.Kiriu E_本稼動_07712対応 DEL START */
+--      /* 2011-06-23 K.Kiriu E_本稼動_07712対応 Add START */
+--      -- 顧客営業担当員取得用の顧客コード取得
+--      lt_emp_customer_code := lv_cur_customer_code2; --現設置先顧客コード
+--      /* 2011-06-23 K.Kiriu E_本稼動_07712対応 Add END */
+      /* 2011-07-08 K.Kiriu E_本稼動_07712対応 DEL END */
 --
     END IF;
 --
-/* 2011-06-23 K.Kiriu E_本稼動_07712対応 Add START */
+/* 2011-07-08 K.Kiriu E_本稼動_07712対応 MOD START */
+--/* 2011-06-23 K.Kiriu E_本稼動_07712対応 Add START */
+--    -- ================
+--    -- 担当営業員コード
+--    -- ================
+--    BEGIN
+--      SELECT xrcv.employee_number employee_number
+--      INTO   lt_empoyee_number
+--      FROM   xxcso_resource_custs_v  xrcv --営業員担当顧客ビュー
+--      WHERE  xrcv.account_number = lt_emp_customer_code  --各作業区分による設置先顧客コード
+--        AND  ld_reqst_date BETWEEN NVL( xrcv.start_date_active, ld_reqst_date )
+--                           AND     NVL( xrcv.end_date_active,   ld_reqst_date )
+--      ;
+--    EXCEPTION
+--      WHEN NO_DATA_FOUND THEN
+--        -- 顧客担当が存在しない場合は発注依頼作成者を設定
+--        lt_empoyee_number := io_get_data_rec.employee_number;
+--      WHEN OTHERS THEN
+--/* 2011-07-01 K.Kiriu E_本稼動_07712対応 Del START */
+----        -- 予期せぬエラーの場合、メッセージを出力し、発注依頼作成者を設定(エラーとせず正常とする)
+----        lt_empoyee_number := io_get_data_rec.employee_number;
+----
+--/* 2011-07-01 K.Kiriu E_本稼動_07712対応 Del END */
+--        -- 警告終了とし、データはスキップする
+--        lv_errmsg := xxccp_common_pkg.get_msg(
+--                        iv_application  => cv_app_name                  -- アプリケーション短縮名
+--                       ,iv_name         => cv_tkn_number_07             -- メッセージコード
+--                       ,iv_token_name1  => cv_tkn_task_nm               -- トークンコード1
+--                       ,iv_token_value1 => cv_account_emp_info          -- トークン値1
+--                       ,iv_token_name2  => cv_tkn_po_num                -- トークンコード2
+--                       ,iv_token_value2 => lv_log_po_head_num           -- トークン値2
+--                       ,iv_token_name3  => cv_tkn_po_line_num           -- トークンコード3
+--                       ,iv_token_value3 => lv_log_po_line_num           -- トークン値3
+--                       ,iv_token_name4  => cv_tkn_po_distr_num          -- トークンコード4
+--                       ,iv_token_value4 => lv_log_po_dist_num           -- トークン値4
+--                       ,iv_token_name5  => cv_tkn_reqst_num             -- トークンコード5
+--                       ,iv_token_value5 => lv_log_rq_head_num           -- トークン値5
+--                       ,iv_token_name6  => cv_tkn_reqst_line_num        -- トークンコード6
+--                       ,iv_token_value6 => lv_log_rq_line_num           -- トークン値6
+--                       ,iv_token_name7  => cv_tkn_errmsg               -- トークンコード7
+--                       ,iv_token_value7 => SQLERRM                      -- トークン値7
+--                     );
+--/* 2011-07-01 K.Kiriu E_本稼動_07712対応 Mod START */
+----        -- メッセージ出力
+----        fnd_file.put_line(
+----           which  => FND_FILE.OUTPUT
+----          ,buff   => lv_errmsg                  -- ユーザー・エラーメッセージ
+----        );
+----        --ログ出力
+----        fnd_file.put_line(
+----           which  => FND_FILE.LOG
+----          ,buff   => cv_pkg_name||cv_msg_cont||
+----                     cv_prg_name||cv_msg_part||
+----                     lv_errmsg                  -- エラーメッセージ
+----        );
+----        --変数初期化
+----        lv_errmsg := NULL;
+----
+--        lv_errbuf := lv_errmsg;
+--        RAISE global_skip_expt;
+--/* 2011-07-01 K.Kiriu E_本稼動_07712対応 Mod END */
+--    END;
+--/* 2011-06-23 K.Kiriu E_本稼動_07712対応 Add END */
     -- ================
     -- 担当営業員コード
     -- ================
-    BEGIN
-      SELECT xrcv.employee_number employee_number
-      INTO   lt_empoyee_number
-      FROM   xxcso_resource_custs_v  xrcv --営業員担当顧客ビュー
-      WHERE  xrcv.account_number = lt_emp_customer_code  --各作業区分による設置先顧客コード
-        AND  ld_reqst_date BETWEEN NVL( xrcv.start_date_active, ld_reqst_date )
-                           AND     NVL( xrcv.end_date_active,   ld_reqst_date )
-      ;
-    EXCEPTION
-      WHEN NO_DATA_FOUND THEN
-        -- 顧客担当が存在しない場合は発注依頼作成者を設定
-        lt_empoyee_number := io_get_data_rec.employee_number;
-      WHEN OTHERS THEN
-/* 2011-07-01 K.Kiriu E_本稼動_07712対応 Del START */
---        -- 予期せぬエラーの場合、メッセージを出力し、発注依頼作成者を設定(エラーとせず正常とする)
---        lt_empoyee_number := io_get_data_rec.employee_number;
+    -- 設置先顧客の売上拠点で最上位従業員を既に取得している場合
+    IF ( gt_higher_emp_tab.EXISTS( lv_reqst_base_code ) ) THEN
 --
-/* 2011-07-01 K.Kiriu E_本稼動_07712対応 Del END */
-        -- 警告終了とし、データはスキップする
+      -- 取得済の最上位営業員を設定
+      lt_empoyee_number := gt_higher_emp_tab( lv_reqst_base_code );
+--
+    -- 未取得の場合、カーソルから取得
+    ELSE
+--
+      -- 最上位従業員取得
+      OPEN  cur_employee_number (
+        lv_reqst_base_code  -- 設置先顧客の売上拠点
+       ,ld_reqst_date       -- 依頼日
+      );
+      FETCH cur_employee_number INTO lt_empoyee_number;
+      CLOSE cur_employee_number;
+--
+      -- コレクションに追加
+      gt_higher_emp_tab( lv_reqst_base_code ) := lt_empoyee_number;
+--
+    END IF;
+--
+    -- 最上位担当者が取得できない場合
+    IF ( lt_empoyee_number IS NULL ) THEN
+        --メッセージを取得しスキップする
         lv_errmsg := xxccp_common_pkg.get_msg(
                         iv_application  => cv_app_name                  -- アプリケーション短縮名
-                       ,iv_name         => cv_tkn_number_07             -- メッセージコード
+                       ,iv_name         => cv_tkn_number_06             -- メッセージコード
                        ,iv_token_name1  => cv_tkn_task_nm               -- トークンコード1
                        ,iv_token_value1 => cv_account_emp_info          -- トークン値1
                        ,iv_token_name2  => cv_tkn_po_num                -- トークンコード2
@@ -2819,30 +2998,12 @@ AS
                        ,iv_token_value5 => lv_log_rq_head_num           -- トークン値5
                        ,iv_token_name6  => cv_tkn_reqst_line_num        -- トークンコード6
                        ,iv_token_value6 => lv_log_rq_line_num           -- トークン値6
-                       ,iv_token_name7  => cv_tkn_errmsg               -- トークンコード7
-                       ,iv_token_value7 => SQLERRM                      -- トークン値7
                      );
-/* 2011-07-01 K.Kiriu E_本稼動_07712対応 Mod START */
---        -- メッセージ出力
---        fnd_file.put_line(
---           which  => FND_FILE.OUTPUT
---          ,buff   => lv_errmsg                  -- ユーザー・エラーメッセージ
---        );
---        --ログ出力
---        fnd_file.put_line(
---           which  => FND_FILE.LOG
---          ,buff   => cv_pkg_name||cv_msg_cont||
---                     cv_prg_name||cv_msg_part||
---                     lv_errmsg                  -- エラーメッセージ
---        );
---        --変数初期化
---        lv_errmsg := NULL;
 --
         lv_errbuf := lv_errmsg;
         RAISE global_skip_expt;
-/* 2011-07-01 K.Kiriu E_本稼動_07712対応 Mod END */
-    END;
-/* 2011-06-23 K.Kiriu E_本稼動_07712対応 Add END */
+    END IF;
+/* 2011-07-08 K.Kiriu E_本稼動_07712対応 MOD END */
     -- ================
     -- 所属マスタ情報
     -- ================
@@ -5040,6 +5201,9 @@ AS
     lv_wdrw_base_code         VARCHAR2(10);   -- 引揚拠点コード
     lv_csv_dir                VARCHAR2(2000); -- CSVファイル出力先
     lv_csv_nm                 VARCHAR2(2000); -- CSVファイル名
+    /* 2011-07-08 K.Kiriu E_本稼動_07712対応 ADD START */
+    ln_org_id                 NUMBER;         -- 営業単位
+    /* 2011-07-08 K.Kiriu E_本稼動_07712対応 ADD END */
     -- ファイルオープン確認戻り値格納
     lb_fopn_retcd             BOOLEAN;
     -- 備考編集用
@@ -5055,7 +5219,11 @@ AS
     IS
       /* 2009.08.05 K.Satomura 0000778対応 START */
       --SELECT   prlv.requisition_line_id         requisition_line_id              -- 発注依頼明細ID
-      SELECT   /*+ first_rows leading(wrp) use_nl(prlv prh prd pd pl ph cev) */
+      /* 2011-07-08 K.Kiriu E_本稼動_07712対応 MOD START */
+--      SELECT   /*+ first_rows leading(wrp) use_nl(prlv prh prd pd pl ph cev) */
+      -- 新台設置
+      SELECT   /*+ first_rows leading(wrp) use_nl(prlv prh prd pd pl ph) */
+      /* 2011-07-08 K.Kiriu E_本稼動_07712対応 MOD END */
                prlv.requisition_line_id         requisition_line_id              -- 発注依頼明細ID
       /* 2009.08.05 K.Satomura 0000778対応 END */
               ,cn_branch_no                     slip_branch_no                   -- 伝票枝番
@@ -5098,7 +5266,10 @@ AS
               ,prlv.remarks2                    remarks2                         -- 備考２
               ,prlv.remarks3                    remarks3                         -- 備考３
               ,prlv.install_at_customer_code    install_at_customer_code         -- 顧客コード１
-              ,cev.employee_number              employee_number                  -- 担当営業員コード
+              /* 2011-07-08 K.Kiriu E_本稼動_07712対応 MOD START */
+--              ,cev.employee_number              employee_number                  -- 担当営業員コード
+              ,NULL                             employee_number                  -- 担当営業員コード
+              /* 2011-07-08 K.Kiriu E_本稼動_07712対応 MOD END */
               ,ph.segment1                      po_header_num                    -- 発注番号
               ,pl.line_num                      po_line_num                      -- 発注明細番号
               ,pd.distribution_num              po_distribution_num              -- 発注搬送番号
@@ -5125,7 +5296,9 @@ AS
               ,po_headers                       ph                               -- 発注ヘッダビュー
               ,po_distributions                 pd                               -- 発注搬送明細ビュー
               ,xxcso_wk_requisition_proc        wrp                    -- 作業依頼／発注情報連携対象テーブル
-              ,xxcso_employees_v                cev                              -- 従業員マスタビュー
+               /* 2011-07-08 K.Kiriu E_本稼動_07712対応 DEL START */
+--              ,xxcso_employees_v                cev                              -- 従業員マスタビュー
+               /* 2011-07-08 K.Kiriu E_本稼動_07712対応 DEL END */
       WHERE    prlv.category_kbn          = cv_new_etblishmt_att1
         AND    prlv.requisition_line_id   = prd.requisition_line_id
         AND    prd.distribution_id        = pd.req_distribution_id
@@ -5136,21 +5309,23 @@ AS
         AND    ph.authorization_status    = cv_approved
         AND    prlv.requisition_line_id   = wrp.requisition_line_id
         AND    wrp.interface_flag         = cv_n
-        AND    cev.user_id                = prh.created_by
-        /* 2010.05.10 D.Abe E_本稼動_02598対応 START */
-        --AND    (TRUNC(ld_process_date) BETWEEN TRUNC(NVL(cev.start_date, TRUNC(ld_process_date))) AND
-        --         TRUNC(NVL(cev.end_date, TRUNC(ld_process_date))))
-        --AND    (TRUNC(ld_process_date) BETWEEN TRUNC(NVL(cev.employee_start_date, TRUNC(ld_process_date))) AND
-        --         TRUNC(NVL(cev.employee_end_date, TRUNC(ld_process_date))))
-        --AND    (TRUNC(ld_process_date) BETWEEN(NVL(cev.assign_start_date, TRUNC(ld_process_date))) AND
-        --         TRUNC(NVL(cev.assign_end_date, TRUNC(ld_process_date))))
-        AND    (TRUNC(prlv.creation_date) BETWEEN TRUNC(NVL(cev.start_date, TRUNC(prlv.creation_date))) AND
-                 TRUNC(NVL(cev.end_date, TRUNC(prlv.creation_date))))
-        AND    (TRUNC(prlv.creation_date) BETWEEN TRUNC(NVL(cev.employee_start_date, TRUNC(prlv.creation_date))) AND
-                 TRUNC(NVL(cev.employee_end_date, TRUNC(prlv.creation_date))))
-        AND    (TRUNC(prlv.creation_date) BETWEEN(NVL(cev.assign_start_date, TRUNC(prlv.creation_date))) AND
-                 TRUNC(NVL(cev.assign_end_date, TRUNC(prlv.creation_date))))
-        /* 2010.05.10 D.Abe E_本稼動_02598対応 END   */
+        /* 2011-07-08 K.Kiriu E_本稼動_07712対応 DEL START */
+--        AND    cev.user_id                = prh.created_by
+--        /* 2010.05.10 D.Abe E_本稼動_02598対応 START */
+--        --AND    (TRUNC(ld_process_date) BETWEEN TRUNC(NVL(cev.start_date, TRUNC(ld_process_date))) AND
+--        --         TRUNC(NVL(cev.end_date, TRUNC(ld_process_date))))
+--        --AND    (TRUNC(ld_process_date) BETWEEN TRUNC(NVL(cev.employee_start_date, TRUNC(ld_process_date))) AND
+--        --         TRUNC(NVL(cev.employee_end_date, TRUNC(ld_process_date))))
+--        --AND    (TRUNC(ld_process_date) BETWEEN(NVL(cev.assign_start_date, TRUNC(ld_process_date))) AND
+--        --         TRUNC(NVL(cev.assign_end_date, TRUNC(ld_process_date))))
+--        AND    (TRUNC(prlv.creation_date) BETWEEN TRUNC(NVL(cev.start_date, TRUNC(prlv.creation_date))) AND
+--                 TRUNC(NVL(cev.end_date, TRUNC(prlv.creation_date))))
+--        AND    (TRUNC(prlv.creation_date) BETWEEN TRUNC(NVL(cev.employee_start_date, TRUNC(prlv.creation_date))) AND
+--                 TRUNC(NVL(cev.employee_end_date, TRUNC(prlv.creation_date))))
+--        AND    (TRUNC(prlv.creation_date) BETWEEN(NVL(cev.assign_start_date, TRUNC(prlv.creation_date))) AND
+--                 TRUNC(NVL(cev.assign_end_date, TRUNC(prlv.creation_date))))
+--        /* 2010.05.10 D.Abe E_本稼動_02598対応 END   */
+        /* 2011-07-08 K.Kiriu E_本稼動_07712対応 DEL END */
         AND    (TRUNC(ld_process_date) BETWEEN(NVL(prlv.lookup_start_date, TRUNC(ld_process_date))) AND
                  TRUNC(NVL(prlv.lookup_end_date, TRUNC(ld_process_date))))
         AND    (TRUNC(ld_process_date) BETWEEN(NVL(prlv.category_start_date, TRUNC(ld_process_date))) AND
@@ -5159,7 +5334,11 @@ AS
       --UNION
       --SELECT   prlv.requisition_line_id         requisition_line_id              -- 発注依頼明細ID
       UNION ALL
-      SELECT   /*+ first_rows leading(wrp) use_nl(prlv prh prd pd pl ph cev) */
+      /* 2011-07-08 K.Kiriu E_本稼動_07712対応 MOD START */
+--      SELECT   /*+ first_rows leading(wrp) use_nl(prlv prh prd pd pl ph cev) */
+      -- 新台代替
+      SELECT   /*+ first_rows leading(wrp) use_nl(prlv prh prd pd pl ph) */
+      /* 2011-07-08 K.Kiriu E_本稼動_07712対応 MOD END */
                prlv.requisition_line_id         requisition_line_id              -- 発注依頼明細ID
       /* 2009.08.05 K.Satomura 0000778対応 END */
               ,cn_branch_no                     slip_branch_no                   -- 伝票枝番
@@ -5202,7 +5381,10 @@ AS
               ,prlv.remarks2                    remarks2                         -- 備考２
               ,prlv.remarks3                    remarks3                         -- 備考３
               ,null                             install_at_customer_code         -- 顧客コード１
-              ,cev.employee_number              employee_number                  -- 担当営業員コード
+              /* 2011-07-08 K.Kiriu E_本稼動_07712対応 MOD START */
+--              ,cev.employee_number              employee_number                  -- 担当営業員コード
+              ,NULL                             employee_number                  -- 担当営業員コード
+              /* 2011-07-08 K.Kiriu E_本稼動_07712対応 MOD END */
               ,ph.segment1                      po_header_num                    -- 発注番号
               ,pl.line_num                      po_line_num                      -- 発注明細番号
               ,pd.distribution_num              po_distribution_num              -- 発注搬送番号
@@ -5229,7 +5411,9 @@ AS
               ,po_headers                       ph                               -- 発注ヘッダビュー
               ,po_distributions                 pd                               -- 発注搬送明細ビュー
               ,xxcso_wk_requisition_proc        wrp                    -- 作業依頼／発注情報連携対象テーブル
-              ,xxcso_employees_v                cev                              -- 従業員マスタビュー
+              /* 2011-07-08 K.Kiriu E_本稼動_07712対応 DEL START */
+--              ,xxcso_employees_v                cev                              -- 従業員マスタビュー
+              /* 2011-07-08 K.Kiriu E_本稼動_07712対応 DEL END */
       WHERE    prlv.category_kbn          = cv_new_altrntive_att1
         AND    prlv.requisition_line_id   = prd.requisition_line_id
         AND    prd.distribution_id        = pd.req_distribution_id
@@ -5240,21 +5424,23 @@ AS
         AND    ph.authorization_status    = cv_approved
         AND    prlv.requisition_line_id   = wrp.requisition_line_id
         AND    wrp.interface_flag         = cv_n
-        AND    cev.user_id                = prh.created_by
-        /* 2010.05.10 D.Abe E_本稼動_02598対応 START */
-        --AND    (TRUNC(ld_process_date) BETWEEN TRUNC(NVL(cev.start_date, TRUNC(ld_process_date))) AND
-        --         TRUNC(NVL(cev.end_date, TRUNC(ld_process_date))))
-        --AND    (TRUNC(ld_process_date) BETWEEN TRUNC(NVL(cev.employee_start_date, TRUNC(ld_process_date))) AND
-        --         TRUNC(NVL(cev.employee_end_date, TRUNC(ld_process_date))))
-        --AND    (TRUNC(ld_process_date) BETWEEN(NVL(cev.assign_start_date, TRUNC(ld_process_date))) AND
-        --         TRUNC(NVL(cev.assign_end_date, TRUNC(ld_process_date))))
-        AND    (TRUNC(prlv.creation_date) BETWEEN TRUNC(NVL(cev.start_date, TRUNC(prlv.creation_date))) AND
-                 TRUNC(NVL(cev.end_date, TRUNC(prlv.creation_date))))
-        AND    (TRUNC(prlv.creation_date) BETWEEN TRUNC(NVL(cev.employee_start_date, TRUNC(prlv.creation_date))) AND
-                 TRUNC(NVL(cev.employee_end_date, TRUNC(prlv.creation_date))))
-        AND    (TRUNC(prlv.creation_date) BETWEEN(NVL(cev.assign_start_date, TRUNC(prlv.creation_date))) AND
-                 TRUNC(NVL(cev.assign_end_date, TRUNC(prlv.creation_date))))
-        /* 2010.05.10 D.Abe E_本稼動_02598対応 END   */
+        /* 2011-07-08 K.Kiriu E_本稼動_07712対応 DEL START */
+--        AND    cev.user_id                = prh.created_by
+--        /* 2010.05.10 D.Abe E_本稼動_02598対応 START */
+--        --AND    (TRUNC(ld_process_date) BETWEEN TRUNC(NVL(cev.start_date, TRUNC(ld_process_date))) AND
+--        --         TRUNC(NVL(cev.end_date, TRUNC(ld_process_date))))
+--        --AND    (TRUNC(ld_process_date) BETWEEN TRUNC(NVL(cev.employee_start_date, TRUNC(ld_process_date))) AND
+--        --         TRUNC(NVL(cev.employee_end_date, TRUNC(ld_process_date))))
+--        --AND    (TRUNC(ld_process_date) BETWEEN(NVL(cev.assign_start_date, TRUNC(ld_process_date))) AND
+--        --         TRUNC(NVL(cev.assign_end_date, TRUNC(ld_process_date))))
+--        AND    (TRUNC(prlv.creation_date) BETWEEN TRUNC(NVL(cev.start_date, TRUNC(prlv.creation_date))) AND
+--                 TRUNC(NVL(cev.end_date, TRUNC(prlv.creation_date))))
+--        AND    (TRUNC(prlv.creation_date) BETWEEN TRUNC(NVL(cev.employee_start_date, TRUNC(prlv.creation_date))) AND
+--                 TRUNC(NVL(cev.employee_end_date, TRUNC(prlv.creation_date))))
+--        AND    (TRUNC(prlv.creation_date) BETWEEN(NVL(cev.assign_start_date, TRUNC(prlv.creation_date))) AND
+--                 TRUNC(NVL(cev.assign_end_date, TRUNC(prlv.creation_date))))
+--        /* 2010.05.10 D.Abe E_本稼動_02598対応 END   */
+        /* 2011-07-08 K.Kiriu E_本稼動_07712対応 DEL END */
         AND    (TRUNC(ld_process_date) BETWEEN(NVL(prlv.lookup_start_date, TRUNC(ld_process_date))) AND
                  TRUNC(NVL(prlv.lookup_end_date, TRUNC(ld_process_date))))
         AND    (TRUNC(ld_process_date) BETWEEN(NVL(prlv.category_start_date, TRUNC(ld_process_date))) AND
@@ -5263,7 +5449,11 @@ AS
       --UNION
       --SELECT   prlv.requisition_line_id         requisition_line_id              -- 発注依頼明細ID
       UNION ALL
-      SELECT   /*+ first_rows leading(wrp) use_nl(prlv prh cev) */
+      /* 2011-07-08 K.Kiriu E_本稼動_07712対応 MOD START */
+--      SELECT   /*+ first_rows leading(wrp) use_nl(prlv prh cev) */
+      -- 旧台設置
+      SELECT   /*+ first_rows leading(wrp) use_nl(prlv prh ) */
+      /* 2011-07-08 K.Kiriu E_本稼動_07712対応 MOD END */
                prlv.requisition_line_id         requisition_line_id              -- 発注依頼明細ID
       /* 2009.08.05 K.Satomura 0000778対応 END */
               ,cn_branch_no                     slip_branch_no                   -- 伝票枝番
@@ -5306,7 +5496,10 @@ AS
               ,prlv.remarks2                    remarks2                         -- 備考２
               ,prlv.remarks3                    remarks3                         -- 備考３
               ,prlv.install_at_customer_code    install_at_customer_code         -- 顧客コード１
-              ,cev.employee_number              employee_number                  -- 担当営業員コード
+              /* 2011-07-08 K.Kiriu E_本稼動_07712対応 MOD START */
+--              ,cev.employee_number              employee_number                  -- 担当営業員コード
+              ,NULL                             employee_number                  -- 担当営業員コード
+              /* 2011-07-08 K.Kiriu E_本稼動_07712対応 MOD END */
               ,null                             po_header_num                    -- 発注番号
               ,null                             po_line_num                      -- 発注明細番号
               ,null                             po_distribution_num              -- 発注搬送番号
@@ -5321,27 +5514,31 @@ AS
       FROM     xxcso_requisition_lines_v        prlv                             -- 発注依頼明細情報ビュー
               ,po_requisition_headers           prh                              -- 発注依頼ヘッダビュー
               ,xxcso_wk_requisition_proc        wrp                    -- 作業依頼／発注情報連携対象テーブル
-              ,xxcso_employees_v                cev                              -- 従業員マスタビュー
+              /* 2011-07-08 K.Kiriu E_本稼動_07712対応 DEL START */
+--              ,xxcso_employees_v                cev                              -- 従業員マスタビュー
+              /* 2011-07-08 K.Kiriu E_本稼動_07712対応 DEL END */
       WHERE    prlv.category_kbn          = cv_old_etblishmt_att1
         AND    prlv.requisition_header_id = prh.requisition_header_id
         AND    prh.authorization_status   = cv_approved
         AND    prlv.requisition_line_id   = wrp.requisition_line_id
         AND    wrp.interface_flag         = cv_n
-        AND    cev.user_id                = prh.created_by
-        /* 2010.05.10 D.Abe E_本稼動_02598対応 START */
-        --AND    (TRUNC(ld_process_date) BETWEEN TRUNC(NVL(cev.start_date, TRUNC(ld_process_date))) AND
-        --         TRUNC(NVL(cev.end_date, TRUNC(ld_process_date))))
-        --AND    (TRUNC(ld_process_date) BETWEEN TRUNC(NVL(cev.employee_start_date, TRUNC(ld_process_date))) AND
-        --         TRUNC(NVL(cev.employee_end_date, TRUNC(ld_process_date))))
-        --AND    (TRUNC(ld_process_date) BETWEEN(NVL(cev.assign_start_date, TRUNC(ld_process_date))) AND
-        --         TRUNC(NVL(cev.assign_end_date, TRUNC(ld_process_date))))
-        AND    (TRUNC(prlv.creation_date) BETWEEN TRUNC(NVL(cev.start_date, TRUNC(prlv.creation_date))) AND
-                 TRUNC(NVL(cev.end_date, TRUNC(prlv.creation_date))))
-        AND    (TRUNC(prlv.creation_date) BETWEEN TRUNC(NVL(cev.employee_start_date, TRUNC(prlv.creation_date))) AND
-                 TRUNC(NVL(cev.employee_end_date, TRUNC(prlv.creation_date))))
-        AND    (TRUNC(prlv.creation_date) BETWEEN(NVL(cev.assign_start_date, TRUNC(prlv.creation_date))) AND
-                 TRUNC(NVL(cev.assign_end_date, TRUNC(prlv.creation_date))))
-        /* 2010.05.10 D.Abe E_本稼動_02598対応 END   */
+        /* 2011-07-08 K.Kiriu E_本稼動_07712対応 DEL START */
+--        AND    cev.user_id                = prh.created_by
+--        /* 2010.05.10 D.Abe E_本稼動_02598対応 START */
+--        --AND    (TRUNC(ld_process_date) BETWEEN TRUNC(NVL(cev.start_date, TRUNC(ld_process_date))) AND
+--        --         TRUNC(NVL(cev.end_date, TRUNC(ld_process_date))))
+--        --AND    (TRUNC(ld_process_date) BETWEEN TRUNC(NVL(cev.employee_start_date, TRUNC(ld_process_date))) AND
+--        --         TRUNC(NVL(cev.employee_end_date, TRUNC(ld_process_date))))
+--        --AND    (TRUNC(ld_process_date) BETWEEN(NVL(cev.assign_start_date, TRUNC(ld_process_date))) AND
+--        --         TRUNC(NVL(cev.assign_end_date, TRUNC(ld_process_date))))
+--        AND    (TRUNC(prlv.creation_date) BETWEEN TRUNC(NVL(cev.start_date, TRUNC(prlv.creation_date))) AND
+--                 TRUNC(NVL(cev.end_date, TRUNC(prlv.creation_date))))
+--        AND    (TRUNC(prlv.creation_date) BETWEEN TRUNC(NVL(cev.employee_start_date, TRUNC(prlv.creation_date))) AND
+--                 TRUNC(NVL(cev.employee_end_date, TRUNC(prlv.creation_date))))
+--        AND    (TRUNC(prlv.creation_date) BETWEEN(NVL(cev.assign_start_date, TRUNC(prlv.creation_date))) AND
+--                 TRUNC(NVL(cev.assign_end_date, TRUNC(prlv.creation_date))))
+--        /* 2010.05.10 D.Abe E_本稼動_02598対応 END   */
+        /* 2011-07-08 K.Kiriu E_本稼動_07712対応 DEL END */
         AND    (TRUNC(ld_process_date) BETWEEN(NVL(prlv.lookup_start_date, TRUNC(ld_process_date))) AND
                  TRUNC(NVL(prlv.lookup_end_date, TRUNC(ld_process_date))))
         AND    (TRUNC(ld_process_date) BETWEEN(NVL(prlv.category_start_date, TRUNC(ld_process_date))) AND
@@ -5350,7 +5547,11 @@ AS
       --UNION
       --SELECT   prlv.requisition_line_id         requisition_line_id              -- 発注依頼明細ID
       UNION ALL
-      SELECT   /*+ first_rows leading(wrp) use_nl(prlv prh cev) */
+      /* 2011-07-08 K.Kiriu E_本稼動_07712対応 MOD START */
+--      SELECT   /*+ first_rows leading(wrp) use_nl(prlv prh cev) */
+      -- 旧台代替
+      SELECT   /*+ first_rows leading(wrp) use_nl(prlv prh) */
+      /* 2011-07-08 K.Kiriu E_本稼動_07712対応 MOD END */
                prlv.requisition_line_id         requisition_line_id              -- 発注依頼明細ID
       /* 2009.08.05 K.Satomura 0000778対応 END */
               ,cn_branch_no                     slip_branch_no                   -- 伝票枝番
@@ -5393,7 +5594,10 @@ AS
               ,prlv.remarks2                    remarks2                         -- 備考２
               ,prlv.remarks3                    remarks3                         -- 備考３
               ,null                             install_at_customer_code         -- 顧客コード１
-              ,cev.employee_number              employee_number                  -- 担当営業員コード
+              /* 2011-07-08 K.Kiriu E_本稼動_07712対応 MOD START */
+--              ,cev.employee_number              employee_number                  -- 担当営業員コード
+              ,NULL                             employee_number                  -- 担当営業員コード
+              /* 2011-07-08 K.Kiriu E_本稼動_07712対応 MOD END */
               ,null                             po_header_num                    -- 発注番号
               ,null                             po_line_num                      -- 発注明細番号
               ,null                             po_distribution_num              -- 発注搬送番号
@@ -5408,27 +5612,31 @@ AS
       FROM     xxcso_requisition_lines_v        prlv                             -- 発注依頼明細情報ビュー
               ,po_requisition_headers           prh                              -- 発注依頼ヘッダビュー
               ,xxcso_wk_requisition_proc        wrp                    -- 作業依頼／発注情報連携対象テーブル
-              ,xxcso_employees_v                cev                              -- 従業員マスタビュー
+              /* 2011-07-08 K.Kiriu E_本稼動_07712対応 DEL START */
+--              ,xxcso_employees_v                cev                              -- 従業員マスタビュー
+              /* 2011-07-08 K.Kiriu E_本稼動_07712対応 DEL END */
       WHERE    prlv.category_kbn          = cv_old_altrntive_att1
         AND    prlv.requisition_header_id = prh.requisition_header_id
         AND    prh.authorization_status   = cv_approved
         AND    prlv.requisition_line_id   = wrp.requisition_line_id
         AND    wrp.interface_flag         = cv_n
-        AND    cev.user_id                = prh.created_by
-        /* 2010.05.10 D.Abe E_本稼動_02598対応 START */
-        --AND    (TRUNC(ld_process_date) BETWEEN TRUNC(NVL(cev.start_date, TRUNC(ld_process_date))) AND
-        --         TRUNC(NVL(cev.end_date, TRUNC(ld_process_date))))
-        --AND    (TRUNC(ld_process_date) BETWEEN TRUNC(NVL(cev.employee_start_date, TRUNC(ld_process_date))) AND
-        --         TRUNC(NVL(cev.employee_end_date, TRUNC(ld_process_date))))
-        --AND    (TRUNC(ld_process_date) BETWEEN(NVL(cev.assign_start_date, TRUNC(ld_process_date))) AND
-        --         TRUNC(NVL(cev.assign_end_date, TRUNC(ld_process_date))))
-        AND    (TRUNC(prlv.creation_date) BETWEEN TRUNC(NVL(cev.start_date, TRUNC(prlv.creation_date))) AND
-                 TRUNC(NVL(cev.end_date, TRUNC(prlv.creation_date))))
-        AND    (TRUNC(prlv.creation_date) BETWEEN TRUNC(NVL(cev.employee_start_date, TRUNC(prlv.creation_date))) AND
-                 TRUNC(NVL(cev.employee_end_date, TRUNC(prlv.creation_date))))
-        AND    (TRUNC(prlv.creation_date) BETWEEN(NVL(cev.assign_start_date, TRUNC(prlv.creation_date))) AND
-                 TRUNC(NVL(cev.assign_end_date, TRUNC(prlv.creation_date))))
-        /* 2010.05.10 D.Abe E_本稼動_02598対応 END   */
+        /* 2011-07-08 K.Kiriu E_本稼動_07712対応 DEL START */
+--        AND    cev.user_id                = prh.created_by
+--        /* 2010.05.10 D.Abe E_本稼動_02598対応 START */
+--        --AND    (TRUNC(ld_process_date) BETWEEN TRUNC(NVL(cev.start_date, TRUNC(ld_process_date))) AND
+--        --         TRUNC(NVL(cev.end_date, TRUNC(ld_process_date))))
+--        --AND    (TRUNC(ld_process_date) BETWEEN TRUNC(NVL(cev.employee_start_date, TRUNC(ld_process_date))) AND
+--        --         TRUNC(NVL(cev.employee_end_date, TRUNC(ld_process_date))))
+--        --AND    (TRUNC(ld_process_date) BETWEEN(NVL(cev.assign_start_date, TRUNC(ld_process_date))) AND
+--        --         TRUNC(NVL(cev.assign_end_date, TRUNC(ld_process_date))))
+--        AND    (TRUNC(prlv.creation_date) BETWEEN TRUNC(NVL(cev.start_date, TRUNC(prlv.creation_date))) AND
+--                 TRUNC(NVL(cev.end_date, TRUNC(prlv.creation_date))))
+--        AND    (TRUNC(prlv.creation_date) BETWEEN TRUNC(NVL(cev.employee_start_date, TRUNC(prlv.creation_date))) AND
+--                 TRUNC(NVL(cev.employee_end_date, TRUNC(prlv.creation_date))))
+--        AND    (TRUNC(prlv.creation_date) BETWEEN(NVL(cev.assign_start_date, TRUNC(prlv.creation_date))) AND
+--                 TRUNC(NVL(cev.assign_end_date, TRUNC(prlv.creation_date))))
+--        /* 2010.05.10 D.Abe E_本稼動_02598対応 END   */
+        /* 2011-07-08 K.Kiriu E_本稼動_07712対応 DEL END */
         AND    (TRUNC(ld_process_date) BETWEEN(NVL(prlv.lookup_start_date, TRUNC(ld_process_date))) AND
                  TRUNC(NVL(prlv.lookup_end_date, TRUNC(ld_process_date))))
         AND    (TRUNC(ld_process_date) BETWEEN(NVL(prlv.category_start_date, TRUNC(ld_process_date))) AND
@@ -5437,7 +5645,11 @@ AS
       --UNION
       --SELECT   prlv.requisition_line_id         requisition_line_id              -- 発注依頼明細ID
       UNION ALL
-      SELECT   /*+ first_rows leading(wrp) use_nl(prlv prh cev) */
+      /* 2011-07-08 K.Kiriu E_本稼動_07712対応 MOD START */
+--      SELECT   /*+ first_rows leading(wrp) use_nl(prlv prh cev) */
+      -- 引揚
+      SELECT   /*+ first_rows leading(wrp) use_nl(prlv prh) */
+      /* 2011-07-08 K.Kiriu E_本稼動_07712対応 MOD END */
                prlv.requisition_line_id         requisition_line_id              -- 発注依頼明細ID
       /* 2009.08.05 K.Satomura 0000778対応 END */
               ,cn_branch_no                     slip_branch_no                   -- 伝票枝番
@@ -5480,7 +5692,10 @@ AS
               ,prlv.remarks2                    remarks2                         -- 備考２
               ,prlv.remarks3                    remarks3                         -- 備考３
               ,null                             install_at_customer_code         -- 顧客コード１
-              ,cev.employee_number              employee_number                  -- 担当営業員コード
+              /* 2011-07-08 K.Kiriu E_本稼動_07712対応 MOD START */
+--              ,cev.employee_number              employee_number                  -- 担当営業員コード
+              ,NULL                             employee_number                  -- 担当営業員コード
+              /* 2011-07-08 K.Kiriu E_本稼動_07712対応 MOD END */
               ,null                             po_header_num                    -- 発注番号
               ,null                             po_line_num                      -- 発注明細番号
               ,null                             po_distribution_num              -- 発注搬送番号
@@ -5495,27 +5710,31 @@ AS
       FROM     xxcso_requisition_lines_v        prlv                             -- 発注依頼明細情報ビュー
               ,po_requisition_headers           prh                              -- 発注依頼ヘッダビュー
               ,xxcso_wk_requisition_proc        wrp                    -- 作業依頼／発注情報連携対象テーブル
-              ,xxcso_employees_v                cev                              -- 従業員マスタビュー
+              /* 2011-07-08 K.Kiriu E_本稼動_07712対応 DEL START */
+--              ,xxcso_employees_v                cev                              -- 従業員マスタビュー
+              /* 2011-07-08 K.Kiriu E_本稼動_07712対応 DEL END */
       WHERE    prlv.category_kbn          = cv_withdraw_att1
         AND    prlv.requisition_header_id = prh.requisition_header_id
         AND    prh.authorization_status   = cv_approved
         AND    prlv.requisition_line_id   = wrp.requisition_line_id
         AND    wrp.interface_flag         = cv_n
-        AND    cev.user_id                = prh.created_by
-        /* 2010.05.10 D.Abe E_本稼動_02598対応 START */
-        --AND    (TRUNC(ld_process_date) BETWEEN TRUNC(NVL(cev.start_date, TRUNC(ld_process_date))) AND
-        --         TRUNC(NVL(cev.end_date, TRUNC(ld_process_date))))
-        --AND    (TRUNC(ld_process_date) BETWEEN TRUNC(NVL(cev.employee_start_date, TRUNC(ld_process_date))) AND
-        --         TRUNC(NVL(cev.employee_end_date, TRUNC(ld_process_date))))
-        --AND    (TRUNC(ld_process_date) BETWEEN(NVL(cev.assign_start_date, TRUNC(ld_process_date))) AND
-        --         TRUNC(NVL(cev.assign_end_date, TRUNC(ld_process_date))))
-        AND    (TRUNC(prlv.creation_date) BETWEEN TRUNC(NVL(cev.start_date, TRUNC(prlv.creation_date))) AND
-                 TRUNC(NVL(cev.end_date, TRUNC(prlv.creation_date))))
-        AND    (TRUNC(prlv.creation_date) BETWEEN TRUNC(NVL(cev.employee_start_date, TRUNC(prlv.creation_date))) AND
-                 TRUNC(NVL(cev.employee_end_date, TRUNC(prlv.creation_date))))
-        AND    (TRUNC(prlv.creation_date) BETWEEN(NVL(cev.assign_start_date, TRUNC(prlv.creation_date))) AND
-                 TRUNC(NVL(cev.assign_end_date, TRUNC(prlv.creation_date))))
-        /* 2010.05.10 D.Abe E_本稼動_02598対応 END   */
+        /* 2011-07-08 K.Kiriu E_本稼動_07712対応 DEL START */
+--        AND    cev.user_id                = prh.created_by
+--        /* 2010.05.10 D.Abe E_本稼動_02598対応 START */
+--        --AND    (TRUNC(ld_process_date) BETWEEN TRUNC(NVL(cev.start_date, TRUNC(ld_process_date))) AND
+--        --         TRUNC(NVL(cev.end_date, TRUNC(ld_process_date))))
+--        --AND    (TRUNC(ld_process_date) BETWEEN TRUNC(NVL(cev.employee_start_date, TRUNC(ld_process_date))) AND
+--        --         TRUNC(NVL(cev.employee_end_date, TRUNC(ld_process_date))))
+--        --AND    (TRUNC(ld_process_date) BETWEEN(NVL(cev.assign_start_date, TRUNC(ld_process_date))) AND
+--        --         TRUNC(NVL(cev.assign_end_date, TRUNC(ld_process_date))))
+--        AND    (TRUNC(prlv.creation_date) BETWEEN TRUNC(NVL(cev.start_date, TRUNC(prlv.creation_date))) AND
+--                 TRUNC(NVL(cev.end_date, TRUNC(prlv.creation_date))))
+--        AND    (TRUNC(prlv.creation_date) BETWEEN TRUNC(NVL(cev.employee_start_date, TRUNC(prlv.creation_date))) AND
+--                 TRUNC(NVL(cev.employee_end_date, TRUNC(prlv.creation_date))))
+--        AND    (TRUNC(prlv.creation_date) BETWEEN(NVL(cev.assign_start_date, TRUNC(prlv.creation_date))) AND
+--                 TRUNC(NVL(cev.assign_end_date, TRUNC(prlv.creation_date))))
+--        /* 2010.05.10 D.Abe E_本稼動_02598対応 END   */
+        /* 2011-07-08 K.Kiriu E_本稼動_07712対応 DEL END */
         AND    (TRUNC(ld_process_date) BETWEEN(NVL(prlv.lookup_start_date, TRUNC(ld_process_date))) AND
                  TRUNC(NVL(prlv.lookup_end_date, TRUNC(ld_process_date))))
         AND    (TRUNC(ld_process_date) BETWEEN(NVL(prlv.category_start_date, TRUNC(ld_process_date))) AND
@@ -5524,7 +5743,11 @@ AS
       --UNION
       --SELECT   prlv.requisition_line_id         requisition_line_id              -- 発注依頼明細ID
       UNION ALL
-      SELECT   /*+ first_rows leading(wrp) use_nl(prlv prh cev) */
+      /* 2011-07-08 K.Kiriu E_本稼動_07712対応 MOD START */
+--      SELECT   /*+ first_rows leading(wrp) use_nl(prlv prh cev) */
+      -- 店内移動
+      SELECT   /*+ first_rows leading(wrp) use_nl(prlv prh) */
+      /* 2011-07-08 K.Kiriu E_本稼動_07712対応 MOD END */
                prlv.requisition_line_id         requisition_line_id              -- 発注依頼明細ID
       /* 2009.08.05 K.Satomura 0000778対応 END */
               ,cn_branch_no                     slip_branch_no                   -- 伝票枝番
@@ -5567,7 +5790,10 @@ AS
               ,prlv.remarks2                    remarks2                         -- 備考２
               ,prlv.remarks3                    remarks3                         -- 備考３
               ,null                             install_at_customer_code         -- 顧客コード１
-              ,cev.employee_number              employee_number                  -- 担当営業員コード
+              /* 2011-07-08 K.Kiriu E_本稼動_07712対応 MOD START */
+--              ,cev.employee_number              employee_number                  -- 担当営業員コード
+              ,NULL                             employee_number                  -- 担当営業員コード
+              /* 2011-07-08 K.Kiriu E_本稼動_07712対応 MOD END */
               ,null                             po_header_num                    -- 発注番号
               ,null                             po_line_num                      -- 発注明細番号
               ,null                             po_distribution_num              -- 発注搬送番号
@@ -5582,27 +5808,31 @@ AS
       FROM     xxcso_requisition_lines_v        prlv                             -- 発注依頼明細情報ビュー
               ,po_requisition_headers           prh                              -- 発注依頼ヘッダビュー
               ,xxcso_wk_requisition_proc        wrp                    -- 作業依頼／発注情報連携対象テーブル
-              ,xxcso_employees_v                cev                              -- 従業員マスタビュー
+              /* 2011-07-08 K.Kiriu E_本稼動_07712対応 DEL START */
+--              ,xxcso_employees_v                cev                              -- 従業員マスタビュー
+              /* 2011-07-08 K.Kiriu E_本稼動_07712対応 DEL END */
       WHERE    prlv.category_kbn          = cv_move_att1
         AND    prlv.requisition_header_id = prh.requisition_header_id
         AND    prh.authorization_status   = cv_approved
         AND    prlv.requisition_line_id   = wrp.requisition_line_id
         AND    wrp.interface_flag         = cv_n
-        AND    cev.user_id                = prh.created_by
-        /* 2010.05.10 D.Abe E_本稼動_02598対応 START */
-        --AND    (TRUNC(ld_process_date) BETWEEN TRUNC(NVL(cev.start_date, TRUNC(ld_process_date))) AND
-        --         TRUNC(NVL(cev.end_date, TRUNC(ld_process_date))))
-        --AND    (TRUNC(ld_process_date) BETWEEN TRUNC(NVL(cev.employee_start_date, TRUNC(ld_process_date))) AND
-        --         TRUNC(NVL(cev.employee_end_date, TRUNC(ld_process_date))))
-        --AND    (TRUNC(ld_process_date) BETWEEN(NVL(cev.assign_start_date, TRUNC(ld_process_date))) AND
-        --         TRUNC(NVL(cev.assign_end_date, TRUNC(ld_process_date))))
-        AND    (TRUNC(prlv.creation_date) BETWEEN TRUNC(NVL(cev.start_date, TRUNC(prlv.creation_date))) AND
-                 TRUNC(NVL(cev.end_date, TRUNC(prlv.creation_date))))
-        AND    (TRUNC(prlv.creation_date) BETWEEN TRUNC(NVL(cev.employee_start_date, TRUNC(prlv.creation_date))) AND
-                 TRUNC(NVL(cev.employee_end_date, TRUNC(prlv.creation_date))))
-        AND    (TRUNC(prlv.creation_date) BETWEEN(NVL(cev.assign_start_date, TRUNC(prlv.creation_date))) AND
-                 TRUNC(NVL(cev.assign_end_date, TRUNC(prlv.creation_date))))
-        /* 2010.05.10 D.Abe E_本稼動_02598対応 END   */
+        /* 2011-07-08 K.Kiriu E_本稼動_07712対応 DEL START */
+--        AND    cev.user_id                = prh.created_by
+--        /* 2010.05.10 D.Abe E_本稼動_02598対応 START */
+--        --AND    (TRUNC(ld_process_date) BETWEEN TRUNC(NVL(cev.start_date, TRUNC(ld_process_date))) AND
+--        --         TRUNC(NVL(cev.end_date, TRUNC(ld_process_date))))
+--        --AND    (TRUNC(ld_process_date) BETWEEN TRUNC(NVL(cev.employee_start_date, TRUNC(ld_process_date))) AND
+--        --         TRUNC(NVL(cev.employee_end_date, TRUNC(ld_process_date))))
+--        --AND    (TRUNC(ld_process_date) BETWEEN(NVL(cev.assign_start_date, TRUNC(ld_process_date))) AND
+--        --         TRUNC(NVL(cev.assign_end_date, TRUNC(ld_process_date))))
+--        AND    (TRUNC(prlv.creation_date) BETWEEN TRUNC(NVL(cev.start_date, TRUNC(prlv.creation_date))) AND
+--                 TRUNC(NVL(cev.end_date, TRUNC(prlv.creation_date))))
+--        AND    (TRUNC(prlv.creation_date) BETWEEN TRUNC(NVL(cev.employee_start_date, TRUNC(prlv.creation_date))) AND
+--                 TRUNC(NVL(cev.employee_end_date, TRUNC(prlv.creation_date))))
+--        AND    (TRUNC(prlv.creation_date) BETWEEN(NVL(cev.assign_start_date, TRUNC(prlv.creation_date))) AND
+--                 TRUNC(NVL(cev.assign_end_date, TRUNC(prlv.creation_date))))
+--        /* 2010.05.10 D.Abe E_本稼動_02598対応 END   */
+        /* 2011-07-08 K.Kiriu E_本稼動_07712対応 DEL END */
         AND    (TRUNC(ld_process_date) BETWEEN(NVL(prlv.lookup_start_date, TRUNC(ld_process_date))) AND
                  TRUNC(NVL(prlv.lookup_end_date, TRUNC(ld_process_date))))
         AND    (TRUNC(ld_process_date) BETWEEN(NVL(prlv.category_start_date, TRUNC(ld_process_date))) AND
@@ -5639,6 +5869,9 @@ AS
       ,ov_csv_dir            => lv_csv_dir          -- CSVファイル出力先
       ,ov_csv_nm             => lv_csv_nm           -- CSVファイル名
       ,ov_wdrw_base_code     => lv_wdrw_base_code   -- 引揚拠点コード
+      /* 2011-07-08 K.Kiriu E_本稼動_07712対応 DEL START */
+      ,on_org_id             => ln_org_id           -- 営業単位
+      /* 2011-07-08 K.Kiriu E_本稼動_07712対応 DEL END */
       ,ov_errbuf             => lv_errbuf           -- エラー・メッセージ            --# 固定 #
       ,ov_retcode            => lv_retcode          -- リターン・コード              --# 固定 #
       ,ov_errmsg             => lv_errmsg           -- ユーザー・エラー・メッセージ  --# 固定 #
@@ -5969,6 +6202,9 @@ AS
            io_get_data_rec            => l_get_data_rec          -- 出力用作業依頼/発注情報
           ,id_process_date            => ld_process_date         -- 業務処理日
           ,iv_wdrw_base_code          => lv_wdrw_base_code       -- 引揚拠点コード
+          /* 2011-07-08 K.Kiriu E_本稼動_07712対応 ADD START */
+          ,iv_org_id                  => ln_org_id               -- 営業単位
+          /* 2011-07-08 K.Kiriu E_本稼動_07712対応 ADD END */
           ,ov_errbuf                  => lv_errbuf               -- エラー・メッセージ   --# 固定 #
           ,ov_retcode                 => lv_sub_retcode          -- リターン・コード     --# 固定 #
           ,ov_errmsg                  => lv_errmsg      -- ユーザー・エラー・メッセージ  --# 固定 #
