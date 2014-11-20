@@ -8,7 +8,7 @@ AS
  *                    CSVファイルを作成します。
  * MD.050           : MD050_CSO_014_A06_HHT-EBSインターフェース：
  *                    (OUT)営業員管理ファイル
- * Version          : 1.8
+ * Version          : 1.9
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -43,6 +43,7 @@ AS
  *  2009-10-19    1.7   K.Kubo            T4_00046対応
  *  2009-11-23    1.8   T.Maruyama        E_本番_00331対応（当月売上実績を営業成績表と同様
  *                                        成績計上者ベースとする）
+ *  2010-08-26    1.9   K.Kiriu           E_本番_04153対応（PT対応)
  *****************************************************************************************/
 --
 --#######################  固定グローバル定数宣言部 START   #######################
@@ -1478,6 +1479,11 @@ AS
     -- ===============================
     -- ユーザー宣言部
     -- ===============================
+    /* 2010.08.26 K.Kiriu E_本番_04153対応 START */
+    -- *** ローカル定数 ***
+    ct_prof_electric_fee_item_cd
+    CONSTANT  fnd_profile_options.profile_option_name%TYPE := 'XXCOS1_ELECTRIC_FEE_ITEM_CODE';
+    /* 2010.08.26 K.Kiriu E_本番_04153対応 END */
     -- *** ローカル変数 ***
     -- OUTパラメータ格納用
     lv_csv_dir           VARCHAR2(2000); -- CSVファイル出力先
@@ -1485,6 +1491,12 @@ AS
     lb_fopn_retcd        BOOLEAN;        -- ファイルオープン確認戻り値格納
     lv_err_rec_info      VARCHAR2(5000); -- データ項目内容メッセージ出力用
     lv_process_date_next VARCHAR2(150);  -- データ項目内容メッセージ出力用 
+    /* 2010.08.26 K.Kiriu E_本番_04153対応 START */
+    -- カーソル条件用
+    lt_elextric_item_cd    xxcos_sales_exp_lines.item_code%TYPE; -- 変動電気代品目コード(プロファイル値)格納用
+    ln_closed_id           NUMBER;                               -- クローズID格納用
+    ld_process_date_next01 DATE;                                 -- 業務日翌日の月初日格納用
+    /* 2010.08.26 K.Kiriu E_本番_04153対応 END */
     
 --
 -- *** ローカル・カーソル ***
@@ -1520,6 +1532,10 @@ AS
                     END
               ) duty_code                            -- 業務コード
              /* 2009.10.19 K.Kubo T4_00046対応 END */
+             /* 2010.08.26 K.Kiriu E_本番_04153対応 START */
+             ,NVL(se_amt.pure_amount_sum ,0)     pure_amount_sum
+             ,NVL(jtb_cnt.prsn_total_cnt ,0)     prsn_total_cnt
+             /* 2010.08.26 K.Kiriu E_本番_04153対応 END */
       FROM   xxcso_resources_v  xrv                  -- リソースマスタビュー
             /* 2009.06.03 K.Satomura T1_1304対応 START */
             ,(
@@ -1544,6 +1560,42 @@ AS
       --           OR  lv_process_date_next    <  xrv.issue_date
       --           AND TRIM(xrv.duty_code_old) =  cv_duty_cd
       --         )
+            /* 2010.08.26 K.Kiriu E_本番_04153対応 START */
+            ,(
+              SELECT /*+
+                       USE_NL(saeh sael)
+                       INDEX(saeh xxcos_sales_exp_headers_n11)
+                     */
+                     saeh.sales_base_code        sales_base_code
+                    ,saeh.results_employee_code  results_employee_code
+                    ,ROUND(SUM(sael.pure_amount) /1000) pure_amount_sum   -- 販売実績金額(千円単位に取得)
+              FROM   xxcos_sales_exp_headers  saeh,
+                     xxcos_sales_exp_lines    sael
+              WHERE  sael.sales_exp_header_id      =  saeh.sales_exp_header_id
+              AND    sael.item_code                <> lt_elextric_item_cd -- 変動電気代(プロファイル)
+              AND    saeh.delivery_date BETWEEN ld_process_date_next01
+                                            AND gd_process_date
+              GROUP BY
+                     saeh.sales_base_code
+                    ,saeh.results_employee_code
+             ) se_amt
+            ,(
+              SELECT /*+
+                       INDEX(jtb xxcso_jtf_tasks_b_n20)
+                     */
+                     jtb.owner_id  owner_id
+                    ,COUNT(1)      prsn_total_cnt  -- 当月訪問実績
+              FROM   jtf_tasks_b  jtb
+              WHERE  jtb.source_object_type_code = cv_object_cd        -- ソースコード:'PARTY'
+              AND    jtb.task_status_id          = ln_closed_id        -- クローズID(プロファイル)
+              AND    jtb.deleted_flag            = cv_delete_flag      -- 未削除
+              AND    TRUNC(jtb.actual_end_date) BETWEEN ld_process_date_next01
+                                                    AND gd_process_date
+              AND    jtb.owner_type_code         = cv_owner_type_code  -- オーナータイプ:'RS_EMPLOYEE'
+              GROUP BY
+                     jtb.owner_id
+             ) jtb_cnt
+             /* 2010.08.26 K.Kiriu E_本番_04153対応 END */
       WHERE  (
                 (xrv.issue_date          <= lv_process_date_next
                AND TRIM(xrv.duty_code_new) IN (cv_duty_cd, cv_duty_cd_050))  -- 職務 010：ルートセールスと050：専門百貨店販売
@@ -1573,6 +1625,13 @@ AS
         -- リソース：（業務処理日＋１）時点で有効（有効判断はリソースのみ。）
       AND    gd_process_date_next BETWEEN TRUNC(xrv.resource_start_date) -- 基準日で有効判断する。
       AND    TRUNC(NVL(xrv.resource_end_date, gd_process_date_next))
+      /* 2010.08.26 K.Kiriu E_本番_04153対応 START */
+      AND    se_amt.results_employee_code(+) = xrv.employee_number
+      AND    se_amt.sales_base_code(+)       = xxcso_util_common_pkg.get_rs_base_code(
+                                                 xrv.resource_id
+                                                ,gd_process_date_next)
+      AND    jtb_cnt.owner_id(+)             = xrv.resource_id
+      /* 2010.08.26 K.Kiriu E_本番_04153対応 END */
       ;
       /* 2009.06.03 K.Satomura T1_1304対応 END */
 --
@@ -1645,6 +1704,11 @@ AS
     -- A-4.リソースデータ取得
     -- =================================================
     lv_process_date_next  := TO_CHAR(gd_process_date_next, 'YYYYMMDD');
+    /* 2010.08.26 K.Kiriu E_本番_04153対応 START */
+    ln_closed_id           := TO_NUMBER(gv_closed_id);
+    lt_elextric_item_cd    := FND_PROFILE.VALUE(ct_prof_electric_fee_item_cd);
+    ld_process_date_next01 := TO_DATE(TO_CHAR(gd_process_date_next, 'YYYYMM') || '01', 'YYYYMMDD');
+    /* 2010.08.26 K.Kiriu E_本番_04153対応 END */
 --
     --カーソルオープン
     OPEN xrv_v_cur;
@@ -1668,6 +1732,10 @@ AS
         l_prsncd_data_rec.resource_id       := l_xrv_v_cur_rec.resource_id;
         l_prsncd_data_rec.full_name         := l_xrv_v_cur_rec.full_name;
         /* 2009.10.19 K.Kubo T4_00046対応 START */
+        /* 2010.08.26 K.Kiriu E_本番_04153対応 START */
+        l_prsncd_data_rec.pure_amount_sum   := l_xrv_v_cur_rec.pure_amount_sum;
+        l_prsncd_data_rec.prsn_total_cnt    := l_xrv_v_cur_rec.prsn_total_cnt;
+        /* 2010.08.26 K.Kiriu E_本番_04153対応 END */
         --職務コード
         gv_duty_cd                          := l_xrv_v_cur_rec.duty_code;
         --職務コード名
@@ -1707,18 +1775,30 @@ AS
         END IF;
         --
         /* 2009.05.28 K.Satomura T1_1236対応 END */
+        /* 2010.08.26 K.Kiriu E_本番_04153対応 START */
         -- =================================================
         -- A-5.CSVファイルに出力する関連情報取得
         -- =================================================
-        get_sum_cnt_data(
-           io_prsncd_data_rec => l_prsncd_data_rec   -- 営業員管理(ファイル)情報ワークテーブルデータ
-          ,ov_errbuf          => lv_errbuf           -- エラー・メッセージ            --# 固定 #
-          ,ov_retcode         => lv_retcode          -- リターン・コード              --# 固定 #
-          ,ov_errmsg          => lv_errmsg           -- ユーザー・エラー・メッセージ  --# 固定 #
+        --get_sum_cnt_data(
+        --   io_prsncd_data_rec => l_prsncd_data_rec   -- 営業員管理(ファイル)情報ワークテーブルデータ
+        --  ,ov_errbuf          => lv_errbuf           -- エラー・メッセージ            --# 固定 #
+        --  ,ov_retcode         => lv_retcode          -- リターン・コード              --# 固定 #
+        --  ,ov_errmsg          => lv_errmsg           -- ユーザー・エラー・メッセージ  --# 固定 #
+        --);
+        --IF (lv_retcode = cv_status_error) THEN
+        --  RAISE global_process_expt;
+        --END IF;
+        -- 販売実績額をログに出力
+        fnd_file.put_line(
+           which  => FND_FILE.LOG
+          ,buff   => cv_debug_msg_sum   || TO_CHAR(l_prsncd_data_rec.pure_amount_sum)
         );
-        IF (lv_retcode = cv_status_error) THEN
-          RAISE global_process_expt;
-        END IF;
+        -- 当月訪問実績件数をログに出力
+        fnd_file.put_line(
+           which  => FND_FILE.LOG
+          ,buff   => cv_debug_msg_cnt   || TO_CHAR(l_prsncd_data_rec.prsn_total_cnt) || CHR(10)
+        );
+        /* 2010.08.26 K.Kiriu E_本番_04153対応 END */
 --        
        -- =====================================================
         -- A-6.営業員管理データを抽出 
