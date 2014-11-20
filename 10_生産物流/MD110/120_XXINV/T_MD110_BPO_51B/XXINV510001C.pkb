@@ -8,7 +8,7 @@ AS
  * Description      : 移動伝票
  * MD.050/070       : 移動実績 T_MD050_BPO_510
  *                  : 移動伝票 T_MD070_BPO_51A
- * Version          : 1.6
+ * Version          : 1.7
  *
  * Program List
  * ---------------------------- ----------------------------------------------------
@@ -35,6 +35,7 @@ AS
  *  2008/06/24    1.4   Yasuhisa Yamamoto  変更要求対応#92
  *  2008/07/18    1.5   Yasuhisa Yamamoto  内部変更要求対応
  *  2008/07/29    1.6   Marushita          禁則文字「'」「"」「<」「>」「＆」対応
+ *  2008/07/30    1.7   Yuko Kawano        内部変更要求対応#164
  *
  *****************************************************************************************/
 --
@@ -1437,6 +1438,11 @@ AS
         lv_move_number := gr_head_data.move_number ;
       END LOOP get_actual_cur_loop;
 --
+--2008.07.30 Y.Kawano ADD start
+      ln_volume_sum := ceil(ln_volume_sum);
+      ln_weight_sum := ceil(ln_weight_sum);
+--2008.07.30 Y.Kawano ADD end
+--
       -- ===================================================
       -- XMLデータ作成（合計部）
       -- ===================================================
@@ -1601,6 +1607,12 @@ AS
         -- 移動番号
         lv_move_number := gr_head_data.move_number;
       END LOOP get_indicate_cur_loop ;
+--
+--2008.07.30 Y.Kawano ADD start
+      ln_volume_sum := ceil(ln_volume_sum);
+      ln_weight_sum := ceil(ln_weight_sum);
+--2008.07.30 Y.Kawano ADD end
+--
       -- ===================================================
       -- XMLデータ作成（合計部）
       -- ===================================================
