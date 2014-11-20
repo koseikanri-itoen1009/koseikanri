@@ -1,4 +1,4 @@
-CREATE OR REPLACE PACKAGE BODY XXCOS004A03R
+CREATE OR REPLACE PACKAGE BODY APPS.XXCOS004A03R
 AS
 /*****************************************************************************************
  * Copyright(c)Sumisho Computer Systems Corporation, 2008. All rights reserved.
@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCOS004A03R (body)
  * Description      : 消化計算チェックリスト
  * MD.050           : 消化計算チェックリスト MD050_COS_004_A03
- * Version          : 1.2
+ * Version          : 1.3
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -28,6 +28,7 @@ AS
  *  2009/01/08    1.0   K.Kin            新規作成
  *  2009/02/04    1.1   K.Kin            [COS_011]文字列バッファが小さすぎます不具合対応
  *  2009/02/26    1.2   K.Kin            削除処理のコメント削除
+ *  2009/06/19    1.3   K.Kiriu          [T1_1437]データパージ不具合対応
  *
  *****************************************************************************************/
 --
@@ -1074,6 +1075,12 @@ AS
     lv_errbuf  VARCHAR2(5000);  -- エラー・メッセージ
     lv_retcode VARCHAR2(1);     -- リターン・コード
     lv_errmsg  VARCHAR2(5000);  -- ユーザー・エラー・メッセージ
+/* 2009/06/19 Ver1.3 Add Start */
+    lv_errbuf_svf  VARCHAR2(5000);  -- エラー・メッセージ(SVF実行結果保持用)
+    lv_retcode_svf VARCHAR2(1);     -- リターン・コード(SVF実行結果保持用)
+    lv_errmsg_svf  VARCHAR2(5000);  -- ユーザー・エラー・メッセージ(SVF実行結果保持用)
+/* 2009/06/19 Ver1.3 Add End   */
+
 --
 --###########################  固定部 END   ####################################
   BEGIN
@@ -1159,11 +1166,17 @@ AS
       ov_errmsg               => lv_errmsg                   -- ユーザー・エラー・メッセージ
       );
 --
-    IF  ( lv_retcode = cv_status_normal ) THEN
-      NULL;
-    ELSE
-      RAISE global_process_expt;
-    END IF;
+/* 2009/06/19 Ver1.3 Mod Start */
+--    IF  ( lv_retcode = cv_status_normal ) THEN
+--      NULL;
+--    ELSE
+--      RAISE global_process_expt;
+--    END IF;
+    --エラーでもワークテーブルを削除する為、エラー情報を保持
+    lv_errbuf_svf  := lv_errbuf;
+    lv_retcode_svf := lv_retcode;
+    lv_errmsg_svf  := lv_errmsg;
+/* 2009/06/19 Ver1.3 Mod End   */
 --
     -- ===============================
     -- A-3  帳票ワークテーブル削除
@@ -1178,8 +1191,18 @@ AS
     ELSE
       RAISE global_process_expt;
     END IF;
-
+--
+/* 2009/06/19 Ver1.3 Add Start */
     COMMIT;
+--
+    --SVF実行結果確認
+    IF ( lv_retcode_svf = cv_status_error ) THEN
+      lv_errbuf  := lv_errbuf_svf;
+      lv_retcode := lv_retcode_svf;
+      lv_errmsg  := lv_errmsg_svf;
+      RAISE global_process_expt;
+    END IF;
+/* 2009/06/19 Ver1.3 Add Start */
 --
     --明細０件時の警告終了制御
     IF ( g_rpt_data_tab.COUNT   =   0 )   THEN
