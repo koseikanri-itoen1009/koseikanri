@@ -7,7 +7,7 @@ AS
  * Description      : 入出庫情報差異リスト（出庫基準）
  * MD.050/070       : 生産物流共通（出荷・移動インタフェース）Issue1.0(T_MD050_BPO_930)
  *                    生産物流共通（出荷・移動インタフェース）Issue1.0(T_MD070_BPO_93C)
- * Version          : 1.19
+ * Version          : 1.20
  *
  * Program List
  * ---------------------------- ----------------------------------------------------------
@@ -53,6 +53,7 @@ AS
  *  2009/01/20    1.17 Yasuhisa Yamamoto 本番障害#806,#814,#975対応
  *  2009/01/27    1.18 Yasuhisa Yamamoto 本番障害#1044対応
  *  2009/03/30    1.19  Akyoshi Shiina   本番障害#1290対応
+ *  2009/10/02    1.20  Hitomi Itou      本番障害#1286対応
  *****************************************************************************************/
 --
 --#######################  固定グローバル定数宣言部 START   #######################
@@ -2211,6 +2212,9 @@ AS
       --AND    xshi.delivery_no  = ir_get_data.delivery_no   -- 配送Ｎｏ                                        2008/10/31 統合指摘#461 Del
       AND    NVL(xshi.delivery_no,gv_nvl_null_char) = NVL(ir_get_data.delivery_no,gv_nvl_null_char) -- 配送Ｎｏ 2008/10/31 統合指摘#461 Add
       AND    xshi.order_source_ref = ir_get_data.request_no    -- 依頼Ｎｏ
+-- 2009/10/02 H.Itou Add Start 本番障害#1286 移動入庫,移動出庫がIFにある場合があるので、条件を追加。
+      AND    xshi.eos_data_type    = ir_get_data.order_type
+-- 2009/10/02 H.Itou Add End
       ;
 --
       lv_eos_data_type := ir_get_data.order_type;   -- 2008/10/17 変更要求#210対応 Add
