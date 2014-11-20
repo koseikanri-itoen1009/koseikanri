@@ -7,7 +7,7 @@ AS
  * Description      : 請求ヘッダデータ作成
  * MD.050           : MD050_CFR_003_A02_請求ヘッダデータ作成
  * MD.070           : MD050_CFR_003_A02_請求ヘッダデータ作成
- * Version          : 1.06
+ * Version          : 1.07
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -38,6 +38,7 @@ AS
  *  2009/07/22    1.04 SCS 廣瀬 真佐人  障害0000827対応 パフォーマンス改善
  *  2009/08/03    1.05 SCS 廣瀬 真佐人  障害0000913対応 パフォーマンス改善
  *  2009/09/29    1.06 SCS 廣瀬 真佐人  共通課題IE535対応 請求書問題
+ *  2009/12/11    1.07 SCS 安川 智博    障害「E_本稼動_00424」暫定対応
  *
  *****************************************************************************************/
 --
@@ -2899,6 +2900,37 @@ AS
     gn_error_cnt   := 0;
     gn_warn_cnt    := 0;
     gv_conc_status := cv_status_normal;
+--
+-- Modify 2009.12.11 Ver1.07 start
+    UPDATE ra_customer_trx_all update_tab
+    SET 
+    update_tab.attribute7 = 'INVALID',
+    update_tab.last_update_date = cd_last_update_date,
+    update_tab.last_updated_by = cn_last_updated_by,
+    update_tab.last_update_login = cn_last_update_login,
+    update_tab.request_id = cn_request_id,
+    update_tab.program_application_id = cn_program_application_id,
+    update_tab.program_id = cn_program_id,
+    update_tab.program_update_date = cd_program_update_date
+    WHERE update_tab.customer_trx_id IN
+    (
+    SELECT
+    rcta.customer_trx_id
+    FROM
+    ra_customer_trx_all rcta,
+    xxcmm_cust_accounts xxca
+    WHERE rcta.bill_to_customer_id = xxca.customer_id
+    AND xxca.card_company_div = '1'
+    AND EXISTS (SELECT 'X'
+                FROM 
+                ra_cust_trx_line_gl_dist_all radist,
+                gl_code_combinations gcc
+                WHERE gcc.segment3 = '14903'
+                AND gcc.code_combination_id = radist.code_combination_id
+                AND radist.customer_trx_id = rcta.customer_trx_id)
+    AND rcta.attribute7 = 'OPEN'
+    );
+-- Modify 2009.12.11 Ver1.07 end
 --
     -- =====================================================
     --  初期処理(A-1)
