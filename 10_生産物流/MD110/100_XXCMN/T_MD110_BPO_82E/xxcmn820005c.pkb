@@ -7,7 +7,7 @@ AS
  * Description      : 原価コピー処理
  * MD.050           : 標準原価マスタT_MD050_BPO_821
  * MD.070           : 原価コピー処理(82E) T_MD070_BPO_82E
- * Version          : 1.2
+ * Version          : 1.3
  *
  * Program List
  * --------------------------- ----------------------------------------------------------
@@ -31,6 +31,7 @@ AS
  *  2008/07/01    1.0   H.Itou           新規作成
  *  2009/01/08    1.1   N.Yoshida        本番#968対応
  *  2009/03/18    1.2   A.Shiina         本番#1304対応
+ *  2009/03/23    1.3   A.Shiina         マスタ受信日時はOPM品目マスタのDFFを参照する
  *
  *****************************************************************************************/
 --
@@ -1127,7 +1128,10 @@ AS
     -- *** ローカル変数 ***
     lr_ins_this_tbl        GMF_ITEMCOST_PUB.THIS_LEVEL_DTL_TBL_TYPE; -- 原価内訳レコード(登録)
     lr_upd_this_tbl        GMF_ITEMCOST_PUB.THIS_LEVEL_DTL_TBL_TYPE; -- 原価内訳レコード(更新)
-    lt_master_receive_date cm_cmpt_dtl.attribute30%TYPE;   -- マスタ受信日
+-- 2009/03/23 v1.3 UPDATE START
+--    lt_master_receive_date cm_cmpt_dtl.attribute30%TYPE;   -- マスタ受信日
+    lt_master_receive_date xxcmn_item_mst_v.recept_date%TYPE;-- マスタ受信日
+-- 2009/03/23 v1.3 UPDATE END
     lt_cmpntcost_id        cm_cmpt_dtl.cmpntcost_id%TYPE;  -- 原価詳細ID
     ln_unit_price_ttl      NUMBER;                         -- 単価合計
     ln_update_flg          NUMBER;                         -- 1の場合、更新。0の場合、登録。
@@ -1176,6 +1180,8 @@ AS
       -- ===============================
       -- 品目原価マスタを検索
       BEGIN
+-- 2009/03/23 v1.3 UPDATE START
+/*
         SELECT ccd.attribute30     master_receive_date   -- マスタ受信日
               ,ccd.cmpntcost_id    cmpntcost_id          -- 原価詳細ID
         INTO   lt_master_receive_date                    -- マスタ受信日
@@ -1190,6 +1196,24 @@ AS
         AND    ccd.delete_mark      = 0                   -- 削除フラグ
         AND    ROWNUM               = 1
         ;
+*/
+        SELECT ximv.recept_date    master_receive_date   -- マスタ受信日
+              ,ccd.cmpntcost_id    cmpntcost_id          -- 原価詳細ID
+        INTO   lt_master_receive_date                    -- マスタ受信日
+              ,lt_cmpntcost_id                           -- 原価詳細ID
+        FROM   cm_cmpt_dtl         ccd                   -- 品目原価マスタ
+              ,xxcmn_item_mst_v    ximv                  -- OPM品目情報VEIW
+        WHERE  ccd.item_id          = it_item_id         -- 品目ID
+        AND    ccd.item_id          = ximv.item_id
+        AND    ccd.cost_cmpntcls_id = cost_cmpntcls_id_tab(loop_cnt) -- コンポーネント区分ID
+        AND    ccd.period_code      = gt_period_code      -- 期間
+        AND    ccd.whse_code        = gv_whse_code        -- 倉庫
+        AND    ccd.calendar_code    = gv_calendar_code    -- カレンダ
+        AND    ccd.cost_mthd_code   = gv_cost_div         -- 原価方法
+        AND    ccd.delete_mark      = 0                   -- 削除フラグ
+        AND    ROWNUM               = 1
+        ;
+-- 2009/03/23 v1.3 UPDATE END
 --
         -- データがすでにあるので、更新
         ln_update_flg := 1;
