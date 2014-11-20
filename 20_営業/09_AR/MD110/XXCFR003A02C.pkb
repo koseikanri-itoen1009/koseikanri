@@ -7,7 +7,7 @@ AS
  * Description      : 請求ヘッダデータ作成
  * MD.050           : MD050_CFR_003_A02_請求ヘッダデータ作成
  * MD.070           : MD050_CFR_003_A02_請求ヘッダデータ作成
- * Version          : 1.01
+ * Version          : 1.02
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -31,6 +31,7 @@ AS
  * ------------- ----- ---------------- -------------------------------------------------
  *  2008/11/11    1.00 SCS 松尾 泰生    初回作成
  *  2009/04/20    1.01 SCS 萱原 伸哉    障害T1_0564対応 税差額計算処理
+ *  2009/07/13    1.02 SCS 廣瀬 真佐人  障害0000344対応 パフォーマンス改善
  *
  *****************************************************************************************/
 --
@@ -260,6 +261,11 @@ AS
   gt_tax_round_rule          hz_cust_site_uses_all.tax_rounding_rule%TYPE;         -- 税金－端数処理
   gv_party_ref_type          VARCHAR2(50);                                         -- パーティ関連タイプ(与信関連)
   gv_party_rev_code          VARCHAR2(50);                                         -- パーティ関連(売掛管理先)
+-- Modify 2009.07.13 Ver1.02 start
+  gt_bill_payment_term_id    hz_cust_site_uses_all.payment_term_id%TYPE;           -- 支払条件1
+  gt_bill_payment_term2      hz_cust_site_uses_all.attribute2%TYPE;                -- 支払条件2
+  gt_bill_payment_term3      hz_cust_site_uses_all.attribute3%TYPE;                -- 支払条件3
+-- Modify 2009.07.13 Ver1.02 end
 --
   /**********************************************************************************
    * Procedure Name   : init
@@ -1186,7 +1192,10 @@ AS
             AND    hzcp.cons_inv_flag = 'Y'                          -- 一括請求書式使用可能FLAG('Y')
             AND    hzsa.org_id = gn_org_id                           -- 組織ID
             AND    hzsu.org_id = gn_org_id                           -- 組織ID
-            AND    hzsu.attribute8 IS NOT NULL                       -- 請求書発行サイクル
+-- Modify 2009.07.13 Ver1.02 start
+--            AND    hzsu.attribute8 IS NOT NULL                       -- 請求書発行サイクル
+            AND    hzsu.attribute8 IN('1','2')                       -- 請求書発行サイクル
+-- Modify 2009.07.13 Ver1.02 end
             AND    hzca.account_number = NVL(iv_bill_acct_code, hzca.account_number)
             AND EXISTS (
               SELECT 'X'
@@ -1793,6 +1802,11 @@ AS
     gt_invoice_output_form   := NULL;      -- 請求書出力形式
     gt_tax_round_rule        := NULL;      -- 税金－端数処理
     gt_object_date_from      := NULL;      -- 対象期間（自）
+-- Modify 2009.07.13 Ver1.02 start
+    gt_bill_payment_term_id  := NULL;      -- 支払条件1
+    gt_bill_payment_term2    := NULL;      -- 支払条件2
+    gt_bill_payment_term3    := NULL;      -- 支払条件3
+-- Modify 2009.07.13 Ver1.02 end
 --
     --==============================================================
     --ヘッダデータ取得処理
@@ -1879,6 +1893,11 @@ AS
              NULL                                     credit_receiv_name3,    -- 売掛コード3（その他）名称
              xxhv.bill_invoice_type                   invoice_output_form,    -- 請求書出力形式
              xxhv.bill_tax_round_rule                         -- 税金－端数処理
+-- Modify 2009.07.13 Ver1.02 start
+            ,xxhv.bill_payment_term_id                bill_payment_term_id    -- 支払条件1
+            ,xxhv.bill_payment_term2                  bill_payment_term2      -- 支払条件2
+            ,xxhv.bill_payment_term3                  bill_payment_term3      -- 支払条件3
+-- Modify 2009.07.13 Ver1.02 end
       INTO   gt_tax_type,               -- 消費税区分
              gt_tax_gap_trx_id,         -- 税差額取引ID
              gt_tax_gap_amount,         -- 税差額
@@ -1906,6 +1925,11 @@ AS
              gt_credit_receiv_name3,    -- 売掛コード3（その他）名称
              gt_invoice_output_form,    -- 請求書出力形式
              gt_tax_round_rule          -- 税金－端数処理
+-- Modify 2009.07.13 Ver1.02 start
+            ,gt_bill_payment_term_id    -- 支払条件1
+            ,gt_bill_payment_term2      -- 支払条件2
+            ,gt_bill_payment_term3      -- 支払条件3
+-- Modify 2009.07.13 Ver1.02 end
       FROM   xxcfr_cust_hierarchy_v    xxhv,       -- 顧客階層ビュー
              hz_relationships          hzrl,       -- パーティ関連
              hz_cust_accounts          hzca,       -- (与信先)顧客マスタ
@@ -2011,10 +2035,16 @@ AS
                                  TO_CHAR(ADD_MONTHS(id_cutoff_date, -1), 'YYYY/MM/') || 
                                    DECODE(rv11.due_cutoff_day - 1, 0, 31, rv11.due_cutoff_day - 1))
                      END cutoff_date
-              FROM   xxcfr_cust_hierarchy_v  xxhv,          -- 顧客階層ビュー
+              FROM   
+-- Modify 2009.07.13 Ver1.02 start
+--                     xxcfr_cust_hierarchy_v  xxhv,          -- 顧客階層ビュー
+-- Modify 2009.07.13 Ver1.02 end
                      ra_terms_vl             rv11           -- 支払条件マスタ
-              WHERE  xxhv.bill_account_id      = iv_cust_acct_id 
-              AND    xxhv.bill_payment_term_id = rv11.term_id
+-- Modify 2009.07.13 Ver1.02 start
+--              WHERE  xxhv.bill_account_id      = iv_cust_acct_id 
+--              AND    xxhv.bill_payment_term_id = rv11.term_id
+              WHERE  rv11.term_id              = gt_bill_payment_term_id
+-- Modify 2009.07.13 Ver1.02 start
               AND    rv11.due_cutoff_day IS NOT NULL        --締開始日or最終月日付が未設定は対象外
               AND    gd_process_date BETWEEN NVL(rv11.start_date_active, gd_process_date)
                                          AND NVL(rv11.end_date_active,   gd_process_date)
@@ -2028,10 +2058,16 @@ AS
                                  TO_CHAR(id_cutoff_date, 'YYYY/MM/') || 
                                    DECODE(rv12.due_cutoff_day - 1, 0, 31, rv12.due_cutoff_day - 1))
                      END cutoff_date
-              FROM   xxcfr_cust_hierarchy_v  xxhv,          -- 顧客階層ビュー
+              FROM   
+-- Modify 2009.07.13 Ver1.02 start
+--                     xxcfr_cust_hierarchy_v  xxhv,          -- 顧客階層ビュー
+-- Modify 2009.07.13 Ver1.02 end
                      ra_terms_vl             rv12           -- 支払条件マスタ
-              WHERE  xxhv.bill_account_id      = iv_cust_acct_id 
-              AND    xxhv.bill_payment_term_id = rv12.term_id
+-- Modify 2009.07.13 Ver1.02 start
+--              WHERE  xxhv.bill_account_id      = iv_cust_acct_id 
+--              AND    xxhv.bill_payment_term_id = rv12.term_id
+              WHERE  rv12.term_id              = gt_bill_payment_term_id
+-- Modify 2009.07.13 Ver1.02 start
               AND    rv12.due_cutoff_day IS NOT NULL        --締開始日or最終月日付が未設定は対象外
               AND    gd_process_date BETWEEN NVL(rv12.start_date_active, gd_process_date)
                                          AND NVL(rv12.end_date_active,   gd_process_date)
@@ -2045,10 +2081,16 @@ AS
                                  TO_CHAR(ADD_MONTHS(id_cutoff_date, -1), 'YYYY/MM/') || 
                                    DECODE(rv21.due_cutoff_day - 1, 0, 31, rv21.due_cutoff_day - 1))
                      END cutoff_date
-              FROM   xxcfr_cust_hierarchy_v  xxhv,          -- 顧客階層ビュー
+              FROM   
+-- Modify 2009.07.13 Ver1.02 start
+--                     xxcfr_cust_hierarchy_v  xxhv,          -- 顧客階層ビュー
+-- Modify 2009.07.13 Ver1.02 end
                      ra_terms_vl             rv21           -- 支払条件マスタ
-              WHERE  xxhv.bill_account_id    = iv_cust_acct_id 
-              AND    xxhv.bill_payment_term2 = rv21.term_id
+-- Modify 2009.07.13 Ver1.02 start
+--              WHERE  xxhv.bill_account_id    = iv_cust_acct_id 
+--              AND    xxhv.bill_payment_term2 = rv21.term_id
+              WHERE  rv21.term_id              = gt_bill_payment_term2
+-- Modify 2009.07.13 Ver1.02 start
               AND    rv21.due_cutoff_day IS NOT NULL        --締開始日or最終月日付が未設定は対象外
               AND    gd_process_date BETWEEN NVL(rv21.start_date_active, gd_process_date)
                                          AND NVL(rv21.end_date_active,   gd_process_date)
@@ -2062,10 +2104,16 @@ AS
                                  TO_CHAR(id_cutoff_date, 'YYYY/MM/') || 
                                    DECODE(rv22.due_cutoff_day - 1, 0, 31, rv22.due_cutoff_day - 1))
                      END cutoff_date
-              FROM   xxcfr_cust_hierarchy_v  xxhv,          -- 顧客階層ビュー
+              FROM   
+-- Modify 2009.07.13 Ver1.02 start
+--                     xxcfr_cust_hierarchy_v  xxhv,          -- 顧客階層ビュー
+-- Modify 2009.07.13 Ver1.02 end
                      ra_terms_vl             rv22           -- 支払条件マスタ
-              WHERE  xxhv.bill_account_id    = iv_cust_acct_id 
-              AND    xxhv.bill_payment_term2 = rv22.term_id
+-- Modify 2009.07.13 Ver1.02 start
+--              WHERE  xxhv.bill_account_id    = iv_cust_acct_id 
+--              AND    xxhv.bill_payment_term2 = rv22.term_id
+              WHERE  rv22.term_id              = gt_bill_payment_term2
+-- Modify 2009.07.13 Ver1.02 start
               AND    rv22.due_cutoff_day IS NOT NULL        --締開始日or最終月日付が未設定は対象外
               AND    gd_process_date BETWEEN NVL(rv22.start_date_active, gd_process_date)
                                          AND NVL(rv22.end_date_active,   gd_process_date)
@@ -2079,10 +2127,16 @@ AS
                                  TO_CHAR(ADD_MONTHS(id_cutoff_date, -1), 'YYYY/MM/') || 
                                    DECODE(rv31.due_cutoff_day - 1, 0, 31, rv31.due_cutoff_day - 1))
                      END cutoff_date
-              FROM   xxcfr_cust_hierarchy_v  xxhv,          -- 顧客階層ビュー
+              FROM   
+-- Modify 2009.07.13 Ver1.02 start
+--                     xxcfr_cust_hierarchy_v  xxhv,          -- 顧客階層ビュー
+-- Modify 2009.07.13 Ver1.02 end
                      ra_terms_vl             rv31           -- 支払条件マスタ
-              WHERE  xxhv.bill_account_id    = iv_cust_acct_id 
-              AND    xxhv.bill_payment_term3 = rv31.term_id
+-- Modify 2009.07.13 Ver1.02 start
+--              WHERE  xxhv.bill_account_id    = iv_cust_acct_id 
+--              AND    xxhv.bill_payment_term3 = rv31.term_id
+              WHERE  rv31.term_id              = gt_bill_payment_term3
+-- Modify 2009.07.13 Ver1.02 start
               AND    rv31.due_cutoff_day IS NOT NULL        --締開始日or最終月日付が未設定は対象外
               AND    gd_process_date BETWEEN NVL(rv31.start_date_active, gd_process_date)
                                          AND NVL(rv31.end_date_active,   gd_process_date)
@@ -2096,10 +2150,16 @@ AS
                                  TO_CHAR(id_cutoff_date, 'YYYY/MM/') || 
                                    DECODE(rv32.due_cutoff_day - 1, 0, 31, rv32.due_cutoff_day - 1))
                      END cutoff_date
-              FROM   xxcfr_cust_hierarchy_v  xxhv,          -- 顧客階層ビュー
+              FROM   
+-- Modify 2009.07.13 Ver1.02 start
+--                     xxcfr_cust_hierarchy_v  xxhv,          -- 顧客階層ビュー
+-- Modify 2009.07.13 Ver1.02 end
                      ra_terms_vl             rv32           -- 支払条件マスタ
-              WHERE  xxhv.bill_account_id    = iv_cust_acct_id 
-              AND    xxhv.bill_payment_term3 = rv32.term_id
+-- Modify 2009.07.13 Ver1.02 start
+--              WHERE  xxhv.bill_account_id    = iv_cust_acct_id 
+--              AND    xxhv.bill_payment_term3 = rv32.term_id
+              WHERE  rv32.term_id              = gt_bill_payment_term3
+-- Modify 2009.07.13 Ver1.02 start
               AND    rv32.due_cutoff_day IS NOT NULL        --締開始日or最終月日付が未設定は対象外
               AND    gd_process_date BETWEEN NVL(rv32.start_date_active, gd_process_date)
                                          AND NVL(rv32.end_date_active,   gd_process_date)
@@ -2335,29 +2395,41 @@ AS
     -- 税コード単位の税差額データ抽出
     CURSOR get_tax_gap_cur
     IS
-      SELECT taxv.tax_rate                                       tax_rate,       -- 税率
-             taxv.vat_tax_id                                     vat_tax_id,     -- 税コードID
-             SUM(taxv.re_calc_tax_amount - taxv.sum_tax_amount)  tax_gap_amount, -- 税差額
-             taxv.tax_code                                       tax_code        -- 税コード
-      FROM   (
+-- Modify 2009.07.13 Ver1.02 start
+--      SELECT taxv.tax_rate                                       tax_rate,       -- 税率
+--             taxv.vat_tax_id                                     vat_tax_id,     -- 税コードID
+--             SUM(taxv.re_calc_tax_amount - taxv.sum_tax_amount)  tax_gap_amount, -- 税差額
+--             taxv.tax_code                                       tax_code        -- 税コード
+--      FROM   (
+-- Modify 2009.07.13 Ver1.02 end
         SELECT avta.tax_rate                        tax_rate,    -- 税率
                avta.vat_tax_id                      vat_tax_id,  -- 税コードID
-               avta.tax_code                        tax_code,    -- 税コード
---Modify 2009.04.20 Ver1.01 Start
+-- Modify 2009.07.13 Ver1.02 start
+--               avta.tax_code                        tax_code,    -- 税コード
+----Modify 2009.04.20 Ver1.01 Start
+----               DECODE(gt_tax_round_rule,
+----                        'UP',      CEIL(ABS(SUM(rctl.taxable_amount) * avta.tax_rate / 100))
+----                                     * SIGN(SUM(rctl.taxable_amount)),
+----                        'DOWN',    TRUNC(SUM(rctl.taxable_amount) * avta.tax_rate / 100),
+----                        'NEAREST', ROUND(SUM(rctl.taxable_amount) * avta.tax_rate / 100, 0)
+----                     )                              re_calc_tax_amount,     -- 消費税額(再計算)
 --               DECODE(gt_tax_round_rule,
---                        'UP',      CEIL(ABS(SUM(rctl.taxable_amount) * avta.tax_rate / 100))
---                                     * SIGN(SUM(rctl.taxable_amount)),
---                        'DOWN',    TRUNC(SUM(rctl.taxable_amount) * avta.tax_rate / 100),
---                        'NEAREST', ROUND(SUM(rctl.taxable_amount) * avta.tax_rate / 100, 0)
---                     )                              re_calc_tax_amount,     -- 消費税額(再計算)
+--                        'UP',     CEIL(ABS(SUM(rlli.extended_amount) * avta.tax_rate / 100))
+--                                    * SIGN(SUM(rlli.extended_amount)),
+--                        'DOWN',    TRUNC(SUM(rlli.extended_amount) * avta.tax_rate / 100),
+--                        'NEAREST', ROUND(SUM(rlli.extended_amount) * avta.tax_rate / 100, 0)
+--                     )                              re_calc_tax_amount,     -- 消費税額(再計算)  
+----Modify 2009.04.20 Ver1.01 End        
+--               SUM(rctl.extended_amount)            sum_tax_amount          -- 消費税額合計
                DECODE(gt_tax_round_rule,
                         'UP',     CEIL(ABS(SUM(rlli.extended_amount) * avta.tax_rate / 100))
                                     * SIGN(SUM(rlli.extended_amount)),
                         'DOWN',    TRUNC(SUM(rlli.extended_amount) * avta.tax_rate / 100),
                         'NEAREST', ROUND(SUM(rlli.extended_amount) * avta.tax_rate / 100, 0)
-                     )                              re_calc_tax_amount,     -- 消費税額(再計算)  
---Modify 2009.04.20 Ver1.01 End        
-               SUM(rctl.extended_amount)            sum_tax_amount          -- 消費税額合計
+               )
+             - SUM(rctl.extended_amount)            tax_gap_amount, -- 消費税額(再計算) - 消費税額合計
+               avta.tax_code                        tax_code        -- 税コード
+-- Modify 2009.07.13 Ver1.02 end
         FROM   ra_customer_trx_all        rcta,                -- 取引テーブル
                ra_customer_trx_lines_all  rctl,                -- 取引明細テーブル
 --Modify 2009.04.20 Ver1.01 Start
@@ -2390,11 +2462,19 @@ AS
         GROUP BY avta.tax_rate,                                -- 税率
                  avta.vat_tax_id,                              -- 税コードID
                  avta.tax_code                                 -- 税コード
-      ) taxv
-      HAVING SUM(taxv.sum_tax_amount - taxv.re_calc_tax_amount) != 0   -- 税差額
-      GROUP BY taxv.tax_rate,
-               taxv.vat_tax_id,
-               taxv.tax_code
+-- Modify 2009.07.13 Ver1.02 start
+--      ) taxv
+--      HAVING SUM(taxv.sum_tax_amount - taxv.re_calc_tax_amount) != 0   -- 税差額
+--      GROUP BY taxv.tax_rate,
+--               taxv.vat_tax_id,
+--               taxv.tax_code
+      HAVING SUM(rctl.extended_amount) <> DECODE(gt_tax_round_rule,
+                                             'UP',     CEIL(ABS(SUM(rlli.extended_amount) * avta.tax_rate / 100))
+                                                         * SIGN(SUM(rlli.extended_amount)),
+                                             'DOWN',    TRUNC(SUM(rlli.extended_amount) * avta.tax_rate / 100),
+                                             'NEAREST', ROUND(SUM(rlli.extended_amount) * avta.tax_rate / 100, 0)
+                                          )    -- 税差額
+-- Modify 2009.07.13 Ver1.02 end
       ;
 --
     TYPE l_get_tax_gap_rtype IS TABLE OF get_tax_gap_cur%ROWTYPE INDEX BY PLS_INTEGER;
