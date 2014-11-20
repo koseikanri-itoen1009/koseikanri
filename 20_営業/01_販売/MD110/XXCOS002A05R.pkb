@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCOS002A05R (body)
  * Description      : 納品書チェックリスト
  * MD.050           : 納品書チェックリスト MD050_COS_002_A05
- * Version          : 1.19
+ * Version          : 1.20
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -69,6 +69,7 @@ AS
  *  2009/12/17    1.19  K.Atsushiba      [E_本稼動_00521]入金データが納品実績の入金欄に表示されない対応
  *                                       [E_本稼動_00522]売上値引きが表示されない対応
  *                                       [E_本稼動_00532]納品実績データの重複表示対応
+ *  2010/01/07    1.20  N.Maeda          [E_本稼動_00849] 値引のみデータ対応
  *
  *****************************************************************************************/
 --
@@ -127,6 +128,9 @@ AS
   -- ロックエラー
   lock_expt EXCEPTION;
   PRAGMA EXCEPTION_INIT( lock_expt, -54 );
+-- ******* 2010/01/07 1.20 N.Maeda ADD START ****** --
+  data_get_err EXCEPTION;
+-- ******* 2010/01/07 1.20 N.Maeda ADD  END  ****** --
 --
   -- ===============================
   -- ユーザー定義グローバル定数
@@ -169,6 +173,9 @@ AS
 -- 2009/12/17 Ver.1.19 Add Start
   cv_msg_payment_update_err     CONSTANT VARCHAR2(20)  := 'APP-XXCOS1-10611';   -- 入金データ更新
 -- 2009/12/17 Ver.1.19 Add End
+-- ******* 2010/01/07 1.20 N.Maeda ADD START ****** --
+  cv_msg_name_lookup            CONSTANT VARCHAR2(20)  := 'APP-XXCOS1-00075';
+-- ******* 2010/01/07 1.20 N.Maeda ADD START ****** --
 --
   -- トークン
   cv_tkn_in_param               CONSTANT VARCHAR2(100) := 'IN_PARAM';           -- 入力パラメータ
@@ -264,12 +271,22 @@ AS
   -- 販売実績データ登録
   TYPE g_dlv_chk_list_tab       IS TABLE OF xxcos_rep_dlv_chk_list%ROWTYPE
     INDEX BY PLS_INTEGER;
+-- ******* 2010/01/07 1.20 N.Maeda ADD START ****** --
+  TYPE disc_item          IS RECORD(  disc_item_code fnd_lookup_values.lookup_code%TYPE );    -- 値引品目コード
+  TYPE g_disc_item_work_ttype  IS TABLE OF disc_item INDEX BY BINARY_INTEGER;
+  TYPE g_disc_item_ttype  IS TABLE OF disc_item INDEX BY fnd_lookup_values.lookup_code%TYPE;
+-- ******* 2010/01/07 1.20 N.Maeda ADD START ****** --
 --
   -- ===============================
   -- ユーザー定義グローバル変数
   -- ===============================
   -- 販売実績データ登録
   gt_dlv_chk_list               g_dlv_chk_list_tab;             -- 販売実績データ登録
+-- ******* 2010/01/07 1.20 N.Maeda ADD START ****** --
+  gt_disc_item_work_tab         g_disc_item_work_ttype;         -- 値引品目コード一時格納用
+  gt_disc_item_tab              g_disc_item_ttype;              -- 値引品目コード格納用
+-- ******* 2010/01/07 1.20 N.Maeda ADD START ****** --
+  
 --
   gv_tkn1                       VARCHAR2(5000);                 -- エラーメッセージ用トークン１
   gv_tkn2                       VARCHAR2(5000);                 -- エラーメッセージ用トークン２
@@ -359,7 +376,63 @@ AS
       ,buff  => NULL
     );
 --
+-- ******* 2010/01/07 1.20 N.Maeda ADD START ****** --
+    BEGIN
+      SELECT  look_val.lookup_code        lookup_code
+      BULK COLLECT INTO
+              gt_disc_item_work_tab
+      FROM    fnd_lookup_values     look_val
+      WHERE   look_val.lookup_type       = ct_qck_discount_item_type  -- XXCOS1_DISCOUNT_ITEM_CODE
+      AND     look_val.enabled_flag      = cv_yes                     -- Y
+      AND     TO_DATE(iv_delivery_date,cv_fmt_date_default)
+                >= NVL( look_val.start_date_active, TO_DATE(iv_delivery_date,cv_fmt_date_default) )
+      AND     TO_DATE(iv_delivery_date,cv_fmt_date_default)
+                <= NVL( look_val.end_date_active, TO_DATE(iv_delivery_date,cv_fmt_date_default) )
+      AND     look_val.language          = ct_lang;
+      --
+      IF ( gt_disc_item_work_tab.COUNT = 0 ) THEN
+        RAISE data_get_err;
+      END IF;
+    EXCEPTION
+      WHEN OTHERS THEN
+        RAISE data_get_err;
+    END;
+    --
+    FOR d IN 1..gt_disc_item_work_tab.COUNT LOOP
+      gt_disc_item_tab(gt_disc_item_work_tab(d).disc_item_code) := gt_disc_item_work_tab(d);
+    END LOOP;
+-- ******* 2010/01/07 1.20 N.Maeda ADD  END  ****** --
+--
   EXCEPTION
+-- ******* 2010/01/07 1.20 N.Maeda ADD START ****** --
+    WHEN data_get_err THEN
+      -- テーブル名:クイックコードマスタ
+      gv_tkn1 := xxccp_common_pkg.get_msg( iv_application  => cv_application
+                                          ,iv_name         => cv_msg_mst_qck  );
+      -- 項目名:クイックコード
+      gv_tkn2 := xxccp_common_pkg.get_msg( iv_application  => cv_application
+                                          ,iv_name         => cv_msg_name_lookup  );
+      -- キー情報編集
+      xxcos_common_pkg.makeup_key_info(
+                                   ov_errbuf      => lv_errbuf           -- エラー・メッセージ
+                                  ,ov_retcode     => lv_retcode          -- リターン・コード
+                                  ,ov_errmsg      => lv_errmsg           -- ユーザー・エラー・メッセージ
+                                  ,ov_key_info    => gv_key_info         -- キー情報
+                                  ,iv_item_name1  => gv_tkn1             -- 要求ID
+                                  ,iv_data_value1 => ct_qck_discount_item_type
+                                  );
+      --
+      lv_errbuf := xxccp_common_pkg.get_msg( iv_application  => cv_application
+                                            ,iv_name         => cv_msg_get_err
+                                            ,iv_token_name1  => cv_tkn_table
+                                            ,iv_token_value1 => gv_tkn1
+                                            ,iv_token_name2  => cv_tkn_key_data
+                                            ,iv_token_value2 => gv_key_info
+                                              );
+      -- ログ出力
+      ov_errbuf  := cv_pkg_name||cv_msg_cont||cv_prg_name||cv_msg_part||lv_errbuf;
+      ov_retcode := cv_status_error;
+-- ******* 2010/01/07 1.20 N.Maeda ADD  END  ****** --
     -- *** 共通関数OTHERS例外ハンドラ ***
     WHEN global_api_others_expt THEN
       ov_errbuf  := cv_pkg_name||cv_msg_cont||cv_prg_name||cv_msg_part||SQLERRM;
@@ -1190,6 +1263,9 @@ AS
              ,seh.hht_dlv_input_date          AS hht_dlv_input_date           -- HHT納品入力日時
              ,sel.dlv_invoice_line_number     AS dlv_invoice_line_number      -- 納品明細番号
 -- **************** 2009/12/12 1.18 N.Maeda ADD  END  **************** --
+-- **************** 2010/01/07 1.20 N.Maeda MOL START **************** --
+             ,SUM(sel.sale_amount)             AS line_sale_amount
+-- **************** 2010/01/07 1.20 N.Maeda MOL  END  **************** --
            FROM
                xxcos_sales_exp_lines     sel           -- 販売実績明細テーブル
               ,xxcos_sales_exp_headers   seh           -- 販売実績ヘッダテーブル
@@ -1452,7 +1528,22 @@ AS
       AND tacl.attribute3            = cuac.tax_div
       AND cuac.business_low_type     = gysm.meaning(+)                                                   -- 業態小分類
       AND cuac.business_low_type     = gysm1.meaning(+)
-      AND infd.quantity             != cn_zero                                                           -- 納品数量 != 0
+-- **************** 2010/01/07 1.20 N.Maeda MOL START **************** --
+--      AND infd.quantity             != cn_zero                                                           -- 納品数量 != 0
+      AND ( (infd.quantity            = cn_zero
+               AND infd.line_sale_amount   != cn_zero          -- 明細売上額合計 != 0 
+               AND EXISTS (  SELECT  cv_yes
+                             FROM    fnd_lookup_values     look_val
+                             WHERE   look_val.lookup_type       = ct_qck_discount_item_type  -- XXCOS1_DISCOUNT_ITEM_CODE
+                             AND     look_val.enabled_flag      = cv_yes                     -- Y
+                             AND     icp_delivery_date         >= NVL( look_val.start_date_active, icp_delivery_date )
+                             AND     icp_delivery_date         <= NVL( look_val.end_date_active, icp_delivery_date )
+                             AND     look_val.language          = ct_lang
+                             AND     look_val.lookup_code       = infd.item_code )
+            )
+        OR  ( infd.quantity         != cn_zero )
+          )
+-- **************** 2010/01/07 1.20 N.Maeda MOL  END  **************** --
 -- **************** 2009/12/12 1.18 N.Maeda ADD START **************** --
 -- 2009/12/17 Ver.1.19 Del Start
 --      AND disc.dlv_invoice_line_number = infd.dlv_invoice_line_number                -- 納品明細番号
@@ -1700,27 +1791,36 @@ AS
         END IF;
 --
 -- ******************** 2009/07/13 Var.1.13 T.Tominaga ADD START  *****************************************
-        -- 確認項目の編集
-        IF ( lt_standard_unit_price < lt_business_cost ) THEN    -- 基準単価 < 営業原価
-          lt_confirmation := lv_check_mark;
---
-        ELSIF ( lt_st_date <= iv_delivery_date ) THEN            -- 定価適用開始 <= 納品日
-          IF ( lt_plice_new < lt_standard_unit_price ) THEN      -- 定価(新) < 基準単価
-            lt_confirmation := lv_check_mark;
-          ELSE
-            lt_confirmation := NULL;
-          END IF;
---
-        ELSIF ( lt_st_date > iv_delivery_date ) THEN             -- 定価適用開始 > 納品日
-          IF ( lt_plice_old < lt_standard_unit_price ) THEN      -- 旧定価 < 基準単価
-            lt_confirmation := lv_check_mark;
-          ELSE
-            lt_confirmation := NULL;
-          END IF;
---
-        ELSE
+-- ******* 2010/01/07 1.20 N.Maeda ADD START ****** --
+        IF ( gt_disc_item_tab.EXISTS(lt_get_sale_data(in_no).item_code) ) THEN
+        -- 対象データが値引き品目の場合
           lt_confirmation := NULL;
+        ELSE
+-- ******* 2010/01/07 1.20 N.Maeda ADD  END  ****** --
+          -- 確認項目の編集
+          IF ( lt_standard_unit_price < lt_business_cost ) THEN    -- 基準単価 < 営業原価
+            lt_confirmation := lv_check_mark;
+--
+          ELSIF ( lt_st_date <= iv_delivery_date ) THEN            -- 定価適用開始 <= 納品日
+            IF ( lt_plice_new < lt_standard_unit_price ) THEN      -- 定価(新) < 基準単価
+              lt_confirmation := lv_check_mark;
+            ELSE
+              lt_confirmation := NULL;
+            END IF;
+--
+          ELSIF ( lt_st_date > iv_delivery_date ) THEN             -- 定価適用開始 > 納品日
+            IF ( lt_plice_old < lt_standard_unit_price ) THEN      -- 旧定価 < 基準単価
+              lt_confirmation := lv_check_mark;
+            ELSE
+              lt_confirmation := NULL;
+            END IF;
+--
+          ELSE
+            lt_confirmation := NULL;
+          END IF;
+-- ******* 2010/01/07 1.20 N.Maeda ADD START ****** --
         END IF;
+-- ******* 2010/01/07 1.20 N.Maeda ADD  END  ****** --
 -- ******************** 2009/07/13 Var.1.13 T.Tominaga ADD END    *****************************************
 --
         -- 売値判定
@@ -1730,6 +1830,24 @@ AS
           lt_set_plice := lt_plice_old_no_tax;
         END IF;
 --
+-- ******* 2010/01/07 1.20 N.Maeda ADD START ****** --
+        IF ( gt_disc_item_tab.EXISTS(lt_get_sale_data(in_no).item_code) ) THEN
+        -- 対象データが値引き品目の場合
+          -- 数量
+          gt_dlv_chk_list(ln_num).quantity                     := NULL;
+          -- 売価
+          gt_dlv_chk_list(ln_num).ploce                        := NULL;
+          -- カード金額
+          gt_dlv_chk_list(ln_num).card_amount                  := NULL;
+        ELSE
+          -- 数量
+          gt_dlv_chk_list(ln_num).quantity                     := lt_get_sale_data(in_no).quantity;
+          -- 売価
+          gt_dlv_chk_list(ln_num).ploce                        := lt_set_plice;
+          -- カード金額
+          gt_dlv_chk_list(ln_num).card_amount                  := lt_get_sale_data(in_no).card_amount;
+        END IF;
+-- ******* 2010/01/07 1.20 N.Maeda ADD  END  ****** --
         -- 対象日付
         gt_dlv_chk_list(ln_num).target_date                  := lt_get_sale_data(in_no).target_date;
         -- 拠点コード
@@ -1778,19 +1896,24 @@ AS
         gt_dlv_chk_list(ln_num).item_code                    := lt_get_sale_data(in_no).item_code;
         -- 商品名
         gt_dlv_chk_list(ln_num).item_name                    := lt_get_sale_data(in_no).item_name;
-        -- 数量
-        gt_dlv_chk_list(ln_num).quantity                     := lt_get_sale_data(in_no).quantity;
+-- ******* 2010/01/07 1.20 N.Maeda DEL START ****** --
+--        -- 数量
+--        gt_dlv_chk_list(ln_num).quantity                     := lt_get_sale_data(in_no).quantity;
+-- ******* 2010/01/07 1.20 N.Maeda DEL  END  ****** --
         -- 卸単価
         gt_dlv_chk_list(ln_num).wholesale_unit_ploce         := lt_get_sale_data(in_no).wholesale_unit_ploce;
+-- **
         -- 確認
         gt_dlv_chk_list(ln_num).confirmation                 := lt_confirmation;
         -- 消費税区分（入力)
         gt_dlv_chk_list(ln_num).consum_tax_calss_entered     := lt_get_sale_data(in_no).consum_tax_calss_entered;
-        -- 売価
-        gt_dlv_chk_list(ln_num).ploce                        := lt_set_plice;
---        gt_dlv_chk_list(ln_num).ploce                        := lt_get_sale_data(in_no).ploce;
-        -- カード金額
-        gt_dlv_chk_list(ln_num).card_amount                  := lt_get_sale_data(in_no).card_amount;
+-- ******* 2010/01/07 1.20 N.Maeda DEL START ****** --
+--        -- 売価
+--        gt_dlv_chk_list(ln_num).ploce                        := lt_set_plice;
+----        gt_dlv_chk_list(ln_num).ploce                        := lt_get_sale_data(in_no).ploce;
+--        -- カード金額
+--        gt_dlv_chk_list(ln_num).card_amount                  := lt_get_sale_data(in_no).card_amount;
+-- ******* 2010/01/07 1.20 N.Maeda DEL  END  ****** --
         -- コラム
         gt_dlv_chk_list(ln_num).column_no                    := lt_get_sale_data(in_no).column_no;
         -- HC
@@ -2176,12 +2299,21 @@ AS
           ,NULL                                   -- 売上区分
           ,NULL                                   -- 品目コード
           ,NULL                                   -- 商品名
-          ,0                                      -- 数量
+-- ******* 2010/01/07 1.20 N.Maeda MOD START ****** --
+--          ,0                                      -- 数量
+          ,NULL                                      -- 数量
+-- ******* 2010/01/07 1.20 N.Maeda MOD START ****** --
           ,0                                      -- 卸単価
           ,NULL                                   -- 確認
           ,NULL                                   -- 消費税区分（入力）
-          ,0                                      -- 売価
-          ,0                                      -- カード金額
+-- ******* 2010/01/07 1.20 N.Maeda MOD START ****** --
+--          ,0                                      -- 売価
+          ,NULL                                      -- 売価
+-- ******* 2010/01/07 1.20 N.Maeda MOD START ****** --
+-- ******* 2010/01/07 1.20 N.Maeda MOD START ****** --
+--          ,0                                      -- カード金額----
+          ,NULL                                      -- カード金額
+-- ******* 2010/01/07 1.20 N.Maeda MOD START ****** --
           ,NULL                                   -- コラム
           ,NULL                                   -- H/C
           ,pacl.meaning                           -- 入金区分
