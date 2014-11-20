@@ -7,7 +7,7 @@ AS
  * Description      : édì¸é¿ê—ï\çÏê¨
  * MD.050/070       : åééüÅYêÿèàóùÅiåoóùÅjIssue1.0(T_MD050_BPO_770)
  *                    åééüÅYêÿèàóùÅiåoóùÅjIssue1.0(T_MD070_BPO_77E)
- * Version          : 1.16
+ * Version          : 1.17
  *
  * Program List
  * -------------------- ------------------------------------------------------------
@@ -47,6 +47,7 @@ AS
  *  2008/12/12    1.14  A.Shiina         ñ{î‘#425ëŒâû
  *  2009/01/09    1.15  N.Yoshida        ñ{î‘#986ëŒâû
  *  2009/07/09    1.16  Marushita        ñ{î‘#1574ëŒâû
+ *  2012/03/23    1.17  Y.Horikawa       E_ñ{â“ìÆ_09257ëŒâûÅiE_ñ{â“ìÆ_08924ëŒâûÅj
  *****************************************************************************************/
 --
 --#######################  å≈íËÉOÉçÅ[ÉoÉãíËêîêÈåæïî START   #######################
@@ -1448,20 +1449,27 @@ AS
 -- 2008/10/28 H.Itou Mod End
 -- 2009/01/09 N.Yoshida Mod Start
 --      || '      ,SUM(mst.stnd_unit_price * mst.trans_qty) AS j_amt '
-      || '      ,SUM(ROUND(mst.stnd_unit_price * mst.trans_qty)) AS j_amt '
+-- 2012/03/23 v1.17 Mod Start
+--      || '      ,SUM(ROUND(mst.stnd_unit_price * mst.trans_qty)) AS j_amt '
+      || '      ,SUM(mst.j_amt) AS j_amt '
+-- 2012/03/23 v1.17 Mod End
 -- 2009/01/09 N.Yoshida Mod End
 --      || '      ,SUM(mst.purchases_price * mst.trans_qty) AS s_amt '
 --      || '      ,SUM(mst.purchases_price) AS s_amt '
       || '      ,SUM(mst.powder_price) AS s_amt '
--- 2008/12/05 v1.13 ADD START
-      || '      ,SUM(ROUND((mst.commission_price * :para_lkup_code) /100)) AS commission_tax '
-      || '      ,SUM( '
-                -- éxï•ã‡äzè¡îÔê≈
-      || '            ROUND(NVL(mst.powder_price, ''' || gn_zero || ''') * :para_lkup_code / 100)'
-                -- å˚ëKã‡äzè¡îÔê≈
-      || '          - ROUND(NVL(mst.commission_price, ''' || gn_zero || ''')  * :para_lkup_code / 100) '
-      || '           ) AS payment_tax '
--- 2008/12/05 v1.13 ADD END
+-- 2012/03/23 v1.17 Mod Start
+---- 2008/12/05 v1.13 ADD START
+--      || '      ,SUM(ROUND((mst.commission_price * :para_lkup_code) /100)) AS commission_tax '
+--      || '      ,SUM( '
+--                -- éxï•ã‡äzè¡îÔê≈
+--      || '            ROUND(NVL(mst.powder_price, ''' || gn_zero || ''') * :para_lkup_code / 100)'
+--                -- å˚ëKã‡äzè¡îÔê≈
+--      || '          - ROUND(NVL(mst.commission_price, ''' || gn_zero || ''')  * :para_lkup_code / 100) '
+--      || '           ) AS payment_tax '
+---- 2008/12/05 v1.13 ADD END
+      || '      ,SUM(mst.commission_tax) AS commission_tax '
+      || '      ,SUM(mst.payment_tax) AS payment_tax '
+-- 2012/03/23 v1.17 Mod End
       || '      ,:para_lkup_code              AS c_tax ';
 --
     -- ----------------------------------------------------
@@ -1491,22 +1499,75 @@ AS
 -- 2008/11/13 v1.8 UPDATE START
 --      || '             ,itp.trans_qty           AS trans_qty '
 --      || '             ,NVL(pla.unit_price, 0) * NVL(itp.trans_qty, 0) AS purchases_price '
-      || '             ,NVL(itp.trans_qty, 0) * TO_NUMBER(xrpm.rcv_pay_div) AS trans_qty '
+-- 2012/03/23 v1.17 Mod Start
+--      || '             ,NVL(itp.trans_qty, 0) * TO_NUMBER(xrpm.rcv_pay_div) AS trans_qty '
+      || '             ,SUM(NVL(itp.trans_qty, 0) * TO_NUMBER(xrpm.rcv_pay_div)) AS trans_qty '
+-- 2012/03/23 v1.17 Mod End
 -- 2008/11/29 v1.10 UPDATE START
 --      || '            ,ROUND(NVL(pla.unit_price, 0) '
-      || '            ,ROUND(NVL(pla.attribute8, 0) '
-      || '             * (NVL(itp.trans_qty, 0) * TO_NUMBER(xrpm.rcv_pay_div))) AS purchases_price '
+-- 2012/03/23 v1.17 Mod Start
+--      || '            ,ROUND(NVL(pla.attribute8, 0) '
+--      || '             * (NVL(itp.trans_qty, 0) * TO_NUMBER(xrpm.rcv_pay_div))) AS purchases_price '
+      || '            ,SUM(ROUND(NVL(pla.attribute8, 0)'
+      || '              * NVL(itp.trans_qty, 0) * TO_NUMBER(xrpm.rcv_pay_div))) AS purchases_price '
+-- 2012/03/23 v1.17 Mod End
 -- 2008/11/13 v1.8 UPDATE END
 --      || '             ,NVL(plla.attribute2, :para_zero) AS powder_price '
-      || '            ,ROUND(NVL(pla.unit_price, :para_zero) '
-      || '             * (NVL(itp.trans_qty, 0) * TO_NUMBER(xrpm.rcv_pay_div))) AS powder_price '
+-- 2012/03/23 v1.17 Mod Start
+--      || '            ,ROUND(NVL(pla.unit_price, :para_zero) '
+--      || '             * (NVL(itp.trans_qty, 0) * TO_NUMBER(xrpm.rcv_pay_div))) AS powder_price '
+      || '            ,SUM(ROUND(NVL(pla.unit_price, :para_zero) '
+      || '             * NVL(itp.trans_qty, 0) * TO_NUMBER(xrpm.rcv_pay_div))) AS powder_price '
+-- 2012/03/23 v1.17 Mod End
 --      || '             ,NVL(plla.attribute4, :para_zero) AS commission_price '
 -- 2008/12/06 MOD START
 --      || '            ,ROUND(NVL(plla.attribute4, :para_zero) '
 --      || '             * (NVL(itp.trans_qty, 0) * TO_NUMBER(xrpm.rcv_pay_div))) AS commission_price '
 --      || '             ,NVL(plla.attribute7, :para_zero) AS assessment '
-      || '            ,TO_NUMBER(NVL(plla.attribute5, :para_zero)) AS commission_price '
-      || '            ,TO_NUMBER(NVL(plla.attribute8, :para_zero)) AS assessment '
+-- 2012/03/23 v1.17 Mod Start
+--      || '            ,TO_NUMBER(NVL(plla.attribute5, :para_zero)) AS commission_price '
+--      || '            ,TO_NUMBER(NVL(plla.attribute8, :para_zero)) AS assessment '
+      || '            ,CASE plla.attribute3 '
+      || '               WHEN ''1'' THEN '
+      || '                 SUM(TRUNC( NVL(plla.attribute4, 0) * NVL(itp.trans_qty, 0))) '
+      || '               WHEN ''2'' THEN '
+      || '                 SUM(TRUNC( pla.attribute8 * NVL(itp.trans_qty, 0) * NVL(plla.attribute4, 0) / 100 )) '
+      || '               ELSE '
+      || '                 0 '
+      || '             END AS commission_price '                                -- å˚ëKã‡äz
+      || '            ,CASE plla.attribute6 '
+      || '               WHEN ''1'' THEN '
+      || '                 SUM(TRUNC( NVL(plla.attribute7,0) * NVL(itp.trans_qty, 0))) '
+      || '               WHEN ''2'' THEN '
+      || '                 SUM(TRUNC((pla.attribute8 * NVL(itp.trans_qty, 0) '
+      || '                           - pla.attribute8 * NVL(itp.trans_qty, 0) * NVL(plla.attribute1,0) / 100) '
+      || '                           * NVL(plla.attribute7,0) / 100)) '
+      || '               ELSE '
+      || '                 0 '
+      || '             END AS assessment '                                      -- ïäâ€ã‡äz
+      || '            ,CASE plla.attribute3 '
+      || '               WHEN ''1'' THEN '
+      || '                 SUM(ROUND(TRUNC( NVL(plla.attribute4, 0) * NVL(itp.trans_qty, 0)) * :para_lkup_code / 100)) '
+      || '               WHEN ''2'' THEN '
+      || '                 SUM(ROUND(TRUNC( pla.attribute8 * NVL(itp.trans_qty, 0) * NVL(plla.attribute4, 0) / 100 ) * :para_lkup_code / 100)) '
+      || '               ELSE '
+      || '                 0 '
+      || '             END AS commission_tax '                                  -- å˚ëKè¡îÔê≈ã‡äz
+      || '            ,CASE plla.attribute3 '
+      || '               WHEN ''1'' THEN '
+      || '                 SUM(ROUND(ROUND(NVL(pla.unit_price, :para_zero) '
+      || '                 * NVL(itp.trans_qty, 0) * TO_NUMBER(xrpm.rcv_pay_div)) * :para_lkup_code / 100) '
+      || '                 - ROUND(TRUNC( NVL(plla.attribute4, 0) * NVL(itp.trans_qty, 0)) * :para_lkup_code / 100)) '
+      || '               WHEN ''2'' THEN '
+      || '                 SUM(ROUND(ROUND(NVL(pla.unit_price, :para_zero) '
+      || '                 * NVL(itp.trans_qty, 0) * TO_NUMBER(xrpm.rcv_pay_div)) * :para_lkup_code / 100) '
+      || '                 - ROUND(TRUNC( pla.attribute8 * NVL(itp.trans_qty, 0) * NVL(plla.attribute4, 0) / 100 ) * :para_lkup_code / 100)) '
+      || '               ELSE '
+      || '                 SUM(ROUND(ROUND(NVL(pla.unit_price, :para_zero) '
+      || '                 * NVL(itp.trans_qty, 0) * TO_NUMBER(xrpm.rcv_pay_div)) * :para_lkup_code / 100)) '
+      || '             END AS payment_tax '                                     -- éxï•è¡îÔê≈ã‡äz
+      || '            ,SUM(ROUND(NVL(xsupv.stnd_unit_price,0) * NVL(itp.trans_qty, 0) * TO_NUMBER(xrpm.rcv_pay_div))) AS j_amt '
+-- 2012/03/23 v1.17 Mod End
 -- 2008/12/06 MOD END
 -- 2008/11/29 v1.10 UPDATE END
 -- 2008/10/28 H.Itou Mod Start T_S_524ëŒâû(çƒëŒâû)
@@ -1692,6 +1753,36 @@ AS
         || '       AND mcb4.segment1 = ''' || ir_param.acnt_crowd_code || '''';
     END IF;
 --
+-- 2012/03/23 v1.17 Add Start
+    lv_porc_po := lv_porc_po
+                    || ' GROUP BY mcb2.segment1 '
+                    || '         ,mct2.description '
+                    || '         ,iimb.item_id '
+                    || '         ,iimb.item_no '
+                    || '         ,iimb.item_um '
+                    || '         ,ximb.item_short_name '
+                    || '         ,iimb.attribute15 '
+                    || '         ,iimb.lot_ctl '
+                    || '         ,pha.vendor_id '
+                    || '         ,mcb3.segment1 '
+                    || '         ,mcb4.segment1 '
+                    || '         ,xrpm.rcv_pay_div '
+                    || '         ,pla.attribute8 '
+                    || '         ,pla.unit_price '
+                    || '         ,plla.attribute5 '
+                    || '         ,plla.attribute8 '
+                    || '         ,xsupv.stnd_unit_price '
+                    || '         ,pha.attribute10 '
+                    || '         ,xl.location_short_name '
+                    || '         ,xvv.segment1 '
+                    || '         ,xvv.vendor_short_name '
+                    || '         ,plla.attribute3 '
+                    || '         ,plla.attribute4 '
+                    || '         ,plla.attribute6 '
+                    || '         ,plla.attribute7 '
+                    || '         ,plla.attribute1 ';
+-- 2012/03/23 v1.17 Add End
+--
     -- ----------------------------------------------------
     -- ç›å…í≤êÆ(édì¸êÊï‘ïi)ê∂ê¨
     -- ----------------------------------------------------
@@ -1719,21 +1810,78 @@ AS
 --      || '             ,itc.trans_qty           AS trans_qty '
 --      || '             ,NVL(xrrt.unit_price, 0) '
 --      || '                * NVL(itc.trans_qty, 0) AS purchases_price '
-      || '             ,NVL(itc.trans_qty, 0) * ABS(TO_NUMBER(xrpm.rcv_pay_div)) AS trans_qty '
-      || '      ,ROUND(NVL(xrrt.unit_price, 0) '
-      || '        * (NVL(itc.trans_qty, 0) * ABS(TO_NUMBER(xrpm.rcv_pay_div)))) AS purchases_price '
+-- 2012/03/23 v1.17 Mod Start
+--      || '             ,NVL(itc.trans_qty, 0) * ABS(TO_NUMBER(xrpm.rcv_pay_div)) AS trans_qty '
+--      || '      ,ROUND(NVL(xrrt.unit_price, 0) '
+--      || '        * (NVL(itc.trans_qty, 0) * ABS(TO_NUMBER(xrpm.rcv_pay_div)))) AS purchases_price '
+      || '             ,SUM(NVL(itc.trans_qty, 0)) * ABS(TO_NUMBER(xrpm.rcv_pay_div)) AS trans_qty '
+      || '             ,SUM(ROUND(NVL(xrrt.unit_price, 0) '
+      || '                * NVL(itc.trans_qty, 0) * ABS(TO_NUMBER(xrpm.rcv_pay_div)))) AS purchases_price '
+-- 2012/03/23 v1.17 Mod End
 -- 2008/11/13 v1.8 UPDATE START
 -- 2008/11/29 v1.10 UPDATE START
 --      || '             ,TO_CHAR(NVL(xrrt.kobki_converted_unit_price, :para_zero)) AS powder_price '
-      || '      ,ROUND(NVL(xrrt.kobki_converted_unit_price, :para_zero) '
-      || '        * (NVL(itc.trans_qty, 0) * ABS(TO_NUMBER(xrpm.rcv_pay_div)))) AS powder_price '
+-- 2012/03/23 v1.17 Mod Start
+--      || '      ,ROUND(NVL(xrrt.kobki_converted_unit_price, :para_zero) '
+--      || '        * (NVL(itc.trans_qty, 0) * ABS(TO_NUMBER(xrpm.rcv_pay_div)))) AS powder_price '
+      || '             ,SUM(ROUND(NVL(xrrt.kobki_converted_unit_price, :para_zero) '
+      || '                * NVL(itc.trans_qty, 0) * ABS(TO_NUMBER(xrpm.rcv_pay_div)))) AS powder_price '
+-- 2012/03/23 v1.17 Mod End
 --      || '           ,TO_CHAR(NVL(xrrt.kousen_rate_or_unit_price, :para_zero)) AS commission_price '
-      || '      ,ROUND(NVL(xrrt.kousen_rate_or_unit_price, :para_zero) '
-      || '        * (NVL(itc.trans_qty, 0) * ABS(TO_NUMBER(xrpm.rcv_pay_div)))) AS commission_price '
---2009/07/09 MOD START
---      || '             ,NVL(xrrt.fukakin_price, :para_zero) AS assessment '
-      || '             ,(NVL(xrrt.fukakin_price, :para_zero) * -1 ) AS assessment '
---2009/07/09 MOD END
+-- 2012/03/23 v1.17 Mod Start
+--      || '      ,ROUND(NVL(xrrt.kousen_rate_or_unit_price, :para_zero) '
+--      || '        * (NVL(itc.trans_qty, 0) * ABS(TO_NUMBER(xrpm.rcv_pay_div)))) AS commission_price '
+----2009/07/09 MOD START
+----      || '             ,NVL(xrrt.fukakin_price, :para_zero) AS assessment '
+--      || '             ,(NVL(xrrt.fukakin_price, :para_zero) * -1 ) AS assessment '
+----2009/07/09 MOD END
+      || '             ,CASE xrrt.kousen_type '
+      || '                WHEN ''1'' THEN '
+      || '                  SUM(TRUNC(NVL(xrrt.kousen_rate_or_unit_price, 0) '
+      || '                  * NVL(itc.trans_qty, 0) * ABS(TO_NUMBER(xrpm.rcv_pay_div)))) '
+      || '                WHEN ''2'' THEN '
+      || '                  SUM(TRUNC( xrrt.unit_price * NVL(itc.trans_qty, 0) '
+      || '                  * NVL(xrrt.kousen_rate_or_unit_price, 0) / 100 * ABS(TO_NUMBER(xrpm.rcv_pay_div)))) '
+      || '                ELSE '
+      || '                  0 '
+      || '                END AS commission_price '                                       -- å˚ëKã‡äz
+      || '             ,CASE xrrt.fukakin_type '
+      || '                WHEN ''1'' THEN '
+      || '                  SUM(TRUNC( NVL(xrrt.fukakin_rate_or_unit_price, 0) * ABS(NVL(itc.trans_qty, 0))) * -1) '
+      || '                WHEN ''2'' THEN '
+      || '                  SUM(TRUNC((xrrt.unit_price * ABS(NVL(itc.trans_qty, 0)) '
+      || '                            - xrrt.unit_price * ABS(NVL(itc.trans_qty, 0)) * NVL(xrrt.kobiki_rate,0) / 100) '
+      || '                            * NVL(xrrt.fukakin_rate_or_unit_price,0) / 100) * -1) '
+      || '                ELSE '
+      || '                  0 '
+      || '              END AS assessment '                                             -- ïäâ€ã‡äz
+      || '             ,CASE xrrt.kousen_type '
+      || '                WHEN ''1'' THEN '
+      || '                  SUM(ROUND(TRUNC(NVL(xrrt.kousen_rate_or_unit_price, 0) '
+      || '                    * NVL(itc.trans_qty, 0) * ABS(TO_NUMBER(xrpm.rcv_pay_div))) * :para_lkup_code / 100)) '
+      || '                WHEN ''2'' THEN '
+      || '                  SUM(ROUND(TRUNC( xrrt.unit_price * NVL(itc.trans_qty, 0) '
+      || '                    * NVL(xrrt.kousen_rate_or_unit_price, 0) / 100 * ABS(TO_NUMBER(xrpm.rcv_pay_div))) * :para_lkup_code / 100)) '
+      || '                ELSE '
+      || '                  0 '
+      || '              END AS commission_tax '                                         -- å˚ëKè¡îÔê≈ã‡äz
+      || '             ,CASE xrrt.kousen_type '
+      || '                WHEN ''1'' THEN '
+      || '                  SUM(ROUND(ROUND(NVL(xrrt.kobki_converted_unit_price, :para_zero) '
+      || '                  * NVL(itc.trans_qty, 0) * ABS(TO_NUMBER(xrpm.rcv_pay_div))) * :para_lkup_code / 100) '
+      || '                  - ROUND(TRUNC(NVL(xrrt.kousen_rate_or_unit_price, 0) '
+      || '                    * NVL(itc.trans_qty, 0) * ABS(TO_NUMBER(xrpm.rcv_pay_div))) * :para_lkup_code / 100)) '
+      || '                WHEN ''2'' THEN '
+      || '                  SUM(ROUND(ROUND(NVL(xrrt.kobki_converted_unit_price, :para_zero) '
+      || '                  * NVL(itc.trans_qty, 0) * ABS(TO_NUMBER(xrpm.rcv_pay_div))) * :para_lkup_code / 100) '
+      || '                  - ROUND(TRUNC( xrrt.unit_price * NVL(itc.trans_qty, 0) '
+      || '                    * NVL(xrrt.kousen_rate_or_unit_price, 0) / 100 * ABS(TO_NUMBER(xrpm.rcv_pay_div))) * :para_lkup_code / 100)) '
+      || '                ELSE '
+      || '                  SUM(ROUND(ROUND(NVL(xrrt.kobki_converted_unit_price, :para_zero) '
+      || '                  * NVL(itc.trans_qty, 0) * ABS(TO_NUMBER(xrpm.rcv_pay_div))) * :para_lkup_code / 100)) '
+      || '              END AS payment_tax '                                            -- éxï•è¡îÔê≈ã‡äz
+      || '             ,SUM(ROUND(NVL(xsupv.stnd_unit_price,0) * NVL(itc.trans_qty, 0) * ABS(TO_NUMBER(xrpm.rcv_pay_div)))) AS j_amt '
+-- 2012/03/23 v1.17 Mod End
 -- 2008/11/29 v1.10 UPDATE END
 -- 2008/10/28 H.Itou Mod Start T_S_524ëŒâû(çƒëŒâû)
 --      || '             ,(NVL((SELECT xsupv.stnd_unit_price '
@@ -1902,6 +2050,34 @@ AS
         || '       AND mcb4.segment1 = ''' || ir_param.acnt_crowd_code || '''';
     END IF;
 --
+-- 2012/03/23 v1.17 Add Start
+    lv_adji := lv_adji 
+                || ' GROUP BY mcb2.segment1 '
+                || '         ,mct2.description '
+                || '         ,iimb.item_id '
+                || '         ,iimb.item_no '
+                || '         ,iimb.item_um '
+                || '         ,ximb.item_short_name '
+                || '         ,iimb.attribute15 '
+                || '         ,iimb.lot_ctl '
+                || '         ,xrrt.vendor_id '
+                || '         ,mcb3.segment1 '
+                || '         ,mcb4.segment1 '
+                || '         ,xrpm.rcv_pay_div '
+                || '         ,xrrt.unit_price '
+                || '         ,xrrt.kobki_converted_unit_price '
+                || '         ,xrrt.kousen_type '
+                || '         ,xrrt.kousen_rate_or_unit_price '
+                || '         ,xrrt.fukakin_type '
+                || '         ,xrrt.fukakin_rate_or_unit_price '
+                || '         ,xrrt.kobiki_rate '
+                || '         ,xsupv.stnd_unit_price '
+                || '         ,xrrt.department_code '
+                || '         ,xl.location_short_name '
+                || '         ,xvv.segment1 '
+                || '         ,xvv.vendor_short_name ';
+-- 2012/03/23 v1.17 Add End
+--
     lv_adji := lv_adji
       || '      ) mst ';
 --
@@ -2002,14 +2178,28 @@ AS
                   || lv_adji
                   || lv_group
                   || lv_order   USING  lt_lkup_code
--- 2008/12/05 ADD START
+-- 2012/03/23 v1.17 Del Start
+---- 2008/12/05 ADD START
+--                                      ,lt_lkup_code
+--                                      ,lt_lkup_code
+--                                      ,lt_lkup_code
+---- 2008/12/05 ADD END
+-- 2012/03/23 v1.17 Del End
+                                      ,cv_zero
+-- 2012/03/23 v1.17 Mod Start
+--                                      ,cv_zero
+--                                      ,cv_zero
                                       ,lt_lkup_code
                                       ,lt_lkup_code
+                                      ,cv_zero
                                       ,lt_lkup_code
--- 2008/12/05 ADD END
+                                      ,lt_lkup_code
                                       ,cv_zero
+                                      ,lt_lkup_code
+                                      ,lt_lkup_code
                                       ,cv_zero
-                                      ,cv_zero
+                                      ,lt_lkup_code
+-- 2012/03/23 v1.17 Mod End
                                       ,cv_porc
                                       ,gn_one
                                       ,ir_param.proc_from
@@ -2045,8 +2235,20 @@ AS
 -- 2008/12/04 v1.14 UPDATE END
 -- 2008/11/13 v1.8 ADD END
                                       ,cv_zero
+-- 2012/03/23 v1.17 Mod Start
+--                                      ,cv_zero
+--                                      ,cv_zero
+                                      ,lt_lkup_code
+                                      ,lt_lkup_code
                                       ,cv_zero
+                                      ,lt_lkup_code
+                                      ,lt_lkup_code
                                       ,cv_zero
+                                      ,lt_lkup_code
+                                      ,lt_lkup_code
+                                      ,cv_zero
+                                      ,lt_lkup_code
+-- 2012/03/23 v1.17 Mod End
                                       ,cv_adji
                                       ,cv_x201
                                       ,ir_param.proc_from
