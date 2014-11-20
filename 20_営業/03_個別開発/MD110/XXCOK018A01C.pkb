@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCOK018A01C(body)
  * Description      : 営業システム構築プロジェクト
  * MD.050           : アドオン：ARインターフェイス（AR I/F）販売物流 MD050_COK_018_A01
- * Version          : 1.10
+ * Version          : 1.11
  *
  * Program List
  * ------------------------------       ----------------------------------------------------------
@@ -42,6 +42,8 @@ AS
  *  2009/10/19    1.8   K.Yamaguchi      [障害E_T3_00631] 消費税コード取得方法を変更
  *  2010/04/26    1.9   S.Arizumi        [E_本稼動_02268] 入金時値引に対する課税時の勘定科目は仮受消費税を設定
  *  2010/07/09    1.10  S.Arizumi        [E_本稼動_02001] AR Web Inquiryに項目を追加する件
+ *  2010/12/07    1.11  S.Niki           [E_本稼動_05823] 顧客情報の取得に失敗した場合、警告終了させる
+ *                                                        AR連携フラグ更新件数、請求OIF登録件数を出力する
  *
  *****************************************************************************************/
 --
@@ -120,6 +122,15 @@ AS
   cv_90000_msg               CONSTANT VARCHAR2(16) := 'APP-XXCCP1-90000'; --対象件数メッセージ
   cv_90002_msg               CONSTANT VARCHAR2(16) := 'APP-XXCCP1-90002'; --エラー件数メッセージ
   cv_90001_msg               CONSTANT VARCHAR2(16) := 'APP-XXCCP1-90001'; --成功件数メッセージ
+-- 2010/12/07 Ver.1.11 [E_本稼動_05823] SCS S.Niki ADD START
+  cv_90005_msg               CONSTANT VARCHAR2(16) := 'APP-XXCCP1-90005'; --警告終了メッセージ
+  cv_10284_msg               CONSTANT VARCHAR2(16) := 'APP-XXCOK1-10284'; --条件別販手販協テーブル処理件数出力用メッセージ
+  cv_10285_msg               CONSTANT VARCHAR2(16) := 'APP-XXCOK1-10285'; --請求OIF登録件数出力用メッセージ
+  cv_10286_msg               CONSTANT VARCHAR2(16) := 'APP-XXCOK1-10286'; --条件別販手販協テーブル件数出力用メッセージ
+  cv_10287_msg               CONSTANT VARCHAR2(16) := 'APP-XXCOK1-10287'; --連携フラグF更新件数出力用メッセージ
+  cv_10288_msg               CONSTANT VARCHAR2(16) := 'APP-XXCOK1-10288'; --請求取引OIF登録件数出力用メッセージ
+  cv_10289_msg               CONSTANT VARCHAR2(16) := 'APP-XXCOK1-10289'; --請求配分OIF登録件数出力用メッセージ
+-- 2010/12/07 Ver.1.11 [E_本稼動_05823] SCS S.Niki ADD END
   cv_90004_msg               CONSTANT VARCHAR2(16) := 'APP-XXCCP1-90004'; --正常終了メッセージ
   cv_00058_err_msg           CONSTANT VARCHAR2(16) := 'APP-XXCOK1-00058'; --AR連携情報取得エラー
   cv_90006_msg               CONSTANT VARCHAR2(16) := 'APP-XXCCP1-90006'; --全ロールバックメッセージ
@@ -183,12 +194,21 @@ AS
 -- Start 2009/04/24 Ver_1.6 T1_0736 M.Hiruta
   cv_submit_bill_type_yes    CONSTANT VARCHAR2(1)  := 'Y';       --請求書出力対象：Yes
 -- End   2009/04/24 Ver_1.6 T1_0736 M.Hiruta
+-- 2010/12/07 Ver.1.11 [E_本稼動_05823] SCS S.Niki ADD START
+  cv_null                    CONSTANT VARCHAR2(1)  := 'X';       --NULLの代替文字
+-- 2010/12/07 Ver.1.11 [E_本稼動_05823] SCS S.Niki ADD END
   -- ===============================
   -- グローバル変数
   -- ===============================
   gn_target_cnt              NUMBER         DEFAULT 0;    --対象件数
   gn_normal_cnt              NUMBER         DEFAULT 0;    --正常件数
   gn_error_cnt               NUMBER         DEFAULT 0;    --エラー件数
+-- 2010/12/07 Ver.1.11 [E_本稼動_05823] SCS S.Niki ADD START
+  gn_target_line_cnt         NUMBER         DEFAULT 0;    --条件別販手販協レコード件数
+  gn_flag_upd_cnt            NUMBER         DEFAULT 0;    --AR連携フラグ更新件数
+  gn_lines_cnt               NUMBER         DEFAULT 0;    --請求取引OIF登録件数
+  gn_distributions_cnt       NUMBER         DEFAULT 0;    --請求配分OIF登録件数
+-- 2010/12/07 Ver.1.11 [E_本稼動_05823] SCS S.Niki ADD END
   gn_set_of_bks_id           NUMBER         DEFAULT NULL; --会計帳簿ID
   gn_org_id                  VARCHAR2(50)   DEFAULT NULL; --組織ID
   gv_aff1_company_code       VARCHAR2(50)   DEFAULT NULL; --会社コード
@@ -327,14 +347,129 @@ AS
   lock_err_expt             EXCEPTION;
   PRAGMA EXCEPTION_INIT( lock_err_expt, -54 );
 --
+-- 2010/12/07 Ver.1.11 [E_本稼動_05823] SCS S.Niki MOD START
+--  /**********************************************************************************
+--   * Procedure Name   : upd_ coordination_result_p
+--   * Description      : 連携結果の更新(A-8)
+--   ***********************************************************************************/
+--  PROCEDURE upd_coordination_result_p(
+--    ov_errbuf  OUT VARCHAR2 -- エラー・メッセージ
+--  , ov_retcode OUT VARCHAR2 -- リターン・コード
+--  , ov_errmsg  OUT VARCHAR2 -- ユーザー・エラー・メッセージ
+--  )
+--  IS
+--    -- ===============================
+--    -- ローカル定数
+--    -- ===============================
+--    cv_prg_name   CONSTANT VARCHAR2(100) := 'upd_coordination_result_p'; -- プログラム名
+--    -- ===============================
+--    -- ローカル変数
+--    -- ===============================
+--    lv_errbuf  VARCHAR2(5000) DEFAULT NULL; -- エラー・メッセージ
+--    lv_retcode VARCHAR2(1)    DEFAULT NULL; -- リターン・コード
+--    lv_errmsg  VARCHAR2(5000) DEFAULT NULL; -- ユーザー・エラー・メッセージ
+--    lb_retcode BOOLEAN        DEFAULT NULL; -- メッセージ出力変数
+--    lv_out_msg VARCHAR2(5000) DEFAULT NULL; -- メッセージ出力変数
+--    --==============================================================
+--    --ロック取得用カーソル
+--    --==============================================================
+--  CURSOR l_upd_cur
+--  IS
+--    SELECT 'X'
+--    FROM   xxcok_cond_bm_support    xcbs                     -- 条件別販手販協テーブル
+--    WHERE  xcbs.ar_interface_status = cv_untreated_ar_status -- 連携ステータス未処理(AR)
+--    AND    xcbs.csh_rcpt_discount_amt IS NOT NULL
+--    FOR UPDATE OF xcbs.cond_bm_support_id NOWAIT;
+----
+--  BEGIN
+--    ov_retcode := cv_status_normal;
+--    --==============================================================
+--    --カーソルオープン
+--    --==============================================================
+--    OPEN  l_upd_cur;
+--    CLOSE l_upd_cur;
+--    --==============================================================
+--    --成功件数のカウント
+--    --==============================================================
+--    BEGIN 
+----
+--      SELECT COUNT(*)
+--      INTO   gn_normal_cnt
+--      FROM   xxcok_cond_bm_support    xcbs                     -- 条件別販手販協テーブル
+--      WHERE  xcbs.ar_interface_status = cv_untreated_ar_status -- 連携ステータス未処理(AR)
+--      AND    xcbs.csh_rcpt_discount_amt IS NOT NULL;
+--    END;
+--    --==============================================================
+--    --条件別販手販協テーブルの更新処理
+--    --==============================================================
+--    BEGIN
+----
+--      UPDATE xxcok_cond_bm_support xcbs
+--      SET    xcbs.ar_interface_status = cv_finished_ar_status  -- 連携ステータス（AR）= 1：処理済
+--           , xcbs.ar_interface_date   = gd_operation_date      -- 連携日(AR) = 業務処理日付
+--           , xcbs.last_updated_by     = cn_last_updated_by     -- 最終更新者 = WHOカラム情報.ユーザID
+--           , xcbs.last_update_date    = SYSDATE                -- 最終更新日 = SYSDATE
+--           , xcbs.last_update_login   = cn_last_update_login   -- 最終更新ログインID=WHOカラム情報. ログインID
+---- 2010/04/26 Ver.1.9 [E_本稼動_02268] SCS S.Arizumi ADD START
+--           , xcbs.request_id              = cn_request_id
+--           , xcbs.program_application_id  = cn_program_application_id
+--           , xcbs.program_id              = cn_program_id
+--           , xcbs.program_update_date     = SYSDATE
+---- 2010/04/26 Ver.1.9 [E_本稼動_02268] SCS S.Arizumi ADD END
+--      WHERE  xcbs.ar_interface_status = cv_untreated_ar_status -- 連携ステータス (AR) = 0: 未処理
+--      AND    xcbs.csh_rcpt_discount_amt IS NOT NULL;
+----
+--    EXCEPTION
+--      -- *** AR連携結果更新エラー ***
+--      WHEN OTHERS THEN
+--        lv_out_msg := xxccp_common_pkg.get_msg(
+--                        cv_appli_xxcok_name
+--                      , cv_10283_err_msg
+--                      );
+--        lb_retcode := xxcok_common_pkg.put_message_f( 
+--                        FND_FILE.OUTPUT    -- 出力区分
+--                      , lv_out_msg         -- メッセージ
+--                      , 0                  -- 改行
+--                      );
+--        ov_errmsg  := NULL;
+--        ov_errbuf  := SUBSTRB( cv_pkg_name||cv_msg_cont||cv_prg_name||cv_msg_part||SQLERRM, 1, 5000 );
+--        ov_retcode := cv_status_error;
+--    END;
+----
+--  EXCEPTION
+--    -- *** ロックエラーメッセージ ***
+--    WHEN lock_err_expt THEN
+--      lv_out_msg := xxccp_common_pkg.get_msg(
+--                      cv_appli_xxcok_name
+--                    , cv_00051_err_msg
+--                    );
+--      lb_retcode := xxcok_common_pkg.put_message_f( 
+--                      FND_FILE.OUTPUT    -- 出力区分
+--                    , lv_out_msg         -- メッセージ
+--                    , 0                  -- 改行
+--                    );
+--      ov_errmsg  := NULL;
+--      ov_errbuf  := SUBSTRB( cv_pkg_name||cv_msg_cont||cv_prg_name||cv_msg_part||lv_out_msg, 1, 5000 );
+--      ov_retcode := cv_status_error;
+--    -- *** 共通関数OTHERS例外ハンドラ ***
+--    WHEN global_api_others_expt THEN
+--      ov_errbuf  := SUBSTRB( cv_pkg_name||cv_msg_cont||cv_prg_name||cv_msg_part||SQLERRM, 1, 5000 );
+--      ov_retcode := cv_status_error;
+--    -- *** OTHERS例外ハンドラ ***
+--    WHEN OTHERS THEN
+--      ov_errbuf  := SUBSTRB( cv_pkg_name||cv_msg_cont||cv_prg_name||cv_msg_part||SQLERRM, 1, 5000 );
+--      ov_retcode := cv_status_error;
+--  END upd_coordination_result_p;
+--
   /**********************************************************************************
    * Procedure Name   : upd_ coordination_result_p
    * Description      : 連携結果の更新(A-8)
    ***********************************************************************************/
   PROCEDURE upd_coordination_result_p(
-    ov_errbuf  OUT VARCHAR2 -- エラー・メッセージ
-  , ov_retcode OUT VARCHAR2 -- リターン・コード
-  , ov_errmsg  OUT VARCHAR2 -- ユーザー・エラー・メッセージ
+    ov_errbuf  OUT VARCHAR2                             -- エラー・メッセージ
+  , ov_retcode OUT VARCHAR2                             -- リターン・コード
+  , ov_errmsg  OUT VARCHAR2                             -- ユーザー・エラー・メッセージ
+  , i_discnt_amount_rec IN  g_discnt_amount_cur%ROWTYPE -- レコード引数
   )
   IS
     -- ===============================
@@ -354,11 +489,21 @@ AS
     --==============================================================
   CURSOR l_upd_cur
   IS
-    SELECT 'X'
-    FROM   xxcok_cond_bm_support    xcbs                     -- 条件別販手販協テーブル
-    WHERE  xcbs.ar_interface_status = cv_untreated_ar_status -- 連携ステータス未処理(AR)
-    AND    xcbs.csh_rcpt_discount_amt IS NOT NULL
-    FOR UPDATE OF xcbs.cond_bm_support_id NOWAIT;
+    SELECT xcbs.cond_bm_support_id
+    FROM   xxcok_cond_bm_support  xcbs
+    WHERE  xcbs.ar_interface_status               = cv_untreated_ar_status                                  -- 連携ステータス未処理(AR)
+    AND    xcbs.csh_rcpt_discount_amt             IS NOT NULL                                               -- 入金値引額
+    AND    xcbs.base_code                         = i_discnt_amount_rec.base_code                           -- 拠点コード
+    AND    NVL(xcbs.supplier_code, cv_null)       = NVL(i_discnt_amount_rec.supplier_code, cv_null)         -- 仕入先コード
+    AND    NVL(xcbs.supplier_site_code, cv_null)  = NVL(i_discnt_amount_rec.supplier_site_code, cv_null)    -- 仕入先サイトコード
+    AND    xcbs.delivery_cust_code                = i_discnt_amount_rec.delivery_cust_code                  -- 納品顧客コード
+    AND    NVL(xcbs.demand_to_cust_code, cv_null) = NVL(i_discnt_amount_rec.demand_to_cust_code, cv_null)   -- 請求顧客コード
+    AND    xcbs.emp_code                          = i_discnt_amount_rec.emp_code                            -- 成績計上担当者コード
+    AND    xcbs.closing_date                      = i_discnt_amount_rec.closing_date                        -- 締め日
+    AND    xcbs.tax_code                          = i_discnt_amount_rec.tax_code                            -- 税金コード
+    AND    xcbs.term_code                         = i_discnt_amount_rec.term_code                           -- 支払条件
+    FOR UPDATE OF xcbs.cond_bm_support_id NOWAIT
+    ;
 --
   BEGIN
     ov_retcode := cv_status_normal;
@@ -368,35 +513,31 @@ AS
     OPEN  l_upd_cur;
     CLOSE l_upd_cur;
     --==============================================================
-    --成功件数のカウント
-    --==============================================================
-    BEGIN 
---
-      SELECT COUNT(*)
-      INTO   gn_normal_cnt
-      FROM   xxcok_cond_bm_support    xcbs                     -- 条件別販手販協テーブル
-      WHERE  xcbs.ar_interface_status = cv_untreated_ar_status -- 連携ステータス未処理(AR)
-      AND    xcbs.csh_rcpt_discount_amt IS NOT NULL;
-    END;
-    --==============================================================
-    --条件別販手販協テーブルの更新処理
+    --条件別販手販協テーブル更新ループ
     --==============================================================
     BEGIN
---
-      UPDATE xxcok_cond_bm_support xcbs
-      SET    xcbs.ar_interface_status = cv_finished_ar_status  -- 連携ステータス（AR）= 1：処理済
-           , xcbs.ar_interface_date   = gd_operation_date      -- 連携日(AR) = 業務処理日付
-           , xcbs.last_updated_by     = cn_last_updated_by     -- 最終更新者 = WHOカラム情報.ユーザID
-           , xcbs.last_update_date    = SYSDATE                -- 最終更新日 = SYSDATE
-           , xcbs.last_update_login   = cn_last_update_login   -- 最終更新ログインID=WHOカラム情報. ログインID
--- 2010/04/26 Ver.1.9 [E_本稼動_02268] SCS S.Arizumi ADD START
-           , xcbs.request_id              = cn_request_id
-           , xcbs.program_application_id  = cn_program_application_id
-           , xcbs.program_id              = cn_program_id
-           , xcbs.program_update_date     = SYSDATE
--- 2010/04/26 Ver.1.9 [E_本稼動_02268] SCS S.Arizumi ADD END
-      WHERE  xcbs.ar_interface_status = cv_untreated_ar_status -- 連携ステータス (AR) = 0: 未処理
-      AND    xcbs.csh_rcpt_discount_amt IS NOT NULL;
+      << l_upd_loop >>
+      FOR l_upd_rec IN l_upd_cur LOOP
+        --==============================================================
+        --条件別販手販協テーブルの更新処理
+        --==============================================================
+        UPDATE xxcok_cond_bm_support  xcbs
+        SET    xcbs.ar_interface_status               = cv_finished_ar_status   -- 連携ステータス（AR）= 1：処理済
+             , xcbs.ar_interface_date                 = gd_operation_date       -- 連携日(AR) = 業務処理日付
+             , xcbs.last_updated_by                   = cn_last_updated_by      -- 最終更新者 = WHOカラム情報.ユーザID
+             , xcbs.last_update_date                  = SYSDATE                 -- 最終更新日 = SYSDATE
+             , xcbs.last_update_login                 = cn_last_update_login    -- 最終更新ログインID=WHOカラム情報. ログインID
+             , xcbs.request_id                        = cn_request_id
+             , xcbs.program_application_id            = cn_program_application_id
+             , xcbs.program_id                        = cn_program_id
+             , xcbs.program_update_date               = SYSDATE
+        WHERE xcbs.cond_bm_support_id = l_upd_rec.cond_bm_support_id
+        ;
+        --==============================================================
+        --AR連携結果更新件数のカウント
+        --==============================================================
+        gn_flag_upd_cnt := gn_flag_upd_cnt + 1;
+      END LOOP l_upd_loop;
 --
     EXCEPTION
       -- *** AR連携結果更新エラー ***
@@ -439,6 +580,8 @@ AS
       ov_errbuf  := SUBSTRB( cv_pkg_name||cv_msg_cont||cv_prg_name||cv_msg_part||SQLERRM, 1, 5000 );
       ov_retcode := cv_status_error;
   END upd_coordination_result_p;
+--
+-- 2010/12/07 Ver.1.11 [E_本稼動_05823] SCS S.Niki MOD END
 --
   /**********************************************************************************
    * Procedure Name   : ins_ra_if_distributions_all_p
@@ -913,6 +1056,10 @@ AS
 --
         IF( lv_retcode = cv_status_error ) THEN
           RAISE global_process_expt;
+-- 2010/12/07 Ver.1.11 [E_本稼動_05823] SCS S.Niki ADD START
+        ELSIF( lv_retcode = cv_status_normal ) THEN
+          gn_lines_cnt := gn_lines_cnt + 1;
+-- 2010/12/07 Ver.1.11 [E_本稼動_05823] SCS S.Niki ADD END
         END IF;
         --================================================================
       --税金/仕訳パターン：借方
@@ -958,6 +1105,10 @@ AS
 --
         IF( lv_retcode = cv_status_error ) THEN
           RAISE global_process_expt;
+-- 2010/12/07 Ver.1.11 [E_本稼動_05823] SCS S.Niki ADD START
+        ELSIF( lv_retcode = cv_status_normal ) THEN
+          gn_lines_cnt := gn_lines_cnt + 1;
+-- 2010/12/07 Ver.1.11 [E_本稼動_05823] SCS S.Niki ADD END
         END IF;
       END IF;
 --
@@ -1005,6 +1156,13 @@ AS
         , it_amount           => lt_distributions_amount -- 明細金額
         , it_ccid             => lt_ccid                 -- 勘定科目ID
         );
+-- 2010/12/07 Ver.1.11 [E_本稼動_05823] SCS S.Niki ADD START
+        IF( lv_retcode = cv_status_error ) THEN
+          RAISE global_process_expt;
+        ELSIF( lv_retcode = cv_status_normal ) THEN
+          gn_distributions_cnt := gn_distributions_cnt + 1;
+        END IF;
+-- 2010/12/07 Ver.1.11 [E_本稼動_05823] SCS S.Niki ADD END
       --================================================================
       --税金/仕訳パターン：借方
       --================================================================
@@ -1055,6 +1213,10 @@ AS
 --
         IF( lv_retcode = cv_status_error ) THEN
           RAISE global_process_expt;
+-- 2010/12/07 Ver.1.11 [E_本稼動_05823] SCS S.Niki ADD START
+        ELSIF( lv_retcode = cv_status_normal ) THEN
+          gn_distributions_cnt := gn_distributions_cnt + 1;
+-- 2010/12/07 Ver.1.11 [E_本稼動_05823] SCS S.Niki ADD END
         END IF;
       --================================================================
       --収益/仕訳パターン：貸方(フルベンダー(消化))
@@ -1106,6 +1268,10 @@ AS
 --
         IF( lv_retcode = cv_status_error ) THEN
           RAISE global_process_expt;
+-- 2010/12/07 Ver.1.11 [E_本稼動_05823] SCS S.Niki ADD START
+        ELSIF( lv_retcode = cv_status_normal ) THEN
+          gn_distributions_cnt := gn_distributions_cnt + 1;
+-- 2010/12/07 Ver.1.11 [E_本稼動_05823] SCS S.Niki ADD END
         END IF;
       --================================================================
       --収益/仕訳パターン：貸方(一般)
@@ -1157,6 +1323,10 @@ AS
 --
         IF( lv_retcode = cv_status_error ) THEN
           RAISE global_process_expt;
+-- 2010/12/07 Ver.1.11 [E_本稼動_05823] SCS S.Niki ADD START
+        ELSIF( lv_retcode = cv_status_normal ) THEN
+          gn_distributions_cnt := gn_distributions_cnt + 1;
+-- 2010/12/07 Ver.1.11 [E_本稼動_05823] SCS S.Niki ADD END
         END IF;
 --
       END IF;
@@ -1386,7 +1556,10 @@ AS
                     );
       ov_errmsg  := NULL;
       ov_errbuf  := SUBSTRB( cv_pkg_name||cv_msg_cont||cv_prg_name||cv_msg_part||lv_out_msg, 1, 5000 );
-      ov_retcode := cv_status_error;
+-- 2010/12/07 Ver.1.11 [E_本稼動_05823] SCS S.Niki MOD START
+--      ov_retcode := cv_status_error;
+      ov_retcode := cv_status_warn;
+-- 2010/12/07 Ver.1.11 [E_本稼動_05823] SCS S.Niki MOD END
     -- *** 支払条件情報取得エラー ***
     WHEN get_term_info_expt THEN
       lv_out_msg := xxccp_common_pkg.get_msg(
@@ -1509,9 +1682,15 @@ AS
     lv_errmsg  VARCHAR2(5000) DEFAULT NULL; -- ユーザー・エラー・メッセージ
     lv_out_msg VARCHAR2(5000) DEFAULT NULL; -- メッセージ変数
     lb_retcode BOOLEAN        DEFAULT NULL; -- メッセージ出力戻り値
+-- 2010/12/07 Ver.1.11 [E_本稼動_05823] SCS S.Niki ADD START
+    lv_sub_retcode VARCHAR2(1) DEFAULT NULL; -- 退避リターン・コード
+-- 2010/12/07 Ver.1.11 [E_本稼動_05823] SCS S.Niki ADD END
 --
   BEGIN
     ov_retcode := cv_status_normal;
+-- 2010/12/07 Ver.1.11 [E_本稼動_05823] SCS S.Niki ADD START
+    lv_sub_retcode:= cv_status_normal;
+-- 2010/12/07 Ver.1.11 [E_本稼動_05823] SCS S.Niki ADD END
 --
     <<ar_coordination_data_loop>>
     FOR g_discnt_amount_rec IN g_discnt_amount_cur LOOP
@@ -1550,6 +1729,34 @@ AS
       IF( lv_retcode = cv_status_error ) THEN
         RAISE global_process_expt;
       END IF;
+-- 2010/12/07 Ver.1.11 [E_本稼動_05823] SCS S.Niki MOD START
+--      --================================================================
+--      --get_discnt_amnt_add_ar_data_pの呼び出し(A-4)
+--      --================================================================
+--      get_discnt_amnt_add_ar_data_p(
+--        ov_errbuf              => lv_errbuf
+--      , ov_retcode             => lv_retcode
+--      , ov_errmsg              => lv_errmsg
+--      , i_discnt_amount_rec    => g_discnt_amount_rec
+--      );
+----
+--      IF( lv_retcode = cv_status_error ) THEN
+--        RAISE global_process_expt;
+--      END IF;
+--      --================================================================
+--      --ins_discnt_amount_ar_data_pの呼び出し(A-5)
+--      --================================================================
+--      ins_discnt_amount_ar_data_p(
+--        ov_errbuf              => lv_errbuf 
+--      , ov_retcode             => lv_retcode
+--      , ov_errmsg              => lv_errmsg 
+--      , i_discnt_amount_rec    => g_discnt_amount_rec 
+--      );
+----
+--      IF( lv_retcode = cv_status_error ) THEN
+--        RAISE global_process_expt;
+--      END IF;
+----
       --================================================================
       --get_discnt_amnt_add_ar_data_pの呼び出し(A-4)
       --================================================================
@@ -1562,22 +1769,49 @@ AS
 --
       IF( lv_retcode = cv_status_error ) THEN
         RAISE global_process_expt;
-      END IF;
-      --================================================================
-      --ins_discnt_amount_ar_data_pの呼び出し(A-5)
-      --================================================================
-      ins_discnt_amount_ar_data_p(
-        ov_errbuf              => lv_errbuf 
-      , ov_retcode             => lv_retcode
-      , ov_errmsg              => lv_errmsg 
-      , i_discnt_amount_rec    => g_discnt_amount_rec 
-      );
+      ELSIF( lv_retcode = cv_status_warn ) THEN
+        gn_error_cnt   := gn_error_cnt + 1;
+        -- リターン・コードを退避
+        lv_sub_retcode := lv_retcode;
+      ELSIF( lv_retcode = cv_status_normal ) THEN
+        --================================================================
+        --ins_discnt_amount_ar_data_pの呼び出し(A-5)
+        --================================================================
+        ins_discnt_amount_ar_data_p(
+          ov_errbuf              => lv_errbuf 
+        , ov_retcode             => lv_retcode
+        , ov_errmsg              => lv_errmsg 
+        , i_discnt_amount_rec    => g_discnt_amount_rec 
+        );
 --
-      IF( lv_retcode = cv_status_error ) THEN
-        RAISE global_process_expt;
+        IF( lv_retcode = cv_status_error ) THEN
+          RAISE global_process_expt;
+        END IF;
+--
+        --==============================================================
+        --upd_ coordination_result_p(連携結果の更新(A-8))の呼び出し
+        --==============================================================
+        upd_coordination_result_p(
+          ov_errbuf              => lv_errbuf
+        , ov_retcode             => lv_retcode
+        , ov_errmsg              => lv_errmsg
+        , i_discnt_amount_rec    => g_discnt_amount_rec 
+        );
+--
+        IF( lv_retcode = cv_status_error ) THEN
+          RAISE global_process_expt;
+        ELSIF( lv_retcode = cv_status_normal ) THEN
+          gn_normal_cnt := gn_normal_cnt + 1;
+        END IF;
       END IF;
+-- 2010/12/07 Ver.1.11 [E_本稼動_05823] SCS S.Niki MOD END
 --
     END LOOP ar_coordination_data_loop;
+-- 2010/12/07 Ver.1.11 [E_本稼動_05823] SCS S.Niki ADD START
+    IF( lv_sub_retcode <> cv_status_normal ) THEN
+        ov_retcode := lv_sub_retcode;
+    END IF;
+-- 2010/12/07 Ver.1.11 [E_本稼動_05823] SCS S.Niki ADD END
 --
   EXCEPTION
     -- *** 処理部共通例外ハンドラ ***
@@ -1915,6 +2149,17 @@ AS
     --==============================================================
     gv_language := USERENV( cv_language );
 --
+-- 2010/12/07 Ver.1.11 [E_本稼動_05823] SCS S.Niki ADD START
+    --==============================================================
+    --条件別販手条件テーブルのカウント
+    --==============================================================
+    SELECT COUNT(*)
+    INTO   gn_target_line_cnt
+    FROM   xxcok_cond_bm_support    xcbs                     -- 条件別販手販協テーブル
+    WHERE  xcbs.ar_interface_status = cv_untreated_ar_status -- 連携ステータス未処理(AR)
+    AND    xcbs.csh_rcpt_discount_amt IS NOT NULL;
+-- 2010/12/07 Ver.1.11 [E_本稼動_05823] SCS S.Niki ADD END
+--
   EXCEPTION
     -- *** プロファイル取得エラー ***
     WHEN profile_expt THEN
@@ -2035,18 +2280,23 @@ AS
     IF( lv_retcode = cv_status_error ) THEN
       RAISE global_process_expt;
     END IF;
-    --==============================================================
-    --upd_ coordination_result_p(連携結果の更新(A-8))の呼び出し
-    --==============================================================
-    upd_coordination_result_p(
-      ov_errbuf  => lv_errbuf      -- エラー・メッセージ
-    , ov_retcode => lv_retcode     -- リターン・コード
-    , ov_errmsg  => lv_errmsg      -- ユーザー・エラー・メッセージ
-    );
---
-    IF( lv_retcode = cv_status_error ) THEN
-      RAISE global_process_expt;
-    END IF;
+-- 2010/12/07 Ver.1.11 [E_本稼動_05823] SCS S.Niki ADD START
+      ov_retcode := lv_retcode;
+-- 2010/12/07 Ver.1.11 [E_本稼動_05823] SCS S.Niki ADD END
+-- 2010/12/07 Ver.1.11 [E_本稼動_05823] SCS S.Niki DEL START
+--    --==============================================================
+--    --upd_ coordination_result_p(連携結果の更新(A-8))の呼び出し
+--    --==============================================================
+--    upd_coordination_result_p(
+--      ov_errbuf  => lv_errbuf      -- エラー・メッセージ
+--    , ov_retcode => lv_retcode     -- リターン・コード
+--    , ov_errmsg  => lv_errmsg      -- ユーザー・エラー・メッセージ
+--    );
+----
+--    IF( lv_retcode = cv_status_error ) THEN
+--      RAISE global_process_expt;
+--    END IF;
+-- 2010/12/07 Ver.1.11 [E_本稼動_05823] SCS S.Niki DEL END
 --
   EXCEPTION
     -- *** 処理部共通例外ハンドラ ***
@@ -2129,6 +2379,15 @@ AS
                     , lv_errbuf          -- メッセージ
                     , 0                  -- 改行
                     );
+-- 2010/12/07 Ver.1.11 [E_本稼動_05823] SCS S.Niki ADD START
+    -- 警告終了した場合は空白行のみ出力する
+    ELSIF( lv_retcode = cv_status_warn ) THEN
+      lb_retcode := xxcok_common_pkg.put_message_f( 
+                      FND_FILE.OUTPUT    -- 出力区分
+                    , NULL               -- メッセージ
+                    , 0                  -- 改行
+                    );
+-- 2010/12/07 Ver.1.11 [E_本稼動_05823] SCS S.Niki ADD END
     END IF;
     --================================================================
     --対象件数出力
@@ -2143,14 +2402,33 @@ AS
       lb_retcode := xxcok_common_pkg.put_message_f( 
                       FND_FILE.OUTPUT    -- 出力区分
                     , lv_out_msg         -- メッセージ
-                    , 0                  -- 改行
+                    , 1                  -- 改行
                     );
     END IF;
+-- 2010/12/07 Ver.1.11 [E_本稼動_05823] SCS S.Niki ADD START
+    --================================================================
+    --条件別販手販協テーブル処理件数出力用メッセージ出力
+    --================================================================
+    lv_out_msg := xxccp_common_pkg.get_msg(
+                    cv_appli_xxcok_name
+                  , cv_10284_msg
+                  );
+    lb_retcode := xxcok_common_pkg.put_message_f( 
+                    FND_FILE.OUTPUT    -- 出力区分
+                  , lv_out_msg         -- メッセージ
+                  , 0                  -- 改行
+                  );
+-- 2010/12/07 Ver.1.11 [E_本稼動_05823] SCS S.Niki ADD END
 --
     IF( lv_retcode = cv_status_error ) THEN
       gn_target_cnt := 0;
       gn_normal_cnt := 0;
       gn_error_cnt  := 1;
+-- 2010/12/07 Ver.1.11 [E_本稼動_05823] SCS S.Niki ADD START
+      gn_target_line_cnt   := 0; 
+      gn_lines_cnt         := 0;
+      gn_distributions_cnt := 0;
+-- 2010/12/07 Ver.1.11 [E_本稼動_05823] SCS S.Niki ADD END
     END IF;
 --
       lv_out_msg := xxccp_common_pkg.get_msg(
@@ -2178,6 +2456,36 @@ AS
                   , lv_out_msg         -- メッセージ
                   , 0                  -- 改行
                   );
+-- 2010/12/07 Ver.1.11 [E_本稼動_05823] SCS S.Niki ADD START
+    -- ===============================================
+    -- 条件別販手販協明細件数出力
+    -- ===============================================
+    lv_out_msg := xxccp_common_pkg.get_msg(
+                    cv_appli_xxcok_name
+                  , cv_10286_msg
+                  , cv_count_token
+                  , TO_CHAR( gn_target_line_cnt )
+                  );
+    lb_retcode := xxcok_common_pkg.put_message_f( 
+                    FND_FILE.OUTPUT    -- 出力区分
+                  , lv_out_msg         -- メッセージ
+                  , 0                  -- 改行
+                  );
+    -- ===============================================
+    -- 連携フラグ更新明細件数出力
+    -- ===============================================
+    lv_out_msg := xxccp_common_pkg.get_msg(
+                    cv_appli_xxcok_name
+                  , cv_10287_msg
+                  , cv_count_token
+                  , TO_CHAR( gn_flag_upd_cnt )
+                  );
+    lb_retcode := xxcok_common_pkg.put_message_f( 
+                    FND_FILE.OUTPUT    -- 出力区分
+                  , lv_out_msg         -- メッセージ
+                  , 0                  -- 改行
+                  );
+-- 2010/12/07 Ver.1.11 [E_本稼動_05823] SCS S.Niki ADD END
     -- ===============================================
     -- エラー件数出力
     -- ===============================================
@@ -2192,17 +2500,71 @@ AS
                   , lv_out_msg         -- メッセージ
                   , 0                  -- 改行
                   );
+-- 2010/12/07 Ver.1.11 [E_本稼動_05823] SCS S.Niki ADD START
+    --================================================
+    --請求OIF登録件数出力用メッセージ出力
+    --================================================
+    lv_out_msg := xxccp_common_pkg.get_msg(
+                    cv_appli_xxcok_name
+                  , cv_10285_msg
+                  );
+    lb_retcode := xxcok_common_pkg.put_message_f( 
+                    FND_FILE.OUTPUT    -- 出力区分
+                  , lv_out_msg         -- メッセージ
+                  , 0                  -- 改行
+                  );
+    -- ===============================================
+    -- 請求取引OIF登録件数出力
+    -- ===============================================
+    lv_out_msg := xxccp_common_pkg.get_msg(
+                    cv_appli_xxcok_name
+                  , cv_10288_msg
+                  , cv_count_token
+                  , TO_CHAR( gn_lines_cnt )
+                  );
+    lb_retcode := xxcok_common_pkg.put_message_f( 
+                    FND_FILE.OUTPUT    -- 出力区分
+                  , lv_out_msg         -- メッセージ
+                  , 0                  -- 改行
+                  );
+    -- ===============================================
+    -- 請求配分OIF登録件数出力
+    -- ===============================================
+    lv_out_msg := xxccp_common_pkg.get_msg(
+                    cv_appli_xxcok_name
+                  , cv_10289_msg
+                  , cv_count_token
+                  , TO_CHAR( gn_distributions_cnt )
+                  );
+    lb_retcode := xxcok_common_pkg.put_message_f( 
+                    FND_FILE.OUTPUT    -- 出力区分
+                  , lv_out_msg         -- メッセージ
+                  , 1                  -- 改行
+                  );
+-- 2010/12/07 Ver.1.11 [E_本稼動_05823] SCS S.Niki ADD END
     -- ===============================================
     -- 終了メッセージ
     -- ===============================================
-    IF( lv_retcode = cv_status_normal ) THEN
+-- 2010/12/07 Ver.1.11 [E_本稼動_05823] SCS S.Niki MOD START
+--    IF( lv_retcode = cv_status_normal ) THEN
+--      lv_message_code := cv_90004_msg;
+--      retcode         := cv_status_normal;
+--    ELSIF( lv_retcode = cv_status_error ) THEN
+--      lv_message_code := cv_90006_msg;
+--      retcode         := cv_status_error;
+--    END IF;
+    --
+    IF( lv_retcode = cv_status_warn ) THEN
+      lv_message_code := cv_90005_msg;
+      retcode         := cv_status_warn;
+    ELSIF( lv_retcode = cv_status_normal ) THEN
       lv_message_code := cv_90004_msg;
       retcode         := cv_status_normal;
     ELSIF( lv_retcode = cv_status_error ) THEN
       lv_message_code := cv_90006_msg;
       retcode         := cv_status_error;
     END IF;
-    --
+-- 2010/12/07 Ver.1.11 [E_本稼動_05823] SCS S.Niki MOD END
 --
     lv_out_msg := xxccp_common_pkg.get_msg(
                     cv_appli_xxccp_name
