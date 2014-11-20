@@ -11,6 +11,8 @@
 ##                       初版                                                 ##
 ##                     SCS    川田           2009/11/26 1.0.2                 ##
 ##                     SCS    川田           2009/12/01 1.0.3                 ##
+##                     SCS    北河           2010/01/08 1.0.4                 ##
+##                       /tmp配下をユーザの条件付で削除対象に追加             ##
 ##                                                                            ##
 ##   [戻り値]                                                                 ##
 ##      0 : 正常                                                              ##
@@ -36,6 +38,13 @@ L_lhizuke=`/bin/date "+%Y%m%d"`          #ログ日付
 L_rogupasu="/var/EBS/jp1/PEBSITO/log"    #ログパス
 L_rogumei="${L_rogupasu}/"`/bin/basename ${L_sherumei} .ksh`"${L_hosutomei}${L_hizuke}.log"   #ログ名
 L_zczzcomn="`/bin/dirname $0`/ZCZZCOMN.env"     #共通環境変数ファイル名
+##2010/01/08 T.Kitagawa Add Start
+L_tmpdir="/tmp"                          #/tmpパス
+L_tmptypef="f"                           #ファイルの種類：通常ファイル
+L_tmptyped="d"                           #ファイルの種類：ディレクトリ
+L_tmpuser="pebsito"                      #ユーザ名
+L_tmphozonkikan="30"                     #/tmpディレクトリ配下の保存期間
+##2010/01/08 T.Kitagawa Add End
 
 
 ################################################################################
@@ -167,6 +176,39 @@ do
    fi
 done < ${TE_ZCZZAPDELFILE}
 
+##2010/01/08 T.Kitagawa Add Start
+#通常ファイルの削除（/tmp配下）
+#L_hyoujunshuturyoku 削除ファイル一覧
+echo "### ${L_tmpdir} ログファイル ###" >> ${L_rogumei}
+/usr/bin/find ${L_tmpdir} -type ${L_tmptypef} -user ${L_tmpuser} -mtime +${L_tmphozonkikan} -print | sort -r > ${TE_ZCZZHYOUJUNSHUTURYOKU}
+L_kensu=`/usr/bin/cat ${TE_ZCZZHYOUJUNSHUTURYOKU} | /usr/bin/wc -l`
+if [ ${L_kensu} -ne 0 ]
+then
+   /usr/bin/cat ${TE_ZCZZHYOUJUNSHUTURYOKU} >> ${L_rogumei}
+   while read L_hyoujunshuturyoku
+   do
+      rm ${L_hyoujunshuturyoku}
+   done < ${TE_ZCZZHYOUJUNSHUTURYOKU}
+else
+   echo ${TE_ZCZZ01000} >> ${L_rogumei}
+fi
+
+#ディレクトリの削除（/tmp配下）
+#L_hyoujunshuturyoku 削除ディレクトリ一覧
+echo "### ${L_tmpdir} ログディレクトリ ###" >> ${L_rogumei}
+/usr/bin/find ${L_tmpdir} -type ${L_tmptyped} -user ${L_tmpuser} -mtime +${L_tmphozonkikan} -print | sort -r > ${TE_ZCZZHYOUJUNSHUTURYOKU}
+L_kensu=`/usr/bin/cat ${TE_ZCZZHYOUJUNSHUTURYOKU} | /usr/bin/wc -l`
+if [ ${L_kensu} -ne 0 ]
+then
+   /usr/bin/cat ${TE_ZCZZHYOUJUNSHUTURYOKU} >> ${L_rogumei}
+   while read L_hyoujunshuturyoku
+   do
+      rmdir ${L_hyoujunshuturyoku}
+   done < ${TE_ZCZZHYOUJUNSHUTURYOKU}
+else
+   echo ${TE_ZCZZ01000} >> ${L_rogumei}
+fi
+##2010/01/08 T.Kitagawa Add End
 
 L_rogushuturyoku "削除対象ログファイル存在確認および削除 終了"
 

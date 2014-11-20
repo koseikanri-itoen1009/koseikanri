@@ -2,6 +2,12 @@
 
 ################################################################################
 ##                                                                            ##
+##   [ファイル名]                                                             ##
+##      ZCZZ_PEBSDB_PURGE.ksh                                                 ##
+##                                                                            ##
+##   [ジョブ名]                                                               ##
+##      データベースデータパージジョブ                                        ##
+##                                                                            ##
 ##   [概要]                                                                   ##
 ##      データベースの監査データの削除を実施する。                            ##
 ##                                                                            ##
@@ -12,15 +18,16 @@
 ##        更新履歴：   Oracle 吉野           2008/10/30 1.0.3                 ##
 ##                      購買オープン・インタフェースで処理されたデータのパージ##
 ##                      を追加                                                ##
+##        更新履歴：   SCS    長濱           2009/07/05 1.0.4                 ##
+##        更新履歴：   SCS    北河           2010/01/08 1.0.5                 ##
+##                      デバッグ・ログおよびシステム・アラートのパージを追加  ##
+##                                                                            ##
 ##   [戻り値]                                                                 ##
 ##      0 : 正常                                                              ##
 ##      8 : 異常                                                              ##
 ##                                                                            ##
 ##   [パラメータ]                                                             ##
 ##      なし                                                                  ##
-##                                                                            ##
-##   [使用方法]                                                               ##
-##      ZCZZ_PEBSDB_PURGE.ksh                                                 ##
 ##                                                                            ##
 ##    Copyright 株式会社伊藤園 U5000プロジェクト 2007-2009                    ##
 ################################################################################
@@ -125,8 +132,8 @@ L_rogushuturyoku "環境設定ファイル読込み 終了"
 ### データパージ ###
 L_rogushuturyoku "データパージ 開始"
 
-#コンカレントデータパージ
-L_rogushuturyoku "コンカレントデータパージ 開始"
+#コンカレント要求やマネージャ・データのパージ
+L_rogushuturyoku "コンカレント要求やマネージャ・データのパージ 開始"
 
 L_app_syokuseki_tansyukumei="SYSADMIN"                     #職責のアプリケーション短縮名
 L_syokusekimei="System Administrator"                      #職責の名称
@@ -228,11 +235,11 @@ fi
 
 L_jyoutaikakunin
 
-L_rogushuturyoku "コンカレントデータパージ 終了"
+L_rogushuturyoku "コンカレント要求やマネージャ・データのパージ 終了"
 
 
-### 監査データパージ ###
-L_rogushuturyoku "監査データパージ 開始"
+### サインオン監査データのパージ ###
+L_rogushuturyoku "サインオン監査データのパージ 開始"
 
 L_hozonkikan=TE_ZCZZ_HOZONKIKAN_KANSA      #保存期間
 
@@ -302,11 +309,11 @@ fi
 
 L_jyoutaikakunin
 
-L_rogushuturyoku "監査データパージ 終了"
+L_rogushuturyoku "サインオン監査データのパージ 終了"
 
 
-###ページアクセストラッキングデータパージ###
-L_rogushuturyoku "ページアクセストラッキングデータパージ 開始"
+### ページ・アクセス追跡データのパージ ###
+L_rogushuturyoku "ページ・アクセス追跡データのパージ 開始"
 
 L_hozonkikan=TE_ZCZZHOZONKIKAN_PAT         #保存期間
 
@@ -376,11 +383,11 @@ fi
 
 L_jyoutaikakunin
 
-L_rogushuturyoku "ページアクセストラッキングデータパージ 終了"
+L_rogushuturyoku "ページ・アクセス追跡データのパージ 終了"
 
 
-###Web Inquiryアクセス履歴データパージ###
-L_rogushuturyoku "Web Inquiryアクセス履歴データパージ 開始"
+### Oracle GL Web Inquiryアクセス／検索ログ削除 ###
+L_rogushuturyoku "Oracle GL Web Inquiryアクセス／検索ログ削除 開始"
 
 
 L_app_syokuseki_tansyukumei="SYSADMIN"     #職責のアプリケーション短縮名
@@ -448,34 +455,11 @@ fi
 
 L_jyoutaikakunin
 
-L_rogushuturyoku "Web Inquiryアクセス履歴データパージ 終了"
+L_rogushuturyoku "Oracle GL Web Inquiryアクセス／検索ログ削除 終了"
 
 
-### STATSPACKデータパージ ###
-L_rogushuturyoku "STATSPACKデータパージ 開始"
-
-#STATSPACKデータ削除実行
-${ORACLE_HOME}/bin/sqlplus -s perfstat/perfstat << EOF >> ${L_rogumei} 2> ${TE_ZCZZHYOUJUNERA}
-WHENEVER OSERROR EXIT FAILURE
-WHENEVER SQLERROR EXIT FAILURE
-
-execute statspack.purge(i_purge_before_date=>sysdate - ${TE_ZCZZHOZONKIKAN_STPK});
-exit
-EOF
-
-#実行結果判定
-if [ $? -ne 0 ]
-then
-   echo ${TE_ZCZZ01108} | /usr/bin/fold -w 75 | /usr/bin/tee -a ${L_rogumei} 1>&2
-   /usr/bin/cat ${TE_ZCZZHYOUJUNERA} >> ${L_rogumei}
-   L_shuryo ${TE_ZCZZIJOUSHURYO}
-fi
-
-L_rogushuturyoku "STATSPACKデータパージ 終了"
-
-
-### 廃止ワークフローランタイムデータパージ ###
-L_rogushuturyoku "廃止ワークフローランタイムデータパージ 開始"
+### 廃止ワークフロー・ランタイム・データのパージ ###
+L_rogushuturyoku "廃止ワークフロー・ランタイム・データのパージ 開始"
 
 L_app_syokuseki_tansyukumei="SYSADMIN"                     #職責のアプリケーション短縮名
 L_syokusekimei="System Administrator"                      #職責の名称
@@ -559,11 +543,11 @@ fi
 
 L_jyoutaikakunin
 
-L_rogushuturyoku "廃止ワークフローランタイムデータパージ 終了"
+L_rogushuturyoku "廃止ワークフロー・ランタイム・データのパージ 終了"
 
 
-### 廃止された一般 ファイル マネージャ データパージ ###
-L_rogushuturyoku "廃止された一般 ファイル マネージャ データパージ 開始"
+### 廃止された一般ファイル・マネージャ・データのパージ ###
+L_rogushuturyoku "廃止された一般ファイル・マネージャ・データのパージ 開始"
 
 L_app_syokuseki_tansyukumei="SYSADMIN"                     #職責のアプリケーション短縮名
 L_syokusekimei="System Administrator"                      #職責の名称
@@ -635,7 +619,7 @@ fi
 
 L_jyoutaikakunin
 
-L_rogushuturyoku "廃止された一般 ファイル マネージャ データパージ 終了"
+L_rogushuturyoku "廃止された一般ファイル・マネージャ・データのパージ 終了"
 
 ### 購買オープン・インタフェースで処理されたデータのパージ ###
 L_rogushuturyoku "購買オープン・インタフェースで処理されたデータのパージ 開始"
@@ -724,6 +708,79 @@ fi
 L_jyoutaikakunin
 
 L_rogushuturyoku "購買オープン・インタフェースで処理されたデータのパージ 終了"
+
+##2010/01/08 T.Kitagawa Add Start
+### デバッグ・ログおよびシステム・アラートのパージ ###
+L_rogushuturyoku "デバッグ・ログおよびシステム・アラートのパージ 開始"
+
+L_app_syokuseki_tansyukumei="SYSADMIN"                     #職責のアプリケーション短縮名
+L_syokusekimei="System Administrator"                      #職責の名称
+L_yuzamei="SYSADMIN"                                       #ユーザ名
+L_konkarento_app_tansyukumei="FND"                         #プログラムアプリケーション短縮名
+L_konkarentomei="FNDLGPRG"                                 #プログラムアプリケーション名
+
+#日付計算
+L_jikan=`expr ${TE_ZCZZHOZONKIKAN_DSP} \* 30 \* 24 + 24 - 9`
+L_hikisu01=`env TZ=JST+${L_jikan} date +%Y/%m/%d`   #Last Purge Date  YYYY/MM/DD
+
+echo "L_app_syokuseki_tansyukumei="${L_app_syokuseki_tansyukumei}   >> ${L_rogumei}
+echo "L_syokusekimei="${L_syokusekimei}                             >> ${L_rogumei}
+echo "L_yuzamei="${L_yuzamei}                                       >> ${L_rogumei}
+echo "L_konkarento_app_tansyukumei="${L_konkarento_app_tansyukumei} >> ${L_rogumei}
+echo "L_konkarentomei="${L_konkarentomei}                           >> ${L_rogumei}
+echo "L_hikisu01="${L_hikisu01}                                     >> ${L_rogumei}
+
+#コンカレント実行
+echo ""
+L_rogushuturyoku "コンカレント実行"
+${FND_TOP}/bin/CONCSUB apps/apps \
+                       "${L_app_syokuseki_tansyukumei}" \
+                       "${L_syokusekimei}" \
+                       "${L_yuzamei}" \
+                       WAIT=Y \
+                       CONCURRENT \
+                       "${L_konkarento_app_tansyukumei}" \
+                       "${L_konkarentomei}" \
+                       "${L_hikisu01}" \
+                       > ${TE_ZCZZHYOUJUNSHUTURYOKU} 2> ${TE_ZCZZHYOUJUNERA}
+
+#コンカレント実行判定
+if [ $? -ne 0 ]
+then
+   echo ${TE_ZCZZ01117} | /usr/bin/fold -w 75 | /usr/bin/tee -a ${L_rogumei} 1>&2
+   /usr/bin/cat ${TE_ZCZZHYOUJUNERA} >> ${L_rogumei}
+   L_shuryo ${TE_ZCZZIJOUSHURYO}
+fi
+
+#要求ID取得
+L_rogushuturyoku "要求ID取得"
+L_yokyu_id=`awk 'NR==1 {print $3}' ${TE_ZCZZHYOUJUNSHUTURYOKU}`
+L_rogushuturyoku "要求ID="${L_yokyu_id}
+L_era_messeige=${TE_ZCZZ01118}
+
+#実行ステータス確認
+L_rogushuturyoku "実行ステータス確認 開始"
+
+${ORACLE_HOME}/bin/sqlplus -s apps/apps << EOF > ${TE_ZCZZHYOUJUNSHUTURYOKU} 2> ${TE_ZCZZHYOUJUNERA}
+WHENEVER OSERROR EXIT FAILURE
+WHENEVER SQLERROR EXIT FAILURE
+
+SELECT REQUEST_ID, PHASE_CODE, STATUS_CODE FROM FND_CONCURRENT_REQUESTS WHERE REQUEST_ID='${L_yokyu_id}';
+exit
+EOF
+
+if [ $? -ne 0 ]
+then
+   echo ${L_era_messeige} | /usr/bin/fold -w 75 | /usr/bin/tee -a ${L_rogumei} 1>&2
+   /usr/bin/cat ${TE_ZCZZHYOUJUNSHUTURYOKU} >> ${L_rogumei}
+   /usr/bin/cat ${TE_ZCZZHYOUJUNERA} >> ${L_rogumei}
+   L_shuryo ${TE_ZCZZIJOUSHURYO}
+fi
+
+L_jyoutaikakunin
+
+L_rogushuturyoku "デバッグ・ログおよびシステム・アラートのパージ 終了"
+##2010/01/08 T.Kitagawa Add End
 
 ### 処理終了出力 ###
 L_shuryo ${TE_ZCZZSEIJOUSHURYO}
