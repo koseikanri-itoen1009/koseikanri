@@ -7,7 +7,7 @@ AS
  * Description      : 従業員マスタと資格ポイントマスタから各営業員の資格ポイントを算出し、
  *                  : 新規獲得ポイント顧客別履歴テーブルに登録します。
  * MD.050           : MD050_CSM_004_A03_新規獲得ポイント集計（資格ポイント集計処理）
- * Version          : 1.6
+ * Version          : 1.7
  *
  * Program List
  * -------------------- ------------------------------------------------------------
@@ -34,6 +34,7 @@ AS
  *  2009/07/14    1.4   M.Ohtsuki       ［SCS障害管理番号0000663］想定外エラー発生時の不具合
  *  2009/07/27    1.5   T.Tsukino       ［SCS障害管理番号0000786］パフォーマンス障害
  *  2009/08/24    1.6   T.Tsukino       ［SCS障害管理番号0001150］障害№0001150対応(発令日の判定方法の不備）
+ *  2009/09/03    1.7   K.Kubo          ［SCS障害管理番号0001286］発令日の判定方法の不備(営業員以外から営業員への異動)
  *****************************************************************************************/
 --
 --#######################  固定グローバル定数宣言部 START   #######################
@@ -995,7 +996,11 @@ AS
         SELECT /*+ LEADING(ippf.ippf.pap) INDEX(ppf.pap PER_PEOPLE_F_PK) */
 --//+ADD  END  2009/07/27 0000786 T.Tsukino
                ppf.employee_number                            employee_number     --従業員コード
-              ,SUBSTRB(paaf.ass_attribute2,1,6)               hatsureibi          --発令日(YYYYMMDD⇒YYYYMM）
+--//+ADD START 2009/09/03 0001286 K.Kubo
+--↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓
+--              ,SUBSTRB(paaf.ass_attribute2,1,6)               hatsureibi          --発令日(YYYYMMDD⇒YYYYMM）
+              ,paaf.ass_attribute2                            hatsureibi          --発令日(YYYYMMDD）
+--//+ADD END   2009/09/03 0001286 K.Kubo
               ,ppf.attribute7                                 new_shikaku_cd      --資格コード（新）
               ,ppf.attribute9                                 old_shikaku_cd      --資格コード（旧）
               ,ppf.attribute15                                new_syokumu_cd      --職務コード（新）
@@ -1465,12 +1470,44 @@ AS
 --//+UPD END   2009/07/14 0000663 M.Ohtsuki
               RAISE global_skip_expt;
             END IF;
+--//+ADD START 2009/09/03 0001286 K.Kubo
+            IF (SUBSTRB(get_eigyo_date_rec.hatsureibi,7,2) = cv_tougetsu_date) THEN
+              --発令日が当月１日の場合、新データの資格ポイントを取得
+              -- ================================================
+              -- (新データ)資格ポイント算出処理
+              -- ================================================
+              get_point_data(
+                 iv_employee_cd      =>   get_eigyo_date_rec.employee_number
+                ,iv_busyo_cd         =>   lv_busyo_cd
+                ,iv_shikaku_cd       =>   get_eigyo_date_rec.new_shikaku_cd
+                ,iv_syokumu_cd       =>   get_eigyo_date_rec.new_syokumu_cd
+                ,on_shikaku_point    =>   ln_shikaku_point
+                ,ov_errbuf           =>   lv_errbuf
+                ,ov_retcode          =>   lv_retcode
+                ,ov_errmsg           =>   lv_errmsg
+                );
+              -- エラーならば、処理をスキップする。
+              IF (lv_retcode = cv_status_error) THEN
+                RAISE global_process_expt;
+              END IF;
+              IF (lv_retcode = cv_status_warn) THEN
+                RAISE global_skip_expt;
+              END IF;
+--
+            ELSE
+              --それ以外の場合は、資格ポイントは'0'を設定
+              ln_shikaku_point := cn_shikaku_point;
+            END IF;
+--//+ADD END   2009/09/03 0001286 K.Kubo
             -- ======================================
             -- レコード新規追加処理
             -- ======================================
             insert_rireki_tbl_data (
                iv_employee_num      => get_eigyo_date_rec.employee_number              -- 従業員№
-              ,in_shikaku_point     => cn_shikaku_point                                -- 資格ポイント
+--//+UPD START 2009/09/03 0001286 K.Kubo
+--              ,in_shikaku_point     => cn_shikaku_point                                -- 資格ポイント
+              ,in_shikaku_point     => ln_shikaku_point                                -- 資格ポイント
+--//+UPD END   2009/09/03 0001286 K.Kubo
               ,iv_busyo_cd          => lv_busyo_cd                                     -- 部署コード
               ,iv_syokumu_cd        => get_eigyo_date_rec.new_syokumu_cd               -- 職務コード
               ,iv_shikaku_cd        => get_eigyo_date_rec.new_shikaku_cd               -- 資格コード
