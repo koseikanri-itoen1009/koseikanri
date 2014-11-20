@@ -7,7 +7,7 @@ AS
  * Description      : 仕入実績表作成
  * MD.050/070       : 月次〆切処理（経理）Issue1.0(T_MD050_BPO_770)
  *                    月次〆切処理（経理）Issue1.0(T_MD070_BPO_77E)
- * Version          : 1.14
+ * Version          : 1.15
  *
  * Program List
  * -------------------- ------------------------------------------------------------
@@ -45,6 +45,7 @@ AS
  *  2008/12/05    1.12  A.Shiina         本番#500対応
  *  2008/12/05    1.13  A.Shiina         本番#473対応
  *  2008/12/12    1.14  A.Shiina         本番#425対応
+ *  2008/12/16    1.15  A.Shiina         本番#754対応
  *****************************************************************************************/
 --
 --#######################  固定グローバル定数宣言部 START   #######################
@@ -850,6 +851,10 @@ AS
 -- 2008/11/13 v1.8 ADD START
     cv_rma               CONSTANT VARCHAR2( 3) := 'RMA';
 -- 2008/11/13 v1.8 ADD END
+-- 2008/12/16 v1.15 ADD START
+    cv_money_fix         CONSTANT VARCHAR2(2)  := '35';
+    cv_cancel            CONSTANT VARCHAR2(2)  := '99';
+-- 2008/12/16 v1.15 ADD END
     cv_cat_set_name_mtof CONSTANT VARCHAR2(30) := 'XXCMN_MONTH_TRANS_OUTPUT_FLAG';
 --
     cn_prod_class_id     CONSTANT NUMBER := TO_NUMBER(FND_PROFILE.VALUE('XXCMN_ITEM_CATEGORY_PROD_CLASS'));
@@ -1652,6 +1657,10 @@ AS
       || '       AND    itp.doc_type              = xrpm.doc_type '
       || '       AND    xrpm.break_col_05         IS NOT NULL '
 -- 2008/11/13 v1.8 ADD END
+-- 2008/12/16 v1.15 ADD START
+      || '       AND    pha.attribute1 >= :para_money_fix '
+      || '       AND    pha.attribute1 <  :para_cancel '
+-- 2008/12/16 v1.15 ADD END
       ;
 --
     -- 品目区分
@@ -2031,6 +2040,10 @@ AS
                                       ,cv_porc
                                       ,cv_rma
                                       ,cv_po
+-- 2008/12/16 v1.15 ADD START
+                                      ,cv_money_fix
+                                      ,cv_cancel
+-- 2008/12/16 v1.15 ADD END
 -- 2008/12/04 v1.14 UPDATE START
 --                                      ,cv_deliver
 --                                      ,cv_return_to_vendor
