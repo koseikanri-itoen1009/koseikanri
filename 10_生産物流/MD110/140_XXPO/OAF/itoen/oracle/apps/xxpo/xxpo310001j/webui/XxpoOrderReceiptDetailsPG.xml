@@ -25,10 +25,12 @@
                                        <lovMappings>
                                           <lovMap id="HeaderNumberRetLovMap" lovItem="HeaderNumber" resultTo="TxtHeaderNumber"/>
                                           <lovMap id="HeaderNumberLovMap" criteriaFrom="TxtHeaderNumber" lovItem="HeaderNumber"/>
-                                          <lovMap id="PeopleCodeLobMap1" programmaticQuery="true" criteriaFrom="fPeopleCode" lovItem="PeopleCode"/>
-                                          <lovMap id="PurchaseSiteCodeLobMap1" programmaticQuery="true" criteriaFrom="fPurchaseSiteCode" lovItem="PurchaseSiteCode"/>
+                                          <lovMap id="PeopleCodeLovMap1" programmaticQuery="true" criteriaFrom="fPeopleCode" lovItem="PeopleCode"/>
+                                          <lovMap id="PurchaseSiteCodeLovMap1" programmaticQuery="true" criteriaFrom="fPurchaseSiteCode" lovItem="PurchaseSiteCode"/>
+                                          <lovMap id="HeaderIdRetLovMap" lovItem="HeaderId" resultTo="fHeaderId"/>
                                        </lovMappings>
                                     </oa:messageLovInput>
+                                    <oa:formValue id="fHeaderId" prompt="発注ヘッダID"/>
                                  </ui:contents>
                               </oa:cellFormat>
                               <oa:cellFormat id="OrderHeaderCell102" hAlign="right" height="1">
@@ -43,9 +45,11 @@
                                           <lovMap id="RequestNumberRetLovMap" lovItem="RequestNumber" resultTo="TxtRequestNumber"/>
                                           <lovMap id="RequestNumberLovMap" lovItem="RequestNumber" criteriaFrom="TxtRequestNumber"/>
                                           <lovMap id="PeopleCodeLobMap2" programmaticQuery="true" criteriaFrom="fPeopleCode" lovItem="PeopleCode"/>
-                                          <lovMap id="PurchaseSiteCodeLobMap2" programmaticQuery="true" criteriaFrom="fPurchaseSiteCode" lovItem="PurchaseSiteCode"/>
+                                          <lovMap id="PurchaseSiteCodeLovMap2" programmaticQuery="true" criteriaFrom="fPurchaseSiteCode" lovItem="PurchaseSiteCode"/>
+                                          <lovMap id="HeaderIdRetLovMap2" lovItem="HeaderId" resultTo="fHeaderId"/>
                                        </lovMappings>
                                     </oa:messageLovInput>
+                                    <oa:formValue id="fHeaderId2" prompt="発注ヘッダID"/>
                                  </ui:contents>
                               </oa:cellFormat>
                               <oa:cellFormat id="OrderHeaderCell104">
