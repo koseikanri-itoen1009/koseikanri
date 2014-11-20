@@ -1,0 +1,47 @@
+CREATE TABLE xxcfr.xxcfr_cust_alt_name(
+/*************************************************************************
+ * 
+ * Table Name      : xxcfr_cust_alt_name
+ * Description     : 振込依頼人マスタ
+ * MD.070          : 
+ * Version         : 1.0
+ * 
+ * Change Record
+ * ------------- ----- --------------- -----------------------------------
+ *  Date          Ver.  Editor          Description
+ * ------------- ----- --------------- -----------------------------------
+ *  2010/10/05    1.0   SCS M.Hirose    初回作成
+ ************************************************************************/
+     alt_name                      VARCHAR2(48)  NOT NULL
+    ,cust_account_id               NUMBER        NOT NULL
+    ,party_name                    VARCHAR2(360) NOT NULL
+    ,account_number                VARCHAR2(30)  NOT NULL
+    ,receiv_base_code              VARCHAR2(4)   NOT NULL
+    ,created_by                    NUMBER
+    ,creation_date                 DATE
+    ,last_updated_by               NUMBER
+    ,last_update_date              DATE
+    ,last_update_login             NUMBER
+    ,request_id                    NUMBER
+    ,program_application_id        NUMBER
+    ,program_id                    NUMBER
+    ,program_update_date           DATE
+  ,CONSTRAINT xxcfr_cust_alt_name_pk PRIMARY KEY (alt_name)
+  USING INDEX TABLESPACE xxidx2)
+ PCTFREE 10 PCTUSED 40 INITRANS 2 STORAGE ( INITIAL 2M)
+;
+COMMENT ON TABLE  xxcfr.xxcfr_cust_alt_name IS '振込依頼人マスタ';
+COMMENT ON COLUMN xxcfr.xxcfr_cust_alt_name.alt_name               IS '振込依頼人名';
+COMMENT ON COLUMN xxcfr.xxcfr_cust_alt_name.cust_account_id        IS '顧客ID';
+COMMENT ON COLUMN xxcfr.xxcfr_cust_alt_name.party_name             IS '顧客名';
+COMMENT ON COLUMN xxcfr.xxcfr_cust_alt_name.account_number         IS '顧客番号';
+COMMENT ON COLUMN xxcfr.xxcfr_cust_alt_name.receiv_base_code       IS '登録拠点';
+COMMENT ON COLUMN xxcfr.xxcfr_cust_alt_name.created_by             IS '作成者';
+COMMENT ON COLUMN xxcfr.xxcfr_cust_alt_name.creation_date          IS '作成日';
+COMMENT ON COLUMN xxcfr.xxcfr_cust_alt_name.last_updated_by        IS '最終更新者';
+COMMENT ON COLUMN xxcfr.xxcfr_cust_alt_name.last_update_date       IS '最終更新日';
+COMMENT ON COLUMN xxcfr.xxcfr_cust_alt_name.last_update_login      IS '最終更新ログイン';
+COMMENT ON COLUMN xxcfr.xxcfr_cust_alt_name.request_id             IS '要求ID';
+COMMENT ON COLUMN xxcfr.xxcfr_cust_alt_name.program_application_id IS 'コンカレント・プログラム・アプリケーションID';
+COMMENT ON COLUMN xxcfr.xxcfr_cust_alt_name.program_id             IS 'コンカレント・プログラムID';
+COMMENT ON COLUMN xxcfr.xxcfr_cust_alt_name.program_update_date    IS 'プログラム更新日';

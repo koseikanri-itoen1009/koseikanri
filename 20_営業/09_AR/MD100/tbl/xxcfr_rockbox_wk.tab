@@ -1,0 +1,83 @@
+CREATE TABLE xxcfr.xxcfr_rockbox_wk(
+/*************************************************************************
+ * 
+ * Table Name      : xxcfr_rockbox_wk
+ * Description     : ロックボックス入金消込ワーク
+ * MD.070          : 
+ * Version         : 1.0
+ * 
+ * Change Record
+ * ------------- ----- --------------- -----------------------------------
+ *  Date          Ver.  Editor          Description
+ * ------------- ----- --------------- -----------------------------------
+ *  2010/09/09    1.0   SCS M.Hirose    初回作成
+ ************************************************************************/
+     parallel_type                 NUMBER
+    ,kind_code                     VARCHAR2(2)
+    ,bank_number                   VARCHAR2(4)
+    ,bank_num                      VARCHAR2(3)
+    ,account_type                  VARCHAR2(1)
+    ,account_num                   VARCHAR2(10)
+    ,ref_number                    VARCHAR2(8)
+    ,payment_code                  VARCHAR2(1)
+    ,trans_code                    VARCHAR2(2)
+    ,alt_name                      VARCHAR2(48)
+    ,cust_account_id               NUMBER
+    ,account_number                VARCHAR2(15)
+    ,cash_receipt_id               NUMBER
+    ,receipt_number                VARCHAR2(30)
+    ,receipt_date                  DATE
+    ,amount                        NUMBER
+    ,factor_discount_amount        NUMBER
+    ,receipt_method_name           VARCHAR2(30)
+    ,receipt_method_id             NUMBER
+    ,comments                      VARCHAR2(20)
+    ,cash_flag                     NUMBER
+    ,apply_flag                    NUMBER
+    ,apply_trx_count               NUMBER
+    ,in_file_name                  VARCHAR2(15)
+    ,created_by                    NUMBER
+    ,creation_date                 DATE
+    ,last_updated_by               NUMBER
+    ,last_update_date              DATE
+    ,last_update_login             NUMBER
+    ,request_id                    NUMBER
+    ,program_application_id        NUMBER
+    ,program_id                    NUMBER
+    ,program_update_date           DATE
+)
+;
+COMMENT ON TABLE  xxcfr.xxcfr_rockbox_wk IS 'ロックボックス入金消込ワーク';
+COMMENT ON COLUMN xxcfr.xxcfr_rockbox_wk.parallel_type          IS 'パラレル実行区分';
+COMMENT ON COLUMN xxcfr.xxcfr_rockbox_wk.kind_code              IS '種別コード';
+COMMENT ON COLUMN xxcfr.xxcfr_rockbox_wk.bank_number            IS '銀行コード';
+COMMENT ON COLUMN xxcfr.xxcfr_rockbox_wk.bank_num               IS '支店コード';
+COMMENT ON COLUMN xxcfr.xxcfr_rockbox_wk.account_type           IS '口座種別';
+COMMENT ON COLUMN xxcfr.xxcfr_rockbox_wk.account_num            IS '口座番号';
+COMMENT ON COLUMN xxcfr.xxcfr_rockbox_wk.ref_number             IS '照会番号';
+COMMENT ON COLUMN xxcfr.xxcfr_rockbox_wk.payment_code           IS '入払区分';
+COMMENT ON COLUMN xxcfr.xxcfr_rockbox_wk.trans_code             IS '取引区分';
+COMMENT ON COLUMN xxcfr.xxcfr_rockbox_wk.alt_name               IS '振込依頼人名';
+COMMENT ON COLUMN xxcfr.xxcfr_rockbox_wk.cust_account_id        IS '顧客ID';
+COMMENT ON COLUMN xxcfr.xxcfr_rockbox_wk.account_number         IS '顧客番号';
+COMMENT ON COLUMN xxcfr.xxcfr_rockbox_wk.cash_receipt_id        IS '入金内部ID';
+COMMENT ON COLUMN xxcfr.xxcfr_rockbox_wk.receipt_number         IS '入金番号';
+COMMENT ON COLUMN xxcfr.xxcfr_rockbox_wk.receipt_date           IS '入金日';
+COMMENT ON COLUMN xxcfr.xxcfr_rockbox_wk.amount                 IS '入金額';
+COMMENT ON COLUMN xxcfr.xxcfr_rockbox_wk.factor_discount_amount IS '手数料';
+COMMENT ON COLUMN xxcfr.xxcfr_rockbox_wk.receipt_method_name    IS '支払方法名称';
+COMMENT ON COLUMN xxcfr.xxcfr_rockbox_wk.receipt_method_id      IS '支払方法ID';
+COMMENT ON COLUMN xxcfr.xxcfr_rockbox_wk.comments               IS '注釈';
+COMMENT ON COLUMN xxcfr.xxcfr_rockbox_wk.cash_flag              IS '入金要否フラグ';
+COMMENT ON COLUMN xxcfr.xxcfr_rockbox_wk.apply_flag             IS '消込要否フラグ';
+COMMENT ON COLUMN xxcfr.xxcfr_rockbox_wk.apply_trx_count        IS '消込対象件数';
+COMMENT ON COLUMN xxcfr.xxcfr_rockbox_wk.in_file_name           IS '取込ファイル名';
+COMMENT ON COLUMN xxcfr.xxcfr_rockbox_wk.created_by             IS '作成者';
+COMMENT ON COLUMN xxcfr.xxcfr_rockbox_wk.creation_date          IS '作成日';
+COMMENT ON COLUMN xxcfr.xxcfr_rockbox_wk.last_updated_by        IS '最終更新者';
+COMMENT ON COLUMN xxcfr.xxcfr_rockbox_wk.last_update_date       IS '最終更新日';
+COMMENT ON COLUMN xxcfr.xxcfr_rockbox_wk.last_update_login      IS '最終更新ログイン';
+COMMENT ON COLUMN xxcfr.xxcfr_rockbox_wk.request_id             IS '要求ID';
+COMMENT ON COLUMN xxcfr.xxcfr_rockbox_wk.program_application_id IS 'コンカレント・プログラム・アプリケーションID';
+COMMENT ON COLUMN xxcfr.xxcfr_rockbox_wk.program_id             IS 'コンカレント・プログラムID';
+COMMENT ON COLUMN xxcfr.xxcfr_rockbox_wk.program_update_date    IS 'プログラム更新日';

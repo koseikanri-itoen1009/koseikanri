@@ -1,0 +1,19 @@
+/************************************************************************
+ * Copyright(c)Oracle Corporation Japan, 2008. All rights reserved.
+ *
+ * Index Name      : XXCFR_ROCK_CUST_TRX_MV_N01
+ * Description     : 債権マテリアライズドビュー
+ * Version         : 1.0
+ *
+ * Change Record
+ * ------------- ----- ---------------- ---------------------------------
+ *  Date          Ver.  Editor           Description
+ * ------------- ----- ---------------- ---------------------------------
+ *  2010-10-27    1.0   SCS.Hirose      新規作成
+ *
+ ************************************************************************/
+CREATE INDEX xxcfr.xxcfr_rock_cust_trx_mv_n01
+ ON apps.xxcfr_rock_cust_trx_mv
+  ( bill_to_customer_id  -- 請求先顧客ID
+  ) TABLESPACE xxidx2
+/

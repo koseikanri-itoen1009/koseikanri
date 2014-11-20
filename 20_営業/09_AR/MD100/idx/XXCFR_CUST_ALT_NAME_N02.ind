@@ -1,0 +1,20 @@
+/************************************************************************
+ * Copyright(c)Sumisho Computer Systems Corporation, 2008. All rights reserved.
+ *
+ * Index Name  : XXCFR_CUST_ALT_NAME_N02
+ * Description : 振込依頼人マスタインデックス02
+ * Version     : 1.0
+ *
+ * Change Record
+ * ------------- ----- ---------------- ---------------------------------
+ *  Date          Ver.  Editor           Description
+ * ------------- ----- ---------------- ---------------------------------
+ *  2010/10/28    1.0   H.Sasaki         新規作成
+ *
+ ************************************************************************/
+CREATE INDEX XXCFR.XXCFR_CUST_ALT_NAME_N02
+ON XXCFR.XXCFR_CUST_ALT_NAME
+(
+  receiv_base_code
+)
+TABLESPACE  XXIDX2;
