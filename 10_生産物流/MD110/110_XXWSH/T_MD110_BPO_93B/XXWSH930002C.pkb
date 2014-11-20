@@ -7,7 +7,7 @@ AS
  * Description      : 生産物流(引当、配車)
  * MD.050           : 出荷・移動インタフェース         T_MD050_BPO_930
  * MD.070           : ＨＨＴ入出庫実績インタフェース   T_MD070_BPO_93B
- * Version          : 1.49
+ * Version          : 1.50
  *
  * Program List
  * ------------------------------------ -------------------------------------------------
@@ -151,6 +151,7 @@ AS
  *  2009/03/31    1.48 SCS    伊藤ひとみ 本番障害対応#1105,1164 指示にあって実績にない品目は、引当なしで依頼数0の場合、削除。依頼数0でない場合は実績0データ作成
  *                                       本番障害対応#1085,1159 実績0作成時で、実績報告済み品目かチェックする時に、IF依頼No単位の品目のみでチェックするように修正
  *  2009/04/07    1.49 SCS    伊藤ひとみ 本番障害対応#1105,1164(再対応) dummy_lot_checkでIFデータを検索する時の条件が漏れていたので修正
+ *  2009/04/08    1.50 SCS    伊藤ひとみ 本番障害対応#1232 運送業者、出庫日、入庫日がNULLの場合の考慮ができていないため修正。配送Noが指示を同じかチェックを追加
  *****************************************************************************************/
 --
 --#######################  固定グローバル定数宣言部 START   #######################
@@ -610,6 +611,9 @@ AS
   gv_frt_chrg_type_act           CONSTANT VARCHAR2(1)  := '2';  -- 実費振替
 --
   gv_delivery_no_null            CONSTANT VARCHAR2(1)  := 'X';  -- 配送No＝NULL時の変換文字
+-- 2009/04/08 ADD START 本番障害#1232
+  gd_date_null                   CONSTANT DATE         := FND_DATE.STRING_TO_DATE('19000101','YYYYMMDD'); -- 日付＝NULL時の変換日付
+-- 2009/04/08 ADD END
 --
   -- 2008/10/13 統合テスト障害#314 Add Start ---------------------------------
   gv_msg_sai_1                   CONSTANT VARCHAR2(20) := '（出荷日差異）';
@@ -621,6 +625,10 @@ AS
   gv_msg_sai_7                   CONSTANT VARCHAR2(20) := '（出庫日差異）';
   gv_msg_sai_8                   CONSTANT VARCHAR2(20) := '（入庫日差異）';
   -- 2008/10/13 統合テスト障害#314 Add End ----------------------------------
+-- 2009/04/08 ADD START 本番障害#1232
+  gv_msg_sai_9                   CONSTANT VARCHAR2(20) := '（配送No差異）';
+-- 2009/04/08 ADD END
+
 --
   gv_msg_abend_1                 CONSTANT VARCHAR2(20) := '（依頼NO=';        -- 2008/12/26 Add 異常終了時に原因となった依頼Noがわかるようにする
   gv_msg_abend_2                 CONSTANT VARCHAR2(20) := '）';               -- 2008/12/26 Add 異常終了時に原因となった依頼Noがわかるようにする
@@ -8834,7 +8842,10 @@ AS
 --
             -- 2008/10/13 統合テスト障害#314 Add Start ---------------------------------------
             -- 取込報告:出庫日 <> トランザクション:NVL(出庫実績日, 出庫予定日)
-            IF (gr_interface_info_rec(i).shipped_date <> NVL(lt_mov_actual_ship_date,lt_mov_schedule_ship_date)) THEN
+-- 2009/04/08 MOD START 本番障害#1232 IFの出庫日がNULLの場合、ダミー日付「1900/01/01」と比較する。
+--            IF (gr_interface_info_rec(i).shipped_date <> NVL(lt_mov_actual_ship_date,lt_mov_schedule_ship_date)) THEN
+            IF (NVL(gr_interface_info_rec(i).shipped_date, gd_date_null) <> NVL(lt_mov_actual_ship_date,NVL(lt_mov_schedule_ship_date, gd_date_null))) THEN
+-- 2009/04/08 MOD END
               ln_errflg := 1;
               lv_err_msg_sai := gv_msg_sai_7;
             END IF;
@@ -8856,7 +8867,10 @@ AS
 --
             -- 2008/10/13 統合テスト障害#314 Add Start ---------------------------------------
             -- 取込報告:入庫日 <> トランザクション:NVL(入庫実績日, 入庫予定日)
-            IF (gr_interface_info_rec(i).arrival_date <> NVL(lt_mov_actual_arrival_date,lt_mov_schedule_arrival_date)) THEN
+-- 2009/04/08 MOD START 本番障害#1232 IFの入庫日がNULLの場合、ダミー日付「1900/01/01」と比較する。
+--            IF (gr_interface_info_rec(i).arrival_date <> NVL(lt_mov_actual_arrival_date,lt_mov_schedule_arrival_date)) THEN
+            IF (NVL(gr_interface_info_rec(i).arrival_date, gd_date_null) <> NVL(lt_mov_actual_arrival_date,NVL(lt_mov_schedule_arrival_date, gd_date_null))) THEN
+-- 2009/04/08 MOD END
               ln_errflg := 1;
               lv_err_msg_sai := gv_msg_sai_8;
             END IF;
@@ -8878,7 +8892,10 @@ AS
 --
             -- 2008/10/13 統合テスト障害#314 Add Start ---------------------------------------
             -- 取込報告:運送業者 <> トランザクション:NVL(運送業者_実績, 運送業者)
-            IF (gr_interface_info_rec(i).freight_carrier_code <> NVL(lt_mov_actual_freight_code,lt_mov_freight_code)) THEN
+-- 2009/04/08 MOD START 本番障害#1232 運送業者がNULLの場合、ダミーコード「X」と比較する。
+--            IF (gr_interface_info_rec(i).freight_carrier_code <> NVL(lt_mov_actual_freight_code,lt_mov_freight_code)) THEN
+            IF (NVL(gr_interface_info_rec(i).freight_carrier_code, gv_delivery_no_null) <> NVL(lt_mov_actual_freight_code, NVL(lt_mov_freight_code, gv_delivery_no_null))) THEN
+-- 2009/04/08 MOD END
               ln_errflg := 1;
               lv_err_msg_sai := gv_msg_sai_3;
             END IF;
@@ -8908,6 +8925,12 @@ AS
               lv_err_msg_sai := gv_msg_sai_4;
             END IF;
             -- 2008/10/13 統合テスト障害#314 Add End -----------------------------------------
+-- 2009/04/08 ADD START 本番障害#1232 配送Noチェック追加
+            IF (NVL(gr_interface_info_rec(i).delivery_no, gv_delivery_no_null) <> NVL(lt_mov_delivery_no, gv_delivery_no_null)) THEN
+              ln_errflg := 1;
+              lv_err_msg_sai := gv_msg_sai_9;
+            END IF;
+-- 2009/04/08 ADD END
 --
             IF (ln_errflg = 1) THEN
 --
@@ -9040,7 +9063,10 @@ AS
 --
               -- 2008/10/13 統合テスト障害#314 Add Start ---------------------------------------
               -- 取込報告:出荷日 <> トランザクション:NVL(出荷日, 出荷予定日)
-              IF (gr_interface_info_rec(i).shipped_date <> NVL(lt_req_shipped_date,lt_req_schedule_ship_date)) THEN
+-- 2009/04/08 MOD START 本番障害#1232 IFの出庫日がNULLの場合、ダミー日付「1900/01/01」と比較する。
+--              IF (gr_interface_info_rec(i).shipped_date <> NVL(lt_req_shipped_date,lt_req_schedule_ship_date)) THEN
+              IF (NVL(gr_interface_info_rec(i).shipped_date, gd_date_null) <> NVL(lt_req_shipped_date, NVL(lt_req_schedule_ship_date, gd_date_null))) THEN
+-- 2009/04/08 MOD END
                 ln_errflg := 1;
                 lv_err_msg_sai := gv_msg_sai_1;
               END IF;
@@ -9062,7 +9088,10 @@ AS
 --
               -- 2008/10/13 統合テスト障害#314 Add Start ---------------------------------------
               -- 取込報告:着荷日 <> トランザクション:NVL(着荷日, 着荷予定日)
-              IF (gr_interface_info_rec(i).arrival_date <> NVL(lt_req_arrival_date,lt_req_schedule_arrival_date)) THEN
+-- 2009/04/08 MOD START 本番障害#1232 IFの入庫日がNULLの場合、ダミー日付「1900/01/01」と比較する。
+--              IF (gr_interface_info_rec(i).arrival_date <> NVL(lt_req_arrival_date,lt_req_schedule_arrival_date)) THEN
+              IF (NVL(gr_interface_info_rec(i).arrival_date, gd_date_null) <> NVL(lt_req_arrival_date, NVL(lt_req_schedule_arrival_date, gd_date_null))) THEN
+-- 2009/04/08 MOD END
                 ln_errflg := 1;
                 lv_err_msg_sai := gv_msg_sai_2;
               END IF;
@@ -9084,7 +9113,10 @@ AS
 --
               -- 2008/10/13 統合テスト障害#314 Add Start ---------------------------------------
               -- 取込報告:運送業者 <> トランザクション:NVL(運送業者_実績, 運送業者)
-              IF (gr_interface_info_rec(i).freight_carrier_code <> NVL(lt_req_result_freight_code,lt_req_freight_code)) THEN
+-- 2009/04/08 MOD START 本番障害#1232 運送業者がNULLの場合、ダミーコード「X」と比較する。
+--              IF (gr_interface_info_rec(i).freight_carrier_code <> NVL(lt_req_result_freight_code,lt_req_freight_code)) THEN
+              IF (NVL(gr_interface_info_rec(i).freight_carrier_code, gv_delivery_no_null)  <> NVL(lt_req_result_freight_code, NVL(lt_req_freight_code, gv_delivery_no_null))) THEN
+-- 2009/04/08 MOD END
                 ln_errflg := 1;
                 lv_err_msg_sai := gv_msg_sai_3;
               END IF;
@@ -9113,6 +9145,12 @@ AS
                 lv_err_msg_sai := gv_msg_sai_4;
               END IF;
               -- 2008/10/13 統合テスト障害#314 Add End -----------------------------------------
+-- 2009/04/08 ADD START 本番障害#1232 配送Noチェック追加
+              IF (NVL(gr_interface_info_rec(i).delivery_no, gv_delivery_no_null) <> NVL(lt_req_delivery_no, gv_delivery_no_null)) THEN
+                ln_errflg := 1;
+                lv_err_msg_sai := gv_msg_sai_9;
+              END IF;
+-- 2009/04/08 ADD END
 --
               -- 拠点出荷確定報告 or 庭先出荷確定報告
               IF ((lt_eos_data_type = gv_eos_data_cd_210)  OR
