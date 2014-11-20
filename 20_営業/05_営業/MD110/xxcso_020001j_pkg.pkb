@@ -6,7 +6,7 @@ AS
  * Package Name     : xxcso_020001j_pkg(BODY)
  * Description      : ƒtƒ‹ƒxƒ“ƒ_[SPêŒˆ
  * MD.050/070       : 
- * Version          : 1.3
+ * Version          : 1.10
  *
  * Program List
  *  ------------------------- ---- ----- --------------------------------------------------
@@ -50,6 +50,7 @@ AS
  *  2009/05/07    1.7   N.Yanagitaira    [áŠQT1_0200]VDƒŠ[ƒX—¿A”ï—p‡ŒvZo•û–@C³
  *  2009/06/05    1.8   N.Yanagitaira    [áŠQT1_1307]chk_single_byte_kanaC³
  *  2009/07/16    1.9   D.Abe            [SCSáŠQ0000385]SPêŒˆ‘”Û”F‚Ìƒtƒ[•ÏX
+ *  2009/10/26    1.10  K.Satomura       [E_T4_00075]‘¹‰v•ªŠò“_‚ÌŒvZ•û–@C³
 *****************************************************************************************/
 --
   -- ===============================
@@ -1560,16 +1561,31 @@ AS
                                 );
 --
     -- ‘¹‰v•ªŠò“_
-    ln_break_even_point := (ln_vd_lease_charge +
-                            ln_electricity_amt_year +
-                            ln_labor_cost_other
-                           ) / 
-                           (
-                            (ln_year_gross_margin_amt -
-                             ln_vd_sales_charge -
-                             ln_transportation_charge
-                            ) / ln_sales_year
-                           );
+-- 2009/10/26 K.Satomura E_T4_00075 Mod START
+    --ln_break_even_point := (ln_vd_lease_charge +
+    --                        ln_electricity_amt_year +
+    --                        ln_labor_cost_other
+    --                       ) / 
+    --                       (
+    --                        (ln_year_gross_margin_amt -
+    --                         ln_vd_sales_charge -
+    --                         ln_transportation_charge
+    --                        ) / ln_sales_year
+    --                       );
+    -- ‘¹‰v•ªŠò“_ = (A / (1 - (B  / ”NŠÔ‘e—˜‹àŠz))) / (”„ã‘e—˜—¦ / 100)
+    --          A = ‚u‚cƒŠ[ƒX—¿ + İ’u‹¦^‹à^”N + “d‹C‘ãi”Nj
+    --          B = ‚u‚c”Ì”„è”—¿ + ‰^‘—”ï‚` + lŒ”ï‘¼
+    ln_break_even_point := (
+                             (ln_vd_lease_charge + ln_install_support_amt_year + ln_electricity_amt_year) /
+                             (1 - 
+                               (
+                                 (ln_vd_sales_charge + ln_transportation_charge + ln_labor_cost_other) / ln_year_gross_margin_amt
+                               )
+                             )
+                           ) / (ln_sales_gross_margin_rate / 100)
+                           ;
+    --
+-- 2009/10/26 K.Satomura E_T4_00075 Mod End
     ov_break_even_point := TO_CHAR(ROUND(ln_break_even_point, 2), 'FM999G999G999G999G990D90');
 --
   EXCEPTION
