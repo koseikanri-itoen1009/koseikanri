@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCOS009A03R (body)
  * Description      : 原価割れチェックリスト
  * MD.050           : 原価割れチェックリスト MD050_COS_009_A03
- * Version          : 1.10
+ * Version          : 1.11
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -38,6 +38,7 @@ AS
  *  2010/01/18    1.8   S.Miyakoshi      [E_本稼動_00711]PT対応 ログイン拠点情報VIEWからの取得をメインSQL外で処理する
  *  2010/02/17    1.9   N.Maeda          [E_本稼動_01553]INパラメータ(納品日)妥当性チェック内容の修正
  *  2010/05/24    1.10  Y.Kuboshima      [E_本稼動_02630]出荷先顧客の絞込みで前月売上拠点コードを考慮するよう修正
+ *  2011/04/20    1.11  S.Ochiai         [E_本稼動_01772]ＨＨＴ画面入力、ＨＨＴ連携データの原価割れ情報も表示させるよう修正
  *
  *****************************************************************************************/
 --
@@ -199,9 +200,11 @@ AS
   cv_lang                   CONSTANT  VARCHAR2(100) :=  USERENV( 'LANG' );     --言語
   cv_type_acc               CONSTANT  VARCHAR2(100) :=  'XXCOS1_ACCOUNT_PERIOD';  --会計期間の種別
   cv_diff_y                 CONSTANT  VARCHAR2(100) :=  'Y';                   --Y
-  cv_ord_src_type           CONSTANT  VARCHAR2(100) :=  'XXCOS1_ODR_SRC_MST_009_A03';
-                                                                               --受注ソースのクイックタイプ
-  cv_ord_src_code           CONSTANT  VARCHAR2(100) :=  'XXCOS_009_A03%';      --受注ソースのクイックコード
+-- 2011/04/20 Ver1.11 Del Start
+--  cv_ord_src_type           CONSTANT  VARCHAR2(100) :=  'XXCOS1_ODR_SRC_MST_009_A03';
+--                                                                               --受注ソースのクイックタイプ
+--  cv_ord_src_code           CONSTANT  VARCHAR2(100) :=  'XXCOS_009_A03%';      --受注ソースのクイックコード
+-- 2011/04/20 Ver1.11 Del End
   cv_mk_org_type            CONSTANT  VARCHAR2(100) :=  'XXCOS1_MK_ORG_CLS_MST_009_A03';
                                                                                --作成元区分のクイックタイプ
   cv_mk_org_code1           CONSTANT  VARCHAR2(100) :=  'XXCOS_009_A03_1%';    --作成元区分のクイックコード(OM受注)
@@ -916,7 +919,9 @@ AS
       FROM    
         xxcos_sales_exp_headers seh,                        --販売実績ヘッダ
         xxcos_sales_exp_lines   sel,                        --販売実績明細
-        oe_order_sources        oos,                        --受注ソースマスタ
+-- 2011/04/20 Ver1.11 Del Start
+--        oe_order_sources        oos,                        --受注ソースマスタ
+-- 2011/04/20 Ver1.11 Del End
 -- 2010/01/18 Ver1.8 Del Start
 --        xxcos_login_base_info_v lbiv,                       --ログインユーザ拠点ビュー
 -- 2010/01/18 Ver1.8 Del End
@@ -930,44 +935,46 @@ AS
         ic_item_mst_b           iimb,                       --OPM品目マスタ
         xxcmn_item_mst_b        ximb                        --OPM品目アドオン
       WHERE seh.sales_exp_header_id = sel.sales_exp_header_id                         --販売実績ヘッダID
-      AND   seh.order_source_id     = oos.order_source_id                             --受注ソースID
-      --受注ソースのクイック参照
-      AND   EXISTS(
--- ******** 2009/08/11 1.5 N.Maeda MOD START *********** --
-              SELECT  'Y'                         ext_flg
-              FROM    fnd_lookup_values           look_val
-              WHERE   look_val.language           = cv_lang
-              AND     look_val.lookup_type        = cv_ord_src_type
-              AND     look_val.lookup_code        LIKE cv_ord_src_code
-              AND     look_val.meaning            = oos.name
-              AND     gd_proc_date                >= NVL( look_val.start_date_active, gd_min_date )
-              AND     gd_proc_date                <= NVL( look_val.end_date_active, gd_max_date )
-              AND     look_val.enabled_flag       = ct_enabled_flg_y
---
+-- 2011/04/20 Ver1.11 Del Start
+--      AND   seh.order_source_id     = oos.order_source_id                             --受注ソースID
+--      --受注ソースのクイック参照
+--      AND   EXISTS(
+---- ******** 2009/08/11 1.5 N.Maeda MOD START *********** --
 --              SELECT  'Y'                         ext_flg
---              FROM    fnd_lookup_values           look_val,
---                      fnd_lookup_types_tl         types_tl,
---                      fnd_lookup_types            types,
---                      fnd_application_tl          appl,
---                      fnd_application             app
---              WHERE   appl.application_id         = types.application_id
---              AND     app.application_id          = appl.application_id
---              AND     types_tl.lookup_type        = look_val.lookup_type
---              AND     types.lookup_type           = types_tl.lookup_type
---              AND     types.security_group_id     = types_tl.security_group_id
---              AND     types.view_application_id   = types_tl.view_application_id
---              AND     types_tl.language           = cv_lang
---              AND     look_val.language           = cv_lang
---              AND     appl.language               = cv_lang
---              AND     app.application_short_name  = cv_xxcos_short_name
+--              FROM    fnd_lookup_values           look_val
+--              WHERE   look_val.language           = cv_lang
 --              AND     look_val.lookup_type        = cv_ord_src_type
 --              AND     look_val.lookup_code        LIKE cv_ord_src_code
 --              AND     look_val.meaning            = oos.name
 --              AND     gd_proc_date                >= NVL( look_val.start_date_active, gd_min_date )
 --              AND     gd_proc_date                <= NVL( look_val.end_date_active, gd_max_date )
 --              AND     look_val.enabled_flag       = ct_enabled_flg_y
--- ******** 2009/08/11 1.5 N.Maeda MOD END *********** --
-                  )
+----
+----              SELECT  'Y'                         ext_flg
+----              FROM    fnd_lookup_values           look_val,
+----                      fnd_lookup_types_tl         types_tl,
+----                      fnd_lookup_types            types,
+----                      fnd_application_tl          appl,
+----                      fnd_application             app
+----              WHERE   appl.application_id         = types.application_id
+----              AND     app.application_id          = appl.application_id
+----              AND     types_tl.lookup_type        = look_val.lookup_type
+----              AND     types.lookup_type           = types_tl.lookup_type
+----              AND     types.security_group_id     = types_tl.security_group_id
+----              AND     types.view_application_id   = types_tl.view_application_id
+----              AND     types_tl.language           = cv_lang
+----              AND     look_val.language           = cv_lang
+----              AND     appl.language               = cv_lang
+----              AND     app.application_short_name  = cv_xxcos_short_name
+----              AND     look_val.lookup_type        = cv_ord_src_type
+----              AND     look_val.lookup_code        LIKE cv_ord_src_code
+----              AND     look_val.meaning            = oos.name
+----              AND     gd_proc_date                >= NVL( look_val.start_date_active, gd_min_date )
+----              AND     gd_proc_date                <= NVL( look_val.end_date_active, gd_max_date )
+----              AND     look_val.enabled_flag       = ct_enabled_flg_y
+---- ******** 2009/08/11 1.5 N.Maeda MOD END *********** --
+--                  )
+-- 2011/04/20 Ver1.11 Del End
       --作成元区分のクイック参照
       AND   EXISTS(
 -- ******** 2009/08/11 1.5 N.Maeda MOD START *********** --
