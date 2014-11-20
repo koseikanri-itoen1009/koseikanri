@@ -9,7 +9,7 @@ AS
  *                    
  * MD050            : MD050_CSO_015_A04_自販機-EBSインタフェース：（OUT）物件マスタ情報
  *                    
- * Version          : 1.6
+ * Version          : 1.7
  *
  * Program List
  * ---------------------------- ----------------------------------------------------------
@@ -43,6 +43,7 @@ AS
  *  2009-05-01    1.4   Tomoko.Mori      T1_0897対応
  *  2009-05-22    1.5   Tomoko.Mori      T1_1131対応 地区コード不正
  *  2009-05-29    1.6   K.Satomura       T1_1017対応
+ *  2009-06-18    1.7   K.Satomura       T1_1017再修正対応
  *****************************************************************************************/
 --
 --#######################  固定グローバル定数宣言部 START   #######################
@@ -207,7 +208,7 @@ AS
   gb_rollback_upd_flg    BOOLEAN;                                     -- ロールバック判断
   -- ファイル・ハンドルの宣言
   gf_file_hand    UTL_FILE.FILE_TYPE;
-  gt_txn_type_id          csi_txn_types.transaction_type_id%TYPE;        -- 取引タイプID
+  gt_txn_type_id  csi_txn_types.transaction_type_id%TYPE;        -- 取引タイプID
 --
   -- ===============================
   -- ユーザー定義グローバル型
@@ -1993,20 +1994,20 @@ AS
            ,xxcso_cust_accounts_v       xcav                          -- 顧客マスタビュー
            ,xxcso_aff_base_v            xabv                          -- AFF部門マスタビュー
       WHERE  xrl.category_kbn IN (cv_disposal_sinsei,cv_disposal_kessai)
-         AND xrl.requisition_header_id = prh.requisition_header_id
-         AND prh.authorization_status = cv_status_app
-         AND xrl.requisition_line_id = xwrp.requisition_line_id 
-         AND (xwrp.interface_flag = cv_interface_flag_n
-                OR TRUNC(xwrp.interface_date) = TRUNC(TO_DATE(gv_date_value, cv_final_format)))
-         AND cii.external_reference = xrl.abolishment_install_code
-         AND cii.owner_party_account_id = xcav.cust_account_id
-         AND xcav.account_status = cv_active_status
-         AND xcav.sale_base_code = xabv.base_code
-         AND  NVL(xabv.start_date_active,ld_process_date_t) <= ld_process_date_t
+        AND xrl.requisition_header_id = prh.requisition_header_id
+        AND prh.authorization_status = cv_status_app
+        AND xrl.requisition_line_id = xwrp.requisition_line_id 
+        AND (xwrp.interface_flag = cv_interface_flag_n
+               OR TRUNC(xwrp.interface_date) = TRUNC(TO_DATE(gv_date_value, cv_final_format)))
+        AND cii.external_reference = xrl.abolishment_install_code
+        AND cii.owner_party_account_id = xcav.cust_account_id
+        AND xcav.account_status = cv_active_status
+        AND xcav.sale_base_code = xabv.base_code
+        AND  NVL(xabv.start_date_active,ld_process_date_t) <= ld_process_date_t
               AND NVL(xabv.end_date_active,ld_process_date_t) >= ld_process_date_t
-         AND    (ld_process_date_t between(NVL(xrl.lookup_start_date, ld_process_date_t)) and
+        AND    (ld_process_date_t between(NVL(xrl.lookup_start_date, ld_process_date_t)) and
                        TRUNC(nvl(xrl.lookup_end_date, ld_process_date_t)))
-         AND    (ld_process_date_t between(NVL(xrl.category_start_date, ld_process_date_t)) and
+        AND    (ld_process_date_t between(NVL(xrl.category_start_date, ld_process_date_t)) and
                        TRUNC(NVL(xrl.category_end_date, ld_process_date_t)));
     /* 2009.05.29 K.Satomura T1_1017対応 START */
     -- 新台設置・新台代替の場合(機器区分連携)
@@ -2270,20 +2271,26 @@ AS
           -- ================================================================
           SAVEPOINT bukken_info_disposal_work;
 --
-          -- ================================================================
-          -- A-12 作業依頼／発注情報処理結果テーブル更新
-          -- ================================================================
-          update_wk_reqst_tbl(
-             i_get_rec        => l_get_rec         -- 抽出出力データ
-            ,id_process_date  => ld_process_date   -- 業務処理日
-            ,ov_errbuf        => lv_sub_buf        -- エラー・メッセージ          --# 固定 #
-            ,ov_retcode       => lv_sub_retcode    -- リターン・コード            --# 固定 #
-            ,ov_errmsg        => lv_sub_msg        -- ユーザー・エラー・メッセージ  --# 固定 #
-          );
+          /* 2009.06.18 K.Satomura T1_1017再修正対応 START */
+          IF (gv_date_value IS NULL) THEN
+          /* 2009.06.18 K.Satomura T1_1017再修正対応 END */
+            -- ================================================================
+            -- A-12 作業依頼／発注情報処理結果テーブル更新
+            -- ================================================================
+            update_wk_reqst_tbl(
+               i_get_rec        => l_get_rec         -- 抽出出力データ
+              ,id_process_date  => ld_process_date   -- 業務処理日
+              ,ov_errbuf        => lv_sub_buf        -- エラー・メッセージ          --# 固定 #
+              ,ov_retcode       => lv_sub_retcode    -- リターン・コード            --# 固定 #
+              ,ov_errmsg        => lv_sub_msg        -- ユーザー・エラー・メッセージ  --# 固定 #
+            );
 --
-          IF (lv_sub_retcode = cv_status_error) THEN
-            RAISE select_warn_expt;
+            IF (lv_sub_retcode = cv_status_error) THEN
+              RAISE select_warn_expt;
+            END IF;
+          /* 2009.06.18 K.Satomura T1_1017再修正対応 START */
           END IF;
+          /* 2009.06.18 K.Satomura T1_1017再修正対応 END */
 --
           -- ================================================================
           -- A-13 廃棄作業依頼情報データCSV出力
@@ -2542,21 +2549,27 @@ AS
           -- ================================================================
           SAVEPOINT bukken_info_device_work;
           --
-          -- ================================================================
-          -- A-18 作業データテーブル更新
-          -- ================================================================
-          update_wk_data_tbl(
-             i_get_rec       => l_get_rec       -- 抽出出力データ
-            ,id_process_date => ld_process_date -- 業務処理日
-            ,ov_errbuf       => lv_sub_buf      -- エラー・メッセージ           --# 固定 #
-            ,ov_retcode      => lv_sub_retcode  -- リターン・コード             --# 固定 #
-            ,ov_errmsg       => lv_sub_msg      -- ユーザー・エラー・メッセージ --# 固定 #
-          );
-          --
-          IF (lv_sub_retcode = cv_status_error) THEN
-            RAISE select_warn_expt;
+          /* 2009.06.18 K.Satomura T1_1017再修正対応 START */
+          IF (gv_date_value IS NULL) THEN
+          /* 2009.06.18 K.Satomura T1_1017再修正対応 END */
+            -- ================================================================
+            -- A-18 作業データテーブル更新
+            -- ================================================================
+            update_wk_data_tbl(
+               i_get_rec       => l_get_rec       -- 抽出出力データ
+              ,id_process_date => ld_process_date -- 業務処理日
+              ,ov_errbuf       => lv_sub_buf      -- エラー・メッセージ           --# 固定 #
+              ,ov_retcode      => lv_sub_retcode  -- リターン・コード             --# 固定 #
+              ,ov_errmsg       => lv_sub_msg      -- ユーザー・エラー・メッセージ --# 固定 #
+            );
             --
+            IF (lv_sub_retcode = cv_status_error) THEN
+              RAISE select_warn_expt;
+              --
+            END IF;
+          /* 2009.06.18 K.Satomura T1_1017再修正対応 START */
           END IF;
+          /* 2009.06.18 K.Satomura T1_1017再修正対応 END */
           --
           -- ================================================================
           -- A-13 廃棄作業依頼情報データCSV出力
