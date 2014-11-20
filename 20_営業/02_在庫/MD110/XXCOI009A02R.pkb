@@ -7,7 +7,7 @@ AS
  * Package Name     : XXCOI009A02R(body)
  * Description      : 倉替出庫明細リスト
  * MD.050           : 倉替出庫明細リスト MD050_COI_009_A02
- * Version          : 1.4
+ * Version          : 1.5
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -36,6 +36,8 @@ AS
  *  2009/02/26    1.2   K.Tsuboi         [障害COI_027] 工場倉替,工場返品の出庫拠点桁数を指定するよう修正
  *  2009/03/02    1.3   K.Tsuboi         [障害COI_030] 営業原価額に取引数量*営業原価の値を設定
  *  2009/04/30    1.4   T.Nakamura       最終行にバックスラッシュを追加
+ *  2009/05/21    1.5   T.Nakamura       [障害T1_0987] 営業原価額を四捨五入し整数値に変換するよう修正
+ *                                       [障害T1_1030] 倉替データ取得時の取得条件を追加
  *****************************************************************************************/
 --
 --#######################  固定グローバル定数宣言部 START   #######################
@@ -1095,6 +1097,9 @@ AS
         AND  msib.organization_id                =  gn_organization_id
         AND  msib.segment1                       =  iimb.item_no
         AND  iimb.item_id                        =  ximb.item_id
+-- == 2009/05/21 V1.5 Added START ==================================================================
+        AND  mmt.transaction_quantity            <  0
+-- == 2009/05/21 V1.5 Added END   ==================================================================
       UNION
       --廃却
       SELECT  mmt.transaction_id
@@ -1515,8 +1520,11 @@ AS
         RAISE global_api_expt;
       END IF;
 --
+-- == 2009/05/21 V1.5 Modified START ===============================================================
       -- 営業原価額の符号変換
-      ln_discrete_cost := TO_NUMBER(lv_discrete_cost)*lr_info_kuragae_rec.transaction_qty;
+--      ln_discrete_cost := TO_NUMBER(lv_discrete_cost)*lr_info_kuragae_rec.transaction_qty;
+      ln_discrete_cost := ROUND(TO_NUMBER(lv_discrete_cost)*lr_info_kuragae_rec.transaction_qty);
+-- == 2009/05/21 V1.5 Modified END   ===============================================================
 --
       -- =====================================================
       -- 品目マスタ情報抽出処理(A-4)
