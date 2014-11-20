@@ -25,4 +25,4 @@ COMMENT ON COLUMN xxwsh_head_branch_or_vendor_v.party_vendor_number     IS 'ŠÇŠ
 COMMENT ON COLUMN xxwsh_head_branch_or_vendor_v.party_vendor_short_name IS 'ŠÇŠ‹’“_/æˆøæ–¼Ì';
 COMMENT ON COLUMN xxwsh_head_branch_or_vendor_v.category                IS '•ª—Ş';
 --
-COMMENT ON TABLE  xxwsh_req_no_move_no_all_v IS 'ŠÇŠ‹’“_/æˆøæVIEW';
+COMMENT ON TABLE  xxwsh_head_branch_or_vendor_v IS 'ŠÇŠ‹’“_/æˆøæVIEW';
