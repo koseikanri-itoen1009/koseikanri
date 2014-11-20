@@ -101,10 +101,20 @@ AS
             AND    XPAY.ACCOUNTING_IF_FLAG(+) = '1'
             GROUP BY 
                    XPAY.CONTRACT_LINE_ID  ),0) XPP
-      ,XCH.TAX_CODE                        AS TAX_CODE
-      ,( SELECT APT.DESCRIPTION
+--ÅyE_ñ{â“ìÆ_10871ÅzMOD START Nakano
+--      ,XCH.TAX_CODE                        AS TAX_CODE
+--      ,( SELECT APT.DESCRIPTION
+--         FROM   AP_TAX_CODES APT
+--         WHERE  XCH.TAX_CODE = APT.NAME(+) ) AS TAX_NAME
+      ,NVL(XCL.TAX_CODE, XCH.TAX_CODE)     AS TAX_CODE
+      ,NVL(
+       ( SELECT APT.DESCRIPTION
          FROM   AP_TAX_CODES APT
-         WHERE  XCH.TAX_CODE = APT.NAME(+) ) AS TAX_NAME
+         WHERE  XCL.TAX_CODE = APT.NAME(+) ),
+       ( SELECT APT.DESCRIPTION
+         FROM   AP_TAX_CODES APT
+         WHERE  XCH.TAX_CODE = APT.NAME(+) )) AS TAX_NAME
+--ÅyE_ñ{â“ìÆ_10871ÅzMOD END Nakano
 FROM   
        XXCFF_OBJECT_HEADERS    XOH
       ,XXCFF_CONTRACT_LINES    XCL
