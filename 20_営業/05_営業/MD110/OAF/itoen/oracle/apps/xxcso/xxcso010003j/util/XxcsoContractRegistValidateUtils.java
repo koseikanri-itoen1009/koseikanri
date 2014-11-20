@@ -12,6 +12,7 @@
 * 2009-04-08 1.2  SCS柳平直人  [ST障害T1_0364]仕入先重複チェック修正対応
 * 2009-04-09 1.3  SCS柳平直人  [ST障害T1_0327]月末締翌20日払チェック処理修正
 * 2009-04-27 1.4  SCS柳平直人  [ST障害T1_0708]入力項目チェック処理統一修正
+* 2009-06-08 1.5  SCS柳平直人  [ST障害T1_1307]半角カナチェックメッセージ修正
 *============================================================================
 */
 package itoen.oracle.apps.xxcso.xxcso010003j.util;
@@ -718,7 +719,10 @@ public class XxcsoContractRegistValidateUtils
     {
       OAException error
         = XxcsoMessage.createErrorMessage(
-            XxcsoConstants.APP_XXCSO1_00533
+// 2009-06-08 [ST障害T1_1307] Mod Start
+//            XxcsoConstants.APP_XXCSO1_00533
+            XxcsoConstants.APP_XXCSO1_00573
+// 2009-06-08 [ST障害T1_1307] Mod End
            ,XxcsoConstants.TOKEN_REGION
            ,XxcsoContractRegistConstants.TOKEN_VALUE_BM1_DEST
            ,XxcsoConstants.TOKEN_COLUMN
@@ -1251,7 +1255,10 @@ public class XxcsoContractRegistValidateUtils
     {
       OAException error
         = XxcsoMessage.createErrorMessage(
-            XxcsoConstants.APP_XXCSO1_00533
+// 2009-06-08 [ST障害T1_1307] Mod Start
+//            XxcsoConstants.APP_XXCSO1_00533
+            XxcsoConstants.APP_XXCSO1_00573
+// 2009-06-08 [ST障害T1_1307] Mod End
            ,XxcsoConstants.TOKEN_REGION
            ,XxcsoContractRegistConstants.TOKEN_VALUE_BM2_DEST
            ,XxcsoConstants.TOKEN_COLUMN
@@ -1785,7 +1792,10 @@ public class XxcsoContractRegistValidateUtils
     {
       OAException error
         = XxcsoMessage.createErrorMessage(
-            XxcsoConstants.APP_XXCSO1_00533
+// 2009-06-08 [ST障害T1_1307] Mod Start
+//            XxcsoConstants.APP_XXCSO1_00533
+            XxcsoConstants.APP_XXCSO1_00573
+// 2009-06-08 [ST障害T1_1307] Mod End
            ,XxcsoConstants.TOKEN_REGION
            ,XxcsoContractRegistConstants.TOKEN_VALUE_BM3_DEST
            ,XxcsoConstants.TOKEN_COLUMN
@@ -3092,7 +3102,7 @@ public class XxcsoContractRegistValidateUtils
 // 2009-04-09 [ST障害T1_0327] Mod Start
 //          returnValue = false;
           returnValue = true;
-// 2009-04-09 [ST障害T1_0327] Mod Start
+// 2009-04-09 [ST障害T1_0327] Mod End
         }
       }
       else
