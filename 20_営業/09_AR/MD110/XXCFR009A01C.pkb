@@ -7,7 +7,7 @@ AS
  * Description      : 営業員別払日別入金予定表
  * MD.050           : MD050_CFR_009_A01_営業員別払日別入金予定表
  * MD.070           : MD050_CFR_009_A01_営業員別払日別入金予定表
- * Version          : 1.7
+ * Version          : 1.8
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -37,6 +37,7 @@ AS
  *  2009/07/15    1.5  SCS M.HIROSE     [障害0000481] パフォーマンス改善
  *  2009/09/29    1.6  SCS T.KANEDA     [共通課題IE542] 拠点並び順変更
  *  2010/01/21    1.7  SCS T.KANEDA     [本稼動_01145] 支払方法の取得先を顧客マスタに変更する
+ *  2011/08/17    1.8  SCS T.ISHIWATA   [本稼動_08140] パフォーマンス改善
  *
  *****************************************************************************************/
 --
@@ -136,6 +137,10 @@ AS
   cv_prof_trx_source     CONSTANT fnd_profile_options_tl.profile_option_name%TYPE 
                                       := 'XXCFR1_TAX_DIFF_TRX_SOURCE';          -- 税差額取引ソース
 -- Modify 2009.02.19 Ver1.1 End
+-- 2011/08/17 Ver1.8 Add Start
+  cv_prf_min_date    CONSTANT VARCHAR2(30) := 'XXCFR1_MIN_DATE';      -- XXCFR:MIN日付
+  cv_prf_max_date    CONSTANT VARCHAR2(30) := 'XXCFR1_MAX_DATE';      -- XXCFR:MAX日付
+-- 2011/08/17 Ver1.8 Add End
 --
   -- 使用DB名
   cv_table           CONSTANT VARCHAR2(100) := 'XXCFR_REP_SALES_REP_PAY_SCH';  -- ワークテーブル名
@@ -148,6 +153,9 @@ AS
 --
   cv_format_date_ymd    CONSTANT VARCHAR2(8)  := 'YYYYMMDD';          -- 日付フォーマット（年月日）
   cv_format_date_ymdhns CONSTANT VARCHAR2(30) := 'YYYY/MM/DD HH24:MI:SS';  -- 日付フォーマット（年月日時分秒）
+-- 2011/08/17 Ver1.8 Add Start
+  cv_format_date_ymd2   CONSTANT VARCHAR2(10)  := 'YYYY/MM/DD';        -- 日付フォーマット（年月日）
+-- 2011/08/17 Ver1.8 Add End
 --
   -- ===============================
   -- ユーザー定義グローバル型
@@ -161,6 +169,10 @@ AS
 -- Modify 2009.02.19 Ver1.1 Start
   gt_taxd_trx_source     fnd_profile_option_values.profile_option_value%TYPE;  -- 税差額取引ソース
 -- Modify 2009.02.19 Ver1.1 End
+-- 2011/08/17 Ver1.8 Add Start
+  gv_min_date           VARCHAR(10);               -- 最小日付
+  gv_max_date           VARCHAR(10);               -- 最大日付
+-- 2011/08/17 Ver1.8 Add End
 --
 -- Modify 2010.01.21 Ver1.7 Start
     gv_no_data_msg  VARCHAR2(5000); -- 帳票０件メッセージ
@@ -490,6 +502,34 @@ AS
     END IF;
 --
 -- Modify 2009.02.18 Ver1.1 End
+-- 2011/08/17 Ver1.8 Add Start
+    --XXCFR:最小日付
+    gv_min_date := fnd_profile.value(cv_prf_min_date);
+    IF (gv_min_date IS NULL) THEN
+      lv_errmsg  := SUBSTRB(xxccp_common_pkg.get_msg(iv_application  => cv_msg_kbn_cfr
+                                                    ,iv_name         => cv_msg_009a01_010
+                                                    ,iv_token_name1  => cv_tkn_prof
+                                                    ,iv_token_value1 
+                                                        => xxcfr_common_pkg.get_user_profile_name(cv_prf_min_date))
+                                                    ,1
+                                                    ,5000);
+      lv_errbuf := lv_errmsg;
+      RAISE global_api_expt;
+    END IF;
+    --XXCFR:最大日付
+    gv_max_date := fnd_profile.value(cv_prf_max_date);
+    IF (gv_max_date IS NULL) THEN
+      lv_errmsg  := SUBSTRB(xxccp_common_pkg.get_msg(iv_application  => cv_msg_kbn_cfr
+                                                    ,iv_name         => cv_msg_009a01_010
+                                                    ,iv_token_name1  => cv_tkn_prof
+                                                    ,iv_token_value1 
+                                                        => xxcfr_common_pkg.get_user_profile_name(cv_prf_max_date))
+                                                    ,1
+                                                    ,5000);
+      lv_errbuf := lv_errmsg;
+      RAISE global_api_expt;
+    END IF;
+-- 2011/08/17 Ver1.8 Add End
     --==============================================================
     --メッセージ出力をする必要がある場合は処理を記述
     --==============================================================
@@ -560,6 +600,10 @@ AS
     cv_relate_class     CONSTANT VARCHAR2(10) := '2';        -- 関連分類：入金
     cv_lookup_tax_type  CONSTANT VARCHAR2(30) := 'XXCMM_CSUT_SYOHIZEI_KBN';   -- 消費税区分
     cv_sales_rep_attr   CONSTANT VARCHAR2(30) := 'RESOURCE' ;   -- 担当営業員属性
+-- 2011/08/17 Ver1.8 Add Start
+    cv_trx_cust_class_code
+                        CONSTANT VARCHAR2(30) := 'XXCFR1_TRX_CUST_CLASS_CODE' ;   -- 取引顧客区分
+-- 2011/08/17 Ver1.8 Add End
 --
     -- *** ローカル変数 ***
     ln_target_cnt   NUMBER := 0;    -- 対象件数
@@ -574,6 +618,10 @@ AS
 --    lt_receipt_class_id4  ar_receipt_methods.receipt_class_id%TYPE;  -- 入金区分４
 --    lt_receipt_class_id5  ar_receipt_methods.receipt_class_id%TYPE;  -- 入金区分５
 -- Modify 2010.01.21 Ver1.7 End
+-- 2011/08/17 Ver1.8 Add Start
+    lv_due_date_from VARCHAR2(10);
+    lv_due_date_to   VARCHAR2(10);
+-- 2011/08/17 Ver1.8 Add End
 --
     -- *** ローカル・カーソル ***
 --
@@ -610,6 +658,13 @@ AS
 --    lt_receipt_class_id4 := TO_NUMBER( iv_receipt_class4 );
 --    lt_receipt_class_id5 := TO_NUMBER( iv_receipt_class5 );
 -- Modify 2010.01.21 Ver1.7 End
+-- 2011/08/17 Ver1.8 Add Start
+    -- 入力パラメータ「支払期日」がNULLの場合に、代替値に置き換える。
+    lv_due_date_from
+      := NVL( TO_CHAR(TO_DATE(iv_due_date_from, cv_format_date_ymdhns),cv_format_date_ymd2), gv_min_date ); -- 支払期日(FROM)
+    lv_due_date_to
+      := NVL( TO_CHAR(TO_DATE(iv_due_date_to,   cv_format_date_ymdhns),cv_format_date_ymd2), gv_max_date ); -- 支払期日(TO)
+-- 2011/08/17 Ver1.8 Add End
 --
     -- ====================================================
     -- ワークテーブルへの登録
@@ -725,10 +780,17 @@ AS
       FROM
         ( 
         SELECT 
--- Modify 2009.07.15 Ver1.5 Start
-               /*+ INDEX(apsa  XXCFR_AR_PAYMENT_SCHEDULES_N01)
+-- 2011/08/17 Ver1.8 Mod Start
+---- Modify 2009.07.15 Ver1.5 Start
+--               /*+ INDEX(apsa  XXCFR_AR_PAYMENT_SCHEDULES_N01)
+--               */
+---- Modify 2009.07.15 Ver1.5 End
+               /*+ 
+                   LEADING(apsa)
+                   USE_NL(rcta apsa rbsa)
+                   INDEX(apsa  XXCFR_AR_PAYMENT_SCHEDULES_N01)
                */
--- Modify 2009.07.15 Ver1.5 End
+-- 2011/08/17 Ver1.8 Mod End
                rcta.bill_to_customer_id           bill_to_customer_id,    -- 請求先顧客ID
 -- Modify 2010.01.21 Ver1.7 Start
 --               arm.name                           receipt_method_name,    -- 入金方法（支払方法）
@@ -817,10 +879,14 @@ AS
 --                )
 --              )
 -- Modify 2010.01.21 Ver1.7 End
-          AND ( apsa.due_date >= xxcfr_common_pkg.get_date_param_trans ( iv_due_date_from )
-                OR iv_due_date_from IS NULL )
-          AND ( apsa.due_date <= xxcfr_common_pkg.get_date_param_trans ( iv_due_date_to )
-                OR iv_due_date_to IS NULL )
+-- 2011/08/17 Ver1.8 Mod Start
+--          AND ( apsa.due_date >= xxcfr_common_pkg.get_date_param_trans ( iv_due_date_from )
+--                OR iv_due_date_from IS NULL )
+--          AND ( apsa.due_date <= xxcfr_common_pkg.get_date_param_trans ( iv_due_date_to )
+--                OR iv_due_date_to IS NULL )
+          AND apsa.due_date >= xxcfr_common_pkg.get_date_param_trans ( lv_due_date_from )
+          AND apsa.due_date <= xxcfr_common_pkg.get_date_param_trans ( lv_due_date_to   )
+-- 2011/08/17 Ver1.8 Mod End
 -- Modify 2009.02.18 Ver1.1 Start
           AND rcta.batch_source_id      = rbsa.batch_source_id
           AND rcta.org_id               = rbsa.org_id
@@ -838,12 +904,18 @@ AS
         )                         pay_sch,        -- 顧客別未回収残高ビュー
         (
           SELECT
--- Modify 2010.01.21 Ver1.7 Start
-                 /*+ USE_CONCAT
-                     LEADING( xca hca_c hcara hca )
-                     USE_NL ( xca hca_c hcara hca )
+-- 2011/08/17 Ver1.8 Mod Start
+---- Modify 2010.01.21 Ver1.7 Start
+--                 /*+ USE_CONCAT
+--                     LEADING( xca hca_c hcara hca )
+--                     USE_NL ( xca hca_c hcara hca )
+--                 */
+---- Modify 2010.01.21 Ver1.7 End
+                 /*+
+                     LEADING( flv_c hca_c xca hcara hca )
+                     USE_NL ( flv_c hca_c xca hcara hca )
                  */
--- Modify 2010.01.21 Ver1.7 End
+-- 2011/08/17 Ver1.8 Mod End
             hca.cust_account_id                     bill_cust_account_id,   -- 請求先顧客ＩＤ
             hca_c.cust_account_id                   cr_cust_account_id,     -- 入金先の顧客ＩＤ
             hca.account_number                      bill_to_account_number, -- 請求先顧客コード（請求先顧客コード）
@@ -860,6 +932,9 @@ AS
 -- Modify 2010.01.21 Ver1.7 Start
                xxcmm_cust_accounts        xca,      -- 顧客追加情報(入金)
 -- Modify 2010.01.21 Ver1.7 End
+-- 2011/08/17 Ver1.8 Add Start
+               fnd_lookup_values          flv_c,      -- 取引顧客区分
+-- 2011/08/17 Ver1.8 Add End
 -- Modify 2009.07.15 Ver1.5 Start
 --               hz_cust_acct_relate_all    hcara     -- 顧客関連
                hz_cust_acct_relate        hcara     -- 顧客関連
@@ -868,6 +943,17 @@ AS
             AND hcara.related_cust_account_id = hca.cust_account_id
             AND hcara.status              = cv_status_enabled -- ステータス：有効
             AND hcara.attribute1          = cv_relate_class   -- 関連分類：入金
+-- 2011/08/17 Ver1.8 Add Start
+            AND hca_c.customer_class_code = flv_c.lookup_code
+            AND flv_c.lookup_type         = cv_trx_cust_class_code
+            AND flv_c.attribute1          = cv_enabled_yes
+            AND flv_c.language            = USERENV( 'LANG' )
+            AND flv_c.enabled_flag        = cv_enabled_yes
+            AND ( flv_c.start_date_active IS NULL
+               OR flv_c.start_date_active <= TRUNC ( SYSDATE ) )
+            AND ( flv_c.end_date_active   IS NULL
+               OR flv_c.end_date_active   >= TRUNC ( SYSDATE ) )
+-- 2011/08/17 Ver1.8 Add End
 -- Modify 2010.01.21 Ver1.7 Start
             AND hca_c.cust_account_id     = xca.customer_id   -- 顧客内部ID
             AND ( ( iv_receive_base_code IS NULL                  )  -- パラメータがNULLか
@@ -882,12 +968,18 @@ AS
           UNION ALL
 -- Modify 2009.07.15 Ver1.5 End
           SELECT
--- Modify 2010.01.21 Ver1.7 Start
-                 /*+ USE_CONCAT
-                     LEADING( xca hca )
-                     USE_NL( xca hca )
+-- 2011/08/17 Ver1.8 Mod Start
+---- Modify 2010.01.21 Ver1.7 Start
+--                 /*+ USE_CONCAT
+--                     LEADING( xca hca )
+--                     USE_NL( xca hca )
+--                 */
+---- Modify 2010.01.21 Ver1.7 End
+                 /*+ 
+                     LEADING( flv_c2 hca xca )
+                     USE_NL ( flv_c2 hca xca )
                  */
--- Modify 2010.01.21 Ver1.7 End
+-- 2011/08/17 Ver1.8 Mod End
             hca.cust_account_id                     bill_cust_account_id,   -- 請求先顧客ＩＤ
             hca.cust_account_id                     cr_cust_account_id,     -- 入金先顧客ＩＤ
             hca.account_number                      bill_to_account_number, -- 請求先顧客コード（請求先顧客コード）
@@ -904,13 +996,30 @@ AS
           FROM hz_cust_accounts           hca,      -- 顧客マスタ（入金関連なし）
                xxcmm_cust_accounts        xca       -- 顧客追加情報（入金関連なし）
 -- Modify 2010.01.21 Ver1.7 End
+-- 2011/08/17 Ver1.8 Add Start
+              ,fnd_lookup_values          flv_c2    -- 取引顧客区分
+-- 2011/08/17 Ver1.8 Add End
           WHERE NOT EXISTS (
-                  SELECT 'X'
+-- 2011/08/17 Ver1.8 Mod Start
+--                  SELECT 'X'
+                  SELECT /*+ USE_NL(cash_hcar_1) */
+                         'X'
+-- 2011/08/17 Ver1.8 Mod End
                     FROM hz_cust_acct_relate_all   cash_hcar_1       --顧客関連マスタ(入金関連)
                    WHERE cash_hcar_1.status     = cv_status_enabled  --顧客関連マスタ(入金関連).ステータス = ‘A’
                      AND cash_hcar_1.attribute1 = cv_relate_class    --顧客関連マスタ(入金関連).関連分類 = ‘2’ (入金)
                      AND cash_hcar_1.related_cust_account_id = hca.cust_account_id --顧客関連マスタ(入金関連).関連先顧客ID = 請求先顧客マスタ.顧客ID
                 )
+-- 2011/08/17 Ver1.8 Add Start
+            AND hca.customer_class_code = flv_c2.lookup_code
+            AND flv_c2.lookup_type         = cv_trx_cust_class_code
+            AND flv_c2.language            = USERENV( 'LANG' )
+            AND flv_c2.enabled_flag        = cv_enabled_yes
+            AND ( flv_c2.start_date_active IS NULL
+               OR flv_c2.start_date_active <= TRUNC ( SYSDATE ) )
+            AND ( flv_c2.end_date_active   IS NULL
+               OR flv_c2.end_date_active   >= TRUNC ( SYSDATE ) )
+-- 2011/08/17 Ver1.8 Add End
 -- Modify 2010.01.21 Ver1.7 Start
             AND hca.cust_account_id       = xca.customer_id   -- 顧客内部ID
             AND ( ( iv_receive_base_code IS NULL                  )  -- パラメータがNULLか
