@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCCP005A01C(body)
  * Description      : 他システムからのIFファイルにおける、ヘッダ・フッタ削除します。
  * MD.050           : MD050_CCP_005_A01_IFファイルヘッダ・フッタ削除処理
- * Version          : 1.4
+ * Version          : 1.5
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -29,6 +29,7 @@ AS
  *  2009-02-25    1.2   T.Matsumoto      ファイル読み込み時の文字列バッファ長不足暫定対応(2047 ⇒ 30000)
  *  2009-02-26    1.3   T.Matsumoto      出力ログ不正対応
  *  2009-05-01    1.4   Masayuki.Sano    障害番号T1_0910対応(スキーマ名付加)
+ *  2009-06-01    1.5   Masayuki.Sano    障害番号T1_1275対応(コンカレント・ログ出力対応)
  *****************************************************************************************/
 --
 --#######################  固定グローバル定数宣言部 START   #######################
@@ -936,6 +937,45 @@ AS
                                           gv_cnst_tkn_fname,
                                           iv_file_name)
     );
+-- 2009-06-01 Ver1.5 Add Start
+    --ファイル名
+    FND_FILE.PUT_LINE(
+       which  => FND_FILE.LOG
+      ,buff   => xxccp_common_pkg.get_msg(gv_cnst_msg_kbn,
+                                          gv_cnst_msg_if_fnam,
+                                          gv_cnst_tkn_fname,
+                                          iv_file_name)
+    );
+    --相手システム名
+    FND_FILE.PUT_LINE(
+       which  => FND_FILE.LOG
+      ,buff   => xxccp_common_pkg.get_msg(gv_cnst_msg_kbn,
+                                          gv_cnst_msg_if_osys,
+                                          gv_cnst_tkn_osystem,
+                                          iv_other_system)
+    );
+    --ファイルディレクトリ
+    FND_FILE.PUT_LINE(
+       which  => FND_FILE.LOG
+      ,buff   => xxccp_common_pkg.get_msg(gv_cnst_msg_kbn,
+                                          gv_cnst_msg_if_fdir,
+                                          gv_cnst_tkn_fdir,
+                                          iv_file_dir)
+    );
+    --空行挿入
+    FND_FILE.PUT_LINE(
+       which  => FND_FILE.LOG
+      ,buff   => ''
+    );
+    --I/Fファイル名出力
+    FND_FILE.PUT_LINE(
+       which  => FND_FILE.LOG
+      ,buff   => xxccp_common_pkg.get_msg(gv_cnst_msg_kbn,
+                                          gv_cnst_msg_if_ifna,
+                                          gv_cnst_tkn_fname,
+                                          iv_file_name)
+    );
+-- 2009-06-01 Ver1.5 Add End
     --空行挿入
     FND_FILE.PUT_LINE(
        which  => FND_FILE.OUTPUT
