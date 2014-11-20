@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCOS001A02C (body)
  * Description      : 入金データの取込を行う
  * MD.050           : HHT入金データ取込 (MD050_COS_001_A02)
- * Version          : 1.6
+ * Version          : 1.8
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -33,6 +33,9 @@ AS
  *  2009/05/15    1.4   T.Kitajima       [T1_0639]拠点コード設定変更(売上拠点→入金拠点)
  *  2009/05/19    1.5   N.Maeda          [T1_1011]エラーリスト登録用拠点抽出条件変更
  *  2009/06/19    1.6   T.Kitajima       [T1_1447]パフォーマンス改善対応
+ *  2009/07/21    1.7   T.Tominaga       [0000741]パフォーマンス改善対応
+ *                                       [0000765]入金拠点コードの取得先変更
+ *  2009/07/28    1.8   T.Tominaga       [0000881]拠点名称・顧客名の桁数編集
  *
  *****************************************************************************************/
 --
@@ -153,6 +156,11 @@ AS
 --
   cv_general         CONSTANT VARCHAR2(1)   := NULL;                -- 百貨店用HHT区分＝NULL：一般拠点
   cv_depart          CONSTANT VARCHAR2(1)   := '1';                 -- 百貨店用HHT区分＝1：百貨店
+--******************************* 2009/07/21 1.7 T.Tominaga ADD START ***************************************
+  --言語コード
+  ct_lang            CONSTANT fnd_lookup_values.language%TYPE
+                                            := USERENV( 'LANG' );
+--******************************* 2009/07/21 1.7 T.Tominaga ADD END   ***************************************
 --
   -- クイックコードタイプ
   cv_qck_typ_class   CONSTANT VARCHAR2(30)  := 'XXCOS1_RECEIPT_MONEY_CLASS';      -- 入金区分
@@ -432,77 +440,104 @@ AS
     CURSOR get_cus_status_cur
     IS
       SELECT  look_val.meaning      meaning
-      FROM    fnd_lookup_values     look_val,
-              fnd_lookup_types_tl   types_tl,
-              fnd_lookup_types      types,
-              fnd_application_tl    appl,
-              fnd_application       app
-      WHERE   appl.application_id   = types.application_id
-      AND     look_val.language     = USERENV( 'LANG' )
-      AND     appl.language         = USERENV( 'LANG' )
-      AND     types_tl.lookup_type  = look_val.lookup_type
-      AND     app.application_id    = appl.application_id
-      AND     app.application_short_name = cv_application
-      AND     look_val.lookup_type = cv_qck_typ_status
+--******************************* 2009/07/21 1.7 T.Tominaga MOD START ***************************************
+--      FROM    fnd_lookup_values     look_val,
+--              fnd_lookup_types_tl   types_tl,
+--              fnd_lookup_types      types,
+--              fnd_application_tl    appl,
+--              fnd_application       app
+--      WHERE   appl.application_id   = types.application_id
+--      AND     look_val.language     = USERENV( 'LANG' )
+--      AND     appl.language         = USERENV( 'LANG' )
+--      AND     types_tl.lookup_type  = look_val.lookup_type
+--      AND     app.application_id    = appl.application_id
+--      AND     app.application_short_name = cv_application
+--      AND     look_val.lookup_type = cv_qck_typ_status
+--      AND     look_val.lookup_code LIKE cv_qck_typ_a02
+--      AND     types.lookup_type = types_tl.lookup_type
+--      AND     types.security_group_id = types_tl.security_group_id
+--      AND     types.view_application_id = types_tl.view_application_id
+--      AND     gd_process_date      >= NVL(look_val.start_date_active, gd_process_date)
+--      AND     gd_process_date      <= NVL(look_val.end_date_active, gd_max_date)
+--      AND     look_val.enabled_flag = cv_tkn_yes
+--      AND     types_tl.language = USERENV( 'LANG' );
+      FROM    fnd_lookup_values     look_val
+      WHERE   look_val.language     = ct_lang
+      AND     look_val.lookup_type  = cv_qck_typ_status
       AND     look_val.lookup_code LIKE cv_qck_typ_a02
-      AND     types.lookup_type = types_tl.lookup_type
-      AND     types.security_group_id = types_tl.security_group_id
-      AND     types.view_application_id = types_tl.view_application_id
       AND     gd_process_date      >= NVL(look_val.start_date_active, gd_process_date)
       AND     gd_process_date      <= NVL(look_val.end_date_active, gd_max_date)
-      AND     look_val.enabled_flag = cv_tkn_yes
-      AND     types_tl.language = USERENV( 'LANG' );
+      AND     look_val.enabled_flag = cv_tkn_yes;
+--******************************* 2009/07/21 1.7 T.Tominaga MOD END   ***************************************
 --
     -- クイックコード：業態（小分類）取得
     CURSOR get_gyotai_sho_cur
     IS
       SELECT  look_val.meaning      meaning
-      FROM    fnd_lookup_values     look_val,
-              fnd_lookup_types_tl   types_tl,
-              fnd_lookup_types      types,
-              fnd_application_tl    appl,
-              fnd_application       app
-      WHERE   appl.application_id   = types.application_id
-      AND     look_val.language     = USERENV( 'LANG' )
-      AND     appl.language         = USERENV( 'LANG' )
-      AND     types_tl.lookup_type  = look_val.lookup_type
-      AND     app.application_id    = appl.application_id
-      AND     app.application_short_name = cv_application
-      AND     look_val.lookup_type = cv_qck_typ_busi
+--******************************* 2009/07/21 1.7 T.Tominaga MOD START ***************************************
+--      FROM    fnd_lookup_values     look_val,
+--              fnd_lookup_types_tl   types_tl,
+--              fnd_lookup_types      types,
+--              fnd_application_tl    appl,
+--              fnd_application       app
+--      WHERE   appl.application_id   = types.application_id
+--      AND     look_val.language     = USERENV( 'LANG' )
+--      AND     appl.language         = USERENV( 'LANG' )
+--      AND     types_tl.lookup_type  = look_val.lookup_type
+--      AND     app.application_id    = appl.application_id
+--      AND     app.application_short_name = cv_application
+--      AND     look_val.lookup_type = cv_qck_typ_busi
+--      AND     look_val.lookup_code LIKE cv_qck_typ_a02
+--      AND     types.lookup_type = types_tl.lookup_type
+--      AND     types.security_group_id = types_tl.security_group_id
+--      AND     types.view_application_id = types_tl.view_application_id
+--      AND     gd_process_date      >= NVL(look_val.start_date_active, gd_process_date)
+--      AND     gd_process_date      <= NVL(look_val.end_date_active, gd_max_date)
+--      AND     look_val.enabled_flag = cv_tkn_yes
+--      AND     types_tl.language = USERENV( 'LANG' );
+      FROM    fnd_lookup_values     look_val
+      WHERE   look_val.language     = ct_lang
+      AND     look_val.lookup_type  = cv_qck_typ_busi
       AND     look_val.lookup_code LIKE cv_qck_typ_a02
-      AND     types.lookup_type = types_tl.lookup_type
-      AND     types.security_group_id = types_tl.security_group_id
-      AND     types.view_application_id = types_tl.view_application_id
       AND     gd_process_date      >= NVL(look_val.start_date_active, gd_process_date)
       AND     gd_process_date      <= NVL(look_val.end_date_active, gd_max_date)
-      AND     look_val.enabled_flag = cv_tkn_yes
-      AND     types_tl.language = USERENV( 'LANG' );
+      AND     look_val.enabled_flag = cv_tkn_yes;
+--******************************* 2009/07/21 1.7 T.Tominaga MOD END   ***************************************
 --
     -- クイックコード：入金区分取得
     CURSOR get_pay_class_cur
     IS
       SELECT  look_val.lookup_code  lookup_code,
               look_val.meaning      meaning
-      FROM    fnd_lookup_values     look_val,
-              fnd_lookup_types_tl   types_tl,
-              fnd_lookup_types      types,
-              fnd_application_tl    appl,
-              fnd_application       app
-      WHERE   appl.application_id   = types.application_id
-      AND     look_val.language     = USERENV( 'LANG' )
-      AND     appl.language         = USERENV( 'LANG' )
-      AND     types_tl.lookup_type  = look_val.lookup_type
-      AND     app.application_id    = appl.application_id
+--******************************* 2009/07/21 1.7 T.Tominaga MOD START ***************************************
+--      FROM    fnd_lookup_values     look_val,
+--              fnd_lookup_types_tl   types_tl,
+--              fnd_lookup_types      types,
+--              fnd_application_tl    appl,
+--              fnd_application       app
+--      WHERE   appl.application_id   = types.application_id
+--      AND     look_val.language     = USERENV( 'LANG' )
+--      AND     appl.language         = USERENV( 'LANG' )
+--      AND     types_tl.lookup_type  = look_val.lookup_type
+--      AND     app.application_id    = appl.application_id
+--      AND     look_val.lookup_type  = cv_qck_typ_class
+--      AND     app.application_short_name = cv_application
+--      AND     types.lookup_type = types_tl.lookup_type
+--      AND     types.security_group_id = types_tl.security_group_id
+--      AND     types.view_application_id = types_tl.view_application_id
+--      AND     gd_process_date      >= NVL(look_val.start_date_active, gd_process_date)
+--      AND     gd_process_date      <= NVL(look_val.end_date_active, gd_max_date)
+--      AND     look_val.enabled_flag = cv_tkn_yes
+--      AND     types_tl.language     = USERENV( 'LANG' )
+--      AND     look_val.attribute1   = cv_tkn_yes;
+      FROM    fnd_lookup_values     look_val
+      WHERE   look_val.language     = ct_lang
       AND     look_val.lookup_type  = cv_qck_typ_class
-      AND     app.application_short_name = cv_application
-      AND     types.lookup_type = types_tl.lookup_type
-      AND     types.security_group_id = types_tl.security_group_id
-      AND     types.view_application_id = types_tl.view_application_id
       AND     gd_process_date      >= NVL(look_val.start_date_active, gd_process_date)
       AND     gd_process_date      <= NVL(look_val.end_date_active, gd_max_date)
       AND     look_val.enabled_flag = cv_tkn_yes
-      AND     types_tl.language     = USERENV( 'LANG' )
       AND     look_val.attribute1   = cv_tkn_yes;
+--******************************* 2009/07/21 1.7 T.Tominaga MOD END   ***************************************
 --
     -- *** ローカル・レコード ***
 --
@@ -928,16 +963,25 @@ AS
 --
         ELSE
           --== 顧客マスタデータ抽出 ==--
-          SELECT parties.party_name           party_name,           -- 顧客名称
+--****************************** 2009/07/28 1.8 T.Tominaga MOD START ******************************--
+--          SELECT parties.party_name           party_name,           -- 顧客名称
+          SELECT SUBSTRB(parties.party_name, 1, 40)  party_name,    -- 顧客名称
+--****************************** 2009/07/28 1.8 T.Tominaga MOD END   ******************************--
                  parties.party_id             party_id,             -- パーティID
 --****************************** 2009/05/15 1.4 T.Kitajima MOD START ******************************--
 --                 custadd.sale_base_code       sale_base_code,       -- 売上拠点コード
 --                 custadd.past_sale_base_code  past_sale_base,       -- 前月売上拠点コード
-                 custadd.receiv_base_code     receiv_base_code,       -- 入金拠点コード
+--****************************** 2009/07/21 1.7 T.Tominaga MOD START ******************************--
+--                 custadd.receiv_base_code     receiv_base_code,       -- 入金拠点コード
 --****************************** 2009/05/15 1.4 T.Kitajima MOD  END  ******************************--
+                 xch.cash_receiv_base_code    receiv_base_code,     --入金拠点コード
+--****************************** 2009/07/21 1.7 T.Tominaga MOD  END  ******************************--
                  parties.duns_number_c        customer_status,      -- 顧客ステータス
                  custadd.business_low_type    business_low_type,    -- 業態（小分類）
-                 base.account_name            account_name,         -- 拠点名称
+--****************************** 2009/07/28 1.8 T.Tominaga MOD START ******************************--
+--                 base.account_name            account_name,         -- 拠点名称
+                 SUBSTRB(base.account_name, 1, 30)  account_name,   -- 拠点名称
+--****************************** 2009/07/28 1.8 T.Tominaga MOD END   ******************************--
                  baseadd.dept_hht_div         dept_hht_div,         -- 百貨店用HHT区分
                  salesreps.resource_id        resource_id           -- リソースID
           INTO   lt_customer_name,
@@ -957,57 +1001,75 @@ AS
                  hz_parties           parties,                 -- パーティ
                  xxcmm_cust_accounts  custadd,                 -- 顧客追加情報_顧客
                  xxcmm_cust_accounts  baseadd,                 -- 顧客追加情報_拠点
+--******************************* 2009/07/21 1.7 T.Tominaga ADD START ***************************************
+                 xxcfr_cust_hierarchy_v xch,                   -- 顧客階層ビュー
+--******************************* 2009/07/21 1.7 T.Tominaga ADD END   ***************************************
                  xxcos_salesreps_v    salesreps,               -- 担当営業員view
-                 (
-                   SELECT  look_val.meaning      cus
-                   FROM    fnd_lookup_values     look_val,
-                           fnd_lookup_types_tl   types_tl,
-                           fnd_lookup_types      types,
-                           fnd_application_tl    appl,
-                           fnd_application       app
-                   WHERE   appl.application_id   = types.application_id
-                   AND     app.application_id    = appl.application_id
-                   AND     types_tl.lookup_type  = look_val.lookup_type
-                   AND     types.lookup_type     = types_tl.lookup_type
-                   AND     types.security_group_id   = types_tl.security_group_id
-                   AND     types.view_application_id = types_tl.view_application_id
-                   AND     types_tl.language = USERENV( 'LANG' )
-                   AND     look_val.language = USERENV( 'LANG' )
-                   AND     appl.language     = USERENV( 'LANG' )
-                   AND     app.application_short_name = cv_application
-                   AND     look_val.lookup_type = cv_qck_typ_cus
-                   AND     look_val.lookup_code LIKE cv_qck_typ_a02
-                   AND     gd_process_date      >= NVL(look_val.start_date_active, gd_process_date)
-                   AND     gd_process_date      <= NVL(look_val.end_date_active, gd_max_date)
-                   AND     look_val.enabled_flag = cv_tkn_yes
-                   AND     look_val.attribute1   = cv_tkn_yes
-                 ) cus_class,    -- 顧客区分（'10'(顧客) , '12'(上様)）
+--******************************* 2009/07/21 1.7 T.Tominaga DEL START ***************************************
+--                 (
+--                   SELECT  look_val.meaning      cus
+--                   FROM    fnd_lookup_values     look_val,
+--                           fnd_lookup_types_tl   types_tl,
+--                           fnd_lookup_types      types,
+--                           fnd_application_tl    appl,
+--                           fnd_application       app
+--                   WHERE   appl.application_id   = types.application_id
+--                   AND     app.application_id    = appl.application_id
+--                   AND     types_tl.lookup_type  = look_val.lookup_type
+--                   AND     types.lookup_type     = types_tl.lookup_type
+--                   AND     types.security_group_id   = types_tl.security_group_id
+--                   AND     types.view_application_id = types_tl.view_application_id
+--                   AND     types_tl.language = USERENV( 'LANG' )
+--                   AND     look_val.language = USERENV( 'LANG' )
+--                   AND     appl.language     = USERENV( 'LANG' )
+--                   AND     app.application_short_name = cv_application
+--                   AND     look_val.lookup_type = cv_qck_typ_cus
+--                   AND     look_val.lookup_code LIKE cv_qck_typ_a02
+--                   AND     gd_process_date      >= NVL(look_val.start_date_active, gd_process_date)
+--                   AND     gd_process_date      <= NVL(look_val.end_date_active, gd_max_date)
+--                   AND     look_val.enabled_flag = cv_tkn_yes
+--                   AND     look_val.attribute1   = cv_tkn_yes
+--                 ) cus_class,    -- 顧客区分（'10'(顧客) , '12'(上様)）
+--******************************* 2009/07/21 1.7 T.Tominaga DEL END   ***************************************
                  (
                    SELECT  look_val.meaning      base
-                   FROM    fnd_lookup_values     look_val,
-                           fnd_lookup_types_tl   types_tl,
-                           fnd_lookup_types      types,
-                           fnd_application_tl    appl,
-                           fnd_application       app
-                   WHERE   appl.application_id   = types.application_id
-                   AND     app.application_id    = appl.application_id
-                   AND     types_tl.lookup_type  = look_val.lookup_type
-                   AND     types.lookup_type     = types_tl.lookup_type
-                   AND     types.security_group_id   = types_tl.security_group_id
-                   AND     types.view_application_id = types_tl.view_application_id
-                   AND     types_tl.language = USERENV( 'LANG' )
-                   AND     look_val.language = USERENV( 'LANG' )
-                   AND     appl.language     = USERENV( 'LANG' )
-                   AND     app.application_short_name = cv_application
-                   AND     look_val.lookup_type = cv_qck_typ_cus
+--******************************* 2009/07/21 1.7 T.Tominaga MOD START ***************************************
+--                   FROM    fnd_lookup_values     look_val,
+--                           fnd_lookup_types_tl   types_tl,
+--                           fnd_lookup_types      types,
+--                           fnd_application_tl    appl,
+--                           fnd_application       app
+--                   WHERE   appl.application_id   = types.application_id
+--                   AND     app.application_id    = appl.application_id
+--                   AND     types_tl.lookup_type  = look_val.lookup_type
+--                   AND     types.lookup_type     = types_tl.lookup_type
+--                   AND     types.security_group_id   = types_tl.security_group_id
+--                   AND     types.view_application_id = types_tl.view_application_id
+--                   AND     types_tl.language = USERENV( 'LANG' )
+--                   AND     look_val.language = USERENV( 'LANG' )
+--                   AND     appl.language     = USERENV( 'LANG' )
+--                   AND     app.application_short_name = cv_application
+--                   AND     look_val.lookup_type = cv_qck_typ_cus
+--                   AND     look_val.lookup_code LIKE cv_qck_typ_a02
+--                   AND     gd_process_date      >= NVL(look_val.start_date_active, gd_process_date)
+--                   AND     gd_process_date      <= NVL(look_val.end_date_active, gd_max_date)
+--                   AND     look_val.enabled_flag = cv_tkn_yes
+--                   AND     look_val.attribute2   = cv_tkn_yes
+                   FROM    fnd_lookup_values     look_val
+                   WHERE   look_val.language     = ct_lang
+                   AND     look_val.lookup_type  = cv_qck_typ_cus
                    AND     look_val.lookup_code LIKE cv_qck_typ_a02
                    AND     gd_process_date      >= NVL(look_val.start_date_active, gd_process_date)
                    AND     gd_process_date      <= NVL(look_val.end_date_active, gd_max_date)
                    AND     look_val.enabled_flag = cv_tkn_yes
                    AND     look_val.attribute2   = cv_tkn_yes
+--******************************* 2009/07/21 1.7 T.Tominaga MOD END   ***************************************
                  ) base_class    -- 顧客区分（'1'(拠点)）
           WHERE  cust.cust_account_id     = custadd.customer_id    -- 顧客マスタ.顧客ID = 顧客追加情報_顧客.顧客ID
-            AND  cust.customer_class_code = cus_class.cus          -- 顧客マスタ.顧客区分 = '10'(顧客) or '12'(上様)
+--******************************* 2009/07/21 1.7 T.Tominaga MOD START ***************************************
+--            AND  cust.customer_class_code = cus_class.cus          -- 顧客マスタ.顧客区分 = '10'(顧客) or '12'(上様)
+            AND  cust.cust_account_id     = xch.ship_account_id    -- 顧客マスタ.顧客ID = 顧客階層ビュー.出荷先顧客ID
+--******************************* 2009/07/21 1.7 T.Tominaga MOD END   ***************************************
             AND  cust.account_number      = lt_customer_number     -- 顧客マスタ.顧客コード = 抽出した顧客コード
             AND  cust.party_id            = parties.party_id       -- 顧客マスタ.パーティID=パーティ.パーティID
 --****************************** 2009/05/19 1.5 N.Maeda MOD START ******************************--
