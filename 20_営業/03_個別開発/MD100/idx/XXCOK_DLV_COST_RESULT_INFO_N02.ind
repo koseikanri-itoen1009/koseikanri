@@ -1,0 +1,7 @@
+CREATE INDEX xxcok.xxcok_dlv_cost_result_info_n02
+ON xxcok.xxcok_dlv_cost_result_info (
+     target_year
+   , target_month
+)
+TABLESPACE xxidx2
+/

@@ -1,0 +1,6 @@
+CREATE INDEX xxcok.xxcok_cond_bm_support_n03
+ON xxcok.xxcok_cond_bm_support (
+     bm_interface_status
+)
+TABLESPACE xxidx2
+/

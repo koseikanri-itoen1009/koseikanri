@@ -1,0 +1,6 @@
+CREATE INDEX xxcok.xxcok_rep_bm_pg_detail_n01
+ON xxcok.xxcok_rep_bm_pg_detail (
+     request_id
+)
+TABLESPACE xxidx2
+/

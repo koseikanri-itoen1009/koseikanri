@@ -1,0 +1,6 @@
+CREATE INDEX xxcok.xxcok_rep_wholesale_pay_n01
+ON xxcok.xxcok_rep_wholesale_pay (
+     request_id
+)
+TABLESPACE xxidx2
+/

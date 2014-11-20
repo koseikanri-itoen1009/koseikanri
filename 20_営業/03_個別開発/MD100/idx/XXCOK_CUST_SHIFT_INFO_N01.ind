@@ -1,0 +1,6 @@
+CREATE INDEX xxcok.xxcok_cust_shift_info_n01
+ON xxcok.xxcok_cust_shift_info (
+     cust_code
+)
+TABLESPACE xxidx2
+/

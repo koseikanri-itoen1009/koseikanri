@@ -1,0 +1,6 @@
+CREATE INDEX xxcok.xxcok_selling_trns_info_n03
+ON xxcok.xxcok_selling_trns_info (
+     selling_date
+)
+TABLESPACE xxidx2
+/

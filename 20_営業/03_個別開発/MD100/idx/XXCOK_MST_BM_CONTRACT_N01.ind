@@ -1,0 +1,6 @@
+CREATE INDEX xxcok.xxcok_mst_bm_contract_n01
+ON xxcok.xxcok_mst_bm_contract (
+     calc_type
+)
+TABLESPACE xxidx2
+/

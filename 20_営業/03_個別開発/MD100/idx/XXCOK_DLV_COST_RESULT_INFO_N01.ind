@@ -1,0 +1,11 @@
+CREATE INDEX xxcok.xxcok_dlv_cost_result_info_n01
+ON xxcok.xxcok_dlv_cost_result_info (
+     base_code
+   , item_code
+   , arrival_date
+   , target_month
+   , target_year
+   , small_amt_type
+)
+TABLESPACE xxidx2
+/

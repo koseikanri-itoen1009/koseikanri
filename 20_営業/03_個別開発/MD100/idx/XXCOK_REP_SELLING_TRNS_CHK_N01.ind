@@ -1,0 +1,6 @@
+CREATE INDEX xxcok.xxcok_rep_selling_trns_chk_n01
+ON xxcok.xxcok_rep_selling_trns_chk (
+     request_id
+)
+TABLESPACE xxidx2
+/

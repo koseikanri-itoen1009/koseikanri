@@ -1,0 +1,7 @@
+CREATE INDEX xxcok.xxcok_backmargin_balance_n07
+ON xxcok.xxcok_backmargin_balance (
+     cust_code
+   , expect_payment_date
+)
+TABLESPACE xxidx2
+/

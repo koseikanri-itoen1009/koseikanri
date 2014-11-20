@@ -1,0 +1,7 @@
+CREATE INDEX xxcok.xxcok_cond_bm_support_n01
+ON xxcok.xxcok_cond_bm_support (
+     closing_date
+   , delivery_cust_code
+)
+TABLESPACE xxidx2
+/

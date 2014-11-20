@@ -1,0 +1,7 @@
+CREATE INDEX xxcok.xxcok_backmargin_balance_n10
+ON xxcok.xxcok_backmargin_balance (
+     gl_interface_status
+   , fb_interface_status
+)
+TABLESPACE xxidx2
+/

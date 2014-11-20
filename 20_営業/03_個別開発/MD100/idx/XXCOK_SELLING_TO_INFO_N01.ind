@@ -1,0 +1,6 @@
+CREATE INDEX xxcok.xxcok_selling_to_info_n01
+ON xxcok.xxcok_selling_to_info (
+     selling_from_info_id
+)
+TABLESPACE xxidx2
+/

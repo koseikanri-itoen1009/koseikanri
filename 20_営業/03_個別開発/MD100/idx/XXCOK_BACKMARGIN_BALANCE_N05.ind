@@ -1,0 +1,6 @@
+CREATE INDEX xxcok.xxcok_backmargin_balance_n05
+ON xxcok.xxcok_backmargin_balance (
+     edi_interface_status
+)
+TABLESPACE xxidx2
+/

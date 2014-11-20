@@ -1,0 +1,9 @@
+CREATE INDEX xxcok.xxcok_selling_rate_info_n01
+ON xxcok.xxcok_selling_rate_info (
+     selling_from_base_code
+   , selling_from_cust_code
+   , selling_to_cust_code
+   , invalid_flag
+)
+TABLESPACE xxidx2
+/

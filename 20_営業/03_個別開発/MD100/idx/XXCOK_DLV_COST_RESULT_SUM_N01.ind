@@ -1,0 +1,9 @@
+CREATE INDEX xxcok.xxcok_dlv_cost_result_sum_n01
+ON xxcok.xxcok_dlv_cost_result_sum (
+     base_code
+   , item_code
+   , target_month
+   , target_year
+)
+TABLESPACE xxidx2
+/

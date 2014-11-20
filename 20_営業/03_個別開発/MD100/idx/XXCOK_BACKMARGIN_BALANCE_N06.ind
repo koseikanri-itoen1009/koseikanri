@@ -1,0 +1,8 @@
+CREATE INDEX xxcok.xxcok_backmargin_balance_n06
+ON xxcok.xxcok_backmargin_balance (
+     supplier_code
+   , edi_interface_status
+   , resv_flag
+)
+TABLESPACE xxidx2
+/

@@ -1,0 +1,9 @@
+CREATE INDEX xxcok.xxcok_cust_shift_info_n06
+ON xxcok.xxcok_cust_shift_info (
+     cust_code
+   , cust_shift_date
+   , status
+   , vd_inv_trnsfr_status
+)
+TABLESPACE xxidx2
+/

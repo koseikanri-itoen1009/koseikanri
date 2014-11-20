@@ -1,0 +1,6 @@
+CREATE INDEX xxcok.xxcok_selling_trns_info_n04
+ON xxcok.xxcok_selling_trns_info (
+     info_interface_flag
+)
+TABLESPACE xxidx2
+/
