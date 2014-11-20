@@ -7,7 +7,7 @@ AS
  * Description      : 生産物流システムの工場直送出荷実績データから販売実績を作成し、
  *                    販売実績を作成したＯＭ受注をクローズします。
  * MD.050           : 出荷確認（生産物流出荷）  MD050_COS_008_A02
- * Version          : 1.22
+ * Version          : 1.23
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -66,6 +66,7 @@ AS
  *                                                        Ver1.19(デバック処理の削除)
  *  2010/01/05    1.21  N.Maeda          [E_本稼動_00895] ログ出力用フラグの初期設定値設定
  *  2010/01/20    1.22  N.Maeda          [E_本稼動_01252] 納品日エラー対応
+ *  2010/02/04    1.23  M.Hokkanji       [E_T4_00195] 会計期間情報取得関数パラメータ修正[AR → INV]
  *
  *****************************************************************************************/
 --
@@ -364,8 +365,14 @@ AS
   cn_check_status_normal        CONSTANT  NUMBER := 0;  -- 正常
   cn_check_status_error         CONSTANT  NUMBER := -1; -- エラー
 --
+
+/* 2010/02/04 Ver1.23 Mod Start */
   --AR会計期間区分値
-  cv_fiscal_period_ar           CONSTANT  VARCHAR2(2) := '02';  --AR
+--  cv_fiscal_period_ar           CONSTANT  VARCHAR2(2) := '02';  --AR
+  --INV会計期間区分値
+  cv_fiscal_period_inv          CONSTANT  VARCHAR2(2) := '01';  -- INV
+  cv_fiscal_period_tkn_inv      CONSTANT  VARCHAR2(3) := 'INV'; -- INV(名称)
+/* 2010/02/04 Ver1.23 Mod End */
 --
   --受注明細クローズ用文字列
   cv_close_type                 CONSTANT  VARCHAR2(5) := 'OEOL';
@@ -1881,7 +1888,10 @@ AS
     -- 1.納品日算出
     --==================================
     get_fiscal_period_from(
-        iv_div        => cv_fiscal_period_ar             -- 会計区分
+/* 2010/02/04 Ver1.23 Mod Start */
+--        iv_div        => cv_fiscal_period_ar                  -- 会計区分
+        iv_div        => cv_fiscal_period_inv                 -- 会計区分(INV)
+/* 2010/02/04 Ver1.23 Mod End */
       , id_base_date  => io_order_rec.org_dlv_date       -- 基準日            =  オリジナル納品日
       , od_open_date  => io_order_rec.dlv_date           -- 有効会計期間FROM  => 納品日
       , ov_errbuf     => lv_errbuf                       -- エラー・メッセージエラー       #固定#
@@ -1898,7 +1908,10 @@ AS
     -- 2.検収日算出
     --==================================
     get_fiscal_period_from(
-        iv_div        => cv_fiscal_period_ar                  -- 会計区分
+/* 2010/02/04 Ver1.23 Mod Start */
+--        iv_div        => cv_fiscal_period_ar                  -- 会計区分
+        iv_div        => cv_fiscal_period_inv                 -- 会計区分(INV)
+/* 2010/02/04 Ver1.23 Mod End */
       , id_base_date  => io_order_rec.orig_inspect_date       -- 基準日           =  オリジナル検収日
       , od_open_date  => io_order_rec.inspect_date            -- 有効会計期間FROM => 検収日
       , ov_errbuf     => lv_errbuf                            -- エラー・メッセージエラー       #固定#
@@ -2455,7 +2468,10 @@ AS
                     iv_application => cv_xxcos_appl_short_nm,
                     iv_name        => ct_msg_fiscal_period_err,
                     iv_token_name1 => cv_tkn_account_name,
-                    iv_token_value1=> cv_fiscal_period_ar,        -- AR会計期間区分値
+/* 2010/02/04 Ver1.23 Mod Start */
+--                    iv_token_value1=> cv_fiscal_period_ar,        -- AR会計期間区分値
+                    iv_token_value1=> cv_fiscal_period_tkn_inv,   -- INV会計期間区分値
+/* 2010/02/04 Ver1.23 Mod End */
                     iv_token_name2 => cv_tkn_order_number,
                     iv_token_value2=> io_order_rec.order_number,  -- 受注番号
                     iv_token_name3 => cv_tkn_line_number,
