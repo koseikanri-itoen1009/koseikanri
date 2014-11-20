@@ -7,7 +7,7 @@ AS
  * Description      : 販売計画時系列表
  * MD.050/070       : 販売計画・引取計画 (T_MD050_BPO_100)
  *                    販売計画時系列表   (T_MD070_BPO_10C)
- * Version          : 1.7
+ * Version          : 1.8
  *
  * Program List
  * ---------------------------- ----------------------------------------------------------------
@@ -40,6 +40,7 @@ AS
  *  2008/07/02   1.5   Satoshi Yunba    禁則文字対応
  *  2009/04/16   1.6   吉元 強樹        本番障害対応(No.1410)
  *  2009/05/29   1.7   吉元 強樹        本番障害対応(No.1509)
+ *  2009/10/05   1.8   吉元 強樹        本番障害対応(No.1648)
  *****************************************************************************************/
 --
 --#######################  固定グローバル定数宣言部 START  #######################
@@ -914,7 +915,10 @@ AS
                            ,xxcmn_item_categories2_v  xicv    -- OPM品目カテゴリ割当情報VIEW
                            ,xxcmn_item_categories2_v  xicv1   -- OPM品目カテゴリ割当情報VIEW(商)
                            ,xxcmn_item_mst2_v         ximv    -- OPM品目情報VIEW
-                           ,xxcmn_parties_v           xpv     -- パーティ情報VIEW
+-- 2009/10/5 v1.8 T.Yoshimoto Mod Start 本番#1648
+                           --,xxcmn_parties_v           xpv     -- パーティ情報VIEW
+                           ,xxcmn_parties3_v          xpv     -- パーティ情報VIEW2
+-- 2009/10/5 v1.8 T.Yoshimoto Mod End 本番#1648
                      ';
 --
     -- WHERE句

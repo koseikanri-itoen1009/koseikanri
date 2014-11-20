@@ -83,7 +83,10 @@ FROM   xxwsh_order_lines_all             xola                       -- ó’–¾×ƒ
 --      ,xxcmn_item_categories3_v          xicv                       -- •i–ÚƒJƒeƒSƒŠî•ñVIEW3
       ,xxcmn_item_categories5_v          xicv                       -- •i–ÚƒJƒeƒSƒŠî•ñVIEW5
 -- 2008/07/23 H.Itou MOD End
-      ,xxcmn_cust_accounts_v             xcav                       -- ŒÚ‹qî•ñVIEW
+-- 2009/10/13 T.Yoshimoto Mod Start –{”Ô#1648
+      --,xxcmn_cust_accounts_v             xcav                       -- ŒÚ‹qî•ñVIEW
+      ,xxcmn_cust_accounts3_v             xcav                       -- ŒÚ‹qî•ñVIEW3
+-- 2009/10/13 T.Yoshimoto Mod End –{”Ô#1648
       ,xxcmn_item_locations_v            xilv                       -- OPM•ÛŠÇêŠî•ñVIEW
 WHERE  
 /* Œ‹‡ğŒ */
