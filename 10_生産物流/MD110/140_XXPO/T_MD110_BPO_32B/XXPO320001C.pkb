@@ -7,7 +7,7 @@ AS
  * Description      : 直送仕入・出荷実績作成処理
  * MD.050           : 仕入先出荷実績         T_MD050_BPO_320
  * MD.070           : 直送仕入・出荷実績作成 T_MD070_BPO_32B
- * Version          : 1.7
+ * Version          : 1.8
  *
  * Program List
  * -------------------- ------------------------------------------------------------
@@ -56,6 +56,7 @@ AS
  *  2008/05/24    1.5   Oracle 高山 洋平 結合テスト不具合ログ##320_3,320_4対応
  *  2008/05/26    1.6   Oracle 山根 一浩 変更要求No120対応
  *  2008/06/11    1.7   Oracle 山根 一浩 不具合ログ#440_63対応
+ *  2008/10/24    1.8   Oracle 吉元 強樹 内部変更No174対応
  *****************************************************************************************/
 --
 --#######################  固定グローバル定数宣言部 START   #######################
@@ -3787,8 +3788,14 @@ AS
           ov_retcode := lv_retcode;
         END IF;
 --
+-- 2008/10/24 v1.18 T.Yoshimoto Mod Start
       -- 出荷実績計上済
-      ELSIF (lr_mst_rec.req_status = gv_req_status_appr) THEN
+      --ELSIF (lr_mst_rec.req_status = gv_req_status_appr) THEN
+--
+      -- 出荷実績計上済み且つ、実績計上済区分が'Y'の場合
+      ELSIF ( (lr_mst_rec.req_status = gv_req_status_appr)
+        AND (lr_mst_rec.actual_confirm_class = gv_flg_on) ) THEN
+-- 2008/10/24 v1.18 T.Yoshimoto Mod End
 --
         -- ================================
         -- B-10.受注ヘッダアドオン情報 更新
@@ -3831,6 +3838,28 @@ AS
         ELSIF (lv_retcode = gv_status_warn) THEN
           ov_retcode := lv_retcode;
         END IF;
+--
+-- 2008/10/24 v1.18 T.Yoshimoto Add Start
+      -- 出荷実績計上済み且つ、実績計上済区分が'Y'以外の場合
+      ELSIF ( (lr_mst_rec.req_status = gv_req_status_appr)
+        AND (lr_mst_rec.actual_confirm_class <> gv_flg_on) ) THEN
+--
+        -- ================================
+        -- B-7.出荷実績作成対象データ取得(新規登録用)
+        -- ================================
+        get_new_data(
+          lr_mst_rec,
+          lv_errbuf,          -- エラー・メッセージ           --# 固定 #
+          lv_retcode,         -- リターン・コード             --# 固定 #
+          lv_errmsg);         -- ユーザー・エラー・メッセージ --# 固定 #
+--
+        IF (lv_retcode = gv_status_error) THEN
+          RAISE global_api_expt;
+--
+        ELSIF (lv_retcode = gv_status_warn) THEN
+          ov_retcode := lv_retcode;
+        END IF;
+-- 2008/10/24 v1.18 T.Yoshimoto Add Start
 --
       -- その他
       ELSE
