@@ -7,7 +7,7 @@ AS
  * Description      : 新旧差額計算表作成
  * MD.050/070       : 標準原価マスタDraft1C (T_MD050_BPO_820)
  *                    新旧差額計算表作成    (T_MD070_BPO_82D)
- * Version          : 1.4
+ * Version          : 1.5
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -30,6 +30,7 @@ AS
  *  2008/06/09    1.2   Marushita        レビュー指摘No6対応
  *  2008/06/26    1.3   Marushita        ST不具合No.288,289対応
  *  2008/07/02    1.4   Satoshi Yunba    禁則文字対応
+ *  2009/04/15    1.5   Marushita        本番障害1412
  *
  *****************************************************************************************/
 --
@@ -343,6 +344,8 @@ AS
          ,MIN(mfdate.forecast_date)               AS forecast_date
          ,xp.item_id                         AS item_id
          ,xp.item_code                       AS item_code
+-- 2009/04/15 MDO START
+/*
          ,SUM(mfdate.original_forecast_quantity * xp.unit_price)  AS cost_price_new
          ,SUM(CASE WHEN xp.cost_type = gc_row_material_cost
                      THEN mfdate.original_forecast_quantity * xp.unit_price
@@ -372,12 +375,24 @@ AS
                      THEN mfdate.original_forecast_quantity * xp.unit_price
                      ELSE 0
                    END) AS other_cost_new
+*/
+         ,SUM(NVL(mfdate.original_forecast_quantity * xp.unit_price,0))        AS cost_price_new
+         ,SUM(NVL(mfdate.original_forecast_quantity * xp.row_material_cost,0)) AS row_material_cost_new
+         ,SUM(NVL(mfdate.original_forecast_quantity * xp.remake_cost,0))       AS remake_cost_new
+         ,SUM(NVL(mfdate.original_forecast_quantity * xp.material_cost,0))     AS material_cost_new
+         ,SUM(NVL(mfdate.original_forecast_quantity * xp.wrapping_cost,0))     AS wrapping_cost_new
+         ,SUM(NVL(mfdate.original_forecast_quantity * xp.outside_cost,0))      AS outside_cost_new
+         ,SUM(NVL(mfdate.original_forecast_quantity * xp.store_cost,0))        AS store_cost_new
+         ,SUM(NVL(mfdate.original_forecast_quantity * xp.other_cost,0))        AS other_cost_new
+-- 2009/04/15 MDO END
         FROM
           mrp_forecast_designators              mfdesi    --フォーキャスト名
          ,xxcmn_lookup_values2_v                flv_fc    --クイックコード
          ,mrp_forecast_dates                    mfdate    --フォーキャスト日付
          ,mtl_system_items_b                    msib      --品目マスタ
          -- 原価の種類ごとに一行となるように集計を実施
+-- 2009/04/15 MOD START
+/*
          ,(SELECT  xph.price_header_id   AS header_id
                   ,xph.start_date_active AS start_date_active
                   ,xph.end_date_active   AS end_date_active
@@ -398,6 +413,34 @@ AS
                     ,xph.item_id
                     ,xph.item_code
                     ,flv_item.attribute2) xp
+*/
+         -- 品目毎に1行となるように集計を実施
+        ,(SELECT  xph.price_header_id     AS header_id
+                  ,xph.start_date_active  AS start_date_active
+                  ,xph.end_date_active    AS end_date_active
+                  ,xph.item_id            AS item_id
+                  ,xph.item_code          AS item_code
+                  ,SUM(xpl.unit_price)    AS unit_price
+                  ,SUM(CASE WHEN flv_item.attribute2 = gc_row_material_cost THEN NVL(xpl.unit_price,0) ELSE 0 END) AS row_material_cost
+                  ,SUM(CASE WHEN flv_item.attribute2 = gc_remake_cost       THEN NVL(xpl.unit_price,0) ELSE 0 END) AS remake_cost
+                  ,SUM(CASE WHEN flv_item.attribute2 = gc_material_cost     THEN NVL(xpl.unit_price,0) ELSE 0 END) AS material_cost
+                  ,SUM(CASE WHEN flv_item.attribute2 = gc_wrapping_cost     THEN NVL(xpl.unit_price,0) ELSE 0 END) AS wrapping_cost
+                  ,SUM(CASE WHEN flv_item.attribute2 = gc_outside_cost      THEN NVL(xpl.unit_price,0) ELSE 0 END) AS outside_cost
+                  ,SUM(CASE WHEN flv_item.attribute2 = gc_store_cost        THEN NVL(xpl.unit_price,0) ELSE 0 END) AS store_cost
+                  ,SUM(CASE WHEN flv_item.attribute2 = gc_other_cost        THEN NVL(xpl.unit_price,0) ELSE 0 END) AS other_cost
+            FROM   xxpo_price_headers       xph  --仕入・標準単価ヘッダ
+                  ,xxpo_price_lines         xpl  --仕入・標準単価明細
+                  ,xxcmn_lookup_values2_v   flv_item  --クイックコード
+            WHERE flv_item.lookup_type = gc_item_type
+            AND   flv_item.attribute1  = xpl.expense_item_type
+            AND   xph.price_header_id  = xpl.price_header_id
+            AND   xph.price_type       = gc_price_type
+            GROUP BY xph.price_header_id
+                    ,xph.start_date_active
+                    ,xph.end_date_active
+                    ,xph.item_id
+                    ,xph.item_code) xp
+-- 2009/04/15 MOD END
         WHERE flv_fc.lookup_type = gc_fc_type
         AND flv_fc.description = gc_fc_description
         AND mfdesi.attribute1 = flv_fc.lookup_code
@@ -423,6 +466,8 @@ AS
           xp.item_id                         AS item_id
          ,xp.item_code                       AS item_code
          -- 今年度の数量で昨年の原価だといくらになるかを計算する
+-- 2009/04/15 MOD START
+/*
          ,SUM(mfdate.original_forecast_quantity * xp.unit_price)  AS cost_price_old
          ,SUM(CASE WHEN xp.cost_type = gc_row_material_cost
                      THEN mfdate.original_forecast_quantity * xp.unit_price
@@ -452,11 +497,23 @@ AS
                      THEN mfdate.original_forecast_quantity * xp.unit_price
                      ELSE 0
                    END) AS other_cost_old
+*/
+         ,SUM(NVL(mfdate.original_forecast_quantity * xp.unit_price,0))        AS cost_price_old
+         ,SUM(NVL(mfdate.original_forecast_quantity * xp.row_material_cost,0)) AS row_material_cost_old
+         ,SUM(NVL(mfdate.original_forecast_quantity * xp.remake_cost,0))       AS remake_cost_old
+         ,SUM(NVL(mfdate.original_forecast_quantity * xp.material_cost,0))     AS material_cost_old
+         ,SUM(NVL(mfdate.original_forecast_quantity * xp.wrapping_cost,0))     AS wrapping_cost_old
+         ,SUM(NVL(mfdate.original_forecast_quantity * xp.outside_cost,0))      AS outside_cost_old
+         ,SUM(NVL(mfdate.original_forecast_quantity * xp.store_cost,0))        AS store_cost_old
+         ,SUM(NVL(mfdate.original_forecast_quantity * xp.other_cost,0))        AS other_cost_old
+-- 2009/04/15 MOD END
         FROM
           mrp_forecast_designators              mfdesi  --フォーキャスト名
          ,xxcmn_lookup_values2_v                flv_fc     --クイックコード
          ,mrp_forecast_dates                    mfdate  --フォーキャスト日付
          ,mtl_system_items_b                    msib    --品目マスタ
+-- 2009/04/15 MOD START
+/*
          -- 原価の種類ごとに一行となるように集計を実施
          ,(SELECT  xph.price_header_id   AS header_id
                   ,xph.start_date_active AS start_date_active
@@ -478,6 +535,36 @@ AS
                     ,xph.item_id
                     ,xph.item_code
                     ,flv_item.attribute2) xp
+*/
+         -- 品目毎に1行となるように集計を実施
+        ,(SELECT xph.price_header_id AS header_id
+                  ,(CASE WHEN MIN(xph.start_date_active) OVER (PARTITION BY xph.item_id) = xph.start_date_active
+                         THEN TO_DATE('19000101','YYYYMMDD') 
+                         ELSE xph.start_date_active END) AS start_date_active
+                  ,xph.end_date_active    AS end_date_active
+                  ,xph.item_id            AS item_id
+                  ,xph.item_code          AS item_code
+                  ,SUM(xpl.unit_price)    AS unit_price
+                  ,SUM(CASE WHEN flv_item.attribute2 = gc_row_material_cost THEN NVL(xpl.unit_price,0) ELSE 0 END) AS row_material_cost
+                  ,SUM(CASE WHEN flv_item.attribute2 = gc_remake_cost       THEN NVL(xpl.unit_price,0) ELSE 0 END) AS remake_cost
+                  ,SUM(CASE WHEN flv_item.attribute2 = gc_material_cost     THEN NVL(xpl.unit_price,0) ELSE 0 END) AS material_cost
+                  ,SUM(CASE WHEN flv_item.attribute2 = gc_wrapping_cost     THEN NVL(xpl.unit_price,0) ELSE 0 END) AS wrapping_cost
+                  ,SUM(CASE WHEN flv_item.attribute2 = gc_outside_cost      THEN NVL(xpl.unit_price,0) ELSE 0 END) AS outside_cost
+                  ,SUM(CASE WHEN flv_item.attribute2 = gc_store_cost        THEN NVL(xpl.unit_price,0) ELSE 0 END) AS store_cost
+                  ,SUM(CASE WHEN flv_item.attribute2 = gc_other_cost        THEN NVL(xpl.unit_price,0) ELSE 0 END) AS other_cost
+            FROM   xxpo_price_headers       xph  --仕入・標準単価ヘッダ
+                  ,xxpo_price_lines         xpl  --仕入・標準単価明細
+                  ,xxcmn_lookup_values2_v   flv_item  --クイックコード
+            WHERE flv_item.lookup_type = 'XXPO_EXPENSE_ITEM_TYPE'
+            AND   flv_item.attribute1  = xpl.expense_item_type
+            AND   xph.price_header_id  = xpl.price_header_id
+            AND   xph.price_type       = '2'
+            GROUP BY xph.price_header_id
+                    ,xph.start_date_active
+                    ,xph.end_date_active
+                    ,xph.item_id
+                    ,xph.item_code)xp
+--2009/04/15 MOD END
         WHERE flv_fc.lookup_type = gc_fc_type
         AND flv_fc.description = gc_fc_description
         AND mfdesi.attribute1 = flv_fc.lookup_code
