@@ -12,6 +12,8 @@
 *                            大きい場合は、99.99%を固定値として表示していること
 * 2009-03-24 1.2  SCS阿部大輔  【課題77】チェックの期間をプロファイル値に修正
 * 2009-03-24 1.2  SCS阿部大輔  【T1_0138】ボタン制御を修正
+* 2009-04-13 1.3  SCS阿部大輔  【T1_0299】CSV出力制御
+* 2009-04-14 1.4  SCS阿部大輔  【T1_0461】見積書印刷制御
 *============================================================================
 */
 package itoen.oracle.apps.xxcso.xxcso017002j.server;
@@ -1156,14 +1158,18 @@ public class XxcsoQuoteStoreRegistAMImpl extends OAApplicationModuleImpl
 
     if ( XxcsoQuoteConstants.QUOTE_INPUT.equals(headerRow.getStatus()) )
     {
-      if ( getTransaction().isDirty() )
-      {
+      /* 20090414_abe_T1_0461 START*/
+      //if ( getTransaction().isDirty() )
+      //{
+      /* 20090414_abe_T1_0461 END*/
         // 画面項目の入力チェック
         validateFixed();
 
         // 保存処理を実行します。
         commit();
-      }
+      /* 20090414_abe_T1_0461 START*/
+      //}
+      /* 20090414_abe_T1_0461 END*/
     }
     else
     {
@@ -1319,14 +1325,18 @@ public class XxcsoQuoteStoreRegistAMImpl extends OAApplicationModuleImpl
 
     if ( XxcsoQuoteConstants.QUOTE_INPUT.equals(headerRow.getStatus()) )
     {
-      if ( getTransaction().isDirty() )
-      {
+      /* 20090414_abe_T1_0461 START*/
+      //if ( getTransaction().isDirty() )
+      //{
+      /* 20090414_abe_T1_0461 END*/
         // 画面項目の入力チェック
         validateFixed();
 
         // 保存処理を実行します。
         commit();
-      }
+      /* 20090414_abe_T1_0461 START*/
+      //}
+      /* 20090414_abe_T1_0461 END*/
     }
     else
     {
@@ -2847,6 +2857,12 @@ public class XxcsoQuoteStoreRegistAMImpl extends OAApplicationModuleImpl
    ,boolean      endFlag
   )
   {
+    /* 20090413_abe_T1_0299 START*/
+    if ( value == null )
+    {
+      value = "";
+    }
+    /* 20090413_abe_T1_0299 END*/
     buffer.append("\"");
     buffer.append(value);
     buffer.append("\"");
