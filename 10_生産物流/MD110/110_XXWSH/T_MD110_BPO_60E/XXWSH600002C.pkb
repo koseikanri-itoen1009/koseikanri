@@ -46,6 +46,7 @@ AS
  *  2008/06/11    1.6   M.NOMURA         結合テスト WF対応
  *  2008/06/12    1.7   M.NOMURA         結合テスト 不具合対応#9
  *  2008/06/16    1.8   M.NOMURA         結合テスト 440 不具合対応#64
+ *  2008/06/18    1.9   M.HOKKANJI       システムテスト不具合対応#147,#187
  *
  *****************************************************************************************/
 --
@@ -1060,9 +1061,21 @@ AS
 -- ##### 20080612 Ver.1.7 商品セキュリティ対応 END   #####
       AND   xoha.req_status           IN( gc_req_status_syu_3   -- 締め済
                                          ,gc_req_status_syu_5 ) -- 取消
-      AND   DECODE( gr_param.fix_class, gc_fix_class_y, xoha.tightening_date
-                                      , gc_fix_class_k, xoha.notif_date      )
-              BETWEEN gd_date_from AND gd_date_to
+-- M.HOKKANJI Ver1.9 START
+      AND  ((gr_param.fix_class = gc_fix_class_y
+              AND EXISTS ( SELECT xic.concurrent_id
+                             FROM xxwsh_tightening_control xic
+                            WHERE xic.concurrent_id = xoha.tightening_program_id
+                              AND xic.tightening_date BETWEEN gd_date_from
+                                                          AND gd_date_to
+                         )
+            ) OR (gr_param.fix_class = gc_fix_class_k
+              AND xoha.notif_date BETWEEN gd_date_from
+                                      AND gd_date_to))
+--      AND   DECODE( gr_param.fix_class, gc_fix_class_y, xoha.tightening_date
+--                                      , gc_fix_class_k, xoha.notif_date      )
+--              BETWEEN gd_date_from AND gd_date_to
+-- M.HOKKANJI Ver1.9 END
       UNION ALL
       -- ===========================================================================================
       -- 支給データＳＱＬ
@@ -1188,10 +1201,16 @@ AS
 -- ##### 20080612 Ver.1.7 商品セキュリティ対応 END   #####
       AND   xoha.req_status           IN( gc_req_status_shi_3   -- 受領済
                                          ,gc_req_status_shi_5 ) -- 取消
-      ---- パラメータが「予定」の場合
-      AND   DECODE( gr_param.fix_class, gc_fix_class_y, xoha.tightening_date
-                                      , gc_fix_class_k, xoha.notif_date      )
-              BETWEEN gd_date_from AND gd_date_to
+-- M.HOKKANJI Ver1.9 START
+      -- パラメータが確定の場合のみ日付を参照
+      AND  ((gr_param.fix_class = gc_fix_class_y
+            ) OR (gr_param.fix_class = gc_fix_class_k
+              AND xoha.notif_date BETWEEN gd_date_from
+                                      AND gd_date_to))
+--      AND   DECODE( gr_param.fix_class, gc_fix_class_y, xoha.tightening_date
+--                                      , gc_fix_class_k, xoha.notif_date      )
+--              BETWEEN gd_date_from AND gd_date_to
+-- M.HOKKANJI Ver1.9 END
       UNION ALL
       -- ===========================================================================================
       -- 移動データＳＱＬ
