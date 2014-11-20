@@ -1,7 +1,7 @@
 /*============================================================================
 * ファイル名 : XxcsoSpDecisionRegistAMImpl
 * 概要説明   : SP専決登録画面アプリケーション・モジュールクラス
-* バージョン : 1.0
+* バージョン : 1.5
 *============================================================================
 * 修正履歴
 * 日付       Ver. 担当者       修正内容
@@ -11,6 +11,7 @@
 * 2009-03-23 1.2  SCS柳平直人   [ST障害T1_0163]課題No.115取り込み
 * 2009-04-14 1.3  SCS柳平直人   [ST障害T1_0225]契約先validate修正
 * 2009-04-27 1.4  SCS柳平直人   [ST障害T1_0294]売価別条件確定事項反映修正
+* 2009-08-04 1.5  SCS小川浩     [SCS障害0000908]コピー時の回送先再設定対応
 *============================================================================
 */
 package itoen.oracle.apps.xxcso.xxcso020001j.server;
@@ -498,6 +499,18 @@ public class XxcsoSpDecisionRegistAMImpl extends OAApplicationModuleImpl
         );
     }
     
+// 2009-08-04 [障害0000908] Add Start
+    XxcsoSpDecisionSendInitVOImpl sendInitVo
+      = getXxcsoSpDecisionSendInitVO1();
+    if ( sendInitVo == null )
+    {
+      throw
+        XxcsoMessage.createInstanceLostError(
+          "XxcsoSpDecisionSendInitVO1"
+        );
+    }
+// 2009-08-04 [障害0000908] Add End
+
     ///////////////////////////////////////////
     // 本処理
     ///////////////////////////////////////////    
@@ -546,6 +559,9 @@ public class XxcsoSpDecisionRegistAMImpl extends OAApplicationModuleImpl
      ,selCcVo2
      ,attachVo2
      ,sendVo2
+// 2009-08-04 [障害0000908] Add Start
+     ,sendInitVo
+// 2009-08-04 [障害0000908] Add End
     );
     
     // 要求ビューインスタンスの初期化

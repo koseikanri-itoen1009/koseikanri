@@ -51,7 +51,52 @@ WHERE   (
             AND
             (
               (
-                xsdh.app_base_code     = criteria.app_base_code
+                (
+                  (criteria.app_user_code IS NOT NULL)
+                  AND
+                  (
+                    (
+                      (criteria.app_user_code  = (SELECT  xev.employee_number
+                                                  FROM    xxcso_employees_v2  xev
+                                                  WHERE   xev.user_id = fnd_global.user_id
+                                                    AND   ROWNUM      = 1
+                                                 )
+                      )
+                      AND
+                      (xsdh.application_code = criteria.app_user_code)
+                    )
+                    OR
+                    (
+                      (criteria.app_user_code <> (SELECT  xev.employee_number
+                                                  FROM    xxcso_employees_v2  xev
+                                                  WHERE   xev.user_id = fnd_global.user_id
+                                                    AND   ROWNUM      = 1
+                                                 )
+                      )
+                      AND
+                      (xsdh.app_base_code = criteria.app_base_code)
+                      AND
+                      (xsdh.application_code = criteria.app_user_code)
+                    )
+                  )
+                )
+                OR
+                (
+                  (criteria.app_user_code IS NULL)
+                  AND
+                  (
+                    (xsdh.app_base_code = criteria.app_base_code)
+                    OR
+                    (
+                      EXISTS (SELECT  1
+                              FROM    xxcso_employees_v2  xev
+                              WHERE   xev.user_id         = fnd_global.user_id
+                                AND   xev.employee_number = xsdh.application_code
+                                AND   ROWNUM              = 1
+                             )
+                    )
+                  )
+                )
               )
               OR
               (
@@ -62,6 +107,7 @@ WHERE   (
                           AND   xsdc.sp_decision_customer_class = '1'
                           AND   xcav.cust_account_id            = xsdc.customer_id
                           AND   xcav.sale_base_code             = criteria.app_base_code
+                          AND   ROWNUM                          = 1
                        )
               )
             )
@@ -78,6 +124,7 @@ WHERE   (
                         WHERE   xev.user_id                = fnd_global.user_id
                           AND   xsds.approve_code          = xev.employee_number
                           AND   xsds.sp_decision_header_id = xsdh.sp_decision_header_id
+                          AND   ROWNUM                     = 1
                        )
               )
               OR
@@ -85,6 +132,7 @@ WHERE   (
                 xsdh.application_code = (SELECT xev.employee_number
                                          FROM   xxcso_employees_v2 xev
                                          WHERE  xev.user_id = fnd_global.user_id
+                                           AND  ROWNUM      = 1
                                         )
               )
             )
@@ -165,6 +213,7 @@ WHERE   (
                       WHERE   xsdc.sp_decision_header_id      = xsdh.sp_decision_header_id
                         AND   xsdc.sp_decision_customer_class = '1'
                         AND   xsdc.customer_id                = criteria.cust_account_id
+                        AND   ROWNUM                          = 1
                      )
             )
           )

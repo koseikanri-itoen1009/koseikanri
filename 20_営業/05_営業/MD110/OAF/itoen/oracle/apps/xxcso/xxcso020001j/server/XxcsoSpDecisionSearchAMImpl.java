@@ -1,13 +1,14 @@
 /*============================================================================
 * ファイル名 : XxcsoSpDecisionSearchAMImpl
 * 概要説明   : SP専決書検索画面アプリケーション・モジュールクラス
-* バージョン : 1.0
+* バージョン : 1.2
 *============================================================================
 * 修正履歴
 * 日付       Ver. 担当者       修正内容
 * ---------- ---- ------------ ----------------------------------------------
 * 2008-12-16 1.0  SCS小川浩     新規作成
 * 2009-04-20 1.1  SCS柳平直人   [ST障害T1_0619]消去ボタン初期化不正対応
+* 2009-08-04 1.2  SCS小川浩     [SCS障害0000821]承認用画面のコピーボタン表示対応
 *============================================================================
 */
 package itoen.oracle.apps.xxcso.xxcso020001j.server;
@@ -201,7 +202,10 @@ public class XxcsoSpDecisionSearchAMImpl extends OAApplicationModuleImpl
            )
          )
       {
-        initRow.setCopyButtonRender(Boolean.FALSE);
+// 2009-08-04 [障害0000821] Mod Start
+//      initRow.setCopyButtonRender(Boolean.FALSE);
+        initRow.setCopyButtonRender(Boolean.TRUE);
+// 2009-08-04 [障害0000821] Mod End
       }
       else
       {

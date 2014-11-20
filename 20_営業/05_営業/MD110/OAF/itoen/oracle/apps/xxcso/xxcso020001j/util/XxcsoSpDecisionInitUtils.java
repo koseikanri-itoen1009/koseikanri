@@ -1,13 +1,14 @@
 /*============================================================================
 * ファイル名 : XxcsoSpDecisionCalculateUtils
 * 概要説明   : SP専決初期化用ユーティリティクラス
-* バージョン : 1.0
+* バージョン : 1.2
 *============================================================================
 * 修正履歴
 * 日付       Ver. 担当者       修正内容
 * ---------- ---- ------------ ----------------------------------------------
 * 2008-12-27 1.0  SCS小川浩    新規作成
 * 2009-05-25 1.1  SCS柳平直人  [ST障害T1_1136]LOVPK項目設定対応
+* 2009-08-04 1.2  SCS小川浩     [SCS障害0000908]コピー時の回送先再設定対応
 *============================================================================
 */
 package itoen.oracle.apps.xxcso.xxcso020001j.util;
@@ -346,6 +347,7 @@ public class XxcsoSpDecisionInitUtils
    * @param selCcVo2   （コピー元）容器別条件登録／更新用ビューインスタンス
    * @param attachVo2  （コピー元）添付登録／更新用ビューインスタンス
    * @param sendVo2    （コピー元）回送先登録／更新用ビューインスタンス
+   * @param sendInitVo  回送先初期化用ビューインスタンス
    *****************************************************************************
    */
   public static void initializeCopyRow(
@@ -372,6 +374,9 @@ public class XxcsoSpDecisionInitUtils
    ,XxcsoSpDecisionSelCcLineFullVOImpl  selCcVo2
    ,XxcsoSpDecisionAttachFullVOImpl     attachVo2
    ,XxcsoSpDecisionSendFullVOImpl       sendVo2
+// 2009-08-04 [障害0000908] Add Start
+   ,XxcsoSpDecisionSendInitVOImpl       sendInitVo
+// 2009-08-04 [障害0000908] Add End
   )
   {
     XxcsoSpDecisionInitVORowImpl initRow
@@ -722,31 +727,79 @@ public class XxcsoSpDecisionInitUtils
     }
 
     // 回送先のコピー
-    sendVo.first();
-    XxcsoSpDecisionSendFullVORowImpl sendRow2
-      = (XxcsoSpDecisionSendFullVORowImpl)sendVo2.first();
-    while ( sendRow2 != null )
+// 2009-08-04 [障害0000908] Mod Start
+//    sendVo.first();
+//    XxcsoSpDecisionSendFullVORowImpl sendRow2
+//      = (XxcsoSpDecisionSendFullVORowImpl)sendVo2.first();
+//    while ( sendRow2 != null )
+//    {
+//      XxcsoSpDecisionSendFullVORowImpl sendRow
+//        = (XxcsoSpDecisionSendFullVORowImpl)sendVo.createRow();
+//      sendVo.last();
+//      sendVo.next();
+//      sendVo.insertRow(sendRow);
+//      sendRow.setApprovalTypeCode(       sendRow2.getApprovalTypeCode()       );
+//      sendRow.setApprAuthLevelNumber(    sendRow2.getApprAuthLevelNumber()    );
+//      sendRow.setApprovalAuthorityName(  sendRow2.getApprovalAuthorityName()  );
+//      sendRow.setApprovalAuthorityNumber(sendRow2.getApprovalAuthorityNumber());
+//      sendRow.setRangeType(              sendRow2.getRangeType()              );
+//      sendRow.setApproveCode(            sendRow2.getApproveCode()            );
+//      sendRow.setWorkRequestType(        sendRow2.getWorkRequestType()        );
+//      sendRow.setApprovalStateType(XxcsoSpDecisionConstants.APPR_NONE);
+//      sendRow.setApproveBaseShortName(   sendRow2.getApproveBaseShortName()   );
+//      sendRow.setApproveUserName(        sendRow2.getApproveUserName()        );
+//// 2009-05-25 [ST障害T1_1136] Add Start
+//      sendRow.setApproveUserId(          sendRow2.getApproveUserId()          );
+//// 2009-05-25 [ST障害T1_1136] Add End
+//
+//      sendRow2 = (XxcsoSpDecisionSendFullVORowImpl)sendVo2.next();
+//    }
+
+    // 回送先のデフォルト値を取得
+    XxcsoSpDecisionSendInitVORowImpl sendInitRow
+      = (XxcsoSpDecisionSendInitVORowImpl)sendInitVo.first();
+
+    while ( sendInitRow != null )
     {
+      // 回送先行を作成
       XxcsoSpDecisionSendFullVORowImpl sendRow
         = (XxcsoSpDecisionSendFullVORowImpl)sendVo.createRow();
+
       sendVo.last();
       sendVo.next();
       sendVo.insertRow(sendRow);
-      sendRow.setApprovalTypeCode(       sendRow2.getApprovalTypeCode()       );
-      sendRow.setApprAuthLevelNumber(    sendRow2.getApprAuthLevelNumber()    );
-      sendRow.setApprovalAuthorityName(  sendRow2.getApprovalAuthorityName()  );
-      sendRow.setApprovalAuthorityNumber(sendRow2.getApprovalAuthorityNumber());
-      sendRow.setRangeType(              sendRow2.getRangeType()              );
-      sendRow.setApproveCode(            sendRow2.getApproveCode()            );
-      sendRow.setWorkRequestType(        sendRow2.getWorkRequestType()        );
-      sendRow.setApprovalStateType(XxcsoSpDecisionConstants.APPR_NONE);
-      sendRow.setApproveBaseShortName(   sendRow2.getApproveBaseShortName()   );
-      sendRow.setApproveUserName(        sendRow2.getApproveUserName()        );
-// 2009-05-25 [ST障害T1_1136] Add Start
-      sendRow.setApproveUserId(          sendRow2.getApproveUserId()          );
-// 2009-05-25 [ST障害T1_1136] Add End
 
-      sendRow2 = (XxcsoSpDecisionSendFullVORowImpl)sendVo2.next();
+      // 回送先行の初期値を設定
+      sendRow.setApprovalAuthorityName(
+        sendInitRow.getApprovalAuthorityName()
+      );
+      sendRow.setApprovalAuthorityNumber(
+        sendInitRow.getApprovalAuthorityNumber()
+      );
+      sendRow.setApprovalTypeCode(
+        sendInitRow.getApprovalTypeCode()
+      );
+      sendRow.setWorkRequestType(
+        sendInitRow.getWorkRequestType()
+      );
+      sendRow.setRangeType(
+        XxcsoSpDecisionConstants.INIT_RANGE_TYPE
+      );
+      sendRow.setApproveCode(
+        XxcsoSpDecisionConstants.INIT_APPROVE_CODE
+      );
+      sendRow.setApprovalStateType(
+        XxcsoSpDecisionConstants.APPR_NONE
+      );
+      sendRow.setApprAuthLevelNumber(
+        sendInitRow.getApprAuthLevelNumber()
+      );
+     sendRow.setApproveUserId(
+        new Number(-1)
+      );
+
+      sendInitRow = (XxcsoSpDecisionSendInitVORowImpl)sendInitVo.next();
     }
+// 2009-08-04 [障害0000908] Mod End
   }
 }

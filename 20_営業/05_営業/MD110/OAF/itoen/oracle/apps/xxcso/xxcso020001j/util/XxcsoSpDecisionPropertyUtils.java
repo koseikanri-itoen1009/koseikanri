@@ -1,7 +1,7 @@
 /*============================================================================
 * ファイル名 : XxcsoSpDecisionPropertyUtils
 * 概要説明   : SP専決表示属性プロパティ設定ユーティリティクラス
-* バージョン : 1.0
+* バージョン : 1.4
 *============================================================================
 * 修正履歴
 * 日付       Ver. 担当者       修正内容
@@ -10,6 +10,7 @@
 * 2009-04-20 1.1  SCS柳平直人   [ST障害T1_0302]返却ボタン押下後表示不正対応
 * 2009-05-13 1.2  SCS柳平直人   [ST障害T1_0954]T1_0302修正漏れ反映
 * 2009-07-16 1.3  SCS阿部大輔   [SCS障害0000385]否決ボタン時の提出ボタン対応
+* 2009-08-04 1.4  SCS小川浩     [SCS障害0000820]転勤時の適用・提出ボタン対応
 *============================================================================
 */
 package itoen.oracle.apps.xxcso.xxcso020001j.util;
@@ -1400,13 +1401,26 @@ public class XxcsoSpDecisionPropertyUtils
     /////////////////////////////////////
     String appBaseCode = headerRow.getAppBaseCode();
     String loginBaseCode = initRow.getBaseCode();
+// 2009-08-04 [障害0000820] Add Start
+    String applicationCode = headerRow.getApplicationCode();
+// 2009-08-04 [障害0000820] Add End
     if ( appBaseCode   == null               ||
          loginBaseCode == null               ||
          ! appBaseCode.equals(loginBaseCode)
        )
     {
-      // 拠点コードが一致しない場合は、適用ボタンを非表示
-      initRow.setApplyButtonRender(                  Boolean.FALSE );
+// 2009-08-04 [障害0000820] Add Start
+      if ( ! loginEmployeeNumber.equals(applicationCode) )
+      {
+        // 拠点コードが一致しない場合、かつ、
+        // 申請者がログインユーザーでない場合は
+        // 適用ボタンを非表示
+// 2009-08-04 [障害0000820] Add End    
+        // 拠点コードが一致しない場合は、適用ボタンを非表示
+        initRow.setApplyButtonRender(                  Boolean.FALSE );
+// 2009-08-04 [障害0000820] Add Start
+      }
+// 2009-08-04 [障害0000820] Add End
     }
 
     String status = headerRow.getStatus();
@@ -1424,8 +1438,18 @@ public class XxcsoSpDecisionPropertyUtils
          ! appBaseCode.equals(loginBaseCode)
        )
     {
-      // 拠点コードが一致しない場合は、提出ボタンを非表示
-      initRow.setSubmitButtonRender(                 Boolean.FALSE );
+// 2009-08-04 [障害0000820] Add Start
+      if ( ! loginEmployeeNumber.equals(applicationCode) )
+      {
+        // 拠点コードが一致しない場合、かつ、
+        // 申請者がログインユーザーでない場合は
+        // 提出ボタンを非表示
+// 2009-08-04 [障害0000820] Add End    
+        // 拠点コードが一致しない場合は、提出ボタンを非表示
+        initRow.setSubmitButtonRender(                 Boolean.FALSE );
+// 2009-08-04 [障害0000820] Add Start
+      }
+// 2009-08-04 [障害0000820] Add End
     }
 
     if ( ! submitFlag )
