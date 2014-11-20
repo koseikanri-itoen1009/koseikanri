@@ -1,4 +1,4 @@
-create or replace PACKAGE BODY XXCOS014A10C
+create or replace PACKAGE BODY APPS.XXCOS014A10C
 AS
 /*****************************************************************************************
  * Copyright(c)Sumisho Computer Systems Corporation, 2008. All rights reserved.
@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCOS014A10C(spec)
  * Description      : 預り金VD納品伝票データ作成
  * MD.050           : 預り金VD納品伝票データ作成 (MD050_COS_014_A10)
- * Version          : 1.2
+ * Version          : 1.3
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -29,6 +29,7 @@ AS
  *  2009/03/06    1.0   S.Nakanishi      新規作成
  *  2009/03/19    1.1   S.Nakanishi      障害No.159対応
  *  2009/04/30    1.2   T.Miyata         [T1_0891]最終行に[/]付与
+ *  2009/07/17    1.3   N.Maeda          [0000788]発注日、店舗納品日フォーマット修正
  *
  *****************************************************************************************/
 --
@@ -287,7 +288,7 @@ AS
 --
     --入力パラメータ11の出力
     gv_out_msg := xxccp_common_pkg.get_msg(cv_apl_name,ct_msg_input_parameters2
-                                          ,cv_tkn_prm11, g_input_rec.rep_group_id                  --グループID
+                                          ,cv_tkn_prm11,g_input_rec.rep_group_id                  --グループID
                                           );
 --
     FND_FILE.PUT_LINE(
@@ -1011,9 +1012,15 @@ AS
            ,xdvsw.company_name                         company_name               --社名（漢字）
            ,xdvsw.shop_code                            shop_code                  --店コード
            ,xdvsw.shop_name                            shop_name                  --店名（漢字）
-           ,TO_CHAR(xdvsw.order_date,cv_time_fmt)      order_date                 --発注日
+-- *************************** 2009/07/17  N.Maeda  1.3  MOD  START ******************************** --
+           ,TO_CHAR(xdvsw.order_date,cv_date_fmt)      order_date                 --発注日
+--           ,TO_CHAR(xdvsw.order_date,cv_time_fmt)      order_date                 --発注日
+-- *************************** 2009/07/17  N.Maeda  1.3  MOD   END  ******************************** --
            ,'00000000'                                 result_delivery_date       --実納品日
-           ,TO_CHAR(xdvsw.delivery_date,cv_time_fmt)   shop_delivery_date         --店舗納品日
+-- *************************** 2009/07/17  N.Maeda  1.3  MOD  START ******************************** --
+           ,TO_CHAR(xdvsw.delivery_date,cv_date_fmt)   shop_delivery_date         --店舗納品日
+--           ,TO_CHAR(xdvsw.delivery_date,cv_time_fmt)   shop_delivery_date         --店舗納品日
+-- *************************** 2009/07/17  N.Maeda  1.3  MOD   END  ******************************** --
            ,xdvsw.invoice_class                        invoice_class              --伝票区分
            ,xdvsw.classification_code                  big_classification_code    --大分類コード
            ,xdvsw.invoice_number                       invoice_number             --伝票番号
@@ -1042,7 +1049,7 @@ AS
            ,'0'                                        invoice_shipping_cost_amt  --（伝票計）原価金額（出荷）
            ,xdvsw.sum_selling_amount                   invoice_order_price_amt    --（伝票計）売価金額（発注）
            ,'0'                                        invoice_shipping_price_amt --（伝票計）売価金額（出荷）
-      FROM  xxcos_deposit_vd_slip_work                 xdvsw                      
+      FROM  xxcos_deposit_vd_slip_work                 xdvsw
       WHERE xdvsw.group_id  = g_input_rec.rep_group_id
       --ロック
       FOR UPDATE OF xdvsw.group_id NOWAIT;--
@@ -1551,3 +1558,4 @@ END IF;
 --
 END XXCOS014A10C;
 /
+

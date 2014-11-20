@@ -1,5 +1,4 @@
-create or replace
-PACKAGE XXCOS014A10C
+CREATE OR REPLACE PACKAGE APPS.XXCOS014A10C
 AS
 /*****************************************************************************************
  * Copyright(c)Sumisho Computer Systems Corporation, 2008. All rights reserved.
@@ -7,7 +6,7 @@ AS
  * Package Name     : XXCOS014A10C(spec)
  * Description      : 預り金VD納品伝票データ作成
  * MD.050           : 預り金VD納品伝票データ作成 (MD050_COS_014_A10)
- * Version          : 1.2
+ * Version          : 1.3
  *
  * Program List
  * -------------------- ------------------------------------------------------------
@@ -22,6 +21,7 @@ AS
  *  2009/03/06    1.0   S.Nakanishi      main新規作成
  *  2009/03/19    1.1   S.Nakanishi      障害No.159対応
  *  2009/04/30    1.2   T.Miyata         [T1_0891]最終行に[/]付与
+ *  2009/07/17    1.3   N.Maeda          [0000788]発注日、店舗納品日フォーマット修正
  *
  *****************************************************************************************/
 --
@@ -44,3 +44,4 @@ AS
   --
 END XXCOS014A10C;
 /
+
