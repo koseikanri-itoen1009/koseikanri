@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCSO019A10C(body)
  * Description      : 訪問売上計画管理表（随時実行の帳票）用にサマリテーブルを作成します。
  * MD.050           :  MD050_CSO_019_A10_訪問売上計画管理集計バッチ
- * Version          : 1.6
+ * Version          : 1.7
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -49,6 +49,7 @@ AS
  *                                       エラーメッセージが出力されず、エラー終了しない
  *  2009-08-28    1.5   Daisuke.Abe      【0001194】パフォーマンス対応
  *  2009-11-06    1.6   Kazuo.Satomura   【E_T4_00135(I_E_636)】
+ *  2009-12-28    1.7   Kazuyo.Hosoi     【E_本稼動_00686】対応
  *
  *****************************************************************************************/
 --
@@ -1778,6 +1779,9 @@ AS
 --
     -- *** ローカル変数 ***
     ln_delete_cnt               NUMBER;              -- 削除件数
+    /* 2009.12.28 K.Hosoi E_本稼動_00686対応 START */
+    ld_calc_ar_gl_prid_frm      DATE;                -- 削除対象データ抽出期間計算用
+    /* 2009.12.28 K.Hosoi E_本稼動_00686対応 END */
 --
   BEGIN
 --
@@ -1796,20 +1800,46 @@ AS
     -- 日別処理対象データ削除処理 
     -- =======================
     BEGIN
-      SELECT COUNT(xsvsr.sum_org_code)
-      INTO  ln_delete_cnt
-      FROM  xxcso_sum_visit_sale_rep xsvsr  -- 訪問売上計画管理表サマリ
-      WHERE  xsvsr.month_date_div = cv_month_date_div_day  -- 月日区分
-        AND  xsvsr.sales_date BETWEEN TO_CHAR(gd_ar_gl_period_from, 'YYYYMMDD')
-                                  AND TO_CHAR(LAST_DAY(gd_process_date)     , 'YYYYMMDD') -- 販売年月日
-      ;
+      /* 2009.12.28 K.Hosoi E_本稼動_00686対応 START */
+      --SELECT COUNT(xsvsr.sum_org_code)
+      --INTO  ln_delete_cnt
+      --FROM  xxcso_sum_visit_sale_rep xsvsr  -- 訪問売上計画管理表サマリ
+      --WHERE  xsvsr.month_date_div = cv_month_date_div_day  -- 月日区分
+      --  AND  xsvsr.sales_date BETWEEN TO_CHAR(gd_ar_gl_period_from, 'YYYYMMDD')
+      --                            AND TO_CHAR(LAST_DAY(gd_process_date)     , 'YYYYMMDD') -- 販売年月日
+      --;
+      --gn_delete_cnt := ln_delete_cnt;
+      --DELETE
+      --FROM  xxcso_sum_visit_sale_rep xsvsr  -- 訪問売上計画管理表サマリ
+      --WHERE  xsvsr.month_date_div = cv_month_date_div_day  -- 月日区分
+      --  AND  xsvsr.sales_date BETWEEN TO_CHAR(gd_ar_gl_period_from, 'YYYYMMDD')
+      --                            AND TO_CHAR(LAST_DAY(gd_process_date)     , 'YYYYMMDD') -- 販売年月日
+      --;
+      -- 削除対象データ抽出期間計算用変数に、会計期間Fromを格納
+      ld_calc_ar_gl_prid_frm := gd_ar_gl_period_from;
+      --
+      --データ削除ループ開始
+      <<loop_del_sm_vst_sl_rp_dt>>
+      LOOP
+        -- 削除対象データ抽出期間計算用変数 の値が、業務処理月の月末をより大きい場合はEXIT
+        EXIT WHEN ( ld_calc_ar_gl_prid_frm > LAST_DAY(gd_process_date));
+        --
+        DELETE
+        FROM  xxcso_sum_visit_sale_rep xsvsr  -- 訪問売上計画管理表サマリ
+        WHERE  xsvsr.month_date_div = cv_month_date_div_day  -- 月日区分
+          AND  xsvsr.sales_date BETWEEN TO_CHAR(gd_ar_gl_period_from, 'YYYYMMDD')
+                                    AND TO_CHAR((ld_calc_ar_gl_prid_frm + 9), 'YYYYMMDD') -- 販売年月日
+        ;
+        ln_delete_cnt := ln_delete_cnt + SQL%ROWCOUNT;
+        -- コミットを行います。
+        COMMIT;
+        --
+        ld_calc_ar_gl_prid_frm := ld_calc_ar_gl_prid_frm + 10;
+        --
+      END LOOP;
+      --
       gn_delete_cnt := ln_delete_cnt;
-      DELETE
-      FROM  xxcso_sum_visit_sale_rep xsvsr  -- 訪問売上計画管理表サマリ
-      WHERE  xsvsr.month_date_div = cv_month_date_div_day  -- 月日区分
-        AND  xsvsr.sales_date BETWEEN TO_CHAR(gd_ar_gl_period_from, 'YYYYMMDD')
-                                  AND TO_CHAR(LAST_DAY(gd_process_date)     , 'YYYYMMDD') -- 販売年月日
-      ;
+      /* 2009.12.28 K.Hosoi E_本稼動_00686対応 END */
       -- *** DEBUG_LOG ***
       -- 日別処理削除対象データ件数をログ出力
       fnd_file.put_line(
@@ -1854,6 +1884,10 @@ AS
                                   ,gv_ym_lst_6
                                  )  -- 販売年月日
       ;
+      /* 2009.12.28 K.Hosoi E_本稼動_00686対応 START */
+      -- コミットを行う
+      COMMIT;
+      /* 2009.12.28 K.Hosoi E_本稼動_00686対応 END */
       -- *** DEBUG_LOG ***
       -- 月別処理削除対象データ件数をログ出力
       fnd_file.put_line(
