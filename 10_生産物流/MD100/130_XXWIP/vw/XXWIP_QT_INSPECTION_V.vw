@@ -55,9 +55,16 @@ AS
   , xim2v.item_short_name               item_name                       -- 品目名称
   , xqi.lot_id                          lot_id                          -- ロットID
   , ilm.lot_no                          lot_no                          -- ロットNo
-  , xqi.product_date                    product_date                    -- 製造日
-  , xqi.unique_sign                     unique_sign                     -- 固有記号
-  , xqi.use_by_date                     use_by_date                     -- 賞味期限
+-- 2008/07/24 H.Itou MOD START
+--  , xqi.product_date                    product_date                    -- 製造日
+--  , xqi.unique_sign                     unique_sign                     -- 固有記号
+--  , xqi.use_by_date                     use_by_date                     -- 賞味期限
+  , FND_DATE.STRING_TO_DATE(ilm.attribute1,'YYYY/MM/DD')
+                                        product_date                    -- 製造日
+  , ilm.attribute2                      unique_sign                     -- 固有記号
+  , FND_DATE.STRING_TO_DATE(ilm.attribute3,'YYYY/MM/DD')
+                                        use_by_date                     -- 賞味期限
+-- 2008/07/24 H.Itou MOD END
   , xqi.qt_effect1                      qt_effect1                      -- 結果１
   , xlvv1.meaning                       qt_effect1_desc                 -- 結果１名称
   , xqi.inspect_due_date1               inspect_due_date1               -- 検査予定日１
@@ -105,8 +112,12 @@ AS
     AND xlvv3.lookup_type (+)        = 'XXWIP_QT_STATUS'
     AND grv.routing_no (+)           = xqi.vendor_line
     AND xim2v.item_id                = xqi.item_id
-    AND xim2v.start_date_active      <= TRUNC( xqi.product_date )
-    AND xim2v.end_date_active        >= TRUNC( xqi.product_date )
+-- 2008/07/24 H.Itou MOD START
+--    AND xim2v.start_date_active      <= TRUNC( xqi.product_date )
+--    AND xim2v.end_date_active        >= TRUNC( xqi.product_date )
+    AND xim2v.start_date_active      <= TRUNC( NVL( xqi.product_date, SYSDATE ) )
+    AND xim2v.end_date_active        >= TRUNC( NVL( xqi.product_date, SYSDATE ) )
+-- 2008/07/24 H.Itou MOD END
     AND ilm.lot_id                   = xqi.lot_id
     AND xqi.inspect_class            = '1'
 --
@@ -122,9 +133,16 @@ AS
   , xim2v.item_short_name               item_name                       -- 品目名称
   , xqi.lot_id                          lot_id                          -- ロットID
   , ilm.lot_no                          lot_no                          -- ロットNo
-  , xqi.product_date                    product_date                    -- 製造日
-  , xqi.unique_sign                     unique_sign                     -- 固有記号
-  , xqi.use_by_date                     use_by_date                     -- 賞味期限
+-- 2008/07/24 H.Itou MOD START
+--  , xqi.product_date                    product_date                    -- 製造日
+--  , xqi.unique_sign                     unique_sign                     -- 固有記号
+--  , xqi.use_by_date                     use_by_date                     -- 賞味期限
+  , FND_DATE.STRING_TO_DATE(ilm.attribute1,'YYYY/MM/DD')
+                                        product_date                    -- 製造日
+  , ilm.attribute2                      unique_sign                     -- 固有記号
+  , FND_DATE.STRING_TO_DATE(ilm.attribute3,'YYYY/MM/DD')
+                                        use_by_date                     -- 賞味期限
+-- 2008/07/24 H.Itou MOD END
   , xqi.qt_effect1                      qt_effect1                      -- 結果１
   , xlvv1.meaning                       qt_effect1_desc                 -- 結果１名称
   , xqi.inspect_due_date1               inspect_due_date1               -- 検査予定日１
@@ -183,14 +201,22 @@ AS
         )
     AND xv2v.segment1 (+)            = xqi.vendor_line
 -- 変更 START 2008/04/25 Oikawa
-    AND xv2v.start_date_active (+)   <= TRUNC( xqi.product_date )
-    AND xv2v.end_date_active (+)     >= TRUNC( xqi.product_date )
+-- 2008/07/24 H.Itou MOD START
+--    AND xv2v.start_date_active (+)   <= TRUNC( xqi.product_date )
+--    AND xv2v.end_date_active (+)     >= TRUNC( xqi.product_date )
+    AND xv2v.start_date_active (+)   <= TRUNC( NVL( xqi.product_date, SYSDATE ) )
+    AND xv2v.end_date_active (+)     >= TRUNC( NVL( xqi.product_date, SYSDATE ) )
+-- 2008/07/24 H.Itou MOD END
 --    AND xv2v.start_date_active       <= TRUNC( xqi.product_date )
 --    AND xv2v.end_date_active         >= TRUNC( xqi.product_date )
 -- 変更 END
     AND xim2v.item_id                = xqi.item_id
-    AND xim2v.start_date_active      <= TRUNC( xqi.product_date )
-    AND xim2v.end_date_active        >= TRUNC( xqi.product_date )
+-- 2008/07/24 H.Itou MOD START
+--    AND xim2v.start_date_active      <= TRUNC( xqi.product_date )
+--    AND xim2v.end_date_active        >= TRUNC( xqi.product_date )
+    AND xim2v.start_date_active      <= TRUNC( NVL( xqi.product_date, SYSDATE ) )
+    AND xim2v.end_date_active        >= TRUNC( NVL( xqi.product_date, SYSDATE ) )
+-- 2008/07/24 H.Itou MOD END
     AND ilm.lot_id                   = xqi.lot_id
     AND xqi.inspect_class            = '2'
 /
