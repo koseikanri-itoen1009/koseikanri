@@ -3,7 +3,7 @@
  *
  * Table Name  : XXCOK_REP_BM_CONTRACT_ERR
  * Description : 販手条件エラーリスト帳票ワークテーブル
- * Version     : 1.1
+ * Version     : 1.2
  *
  * Change Record
  * ------------- ----- ---------------- ---------------------------------
@@ -11,11 +11,15 @@
  * ------------- ----- ---------------- ---------------------------------
  *  2009/01/15    1.0   T.Osada          新規作成
  *  2009/07/09    1.1   K.Yamaguchi      [障害0000515]STORAGE句追加
+ *  2011/12/20    1.2   T.Yoshimoto      [E_本稼動_08631]パラメータ項目追加
  *
  **************************************************************************************/
 CREATE TABLE XXCOK.XXCOK_REP_BM_CONTRACT_ERR
 (
    P_SELLING_BASE_CODE       VARCHAR2(4),
+-- 2011/12/20 v1.2 T.Yoshimoto Add Start E_本稼動_08631
+   P_CUST_CODE               VARCHAR2(9),
+-- 2011/12/20 v1.2 T.Yoshimoto Add End
    SELLING_BASE_CODE         VARCHAR2(4),
    SELLING_BASE_NAME         VARCHAR2(240),
    COST_CODE                 VARCHAR2(9),
@@ -46,6 +50,10 @@ COMMENT ON TABLE  XXCOK.XXCOK_REP_BM_CONTRACT_ERR                           IS '
 /
 COMMENT ON COLUMN XXCOK.XXCOK_REP_BM_CONTRACT_ERR.P_SELLING_BASE_CODE       IS '売上計上拠点コード(入力パラメータ)'
 /
+-- 2011/12/20 v1.2 T.Yoshimoto Add Start E_本稼動_08631
+COMMENT ON COLUMN xxcok.xxcok_rep_bm_contract_err.p_cust_code               IS '顧客コード(入力パラメータ)'
+/
+-- 2011/12/20 v1.2 T.Yoshimoto Add End
 COMMENT ON COLUMN XXCOK.XXCOK_REP_BM_CONTRACT_ERR.SELLING_BASE_CODE         IS '売上計上拠点コード'
 /
 COMMENT ON COLUMN XXCOK.XXCOK_REP_BM_CONTRACT_ERR.SELLING_BASE_NAME         IS '売上計上拠点名'

@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCOK014A06R(body)
  * Description      : 条件別販手販協計算処理実行時に販手条件マスタ未登録の販売実績をエラーリストに出力
  * MD.050           : 自販機販手条件エラーリスト MD050_COK_014_A06
- * Version          : 1.5
+ * Version          : 1.6
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -31,6 +31,7 @@ AS
  *  2009/03/02    1.3   K.Yamaguchi      [障害T1_0510] 売上拠点情報取得SQL文の不足対応
  *  2009/09/01    1.4   S.Moriyama       [障害0001230] OPM品目マスタ取得条件追加
  *  2011/02/02    1.5   S.Ochiai         [障害E_本稼動_05408] 年次切替対応
+ *  2011/12/20    1.6   T.Yoshimoto      [改善E_本稼動_08361] パラメータ追加対応
  *
  *****************************************************************************************/
   -- ===============================================
@@ -69,6 +70,9 @@ AS
   cv_msg_code_00040          CONSTANT VARCHAR2(50)  := 'APP-XXCOK1-00040';          -- SVF起動APIエラー
   cv_msg_code_10321          CONSTANT VARCHAR2(50)  := 'APP-XXCOK1-10321';          -- ロック取得エラー
   cv_msg_code_10397          CONSTANT VARCHAR2(50)  := 'APP-XXCOK1-10397';          -- データ削除エラー
+-- 2011/12/20 v1.6 T.Yoshimoto Add Start E_本稼動_08631
+  cv_msg_code_10490          CONSTANT VARCHAR2(50)  := 'APP-XXCOK1-10490';          -- パラメータログ出力用メッセージ
+-- 2011/12/20 v1.6 T.Yoshimoto Add End
   cv_msg_code_90000          CONSTANT VARCHAR2(50)  := 'APP-XXCCP1-90000';          -- 対象件数
   cv_msg_code_90001          CONSTANT VARCHAR2(50)  := 'APP-XXCCP1-90001';          -- 成功件数
   cv_msg_code_90002          CONSTANT VARCHAR2(50)  := 'APP-XXCCP1-90002';          -- エラー件数
@@ -122,45 +126,60 @@ AS
   gn_normal_cnt             NUMBER         DEFAULT 0;     -- 正常件数
   gn_error_cnt              NUMBER         DEFAULT 0;     -- エラー件数
   -- メッセージ
-  gv_no_data_msg_table      VARCHAR2(30)                         DEFAULT NULL;  -- 0件メッセージ(テーブル格納用)
-  gv_no_data_msg_output     VARCHAR2(5000)                       DEFAULT NULL;  -- 0件メッセージ(SVF出力用)
+  gv_no_data_msg_table      VARCHAR2(30)                                   DEFAULT NULL;  -- 0件メッセージ(テーブル格納用)
+  gv_no_data_msg_output     VARCHAR2(5000)                                 DEFAULT NULL;  -- 0件メッセージ(SVF出力用)
   -- 取得データ格納
 -- 2009/04/14 Ver.1.3 [障害T1_0510] SCS K.Yamaguchi ADD START
-  gn_operating_unit         NUMBER                               DEFAULT NULL;  -- プロファイル(MO：営業単位ID)
+  gn_operating_unit         NUMBER                                         DEFAULT NULL;  -- プロファイル(MO：営業単位ID)
 -- 2009/04/14 Ver.1.3 [障害T1_0510] SCS K.Yamaguchi ADD END
-  gv_org_code               VARCHAR2(50)                         DEFAULT NULL;  -- プロファイル値(在庫組織コード)
-  gn_org_id                 NUMBER                               DEFAULT NULL;  -- 在庫組織ID
-  gt_selling_base_code      hz_cust_accounts.account_number%TYPE DEFAULT NULL;  -- 売上計上拠点コード(入力パラメータ)
-  gt_selling_base_name      hz_cust_accounts.account_name%TYPE   DEFAULT NULL;  -- 売上計上拠点名
-  gt_section_code           hz_locations.address3%TYPE           DEFAULT NULL;  -- 地区コード（売上計上拠点）
-  gt_customer_code          hz_cust_accounts.account_number%TYPE DEFAULT NULL;  -- 顧客コード
-  gt_customer_name          hz_cust_accounts.account_name%TYPE   DEFAULT NULL;  -- 顧客名
+  gv_org_code               VARCHAR2(50)                                   DEFAULT NULL;  -- プロファイル値(在庫組織コード)
+  gn_org_id                 NUMBER                                         DEFAULT NULL;  -- 在庫組織ID
+  gt_selling_base_code      hz_cust_accounts.account_number%TYPE           DEFAULT NULL;  -- 売上計上拠点コード(入力パラメータ)
+  gt_selling_base_name      hz_cust_accounts.account_name%TYPE             DEFAULT NULL;  -- 売上計上拠点名
+  gt_section_code           hz_locations.address3%TYPE                     DEFAULT NULL;  -- 地区コード（売上計上拠点）
+  gt_customer_code          hz_cust_accounts.account_number%TYPE           DEFAULT NULL;  -- 顧客コード
+  gt_customer_name          hz_cust_accounts.account_name%TYPE             DEFAULT NULL;  -- 顧客名
   -- 退避データ格納
-  gt_base_code              xxcok_bm_contract_err.base_code%TYPE DEFAULT NULL;  -- 拠点コード(入力パラメータ)
-  gt_selling_base_code_bkup hz_cust_accounts.account_number%TYPE DEFAULT NULL;  -- 売上計上拠点コード
-  gt_cust_code_bkup         hz_locations.address3%TYPE           DEFAULT NULL;  -- 地区コード
+  gt_base_code              xxcok_bm_contract_err.base_code%TYPE           DEFAULT NULL;  -- 売上計上拠点コード(入力パラメータ)
+-- 2011/12/20 v1.6 T.Yoshimoto Add Start E_本稼動_08631
+  gt_cust_code              xxcok_rep_bm_contract_err.p_cust_code%TYPE     DEFAULT NULL;  -- 顧客コード(入力パラメータ)
+-- 2011/12/20 v1.6 T.Yoshimoto Add End
+  gt_selling_base_code_bkup hz_cust_accounts.account_number%TYPE           DEFAULT NULL;  -- 売上計上拠点コード
+  gt_cust_code_bkup         hz_locations.address3%TYPE                     DEFAULT NULL;  -- 地区コード
 -- 2009/09/01 Ver.1.4 [障害0001230] SCS S.Moriyama ADD START
-  gd_process_date           DATE                                 DEFAULT NULL;  -- 業務処理日付
+  gd_process_date           DATE                                           DEFAULT NULL;  -- 業務処理日付
 -- 2009/09/01 Ver.1.4 [障害0001230] SCS S.Moriyama ADD END
   -- ファイル名称
-  gv_file_name              VARCHAR2(100)                        DEFAULT NULL;  -- SVF出力ファイル名
+  gv_file_name              VARCHAR2(100)                                  DEFAULT NULL;  -- SVF出力ファイル名
   -- ===============================================
   -- グローバルカーソル
   -- ===============================================
   -- エラーデータ取得カーソル
   CURSOR g_get_err_cur(
-    iv_bace_code IN  VARCHAR2 DEFAULT NULL                        -- 拠点コード(入力パラメータ)
+    iv_bace_code     IN  VARCHAR2 DEFAULT NULL    -- 売上計上拠点コード(入力パラメータ)
+-- 2011/12/20 v1.6 T.Yoshimoto Add Start E_本稼動_08631
+  , iv_cust_code     IN  VARCHAR2 DEFAULT NULL    -- 顧客コード(入力パラメータ)
+-- 2011/12/20 v1.6 T.Yoshimoto Add End
   )
   IS
 -- 2011/02/02 Ver.1.5 [障害E_本稼動_05408] SCS S.Ochiai UPD START
 --    SELECT xbce.base_code            AS base_code                 -- 拠点コード
+-- 2011/12/20 v1.6 T.Yoshimoto Add Start E_本稼動_08631
+--    SELECT /*+
+--               PUSH_PRED(ITEM)
+--               LEADING  (XBCE XCA)
+--               USE_NL   (XBCE XCA)
+--               INDEX    (XBCE XXCOK_BM_CONTRACT_ERR_N02)
+--               INDEX    (XCA  XXCMM_CUST_ACCOUNTS_N06)
+--           */
     SELECT /*+
                PUSH_PRED(ITEM)
                LEADING  (XBCE XCA)
                USE_NL   (XBCE XCA)
-               INDEX    (XBCE XXCOK_BM_CONTRACT_ERR_N02)
+               INDEX    (XBCE XXCOK_BM_CONTRACT_ERR_N03)
                INDEX    (XCA  XXCMM_CUST_ACCOUNTS_N06)
            */
+-- 2011/12/20 v1.6 T.Yoshimoto Add End E_本稼動_08631
            xbce.base_code            AS base_code                 -- 拠点コード
 -- 2011/02/02 Ver.1.5 [障害E_本稼動_05408] SCS S.Ochiai UPD END
          , xbce.cust_code            AS cust_code                 -- 顧客コード
@@ -203,6 +222,9 @@ AS
 -- 2011/02/02 Ver.1.5 [障害E_本稼動_05408] SCS S.Ochiai UPD END
     AND    xbce.item_code            = item.item_code(+)
     AND    xbce.container_type_code  = cont.container_type_code(+)
+-- 2011/12/20 v1.6 T.Yoshimoto Add Start E_本稼動_08631
+    AND    xbce.cust_code            = NVL(iv_cust_code,    xbce.cust_code)
+-- 2011/12/20 v1.6 T.Yoshimoto Add End
     ORDER BY
       xbce.base_code
     , xbce.cust_code
@@ -442,6 +464,9 @@ AS
     IF ( gn_target_cnt != cn_number_0 ) THEN
       INSERT INTO xxcok_rep_bm_contract_err(   -- 販手条件エラーリスト帳票ワークテーブル
         p_selling_base_code                    -- 売上計上拠点コード(入力パラメータ)
+-- 2011/12/20 v1.6 T.Yoshimoto Add Start E_本稼動_08631
+      , p_cust_code                            -- 顧客コード(入力パラメータ)
+-- 2011/12/20 v1.6 T.Yoshimoto Add End
       , selling_base_code                      -- 売上計上拠点コード
       , selling_base_name                      -- 売上計上拠点名
       , cost_code                              -- 顧客コード
@@ -466,6 +491,9 @@ AS
       )
       VALUES(
         gt_base_code                           -- 売上計上拠点コード(入力パラメータ)
+-- 2011/12/20 v1.6 T.Yoshimoto Add Start E_本稼動_08631
+      , gt_cust_code                           -- 顧客コード(入力パラメータ)
+-- 2011/12/20 v1.6 T.Yoshimoto Add End
       , gt_selling_base_code                   -- 売上計上拠点コード
       , gt_selling_base_name                   -- 売上計上拠点名
       , gt_customer_code                       -- 顧客コード
@@ -497,6 +525,9 @@ AS
     ELSE
       INSERT INTO xxcok_rep_bm_contract_err(   -- 販手条件エラーリスト帳票ワークテーブル
         p_selling_base_code                    -- 売上計上拠点コード(入力パラメータ)
+-- 2011/12/20 v1.6 T.Yoshimoto Add Start E_本稼動_08631
+      , p_cust_code                            -- 顧客コード(入力パラメータ)
+-- 2011/12/20 v1.6 T.Yoshimoto Add End
       , selling_base_code                      -- 売上計上拠点コード
       , selling_base_name                      -- 売上計上拠点名
       , cost_code                              -- 顧客コード
@@ -521,6 +552,9 @@ AS
       )
       VALUES(
         gt_base_code                           -- 売上計上拠点コード(入力パラメータ)
+-- 2011/12/20 v1.6 T.Yoshimoto Add Start E_本稼動_08631
+      , gt_cust_code                           -- 顧客コード(入力パラメータ)
+-- 2011/12/20 v1.6 T.Yoshimoto Add End
       , NULL                                   -- 売上計上拠点コード
       , NULL                                   -- 売上計上拠点名
       , NULL                                   -- 顧客コード
@@ -749,7 +783,10 @@ AS
     -- ===============================================
     -- カーソルオープン
     OPEN g_get_err_cur(
-           iv_bace_code => gt_base_code
+           iv_bace_code      => gt_base_code     -- 売上計上拠点コード(入力パラメータ)
+-- 2011/12/20 v1.6 T.Yoshimoto Add Start E_本稼動_08631
+         , iv_cust_code      => gt_cust_code     -- 顧客コード(入力パラメータ)
+-- 2011/12/20 v1.6 T.Yoshimoto Add End
          );
     FETCH g_get_err_cur BULK COLLECT INTO g_err_tab;
     -- カーソルクローズ
@@ -879,16 +916,20 @@ AS
    * Description     : 初期処理(A-1)
    ************************************************************************/
   PROCEDURE init(
-    ov_errbuf     OUT VARCHAR2     -- エラー・メッセージ
-  , ov_retcode    OUT VARCHAR2     -- リターン・コード
-  , ov_errmsg     OUT VARCHAR2     -- ユーザ・エラー・メッセージ
-  , iv_base_code  IN  VARCHAR2     -- 拠点コード
+    ov_errbuf        OUT VARCHAR2     -- エラー・メッセージ
+  , ov_retcode       OUT VARCHAR2     -- リターン・コード
+  , ov_errmsg        OUT VARCHAR2     -- ユーザ・エラー・メッセージ
+  , iv_base_code     IN  VARCHAR2     -- 売上計上拠点コード(入力パラメータ)
+-- 2011/12/20 v1.6 T.Yoshimoto Add Start E_本稼動_08631
+  , iv_cust_code     IN  VARCHAR2     -- 顧客コード(入力パラメータ)
+-- 2011/12/20 v1.6 T.Yoshimoto Add End
   )
   IS
     -- ===============================================
     -- ローカル定数
     -- ===============================================
     cv_prg_name   CONSTANT VARCHAR2(30)  := 'init';  -- プロシージャ名
+
     -- ===============================================
     -- ローカル変数
     -- ===============================================
@@ -907,16 +948,30 @@ AS
     --================================================
     -- 入力パラメータの退避
     --================================================
-    gt_base_code := iv_base_code;
+    gt_base_code     := iv_base_code;                            -- 売上計上拠点コード(入力パラメータ)
+-- 2011/12/20 v1.6 T.Yoshimoto Add Start E_本稼動_08631
+    gt_cust_code     := iv_cust_code;                            -- 顧客コード(入力パラメータ)
+-- 2011/12/20 v1.6 T.Yoshimoto Add End
+--
     --================================================
     -- 入力パラメータのログ出力
     --================================================
+-- 2011/12/20 v1.6 T.Yoshimoto Mod Start E_本稼動_08631
+--      lv_message  := xxccp_common_pkg.get_msg(
+--                      iv_application  => cv_xxcok_appl_short_name
+--                    , iv_name         => cv_msg_code_00074
+--                    , iv_token_name1  => cv_token_base_code
+--                    , iv_token_value1 => gt_base_code
+--                    );
       lv_message  := xxccp_common_pkg.get_msg(
                       iv_application  => cv_xxcok_appl_short_name
-                    , iv_name         => cv_msg_code_00074
+                    , iv_name         => cv_msg_code_10490
                     , iv_token_name1  => cv_token_base_code
                     , iv_token_value1 => gt_base_code
+                    , iv_token_name2  => cv_token_cust_code
+                    , iv_token_value2 => gt_cust_code
                     );
+-- 2011/12/20 v1.6 T.Yoshimoto Mod End
       lb_retcode := xxcok_common_pkg.put_message_f(
                       in_which    => FND_FILE.LOG     --出力区分
                     , iv_message  => lv_message       --メッセージ
@@ -1022,10 +1077,13 @@ AS
    * Description     : メイン処理プロシージャ
    ************************************************************************/
   PROCEDURE submain(
-    ov_errbuf     OUT VARCHAR2     -- エラー・メッセージ
-  , ov_retcode    OUT VARCHAR2     -- リターン・コード
-  , ov_errmsg     OUT VARCHAR2     -- ユーザ・エラー・メッセージ
-  , iv_base_code  IN  VARCHAR2     -- 拠点コード
+    ov_errbuf        OUT VARCHAR2     -- エラー・メッセージ
+  , ov_retcode       OUT VARCHAR2     -- リターン・コード
+  , ov_errmsg        OUT VARCHAR2     -- ユーザ・エラー・メッセージ
+  , iv_base_code     IN  VARCHAR2     -- 売上計上拠点コード(入力パラメータ)
+-- 2011/12/20 v1.6 T.Yoshimoto Add Start E_本稼動_08631
+  , iv_cust_code     IN  VARCHAR2     -- 顧客コード(入力パラメータ)
+-- 2011/12/20 v1.6 T.Yoshimoto Add End
   )
   IS
     -- ===============================================
@@ -1048,7 +1106,10 @@ AS
       ov_errbuf     => lv_errbuf     -- エラー・メッセージ
     , ov_retcode    => lv_retcode    -- リターン・コード
     , ov_errmsg     => lv_errmsg     -- ユーザ・エラー・メッセージ
-    , iv_base_code  => iv_base_code  -- 拠点コード
+    , iv_base_code  => iv_base_code  -- 売上計上拠点コード(入力パラメータ)
+-- 2011/12/20 v1.6 T.Yoshimoto Add Start E_本稼動_08631
+    , iv_cust_code    => iv_cust_code     -- 顧客コード(入力パラメータ)
+-- 2011/12/20 v1.6 T.Yoshimoto Add End
     );
     IF ( lv_retcode = cv_status_error ) THEN
       RAISE global_api_expt;
@@ -1113,9 +1174,12 @@ AS
    * Description     : コンカレント実行ファイル登録プロシージャ
    ************************************************************************/
   PROCEDURE main(
-    errbuf        OUT VARCHAR2     -- エラー・メッセージ
-  , retcode       OUT VARCHAR2     -- リターン・コード
-  , iv_base_code  IN  VARCHAR2     -- 拠点コード
+    errbuf           OUT VARCHAR2     -- エラー・メッセージ
+  , retcode          OUT VARCHAR2     -- リターン・コード
+  , iv_base_code     IN  VARCHAR2     -- 売上計上拠点コード(入力パラメータ)
+-- 2011/12/20 v1.6 T.Yoshimoto Add Start E_本稼動_08631
+  , iv_cust_code     IN  VARCHAR2     -- 顧客コード(入力パラメータ)
+-- 2011/12/20 v1.6 T.Yoshimoto Add End
   )
   IS
     -- ===============================================
@@ -1149,10 +1213,13 @@ AS
     -- submain(実処理)呼び出し
     -- ===============================================
     submain(
-      ov_errbuf     => lv_errbuf     -- エラー・メッセージ
-    , ov_retcode    => lv_retcode    -- リターン・コード
-    , ov_errmsg     => lv_errmsg     -- ユーザ・エラー・メッセージ
-    , iv_base_code  => iv_base_code  -- 拠点コード
+      ov_errbuf        => lv_errbuf         -- エラー・メッセージ
+    , ov_retcode       => lv_retcode        -- リターン・コード
+    , ov_errmsg        => lv_errmsg         -- ユーザ・エラー・メッセージ
+    , iv_base_code     => iv_base_code      -- 売上計上拠点コード(入力パラメータ)
+-- 2011/12/20 v1.6 T.Yoshimoto Add Start E_本稼動_08631
+    , iv_cust_code     => iv_cust_code      -- 顧客コード(入力パラメータ)
+-- 2011/12/20 v1.6 T.Yoshimoto Add End
     );
     -- ===============================================
     -- エラー終了時、lv_errmsgとlv_errbufをログに出力する
