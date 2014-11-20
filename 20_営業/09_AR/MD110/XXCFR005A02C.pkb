@@ -7,7 +7,7 @@ AS
  * Description      : ロックボックスデータ更新
  * MD.050           : MD050_CFR_005_A02_ロックボックスデータ更新
  * MD.070           : MD050_CFR_005_A02_ロックボックスデータ更新
- * Version          : 1.00
+ * Version          : 1.10
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -24,7 +24,7 @@ AS
  *  Date          Ver.  Editor           Description
  * ------------- ----- ---------------- -------------------------------------------------
  *  2008/12/09    1.00  SCS 濱中 亮一    初回作成
- *
+ *  2009/11/06    1.10  SCS 安川 智博    障害「T4_165」対応
  *****************************************************************************************/
 --
 --#######################  固定グローバル定数宣言部 START   #######################
@@ -385,6 +385,9 @@ AS
     -- ロックボックスIF更新(DFF1(振込依頼人カナ名))
     UPDATE ar_payments_interface_all
     SET    attribute1             = customer_name_alt         -- DFF1(振込依頼人カナ名)
+-- Add 2009-11-06 Ver1.10 Start
+          ,attribute_category     = gn_org_id                 -- 組織ID
+-- Add 2009-11-06 Ver1.10 Start
           ,last_updated_by        = cn_last_updated_by        -- 最終更新者
           ,last_update_date       = cd_last_update_date       -- 最終更新日
           ,last_update_login      = cn_last_update_login      -- 最終更新時のLOGIN_ID
