@@ -11,5 +11,9 @@
  * ------------- ----- ---------------- ---------------------------------
  *  2009/03/27    1.0   T.Miyata         新規作成  T1_0144対応
  *  2009/07/23    1.1   M.Maruyama       障害番号0000752 対応
+ *  2009/11/05    1.2   K.Kiriu          障害番号E_最終移行リハ_00519 対応
  ************************************************************************/
-CREATE SEQUENCE XXCOS.XXCOS_TRX_NUMBER_LARGE_S01 MINVALUE 1 MAXVALUE 999 INCREMENT BY 1 START WITH 1 CACHE 20 NOORDER  CYCLE;
+/* 2009/11/05 Ver1.2 Mod Start */
+--CREATE SEQUENCE XXCOS.XXCOS_TRX_NUMBER_LARGE_S01 MINVALUE 1 MAXVALUE 999 INCREMENT BY 1 START WITH 1 CACHE 20 NOORDER  CYCLE;
+CREATE SEQUENCE XXCOS.XXCOS_TRX_NUMBER_LARGE_S01 MINVALUE 1 MAXVALUE 99 INCREMENT BY 1 START WITH 1 CACHE 20 NOORDER  CYCLE;
+/* 2009/11/05 Ver1.2 Mod End   */
