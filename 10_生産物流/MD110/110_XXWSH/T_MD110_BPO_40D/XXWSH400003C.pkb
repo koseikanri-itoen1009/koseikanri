@@ -7,7 +7,7 @@ AS
  * Description            : 出荷依頼確定関数(BODY)
  * MD.050                 : T_MD050_BPO_401_出荷依頼
  * MD.070                 : T_MD070_EDO_BPO_40D_出荷依頼確定関数
- * Version                : 1.15
+ * Version                : 1.17
  *
  * Program List
  *  ------------------------ ---- ---- --------------------------------------------------
@@ -45,6 +45,7 @@ AS
  *                                      カテゴリ情報VIEW変更
  *  2008/08/11    1.15  M.Hokkanji      内部課題#32対応、内部変更要求#173,178対応
  *  2008/09/01    1.16  N.Yoshida       PT対応(起票なし)
+ *  2008/09/24    1.17  M.Hokkanji       TE080_400指摘66対応
  *
  *****************************************************************************************/
 --
@@ -122,6 +123,9 @@ AS
   gv_cnst_msg_173  CONSTANT VARCHAR2(15)  := 'APP-XXWSH-11173';  -- 出荷可否チェック（出荷数制限）警告
   gv_cnst_msg_174  CONSTANT VARCHAR2(15)  := 'APP-XXWSH-11174';  -- 出荷可否チェック（出荷停止日）警告
   gv_cnst_msg_175  CONSTANT VARCHAR2(15)  := 'APP-XXWSH-11175';  -- 出荷引当対象エラー
+-- Ver 1.17 M.Hokkanji START
+  gv_cnst_msg_176  CONSTANT VARCHAR2(15)  := 'APP-XXWSH-11176';  -- 運送業者エラー
+-- Ver 1.17 M.Hokkanji END
   gv_cnst_sep_msg  CONSTANT VARCHAR2(15)  := 'APP-XXCMN-00003';  -- sep_msg
   gv_cnst_cmn_008  CONSTANT VARCHAR2(15)  := 'APP-XXCMN-00008';  -- 処理件数
   gv_cnst_cmn_009  CONSTANT VARCHAR2(15)  := 'APP-XXCMN-00009';  -- 成功件数
@@ -142,6 +146,9 @@ AS
 -- Ver 1.15 M.Hokkanji START
   gv_cnst_tkn_key         CONSTANT VARCHAR2(15)  := 'KEY';
 -- Ver 1.15 M.Hokkanji END
+-- Ver 1.17 M.Hokkanji START
+  gv_cnst_tkn_request_no  CONSTANT VARCHAR2(15)  := 'REQUEST_NO';
+-- Ver 1.17 M.Hokkanji END
 --
 -- 入力パラメータ名称
   gv_cnst_item_name       CONSTANT VARCHAR2(15)  := '項目名称';
@@ -807,6 +814,9 @@ AS
     lt_weight_capacity_class         xxwsh_order_headers_all.weight_capacity_class%TYPE; -- 重量容積区分
     lt_transaction_type_id           xxwsh_oe_transaction_types_v.transaction_type_id%TYPE; -- 荒茶出荷ID保管
 -- Ver1.15 M.Hokkanji End
+-- Ver1.17 M.Hokkanji Start
+    lv_bfr_freight_carrier_code      xxwsh_order_headers_all.freight_carrier_code%TYPE; --運送業者
+-- Ver1.17 M.Hokkanji End
 -- 2008/09/01 N.Yoshida ADD START
     lv_select     VARCHAR2(32000) ;
     lv_select_other     VARCHAR2(32000) ;
@@ -859,7 +869,10 @@ AS
        ,location_rel_code           xxcmn_cust_accounts2_v.location_rel_code %TYPE
        ,order_header_id             xxwsh_order_headers_all.order_header_id%TYPE
        ,conv_unit                   xxcmn_item_mst2_v.conv_unit%TYPE
-       ,freight_charge_class        xxwsh_order_headers_all.freight_charge_class %TYPE
+       ,freight_charge_class        xxwsh_order_headers_all.freight_charge_class%TYPE
+-- Ver 1.17 M.Hokkanji START
+       ,freight_carrier_code        xxwsh_order_headers_all.freight_carrier_code%TYPE
+-- Ver 1.17 M.Hokkanji END
       );
     loop_cnt    ret_value ;
     
@@ -1050,6 +1063,8 @@ AS
     ||      ', xoha.order_header_id    order_header_id   ' -- 受注ヘッダアドオンID
     ||      ', ximv.conv_unit          conv_unit         ' -- 入出庫換算単位 OPM品目マスタ入出庫換算単位
     ||      ', xoha.freight_charge_class   freight_charge_class '  -- 運賃区分 2008/07/09 ST不具合対応#430
+    ||      ', NVL(xoha.result_freight_carrier_code,xoha.freight_carrier_code) '
+    ||      '                          freight_carrier_code ' -- 運送業者 - 受注ヘッダアドオン.運送業者 2008/09/24 TE080_400指摘66対応
     ||  ' FROM'
     ||  '   xxwsh_oe_transaction_types2_v xottv ' --①受注タイプ情報VIEW2
     ||  '  ,xxwsh_order_headers_all       xoha  ' --②受注ヘッダアドオン
@@ -2253,6 +2268,16 @@ AS
         AND ( lv_bfr_freight_charge_class = gv_freight_charge_class_on ) -- 運賃区分がONの場合にチェックする(2008/07/09 ST不具合対応#430)
         AND ( ln_data_cnt > 1 )) THEN
 --
+-- Ver 1.17 M.Hokkanji START
+        -- 運送業者がNULLの場合
+        IF (lv_bfr_freight_carrier_code IS NULL ) THEN
+          lv_errmsg := xxcmn_common_pkg.get_msg(gv_cnst_msg_kbn,
+                                                gv_cnst_msg_176,
+                                                gv_cnst_tkn_request_no,
+                                                lv_bfr_request_no);
+          RAISE global_api_expt;
+        END IF;
+-- Ver 1.17 M.Hokkanji END
 -- Ver1.15 M.Hokkanji START
           -- 重量容積区分の値によりいずれかのみチェックを行うように修正（両方見るのはヘッダに値セット時のみ）
           IF (lt_weight_capacity_class = cv_weight_capacity_class_1) THEN
@@ -2386,6 +2411,9 @@ AS
       lv_bfr_prod_class            := loop_cnt.prod_class;           -- 前商品区分
       id_bfr_schedule_ship_date    := loop_cnt.schedule_ship_date;   -- 前出庫日
       lv_bfr_freight_charge_class  := loop_cnt.freight_charge_class; -- 前運賃区分 2008/07/09 ST不具合対応#430
+-- Ver1.17 M.Hokkanji Start
+      lv_bfr_freight_carrier_code  := loop_cnt.freight_carrier_code; -- 運送業者
+-- Ver1.17 M.Hokkanji End
 --
 --
       -- **************************************************
@@ -2403,6 +2431,18 @@ AS
     END LOOP data_loop;
     CLOSE upd_status_cur;
 -- 2008/09/01 N.Yoshida ADD END
+
+-- Ver 1.17 M.Hokkanji START
+    IF (( ln_data_cnt <> 0)
+    AND ( lv_bfr_freight_charge_class = gv_freight_charge_class_on )
+    AND ( lv_bfr_freight_carrier_code IS NULL)) THEN
+      lv_errmsg := xxcmn_common_pkg.get_msg(gv_cnst_msg_kbn,
+                                            gv_cnst_msg_176,
+                                            gv_cnst_tkn_request_no,
+                                            lv_bfr_request_no);
+      RAISE global_api_expt;
+    END IF;
+-- Ver 1.17 M.Hokkanji END
 --
     IF ( ln_data_cnt = 0 ) THEN
       -- 出荷依頼情報対象データなし
