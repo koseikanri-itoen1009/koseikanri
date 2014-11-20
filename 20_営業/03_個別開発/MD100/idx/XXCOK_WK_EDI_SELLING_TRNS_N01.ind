@@ -1,0 +1,7 @@
+CREATE INDEX xxcok.xxcok_wk_edi_selling_trns_n01
+ON xxcok.xxcok_wk_edi_selling_trns (
+     if_file_name
+   , status
+)
+TABLESPACE xxidx2
+/

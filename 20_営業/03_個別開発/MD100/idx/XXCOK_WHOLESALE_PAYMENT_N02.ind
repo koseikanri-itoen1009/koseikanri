@@ -1,0 +1,11 @@
+CREATE INDEX xxcok.xxcok_wholesale_payment_n02
+ON xxcok.xxcok_wholesale_payment (
+     base_code
+   , cust_code
+   , supplier_code
+   , selling_month
+   , expect_payment_date
+   , ap_interface_status
+)
+TABLESPACE xxidx2
+/

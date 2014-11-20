@@ -1,0 +1,11 @@
+CREATE INDEX xxcok.xxcok_backmargin_balance_n02
+ON xxcok.xxcok_backmargin_balance (
+     base_code
+   , cust_code
+   , supplier_code
+   , supplier_site_code
+   , closing_date
+   , expect_payment_date
+)
+TABLESPACE xxidx2
+/

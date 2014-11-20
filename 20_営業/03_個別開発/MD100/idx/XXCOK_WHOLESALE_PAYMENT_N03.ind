@@ -1,0 +1,9 @@
+CREATE INDEX xxcok.xxcok_wholesale_payment_n03
+ON xxcok.xxcok_wholesale_payment (
+     supplier_code
+   , selling_month
+   , expect_payment_date
+   , base_code
+)
+TABLESPACE xxidx2
+/

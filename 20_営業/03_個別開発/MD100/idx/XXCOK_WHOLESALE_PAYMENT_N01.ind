@@ -1,0 +1,7 @@
+CREATE INDEX xxcok.xxcok_wholesale_payment_n01
+ON xxcok.xxcok_wholesale_payment (
+     info_interface_status
+   , ap_interface_status
+)
+TABLESPACE xxidx2
+/

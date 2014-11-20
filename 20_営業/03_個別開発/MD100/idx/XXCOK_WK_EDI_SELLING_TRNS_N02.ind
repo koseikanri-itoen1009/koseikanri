@@ -1,0 +1,6 @@
+CREATE INDEX xxcok.xxcok_wk_edi_selling_trns_n02
+ON xxcok.xxcok_wk_edi_selling_trns (
+     edi_selling_trns_id
+)
+TABLESPACE xxidx2
+/

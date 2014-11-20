@@ -1,0 +1,6 @@
+CREATE INDEX xxcok.xxcok_backmargin_balance_n01
+ON xxcok.xxcok_backmargin_balance (
+     closing_date
+)
+TABLESPACE xxidx2
+/
