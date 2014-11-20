@@ -18,51 +18,71 @@ WITH
   FROM   xxcso_sp_decision_wf_orgs  xsdwo
   WHERE  xsdwo.base_code         = (SELECT xtsdr.app_base_code FROM xxcso_tmp_sp_dec_request xtsdr)
   AND    xsdwo.sends_dept_code1  IS NOT NULL
+  AND    TRUNC(xsdwo.effective_st_date) <= TRUNC(xxcso_util_common_pkg.get_online_sysdate)
+  AND    TRUNC(NVL(xsdwo.effective_ed_date,   TRUNC(xxcso_util_common_pkg.get_online_sysdate))) >= TRUNC(xxcso_util_common_pkg.get_online_sysdate)
   UNION
   SELECT xsdwo.sends_dept_code2  base_code
   FROM   xxcso_sp_decision_wf_orgs  xsdwo
   WHERE  xsdwo.base_code         = (SELECT xtsdr.app_base_code FROM xxcso_tmp_sp_dec_request xtsdr)
   AND    xsdwo.sends_dept_code2  IS NOT NULL
+  AND    TRUNC(xsdwo.effective_st_date) <= TRUNC(xxcso_util_common_pkg.get_online_sysdate)
+  AND    TRUNC(NVL(xsdwo.effective_ed_date,   TRUNC(xxcso_util_common_pkg.get_online_sysdate))) >= TRUNC(xxcso_util_common_pkg.get_online_sysdate)
   UNION
   SELECT xsdwo.sends_dept_code3  base_code
   FROM   xxcso_sp_decision_wf_orgs  xsdwo
   WHERE  xsdwo.base_code         = (SELECT xtsdr.app_base_code FROM xxcso_tmp_sp_dec_request xtsdr)
   AND    xsdwo.sends_dept_code3  IS NOT NULL
+  AND    TRUNC(xsdwo.effective_st_date) <= TRUNC(xxcso_util_common_pkg.get_online_sysdate)
+  AND    TRUNC(NVL(xsdwo.effective_ed_date,   TRUNC(xxcso_util_common_pkg.get_online_sysdate))) >= TRUNC(xxcso_util_common_pkg.get_online_sysdate)
   UNION
   SELECT xsdwo.sends_dept_code4  base_code
   FROM   xxcso_sp_decision_wf_orgs  xsdwo
   WHERE  xsdwo.base_code         = (SELECT xtsdr.app_base_code FROM xxcso_tmp_sp_dec_request xtsdr)
   AND    xsdwo.sends_dept_code4  IS NOT NULL
+  AND    TRUNC(xsdwo.effective_st_date) <= TRUNC(xxcso_util_common_pkg.get_online_sysdate)
+  AND    TRUNC(NVL(xsdwo.effective_ed_date,   TRUNC(xxcso_util_common_pkg.get_online_sysdate))) >= TRUNC(xxcso_util_common_pkg.get_online_sysdate)
   UNION
   SELECT xsdwo.sends_dept_code5  base_code
   FROM   xxcso_sp_decision_wf_orgs  xsdwo
   WHERE  xsdwo.base_code         = (SELECT xtsdr.app_base_code FROM xxcso_tmp_sp_dec_request xtsdr)
   AND    xsdwo.sends_dept_code5  IS NOT NULL
+  AND    TRUNC(xsdwo.effective_st_date) <= TRUNC(xxcso_util_common_pkg.get_online_sysdate)
+  AND    TRUNC(NVL(xsdwo.effective_ed_date,   TRUNC(xxcso_util_common_pkg.get_online_sysdate))) >= TRUNC(xxcso_util_common_pkg.get_online_sysdate)
   UNION
   SELECT xsdwo.sends_dept_code6  base_code
   FROM   xxcso_sp_decision_wf_orgs  xsdwo
   WHERE  xsdwo.base_code         = (SELECT xtsdr.app_base_code FROM xxcso_tmp_sp_dec_request xtsdr)
   AND    xsdwo.sends_dept_code6  IS NOT NULL
+  AND    TRUNC(xsdwo.effective_st_date) <= TRUNC(xxcso_util_common_pkg.get_online_sysdate)
+  AND    TRUNC(NVL(xsdwo.effective_ed_date,   TRUNC(xxcso_util_common_pkg.get_online_sysdate))) >= TRUNC(xxcso_util_common_pkg.get_online_sysdate)
   UNION
   SELECT xsdwo.sends_dept_code7  base_code
   FROM   xxcso_sp_decision_wf_orgs  xsdwo
   WHERE  xsdwo.base_code         = (SELECT xtsdr.app_base_code FROM xxcso_tmp_sp_dec_request xtsdr)
   AND    xsdwo.sends_dept_code7  IS NOT NULL
+  AND    TRUNC(xsdwo.effective_st_date) <= TRUNC(xxcso_util_common_pkg.get_online_sysdate)
+  AND    TRUNC(NVL(xsdwo.effective_ed_date,   TRUNC(xxcso_util_common_pkg.get_online_sysdate))) >= TRUNC(xxcso_util_common_pkg.get_online_sysdate)
   UNION
   SELECT xsdwo.sends_dept_code8  base_code
   FROM   xxcso_sp_decision_wf_orgs  xsdwo
   WHERE  xsdwo.base_code         = (SELECT xtsdr.app_base_code FROM xxcso_tmp_sp_dec_request xtsdr)
   AND    xsdwo.sends_dept_code8  IS NOT NULL
+  AND    TRUNC(xsdwo.effective_st_date) <= TRUNC(xxcso_util_common_pkg.get_online_sysdate)
+  AND    TRUNC(NVL(xsdwo.effective_ed_date,   TRUNC(xxcso_util_common_pkg.get_online_sysdate))) >= TRUNC(xxcso_util_common_pkg.get_online_sysdate)
   UNION
   SELECT xsdwo.sends_dept_code9  base_code
   FROM   xxcso_sp_decision_wf_orgs  xsdwo
   WHERE  xsdwo.base_code         = (SELECT xtsdr.app_base_code FROM xxcso_tmp_sp_dec_request xtsdr)
   AND    xsdwo.sends_dept_code9  IS NOT NULL
+  AND    TRUNC(xsdwo.effective_st_date) <= TRUNC(xxcso_util_common_pkg.get_online_sysdate)
+  AND    TRUNC(NVL(xsdwo.effective_ed_date,   TRUNC(xxcso_util_common_pkg.get_online_sysdate))) >= TRUNC(xxcso_util_common_pkg.get_online_sysdate)
   UNION
   SELECT xsdwo.sends_dept_code10 base_code
   FROM   xxcso_sp_decision_wf_orgs  xsdwo
   WHERE  xsdwo.base_code         = (SELECT xtsdr.app_base_code FROM xxcso_tmp_sp_dec_request xtsdr)
   AND    xsdwo.sends_dept_code10 IS NOT NULL
+  AND    TRUNC(xsdwo.effective_st_date) <= TRUNC(xxcso_util_common_pkg.get_online_sysdate)
+  AND    TRUNC(NVL(xsdwo.effective_ed_date,   TRUNC(xxcso_util_common_pkg.get_online_sysdate))) >= TRUNC(xxcso_util_common_pkg.get_online_sysdate)
   )
 SELECT  '1'  range_type
        ,flvv2.lookup_type approval_type_code
