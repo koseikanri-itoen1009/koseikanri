@@ -8,7 +8,7 @@ AS
  *                           訪問売上計画管理表を帳票に出力します。
  * MD.050                  : 営業システム構築プロジェクトアドオン：
  *                           訪問売上計画管理表
- * Version                 : 1.3
+ * Version                 : 1.4
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -59,7 +59,7 @@ AS
  *  2009-05-19    1.3   Hiroshi.Ogawa     障害番号：T1_0945,T1_1021,T1_1024,T1_1027,T1_1028
  *  2009-05-19    1.3   Hiroshi.Ogawa     障害番号：T1_1029,T1_1031,T1_1033,T1_1037,T1_1056
  *  2009-06-02    1.3   Daisuke.Abe       PT対応
- *
+ *  2009-06-26    1.4   Satomura.Kazuo    統合テスト障害番号0000016対応
  *****************************************************************************************/
 --
 --#######################  固定グローバル定数宣言部 START   #######################
@@ -203,6 +203,9 @@ AS
   -- 未訪問顧客一覧帳票ワークテーブルのデータ削除に失敗しました、処理を終了します。（SQLエラー：ORA-XXXX ・・・）システ      ム管理者に連絡してください。
   cv_tkn_number_11          CONSTANT VARCHAR2(100) := 'APP-XXCSO1-00140';  -- (データがありません。)
   cv_tkn_number_12          CONSTANT VARCHAR2(100) := 'APP-XXCSO1-00173';  -- 参照タイプなし
+  /* 2009.06.26 K.Satomura 統合テスト障害番号0000016対応 START */
+  cv_tkn_number_13          CONSTANT VARCHAR2(100) := 'APP-XXCSO1-00539';
+  /* 2009.06.26 K.Satomura 統合テスト障害番号0000016対応 END */
 --
   -- トークンコード
   cv_tkn_entry              CONSTANT VARCHAR2(5)   := 'ENTRY' ;             -- ENTRY
@@ -212,6 +215,9 @@ AS
   cv_tkn_cnt                CONSTANT VARCHAR2(10)  := 'COUNT' ;             -- COUNT
   cv_tkn_task_name          CONSTANT VARCHAR2(10)  := 'TASK_NAME' ;         -- TASK_NAME
   cv_tkn_lookup_type_name   CONSTANT VARCHAR2(20)  := 'LOOKUP_TYPE_NAME' ;  -- LOOKUP_TYPE_NAME
+  /* 2009.06.26 K.Satomura 統合テスト障害番号0000016対応 START */
+  cv_tkn_item               CONSTANT VARCHAR2(100) := 'ITEM';
+  /* 2009.06.26 K.Satomura 統合テスト障害番号0000016対応 END */
   -- DEBUG_LOG用メッセージ
 --
   -- ===============================
@@ -4646,9 +4652,18 @@ DO_ERROR('A-1');
   -- ユーザー宣言部
   -- ===============================
   -- *** ローカル定数 ***
+    /* 2009.06.26 K.Satomura 統合テスト障害番号0000016対応 START */
+    cv_manage_base_code CONSTANT VARCHAR2(100) := 'XXCSO1_MANAGE_BASE_CODE';
+    cv_tkn_msg_base     CONSTANT VARCHAR2(100) := '拠点';
+    cv_tkn_msg_errmsg   CONSTANT VARCHAR2(100) := '（非直轄範囲）';
+    /* 2009.06.26 K.Satomura 統合テスト障害番号0000016対応 END */
   -- *** ローカル変数 ***
     lv_boolean                    VARCHAR2(5);              -- 共通関数リターン値を格納
     ld_year_month_lastday         DATE;                     -- 基準年月月末日（オンライン日付考慮）
+    /* 2009.06.26 K.Satomura 統合テスト障害番号0000016対応 START */
+    lv_manage_base_code fnd_profile_option_values.profile_option_value%TYPE;
+    ln_work_count       NUMBER;
+    /* 2009.06.26 K.Satomura 統合テスト障害番号0000016対応 END */
   --
   BEGIN
 --##################  固定ステータス初期化部 START   ###################
@@ -4688,15 +4703,54 @@ DO_ERROR('A-1');
        buff   => '基準年月の１日' || gd_year_month_day
      );
 --
-    -- 入力された拠点コード、帳票種別に実行権限が、あるかをチェックします。
-    xxcso_util_common_pkg.chk_exe_report_visite_sales(
-       in_user_id     => fnd_global.user_id
-      ,in_resp_id     => gn_resp_id
-      ,iv_base_code   => gv_base_code
-      ,iv_report_type => gv_report_type
-      ,ov_ret_code    => lv_boolean
-      ,ov_err_msg     => lv_errmsg
-    );
+    /* 2009.06.26 K.Satomura 統合テスト障害番号0000016対応 START */
+    lv_manage_base_code := fnd_profile.value(cv_manage_base_code);
+    --
+    IF (lv_manage_base_code IS NULL) THEN
+    /* 2009.06.26 K.Satomura 統合テスト障害番号0000016対応 END */
+      -- 入力された拠点コード、帳票種別に実行権限が、あるかをチェックします。
+      xxcso_util_common_pkg.chk_exe_report_visite_sales(
+         in_user_id     => fnd_global.user_id
+        ,in_resp_id     => gn_resp_id
+        ,iv_base_code   => gv_base_code
+        ,iv_report_type => gv_report_type
+        ,ov_ret_code    => lv_boolean
+        ,ov_err_msg     => lv_errmsg
+      );
+    /* 2009.06.26 K.Satomura 統合テスト障害番号0000016対応 START */
+    ELSE
+      -- プロファイルに値がある場合、入力された拠点コードが
+      -- プロファイルの拠点コード配下に存在するかチェックをする。
+      IF (lv_manage_base_code <> gv_base_code) THEN
+        -- プロファイルの拠点コードと、入力された拠点コードが異なる場合
+        SELECT COUNT(1)
+        INTO   ln_work_count
+        FROM   (
+                 SELECT     abl.child_base_code child_base_code
+                 FROM       xxcso_aff_base_level_v2 abl
+                 START WITH abl.base_code = lv_manage_base_code
+                 CONNECT BY PRIOR abl.child_base_code = abl.base_code
+               ) aff
+        WHERE  aff.child_base_code = gv_base_code
+        ;
+        --
+        IF (ln_work_count <= 0) THEN
+          lv_errmsg := xxccp_common_pkg.get_msg(
+                          iv_application  => cv_app_name
+                         ,iv_name         => cv_tkn_number_13
+                         ,iv_token_name1  => cv_tkn_item
+                         ,iv_token_value1 => cv_tkn_msg_base
+                         ,iv_token_name2  => cv_tkn_errmsg
+                         ,iv_token_value2 => cv_tkn_msg_errmsg
+                       );
+          lv_boolean := 'FALSE';
+          --
+        END IF;
+        --
+      END IF;
+      --
+    END IF;
+    /* 2009.06.26 K.Satomura 統合テスト障害番号0000016対応 END */
 --
 DO_ERROR('A-2-2');
 --
@@ -20545,7 +20599,7 @@ DO_ERROR('A-9');
     ,ov_errmsg           OUT NOCOPY VARCHAR2   -- ユーザー・エラー・メッセージ  --# 固定 #
   )
   IS
-        -- ===============================
+    -- ===============================
     -- 固定ローカル定数
     -- ===============================
     cv_prg_name             CONSTANT VARCHAR2(100)   := 'submain';     -- プログラム名
