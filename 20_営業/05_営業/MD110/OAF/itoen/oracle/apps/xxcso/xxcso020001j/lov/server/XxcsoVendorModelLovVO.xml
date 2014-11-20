@@ -14,7 +14,7 @@ SELECT  punv.attribute2 maker_code
        ,punv.un_number
        ,punv.attribute1 vendor_type
        ,punv.attribute3 vendor_form
-       ,punv.attribute7 sele_number
+       ,punv.attribute8 sele_number
        ,punv.un_number_id
 FROM    fnd_lookup_values_vl    flvv
        ,po_hazard_classes_vl    phcv
