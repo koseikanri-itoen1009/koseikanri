@@ -11,5 +11,5 @@
  * ------------- ----- ------------ -------------------------------------
  *  2009/07/09    1.0  K.Atsushiba   [è·äQ0000488] èââÒçÏê¨
  ************************************************************************/
-CREATE INDEX XXCOS_REP_SCH_DLV_LIST_N01 ON XXCOS_REP_SCH_DLV_LIST (REQUEST_ID) TABLESPACE xxidx2
+CREATE INDEX XXCOS.XXCOS_REP_SCH_DLV_LIST_N01 ON XXCOS_REP_SCH_DLV_LIST (REQUEST_ID) TABLESPACE xxidx2
 /
