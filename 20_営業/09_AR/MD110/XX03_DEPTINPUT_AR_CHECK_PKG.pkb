@@ -7,7 +7,7 @@ AS
  * Package Name           : xx03_deptinput_ar_check_pkg(body)
  * Description            : 部門入力(AR)において入力チェックを行う共通関数
  * MD.070                 : 部門入力(AR)共通関数 OCSJ/BFAFIN/MD070/F702
- * Version                : 11.5.10.2.10D
+ * Version                : 11.5.10.2.11
  *
  * Program List
  *  -------------------------- ---- ----- --------------------------------------------------
@@ -47,6 +47,7 @@ AS
  *  2007/08/16   11.5.10.2.10B  銀行支店の無効日は前日まで有効とするように修正
  *  2007/08/28   11.5.10.2.10C  AR通貨有効日の比較対象は請求書日付とする修正
  *  2007/10/29   11.5.10.2.10D  通貨の精度チェック(入力可能精度か桁チェック)追加
+ *  2010/01/14   11.5.10.2.11   障害「E_本稼動_01066」対応
  *
  *****************************************************************************************/
 --
@@ -448,7 +449,43 @@ AS
     WHERE  XRS.RECEIVABLE_ID = in_receivable_id
       AND  RAA_BILL.STATUS = 'A'
       AND  RAA_BILL.CUST_ACCOUNT_ID  = XRS.CUSTOMER_ID;
-
+--
+-- ver 11.5.10.2.11 Add Start
+    --顧客業態チェックカーソル
+    CURSOR xx03_gyotai_cur
+    IS
+    SELECT COUNT(1) exist_check
+    FROM   xx03_receivable_slips xrs
+          ,ra_cust_trx_types_all rctta
+    WHERE xrs.receivable_id = in_receivable_id
+    AND   rctta.cust_trx_type_id = xrs.trans_type_id
+    AND   (
+           (rctta.attribute4 IS NOT NULL
+            AND
+            EXISTS (SELECT 'X' 
+                    FROM xxcmm_cust_accounts xxca
+                        ,fnd_lookup_values_vl flvv
+                    WHERE xxca.customer_id = xrs.customer_id
+                    AND   flvv.lookup_type = rctta.attribute4
+                    AND   flvv.lookup_code = xxca.business_low_type
+                    AND   flvv.enabled_flag = 'Y'
+                    AND   SYSDATE BETWEEN NVL(flvv.start_date_active,SYSDATE) AND NVL(flvv.end_date_active,SYSDATE)))
+           OR
+           (rctta.attribute4 IS NULL));
+--
+    --顧客区分チェックカーソル
+    CURSOR xx03_customer_class_cur
+    IS
+    SELECT COUNT(1) exist_check
+    FROM xx03_receivable_slips xrs
+        ,ra_cust_trx_types_all rctta
+        ,hz_cust_accounts hzca
+    WHERE xrs.receivable_id = in_receivable_id
+    AND   rctta.cust_trx_type_id = xrs.trans_type_id
+    AND   rctta.attribute7 = 'Y'
+    AND   hzca.cust_account_id = xrs.customer_id
+    AND   hzca.customer_class_code = '14';
+-- ver 11.5.10.2.11 Add End
 --
     --顧客事業所チェックカーソル
     CURSOR xx03_cust_office_cur
@@ -610,6 +647,62 @@ AS
                                AND NVL(XTCLV.END_DATE  , TO_DATE('4712/12/31', 'YYYY/MM/DD'));
 --
 --2006/02/15 Ver11.5.10.1.6E add End
+-- ver 11.5.10.2.11 Add Start
+    -- 納品書番号チェックカーソル
+    CURSOR xx03_receipt_line_no_chk_cur
+    IS
+      SELECT rctta.attribute6          AS attribute6,          -- 納品書番号チェック
+             xrsl.slip_line_reciept_no AS slip_line_reciept_no -- 納品書番号
+      FROM xx03_receivable_slips xrs,
+           xx03_receivable_slips_line xrsl,
+           ra_cust_trx_types_all rctta
+      WHERE xrs.receivable_id = in_receivable_id
+      AND   xrsl.receivable_id = xrs.receivable_id
+      AND   rctta.cust_trx_type_id = xrs.trans_type_id
+      AND   rctta.attribute6 IS NOT NULL;
+--
+    -- 取消対象伝票消し込みチェックカーソル
+    CURSOR xx03_cancel_chk_cur
+    IS
+      SELECT xrs.orig_invoice_num                          AS orig_invoice_num,
+             acrv.receipt_number                           AS receipt_number,
+             acrv.payment_method_dsp                       AS payment_method_dsp,
+             acrv.receipt_date                             AS receipt_date,
+             acrv.customer_number||':'||acrv.customer_name AS customer,
+             acrv.amount                                   AS amount,
+             acrv.document_number                          AS document_number
+      FROM xx03_receivable_slips xrs
+          ,ra_customer_trx_all rcta
+          ,ar_receivable_applications_all araa
+          ,ar_cash_receipts_v acrv
+      WHERE xrs.receivable_id = in_receivable_id
+      AND   rcta.trx_number = xrs.orig_invoice_num
+      AND   rcta.org_id = FND_PROFILE.VALUE('ORG_ID')
+      AND   rcta.set_of_books_id = FND_PROFILE.VALUE('GL_SET_OF_BKS_ID')
+      AND   araa.applied_customer_trx_id = rcta.customer_trx_id
+      AND   araa.set_of_books_id = rcta.set_of_books_id
+      AND   araa.org_id = rcta.org_id
+      AND   araa.display = 'Y'
+      AND   acrv.cash_receipt_id = araa.cash_receipt_id;
+--
+    --勘定科目チェックカーソル
+    CURSOR xx03_account_chk_cur
+    IS
+    SELECT xrsl.line_number
+    FROM   xx03_receivable_slips xrs
+          ,xx03_receivable_slips_line xrsl
+          ,ra_cust_trx_types_all rctta
+    WHERE xrs.receivable_id = in_receivable_id
+    AND   xrsl.receivable_id = xrs.receivable_id
+    AND   rctta.cust_trx_type_id = xrs.trans_type_id
+    AND   rctta.attribute8 IS NOT NULL
+    AND   NOT EXISTS (SELECT 'X' 
+                      FROM fnd_lookup_values_vl flvv
+                      WHERE flvv.lookup_type = rctta.attribute8
+                      AND   flvv.lookup_code = xrsl.segment3
+                      AND   flvv.enabled_flag = 'Y'
+                      AND   SYSDATE BETWEEN NVL(flvv.start_date_active,SYSDATE) AND NVL(flvv.end_date_active,SYSDATE));
+-- ver 11.5.10.2.11 Add Start
 --
     -- 共通エラーチェック結果取得カーソル
     CURSOR xx03_errchk_result_cur
@@ -663,6 +756,18 @@ AS
     --税金コードチェックカーソルレコード型
     xx03_tax_col_rec             xx03_tax_col_cur%ROWTYPE;
 -- 2006/02/18 Ver11.5.10.1.6E Add END
+-- ver 11.5.10.2.11 Add Start
+    --顧客業態チェックカーソルレコード型
+    xx03_gyotai_rec              xx03_gyotai_cur%ROWTYPE;
+    -- 取消対象伝票消し込みチェックカーソルレコード型
+    xx03_cancel_chk_rec          xx03_cancel_chk_cur%ROWTYPE;
+    -- 納品書番号チェックカーソル
+    xx03_receipt_line_no_chk_rec xx03_receipt_line_no_chk_cur%ROWTYPE;
+    -- 顧客区分チェックカーソル
+    xx03_customer_class_rec xx03_customer_class_cur%ROWTYPE;
+    -- 勘定科目チェックカーソル
+    xx03_account_chk_rec xx03_account_chk_cur%ROWTYPE;
+-- ver 11.5.10.2.11 Add End
 
 --
     -- 相互検証用パラメータ
@@ -675,6 +780,12 @@ AS
     lv_segment_array    FND_FLEX_EXT.SEGMENTARRAY;
     on_combination_id   NUMBER         := null;                         -- コンビネーションID
     ld_data_set         NUMBER         := -1;
+-- ver 11.5.10.2.11 Add Start
+    lv_line_rpt_no_chk1  CONSTANT VARCHAR2(1) := '1';                   -- 納品書番号チェック(必須のみチェック)
+    lv_line_rpt_no_chk2  CONSTANT VARCHAR2(1) := '2';                   -- 納品書番号チェック(必須＋フォーマットチェック)
+    lv_line_rpt_no_chk3  CONSTANT VARCHAR2(1) := '3';                   -- 納品書番号チェック(フォーマットチェックのみ)
+    lv_line_rpt_no_rule1 CONSTANT VARCHAR2(1) := 'I';                   -- 納品書番号先頭文字列 
+-- ver 11.5.10.2.11 Add End
 --
     -- ===============================
     -- ユーザー定義例外
@@ -1059,6 +1170,30 @@ AS
         END IF;
         CLOSE xx03_customer_cur;
 --
+-- ver 11.5.10.2.11 Add Start
+        --顧客業態チェック
+        OPEN xx03_gyotai_cur;
+        FETCH xx03_gyotai_cur INTO xx03_gyotai_rec;
+        IF xx03_gyotai_rec.exist_check = 0 THEN
+          -- 顧客チェックエラー
+          errflg_tbl(ln_err_cnt) := 'E';
+          errmsg_tbl(ln_err_cnt) := xx00_message_pkg.get_msg('XXCFR', 'APP-XXCFR1-00090');
+          ln_err_cnt := ln_err_cnt + 1;
+        END IF;
+        CLOSE xx03_gyotai_cur;
+--
+        --顧客区分チェック
+        OPEN xx03_customer_class_cur;
+        FETCH xx03_customer_class_cur INTO xx03_customer_class_rec;
+        IF xx03_customer_class_rec.exist_check <> 0 THEN
+          -- 顧客区分チェックエラー
+          errflg_tbl(ln_err_cnt) := 'E';
+          errmsg_tbl(ln_err_cnt) := xx00_message_pkg.get_msg('XXCFR', 'APP-XXCFR1-00091');
+          ln_err_cnt := ln_err_cnt + 1;
+        END IF;
+        CLOSE xx03_customer_class_cur;
+-- ver 11.5.10.2.11 Add End
+--
         --顧客事業所チェック
         OPEN xx03_cust_office_cur;
         FETCH xx03_cust_office_cur INTO xx03_cust_office_rec;
@@ -1069,6 +1204,84 @@ AS
           ln_err_cnt := ln_err_cnt + 1;
         END IF;
         CLOSE xx03_cust_office_cur;
+--
+-- ver 11.5.10.2.11 Add Start
+        --取消伝票消し込みチェック
+        OPEN xx03_cancel_chk_cur;
+        FETCH xx03_cancel_chk_cur INTO xx03_cancel_chk_rec;
+        IF xx03_cancel_chk_cur%FOUND THEN
+          errflg_tbl(ln_err_cnt) := 'E';
+          errmsg_tbl(ln_err_cnt) := xx00_message_pkg.get_msg('XXCFR',
+                                                             'APP-XXCFR1-00088',
+                                                             'TRX_NUMBER',
+                                                             xx03_cancel_chk_rec.orig_invoice_num,
+                                                             'RECEIPT_NUMBER',
+                                                             xx03_cancel_chk_rec.receipt_number,
+                                                             'PAYMENT_METHOD_DSP',
+                                                             xx03_cancel_chk_rec.payment_method_dsp,
+                                                             'RECEIPT_DATE',
+                                                             xx03_cancel_chk_rec.receipt_date,
+                                                             'CUSTOMER',
+                                                             xx03_cancel_chk_rec.customer,
+                                                             'AMOUNT',
+                                                             xx03_cancel_chk_rec.amount,
+                                                             'DOCUMENT_NUMBER',
+                                                             xx03_cancel_chk_rec.document_number);
+          ln_err_cnt := ln_err_cnt + 1;
+        END IF;
+        CLOSE xx03_cancel_chk_cur;
+--
+        -- 勘定科目チェック
+        OPEN xx03_account_chk_cur;
+        <<account_chk_loop>>
+        LOOP
+          FETCH xx03_account_chk_cur INTO xx03_account_chk_rec;
+          EXIT WHEN xx03_account_chk_cur%NOTFOUND;
+          errflg_tbl(ln_err_cnt) := 'E';
+          errmsg_tbl(ln_err_cnt) := xx00_message_pkg.get_msg('XXCFR',
+                                                             'APP-XXCFR1-00092',
+                                                             'LINE_NUMBER',
+                                                             xx03_account_chk_rec.line_number);
+          ln_err_cnt := ln_err_cnt + 1;
+        END LOOP account_chk_loop;
+        CLOSE xx03_account_chk_cur;
+--
+        -- 納品書番号フォーマットチェック
+        OPEN xx03_receipt_line_no_chk_cur;
+        <<receipt_line_no_chk_loop>>
+        LOOP 
+          FETCH xx03_receipt_line_no_chk_cur INTO xx03_receipt_line_no_chk_rec;
+          EXIT WHEN xx03_receipt_line_no_chk_cur%NOTFOUND;
+          -- 納品書番号 必須チェックのみの場合
+          IF  (xx03_receipt_line_no_chk_rec.attribute6 IN (lv_line_rpt_no_chk1,lv_line_rpt_no_chk2))
+          AND (xx03_receipt_line_no_chk_rec.slip_line_reciept_no IS NULL) THEN
+            errflg_tbl(ln_err_cnt) := 'E';
+            errmsg_tbl(ln_err_cnt) := xx00_message_pkg.get_msg('XXCFR','APP-XXCFR1-00089');
+            ln_err_cnt := ln_err_cnt + 1;
+            EXIT;
+          END IF;
+          -- 納品書番号 必須＋フォーマットチェックの場合
+          IF  (xx03_receipt_line_no_chk_rec.attribute6 IN (lv_line_rpt_no_chk2,lv_line_rpt_no_chk3))
+          AND (xx03_receipt_line_no_chk_rec.slip_line_reciept_no IS NOT NULL) THEN
+            DECLARE
+              ln_slip_line_receipt_no NUMBER;
+            BEGIN
+              IF SUBSTRB(xx03_receipt_line_no_chk_rec.slip_line_reciept_no,1,1) = lv_line_rpt_no_rule1 THEN
+                ln_slip_line_receipt_no := TO_NUMBER(SUBSTRB(xx03_receipt_line_no_chk_rec.slip_line_reciept_no,2));
+              ELSE
+                ln_slip_line_receipt_no := TO_NUMBER(xx03_receipt_line_no_chk_rec.slip_line_reciept_no);
+              END IF;
+            EXCEPTION
+              WHEN INVALID_NUMBER OR VALUE_ERROR THEN
+                errflg_tbl(ln_err_cnt) := 'E';
+                errmsg_tbl(ln_err_cnt) := xx00_message_pkg.get_msg('XXCFR','APP-XXCFR1-00089');
+                ln_err_cnt := ln_err_cnt + 1;
+                EXIT;
+            END;
+          END IF;
+        END LOOP receipt_line_no_chk_loop;
+        CLOSE xx03_receipt_line_no_chk_cur;
+-- ver 11.5.10.2.11 Add End
 --
         -- ver 11.5.10.2.10D Chg Start
         ----通貨チェック
