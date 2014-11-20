@@ -1,0 +1,1 @@
+CREATE INDEX xxcmn.xxcmn_tlc_n01 ON xxcmn.xxcmn_txn_lot_cost( item_id,lot_id ) TABLESPACE xxidx;

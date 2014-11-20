@@ -49,11 +49,7 @@ CREATE OR REPLACE VIEW xxcmn_parties2_v
 )
 AS
   SELECT  hp.party_id,
-          CASE
-            WHEN hca.cust_account_id IS NULL
-              THEN wc.freight_code
-              ELSE hca.account_number
-          END,
+          wc.freight_code,
           hp.status,
           hp.attribute24,
           hca.cust_account_id,
@@ -105,6 +101,62 @@ AS
   WHERE   hp.party_id = hca.party_id (+)
   AND     hp.party_id = wc.carrier_id (+)
   AND     hp.party_id = xp.party_id
+  AND     hca.cust_account_id IS NULL
+  UNION ALL
+  SELECT  hp.party_id,
+          hca.account_number,
+          hp.status,
+          hp.attribute24,
+          hca.cust_account_id,
+          hca.account_number,
+          hca.customer_class_code,
+          hca.status,
+          hca.attribute1,
+          hca.attribute2,
+          hca.attribute3,
+          hca.attribute4,
+          hca.attribute5,
+          hca.attribute6,
+          hca.attribute7,
+          hca.attribute9,
+          hca.attribute10,
+          hca.attribute11,
+          hca.attribute12,
+          NULL,
+          hca.attribute14,
+          hca.attribute15,
+          hca.attribute16,
+          hca.attribute13,
+          hca.attribute13,
+          hca.attribute17,
+          hca.attribute18,
+          hca.attribute19,
+          hca.attribute20,
+          wc.freight_code,
+          xp.start_date_active,
+          xp.end_date_active,
+          xp.party_name,
+          xp.party_short_name,
+          xp.party_name_alt,
+          xp.zip,
+          xp.address_line1,
+          xp.address_line2,
+          xp.phone,
+          xp.fax,
+          xp.reserve_order,
+          xp.drink_transfer_std,
+          xp.leaf_transfer_std,
+          xp.transfer_group,
+          xp.distribution_block,
+          xp.base_major_division
+  FROM    hz_parties        hp,
+          hz_cust_accounts  hca,
+          wsh_carriers      wc,
+          xxcmn_parties     xp
+  WHERE   hp.party_id = hca.party_id (+)
+  AND     hp.party_id = wc.carrier_id (+)
+  AND     hp.party_id = xp.party_id
+  AND     hca.cust_account_id IS NOT NULL
 ;
 --
 COMMENT ON COLUMN xxcmn_parties2_v.party_id                IS 'パーティーID';

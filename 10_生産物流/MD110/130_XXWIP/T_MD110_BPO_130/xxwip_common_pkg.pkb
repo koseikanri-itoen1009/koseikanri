@@ -40,17 +40,18 @@ AS
  *  get_can_stock_qty      F          手持在庫数量算出API(投入実績用)
  *
  * Change Record
- * ------------ ----- ---------------- -----------------------------------------------
- *  Date         Ver.  Editor           Description
- * ------------ ----- ---------------- -----------------------------------------------
- *  2007/11/13   1.0   H.Itou           新規作成
- *  2008/05/28   1.1   Oracle 二瓶 大輔 結合テスト不具合対応(委託加工費更新関数修正)
- *  2008/06/02   1.2   Oracle 二瓶 大輔 内部変更要求#130(委託加工費更新関数修正)
- *  2008/06/12   1.3   Oracle 二瓶 大輔 システムテスト不具合対応#78(委託加工費更新関数修正)
- *  2008/06/25   1.4   Oracle 二瓶 大輔 システムテスト不具合対応#75
- *  2008/06/27   1.5   Oracle 二瓶 大輔 結合テスト不具合対応(原料追加関数修正)
- *  2008/07/02   1.6   Oracle 伊藤ひとみ システムテスト不具合対応#343(荒茶製造情報取得関数修正)
- *  2008/07/10   1.7   Oracle 二瓶 大輔 システムテスト不具合対応#315(在庫単価取得関数修正)
+ * ------------ ----- ------------------ -----------------------------------------------
+ *  Date         Ver.  Editor             Description
+ * ------------ ----- ------------------ -----------------------------------------------
+ *  2007/11/13   1.0   H.Itou             新規作成
+ *  2008/05/28   1.1   Oracle 二瓶 大輔   結合テスト不具合対応(委託加工費更新関数修正)
+ *  2008/06/02   1.2   Oracle 二瓶 大輔   内部変更要求#130(委託加工費更新関数修正)
+ *  2008/06/12   1.3   Oracle 二瓶 大輔   システムテスト不具合対応#78(委託加工費更新関数修正)
+ *  2008/06/25   1.4   Oracle 二瓶 大輔   システムテスト不具合対応#75
+ *  2008/06/27   1.5   Oracle 二瓶 大輔   結合テスト不具合対応(原料追加関数修正)
+ *  2008/07/02   1.6   Oracle 伊藤ひとみ  システムテスト不具合対応#343(荒茶製造情報取得関数修正)
+ *  2008/07/10   1.7   Oracle 二瓶 大輔   システムテスト不具合対応#315(在庫単価取得関数修正)
+ *  2008/07/14   1.8   Oracle 伊藤ひとみ  結合不具合 指摘2対応  品質検査依頼情報作成で更新の場合、検査予定日・結果を更新しない。
  *****************************************************************************************/
 --
 --###############################  固定グローバル定数宣言部 START   ###############################
@@ -3561,13 +3562,15 @@ AS
             ,xqi.product_date            = lr_xxwip_qt_inspection.product_date           -- 製造日
             ,xqi.qty                     = lr_xxwip_qt_inspection.qty                    -- 数量
             ,xqi.prod_dely_date          = lr_xxwip_qt_inspection.prod_dely_date         -- 生産/納入日
-            ,xqi.inspect_due_date1       = lr_xxwip_qt_inspection.inspect_due_date1      -- 検査予定日１
-            ,xqi.qt_effect1              = lr_xxwip_qt_inspection.qt_effect1             -- 結果１
-            ,xqi.inspect_due_date2       = lr_xxwip_qt_inspection.inspect_due_date2      -- 検査予定日２
-            ,xqi.qt_effect2              = lr_xxwip_qt_inspection.qt_effect2             -- 結果２
-            ,xqi.inspect_due_date3       = lr_xxwip_qt_inspection.inspect_due_date3      -- 検査予定日３
-            ,xqi.qt_effect3              = lr_xxwip_qt_inspection.qt_effect3             -- 結果３
-            ,xqi.inspect_period          = lr_xxwip_qt_inspection.inspect_period         -- 検査期間
+-- 2008/07/14 H.Itou DEL START 検査予定日・結果は更新不要
+--            ,xqi.inspect_due_date1       = lr_xxwip_qt_inspection.inspect_due_date1      -- 検査予定日１
+--            ,xqi.qt_effect1              = lr_xxwip_qt_inspection.qt_effect1             -- 結果１
+--            ,xqi.inspect_due_date2       = lr_xxwip_qt_inspection.inspect_due_date2      -- 検査予定日２
+--            ,xqi.qt_effect2              = lr_xxwip_qt_inspection.qt_effect2             -- 結果２
+--            ,xqi.inspect_due_date3       = lr_xxwip_qt_inspection.inspect_due_date3      -- 検査予定日３
+--            ,xqi.qt_effect3              = lr_xxwip_qt_inspection.qt_effect3             -- 結果３
+--            ,xqi.inspect_period          = lr_xxwip_qt_inspection.inspect_period         -- 検査期間
+-- 2008/07/14 H.Itou DEL END 検査予定日・結果は更新不要
             ,xqi.use_by_date             = lr_xxwip_qt_inspection.use_by_date            -- 賞味期限
             ,xqi.unique_sign             = lr_xxwip_qt_inspection.unique_sign            -- 固有記号
             ,xqi.division                = lr_xxwip_qt_inspection.division               -- 区分
