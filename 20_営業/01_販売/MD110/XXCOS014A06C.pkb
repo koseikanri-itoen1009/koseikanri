@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCOS014A06C (body)
  * Description      : 納品予定プルーフリスト作成 
  * MD.050           : 納品予定プルーフリスト作成 MD050_COS_014_A06
- * Version          : 1.17
+ * Version          : 1.18
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -57,6 +57,7 @@ AS
  *  2010/03/10    1.16  S.Karikomi       [E_本稼働_01637] 売単価、売価金額修正
  *  2010/03/24    1.17  M.Hirose         [E_本稼働_01802] パフォーマンス対応
  *                                       [E_本稼働_01848] 納品日変更対応
+ *  2010/04/01    1.18  M.Hokkanji       [E_本稼動_01979] 原価金額(出荷)の計算式を変更
  *
 *** 開発中の変更内容 ***
 *****************************************************************************************/
@@ -5496,7 +5497,10 @@ out_line(buff => '1');
         --原価金額（出荷）設定
         l_data_tab('SHIPPING_COST_AMT') := TO_CHAR(
                                              TRUNC( TO_NUMBER( l_data_tab('SHIPPING_UNIT_PRICE') )
-                                                      * TO_NUMBER( l_data_tab('SUM_ORDER_QTY') ) ) );
+--********* 2010/04/01 1.18 M.Hokkanji  MOD START  ********* --
+--                                                      * TO_NUMBER( l_data_tab('SUM_ORDER_QTY') ) ) );
+                                                      * TO_NUMBER( l_data_tab('SUM_SHIPPING_QTY') ) ) );
+--********* 2010/04/01 1.18 M.Hokkanji  MOD END    ********* --
       END IF;
 -- ********* 2009/10/06 1.14 N.Maeda ADD  END  ********* --
 --
