@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCOS015A01C(body)
  * Description      : 情報系システム向け販売実績データの作成を行う
  * MD.050           : 情報系システム向け販売実績データの作成 MD050_COS_015_A01
- * Version          : 2.15
+ * Version          : 2.17
  *
  * Program List
  * --------------------------- ----------------------------------------------------------
@@ -76,6 +76,8 @@ AS
  *  2009/12/29    2.13  K.Kiriu          [E_本番_00531]伝票番号の桁数オーバー切捨て対応
  *  2010/01/06    2.14  K.Atsushiba      [E_本稼働_00922]情報系への売上実績連携のAR情報不正対応
  *  2010/02/02    2.15  K.Atsushiba      [E_本稼動_01386]消化VDのAR(速報用)対応
+ *  2010/02/16    2.16  K.Atsushiba      [E_本稼動_01398]GL記帳日から販売実績の納品日に変更(AR取引情報)
+ *  2010/02/23    2.17  K.Atsushiba      [E_本稼動_01675]ARの伝票番号から販売実績の納品伝票番号に変更(AR取引情報)
  *
  *****************************************************************************************/
 --
@@ -171,8 +173,11 @@ AS
 -- ************** 2009/09/28 2.11 N.Maeda ADD START **************** --
   cv_msg_details              CONSTANT VARCHAR2(20) := 'APP-XXCOS1-13322';    -- メッセージ用文字列:「詳細」
 -- ************** 2009/09/28 2.11 N.Maeda ADD  END  **************** --
+
 /* 2009/12/29 Ver2.13 Add Start */
-  cv_msg_ar_trx_number        CONSTANT VARCHAR2(20) := 'APP-XXCOS1-13323';    -- AR伝票番号桁数オーバーエラー
+/* 2010/02/23 Ver2.17 Del Start */
+--  cv_msg_ar_trx_number        CONSTANT VARCHAR2(20) := 'APP-XXCOS1-13323';    -- AR伝票番号桁数オーバーエラー
+/* 2010/02/23 Ver2.17 Del End */
 /* 2009/12/29 Ver2.13 Add End   */
 -- 2010/02/02 Ver.2.15 Add Start
   cv_msg_vd_digestion_data    CONSTANT VARCHAR2(20) := 'APP-XXCOS1-13324';    -- 消化計算(消化VD)データ取得エラー
@@ -198,11 +203,18 @@ AS
   cv_tkn_count_3              CONSTANT VARCHAR2(20) := 'COUNT3';              -- 件数3
 --****************************** 2009/04/23 2.3 6 T.Kitajima ADD  END  ******************************--
 /* 2009/12/29 Ver2.13 Add Start */
-  cv_tkn_base_code            CONSTANT VARCHAR2(20) := 'BASE_CODE';           -- 売上拠点
+/* 2010/02/23 Ver2.17 Del Start */
+--  cv_tkn_base_code            CONSTANT VARCHAR2(20) := 'BASE_CODE';           -- 売上拠点
+/* 2010/02/23 Ver2.17 Del End */
   cv_tkn_account_number       CONSTANT VARCHAR2(20) := 'ACCOUNT_NUMBER';      -- 顧客コード
-  cv_tkn_gl_date              CONSTANT VARCHAR2(20) := 'GL_DATE';             -- GL記帳日
-  cv_tkn_ar_trx_number        CONSTANT VARCHAR2(20) := 'TRX_NUMBER';          -- AR伝票番号
+/* 2010/02/23 Ver2.17 Del Start */
+--  cv_tkn_gl_date              CONSTANT VARCHAR2(20) := 'GL_DATE';             -- GL記帳日
+--  cv_tkn_ar_trx_number        CONSTANT VARCHAR2(20) := 'TRX_NUMBER';          -- AR伝票番号
+/* 2010/02/23 Ver2.17 Del End */
 /* 2009/12/29 Ver2.13 Add End   */
+/* 2010/02/23 Ver2.17 Add Start */
+    cv_tkn_sql_msg            CONSTANT VARCHAR2(20) := 'SQL_MSG';             -- SQLコード
+/* 2010/02/23 Ver2.17 Add End */
 -- 2010/02/02 Ver.2.15 Add Start
   cv_tkn_delivery_date        CONSTANT VARCHAR2(20) := 'DELIVERY_DATE';
   cv_tkn_sales_header_id      CONSTANT VARCHAR2(20) := 'SALES_HEADER_ID';
@@ -283,8 +295,10 @@ AS
   cv_relate_attri_req         CONSTANT VARCHAR2(1)     := '1';
 --****************************** 2009/06/08 2.8 N.Maeda ADD  END  ******************************--
 /* 2009/12/29 Ver2.13 Add Start */
-  cn_trx_num_length           CONSTANT NUMBER(2)       := 12;   --AR取引番号桁数
-  cn_1                        CONSTANT NUMBER(1)       := 1;    --数値:1(汎用)
+/* 2010/02/23 Ver2.17 Del Start */
+--  cn_trx_num_length           CONSTANT NUMBER(2)       := 12;   --AR取引番号桁数
+--  cn_1                        CONSTANT NUMBER(1)       := 1;    --数値:1(汎用)
+/* 2010/02/23 Ver2.17 Del End */
 /* 2009/12/29 Ver2.13 Add End   */
 -- 2010/02/02 Ver.2.15 Add Start
   cv_txn_type_02              CONSTANT VARCHAR2(50) := 'XXCOS_015_A01_02';                -- 消化VD
@@ -314,7 +328,9 @@ AS
   gn_card_count         NUMBER;                                                   -- カード分カウント
 --****************************** 2009/04/23 2.3 6 T.Kitajima ADD  END  ******************************--
 /* 2009/12/29 Ver2.13 Add Start */
-  gn_ar_trx_num_warn   NUMBER(1) DEFAULT 0;                                      -- AR伝票番号エラー警告保持
+/* 2010/02/23 Ver2.17 Del Start */
+--  gn_ar_trx_num_warn   NUMBER(1) DEFAULT 0;                                      -- AR伝票番号エラー警告保持
+/* 2010/02/23 Ver2.17 Del End */
 /* 2009/12/29 Ver2.13 Add End   */
 -- 2010/02/02 Ver.2.15 Add Start
   gt_mk_org_cls_vd       fnd_lookup_values.meaning%TYPE;                           -- 作成元特定区分(消化計算)
@@ -538,7 +554,9 @@ AS
              ,cust.customer_id              rcta_bill_to_customer_id     -- 請求先顧客ID
              ,line.gl_date                  rctlgda_gl_date              -- GL記帳日
 /* 2009/12/29 Ver2.13 Add Start */
-             ,cust.ship_account_number      ship_account_number          -- 出荷先顧客
+/* 2010/02/23 Ver2.17 Del Start */
+--             ,cust.ship_account_number      ship_account_number          -- 出荷先顧客
+/* 2010/02/23 Ver2.17 Del End */
 /* 2009/12/29 Ver2.13 Add End   */
       FROM
       -- 税金データ
@@ -587,7 +605,9 @@ AS
                 ,rctla.customer_trx_id         customer_trx_id              -- 取引ID
                 ,rctla.customer_trx_line_id    customer_trx_line_id         -- 取引明細ID
 /* 2009/12/29 Ver2.13 Add Start */
-                ,hca.account_number            ship_account_number     --出荷先顧客
+/* 2010/02/23 Ver2.17 Del Start */
+--                ,hca.account_number            ship_account_number     --出荷先顧客
+/* 2010/02/23 Ver2.17 Del End */
 /* 2009/12/29 Ver2.13 Add End   */
          FROM    ra_customer_trx_all           rcta                         -- AR取引情報ヘッダ
                 ,ra_customer_trx_lines_all     rctla                        -- AR取引情報明細
@@ -2233,63 +2253,69 @@ AS
     FOR ln_idx IN gt_ar_deal_tbl.FIRST..gt_ar_deal_tbl.LAST LOOP
       --
 /*2009/12/29 Ver2.13 Add Start */
-      --伝票番号(取引番号)の桁数チェック(警告)
-      IF ( lengthb( gt_ar_deal_tbl(ln_idx).rcta_trx_number ) > cn_trx_num_length ) THEN
-        --12桁以上の場合は、メッセージ出力(明細単位で出力)
-        lv_errmsg := xxccp_common_pkg.get_msg(
-                      iv_application  => cv_xxcos_short_name
-                     ,iv_name         => cv_msg_ar_trx_number
-                     ,iv_token_name1  => cv_tkn_base_code
-                     ,iv_token_value1 => gt_ar_deal_tbl(ln_idx).delivery_base_code
-                     ,iv_token_name2  => cv_tkn_account_number
-                     ,iv_token_value2 => gt_ar_deal_tbl(ln_idx).ship_account_number
-                     ,iv_token_name3  => cv_tkn_gl_date
-                     ,iv_token_value3 => TO_CHAR( gt_ar_deal_tbl(ln_idx).rctlgda_gl_date, cv_date_format )
-                     ,iv_token_name4  => cv_tkn_ar_trx_number
-                     ,iv_token_value4 => TO_CHAR( gt_ar_deal_tbl(ln_idx).rcta_trx_number )
-                     );
-        --ログ
-        FND_FILE.PUT_LINE( 
-          which  => FND_FILE.LOG 
-         ,buff   => lv_errmsg
-        );
-        --出力
-        FND_FILE.PUT_LINE( 
-          which  => FND_FILE.OUTPUT 
-         ,buff   => lv_errmsg
-        );
--- 2010/02/02 Ver.2.15 Add Start
-        --ログ
-        FND_FILE.PUT_LINE( 
-          which  => FND_FILE.LOG 
-         ,buff   => ''
-        );
-        --出力
-        FND_FILE.PUT_LINE( 
-          which  => FND_FILE.OUTPUT 
-         ,buff   => ''
-        );
--- 2010/02/02 Ver.2.15 Add End
-        
-        
-        --コンカレントを警告とする為、フラグで保持
-        gn_ar_trx_num_warn := cn_1;
-        --12桁に切捨て
-        gt_ar_deal_tbl(ln_idx).rcta_trx_number
-/*2010/01/06 Ver2.14 Mod Start   */
-          := SUBSTRB( gt_ar_deal_tbl(ln_idx).rcta_trx_number , 1, cn_trx_num_length );
---          := TO_NUMBER( SUBSTRB( TO_CHAR( gt_ar_deal_tbl(ln_idx).rcta_trx_number ), 1, cn_trx_num_length ) );
-/*2010/01/06 Ver2.14 Mod End   */
-      END IF;
-      --
+/* 2010/02/23 Ver2.17 Del Start */
+--      --伝票番号(取引番号)の桁数チェック(警告)
+--      IF ( lengthb( gt_ar_deal_tbl(ln_idx).rcta_trx_number ) > cn_trx_num_length ) THEN
+--        --12桁以上の場合は、メッセージ出力(明細単位で出力)
+--        lv_errmsg := xxccp_common_pkg.get_msg(
+--                      iv_application  => cv_xxcos_short_name
+--                     ,iv_name         => cv_msg_ar_trx_number
+--                     ,iv_token_name1  => cv_tkn_base_code
+--                     ,iv_token_value1 => gt_ar_deal_tbl(ln_idx).delivery_base_code
+--                     ,iv_token_name2  => cv_tkn_account_number
+--                     ,iv_token_value2 => gt_ar_deal_tbl(ln_idx).ship_account_number
+--                     ,iv_token_name3  => cv_tkn_gl_date
+--                     ,iv_token_value3 => TO_CHAR( gt_ar_deal_tbl(ln_idx).rctlgda_gl_date, cv_date_format )
+--                     ,iv_token_name4  => cv_tkn_ar_trx_number
+--                     ,iv_token_value4 => TO_CHAR( gt_ar_deal_tbl(ln_idx).rcta_trx_number )
+--                     );
+--        --ログ
+--        FND_FILE.PUT_LINE( 
+--          which  => FND_FILE.LOG 
+--         ,buff   => lv_errmsg
+--        );
+--        --出力
+--        FND_FILE.PUT_LINE( 
+--          which  => FND_FILE.OUTPUT 
+--         ,buff   => lv_errmsg
+--        );
+---- 2010/02/02 Ver.2.15 Add Start
+--        --ログ
+--        FND_FILE.PUT_LINE( 
+--          which  => FND_FILE.LOG 
+--         ,buff   => ''
+--        );
+--        --出力
+--        FND_FILE.PUT_LINE( 
+--          which  => FND_FILE.OUTPUT 
+--         ,buff   => ''
+--        );
+---- 2010/02/02 Ver.2.15 Add End
+--        --コンカレントを警告とする為、フラグで保持
+--        gn_ar_trx_num_warn := cn_1;
+--        --12桁に切捨て
+--        gt_ar_deal_tbl(ln_idx).rcta_trx_number
+--/*2010/01/06 Ver2.14 Mod Start   */
+--          := SUBSTRB( gt_ar_deal_tbl(ln_idx).rcta_trx_number , 1, cn_trx_num_length );
+----          := TO_NUMBER( SUBSTRB( TO_CHAR( gt_ar_deal_tbl(ln_idx).rcta_trx_number ), 1, cn_trx_num_length ) );
+--/*2010/01/06 Ver2.14 Mod End   */
+--      END IF;
+--      --
+/* 2010/02/23 Ver2.17 Del End */
 /*2009/12/29 Ver2.13 Add End   */
       lv_buffer :=
         cv_d_cot || gt_company_code || cv_d_cot                                  || cv_delimiter    -- 会社コード
 /*2010/01/06 Ver2.14 Mod Start   */
-        || TO_CHAR(gt_ar_deal_tbl(ln_idx).rctlgda_gl_date,cv_date_format_non_sep)  || cv_delimiter    -- 納品日
+/*2010/02/16 Ver2.16 Mod Start   */
+        || TO_CHAR(it_sales_rec.xseh_delivery_date,cv_date_format_non_sep)  || cv_delimiter             -- 納品日
+--        || TO_CHAR(gt_ar_deal_tbl(ln_idx).rctlgda_gl_date,cv_date_format_non_sep)  || cv_delimiter    -- 納品日
+/*2010/02/16 Ver2.16 Mod End   */
 --        || TO_CHAR(gt_ar_deal_tbl(ln_idx).rcta_trx_date,cv_date_format_non_sep)  || cv_delimiter    -- 納品日
 /*2010/01/06 Ver2.14 Mod End   */
-        || cv_d_cot || TO_CHAR(gt_ar_deal_tbl(ln_idx).rcta_trx_number) || cv_d_cot || cv_delimiter    -- 伝票番号
+/*2010/02/23 Ver2.17 Mod Start   */
+        || cv_d_cot || TO_CHAR(it_sales_rec.xseh_dlv_invoice_number) || cv_d_cot || cv_delimiter    -- 伝票番号
+--        || cv_d_cot || TO_CHAR(gt_ar_deal_tbl(ln_idx).rcta_trx_number) || cv_d_cot || cv_delimiter    -- 伝票番号
+/*2010/02/23 Ver2.17 Mod End   */
         || TO_CHAR(gt_ar_deal_tbl(ln_idx).rctla_line_number)                     || cv_delimiter    -- 行No
         || cv_d_cot || it_sales_rec.xseh_ship_to_customer_code || cv_d_cot       || cv_delimiter    -- 顧客コード
         || cv_d_cot || gt_ar_deal_tbl(ln_idx).puroduct_code || cv_d_cot          || cv_delimiter    -- 商品コード
@@ -2874,6 +2900,10 @@ AS
                   ,iv_token_value2 => TO_CHAR(g_sales_actual_rec.xseh_delivery_date,cv_date_format)
                   ,iv_token_name3  => cv_tkn_sales_header_id                          -- 販売実績ID
                   ,iv_token_value3 => g_sales_actual_rec.sales_exp_header_id
+/* 2010/02/23 Ver2.17 Add Start */
+                  ,iv_token_name4  => cv_tkn_sql_msg                          -- オラクルエラーコード
+                  ,iv_token_value4 => SQLERRM(SQLCODE)
+/* 2010/02/23 Ver2.17 Add End */
                 );
                 -- メッセージ出力
                 FND_FILE.PUT_LINE(
@@ -3176,11 +3206,13 @@ AS
     );
 --
 /* 2009/12/29 Ver2.13 Add Start */
-    --伝票番号桁数エラーの場合、警告とする
-    IF ( lv_retcode <> cv_status_error )
-      AND( gn_ar_trx_num_warn = cn_1 ) THEN
-      lv_retcode := cv_status_warn;
-    END IF;
+/* 2010/02/23 Ver2.17 Del Start */
+--    --伝票番号桁数エラーの場合、警告とする
+--    IF ( lv_retcode <> cv_status_error )
+--      AND( gn_ar_trx_num_warn = cn_1 ) THEN
+--      lv_retcode := cv_status_warn;
+--    END IF;
+/* 2010/02/23 Ver2.17 Del End */
 /* 2009/12/29 Ver2.13 Add End   */
     --終了メッセージ
     IF (lv_retcode = cv_status_normal) THEN
