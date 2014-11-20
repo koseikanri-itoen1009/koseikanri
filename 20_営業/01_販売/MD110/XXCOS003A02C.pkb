@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCOS003A02C(body)
  * Description      : 単価マスタIF出力（データ抽出）
  * MD.050           : 単価マスタIF出力（データ抽出） MD050_COS_003_A02
- * Version          : 1.2
+ * Version          : 1.3
  *
  * Program List     
  * ---------------------- ----------------------------------------------------------
@@ -26,6 +26,7 @@ AS
  *  2008/12/05   1.0    K.Okaguchi       新規作成
  *  2009/02/23   1.1    K.Okaguchi       [障害COS_111] 非在庫品目を抽出しないようにする。
  *  2009/02/24   1.2    T.Nakamura       [障害COS_130] メッセージ出力、ログ出力への出力内容の追加・修正
+ *  2009/05/28   1.3    S.Kayahara       [障害T1_1176] 単価の導出に端数処理追加
  *****************************************************************************************/
 --
 --#######################  固定グローバル定数宣言部 START   #######################
@@ -115,6 +116,11 @@ AS
   cv_lookup_type_gyotai   CONSTANT VARCHAR2(30) := 'XXCOS1_GYOTAI_SHO_MST_003_A02'; --参照タイプ　業態小分類
   cv_lookup_type_no_inv   CONSTANT VARCHAR2(30) := 'XXCOS1_NO_INV_ITEM_CODE'; --参照タイプ　非在庫品目
   cv_lookup_type_sals_cls CONSTANT VARCHAR2(30) := 'XXCOS1_SALE_CLASS';   -- 参照タイプ　売上区分
+--****************************** 2009/05/27 1.3  S.Kayahara MOD START ******************************--  
+  cv_amount_up            CONSTANT VARCHAR2(5)  := 'UP';                  -- 消費税_端数(切上)
+  cv_amount_down          CONSTANT VARCHAR(5)   := 'DOWN';                -- 消費税_端数(切捨て)
+  cv_amount_nearest       CONSTANT VARCHAR(10)  := 'NEAREST';             -- 消費税_端数(四捨五入)
+--****************************** 2009/05/27 1.3  S.Kayahara MOD END ******************************--  
 --
   -- ===============================
   -- ユーザー定義グローバル変数
@@ -165,11 +171,20 @@ AS
            ,xsel.creation_date                creation_date                     --作成日
            ,xsel.sales_exp_line_id            sales_exp_line_id                 --販売実績明細ID
            ,xsel.sales_class                  sales_class                       --売上区分
+--****************************** 2009/05/27 1.3  S.Kayahara MOD START ******************************--
+           ,hca.tax_rounding_rule             tax_round_rule                 --税金-端数処理
+--****************************** 2009/05/27 1.3  S.Kayahara MOD END ******************************--
     FROM    xxcos_sales_exp_headers xseh
            ,xxcos_sales_exp_lines   xsel
+--****************************** 2009/05/27 1.3  S.Kayahara MOD START ******************************--
+           ,hz_cust_accounts                  hca                 
+--****************************** 2009/05/27 1.3  S.Kayahara MOD END ******************************--
     WHERE   (xseh.cancel_correct_class IS NULL
            OR 
              xseh.order_no_hht         IS NULL )
+--****************************** 2009/05/27 1.3  S.Kayahara MOD START ******************************--
+    AND     hca.account_number           = xseh.ship_to_customer_code
+--****************************** 2009/05/27 1.3  S.Kayahara MOD END ******************************--          
     AND     xseh.dlv_invoice_class = cv_invoice_class_dliv
     AND     xseh.sales_exp_header_id =  xsel.sales_exp_header_id
     AND     xsel.sales_class         IN(gv_sales_cls_nml,gv_sales_cls_sls)
@@ -206,8 +221,14 @@ AS
            ,xsel.creation_date                creation_date                     --作成日
            ,xsel.sales_exp_line_id            sales_exp_line_id                 --販売実績明細ID
            ,xsel.sales_class                  sales_class                       --売上区分
+--****************************** 2009/05/27 1.3  S.Kayahara MOD START ******************************--
+           ,hca.tax_rounding_rule             tax_round_rule                 --税金-端数処理
+--****************************** 2009/05/27 1.3  S.Kayahara MOD END ******************************--
     FROM    xxcos_sales_exp_headers xseh
            ,xxcos_sales_exp_lines   xsel
+--****************************** 2009/05/27 1.3  S.Kayahara MOD START ******************************--
+           ,hz_cust_accounts                  hca                 
+--****************************** 2009/05/27 1.3  S.Kayahara MOD END ******************************--
            ,(SELECT  MAX(xseh.digestion_ln_number) digestion_ln_number
                     ,inl2.order_no_hht
              FROM   xxcos_sales_exp_headers xseh
@@ -234,6 +255,9 @@ AS
              GROUP BY inl2.order_no_hht
             ) inl1
     WHERE   inl1.order_no_hht        = xseh.order_no_hht
+--****************************** 2009/05/27 1.3  S.Kayahara MOD START ******************************--
+    AND     hca.account_number       = xseh.ship_to_customer_code
+--****************************** 2009/05/27 1.3  S.Kayahara MOD END ******************************--          
     AND     inl1.digestion_ln_number = xseh.digestion_ln_number
     AND     xseh.sales_exp_header_id = xsel.sales_exp_header_id
     AND     xsel.sales_class         IN(gv_sales_cls_nml,gv_sales_cls_sls)
@@ -1049,6 +1073,9 @@ AS
     lv_message_code          VARCHAR2(20);
     ln_update_pattrun        NUMBER;
     lv_sales_exp_line_id     xxcos_sales_exp_lines.sales_exp_line_id%TYPE; --処理用ダミー変数
+--****************************** 2009/05/27 1.3  S.Kayahara MOD START ******************************-- 
+    ln_unit_price            NUMBER;
+--****************************** 2009/05/27 1.3  S.Kayahara MOD END ******************************-- 
 --
   BEGIN
 --
@@ -1099,8 +1126,28 @@ AS
         -- ===============================
         --単価の導出
         -- ===============================
+--****************************** 2009/05/27 1.3  S.Kayahara MOD START ******************************-- 
+        --変数の代入
+        ln_unit_price := main_rec.standard_unit_price_excluded * (1 + (main_rec.tax_rate / 100));
+--****************************** 2009/05/27 1.3  S.Kayahara MOD END ******************************-- 
         IF main_rec.standard_unit_price_excluded = main_rec.standard_unit_price THEN
-          gn_unit_price := trunc(main_rec.standard_unit_price_excluded * (1 + (main_rec.tax_rate / 100)),0);
+--****************************** 2009/05/28 1.3  S.Kayahara MOD START ******************************-- 
+   --       gn_unit_price := trunc(main_rec.standard_unit_price_excluded * (1 + (main_rec.tax_rate / 100)),0);
+          -- 切上げ
+          IF main_rec.tax_round_rule    = cv_amount_up THEN
+            -- 小数点が存在する場合
+            IF (ln_unit_price - TRUNC(ln_unit_price) <> 0 ) THEN
+              gn_unit_price := TRUNC(ln_unit_price,2) + 0.01;
+            ELSE gn_unit_price := ln_unit_price;
+            END IF;
+          -- 切捨て
+          ELSIF main_rec.tax_round_rule = cv_amount_down THEN
+            gn_unit_price := TRUNC(ln_unit_price,2);
+          -- 四捨五入
+          ELSIF main_rec.tax_round_rule = cv_amount_nearest THEN
+            gn_unit_price := ROUND(ln_unit_price,2);
+          END IF;
+--****************************** 2009/05/28 1.3  S.Kayahara MOD END ******************************--
         ELSE
           gn_unit_price := main_rec.standard_unit_price;
         END IF;
