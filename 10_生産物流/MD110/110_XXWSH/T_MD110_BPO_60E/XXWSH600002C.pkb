@@ -7,7 +7,7 @@ AS
  * Description      : 入出庫配送計画情報抽出処理
  * MD.050           : T_MD050_BPO_601_配車配送計画
  * MD.070           : T_MD070_BPO_60E_入出庫配送計画情報抽出処理
- * Version          : 1.14
+ * Version          : 1.15
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -51,7 +51,8 @@ AS
  *  2008/07/04    1.12  M.NOMURA         システムテスト不具合対応#390
  *  2008/07/16    1.13  Oracle 山根 一浩 I_S_192,T_S_443,指摘240対応
  *  2008/08/04    1.14  M.NOMURA         追加結合不具合対応
- *
+ *  2008/08/12    1.15  N.Fukuda         課題#32対応
+ *  2008/08/12    1.15  N.Fukuda         課題#48(変更要求#164)対応
  *****************************************************************************************/
 --
 --#######################  固定グローバル定数宣言部 START   #######################
@@ -979,7 +980,8 @@ AS
             ,xlv.lookup_code                          -- 24:配送区分
             ,CASE
                WHEN xoha.weight_capacity_class  = gc_wc_class_j
-               AND  xlv.attribute6              = gc_small_method_y THEN xoha.sum_weight
+               --AND  xlv.attribute6              = gc_small_method_y THEN xoha.sum_weight      --2008/08/12 Del 課題#48(変更#164)
+               AND  xlv.attribute6              = gc_small_method_y THEN NVL(xoha.sum_weight,0) --2008/08/12 Add 課題#48(変更#164)
 -- M.HOKKANJI Ver1.2 START
                WHEN xoha.weight_capacity_class  = gc_wc_class_j
                AND  NVL(xlv.attribute6,gc_small_method_n) <> gc_small_method_y THEN NVL(xoha.sum_weight,0)
@@ -987,7 +989,8 @@ AS
 --               AND  xlv.attribute6             <> gc_small_method_y THEN xoha.sum_weight
 --                                                                      + xoha.sum_pallet_weight
 -- M.HOKKANJI Ver1.2 END
-               WHEN xoha.weight_capacity_class  = gc_wc_class_y     THEN xoha.sum_capacity
+               --WHEN xoha.weight_capacity_class  = gc_wc_class_y     THEN xoha.sum_capacity      --2008/08/12 Del 課題#48(変更#164)
+               WHEN xoha.weight_capacity_class  = gc_wc_class_y     THEN NVL(xoha.sum_capacity,0) --2008/08/12 Add 課題#48(変更#164)
              END                                      -- 25:重量／容積
             ,xoha.mixed_no                            -- 26:混載元依頼No
             ,xoha.collected_pallet_qty                -- 27:ﾊﾟﾚｯﾄ回収枚数
@@ -1133,8 +1136,12 @@ AS
             ,xoha.schedule_arrival_date               -- 23:着日
             ,xlv.lookup_code                          -- 24:配送区分
             ,CASE
-               WHEN xoha.weight_capacity_class  = gc_wc_class_j   THEN xoha.sum_weight
-               WHEN xoha.weight_capacity_class  = gc_wc_class_y   THEN xoha.sum_capacity
+               --2008/08/12 Start 課題#48(変更#164) ----------------------------------------------
+               --WHEN xoha.weight_capacity_class  = gc_wc_class_j   THEN xoha.sum_weight
+               --WHEN xoha.weight_capacity_class  = gc_wc_class_y   THEN xoha.sum_capacity
+               WHEN xoha.weight_capacity_class  = gc_wc_class_j   THEN NVL(xoha.sum_weight,0)
+               WHEN xoha.weight_capacity_class  = gc_wc_class_y   THEN NVL(xoha.sum_capacity,0)
+               --2008/08/12 End 課題#48(変更#164) ------------------------------------------------
              END                                      -- 25:重量／容積
             ,xoha.mixed_no                            -- 26:混載元依頼No
             ,xoha.collected_pallet_qty                -- 27:ﾊﾟﾚｯﾄ回収枚数
@@ -1273,11 +1280,14 @@ AS
             ,CASE
 -- M.HOKKANJI Ver1.2 START
                WHEN xmrih.weight_capacity_class  = gc_wc_class_j
-               AND  xlv.attribute6               = gc_small_method_y THEN xmrih.sum_weight
+               --AND  xlv.attribute6               = gc_small_method_y THEN xmrih.sum_weight      --2008/08/12 Del 課題#48(変更#164)
+               AND  xlv.attribute6               = gc_small_method_y THEN NVL(xmrih.sum_weight,0) --2008/08/12 Add 課題#48(変更#164)
                WHEN xmrih.weight_capacity_class  = gc_wc_class_j
                AND  NVL(xlv.attribute6,gc_small_method_n) <> gc_small_method_y THEN NVL(xmrih.sum_weight,0)
                                                                     + NVL(xmrih.sum_pallet_weight,0)
-               WHEN xmrih.weight_capacity_class  = gc_wc_class_y THEN xmrih.sum_capacity
+                                                                    
+               --WHEN xmrih.weight_capacity_class  = gc_wc_class_y THEN xmrih.sum_capacity      --2008/08/12 Del 課題#48(変更#164)
+               WHEN xmrih.weight_capacity_class  = gc_wc_class_y THEN NVL(xmrih.sum_capacity,0) --2008/08/12 Add 課題#48(変更#164)
 /*
                WHEN xmrih.weight_capacity_class  = gc_wc_class_j
                AND  xlv.attribute6               = gc_wc_class_j THEN xmrih.sum_weight
@@ -2021,7 +2031,7 @@ AS
           -- ロット数量 ÷ ケース入り数
           gt_lot_quantity(gn_cre_idx) := gt_lot_quantity(gn_cre_idx)
                                             / ir_main_data.case_quantity ;
-          gt_lot_quantity(gn_cre_idx) := TRUNC( gt_lot_quantity(gn_cre_idx), 3 ) ;
+          --gt_lot_quantity(gn_cre_idx) := TRUNC( gt_lot_quantity(gn_cre_idx), 3 ) ; --2008/08/12 Del 課題#32
 --
         END IF;
 --
@@ -2034,7 +2044,7 @@ AS
           -- ロット数量 ÷ ケース入り数
           gt_lot_quantity(gn_cre_idx) := gt_lot_quantity(gn_cre_idx)
                                             / ir_main_data.case_quantity ;
-          gt_lot_quantity(gn_cre_idx) := TRUNC( gt_lot_quantity(gn_cre_idx), 3 ) ;
+          --gt_lot_quantity(gn_cre_idx) := TRUNC( gt_lot_quantity(gn_cre_idx), 3 ) ; --2008/08/12 Del 課題#32
         END IF ;
       END IF;
 -- ##### 20080627 Ver.1.11 ロット数量換算対応 END   #####
@@ -2211,7 +2221,7 @@ AS
 -- ##### 20080627 Ver.1.11 ロット数量換算対応 END   #####
         lv_item_quantity := gt_main_data(in_idx).item_quantity
                           / gt_main_data(in_idx).case_quantity ;
-        lv_item_quantity := TRUNC( lv_item_quantity, 3 ) ;
+        --lv_item_quantity := TRUNC( lv_item_quantity, 3 ) ;       --2008/08/12 Del 課題#32
 -- ##### 20080627 Ver.1.11 ロット数量換算対応 START #####
 --
       -- 入出庫換算単位＝NULLの場合
@@ -2343,7 +2353,7 @@ AS
           -- 品目数量
           lv_item_quantity := gt_main_data(in_idx).item_quantity
                             / gt_main_data(in_idx).case_quantity ;
-          lv_item_quantity := TRUNC( lv_item_quantity, 3 ) ;
+          --lv_item_quantity := TRUNC( lv_item_quantity, 3 ) ;       --2008/08/12 Del 課題#32
 -- ##### 20080627 Ver.1.11 ロット数量換算対応 START #####
 --
         -- 入出庫換算単位＝NULLの場合
@@ -2516,7 +2526,7 @@ AS
 -- ##### 20080627 Ver.1.11 ロット数量換算対応 END   #####
         lv_item_quantity := gt_main_data(in_idx).item_quantity
                           / gt_main_data(in_idx).case_quantity ;
-        lv_item_quantity := TRUNC( lv_item_quantity, 3 ) ;
+        --lv_item_quantity := TRUNC( lv_item_quantity, 3 ) ;      --2008/08/12 Del 課題#32
 -- ##### 20080627 Ver.1.11 ロット数量換算対応 START #####
 --
       -- 入出庫換算単位＝NULLの場合
@@ -2648,7 +2658,7 @@ AS
           -- 品目数量
           lv_item_quantity := gt_main_data(in_idx).item_quantity
                             / gt_main_data(in_idx).case_quantity ;
-          lv_item_quantity := TRUNC( lv_item_quantity, 3 ) ;
+          --lv_item_quantity := TRUNC( lv_item_quantity, 3 ) ;      --2008/08/12 Del 課題#32
 -- ##### 20080627 Ver.1.11 ロット数量換算対応 START #####
 --
         -- 入出庫換算単位＝NULLの場合
@@ -3423,7 +3433,8 @@ AS
                     || TO_CHAR( re_out_data.schedule_ship_date   , 'YYYY/MM/DD' ) || ','
                     || TO_CHAR( re_out_data.schedule_arrival_date, 'YYYY/MM/DD' ) || ','
                     || re_out_data.shipping_method_code     || ','    -- 配送区分
-                    || re_out_data.weight                   || ','    -- 重量/容積
+                    --|| re_out_data.weight                   || ','    -- 重量/容積 --2008/08/12 Del 課題#48(変更#164)
+                    || CEIL(TRUNC(re_out_data.weight,3))    || ','    -- 重量/容積   --2008/08/12 Add 課題#48(変更#164)
                     || re_out_data.mixed_no                 || ','    -- 混載元依頼№
                     || re_out_data.collected_pallet_qty     || ','    -- パレット回収枚数
                     || re_out_data.arrival_time_from        || ','    -- 着荷時間指定(FROM)
@@ -3441,12 +3452,14 @@ AS
                     || re_out_data.item_code                || ','    -- 品目コード
                     || REPLACE(re_out_data.item_name,',')              || ','    -- 品目名
                     || re_out_data.item_uom_code            || ','    -- 品目単位
-                    || re_out_data.item_quantity            || ','    -- 品目数量
+                    --|| re_out_data.item_quantity            || ','    -- 品目数量 --2008/08/12 Del 課題#32
+                    || CEIL(TRUNC(re_out_data.item_quantity,3)) || ','  -- 品目数量 --2008/08/12 Add 課題#32
                     || re_out_data.lot_no                   || ','    -- ロット番号
                     || TO_CHAR( re_out_data.lot_date     , 'YYYY/MM/DD' ) || ','
                     || TO_CHAR( re_out_data.best_bfr_date, 'YYYY/MM/DD' ) || ','
                     || re_out_data.lot_sign                 || ','    -- 固有記号
-                    || re_out_data.lot_quantity             || ','    -- ロット数量
+                    --|| re_out_data.lot_quantity             || ','    -- ロット数量 --2008/08/12 Del 課題#32
+                    || CEIL(TRUNC(re_out_data.lot_quantity,3)) || ','   -- ロット数量 --2008/08/12 Add 課題#32
 -- M.Hokkanji Ver1.4 STRAT
                     || lt_new_modify_del_class              || ','    -- データ区分
 --                    || re_out_data.new_modify_del_class     || ','    -- データ区分
