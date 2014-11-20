@@ -7,7 +7,7 @@ AS
  * Description      : 出荷依頼情報抽出
  * MD.050           : 出荷依頼         T_MD050_BPO_401
  * MD.070           : 出荷依頼情報抽出 T_MD070_BPO_40F
- * Version          : 1.8
+ * Version          : 1.9
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -39,6 +39,7 @@ AS
  *  2008/09/04    1.6   Oracle 山根 一浩 PT 3-3_23 指摘37対応
  *  2008/09/18    1.7   Oracle 伊藤 ひとみ T_TE080_BPO_400 指摘79,T_S_630対応
  *  2008/11/06    1.8   Oracle 伊藤 ひとみ 統合テスト指摘560対応
+ *  2008/12/01    1.9   Oracle 吉田 夏樹 本番#291対応
  *****************************************************************************************/
 --
 --#######################  固定グローバル定数宣言部 START   #######################
@@ -630,7 +631,13 @@ AS
             ,xoha.request_no                     -- 依頼No
             ,xola.order_line_id                  -- 受注明細アドオンID
             ,xola.request_item_code              -- 依頼品目
-            ,xola.shipped_quantity               -- 出荷実績数量
+-- 2008/12/01 1.9  Mod ↓
+            ,CASE WHEN otta.order_category_code   = gv_category_code
+                  THEN xola.shipped_quantity
+                  ELSE xola.shipped_quantity * (-1)
+             END  shipped_quantity
+            --,xola.shipped_quantity               -- 出荷実績数量
+-- 2008/12/01 1.9  Mod ↑
             ,xola.delete_flag                    -- 削除フラグ
             ,ximv1.item_no                       -- 親品目
             ,ximv2.new_crowd_code                -- 新・群コード
@@ -686,6 +693,12 @@ AS
       AND    ximb.parent_item_id        = ximv1.item_id
       AND    ximb.start_date_active    <= xoha.shipped_date
       AND    ximb.end_date_active      >= xoha.shipped_date
+-- 2008/12/01 1.9  Mod ↓
+      AND    ximv1.start_date_active    <= xoha.shipped_date
+      AND    ximv1.end_date_active      >= xoha.shipped_date
+      AND    ximv2.start_date_active    <= xoha.shipped_date
+      AND    ximv2.end_date_active      >= xoha.shipped_date
+-- 2008/12/01 1.9  Mod ↑
 -- 2008/07/14 1.3 Update Start
 --      AND    ximv2.item_id              = xic4.item_id
 -- 2008/09/04 Del ↓
@@ -697,7 +710,9 @@ AS
 --      AND    otta.transaction_type_name = gv_tran_type_name               -- 出荷依頼
       AND    otta.shipping_shikyu_class = gv_shipping_shikyu_class_1        -- 出荷支給区分が「1：出荷依頼」
 -- 2008/09/18 1.17 Mod ↑
-      AND    otta.order_category_code   = gv_category_code                  -- 受注
+-- 2008/12/01 1.9  Mod ↓
+--    AND    otta.order_category_code   = gv_category_code                  -- 受注
+-- 2008/12/01 1.9  Mod ↑
       AND    NVL(otta.adjs_class,gv_adjs_class_req) <> gv_adjs_class_adj    -- 在庫調整以外
       AND    NVL(xola.shipping_result_if_flg, gv_flag_off )  = gv_flag_off  -- 出力済み以外
       ORDER BY xoha.request_no,xola.request_item_code;

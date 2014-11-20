@@ -8,7 +8,7 @@ PACKAGE BODY XXINV100001C AS
  * Description      : 生産物流(計画)
  * MD.050           : 計画・移動・在庫・販売計画/引取計画 T_MD050_BPO100
  * MD.070           : 計画・移動・在庫・販売計画/引取計画 T_MD070_BPO10A
- * Version          : 1.15
+ * Version          : 1.16
  *
  * Program List
  * -------------------------------- ----------------------------------------------------------
@@ -102,6 +102,7 @@ PACKAGE BODY XXINV100001C AS
  *  2008/11/07    1.13 Oracle Yuko Kawano 統合指摘#585
  *  2008/11/11    1.14 Oracle 福田 直樹 統合指摘#589対応
  *  2008/11/13    1.15 Oracle 大橋 孝郎 指摘586,596対応
+ *  2008/12/01    1.16 Oracle 大橋 孝郎 本番#155対応
  *****************************************************************************************/
 --
 --#######################  固定グローバル定数宣言部 START   #######################
@@ -10389,7 +10390,10 @@ and mfd.FORECAST_DESIGNATOR = mfi.FORECAST_DESIGNATOR
        gn_del_data_cnt := 0;
        t_forecast_interface_tab_del.delete;
      -- 抽出インターフェースデータループが終了する場合
-     ELSIF (ln_data_cnt = gn_araigae_cnt) THEN
+-- mod start ver1.16
+--     ELSIF (ln_data_cnt = gn_araigae_cnt) THEN
+     ELSIF (ln_data_cnt = gn_target_cnt) THEN
+-- mod end ver1.16
 --
        lb_retcode := MRP_FORECAST_INTERFACE_PK.MRP_FORECAST_INTERFACE(
                                              t_forecast_interface_tab_del);
@@ -11224,7 +11228,10 @@ FND_FILE.PUT_LINE(FND_FILE.LOG,'(A-3)-A-3-3 error....');
        gn_del_data_cnt2 := 0;
        t_forecast_interface_tab_del.delete;
      -- 抽出インターフェースデータループが終了する場合
-     ELSIF (ln_data_cnt = gn_araigae_cnt) THEN
+-- mod start ver1.16
+--     ELSIF (ln_data_cnt = gn_araigae_cnt) THEN
+     ELSIF (ln_data_cnt = gn_target_cnt) THEN
+-- mod end ver1.16
 --
        lb_retcode := MRP_FORECAST_INTERFACE_PK.MRP_FORECAST_INTERFACE(
                                              t_forecast_interface_tab_del);
@@ -11733,7 +11740,10 @@ FND_FILE.PUT_LINE(FND_FILE.LOG,'(A-3)-A-3-3 error....');
        gn_del_data_cnt2 := 0;
        t_forecast_interface_tab_del.delete;
      -- 抽出インターフェースデータループが終了する場合
-     ELSIF (ln_data_cnt = gn_araigae_cnt) THEN
+-- mod start ver1.16
+--     ELSIF (ln_data_cnt = gn_araigae_cnt) THEN
+     ELSIF (ln_data_cnt = gn_target_cnt) THEN
+-- mod end ver1.16
 --
        lb_retcode := MRP_FORECAST_INTERFACE_PK.MRP_FORECAST_INTERFACE(
                                              t_forecast_interface_tab_del);
@@ -12242,7 +12252,10 @@ AND (im.item_no = NVL(pv_item_code,im.item_no)
        gn_del_data_cnt2 := 0;
        t_forecast_interface_tab_del.delete;
      -- 抽出インターフェースデータループが終了する場合
-     ELSIF (ln_data_cnt = gn_araigae_cnt) THEN
+-- mod start ver1.16
+--     ELSIF (ln_data_cnt = gn_araigae_cnt) THEN
+     ELSIF (ln_data_cnt = gn_target_cnt) THEN
+-- mod end ver1.16
 --
        lb_retcode := MRP_FORECAST_INTERFACE_PK.MRP_FORECAST_INTERFACE(
                                              t_forecast_interface_tab_del);
