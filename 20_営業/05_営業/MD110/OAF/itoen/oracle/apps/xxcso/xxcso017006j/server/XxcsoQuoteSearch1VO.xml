@@ -12,23 +12,28 @@
    <SQLQuery><![CDATA[
 SELECT xqh.quote_header_id quote_header_id
 FROM xxcso_quote_headers xqh
-    ,xxcso_employees_v2 xev2
-    ,xxcso_resource_custs_v2 xrcv2
+    ,xxcso_cust_accounts_v xcav
 WHERE xqh.quote_type = :1
   AND xqh.quote_number = :2
   AND xqh.quote_revision_number = :3
-  AND xqh.account_number = xrcv2.account_number
-  AND xrcv2.employee_number = xev2.employee_number
+  AND xqh.account_number = xcav.account_number
   AND (
         (
           fnd_profile.value('XXCSO1_QUOTE_STANDARD') = '0'
           AND
-          xev2.user_id = fnd_global.user_id
+          EXISTS(SELECT '1'
+                 FROM   xxcso_employees_v2 xev2
+                       ,xxcso_resource_custs_v2 xrcv2
+                 WHERE  xev2.user_id = fnd_global.user_id
+                 AND    xrcv2.employee_number = xev2.employee_number
+                 AND    xrcv2.account_number = xqh.account_number
+          )
         )
         OR
         (
           fnd_profile.value('XXCSO1_QUOTE_STANDARD') = '1'
           AND
+          (
           xqh.base_code = (SELECT xxcso_util_common_pkg.get_emp_parameter(
                                     xev.work_base_code_new
                                    ,xev.work_base_code_old
@@ -37,29 +42,60 @@ WHERE xqh.quote_type = :1
                            FROM   xxcso_employees_v2  xev
                            WHERE  xev.user_id = fnd_global.user_id
                           )
+          OR
+          xcav.sale_base_code = (SELECT xxcso_util_common_pkg.get_emp_parameter(
+                                          xev.work_base_code_new
+                                         ,xev.work_base_code_old
+                                         ,xev.issue_date
+                                         ,TRUNC(xxcso_util_common_pkg.get_online_sysdate))
+                                 FROM   xxcso_employees_v2  xev
+                                 WHERE  xev.user_id = fnd_global.user_id
+                                )
+          )
         )
         OR
         (
           fnd_profile.value('XXCSO1_QUOTE_STANDARD') = '2'
           AND
-          EXISTS(
-            SELECT '1'
-            FROM   xxcso_aff_base_level_v2 xablv2
-                  ,(
-                    SELECT xablv.base_code
-                    FROM   xxcso_aff_base_level_v2 xablv
-                    WHERE  xablv.child_base_code = (
-                                                    SELECT xxcso_util_common_pkg.get_emp_parameter(
-                                                           xev.work_base_code_new
-                                                          ,xev.work_base_code_old
-                                                          ,xev.issue_date
-                                                          ,TRUNC(xxcso_util_common_pkg.get_online_sysdate))
-                                                    FROM   xxcso_employees_v2  xev
-                                                    WHERE  xev.user_id = fnd_global.user_id
-                                                   )
-                   ) xablv_base
-            WHERE  xqh.base_code        = xablv2.child_base_code
-              AND  xablv_base.base_code = xablv2.base_code
+          ( EXISTS(
+              SELECT '1'
+              FROM   xxcso_aff_base_level_v2 xablv2
+                    ,(
+                      SELECT xablv.base_code
+                      FROM   xxcso_aff_base_level_v2 xablv
+                      WHERE  xablv.child_base_code = (
+                                                      SELECT xxcso_util_common_pkg.get_emp_parameter(
+                                                               xev.work_base_code_new
+                                                              ,xev.work_base_code_old
+                                                              ,xev.issue_date
+                                                              ,TRUNC(xxcso_util_common_pkg.get_online_sysdate))
+                                                      FROM   xxcso_employees_v2  xev
+                                                      WHERE  xev.user_id = fnd_global.user_id
+                                                     )
+                     ) xablv_base
+              WHERE  xqh.base_code        = xablv2.child_base_code
+                AND  xablv_base.base_code = xablv2.base_code
+            )
+          OR
+            EXISTS(
+              SELECT '1'
+              FROM   xxcso_aff_base_level_v2 xablv2
+                    ,(
+                      SELECT xablv.base_code
+                      FROM   xxcso_aff_base_level_v2 xablv
+                      WHERE  xablv.child_base_code = (
+                                                      SELECT xxcso_util_common_pkg.get_emp_parameter(
+                                                               xev.work_base_code_new
+                                                              ,xev.work_base_code_old
+                                                              ,xev.issue_date
+                                                              ,TRUNC(xxcso_util_common_pkg.get_online_sysdate))
+                                                      FROM   xxcso_employees_v2  xev
+                                                      WHERE  xev.user_id = fnd_global.user_id
+                                                     )
+                     ) xablv_base
+              WHERE  xcav.sale_base_code  = xablv2.child_base_code
+                AND  xablv_base.base_code = xablv2.base_code
+            )
           )
         )
       )
