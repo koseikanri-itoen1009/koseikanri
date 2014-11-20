@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCOS002A02R(body)
  * Description      : ‰c‹Æ•ñ“ú•ñ
  * MD.050           : ‰c‹Æ•ñ“ú•ñ MD050_COS_002_A02
- * Version          : 1.13
+ * Version          : 1.14
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -54,6 +54,7 @@ AS
  *  2009/12/24    1.11  K.Atsushiba      [E_–{‰Ò“®_00596]“ü‹àŠz‚Ì•\Ž¦•s—Ç‘Î‰ž
  *  2010/01/06    1.12  K.Atsushiba      [E_–{‰Ò“®_00827]’ •[‚ªo—Í‚³‚ê‚È‚¢‘Î‰ž
  *  2010/02/04    1.13  N.Maeda          [E_–{‰Ò“®_01472] “ü‹àŠz·Šzo—Í”»’èC³
+ *  2010/09/14    1.14  K.Kiriu          [E_–{‰Ò“®_04849] PT‘Î‰ž
  *
  *****************************************************************************************/
 --
@@ -635,14 +636,21 @@ AS
 --            xxcos_rs_info_v               rsid
             xxcos_rs_info2_v              rsid
 -- 2009/10/30 Ver1.9 Mod End
-    WHERE   task.actual_end_date          >=      icp_delivery_date
-    AND     task.actual_end_date          <       icp_delivery_date + 1
+/* 2010/09/14 Ver1.14 Mod Start */
+--    WHERE   task.actual_end_date          >=      icp_delivery_date
+--    AND     task.actual_end_date          <       icp_delivery_date + 1
+    WHERE   TRUNC(task.actual_end_date)   >=      icp_delivery_date
+    AND     TRUNC(task.actual_end_date)   <       icp_delivery_date + 1   --ˆÓ}‚µ‚½ƒCƒ“ƒfƒbƒNƒX‚ðŽg—p‚³‚¹‚é‚½‚ßŽc‚µ‚Ü‚·B
+/* 2010/09/14 Ver1.14 Mod End   */
 /* 2009/05/01 Ver1.4 Mod Start */
 --    AND     task.source_object_type_code  =       ct_task_obj_type_party
 --    AND     task.owner_type_code          =       ct_task_own_type_employee
 --    AND     task.deleted_flag             =       cv_no
 /* 2009/05/01 Ver1.4 Mod End   */
-    AND     rsid.base_code                =       icp_delivery_base_code
+/* 2010/09/14 Ver1.14 Mod Start */
+--    AND     rsid.base_code                =       icp_delivery_base_code
+    AND     UPPER(rsid.base_code)         =       icp_delivery_base_code
+/* 2010/09/14 Ver1.14 Mod End   */
 /* 2009/09/02 Ver1.8 Mod Start */
 --    AND     rsid.employee_number          =       NVL(icp_dlv_by_code, rsid.employee_number)
     AND     (
@@ -1689,8 +1697,11 @@ AS
 --              xxcos_rs_info_v               rsid
               xxcos_rs_info2_v              rsid
 -- 2009/10/30 Ver1.9 Mod End
-      WHERE   task.actual_end_date          >=      ld_delivery_date
-      AND     task.actual_end_date          <       ld_delivery_date + 1
+/* 2010/09/14 Ver1.14 Mod Start */
+--      WHERE   task.actual_end_date          >=      ld_delivery_date
+--      AND     task.actual_end_date          <       ld_delivery_date + 1
+      WHERE   TRUNC(task.actual_end_date)   =       ld_delivery_date
+/* 2010/09/14 Ver1.14 Mod End   */
 /* 2009/05/01 Ver1.4 Del Start */
 --      AND     task.source_object_type_code  =       ct_task_obj_type_party
 --      AND     task.owner_type_code          =       ct_task_own_type_employee
