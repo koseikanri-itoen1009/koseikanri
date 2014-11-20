@@ -3,11 +3,11 @@ AS
 /*****************************************************************************************
  * Copyright(c)Oracle Corporation Japan, 2008. All rights reserved.
  *
- * Package Name     : XXCMN770025(spec)
+ * Package Name     : XXCMN770025C(body)
  * Description      : 仕入実績表作成
  * MD.050/070       : 月次〆切処理（経理）Issue1.0(T_MD050_BPO_770)
  *                    月次〆切処理（経理）Issue1.0(T_MD070_BPO_77E)
- * Version          : 1.5
+ * Version          : 1.6
  *
  * Program List
  * -------------------- ------------------------------------------------------------
@@ -36,6 +36,7 @@ AS
  *  2008/06/25    1.4   T.Endou          特定文字列を出力しようとすると、エラーとなり帳票が出力
  *                                       されない現象への対応
  *  2008/07/22    1.5   T.Endou          改ページ時、ヘッダが出ないパターン対応
+ *  2008/10/14    1.6   A.Shiina         T_S_524対応
  *
  *****************************************************************************************/
 --
@@ -833,13 +834,500 @@ AS
     cv_x201              CONSTANT VARCHAR2( 4) := 'X201'; -- 仕入先返品
     cv_cat_set_name_mtof CONSTANT VARCHAR2(30) := 'XXCMN_MONTH_TRANS_OUTPUT_FLAG';
 --
+    cn_prod_class_id     CONSTANT NUMBER := TO_NUMBER(FND_PROFILE.VALUE('XXCMN_ITEM_CATEGORY_PROD_CLASS'));
+    cn_item_class_id     CONSTANT NUMBER := TO_NUMBER(FND_PROFILE.VALUE('XXCMN_ITEM_CATEGORY_ITEM_CLASS'));
+    cn_crowd_code_id     CONSTANT NUMBER := TO_NUMBER(FND_PROFILE.VALUE('XXCMN_ITEM_CATEGORY_CROWD_CODE'));
+    cn_acnt_crowd_id     CONSTANT NUMBER := TO_NUMBER(FND_PROFILE.VALUE('XXCMN_ITEM_CATEGORY_ACNT_CROWD_CODE'));
+--
+-- 2008/10/14 v1.6 ADD START
+    cv_zero              CONSTANT VARCHAR2( 1) := '0';
+-- 2008/10/14 v1.6 ADD END
     -- *** ローカル・変数 ***
     lv_sql        VARCHAR2(32000) ;     -- データ取得用ＳＱＬ
     lv_in         VARCHAR2(1000) ;
+    lt_lkup_code  fnd_lookup_values.lookup_code%TYPE;
 --
+-- 2008/10/14 v1.6 ADD START
+    lv_select     VARCHAR2(32000) ;
+    lv_porc_po    VARCHAR2(32000) ;
+    lv_adji       VARCHAR2(32000) ;
+    lv_group      VARCHAR2(32000) ;
+    lv_order      VARCHAR2(32000) ;
+--
+-- 2008/10/14 v1.6 ADD END
     -- *** ローカル・カーソル ***
     TYPE   ref_cursor IS REF CURSOR ;
     lc_ref ref_cursor ;
+--
+-- 2008/10/14 v1.6 DELETE START
+/*
+--yutsuzuk add
+    CURSOR get_cur01 IS
+      SELECT mst.result_post           AS result_post
+            ,mst.location_name         AS location_name
+            ,mst.item_div              AS item_div
+            ,mst.item_div_name         AS item_div_name
+            ,mst.segment1              AS vendor_code
+            ,mst.vendor_name           AS vendor_name
+            ,mst.crowd_code            AS crowd_code
+            ,mst.item_code             AS item_code
+            ,mst.item_s_name           AS item_s_name
+            ,mst.item_um               AS item_um
+            ,mst.item_atr15            AS item_atr15
+            ,mst.lot_ctl               AS lot_ctl
+            ,SUM(mst.trans_qty)        AS trans_qty
+            ,AVG(mst.purchases_price)  AS purchases_price
+            ,AVG(mst.powder_price)     AS powder_price
+            ,AVG(mst.commission_price) AS commission_price
+            ,SUM(mst.commission_price * mst.trans_qty) AS c_amt
+            ,SUM(mst.assessment)       AS assessment
+            ,AVG(mst.stnd_unit_price)  AS stnd_unit_price
+            ,SUM(mst.stnd_unit_price * mst.trans_qty) AS j_amt
+            ,SUM(mst.purchases_price * mst.trans_qty) AS s_amt
+            ,lt_lkup_code              AS c_tax
+      FROM  (-- 購買関連
+             SELECT /*+ leading(itp gic1 mcb1 rsl rt pha pla plla) use_nl(itp gic1 mcb1)*/
+/*
+                    pha.attribute10         AS result_post
+                   ,mcb2.segment1           AS item_div
+                   ,mct2.description        AS item_div_name
+                   ,iimb.item_id            AS item_id
+                   ,iimb.item_no            AS item_code
+                   ,iimb.item_um            AS item_um
+                   ,ximb.item_short_name    AS item_s_name
+                   ,iimb.attribute15        AS item_atr15
+                   ,iimb.lot_ctl            AS lot_ctl
+                   ,pha.vendor_id           AS vendor_id
+                   ,mcb3.segment1           AS crowd_code
+                   ,mcb4.segment1           AS acnt_crowd_code
+                   ,itp.trans_qty           AS trans_qty
+                   ,(SELECT NVL(
+                            DECODE(SUM(NVL(xlc.trans_qty,0))
+                            ,0,0
+                            ,SUM(xlc.trans_qty * NVL(xlc.unit_ploce,0)) / SUM(NVL(xlc.trans_qty,0))),0
+                            ) AS purchases_price
+                    FROM   xxcmn_lot_cost xlc
+                    WHERE  xlc.item_id = itp.item_id
+                    AND    xlc.lot_id  = itp.lot_id)  AS purchases_price
+                   ,NVL(plla.attribute2,'0') AS powder_price
+                   ,NVL(plla.attribute4,'0') AS commission_price
+                   ,NVL(plla.attribute7,'0') AS assessment
+                   ,NVL(xsupv.stnd_unit_price,0) AS stnd_unit_price
+                   ,xvv.segment1            AS segment1
+                   ,xvv.vendor_short_name   AS vendor_name
+                   ,xl.location_short_name  AS location_name
+             FROM   ic_tran_pnd              itp
+                   ,rcv_shipment_lines       rsl
+                   ,rcv_transactions         rt
+                   ,po_headers_all           pha
+                   ,po_lines_all             pla
+                   ,po_line_locations_all    plla
+                   ,ic_item_mst_b            iimb
+                   ,xxcmn_item_mst_b         ximb
+                   ,gmi_item_categories      gic1
+                   ,mtl_categories_b         mcb1
+                   ,gmi_item_categories      gic2
+                   ,mtl_categories_b         mcb2
+                   ,mtl_categories_tl        mct2
+                   ,gmi_item_categories      gic3
+                   ,mtl_categories_b         mcb3
+                   ,gmi_item_categories      gic4
+                   ,mtl_categories_b         mcb4
+                   ,xxcmn_vendors2_v         xvv
+                   ,hr_locations_all         hl
+                   ,xxcmn_locations_all      xl
+                   ,xxcmn_stnd_unit_price_v  xsupv
+             WHERE  itp.doc_type                = cv_porc
+             AND    itp.completed_ind           = gn_one
+             AND    itp.trans_date >= FND_DATE.STRING_TO_DATE(ir_param.proc_from,gc_char_yyyymm_format)
+             AND    itp.trans_date <  ADD_MONTHS(FND_DATE.STRING_TO_DATE(ir_param.proc_to,gc_char_yyyymm_format),1)
+             AND    iimb.item_id                = itp.item_id
+             AND    ximb.item_id                = iimb.item_id
+             AND    ximb.start_date_active < (TRUNC(itp.trans_date) + 1)
+             AND    ximb.end_date_active   >= TRUNC(itp.trans_date)
+             AND    gic1.item_id                = itp.item_id
+             AND    gic1.category_set_id        = cn_prod_class_id
+             AND    mcb1.category_id            = gic1.category_id
+             AND    mcb1.segment1               = ir_param.prod_div
+             AND    gic2.item_id                = itp.item_id
+             AND    gic2.category_set_id        = cn_item_class_id
+             AND    mcb2.category_id            = gic2.category_id
+             AND    mct2.category_id            = mcb2.category_id
+             AND    mct2.language               = gv_ja
+             AND    gic3.item_id                = itp.item_id
+             AND    gic3.category_set_id        = cn_crowd_code_id
+             AND    mcb3.category_id            = gic3.category_id
+             AND    gic4.item_id                = itp.item_id
+             AND    gic4.category_set_id        = cn_acnt_crowd_id
+             AND    mcb4.category_id            = gic4.category_id
+             AND    rsl.shipment_header_id      = itp.doc_id
+             AND    rsl.line_num                = itp.doc_line
+             AND    rt.transaction_id           = itp.line_id
+             AND    rt.shipment_line_id         = rsl.shipment_line_id
+             AND    rsl.po_header_id            = pha.po_header_id
+             AND    rsl.po_line_id              = pla.po_line_id
+             AND    pla.po_line_id              = plla.po_line_id
+             AND    rsl.source_document_code    = cv_po
+             AND    rt.transaction_type     IN (cv_deliver
+                                               ,cv_return_to_vendor)
+             AND    xvv.start_date_active < (TRUNC(itp.trans_date) + 1)
+             AND    ((xvv.end_date_active >= TRUNC(itp.trans_date))
+                    OR (xvv.end_date_active IS NULL))
+             AND    xvv.vendor_id     = pha.vendor_id
+             AND    hl.location_code            = pha.attribute10
+             AND    hl.location_id              = xl.location_id
+             AND    xl.start_date_active  < (TRUNC(itp.trans_date) + 1)
+             AND    xl.end_date_active    >= TRUNC(itp.trans_date)
+             AND    xsupv.start_date_active     < (TRUNC(itp.trans_date) + 1)
+             AND    ((xsupv.end_date_active     >= TRUNC(itp.trans_date))
+                    OR(xsupv.end_date_active       IS NULL))
+             AND    xsupv.item_id                = itp.item_id
+             UNION ALL -- 在庫調整(仕入先返品)
+             SELECT /*+ leading(itc gic1 mcb1 iaj ijm xrrt ) use_nl(itc gic1 mcb1) */
+/*
+                    xrrt.department_code    AS result_post
+                   ,mcb2.segment1           AS item_div
+                   ,mct2.description        AS item_div_name
+                   ,iimb.item_id            AS item_id
+                   ,iimb.item_no            AS item_code
+                   ,iimb.item_um            AS item_um
+                   ,ximb.item_short_name    AS item_s_name
+                   ,iimb.attribute15        AS item_atr15
+                   ,iimb.lot_ctl            AS lot_ctl
+                   ,xrrt.vendor_id          AS vendor_id
+                   ,mcb3.segment1           AS crowd_code
+                   ,mcb4.segment1           AS acnt_crowd_code
+                   ,itc.trans_qty           AS trans_qty
+                   ,(SELECT NVL(
+                            DECODE(SUM(NVL(xlc.trans_qty,0))
+                            ,0,0
+                            ,SUM(xlc.trans_qty * NVL(xlc.unit_ploce,0)) / SUM(NVL(xlc.trans_qty,0))),0
+                            ) AS purchases_price
+                    FROM   xxcmn_lot_cost xlc
+                    WHERE  xlc.item_id = itc.item_id
+                    AND    xlc.lot_id  = itc.lot_id) AS purchases_price
+                   ,TO_CHAR(NVL(xrrt.kobki_converted_unit_price,0)) AS powder_price
+                   ,TO_CHAR(NVL(xrrt.kousen_rate_or_unit_price,0))  AS commission_price
+                   ,TO_CHAR(NVL(xrrt.fukakin_price,0)) AS assessment
+                   ,NVL(xsupv.stnd_unit_price,0) AS stnd_unit_price
+                   ,xvv.segment1            AS segment1
+                   ,xvv.vendor_short_name   AS vendor_name
+                   ,xl.location_short_name  AS location_name
+             FROM   ic_tran_cmp               itc
+                   ,ic_adjs_jnl               iaj
+                   ,ic_jrnl_mst               ijm
+                   ,ic_item_mst_b             iimb
+                   ,xxpo_rcv_and_rtn_txns     xrrt
+                   ,xxcmn_item_mst_b          ximb
+                   ,gmi_item_categories       gic1
+                   ,mtl_categories_b          mcb1
+                   ,gmi_item_categories       gic2
+                   ,mtl_categories_b          mcb2
+                   ,mtl_categories_tl         mct2
+                   ,gmi_item_categories       gic3
+                   ,mtl_categories_b          mcb3
+                   ,gmi_item_categories       gic4
+                   ,mtl_categories_b          mcb4
+                   ,xxcmn_vendors2_v          xvv
+                   ,hr_locations_all          hl
+                   ,xxcmn_locations_all       xl
+                   ,xxcmn_stnd_unit_price_v  xsupv
+             WHERE  itc.doc_type        = cv_adji
+             AND    itc.reason_code     = cv_x201
+             AND    itc.trans_date >= FND_DATE.STRING_TO_DATE(ir_param.proc_from,gc_char_yyyymm_format)
+             AND    itc.trans_date <  ADD_MONTHS(FND_DATE.STRING_TO_DATE(ir_param.proc_to,gc_char_yyyymm_format),1)
+             AND    iaj.trans_type      = itc.doc_type
+             AND    iaj.doc_id          = itc.doc_id
+             AND    iaj.doc_line        = itc.doc_line
+             AND    ijm.journal_id      = iaj.journal_id
+             AND    xrrt.txns_id        = TO_NUMBER(ijm.attribute1)
+             AND    iimb.item_id        = itc.item_id
+             AND    ximb.item_id        = iimb.item_id
+             AND    ximb.start_date_active < (TRUNC(itc.trans_date) + 1)
+             AND    ximb.end_date_active   >= TRUNC(itc.trans_date)
+             AND    gic1.item_id        = itc.item_id
+             AND    gic1.category_set_id = cn_prod_class_id
+             AND    mcb1.category_id    = gic1.category_id
+             AND    mcb1.segment1       = ir_param.prod_div
+             AND    gic2.item_id        = itc.item_id
+             AND    gic2.category_set_id = cn_item_class_id
+             AND    mcb2.category_id    = gic2.category_id
+             AND    mct2.category_id    = mcb2.category_id
+             AND    mct2.language       = gv_ja
+             AND    gic3.item_id        = itc.item_id
+             AND    gic3.category_set_id = cn_crowd_code_id
+             AND    mcb3.category_id    = gic3.category_id
+             AND    gic4.item_id        = itc.item_id
+             AND    gic4.category_set_id = cn_acnt_crowd_id
+             AND    mcb4.category_id    = gic4.category_id
+             AND    xvv.start_date_active < (TRUNC(itc.trans_date) + 1)
+             AND    ((xvv.end_date_active >= TRUNC(itc.trans_date))
+                    OR (xvv.end_date_active IS NULL))
+             AND    xvv.vendor_id     = xrrt.vendor_id
+             AND    hl.location_code         = xrrt.department_code
+             AND    hl.location_id           = xl.location_id
+             and    xl.start_date_active  < (TRUNC(itc.trans_date) + 1)
+             AND    xl.end_date_active    >= TRUNC(itc.trans_date)
+             and    xsupv.start_date_active <(TRUNC(itc.trans_date) + 1)
+             AND    ((xsupv.end_date_active     >= TRUNC(itc.trans_date))
+                    OR(xsupv.end_date_active       IS NULL))
+             AND    xsupv.item_id               = itc.item_id
+            ) mst
+      GROUP BY mst.result_post
+              ,mst.location_name
+              ,mst.item_div
+              ,mst.item_div_name
+              ,mst.segment1
+              ,mst.vendor_name
+              ,mst.crowd_code
+              ,mst.item_code
+              ,mst.item_s_name
+              ,mst.item_um
+              ,mst.item_atr15
+              ,mst.lot_ctl
+      ORDER BY mst.result_post
+              ,mst.item_div
+              ,mst.segment1
+              ,mst.crowd_code
+              ,mst.item_code
+    ;
+--yutsuzuk add
+--
+--yutsuzuk add
+    CURSOR get_cur02 IS
+      SELECT mst.result_post           AS result_post
+            ,mst.location_name         AS location_name
+            ,mst.item_div              AS item_div
+            ,mst.item_div_name         AS item_div_name
+            ,mst.segment1              AS vendor_code
+            ,mst.vendor_name           AS vendor_name
+            ,mst.crowd_code            AS crowd_code
+            ,mst.item_code             AS item_code
+            ,mst.item_s_name           AS item_s_name
+            ,mst.item_um               AS item_um
+            ,mst.item_atr15            AS item_atr15
+            ,mst.lot_ctl               AS lot_ctl
+            ,SUM(mst.trans_qty)        AS trans_qty
+            ,AVG(mst.purchases_price)  AS purchases_price
+            ,AVG(mst.powder_price)     AS powder_price
+            ,AVG(mst.commission_price) AS commission_price
+            ,SUM(mst.commission_price * mst.trans_qty) AS c_amt
+            ,SUM(mst.assessment)       AS assessment
+            ,AVG(mst.stnd_unit_price)  AS stnd_unit_price
+            ,SUM(mst.stnd_unit_price * mst.trans_qty) AS j_amt
+            ,SUM(mst.purchases_price * mst.trans_qty) AS s_amt
+            ,lt_lkup_code              AS c_tax
+      FROM  (-- 購買関連
+             SELECT /*+ leading(itp gic1 mcb1 gic2 mcb2 rsl rt pha pla plla) use_nl(itp gic1 mcb1 gic2 mcb2)*/
+/*
+                    pha.attribute10         AS result_post
+                   ,mcb2.segment1           AS item_div
+                   ,mct2.description        AS item_div_name
+                   ,iimb.item_id            AS item_id
+                   ,iimb.item_no            AS item_code
+                   ,iimb.item_um            AS item_um
+                   ,ximb.item_short_name    AS item_s_name
+                   ,iimb.attribute15        AS item_atr15
+                   ,iimb.lot_ctl            AS lot_ctl
+                   ,pha.vendor_id           AS vendor_id
+                   ,mcb3.segment1           AS crowd_code
+                   ,mcb4.segment1           AS acnt_crowd_code
+                   ,itp.trans_qty           AS trans_qty
+                   ,(SELECT NVL(
+                            DECODE(SUM(NVL(xlc.trans_qty,0))
+                            ,0,0
+                            ,SUM(xlc.trans_qty * NVL(xlc.unit_ploce,0)) / SUM(NVL(xlc.trans_qty,0))),0
+                            ) AS purchases_price
+                    FROM   xxcmn_lot_cost xlc
+                    WHERE  xlc.item_id = itp.item_id
+                    AND    xlc.lot_id  = itp.lot_id)  AS purchases_price
+                   ,NVL(plla.attribute2,'0') AS powder_price
+                   ,NVL(plla.attribute4,'0') AS commission_price
+                   ,NVL(plla.attribute7,'0') AS assessment
+                   ,NVL(xsupv.stnd_unit_price,0) AS stnd_unit_price
+                   ,xvv.segment1            AS segment1
+                   ,xvv.vendor_short_name   AS vendor_name
+                   ,xl.location_short_name  AS location_name
+             FROM   ic_tran_pnd              itp
+                   ,rcv_shipment_lines       rsl
+                   ,rcv_transactions         rt
+                   ,po_headers_all           pha
+                   ,po_lines_all             pla
+                   ,po_line_locations_all    plla
+                   ,ic_item_mst_b            iimb
+                   ,xxcmn_item_mst_b         ximb
+                   ,gmi_item_categories      gic1
+                   ,mtl_categories_b         mcb1
+                   ,gmi_item_categories      gic2
+                   ,mtl_categories_b         mcb2
+                   ,mtl_categories_tl        mct2
+                   ,gmi_item_categories      gic3
+                   ,mtl_categories_b         mcb3
+                   ,gmi_item_categories      gic4
+                   ,mtl_categories_b         mcb4
+                   ,xxcmn_vendors2_v         xvv
+                   ,hr_locations_all         hl
+                   ,xxcmn_locations_all      xl
+                   ,xxcmn_stnd_unit_price_v  xsupv
+             WHERE  itp.doc_type                = cv_porc
+             AND    itp.completed_ind           = gn_one
+             AND    itp.trans_date >= FND_DATE.STRING_TO_DATE(ir_param.proc_from,gc_char_yyyymm_format)
+             AND    itp.trans_date <  ADD_MONTHS(FND_DATE.STRING_TO_DATE(ir_param.proc_to,gc_char_yyyymm_format),1)
+             AND    iimb.item_id                = itp.item_id
+             AND    ximb.item_id                = iimb.item_id
+             AND    ximb.start_date_active < (TRUNC(itp.trans_date) + 1)
+             AND    ximb.end_date_active   >= TRUNC(itp.trans_date)
+             AND    gic1.item_id                = itp.item_id
+             AND    gic1.category_set_id        = cn_prod_class_id
+             AND    mcb1.category_id            = gic1.category_id
+             AND    mcb1.segment1               = ir_param.prod_div
+             AND    gic2.item_id                = itp.item_id
+             AND    gic2.category_set_id        = cn_item_class_id
+             AND    mcb2.category_id            = gic2.category_id
+             AND    mct2.category_id            = mcb2.category_id
+             AND    mct2.language               = gv_ja
+             AND    mcb2.segment1               = ir_param.item_div
+             AND    gic3.item_id                = itp.item_id
+             AND    gic3.category_set_id        = cn_crowd_code_id
+             AND    mcb3.category_id            = gic3.category_id
+             AND    gic4.item_id                = itp.item_id
+             AND    gic4.category_set_id        = cn_acnt_crowd_id
+             AND    mcb4.category_id            = gic4.category_id
+             AND    rsl.shipment_header_id      = itp.doc_id
+             AND    rsl.line_num                = itp.doc_line
+             AND    rt.transaction_id           = itp.line_id
+             AND    rt.shipment_line_id         = rsl.shipment_line_id
+             AND    rsl.po_header_id            = pha.po_header_id
+             AND    rsl.po_line_id              = pla.po_line_id
+             AND    pla.po_line_id              = plla.po_line_id
+             AND    rsl.source_document_code    = cv_po
+             AND    rt.transaction_type     IN (cv_deliver
+                                               ,cv_return_to_vendor)
+             AND    xvv.start_date_active < (TRUNC(itp.trans_date) + 1)
+             AND    ((xvv.end_date_active >= TRUNC(itp.trans_date))
+                    OR (xvv.end_date_active IS NULL))
+             AND    xvv.vendor_id     = pha.vendor_id
+             AND    hl.location_code            = pha.attribute10
+             AND    hl.location_id              = xl.location_id
+             AND    xl.start_date_active  < (TRUNC(itp.trans_date) + 1)
+             AND    xl.end_date_active    >= TRUNC(itp.trans_date)
+             AND    xsupv.start_date_active     < (TRUNC(itp.trans_date) + 1)
+             AND    ((xsupv.end_date_active     >= TRUNC(itp.trans_date))
+                    OR(xsupv.end_date_active       IS NULL))
+             AND    xsupv.item_id                = itp.item_id
+             UNION ALL -- 在庫調整(仕入先返品)
+             SELECT /*+ leading(itc gic1 mcb1 gic2 mcb2 iaj ijm xrrt ) use_nl(itc gic1 mcb1 gic2 mcb2) */
+/*
+                    xrrt.department_code    AS result_post
+                   ,mcb2.segment1           AS item_div
+                   ,mct2.description        AS item_div_name
+                   ,iimb.item_id            AS item_id
+                   ,iimb.item_no            AS item_code
+                   ,iimb.item_um            AS item_um
+                   ,ximb.item_short_name    AS item_s_name
+                   ,iimb.attribute15        AS item_atr15
+                   ,iimb.lot_ctl            AS lot_ctl
+                   ,xrrt.vendor_id          AS vendor_id
+                   ,mcb3.segment1           AS crowd_code
+                   ,mcb4.segment1           AS acnt_crowd_code
+                   ,itc.trans_qty           AS trans_qty
+                   ,(SELECT NVL(
+                            DECODE(SUM(NVL(xlc.trans_qty,0))
+                            ,0,0
+                            ,SUM(xlc.trans_qty * NVL(xlc.unit_ploce,0)) / SUM(NVL(xlc.trans_qty,0))),0
+                            ) AS purchases_price
+                    FROM   xxcmn_lot_cost xlc
+                    WHERE  xlc.item_id = itc.item_id
+                    AND    xlc.lot_id  = itc.lot_id) AS purchases_price
+                   ,TO_CHAR(NVL(xrrt.kobki_converted_unit_price,0)) AS powder_price
+                   ,TO_CHAR(NVL(xrrt.kousen_rate_or_unit_price,0))  AS commission_price
+                   ,TO_CHAR(NVL(xrrt.fukakin_price,0)) AS assessment
+                   ,NVL(xsupv.stnd_unit_price,0) AS stnd_unit_price
+                   ,xvv.segment1            AS segment1
+                   ,xvv.vendor_short_name   AS vendor_name
+                   ,xl.location_short_name  AS location_name
+             FROM   ic_tran_cmp               itc
+                   ,ic_adjs_jnl               iaj
+                   ,ic_jrnl_mst               ijm
+                   ,ic_item_mst_b             iimb
+                   ,xxpo_rcv_and_rtn_txns     xrrt
+                   ,xxcmn_item_mst_b          ximb
+                   ,gmi_item_categories       gic1
+                   ,mtl_categories_b          mcb1
+                   ,gmi_item_categories       gic2
+                   ,mtl_categories_b          mcb2
+                   ,mtl_categories_tl         mct2
+                   ,gmi_item_categories       gic3
+                   ,mtl_categories_b          mcb3
+                   ,gmi_item_categories       gic4
+                   ,mtl_categories_b          mcb4
+                   ,xxcmn_vendors2_v          xvv
+                   ,hr_locations_all          hl
+                   ,xxcmn_locations_all       xl
+                   ,xxcmn_stnd_unit_price_v  xsupv
+             WHERE  itc.doc_type        = cv_adji
+             AND    itc.reason_code     = cv_x201
+             AND    itc.trans_date >= FND_DATE.STRING_TO_DATE(ir_param.proc_from,gc_char_yyyymm_format)
+             AND    itc.trans_date <  ADD_MONTHS(FND_DATE.STRING_TO_DATE(ir_param.proc_to,gc_char_yyyymm_format),1)
+             AND    iaj.trans_type      = itc.doc_type
+             AND    iaj.doc_id          = itc.doc_id
+             AND    iaj.doc_line        = itc.doc_line
+             AND    ijm.journal_id      = iaj.journal_id
+             AND    xrrt.txns_id        = TO_NUMBER(ijm.attribute1)
+             AND    iimb.item_id        = itc.item_id
+             AND    ximb.item_id        = iimb.item_id
+             AND    ximb.start_date_active < (TRUNC(itc.trans_date) + 1)
+             AND    ximb.end_date_active   >= TRUNC(itc.trans_date)
+             AND    gic1.item_id        = itc.item_id
+             AND    gic1.category_set_id = cn_prod_class_id
+             AND    mcb1.category_id    = gic1.category_id
+             AND    mcb1.segment1       = ir_param.prod_div
+             AND    gic2.item_id        = itc.item_id
+             AND    gic2.category_set_id = cn_item_class_id
+             AND    mcb2.category_id    = gic2.category_id
+             AND    mct2.category_id    = mcb2.category_id
+             AND    mct2.language       = gv_ja
+             AND    mcb2.segment1       = ir_param.item_div
+             AND    gic3.item_id        = itc.item_id
+             AND    gic3.category_set_id = cn_crowd_code_id
+             AND    mcb3.category_id    = gic3.category_id
+             AND    gic4.item_id        = itc.item_id
+             AND    gic4.category_set_id = cn_acnt_crowd_id
+             AND    mcb4.category_id    = gic4.category_id
+             AND    xvv.start_date_active < (TRUNC(itc.trans_date) + 1)
+             AND    ((xvv.end_date_active >= TRUNC(itc.trans_date))
+                    OR (xvv.end_date_active IS NULL))
+             AND    xvv.vendor_id     = xrrt.vendor_id
+             AND    hl.location_code         = xrrt.department_code
+             AND    hl.location_id           = xl.location_id
+             and    xl.start_date_active  < (TRUNC(itc.trans_date) + 1)
+             AND    xl.end_date_active    >= TRUNC(itc.trans_date)
+             and    xsupv.start_date_active <(TRUNC(itc.trans_date) + 1)
+             AND    ((xsupv.end_date_active     >= TRUNC(itc.trans_date))
+                    OR(xsupv.end_date_active       IS NULL))
+             AND    xsupv.item_id               = itc.item_id
+            ) mst
+      GROUP BY mst.result_post
+              ,mst.location_name
+              ,mst.item_div
+              ,mst.item_div_name
+              ,mst.segment1
+              ,mst.vendor_name
+              ,mst.crowd_code
+              ,mst.item_code
+              ,mst.item_s_name
+              ,mst.item_um
+              ,mst.item_atr15
+              ,mst.lot_ctl
+      ORDER BY mst.result_post
+              ,mst.item_div
+              ,mst.segment1
+              ,mst.crowd_code
+              ,mst.item_code
+    ;
+--yutsuzuk add
+*/
+-- 2008/10/14 v1.6 DELETE END
 --
     -- *** ローカル・例外処理 ***
     no_data_expt            EXCEPTION ;  -- 取得レコードなし
@@ -852,428 +1340,466 @@ AS
 --
 --###########################  固定部 END   ############################
 --
+-- 2008/10/14 v1.6 ADD START
     -- ----------------------------------------------------
-    -- ＳＥＬＥＣＴ句生成
+    -- SELECT句生成
     -- ----------------------------------------------------
-    lv_sql :=
-         'SELECT ';
+    lv_select := 'SELECT ';
     -- 成績部署
     IF ( ir_param.result_post IS NULL ) THEN
-      lv_sql := lv_sql
-        || '  mst.result_post           AS result_post '        -- 成績部署
-        || ' ,mst.location_name         AS location_name ';     -- 事業所名
+      lv_select := lv_select
+        || '       mst.result_post           AS result_post '
+        || '      ,mst.location_name         AS location_name ';
     ELSE
-      lv_sql := lv_sql
-        || '  NULL                      AS result_post '        -- 成績部署
-        || ' ,NULL                      AS location_name ';     -- 事業所名
+      lv_select := lv_select
+        || '       NULL                      AS result_post '
+        || '      ,NULL                      AS location_name ';
     END IF;
-    lv_sql := lv_sql
-      || ' ,mst.item_div              AS item_div '             -- 品目区分
-      || ' ,mst.item_div_name         AS item_div_name ';       -- 品目区分名
+--
+    lv_select := lv_select
+      || '      ,mst.item_div              AS item_div '
+      || '      ,mst.item_div_name         AS item_div_name ';
+--
     -- 仕入先
     IF ( ir_param.party_code IS NULL ) THEN
-      lv_sql := lv_sql
-        || ' ,mst.segment1              AS vendor_code '        -- 仕入先コード
-        || ' ,mst.vendor_name           AS vendor_name ';       -- 仕入先名
+      lv_select := lv_select
+        || '      ,mst.segment1              AS vendor_code '
+        || '      ,mst.vendor_name           AS vendor_name ';
     ELSE
-      lv_sql := lv_sql
-        || ' ,NULL                      AS vendor_code '        -- 仕入先コード
-        || ' ,NULL                      AS vendor_name ';       -- 仕入先名
+      lv_select := lv_select
+        || '      ,NULL                      AS vendor_code '
+        || '      ,NULL                      AS vendor_name ';
     END IF;
+--
     -- 群種別
     IF ( ir_param.crowd_type = cv_crowd_type ) THEN
       -- 群別
-      lv_sql := lv_sql
-        || ' ,mst.crowd_code            AS crowd_code';  -- 群コード
+      lv_select := lv_select
+        || '      ,mst.crowd_code            AS crowd_code';
     ELSIF ( ir_param.crowd_type = cv_crowd_type_acnt ) THEN
       -- 経理群別
-      lv_sql := lv_sql
-        || ' ,mst.acnt_crowd_code       AS crowd_code '; -- 群コード
+      lv_select := lv_select
+        || '      ,mst.acnt_crowd_code       AS crowd_code ';
     END IF;
-    lv_sql := lv_sql
-      || ' ,mst.item_code             AS item_code '            -- 品目コード
-      || ' ,mst.item_s_name           AS item_s_name '          -- 品目名称
-      || ' ,mst.item_um               AS item_um '              -- 単位
-      || ' ,mst.item_atr15            AS item_atr15 '           -- 原価管理区分
-      || ' ,mst.lot_ctl               AS lot_ctl '              -- ロット管理区分
-      || ' ,SUM(mst.trans_qty)        AS trans_qty '            -- 数量
-      || ' ,AVG(mst.purchases_price)  AS purchases_price '      -- 仕入単価(ロット)
-      || ' ,AVG(mst.powder_price)     AS powder_price '         -- 粉引後単価
-      || ' ,AVG(mst.commission_price) AS commission_price '     -- 口銭単価
-      || ' ,SUM(mst.commission_price * mst.trans_qty) AS c_amt '-- 口銭金額 口銭単価 * 数量
-      || ' ,SUM(mst.assessment)       AS assessment '           -- 賦課金
-      || ' ,AVG(mst.stnd_unit_price)  AS stnd_unit_price '      -- 標準単価
-      || ' ,SUM(mst.stnd_unit_price * mst.trans_qty) AS j_amt ' -- 標準単価 * 数量
-      || ' ,SUM(mst.purchases_price * mst.trans_qty) AS s_amt ' -- 仕入単価(ロット) * 数量
-      || ' ,MAX(mst.c_tax)            AS c_tax '                -- 消費税
-      || 'FROM '
-      || '  ( '
-             -- 購買関連
-      || '   SELECT '
-      || '     xrpmpv.result_post      AS result_post '      -- 成績部署
-      || '    ,xleiv.item_div          AS item_div '         -- 品目区分
-      || '    ,xcv.description         AS item_div_name '    -- 品目区分名
-      || '    ,xleiv.item_id           AS item_id '          -- 品目ID
-      || '    ,xleiv.item_code         AS item_code '        -- 品目コード
-      || '    ,xleiv.item_um           AS item_um '          -- 単位
-      || '    ,xleiv.item_short_name   AS item_s_name '      -- 品目名称
-      || '    ,xleiv.item_attribute15  AS item_atr15 '       -- 原価管理区分
-      || '    ,xleiv.lot_ctl           AS lot_ctl '          -- ロット管理区分
-      || '    ,xrpmpv.vendor_id        AS vendor_id '        -- 仕入先ID
-      || '    ,xleiv.crowd_code        AS crowd_code '       -- 群コード
-      || '    ,xleiv.acnt_crowd_code   AS acnt_crowd_code '  -- 経理群コード
-      || '    ,itp.trans_qty           AS trans_qty '        -- 数量
-      || '    ,( '
-      || '      SELECT '
-      || '        NVL(DECODE(SUM(NVL(trans_qty,0)),0,0, '
-      || '          SUM(trans_qty * unit_ploce) '
-      || '            / SUM(NVL(trans_qty,0))),0) AS purchases_price '
-      || '      FROM  xxcmn_lot_cost xlc ' -- ﾛｯﾄ別原価ｱﾄﾞｵﾝ
-      || '      WHERE xlc.item_id = itp.item_id '
-      || '     )                       AS purchases_price '  -- 仕入単価 ロット別単価(※加重平均)
-      || '    ,NVL(xrpmpv.powder_price,0)     AS powder_price '     -- 粉引後単価
-      || '    ,NVL(xrpmpv.commission_price,0) AS commission_price ' -- 預かり口銭単価
-      || '    ,NVL(xrpmpv.assessment,0)       AS assessment '       -- 賦課金
-      || '    ,( '
-      || '      NVL((SELECT '
-      || '        xsupv.stnd_unit_price '
-      || '      FROM '
-      || '        xxcmn_stnd_unit_price_v xsupv ' -- 標準原価情報
-      || '      WHERE xsupv.start_date_active < (TRUNC(itp.trans_date) + 1) '
-      || '      AND ( '
-      || '              (xsupv.end_date_active >= TRUNC(itp.trans_date)) '
-      || '           OR (xsupv.end_date_active IS NULL) '
-      || '          ) '
-      || '      AND xsupv.item_id = itp.item_id '
-      || '     ),0))                       AS stnd_unit_price '  -- 標準原価
-      || '    ,xvv.segment1            AS segment1 '         -- 仕入先コード
-      || '    ,xvv.vendor_short_name   AS vendor_name '      -- 仕入先名
-      || '    ,( '
-      || '      SELECT '
-      || '        xlv.location_short_name '
-      || '      FROM '
-      || '        xxcmn_locations2_v xlv ' -- 事業所情報
-      || '      WHERE xlv.start_date_active < (TRUNC(itp.trans_date) + 1) '
-      || '      AND ( '
-      || '              (xlv.end_date_active >= TRUNC(itp.trans_date)) '
-      || '           OR (xlv.end_date_active IS NULL) '
-      || '          ) '
-      || '      AND xlv.location_code = xrpmpv.result_post '
-      || '     )                       AS location_name '    -- 事業所名
-      || '    ,flv.lookup_code         AS c_tax '            -- 消費税
-      || '   FROM '
-      || '     ic_tran_pnd              itp '      -- 在庫トラン
-      || '    ,xxcmn_lot_each_item_v    xleiv '    -- ロット別品目情報
-      || '    ,xxcmn_rcv_pay_mst_porc_po_v xrpmpv '-- 受払VIEW(購買)
-      || '    ,xxcmn_lookup_values2_v   xlvv '     -- ルックアップ
-      || '    ,xxcmn_categories_v       xcv '      -- カテゴリ
-      || '    ,xxcmn_vendors2_v         xvv '      -- 仕入先情報
-      || '    ,xxcmn_lookup_values2_v   flv '      -- 消費税
-      || '   WHERE '
-               -- 在庫トラン
-      || '         itp.doc_type                = ''' || cv_porc || ''''
-      || '     AND itp.completed_ind           = ' || gn_one
-      || '     AND itp.trans_date >= '
-      || '       FND_DATE.STRING_TO_DATE('
-      ||           '''' || ir_param.proc_from || ''',''' || gc_char_yyyymm_format || ''') '
-      || '     AND itp.trans_date < ADD_MONTHS(FND_DATE.STRING_TO_DATE('
-      ||           '''' || ir_param.proc_to ||''',''' || gc_char_yyyymm_format || '''),1) '
-               -- ロット別品目View
-      || '     AND xleiv.start_date_active < (TRUNC(itp.trans_date) + 1) '
-      || '     AND ( '
-      || '             (xleiv.end_date_active >= TRUNC(itp.trans_date)) '
-      || '          OR (xleiv.end_date_active IS NULL) '
-      || '         ) '
-      || '     AND xleiv.item_id               = itp.item_id '
-      || '     AND xleiv.lot_id                = itp.lot_id '
-               -- 受払VIEW：購買関連
-      || '     AND xrpmpv.source_document_code = ''' || cv_po || ''''
-      || '     AND xrpmpv.transaction_type '
-      || '          IN(''' || cv_deliver || ''',''' || cv_return_to_vendor || ''') '
-               -- ルックアップ
-      || '     AND xlvv.lookup_type            = ''' || cv_cat_set_name_mtof || ''''
-      || '     AND xlvv.language               = ''' || gv_ja  || ''''
-      || '     AND xlvv.source_lang            = ''' || gv_ja  || ''''
-      || '     AND xlvv.enabled_flag           = ''' || gv_y   || ''''
-      || '     AND xlvv.attribute5             = ''' || gn_one || '''' -- 対象帳票フラグ
-      || '     AND xlvv.start_date_active < (TRUNC(itp.trans_date) + 1) '
-      || '     AND ( '
-      || '             (xlvv.end_date_active >= TRUNC(itp.trans_date)) '
-      || '          OR (xlvv.end_date_active IS NULL) '
-      || '         ) '
-               -- ルックアップ = 受払VIEW
-      || '     AND xrpmpv.dealings_div         = xlvv.meaning '
-               -- 在庫トラン = 受払VIEW
-      || '     AND itp.doc_type                = xrpmpv.doc_type '
-      || '     AND itp.doc_id                  = xrpmpv.doc_id '
-      || '     AND itp.doc_line                = xrpmpv.doc_line '
-      || '     AND itp.line_id                 = xrpmpv.line_id '
-               -- 事業所マスタ
-      || '     AND xvv.start_date_active < (TRUNC(itp.trans_date) + 1) '
-      || '     AND ( '
-      || '             (xvv.end_date_active >= TRUNC(itp.trans_date)) '
-      || '          OR (xvv.end_date_active IS NULL) '
-      || '         ) '
-      || '     AND xvv.vendor_id     = xrpmpv.vendor_id '
-               -- カテゴリ
-      || '     AND xcv.category_set_name       = ''' || gv_cat_set_name_item_div || ''''
-      || '     AND xcv.segment1                = xleiv.item_div '
-               -- 消費税
-      || '     AND flv.lookup_type = ''' || gv_xxcmn_ctr || ''''
-      || '     AND flv.language    = ''' || gv_ja || ''''
-      || '     AND flv.start_date_active < (TRUNC(itp.trans_date) + 1) '
-      || '     AND ( '
-      || '             (flv.end_date_active >= TRUNC(itp.trans_date)) '
-      || '          OR (flv.end_date_active IS NULL) '
-      || '         ) ';
-    -- 商品区分
-    IF ( ir_param.prod_div IS NOT NULL ) THEN
-      lv_sql := lv_sql
-        || '     AND xleiv.prod_div = ''' || ir_param.prod_div || '''';
-    END IF;
+--
+    lv_select := lv_select
+      || '      ,mst.item_code             AS item_code '
+      || '      ,mst.item_s_name           AS item_s_name '
+      || '      ,mst.item_um               AS item_um '
+      || '      ,mst.item_atr15            AS item_atr15 '
+      || '      ,mst.lot_ctl               AS lot_ctl '
+      || '      ,SUM(mst.trans_qty)        AS trans_qty '
+      || '      ,SUM(mst.purchases_price)   / SUM(mst.trans_qty) AS purchases_price '
+      || '      ,SUM(mst.powder_price)      / SUM(mst.trans_qty) AS powder_price '
+      || '      ,SUM(mst.commission_price)  / SUM(mst.trans_qty) AS commission_price '
+      || '      ,SUM(mst.commission_price * mst.trans_qty) AS c_amt '
+      || '      ,SUM(mst.assessment)       AS assessment '
+      || '      ,SUM(mst.stnd_unit_price)   / SUM(mst.trans_qty) AS stnd_unit_price '
+      || '      ,SUM(mst.stnd_unit_price * mst.trans_qty) AS j_amt '
+      || '      ,SUM(mst.purchases_price * mst.trans_qty) AS s_amt '
+      || '      ,:para_lkup_code              AS c_tax ';
+--
+    -- ----------------------------------------------------
+    -- 購買関連生成
+    -- ----------------------------------------------------
+    lv_porc_po := 'FROM '
+      || '      ( '
+      || '       SELECT /*+ leading(itp gic1 mcb1 rsl rt pha pla plla) use_nl(itp gic1 mcb1)*/ '
+      || '              pha.attribute10         AS result_post '
+      || '             ,mcb2.segment1           AS item_div '
+      || '             ,mct2.description        AS item_div_name '
+      || '             ,iimb.item_id            AS item_id '
+      || '             ,iimb.item_no            AS item_code '
+      || '             ,iimb.item_um            AS item_um '
+      || '             ,ximb.item_short_name    AS item_s_name '
+      || '             ,iimb.attribute15        AS item_atr15 '
+      || '             ,iimb.lot_ctl            AS lot_ctl '
+      || '             ,pha.vendor_id           AS vendor_id '
+      || '             ,mcb3.segment1           AS crowd_code '
+      || '             ,mcb4.segment1           AS acnt_crowd_code '
+      || '             ,itp.trans_qty           AS trans_qty '
+      || '             ,NVL(pla.unit_price, 0) * NVL(itp.trans_qty, 0) AS purchases_price '
+      || '             ,NVL(plla.attribute2, :para_zero) AS powder_price '
+      || '             ,NVL(plla.attribute4, :para_zero) AS commission_price '
+      || '             ,NVL(plla.attribute7, :para_zero) AS assessment '
+      || '             ,(NVL((SELECT xsupv.stnd_unit_price '
+      || '                    FROM   xxcmn_stnd_unit_price_v xsupv '
+      || '                    WHERE  xsupv.start_date_active < (TRUNC(itp.trans_date) + 1) '
+      || '                    AND    ((xsupv.end_date_active >= TRUNC(itp.trans_date)) '
+      || '                             OR (xsupv.end_date_active IS NULL)) '
+      || '                    AND    xsupv.item_id = itp.item_id), 0)) AS stnd_unit_price '
+      || '             ,xvv.segment1            AS segment1 '
+      || '             ,xvv.vendor_short_name   AS vendor_name '
+      || '             ,xl.location_short_name  AS location_name '
+      || '       FROM   ic_tran_pnd              itp '
+      || '             ,rcv_shipment_lines       rsl '
+      || '             ,rcv_transactions         rt '
+      || '             ,po_headers_all           pha '
+      || '             ,po_lines_all             pla '
+      || '             ,po_line_locations_all    plla '
+      || '             ,ic_item_mst_b            iimb '
+      || '             ,xxcmn_item_mst_b         ximb '
+      || '             ,gmi_item_categories      gic1 '
+      || '             ,mtl_categories_b         mcb1 '
+      || '             ,gmi_item_categories      gic2 '
+      || '             ,mtl_categories_b         mcb2 '
+      || '             ,mtl_categories_tl        mct2 '
+      || '             ,gmi_item_categories      gic3 '
+      || '             ,mtl_categories_b         mcb3 '
+      || '             ,gmi_item_categories      gic4 '
+      || '             ,mtl_categories_b         mcb4 '
+      || '             ,xxcmn_vendors2_v         xvv '
+      || '             ,hr_locations_all         hl '
+      || '             ,xxcmn_locations_all      xl '
+      || '       WHERE  itp.doc_type                = :para_porc '
+      || '       AND    itp.completed_ind           = :para_one '
+      || '       AND    itp.trans_date '
+      || '                >=FND_DATE.STRING_TO_DATE(:para_param_proc_from '
+      || '                                         ,:para_char_yyyymm_format) '
+      || '       AND    itp.trans_date '
+      || '                < ADD_MONTHS( '
+      || '                  FND_DATE.STRING_TO_DATE(:para_param_proc_to '
+      || '                                         ,:para_char_yyyymm_format), 1) '
+      || '       AND    iimb.item_id                = itp.item_id '
+      || '       AND    ximb.item_id                = iimb.item_id '
+      || '       AND    ximb.start_date_active < (TRUNC(itp.trans_date) + 1) '
+      || '       AND    ximb.end_date_active   >= TRUNC(itp.trans_date) '
+      || '       AND    gic1.item_id                = itp.item_id '
+      || '       AND    gic1.category_set_id        = :para_prod_class_id '
+      || '       AND    mcb1.category_id            = gic1.category_id '
+      || '       AND    mcb1.segment1               = :para_param_prod_div '
+      || '       AND    gic2.item_id                = itp.item_id '
+      || '       AND    gic2.category_set_id        = :para_item_class_id '
+      || '       AND    mcb2.category_id            = gic2.category_id '
+      || '       AND    mct2.category_id            = mcb2.category_id '
+      || '       AND    mct2.language               = :para_ja '
+      || '       AND    gic3.item_id                = itp.item_id '
+      || '       AND    gic3.category_set_id        = :para_crowd_code_id '
+      || '       AND    mcb3.category_id            = gic3.category_id '
+      || '       AND    gic4.item_id                = itp.item_id '
+      || '       AND    gic4.category_set_id        = :para_acnt_crowd_id '
+      || '       AND    mcb4.category_id            = gic4.category_id '
+      || '       AND    rsl.shipment_header_id      = itp.doc_id '
+      || '       AND    rsl.line_num                = itp.doc_line '
+      || '       AND    rt.transaction_id           = itp.line_id '
+      || '       AND    rt.shipment_line_id         = rsl.shipment_line_id '
+      || '       AND    rsl.po_header_id            = pha.po_header_id '
+      || '       AND    rsl.po_line_id              = pla.po_line_id '
+      || '       AND    pla.po_line_id              = plla.po_line_id '
+      || '       AND    rsl.source_document_code    = :para_po '
+      || '       AND    rt.transaction_type     IN (:para_deliver '
+      || '                                         ,:para_return_to_vendor) '
+      || '       AND    xvv.start_date_active < (TRUNC(itp.trans_date) + 1) '
+      || '       AND    ((xvv.end_date_active >= TRUNC(itp.trans_date)) '
+      || '              OR (xvv.end_date_active IS NULL)) '
+      || '       AND    xvv.vendor_id               = pha.vendor_id '
+      || '       AND    hl.location_code            = pha.attribute10 '
+      || '       AND    hl.location_id              = xl.location_id '
+      || '       AND    xl.start_date_active  < (TRUNC(itp.trans_date) + 1) '
+      || '       AND ( '
+      || '             (xl.end_date_active >= TRUNC(itp.trans_date)) '
+      || '             OR '
+      || '             (xl.end_date_active IS NULL) '
+      || '           ) ';
+--
     -- 品目区分
     IF ( ir_param.item_div IS NOT NULL ) THEN
-      lv_sql := lv_sql
-        || '     AND xleiv.item_div = ''' || ir_param.item_div || '''';
+      lv_porc_po := lv_porc_po
+        || '       AND    mcb2.segment1               = ''' || ir_param.item_div || '''';
     END IF;
+--
     -- 成績部署
     IF ( (ir_param.result_post IS NOT NULL)
       AND (ir_param.result_post <> xxcmn770015c.dept_code_all) ) THEN
-      lv_sql := lv_sql
-        || '     AND xrpmpv.result_post = ''' || ir_param.result_post || '''';
+      lv_porc_po := lv_porc_po
+        || '       AND pha.attribute10 = ''' || ir_param.result_post || '''';
     END IF;
+--
     -- 仕入先
     IF ( (ir_param.party_code IS NOT NULL)
       AND (ir_param.party_code <> xxcmn770015c.dept_code_all) ) THEN
-      lv_sql := lv_sql
-        || '     AND xrpmpv.vendor_id = ''' || gn_para_vendor_id || '''';
+      lv_porc_po := lv_porc_po
+        || '       AND pha.vendor_id = ''' || gn_para_vendor_id || '''';
     END IF;
+--
     -- 群種別
     IF ( (ir_param.crowd_type = cv_crowd_type)
       AND (ir_param.crowd_code IS NOT NULL) ) THEN
       -- 群別
-      lv_sql := lv_sql
-        || '     AND xleiv.crowd_code = ''' || ir_param.crowd_code || '''';
+      lv_porc_po := lv_porc_po
+        || '       AND mcb3.segment1 = ''' || ir_param.crowd_code || '''';
     ELSIF ( (ir_param.crowd_type = cv_crowd_type_acnt)
       AND (ir_param.acnt_crowd_code IS NOT NULL) ) THEN
       -- 経理群別
-      lv_sql := lv_sql
-        || '     AND xleiv.acnt_crowd_code = ''' || ir_param.acnt_crowd_code || '''';
+      lv_porc_po := lv_porc_po
+        || '       AND mcb4.segment1 = ''' || ir_param.acnt_crowd_code || '''';
     END IF;
 --
-    lv_sql := lv_sql
-      || '   UNION ALL '
-             -- 在庫調整(仕入先返品)
-      || '   SELECT '
-      || '     xrrt.department_code    AS result_post '      -- 成績部署
-      || '    ,xleiv.item_div          AS item_div '         -- 品目区分
-      || '    ,xcv.description         AS item_div_name '    -- 品目区分名
-      || '    ,xleiv.item_id           AS item_id '          -- 品目ID
-      || '    ,xleiv.item_code         AS item_code '        -- 品目コード
-      || '    ,xleiv.item_um           AS item_um '          -- 単位
-      || '    ,xleiv.item_short_name   AS item_s_name '      -- 品目名称
-      || '    ,xleiv.item_attribute15  AS item_atr15 '       -- 原価管理区分
-      || '    ,xleiv.lot_ctl           AS lot_ctl '          -- ロット管理区分
-      || '    ,xrrt.vendor_id          AS vendor_id '        -- 仕入先ID
-      || '    ,xleiv.crowd_code        AS crowd_code '       -- 群コード
-      || '    ,xleiv.acnt_crowd_code   AS acnt_crowd_code '  -- 経理群コード
-      || '    ,itc.trans_qty           AS trans_qty '        -- 数量
-      || '    ,( '
-      || '      SELECT '
-      || '        NVL(DECODE(SUM(NVL(xlc.trans_qty,0)),0,0, '
-      || '          SUM(xlc.trans_qty * xlc.unit_ploce) '
-      || '            / SUM(NVL(xlc.trans_qty,0))),0) AS purchases_price '
-      || '      FROM  xxcmn_lot_cost xlc ' -- ﾛｯﾄ別原価ｱﾄﾞｵﾝ
-      || '      WHERE xlc.item_id = itc.item_id '
-      || '     )                       AS purchases_price '  -- 仕入単価
-      || '    ,TO_CHAR(NVL(xrrt.kobki_converted_unit_price,0)) AS powder_price ' -- 粉引後単価
-      || '    ,TO_CHAR(NVL(xrrt.kousen_rate_or_unit_price,0))  AS commission_price ' -- 口銭単価
-      || '    ,TO_CHAR(NVL(xrrt.fukakin_price,0)) AS assessment '       -- 賦課金
-      || '    ,( '
-      || '      NVL((SELECT '
-      || '        xsupv.stnd_unit_price '
-      || '      FROM '
-      || '        xxcmn_stnd_unit_price_v xsupv ' -- 標準原価情報
-      || '      WHERE xsupv.start_date_active < (TRUNC(itc.trans_date) + 1) '
-      || '      AND ( '
-      || '              (xsupv.end_date_active >= TRUNC(itc.trans_date)) '
-      || '           OR (xsupv.end_date_active IS NULL) '
-      || '          ) '
-      || '      AND xsupv.item_id = itc.item_id '
-      || '     ),0))                       AS stnd_unit_price '  -- 標準原価
-      || '    ,xvv.segment1            AS segment1 '         -- 仕入先コード
-      || '    ,xvv.vendor_short_name   AS vendor_name '      -- 仕入先名
-      || '    ,( '
-      || '      SELECT '
-      || '        xlv.location_short_name '
-      || '      FROM '
-      || '        xxcmn_locations2_v xlv ' -- 事業所情報
-      || '      WHERE xlv.start_date_active < (TRUNC(itc.trans_date) + 1) '
-      || '      AND ( '
-      || '              (xlv.end_date_active >= TRUNC(itc.trans_date)) '
-      || '           OR (xlv.end_date_active IS NULL) '
-      || '          ) '
-      || '      AND xlv.location_code = xrrt.department_code '
-      || '     )                       AS location_name '    -- 事業所名
-      || '    ,flv.lookup_code        AS c_tax '             -- 消費税
-      || '   FROM '
-      || '     ic_tran_cmp               itc '    -- OPM完了在庫トラン
-      || '    ,ic_adjs_jnl               iaj '    -- OPM在庫調整ジャーナル
-      || '    ,ic_jrnl_mst               ijm '    -- OPMジャーナルマスタ
-      || '    ,xxpo_rcv_and_rtn_txns     xrrt '   -- 受入返品実績アドオン
-      || '    ,xxcmn_rcv_pay_mst_adji_v  xrpmav ' -- 受払View(在庫調整)
-      || '    ,xxcmn_lookup_values2_v    xlvv '   -- クイックコード情報VIEW2
-      || '    ,xxcmn_lot_each_item_v     xleiv  ' -- ロット別品目情報VIEW
-      || '    ,xxcmn_categories_v        xcv '    -- カテゴリ
-      || '    ,xxcmn_vendors2_v          xvv '    -- 仕入先情報
-      || '    ,xxcmn_lookup_values2_v    flv '    -- 消費税
-      || '   WHERE itc.doc_type        = ''' || cv_adji || ''''
-      || '     AND itc.doc_type        = xrpmav.doc_type '
-      || '     AND itc.reason_code     = ''' || cv_x201 || '''' -- 仕入先返品
-      || '     AND iaj.trans_type      = itc.doc_type '
-      || '     AND iaj.doc_id          = itc.doc_id '
-      || '     AND iaj.doc_line        = itc.doc_line '
-      || '     AND ijm.journal_id      = iaj.journal_id '
-      || '     AND xrrt.txns_id        = ijm.attribute1 '
-      || '     AND itc.reason_code     = xrpmav.reason_code '
-      || '     AND itc.trans_date >= '
-      || '       FND_DATE.STRING_TO_DATE('
-      ||           '''' || ir_param.proc_from || ''',''' || gc_char_yyyymm_format || ''') '
-      || '     AND itc.trans_date <  ADD_MONTHS(FND_DATE.STRING_TO_DATE( '
-      ||           '''' || ir_param.proc_to ||''',''' || gc_char_yyyymm_format || '''),1) '
-      || '     AND xlvv.lookup_type        = ''' || cv_cat_set_name_mtof || ''''
-      || '     AND xrpmav.dealings_div     = xlvv.meaning '
-      || '     AND (xlvv.start_date_active IS NULL '
-      || '       OR xlvv.start_date_active  <= TRUNC(itc.trans_date)) '
-      || '     AND (xlvv.end_date_active   IS NULL '
-      || '       OR xlvv.end_date_active    >= TRUNC(itc.trans_date)) '
-      || '     AND xlvv.language           = ''' || gv_ja  || ''''
-      || '     AND xlvv.source_lang        = ''' || gv_ja  || ''''
-      || '     AND xlvv.attribute5         = ''' || gn_one || ''''
-      || '     AND itc.item_id             = xleiv.item_id '
-      || '     AND itc.lot_id              = xleiv.lot_id '
-      || '     AND (xleiv.start_date_active IS NULL '
-      || '       OR xleiv.start_date_active <= TRUNC(itc.trans_date)) '
-      || '     AND (xleiv.end_date_active   IS NULL '
-      || '       OR  xleiv.end_date_active  >= TRUNC(itc.trans_date)) '
-      || '     AND xvv.start_date_active < (TRUNC(itc.trans_date) + 1) '
-      || '     AND ( '
-      || '             (xvv.end_date_active >= TRUNC(itc.trans_date)) '
-      || '          OR (xvv.end_date_active IS NULL) '
-      || '         ) '
-      || '     AND xvv.vendor_id     = xrrt.vendor_id '
-               -- カテゴリ
-      || '     AND xcv.category_set_name       = ''' || gv_cat_set_name_item_div || ''''
-      || '     AND xcv.segment1                = xleiv.item_div '
-               -- 消費税
-      || '     AND flv.lookup_type = ''' || gv_xxcmn_ctr || ''''
-      || '     AND flv.language    = ''' || gv_ja || ''''
-      || '     AND flv.start_date_active < (TRUNC(itc.trans_date) + 1) '
-      || '     AND ( '
-      || '             (flv.end_date_active >= TRUNC(itc.trans_date)) '
-      || '          OR (flv.end_date_active IS NULL) '
-      || '         ) ';
-    -- 商品区分
-    IF ( ir_param.prod_div IS NOT NULL ) THEN
-      lv_sql := lv_sql
-        || '     AND xleiv.prod_div = ''' || ir_param.prod_div || '''';
-    END IF;
+    -- ----------------------------------------------------
+    -- 在庫調整(仕入先返品)生成
+    -- ----------------------------------------------------
+    lv_adji := 'UNION ALL '
+      || '       SELECT /*+ leading(itc gic1 mcb1 iaj ijm xrrt ) use_nl(itc gic1 mcb1) */ '
+      || '              xrrt.department_code    AS result_post '
+      || '             ,mcb2.segment1           AS item_div '
+      || '             ,mct2.description        AS item_div_name '
+      || '             ,iimb.item_id            AS item_id '
+      || '             ,iimb.item_no            AS item_code '
+      || '             ,iimb.item_um            AS item_um '
+      || '             ,ximb.item_short_name    AS item_s_name '
+      || '             ,iimb.attribute15        AS item_atr15 '
+      || '             ,iimb.lot_ctl            AS lot_ctl '
+      || '             ,xrrt.vendor_id          AS vendor_id '
+      || '             ,mcb3.segment1           AS crowd_code '
+      || '             ,mcb4.segment1           AS acnt_crowd_code '
+      || '             ,itc.trans_qty           AS trans_qty '
+      || '             ,NVL(xrrt.unit_price, 0) '
+      || '                * NVL(itc.trans_qty, 0) AS purchases_price '
+      || '             ,TO_CHAR(NVL(xrrt.kobki_converted_unit_price, :para_zero)) AS powder_price '
+      || '           ,TO_CHAR(NVL(xrrt.kousen_rate_or_unit_price, :para_zero)) AS commission_price '
+      || '             ,TO_CHAR(NVL(xrrt.fukakin_price, :para_zero)) AS assessment '
+      || '             ,(NVL((SELECT xsupv.stnd_unit_price '
+      || '                    FROM   xxcmn_stnd_unit_price_v xsupv '
+      || '                    WHERE  xsupv.start_date_active < (TRUNC(itc.trans_date) + 1) '
+      || '                    AND    ((xsupv.end_date_active >= TRUNC(itc.trans_date)) '
+      || '                             OR (xsupv.end_date_active IS NULL)) '
+      || '                    AND    xsupv.item_id = itc.item_id), 0)) AS stnd_unit_price '
+      || '             ,xvv.segment1            AS segment1 '
+      || '             ,xvv.vendor_short_name   AS vendor_name '
+      || '             ,xl.location_short_name  AS location_name '
+      || '       FROM   ic_tran_cmp               itc '
+      || '             ,ic_adjs_jnl               iaj '
+      || '             ,ic_jrnl_mst               ijm '
+      || '             ,ic_item_mst_b             iimb '
+      || '             ,xxpo_rcv_and_rtn_txns     xrrt '
+      || '             ,xxcmn_item_mst_b          ximb '
+      || '             ,gmi_item_categories       gic1 '
+      || '             ,mtl_categories_b          mcb1 '
+      || '             ,gmi_item_categories       gic2 '
+      || '             ,mtl_categories_b          mcb2 '
+      || '             ,mtl_categories_tl         mct2 '
+      || '             ,gmi_item_categories       gic3 '
+      || '             ,mtl_categories_b          mcb3 '
+      || '             ,gmi_item_categories       gic4 '
+      || '             ,mtl_categories_b          mcb4 '
+      || '             ,xxcmn_vendors2_v          xvv '
+      || '             ,hr_locations_all          hl '
+      || '             ,xxcmn_locations_all       xl '
+      || '       WHERE  itc.doc_type        = :para_adji '
+      || '       AND    itc.reason_code     = :para_x201 '
+      || '       AND    itc.trans_date '
+      || '                >= FND_DATE.STRING_TO_DATE(:para_param_proc_from '
+      || '                                          ,:para_char_yyyymm_format) '
+      || '       AND    itc.trans_date '
+      || '                < ADD_MONTHS( '
+      || '                  FND_DATE.STRING_TO_DATE(:para_param_proc_to '
+      || '                                         ,:para_char_yyyymm_format), 1) '
+      || '       AND    iaj.trans_type      = itc.doc_type '
+      || '       AND    iaj.doc_id          = itc.doc_id '
+      || '       AND    iaj.doc_line        = itc.doc_line '
+      || '       AND    ijm.journal_id      = iaj.journal_id '
+      || '       AND    xrrt.txns_id        = TO_NUMBER(ijm.attribute1) '
+      || '       AND    iimb.item_id        = itc.item_id '
+      || '       AND    ximb.item_id        = iimb.item_id '
+      || '       AND    ximb.start_date_active < (TRUNC(itc.trans_date) + 1) '
+      || '       AND    ximb.end_date_active   >= TRUNC(itc.trans_date) '
+      || '       AND    gic1.item_id        = itc.item_id '
+      || '       AND    gic1.category_set_id = :para_prod_class_id '
+      || '       AND    mcb1.category_id    = gic1.category_id '
+      || '       AND    mcb1.segment1       = :para_param_prod_div '
+      || '       AND    gic2.item_id        = itc.item_id '
+      || '       AND    gic2.category_set_id = :para_item_class_id '
+      || '       AND    mcb2.category_id    = gic2.category_id '
+      || '       AND    mct2.category_id    = mcb2.category_id '
+      || '       AND    mct2.language       = :para_ja '
+      || '       AND    gic3.item_id        = itc.item_id '
+      || '       AND    gic3.category_set_id = :para_crowd_code_id '
+      || '       AND    mcb3.category_id    = gic3.category_id '
+      || '       AND    gic4.item_id        = itc.item_id '
+      || '       AND    gic4.category_set_id = :para_acnt_crowd_id '
+      || '       AND    mcb4.category_id    = gic4.category_id '
+      || '       AND    xvv.start_date_active < (TRUNC(itc.trans_date) + 1) '
+      || '       AND    ((xvv.end_date_active >= TRUNC(itc.trans_date)) '
+      || '              OR (xvv.end_date_active IS NULL)) '
+      || '       AND    xvv.vendor_id     = xrrt.vendor_id '
+      || '       AND    hl.location_code         = xrrt.department_code '
+      || '       AND    hl.location_id           = xl.location_id '
+      || '       and    xl.start_date_active  < (TRUNC(itc.trans_date) + 1) '
+      || '       AND ( '
+      || '             (xl.end_date_active >= TRUNC(itc.trans_date)) '
+      || '             OR '
+      || '             (xl.end_date_active IS NULL) '
+      || '           ) ';
+--
     -- 品目区分
     IF ( ir_param.item_div IS NOT NULL ) THEN
-      lv_sql := lv_sql
-        || '     AND xleiv.item_div = ''' || ir_param.item_div || '''';
+      lv_adji := lv_adji
+        || '       AND    mcb2.segment1               = ''' || ir_param.item_div || '''';
     END IF;
+--
     -- 成績部署
     IF ( (ir_param.result_post IS NOT NULL)
       AND (ir_param.result_post <> xxcmn770015c.dept_code_all) ) THEN
-      lv_sql := lv_sql
-        || '     AND xrrt.department_code = ''' || ir_param.result_post || '''';
+      lv_adji := lv_adji
+        || '       AND xrrt.department_code = ''' || ir_param.result_post || '''';
     END IF;
+--
     -- 仕入先
     IF ( (ir_param.party_code IS NOT NULL)
       AND (ir_param.party_code <> xxcmn770015c.dept_code_all) ) THEN
-      lv_sql := lv_sql
-        || '     AND xrrt.vendor_id = ''' || gn_para_vendor_id || '''';
+      lv_adji := lv_adji
+        || '       AND xrrt.vendor_id = ''' || gn_para_vendor_id || '''';
     END IF;
+--
     -- 群種別
     IF ( (ir_param.crowd_type = cv_crowd_type)
       AND (ir_param.crowd_code IS NOT NULL) ) THEN
       -- 群別
-      lv_sql := lv_sql
-        || '     AND xleiv.crowd_code = ''' || ir_param.crowd_code || '''';
+      lv_adji := lv_adji
+        || '       AND mcb3.segment1 = ''' || ir_param.crowd_code || '''';
     ELSIF ( (ir_param.crowd_type = cv_crowd_type_acnt)
       AND (ir_param.acnt_crowd_code IS NOT NULL) ) THEN
       -- 経理群別
-      lv_sql := lv_sql
-        || '     AND xleiv.acnt_crowd_code = ''' || ir_param.acnt_crowd_code || '''';
+      lv_adji := lv_adji
+        || '       AND mcb4.segment1 = ''' || ir_param.acnt_crowd_code || '''';
     END IF;
-    lv_sql := lv_sql
-      || '  ) mst '
-      || 'GROUP BY '
-      || '  mst.result_post'          -- 成績部署
-      || ' ,mst.location_name'        -- 事業所名
-      || ' ,mst.item_div'             -- 品目区分
-      || ' ,mst.item_div_name'        -- 品目区分名
-      || ' ,mst.segment1'             -- 仕入先コード
-      || ' ,mst.vendor_name';         -- 仕入先名
+--
+    lv_adji := lv_adji
+      || '      ) mst ';
+--
+    -- ----------------------------------------------------
+    -- GROUP句生成
+    -- ----------------------------------------------------
+    lv_group := 'GROUP BY '
+      || '         mst.result_post '
+      || '        ,mst.location_name '
+      || '        ,mst.item_div '
+      || '        ,mst.item_div_name '
+      || '        ,mst.segment1 '
+      || '        ,mst.vendor_name ';
+--
     -- 群種別
     IF ( ir_param.crowd_type = cv_crowd_type ) THEN
       -- 群別
-      lv_sql := lv_sql
-        || ' ,mst.crowd_code';      -- 群コード
+      lv_group := lv_group
+        || '        ,mst.crowd_code ';
     ELSIF ( ir_param.crowd_type = cv_crowd_type_acnt ) THEN
       -- 経理群別
-      lv_sql := lv_sql
-        || ' ,mst.acnt_crowd_code'; -- 群コード
+      lv_group := lv_group
+        || '        ,mst.acnt_crowd_code ';
     END IF;
-    lv_sql := lv_sql
-      || ' ,mst.item_code'            -- 品目コード
-      || ' ,mst.item_s_name'          -- 品目名称
-      || ' ,mst.item_um'              -- 単位
-      || ' ,mst.item_atr15'           -- 原価管理区分
-      || ' ,mst.lot_ctl '             -- ロット管理区分
-      || 'ORDER BY ';
+--
+    lv_group := lv_group
+      || '        ,mst.item_code '
+      || '        ,mst.item_s_name '
+      || '        ,mst.item_um '
+      || '        ,mst.item_atr15 '
+      || '        ,mst.lot_ctl ';
+--
+    -- ----------------------------------------------------
+    -- ORDER句生成
+    -- ----------------------------------------------------
+    lv_order := 'ORDER BY ';
     -- 成績部署
     IF ( ir_param.result_post IS NULL ) THEN
-      lv_sql := lv_sql
-        || '   mst.result_post '      -- 成績部署
-        || '  ,mst.item_div ';        -- 品目区分
+      lv_order := lv_order
+        || '         mst.result_post '
+        || '        ,mst.item_div ';
     ELSE
-      lv_sql := lv_sql
-        || '   mst.item_div ';        -- 品目区分
+      lv_order := lv_order
+        || '         mst.item_div ';
     END IF;
     -- 仕入先
     IF ( ir_param.party_code IS NULL ) THEN
-      lv_sql := lv_sql
-        || '  ,mst.segment1 ';        -- 仕入先
+      lv_order := lv_order
+        || '        ,mst.segment1 ';
     END IF;
     -- 群種別
     IF ( ir_param.crowd_type = cv_crowd_type ) THEN
       -- 群別
-      lv_sql := lv_sql
-        || ' ,mst.crowd_code';      -- 群コード
+      lv_order := lv_order
+        || '        ,mst.crowd_code ';
     ELSIF ( ir_param.crowd_type = cv_crowd_type_acnt ) THEN
       -- 経理群別
-      lv_sql := lv_sql
-        || ' ,mst.acnt_crowd_code'; -- 群コード
+      lv_order := lv_order
+        || '        ,mst.acnt_crowd_code ';
     END IF;
-    lv_sql := lv_sql
-      || '  ,mst.item_code '          -- 品目
-      ;
+    lv_order := lv_order
+      || '        ,mst.item_code ';
 --
-    -- ====================================================
-    -- データ抽出
-    -- ====================================================
-    -- オープン
-    OPEN lc_ref FOR lv_sql;
-    -- バルクフェッチ
+FND_FILE.PUT_LINE( FND_FILE.LOG, lv_sql);
+
+-- 2008/10/14 v1.6 ADD END
+--yutsuzuk add
+    SELECT flv.lookup_code
+    INTO   lt_lkup_code
+    FROM   xxcmn_lookup_values_v flv
+    WHERE  flv.lookup_type = gv_xxcmn_ctr
+    AND    ROWNUM          = 1;
+--yutsuzuk add
+-- 2008/10/14 v1.6 UPDATE START
+/*
+--yutsuzuk add
+    IF  ( ir_param.result_post IS NULL )        -- 成績部署未入力
+    AND ( ir_param.party_code IS NULL )         -- 仕入先未入力
+    AND ( ir_param.crowd_type = cv_crowd_type ) -- 群別
+    AND ( ir_param.prod_div IS NOT NULL )       -- 商品区分入力
+    THEN
+      IF ( ir_param.item_div IS NULL )           -- 品目区分入力
+      THEN
+        OPEN  get_cur01;
+        FETCH get_cur01 BULK COLLECT INTO ot_data_rec;
+        CLOSE get_cur01;
+      ELSE
+        OPEN  get_cur02;
+        FETCH get_cur02 BULK COLLECT INTO ot_data_rec;
+        CLOSE get_cur02;
+      END IF;
+    END IF;
+--yutsuzuk add
+*/
+    OPEN  lc_ref FOR lv_select
+                  || lv_porc_po
+                  || lv_adji
+                  || lv_group
+                  || lv_order   USING  lt_lkup_code
+                                      ,cv_zero
+                                      ,cv_zero
+                                      ,cv_zero
+                                      ,cv_porc
+                                      ,gn_one
+                                      ,ir_param.proc_from
+                                      ,gc_char_yyyymm_format
+                                      ,ir_param.proc_to
+                                      ,gc_char_yyyymm_format
+                                      ,cn_prod_class_id
+                                      ,ir_param.prod_div
+                                      ,cn_item_class_id
+                                      ,gv_ja
+                                      ,cn_crowd_code_id
+                                      ,cn_acnt_crowd_id
+                                      ,cv_po
+                                      ,cv_deliver
+                                      ,cv_return_to_vendor
+                                      ,cv_zero
+                                      ,cv_zero
+                                      ,cv_zero
+                                      ,cv_adji
+                                      ,cv_x201
+                                      ,ir_param.proc_from
+                                      ,gc_char_yyyymm_format
+                                      ,ir_param.proc_to
+                                      ,gc_char_yyyymm_format
+                                      ,cn_prod_class_id
+                                      ,ir_param.prod_div
+                                      ,cn_item_class_id
+                                      ,gv_ja
+                                      ,cn_crowd_code_id
+                                      ,cn_acnt_crowd_id;
+--
     FETCH lc_ref BULK COLLECT INTO ot_data_rec;
-    -- カーソルクローズ
     CLOSE lc_ref;
-    IF ( ot_data_rec.COUNT = 0 ) THEN
-      -- 取得データが０件の場合
-      RAISE no_data_expt;
-    END IF;
+-- 2008/10/14 v1.6 UPDATE END
 --
   EXCEPTION
     -- *** 取得データ０件 ***

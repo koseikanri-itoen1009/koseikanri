@@ -7,7 +7,7 @@ AS
  * Description      : 入出庫配送計画情報抽出処理
  * MD.050           : T_MD050_BPO_601_配車配送計画
  * MD.070           : T_MD070_BPO_60E_入出庫配送計画情報抽出処理
- * Version          : 1.22
+ * Version          : 1.23
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -15,7 +15,9 @@ AS
  * ---------------------- ----------------------------------------------------------
  *  prc_chk_param          パラメータチェック             (E-01)
  *  prc_get_profile        プロファイル取得               (E-02)
+ *  prc_chk_multi          多重起動チェック               -- PT2-2_17指摘71対応 追加
  *  prc_del_temp_data      テーブル削除                   (E-03)
+ *  prc_del_tmptable_data  テンポラリテーブルデータ削除   -- PT2-2_17指摘71対応 追加
  *  prc_ins_temp_table     中間テーブル登録
  *  prc_get_main_data      メインデータ抽出               (E-04)
  *  prc_get_can_data       取消データ抽出                 -- TE080_600指摘#27対応 追加
@@ -61,7 +63,8 @@ AS
  *  2008/09/25    1.19  M.Nomura         TE080_600指摘#31対応
  *  2008/09/25    1.20  M.Nomura         統合#26対応
  *  2008/10/06    1.21  M.Nomura         統合#306対応
- *  2008/10/07    1.21  M.Nomura         TE080_600指摘#27対応
+ *  2008/10/07    1.22  M.Nomura         TE080_600指摘#27対応
+ *  2008/10/14    1.23  M.Nomura         PT2-2_17指摘71対応
  *
  *****************************************************************************************/
 --
@@ -265,7 +268,7 @@ AS
   gc_time_default           CONSTANT VARCHAR2(4) := '0000' ;    -- 時間デフォルト値
   gc_time_min               CONSTANT VARCHAR2(5) := '00:00' ;   -- 時間最小値
   gc_time_max               CONSTANT VARCHAR2(5) := '23:59' ;   -- 時間最大値
-
+--
 -- ##### 20080611 Ver.1.6 WF対応 START #####
   gc_wf_ope_div             CONSTANT VARCHAR2(2) := '09'; -- Workflow通知先（09:外部倉庫入出庫）
 -- ##### 20080611 Ver.1.6 WF対応 END   #####
@@ -284,7 +287,10 @@ AS
 -- ##### 20080925 Ver.1.19 TE080_600指摘#31対応 END   #####
 --
 -- ##### 20080919 Ver.1.18 T_S_453 460 468対応 START #####
-  gv_filetimes        VARCHAR2(14);   -- YYYYMMDDHH24MISS形式
+-- ##### 20081014 Ver.1.23 PT2-2_17指摘71対応 START #####
+--  gv_filetimes        VARCHAR2(14);   -- YYYYMMDDHH24MISS形式
+  gv_filetimes        VARCHAR2(15);   -- YYYYMMDDHH24MISSFF形式
+-- ##### 20081014 Ver.1.23 PT2-2_17指摘71対応 END   #####
 -- ##### 20080919 Ver.1.18 T_S_453 460 468対応 END   #####
 --
 -- ##### 20080611 Ver.1.6 WF対応 START #####
@@ -303,9 +309,16 @@ AS
   gn_out_cnt_mov              NUMBER := 0 ;   -- 出力件数：移動
 --
 -- ##### 20080612 Ver.1.7 商品セキュリティ対応 START #####
-  gv_item_div_security       VARCHAR2(100);
+  gv_item_div_security        VARCHAR2(100);
 -- ##### 20080612 Ver.1.7 商品セキュリティ対応 END   #####
-
+--
+-- ##### 20081014 Ver.1.23 PT2-2_17指摘71対応 START #####
+  -- 多重起動確認用
+  gv_date_fix          VARCHAR2(20);  -- 確定通知実施日
+  gv_fix_from          VARCHAR2(10);  -- 確定通知実施時間From
+  gv_fix_to            VARCHAR2(10);  -- 確定通知実施時間To
+-- ##### 20081014 Ver.1.23 PT2-2_17指摘71対応 END   #####
+--
   --------------------------------------------------
   -- デバッグ用
   --------------------------------------------------
@@ -414,6 +427,18 @@ AS
 --
 -- ##### 20081007 Ver.1.22 TE080_600指摘#27対応 END   #####
 --
+-- ##### 20081014 Ver.1.23 PT2-2_17指摘71対応 START #####
+--
+  -- 多重起動チェック用 要求ID取得用
+  TYPE rec_multi_data  IS RECORD
+    (
+      request_id        NUMBER(15,0)
+    ) ;
+  TYPE tab_multi_data IS TABLE OF rec_multi_data INDEX BY BINARY_INTEGER ;
+  gt_multi_data  tab_multi_data ;
+--
+-- ##### 20081014 Ver.1.23 PT2-2_17指摘71対応 END   #####
+--
   --------------------------------------------------
   -- 通知済情報格納用
   --------------------------------------------------
@@ -521,6 +546,10 @@ AS
   TYPE t_notif_date              IS TABLE OF
        xxwsh_stock_delivery_info_tmp.notif_date%TYPE INDEX BY BINARY_INTEGER ;
 -- ##### 20080925 Ver.1.20 統合#26対応 END   #####
+-- ##### 20081014 Ver.1.23 PT2-2_17指摘71対応 START #####
+  TYPE t_target_request_id       IS TABLE OF
+       xxwsh_stock_delivery_info_tmp.target_request_id%TYPE INDEX BY BINARY_INTEGER ;
+-- ##### 20081014 Ver.1.23 PT2-2_17指摘71対応 END   #####
   gt_corporation_name        t_corporation_name ;
   gt_data_class              t_data_class ;
   gt_transfer_branch_no      t_transfer_branch_no ;
@@ -574,6 +603,9 @@ AS
 -- ##### 20080925 Ver.1.20 統合#26対応 START #####
   gt_notif_date              t_notif_date ;
 -- ##### 20080925 Ver.1.20 統合#26対応 END   #####
+-- ##### 20081014 Ver.1.23 PT2-2_17指摘71対応 START #####
+  gt_target_request_id       t_target_request_id ;
+-- ##### 20081014 Ver.1.23 PT2-2_17指摘71対応 END   #####
   gn_cre_idx    NUMBER := 0 ;
 --
   -- 警告メッセージ用配列変数
@@ -835,7 +867,10 @@ AS
   -- 初期処理
   -- ====================================================
   --ファイル名タイムスタンプ取得
-  gv_filetimes  := TO_CHAR(SYSDATE, 'YYYYMMDDHH24MISS');
+-- ##### 20081014 Ver.1.23 PT2-2_17指摘71対応 START #####
+--  gv_filetimes  := TO_CHAR(SYSDATE, 'YYYYMMDDHH24MISS');
+    gv_filetimes  := TO_CHAR(SYSTIMESTAMP, 'YYYYMMDDHH24MISSFF1');
+-- ##### 20081014 Ver.1.23 PT2-2_17指摘71対応 END   #####
 -- ##### 20080919 Ver.1.18 T_S_453 460 468対応 END   #####
     -- ====================================================
     -- プロファイル取得
@@ -892,6 +927,278 @@ AS
 --##### 固定例外処理部 END   #######################################################################
   END prc_get_profile ;
 --
+-- ##### 20081014 Ver.1.23 PT2-2_17指摘71対応 START #####
+--
+  /************************************************************************************************
+   * Procedure Name   : prc_chk_multi
+   * Description      : 多重起動チェック
+   ***********************************************************************************************/
+  PROCEDURE prc_chk_multi
+    (
+      ov_errbuf   OUT NOCOPY VARCHAR2   -- エラー・メッセージ
+     ,ov_retcode  OUT NOCOPY VARCHAR2   -- リターン・コード
+     ,ov_errmsg   OUT NOCOPY VARCHAR2   -- ユーザー・エラー・メッセージ
+    )
+  IS
+    -- ==================================================
+    -- 固定ローカル定数
+    -- ==================================================
+    cv_prg_name   CONSTANT VARCHAR2(100) := 'prc_chk_multi' ; -- プログラム名
+--
+--#####################  固定ローカル変数宣言部 START   ########################
+    lv_errbuf  VARCHAR2(5000);  -- エラー・メッセージ
+    lv_retcode VARCHAR2(1);     -- リターン・コード
+    lv_errmsg  VARCHAR2(5000);  -- ユーザー・エラー・メッセージ
+--###########################  固定部 END   ####################################
+--
+    -- ==================================================
+    -- 定数宣言
+    -- ==================================================
+    lc_msg_code CONSTANT VARCHAR2(50) := 'APP-XXWSH-11901' ;  -- 多重起動
+    lc_tok_name CONSTANT VARCHAR2(50) := 'REQ_ID' ;
+--
+    -- ==================================================
+    -- 変数宣言
+    -- ==================================================
+    lv_msg_code       VARCHAR2(100) ;
+    lv_tkn_val        VARCHAR2(100) ;
+--
+    -- ==================================================
+    -- 例外宣言
+    -- ==================================================
+    ex_multi_error     EXCEPTION ;
+--
+  BEGIN
+--
+--##################  固定ステータス初期化部 START   ###################
+--
+--##### 固定ステータス初期化部 START #################################
+    ov_retcode := gv_status_normal;
+--##### 固定ステータス初期化部 END   #################################
+--
+  -- ==============================================================
+  -- コンカレントプログラムIDより起動中の同じプログラムを検索する
+  --  以下の条件に全て含まれる場合は多重起動と判断する
+  --   ・部署01～10の中で現在起動している部署と同じ部署が存在する
+  --   ・確定通知日実施日が同じ
+  --   ・確定通知日実施時間のFrom-Toにしての時間が含まれる
+  -- ==============================================================
+  SELECT request_id
+  BULK COLLECT INTO gt_multi_data
+  FROM   fnd_concurrent_requests fcr
+  WHERE  fcr.phase_code = 'R'           -- 実行中
+  -- プログラムIDよりコンカレントIDを取得
+  AND  exists (select 'x' 
+                FROM  fnd_concurrent_programs fcp1
+                    , fnd_concurrent_programs fcp2
+                WHERE fcp1.concurrent_program_id = fcr.concurrent_program_id
+                AND   fcp1.executable_id         = fcp2.executable_id
+                AND   fcp2.concurrent_program_id = gn_program_id        -- コンカレントプログラムID
+                )
+  -- 部署01
+  AND (gr_param.dept_code_01 IN ( fcr.argument1, fcr.argument2, 
+                                  fcr.argument3, fcr.argument4, 
+                                  fcr.argument5, fcr.argument6, 
+                                  fcr.argument7, fcr.argument8, 
+                                  fcr.argument9, fcr.argument10)
+    -- 部署02（NULLの場合は 部署01と比較）
+    OR NVL(gr_param.dept_code_02, gr_param.dept_code_01) IN ( fcr.argument1, fcr.argument2, 
+                                                              fcr.argument3, fcr.argument4, 
+                                                              fcr.argument5, fcr.argument6, 
+                                                              fcr.argument7, fcr.argument8, 
+                                                              fcr.argument9, fcr.argument10)
+    -- 部署03（NULLの場合は 部署01と比較）
+    OR NVL(gr_param.dept_code_03, gr_param.dept_code_01) IN ( fcr.argument1, fcr.argument2, 
+                                                              fcr.argument3, fcr.argument4, 
+                                                              fcr.argument5, fcr.argument6, 
+                                                              fcr.argument7, fcr.argument8, 
+                                                              fcr.argument9, fcr.argument10)
+    -- 部署04（NULLの場合は 部署01と比較）
+    OR NVL(gr_param.dept_code_04, gr_param.dept_code_01) IN ( fcr.argument1, fcr.argument2, 
+                                                              fcr.argument3, fcr.argument4, 
+                                                              fcr.argument5, fcr.argument6, 
+                                                              fcr.argument7, fcr.argument8, 
+                                                              fcr.argument9, fcr.argument10)
+    -- 部署05（NULLの場合は 部署01と比較）
+    OR NVL(gr_param.dept_code_05, gr_param.dept_code_01) IN ( fcr.argument1, fcr.argument2, 
+                                                              fcr.argument3, fcr.argument4, 
+                                                              fcr.argument5, fcr.argument6, 
+                                                              fcr.argument7, fcr.argument8, 
+                                                              fcr.argument9, fcr.argument10)
+    -- 部署06（NULLの場合は 部署01と比較）
+    OR NVL(gr_param.dept_code_06, gr_param.dept_code_01) IN ( fcr.argument1, fcr.argument2, 
+                                                              fcr.argument3, fcr.argument4, 
+                                                              fcr.argument5, fcr.argument6, 
+                                                              fcr.argument7, fcr.argument8, 
+                                                              fcr.argument9, fcr.argument10)
+    -- 部署07（NULLの場合は 部署01と比較）
+    OR NVL(gr_param.dept_code_07, gr_param.dept_code_01) IN ( fcr.argument1, fcr.argument2, 
+                                                              fcr.argument3, fcr.argument4, 
+                                                              fcr.argument5, fcr.argument6, 
+                                                              fcr.argument7, fcr.argument8, 
+                                                              fcr.argument9, fcr.argument10)
+    -- 部署08（NULLの場合は 部署01と比較）
+    OR NVL(gr_param.dept_code_08, gr_param.dept_code_01) IN ( fcr.argument1, fcr.argument2, 
+                                                              fcr.argument3, fcr.argument4, 
+                                                              fcr.argument5, fcr.argument6, 
+                                                              fcr.argument7, fcr.argument8, 
+                                                              fcr.argument9, fcr.argument10)
+    -- 部署09（NULLの場合は 部署01と比較）
+    OR NVL(gr_param.dept_code_09, gr_param.dept_code_01) IN ( fcr.argument1, fcr.argument2, 
+                                                              fcr.argument3, fcr.argument4, 
+                                                              fcr.argument5, fcr.argument6, 
+                                                              fcr.argument7, fcr.argument8, 
+                                                              fcr.argument9, fcr.argument10)
+    -- 部署10（NULLの場合は 部署01と比較）
+    OR NVL(gr_param.dept_code_10, gr_param.dept_code_01) IN ( fcr.argument1, fcr.argument2, 
+                                                              fcr.argument3, fcr.argument4, 
+                                                              fcr.argument5, fcr.argument6, 
+                                                              fcr.argument7, fcr.argument8, 
+                                                              fcr.argument9, fcr.argument10))
+  -- 予定確定区分
+  AND fcr.argument11 = '2'  -- 確定
+  -- 確定通知実施日
+  AND fcr.argument15 = gv_date_fix
+  AND 
+    -- 確定通知実施時間From
+    (
+      ( FND_DATE.STRING_TO_DATE(fcr.argument16, 'HH24:MI') <= FND_DATE.STRING_TO_DATE(gv_fix_from, 'HH24:MI')
+    AND FND_DATE.STRING_TO_DATE(fcr.argument17, 'HH24:MI') >= FND_DATE.STRING_TO_DATE(gv_fix_from, 'HH24:MI'))
+  OR
+    -- 確定通知実施時間To
+      ( FND_DATE.STRING_TO_DATE(fcr.argument16, 'HH24:MI') <= FND_DATE.STRING_TO_DATE(gv_fix_to, 'HH24:MI')
+    AND FND_DATE.STRING_TO_DATE(fcr.argument17, 'HH24:MI') >= FND_DATE.STRING_TO_DATE(gv_fix_to, 'HH24:MI'))
+    )
+  -- 自分の要求IDよりも古いものを対象
+  AND request_id < gn_request_id
+  ;
+--
+  -- データが存在した場合
+  IF ( gt_multi_data.COUNT <> 0 ) THEN
+--
+    -- 初期設定
+    lv_tkn_val := NULL;
+--
+    <<msg_loop>>
+    FOR i IN 1..gt_multi_data.COUNT LOOP
+      -- 2つ以上存在する場合は区切り文字に , を付与
+      IF ( i > 1 ) THEN
+        lv_tkn_val := lv_tkn_val || ',' ;
+      END IF;
+      -- 要求IDをトークンに格納
+      lv_tkn_val := lv_tkn_val || gt_multi_data(i).request_id;
+    END LOOP msg_loop;
+--
+    -- 多重起動エラーとする
+    RAISE ex_multi_error;
+  END IF;
+--
+  EXCEPTION
+    -- ============================================================================================
+    -- 多重起動エラー
+    -- ============================================================================================
+    WHEN ex_multi_error THEN
+      lv_errmsg := xxcmn_common_pkg.get_msg
+                    ( iv_application    => gc_appl_sname_wsh
+                     ,iv_name           => lc_msg_code
+                     ,iv_token_name1    => lc_tok_name
+                     ,iv_token_value1   => lv_tkn_val
+                    ) ;
+      ov_errmsg  := lv_errmsg ;
+      ov_errbuf  := lv_errmsg ;
+      ov_retcode := gv_status_error ;
+--
+--##### 固定例外処理部 START ######################################################################
+--
+    -- *** 共通関数例外ハンドラ ***
+    WHEN global_api_expt THEN
+      ov_errmsg  := lv_errmsg;
+      ov_errbuf  := SUBSTRB(gc_pkg_name||gv_msg_cont||cv_prg_name||gv_msg_part||lv_errbuf,1,5000);
+      ov_retcode := gv_status_error;
+    -- *** 共通関数OTHERS例外ハンドラ ***
+    WHEN global_api_others_expt THEN
+      ov_errbuf  := gc_pkg_name||gv_msg_cont||cv_prg_name||gv_msg_part||SQLERRM;
+      ov_retcode := gv_status_error;
+    -- *** OTHERS例外ハンドラ ***
+    WHEN OTHERS THEN
+      ov_errbuf  := gc_pkg_name||gv_msg_cont||cv_prg_name||gv_msg_part||SQLERRM;
+      ov_retcode := gv_status_error;
+--
+--##### 固定例外処理部 END   #######################################################################
+  END prc_chk_multi ;
+--
+  /************************************************************************************************
+   * Procedure Name   : prc_del_tmptable_data
+   * Description      : テンポラリテーブルデータ削除
+   ************************************************************************************************/
+  PROCEDURE prc_del_tmptable_data
+    (
+      ov_errbuf   OUT NOCOPY VARCHAR2   -- エラー・メッセージ
+     ,ov_retcode  OUT NOCOPY VARCHAR2   -- リターン・コード
+     ,ov_errmsg   OUT NOCOPY VARCHAR2   -- ユーザー・エラー・メッセージ
+    )
+  IS
+    -- ==================================================
+    -- 固定ローカル定数
+    -- ==================================================
+    cv_prg_name   CONSTANT VARCHAR2(100) := 'prc_del_tmptable_data' ; -- プログラム名
+--
+--#####################  固定ローカル変数宣言部 START   ########################
+    lv_errbuf  VARCHAR2(5000);  -- エラー・メッセージ
+    lv_retcode VARCHAR2(1);     -- リターン・コード
+    lv_errmsg  VARCHAR2(5000);  -- ユーザー・エラー・メッセージ
+--###########################  固定部 END   ####################################
+--
+    -- ==================================================
+    -- 定数宣言
+    -- ==================================================
+--
+    -- ==================================================
+    -- カーソル宣言
+    -- ==================================================
+--
+  BEGIN
+--
+--##################  固定ステータス初期化部 START   ###################
+--
+--##### 固定ステータス初期化部 START #################################
+    ov_retcode := gv_status_normal;
+--##### 固定ステータス初期化部 END   #################################
+--
+    -- ====================================================
+    -- データ削除
+    -- ====================================================
+    -- 要求IDをキーに削除
+    DELETE FROM xxwsh_stock_delivery_info_tmp  
+    WHERE target_request_id = gn_request_id;
+--
+    -- 要求IDをキーに削除
+    DELETE FROM xxwsh_stock_delivery_info_tmp2 
+    WHERE target_request_id = gn_request_id;
+--
+  EXCEPTION
+--
+--##### 固定例外処理部 START #######################################################################
+--
+    -- *** 共通関数例外ハンドラ ***
+    WHEN global_api_expt THEN
+      ov_errmsg  := lv_errmsg;
+      ov_errbuf  := SUBSTRB(gc_pkg_name||gv_msg_cont||cv_prg_name||gv_msg_part||lv_errbuf,1,5000);
+      ov_retcode := gv_status_error;
+    -- *** 共通関数OTHERS例外ハンドラ ***
+    WHEN global_api_others_expt THEN
+      ov_errbuf  := gc_pkg_name||gv_msg_cont||cv_prg_name||gv_msg_part||SQLERRM;
+      ov_retcode := gv_status_error;
+    -- *** OTHERS例外ハンドラ ***
+    WHEN OTHERS THEN
+      ov_errbuf  := gc_pkg_name||gv_msg_cont||cv_prg_name||gv_msg_part||SQLERRM;
+      ov_retcode := gv_status_error;
+--
+--##### 固定例外処理部 END   #######################################################################
+  END prc_del_tmptable_data ;
+--
+-- ##### 20081014 Ver.1.23 PT2-2_17指摘71対応 END   #####
+--
   /************************************************************************************************
    * Procedure Name   : prc_del_temp_data
    * Description      : データ削除(E-03)
@@ -929,6 +1236,9 @@ AS
     IS
       SELECT xsdit.request_no
       FROM xxwsh_stock_delivery_info_tmp xsdit
+-- ##### 20081014 Ver.1.23 PT2-2_17指摘71対応 START #####
+      WHERE  xsdit.notif_date < TRUNC( SYSDATE ) - gn_prof_del_date + 1
+-- ##### 20081014 Ver.1.23 PT2-2_17指摘71対応 END   #####
       FOR UPDATE NOWAIT
     ;
     ----------------------------------------
@@ -938,6 +1248,9 @@ AS
     IS
       SELECT xsdit2.request_no
       FROM xxwsh_stock_delivery_info_tmp2 xsdit2
+-- ##### 20081014 Ver.1.23 PT2-2_17指摘71対応 START #####
+      WHERE xsdit2.notif_date < TRUNC( SYSDATE ) - gn_prof_del_date + 1
+-- ##### 20081014 Ver.1.23 PT2-2_17指摘71対応 END   #####
       FOR UPDATE NOWAIT
     ;
     ----------------------------------------
@@ -981,8 +1294,20 @@ AS
     -- ====================================================
     -- データ削除
     -- ====================================================
+-- ##### 20081014 Ver.1.23 PT2-2_17指摘71対応 START #####
+/*****
     DELETE FROM xxwsh_stock_delivery_info_tmp ;
     DELETE FROM xxwsh_stock_delivery_info_tmp2 ;
+*****/
+    -- 確定通知日時のパージ日数以前を削除
+    DELETE FROM xxwsh_stock_delivery_info_tmp  
+    WHERE  notif_date < TRUNC( SYSDATE ) - gn_prof_del_date + 1 ;
+--
+    -- 確定通知日時のパージ日数以前を削除
+    DELETE FROM xxwsh_stock_delivery_info_tmp2 
+    WHERE  notif_date < TRUNC( SYSDATE ) - gn_prof_del_date + 1 ;
+-- ##### 20081014 Ver.1.23 PT2-2_17指摘71対応 END   #####
+--
     DELETE FROM xxwsh_notif_delivery_info
 -- 2008/09/01 v1.16 update Y.Yamamoto start
 --    WHERE TRUNC( last_update_date ) <= TRUNC( SYSDATE ) - gn_prof_del_date ;
@@ -1148,6 +1473,9 @@ AS
 -- ##### 20080925 Ver.1.20 統合#26対応 START #####
             ,xoha.notif_date                          --   :確定通知実施日時
 -- ##### 20080925 Ver.1.20 統合#26対応 END   #####
+-- ##### 20081014 Ver.1.23 PT2-2_17指摘71対応 START #####
+            ,gn_request_id                            --   :要求ID
+-- ##### 20081014 Ver.1.23 PT2-2_17指摘71対応 END   #####
       FROM xxwsh_order_headers_all    xoha      -- 受注ヘッダアドオン
           ,xxwsh_order_lines_all      xola      -- 受注明細アドオン
           ,oe_transaction_types_all   otta      -- 受注タイプ
@@ -1329,6 +1657,9 @@ AS
 -- ##### 20080925 Ver.1.20 統合#26対応 START #####
             ,xoha.notif_date                          --   :確定通知実施日時
 -- ##### 20080925 Ver.1.20 統合#26対応 END   #####
+-- ##### 20081014 Ver.1.23 PT2-2_17指摘71対応 START #####
+            ,gn_request_id                            --   :要求ID
+-- ##### 20081014 Ver.1.23 PT2-2_17指摘71対応 END   #####
       FROM xxwsh_order_headers_all    xoha      -- 受注ヘッダアドオン
           ,xxwsh_order_lines_all      xola      -- 受注明細アドオン
           ,oe_transaction_types_all   otta      -- 受注タイプ
@@ -1505,6 +1836,9 @@ AS
 -- ##### 20080925 Ver.1.20 統合#26対応 START #####
             ,xmrih.notif_date                         --   :確定通知実施日時
 -- ##### 20080925 Ver.1.20 統合#26対応 END   #####
+-- ##### 20081014 Ver.1.23 PT2-2_17指摘71対応 START #####
+            ,gn_request_id                            --   :要求ID
+-- ##### 20081014 Ver.1.23 PT2-2_17指摘71対応 END   #####
       FROM xxinv_mov_req_instr_headers    xmrih     -- 移動依頼指示ヘッダアドオン
           ,xxinv_mov_req_instr_lines      xmril     -- 移動依頼指示明細アドオン
           ,xxcmn_item_locations_v         xil1      -- OPM保管場所情報VIEW（配送元）
@@ -1683,6 +2017,9 @@ AS
 -- ##### 20080925 Ver.1.20 統合#26対応 START #####
             ,xoha.notif_date                          --   :確定通知実施日時
 -- ##### 20080925 Ver.1.20 統合#26対応 END   #####
+-- ##### 20081014 Ver.1.23 PT2-2_17指摘71対応 START #####
+            ,gn_request_id                            --   :要求ID
+-- ##### 20081014 Ver.1.23 PT2-2_17指摘71対応 END   #####
       FROM xxwsh_order_headers_all    xoha      -- 受注ヘッダアドオン
           ,xxwsh_order_lines_all      xola      -- 受注明細アドオン
           ,oe_transaction_types_all   otta      -- 受注タイプ
@@ -1860,6 +2197,9 @@ AS
 -- ##### 20080925 Ver.1.20 統合#26対応 START #####
             ,xoha.notif_date                          --   :確定通知実施日時
 -- ##### 20080925 Ver.1.20 統合#26対応 END   #####
+-- ##### 20081014 Ver.1.23 PT2-2_17指摘71対応 START #####
+            ,gn_request_id                            --   :要求ID
+-- ##### 20081014 Ver.1.23 PT2-2_17指摘71対応 END   #####
       FROM xxwsh_order_headers_all    xoha      -- 受注ヘッダアドオン
           ,xxwsh_order_lines_all      xola      -- 受注明細アドオン
           ,oe_transaction_types_all   otta      -- 受注タイプ
@@ -2031,6 +2371,9 @@ AS
 -- ##### 20080925 Ver.1.20 統合#26対応 START #####
             ,xmrih.notif_date                         --   :確定通知実施日時
 -- ##### 20080925 Ver.1.20 統合#26対応 END   #####
+-- ##### 20081014 Ver.1.23 PT2-2_17指摘71対応 START #####
+            ,gn_request_id                            --   :要求ID
+-- ##### 20081014 Ver.1.23 PT2-2_17指摘71対応 END   #####
       FROM xxinv_mov_req_instr_headers    xmrih     -- 移動依頼指示ヘッダアドオン
           ,xxinv_mov_req_instr_lines      xmril     -- 移動依頼指示明細アドオン
           ,xxcmn_item_locations_v         xil1      -- OPM保管場所情報VIEW（配送元）
@@ -2413,6 +2756,13 @@ AS
     lv_where := lv_where || ')';
 -- 2008/07/16 Add ↑
 --
+-- ##### 20081014 Ver.1.23 PT2-2_17指摘71対応 START #####
+    -------------------------------------------------------
+    -- 要求ID
+    -------------------------------------------------------
+    lv_where := lv_where || ' AND wsdit2.target_request_id = ' || TO_CHAR(gn_request_id) || ' ' ;
+-- ##### 20081014 Ver.1.23 PT2-2_17指摘71対応 END   #####
+--
     -- ====================================================
     -- ＯＲＤＥＲ ＢＹ句
     -- ====================================================
@@ -2627,6 +2977,13 @@ AS
 --
     lv_where := lv_where || ')';
 --
+-- ##### 20081014 Ver.1.23 PT2-2_17指摘71対応 START #####
+    -------------------------------------------------------
+    -- 要求ID
+    -------------------------------------------------------
+    lv_where := lv_where || ' AND wsdit2.target_request_id = ' || TO_CHAR(gn_request_id) || ' ' ;
+-- ##### 20081014 Ver.1.23 PT2-2_17指摘71対応 END   #####
+--
     -- ====================================================
     -- ＯＲＤＥＲ ＢＹ句
     -- ====================================================
@@ -2808,6 +3165,10 @@ AS
     gt_notif_date(gn_cre_idx)             := ir_main_data.notif_date ;          -- 確定通知実施日時
 -- ##### 20080925 Ver.1.20 統合#26対応 END   #####
 --
+-- ##### 20081014 Ver.1.23 PT2-2_17指摘71対応 START #####
+    gt_target_request_id(gn_cre_idx)      := gn_request_id;                     -- 要求ID
+-- ##### 20081014 Ver.1.23 PT2-2_17指摘71対応 END   #####
+--
   EXCEPTION
 --##### 固定例外処理部 START #######################################################################
 --
@@ -2938,6 +3299,10 @@ AS
 -- ##### 20080925 Ver.1.20 統合#26対応 START #####
     gt_notif_date(gn_cre_idx)             := ir_main_data.notif_date ;          -- 確定通知実施日時
 -- ##### 20080925 Ver.1.20 統合#26対応 END   #####
+--
+-- ##### 20081014 Ver.1.23 PT2-2_17指摘71対応 START #####
+    gt_target_request_id(gn_cre_idx)      := gn_request_id;                     -- 要求ID
+-- ##### 20081014 Ver.1.23 PT2-2_17指摘71対応 END   #####
 --
     -------------------------------------------------------
     -- ロット管理品の場合
@@ -4016,6 +4381,11 @@ AS
       gt_notif_date(gn_cre_idx)             := re_can_data.notif_date ;
 -- ##### 20080925 Ver.1.20 統合#26対応 END   #####
 --
+-- ##### 20081014 Ver.1.23 PT2-2_17指摘71対応 START #####
+    gt_target_request_id(gn_cre_idx)      := gn_request_id;                     -- 要求ID
+-- ##### 20081014 Ver.1.23 PT2-2_17指摘71対応 END   #####
+--
+--
     END LOOP can_data_loop ;
 --
   EXCEPTION
@@ -4131,6 +4501,9 @@ AS
 -- ##### 20080925 Ver.1.20 統合#26対応 START #####
          ,notif_date                                        -- 確定通知実施日時
 -- ##### 20080925 Ver.1.20 統合#26対応 END   #####
+-- ##### 20080925 Ver.1.20 統合#26対応 START #####
+         ,target_request_id                                 -- 要求ID
+-- ##### 20080925 Ver.1.20 統合#26対応 END   #####
         )
       VALUES
         (
@@ -4186,6 +4559,9 @@ AS
          ,gt_eos_csv_output(ln_cnt)               -- EOS宛先（CSV出力）
 -- ##### 20080925 Ver.1.20 統合#26対応 START #####
          ,gt_notif_date(ln_cnt)                   -- 確定通知実施日時
+-- ##### 20080925 Ver.1.20 統合#26対応 END   #####
+-- ##### 20080925 Ver.1.20 統合#26対応 START #####
+         ,gt_target_request_id(ln_cnt)            -- 要求ID
 -- ##### 20080925 Ver.1.20 統合#26対応 END   #####
         ) ;
 --
@@ -4427,7 +4803,10 @@ AS
           lv_file_name  :=  lv_wf_ope_div               || '-' || 
                             re_out_data.eos_csv_output  || '_' || 
 -- ##### 20080919 Ver.1.18 T_S_453 460 468対応 START #####
-                            gv_filetimes                || '_' ||
+-- ##### 20081014 Ver.1.23 PT2-2_17指摘71対応 START #####
+--                            gv_filetimes                || '_' ||
+                            gv_filetimes                ||
+-- ##### 20081014 Ver.1.23 PT2-2_17指摘71対応 END   #####
 -- ##### 20080919 Ver.1.18 T_S_453 460 468対応 END   #####
                             gr_wf_whs_rec.file_name ;
 --
@@ -4896,6 +5275,12 @@ AS
     lv_retcode            VARCHAR2(1);     -- リターン・コード
     lv_errmsg             VARCHAR2(5000);  -- ユーザー・エラー・メッセージ
 --
+-- ##### 20081014 Ver.1.23 PT2-2_17指摘71対応 START #####
+    -- 警告処理用 バッファ
+    lv_errbuf2            VARCHAR2(5000);  -- エラー・メッセージ
+    lv_errmsg2            VARCHAR2(5000);  -- ユーザー・エラー・メッセージ
+-- ##### 20081014 Ver.1.23 PT2-2_17指摘71対応 END   #####
+--
     -- ==================================================
     -- 例外宣言
     -- ==================================================
@@ -4940,6 +5325,13 @@ AS
     gr_param.fix_from    := NVL( iv_fix_from, gc_time_min ) ;       -- 16 : 確定通知実施時間From
     gr_param.fix_to      := NVL( iv_fix_to  , gc_time_max ) ;       -- 17 : 確定通知実施時間To
 --
+-- ##### 20081014 Ver.1.23 PT2-2_17指摘71対応 START #####
+    -- 多重起動確認用（時間に秒を入れる前に設定）
+    gv_date_fix :=  iv_date_fix;        -- 確定通知実施日
+    gv_fix_from :=  gr_param.fix_from;  -- 確定通知実施時間From
+    gv_fix_to   :=  gr_param.fix_to;    -- 確定通知実施時間To
+-- ##### 20081014 Ver.1.23 PT2-2_17指摘71対応 END   #####
+--
     gr_param.cutoff_from := ' ' || gr_param.cutoff_from || ':00' ;
     gr_param.cutoff_to   := ' ' || gr_param.cutoff_to   || ':00' ;
     gr_param.fix_from    := ' ' || gr_param.fix_from    || ':00' ;
@@ -4949,7 +5341,6 @@ AS
     gr_param.ship_date_from := SUBSTR(iv_ship_date_from, 1, 10) ;   -- 出庫日From
     gr_param.ship_date_to   := SUBSTR(iv_ship_date_to,   1, 10) ;   -- 出庫日To
 -- ##### 20080925 Ver.1.19 TE080_600指摘#31対応 END   #####
---
     --------------------------------------------------
     -- ＷＨＯカラム取得
     --------------------------------------------------
@@ -4987,6 +5378,26 @@ AS
       gn_error_cnt := gn_error_cnt + 1 ;
       RAISE global_process_expt;
     END IF ;
+--
+-- ##### 20081014 Ver.1.23 PT2-2_17指摘71対応 START #####
+    -- 予定確定区分：確定 の場合
+    IF ( gr_param.fix_class = gc_fix_class_k ) THEN
+      -- ===========================================================================================
+      -- 多重起動チェック
+      -- ===========================================================================================
+      prc_chk_multi
+        (
+          ov_errbuf   => lv_errbuf
+         ,ov_retcode  => lv_retcode
+         ,ov_errmsg   => lv_errmsg
+        ) ;
+      IF ( lv_retcode = gv_status_error ) THEN
+        gn_error_cnt := gn_error_cnt + 1 ;
+        RAISE global_process_expt;
+      END IF ;
+    END IF;
+--
+-- ##### 20081014 Ver.1.23 PT2-2_17指摘71対応 END   #####
 --
     -- =============================================================================================
     -- E-03 データ削除
@@ -5208,6 +5619,7 @@ AS
                       ,iv_name          => lc_msg_code
                     ) ;
       lv_errbuf  := lv_errmsg;
+--
       RAISE ex_worn ;
     END IF;
 -- ##### 20081007 Ver.1.22 TE080_600指摘#27対応 END   #####
@@ -5257,15 +5669,58 @@ AS
 --
     END IF ;
 --
+-- ##### 20081014 Ver.1.23 PT2-2_17指摘71対応 START #####
+    -- =============================================================================================
+    -- テンポラリテーブルデータ削除
+    -- =============================================================================================
+    prc_del_tmptable_data
+      (
+        ov_errbuf   => lv_errbuf
+       ,ov_retcode  => lv_retcode
+       ,ov_errmsg   => lv_errmsg
+      ) ;
+    IF ( lv_retcode = gv_status_error ) THEN
+      gn_error_cnt := gn_error_cnt + 1 ;
+      RAISE global_process_expt;
+    END IF ;
+-- ##### 20081014 Ver.1.23 PT2-2_17指摘71対応 END   #####
+--
   EXCEPTION
     -- =============================================================================================
     -- 警告処理
     -- =============================================================================================
     WHEN ex_worn THEN
-      ov_errmsg  := lv_errmsg;
-      ov_errbuf  := lv_errbuf ;
-      ov_retcode := gv_status_warn;
-
+--
+-- ##### 20081014 Ver.1.23 PT2-2_17指摘71対応 START #####
+      -- ===========================================================================================
+      -- テンポラリテーブルデータ削除
+      -- ===========================================================================================
+      -- 対象データが存在しない場合もtmp2にはデータが存在する場合が在るので
+      --     ここにて削除処理を実施
+      prc_del_tmptable_data
+        (
+          ov_errbuf   => lv_errbuf2
+         ,ov_retcode  => lv_retcode
+         ,ov_errmsg   => lv_errmsg2
+        ) ;
+      IF ( lv_retcode = gv_status_error ) THEN
+        gn_error_cnt := gn_error_cnt + 1 ;
+--
+        -- 削除処理エラーのメッセージ設定
+        ov_errmsg  := lv_errmsg2;
+        ov_errbuf  := SUBSTRB(gc_pkg_name||gv_msg_cont||cv_prg_name||gv_msg_part||lv_errbuf2,1,5000);
+        ov_retcode := gv_status_error;
+      ELSE
+--
+-- ##### 20081014 Ver.1.23 PT2-2_17指摘71対応 END   #####
+        ov_errmsg  := lv_errmsg;
+        ov_errbuf  := lv_errbuf ;
+        ov_retcode := gv_status_warn;
+-- ##### 20081014 Ver.1.23 PT2-2_17指摘71対応 START #####
+--
+      END IF;
+-- ##### 20081014 Ver.1.23 PT2-2_17指摘71対応 END   #####
+--
 --#################################  固定例外処理部 START   ###################################
 --
     -- *** 処理部共通例外ハンドラ ***
