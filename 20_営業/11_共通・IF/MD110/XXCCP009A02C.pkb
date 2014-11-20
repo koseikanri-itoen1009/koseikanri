@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCCP009A02C(body)
  * Description      : 対向システムジョブ状況テーブル(アドオン)の更新を行います。
  * MD.050           : MD050_CCP_009_A02_対向システムジョブ状況更新処理
- * Version          : 1.2
+ * Version          : 1.3
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -25,6 +25,8 @@ AS
  *  2009-04-01    1.1   Masayuki.Sano    [障害番号：T1-0521]
  *                                       ・更新処理の検索条件の変更(列名変更)
  *  2009-05-01    1.2   Masayuki.Sano    障害番号T1_0910対応(スキーマ名付加)
+ *  2009-05-11    1.3   Masayuki.Sano    障害番号T1_0784対応
+ *                                       ・更新処理にジョブ状況ステータス='E'を追加
  *****************************************************************************************/
 --
 --#######################  固定グローバル定数宣言部 START   #######################
@@ -82,6 +84,8 @@ AS
   cv_pkg_name          CONSTANT VARCHAR2(100) := 'XXCCP009A02C';      -- パッケージ名
 --
   cv_cnst_msg_kbn      CONSTANT VARCHAR2(5)   := 'XXCCP';             -- メッセージ区分
+--
+  cv_job_process_end   CONSTANT VARCHAR2(1)   := 'E';                 -- ジョブ状況ステータス：完了
 --
   /**********************************************************************************
    * Procedure Name   : init
@@ -210,8 +214,11 @@ AS
           ,xijs.program_application_id = cn_program_application_id  --コンカレント・プログラム・アプリケーションID
           ,xijs.program_id             = cn_program_id              --コンカレント・プログラムID
           ,xijs.program_update_date    = cd_program_update_date     --プログラム更新日
+-- 2009/04/01 Ver.1.4 Masayuki.Sano update START
 --    WHERE  xijs.pk_request_id_val = iv_pk_request_id_val  --処理順付要求ID
+          ,xijs.job_process            = cv_job_process_end
     WHERE  xijs.request_id_val = iv_pk_request_id_val  --処理順付要求ID
+-- 2009/04/01 Ver.1.4 Masayuki.Sano update END
     ;
 --
   EXCEPTION
