@@ -6,7 +6,7 @@ AS
  * Package Name     : xxpo_common925_pkg(body)
  * Description      : 共通関数
  * MD.050/070       : 支給指示からの発注自動作成 Issue1.0  (T_MD050_BPO_925)
- * Version          : 1.7
+ * Version          : 1.8
  *
  * Program List
  * -------------------------- ----------------------------------------------------------
@@ -43,8 +43,8 @@ AS
  *  2008/07/03    1.5   I.Higa           入庫予定日(着荷予定日)を発注の納入日にしているが
  *                                       出庫予定日を発注の納入日とするように変更する。
  *  2008/12/02    1.6   Y.Suzuki         PLSQL表初期化プロシージャの追加
- *  2008/12/02    1.6   T.Yoshimoto      本番障害#377
- *
+ *  2008/12/02    1.7   T.Yoshimoto      本番障害#377対応
+ *  2009/01/05    1.8   D.Nihei          本番障害#861対応
  *****************************************************************************************/
 --
 --#######################  固定グローバル定数宣言部 START   #######################
@@ -1249,14 +1249,17 @@ AS
     -- ユーザー宣言部
     -- ===============================
     -- *** ローカル・定数 ***
-    cv_process_code   CONSTANT po_headers_interface.process_code%TYPE    := 'PENDING';  -- 処理ｺｰﾄﾞ
-    cv_action         CONSTANT po_headers_interface.action%TYPE          := 'ORIGINAL'; -- 処理区分
-    cv_standard    CONSTANT po_headers_interface.document_type_code%TYPE := 'STANDARD'; -- 標準発注
-    cv_approval_sts   CONSTANT po_headers_interface.approval_status%TYPE := 'APPROVED';-- 承認ｽﾃｰﾀｽ
-    cv_po_add_status  CONSTANT po_headers_interface.attribute1%TYPE    := '20';-- ｽﾃｰﾀｽ(発注作成済)
-    cv_drop_ship_type CONSTANT po_headers_interface.attribute6%TYPE    := '3'; -- 直送区分(支給)
-    cv_po_type        CONSTANT po_headers_interface.attribute11%TYPE   := '1'; -- 発注区分(新規)
+    cv_process_code   CONSTANT po_headers_interface.process_code%TYPE        := 'PENDING';  -- 処理ｺｰﾄﾞ
+    cv_action         CONSTANT po_headers_interface.action%TYPE              := 'ORIGINAL'; -- 処理区分
+    cv_standard       CONSTANT po_headers_interface.document_type_code%TYPE  := 'STANDARD'; -- 標準発注
+    cv_approval_sts   CONSTANT po_headers_interface.approval_status%TYPE     := 'APPROVED'; -- 承認ｽﾃｰﾀｽ
+    cv_po_add_status  CONSTANT po_headers_interface.attribute1%TYPE          := '20';       -- ｽﾃｰﾀｽ(発注作成済)
+    cv_drop_ship_type CONSTANT po_headers_interface.attribute6%TYPE          := '3';        -- 直送区分(支給)
+    cv_po_type        CONSTANT po_headers_interface.attribute11%TYPE         := '1';        -- 発注区分(新規)
     cn_recovery_rate  CONSTANT po_distributions_interface.recovery_rate%TYPE := 100;
+-- 2009/01/05 D.Nihei Add Start 本番障害#861対応
+    cv_notif_ktz      CONSTANT xxwsh_order_headers_all.notif_status%TYPE     := '40';       -- 通知ステータス(確定通知済)
+-- 2009/01/05 D.Nihei Add End
 --
     -- *** ローカル・変数 ***
     cn_emp_num        per_all_people_f.employee_number%TYPE;
@@ -1555,6 +1558,11 @@ AS
     BEGIN
       UPDATE xxwsh_order_headers_all       xoha                             -- 受注ヘッダアドオン
       SET   xoha.po_no                   = ir_po_headers_if.document_num    -- 発注No
+-- 2009/01/05 D.Nihei Add Start 本番障害#861対応
+           ,xoha.notif_status            = cv_notif_ktz                     -- 通知ステータス
+           ,xoha.prev_notif_status       = xoha.notif_status                -- 前回通知ステータス
+           ,xoha.notif_date              = gd_sysdate                       -- 確定通知日時
+-- 2009/01/05 D.Nihei Add End
            ,xoha.last_updated_by         = gn_user_id                       -- 最終更新者
            ,xoha.last_update_date        = gd_sysdate                       -- 最終更新日
            ,xoha.last_update_login       = gn_login_id                      -- 最終更新ログイン
