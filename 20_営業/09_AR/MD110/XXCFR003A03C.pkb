@@ -7,7 +7,7 @@ AS
  * Description      : 請求明細データ作成
  * MD.050           : MD050_CFR_003_A03_請求明細データ作成
  * MD.070           : MD050_CFR_003_A03_請求明細データ作成
- * Version          : 1.110
+ * Version          : 1.120
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -43,6 +43,8 @@ AS
  *  2010/10/19    1.100 SCS 小山 伸男   [障害本稼動05091] 請求書の一部伝票金額が重複している件
  *                                                        ※販売実績明細との条件追加
  *  2011/10/11    1.110 SCS 白川 篤史   [障害本稼動07906] EDIの流通BMS対応
+ *  2012/11/06    1.120 SCSK 中村 健一  [障害本稼動10090] 夜間ジョブパフォーマンス対応(JOBの分割対応)
+ *                                                        使用していない変数の削除
  *
  *****************************************************************************************/
 --
@@ -77,11 +79,15 @@ AS
   gn_target_header_cnt    NUMBER;                    -- 対象件数(請求ヘッダ単位)
   gn_target_line_cnt      NUMBER;                    -- 対象件数(請求明細単位)
   gn_target_aroif_cnt     NUMBER;                    -- 対象件数(AR取引OIF登録件数)
-  gn_target_del_head_cnt  NUMBER;                    -- 対象件数(ヘッダデータ削除件数)
-  gn_target_del_line_cnt  NUMBER;                    -- 対象件数(明細データ削除件数)
-  gn_normal_cnt           NUMBER;                    -- 正常件数
+-- Modify 2012.11.06 Ver1.120 Start
+--  gn_target_del_head_cnt  NUMBER;                    -- 対象件数(ヘッダデータ削除件数)
+--  gn_target_del_line_cnt  NUMBER;                    -- 対象件数(明細データ削除件数)
+--  gn_normal_cnt           NUMBER;                    -- 正常件数
+-- Modify 2012.11.06 Ver1.120 End
   gn_error_cnt            NUMBER;                    -- エラー件数
-  gn_warn_cnt             NUMBER;                    -- スキップ件数
+-- Modify 2012.11.06 Ver1.120 Start
+--  gn_warn_cnt             NUMBER;                    -- スキップ件数
+-- Modify 2012.11.06 Ver1.120 End
 --
 --################################  固定部 END   ##################################
 --
@@ -170,12 +176,17 @@ AS
 --  cv_msg_cfr_00043  CONSTANT VARCHAR2(20) := 'APP-XXCFR1-00043'; --自動インボイス処理エラーメッセージ
 --  cv_msg_cfr_00044  CONSTANT VARCHAR2(20) := 'APP-XXCFR1-00044'; --税差額取引作成エラーメッセージ
 -- Modify 2009.09.29 Ver1.5 End
-  cv_msg_cfr_00045  CONSTANT VARCHAR2(20) := 'APP-XXCFR1-00045'; --エラー終了（請求データ削除済）メッセージ
+-- Modify 2012.11.06 Ver1.120 Start
+--  cv_msg_cfr_00045  CONSTANT VARCHAR2(20) := 'APP-XXCFR1-00045'; --エラー終了（請求データ削除済）メッセージ
+-- Modify 2012.11.06 Ver1.120 End
   cv_msg_cfr_00046  CONSTANT VARCHAR2(20) := 'APP-XXCFR1-00046'; --エラー終了（請求データ未削除）メッセージ
 -- Modify 2009.09.29 Ver1.5 Start
 --  cv_msg_cfr_00059  CONSTANT VARCHAR2(20) := 'APP-XXCFR1-00059'; --トランザクション確定メッセージ
 --  cv_msg_cfr_00060  CONSTANT VARCHAR2(20) := 'APP-XXCFR1-00060'; --請求データ削除メッセージ
 -- Modify 2009.09.29 Ver1.5 End
+-- Modify 2012.11.06 Ver1.120 Start
+  cv_msg_cfr_00125  CONSTANT VARCHAR2(20) := 'APP-XXCFR1-00125'; --入力パラメータ「パラレル実行区分」チェックエラーメッセージ
+-- Modify 2012.11.06 Ver1.120 End
 --
   -- 日本語辞書参照コード
 -- Modify 2009.09.29 Ver1.5 Start
@@ -276,54 +287,58 @@ AS
 -- Modify 2010.01.04 Ver1.9 Start
   cv_sold_return_type_ar  CONSTANT VARCHAR2(1)  := '1';         -- 売上返品区分(AR部門入力用)
 -- Modify 2010.01.04 Ver1.9 End
+-- Modify 2012.11.06 Ver1.120 Start
+  cv_judge_type_batch   CONSTANT VARCHAR2(1)  := '2';           -- 夜間手動判断区分(夜間)
+-- Modify 2012.11.06 Ver1.120 End
 --
   -- ===============================
   -- ユーザー定義グローバル型
   -- ===============================
---
-    TYPE get_invoice_id_ttype    IS TABLE OF xxcfr_invoice_headers.invoice_id%TYPE 
-                                             INDEX BY PLS_INTEGER;
-    TYPE get_cust_code_ttype     IS TABLE OF xxcfr_invoice_headers.bill_cust_code%TYPE
-                                             INDEX BY PLS_INTEGER;
-    TYPE get_cutoff_date_ttype   IS TABLE OF xxcfr_invoice_headers.cutoff_date%TYPE
-                                             INDEX BY PLS_INTEGER;
-    TYPE get_cust_acct_id_ttype  IS TABLE OF xxcfr_invoice_headers.bill_cust_account_id%TYPE
-                                             INDEX BY PLS_INTEGER;
-    TYPE get_cust_site_id_ttype  IS TABLE OF xxcfr_invoice_headers.bill_cust_acct_site_id%TYPE
-                                             INDEX BY PLS_INTEGER;
-    TYPE get_tax_gap_amt_ttype   IS TABLE OF xxcfr_invoice_headers.tax_gap_amount%TYPE
-                                             INDEX BY PLS_INTEGER;
-    TYPE get_term_name_ttype     IS TABLE OF xxcfr_invoice_headers.term_name%TYPE
-                                             INDEX BY PLS_INTEGER;
-    TYPE get_term_id_ttype       IS TABLE OF xxcfr_invoice_headers.term_id%TYPE
-                                             INDEX BY PLS_INTEGER;
-    TYPE get_send_addr1_ttype    IS TABLE OF xxcfr_invoice_headers.send_address1%TYPE
-                                             INDEX BY PLS_INTEGER;
-    TYPE get_send_addr2_ttype    IS TABLE OF xxcfr_invoice_headers.send_address2%TYPE
-                                             INDEX BY PLS_INTEGER;
-    TYPE get_send_addr3_ttype    IS TABLE OF xxcfr_invoice_headers.send_address3%TYPE
-                                             INDEX BY PLS_INTEGER;
-    TYPE get_rec_loc_code_ttype  IS TABLE OF xxcfr_invoice_headers.receipt_location_code%TYPE
-                                             INDEX BY PLS_INTEGER;
-    TYPE get_tax_type_ttype      IS TABLE OF xxcfr_invoice_headers.tax_type%TYPE
-                                             INDEX BY PLS_INTEGER;
-    TYPE get_bil_loc_code_ttype  IS TABLE OF xxcfr_invoice_headers.bill_location_code%TYPE
-                                             INDEX BY PLS_INTEGER;
---
-    gt_invoice_id_tab        get_invoice_id_ttype;
-    gt_cust_code_tab         get_cust_code_ttype;
-    gt_cutoff_date_tab       get_cutoff_date_ttype;
-    gt_cust_acct_id_tab      get_cust_acct_id_ttype;
-    gt_cust_site_id_tab      get_cust_site_id_ttype;
-    gt_tax_gap_amt_tab       get_tax_gap_amt_ttype;
-    gt_term_name_tab         get_term_name_ttype;
-    gt_term_id_tab           get_term_id_ttype;
-    gt_send_addr1_tab        get_send_addr1_ttype;
-    gt_send_addr2_tab        get_send_addr2_ttype;
-    gt_send_addr3_tab        get_send_addr3_ttype;
-    gt_rec_loc_code_tab      get_rec_loc_code_ttype;
-    gt_tax_type_tab          get_tax_type_ttype;
-    gt_bil_loc_code_tab      get_bil_loc_code_ttype;
+-- Modify 2012.11.06 Ver1.120 Start
+--    TYPE get_invoice_id_ttype    IS TABLE OF xxcfr_invoice_headers.invoice_id%TYPE 
+--                                             INDEX BY PLS_INTEGER;
+--    TYPE get_cust_code_ttype     IS TABLE OF xxcfr_invoice_headers.bill_cust_code%TYPE
+--                                             INDEX BY PLS_INTEGER;
+--    TYPE get_cutoff_date_ttype   IS TABLE OF xxcfr_invoice_headers.cutoff_date%TYPE
+--                                             INDEX BY PLS_INTEGER;
+--    TYPE get_cust_acct_id_ttype  IS TABLE OF xxcfr_invoice_headers.bill_cust_account_id%TYPE
+--                                             INDEX BY PLS_INTEGER;
+--    TYPE get_cust_site_id_ttype  IS TABLE OF xxcfr_invoice_headers.bill_cust_acct_site_id%TYPE
+--                                             INDEX BY PLS_INTEGER;
+--    TYPE get_tax_gap_amt_ttype   IS TABLE OF xxcfr_invoice_headers.tax_gap_amount%TYPE
+--                                             INDEX BY PLS_INTEGER;
+--    TYPE get_term_name_ttype     IS TABLE OF xxcfr_invoice_headers.term_name%TYPE
+--                                             INDEX BY PLS_INTEGER;
+--    TYPE get_term_id_ttype       IS TABLE OF xxcfr_invoice_headers.term_id%TYPE
+--                                             INDEX BY PLS_INTEGER;
+--    TYPE get_send_addr1_ttype    IS TABLE OF xxcfr_invoice_headers.send_address1%TYPE
+--                                             INDEX BY PLS_INTEGER;
+--    TYPE get_send_addr2_ttype    IS TABLE OF xxcfr_invoice_headers.send_address2%TYPE
+--                                             INDEX BY PLS_INTEGER;
+--    TYPE get_send_addr3_ttype    IS TABLE OF xxcfr_invoice_headers.send_address3%TYPE
+--                                             INDEX BY PLS_INTEGER;
+--    TYPE get_rec_loc_code_ttype  IS TABLE OF xxcfr_invoice_headers.receipt_location_code%TYPE
+--                                             INDEX BY PLS_INTEGER;
+--    TYPE get_tax_type_ttype      IS TABLE OF xxcfr_invoice_headers.tax_type%TYPE
+--                                             INDEX BY PLS_INTEGER;
+--    TYPE get_bil_loc_code_ttype  IS TABLE OF xxcfr_invoice_headers.bill_location_code%TYPE
+--                                             INDEX BY PLS_INTEGER;
+----
+--    gt_invoice_id_tab        get_invoice_id_ttype;
+--    gt_cust_code_tab         get_cust_code_ttype;
+--    gt_cutoff_date_tab       get_cutoff_date_ttype;
+--    gt_cust_acct_id_tab      get_cust_acct_id_ttype;
+--    gt_cust_site_id_tab      get_cust_site_id_ttype;
+--    gt_tax_gap_amt_tab       get_tax_gap_amt_ttype;
+--    gt_term_name_tab         get_term_name_ttype;
+--    gt_term_id_tab           get_term_id_ttype;
+--    gt_send_addr1_tab        get_send_addr1_ttype;
+--    gt_send_addr2_tab        get_send_addr2_ttype;
+--    gt_send_addr3_tab        get_send_addr3_ttype;
+--    gt_rec_loc_code_tab      get_rec_loc_code_ttype;
+--    gt_tax_type_tab          get_tax_type_ttype;
+--    gt_bil_loc_code_tab      get_bil_loc_code_ttype;
+-- Modify 2012.11.06 Ver1.120 End
 --
   -- ===============================
   -- ユーザー定義グローバル変数
@@ -357,24 +372,36 @@ AS
   gt_target_request_id      xxcfr_inv_info_transfer.target_request_id%TYPE;    -- 処理対象コンカレント要求ID
   gt_mtl_organization_id mtl_parameters.organization_id%TYPE;                  -- 品目マスタ組織ID
 --
-  gd_target_date         DATE;                                                 -- 締日(日付型)
+-- Modify 2012.11.06 Ver1.120 Start
+--  gd_target_date         DATE;                                                 -- 締日(日付型)
+-- Modify 2012.11.06 Ver1.120 End
   gn_org_id              NUMBER;                                               -- 組織ID
   gn_set_book_id         NUMBER;                                               -- 会計帳簿ID
   gd_process_date        DATE;                                                 -- 業務処理日付
-  gd_work_day_ago1       DATE;                                                 -- 1営業日前日
-  gd_work_day_ago2       DATE;                                                 -- 2営業日前日
-  gv_warning_flag        VARCHAR2(1);                                          -- 警告フラグ
-  gv_auto_inv_err_flag   VARCHAR2(1);                                          -- 自動インボイスエラーフラグ
+-- Modify 2012.11.06 Ver1.120 Start
+--  gd_work_day_ago1       DATE;                                                 -- 1営業日前日
+--  gd_work_day_ago2       DATE;                                                 -- 2営業日前日
+--  gv_warning_flag        VARCHAR2(1);                                          -- 警告フラグ
+--  gv_auto_inv_err_flag   VARCHAR2(1);                                          -- 自動インボイスエラーフラグ
+-- Modify 2012.11.06 Ver1.120 End
 --
 -- Modify 2009.08.03 Ver1.4 Start
   gn_bulk_limit          PLS_INTEGER;     -- バルクのリミット値
 -- Modify 2009.08.03 Ver1.4 End
+-- Modify 2012.11.06 Ver1.120 Start
+  gn_parallel_type       NUMBER      DEFAULT NULL; -- パラレル実行区分
+  gv_batch_on_judge_type VARCHAR2(1) DEFAULT NULL; -- 夜間手動判断区分
+-- Modify 2012.11.06 Ver1.120 End
 --
   /**********************************************************************************
    * Procedure Name   : init
    * Description      : 初期処理(A-1)
    ***********************************************************************************/
   PROCEDURE init(
+-- Modify 2012.11.06 Ver1.120 Start
+    iv_parallel_type        IN  VARCHAR2,     -- パラレル実行区分
+    iv_batch_on_judge_type  IN  VARCHAR2,     -- 夜間手動判断区分
+-- Modify 2012.11.06 Ver1.120 End
     ov_errbuf               OUT VARCHAR2,     -- エラー・メッセージ           --# 固定 #
     ov_retcode              OUT VARCHAR2,     -- リターン・コード             --# 固定 #
     ov_errmsg               OUT VARCHAR2      -- ユーザー・エラー・メッセージ --# 固定 #
@@ -422,6 +449,10 @@ AS
     -- メッセージ出力
     xxcfr_common_pkg.put_log_param(
        iv_which        => cv_file_type_out        -- メッセージ出力
+-- Modify 2012.11.06 Ver1.120 Start
+      ,iv_conc_param1  => iv_parallel_type        -- パラレル実行区分
+      ,iv_conc_param2  => iv_batch_on_judge_type  -- 夜間手動判断区分
+-- Modify 2012.11.06 Ver1.120 End
       ,ov_errbuf       => lv_errbuf               -- エラー・メッセージ           --# 固定 #
       ,ov_retcode      => lv_retcode              -- リターン・コード             --# 固定 #
       ,ov_errmsg       => lv_errmsg);             -- ユーザー・エラー・メッセージ --# 固定 #
@@ -432,6 +463,10 @@ AS
     -- ログ出力
     xxcfr_common_pkg.put_log_param(
        iv_which        => cv_file_type_log        -- ログ出力
+-- Modify 2012.11.06 Ver1.120 Start
+      ,iv_conc_param1  => iv_parallel_type        -- パラレル実行区分
+      ,iv_conc_param2  => iv_batch_on_judge_type  -- 夜間手動判断区分
+-- Modify 2012.11.06 Ver1.120 End
       ,ov_errbuf       => lv_errbuf               -- エラー・メッセージ           --# 固定 #
       ,ov_retcode      => lv_retcode              -- リターン・コード             --# 固定 #
       ,ov_errmsg       => lv_errmsg);             -- ユーザー・エラー・メッセージ --# 固定 #
@@ -440,6 +475,34 @@ AS
       RAISE global_api_expt;
     END IF;
 --
+-- Modify 2012.11.06 Ver1.120 Start
+    -- 入力パラメータ「夜間手動判断区分」の設定
+    gv_batch_on_judge_type := iv_batch_on_judge_type;
+    --
+    --==============================================================
+    -- 入力パラメータチェック
+    --==============================================================
+    -- 入力パラメータ「夜間手動判断区分」が'2'(夜間)の場合
+    IF ( gv_batch_on_judge_type = cv_judge_type_batch ) THEN
+      -- 入力パラメータ「パラレル実行区分」必須チェック
+      IF ( iv_parallel_type IS NULL ) THEN
+        lv_errmsg := xxccp_common_pkg.get_msg(iv_application  => cv_msg_kbn_cfr       -- アプリケーション短縮名
+                                             ,iv_name         => cv_msg_cfr_00125);  -- メッセージ
+        lv_errbuf := lv_errmsg ||cv_msg_part|| SQLERRM;
+        RAISE global_api_expt;
+      END IF;
+      -- 入力パラメータ「パラレル実行区分」数値チェック
+      BEGIN
+        gn_parallel_type := TO_NUMBER( iv_parallel_type );
+      EXCEPTION
+        WHEN OTHERS THEN
+          lv_errmsg := xxccp_common_pkg.get_msg(iv_application  => cv_msg_kbn_cfr       -- アプリケーション短縮名
+                                               ,iv_name         => cv_msg_cfr_00125);  -- メッセージ
+          lv_errbuf := lv_errmsg ||cv_msg_part|| SQLERRM;
+          RAISE global_api_expt;
+      END;
+    END IF;
+-- Modify 2012.11.06 Ver1.120 End
     --==============================================================
     --プロファイル取得処理
     --==============================================================
@@ -847,33 +910,47 @@ AS
 --
     -- *** ローカル・カーソル ***
     -- 請求ヘッダデータカーソル
-    CURSOR get_inv_header_cur(
-      iv_request_id    VARCHAR2
-    )
+-- Modify 2012.11.06 Ver1.120 Start
+--    CURSOR get_inv_header_cur(
+--      iv_request_id    VARCHAR2
+--    )
+--    IS
+---- Modify 2009.08.03 Ver1.4 Start
+----      SELECT xxih.invoice_id              invoice_id,             -- 一括請求書ID
+--      SELECT /*+ INDEX(xxih XXCFR_INVOICE_HEADERS_N02) */
+--             xxih.invoice_id              invoice_id,             -- 一括請求書ID
+------ Modify 2009.08.03 Ver1.4 End
+--             xxih.bill_cust_code          bill_cust_code,         -- 請求先顧客コード
+--             xxih.cutoff_date             cutoff_date,            -- 締日
+--             xxih.bill_cust_account_id    bill_cust_account_id,   -- 請求先顧客ID
+--             xxih.bill_cust_acct_site_id  bill_cust_acct_site_id, -- 請求先顧客所在地ID
+--             xxih.tax_gap_amount          tax_gap_amount,         -- 税差額
+--             xxih.term_name               term_name,              -- 支払条件
+--             xxih.term_id                 term_id,                -- 支払条件ID
+--             xxih.send_address1           send_address1,          -- 送付先住所1
+--             xxih.send_address2           send_address2,          -- 送付先住所2
+--             xxih.send_address3           send_address3,          -- 送付先住所3
+--             xxih.receipt_location_code   receipt_location_code,  -- 入金拠点コード
+--             xxih.tax_type                tax_type,               -- 消費税区分
+--             xxih.bill_location_code      bill_location_code      -- 請求拠点コード
+--      FROM   xxcfr_invoice_headers xxih                   -- 請求ヘッダ情報テーブル
+--      WHERE  xxih.request_id = iv_request_id              -- コンカレント要求ID
+--      AND    xxih.org_id = gn_org_id                      -- 組織ID
+--      AND    xxih.set_of_books_id = gn_set_book_id        -- 会計帳簿ID
+--      FOR UPDATE NOWAIT
+    CURSOR get_inv_header_cur
     IS
--- Modify 2009.08.03 Ver1.4 Start
---      SELECT xxih.invoice_id              invoice_id,             -- 一括請求書ID
       SELECT /*+ INDEX(xxih XXCFR_INVOICE_HEADERS_N02) */
-             xxih.invoice_id              invoice_id,             -- 一括請求書ID
--- Modify 2009.08.03 Ver1.4 End
-             xxih.bill_cust_code          bill_cust_code,         -- 請求先顧客コード
-             xxih.cutoff_date             cutoff_date,            -- 締日
-             xxih.bill_cust_account_id    bill_cust_account_id,   -- 請求先顧客ID
-             xxih.bill_cust_acct_site_id  bill_cust_acct_site_id, -- 請求先顧客所在地ID
-             xxih.tax_gap_amount          tax_gap_amount,         -- 税差額
-             xxih.term_name               term_name,              -- 支払条件
-             xxih.term_id                 term_id,                -- 支払条件ID
-             xxih.send_address1           send_address1,          -- 送付先住所1
-             xxih.send_address2           send_address2,          -- 送付先住所2
-             xxih.send_address3           send_address3,          -- 送付先住所3
-             xxih.receipt_location_code   receipt_location_code,  -- 入金拠点コード
-             xxih.tax_type                tax_type,               -- 消費税区分
-             xxih.bill_location_code      bill_location_code      -- 請求拠点コード
+             COUNT(1)              xxih_count             -- 件数
       FROM   xxcfr_invoice_headers xxih                   -- 請求ヘッダ情報テーブル
-      WHERE  xxih.request_id = iv_request_id              -- コンカレント要求ID
-      AND    xxih.org_id = gn_org_id                      -- 組織ID
-      AND    xxih.set_of_books_id = gn_set_book_id        -- 会計帳簿ID
-      FOR UPDATE NOWAIT
+      WHERE  xxih.request_id       = gt_target_request_id -- コンカレント要求ID
+      AND    xxih.org_id           = gn_org_id            -- 組織ID
+      AND    xxih.set_of_books_id  = gn_set_book_id       -- 会計帳簿ID
+      AND ( ( ( gv_batch_on_judge_type  = cv_judge_type_batch ) -- 夜間手動判断区分が'2'(夜間)
+      AND     ( xxih.parallel_type      = gn_parallel_type ) )  -- パラレル実行区分が一致
+      OR    ( ( gv_batch_on_judge_type != cv_judge_type_batch ) -- 夜間手動判断区分が'0'(手動)
+      AND     ( xxih.parallel_type     IS NULL ) ) )            -- パラレル実行区分がNULL
+-- Modify 2012.11.06 Ver1.120 End
     ;
 --
     -- *** ローカル・レコード ***
@@ -919,31 +996,38 @@ AS
     END;
 --
     --請求ヘッダ情報データ抽出処理
+-- Modify 2012.11.06 Ver1.120 Start
+--    -- カーソルオープン
+--    OPEN get_inv_header_cur(
+--           gt_target_request_id
+--         );
+--
+--    -- データの一括取得
+--    FETCH get_inv_header_cur 
+--    BULK COLLECT INTO gt_invoice_id_tab,    -- 一括請求書ID
+--                      gt_cust_code_tab,     -- 請求先顧客コード
+--                      gt_cutoff_date_tab,   -- 締日
+--                      gt_cust_acct_id_tab,  -- 請求先顧客ID
+--                      gt_cust_site_id_tab,  -- 請求先顧客所在地ID
+--                      gt_tax_gap_amt_tab,   -- 税差額
+--                      gt_term_name_tab,     -- 支払条件
+--                      gt_term_id_tab,       -- 支払条件ID
+--                      gt_send_addr1_tab,    -- 送付先住所1
+--                      gt_send_addr2_tab,    -- 送付先住所2
+--                      gt_send_addr3_tab,    -- 送付先住所3
+--                      gt_rec_loc_code_tab,  -- 入金拠点コード
+--                      gt_tax_type_tab,      -- 消費税区分
+--                      gt_bil_loc_code_tab   -- 請求拠点コード
+--    ;
+----
+--    -- 処理件数のセット
+--    gn_target_header_cnt := gt_invoice_id_tab.COUNT;
     -- カーソルオープン
-    OPEN get_inv_header_cur(
-           gt_target_request_id
-         );
---
-    -- データの一括取得
-    FETCH get_inv_header_cur 
-    BULK COLLECT INTO gt_invoice_id_tab,    -- 一括請求書ID
-                      gt_cust_code_tab,     -- 請求先顧客コード
-                      gt_cutoff_date_tab,   -- 締日
-                      gt_cust_acct_id_tab,  -- 請求先顧客ID
-                      gt_cust_site_id_tab,  -- 請求先顧客所在地ID
-                      gt_tax_gap_amt_tab,   -- 税差額
-                      gt_term_name_tab,     -- 支払条件
-                      gt_term_id_tab,       -- 支払条件ID
-                      gt_send_addr1_tab,    -- 送付先住所1
-                      gt_send_addr2_tab,    -- 送付先住所2
-                      gt_send_addr3_tab,    -- 送付先住所3
-                      gt_rec_loc_code_tab,  -- 入金拠点コード
-                      gt_tax_type_tab,      -- 消費税区分
-                      gt_bil_loc_code_tab   -- 請求拠点コード
-    ;
---
+    OPEN get_inv_header_cur;
+    --
     -- 処理件数のセット
-    gn_target_header_cnt := gt_invoice_id_tab.COUNT;
+    FETCH get_inv_header_cur INTO gn_target_header_cnt;
+-- Modify 2012.11.06 Ver1.120 End
 --
     -- カーソルクローズ
     CLOSE get_inv_header_cur;
@@ -1244,6 +1328,12 @@ AS
                    ar_vat_tax_all_b              arta,              -- 税金マスタ
                    fnd_lookup_values             fnvd               -- クイックコード(VD顧客区分)
             WHERE  xih.request_id            = gt_target_request_id       -- ターゲットとなる要求ID
+-- Modify 2012.11.06 Ver1.120 Start
+            AND ( ( ( gv_batch_on_judge_type  = cv_judge_type_batch ) -- 夜間手動判断区分が'2'(夜間)
+            AND     ( xih.parallel_type       = gn_parallel_type ) )  -- パラレル実行区分が一致
+            OR    ( ( gv_batch_on_judge_type != cv_judge_type_batch ) -- 夜間手動判断区分が'0'(手動)
+            AND     ( xih.parallel_type      IS NULL ) ) )            -- パラレル実行区分がNULL
+-- Modify 2012.11.06 Ver1.120 End
             AND    rcta.trx_date            <= xih.cutoff_date            -- 取引日
             AND    rcta.bill_to_customer_id  = xih.bill_cust_account_id   -- 請求先顧客ID
             AND    xih.org_id                = gn_org_id                      -- 組織ID
@@ -1419,6 +1509,12 @@ AS
                    ic_item_mst_b                 icmb,           -- OPM品目マスタ
                    xxcmn_item_mst_b              xxmb            -- OPM品目アドオン
             WHERE  xih.request_id            = gt_target_request_id       -- ターゲットとなる要求ID
+-- Modify 2012.11.06 Ver1.120 Start
+            AND ( ( ( gv_batch_on_judge_type  = cv_judge_type_batch ) -- 夜間手動判断区分が'2'(夜間)
+            AND     ( xih.parallel_type       = gn_parallel_type ) )  -- パラレル実行区分が一致
+            OR    ( ( gv_batch_on_judge_type != cv_judge_type_batch ) -- 夜間手動判断区分が'0'(手動)
+            AND     ( xih.parallel_type      IS NULL ) ) )            -- パラレル実行区分がNULL
+-- Modify 2012.11.06 Ver1.120 End
             AND    rcta.trx_date            <= xih.cutoff_date            -- 取引日
             AND    rcta.bill_to_customer_id  = xih.bill_cust_account_id   -- 請求先顧客ID
             AND    xih.org_id                = gn_org_id                      -- 組織ID
@@ -3526,6 +3622,12 @@ AS
       AND    rcta.attribute7 IN (cv_inv_hold_status_o,
                                  cv_inv_hold_status_r)             -- 請求書保留ステータス
       AND    xxih.request_id = xiit.target_request_id              -- 要求ID
+-- Modify 2012.11.06 Ver1.120 Start
+      AND ( ( ( gv_batch_on_judge_type  = cv_judge_type_batch ) -- 夜間手動判断区分が'2'(夜間)
+      AND     ( xxih.parallel_type      = gn_parallel_type ) )  -- パラレル実行区分が一致
+      OR    ( ( gv_batch_on_judge_type != cv_judge_type_batch ) -- 夜間手動判断区分が'0'(手動)
+      AND     ( xxih.parallel_type     IS NULL ) ) )            -- パラレル実行区分がNULL
+-- Modify 2012.11.06 Ver1.120 End
 -- Modify 2009.08.03 Ver1.4 Start
 --      FOR UPDATE NOWAIT
       FOR UPDATE OF rcta.customer_trx_id NOWAIT -- 取引ヘッダテーブルのみをロック
@@ -3711,6 +3813,10 @@ AS
    * Description      : メイン処理プロシージャ
    **********************************************************************************/
   PROCEDURE submain(
+-- Modify 2012.11.06 Ver1.120 Start
+    iv_parallel_type          IN  VARCHAR2,     -- パラレル実行区分
+    iv_batch_on_judge_type    IN  VARCHAR2,     -- 夜間手動判断区分
+-- Modify 2012.11.06 Ver1.120 End
     ov_errbuf                 OUT VARCHAR2,     -- エラー・メッセージ           --# 固定 #
     ov_retcode                OUT VARCHAR2,     -- リターン・コード             --# 固定 #
     ov_errmsg                 OUT VARCHAR2)     -- ユーザー・エラー・メッセージ --# 固定 #
@@ -3759,19 +3865,29 @@ AS
     gn_target_header_cnt   := 0;
     gn_target_line_cnt     := 0;
     gn_target_aroif_cnt    := 0;
-    gn_target_del_head_cnt := 0;
-    gn_target_del_line_cnt := 0;
-    gn_normal_cnt  := 0;
+-- Modify 2012.11.06 Ver1.120 Start
+--    gn_target_del_head_cnt := 0;
+--    gn_target_del_line_cnt := 0;
+--    gn_normal_cnt  := 0;
+-- Modify 2012.11.06 Ver1.120 End
     gn_error_cnt   := 0;
-    gn_warn_cnt    := 0;
+-- Modify 2012.11.06 Ver1.120 Start
+--    gn_warn_cnt    := 0;
+-- Modify 2012.11.06 Ver1.120 End
     gv_conc_status := cv_status_normal;
-    gv_auto_inv_err_flag := 'N';
+-- Modify 2012.11.06 Ver1.120 Start
+--    gv_auto_inv_err_flag := 'N';
+-- Modify 2012.11.06 Ver1.120 End
 --
     -- =====================================================
     --  初期処理(A-1)
     -- =====================================================
     init(
-       lv_errbuf               -- エラー・メッセージ           --# 固定 #
+-- Modify 2012.11.06 Ver1.120 Start
+       iv_parallel_type        -- パラレル実行区分
+      ,iv_batch_on_judge_type  -- 夜間手動判断区分
+-- Modify 2012.11.06 Ver1.120 End
+      ,lv_errbuf               -- エラー・メッセージ           --# 固定 #
       ,lv_retcode              -- リターン・コード             --# 固定 #
       ,lv_errmsg);             -- ユーザー・エラー・メッセージ --# 固定 #
 --
@@ -3947,6 +4063,7 @@ AS
       -- リターン・コードに警告をセット
       ov_retcode := cv_status_warn;
     END IF;
+--
   EXCEPTION
       -- *** 任意で例外処理を記述する ****
       -- カーソルのクローズをここに記述する
@@ -3978,7 +4095,12 @@ AS
 --
   PROCEDURE main(
     errbuf                  OUT     VARCHAR2,         -- エラー・メッセージ
-    retcode                 OUT     VARCHAR2          -- エラーコード
+-- Modify 2012.11.06 Ver1.120 Start
+--    retcode                 OUT     VARCHAR2          -- エラーコード
+    retcode                 OUT     VARCHAR2,         -- エラーコード
+    iv_parallel_type        IN      VARCHAR2,         -- パラレル実行区分
+    iv_batch_on_judge_type  IN      VARCHAR2          -- 夜間手動判断区分
+-- Modify 2012.11.06 Ver1.120 End
   )
 --
 --
@@ -4025,7 +4147,11 @@ AS
     -- submainの呼び出し（実際の処理はsubmainで行う）
     -- ===============================================
     submain(
-       lv_errbuf                 -- エラー・メッセージ           
+-- Modify 2012.11.06 Ver1.120 Start
+       iv_parallel_type          -- パラレル実行区分
+      ,iv_batch_on_judge_type    -- 夜間手動判断区分
+-- Modify 2012.11.06 Ver1.120 End
+      ,lv_errbuf                 -- エラー・メッセージ           
       ,lv_retcode                -- リターン・コード             
       ,lv_errmsg                 -- ユーザー・エラー・メッセージ 
     );
@@ -4053,9 +4179,11 @@ AS
     IF (lv_retcode = cv_status_error) THEN
       gn_target_header_cnt := 0;
       gn_target_line_cnt := 0;
-      gn_target_del_head_cnt := 0;
-      gn_target_del_line_cnt := 0;
-      gn_normal_cnt := 0;
+-- Modify 2012.11.06 Ver1.120 Start
+--      gn_target_del_head_cnt := 0;
+--      gn_target_del_line_cnt := 0;
+--      gn_normal_cnt := 0;
+-- Modify 2012.11.06 Ver1.120 End
       gn_error_cnt  := 1;
     END IF;
     --
@@ -4086,7 +4214,10 @@ AS
                      iv_application  => cv_msg_kbn_ccp
                     ,iv_name         => cv_msg_ccp_90001
                     ,iv_token_name1  => cv_tkn_count
-                    ,iv_token_value1 => TO_CHAR(gn_target_header_cnt - gn_target_del_head_cnt)
+-- Modify 2012.11.06 Ver1.120 Start
+--                    ,iv_token_value1 => TO_CHAR(gn_target_header_cnt - gn_target_del_head_cnt)
+                    ,iv_token_value1 => TO_CHAR(gn_target_header_cnt)
+-- Modify 2012.11.06 Ver1.120 End
                    );
     fnd_file.put_line(
        which  => FND_FILE.OUTPUT
@@ -4094,22 +4225,30 @@ AS
     );
     --
     --エラー件数出力(ヘッダ部)
-    IF (lv_retcode = cv_status_error) THEN
-      gv_out_msg := xxccp_common_pkg.get_msg(
-                       iv_application  => cv_msg_kbn_ccp
-                      ,iv_name         => cv_msg_ccp_90002
-                      ,iv_token_name1  => cv_tkn_count
-                      ,iv_token_value1 => '1'
-                     );
-
-    ELSE
-      gv_out_msg := xxccp_common_pkg.get_msg(
-                       iv_application  => cv_msg_kbn_ccp
-                      ,iv_name         => cv_msg_ccp_90002
-                      ,iv_token_name1  => cv_tkn_count
-                      ,iv_token_value1 => TO_CHAR(gn_target_del_head_cnt)
-                     );
-    END IF;
+-- Modify 2012.11.06 Ver1.120 Start
+--    IF (lv_retcode = cv_status_error) THEN
+--      gv_out_msg := xxccp_common_pkg.get_msg(
+--                       iv_application  => cv_msg_kbn_ccp
+--                      ,iv_name         => cv_msg_ccp_90002
+--                      ,iv_token_name1  => cv_tkn_count
+--                      ,iv_token_value1 => '1'
+--                     );
+--
+--    ELSE
+--      gv_out_msg := xxccp_common_pkg.get_msg(
+--                       iv_application  => cv_msg_kbn_ccp
+--                      ,iv_name         => cv_msg_ccp_90002
+--                      ,iv_token_name1  => cv_tkn_count
+--                      ,iv_token_value1 => TO_CHAR(gn_target_del_head_cnt)
+--                     );
+--    END IF;
+    gv_out_msg := xxccp_common_pkg.get_msg(
+                     iv_application  => cv_msg_kbn_ccp
+                    ,iv_name         => cv_msg_ccp_90002
+                    ,iv_token_name1  => cv_tkn_count
+                    ,iv_token_value1 => TO_CHAR(gn_error_cnt)
+                   );
+-- Modify 2012.11.06 Ver1.120 End
     fnd_file.put_line(
        which  => FND_FILE.OUTPUT
       ,buff   => gv_out_msg
@@ -4142,7 +4281,10 @@ AS
                      iv_application  => cv_msg_kbn_ccp
                     ,iv_name         => cv_msg_ccp_90001
                     ,iv_token_name1  => cv_tkn_count
-                    ,iv_token_value1 => TO_CHAR(gn_target_line_cnt - gn_target_del_line_cnt)
+-- Modify 2012.11.06 Ver1.120 Start
+--                    ,iv_token_value1 => TO_CHAR(gn_target_line_cnt - gn_target_del_line_cnt)
+                    ,iv_token_value1 => TO_CHAR(gn_target_line_cnt)
+-- Modify 2012.11.06 Ver1.120 End
                    );
     fnd_file.put_line(
        which  => FND_FILE.OUTPUT
@@ -4150,22 +4292,30 @@ AS
     );
     --
     --エラー件数出力(明細部)
-    IF (lv_retcode = cv_status_error) THEN
-      gv_out_msg := xxccp_common_pkg.get_msg(
-                       iv_application  => cv_msg_kbn_ccp
-                      ,iv_name         => cv_msg_ccp_90002
-                      ,iv_token_name1  => cv_tkn_count
-                      ,iv_token_value1 => '1'
-                     );
-
-    ELSE
-      gv_out_msg := xxccp_common_pkg.get_msg(
-                       iv_application  => cv_msg_kbn_ccp
-                      ,iv_name         => cv_msg_ccp_90002
-                      ,iv_token_name1  => cv_tkn_count
-                      ,iv_token_value1 => TO_CHAR(gn_target_del_line_cnt)
-                     );
-    END IF;
+-- Modify 2012.11.06 Ver1.120 Start
+--    IF (lv_retcode = cv_status_error) THEN
+--      gv_out_msg := xxccp_common_pkg.get_msg(
+--                       iv_application  => cv_msg_kbn_ccp
+--                      ,iv_name         => cv_msg_ccp_90002
+--                      ,iv_token_name1  => cv_tkn_count
+--                      ,iv_token_value1 => '1'
+--                     );
+--
+--    ELSE
+--      gv_out_msg := xxccp_common_pkg.get_msg(
+--                       iv_application  => cv_msg_kbn_ccp
+--                      ,iv_name         => cv_msg_ccp_90002
+--                      ,iv_token_name1  => cv_tkn_count
+--                      ,iv_token_value1 => TO_CHAR(gn_target_del_line_cnt)
+--                     );
+--    END IF;
+    gv_out_msg := xxccp_common_pkg.get_msg(
+                     iv_application  => cv_msg_kbn_ccp
+                    ,iv_name         => cv_msg_ccp_90002
+                    ,iv_token_name1  => cv_tkn_count
+                    ,iv_token_value1 => TO_CHAR(gn_error_cnt)
+                   );
+-- Modify 2012.11.06 Ver1.120 End
     fnd_file.put_line(
        which  => FND_FILE.OUTPUT
       ,buff   => gv_out_msg
@@ -4177,11 +4327,13 @@ AS
     ELSIF(lv_retcode = cv_status_warn) THEN
       lv_message_code := cv_warn_msg;
     ELSIF(lv_retcode = cv_status_error) 
-      AND(gv_auto_inv_err_flag = 'Y')
-    THEN
-      lv_message_code := cv_msg_cfr_00045;
-    ELSIF(lv_retcode = cv_status_error) 
-      AND(gv_auto_inv_err_flag = 'N')
+-- Modify 2012.11.06 Ver1.120 Start
+--      AND(gv_auto_inv_err_flag = 'Y')
+--    THEN
+--      lv_message_code := cv_msg_cfr_00045;
+--    ELSIF(lv_retcode = cv_status_error) 
+--      AND(gv_auto_inv_err_flag = 'N')
+-- Modify 2012.11.06 Ver1.120 End
     THEN
       lv_message_code := cv_msg_cfr_00046;
     END IF;

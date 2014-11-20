@@ -5,7 +5,7 @@ CREATE TABLE xxcfr.xxcfr_invoice_headers
  * Description     : ¿‹ƒwƒbƒ_î•ñƒe[ƒuƒ‹
  * MD.050          : MD.050_LDM_CFR_001
  * MD.070          : 
- * Version         : 1.1
+ * Version         : 1.2
  * 
  * Change Record
  * ------------- ----- ------------ -------------------------------------
@@ -13,6 +13,7 @@ CREATE TABLE xxcfr.xxcfr_invoice_headers
  * ------------- ----- ------------ -------------------------------------
  *  2008/10/28    1.0  SCS ‘åì Œb    ‰‰ñì¬
  *  2009/07/21    1.1  SCS œA£ ^²l[0000792]áŠQ‘Î‰
+ *  2012/11/13    1.2  SCSK ’†‘º Œ’ˆê [E_–{‰Ò“®_10090]‘Î‰
  ************************************************************************/
 ( 
   invoice_id                 NUMBER         NOT NULL  ,-- ˆêŠ‡¿‹‘ID
@@ -63,6 +64,9 @@ CREATE TABLE xxcfr.xxcfr_invoice_headers
   credit_receiv_name3        VARCHAR2(360)            ,-- ”„Š|ƒR[ƒh3i‚»‚Ì‘¼j–¼Ì
   invoice_output_form        VARCHAR2(15)             ,-- ¿‹‘o—ÍŒ`®
   org_id                     NUMBER                   ,-- ‘gDID
+/* 2012.11.13 (E_–{‰Ò“®_10090) START */
+  parallel_type              NUMBER                   ,-- ƒpƒ‰ƒŒƒ‹Às‹æ•ª
+/* 2012.11.13 (E_–{‰Ò“®_10090) END */
   created_by                 NUMBER(15)     NOT NULL  ,-- ì¬Ò
   creation_date              DATE           NOT NULL  ,-- ì¬“ú
   last_updated_by            NUMBER(15)     NOT NULL  ,-- ÅIXVÒ
@@ -128,6 +132,9 @@ COMMENT ON COLUMN xxcfr.xxcfr_invoice_headers.credit_receiv_code3    IS '”„Š|ƒR
 COMMENT ON COLUMN xxcfr.xxcfr_invoice_headers.credit_receiv_name3    IS '”„Š|ƒR[ƒh3i‚»‚Ì‘¼j–¼Ì';
 COMMENT ON COLUMN xxcfr.xxcfr_invoice_headers.invoice_output_form    IS '¿‹‘o—ÍŒ`®';
 COMMENT ON COLUMN xxcfr.xxcfr_invoice_headers.org_id                 IS '‘gDID';
+/* 2012.11.13 (E_–{‰Ò“®_10090) START */
+COMMENT ON COLUMN xxcfr.xxcfr_invoice_headers.parallel_type          IS 'ƒpƒ‰ƒŒƒ‹Às‹æ•ª';
+/* 2012.11.13 (E_–{‰Ò“®_10090) END */
 COMMENT ON COLUMN xxcfr.xxcfr_invoice_headers.created_by             IS 'ì¬Ò';
 COMMENT ON COLUMN xxcfr.xxcfr_invoice_headers.creation_date          IS 'ì¬“ú';
 COMMENT ON COLUMN xxcfr.xxcfr_invoice_headers.last_updated_by        IS 'ÅIXVÒ';

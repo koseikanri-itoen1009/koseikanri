@@ -7,7 +7,7 @@ AS
  * Description      : 請求ヘッダデータ作成
  * MD.050           : MD050_CFR_003_A02_請求ヘッダデータ作成
  * MD.070           : MD050_CFR_003_A02_請求ヘッダデータ作成
- * Version          : 1.10
+ * Version          : 1.11
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -42,6 +42,7 @@ AS
  *  2009/12/28    1.08 SCS 安川 智博    障害「E_本稼動_00606」対応
  *  2010/01/29    1.09 SCS 安川 智博    障害「E_本稼動_01503」対応」
  *  2011/03/10    1.10 SCS 西野 裕介    障害「E_本稼動_03333」対応
+ *  2012/11/09    1.11 SCSK 小野塚 香織 障害「E_本稼動_10090」対応
  *
  *****************************************************************************************/
 --
@@ -113,6 +114,10 @@ AS
                                       := 'XXCFR1_GENERAL_INVOICE_ITOEN_NAME';   -- 汎用請求書取引先名
   cv_org_id                CONSTANT VARCHAR2(6)  := 'ORG_ID';                   -- 組織ID
   cv_set_of_books_id       CONSTANT VARCHAR2(16) := 'GL_SET_OF_BKS_ID';         -- 会計帳簿ID
+-- Modify 2012.11.09 Ver1.11 Start
+  cv_invoice_h_parallel_count CONSTANT VARCHAR2(36)
+                                      := 'XXCFR1_INVOICE_HEADER_PARALLEL_COUNT';  -- XXCFR:請求ヘッダパラレル実行数
+-- Modify 2012.11.09 Ver1.11 End
   -- アプリケーション短縮名
   cv_msg_kbn_cfr     CONSTANT VARCHAR2(5)   := 'XXCFR';     -- アプリケーション短縮名(XXCFR)
 --
@@ -267,6 +272,9 @@ AS
   gd_target_date             DATE;                                                 -- 締日(日付型)
   gn_org_id                  NUMBER;                                               -- 組織ID
   gn_set_book_id             NUMBER;                                               -- 会計帳簿ID
+-- Modify 2012.11.09 Ver1.11 Start
+  gn_invoice_h_parallel_count NUMBER;                                              -- 請求ヘッダパラレル実行数
+-- Modify 2012.11.09 Ver1.11 End
   gn_request_id              NUMBER;                                               -- コンカレント要求ID
   gd_process_date            DATE;                                                 -- 業務処理日付
   gd_work_day_ago1           DATE;                                                 -- 1営業日前日
@@ -315,6 +323,9 @@ AS
   gt_bill_payment_term2      hz_cust_site_uses_all.attribute2%TYPE;                -- 支払条件2
   gt_bill_payment_term3      hz_cust_site_uses_all.attribute3%TYPE;                -- 支払条件3
 -- Modify 2009.07.13 Ver1.02 end
+-- Modify 2012.11.09 Ver1.11 Start
+  gn_parallel_count          NUMBER DEFAULT 0;                                     -- 請求ヘッダパラレル実行数
+-- Modify 2012.11.09 Ver1.11 End
 --
   /**********************************************************************************
    * Procedure Name   : init
@@ -436,6 +447,21 @@ AS
                                                     ,5000);
       RAISE global_api_expt;
     END IF;
+--
+-- Modify 2012.11.09 Ver1.11 Start
+    --請求ヘッダパラレル実行数
+    gn_invoice_h_parallel_count := TO_NUMBER(FND_PROFILE.VALUE(cv_invoice_h_parallel_count));
+    IF (gn_invoice_h_parallel_count IS NULL) THEN
+      lt_prof_name := xxcfr_common_pkg.get_user_profile_name(cv_invoice_h_parallel_count);
+      lv_errmsg := SUBSTRB(xxccp_common_pkg.get_msg( iv_application  => cv_msg_kbn_cfr    
+                                                    ,iv_name         => cv_msg_cfr_00004  
+                                                    ,iv_token_name1  => cv_tkn_prof_name  
+                                                    ,iv_token_value1 => lt_prof_name)
+                                                    ,1
+                                                    ,5000);
+      RAISE global_api_expt;
+    END IF;
+-- Modify 2012.11.09 Ver1.11 End
 --
     --==============================================================
     --業務処理日付取得処理
@@ -578,6 +604,13 @@ AS
     WHEN global_api_others_expt THEN
       ov_errbuf  := cv_pkg_name||cv_msg_cont||cv_prg_name||cv_msg_part||SQLERRM;
       ov_retcode := cv_status_error;
+-- Modify 2012.11.09 Ver1.11 Start
+    -- *** 変換例外ハンドラ ***
+    WHEN VALUE_ERROR THEN
+      ov_errmsg  := cv_pkg_name||cv_msg_cont||cv_prg_name||cv_msg_part||SQLERRM;
+      ov_errbuf  := cv_pkg_name||cv_msg_cont||cv_prg_name||cv_msg_part||SQLERRM;
+      ov_retcode := cv_status_error;
+-- Modify 2012.11.09 Ver1.11 End
     -- *** OTHERS例外ハンドラ ***
     WHEN OTHERS THEN
       ov_errbuf  := cv_pkg_name||cv_msg_cont||cv_prg_name||cv_msg_part||SQLERRM;
@@ -1875,6 +1908,9 @@ AS
     iv_term_name            IN  VARCHAR2,     -- 支払条件
     iv_term_id              IN  NUMBER,       -- 支払条件ID
     iv_tax_div              IN  VARCHAR2,     -- 消費税区分
+-- Modify 2012.11.09 Ver1.11 Start
+    iv_batch_on_judge_type  IN  VARCHAR2,     -- 夜間手動判断区分
+-- Modify 2012.11.09 Ver1.11 End
     ov_errbuf               OUT VARCHAR2,     -- エラー・メッセージ           --# 固定 #
     ov_retcode              OUT VARCHAR2,     -- リターン・コード             --# 固定 #
     ov_errmsg               OUT VARCHAR2      -- ユーザー・エラー・メッセージ --# 固定 #
@@ -2515,6 +2551,22 @@ AS
         RAISE global_process_expt;
     END;
 --
+-- Modify 2012.11.09 Ver1.11 Start
+    --夜間手動判断区分が2(夜間)の場合のみ、
+    --請求明細データ作成のパラレル実行の為のパラレル実行区分を設定
+    IF (iv_batch_on_judge_type = cv_judge_type_batch) THEN
+      --プロファイルで設定されている数で分割
+      IF ( gn_parallel_count < gn_invoice_h_parallel_count ) THEN
+        gn_parallel_count := gn_parallel_count + 1;
+      ELSE
+        --プロファイルで設定している値に達した場合、初期化
+        gn_parallel_count := 1;
+      END IF;
+    ELSE
+      --手動実行の場合、パラレル実行区分はNULLとする
+      gn_parallel_count := NULL;
+    END IF;
+-- Modify 2012.11.09 Ver1.11 End
     --==============================================================
     --請求ヘッダ情報テーブル登録処理
     --==============================================================
@@ -2576,7 +2628,11 @@ AS
         request_id,                        -- 要求ID
         program_application_id,            -- コンカレント・プログラム・アプリケーションID
         program_id,                        -- コンカレント・プログラムID
-        program_update_date                -- プログラム更新日
+-- Modify 2012.11.09 Ver1.11 Start
+--        program_update_date                -- プログラム更新日
+        program_update_date,               -- プログラム更新日
+        parallel_type                      -- パラレル実行区分
+-- Modify 2012.11.09 Ver1.11 End
       ) VALUES (
         xxcfr_invoice_headers_s1.NEXTVAL,                             -- 一括請求書ID
         gn_set_book_id,                                               -- 会計帳簿ID
@@ -2634,7 +2690,11 @@ AS
         cn_request_id,                                                -- 要求ID
         cn_program_application_id,                                    -- コンカレント・プログラム・アプリケーションID
         cn_program_id,                                                -- コンカレント・プログラムID
-        cd_program_update_date                                        -- プログラム更新日
+-- Modify 2012.11.09 Ver1.11 Start
+--        cd_program_update_date                                        -- プログラム更新日
+        cd_program_update_date,                                       -- プログラム更新日
+        gn_parallel_count                                             -- パラレル実行区分
+-- Modify 2012.11.09 Ver1.11 End
       )
       RETURNING invoice_id INTO gt_invoice_id;                        -- 一括請求書ID
 --
@@ -3311,6 +3371,9 @@ AS
            gt_get_term_name_tab(ln_loop_cnt),          -- 支払条件
            gt_get_term_id_tab(ln_loop_cnt),            -- 支払条件ID
            gt_get_tax_div_tab(ln_loop_cnt),            -- 消費税区分
+-- Modify 2012.11.09 Ver1.11 Start
+           iv_batch_on_judge_type,                     -- 夜間手動判断区分
+-- Modify 2012.11.09 Ver1.11 End
            lv_errbuf,                                  -- エラー・メッセージ           --# 固定 #
            lv_retcode,                                 -- リターン・コード             --# 固定 #
            lv_errmsg                                   -- ユーザー・エラー・メッセージ --# 固定 #
