@@ -7,7 +7,7 @@ AS
  * Description      : 生産物流(引当、配車)
  * MD.050           : 出荷・移動インタフェース         T_MD050_BPO_930
  * MD.070           : 外部倉庫入出庫実績インタフェース T_MD070_BPO_93A
- * Version          : 1.65
+ * Version          : 1.66
  *
  * Program List
  * ------------------------------------ -------------------------------------------------
@@ -164,6 +164,7 @@ AS
  *  2010/03/11    1.63 SCS    北寒寺正夫 本稼働障害  #1871 依頼No/移動番号重複チェックを追加
  *  2010/03/12    1.64 SCS    北寒寺正夫 本稼働障害  #1622 移動の実績訂正の際に実績計上済区分をYからNに更新するように修正
  *  2010/04/16    1.65 SCS    伊藤ひとみ E_本稼動_02302    指示なし実績のとき、入力拠点に報告部署をセットする。
+ *  2011/06/09    1.66 SCS    H.Sasaki   E_本稼動_05234,07582    出荷先、品目チェックを追加
  *****************************************************************************************/
 --
 --#######################  固定グローバル定数宣言部 START   #######################
@@ -345,6 +346,10 @@ AS
   -- 重複エラー
   gv_msg_93a_616                 CONSTANT VARCHAR2(15) := 'APP-XXCMN-10616';
 -- 2010/03/11 M.Hokkanji End
+-- 2011/06/09 E_本稼動_06875 V1.66 Added START
+  gv_msg_93a_182                CONSTANT VARCHAR2(15) := 'APP-XXWSH-13182';
+  gv_msg_93a_183                CONSTANT VARCHAR2(15) := 'APP-XXWSH-13183';
+-- 2011/06/09 E_本稼動_06875 V1.66 Added END
 --
   -- トークン
   gv_tkn_cnt                     CONSTANT VARCHAR2(3)  := 'CNT';         -- カウントトークン
@@ -391,6 +396,10 @@ AS
   gv_param3_token3_nm            CONSTANT VARCHAR2(20) := '倉替返品';   -- 参照値トークン
   gv_param3_token4_nm            CONSTANT VARCHAR2(20) := '移動';       -- 参照値トークン
 -- 2010/03/11 M.Hokkanji End
+-- 2011/06/09 E_本稼動_06875 V1.66 Added START
+  gv_prf_inv_org_code           CONSTANT VARCHAR2(30) :=  'XXWSH_INV_ORG_CODE';
+  gv_party_site_code_token      CONSTANT VARCHAR2(30) :=  'PARTY_SITE_CODE';
+-- 2011/06/09 E_本稼動_06875 V1.66 Added END
 --
   -- メッセージPARAM1：処理件数名
   gv_c_file_id_name             CONSTANT VARCHAR2(50)   := '受注ヘッダ更新作成件数(実績計上)';
@@ -668,6 +677,10 @@ AS
   gv_shipping_shikyu_class_2     CONSTANT VARCHAR2(1) := '2';    -- 支給
   gv_shipping_shikyu_class_3     CONSTANT VARCHAR2(1) := '3';    -- 倉替返品
 -- 2010/03/11 M.Hokkanji End
+-- 2011/06/09 E_本稼動_06875 V1.66 Added START
+  gt_inv_org_id                 mtl_parameters.organization_id%TYPE;
+  gd_process_date               DATE;
+-- 2011/06/09 E_本稼動_06875 V1.66 Added END
 --
   -- ===============================
   -- ユーザー定義グローバル型
@@ -1234,6 +1247,7 @@ AS
   -- デバッグ用
   gb_debug    BOOLEAN DEFAULT FALSE;    --デバッグログ出力用スイッチ
 --
+
   /**********************************************************************************
    * Procedure Name   : set_debug_switch
    * Description      : デバッグ用ログ出力用切り替えスイッチ取得処理
@@ -1656,6 +1670,15 @@ AS
     lt_whse_inventory_item_no      xxcmn_item_mst2_v.item_no%TYPE;                      -- INV倉庫品目
     lt_customer_class_code         xxcmn_cust_accounts2_v.customer_class_code%TYPE;     -- 顧客区分
     lt_location_rel_code           xxcmn_cust_accounts2_v.location_rel_code%TYPE;       -- 拠点実績有無区分    2008/12/11 本番障害#644 Add
+-- 2011/06/09 E_本稼動_06875 V1.66 Added START
+    lt_chk_inv_base_code            hz_cust_accounts.account_number%TYPE;
+    lt_chk_inv_delivery_code        hz_locations.province%TYPE;
+    ln_subinventory_chk             NUMBER;
+    lt_request_item_id              mtl_system_items_b.inventory_item_id%TYPE;
+    lt_request_item_code            mtl_system_items_b.segment1%TYPE;
+    lt_inventory_chk                mtl_system_items_b.segment1%TYPE;
+    ln_dummy                        NUMBER;
+-- 2011/06/09 E_本稼動_06875 V1.66 Added END
 --
     lv_msg_buff                    VARCHAR2(5000);
     -- *** ローカル・カーソル ***
@@ -1722,7 +1745,89 @@ AS
         END ;
 --
 -- 2009/02/03 本番障害#1101 ADD END
-
+-- 2011/06/09 E_本稼動_06875 V1.66 Added START
+        IF (gr_interface_info_rec(in_idx).eos_data_type IN(gv_eos_data_cd_210, gv_eos_data_cd_215)) THEN
+          BEGIN
+            SELECT  hca.account_number
+                  , hl.province
+            INTO    lt_chk_inv_base_code
+                  , lt_chk_inv_delivery_code
+            FROM    hz_cust_accounts      hca
+                  , hz_party_sites        hps
+                  , hz_locations          hl
+                  , xxcmm_cust_accounts   xca
+            WHERE   hps.party_site_id         =   lt_party_site_id
+            AND     hps.location_id           =   hl.location_id
+            AND     hps.party_id              =   hca.party_id
+            AND     hca.cust_account_id       =   xca.customer_id
+            AND     hca.customer_class_code   =   '1'
+            AND     hca.status                =   'A'
+            AND     hl.province   LIKE  '0%';
+            --
+            SELECT  COUNT(1)
+            INTO    ln_subinventory_chk
+            FROM    mtl_secondary_inventories   msi2
+            WHERE   msi2.attribute7         =   lt_chk_inv_base_code
+            AND     msi2.organization_id    =   gt_inv_org_id
+            AND     msi2.attribute1   IN('1', '4')
+            AND     NVL(msi2.disable_date, gd_process_date + 1)   >   gd_process_date
+            AND     SUBSTRB(msi2.secondary_inventory_name, 6, 2)
+                          =   NVL(
+                                (
+                                  SELECT  SUBSTRB(msi.secondary_inventory_name, 6, 2)
+                                  FROM    mtl_secondary_inventories   msi
+                                  WHERE   msi.attribute7        =   lt_chk_inv_base_code
+                                  AND     msi.attribute1    IN('1', '4')
+                                  AND     msi.attribute11       =   'Y'
+                                  AND     msi.attribute6        =   'Y'
+                                  AND     msi.organization_id   =   gt_inv_org_id
+                                ), SUBSTRB(lt_chk_inv_delivery_code, LENGTHB(lt_chk_inv_delivery_code) - 1, 2)
+                              );
+            --
+            IF (ln_subinventory_chk <> 1) THEN
+              --  保管場所情報の取得件数が１件以外の場合
+              --********** debug_log ********** START ***
+              debug_log(FND_FILE.LOG,'保管場所チェックエラー');
+              --********** debug_log ********** END   ***
+              lv_msg_buff :=  SUBSTRB(
+                                xxcmn_common_pkg.get_msg(
+                                    gv_msg_kbn
+                                  , gv_msg_93a_182
+                                  , gv_param1_token
+                                  , gr_interface_info_rec(in_idx).delivery_no
+                                  , gv_param2_token
+                                  , gr_interface_info_rec(in_idx).order_source_ref
+                                  , gv_param3_token
+                                  , lt_chk_inv_base_code
+                                  , gv_param4_token
+                                  , gr_interface_info_rec(in_idx).party_site_code
+                                ), 1, 5000
+                              );
+              --
+              --配送No/移動No-EOSデータ種別単位で妥当チェックエラーflagをセット
+              set_header_unit_reserveflg(
+                  in_idx                    =>  in_idx                                              --  データindex
+                , iv_header_err_only_flg    =>  gv_flg_off                                          --  ヘッダーデータ・エラーフラグ（明細単位エラー:0、ヘッダー単位エラー:1）
+                , iv_msg_id                 =>  gv_msg_93a_182
+                , iv_delivery_no            =>  gr_interface_info_rec(in_idx).delivery_no           --  配送No
+                , iv_movreqno               =>  gr_interface_info_rec(in_idx).order_source_ref      --  受注ソース参照(依頼/移動No)
+                , iv_eos_data_type          =>  gr_interface_info_rec(in_idx).eos_data_type         --  EOSデータ種別
+                , in_level                  =>  gv_err_class                                        --  エラー種別：エラー
+                , iv_message                =>  lv_msg_buff                                         --  エラー・メッセージ(出力用)
+                , ov_errbuf                 =>  lv_errbuf                                           --  エラー・メッセージ           --# 固定 #
+                , ov_retcode                =>  lv_retcode                                          --  リターン・コード             --# 固定 #
+                , ov_errmsg                 =>  lv_errmsg                                           --  ユーザー・エラー・メッセージ --# 固定 #
+              );
+              -- 処理ステータス：警告
+              ov_retcode := gv_status_warn;
+            END IF;
+          EXCEPTION
+            WHEN NO_DATA_FOUND THEN
+              --  拠点、配送先未取得の場合はチェックなし
+              NULL;
+          END;
+        END IF;
+-- 2011/06/09 E_本稼動_06875 V1.66 Added END
 --
         --拠点情報（拠点実績有無区分）の取得
         BEGIN
@@ -2113,6 +2218,93 @@ AS
 --
         END ;
 --
+-- 2011/06/09 E_本稼動_06875 V1.66 Added START
+        IF (gr_interface_info_rec(in_idx).eos_data_type IN(gv_eos_data_cd_210, gv_eos_data_cd_215)) THEN
+          --  依頼品目の設定
+          IF  (gr_interface_info_rec(in_idx).item_kbn_cd <> gv_item_kbn_cd_5) THEN
+            -- 依頼品目ID
+            lt_request_item_id    :=  gr_interface_info_rec(in_idx).whse_inventory_item_id;   --  OPM品目マスタ.倉庫品目ID
+            lt_request_item_code  :=  gr_interface_info_rec(in_idx).whse_inventory_item_no;
+          ELSE
+            -- 依頼品目ID
+            lt_request_item_id    :=  gr_interface_info_rec(in_idx).inventory_item_id;        --  INV品目マスタ.品目ID
+            lt_request_item_code  :=  gr_interface_info_rec(in_idx).orderd_item_code;
+          END IF;
+          --
+          IF  (lt_request_item_id IS NOT NULL) THEN
+            BEGIN
+              --  品目ステータス、顧客受注可能、取引可能、在庫保有可能、返品可能をチェックし
+              --  取得されない場合は、該当品目はエラー
+              SELECT  msib.segment1
+              INTO    lt_inventory_chk
+              FROM    mtl_system_items_b      msib
+                    , ic_item_mst_b           iimb
+              WHERE   msib.segment1                       =   iimb.item_no
+              AND     msib.organization_id                =   gt_inv_org_id
+              AND     msib.inventory_item_id              =   lt_request_item_id
+              AND     msib.inventory_item_status_code     <>  'Inactive'
+              AND     msib.customer_order_enabled_flag    =   'Y'
+              AND     msib.mtl_transactions_enabled_flag  =   'Y'
+              AND     msib.stock_enabled_flag             =   'Y'
+              AND     msib.returnable_flag                =   'Y';
+              --
+              IF  (SUBSTRB(lt_inventory_chk, 1, 1) NOT IN('5', '6'))  THEN
+                --  資材以外（品目コードの1byte目が5, 6以外）の場合、売上げ対象区分 1 以外はエラー
+                SELECT  1
+                INTO    ln_dummy
+                FROM    mtl_system_items_b      msib
+                      , ic_item_mst_b           iimb_c
+                      , ic_item_mst_b           iimb_p
+                      , xxcmn_item_mst_b        ximb
+                WHERE   msib.segment1                       =   iimb_c.item_no
+                AND     msib.organization_id                =   gt_inv_org_id
+                AND     msib.inventory_item_id              =   lt_request_item_id
+                AND     iimb_c.item_id                      =   ximb.item_id
+                AND     ximb.parent_item_id                 =   iimb_p.item_id
+                AND     iimb_p.attribute26                  =   '1'
+                AND     gr_interface_info_rec(in_idx).arrival_date
+                          BETWEEN ximb.start_date_active
+                          AND     NVL(ximb.end_date_active, gr_interface_info_rec(in_idx).arrival_date);
+              END IF;
+            EXCEPTION
+              WHEN NO_DATA_FOUND THEN
+                --  有効な品目が取得されない
+                --********** debug_log ********** START ***
+                debug_log(FND_FILE.LOG,'品目チェックエラー');
+                --********** debug_log ********** END   ***
+                lv_msg_buff :=  SUBSTRB(
+                                  xxcmn_common_pkg.get_msg(
+                                      gv_msg_kbn
+                                    , gv_msg_93a_183
+                                    , gv_param1_token
+                                    , gr_interface_info_rec(in_idx).delivery_no
+                                    , gv_param2_token
+                                    , gr_interface_info_rec(in_idx).order_source_ref
+                                    , gv_param3_token
+                                    , lt_request_item_code
+                                  ), 1, 5000
+                                );
+                --
+                --配送No/移動No-EOSデータ種別単位で妥当チェックエラーflagをセット
+                set_header_unit_reserveflg(
+                    in_idx                    =>  in_idx                                              --  データindex
+                  , iv_header_err_only_flg    =>  gv_flg_off                                          --  ヘッダーデータ・エラーフラグ（明細単位エラー:0、ヘッダー単位エラー:1）
+                  , iv_msg_id                 =>  gv_msg_93a_183
+                  , iv_delivery_no            =>  gr_interface_info_rec(in_idx).delivery_no           --  配送No
+                  , iv_movreqno               =>  gr_interface_info_rec(in_idx).order_source_ref      --  受注ソース参照(依頼/移動No)
+                  , iv_eos_data_type          =>  gr_interface_info_rec(in_idx).eos_data_type         --  EOSデータ種別
+                  , in_level                  =>  gv_err_class                                        --  エラー種別：エラー
+                  , iv_message                =>  lv_msg_buff                                         --  エラー・メッセージ(出力用)
+                  , ov_errbuf                 =>  lv_errbuf                                           --  エラー・メッセージ           --# 固定 #
+                  , ov_retcode                =>  lv_retcode                                          --  リターン・コード             --# 固定 #
+                  , ov_errmsg                 =>  lv_errmsg                                           --  ユーザー・エラー・メッセージ --# 固定 #
+                );
+                -- 処理ステータス：警告
+                ov_retcode := gv_status_warn;
+            END;
+          END IF;
+        END IF;
+-- 2011/06/09 E_本稼動_06875 V1.66 Added END
       END IF;
 --
     END IF;
@@ -4861,6 +5053,28 @@ AS
     -- 在庫クローズ年月の月末を取得
     gd_close_last_day := LAST_DAY(FND_DATE.STRING_TO_DATE(xxcmn_common_pkg.get_opminv_close_period,'YYYY/MM'));
 -- 2009/05/26 H.Itou Add End
+-- 2011/06/09 E_本稼動_06875 V1.66 Added START
+    --  在庫組織IDを取得
+    BEGIN
+      SELECT  mp.organization_id
+      INTO    gt_inv_org_id
+      FROM    mtl_parameters      mp
+      WHERE   mp.organization_code  =   fnd_profile.value(gv_prf_inv_org_code);
+    EXCEPTION
+      WHEN NO_DATA_FOUND THEN
+        lv_errmsg :=  xxcmn_common_pkg.get_msg(
+                          gv_msg_kbn                -- 'XXWSH'
+                        , gv_msg_93a_002            -- プロファイル取得エラーメッセージ
+                        , gv_prof_token             -- トークン'PROF_NAME'
+                        , gv_prf_inv_org_code
+                      );      -- パージ処理期間(入出庫実績インタフェース)
+  --
+        lv_errbuf := lv_errmsg;
+        RAISE global_api_expt;
+    END;
+    --  業務日付を取得
+    gd_process_date   :=    xxccp_common_pkg2.get_process_date;
+-- 2011/06/09 E_本稼動_06875 V1.66 Added END
     --==============================================================
     --メッセージ出力(エラー以外)をする必要がある場合は処理を記述
     --==============================================================
@@ -5573,6 +5787,10 @@ AS
 --
        IF (lv_retcode = gv_status_error) THEN
          RAISE global_api_expt;
+-- 2011/06/09 E_本稼動_06875 V1.66 Added START
+       ELSIF (lv_retcode = gv_status_warn) THEN
+         lv_warn_flg  :=  gv_status_warn;
+-- 2011/06/09 E_本稼動_06875 V1.66 Added END
        END IF;
 --
     END LOOP get_master_data_loop;

@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCOI001A01C(body)
  * Description      : 生産物流システムから営業システムへの出荷依頼データの抽出・データ連携を行う
  * MD.050           : 入庫情報取得 MD050_COI_001_A01
- * Version          : 1.19
+ * Version          : 1.21
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -35,6 +35,7 @@ AS
  *  upd_old_data           旧情報出庫数量初期化処理(A-22)
  *  upd_no_order_data      受注非存在情報数量初期化処理(A-23)
  *  chk_aff_dept_active    拠点有効チェック(A-24)
+ *  upd_storage_information 入庫情報一時表更新(A-25)
  *
  * Change Record
  * ------------- ----- ---------------- -------------------------------------------------
@@ -66,6 +67,11 @@ AS
  *  2010/01/13    1.17  H.Sasaki         [E_本稼動_00837]エラーメッセージ修正
  *  2010/02/15    1.18  H.Sasaki         [E_本稼動_01567]倉庫コード違いの入庫情報編集内容を修正
  *  2010/03/23    1.19  Y.Goto           [E_本稼動_01943]A-24.拠点有効チェックを追加
+ *  2011/02/03    1.20  H.Sekine         [E_本稼動_03342]受注明細アドオンの取込済みフラグを更新処理の修正
+ *                                       [E_本稼動_05090]配送先が直送の入庫情報一時表の出庫数量を0に更新するよう修正
+ *  2011/05/24    1.21  H.Sasaki         [E_本稼動_06875]受注明細アドオンの取込済みフラグを更新処理の修正
+ *                                                       一伝票同一品目複数行に対する対応
+ *                                       [E_本稼動_06875追加]取込済みフラグの条件変更、日付指定
  *
  *****************************************************************************************/
 --
@@ -181,6 +187,11 @@ AS
 -- == 2010/03/23 V1.19 Added START   =============================================================
   cv_tkn_slip_num  CONSTANT VARCHAR2(30)  := 'SLIP_NUM';
 -- == 2010/03/23 V1.19 Added END   ===============================================================
+-- == 2011/02/03 V1.20 Added START   =============================================================
+  cv_cust_class    CONSTANT VARCHAR2(2)   := '10';
+  cv_date_format1  CONSTANT VARCHAR2(10)  := 'YYYY/MM/DD';
+  cv_date_format2  CONSTANT VARCHAR2(6)   := 'YYYYMM';
+-- == 2011/02/03 V1.20 Added END   ===============================================================
 --
   -- 初期処理出力
   cv_prf_org_err_msg          CONSTANT VARCHAR2(100) := 'APP-XXCOI1-00005'; -- 在庫組織コード取得エラーメッセージ
@@ -247,6 +258,10 @@ AS
   gn_detail_cnt               NUMBER;                                 -- 詳細レコード取得件数
   gn_slip_cnt                 NUMBER;                                 -- サマリレコードカウンタ
   gn_line_cnt                 NUMBER;                                 -- 詳細レコードカウンタ
+-- == 2011/05/24 V1.21 Modified START ==============================================================
+  gd_start_date               DATE;                                   --  受注検索用開始日
+  gd_end_date                 DATE;                                   --  受注検索用終了日
+-- == 2011/05/24 V1.21 Modified END   ==============================================================
 --
   TYPE g_summary_rtype IS RECORD(
       req_status        xxwsh_order_headers_all.req_status%TYPE       -- 出荷実績ステータス
@@ -934,6 +949,20 @@ AS
       RAISE global_api_expt;
     END IF;
 --
+-- == 2011/05/24 V1.21 Modified START ==============================================================
+    --============================================
+    --  会計期間の取得（受注条件用）
+    --============================================
+    --  OPEN会計期間の１ヶ月前から、OPENしている最終日まで
+    SELECT  ADD_MONTHS(MIN(oap.period_start_date), -1)    wh_start_date
+          , ADD_MONTHS(MAX(oap.period_start_date),  1)    wh_end_date
+    INTO    gd_start_date
+          , gd_end_date
+    FROM    org_acct_periods        oap
+    WHERE   oap.open_flag           =   cv_y_flag
+    AND     oap.organization_id     =   gt_org_id
+    ;
+-- == 2011/05/24 V1.21 Modified END   ==============================================================
     --==============================================================
     --メッセージ出力をする必要がある場合は処理を記述
     --==============================================================
@@ -1230,52 +1259,84 @@ AS
              )
 -- == 2009/09/08 V1.8 Added END   ===============================================================
       AND    msib.organization_id   =   gt_org_id
-      AND ( ( -- 締め済み、確定通知済出荷依頼（出荷依頼は削除明細を除外）
-              xoha.req_status                          = gt_ship_status_close
-              AND xoha.notif_status                    = gt_notice_status
-              AND NVL(xola.delete_flag,cv_n_flag)      = cv_n_flag
--- == 2009/12/08 V1.12 Modified START ===============================================================
---              AND xola.shipping_request_if_flg         = cv_n_flag
---              AND xola.shipping_result_if_flg          = cv_n_flag
-              AND NVL(xola.shipping_request_if_flg,cv_n_flag) = cv_n_flag
-              AND NVL(xola.shipping_result_if_flg,cv_n_flag)  = cv_n_flag
--- == 2009/12/08 V1.12 Modified END   ===============================================================
-              AND xoha.deliver_to_id                   = hps.party_site_id
-            )
-         OR ( -- 出荷実績計上済出荷実績（出荷実績は削除明細を除外、ただし出荷依頼連携済は対象）
-              (xoha.actual_confirm_class               = cv_y_flag
-              AND xoha.result_deliver_to_id            = hps.party_site_id)
-              AND(( xoha.req_status                    = gt_ship_status_result
-                   AND NVL(xola.delete_flag,cv_n_flag) = cv_n_flag
--- == 2009/12/08 V1.12 Modified START ===============================================================
---                   AND xola.shipping_result_if_flg     = cv_n_flag
-                   AND NVL(xola.shipping_result_if_flg,cv_n_flag) = cv_n_flag
--- == 2009/12/08 V1.12 Modified END   ===============================================================
-                  )
-              OR ( xoha.req_status                     = gt_ship_status_result
--- == 2009/12/08 V1.12 Modified START ===============================================================
---                   AND xola.delete_flag                = cv_y_flag
---                   AND xola.shipping_request_if_flg    = cv_y_flag
---                   AND xola.shipping_result_if_flg     = cv_n_flag
-                   AND NVL(xola.delete_flag,cv_n_flag)             = cv_y_flag
-                   AND NVL(xola.shipping_request_if_flg,cv_n_flag) = cv_y_flag
-                   AND NVL(xola.shipping_result_if_flg,cv_n_flag)  = cv_n_flag
--- == 2009/12/08 V1.12 Modified END   ===============================================================
-                 ))
-            )
-         OR ( -- 出荷依頼連携済に対して取消を行ったものは対象
-              xoha.req_status                                       = gt_ship_status_cancel
-              AND NVL(xoha.deliver_to_id,xoha.result_deliver_to_id) = hps.party_site_id
--- == 2009/12/08 V1.12 Modified START ===============================================================
---              AND xola.shipping_request_if_flg                      = cv_y_flag
---              AND xola.shipping_result_if_flg                       = cv_n_flag
---              AND xola.delete_flag                                  = cv_y_flag
-              AND NVL(xola.shipping_request_if_flg,cv_n_flag)       = cv_y_flag
-              AND NVL(xola.shipping_result_if_flg,cv_n_flag)        = cv_n_flag
-              AND NVL(xola.delete_flag,cv_n_flag)                   = cv_y_flag
--- == 2009/12/08 V1.12 Modified END   ===============================================================
-            )
-          )
+-- == 2011/05/24 V1.21 Modified START ==============================================================
+--      AND ( ( -- 締め済み、確定通知済出荷依頼（出荷依頼は削除明細を除外）
+--              xoha.req_status                          = gt_ship_status_close
+--              AND xoha.notif_status                    = gt_notice_status
+--              AND NVL(xola.delete_flag,cv_n_flag)      = cv_n_flag
+---- == 2009/12/08 V1.12 Modified START ===============================================================
+----              AND xola.shipping_request_if_flg         = cv_n_flag
+----              AND xola.shipping_result_if_flg          = cv_n_flag
+--              AND NVL(xola.shipping_request_if_flg,cv_n_flag) = cv_n_flag
+--              AND NVL(xola.shipping_result_if_flg,cv_n_flag)  = cv_n_flag
+---- == 2009/12/08 V1.12 Modified END   ===============================================================
+--              AND xoha.deliver_to_id                   = hps.party_site_id
+--            )
+--         OR ( -- 出荷実績計上済出荷実績（出荷実績は削除明細を除外、ただし出荷依頼連携済は対象）
+--              (xoha.actual_confirm_class               = cv_y_flag
+--              AND xoha.result_deliver_to_id            = hps.party_site_id)
+--              AND(( xoha.req_status                    = gt_ship_status_result
+--                   AND NVL(xola.delete_flag,cv_n_flag) = cv_n_flag
+---- == 2009/12/08 V1.12 Modified START ===============================================================
+----                   AND xola.shipping_result_if_flg     = cv_n_flag
+--                   AND NVL(xola.shipping_result_if_flg,cv_n_flag) = cv_n_flag
+---- == 2009/12/08 V1.12 Modified END   ===============================================================
+--                  )
+--              OR ( xoha.req_status                     = gt_ship_status_result
+---- == 2009/12/08 V1.12 Modified START ===============================================================
+----                   AND xola.delete_flag                = cv_y_flag
+----                   AND xola.shipping_request_if_flg    = cv_y_flag
+----                   AND xola.shipping_result_if_flg     = cv_n_flag
+--                   AND NVL(xola.delete_flag,cv_n_flag)             = cv_y_flag
+--                   AND NVL(xola.shipping_request_if_flg,cv_n_flag) = cv_y_flag
+--                   AND NVL(xola.shipping_result_if_flg,cv_n_flag)  = cv_n_flag
+---- == 2009/12/08 V1.12 Modified END   ===============================================================
+--                 ))
+--            )
+--         OR ( -- 出荷依頼連携済に対して取消を行ったものは対象
+--              xoha.req_status                                       = gt_ship_status_cancel
+--              AND NVL(xoha.deliver_to_id,xoha.result_deliver_to_id) = hps.party_site_id
+---- == 2009/12/08 V1.12 Modified START ===============================================================
+----              AND xola.shipping_request_if_flg                      = cv_y_flag
+----              AND xola.shipping_result_if_flg                       = cv_n_flag
+----              AND xola.delete_flag                                  = cv_y_flag
+--              AND NVL(xola.shipping_request_if_flg,cv_n_flag)       = cv_y_flag
+--              AND NVL(xola.shipping_result_if_flg,cv_n_flag)        = cv_n_flag
+--              AND NVL(xola.delete_flag,cv_n_flag)                   = cv_y_flag
+---- == 2009/12/08 V1.12 Modified END   ===============================================================
+--            )
+--          )
+      AND     (
+                --  ステータス：03 出荷依頼、出荷依頼IF済フラグ N
+                (
+                      xoha.req_status             =   gt_ship_status_close
+                  AND xoha.notif_status           =   gt_notice_status
+                  AND xoha.deliver_to_id          =   hps.party_site_id
+                  AND xoha.schedule_arrival_date  >=  gd_start_date
+                  AND xoha.schedule_arrival_date  <   gd_end_date
+                  AND NVL(xola.shipping_request_if_flg, cv_n_flag)  =   cv_n_flag
+                )
+                OR
+                --  ステータス：04 出荷実績、出荷実績IF済フラグ N
+                (
+                      xoha.req_status             =   gt_ship_status_result
+                  AND xoha.actual_confirm_class   =   cv_y_flag
+                  AND xoha.result_deliver_to_id   =   hps.party_site_id
+                  AND xoha.arrival_date           >=  gd_start_date
+                  AND xoha.arrival_date           <   gd_end_date
+                  AND NVL(xola.shipping_result_if_flg,  cv_n_flag)  =   cv_n_flag
+                )
+                OR
+                (
+                  --  ステータス：99 取消、出荷実績IF済フラグ N
+                      xoha.req_status             =   gt_ship_status_cancel
+                  AND xoha.schedule_arrival_date  >=  gd_start_date
+                  AND xoha.schedule_arrival_date  <   gd_end_date
+                  AND xoha.deliver_to_id          =   hps.party_site_id
+                  AND NVL(xola.shipping_result_if_flg,  cv_n_flag)  =   cv_n_flag
+                )
+      )
+-- == 2011/05/24 V1.21 Modified END   ==============================================================
       AND     otta.attribute1             = cv_1
       AND     NVL(otta.attribute4, cv_1) <> cv_2
       AND     otta.org_id                 = gt_itou_ou_id
@@ -1825,46 +1886,52 @@ AS
 -- == 2009/12/18 V1.14 Modified END   ===============================================================
                                   , xmld.lot_no                         AS  lot_no                      -- ロット番号
                                   , xola.request_item_id                AS  request_item_id             -- 品目ID
-                                  , CASE  WHEN      xoha.req_status                   = gt_ship_status_close
-                                                AND xoha.notif_status                 = gt_notice_status
-                                                AND NVL(xola.delete_flag,cv_n_flag)   = cv_n_flag
--- == 2009/12/08 V1.12 Modified START ===============================================================
---                                                AND xola.shipping_request_if_flg      = cv_n_flag
---                                                AND xola.shipping_result_if_flg       = cv_n_flag
-                                                AND NVL(xola.shipping_request_if_flg,cv_n_flag) = cv_n_flag
-                                                AND NVL(xola.shipping_result_if_flg,cv_n_flag)  = cv_n_flag
--- == 2009/12/08 V1.12 Modified END   ===============================================================
-                                          THEN  xoha.deliver_to_id
-                                          WHEN      xoha.actual_confirm_class         = cv_y_flag
-                                                AND xoha.req_status                   = gt_ship_status_result
-                                                AND NVL(xola.delete_flag,cv_n_flag)   = cv_n_flag
--- == 2009/12/08 V1.12 Modified START ===============================================================
---                                                AND xola.shipping_result_if_flg       = cv_n_flag
-                                                AND NVL(xola.shipping_result_if_flg,cv_n_flag) = cv_n_flag
--- == 2009/12/08 V1.12 Modified END   ===============================================================
-                                          THEN  xoha.result_deliver_to_id
-                                          WHEN      xoha.actual_confirm_class         = cv_y_flag
-                                                AND xoha.req_status                   = gt_ship_status_result
--- == 2009/12/08 V1.12 Modified START ===============================================================
---                                                AND xola.delete_flag                  = cv_y_flag
---                                                AND xola.shipping_request_if_flg      = cv_y_flag
---                                                AND xola.shipping_result_if_flg       = cv_n_flag
-                                                AND NVL(xola.delete_flag,cv_n_flag)             = cv_y_flag
-                                                AND NVL(xola.shipping_request_if_flg,cv_n_flag) = cv_y_flag
-                                                AND NVL(xola.shipping_result_if_flg,cv_n_flag)  = cv_n_flag
--- == 2009/12/08 V1.12 Modified END   ===============================================================
-                                          THEN  xoha.result_deliver_to_id
-                                          WHEN      xoha.req_status                   = gt_ship_status_cancel
--- == 2009/12/08 V1.12 Modified START ===============================================================
---                                                AND xola.shipping_request_if_flg      = cv_y_flag
---                                                AND xola.shipping_result_if_flg       = cv_n_flag
---                                                AND xola.delete_flag                  = cv_y_flag
-                                                AND NVL(xola.shipping_request_if_flg,cv_n_flag) = cv_y_flag
-                                                AND NVL(xola.shipping_result_if_flg,cv_n_flag)  = cv_n_flag
-                                                AND NVL(xola.delete_flag,cv_n_flag)             = cv_y_flag
--- == 2009/12/08 V1.12 Modified END   ===============================================================
-                                          THEN NVL(xoha.deliver_to_id, xoha.result_deliver_to_id)
+-- == 2011/05/24 V1.21 Modified START ==============================================================
+--                                  , CASE  WHEN      xoha.req_status                   = gt_ship_status_close
+--                                                AND xoha.notif_status                 = gt_notice_status
+--                                                AND NVL(xola.delete_flag,cv_n_flag)   = cv_n_flag
+---- == 2009/12/08 V1.12 Modified START ===============================================================
+----                                                AND xola.shipping_request_if_flg      = cv_n_flag
+----                                                AND xola.shipping_result_if_flg       = cv_n_flag
+--                                                AND NVL(xola.shipping_request_if_flg,cv_n_flag) = cv_n_flag
+--                                                AND NVL(xola.shipping_result_if_flg,cv_n_flag)  = cv_n_flag
+---- == 2009/12/08 V1.12 Modified END   ===============================================================
+--                                          THEN  xoha.deliver_to_id
+--                                          WHEN      xoha.actual_confirm_class         = cv_y_flag
+--                                                AND xoha.req_status                   = gt_ship_status_result
+--                                                AND NVL(xola.delete_flag,cv_n_flag)   = cv_n_flag
+---- == 2009/12/08 V1.12 Modified START ===============================================================
+----                                                AND xola.shipping_result_if_flg       = cv_n_flag
+--                                                AND NVL(xola.shipping_result_if_flg,cv_n_flag) = cv_n_flag
+---- == 2009/12/08 V1.12 Modified END   ===============================================================
+--                                          THEN  xoha.result_deliver_to_id
+--                                          WHEN      xoha.actual_confirm_class         = cv_y_flag
+--                                                AND xoha.req_status                   = gt_ship_status_result
+---- == 2009/12/08 V1.12 Modified START ===============================================================
+----                                                AND xola.delete_flag                  = cv_y_flag
+----                                                AND xola.shipping_request_if_flg      = cv_y_flag
+----                                                AND xola.shipping_result_if_flg       = cv_n_flag
+--                                                AND NVL(xola.delete_flag,cv_n_flag)             = cv_y_flag
+--                                                AND NVL(xola.shipping_request_if_flg,cv_n_flag) = cv_y_flag
+--                                                AND NVL(xola.shipping_result_if_flg,cv_n_flag)  = cv_n_flag
+---- == 2009/12/08 V1.12 Modified END   ===============================================================
+--                                          THEN  xoha.result_deliver_to_id
+--                                          WHEN      xoha.req_status                   = gt_ship_status_cancel
+---- == 2009/12/08 V1.12 Modified START ===============================================================
+----                                                AND xola.shipping_request_if_flg      = cv_y_flag
+----                                                AND xola.shipping_result_if_flg       = cv_n_flag
+----                                                AND xola.delete_flag                  = cv_y_flag
+--                                                AND NVL(xola.shipping_request_if_flg,cv_n_flag) = cv_y_flag
+--                                                AND NVL(xola.shipping_result_if_flg,cv_n_flag)  = cv_n_flag
+--                                                AND NVL(xola.delete_flag,cv_n_flag)             = cv_y_flag
+---- == 2009/12/08 V1.12 Modified END   ===============================================================
+--                                          THEN NVL(xoha.deliver_to_id, xoha.result_deliver_to_id)
+--                                    END                                 AS  party_site_id               -- パーティサイト結合ID
+                                  , CASE  WHEN  xoha.req_status   =   gt_ship_status_result
+                                            THEN  xoha.result_deliver_to_id
+                                            ELSE  xoha.deliver_to_id
                                     END                                 AS  party_site_id               -- パーティサイト結合ID
+-- == 2011/05/24 V1.21 Modified END   ==============================================================
                       FROM
                                   xxwsh_order_headers_all           xoha                                -- 受注ヘッダアドオン
                                 , xxwsh_order_lines_all             xola                                -- 受注明細アドオン
@@ -1885,53 +1952,79 @@ AS
                       AND         xoha.deliver_from                 =   g_summary_tab ( in_slip_cnt ) .deliver_from
                       AND         xola.request_item_code            =   g_summary_tab ( in_slip_cnt ) .item_no
                       AND         xoha.latest_external_flag         =   cv_y_flag
-                      AND(        ( -- 締め済み、確定通知済出荷依頼（出荷依頼は削除明細を除外）
-                                        xoha.req_status                         = gt_ship_status_close
-                                    AND xoha.notif_status                       = gt_notice_status
-                                    AND NVL(xola.delete_flag,cv_n_flag)         = cv_n_flag
--- == 2009/12/08 V1.12 Modified START ===============================================================
---                                    AND xola.shipping_request_if_flg            = cv_n_flag
---                                    AND xola.shipping_result_if_flg             = cv_n_flag
-                                    AND NVL(xola.shipping_request_if_flg,cv_n_flag) = cv_n_flag
-                                    AND NVL(xola.shipping_result_if_flg,cv_n_flag)  = cv_n_flag
--- == 2009/12/08 V1.12 Modified END   ===============================================================
-                                  )
-                                  OR
-                                  ( -- 出荷実績計上済出荷実績（出荷実績は削除明細を除外、ただし出荷依頼連携済は対象）
-                                        xoha.actual_confirm_class               = cv_y_flag
-                                    AND xoha.req_status                         = gt_ship_status_result
-                                    AND(
-                                        (     NVL(xola.delete_flag,cv_n_flag)   = cv_n_flag
--- == 2009/12/08 V1.12 Modified START ===============================================================
---                                          AND xola.shipping_result_if_flg       = cv_n_flag
-                                          AND NVL(xola.shipping_result_if_flg,cv_n_flag) = cv_n_flag
--- == 2009/12/08 V1.12 Modified END   ===============================================================
-                                        )
-                                        OR
--- == 2009/12/08 V1.12 Modified START ===============================================================
---                                        (     xola.delete_flag                  = cv_y_flag
---                                          AND xola.shipping_request_if_flg      = cv_y_flag
---                                          AND xola.shipping_result_if_flg       = cv_n_flag
-                                        (     NVL(xola.delete_flag,cv_n_flag)             = cv_y_flag
-                                          AND NVL(xola.shipping_request_if_flg,cv_n_flag) = cv_y_flag
-                                          AND NVL(xola.shipping_result_if_flg,cv_n_flag)  = cv_n_flag
--- == 2009/12/08 V1.12 Modified END   ===============================================================
-                                        )
-                                    )
-                                  )
-                                  OR
-                                  ( -- 出荷依頼連携済に対して取消を行ったものは対象
-                                        xoha.req_status                         = gt_ship_status_cancel
--- == 2009/12/08 V1.12 Modified START ===============================================================
---                                    AND xola.shipping_request_if_flg            = cv_y_flag
---                                    AND xola.shipping_result_if_flg             = cv_n_flag
---                                    AND xola.delete_flag                        = cv_y_flag
-                                    AND NVL(xola.delete_flag,cv_n_flag)             = cv_y_flag
-                                    AND NVL(xola.shipping_request_if_flg,cv_n_flag) = cv_y_flag
-                                    AND NVL(xola.shipping_result_if_flg,cv_n_flag)  = cv_n_flag
--- == 2009/12/08 V1.12 Modified END   ===============================================================
-                                  )
+-- == 2011/05/24 V1.21 Modified START ==============================================================
+--                      AND(        ( -- 締め済み、確定通知済出荷依頼（出荷依頼は削除明細を除外）
+--                                        xoha.req_status                         = gt_ship_status_close
+--                                    AND xoha.notif_status                       = gt_notice_status
+--                                    AND NVL(xola.delete_flag,cv_n_flag)         = cv_n_flag
+---- == 2009/12/08 V1.12 Modified START ===============================================================
+----                                    AND xola.shipping_request_if_flg            = cv_n_flag
+----                                    AND xola.shipping_result_if_flg             = cv_n_flag
+--                                    AND NVL(xola.shipping_request_if_flg,cv_n_flag) = cv_n_flag
+--                                    AND NVL(xola.shipping_result_if_flg,cv_n_flag)  = cv_n_flag
+---- == 2009/12/08 V1.12 Modified END   ===============================================================
+--                                  )
+--                                  OR
+--                                  ( -- 出荷実績計上済出荷実績（出荷実績は削除明細を除外、ただし出荷依頼連携済は対象）
+--                                        xoha.actual_confirm_class               = cv_y_flag
+--                                    AND xoha.req_status                         = gt_ship_status_result
+--                                    AND(
+--                                        (     NVL(xola.delete_flag,cv_n_flag)   = cv_n_flag
+---- == 2009/12/08 V1.12 Modified START ===============================================================
+----                                          AND xola.shipping_result_if_flg       = cv_n_flag
+--                                          AND NVL(xola.shipping_result_if_flg,cv_n_flag) = cv_n_flag
+---- == 2009/12/08 V1.12 Modified END   ===============================================================
+--                                        )
+--                                        OR
+---- == 2009/12/08 V1.12 Modified START ===============================================================
+----                                        (     xola.delete_flag                  = cv_y_flag
+----                                          AND xola.shipping_request_if_flg      = cv_y_flag
+----                                          AND xola.shipping_result_if_flg       = cv_n_flag
+--                                        (     NVL(xola.delete_flag,cv_n_flag)             = cv_y_flag
+--                                          AND NVL(xola.shipping_request_if_flg,cv_n_flag) = cv_y_flag
+--                                          AND NVL(xola.shipping_result_if_flg,cv_n_flag)  = cv_n_flag
+---- == 2009/12/08 V1.12 Modified END   ===============================================================
+--                                        )
+--                                    )
+--                                  )
+--                                  OR
+--                                  ( -- 出荷依頼連携済に対して取消を行ったものは対象
+--                                        xoha.req_status                         = gt_ship_status_cancel
+---- == 2009/12/08 V1.12 Modified START ===============================================================
+----                                    AND xola.shipping_request_if_flg            = cv_y_flag
+----                                    AND xola.shipping_result_if_flg             = cv_n_flag
+----                                    AND xola.delete_flag                        = cv_y_flag
+--                                    AND NVL(xola.delete_flag,cv_n_flag)             = cv_y_flag
+--                                    AND NVL(xola.shipping_request_if_flg,cv_n_flag) = cv_y_flag
+--                                    AND NVL(xola.shipping_result_if_flg,cv_n_flag)  = cv_n_flag
+---- == 2009/12/08 V1.12 Modified END   ===============================================================
+--                                  )
+--                      )
+                      AND (
+                            (
+                                  xoha.req_status             =   gt_ship_status_close
+                              AND xoha.notif_status           =   gt_notice_status
+                              AND xoha.schedule_arrival_date  >=  gd_start_date
+                              AND xoha.schedule_arrival_date  <   gd_end_date
+                              AND NVL(xola.shipping_request_if_flg, cv_n_flag)  =   cv_n_flag
+                            )
+                            OR
+                            (
+                                  xoha.req_status             =   gt_ship_status_result
+                              AND xoha.actual_confirm_class   =   cv_y_flag
+                              AND xoha.arrival_date           >=  gd_start_date
+                              AND xoha.arrival_date           <   gd_end_date
+                              AND NVL(xola.shipping_result_if_flg, cv_n_flag)   =   cv_n_flag
+                            )
+                            OR
+                            (
+                                  xoha.req_status             =   gt_ship_status_cancel
+                              AND xoha.schedule_arrival_date  >=  gd_start_date
+                              AND xoha.schedule_arrival_date  <   gd_end_date
+                              AND NVL(xola.shipping_result_if_flg,  cv_n_flag)  =   cv_n_flag
+                            )
                       )
+-- == 2011/05/24 V1.21 Modified END   ==============================================================
                       AND(        (
                                         xoha.req_status               IN (gt_ship_status_close, gt_ship_status_cancel)
                                     AND xoha.deliver_to               = g_summary_tab ( in_slip_cnt ) .result_deliver_to
@@ -2761,7 +2854,11 @@ AS
             , ship_singly_qty        = DECODE ( g_summary_tab ( in_slip_cnt ) .delete_flag , cv_y_flag , 0 ,
                                          MOD ( g_summary_tab ( in_slip_cnt ) .shipped_qty ,
                                                NVL ( g_summary_tab ( in_slip_cnt ) .case_in_qty , 0 ) ) )
-            , ship_summary_qty       = g_summary_tab ( in_slip_cnt ) .shipped_qty
+-- == 2011/05/24 V1.21 Modified START ==============================================================
+--            , ship_summary_qty       = g_summary_tab ( in_slip_cnt ) .shipped_qty
+            , ship_summary_qty       = DECODE( g_summary_tab ( in_slip_cnt ) .delete_flag , cv_y_flag , 0 ,
+                                         g_summary_tab ( in_slip_cnt ) .shipped_qty )
+-- == 2011/05/24 V1.21 Modified END   ==============================================================
             , ship_base_code         = g_summary_tab ( in_slip_cnt ) .deliver_from
             , last_updated_by        = cn_last_updated_by
             , last_update_date       = SYSDATE
@@ -3638,7 +3735,10 @@ AS
    * Description      : 受注明細アドオン更新(A-13)
    ***********************************************************************************/
   PROCEDURE upd_order_lines(
-      in_line_cnt    IN NUMBER                                        -- 1.ループカウンタ
+-- == 2011/02/03 V1.20 Mod START   ==============================================================
+--      in_line_cnt    IN NUMBER                                        -- 1.ループカウンタ
+      in_slip_cnt   IN NUMBER                                        -- 1.ループカウンタ
+-- == 2011/02/03 V1.20 Mod End     ==============================================================
     , ov_errbuf     OUT VARCHAR2      --   エラー・メッセージ           --# 固定 #
     , ov_retcode    OUT VARCHAR2      --   リターン・コード             --# 固定 #
     , ov_errmsg     OUT VARCHAR2 )    --   ユーザー・エラー・メッセージ --# 固定 #
@@ -3664,15 +3764,32 @@ AS
     -- *** ローカル変数 ***
 --
     -- *** ローカル・カーソル ***
-    CURSOR upd_xola_tbl_cur(
-      g_detail_tab g_detail_ttype )
+-- == 2011/02/03 V1.20 Delet START     ==============================================================
+--    CURSOR upd_xola_tbl_cur(
+--      g_detail_tab g_detail_ttype )
+--    IS
+--      SELECT xola.rowid
+--      FROM   xxwsh_order_lines_all xola
+--      WHERE  xola.order_header_id = g_detail_tab ( in_line_cnt ) .order_header_id
+--      AND    xola.order_line_id   = g_detail_tab ( in_line_cnt ) .order_line_id
+--      FOR UPDATE NOWAIT
+--    ;
+-- == 2011/02/03 V1.20 Delet END       ==============================================================
+-- == 2011/02/03 V1.20 Add START       ==============================================================
+    CURSOR upd_xola_tbl_cur
     IS
       SELECT xola.rowid
-      FROM   xxwsh_order_lines_all xola
-      WHERE  xola.order_header_id = g_detail_tab ( in_line_cnt ) .order_header_id
-      AND    xola.order_line_id   = g_detail_tab ( in_line_cnt ) .order_line_id
+            ,xoha.req_status
+      FROM   xxwsh_order_headers_all xoha
+            ,xxwsh_order_lines_all   xola
+      WHERE  xoha.order_header_id      = xola.order_header_id
+      AND    xoha.request_no           = g_summary_tab ( in_slip_cnt ) .req_move_no
+      AND    xoha.latest_external_flag = cv_y_flag
+      AND    xola.request_item_code    = g_summary_tab ( in_slip_cnt ) .item_no
+      AND    xola.delete_flag          = g_summary_tab ( in_slip_cnt ) .delete_flag
       FOR UPDATE NOWAIT
     ;
+-- == 2011/02/03 V1.20 Add END         ==============================================================
 --
     -- *** ローカル・レコード ***
     upd_xola_tbl_rec  upd_xola_tbl_cur%ROWTYPE;
@@ -3693,28 +3810,81 @@ AS
     -- ===============================
     -- 受注明細アドオンテーブルのロック取得
     -- ===============================
-    OPEN upd_xola_tbl_cur(
-      g_detail_tab
-    );
-    -- レコード読込
-    FETCH upd_xola_tbl_cur INTO upd_xola_tbl_rec;
+-- == 2011/05/24 V1.21 Modified START ==============================================================
+---- == 2011/02/03 V1.20 Mod START   ==============================================================
+----    OPEN upd_xola_tbl_cur(
+----      g_detail_tab
+----   );
+--    OPEN upd_xola_tbl_cur;
+---- == 2011/02/03 V1.20 Mod End     ==============================================================
+--    -- レコード読込
+--    FETCH upd_xola_tbl_cur INTO upd_xola_tbl_rec;
+----
+---- == 2011/02/03 V1.20 Mod START   ==============================================================
+----      IF ( g_detail_tab ( in_line_cnt ) .req_status = gt_ship_status_close ) THEN
+--      IF ( upd_xola_tbl_rec.req_status = gt_ship_status_close ) THEN
+--        -- 受注明細アドオンテーブルの更新（出荷指示の場合は指示連携済みフラグ更新）
+--        UPDATE xxwsh_order_lines_all xola
+--        SET    xola.shipping_request_if_flg = cv_y_flag
+--             ,last_updated_by         = cn_last_updated_by
+--             ,last_update_date        = cd_last_update_date
+--             ,last_update_login       = cn_last_update_login
+--             ,request_id              = cn_request_id
+--             ,program_application_id  = cn_program_application_id
+--             ,program_id              = cn_program_id
+--             ,program_update_date     = cd_program_update_date
+--        WHERE  xola.rowid             = upd_xola_tbl_rec.rowid
+--        ;
+--      ELSE
+--        -- 受注明細アドオンテーブルの更新（出荷実績・取消の場合は実績連携済みフラグ更新）
+--        UPDATE xxwsh_order_lines_all xola
+--        SET    xola.shipping_result_if_flg  = cv_y_flag
+--             ,last_updated_by               = cn_last_updated_by
+--             ,last_update_date              = cd_last_update_date
+--             ,last_update_login             = cn_last_update_login
+--             ,request_id                    = cn_request_id
+--             ,program_application_id        = cn_program_application_id
+--             ,program_id                    = cn_program_id
+--             ,program_update_date           = cd_program_update_date
+--        WHERE  xola.rowid                   = upd_xola_tbl_rec.rowid
+--        ;
+--      END IF;
+---- == 2011/02/03 V1.20 Mod End     ==============================================================
+----
+--    -- カーソルクローズ
+--    CLOSE upd_xola_tbl_cur;
 --
-      IF ( g_detail_tab ( in_line_cnt ) .req_status = gt_ship_status_close ) THEN
+    <<xola_upd_loop>>
+    FOR upd_xola_tbl_rec  IN  upd_xola_tbl_cur  LOOP
+      IF ( upd_xola_tbl_rec.req_status = gt_ship_status_close ) THEN
         -- 受注明細アドオンテーブルの更新（出荷指示の場合は指示連携済みフラグ更新）
-        UPDATE xxwsh_order_lines_all xola
-        SET    xola.shipping_request_if_flg = cv_y_flag
-        WHERE  xola.rowid                   = upd_xola_tbl_rec.rowid
+        UPDATE  xxwsh_order_lines_all   xola
+        SET     xola.shipping_request_if_flg  =   cv_y_flag
+              , last_updated_by               =   cn_last_updated_by
+              , last_update_date              =   cd_last_update_date
+              , last_update_login             =   cn_last_update_login
+              , request_id                    =   cn_request_id
+              , program_application_id        =   cn_program_application_id
+              , program_id                    =   cn_program_id
+              , program_update_date           =   cd_program_update_date
+        WHERE   xola.ROWID    =   upd_xola_tbl_rec.ROWID
         ;
       ELSE
         -- 受注明細アドオンテーブルの更新（出荷実績・取消の場合は実績連携済みフラグ更新）
-        UPDATE xxwsh_order_lines_all xola
-        SET    xola.shipping_result_if_flg  = cv_y_flag
-        WHERE  xola.rowid                   = upd_xola_tbl_rec.rowid
+        UPDATE  xxwsh_order_lines_all xola
+        SET     xola.shipping_result_if_flg   =   cv_y_flag
+              , last_updated_by               =   cn_last_updated_by
+              , last_update_date              =   cd_last_update_date
+              , last_update_login             =   cn_last_update_login
+              , request_id                    =   cn_request_id
+              , program_application_id        =   cn_program_application_id
+              , program_id                    =   cn_program_id
+              , program_update_date           =   cd_program_update_date
+        WHERE  xola.ROWID   =   upd_xola_tbl_rec.ROWID
         ;
       END IF;
---
-    -- カーソルクローズ
-    CLOSE upd_xola_tbl_cur;
+    END LOOP  xola_upd_loop;
+-- == 2011/05/24 V1.21 Modified END   ==============================================================
 --
     --==============================================================
     --メッセージ出力をする必要がある場合は処理を記述
@@ -4284,6 +4454,9 @@ AS
         -- 受注明細「出荷実績連携済フラグ」更新
         UPDATE xxwsh_order_lines_all xol
         SET    xol.shipping_result_if_flg   =   cv_y_flag
+-- == 2011/05/24 V1.21 Added START ==============================================================
+              , xol.shipping_request_if_flg =   cv_y_flag
+-- == 2011/05/24 V1.21 Added END   ==============================================================
         WHERE  xol.order_header_id          =   ( SELECT    xoh.order_header_id
                                                   FROM      xxwsh_order_headers_all   xoh
                                                   WHERE     xoh.request_no            =   g_summary_tab ( in_slip_cnt ) .req_move_no
@@ -4488,6 +4661,162 @@ AS
   END chk_aff_dept_active;
 --
 -- == 2010/03/23 V1.19 Added END   ===============================================================
+-- == 2011/02/03 V1.20 Added START ===============================================================
+  /**********************************************************************************
+   * Procedure Name   : upd_storage_information
+   * Description      : 入庫情報一時表更新(A-25)
+   ***********************************************************************************/
+  PROCEDURE upd_storage_information(
+      ov_errbuf     OUT VARCHAR2      --   エラー・メッセージ           --# 固定 #
+    , ov_retcode    OUT VARCHAR2      --   リターン・コード             --# 固定 #
+    , ov_errmsg     OUT VARCHAR2 )    --   ユーザー・エラー・メッセージ --# 固定 #
+  IS
+    -- ===============================
+    -- 固定ローカル定数
+    -- ===============================
+    cv_prg_name   CONSTANT VARCHAR2(100) := 'upd_storage_information';      -- プログラム名
+--
+--#####################  固定ローカル変数宣言部 START   ########################
+--
+    lv_errbuf  VARCHAR2(5000);  -- エラー・メッセージ
+    lv_retcode VARCHAR2(1);     -- リターン・コード
+    lv_errmsg  VARCHAR2(5000);  -- ユーザー・エラー・メッセージ
+--
+--###########################  固定部 END   ####################################
+--
+    -- ===============================
+    -- ユーザー宣言部
+    -- ===============================
+    -- *** ローカル定数 ***
+--
+    -- *** ローカル変数 ***
+    lv_f_inv_acct_period      VARCHAR2(100);        -- 在庫会計期間（年月 YYYYMM）
+--
+    -- *** ローカル・カーソル ***
+--
+    CURSOR storage_information_cur
+    IS
+      SELECT  xsi.ROWID
+            , xsi.item_code
+            , xsi.slip_num
+            , xsi.slip_date
+      FROM    xxcoi_storage_information     xsi
+      WHERE   xsi.slip_date   >=  TRUNC( TO_DATE( lv_f_inv_acct_period , cv_date_format2 ) )
+      AND     xsi.slip_date   <   (TRUNC( gd_process_date ) + 1)
+      AND     xsi.ship_summary_qty  IS NOT NULL
+      AND     xsi.ship_summary_qty  <>  0
+      AND     xsi.summary_data_flag = cv_y_flag
+      AND EXISTS(
+            SELECT  1
+            FROM    xxwsh_order_headers_all          xoha                   -- 受注ヘッダアドオン
+                  , xxwsh_order_lines_all            xola                   -- 受注明細アドオン
+                  , hz_party_sites                   hps                    -- パーティサイトマスタ
+                  , hz_cust_accounts                 hca                    -- 顧客マスタ
+            WHERE  xoha.order_header_id   =   xola.order_header_id
+            AND    ((xoha.req_status = gt_ship_status_result
+                     AND xoha.arrival_date >= TRUNC( TO_DATE( lv_f_inv_acct_period , cv_date_format2 )  )
+                     AND xoha.arrival_date <  TRUNC( gd_process_date ) + 1
+                    )
+                    OR
+                    (xoha.req_status <> gt_ship_status_result
+                     AND xoha.schedule_arrival_date >= TRUNC( TO_DATE( lv_f_inv_acct_period , cv_date_format2 )  )
+                     AND xoha.schedule_arrival_date <  TRUNC( gd_process_date ) + 1
+                    )
+                   )
+            AND ( ( -- 締め済み、確定通知済出荷依頼（出荷依頼は削除明細を除外）
+                    xoha.req_status                      = gt_ship_status_close
+                    AND xoha.deliver_to_id               = hps.party_site_id
+                  )
+               OR ( -- 出荷実績計上済出荷実績（出荷実績は削除明細を除外、ただし出荷依頼連携済は対象）
+                    xoha.req_status                      = gt_ship_status_result
+                    AND xoha.result_deliver_to_id        = hps.party_site_id
+                  )
+               OR ( -- 出荷依頼連携済に対して取消を行ったものは対象
+                    xoha.req_status                                       = gt_ship_status_cancel
+                    AND NVL(xoha.deliver_to_id,xoha.result_deliver_to_id) = hps.party_site_id
+                  )
+                )
+-- == 2011/05/24 V1.21 Deleted START ==============================================================
+--            AND (xola.shipping_request_if_flg = cv_y_flag OR xola.shipping_result_if_flg = cv_y_flag )
+-- == 2011/05/24 V1.21 Deleted END   ==============================================================
+            AND hps.party_id              = hca.party_id
+            AND hca.customer_class_code   = cv_cust_class
+            AND xoha.latest_external_flag = cv_y_flag
+            AND xoha.request_no           = xsi.slip_num
+            AND xola.request_item_code    = xsi.item_code)
+      ;
+--
+    -- *** ローカル・レコード ***
+    storage_information_rec     storage_information_cur%ROWTYPE;
+--
+  BEGIN
+--
+--##################  固定ステータス初期化部 START   ###################
+--
+    ov_retcode := cv_status_normal;
+--
+--###########################  固定部 END   ############################
+    --
+    -- OPEN在庫会計期間を取得
+    SELECT  MIN( TO_CHAR( oap.period_start_date , cv_date_format2 ) ) -- 最も古い会計年月
+    INTO    lv_f_inv_acct_period
+    FROM    org_acct_periods      oap                     -- 在庫会計期間テーブル
+    WHERE   oap.organization_id = gt_org_id
+    AND     oap.open_flag       = cv_y_flag;
+    --
+    -- ループ処理
+    <<storage_information_loop>>
+    FOR storage_information_rec IN storage_information_cur LOOP
+      --
+      -- 入庫情報一時表を更新する
+      UPDATE xxcoi_storage_information  xsi
+      SET    ship_case_qty          = 0
+            ,ship_singly_qty        = 0
+            ,ship_summary_qty       = 0
+            ,last_updated_by        = cn_last_updated_by
+            ,last_update_date       = cd_last_update_date
+            ,last_update_login      = cn_last_update_login
+            ,request_id             = cn_request_id
+            ,program_application_id = cn_program_application_id
+            ,program_id             = cn_program_id
+            ,program_update_date    = cd_program_update_date
+      WHERE  xsi.ROWID              = storage_information_rec.ROWID;
+      --
+      -- 入庫情報一時表を削除する
+      DELETE FROM xxcoi_storage_information  xsi
+      WHERE   xsi.item_code         = storage_information_rec.item_code
+      AND     xsi.slip_num          = storage_information_rec.slip_num
+      AND     xsi.slip_date         = storage_information_rec.slip_date
+      AND     xsi.summary_data_flag = cv_n_flag;
+      --
+    END LOOP storage_information_loop;
+--
+    --==============================================================
+    --メッセージ出力をする必要がある場合は処理を記述
+    --==============================================================
+--
+  EXCEPTION
+--
+--#################################  固定例外処理部 START   ####################################
+--
+    -- *** 共通関数例外ハンドラ ***
+    WHEN global_api_expt THEN
+      ov_errmsg  := lv_errmsg;
+      ov_errbuf  := SUBSTRB(cv_pkg_name||cv_msg_cont||cv_prg_name||cv_msg_part||lv_errbuf,1,5000);
+      ov_retcode := cv_status_error;
+    -- *** 共通関数OTHERS例外ハンドラ ***
+    WHEN global_api_others_expt THEN
+      ov_errbuf  := cv_pkg_name||cv_msg_cont||cv_prg_name||cv_msg_part||SQLERRM;
+      ov_retcode := cv_status_error;
+    -- *** OTHERS例外ハンドラ ***
+    WHEN OTHERS THEN
+      ov_errbuf  := cv_pkg_name||cv_msg_cont||cv_prg_name||cv_msg_part||SQLERRM;
+      ov_retcode := cv_status_error;
+--
+--#####################################  固定部 END   ##########################################
+--
+  END upd_storage_information;
+-- == 2011/02/03 V1.20 Added END   ===============================================================
   /**********************************************************************************
    * Procedure Name   : submain
    * Description      : メイン処理プロシージャ
@@ -4573,6 +4902,19 @@ AS
     IF ( lv_retcode = cv_status_error ) THEN
       RAISE global_process_expt;
     END IF;
+-- == 2011/02/03 V1.20 Added START ===============================================================
+    -- ===============================
+    -- A-25.入庫情報一時表更新
+    -- ===============================
+    upd_storage_information(
+        ov_errbuf  => lv_errbuf                                       -- エラー・メッセージ           --# 固定 #
+      , ov_retcode => lv_retcode                                      -- リターン・コード             --# 固定 #
+      , ov_errmsg  => lv_errmsg                                       -- ユーザー・エラー・メッセージ --# 固定 #
+    );
+    IF ( lv_retcode = cv_status_error ) THEN
+      RAISE global_process_expt;
+    END IF;
+-- == 2011/02/03 V1.20 Added END   ===============================================================
 --
     -- ===============================
     -- A-2.入庫情報サマリの取得
@@ -4819,10 +5161,13 @@ AS
               END IF;
             END IF;
 -- == 2009/12/18 V1.14 Added END   ===============================================================
-          ELSE
-            -- ===========================================
-            --  入出庫一時表にサマリデータが存在しない場合
-            -- ===========================================
+-- == 2011/05/24 V1.21 Modified START ==============================================================
+--          ELSE
+          ELSIF (lb_record_valid = FALSE AND g_summary_tab(gn_slip_cnt).delete_flag <> cv_y_flag) THEN
+-- == 2011/05/24 V1.21 Modified END   ==============================================================
+            -- ===========================================================================
+            --  入出庫一時表にサマリデータが存在しない、削除データ以外の場合
+            -- ===========================================================================
             -- =========================================
             -- 取得した伝票が入庫確認済かカウント
             -- =========================================
@@ -4922,128 +5267,189 @@ AS
             RAISE global_process_expt;
           END IF;
 --
-          <<g_detail_tab_loop>>
-          FOR gn_line_cnt IN 1..g_detail_tab.COUNT LOOP
--- == 2009/12/18 V1.14 Deleted START ===============================================================
---             -- ===============================
---             -- A-17.入庫情報詳細存在確認
---             -- ===============================
---             chk_detail_data(
---                 in_line_cnt     => gn_line_cnt                        -- 1.ループカウンタ
---               , iv_store_code   => lt_store_code                      -- 2.倉庫コード
---               , ov_rowid        => lv_rowid                           -- 3.ROWID
---               , ot_req_status   => lt_req_status                      -- 4.出荷依頼ステータス
---               , ob_record_valid => lb_record_valid                    -- 5.TRUE:詳細レコード存在 FALSE:存在せず
---               , ov_errbuf       => lv_errbuf                          -- エラー・メッセージ
---               , ov_retcode      => lv_retcode                         -- リターン・コード
---               , ov_errmsg       => lv_errmsg                          -- ユーザー・エラー・メッセージ
---             );
---             IF ( lv_retcode = cv_status_error ) THEN
---               RAISE global_process_expt;
---             END IF;
--- == 2009/12/18 V1.14 Deleted END   ===============================================================
---
--- == 2009/12/18 V1.14 Modified START ===============================================================
---             IF ( lb_record_valid = TRUE ) THEN
---               IF ( lt_req_status = gt_ship_status_result ) THEN
---                 -- ===============================
---                 -- A-12.入庫情報詳細の更新
---                 -- ===============================
---                 upd_detail_results(
---                     in_line_cnt   => gn_line_cnt                      -- 1.ループカウンタ
---                   , iv_rowid      => lv_rowid                         -- 2.更新対象ROWID
---                   , iv_store_code => lt_store_code                    -- 3.倉庫コード
---                   , iv_shop_code  => lt_shop_code                     -- 4.店舗コード
---                   , ov_errbuf     => lv_errbuf                        -- エラー・メッセージ
---                   , ov_retcode    => lv_retcode                       -- リターン・コード
---                   , ov_errmsg     => lv_errmsg                        -- ユーザー・エラー・メッセージ
---                 );
---                 IF ( lv_retcode = cv_status_error ) THEN
---                   RAISE global_process_expt;
---                 ELSIF ( lv_retcode = cv_status_warn ) THEN
---                   gn_warn_cnt := gn_warn_cnt + 1;
---                   lb_slip_chk_status := FALSE;
---                   -- 次伝票Noへ遷移
---                   EXIT g_detail_tab_loop;
---                 END IF;
---               ELSE
---                 -- ===============================
---                 -- A-11.入庫情報詳細の更新
---                 -- ===============================
---                 upd_detail_close(
---                     in_line_cnt   => gn_line_cnt                      -- 1.ループカウンタ
---                   , iv_rowid      => lv_rowid                         -- 2.更新対象ROWID
---                   , iv_store_code => lt_store_code                    -- 3.倉庫コード
---                   , iv_shop_code  => lt_shop_code                     -- 4.店舗コード
---                   , ov_errbuf     => lv_errbuf                        -- エラー・メッセージ
---                   , ov_retcode    => lv_retcode                       -- リターン・コード
---                   , ov_errmsg     => lv_errmsg                        -- ユーザー・エラー・メッセージ
---                 );
---                 IF ( lv_retcode = cv_status_error ) THEN
---                   RAISE global_process_expt;
---                 ELSIF ( lv_retcode = cv_status_warn ) THEN
---                   gn_warn_cnt := gn_warn_cnt + 1;
---                   lb_slip_chk_status := FALSE;
---                   -- 次伝票Noへ遷移
---                   EXIT g_detail_tab_loop;
---                 END IF;
---               END IF;
---             ELSE
---               -- ===============================
---               -- A-10.入庫情報詳細の登録
---               -- ===============================
---               ins_detail_confirmed(
---                   in_line_cnt               => gn_line_cnt            -- 1.ループカウンタ
---                 , iv_store_code             => lt_store_code          -- 2.倉庫コード
---                 , iv_shop_code              => lt_shop_code           -- 3.店舗コード
---                 , it_auto_confirmation_flag => lt_auto_confirmation_flg
---                                                                       -- 4.自動入庫確認フラグ
---                 , ov_errbuf                 => lv_errbuf              -- エラー・メッセージ
---                 , ov_retcode                => lv_retcode             -- リターン・コード
---                 , ov_errmsg                 => lv_errmsg              -- ユーザー・エラー・メッセージ
---               );
---               IF ( lv_retcode = cv_status_error ) THEN
---                 RAISE global_process_expt;
---               END IF;
---             END IF;
---
-            -- ===============================
-            -- A-10.入庫情報詳細の登録
-            -- ===============================
-            ins_detail_confirmed(
-                in_line_cnt               => gn_line_cnt            -- 1.ループカウンタ
-              , iv_store_code             => lt_store_code          -- 2.倉庫コード
-              , iv_shop_code              => lt_shop_code           -- 3.店舗コード
-              , it_auto_confirmation_flag => lt_auto_confirmation_flg
-                                                                    -- 4.自動入庫確認フラグ
-              , ov_errbuf                 => lv_errbuf              -- エラー・メッセージ
-              , ov_retcode                => lv_retcode             -- リターン・コード
-              , ov_errmsg                 => lv_errmsg              -- ユーザー・エラー・メッセージ
-            );
-            IF ( lv_retcode = cv_status_error ) THEN
-              RAISE global_process_expt;
-            END IF;
--- == 2009/12/18 V1.14 Modified END   ===============================================================
-            --
-            -- ===============================
-            -- A-13.受注明細アドオンの更新
-            -- ===============================
-            upd_order_lines(
-                in_line_cnt => gn_line_cnt                            -- 1.ループカウンタ
-              , ov_errbuf   => lv_errbuf                              -- エラー・メッセージ
-              , ov_retcode  => lv_retcode                             -- リターン・コード
-              , ov_errmsg   => lv_errmsg                              -- ユーザー・エラー・メッセージ
-            );
-            --
-            IF ( lv_retcode = cv_status_error ) THEN
-              RAISE global_process_expt;
-            ELSIF ( lv_retcode = cv_status_warn ) THEN
-              gn_warn_cnt := gn_warn_cnt + 1;
-              -- 次伝票Noへ遷移
-              EXIT g_detail_tab_loop;
-            END IF;
-            --
-          END LOOP g_detail_tab_loop;
+-- == 2011/05/24 V1.21 Modified START ==============================================================
+--          <<g_detail_tab_loop>>
+--          FOR gn_line_cnt IN 1..g_detail_tab.COUNT LOOP
+---- == 2009/12/18 V1.14 Deleted START ===============================================================
+----             -- ===============================
+----             -- A-17.入庫情報詳細存在確認
+----             -- ===============================
+----             chk_detail_data(
+----                 in_line_cnt     => gn_line_cnt                        -- 1.ループカウンタ
+----               , iv_store_code   => lt_store_code                      -- 2.倉庫コード
+----               , ov_rowid        => lv_rowid                           -- 3.ROWID
+----               , ot_req_status   => lt_req_status                      -- 4.出荷依頼ステータス
+----               , ob_record_valid => lb_record_valid                    -- 5.TRUE:詳細レコード存在 FALSE:存在せず
+----               , ov_errbuf       => lv_errbuf                          -- エラー・メッセージ
+----               , ov_retcode      => lv_retcode                         -- リターン・コード
+----               , ov_errmsg       => lv_errmsg                          -- ユーザー・エラー・メッセージ
+----             );
+----             IF ( lv_retcode = cv_status_error ) THEN
+----               RAISE global_process_expt;
+----             END IF;
+---- == 2009/12/18 V1.14 Deleted END   ===============================================================
+----
+---- == 2009/12/18 V1.14 Modified START ===============================================================
+----             IF ( lb_record_valid = TRUE ) THEN
+----               IF ( lt_req_status = gt_ship_status_result ) THEN
+----                 -- ===============================
+----                 -- A-12.入庫情報詳細の更新
+----                 -- ===============================
+----                 upd_detail_results(
+----                     in_line_cnt   => gn_line_cnt                      -- 1.ループカウンタ
+----                   , iv_rowid      => lv_rowid                         -- 2.更新対象ROWID
+----                   , iv_store_code => lt_store_code                    -- 3.倉庫コード
+----                   , iv_shop_code  => lt_shop_code                     -- 4.店舗コード
+----                   , ov_errbuf     => lv_errbuf                        -- エラー・メッセージ
+----                   , ov_retcode    => lv_retcode                       -- リターン・コード
+----                   , ov_errmsg     => lv_errmsg                        -- ユーザー・エラー・メッセージ
+----                 );
+----                 IF ( lv_retcode = cv_status_error ) THEN
+----                   RAISE global_process_expt;
+----                 ELSIF ( lv_retcode = cv_status_warn ) THEN
+----                   gn_warn_cnt := gn_warn_cnt + 1;
+----                   lb_slip_chk_status := FALSE;
+----                   -- 次伝票Noへ遷移
+----                   EXIT g_detail_tab_loop;
+----                 END IF;
+----               ELSE
+----                 -- ===============================
+----                 -- A-11.入庫情報詳細の更新
+----                 -- ===============================
+----                 upd_detail_close(
+----                     in_line_cnt   => gn_line_cnt                      -- 1.ループカウンタ
+----                   , iv_rowid      => lv_rowid                         -- 2.更新対象ROWID
+----                   , iv_store_code => lt_store_code                    -- 3.倉庫コード
+----                   , iv_shop_code  => lt_shop_code                     -- 4.店舗コード
+----                   , ov_errbuf     => lv_errbuf                        -- エラー・メッセージ
+----                   , ov_retcode    => lv_retcode                       -- リターン・コード
+----                   , ov_errmsg     => lv_errmsg                        -- ユーザー・エラー・メッセージ
+----                 );
+----                 IF ( lv_retcode = cv_status_error ) THEN
+----                   RAISE global_process_expt;
+----                 ELSIF ( lv_retcode = cv_status_warn ) THEN
+----                   gn_warn_cnt := gn_warn_cnt + 1;
+----                   lb_slip_chk_status := FALSE;
+----                   -- 次伝票Noへ遷移
+----                   EXIT g_detail_tab_loop;
+----                 END IF;
+----               END IF;
+----             ELSE
+----               -- ===============================
+----               -- A-10.入庫情報詳細の登録
+----               -- ===============================
+----               ins_detail_confirmed(
+----                   in_line_cnt               => gn_line_cnt            -- 1.ループカウンタ
+----                 , iv_store_code             => lt_store_code          -- 2.倉庫コード
+----                 , iv_shop_code              => lt_shop_code           -- 3.店舗コード
+----                 , it_auto_confirmation_flag => lt_auto_confirmation_flg
+----                                                                       -- 4.自動入庫確認フラグ
+----                 , ov_errbuf                 => lv_errbuf              -- エラー・メッセージ
+----                 , ov_retcode                => lv_retcode             -- リターン・コード
+----                 , ov_errmsg                 => lv_errmsg              -- ユーザー・エラー・メッセージ
+----               );
+----               IF ( lv_retcode = cv_status_error ) THEN
+----                 RAISE global_process_expt;
+----               END IF;
+----             END IF;
+----
+--            -- ===============================
+--            -- A-10.入庫情報詳細の登録
+--            -- ===============================
+--            ins_detail_confirmed(
+--                in_line_cnt               => gn_line_cnt            -- 1.ループカウンタ
+--              , iv_store_code             => lt_store_code          -- 2.倉庫コード
+--              , iv_shop_code              => lt_shop_code           -- 3.店舗コード
+--              , it_auto_confirmation_flag => lt_auto_confirmation_flg
+--                                                                    -- 4.自動入庫確認フラグ
+--              , ov_errbuf                 => lv_errbuf              -- エラー・メッセージ
+--              , ov_retcode                => lv_retcode             -- リターン・コード
+--              , ov_errmsg                 => lv_errmsg              -- ユーザー・エラー・メッセージ
+--            );
+--            IF ( lv_retcode = cv_status_error ) THEN
+--              RAISE global_process_expt;
+--            END IF;
+---- == 2009/12/18 V1.14 Modified END   ===============================================================
+---- == 2011/02/03 V1.20 Deleted START   ==============================================================
+----            --
+----            -- ===============================
+----            -- A-13.受注明細アドオンの更新
+----            -- ===============================
+----            upd_order_lines(
+----                in_line_cnt => gn_line_cnt                            -- 1.ループカウンタ
+----              , ov_errbuf   => lv_errbuf                              -- エラー・メッセージ
+----              , ov_retcode  => lv_retcode                             -- リターン・コード
+----              , ov_errmsg   => lv_errmsg                              -- ユーザー・エラー・メッセージ
+----            );
+----            --
+----            IF ( lv_retcode = cv_status_error ) THEN
+----              RAISE global_process_expt;
+----            ELSIF ( lv_retcode = cv_status_warn ) THEN
+----              gn_warn_cnt := gn_warn_cnt + 1;
+----              -- 次伝票Noへ遷移
+----              EXIT g_detail_tab_loop;
+----            END IF;
+----            --
+---- == 2011/02/03 V1.20 Deleted END   ================================================================
+--          END LOOP g_detail_tab_loop;
+---- == 2011/02/03 V1.20 Added START   ================================================================
+--        --
+--        -- ===============================
+--        -- A-13.受注明細アドオンの更新
+--        -- ===============================
+--        upd_order_lines(
+--            in_slip_cnt => gn_slip_cnt                            -- 1.ループカウンタ
+--          , ov_errbuf   => lv_errbuf                              -- エラー・メッセージ
+--          , ov_retcode  => lv_retcode                             -- リターン・コード
+--          , ov_errmsg   => lv_errmsg                              -- ユーザー・エラー・メッセージ
+--        );
+--        --
+--        IF ( lv_retcode = cv_status_error ) THEN
+--          RAISE global_process_expt;
+--        ELSIF ( lv_retcode = cv_status_warn ) THEN
+--          gn_warn_cnt := gn_warn_cnt + 1;
+--        END IF;
+--        --
+---- == 2011/02/03 V1.20 Added END   ==================================================================
+          IF (g_summary_tab(gn_slip_cnt).delete_flag <> cv_y_flag) THEN
+            --  削除、取消以外の場合明細行を作成
+            <<g_detail_tab_loop>>
+            FOR gn_line_cnt IN 1..g_detail_tab.COUNT LOOP
+              -- ===============================
+              -- A-10.入庫情報詳細の登録
+              -- ===============================
+              ins_detail_confirmed(
+                  in_line_cnt               => gn_line_cnt            -- 1.ループカウンタ
+                , iv_store_code             => lt_store_code          -- 2.倉庫コード
+                , iv_shop_code              => lt_shop_code           -- 3.店舗コード
+                , it_auto_confirmation_flag => lt_auto_confirmation_flg
+                                                                      -- 4.自動入庫確認フラグ
+                , ov_errbuf                 => lv_errbuf              -- エラー・メッセージ
+                , ov_retcode                => lv_retcode             -- リターン・コード
+                , ov_errmsg                 => lv_errmsg              -- ユーザー・エラー・メッセージ
+              );
+              IF ( lv_retcode = cv_status_error ) THEN
+                RAISE global_process_expt;
+              END IF;
+            END LOOP g_detail_tab_loop;
+          END IF;
+          --
+          -- ===============================
+          -- A-13.受注明細アドオンの更新
+          -- ===============================
+          upd_order_lines(
+              in_slip_cnt => gn_slip_cnt                            -- 1.ループカウンタ
+            , ov_errbuf   => lv_errbuf                              -- エラー・メッセージ
+            , ov_retcode  => lv_retcode                             -- リターン・コード
+            , ov_errmsg   => lv_errmsg                              -- ユーザー・エラー・メッセージ
+          );
+          --
+          IF ( lv_retcode = cv_status_error ) THEN
+            RAISE global_process_expt;
+          ELSIF ( lv_retcode = cv_status_warn ) THEN
+            gn_warn_cnt := gn_warn_cnt + 1;
+          END IF;
+-- == 2011/05/24 V1.21 Modified END   ==============================================================
         END IF;
 --
         -- 正常終了件数カウントアップ（伝票単位）
