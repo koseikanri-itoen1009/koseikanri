@@ -54,6 +54,7 @@ AS
  *                                                 納品伝票入力画面登録データ抽出条件変更
  *                                                 トランザクション制御修正
  *                                                 対象データ抽出条件の変更
+ *  2009/05/12    1.13  N.Maeda          [T1_0768] 納品伝票画面登録データのOM受注クローズ処理追加
  *
  *****************************************************************************************/
 --
@@ -664,6 +665,9 @@ AS
   gt_inv_trans_head               g_tab_inv_trans_head;           -- ヘッダ登録用HHT入出庫一時テーブル抽出データ
   gt_inv_transactions_data        g_tab_inv_transactions_data;    -- HHT入出庫一時テーブル抽出データ
   gt_oe_order_all                 g_tab_oe_order_data;            -- OM受注テーブル抽出データ
+--******************************* 2009/05/12 N.Maeda Var1.13 ADD START *************************************
+  gt_inp_oe_order_all             g_tab_oe_order_data;            -- 納品伝票入力画面登録OM受注テーブル抽出データ
+--******************************* 2009/05/12 N.Maeda Var1.13 ADD  END ***************************************
 --******************************* 2009/04/16 N.Maeda Var1.12 ADD START *************************************
   gt_accumulation_data            g_tab_accumulation_data;        -- データ格納用
 --******************************* 2009/04/16 N.Maeda Var1.12 ADD END ***************************************
@@ -784,6 +788,9 @@ AS
   gv_tkn1                         VARCHAR2(5000);                    -- エラーメッセージ用トークン１
   gv_tkn2                         VARCHAR2(5000);                    -- エラーメッセージ用トークン２
   gv_tkn3                         VARCHAR2(5000);                    -- エラーメッセージ用トークン３
+--******************************* 2009/05/12 N.Maeda Var1.13 ADD START *************************************
+  gn_cnt_om_order                 NUMBER :=  1;                      -- OM受注情報格納数
+--******************************* 2009/05/12 N.Maeda Var1.13 ADD  END ***************************************
 --
   /***********************************************************************************
    * Procedure Name   : proc_flg_update
@@ -1083,6 +1090,7 @@ AS
 --
     <<om_close_loop>>
     FOR cnt_order IN 1..ln_data_cnt LOOP
+--
       lt_order_number         := gt_oe_order_number( cnt_order );           -- 受注番号
       lt_header_id            := gt_oe_header_id( cnt_order );              -- 受注ヘッダID
       lt_he_flow_status_code  := gt_oe_he_flow_status_code( cnt_order );    -- ステータス
@@ -4279,14 +4287,23 @@ AS
             -- ====================================
             -- OM受注情報格納
             -- ====================================
-            ln_cnt_om_order := ln_cnt_om_order + 1;
-            gt_oe_order_number( ln_cnt_om_order )      := gt_oe_order_all( om_data_no ).order_number;
-            gt_oe_header_id( ln_cnt_om_order )         := gt_oe_order_all( om_data_no ).header_id;
-            gt_oe_he_flow_status_code( ln_cnt_om_order )  := gt_oe_order_all( om_data_no ).head_flow_status_code;
-            gt_oe_order_source_id( ln_cnt_om_order )   := gt_oe_order_all( om_data_no ).order_source_id;
-            gt_oe_cust_po_number( ln_cnt_om_order )    := gt_oe_order_all( om_data_no ).cust_po_number;
-            gt_oe_line_id( ln_cnt_om_order )           := gt_oe_order_all( om_data_no ).line_id;
-            gt_oe_li_flow_status_code( ln_cnt_om_order )  := gt_oe_order_all( om_data_no ).line_flow_status_code;
+--******************************* 2009/05/12 N.Maeda Var1.13 MOD START *************************************
+--            gt_oe_order_number( ln_cnt_om_order )      := gt_oe_order_all( om_data_no ).order_number;
+--            gt_oe_header_id( ln_cnt_om_order )         := gt_oe_order_all( om_data_no ).header_id;
+--            gt_oe_he_flow_status_code( ln_cnt_om_order )  := gt_oe_order_all( om_data_no ).head_flow_status_code;
+--            gt_oe_order_source_id( ln_cnt_om_order )   := gt_oe_order_all( om_data_no ).order_source_id;
+--            gt_oe_cust_po_number( ln_cnt_om_order )    := gt_oe_order_all( om_data_no ).cust_po_number;
+--            gt_oe_line_id( ln_cnt_om_order )           := gt_oe_order_all( om_data_no ).line_id;
+--            gt_oe_li_flow_status_code( ln_cnt_om_order )  := gt_oe_order_all( om_data_no ).line_flow_status_code;
+--            ln_cnt_om_order := ln_cnt_om_order + 1;
+            gt_oe_order_number( gn_cnt_om_order )      := gt_oe_order_all( om_data_no ).order_number;
+            gt_oe_header_id( gn_cnt_om_order )         := gt_oe_order_all( om_data_no ).header_id;
+            gt_oe_he_flow_status_code( gn_cnt_om_order )  := gt_oe_order_all( om_data_no ).head_flow_status_code;
+            gt_oe_order_source_id( gn_cnt_om_order )   := gt_oe_order_all( om_data_no ).order_source_id;
+            gt_oe_cust_po_number( gn_cnt_om_order )    := gt_oe_order_all( om_data_no ).cust_po_number;
+            gt_oe_line_id( gn_cnt_om_order )           := gt_oe_order_all( om_data_no ).line_id;
+            gt_oe_li_flow_status_code( gn_cnt_om_order )  := gt_oe_order_all( om_data_no ).line_flow_status_code;
+--******************************* 2009/05/12 N.Maeda Var1.13 MOD  END ***************************************
           END LOOP om_order_loop;
         END IF;
 --
@@ -4658,6 +4675,31 @@ AS
     ln_line_data_count           NUMBER;                                          -- 明細件数(ヘッダ単位)
     lv_dept_hht_div_flg          VARCHAR2(1);                                     -- HHT百貨店区分エラーフラグ
 --******************************* 2009/04/16 N.Maeda Var1.12 ADD END *****************************************
+--******************************* 2009/05/12 N.Maeda Var1.13 ADD START ***************************************
+    lv_edi_order_name            VARCHAR2(100);                                   -- EDI受注
+--   --****** ユーザー定義ローカルカーソル ********--
+    -- OM受注データ取得カーソル
+    CURSOR get_oe_order_cur
+    IS
+      SELECT ooh.order_number      order_number,            -- 受注番号
+             ooh.header_id         header_id,               -- 受注ヘッダID
+             ooh.flow_status_code  head_flow_status_code,   -- ステータス
+             ooh.order_source_id   order_source_id,         -- 受注ソースID
+             ooh.cust_po_number    cust_po_number,          -- 顧客発注
+             ool.line_id           line_id,                 -- 受注明細ID
+             ool.flow_status_code  line_flow_status_code    -- ステータス
+      FROM   oe_order_headers_all ooh,                      -- OM受注ヘッダ
+             oe_order_lines_all ool,                        -- OM受注明細テーブル
+             oe_order_sources oos                           -- オーダーソース
+      WHERE  ooh.header_id = ool.header_id
+      AND    ooh.order_source_id = oos.order_source_id
+      AND    ool.order_source_id = oos.order_source_id
+      AND    ooh.org_id = TO_NUMBER ( gv_salse_unit )
+      AND    ooh.order_number = lt_order_no_ebs
+      AND    ool.flow_status_code NOT IN ( cv_status_type_can , cv_status_type_clo )
+      AND    oos.name = lv_edi_order_name
+      ORDER BY ooh.order_number,ool.line_id;
+--******************************* 2009/05/13 N.Maeda Var1.13 ADD  END  ***************************************
 --
   BEGIN
 --
@@ -4667,6 +4709,10 @@ AS
 --
 --###########################  固定部 END   ############################
 --
+--******************************* 2009/05/12 N.Maeda Var1.13 ADD START ***************************************
+    -- EDI受注名称取得
+    lv_edi_order_name := xxccp_common_pkg.get_msg( cv_application, cv_order_s_name );
+--******************************* 2009/05/13 N.Maeda Var1.13 ADD  END  ***************************************
     -- ループ開始：ヘッダ部
     <<header_loop>>
     FOR ck_no IN 1..gn_inp_target_cnt LOOP
@@ -6422,6 +6468,62 @@ AS
           -- 消費税金額合計
           lt_set_tax_amount_sum := ( lt_tax_amount_sum * ( -1 ) );
         END IF;
+--
+--******************************* 2009/05/12 N.Maeda Var1.13 ADD START *************************************
+        IF ( NVL( lt_order_no_ebs, 0 ) <> 0 ) AND ( lt_red_black_flag = cv_black_flag)
+        AND ( lt_digestion_ln_number = 1 ) THEN
+          BEGIN
+            OPEN  get_oe_order_cur;
+            -- バルクフェッチ
+            FETCH get_oe_order_cur BULK COLLECT INTO gt_inp_oe_order_all;
+            -- 抽出件数セット
+            gn_om_data_cnt := gn_om_data_cnt + get_oe_order_cur%ROWCOUNT;
+            -- カーソルCLOSE
+            CLOSE get_oe_order_cur;
+          EXCEPTION
+            WHEN OTHERS THEN
+              IF( get_oe_order_cur%ISOPEN ) THEN
+                CLOSE get_oe_order_cur;
+              END IF;
+              gv_tkn1   := xxccp_common_pkg.get_msg( cv_application, cv_om_order );
+              --キー編集表変数設定
+            lv_state_flg    := cv_status_warn;
+            gn_wae_data_num := gn_wae_data_num + 1 ;
+            xxcos_common_pkg.makeup_key_info(
+              iv_item_name1  => xxccp_common_pkg.get_msg( cv_application, cv_order_no ), -- 項目名称１
+              iv_data_value1 => lt_order_no_ebs,         -- データの値１
+              ov_key_info    => gv_tkn2,              -- キー情報
+              ov_errbuf      => lv_errbuf,            -- エラー・メッセージエラー
+              ov_retcode     => lv_retcode,           -- リターン・コード
+              ov_errmsg      => lv_errmsg);            -- ユーザー・エラー・メッセージ
+            gt_msg_war_data(gn_wae_data_num) := xxccp_common_pkg.get_msg(
+                                                  iv_application   => cv_application,    --アプリケーション短縮名
+                                                  iv_name          => cv_msg_no_data,    --メッセージコード
+                                                  iv_token_name1   => cv_tkn_table_name, --トークンコード1
+                                                  iv_token_value1  => gv_tkn1,           --トークン値1
+                                                  iv_token_name2   => cv_key_data,       --トークンコード2
+                                                  iv_token_value2  => gv_tkn2 );         --トークン値2
+          END;
+--
+          IF ( gt_inp_oe_order_all.COUNT > 0 ) AND ( lv_state_flg <> cv_status_warn )THEN
+            <<om_order_loop>>
+            FOR om_data_no IN 1..gt_inp_oe_order_all.COUNT LOOP
+              -- ====================================
+              -- OM受注情報格納
+              -- ====================================
+              gt_oe_order_number( gn_cnt_om_order )      := gt_inp_oe_order_all( om_data_no ).order_number;
+              gt_oe_header_id( gn_cnt_om_order )         := gt_inp_oe_order_all( om_data_no ).header_id;
+              gt_oe_he_flow_status_code( gn_cnt_om_order )  := gt_inp_oe_order_all( om_data_no ).head_flow_status_code;
+              gt_oe_order_source_id( gn_cnt_om_order )   := gt_inp_oe_order_all( om_data_no ).order_source_id;
+              gt_oe_cust_po_number( gn_cnt_om_order )    := gt_inp_oe_order_all( om_data_no ).cust_po_number;
+              gt_oe_line_id( gn_cnt_om_order )           := gt_inp_oe_order_all( om_data_no ).line_id;
+              gt_oe_li_flow_status_code( gn_cnt_om_order )  := gt_inp_oe_order_all( om_data_no ).line_flow_status_code;
+              gn_cnt_om_order := gn_cnt_om_order + 1;
+            END LOOP om_order_loop;
+          END IF;
+        END IF;
+--      END IF;
+--******************************* 2009/05/12 N.Maeda Var1.13 ADD  END ***************************************
 --
 --******************************* 2009/04/16 N.Maeda Var1.12 ADD START ***************************************
         --================================
@@ -9680,7 +9782,10 @@ AS
       END IF;
     END IF;
 --
-    IF ( gn_target_edi_cnt <> 0 ) AND ( gn_line_edi_cnt <> 0 ) THEN
+--******************************* 2009/05/12 N.Maeda Var1.13 MOD START ***************************************
+--    IF ( gn_target_edi_cnt <> 0 ) AND ( gn_line_edi_cnt <> 0 ) THEN
+    IF ( gt_oe_order_number.COUNT <> 0 ) THEN
+--******************************* 2009/05/12 N.Maeda Var1.13 MOD  END  ***************************************
       -- =======================================
       -- OMクローズ処理(A-7)
       -- =======================================
