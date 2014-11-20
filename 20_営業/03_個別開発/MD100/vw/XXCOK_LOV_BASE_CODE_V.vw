@@ -5,13 +5,14 @@
  * Description : 拠点ビュー（セキュリティ付）
  *               ログインユーザの所属する拠点
  *               またはログインユーザの所属する拠点が管理する拠点を表示
- * Version     : 1.0
+ * Version     : 1.1
  *
  * Change Record
  * ------------- ----- ---------------- ---------------------------------
  *  Date          Ver.  Editor           Description
  * ------------- ----- ---------------- ---------------------------------
  *  2009/01/28    1.0   K.Yamaguchi      新規作成
+ *  2009/09/09    1.1   S.Moriyama       [障害0001304]発令日の比較を業務処理日付へ変更
  *
  **************************************************************************************/
 CREATE OR REPLACE VIEW apps.xxcok_lov_base_code_v(
@@ -38,13 +39,19 @@ WHERE hca.party_id            = hp.party_id
   AND TRUNC( SYSDATE )  BETWEEN papf.effective_start_date
                             AND NVL( papf.effective_end_date, TRUNC( SYSDATE ) )
   AND (    hca.account_number       = CASE
-                                      WHEN TO_DATE( paaf.ass_attribute2, 'RRRRMMDD' ) > TRUNC( SYSDATE ) THEN
+-- 2009/09/09 Ver.1.1 [障害0001304] SCS S.Moriyama UPD START
+--                                      WHEN TO_DATE( paaf.ass_attribute2, 'RRRRMMDD' ) > TRUNC( SYSDATE ) THEN
+                                      WHEN TO_DATE( paaf.ass_attribute2, 'RRRRMMDD' ) > TRUNC( xxccp_common_pkg2.get_process_date ) THEN
+-- 2009/09/09 Ver.1.1 [障害0001304] SCS S.Moriyama UPD END
                                         paaf.ass_attribute6
                                       ELSE
                                         paaf.ass_attribute5
                                       END
         OR xca.management_base_code = CASE
-                                      WHEN TO_DATE( paaf.ass_attribute2, 'RRRRMMDD' ) > TRUNC( SYSDATE ) THEN
+-- 2009/09/09 Ver.1.1 [障害0001304] SCS S.Moriyama UPD START
+--                                      WHEN TO_DATE( paaf.ass_attribute2, 'RRRRMMDD' ) > TRUNC( SYSDATE ) THEN
+                                      WHEN TO_DATE( paaf.ass_attribute2, 'RRRRMMDD' ) > TRUNC( xxccp_common_pkg2.get_process_date ) THEN
+-- 2009/09/09 Ver.1.1 [障害0001304] SCS S.Moriyama UPD END
                                         paaf.ass_attribute6
                                       ELSE
                                         paaf.ass_attribute5
