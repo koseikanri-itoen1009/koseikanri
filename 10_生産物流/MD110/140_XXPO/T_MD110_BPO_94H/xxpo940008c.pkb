@@ -7,7 +7,7 @@ AS
  * Description      : ロット引当情報取込処理
  * MD.050           : 取引先オンライン T_MD050_BPO_940
  * MD.070           : ロット引当情報取込処理 T_MD070_BPO_94H
- * Version          : 1.9
+ * Version          : 1.10
  * Program List
  * --------------------------- ----------------------------------------------------------
  *  Name                        Description
@@ -42,6 +42,7 @@ AS
  *  2009/04/15    1.7  SCS    伊藤ひとみ 本番#1403,1405対応
  *  2009/04/17    1.8  SCS    椎名 昭圭  ロット管理外品はロットIDをNULLとして取得
  *  2009/04/23    1.9  SCS    椎名 昭圭  本番#1420対応
+ *  2009/05/19    1.10 SCS    伊藤ひとみ 本番#1485対応
  *****************************************************************************************/
 --
 --#######################  固定グローバル定数宣言部 START   #######################
@@ -3224,7 +3225,17 @@ AS
     gt_pm_item_id_tbl(gn_i)                         :=  gt_lr_item_id_tbl(gn_i);
     gt_pm_item_code_tbl(gn_i)                       :=  gt_lr_item_code_tbl(gn_i);
     gt_pm_lot_id_tbl(gn_i)                          :=  gt_lr_lot_id_tbl(gn_i);
-    gt_pm_lot_no_tbl(gn_i)                          :=  gt_lr_lot_no_tbl(gn_i);
+-- 2009/05/19 v1.10 Mod Start 本番障害#1485 ロット管理外品のときはロットNoを設定しない
+--    gt_pm_lot_no_tbl(gn_i)                          :=  gt_lr_lot_no_tbl(gn_i);
+    -- ロット管理品の場合
+    IF (gt_lr_lot_ctl_tbl(gn_i) = gv_flg_on) THEN
+      gt_pm_lot_no_tbl(gn_i)                          :=  gt_lr_lot_no_tbl(gn_i);
+--
+    -- ロット管理外品の場合
+    ELSE
+      gt_pm_lot_no_tbl(gn_i)                          :=  NULL;
+    END IF;
+-- 2009/05/19 v1.10 Mod End
     gt_pm_actual_date_tbl(gn_i)                     :=  gt_lr_shipped_date_tbl(gn_i);
     gt_pm_actual_quantity_tbl(gn_i)                 :=  gt_lr_reserved_quantity_tbl(gn_i);
     gt_pm_auma_reserve_class_tbl(gn_i)              :=  gv_am_reserve_class_au;
