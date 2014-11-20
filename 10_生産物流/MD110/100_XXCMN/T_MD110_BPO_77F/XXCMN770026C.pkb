@@ -7,7 +7,7 @@ AS
  * Description      : 出庫実績表
  * MD.050/070       : 月次〆処理(経理)Issue1.0 (T_MD050_BPO_770)
  *                    月次〆処理(経理)Issue1.0 (T_MD070_BPO_77F)
- * Version          : 1.26
+ * Version          : 1.27
  *
  * Program List
  * -------------------------- ----------------------------------------------------------
@@ -61,6 +61,7 @@ AS
  *  2009/01/21    1.24  N.Yoshida        本番#1016対応(v1.23の取り止めを含む)
  *  2009/05/29    1.25  Marushita        本番障害1511対応
  *  2009/10/02    1.26  Marushita        本番障害1648対応
+ *  2013/07/03    1.27  S.Niki           E_本稼動_10839対応（消費税増税対応）
  *
  *****************************************************************************************/
 --
@@ -127,6 +128,9 @@ AS
   -- クイックコード・タイプ名
   ------------------------------
   gc_xxcmn_new_acc_div        CONSTANT VARCHAR2(30) := 'XXCMN_NEW_ACCOUNT_DIV';
+-- v1.27 ADD START
+  gc_xxcmn_tax_rate           CONSTANT VARCHAR2(30) := 'XXCMN_CONSUMPTION_TAX_RATE';  -- 消費税
+-- v1.27 ADD END
 --
   -- 原価区分
   gc_cost_ac                  CONSTANT VARCHAR2(1) := '0'; --実際原価
@@ -734,7 +738,9 @@ AS
     lv_select_1_om108               VARCHAR2(32767) ;     -- データ取得用ＳＱＬ
     lv_select_2_om108               VARCHAR2(32767) ;     -- データ取得用ＳＱＬ
 --
-    lt_lkup_code            fnd_lookup_values.lookup_code%TYPE;
+-- v1.27 DEL START
+--    lt_lkup_code            fnd_lookup_values.lookup_code%TYPE;
+-- v1.27 DEL END
     --lv_crowd_c_name         VARCHAR2(20) ;        -- 郡コードカラム名(抽出条件用)
 --
     -- *** ローカル・カーソル ***
@@ -754,11 +760,13 @@ AS
 --
 -- 2008/10/24 v1.10 UPDATE START
 -- 2008/10/24 v1.10 ADD START  
-    SELECT flv.lookup_code
-    INTO   lt_lkup_code
-    FROM   xxcmn_lookup_values_v flv
-    WHERE  flv.lookup_type = 'XXCMN_CONSUMPTION_TAX_RATE'
-    AND    ROWNUM          = 1;
+-- v1.27 DEL START
+--    SELECT flv.lookup_code
+--    INTO   lt_lkup_code
+--    FROM   xxcmn_lookup_values_v flv
+--    WHERE  flv.lookup_type = 'XXCMN_CONSUMPTION_TAX_RATE'
+--    AND    ROWNUM          = 1;
+-- v1.27 DEL END
 --
     lv_select_main_start :=
        ' SELECT'
@@ -874,7 +882,10 @@ AS
     || ' ,ROUND(xola.unit_price * (itp.trans_qty * TO_NUMBER(xrpm.rcv_pay_div))) AS price' -- 有償金額
 -- 2008/12/18 v1.21 UPDATE END
 -- 2008/12/02 v1.14 UPDATE END
-    || ' ,TO_NUMBER(''' || lt_lkup_code    || ''') AS tax' 
+-- v1.27 MOD START
+--    || ' ,TO_NUMBER(''' || lt_lkup_code    || ''') AS tax' 
+    || ' ,TO_NUMBER(xlv2v.lookup_code) AS tax' -- 消費税率
+-- v1.27 MOD END
     ;
 -- 
  -- 共通SELECT group1 
@@ -1189,6 +1200,9 @@ AS
 --    || ' ,xxcmn_locations_all xla '
 --    || ' ,mtl_categories_tl mct '
 -- 2008/12/13 v1.16 ADD END
+-- v1.27 ADD START
+    || ' ,xxcmn_lookup_values2_v xlv2v '  -- 消費税率情報VIEW
+-- v1.27 ADD END
     || ' WHERE itp.doc_type = ''PORC''' -- 文書タイプ(PORC)
     || ' AND itp.completed_ind = 1' -- 完了フラグ
 --    || ' AND itp.trans_date >= FND_DATE.STRING_TO_DATE(''' || ir_param.proc_from    || ''',''yyyymm'')'
@@ -1292,6 +1306,11 @@ AS
 --    || ' AND mct.source_lang   = ''JA'''
 --    || ' AND mct.language      = ''JA'''
 -- 2008/12/13 v1.16 ADD END
+-- v1.27 ADD START
+    || ' AND xlv2v.lookup_type        = ''' || gc_xxcmn_tax_rate || '''' -- 消費税率マスタ(LOOKUP表)
+    || ' AND xlv2v.start_date_active <= TRUNC(xoha.arrival_date)'
+    || ' AND xlv2v.end_date_active   >= TRUNC(xoha.arrival_date)'
+-- v1.27 ADD END
     ;
 --
 -- 
@@ -1345,6 +1364,9 @@ AS
 --    || ' ,xxcmn_locations_all xla '
 --    || ' ,mtl_categories_tl mct '
 -- 2008/12/13 v1.16 ADD END
+-- v1.27 ADD START
+    || ' ,xxcmn_lookup_values2_v xlv2v '  -- 消費税率情報VIEW
+-- v1.27 ADD END
     || ' WHERE itp.doc_type = ''PORC''' -- 文書タイプ(PORC)
     || ' AND itp.completed_ind = 1' -- 完了フラグ
 --    || ' AND itp.trans_date >= FND_DATE.STRING_TO_DATE(''' || ir_param.proc_from    || ''',''yyyymm'')'
@@ -1444,6 +1466,11 @@ AS
 --    || ' AND mct.source_lang   = ''JA'''
 --    || ' AND mct.language      = ''JA'''
 -- 2008/12/13 v1.16 ADD END
+-- v1.27 ADD START
+    || ' AND xlv2v.lookup_type        = ''' || gc_xxcmn_tax_rate || '''' -- 消費税率マスタ(LOOKUP表)
+    || ' AND xlv2v.start_date_active <= TRUNC(xoha.arrival_date)'
+    || ' AND xlv2v.end_date_active   >= TRUNC(xoha.arrival_date)'
+-- v1.27 ADD END
     ;
 -- 
  -- PORC_112
@@ -1499,6 +1526,9 @@ AS
 --    || ' ,xxcmn_locations_all xla '
 --    || ' ,mtl_categories_tl mct '
 -- 2008/12/13 v1.16 ADD END
+-- v1.27 ADD START
+    || ' ,xxcmn_lookup_values2_v xlv2v '  -- 消費税率情報VIEW
+-- v1.27 ADD END
     || ' WHERE itp.doc_type = ''PORC''' -- 文書タイプ(PORC)
     || ' AND itp.completed_ind = 1' -- 完了フラグ
 --    || ' AND itp.trans_date >= FND_DATE.STRING_TO_DATE(''' || ir_param.proc_from    || ''',''yyyymm'')'
@@ -1603,6 +1633,11 @@ AS
 --    || ' AND mct.source_lang   = ''JA'''
 --    || ' AND mct.language      = ''JA'''
 -- 2008/12/13 v1.16 ADD END
+-- v1.27 ADD START
+    || ' AND xlv2v.lookup_type        = ''' || gc_xxcmn_tax_rate || '''' -- 消費税率マスタ(LOOKUP表)
+    || ' AND xlv2v.start_date_active <= TRUNC(xoha.arrival_date)'
+    || ' AND xlv2v.end_date_active   >= TRUNC(xoha.arrival_date)'
+-- v1.27 ADD END
     ;
 -- 
  -- PORC_103_5
@@ -1647,6 +1682,9 @@ AS
 --    || ' ,xxcmn_locations_all xla '
 --    || ' ,mtl_categories_tl mct '
 -- 2008/12/13 v1.16 ADD END
+-- v1.27 ADD START
+    || ' ,xxcmn_lookup_values2_v xlv2v '  -- 消費税率情報VIEW
+-- v1.27 ADD END
     || ' WHERE itp.doc_type = ''PORC''' -- 文書タイプ(PORC)
     || ' AND itp.completed_ind = 1' -- 完了フラグ
 --    || ' AND itp.trans_date >= FND_DATE.STRING_TO_DATE(''' || ir_param.proc_from    || ''',''yyyymm'')'
@@ -1742,6 +1780,11 @@ AS
 --    || ' AND mct.source_lang   = ''JA'''
 --    || ' AND mct.language      = ''JA'''
 -- 2008/12/13 v1.16 ADD END
+-- v1.27 ADD START
+    || ' AND xlv2v.lookup_type        = ''' || gc_xxcmn_tax_rate || '''' -- 消費税率マスタ(LOOKUP表)
+    || ' AND xlv2v.start_date_active <= TRUNC(xoha.arrival_date)'
+    || ' AND xlv2v.end_date_active   >= TRUNC(xoha.arrival_date)'
+-- v1.27 ADD END
     ;
 -- 
  -- PORC_103_124
@@ -1786,6 +1829,9 @@ AS
 --    || ' ,xxcmn_locations_all xla '
 --    || ' ,mtl_categories_tl mct '
 -- 2008/12/13 v1.16 ADD END
+-- v1.27 ADD START
+    || ' ,xxcmn_lookup_values2_v xlv2v '  -- 消費税率情報VIEW
+-- v1.27 ADD END
     || ' WHERE itp.doc_type = ''PORC''' -- 文書タイプ(PORC)
     || ' AND itp.completed_ind = 1' -- 完了フラグ
 --    || ' AND itp.trans_date >= FND_DATE.STRING_TO_DATE(''' || ir_param.proc_from    || ''',''yyyymm'')'
@@ -1881,6 +1927,11 @@ AS
 --    || ' AND mct.source_lang   = ''JA'''
 --    || ' AND mct.language      = ''JA'''
 -- 2008/12/13 v1.16 ADD END
+-- v1.27 ADD START
+    || ' AND xlv2v.lookup_type        = ''' || gc_xxcmn_tax_rate || '''' -- 消費税率マスタ(LOOKUP表)
+    || ' AND xlv2v.start_date_active <= TRUNC(xoha.arrival_date)'
+    || ' AND xlv2v.end_date_active   >= TRUNC(xoha.arrival_date)'
+-- v1.27 ADD END
     ;
 -- 
  -- PORC_105
@@ -1928,6 +1979,9 @@ AS
 --    || ' ,xxcmn_locations_all xla '
 --    || ' ,mtl_categories_tl mct '
 -- 2008/12/13 v1.16 ADD END
+-- v1.27 ADD START
+    || ' ,xxcmn_lookup_values2_v xlv2v '  -- 消費税率情報VIEW
+-- v1.27 ADD END
     || ' WHERE itp.doc_type = ''PORC''' -- 文書タイプ(PORC)
     || ' AND itp.completed_ind = 1' -- 完了フラグ
 --    || ' AND itp.trans_date >= FND_DATE.STRING_TO_DATE(''' || ir_param.proc_from    || ''',''yyyymm'')'
@@ -2024,6 +2078,11 @@ AS
 --    || ' AND mct.source_lang   = ''JA'''
 --    || ' AND mct.language      = ''JA'''
 -- 2008/12/13 v1.16 ADD END
+-- v1.27 ADD START
+    || ' AND xlv2v.lookup_type        = ''' || gc_xxcmn_tax_rate || '''' -- 消費税率マスタ(LOOKUP表)
+    || ' AND xlv2v.start_date_active <= TRUNC(xoha.arrival_date)'
+    || ' AND xlv2v.end_date_active   >= TRUNC(xoha.arrival_date)'
+-- v1.27 ADD END
     ;
 -- 
  -- PORC_108
@@ -2073,6 +2132,9 @@ AS
 --    || ' ,xxcmn_locations_all xla '
 --    || ' ,mtl_categories_tl mct '
 -- 2008/12/13 v1.16 ADD END
+-- v1.27 ADD START
+    || ' ,xxcmn_lookup_values2_v xlv2v '  -- 消費税率情報VIEW
+-- v1.27 ADD END
     || ' WHERE itp.doc_type = ''PORC''' -- 文書タイプ(PORC)
     || ' AND itp.completed_ind = 1' -- 完了フラグ
 --    || ' AND itp.trans_date >= FND_DATE.STRING_TO_DATE(''' || ir_param.proc_from    || ''',''yyyymm'')'
@@ -2173,6 +2235,11 @@ AS
 --    || ' AND mct.source_lang   = ''JA'''
 --    || ' AND mct.language      = ''JA'''
 -- 2008/12/13 v1.16 ADD END
+-- v1.27 ADD START
+    || ' AND xlv2v.lookup_type        = ''' || gc_xxcmn_tax_rate || '''' -- 消費税率マスタ(LOOKUP表)
+    || ' AND xlv2v.start_date_active <= TRUNC(xoha.arrival_date)'
+    || ' AND xlv2v.end_date_active   >= TRUNC(xoha.arrival_date)'
+-- v1.27 ADD END
     ;
 -- 
  -- OMSO_102
@@ -2225,6 +2292,9 @@ AS
 --    || ' ,xxcmn_locations_all xla '
 --    || ' ,mtl_categories_tl mct '
 -- 2008/12/13 v1.16 ADD END
+-- v1.27 ADD START
+    || ' ,xxcmn_lookup_values2_v xlv2v '  -- 消費税率情報VIEW
+-- v1.27 ADD END
     || ' WHERE itp.doc_type = ''OMSO''' 
     || ' AND itp.completed_ind = 1' 
 --    || ' AND itp.trans_date >= FND_DATE.STRING_TO_DATE(''' || ir_param.proc_from    || ''',''yyyymm'')'
@@ -2301,7 +2371,6 @@ AS
     || ' AND hps.party_site_id = xoha.result_deliver_to_id' 
     || ' AND xp.party_id       = hps.party_id' 
     || ' AND hca.party_id      = hps.party_id' 
-
 -- 2008/12/17 v1.20 UPDATE END
     || ' AND xrpm.doc_type = itp.doc_type' 
     || ' AND xrpm.doc_type = ''OMSO'''
@@ -2324,6 +2393,11 @@ AS
 --    || ' AND mct.source_lang   = ''JA'''
 --    || ' AND mct.language      = ''JA'''
 -- 2008/12/13 v1.16 ADD END
+-- v1.27 ADD START
+    || ' AND xlv2v.lookup_type        = ''' || gc_xxcmn_tax_rate || '''' -- 消費税率マスタ(LOOKUP表)
+    || ' AND xlv2v.start_date_active <= TRUNC(xoha.arrival_date)'
+    || ' AND xlv2v.end_date_active   >= TRUNC(xoha.arrival_date)'
+-- v1.27 ADD END
     ;
 -- 
  -- OMSO_101
@@ -2364,7 +2438,6 @@ AS
 */
     || ' ,hz_party_sites hps'
     || ' ,xxcmn_parties xp'
-
 -- 2008/12/17 v1.20 UPDATE END
     || ' ,hz_cust_accounts hca'
 -- 2008/12/13 v1.17 N.Yoshida mod start
@@ -2377,6 +2450,9 @@ AS
 --    || ' ,xxcmn_locations_all xla '
 --    || ' ,mtl_categories_tl mct '
 -- 2008/12/13 v1.16 ADD END
+-- v1.27 ADD START
+    || ' ,xxcmn_lookup_values2_v xlv2v '  -- 消費税率情報VIEW
+-- v1.27 ADD END
     || ' WHERE itp.doc_type = ''OMSO''' 
     || ' AND itp.completed_ind = 1' 
 --    || ' AND itp.trans_date >= FND_DATE.STRING_TO_DATE(''' || ir_param.proc_from    || ''',''yyyymm'')'
@@ -2475,6 +2551,11 @@ AS
 --    || ' AND mct.source_lang   = ''JA'''
 --    || ' AND mct.language      = ''JA'''
 -- 2008/12/13 v1.16 ADD END
+-- v1.27 ADD START
+    || ' AND xlv2v.lookup_type        = ''' || gc_xxcmn_tax_rate || '''' -- 消費税率マスタ(LOOKUP表)
+    || ' AND xlv2v.start_date_active <= TRUNC(xoha.arrival_date)'
+    || ' AND xlv2v.end_date_active   >= TRUNC(xoha.arrival_date)'
+-- v1.27 ADD END
     ;
 -- 
  -- OMSO_112
@@ -2530,6 +2611,9 @@ AS
 --    || ' ,xxcmn_locations_all xla '
 --    || ' ,mtl_categories_tl mct '
 -- 2008/12/13 v1.16 ADD END
+-- v1.27 ADD START
+    || ' ,xxcmn_lookup_values2_v xlv2v '  -- 消費税率情報VIEW
+-- v1.27 ADD END
     || ' WHERE itp.doc_type = ''OMSO''' 
     || ' AND itp.completed_ind = 1' 
 --    || ' AND itp.trans_date >= FND_DATE.STRING_TO_DATE(''' || ir_param.proc_from    || ''',''yyyymm'')'
@@ -2632,6 +2716,11 @@ AS
 --    || ' AND mct.source_lang   = ''JA'''
 --    || ' AND mct.language      = ''JA'''
 -- 2008/12/13 v1.16 ADD END
+-- v1.27 ADD START
+    || ' AND xlv2v.lookup_type        = ''' || gc_xxcmn_tax_rate || '''' -- 消費税率マスタ(LOOKUP表)
+    || ' AND xlv2v.start_date_active <= TRUNC(xoha.arrival_date)'
+    || ' AND xlv2v.end_date_active   >= TRUNC(xoha.arrival_date)'
+-- v1.27 ADD END
     ;
 -- 
  -- OMSO_103_5
@@ -2676,6 +2765,9 @@ AS
 --    || ' ,xxcmn_locations_all xla '
 --    || ' ,mtl_categories_tl mct '
 -- 2008/12/13 v1.16 ADD END
+-- v1.27 ADD START
+    || ' ,xxcmn_lookup_values2_v xlv2v '  -- 消費税率情報VIEW
+-- v1.27 ADD END
     || ' WHERE itp.doc_type = ''OMSO''' 
     || ' AND itp.completed_ind = 1' 
 --    || ' AND itp.trans_date >= FND_DATE.STRING_TO_DATE(''' || ir_param.proc_from    || ''',''yyyymm'')'
@@ -2770,6 +2862,11 @@ AS
 --    || ' AND mct.source_lang   = ''JA'''
 --    || ' AND mct.language      = ''JA'''
 -- 2008/12/13 v1.16 ADD END
+-- v1.27 ADD START
+    || ' AND xlv2v.lookup_type        = ''' || gc_xxcmn_tax_rate || '''' -- 消費税率マスタ(LOOKUP表)
+    || ' AND xlv2v.start_date_active <= TRUNC(xoha.arrival_date)'
+    || ' AND xlv2v.end_date_active   >= TRUNC(xoha.arrival_date)'
+-- v1.27 ADD END
     ;
 -- 
  -- OMSO_103_124
@@ -2814,6 +2911,9 @@ AS
 --    || ' ,xxcmn_locations_all xla '
 --    || ' ,mtl_categories_tl mct '
 -- 2008/12/13 v1.16 ADD END
+-- v1.27 ADD START
+    || ' ,xxcmn_lookup_values2_v xlv2v '  -- 消費税率情報VIEW
+-- v1.27 ADD END
     || ' WHERE itp.doc_type = ''OMSO''' 
     || ' AND itp.completed_ind = 1' 
 --    || ' AND itp.trans_date >= FND_DATE.STRING_TO_DATE(''' || ir_param.proc_from    || ''',''yyyymm'')'
@@ -2908,6 +3008,11 @@ AS
 --    || ' AND mct.source_lang   = ''JA'''
 --    || ' AND mct.language      = ''JA'''
 -- 2008/12/13 v1.16 ADD END
+-- v1.27 ADD START
+    || ' AND xlv2v.lookup_type        = ''' || gc_xxcmn_tax_rate || '''' -- 消費税率マスタ(LOOKUP表)
+    || ' AND xlv2v.start_date_active <= TRUNC(xoha.arrival_date)'
+    || ' AND xlv2v.end_date_active   >= TRUNC(xoha.arrival_date)'
+-- v1.27 ADD END
     ;
 -- 
  -- OMSO_105
@@ -2955,6 +3060,9 @@ AS
 --    || ' ,xxcmn_locations_all xla '
 --    || ' ,mtl_categories_tl mct '
 -- 2008/12/13 v1.16 ADD END
+-- v1.27 ADD START
+    || ' ,xxcmn_lookup_values2_v xlv2v '  -- 消費税率情報VIEW
+-- v1.27 ADD END
     || ' WHERE itp.doc_type = ''OMSO''' 
     || ' AND itp.completed_ind = 1' 
 --    || ' AND itp.trans_date >= FND_DATE.STRING_TO_DATE(''' || ir_param.proc_from    || ''',''yyyymm'')'
@@ -3050,6 +3158,11 @@ AS
 --    || ' AND mct.source_lang   = ''JA'''
 --    || ' AND mct.language      = ''JA'''
 -- 2008/12/13 v1.16 ADD END
+-- v1.27 ADD START
+    || ' AND xlv2v.lookup_type        = ''' || gc_xxcmn_tax_rate || '''' -- 消費税率マスタ(LOOKUP表)
+    || ' AND xlv2v.start_date_active <= TRUNC(xoha.arrival_date)'
+    || ' AND xlv2v.end_date_active   >= TRUNC(xoha.arrival_date)'
+-- v1.27 ADD END
     ;
 -- 
  -- OMSO_108
@@ -3099,6 +3212,9 @@ AS
 --    || ' ,xxcmn_locations_all xla '
 --    || ' ,mtl_categories_tl mct '
 -- 2008/12/13 v1.16 ADD END
+-- v1.27 ADD START
+    || ' ,xxcmn_lookup_values2_v xlv2v '  -- 消費税率情報VIEW
+-- v1.27 ADD END
     || ' WHERE itp.doc_type = ''OMSO''' 
     || ' AND itp.completed_ind = 1' 
 --    || ' AND itp.trans_date >= FND_DATE.STRING_TO_DATE(''' || ir_param.proc_from    || ''',''yyyymm'')'
@@ -3199,6 +3315,11 @@ AS
 --    || ' AND mct.source_lang   = ''JA'''
 --    || ' AND mct.language      = ''JA'''
 -- 2008/12/13 v1.16 ADD END
+-- v1.27 ADD START
+    || ' AND xlv2v.lookup_type        = ''' || gc_xxcmn_tax_rate || '''' -- 消費税率マスタ(LOOKUP表)
+    || ' AND xlv2v.start_date_active <= TRUNC(xoha.arrival_date)'
+    || ' AND xlv2v.end_date_active   >= TRUNC(xoha.arrival_date)'
+-- v1.27 ADD END
     ;
 ---------------------------
 --  パターン別ヒント句
@@ -3294,7 +3415,6 @@ AS
     lv_select_g1_om108_1_hint :=
        --' SELECT /*+ leading(itp gic4 mcb4 gic5 mcb5 wdd xola iimb3 gic2 mcb2 gic1 mcb1 ooha otta) use_nl(itp gic4 mcb4 gic5 mcb5 wdd xola iimb3 gic2 mcb2 gic1 mcb1 ooha otta) */';
        ' SELECT /*+ leading (xoha xola iimb2 gic1 mcb1 gic2 mcb2 ooha otta xrpm wdd itp) use_nl (xoha xola iimb2 gic1 mcb1 gic2 mcb2 ooha otta xrpm wdd itp) push_pred(xsupv) */';
-
  --===============================================================
  -- GROUP1 PTN02
  --===============================================================
@@ -10247,7 +10367,6 @@ AS
         -- カーソルクローズ
         CLOSE get_cur01 ;
       END IF;
-
 --
     END IF;
 --
