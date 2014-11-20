@@ -1,4 +1,4 @@
-CREATE OR REPLACE PACKAGE XXCOS004A06C
+CREATE OR REPLACE PACKAGE APPS.XXCOS004A06C
 AS
 /*****************************************************************************************
  * Copyright(c)Sumisho Computer Systems Corporation, 2008. All rights reserved.
@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCOS004A06C (spec)
  * Description      : 消化ＶＤ掛率作成
  * MD.050           : 消化ＶＤ掛率作成 MD050_COS_004_A06
- * Version          : 1.9
+ * Version          : 1.10
  *
  * Program List
  * -------------------- ------------------------------------------------------------
@@ -30,6 +30,7 @@ AS
  *  2009/05/01    1.8   N.Maeda          [T1_0496]リカバリ用パラメータ追加
  *  2009/07/16    1.9   M.Sano           [0000319]DISC品目変更履歴アドオンの定価を取得しない
  *                                       [0000432]PTの考慮
+ *  2009/08/04    1.10  N.Maeda          [0000922]PTの考慮
  *
  *****************************************************************************************/
 --

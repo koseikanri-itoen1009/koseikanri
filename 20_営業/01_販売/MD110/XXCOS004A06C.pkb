@@ -1,4 +1,4 @@
-CREATE OR REPLACE PACKAGE BODY XXCOS004A06C
+CREATE OR REPLACE PACKAGE BODY APPS.XXCOS004A06C
 AS
 /*****************************************************************************************
  * Copyright(c)Sumisho Computer Systems Corporation, 2008. All rights reserved.
@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCOS004A06C (body)
  * Description      : 消化ＶＤ掛率作成
  * MD.050           : 消化ＶＤ掛率作成 MD050_COS_004_A06
- * Version          : 1.9
+ * Version          : 1.10
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -45,6 +45,9 @@ AS
  *  2009/05/01    1.8   N.Maeda          [T1_0496]リカバリ用パラメータ追加
  *  2009/07/16    1.9   M.Sano           [0000319]DISC品目変更履歴アドオンの定価を取得しない
  *                                       [0000432]PTの考慮
+ *  2009/08/04    1.10  N.Maeda          [0000922]PTの考慮
+ *  2009/08/05    1.10  N.Maeda          [0000922]レビュー指摘対応
+ *  2009/08/06    1.10  N.Maeda          [0000922]再レビュー指摘対応
  *
  *****************************************************************************************/
 --
@@ -1299,7 +1302,9 @@ AS
 --            AND flv.language                = USERENV( 'LANG' )
             AND flv.language                = ct_lang
 -- 2009/07/16 Ver.1.9 M.Sano Mod End
-            AND ROWNUM                      = 1
+-- *********** 2009/08/04 N.Maeda 1.10 DEL START *******************--
+--            AND ROWNUM                      = 1
+-- *********** 2009/08/04 N.Maeda 1.10 DEL  END  *******************--
           )
 -- 2009/07/16 Ver.1.9 M.Sano Del Start
 --      UNION ALL
@@ -1618,6 +1623,11 @@ AS
     CURSOR vdc_cur
     IS
       SELECT
+-- ******************************* 2009/08/06 1.10 N.Maeda ADD START ******************************* --
+        /*+
+          INDEX( xvch XXCOS_VD_COLUMN_HEADERS_N04)
+        */
+-- ******************************* 2009/08/06 1.10 N.Maeda ADD  END  ******************************* --
         xvch.performance_by_code            performance_by_code,           --成績者コード
         xvch.dlv_date                       dlv_date,                      --納品日
         xvch.dlv_time                       dlv_time,                      --時間
@@ -1649,7 +1659,10 @@ AS
       AND xvch.digestion_ln_number          = xvcl.digestion_ln_number
 --******************************** 2009/05/01 1.8 N.Maeda MOD START **************************************************
 --      AND xvch.customer_number              = it_customer_number
-      AND xvch.customer_number              = NVL( it_customer_number , xvch.customer_number )
+-- ************** 2009/08/04 N.Maeda 1.10 MOD START ********************* --
+      AND xvch.customer_number              = it_customer_number
+--      AND xvch.customer_number              = NVL( it_customer_number , xvch.customer_number )
+-- ************** 2009/08/04 N.Maeda 1.10 MOD  END  ********************* --
 --******************************** 2009/05/01 1.8 N.Maeda MOD END   **************************************************
       AND ( ( ( xvch.digestion_vd_rate_maked_date IS NULL)
         AND ( xvch.dlv_date <= it_digestion_due_date) )
@@ -1699,6 +1712,9 @@ AS
     THEN
       BEGIN
         SELECT
+-- ************** 2009/08/04 N.Maeda 1.10 ADD START ***************************** --
+          /*+ INDEX( msi XXCOI_MSI_N02 ) */
+-- ************** 2009/08/04 N.Maeda 1.10 ADD  END  ***************************** --
           msi.secondary_inventory_name        secondary_inventory_name       --保管場所
         INTO
 --******************************** 2009/03/19 1.6 T.Kitajima MOD START **************************************************
@@ -1735,7 +1751,9 @@ AS
 --              AND flv.language                = USERENV( 'LANG' )
               AND flv.language                = ct_lang
 -- 2009/07/16 Ver.1.9 M.Sano Mod End
-              AND ROWNUM                      = 1
+-- ************** 2009/08/04 N.Maeda 1.10 DEL START ***************************** --
+--              AND ROWNUM                      = 1
+-- ************** 2009/08/04 N.Maeda 1.10 DEL  END  ***************************** --
             )
 --******************************** 2009/03/19 1.6 T.Kitajima MOD START **************************************************
 --        AND msi.attribute7                    = it_delivery_base_code
@@ -2679,6 +2697,11 @@ AS
     CURSOR blt_cur
     IS
       SELECT
+-- ***************** 2009/08/06 1.10 N.Maeda ADD START ************************** --
+        /*+
+          INDEX (XVDH XXCOS_VD_DIGESTION_HDRS_N03 )
+        */
+-- ***************** 2009/08/06 1.10 N.Maeda END START ************************** --
         xvdh.customer_number              customer_number,            -- 顧客コード
         xvdh.digestion_due_date           digestion_due_date,         -- 消化計算締年月日
         xvdh.vd_digestion_hdr_id          vd_digestion_hdr_id,        -- 消化VD用消化計算ヘッダID
@@ -3275,6 +3298,11 @@ AS
       FROM
         (
           SELECT
+-- ***************** 2009/08/06 1.10 N.Maeda ADD START ************************** --
+            /*+
+              INDEX (XVDH XXCOS_VD_DIGESTION_HDRS_N03 )
+            */
+-- ***************** 2009/08/06 1.10 N.Maeda ADD  END  ************************** --
             xvdh.vd_digestion_hdr_id              vd_digestion_hdr_id,          --消化VD用消化計算ヘッダID
             xvdh.customer_number                  customer_number,              --顧客コード
             xvdh.digestion_due_date               digestion_due_date,           --消化計算締年月日
@@ -3293,9 +3321,18 @@ AS
           AND hca.cust_account_id                 = xca.customer_id
           AND xvdh.sales_result_creation_flag     = ct_sr_creation_flag_no
           AND xvdh.sales_base_code                = NVL( gt_base_code, xvdh.sales_base_code )
-          AND xvdh.customer_number                = NVL( gt_customer_number, xvdh.customer_number )
+-- ************** 2009/08/04 N.Maeda 1.10 MOD START ********************* --
+          AND ( ( gt_customer_number IS NULL )
+            OR ( gt_customer_number IS NOT NULL AND xvdh.customer_number = gt_customer_number ) )
+--          AND xvdh.customer_number                = NVL( gt_customer_number, xvdh.customer_number )
+-- ************** 2009/08/04 N.Maeda 1.10 MOD  END  ********************* --
           UNION
           SELECT
+-- ***************** 2009/08/06 1.10 N.Maeda ADD START ************************** --
+            /*+
+              INDEX (XVDH XXCOS_VD_DIGESTION_HDRS_N03 )
+            */
+-- ***************** 2009/08/06 1.10 N.Maeda ADD  END  ************************** --
             xvdh.vd_digestion_hdr_id              vd_digestion_hdr_id,          --消化VD用消化計算ヘッダID
             xvdh.customer_number                  customer_number,              --顧客コード
             xvdh.digestion_due_date               digestion_due_date,           --消化計算締年月日
@@ -3343,10 +3380,16 @@ AS
 --                AND flv.language                  = USERENV( 'LANG' )
                 AND flv.language                  = ct_lang
 -- 2009/07/16 Ver.1.9 M.Sano Mod End
-                AND ROWNUM                        = 1
+-- ************** 2009/08/04 N.Maeda 1.10 DEL START ********************* --
+--                AND ROWNUM                        = 1
+-- ************** 2009/08/04 N.Maeda 1.10 DEL  END  ********************* --
               )
           AND xca2.management_base_code           = NVL( gt_base_code, xca2.management_base_code )
-          AND xvdh.customer_number                = NVL( gt_customer_number, xvdh.customer_number )
+-- ************** 2009/08/04 N.Maeda 1.10 MOD START ********************* --
+          AND ( ( gt_customer_number IS NULL )
+            OR ( gt_customer_number IS NOT NULL AND xvdh.customer_number = gt_customer_number ) )
+--          AND xvdh.customer_number                = NVL( gt_customer_number, xvdh.customer_number )
+-- ************** 2009/08/04 N.Maeda 1.10 MOD  END  ********************* --
        ) xvdh
      ORDER BY
        xvdh.digestion_due_date,
@@ -3363,11 +3406,18 @@ AS
     )
     IS
       SELECT
+-- ************** 2009/08/06 N.Maeda 1.10 MOD START ********************* --
+        /*+ INDEX( XVDH XXCOS_VD_DIGESTION_HDRS_N03) */
+-- ************** 2009/08/06 N.Maeda 1.10 MOD  END  ********************* --
         xvdh.vd_digestion_hdr_id                  vd_digestion_hdr_id           --消化VD用消化計算ヘッダID
       FROM
         xxcos_vd_digestion_hdrs                   xvdh                          --消化VD用消化計算ヘッダテーブル
       WHERE
-          xvdh.customer_number                    = NVL( it_customer_number, xvdh.customer_number )
+-- ************** 2009/08/04 N.Maeda 1.10 MOD START ********************* --
+         ( ( it_customer_number IS NULL )
+        OR ( it_customer_number IS NOT NULL AND it_customer_number = xvdh.customer_number ) )
+--          xvdh.customer_number                    = NVL( it_customer_number, xvdh.customer_number )
+-- ************** 2009/08/04 N.Maeda 1.10 MOD  END  ********************* --
       AND xvdh.sales_result_creation_flag         = ct_sr_creation_flag_no
       ;
     -- 消化VD用消化計算ヘッダ情報 レコード型
@@ -3398,6 +3448,9 @@ AS
       FROM
         (
           SELECT
+-- *********** 2009/08/05 N.Maeda 1.10 ADD START *******************--
+            /*+ INDEX (xca XXCMM_CUST_ACCOUNTS_N09 ) */
+-- *********** 2009/08/05 N.Maeda 1.10 ADD  END  *******************--
             hca.cust_account_id                   cust_account_id,              --顧客ID
             hca.account_number                    customer_number,              --顧客コード
             hca.party_id                          party_id,                     --パーティID
@@ -3441,15 +3494,32 @@ AS
 --                AND flv.language                  = USERENV( 'LANG' )
                 AND flv.language                  = ct_lang
 -- 2009/07/16 Ver.1.9 M.Sano Mod End
-                AND ROWNUM                        = 1
+-- ************** 2009/08/04 N.Maeda 1.10 DEL START ********************* --
+--                AND ROWNUM                        = 1
+-- ************** 2009/08/04 N.Maeda 1.10 DEL  END  ********************* --
               )
-          AND NVL( xca.past_sale_base_code, xca.sale_base_code )
-                                                  = NVL( gt_base_code,
-                                                      NVL( xca.past_sale_base_code,
-                                                        xca.sale_base_code
-                                                      )
-                                                    )
-          AND hca.account_number                  = NVL( gt_customer_number, hca.account_number )
+-- ************** 2009/08/04 N.Maeda 1.10 MOD START ********************* --
+--
+          AND (
+                ( gt_base_code IS NULL )
+              OR
+                ( gt_base_code IS NOT NULL 
+                  AND NVL( xca.past_sale_base_code, xca.sale_base_code )
+                = gt_base_code )
+              )
+--          AND NVL( xca.past_sale_base_code, xca.sale_base_code )
+--                                                  = NVL( gt_base_code,
+--                                                      NVL( xca.past_sale_base_code,
+--                                                        xca.sale_base_code
+--                                                      )
+--                                                    )
+          AND ( ( gt_customer_number IS NULL )
+                OR ( gt_customer_number IS NOT NULL
+              AND hca.account_number = gt_customer_number )
+              )
+--          AND hca.account_number                  = NVL( gt_customer_number, hca.account_number )
+--
+-- ************** 2009/08/04 N.Maeda 1.10 MOD  END  ********************* --
           AND EXISTS(
                 SELECT
                   cv_exists_flag_yes              exists_flag
@@ -3476,7 +3546,9 @@ AS
 --                AND flv.language                  = USERENV( 'LANG' )
                 AND flv.language                  = ct_lang
 -- 2009/07/16 Ver.1.9 M.Sano Mod End
-                AND ROWNUM                        = 1
+-- ************** 2009/08/04 N.Maeda 1.10 DEL START ********************* --
+--                AND ROWNUM                        = 1
+-- ************** 2009/08/04 N.Maeda 1.10 DEL  END  ********************* --
               )
           AND iv_due_day                          IN (
                                                        DECODE(
@@ -3512,6 +3584,9 @@ AS
                                                      )
           UNION
           SELECT
+-- *********** 2009/08/05 N.Maeda 1.10 ADD START *******************--
+            /*+ INDEX (xca2 XXCMM_CUST_ACCOUNTS_N09 ) */
+-- *********** 2009/08/05 N.Maeda 1.10 ADD  END  *******************--
             hca2.cust_account_id                  cust_account_id,              --顧客ID
             hca2.account_number                   customer_number,              --顧客コード
             hca2.party_id                         party_id,                     --パーティID
@@ -3557,9 +3632,17 @@ AS
 --                AND flv.language                  = USERENV( 'LANG' )
                 AND flv.language                  = ct_lang
 -- 2009/07/16 Ver.1.9 M.Sano Mod End
-                AND ROWNUM                        = 1
+-- ************** 2009/08/04 N.Maeda 1.10 DEL START ********************* --
+--                AND ROWNUM                        = 1
+-- ************** 2009/08/04 N.Maeda 1.10 DEL  END  ********************* --
               )
-          AND xca.management_base_code            = NVL( gt_base_code, hca.customer_class_code )
+-- ************** 2009/08/04 N.Maeda 1.10 MOD START ********************* --
+--
+          AND ( ( gt_base_code IS NULL )
+            OR ( gt_base_code IS NOT NULL 
+              AND xca.management_base_code = gt_base_code ) )
+--          AND xca.management_base_code            = NVL( gt_base_code, hca.customer_class_code )
+-- ************** 2009/08/04 N.Maeda 1.10 MOD  END  ********************* --
           AND hca2.cust_account_id                = xca2.customer_id
           AND EXISTS(
                 SELECT
@@ -3587,11 +3670,17 @@ AS
 --                AND flv.language                  = USERENV( 'LANG' )
                 AND flv.language                  = ct_lang
 -- 2009/07/16 Ver.1.9 M.Sano Mod End
-                AND ROWNUM                        = 1
+-- ************** 2009/08/04 N.Maeda 1.10 DEL START ********************* --
+--                AND ROWNUM                        = 1
+-- ************** 2009/08/04 N.Maeda 1.10 DEL  END  ********************* --
               )
           AND NVL( xca2.past_sale_base_code, xca2.sale_base_code )
                                                   = hca.account_number
-          AND hca2.account_number                 = NVL( gt_customer_number, hca2.account_number )
+-- ************** 2009/08/04 N.Maeda 1.10 MOD START ********************* --
+          AND ( ( gt_customer_number IS NULL )
+            OR ( gt_customer_number IS NOT NULL AND gt_customer_number = hca2.account_number ) )
+--          AND hca2.account_number                 = NVL( gt_customer_number, hca2.account_number )
+-- ************** 2009/08/04 N.Maeda 1.10 MOD  END  ********************* --
           AND EXISTS(
                 SELECT
                   cv_exists_flag_yes              exists_flag
@@ -3618,7 +3707,9 @@ AS
 --                AND flv.language                  = USERENV( 'LANG' )
                 AND flv.language                  = ct_lang
 -- 2009/07/16 Ver.1.9 M.Sano Mod End
-                AND ROWNUM                        = 1
+-- ************** 2009/08/04 N.Maeda 1.10 DEL START ********************* --
+--                AND ROWNUM                        = 1
+-- ************** 2009/08/04 N.Maeda 1.10 DEL  END  ********************* --
               )
           AND iv_due_day                          IN (
                                                        DECODE(
