@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCOS001A08C (body)
  * Description      : 返品実績データ作成（ＨＨＴ）
  * MD.050           : 返品実績データ作成（ＨＨＴ）(MD050_COS_001_A08)
- * Version          : 1.7
+ * Version          : 1.10
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -35,6 +35,10 @@ AS
  *  2009/03/18    1.6   T.Kitajima       [T1_0066] HHT納品データの販売実績連携時における設定項目の不備
  *                                       [T1_0078] 金額の端数計算が正しく行われていない
  *  2009/03/23    1.7   N.Maeda          [T1_0078] 金額端数処理の修正
+ *  2009/04/03    1.8   N.Maeda          [T1_0256] HHT百貨店保管場所抽出条件を修正
+ *  2009/04/07    1.9   N.Maeda          [T1_0248] HHT百貨店入力区分がnullでない時の判定内容を変更
+ *  2009/04/09    1.10  N.Maeda          [T1_0401] 外税、内税(伝票課税)時の売上金額の計算方法修正
+ *                                                 外税時の売上金額合計の計算方法修正
  *
  *****************************************************************************************/
 --
@@ -165,7 +169,10 @@ AS
   cv_xxcos_001_a05_05         CONSTANT VARCHAR2(50)  := 'XXCOS_001_A05_05';
   cv_xxcos_001_a05_09         CONSTANT VARCHAR2(50)  := 'XXCOS_001_A05_09';
   cv_tkn_profile              CONSTANT VARCHAR2(20)  := 'PROFILE';            -- プロファイル名
---  cv_depart_type              CONSTANT VARCHAR2(10)  := '1';                  -- HHT百貨店入力区分(百貨店)
+  cv_depart_type              CONSTANT VARCHAR2(10)  := '1';                  -- HHT百貨店入力区分(百貨店)
+  cv_depart_type_k            CONSTANT VARCHAR2(10)  := '2';                  -- HHT百貨店入力区分(百貨店_拠点)
+  cv_depart_screen_class_base CONSTANT VARCHAR2(10)  := '0';                  -- HHT百貨店画面種別(拠点)
+  cv_depart_screen_class_dep  CONSTANT VARCHAR2(10)  := '2';                  -- HHT百貨店画面種別(百貨店)
 --  cv_depart_car               CONSTANT VARCHAR2(10)  := '2';                  -- HHT百貨店入力区分(拠点)
   cv_fs_vd_s                  CONSTANT VARCHAR2(10)  := '24';                 -- 業態区分(フルサービス(消化)VD)
   cv_fs_vd                    CONSTANT VARCHAR2(10)  := '25';                 -- 業態区分(フルサービスVD)
@@ -1036,6 +1043,7 @@ AS
     ln_max_tax_data                    NUMBER;                               -- 明細最大消費税額
     ln_max_no_data                     NUMBER;                               -- ヘッダ最大消費税明細行番号
     ln_tax_data                        NUMBER;                               -- 税込額算出用
+    ln_amount_deta                     NUMBER;                               -- 金額算出用
     lv_delivery_type                   VARCHAR2(100);                        -- 納品形態区分
     ld_input_date                      DATE;                                 -- HHT納品入力日時
     ln_actual_id                       NUMBER;                               -- 販売実績ヘッダID
@@ -1242,7 +1250,8 @@ AS
 --
 /*--==============2009/2/3-START=========================--*/
 --      IF ( lv_depart_code = cv_depart_car ) THEN
-      IF ( lv_depart_code IS NULL ) THEN
+      IF ( lv_depart_code IS NULL )
+        OR (( lv_depart_code = cv_depart_type_k ) AND ( lt_department_screen_class = cv_depart_screen_class_base ) ) THEN
 /*--==============2009/2/3-END=========================--*/
         --参照コードマスタ：営業車の保管場所分類コード取得
         BEGIN
@@ -1302,7 +1311,9 @@ AS
 --
 /*--==============2009/2/3-START=========================--*/
 --      ELSIF ( lv_depart_code = cv_depart_type ) THEN
-      ELSIF ( lv_depart_code IS NOT NULL ) THEN
+--      ELSIF ( lv_depart_code IS NOT NULL ) THEN
+      ELSIF ( lv_depart_code = cv_depart_type ) 
+        OR (( lv_depart_code = cv_depart_type_k ) AND ( lt_department_screen_class = cv_depart_screen_class_dep ) )THEN
 /*--==============2009/2/3-END=========================--*/
         --参照コードマスタ：百貨店の保管場所分類コード取得
         BEGIN
@@ -1347,7 +1358,8 @@ AS
           FROM   mtl_secondary_inventories msi    -- 保管場所マスタ
           WHERE  msi.attribute7 = lt_base_code
           AND    msi.attribute13 = lt_depart_location_type_code
-          AND    msi.attribute4 = lt_customer_number;
+          AND    msi.attribute4 = lt_keep_in_code;
+--          AND    msi.attribute4 = lt_customer_number;
         EXCEPTION
           WHEN NO_DATA_FOUND THEN
             -- ログ出力          
@@ -1567,8 +1579,7 @@ AS
 --              lt_sale_amount := ROUND( lt_sale_amount );
 --            END IF;
 --          END IF;
-          ln_amount           := ( ( ( lt_state_wholesale_unit_ploce * lt_state_replenish_number ) )
-                                        * ln_tax_data );
+          ln_amount           := ( ( lt_state_wholesale_unit_ploce * lt_state_replenish_number ) );
           IF ( ln_amount <> TRUNC( ln_amount ) ) THEN
             IF ( lt_tax_odd = cv_amount_up ) THEN
               lt_sale_amount := ( TRUNC( ln_amount ) - 1 );
@@ -1648,8 +1659,7 @@ AS
 --              lt_sale_amount := ROUND( lt_sale_amount );
 --            END IF;
 --          END IF;
-          ln_amount           := ( ( ( lt_state_wholesale_unit_ploce * lt_state_replenish_number ) )
-                                        * ln_tax_data );
+          ln_amount           := ( ( lt_state_wholesale_unit_ploce * lt_state_replenish_number ) );
           IF ( ln_amount <> TRUNC( ln_amount ) ) THEN
             IF ( lt_tax_odd = cv_amount_up ) THEN
               lt_sale_amount := ( TRUNC( ln_amount ) - 1 );
@@ -1943,7 +1953,7 @@ AS
 --              lt_sale_amount := ROUND( lt_sale_amount );
 --            END IF;
 --          END IF;
-          ln_amount           := ( lt_sale_discount_amount * ln_tax_data);
+          ln_amount           := lt_sale_discount_amount;
           IF ( ln_amount <> TRUNC( ln_amount ) ) THEN
             IF ( lt_tax_odd = cv_amount_up ) THEN
               lt_sale_amount := ( TRUNC( ln_amount ) + 1 );
@@ -1997,7 +2007,7 @@ AS
 --              lt_sale_amount := ROUND( lt_sale_amount );
 --            END IF;
 --          END IF;
-          ln_amount           := ( lt_sale_discount_amount * ln_tax_data);
+          ln_amount           := lt_sale_discount_amount;
           IF ( ln_amount <> TRUNC( ln_amount ) ) THEN
             IF ( lt_tax_odd = cv_amount_up ) THEN
               lt_sale_amount := ( TRUNC( ln_amount ) + 1 );
@@ -2179,60 +2189,65 @@ AS
           IF ( lt_consumption_tax_class = cv_out_tax ) THEN      -- 外税
 --
             -- 売上金額合計
-            lt_sale_amount_sum := ( ( lt_total_amount - lt_sale_discount_amount ) * ln_tax_data );
-              IF ( lt_sale_amount_sum <> TRUNC( lt_sale_amount_sum ) ) THEN
+            ln_amount_deta := ( lt_total_amount - lt_sale_discount_amount );
+              IF ( ln_amount_deta <> TRUNC( ln_amount_deta ) ) THEN
                 IF ( lt_tax_odd = cv_amount_up ) THEN
-                lt_sale_amount_sum := ( TRUNC( lt_sale_amount_sum ) + 1 );
+                lt_sale_amount_sum := ( TRUNC( ln_amount_deta ) + 1 );
                 -- 切捨て
                 ELSIF ( lt_tax_odd = cv_amount_down ) THEN
-                  lt_sale_amount_sum := TRUNC( lt_sale_amount_sum );
+                  lt_sale_amount_sum := TRUNC( ln_amount_deta );
                 -- 四捨五入
                 ELSIF ( lt_tax_odd = cv_amount_nearest ) THEN
-                lt_sale_amount_sum := ROUND( lt_sale_amount_sum );
+                lt_sale_amount_sum := ROUND( ln_amount_deta );
                 END IF;
+              ELSE
+                lt_sale_amount_sum := ln_amount_deta;
               END IF;
               -- 本体金額合計
               lt_pure_amount_sum := ( lt_total_amount - lt_sale_discount_amount );
               -- 消費税金額合計
-              lt_tax_amount_sum  := ( lt_sale_amount_sum - lt_pure_amount_sum );
+              ln_amount_deta  := ( lt_sale_amount_sum  * ( ln_tax_data - 1 ) );
+              IF ( ln_amount_deta <> TRUNC( ln_amount_deta ) ) THEN
+                IF ( lt_tax_odd = cv_amount_up ) THEN
+                lt_tax_amount_sum := ( TRUNC( ln_amount_deta ) + 1 );
+                -- 切捨て
+                ELSIF ( lt_tax_odd = cv_amount_down ) THEN
+                  lt_tax_amount_sum := TRUNC( ln_amount_deta );
+                -- 四捨五入
+                ELSIF ( lt_tax_odd = cv_amount_nearest ) THEN
+                lt_tax_amount_sum := ROUND( ln_amount_deta );
+                END IF;
+              ELSE
+                lt_tax_amount_sum := ln_amount_deta;
+              END IF;
 --
           ELSIF ( lt_consumption_tax_class = cv_ins_slip_tax ) THEN -- 内税（伝票課税）
 --
             -- 売上金額合計
---            lt_sale_amount_sum := ( ( lt_total_amount - lt_sale_discount_amount ) * ln_tax_data );
---            IF ( lt_sale_amount_sum <> TRUNC( lt_sale_amount_sum ) ) THEN
---              IF ( lt_tax_odd = cv_amount_up ) THEN
---              lt_sale_amount_sum := ( TRUNC( lt_sale_amount_sum ) + 1 );
---              -- 切捨て
---              ELSIF ( lt_tax_odd = cv_amount_down ) THEN
---                lt_sale_amount_sum := TRUNC( lt_sale_amount_sum );
---              -- 四捨五入
---              ELSIF ( lt_tax_odd = cv_amount_nearest ) THEN
---                lt_sale_amount_sum := ROUND( lt_sale_amount_sum );
---              END IF;
---            END IF;
             lt_sale_amount_sum := lt_tax_include;
             -- 本体金額合計
             lt_pure_amount_sum := ( lt_total_amount - lt_sale_discount_amount );
             -- 消費税金額合計
-            lt_tax_amount_sum  := lt_sales_consumption_tax;--( lt_sale_amount_sum - lt_pure_amount_sum );
+            lt_tax_amount_sum  := lt_sales_consumption_tax;
 --
           ELSIF ( lt_consumption_tax_class = cv_ins_bid_tax ) THEN  -- 内税（単価込み）
 --
             -- 売上金額合計
             lt_sale_amount_sum := ( lt_total_amount - lt_sale_discount_amount );
             -- 本体金額合計
-            lt_pure_amount_sum := ( lt_sale_amount_sum / ln_tax_data );
-            IF ( lt_pure_amount_sum <> TRUNC( lt_pure_amount_sum ) ) THEN
+            ln_amount_deta := ( lt_sale_amount_sum / ln_tax_data );
+            IF ( ln_amount_deta <> TRUNC( ln_amount_deta ) ) THEN
               IF ( lt_tax_odd = cv_amount_up ) THEN
-                lt_pure_amount_sum := ( TRUNC( lt_pure_amount_sum ) + 1 );
+                lt_pure_amount_sum := ( TRUNC( ln_amount_deta ) + 1 );
               -- 切捨て
               ELSIF ( lt_tax_odd = cv_amount_down ) THEN
-                lt_pure_amount_sum := TRUNC( lt_pure_amount_sum );
+                lt_pure_amount_sum := TRUNC( ln_amount_deta );
               -- 四捨五入
               ELSIF ( lt_tax_odd = cv_amount_nearest ) THEN
-                 lt_pure_amount_sum:= ROUND( lt_pure_amount_sum );
+                lt_pure_amount_sum := ROUND( ln_amount_deta );
               END IF;
+            ELSE
+              lt_pure_amount_sum := ln_amount_deta;
             END IF;
             -- 値引消費税算出
             ln_discount_tax    := ( lt_sale_discount_amount - ( lt_sale_discount_amount / ln_tax_data ) );
@@ -2257,37 +2272,54 @@ AS
           IF ( lt_consumption_tax_class = cv_out_tax ) THEN      -- 外税
 --
             -- 売上金額合計
-            lt_sale_amount_sum := ( lt_total_amount * ln_tax_data );
-            IF ( lt_sale_amount_sum <> TRUNC( lt_sale_amount_sum ) ) THEN
+            ln_amount_deta := lt_total_amount;
+            IF ( ln_amount_deta <> TRUNC( ln_amount_deta ) ) THEN
               IF ( lt_tax_odd = cv_amount_up ) THEN
-              lt_sale_amount_sum := ( TRUNC( lt_sale_amount_sum ) + 1 );
+              lt_sale_amount_sum := ( TRUNC( ln_amount_deta ) + 1 );
               -- 切捨て
               ELSIF ( lt_tax_odd = cv_amount_down ) THEN
-                lt_sale_amount_sum := TRUNC( lt_sale_amount_sum );
+                lt_sale_amount_sum := TRUNC( ln_amount_deta );
               -- 四捨五入
               ELSIF ( lt_tax_odd = cv_amount_nearest ) THEN
-                lt_sale_amount_sum := ROUND( lt_sale_amount_sum );
+                lt_sale_amount_sum := ROUND( ln_amount_deta );
               END IF;
+            ELSE
+              lt_sale_amount_sum := ln_amount_deta;
             END IF;
             -- 本体金額合計
             lt_pure_amount_sum := lt_total_amount;
             -- 消費税金額合計
-            lt_tax_amount_sum  := ( lt_sale_amount_sum - lt_pure_amount_sum );
+            ln_amount_deta  := ( lt_sale_amount_sum * ( ln_tax_data - 1 ) );
+            IF ( ln_amount_deta <> TRUNC( ln_amount_deta ) ) THEN
+              IF ( lt_tax_odd = cv_amount_up ) THEN
+              lt_tax_amount_sum := ( TRUNC( ln_amount_deta ) + 1 );
+              -- 切捨て
+              ELSIF ( lt_tax_odd = cv_amount_down ) THEN
+                lt_tax_amount_sum := TRUNC( ln_amount_deta );
+              -- 四捨五入
+              ELSIF ( lt_tax_odd = cv_amount_nearest ) THEN
+                lt_tax_amount_sum := ROUND( ln_amount_deta );
+              END IF;
+            ELSE
+              lt_tax_amount_sum   := ln_amount_deta;
+            END IF;
 --
           ELSIF ( lt_consumption_tax_class = cv_ins_slip_tax ) THEN -- 内税（伝票課税）
 --
             -- 売上金額合計
-            lt_sale_amount_sum := ( lt_total_amount * ln_tax_data );
-            IF ( lt_sale_amount_sum <> TRUNC( lt_sale_amount_sum ) ) THEN
+            ln_amount_deta := ( lt_total_amount * ln_tax_data );
+            IF ( ln_amount_deta <> TRUNC( ln_amount_deta ) ) THEN
               IF ( lt_tax_odd = cv_amount_up ) THEN
-              lt_sale_amount_sum := ( TRUNC( lt_sale_amount_sum ) + 1 );
+              lt_sale_amount_sum := ( TRUNC( ln_amount_deta ) + 1 );
               -- 切捨て
               ELSIF ( lt_tax_odd = cv_amount_down ) THEN
-                lt_sale_amount_sum := TRUNC( lt_sale_amount_sum );
+                lt_sale_amount_sum := TRUNC( ln_amount_deta );
               -- 四捨五入
               ELSIF ( lt_tax_odd = cv_amount_nearest ) THEN
-                lt_sale_amount_sum := ROUND( lt_sale_amount_sum );
+                lt_sale_amount_sum := ROUND( ln_amount_deta );
               END IF;
+            ELSE
+              lt_sale_amount_sum := ln_amount_deta;
             END IF;
             -- 本体金額合計
             lt_pure_amount_sum := lt_total_amount;
@@ -2299,17 +2331,19 @@ AS
             -- 売上金額合計
             lt_sale_amount_sum := lt_total_amount;
             -- 本体金額合計
-            lt_pure_amount_sum := ( lt_total_amount / ln_tax_data );
-            IF ( lt_pure_amount_sum <> TRUNC( lt_pure_amount_sum ) ) THEN
+            ln_amount_deta := ( lt_total_amount / ln_tax_data );
+            IF ( ln_amount_deta <> TRUNC( ln_amount_deta ) ) THEN
               IF ( lt_tax_odd = cv_amount_up ) THEN
-                lt_pure_amount_sum := ( TRUNC( lt_pure_amount_sum ) + 1 );
+                lt_pure_amount_sum := ( TRUNC( ln_amount_deta ) + 1 );
               -- 切捨て
               ELSIF ( lt_tax_odd = cv_amount_down ) THEN
-                lt_pure_amount_sum := TRUNC( lt_pure_amount_sum );
+                lt_pure_amount_sum := TRUNC( ln_amount_deta );
               -- 四捨五入
               ELSIF ( lt_tax_odd = cv_amount_nearest ) THEN
-                lt_pure_amount_sum:= ROUND( lt_pure_amount_sum );
+                lt_pure_amount_sum := ROUND( ln_amount_deta );
               END IF;
+            ELSE
+              lt_pure_amount_sum := ln_amount_deta;
             END IF;
           -- 消費税金額合計
           lt_tax_amount_sum  := ln_all_tax_amount;
@@ -2325,8 +2359,8 @@ AS
         --================================================
         -- 値引明細がnull以外の時
         IF ( lt_sale_discount_amount IS NOT NULL ) AND ( lt_sale_discount_amount <> 0 )
-        AND ( lt_consumption_tax_class <> cv_ins_bid_tax ) THEN
-          ln_all_tax_amount := ( ln_all_tax_amount + lt_tax_amount );
+          AND ( lt_consumption_tax_class <> cv_ins_bid_tax ) THEN
+            ln_all_tax_amount := ( ln_all_tax_amount + lt_tax_amount );
         END IF;
         --
         IF ( ABS( lt_tax_amount_sum ) <> ABS( ln_all_tax_amount ) ) THEN
@@ -2833,7 +2867,8 @@ AS
 --
 /*--==============2009/2/3-START=========================--*/
 --      IF ( lv_depart_code = cv_depart_car ) THEN
-      IF ( lv_depart_code IS NULL ) THEN
+      IF ( lv_depart_code IS NULL ) 
+        OR (( lv_depart_code = cv_depart_type_k ) AND ( lt_department_screen_class = cv_depart_screen_class_base ) ) THEN
 /*--==============2009/2/3-END=========================--*/
         --参照コードマスタ：営業車の保管場所分類コード取得
         BEGIN
@@ -2893,7 +2928,9 @@ AS
 --
 /*--==============2009/2/3-START=========================--*/
 --      ELSIF ( lv_depart_code = cv_depart_type ) THEN
-      ELSIF ( lv_depart_code IS NOT NULL ) THEN
+--      ELSIF ( lv_depart_code IS NOT NULL ) THEN
+      ELSIF ( lv_depart_code = cv_depart_type ) 
+        OR (( lv_depart_code = cv_depart_type_k ) AND ( lt_department_screen_class = cv_depart_screen_class_dep ) )THEN
 /*--==============2009/2/3-END=========================--*/
         --参照コードマスタ：百貨店の保管場所分類コード取得
         BEGIN
@@ -2938,7 +2975,8 @@ AS
           FROM   mtl_secondary_inventories msi    -- 保管場所マスタ
           WHERE  msi.attribute7 = lt_base_code
           AND    msi.attribute13 = lt_depart_location_type_code
-          AND    msi.attribute4 = lt_customer_number;
+          AND    msi.attribute4 = lt_keep_in_code;
+--          AND    msi.attribute4 = lt_customer_number;
         EXCEPTION
           WHEN NO_DATA_FOUND THEN
             -- ログ出力          
@@ -3146,7 +3184,7 @@ AS
           -- 売上金額
 --          lt_sale_amount           := ( ( ( lt_state_wholesale_unit_ploce * lt_state_replenish_number ) )
 --                                        * ln_tax_data );
-          ln_amount_deta           := ( ( ( lt_state_wholesale_unit_ploce * lt_state_replenish_number ) ) * ln_tax_data );
+          ln_amount_deta           := ( lt_state_wholesale_unit_ploce * lt_state_replenish_number ) ;
           IF ( ln_amount_deta <> TRUNC( ln_amount_deta ) ) THEN
             IF ( lt_tax_odd = cv_amount_up ) THEN
               lt_sale_amount := ( TRUNC( ln_amount_deta ) - 1 );
@@ -3188,7 +3226,7 @@ AS
           -- 売上金額
 --          lt_sale_amount           := ( ( ( lt_state_wholesale_unit_ploce * lt_state_replenish_number ) )
 --                                        * ln_tax_data );
-          ln_amount_deta           := ( ( ( lt_state_wholesale_unit_ploce * lt_state_replenish_number ) ) * ln_tax_data );
+          ln_amount_deta           := ( ( lt_state_wholesale_unit_ploce * lt_state_replenish_number ) );
           IF ( ln_amount_deta <> TRUNC( ln_amount_deta ) ) THEN
             IF ( lt_tax_odd = cv_amount_up ) THEN
               lt_sale_amount := ( TRUNC( ln_amount_deta ) - 1 );
@@ -3418,13 +3456,11 @@ AS
           lt_standard_unit_price   := lt_sale_discount_amount;
           -- 売上金額
 --          lt_sale_amount           := ( lt_sale_discount_amount * ln_tax_data);
-          ln_amount_deta           := ( lt_sale_discount_amount * ln_tax_data);
+          ln_amount_deta           := lt_sale_discount_amount;
           IF ( ln_amount_deta <> TRUNC( ln_amount_deta ) ) THEN
---
             -- 切上
             IF ( lt_tax_odd = cv_amount_up ) THEN
               lt_sale_amount := ( TRUNC( ln_amount_deta ) + 1 );
---
             -- 切捨て
             ELSIF ( lt_tax_odd = cv_amount_down ) THEN
               lt_sale_amount := TRUNC( ln_amount_deta );
@@ -3438,7 +3474,21 @@ AS
           -- 本体金額
           lt_pure_amount           := lt_sale_discount_amount;
           -- 消費税金額
-          lt_tax_amount            := ( lt_sale_amount - lt_pure_amount );
+          ln_amount_deta            := ( lt_sale_amount * (ln_tax_data - 1 ) );
+          IF ( ln_amount_deta <> TRUNC( ln_amount_deta ) ) THEN
+            -- 切上
+            IF ( lt_tax_odd = cv_amount_up ) THEN
+              lt_tax_amount := ( TRUNC( ln_amount_deta ) + 1 );
+            -- 切捨て
+            ELSIF ( lt_tax_odd = cv_amount_down ) THEN
+              lt_tax_amount := TRUNC( ln_amount_deta );
+            -- 四捨五入
+            ELSIF ( lt_tax_odd = cv_amount_nearest ) THEN
+              lt_tax_amount := ROUND( ln_amount_deta );
+            END IF;
+          ELSE
+            lt_tax_amount := ln_amount_deta;
+          END IF;
 --
         ELSIF ( lt_consumption_tax_class = cv_ins_slip_tax ) THEN -- 内税（伝票課税）
 --
@@ -3448,9 +3498,8 @@ AS
           lt_standard_unit_price   := lt_sale_discount_amount;
           -- 売上金額
 --          lt_sale_amount           := ( lt_sale_discount_amount * ln_tax_data);
-          ln_amount_deta           := ( lt_sale_discount_amount * ln_tax_data);
+          ln_amount_deta           := lt_sale_discount_amount;
           IF ( ln_amount_deta <> TRUNC( ln_amount_deta ) ) THEN
---
             -- 切上
             IF ( lt_tax_odd = cv_amount_up ) THEN
               lt_sale_amount := ( TRUNC( ln_amount_deta ) + 1 );
@@ -3467,7 +3516,21 @@ AS
           -- 本体金額
           lt_pure_amount           := lt_sale_discount_amount;
           -- 消費税金額
-          lt_tax_amount            := ( lt_sale_amount - lt_pure_amount );
+          ln_amount_deta            := ( lt_sale_amount * ( ln_tax_data - 1 ) ); 
+          IF ( ln_amount_deta <> TRUNC( ln_amount_deta ) ) THEN
+            -- 切上
+            IF ( lt_tax_odd = cv_amount_up ) THEN
+              lt_tax_amount := ( TRUNC( ln_amount_deta ) + 1 );
+            -- 切捨て
+            ELSIF ( lt_tax_odd = cv_amount_down ) THEN
+              lt_tax_amount := TRUNC( ln_amount_deta );
+            -- 四捨五入
+            ELSIF ( lt_tax_odd = cv_amount_nearest ) THEN
+              lt_tax_amount := ROUND( ln_amount_deta );
+            END IF;
+          ELSE
+            lt_tax_amount := ln_amount_deta;
+          END IF;
 --
         ELSIF ( lt_consumption_tax_class = cv_ins_bid_tax ) THEN  -- 内税（単価込み）
 --
@@ -3591,7 +3654,7 @@ AS
           IF ( lt_consumption_tax_class = cv_out_tax ) THEN      -- 外税
 --
             -- 売上金額合計
-            lt_sale_amount_sum := ( lt_tax_include * ln_tax_data );
+            lt_sale_amount_sum := lt_tax_include;
               IF ( lt_sale_amount_sum <> TRUNC( lt_sale_amount_sum ) ) THEN
                 IF ( lt_tax_odd = cv_amount_up ) THEN
                 lt_sale_amount_sum := ( TRUNC( lt_sale_amount_sum ) + 1 );
@@ -3606,7 +3669,20 @@ AS
               -- 本体金額合計
               lt_pure_amount_sum := lt_tax_include;
               -- 消費税金額合計
-              lt_tax_amount_sum  := ( lt_sale_amount_sum - lt_pure_amount_sum );
+              ln_amount_deta  := ( lt_sale_amount_sum * ( ln_tax_data - 1 ) );
+            IF ( ln_amount_deta <> TRUNC( ln_amount_deta ) ) THEN
+              IF ( lt_tax_odd = cv_amount_up ) THEN
+                lt_tax_amount_sum := ( TRUNC( ln_amount_deta ) + 1 );
+              -- 切捨て
+              ELSIF ( lt_tax_odd = cv_amount_down ) THEN
+                lt_tax_amount_sum := TRUNC( ln_amount_deta );
+              -- 四捨五入
+              ELSIF ( lt_tax_odd = cv_amount_nearest ) THEN
+                 lt_tax_amount_sum:= ROUND( ln_amount_deta );
+              END IF;
+            ELSE
+              lt_tax_amount_sum := ln_amount_deta;
+            END IF;
 --
           ELSIF ( lt_consumption_tax_class = cv_ins_slip_tax ) THEN -- 内税（伝票課税）
 --
@@ -3664,6 +3740,42 @@ AS
 --
             -- 売上金額合計
 --            lt_sale_amount_sum := ( lt_total_amount * ln_tax_data );
+            ln_amount_deta     := lt_total_amount ;
+            IF ( ln_amount_deta <> TRUNC( ln_amount_deta ) ) THEN
+              IF ( lt_tax_odd = cv_amount_up ) THEN
+              lt_sale_amount_sum := ( TRUNC( ln_amount_deta ) + 1 );
+              -- 切捨て
+              ELSIF ( lt_tax_odd = cv_amount_down ) THEN
+                lt_sale_amount_sum := TRUNC( ln_amount_deta );
+              -- 四捨五入
+              ELSIF ( lt_tax_odd = cv_amount_nearest ) THEN
+                lt_sale_amount_sum := ROUND( ln_amount_deta );
+              END IF;
+            ELSE
+              lt_sale_amount_sum   := ln_amount_deta;
+            END IF;
+            -- 本体金額合計
+            lt_pure_amount_sum := lt_total_amount;
+            -- 消費税金額合計
+            ln_amount_deta  := ( lt_sale_amount_sum * ( ln_tax_data - 1 ) );
+            IF ( ln_amount_deta <> TRUNC( ln_amount_deta ) ) THEN
+              IF ( lt_tax_odd = cv_amount_up ) THEN
+              lt_tax_amount_sum := ( TRUNC( ln_amount_deta ) + 1 );
+              -- 切捨て
+              ELSIF ( lt_tax_odd = cv_amount_down ) THEN
+                lt_tax_amount_sum := TRUNC( ln_amount_deta );
+              -- 四捨五入
+              ELSIF ( lt_tax_odd = cv_amount_nearest ) THEN
+                lt_tax_amount_sum := ROUND( ln_amount_deta );
+              END IF;
+            ELSE
+              lt_tax_amount_sum   := ln_amount_deta;
+            END IF;
+--
+          ELSIF ( lt_consumption_tax_class = cv_ins_slip_tax ) THEN -- 内税（伝票課税）
+--
+            -- 売上金額合計
+--            lt_sale_amount_sum := ( lt_total_amount * ln_tax_data );
             ln_amount_deta     := ( lt_total_amount * ln_tax_data );
             IF ( ln_amount_deta <> TRUNC( ln_amount_deta ) ) THEN
               IF ( lt_tax_odd = cv_amount_up ) THEN
@@ -3681,30 +3793,20 @@ AS
             -- 本体金額合計
             lt_pure_amount_sum := lt_total_amount;
             -- 消費税金額合計
-            lt_tax_amount_sum  := ( lt_sale_amount_sum - lt_pure_amount_sum );
---
-          ELSIF ( lt_consumption_tax_class = cv_ins_slip_tax ) THEN -- 内税（伝票課税）
---
-            -- 売上金額合計
---            lt_sale_amount_sum := ( lt_total_amount * ln_tax_data );
-            ln_amount_deta     := ( lt_total_amount * ln_tax_data );
-            IF ( lt_sale_amount_sum <> TRUNC( ln_amount_deta ) ) THEN
+            ln_amount_deta  := ( lt_sale_amount_sum - lt_pure_amount_sum );
+            IF ( ln_amount_deta <> TRUNC( ln_amount_deta ) ) THEN
               IF ( lt_tax_odd = cv_amount_up ) THEN
-              lt_sale_amount_sum := ( TRUNC( ln_amount_deta ) + 1 );
+                lt_tax_amount_sum := ( TRUNC( ln_amount_deta ) + 1 );
               -- 切捨て
               ELSIF ( lt_tax_odd = cv_amount_down ) THEN
-                lt_sale_amount_sum := TRUNC( ln_amount_deta );
+                lt_tax_amount_sum := TRUNC( ln_amount_deta );
               -- 四捨五入
               ELSIF ( lt_tax_odd = cv_amount_nearest ) THEN
-                lt_sale_amount_sum := ROUND( ln_amount_deta );
+                lt_tax_amount_sum := ROUND( ln_amount_deta );
               END IF;
             ELSE
-              lt_sale_amount_sum   := ln_amount_deta;
+              lt_tax_amount_sum   := ln_amount_deta;
             END IF;
-            -- 本体金額合計
-            lt_pure_amount_sum := lt_total_amount;
-            -- 消費税金額合計
-            lt_tax_amount_sum  := ( lt_sale_amount_sum - lt_pure_amount_sum );
 --
           ELSIF ( lt_consumption_tax_class = cv_ins_bid_tax ) THEN  -- 内税（単価込み）
 --  
@@ -3739,9 +3841,9 @@ AS
         --ヘッダ売上消費税額と明細売上消費税額比較判断処理
         --================================================
         -- 値引明細がnull以外の時
-        IF ( lt_sale_discount_amount IS NOT NULL ) AND ( lt_sale_discount_amount <> 0 )
-        AND ( lt_consumption_tax_class <> cv_ins_bid_tax ) THEN
-          ln_all_tax_amount := ( ln_all_tax_amount + lt_tax_amount );
+        IF ( lt_sale_discount_amount IS NOT NULL ) AND ( lt_sale_discount_amount <> 0 ) 
+          AND ( lt_consumption_tax_class <> cv_ins_bid_tax ) THEN
+            ln_all_tax_amount := ( ln_all_tax_amount + lt_tax_amount );
         END IF;
         --
         IF ( ABS( lt_tax_amount_sum ) <> ABS( ln_all_tax_amount ) ) THEN
