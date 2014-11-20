@@ -7,7 +7,7 @@ AS
  * Description      : 在庫（帳票）
  * MD.050/070       : 在庫（帳票）Issue1.0  (T_MD050_BPO_550)
  *                    受払残高リスト        (T_MD070_BPO_55A)
- * Version          : 1.26
+ * Version          : 1.27
  *
  * Program List
  * -------------------------- ----------------------------------------------------------
@@ -53,6 +53,7 @@ AS
  *  2008/12/02    1.24  Yasuhisa Yamamoto  本番指摘 #321対応
  *  2008/12/04    1.25  Hitomi Itou        本番指摘 #362対応
  *  2008/12/07    1.26  Natsuki Yoshida    本番指摘 #520対応
+ *  2008/12/07    1.27  Yasuhisa Yamamoto  統合指摘 #503,509対応
  *****************************************************************************************/
 --
 --#######################  固定グローバル定数宣言部 START   #######################
@@ -1137,7 +1138,9 @@ AS
                     AND    xrpm6v.doc_type                   = itc_adji.doc_type
                     AND    xrpm6v.reason_code                = itc_adji.reason_code
 -- 08/11/17 Y.Yamamoto ADD v1.23 Start
-                    AND    xrpm6v.rcv_pay_div                = TO_CHAR( SIGN( itc_adji.trans_qty ) )
+-- 08/12/07 Y.Yamamoto delete v1.27 Start
+--                    AND    xrpm6v.rcv_pay_div                = TO_CHAR( SIGN( itc_adji.trans_qty ) )
+-- 08/12/07 Y.Yamamoto delete v1.27 end
 -- 08/11/17 Y.Yamamoto ADD v1.23 End
 -- 08/05/07 Y.Yamamoto Update v1.1 Start
 --                    AND    xrpm6v.rcv_pay_div                = SIGN( itc_adji.trans_qty )
@@ -2101,7 +2104,9 @@ AS
                     AND    xrpm6v.doc_type                   = itc_adji.doc_type
                     AND    xrpm6v.reason_code                = itc_adji.reason_code
 -- 08/11/17 Y.Yamamoto ADD v1.23 Start
-                    AND    xrpm6v.rcv_pay_div                = TO_CHAR( SIGN( itc_adji.trans_qty ) )
+-- 08/12/07 Y.Yamamoto delete v1.27 Start
+--                    AND    xrpm6v.rcv_pay_div                = TO_CHAR( SIGN( itc_adji.trans_qty ) )
+-- 08/12/07 Y.Yamamoto delete v1.27 end
 -- 08/11/17 Y.Yamamoto ADD v1.23 End
 -- 08/05/07 Y.Yamamoto Update v1.1 Start
 --                    AND    xrpm6v.rcv_pay_div                = SIGN( itc_adji.trans_qty )
