@@ -1,4 +1,4 @@
-CREATE OR REPLACE PACKAGE XXCOS004A01C
+CREATE OR REPLACE PACKAGE APPS.XXCOS004A01C 
 AS
 /*****************************************************************************************
  * Copyright(c)Sumisho Computer Systems Corporation, 2008. All rights reserved.
@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCOS004A01C (spec)
  * Description      : 店舗別掛率作成
  * MD.050           : 店舗別掛率作成 MD050_COS_004_A01
- * Version          : 1.1
+ * Version          : 1.7
  *
  * Program List
  * -------------------- ------------------------------------------------------------
@@ -23,6 +23,14 @@ AS
  *  2009/02/10    1.2   T.kitajima       [COS_057]顧客区分絞り込み条件不足対応(仕様漏れ)
  *  2009/02/17    1.3   T.kitajima       get_msgのパッケージ名修正
  *  2009/02/24    1.4   T.kitajima       パラメータのログファイル出力対応
+ *  2009/03/05    1.5   N.Maeda          棚卸減耗の抽出時の計算処理削除
+ *                                       ・修正前
+ *                                         ⇒sirm.inv_wear * -1
+ *                                       ・修正後
+ *                                         ⇒sirm.inv_wear
+ *  2009/03/19    1.6   T.kitajima       [T1_0093]INV月次在庫受払い表情報取得修正
+ *  2009/07/17    1.7   T.Tominaga       [0000429]PTの考慮、ロック処理の条件修正
+ *  2009/08/03    1.7   N.Maeda          [0000429] レビュー指摘対応
  *
  *****************************************************************************************/
 --
