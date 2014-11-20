@@ -8,7 +8,7 @@ AS
  *                    CSVファイルを作成します。
  * MD.050           :  MD050_CSO_016_A04_情報系-EBSインターフェース：
  *                     (OUT)訪問実績データ
- * Version          : 1.13
+ * Version          : 1.14
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -22,7 +22,7 @@ AS
  *  get_accounts_data      顧客マスタ・顧客アドオンマスタ抽出(A-7)
  *  get_extrnl_rfrnc       インストールベースマスタ抽出(A-8)
  *  get_sl_rslts_data      販売実績ヘッダーテーブル・販売実績明細テーブル抽出(A-9)
- *  create_csv_rec         訪問実績データCSV出力(A-11)
+ *  create_csv_rec         訪問実績データCSV出力(A-12)
  *  close_csv_file         CSVファイルクローズ処理(A-13)
  *  submain                メイン処理プロシージャ
  *                         訪問実績データ抽出(A-6)
@@ -50,6 +50,7 @@ AS
  *  2009-12-02    1.11  T.Maruyama       障害対応(E_本稼動_00081)
  *  2009-12-11    1.12  K.Hosoi          障害対応(E_本稼動_00413)
  *  2010-04-08    1.13  Daisuke.Abe      障害対応(E_本稼動_02021)
+ *  2011-08-05    1.14  K.Kiriu          障害対応(E_本稼動_06766)
  *****************************************************************************************/
 --
 --#######################  固定グローバル定数宣言部 START   #######################
@@ -1417,7 +1418,7 @@ AS
 --
   /**********************************************************************************
    * Procedure Name   : create_csv_rec
-   * Description      : 訪問実績データCSV出力(A-11)
+   * Description      : 訪問実績データCSV出力(A-12)
    ***********************************************************************************/
   PROCEDURE create_csv_rec(
      i_get_data_rec      IN  g_get_data_rtype        -- 訪問実績データ
@@ -2280,46 +2281,50 @@ AS
       AND    ala.lead_id                 = jtb.source_object_id
       /* 2009.10.23 D.Abe E_T4_00056対応 END */
       ;
-    -- 前回訪問日抽出カーソル
-    CURSOR get_lst_vst_dt_cur(
-              it_srce_objct_id  IN jtf_tasks_b.source_object_id%TYPE -- パーティID
-             ,it_task_id        IN jtf_tasks_b.task_id%TYPE          -- タスクID
-             ,it_act_end_dt     IN jtf_tasks_b.actual_end_date%TYPE  -- 実績終了日
-           )
-    IS
-      SELECT  jtb.actual_end_date   actual_end_date   -- 前回訪問日
-             ,jtb.attribute11       attribute11       -- 有効訪問区分
-             ,jtb.attribute12       attribute12       -- 登録区分
-      FROM   jtf_tasks_b    jtb                       -- タスクテーブル
-      WHERE  jtb.source_object_type_code = cv_src_obj_tp_cd
-        AND  jtb.task_status_id          = TO_NUMBER(lv_tsk_stts_cls)
-        AND  jtb.owner_type_code         = cv_owner_tp_cd
-        AND  jtb.source_object_id        = it_srce_objct_id
-        AND  jtb.task_id                <> it_task_id
-        AND  jtb.actual_end_date        <= it_act_end_dt
-        AND  jtb.deleted_flag            = cv_no
-      /* 2009.04.22 K.Satomura T1_0478対応 START */
-      UNION ALL
-      SELECT jtb.actual_end_date actual_end_date -- 前回訪問日
-            ,jtb.attribute11     attribute11     -- 有効訪問区分
-            ,jtb.attribute12     attribute12     -- 登録区分
-      FROM   jtf_tasks_b  jtb -- タスクテーブル
-            ,as_leads_all ala -- 商談テーブル
-      WHERE  jtb.source_object_type_code =  cv_src_obj_tp_cd_opp
-      AND    jtb.task_status_id          =  TO_NUMBER(lv_tsk_stts_cls)
-      AND    jtb.owner_type_code         =  cv_owner_tp_cd
-      AND    jtb.task_id                 <> it_task_id
-      AND    jtb.actual_end_date         <= it_act_end_dt
-      AND    jtb.deleted_flag            =  cv_no
-      AND    ala.lead_id                 =  jtb.source_object_id
-      AND    ala.customer_id             =  it_srce_objct_id
-      /* 2009.04.22 K.Satomura T1_0478対応 END */
-      ORDER BY actual_end_date DESC
-    ;
+    /* 2011-08-05 Ver1.14 Del Start */
+--    -- 前回訪問日抽出カーソル
+--    CURSOR get_lst_vst_dt_cur(
+--              it_srce_objct_id  IN jtf_tasks_b.source_object_id%TYPE -- パーティID
+--             ,it_task_id        IN jtf_tasks_b.task_id%TYPE          -- タスクID
+--             ,it_act_end_dt     IN jtf_tasks_b.actual_end_date%TYPE  -- 実績終了日
+--           )
+--    IS
+--      SELECT  jtb.actual_end_date   actual_end_date   -- 前回訪問日
+--             ,jtb.attribute11       attribute11       -- 有効訪問区分
+--             ,jtb.attribute12       attribute12       -- 登録区分
+--      FROM   jtf_tasks_b    jtb                       -- タスクテーブル
+--      WHERE  jtb.source_object_type_code = cv_src_obj_tp_cd
+--        AND  jtb.task_status_id          = TO_NUMBER(lv_tsk_stts_cls)
+--        AND  jtb.owner_type_code         = cv_owner_tp_cd
+--        AND  jtb.source_object_id        = it_srce_objct_id
+--        AND  jtb.task_id                <> it_task_id
+--        AND  jtb.actual_end_date        <= it_act_end_dt
+--        AND  jtb.deleted_flag            = cv_no
+--      /* 2009.04.22 K.Satomura T1_0478対応 START */
+--      UNION ALL
+--      SELECT jtb.actual_end_date actual_end_date -- 前回訪問日
+--            ,jtb.attribute11     attribute11     -- 有効訪問区分
+--            ,jtb.attribute12     attribute12     -- 登録区分
+--      FROM   jtf_tasks_b  jtb -- タスクテーブル
+--            ,as_leads_all ala -- 商談テーブル
+--      WHERE  jtb.source_object_type_code =  cv_src_obj_tp_cd_opp
+--      AND    jtb.task_status_id          =  TO_NUMBER(lv_tsk_stts_cls)
+--      AND    jtb.owner_type_code         =  cv_owner_tp_cd
+--      AND    jtb.task_id                 <> it_task_id
+--      AND    jtb.actual_end_date         <= it_act_end_dt
+--      AND    jtb.deleted_flag            =  cv_no
+--      AND    ala.lead_id                 =  jtb.source_object_id
+--      AND    ala.customer_id             =  it_srce_objct_id
+--      /* 2009.04.22 K.Satomura T1_0478対応 END */
+--      ORDER BY actual_end_date DESC
+--    ;
+    /* 2011-08-05 Ver1.14 Del End   */
 --
     -- *** ローカル・レコード ***
     l_get_vst_rslt_dt_rec     get_vst_rslt_data_cur%ROWTYPE;
-    l_get_lst_vst_dt_rec      get_lst_vst_dt_cur%ROWTYPE;
+    /* 2011-08-05 Ver1.14 Del Start */
+--    l_get_lst_vst_dt_rec      get_lst_vst_dt_cur%ROWTYPE;
+    /* 2011-08-05 Ver1.14 Del End   */
     l_get_data_rec            g_get_data_rtype;
     -- *** ローカル例外 ***
     error_skip_data_expt           EXCEPTION;   -- 処理スキップ例外
@@ -2583,52 +2588,56 @@ AS
         -- ========================================
         -- A-10.前回訪問日抽出
         -- ========================================
-        -- カーソルオープン
-        OPEN get_lst_vst_dt_cur(
-              it_srce_objct_id  => l_get_data_rec.source_object_id  -- パーティID
-             ,it_task_id        => l_get_data_rec.task_id           -- タスクID
-             ,it_act_end_dt     => l_get_data_rec.actual_end_date   -- 実績終了日
-             );
---
-        <<get_lst_vst_dt_loop>>
-        LOOP
-          FETCH get_lst_vst_dt_cur INTO l_get_lst_vst_dt_rec;
-          -- 処理対象データが存在しなかった場合、1件目を抽出し終えた場合 EXIT
-          EXIT WHEN get_lst_vst_dt_cur%NOTFOUND
-          OR  get_lst_vst_dt_cur%ROWCOUNT = 0;
---
-          -- 前回訪問日を格納
-          l_get_data_rec.actual_end_date_lt := l_get_lst_vst_dt_rec.actual_end_date;
---
-        -- 有効訪問区分が有効(1)かつ登録区分が納品情報(3)もしくは消化計算(5)の場合 
-          IF (l_get_lst_vst_dt_rec.attribute11 = cv_active) THEN
-            IF (l_get_lst_vst_dt_rec.attribute12 IN (cv_dlv_gds_info,cv_abrb_clclt)) THEN
-              -- 有効訪問区分に1(有効)を設定
-              l_get_data_rec.act_vst_dvsn_lt := cv_active;
-            ELSE
-              -- 有効訪問区分に0(無効)を設定
-              l_get_data_rec.act_vst_dvsn_lt := cv_invalid;
-            END IF;
-          ELSE
-            -- 有効訪問区分に0(無効)を設定
-            l_get_data_rec.act_vst_dvsn_lt := cv_invalid;
-          END IF;
---
-          -- 一件目取得できた時点でループを抜けます。
-          EXIT WHEN get_lst_vst_dt_cur%NOTFOUND
-          OR  get_lst_vst_dt_cur%ROWCOUNT <> 0;
---
-        END LOOP get_lst_vst_dt_loop;
-        -- 前回訪問日抽出カーソルで、対象データが存在しなかった場合
-        IF (get_lst_vst_dt_cur%ROWCOUNT = 0) THEN
-          l_get_data_rec.actual_end_date_lt := NULL;  -- 前回訪問日
-          l_get_data_rec.act_vst_dvsn_lt    := NULL;  -- 有効訪問区分
-        END IF;
-        -- カーソルクローズ
-        CLOSE get_lst_vst_dt_cur;
-
+        /* 2011-08-05 Ver1.14 Mod Start */
+--        -- カーソルオープン
+--        OPEN get_lst_vst_dt_cur(
+--              it_srce_objct_id  => l_get_data_rec.source_object_id  -- パーティID
+--             ,it_task_id        => l_get_data_rec.task_id           -- タスクID
+--             ,it_act_end_dt     => l_get_data_rec.actual_end_date   -- 実績終了日
+--             );
+----
+--        <<get_lst_vst_dt_loop>>
+--        LOOP
+--          FETCH get_lst_vst_dt_cur INTO l_get_lst_vst_dt_rec;
+--          -- 処理対象データが存在しなかった場合、1件目を抽出し終えた場合 EXIT
+--          EXIT WHEN get_lst_vst_dt_cur%NOTFOUND
+--          OR  get_lst_vst_dt_cur%ROWCOUNT = 0;
+----
+--          -- 前回訪問日を格納
+--          l_get_data_rec.actual_end_date_lt := l_get_lst_vst_dt_rec.actual_end_date;
+----
+--        -- 有効訪問区分が有効(1)かつ登録区分が納品情報(3)もしくは消化計算(5)の場合 
+--          IF (l_get_lst_vst_dt_rec.attribute11 = cv_active) THEN
+--            IF (l_get_lst_vst_dt_rec.attribute12 IN (cv_dlv_gds_info,cv_abrb_clclt)) THEN
+--              -- 有効訪問区分に1(有効)を設定
+--              l_get_data_rec.act_vst_dvsn_lt := cv_active;
+--            ELSE
+--              -- 有効訪問区分に0(無効)を設定
+--              l_get_data_rec.act_vst_dvsn_lt := cv_invalid;
+--            END IF;
+--          ELSE
+--            -- 有効訪問区分に0(無効)を設定
+--            l_get_data_rec.act_vst_dvsn_lt := cv_invalid;
+--          END IF;
+----
+--          -- 一件目取得できた時点でループを抜けます。
+--          EXIT WHEN get_lst_vst_dt_cur%NOTFOUND
+--          OR  get_lst_vst_dt_cur%ROWCOUNT <> 0;
+----
+--        END LOOP get_lst_vst_dt_loop;
+--        -- 前回訪問日抽出カーソルで、対象データが存在しなかった場合
+--        IF (get_lst_vst_dt_cur%ROWCOUNT = 0) THEN
+--          l_get_data_rec.actual_end_date_lt := NULL;  -- 前回訪問日
+--          l_get_data_rec.act_vst_dvsn_lt    := NULL;  -- 有効訪問区分
+--        END IF;
+--        -- カーソルクローズ
+--        CLOSE get_lst_vst_dt_cur;
+        --NULLを設定する
+        l_get_data_rec.actual_end_date_lt := NULL;  -- 前回訪問日
+        l_get_data_rec.act_vst_dvsn_lt    := NULL;  -- 有効訪問区分
+        /* 2011-08-05 Ver1.14 Mod End   */
         -- ========================================
-        -- A-11.訪問実績データCSV出力
+        -- A-12.訪問実績データCSV出力
         -- ========================================
         create_csv_rec(
           i_get_data_rec      =>  l_get_data_rec   -- 訪問実績データ
@@ -2857,20 +2866,22 @@ AS
                    ''
       );
       END IF;
-      -- カーソルがクローズされていない場合
-      IF (get_lst_vst_dt_cur%ISOPEN) THEN
-        -- カーソルクローズ
-        CLOSE get_lst_vst_dt_cur;
-      -- *** DEBUG_LOG ***
-      -- カーソルクローズしたことをログ出力
-      fnd_file.put_line(
-         which  => FND_FILE.LOG
-        ,buff   => cv_debug_msg_ccls2|| CHR(10) ||
-                   cv_prg_name       || cv_msg_part ||
-                   cv_debug_msg_err1 || CHR(10) ||
-                   ''
-      );
-      END IF;
+      /* 2011-08-05 Ver1.14 Del Start */
+--      -- カーソルがクローズされていない場合
+--      IF (get_lst_vst_dt_cur%ISOPEN) THEN
+--        -- カーソルクローズ
+--        CLOSE get_lst_vst_dt_cur;
+--      -- *** DEBUG_LOG ***
+--      -- カーソルクローズしたことをログ出力
+--      fnd_file.put_line(
+--         which  => FND_FILE.LOG
+--        ,buff   => cv_debug_msg_ccls2|| CHR(10) ||
+--                   cv_prg_name       || cv_msg_part ||
+--                   cv_debug_msg_err1 || CHR(10) ||
+--                   ''
+--      );
+--      END IF;
+      /* 2011-08-05 Ver1.14 Del End   */
 --
       ov_errmsg  := lv_errmsg;
       ov_errbuf  := SUBSTRB(cv_pkg_name||cv_msg_cont||cv_prg_name||cv_msg_part||lv_errbuf,1,5000);
@@ -2915,20 +2926,22 @@ AS
                    ''
       );
       END IF;
-      -- カーソルがクローズされていない場合
-      IF (get_lst_vst_dt_cur%ISOPEN) THEN
-        -- カーソルクローズ
-        CLOSE get_lst_vst_dt_cur;
-      -- *** DEBUG_LOG ***
-      -- カーソルクローズしたことをログ出力
-      fnd_file.put_line(
-         which  => FND_FILE.LOG
-        ,buff   => cv_debug_msg_ccls2|| CHR(10) ||
-                   cv_prg_name       || cv_msg_part ||
-                   cv_debug_msg_err2 || CHR(10) ||
-                   ''
-      );
-      END IF;
+      /* 2011-08-05 Ver1.14 Del Start */
+--      -- カーソルがクローズされていない場合
+--      IF (get_lst_vst_dt_cur%ISOPEN) THEN
+--        -- カーソルクローズ
+--        CLOSE get_lst_vst_dt_cur;
+--      -- *** DEBUG_LOG ***
+--      -- カーソルクローズしたことをログ出力
+--      fnd_file.put_line(
+--         which  => FND_FILE.LOG
+--        ,buff   => cv_debug_msg_ccls2|| CHR(10) ||
+--                   cv_prg_name       || cv_msg_part ||
+--                   cv_debug_msg_err2 || CHR(10) ||
+--                   ''
+--      );
+--      END IF;
+      /* 2011-08-05 Ver1.14 Del End   */
 --
       ov_errbuf  := cv_pkg_name||cv_msg_cont||cv_prg_name||cv_msg_part||SQLERRM||lv_errbuf;
       ov_retcode := cv_status_error;
@@ -2972,20 +2985,22 @@ AS
                    ''
       );
       END IF;
-      -- カーソルがクローズされていない場合
-      IF (get_lst_vst_dt_cur%ISOPEN) THEN
-        -- カーソルクローズ
-        CLOSE get_lst_vst_dt_cur;
-      -- *** DEBUG_LOG ***
-      -- カーソルクローズしたことをログ出力
-      fnd_file.put_line(
-         which  => FND_FILE.LOG
-        ,buff   => cv_debug_msg_ccls2|| CHR(10) ||
-                   cv_prg_name       || cv_msg_part ||
-                   cv_debug_msg_err3 || CHR(10) ||
-                   ''
-      );
-      END IF;
+      /* 2011-08-05 Ver1.14 Del Start */
+--      -- カーソルがクローズされていない場合
+--      IF (get_lst_vst_dt_cur%ISOPEN) THEN
+--        -- カーソルクローズ
+--        CLOSE get_lst_vst_dt_cur;
+--      -- *** DEBUG_LOG ***
+--      -- カーソルクローズしたことをログ出力
+--      fnd_file.put_line(
+--         which  => FND_FILE.LOG
+--        ,buff   => cv_debug_msg_ccls2|| CHR(10) ||
+--                   cv_prg_name       || cv_msg_part ||
+--                   cv_debug_msg_err3 || CHR(10) ||
+--                   ''
+--      );
+--      END IF;
+      /* 2011-08-05 Ver1.14 Del End   */
 --
       ov_errbuf  := cv_pkg_name||cv_msg_cont||cv_prg_name||cv_msg_part||SQLERRM;
       ov_retcode := cv_status_error;
