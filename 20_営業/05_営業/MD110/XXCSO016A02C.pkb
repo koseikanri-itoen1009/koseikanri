@@ -8,7 +8,7 @@ AS
  *                    CSVファイルを作成します。
  * MD.050           : MD050_CSO_016_A02_情報系-EBSインターフェース：
  *                    (OUT)営業員マスタ
- * Version          : 1.3
+ * Version          : 1.5
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -34,6 +34,7 @@ AS
  *  2009-03-26    1.2   M.Maruyama      【ST障害T01_208】データ取得元をリソース関連マスタビューに変更
  *  2009-04-16    1.3   K.Satomura      【ST障害T01_0172】営業員名称、営業員名称（カナ）を全角置換
  *  2009-05-01    1.4   Tomoko.Mori      T1_0897対応
+ *  2009-10-09    1.5   D.Abe            0001515対応
  *****************************************************************************************/
 --
 --#######################  固定グローバル定数宣言部 START   #######################
@@ -1105,8 +1106,11 @@ AS
     -- ユーザー宣言部
     -- ===============================
     -- *** ローカル定数 ***
-      cv_space        CONSTANT VARCHAR2(2) := '　';       -- 全角スペース
-      cv_category     CONSTANT VARCHAR2(8) := 'EMPLOYEE'; -- 抽出条件カテゴリーに当てる値
+    cv_space        CONSTANT VARCHAR2(2) := '　';       -- 全角スペース
+    cv_category     CONSTANT VARCHAR2(8) := 'EMPLOYEE'; -- 抽出条件カテゴリーに当てる値
+    /* 2009.10.09 D.Abe 0001515対応 START */
+    cv_job_type_code01 CONSTANT VARCHAR2(2) := '01';      -- 営業職
+    /* 2009.10.09 D.Abe 0001515対応 END   */
     -- *** ローカル変数 ***
     -- OUTパラメータ格納用
     ld_sysdate      DATE;           -- システム日付
@@ -1127,10 +1131,16 @@ AS
     IS
       SELECT  xrrv.employee_number employee_number  -- 営業員コード
              ,( CASE
-                 WHEN TO_DATE(xrrv.issue_date, 'yyyy/mm/dd') <= ld_date THEN
+                 /* 2009.10.09 D.Abe 0001515対応 START */
+                 --WHEN TO_DATE(xrrv.issue_date, 'yyyy/mm/dd') <= ld_date THEN
+                 --  xrrv.work_dept_code_new          -- 勤務地拠点コード(新)
+                 --WHEN TO_DATE(xrrv.issue_date, 'yyyy/mm/dd')  > ld_date THEN
+                 --  xrrv.work_dept_code_old          -- 勤務地拠点コード(旧)
+                 WHEN TO_DATE(xrrv.issue_date, 'yyyymmdd') <= ld_date THEN
                    xrrv.work_dept_code_new          -- 勤務地拠点コード(新)
-                 WHEN TO_DATE(xrrv.issue_date, 'yyyy/mm/dd')  > ld_date THEN
+                 WHEN TO_DATE(xrrv.issue_date, 'yyyymmdd')  > ld_date THEN
                    xrrv.work_dept_code_old          -- 勤務地拠点コード(旧)
+                 /* 2009.10.09 D.Abe 0001515対応 END   */
                  WHEN xrrv.issue_date IS NULL THEN
                    xrrv.work_dept_code_old          -- 勤務地拠点コード(旧)
                  END
@@ -1150,19 +1160,31 @@ AS
              ,xrrv.sales_style  sales_style         -- 営業形態
              ,xrrv.resource_id  resource_id         -- リソースID
              ,( CASE
-                 WHEN TO_DATE(xrrv.issue_date, 'yyyy/mm/dd') <= ld_date THEN
+                 /* 2009.10.09 D.Abe 0001515対応 START */
+                 --WHEN TO_DATE(xrrv.issue_date, 'yyyy/mm/dd') <= ld_date THEN
+                 --  xrrv.group_leader_flag_new       -- グループ長区分(新)
+                 --WHEN TO_DATE(xrrv.issue_date, 'yyyy/mm/dd')  > ld_date THEN
+                 --  xrrv.group_leader_flag_old       -- グループ長区分(旧)
+                 WHEN TO_DATE(xrrv.issue_date, 'yyyymmdd') <= ld_date THEN
                    xrrv.group_leader_flag_new       -- グループ長区分(新)
-                 WHEN TO_DATE(xrrv.issue_date, 'yyyy/mm/dd')  > ld_date THEN
+                 WHEN TO_DATE(xrrv.issue_date, 'yyyymmdd')  > ld_date THEN
                    xrrv.group_leader_flag_old       -- グループ長区分(旧)
+                 /* 2009.10.09 D.Abe 0001515対応 END   */
                  WHEN xrrv.issue_date IS NULL THEN
                    xrrv.group_leader_flag_old       -- グループ長区分(旧)
                  END
               )  group_leader_flag                  -- グループ長区分
              ,( CASE
-                 WHEN TO_DATE(xrrv.issue_date, 'yyyy/mm/dd') <= ld_date THEN
+                 /* 2009.10.09 D.Abe 0001515対応 START */
+                 --WHEN TO_DATE(xrrv.issue_date, 'yyyy/mm/dd') <= ld_date THEN
+                 --  xrrv.group_number_new            -- グループ番号(新)
+                 --WHEN TO_DATE(xrrv.issue_date, 'yyyy/mm/dd')  > ld_date THEN
+                 --  xrrv.group_number_old            -- グループ番号(旧)
+                 WHEN TO_DATE(xrrv.issue_date, 'yyyymmdd') <= ld_date THEN
                    xrrv.group_number_new            -- グループ番号(新)
-                 WHEN TO_DATE(xrrv.issue_date, 'yyyy/mm/dd')  > ld_date THEN
+                 WHEN TO_DATE(xrrv.issue_date, 'yyyymmdd')  > ld_date THEN
                    xrrv.group_number_old            -- グループ番号(旧)
+                 /* 2009.10.09 D.Abe 0001515対応 END   */
                  WHEN xrrv.issue_date IS NULL THEN
                    xrrv.group_number_old            -- グループ番号(旧)
                  END
@@ -1178,6 +1200,21 @@ AS
         AND  NVL(xrrv.end_date_active_new,ld_date)   >= ld_date
         AND  NVL(xrrv.start_date_active_old,ld_date) <= ld_date
         AND  NVL(xrrv.end_date_active_old,ld_date)   >= ld_date
+        /* 2009.10.09 D.Abe 0001515対応 START */
+        AND  (
+              (TO_DATE(xrrv.issue_date,'yyyymmdd') <= ld_date
+               AND  xrrv.job_type_code_new = cv_job_type_code01
+              )
+              OR
+              (TO_DATE(xrrv.issue_date,'yyyymmdd') > ld_date
+               AND  xrrv.job_type_code_old = cv_job_type_code01
+              )
+              OR
+              (xrrv.issue_date IS NULL
+               AND  xrrv.job_type_code_old = cv_job_type_code01
+              )
+             )
+        /* 2009.10.09 D.Abe 0001515対応 END   */
       ;
     --CURSOR get_person_data_cur
     --IS
