@@ -7,7 +7,7 @@ AS
  * Description      : 受払台帳作成
  * MD.050/070       : 在庫(帳票)Draft2A (T_MD050_BPO_550)
  *                    受払台帳Draft1A   (T_MD070_BPO_55B)
- * Version          : 1.25
+ * Version          : 1.26
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -53,6 +53,7 @@ AS
  *  2008/11/21    1.23  Natsuki Yoshida  統合テスト障害687対応 (大幅な修正の為、履歴を残しておりません)
  *  2008/11/28    1.24  Hitomi Itou      本番障害#227対応
  *  2008/12/02    1.25  Natsuki Yoshida  本番障害#327対応
+ *  2008/12/02    1.26  Takao Ohashi     本番障害#327対応
  *****************************************************************************************/
 --
 --#######################  固定グローバル定数宣言部 START   #######################
@@ -5597,10 +5598,14 @@ AS
         --パラメータによる絞込み(品目区分)
         AND mcb2.segment1 = civ_item_div
         --カテゴリセットが商品区分である品目
-        AND iimb.item_id = gic1.item_id
+-- mod start 1.26
+--        AND iimb.item_id = gic1.item_id
+        AND itp.item_id = gic1.item_id
         AND gic1.category_set_id    = cn_prod_class_id
         --カテゴリセットが品目区分である品目
-        AND iimb.item_id = gic2.item_id
+--        AND iimb.item_id = gic2.item_id
+        AND itp.item_id = gic2.item_id
+-- mod end 1.26
         AND gic2.category_set_id   = cn_item_class_id
         AND mcb1.category_id       = gic1.category_id
         AND mcb2.category_id       = gic2.category_id
