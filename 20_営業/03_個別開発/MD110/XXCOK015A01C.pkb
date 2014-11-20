@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCOK015A01C(body)
  * Description      : 営業システム構築プロジェクト
  * MD.050           : EDIシステムにてイセトー社へ送信する支払案内書(圧着はがき)用データファイル作成
- * Version          : 1.5
+ * Version          : 1.6
  *
  * Program List
  * --------------------------- ----------------------------------------------------------
@@ -34,6 +34,7 @@ AS
  *  2009/05/22    1.3   M.Hiruta         [障害T1_1144] フッタレコード作成時にデータ種コードを使用するよう変更
  *  2009/07/01    1.4   M.Hiruta         [障害0000289] パフォーマンス向上のためデータ抽出方法を変更
  *  2009/07/10    1.5   M.Hiruta         [障害0000498] ヘッダデータ取得共通関数へ与えるチェーン店コードを変更
+ *  2009/07/15    1.6   K.Yamaguchi      [障害0000688] 宛名2行目を修正
  *
  *****************************************************************************************/
   -- ===============================================
@@ -803,9 +804,15 @@ AS
     lv_cust_code         :=  LPAD( it_bm_data_rec.supplier_code, 9, cv_0 );                             -- 顧客コード
     lv_counter           :=  LPAD( TO_CHAR( gn_cnt ), 5, cv_0 );                                       -- カウンタ
     lv_cust_name1        :=  SUBSTRB( RPAD( it_bm_data_rec.vendor_name, 30, cv_space ) , 1, 30 );       -- 顧客名１
-    lv_cust_name2        :=  SUBSTRB( RPAD( it_bm_data_rec.vendor_name, 30, cv_space ) , 1, 30 );       -- 顧客名２
+-- 2009/07/15 Ver.1.6 [障害0000688] SCS K.Yamaguchi REPAIR START
+--    lv_cust_name2        :=  SUBSTRB( RPAD( it_bm_data_rec.vendor_name, 30, cv_space ) , 1, 30 );       -- 顧客名２
+    lv_cust_name2        :=  RPAD( SUBSTRB( NVL( it_bm_data_rec.vendor_name, cv_space ), 31, 30 ), 30, cv_space ); -- 顧客名２
+-- 2009/07/15 Ver.1.6 [障害0000688] SCS K.Yamaguchi REPAIR END
     lv_atena1            :=  SUBSTRB( RPAD( it_bm_data_rec.vendor_name, 30, cv_space ) , 1, 30 );       -- 宛名１
-    lv_atena2            :=  SUBSTRB( RPAD( it_bm_data_rec.vendor_name, 30, cv_space ) , 1, 30 );       -- 宛名２
+-- 2009/07/15 Ver.1.6 [障害0000688] SCS K.Yamaguchi REPAIR START
+--    lv_atena2            :=  SUBSTRB( RPAD( it_bm_data_rec.vendor_name, 30, cv_space ) , 1, 30 );       -- 宛名２
+    lv_atena2            :=  RPAD( SUBSTRB( NVL( it_bm_data_rec.vendor_name, cv_space ), 31, 30 ), 30, cv_space ); -- 宛名２
+-- 2009/07/15 Ver.1.6 [障害0000688] SCS K.Yamaguchi REPAIR END
     lv_zip               :=  RPAD( NVL( it_bm_data_rec.zip, cv_space ), 8, cv_space );                  -- 郵便番号
     lv_address1          :=  SUBSTRB( RPAD( NVL( it_bm_data_rec.address1, cv_space ), 30, cv_space ) , 1, 30 );      -- 住所１
     lv_address2          :=  SUBSTRB( RPAD( NVL( it_bm_data_rec.address2, cv_space ), 30, cv_space ) , 1, 30 );      -- 住所２
