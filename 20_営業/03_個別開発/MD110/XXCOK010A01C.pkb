@@ -7,7 +7,7 @@ AS
  * Description      : 売上実績振替情報テーブルのデータから、
                       情報系システムへI/Fする「実績振替」を作成します。
  * MD.050           : 売上実績振替情報のI/Fファイル作成 (MD050_COK_010_A01)
- * Version          : 1.5
+ * Version          : 1.6
  *
  * Program List
  * ------------------------- ----------------------------------------------------------
@@ -36,6 +36,7 @@ AS
  *                                       【納品単価】納品単価÷納品単位１あたりの基準単位数量  -> 基準単位単価
  *  2010/02/18    1.5   K.Yamaguchi      [障害E_本稼動_01600]非在庫品目の場合納品数量を０とする
  *                                                           変動電気料を連携対象外とする
+ *  2011/04/19    1.6   Y.Nishino        [障害E_本稼動_04976]情報系への連携項目追加
  *
  *****************************************************************************************/
 --
@@ -549,6 +550,26 @@ AS
       || cv_msg_c
       || cv_msg_wq || g_xsti_tab( in_idx ).xsti_demand_to_cust_code                  || cv_msg_wq  -- 請求顧客コード
       || cv_msg_c
+-- 2011/04/19 Ver.1.6 [障害E_本稼動_04976] SCS Y.Nishino ADD START
+      || cv_msg_wq                                                                   || cv_msg_wq  -- 注文伝票番号
+      || cv_msg_c
+      || cv_msg_wq                                                                   || cv_msg_wq  -- 伝票区分
+      || cv_msg_c
+      || cv_msg_wq                                                                   || cv_msg_wq  -- 伝票分類コード
+      || cv_msg_c
+      || cv_msg_wq                                                                   || cv_msg_wq  -- つり銭切れ時間100円
+      || cv_msg_c
+      || cv_msg_wq                                                                   || cv_msg_wq  -- つり銭切れ時間10円
+      || cv_msg_c
+                   || cn_number_0                                                                  -- 基準単価（税込）
+      || cv_msg_c
+                   || cn_number_0                                                                  -- 売上金額（税込）
+      || cv_msg_c
+      || cv_msg_wq                                                                   || cv_msg_wq  -- 売切区分
+      || cv_msg_c
+      || cv_msg_wq                                                                   || cv_msg_wq  -- 売切時間
+      || cv_msg_c
+-- 2011/04/19 Ver.1.6 [障害E_本稼動_04976] SCS Y.Nishino ADD END
                    || TO_CHAR( gd_sysdate, 'YYYYMMDDHH24MISS' )                                    -- システム日付
     );
 --
