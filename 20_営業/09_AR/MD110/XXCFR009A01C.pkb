@@ -7,7 +7,7 @@ AS
  * Description      : 営業員別払日別入金予定表
  * MD.050           : MD050_CFR_009_A01_営業員別払日別入金予定表
  * MD.070           : MD050_CFR_009_A01_営業員別払日別入金予定表
- * Version          : 1.3
+ * Version          : 1.5
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -31,6 +31,7 @@ AS
  *                                      中間テーブルデータ削除処理コメントアウト削除対応
  *  2009/04/14    1.3  SCS M.OKAWA      [障害T1_0533] 出力ファイル名変数文字列オーバーフロー対応
  *  2009/04/24    1.4  SCS S.KAYAHARA   [障害T1_0633] 組織プロファイル結合条件対応
+ *  2009/07/15    1.5  SCS M.HIROSE     [障害0000481] パフォーマンス改善
  *
  *****************************************************************************************/
 --
@@ -98,6 +99,9 @@ AS
   cv_msg_kbn_cmn     CONSTANT VARCHAR2(5)   := 'XXCMN'; -- アプリケーション短縮名(XXCMN)
   cv_msg_kbn_ccp     CONSTANT VARCHAR2(5)   := 'XXCCP'; -- アプリケーション短縮名(XXCCP)
   cv_msg_kbn_cfr     CONSTANT VARCHAR2(5)   := 'XXCFR'; -- アプリケーション短縮名(XXCFR)
+-- Modify 2009.07.15 Ver1.5 Start
+  cv_msg_kbn_ar      CONSTANT VARCHAR2(5)   := 'AR';    -- アプリケーション短縮名(AR)
+-- Modify 2009.07.15 Ver1.5 End
 --
   -- メッセージ番号
   cv_msg_009a01_008  CONSTANT VARCHAR2(20) := 'APP-XXCCP1-90007'; --エラー終了一部処理メッセージ
@@ -626,6 +630,13 @@ AS
         ,program_update_date
       )
       SELECT
+-- Modify 2009.07.15 Ver1.5 Start
+             /*+ INDEX(hp    HZ_PARTIES_U1 )
+                 INDEX(hop   HZ_ORGANIZATION_PROFILES_N1)
+                 INDEX(hopeb HZ_ORG_PROFILES_EXT_B_N1)
+                 INDEX(xca   XXCMM_CUST_ACCOUNTS_PK)
+             */
+-- Modify 2009.07.15 Ver1.5 End
         cv_pkg_name                                 report_id,            -- 帳票ＩＤ
         TO_CHAR( cd_creation_date, cv_format_date_ymdhns ) output_date,   -- 出力日
         xdev.attribute9                             receipt_area_code,    -- 入金拠点エリアコード（本部コード）
@@ -673,7 +684,12 @@ AS
         cd_program_update_date                      program_update_date   -- プログラム更新日
       FROM
         ( 
-        SELECT rcta.bill_to_customer_id           bill_to_customer_id,    -- 請求先顧客ID
+        SELECT 
+-- Modify 2009.07.15 Ver1.5 Start
+               /*+ INDEX(apsa  XXCFR_AR_PAYMENT_SCHEDULES_N01)
+               */
+-- Modify 2009.07.15 Ver1.5 End
+               rcta.bill_to_customer_id           bill_to_customer_id,    -- 請求先顧客ID
                arm.name                           receipt_method_name,    -- 入金方法（支払方法）
                arm.receipt_class_id               receipt_class_id,       -- 入金区分ID
                arc.name                           receipt_class_name,     -- 入金区分
@@ -702,16 +718,25 @@ AS
                                                   tax_due_remaining,      -- 未回収税額
 -- Modify 2009.02.18 Ver1.1 End
                hcsua.tax_rounding_rule            tax_rounding_rule       -- 税金－端数処理
-        FROM ra_customer_trx_all        rcta,     -- 取引ヘッダ
-             ar_payment_schedules_all   apsa,     -- 支払計画
+-- Modify 2009.07.15 Ver1.5 Start
+--        FROM ra_customer_trx_all        rcta,     -- 取引ヘッダ
+--             ar_payment_schedules_all   apsa,     -- 支払計画
+        FROM ra_customer_trx            rcta,     -- 取引ヘッダ
+             ar_payment_schedules       apsa,     -- 支払計画
+-- Modify 2009.07.15 Ver1.5 End
              ar_receipt_methods         arm,      -- 入金方法（支払方法）
              ar_receipt_classes         arc,      -- 入金区分
              hz_cust_accounts           hca,      -- 顧客マスタ（請求先）
-             hz_cust_acct_sites_all     hcasa,    -- 顧客所在地マスタ
-             hz_cust_site_uses_all      hcsua     -- 顧客使用目的マスタ
--- Modify 2009.02.18 Ver1.1 Start
-            ,ra_batch_sources_all       rbsa
--- Modify 2009.02.18 Ver1.1 End
+-- Modify 2009.07.15 Ver1.5 Start
+--             hz_cust_acct_sites_all     hcasa,    -- 顧客所在地マスタ
+--             hz_cust_site_uses_all      hcsua     -- 顧客使用目的マスタ
+---- Modify 2009.02.18 Ver1.1 Start
+--            ,ra_batch_sources_all       rbsa
+---- Modify 2009.02.18 Ver1.1 End
+             hz_cust_acct_sites         hcasa,    -- 顧客所在地マスタ
+             hz_cust_site_uses          hcsua,    -- 顧客使用目的マスタ
+             ra_batch_sources           rbsa
+-- Modify 2009.07.15 Ver1.5 End
         WHERE rcta.customer_trx_id      = apsa.customer_trx_id
           AND rcta.receipt_method_id    = arm.receipt_method_id
           AND arm.receipt_class_id      = arc.receipt_class_id
@@ -720,7 +745,9 @@ AS
           AND hcasa.cust_acct_site_id   = hcsua.cust_acct_site_id(+)
           AND hcsua.site_use_code       = cv_bill_to   -- 使用目的：請求先
           AND rcta.set_of_books_id      = gn_set_of_bks_id
-          AND rcta.org_id               = gn_org_id
+-- Modify 2009.07.15 Ver1.5 Start
+--          AND rcta.org_id               = gn_org_id
+-- Modify 2009.07.15 Ver1.5 End
           AND apsa.status               = cv_status_op -- ステータス：オープン
           AND (
                 ( lt_receipt_class_id1 IS NULL 
@@ -762,12 +789,18 @@ AS
             hca_c.party_id                          cr_party_id             -- 入金先顧客パーティＩＤ
           FROM hz_cust_accounts           hca_c,    -- 顧客マスタ（入金）
                hz_cust_accounts           hca,      -- 顧客マスタ（請求先）
-               hz_cust_acct_relate_all    hcara     -- 顧客関連
+-- Modify 2009.07.15 Ver1.5 Start
+--               hz_cust_acct_relate_all    hcara     -- 顧客関連
+               hz_cust_acct_relate        hcara     -- 顧客関連
+-- Modify 2009.07.15 Ver1.5 End
           WHERE hca_c.cust_account_id     = hcara.cust_account_id
             AND hcara.related_cust_account_id = hca.cust_account_id
             AND hcara.status              = cv_status_enabled -- ステータス：有効
             AND hcara.attribute1          = cv_relate_class   -- 関連分類：入金
-          UNION
+-- Modify 2009.07.15 Ver1.5 Start
+--          UNION
+          UNION ALL
+-- Modify 2009.07.15 Ver1.5 End
           SELECT
             hca.cust_account_id                     bill_cust_account_id,   -- 請求先顧客ＩＤ
             hca.cust_account_id                     cr_cust_account_id,     -- 入金先顧客ＩＤ
@@ -791,6 +824,9 @@ AS
         xxcmm_cust_accounts       xca,            -- 顧客追加情報テーブル
         xx03_departments_ext_v    xdev,           -- 部門マスタビュー
         fnd_lookup_values         flv             -- 参照表（消費税区分）
+-- Modify 2009.07.15 Ver1.5 Start
+       ,fnd_application           fapp            -- アプリケーション
+-- Modify 2009.07.15 Ver1.5 End
       WHERE pay_sch.bill_to_customer_id = ca.bill_cust_account_id
         AND ca.cr_party_id              = hp.party_id
         AND hp.party_id                 = hop.party_id(+)
@@ -800,6 +836,10 @@ AS
         AND hop.organization_profile_id = hopeb.organization_profile_id(+)
         AND hopeb.attr_group_id         = eagv.attr_group_id(+)
         AND eagv.attr_group_name        = cv_sales_rep_attr    -- 担当営業員属性
+-- Modify 2009.07.15 Ver1.5 Start
+        AND eagv.application_id         = fapp.application_id  -- アプリケーションID
+        AND fapp.application_short_name = cv_msg_kbn_ar        -- アプリケーション短縮名(AR)
+-- Modify 2009.07.15 Ver1.5 Start
         AND hopeb.c_ext_attr1           = papf.employee_number
         AND ( hopeb.d_ext_attr1 <= TRUNC ( SYSDATE )
            OR hopeb.d_ext_attr1 IS NULL )
@@ -811,6 +851,9 @@ AS
         AND NVL( xca.receiv_base_code, xca.sale_base_code )
                                         = xdev.flex_value
         AND xdev.enabled_flag           = cv_enabled_yes
+-- Modify 2009.07.15 Ver1.5 Start
+        AND xdev.set_of_books_id        = gn_set_of_bks_id
+-- Modify 2009.07.15 Ver1.5 End
         AND NVL( xca.receiv_base_code, xca.sale_base_code )
                                         = NVL ( iv_receive_base_code, 
                                                 NVL( xca.receiv_base_code, xca.sale_base_code ) )
