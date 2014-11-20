@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCOP003A01C(body)
  * Description      : アップロードファイルからの取込（割当セット）
  * MD.050           : アップロードファイルからの取込（割当セット） MD050_COP_003_A01
- * Version          : 1.0
+ * Version          : 1.2
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -30,6 +30,7 @@ AS
  * ------------- ----- ---------------- -------------------------------------------------
  *  2008/11/11    1.0   Y.Goto           新規作成
  *  2009/02/25    1.1   SCS.Uda          結合テスト仕様変更（結合障害No.016,017）
+ *  2009/09/04    1.2   K.Kayahara       統合テスト障害0001297対応
  *  
  *****************************************************************************************/
 --
@@ -182,7 +183,10 @@ AS
   --ファイルアップロードI/Fテーブル
   gv_format_pattern         CONSTANT VARCHAR2(3)   := '220';                    -- フォーマットパターン
   gv_delim                  CONSTANT VARCHAR2(1)   := ',';                      -- デリミタ文字
-  gn_column_num             CONSTANT NUMBER        := 27;                       -- 項目数
+-- 0001297 2009/09/04 MOD START
+  --gn_column_num             CONSTANT NUMBER        := 27;                       -- 項目数
+  gn_column_num             CONSTANT NUMBER        := 28;                       -- 項目数
+-- 0001297 2009/09/04 MOD END 
   gn_header_row_num         CONSTANT NUMBER        := 1;                        -- ヘッダー行数
   --項目の日本語名称
   gv_column_name_01         CONSTANT VARCHAR2(100) := '割当セット名';
@@ -1138,6 +1142,12 @@ AS
       END IF;
       --レコードの妥当性チェック
       IF ( l_csv_tab.COUNT = gn_column_num ) THEN
+      --萱原デバッグstart
+    fnd_file.put_line(
+         which  => FND_FILE.LOG
+        ,buff   => l_csv_tab.COUNT
+      );
+--萱原デバッグend
         --項目毎の妥当性チェック
         --割当セット名
         check_validate_item(
