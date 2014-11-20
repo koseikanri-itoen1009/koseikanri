@@ -1,4 +1,4 @@
-CREATE OR REPLACE PACKAGE BODY XXCOS002A05R
+CREATE OR REPLACE PACKAGE BODY APPS.XXCOS002A05R
 AS
 /*****************************************************************************************
  * Copyright(c)Sumisho Computer Systems Corporation, 2008. All rights reserved.
@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCOS002A05R (body)
  * Description      : 納品書チェックリスト
  * MD.050           : 納品書チェックリスト MD050_COS_002_A05
- * Version          : 1.11
+ * Version          : 1.13
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -55,6 +55,10 @@ AS
  *                                       メインカーソルの変更（端数処理区分の取得先変更）
  *  2009/06/11    1.11  T.Tominaga       障害[T1_1420]対応
  *                                       税処理において、消費税区分が"2","3"以外の場合の条件を"3"以外に変更
+ *  2009/06/19    1.12  K.Kiriu          障害[T1_1437]対応
+ *                                       データパージの不具合を修正
+ *  2009/07/13    1.13  T.Tominaga       障害[0000651]対応
+ *                                       税処理を行う対象を変更（VD以外⇒VD）、確認項目の処理をVD,VD以外の両方で行うように変更
  *
  *****************************************************************************************/
 --
@@ -1406,7 +1410,6 @@ AS
         FROM
           DUAL;
 --
-        --== ベンダー以外の時の処理 ==--
         -- データ取得
         lt_enabled_flag        := lt_get_sale_data(in_no).enabled_flag;          -- 業態小分類使用可
         lt_standard_unit_price := lt_get_sale_data(in_no).standard_unit_price;   -- 基準単価--卸単価
@@ -1420,9 +1423,11 @@ AS
 --
         -- 判定
         IF ( lt_enabled_flag = cv_yes ) THEN
-          lt_confirmation := NULL;
---
-        ELSE
+-- ******************** 2009/07/13 Var.1.13 T.Tominaga DEL START  *****************************************
+--          lt_confirmation := NULL;
+----
+--        ELSE
+-- ******************** 2009/07/13 Var.1.13 T.Tominaga DEL START  *****************************************
           --営業原価の税処理
           lt_tax_amount          := lt_business_cost * lt_tax_rate / 100;
           -- 端数処理
@@ -1498,34 +1503,62 @@ AS
           END IF;
           lt_plice_old  := lt_plice_old + lt_tax_amount;
 --
-          IF ( lt_standard_unit_price < lt_business_cost ) THEN    -- 基準単価 < 営業原価
+-- ******************** 2009/07/13 Var.1.13 T.Tominaga MOD START  *****************************************
+--          IF ( lt_standard_unit_price < lt_business_cost ) THEN    -- 基準単価 < 営業原価
+--            lt_confirmation := lv_check_mark;
+----
+---- ******************** 2009/06/05 Var.1.9 T.Tominaga MOD START  ******************************************
+----          ELSIF ( lt_st_date >= iv_delivery_date ) THEN            -- 定価適用開始 >= 納品日
+--          ELSIF ( lt_st_date <= iv_delivery_date ) THEN            -- 定価適用開始 <= 納品日
+---- ******************** 2009/06/05 Var.1.9 T.Tominaga MOD START  ******************************************
+--            IF ( lt_plice_new < lt_standard_unit_price ) THEN      -- 定価(新) < 基準単価
+--              lt_confirmation := lv_check_mark;
+--            ELSE
+--              lt_confirmation := NULL;
+--            END IF;
+----
+---- ******************** 2009/06/05 Var.1.9 T.Tominaga MOD START  ******************************************
+----          ELSIF ( lt_st_date < iv_delivery_date ) THEN             -- 定価適用開始 < 納品日
+--          ELSIF ( lt_st_date > iv_delivery_date ) THEN             -- 定価適用開始 > 納品日
+---- ******************** 2009/06/05 Var.1.9 T.Tominaga MOD START  ******************************************
+--            IF ( lt_plice_old < lt_standard_unit_price ) THEN      -- 旧定価 < 基準単価
+--              lt_confirmation := lv_check_mark;
+--            ELSE
+--              lt_confirmation := NULL;
+--            END IF;
+----
+--          ELSE
+--            lt_confirmation := NULL;
+--          END IF;
+--
+        ELSE
+          NULL;
+-- ******************** 2009/07/13 Var.1.13 T.Tominaga MOD END    *****************************************
+        END IF;
+--
+-- ******************** 2009/07/13 Var.1.13 T.Tominaga ADD START  *****************************************
+        -- 確認項目の編集
+        IF ( lt_standard_unit_price < lt_business_cost ) THEN    -- 基準単価 < 営業原価
+          lt_confirmation := lv_check_mark;
+--
+        ELSIF ( lt_st_date <= iv_delivery_date ) THEN            -- 定価適用開始 <= 納品日
+          IF ( lt_plice_new < lt_standard_unit_price ) THEN      -- 定価(新) < 基準単価
             lt_confirmation := lv_check_mark;
---
--- ******************** 2009/06/05 Var.1.9 T.Tominaga MOD START  ******************************************
---          ELSIF ( lt_st_date >= iv_delivery_date ) THEN            -- 定価適用開始 >= 納品日
-          ELSIF ( lt_st_date <= iv_delivery_date ) THEN            -- 定価適用開始 <= 納品日
--- ******************** 2009/06/05 Var.1.9 T.Tominaga MOD START  ******************************************
-            IF ( lt_plice_new < lt_standard_unit_price ) THEN      -- 定価(新) < 基準単価
-              lt_confirmation := lv_check_mark;
-            ELSE
-              lt_confirmation := NULL;
-            END IF;
---
--- ******************** 2009/06/05 Var.1.9 T.Tominaga MOD START  ******************************************
---          ELSIF ( lt_st_date < iv_delivery_date ) THEN             -- 定価適用開始 < 納品日
-          ELSIF ( lt_st_date > iv_delivery_date ) THEN             -- 定価適用開始 > 納品日
--- ******************** 2009/06/05 Var.1.9 T.Tominaga MOD START  ******************************************
-            IF ( lt_plice_old < lt_standard_unit_price ) THEN      -- 旧定価 < 基準単価
-              lt_confirmation := lv_check_mark;
-            ELSE
-              lt_confirmation := NULL;
-            END IF;
---
           ELSE
             lt_confirmation := NULL;
           END IF;
 --
+        ELSIF ( lt_st_date > iv_delivery_date ) THEN             -- 定価適用開始 > 納品日
+          IF ( lt_plice_old < lt_standard_unit_price ) THEN      -- 旧定価 < 基準単価
+            lt_confirmation := lv_check_mark;
+          ELSE
+            lt_confirmation := NULL;
+          END IF;
+--
+        ELSE
+          lt_confirmation := NULL;
         END IF;
+-- ******************** 2009/07/13 Var.1.13 T.Tominaga ADD END    *****************************************
 --
         -- 売値判定
         IF ( lt_st_date <= iv_delivery_date ) THEN
@@ -2338,6 +2371,11 @@ AS
     lv_errbuf  VARCHAR2(5000);  -- エラー・メッセージ
     lv_retcode VARCHAR2(1);     -- リターン・コード
     lv_errmsg  VARCHAR2(5000);  -- ユーザー・エラー・メッセージ
+/* 2009/06/19 Ver1.12 Add Start */
+    lv_errbuf_svf  VARCHAR2(5000);  -- エラー・メッセージ(SVF実行結果保持用)
+    lv_retcode_svf VARCHAR2(1);     -- リターン・コード(SVF実行結果保持用)
+    lv_errmsg_svf  VARCHAR2(5000);  -- ユーザー・エラー・メッセージ(SVF実行結果保持用)
+/* 2009/06/19 Ver1.12 Add End   */
 --
 --###########################  固定部 END   ####################################
 --
@@ -2446,10 +2484,16 @@ AS
       ,lv_errmsg   -- ユーザー・エラー・メッセージ --# 固定 #
     );
 --
-    -- エラー処理
-    IF ( lv_retcode = cv_status_error ) THEN
-      RAISE global_process_expt;
-    END IF;
+/* 2009/06/19 Ver1.12 Mod Start */
+--    -- エラー処理
+--    IF ( lv_retcode = cv_status_error ) THEN
+--      RAISE global_process_expt;
+--    END IF;
+    --エラーでもワークテーブルを削除する為、エラー情報を保持
+    lv_errbuf_svf  := lv_errbuf;
+    lv_retcode_svf := lv_retcode;
+    lv_errmsg_svf  := lv_errmsg;
+/* 2009/06/19 Ver1.12 Mod End   */
 --
     --  ===============================
     --  帳票ワークテーブルデータ削除(A-8)
@@ -2464,6 +2508,19 @@ AS
     IF ( lv_retcode = cv_status_error ) THEN
       RAISE global_process_expt;
     END IF;
+--
+/* 2009/06/19 Ver1.12 Add Start */
+    --エラーの場合、ロールバックするのでここでコミット
+    COMMIT;
+--
+    --SVF実行結果確認
+    IF ( lv_retcode_svf = cv_status_error ) THEN
+      lv_errbuf  := lv_errbuf_svf;
+      lv_retcode := lv_retcode_svf;
+      lv_errmsg  := lv_errmsg_svf;
+      RAISE global_process_expt;
+    END IF;
+/* 2009/06/19 Ver1.12 Add End   */
 --
     -- 帳票は対象件数＝正常件数とする
     gn_normal_cnt := gn_target_cnt;
