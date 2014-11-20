@@ -7,7 +7,7 @@ AS
  * Description      : 仕入・有償・移動情報抽出処理
  * MD.050           : 生産物流共通                  T_MD050_BPO_940
  * MD.070           : 仕入・有償・移動情報抽出処理  T_MD070_BPO_94D
- * Version          : 1.3
+ * Version          : 1.4
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -34,6 +34,7 @@ AS
  *  2008/08/20    1.1   Oracle 山根 一浩 T_S_593,T_TE080_BPO_940 指摘6,指摘7,指摘8,指摘9対応
  *  2008/09/02    1.2   Oracle 山根 一浩 T_S_626,T_TE080_BPO_940 指摘10対応
  *  2008/09/18    1.3   Oracle 大橋 孝郎 T_S_460対応
+ *  2008/11/26    1.4   Oracle 吉田 夏樹 本番#113対応
  *****************************************************************************************/
 --
 --#######################  固定グローバル定数宣言部 START   #######################
@@ -1477,15 +1478,16 @@ AS
                           AND    fu.user_id                 = gn_user_id            -- ユーザーID
                           )
                OR      pha.attribute5 IN (
+-- 2008/11/26 Mod ↓
 -- 2008/07/30 Mod ↓
-/*
-                          SELECT xilv.frequent_whse           -- 代表倉庫
-*/
-                          SELECT xilv.frequent_whse_code      -- 主管倉庫
+--                          SELECT xilv.frequent_whse           -- 代表倉庫
+--                          SELECT xilv.frequent_whse_code      -- 主管倉庫
+                          SELECT xilv2.segment1
 -- 2008/07/30 Mod ↑
                           FROM   fnd_user               fu          -- ユーザーマスタ
                                 ,per_all_people_f       papf        -- 従業員マスタ
                                 ,xxcmn_item_locations_v xilv        -- OPM保管場所情報VIEW
+                                ,xxcmn_item_locations_v xilv2       -- OPM保管場所情報VIEW
                           WHERE  fu.employee_id             = papf.person_id        -- 従業員ID
                           AND    papf.effective_start_date <= TRUNC(gd_sys_date)    -- 適用開始日
                           AND    papf.effective_end_date   >= TRUNC(gd_sys_date)    -- 適用終了日
@@ -1493,8 +1495,10 @@ AS
                           AND  ((fu.end_date               IS NULL)                 -- 適用終了日
                             OR  (fu.end_date               >= TRUNC(gd_sys_date)))
                           AND    xilv.purchase_code         = papf.attribute4       -- 仕入先コード
+                          AND    xilv.segment1              = xilv2.frequent_whse_code  -- 小倉庫の絞込み
                           AND    fu.user_id                 = gn_user_id            -- ユーザーID
                           )
+-- 2008/11/26 Mod ↑
                       )
               )
              )
@@ -1744,10 +1748,13 @@ AS
                           AND    fu.user_id                 = gn_user_id            -- ユーザーID
                           )
                OR      xrart.location_code IN (
-                          SELECT xilv.frequent_whse_code      -- 主管倉庫
+-- 2008/11/26 Mod ↓
+--                          SELECT xilv.frequent_whse_code      -- 主管倉庫
+                          SELECT xilv2.segment1       -- 東洋埠頭子倉庫
                           FROM   fnd_user               fu          -- ユーザーマスタ
                                 ,per_all_people_f       papf        -- 従業員マスタ
                                 ,xxcmn_item_locations_v xilv        -- OPM保管場所情報VIEW
+                                ,xxcmn_item_locations_v xilv2       -- OPM保管場所情報VIEW
                           WHERE  fu.employee_id             = papf.person_id        -- 従業員ID
                           AND    papf.effective_start_date <= TRUNC(gd_sys_date)    -- 適用開始日
                           AND    papf.effective_end_date   >= TRUNC(gd_sys_date)    -- 適用終了日
@@ -1755,8 +1762,10 @@ AS
                           AND  ((fu.end_date               IS NULL)                 -- 適用終了日
                             OR  (fu.end_date               >= TRUNC(gd_sys_date)))
                           AND    xilv.purchase_code         = papf.attribute4       -- 仕入先コード
+                          AND    xilv.segment1              = xilv2.frequent_whse_code   -- 子倉庫の絞込み
                           AND    fu.user_id                 = gn_user_id            -- ユーザーID
                           )
+-- 2008/11/26 Mod ↑
                       )
               )
              )
@@ -2379,15 +2388,16 @@ AS
                           AND    fu.user_id                 = gn_user_id            -- ユーザーID
                           )
                OR      xoha.deliver_from IN (
+-- 2008/11/26 Mod ↓
 -- 2008/07/30 Mod ↓
-/*
-                          SELECT xilv.frequent_whse           -- 代表倉庫
-*/
-                          SELECT xilv.frequent_whse_code      -- 主管倉庫
+--                          SELECT xilv.frequent_whse           -- 代表倉庫
+--                          SELECT xilv.frequent_whse_code      -- 主管倉庫
+                          SELECT xilv2.segment1      -- 東洋埠頭子倉庫
 -- 2008/07/30 Mod ↑
                           FROM   fnd_user               fu          -- ユーザーマスタ
                                 ,per_all_people_f       papf        -- 従業員マスタ
                                 ,xxcmn_item_locations_v xilv        -- OPM保管場所情報VIEW
+                                ,xxcmn_item_locations_v xilv2       -- OPM保管場所情報VIEW
                           WHERE  fu.employee_id             = papf.person_id        -- 従業員ID
                           AND    papf.effective_start_date <= TRUNC(gd_sys_date)    -- 適用開始日
                           AND    papf.effective_end_date   >= TRUNC(gd_sys_date)    -- 適用終了日
@@ -2395,8 +2405,10 @@ AS
                           AND  ((fu.end_date               IS NULL)                 -- 適用終了日
                             OR  (fu.end_date               >= TRUNC(gd_sys_date)))
                           AND    xilv.purchase_code         = papf.attribute4       -- 仕入先コード
+                          AND    xilv.segment1              = xilv2.frequent_whse_code  -- 子倉庫の絞込み
                           AND    fu.user_id                 = gn_user_id            -- ユーザーID
                           )
+-- 2008/11/26 Mod ↑
                       )
               )
              )
@@ -2978,15 +2990,16 @@ AS
                           AND    fu.user_id                 = gn_user_id            -- ユーザーID
                           )
                OR      xmrh.shipped_locat_code IN (
+-- 2008/11/26 Mod ↓
 -- 2008/07/30 Mod ↓
-/*
-                          SELECT xilv.frequent_whse           -- 代表倉庫
-*/
-                          SELECT xilv.frequent_whse_code      -- 主管倉庫
+--                          SELECT xilv.frequent_whse           -- 代表倉庫
+--                          SELECT xilv.frequent_whse_code      -- 主管倉庫
+                          SELECT xilv2.segment1      -- 東洋埠頭子倉庫
 -- 2008/07/30 Mod ↑
                           FROM   fnd_user               fu          -- ユーザーマスタ
                                 ,per_all_people_f       papf        -- 従業員マスタ
                                 ,xxcmn_item_locations_v xilv        -- OPM保管場所情報VIEW
+                                ,xxcmn_item_locations_v xilv2       -- OPM保管場所情報VIEW
                           WHERE  fu.employee_id             = papf.person_id        -- 従業員ID
                           AND    papf.effective_start_date <= TRUNC(gd_sys_date)    -- 適用開始日
                           AND    papf.effective_end_date   >= TRUNC(gd_sys_date)    -- 適用終了日
@@ -2994,6 +3007,7 @@ AS
                           AND  ((fu.end_date               IS NULL)                 -- 適用終了日
                             OR  (fu.end_date               >= TRUNC(gd_sys_date)))
                           AND    xilv.purchase_code         = papf.attribute4       -- 仕入先コード
+                          AND    xilv.segment1              = xilv2.frequent_whse_code   -- 子倉庫絞込み
                           AND    fu.user_id                 = gn_user_id            -- ユーザーID
                           )
                       )
@@ -3014,14 +3028,14 @@ AS
                           )
                OR      xmrh.ship_to_locat_code IN (
 -- 2008/07/30 Mod ↓
-/*
-                          SELECT xilv.frequent_whse           -- 代表倉庫
-*/
-                          SELECT xilv.frequent_whse_code      -- 主管倉庫
+--                          SELECT xilv.frequent_whse           -- 代表倉庫
+--                          SELECT xilv.frequent_whse_code      -- 主管倉庫
+                          SELECT xilv2.segment1      -- 東洋埠頭子倉庫
 -- 2008/07/30 Mod ↑
                           FROM   fnd_user               fu          -- ユーザーマスタ
                                 ,per_all_people_f       papf        -- 従業員マスタ
                                 ,xxcmn_item_locations_v xilv        -- OPM保管場所情報VIEW
+                                ,xxcmn_item_locations_v xilv2       -- OPM保管場所情報VIEW
                           WHERE  fu.employee_id             = papf.person_id        -- 従業員ID
                           AND    papf.effective_start_date <= TRUNC(gd_sys_date)    -- 適用開始日
                           AND    papf.effective_end_date   >= TRUNC(gd_sys_date)    -- 適用終了日
@@ -3029,8 +3043,10 @@ AS
                           AND  ((fu.end_date               IS NULL)                 -- 適用終了日
                             OR  (fu.end_date               >= TRUNC(gd_sys_date)))
                           AND    xilv.purchase_code         = papf.attribute4       -- 仕入先コード
+                          AND    xilv.segment1              = xilv2.frequent_whse_code       -- 仕入先コード
                           AND    fu.user_id                 = gn_user_id            -- ユーザーID
                           )
+-- 2008/11/26 Mod ↑
                       ))
               )
              )
