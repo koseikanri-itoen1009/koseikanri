@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCOS009A01R (body)
  * Description      : 受注一覧リスト
  * MD.050           : 受注一覧リスト MD050_COS_009_A01
- * Version          : 1.7
+ * Version          : 1.8
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -34,6 +34,7 @@ AS
  *  2009/06/19    1.5   N.Nishimura      [T1_1437]データパージ不具合対応
  *  2009/07/13    1.6   K.Kiriu          [0000063]情報区分の課題対応
  *  2009/07/29    1.7   T.Tominaga       [0000271]受注ソースがEDI受注とそれ以外とでカーソルを分ける（EDI受注のみロック）
+ *  2009/10/02    1.8   N.Maeda          [0001338]execute_svfの独立トランザクション化
  *
  *****************************************************************************************/
 --
@@ -400,21 +401,9 @@ AS
       --EDI取込 受注ソースの名称を取得
       SELECT  look_val.description        order_source_edi
       INTO    gv_order_source_edi_chk
-      FROM    fnd_lookup_values           look_val,
-              fnd_lookup_types_tl         types_tl,
-              fnd_lookup_types            types,
-              fnd_application_tl          appl,
-              fnd_application             app
-      WHERE   appl.application_id         = types.application_id
-      AND     app.application_id          = appl.application_id
-      AND     types_tl.lookup_type        = look_val.lookup_type
-      AND     types.lookup_type           = types_tl.lookup_type
-      AND     types.security_group_id     = types_tl.security_group_id
-      AND     types.view_application_id   = types_tl.view_application_id
-      AND     types_tl.language           = cv_lang
-      AND     look_val.language           = cv_lang
-      AND     appl.language               = cv_lang
-      AND     app.application_short_name  = cv_xxcos_short_name
+-- ******** 2009/10/02 1.8 N.Maeda MOD START ******** --
+      FROM    fnd_lookup_values           look_val
+      WHERE   look_val.language           = cv_lang
       AND     look_val.lookup_type        = cv_type_ost_009_a01
       AND     look_val.lookup_code        LIKE cv_code_ost_009_a01
       AND     look_val.attribute2         = cv_diff_y               --EDI取込
@@ -423,24 +412,37 @@ AS
       AND     look_val.enabled_flag       = ct_enabled_flg_y
       AND     rownum                      = 1
       ;
+--
+--      FROM    fnd_lookup_values           look_val,
+--              fnd_lookup_types_tl         types_tl,
+--              fnd_lookup_types            types,
+--              fnd_application_tl          appl,
+--              fnd_application             app
+--      WHERE   appl.application_id         = types.application_id
+--      AND     app.application_id          = appl.application_id
+--      AND     types_tl.lookup_type        = look_val.lookup_type
+--      AND     types.lookup_type           = types_tl.lookup_type
+--      AND     types.security_group_id     = types_tl.security_group_id
+--      AND     types.view_application_id   = types_tl.view_application_id
+--      AND     types_tl.language           = cv_lang
+--      AND     look_val.language           = cv_lang
+--      AND     appl.language               = cv_lang
+--      AND     app.application_short_name  = cv_xxcos_short_name
+--      AND     look_val.lookup_type        = cv_type_ost_009_a01
+--      AND     look_val.lookup_code        LIKE cv_code_ost_009_a01
+--      AND     look_val.attribute2         = cv_diff_y               --EDI取込
+--      AND     gd_proc_date                >= NVL( look_val.start_date_active, gd_min_date )
+--      AND     gd_proc_date                <= NVL( look_val.end_date_active, gd_max_date )
+--      AND     look_val.enabled_flag       = ct_enabled_flg_y
+--      AND     rownum                      = 1
+--      ;
+-- ******** 2009/10/02 1.8 N.Maeda MOD END ******** --
       --クイック受注入力 受注ソースの名称を取得
       SELECT  look_val.description        order_source_clik
       INTO    gv_order_source_clik_chk
-      FROM    fnd_lookup_values           look_val,
-              fnd_lookup_types_tl         types_tl,
-              fnd_lookup_types            types,
-              fnd_application_tl          appl,
-              fnd_application             app
-      WHERE   appl.application_id         = types.application_id
-      AND     app.application_id          = appl.application_id
-      AND     types_tl.lookup_type        = look_val.lookup_type
-      AND     types.lookup_type           = types_tl.lookup_type
-      AND     types.security_group_id     = types_tl.security_group_id
-      AND     types.view_application_id   = types_tl.view_application_id
-      AND     types_tl.language           = cv_lang
-      AND     look_val.language           = cv_lang
-      AND     appl.language               = cv_lang
-      AND     app.application_short_name  = cv_xxcos_short_name
+-- ******** 2009/10/02 1.8 N.Maeda MOD START ******** --
+      FROM    fnd_lookup_values           look_val
+      WHERE   look_val.language           = cv_lang
       AND     look_val.lookup_type        = cv_type_ost_009_a01
       AND     look_val.lookup_code        LIKE cv_code_ost_009_a01
       AND     look_val.attribute4         = cv_diff_y               --クイック受注入力
@@ -449,6 +451,31 @@ AS
       AND     look_val.enabled_flag       = ct_enabled_flg_y
       AND     rownum                      = 1
       ;
+--
+--      FROM    fnd_lookup_values           look_val,
+--              fnd_lookup_types_tl         types_tl,
+--              fnd_lookup_types            types,
+--              fnd_application_tl          appl,
+--              fnd_application             app
+--      WHERE   appl.application_id         = types.application_id
+--      AND     app.application_id          = appl.application_id
+--      AND     types_tl.lookup_type        = look_val.lookup_type
+--      AND     types.lookup_type           = types_tl.lookup_type
+--      AND     types.security_group_id     = types_tl.security_group_id
+--      AND     types.view_application_id   = types_tl.view_application_id
+--      AND     types_tl.language           = cv_lang
+--      AND     look_val.language           = cv_lang
+--      AND     appl.language               = cv_lang
+--      AND     app.application_short_name  = cv_xxcos_short_name
+--      AND     look_val.lookup_type        = cv_type_ost_009_a01
+--      AND     look_val.lookup_code        LIKE cv_code_ost_009_a01
+--      AND     look_val.attribute4         = cv_diff_y               --クイック受注入力
+--      AND     gd_proc_date                >= NVL( look_val.start_date_active, gd_min_date )
+--      AND     gd_proc_date                <= NVL( look_val.end_date_active, gd_max_date )
+--      AND     look_val.enabled_flag       = ct_enabled_flg_y
+--      AND     rownum                      = 1
+--      ;
+-- ******** 2009/10/02 1.8 N.Maeda MOD END ******** --
     EXCEPTION
       WHEN NO_DATA_FOUND THEN
         RAISE global_order_source_get_expt;
@@ -942,21 +969,9 @@ AS
       -- 受注ソース名称（EDI受注、問屋CSV、国際CSV、Online）
       AND oos.name IN ( 
         SELECT  look_val.attribute1
-        FROM    fnd_lookup_values           look_val,
-                fnd_lookup_types_tl         types_tl,
-                fnd_lookup_types            types,
-                fnd_application_tl          appl,
-                fnd_application             app
-        WHERE   appl.application_id         = types.application_id
-        AND     app.application_id          = appl.application_id
-        AND     types_tl.lookup_type        = look_val.lookup_type
-        AND     types.lookup_type           = types_tl.lookup_type
-        AND     types.security_group_id     = types_tl.security_group_id
-        AND     types.view_application_id   = types_tl.view_application_id
-        AND     types_tl.language           = cv_lang
-        AND     look_val.language           = cv_lang
-        AND     appl.language               = cv_lang
-        AND     app.application_short_name  = cv_xxcos_short_name
+-- ******** 2009/10/02 1.8 N.Maeda MOD START ******** --
+        FROM    fnd_lookup_values           look_val
+        WHERE   look_val.language           = cv_lang
         AND     look_val.lookup_type        = cv_type_ost_009_a01
         AND     look_val.lookup_code        LIKE cv_code_ost_009_a01
         AND     gd_proc_date                >= NVL( look_val.start_date_active, gd_min_date )
@@ -964,6 +979,30 @@ AS
         AND     look_val.enabled_flag       = ct_enabled_flg_y
         --受注ソース（EDI取込・CSV取込・クイック受注入力）
         AND     look_val.description        = iv_order_source
+--
+--        FROM    fnd_lookup_values           look_val,
+--                fnd_lookup_types_tl         types_tl,
+--                fnd_lookup_types            types,
+--                fnd_application_tl          appl,
+--                fnd_application             app
+--        WHERE   appl.application_id         = types.application_id
+--        AND     app.application_id          = appl.application_id
+--        AND     types_tl.lookup_type        = look_val.lookup_type
+--        AND     types.lookup_type           = types_tl.lookup_type
+--        AND     types.security_group_id     = types_tl.security_group_id
+--        AND     types.view_application_id   = types_tl.view_application_id
+--        AND     types_tl.language           = cv_lang
+--        AND     look_val.language           = cv_lang
+--        AND     appl.language               = cv_lang
+--        AND     app.application_short_name  = cv_xxcos_short_name
+--        AND     look_val.lookup_type        = cv_type_ost_009_a01
+--        AND     look_val.lookup_code        LIKE cv_code_ost_009_a01
+--        AND     gd_proc_date                >= NVL( look_val.start_date_active, gd_min_date )
+--        AND     gd_proc_date                <= NVL( look_val.end_date_active, gd_max_date )
+--        AND     look_val.enabled_flag       = ct_enabled_flg_y
+--        --受注ソース（EDI取込・CSV取込・クイック受注入力）
+--        AND     look_val.description        = iv_order_source
+-- ******** 2009/10/02 1.8 N.Maeda MOD END  ******** --
       )
       --受注ヘッダ.顧客ID = 顧客マスタ.顧客ID
       AND ooha.sold_to_org_id               = hca.cust_account_id
@@ -1164,21 +1203,9 @@ AS
       -- 受注ソース名称（EDI受注、問屋CSV、国際CSV、Online）
       AND oos.name IN ( 
         SELECT  look_val.attribute1
-        FROM    fnd_lookup_values           look_val,
-                fnd_lookup_types_tl         types_tl,
-                fnd_lookup_types            types,
-                fnd_application_tl          appl,
-                fnd_application             app
-        WHERE   appl.application_id         = types.application_id
-        AND     app.application_id          = appl.application_id
-        AND     types_tl.lookup_type        = look_val.lookup_type
-        AND     types.lookup_type           = types_tl.lookup_type
-        AND     types.security_group_id     = types_tl.security_group_id
-        AND     types.view_application_id   = types_tl.view_application_id
-        AND     types_tl.language           = cv_lang
-        AND     look_val.language           = cv_lang
-        AND     appl.language               = cv_lang
-        AND     app.application_short_name  = cv_xxcos_short_name
+-- ******** 2009/10/02 1.8 N.Maeda MOD START ******** --
+        FROM    fnd_lookup_values           look_val
+        WHERE   look_val.language           = cv_lang
         AND     look_val.lookup_type        = cv_type_ost_009_a01
         AND     look_val.lookup_code        LIKE cv_code_ost_009_a01
         AND     gd_proc_date                >= NVL( look_val.start_date_active, gd_min_date )
@@ -1186,6 +1213,30 @@ AS
         AND     look_val.enabled_flag       = ct_enabled_flg_y
         --受注ソース（EDI取込・CSV取込・クイック受注入力）
         AND     look_val.description        = iv_order_source
+--
+--        FROM    fnd_lookup_values           look_val,
+--                fnd_lookup_types_tl         types_tl,
+--                fnd_lookup_types            types,
+--                fnd_application_tl          appl,
+--                fnd_application             app
+--        WHERE   appl.application_id         = types.application_id
+--        AND     app.application_id          = appl.application_id
+--        AND     types_tl.lookup_type        = look_val.lookup_type
+--        AND     types.lookup_type           = types_tl.lookup_type
+--        AND     types.security_group_id     = types_tl.security_group_id
+--        AND     types.view_application_id   = types_tl.view_application_id
+--        AND     types_tl.language           = cv_lang
+--        AND     look_val.language           = cv_lang
+--        AND     appl.language               = cv_lang
+--        AND     app.application_short_name  = cv_xxcos_short_name
+--        AND     look_val.lookup_type        = cv_type_ost_009_a01
+--        AND     look_val.lookup_code        LIKE cv_code_ost_009_a01
+--        AND     gd_proc_date                >= NVL( look_val.start_date_active, gd_min_date )
+--        AND     gd_proc_date                <= NVL( look_val.end_date_active, gd_max_date )
+--        AND     look_val.enabled_flag       = ct_enabled_flg_y
+--        --受注ソース（EDI取込・CSV取込・クイック受注入力）
+--        AND     look_val.description        = iv_order_source
+-- ******** 2009/10/02 1.8 N.Maeda MOD END  ******** --
       )
       --受注ヘッダ.顧客ID = 顧客マスタ.顧客ID
       AND ooha.sold_to_org_id               = hca.cust_account_id
@@ -1687,6 +1738,9 @@ AS
     ov_retcode    OUT VARCHAR2,     --   リターン・コード             --# 固定 #
     ov_errmsg     OUT VARCHAR2)     --   ユーザー・エラー・メッセージ --# 固定 #
   IS
+-- ********* 2009/10/02 N.Maeda 1.8 ADD START ********* --
+    PRAGMA AUTONOMOUS_TRANSACTION; -- 独立トランザクション
+-- ********* 2009/10/02 N.Maeda 1.8 ADD  END  ********* --
     -- ===============================
     -- 固定ローカル定数
     -- ===============================
@@ -2008,6 +2062,11 @@ AS
     lv_retcode_svf VARCHAR2(1);     -- リターン・コード(SVF実行結果保持用)
     lv_errmsg_svf  VARCHAR2(5000);  -- ユーザー・エラー・メッセージ(SVF実行結果保持用)
 --2009/06/19  Ver1.5 T1_1437  Add end
+-- ************ 2009/10/02 1.8 N.Maeda ADD START ************--
+    lv_update_errbuf                  VARCHAR2(5000);
+    lv_update_retcode                 VARCHAR2(1);
+    lv_update_errmsg                  VARCHAR2(5000);
+-- ************ 2009/10/02 1.8 N.Maeda ADD  END  ************--
 --
   BEGIN
 --
@@ -2110,6 +2169,9 @@ AS
     ELSE
       RAISE global_process_expt;
     END IF;
+-- ************ 2009/10/02 1.8 N.Maeda ADD START ************--
+    COMMIT;
+-- ************ 2009/10/02 1.8 N.Maeda ADD  END  ************--
 --
     -- ===============================
     -- A-5  受注明細出力済み更新（EDI取込のみ）
@@ -2119,36 +2181,56 @@ AS
         lv_errbuf,         -- エラー・メッセージ           --# 固定 #
         lv_retcode,        -- リターン・コード             --# 固定 #
         lv_errmsg);        -- ユーザー・エラー・メッセージ --# 固定 #
-      IF ( lv_retcode = cv_status_normal ) THEN
-        NULL;
-      ELSE
-        --帳票ワークテーブルに登録された件数をクリア
-        gn_normal_cnt := 0;
-        RAISE global_process_expt;
-      END IF;
+-- ************ 2009/10/02 1.8 N.Maeda DEL START ************--
+--      IF ( lv_retcode = cv_status_normal ) THEN
+--        NULL;
+--      ELSE
+--        --帳票ワークテーブルに登録された件数をクリア
+--        gn_normal_cnt := 0;
+--        RAISE global_process_expt;
+--      END IF;
+-- ************ 2009/10/02 1.8 N.Maeda DEL  END  ************--
     END IF;
+-- ************ 2009/10/02 1.8 N.Maeda ADD START ************--
+      lv_update_errbuf  := lv_errbuf;
+      lv_update_retcode := lv_retcode;
+      lv_update_errmsg  := lv_errmsg;
+-- ************ 2009/10/02 1.8 N.Maeda ADD  END  ************--
 --
-    --コメット処理（以上の処理が正常の場合）
-    COMMIT;
+-- ************ 2009/10/02 1.8 N.Maeda DEL START ************--
+--    --コメット処理（以上の処理が正常の場合）
+--    COMMIT;
+-- ************ 2009/10/02 1.8 N.Maeda DEL  END  ************--
 --
-    -- ===============================
-    -- A-6  SVF起動
-    -- ===============================
-    execute_svf(
-      lv_errbuf,         -- エラー・メッセージ           --# 固定 #
-      lv_retcode,        -- リターン・コード             --# 固定 #
-      lv_errmsg);        -- ユーザー・エラー・メッセージ --# 固定 #
+-- ************ 2009/10/02 1.8 N.Maeda ADD START ************--
+    IF ( lv_update_retcode = cv_status_normal ) THEN
+-- ************ 2009/10/02 1.8 N.Maeda ADD  END  ************--
+      -- ===============================
+      -- A-6  SVF起動
+      -- ===============================
+      execute_svf(
+        lv_errbuf,         -- エラー・メッセージ           --# 固定 #
+        lv_retcode,        -- リターン・コード             --# 固定 #
+        lv_errmsg);        -- ユーザー・エラー・メッセージ --# 固定 #
 -- 2009/06/19  Ver1.5 T1_1437  Mod start
 --    IF ( lv_retcode = cv_status_normal ) THEN
 --      NULL;
 --    ELSE
 --      RAISE global_process_expt;
 --    END IF;
-    --
-    --エラーでもワークテーブルを削除する為、エラー情報を保持
-    lv_errbuf_svf  := lv_errbuf;
-    lv_retcode_svf := lv_retcode;
-    lv_errmsg_svf  := lv_errmsg;
+      --
+-- ************ 2009/10/02 1.8 N.Maeda ADD START ************--
+    IF ( lv_retcode <> cv_status_normal ) THEN
+      ROLLBACK;
+    END IF;
+-- ************ 2009/10/02 1.8 N.Maeda ADD  END  ************--
+      --エラーでもワークテーブルを削除する為、エラー情報を保持
+      lv_errbuf_svf  := lv_errbuf;
+      lv_retcode_svf := lv_retcode;
+      lv_errmsg_svf  := lv_errmsg;
+-- ************ 2009/10/02 1.8 N.Maeda ADD START ************--
+    END IF;
+-- ************ 2009/10/02 1.8 N.Maeda ADD  END  ************--
 -- 2009/06/19  Ver1.5 T1_1437  Mod End
     -- ===============================
     -- A-7  帳票ワークテーブル削除
@@ -2167,6 +2249,14 @@ AS
     --エラーの場合、ロールバックするのでここでコミット
     COMMIT;
 --
+-- ************ 2009/10/02 1.8 N.Maeda ADD START ************--
+    IF ( lv_update_retcode = cv_status_error ) THEN
+      lv_errbuf   := lv_update_errbuf;
+      lv_retcode  := lv_update_retcode;
+      lv_errmsg   := lv_update_errmsg;
+      RAISE global_process_expt;
+    END IF;
+-- ************ 2009/10/02 1.8 N.Maeda ADD  END  ************--
     --SVF実行結果確認
     IF ( lv_retcode_svf = cv_status_error ) THEN
       lv_errbuf  := lv_errbuf_svf;

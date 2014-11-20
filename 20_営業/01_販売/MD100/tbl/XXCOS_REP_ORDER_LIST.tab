@@ -10,6 +10,11 @@
  *  Date          Ver.  Editor           Description
  * ------------- ----- ---------------- ---------------------------------
  *  2009/01/30    1.0   SCS T.Tyou     新規作成
+ *  2009/10/02    1.1   SCS N.Maeda    受注番号  NUMBER(9)    ⇒ NUMBERに変更
+ *                                     明細番号  NUMBER(3)    ⇒ NUMBERに変更
+ *                                     数量      NUMBER(9,2)  ⇒ NUMBER(13,2)に変更
+ *                                     納品単価  NUMBER(8,2)  ⇒ NUMBER(13,2)に変更
+ *                                     受注金額  NUMBER(12,0) ⇒ NUMBERに変更
  *
  ****************************************************************************************/
 CREATE TABLE XXCOS.XXCOS_REP_ORDER_LIST 
