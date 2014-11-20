@@ -7,7 +7,7 @@ AS
  * Description      : 支払運賃データ自動作成
  * MD.050           : 運賃計算（トランザクション） T_MD050_BPO_730
  * MD.070           : 支払運賃データ自動作成 T_MD070_BPO_73A
- * Version          : 1.24
+ * Version          : 1.25
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -119,6 +119,7 @@ AS
  *  2009/02/09    1.22 Oracle 野村       本番#1017対応
  *  2009/04/07    1.23 Oracle 野村       本番#432対応
  *  2009/04/30    1.24 Oracle 野村       本番#432対応
+ *  2009/05/07    1.25 Oracle 野村       本番#432対応
  *
  *****************************************************************************************/
 --
@@ -891,6 +892,9 @@ AS
     , distance            xxwip_delivery_lines.distance%TYPE          -- 最長距離（最大）
     , actual_distance     xxwip_delivery_lines.actual_distance%TYPE   -- 実際距離
     , delivery_weight     xxwip_delivery_lines.delivery_weight%TYPE   -- 重量（合計）
+-- *----------* 2009/05/07 Ver.1.25 本番#432対応 start *----------*
+    , qty                      xxwip_delivery_lines.qty%TYPE          -- 数量（合計）
+-- *----------* 2009/05/07 Ver.1.25 本番#432対応 end   *----------*
 -- *----------* 2009/04/07 Ver.1.23 本番#432対応 start *----------*
     , invoice_no               xxwip_delivery_lines.invoice_no%TYPE               -- 送り状No
     , payments_judgment_classe xxwip_delivery_lines.payments_judgment_classe%TYPE -- 支払判断区分
@@ -915,6 +919,9 @@ AS
   ue_head_distance_tab           head_distance_type;        -- 最長距離
   ue_head_deliv_wght1_tab        head_deliv_wght1_type;     -- 重量１
   ue_head_actual_ditnc_tab       head_actual_ditnc_type;    -- 最長実際距離
+-- *----------* 2009/05/07 Ver.1.25 本番#432対応 start *----------*
+  ue_head_actual_qty1_tab        head_qty1_type;            -- 数量１
+-- *----------* 2009/05/07 Ver.1.25 本番#432対応 end   *----------*
 -- *----------* 2009/04/07 Ver.1.23 本番#432対応 start *----------*
   ue_head_invoice_no_tab         head_invoice_no_type;      -- 送り状No
   ue_head_pay_judg_cls_tab       head_pay_judg_cls_type;    -- 支払判断区分
@@ -9814,6 +9821,9 @@ AS
             , MAX(xdl.distance)           -- 最長距離
             , NULL                        -- 実際距離
             , SUM(xdl.delivery_weight)    -- 重量
+-- *----------* 2009/05/07 Ver.1.25 本番#432対応 start *----------*
+            , SUM(xdl.qty)                -- 数量
+-- *----------* 2009/05/07 Ver.1.25 本番#432対応 end   *----------*
 -- *----------* 2009/04/07 Ver.1.23 本番#432対応 start *----------*
             , NULL                        -- 送り状No
             , NULL                        -- 支払判断区分
@@ -10123,6 +10133,10 @@ AS
       -- 最長実際距離
       ue_head_actual_ditnc_tab(ln_index)  := gt_exch_delivno_line_tab(ln_index).actual_distance;
 --
+-- *----------* 2009/05/07 Ver.1.25 本番#432対応 start *----------*
+      -- 数量１
+      ue_head_actual_qty1_tab(ln_index)   := gt_exch_delivno_line_tab(ln_index).qty;
+-- *----------* 2009/05/07 Ver.1.25 本番#432対応 end   *----------*
 -- *----------* 2009/04/07 Ver.1.23 本番#432対応 start *----------*
       -- 送り状No
       ue_head_invoice_no_tab(ln_index)    := gt_exch_delivno_line_tab(ln_index).invoice_no;
@@ -10159,6 +10173,7 @@ AS
         FND_FILE.PUT_LINE(FND_FILE.LOG, 'set_exch_deliv_head_h：距離            ：' || gt_exch_delivno_line_tab(ln_index).distance);
         FND_FILE.PUT_LINE(FND_FILE.LOG, 'set_exch_deliv_head_h：実際距離        ：' || gt_exch_delivno_line_tab(ln_index).actual_distance);
         FND_FILE.PUT_LINE(FND_FILE.LOG, 'set_exch_deliv_head_h：重量            ：' || gt_exch_delivno_line_tab(ln_index).delivery_weight);
+        FND_FILE.PUT_LINE(FND_FILE.LOG, 'set_exch_deliv_head_h：数量            ：' || gt_exch_delivno_line_tab(ln_index).qty);
         FND_FILE.PUT_LINE(FND_FILE.LOG, 'set_exch_deliv_head_h：送り状No        ：' || gt_exch_delivno_line_tab(ln_index).invoice_no);
         FND_FILE.PUT_LINE(FND_FILE.LOG, 'set_exch_deliv_head_h：支払判断区分    ：' || gt_exch_delivno_line_tab(ln_index).payments_judgment_classe );
         FND_FILE.PUT_LINE(FND_FILE.LOG, 'set_exch_deliv_head_h：出庫日          ：' || gt_exch_delivno_line_tab(ln_index).ship_date);
@@ -10253,6 +10268,9 @@ AS
       SET     distance                  = ue_head_distance_tab(ln_index)       -- 最長距離
             , delivery_weight1          = ue_head_deliv_wght1_tab(ln_index)    -- 重量１
             , actual_distance           = ue_head_actual_ditnc_tab(ln_index)   -- 最長実際距離
+-- *----------* 2009/05/07 Ver.1.25 本番#432対応 start *----------*
+            , qty1                      = ue_head_actual_qty1_tab(ln_index)    -- 数量１
+-- *----------* 2009/05/07 Ver.1.25 本番#432対応 end   *----------*
 -- *----------* 2009/04/07 Ver.1.23 本番#432対応 start *----------*
             , invoice_no                = ue_head_invoice_no_tab(ln_index)     -- 送り状No
             , payments_judgment_classe  = ue_head_pay_judg_cls_tab(ln_index)   -- 支払判断区分
@@ -11005,7 +11023,12 @@ AS
 --
         -- ***** 支払ピッキング料 *****
         -- 運賃用運送業者マスタ 支払変更フラグ = '1'の場合
-        IF (gt_exch_deliv_tab(ln_index).pay_change_flg = gv_target_y) THEN
+        --   もしくは運賃明細が更新されている場合は、支払ピッキング料を再計算する。
+-- *----------* 2009/05/07 Ver.1.25 本番#432対応 start *----------*
+--        IF (gt_exch_deliv_tab(ln_index).pay_change_flg = gv_target_y) THEN
+        IF   ((gt_exch_deliv_tab(ln_index).pay_change_flg   = gv_target_y)
+          OR  (gt_exch_deliv_tab(ln_index).last_update_date = gd_sysdate )) THEN
+-- *----------* 2009/05/07 Ver.1.25 本番#432対応 end   *----------*
           -- 個数 × 支払ピッキング単価
           ueh_head_pick_charge_tab(ln_target_cnt)  := CEIL(gt_exch_deliv_tab(ln_index).qty1 *
                                                       gt_exch_deliv_tab(ln_index).pay_picking_amount);
