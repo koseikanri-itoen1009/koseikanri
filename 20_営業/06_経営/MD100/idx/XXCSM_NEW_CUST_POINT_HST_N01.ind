@@ -1,0 +1,2 @@
+CREATE INDEX xxcsm.xxcsm_new_cust_point_hst_n01 ON xxcsm_new_cust_point_hst (employee_number, year_month, account_number, data_kbn) TABLESPACE xxidx2
+/
