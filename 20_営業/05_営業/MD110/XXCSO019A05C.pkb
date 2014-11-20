@@ -8,7 +8,7 @@ AS
  *                           訪問売上計画管理表を帳票に出力します。
  * MD.050                  : 営業システム構築プロジェクトアドオン：
  *                           訪問売上計画管理表
- * Version                 : 1.7
+ * Version                 : 1.8
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -67,6 +67,8 @@ AS
  *  2009-07-02    1.5   Hiroshi.Ogawa     障害番号：0000312
  *  2009-08-03    1.6   Satomura.Kazuo    統合テスト障害番号0000911対応
  *  2009-08-03    1.7   Mio.Maruyama      統合テスト障害番号0001105対応
+ *  2009-08-03    1.8   Satomura.Kazuo    統合テスト障害番号0001271対応
+ *                                        統合テスト障害番号0001317対応
  *****************************************************************************************/
 --
 --#######################  固定グローバル定数宣言部 START   #######################
@@ -186,6 +188,9 @@ AS
   cv_flg_y                  CONSTANT VARCHAR2(1)   := 'Y';                 -- 営業グループリーダ(フラグ)
   cv_flg_n                  CONSTANT VARCHAR2(1)   := 'N';                 -- 営業員(フラグ)
   cv_mc                     CONSTANT VARCHAR2(2)   := 'MC';
+  /* 2009.09.08 K.Satomura 0001271対応 START */
+  cd_process_date           CONSTANT DATE          := xxccp_common_pkg2.get_process_date; -- 業務処理日付
+  /* 2009.09.08 K.Satomura 0001271対応 END */
   -- 訪問売上計画管理表帳票種別参照タイプ
   cv_rep_lookup_type_code   CONSTANT VARCHAR2(100) := 'XXCSO1_VST_SLS_REP_KIND';
   cv_lookup_type_dai        CONSTANT VARCHAR2(100) := 'XXCMM_CUST_GYOTAI_DAI';
@@ -2099,11 +2104,22 @@ AS
     -- ユーザー宣言部
     -- ===============================
     -- *** ローカル定数 ***
+    /* 2009.09.08 K.Satomura 0001271対応 START */
+    ct_prof_op_vd_dai  CONSTANT fnd_profile_options.profile_option_name%TYPE := 'XXCSO1_VD_GYOUTAI_CD_DAI';
+    ct_lookup_type_dai CONSTANT fnd_lookup_values_vl.lookup_type%TYPE        := 'XXCMM_CUST_GYOTAI_DAI';
+    ct_lookup_type_chu CONSTANT fnd_lookup_values_vl.lookup_type%TYPE        := 'XXCMM_CUST_GYOTAI_CHU';
+    ct_lookup_type_syo CONSTANT fnd_lookup_values_vl.lookup_type%TYPE        := 'XXCMM_CUST_GYOTAI_SHO';
+    --
+    /* 2009.09.08 K.Satomura 0001271対応 END */
     -- *** ローカル変数 ***
     /* 2009.08.03 K.Satomura 0000911対応 START */
     lv_date      VARCHAR2(8);
     ln_route_bit NUMBER; -- 訪問予定回数
     /* 2009.08.03 K.Satomura 0000911対応 END */
+    /* 2009.09.08 K.Satomura 0001271対応 START */
+    lt_profile_option_value fnd_profile_option_values.profile_option_value%TYPE;
+    --
+    /* 2009.09.08 K.Satomura 0001271対応 END */
     -- *** ローカルカーソル ***
     /* 2009.08.03 K.Satomura 0000911対応 START */
     -- 基本項目を取得するカーソル
@@ -2118,7 +2134,10 @@ AS
                    cv_gvm_m
                  ELSE
                    CASE
-                     WHEN xxcso_route_common_pkg.iscustomervendor(xcav.business_low_type) = cv_true THEN
+                     /* 2009.09.08 K.Satomura 0001271対応 START */
+                     --WHEN xxcso_route_common_pkg.iscustomervendor(xcav.business_low_type) = cv_true THEN
+                     WHEN xcav.is_customer_vendor = cv_true THEN
+                     /* 2009.09.08 K.Satomura 0001271対応 END */
                        cv_gvm_v
                      ELSE
                        cv_gvm_g
@@ -2145,7 +2164,10 @@ AS
                             cv_gvm_m
                           ELSE
                             CASE
-                              WHEN xxcso_route_common_pkg.iscustomervendor(xcav.business_low_type) = cv_true THEN
+                              /* 2009.09.08 K.Satomura 0001271対応 START */
+                              --WHEN xxcso_route_common_pkg.iscustomervendor(xcav.business_low_type) = cv_true THEN
+                              WHEN xcav.is_customer_vendor = cv_true THEN
+                              /* 2009.09.08 K.Satomura 0001271対応 END */
                                 cv_gvm_v
                               ELSE
                                 cv_gvm_g
@@ -2163,6 +2185,9 @@ AS
              ,xcav.cnvs_date         cnvs_date         -- 顧客獲得日
              ,xcav.vist_target_div   vist_target_div   -- 訪問対象区分
              ,xcav.sale_base_code    sale_base_code    -- 売上拠点コード
+             /* 2009.09.08 K.Satomura 0001271対応 START */
+             ,xcav.is_customer_vendor is_customer_vendor -- ＶＤ区分
+             /* 2009.09.08 K.Satomura 0001271対応 END */
       FROM (
         SELECT /*+ ORDERED USE_NL(hor,hop,hpa,hca,xca) */
                xtr.base_code         base_code
@@ -2180,6 +2205,37 @@ AS
               ,xxcso019a05c.get_route_number(
                  hop.organization_profile_id
               )                      route_number
+              /* 2009.09.08 K.Satomura 0001271対応 START */
+              ,NVL(
+                 (
+                   SELECT (
+                            CASE dai.lookup_code
+                              WHEN lt_profile_option_value THEN
+                                cv_true
+                              ELSE
+                                cv_false
+                            END
+                          ) is_customer_vendor
+                   FROM   fnd_lookup_values_vl dai
+                         ,fnd_lookup_values_vl chu
+                         ,fnd_lookup_values_vl syo
+                   WHERE  syo.lookup_type                                     = ct_lookup_type_syo
+                   AND    chu.lookup_type                                     = ct_lookup_type_chu
+                   AND    dai.lookup_type                                     = ct_lookup_type_dai
+                   AND    syo.lookup_code                                     = xca.business_low_type
+                   AND    chu.lookup_code                                     = syo.attribute1
+                   AND    dai.lookup_code                                     = chu.attribute1
+                   AND    syo.enabled_flag                                    = cv_flg_y
+                   AND    chu.enabled_flag                                    = cv_flg_y
+                   AND    dai.enabled_flag                                    = cv_flg_y
+                   AND    NVL(dai.start_date_active, TRUNC(cd_process_date)) <= TRUNC(cd_process_date)
+                   AND    NVL(dai.end_date_active,   TRUNC(cd_process_date)) >= TRUNC(cd_process_date)
+                   AND    NVL(chu.start_date_active, TRUNC(cd_process_date)) <= TRUNC(cd_process_date)
+                   AND    NVL(chu.end_date_active,   TRUNC(cd_process_date)) >= TRUNC(cd_process_date)
+                   AND    NVL(syo.start_date_active, TRUNC(cd_process_date)) <= TRUNC(cd_process_date)
+                   AND    NVL(syo.end_date_active,   TRUNC(cd_process_date)) >= TRUNC(cd_process_date)
+                 ), cv_false)        is_customer_vendor
+              /* 2009.09.08 K.Satomura 0001271対応 END */
         FROM   xxcso_tmp_rep_vsp_rsrcs    xtr
               ,hz_org_profiles_ext_b      hor
               ,hz_organization_profiles   hop
@@ -2289,6 +2345,10 @@ AS
 --
   BEGIN
 --
+    /* 2009.09.08 K.Satomura 0001271対応 START */
+    lt_profile_option_value := fnd_profile.value(ct_prof_op_vd_dai);
+    --
+    /* 2009.09.08 K.Satomura 0001271対応 END */
 /* 2009.08.03 K.Satomura 0000911対応 START */
 --    INSERT INTO xxcso_tmp_rep_vs_plan(
 --       base_code
@@ -6112,7 +6172,9 @@ AS
                              || (CASE WHEN (xsvsr.vis_y_num > 0) THEN 'Y' END)
                              || (CASE WHEN (xsvsr.vis_z_num > 0) THEN 'Z' END)
                        WHEN (xsvsr.vis_num > 0)
-                         AND (lt_tmp_rep_vs_plan_tab(i).vist_target_div = '1')
+                         /* 2009.09.08 K.Satomura 0001317対応 START */
+                         --AND (lt_tmp_rep_vs_plan_tab(i).vist_target_div = '1')
+                         /* 2009.09.08 K.Satomura 0001317対応 END */
                        THEN
                          '*' || (CASE WHEN (xsvsr.vis_a_num > 0) THEN 'A' END)
                              || (CASE WHEN (xsvsr.vis_b_num > 0) THEN 'B' END)
@@ -6151,14 +6213,20 @@ AS
                     WHEN (xsvsr.tgt_amt > 0)
                       AND (lt_tmp_rep_vs_plan_tab(i).vist_target_div = '1')
                       AND (lt_tmp_rep_vs_plan_tab(i).cnvs_date <= TO_DATE(xsvsr.sales_date, 'YYYYMMDD'))
-                      AND (xxcso_route_common_pkg.iscustomervendor(lt_tmp_rep_vs_plan_tab(i).business_low_type) <> cv_true)
+                      /* 2009.09.08 K.Satomura 0001271対応 START */
+                      --AND (xxcso_route_common_pkg.iscustomervendor(lt_tmp_rep_vs_plan_tab(i).business_low_type) <> cv_true)
+                      AND (lt_tmp_rep_vs_plan_tab(i).is_customer_vendor <> cv_true)
+                      /* 2009.09.08 K.Satomura 0001271対応 END */
                     THEN
                       ln_route_bit
                     WHEN (xsvsr.tgt_amt > 0)
                       AND (lt_tmp_rep_vs_plan_tab(i).vist_target_div = '1')
                       AND (lt_tmp_rep_vs_plan_tab(i).cnvs_date IS NULL)
                       AND (lt_tmp_rep_vs_plan_tab(i).customer_status IN (cv_cust_status8, cv_cust_status9, cv_cust_status3))
-                      AND (xxcso_route_common_pkg.iscustomervendor(lt_tmp_rep_vs_plan_tab(i).business_low_type) <> cv_true)
+                      /* 2009.09.08 K.Satomura 0001271対応 START */
+                      --AND (xxcso_route_common_pkg.iscustomervendor(lt_tmp_rep_vs_plan_tab(i).business_low_type) <> cv_true)
+                      AND (lt_tmp_rep_vs_plan_tab(i).is_customer_vendor <> cv_true)
+                      /* 2009.09.08 K.Satomura 0001271対応 END */
                     THEN
                       ln_route_bit
                     ELSE
@@ -6169,14 +6237,20 @@ AS
                     WHEN (xsvsr.tgt_amt > 0)
                       AND (lt_tmp_rep_vs_plan_tab(i).vist_target_div = '1')
                       AND (lt_tmp_rep_vs_plan_tab(i).cnvs_date <= TO_DATE(xsvsr.sales_date,'YYYYMMDD'))
-                      AND (xxcso_route_common_pkg.iscustomervendor(lt_tmp_rep_vs_plan_tab(i).business_low_type) = cv_true)
+                      /* 2009.09.08 K.Satomura 0001271対応 START */
+                      --AND (xxcso_route_common_pkg.iscustomervendor(lt_tmp_rep_vs_plan_tab(i).business_low_type) = cv_true)
+                      AND (lt_tmp_rep_vs_plan_tab(i).is_customer_vendor = cv_true)
+                      /* 2009.09.08 K.Satomura 0001271対応 END */
                     THEN
                       ln_route_bit
                     WHEN (xsvsr.tgt_amt > 0)
                       AND (lt_tmp_rep_vs_plan_tab(i).vist_target_div = '1')
                       AND (lt_tmp_rep_vs_plan_tab(i).cnvs_date IS NULL)
                       AND (lt_tmp_rep_vs_plan_tab(i).customer_status IN (cv_cust_status8, cv_cust_status9, cv_cust_status3))
-                      AND (xxcso_route_common_pkg.iscustomervendor(lt_tmp_rep_vs_plan_tab(i).business_low_type) = cv_true)
+                      /* 2009.09.08 K.Satomura 0001271対応 START */
+                      --AND (xxcso_route_common_pkg.iscustomervendor(lt_tmp_rep_vs_plan_tab(i).business_low_type) = cv_true)
+                      AND (lt_tmp_rep_vs_plan_tab(i).is_customer_vendor = cv_true)
+                      /* 2009.09.08 K.Satomura 0001271対応 END */
                     THEN
                       ln_route_bit
                     ELSE
@@ -6185,34 +6259,54 @@ AS
                  ) tgt_vis_v_num -- 訪問計画(自販)
                 ,(CASE
                     WHEN (xsvsr.vis_num > 0)
-                      AND (lt_tmp_rep_vs_plan_tab(i).vist_target_div = '1')
+                      /* 2009.09.08 K.Satomura 0001317対応 START */
+                      --AND (lt_tmp_rep_vs_plan_tab(i).vist_target_div = '1')
+                      /* 2009.09.08 K.Satomura 0001317対応 END */
                       AND (lt_tmp_rep_vs_plan_tab(i).cnvs_date <= TO_DATE(xsvsr.sales_date,'YYYYMMDD'))
-                      AND (xxcso_route_common_pkg.iscustomervendor(lt_tmp_rep_vs_plan_tab(i).business_low_type) <> cv_true)
+                      /* 2009.09.08 K.Satomura 0001271対応 START */
+                      --AND (xxcso_route_common_pkg.iscustomervendor(lt_tmp_rep_vs_plan_tab(i).business_low_type) <> cv_true)
+                      AND (lt_tmp_rep_vs_plan_tab(i).is_customer_vendor <> cv_true)
+                      /* 2009.09.08 K.Satomura 0001271対応 END */
                     THEN
                       xsvsr.vis_num
                     WHEN (xsvsr.vis_num > 0)
-                      AND (lt_tmp_rep_vs_plan_tab(i).vist_target_div = '1')
+                      /* 2009.09.08 K.Satomura 0001317対応 START */
+                      --AND (lt_tmp_rep_vs_plan_tab(i).vist_target_div = '1')
+                      /* 2009.09.08 K.Satomura 0001317対応 END */
                       AND (lt_tmp_rep_vs_plan_tab(i).cnvs_date IS NULL)
                       AND (lt_tmp_rep_vs_plan_tab(i).customer_status IN (cv_cust_status8, cv_cust_status9, cv_cust_status3))
-                      AND (xxcso_route_common_pkg.iscustomervendor(lt_tmp_rep_vs_plan_tab(i).business_low_type) <> cv_true)
+                      /* 2009.09.08 K.Satomura 0001271対応 START */
+                      --AND (xxcso_route_common_pkg.iscustomervendor(lt_tmp_rep_vs_plan_tab(i).business_low_type) <> cv_true)
+                      AND (lt_tmp_rep_vs_plan_tab(i).is_customer_vendor <> cv_true)
+                      /* 2009.09.08 K.Satomura 0001271対応 END */
                     THEN
                       xsvsr.vis_num
                     ELSE
                       0
                   END
-                 )
+                 ) tgt_vis_i_num -- 訪問実績(一般)
                 ,(CASE
                     WHEN (xsvsr.vis_num > 0)
-                      AND (lt_tmp_rep_vs_plan_tab(i).vist_target_div = '1')
+                      /* 2009.09.08 K.Satomura 0001317対応 START */
+                      --AND (lt_tmp_rep_vs_plan_tab(i).vist_target_div = '1')
+                      /* 2009.09.08 K.Satomura 0001317対応 END */
                       AND (lt_tmp_rep_vs_plan_tab(i).cnvs_date <= TO_DATE(xsvsr.sales_date,'YYYYMMDD'))
-                      AND (xxcso_route_common_pkg.iscustomervendor(lt_tmp_rep_vs_plan_tab(i).business_low_type) = cv_true)
+                      /* 2009.09.08 K.Satomura 0001271対応 START */
+                      --AND (xxcso_route_common_pkg.iscustomervendor(lt_tmp_rep_vs_plan_tab(i).business_low_type) = cv_true)
+                      AND (lt_tmp_rep_vs_plan_tab(i).is_customer_vendor = cv_true)
+                      /* 2009.09.08 K.Satomura 0001271対応 END */
                     THEN
                       xsvsr.vis_num
                     WHEN (xsvsr.vis_num > 0)
-                      AND (lt_tmp_rep_vs_plan_tab(i).vist_target_div = '1')
+                      /* 2009.09.08 K.Satomura 0001317対応 START */
+                      --AND (lt_tmp_rep_vs_plan_tab(i).vist_target_div = '1')
+                      /* 2009.09.08 K.Satomura 0001317対応 END */
                       AND (lt_tmp_rep_vs_plan_tab(i).cnvs_date IS NULL)
                       AND (lt_tmp_rep_vs_plan_tab(i).customer_status IN (cv_cust_status8, cv_cust_status9, cv_cust_status3))
-                      AND (xxcso_route_common_pkg.iscustomervendor(lt_tmp_rep_vs_plan_tab(i).business_low_type) = cv_true)
+                      /* 2009.09.08 K.Satomura 0001271対応 START */
+                      --AND (xxcso_route_common_pkg.iscustomervendor(lt_tmp_rep_vs_plan_tab(i).business_low_type) = cv_true)
+                      AND (lt_tmp_rep_vs_plan_tab(i).is_customer_vendor = cv_true)
+                      /* 2009.09.08 K.Satomura 0001271対応 END */
                     THEN
                       xsvsr.vis_num
                     ELSE
@@ -6235,7 +6329,9 @@ AS
                  ) rslt_vis_m_num -- 訪問実績(MC)
                 ,(CASE
                     WHEN (xsvsr.vis_sales_num > 0)
-                      AND (lt_tmp_rep_vs_plan_tab(i).vist_target_div = '1')
+                      /* 2009.09.08 K.Satomura 0001317対応 START */
+                      --AND (lt_tmp_rep_vs_plan_tab(i).vist_target_div = '1')
+                      /* 2009.09.08 K.Satomura 0001317対応 END */
                     THEN
                       xsvsr.vis_sales_num
                     ELSE
