@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCOK015A01C(body)
  * Description      : 営業システム構築プロジェクト
  * MD.050           : EDIシステムにてイセトー社へ送信する支払案内書(圧着はがき)用データファイル作成
- * Version          : 2.3
+ * Version          : 2.4
  *
  * Program List
  * --------------------------- ----------------------------------------------------------
@@ -39,6 +39,7 @@ AS
  *  2009/10/14    2.1   S.Moriyama       [変更依頼I_E_573] 宛名、住所の取得元を変更
  *  2009/11/16    2.2   S.Moriyama       [変更依頼I_E_665] 郵便番号を7桁ハイフンなしからハイフンありへ変更
  *  2009/12/15    2.3   K.Nakamura       [障害E_本稼動_00427] 銀行振込手数料の算出を変更
+ *  2010/01/06    2.4   K.Yamaguchi      [E_本稼動_00901] 締め日の判定方法修正
  *
  *****************************************************************************************/
   -- ===============================================
@@ -124,7 +125,9 @@ AS
   -- プロファイル
   cv_prof_i_dire_path        CONSTANT VARCHAR2(40)    := 'XXCOK1_PAY_GUIDE_I_DIRE_PATH';     -- イセトー_ディレクトリパス
   cv_prof_i_file_name        CONSTANT VARCHAR2(40)    := 'XXCOK1_PAY_GUIDE_I_FILE_NAME';     -- イセトー_ファイル名
-  cv_prof_suport_period_to   CONSTANT VARCHAR2(40)    := 'XXCOK1_BM_SUPPORT_PERIOD_TO';      -- 販手販協計算処理期間（To）
+-- 2010/01/12 Ver.2.4 [E_本稼動_00901] SCS K.Yamaguchi DELETE START
+--  cv_prof_suport_period_to   CONSTANT VARCHAR2(40)    := 'XXCOK1_BM_SUPPORT_PERIOD_TO';      -- 販手販協計算処理期間（To）
+-- 2010/01/12 Ver.2.4 [E_本稼動_00901] SCS K.Yamaguchi DELETE END
   cv_prof_term_name          CONSTANT VARCHAR2(40)    := 'XXCOK1_DEFAULT_TERM_NAME';         -- デフォルト支払条件
   cv_prof_bank_fee_trans     CONSTANT VARCHAR2(40)    := 'XXCOK1_BANK_FEE_TRANS_CRITERION';  -- 銀行手数料_振込額基準
   cv_prof_bank_fee_less      CONSTANT VARCHAR2(40)    := 'XXCOK1_BANK_FEE_LESS_CRITERION';   -- 銀行手数料_基準額未満
@@ -182,6 +185,9 @@ AS
   cv_edi_output_error_kbn    CONSTANT VARCHAR2(10)    := '×';                  -- エラー
   -- 郵便番号区切り
   cv_zip_separator_char      CONSTANT VARCHAR2(1)     := '-';                   -- 郵便番号ハイフン
+-- 2010/01/12 Ver.2.4 [E_本稼動_00901] SCS K.Yamaguchi ADD START
+  cv_fix_status              CONSTANT VARCHAR2(1)     := '1';                   -- 金額確定ステータス：確定
+-- 2010/01/12 Ver.2.4 [E_本稼動_00901] SCS K.Yamaguchi ADD END
   -- ===============================================
   -- グローバル変数
   -- ===============================================
@@ -197,7 +203,9 @@ AS
   gv_prof_org_id             VARCHAR2(40) DEFAULT NULL;                         -- 組織ID
   gv_i_dire_path             fnd_profile_option_values.profile_option_value%TYPE DEFAULT NULL; -- イセトー_ディレクトリパス
   gv_i_file_name             fnd_profile_option_values.profile_option_value%TYPE DEFAULT NULL; -- イセトー_ファイル名
-  gv_bm_period_to            fnd_profile_option_values.profile_option_value%TYPE DEFAULT NULL; -- 販手販協計算処理期間（To）
+-- 2010/01/12 Ver.2.4 [E_本稼動_00901] SCS K.Yamaguchi DELETE START
+--  gv_bm_period_to            fnd_profile_option_values.profile_option_value%TYPE DEFAULT NULL; -- 販手販協計算処理期間（To）
+-- 2010/01/12 Ver.2.4 [E_本稼動_00901] SCS K.Yamaguchi DELETE END
   gv_term_name               fnd_profile_option_values.profile_option_value%TYPE DEFAULT NULL; -- 支払条件
   gv_bank_fee_trans          fnd_profile_option_values.profile_option_value%TYPE DEFAULT NULL; -- 銀行手数料_振込額基準
   gv_bank_fee_less           fnd_profile_option_values.profile_option_value%TYPE DEFAULT NULL; -- 銀行手数料_基準額未満
@@ -285,7 +293,10 @@ AS
          , ap_bank_accounts         aba                                         -- 銀行口座マスタ
          , ap_bank_branches         abb                                         -- 銀行支店マスタ
      WHERE xbb.edi_interface_status      =  cv_edi_if_status_0
-       AND xbb.closing_date              <= gd_operating_date
+-- 2010/01/06 Ver.2.4 [E_本稼動_00901] SCS K.Yamaguchi REPAIR START
+--       AND xbb.closing_date              <= gd_operating_date
+       AND xbb.closing_date              <= gd_schedule_date
+-- 2010/01/06 Ver.2.4 [E_本稼動_00901] SCS K.Yamaguchi REPAIR END
        AND NVL( xbb.payment_amt_tax, cn_number_0 ) =  cn_number_0
        AND pv.segment1                   =  xbb.supplier_code
        AND pv.vendor_id                  =  pvs.vendor_id
@@ -306,6 +317,9 @@ AS
                                              AND NVL( abau.end_date,   TRUNC( gd_process_date ) )
        AND aba.bank_account_id           =  abau.external_bank_account_id
        AND abb.bank_branch_id            =  aba.bank_branch_id
+-- 2010/01/12 Ver.2.4 [E_本稼動_00901] SCS K.Yamaguchi ADD START
+       AND xbb.amt_fix_status            = cv_fix_status
+-- 2010/01/12 Ver.2.4 [E_本稼動_00901] SCS K.Yamaguchi ADD END
     GROUP BY  xbb.supplier_code
 -- 2009/10/14 Ver.2.1 [変更依頼I_E_573] SCS S.Moriyama UPD START
 --            , pv.vendor_name
@@ -382,6 +396,9 @@ AS
        AND sales_hl.location_id          = sales_hps.location_id
        AND cust_hca.account_number       = xbb.cust_code
        AND cust_hp.party_id              = cust_hca.party_id
+-- 2010/01/12 Ver.2.4 [E_本稼動_00901] SCS K.Yamaguchi ADD START
+       AND xbb.amt_fix_status            = cv_fix_status
+-- 2010/01/12 Ver.2.4 [E_本稼動_00901] SCS K.Yamaguchi ADD END
      GROUP BY xbb.supplier_code
             , xbb.base_code
             , sales_hl.address3
@@ -1647,24 +1664,26 @@ AS
                        );
       RAISE init_fail_expt;
     END IF;
-    -- ===============================================
-    -- プロファイル取得(販手販協計算処理期間（To）)
-    -- ===============================================
-    gv_bm_period_to  := FND_PROFILE.VALUE( cv_prof_suport_period_to );
-    IF ( gv_bm_period_to IS NULL ) THEN
-      lv_outmsg     := xxccp_common_pkg.get_msg(
-                         iv_application   => cv_appli_short_name_xxcok
-                       , iv_name          => cv_msg_xxcok1_00003
-                       , iv_token_name1   => cv_token_profile
-                       , iv_token_value1  => cv_prof_suport_period_to
-                       );
-      lb_msg_return := xxcok_common_pkg.put_message_f(
-                         in_which         => FND_FILE.LOG
-                       , iv_message       => lv_outmsg
-                       , in_new_line      => cn_number_0
-                       );
-      RAISE init_fail_expt;
-    END IF;
+-- 2010/01/12 Ver.2.4 [E_本稼動_00901] SCS K.Yamaguchi DELETE START
+--    -- ===============================================
+--    -- プロファイル取得(販手販協計算処理期間（To）)
+--    -- ===============================================
+--    gv_bm_period_to  := FND_PROFILE.VALUE( cv_prof_suport_period_to );
+--    IF ( gv_bm_period_to IS NULL ) THEN
+--      lv_outmsg     := xxccp_common_pkg.get_msg(
+--                         iv_application   => cv_appli_short_name_xxcok
+--                       , iv_name          => cv_msg_xxcok1_00003
+--                       , iv_token_name1   => cv_token_profile
+--                       , iv_token_value1  => cv_prof_suport_period_to
+--                       );
+--      lb_msg_return := xxcok_common_pkg.put_message_f(
+--                         in_which         => FND_FILE.LOG
+--                       , iv_message       => lv_outmsg
+--                       , in_new_line      => cn_number_0
+--                       );
+--      RAISE init_fail_expt;
+--    END IF;
+-- 2010/01/12 Ver.2.4 [E_本稼動_00901] SCS K.Yamaguchi DELETE END
     -- ===============================================
     -- プロファイル取得(FB支払条件)
     -- ===============================================
@@ -1847,26 +1866,29 @@ AS
                          );
       RAISE init_fail_expt;
     END IF;
-    -- ===============================================
-    -- 営業日取得(連携対象締め日)
-    -- ===============================================
-    gd_operating_date := xxcok_common_pkg.get_operating_day_f(
-                           id_proc_date      => gd_process_date
-                         , in_days           => TO_NUMBER ( gv_bm_period_to ) * -1
-                         , in_proc_type      => cn_number_0
-                         );
-    IF ( gd_operating_date IS NULL ) THEN
-      lv_outmsg       := xxccp_common_pkg.get_msg(
-                           iv_application   => cv_appli_short_name_xxcok
-                         , iv_name          => cv_msg_xxcok1_00027
-                         );
-      lb_msg_return   := xxcok_common_pkg.put_message_f(
-                           in_which         => FND_FILE.LOG
-                         , iv_message       => lv_outmsg
-                         , in_new_line      => cn_number_0
-                         );
-      RAISE init_fail_expt;
-    END IF;
+-- 2010/01/06 Ver.2.4 [E_本稼動_00901] SCS K.Yamaguchi REPAIR START
+--    -- ===============================================
+--    -- 営業日取得(連携対象締め日)
+--    -- ===============================================
+--    gd_operating_date := xxcok_common_pkg.get_operating_day_f(
+--                           id_proc_date      => gd_process_date
+--                         , in_days           => TO_NUMBER ( gv_bm_period_to ) * -1
+--                         , in_proc_type      => cn_number_0
+--                         );
+--    IF ( gd_operating_date IS NULL ) THEN
+--      lv_outmsg       := xxccp_common_pkg.get_msg(
+--                           iv_application   => cv_appli_short_name_xxcok
+--                         , iv_name          => cv_msg_xxcok1_00027
+--                         );
+--      lb_msg_return   := xxcok_common_pkg.put_message_f(
+--                           in_which         => FND_FILE.LOG
+--                         , iv_message       => lv_outmsg
+--                         , in_new_line      => cn_number_0
+--                         );
+--      RAISE init_fail_expt;
+--    END IF;
+      gd_operating_date := ADD_MONTHS( gd_process_date, -1 );
+-- 2010/01/06 Ver.2.4 [E_本稼動_00901] SCS K.Yamaguchi REPAIR END
     -- ===============================================
     -- 締め日、支払日予定日取得
     -- ===============================================
