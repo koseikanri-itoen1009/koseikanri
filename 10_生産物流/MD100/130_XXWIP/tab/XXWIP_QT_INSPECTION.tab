@@ -19,7 +19,9 @@ CREATE TABLE xxwip.xxwip_qt_inspection
   qt_effect3                VARCHAR2(2),
   inspect_period            NUMBER(2),
   use_by_date               DATE,
-  inherence_code            VARCHAR2(4),
+-- 2008/07/24 H.Itou DEL START
+--  inherence_code            VARCHAR2(4),
+-- 2008/07/24 H.Itou DEL END
   remarks_column            VARCHAR2(250),
   unique_sign               VARCHAR2(6), 
   division                  VARCHAR2(1)     NOT NULL,
@@ -56,8 +58,13 @@ COMMENT ON COLUMN xxwip.xxwip_qt_inspection.test_date3              IS '検査日３
 COMMENT ON COLUMN xxwip.xxwip_qt_inspection.qt_effect3              IS '結果３';
 COMMENT ON COLUMN xxwip.xxwip_qt_inspection.inspect_period          IS '検査期間';
 COMMENT ON COLUMN xxwip.xxwip_qt_inspection.use_by_date             IS '賞味期限';
-COMMENT ON COLUMN xxwip.xxwip_qt_inspection.inherence_code          IS '固有記号';
+-- 2008/07/24 H.Itou DEL START
+--COMMENT ON COLUMN xxwip.xxwip_qt_inspection.inherence_code          IS '固有記号';
+-- 2008/07/24 H.Itou DEL END
 COMMENT ON COLUMN xxwip.xxwip_qt_inspection.remarks_column          IS '備考';
+-- 2008/07/24 H.Itou ADD START
+COMMENT ON COLUMN xxwip.xxwip_qt_inspection.unique_sign          IS '固有記号';
+-- 2008/07/24 H.Itou ADD END
 COMMENT ON COLUMN xxwip.xxwip_qt_inspection.division                IS '区分';
 COMMENT ON COLUMN xxwip.xxwip_qt_inspection.batch_po_id             IS '番号';
 COMMENT ON COLUMN xxwip.xxwip_qt_inspection.created_by              IS '作成者';
