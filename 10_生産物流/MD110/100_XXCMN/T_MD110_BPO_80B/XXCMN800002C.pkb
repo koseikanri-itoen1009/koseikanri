@@ -7,7 +7,7 @@ AS
  * Description      : 品目マスタインタフェース
  * MD.050           : マスタインタフェース T_MD050_BPO_800
  * MD.070           : 品目インタフェース T_MD070_BPO_80B
- * Version          : 1.8
+ * Version          : 1.9
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -74,6 +74,7 @@ AS
  *  2008/07/07    1.6   Oracle 山根 一浩 I_S_192対応
  *  2008/08/07    1.7   Oracle 椎名 昭圭 内部変更要求#178対応
  *  2008/08/20    1.8   Oracle 椎名 昭圭 PT_3-2_22_指摘13対応
+ *  2008/08/27    1.9   Oracle 山根 一浩 T_S_543,T_S_496対応
  *****************************************************************************************/
 --
 --#######################  固定グローバル定数宣言部 START   #######################
@@ -195,6 +196,8 @@ AS
   gv_msg_80b_020       CONSTANT VARCHAR2(15) := 'APP-XXCMN-10148';  --品目原価未入力エラー
   gv_msg_80b_021       CONSTANT VARCHAR2(15) := 'APP-XXCMN-00024';  --成功データ・警告あり(見出し)
   gv_msg_80b_022       CONSTANT VARCHAR2(15) := 'APP-XXCMN-10036';  --データ取得エラー１
+--
+  gv_msg_80b_023       CONSTANT VARCHAR2(15) := 'APP-XXCMN-10040';  --存在チェック１：汎用１ 2008/08/27 Add
 --エラー・ワーニング
   gv_msg_80b_100       CONSTANT VARCHAR2(15) := 'APP-XXCMN-10099';  --品目原価更新の原価チェック
   gv_msg_80b_101       CONSTANT VARCHAR2(15) := 'APP-XXCMN-10100';  --品目原価登録の原価チェック
@@ -218,6 +221,10 @@ AS
   gv_tkn_ng_hinmoku    CONSTANT VARCHAR2(15) := 'NG_HINMOKU';
   gv_tkn_ng_genka      CONSTANT VARCHAR2(15) := 'NG_GENKA';
   gv_tkn_ng_item_cd    CONSTANT VARCHAR2(15) := 'NG_ITEM_CODE';
+--
+  gv_tkn_item_name     CONSTANT VARCHAR2(15) := 'ITEM_NAME';                -- 2008/08/27 Add
+  gv_tkn_item_value    CONSTANT VARCHAR2(15) := 'ITEM_VALUE';               -- 2008/08/27 Add
+  gv_tkn_table_name    CONSTANT VARCHAR2(15) := 'TABLE_NAME';               -- 2008/08/27 Add
 --
   -- 使用DB名
   gv_xxcmn_item_if_name      CONSTANT VARCHAR2(100) := '品目インタフェース';
@@ -3154,6 +3161,7 @@ AS
    * Description      : 期間の取得を行います。
    ***********************************************************************************/
   PROCEDURE get_period_code(
+    ir_status_rec   IN OUT NOCOPY status_rec,   -- 処理状況  2008/08/27 Add
     ir_masters_rec  IN OUT NOCOPY masters_rec,  -- チェック対象データ
     ov_errbuf          OUT NOCOPY VARCHAR2,     -- エラー・メッセージ           --# 固定 #
     ov_retcode         OUT NOCOPY VARCHAR2,     -- リターン・コード             --# 固定 #
@@ -3176,8 +3184,11 @@ AS
     -- ユーザー宣言部
     -- ===============================
     -- *** ローカル定数 ***
+    cv_item_name   CONSTANT VARCHAR2(100) := '原価適用開始日';               -- 2008/08/27 Add
+    cv_table_name  CONSTANT VARCHAR2(100) := '原価カレンダー';               -- 2008/08/27 Add
 --
     -- *** ローカル変数 ***
+    cv_start_date  VARCHAR2(10);                                             -- 2008/08/27 Add
 --
     -- *** ローカル・カーソル ***
 --
@@ -3198,6 +3209,8 @@ AS
 --
     BEGIN
 --
+      cv_start_date := TO_CHAR(ir_masters_rec.standard_start_date,'YYYY/MM/DD');   -- 2008/08/27 Add
+--
       SELECT ccd.period_code
       INTO   ir_masters_rec.period_code
       FROM   cm_cldr_dtl ccd
@@ -3206,9 +3219,42 @@ AS
       AND    ccd.end_date     >= ir_masters_rec.standard_start_date
       AND    ROWNUM            = 1;
 --
+-- 2008/08/27 Add ↓
+      IF (ir_masters_rec.period_code IS NULL) THEN
+        set_error_status(ir_status_rec,
+                         xxcmn_common_pkg.get_msg(gv_msg_kbn,
+                                                  gv_msg_80b_023,
+                                                  gv_tkn_item_name,  cv_item_name,
+                                                  gv_tkn_item_value, cv_start_date,
+                                                  gv_tkn_table_name, cv_table_name),
+                         lv_errbuf,
+                         lv_retcode,
+                         lv_errmsg);
+  --
+        IF (lv_retcode = gv_status_error) THEN
+          RAISE check_sub_main_expt;
+        END IF;
+      END IF;
+-- 2008/08/27 Add ↑
+--
     EXCEPTION
       WHEN NO_DATA_FOUND THEN
         ir_masters_rec.period_code := NULL;
+-- 2008/08/27 Add ↓
+        set_error_status(ir_status_rec,
+                         xxcmn_common_pkg.get_msg(gv_msg_kbn,
+                                                  gv_msg_80b_023,
+                                                  gv_tkn_item_name,  cv_item_name,
+                                                  gv_tkn_item_value, cv_start_date,
+                                                  gv_tkn_table_name, cv_table_name),
+                         lv_errbuf,
+                         lv_retcode,
+                         lv_errmsg);
+  --
+        IF (lv_retcode = gv_status_error) THEN
+          RAISE check_sub_main_expt;
+        END IF;
+-- 2008/08/27 Add ↑
 --
       WHEN OTHERS THEN
         RAISE global_api_others_expt;
@@ -5069,6 +5115,7 @@ AS
     -- ユーザー宣言部
     -- ===============================
     -- *** ローカル定数 ***
+    cv_flg_on  CONSTANT VARCHAR2(1)   := '1';     -- 2008/08/27 Add
 --
     -- *** ローカル変数 ***
     lv_api_name       VARCHAR2(200);
@@ -5144,6 +5191,8 @@ AS
 --
     -- 2008.06.25 Mod
     lr_item_rec.user_name := gv_user_name;
+--
+    lr_item_rec.attribute18 := cv_flg_on;       -- 出荷区分 2008/08/27 Add
 --
     -- OPM品目マスタ(登録)
     GMI_ITEM_PUB.CREATE_ITEM(
@@ -5545,6 +5594,7 @@ AS
     IF (lv_retcode = gv_status_error) THEN
       RAISE global_api_expt;
     END IF;
+/* 2008/08/27 Del ↓
 --
     -- 期間の取得
     get_period_code(ir_masters_rec,
@@ -5555,6 +5605,7 @@ AS
     IF (lv_retcode = gv_status_error) THEN
       RAISE global_api_expt;
     END IF;
+2008/08/27 Del ↑ */
 --
     -- 基本設定値
     lr_head_rec.item_id        := ir_masters_rec.item_id;
@@ -5721,6 +5772,7 @@ AS
     IF (lv_retcode = gv_status_error) THEN
       RAISE global_api_expt;
     END IF;
+/* 2008/08/27 Del ↓
 --
     -- 期間の取得
     get_period_code(ir_masters_rec,
@@ -5731,6 +5783,7 @@ AS
     IF (lv_retcode = gv_status_error) THEN
       RAISE global_api_expt;
     END IF;
+2008/08/27 Del ↑ */
 --
     -- 基本設定値
     lr_head_rec.item_id        := ir_masters_rec.item_id;
@@ -6508,7 +6561,8 @@ AS
     gd_sysdate     := SYSDATE;
     gn_login_id    := FND_GLOBAL.LOGIN_ID;
     gn_request_id  := FND_GLOBAL.CONC_REQUEST_ID;
-    gn_appl_id     := FND_GLOBAL.QUEUE_APPL_ID;
+--    gn_appl_id     := FND_GLOBAL.QUEUE_APPL_ID;       -- 2008/08/27 Mod
+    gn_appl_id     := FND_GLOBAL.PROG_APPL_ID;
     gn_program_id  := FND_GLOBAL.CONC_PROGRAM_ID;
 --
     --*********************************************
@@ -6670,6 +6724,23 @@ AS
       IF (lv_retcode = gv_status_error) THEN
         RAISE check_sub_main_expt;
       END IF;
+--
+--2008/08/27 Add ↓
+--
+      -- 正常なら
+      IF (is_row_status_nomal(lr_status_rec)) THEN
+        -- 期間の取得
+        get_period_code(lr_status_rec,
+                        lr_masters_rec,
+                        lv_errbuf,
+                        lv_retcode,
+                        lv_errmsg);
+    --
+        IF (lv_retcode = gv_status_error) THEN
+          RAISE check_sub_main_expt;
+        END IF;
+      END IF;
+--2008/08/27 Add ↑
 --
       -- 正常なら
       IF (is_row_status_nomal(lr_status_rec)) THEN

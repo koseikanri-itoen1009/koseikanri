@@ -48,8 +48,8 @@ AS
   SELECT  hps.party_site_id,
           hps.party_id,
           hps.location_id,
-          hcas.attribute18,
-          hps.party_site_name,
+          hzl.province,
+          hzl.county,
           hps.attribute20,
           hcas.cust_account_id,
           hcas.cust_acct_site_id,
@@ -70,7 +70,7 @@ AS
           hcas.attribute15,
           hcas.attribute16,
           hcas.attribute17,
-          hcas.attribute18,
+          hzl.province,
           hcas.attribute19,
           hcas.attribute20,
           hcsu.site_use_id,
@@ -91,7 +91,8 @@ AS
   FROM    hz_party_sites          hps,
           hz_cust_acct_sites_all  hcas,
           hz_cust_site_uses_all   hcsu,
-          xxcmn_party_sites       xps
+          xxcmn_party_sites       xps,
+          hz_locations            hzl
   WHERE   hps.party_site_id       = hcas.party_site_id (+)
   AND     hcas.org_id             = fnd_profile.value('org_id')
   AND     hcas.cust_acct_site_id  = hcsu.cust_acct_site_id
@@ -104,6 +105,7 @@ AS
   AND     hcsu.status             = 'A'
   AND     xps.start_date_active   <= TRUNC(SYSDATE)
   AND     xps.end_date_active     >= TRUNC(SYSDATE)
+  AND     hps.location_id         = hzl.location_id
 ;
 --
 COMMENT ON COLUMN xxcmn_party_sites_v.party_site_id           IS 'パーティサイトID';

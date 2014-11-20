@@ -7,7 +7,7 @@ AS
  * Description      : 顧客インタフェース
  * MD.050           : マスタインタフェース T_MD050_BPO_800
  * MD.070           : 顧客インタフェース   T_MD070_BPO_80A
- * Version          : 1.8
+ * Version          : 1.9
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -84,6 +84,7 @@ AS
  *  2008/08/08    1.6   Oracle 山根 一浩 ST不具合修正
  *  2008/08/18    1.7   Oracle 山根 一浩 変更要求No61 不具合修正対応
  *  2008/08/19    1.8   Oracle 山根 一浩 T_TE110_BPO_130-002 指摘216対応
+ *  2008/08/25    1.9   Oracle 山根 一浩 T_S_442,T_S_548対応
  *****************************************************************************************/
 --
 --#######################  固定グローバル定数宣言部 START   #######################
@@ -229,6 +230,7 @@ AS
   gv_xxcmn_parties_name     CONSTANT VARCHAR2(100) := 'パーティアドオンマスタ';
   gv_xxcmn_party_sites_name CONSTANT VARCHAR2(100) := 'パーティサイトアドオンマスタ';
   gv_hz_cust_site_uses_name CONSTANT VARCHAR2(100) := '顧客使用目的マスタ';
+  gv_hz_locations_name      CONSTANT VARCHAR2(100) := '顧客事業所マスタ';
 --
   --プロファイル
   gv_prf_max_date      CONSTANT VARCHAR2(15) := 'XXCMN_MAX_DATE';
@@ -264,6 +266,8 @@ AS
   gn_kbn_del_cust CONSTANT NUMBER := 4;  -- 顧客削除
   gn_kbn_flg_on   CONSTANT NUMBER := 1;  -- 有効
   gn_kbn_flg_off  CONSTANT NUMBER := 2;  -- 無効
+--
+  gv_def_party_num CONSTANT xxcmn_site_if.party_num%TYPE := '000000000';  -- 2008/08/25 Add
 --
   -- ===============================
   -- ユーザー定義グローバル型
@@ -329,6 +333,10 @@ AS
     --顧客所在地マスタ
     cust_acct_site_id    hz_cust_acct_sites_all.cust_acct_site_id%TYPE,
     obj_acct_number      hz_cust_acct_sites_all.object_version_number%TYPE,
+--
+    --顧客事業所マスタ
+    hzl_location_id      hz_locations.location_id%TYPE,                 -- 2008/08/25 Add
+    hzl_obj_number       hz_locations.object_version_number%TYPE,       -- 2008/08/25 Add
 -- 現在のデータ以前での件数
     -- 出庫管理元区分=0
     row_o_ins_cnt        NUMBER,                               -- 登録件数
@@ -405,6 +413,8 @@ AS
     xps_flg              NUMBER,                                  --パーティアドオンマスタ
     xpss_flg             NUMBER,                                  --パーティサイトアドオンマスタ
     hcsu_flg             NUMBER,                                  --顧客使用目的マスタ
+-- 2008/08/25 Add
+    hzl_flg              NUMBER,                                  --顧客事業所マスタ
 --
     message              VARCHAR2(1000)
   );
@@ -574,6 +584,8 @@ AS
   -- 配送先IFより
   CURSOR gc_hps_site_cur
   IS
+-- 2008/08/25 Mod ↓
+/*
     SELECT hps.party_site_id
     FROM   hz_party_sites hps
     WHERE  EXISTS (
@@ -587,11 +599,28 @@ AS
       AND    hps.party_site_id = hcas.party_site_id
       AND    ROWNUM = 1)
     AND    hps.status = gv_status_on
+*/
+    SELECT hps.party_site_id
+    FROM   hz_party_sites hps                     -- パーティサイトマスタ
+    WHERE  EXISTS (
+      SELECT hcas.location_id
+      FROM   hz_locations hcas                    -- 顧客事業所マスタ
+      WHERE  EXISTS (
+        SELECT xsi.ship_to_code
+        FROM   xxcmn_site_if xsi
+        WHERE  hcas.province = xsi.ship_to_code
+        AND    ROWNUM = 1)
+      AND    hps.location_id = hcas.location_id
+      AND    ROWNUM = 1)
+    AND    hps.status = gv_status_on
+-- 2008/08/25 Mod ↑
     FOR UPDATE OF hps.party_site_id NOWAIT;
 --
   -- パーティーサイトアドオンマスタ
   CURSOR gc_xps_site_cur
   IS
+-- 2008/08/25 Mod ↓
+/*
     SELECT xps.party_site_id
     FROM   xxcmn_party_sites xps
     WHERE  EXISTS (
@@ -604,6 +633,20 @@ AS
         AND    ROWNUM = 1)
       AND    xps.party_site_id = hcas.party_site_id
       AND    ROWNUM = 1)
+*/
+    SELECT xps.party_site_id
+    FROM   xxcmn_party_sites xps                  -- パーティサイトアドオンマスタ
+    WHERE  EXISTS (
+      SELECT hcas.location_id
+      FROM   hz_locations hcas                    -- 顧客事業所マスタ
+      WHERE  EXISTS (
+        SELECT xsi.ship_to_code
+        FROM   xxcmn_site_if xsi
+        WHERE  hcas.province = xsi.ship_to_code
+        AND    ROWNUM = 1)
+      AND    xps.location_id = hcas.location_id
+      AND    ROWNUM = 1)
+-- 2008/08/25 Mod ↑
     FOR UPDATE OF xps.party_site_id NOWAIT;
 --
   /***********************************************************************************
@@ -1599,6 +1642,7 @@ AS
     lr_report_rec.xps_flg         := 0;
     lr_report_rec.xpss_flg        := 0;
     lr_report_rec.hcsu_flg        := 0;
+    lr_report_rec.hzl_flg         := 0;      -- 2008/08/25 Add
 --
     -- レポートテーブルに追加
     it_report_tbl(gn_p_report_cnt) := lr_report_rec;
@@ -1711,6 +1755,7 @@ AS
     lr_report_rec.xps_flg         := 0;
     lr_report_rec.xpss_flg        := 0;
     lr_report_rec.hcsu_flg        := 0;
+    lr_report_rec.hzl_flg         := 0;      -- 2008/08/25 Add
 --
     -- レポートテーブルに追加
     it_report_tbl(gn_s_report_cnt) := lr_report_rec;
@@ -1823,6 +1868,7 @@ AS
     lr_report_rec.xps_flg         := 0;
     lr_report_rec.xpss_flg        := 0;
     lr_report_rec.hcsu_flg        := 0;
+    lr_report_rec.hzl_flg         := 0;      -- 2008/08/25 Add
 --
     -- レポートテーブルに追加
     it_report_tbl(gn_c_report_cnt) := lr_report_rec;
@@ -1986,6 +2032,12 @@ AS
           IF (lr_report_rec.hcsu_flg = 1) THEN
             FND_FILE.PUT_LINE(FND_FILE.OUTPUT, gv_hz_cust_site_uses_name);
           END IF;
+-- 2008/08/25 Add ↓
+          --顧客事業所マスタ
+          IF (lr_report_rec.hzl_flg = 1) THEN
+            FND_FILE.PUT_LINE(FND_FILE.OUTPUT, gv_hz_locations_name);
+          END IF;
+-- 2008/08/25 Add ↑
 --
         -- 正常以外
         ELSE
@@ -2150,6 +2202,12 @@ AS
           IF (lr_report_rec.hcsu_flg = 1) THEN
             FND_FILE.PUT_LINE(FND_FILE.OUTPUT, gv_hz_cust_site_uses_name);
           END IF;
+-- 2008/08/25 Add ↓
+          --顧客事業所マスタ
+          IF (lr_report_rec.hzl_flg = 1) THEN
+            FND_FILE.PUT_LINE(FND_FILE.OUTPUT, gv_hz_locations_name);
+          END IF;
+-- 2008/08/25 Add ↑
 --
         -- 正常以外
         ELSE
@@ -2314,6 +2372,12 @@ AS
           IF (lr_report_rec.hcsu_flg = 1) THEN
             FND_FILE.PUT_LINE(FND_FILE.OUTPUT, gv_hz_cust_site_uses_name);
           END IF;
+-- 2008/08/25 Add ↓
+          --顧客事業所マスタ
+          IF (lr_report_rec.hzl_flg = 1) THEN
+            FND_FILE.PUT_LINE(FND_FILE.OUTPUT, gv_hz_locations_name);
+          END IF;
+-- 2008/08/25 Add ↓
 --
         -- 正常以外
         ELSE
@@ -2962,7 +3026,12 @@ AS
     END;
 --
     -- 顧客コード入力あり
+-- 2008/08/25 Mod ↓
+/*
     IF (ir_masters_rec.party_num IS NOT NULL) THEN
+*/
+    IF (ir_masters_rec.party_num <> gv_def_party_num) THEN
+-- 2008/08/25 Mod ↑
       -- 顧客コードが同じ件数
       BEGIN
 --
@@ -3016,7 +3085,12 @@ AS
       FROM   xxcmn_site_if xsi
       WHERE  xsi.ship_to_code = ir_masters_rec.ship_to_code  -- 配送先コードが同じ
       AND    xsi.seq_number < ir_masters_rec.seq_number      -- SEQ番号が以前のデータ
+-- 2008/08/25 Mod ↓
+/*
       AND    xsi.party_num IS NULL                           -- 顧客コードが設定されていない
+*/
+      AND    xsi.party_num    = gv_def_party_num
+-- 2008/08/25 Mod ↑
       GROUP BY base_code;
 --
     EXCEPTION
@@ -3046,7 +3120,12 @@ AS
       FROM   xxcmn_site_if xsi
       WHERE  xsi.ship_to_code = ir_masters_rec.ship_to_code  -- 配送先コードが同じ
       AND    xsi.seq_number < ir_masters_rec.seq_number      -- SEQ番号が以前のデータ
+-- 2008/08/25 Mod ↓
+/*
       AND    xsi.party_num IS NOT NULL                       -- 顧客コードが設定されている
+*/
+      AND    xsi.party_num <> gv_def_party_num
+-- 2008/08/25 Mod ↑
       GROUP BY base_code;
 --
     EXCEPTION
@@ -3356,7 +3435,12 @@ AS
 --
     -- 2008/04/17 変更要求No61 対応
     -- 登録(拠点紐付き)
+-- 2008/08/25 Mod ↓
+/*
     IF (ir_masters_rec.party_num IS NULL) THEN
+*/
+    IF (ir_masters_rec.party_num = gv_def_party_num) THEN
+-- 2008/08/25 Mod ↑
       lv_account_number := ir_masters_rec.base_code;      -- 拠点コード
 --
     -- 登録(顧客紐付き)
@@ -3379,6 +3463,8 @@ AS
              ir_masters_rec.site_status,
              ir_masters_rec.party_number,
              ir_masters_rec.obj_site_number
+-- 2008/08/25 Mod ↓
+/*
       FROM   hz_parties             hp,                  -- パーティマスタ
              hz_party_sites         hps,                 -- パーティサイトマスタ
              hz_cust_accounts       hca,                 -- 顧客マスタ
@@ -3389,6 +3475,18 @@ AS
       AND    hca.account_number = lv_account_number
       AND    hcas.attribute18   = ir_masters_rec.ship_to_code    -- 配送先コード
       AND    hps.status         = gv_status_on;
+*/
+      FROM   hz_parties             hp,                  -- パーティマスタ
+             hz_party_sites         hps,                 -- パーティサイトマスタ
+             hz_cust_accounts       hca,                 -- 顧客マスタ
+             hz_locations           hcas                 -- 顧客事業所マスタ
+      WHERE  hp.party_id        = hps.party_id
+      AND    hps.party_id       = hca.party_id
+      AND    hps.location_id    = hcas.location_id
+      AND    hca.account_number = lv_account_number
+      AND    hcas.province      = ir_masters_rec.ship_to_code    -- 配送先コード
+      AND    hps.status         = gv_status_on;
+-- 2008/08/25 Mod ↑
 --      AND    ROWNUM             = 1;
 --
       ob_retcd := TRUE;
@@ -3490,7 +3588,12 @@ AS
       FROM   xxcmn_site_if xsi
       WHERE  xsi.seq_number < ir_masters_rec.seq_number          -- SEQ番号が以前
       AND    xsi.ship_to_code = ir_masters_rec.ship_to_code      -- 配送先コード
+-- 2008/08/25 Mod ↓
+/*
       AND    xsi.party_num IS NOT NULL                           -- 顧客コードが存在する
+*/
+      AND    xsi.party_num <> gv_def_party_num
+-- 2008/08/25 Mod ↑
       AND    xsi.proc_code = in_proc_code
       AND    xsi.seq_number IN (
         SELECT MAX(xxsi.seq_number)
@@ -3498,7 +3601,10 @@ AS
         WHERE  xxsi.seq_number < ir_masters_rec.seq_number
         AND    xxsi.ship_to_code = ir_masters_rec.ship_to_code
         AND    xxsi.proc_code = in_proc_code
+/*
         AND    xxsi.party_num IS NOT NULL)
+*/
+        AND    xxsi.party_num <> gv_def_party_num)
       AND    ROWNUM = 1;
 --
       ir_masters_rec.party_num := lv_party_num;
@@ -3587,7 +3693,12 @@ AS
 --
     -- 2008/04/17 変更要求No61 対応
     -- 登録(拠点紐付き)
+-- 2008/08/25 Mod ↓
+/*
     IF (ir_masters_rec.party_num IS NULL) THEN
+*/
+    IF (ir_masters_rec.party_num = gv_def_party_num) THEN
+-- 2008/08/25 Mod ↑
       lv_account_number := ir_masters_rec.base_code;      -- 拠点コード
 --
     -- 登録(顧客紐付き)
@@ -3720,7 +3831,9 @@ AS
              hp.party_number,                            -- 組織番号
              hps.object_version_number,                  -- オブジェクトバージョン番号
              hcas.cust_acct_site_id,                     -- 顧客サイトID
-             hcas.object_version_number                  -- オブジェクトバージョン番号
+             hcas.object_version_number,                 -- オブジェクトバージョン番号
+             hzl.location_id,                            -- ロケーションID             2008/08/25 Add
+             hzl.object_version_number                   -- オブジェクトバージョン番号 2008/08/25 Add
       INTO   ir_masters_rec.p_party_id,
              ir_masters_rec.party_site_id,
              ir_masters_rec.location_id,
@@ -3728,7 +3841,11 @@ AS
              ir_masters_rec.party_number,
              ir_masters_rec.obj_site_number,
              ir_masters_rec.cust_acct_site_id,
-             ir_masters_rec.obj_acct_number
+             ir_masters_rec.obj_acct_number,
+             ir_masters_rec.hzl_location_id,             -- 2008/08/25 Add
+             ir_masters_rec.hzl_obj_number               -- 2008/08/25 Add
+-- 2008/08/25 Mod ↓
+/*
       FROM   hz_parties             hp,                  -- パーティマスタ
              hz_party_sites         hps,                 -- パーティサイトマスタ
              hz_cust_acct_sites_all hcas,                -- 顧客所在地マスタ
@@ -3740,6 +3857,19 @@ AS
       AND    hps.status         = gv_status_on                   -- 有効 2008/08/18 Add
       AND    hcas.attribute18   = ir_masters_rec.ship_to_code;   -- 配送先コード
 --      AND    ROWNUM = 1;                                       -- 2008/08/18 Del
+*/
+      FROM   hz_parties             hp,                  -- パーティマスタ
+             hz_party_sites         hps,                 -- パーティサイトマスタ
+             hz_cust_acct_sites_all hcas,                -- 顧客所在地マスタ
+             hz_cust_accounts       hca,                 -- 顧客マスタ
+             hz_locations           hzl                  -- 顧客事業所マスタ
+      WHERE  hp.party_id        = hps.party_id
+      AND    hp.party_id        = hca.party_id
+      AND    hps.party_site_id  = hcas.party_site_id
+      AND    hps.location_id    = hzl.location_id
+      AND    hps.status         = gv_status_on                   -- 有効 2008/08/18 Add
+      AND    hzl.province       = ir_masters_rec.ship_to_code;   -- 配送先コード
+-- 2008/08/25 Mod ↑
 --
     EXCEPTION
       WHEN NO_DATA_FOUND THEN
@@ -3750,6 +3880,8 @@ AS
         ir_masters_rec.site_status     := NULL;
         ir_masters_rec.party_number    := NULL;
         ir_masters_rec.obj_site_number := NULL;
+        ir_masters_rec.hzl_location_id := NULL;             -- 2008/08/25 Add
+        ir_masters_rec.hzl_obj_number  := NULL;             -- 2008/08/25 Add
 --
       WHEN OTHERS THEN
         RAISE global_api_others_expt;
@@ -3835,7 +3967,12 @@ AS
     ob_retcd := TRUE;
 --
     -- 登録(拠点紐付き)
+-- 2008/08/25 Mod ↓
+/*
     IF (ir_masters_rec.party_num IS NULL) THEN
+*/
+    IF (ir_masters_rec.party_num = gv_def_party_num) THEN
+-- 2008/08/25 Mod ↑
       lv_account_number := ir_masters_rec.base_code;      -- 拠点コード
 --
     -- 登録(顧客紐付き)
@@ -3852,7 +3989,9 @@ AS
              hp.party_number,                            -- 組織番号
              hps.object_version_number,                  -- オブジェクトバージョン番号
              hcas.cust_acct_site_id,                     -- 顧客サイトID
-             hcas.object_version_number                  -- オブジェクトバージョン番号
+             hcas.object_version_number,                 -- オブジェクトバージョン番号
+             hzl.location_id,                            -- ロケーションID             2008/08/25 Add
+             hzl.object_version_number                   -- オブジェクトバージョン番号 2008/08/25 Add
       INTO   ir_masters_rec.p_party_id,
              ir_masters_rec.party_site_id,
              ir_masters_rec.location_id,
@@ -3860,7 +3999,11 @@ AS
              ir_masters_rec.party_number,
              ir_masters_rec.obj_site_number,
              ir_masters_rec.cust_acct_site_id,
-             ir_masters_rec.obj_acct_number
+             ir_masters_rec.obj_acct_number,
+             ir_masters_rec.hzl_location_id,             -- 2008/08/25 Add
+             ir_masters_rec.hzl_obj_number               -- 2008/08/25 Add
+-- 2008/08/25 Mod ↓
+/*
       FROM   hz_parties             hp,                  -- パーティマスタ
              hz_party_sites         hps,                 -- パーティサイトマスタ
              hz_cust_acct_sites_all hcas,                -- 顧客所在地マスタ
@@ -3871,6 +4014,20 @@ AS
       AND    hca.account_number = lv_account_number
       AND    hps.status         = gv_status_off                  -- 無効
       AND    hcas.attribute18   = ir_masters_rec.ship_to_code;   -- 配送先コード
+*/
+      FROM   hz_parties             hp,                  -- パーティマスタ
+             hz_party_sites         hps,                 -- パーティサイトマスタ
+             hz_cust_acct_sites_all hcas,                -- 顧客所在地マスタ
+             hz_cust_accounts       hca,                 -- 顧客マスタ
+             hz_locations           hzl                  -- 顧客事業所マスタ
+      WHERE  hp.party_id        = hps.party_id
+      AND    hp.party_id        = hca.party_id
+      AND    hps.party_site_id  = hcas.party_site_id
+      AND    hps.location_id    = hzl.location_id
+      AND    hca.account_number = lv_account_number
+      AND    hps.status         = gv_status_off                  -- 無効
+      AND    hzl.province       = ir_masters_rec.ship_to_code;   -- 配送先コード
+-- 2008/08/25 Mod ↑
 --
     EXCEPTION
       WHEN NO_DATA_FOUND THEN
@@ -3881,6 +4038,8 @@ AS
         ir_masters_rec.site_status     := NULL;
         ir_masters_rec.party_number    := NULL;
         ir_masters_rec.obj_site_number := NULL;
+        ir_masters_rec.hzl_location_id := NULL;             -- 2008/08/25 Add
+        ir_masters_rec.hzl_obj_number  := NULL;             -- 2008/08/25 Add
 --
       WHEN OTHERS THEN
         RAISE global_api_others_expt;
@@ -4111,7 +4270,12 @@ AS
 --
     -- 2008/04/17 変更要求No61 対応
     -- 登録(拠点紐付き)
+-- 2008/08/25 Mod ↓
+/*
     IF (ir_masters_rec.party_num IS NULL) THEN
+*/
+    IF (ir_masters_rec.party_num = gv_def_party_num) THEN
+-- 2008/08/25 Mod ↑
       lv_account_number := ir_masters_rec.base_code;      -- 拠点コード
 --
     -- 登録(顧客紐付き)
@@ -4605,10 +4769,18 @@ AS
            SUM(NVL(DECODE(hps.status,gv_status_off,1),0))          --ステータス無効
     INTO   ln_on_cnt,
            ln_off_cnt
+-- 2008/08/25 Mod ↓
+/*
     FROM   hz_party_sites         hps,                   -- パーティサイトマスタ
            hz_cust_acct_sites_all hcas                   -- 顧客所在地マスタ
     WHERE  hps.party_site_id  = hcas.party_site_id
     AND    hcas.attribute18   = ir_masters_rec.ship_to_code;   -- 配送先コード
+*/
+    FROM   hz_party_sites         hps,                   -- パーティサイトマスタ
+           hz_locations           hzl                   -- 顧客事業所マスタ
+    WHERE  hps.location_id  = hzl.location_id
+    AND    hzl.province     = ir_masters_rec.ship_to_code;   -- 配送先コード
+-- 2008/08/25 Mod ↑
 -- 2008/08/18 Mod ↑
 --
     -- 有効あり
@@ -4881,7 +5053,12 @@ AS
 --
     -- 2008/04/17 変更要求No61 対応
     -- 顧客コード=NULL
+-- 2008/08/25 Mod ↓
+/*
     IF (ir_masters_rec.party_num IS NULL) THEN
+*/
+    IF (ir_masters_rec.party_num = gv_def_party_num) THEN
+-- 2008/08/25 Mod ↑
       lv_account_number := ir_masters_rec.base_code;       -- 拠点コード
 --
     -- 顧客コード<>NULL
@@ -4902,6 +5079,8 @@ AS
 -- 2008/08/18 Mod ↑
     SELECT COUNT(hps.party_site_id)
     INTO   ln_cnt
+-- 2008/08/25 Mod ↓
+/*
     FROM   hz_party_sites         hps,                   -- パーティサイトマスタ
            hz_cust_accounts       hca,                   -- 顧客マスタ
            hz_cust_acct_sites_all hcas                   -- 顧客所在地マスタ
@@ -4910,6 +5089,16 @@ AS
     AND    hca.account_number = lv_account_number
     AND    hcas.attribute18   = ir_masters_rec.ship_to_code    -- 配送先コード
     AND    hps.status         = iv_status;
+*/
+    FROM   hz_party_sites         hps,                   -- パーティサイトマスタ
+           hz_cust_accounts       hca,                   -- 顧客マスタ
+           hz_locations           hzl                    -- 顧客事業所マスタ
+    WHERE  hps.location_id    = hzl.location_id
+    AND    hps.party_id       = hca.party_id
+    AND    hca.account_number = lv_account_number
+    AND    hzl.province       = ir_masters_rec.ship_to_code    -- 配送先コード
+    AND    hps.status         = iv_status;
+-- 2008/08/25 Mod ↑
 --
     IF (ln_cnt > 0) THEN
       ob_retcd := TRUE;
@@ -5763,7 +5952,12 @@ AS
     -- ***************************************
 --
     -- 顧客コード=NULL
+-- 2008/08/25 Mod ↓
+/*
     IF (ir_masters_rec.party_num IS NULL) THEN
+*/
+    IF (ir_masters_rec.party_num = gv_def_party_num) THEN
+-- 2008/08/25 Mod ↑
 --
       -- 処理スキップ
       set_warn_status(ir_status_rec,
@@ -6109,7 +6303,12 @@ AS
         AND (ir_masters_rec.row_s_del_cnt = 0)) THEN
 --
           -- 顧客コード=NULL
+-- 2008/08/25 Mod ↓
+/*
           IF (ir_masters_rec.party_num IS NULL) THEN
+*/
+          IF (ir_masters_rec.party_num = gv_def_party_num) THEN
+-- 2008/08/25 Mod ↑
             ir_masters_rec.proc_code := gn_proc_s_ins;   -- 登録(拠点紐付き)
 --
           -- 顧客コード<>NULL
@@ -6144,7 +6343,12 @@ AS
         AND (ir_masters_rec.row_s_del_cnt = 0)) THEN
 --
           -- 顧客コード=NULL
+-- 2008/08/25 Mod ↓
+/*
           IF (ir_masters_rec.party_num IS NULL) THEN
+*/
+          IF (ir_masters_rec.party_num = gv_def_party_num) THEN
+-- 2008/08/25 Mod ↑
             ir_masters_rec.proc_code := gn_proc_s_upd;   -- 更新(拠点紐付き)
             ir_masters_rec.status := gv_status_on;       -- ステータスを有効
 --
@@ -6300,7 +6504,12 @@ AS
         ELSE
 --
           -- 顧客コード=NULL
+-- 2008/08/25 Mod ↓
+/*
           IF (ir_masters_rec.party_num IS NULL) THEN
+*/
+          IF (ir_masters_rec.party_num = gv_def_party_num) THEN
+-- 2008/08/25 Mod ↑
 --
             -- 以前に同じ拠点コードが存在している
             IF (lb_party_retcd) THEN
@@ -6334,7 +6543,12 @@ AS
         AND (ir_masters_rec.row_s_del_cnt = 0)) THEN
 --
           -- 顧客コード=NULL
+-- 2008/08/25 Mod ↓
+/*
           IF (ir_masters_rec.party_num IS NULL) THEN
+*/
+          IF (ir_masters_rec.party_num = gv_def_party_num) THEN
+-- 2008/08/25 Mod ↑
 --
             -- 拠点コード=パーティサイトマスタ.パーティ番号
             IF (lb_off_retcd) THEN
@@ -6364,7 +6578,12 @@ AS
         ELSE
 --
           -- 顧客コード=NULL
+-- 2008/08/25 Mod ↓
+/*
           IF (ir_masters_rec.party_num IS NULL) THEN
+*/
+          IF (ir_masters_rec.party_num = gv_def_party_num) THEN
+-- 2008/08/25 Mod ↑
 --
             -- 拠点コード=パーティサイトマスタ.パーティ番号
             IF (lb_off_retcd) THEN
@@ -6395,7 +6614,12 @@ AS
       ELSIF (ln_kbn = gn_data_on) THEN
 --
         -- 顧客コード=NULL
+-- 2008/08/25 Mod ↓
+/*
         IF (ir_masters_rec.party_num IS NULL) THEN
+*/
+        IF (ir_masters_rec.party_num = gv_def_party_num) THEN
+-- 2008/08/25 Mod ↑
 --
           -- 拠点コード=パーティサイトマスタ.パーティ番号
           IF (lb_on_retcd) THEN
@@ -6457,7 +6681,12 @@ AS
           IF ((ir_masters_rec.row_s_ins_cnt > 0) OR (ir_masters_rec.row_s_upd_cnt > 0)) THEN
 --
             -- 顧客コード=NULL
+-- 2008/08/25 Mod ↓
+/*
             IF (ir_masters_rec.party_num IS NULL) THEN
+*/
+            IF (ir_masters_rec.party_num = gv_def_party_num) THEN
+-- 2008/08/25 Mod ↑
 --
               -- 以前に拠点コードが存在している
               IF (lb_party_retcd) THEN
@@ -6555,7 +6784,12 @@ AS
           IF ((ir_masters_rec.row_s_ins_cnt > 0) OR (ir_masters_rec.row_s_upd_cnt > 0)) THEN
 --
             -- 顧客コード=NULL
+-- 2008/08/25 Mod ↓
+/*
             IF (ir_masters_rec.party_num IS NULL) THEN
+*/
+            IF (ir_masters_rec.party_num = gv_def_party_num) THEN
+-- 2008/08/25 Mod ↑
 --
               -- 以前に拠点コードが存在している
               IF (lb_party_retcd) THEN
@@ -6636,7 +6870,12 @@ AS
             IF (lb_on_retcd) THEN
 --
               -- 顧客コード=NULL
+-- 2008/08/25 Mod ↓
+/*
               IF (ir_masters_rec.party_num IS NULL) THEN
+*/
+              IF (ir_masters_rec.party_num = gv_def_party_num) THEN
+-- 2008/08/25 Mod ↑
                 ir_masters_rec.proc_code := gn_proc_ds_del;   -- 削除(拠点紐付き)
 --
               -- 顧客コード<>NULL
@@ -6668,7 +6907,12 @@ AS
           IF ((ir_masters_rec.row_s_ins_cnt > 0) OR (ir_masters_rec.row_s_upd_cnt > 0)) THEN
 --
             -- 顧客コード=NULL
+-- 2008/08/25 Mod ↓
+/*
             IF (ir_masters_rec.party_num IS NULL) THEN
+*/
+            IF (ir_masters_rec.party_num = gv_def_party_num) THEN
+-- 2008/08/25 Mod ↑
 --
               -- 以前に拠点コードが存在している
               IF (lb_party_retcd) THEN
@@ -7742,6 +7986,8 @@ AS
     lv_party_site_number            hz_party_sites.party_site_number%TYPE;
     ln_party_site_id                NUMBER;
 --
+    lv_county                       hz_locations.county%TYPE;
+--
     -- 2008/04/17 変更要求No61 対応
     ln_cnt                          NUMBER;
     lv_primary_flag                 hz_cust_site_uses_all.primary_flag%TYPE;
@@ -7785,6 +8031,10 @@ AS
       lr_location_rec.address2 := ir_masters_rec.party_site_addr2;
     END IF;
     lr_location_rec.created_by_module := gv_created_by_module;
+-- 2008/08/25 Add
+    lv_county := ir_masters_rec.party_site_name1 || ir_masters_rec.party_site_name2;
+    lr_location_rec.province := ir_masters_rec.ship_to_code;
+    lr_location_rec.county   := lv_county;
 --
     -- 顧客事業所マスタ(HZ_LOCATION_V2PUB)
     HZ_LOCATION_V2PUB.CREATE_LOCATION (
@@ -7818,8 +8068,10 @@ AS
     -- 2008/04/17 変更要求No61 対応
     lr_party_site_rec.party_site_number := NULL;
 --
+/* 2008/08/25 Del ↓
     lr_party_site_rec.party_site_name   := ir_masters_rec.party_site_name1||
                                            ir_masters_rec.party_site_name2;
+2008/08/25 Del ↑ */
     lr_party_site_rec.attribute20       := TO_CHAR(SYSDATE,'YYYYMMDD');
     lr_party_site_rec.status            := gv_status_on;
 --
@@ -7854,9 +8106,20 @@ AS
     BEGIN
       SELECT COUNT(hcas.cust_acct_site_id)
       INTO   ln_cnt
+-- 2008/08/25 Mod ↓
+/*
       FROM   hz_cust_acct_sites_all hcas
       WHERE  hcas.attribute18 = ir_masters_rec.ship_to_code
       AND    ROWNUM = 1;
+*/
+      FROM   hz_party_sites         hps,                 -- パーティサイトマスタ
+             hz_cust_acct_sites_all hcas,                -- 顧客所在地マスタ
+             hz_locations           hzl                  -- 顧客事業所マスタ
+      WHERE  hzl.location_id   = hps.location_id
+      AND    hps.party_site_id = hcas.party_site_id
+      AND    hps.status         = gv_status_on
+      AND    hzl.province       = ir_masters_rec.ship_to_code;   -- 配送先コード
+-- 2008/08/25 Mod ↑
 --
     EXCEPTION
       WHEN NO_DATA_FOUND THEN
@@ -7879,7 +8142,9 @@ AS
     lr_cust_site_rec.cust_account_id   := ir_masters_rec.cust_account_id; -- 顧客ID
     lr_cust_site_rec.party_site_id     := ln_party_site_id;               -- パーティサイトID
     lr_cust_site_rec.created_by_module := gv_created_by_module;           -- 作成モジュール
+/* 2008/08/25 Del ↓
     lr_cust_site_rec.attribute18       := ir_masters_rec.ship_to_code;    -- 属性１８
+2008/08/25 Del ↑ */
 -- 2008/08/18 Add
     lr_cust_site_rec.attribute_category := FND_PROFILE.VALUE('ORG_ID');
 --
@@ -8046,6 +8311,10 @@ AS
     ln_party_site_id                hz_party_sites.party_site_id%TYPE;
     ln_object_version_number        hz_party_sites.object_version_number%TYPE;
     lb_retcd                        BOOLEAN;
+-- 2008/08/25 Add ↓
+    lr_location_rec                 HZ_LOCATION_V2PUB.LOCATION_REC_TYPE;
+    lv_county                       hz_locations.county%TYPE;
+-- 2008/08/25 Add ↑
 --
     -- *** ローカル・カーソル ***
 --
@@ -8173,6 +8442,31 @@ AS
       lv_errbuf := lv_msg_data;
       RAISE global_api_expt;
     END IF;
+-- 2008/08/25 Add ↓
+    lv_county := ir_masters_rec.party_site_name1 || ir_masters_rec.party_site_name2;
+    lr_location_rec.location_id := ir_masters_rec.hzl_location_id;
+    lr_location_rec.county      := lv_county;
+    ln_object_version_number    := ir_masters_rec.hzl_obj_number;
+--
+    -- 顧客事業所マスタ(HZ_LOCATION_V2PUB)
+    HZ_LOCATION_V2PUB.UPDATE_LOCATION (
+        P_INIT_MSG_LIST         => FND_API.G_FALSE
+       ,P_LOCATION_REC          => lr_location_rec
+       ,P_OBJECT_VERSION_NUMBER => ln_object_version_number
+       ,X_RETURN_STATUS         => lv_return_status
+       ,X_MSG_COUNT             => ln_msg_count
+       ,X_MSG_DATA              => lv_msg_data
+    );
+--
+    IF (lv_return_status <> FND_API.G_RET_STS_SUCCESS) THEN
+      lv_api_name := 'HZ_LOCATION_V2PUB.UPDATE_LOCATION';
+      lv_errmsg := xxcmn_common_pkg.get_msg(gv_msg_kbn,      gv_msg_80a_016,
+                                            gv_tkn_api_name, lv_api_name);
+--
+      lv_errbuf := lv_msg_data;
+      RAISE global_api_expt;
+    END IF;
+-- 2008/08/25 Add ↑
 --
     --==============================================================
     --メッセージ出力（エラー以外）をする必要がある場合は処理を記述
@@ -8668,7 +8962,12 @@ AS
 --
     -- 登録
     ELSE
+-- 2008/08/25 Mod ↓
+/*
       IF (ir_masters_rec.party_num IS NULL) THEN
+*/
+      IF (ir_masters_rec.party_num = gv_def_party_num) THEN
+-- 2008/08/25 Mod ↑
         ln_kbn := gn_kbn_party;
       ELSE
         ln_kbn := gn_kbn_site;
@@ -8717,6 +9016,8 @@ AS
       ir_report_rec.hcas_flg := 1;
       ir_report_rec.hcsu_flg := 1;
 --
+      ir_report_rec.hzl_flg  := 1;           -- 2008/08/25 Add
+--
       -- パーティサイトアドオンマスタ(直接登録)
       proc_xxcmn_party_site(ir_masters_rec,
                             gn_proc_insert,
@@ -8750,6 +9051,7 @@ AS
       END IF;
       ir_report_rec.hpss_flg := 1;
       ir_report_rec.hcas_flg := 1;
+      ir_report_rec.hzl_flg  := 1;           -- 2008/08/25 Add
 --
       -- パーティサイトアドオンマスタ(直接更新)
       proc_xxcmn_party_site(ir_masters_rec,
@@ -8817,6 +9119,8 @@ AS
     END IF;
     ir_report_rec.hpss_flg := 1;
     ir_report_rec.hcas_flg := 1;
+--
+    ir_report_rec.hzl_flg  := 1;             -- 2008/08/25 Add
 --
     --==============================================================
     --メッセージ出力（エラー以外）をする必要がある場合は処理を記述
@@ -9989,7 +10293,12 @@ AS
 --
 --2008/08/08 Add ↓
       -- 顧客コード入力あり
+-- 2008/08/25 Mod ↓
+/*
       IF (lr_masters_rec.party_num IS NOT NULL) THEN
+*/
+      IF (lr_masters_rec.party_num <> gv_def_party_num) THEN
+-- 2008/08/25 Mod ↑
 --2008/08/08 Add ↑
         -- ===============================
         -- 顧客データ処理開始
@@ -10044,7 +10353,12 @@ AS
           -- 警告件数をカウントアップ
           IF (is_row_status_warn(lr_cust_sts_rec)) THEN
             IF ((lr_masters_rec.k_proc_code = gn_proc_insert)
+-- 2008/08/25 Mod ↓
+/*
              AND (lr_masters_rec.party_num IS NOT NULL)) THEN
+*/
+             AND (lr_masters_rec.party_num <> gv_def_party_num)) THEN
+-- 2008/08/25 Mod ↑
               lr_cust_sts_rec.file_level_status := gn_data_status_nomal;
               gn_c_normal_cnt := gn_c_normal_cnt + 1;
             ELSE
