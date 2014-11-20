@@ -31,7 +31,7 @@ AS
  *  2009/04/02    1.1   H.Sasaki         [T1_0002]VD預け先の顧客コード出力
  *  2009/05/15    1.2   H.Sasaki         [T1_0785]帳票出力のソート項目の設定値を変更
  *  2009/06/03    1.3   H.Sasaki         [T1_1202]保管場所マスタの結合条件に在庫組織IDを追加
- *  2009/06/17    1.4   H.Sasaki         [I_E_453][T1_1090]HHT入出庫取得データを変更
+ *  2009/06/19    1.4   H.Sasaki         [I_E_453][T1_1090]HHT入出庫取得データを変更
  *
  *****************************************************************************************/
 --
@@ -153,7 +153,7 @@ AS
   TYPE gt_base_num_ttype IS TABLE OF gr_base_num_rec INDEX BY BINARY_INTEGER;
 --
   -- HHT情報格納用レコード変数
--- == 2009/06/17 V1.4 Modified START ===============================================================
+-- == 2009/06/19 V1.4 Modified START ===============================================================
 --  TYPE gr_hht_info_rec IS RECORD(
 --      transaction_id             xxcoi_hht_inv_transactions.transaction_id%TYPE       -- HHT入出庫テーブルID
 --    , interface_id               xxcoi_hht_inv_transactions.interface_id%TYPE         -- インターフェース
@@ -194,7 +194,7 @@ AS
     , total_quantity             xxcoi_hht_inv_transactions.total_quantity%TYPE       -- 総数
     , invoice_no                 xxcoi_hht_inv_transactions.invoice_no%TYPE           -- 伝票No
   );
--- == 2009/06/17 V1.4 Modified END   ===============================================================
+-- == 2009/06/19 V1.4 Modified END   ===============================================================
 --
   --  HHT情報格納用テーブル
   TYPE gt_hht_info_ttype IS TABLE OF gr_hht_info_rec INDEX BY BINARY_INTEGER;
@@ -766,15 +766,16 @@ AS
     -- ユーザー宣言部
     -- ===============================
     -- *** ローカル定数 ***
--- == 2009/06/17 V1.4 Added START ===============================================================
+-- == 2009/06/19 V1.4 Added START ===============================================================
     cv_10               CONSTANT VARCHAR2(2)  := '10';    -- 顧客区分：10（顧客）
--- == 2009/06/17 V1.4 Added END   ===============================================================
+    cv_20               CONSTANT VARCHAR2(2)  := '20';    -- 伝票区分：他拠点から預け先
+-- == 2009/06/19 V1.4 Added END   ===============================================================
 --
     -- *** ローカル変数 ***
--- == 2009/06/17 V1.4 Added START ===============================================================
+-- == 2009/06/19 V1.4 Added START ===============================================================
     lv_outside_name     VARCHAR2(50);                     -- 出庫側名称
     lv_inside_name      VARCHAR2(50);                     -- 入庫側名称
--- == 2009/06/17 V1.4 Added END   ===============================================================
+-- == 2009/06/19 V1.4 Added END   ===============================================================
 --
     -- *** ローカル・カーソル ***
 --
@@ -793,10 +794,19 @@ AS
     -- ***       共通関数の呼び出し        ***
     -- ***************************************
 --
--- == 2009/06/17 V1.4 Added START ===============================================================
+-- == 2009/06/19 V1.4 Added START ===============================================================
     -- 出庫側名称
     BEGIN
-      IF (gt_hht_info_tab( gn_hht_info_loop_cnt ).outside_cust_code IS NULL) THEN
+      IF (gt_hht_info_tab( gn_hht_info_loop_cnt ).invoice_type = cv_20) THEN
+        SELECT  SUBSTRB(msi.description, 1, 50)
+        INTO    lv_outside_name
+        FROM    mtl_secondary_inventories   msi
+        WHERE   msi.attribute7                =   gt_hht_info_tab( gn_hht_info_loop_cnt ).outside_code
+        AND     msi.attribute6                =   cv_yes
+        AND     msi.organization_id           =   gn_organization_id
+        AND     SYSDATE                       <=  NVL(msi.disable_date, SYSDATE);
+        --
+      ELSIF (gt_hht_info_tab( gn_hht_info_loop_cnt ).outside_cust_code IS NULL) THEN
         SELECT  SUBSTRB(msi.description, 1, 50)
         INTO    lv_outside_name
         FROM    mtl_secondary_inventories   msi
@@ -837,7 +847,7 @@ AS
       WHEN NO_DATA_FOUND  THEN
         lv_inside_name  :=  NULL;
     END;
--- == 2009/06/17 V1.4 Added END   ===============================================================
+-- == 2009/06/19 V1.4 Added END   ===============================================================
     --
     --入出庫ジャーナルチェックリスト帳票ワークテーブル登録処理
     INSERT INTO xxcoi_rep_shipstore_jour_list(
@@ -879,20 +889,20 @@ AS
        ,gv_output_kbn_name                                                          -- 2.出力区分
        ,gt_hht_info_tab( gn_hht_info_loop_cnt ).outside_base_code                   -- 3.拠点コード
        ,gt_hht_info_tab( gn_hht_info_loop_cnt ).outside_base_name                   -- 4.拠点名
--- == 2009/06/17 V1.4 Added START ===============================================================
+-- == 2009/06/19 V1.4 Added START ===============================================================
 --       ,gt_hht_info_tab( gn_hht_info_loop_cnt ).outside_subinv_code
 --       ,gt_hht_info_tab( gn_hht_info_loop_cnt ).outside_subinv_name
        ,gt_hht_info_tab( gn_hht_info_loop_cnt ).outside_code                        -- 5.出庫側保管場所コード
        ,lv_outside_name                                                             -- 6.出庫側保管場所名
--- == 2009/06/17 V1.4 Added START ===============================================================
+-- == 2009/06/19 V1.4 Added START ===============================================================
        ,gt_hht_info_tab( gn_hht_info_loop_cnt ).invoice_type                        -- 7.伝票区分
        ,gt_hht_info_tab( gn_hht_info_loop_cnt ).invoice_type_name                   -- 8.伝票区分名
--- == 2009/06/17 V1.4 Added START ===============================================================
+-- == 2009/06/19 V1.4 Added START ===============================================================
 --       ,gt_hht_info_tab( gn_hht_info_loop_cnt ).inside_subinv_code
 --       ,gt_hht_info_tab( gn_hht_info_loop_cnt ).inside_subinv_name
        ,gt_hht_info_tab( gn_hht_info_loop_cnt ).inside_code                         -- 9.出庫側保管場所コード
        ,lv_inside_name                                                              -- 10.出庫側保管場所名
--- == 2009/06/17 V1.4 Added START ===============================================================
+-- == 2009/06/19 V1.4 Added START ===============================================================
        ,gt_hht_info_tab( gn_hht_info_loop_cnt ).item_code                           -- 11.商品コード
        ,gt_hht_info_tab( gn_hht_info_loop_cnt ).item_name                           -- 12.商品名
        ,gt_hht_info_tab( gn_hht_info_loop_cnt ).case_quantity                       -- 13.ケース数
@@ -975,10 +985,10 @@ AS
 -- == 2009/04/02 V1.1 Added END   ===============================================================
 --
     -- 参照タイプ
--- == 2009/06/17 V1.4 Modified START ===============================================================
+-- == 2009/06/19 V1.4 Modified START ===============================================================
 --    cv_invoice_type               CONSTANT VARCHAR2(30)  := 'XXCOI1_INVOICE_KBN';        -- 伝票区分
     cv_invoice_type               CONSTANT VARCHAR2(30)  := 'XXCOI1_HHT_EBS_CONVERT_TABLE';        -- 伝票区分
--- == 2009/06/17 V1.4 Modified END   ===============================================================
+-- == 2009/06/19 V1.4 Modified END   ===============================================================
 --
     -- 参照コード
 --
@@ -993,7 +1003,7 @@ AS
     -- HHT入出庫データ
     CURSOR info_hht_cur
     IS
--- == 2009/06/17 V1.4 Modified START ===============================================================
+-- == 2009/06/19 V1.4 Modified START ===============================================================
 --    SELECT  xhit.transaction_id             transaction_id              -- HHT入出庫一時表ID
 --           ,xhit.interface_id               interface_id                -- インターフェースID
 --           ,xhit.outside_base_code          out_base_code               -- 出庫拠点コード
@@ -1100,7 +1110,7 @@ AS
       AND     flv.enabled_flag                          =   cv_yes
       AND     flv.attribute11                           =   NVL(gr_param.invoice_kbn, flv.attribute11)
       ORDER BY xhit.interface_id;
--- == 2009/06/17 V1.4 Modified END   ===============================================================
+-- == 2009/06/19 V1.4 Modified END   ===============================================================
 --
     -- ローカル・レコード
 --
@@ -1349,10 +1359,10 @@ AS
     cv_profile_name    CONSTANT VARCHAR2(24)   := 'XXCOI1_ORGANIZATION_CODE';        -- プロファイル名(在庫組織コード)
     cv_output_kbn      CONSTANT VARCHAR2(30)   := 'XXCOI1_OUTPUT_KBN';               -- 参照タイプ(出力区分)
     cv_reverse_kbn     CONSTANT VARCHAR2(30)   := 'XXCOI1_REVERSE_DATA_OUTPUT_KBN';  -- 参照タイプ(入出庫逆転データ出力区分)
--- == 2009/06/17 V1.4 Modified START ===============================================================
+-- == 2009/06/19 V1.4 Modified START ===============================================================
 --    cv_invoice_type    CONSTANT VARCHAR2(30)   := 'XXCOI1_INVOICE_KBN';              -- 参照タイプ(伝票区分)
     cv_invoice_type    CONSTANT VARCHAR2(30)   := 'XXCOI1_HHT_EBS_CONVERT_TABLE';    -- 参照タイプ(伝票区分)
--- == 2009/06/17 V1.4 Modified END   ===============================================================
+-- == 2009/06/19 V1.4 Modified END   ===============================================================
 --
     -- *** ローカル変数 ***
     lv_organization_code mtl_parameters.organization_code%TYPE;  -- 在庫組織コード
@@ -1473,7 +1483,7 @@ AS
     -- パラメータ.伝票区分
     -- 伝票区分名取得
     IF ( gr_param.invoice_kbn IS NOT NULL ) THEN
--- == 2009/06/17 V1.4 Modified START ===============================================================
+-- == 2009/06/19 V1.4 Modified START ===============================================================
 --     lv_invoice_type_name := xxcoi_common_pkg.get_meaning(cv_invoice_type, gr_param.invoice_kbn);
 --      --
 --      -- リターンコードがNULLの場合はエラー
@@ -1510,7 +1520,7 @@ AS
           lv_errbuf := lv_errmsg;
           RAISE global_api_expt;
       END;
--- == 2009/06/17 V1.4 Modified END   ===============================================================
+-- == 2009/06/19 V1.4 Modified END   ===============================================================
     ELSE
       lv_invoice_type_name := gr_param.invoice_kbn;
     END IF;
