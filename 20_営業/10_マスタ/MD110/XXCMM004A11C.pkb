@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCMM004A11C(body)
  * Description      : 品目マスタIF出力（情報系）
  * MD.050           : 品目マスタIF出力（情報系） CMM_004_A11
- * Version          : Draft2D
+ * Version          : Issue3.4
  *
  * Program List
  * -------------------- ------------------------------------------------------------
@@ -44,6 +44,7 @@ AS
  *                                       ファイル名を出力するように修正
  *  2009/05/12    1.4   H.Yoshikawa      障害T1_0905,T1_0906対応
  *  2009/06/15    1.5   H.Yoshikawa      障害T1_1455対応
+ *  2010/02/02    1.6   Shigeto.Niki     E_本稼動_01420対応 
  *
  *****************************************************************************************/
 --
@@ -167,6 +168,11 @@ AS
   cv_categ_set_item_prod         CONSTANT VARCHAR2(20)  := xxcmm_004common_pkg.cv_categ_set_item_prod;
                                                                                  -- 商品製品区分
   cv_csv_mode                    CONSTANT VARCHAR2(1)   := 'w';                  -- csvファイルオープン時のモード
+-- 2010/02/02 Ver1.6 障害E_本稼動_01420 add start by Shigeto.Niki
+-- 品目ステータス
+  cn_itm_status_pre_reg        CONSTANT NUMBER        := xxcmm_004common_pkg.cn_itm_status_pre_reg;
+                                                                               -- 仮登録
+-- 2010/02/02 Ver1.6 障害E_本稼動_01420 add end by Shigeto.Niki
 --
   -- ===============================
   -- ユーザー定義グローバル型
@@ -613,6 +619,9 @@ AS
       AND         gic.item_id             = xoiv.item_id
       AND         gic.category_id         = mcv.category_id
 -- End
+-- 2010/02/02 Ver1.6 障害E_本稼動_01420 add start by Shigeto.Niki
+      AND         xoiv.item_status       >= cn_itm_status_pre_reg
+-- 2010/02/02 Ver1.6 障害E_本稼動_01420 add end by Shigeto.Niki
       ORDER BY    xoiv.item_no;
     --
 -- Ver1.4 Add 2009/05/12 ファイル項目追加対応
