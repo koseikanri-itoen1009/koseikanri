@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCMM006A04C(body)
  * Description      : 稼動日カレンダIF出力（情報系）
  * MD.050           : 稼動日カレンダIF出力（情報系) MD050_CMM_006_A04
- * Version          : 1.0
+ * Version          : 1.1
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -22,6 +22,8 @@ AS
  *  Date          Ver.  Editor           Description
  * ------------- ----- ---------------- -------------------------------------------------
  *  2008/12/12    1.0   SCS 工藤 真純    初回作成
+ *  2010/04/20    1.1   SCS 久保島 豊    E_本稼動_02251対応 プロファイルの変更
+ *                                                          (XXCCP1_WORKING_CALENDAR -> XXCMM1_006A04_BUSINS_CAL_CODE)
  *
  *****************************************************************************************/
 --
@@ -86,7 +88,10 @@ AS
   -- プロファイル
   cv_prf_dir           CONSTANT VARCHAR2(30) := 'XXCMM1_JYOHO_OUT_DIR';  -- 稼働日カレンダ連携用CSVファイル出力先
   cv_prf_fil           CONSTANT VARCHAR2(30) := 'XXCMM1_006A04_OUT_FILE';  -- 稼働日カレンダ連携用CSVファイル名
-  cv_prf_calender_cd   CONSTANT VARCHAR2(30) := 'XXCCP1_WORKING_CALENDAR';  -- カレンダ名称(アドオン：共通・IF領域)
+-- 2010/04/20 Ver1.1 modify start by Y.Kuboshima
+--  cv_prf_calender_cd   CONSTANT VARCHAR2(30) := 'XXCCP1_WORKING_CALENDAR';  -- カレンダ名称(アドオン：共通・IF領域)
+  cv_prf_calender_cd   CONSTANT VARCHAR2(30) := 'XXCMM1_006A04_BUSINS_CAL_CODE';  -- 稼動日カレンダIF出力用営業稼動カレンダコード
+-- 2010/04/20 Ver1.1 modify end by Y.Kuboshima
 
   -- トークン
   cv_tkn_ng_profile    CONSTANT VARCHAR2(30) := 'NG_PROFILE';        -- プロファイル名
