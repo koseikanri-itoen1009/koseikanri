@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCOI010A02C(body)
  * Description      : 気づき情報IF出力
  * MD.050           : 気づき情報IF出力 MD050_COI_010_A02
- * Version          : 1.0
+ * Version          : 1.1
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -26,6 +26,8 @@ AS
  *  Date          Ver.  Editor           Description
  * ------------- ----- ---------------- -------------------------------------------------
  *  2008/12/26    1.0   T.Nakamura       新規作成
+ *  2009/03/30    1.1   T.Nakamura       [障害T1_0083]IF項目の桁数を修正
+ *                                       [障害T1_0084]IF項目の形式を修正
  *
  *****************************************************************************************/
 --
@@ -785,13 +787,25 @@ AS
                        g_get_awareness_tab(i).supl_rate                     || cv_delimiter || --補充率
                        g_get_awareness_tab(i).hot_inv                       || cv_delimiter || --ホット在庫
         cv_encloser || gv_sold_out_msg_color                 || cv_encloser || cv_delimiter || --売切れ対策メッセージ色
-        cv_encloser || lv_sold_out_msg                       || cv_encloser || cv_delimiter || --売切れ対策メッセージ1
+-- == 2009/03/30 V1.1 Moded START ===============================================================
+--        cv_encloser || lv_sold_out_msg                       || cv_encloser || cv_delimiter || --売切れ対策メッセージ1
+        cv_encloser || TO_MULTI_BYTE( REPLACE( lv_sold_out_msg, ' ' ) )
+                                                             || cv_encloser || cv_delimiter || --売切れ対策メッセージ1
+-- == 2009/03/30 V1.1 Moded END   ===============================================================
         cv_encloser || lv_column_exist_msg                   || cv_encloser || cv_delimiter || --売切れ対策メッセージ2
         cv_encloser || gv_supl_rate_msg_color                || cv_encloser || cv_delimiter || --補充率対策メッセージ色
-        cv_encloser || lv_supl_rate_msg                      || cv_encloser || cv_delimiter || --補充率対策メッセージ1
+-- == 2009/03/30 V1.1 Moded START ===============================================================
+--        cv_encloser || lv_supl_rate_msg                      || cv_encloser || cv_delimiter || --補充率対策メッセージ1
+        cv_encloser || TO_MULTI_BYTE( REPLACE( lv_supl_rate_msg, ' ' ) )    
+                                                             || cv_encloser || cv_delimiter || --補充率対策メッセージ1
+-- == 2009/03/30 V1.1 Moded END   ===============================================================
         cv_encloser || lv_column_exist_msg                   || cv_encloser || cv_delimiter || --補充率対策メッセージ2
         cv_encloser || gv_hot_inv_msg_color                  || cv_encloser || cv_delimiter || --ホット在庫メッセージ色
-        cv_encloser || lv_hot_inv_msg                        || cv_encloser || cv_delimiter || --ホット在庫メッセージ1
+-- == 2009/03/30 V1.1 Moded START ===============================================================
+--        cv_encloser || lv_hot_inv_msg                        || cv_encloser || cv_delimiter || --ホット在庫メッセージ1
+        cv_encloser || TO_MULTI_BYTE( REPLACE( lv_hot_inv_msg, ' ' ) )
+                                                             || cv_encloser || cv_delimiter || --ホット在庫メッセージ1
+-- == 2009/03/30 V1.1 Moded END   ===============================================================
         cv_encloser || lv_column_exist_msg                   || cv_encloser                    --ホット在庫メッセージ2
       );
 --
