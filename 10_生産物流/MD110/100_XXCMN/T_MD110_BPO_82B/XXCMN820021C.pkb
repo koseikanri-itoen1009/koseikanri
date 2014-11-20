@@ -7,7 +7,7 @@ AS
  * Description      : 原価差異表作成
  * MD.050/070       : 標準原価マスタIssue1.0(T_MD050_BPO_820)
  *                    原価差異表作成Issue1.0(T_MD070_BPO_82B/T_MD070_BPO_82C)
- * Version          : 1.6
+ * Version          : 1.7
  *
  * Program List
  * ---------------------------- ----------------------------------------------------------
@@ -44,6 +44,7 @@ AS
  *                                       (1.4.2)「**項目計**」が「項目計」と出力される不具合対応
  *  2008/07/01    1.5   Marushita        ST不具合339対応製造日をロットマスタから取得
  *  2008/07/02    1.6   Satoshi Yunba    禁則文字対応
+ *  2008/12/09    1.7   T.Miyata         本番#542対応
  *
  *****************************************************************************************/
 --
@@ -600,15 +601,30 @@ AS
             ,detail_name
             ,SUM( s_amount )  AS s_amount
             ,SUM( r_amount )  AS r_amount
+-- S 2008/12/09 1.7 MOD BY T.Miyata 本番#542 項目単位での取引数値を取得
+            ,SUM( s_quantity )  AS s_quantity
+            ,SUM( r_quantity )  AS r_quantity
+-- E 2008/12/09 1.7 MOD BY T.Miyata 本番#542
       FROM
         (
-          SELECT flv.attribute1         AS detail_code
+          SELECT
+-- S 2008/12/09 1.7 MOD BY T.Miyata 本番#542 項目単位での取引数値を取得
+                xph.item_id
+-- E 2008/12/09 1.7 MOD BY T.Miyata 本番#542
+                ,flv.attribute1         AS detail_code
                 ,flv.meaning            AS detail_name
 -- S 2008/05/21 1.1 MOD BY M.Ikeda ------------------------------------------------------------ S --
 --                ,xrart.quantity * xpl.unit_price * xpl.quantity AS s_amount
-                ,xrart.quantity * xpl.unit_price AS s_amount
+-- S 2008/12/09 1.7 MOD BY T.Miyata 本番#542 項目単位での取引数値を取得
+                -- ,xrart.quantity * xpl.unit_price AS s_amount
+                ,SUM(xrart.quantity * xpl.unit_price) AS s_amount
+-- E 2008/12/09 1.7 MOD BY T.Miyata 本番#542
 -- E 2008/05/21 1.1 MOD BY M.Ikeda ------------------------------------------------------------ E --
-                ,0                                              AS r_amount
+                ,0                                    AS r_amount
+-- S  2008/12/09 1.7 MOD BY T.Miyata 本番#542 項目単位での取引数値を取得
+                ,SUM(xrart.quantity)/count(*)                   AS s_quantity
+                ,0                                              AS r_quantity
+-- E  2008/12/09 1.7 MOD BY T.Miyata 本番#542                                              AS r_amount
           FROM xxpo_rcv_and_rtn_txns    xrart
               ,xxpo_price_headers       xph
               ,xxpo_price_lines         xpl
@@ -627,14 +643,28 @@ AS
           AND   xrart.item_id         = p_item_id
           AND   xrart.vendor_id       = p_vendor_id
           AND   xrart.department_code = NVL( p_dept_code, department_code )
+-- S  2008/12/09 1.7 MOD BY T.Miyata 本番#542 項目単位での取引数値を取得
+          GROUP BY xph.item_id, flv.attribute1, flv.meaning
+-- E  2008/12/09 1.7 MOD BY T.Miyata 本番#542
           UNION ALL
-          SELECT flv.attribute1         AS detail_code
+          SELECT
+-- S  2008/12/09 1.7 MOD BY T.Miyata 本番#542 項目単位での取引数値を取得
+                 xph.item_id
+-- E  2008/12/09 1.7 MOD BY T.Miyata 本番#542
+                ,flv.attribute1         AS detail_code
                 ,flv.meaning            AS detail_name
                 ,0                                              AS s_amount
 --mod start 1.3.3
 --                ,xrart.quantity * xpl.unit_price * xpl.quantity AS r_amount
-                ,xrart.quantity * xpl.unit_price AS r_amount
+-- S  2008/12/09 1.7 MOD BY T.Miyata 本番#542 項目単位での取引数値を取得
+--                ,xrart.quantity * xpl.unit_price AS r_amount
+                ,SUM(xrart.quantity * xpl.unit_price) AS r_amount
+-- E  2008/12/09 1.7 MOD BY T.Miyata 本番#542
 --mod end 1.3.3
+-- S 2008/12/09 1.7 MOD BY T.Miyata 本番#542 項目単位での取引数値を取得
+                ,0                                              AS s_quantity
+                ,SUM(xrart.quantity)/count(*)                   AS r_quantity
+-- E 2008/12/09 1.7 MOD BY T.Miyata 本番#542
           FROM xxpo_rcv_and_rtn_txns    xrart
               ,ic_item_mst_b            iimc
               ,po_headers_all           pha
@@ -671,6 +701,9 @@ AS
           AND   xrart.department_code = NVL( p_dept_code, department_code )
           AND   xrart.item_id         = ilm.item_id(+)
           AND   xrart.lot_number      = ilm.lot_no(+)
+          -- S 2008/12/09 1.7 MOD BY T.Miyata 本番#542 項目単位での取引数値を取得
+          GROUP BY xph.item_id, flv.attribute1, flv.meaning
+          -- E 2008/12/09 1.7 MOD BY T.Miyata 本番#542
         )
       GROUP BY detail_code
               ,detail_name
@@ -711,8 +744,20 @@ AS
         lr_amount.r_unit_price := 0 ; 
         lr_amount.d_unit_price := 0 ;
       ELSE
-        lr_amount.s_unit_price := ROUND( re_main.s_amount / gv_quant, 2 ) ;
-        lr_amount.r_unit_price := ROUND( re_main.r_amount / gv_quant, 2 ) ; 
+-- S  2008/12/09 1.7 MOD BY T.Miyata 本番#542 項目単位での取引数値を取得
+--        lr_amount.s_unit_price := ROUND( re_main.s_amount / gv_quant, 2 ) ;
+--        lr_amount.r_unit_price := ROUND( re_main.r_amount / gv_quant, 2 ) ;
+        IF ( re_main.s_quantity = 0 ) THEN
+            lr_amount.s_unit_price := 0;
+        ELSE
+            lr_amount.s_unit_price := ROUND( re_main.s_amount / re_main.s_quantity, 2 ) ;
+        END IF;
+        IF ( lr_amount.r_unit_price = 0 ) THEN
+          lr_amount.r_unit_price := 0;
+        ELSE
+          lr_amount.r_unit_price := ROUND( re_main.r_amount / re_main.r_quantity, 2 ) ;
+        END IF;
+-- E  2008/12/09 1.7 MOD BY T.Miyata 本番#542
         lr_amount.d_unit_price := lr_amount.s_unit_price - lr_amount.r_unit_price ;
       END IF ;
       lr_amount.s_amount     := re_main.s_amount ;
@@ -1569,15 +1614,30 @@ AS
             ,meaning          AS item_detail_name
             ,SUM( s_amount )  AS s_amount
             ,SUM( r_amount )  AS r_amount
+-- S 2008/12/09 1.7 MOD BY T.Miyata 本番#542 項目単位での取引数値を取得
+            ,SUM( s_quantity )  AS s_quantity
+            ,SUM( r_quantity )  AS r_quantity
+-- E 2008/12/09 1.7 MOD BY T.Miyata 本番#542
       FROM
         (
-          SELECT flv.attribute1
+          SELECT
+-- S 2008/12/09 1.7 MOD BY T.Miyata 本番#542 項目単位での取引数値を取得
+                xph.item_id
+-- E 2008/12/09 1.7 MOD BY T.Miyata 本番#542
+                ,flv.attribute1
                 ,flv.meaning
 -- S 2008/05/21 1.1 MOD BY M.Ikeda ------------------------------------------------------------ S --
 --                ,xrart.quantity * xpl.unit_price * xpl.quantity AS s_amount
-                ,xrart.quantity * xpl.unit_price AS s_amount
+-- S 2008/12/09 1.7 MOD BY T.Miyata 本番#542 項目単位での取引数値を取得
+                -- ,xrart.quantity * xpl.unit_price AS s_amount
+                ,SUM(xrart.quantity * xpl.unit_price) AS s_amount
+-- E 2008/12/09 1.7 MOD BY T.Miyata 本番#542
 -- E 2008/05/21 1.1 MOD BY M.Ikeda ------------------------------------------------------------ E --
                 ,0                                              AS r_amount
+-- S  2008/12/09 1.7 MOD BY T.Miyata 本番#542 項目単位での取引数値を取得
+                ,SUM(xrart.quantity)/count(*)                   AS s_quantity
+                ,0                                              AS r_quantity
+-- E  2008/12/09 1.7 MOD BY T.Miyata 本番#542
           FROM xxpo_rcv_and_rtn_txns    xrart
               ,xxpo_price_headers       xph
               ,xxpo_price_lines         xpl
@@ -1594,14 +1654,28 @@ AS
           AND   xrart.txns_date       BETWEEN gd_fiscal_date_from AND gd_fiscal_date_to
           AND   xrart.item_id         = p_item_id
           AND   xrart.department_code = NVL( p_dept_code, department_code )
+-- S  2008/12/09 1.7 MOD BY T.Miyata 本番#542 項目単位での取引数値を取得
+          GROUP BY xph.item_id, flv.attribute1, flv.meaning
+-- E  2008/12/09 1.7 MOD BY T.Miyata 本番#542
           UNION ALL
-          SELECT flv.attribute1
+          SELECT
+-- S  2008/12/09 1.7 MOD BY T.Miyata 本番#542 項目単位での取引数値を取得
+                xph.item_id
+-- E  2008/12/09 1.7 MOD BY T.Miyata 本番#542
+                ,flv.attribute1
                 ,flv.meaning
                 ,0                                              AS s_amount
 --mod start 1.3.3
 --                ,xrart.quantity * xpl.unit_price * xpl.quantity AS r_amount
-                ,xrart.quantity * xpl.unit_price AS r_amount
+-- S  2008/12/09 1.7 MOD BY T.Miyata 本番#542 項目単位での取引数値を取得
+--                ,xrart.quantity * xpl.unit_price AS r_amount
+                ,SUM(xrart.quantity * xpl.unit_price) AS r_amount
+-- E  2008/12/09 1.7 MOD BY T.Miyata 本番#542
 --mod end 1.3.3
+-- S 2008/12/09 1.7 MOD BY T.Miyata 本番#542 項目単位での取引数値を取得
+                ,0                                              AS s_quantity
+                ,SUM(xrart.quantity)/count(*)                   AS r_quantity
+-- E 2008/12/09 1.7 MOD BY T.Miyata 本番#542
           FROM xxpo_rcv_and_rtn_txns    xrart
               ,ic_item_mst_b            iimc
               ,po_headers_all           pha
@@ -1636,6 +1710,9 @@ AS
           AND   xrart.department_code = NVL( p_dept_code, department_code )
           AND   xrart.item_id         = ilm.item_id(+)
           AND   xrart.lot_number      = ilm.lot_no(+)
+          -- S 2008/12/09 1.7 MOD BY T.Miyata 本番#542 項目単位での取引数値を取得
+          GROUP BY xph.item_id, flv.attribute1, flv.meaning
+          -- E 2008/12/09 1.7 MOD BY T.Miyata 本番#542
         )
       GROUP BY attribute1
               ,meaning
@@ -2073,8 +2150,22 @@ AS
           lr_amount_dtl.r_unit_price := 0 ;
           lr_amount_dtl.d_unit_price := 0 ;
         ELSE
-          lr_amount_dtl.s_unit_price := ROUND( re_sum_dtl.s_amount / lr_ref.quant, 2 ) ;
-          lr_amount_dtl.r_unit_price := ROUND( re_sum_dtl.r_amount / lr_ref.quant, 2 ) ; 
+-- S 2008/12/09 1.7 MOD BY T.Miyata 本番#542 項目単位での取引数値を取得
+--          lr_amount_dtl.s_unit_price := ROUND( re_sum_dtl.s_amount / lr_ref.quant, 2 ) ;
+--          lr_amount_dtl.r_unit_price := ROUND( re_sum_dtl.r_amount / lr_ref.quant, 2 ) ;
+          IF ( re_sum_dtl.s_quantity = 0 ) THEN
+            lr_amount_dtl.s_unit_price := 0;
+          ELSE
+            lr_amount_dtl.s_unit_price := ROUND( re_sum_dtl.s_amount / re_sum_dtl.s_quantity, 2 ) ;
+--            lr_amount_dtl.s_unit_price := re_sum_dtl.s_test_up;
+          END IF;
+          IF ( re_sum_dtl.r_quantity = 0 ) THEN
+            lr_amount_dtl.r_unit_price := 0;
+          ELSE
+            lr_amount_dtl.r_unit_price := ROUND( re_sum_dtl.r_amount / re_sum_dtl.r_quantity, 2 ) ;
+--            lr_amount_dtl.r_unit_price := re_sum_dtl.r_test_up; 
+          END IF;
+-- E 2008/12/09 1.7 MOD BY T.Miyata 本番#542
           lr_amount_dtl.d_unit_price := lr_amount_dtl.s_unit_price - lr_amount_dtl.r_unit_price ;
         END IF ;
         lr_amount_dtl.s_amount     := re_sum_dtl.s_amount ;
@@ -2355,15 +2446,30 @@ AS
             ,meaning          AS item_detail_name
             ,SUM( s_amount )  AS s_amount
             ,SUM( r_amount )  AS r_amount
+-- S 2008/12/09 1.7 MOD BY T.Miyata 本番#542 項目単位での取引数値を取得
+            ,SUM( s_quantity )  AS s_quantity
+            ,SUM( r_quantity )  AS r_quantity
+-- E 2008/12/09 1.7 MOD BY T.Miyata 本番#542
       FROM
         (
-          SELECT flv.attribute1
+          SELECT 
+-- S 2008/12/09 1.7 MOD BY T.Miyata 本番#542 項目単位での取引数値を取得
+                 xph.item_id
+-- E 2008/12/09 1.7 MOD BY T.Miyata 本番#542
+                ,flv.attribute1
                 ,flv.meaning
 -- S 2008/05/21 1.1 MOD BY M.Ikeda ------------------------------------------------------------ S --
 --                ,xrart.quantity * xpl.unit_price * xpl.quantity AS s_amount
-                ,xrart.quantity * xpl.unit_price AS s_amount
+-- S 2008/12/09 1.7 MOD BY T.Miyata 本番#542 項目単位での取引数値を取得
+--                ,xrart.quantity * xpl.unit_price AS s_amount
+                ,SUM(xrart.quantity * xpl.unit_price) AS s_amount
+-- E 2008/12/09 1.7 MOD BY T.Miyata 本番#542
 -- E 2008/05/21 1.1 MOD BY M.Ikeda ------------------------------------------------------------ E --
                 ,0                                              AS r_amount
+-- S 2008/12/09 1.7 MOD BY T.Miyata 本番#542 項目単位での取引数値を取得
+                ,SUM(xrart.quantity)/count(*)                   AS s_quantity
+                ,0                                              AS r_quantity
+-- E 2008/12/09 1.7 MOD BY T.Miyata 本番#542
           FROM xxpo_rcv_and_rtn_txns    xrart
               ,xxcmn_item_categories4_v xicv
               ,xxpo_price_headers       xph
@@ -2387,14 +2493,28 @@ AS
           AND   xicv.crowd_code IN( NVL( gr_param.crowd_code_01, xicv.crowd_code )
                                    ,NVL( gr_param.crowd_code_02, xicv.crowd_code )
                                    ,NVL( gr_param.crowd_code_03, xicv.crowd_code ) )
+-- S 2008/12/09 1.7 MOD BY T.Miyata 本番#542 項目単位での取引数値を取得
+          GROUP BY xph.item_id, flv.attribute1, flv.meaning
+-- E 2008/12/09 1.7 MOD BY T.Miyata 本番#542
           UNION ALL
-          SELECT flv.attribute1
+          SELECT
+-- S 2008/12/09 1.7 MOD BY T.Miyata 本番#542 項目単位での取引数値を取得
+                xph.item_id
+-- E 2008/12/09 1.7 MOD BY T.Miyata 本番#542
+                ,flv.attribute1
                 ,flv.meaning
                 ,0                                              AS s_amount
 --mod start 1.3.3
 --                ,xrart.quantity * xpl.unit_price * xpl.quantity AS r_amount
-                ,xrart.quantity * xpl.unit_price AS r_amount
+-- S 2008/12/09 1.7 MOD BY T.Miyata 本番#542 項目単位での取引数値を取得
+--                ,xrart.quantity * xpl.unit_price AS r_amount
+                ,SUM(xrart.quantity * xpl.unit_price) AS r_amount
+-- E 2008/12/09 1.7 MOD BY T.Miyata 本番#542
 --mod end 1.3.3
+-- S 2008/12/09 1.7 MOD BY T.Miyata 本番#542 項目単位での取引数値を取得
+                ,0                                              AS s_quantity
+                ,SUM(xrart.quantity)/count(*)                   AS r_quantity
+-- E 2008/12/09 1.7 MOD BY T.Miyata 本番#542
           FROM xxpo_rcv_and_rtn_txns    xrart
               ,xxcmn_item_categories4_v xicv
               ,ic_item_mst_b            iimc
@@ -2436,6 +2556,9 @@ AS
                                    ,NVL( gr_param.crowd_code_03, xicv.crowd_code ) )
           AND   xrart.item_id         = ilm.item_id(+)
           AND   xrart.lot_number      = ilm.lot_no(+)
+-- S 2008/12/09 1.7 MOD BY T.Miyata 本番#542 項目単位での取引数値を取得
+        GROUP BY xph.item_id, flv.attribute1, flv.meaning
+-- E 2008/12/09 1.7 MOD BY T.Miyata 本番#542
         )
       GROUP BY attribute1
               ,meaning
@@ -2875,8 +2998,20 @@ AS
           lr_amount_dtl.r_unit_price := 0 ;
           lr_amount_dtl.d_unit_price := 0 ;
         ELSE
-          lr_amount_dtl.s_unit_price := ROUND( re_sum_dtl.s_amount / lr_ref.quant, 2 ) ;
-          lr_amount_dtl.r_unit_price := ROUND( re_sum_dtl.r_amount / lr_ref.quant, 2 ) ; 
+-- S 2008/12/09 1.7 MOD BY T.Miyata 本番#542 項目単位での取引数値を取得
+--          lr_amount_dtl.s_unit_price := ROUND( re_sum_dtl.s_amount / lr_ref.quant, 2 ) ;	
+--          lr_amount_dtl.r_unit_price := ROUND( re_sum_dtl.r_amount / lr_ref.quant, 2 ) ; 	
+          IF ( re_sum_dtl.s_quantity = 0 ) THEN
+            lr_amount_dtl.s_unit_price := 0;
+          ELSE
+            lr_amount_dtl.s_unit_price := ROUND( re_sum_dtl.s_amount / re_sum_dtl.s_quantity, 2 ) ;
+          END IF;
+          IF ( re_sum_dtl.r_quantity = 0 ) THEN
+            lr_amount_dtl.r_unit_price := 0;
+          ELSE
+            lr_amount_dtl.r_unit_price := ROUND( re_sum_dtl.r_amount / re_sum_dtl.r_quantity, 2 ) ;
+          END IF;
+-- E 2008/12/09 1.7 MOD BY T.Miyata 本番#542
           lr_amount_dtl.d_unit_price := lr_amount_dtl.s_unit_price - lr_amount_dtl.r_unit_price ;
         END IF ;
         lr_amount_dtl.s_amount     := re_sum_dtl.s_amount ;
