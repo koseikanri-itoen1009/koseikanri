@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCOS005A08C (body)
  * Description      : CSVファイルの受注取込
  * MD.050           : CSVファイルの受注取込 MD050_COS_005_A08
- * Version          : 1.24
+ * Version          : 1.25
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -75,6 +75,7 @@ AS
  *  2011/01/25    1.23  H.Sekine         [E_本稼動_06397] CSVファイルの行No.について数値型チェックを行なうように変更
  *                                                        受注明細OIFの明細行にCSVファイルの行No.をセットするように変更                                                        
  *  2011/02/01    1.24  H.Sekine         [E_本稼動_06457] 問屋CSVについて単価が0となってしまう障害を修正
+ *  2011/02/21    1.25  H.Sekine         [E_本稼動_06614] 特殊商品コードが設定されている場合の出荷予定日の導出方法の変更
  *
  *****************************************************************************************/
 --
@@ -3945,6 +3946,9 @@ AS
     in_line_no            IN  NUMBER,   -- 行NO.
     id_delivery_date      IN  DATE,     -- 納品日
     iv_item_no            IN  VARCHAR2, -- 品目コード
+-- *********** 2011/02/21 1.25 H.Sekine ADD START **********--
+    iv_tokushu_item_code  IN  VARCHAR2, -- 特殊商品コード
+-- *********** 2011/02/21 1.25 H.Sekine ADD END   **********--
     iv_delivery_code      IN  VARCHAR2, -- 配送先コード
 -- *********** 2009/12/07 1.15 N.Maeda MOD START ***********--
 --    iv_delivery_base_code IN  VARCHAR2, -- 納品拠点コード
@@ -4027,7 +4031,10 @@ AS
       INTO
         gt_base_code                  --出荷元保管場所
       FROM  xxcmn_sourcing_rules xsr
-      WHERE xsr.item_code          =  iv_item_no        -- 1.<品目コード>
+--****************************** 2011/02/21 1.25 H.Sekine MOD START  ******************************--
+--      WHERE xsr.item_code          =  iv_item_no        -- 1.<品目コード>
+      WHERE xsr.item_code          =  NVL( iv_tokushu_item_code , iv_item_no )   -- 1.<品目コード>
+--****************************** 2011/02/21 1.25 H.Sekine MOD END    ******************************--
       AND   xsr.ship_to_code       =  iv_delivery_code  -- 2.<配送先コード>
       AND   xsr.start_date_active  <= id_delivery_date  -- 3.<納品日>
       AND   xsr.end_date_active    >= id_delivery_date  -- 4.<納品日>
@@ -4089,7 +4096,10 @@ AS
         INTO
           gt_base_code                  --出荷元保管場所
         FROM  xxcmn_sourcing_rules xsr
-        WHERE xsr.item_code          =  iv_item_no              -- 品目コード = 品目コード
+--************ 2011/02/21 1.25 H.Sekine MOD START***********--
+--        WHERE xsr.item_code          =  iv_item_no              -- 品目コード = 品目コード
+        WHERE xsr.item_code          =  NVL( iv_tokushu_item_code , iv_item_no )       -- 1.<品目コード>
+--************ 2011/02/21 1.25 H.Sekine MOD END  ***********--
 -- *********** 2009/12/07 1.15 N.Maeda MOD START ***********--
 --        AND   xsr.BASE_CODE          =  iv_delivery_base_code   -- 拠点コード = 納品拠点コード
         AND   xsr.base_code          =  iv_sales_base_code      -- 拠点コード = 売上拠点コード
@@ -5424,6 +5434,9 @@ AS
           in_line_no            => lv_line_number,        -- 行NO.
           id_delivery_date      => lod_delivery_date,     -- 納品日
           iv_item_no            => lv_item_no,            -- 品目コード
+-- *********** 2011/02/21 1.25 H.Sekine ADD START **********--
+          iv_tokushu_item_code  => lv_tokushu_item_code,  -- 特殊商品コード
+-- *********** 2011/02/21 1.25 H.Sekine ADD END   **********--
           iv_delivery_code      => lv_delivery_code,      -- 配送先コード
 -- *********** 2009/12/07 1.15 N.Maeda MOD START ***********--
 --          iv_delivery_base_code => lv_delivery_base_code, -- 納品拠点コード
