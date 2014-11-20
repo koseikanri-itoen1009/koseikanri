@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCOS010A01C (body)
  * Description      : 受注データ取込機能
  * MD.050           : 受注データ取込(MD050_COS_010_A01)
- * Version          : 1.17
+ * Version          : 1.18
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -81,6 +81,8 @@ AS
  *                                       ・情報区分「04」時はチェック処理を実施
  *  2010/02/23    1.16  M.Sano           [E_本稼動_01159] エラー情報にセットする品目名の定義修正
  *  2010/03/23    1.17  M.Sano           [E_本稼動_01728] 営業担当の日付チェック変更
+ *  2010/04/19    1.18  Y.Goto           [E_本稼動_01719] 営業担当チェックを共通関数に変更
+ *                                       [E_本稼動_01900] EDI明細情報テーブルにEDI原単価(発注)を追加
  *
  *****************************************************************************************/
 --
@@ -177,6 +179,9 @@ AS
   cv_msg_salesrep_err    CONSTANT VARCHAR2(20)  := 'APP-XXCOS1-11963';          -- 担当営業員取得エラーメッセージ
   cv_msg_line_no_err     CONSTANT VARCHAR2(20)  := 'APP-XXCOS1-11964';          -- 行No重複エラーメッセージ
 -- 2010/01/19 Ver.1.15 M.Sano add End
+-- 2010/04/19 Ver.1.18 Y.Goto add Start
+  cv_msg_higher_num_err  CONSTANT VARCHAR2(20)  := 'APP-XXCOS1-11966';          -- 最上位者担当営業員取得エラーメッセージ
+-- 2010/04/19 Ver.1.18 Y.Goto add End
   cv_msg_insert          CONSTANT VARCHAR2(20)  := 'APP-XXCOS1-00010';          -- データ登録エラーメッセージ
   cv_msg_update          CONSTANT VARCHAR2(20)  := 'APP-XXCOS1-00011';          -- データ更新エラーメッセージ
   cv_msg_delete          CONSTANT VARCHAR2(20)  := 'APP-XXCOS1-00012';          -- データ削除エラーメッセージ
@@ -227,6 +232,9 @@ AS
   cv_msg_rep_no_quantity CONSTANT VARCHAR2(20)  := 'APP-XXCOS1-00202';          -- エラーリスト用：必須項目(本数)未入力エラー
   cv_msg_rep_cust_item   CONSTANT VARCHAR2(20)  := 'APP-XXCOS1-00203';          -- エラーリスト用：顧客品目変換エラー
 -- 2010/01/19 Ver.1.15 M.Sano add End
+-- 2010/04/19 Ver.1.18 Y.Goto add Start
+  cv_msg_rep_higher_num  CONSTANT VARCHAR2(20)  := 'APP-XXCOS1-11965';          -- エラーリスト用：最上位者従業員コード設定メッセージ
+-- 2010/04/19 Ver.1.18 Y.Goto add End
   -- トークン
   cv_tkn_in_param        CONSTANT VARCHAR2(20)  := 'IN_PARAM';                  -- 入力パラメータ
   cv_tkn_profile         CONSTANT VARCHAR2(20)  := 'PROFILE';                   -- プロファイル
@@ -253,6 +261,10 @@ AS
   cv_tkn_new_line_no     CONSTANT VARCHAR2(20)  := 'NEW_LINE_NO';               -- 行番号(採番後)
   cv_tkn_cust_code       CONSTANT VARCHAR2(20)  := 'CUST_CODE';                 -- (変換後)顧客コード
 -- 2010/01/19 Ver.1.15 M.Sano add End
+-- 2010/04/19 Ver.1.18 Y.Goto add Start
+  cv_tkn_err_msg         CONSTANT VARCHAR2(20)  := 'ERR_MSG';                   -- エラーメッセージ
+  cv_tkn_emp_num         CONSTANT VARCHAR2(20)  := 'EMPLOYEE_NUMBER';           -- 従業員番号
+-- 2010/04/19 Ver.1.18 Y.Goto add End
   -- クイックコードタイプ
   cv_qck_edi_exe         CONSTANT VARCHAR2(50)  := 'XXCOS1_EDI_EXE_TYPE';       -- 実行区分
   cv_qck_creation_class  CONSTANT VARCHAR2(50)  := 'XXCOS1_EDI_CREATE_CLASS';   -- EDI作成元区分
@@ -1105,6 +1117,9 @@ AS
 -- 2010/03/23 Ver.1.17 M.Sano add Start
       request_date                           DATE,                                                       -- 要求日
 -- 2010/03/23 Ver.1.17 M.Sano add End
+-- 2010/04/19 Ver.1.18 Y.Goto add Start
+      edi_unit_price                         xxcos_edi_lines.edi_unit_price%TYPE,                        -- ＥＤＩ原単価（発注）
+-- 2010/04/19 Ver.1.18 Y.Goto add End
       check_status                           xxcos_edi_order_work.err_status%TYPE                        -- チェックステータス
     );
 --
@@ -1889,7 +1904,9 @@ AS
   -- 処理対象レコードのチェック処理判定フラグ変数
   gn_check_record_flag                       NUMBER(1); 
 -- 2009/06/29 M.Sano Ver.1.6 add End
-
+-- 2010/04/19 Ver.1.18 Y.Goto add Start
+  gt_ranks_higher_num                        per_all_people_f.employee_number%TYPE;                 -- 従業員番号
+-- 2010/04/19 Ver.1.18 Y.Goto add End
 --
   -- EDI受注情報ワークテーブル用変数（カーソルレコード型）
   gt_edi_order_work                          g_edi_order_work_ttype;
@@ -2975,6 +2992,17 @@ AS
     -- メッセージIDからメッセージを取得
     lv_errmsg := xxccp_common_pkg.get_msg( cv_application, iv_message_id );
 --
+-- 2010/04/19 Ver.1.18 Y.Goto add Start
+    -- ・最上位者従業員コード設定エラーメッセージの場合、トークンに従業員コードを設定する為、再度メッセージを取得
+    IF ( iv_message_id = cv_msg_rep_higher_num ) THEN
+      lv_errmsg := xxccp_common_pkg.get_msg(
+                       cv_application
+                     , iv_message_id
+                     , cv_tkn_emp_num
+                     , gt_ranks_higher_num
+                   );
+    END IF;
+-- 2010/04/19 Ver.1.18 Y.Goto add End
 -- 2010/01/19 Ver1.15 M.Sano Add Start
     -- ・行No重複エラーの場合、トークンに行Noを取得する為、再度メッセージを取得
     IF ( iv_message_id = cv_msg_rep_line_no ) THEN
@@ -3166,6 +3194,9 @@ AS
     ln_new_line_no            NUMBER;                                           -- 行No(再採番用)
     lt_salesrep_id            jtf_rs_salesreps.salesrep_id%TYPE;                -- 営業担当ID
 -- 2010/01/19 M.Sano Ver.1.15 add End
+-- 2010/04/19 Ver.1.18 Y.Goto add Start
+    lv_date_validate_flag     VARCHAR2(1);                                      -- データ妥当性チェックフラグ
+-- 2010/04/19 Ver.1.18 Y.Goto add End
 --
     -- *** ローカル・カーソル ***
 --
@@ -4072,6 +4103,10 @@ AS
     ln_new_line_no := gt_edi_work( gt_edi_work.last ).line_no;
 -- 2010/01/19 Ver.1.15 M.Sano add End
 -- 2009/06/29 M.Sano Ver.1.6 add Start
+-- 2010/04/19 Ver.1.18 Y.Goto add Start
+    -- データ妥当性チェックフラグ初期化
+    lv_date_validate_flag := cv_status_normal;
+-- 2010/04/19 Ver.1.18 Y.Goto add End
 --
     -- チェック対象の有無を取得する。
     IF ( ( gt_edi_work(gt_edi_work.first).info_class IS NULL )
@@ -4177,19 +4212,117 @@ AS
     ----------------------------------------
     -- 営業担当員存在チェック
     ----------------------------------------
-    get_salesrep_id(
-      lt_cust_info_rec.conv_cust_code,              -- IN ：顧客コード
--- 2010/03/23 Ver.1.17 M.Sano mod Start
---      gt_edi_work(gt_edi_work.first).order_date,  -- IN ：受注日
-      gt_edi_work(gt_edi_work.first).request_date,  -- IN ：要求日
--- 2010/03/23 Ver.1.17 M.Sano mod End
-      lt_salesrep_id                                -- OUT：営業担当員ID
+-- 2010/04/19 Ver.1.18 Y.Goto mod Start
+--    get_salesrep_id(
+--      lt_cust_info_rec.conv_cust_code,              -- IN ：顧客コード
+---- 2010/03/23 Ver.1.17 M.Sano mod Start
+----      gt_edi_work(gt_edi_work.first).order_date,  -- IN ：受注日
+--      gt_edi_work(gt_edi_work.first).request_date,  -- IN ：要求日
+---- 2010/03/23 Ver.1.17 M.Sano mod End
+--      lt_salesrep_id                                -- OUT：営業担当員ID
+--    );
+--    IF ( lt_salesrep_id IS NULL AND gn_check_record_flag = cn_check_record_yes )THEN
+--      -- 営業担当員取得エラーを出力
+--      lv_errmsg := xxccp_common_pkg.get_msg(
+--                       cv_application
+--                     , cv_msg_salesrep_err
+--                     , cv_tkn_chain_shop_code
+--                     , gt_edi_work(gt_edi_work.first).edi_chain_code
+--                     , cv_tkn_shop_code
+--                     , gt_edi_work(gt_edi_work.first).shop_code
+--                     , cv_tkn_cust_code
+--                     , lt_cust_info_rec.conv_cust_code
+--                     , cv_tkn_order_no
+--                     , gt_edi_work(gt_edi_work.first).invoice_number
+--                     , cv_tkn_store_deliv_dt
+--                     , TO_CHAR( gt_edi_work(gt_edi_work.first).shop_delivery_date
+--                              , cv_format_yyyymmdds )
+---- 2010/03/23 Ver.1.17 M.Sano add Start
+--                     , cv_tkn_base_deliv_dt
+--                     , TO_CHAR( gt_edi_work(gt_edi_work.first).request_date
+--                              , cv_format_yyyymmdds )
+---- 2010/03/23 Ver.1.17 M.Sano add End
+--                   );
+--      lv_errbuf := lv_errmsg;
+--      -- ログ出力
+--      proc_msg_output( cv_prg_name, lv_errbuf );
+--      -- 全データに警告ステータスを設定
+--      set_check_status_all( cv_edi_status_warning );
+--      -- EDIエラー情報追加
+--      proc_set_edi_errors( gt_edi_work(gt_edi_work.first), NULL, NULL, cv_msg_rep_salesrep );
+--      -- 伝票エラーフラグ設定
+--      gn_invoice_err_flag := 1;
+--      -- チェック処理終了
+--      ov_retcode := cv_status_warn;
+--      RETURN;
+--    END IF;
+    xxcos_common2_pkg.get_salesrep_id(
+      iv_account_number  => lt_cust_info_rec.conv_cust_code,              -- IN ：顧客コード
+      id_target_date     => gt_edi_work(gt_edi_work.first).request_date,  -- IN ：要求日
+      in_org_id          => gn_org_unit_id,                               -- IN ：営業単位ID
+      on_salesrep_id     => lt_salesrep_id,                               -- OUT：担当営業員ID
+      ov_employee_number => gt_ranks_higher_num,                          -- OUT：最上位者従業員番号
+      ov_errbuf          => lv_errbuf,                                    -- OUT：エラー・メッセージエラー
+      ov_retcode         => lv_retcode,                                   -- OUT：リターン・コード
+      ov_errmsg          => lv_errmsg                                     -- OUT：ユーザー・エラー・メッセージ
     );
-    IF ( lt_salesrep_id IS NULL AND gn_check_record_flag = cn_check_record_yes )THEN
+    IF (  lv_retcode           = cv_status_normal
+      AND gn_check_record_flag = cn_check_record_yes
+      AND lt_salesrep_id      IS NOT NULL
+      AND gt_ranks_higher_num IS NOT NULL )
+    THEN
+      -- 担当営業員IDに最上位従業員を設定した場合
+      lv_errbuf := lv_errmsg;
+      -- ログ出力
+      proc_msg_output( cv_prg_name, lv_errbuf );
+      -- EDIエラー情報追加
+      proc_set_edi_errors( gt_edi_work(gt_edi_work.first), NULL, cv_error_delete_flag, cv_msg_rep_higher_num );
+      -- データ妥当性チェックフラグに警告を設定
+      lv_date_validate_flag := cv_status_warn;
+    ELSIF ( lv_retcode           = cv_status_warn
+      AND   gn_check_record_flag = cn_check_record_yes
+      AND   lt_salesrep_id      IS NULL )
+    THEN
+      -- 担当営業員IDを取得できなかった場合
+      -- 営業担当員取得エラーを出力
+      lv_errmsg := xxccp_common_pkg.get_msg(
+                       cv_application
+                     , cv_msg_higher_num_err
+                     , cv_tkn_err_msg
+                     , lv_errmsg
+                     , cv_tkn_chain_shop_code
+                     , gt_edi_work(gt_edi_work.first).edi_chain_code
+                     , cv_tkn_shop_code
+                     , gt_edi_work(gt_edi_work.first).shop_code
+                     , cv_tkn_order_no
+                     , gt_edi_work(gt_edi_work.first).invoice_number
+                     , cv_tkn_store_deliv_dt
+                     , TO_CHAR( gt_edi_work(gt_edi_work.first).shop_delivery_date
+                              , cv_format_yyyymmdds )
+                   );
+      lv_errbuf := lv_errmsg;
+      -- ログ出力
+      proc_msg_output( cv_prg_name, lv_errbuf );
+      -- 全データに警告ステータスを設定
+      set_check_status_all( cv_edi_status_warning );
+      -- EDIエラー情報追加
+      proc_set_edi_errors( gt_edi_work(gt_edi_work.first), NULL, NULL, cv_msg_rep_salesrep );
+      -- 伝票エラーフラグ設定
+      gn_invoice_err_flag := 1;
+      -- チェック処理終了
+      ov_retcode := cv_status_warn;
+      RETURN;
+    ELSIF ( lv_retcode           = cv_status_error
+      AND   gn_check_record_flag = cn_check_record_yes
+      AND   lt_salesrep_id      IS NULL )
+    THEN
+      -- 共通関数エラー
       -- 営業担当員取得エラーを出力
       lv_errmsg := xxccp_common_pkg.get_msg(
                        cv_application
                      , cv_msg_salesrep_err
+                     , cv_tkn_err_msg
+                     , lv_errmsg
                      , cv_tkn_chain_shop_code
                      , gt_edi_work(gt_edi_work.first).edi_chain_code
                      , cv_tkn_shop_code
@@ -4201,11 +4334,9 @@ AS
                      , cv_tkn_store_deliv_dt
                      , TO_CHAR( gt_edi_work(gt_edi_work.first).shop_delivery_date
                               , cv_format_yyyymmdds )
--- 2010/03/23 Ver.1.17 M.Sano add Start
                      , cv_tkn_base_deliv_dt
                      , TO_CHAR( gt_edi_work(gt_edi_work.first).request_date
                               , cv_format_yyyymmdds )
--- 2010/03/23 Ver.1.17 M.Sano add End
                    );
       lv_errbuf := lv_errmsg;
       -- ログ出力
@@ -4220,6 +4351,7 @@ AS
       ov_retcode := cv_status_warn;
       RETURN;
     END IF;
+-- 2010/04/19 Ver.1.18 Y.Goto mod End
 -- 2010/01/19 Ver.1.15 M.Sano add End
     -- 同一伝票内の全明細のチェック
     <<loop_edi_lines_check>>
@@ -4412,6 +4544,14 @@ AS
 --
     -- 終了ステータス設定
     ov_retcode := lv_retcode;
+-- 2010/04/19 Ver.1.18 Y.Goto add Start
+    -- データ妥当性チェックフラグが警告の場合、終了ステータスに警告を設定
+    IF ( lv_date_validate_flag = cv_status_warn ) THEN
+      -- 全データに警告ステータスを設定
+      set_check_status_all( cv_edi_status_warning );
+      ov_retcode := cv_status_warn;
+    END IF;
+-- 2010/04/19 Ver.1.18 Y.Goto add End
 --
   EXCEPTION
 --
@@ -4852,6 +4992,9 @@ AS
 -- 2010/03/23 Ver.1.17 M.Sano add Start
     gt_edi_work(ln_idx).request_date                   := it_edi_work.request_date;                      -- 要求日
 -- 2010/03/23 Ver.1.17 M.Sano add End
+-- 2010/04/19 Ver.1.18 Y.Goto add Start
+    gt_edi_work(ln_idx).edi_unit_price                 := it_edi_work.order_unit_price;                  -- ＥＤＩ原単価（発注）
+-- 2010/04/19 Ver.1.18 Y.Goto add End
 --
   EXCEPTION
 --
@@ -6023,6 +6166,9 @@ AS
 --****************************** 2009/05/08 1.4 T.Kitajima ADD START ******************************--
     gt_edi_lines(ln_idx).taking_unit_price             := it_edi_work.order_unit_price;                  -- 取込時原単価（発注）
 --****************************** 2009/05/08 1.4 T.Kitajima ADD  END  ******************************--
+-- 2010/04/19 Ver.1.18 Y.Goto add Start
+    gt_edi_lines(ln_idx).edi_unit_price                := it_edi_work.edi_unit_price;                    -- ＥＤＩ元単価（発注）
+-- 2010/04/19 Ver.1.18 Y.Goto add End
     gt_edi_lines(ln_idx).created_by                    := cn_created_by;                                 -- 作成者
     gt_edi_lines(ln_idx).creation_date                 := cd_creation_date;                              -- 作成日
     gt_edi_lines(ln_idx).last_updated_by               := cn_last_updated_by;                            -- 最終更新者

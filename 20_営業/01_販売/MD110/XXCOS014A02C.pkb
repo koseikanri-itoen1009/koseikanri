@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCOS014A02C (body)
  * Description      : 納品書用データ作成(EDI)
  * MD.050           : 納品書用データ作成(EDI) MD050_COS_014_A02
- * Version          : 1.15
+ * Version          : 1.16
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -48,6 +48,8 @@ AS
  *  2010/01/04    1.13  M.Sano           [E_本稼動_00738] 受注連携済フラグ「S(対象外)」追加に伴う修正
  *  2010/01/06    1.14  N.Maeda          [E_本稼動_00552] 取引先名(漢字)のスペース削除
  *  2010/03/10    1.15  T.Nakano         [E_本稼動_01695] EDI取込日の変更
+ *  2010/04/20    1.16  H.Sasaki         [E_本稼動_01900] 原価金額の取得元を変更
+ *                                       [E_本稼動_02042] 商品名の取得元を変更
  *****************************************************************************************/
 --
 --#######################  固定グローバル定数宣言部 START   #######################
@@ -2569,7 +2571,10 @@ AS
             ,TO_CHAR(xeh_l.xel_line_no)                                        line_no                       --行Ｎｏ
             ,xeh_l.xel_stockout_class                                          stockout_class                --欠品区分
             ,xeh_l.xel_stockout_reason                                         stockout_reason               --欠品理由
-            ,xeh_l.xel_item_code                                               item_code                     --商品コード（伊藤園）
+-- == 2010/04/20 V1.16 Modified START ===============================================================
+--            ,xeh_l.xel_item_code                                               item_code                     --商品コード（伊藤園）
+            ,ixe.item_code                                                     item_code                     -- 商品コード（伊藤園）
+-- == 2010/04/20 V1.16 Modified END   ===============================================================
             ,xeh_l.xel_product_code1                                           product_code1                 --商品コード１
             ,xeh_l.xel_product_code2                                           product_code2                 --商品コード２
             ,CASE
@@ -2654,7 +2659,15 @@ AS
             ,TO_CHAR(xeh_l.xel_sum_stockout_qty)                               sum_stockout_qty              --欠品数量（合計、バラ）
             ,TO_CHAR(xeh_l.xel_case_qty)                                       case_qty                      --ケース個口数
             ,TO_CHAR(xeh_l.xel_fold_container_indv_qty)                        fold_container_indv_qty       --オリコン（バラ）個口数
-            ,TO_CHAR(xeh_l.xel_order_unit_price)                               order_unit_price              --原単価（発注）
+-- == 2010/04/20 V1.16 Modified START ===============================================================
+--            ,TO_CHAR(xeh_l.xel_order_unit_price)                               order_unit_price              --原単価（発注）
+            ,CASE WHEN  ixe.unit_selling_price  IS NULL
+                            THEN  TO_CHAR(xeh_l.xel_order_unit_price)
+                  WHEN  xeh_l.edi_unit_price    IS NOT NULL
+                            THEN  TO_CHAR(xeh_l.xel_order_unit_price)
+                            ELSE  TO_CHAR(ixe.unit_selling_price)
+             END                                                               order_unit_price              -- 原単価（発注）
+-- == 2010/04/20 V1.16 Modified END   ===============================================================
             ,TO_CHAR(xeh_l.xel_shipping_unit_price)                            shipping_unit_price           --原単価（出荷）
             ,TO_CHAR(xeh_l.xel_order_cost_amt)                                 order_cost_amt                --原価金額（発注）
             ,TO_CHAR(xeh_l.xel_shipping_cost_amt)                              shipping_cost_amt             --原価金額（出荷）
@@ -3142,6 +3155,9 @@ AS
                            || REPLACE ( cdm.base_name , cv_space)
 -- ************************* 2010/01/06 N.Maeda MOD  END  **************** --
                      )                                  cdm_vendor_name                 -- 取引先名
+-- == 2010/04/20 V1.16 Added START ===============================================================
+                   , xel.edi_unit_price                 edi_unit_price                  -- EDI原単価（発注）
+-- == 2010/04/20 V1.16 Added END   ===============================================================
              FROM    xxcos_edi_headers                  xeh                             -- EDIヘッダ情報テーブル
                     ,xxcos_edi_lines                    xel                             -- EDI明細情報テーブル
                     ,xxcmm_cust_accounts                    xca                           --顧客マスタアドオン
@@ -3626,6 +3642,9 @@ AS
                     ,NULL                               cdm_address1
                     ,NULL                               cdm_address2
                     ,NULL                               cdm_vendor_name                 -- 取引先名
+-- == 2010/04/20 V1.16 Added START ===============================================================
+                   , xel.edi_unit_price                 edi_unit_price                  -- EDI原単価（発注）
+-- == 2010/04/20 V1.16 Added END   ===============================================================
              FROM  xxcos_edi_headers                    xeh --EDIヘッダ情報テーブル
                   ,xxcos_edi_lines                      xel --EDI明細情報テーブル
              WHERE  xel.edi_header_info_id = xeh.edi_header_info_id
@@ -3652,6 +3671,10 @@ AS
                              ,ooha.request_date        request_date        --納品日
                              ,xlvv.attribute8          bargain_class       --定番特売区分
                              ,xlvv.attribute10         outbound_flag       --OUTBOUND可否
+-- == 2010/04/20 V1.16 Added START ===============================================================
+                            , oola.unit_selling_price  unit_selling_price  -- 販売単価
+                            , msib.segment1            item_code           -- 品目コード
+-- == 2010/04/20 V1.16 Added END   ===============================================================
                       FROM    xxcos_edi_headers        xeh         --EDIヘッダ
                              ,xxcos_edi_lines          xel         --EDI明細
                              ,oe_order_headers_all     ooha        --受注ヘッダ
@@ -3660,6 +3683,9 @@ AS
                              ,oe_order_lines_all       oola        --受注明細
                              ,oe_transaction_types_tl  ottt_l      --受注タイプ(明細)
                              ,xxcos_lookup_values_v    xlvv        --クイックコード(売上区分マスタ)
+-- == 2010/04/20 V1.16 Added START ===============================================================
+                            , mtl_system_items_b       msib        -- 品目マスタ
+-- == 2010/04/20 V1.16 Added END   ===============================================================
 /* 2009/09/15 Ver1.12 Mod Start */
 --                      WHERE   xeh.order_forward_flag        = 'Y'                        --受注連携済
                       WHERE   xeh.order_forward_flag        = cv_order_forward_flag_y    --受注連携済
@@ -3703,6 +3729,10 @@ AS
                       AND     xeh.data_type_code = i_input_rec.data_type_code
                       AND     xeh.edi_chain_code = i_input_rec.ssm_store_code
 -- ************ 2009/08/12 N.Maeda 1.11 ADD  END  ***************** --
+-- == 2010/04/20 V1.16 Added START ===============================================================
+                      AND     oola.inventory_item_id        =   msib.inventory_item_id
+                      AND     msib.organization_id          =   i_other_rec.organization_id
+-- == 2010/04/20 V1.16 Added END   ===============================================================
                       UNION ALL
                       --受注が存在しないデータ
                       SELECT  xeh.edi_header_info_id   edi_header_info_id  --EDIヘッダID
@@ -3711,6 +3741,10 @@ AS
                              ,TO_DATE( NULL )          request_date        --納品日
                              ,TO_CHAR( NULL )          bargain_class       --定番特売区分
                              ,TO_CHAR( NULL )          outbound_flag       --OUTBOUND可否
+-- == 2010/04/20 V1.16 Added START ===============================================================
+                            , TO_NUMBER(NULL)          unit_selling_price  -- 販売単価
+                            , xel.item_code            item_code           -- 品目コード
+-- == 2010/04/20 V1.16 Added END   ===============================================================
                       FROM   xxcos_edi_headers         xeh         --EDIヘッダ
                              ,xxcos_edi_lines          xel         --EDI明細
 /* 2010/01/04 Ver1.13 Add Start */
@@ -3772,8 +3806,11 @@ AS
                      ,xeh_l.xeh_deliv_slip_flag_area_chain                                           --チェーン店固有帳票様式用納品書発行フラグエリア
                )
              ) = i_input_rec.publish_div                                                               --入力パラメータ.納品書発行フラグ
+-- == 2010/04/20 V1.16 Modified START ===============================================================
       --OPM品目マスタ抽出条件
-      AND    iimb.item_no(+) = xeh_l.xel_item_code                                                     --品目コード
+--      AND    iimb.item_no(+) = xeh_l.xel_item_code                                                     --品目コード
+      AND    iimb.item_no(+) = ixe.item_code                                                           --品目コード
+-- == 2010/04/20 V1.16 Modified END   ===============================================================
       --OPM品目マスタアドオン抽出条件
       AND    ximb.item_id(+) = iimb.item_id                                                            --品目ID
       AND    NVL(xeh_l.xeh_shop_delivery_date
@@ -3790,8 +3827,11 @@ AS
                        ,NVL(xeh_l.xeh_center_delivery_date
                            ,NVL(xeh_l.xeh_order_date
                                ,xeh_l.xeh_data_creat_date_edi_d))))
+-- == 2010/04/20 V1.16 Modified START ===============================================================
       --DISC品目マスタ抽出条件
-      AND    msib.segment1(+) = xeh_l.xel_item_code                                                    --品目コード
+--      AND    msib.segment1(+) = xeh_l.xel_item_code                                                    --品目コード
+      AND    msib.segment1(+) = ixe.item_code                                                          --品目コード
+-- == 2010/04/20 V1.16 Modified END   ===============================================================
       AND    msib.organization_id(+) = i_other_rec.organization_id                                     --在庫組織ID
       --DISC品目アドオン抽出条件
       AND    xsib.item_code(+) = msib.segment1                                                         --INV品目ID

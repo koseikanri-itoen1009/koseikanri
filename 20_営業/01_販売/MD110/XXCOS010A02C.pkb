@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCOS010A02C(body)
  * Description      : 受注OIFへの取込機能
  * MD.050           : 受注OIFへの取込(MD050_COS_010_A02)
- * Version          : 1.12
+ * Version          : 1.13
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -55,6 +55,7 @@ AS
  *  2010/03/23    1.12  M.Sano           [E_本稼動_01728]
  *                                       ・営業担当の日付チェック変更
  *                                       ・営業担当が複数取得できた場合の考慮
+ *  2010/04/20    1.13  H.Sasaki         [E_本稼動_01719]担当営業員の取得方法を変更
  *
  *****************************************************************************************/
 --
@@ -1119,6 +1120,9 @@ AS
 -- 2010/03/23 Ver.1.12 M.Sano add Start
     lt_salesrep_id_tab g_tab_salesrep_id;
 -- 2010/03/23 Ver.1.12 M.Sano add End
+-- == 2010/04/20 V1.13 Added START ===============================================================
+    lt_employee_number      per_all_people_f.employee_number%TYPE;      --  最上位従業員番号
+-- == 2010/04/20 V1.13 Added END   ===============================================================
 --
 --
   BEGIN
@@ -1158,57 +1162,72 @@ AS
 -- 2009/07/01 Ver.1.7 M.Sano add End
 -- 2009/12/04 Ver.1.9 M.Fujinuma add Start
     -- 営業担当IDを設定
-    BEGIN
+
+
+-- == 2010/04/20 V1.13 Modified START ===============================================================
+--    BEGIN
+----
+--      SELECT jrs.salesrep_id
+---- 2010/03/23 Ver.1.12 M.Sano mod Start
+----      INTO   ln_salesrep_id
+--      BULK COLLECT INTO
+--             lt_salesrep_id_tab
+---- 2010/03/23 Ver.1.12 M.Sano mod End
+--      FROM   hz_cust_accounts          hca
+--            ,hz_organization_profiles  hop
+--            ,ego_resource_agv          era
+--            ,jtf_rs_salesreps          jrs
+--      WHERE  hca.account_number          = gt_customer_number ( gn_idx )  --顧客コード
+--      AND    hop.party_id                = hca.PARTY_ID
+--      AND    era.organization_profile_id = hop.organization_profile_id
+--      AND    hop.effective_end_date      IS NULL
+--      AND    jrs.salesrep_number         = era.resource_no
+--      AND    jrs.org_id                  = gt_org_id ( gn_idx )           -- 営業単位ID
+---- 2010/03/23 Ver.1.12 M.Sano mod Start
+----      AND    trunc(era.resource_s_date)    <=           trunc(nvl(gt_ordered_date ( gn_idx ),sysdate))  --受注日
+----      AND    trunc(nvl(era.resource_e_date,sysdate)) >= trunc(nvl(gt_ordered_date ( gn_idx ),sysdate))
+----      AND    trunc(jrs.start_date_active)  <=           trunc(nvl(gt_ordered_date ( gn_idx ),sysdate))
+----      AND    trunc(nvl(jrs.end_date_active,sysdate)) >= trunc(nvl(gt_ordered_date ( gn_idx ),sysdate))
+----      AND    rownum = 1;
+--      AND    TRUNC( era.resource_s_date )   <= TRUNC( gt_request_date ( gn_idx ) )  --受注日
+--      AND    TRUNC( NVL(era.resource_e_date, gt_request_date ( gn_idx ) ) )
+--                                            >= TRUNC( gt_request_date ( gn_idx ) )
+--      AND    TRUNC( jrs.start_date_active ) <= TRUNC( gt_request_date ( gn_idx ) )
+--      AND    TRUNC( NVL(jrs.end_date_active, gt_request_date ( gn_idx ) ) )
+--                                            >= TRUNC( gt_request_date ( gn_idx ) )
+--      ORDER BY
+--             era.resource_s_date DESC
+--      ;
+---- 2010/03/23 Ver.1.12 M.Sano mod End
+----
+--    EXCEPTION
+--      WHEN NO_DATA_FOUND THEN
+---- 2010/03/23 Ver.1.12 M.Sano mod Start
+----        ln_salesrep_id := NULL;
+--        lt_salesrep_id_tab(ct_tbl_first) := NULL;
+---- 2010/03/23 Ver.1.12 M.Sano mod End
+----
+--    END;
+----
+---- 2010/03/23 Ver.1.12 M.Sano mod Start
+----    gt_salesrep_id ( gn_idx ) := ln_salesrep_id;    -- 営業担当ID
+--    -- 開始日が最も新しい『顧客の担当営業員』を取得
+--    gt_salesrep_id ( gn_idx ) := lt_salesrep_id_tab(lt_salesrep_id_tab.first);
+--    lt_salesrep_id_tab.DELETE;
+---- 2010/03/23 Ver.1.12 M.Sano mod End
+---- 2009/12/04 Ver.1.9 M.Fujinuma add End
 --
-      SELECT jrs.salesrep_id
--- 2010/03/23 Ver.1.12 M.Sano mod Start
---      INTO   ln_salesrep_id
-      BULK COLLECT INTO
-             lt_salesrep_id_tab
--- 2010/03/23 Ver.1.12 M.Sano mod End
-      FROM   hz_cust_accounts          hca
-            ,hz_organization_profiles  hop
-            ,ego_resource_agv          era
-            ,jtf_rs_salesreps          jrs
-      WHERE  hca.account_number          = gt_customer_number ( gn_idx )  --顧客コード
-      AND    hop.party_id                = hca.PARTY_ID
-      AND    era.organization_profile_id = hop.organization_profile_id
-      AND    hop.effective_end_date      IS NULL
-      AND    jrs.salesrep_number         = era.resource_no
-      AND    jrs.org_id                  = gt_org_id ( gn_idx )           -- 営業単位ID
--- 2010/03/23 Ver.1.12 M.Sano mod Start
---      AND    trunc(era.resource_s_date)    <=           trunc(nvl(gt_ordered_date ( gn_idx ),sysdate))  --受注日
---      AND    trunc(nvl(era.resource_e_date,sysdate)) >= trunc(nvl(gt_ordered_date ( gn_idx ),sysdate))
---      AND    trunc(jrs.start_date_active)  <=           trunc(nvl(gt_ordered_date ( gn_idx ),sysdate))
---      AND    trunc(nvl(jrs.end_date_active,sysdate)) >= trunc(nvl(gt_ordered_date ( gn_idx ),sysdate))
---      AND    rownum = 1;
-      AND    TRUNC( era.resource_s_date )   <= TRUNC( gt_request_date ( gn_idx ) )  --受注日
-      AND    TRUNC( NVL(era.resource_e_date, gt_request_date ( gn_idx ) ) )
-                                            >= TRUNC( gt_request_date ( gn_idx ) )
-      AND    TRUNC( jrs.start_date_active ) <= TRUNC( gt_request_date ( gn_idx ) )
-      AND    TRUNC( NVL(jrs.end_date_active, gt_request_date ( gn_idx ) ) )
-                                            >= TRUNC( gt_request_date ( gn_idx ) )
-      ORDER BY
-             era.resource_s_date DESC
-      ;
--- 2010/03/23 Ver.1.12 M.Sano mod End
---
-    EXCEPTION
-      WHEN NO_DATA_FOUND THEN
--- 2010/03/23 Ver.1.12 M.Sano mod Start
---        ln_salesrep_id := NULL;
-        lt_salesrep_id_tab(ct_tbl_first) := NULL;
--- 2010/03/23 Ver.1.12 M.Sano mod End
---
-    END;
---
--- 2010/03/23 Ver.1.12 M.Sano mod Start
---    gt_salesrep_id ( gn_idx ) := ln_salesrep_id;    -- 営業担当ID
-    -- 開始日が最も新しい『顧客の担当営業員』を取得
-    gt_salesrep_id ( gn_idx ) := lt_salesrep_id_tab(lt_salesrep_id_tab.first);
-    lt_salesrep_id_tab.DELETE;
--- 2010/03/23 Ver.1.12 M.Sano mod End
--- 2009/12/04 Ver.1.9 M.Fujinuma add End
+    xxcos_common2_pkg.get_salesrep_id(
+        iv_account_number       =>    gt_customer_number ( gn_idx )   --  顧客コード
+      , id_target_date          =>    gt_request_date ( gn_idx )      --  基準日
+      , in_org_id               =>    gt_org_id ( gn_idx )            --  営業単位ID
+      , on_salesrep_id          =>    gt_salesrep_id ( gn_idx )       --  担当営業員ID
+      , ov_employee_number      =>    lt_employee_number              --  最上位者従業員番号
+      , ov_errbuf               =>    lv_errbuf                       --  エラー・メッセージエラー       #固定#
+      , ov_retcode              =>    lv_retcode                      --  リターン・コード               #固定#
+      , ov_errmsg               =>    lv_errmsg                       --  ユーザー・エラー・メッセージ   #固定#
+    );
+-- == 2010/04/20 V1.13 Modified END   ===============================================================
 --
   EXCEPTION
 --
