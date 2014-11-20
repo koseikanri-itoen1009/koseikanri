@@ -6,7 +6,7 @@ AS
  * Package Name           : xxcmn_common2_pkg(BODY)
  * Description            : 共通関数2(BODY)
  * MD.070(CMD.050)        : T_MD050_BPO_000_引当可能数算出（補足資料）.doc
- * Version                : 1.3
+ * Version                : 1.4
  *
  * Program List
  *  ---------------------------- ---- ----- --------------------------------------------------
@@ -59,6 +59,8 @@ AS
  *  2008/04/03   1.1   oracle 丸下     内部変更要求#32 get_stock_qty修正
  *  2008/05/22   1.2   oracle 椎名     内部変更要求#98対応
  *  2008/06/19   1.3   oracle 吉田     結合テスト不具合対応(D6 引数設定の変数(品目コード)変更)
+ *  2008/06/24   1.4   oracle 竹本     結合テスト不具合対応(I5,I6 引数設定の変数(品目コード)変更)
+ *  2008/06/24   1.4   oracle 新藤     システムテスト不具合対応#75(D5)
  *
  *****************************************************************************************/
 --
@@ -1642,7 +1644,8 @@ AS
     FROM    gme_batch_header      gbh, -- 生産バッチ
             gme_material_details  gmd, -- 生産原料詳細
             xxinv_mov_lot_details mld, -- 移動ロット詳細（アドオン）
-            gmd_routings_b        grb  -- 工順マスタ
+            gmd_routings_b        grb, -- 工順マスタ
+            ic_tran_pnd           itp  -- 保留在庫トランザクション
     WHERE   gbh.batch_status      IN (cn_batch_status_wip, cn_batch_status_reserv)
     AND     gbh.plan_start_date   <= id_eff_date
     AND     gbh.batch_id           = gmd.batch_id
@@ -1654,6 +1657,10 @@ AS
     AND     grb.attribute9         = iv_whse_code       -- 納品場所
     AND     mld.document_type_code = cv_doc_type
     AND     mld.record_type_code   = cv_rec_type
+    AND     itp.line_id            = gmd.material_detail_id 
+    AND     itp.item_id            = gmd.item_id
+    AND     itp.lot_id             = mld.lot_id
+    AND     itp.completed_ind      = 0
     ;
     --==============================================================
     --メッセージ出力（エラー以外）をする必要がある場合は処理を記述
@@ -3078,6 +3085,7 @@ AS
     AND     xmd.plan_type          = cv_plan_type
     AND     gbh.routing_id         = grb.routing_id
     AND     grb.attribute9         = iv_whse_code       -- 納品場所
+    AND     xmd.invested_qty       = 0
     ;
     --==============================================================
     --メッセージ出力（エラー以外）をする必要がある場合は処理を記述
@@ -3653,7 +3661,10 @@ AS
       -- 非ロット  I5  実績未取在庫数  出荷
       get_inv_ship_qty(
         ln_whse_id,
-        ln_item_id,
+-- 2008.06.24 mod S.Takemoto start
+--        ln_item_id,
+        lv_item_code,
+-- 2008.06.24 mod S.Takemoto end
         ln_inv_ship_qty,
         lv_errbuf,
         lv_retcode,
@@ -3668,7 +3679,10 @@ AS
       -- 非ロット  I6  実績未取在庫数  支給
       get_inv_provide_qty(
         ln_whse_id,
-        ln_item_id,
+-- 2008.06.24 mod S.Takemoto start
+--        ln_item_id,
+        lv_item_code,
+-- 2008.06.24 mod S.Takemoto end
         ln_inv_provide_qty,
         lv_errbuf,
         lv_retcode,
