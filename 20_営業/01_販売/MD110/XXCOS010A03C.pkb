@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCOS010A03C (body)
  * Description      : 納品確定データ取込機能
  * MD.050           : 納品確定データ取込(MD050_COS_010_A03)
- * Version          : 1.9
+ * Version          : 1.11
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -60,6 +60,7 @@ AS
  *  2009/08/06    1.8   M.Sano           [0000644]レビュー指摘対応
  *  2009/08/07    1.9   M.Sano           [0000059]納品確定データ取込のPT考慮
  *  2009/09/10    1.10  K.Kiriu          [0001308]エラー処理実行の判定を情報区分から通過在庫型区分に変更
+ *  2009/09/17    1.11  N.Maeda          [0001361]PT再対応
  *
  *****************************************************************************************/
 --
@@ -6874,7 +6875,15 @@ AS
     IS
 /* 2009/08/07 Ver1.9 Mod Start */
 --      SELECT  head.edi_header_info_id,                           -- EDIヘッダ情報ID
-      SELECT  /*+ INDEX( HEAD XXCOS_EDI_HEADERS_N01) INDEX( LINE XXCOS_EDI_LINES_N01) */
+-- ************ 2009/09/17 N.Maeda 1.11 MOD START ************** --
+        SELECT /*+
+                 INDEX( head xxcos_edi_headers_n07)
+                 INDEX( line xxcos_edi_lines_n01)
+                 USE_NL(head line)
+                 USE_CONCAT
+               */
+--      SELECT  /*+ INDEX( HEAD XXCOS_EDI_HEADERS_N01) INDEX( LINE XXCOS_EDI_LINES_N01) */
+-- ************ 2009/09/17 N.Maeda 1.11 MOD  END  ************** --
               head.edi_header_info_id,                           -- EDIヘッダ情報ID
 /* 2009/08/07 Ver1.9 Mod End   */
               line.edi_line_info_id                              -- EDI明細情報ID
@@ -6883,13 +6892,24 @@ AS
       WHERE   head.data_type_code       IN ( cv_data_type_31,    -- データ種コード：納品確定
                                              cv_data_type_32 )   -- データ種コード：出庫確定
       AND     head.edi_header_info_id   = line.edi_header_info_id
-      AND     NVL( head.shop_delivery_date,                      -- 店舗納品日
-                NVL( head.center_delivery_date,                  -- センター納品日
-                  NVL( head.order_date,                          -- 発注日
-                    TRUNC( head.data_creation_date_edi_data )    -- データ作成日（ＥＤＩデータ中）
-                  )
-                )
-              )                         < id_purge_date
+-- ************ 2009/09/17 N.Maeda 1.11 MOD START ************** --
+      AND ( ( head.shop_delivery_date IS NOT NULL
+             AND head.shop_delivery_date < id_purge_date )                      -- 店舗納品日
+        OR  ( head.shop_delivery_date IS NULL  AND head.center_delivery_date IS NOT NULL
+             AND head.center_delivery_date < id_purge_date )                    -- センター納品日
+        OR  ( head.shop_delivery_date IS NULL  AND head.center_delivery_date IS NULL AND head.order_date IS NOT NULL
+             AND head.order_date < id_purge_date )                              -- 発注日
+        OR  ( head.shop_delivery_date IS NULL  AND head.center_delivery_date IS NULL AND head.order_date IS NULL
+             AND TRUNC( head.data_creation_date_edi_data ) < id_purge_date )    -- データ作成日（ＥＤＩデータ中）
+          )
+--      AND     NVL( head.shop_delivery_date,                      -- 店舗納品日
+--                NVL( head.center_delivery_date,                  -- センター納品日
+--                  NVL( head.order_date,                          -- 発注日
+--                    TRUNC( head.data_creation_date_edi_data )    -- データ作成日（ＥＤＩデータ中）
+--                  )
+--                )
+--              )                         < id_purge_date
+-- ************ 2009/09/17 N.Maeda 1.11 MOD  END  ************** --
       FOR UPDATE NOWAIT;
 --
     -- *** ローカル・レコード ***
@@ -6917,7 +6937,15 @@ AS
     WHERE   edi_line_info_id IN (
 /* 2009/08/07 Ver1.9 Mod Start */
 --              SELECT  edi_line_info_id                                -- EDI明細情報ID
-              SELECT  /*+ INDEX( HEAD XXCOS_EDI_HEADERS_N01) INDEX( LINE XXCOS_EDI_LINES_N01) */  
+-- ************ 2009/09/17 N.Maeda 1.11 MOD START ************** --
+              SELECT /*+
+                      INDEX( head xxcos_edi_headers_n07)
+                      INDEX( line xxcos_edi_lines_n01)
+                      USE_NL(head line)
+                      USE_CONCAT
+                     */
+--              SELECT  /*+ INDEX( HEAD XXCOS_EDI_HEADERS_N01) INDEX( LINE XXCOS_EDI_LINES_N01) */  
+-- ************ 2009/09/17 N.Maeda 1.11 MOD  END  ************** --
                       edi_line_info_id                                -- EDI明細情報ID
 /* 2009/08/07 Ver1.9 Mod End   */
               FROM    xxcos_edi_lines         line,                   -- EDI明細情報テーブル
@@ -6925,30 +6953,59 @@ AS
               WHERE   head.data_type_code     IN ( cv_data_type_31,   -- データ種コード：納品確定
                                                    cv_data_type_32 )  -- データ種コード：出庫確定
               AND     head.edi_header_info_id = line.edi_header_info_id
-              AND     NVL( head.shop_delivery_date,                   -- 店舗納品日
-                        NVL( head.center_delivery_date,               -- センター納品日
-                          NVL( head.order_date,                       -- 発注日
-                            TRUNC( head.data_creation_date_edi_data ) -- データ作成日（ＥＤＩデータ中）
-                          )
-                        )
-                      )                       < ld_purge_date
-            );
+-- ************ 2009/09/17 N.Maeda 1.11 MOD START ************** --
+              AND ( ( head.shop_delivery_date IS NOT NULL
+                     AND head.shop_delivery_date < ld_purge_date )                      -- 店舗納品日
+                OR  ( head.shop_delivery_date IS NULL  AND head.center_delivery_date IS NOT NULL
+                     AND head.center_delivery_date < ld_purge_date )                    -- センター納品日
+                OR  ( head.shop_delivery_date IS NULL  AND head.center_delivery_date IS NULL AND head.order_date IS NOT NULL
+                     AND head.order_date < ld_purge_date )                              -- 発注日
+                OR  ( head.shop_delivery_date IS NULL  AND head.center_delivery_date IS NULL AND head.order_date IS NULL
+                     AND TRUNC( head.data_creation_date_edi_data ) < ld_purge_date )    -- データ作成日（ＥＤＩデータ中）
+                  )
+             );
+--              AND     NVL( head.shop_delivery_date,                   -- 店舗納品日
+--                        NVL( head.center_delivery_date,               -- センター納品日
+--                          NVL( head.order_date,                       -- 発注日
+--                            TRUNC( head.data_creation_date_edi_data ) -- データ作成日（ＥＤＩデータ中）
+--                          )
+--                        )
+--                      )                       < ld_purge_date
+--            );
+-- ************ 2009/09/17 N.Maeda 1.11 MOD  END  ************** --
 --
     -- EDIヘッダ情報テーブルデータ削除
 /* 2009/08/07 Ver1.9 Mod Start */
 --    DELETE
-    DELETE  /*+ INDEX( HEAD XXCOS_EDI_HEADERS_N01) */
+-- ************ 2009/09/17 N.Maeda 1.11 MOD START ************** --
+    DELETE  /*+
+             INDEX( head xxcos_edi_headers_n07)
+             USE_CONCAT
+            */
+--    DELETE  /*+ INDEX( head xxcos_edi_headers_n01) */
+-- ************ 2009/09/17 N.Maeda 1.11 MOD  END  ************** --
 /* 2009/08/07 Ver1.9 Mod End   */
     FROM    xxcos_edi_headers                 head                    -- EDIヘッダ情報テーブル
     WHERE   head.data_type_code               IN ( cv_data_type_31,   -- データ種コード：納品確定
                                                    cv_data_type_32 )  -- データ種コード：出庫確定
-    AND     NVL( head.shop_delivery_date,                             -- 店舗納品日
-              NVL( head.center_delivery_date,                         -- センター納品日
-                NVL( head.order_date,                                 -- 発注日
-                  TRUNC( head.data_creation_date_edi_data )           -- データ作成日（ＥＤＩデータ中）
-                )
-              )
-            )                                 < ld_purge_date;
+-- ************ 2009/09/17 N.Maeda 1.11 MOD START ************** --
+    AND ( ( head.shop_delivery_date IS NOT NULL
+           AND head.shop_delivery_date < ld_purge_date )                      -- 店舗納品日
+      OR  ( head.shop_delivery_date IS NULL  AND head.center_delivery_date IS NOT NULL
+           AND head.center_delivery_date < ld_purge_date )                    -- センター納品日
+      OR  ( head.shop_delivery_date IS NULL  AND head.center_delivery_date IS NULL AND head.order_date IS NOT NULL
+           AND head.order_date < ld_purge_date )                              -- 発注日
+      OR  ( head.shop_delivery_date IS NULL  AND head.center_delivery_date IS NULL AND head.order_date IS NULL
+           AND TRUNC( head.data_creation_date_edi_data ) < ld_purge_date )    -- データ作成日（ＥＤＩデータ中）
+        );
+--    AND     NVL( head.shop_delivery_date,                             -- 店舗納品日
+--              NVL( head.center_delivery_date,                         -- センター納品日
+--                NVL( head.order_date,                                 -- 発注日
+--                  TRUNC( head.data_creation_date_edi_data )           -- データ作成日（ＥＤＩデータ中）
+--                )
+--              )
+--            )                                 < ld_purge_date;
+-- ************ 2009/09/17 N.Maeda 1.11 MOD  END  ************** --
 --
     -- ロックカーソルクローズ
     CLOSE edi_head_line_cur;
