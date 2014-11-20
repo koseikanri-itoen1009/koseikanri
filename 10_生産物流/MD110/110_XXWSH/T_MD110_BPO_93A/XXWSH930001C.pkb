@@ -7,7 +7,7 @@ AS
  * Description      : 生産物流(引当、配車)
  * MD.050           : 出荷・移動インタフェース         T_MD050_BPO_930
  * MD.070           : 外部倉庫入出庫実績インタフェース T_MD070_BPO_93A
- * Version          : 1.16
+ * Version          : 1.17
  *
  * Program List
  * ------------------------------------ -------------------------------------------------
@@ -79,7 +79,7 @@ AS
  *                                       TE080指摘事項930#13,17対応
  *                                       ST不具合420-001#195対応
  *                                       ST不具合440-002#374対応
- *                                       内部変更#168対応
+ *                                       内部変更#168対応-
  *                                       T_S_426対応
  *                                       I_S_192対応
  *                                       T_TE110_BPO_280#363対応
@@ -94,6 +94,11 @@ AS
  *  2008/08/13    1.15 Oracle 福田 直樹  内部変更#177対応(出荷日/着荷日の逆転チェック追加対応)
  *  2008/08/18    1.15 Oracle 福田 直樹  TE080_930指摘#32対応(指示にあって実績にない品目は実績0で更新する)
  *  2008/09/02    1.16 Oracle 福田 直樹  統合テスト障害#27対応(内部変更#176の再修正)
+ *  2008/09/03    1.17 Oracle 福田 直樹  内部変更#211対応(処理対象となるデータのみチェック対象とする)
+ *  2008/09/12    1.17 Oracle 福田 直樹  TE080_930指摘#37(運賃区分OFFのとき運送業者・配送区分のチェックは行わない)
+ *  2008/09/22    1.17 Oracle 福田 直樹  TE080_400指摘#76(出荷依頼I/F済みフラグ・出荷実績I/F済みフラグの更新条件追加)
+ *  2008/09/24    1.17 Oracle 福田 直樹  TE080_930指摘#39(移動のステータス設定処理で'依頼済'が考慮されていない)
+ *  2008/09/29    1.17 Oracle 福田 直樹  出荷の実績計上・訂正時に複写元からの引継項目が不足している
  *****************************************************************************************/
 --
 --#######################  固定グローバル定数宣言部 START   #######################
@@ -832,6 +837,7 @@ AS
     ,deliver_from_id             xxwsh_order_headers_all.deliver_from_id%TYPE             --出荷元ID
     ,deliver_from                xxwsh_order_headers_all.deliver_from%TYPE                --出荷元保管場所
     ,head_sales_branch           xxwsh_order_headers_all.head_sales_branch%TYPE           --管轄拠点
+    ,input_sales_branch          xxwsh_order_headers_all.input_sales_branch%TYPE          --入力拠点 2008/09/22 TE080_400指摘#76 Add
     ,po_no                       xxwsh_order_headers_all.po_no%TYPE                       --発注no
     ,prod_class                  xxwsh_order_headers_all.prod_class%TYPE                  --商品区分
     ,item_class                  xxwsh_order_headers_all.item_class%TYPE                  --品目区分
@@ -1064,6 +1070,10 @@ AS
 --
   gb_mov_cnt_a7_flg       BOOLEAN;      -- 移動(A-7) 件数表示で計上か訂正か判断するのためのフラグ
   gb_ord_cnt_a8_flg       BOOLEAN;      -- 受注(A-8) 件数表示で計上か訂正か判断するのためのフラグ
+--
+  -- 2008/09/22 TE080_400指摘#76 Add Start ---------------------------------------------------------
+  gb_shipping_result_if_flg BOOLEAN;    -- 全受注明細の出荷実績インタフェース済フラグを'N'に更新する場合はTRUE
+  -- 2008/09/22 TE080_400指摘#76 Add End -----------------------------------------------------------
 --
   -- WHOカラム
   gt_user_id         xxinv_mov_lot_details.created_by%TYPE;             -- 作成者(最終更新者)
@@ -2388,6 +2398,11 @@ AS
 --
     -- *** ローカル変数 ***
 --
+    -- 2008/09/22 TE080_400指摘#76 Add Start ----------------------------------------------------------------
+    ln_shipped_quantity         xxwsh_order_lines_all.shipped_quantity%TYPE;         --出荷実績数量
+    lv_shipping_result_if_flg   xxwsh_order_lines_all.shipping_result_if_flg%TYPE;   --出荷実績インタフェース済フラグ
+    -- 2008/09/22 TE080_400指摘#76 Add End ------------------------------------------------------------------
+--
     -- *** ローカル・カーソル ***
     CURSOR ord_results_quantity_cur
       (
@@ -2461,26 +2476,70 @@ AS
     --クローズ
     CLOSE ord_results_quantity_cur;
 --
-    -- 更新処理(バルク処理)
-    <<sum_actual_quantity_upd_loop>>
-    FORALL i IN 1 .. lt_order_line_id.COUNT
-      -- **************************************************
-      -- *** 受注明細(アドオン)更新を行う
-      -- **************************************************
+    -- 2008/09/22 TE080_400指摘#76 Del Start -------------------------------------------------------
+    ---- 更新処理(バルク処理)
+    --<<sum_actual_quantity_upd_loop>>
+    --FORALL i IN 1 .. lt_order_line_id.COUNT
+    --  -- **************************************************
+    --  -- *** 受注明細(アドオン)更新を行う
+    --  -- **************************************************
+    --  UPDATE
+    --    xxwsh_order_lines_all    xola    -- 受注明細(アドオン)
+    --  SET
+    --     xola.shipped_quantity        = lt_sum_actual_quantity(i)               -- 出庫実績数量
+    --    ,xola.last_updated_by         = gt_user_id                              -- 最終更新者
+    --    ,xola.last_update_date        = gt_sysdate                              -- 最終更新日
+    --    ,xola.last_update_login       = gt_login_id                             -- 最終更新ログイン
+    --    ,xola.request_id              = gt_conc_request_id                      -- 要求ID
+    --    ,xola.program_application_id  = gt_prog_appl_id                         -- アプリケーションID
+    --    ,xola.program_id              = gt_conc_program_id                      -- プログラムID
+    --    ,xola.program_update_date     = gt_sysdate                              -- プログラム更新日
+    --  WHERE xola.order_line_id = lt_order_line_id(i) -- 受注明細ID
+    --  AND   ((xola.delete_flag = gv_yesno_n) OR (xola.delete_flag IS NULL))
+    --  ;
+    -- 2008/09/22 TE080_400指摘#76 Del End ---------------------------------------------------------
+--
+    -- 2008/09/22 TE080_400指摘#76 Add Start -------------------------------------------------------
+    FOR i IN  1 .. lt_order_line_id.COUNT LOOP
+--
+      ln_shipped_quantity := 0;
+      lv_shipping_result_if_flg := NULL;
+--
+      -- 訂正前の明細情報を取得
+      SELECT   xola.shipped_quantity
+              ,xola.shipping_result_if_flg
+      INTO     ln_shipped_quantity                            -- 出荷実績数量
+              ,lv_shipping_result_if_flg                      -- 出荷実績I/F済フラグ
+      FROM    xxwsh_order_lines_all     xola                  -- 受注明細(アドオン)
+      WHERE xola.order_line_id = lt_order_line_id(i)
+      AND   ((xola.delete_flag = gv_yesno_n) OR (xola.delete_flag IS NULL));
+--
+      IF (gb_shipping_result_if_flg = TRUE) THEN  -- 受注ヘッダレベルの項目変更があった場合
+        lv_shipping_result_if_flg := gv_yesno_n;  -- 受注明細レベルの項目変更に関わらず全受注明細を'N'に更新
+--
+      ELSE  -- 受注ヘッダレベルの項目変更がない場合
+        IF (ln_shipped_quantity <> lt_sum_actual_quantity(i)) THEN -- 受注明細レベルの出荷実績数量に変更があった場合
+          lv_shipping_result_if_flg := gv_yesno_n; -- 該当明細のみ出荷実績I/F済フラグを'N'で更新
+        END IF;
+      END IF;
+--
       UPDATE
-        xxwsh_order_lines_all    xola    -- 受注明細(アドオン)
+        xxwsh_order_lines_all    xola
       SET
-         xola.shipped_quantity        = lt_sum_actual_quantity(i)               -- 出庫実績数量
-        ,xola.last_updated_by         = gt_user_id                              -- 最終更新者
-        ,xola.last_update_date        = gt_sysdate                              -- 最終更新日
-        ,xola.last_update_login       = gt_login_id                             -- 最終更新ログイン
-        ,xola.request_id              = gt_conc_request_id                      -- 要求ID
-        ,xola.program_application_id  = gt_prog_appl_id                         -- アプリケーションID
-        ,xola.program_id              = gt_conc_program_id                      -- プログラムID
-        ,xola.program_update_date     = gt_sysdate                              -- プログラム更新日
-      WHERE xola.order_line_id = lt_order_line_id(i) -- 受注明細ID
-      AND   ((xola.delete_flag = gv_yesno_n) OR (xola.delete_flag IS NULL))
-      ;
+         xola.shipped_quantity        = lt_sum_actual_quantity(i)      -- 出荷実績数量
+        ,xola.shipping_result_if_flg  = lv_shipping_result_if_flg      -- 出荷実績I/F済フラグ
+        ,xola.last_updated_by         = gt_user_id                     -- 最終更新者
+        ,xola.last_update_date        = gt_sysdate                     -- 最終更新日
+        ,xola.last_update_login       = gt_login_id                    -- 最終更新ログイン
+        ,xola.request_id              = gt_conc_request_id             -- 要求ID
+        ,xola.program_application_id  = gt_prog_appl_id                -- アプリケーションID
+        ,xola.program_id              = gt_conc_program_id             -- プログラムID
+        ,xola.program_update_date     = gt_sysdate                     -- プログラム更新日
+      WHERE xola.order_line_id = lt_order_line_id(i)
+      AND   ((xola.delete_flag = gv_yesno_n) OR (xola.delete_flag IS NULL));
+--
+    END LOOP;
+    -- 2008/09/22 TE080_400指摘#76 Add End -------------------------------------------------------
 --
     --==============================================================
     --メッセージ出力(エラー以外)をする必要がある場合は処理を記述
@@ -3805,7 +3864,14 @@ AS
     ;
 --
     --IFヘッダは存在するが、IF明細が存在しない場合、警告をセットしログ出力します。
+    --CURSOR ifh_exists_ifm_not_cur      -- 2008/09/03 内部変更#211 Del
+    -- 2008/09/03 内部変更#211 Add Start -----------------------------------------------
     CURSOR ifh_exists_ifm_not_cur
+    (
+      in_data_type         xxwsh_shipping_headers_if.data_type%TYPE        -- データタイプ
+     ,in_report_post_code  xxwsh_shipping_headers_if.report_post_code%TYPE -- 報告部署
+    )
+    -- 2008/09/03 内部変更#211 Add End --------------------------------------------------
     IS
     SELECT xshi.header_id
           ,xshi.order_source_ref
@@ -3813,6 +3879,8 @@ AS
     WHERE NOT EXISTS (SELECT 'X'
                         FROM xxwsh_shipping_lines_if xsli
                        WHERE xshi.header_id = xsli.header_id)
+    AND xshi.data_type        = in_data_type         -- データタイプ  -- 2008/09/03 内部変更#211 Add
+    AND xshi.report_post_code = in_report_post_code  -- 報告部署      -- 2008/09/03 内部変更#211 Add
     ;
 --
     --IF明細は存在するが、ヘッダが存在しない場合、警告をセットしログ出力します。
@@ -3930,7 +3998,14 @@ AS
 --
     gr_header_id.delete;
 --
-    OPEN ifh_exists_ifm_not_cur;
+    --OPEN ifh_exists_ifm_not_cur;  -- 2008/09/03 内部変更#211 Del
+    -- 2008/09/03 内部変更#211 Add Start ---------------------
+    OPEN ifh_exists_ifm_not_cur
+    (
+      iv_process_object_info  -- データタイプ
+     ,iv_report_post          -- 報告部署
+    );
+    -- 2008/09/03 内部変更#211 Add End -----------------------
 --
     -- データの一括取得
     FETCH ifh_exists_ifm_not_cur BULK COLLECT INTO gr_header_id,gr_order_source_ref;
@@ -4429,8 +4504,15 @@ AS
 --
         ln_err_flg := 0;
 --
-        -- 配送Noが設定されていた場合、受注ソースと配送Noの発番内容をチェック
-        IF (gr_interface_info_rec(i).delivery_no IS NOT NULL)
+        -- 2008/09/12 TE080_930指摘#37 Del Start -----------------------------------
+        ---- 配送Noが設定されていた場合、受注ソースと配送Noの発番内容をチェック
+        --IF (gr_interface_info_rec(i).delivery_no IS NOT NULL)
+        -- 2008/09/12 TE080_930指摘#37 Del End -------------------------------------
+        -- 2008/09/12 TE080_930指摘#37 Add Start -----------------------------------
+        -- 配送Noが設定されていた場合かつ運賃区分=ONの場合、受注ソースと配送Noの発番内容をチェック
+        IF ((gr_interface_info_rec(i).delivery_no IS NOT NULL) AND
+            (gr_interface_info_rec(i).freight_charge_class = gv_include_exclude_1))
+        -- 2008/09/12 TE080_930指摘#37 Add End -------------------------------------
         THEN
           -- 業務種別判定
           -- EOSデータ種別 = 200 有償出荷報告, 210 拠点出荷確定報告, 215 庭先出荷確定報告, 220 移動出庫確定報告
@@ -5755,8 +5837,15 @@ AS
 --
         IF ((ln_err_flg = 0) AND (lv_error_flg = '0')) THEN
 --
-          -- 運送業者≠NULLの場合のみチェックします。
-          IF (TRIM(gr_interface_info_rec(i).freight_carrier_code) IS NOT NULL) THEN
+          -- 2008/09/12 TE080_930指摘#37 Del Start --------------------------------------
+          ---- 運送業者≠NULLの場合のみチェックします。
+          --IF (TRIM(gr_interface_info_rec(i).freight_carrier_code) IS NOT NULL) THEN
+          -- 2008/09/12 TE080_930指摘#37 Del Start --------------------------------------
+          -- 2008/09/12 TE080_930指摘#37 Add Start --------------------------------------
+          -- 運送業者≠NULLかつ運賃区分=ONの場合のみチェックします。
+          IF ((TRIM(gr_interface_info_rec(i).freight_carrier_code) IS NOT NULL) AND
+              (gr_interface_info_rec(i).freight_charge_class = gv_include_exclude_1)) THEN
+          -- 2008/09/12 TE080_930指摘#37 Add End ----------------------------------------
 --
             -- マスタチェック[運送業者]
             IF (lt_eos_data_type = gv_eos_data_cd_220) THEN     -- 移動出庫
@@ -6055,6 +6144,7 @@ AS
         END IF;
 --
         IF ((ln_err_flg = 0) AND (lv_error_flg = '0')) THEN
+--
           -- 配送Noと移動Noの組み合わせチェック。(外部倉庫発番の場合実施しない)
           IF (gr_interface_info_rec(i).out_warehouse_flg <> gv_flg_on) THEN
 --
@@ -6271,8 +6361,15 @@ AS
 --
         IF ((ln_err_flg = 0) AND (lv_error_flg = '0')) THEN
 --
-          -- 運送業者≠NULLの場合のみチェックします。
-          IF (TRIM(gr_interface_info_rec(i).freight_carrier_code) IS NOT NULL) THEN
+          -- 2008/09/12 TE080_930指摘#37 Del Start ----------------------------------
+          ---- 運送業者≠NULLの場合のみチェックします。
+          --IF (TRIM(gr_interface_info_rec(i).freight_carrier_code) IS NOT NULL) THEN
+          -- 2008/09/12 TE080_930指摘#37 Del End ------------------------------------
+          -- 2008/09/12 TE080_930指摘#37 Add Start ----------------------------------
+          -- 運送業者≠NULLかつ運賃区分=ONの場合のみチェックします。
+          IF ((TRIM(gr_interface_info_rec(i).freight_carrier_code) IS NOT NULL) AND
+              (gr_interface_info_rec(i).freight_charge_class = gv_include_exclude_1)) THEN
+          -- 2008/09/12 TE080_930指摘#37 Add End ------------------------------------
 --
             -- マスタチェック[運送業者]
             SELECT COUNT(xcv.party_number) item_cnt
@@ -6993,11 +7090,17 @@ AS
             IF (lt_mov_schedule_ship_date <> gr_interface_info_rec(i).shipped_date) THEN
 --
               ln_errflg := 1;
+              --********** debug_log ********** START ***
+              debug_log(FND_FILE.LOG,'移動予定実績警告１');
+              --********** debug_log ********** END   ***
 --
             ELSIF (lt_mov_actual_ship_date IS NOT NULL) THEN
 --
               IF (lt_mov_schedule_ship_date <> lt_mov_actual_ship_date) THEN
                 ln_errflg := 1;
+                --********** debug_log ********** START ***
+                debug_log(FND_FILE.LOG,'移動予定実績警告２');
+                --********** debug_log ********** END   ***
               END IF;
 --
             END IF;
@@ -7006,11 +7109,17 @@ AS
             IF (lt_mov_schedule_arrival_date <> gr_interface_info_rec(i).arrival_date) THEN
 --
               ln_errflg := 1;
+              --********** debug_log ********** START ***
+              debug_log(FND_FILE.LOG,'移動予定実績警告３');
+              --********** debug_log ********** END   ***
 --
             ELSIF (lt_mov_actual_arrival_date IS NOT NULL) THEN
 --
               IF (lt_mov_schedule_arrival_date <> lt_mov_actual_arrival_date) THEN
                 ln_errflg := 1;
+                --********** debug_log ********** START ***
+                debug_log(FND_FILE.LOG,'移動予定実績警告４');
+                --********** debug_log ********** END   ***
               END IF;
 --
             END IF;
@@ -7019,11 +7128,17 @@ AS
             IF (lt_mov_freight_code <> gr_interface_info_rec(i).freight_carrier_code) THEN
 --
               ln_errflg := 1;
+              --********** debug_log ********** START ***
+              debug_log(FND_FILE.LOG,'移動予定実績警告５');
+              --********** debug_log ********** END   ***
 --
             ELSIF (lt_mov_actual_freight_code IS NOT NULL) THEN
 --
               IF (lt_mov_freight_code <> lt_mov_actual_freight_code) THEN
                 ln_errflg := 1;
+                --********** debug_log ********** START ***
+                debug_log(FND_FILE.LOG,'移動予定実績警告６');
+                --********** debug_log ********** END   ***
               END IF;
 --
             END IF;
@@ -7032,11 +7147,17 @@ AS
             IF (NVL(lt_mov_shipping_code,gv_delivery_no_null) <> NVL(gr_interface_info_rec(i).shipping_method_code,gv_delivery_no_null)) THEN
 --
               ln_errflg := 1;
+              --********** debug_log ********** START ***
+              debug_log(FND_FILE.LOG,'移動予定実績警告７');
+              --********** debug_log ********** END   ***
 --
             ELSIF (lt_mov_actual_shipping_code IS NOT NULL) THEN
 --
               IF (lt_mov_shipping_code <> lt_mov_actual_shipping_code) THEN
                 ln_errflg := 1;
+                --********** debug_log ********** START ***
+                debug_log(FND_FILE.LOG,'移動予定実績警告８');
+                --********** debug_log ********** END   ***
               END IF;
 --
             END IF;
@@ -7152,11 +7273,17 @@ AS
               IF (lt_req_schedule_ship_date <> gr_interface_info_rec(i).shipped_date) THEN
 --
                 ln_errflg := 1;
+                --********** debug_log ********** START ***
+                debug_log(FND_FILE.LOG,'出荷支給予定実績警告１');
+                --********** debug_log ********** END   ***
 --
               ELSIF (lt_req_shipped_date IS NOT NULL) THEN
 --
                 IF (lt_req_schedule_ship_date <> lt_req_shipped_date) THEN
                   ln_errflg := 1;
+                  --********** debug_log ********** START ***
+                  debug_log(FND_FILE.LOG,'出荷支給予定実績警告２');
+                  --********** debug_log ********** END   ***
                 END IF;
 --
               END IF;
@@ -7165,11 +7292,17 @@ AS
               IF (lt_req_schedule_arrival_date <> gr_interface_info_rec(i).arrival_date) THEN
 --
                 ln_errflg := 1;
+                --********** debug_log ********** START ***
+                debug_log(FND_FILE.LOG,'出荷支給予定実績警告３');
+                --********** debug_log ********** END   ***
 --
               ELSIF (lt_req_arrival_date IS NOT NULL) THEN
 --
                 IF (lt_req_schedule_arrival_date <> lt_req_arrival_date) THEN
                   ln_errflg := 1;
+                  --********** debug_log ********** START ***
+                  debug_log(FND_FILE.LOG,'出荷支給予定実績警告４');
+                  --********** debug_log ********** END   ***
                 END IF;
 --
               END IF;
@@ -7178,11 +7311,17 @@ AS
               IF (lt_req_freight_code <> gr_interface_info_rec(i).freight_carrier_code) THEN
 --
                 ln_errflg := 1;
+                --********** debug_log ********** START ***
+                debug_log(FND_FILE.LOG,'出荷支給予定実績警告５');
+                --********** debug_log ********** END   ***
 --
               ELSIF (lt_req_result_freight_code IS NOT NULL) THEN
 --
                 IF (lt_req_freight_code <> lt_req_result_freight_code) THEN
                   ln_errflg := 1;
+                --********** debug_log ********** START ***
+                debug_log(FND_FILE.LOG,'出荷支給予定実績警告６');
+                --********** debug_log ********** END   ***
                 END IF;
 --
               END IF;
@@ -7191,11 +7330,17 @@ AS
               IF (NVL(lt_req_shipping_code,gv_delivery_no_null) <> NVL(gr_interface_info_rec(i).shipping_method_code,gv_delivery_no_null)) THEN
 --
                 ln_errflg := 1;
+                --********** debug_log ********** START ***
+                debug_log(FND_FILE.LOG,'出荷支給予定実績警告７');
+                --********** debug_log ********** END   ***
 --
               ELSIF (lt_req_result_shipping_code IS NOT NULL) THEN
 --
                 IF (lt_req_shipping_code <> lt_req_result_shipping_code) THEN
                   ln_errflg := 1;
+                  --********** debug_log ********** START ***
+                  debug_log(FND_FILE.LOG,'出荷支給予定実績警告８');
+                  --********** debug_log ********** END   ***
                 END IF;
 --
               END IF;
@@ -7209,11 +7354,17 @@ AS
                 IF (lt_req_deliver_to <> gr_interface_info_rec(i).party_site_code) THEN
 --
                   ln_errflg := 1;
+                  --********** debug_log ********** START ***
+                  debug_log(FND_FILE.LOG,'出荷支給予定実績警告９');
+                  --********** debug_log ********** END   ***
 --
                 ELSIF (lt_req_result_deliver_to IS NOT NULL) THEN
 --
                   IF (lt_req_deliver_to <> lt_req_result_deliver_to) THEN
                     ln_errflg := 1;
+                    --********** debug_log ********** START ***
+                    debug_log(FND_FILE.LOG,'出荷支給予定実績警告１０');
+                    --********** debug_log ********** END   ***
                   END IF;
 --
                 END IF;
@@ -7225,6 +7376,9 @@ AS
 --
                 IF (lt_vendor_site_code <> gr_interface_info_rec(i).party_site_code) THEN
                   ln_errflg := 1;
+                  --********** debug_log ********** START ***
+                  debug_log(FND_FILE.LOG,'出荷支給予定実績警告１１');
+                  --********** debug_log ********** END   ***
                 END IF;
 --
               END IF;
@@ -9849,8 +10003,8 @@ AS
       gr_order_h_rec.performance_management_dept := NULL;
     END IF;
 --
-     -- (210)拠点出荷確定報告・(215)庭先出荷確定報告以外の場合
-     -- (210)拠点出荷確定報告・(215)庭先出荷確定報告の場合で、成績管理部署がない場合
+    -- (210)拠点出荷確定報告・(215)庭先出荷確定報告以外の場合
+    -- (210)拠点出荷確定報告・(215)庭先出荷確定報告の場合で、成績管理部署がない場合
     IF (gr_order_h_rec.performance_management_dept IS NULL) THEN
       UPDATE xxwsh.xxwsh_order_headers_all xoha
       SET xoha.req_status                   = gr_order_h_rec.req_status
@@ -10067,6 +10221,7 @@ AS
             ,xoha.deliver_from_id             --出荷元ID
             ,xoha.deliver_from                --出荷元保管場所
             ,xoha.head_sales_branch           --管轄拠点
+            ,xoha.input_sales_branch          --入力拠点 2008/09/22 TE080_400指摘#76 Add
             ,xoha.po_no                       --発注no
             ,xoha.prod_class                  --商品区分
             ,xoha.item_class                  --品目区分
@@ -10152,6 +10307,18 @@ AS
 --
     END ;
 --
+    -- 2008/09/22 TE080_400指摘#76 Add Start ----------------------------------------------------
+    -- I/F取込項目と比較して受注ヘッダレベルの項目が変更になった場合は
+    -- 全受注明細の出荷実績I/F済みフラグをすべて'N'に更新する
+    gb_shipping_result_if_flg := FALSE;     -- フラグ初期化
+--
+    IF NOT ((lr_order_h_rec_ins.arrival_date = gr_interface_info_rec(in_index).arrival_date) AND      -- 着荷日の変更チェック
+            (lr_order_h_rec_ins.result_deliver_to = gr_interface_info_rec(in_index).party_site_code)) -- 出荷先_実績の変更チェック
+    THEN
+      gb_shipping_result_if_flg := TRUE;    -- 全受注明細の出荷実績インタフェース済フラグを'N'に更新する場合はTRUE
+    END IF;
+    -- 2008/09/22 TE080_400指摘#76 Add End -------------------------------------------------------
+--
     UPDATE xxwsh_order_headers_all xoha
     SET xoha.latest_external_flag   = gr_order_h_rec_up2(in_index).latest_external_flag
        ,xoha.last_updated_by        = gt_user_id
@@ -10204,6 +10371,7 @@ AS
     gr_order_h_rec.deliver_from_id             := lr_order_h_rec_ins.deliver_from_id;
     gr_order_h_rec.deliver_from                := lr_order_h_rec_ins.deliver_from;
     gr_order_h_rec.head_sales_branch           := lr_order_h_rec_ins.head_sales_branch;
+    gr_order_h_rec.input_sales_branch          := lr_order_h_rec_ins.input_sales_branch; --2008/09/22 TE080_400指摘#76 Add
     gr_order_h_rec.po_no                       := lr_order_h_rec_ins.po_no;
     gr_order_h_rec.prod_class                  := lr_order_h_rec_ins.prod_class;
     gr_order_h_rec.no_cont_freight_class       := lr_order_h_rec_ins.no_cont_freight_class;
@@ -10232,7 +10400,10 @@ AS
     gr_order_h_rec.shipped_date                := gr_interface_info_rec(in_index).shipped_date;
     gr_order_h_rec.arrival_date                := gr_interface_info_rec(in_index).arrival_date;
     gr_order_h_rec.weight_capacity_class       := lr_order_h_rec_ins.weight_capacity_class;
+    gr_order_h_rec.actual_confirm_class        := lr_order_h_rec_ins.actual_confirm_class; --2008/09/22 TE080_400指摘#76 Add
     gr_order_h_rec.notif_status                := lr_order_h_rec_ins.notif_status;
+    gr_order_h_rec.prev_notif_status           := lr_order_h_rec_ins.prev_notif_status;    --2008/09/22 TE080_400指摘#76 Add
+    gr_order_h_rec.notif_date                  := lr_order_h_rec_ins.notif_date;           --2008/09/22 TE080_400指摘#76 Add
     gr_order_h_rec.performance_management_dept := lr_order_h_rec_ins.performance_management_dept;
     gr_order_h_rec.instruction_dept            := lr_order_h_rec_ins.instruction_dept;
     gr_order_h_rec.transfer_location_id        := lr_order_h_rec_ins.transfer_location_id;
@@ -10245,6 +10416,7 @@ AS
     gr_order_h_rec.vendor_code                 := lr_order_h_rec_ins.vendor_code;
     gr_order_h_rec.vendor_site_id              := lr_order_h_rec_ins.vendor_site_id;
     gr_order_h_rec.vendor_site_code            := lr_order_h_rec_ins.vendor_site_code;
+    gr_order_h_rec.tightening_program_id       := lr_order_h_rec_ins.tightening_program_id;  --2008/09/22 TE080_400指摘#76 Add
 --
     INSERT INTO xxwsh_order_headers_all
       ( order_header_id                              -- 受注ヘッダアドオンID
@@ -10276,6 +10448,7 @@ AS
        ,deliver_from_id                              -- 出荷元ID
        ,deliver_from                                 -- 出荷元保管場所
        ,head_sales_branch                            -- 管轄拠点
+       ,input_sales_branch                           -- 入力拠点 2008/09/22 TE080_400指摘#76 Add
        ,po_no                                        -- 発注No
        ,prod_class                                   -- 商品区分
        ,no_cont_freight_class                        -- 契約外運賃区分
@@ -10304,7 +10477,10 @@ AS
        ,shipped_date                                 -- 出荷日
        ,arrival_date                                 -- 着荷日
        ,weight_capacity_class                        -- 重量容積区分
+       ,actual_confirm_class                         -- 実績計上済区分     2008/09/22 TE080_400指摘#76 Add
        ,notif_status                                 -- 通知ステータス
+       ,prev_notif_status                            -- 前回通知ステータス 2008/09/22 TE080_400指摘#76 Add
+       ,notif_date                                   -- 確定通知実施日時   2008/09/22 TE080_400指摘#76 Add
        ,new_modify_flg                               -- 新規修正フラグ
        ,performance_management_dept                  -- 成績管理部署
        ,instruction_dept                             -- 指示部署
@@ -10318,6 +10494,7 @@ AS
        ,vendor_code                                  -- 取引先
        ,vendor_site_id                               -- 取引先サイトID
        ,vendor_site_code                             -- 取引先サイト
+       ,tightening_program_id                        -- 締めコンカレントID 2008/09/22 TE080_400指摘#76 Add
        ,corrected_tighten_class                      -- 締め後修正区分
        ,created_by                                   -- 作成者
        ,creation_date                                -- 作成日
@@ -10359,6 +10536,7 @@ AS
        ,gr_order_h_rec.deliver_from_id               -- 出荷元ID
        ,gr_order_h_rec.deliver_from                  -- 出荷元保管場所
        ,gr_order_h_rec.head_sales_branch             -- 管轄拠点
+       ,gr_order_h_rec.input_sales_branch            -- 入力拠点 2008/09/22 TE080_400指摘#76 Add
        ,gr_order_h_rec.po_no                         -- 発注No
        ,gr_order_h_rec.prod_class                    -- 商品区分
        ,gr_order_h_rec.no_cont_freight_class         -- 契約外運賃区分
@@ -10387,7 +10565,10 @@ AS
        ,gr_order_h_rec.shipped_date                  -- 出荷日
        ,gr_order_h_rec.arrival_date                  -- 着荷日
        ,gr_order_h_rec.weight_capacity_class         -- 重量容積区分
+       ,gr_order_h_rec.actual_confirm_class          -- 実績計上済区分     2008/09/22 TE080_400指摘#76 Add
        ,gr_order_h_rec.notif_status                  -- 通知ステータス
+       ,gr_order_h_rec.prev_notif_status             -- 前回通知ステータス 2008/09/22 TE080_400指摘#76 Add
+       ,gr_order_h_rec.notif_date                    -- 確定通知実施日時   2008/09/22 TE080_400指摘#76 Add
        ,gv_yesno_n                                   -- 新規修正フラグ
        ,gr_order_h_rec.performance_management_dept   -- 成績管理部署
        ,gr_order_h_rec.instruction_dept              -- 指示部署
@@ -10401,6 +10582,7 @@ AS
        ,gr_order_h_rec.vendor_code                   -- 取引先
        ,gr_order_h_rec.vendor_site_id                -- 取引先サイトID
        ,gr_order_h_rec.vendor_site_code              -- 取引先サイト
+       ,gr_order_h_rec.tightening_program_id         -- 締めコンカレントID 2008/09/22 TE080_400指摘#76 Add
        ,gv_yesno_n                                   -- 締め後修正区分
        ,gt_user_id                                   -- 作成者
        ,gt_sysdate                                   -- 作成日
@@ -10450,7 +10632,6 @@ AS
 --
   END order_headers_inup;
 --
---
  /**********************************************************************************
   * F Name   : order_lines_upd
   * Description      : 受注明細アドオンUPDATE プロシージャ(A-8-5)
@@ -10482,6 +10663,10 @@ AS
     -- *** ローカル定数 ***
 --
     -- *** ローカル変数 ***
+    -- 2008/09/22 TE080_400指摘#76 Add Start --------------------------------------------------------------
+    ln_shipped_quantity         xxwsh_order_lines_all.shipped_quantity%TYPE;         --出荷実績数量
+    lv_shipping_result_if_flg   xxwsh_order_lines_all.shipping_result_if_flg%TYPE;   --出荷実績I/F済フラグ
+    -- 2008/09/22 TE080_400指摘#76 Add End ----------------------------------------------------------------
 --
     lt_order_header_id         xxwsh_order_headers_all.order_header_id%TYPE;
     -- *** ローカル・カーソル ***
@@ -10509,8 +10694,22 @@ AS
     IF (gr_interface_info_rec(in_idx).lot_ctl = gv_lotkr_kbn_cd_0) THEN
 --
       -- 出荷依頼IF明細.出荷実績数量を設定
-      gr_order_l_rec.shipped_quantity
-             := gr_interface_info_rec(in_idx).shiped_quantity;
+      gr_order_l_rec.shipped_quantity := gr_interface_info_rec(in_idx).shiped_quantity;
+--
+      -- 2008/09/22 TE080_400指摘#76 Add Start ------------------------------------------
+      -- 更新前の明細情報を取得
+      SELECT   xola.shipped_quantity
+              ,xola.shipping_result_if_flg
+      INTO     ln_shipped_quantity                            -- 出荷実績数量
+              ,lv_shipping_result_if_flg                      -- 出荷実績I/F済フラグ
+      FROM    xxwsh_order_lines_all     xola                  -- 受注明細(アドオン)
+      WHERE xola.order_line_id = in_order_line_id             -- 受注明細アドオンID
+      AND   ((xola.delete_flag = gv_yesno_n) OR (xola.delete_flag IS NULL));
+--
+      IF (ln_shipped_quantity <> gr_order_l_rec.shipped_quantity) THEN   -- 受注明細レベルで実績数量の変更があれば
+        lv_shipping_result_if_flg := gv_yesno_n;  -- 該当受注明細の出荷実績I/F済フラグを'N'で更新
+      END IF;  -- 受注明細レベルで実績数量の変更がなければ訂正前の値を引き継ぐ
+      -- 2008/09/22 TE080_400指摘#76 Add End ------------------------------------------
 --
       -- **************************************************
       -- *** 受注明細(アドオン)更新を行う
@@ -10519,6 +10718,7 @@ AS
         xxwsh_order_lines_all    xola    -- 受注明細(アドオン)
       SET
          xola.shipped_quantity        = gr_order_l_rec.shipped_quantity   -- 出庫実績数量
+        ,xola.shipping_result_if_flg  = lv_shipping_result_if_flg         -- 出荷実績I/F済フラグ 2008/09/22 TE080_400指摘#76 Add
         ,xola.last_updated_by         = gt_user_id                        -- 最終更新者
         ,xola.last_update_date        = gt_sysdate                        -- 最終更新日
         ,xola.last_update_login       = gt_login_id                       -- 最終更新ログイン
@@ -10618,6 +10818,19 @@ AS
     ln_reserved_quantity        xxwsh_order_lines_all.reserved_quantity%TYPE;        --引当数
     lv_automanual_reserve_class xxwsh_order_lines_all.automanual_reserve_class%TYPE; --自動手動引当区分
 --
+    -- 2008/09/22 TE080_400指摘#76 Add Start --------------------------------------------------------------
+    ln_shipped_quantity         xxwsh_order_lines_all.shipped_quantity%TYPE;         --出荷実績数量
+    lv_shipping_request_if_flg  xxwsh_order_lines_all.shipping_request_if_flg%TYPE;  --出荷依頼I/F済フラグ
+    lv_shipping_result_if_flg   xxwsh_order_lines_all.shipping_result_if_flg%TYPE;   --出荷実績I/F済フラグ
+    -- 2008/09/22 TE080_400指摘#76 Add End ----------------------------------------------------------------
+--
+    -- 2008/09/29 複写元引継項目不足対応 Add Start --------------------------------------------------------------
+    ln_quantity                 xxwsh_order_lines_all.quantity%TYPE;                 --数量
+    ln_case_quantity            xxwsh_order_lines_all.case_quantity%TYPE;            --ケース数
+    ln_pallet_quantity          xxwsh_order_lines_all.pallet_quantity%TYPE;          --パレット数
+    ln_layer_quantity           xxwsh_order_lines_all.layer_quantity%TYPE;           --段数
+    -- 2008/09/29 複写元引継項目不足対応 Add End ----------------------------------------------------------------
+--
     -- *** ローカル・カーソル ***
 --
     -- *** ローカル・レコード ***
@@ -10644,7 +10857,7 @@ AS
     FROM   dual;
 --
     -- 受注明細アドオンID
-     gr_order_l_rec.order_line_id   := lt_order_line_id_s1;
+    gr_order_l_rec.order_line_id   := lt_order_line_id_s1;
 --
     -- 受注ヘッダアドオンID
     gr_order_l_rec.order_header_id  := gr_order_h_rec.order_header_id;
@@ -10709,10 +10922,16 @@ AS
              := gr_interface_info_rec(in_idx).shiped_quantity;
     END IF;
 --
-    -- 初期クリア　NULLセット
-    gr_order_l_rec.based_request_quantity   := 0;        --拠点依頼数量
-    gr_order_l_rec.reserved_quantity        := 0;        --引当数
-    gr_order_l_rec.automanual_reserve_class := NULL;     --自動手動引当区分
+    -- 初期クリア NULLセット
+    gr_order_l_rec.based_request_quantity   := 0;          --拠点依頼数量
+    gr_order_l_rec.reserved_quantity        := 0;          --引当数
+    gr_order_l_rec.automanual_reserve_class := NULL;       --自動手動引当区分
+    gr_order_l_rec.shipping_request_if_flg  := gv_yesno_n; --出荷依頼I/F済フラグ 2008/09/22 TE080_400指摘#76 Add
+    gr_order_l_rec.shipping_result_if_flg   := gv_yesno_n; --出荷実績I/F済フラグ 2008/09/22 TE080_400指摘#76 Add
+    gr_order_l_rec.quantity                 := 0;          --数量                2008/09/29 複写元引継項目不足対応 Add
+    gr_order_l_rec.case_quantity            := 0;          --ケース数            2008/09/29 複写元引継項目不足対応 Add
+    gr_order_l_rec.pallet_quantity          := 0;          --パレット数          2008/09/29 複写元引継項目不足対応 Add
+    gr_order_l_rec.layer_quantity           := 0;          --段数                2008/09/29 複写元引継項目不足対応 Add
 --
     -- 訂正（同品目）の場合、ＩＦにない項目の値を訂正前レコードより受け継ぐ
     IF (iv_cnt_kbn = gv_cnt_kbn_4) THEN
@@ -10724,7 +10943,8 @@ AS
         FROM      xxwsh_order_headers_all   xoha    -- 受注ヘッダ(アドオン)
         WHERE     NVL(xoha.delivery_no,gv_delivery_no_null) = NVL(gr_interface_info_rec(in_idx).delivery_no,gv_delivery_no_null)
         AND       xoha.request_no = gr_interface_info_rec(in_idx).order_source_ref
-        AND       actual_confirm_class = gv_yesno_y
+        AND       xoha.actual_confirm_class = gv_yesno_y
+        AND       xoha.latest_external_flag = gv_yesno_n  -- 2008/09/22 TE080_400指摘#76 Add これがないと最新のヘッダを取得してしまう
         GROUP BY  xoha.delivery_no                 --配送No
                  ,xoha.order_source_ref            --受注ソース参照
         ;
@@ -10733,26 +10953,72 @@ AS
         SELECT   xola.based_request_quantity
                 ,xola.reserved_quantity
                 ,xola.automanual_reserve_class
+                ,xola.quantity                                  -- 数量                2008/09/29 複写元引継項目不足対応 Add
+                ,xola.case_quantity                             -- ケース数            2008/09/29 複写元引継項目不足対応 Add
+                ,xola.pallet_quantity                           -- パレット数          2008/09/29 複写元引継項目不足対応 Add
+                ,xola.layer_quantity                            -- 段数                2008/09/29 複写元引継項目不足対応 Add
+                ,xola.shipped_quantity                          -- 出荷実績数量        2008/09/22 TE080_400指摘#76 Add
+                ,xola.shipping_request_if_flg                   -- 出荷依頼I/F済フラグ 2008/09/22 TE080_400指摘#76 Add
+                ,xola.shipping_result_if_flg                    -- 出荷実績I/F済フラグ 2008/09/22 TE080_400指摘#76 Add
         INTO     ln_based_request_quantity                      -- 拠点依頼数量
                 ,ln_reserved_quantity                           -- 引当数
                 ,lv_automanual_reserve_class                    -- 自動手動引当区分
+                ,ln_quantity                                    -- 数量                2008/09/29 複写元引継項目不足対応 Add
+                ,ln_case_quantity                               -- ケース数            2008/09/29 複写元引継項目不足対応 Add
+                ,ln_pallet_quantity                             -- パレット数          2008/09/29 複写元引継項目不足対応 Add
+                ,ln_layer_quantity                              -- 段数                2008/09/29 複写元引継項目不足対応 Add
+                ,ln_shipped_quantity                            -- 出荷実績数量        2008/09/22 TE080_400指摘#76 Add
+                ,lv_shipping_request_if_flg                     -- 出荷依頼I/F済フラグ 2008/09/22 TE080_400指摘#76 Add
+                ,lv_shipping_result_if_flg                      -- 出荷実績I/F済フラグ 2008/09/22 TE080_400指摘#76 Add
         FROM    xxwsh_order_lines_all     xola                  -- 受注明細(アドオン)
         WHERE   xola.order_header_id = ln_order_header_id       -- 受注ヘッダアドオンID
         AND     xola.shipping_item_code = gr_interface_info_rec(in_idx).orderd_item_code -- 出荷品目
         AND     ((xola.delete_flag = gv_yesno_n) OR (xola.delete_flag IS NULL))
         ;
 --
-        -- 取得した値をセット
+        -- 訂正前の値を引き継ぐため取得した値をセット
         gr_order_l_rec.based_request_quantity   := ln_based_request_quantity;   --拠点依頼数量
         gr_order_l_rec.reserved_quantity        := ln_reserved_quantity;        --引当数
         gr_order_l_rec.automanual_reserve_class := lv_automanual_reserve_class; --自動手動引当区分
+        gr_order_l_rec.shipping_request_if_flg  := lv_shipping_request_if_flg;  --出荷依頼I/F済フラグ 2008/09/22 TE080_400指摘#76 Add
+        gr_order_l_rec.quantity                 := ln_quantity;                 --数量                2008/09/29 複写元引継項目不足対応 Add
+        gr_order_l_rec.case_quantity            := ln_case_quantity;            --ケース数            2008/09/29 複写元引継項目不足対応 Add
+        gr_order_l_rec.pallet_quantity          := ln_pallet_quantity;          --パレット数          2008/09/29 複写元引継項目不足対応 Add
+        gr_order_l_rec.layer_quantity           := ln_layer_quantity;           --段数                2008/09/29 複写元引継項目不足対応 Add
+--
+        -- 2008/09/22 TE080_400指摘#76 Add Start ----------------------------------------------------------------
+        IF (gr_interface_info_rec(in_idx).lot_ctl = gv_lotkr_kbn_cd_0) THEN  -- ロット管理外品の場合
+--
+          IF (gb_shipping_result_if_flg = TRUE) THEN  -- 受注ヘッダレベルの項目変更があった場合
+            gr_order_l_rec.shipping_result_if_flg := gv_yesno_n; -- 受注明細レベルの項目変更に関わらず全受注明細を'N'に更新
+--
+          ELSE  -- 受注ヘッダレベルの項目変更がない場合
+            IF (ln_shipped_quantity <> gr_order_l_rec.shipped_quantity) THEN   -- 受注明細レベルで実績数量の変更があれば
+              gr_order_l_rec.shipping_result_if_flg := gv_yesno_n;  -- 該当受注明細の出荷実績I/F済フラグを'N'で更新
+--
+            ELSE  -- 受注明細レベルで実績数量の変更がなければ訂正前の値を引き継ぐ
+              gr_order_l_rec.shipping_result_if_flg  := lv_shipping_result_if_flg;  -- 出荷実績I/F済フラグ
+            END IF;
+          END IF;
+--
+        ELSE  -- ロット管理品の場合は訂正前の値を引き継ぐ
+          gr_order_l_rec.shipped_quantity        := ln_shipped_quantity;        -- 出荷実績数量
+          gr_order_l_rec.shipping_result_if_flg  := lv_shipping_result_if_flg;  -- 出荷実績I/F済フラグ
+        END IF;
+        -- 2008/09/22 TE080_400指摘#76 Add End -------------------------------------------------------------------
 --
       EXCEPTION
 --
         WHEN NO_DATA_FOUND THEN
-          gr_order_l_rec.based_request_quantity   := 0;        --拠点依頼数量
-          gr_order_l_rec.reserved_quantity        := 0;        --引当数
-          gr_order_l_rec.automanual_reserve_class := NULL;     --自動手動引当区分
+          gr_order_l_rec.based_request_quantity   := 0;          --拠点依頼数量
+          gr_order_l_rec.reserved_quantity        := 0;          --引当数
+          gr_order_l_rec.automanual_reserve_class := NULL;       --自動手動引当区分
+          gr_order_l_rec.shipping_request_if_flg  := gv_yesno_n; --出荷依頼I/F済フラグ 2008/09/22 TE080_400指摘#76 Add
+          gr_order_l_rec.shipping_result_if_flg   := gv_yesno_n; --出荷実績I/F済フラグ 2008/09/22 TE080_400指摘#76 Add
+          gr_order_l_rec.quantity                 := 0;          --数量                2008/09/29 複写元引継項目不足対応 Add
+          gr_order_l_rec.case_quantity            := 0;          --ケース数            2008/09/29 複写元引継項目不足対応 Add
+          gr_order_l_rec.pallet_quantity          := 0;          --パレット数          2008/09/29 複写元引継項目不足対応 Add
+          gr_order_l_rec.layer_quantity           := 0;          --段数                2008/09/29 複写元引継項目不足対応 Add
 --
       END;
 --
@@ -10768,11 +11034,15 @@ AS
       ,request_no                                  -- 依頼No
       ,shipping_inventory_item_id                  -- 出荷品目ID
       ,shipping_item_code                          -- 出荷品目
+      ,quantity                                    -- 数量          2008/09/29 複写元引継項目不足対応 Add
       ,uom_code                                    -- 単位
       ,request_item_id                             -- 依頼品目ID
       ,request_item_code                           -- 依頼品目
       ,shipped_quantity                            -- 出庫実績数量
       ,based_request_quantity                      -- 拠点依頼数量
+      ,pallet_quantity                             -- パレット数    2008/09/29 複写元引継項目不足対応 Add
+      ,layer_quantity                              -- 段数          2008/09/29 複写元引継項目不足対応 Add
+      ,case_quantity                               -- ケース数      2008/09/29 複写元引継項目不足対応 Add
       ,reserved_quantity                           -- 引当数
       ,automanual_reserve_class                    -- 自動手動引当区分
       ,delete_flag                                 -- 削除フラグ
@@ -10793,20 +11063,26 @@ AS
       (gr_order_l_rec.order_line_id                --受注明細アドオンID
       ,gr_order_l_rec.order_header_id              --受注ヘッダアドオンID
       ,gr_order_l_rec.order_line_number            --明細番号
-      ,gr_order_l_rec.request_no                   --依頼no
+      ,gr_order_l_rec.request_no                   --依頼No
       ,gr_order_l_rec.shipping_inventory_item_id   --出荷品目ID
       ,gr_order_l_rec.shipping_item_code           --出荷品目
+      ,gr_order_l_rec.quantity                     --数量                  2008/09/29 複写元引継項目不足対応 Add
       ,gr_order_l_rec.uom_code                     --単位
       ,gr_order_l_rec.request_item_id              --依頼品目ID
       ,gr_order_l_rec.request_item_code            --依頼品目
       ,gr_order_l_rec.shipped_quantity             --出庫実績数量
       ,gr_order_l_rec.based_request_quantity       --拠点依頼数量
+      ,gr_order_l_rec.pallet_quantity              --パレット数            2008/09/29 複写元引継項目不足対応 Add
+      ,gr_order_l_rec.layer_quantity               --段数                  2008/09/29 複写元引継項目不足対応 Add
+      ,gr_order_l_rec.case_quantity                --ケース数              2008/09/29 複写元引継項目不足対応 Add
       ,gr_order_l_rec.reserved_quantity            --引当数
       ,gr_order_l_rec.automanual_reserve_class     --自動手動引当区分
       ,gv_yesno_n                                  --削除フラグ
-      ,gv_yesno_n                                  --倉替返品インタフェース済フラグ
-      ,gv_yesno_n                                  --出荷依頼インタフェース済フラグ
-      ,gv_yesno_n                                  --出荷実績インタフェース済フラグ
+      ,gv_yesno_n                                  --倉替返品I/F済フラグ
+      --,gv_yesno_n                                  --出荷依頼I/F済フラグ 2008/09/22 TE080_400指摘#76 Del
+      --,gv_yesno_n                                  --出荷実績I/F済フラグ 2008/09/22 TE080_400指摘#76 Del
+      ,gr_order_l_rec.shipping_request_if_flg      --出荷依頼I/F済フラグ   2008/09/22 TE080_400指摘#76 Add
+      ,gr_order_l_rec.shipping_result_if_flg       --出荷実績I/F済フラグ   2008/09/22 TE080_400指摘#76 Add
       ,gt_user_id                                  --作成者
       ,gt_sysdate                                  --作成日
       ,gt_user_id                                  --最終更新者
@@ -10975,7 +11251,7 @@ AS
         FROM      xxwsh_order_headers_all   xoha    -- 受注ヘッダ(アドオン)
         WHERE     NVL(xoha.delivery_no,gv_delivery_no_null) = NVL(gr_interface_info_rec(in_idx).delivery_no,gv_delivery_no_null)
         AND       xoha.request_no = gr_interface_info_rec(in_idx).order_source_ref
-        AND       actual_confirm_class = gv_yesno_y
+        AND       xoha.actual_confirm_class = gv_yesno_y
         GROUP BY  xoha.delivery_no                 --配送No
                  ,xoha.order_source_ref            --受注ソース参照
         ;
@@ -11981,8 +12257,14 @@ AS
     -- ステータス
     gr_mov_req_instr_h_rec.status := iv_status;   -- まずは今入っている同じ値をセットしておく
 --
-    IF (iv_status = gv_mov_status_01) OR      -- 依頼中
+    -- 2008/09/24 TE080_930指摘#39 Del Start ---------------------------
+    --IF (iv_status = gv_mov_status_01) OR      -- 依頼中
+    --   (iv_status = gv_mov_status_03) THEN    -- 調整中
+    -- 2008/09/24 TE080_930指摘#39 Del End -----------------------------
+    -- 2008/09/24 TE080_930指摘#39 Add Start ---------------------------
+    IF (iv_status = gv_mov_status_02) OR      -- 依頼済
        (iv_status = gv_mov_status_03) THEN    -- 調整中
+    -- 2008/09/24 TE080_930指摘#39 Add End -----------------------------
 --
       IF (gr_interface_info_rec(in_index).eos_data_type = gv_eos_data_cd_220) THEN
         gr_mov_req_instr_h_rec.status := gv_mov_status_04; -- 出庫報告有をセット
@@ -12677,7 +12959,7 @@ AS
       ,mov_hdr_id                                         -- 移動ヘッダID
       ,line_number                                        -- 明細番号
       ,organization_id                                    -- 組織ID
-      ,item_id                                            -- opm品目ID
+      ,item_id                                            -- OPM品目ID
       ,item_code                                          -- 品目
       ,uom_code                                           -- 単位
       ,shipped_quantity                                   -- 出庫実績数量
@@ -12830,11 +13112,9 @@ AS
     IF gr_interface_info_rec(in_idx).lot_ctl = gv_lotkr_kbn_cd_0 THEN
 --
       -- 出荷依頼IF明細.出荷実績数量を設定
-      gr_mov_req_instr_l_rec.shipped_quantity
-             := gr_interface_info_rec(in_idx).shiped_quantity;-- 出庫実績数量
+      gr_mov_req_instr_l_rec.shipped_quantity := gr_interface_info_rec(in_idx).shiped_quantity;  -- 出庫実績数量
       -- 出荷依頼IF明細.入庫実績数量を設定
-      gr_mov_req_instr_l_rec.ship_to_quantity
-             := gr_interface_info_rec(in_idx).ship_to_quantity;-- 入庫実績数量
+      gr_mov_req_instr_l_rec.ship_to_quantity := gr_interface_info_rec(in_idx).ship_to_quantity; -- 入庫実績数量
 --
       -- **************************************************
       -- *** 移動依頼/指示明細(アドオン)更新を行う
@@ -15234,6 +15514,8 @@ debug_log(FND_FILE.LOG,'　　　受注実績数量の設定 プロシージャ：ord_results_quant
       gb_ord_line_flg      := FALSE; -- 外部倉庫(指示なし)判定 明細用
       lb_break_flg         := FALSE;
       gb_ord_cnt_a8_flg    := FALSE;      -- 受注(A-8) 件数表示で計上か訂正か判断するのためのフラグ
+      gb_shipping_result_if_flg := FALSE; -- 2008/09/22 TE080_400指摘#76 Add
+
 --
     END IF;
 --
