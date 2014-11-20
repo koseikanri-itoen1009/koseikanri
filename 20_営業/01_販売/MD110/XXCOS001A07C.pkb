@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCOS001A07C (body)
  * Description      : 入出庫一時表、納品ヘッダ・明細テーブルのデータの抽出を行う
  * MD.050           : VDコラム別取引データ抽出 (MD050_COS_001_A07)
- * Version          : 1.16
+ * Version          : 1.17
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -44,6 +44,7 @@ AS
  *  2009/11/27    1.14  K.Atsushiba      [E_本稼動_00147]PT対応
  *  2010/02/03    1.15  N.Maeda          [E_本稼動_01441]入出庫データ連携時VDコラム取引用ヘッダ作成条件修正
  *  2010/03/18    1.16  S.Miyakoshi      [E_本稼動_01907]顧客使用目的、顧客所在地からの抽出時に有効条件追加
+ *  2012/04/24    1.17  Y.Horikawa       [E_本稼動_09440]「売上値引金額」「売上消費税額」のマッピング不正の修正
  *
  *****************************************************************************************/
 --
@@ -2698,8 +2699,12 @@ AS
                  gt_dev_set_input_class(i),
                  gt_dev_set_tax_class(i),
                  gt_dev_set_total_amount(i),
-                 gt_dev_set_sales_tax(i),
+--****************************** 2012/04/24 1.17 MOD START ******************************
+--                 gt_dev_set_sales_tax(i),
+--                 gt_dev_set_sale_discount_a(i),
                  gt_dev_set_sale_discount_a(i),
+                 gt_dev_set_sales_tax(i),
+--****************************** 2012/04/24 1.17 MOD END   ******************************
                  gt_dev_set_tax_include(i),
                  gt_dev_set_keep_in_code(i),
                  gt_dev_set_depart_sc_clas(i),
