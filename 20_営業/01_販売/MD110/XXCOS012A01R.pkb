@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCOS012A01R (body)
  * Description      : ピックリスト（チェーン・製品別トータル）
  * MD.050           : ピックリスト（チェーン・製品別トータル） MD050_COS_012_A01
- * Version          : 1.7
+ * Version          : 1.8
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -42,6 +42,9 @@ AS
  *  2009/06/19    1.5   N.Nishimura      [T1_1437]データパージ不具合対応
  *  2009/07/10    1.6   M.Sano           [0000063]情報区分によるデータ作成対象の制御
  *  2009/08/10    1.7   M.Sano           [0000008]ピッキングリスト性能懸念
+ *  2010/02/02    1.8   Y.Kikuchi        [E_本稼動_01161]以下の抽出条件を除外する。
+ *                                                       ・出荷元保管場所の条件
+ *                                                       ・通過在庫型区分
  *
  *****************************************************************************************/
 --
@@ -219,12 +222,14 @@ AS
   --受注タイプ（ヘッダ）
   ct_tran_type_code_order   CONSTANT oe_transaction_types_all.transaction_type_code%TYPE
                                      := 'ORDER';                      --ORDER
-  --保管場所区分
-  ct_subinv_class           CONSTANT mtl_secondary_inventories.attribute1%TYPE
-                                     := '1';                          --倉庫
-  --通過在庫型区分2桁目
-  cv_invtype_dlv            CONSTANT VARCHAR2(1)   := '2';            --在庫型（納品）
-  cv_invtype_dlvfix         CONSTANT VARCHAR2(1)   := '3';            --在庫型（納品確定）
+-- 2010/02/02 Ver1.8 Del Start *
+--  --保管場所区分
+--  ct_subinv_class           CONSTANT mtl_secondary_inventories.attribute1%TYPE
+--                                     := '1';                          --倉庫
+--  --通過在庫型区分2桁目
+--  cv_invtype_dlv            CONSTANT VARCHAR2(1)   := '2';            --在庫型（納品）
+--  cv_invtype_dlvfix         CONSTANT VARCHAR2(1)   := '3';            --在庫型（納品確定）
+-- 2010/02/02 Ver1.8 Del End   *
   --ＥＤＩ品目エラーフラグ
   cv_edi_item_err_flag_yes  CONSTANT VARCHAR2(1)   := 'Y';            --エラーである
   cv_edi_item_err_flag_no   CONSTANT VARCHAR2(1)   := 'N';            --エラーでない
@@ -903,15 +908,19 @@ AS
 -- 2009/08/10 Ver1.7 Mod End   *
           AND oola.subinventory               = msi.secondary_inventory_name
           AND oola.ship_from_org_id           = msi.organization_id
-          AND msi.attribute1                  = ct_subinv_class
+-- 2010/02/02 Ver1.8 Del Start *
+--          AND msi.attribute1                  = ct_subinv_class
+-- 2010/02/02 Ver1.8 Del End   *
           AND oola.inventory_item_id          = msib.inventory_item_id
           AND oola.ship_from_org_id           = msib.organization_id
           AND oola.sold_to_org_id             = hca1.cust_account_id
           AND hca1.cust_account_id            = xca1.customer_id
           AND xca1.chain_store_code           = gv_login_chain_store_code
           AND xca1.delivery_base_code         = gv_login_base_code
-          AND SUBSTR( xca1.tsukagatazaiko_div, 2, 1 )
-                                              NOT IN ( cv_invtype_dlv, cv_invtype_dlvfix )
+-- 2010/02/02 Ver1.8 Del Start *
+--          AND SUBSTR( xca1.tsukagatazaiko_div, 2, 1 )
+--                                              NOT IN ( cv_invtype_dlv, cv_invtype_dlvfix )
+-- 2010/02/02 Ver1.8 Del End   *
           AND xca1.delivery_base_code         = hca2.account_number
           AND hca2.party_id                   = hp2.party_id
           AND EXISTS(
@@ -1129,15 +1138,19 @@ AS
 -- 2009/08/10 Ver1.7 Mod End   *
           AND oola.subinventory               = msi.secondary_inventory_name
           AND oola.ship_from_org_id           = msi.organization_id
-          AND msi.attribute1                  = ct_subinv_class
+-- 2010/02/02 Ver1.8 Del Start *
+--          AND msi.attribute1                  = ct_subinv_class
+-- 2010/02/02 Ver1.8 Del End   *
           AND oola.inventory_item_id          = msib.inventory_item_id
           AND oola.ship_from_org_id           = msib.organization_id
           AND oola.sold_to_org_id             = hca1.cust_account_id
           AND hca1.cust_account_id            = xca1.customer_id
           AND xca1.chain_store_code           = gv_login_chain_store_code
           AND xca1.delivery_base_code         = gv_login_base_code
-          AND SUBSTR( xca1.tsukagatazaiko_div, 2, 1 )
-                                              NOT IN ( cv_invtype_dlv, cv_invtype_dlvfix )
+-- 2010/02/02 Ver1.8 Del Start *
+--          AND SUBSTR( xca1.tsukagatazaiko_div, 2, 1 )
+--                                              NOT IN ( cv_invtype_dlv, cv_invtype_dlvfix )
+-- 2010/02/02 Ver1.8 Del End   *
           AND xca1.delivery_base_code         = hca2.account_number
           AND hca2.party_id                   = hp2.party_id
           AND EXISTS(
@@ -2165,6 +2178,7 @@ AS
     lv_errmsg_svf  := lv_errmsg;
 -- 2009/06/19  Ver1.5 T1_1437  Mod End
 --
+
     -- ===============================
     -- A-3  帳票ワークテーブル削除
     -- ===============================
@@ -2178,6 +2192,7 @@ AS
     ELSE
       RAISE global_process_expt;
     END IF;
+
 --
     COMMIT;
 --
