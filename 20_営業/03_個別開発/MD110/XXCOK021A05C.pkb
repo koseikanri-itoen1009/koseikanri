@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCOK021A05C(body)
  * Description      : APインターフェイス
  * MD.050           : APインターフェース MD050_COK_021_A05
- * Version          : 1.5
+ * Version          : 1.6
  *
  * Program List
  * -------------------- ------------------------------------------------------------
@@ -15,7 +15,7 @@ AS
  *  create_csv           データファイル出力(A-8)
  *  change_status        連携ステータス更新(A-7)
  *  amount_chk           金額チェック(A-6)
- *  create_detail_tax    P請求書明細OIF登録(A-5) 消費税
+ *  create_detail_tax    AP請求書明細OIF登録(A-5) 消費税
  *  create_detail_data   AP請求書明細OIF(A-5) 税以外
  *  create_oif_data      AP請求書ヘッダーOIF登録(A-3)
  *  init                 初期処理(A-1)
@@ -35,6 +35,7 @@ AS
  *                                                       明細レコード取得時にインターフェースステータスを
  *                                                       考慮するように変更
  *                                                       AP_IFヘッダに登録している請求書番号を問屋支払テーブルへ更新
+ *  2009/12/09    1.6   K.Yamaguchi      [E_本稼動_00388]連携ステータス更新条件漏れ対応
  *
  *****************************************************************************************/
   -- ===============================================
@@ -337,6 +338,9 @@ AS
       id_payment_date   IN DATE                                  -- 支払予定日
     , iv_selling_month  IN VARCHAR2                              -- 売上対象年月
     , iv_supplier_code  IN VARCHAR2                              -- 仕入先コード
+-- 2009/12/09 Ver.1.6 [E_本稼動_00388] SCS K.Yamaguchi ADD START
+    , iv_base_code      IN VARCHAR2                              -- 拠点
+-- 2009/12/09 Ver.1.6 [E_本稼動_00388] SCS K.Yamaguchi ADD END
     )
     IS
       SELECT xwp.expect_payment_date  AS expect_payment_date     -- 支払予定日
@@ -362,6 +366,9 @@ AS
       WHERE  xwp.expect_payment_date  = id_payment_date
       AND    xwp.selling_month        = iv_selling_month
       AND    xwp.supplier_code        = iv_supplier_code
+-- 2009/12/09 Ver.1.6 [E_本稼動_00388] SCS K.Yamaguchi ADD START
+      AND    xwp.base_code            = iv_base_code
+-- 2009/12/09 Ver.1.6 [E_本稼動_00388] SCS K.Yamaguchi ADD END
       AND    xwp.request_id           = cn_request_id
       AND    xwp.ap_interface_status  = cv_payment_cooperate     -- AP連携フラグ：'1'連携済
       AND    xwp.base_code            = hca_base.account_number
@@ -420,7 +427,10 @@ AS
       CLOSE get_column_name_cur;
       -- CSVファイルに書き込み
       <<output_csv_column_loop>>
-      FOR i IN lt_column_name_tab.FIRST .. lt_column_name_tab.LAST LOOP
+-- 2009/12/09 Ver.1.6 [E_本稼動_00388] SCS K.Yamaguchi REPAIR START
+--      FOR i IN lt_column_name_tab.FIRST .. lt_column_name_tab.LAST LOOP
+      FOR i IN 1 .. lt_column_name_tab.COUNT LOOP
+-- 2009/12/09 Ver.1.6 [E_本稼動_00388] SCS K.Yamaguchi REPAIR END
         -- 出力行作成
         IF ( i != lt_column_name_tab.COUNT ) THEN
           lv_csv_line := lv_csv_line || lt_column_name_tab( i ).column_name || ',';
@@ -444,12 +454,18 @@ AS
            id_payment_date   => ir_haed_data_rec.expect_payment_date      -- 支払予定日
          , iv_selling_month  => ir_haed_data_rec.selling_month            -- 売上対象年月
          , iv_supplier_code  => ir_haed_data_rec.supplier_code            -- 仕入先コード
+-- 2009/12/09 Ver.1.6 [E_本稼動_00388] SCS K.Yamaguchi ADD START
+         , iv_base_code      => ir_haed_data_rec.base_code                -- 拠点コード
+-- 2009/12/09 Ver.1.6 [E_本稼動_00388] SCS K.Yamaguchi ADD END
          );
     FETCH get_csv_data_cur BULK COLLECT INTO lt_csv_data_tab;
     CLOSE get_csv_data_cur;
     -- CSVファイルに書き込み
     <<output_csv_data_loop>>
-    FOR j IN lt_csv_data_tab.FIRST .. lt_csv_data_tab.LAST LOOP
+-- 2009/12/09 Ver.1.6 [E_本稼動_00388] SCS K.Yamaguchi REPAIR START
+--    FOR j IN lt_csv_data_tab.FIRST .. lt_csv_data_tab.LAST LOOP
+    FOR j IN 1 .. lt_csv_data_tab.COUNT LOOP
+-- 2009/12/09 Ver.1.6 [E_本稼動_00388] SCS K.Yamaguchi REPAIR END
       -- 支払予定日を文字列に変更
       lv_payment_date := TO_CHAR( lt_csv_data_tab( j ).expect_payment_date , 'YYYY/MM/DD' );
       -- 支払金額(税抜)に税を加算
@@ -522,6 +538,9 @@ AS
       id_payment_date   IN  DATE                   -- 支払予定日
     , iv_selling_month  IN  VARCHAR2               -- 売上対象年月
     , iv_supplier_code  IN  VARCHAR2               -- 仕入先コード
+-- 2009/12/09 Ver.1.6 [E_本稼動_00388] SCS K.Yamaguchi ADD START
+    , iv_base_code      IN  VARCHAR2               -- 拠点コード
+-- 2009/12/09 Ver.1.6 [E_本稼動_00388] SCS K.Yamaguchi ADD END
     )
     IS
       SELECT 'X'
@@ -533,6 +552,9 @@ AS
                AND    xwp.expect_payment_date      = id_payment_date
                AND    xwp.selling_month            = iv_selling_month
                AND    xwp.supplier_code            = iv_supplier_code
+-- 2009/12/09 Ver.1.6 [E_本稼動_00388] SCS K.Yamaguchi ADD START
+               AND    xwp.base_code                = iv_base_code
+-- 2009/12/09 Ver.1.6 [E_本稼動_00388] SCS K.Yamaguchi ADD END
                AND    xwp.ap_interface_status      = cv_payment_uncooperate  -- AP連携ステータス：'0'未連携
              )
     FOR UPDATE NOWAIT;
@@ -541,6 +563,9 @@ AS
       id_payment_date   IN  DATE                   -- 支払予定日
     , iv_selling_month  IN  VARCHAR2               -- 売上対象年月
     , iv_supplier_code  IN  VARCHAR2               -- 仕入先コード
+-- 2009/12/09 Ver.1.6 [E_本稼動_00388] SCS K.Yamaguchi ADD START
+    , iv_base_code      IN  VARCHAR2               -- 拠点コード
+-- 2009/12/09 Ver.1.6 [E_本稼動_00388] SCS K.Yamaguchi ADD END
     )
     IS
        SELECT 'X'
@@ -548,6 +573,9 @@ AS
        WHERE  xwp.expect_payment_date      = id_payment_date
        AND    xwp.selling_month            = iv_selling_month
        AND    xwp.supplier_code            = iv_supplier_code
+-- 2009/12/09 Ver.1.6 [E_本稼動_00388] SCS K.Yamaguchi ADD START
+       AND    xwp.base_code                = iv_base_code
+-- 2009/12/09 Ver.1.6 [E_本稼動_00388] SCS K.Yamaguchi ADD END
        AND    xwp.ap_interface_status      = cv_payment_uncooperate          -- AP連携ステータス：'0'未連携
      FOR UPDATE NOWAIT;
     -- ===============================================
@@ -566,6 +594,9 @@ AS
         id_payment_date   => ir_head_data_rec.expect_payment_date  -- 支払予定日
       , iv_selling_month  => ir_head_data_rec.selling_month        -- 売上対象年月
       , iv_supplier_code  => ir_head_data_rec.supplier_code        -- 仕入先コード
+-- 2009/12/09 Ver.1.6 [E_本稼動_00388] SCS K.Yamaguchi ADD START
+      , iv_base_code      => ir_head_data_rec.base_code            -- 拠点コード
+-- 2009/12/09 Ver.1.6 [E_本稼動_00388] SCS K.Yamaguchi ADD END
       );
       -- カーソルクローズ
       CLOSE wholesale_bill_chk;
@@ -587,6 +618,9 @@ AS
                  AND    xwp.expect_payment_date      = ir_head_data_rec.expect_payment_date
                  AND    xwp.selling_month            = ir_head_data_rec.selling_month
                  AND    xwp.supplier_code            = ir_head_data_rec.supplier_code
+-- 2009/12/09 Ver.1.6 [E_本稼動_00388] SCS K.Yamaguchi ADD START
+                 AND    xwp.base_code                = ir_head_data_rec.base_code
+-- 2009/12/09 Ver.1.6 [E_本稼動_00388] SCS K.Yamaguchi ADD END
                  AND    xwp.ap_interface_status      = cv_payment_uncooperate             -- AP連携ステータス：未連携
                );
       EXCEPTION
@@ -639,6 +673,9 @@ AS
         id_payment_date   => ir_head_data_rec.expect_payment_date  -- 支払予定日
       , iv_selling_month  => ir_head_data_rec.selling_month        -- 売上対象年月
       , iv_supplier_code  => ir_head_data_rec.supplier_code        -- 仕入先コード
+-- 2009/12/09 Ver.1.6 [E_本稼動_00388] SCS K.Yamaguchi ADD START
+      , iv_base_code      => ir_head_data_rec.base_code            -- 拠点コード
+-- 2009/12/09 Ver.1.6 [E_本稼動_00388] SCS K.Yamaguchi ADD END
       );
       -- カーソルクローズ
       CLOSE wholesale_payment_chk;
@@ -659,6 +696,9 @@ AS
         WHERE  expect_payment_date    = ir_head_data_rec.expect_payment_date
         AND    selling_month          = ir_head_data_rec.selling_month
         AND    supplier_code          = ir_head_data_rec.supplier_code
+-- 2009/12/09 Ver.1.6 [E_本稼動_00388] SCS K.Yamaguchi ADD START
+        AND    base_code              = ir_head_data_rec.base_code
+-- 2009/12/09 Ver.1.6 [E_本稼動_00388] SCS K.Yamaguchi ADD END
         AND    ap_interface_status    = cv_payment_uncooperate;            -- AP連携ステータス：未連携
 --
       EXCEPTION
@@ -1388,7 +1428,10 @@ AS
     END IF;
     -- ループ開始
     <<ap_oif_detail_loop>>
-    FOR i IN lt_detail_tab.FIRST .. lt_detail_tab.LAST LOOP
+-- 2009/12/09 Ver.1.6 [E_本稼動_00388] SCS K.Yamaguchi REPAIR START
+--    FOR i IN lt_detail_tab.FIRST .. lt_detail_tab.LAST LOOP
+    FOR i IN 1 .. lt_detail_tab.COUNT LOOP
+-- 2009/12/09 Ver.1.6 [E_本稼動_00388] SCS K.Yamaguchi REPAIR END
     -- 販売手数料・販売協賛金・その他科目レコードの登録
       create_detail_data(
         ov_errbuf           => lv_errbuf               -- エラー・メッセージ
