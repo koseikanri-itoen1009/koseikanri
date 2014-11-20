@@ -7,7 +7,7 @@ AS
  * Description      : 倉庫払出指示書
  * MD.050           : 引当/配車(帳票) T_MD050_BPO_621
  * MD.070           : 倉庫払出指示書  T_MD070_BPO_62F
- * Version          : 1.2
+ * Version          : 1.5
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -29,6 +29,9 @@ AS
  *                                         vendor_site_codeに変更。
  *  2008/07/02    1.2   Satoshi Yunba    禁則文字対応
  *  2008/07/18    1.3   Hitomi Itou      ST不具合#465対応 出庫元・ブロックの抽出条件を変更
+ *  2008/08/07    1.4   Akiyoshi Shiina  内部変更要求#168,#183対応
+ *  2008/10/20    1.5   Masayoshi Uehara T_TE080_BPO_620 指摘44(品目、ロット単位に合計して算出)
+ *                                       課題#62変更#168 指示無し実績の帳票出力制御
  *
  *****************************************************************************************/
 --
@@ -83,6 +86,10 @@ AS
   gc_order_category_code     CONSTANT  VARCHAR2(6)  := 'RETURN' ;             -- 返品
   -- 削除フラグ
   gc_delete_flag             CONSTANT  VARCHAR2(1)  := 'Y' ;
+-- ADD START 2008/10/20 1.5
+  -- 指示なし実績区分
+  gc_no_instr_actual_class   CONSTANT  VARCHAR2(1)  := 'Y' ;                 -- 指示なし実績
+-- ADD END 2008/10/20 1.5
   -- 文書タイプ
   gc_doc_type_code_mv        CONSTANT  VARCHAR2(2)  := '20' ;                -- 移動
   gc_doc_type_code_syukka    CONSTANT  VARCHAR2(2)  := '10' ;                -- 出荷依頼
@@ -149,7 +156,10 @@ AS
   xott2v  xxwsh_oe_transaction_types2_v%ROWTYPE ;   -- 受注タイプ情報VIEW2
   xola    xxwsh_order_lines_all%ROWTYPE ;           -- 受注明細アドオン
   xim2v   xxcmn_item_mst2_v%ROWTYPE ;               -- OPM品目情報VIEW2
-  xic3v   xxcmn_item_categories3_v%ROWTYPE ;        -- OPM品目カテゴリ割当情報VIEW3
+-- 2008/08/07 v1.4 UPDATE START
+--  xic3v   xxcmn_item_categories3_v%ROWTYPE ;        -- OPM品目カテゴリ割当情報VIEW3
+  xic2v   xxcmn_item_categories2_v%ROWTYPE ;        -- OPM品目カテゴリ割当情報VIEW2
+-- 2008/08/07 v1.4 UPDATE END
   xmld    xxinv_mov_lot_details%ROWTYPE ;           -- 移動ロット詳細(アドオン)
   ilm     ic_lots_mst%ROWTYPE ;                     -- OPMロットマスタ
   xil2v   xxcmn_item_locations2_v%ROWTYPE ;         -- OPM保管場所情報VIEW2
@@ -163,9 +173,15 @@ AS
       ,ship_nm               xil2v.description%TYPE             -- 出庫元(名称)
       ,delivery_to_cd        xoha.deliver_to%TYPE               -- 配送先/入庫先（コード）
       ,delivery_to_nm        xcas2v.party_site_full_name%TYPE   -- 配送先/入庫先（名称）
-      ,item_class            xic3v.item_class_name%TYPE         -- 品目区分名
+-- 2008/08/07 v1.4 UPDATE START
+--      ,item_class            xic3v.item_class_name%TYPE         -- 品目区分名
+      ,item_class            xic2v.description%TYPE             -- 品目区分名
+-- 2008/08/07 v1.4 UPDATE END
       ,ship_date             xoha.schedule_ship_date%TYPE       -- 出庫日
-      ,in_out_class_code     xic3v.int_ext_class%TYPE           -- 内外区分（自社他社区分コード）
+-- 2008/08/07 v1.4 UPDATE START
+--      ,in_out_class_code     xic3v.int_ext_class%TYPE           -- 内外区分（自社他社区分コード）
+      ,in_out_class_code     xic2v.segment1%TYPE                -- 内外区分（自社他社区分コード）
+-- 2008/08/07 v1.4 UPDATE END
       ,int_ext_class         xlv2v.meaning%TYPE                 -- 内外区分
       ,item_cd               xola.shipping_item_code%TYPE       -- 品目（コード）
       ,item_nm               xim2v.item_short_name%TYPE         -- 品目（名称）
@@ -176,7 +192,10 @@ AS
       ,best_before_date      ilm.attribute3%TYPE                -- 賞味期限
       ,native_sign           ilm.attribute2%TYPE                -- 固有記号
       ,trans_type_id         xoha.order_type_id%TYPE            -- 出庫形態(ID)
-      ,item_class_code       xic3v.item_class_code%TYPE         -- 品目区分コード
+-- 2008/08/07 v1.4 UPDATE START
+--      ,item_class_code       xic3v.item_class_code%TYPE         -- 品目区分コード
+      ,item_class_code       xic2v.segment1%TYPE                -- 品目区分コード
+-- 2008/08/07 v1.4 UPDATE END
   );
   type_report_data      rec_report_data;
   TYPE list_report_data IS TABLE OF rec_report_data INDEX BY BINARY_INTEGER ;
@@ -306,51 +325,92 @@ AS
        xott2v.transaction_type_name         AS  trans_type        -- 出庫形態
       ,xoha.deliver_from                    AS  ship_cd           -- 出庫元
       ,xil2v.description                    AS  ship_nm           -- 出庫元(名称)
-      ,xoha.deliver_to                      AS  delivery_to_cd    -- 配送先/入庫先（コード）
-      ,xcas2v.party_site_full_name          AS  delivery_to_nm    -- 配送先/入庫先（名称）
-      ,xic3v.item_class_name                AS  item_class        -- 品目区分名
+--MOD START 2008/10/20 1.5 
+--      ,xoha.deliver_to                      AS  delivery_to_cd    -- 配送先/入庫先（コード）
+--      ,xcas2v.party_site_full_name          AS  delivery_to_nm    -- 配送先/入庫先（名称）
+      ,DECODE(gt_param.deliver_to
+        ,NULL,NULL
+        ,xoha.deliver_to)                  AS  delivery_to_cd    -- 配送先/入庫先（コード）
+      ,DECODE(gt_param.deliver_to
+        ,NULL,NULL
+        ,xcas2v.party_site_full_name)       AS  delivery_to_nm    -- 配送先/入庫先（名称）
+--MOD END 2008/10/20 1.5 
+-- 2008/08/07 v1.4 UPDATE START
+--      ,xic3v.item_class_name                AS  item_class        -- 品目区分名
+      ,xic5v.item_class_name                AS  item_class        -- 品目区分名
+-- 2008/08/07 v1.4 UPDATE END
       ,xoha.schedule_ship_date              AS  ship_date         -- 出庫日
-      ,xic3v.int_ext_class                  AS  in_out_class_code -- 内外区分（自社他社区分コード）
+-- 2008/08/07 v1.4 UPDATE START
+--     ,xic3v.int_ext_class                  AS  in_out_class_code -- 内外区分（自社他社区分コード）
+      ,mcb.attribute1                       AS  in_out_class_code -- 内外区分（自社他社区分コード）
+-- 2008/08/07 v1.4 UPDATE END
       ,xlv2v.meaning                        AS  int_ext_class     -- 内外区分
       ,xola.shipping_item_code              AS  item_cd           -- 品目（コード）
       ,xim2v.item_short_name                AS  item_nm           -- 品目（名称）
       ,CASE                                     
         -- 引当されている場合
-        WHEN ( xola.reserved_quantity > 0 ) THEN
+        WHEN ( SUM(xola.reserved_quantity) > 0 ) THEN
           CASE 
-            WHEN  ( ( xic3v.item_class_code = gc_item_cd_prdct )
+-- 2008/08/07 v1.4 UPDATE START
+--            WHEN  ( ( xic3v.item_class_code = gc_item_cd_prdct )
+            WHEN  ( ( xic5v.item_class_code = gc_item_cd_prdct )
+-- 2008/08/07 v1.4 UPDATE END
             AND     ( xim2v.conv_unit IS NOT NULL  ) ) THEN
-              xmld.actual_quantity / TO_NUMBER(
+-- 2008/10/20 1.5 MOD START 品目/ロット単位に数量を合計
+--              xmld.actual_quantity / TO_NUMBER(
+              SUM(xmld.actual_quantity) / TO_NUMBER(
+-- 2008/10/20 1.5 MOD END
                                                 CASE
                                                   WHEN ( xim2v.num_of_cases > 0 ) THEN
                                                     xim2v.num_of_cases
                                                   ELSE
                                                     TO_CHAR(1)
                                                 END
+-- 2008/10/20 1.5 MOD START 品目/ロット単位に数量を合計
+--                                              )
                                               )
+-- 2008/10/20 1.5 MOD END
             ELSE
-              xmld.actual_quantity
+-- 2008/10/20 1.5 MOD START 品目/ロット単位に数量を合計
+--              xmld.actual_quantity
+              SUM(xmld.actual_quantity)
+-- 2008/10/20 1.5 MOD END
             END
         -- 引当されていない場合
-        WHEN  ( ( xola.reserved_quantity IS NULL ) OR ( xola.reserved_quantity = 0 ) ) THEN
+        WHEN  ( ( SUM(xola.reserved_quantity) IS NULL ) OR ( SUM(xola.reserved_quantity) = 0 ) ) THEN
           CASE 
-            WHEN  ( ( xic3v.item_class_code = gc_item_cd_prdct )
+-- 2008/08/07 v1.4 UPDATE START
+--            WHEN  ( ( xic3v.item_class_code = gc_item_cd_prdct )
+            WHEN  ( ( xic5v.item_class_code = gc_item_cd_prdct )
+-- 2008/08/07 v1.4 UPDATE END
             AND     ( xim2v.conv_unit IS NOT NULL  ) ) THEN
-              xola.quantity / TO_NUMBER(
+-- 2008/10/20 1.5 MOD START 品目/ロット単位に数量を合計
+--              xola.quantity / TO_NUMBER(
+              SUM(xola.quantity) / TO_NUMBER(
+-- 2008/10/20 1.5 MOD END
                                         CASE
                                           WHEN ( xim2v.num_of_cases > 0 ) THEN
                                             xim2v.num_of_cases
                                           ELSE
                                             TO_CHAR(1)
                                         END
+-- 2008/10/20 1.5 MOD START 品目/ロット単位に数量を合計
+--                                       )
                                        )
+-- 2008/10/20 1.5 MOD END
             ELSE
-              xola.quantity
+-- 2008/10/20 1.5 MOD START 品目/ロット単位に数量を合計
+--              xola.quantity
+              SUM(xola.quantity)
+-- 2008/10/20 1.5 MOD END
             END
         END                                 AS  qty               -- 合計数
       ,CASE
        -- 条件①
-       WHEN (    xic3v.item_class_code = gc_item_cd_prdct
+-- 2008/08/07 v1.4 UPDATE START
+--       WHEN (    xic3v.item_class_code = gc_item_cd_prdct
+       WHEN (    xic5v.item_class_code = gc_item_cd_prdct
+-- 2008/08/07 v1.4 UPDATE END
              AND xim2v.conv_unit IS NOT NULL) THEN
          xim2v.conv_unit
        ELSE
@@ -362,13 +422,24 @@ AS
       ,ilm.attribute3                       AS  best_before_date  -- 賞味期限
       ,ilm.attribute2                       AS  native_sign       -- 固有記号
       ,xoha.order_type_id                   AS  order_type_id     -- 出庫形態（ID）
-      ,xic3v.item_class_code                AS  item_class_code   -- 品目区分コード
+-- 2008/08/07 v1.4 UPDATE START
+--      ,xic3v.item_class_code                AS  item_class_code   -- 品目区分コード
+      ,xic5v.item_class_code                AS  item_class_code   -- 品目区分コード
+-- 2008/08/07 v1.4 UPDATE END
     FROM
        xxwsh_order_headers_all                xoha                  -- 受注ヘッダアドオン
       ,xxwsh_oe_transaction_types2_v          xott2v                -- 受注タイプ情報VIEW2
       ,xxwsh_order_lines_all                  xola                  -- 受注明細アドオン
       ,xxcmn_item_mst2_v                      xim2v                 -- OPM品目情報VIEW2
-      ,xxcmn_item_categories3_v               xic3v                 -- OPM品目カテゴリ割当情報VIEW3
+-- 2008/08/07 v1.4 UPDATE START
+--     ,xxcmn_item_categories3_v               xic3v                 -- OPM品目カテゴリ割当情報VIEW3
+      ,xxcmn_item_categories5_v               xic5v                 -- OPM品目カテゴリ割当情報VIEW5
+      ,gmi_item_categories                    gic
+      ,mtl_categories_b                       mcb
+      ,mtl_categories_tl                      mct
+      ,mtl_category_sets_b                    mcsb
+      ,mtl_category_sets_tl                   mcst
+-- 2008/08/07 v1.4 UPDATE END
       ,xxinv_mov_lot_details                  xmld                  -- 移動ロット詳細(アドオン)
       ,ic_lots_mst                            ilm                   -- OPMロットマスタ
       ,xxcmn_item_locations2_v                xil2v                 -- OPM保管場所情報VIEW2
@@ -399,6 +470,9 @@ AS
         OR  xil2v.distribution_block  =  gt_param.block)                     -- パラメータ：ブロックがNULLでない場合、条件に追加
 --Mod end 2008/07/18 H.Itou
       AND   TRUNC( xoha.schedule_ship_date )   = TRUNC( gt_param.date_from )  -- パラメータ：出庫日
+-- 2008/10/20 v1.5 ADD START
+      AND   xoha.schedule_ship_date IS NOT NULL
+-- 2008/10/20 v1.5 ADD END
       AND   xoha.latest_external_flag          = gc_latest_external_flag
       -------------------------------------------------------------------------------
       -- 受注タイプ情報VIEW2
@@ -416,6 +490,11 @@ AS
       -------------------------------------------------------------------------------
       AND   xoha.order_header_id               = xola.order_header_id
       AND   xola.delete_flag                  <> gc_delete_flag
+-- 2008/10/20 v1.5 DEL START
+-- 2008/08/07 v1.4 ADD START
+--      AND   xola.quantity                      > 0
+-- 2008/08/07 v1.4 ADD END
+-- 2008/10/20 v1.5 DEL END
       -------------------------------------------------------------------------------
       -- OPM品目情報VIEW2
       -------------------------------------------------------------------------------
@@ -426,14 +505,35 @@ AS
           OR
              (xim2v.end_date_active IS NULL)
           )
+-- 2008/08/07 v1.4 UPDATE START
+--      -------------------------------------------------------------------------------
+--      -- OPM品目カテゴリ割当情報VIEW3
+--      -------------------------------------------------------------------------------
       -------------------------------------------------------------------------------
-      -- OPM品目カテゴリ割当情報VIEW3
+      -- OPM品目カテゴリ割当情報VIEW
       -------------------------------------------------------------------------------
-      AND xim2v.item_id                        = xic3v.item_id
+--      AND xim2v.item_id                        = xic3v.item_id
+      AND xim2v.item_id                        = xic5v.item_id
+      AND mct.source_lang                      = 'JA'
+      AND mct.language                         = 'JA'
+      AND mcb.category_id                      = mct.category_id
+      AND mcsb.structure_id                    = mcb.structure_id
+      AND gic.category_id                      = mcb.category_id
+      AND mcst.source_lang                     = 'JA'
+      AND mcst.language                        = 'JA'
+      AND mcst.category_set_name               = '内外区分'
+      AND mcsb.category_set_id                 = mcst.category_set_id
+      AND gic.category_set_id                  = mcsb.category_set_id
+      AND xim2v.item_id                        = gic.item_id
+-- 2008/08/07 v1.4 UPDATE END
       AND (gt_param.item_div IS NULL
            OR
-           xic3v.item_class_code               = gt_param.item_div )       -- パラメータ：品目区分
-      AND xic3v.prod_class_code                = gt_param.prod_div         -- パラメータ：商品区分
+-- 2008/08/07 v1.4 UPDATE START
+--           xic3v.item_class_code               = gt_param.item_div )       -- パラメータ：品目区分
+           xic5v.item_class_code               = gt_param.item_div )       -- パラメータ：品目区分
+--      AND xic3v.prod_class_code                = gt_param.prod_div         -- パラメータ：商品区分
+      AND xic5v.prod_class_code                = gt_param.prod_div         -- パラメータ：商品区分
+-- 2008/08/07 v1.4 UPDATE END
       -------------------------------------------------------------------------------
       -- 移動ロット詳細(アドオン)
       -------------------------------------------------------------------------------
@@ -463,12 +563,46 @@ AS
       -- クイックコード情報VIEW2
       -------------------------------------------------------------------------------
       AND xlv2v.lookup_type = gc_lookup_type_621b_int
-      AND xlv2v.lookup_code = xic3v.int_ext_class                  -- 自社他社区分(1:自社、2:他社）
+-- 2008/08/07 v1.4 UPDATE START
+--     AND xlv2v.lookup_code = xic3v.int_ext_class                  -- 自社他社区分(1:自社、2:他社）
+      AND xlv2v.lookup_code = mcb.attribute1                       -- 自社他社区分(1:自社、2:他社）
+-- 2008/10/20 1.5 ADD START 品目/ロット単位に数量を合計
+      GROUP BY
+       xott2v.transaction_type_name    -- 出庫形態
+        , xoha.order_type_id    
+        ,xoha.deliver_from             -- 出庫元
+        ,xil2v.description             -- 出庫元(名称)
+        ,DECODE(gt_param.deliver_to
+          ,NULL,NULL
+          ,xoha.deliver_to)                 -- 配送先/入庫先（コード）
+        ,DECODE(gt_param.deliver_to
+          ,NULL,NULL
+          ,xcas2v.party_site_full_name)       -- 配送先/入庫先（名称）
+        ,xic5v.item_class_name          -- 品目区分名
+        ,xoha.schedule_ship_date        -- 出庫日
+        ,mcb.attribute1                 -- 内外区分（自社他社区分コード）
+        ,xlv2v.meaning                  -- 内外区分
+        ,xola.shipping_item_code        -- 品目（コード）
+        ,xim2v.item_short_name          -- 品目（名称）
+        ,xim2v.conv_unit                -- 入出庫換算単位
+        ,xmld.lot_no                    -- ロットNo
+        ,ilm.attribute1                 -- 製造日
+        ,ilm.attribute3                 -- 賞味期限
+        ,ilm.attribute2                 -- 固有記号
+        ,xic5v.item_class_code          -- 品目クラスコード
+        ,xim2v.num_of_cases             -- 入数
+        ,xim2v.item_um                  -- 合計数_単位
+-- 2008/10/20 1.5 ADD END
+-- 2008/08/07 v1.4 UPDATE END
       ORDER BY
          xoha.order_type_id           ASC
         ,xoha.deliver_from            ASC
-        ,xic3v.item_class_code        ASC
-        ,xic3v.int_ext_class          ASC
+-- 2008/08/07 v1.4 UPDATE START
+--        ,xic3v.item_class_code        ASC
+--        ,xic3v.int_ext_class          ASC
+        ,xic5v.item_class_code        ASC
+        ,mcb.attribute1               ASC
+-- 2008/08/07 v1.4 UPDATE END
         ,xola.shipping_item_code      ASC
         ,xmld.lot_no                  ASC
       ;
@@ -479,35 +613,70 @@ AS
        xott2v.transaction_type_name         AS  trans_type        -- 出庫形態
       ,xoha.deliver_from                    AS  ship_cd           -- 出庫元
       ,xil2v.description                    AS  ship_nm           -- 出庫元(名称)
-      ,xoha.vendor_site_code                AS  delivery_to_cd    -- 配送先/入庫先（コード）
-      ,xvs2v.vendor_site_name               AS  delivery_to_nm    -- 配送先/入庫先（名称）
-      ,xic3v.item_class_name                AS  item_class        -- 品目区分名
+--MOD START 2008/10/20 1.5 
+--      ,xoha.vendor_site_code                AS  delivery_to_cd    -- 配送先/入庫先（コード）
+--      ,xvs2v.vendor_site_name               AS  delivery_to_nm    -- 配送先/入庫先（名称）
+      ,DECODE(gt_param.deliver_to
+        ,NULL,NULL
+        ,xoha.vendor_site_code)             AS  delivery_to_cd    -- 配送先/入庫先（コード）
+      ,DECODE(gt_param.deliver_to
+        ,NULL,NULL
+        ,xvs2v.vendor_site_name)            AS  delivery_to_nm   -- 配送先/入庫先（名称）
+--MOD START 2008/10/20 1.5 
+-- 2008/08/07 v1.4 UPDATE START
+--      ,xic3v.item_class_name                AS  item_class        -- 品目区分名
+      ,xic5v.item_class_name                AS  item_class        -- 品目区分名
+-- 2008/08/07 v1.4 UPDATE END
       ,xoha.schedule_ship_date              AS  ship_date         -- 出庫日
-      ,xic3v.int_ext_class                  AS  in_out_class_code -- 内外区分（自社他社区分コード）
+-- 2008/08/07 v1.4 UPDATE START
+--     ,xic3v.int_ext_class                  AS  in_out_class_code -- 内外区分（自社他社区分コード）
+      ,mcb.attribute1                       AS  in_out_class_code -- 内外区分（自社他社区分コード）
+-- 2008/08/07 v1.4 UPDATE END
       ,xlv2v.meaning                        AS  int_ext_class     -- 内外区分
       ,xola.shipping_item_code              AS  item_cd           -- 品目（コード）
       ,xim2v.item_short_name                AS  item_nm           -- 品目（名称）
+-- 2008/10/20 1.5 MOD START 品目/ロット単位に数量を合計
+--      ,CASE                                     
+--        -- 引当されている場合
+--        WHEN ( xola.reserved_quantity > 0 ) THEN
+--            xmld.actual_quantity
+--        -- 引当されていない場合
+--        WHEN  ( ( xola.reserved_quantity IS NULL ) OR ( xola.reserved_quantity = 0 ) ) THEN
+--            xola.quantity
+--        END                                 AS  qty               -- 合計数
       ,CASE                                     
         -- 引当されている場合
-        WHEN ( xola.reserved_quantity > 0 ) THEN
-            xmld.actual_quantity
+        WHEN ( SUM(xola.reserved_quantity) > 0 ) THEN
+            SUM(xmld.actual_quantity)
         -- 引当されていない場合
-        WHEN  ( ( xola.reserved_quantity IS NULL ) OR ( xola.reserved_quantity = 0 ) ) THEN
-            xola.quantity
+        WHEN  ( ( SUM(xola.reserved_quantity) IS NULL ) OR ( SUM(xola.reserved_quantity) = 0 ) ) THEN
+            SUM(xola.quantity)
         END                                 AS  qty               -- 合計数
+-- 2008/10/20 1.5 MOD END
       ,xim2v.item_um                        AS  qty_tani          -- 合計数_単位
       ,xmld.lot_no                          AS  lot_no            -- ロットNo
       ,ilm.attribute1                       AS  prod_date         -- 製造日
       ,ilm.attribute3                       AS  best_before_date  -- 賞味期限
       ,ilm.attribute2                       AS  native_sign       -- 固有記号
       ,xoha.order_type_id                   AS  trans_type_id     -- 出庫形態（ID）
-      ,xic3v.item_class_code                AS  item_class_code   -- 品目区分コード
+-- 2008/08/07 v1.4 UPDATE START
+--      ,xic3v.item_class_code                AS  item_class_code   -- 品目区分コード
+      ,xic5v.item_class_code                AS  item_class_code   -- 品目区分コード
+-- 2008/08/07 v1.4 UPDATE END
     FROM
        xxwsh_order_headers_all                xoha       -- 受注ヘッダアドオン
       ,xxwsh_oe_transaction_types2_v          xott2v     -- 受注タイプ情報VIEW2
       ,xxwsh_order_lines_all                  xola       -- 受注明細アドオン
       ,xxcmn_item_mst2_v                      xim2v      -- OPM品目情報VIEW2
-      ,xxcmn_item_categories3_v               xic3v      -- OPM品目カテゴリ割当情報VIEW3
+-- 2008/08/07 v1.4 UPDATE START
+--     ,xxcmn_item_categories3_v               xic3v                 -- OPM品目カテゴリ割当情報VIEW3
+      ,xxcmn_item_categories5_v               xic5v                 -- OPM品目カテゴリ割当情報VIEW5
+      ,gmi_item_categories                    gic
+      ,mtl_categories_b                       mcb
+      ,mtl_categories_tl                      mct
+      ,mtl_category_sets_b                    mcsb
+      ,mtl_category_sets_tl                   mcst
+-- 2008/08/07 v1.4 UPDATE END
       ,xxinv_mov_lot_details                  xmld       -- 移動ロット詳細(アドオン)
       ,ic_lots_mst                            ilm        -- OPMロットマスタ
       ,xxcmn_item_locations2_v                xil2v      -- OPM保管場所情報VIEW2
@@ -567,14 +736,35 @@ AS
           OR
              (xim2v.end_date_active IS NULL)
           )
+-- 2008/08/07 v1.4 UPDATE START
+--      -------------------------------------------------------------------------------
+--      -- OPM品目カテゴリ割当情報VIEW3
+--      -------------------------------------------------------------------------------
       -------------------------------------------------------------------------------
-      -- OPM品目カテゴリ割当情報VIEW3
+      -- OPM品目カテゴリ割当情報VIEW
       -------------------------------------------------------------------------------
-      AND xim2v.item_id                         = xic3v.item_id
+--      AND xim2v.item_id                        = xic3v.item_id
+      AND xim2v.item_id                        = xic5v.item_id
+      AND mct.source_lang                      = 'JA'
+      AND mct.language                         = 'JA'
+      AND mcb.category_id                      = mct.category_id
+      AND mcsb.structure_id                    = mcb.structure_id
+      AND gic.category_id                      = mcb.category_id
+      AND mcst.source_lang                     = 'JA'
+      AND mcst.language                        = 'JA'
+      AND mcst.category_set_name               = '内外区分'
+      AND mcsb.category_set_id                 = mcst.category_set_id
+      AND gic.category_set_id                  = mcsb.category_set_id
+      AND xim2v.item_id                        = gic.item_id
+-- 2008/08/07 v1.4 UPDATE END
       AND (gt_param.item_div IS NULL
            OR
-           xic3v.item_class_code                = gt_param.item_div )      -- パラメータ：品目区分
-      AND xic3v.prod_class_code                 = gt_param.prod_div        -- パラメータ：商品区分
+-- 2008/08/07 v1.4 UPDATE START
+--           xic3v.item_class_code               = gt_param.item_div )       -- パラメータ：品目区分
+           xic5v.item_class_code               = gt_param.item_div )       -- パラメータ：品目区分
+--      AND xic3v.prod_class_code                = gt_param.prod_div         -- パラメータ：商品区分
+      AND xic5v.prod_class_code                = gt_param.prod_div         -- パラメータ：商品区分
+-- 2008/08/07 v1.4 UPDATE END
       -------------------------------------------------------------------------------
       -- 移動ロット詳細(アドオン)
       -------------------------------------------------------------------------------
@@ -604,13 +794,45 @@ AS
       -- クイックコード情報VIEW2
       -------------------------------------------------------------------------------
       AND xlv2v.lookup_type                     = gc_lookup_type_621b_int
-      AND xlv2v.lookup_code                     = xic3v.int_ext_class
+-- 2008/08/07 v1.4 UPDATE START
+--      AND xlv2v.lookup_code                     = xic3v.int_ext_class
+      AND xlv2v.lookup_code                     = mcb.attribute1
+-- 2008/08/07 v1.4 UPDATE END
                                                              -- 自社他社区分(1:自社、2:他社）
+-- 2008/10/20 1.5 ADD START 品目/ロット単位に数量を合計
+      GROUP BY
+        xott2v.transaction_type_name   -- 出庫形態
+        ,xoha.deliver_from              -- 出庫元
+        ,xil2v.description              -- 出庫元(名称)
+        ,DECODE(gt_param.deliver_to
+          ,NULL,NULL
+          ,xoha.vendor_site_code)       -- 配送先/入庫先（コード）
+        ,DECODE(gt_param.deliver_to
+          ,NULL,NULL
+          ,xvs2v.vendor_site_name)      -- 配送先/入庫先（名称）
+        ,xic5v.item_class_name          -- 品目区分名
+        ,xoha.schedule_ship_date        -- 出庫日
+        ,mcb.attribute1                 -- 内外区分（自社他社区分コード）
+        ,xlv2v.meaning                  -- 内外区分
+        ,xola.shipping_item_code        -- 品目（コード）
+        ,xim2v.item_short_name          -- 品目（名称）
+        ,xim2v.item_um                  -- 合計数_単位
+        ,xmld.lot_no                    -- ロットNo
+        ,ilm.attribute1                 -- 製造日
+        ,ilm.attribute3                 -- 賞味期限
+        ,ilm.attribute2                 -- 固有記号
+        ,xoha.order_type_id             -- 出庫形態（ID）
+        ,xic5v.item_class_code          -- 品目区分コード
+-- 2008/10/20 1.5 ADD END
       ORDER BY
          xoha.order_type_id           ASC
         ,xoha.deliver_from            ASC
-        ,xic3v.item_class_code        ASC
-        ,xic3v.int_ext_class          ASC
+-- 2008/08/07 v1.4 UPDATE START
+--        ,xic3v.item_class_code        ASC
+--        ,xic3v.int_ext_class          ASC
+        ,xic5v.item_class_code        ASC
+        ,mcb.attribute1               ASC
+-- 2008/08/07 v1.4 UPDATE END
         ,xola.shipping_item_code      ASC
         ,xmld.lot_no                  ASC
       ;
@@ -621,21 +843,79 @@ AS
        NULL                                AS  trans_type        -- 出庫形態
       ,xmrih.shipped_locat_code            AS  ship_cd           -- 出庫元
       ,xil2v1.description                  AS  ship_nm           -- 出庫元(名称)
-      ,xmrih.ship_to_locat_code            AS  delivery_to_cd    -- 配送先/入庫先（コード）
-      ,xil2v2.description                  AS  delivery_to_nm    -- 配送先/入庫先（名称）
-      ,xic3v.item_class_name               AS  item_class        -- 品目区分名
+--MOD START 2008/10/20 1.5 
+--      ,xmrih.ship_to_locat_code            AS  delivery_to_cd    -- 配送先/入庫先（コード）
+--      ,xil2v2.description                  AS  delivery_to_nm    -- 配送先/入庫先（名称）
+      ,DECODE(gt_param.deliver_to
+        ,NULL,NULL
+        ,xmrih.ship_to_locat_code)         AS  delivery_to_cd    -- 配送先/入庫先（コード）
+      ,DECODE(gt_param.deliver_to
+        ,NULL,NULL
+        ,xil2v2.description)               AS  delivery_to_nm   -- 配送先/入庫先（名称）
+--MOD END 2008/10/20 1.5 
+-- 2008/08/07 v1.4 UPDATE START
+--      ,xic3v.item_class_name                AS  item_class        -- 品目区分名
+      ,xic5v.item_class_name                AS  item_class        -- 品目区分名
+-- 2008/08/07 v1.4 UPDATE END
       ,xmrih.schedule_ship_date            AS  ship_date         -- 出庫日
-      ,xic3v.int_ext_class                 AS  in_out_class_code -- 内外区分（自社他社区分コード）
+-- 2008/08/07 v1.4 UPDATE START
+--     ,xic3v.int_ext_class                  AS  in_out_class_code -- 内外区分（自社他社区分コード）
+      ,mcb.attribute1                       AS  in_out_class_code -- 内外区分（自社他社区分コード）
+-- 2008/08/07 v1.4 UPDATE END
       ,xlv2v.meaning                       AS  int_ext_class     -- 内外区分
       ,xmril.item_code                     AS  item_cd           -- 品目（コード）
       ,xim2v.item_short_name               AS  item_nm           -- 品目（名称）
+-- 2008/10/20 1.5 MOD START 品目/ロット単位に数量を合計
+--      ,CASE
+--        -- 引当されている場合
+--        WHEN ( xmril.reserved_quantity > 0 ) THEN
+--          CASE 
+---- 2008/08/07 v1.4 UPDATE START
+----            WHEN  ( ( xic3v.item_class_code = gc_item_cd_prdct )
+--            WHEN  ( ( xic5v.item_class_code = gc_item_cd_prdct )
+---- 2008/08/07 v1.4 UPDATE END
+--            AND     ( xim2v.conv_unit IS NOT NULL  ) ) THEN
+--              xmld.actual_quantity / TO_NUMBER(
+--                                                CASE
+--                                                  WHEN ( xim2v.num_of_cases > 0 ) THEN
+--                                                    xim2v.num_of_cases
+--                                                  ELSE
+--                                                    TO_CHAR(1)
+--                                                END
+--                                              )
+--            ELSE
+--              xmld.actual_quantity
+--            END
+--        -- 引当されていない場合
+--        WHEN  ( ( xmril.reserved_quantity IS NULL ) OR ( xmril.reserved_quantity = 0 ) ) THEN
+--          CASE 
+---- 2008/08/07 v1.4 UPDATE START
+----            WHEN  ( ( xic3v.item_class_code = gc_item_cd_prdct )
+--            WHEN  ( ( xic5v.item_class_code = gc_item_cd_prdct )
+---- 2008/08/07 v1.4 UPDATE END
+--            AND     ( xim2v.conv_unit IS NOT NULL  ) ) THEN
+--              xmril.instruct_qty / TO_NUMBER(
+--                                        CASE
+--                                          WHEN ( xim2v.num_of_cases > 0 ) THEN
+--                                            xim2v.num_of_cases
+--                                          ELSE
+--                                            TO_CHAR(1)
+--                                        END
+--                                       )
+----            ELSE
+----              xmril.instruct_qty
+----            END
+----        END                                AS  qty               -- 合計数      
       ,CASE
         -- 引当されている場合
-        WHEN ( xmril.reserved_quantity > 0 ) THEN
+        WHEN ( SUM(xmril.reserved_quantity) > 0 ) THEN
           CASE 
-            WHEN  ( ( xic3v.item_class_code = gc_item_cd_prdct )
+-- 2008/08/07 v1.4 UPDATE START
+--            WHEN  ( ( xic3v.item_class_code = gc_item_cd_prdct )
+            WHEN  ( ( xic5v.item_class_code = gc_item_cd_prdct )
+-- 2008/08/07 v1.4 UPDATE END
             AND     ( xim2v.conv_unit IS NOT NULL  ) ) THEN
-              xmld.actual_quantity / TO_NUMBER(
+              SUM(xmld.actual_quantity) / TO_NUMBER(
                                                 CASE
                                                   WHEN ( xim2v.num_of_cases > 0 ) THEN
                                                     xim2v.num_of_cases
@@ -644,14 +924,17 @@ AS
                                                 END
                                               )
             ELSE
-              xmld.actual_quantity
+              SUM(xmld.actual_quantity)
             END
         -- 引当されていない場合
-        WHEN  ( ( xmril.reserved_quantity IS NULL ) OR ( xmril.reserved_quantity = 0 ) ) THEN
+        WHEN  ( ( SUM(xmril.reserved_quantity) IS NULL ) OR ( SUM(xmril.reserved_quantity) = 0 ) ) THEN
           CASE 
-            WHEN  ( ( xic3v.item_class_code = gc_item_cd_prdct )
+-- 2008/08/07 v1.4 UPDATE START
+--            WHEN  ( ( xic3v.item_class_code = gc_item_cd_prdct )
+            WHEN  ( ( xic5v.item_class_code = gc_item_cd_prdct )
+-- 2008/08/07 v1.4 UPDATE END
             AND     ( xim2v.conv_unit IS NOT NULL  ) ) THEN
-              xmril.instruct_qty / TO_NUMBER(
+              SUM(xmril.instruct_qty) / TO_NUMBER(
                                         CASE
                                           WHEN ( xim2v.num_of_cases > 0 ) THEN
                                             xim2v.num_of_cases
@@ -660,12 +943,16 @@ AS
                                         END
                                        )
             ELSE
-              xmril.instruct_qty
+              SUM(xmril.instruct_qty)
             END
         END                                AS  qty               -- 合計数
+-- 2008/10/20 1.5 MOD END
       ,CASE
        -- 条件①
-       WHEN (    xic3v.item_class_code = gc_item_cd_prdct
+-- 2008/08/07 v1.4 UPDATE START
+--       WHEN (    xic3v.item_class_code = gc_item_cd_prdct
+       WHEN (    xic5v.item_class_code = gc_item_cd_prdct
+-- 2008/08/07 v1.4 UPDATE END
              AND xim2v.conv_unit IS NOT NULL) THEN
          xim2v.conv_unit
        ELSE
@@ -677,12 +964,23 @@ AS
       ,ilm.attribute3                      AS  best_before_date  -- 賞味期限
       ,ilm.attribute2                      AS  native_sign       -- 固有記号
       ,NULL                                AS  order_type_id     -- 出庫形態(ID)
-      ,xic3v.item_class_code               AS  item_class_code   -- 品目区分コード
+-- 2008/08/07 v1.4 UPDATE START
+--      ,xic3v.item_class_code                AS  item_class_code   -- 品目区分コード
+      ,xic5v.item_class_code                AS  item_class_code   -- 品目区分コード
+-- 2008/08/07 v1.4 UPDATE END
     FROM
        xxinv_mov_req_instr_headers            xmrih            -- 移動依頼/指示ヘッダアドオン
       ,xxinv_mov_req_instr_lines              xmril            -- 移動依頼/指示明細(アドオン)
       ,xxcmn_item_mst2_v                      xim2v            -- OPM品目情報VIEW2
-      ,xxcmn_item_categories3_v               xic3v            -- OPM品目カテゴリ割当情報VIEW3
+-- 2008/08/07 v1.4 UPDATE START
+--     ,xxcmn_item_categories3_v               xic3v                 -- OPM品目カテゴリ割当情報VIEW3
+      ,xxcmn_item_categories5_v               xic5v                 -- OPM品目カテゴリ割当情報VIEW5
+      ,gmi_item_categories                    gic
+      ,mtl_categories_b                       mcb
+      ,mtl_categories_tl                      mct
+      ,mtl_category_sets_b                    mcsb
+      ,mtl_category_sets_tl                   mcst
+-- 2008/08/07 v1.4 UPDATE END
       ,xxinv_mov_lot_details                  xmld             -- 移動ロット詳細(アドオン)
       ,ic_lots_mst                            ilm              -- OPMロットマスタ
       ,xxcmn_item_locations2_v                xil2v1           -- OPM保管場所情報VIEW2-1
@@ -714,11 +1012,20 @@ AS
         OR  xil2v1.distribution_block  =  gt_param.block)                     -- パラメータ：ブロックがNULLでない場合、条件に追加
 --Mod end 2008/07/18 H.Itou
       AND xmrih.schedule_ship_date              = gt_param.date_from        -- パラメータ：出庫日
+--ADD START 2008/10/20 1.5 指示なし実績を除外
+      AND (xmrih.no_instr_actual_class IS NULL
+        OR xmrih.no_instr_actual_class  <> gc_no_instr_actual_class)            -- 指示なし実績以外
+--ADD END 2008/10/20 1.5
       -------------------------------------------------------------------------------
       -- 移動依頼/指示明細(アドオン)
       -------------------------------------------------------------------------------
       AND xmrih.mov_hdr_id                      =  xmril.mov_hdr_id
       AND xmril.delete_flg                     <>  gc_delete_flag
+--DEL START 2008/10/20 1.5 指示なし実績を除外
+-- 2008/08/07 v1.4 ADD START
+--      AND xmril.instruct_qty                    > 0
+-- 2008/08/07 v1.4 ADD END
+--DEL END 2008/10/20 1.5
       -------------------------------------------------------------------------------
       -- OPM品目情報VIEW2
       -------------------------------------------------------------------------------
@@ -729,14 +1036,35 @@ AS
           OR
              xim2v.end_date_active             >=  xmrih.schedule_ship_date
           )
+-- 2008/08/07 v1.4 UPDATE START
+--      -------------------------------------------------------------------------------
+--      -- OPM品目カテゴリ割当情報VIEW3
+--      -------------------------------------------------------------------------------
       -------------------------------------------------------------------------------
-      -- OPM品目カテゴリ割当情報VIEW3
+      -- OPM品目カテゴリ割当情報VIEW
       -------------------------------------------------------------------------------
-      AND xim2v.item_id                         = xic3v.item_id
-      AND xic3v.prod_class_code                 = gt_param.prod_div         -- パラメータ：商品区分
+--      AND xim2v.item_id                        = xic3v.item_id
+      AND xim2v.item_id                        = xic5v.item_id
+      AND mct.source_lang                      = 'JA'
+      AND mct.language                         = 'JA'
+      AND mcb.category_id                      = mct.category_id
+      AND mcsb.structure_id                    = mcb.structure_id
+      AND gic.category_id                      = mcb.category_id
+      AND mcst.source_lang                     = 'JA'
+      AND mcst.language                        = 'JA'
+      AND mcst.category_set_name               = '内外区分'
+      AND mcsb.category_set_id                 = mcst.category_set_id
+      AND gic.category_set_id                  = mcsb.category_set_id
+      AND xim2v.item_id                        = gic.item_id
+--     AND xic3v.prod_class_code                 = gt_param.prod_div         -- パラメータ：商品区分
+      AND xic5v.prod_class_code                 = gt_param.prod_div         -- パラメータ：商品区分
+-- 2008/08/07 v1.4 UPDATE END
       AND (gt_param.item_div IS NULL
            OR
-           xic3v.item_class_code                = gt_param.item_div )       -- パラメータ：品目区分
+-- 2008/08/07 v1.4 UPDATE START
+--          xic3v.item_class_code                = gt_param.item_div )       -- パラメータ：品目区分
+           xic5v.item_class_code                = gt_param.item_div )       -- パラメータ：品目区分
+-- 2008/08/07 v1.4 UPDATE END
       -------------------------------------------------------------------------------
       -- 移動ロット詳細(アドオン)
       -------------------------------------------------------------------------------
@@ -760,11 +1088,44 @@ AS
       -- クイックコード情報VIEW2
       -------------------------------------------------------------------------------
       AND xlv2v.lookup_type = gc_lookup_type_621b_int
-      AND xlv2v.lookup_code = xic3v.int_ext_class                  -- 自社他社区分(1:自社、2:他社）
+-- 2008/08/07 v1.4 UPDATE START
+--     AND xlv2v.lookup_code = xic3v.int_ext_class                  -- 自社他社区分(1:自社、2:他社）
+      AND xlv2v.lookup_code = mcb.attribute1                       -- 自社他社区分(1:自社、2:他社）
+-- 2008/10/20 1.5 ADD START 品目/ロット単位に数量を合計
+      GROUP BY
+        xmrih.shipped_locat_code     -- 出庫元
+        ,xil2v1.description          -- 出庫元(名称)
+        ,DECODE(gt_param.deliver_to
+          ,NULL,NULL
+          ,xmrih.ship_to_locat_code) -- 配送先/入庫先（コード）
+        ,DECODE(gt_param.deliver_to
+          ,NULL,NULL
+          ,xil2v2.description)       -- 配送先/入庫先（名称）
+        ,xic5v.item_class_name       -- 品目区分名
+        ,xmrih.schedule_ship_date    -- 出庫日
+        ,mcb.attribute1              -- 内外区分（自社他社区分コード）
+        ,xlv2v.meaning               -- 内外区分
+        ,xmril.item_code             -- 品目（コード）
+        ,xim2v.item_short_name       -- 品目（名称）
+        ,xim2v.conv_unit             -- 単位
+        ,xic5v.item_class_code       -- 品目区分コード
+        ,xim2v.num_of_cases          -- 入数
+        ,xim2v.item_um               -- 入出庫換算単位
+        ,xmld.lot_no                 -- ロットNo
+        ,ilm.attribute1              -- 製造日
+        ,ilm.attribute3              -- 賞味期限
+        ,ilm.attribute2              -- 固有記号
+        ,xic5v.item_class_code       -- 品目区分コード
+-- 2008/10/20 1.5 ADD END
+-- 2008/08/07 v1.4 UPDATE END
       ORDER BY
          xmrih.shipped_locat_code ASC
-        ,xic3v.item_class_code    ASC
-        ,xic3v.int_ext_class      ASC
+-- 2008/08/07 v1.4 UPDATE START
+--        ,xic3v.item_class_code        ASC
+--        ,xic3v.int_ext_class          ASC
+        ,xic5v.item_class_code        ASC
+        ,mcb.attribute1               ASC
+-- 2008/08/07 v1.4 UPDATE END
         ,xmril.item_code          ASC
         ,xmld.lot_no              ASC
       ;
