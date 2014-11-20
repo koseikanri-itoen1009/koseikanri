@@ -1,7 +1,7 @@
 /*============================================================================
 * ファイル名 : XxpoUtility
 * 概要説明   : 仕入共通関数
-* バージョン : 1.6
+* バージョン : 1.8
 *============================================================================
 * 修正履歴
 * 日付       Ver. 担当者       修正内容
@@ -10,11 +10,12 @@
 * 2008-06-11 1.1  吉元強樹     ST不具合ログ#72を対応
 * 2008-06-17 1.2  二瓶大輔     ST不具合ログ#126を対応
 * 2008-06-18 1.3  伊藤ひとみ   結合バグ 発注明細IFの単価、仕入定価を
-*                             仕入/標準単価ヘッダの内訳合計に変更。
+*                              仕入/標準単価ヘッダの内訳合計に変更。
 * 2008-06-30 1.4  吉元強樹     ST不具合ログ#41を対応
 * 2008-07-02 1.5  吉元強樹     ST不具合ログ#104を対応
 * 2008-07-11 1.6  二瓶大輔     ST不具合ログ#421対応
 * 2008-07-17 1.7  伊藤ひとみ   ST不具合ログ#83対応
+* 2008-07-29 1.8  二瓶大輔     内部変更要求#164,166,173、課題#32
 *============================================================================
 */
 package itoen.oracle.apps.xxpo.util;
@@ -36,7 +37,7 @@ import oracle.jbo.domain.Number;
 /***************************************************************************
  * 仕入共通関数クラスです。
  * @author  ORACLE 伊藤ひとみ
- * @version 1.6
+ * @version 1.8
  ***************************************************************************
  */
 public class XxpoUtility 
@@ -7950,26 +7951,43 @@ public class XxpoUtility
     sb.append("         ,ln_drink_loading_capacity "); // ドリンク積載容積
     sb.append("         ,ln_leaf_loading_capacity  "); // リーフ積載容積
     sb.append("         ,ln_palette_max_qty); "); // パレット最大枚数
-    // リーフ・重量の場合
-    sb.append("  IF (('1' = lv_prod_class) AND ('1' = lv_weight_capacity_class)) THEN ");
+// 2008-07-29 D.Nihei MOD START
+//    // リーフ・重量の場合
+//    sb.append("  IF (('1' = lv_prod_class) AND ('1' = lv_weight_capacity_class)) THEN ");
+    // リーフの場合
+    sb.append("  IF ( '1' = lv_prod_class ) THEN ");
+// 2008-07-29 D.Nihei MOD END
     sb.append("    ln_deadweight := ln_leaf_deadweight; ");
-    // リーフ・容積の場合
-    sb.append("  ELSIF (('1' = lv_prod_class) AND ('2' = lv_weight_capacity_class)) THEN ");
+// 2008-07-29 D.Nihei DEL START
+//    // リーフ・容積の場合
+//    sb.append("  ELSIF (('1' = lv_prod_class) AND ('2' = lv_weight_capacity_class)) THEN ");
+// 2008-07-29 D.Nihei DEL END
     sb.append("    ln_loading_capacity := ln_leaf_loading_capacity; ");
-    // ドリンク・重量の場合
-    sb.append("  ELSIF (('2' = lv_prod_class) AND ('1' = lv_weight_capacity_class)) THEN ");
+// 2008-07-29 D.Nihei MOD START
+//    // ドリンク・重量の場合
+//    sb.append("  ELSIF (('2' = lv_prod_class) AND ('1' = lv_weight_capacity_class)) THEN ");
+    // ドリンクの場合
+    sb.append("  ELSIF ('2' = lv_prod_class ) THEN ");
+// 2008-07-29 D.Nihei MOD END
     sb.append("    ln_deadweight := ln_drink_deadweight; ");
-    // ドリンク・容積の場合
-    sb.append("  ELSIF (('2' = lv_prod_class) AND ('2' = lv_weight_capacity_class)) THEN ");
+// 2008-07-29 D.Nihei DEL START
+//    // ドリンク・容積の場合
+//    sb.append("  ELSIF (('2' = lv_prod_class) AND ('2' = lv_weight_capacity_class)) THEN ");
+// 2008-07-29 D.Nihei DEL END
     sb.append("    ln_loading_capacity := ln_leaf_loading_capacity; ");
     // それ以外
     sb.append("  ELSE ");
-    sb.append("    ln_deadweight := null; ");
+    sb.append("    ln_deadweight       := null; ");
     sb.append("    ln_loading_capacity := null; ");
     sb.append("  END IF; ");
-    sb.append("  :10 := TO_CHAR(ln_palette_max_qty,  'FM9,999,990'); ");
-    sb.append("  :11 := TO_CHAR(ln_deadweight,       'FM9,999,990'); ");
-    sb.append("  :12 := TO_CHAR(ln_loading_capacity, 'FM9,999,990'); ");
+// 2008-07-29 D.Nihei MOD START
+//    sb.append("  :10 := TO_CHAR(ln_palette_max_qty,  'FM9,999,990'); ");
+//    sb.append("  :11 := TO_CHAR(ln_deadweight,       'FM9,999,990'); ");
+//    sb.append("  :12 := TO_CHAR(ln_loading_capacity, 'FM9,999,990'); ");
+    sb.append("  :10 := TO_CHAR(ln_palette_max_qty);  ");
+    sb.append("  :11 := TO_CHAR(ln_deadweight);       ");
+    sb.append("  :12 := TO_CHAR(ln_loading_capacity); ");
+// 2008-07-29 D.Nihei MOD END
     sb.append("END; ");
 
     //PL/SQLの設定を行います
@@ -8175,16 +8193,25 @@ public class XxpoUtility
     // PL/SQLの作成を行います
     StringBuffer sb = new StringBuffer(1000);
     sb.append("BEGIN ");
-    sb.append("  SELECT ROUND(SUM(CASE "); 
+// 2008-07-29 D.Nihei MOD START
+//    sb.append("  SELECT ROUND(SUM(CASE "); 
+    sb.append("  SELECT CEIL(SUM(CASE "); 
+// 2008-07-29 D.Nihei MOD END
     sb.append("               WHEN (ximv.num_of_deliver IS NOT NULL)      "); 
     sb.append("                 THEN xola.quantity / ximv.num_of_deliver  "); 
     sb.append("               WHEN (ximv.conv_unit IS NOT NULL)           "); 
     sb.append("                 THEN xola.quantity / ximv.num_of_cases    "); 
     sb.append("                 ELSE xola.quantity  "); 
+// 2008-07-29 D.Nihei MOD START
+//    sb.append("               END))   small_quantity ");   // 小口個数
+//    sb.append("        ,TO_CHAR(SUM(xola.quantity),   'FM999,999,990.000') sum_quantity ");   // 合計数量
+//    sb.append("        ,TO_CHAR(SUM(NVL(xola.weight  , 0)), 'FM9,999,990') sum_weight   ");   // 合計重量
+//    sb.append("        ,TO_CHAR(SUM(NVL(xola.capacity, 0)), 'FM9,999,990') sum_capacity ");   // 合計容積
     sb.append("               END))   small_quantity ");   // 小口個数
-    sb.append("        ,TO_CHAR(SUM(xola.quantity),   'FM999,999,990.000') sum_quantity ");   // 合計数量
-    sb.append("        ,TO_CHAR(SUM(NVL(xola.weight  , 0)), 'FM9,999,990') sum_weight   ");   // 合計重量
-    sb.append("        ,TO_CHAR(SUM(NVL(xola.capacity, 0)), 'FM9,999,990') sum_capacity ");   // 合計容積
+    sb.append("        ,TO_CHAR(SUM(xola.quantity))         sum_quantity ");   // 合計数量
+    sb.append("        ,TO_CHAR(SUM(NVL(xola.weight  , 0))) sum_weight   ");   // 合計重量
+    sb.append("        ,TO_CHAR(SUM(NVL(xola.capacity, 0))) sum_capacity ");   // 合計容積
+// 2008-07-29 D.Nihei MOD END
     sb.append("  INTO   :1 "); 
     sb.append("        ,:2 "); 
     sb.append("        ,:3 "); 

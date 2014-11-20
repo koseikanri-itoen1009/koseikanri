@@ -476,7 +476,7 @@
                         </oa:cellFormat>
                         <oa:cellFormat id="Cell302" hAlign="right" styleClass="OraTableCellText">
                            <ui:contents>
-                              <oa:messageStyledText id="BasedWeight" viewName="XxpoProvisionInstMakeHeaderVO1" viewAttr="BasedWeight" styleClass="OraFieldNumber"/>
+                              <oa:messageStyledText id="BasedWeight" viewName="XxpoProvisionInstMakeTotalVO1" viewAttr="BasedWeight" styleClass="OraFieldNumber"/>
                            </ui:contents>
                         </oa:cellFormat>
                         <oa:cellFormat id="Cell303" hAlign="right">
@@ -486,7 +486,7 @@
                         </oa:cellFormat>
                         <oa:cellFormat id="Cell304" hAlign="right" styleClass="OraTableCellText">
                            <ui:contents>
-                              <oa:messageStyledText id="SumWeight" viewName="XxpoProvisionInstMakeHeaderVO1" viewAttr="SumWeight" styleClass="OraFieldNumber"/>
+                              <oa:messageStyledText id="SumWeight" viewName="XxpoProvisionInstMakeTotalVO1" viewAttr="SumWeight" styleClass="OraFieldNumber"/>
                            </ui:contents>
                         </oa:cellFormat>
                         <oa:cellFormat id="Cell305" hAlign="right">
@@ -496,7 +496,7 @@
                         </oa:cellFormat>
                         <oa:cellFormat id="Cell306" hAlign="right" styleClass="OraTableCellText">
                            <ui:contents>
-                              <oa:messageStyledText id="EfficiencyWeight" viewName="XxpoProvisionInstMakeHeaderVO1" viewAttr="EfficiencyWeightDisp" styleClass="OraFieldNumber"/>
+                              <oa:messageStyledText id="EfficiencyWeight" viewName="XxpoProvisionInstMakeTotalVO1" viewAttr="EfficiencyWeight" styleClass="OraFieldNumber"/>
                            </ui:contents>
                         </oa:cellFormat>
                      </ui:contents>
@@ -519,7 +519,7 @@
                         </oa:cellFormat>
                         <oa:cellFormat id="Cell402" hAlign="right" styleClass="OraTableCellText">
                            <ui:contents>
-                              <oa:messageStyledText id="BasedCapacity" viewName="XxpoProvisionInstMakeHeaderVO1" viewAttr="BasedCapacity" styleClass="OraFieldNumber"/>
+                              <oa:messageStyledText id="BasedCapacity" viewName="XxpoProvisionInstMakeTotalVO1" viewAttr="BasedCapacity" styleClass="OraFieldNumber"/>
                            </ui:contents>
                         </oa:cellFormat>
                         <oa:cellFormat id="Cell403" hAlign="right">
@@ -529,7 +529,7 @@
                         </oa:cellFormat>
                         <oa:cellFormat id="Cell404" hAlign="right" styleClass="OraTableCellText">
                            <ui:contents>
-                              <oa:messageStyledText id="SumCapacity" viewName="XxpoProvisionInstMakeHeaderVO1" viewAttr="SumCapacity" styleClass="OraFieldNumber"/>
+                              <oa:messageStyledText id="SumCapacity" viewName="XxpoProvisionInstMakeTotalVO1" viewAttr="SumCapacity" styleClass="OraFieldNumber"/>
                            </ui:contents>
                         </oa:cellFormat>
                         <oa:cellFormat id="Cell405" hAlign="right">
@@ -539,7 +539,7 @@
                         </oa:cellFormat>
                         <oa:cellFormat id="Cell406" hAlign="right" styleClass="OraTableCellText">
                            <ui:contents>
-                              <oa:messageStyledText id="EfficiencyCapacity" viewName="XxpoProvisionInstMakeHeaderVO1" viewAttr="EfficiencyCapacityDisp" styleClass="OraFieldNumber"/>
+                              <oa:messageStyledText id="EfficiencyCapacity" viewName="XxpoProvisionInstMakeTotalVO1" viewAttr="EfficiencyCapacity" styleClass="OraFieldNumber"/>
                            </ui:contents>
                         </oa:cellFormat>
                      </ui:contents>

@@ -1,7 +1,7 @@
 /*============================================================================
 * ファイル名 : XxpoProvisionRequestAMImpl
 * 概要説明   : 支給依頼要約アプリケーションモジュール
-* バージョン : 1.4
+* バージョン : 1.5
 *============================================================================
 * 修正履歴
 * 日付       Ver. 担当者       修正内容
@@ -13,6 +13,7 @@
 * 2008-06-02 1.3  二瓶大輔     変更要求#42対応
 *                              ST不具合#199対応
 * 2008-07-04 1.4  二瓶大輔     変更要求#91対応
+* 2008-07-29 1.5  二瓶大輔     内部変更要求#164,166,173、課題#32
 *============================================================================
 */
 package itoen.oracle.apps.xxpo.xxpo440001j.server;
@@ -46,7 +47,7 @@ import oracle.jbo.RowSetIterator;
 /***************************************************************************
  * 支給依頼要約画面のアプリケーションモジュールクラスです。
  * @author  ORACLE 二瓶 大輔
- * @version 1.4
+ * @version 1.5
  ***************************************************************************
  */
 public class XxpoProvisionRequestAMImpl extends XxcmnOAApplicationModuleImpl 
@@ -2124,24 +2125,30 @@ public class XxpoProvisionRequestAMImpl extends XxcmnOAApplicationModuleImpl
       if (freightOnFlag || changeHdrFlag || changeLineFlag)
       {
         // 重量容積区分によって渡すパラメータをかえる
-        String sumWeight   = null;
-        String sumCapacity = null;
-        // 重量容積区分が、「重量」の場合
-        if (XxpoConstants.WGHT_CAPA_CLASS_WEIGHT.equals(weightCapaClass)) 
-        {
-          sumWeight   = (String)hdrRow.getAttribute("SumWeight");
-        // それ以外
-        } else 
-        {
-          sumCapacity = (String)hdrRow.getAttribute("SumCapacity");
-        }
+// 2008-07-29 D.Nihei DEL START
+//        String sumWeight   = null;
+//        String sumCapacity = null;
+//        // 重量容積区分が、「重量」の場合
+//        if (XxpoConstants.WGHT_CAPA_CLASS_WEIGHT.equals(weightCapaClass)) 
+//        {
+//          sumWeight   = (String)hdrRow.getAttribute("SumWeight");
+//        // それ以外
+//        } else 
+//        {
+//          sumCapacity = (String)hdrRow.getAttribute("SumCapacity");
+//        }
+// 2008-07-29 D.Nihei DEL END
         /******************
-         * 積載効率チェック(積載効率算出)
+         * 重量積載効率チェック(積載効率算出)
          ******************/
-        HashMap params = XxpoUtility.calcLoadEfficiency(
+        HashMap params1 = XxpoUtility.calcLoadEfficiency(
                            getOADBTransaction(),
-                           sumWeight,
-                           sumCapacity,
+// 2008-07-29 D.Nihei MOD START
+//                           sumWeight,
+//                           sumCapacity,
+                           (String)hdrRow.getAttribute("SumWeight"),
+                           null,
+// 2008-07-29 D.Nihei MOD END
                            "4",  // 倉庫
                            shipWhseCode,
                            "11", // 支給先
@@ -2152,8 +2159,27 @@ public class XxpoProvisionRequestAMImpl extends XxcmnOAApplicationModuleImpl
         /******************
          * 各項目をセット
          ******************/
-        hdrRow.setAttribute("EfficiencyWeight",   params.get("loadEfficiencyWeight"));   // 重量積載効率
-        hdrRow.setAttribute("EfficiencyCapacity", params.get("loadEfficiencyCapacity")); // 容積積載効率
+        hdrRow.setAttribute("EfficiencyWeight",   params1.get("loadEfficiencyWeight"));   // 重量積載効率
+// 2008-07-29 D.Nihei ADD START
+        /******************
+         * 容積積載効率チェック(積載効率算出)
+         ******************/
+        HashMap params2 = XxpoUtility.calcLoadEfficiency(
+                           getOADBTransaction(),
+                           null,
+                           (String)hdrRow.getAttribute("SumCapacity"),
+                           "4",  // 倉庫
+                           shipWhseCode,
+                           "11", // 支給先
+                           shipToCode,
+                           maxShipToCode,
+                           shippedDate,
+                           true);
+        /******************
+         * 各項目をセット
+         ******************/
+// 2008-07-29 D.Nihei ADD END
+        hdrRow.setAttribute("EfficiencyCapacity", params2.get("loadEfficiencyCapacity")); // 容積積載効率
       }
     }
     /****************************

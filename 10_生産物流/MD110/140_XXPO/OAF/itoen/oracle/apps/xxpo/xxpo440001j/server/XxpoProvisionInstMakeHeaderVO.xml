@@ -75,20 +75,31 @@ SELECT xoha.order_header_id               order_header_id       -- Žó’ƒwƒbƒ_ƒAƒ
       ,xcav.party_id                      customer_id           -- ŒÚ‹qID(ƒp[ƒeƒB[ID)
       ,xcav.party_number                  customer_code         -- ŒÚ‹qƒR[ƒh(‘gD”Ô†)
       ,xvv.spare2                         price_list            -- ‰¿Ši•\
-      ,DECODE(xoha.freight_charge_class, '1', TO_CHAR(xoha.based_weight, 'FM9,999,990'), '')
-                                          based_weight          -- Šî–{d—Ê
-      ,TO_CHAR(ROUND(xoha.sum_weight), 'FM9,999,990')
-                                          sum_weight            -- ÏÚd—Ê‡Œv
+-- 2008-07-29 D.Nihei Mod Start
+--      ,DECODE(xoha.freight_charge_class, '1', TO_CHAR(xoha.based_weight, 'FM9,999,990'), '')
+--                                          based_weight          -- Šî–{d—Ê
+--      ,TO_CHAR(ROUND(xoha.sum_weight), 'FM9,999,990')
+--                                          sum_weight            -- ÏÚd—Ê‡Œv
+      ,TO_CHAR(xoha.based_weight)         based_weight          -- Šî–{d—Ê
+      ,TO_CHAR(xoha.sum_weight)           sum_weight            -- ÏÚd—Ê‡Œv
+-- 2008-07-29 D.Nihei Mod End
       ,TO_CHAR(xoha.loading_efficiency_weight)
                                           efficiency_weight     -- d—ÊÏÚŒø—¦
-      ,DECODE(xoha.freight_charge_class, '1', TO_CHAR(xoha.based_capacity, 'FM9,999,990'), '')
-                                          based_capacity        -- Šî–{—eÏ
-      ,TO_CHAR(ROUND(xoha.sum_capacity), 'FM9,999,990')
-                                          sum_capacity          -- ÏÚ—eÏ‡Œv
+-- 2008-07-29 D.Nihei Mod Start
+--      ,DECODE(xoha.freight_charge_class, '1', TO_CHAR(xoha.based_capacity, 'FM9,999,990'), '')
+--                                          based_capacity        -- Šî–{—eÏ
+--      ,TO_CHAR(ROUND(xoha.sum_capacity), 'FM9,999,990')
+--                                          sum_capacity          -- ÏÚ—eÏ‡Œv
+      ,TO_CHAR(xoha.based_capacity)       based_capacity        -- Šî–{—eÏ
+      ,TO_CHAR(xoha.sum_capacity)         sum_capacity          -- ÏÚ—eÏ‡Œv
+-- 2008-07-29 D.Nihei Mod End
       ,TO_CHAR(xoha.loading_efficiency_capacity)
                                           efficiency_capacity   -- —eÏÏÚŒø—¦
-      ,TO_CHAR(xoha.sum_quantity, 'FM999,999,990.000')
-                                          sum_quantity          -- ‡Œv”—Ê
+-- 2008-07-29 D.Nihei Mod Start
+--      ,TO_CHAR(xoha.sum_quantity, 'FM999,999,990.000')
+--                                          sum_quantity          -- ‡Œv”—Ê
+      ,TO_CHAR(xoha.sum_quantity)         sum_quantity          -- ‡Œv”—Ê
+-- 2008-07-29 D.Nihei Mod End
       ,xoha.small_quantity                small_quantity        -- ¬ŒûŒÂ”
       ,xoha.label_quantity                label_quantity        -- ƒ‰ƒxƒ‹–‡”
 /*    DB€–Ú     */ 
@@ -159,10 +170,12 @@ SELECT xoha.order_header_id               order_header_id       -- Žó’ƒwƒbƒ_ƒAƒ
          -- ã‹LˆÈŠO
          ELSE NULL
        END                                rcv_type                 -- Žó—Ìƒ^ƒCƒv
-      ,DECODE(xoha.freight_charge_class, '1', TO_CHAR(xoha.loading_efficiency_weight, 'FM990.00'), '')
-                                          efficiency_weight_disp         -- d—ÊÏÚŒø—¦
-      ,DECODE(xoha.freight_charge_class, '1', TO_CHAR(xoha.loading_efficiency_capacity, 'FM990.00'), '')
-                                          efficiency_capacity_disp       -- —eÏÏÚŒø—¦
+-- 2008-07-29 D.Nihei Del Start
+--      ,DECODE(xoha.freight_charge_class, '1', TO_CHAR(xoha.loading_efficiency_weight, 'FM990.00'), '')
+--                                          efficiency_weight_disp         -- d—ÊÏÚŒø—¦
+--      ,DECODE(xoha.freight_charge_class, '1', TO_CHAR(xoha.loading_efficiency_capacity, 'FM990.00'), '')
+--                                          efficiency_capacity_disp       -- —eÏÏÚŒø—¦
+-- 2008-07-29 D.Nihei Del End
       ,xoha.result_freight_carrier_id     db_result_freight_carrier_id   -- ‰^‘—‹ÆŽÒID(ŽÀÑ)
       ,xoha.result_freight_carrier_code   db_result_freight_carrier_code -- ‰^‘—‹ÆŽÒƒR[ƒh(ŽÀÑ)
       ,xoha.result_shipping_method_code   db_result_shipping_method_code -- ”z‘—‹æ•ª(ŽÀÑ)
@@ -1386,32 +1399,6 @@ AND    NVL(xoha.shipped_date, xoha.schedule_ship_date) BETWEEN ximv.start_date_a
       SQLType="VARCHAR" >
       <DesignTime>
          <Attr Name="_DisplaySize" Value="1" />
-      </DesignTime>
-   </ViewAttribute>
-   <ViewAttribute
-      Name="EfficiencyWeightDisp"
-      IsPersistent="false"
-      Precision="40"
-      Type="java.lang.String"
-      ColumnType="VARCHAR2"
-      AliasName="EFFICIENCY_WEIGHT_DISP"
-      Expression="EFFICIENCY_WEIGHT_DISP"
-      SQLType="VARCHAR" >
-      <DesignTime>
-         <Attr Name="_DisplaySize" Value="40" />
-      </DesignTime>
-   </ViewAttribute>
-   <ViewAttribute
-      Name="EfficiencyCapacityDisp"
-      IsPersistent="false"
-      Precision="40"
-      Type="java.lang.String"
-      ColumnType="VARCHAR2"
-      AliasName="EFFICIENCY_CAPACITY_DISP"
-      Expression="EFFICIENCY_CAPACITY_DISP"
-      SQLType="VARCHAR" >
-      <DesignTime>
-         <Attr Name="_DisplaySize" Value="40" />
       </DesignTime>
    </ViewAttribute>
    <ViewAttribute
