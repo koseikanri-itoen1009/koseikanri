@@ -1,3 +1,18 @@
+/************************************************************************
+ * Copyright(c)Sumisho Computer Systems Corporation, 2008. All rights reserved.
+ *
+ * View Name       : xxcmm_hierarchy_dept_all_v
+ * Description     : ëSïîñÂäKëwÉrÉÖÅ[
+ * Version         : 1.2
+ *
+ * Change Record
+ * ------------- ----- ---------------- ---------------------------------
+ *  Date          Ver.  Editor           Description
+ * ------------- ----- ---------------- ---------------------------------
+ *                1.0   K.Okuyama        êVãKçÏê¨
+ *  2009/04/20    1.1   Y.Kuboshima      è·äQT1_0590ëŒâû
+ *  2009/10/01    1.2   S.Niki           ã§í â€ëËI_E_542ëŒâû
+ ************************************************************************/
 CREATE OR REPLACE FORCE VIEW apps.xxcmm_hierarchy_dept_all_v
 (
   cur_dpt_cd,
@@ -6,46 +21,85 @@ CREATE OR REPLACE FORCE VIEW apps.xxcmm_hierarchy_dept_all_v
   dpt1_cd,
   dpt1_name,
   dpt1_abbreviate,
-  dpt1_sort_num,
+-- 2009/10/01 I_E_542 mod start by Shigeto.Niki
+--  dpt1_sort_num,
+  dpt1_start_date_active,
+-- 2009/10/01 I_E_542 mod end by Shigeto.Niki
   dpt1_old_cd,
+-- 2009/10/01 I_E_542 add start by Shigeto.Niki
+  dpt1_new_cd,
+-- 2009/10/01 I_E_542 add end by Shigeto.Niki
   dpt1_div,
   dpt2_cd,
   dpt2_name,
   dpt2_abbreviate,
-  dpt2_sort_num,
+-- 2009/10/01 I_E_542 mod start by Shigeto.Niki
+--  dpt2_sort_num,
+  dpt2_start_date_active,
+-- 2009/10/01 I_E_542 mod end by Shigeto.Niki
   dpt2_old_cd,
+-- 2009/10/01 I_E_542 add start by Shigeto.Niki
+  dpt2_new_cd,
+-- 2009/10/01 I_E_542 add end by Shigeto.Niki
   dpt2_div,
   dpt3_cd,
   dpt3_name,
   dpt3_abbreviate,
-  dpt3_sort_num,
+-- 2009/10/01 I_E_542 mod start by Shigeto.Niki
+--  dpt3_sort_num,
+  dpt3_start_date_active,
+-- 2009/10/01 I_E_542 mod end by Shigeto.Niki
   dpt3_old_cd,
+-- 2009/10/01 I_E_542 add start by Shigeto.Niki
+  dpt3_new_cd,
+-- 2009/10/01 I_E_542 add end by Shigeto.Niki
   dpt3_div,
   dpt4_cd,
   dpt4_name,
   dpt4_abbreviate,
-  dpt4_sort_num,
+-- 2009/10/01 I_E_542 mod start by Shigeto.Niki
+--  dpt4_sort_num,
+  dpt4_start_date_active,
+-- 2009/10/01 I_E_542 mod end by Shigeto.Niki
   dpt4_old_cd,
+-- 2009/10/01 I_E_542 add start by Shigeto.Niki
+  dpt4_new_cd,
+-- 2009/10/01 I_E_542 add end by Shigeto.Niki
   dpt4_div,
   dpt5_cd,
   dpt5_name,
   dpt5_abbreviate,
-  dpt5_sort_num,
+-- 2009/10/01 I_E_542 mod start by Shigeto.Niki
+--  dpt5_sort_num,
+  dpt5_start_date_active,
+-- 2009/10/01 I_E_542 mod end by Shigeto.Niki
   dpt5_old_cd,
+-- 2009/10/01 I_E_542 add start by Shigeto.Niki
+  dpt5_new_cd,
+-- 2009/10/01 I_E_542 add end by Shigeto.Niki
   dpt5_div,
   dpt6_cd,
   dpt6_name,
   dpt6_abbreviate,
-  dpt6_sort_num,
+-- 2009/10/01 I_E_542 mod start by Shigeto.Niki
+--  dpt6_sort_num,
+  dpt6_start_date_active,
+-- 2009/10/01 I_E_542 mod end by Shigeto.Niki
   dpt6_old_cd,
+-- 2009/10/01 I_E_542 add start by Shigeto.Niki
+  dpt6_new_cd,
+-- 2009/10/01 I_E_542 add end by Shigeto.Niki
   dpt6_div,
   enabled_flag,
   start_date_active,
   end_date_active,
   flex_value_set_id,
   creation_date,
-  last_update_date,
-  hierarchy_sort_key
+-- 2009/10/01 I_E_542 mod start by Shigeto.Niki
+--  last_update_date,
+--  hierarchy_sort_key
+  last_update_date
+-- 2009/10/01 I_E_542 mod end by Shigeto.Niki
 ) AS 
 SELECT
   tbl.cur_dpt_cd,
@@ -54,64 +108,103 @@ SELECT
   tbl.dpt1_cd,
   tbl.dpt1_name,
   tbl.dpt1_abbreviate,
-  tbl.dpt1_sort_num,
+-- 2009/10/01 I_E_542 mod start by Shigeto.Niki
+--  tbl.dpt1_sort_num,
+  tbl.dpt1_start_date_active,
+-- 2009/10/01 I_E_542 mod end by Shigeto.Niki
   tbl.dpt1_old_cd,
+-- 2009/10/01 I_E_542 add start by Shigeto.Niki
+  tbl.dpt1_new_cd,
+-- 2009/10/01 I_E_542 add end by Shigeto.Niki
   tbl.dpt1_div,
   tbl.dpt2_cd,
   tbl.dpt2_name,
   tbl.dpt2_abbreviate,
-  tbl.dpt2_sort_num,
+-- 2009/10/01 I_E_542 mod start by Shigeto.Niki
+--  tbl.dpt2_sort_num,
+  tbl.dpt2_start_date_active,
+-- 2009/10/01 I_E_542 mod end by Shigeto.Niki
   tbl.dpt2_old_cd,
+-- 2009/10/01 I_E_542 add start by Shigeto.Niki
+  tbl.dpt2_new_cd,
+-- 2009/10/01 I_E_542 add end by Shigeto.Niki
   tbl.dpt2_div,
   tbl.dpt3_cd,
   tbl.dpt3_name,
   tbl.dpt3_abbreviate,
-  tbl.dpt3_sort_num,
+-- 2009/10/01 I_E_542 mod start by Shigeto.Niki
+--  tbl.dpt3_sort_num,
+  tbl.dpt3_start_date_active,
+-- 2009/10/01 I_E_542 mod end by Shigeto.Niki
   tbl.dpt3_old_cd,
+-- 2009/10/01 I_E_542 add start by Shigeto.Niki
+  tbl.dpt3_new_cd,
+-- 2009/10/01 I_E_542 add end by Shigeto.Niki
   tbl.dpt3_div,
   tbl.dpt4_cd,
   tbl.dpt4_name,
   tbl.dpt4_abbreviate,
-  tbl.dpt4_sort_num,
+-- 2009/10/01 I_E_542 mod start by Shigeto.Niki
+--  tbl.dpt4_sort_num,
+  tbl.dpt4_start_date_active,
+-- 2009/10/01 I_E_542 mod end by Shigeto.Niki
   tbl.dpt4_old_cd,
+-- 2009/10/01 I_E_542 add start by Shigeto.Niki
+  tbl.dpt4_new_cd,
+-- 2009/10/01 I_E_542 add end by Shigeto.Niki
   tbl.dpt4_div,
   tbl.dpt5_cd,
   tbl.dpt5_name,
   tbl.dpt5_abbreviate,
-  tbl.dpt5_sort_num,
+-- 2009/10/01 I_E_542 mod start by Shigeto.Niki
+--  tbl.dpt5_sort_num,
+  tbl.dpt5_start_date_active,
+-- 2009/10/01 I_E_542 mod end by Shigeto.Niki
   tbl.dpt5_old_cd,
+-- 2009/10/01 I_E_542 add start by Shigeto.Niki
+  tbl.dpt5_new_cd,
+-- 2009/10/01 I_E_542 add end by Shigeto.Niki
   tbl.dpt5_div,
   tbl.dpt6_cd,
   tbl.dpt6_name,
   tbl.dpt6_abbreviate,
-  tbl.dpt6_sort_num,
+-- 2009/10/01 I_E_542 mod start by Shigeto.Niki
+--  tbl.dpt6_sort_num,
+  tbl.dpt6_start_date_active,
+-- 2009/10/01 I_E_542 mod end by Shigeto.Niki
   tbl.dpt6_old_cd,
+-- 2009/10/01 I_E_542 add start by Shigeto.Niki
+  tbl.dpt6_new_cd,
+-- 2009/10/01 I_E_542 add end by Shigeto.Niki
   tbl.dpt6_div,
   tbl.enabled_flag,
   tbl.start_date_active,
   tbl.end_date_active,
   tbl.flex_value_set_id,
   tbl.creation_date,
-  tbl.last_update_date,
-  ( '01' ||
-    LPAD(NVL(tbl.dpt1_sort_num,'999'),3,'0') ||
-    LPAD(tbl.dpt1_cd,4,'0') || 
-    '02' ||
-    LPAD(NVL(tbl.dpt2_sort_num,'999'),3,'0') ||
-    LPAD(tbl.dpt2_cd,4,'0') || 
-    '03' ||
-    LPAD(NVL(tbl.dpt3_sort_num,'999'),3,'0') ||
-    LPAD(tbl.dpt3_cd,4,'0') || 
-    '04' ||
-    LPAD(NVL(tbl.dpt4_sort_num,'999'),3,'0') ||
-    LPAD(tbl.dpt4_cd,4,'0') || 
-    '05' ||
-    LPAD(NVL(tbl.dpt5_sort_num,'999'),3,'0') ||
-    LPAD(tbl.dpt5_cd,4,'0') || 
-    '06' ||
-    LPAD(NVL(tbl.dpt6_sort_num,'999'),3,'0') ||
-    LPAD(tbl.dpt6_cd,4,'0')
-  ) AS  hierarchy_sort_key
+-- 2009/10/01 I_E_542 mod start by Shigeto.Niki
+--   tbl.last_update_date,
+--   ( '01' ||
+--     LPAD(NVL(tbl.dpt1_sort_num,'999'),3,'0') ||
+--     LPAD(tbl.dpt1_cd,4,'0') || 
+--     '02' ||
+--     LPAD(NVL(tbl.dpt2_sort_num,'999'),3,'0') ||
+--     LPAD(tbl.dpt2_cd,4,'0') || 
+--     '03' ||
+--     LPAD(NVL(tbl.dpt3_sort_num,'999'),3,'0') ||
+--     LPAD(tbl.dpt3_cd,4,'0') || 
+--     '04' ||
+--     LPAD(NVL(tbl.dpt4_sort_num,'999'),3,'0') ||
+--     LPAD(tbl.dpt4_cd,4,'0') || 
+--     '05' ||
+--     LPAD(NVL(tbl.dpt5_sort_num,'999'),3,'0') ||
+--     LPAD(tbl.dpt5_cd,4,'0') || 
+--     '06' ||
+--     LPAD(NVL(tbl.dpt6_sort_num,'999'),3,'0') ||
+--     LPAD(tbl.dpt6_cd,4,'0')
+--   ) AS  hierarchy_sort_key
+  tbl.last_update_date
+-- 2009/10/01 I_E_542 mod end by Shigeto.Niki
 FROM
 (
   SELECT
@@ -122,8 +215,14 @@ FROM
     dph.dpt1_cd,
     dph.dpt1_name,
     dph.dpt1_abbreviate,
-    dph.dpt1_sort_num,
+-- 2009/10/01 I_E_542 mod start by Shigeto.Niki
+--     dph.dpt1_sort_num,
+    dph.dpt1_start_date_active,
+-- 2009/10/01 I_E_542 mod end by Shigeto.Niki
     dph.dpt1_old_cd,
+-- 2009/10/01 I_E_542 add start by Shigeto.Niki
+    dph.dpt1_new_cd,
+-- 2009/10/01 I_E_542 add end by Shigeto.Niki
     dph.dpt1_div,
     /* ÇQäKëwñ⁄ */
     CASE WHEN dph.dpt2_cd IS NULL THEN
@@ -153,15 +252,26 @@ FROM
         dph.dpt1_abbreviate
       END
     END                               AS  dpt2_abbreviate,
+-- 2009/10/01 I_E_542 mod start by Shigeto.Niki
+--     CASE WHEN dph.dpt2_cd IS NULL THEN
+--       dph.dpt1_sort_num
+--     ELSE
+--       CASE WHEN dph.dpt2_cd <> dph.fvl_cd THEN
+--         dph.dpt2_sort_num
+--       ELSE
+--         dph.dpt1_sort_num
+--       END
+--     END                               AS  dpt2_sort_num,
     CASE WHEN dph.dpt2_cd IS NULL THEN
-      dph.dpt1_sort_num
+      dph.dpt1_start_date_active
     ELSE
       CASE WHEN dph.dpt2_cd <> dph.fvl_cd THEN
-        dph.dpt2_sort_num
+        dph.dpt2_start_date_active
       ELSE
-        dph.dpt1_sort_num
+        dph.dpt1_start_date_active
       END
-    END                               AS  dpt2_sort_num,
+    END                               AS  dpt2_start_date_active,
+-- 2009/10/01 I_E_542 mod end by Shigeto.Niki
     CASE WHEN dph.dpt2_cd IS NULL THEN
       dph.dpt1_old_cd
     ELSE
@@ -171,6 +281,17 @@ FROM
         dph.dpt1_old_cd
       END
     END                               AS  dpt2_old_cd,
+-- 2009/10/01 I_E_542 add start by Shigeto.Niki
+    CASE WHEN dph.dpt2_cd IS NULL THEN
+      dph.dpt1_new_cd
+    ELSE
+      CASE WHEN dph.dpt2_cd <> dph.fvl_cd THEN
+        dph.dpt2_new_cd
+      ELSE
+        dph.dpt1_new_cd
+      END
+    END                               AS  dpt2_new_cd,
+-- 2009/10/01 I_E_542 add end by Shigeto.Niki
     CASE WHEN dph.dpt2_cd IS NULL THEN
       dph.dpt1_div
     ELSE
@@ -208,15 +329,26 @@ FROM
         dph.dpt2_abbreviate
       END
     END                               AS  dpt3_abbreviate,
+-- 2009/10/01 I_E_542 mod start by Shigeto.Niki
+--     CASE WHEN dph.dpt3_cd IS NULL THEN
+--       dph.dpt1_sort_num
+--     ELSE
+--       CASE WHEN dph.dpt3_cd <> dph.fvl_cd THEN
+--         dph.dpt3_sort_num
+--       ELSE
+--         dph.dpt2_sort_num
+--       END
+--      END                               AS  dpt3_sort_num,
     CASE WHEN dph.dpt3_cd IS NULL THEN
-      dph.dpt1_sort_num
+      dph.dpt1_start_date_active
     ELSE
       CASE WHEN dph.dpt3_cd <> dph.fvl_cd THEN
-        dph.dpt3_sort_num
+        dph.dpt3_start_date_active
       ELSE
-        dph.dpt2_sort_num
+        dph.dpt2_start_date_active
       END
-    END                               AS  dpt3_sort_num,
+    END                               AS  dpt3_start_date_active,
+-- 2009/10/01 I_E_542 mod end by Shigeto.Niki
     CASE WHEN dph.dpt3_cd IS NULL THEN
       dph.dpt1_old_cd
     ELSE
@@ -226,6 +358,17 @@ FROM
         dph.dpt2_old_cd
       END
     END                               AS  dpt3_old_cd,
+-- 2009/10/01 I_E_542 add start by Shigeto.Niki
+    CASE WHEN dph.dpt3_cd IS NULL THEN
+      dph.dpt1_new_cd
+    ELSE
+      CASE WHEN dph.dpt3_cd <> dph.fvl_cd THEN
+        dph.dpt3_new_cd
+      ELSE
+        dph.dpt2_new_cd
+      END
+    END                               AS  dpt3_new_cd,
+-- 2009/10/01 I_E_542 add end by Shigeto.Niki
     CASE WHEN dph.dpt3_cd IS NULL THEN
       dph.dpt1_div
     ELSE
@@ -287,23 +430,42 @@ FROM
         dph.dpt3_abbreviate
       END
     END                               AS  dpt4_abbreviate,
+-- 2009/10/01 I_E_542 mod start by Shigeto.Niki
+--     CASE WHEN dph.dpt4_cd IS NULL THEN
+--       CASE WHEN dph.dpt2_cd IS NULL THEN
+--         dph.dpt1_sort_num
+--       ELSE
+--         CASE WHEN dph.dpt2_cd <> dph.fvl_cd THEN
+--           dph.dpt2_sort_num
+--         ELSE
+--           dph.dpt1_sort_num
+--         END
+--       END
+--     ELSE
+--       CASE WHEN dph.dpt4_cd <> dph.fvl_cd THEN
+--         dph.dpt4_sort_num
+--       ELSE
+--         dph.dpt3_sort_num
+--       END
+--     END                               AS  dpt4_sort_num,
     CASE WHEN dph.dpt4_cd IS NULL THEN
       CASE WHEN dph.dpt2_cd IS NULL THEN
-        dph.dpt1_sort_num
+        dph.dpt1_start_date_active
       ELSE
         CASE WHEN dph.dpt2_cd <> dph.fvl_cd THEN
-          dph.dpt2_sort_num
+          dph.dpt2_start_date_active
         ELSE
-          dph.dpt1_sort_num
+          dph.dpt1_start_date_active
         END
       END
     ELSE
       CASE WHEN dph.dpt4_cd <> dph.fvl_cd THEN
-        dph.dpt4_sort_num
+        dph.dpt4_start_date_active
       ELSE
-        dph.dpt3_sort_num
+        dph.dpt3_start_date_active
       END
-    END                               AS  dpt4_sort_num,
+    END                               AS  dpt4_start_date_active,
+-- 2009/10/01 I_E_542 mod end by Shigeto.Niki
     CASE WHEN dph.dpt4_cd IS NULL THEN
       CASE WHEN dph.dpt2_cd IS NULL THEN
         dph.dpt1_old_cd
@@ -321,6 +483,25 @@ FROM
         dph.dpt3_old_cd
       END
     END                               AS  dpt4_old_cd,
+-- 2009/10/01 I_E_542 add start by Shigeto.Niki
+    CASE WHEN dph.dpt4_cd IS NULL THEN
+      CASE WHEN dph.dpt2_cd IS NULL THEN
+        dph.dpt1_new_cd
+      ELSE
+        CASE WHEN dph.dpt2_cd <> dph.fvl_cd THEN
+          dph.dpt2_new_cd
+        ELSE
+          dph.dpt1_new_cd
+        END
+      END
+    ELSE
+      CASE WHEN dph.dpt4_cd <> dph.fvl_cd THEN
+        dph.dpt4_new_cd
+      ELSE
+        dph.dpt3_new_cd
+      END
+    END                               AS  dpt4_new_cd,
+-- 2009/10/01 I_E_542 add end by Shigeto.Niki
     CASE WHEN dph.dpt4_cd IS NULL THEN
       CASE WHEN dph.dpt2_cd IS NULL THEN
         dph.dpt1_div
@@ -390,23 +571,42 @@ FROM
         dph.dpt4_abbreviate
       END
     END                               AS  dpt5_abbreviate,
+-- 2009/10/01 I_E_542 mod start by Shigeto.Niki
+--     CASE WHEN dph.dpt5_cd IS NULL THEN
+--       CASE WHEN dph.dpt3_cd IS NULL THEN
+--         dph.dpt1_sort_num
+--       ELSE
+--         CASE WHEN dph.dpt3_cd <> dph.fvl_cd THEN
+--           dph.dpt3_sort_num
+--         ELSE
+--           dph.dpt2_sort_num
+--         END
+--       END
+--     ELSE
+--       CASE WHEN dph.dpt5_cd <> dph.fvl_cd THEN
+--         dph.dpt5_sort_num
+--       ELSE
+--         dph.dpt4_sort_num
+--       END
+--     END                               AS  dpt5_sort_num,
     CASE WHEN dph.dpt5_cd IS NULL THEN
       CASE WHEN dph.dpt3_cd IS NULL THEN
-        dph.dpt1_sort_num
+        dph.dpt1_start_date_active
       ELSE
         CASE WHEN dph.dpt3_cd <> dph.fvl_cd THEN
-          dph.dpt3_sort_num
+          dph.dpt3_start_date_active
         ELSE
-          dph.dpt2_sort_num
+          dph.dpt2_start_date_active
         END
       END
     ELSE
       CASE WHEN dph.dpt5_cd <> dph.fvl_cd THEN
-        dph.dpt5_sort_num
+        dph.dpt5_start_date_active
       ELSE
-        dph.dpt4_sort_num
+        dph.dpt4_start_date_active
       END
-    END                               AS  dpt5_sort_num,
+    END                               AS  dpt5_start_date_active,
+-- 2009/10/01 I_E_542 mod end by Shigeto.Niki
     CASE WHEN dph.dpt5_cd IS NULL THEN
       CASE WHEN dph.dpt3_cd IS NULL THEN
         dph.dpt1_old_cd
@@ -424,6 +624,25 @@ FROM
         dph.dpt4_old_cd
       END
     END                               AS  dpt5_old_cd,
+-- 2009/10/01 I_E_542 add start by Shigeto.Niki
+    CASE WHEN dph.dpt5_cd IS NULL THEN
+      CASE WHEN dph.dpt3_cd IS NULL THEN
+        dph.dpt1_new_cd
+      ELSE
+        CASE WHEN dph.dpt3_cd <> dph.fvl_cd THEN
+          dph.dpt3_new_cd
+        ELSE
+          dph.dpt2_new_cd
+        END
+      END
+    ELSE
+      CASE WHEN dph.dpt5_cd <> dph.fvl_cd THEN
+        dph.dpt5_new_cd
+      ELSE
+        dph.dpt4_new_cd
+      END
+    END                               AS  dpt5_new_cd,
+-- 2009/10/01 I_E_542 add end by Shigeto.Niki
     CASE WHEN dph.dpt5_cd IS NULL THEN
       CASE WHEN dph.dpt3_cd IS NULL THEN
         dph.dpt1_div
@@ -445,8 +664,14 @@ FROM
     NVL(dph.dpt6_cd,dph.fvl_cd)             AS  dpt6_cd,
     NVL(dph.dpt6_name,dph.attribute4)       AS  dpt6_name,
     NVL(dph.dpt6_abbreviate,dph.attribute5) AS  dpt6_abbreviate,
-    NVL(dph.dpt6_sort_num,dph.attribute6)   AS  dpt6_sort_num,
+-- 2009/10/01 I_E_542 mod start by Shigeto.Niki
+--     NVL(dph.dpt6_sort_num,dph.attribute6)   AS  dpt6_sort_num,
+    NVL(dph.dpt6_start_date_active,dph.attribute6)   AS  dpt6_start_date_active,
+-- 2009/10/01 I_E_542 mod end by Shigeto.Niki
     NVL(dph.dpt6_old_cd,dph.attribute7)     AS  dpt6_old_cd,
+-- 2009/10/01 I_E_542 add start by Shigeto.Niki
+    NVL(dph.dpt6_new_cd,dph.attribute9)     AS  dpt6_new_cd,
+-- 2009/10/01 I_E_542 add end by Shigeto.Niki
     NVL(dph.dpt6_div,dph.attribute8)        AS  dpt6_div,
     dph.enabled_flag,
     dph.start_date_active,
@@ -464,6 +689,9 @@ FROM
       dpt.attribute6        AS  attribute6,
       dpt.attribute7        AS  attribute7,
       dpt.attribute8        AS  attribute8,
+-- 2009/10/01 I_E_542 add atart by Shigeto.Niki
+      dpt.attribute9        AS  attribute9,
+-- 2009/10/01 I_E_542 add end by Shigeto.Niki
       dpt.dpt_lelel         AS  fvl_level,
       /* ÇPäKëwñ⁄ */
       SUBSTR(
@@ -486,16 +714,30 @@ FROM
         INSTR(dpt.dpt_abbreviate_root,'\',1,1)+1,
         INSTR(dpt.dpt_abbreviate_root,'\',1,2)-INSTR(dpt.dpt_abbreviate_root,'\',1,1)-1
       )                     AS  dpt1_abbreviate,
+-- 2009/10/01 I_E_542 mod start by Shigeto.Niki
+--       SUBSTR(
+--         dpt.dpt_sort_num_root,
+--         INSTR(dpt.dpt_sort_num_root,'\',1,1)+1,
+--         INSTR(dpt.dpt_sort_num_root,'\',1,2)-INSTR(dpt.dpt_sort_num_root,'\',1,1)-1
+--       )                     AS  dpt1_sort_num,
       SUBSTR(
-        dpt.dpt_sort_num_root,
-        INSTR(dpt.dpt_sort_num_root,'\',1,1)+1,
-        INSTR(dpt.dpt_sort_num_root,'\',1,2)-INSTR(dpt.dpt_sort_num_root,'\',1,1)-1
-      )                     AS  dpt1_sort_num,
+        dpt.dpt_start_date_active_root,
+        INSTR(dpt.dpt_start_date_active_root,'\',1,1)+1,
+        INSTR(dpt.dpt_start_date_active_root,'\',1,2)-INSTR(dpt.dpt_start_date_active_root,'\',1,1)-1
+      )                     AS  dpt1_start_date_active,
+-- 2009/10/01 I_E_542 mod end by Shigeto.Niki
       SUBSTR(
         dpt.dpt_old_cd_root,
         INSTR(dpt.dpt_old_cd_root,'\',1,1)+1,
         INSTR(dpt.dpt_old_cd_root,'\',1,2)-INSTR(dpt.dpt_old_cd_root,'\',1,1)-1
       )                     AS  dpt1_old_cd,
+-- 2009/10/01 I_E_542 add start by Shigeto.Niki
+      SUBSTR(
+        dpt.dpt_new_cd_root,
+        INSTR(dpt.dpt_new_cd_root,'\',1,1)+1,
+        INSTR(dpt.dpt_new_cd_root,'\',1,2)-INSTR(dpt.dpt_new_cd_root,'\',1,1)-1
+      )                     AS  dpt1_new_cd,
+-- 2009/10/01 I_E_542 add end by Shigeto.Niki
       SUBSTR(
         dpt.dpt_div_root,
         INSTR(dpt.dpt_div_root,'\',1,1)+1,
@@ -522,16 +764,30 @@ FROM
         INSTR(dpt.dpt_abbreviate_root,'\',1,2)+1,
         INSTR(dpt.dpt_abbreviate_root,'\',1,3)-INSTR(dpt.dpt_abbreviate_root,'\',1,2)-1
       )                     AS  dpt2_abbreviate,
+-- 2009/10/01 I_E_542 mod start by Shigeto.Niki
+--       SUBSTR(
+--         dpt.dpt_sort_num_root,
+--         INSTR(dpt.dpt_sort_num_root,'\',1,2)+1,
+--         INSTR(dpt.dpt_sort_num_root,'\',1,3)-INSTR(dpt.dpt_sort_num_root,'\',1,2)-1
+--       )                     AS  dpt2_sort_num,
       SUBSTR(
-        dpt.dpt_sort_num_root,
-        INSTR(dpt.dpt_sort_num_root,'\',1,2)+1,
-        INSTR(dpt.dpt_sort_num_root,'\',1,3)-INSTR(dpt.dpt_sort_num_root,'\',1,2)-1
-      )                     AS  dpt2_sort_num,
+        dpt.dpt_start_date_active_root,
+        INSTR(dpt.dpt_start_date_active_root,'\',1,2)+1,
+        INSTR(dpt.dpt_start_date_active_root,'\',1,3)-INSTR(dpt.dpt_start_date_active_root,'\',1,2)-1
+      )                     AS  dpt2_start_date_active,
+-- 2009/10/01 I_E_542 mod end by Shigeto.Niki
       SUBSTR(
         dpt.dpt_old_cd_root,
         INSTR(dpt.dpt_old_cd_root,'\',1,2)+1,
         INSTR(dpt.dpt_old_cd_root,'\',1,3)-INSTR(dpt.dpt_old_cd_root,'\',1,2)-1
       )                     AS  dpt2_old_cd,
+-- 2009/10/01 I_E_542 add start by Shigeto.Niki
+      SUBSTR(
+        dpt.dpt_new_cd_root,
+        INSTR(dpt.dpt_new_cd_root,'\',1,2)+1,
+        INSTR(dpt.dpt_new_cd_root,'\',1,3)-INSTR(dpt.dpt_new_cd_root,'\',1,2)-1
+      )                     AS  dpt2_new_cd,
+-- 2009/10/01 I_E_542 add end by Shigeto.Niki
       SUBSTR(
         dpt.dpt_div_root,
         INSTR(dpt.dpt_div_root,'\',1,2)+1,
@@ -558,16 +814,30 @@ FROM
         INSTR(dpt.dpt_abbreviate_root,'\',1,3)+1,
         INSTR(dpt.dpt_abbreviate_root,'\',1,4)-INSTR(dpt.dpt_abbreviate_root,'\',1,3)-1
       )                     AS  dpt3_abbreviate,
+-- 2009/10/01 I_E_542 mod start by Shigeto.Niki
+--       SUBSTR(
+--         dpt.dpt_sort_num_root,
+--         INSTR(dpt.dpt_sort_num_root,'\',1,3)+1,
+--         INSTR(dpt.dpt_sort_num_root,'\',1,4)-INSTR(dpt.dpt_sort_num_root,'\',1,3)-1
+--       )                     AS  dpt3_sort_num,
       SUBSTR(
-        dpt.dpt_sort_num_root,
-        INSTR(dpt.dpt_sort_num_root,'\',1,3)+1,
-        INSTR(dpt.dpt_sort_num_root,'\',1,4)-INSTR(dpt.dpt_sort_num_root,'\',1,3)-1
-      )                     AS  dpt3_sort_num,
+        dpt.dpt_start_date_active_root,
+        INSTR(dpt.dpt_start_date_active_root,'\',1,3)+1,
+        INSTR(dpt.dpt_start_date_active_root,'\',1,4)-INSTR(dpt.dpt_start_date_active_root,'\',1,3)-1
+      )                     AS  dpt3_start_date_active,
+-- 2009/10/01 I_E_542 mod end by Shigeto.Niki
       SUBSTR(
         dpt.dpt_old_cd_root,
         INSTR(dpt.dpt_old_cd_root,'\',1,3)+1,
         INSTR(dpt.dpt_old_cd_root,'\',1,4)-INSTR(dpt.dpt_old_cd_root,'\',1,3)-1
       )                     AS  dpt3_old_cd,
+-- 2009/10/01 I_E_542 add start by Shigeto.Niki
+      SUBSTR(
+        dpt.dpt_new_cd_root,
+        INSTR(dpt.dpt_new_cd_root,'\',1,3)+1,
+        INSTR(dpt.dpt_new_cd_root,'\',1,4)-INSTR(dpt.dpt_new_cd_root,'\',1,3)-1
+      )                     AS  dpt3_new_cd,
+-- 2009/10/01 I_E_542 add end by Shigeto.Niki
       SUBSTR(
         dpt.dpt_div_root,
         INSTR(dpt.dpt_div_root,'\',1,3)+1,
@@ -594,16 +864,30 @@ FROM
         INSTR(dpt.dpt_abbreviate_root,'\',1,4)+1,
         INSTR(dpt.dpt_abbreviate_root,'\',1,5)-INSTR(dpt.dpt_abbreviate_root,'\',1,4)-1
       )                     AS  dpt4_abbreviate,
+-- 2009/10/01 I_E_542 mod start by Shigeto.Niki
+--       SUBSTR(
+--         dpt.dpt_sort_num_root,
+--         INSTR(dpt.dpt_sort_num_root,'\',1,4)+1,
+--         INSTR(dpt.dpt_sort_num_root,'\',1,5)-INSTR(dpt.dpt_sort_num_root,'\',1,4)-1
+--       )                     AS  dpt4_sort_num,
       SUBSTR(
-        dpt.dpt_sort_num_root,
-        INSTR(dpt.dpt_sort_num_root,'\',1,4)+1,
-        INSTR(dpt.dpt_sort_num_root,'\',1,5)-INSTR(dpt.dpt_sort_num_root,'\',1,4)-1
-      )                     AS  dpt4_sort_num,
+        dpt.dpt_start_date_active_root,
+        INSTR(dpt.dpt_start_date_active_root,'\',1,4)+1,
+        INSTR(dpt.dpt_start_date_active_root,'\',1,5)-INSTR(dpt.dpt_start_date_active_root,'\',1,4)-1
+      )                     AS  dpt4_start_date_active,
+-- 2009/10/01 I_E_542 mod end by Shigeto.Niki
       SUBSTR(
         dpt.dpt_old_cd_root,
         INSTR(dpt.dpt_old_cd_root,'\',1,4)+1,
         INSTR(dpt.dpt_old_cd_root,'\',1,5)-INSTR(dpt.dpt_old_cd_root,'\',1,4)-1
       )                     AS  dpt4_old_cd,
+-- 2009/10/01 I_E_542 add start by Shigeto.Niki
+      SUBSTR(
+        dpt.dpt_new_cd_root,
+        INSTR(dpt.dpt_new_cd_root,'\',1,4)+1,
+        INSTR(dpt.dpt_new_cd_root,'\',1,5)-INSTR(dpt.dpt_new_cd_root,'\',1,4)-1
+      )                     AS  dpt4_new_cd,
+-- 2009/10/01 I_E_542 add end by Shigeto.Niki
       SUBSTR(
         dpt.dpt_div_root,
         INSTR(dpt.dpt_div_root,'\',1,4)+1,
@@ -630,16 +914,30 @@ FROM
         INSTR(dpt.dpt_abbreviate_root,'\',1,5)+1,
         INSTR(dpt.dpt_abbreviate_root,'\',1,6)-INSTR(dpt.dpt_abbreviate_root,'\',1,5)-1
       )                     AS  dpt5_abbreviate,
+-- 2009/10/01 I_E_542 mod start by Shigeto.Niki
+--       SUBSTR(
+--         dpt.dpt_sort_num_root,
+--         INSTR(dpt.dpt_sort_num_root,'\',1,5)+1,
+--         INSTR(dpt.dpt_sort_num_root,'\',1,6)-INSTR(dpt.dpt_sort_num_root,'\',1,5)-1
+--       )                     AS  dpt5_sort_num,
       SUBSTR(
-        dpt.dpt_sort_num_root,
-        INSTR(dpt.dpt_sort_num_root,'\',1,5)+1,
-        INSTR(dpt.dpt_sort_num_root,'\',1,6)-INSTR(dpt.dpt_sort_num_root,'\',1,5)-1
-      )                     AS  dpt5_sort_num,
+        dpt.dpt_start_date_active_root,
+        INSTR(dpt.dpt_start_date_active_root,'\',1,5)+1,
+        INSTR(dpt.dpt_start_date_active_root,'\',1,6)-INSTR(dpt.dpt_start_date_active_root,'\',1,5)-1
+      )                     AS  dpt5_start_date_active,
+-- 2009/10/01 I_E_542 mod end by Shigeto.Niki      
       SUBSTR(
         dpt.dpt_old_cd_root,
         INSTR(dpt.dpt_old_cd_root,'\',1,5)+1,
         INSTR(dpt.dpt_old_cd_root,'\',1,6)-INSTR(dpt.dpt_old_cd_root,'\',1,5)-1
       )                     AS  dpt5_old_cd,
+-- 2009/10/01 I_E_542 add start by Shigeto.Niki
+      SUBSTR(
+        dpt.dpt_new_cd_root,
+        INSTR(dpt.dpt_new_cd_root,'\',1,5)+1,
+        INSTR(dpt.dpt_new_cd_root,'\',1,6)-INSTR(dpt.dpt_new_cd_root,'\',1,5)-1
+      )                     AS  dpt5_new_cd,
+-- 2009/10/01 I_E_542 add end by Shigeto.Niki
       SUBSTR(
         dpt.dpt_div_root,
         INSTR(dpt.dpt_div_root,'\',1,5)+1,
@@ -666,16 +964,30 @@ FROM
         INSTR(dpt.dpt_abbreviate_root,'\',1,6)+1,
         INSTR(dpt.dpt_abbreviate_root,'\',1,7)-INSTR(dpt.dpt_abbreviate_root,'\',1,6)-1
       )                     AS  dpt6_abbreviate,
+-- 2009/10/01 I_E_542 mod start by Shigeto.Niki
+--       SUBSTR(
+--         dpt.dpt_sort_num_root,
+--         INSTR(dpt.dpt_sort_num_root,'\',1,6)+1,
+--         INSTR(dpt.dpt_sort_num_root,'\',1,7)-INSTR(dpt.dpt_sort_num_root,'\',1,6)-1
+--       )                     AS  dpt6_sort_num,
       SUBSTR(
-        dpt.dpt_sort_num_root,
-        INSTR(dpt.dpt_sort_num_root,'\',1,6)+1,
-        INSTR(dpt.dpt_sort_num_root,'\',1,7)-INSTR(dpt.dpt_sort_num_root,'\',1,6)-1
-      )                     AS  dpt6_sort_num,
+        dpt.dpt_start_date_active_root,
+        INSTR(dpt.dpt_start_date_active_root,'\',1,6)+1,
+        INSTR(dpt.dpt_start_date_active_root,'\',1,7)-INSTR(dpt.dpt_start_date_active_root,'\',1,6)-1
+      )                     AS  dpt6_start_date_active,
+-- 2009/10/01 I_E_542 mod end by Shigeto.Niki
       SUBSTR(
         dpt.dpt_old_cd_root,
         INSTR(dpt.dpt_old_cd_root,'\',1,6)+1,
         INSTR(dpt.dpt_old_cd_root,'\',1,7)-INSTR(dpt.dpt_old_cd_root,'\',1,6)-1
       )                     AS  dpt6_old_cd,
+-- 2009/10/01 I_E_542 add start by Shigeto.Niki
+      SUBSTR(
+        dpt.dpt_new_cd_root,
+        INSTR(dpt.dpt_new_cd_root,'\',1,6)+1,
+        INSTR(dpt.dpt_new_cd_root,'\',1,7)-INSTR(dpt.dpt_new_cd_root,'\',1,6)-1
+      )                     AS  dpt6_new_cd,
+-- 2009/10/01 I_E_542 add end by Shigeto.Niki
       SUBSTR(
         dpt.dpt_div_root,
         INSTR(dpt.dpt_div_root,'\',1,6)+1,
@@ -697,6 +1009,9 @@ FROM
         ffv.attribute6,
         ffv.attribute7,
         ffv.attribute8,
+        -- 2009/10/01 I_E_542 add atart by Shigeto.Niki
+        ffv.attribute9,
+        -- 2009/10/01 I_E_542 add end by Shigeto.Niki
         ffv.summary_flag,
         ffv.parent_flex_value,
         LEVEL AS dpt_lelel,
@@ -704,8 +1019,14 @@ FROM
         SYS_CONNECT_BY_PATH(ffv.description,'\') || '\' AS fvl_name_root,
         SYS_CONNECT_BY_PATH(ffv.attribute4,'\')  || '\' AS dpt_name_root,
         SYS_CONNECT_BY_PATH(ffv.attribute5,'\')  || '\' AS dpt_abbreviate_root,
-        SYS_CONNECT_BY_PATH(ffv.attribute6,'\')  || '\' AS dpt_sort_num_root,
+-- 2009/10/01 I_E_542 mod start by Shigeto.Niki
+--         SYS_CONNECT_BY_PATH(ffv.attribute6,'\')  || '\' AS dpt_sort_num_root,
+        SYS_CONNECT_BY_PATH(ffv.attribute6,'\')  || '\' AS dpt_start_date_active_root,
+-- 2009/10/01 I_E_542 mod end by Shigeto.Niki
         SYS_CONNECT_BY_PATH(ffv.attribute7,'\')  || '\' AS dpt_old_cd_root,
+-- 2009/10/01 I_E_542 add start by Shigeto.Niki
+        SYS_CONNECT_BY_PATH(ffv.attribute9,'\')  || '\' AS dpt_new_cd_root,
+-- 2009/10/01 I_E_542 add end by Shigeto.Niki
         SYS_CONNECT_BY_PATH(ffv.attribute8,'\')  || '\' AS dpt_div_root,
         ffv.enabled_flag,
         ffv.start_date_active,
@@ -726,6 +1047,9 @@ FROM
           ffvl.attribute6,
           ffvl.attribute7,
           ffvl.attribute8,
+          -- 2009/10/01 I_E_542 add atart by Shigeto.Niki
+          ffvl.attribute9,
+          -- 2009/10/01 I_E_542 add end by Shigeto.Niki
           ffvl.enabled_flag,
           ffvl.start_date_active,
           ffvl.end_date_active,
@@ -779,6 +1103,9 @@ FROM
           ffvl.attribute6,
           ffvl.attribute7,
           ffvl.attribute8,
+-- 2009/10/01 I_E_542 add atart by Shigeto.Niki
+          ffvl.attribute9,
+-- 2009/10/01 I_E_542 add end by Shigeto.Niki
           ffvl.enabled_flag,
           ffvl.start_date_active,
           ffvl.end_date_active,
@@ -818,97 +1145,147 @@ FROM
   ) dph
 ) tbl
 /
-COMMENT ON TABLE apps.xxcmm_hierarchy_dept_all_v                        IS 'ëSïîñÂäKëwÉrÉÖÅ['
+COMMENT ON TABLE apps.xxcmm_hierarchy_dept_all_v                         IS 'ëSïîñÂäKëwÉrÉÖÅ['
 /
-COMMENT ON COLUMN apps.xxcmm_hierarchy_dept_all_v.cur_dpt_cd            IS 'ç≈â∫ëwïîñÂÉRÅ[Éh'
+COMMENT ON COLUMN apps.xxcmm_hierarchy_dept_all_v.cur_dpt_cd             IS 'ç≈â∫ëwïîñÂÉRÅ[Éh'
 /
-COMMENT ON COLUMN apps.xxcmm_hierarchy_dept_all_v.cur_dpt_lv            IS 'ç≈â∫ëwïîñÂäKëwÉåÉxÉã'
+COMMENT ON COLUMN apps.xxcmm_hierarchy_dept_all_v.cur_dpt_lv             IS 'ç≈â∫ëwïîñÂäKëwÉåÉxÉã'
 /
-COMMENT ON COLUMN apps.xxcmm_hierarchy_dept_all_v.cur_dpt_fvl_name      IS 'ç≈â∫ëwïîñÂíËã`ñº'
+COMMENT ON COLUMN apps.xxcmm_hierarchy_dept_all_v.cur_dpt_fvl_name       IS 'ç≈â∫ëwïîñÂíËã`ñº'
 /
-COMMENT ON COLUMN apps.xxcmm_hierarchy_dept_all_v.dpt1_cd               IS 'ÇPäKëwñ⁄ïîñÂÉRÅ[Éh'
+COMMENT ON COLUMN apps.xxcmm_hierarchy_dept_all_v.dpt1_cd                IS 'ÇPäKëwñ⁄ïîñÂÉRÅ[Éh'
 /
-COMMENT ON COLUMN apps.xxcmm_hierarchy_dept_all_v.dpt1_name             IS 'ÇPäKëwñ⁄ïîñÂê≥éÆñº'
+COMMENT ON COLUMN apps.xxcmm_hierarchy_dept_all_v.dpt1_name              IS 'ÇPäKëwñ⁄ïîñÂê≥éÆñº'
 /
-COMMENT ON COLUMN apps.xxcmm_hierarchy_dept_all_v.dpt1_abbreviate       IS 'ÇPäKëwñ⁄ïîñÂó™ñº'
+COMMENT ON COLUMN apps.xxcmm_hierarchy_dept_all_v.dpt1_abbreviate        IS 'ÇPäKëwñ⁄ïîñÂó™ñº'
 /
-COMMENT ON COLUMN apps.xxcmm_hierarchy_dept_all_v.dpt1_sort_num         IS 'ÇPäKëwñ⁄ï¿Ç—èá'
+-- 2009/10/01 I_E_542 mod start by Shigeto.Niki
+-- COMMENT ON COLUMN apps.xxcmm_hierarchy_dept_all_v.dpt1_sort_num         IS 'ÇPäKëwñ⁄ï¿Ç—èá'
+-- /
+COMMENT ON COLUMN apps.xxcmm_hierarchy_dept_all_v.dpt1_start_date_active IS 'ÇPäKëwñ⁄ìKópäJénì˙'
 /
-COMMENT ON COLUMN apps.xxcmm_hierarchy_dept_all_v.dpt1_old_cd           IS 'ÇPäKëwñ⁄ãåñ{ïîÉRÅ[Éh'
+-- 2009/10/01 I_E_542 mod end by Shigeto.Niki
+COMMENT ON COLUMN apps.xxcmm_hierarchy_dept_all_v.dpt1_old_cd            IS 'ÇPäKëwñ⁄ãåñ{ïîÉRÅ[Éh'
 /
-COMMENT ON COLUMN apps.xxcmm_hierarchy_dept_all_v.dpt1_div              IS 'ÇPäKëwñ⁄ïîñÂãÊï™'
+-- 2009/10/01 I_E_542 add start by Shigeto.Niki
+COMMENT ON COLUMN apps.xxcmm_hierarchy_dept_all_v.dpt1_new_cd            IS 'ÇPäKëwñ⁄êVñ{ïîÉRÅ[Éh'
 /
-COMMENT ON COLUMN apps.xxcmm_hierarchy_dept_all_v.dpt2_cd               IS 'ÇQäKëwñ⁄ïîñÂÉRÅ[Éh'
+-- 2009/10/01 I_E_542 add end by Shigeto.Niki
+COMMENT ON COLUMN apps.xxcmm_hierarchy_dept_all_v.dpt1_div               IS 'ÇPäKëwñ⁄ïîñÂãÊï™'
 /
-COMMENT ON COLUMN apps.xxcmm_hierarchy_dept_all_v.dpt2_name             IS 'ÇQäKëwñ⁄ïîñÂê≥éÆñº'
+COMMENT ON COLUMN apps.xxcmm_hierarchy_dept_all_v.dpt2_cd                IS 'ÇQäKëwñ⁄ïîñÂÉRÅ[Éh'
 /
-COMMENT ON COLUMN apps.xxcmm_hierarchy_dept_all_v.dpt2_abbreviate       IS 'ÇQäKëwñ⁄ïîñÂó™ñº'
+COMMENT ON COLUMN apps.xxcmm_hierarchy_dept_all_v.dpt2_name              IS 'ÇQäKëwñ⁄ïîñÂê≥éÆñº'
 /
-COMMENT ON COLUMN apps.xxcmm_hierarchy_dept_all_v.dpt2_sort_num         IS 'ÇQäKëwñ⁄ï¿Ç—èá'
+COMMENT ON COLUMN apps.xxcmm_hierarchy_dept_all_v.dpt2_abbreviate        IS 'ÇQäKëwñ⁄ïîñÂó™ñº'
 /
-COMMENT ON COLUMN apps.xxcmm_hierarchy_dept_all_v.dpt2_old_cd           IS 'ÇQäKëwñ⁄ãåñ{ïîÉRÅ[Éh'
+-- 2009/10/01 I_E_542 mod start by Shigeto.Niki
+-- COMMENT ON COLUMN apps.xxcmm_hierarchy_dept_all_v.dpt2_sort_num         IS 'ÇQäKëwñ⁄ï¿Ç—èá'
+-- /
+COMMENT ON COLUMN apps.xxcmm_hierarchy_dept_all_v.dpt2_start_date_active IS 'ÇQäKëwñ⁄ìKópäJénì˙'
 /
-COMMENT ON COLUMN apps.xxcmm_hierarchy_dept_all_v.dpt2_div              IS 'ÇQäKëwñ⁄ïîñÂãÊï™'
+-- 2009/10/01 I_E_542 mod end by Shigeto.Niki
+COMMENT ON COLUMN apps.xxcmm_hierarchy_dept_all_v.dpt2_old_cd            IS 'ÇQäKëwñ⁄ãåñ{ïîÉRÅ[Éh'
 /
-COMMENT ON COLUMN apps.xxcmm_hierarchy_dept_all_v.dpt3_cd               IS 'ÇRäKëwñ⁄ïîñÂÉRÅ[Éh'
+-- 2009/10/01 I_E_542 add start by Shigeto.Niki
+COMMENT ON COLUMN apps.xxcmm_hierarchy_dept_all_v.dpt2_new_cd            IS 'ÇQäKëwñ⁄êVñ{ïîÉRÅ[Éh'
 /
-COMMENT ON COLUMN apps.xxcmm_hierarchy_dept_all_v.dpt3_name             IS 'ÇRäKëwñ⁄ïîñÂê≥éÆñº'
+-- 2009/10/01 I_E_542 add end by Shigeto.Niki
+COMMENT ON COLUMN apps.xxcmm_hierarchy_dept_all_v.dpt2_div               IS 'ÇQäKëwñ⁄ïîñÂãÊï™'
 /
-COMMENT ON COLUMN apps.xxcmm_hierarchy_dept_all_v.dpt3_abbreviate       IS 'ÇRäKëwñ⁄ïîñÂó™ñº'
+COMMENT ON COLUMN apps.xxcmm_hierarchy_dept_all_v.dpt3_cd                IS 'ÇRäKëwñ⁄ïîñÂÉRÅ[Éh'
 /
-COMMENT ON COLUMN apps.xxcmm_hierarchy_dept_all_v.dpt3_sort_num         IS 'ÇRäKëwñ⁄ï¿Ç—èá'
+COMMENT ON COLUMN apps.xxcmm_hierarchy_dept_all_v.dpt3_name              IS 'ÇRäKëwñ⁄ïîñÂê≥éÆñº'
 /
-COMMENT ON COLUMN apps.xxcmm_hierarchy_dept_all_v.dpt3_old_cd           IS 'ÇRäKëwñ⁄ãåñ{ïîÉRÅ[Éh'
+COMMENT ON COLUMN apps.xxcmm_hierarchy_dept_all_v.dpt3_abbreviate        IS 'ÇRäKëwñ⁄ïîñÂó™ñº'
 /
-COMMENT ON COLUMN apps.xxcmm_hierarchy_dept_all_v.dpt3_div              IS 'ÇRäKëwñ⁄ïîñÂãÊï™'
+-- 2009/10/01 I_E_542 mod start by Shigeto.Niki
+-- COMMENT ON COLUMN apps.xxcmm_hierarchy_dept_all_v.dpt3_sort_num         IS 'ÇRäKëwñ⁄ï¿Ç—èá'
+-- /
+COMMENT ON COLUMN apps.xxcmm_hierarchy_dept_all_v.dpt3_start_date_active IS 'ÇRäKëwñ⁄ìKópäJénì˙'
 /
-COMMENT ON COLUMN apps.xxcmm_hierarchy_dept_all_v.dpt4_cd               IS 'ÇSäKëwñ⁄ïîñÂÉRÅ[Éh'
+-- 2009/10/01 I_E_542 mod end by Shigeto.Niki
+COMMENT ON COLUMN apps.xxcmm_hierarchy_dept_all_v.dpt3_old_cd            IS 'ÇRäKëwñ⁄ãåñ{ïîÉRÅ[Éh'
 /
-COMMENT ON COLUMN apps.xxcmm_hierarchy_dept_all_v.dpt4_name             IS 'ÇSäKëwñ⁄ïîñÂê≥éÆñº'
+-- 2009/10/01 I_E_542 add start by Shigeto.Niki
+COMMENT ON COLUMN apps.xxcmm_hierarchy_dept_all_v.dpt3_new_cd            IS 'ÇRäKëwñ⁄êVñ{ïîÉRÅ[Éh'
 /
-COMMENT ON COLUMN apps.xxcmm_hierarchy_dept_all_v.dpt4_abbreviate       IS 'ÇSäKëwñ⁄ïîñÂó™ñº'
+-- 2009/10/01 I_E_542 add end by Shigeto.Niki
+COMMENT ON COLUMN apps.xxcmm_hierarchy_dept_all_v.dpt3_div               IS 'ÇRäKëwñ⁄ïîñÂãÊï™'
 /
-COMMENT ON COLUMN apps.xxcmm_hierarchy_dept_all_v.dpt4_sort_num         IS 'ÇSäKëwñ⁄ï¿Ç—èá'
+COMMENT ON COLUMN apps.xxcmm_hierarchy_dept_all_v.dpt4_cd                IS 'ÇSäKëwñ⁄ïîñÂÉRÅ[Éh'
 /
-COMMENT ON COLUMN apps.xxcmm_hierarchy_dept_all_v.dpt4_old_cd           IS 'ÇSäKëwñ⁄ãåñ{ïîÉRÅ[Éh'
+COMMENT ON COLUMN apps.xxcmm_hierarchy_dept_all_v.dpt4_name              IS 'ÇSäKëwñ⁄ïîñÂê≥éÆñº'
 /
-COMMENT ON COLUMN apps.xxcmm_hierarchy_dept_all_v.dpt4_div              IS 'ÇSäKëwñ⁄ïîñÂãÊï™'
+COMMENT ON COLUMN apps.xxcmm_hierarchy_dept_all_v.dpt4_abbreviate        IS 'ÇSäKëwñ⁄ïîñÂó™ñº'
 /
-COMMENT ON COLUMN apps.xxcmm_hierarchy_dept_all_v.dpt5_cd               IS 'ÇTäKëwñ⁄ïîñÂÉRÅ[Éh'
+-- 2009/10/01 I_E_542 mod start by Shigeto.Niki
+-- COMMENT ON COLUMN apps.xxcmm_hierarchy_dept_all_v.dpt4_sort_num         IS 'ÇSäKëwñ⁄ï¿Ç—èá'
+-- /
+COMMENT ON COLUMN apps.xxcmm_hierarchy_dept_all_v.dpt4_start_date_active IS 'ÇSäKëwñ⁄ìKópäJénì˙'
 /
-COMMENT ON COLUMN apps.xxcmm_hierarchy_dept_all_v.dpt5_name             IS 'ÇTäKëwñ⁄ïîñÂê≥éÆñº'
+-- 2009/10/01 I_E_542 mod end by Shigeto.Niki
+COMMENT ON COLUMN apps.xxcmm_hierarchy_dept_all_v.dpt4_old_cd            IS 'ÇSäKëwñ⁄ãåñ{ïîÉRÅ[Éh'
 /
-COMMENT ON COLUMN apps.xxcmm_hierarchy_dept_all_v.dpt5_abbreviate       IS 'ÇTäKëwñ⁄ïîñÂó™ñº'
+-- 2009/10/01 I_E_542 add start by Shigeto.Niki
+COMMENT ON COLUMN apps.xxcmm_hierarchy_dept_all_v.dpt4_new_cd            IS 'ÇSäKëwñ⁄êVñ{ïîÉRÅ[Éh'
 /
-COMMENT ON COLUMN apps.xxcmm_hierarchy_dept_all_v.dpt5_sort_num         IS 'ÇTäKëwñ⁄ï¿Ç—èá'
+-- 2009/10/01 I_E_542 add end by Shigeto.Niki
+COMMENT ON COLUMN apps.xxcmm_hierarchy_dept_all_v.dpt4_div               IS 'ÇSäKëwñ⁄ïîñÂãÊï™'
 /
-COMMENT ON COLUMN apps.xxcmm_hierarchy_dept_all_v.dpt5_old_cd           IS 'ÇTäKëwñ⁄ãåñ{ïîÉRÅ[Éh'
+COMMENT ON COLUMN apps.xxcmm_hierarchy_dept_all_v.dpt5_cd                IS 'ÇTäKëwñ⁄ïîñÂÉRÅ[Éh'
 /
-COMMENT ON COLUMN apps.xxcmm_hierarchy_dept_all_v.dpt5_div              IS 'ÇTäKëwñ⁄ïîñÂãÊï™'
+COMMENT ON COLUMN apps.xxcmm_hierarchy_dept_all_v.dpt5_name              IS 'ÇTäKëwñ⁄ïîñÂê≥éÆñº'
 /
-COMMENT ON COLUMN apps.xxcmm_hierarchy_dept_all_v.dpt6_cd               IS 'ÇUäKëwñ⁄ïîñÂÉRÅ[Éh'
+COMMENT ON COLUMN apps.xxcmm_hierarchy_dept_all_v.dpt5_abbreviate        IS 'ÇTäKëwñ⁄ïîñÂó™ñº'
 /
-COMMENT ON COLUMN apps.xxcmm_hierarchy_dept_all_v.dpt6_name             IS 'ÇUäKëwñ⁄ïîñÂê≥éÆñº'
+-- 2009/10/01 I_E_542 mod start by Shigeto.Niki
+-- COMMENT ON COLUMN apps.xxcmm_hierarchy_dept_all_v.dpt5_sort_num         IS 'ÇTäKëwñ⁄ï¿Ç—èá'
+-- /
+COMMENT ON COLUMN apps.xxcmm_hierarchy_dept_all_v.dpt5_start_date_active IS 'ÇTäKëwñ⁄ìKópäJénì˙'
 /
-COMMENT ON COLUMN apps.xxcmm_hierarchy_dept_all_v.dpt6_abbreviate       IS 'ÇUäKëwñ⁄ïîñÂó™ñº'
+-- 2009/10/01 I_E_542 mod end by Shigeto.Niki
+COMMENT ON COLUMN apps.xxcmm_hierarchy_dept_all_v.dpt5_old_cd            IS 'ÇTäKëwñ⁄ãåñ{ïîÉRÅ[Éh'
 /
-COMMENT ON COLUMN apps.xxcmm_hierarchy_dept_all_v.dpt6_sort_num         IS 'ÇUäKëwñ⁄ï¿Ç—èá'
+-- 2009/10/01 I_E_542 add start by Shigeto.Niki
+COMMENT ON COLUMN apps.xxcmm_hierarchy_dept_all_v.dpt5_new_cd            IS 'ÇTäKëwñ⁄êVñ{ïîÉRÅ[Éh'
 /
-COMMENT ON COLUMN apps.xxcmm_hierarchy_dept_all_v.dpt6_old_cd           IS 'ÇUäKëwñ⁄ãåñ{ïîÉRÅ[Éh'
+-- 2009/10/01 I_E_542 add end by Shigeto.Niki
+COMMENT ON COLUMN apps.xxcmm_hierarchy_dept_all_v.dpt5_div               IS 'ÇTäKëwñ⁄ïîñÂãÊï™'
 /
-COMMENT ON COLUMN apps.xxcmm_hierarchy_dept_all_v.dpt6_div              IS 'ÇUäKëwñ⁄ïîñÂãÊï™'
+COMMENT ON COLUMN apps.xxcmm_hierarchy_dept_all_v.dpt6_cd                IS 'ÇUäKëwñ⁄ïîñÂÉRÅ[Éh'
 /
-COMMENT ON COLUMN apps.xxcmm_hierarchy_dept_all_v.enabled_flag          IS 'égópâ¬î\ÉtÉâÉO'
+COMMENT ON COLUMN apps.xxcmm_hierarchy_dept_all_v.dpt6_name              IS 'ÇUäKëwñ⁄ïîñÂê≥éÆñº'
 /
-COMMENT ON COLUMN apps.xxcmm_hierarchy_dept_all_v.start_date_active     IS 'óLå¯ä˙ä‘äJénì˙'
+COMMENT ON COLUMN apps.xxcmm_hierarchy_dept_all_v.dpt6_abbreviate        IS 'ÇUäKëwñ⁄ïîñÂó™ñº'
 /
-COMMENT ON COLUMN apps.xxcmm_hierarchy_dept_all_v.end_date_active       IS 'óLå¯ä˙ä‘èIóπì˙'
+-- 2009/10/01 I_E_542 mod start by Shigeto.Niki
+-- COMMENT ON COLUMN apps.xxcmm_hierarchy_dept_all_v.dpt6_sort_num         IS 'ÇUäKëwñ⁄ï¿Ç—èá'
+-- /
+COMMENT ON COLUMN apps.xxcmm_hierarchy_dept_all_v.dpt6_start_date_active IS 'ÇUäKëwñ⁄ìKópäJénì˙'
 /
-COMMENT ON COLUMN apps.xxcmm_hierarchy_dept_all_v.flex_value_set_id     IS 'ílÉZÉbÉgID'
+-- 2009/10/01 I_E_542 mod end by Shigeto.Niki
+COMMENT ON COLUMN apps.xxcmm_hierarchy_dept_all_v.dpt6_old_cd            IS 'ÇUäKëwñ⁄ãåñ{ïîÉRÅ[Éh'
 /
-COMMENT ON COLUMN apps.xxcmm_hierarchy_dept_all_v.creation_date         IS 'çÏê¨ì˙'
+-- 2009/10/01 I_E_542 add start by Shigeto.Niki
+COMMENT ON COLUMN apps.xxcmm_hierarchy_dept_all_v.dpt6_new_cd            IS 'ÇUäKëwñ⁄êVñ{ïîÉRÅ[Éh'
 /
-COMMENT ON COLUMN apps.xxcmm_hierarchy_dept_all_v.last_update_date      IS 'ç≈èIçXêVì˙'
+-- 2009/10/01 I_E_542 add end by Shigeto.Niki
+COMMENT ON COLUMN apps.xxcmm_hierarchy_dept_all_v.dpt6_div               IS 'ÇUäKëwñ⁄ïîñÂãÊï™'
 /
-COMMENT ON COLUMN apps.xxcmm_hierarchy_dept_all_v.hierarchy_sort_key    IS 'ïîñÂäKëwÉ\Å[ÉgÉLÅ['
+COMMENT ON COLUMN apps.xxcmm_hierarchy_dept_all_v.enabled_flag           IS 'égópâ¬î\ÉtÉâÉO'
 /
+COMMENT ON COLUMN apps.xxcmm_hierarchy_dept_all_v.start_date_active      IS 'óLå¯ä˙ä‘äJénì˙'
+/
+COMMENT ON COLUMN apps.xxcmm_hierarchy_dept_all_v.end_date_active        IS 'óLå¯ä˙ä‘èIóπì˙'
+/
+COMMENT ON COLUMN apps.xxcmm_hierarchy_dept_all_v.flex_value_set_id      IS 'ílÉZÉbÉgID'
+/
+COMMENT ON COLUMN apps.xxcmm_hierarchy_dept_all_v.creation_date          IS 'çÏê¨ì˙'
+/
+COMMENT ON COLUMN apps.xxcmm_hierarchy_dept_all_v.last_update_date       IS 'ç≈èIçXêVì˙'
+/
+-- 2009/10/01 I_E_542 delete start by Shigeto.Niki
+-- COMMENT ON COLUMN apps.xxcmm_hierarchy_dept_all_v.hierarchy_sort_key    IS 'ïîñÂäKëwÉ\Å[ÉgÉLÅ['
+-- /
+-- 2009/10/01 I_E_542 delete end by Shigeto.Niki

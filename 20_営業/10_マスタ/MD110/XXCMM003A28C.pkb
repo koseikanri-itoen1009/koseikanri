@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCMM003A28C(body)
  * Description      : 顧客一括更新用ＣＳＶダウンロード
  * MD.050           : MD050_CMM_003_A28_顧客一括更新用CSVダウンロード
- * Version          : 1.1
+ * Version          : 1.2
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -24,6 +24,7 @@ AS
  * ------------- ----- ---------------- -------------------------------------------------
  *  2009/01/07    1.0   中村 祐基        新規作成
  *  2009/03/09    1.1   中村 祐基        ファイル出力先プロファイル名称変更
+ *  2009/10/08    1.2   仁木 重人        障害I_E_542、E_T3_00469対応
  *
  *****************************************************************************************/
 --
@@ -134,6 +135,9 @@ AS
   -- ===============================
   -- ユーザー定義グローバル変数
   -- ===============================
+-- 2009/10/08 Ver1.2 add start by Shigeto.Niki
+  gv_process_date           VARCHAR2(8);                                               -- 業務日付(YYYYMMDD)
+-- 2009/10/08 Ver1.2 add end by Shigeto.Niki
 --
   /**********************************************************************************
    * Procedure Name   : init
@@ -205,7 +209,14 @@ AS
       lv_errbuf := lv_errmsg;
       RAISE init_err_expt;
     END IF;
+
 --
+-- 2009/10/08 Ver1.2 add start by Shigeto.Niki
+      -- 業務日付をYYYYMMDD形式で取得します
+      gv_process_date := TO_CHAR(xxccp_common_pkg2.get_process_date,'YYYYMMDD');
+-- 2009/10/08 Ver1.2 add end by Shigeto.Niki
+--
+
   EXCEPTION
     WHEN init_err_expt THEN                           --*** 初期処理例外 ***
       ov_errmsg  := lv_errmsg;
@@ -426,7 +437,14 @@ AS
                hcsu.attribute4                        ar_invoice_code,      --売掛コード１（請求書）
                hcsu.attribute5                        ar_location_code,     --売掛コード２（事業所）
                hcsu.attribute6                        ar_others_code,       --売掛コード３（その他）
-               CONCAT(ff.attribute7, ff.attribute6)   main_base_code,       --本部コード
+-- 2009/10/08 Ver1.2 modify start by Shigeto.Niki
+--                CONCAT(ff.attribute7, ff.attribute6)   main_base_code,       --本部コード
+               -- 最新本部コードを取得
+               CASE
+                 WHEN (ff.attribute6 <= gv_process_date) THEN ff.attribute9  --新本部コード
+                 ELSE                                         ff.attribute7  --旧本部コード
+               END                                AS  main_base_code,       --本部コード
+-- 2009/10/08 Ver1.2 modify end by Shigeto.Niki
                xca.customer_id                        addon_customer_id,    --顧客追加情報.顧客ＩＤ
                xca.sale_base_code                     sale_base_code,       --売上拠点コード
                hp.duns_number_c                       customer_status,      --顧客ステータス
@@ -447,6 +465,9 @@ AS
                xxcmm_cust_accounts  xca,
                (SELECT ffv.flex_value fv,
                        ffv.attribute6 attribute6,
+-- 2009/10/08 Ver1.2 add start by Shigeto.Niki
+                       ffv.attribute9 attribute9,
+-- 2009/10/08 Ver1.2 add end by Shigeto.Niki                       
                        ffv.attribute7 attribute7
                 FROM   fnd_flex_value_sets  ffvs,
                        fnd_flex_values      ffv
@@ -666,7 +687,10 @@ AS
 --
         --出力文字列作成
         lv_output_str := SUBSTRB(cust_data_rec.customer_class_code,1,2);                               --顧客区分
-        lv_output_str := lv_output_str || cv_comma || SUBSTRB(cust_data_rec.main_base_code,1,7);       --本部コード
+-- 2009/10/08 Ver1.2 modify start by Shigeto.Niki        
+--        lv_output_str := lv_output_str || cv_comma || SUBSTRB(cust_data_rec.main_base_code,1,7);       --本部コード
+        lv_output_str := lv_output_str || cv_comma || SUBSTRB(cust_data_rec.main_base_code,1,6);       --本部コード
+-- 2009/10/08 Ver1.2 modify end by Shigeto.Niki
         lv_output_str := lv_output_str || cv_comma || SUBSTRB(cust_data_rec.sale_base_code,1,4);       --売上拠点コード
         lv_output_str := lv_output_str || cv_comma || lv_sales_base_name;                              --売上拠点名称
         lv_output_str := lv_output_str || cv_comma || SUBSTRB(cust_data_rec.customer_code,1,9);        --顧客コード

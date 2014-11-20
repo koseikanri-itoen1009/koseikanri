@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCMM005A05C(body)
  * Description      : 拠点マスタIF出力（ワークフロー）
  * MD.050           : 拠点マスタIF出力（ワークフロー） MD050_CMM_005_A05
- * Version          : 1.5
+ * Version          : 1.6
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -30,6 +30,7 @@ AS
  *  2009/03/09    1.3   Yuuki.Nakamura   ファイル出力先プロファイル名称変更
  *  2009/04/20    1.4   Yutaka.Kuboshima 障害T1_0590の対応
  *  2009/05/14    1.5   Yutaka.Kuboshima 障害T1_1000の対応
+ *  2009/10/07    1.6   Shigeto.Niki     障害I_E_542、E_T3_00469の対応
  *
  *****************************************************************************************/
 --
@@ -149,26 +150,32 @@ AS
   -- 拠点マスタIF出力(ワークフロー)レイアウト
   TYPE output_data_rtype IS RECORD
   (
-     dpt6_cd                 xxcmm_hierarchy_dept_v.dpt6_cd%TYPE          -- 部門コード
-    ,dpt6_name               xxcmm_hierarchy_dept_v.dpt6_name%TYPE        -- 拠点正式名
-    ,dpt6_abbreviate         xxcmm_hierarchy_dept_v.dpt6_abbreviate%TYPE  -- 拠点略称
-    ,dpt6_old_cd             xxcmm_hierarchy_dept_v.dpt6_old_cd%TYPE      -- 旧本部コード
-    ,dpt6_sort_num           xxcmm_hierarchy_dept_v.dpt6_sort_num%TYPE    -- 拠点並び順
+     dpt6_cd                 xxcmm_hierarchy_dept_v.dpt6_cd%TYPE                 -- 部門コード
+    ,dpt6_name               xxcmm_hierarchy_dept_v.dpt6_name%TYPE               -- 拠点正式名
+    ,dpt6_abbreviate         xxcmm_hierarchy_dept_v.dpt6_abbreviate%TYPE         -- 拠点略称
+    ,dpt6_old_cd             xxcmm_hierarchy_dept_v.dpt6_old_cd%TYPE             -- 旧本部コード
+-- 2009/10/07 Ver1.6 modify start by Shigeto.Niki
+--     ,dpt6_sort_num           xxcmm_hierarchy_dept_v.dpt6_sort_num%TYPE         -- 拠点並び順
+    ,dpt6_new_cd             xxcmm_hierarchy_dept_v.dpt6_new_cd%TYPE             -- 新本部コード
+    ,dpt6_start_date_active  xxcmm_hierarchy_dept_v.dpt6_start_date_active%TYPE  -- 部門適用開始日
+-- 2009/10/07 Ver1.6 modify end by Shigeto.Niki
 -- 2009/05/14 Ver1.5 delete start by Yutaka.Kuboshima
---    ,attribute4              fnd_flex_values.attribute4%TYPE              -- 拠点正式名（旧本部コード）
---    ,attribute6              fnd_flex_values.attribute6%TYPE              -- 拠点並び順（旧本部コード）
+--    ,attribute4              fnd_flex_values.attribute4%TYPE                    -- 拠点正式名（旧本部コード）
+--    ,attribute6              fnd_flex_values.attribute6%TYPE                    -- 拠点並び順（旧本部コード）
 -- 2009/05/14 Ver1.5 delete end by Yutaka.Kuboshima
-    ,creation_date           xxcmm_hierarchy_dept_v.creation_date%TYPE    -- 作成日
-    ,dpt3_cd                 xxcmm_hierarchy_dept_v.dpt3_cd%TYPE          -- 部門コード(3階層目)
-    ,dpt3_name               xxcmm_hierarchy_dept_v.dpt3_name%TYPE        -- 拠点正式名(3階層目)
-    ,customer_name_phonetic  ar_customers_v.customer_name_phonetic%TYPE   -- 顧客カナ名
-    ,address_line            VARCHAR2(100)                                -- 住所
-    ,zip                     xxcmn_parties.zip%TYPE                       -- 郵便番号
-    ,phone                   xxcmn_parties.phone%TYPE                     -- 電話番号
-    ,fax                     xxcmn_parties.fax%TYPE                       -- FAX番号
+    ,creation_date           xxcmm_hierarchy_dept_v.creation_date%TYPE           -- 作成日
+    ,dpt3_cd                 xxcmm_hierarchy_dept_v.dpt3_cd%TYPE                 -- 部門コード(3階層目)
+    ,dpt3_name               xxcmm_hierarchy_dept_v.dpt3_name%TYPE               -- 拠点正式名(3階層目)
+    ,customer_name_phonetic  ar_customers_v.customer_name_phonetic%TYPE          -- 顧客カナ名
+    ,address_line            VARCHAR2(100)                                       -- 住所
+    ,zip                     xxcmn_parties.zip%TYPE                              -- 郵便番号
+    ,phone                   xxcmn_parties.phone%TYPE                            -- 電話番号
+    ,fax                     xxcmn_parties.fax%TYPE                              -- FAX番号
+-- 2009/10/08 Ver1.6 delete start by Shigeto.Niki
 -- 2009/05/14 Ver1.5 add start by Yutaka.Kuboshima
-    ,area_name               fnd_lookup_values.meaning%TYPE               -- 地区名
+--     ,area_name               fnd_lookup_values.meaning%TYPE                      -- 地区名
 -- 2009/05/14 Ver1.5 add start by Yutaka.Kuboshima
+-- 2009/10/08 Ver1.6 delete end by Shigeto.Niki
   );
 --
   -- 拠点マスタIF出力(ワークフロー)レイアウト テーブルタイプ
@@ -189,6 +196,10 @@ AS
                                         -- CSVファイル出力用ハンドラ
   gt_csv_out_tab        output_data_ttype;                                   
                                         -- 拠点マスタIF出力（ワークフロー）データ
+-- 2009/10/07 Ver1.6 add start by Shigeto.Niki
+  gv_next_proc_date     VARCHAR2(8);
+                                        -- 翌業務日付(YYYYMMDD)
+-- 2009/10/07 Ver1.6 add end by Shigeto.Niki
 --
   /**********************************************************************************
    * Procedure Name   : init
@@ -294,6 +305,14 @@ AS
       lv_errbuf := lv_errmsg;
       RAISE global_api_expt;
     END IF;
+--
+-- 2009/10/07 Ver1.6 add start by Shigeto.Niki
+    --==============================================================
+    --３．翌業務日付をYYYYMMDD形式で取得します。
+    --==============================================================
+      gv_next_proc_date := TO_CHAR(xxccp_common_pkg2.get_process_date + 1,'YYYYMMDD');
+      --
+-- 2009/10/07 Ver1.6 add end by Shigeto.Niki
 --
   EXCEPTION
 --
@@ -589,7 +608,11 @@ AS
             ,xhdv.dpt6_name               AS  dpt6_name               -- 拠点正式名
             ,xhdv.dpt6_abbreviate         AS  dpt6_abbreviate         -- 拠点略称
             ,xhdv.dpt6_old_cd             AS  dpt6_old_cd             -- 旧本部コード
-            ,xhdv.dpt6_sort_num           AS  dpt6_sort_num           -- 拠点並び順
+-- 2009/10/07 Ver1.6 modify start by Shigeto.Niki
+            ,xhdv.dpt6_new_cd             AS  dpt6_new_cd             -- 新本部コード
+            ,xhdv.dpt6_start_date_active  AS  dpt6_start_date_active  -- 部門適用開始日(6階層目)
+--             ,xhdv.dpt6_sort_num           AS  dpt6_sort_num           -- 拠点並び順
+-- 2009/10/07 Ver1.6 modify end by Shigeto.Niki
 -- 2009/05/14 Ver1.5 delete start by Yutaka.Kuboshima
 --            ,ffvl.attribute4              AS  attribute4              -- 拠点正式名（旧本部コード）
 --            ,ffvl.attribute6              AS  attribute6              -- 拠点並び順（旧本部コード）
@@ -602,9 +625,11 @@ AS
             ,bnad.zip                     AS  zip                     -- 郵便番号
             ,bnad.phone                   AS  phone                   -- 電話番号
             ,bnad.fax                     AS  fax                     -- FAX番号
+-- 2009/10/08 Ver1.6 delete start by Shigeto.Niki
 -- 2009/05/14 Ver1.5 add start by Yutaka.Kuboshima
-            ,flva.meaning                 AS  area_name               -- 地区名
+--             ,flva.meaning                 AS  area_name               -- 地区名
 -- 2009/05/14 Ver1.5 add end by Yutaka.Kuboshima
+-- 2009/10/08 Ver1.6 delete end by Shigeto.Niki
       FROM   xxcmm_hierarchy_dept_v xhdv          -- (table)部門階層ビュー
 -- 2009/05/14 Ver1.5 delete start by Yutaka.Kuboshima
 --            ,fnd_flex_values        ffvl          -- (table)値セット値定義マスタ
@@ -632,23 +657,27 @@ AS
                WHERE  pta.party_id(+)         = arv.party_id
                  AND  arv.customer_class_code = '1'
              )                      bnad          -- (table)拠点名称住所
+-- 2009/10/08 Ver1.6 delete start by Shigeto.Niki
 -- 2009/05/14 Ver1.5 add start by Yutaka.Kuboshima
-            ,( SELECT flv.lookup_code lookup_code
-                     ,flv.meaning     meaning
-               FROM   fnd_lookup_values flv
-               WHERE  flv.lookup_type  = cv_lookup_area
-                 AND  flv.enabled_flag = cv_y_flag
-                 AND  flv.language     = cv_language_ja
-             )                      flva          -- (table)LOOKUP地区名
+--             ,( SELECT flv.lookup_code lookup_code
+--                      ,flv.meaning     meaning
+--                FROM   fnd_lookup_values flv
+--                WHERE  flv.lookup_type  = cv_lookup_area
+--                  AND  flv.enabled_flag = cv_y_flag
+--                  AND  flv.language     = cv_language_ja
+--              )                      flva          -- (table)LOOKUP地区名
 -- 2009/05/14 Ver1.5 add end by Yutaka.Kuboshima
+-- 2009/10/08 Ver1.6 delete end by Shigeto.Niki
       WHERE  bnad.customer_number(+)   = xhdv.dpt6_cd
 -- 2009/05/14 Ver1.5 delete start by Yutaka.Kuboshima
 --      AND    ffvl.flex_value_set_id(+) = xhdv.flex_value_set_id
 --      AND    ffvl.flex_value(+)        = xhdv.dpt6_old_cd
 -- 2009/05/14 Ver1.5 delete end by Yutaka.Kuboshima
+-- 2009/10/08 Ver1.6 delete start by Shigeto.Niki
 -- 2009/05/14 Ver1.5 add start by Yutaka.Kuboshima
-      AND    flva.lookup_code(+)       = xhdv.dpt6_old_cd
+--       AND    flva.lookup_code(+)       = xhdv.dpt6_old_cd
 -- 2009/05/14 Ver1.5 add end by Yutaka.Kuboshima
+-- 2009/10/08 Ver1.6 delete end by Shigeto.Niki
       ORDER BY
              xhdv.dpt6_cd ASC
       ;
@@ -753,16 +782,21 @@ AS
     -- ユーザー宣言部
     -- ===============================
     -- *** ローカル定数 ***
-    cv_sep          CONSTANT VARCHAR2(1)   := ',';  -- 区切り文字
-    cv_dqu          CONSTANT VARCHAR2(1)   := '"';  -- ダブルクォーテーション
-    cv_datetime_fmt CONSTANT VARCHAR2(16)  := 'YYYYMMDDHH24MISS'; -- 日時出力フォーマット①
+    cv_sep                CONSTANT VARCHAR2(1)   := ',';  -- 区切り文字
+    cv_dqu                CONSTANT VARCHAR2(1)   := '"';  -- ダブルクォーテーション
+    cv_datetime_fmt       CONSTANT VARCHAR2(16)  := 'YYYYMMDDHH24MISS'; -- 日時出力フォーマット①
     -- *** ローカル変数 ***
-    ln_idx          NUMBER;          -- Loop時のカウント変数
-    lv_out_val      VARCHAR2(255);   -- 出力内容(項目)
-    lv_out_line     VARCHAR2(2400);  -- 出力内容(行)
-    lv_base_code    hz_cust_accounts.account_number%TYPE;
-                                    -- 拠点コード
-    ld_sys_date     DATE;            -- 1レコード目出力時のシステム日付
+    ln_idx                NUMBER;          -- Loop時のカウント変数
+    lv_out_val            VARCHAR2(255);   -- 出力内容(項目)
+    lv_out_line           VARCHAR2(2400);  -- 出力内容(行)
+    lv_base_code          hz_cust_accounts.account_number%TYPE;
+                                           -- 拠点コード
+-- 2009/10/08 Ver1.6 add start by Shigeto.Niki
+    lv_head_code          VARCHAR2(6);     -- 最新本部コード
+    lv_district_code      VARCHAR2(4);     -- 最新地区本部コード
+    lv_district_name      VARCHAR2(16);    -- 最新地区本部名称    
+-- 2009/10/08 Ver1.6 add end by Shigeto.Niki
+    ld_sys_date           DATE;            -- 1レコード目出力時のシステム日付
 --
   BEGIN
 --
@@ -787,6 +821,41 @@ AS
         IF ln_idx = 1 THEN
           ld_sys_date := SYSDATE;
         END IF;
+--
+-- 2009/10/08 Ver1.6 add start by Shigeto.Niki
+      -- ■ 最新地区本部コードおよび最新本部コードを取得する
+      IF (gt_csv_out_tab(ln_idx).dpt6_start_date_active IS NULL) THEN
+        lv_head_code     := SUBSTRB(gt_csv_out_tab(ln_idx).dpt6_old_cd, 1, 6);
+        lv_district_code := SUBSTRB(gt_csv_out_tab(ln_idx).dpt6_old_cd, 1, 4);
+      ELSIF (gt_csv_out_tab(ln_idx).dpt6_start_date_active <= gv_next_proc_date) THEN
+        lv_head_code     := SUBSTRB(gt_csv_out_tab(ln_idx).dpt6_new_cd, 1, 6);
+        lv_district_code := SUBSTRB(gt_csv_out_tab(ln_idx).dpt6_new_cd, 1, 4);
+      ELSE
+        lv_head_code     := SUBSTRB(gt_csv_out_tab(ln_idx).dpt6_old_cd, 1, 6);
+        lv_district_code := SUBSTRB(gt_csv_out_tab(ln_idx).dpt6_old_cd, 1, 4);
+      END IF;
+
+      -- ■ 最新本部名称を取得する
+      IF ( lv_head_code IS NOT NULL ) THEN
+        BEGIN
+        SELECT SUBSTRB(flv.meaning, 1, 16)
+        INTO   lv_district_name
+        FROM   fnd_lookup_values     flv
+        WHERE  flv.lookup_type     = cv_lookup_area
+          AND  flv.enabled_flag    = cv_y_flag
+          AND  flv.language        = cv_language_ja
+          AND  flv.lookup_code(+)  = lv_district_code
+          ;
+        EXCEPTION
+          WHEN NO_DATA_FOUND THEN
+            lv_district_name := '';
+          WHEN OTHERS THEN
+            RAISE global_api_others_expt;
+        END;
+      ELSE
+        lv_district_name := '';
+      END IF;
+-- 2009/10/08 Ver1.6 add end by Shigeto.Niki
 --
         -- ■ 出力データ作成
         -- 1.拠点（部門）コード
@@ -823,21 +892,30 @@ AS
         lv_out_val  := SUBSTRB(gt_csv_out_tab(ln_idx).dpt3_name, 1, 12);
         lv_out_line := lv_out_line || cv_sep || cv_dqu || lv_out_val || cv_dqu;
         --12.最新地区本部コード
-        lv_out_val  := SUBSTRB(gt_csv_out_tab(ln_idx).dpt6_old_cd, 1, 4);
+-- 2009/10/07 Ver1.6 modify start by Shigeto.Niki
+--         lv_out_val  := SUBSTRB(gt_csv_out_tab(ln_idx).dpt6_old_cd, 1, 4);
+        lv_out_val  := lv_district_code;
         lv_out_line := lv_out_line || cv_sep || cv_dqu || lv_out_val || cv_dqu;
+-- 2009/10/07 Ver1.6 modify start by Shigeto.Niki
         --13.最新地区本部名称
 -- 2009/05/14 Ver1.5 modify start by Yutaka.Kuboshima
 --        lv_out_val  := SUBSTRB(gt_csv_out_tab(ln_idx).attribute4, 1, 16);
-        lv_out_val  := SUBSTRB(gt_csv_out_tab(ln_idx).area_name, 1, 16);
+-- 2009/10/07 Ver1.6 modify start by Shigeto.Niki
+--        lv_out_val  := SUBSTRB(gt_csv_out_tab(ln_idx).area_name, 1, 16);
+        lv_out_val  := lv_district_name;
+-- 2009/10/07 Ver1.6 modify end by Shigeto.Niki
 -- 2009/05/14 Ver1.5 modify end by Yutaka.Kuboshima
         lv_out_line := lv_out_line || cv_sep || cv_dqu || lv_out_val || cv_dqu;
         --14.最新本部コード
-        lv_out_val  := SUBSTRB(gt_csv_out_tab(ln_idx).dpt6_old_cd ||
+-- 2009/10/07 Ver1.6 modify start by Shigeto.Niki
+--        lv_out_val  := SUBSTRB(gt_csv_out_tab(ln_idx).dpt6_old_cd ||
+        lv_out_val  := lv_head_code;
 -- 2009/05/14 Ver1.5 modify start by Yutaka.Kuboshima
---                         SUBSTRB(LPAD(gt_csv_out_tab(ln_idx).attribute6, 3, '0'), 2, 2), 1, 6);
-                         SUBSTRB(LPAD(gt_csv_out_tab(ln_idx).dpt6_sort_num, 3, '0'), 2, 2), 1, 6);
+--                            SUBSTRB(LPAD(gt_csv_out_tab(ln_idx).attribute6, 3, '0'), 2, 2), 1, 6);
+--                         SUBSTRB(LPAD(gt_csv_out_tab(ln_idx).dpt6_sort_num, 3, '0'), 2, 2), 1, 6);
 -- 2009/05/14 Ver1.5 modify end by Yutaka.Kuboshima
         lv_out_line := lv_out_line || cv_sep || cv_dqu || lv_out_val || cv_dqu;
+-- 2009/10/07 Ver1.6 modify end by Shigeto.Niki
         --15.拠点名（正式名）
         lv_out_val  := SUBSTRB(gt_csv_out_tab(ln_idx).dpt6_name, 1, 20);
         lv_out_line := lv_out_line || cv_sep || cv_dqu || lv_out_val || cv_dqu;
@@ -859,19 +937,30 @@ AS
         --21.ＦＡＸ番号
         lv_out_val  := SUBSTRB(gt_csv_out_tab(ln_idx).fax, 1, 60);
         lv_out_line := lv_out_line || cv_sep || cv_dqu || lv_out_val || cv_dqu;
-        --22.旧本部コード(null)
-        lv_out_val   := '';
+-- 2009/10/07 Ver1.6 modify start by Shigeto.Niki
+--         --22.旧本部コード(null)
+        --22.旧本部コード
+--         lv_out_val   := '';
+        lv_out_val  := SUBSTRB(gt_csv_out_tab(ln_idx).dpt6_old_cd, 1, 6);
         lv_out_line := lv_out_line || cv_sep || cv_dqu || lv_out_val || cv_dqu;
+-- 2009/10/07 Ver1.6 modify end by Shigeto.Niki
+-- 2009/10/07 Ver1.6 modify start by Shigeto.Niki
         --23.新本部コード
-        lv_out_val  := SUBSTRB(gt_csv_out_tab(ln_idx).dpt6_old_cd ||
+--         lv_out_val  := SUBSTRB(gt_csv_out_tab(ln_idx).dpt6_old_cd ||
 -- 2009/05/14 Ver1.5 modify start by Yutaka.Kuboshima
---                         SUBSTRB(LPAD(gt_csv_out_tab(ln_idx).attribute6, 3, '0'), 2, 2), 1, 6);
-                         SUBSTRB(LPAD(gt_csv_out_tab(ln_idx).dpt6_sort_num, 3, '0'), 2, 2), 1, 6);
+--                             SUBSTRB(LPAD(gt_csv_out_tab(ln_idx).attribute6, 3, '0'), 2, 2), 1, 6);
+--                          SUBSTRB(LPAD(gt_csv_out_tab(ln_idx).dpt6_sort_num, 3, '0'), 2, 2), 1, 6);
 -- 2009/05/14 Ver1.5 modify end by Yutaka.Kuboshima
+        lv_out_val  := SUBSTRB(gt_csv_out_tab(ln_idx).dpt6_new_cd, 1, 6);
         lv_out_line := lv_out_line || cv_sep || cv_dqu || lv_out_val || cv_dqu;
-        --24.本部コード適用開始日(null)
-        lv_out_val   := '';
+-- 2009/10/07 Ver1.6 modify end by Shigeto.Niki
+-- 2009/10/07 Ver1.6 modify start by Shigeto.Niki
+--         --24.本部コード適用開始日(null)
+        --24.本部コード適用開始日
+--         lv_out_val   := '';
+        lv_out_val  := SUBSTRB(gt_csv_out_tab(ln_idx).dpt6_start_date_active, 1, 8);
         lv_out_line := lv_out_line || cv_sep || cv_dqu || lv_out_val || cv_dqu;
+-- 2009/10/07 Ver1.6 modify end by Shigeto.Niki
         --25.拠点実績有無区分(null)
         lv_out_val   := '';
         lv_out_line := lv_out_line || cv_sep || cv_dqu || lv_out_val || cv_dqu;
@@ -881,7 +970,10 @@ AS
         --27.地区名（本部コード用）
 -- 2009/05/14 Ver1.5 modify start by Yutaka.Kuboshima
 --        lv_out_val  := SUBSTRB(gt_csv_out_tab(ln_idx).attribute4, 1, 16);
-        lv_out_val  := SUBSTRB(gt_csv_out_tab(ln_idx).area_name, 1, 16);
+-- 2009/10/08 Ver1.6 modify start by Shigeto.Niki
+--        lv_out_val  := SUBSTRB(gt_csv_out_tab(ln_idx).area_name, 1, 16);
+        lv_out_val  := lv_district_name;
+-- 2009/10/08 Ver1.6 modify end by Shigeto.Niki
 -- 2009/05/14 Ver1.5 modify end by Yutaka.Kuboshima
         lv_out_line := lv_out_line || cv_sep || cv_dqu || lv_out_val || cv_dqu;
         --28.作成年月日時分秒日付

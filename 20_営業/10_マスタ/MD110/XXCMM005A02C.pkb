@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCMM005A02C(spec)
  * Description      : 組織マスタIF出力（情報系）
  * MD.050           : 組織マスタIF出力（情報系） CMM_005_A02
- * Version          : 1.3
+ * Version          : 1.4
  *
  * Program List
  * -------------------- ------------------------------------------------------------
@@ -40,6 +40,7 @@ AS
  *  2009/03/09    1.1  Takuya Kaihara    プロファイル値共通化
  *  2009/04/20    1.2  Yutaka.Kuboshima  障害T1_0590の対応
  *  2009/05/15    1.3  Yutaka.Kuboshima  障害T1_1026の対応
+ *  2009/10/06    1.4  Shigeto.Niki      I_E_542、E_T3_00469対応
  *
  *****************************************************************************************/
 --
@@ -157,27 +158,58 @@ AS
     ,base_name                fnd_flex_values.attribute4%TYPE                             -- 拠点名称
     ,base_abbrev              fnd_flex_values.attribute5%TYPE                             -- 拠点略称
     ,base_order               fnd_flex_values.attribute6%TYPE                             -- 拠点並び順
+-- 2009/10/06 Ver1.4 add start by Shigeto.Niki
+--    ,dpt6_start_date_active   fnd_flex_values.attribute6%TYPE                             -- ６階層目適用開始日
+    ,dpt6_start_date_active   VARCHAR2(8)
+    ,dpt6_old_cd              fnd_flex_values.attribute7%TYPE                             -- ６階層目旧本部コード
+    ,dpt6_new_cd              fnd_flex_values.attribute9%TYPE                             -- ６階層目新本部コード    
+-- 2009/10/06 Ver1.4 add end by Shigeto.Niki    
     ,section_div              fnd_flex_values.attribute8%TYPE                             -- 部門区分
     ,district_code            fnd_flex_values.flex_value%TYPE                             -- 地区コード
     ,district_name            fnd_flex_values.attribute4%TYPE                             -- 地区名
     ,district_abbrev          fnd_flex_values.attribute5%TYPE                             -- 地区略称
     ,district_order           fnd_flex_values.attribute6%TYPE                             -- 地区並び順
+-- 2009/10/06 Ver1.4 add start by Shigeto.Niki
+    ,dpt5_start_date_active   fnd_flex_values.attribute6%TYPE                             -- ５階層目適用開始日
+    ,dpt5_old_cd              fnd_flex_values.attribute7%TYPE                             -- ５階層目旧本部コード
+    ,dpt5_new_cd              fnd_flex_values.attribute9%TYPE                             -- ５階層目新本部コード    
+-- 2009/10/06 Ver1.4 add end by Shigeto.Niki
     ,area_code                fnd_flex_values.flex_value%TYPE                             -- エリアコード
     ,area_name                fnd_flex_values.attribute4%TYPE                             -- エリア名
     ,area_abbrev              fnd_flex_values.attribute5%TYPE                             -- エリア略称
     ,area_order               fnd_flex_values.attribute6%TYPE                             -- エリア並び順
+-- 2009/10/06 Ver1.4 add start by Shigeto.Niki
+    ,dpt4_start_date_active   fnd_flex_values.attribute6%TYPE                             -- ４階層目適用開始日
+    ,dpt4_old_cd              fnd_flex_values.attribute7%TYPE                             -- ４階層目旧本部コード
+    ,dpt4_new_cd              fnd_flex_values.attribute9%TYPE                             -- ４階層目新本部コード
+-- 2009/10/06 Ver1.4 add end by Shigeto.Niki
     ,head_code                fnd_flex_values.flex_value%TYPE                             -- 本部コード
     ,head_name                fnd_flex_values.attribute4%TYPE                             -- 本部名
     ,head_abbrev              fnd_flex_values.attribute5%TYPE                             -- 本部略称
     ,head_order               fnd_flex_values.attribute6%TYPE                             -- 本部並び順
+-- 2009/10/06 Ver1.4 add start by Shigeto.Niki
+    ,dpt3_start_date_active   fnd_flex_values.attribute6%TYPE                             -- ３階層目適用開始日
+    ,dpt3_old_cd              fnd_flex_values.attribute7%TYPE                             -- ３階層目旧本部コード
+    ,dpt3_new_cd              fnd_flex_values.attribute9%TYPE                             -- ３階層目新本部コード
+-- 2009/10/06 Ver1.4 add end by Shigeto.Niki
     ,foundation_code          fnd_flex_values.flex_value%TYPE                             -- 大本部
     ,foundation_name          fnd_flex_values.attribute4%TYPE                             -- 大本部名
     ,foundation_abbrev        fnd_flex_values.attribute5%TYPE                             -- 大本部略称
     ,foundation_order         fnd_flex_values.attribute6%TYPE                             -- 大本部並び順
+-- 2009/10/06 Ver1.4 add start by Shigeto.Niki
+    ,dpt2_start_date_active   fnd_flex_values.attribute6%TYPE                             -- ２階層目適用開始日
+    ,dpt2_old_cd              fnd_flex_values.attribute7%TYPE                             -- ２階層目旧本部コード
+    ,dpt2_new_cd              fnd_flex_values.attribute9%TYPE                             -- ２階層目新本部コード
+-- 2009/10/06 Ver1.4 add end by Shigeto.Niki
     ,co_code                  fnd_flex_values.flex_value%TYPE                             -- 本社計
     ,co_name                  fnd_flex_values.attribute4%TYPE                             -- 本社計名
     ,co_abbrev                fnd_flex_values.attribute5%TYPE                             -- 本社計略称
     ,co_order                 fnd_flex_values.attribute6%TYPE                             -- 本社計並び順
+-- 2009/10/06 Ver1.4 add start by Shigeto.Niki
+    ,dpt1_start_date_active   fnd_flex_values.attribute6%TYPE                             -- １階層目適用開始日
+    ,dpt1_old_cd              fnd_flex_values.attribute7%TYPE                             -- １階層目旧本部コード
+    ,dpt1_new_cd              fnd_flex_values.attribute9%TYPE                             -- １+階層目新本部コード
+-- 2009/10/06 Ver1.4 add end by Shigeto.Niki
     ,enabled_flag             fnd_flex_values.enabled_flag%TYPE                           -- 使用可能フラグ
     ,start_date_active        fnd_flex_values.start_date_active%TYPE                      -- 有効期間開始日
     ,end_date_active          fnd_flex_values.end_date_active%TYPE                        -- 有効期間終了日
@@ -195,6 +227,9 @@ AS
 -- 2009/04/20 Ver1.2 add start by Yutaka.Kuboshima
   gv_aff_dept_dummy_cd        fnd_profile_option_values.profile_option_value%TYPE;        -- AFFダミー部門コード
 -- 2009/04/20 Ver1.2 add end by Yutaka.Kuboshima
+-- 2009/10/06 Ver1.4 add start by Shigeto.Niki
+  gv_process_date              VARCHAR2(8);                                               -- 業務日付(YYYYMMDD)
+-- 2009/10/06 Ver1.4 add end by Shigeto.Niki
 --
   gf_file_hand                UTL_FILE.FILE_TYPE;                                         -- CSVファイル出力用ハンドラ
   g_csv_organ_tab             xxcmm005a02c_ttype;                                         -- 組織IF出力データ
@@ -235,7 +270,7 @@ AS
     --
     -- *** ユーザー定義例外 ***
     profile_expt              EXCEPTION;                                                  -- プロファイル取得例外
-    csv_file_exst_expt        EXCEPTION;                                                  -- ファイル重複エラー
+    csv_file_exst_expt        EXCEPTION;                                                  -- ファイル重複エラー  
 --
   BEGIN
     -- 変数初期化
@@ -298,6 +333,12 @@ AS
       IF ( lb_file_exists = TRUE ) THEN
         RAISE csv_file_exst_expt;
       END IF;
+
+-- 2009/10/06 Ver1.4 add start by Shigeto.Niki
+      -- 業務日付をYYYYMMDD形式で取得します
+      gv_process_date := TO_CHAR(xxccp_common_pkg2.get_process_date,'YYYYMMDD');
+      --
+-- 2009/10/06 Ver1.4 add end by Shigeto.Niki
 --
   EXCEPTION
     --*** プロファイル取得エラー ***
@@ -377,37 +418,70 @@ AS
     -- 組織マスタ（情報系）情報カーソル
     CURSOR csv_organ_cur
     IS
-      SELECT     xhdal.dpt6_cd              AS base_code                                  -- 拠点コード
-                ,xhdal.dpt6_name            AS base_name                                  -- 拠点名称
-                ,xhdal.dpt6_abbreviate      AS base_abbrev                                -- 拠点略称
-                ,xhdal.dpt6_sort_num        AS base_order                                 -- 拠点並び順
-                ,xhdal.dpt6_div             AS section_div                                -- 部門区分
-                ,xhdal.dpt5_cd              AS district_code                              -- 地区コード
-                ,xhdal.dpt5_name            AS district_name                              -- 地区名
-                ,xhdal.dpt5_abbreviate      AS district_abbrev                            -- 地区略称
-                ,xhdal.dpt5_sort_num        AS district_order                             -- 地区並び順
-                ,xhdal.dpt4_cd              AS area_code                                  -- エリアコード
-                ,xhdal.dpt4_name            AS area_name                                  -- エリア名
-                ,xhdal.dpt4_abbreviate      AS area_abbrev                                -- エリア略称
-                ,xhdal.dpt4_sort_num        AS area_order                                 -- エリア並び順
-                ,xhdal.dpt3_cd              AS head_code                                  -- 本部コード
-                ,xhdal.dpt3_name            AS head_name                                  -- 本部名
-                ,xhdal.dpt3_abbreviate      AS head_abbrev                                -- 本部略称
-                ,xhdal.dpt3_sort_num        AS head_order                                 -- 本部並び順
-                ,xhdal.dpt2_cd              AS foundation_code                            -- 大本部
-                ,xhdal.dpt2_name            AS foundation_name                            -- 大本部名
-                ,xhdal.dpt2_abbreviate      AS foundation_abbrev                          -- 大本部略称
-                ,xhdal.dpt2_sort_num        AS foundation_order                           -- 大本部並び順
-                ,xhdal.dpt1_cd              AS co_code                                    -- 本社計
-                ,xhdal.dpt1_name            AS co_name                                    -- 本社計名
-                ,xhdal.dpt1_abbreviate      AS co_abbrev                                  -- 本社計略称
-                ,xhdal.dpt1_sort_num        AS co_order                                   -- 本社計並び順
+      SELECT     xhdal.dpt6_cd                 AS base_code                                  -- 拠点コード
+                ,xhdal.dpt6_name               AS base_name                                  -- 拠点名称
+                ,xhdal.dpt6_abbreviate         AS base_abbrev                                -- 拠点略称
+-- 2009/10/06 Ver1.4 mod start by Shigeto.Niki
+--                 ,xhdal.dpt6_sort_num           AS base_order                                 -- 拠点並び順
+                ,xhdal.dpt6_start_date_active  AS dpt6_start_date_active                     -- ６階層目適用開始日
+                ,xhdal.dpt6_old_cd             AS dpt6_old_cd                                -- ６階層目旧本部コード
+                ,xhdal.dpt6_new_cd             AS dpt6_new_cd                                -- ６階層目新本部コード
+-- 2009/10/06 Ver1.4 mod end by Shigeto.Niki
+                ,xhdal.dpt6_div                AS section_div                                -- 部門区分
+                ,xhdal.dpt5_cd                 AS district_code                              -- 地区コード
+                ,xhdal.dpt5_name               AS district_name                              -- 地区名
+                ,xhdal.dpt5_abbreviate         AS district_abbrev                            -- 地区略称
+-- 2009/10/06 Ver1.4 mod start by Shigeto.Niki
+--                 ,xhdal.dpt5_sort_num           AS district_order                             -- 地区並び順
+                ,xhdal.dpt5_start_date_active  AS dpt5_start_date_active                     -- ５階層目適用開始日
+                ,xhdal.dpt5_old_cd             AS dpt5_old_cd                                -- ５階層目旧本部コード
+                ,xhdal.dpt5_new_cd             AS dpt5_new_cd                                -- ５階層目新本部コード
+-- 2009/10/06 Ver1.4 mod end by Shigeto.Niki
+                ,xhdal.dpt4_cd                 AS area_code                                  -- エリアコード
+                ,xhdal.dpt4_name               AS area_name                                  -- エリア名
+                ,xhdal.dpt4_abbreviate         AS area_abbrev                                -- エリア略称
+-- 2009/10/06 Ver1.4 mod start by Shigeto.Niki
+--                 ,xhdal.dpt4_sort_num           AS area_order                                 -- エリア並び順
+                ,xhdal.dpt4_start_date_active  AS dpt4_start_date_active                     -- ４階層目適用開始日
+                ,xhdal.dpt4_old_cd             AS dpt4_old_cd                                -- ４階層目旧本部コード
+                ,xhdal.dpt4_new_cd             AS dpt4_new_cd                                -- ４階層目新本部コード
+-- 2009/10/06 Ver1.4 mod end by Shigeto.Niki
+                ,xhdal.dpt3_cd                 AS head_code                                  -- 本部コード
+                ,xhdal.dpt3_name               AS head_name                                  -- 本部名
+                ,xhdal.dpt3_abbreviate         AS head_abbrev                                -- 本部略称
+-- 2009/10/06 Ver1.4 mod start by Shigeto.Niki
+--                 ,xhdal.dpt3_sort_num           AS head_order                                 -- 本部並び順
+                ,xhdal.dpt3_start_date_active  AS dpt3_start_date_active                     -- ３階層目適用開始日
+                ,xhdal.dpt3_old_cd             AS dpt3_old_cd                                -- ３階層目旧本部コード
+                ,xhdal.dpt3_new_cd             AS dpt3_new_cd                                -- ３階層目新本部コード
+-- 2009/10/06 Ver1.4 mod end by Shigeto.Niki
+                ,xhdal.dpt2_cd                 AS foundation_code                            -- 大本部
+                ,xhdal.dpt2_name               AS foundation_name                            -- 大本部名
+                ,xhdal.dpt2_abbreviate         AS foundation_abbrev                          -- 大本部略称
+-- 2009/10/06 Ver1.4 mod start by Shigeto.Niki
+--                 ,xhdal.dpt2_sort_num           AS foundation_order                           -- 大本部並び順
+                ,xhdal.dpt2_start_date_active  AS dpt2_start_date_active                     -- ２階層目適用開始日
+                ,xhdal.dpt2_old_cd             AS dpt2_old_cd                                -- ２階層目旧本部コード
+                ,xhdal.dpt2_new_cd             AS dpt2_new_cd                                -- ２階層目新本部コード
+-- 2009/10/06 Ver1.4 mod end by Shigeto.Niki
+                ,xhdal.dpt1_cd                 AS co_code                                    -- 本社計
+                ,xhdal.dpt1_name               AS co_name                                    -- 本社計名
+                ,xhdal.dpt1_abbreviate         AS co_abbrev                                  -- 本社計略称
+-- 2009/10/06 Ver1.4 mod start by Shigeto.Niki
+--                 ,xhdal.dpt1_sort_num           AS co_order                                   -- 本社計並び順
+                ,xhdal.dpt1_start_date_active  AS dpt1_start_date_active                     -- １階層目適用開始日
+                ,xhdal.dpt1_old_cd             AS dpt1_old_cd                                -- １階層目旧本部コード
+                ,xhdal.dpt1_new_cd             AS dpt1_new_cd                                -- １階層目新本部コード
+-- 2009/10/06 Ver1.4 mod end by Shigeto.Niki
                 ,DECODE(xhdal.enabled_flag,'N','0','Y','1',NULL)
-                                            AS enabled_flag                               -- 使用可能フラグ
-                ,xhdal.start_date_active    AS start_date_active                          -- 有効期間開始日
-                ,xhdal.end_date_active      AS end_date_active                            -- 有効期間終了日
-      FROM      xxcmm_hierarchy_dept_all_v  xhdal
-      ORDER BY  xhdal.dpt1_cd ASC
+                                               AS enabled_flag                               -- 使用可能フラグ
+                ,xhdal.start_date_active       AS start_date_active                          -- 有効期間開始日
+                ,xhdal.end_date_active         AS end_date_active                            -- 有効期間終了日
+      FROM      xxcmm_hierarchy_dept_all_v     xhdal
+-- 2009/10/06 Ver1.4 mod start by Shigeto.Niki
+--       ORDER BY  xhdal.dpt1_cd ASC
+      ORDER BY  xhdal.dpt6_cd ASC
+-- 2009/10/06 Ver1.4 mod start by Shigeto.Niki
       ;
     -- ===============================
     -- ユーザー定義例外
@@ -447,10 +521,20 @@ AS
       lv_step :='A-4.base_abbrev';
       lv_message_token :='拠点略称';
       g_csv_organ_tab(ln_loop_cnt).base_abbrev       := l_csv_organ_rec.base_abbrev;
+-- 2009/10/06 Ver1.4 mod start by Shigeto.Niki
       -- 拠点並び順
       lv_step :='A-4.base_order';
       lv_message_token :='拠点並び順';
-      g_csv_organ_tab(ln_loop_cnt).base_order        := l_csv_organ_rec.base_order;
+--       g_csv_organ_tab(ln_loop_cnt).base_order        := l_csv_organ_rec.base_order;
+      -- 適用開始日 <= 業務日付の場合は、新本部コードをセット
+      IF (l_csv_organ_rec.dpt6_start_date_active IS NULL) THEN
+        g_csv_organ_tab(ln_loop_cnt).base_order  := l_csv_organ_rec.dpt6_old_cd;
+      ELSIF (l_csv_organ_rec.dpt6_start_date_active <= gv_process_date) THEN
+        g_csv_organ_tab(ln_loop_cnt).base_order  := l_csv_organ_rec.dpt6_new_cd;
+      ELSE
+        g_csv_organ_tab(ln_loop_cnt).base_order  := l_csv_organ_rec.dpt6_old_cd;
+      END IF;
+-- 2009/10/06 Ver1.4 mod end by Shigeto.Niki
       -- 部門区分
       lv_step :='A-4.section_div';
       lv_message_token :='部門区分';
@@ -467,10 +551,20 @@ AS
       lv_step :='A-4.district_abbrev';
       lv_message_token :='地区略称';
       g_csv_organ_tab(ln_loop_cnt).district_abbrev   := l_csv_organ_rec.district_abbrev;
+-- 2009/10/06 Ver1.4 mod start by Shigeto.Niki
       -- 地区並び順
       lv_step :='A-4.district_order';
       lv_message_token :='地区並び順';
-      g_csv_organ_tab(ln_loop_cnt).district_order    := l_csv_organ_rec.district_order;
+--      g_csv_organ_tab(ln_loop_cnt).district_order    := l_csv_organ_rec.district_order;
+      -- 適用開始日 <= 業務日付の場合は、新本部コードをセット
+      IF (l_csv_organ_rec.dpt5_start_date_active IS NULL) THEN
+        g_csv_organ_tab(ln_loop_cnt).district_order  := l_csv_organ_rec.dpt5_old_cd;
+      ELSIF (l_csv_organ_rec.dpt5_start_date_active <= gv_process_date) THEN
+        g_csv_organ_tab(ln_loop_cnt).district_order  := l_csv_organ_rec.dpt5_new_cd;
+      ELSE
+        g_csv_organ_tab(ln_loop_cnt).district_order  := l_csv_organ_rec.dpt5_old_cd;
+      END IF;
+-- 2009/10/06 Ver1.4 mod end by Shigeto.Niki
       -- エリアコード
       lv_step :='A-4.area_code';
       lv_message_token :='エリアコード';
@@ -483,10 +577,20 @@ AS
       lv_step :='A-4.area_abbrev';
       lv_message_token :='エリア略称';
       g_csv_organ_tab(ln_loop_cnt).area_abbrev       := l_csv_organ_rec.area_abbrev;
+-- 2009/10/06 Ver1.4 mod start by Shigeto.Niki
       -- エリア並び順
       lv_step :='A-4.area_order';
       lv_message_token :='エリア並び順';
-      g_csv_organ_tab(ln_loop_cnt).area_order        := l_csv_organ_rec.area_order;
+--       g_csv_organ_tab(ln_loop_cnt).area_order        := l_csv_organ_rec.area_order;
+      -- 適用開始日 <= 業務日付の場合は、新本部コードをセット
+      IF (l_csv_organ_rec.dpt4_start_date_active IS NULL) THEN
+        g_csv_organ_tab(ln_loop_cnt).area_order      := l_csv_organ_rec.dpt4_old_cd;
+      ELSIF (l_csv_organ_rec.dpt4_start_date_active <= gv_process_date) THEN
+        g_csv_organ_tab(ln_loop_cnt).area_order      := l_csv_organ_rec.dpt4_new_cd;
+      ELSE
+        g_csv_organ_tab(ln_loop_cnt).area_order      := l_csv_organ_rec.dpt4_old_cd;
+      END IF;
+-- 2009/10/06 Ver1.4 mod end by Shigeto.Niki
       -- 本部コード
       lv_step :='A-4.head_code';
       lv_message_token :='本部コード';
@@ -499,10 +603,20 @@ AS
       lv_step :='A-4.head_abbrev';
       lv_message_token :='本部略称';
       g_csv_organ_tab(ln_loop_cnt).head_abbrev       := l_csv_organ_rec.head_abbrev;
+-- 2009/10/06 Ver1.4 mod start by Shigeto.Niki
       -- 本部並び順
       lv_step :='A-4.head_order';
       lv_message_token :='本部並び順';
-      g_csv_organ_tab(ln_loop_cnt).head_order        := l_csv_organ_rec.head_order;
+--       g_csv_organ_tab(ln_loop_cnt).head_order        := l_csv_organ_rec.head_order;
+      -- 適用開始日 <= 業務日付の場合は、新本部コードをセット
+      IF (l_csv_organ_rec.dpt3_start_date_active IS NULL) THEN
+        g_csv_organ_tab(ln_loop_cnt).head_order      := l_csv_organ_rec.dpt3_old_cd;
+      ELSIF (l_csv_organ_rec.dpt3_start_date_active <= gv_process_date) THEN
+        g_csv_organ_tab(ln_loop_cnt).head_order      := l_csv_organ_rec.dpt3_new_cd;
+      ELSE
+        g_csv_organ_tab(ln_loop_cnt).head_order      := l_csv_organ_rec.dpt3_old_cd;
+      END IF;
+-- 2009/10/06 Ver1.4 mod end by Shigeto.Niki
       -- 大本部
       lv_step :='A-4.foundation_code';
       lv_message_token :='大本部';
@@ -515,10 +629,20 @@ AS
       lv_step :='A-4.foundation_abbrev';
       lv_message_token :='大本部略称';
       g_csv_organ_tab(ln_loop_cnt).foundation_abbrev := l_csv_organ_rec.foundation_abbrev;
+-- 2009/10/06 Ver1.4 mod start by Shigeto.Niki
       -- 大本部並び順
       lv_step :='A-4.foundation_order';
       lv_message_token :='大本部並び順';
-      g_csv_organ_tab(ln_loop_cnt).foundation_order  := l_csv_organ_rec.foundation_order;
+--       g_csv_organ_tab(ln_loop_cnt).foundation_order  := l_csv_organ_rec.foundation_order;
+      -- 適用開始日 <= 業務日付の場合は、新本部コードをセット
+      IF (l_csv_organ_rec.dpt2_start_date_active IS NULL) THEN
+        g_csv_organ_tab(ln_loop_cnt).foundation_order  := l_csv_organ_rec.dpt2_old_cd;
+      ELSIF (l_csv_organ_rec.dpt2_start_date_active <= gv_process_date) THEN
+        g_csv_organ_tab(ln_loop_cnt).foundation_order  := l_csv_organ_rec.dpt2_new_cd;
+      ELSE
+        g_csv_organ_tab(ln_loop_cnt).foundation_order  := l_csv_organ_rec.dpt2_old_cd;
+      END IF;
+-- 2009/10/06 Ver1.4 mod end by Shigeto.Niki
       -- 本社計
       lv_step :='A-4.co_code';
       lv_message_token :='本社計';
@@ -531,10 +655,19 @@ AS
       lv_step :='A-4.co_abbrev';
       lv_message_token :='本社計略称';
       g_csv_organ_tab(ln_loop_cnt).co_abbrev         := l_csv_organ_rec.co_abbrev;
+-- 2009/10/06 Ver1.4 mod start by Shigeto.Niki
       -- 本社計並び順
       lv_step :='A-4.co_order';
       lv_message_token :='本社計並び順';
-      g_csv_organ_tab(ln_loop_cnt).co_order          := l_csv_organ_rec.co_order;
+--      g_csv_organ_tab(ln_loop_cnt).co_order          := l_csv_organ_rec.co_order;
+      IF (l_csv_organ_rec.dpt1_start_date_active IS NULL) THEN
+        g_csv_organ_tab(ln_loop_cnt).co_order      := l_csv_organ_rec.dpt1_old_cd;
+      ELSIF (l_csv_organ_rec.dpt1_start_date_active <= gv_process_date) THEN
+        g_csv_organ_tab(ln_loop_cnt).co_order      := l_csv_organ_rec.dpt1_new_cd;
+      ELSE
+        g_csv_organ_tab(ln_loop_cnt).co_order      := l_csv_organ_rec.dpt1_old_cd;
+      END IF;
+-- 2009/10/06 Ver1.4 mod end by Shigeto.Niki
       -- 使用可能フラグ
       lv_step :='A-4.enabled_flag';
       lv_message_token :='使用可能フラグ';
@@ -701,7 +834,10 @@ AS
       lv_step :='A-5.base_order';
       lv_message_token :='拠点並び順';
       lv_out_csv_line  := lv_out_csv_line || cv_sep || cv_dqu ||
-                          SUBSTRB(g_csv_organ_tab(ln_index).base_order, 1, 3)
+-- 2009/10/06 Ver1.4 mod start by Shigeto.Niki
+--                           SUBSTRB(g_csv_organ_tab(ln_index).base_order, 1, 3)
+                          SUBSTRB(g_csv_organ_tab(ln_index).base_order, 1, 8)
+-- 2009/10/06 Ver1.4 mod end by Shigeto.Niki
                           || cv_dqu;
       -- 部門区分
       lv_step :='A-5.section_div';
@@ -731,7 +867,10 @@ AS
       lv_step :='A-5.district_order';
       lv_message_token :='地区並び順';
       lv_out_csv_line  := lv_out_csv_line || cv_sep || cv_dqu ||
-                          SUBSTRB(g_csv_organ_tab(ln_index).district_order, 1, 3)
+-- 2009/10/06 Ver1.4 mod start by Shigeto.Niki
+--                           SUBSTRB(g_csv_organ_tab(ln_index).district_order, 1, 3)
+                          SUBSTRB(g_csv_organ_tab(ln_index).district_order, 1, 6)
+-- 2009/10/06 Ver1.4 mod end by Shigeto.Niki
                           || cv_dqu;
       -- エリアコード
       lv_step :='A-5.area_code';
@@ -755,7 +894,10 @@ AS
       lv_step :='A-5.area_order';
       lv_message_token :='エリア並び順';
       lv_out_csv_line  := lv_out_csv_line || cv_sep || cv_dqu ||
-                          SUBSTRB(g_csv_organ_tab(ln_index).area_order, 1, 3)
+-- 2009/10/06 Ver1.4 mod start by Shigeto.Niki
+--                           SUBSTRB(g_csv_organ_tab(ln_index).area_order, 1, 3)
+                          SUBSTRB(g_csv_organ_tab(ln_index).area_order, 1, 6)
+-- 2009/10/06 Ver1.4 mod end by Shigeto.Niki
                           || cv_dqu;
       -- 本部コード
       lv_step :='A-5.head_code';
@@ -779,7 +921,10 @@ AS
       lv_step :='A-5.head_order';
       lv_message_token :='本部並び順';
       lv_out_csv_line  := lv_out_csv_line || cv_sep || cv_dqu ||
-                          SUBSTRB(g_csv_organ_tab(ln_index).head_order, 1, 3)
+-- 2009/10/06 Ver1.4 mod start by Shigeto.Niki
+--                           SUBSTRB(g_csv_organ_tab(ln_index).head_order, 1, 3)
+                          SUBSTRB(g_csv_organ_tab(ln_index).head_order, 1, 6)
+-- 2009/10/06 Ver1.4 mod end by Shigeto.Niki
                           || cv_dqu;
       -- 大本部
       lv_step :='A-5.foundation_code';
@@ -803,7 +948,10 @@ AS
       lv_step :='A-5.foundation_order';
       lv_message_token :='大本部並び順';
       lv_out_csv_line  := lv_out_csv_line || cv_sep || cv_dqu ||
-                          SUBSTRB(g_csv_organ_tab(ln_index).foundation_order, 1, 3)
+-- 2009/10/06 Ver1.4 mod start by Shigeto.Niki
+--                           SUBSTRB(g_csv_organ_tab(ln_index).foundation_order, 1, 3)
+                          SUBSTRB(g_csv_organ_tab(ln_index).foundation_order, 1, 6)
+-- 2009/10/06 Ver1.4 mod end by Shigeto.Niki
                           || cv_dqu;
       -- 本社計
       lv_step :='A-5.co_code';
@@ -827,7 +975,10 @@ AS
       lv_step :='A-5.co_order';
       lv_message_token :='本社計並び順';
       lv_out_csv_line  := lv_out_csv_line || cv_sep || cv_dqu ||
-                          SUBSTRB(g_csv_organ_tab(ln_index).co_order, 1, 3)
+-- 2009/10/06 Ver1.4 mod start by Shigeto.Niki
+--                           SUBSTRB(g_csv_organ_tab(ln_index).co_order, 1, 3)
+                          SUBSTRB(g_csv_organ_tab(ln_index).co_order, 1, 6)
+-- 2009/10/06 Ver1.4 mod end by Shigeto.Niki
                           || cv_dqu;
       -- 使用可能フラグ
       lv_step :='A-5.enabled_flag';
