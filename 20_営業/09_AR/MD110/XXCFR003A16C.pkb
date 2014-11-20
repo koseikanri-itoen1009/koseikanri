@@ -7,7 +7,7 @@ AS
  * Description      : 標準請求書税抜
  * MD.050           : MD050_CFR_003_A16_標準請求書税抜
  * MD.070           : MD050_CFR_003_A16_標準請求書税抜
- * Version          : 1.10
+ * Version          : 1.11
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -43,6 +43,7 @@ AS
  *  2011/01/17    1.8  SCS 廣瀬 真佐人  [E_本稼動_00580] ソート順に店舗コード追加
  *  2011/03/10    1.9  SCS 石渡 賢和    [E_本稼動_06753] ソート順の店舗コードの例外条件追加
  *  2013/11/25    1.10 SCSK 桐生 和幸   [E_本稼動_11330] 税別内訳出力対応
+ *  2014/03/27    1.11 SCSK 山下 翔太   [E_本稼動_11617] 請求書出力形式が業者委託の顧客対応
  *
  *****************************************************************************************/
 --
@@ -282,6 +283,9 @@ AS
 -- Add 2013.11.25 Ver1.10 Start
     iv_tax_output_type     IN      VARCHAR2,         -- 税別内訳出力区分
 -- Add 2013.11.25 Ver1.10 End
+-- Add 2014.03.27 Ver1.11 Start
+    iv_bill_invoice_type   IN      VARCHAR2,         -- 請求書出力形式
+-- Add 2014.03.27 Ver1.11 End
     ov_errbuf              OUT     VARCHAR2,         -- エラー・メッセージ           --# 固定 #
     ov_retcode             OUT     VARCHAR2,         -- リターン・コード             --# 固定 #
     ov_errmsg              OUT     VARCHAR2)         -- ユーザー・エラー・メッセージ --# 固定 #
@@ -357,6 +361,9 @@ AS
 -- Add 2013.11.25 Ver1.10 Start
                                    ,iv_conc_param6  => iv_tax_output_type           -- コンカレントパラメータ６
 -- Add 2013.11.25 Ver1.10 End
+-- Add 2014.03.27 Ver1.11 Start
+                                   ,iv_conc_param7  => iv_bill_invoice_type         -- コンカレントパラメータ７
+-- Add 2014.03.27 Ver1.11 End
                                    ,ov_errbuf       => ov_errbuf                    -- エラー・メッセージ
                                    ,ov_retcode      => ov_retcode                   -- リターン・コード
                                    ,ov_errmsg       => ov_errmsg);                  -- ユーザー・エラー・メッセージ 
@@ -885,6 +892,9 @@ AS
 -- Add 2013.11.25 Ver1.10 Start
     iv_tax_output_type      IN   VARCHAR2,            -- 税別内訳出力区分
 -- Add 2013.11.25 Ver1.10 End
+-- Add 2014.03.27 Ver1.11 Start
+    iv_bill_invoice_type    IN   VARCHAR2,            -- 請求書出力形式
+-- Add 2014.03.27 Ver1.11 End
     ov_errbuf               OUT  VARCHAR2,            -- エラー・メッセージ           --# 固定 #
     ov_retcode              OUT  VARCHAR2,            -- リターン・コード             --# 固定 #
     ov_errmsg               OUT  VARCHAR2)            -- ユーザー・エラー・メッセージ --# 固定 #
@@ -914,6 +924,12 @@ AS
 -- Add 2013.11.25 Ver1.10 Start
     cv_tax_op_type_yes  CONSTANT VARCHAR2(1)  := '2';                      -- 2.税別内訳出力あり
 -- Add 2013.11.25 Ver1.10 End
+-- Add 2014.03.27 Ver1.11 Start
+    -- 業者委託フラグ
+    cv_os_flag_y        CONSTANT VARCHAR2(1)  := 'Y';                      -- Y.業者委託
+    -- 請求書出力形式
+    cv_bill_invoice_type_os  CONSTANT VARCHAR2(1) := '4';                  -- 4.業者委託
+-- Add 2014.03.27 Ver1.11 End
 --
 -- Modify 2009.09.10 Ver1.3 Start
     -- 部門
@@ -1392,7 +1408,10 @@ AS
          AND  ((gv_inv_all_flag = cv_status_yes) OR 
                ((gv_inv_all_flag = cv_status_no) AND  (lr_main_data.bill_base_code = gt_user_dept)))  -- 請求拠点 = ログインユーザの拠点
          AND  (lr_main_data.bill_tax_div IN (cv_syohizei_kbn_te,cv_syohizei_kbn_nt))  -- 消費税区分 IN (外税,非課税)
-         AND  (lr_main_data.bill_invoice_type = cv_inv_prt_type) -- 請求書出力形式 = 1.伊藤園標準
+-- Modify 2014.03.27 Ver1.11 Start
+--         AND  (lr_main_data.bill_invoice_type = cv_inv_prt_type) -- 請求書出力形式 = 1.伊藤園標準
+         AND  (lr_main_data.bill_invoice_type = iv_bill_invoice_type)     -- 請求書出力形式 = 入力パラメータ「請求書出力形式」
+-- Modify 2014.03.27 Ver1.11 End
          AND  (lr_main_data.cons_inv_flag = cv_enabled_yes) -- 一括請求書式 = 'Y'(有効)
 -- Add 2010.12.10 Ver1.7 Start
          AND  (lr_main_data.bill_pub_cycle = NVL(iv_bill_pub_cycle, lr_main_data.bill_pub_cycle))     -- 請求書発行サイクル = 入力パラメータ「請求書発行サイクル」
@@ -1432,6 +1451,9 @@ AS
 -- Add 2013.11.25 Ver1.10 Start
             tax_rate                , -- 消費税率(編集用)
 -- Add 2013.11.25 Ver1.10 End
+-- Add 2014.03.27 Ver1.11 Start
+            outsourcing_flag        , -- 業者委託フラグ
+-- Add 2014.03.27 Ver1.11 End
             data_empty_message      , -- 0件メッセージ
             created_by              , -- 作成者
             creation_date           , -- 作成日
@@ -1511,6 +1533,13 @@ AS
 -- Add 2013.11.25 Ver1.10 Start
                  xil.tax_rate                                                       tax_rate         , -- 税率
 -- Add 2013.11.25 Ver1.10 End
+-- Add 2014.03.27 Ver1.11 Start
+                 CASE WHEN iv_bill_invoice_type = cv_bill_invoice_type_os THEN
+                   cv_os_flag_y
+                 ELSE
+                   NULL
+                 END                                                                outsourcing_flag , -- 業者委託フラグ
+-- Add 2014.03.27 Ver1.11 End
                  NULL                                                               data_empty_message,-- 0件メッセージ
                  cn_created_by                                                      created_by,             -- 作成者
                  cd_creation_date                                                   creation_date,          -- 作成日
@@ -1625,7 +1654,15 @@ AS
 -- Modify 2013.11.25 Ver1.10 Start
 --                   xil.slip_num;
                    xil.slip_num,
-                   xil.tax_rate
+-- Modify 2014.03.27 Ver1.11 Start
+--                   xil.tax_rate
+                   xil.tax_rate,
+                   CASE WHEN iv_bill_invoice_type = cv_bill_invoice_type_os THEN
+                     cv_os_flag_y
+                   ELSE
+                     NULL
+                   END
+-- Modify 2014.03.27 Ver1.11 End
                    ;
 -- Modify 2013.11.25 Ver1.10 End
 --
@@ -1636,7 +1673,10 @@ AS
            AND  ((gv_inv_all_flag = cv_status_yes) OR 
                  ((gv_inv_all_flag = cv_status_no) AND  (lr_main_data.bill_base_code = gt_user_dept)))  -- 請求拠点 = ログインユーザの拠点
            AND  (lr_main_data.bill_tax_div IN (cv_syohizei_kbn_te,cv_syohizei_kbn_nt))  -- 消費税区分 IN (外税,非課税)
-           AND  (lr_main_data.bill_invoice_type = cv_inv_prt_type) -- 請求書出力形式 = 1.伊藤園標準
+-- Modify 2014.03.27 Ver1.11 Start
+--         AND  (lr_main_data.bill_invoice_type = cv_inv_prt_type) -- 請求書出力形式 = 1.伊藤園標準
+         AND  (lr_main_data.bill_invoice_type = iv_bill_invoice_type)     -- 請求書出力形式 = 入力パラメータ「請求書出力形式」
+-- Modify 2014.03.27 Ver1.11 End
          AND  (lr_main_data.cons_inv_flag = cv_enabled_yes) -- 一括請求書式 = 'Y'(有効)
 -- Add 2010.12.10 Ver1.7 Start
          AND  (lr_main_data.bill_pub_cycle = NVL(iv_bill_pub_cycle, lr_main_data.bill_pub_cycle))     -- 請求書発行サイクル = 入力パラメータ「請求書発行サイクル」
@@ -1672,6 +1712,9 @@ AS
 -- Add 2013.11.25 Ver1.10 Start
               tax_rate                , -- 消費税率(編集用)
 -- Add 2013.11.25 Ver1.10 End
+-- Add 2014.03.27 Ver1.11 Start
+              outsourcing_flag        , -- 業者委託フラグ
+-- Add 2014.03.27 Ver1.11 End
               data_empty_message      , -- 0件メッセージ
               created_by              , -- 作成者
               creation_date           , -- 作成日
@@ -1764,6 +1807,13 @@ AS
 -- Add 2013.11.25 Ver1.10 Start
                    xil.tax_rate                                                       tax_rate         , -- 税率
 -- Add 2013.11.25 Ver1.10 End
+-- Add 2014.03.27 Ver1.11 Start
+                 CASE WHEN iv_bill_invoice_type = cv_bill_invoice_type_os THEN
+                   cv_os_flag_y
+                 ELSE
+                   NULL
+                 END                                                                  outsourcing_flag , -- 業者委託フラグ
+-- Add 2014.03.27 Ver1.11 End
                    NULL                                                               data_empty_message,-- 0件メッセージ
                    cn_created_by                                                      created_by,             -- 作成者
                    cd_creation_date                                                   creation_date,          -- 作成日
@@ -1871,7 +1921,15 @@ AS
 -- Modify 2013.11.25 Ver1.10 Start
 --                     xil.slip_num;
                      xil.slip_num,
-                     xil.tax_rate
+-- Modify 2014.03.27 Ver1.11 Start
+--                     xil.tax_rate
+                     xil.tax_rate,
+                     CASE WHEN iv_bill_invoice_type = cv_bill_invoice_type_os THEN
+                       cv_os_flag_y
+                     ELSE
+                       NULL
+                     END
+-- Modify 2014.03.27 Ver1.11 End
                      ;
 -- Modify 2013.11.25 Ver1.10 End
 --
@@ -1880,7 +1938,10 @@ AS
         --請求書印刷単位 = 'N3'
         ELSIF (all_account_rec.invoice_printing_unit = cv_invoice_printing_unit_n3)
          AND  (lr_main_data.bill_tax_div IN (cv_syohizei_kbn_te,cv_syohizei_kbn_nt))  -- 消費税区分 IN (外税,非課税)
-         AND  (lr_main_data.bill_invoice_type = cv_inv_prt_type) -- 請求書出力形式 = 1.伊藤園標準
+-- Modify 2014.03.27 Ver1.11 Start
+--         AND  (lr_main_data.bill_invoice_type = cv_inv_prt_type) -- 請求書出力形式 = 1.伊藤園標準
+         AND  (lr_main_data.bill_invoice_type = iv_bill_invoice_type)     -- 請求書出力形式 = 入力パラメータ「請求書出力形式」
+-- Modify 2014.03.27 Ver1.11 End
          AND  (lr_main_data.cons_inv_flag = cv_enabled_yes) -- 一括請求書式 = 'Y'(有効)
 -- Add 2010.12.10 Ver1.7 Start
          AND  (lr_main_data.bill_pub_cycle = NVL(iv_bill_pub_cycle, lr_main_data.bill_pub_cycle))     -- 請求書発行サイクル = 入力パラメータ「請求書発行サイクル」
@@ -1941,6 +2002,9 @@ AS
 -- Add 2013.11.25 Ver1.10 Start
               tax_rate                , -- 消費税率(編集用)
 -- Add 2013.11.25 Ver1.10 End
+-- Add 2014.03.27 Ver1.11 Start
+              outsourcing_flag        , -- 業者委託フラグ
+-- Add 2014.03.27 Ver1.11 End
               data_empty_message      , -- 0件メッセージ
               created_by              , -- 作成者
               creation_date           , -- 作成日
@@ -2021,6 +2085,13 @@ AS
 -- Add 2013.11.25 Ver1.10 Start
                    xil.tax_rate                                                       tax_rate         , -- 税率
 -- Add 2013.11.25 Ver1.10 End
+-- Add 2014.03.27 Ver1.11 Start
+                   CASE WHEN iv_bill_invoice_type = cv_bill_invoice_type_os THEN
+                     cv_os_flag_y
+                   ELSE
+                     NULL
+                   END                                                                outsourcing_flag , -- 業者委託フラグ
+-- Add 2014.03.27 Ver1.11 End
                    NULL                                                               data_empty_message,-- 0件メッセージ
                    cn_created_by                                                      created_by,             -- 作成者
                    cd_creation_date                                                   creation_date,          -- 作成日
@@ -2130,7 +2201,15 @@ AS
 -- Modify 2013.11.25 Ver1.10 Start
 --                     xil.slip_num;
                      xil.slip_num,
-                     xil.tax_rate
+-- Modify 2014.03.27 Ver1.11 Start
+--                     xil.tax_rate
+                     xil.tax_rate,
+                     CASE WHEN iv_bill_invoice_type = cv_bill_invoice_type_os THEN
+                       cv_os_flag_y
+                     ELSE
+                       NULL
+                     END
+-- Modify 2014.03.27 Ver1.11 End
                      ;
 -- Modify 2013.11.25 Ver1.10 End
 --
@@ -2356,6 +2435,9 @@ AS
 --
         INSERT INTO xxcfr_rep_st_invoice_ex_tax (
           data_empty_message           , -- 0件メッセージ
+-- Modify 2014.03.27 Ver1.11 Start
+          outsourcing_flag             , -- 業者委託フラグ
+-- Modify 2014.03.27 Ver1.11 End
           created_by                   , -- 作成者
           creation_date                , -- 作成日
           last_updated_by              , -- 最終更新者
@@ -2367,6 +2449,13 @@ AS
           program_update_date          ) -- プログラム更新日
         VALUES (
           lv_no_data_msg               , -- 0件メッセージ
+-- Modify 2014.03.27 Ver1.11 Start
+          CASE WHEN iv_bill_invoice_type = cv_bill_invoice_type_os THEN
+            cv_os_flag_y
+          ELSE
+            NULL
+          END                          , -- 業者委託フラグ
+-- Modify 2014.03.27 Ver1.11 End
           cn_created_by                , -- 作成者
           cd_creation_date             , -- 作成日
           cn_last_updated_by           , -- 最終更新者
@@ -2885,6 +2974,9 @@ AS
 -- Add 2013.11.25 Ver1.10 Start
     iv_tax_output_type     IN      VARCHAR2,         -- 税別内訳出力区分
 -- Add 2013.11.25 Ver1.10 End
+-- Add 2014.03.27 Ver1.11 Start
+    iv_bill_invoice_type   IN      VARCHAR2,         -- 請求書出力形式
+-- Add 2014.03.27 Ver1.11 End
     ov_errbuf              OUT     VARCHAR2,         -- エラー・メッセージ           --# 固定 #
     ov_retcode             OUT     VARCHAR2,         -- リターン・コード             --# 固定 #
     ov_errmsg              OUT     VARCHAR2)         -- ユーザー・エラー・メッセージ --# 固定 #
@@ -2951,6 +3043,9 @@ AS
 -- Add 2013.11.25 Ver1.10 Start
       ,iv_tax_output_type     -- 税別内訳出力区分
 -- Add 2013.11.25 Ver1.10 End
+-- Add 2014.03.27 Ver1.11 Start
+      ,iv_bill_invoice_type   -- 請求書出力形式
+-- Add 2014.03.27 Ver1.11 End
       ,lv_errbuf              -- エラー・メッセージ           --# 固定 #
       ,lv_retcode             -- リターン・コード             --# 固定 #
       ,lv_errmsg);            -- ユーザー・エラー・メッセージ --# 固定 #
@@ -3000,6 +3095,9 @@ AS
 -- Add 2013.11.25 Ver1.10 Start
       ,iv_tax_output_type     -- 税別内訳出力区分
 -- Add 2013.11.25 Ver1.10 End
+-- Add 2014.03.27 Ver1.11 Start
+      ,iv_bill_invoice_type   -- 請求書出力形式
+-- Add 2014.03.27 Ver1.11 End
       ,lv_errbuf              -- エラー・メッセージ           --# 固定 #
       ,lv_retcode             -- リターン・コード             --# 固定 #
       ,lv_errmsg);            -- ユーザー・エラー・メッセージ --# 固定 #
@@ -3103,6 +3201,9 @@ AS
 -- Add 2013.11.25 Ver1.10 Start
    ,iv_tax_output_type     IN      VARCHAR2          -- 税別内訳出力区分
 -- Add 2013.11.25 Ver1.10 End
+-- Add 2014.03.27 Ver1.11 Start
+   ,iv_bill_invoice_type   IN      VARCHAR2          -- 請求書出力形式
+-- Add 2014.03.27 Ver1.11 End
   )
 --
 --
@@ -3171,6 +3272,9 @@ AS
 -- Add 2013.11.25 Ver1.10 Start
       ,iv_tax_output_type
 -- Add 2013.11.25 Ver1.10 End
+-- Add 2014.03.27 Ver1.11 Start
+      ,iv_bill_invoice_type -- 請求書出力形式
+-- Add 2014.03.27 Ver1.11 End
       ,lv_errbuf      -- エラー・メッセージ           --# 固定 #
       ,lv_retcode     -- リターン・コード             --# 固定 #
       ,lv_errmsg      -- ユーザー・エラー・メッセージ --# 固定 #
