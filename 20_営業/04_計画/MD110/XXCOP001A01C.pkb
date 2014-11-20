@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCOP001A01C(body)
  * Description      : アップロードファイルからの登録（基準計画）
  * MD.050           : アップロードファイルからの登録（基準計画） MD050_COP_001_A01
- * Version          : ver1.2
+ * Version          : ver1.3
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -30,6 +30,7 @@ AS
  *  2008/11/21    1.0  SCS.Uchida       新規作成
  *  2009/04/03    1.1  SCS.Goto         T1_0237、T1_0270対応
  *  2009/08/21    1.2  SCS.Moriyama     0001134対応
+ *  2010/01/19    1.3  SCS.Kikuchi      E_本稼動_01222対応（品目チェック・一意チェック修正）
  *
  *****************************************************************************************/
 --#######################  固定グローバル定数宣言部 START   #######################
@@ -1616,7 +1617,9 @@ AS
           SELECT msib.inventory_item_id
           INTO   l_item_id
           FROM   mtl_system_items_b        msib               -- Disc品目マスタ
-                ,mrp_schedule_designators  msde               -- 基準計画名
+--20100119_Ver1.3_E_本稼動_01222_SCS.Kikuchi_DEL_START
+--                ,mrp_schedule_designators  msde               -- 基準計画名
+--20100119_Ver1.3_E_本稼動_01222_SCS.Kikuchi_DEL_END
                 --★↓2009/01/16 追加
                 ,mtl_parameters            mp                 -- 組織パラメータ
                 --★↑2009/01/16 追加
@@ -1626,8 +1629,10 @@ AS
           AND    msib.organization_id     = mp.organization_id
           --★↑2009/01/16 追加
           AND    msib.inventory_item_status_code <> 'Inactive'
-          AND    msib.organization_id     = msde.organization_id
-          AND    msde.schedule_designator = o_scdl_tab(ln_srd_idx).schedule_designator
+--20100119_Ver1.3_E_本稼動_01222_SCS.Kikuchi_DEL_START
+--          AND    msib.organization_id     = msde.organization_id
+--          AND    msde.schedule_designator = o_scdl_tab(ln_srd_idx).schedule_designator
+--20100119_Ver1.3_E_本稼動_01222_SCS.Kikuchi_DEL_END
           ;
         EXCEPTION
           WHEN NO_DATA_FOUND THEN
@@ -1815,7 +1820,11 @@ AS
                 AND o_scdl_tab(ln_srd_idx).organization_code     = o_scdl_tab(ln_key_idx).organization_code
                 AND o_scdl_tab(ln_srd_idx).item_code             = o_scdl_tab(ln_key_idx).item_code
                 AND o_scdl_tab(ln_srd_idx).schedule_date         = o_scdl_tab(ln_key_idx).schedule_date
-                AND o_scdl_tab(ln_srd_idx).deliver_from          = o_scdl_tab(ln_key_idx).deliver_from )
+--20100119_Ver1.3_E_本稼動_01222_SCS.Kikuchi_UPD_START
+--                AND o_scdl_tab(ln_srd_idx).deliver_from          = o_scdl_tab(ln_key_idx).deliver_from )
+                AND o_scdl_tab(ln_srd_idx).deliver_from          = o_scdl_tab(ln_key_idx).deliver_from
+                AND o_scdl_tab(ln_srd_idx).schedule_prod_date    = o_scdl_tab(ln_key_idx).schedule_prod_date )
+--20100119_Ver1.3_E_本稼動_01222_SCS.Kikuchi_UPD_END
               THEN
                 lv_one_chk_flg := '1';
                 lv_token_col_name := gv_column_name_01 || gv_msg_comma
@@ -1823,7 +1832,12 @@ AS
                                   || gv_column_name_03 || gv_msg_comma
                                   || gv_column_name_05 || gv_msg_comma
                                   || gv_column_name_06 || gv_msg_comma
-                                  || gv_column_name_08 || gv_msg_comma ;
+--20100119_Ver1.3_E_本稼動_01222_SCS.Kikuchi_UPD_START
+--                                  || gv_column_name_08 || gv_msg_comma ;
+                                  || gv_column_name_08 || gv_msg_comma
+                                  || gv_column_name_11
+                                  ;
+--20100119_Ver1.3_E_本稼動_01222_SCS.Kikuchi_UPD_END                                  
               END IF;
             --★↑2009/01/20 追加
             --
