@@ -1,7 +1,7 @@
 /*============================================================================
 * ファイル名 : XxcsoQuoteSalesRegistAMImpl
 * 概要説明   : 販売先用見積入力画面アプリケーション・モジュールクラス
-* バージョン : 1.14
+* バージョン : 1.15
 *============================================================================
 * 修正履歴
 * 日付       Ver. 担当者       修正内容
@@ -23,6 +23,7 @@
 * 2009-12-21 1.12 SCS阿部大輔  【E_本稼動_00535】営業原価対応
 * 2011-05-17 1.13 SCS桐生和幸  【E_本稼動_02500】原価割れチェック方法の変更対応
 * 2011-11-14 1.14 SCSK桐生和幸 【E_本稼動_08312】問屋見積画面の改修①
+* 2013-08-20 1.15 SCSK中野徹也 【E_本稼動_10884】消費税増税対応
 *============================================================================
 */
 package itoen.oracle.apps.xxcso.xxcso017001j.server;
@@ -2142,10 +2143,12 @@ public class XxcsoQuoteSalesRegistAMImpl extends OAApplicationModuleImpl
     XxcsoQuoteLinesSalesFullVORowImpl lineRow
       = (XxcsoQuoteLinesSalesFullVORowImpl)lineVo.first();
 
-// 2011-05-17 Ver1.13 [E_本稼動_02500] Add Start
-    XxcsoQtApTaxRateVORowImpl taxRow
-      = (XxcsoQtApTaxRateVORowImpl)taxVo.first();
-// 2011-05-17 Ver1.13 [E_本稼動_02500] Add End
+// 2013-08-20 Ver1.15 [E_本稼動_10884] Del Start
+//// 2011-05-17 Ver1.13 [E_本稼動_02500] Add Start
+//    XxcsoQtApTaxRateVORowImpl taxRow
+//      = (XxcsoQtApTaxRateVORowImpl)taxVo.first();
+//// 2011-05-17 Ver1.13 [E_本稼動_02500] Add End
+// 2013-08-20 Ver1.15 [E_本稼動_10884] Del End
 
     /* 20090324_abe_課題77 START*/
     //プロファイルの取得
@@ -2159,14 +2162,25 @@ public class XxcsoQuoteSalesRegistAMImpl extends OAApplicationModuleImpl
     }
     /* 20090324_abe_課題77 END*/
 
-// 2011-05-17 Ver1.13 [E_本稼動_02500] Add Start
-    //仮払税率の存在チェック
-    double taxrate = -1;
-    if ( taxRow != null )
+// 2013-08-20 Ver1.15 [E_本稼動_10884] Del Start
+//// 2011-05-17 Ver1.13 [E_本稼動_02500] Add Start
+//    //仮払税率の存在チェック
+//    double taxrate = -1;
+//    if ( taxRow != null )
+//    {
+//      taxrate = taxRow.getApTaxRate().doubleValue();
+//    }
+//// 2011-05-17 Ver1.13 [E_本稼動_02500] Add End
+// 2013-08-20 Ver1.15 [E_本稼動_10884] Del End
+
+// 2013-08-20 Ver1.15 [E_本稼動_10884] Add Start
+    boolean taxFlag = false;
+    //店納価格税区分が"2"(税込価格)の場合
+    if (headerRow.getDelivPriceTaxType().equals("2"))
     {
-      taxrate = taxRow.getApTaxRate().doubleValue();
+      taxFlag = true;
     }
-// 2011-05-17 Ver1.13 [E_本稼動_02500] Add End
+// 2013-08-20 Ver1.15 [E_本稼動_10884] Add End
 
     int index = 0;
     while ( lineRow != null )
@@ -2177,6 +2191,28 @@ public class XxcsoQuoteSalesRegistAMImpl extends OAApplicationModuleImpl
        ,lineRow
        ,index
       );
+
+// 2013-08-20 Ver1.15 [E_本稼動_10884] Add Start
+      //仮払税率の取得、存在チェック
+      double taxrate = -1;
+      if ( taxFlag )
+      {
+        taxVo.initQuery(lineRow.getQuoteEndDate());
+        XxcsoQtApTaxRateVORowImpl taxRow
+          = (XxcsoQtApTaxRateVORowImpl)taxVo.first();
+        if ( taxRow != null )
+        {
+          if ( ! taxVo.hasNext() )
+          {
+            taxrate = taxRow.getApTaxRate().doubleValue();
+          }
+        }
+      }
+      else
+      {
+        taxrate = 1;
+      }
+// 2013-08-20 Ver1.15 [E_本稼動_10884] Add End
 
       validateFixedLine(
         errorList

@@ -12,6 +12,8 @@
    <SQLQuery><![CDATA[
 SELECT qatrv.ap_tax_rate
 FROM   xxcso_qt_ap_tax_rate_v qatrv
+WHERE  qatrv.start_date <= :1
+AND    NVL( qatrv.end_date, :1 ) >= :1
    ]]></SQLQuery>
    <DesignTime>
       <Attr Name="_isCodegen" Value="true" />
