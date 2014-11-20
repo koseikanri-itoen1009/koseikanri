@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCOS001A03C (body)
  * Description      : VD納品データ作成
  * MD.050           : VD納品データ作成(MD050_COS_001_A03)
- * Version          : 1.19
+ * Version          : 1.20
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -65,6 +65,7 @@ AS
  *  2009/08/21    1.17    N.Maeda          [0001141] 前月売上拠点の考慮追加
  *  2009/09/03    1.18    N.Maeda          [0001211] 消費税関連項目取得基準日付の修正
  *  2009/10/30    1.19    M.Sano           [0001373] 参照View変更[xxcos_rs_info_v ⇒ xxcos_rs_info2_v]
+ *  2010/02/01    1.20    M.Hokkanji       [E_T4_00195] 会計期間情報取得関数パラメータ修正[AR → INV]
  *
  *****************************************************************************************/
 --
@@ -213,8 +214,13 @@ AS
   --
   cn_cons_tkn_zero               CONSTANT NUMBER  := 0;                       -- '0'
 --******************************* 2009/05/20 N.Maeda Var1.13 ADD START ***************************************
+--******************************* 2010/02/01 M.Hokkanji Var1.20 MOD START ************************************
   --AR会計期間区分値
-  cv_fiscal_period_ar           CONSTANT  VARCHAR2(2) := '02';  --AR
+--  cv_fiscal_period_ar           CONSTANT  VARCHAR2(2) := '02';  --AR
+  --INV会計期間区分値
+  cv_fiscal_period_inv          CONSTANT  VARCHAR2(2) := '01';  --INV
+  cv_fiscal_period_tkn_inv      CONSTANT  VARCHAR2(3) := 'INV'; --INV(名称)
+--******************************* 2010/02/01 M.Hokkanji Var1.20 MOD END   ************************************
 --******************************* 2009/05/20 N.Maeda Var1.13 ADD END *****************************************
 --******************************* 2009/08/12 N.Maeda Ver1.16 ADD START ***************************************
   ct_user_lang                  CONSTANT  fnd_lookup_values.language%TYPE :=  USERENV( 'LANG' );
@@ -1492,7 +1498,10 @@ AS
       -- 1.納品日算出
       --==================================
       get_fiscal_period_from(
-          iv_div        => cv_fiscal_period_ar             -- 会計区分
+-- ************************************* 2010/02/01 1.20 M.Hokkanji MOD START ************************************
+--          iv_div        => cv_fiscal_period_ar                  -- 会計区分
+          iv_div        => cv_fiscal_period_inv                 -- 会計区分
+-- ************************************* 2010/02/01 1.20 M.Hokkanji MOD END   ************************************
         , id_base_date  => lt_dlv_date                     -- 基準日            =  オリジナル納品日
         , od_open_date  => lt_open_dlv_date                -- 有効会計期間FROM  => 納品日
         , ov_errbuf     => lv_errbuf                       -- エラー・メッセージエラー       #固定#
@@ -1506,7 +1515,10 @@ AS
                                               iv_application   => cv_application,    --アプリケーション短縮名
                                               iv_name          => ct_msg_fiscal_period_err,    --メッセージコード
                                               iv_token_name1   => cv_tkn_account_name,         --トークンコード1
-                                              iv_token_value1  => cv_fiscal_period_ar,         --トークン値1
+-- ************************************* 2010/02/01 1.20 M.Hokkanji MOD START *************************************
+--                                              iv_token_value1  => cv_fiscal_period_ar,         --トークン値1
+                                              iv_token_value1  => cv_fiscal_period_tkn_inv,        --トークン値(INV)
+-- ************************************* 2010/02/01 1.20 M.Hokkanji MOD END   *************************************
                                               iv_token_name2   => cv_tkn_order_number,         --トークンコード2
                                               iv_token_value2  => lt_order_no_hht,
                                               iv_token_name3   => cv_tkn_base_date,
@@ -1518,7 +1530,10 @@ AS
       -- 2.売上計上日算出
       --==================================
       get_fiscal_period_from(
-          iv_div        => cv_fiscal_period_ar                  -- 会計区分
+-- ************************************* 2010/02/01 1.20 M.Hokkanji MOD START ************************************
+--          iv_div        => cv_fiscal_period_ar                  -- 会計区分
+          iv_div        => cv_fiscal_period_inv                 -- 会計区分
+-- ************************************* 2010/02/01 1.20 M.Hokkanji MOD END   ************************************
         , id_base_date  => lt_inspect_date                      -- 基準日           =  オリジナル検収日
         , od_open_date  => lt_open_inspect_date                 -- 有効会計期間FROM => 検収日
         , ov_errbuf     => lv_errbuf                            -- エラー・メッセージエラー       #固定#
@@ -1532,7 +1547,10 @@ AS
                                               iv_application   => cv_application,    --アプリケーション短縮名
                                               iv_name          => ct_msg_fiscal_period_err,    --メッセージコード
                                               iv_token_name1   => cv_tkn_account_name,         --トークンコード1
-                                              iv_token_value1  => cv_fiscal_period_ar,         --トークン値1
+-- ************************************* 2010/02/01 1.20 M.Hokkanji MOD START *************************************
+--                                              iv_token_value1  => cv_fiscal_period_ar,         --トークン値1
+                                              iv_token_value1  => cv_fiscal_period_tkn_inv,      --トークン値(INV)
+-- ************************************* 2010/02/01 1.20 M.Hokkanji MOD END   *************************************
                                               iv_token_name2   => cv_tkn_order_number,         --トークンコード2
                                               iv_token_value2  => lt_order_no_hht,
                                               iv_token_name3   => cv_tkn_base_date,
@@ -2978,7 +2996,7 @@ AS
           AND    vch.forward_flag  =  cv_forward_flag_no
           AND    vch.order_no_hht  =  lt_order_no_hht
           AND    vch.cancel_correct_class IS NOT NULL
-        　AND    vch.digestion_ln_number  = ( SELECT
+          AND    vch.digestion_ln_number  = ( SELECT
                                                 MAX( vch.digestion_ln_number )
                                               FROM   xxcos_vd_column_headers vch,        -- VDコラム別取引情報ヘッダ情報
                                                      xxcos_vd_column_lines vcl           -- VDコラム別取引情報明細
