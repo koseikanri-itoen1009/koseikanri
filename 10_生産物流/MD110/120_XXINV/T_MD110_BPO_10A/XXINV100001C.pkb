@@ -8,7 +8,7 @@ PACKAGE BODY XXINV100001C AS
  * Description      : 生産物流(計画)
  * MD.050           : 計画・移動・在庫・販売計画/引取計画 T_MD050_BPO100
  * MD.070           : 計画・移動・在庫・販売計画/引取計画 T_MD070_BPO10A
- * Version          : 1.9
+ * Version          : 1.10
  *
  * Program List
  * -------------------------------- ----------------------------------------------------------
@@ -96,6 +96,7 @@ PACKAGE BODY XXINV100001C AS
  *  2008/05/29    1.7  Oracle 熊本 和郎 結合テスト障害対応(販売計画のMD050.機能フローとロジックの不一致修正)
  *  2008/06/04    1.8  Oracle 熊本 和郎 システムテスト障害対応(販売計画の削除対象抽出条件からROWNUM=1削除)
  *  2008/06/12    1.9  Oracle 大橋 孝郎 結合テスト障害対応(400_不具合ログ#115)
+ *  2008/08/01    1.10 Oracle 山根 一浩 ST障害No10,変更要求No184対応
  *
  *****************************************************************************************/
 --
@@ -437,6 +438,14 @@ PACKAGE BODY XXINV100001C AS
   gn_no_msg_disp          NUMBER := 0;        -- mainにて処理結果レポートに表示しない
   -- A-2-2, A-3-2, A-4-2, A-5-2, A-6-2 でエラーメッセージを表示した場合は、mainで最後に
   -- メッセージを表示する必要がないので、mainはこの変数で表示の是非を決める
+-- 2008/08/01 Add ↓
+-- WHOカラム
+  gn_last_updated_by         NUMBER;
+  gn_request_id              NUMBER;
+  gn_program_application_id  NUMBER;
+  gn_program_id              NUMBER;
+  gd_who_sysdate             DATE;
+-- 2008/08/01 Add ↑
 --
   /**********************************************************************************
    * Procedure Name   : if_data_disp
@@ -8539,6 +8548,18 @@ and mfd.FORECAST_DESIGNATOR = mfi.FORECAST_DESIGNATOR
     t_forecast_interface_tab_ins(1).process_status        := 2;
     t_forecast_interface_tab_ins(1).confidence_percentage := 100;
 --
+-- 2008/08/01 Add ↓
+    t_forecast_interface_tab_ins(1).last_update_date       := gd_who_sysdate;
+    t_forecast_interface_tab_ins(1).last_updated_by        := gn_last_updated_by;
+    t_forecast_interface_tab_ins(1).creation_date          := gd_who_sysdate;
+    t_forecast_interface_tab_ins(1).created_by             := gn_created_by;
+    t_forecast_interface_tab_ins(1).last_update_login      := gn_login_user;
+    t_forecast_interface_tab_ins(1).request_id             := gn_request_id;
+    t_forecast_interface_tab_ins(1).program_application_id := gn_program_application_id;
+    t_forecast_interface_tab_ins(1).program_id             := gn_program_id;
+    t_forecast_interface_tab_ins(1).program_update_date    := gd_who_sysdate;
+-- 2008/08/01 Add ↓
+--
     -- Forecastデータに抽出したインターフェースデータを登録
     lb_retcode := MRP_FORECAST_INTERFACE_PK.MRP_FORECAST_INTERFACE(
                                            t_forecast_interface_tab_ins,
@@ -8741,6 +8762,18 @@ and mfd.FORECAST_DESIGNATOR = mfi.FORECAST_DESIGNATOR
     t_forecast_interface_tab_ins(1).bucket_type           := 1;
     t_forecast_interface_tab_ins(1).process_status        := 2;
     t_forecast_interface_tab_ins(1).confidence_percentage := 100;
+--
+-- 2008/08/01 Add ↓
+    t_forecast_interface_tab_ins(1).last_update_date       := gd_who_sysdate;
+    t_forecast_interface_tab_ins(1).last_updated_by        := gn_last_updated_by;
+    t_forecast_interface_tab_ins(1).creation_date          := gd_who_sysdate;
+    t_forecast_interface_tab_ins(1).created_by             := gn_created_by;
+    t_forecast_interface_tab_ins(1).last_update_login      := gn_login_user;
+    t_forecast_interface_tab_ins(1).request_id             := gn_request_id;
+    t_forecast_interface_tab_ins(1).program_application_id := gn_program_application_id;
+    t_forecast_interface_tab_ins(1).program_id             := gn_program_id;
+    t_forecast_interface_tab_ins(1).program_update_date    := gd_who_sysdate;
+-- 2008/08/01 Add ↓
 --
     -- Forecastデータに抽出したインターフェースデータを登録
     lb_retcode := MRP_FORECAST_INTERFACE_PK.MRP_FORECAST_INTERFACE(
@@ -9068,6 +9101,18 @@ and mfd.FORECAST_DESIGNATOR = mfi.FORECAST_DESIGNATOR
     t_forecast_interface_tab_ins(1).process_status        := 2;
     t_forecast_interface_tab_ins(1).confidence_percentage := 100;
 --
+-- 2008/08/01 Add ↓
+    t_forecast_interface_tab_ins(1).last_update_date       := gd_who_sysdate;
+    t_forecast_interface_tab_ins(1).last_updated_by        := gn_last_updated_by;
+    t_forecast_interface_tab_ins(1).creation_date          := gd_who_sysdate;
+    t_forecast_interface_tab_ins(1).created_by             := gn_created_by;
+    t_forecast_interface_tab_ins(1).last_update_login      := gn_login_user;
+    t_forecast_interface_tab_ins(1).request_id             := gn_request_id;
+    t_forecast_interface_tab_ins(1).program_application_id := gn_program_application_id;
+    t_forecast_interface_tab_ins(1).program_id             := gn_program_id;
+    t_forecast_interface_tab_ins(1).program_update_date    := gd_who_sysdate;
+-- 2008/08/01 Add ↓
+--
     -- Forecastデータに抽出したインターフェースデータを登録
     lb_retcode := MRP_FORECAST_INTERFACE_PK.MRP_FORECAST_INTERFACE(
                                            t_forecast_interface_tab_ins,
@@ -9353,6 +9398,18 @@ and mfd.FORECAST_DESIGNATOR = mfi.FORECAST_DESIGNATOR
     t_forecast_interface_tab_ins(1).process_status        := 2;
     t_forecast_interface_tab_ins(1).confidence_percentage := 100;
 --
+-- 2008/08/01 Add ↓
+    t_forecast_interface_tab_ins(1).last_update_date       := gd_who_sysdate;
+    t_forecast_interface_tab_ins(1).last_updated_by        := gn_last_updated_by;
+    t_forecast_interface_tab_ins(1).creation_date          := gd_who_sysdate;
+    t_forecast_interface_tab_ins(1).created_by             := gn_created_by;
+    t_forecast_interface_tab_ins(1).last_update_login      := gn_login_user;
+    t_forecast_interface_tab_ins(1).request_id             := gn_request_id;
+    t_forecast_interface_tab_ins(1).program_application_id := gn_program_application_id;
+    t_forecast_interface_tab_ins(1).program_id             := gn_program_id;
+    t_forecast_interface_tab_ins(1).program_update_date    := gd_who_sysdate;
+-- 2008/08/01 Add ↓
+--
     -- Forecastデータに抽出したインターフェースデータを登録
     lb_retcode := MRP_FORECAST_INTERFACE_PK.MRP_FORECAST_INTERFACE(
                                            t_forecast_interface_tab_ins,
@@ -9631,6 +9688,18 @@ and mfd.FORECAST_DESIGNATOR = mfi.FORECAST_DESIGNATOR
     t_forecast_interface_tab_ins(1).bucket_type           := 1;
     t_forecast_interface_tab_ins(1).process_status        := 2;
     t_forecast_interface_tab_ins(1).confidence_percentage := 100;
+--
+-- 2008/08/01 Add ↓
+    t_forecast_interface_tab_ins(1).last_update_date       := gd_who_sysdate;
+    t_forecast_interface_tab_ins(1).last_updated_by        := gn_last_updated_by;
+    t_forecast_interface_tab_ins(1).creation_date          := gd_who_sysdate;
+    t_forecast_interface_tab_ins(1).created_by             := gn_created_by;
+    t_forecast_interface_tab_ins(1).last_update_login      := gn_login_user;
+    t_forecast_interface_tab_ins(1).request_id             := gn_request_id;
+    t_forecast_interface_tab_ins(1).program_application_id := gn_program_application_id;
+    t_forecast_interface_tab_ins(1).program_id             := gn_program_id;
+    t_forecast_interface_tab_ins(1).program_update_date    := gd_who_sysdate;
+-- 2008/08/01 Add ↓
 --
     -- Forecastデータに抽出したインターフェースデータを登録
     lb_retcode := MRP_FORECAST_INTERFACE_PK.MRP_FORECAST_INTERFACE(
@@ -10162,6 +10231,12 @@ FND_FILE.PUT_LINE(FND_FILE.LOG,'forecast_del_set_loop...');
     ln_data_flg   NUMBER;    -- 日付データありなしフラグ(0:なし、1:あり)
     ln_error_flg  NUMBER;    -- インタ－フェースデータエラーありフラグ(0:なし, 1:あり)
 --
+-- 2008/08/01 Add ↓
+    lv_errbuf_w  VARCHAR2(5000);  -- エラー・メッセージ
+    lv_errmsg_w  VARCHAR2(5000);  -- ユーザー・エラー・メッセージ
+    ln_warm_flg  NUMBER;
+-- 2008/08/01 Add ↑
+--
     -- *** ローカル・カーソル ***
 --
     -- *** ローカル・レコード ***
@@ -10212,6 +10287,10 @@ FND_FILE.PUT_LINE(FND_FILE.LOG,'forecast_del_set_loop...');
     -- インタ－フェースデータエラーありフラグ初期化
     ln_error_flg :=0;
 --
+-- 2008/08/01 Add ↓
+    ln_warm_flg  := 0;
+-- 2008/08/01 Add ↑
+--
     -- 抽出データチェックループ
     <<if_data_check_loop>>
     FOR ln_data_cnt IN 1..gn_target_cnt LOOP
@@ -10223,11 +10302,18 @@ FND_FILE.PUT_LINE(FND_FILE.LOG,'forecast_del_set_loop...');
                           lv_errbuf,
                           lv_retcode,
                           lv_errmsg );
+--
       -- エラーがあった場合は、インタ－フェースデータエラーありフラグONにしつつ、
       -- いったん全データを処理(チェック)して、最後にエラーがあれば処理を中止する。
       -- 警告ならば処理は続行する。
       IF (lv_retcode = gv_status_error) THEN
         ln_error_flg := 1;
+-- 2008/08/01 Add ↓
+      ELSIF (lv_retcode = gv_status_warn) THEN
+        lv_errbuf_w := lv_errbuf;
+        lv_errmsg_w := lv_errmsg;
+        ln_warm_flg := 1;
+-- 2008/08/01 Add ↑
       END IF;
 --add start 1.7
     END LOOP if_data_check_loop;
@@ -10240,6 +10326,7 @@ FND_FILE.PUT_LINE(FND_FILE.LOG,'forecast_del_set_loop...');
                          lv_errbuf,
                          lv_retcode,
                          lv_errmsg );
+--
       -- エラーがあったらA-X-6まで処理をとばす
       IF (lv_retcode = gv_status_error) THEN
         gn_error_cnt := gn_error_cnt + 1;
@@ -10254,6 +10341,7 @@ FND_FILE.PUT_LINE(FND_FILE.LOG,'forecast_del_set_loop...');
                           lv_errbuf,
                           lv_retcode,
                           lv_errmsg );
+--
     -- エラーがあったらA-X-6まで処理をとばす
       IF (lv_retcode = gv_status_error) THEN
         gn_error_cnt := gn_error_cnt + 1;
@@ -10304,6 +10392,7 @@ FND_FILE.PUT_LINE(FND_FILE.LOG,'(A-3)-A-3-3 error....');
                              lv_errbuf,
                              lv_retcode,
                              lv_errmsg );
+--
         -- エラーがあったらループ処理中止
         IF (lv_retcode = gv_status_error) THEN
           gn_error_cnt := gn_error_cnt + 1;
@@ -10328,6 +10417,7 @@ FND_FILE.PUT_LINE(FND_FILE.LOG,'(A-3)-A-3-3 error....');
                  lv_errbuf_d,
                  lv_retcode_d,
                  lv_errmsg_d );
+--
     -- エラーがあったら処理中止
     IF (lv_retcode_d = gv_status_error) THEN
       gn_error_cnt := gn_error_cnt + 1;
@@ -10342,6 +10432,14 @@ FND_FILE.PUT_LINE(FND_FILE.LOG,'(A-3)-A-3-3 error....');
     IF (ln_error_flg = 1) THEN
       RAISE global_api_expt;
     END IF;
+--
+-- 2008/08/01 Add ↓
+    IF (ln_warm_flg = 1) THEN
+      lv_errbuf := lv_errbuf_w;
+      lv_errmsg := lv_errmsg_w;
+      RAISE warn_expt;
+    END IF;
+-- 2008/08/01 Add ↑
 --
   EXCEPTION
     WHEN warn_expt THEN
@@ -11482,7 +11580,6 @@ AND (im.item_no = NVL(pv_item_code,im.item_no)
     --***      MD.050のフロー図を表す           ***
     --***      分岐と処理部の呼び出しを行う     ***
     --*********************************************
---
     -- 入力パラメータの年月を保存
     gv_in_yyyymm := iv_forecast_yyyymm;
 --
@@ -11890,7 +11987,16 @@ IS
 --
     -- ログインID、ユーザIDの取得
     gn_login_user := FND_GLOBAL.LOGIN_ID;
-    gn_created_by :=  FND_GLOBAL.USER_ID;
+    gn_created_by := FND_GLOBAL.USER_ID;
+--
+-- 2008/08/01 Add ↓
+-- WHOカラムセット
+    gn_last_updated_by         := FND_GLOBAL.USER_ID;
+    gn_request_id              := FND_GLOBAL.CONC_REQUEST_ID;
+    gn_program_application_id  := FND_GLOBAL.QUEUE_APPL_ID;
+    gn_program_id              := FND_GLOBAL.CONC_PROGRAM_ID;
+    gd_who_sysdate             := SYSDATE;
+-- 2008/08/01 Add ↑
 --
     -- ===============================================
     -- submainの呼び出し（実際の処理はsubmainで行う）
