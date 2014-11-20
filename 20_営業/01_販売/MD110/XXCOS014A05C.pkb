@@ -7,7 +7,7 @@ AS
  * Description      : 帳票発行画面(アドオン)で指定した条件を元にEDI経由で取り込んだ在庫情報を、
  *                    帳票サーバ向けにファイルを出力します。
  * MD.050           : 在庫情報データ作成 MD050_COS_014_A05
- * Version          : 1.7
+ * Version          : 1.8
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -35,6 +35,7 @@ AS
  *  2009/02/19    1.5   T.Nakamura       [障害COS_109] ログ出力にエラーメッセージを出力等
  *  2009/02/20    1.6   T.Nakamura       [障害COS_110] フッタレコード作成処理実行時のエラーハンドリングを追加
  *  2009/04/02    1.7   T.Kitajima       [T1_0114] 納品拠点情報取得方法変更
+ *  2009/05/27    1.8   K.Tsuboi         [T1_1222] 単位の取得元変更
  *
  *****************************************************************************************/
 --
@@ -1407,7 +1408,10 @@ AS
             ,xei.qty_in_case                                                  qty_in_case                    --入数
 -- 2009/02/17 T.Nakamura Ver.1.4 mod start
 --            ,xei.uom_code                                                     uom_code                       --単位
-            ,xei.ebs_uom_code                                                 uom_code                       --単位
+-- 2009/05/27 K.Tsuboi Ver.1.8 mod start
+--            ,xei.ebs_uom_code                                                 uom_code                       --単位
+            ,xei.uom_code                                                     uom_code                       --単位
+-- 2009/05/27 K.Tsuboi Ver.1.8 mod end
 -- 2009/02/17 T.Nakamura Ver.1.4 mod end
             ,xei.day_average_shipping_qty                                     day_average_shipping_qty       --一日平均出荷数量
             ,xei.stk_type_code                                                stk_type_code                  --在庫種別コード
