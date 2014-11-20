@@ -6,7 +6,7 @@ AS
  * Package Name     : xxcso_020001j_pkg(SPEC)
  * Description      : フルベンダーSP専決
  * MD.050/070       : 
- * Version          : 1.1
+ * Version          : 1.4
  *
  * Program List
  *  ------------------------- ---- ----- --------------------------------------------------
@@ -33,9 +33,10 @@ AS
  *  chk_tel_format            F    V     電話番号チェック（共通関数ラッピング）
  *  conv_number_separate      P    -     数値セパレート変換
  *  conv_line_number_separate P    -     数値セパレート変換（明細）
- *  chk_double_byte           F    V      全角文字チェック（共通関数ラッピング）
- *  chk_single_byte_kana      F    V      半角カナチェック（共通関数ラッピング）
- *  chk_account_many          F    V     アカウント複数判定
+ *  chk_double_byte           F    V     全角文字チェック（共通関数ラッピング）
+ *  chk_single_byte_kana      F    V     半角カナチェック（共通関数ラッピング）
+ *  chk_account_many          P    -     アカウント複数チェック
+ *  chk_cust_site_uses        P    -     顧客使用目的チェック
  *
  * Change Record
  * ------------- ----- ---------------- -------------------------------------------------
@@ -47,6 +48,7 @@ AS
  *                                                    chk_single_byte_kana
  *  2009-05-01    1.2   Tomoko.Mori      T1_0897対応
  *  2009/11/29    1.3   D.Abe            [E_本稼動_00106]アカウント複数判定
+ *  2010/01/12    1.4   D.Abe            [E_本稼動_00823]顧客マスタの整合性チェック対応
  *****************************************************************************************/
 --
   -- トランザクション初期化処理
@@ -310,7 +312,7 @@ AS
 -- 20090427_N.Yanagitaira T1_0708 Add END
 --
 -- 20091129_D.Abe E_本稼動_00106 Mod START
-  -- アカウント複数判定
+  -- アカウント複数チェック
   PROCEDURE chk_account_many(
     iv_account_number           IN  VARCHAR2
    ,ov_errbuf                   OUT VARCHAR2
@@ -319,5 +321,15 @@ AS
   );
 --
 -- 20091129_D.Abe E_本稼動_00106 Mod END
+-- 20100112_D.Abe E_本稼動_00823 Mod START
+  -- 顧客使用目的チェック
+  PROCEDURE chk_cust_site_uses(
+    iv_account_number           IN  VARCHAR2
+   ,ov_errbuf                   OUT VARCHAR2
+   ,ov_retcode                  OUT VARCHAR2
+   ,ov_errmsg                   OUT VARCHAR2
+  );
+--
+-- 20100112_D.Abe E_本稼動_00823 Mod END
 END xxcso_020001j_pkg;
 /

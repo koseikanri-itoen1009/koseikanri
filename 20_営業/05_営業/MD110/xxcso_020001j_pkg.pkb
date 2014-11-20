@@ -6,7 +6,7 @@ AS
  * Package Name     : xxcso_020001j_pkg(BODY)
  * Description      : フルベンダーSP専決
  * MD.050/070       : 
- * Version          : 1.11
+ * Version          : 1.12
  *
  * Program List
  *  ------------------------- ---- ----- --------------------------------------------------
@@ -33,7 +33,8 @@ AS
  *  conv_line_number_separate P    -     数値セパレート変換（明細）
  *  chk_double_byte           F    V     全角文字チェック（共通関数ラッピング）
  *  chk_single_byte_kana      F    V     半角カナチェック（共通関数ラッピング）
- *  chk_account_many          F    V     アカウント複数判定
+ *  chk_account_many          P    -     アカウント複数チェック
+ *  chk_cust_site_uses        P    -     顧客使用目的チェック
  *
  * Change Record
  * ------------- ----- ---------------- -------------------------------------------------
@@ -53,6 +54,7 @@ AS
  *  2009/07/16    1.9   D.Abe            [SCS障害0000385]SP専決書否認時のフロー変更
  *  2009/10/26    1.10  K.Satomura       [E_T4_00075]損益分岐点の計算方法修正
  *  2009/11/29    1.11  D.Abe            [E_本稼動_00106]アカウント複数判定
+ *  2010/01/12    1.12  D.Abe            [E_本稼動_00823]顧客マスタの整合性チェック対応
 *****************************************************************************************/
 --
   -- ===============================
@@ -2521,9 +2523,6 @@ AS
     -- ===============================
     -- ローカル変数
     -- ===============================
-    lv_return_value              VARCHAR2(1);
-    lb_return_value              BOOLEAN;
-    ln_party_id                  NUMBER;
     ln_count                     NUMBER;
     lv_errmsg                    VARCHAR2(2000);
     -- ===============================
@@ -2589,5 +2588,108 @@ AS
   END chk_account_many;
 --
 -- 20091129_D.Abe E_本稼動_00106 Mod END
+-- 20100112_D.Abe E_本稼動_00823 Mod START
+  /**********************************************************************************
+   * Function Name    : chk_cust_site_uses
+   * Description      : 顧客使用目的チェック
+   ***********************************************************************************/
+  PROCEDURE chk_cust_site_uses(
+    iv_account_number           IN  VARCHAR2
+   ,ov_errbuf                   OUT VARCHAR2
+   ,ov_retcode                  OUT VARCHAR2
+   ,ov_errmsg                   OUT VARCHAR2
+  )
+  IS
+    -- ===============================
+    -- 固定ローカル定数
+    -- ===============================
+    cv_prg_name                  CONSTANT VARCHAR2(100)   := 'chk_cust_site_uses';
+    -- ===============================
+    -- *** ローカル定数 ***
+    -- ===============================
+    cv_ship_to_site_code    CONSTANT VARCHAR2(30) := 'SHIP_TO';
+    cv_bill_to_site_code    CONSTANT VARCHAR2(30) := 'BILL_TO';
+    cv_site_use_status      CONSTANT VARCHAR2(30) := 'A';
+    cv_site_use_lookup_type CONSTANT VARCHAR2(30) := 'SITE_USE_CODE';
+    -- ===============================
+    -- ローカル変数
+    -- ===============================
+    ln_count                     NUMBER;
+    lv_errmsg                    VARCHAR2(2000);
+    -- ===============================
+    -- ローカル・カーソル
+    -- ===============================
+    CURSOR l_site_uses_cur
+    IS
+      -- 顧客使用目的の取得(出荷先・請求先以外)
+      SELECT flvv.meaning         meaning
+      FROM   hz_cust_accounts     hca
+            ,hz_cust_acct_sites   hcas
+            ,hz_cust_site_uses    hcsu
+            ,fnd_lookup_values_vl flvv
+      WHERE  hca.account_number  = iv_account_number
+      AND    hca.cust_account_id = hcas.cust_account_id
+      AND    hcas.cust_acct_site_id  = hcsu.cust_acct_site_id
+      AND    (
+               (hcsu.site_use_code  <> cv_ship_to_site_code)
+               AND
+               (hcsu.site_use_code  <> cv_bill_to_site_code)
+             )
+      AND    hcsu.status        = cv_site_use_status
+      AND    flvv.lookup_type   = cv_site_use_lookup_type
+      AND    flvv.lookup_code   = hcsu.site_use_code
+      ;
+
+    -- *** ローカル・レコード *** 
+    l_site_uses_cur_rec  l_site_uses_cur%ROWTYPE;
+
+--
+  BEGIN
+--
+    -- 初期化
+    ov_retcode := xxcso_common_pkg.gv_status_normal;
+    ov_errbuf  := NULL;
+    ov_errmsg  := NULL;
+--
+    ln_count := 0;
+    lv_errmsg:=NULL;
+    -- カーソルオープン
+    OPEN l_site_uses_cur;
+--
+    <<site_uses_loop>>
+    LOOP
+      FETCH l_site_uses_cur INTO l_site_uses_cur_rec;
+--
+      EXIT WHEN l_site_uses_cur%NOTFOUND
+        OR l_site_uses_cur%ROWCOUNT = 0;
+      IF (ln_count = 0 ) THEN
+        lv_errmsg :=  l_site_uses_cur_rec.meaning;
+      ELSE
+        lv_errmsg := lv_errmsg || '、' || l_site_uses_cur_rec.meaning;
+      END IF;
+      ln_count := ln_count + 1;
+--
+    END LOOP site_uses_loop;
+--
+    -- カーソル・クローズ
+    CLOSE l_site_uses_cur;
+
+    IF (ln_count > 0) THEN
+      ov_errmsg := lv_errmsg;
+      ov_retcode := xxcso_common_pkg.gv_status_warn;
+    END IF;
+    --
+--
+  EXCEPTION
+--#################################  固定例外処理部 START   ####################################
+--
+    -- *** OTHERS例外ハンドラ ***
+    WHEN OTHERS THEN
+      xxcso_common_pkg.raise_api_others_expt(gv_pkg_name, cv_prg_name);
+--
+--#####################################  固定部 END   ##########################################
+  END chk_cust_site_uses;
+--
+-- 20100112_D.Abe E_本稼動_00823 Mod END
 END xxcso_020001j_pkg;
 /

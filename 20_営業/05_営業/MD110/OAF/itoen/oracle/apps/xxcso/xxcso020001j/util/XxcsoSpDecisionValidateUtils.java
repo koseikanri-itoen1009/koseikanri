@@ -1,7 +1,7 @@
 /*============================================================================
 * ファイル名 : XxcsoSpDecisionValidateUtils
 * 概要説明   : SP専決登録画面用検証ユーティリティクラス
-* バージョン : 1.11
+* バージョン : 1.12
 *============================================================================
 * 修正履歴
 * 日付       Ver. 担当者       修正内容
@@ -19,6 +19,7 @@
 * 2009-11-29 1.9  SCS阿部大輔  [E_本稼動_00106]アカウント複数対応
 * 2009-12-17 1.10 SCS阿部大輔  [E_本稼動_00514]郵便番号対応
 * 2010-01-08 1.11 SCS阿部大輔  [E_本稼動_01030]承認権限チェック対応
+* 2010-01-12 1.12 SCS阿部大輔  [E_本稼動_00823]顧客マスタの整合性チェック対応
 *============================================================================
 */
 package itoen.oracle.apps.xxcso.xxcso020001j.util;
@@ -118,6 +119,9 @@ public class XxcsoSpDecisionValidateUtils
        )
     {
       String AccountNumber;
+// 2010-01-12 [E_本稼動_00823] Add Start
+      // アカウント複数検証
+// 2010-01-12 [E_本稼動_00823] Add End
       AccountNumber = validateAccount(txn,installRow.getInstallAccountNumber());
       if (!(AccountNumber == null || "".equals(AccountNumber)))
       {
@@ -130,6 +134,29 @@ public class XxcsoSpDecisionValidateUtils
             );
         errorList.add(error);
       }
+// 2010-01-12 [E_本稼動_00823] Add Start
+      String customerStatus = installRow.getCustomerStatus();
+      // MC,MC候補の時のみチェック
+      if ( XxcsoSpDecisionConstants.CUST_STATUS_MC.equals(customerStatus)     ||
+         XxcsoSpDecisionConstants.CUST_STATUS_MC_CAND.equals(customerStatus)
+       )
+      {
+        // 顧客使用目的検証
+        String SiteUseCode;
+        SiteUseCode = validateSiteUses(txn,installRow.getInstallAccountNumber());
+        if (!(SiteUseCode == null || "".equals(SiteUseCode)))
+        {
+          token1 =AccountNumber;
+          OAException error
+            = XxcsoMessage.createErrorMessage(
+                XxcsoConstants.APP_XXCSO1_00589
+               ,XxcsoConstants.TOKEN_PARAM1
+               ,SiteUseCode
+              );
+          errorList.add(error);
+        }
+      }
+// 2010-01-12 [E_本稼動_00823] Add End
     }
 // 2009-11-29 [E_本稼動_00106] Add End
 
@@ -1070,6 +1097,7 @@ public class XxcsoSpDecisionValidateUtils
          ,3
          ,true
          ,true
+
          ,submitFlag
          ,0
         );
@@ -5670,4 +5698,91 @@ public class XxcsoSpDecisionValidateUtils
     return returnValue;
  }
 // 2009-11-29 [E_本稼動_00106] Add End
+// 2010-01-12 [E_本稼動_00823] Add Start
+  /*****************************************************************************
+   * 顧客使用目的検証
+   * @param txn                 OADBTransactionインスタンス
+   * @param value               チェック対象の値
+   * @return String             エラーメッセージ
+   *****************************************************************************
+   */
+  private static String validateSiteUses(
+     OADBTransaction   txn
+    ,String            Account_Code
+  )
+  {
+    OracleCallableStatement stmt = null;
+    String returnValue = "";
+
+    if ( Account_Code == null || "".equals(Account_Code) )
+    {
+      return "";
+    }
+
+    try
+    {
+      StringBuffer sql = new StringBuffer(100);
+ 
+      sql.append("BEGIN");
+      sql.append("  xxcso_020001j_pkg.chk_cust_site_uses(");
+      sql.append("    iv_account_number      => :1");
+      sql.append("   ,ov_errbuf              => :2");
+      sql.append("   ,ov_retcode             => :3");
+      sql.append("   ,ov_errmsg              => :4");
+      sql.append("  );");
+      sql.append("END;");
+
+      XxcsoUtils.debug(txn, "execute = " + sql.toString());
+
+      stmt
+        = (OracleCallableStatement)
+            txn.createCallableStatement(sql.toString(), 0);
+
+      stmt.setString(1, Account_Code);
+      stmt.registerOutParameter(2, OracleTypes.VARCHAR);
+      stmt.registerOutParameter(3, OracleTypes.VARCHAR);
+      stmt.registerOutParameter(4, OracleTypes.VARCHAR);
+
+      stmt.execute();
+
+      String errBuf  = stmt.getString(2);
+      String retCode = stmt.getString(3);
+      String errMsg  = stmt.getString(4);
+      
+      XxcsoUtils.debug(txn, "errBuf  = " + errBuf);
+      XxcsoUtils.debug(txn, "retCode = " + retCode);
+      XxcsoUtils.debug(txn, "errMsg  = " + errMsg);
+
+      if ( ! "0".equals(retCode) )
+      {
+        returnValue = errMsg;
+      }
+
+    }
+    catch ( SQLException e )
+    {
+      XxcsoUtils.unexpected(txn, e);
+      throw
+        XxcsoMessage.createSqlErrorMessage(
+          e
+         ,XxcsoSpDecisionConstants.TOKEN_VALUE_SITE_USE_CODE_CHK
+        );
+    }
+    finally
+    {
+      try
+      {
+        if ( stmt != null )
+        {
+          stmt.close();
+        }
+      }
+      catch ( SQLException e )
+      {
+        XxcsoUtils.unexpected(txn, e);
+      }
+    }
+    return returnValue;
+ }
+// 2010-01-12 [E_本稼動_00823] Add End
 }

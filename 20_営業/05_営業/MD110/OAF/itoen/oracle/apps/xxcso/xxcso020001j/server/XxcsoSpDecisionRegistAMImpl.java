@@ -3187,6 +3187,17 @@ public class XxcsoSpDecisionRegistAMImpl extends OAApplicationModuleImpl
       );
     // 2009-08-24 [áŠQ0001104] Add Start
     }
+    else
+    {
+      errorList.addAll(
+        XxcsoSpDecisionValidateUtils.validateVdInfo(
+          txn
+         ,headerVo
+         ,false
+        )
+      );
+
+    }
     // 2009-08-24 [áŠQ0001104] Add End
     /////////////////////////////////////
     // ŒŸØˆ—FæˆøğŒ

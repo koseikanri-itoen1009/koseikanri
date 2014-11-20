@@ -1,7 +1,7 @@
 /*============================================================================
 * ファイル名 : XxcsoSpDecisionConstants
 * 概要説明   : SP専決固定値クラス
-* バージョン : 1.5
+* バージョン : 1.6
 *============================================================================
 * 修正履歴
 * 日付       Ver. 担当者       修正内容
@@ -13,6 +13,7 @@
 * 2009-08-24 1.4  SCS阿部大輔  [SCS障害0001104]申請区分チェック対応
 * 2009-08-24 1.4  SCS阿部大輔  [SCS障害0001104]申請区分チェック対応
 * 2009-11-29 1.5  SCS阿部大輔  [E_本稼動_00106]アカウント複数対応
+* 2010-01-12 1.6  SCS阿部大輔  [E_本稼動_00823]顧客マスタの整合性チェック対応
 *============================================================================
 */
 package itoen.oracle.apps.xxcso.xxcso020001j.util;
@@ -480,9 +481,11 @@ public class XxcsoSpDecisionConstants
     TOKEN_VALUE_DOUBLE_BYTE_CHK       = "全角文字チェック";
 // 2009-04-27 [ST障害T1_0708] Add End
 // 2009-11-29 [E_本稼動_00106] Add Start
-  public static final String 
-   TOKEN_VALUE_INST_PARTY_NUMBER       = "顧客コード";
   public static final String
      TOKEN_VALUE_ACCOUNT_CHK           = "複数アカウントチェック";
 // 2009-11-29 [E_本稼動_00106] Add End
+// 2010-01-12 [E_本稼動_00823] Add Start
+  public static final String
+     TOKEN_VALUE_SITE_USE_CODE_CHK     = "顧客使用目的チェック";
+// 2010-01-12 [E_本稼動_00823] Add End
 }
