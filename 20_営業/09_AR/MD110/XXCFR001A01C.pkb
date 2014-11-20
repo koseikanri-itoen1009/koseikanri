@@ -27,6 +27,7 @@ AS
  *  Date          Ver.  Editor           Description
  * ------------- ----- ---------------- -------------------------------------------------
  *  2008/11/05    1.00 SCS 中村 博      初回作成
+ *  2009/07/23    1.1  SCS T.KANEDA     T3時障害0000838対応
  *
  *****************************************************************************************/
 --
@@ -127,6 +128,10 @@ AS
   cv_file_type_log   CONSTANT VARCHAR2(10) := 'LOG';       -- ログ出力
 --
   cv_enabled_yes     CONSTANT VARCHAR2(1)  := 'Y';         -- 有効フラグ（Ｙ）
+-- Modify 2009.07.23 Ver1.1 Start
+  cv_primary_yes     CONSTANT VARCHAR2(1)  := 'Y';         -- 主フラグ（Ｙ）
+  cn_count_1         CONSTANT NUMBER       := 1;           -- カウント数１
+-- Modify 2009.07.23 Ver1.1 End
 --
   cv_ship_to                CONSTANT VARCHAR2(100) := 'SHIP_TO'; -- 出荷先
   cv_cust_class_code_ar_mng CONSTANT VARCHAR2(10) := '14';       -- 顧客区分＝「14」（売掛金管理先顧客）
@@ -151,6 +156,12 @@ AS
                                                INDEX BY PLS_INTEGER;
   TYPE g_customer_class_code_ttype IS TABLE OF hz_cust_accounts.customer_class_code%type
                                                INDEX BY PLS_INTEGER;
+-- Modify 2009.07.23 Ver1.1 Start
+  TYPE g_receipt_method_id_ttype   IS TABLE OF ra_cust_receipt_methods.receipt_method_id%type
+                                               INDEX BY PLS_INTEGER;
+  TYPE g_trx_date_ttype            IS TABLE OF ra_interface_lines_all.trx_date%type
+                                               INDEX BY PLS_INTEGER;
+-- Modify 2009.07.23 Ver1.1 End
   gt_ril_rowid                          g_rowid_ttype;
   gt_ril_bill_customer_id               g_bill_customer_id_ttype;
   gt_ril_bill_address_id                g_bill_address_id_ttype;
@@ -160,6 +171,10 @@ AS
   gt_ril_header_attribute7              g_header_attribute7_ttype;
   gt_ril_header_attribute11             g_header_attribute11_ttype;
   gt_hca_customer_class_code            g_customer_class_code_ttype;
+-- Modify 2009.07.23 Ver1.1 Start
+  gt_ril_receipt_method_id              g_receipt_method_id_ttype;
+  gt_ril_trx_date                       g_trx_date_ttype;
+-- Modify 2009.07.23 Ver1.1 End
 --
   TYPE c_out_flag_ttype     IS TABLE OF VARCHAR2(1);
   TYPE c_hold_status_ttype  IS TABLE OF VARCHAR2(10);
@@ -391,6 +406,10 @@ AS
              rila.orig_system_ship_customer_id   orig_system_ship_customer_id,   -- 出荷先顧客ＩＤ
              rila.orig_system_ship_address_id    orig_system_ship_address_id,    -- 出荷先顧客所在地ＩＤ
              rila.cust_trx_type_id               cust_trx_type_id,               -- 取引タイプＩＤ
+-- Modify 2009.07.23 Ver1.1 Start
+             rila.receipt_method_id              receipt_method_id,              -- 支払方法ＩＤ
+             rila.trx_date                       trx_date,                       -- 取引日
+-- Modify 2009.07.23 Ver1.1 End
              hca.customer_class_code             customer_class_code,            -- 顧客区分
              DECODE ( rctt.attribute1,
                       gt_out_flag(1), gt_hold_status(1),
@@ -450,6 +469,10 @@ AS
           gt_ril_ship_customer_id,
           gt_ril_ship_address_id,
           gt_ril_cust_trx_type_id,
+-- Modify 2009.07.23 Ver1.1 Start
+          gt_ril_receipt_method_id,
+          gt_ril_trx_date,
+-- Modify 2009.07.23 Ver1.1 End
           gt_hca_customer_class_code,
           gt_ril_header_attribute7;
 --
@@ -527,12 +550,30 @@ AS
     -- *** ローカル変数 ***
     ln_target_cnt   NUMBER;         -- 対象件数
     ln_loop_cnt     NUMBER;         -- ループカウンタ
+-- Modify 2009.07.23 Ver1.1 Start
+    ln_receipt_method_id    NUMBER; -- 支払方法ＩＤ
+-- Modify 2009.07.23 Ver1.1 End
 --
     ln_bill_customer_id   hz_cust_accounts.cust_account_id%type;            -- 請求先顧客ＩＤ
     ln_bill_address_id    hz_cust_acct_sites_all.cust_acct_site_id%type;    -- 請求先顧客所在地ＩＤ
---
+-- Modify 2009.07.23 Ver1.1 Start
     -- *** ローカル・カーソル ***
+    CURSOR get_receipt_method_cur(in_bill_customer_id IN NUMBER
+                                 ,in_trx_date         IN DATE)
+    IS
+      SELECT rcrm.receipt_method_id    receipt_method_id
+            ,rcrm.primary_flag         primary_flag
+        FROM ra_cust_receipt_methods       rcrm
+       WHERE rcrm.customer_id = in_bill_customer_id
+         AND in_trx_date BETWEEN rcrm.start_date
+                             AND NVL(rcrm.end_date,in_trx_date)
+      ORDER BY rcrm.primary_flag DESC
+              ,rcrm.end_date desc
+              ,rcrm.start_date desc
+              ,rcrm.receipt_method_id;
 --
+    get_receipt_method_rec    get_receipt_method_cur%ROWTYPE;
+-- Modify 2009.07.23 Ver1.1 End
   BEGIN
 --
 --##################  固定ステータス初期化部 START   ###################
@@ -586,6 +627,36 @@ AS
 --
             gt_ril_bill_customer_id(ln_loop_cnt) := ln_bill_customer_id;
             gt_ril_bill_address_id(ln_loop_cnt)  := ln_bill_address_id;
+
+-- Modify 2009.07.23 Ver1.1 Start
+            -- 納品先顧客に設定されている（ＯＩＦ上に支払方法が設定されている）場合のみ対象とする
+            IF (gt_ril_receipt_method_id(ln_loop_cnt) IS NOT NULL) THEN
+              -- 変数を初期化する
+              ln_receipt_method_id := NULL;
+--
+              OPEN get_receipt_method_cur(gt_ril_bill_customer_id(ln_loop_cnt)
+                                         ,gt_ril_trx_date(ln_loop_cnt));
+              LOOP
+                FETCH get_receipt_method_cur INTO get_receipt_method_rec;
+                EXIT WHEN get_receipt_method_cur%NOTFOUND;
+--
+                -- ＡＲ部門入力画面で設定した支払方法と同じ支払方法があれば、その支払方法を設定する
+                IF (gt_ril_receipt_method_id(ln_loop_cnt) = get_receipt_method_rec.receipt_method_id) THEN
+                  ln_receipt_method_id := get_receipt_method_rec.receipt_method_id;
+                  EXIT;
+                -- ＡＲ部門入力画面で設定した支払方法と同じ支払方法がない場合、主フラグ＝Ｙの支払方法を設定する
+                ELSIF (get_receipt_method_rec.primary_flag = 'Y') THEN
+                  ln_receipt_method_id := get_receipt_method_rec.receipt_method_id;
+                -- 上記以外の場合、一番最初の支払方法を設定する
+                ELSIF (get_receipt_method_cur%ROWCOUNT = cn_count_1) THEN
+                  ln_receipt_method_id := get_receipt_method_rec.receipt_method_id;
+                END IF;
+--
+              END LOOP;
+              CLOSE get_receipt_method_cur;
+              gt_ril_receipt_method_id(ln_loop_cnt) := ln_receipt_method_id;
+            END IF;
+-- Modify 2009.07.23 Ver1.1 End
 --
           EXCEPTION
             WHEN OTHERS THEN
@@ -774,6 +845,9 @@ AS
            ,orig_system_ship_address_id    = gt_ril_ship_address_id(ln_loop_cnt)        -- 出荷先顧客所在地ＩＤ
            ,header_attribute7              = gt_ril_header_attribute7(ln_loop_cnt)      -- 請求書保留ステータス
            ,header_attribute11             = gt_ril_header_attribute11(ln_loop_cnt)     -- 入金拠点
+-- Modify 2009.07.23 Ver1.1 Start
+           ,receipt_method_id              = gt_ril_receipt_method_id(ln_loop_cnt)
+-- Modify 2009.07.23 Ver1.1 End
            ,last_updated_by                = cn_last_updated_by                         -- 最終更新者
            ,last_update_date               = cd_last_update_date                        -- 最終更新日
            ,last_update_login              = cn_last_update_login                       -- 最終更新ログイン
