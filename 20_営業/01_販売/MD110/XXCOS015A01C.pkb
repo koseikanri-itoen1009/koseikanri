@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCOS015A01C(body)
  * Description      : 情報系システム向け販売実績データの作成を行う
  * MD.050           : 情報系システム向け販売実績データの作成 MD050_COS_015_A01
- * Version          : 2.12
+ * Version          : 2.13
  *
  * Program List
  * --------------------------- ----------------------------------------------------------
@@ -73,6 +73,7 @@ AS
  *  2009/09/28    2.10  N.Maeda          [0001351]レビュー指摘対応
  *  2009/09/28    2.11  N.Maeda          [0001299]販売実績ヘッダ更新時エラー時出力内容修正
  *  2009/11/24    2.12  N.Maeda          [E_本番_XXXX] 販売実績対象データ取得条件「検収日」⇒「納品日」へ修正
+ *  2009/12/29    2.13  K.Kiriu          [E_本番_00531]伝票番号の桁数オーバー切捨て対応
  *
  *****************************************************************************************/
 --
@@ -168,6 +169,9 @@ AS
 -- ************** 2009/09/28 2.11 N.Maeda ADD START **************** --
   cv_msg_details              CONSTANT VARCHAR2(20) := 'APP-XXCOS1-13322';    -- メッセージ用文字列:「詳細」
 -- ************** 2009/09/28 2.11 N.Maeda ADD  END  **************** --
+/* 2009/12/29 Ver2.13 Add Start */
+  cv_msg_ar_trx_number        CONSTANT VARCHAR2(20) := 'APP-XXCOS1-13323';    -- AR伝票番号桁数オーバーエラー
+/* 2009/12/29 Ver2.13 Add End   */
   -- メッセージトークン
   cv_tkn_pro_tok              CONSTANT VARCHAR2(20) := 'PROFILE';             -- プロファイル名
   cv_tkn_table                CONSTANT VARCHAR2(20) := 'TABLE';               -- テーブル名
@@ -187,6 +191,12 @@ AS
   cv_tkn_count_2              CONSTANT VARCHAR2(20) := 'COUNT2';              -- 件数2
   cv_tkn_count_3              CONSTANT VARCHAR2(20) := 'COUNT3';              -- 件数3
 --****************************** 2009/04/23 2.3 6 T.Kitajima ADD  END  ******************************--
+/* 2009/12/29 Ver2.13 Add Start */
+  cv_tkn_base_code            CONSTANT VARCHAR2(20) := 'BASE_CODE';           -- 売上拠点
+  cv_tkn_account_number       CONSTANT VARCHAR2(20) := 'ACCOUNT_NUMBER';      -- 顧客コード
+  cv_tkn_gl_date              CONSTANT VARCHAR2(20) := 'GL_DATE';             -- GL記帳日
+  cv_tkn_ar_trx_number        CONSTANT VARCHAR2(20) := 'TRX_NUMBER';          -- AR伝票番号
+/* 2009/12/29 Ver2.13 Add End   */
   -- プロファイル
   cv_pf_output_directory      CONSTANT VARCHAR2(50) := 'XXCOS1_OUTBOUND_ZYOHO_DIR';        -- ディレクトリパス
   cv_pf_company_code          CONSTANT VARCHAR2(50) := 'XXCOI1_COMPANY_CODE';              -- 会社コード
@@ -209,7 +219,9 @@ AS
 --  cv_txn_type_03              CONSTANT VARCHAR2(50) := 'XXCOS_015_A01_03';                -- 売掛金訂正*/
   cv_txn_sales_type           CONSTANT VARCHAR2(50) := 'XXCOS_015_A01_%';                 -- 取引タイプ
   -- 日付フォーマット
---  cv_date_format              CONSTANT VARCHAR2(20) := 'YYYY/MM/DD';
+/* 2009/12/29 Ver2.13 Mod Start */
+  cv_date_format              CONSTANT VARCHAR2(20) := 'YYYY/MM/DD';
+/* 2009/12/29 Ver2.13 Mod Start */
   cv_date_format_non_sep      CONSTANT VARCHAR2(20) := 'YYYYMMDD';
   cv_datetime_format          CONSTANT VARCHAR2(20) := 'YYYYMMDDHH24MISS';
   -- 切捨て時間要素
@@ -254,6 +266,10 @@ AS
   cv_relate_stat_a            CONSTANT VARCHAR2(1)     := 'A';
   cv_relate_attri_req         CONSTANT VARCHAR2(1)     := '1';
 --****************************** 2009/06/08 2.8 N.Maeda ADD  END  ******************************--
+/* 2009/12/29 Ver2.13 Add Start */
+  cn_trx_num_length           CONSTANT NUMBER(2)       := 12;   --AR取引番号桁数
+  cn_1                        CONSTANT NUMBER(1)       := 1;    --数値:1(汎用)
+/* 2009/12/29 Ver2.13 Add End   */
 --
   -- ===============================
   -- ユーザー定義グローバル変数
@@ -275,6 +291,9 @@ AS
 --****************************** 2009/04/23 2.3 6 T.Kitajima ADD START ******************************--
   gn_card_count         NUMBER;                                                   -- カード分カウント
 --****************************** 2009/04/23 2.3 6 T.Kitajima ADD  END  ******************************--
+/* 2009/12/29 Ver2.13 Add Start */
+  gn_ar_trx_num_warn   NUMBER(1) DEFAULT 0;                                      -- AR伝票番号エラー警告保持
+/* 2009/12/29 Ver2.13 Add End   */
 --
   -- ===============================
   -- ユーザー定義グローバルカーソル
@@ -480,6 +499,9 @@ AS
              ,cust.tax_code                 avtab_tax_code               -- 税金コード
              ,cust.customer_id              rcta_bill_to_customer_id     -- 請求先顧客ID
              ,line.gl_date                  rctlgda_gl_date              -- GL記帳日
+/* 2009/12/29 Ver2.13 Add Start */
+             ,cust.ship_account_number      ship_account_number          -- 出荷先顧客
+/* 2009/12/29 Ver2.13 Add End   */
       FROM
       -- 税金データ
       (  SELECT rctla.customer_trx_id                customer_trx_id
@@ -522,6 +544,9 @@ AS
                 ,rcta.bill_to_customer_id      customer_id             -- 請求先顧客ID
                 ,rctla.customer_trx_id         customer_trx_id              -- 取引ID
                 ,rctla.customer_trx_line_id    customer_trx_line_id         -- 取引明細ID
+/* 2009/12/29 Ver2.13 Add Start */
+                ,hca.account_number            ship_account_number     --出荷先顧客
+/* 2009/12/29 Ver2.13 Add End   */
          FROM    ra_customer_trx_all           rcta                         -- AR取引情報ヘッダ
                 ,ra_customer_trx_lines_all     rctla                        -- AR取引情報明細
                 ,ar_vat_tax_all_b              avtab                        -- 税金マスタ
@@ -2066,6 +2091,40 @@ AS
     <<ar_output_loop>>
     FOR ln_idx IN gt_ar_deal_tbl.FIRST..gt_ar_deal_tbl.LAST LOOP
       --
+/*2009/12/29 Ver2.13 Add Start */
+      --伝票番号(取引番号)の桁数チェック(警告)
+      IF ( lengthb( gt_ar_deal_tbl(ln_idx).rcta_trx_number ) > cn_trx_num_length ) THEN
+        --12桁以上の場合は、メッセージ出力(明細単位で出力)
+        lv_errmsg := xxccp_common_pkg.get_msg(
+                      iv_application  => cv_xxcos_short_name
+                     ,iv_name         => cv_msg_ar_trx_number
+                     ,iv_token_name1  => cv_tkn_base_code
+                     ,iv_token_value1 => gt_ar_deal_tbl(ln_idx).delivery_base_code
+                     ,iv_token_name2  => cv_tkn_account_number
+                     ,iv_token_value2 => gt_ar_deal_tbl(ln_idx).ship_account_number
+                     ,iv_token_name3  => cv_tkn_gl_date
+                     ,iv_token_value3 => TO_CHAR( gt_ar_deal_tbl(ln_idx).rctlgda_gl_date, cv_date_format )
+                     ,iv_token_name4  => cv_tkn_ar_trx_number
+                     ,iv_token_value4 => TO_CHAR( gt_ar_deal_tbl(ln_idx).rcta_trx_number )
+                     );
+        --ログ
+        FND_FILE.PUT_LINE( 
+          which  => FND_FILE.LOG 
+         ,buff   => lv_errmsg
+        );
+        --出力
+        FND_FILE.PUT_LINE( 
+          which  => FND_FILE.OUTPUT 
+         ,buff   => lv_errmsg
+        );
+        --コンカレントを警告とする為、フラグで保持
+        gn_ar_trx_num_warn := cn_1;
+        --12桁に切捨て
+        gt_ar_deal_tbl(ln_idx).rcta_trx_number
+          := TO_NUMBER( SUBSTRB( TO_CHAR( gt_ar_deal_tbl(ln_idx).rcta_trx_number ), 1, cn_trx_num_length ) );
+      END IF;
+      --
+/*2009/12/29 Ver2.13 Add End   */
       lv_buffer :=
         cv_d_cot || gt_company_code || cv_d_cot                                  || cv_delimiter    -- 会社コード
         || TO_CHAR(gt_ar_deal_tbl(ln_idx).rcta_trx_date,cv_date_format_non_sep)  || cv_delimiter    -- 納品日
@@ -2813,6 +2872,13 @@ AS
       ,buff   => gv_out_msg
     );
 --
+/* 2009/12/29 Ver2.13 Add Start */
+    --伝票番号桁数エラーの場合、警告とする
+    IF ( lv_retcode <> cv_status_error )
+      AND( gn_ar_trx_num_warn = cn_1 ) THEN
+      lv_retcode := cv_status_warn;
+    END IF;
+/* 2009/12/29 Ver2.13 Add End   */
     --終了メッセージ
     IF (lv_retcode = cv_status_normal) THEN
       lv_message_code := cv_normal_msg;
