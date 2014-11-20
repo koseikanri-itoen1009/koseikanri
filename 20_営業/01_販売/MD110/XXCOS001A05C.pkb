@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCOS001A05C (body)
  * Description      : 出荷確認処理（HHT納品データ）
  * MD.050           : 出荷確認処理(MD050_COS_001_A05)
- * Version          : 1.31
+ * Version          : 1.32
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -94,6 +94,7 @@ AS
  *  2011/04/26    1.30  Y.Nishino        [E_本稼動_07244] OM受注のオーダーNo連携対応
  *                                                        オーダーNo内のスペース削除対応
  *  2011/07/04    1.31  T.Ishiwata       [E_本稼動_07848] OM受注のオーダーNo初期化対応
+ *  2011/10/14    1.32  K.Kiriu          [E_本稼動_07906] 流通ＢＭＳ対応
  *
  *****************************************************************************************/
 --
@@ -440,6 +441,13 @@ AS
   cv_msg_branch_num_02        CONSTANT  VARCHAR2(2) := '02';  --メッセージ名枝番：02
   cv_msg_branch_num_03        CONSTANT  VARCHAR2(2) := '03';  --メッセージ名枝番：03
 --******************************* 2010/09/02 K.Kiriu Var1.27 ADD END ***************************************
+/* 2011/10/14 Ver1.32 Add Start */
+  --EDI情報(受注関連番号)取得用
+  cv_yes                      CONSTANT  VARCHAR2(1) := 'Y';  --受注作成フラグ
+  cv_info_class_01            CONSTANT  VARCHAR2(2) := '01'; --情報区分(01)
+  cv_data_type_code_11        CONSTANT  VARCHAR2(2) := '11'; --データ種(11) EDI受注
+  cv_data_type_code_31        CONSTANT  VARCHAR2(2) := '31'; --データ種(31) 納品確定
+/* 2011/10/14 Ver1.32 Add End   */
 --
   -- ===============================
   -- ユーザー定義グローバル型
@@ -987,6 +995,39 @@ AS
   gv_gen_err_out_flag             VARCHAR2(1);                       -- パラメータ汎用エラーリスト出力フラグ
   gn_gen_err_count                NUMBER := 0;                       -- 汎用エラー出力件数
 --
+/* 2011/10/14 Ver1.32 Add Start */
+  -- ===============================
+  -- ユーザー定義グローバル・カーソル
+  -- ===============================
+  --受注関連番号取得
+  CURSOR
+    cur_edi_con_num (
+       iv_customer_number xxcos_dlv_headers.customer_number%TYPE
+      ,iv_hht_invoice_no  xxcos_dlv_headers.hht_invoice_no%TYPE
+      ,iv_dlv_date        xxcos_dlv_headers.dlv_date%TYPE
+    )
+  IS
+    SELECT xeh.order_connection_number  -- 受注関連番号
+    FROM   xxcmm_cust_accounts   xca
+          ,xxcos_edi_headers     xeh
+          ,oe_order_headers_all  ooha
+    WHERE  xca.customer_code       = iv_customer_number  -- 顧客コード
+    AND    xca.chain_store_code    = xeh.edi_chain_code
+    AND    xca.store_code          = xeh.shop_code
+    AND    xeh.invoice_number      = iv_hht_invoice_no   -- 伝票番号
+    AND    xeh.order_forward_flag  = cv_yes              -- 受注作成済
+    AND    xeh.data_type_code      IN (cv_data_type_code_11,cv_data_type_code_31) --データ種(販売実績を作成する)
+    AND    (
+             (xeh.info_class IS NULL)
+             OR
+             (xeh.info_class  = cv_info_class_01)
+           )                                             -- 情報区分(販売実績を作成する)
+    AND    xeh.order_connection_number = ooha.orig_sys_document_ref
+    AND    TRUNC(ooha.request_date) = iv_dlv_date        -- 納品日
+    ORDER BY
+           xeh.data_type_code                            -- 11(EDI受注)優先
+    ;
+/* 2011/10/14 Ver1.32 Add End   */
   /**********************************************************************************
    * Procedure Name   : proc_ins_gen_err_list
    * Description      : 汎用エラーリスト作成(A-13)
@@ -3318,6 +3359,9 @@ AS
 -- 2011/04/26 1.30 Y.Nishino ADD START
   lt_order_invoice_number         oe_order_headers_all.attribute19%TYPE DEFAULT NULL;   -- OM受注.オーダーNo
 -- 2011/04/26 1.30 Y.Nishino ADD END
+/* 2011/10/14 Ver1.32 Add Start */
+  lt_order_connection_num         xxcos_edi_headers.order_connection_number%TYPE;  -- 受注関連番号
+/* 2011/10/14 Ver1.32 Add End   */
 --
     -- *** ローカル・カーソル ***
 --******************************* 2009/06/23 N.Maeda Var1.17 ADD START ***************************************
@@ -4563,6 +4607,20 @@ AS
                                                     iv_token_value2  => gv_tkn2 );         --トークン値2
           END;
 -- **************** 2009/10/13 1.22 N.Maeda MOD  END  **************** --
+/* 2011/10/14 Ver1.32 Add Start */
+          -- =====================
+          -- 受注関連番号の取得
+          -- =====================
+          lt_order_connection_num := NULL;
+--
+          OPEN cur_edi_con_num(
+            lt_customer_number  --顧客コード
+           ,lt_hht_invoice_no   --伝票番号
+           ,lt_dlv_date         --納品日
+          );
+          FETCH cur_edi_con_num INTO lt_order_connection_num;
+          CLOSE cur_edi_con_num;
+/* 2011/10/14 Ver1.32 Add End   */
 --
           --明細データ取得
           <<line_loop>>
@@ -6170,7 +6228,10 @@ AS
             gt_head_order_invoice_number( gn_head_data_no )    := NVL( lt_order_number , lt_order_invoice_number );  -- 注文伝票番号
 -- 2011/04/26 1.30 Y.Nishino MOD END
 -- 2011/03/22 Ver.1.28 S.Ochiai MOD End
-            gt_head_order_connection_num( gn_head_data_no )    := cv_tkn_null;                -- 受注関連番号(NULL設定)
+/* 2011/10/14 Ver1.32 Mod Start */
+--            gt_head_order_connection_num( gn_head_data_no )    := cv_tkn_null;                -- 受注関連番号(NULL設定)
+            gt_head_order_connection_num( gn_head_data_no )    := lt_order_connection_num;    -- 受注関連番号
+/* 2011/10/14 Ver1.32 Mod End   */
             gt_head_ar_interface_flag( gn_head_data_no )       := cv_tkn_n;                   -- AR-IF済フラグ('N')
             gt_head_gl_interface_flag( gn_head_data_no )       := cv_tkn_n;                   -- GL-IF済フラグ('N')
             gt_head_dwh_interface_flag( gn_head_data_no )      := cv_tkn_n;                   -- 情報システム-IF済フラグ('N')
@@ -6534,6 +6595,9 @@ AS
 -- 2011/04/26 1.30 Y.Nishino ADD START
   lt_order_invoice_number              oe_order_headers_all.attribute19%TYPE DEFAULT NULL;   -- OM受注.オーダーNo
 -- 2011/04/26 1.30 Y.Nishino ADD END
+/* 2011/10/14 Ver1.32 Add Start */
+  lt_order_connection_num         xxcos_edi_headers.order_connection_number%TYPE;  -- 受注関連番号
+/* 2011/10/14 Ver1.32 Add End   */
 --
     -- *** ローカル・カーソル ***
   CURSOR get_sales_exp_cur
@@ -7794,6 +7858,20 @@ AS
     --
           END IF;
 -- ************ 2009/10/13 1.22 N.Maeda ADD  END  *********** --
+/* 2011/10/14 Ver1.32 Add Start */
+          -- =====================
+          -- 受注関連番号の取得
+          -- =====================
+          lt_order_connection_num := NULL;
+--
+          OPEN cur_edi_con_num(
+            lt_customer_number  --顧客コード
+           ,lt_hht_invoice_no   --伝票番号
+           ,lt_dlv_date         --納品日
+          );
+          FETCH cur_edi_con_num INTO lt_order_connection_num;
+          CLOSE cur_edi_con_num;
+/* 2011/10/14 Ver1.32 Add End   */
           --明細データ取得
           <<line_loop>>
   --******************************* 2009/06/23 N.Maeda Var1.17 MOD START ***************************************
@@ -9434,7 +9512,10 @@ AS
             gt_head_order_invoice_number( gn_head_data_no )    := NVL( lt_order_number , lt_order_invoice_number );  -- 注文伝票番号
 -- 2011/04/26 1.30 Y.Nishino MOD END
 -- 2011/03/22 Ver.1.28 S.Ochiai MOD End
-            gt_head_order_connection_num( gn_head_data_no )    := cv_tkn_null;                  -- 受注関連番号(NULL設定)
+/* 2011/10/14 Ver1.32 Mod Start */
+--            gt_head_order_connection_num( gn_head_data_no )    := cv_tkn_null;                  -- 受注関連番号(NULL設定)
+            gt_head_order_connection_num( gn_head_data_no )    := lt_order_connection_num;      -- 受注関連番号
+/* 2011/10/14 Ver1.32 Mod End   */
             gt_head_ar_interface_flag( gn_head_data_no )       := cv_tkn_n;                     -- AR-IF済フラグ('N')
             gt_head_gl_interface_flag( gn_head_data_no )       := cv_tkn_n;                     -- GL-IF済フラグ('N')
             gt_head_dwh_interface_flag( gn_head_data_no )      := cv_tkn_n;                     -- 情報システムIF済フラグ('N')
@@ -9757,6 +9838,9 @@ AS
   lt_open_dlv_date                xxcos_dlv_headers.dlv_date%TYPE;                 -- オープン済み納品日
   lt_open_inspect_date            xxcos_dlv_headers.inspect_date%TYPE;             -- オープン済み検収日
 --******************************* 2010/03/01 1.26 N.Maeda ADD  END  ***************************************
+/* 2011/10/14 Ver1.32 Add Start */
+  lt_order_connection_num         xxcos_edi_headers.order_connection_number%TYPE;  -- 受注関連番号
+/* 2011/10/14 Ver1.32 Add End   */
 --
     -- *** ローカル・カーソル ***
 --******************************* 2009/06/23 N.Maeda Var1.17 ADD START ***************************************
@@ -10834,6 +10918,20 @@ AS
     --******************************* 2009/04/16 N.Maeda Var1.12 MOD END *****************************************
               END;
     --
+/* 2011/10/14 Ver1.32 Add Start */
+          -- =====================
+          -- 受注関連番号の取得
+          -- =====================
+          lt_order_connection_num := NULL;
+--
+          OPEN cur_edi_con_num(
+            lt_customer_number  --顧客コード
+           ,lt_hht_invoice_no   --伝票番号
+           ,lt_dlv_date         --納品日
+          );
+          FETCH cur_edi_con_num INTO lt_order_connection_num;
+          CLOSE cur_edi_con_num;
+/* 2011/10/14 Ver1.32 Add End   */
           --明細データ取得
           <<line_loop>>
   --******************************* 2009/06/23 N.Maeda Var1.17 MOD START ***************************************
@@ -12391,7 +12489,10 @@ AS
 --            gt_head_order_invoice_number( gn_head_data_no )    := cv_tkn_null;                  -- 注文伝票番号(NULL設定)
             gt_head_order_invoice_number( gn_head_data_no )    := lt_order_number;              -- 注文伝票番号
 -- 2011/03/22 Ver.1.28 S.Ochiai MOD End
-            gt_head_order_connection_num( gn_head_data_no )    := cv_tkn_null;                  -- 受注関連番号(NULL設定)
+/* 2011/10/14 Ver1.32 Mod Start */
+--            gt_head_order_connection_num( gn_head_data_no )    := cv_tkn_null;                  -- 受注関連番号(NULL設定)
+            gt_head_order_connection_num( gn_head_data_no )    := lt_order_connection_num;      -- 受注関連番号
+/* 2011/10/14 Ver1.32 Mod End   */
             gt_head_ar_interface_flag( gn_head_data_no )       := cv_tkn_n;                     -- AR-IF済フラグ('N')
             gt_head_gl_interface_flag( gn_head_data_no )       := cv_tkn_n;                     -- GL-IF済フラグ('N')
             gt_head_dwh_interface_flag( gn_head_data_no )      := cv_tkn_n;                     -- 情報システムIF済フラグ('N')
