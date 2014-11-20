@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCMM005A04C(body)
  * Description      : 所属マスタIF出力（自販機管理）
  * MD.050           : 所属マスタIF出力（自販機管理） MD050_CMM_005_A04
- * Version          : 1.3
+ * Version          : 1.4
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -28,6 +28,7 @@ AS
  *  2009/02/26    1.1   Masayuki.Sano    結合テスト動作不正対応
  *  2009/03/09    1.2   Yuuki.Nakamura   ファイル出力先プロファイル名称変更
  *  2009/04/20    1.3   Yutaka.Kuboshima 障害T1_0590の対応
+ *  2009/05/15    1.4   Yutaka.Kuboshima 障害T1_1026の対応
  *
  *****************************************************************************************/
 --
@@ -106,7 +107,9 @@ AS
   cv_msg_00010        CONSTANT VARCHAR2(20) := 'APP-XXCMM1-00010';            -- CSVファイル存在チェック
   cv_msg_00031        CONSTANT VARCHAR2(20) := 'APP-XXCMM1-00031';            -- 期間指定エラー
   cv_msg_00003        CONSTANT VARCHAR2(20) := 'APP-XXCMM1-00003';            -- ファイルパス不正エラー
-  cv_msg_00500        CONSTANT VARCHAR2(20) := 'APP-XXCMM1-00500';            -- 部門階層エラー
+-- 2009/05/15 Ver1.4 delete start by Yutaka.Kuboshima
+--  cv_msg_00500        CONSTANT VARCHAR2(20) := 'APP-XXCMM1-00500';            -- 部門階層エラー
+-- 2009/05/15 Ver1.4 delete end by Yutaka.Kuboshima
   cv_msg_00009        CONSTANT VARCHAR2(20) := 'APP-XXCMM1-00009';            -- CSVデータ出力エラー
 -- 2009/02/26 ADD by M.Sano Start
   cv_msg_91003        CONSTANT VARCHAR2(20) := 'APP-XXCCP1-91003';            -- システムエラー
@@ -454,134 +457,136 @@ AS
 --
   END open_csv_file;
 --
+-- 2009/05/15 Ver1.4 delete start by Yutaka.Kuboshima
   /**********************************************************************************
    * Procedure Name   : chk_count_top_dept
    * Description      : 最上位部門件数取得(A-3)
    ***********************************************************************************/
-  PROCEDURE chk_count_top_dept(
-    ov_errbuf     OUT VARCHAR2,     --   エラー・メッセージ                  --# 固定 #
-    ov_retcode    OUT VARCHAR2,     --   リターン・コード                    --# 固定 #
-    ov_errmsg     OUT VARCHAR2)     --   ユーザー・エラー・メッセージ        --# 固定 #
-  IS
-    -- ===============================
-    -- 固定ローカル定数
-    -- ===============================
-    cv_prg_name   CONSTANT VARCHAR2(100) := 'chk_count_top_dept'; -- プログラム名
+--  PROCEDURE chk_count_top_dept(
+--    ov_errbuf     OUT VARCHAR2,     --   エラー・メッセージ                  --# 固定 #
+--    ov_retcode    OUT VARCHAR2,     --   リターン・コード                    --# 固定 #
+--    ov_errmsg     OUT VARCHAR2)     --   ユーザー・エラー・メッセージ        --# 固定 #
+--  IS
+--    -- ===============================
+--    -- 固定ローカル定数
+--    -- ===============================
+--    cv_prg_name   CONSTANT VARCHAR2(100) := 'chk_count_top_dept'; -- プログラム名
+----
+----#######################  固定ローカル変数宣言部 START   ######################
+----
+--    lv_errbuf  VARCHAR2(5000);  -- エラー・メッセージ
+--    lv_retcode VARCHAR2(1);     -- リターン・コード
+--    lv_errmsg  VARCHAR2(5000);  -- ユーザー・エラー・メッセージ
+----
+----###########################  固定部 END   ####################################
+----
+--    -- ===============================
+--    -- ユーザー宣言部
+--    -- ===============================
+--    -- *** ローカル変数 ***
+--    ln_top_dept_cnt NUMBER;
+----
+--  BEGIN
+----
+----##################  固定ステータス初期化部 START   ###################
+----
+--    ov_retcode := cv_status_normal;
+----
+----###########################  固定部 END   ############################
+----
+--    --==============================================================
+--    -- 1.最上位部門の件数を取得します。
+--    --==============================================================
+--    BEGIN
+--      SELECT COUNT(1)
+--      INTO   ln_top_dept_cnt
+--      FROM   fnd_flex_value_sets ffvs  -- 値セット定義マスタ
+--            ,fnd_flex_values     ffvl  -- 値セット値定義マスタ
+--      WHERE  ffvs.flex_value_set_id = ffvl.flex_value_set_id
+--      AND    ffvl.enabled_flag = 'Y'
+--      AND    ffvl.summary_flag = 'Y'
+--      AND    ffvs.flex_value_set_name = 'XX03_DEPARTMENT'
+--      AND    xxccp_common_pkg2.get_process_date BETWEEN
+--                   NVL(ffvl.start_date_active, TO_DATE('19000101','YYYYMMDD'))
+--               AND NVL(ffvl.end_date_active, TO_DATE('99991231','YYYYMMDD'))
+---- 2009/04/20 Ver1.3 add start by Yutaka.Kuboshima
+--      AND    ffvl.flex_value <> gv_aff_dept_dummy_cd
+---- 2009/04/20 Ver1.3 add end by Yutaka.Kuboshima
+--      AND    NOT EXISTS (
+--               SELECT 'X'
+--               FROM   fnd_flex_value_norm_hierarchy ffvh
+--               WHERE  ffvh.flex_value_set_id = ffvl.flex_value_set_id
+--               AND    ffvl.flex_value BETWEEN ffvh.child_flex_value_low
+--                                          AND ffvh.child_flex_value_high
+---- 2009/04/20 Ver1.3 add start by Yutaka.Kuboshima
+--               AND    ffvh.range_attribute   = cv_flag_parent
+--             )
+--      AND    EXISTS (
+--               SELECT 'X'
+--               FROM   fnd_flex_value_norm_hierarchy ffvh2
+--               WHERE  ffvh2.flex_value_set_id = ffvl.flex_value_set_id
+--               AND    ffvh2.parent_flex_value = ffvl.flex_value
+--               AND    ffvh2.range_attribute   = cv_flag_parent
+--             )
+---- 2009/04/20 Ver1.3 add end by Yutaka.Kuboshima
+--      ;
+--    EXCEPTION
+--      WHEN OTHERS THEN
+--        RAISE global_api_others_expt;
+--    END;
+----
+--    --==============================================================
+--    -- 2．最上位部門件数が1件以外の場合、部門階層エラー
+--    --==============================================================
+--    IF ( ln_top_dept_cnt <> 1 ) THEN
+--      -- エラーメッセージを出力後、異常終了
+--      lv_errmsg := xxccp_common_pkg.get_msg(
+--                      iv_application  => cv_app_name_xxcmm        -- マスタ
+--                     ,iv_name         => cv_msg_00500             -- エラー:部門階層エラー
+--                     ,iv_token_name1  => cv_tok_ffv_set_name      -- トークン  :FFV_SET_NAME
+--                     ,iv_token_value1 => cv_tvl_ffv_set_name      -- トークン値:XX03_DEPARTMENT
+--                     ,iv_token_name2  => cv_tok_count             -- トークン  :COUNT
+--                     ,iv_token_value2 => TO_CHAR(ln_top_dept_cnt) -- トークン値:最上位階層の件数
+--                   );
+--      lv_errbuf := lv_errmsg;
+--      RAISE global_api_expt;
+--    END IF;
+----
+--  EXCEPTION
+----
+----#################################  固定例外処理部 START   ####################################
+----
+--    -- *** 共通関数例外ハンドラ ***
+--    WHEN global_api_expt THEN
+--      ov_errmsg  := lv_errmsg;
+--      ov_errbuf  := SUBSTRB(cv_pkg_name||cv_msg_cont||cv_prg_name||cv_msg_part||lv_errbuf,1,5000);
+--      ov_retcode := cv_status_error;
+--    -- *** 共通関数OTHERS例外ハンドラ ***
+--    WHEN global_api_others_expt THEN
+---- 2009/02/26 ADD by M.Sano Start
+--      ov_errmsg  := xxccp_common_pkg.get_msg(
+--                      iv_application  => cv_app_name_xxccp    -- マスタ
+--                     ,iv_name         => cv_msg_91003         -- エラー:システムエラー
+--                   );
+---- 2009/02/26 ADD by M.Sano End
+--      ov_errbuf  := cv_pkg_name||cv_msg_cont||cv_prg_name||cv_msg_part||SQLERRM;
+--      ov_retcode := cv_status_error;
+--    -- *** OTHERS例外ハンドラ ***
+--    WHEN OTHERS THEN
+---- 2009/02/26 ADD by M.Sano Start
+--      ov_errmsg  := xxccp_common_pkg.get_msg(
+--                      iv_application  => cv_app_name_xxccp    -- マスタ
+--                     ,iv_name         => cv_msg_91003         -- エラー:システムエラー
+--                   );
+---- 2009/02/26 ADD by M.Sano End
+--      ov_errbuf  := cv_pkg_name||cv_msg_cont||cv_prg_name||cv_msg_part||SQLERRM;
+--      ov_retcode := cv_status_error;
+----
+----#####################################  固定部 END   ##########################################
+----
+--  END chk_count_top_dept;
 --
---#######################  固定ローカル変数宣言部 START   ######################
---
-    lv_errbuf  VARCHAR2(5000);  -- エラー・メッセージ
-    lv_retcode VARCHAR2(1);     -- リターン・コード
-    lv_errmsg  VARCHAR2(5000);  -- ユーザー・エラー・メッセージ
---
---###########################  固定部 END   ####################################
---
-    -- ===============================
-    -- ユーザー宣言部
-    -- ===============================
-    -- *** ローカル変数 ***
-    ln_top_dept_cnt NUMBER;
---
-  BEGIN
---
---##################  固定ステータス初期化部 START   ###################
---
-    ov_retcode := cv_status_normal;
---
---###########################  固定部 END   ############################
---
-    --==============================================================
-    -- 1.最上位部門の件数を取得します。
-    --==============================================================
-    BEGIN
-      SELECT COUNT(1)
-      INTO   ln_top_dept_cnt
-      FROM   fnd_flex_value_sets ffvs  -- 値セット定義マスタ
-            ,fnd_flex_values     ffvl  -- 値セット値定義マスタ
-      WHERE  ffvs.flex_value_set_id = ffvl.flex_value_set_id
-      AND    ffvl.enabled_flag = 'Y'
-      AND    ffvl.summary_flag = 'Y'
-      AND    ffvs.flex_value_set_name = 'XX03_DEPARTMENT'
-      AND    xxccp_common_pkg2.get_process_date BETWEEN
-                   NVL(ffvl.start_date_active, TO_DATE('19000101','YYYYMMDD'))
-               AND NVL(ffvl.end_date_active, TO_DATE('99991231','YYYYMMDD'))
--- 2009/04/20 Ver1.3 add start by Yutaka.Kuboshima
-      AND    ffvl.flex_value <> gv_aff_dept_dummy_cd
--- 2009/04/20 Ver1.3 add end by Yutaka.Kuboshima
-      AND    NOT EXISTS (
-               SELECT 'X'
-               FROM   fnd_flex_value_norm_hierarchy ffvh
-               WHERE  ffvh.flex_value_set_id = ffvl.flex_value_set_id
-               AND    ffvl.flex_value BETWEEN ffvh.child_flex_value_low
-                                          AND ffvh.child_flex_value_high
--- 2009/04/20 Ver1.3 add start by Yutaka.Kuboshima
-               AND    ffvh.range_attribute   = cv_flag_parent
-             )
-      AND    EXISTS (
-               SELECT 'X'
-               FROM   fnd_flex_value_norm_hierarchy ffvh2
-               WHERE  ffvh2.flex_value_set_id = ffvl.flex_value_set_id
-               AND    ffvh2.parent_flex_value = ffvl.flex_value
-               AND    ffvh2.range_attribute   = cv_flag_parent
-             )
--- 2009/04/20 Ver1.3 add end by Yutaka.Kuboshima
-      ;
-    EXCEPTION
-      WHEN OTHERS THEN
-        RAISE global_api_others_expt;
-    END;
---
-    --==============================================================
-    -- 2．最上位部門件数が1件以外の場合、部門階層エラー
-    --==============================================================
-    IF ( ln_top_dept_cnt <> 1 ) THEN
-      -- エラーメッセージを出力後、異常終了
-      lv_errmsg := xxccp_common_pkg.get_msg(
-                      iv_application  => cv_app_name_xxcmm        -- マスタ
-                     ,iv_name         => cv_msg_00500             -- エラー:部門階層エラー
-                     ,iv_token_name1  => cv_tok_ffv_set_name      -- トークン  :FFV_SET_NAME
-                     ,iv_token_value1 => cv_tvl_ffv_set_name      -- トークン値:XX03_DEPARTMENT
-                     ,iv_token_name2  => cv_tok_count             -- トークン  :COUNT
-                     ,iv_token_value2 => TO_CHAR(ln_top_dept_cnt) -- トークン値:最上位階層の件数
-                   );
-      lv_errbuf := lv_errmsg;
-      RAISE global_api_expt;
-    END IF;
---
-  EXCEPTION
---
---#################################  固定例外処理部 START   ####################################
---
-    -- *** 共通関数例外ハンドラ ***
-    WHEN global_api_expt THEN
-      ov_errmsg  := lv_errmsg;
-      ov_errbuf  := SUBSTRB(cv_pkg_name||cv_msg_cont||cv_prg_name||cv_msg_part||lv_errbuf,1,5000);
-      ov_retcode := cv_status_error;
-    -- *** 共通関数OTHERS例外ハンドラ ***
-    WHEN global_api_others_expt THEN
--- 2009/02/26 ADD by M.Sano Start
-      ov_errmsg  := xxccp_common_pkg.get_msg(
-                      iv_application  => cv_app_name_xxccp    -- マスタ
-                     ,iv_name         => cv_msg_91003         -- エラー:システムエラー
-                   );
--- 2009/02/26 ADD by M.Sano End
-      ov_errbuf  := cv_pkg_name||cv_msg_cont||cv_prg_name||cv_msg_part||SQLERRM;
-      ov_retcode := cv_status_error;
-    -- *** OTHERS例外ハンドラ ***
-    WHEN OTHERS THEN
--- 2009/02/26 ADD by M.Sano Start
-      ov_errmsg  := xxccp_common_pkg.get_msg(
-                      iv_application  => cv_app_name_xxccp    -- マスタ
-                     ,iv_name         => cv_msg_91003         -- エラー:システムエラー
-                   );
--- 2009/02/26 ADD by M.Sano End
-      ov_errbuf  := cv_pkg_name||cv_msg_cont||cv_prg_name||cv_msg_part||SQLERRM;
-      ov_retcode := cv_status_error;
---
---#####################################  固定部 END   ##########################################
---
-  END chk_count_top_dept;
---
+-- 2009/05/15 Ver1.3 delete end by Yutaka.Kuboshima
   /**********************************************************************************
    * Procedure Name   : get_output_data
    * Description      : 処理対象データ抽出(A-4)
@@ -1162,17 +1167,19 @@ AS
     -- ===============================================
     -- A-3．最上位部門件数取得
     -- ===============================================
-    chk_count_top_dept(
-       ov_errbuf           => lv_errbuf       -- エラー・メッセージ           --# 固定 #
-      ,ov_retcode          => lv_retcode      -- リターン・コード             --# 固定 #
-      ,ov_errmsg           => lv_errmsg       -- ユーザー・エラー・メッセージ --# 固定 #
-    );
-    -- 処理結果チェック
-    IF ( lv_retcode <> cv_status_normal ) THEN
-      -- (例外をスロー)
-      RAISE global_process_expt;
-    END IF;
+-- 2009/05/15 Ver1.3 delete start by Yutaka.Kuboshima
+--    chk_count_top_dept(
+--       ov_errbuf           => lv_errbuf       -- エラー・メッセージ           --# 固定 #
+--      ,ov_retcode          => lv_retcode      -- リターン・コード             --# 固定 #
+--      ,ov_errmsg           => lv_errmsg       -- ユーザー・エラー・メッセージ --# 固定 #
+--    );
+--    -- 処理結果チェック
+--    IF ( lv_retcode <> cv_status_normal ) THEN
+--      -- (例外をスロー)
+--      RAISE global_process_expt;
+--    END IF;
 --
+-- 2009/05/15 Ver1.3 delete end by Yutaka.Kuboshima
     -- ===============================================
     -- A-4．処理対象データ抽出
     -- ===============================================

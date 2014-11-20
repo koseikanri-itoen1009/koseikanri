@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCMM005A02C(spec)
  * Description      : 組織マスタIF出力（情報系）
  * MD.050           : 組織マスタIF出力（情報系） CMM_005_A02
- * Version          : 1.1
+ * Version          : 1.3
  *
  * Program List
  * -------------------- ------------------------------------------------------------
@@ -37,8 +37,9 @@ AS
  *  Date          Ver.  Editor           Description
  * ------------- ----- ---------------- -------------------------------------------------
  *  2009/01/28    1.0  T.Matsumoto       main新規作成
- *  2009/03/09    1.1  Takuya Kaihara   プロファイル値共通化
+ *  2009/03/09    1.1  Takuya Kaihara    プロファイル値共通化
  *  2009/04/20    1.2  Yutaka.Kuboshima  障害T1_0590の対応
+ *  2009/05/15    1.3  Yutaka.Kuboshima  障害T1_1026の対応
  *
  *****************************************************************************************/
 --
@@ -106,7 +107,9 @@ AS
   cv_emsg_file_exists         CONSTANT VARCHAR2(30)  := 'APP-XXCMM1-00010';               -- CSVファイル存在エラー
   cv_emsg_file_open           CONSTANT VARCHAR2(30)  := 'APP-XXCMM1-00487';               -- ファイルオープンエラー
   cv_emsg_file_close          CONSTANT VARCHAR2(30)  := 'APP-XXCMM1-00489';               -- ファイルクローズエラー
-  cv_emsg_uppersec_cnt        CONSTANT VARCHAR2(30)  := 'APP-XXCMM1-00500';               -- 最上位部門複数時エラー
+-- 2009/05/15 Ver1.3 delete start by Yutaka.Kuboshima
+--  cv_emsg_uppersec_cnt        CONSTANT VARCHAR2(30)  := 'APP-XXCMM1-00500';               -- 最上位部門複数時エラー
+-- 2009/05/15 Ver1.3 delete end by Yutaka.Kuboshima
   cv_imsg_all_count           CONSTANT VARCHAR2(30)  := 'APP-XXCCP1-90000';               -- 総件数情報
   cv_imsg_suc_count           CONSTANT VARCHAR2(30)  := 'APP-XXCCP1-90001';               -- 成功件数情報
   cv_imsg_err_count           CONSTANT VARCHAR2(30)  := 'APP-XXCCP1-90002';               -- エラー件数情報
@@ -1160,7 +1163,9 @@ AS
     -- ===============================
     subproc_expt              EXCEPTION;                                                  -- サブプログラムエラー
     file_open_expt            EXCEPTION;                                                  -- ファイルオープンエラー
-    upper_sec_cnt_expt        EXCEPTION;                                                  -- 最上位部門複数時のエラー
+-- 2009/05/15 Ver1.3 delete start by Yutaka.Kuboshima
+--    upper_sec_cnt_expt        EXCEPTION;                                                  -- 最上位部門複数時のエラー
+-- 2009/05/15 Ver1.3 delete end by Yutaka.Kuboshima
 --
   BEGIN
 --
@@ -1212,7 +1217,8 @@ AS
     -- ===============================================
     -- A-3.最上位部門件数取得
     -- ===============================================
-    -- 最上位部門の数をカウントする
+-- 2009/05/15 Ver1.3 delete start by Yutaka.Kuboshima
+/*    -- 最上位部門の数をカウントする
     lv_step := 'A-3.1';
     SELECT
           COUNT(1)
@@ -1263,6 +1269,8 @@ AS
       RAISE upper_sec_cnt_expt ;
     END IF;
 --
+*/
+-- 2009/05/15 Ver1.3 delete end by Yutaka.Kuboshima
     -- ===============================================
     -- A-4.AFF部門マスタ情報取得(create_aff_date_procを呼び出す)
     -- ===============================================
@@ -1311,7 +1319,8 @@ AS
                     lv_step     || cv_msg_part || lv_errbuf;
       ov_retcode := cv_status_error;
 --
-    --*** 最上位部門数エラー ***
+-- 2009/05/15 Ver1.3 delete start by Yutaka.Kuboshima
+/*    --*** 最上位部門数エラー ***
     WHEN upper_sec_cnt_expt THEN
       lv_errmsg := xxccp_common_pkg.get_msg(
                       iv_application  => cv_app_name_xxcmm                                -- マスタ
@@ -1325,6 +1334,8 @@ AS
       ov_errbuf  := cv_pkg_name || cv_msg_cont || cv_prg_name || cv_msg_cont ||
                     lv_step     || cv_msg_part || lv_errbuf;
       ov_retcode := cv_status_error;
+*/
+-- 2009/05/15 Ver1.3 delete end by Yutaka.Kuboshima
 --
 --#################################  固定例外処理部 START   ####################################
 --
