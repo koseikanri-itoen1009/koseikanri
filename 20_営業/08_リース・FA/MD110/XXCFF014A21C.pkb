@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCFF014A21C(body)
  * Description      : 別表16(4)リース資産
  * MD.050           : 別表16(4)リース資産 MD050_CFF_014_A21
- * Version          : 1.4
+ * Version          : 1.5
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -34,6 +34,7 @@ AS
  *                                         ・未経過リース期末残高相当額、未経過リース消費税額、
  *                                           解約時リース債務残高の取得方法修正
  *  2009/08/28    1.4   SCS 渡辺         [統合テスト障害0001062(PT対応)]
+ *  2012/01/31    1.5   SCSK 中村        [E_本稼動_08123] リース解約日設定許可に伴うリース債務残高集計条件の修正
  *
  *****************************************************************************************/
 --
@@ -100,8 +101,11 @@ AS
   -- メッセージ
   cv_msg_no_data      CONSTANT VARCHAR2(20)  := 'APP-XXCFF1-00062'; -- 対象データ無し
   -- リース種類
-  cv_lease_kind_fin   CONSTANT VARCHAR2(1)   := '0';  -- Finリース
-  cv_lease_kind_op    CONSTANT VARCHAR2(1)   := '1';  -- Opリース
+-- 2012/01/31 Ver.1.5 K.Nakamura DEL Start
+-- 使用していないため削除
+--  cv_lease_kind_fin   CONSTANT VARCHAR2(1)   := '0';  -- Finリース
+--  cv_lease_kind_op    CONSTANT VARCHAR2(1)   := '1';  -- Opリース
+-- 2012/01/31 Ver.1.5 K.Nakamura DEL End
   cv_lease_kind_qfin  CONSTANT VARCHAR2(1)   := '2';  -- 旧Finリース
 -- 0000417 2009/07/31 ADD START --
   -- 除売却ステータス
@@ -263,7 +267,15 @@ AS
       );
     END IF;
     -- 解約時資産簿価
-    IF io_csv_rec.cancellation_date IS NULL THEN
+-- 2012/01/31 Ver.1.5 K.Nakamura MOD Start
+--    IF io_csv_rec.cancellation_date IS NULL THEN
+    -- 指定した会計期間時点で解約されていない場合（解約日がNULLまたは、解約日が指定した会計期間の翌月月初以降）
+    --   解約日をNULL、解約時資産簿価および解約時リース債務残高を0で出力
+    IF ( ( io_csv_rec.cancellation_date IS NULL )
+      OR ( io_csv_rec.cancellation_date >= LAST_DAY(TO_DATE(io_csv_rec.period_to, 'YYYY-MM')) + 1 ) ) THEN
+      io_csv_rec.cancellation_date := NULL;
+      io_csv_rec.cxl_debt_bal      := 0;
+-- 2012/01/31 Ver.1.5 K.Nakamura MOD End
       io_csv_rec.cxl_amount := 0;
     END IF;
     -- CSVデータ編集
@@ -363,6 +375,9 @@ AS
   PROCEDURE get_pay_planning(
     id_start_date_1st IN     DATE,         -- 1.期首開始日
     id_start_date_now IN     DATE,         -- 2.当期開始日
+-- 2012/01/31 Ver.1.5 K.Nakamura ADD Start
+    iv_period_name    IN     VARCHAR2,     --   会計期間名
+-- 2012/01/31 Ver.1.5 K.Nakamura ADD End
     io_csv_rec        IN OUT g_csv_rtype,  -- 3.CSV出力レコード
     ov_errbuf         OUT    VARCHAR2,     --   エラー・メッセージ           --# 固定 #
     ov_retcode        OUT    VARCHAR2,     --   リターン・コード             --# 固定 #
@@ -587,6 +602,9 @@ AS
 --         AND NOT (xpp.period_name >= TO_CHAR(io_csv_rec.cancellation_date,'YYYY-MM') AND
          AND NOT (xpp.period_name > TO_CHAR(io_csv_rec.cancellation_date,'YYYY-MM') AND
 -- 0000417 2009/07/17 MOD END --
+-- 2012/01/31 Ver.1.5 K.Nakamura ADD Start
+                  io_csv_rec.cancellation_date < LAST_DAY(TO_DATE(iv_period_name, 'YYYY-MM')) + 1 AND
+-- 2012/01/31 Ver.1.5 K.Nakamura ADD End
                   io_csv_rec.cancellation_date IS NOT NULL)
       GROUP BY xpp.contract_header_id
               ,xpp.contract_line_id
@@ -860,24 +878,40 @@ AS
             ,xch.lease_end_date                 -- リース終了日
             ,xch.payment_frequency              -- 月数
             ,SUM(CASE WHEN fret.retirement_id IS NULL OR
+-- 2012/01/31 Ver.1.5 K.Nakamura ADD Start
+                           (xcl.cancellation_date IS NULL) OR
+                           (xcl.cancellation_date >= LAST_DAY(TO_DATE(iv_period_to, 'YYYY-MM')) + 1) OR
+-- 2012/01/31 Ver.1.5 K.Nakamura ADD End
                            fret.status <> cv_processed   THEN
                    (CASE WHEN NVL(fdp.period_name,iv_period_to) = iv_period_to THEN
                       xcl.second_charge
                     ELSE 0 END)
                  ELSE 0 END) AS monthly_charge  -- 月間リース料
             ,SUM(CASE WHEN fret.retirement_id IS NULL OR
+-- 2012/01/31 Ver.1.5 K.Nakamura ADD Start
+                           (xcl.cancellation_date IS NULL) OR
+                           (xcl.cancellation_date >= LAST_DAY(TO_DATE(iv_period_to, 'YYYY-MM')) + 1) OR
+-- 2012/01/31 Ver.1.5 K.Nakamura ADD End
                            fret.status <> cv_processed   THEN
                    (CASE WHEN NVL(fdp.period_name,iv_period_to) = iv_period_to THEN
                       xcl.gross_charge
                     ELSE 0 END)
                  ELSE 0 END) AS gross_charge    -- リース料総額
             ,SUM(CASE WHEN fret.retirement_id IS NULL OR
+-- 2012/01/31 Ver.1.5 K.Nakamura ADD Start
+                           (xcl.cancellation_date IS NULL) OR
+                           (xcl.cancellation_date >= LAST_DAY(TO_DATE(iv_period_to, 'YYYY-MM')) + 1) OR
+-- 2012/01/31 Ver.1.5 K.Nakamura ADD End
                            fret.status <> cv_processed   THEN
                    (CASE WHEN NVL(fdp.period_name,iv_period_to) = iv_period_to THEN
                       xcl.original_cost
                     ELSE 0 END)
                  ELSE 0 END) AS original_cost   -- 取得価額総額
             ,SUM(CASE WHEN fret.retirement_id IS NULL OR
+-- 2012/01/31 Ver.1.5 K.Nakamura ADD Start
+                           (xcl.cancellation_date IS NULL) OR
+                           (xcl.cancellation_date >= LAST_DAY(TO_DATE(iv_period_to, 'YYYY-MM')) + 1) OR
+-- 2012/01/31 Ver.1.5 K.Nakamura ADD End
                            fret.status <> cv_processed   THEN
                    (CASE WHEN NVL(fdp.period_name,iv_period_to) = iv_period_to THEN
                       NVL(fds.deprn_reserve,original_cost)
@@ -889,12 +923,20 @@ AS
                     ELSE 0 END)
                  ELSE 0 END) AS deprn_amount    -- 減価償却相当額
             ,SUM(CASE WHEN fret.retirement_id IS NULL OR
+-- 2012/01/31 Ver.1.5 K.Nakamura ADD Start
+                           (xcl.cancellation_date IS NULL) OR
+                           (xcl.cancellation_date >= LAST_DAY(TO_DATE(iv_period_to, 'YYYY-MM')) + 1) OR
+-- 2012/01/31 Ver.1.5 K.Nakamura ADD End
                            fret.status <> cv_processed   THEN
                    (CASE WHEN NVL(fdp.period_name,iv_period_to) = iv_period_to THEN
                       xcl.second_deduction
                     ELSE 0 END)
                  ELSE 0 END) AS monthly_deduction -- 月間リース料（控除額）
             ,SUM(CASE WHEN fret.retirement_id IS NULL OR
+-- 2012/01/31 Ver.1.5 K.Nakamura ADD Start
+                           (xcl.cancellation_date IS NULL) OR
+                           (xcl.cancellation_date >= LAST_DAY(TO_DATE(iv_period_to, 'YYYY-MM')) + 1) OR
+-- 2012/01/31 Ver.1.5 K.Nakamura ADD End
                            fret.status <> cv_processed   THEN
                    (CASE WHEN NVL(fdp.period_name,iv_period_to) = iv_period_to THEN
                    xcl.gross_deduction
@@ -1019,6 +1061,9 @@ AS
       get_pay_planning(
          id_start_date_1st
         ,id_start_date_now
+-- 2012/01/31 Ver.1.5 K.Nakamura ADD Start
+        ,iv_period_to
+-- 2012/01/31 Ver.1.5 K.Nakamura ADD End
         ,l_csv_rec
         ,lv_errbuf
         ,lv_retcode
