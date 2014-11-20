@@ -7,7 +7,7 @@ AS
  * Description      : 受払台帳作成
  * MD.050/070       : 在庫(帳票)Draft2A (T_MD050_BPO_550)
  *                    受払台帳Draft1A   (T_MD070_BPO_55B)
- * Version          : 1.16
+ * Version          : 1.17
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -44,6 +44,7 @@ AS
  *                                       T_TE080_BPO_550 指摘28(在庫調整実績情報の受入返品情報取得(相手先在庫)を追加)
  *                                       T_TE080_BPO_540 指摘44(同上)
  *                                       変更要求#171(同上)
+ *  2008/09/22    1.17  Hitomi Itou      T_TE080_BPO_550 指摘28(在庫調整実績情報の外注出来高情報・受入返品情報取得(相手先在庫)の相手先を取引先に変更)
  *****************************************************************************************/
 --
 --#######################  固定グローバル定数宣言部 START   #######################
@@ -2766,13 +2767,22 @@ AS
             SELECT
               ijm.journal_id                                  journal_id          --ジャーナルID
              ,xrart.source_document_number                    slip_no             --伝票No
-             ,xrart.location_code                             other_code          --入出庫先コード
-             ,xilv.description                                other_name          --摘要（入出庫先名称）
+-- mod start 1.17 相手先コードは受入返品実績アドオン.取引先コードを出力
+--             ,xrart.location_code                             other_code          --入出庫先コード
+              ,xrart.vendor_code                              other_code          --取引先コード(相手先)
+-- mod end 1.17
+-- mod start 1.17 相手先名は仕入先情報VIEW.正式名を出力
+--             ,xilv.description                                other_name          --摘要（入出庫先名称）
+              ,xvv.vendor_full_name                           other_name          --正式名(相手先名)
+-- mod end 1.17
              ,gv_adji_xrart                                   adji_type           --在庫タイプ
             FROM
               ic_jrnl_mst                                     ijm                 --OPMジャーナルマスタ
              ,xxpo_rcv_and_rtn_txns                           xrart               --受入返品実績アドオン
-             ,xxcmn_item_locations2_v                         xilv                --OPM保管場所マスタ
+-- mod start 1.17 相手先名は仕入先情報VIEW.正式名を出力
+--             ,xxcmn_item_locations2_v                         xilv                --OPM保管場所マスタ
+             ,xxcmn_vendors2_v                                xvv                 --仕入先情報VIEW
+-- mod end 1.17
              ,po_headers_all                                  pha                 --発注ヘッダ
             --受入返品実績(アドオン)抽出条件
             WHERE xrart.txns_type  = gv_txns_type_rcv                             --実績区分
@@ -2781,10 +2791,17 @@ AS
               AND TO_DATE(civ_ymd_to,gv_fmt_ymd)
             --OPMジャーナルマスタ抽出条件
             AND ijm.attribute1 = xrart.txns_id                                    --実績ID
-            --OPM保管場所マスタview抽出条件
-            AND xrart.location_code = xilv.segment1                               --入出庫先コード
+-- mod start 1.17 相手先名は仕入先情報VIEW.正式名を出力
+--            --OPM保管場所マスタview抽出条件
+--            AND xrart.location_code = xilv.segment1                               --入出庫先コード
+--            AND xrart.txns_date                                                   --取引日
+--              BETWEEN xilv.date_from AND NVL(xilv.date_to,xrart.txns_date)
+            --仕入先情報view抽出条件
+            AND xrart.vendor_id = xvv.vendor_id                                   --取引先ID
             AND xrart.txns_date                                                   --取引日
-              BETWEEN xilv.date_from AND NVL(xilv.date_to,xrart.txns_date)
+              BETWEEN xvv.start_date_active                                       --適用開始日
+              AND NVL(xvv.end_date_active, xrart.txns_date)                       --適用終了日
+-- mod end 1.17
             --発注ヘッダ
             AND xrart.source_document_number = pha.segment1                       --発注番号
             AND pha.attribute11 = po_type_inv                                     --発注区分(相手先在庫)
@@ -2815,15 +2832,24 @@ AS
             SELECT
               ijm.journal_id                                  journal_id          --ジャーナルID
               ,''                                             slip_no             --伝票No
-              ,itc.location                                   other_code          --相手先コード
-              ,xilv.description                               other_name          --相手先名
+-- mod start 1.17 相手先コードは外注出来高実績(アドオン).取引先コードを出力
+--              ,itc.location                                   other_code          --相手先コード
+              ,xvst.vendor_code                               other_code          --取引先コード(相手先)
+-- mod end 1.17
+-- mod start 1.17 相手先名は仕入先情報VIEW.正式名を出力
+--              ,xilv.description                               other_name          --相手先名
+              ,xvv.vendor_full_name                           other_name          --正式名(相手先名)
+-- mod end 1.17
               ,gv_adji_xvst                                   adji_type           --在庫タイプ
             FROM
               ic_jrnl_mst                                     ijm                 --OPMジャーナルマスタ
              ,xxpo_vendor_supply_txns                         xvst                --外注出来高実績(アドオン)
              ,ic_adjs_jnl                                     iaj                 --OPM在庫調整ジャーナル
              ,ic_tran_cmp                                     itc                 --OPM完了在庫トランザクション
-             ,xxcmn_item_locations2_v                         xilv                --OPM保管場所マスタ
+-- mod start 1.17 相手先名は仕入先情報VIEW.正式名を出力
+--             ,xxcmn_item_locations2_v                         xilv                --OPM保管場所マスタ
+               ,xxcmn_vendors2_v                                xvv                 --仕入先情報VIEW
+-- mod end 1.17
             --外注出来高実績アドオン抽出条件
             WHERE ijm.attribute1 = xvst.txns_id                                   --実績ID
             --OPM在庫調整ジャーナル抽出条件
@@ -2834,10 +2860,17 @@ AS
             AND TRUNC(itc.trans_date)
               BETWEEN TO_DATE(civ_ymd_from,gv_fmt_ymd)
               AND TO_DATE(civ_ymd_to,gv_fmt_ymd)
-            --OPM保管場所マスタview抽出条件
-            AND itc.location = xilv.segment1
-            AND itc.trans_date
-              BETWEEN xilv.date_from AND NVL(xilv.date_to,itc.trans_date)
+-- mod start 1.17 相手先名は仕入先情報VIEW.正式名を出力
+--            --OPM保管場所マスタview抽出条件
+--            AND itc.location = xilv.segment1
+--            AND itc.trans_date
+--              BETWEEN xilv.date_from AND NVL(xilv.date_to,itc.trans_date)
+            --仕入先情報view抽出条件
+            AND xvst.vendor_id = xvv.vendor_id                                   --取引先ID
+            AND itc.trans_date                                                   --取引日
+              BETWEEN xvv.start_date_active                                      --適用開始日
+              AND NVL(xvv.end_date_active, itc.trans_date)                       --適用終了日
+-- mod end 1.17
 --del start 1.2
 /*
             UNION ALL
