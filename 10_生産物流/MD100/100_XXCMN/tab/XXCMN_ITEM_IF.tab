@@ -1,0 +1,102 @@
+CREATE TABLE xxcmn.xxcmn_item_if
+(
+  seq_number                NUMBER(15)    NOT NULL
+ ,proc_code                 NUMBER(1)     NOT NULL
+ ,item_code                 VARCHAR2(7)   NOT NULL
+ ,item_name                 VARCHAR2(40)
+ ,item_short_name           VARCHAR2(20)
+ ,item_name_alt             VARCHAR2(10)
+ ,old_crowd_code            VARCHAR2(4)
+ ,new_crowd_code            VARCHAR2(4)
+ ,crowd_start_date          DATE
+ ,policy_group_code         VARCHAR2(4)
+ ,marke_crowd_code          VARCHAR2(4)
+ ,old_price                 VARCHAR2(7)
+ ,new_price                 VARCHAR2(7)
+ ,price_start_date          DATE
+ ,old_standard_cost         VARCHAR2(10)
+ ,new_standard_cost         VARCHAR2(10)
+ ,standard_start_date       DATE
+ ,old_business_cost         VARCHAR2(7)
+ ,new_business_cost         VARCHAR2(7)
+ ,business_start_date       DATE
+ ,old_tax                   VARCHAR2(7)
+ ,new_tax                   VARCHAR2(7)
+ ,tax_start_date            DATE
+ ,rate_code                 VARCHAR2(1)
+ ,case_num                  VARCHAR2(5)
+ ,product_div_code          VARCHAR2(1)
+ ,net                       VARCHAR2(5)
+ ,weight_volume             VARCHAR2(7)
+ ,arti_div_code             VARCHAR2(1)
+ ,div_tea_code              VARCHAR2(1)
+ ,parent_item_code          VARCHAR2(7)
+ ,sale_obj_code             VARCHAR2(1)
+ ,jan_code                  VARCHAR2(13)
+ ,sale_start_date           DATE
+ ,abolition_code            VARCHAR2(1)
+ ,abolition_date            DATE
+ ,raw_mate_consumption      VARCHAR2(10)
+ ,raw_material_cost         VARCHAR2(12)
+ ,agein_cost                VARCHAR2(12)
+ ,material_cost             VARCHAR2(12)
+ ,pack_cost                 VARCHAR2(12)
+ ,out_order_cost            VARCHAR2(12)
+ ,safekeep_cost             VARCHAR2(12)
+ ,other_expense_cost        VARCHAR2(12)
+ ,spare1                    VARCHAR2(12)
+ ,spare2                    VARCHAR2(12)
+ ,spare3                    VARCHAR2(12)
+ ,spare                     VARCHAR2(22)
+) ;
+--
+COMMENT ON COLUMN xxcmn.xxcmn_item_if.seq_number            IS 'SEQ番号' ;
+COMMENT ON COLUMN xxcmn.xxcmn_item_if.proc_code             IS '更新区分' ;
+COMMENT ON COLUMN xxcmn.xxcmn_item_if.item_code             IS '品名コード' ;
+COMMENT ON COLUMN xxcmn.xxcmn_item_if.item_name             IS '品名・正式名' ;
+COMMENT ON COLUMN xxcmn.xxcmn_item_if.item_short_name       IS '品名・略名' ;
+COMMENT ON COLUMN xxcmn.xxcmn_item_if.item_name_alt         IS '品名・カナ' ;
+COMMENT ON COLUMN xxcmn.xxcmn_item_if.old_crowd_code        IS '旧・群コード' ;
+COMMENT ON COLUMN xxcmn.xxcmn_item_if.new_crowd_code        IS '新・群コード' ;
+COMMENT ON COLUMN xxcmn.xxcmn_item_if.crowd_start_date      IS '適用開始日' ;
+COMMENT ON COLUMN xxcmn.xxcmn_item_if.policy_group_code     IS '政策群コード' ;
+COMMENT ON COLUMN xxcmn.xxcmn_item_if.marke_crowd_code      IS 'マーケ用群コード' ;
+COMMENT ON COLUMN xxcmn.xxcmn_item_if.old_price             IS '旧・定価' ;
+COMMENT ON COLUMN xxcmn.xxcmn_item_if.new_price             IS '新・定価' ;
+COMMENT ON COLUMN xxcmn.xxcmn_item_if.price_start_date      IS '適用開始日' ;
+COMMENT ON COLUMN xxcmn.xxcmn_item_if.old_standard_cost     IS '旧・標準原価' ;
+COMMENT ON COLUMN xxcmn.xxcmn_item_if.new_standard_cost     IS '新・標準原価' ;
+COMMENT ON COLUMN xxcmn.xxcmn_item_if.standard_start_date   IS '適用開始日' ;
+COMMENT ON COLUMN xxcmn.xxcmn_item_if.old_business_cost     IS '旧・営業原価' ;
+COMMENT ON COLUMN xxcmn.xxcmn_item_if.new_business_cost     IS '新・営業原価' ;
+COMMENT ON COLUMN xxcmn.xxcmn_item_if.business_start_date   IS '適用開始日' ;
+COMMENT ON COLUMN xxcmn.xxcmn_item_if.old_tax               IS '旧・消費税率' ;
+COMMENT ON COLUMN xxcmn.xxcmn_item_if.new_tax               IS '新・消費税率' ;
+COMMENT ON COLUMN xxcmn.xxcmn_item_if.tax_start_date        IS '適用開始日' ;
+COMMENT ON COLUMN xxcmn.xxcmn_item_if.rate_code             IS '率区分' ;
+COMMENT ON COLUMN xxcmn.xxcmn_item_if.case_num              IS 'ケース入数' ;
+COMMENT ON COLUMN xxcmn.xxcmn_item_if.product_div_code      IS '商品製品区分' ;
+COMMENT ON COLUMN xxcmn.xxcmn_item_if.net                   IS 'NET' ;
+COMMENT ON COLUMN xxcmn.xxcmn_item_if.weight_volume         IS '重量/体積' ;
+COMMENT ON COLUMN xxcmn.xxcmn_item_if.arti_div_code         IS '商品区分' ;
+COMMENT ON COLUMN xxcmn.xxcmn_item_if.div_tea_code          IS 'バラ茶区分' ;
+COMMENT ON COLUMN xxcmn.xxcmn_item_if.parent_item_code      IS '親品名コード' ;
+COMMENT ON COLUMN xxcmn.xxcmn_item_if.sale_obj_code         IS '売上対象区分' ;
+COMMENT ON COLUMN xxcmn.xxcmn_item_if.jan_code              IS 'JANコード' ;
+COMMENT ON COLUMN xxcmn.xxcmn_item_if.sale_start_date       IS '発売開始日（製造開始日）' ;
+COMMENT ON COLUMN xxcmn.xxcmn_item_if.abolition_code        IS '廃止区分' ;
+COMMENT ON COLUMN xxcmn.xxcmn_item_if.abolition_date        IS '廃止日（製造中止日）' ;
+COMMENT ON COLUMN xxcmn.xxcmn_item_if.raw_mate_consumption  IS '原料使用量' ;
+COMMENT ON COLUMN xxcmn.xxcmn_item_if.raw_material_cost     IS '原料' ;
+COMMENT ON COLUMN xxcmn.xxcmn_item_if.agein_cost            IS '再製費' ;
+COMMENT ON COLUMN xxcmn.xxcmn_item_if.material_cost         IS '資材費' ;
+COMMENT ON COLUMN xxcmn.xxcmn_item_if.pack_cost             IS '包装費' ;
+COMMENT ON COLUMN xxcmn.xxcmn_item_if.out_order_cost        IS '外注管理費' ;
+COMMENT ON COLUMN xxcmn.xxcmn_item_if.safekeep_cost         IS '保管費' ;
+COMMENT ON COLUMN xxcmn.xxcmn_item_if.other_expense_cost    IS 'その他経費' ;
+COMMENT ON COLUMN xxcmn.xxcmn_item_if.spare1                IS '予備1' ;
+COMMENT ON COLUMN xxcmn.xxcmn_item_if.spare2                IS '予備2' ;
+COMMENT ON COLUMN xxcmn.xxcmn_item_if.spare3                IS '予備3' ;
+COMMENT ON COLUMN xxcmn.xxcmn_item_if.spare                 IS '予備' ;
+--
+COMMENT ON TABLE  xxcmn.xxcmn_item_if IS '品名インタフェース';

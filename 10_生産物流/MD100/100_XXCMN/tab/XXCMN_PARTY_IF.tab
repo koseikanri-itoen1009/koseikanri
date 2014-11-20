@@ -1,0 +1,46 @@
+CREATE TABLE xxcmn.xxcmn_party_if
+(
+  seq_number                NUMBER(15,0)  NOT NULL,
+  proc_code                 NUMBER(1,0)   NOT NULL,
+  base_code                 VARCHAR2(4)   NOT NULL,
+  party_name                VARCHAR2(60),
+  party_short_name          VARCHAR2(20),
+  party_name_alt            VARCHAR2(30),
+  address                   VARCHAR2(60),
+  zip                       VARCHAR2(8),
+  phone                     VARCHAR2(15),
+  fax                       VARCHAR2(15),
+  old_division_code         VARCHAR2(6),
+  new_division_code         VARCHAR2(6),
+  division_start_date       DATE,
+  location_rel_code         VARCHAR2(1),
+  ship_mng_code             VARCHAR2(1),
+  district_code             VARCHAR2(16),
+  warehouse_code            VARCHAR2(1),
+  terminal_code             VARCHAR2(1),
+  zip2                      VARCHAR2(8),
+  spare                     VARCHAR2(15)
+) ;
+--
+COMMENT ON COLUMN xxcmn.xxcmn_party_if.seq_number           IS 'SEQ番号';
+COMMENT ON COLUMN xxcmn.xxcmn_party_if.proc_code            IS '更新区分';
+COMMENT ON COLUMN xxcmn.xxcmn_party_if.base_code            IS '拠点コード';
+COMMENT ON COLUMN xxcmn.xxcmn_party_if.party_name           IS '拠点名・正式名';
+COMMENT ON COLUMN xxcmn.xxcmn_party_if.party_short_name     IS '拠点名・略名';
+COMMENT ON COLUMN xxcmn.xxcmn_party_if.party_name_alt       IS '拠点名・カナ';
+COMMENT ON COLUMN xxcmn.xxcmn_party_if.address              IS '住所';
+COMMENT ON COLUMN xxcmn.xxcmn_party_if.zip                  IS '郵便番号';
+COMMENT ON COLUMN xxcmn.xxcmn_party_if.phone                IS '電話番号';
+COMMENT ON COLUMN xxcmn.xxcmn_party_if.fax                  IS 'FAX番号';
+COMMENT ON COLUMN xxcmn.xxcmn_party_if.old_division_code    IS '旧・本部コード';
+COMMENT ON COLUMN xxcmn.xxcmn_party_if.new_division_code    IS '新・本部コード';
+COMMENT ON COLUMN xxcmn.xxcmn_party_if.division_start_date  IS '適用開始日（本部コード）';
+COMMENT ON COLUMN xxcmn.xxcmn_party_if.location_rel_code    IS '拠点実績有無区分';
+COMMENT ON COLUMN xxcmn.xxcmn_party_if.ship_mng_code        IS '出庫管理元区分';
+COMMENT ON COLUMN xxcmn.xxcmn_party_if.district_code        IS '地区名（本部コード用）';
+COMMENT ON COLUMN xxcmn.xxcmn_party_if.warehouse_code       IS '倉替対象可否区分';
+COMMENT ON COLUMN xxcmn.xxcmn_party_if.terminal_code        IS '端末有無区分';
+COMMENT ON COLUMN xxcmn.xxcmn_party_if.zip2                 IS '郵便番号2';
+COMMENT ON COLUMN xxcmn.xxcmn_party_if.spare                IS '予備';
+--
+COMMENT ON TABLE  xxcmn.xxcmn_party_if IS '拠点インタフェース';

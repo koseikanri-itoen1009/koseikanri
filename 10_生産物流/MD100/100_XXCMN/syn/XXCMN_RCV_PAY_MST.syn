@@ -1,0 +1,1 @@
+CREATE OR REPLACE SYNONYM apps.xxcmn_rcv_pay_mst FOR xxcmn.xxcmn_rcv_pay_mst;

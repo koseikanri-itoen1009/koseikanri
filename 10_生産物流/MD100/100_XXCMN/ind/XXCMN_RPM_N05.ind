@@ -1,0 +1,1 @@
+CREATE INDEX xxcmn.xxcmn_rpm_n05 ON xxcmn.xxcmn_rcv_pay_mst(doc_type,reason_code) TABLESPACE xxidx;

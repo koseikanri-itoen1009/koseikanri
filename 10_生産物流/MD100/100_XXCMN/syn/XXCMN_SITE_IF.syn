@@ -1,0 +1,1 @@
+CREATE OR REPLACE SYNONYM apps.xxcmn_site_if FOR xxcmn.xxcmn_site_if;

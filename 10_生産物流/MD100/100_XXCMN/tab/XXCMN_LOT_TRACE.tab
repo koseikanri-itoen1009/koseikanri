@@ -1,0 +1,94 @@
+CREATE TABLE xxcmn.xxcmn_lot_trace
+(
+  division                    VARCHAR2(20)      NOT NULL,
+  level_num                   NUMBER(1,0)       NOT NULL,
+  item_code                   VARCHAR2(32)      NOT NULL,
+  item_name                   VARCHAR2(240),
+  lot_num                     VARCHAR2(32)      NOT NULL,
+  trace_item_code             VARCHAR2(32),
+  trace_item_name             VARCHAR2(240),
+  trace_lot_num               VARCHAR2(32),
+  batch_num                   VARCHAR2(32),
+  batch_date                  DATE,
+  whse_code                   VARCHAR2(240),
+  line_num                    VARCHAR2(32),
+  turn_date                   DATE,
+  turn_batch_num              VARCHAR2(32),
+  receipt_date                DATE,
+  receipt_num                 VARCHAR2(32),
+  order_num                   VARCHAR2(32),
+  supp_name                   VARCHAR2(240),
+  supp_code                   VARCHAR2(32),
+  trader_name                 VARCHAR2(240),
+  lot_date                    DATE,
+  lot_sign                    VARCHAR2(240),
+  best_bfr_date               DATE,
+  dlv_date_first              DATE,
+  dlv_date_last               DATE,
+  stock_ins_amount            NUMBER(15,0),
+  tea_period_dev              VARCHAR2(240),
+  product_year                VARCHAR2(240),
+  product_home                VARCHAR2(240),
+  product_type                VARCHAR2(240),
+  product_ranc_1              VARCHAR2(240),
+  product_ranc_2              VARCHAR2(240),
+  product_slip_dev            VARCHAR2(240),
+  description                 VARCHAR2(240),
+  inspect_req                 VARCHAR2(240),
+  created_by                  NUMBER(15,0)      NOT NULL,
+  creation_date               DATE              NOT NULL,
+  last_updated_by             NUMBER(15,0)      NOT NULL,
+  last_update_date            DATE              NOT NULL,
+  last_update_login           NUMBER(15,0),
+  request_id                  NUMBER(15,0)      NOT NULL,
+  program_application_id      NUMBER(15,0),
+  program_id                  NUMBER(15,0),
+  program_update_date         DATE
+  ) ;
+--
+COMMENT ON COLUMN xxcmn.xxcmn_lot_trace.division                IS '区分';
+COMMENT ON COLUMN xxcmn.xxcmn_lot_trace.level_num               IS 'レベル番号';
+COMMENT ON COLUMN xxcmn.xxcmn_lot_trace.item_code               IS '親品目コード';
+COMMENT ON COLUMN xxcmn.xxcmn_lot_trace.item_name               IS '親品目名称';
+COMMENT ON COLUMN xxcmn.xxcmn_lot_trace.lot_num                 IS '親ロットＮｏ';
+COMMENT ON COLUMN xxcmn.xxcmn_lot_trace.trace_item_code         IS '子品目コード';
+COMMENT ON COLUMN xxcmn.xxcmn_lot_trace.trace_item_name         IS '子品目名称';
+COMMENT ON COLUMN xxcmn.xxcmn_lot_trace.trace_lot_num           IS '子ロットＮｏ';
+COMMENT ON COLUMN xxcmn.xxcmn_lot_trace.batch_num               IS '製造バッチ番号';
+COMMENT ON COLUMN xxcmn.xxcmn_lot_trace.batch_date              IS '製造日';
+COMMENT ON COLUMN xxcmn.xxcmn_lot_trace.whse_code               IS '倉庫（工場）';
+COMMENT ON COLUMN xxcmn.xxcmn_lot_trace.line_num                IS 'ライン番号';
+COMMENT ON COLUMN xxcmn.xxcmn_lot_trace.turn_date               IS '投入日';
+COMMENT ON COLUMN xxcmn.xxcmn_lot_trace.turn_batch_num          IS '投入バッチ番号';
+COMMENT ON COLUMN xxcmn.xxcmn_lot_trace.receipt_date            IS '受入日';
+COMMENT ON COLUMN xxcmn.xxcmn_lot_trace.receipt_num             IS '受入番号';
+COMMENT ON COLUMN xxcmn.xxcmn_lot_trace.order_num               IS '発注番号';
+COMMENT ON COLUMN xxcmn.xxcmn_lot_trace.supp_name               IS '仕入先名';
+COMMENT ON COLUMN xxcmn.xxcmn_lot_trace.supp_code               IS '仕入先コード';
+COMMENT ON COLUMN xxcmn.xxcmn_lot_trace.trader_name             IS '斡旋業者';
+COMMENT ON COLUMN xxcmn.xxcmn_lot_trace.lot_date                IS '製造年月日';
+COMMENT ON COLUMN xxcmn.xxcmn_lot_trace.lot_sign                IS '固有記号';
+COMMENT ON COLUMN xxcmn.xxcmn_lot_trace.best_bfr_date           IS '賞味期限';
+COMMENT ON COLUMN xxcmn.xxcmn_lot_trace.dlv_date_first          IS '納入日（初回）';
+COMMENT ON COLUMN xxcmn.xxcmn_lot_trace.dlv_date_last           IS '納入日（最終）';
+COMMENT ON COLUMN xxcmn.xxcmn_lot_trace.stock_ins_amount        IS '在庫入数';
+COMMENT ON COLUMN xxcmn.xxcmn_lot_trace.tea_period_dev          IS '茶期区分';
+COMMENT ON COLUMN xxcmn.xxcmn_lot_trace.product_year            IS '年度';
+COMMENT ON COLUMN xxcmn.xxcmn_lot_trace.product_home            IS '産地';
+COMMENT ON COLUMN xxcmn.xxcmn_lot_trace.product_type            IS 'タイプ';
+COMMENT ON COLUMN xxcmn.xxcmn_lot_trace.product_ranc_1          IS 'ランク１';
+COMMENT ON COLUMN xxcmn.xxcmn_lot_trace.product_ranc_2          IS 'ランク２';
+COMMENT ON COLUMN xxcmn.xxcmn_lot_trace.product_slip_dev        IS '生産伝票区分';
+COMMENT ON COLUMN xxcmn.xxcmn_lot_trace.description             IS '摘要';
+COMMENT ON COLUMN xxcmn.xxcmn_lot_trace.inspect_req             IS '検査依頼Ｎｏ';
+COMMENT ON COLUMN xxcmn.xxcmn_lot_trace.created_by              IS '作成者';
+COMMENT ON COLUMN xxcmn.xxcmn_lot_trace.creation_date           IS '作成日';
+COMMENT ON COLUMN xxcmn.xxcmn_lot_trace.last_updated_by         IS '最終更新者';
+COMMENT ON COLUMN xxcmn.xxcmn_lot_trace.last_update_date        IS '最終更新日';
+COMMENT ON COLUMN xxcmn.xxcmn_lot_trace.last_update_login       IS '最終更新ログイン';
+COMMENT ON COLUMN xxcmn.xxcmn_lot_trace.request_id              IS '要求ID';
+COMMENT ON COLUMN xxcmn.xxcmn_lot_trace.program_application_id  IS 'コンカレント・プログラムのアプリケーションID';
+COMMENT ON COLUMN xxcmn.xxcmn_lot_trace.program_id              IS 'コンカレント・プログラムID';
+COMMENT ON COLUMN xxcmn.xxcmn_lot_trace.program_update_date     IS 'プログラムによる更新日';
+--
+COMMENT ON TABLE  xxcmn.xxcmn_lot_trace IS 'ロットトレース（アドオン）';

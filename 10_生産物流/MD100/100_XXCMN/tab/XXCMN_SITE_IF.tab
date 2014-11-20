@@ -1,0 +1,50 @@
+CREATE TABLE xxcmn.xxcmn_site_if
+(
+  seq_number          NUMBER(15,0)    NOT NULL,
+  proc_code           NUMBER(1,0)     NOT NULL,
+  ship_to_code        VARCHAR2(9)     NOT NULL,
+  base_code           VARCHAR2(4)     NOT NULL,
+  party_site_name1    VARCHAR2(30),
+  party_site_name2    VARCHAR2(30),
+  party_site_addr1    VARCHAR2(30),
+  party_site_addr2    VARCHAR2(30),
+  phone               VARCHAR2(15),
+  fax                 VARCHAR2(15),
+  zip                 VARCHAR2(8),
+  party_num           VARCHAR2(9),
+  zip2                 VARCHAR2(8),
+  customer_name1      VARCHAR2(30),
+  customer_name2      VARCHAR2(30),
+  sale_base_code      VARCHAR2(4),
+  res_sale_base_code  VARCHAR2(4),
+  chain_store         VARCHAR2(4),
+  chain_store_name    VARCHAR2(30),
+  cal_cust_app_flg    VARCHAR2(1),
+  direct_ship_code    VARCHAR2(1),
+  shift_judg_flg      VARCHAR2(1)
+) ;
+--
+COMMENT ON COLUMN xxcmn.xxcmn_site_if.seq_number         IS 'SEQ番号';
+COMMENT ON COLUMN xxcmn.xxcmn_site_if.proc_code          IS '更新区分';
+COMMENT ON COLUMN xxcmn.xxcmn_site_if.ship_to_code       IS '配送先コード';
+COMMENT ON COLUMN xxcmn.xxcmn_site_if.base_code          IS '拠点コード';
+COMMENT ON COLUMN xxcmn.xxcmn_site_if.party_site_name1   IS '配送先名称1';
+COMMENT ON COLUMN xxcmn.xxcmn_site_if.party_site_name2   IS '配送先名称2';
+COMMENT ON COLUMN xxcmn.xxcmn_site_if.party_site_addr1   IS '配送先住所1';
+COMMENT ON COLUMN xxcmn.xxcmn_site_if.party_site_addr2   IS '配送先住所2';
+COMMENT ON COLUMN xxcmn.xxcmn_site_if.phone              IS '電話番号';
+COMMENT ON COLUMN xxcmn.xxcmn_site_if.fax                IS 'FAX番号';
+COMMENT ON COLUMN xxcmn.xxcmn_site_if.zip                IS '郵便番号';
+COMMENT ON COLUMN xxcmn.xxcmn_site_if.party_num          IS '顧客コード';
+COMMENT ON COLUMN xxcmn.xxcmn_site_if.zip2               IS '郵便番号2';
+COMMENT ON COLUMN xxcmn.xxcmn_site_if.customer_name1     IS '顧客・漢字1';
+COMMENT ON COLUMN xxcmn.xxcmn_site_if.customer_name2     IS '顧客・漢字2';
+COMMENT ON COLUMN xxcmn.xxcmn_site_if.sale_base_code     IS '当月売上拠点コード';
+COMMENT ON COLUMN xxcmn.xxcmn_site_if.res_sale_base_code IS '予約（翌月）売上拠点コード';
+COMMENT ON COLUMN xxcmn.xxcmn_site_if.chain_store        IS '売上チェーン店';
+COMMENT ON COLUMN xxcmn.xxcmn_site_if.chain_store_name   IS '売上チェーン店名';
+COMMENT ON COLUMN xxcmn.xxcmn_site_if.cal_cust_app_flg   IS '中止客申請フラグ';
+COMMENT ON COLUMN xxcmn.xxcmn_site_if.direct_ship_code   IS '直送区分';
+COMMENT ON COLUMN xxcmn.xxcmn_site_if.shift_judg_flg     IS '移行判定フラグ';
+--
+COMMENT ON TABLE  xxcmn.xxcmn_site_if IS '配送先インタフェース';

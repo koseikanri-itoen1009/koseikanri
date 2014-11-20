@@ -1,0 +1,36 @@
+CREATE TABLE xxcmn.xxcmn_standard_cost_if
+(
+  item_code                 VARCHAR2(7)     NOT NULL,
+  start_date_active         DATE            NOT NULL,
+  expence_item_type         VARCHAR2(10)    NOT NULL,
+  expence_item_detail_type  VARCHAR2(10)    NOT NULL,
+  item_code_detail          VARCHAR2(7),
+  unit_price                NUMBER(9,2)     NOT NULL,
+  created_by                NUMBER(15,0)    NOT NULL,
+  creation_date             DATE            NOT NULL,
+  last_updated_by           NUMBER(15,0)    NOT NULL,
+  last_update_date          DATE            NOT NULL,
+  last_update_login         NUMBER(15,0),
+  request_id                NUMBER(15,0),
+  program_application_id    NUMBER(15,0),
+  program_id                NUMBER(15,0),
+  program_update_date       DATE
+  ) ;
+--
+COMMENT ON COLUMN xxcmn.xxcmn_standard_cost_if.item_code                IS '品目';
+COMMENT ON COLUMN xxcmn.xxcmn_standard_cost_if.start_date_active        IS '適用開始日';
+COMMENT ON COLUMN xxcmn.xxcmn_standard_cost_if.expence_item_type        IS '費目';
+COMMENT ON COLUMN xxcmn.xxcmn_standard_cost_if.expence_item_detail_type IS '項目';
+COMMENT ON COLUMN xxcmn.xxcmn_standard_cost_if.item_code_detail         IS '内訳品目';
+COMMENT ON COLUMN xxcmn.xxcmn_standard_cost_if.unit_price               IS '単価';
+COMMENT ON COLUMN xxcmn.xxcmn_standard_cost_if.created_by               IS '作成者';
+COMMENT ON COLUMN xxcmn.xxcmn_standard_cost_if.creation_date            IS '作成日';
+COMMENT ON COLUMN xxcmn.xxcmn_standard_cost_if.last_updated_by          IS '最終更新者';
+COMMENT ON COLUMN xxcmn.xxcmn_standard_cost_if.last_update_date         IS '最終更新日';
+COMMENT ON COLUMN xxcmn.xxcmn_standard_cost_if.last_update_login        IS '最終更新ログイン';
+COMMENT ON COLUMN xxcmn.xxcmn_standard_cost_if.request_id               IS '要求ID';
+COMMENT ON COLUMN xxcmn.xxcmn_standard_cost_if.program_application_id   IS 'コンカレント・プログラムのアプリケーションID';
+COMMENT ON COLUMN xxcmn.xxcmn_standard_cost_if.program_id               IS 'コンカレント・プログラムID';
+COMMENT ON COLUMN xxcmn.xxcmn_standard_cost_if.program_update_date      IS 'プログラムによる更新日';
+--
+COMMENT ON TABLE  xxcmn.xxcmn_standard_cost_if IS '標準原価インタフェース';

@@ -1,0 +1,1 @@
+CREATE OR REPLACE SYNONYM apps.xxcmn_sr_lines_if FOR xxcmn.xxcmn_sr_lines_if;

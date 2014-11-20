@@ -1,0 +1,1069 @@
+/************************************************************************
+ * Copyright(c)Oracle Corporation Japan, 2008. All rights reserved.
+ *
+ * View Name       : XXCMN_RCV_PAY_MST_PORC_RMA_V
+ * Description     : 経理受払区分情報VIEW_購買関連_出荷
+ * Version         : 1.1
+ *
+ * Change Record
+ * ------------- ----- ---------------- ---------------------------------
+ *  Date          Ver.  Editor           Description
+ * ------------- ----- ---------------- ---------------------------------
+ *  2008-04-14    1.0   Y.Ishikawa       新規作成
+ *  2008-05-20    1.1   Y.Ishikawa       XXCMN_ITEM_CATEGORIES3_Vをやめ
+ *                                       必要なテーブルのみの結合とする。
+ *
+ ************************************************************************/
+CREATE OR REPLACE VIEW XXCMN_RCV_PAY_MST_PORC_RMA_V
+    (NEW_DIV_ACCOUNT,DEALINGS_DIV,RCV_PAY_DIV,DOC_TYPE,SOURCE_DOCUMENT_CODE,TRANSACTION_TYPE,
+     SHIPMENT_PROVISION_DIV,STOCK_ADJUSTMENT_DIV,SHIP_PROV_RCV_PAY_CATEGORY,ITEM_DIV_AHEAD,
+     ITEM_DIV_ORIGIN,PROD_DIV_AHEAD,PROD_DIV_ORIGIN,ROUTING_CLASS,LINE_TYPE,HIT_IN_DIV,REASON_CODE,
+     DOC_ID,DOC_LINE,RESULT_POST,UNIT_PRICE,REQUEST_ITEM_CODE,DELIVER_TO_ID,ITEM_ID,ITEM_DIV
+     ,PROD_DIV,CROWD_CODE,ACNT_CROWD_CODE)
+AS
+SELECT  xrpm.new_div_account            AS new_div_account            -- 新経理受払区分
+       ,xrpm.dealings_div               AS dealings_div               -- 取引区分
+       ,xrpm.rcv_pay_div                AS rcv_pay_div                -- 受払区分
+       ,xrpm.doc_type                   AS doc_type                   -- 文書タイプ
+       ,xrpm.source_document_code       AS source_document_code       -- ソース文書
+       ,xrpm.transaction_type           AS transaction_type           -- PO取引タイプ
+       ,xrpm.shipment_provision_div     AS shipment_provision_div     -- 出荷支給区分
+       ,xrpm.stock_adjustment_div       AS stock_adjustment_div       -- 在庫調整区分
+       ,xrpm.ship_prov_rcv_pay_category AS ship_prov_rcv_pay_category -- 出荷支給受払カテゴリ
+       ,xrpm.item_div_ahead             AS item_div_ahead             -- 品目区分（振替先）
+       ,xrpm.item_div_origin            AS item_div_origin            -- 品目区分（振替元）
+       ,xrpm.prod_div_ahead             AS prod_div_ahead             -- 商品区分（振替先）
+       ,xrpm.prod_div_origin            AS prod_div_origin            -- 商品区分（振替元）
+       ,xrpm.routing_class              AS routing_class              -- 工順区分
+       ,xrpm.line_type                  AS line_type                  -- ラインタイプ
+       ,xrpm.hit_in_div                 AS hit_in_div                 -- 打込区分
+       ,xrpm.reason_code                AS reason_code                -- 事由コード
+       ,rsl.shipment_header_id          AS doc_id                     -- 文書ID
+       ,rsl.line_num                    AS doc_line                   -- 取引明細番号
+       ,ooha.attribute11                AS result_post                -- 成績部署
+       ,xola.unit_price                 AS unit_price                 -- 販売単価
+       ,oola.attribute3                 AS request_item_code          -- 依頼品目コード
+       ,xoha.deliver_to_id              AS deliver_to_id              -- 出荷先ID
+       ,NULL                            AS item_id                    -- 品目ID
+       ,xicv3_o.item_class_code         AS item_div                   -- 品目区分
+       ,xicv3_o.prod_class_code         AS prod_div                   -- 商品区分
+       ,xicv3_o.crowd_code              AS crowd_code                 -- 郡
+       ,xicv3_o.acnt_crowd_code         AS acnt_crowd_code            -- 経理郡
+ FROM   xxcmn_rcv_pay_mst        xrpm    -- 受払区分マスタ
+       ,rcv_shipment_lines       rsl     -- 受入明細
+       ,oe_order_headers_all     ooha    -- 受注ヘッダ
+       ,oe_order_lines_all       oola    -- 受注明細
+       ,oe_transaction_types_all otta    -- 受注タイプ
+       ,(SELECT
+           iimb.item_id AS item_id
+          ,iimb.item_no AS item_no
+          ,MAX( CASE
+                  WHEN mcst.category_set_name = '商品区分' THEN mcb.segment1
+                  ELSE NULL
+                END ) AS prod_class_code
+          ,MAX( CASE
+                  WHEN mcst.category_set_name = '品目区分' THEN mcb.segment1
+                  ELSE NULL
+                END ) AS item_class_code
+          ,MAX( CASE
+                  WHEN mcst.category_set_name = '群コード' THEN mcb.segment1
+                 ELSE NULL
+                END ) AS crowd_code
+          ,MAX( CASE
+                  WHEN mcst.category_set_name = '経理部用群コード' THEN mcb.segment1
+                  ELSE NULL
+                END ) AS acnt_crowd_code
+         FROM ic_item_mst_b          iimb
+             ,gmi_item_categories    gic
+             ,mtl_categories_b       mcb
+             ,mtl_category_sets_tl   mcst
+        WHERE gic.category_set_id   = mcst.category_set_id
+          AND gic.category_id       = mcb.category_id
+          AND mcst.language         = 'JA'
+          AND mcst.source_lang      = 'JA'
+          AND mcst.category_set_name IN ( '商品区分','品目区分','群コード','経理部用群コード' )
+          AND iimb.item_id          = gic.item_id
+          GROUP BY iimb.item_id
+                  ,iimb.item_no) xicv3_a
+       ,(SELECT
+           iimb.item_id AS item_id
+          ,iimb.item_no AS item_no
+          ,MAX( CASE
+                  WHEN mcst.category_set_name = '商品区分' THEN mcb.segment1
+                  ELSE NULL
+                END ) AS prod_class_code
+          ,MAX( CASE
+                  WHEN mcst.category_set_name = '品目区分' THEN mcb.segment1
+                  ELSE NULL
+                END ) AS item_class_code
+          ,MAX( CASE
+                  WHEN mcst.category_set_name = '群コード' THEN mcb.segment1
+                 ELSE NULL
+                END ) AS crowd_code
+          ,MAX( CASE
+                  WHEN mcst.category_set_name = '経理部用群コード' THEN mcb.segment1
+                  ELSE NULL
+                END ) AS acnt_crowd_code
+         FROM ic_item_mst_b          iimb
+             ,gmi_item_categories    gic
+             ,mtl_categories_b       mcb
+             ,mtl_category_sets_tl   mcst
+        WHERE gic.category_set_id   = mcst.category_set_id
+          AND gic.category_id       = mcb.category_id
+          AND mcst.language         = 'JA'
+          AND mcst.source_lang      = 'JA'
+          AND mcst.category_set_name IN ( '商品区分','品目区分','群コード','経理部用群コード' )
+          AND iimb.item_id          = gic.item_id
+          GROUP BY iimb.item_id
+                  ,iimb.item_no) xicv3_o
+       ,xxwsh_order_headers_all  xoha    -- 受注ヘッダアドオン
+       ,xxwsh_order_lines_all    xola    -- 受注明細アドオン
+       ,xxcmn_lookup_values_v    xlvv    -- クイックコードビューLOOKUP_CODE
+WHERE xrpm.doc_type             = 'PORC'
+  AND xrpm.source_document_code = 'RMA'
+  AND xlvv.lookup_type          = 'XXCMN_DEALINGS_DIV'
+  AND xlvv.meaning              IN ('製品出荷','有償')
+  AND xrpm.dealings_div         = xlvv.lookup_code
+  AND ooha.header_id            = rsl.oe_order_header_id
+  AND otta.transaction_type_id  = ooha.order_type_id
+  AND xoha.header_id            = ooha.header_id
+  AND oola.header_id            = ooha.header_id
+  AND oola.line_id              = rsl.oe_order_line_id
+  AND oola.line_id              = xola.line_id
+  AND xicv3_a.item_no           = xola.request_item_code
+  AND xicv3_o.item_no           = xola.shipping_item_code
+  AND xrpm.shipment_provision_div = otta.attribute1
+  AND ((otta.attribute4           <> '2')         -- 在庫調整以外
+      OR  (otta.attribute4       IS NULL))        -- 在庫調整以外
+  AND NVL( xrpm.ship_prov_rcv_pay_category, NVL( otta.attribute11, 'NULL' ) ) =
+      NVL( otta.attribute11, 'NULL' )
+  AND xrpm.item_div_ahead      IS NOT NULL
+  AND xrpm.item_div_origin     IS NOT NULL
+  AND xrpm.prod_div_ahead      IS NULL
+  AND xrpm.prod_div_origin     IS NULL
+  AND xrpm.item_div_ahead  = xicv3_a.item_class_code
+  AND xrpm.item_div_origin = xicv3_o.item_class_code
+  AND xola.request_item_code = xola.shipping_item_code
+--
+UNION
+--
+SELECT  xrpm.new_div_account            AS new_div_account            -- 新経理受払区分
+       ,xrpm.dealings_div               AS dealings_div               -- 取引区分
+       ,xrpm.rcv_pay_div                AS rcv_pay_div                -- 受払区分
+       ,xrpm.doc_type                   AS doc_type                   -- 文書タイプ
+       ,xrpm.source_document_code       AS source_document_code       -- ソース文書
+       ,xrpm.transaction_type           AS transaction_type           -- PO取引タイプ
+       ,xrpm.shipment_provision_div     AS shipment_provision_div     -- 出荷支給区分
+       ,xrpm.stock_adjustment_div       AS stock_adjustment_div       -- 在庫調整区分
+       ,xrpm.ship_prov_rcv_pay_category AS ship_prov_rcv_pay_category -- 出荷支給受払カテゴリ
+       ,xrpm.item_div_ahead             AS item_div_ahead             -- 品目区分（振替先）
+       ,xrpm.item_div_origin            AS item_div_origin            -- 品目区分（振替元）
+       ,xrpm.prod_div_ahead             AS prod_div_ahead             -- 商品区分（振替先）
+       ,xrpm.prod_div_origin            AS prod_div_origin            -- 商品区分（振替元）
+       ,xrpm.routing_class              AS routing_class              -- 工順区分
+       ,xrpm.line_type                  AS line_type                  -- ラインタイプ
+       ,xrpm.hit_in_div                 AS hit_in_div                 -- 打込区分
+       ,xrpm.reason_code                AS reason_code                -- 事由コード
+       ,rsl.shipment_header_id          AS doc_id                     -- 文書ID
+       ,rsl.line_num                    AS doc_line                   -- 取引明細番号
+       ,ooha.attribute11                AS result_post                -- 成績部署
+       ,xola.unit_price                 AS unit_price                 -- 販売単価
+       ,oola.attribute3                 AS request_item_code          -- 依頼品目コード
+       ,xoha.deliver_to_id              AS deliver_to_id              -- 出荷先ID
+       ,NULL                            AS item_id                    -- 品目ID
+       ,xicv3_o.item_class_code         AS item_div                   -- 品目区分
+       ,xicv3_o.prod_class_code         AS prod_div                   -- 商品区分
+       ,xicv3_o.crowd_code              AS crowd_code                 -- 郡
+       ,xicv3_o.acnt_crowd_code         AS acnt_crowd_code            -- 経理郡
+ FROM   xxcmn_rcv_pay_mst        xrpm    -- 受払区分マスタ
+       ,rcv_shipment_lines       rsl     -- 受入明細
+       ,oe_order_headers_all     ooha    -- 受注ヘッダ
+       ,oe_order_lines_all       oola    -- 受注明細
+       ,oe_transaction_types_all otta    -- 受注タイプ
+       ,(SELECT
+           iimb.item_id AS item_id
+          ,iimb.item_no AS item_no
+          ,MAX( CASE
+                  WHEN mcst.category_set_name = '商品区分' THEN mcb.segment1
+                  ELSE NULL
+                END ) AS prod_class_code
+          ,MAX( CASE
+                  WHEN mcst.category_set_name = '品目区分' THEN mcb.segment1
+                  ELSE NULL
+                END ) AS item_class_code
+          ,MAX( CASE
+                  WHEN mcst.category_set_name = '群コード' THEN mcb.segment1
+                 ELSE NULL
+                END ) AS crowd_code
+          ,MAX( CASE
+                  WHEN mcst.category_set_name = '経理部用群コード' THEN mcb.segment1
+                  ELSE NULL
+                END ) AS acnt_crowd_code
+         FROM ic_item_mst_b          iimb
+             ,gmi_item_categories    gic
+             ,mtl_categories_b       mcb
+             ,mtl_category_sets_tl   mcst
+        WHERE gic.category_set_id   = mcst.category_set_id
+          AND gic.category_id       = mcb.category_id
+          AND mcst.language         = 'JA'
+          AND mcst.source_lang      = 'JA'
+          AND mcst.category_set_name IN ( '商品区分','品目区分','群コード','経理部用群コード' )
+          AND iimb.item_id          = gic.item_id
+          GROUP BY iimb.item_id
+                  ,iimb.item_no) xicv3_a
+       ,(SELECT
+           iimb.item_id AS item_id
+          ,iimb.item_no AS item_no
+          ,MAX( CASE
+                  WHEN mcst.category_set_name = '商品区分' THEN mcb.segment1
+                  ELSE NULL
+                END ) AS prod_class_code
+          ,MAX( CASE
+                  WHEN mcst.category_set_name = '品目区分' THEN mcb.segment1
+                  ELSE NULL
+                END ) AS item_class_code
+          ,MAX( CASE
+                  WHEN mcst.category_set_name = '群コード' THEN mcb.segment1
+                 ELSE NULL
+                END ) AS crowd_code
+          ,MAX( CASE
+                  WHEN mcst.category_set_name = '経理部用群コード' THEN mcb.segment1
+                  ELSE NULL
+                END ) AS acnt_crowd_code
+         FROM ic_item_mst_b          iimb
+             ,gmi_item_categories    gic
+             ,mtl_categories_b       mcb
+             ,mtl_category_sets_tl   mcst
+        WHERE gic.category_set_id   = mcst.category_set_id
+          AND gic.category_id       = mcb.category_id
+          AND mcst.language         = 'JA'
+          AND mcst.source_lang      = 'JA'
+          AND mcst.category_set_name IN ( '商品区分','品目区分','群コード','経理部用群コード' )
+          AND iimb.item_id          = gic.item_id
+          GROUP BY iimb.item_id
+                  ,iimb.item_no) xicv3_o
+       ,xxwsh_order_headers_all  xoha    -- 受注ヘッダアドオン
+       ,xxwsh_order_lines_all    xola    -- 受注明細アドオン
+       ,xxcmn_lookup_values_v    xlvv    -- クイックコードビューLOOKUP_CODE
+WHERE xrpm.doc_type             = 'PORC'
+  AND xrpm.source_document_code = 'RMA'
+  AND xlvv.lookup_type          = 'XXCMN_DEALINGS_DIV'
+  AND xlvv.meaning              IN ('資材出荷','有償')
+  AND xrpm.dealings_div         = xlvv.lookup_code
+  AND ooha.header_id            = rsl.oe_order_header_id
+  AND otta.transaction_type_id  = ooha.order_type_id
+  AND xoha.header_id            = ooha.header_id
+  AND oola.header_id            = ooha.header_id
+  AND oola.line_id              = rsl.oe_order_line_id
+  AND oola.line_id              = xola.line_id
+  AND xicv3_a.item_no           = xola.request_item_code
+  AND xicv3_o.item_no           = xola.shipping_item_code
+  AND xrpm.shipment_provision_div = otta.attribute1
+  AND ((otta.attribute4           <> '2')         -- 在庫調整以外
+      OR  (otta.attribute4       IS NULL))        -- 在庫調整以外
+  AND NVL( xrpm.ship_prov_rcv_pay_category, NVL( otta.attribute11, 'NULL' ) ) =
+      NVL( otta.attribute11, 'NULL' )
+  AND xrpm.item_div_ahead      IS NULL
+  AND xrpm.item_div_origin     IS NULL
+  AND xrpm.prod_div_ahead      IS NULL
+  AND xrpm.prod_div_origin     IS NULL
+  AND xicv3_a.item_class_code  <> '5'   -- 製品以外
+  AND xicv3_o.item_class_code  <> '5'   -- 製品以外
+  AND xola.request_item_code = xola.shipping_item_code
+--
+UNION
+--
+SELECT  xrpm.new_div_account            AS new_div_account            -- 新経理受払区分
+       ,xrpm.dealings_div               AS dealings_div               -- 取引区分
+       ,xrpm.rcv_pay_div                AS rcv_pay_div                -- 受払区分
+       ,xrpm.doc_type                   AS doc_type                   -- 文書タイプ
+       ,xrpm.source_document_code       AS source_document_code       -- ソース文書
+       ,xrpm.transaction_type           AS transaction_type           -- PO取引タイプ
+       ,xrpm.shipment_provision_div     AS shipment_provision_div     -- 出荷支給区分
+       ,xrpm.stock_adjustment_div       AS stock_adjustment_div       -- 在庫調整区分
+       ,xrpm.ship_prov_rcv_pay_category AS ship_prov_rcv_pay_category -- 出荷支給受払カテゴリ
+       ,xrpm.item_div_ahead             AS item_div_ahead             -- 品目区分（振替先）
+       ,xrpm.item_div_origin            AS item_div_origin            -- 品目区分（振替元）
+       ,xrpm.prod_div_ahead             AS prod_div_ahead             -- 商品区分（振替先）
+       ,xrpm.prod_div_origin            AS prod_div_origin            -- 商品区分（振替元）
+       ,xrpm.routing_class              AS routing_class              -- 工順区分
+       ,xrpm.line_type                  AS line_type                  -- ラインタイプ
+       ,xrpm.hit_in_div                 AS hit_in_div                 -- 打込区分
+       ,xrpm.reason_code                AS reason_code                -- 事由コード
+       ,rsl.shipment_header_id          AS doc_id                     -- 文書ID
+       ,rsl.line_num                    AS doc_line                   -- 取引明細番号
+       ,ooha.attribute11                AS result_post                -- 成績部署
+       ,xola.unit_price                 AS unit_price                 -- 販売単価
+       ,oola.attribute3                 AS request_item_code          -- 依頼品目コード
+       ,xoha.deliver_to_id              AS deliver_to_id              -- 出荷先ID
+       ,DECODE(xlvv.meaning,
+                 '振替有償_受入',xicv3_a.item_id,                     -- 振替先品目ID
+                 '振替有償_出荷',xicv3_a.item_id,                     -- 振替先品目ID
+                 '振替有償_払出',xicv3_o.item_id) AS item_id          -- 振替元品目ID
+       ,DECODE(xlvv.meaning,
+                 '振替有償_受入',xicv3_a.item_class_code,             -- 振替先品目区分
+                 '振替有償_出荷',xicv3_a.item_class_code,             -- 振替先品目区分
+                 '振替有償_払出',xicv3_o.item_class_code) AS item_div -- 振替元品目区分
+       ,DECODE(xlvv.meaning,
+                 '振替有償_受入',xicv3_a.prod_class_code,             -- 振替先商品区分
+                 '振替有償_出荷',xicv3_a.prod_class_code,             -- 振替先商品区分
+                 '振替有償_払出',xicv3_o.prod_class_code) AS prod_div -- 振替元商品区分
+       ,DECODE(xlvv.meaning,
+                 '振替有償_受入',xicv3_a.crowd_code,                  -- 振替先郡
+                 '振替有償_出荷',xicv3_a.crowd_code,                  -- 振替先郡
+                 '振替有償_払出',xicv3_o.crowd_code) AS crowd_code    -- 振替元郡
+       ,DECODE(xlvv.meaning,
+                 '振替有償_受入',xicv3_a.acnt_crowd_code,             -- 振替先経理郡
+                 '振替有償_出荷',xicv3_a.acnt_crowd_code,             -- 振替先経理郡
+                 '振替有償_払出',xicv3_o.acnt_crowd_code) AS acnt_crowd_code  -- 振替元経理郡
+ FROM   xxcmn_rcv_pay_mst        xrpm    -- 受払区分マスタ
+       ,rcv_shipment_lines       rsl     -- 受入明細
+       ,oe_order_headers_all     ooha    -- 受注ヘッダ
+       ,oe_order_lines_all       oola    -- 受注明細
+       ,oe_transaction_types_all otta    -- 受注タイプ
+       ,(SELECT
+           iimb.item_id AS item_id
+          ,iimb.item_no AS item_no
+          ,MAX( CASE
+                  WHEN mcst.category_set_name = '商品区分' THEN mcb.segment1
+                  ELSE NULL
+                END ) AS prod_class_code
+          ,MAX( CASE
+                  WHEN mcst.category_set_name = '品目区分' THEN mcb.segment1
+                  ELSE NULL
+                END ) AS item_class_code
+          ,MAX( CASE
+                  WHEN mcst.category_set_name = '群コード' THEN mcb.segment1
+                 ELSE NULL
+                END ) AS crowd_code
+          ,MAX( CASE
+                  WHEN mcst.category_set_name = '経理部用群コード' THEN mcb.segment1
+                  ELSE NULL
+                END ) AS acnt_crowd_code
+         FROM ic_item_mst_b          iimb
+             ,gmi_item_categories    gic
+             ,mtl_categories_b       mcb
+             ,mtl_category_sets_tl   mcst
+        WHERE gic.category_set_id   = mcst.category_set_id
+          AND gic.category_id       = mcb.category_id
+          AND mcst.language         = 'JA'
+          AND mcst.source_lang      = 'JA'
+          AND mcst.category_set_name IN ( '商品区分','品目区分','群コード','経理部用群コード' )
+          AND iimb.item_id          = gic.item_id
+          GROUP BY iimb.item_id
+                  ,iimb.item_no) xicv3_a
+       ,(SELECT
+           iimb.item_id AS item_id
+          ,iimb.item_no AS item_no
+          ,MAX( CASE
+                  WHEN mcst.category_set_name = '商品区分' THEN mcb.segment1
+                  ELSE NULL
+                END ) AS prod_class_code
+          ,MAX( CASE
+                  WHEN mcst.category_set_name = '品目区分' THEN mcb.segment1
+                  ELSE NULL
+                END ) AS item_class_code
+          ,MAX( CASE
+                  WHEN mcst.category_set_name = '群コード' THEN mcb.segment1
+                 ELSE NULL
+                END ) AS crowd_code
+          ,MAX( CASE
+                  WHEN mcst.category_set_name = '経理部用群コード' THEN mcb.segment1
+                  ELSE NULL
+                END ) AS acnt_crowd_code
+         FROM ic_item_mst_b          iimb
+             ,gmi_item_categories    gic
+             ,mtl_categories_b       mcb
+             ,mtl_category_sets_tl   mcst
+        WHERE gic.category_set_id   = mcst.category_set_id
+          AND gic.category_id       = mcb.category_id
+          AND mcst.language         = 'JA'
+          AND mcst.source_lang      = 'JA'
+          AND mcst.category_set_name IN ( '商品区分','品目区分','群コード','経理部用群コード' )
+          AND iimb.item_id          = gic.item_id
+          GROUP BY iimb.item_id
+                  ,iimb.item_no) xicv3_o
+       ,xxwsh_order_headers_all  xoha    -- 受注ヘッダアドオン
+       ,xxwsh_order_lines_all    xola    -- 受注明細アドオン
+       ,xxcmn_lookup_values_v    xlvv    -- クイックコードビューLOOKUP_CODE
+WHERE xrpm.doc_type               = 'PORC'
+  AND xrpm.source_document_code   = 'RMA'
+  AND xlvv.lookup_type            = 'XXCMN_DEALINGS_DIV'
+  AND xlvv.meaning                IN ('振替有償_受入','振替有償_出荷','振替有償_払出')
+  AND xrpm.dealings_div           = xlvv.lookup_code
+  AND ooha.header_id              = rsl.oe_order_header_id
+  AND otta.transaction_type_id    = ooha.order_type_id
+  AND xoha.header_id              = ooha.header_id
+  AND oola.header_id              = ooha.header_id
+  AND oola.line_id                = rsl.oe_order_line_id
+  AND oola.line_id                = xola.line_id
+  AND xicv3_a.item_no             = xola.request_item_code
+  AND xicv3_o.item_no             = xola.shipping_item_code
+  AND xrpm.shipment_provision_div = otta.attribute1
+  AND ((otta.attribute4           <> '2')         -- 在庫調整以外
+      OR  (otta.attribute4       IS NULL))        -- 在庫調整以外
+  AND xrpm.ship_prov_rcv_pay_category = otta.attribute11
+  AND xrpm.item_div_ahead         IS NOT NULL
+  AND xrpm.item_div_origin        IS NULL
+  AND xrpm.prod_div_ahead         IS NULL
+  AND xrpm.prod_div_origin        IS NULL
+  AND xrpm.item_div_ahead         = xicv3_a.item_class_code
+  AND xicv3_o.item_class_code     <> '5'   -- 製品以外
+--
+UNION
+--
+SELECT  xrpm.new_div_account            AS new_div_account            -- 新経理受払区分
+       ,xrpm.dealings_div               AS dealings_div               -- 取引区分
+       ,xrpm.rcv_pay_div                AS rcv_pay_div                -- 受払区分
+       ,xrpm.doc_type                   AS doc_type                   -- 文書タイプ
+       ,xrpm.source_document_code       AS source_document_code       -- ソース文書
+       ,xrpm.transaction_type           AS transaction_type           -- PO取引タイプ
+       ,xrpm.shipment_provision_div     AS shipment_provision_div     -- 出荷支給区分
+       ,xrpm.stock_adjustment_div       AS stock_adjustment_div       -- 在庫調整区分
+       ,xrpm.ship_prov_rcv_pay_category AS ship_prov_rcv_pay_category -- 出荷支給受払カテゴリ
+       ,xrpm.item_div_ahead             AS item_div_ahead             -- 品目区分（振替先）
+       ,xrpm.item_div_origin            AS item_div_origin            -- 品目区分（振替元）
+       ,xrpm.prod_div_ahead             AS prod_div_ahead             -- 商品区分（振替先）
+       ,xrpm.prod_div_origin            AS prod_div_origin            -- 商品区分（振替元）
+       ,xrpm.routing_class              AS routing_class              -- 工順区分
+       ,xrpm.line_type                  AS line_type                  -- ラインタイプ
+       ,xrpm.hit_in_div                 AS hit_in_div                 -- 打込区分
+       ,xrpm.reason_code                AS reason_code                -- 事由コード
+       ,rsl.shipment_header_id          AS doc_id                     -- 文書ID
+       ,rsl.line_num                    AS doc_line                   -- 取引明細番号
+       ,ooha.attribute11                AS result_post                -- 成績部署
+       ,xola.unit_price                 AS unit_price                 -- 販売単価
+       ,oola.attribute3                 AS request_item_code          -- 依頼品目コード
+       ,xoha.deliver_to_id              AS deliver_to_id              -- 出荷先ID
+       ,DECODE(xlvv.meaning,
+                 '商品振替有償_受入',xicv3_a.item_id,                     -- 振替先品目ID
+                 '商品振替有償_出荷',xicv3_a.item_id,                     -- 振替先品目ID
+                 '商品振替有償_払出',xicv3_o.item_id) AS item_id          -- 振替元品目ID
+       ,DECODE(xlvv.meaning,
+                 '商品振替有償_受入',xicv3_a.item_class_code,             -- 振替先品目区分
+                 '商品振替有償_出荷',xicv3_a.item_class_code,             -- 振替先品目区分
+                 '商品振替有償_払出',xicv3_o.item_class_code) AS item_div -- 振替元品目区分
+       ,DECODE(xlvv.meaning,
+                 '商品振替有償_受入',xicv3_a.prod_class_code,             -- 振替先商品区分
+                 '商品振替有償_出荷',xicv3_a.prod_class_code,             -- 振替先商品区分
+                 '商品振替有償_払出',xicv3_o.prod_class_code) AS prod_div -- 振替元商品区分
+       ,DECODE(xlvv.meaning,
+                 '商品振替有償_受入',xicv3_a.crowd_code,                  -- 振替先郡
+                 '商品振替有償_出荷',xicv3_a.crowd_code,                  -- 振替先郡
+                 '商品振替有償_払出',xicv3_o.crowd_code) AS crowd_code    -- 振替元郡
+       ,DECODE(xlvv.meaning,
+                 '商品振替有償_受入',xicv3_a.acnt_crowd_code,             -- 振替先経理郡
+                 '商品振替有償_出荷',xicv3_a.acnt_crowd_code,             -- 振替先経理郡
+                 '商品振替有償_払出',xicv3_o.acnt_crowd_code) AS acnt_crowd_code -- 振替元経理郡
+ FROM   xxcmn_rcv_pay_mst        xrpm    -- 受払区分マスタ
+       ,rcv_shipment_lines       rsl     -- 受入明細
+       ,oe_order_headers_all     ooha    -- 受注ヘッダ
+       ,oe_order_lines_all       oola    -- 受注明細
+       ,oe_transaction_types_all otta    -- 受注タイプ
+       ,(SELECT
+           iimb.item_id AS item_id
+          ,iimb.item_no AS item_no
+          ,MAX( CASE
+                  WHEN mcst.category_set_name = '商品区分' THEN mcb.segment1
+                  ELSE NULL
+                END ) AS prod_class_code
+          ,MAX( CASE
+                  WHEN mcst.category_set_name = '品目区分' THEN mcb.segment1
+                  ELSE NULL
+                END ) AS item_class_code
+          ,MAX( CASE
+                  WHEN mcst.category_set_name = '群コード' THEN mcb.segment1
+                 ELSE NULL
+                END ) AS crowd_code
+          ,MAX( CASE
+                  WHEN mcst.category_set_name = '経理部用群コード' THEN mcb.segment1
+                  ELSE NULL
+                END ) AS acnt_crowd_code
+         FROM ic_item_mst_b          iimb
+             ,gmi_item_categories    gic
+             ,mtl_categories_b       mcb
+             ,mtl_category_sets_tl   mcst
+        WHERE gic.category_set_id   = mcst.category_set_id
+          AND gic.category_id       = mcb.category_id
+          AND mcst.language         = 'JA'
+          AND mcst.source_lang      = 'JA'
+          AND mcst.category_set_name IN ( '商品区分','品目区分','群コード','経理部用群コード' )
+          AND iimb.item_id          = gic.item_id
+          GROUP BY iimb.item_id
+                  ,iimb.item_no) xicv3_a
+       ,(SELECT
+           iimb.item_id AS item_id
+          ,iimb.item_no AS item_no
+          ,MAX( CASE
+                  WHEN mcst.category_set_name = '商品区分' THEN mcb.segment1
+                  ELSE NULL
+                END ) AS prod_class_code
+          ,MAX( CASE
+                  WHEN mcst.category_set_name = '品目区分' THEN mcb.segment1
+                  ELSE NULL
+                END ) AS item_class_code
+          ,MAX( CASE
+                  WHEN mcst.category_set_name = '群コード' THEN mcb.segment1
+                 ELSE NULL
+                END ) AS crowd_code
+          ,MAX( CASE
+                  WHEN mcst.category_set_name = '経理部用群コード' THEN mcb.segment1
+                  ELSE NULL
+                END ) AS acnt_crowd_code
+         FROM ic_item_mst_b          iimb
+             ,gmi_item_categories    gic
+             ,mtl_categories_b       mcb
+             ,mtl_category_sets_tl   mcst
+        WHERE gic.category_set_id   = mcst.category_set_id
+          AND gic.category_id       = mcb.category_id
+          AND mcst.language         = 'JA'
+          AND mcst.source_lang      = 'JA'
+          AND mcst.category_set_name IN ( '商品区分','品目区分','群コード','経理部用群コード' )
+          AND iimb.item_id          = gic.item_id
+          GROUP BY iimb.item_id
+                  ,iimb.item_no) xicv3_o
+       ,xxwsh_order_headers_all  xoha    -- 受注ヘッダアドオン
+       ,xxwsh_order_lines_all    xola    -- 受注明細アドオン
+       ,xxcmn_lookup_values_v    xlvv    -- クイックコードビューLOOKUP_CODE
+WHERE xrpm.doc_type             = 'PORC'
+  AND xrpm.source_document_code = 'RMA'
+  AND xlvv.lookup_type          = 'XXCMN_DEALINGS_DIV'
+  AND xlvv.meaning              IN ('商品振替有償_受入','商品振替有償_出荷','商品振替有償_払出')
+  AND xrpm.dealings_div           = xlvv.lookup_code
+  AND ooha.header_id              = rsl.oe_order_header_id
+  AND otta.transaction_type_id    = ooha.order_type_id
+  AND xoha.header_id              = ooha.header_id
+  AND oola.header_id              = ooha.header_id
+  AND oola.line_id                = rsl.oe_order_line_id
+  AND oola.line_id                = xola.line_id
+  AND xicv3_a.item_no             = xola.request_item_code
+  AND xicv3_o.item_no             = xola.shipping_item_code
+  AND xrpm.shipment_provision_div = otta.attribute1
+  AND ((otta.attribute4           <> '2')         -- 在庫調整以外
+      OR  (otta.attribute4       IS NULL))        -- 在庫調整以外
+  AND xrpm.ship_prov_rcv_pay_category = otta.attribute11
+  AND xrpm.item_div_ahead  IS NOT NULL
+  AND xrpm.item_div_origin IS NOT NULL
+  AND xrpm.prod_div_ahead  IS NOT NULL
+  AND xrpm.prod_div_origin IS NOT NULL
+  AND xrpm.item_div_ahead  = xicv3_a.item_class_code
+  AND xrpm.item_div_origin = xicv3_o.item_class_code
+  AND xrpm.prod_div_ahead  = xicv3_a.prod_class_code
+  AND xrpm.prod_div_origin = xicv3_o.prod_class_code
+--
+UNION
+--
+SELECT  xrpm.new_div_account            AS new_div_account            -- 新経理受払区分
+       ,xrpm.dealings_div               AS dealings_div               -- 取引区分
+       ,xrpm.rcv_pay_div                AS rcv_pay_div                -- 受払区分
+       ,xrpm.doc_type                   AS doc_type                   -- 文書タイプ
+       ,xrpm.source_document_code       AS source_document_code       -- ソース文書
+       ,xrpm.transaction_type           AS transaction_type           -- PO取引タイプ
+       ,xrpm.shipment_provision_div     AS shipment_provision_div     -- 出荷支給区分
+       ,xrpm.stock_adjustment_div       AS stock_adjustment_div       -- 在庫調整区分
+       ,xrpm.ship_prov_rcv_pay_category AS ship_prov_rcv_pay_category -- 出荷支給受払カテゴリ
+       ,xrpm.item_div_ahead             AS item_div_ahead             -- 品目区分（振替先）
+       ,xrpm.item_div_origin            AS item_div_origin            -- 品目区分（振替元）
+       ,xrpm.prod_div_ahead             AS prod_div_ahead             -- 商品区分（振替先）
+       ,xrpm.prod_div_origin            AS prod_div_origin            -- 商品区分（振替元）
+       ,xrpm.routing_class              AS routing_class              -- 工順区分
+       ,xrpm.line_type                  AS line_type                  -- ラインタイプ
+       ,xrpm.hit_in_div                 AS hit_in_div                 -- 打込区分
+       ,xrpm.reason_code                AS reason_code                -- 事由コード
+       ,rsl.shipment_header_id          AS doc_id                     -- 文書ID
+       ,rsl.line_num                    AS doc_line                   -- 取引明細番号
+       ,ooha.attribute11                AS result_post                -- 成績部署
+       ,xola.unit_price                 AS unit_price                 -- 販売単価
+       ,oola.attribute3                 AS request_item_code          -- 依頼品目コード
+       ,xoha.deliver_to_id              AS deliver_to_id              -- 出荷先ID
+       ,DECODE(xlvv.meaning,
+                 '振替出荷_受入_原',xicv3_a.item_id,                  -- 振替先品目ID
+                 '振替出荷_受入_半',xicv3_a.item_id,                  -- 振替先品目ID
+                 '振替出荷_出荷'   ,xicv3_a.item_id,                  -- 振替先品目ID
+                 '振替出荷_払出'   ,xicv3_o.item_id) AS item_id       -- 振替元品目ID
+       ,DECODE(xlvv.meaning,
+                 '振替出荷_受入_原',xicv3_a.item_class_code,          -- 振替先品目区分
+                 '振替出荷_受入_半',xicv3_a.item_class_code,          -- 振替先品目区分
+                 '振替出荷_出荷'   ,xicv3_a.item_class_code,          -- 振替先品目区分
+                 '振替出荷_払出'   ,xicv3_o.item_class_code) AS item_div -- 振替元品目区分
+       ,DECODE(xlvv.meaning,
+                 '振替出荷_受入_原',xicv3_a.prod_class_code,          -- 振替先商品区分
+                 '振替出荷_受入_半',xicv3_a.prod_class_code,          -- 振替先商品区分
+                 '振替出荷_出荷'   ,xicv3_a.prod_class_code,          -- 振替先商品区分
+                 '振替出荷_払出'   ,xicv3_o.prod_class_code) AS prod_div -- 振替元商品区分
+       ,DECODE(xlvv.meaning,
+                 '振替出荷_受入_原',xicv3_a.crowd_code,               -- 振替先郡
+                 '振替出荷_受入_半',xicv3_a.crowd_code,               -- 振替先郡
+                 '振替出荷_出荷'   ,xicv3_a.crowd_code,               -- 振替先郡
+                 '振替出荷_払出'   ,xicv3_o.crowd_code) AS crowd_code -- 振替元郡
+       ,DECODE(xlvv.meaning,
+                 '振替出荷_受入_原',xicv3_a.acnt_crowd_code,          -- 振替先経理郡
+                 '振替出荷_受入_半',xicv3_a.acnt_crowd_code,          -- 振替先経理郡
+                 '振替出荷_出荷'   ,xicv3_a.acnt_crowd_code,          -- 振替先経理郡
+                 '振替出荷_払出'   ,xicv3_o.acnt_crowd_code) AS acnt_crowd_code -- 振替元経理郡
+ FROM   xxcmn_rcv_pay_mst        xrpm    -- 受払区分マスタ
+       ,rcv_shipment_lines       rsl     -- 受入明細
+       ,oe_order_headers_all     ooha    -- 受注ヘッダ
+       ,oe_order_lines_all       oola    -- 受注明細
+       ,oe_transaction_types_all otta    -- 受注タイプ
+       ,(SELECT
+           iimb.item_id AS item_id
+          ,iimb.item_no AS item_no
+          ,MAX( CASE
+                  WHEN mcst.category_set_name = '商品区分' THEN mcb.segment1
+                  ELSE NULL
+                END ) AS prod_class_code
+          ,MAX( CASE
+                  WHEN mcst.category_set_name = '品目区分' THEN mcb.segment1
+                  ELSE NULL
+                END ) AS item_class_code
+          ,MAX( CASE
+                  WHEN mcst.category_set_name = '群コード' THEN mcb.segment1
+                 ELSE NULL
+                END ) AS crowd_code
+          ,MAX( CASE
+                  WHEN mcst.category_set_name = '経理部用群コード' THEN mcb.segment1
+                  ELSE NULL
+                END ) AS acnt_crowd_code
+         FROM ic_item_mst_b          iimb
+             ,gmi_item_categories    gic
+             ,mtl_categories_b       mcb
+             ,mtl_category_sets_tl   mcst
+        WHERE gic.category_set_id   = mcst.category_set_id
+          AND gic.category_id       = mcb.category_id
+          AND mcst.language         = 'JA'
+          AND mcst.source_lang      = 'JA'
+          AND mcst.category_set_name IN ( '商品区分','品目区分','群コード','経理部用群コード' )
+          AND iimb.item_id          = gic.item_id
+          GROUP BY iimb.item_id
+                  ,iimb.item_no) xicv3_a
+       ,(SELECT
+           iimb.item_id AS item_id
+          ,iimb.item_no AS item_no
+          ,MAX( CASE
+                  WHEN mcst.category_set_name = '商品区分' THEN mcb.segment1
+                  ELSE NULL
+                END ) AS prod_class_code
+          ,MAX( CASE
+                  WHEN mcst.category_set_name = '品目区分' THEN mcb.segment1
+                  ELSE NULL
+                END ) AS item_class_code
+          ,MAX( CASE
+                  WHEN mcst.category_set_name = '群コード' THEN mcb.segment1
+                 ELSE NULL
+                END ) AS crowd_code
+          ,MAX( CASE
+                  WHEN mcst.category_set_name = '経理部用群コード' THEN mcb.segment1
+                  ELSE NULL
+                END ) AS acnt_crowd_code
+         FROM ic_item_mst_b          iimb
+             ,gmi_item_categories    gic
+             ,mtl_categories_b       mcb
+             ,mtl_category_sets_tl   mcst
+        WHERE gic.category_set_id   = mcst.category_set_id
+          AND gic.category_id       = mcb.category_id
+          AND mcst.language         = 'JA'
+          AND mcst.source_lang      = 'JA'
+          AND mcst.category_set_name IN ( '商品区分','品目区分','群コード','経理部用群コード' )
+          AND iimb.item_id          = gic.item_id
+          GROUP BY iimb.item_id
+                  ,iimb.item_no) xicv3_o
+       ,xxwsh_order_headers_all  xoha    -- 受注ヘッダアドオン
+       ,xxwsh_order_lines_all    xola    -- 受注明細アドオン
+       ,xxcmn_lookup_values_v    xlvv    -- クイックコードビューLOOKUP_CODE
+WHERE xrpm.doc_type             = 'PORC'
+  AND xrpm.source_document_code = 'RMA'
+  AND xlvv.lookup_type          = 'XXCMN_DEALINGS_DIV'
+  AND xlvv.meaning              IN ('振替出荷_受入_原','振替出荷_受入_半',
+                                    '振替出荷_出荷','振替出荷_払出')
+  AND xrpm.dealings_div           = xlvv.lookup_code
+  AND ooha.header_id              = rsl.oe_order_header_id
+  AND otta.transaction_type_id    = ooha.order_type_id
+  AND xoha.header_id              = ooha.header_id
+  AND oola.header_id              = ooha.header_id
+  AND oola.line_id                = rsl.oe_order_line_id
+  AND oola.line_id                = xola.line_id
+  AND xicv3_a.item_no             = xola.request_item_code
+  AND xicv3_o.item_no             = xola.shipping_item_code
+  AND xrpm.shipment_provision_div = otta.attribute1
+  AND ((otta.attribute4           <> '2')         -- 在庫調整以外
+      OR  (otta.attribute4       IS NULL))        -- 在庫調整以外
+  AND xrpm.item_div_ahead  IS NOT NULL
+  AND xrpm.item_div_origin IS NULL
+  AND xrpm.prod_div_ahead  IS NULL
+  AND xrpm.prod_div_origin IS NULL
+  AND xrpm.item_div_ahead  = xicv3_a.item_class_code
+  AND xicv3_o.item_class_code     <> '5'   -- 製品以外
+--
+UNION
+--
+SELECT  xrpm.new_div_account            AS new_div_account            -- 新経理受払区分
+       ,xrpm.dealings_div               AS dealings_div               -- 取引区分
+       ,xrpm.rcv_pay_div                AS rcv_pay_div                -- 受払区分
+       ,xrpm.doc_type                   AS doc_type                   -- 文書タイプ
+       ,xrpm.source_document_code       AS source_document_code       -- ソース文書
+       ,xrpm.transaction_type           AS transaction_type           -- PO取引タイプ
+       ,xrpm.shipment_provision_div     AS shipment_provision_div     -- 出荷支給区分
+       ,xrpm.stock_adjustment_div       AS stock_adjustment_div       -- 在庫調整区分
+       ,xrpm.ship_prov_rcv_pay_category AS ship_prov_rcv_pay_category -- 出荷支給受払カテゴリ
+       ,xrpm.item_div_ahead             AS item_div_ahead             -- 品目区分（振替先）
+       ,xrpm.item_div_origin            AS item_div_origin            -- 品目区分（振替元）
+       ,xrpm.prod_div_ahead             AS prod_div_ahead             -- 商品区分（振替先）
+       ,xrpm.prod_div_origin            AS prod_div_origin            -- 商品区分（振替元）
+       ,xrpm.routing_class              AS routing_class              -- 工順区分
+       ,xrpm.line_type                  AS line_type                  -- ラインタイプ
+       ,xrpm.hit_in_div                 AS hit_in_div                 -- 打込区分
+       ,xrpm.reason_code                AS reason_code                -- 事由コード
+       ,rsl.shipment_header_id          AS doc_id                     -- 文書ID
+       ,rsl.line_num                    AS doc_line                   -- 取引明細番号
+       ,ooha.attribute11                AS result_post                -- 成績部署
+       ,xola.unit_price                 AS unit_price                 -- 販売単価
+       ,oola.attribute3                 AS request_item_code          -- 依頼品目コード
+       ,xoha.deliver_to_id              AS deliver_to_id              -- 出荷先ID
+       ,DECODE(xlvv.meaning,
+                 '振替出荷_受入_原',xicv3_a.item_id,                  -- 振替先品目ID
+                 '振替出荷_受入_半',xicv3_a.item_id,                  -- 振替先品目ID
+                 '振替出荷_出荷'   ,xicv3_a.item_id,                  -- 振替先品目ID
+                 '振替出荷_払出'   ,xicv3_o.item_id) AS item_id       -- 振替元品目ID
+       ,DECODE(xlvv.meaning,
+                 '振替出荷_受入_原',xicv3_a.item_class_code,          -- 振替先品目区分
+                 '振替出荷_受入_半',xicv3_a.item_class_code,          -- 振替先品目区分
+                 '振替出荷_出荷'   ,xicv3_a.item_class_code,          -- 振替先品目区分
+                 '振替出荷_払出'   ,xicv3_o.item_class_code) AS item_div -- 振替元品目区分
+       ,DECODE(xlvv.meaning,
+                 '振替出荷_受入_原',xicv3_a.prod_class_code,          -- 振替先商品区分
+                 '振替出荷_受入_半',xicv3_a.prod_class_code,          -- 振替先商品区分
+                 '振替出荷_出荷'   ,xicv3_a.prod_class_code,          -- 振替先商品区分
+                 '振替出荷_払出'   ,xicv3_o.prod_class_code) AS prod_div -- 振替元商品区分
+       ,DECODE(xlvv.meaning,
+                 '振替出荷_受入_原',xicv3_a.crowd_code,               -- 振替先郡
+                 '振替出荷_受入_半',xicv3_a.crowd_code,               -- 振替先郡
+                 '振替出荷_出荷'   ,xicv3_a.crowd_code,               -- 振替先郡
+                 '振替出荷_払出'   ,xicv3_o.crowd_code) AS crowd_code -- 振替元郡
+       ,DECODE(xlvv.meaning,
+                 '振替出荷_受入_原',xicv3_a.acnt_crowd_code,          -- 振替先経理郡
+                 '振替出荷_受入_半',xicv3_a.acnt_crowd_code,          -- 振替先経理郡
+                 '振替出荷_出荷'   ,xicv3_a.acnt_crowd_code,          -- 振替先経理郡
+                 '振替出荷_払出'   ,xicv3_o.acnt_crowd_code) AS acnt_crowd_code -- 振替元経理郡
+ FROM   xxcmn_rcv_pay_mst        xrpm    -- 受払区分マスタ
+       ,rcv_shipment_lines       rsl     -- 受入明細
+       ,oe_order_headers_all     ooha    -- 受注ヘッダ
+       ,oe_order_lines_all       oola    -- 受注明細
+       ,oe_transaction_types_all otta    -- 受注タイプ
+       ,(SELECT
+           iimb.item_id AS item_id
+          ,iimb.item_no AS item_no
+          ,MAX( CASE
+                  WHEN mcst.category_set_name = '商品区分' THEN mcb.segment1
+                  ELSE NULL
+                END ) AS prod_class_code
+          ,MAX( CASE
+                  WHEN mcst.category_set_name = '品目区分' THEN mcb.segment1
+                  ELSE NULL
+                END ) AS item_class_code
+          ,MAX( CASE
+                  WHEN mcst.category_set_name = '群コード' THEN mcb.segment1
+                 ELSE NULL
+                END ) AS crowd_code
+          ,MAX( CASE
+                  WHEN mcst.category_set_name = '経理部用群コード' THEN mcb.segment1
+                  ELSE NULL
+                END ) AS acnt_crowd_code
+         FROM ic_item_mst_b          iimb
+             ,gmi_item_categories    gic
+             ,mtl_categories_b       mcb
+             ,mtl_category_sets_tl   mcst
+        WHERE gic.category_set_id   = mcst.category_set_id
+          AND gic.category_id       = mcb.category_id
+          AND mcst.language         = 'JA'
+          AND mcst.source_lang      = 'JA'
+          AND mcst.category_set_name IN ( '商品区分','品目区分','群コード','経理部用群コード' )
+          AND iimb.item_id          = gic.item_id
+          GROUP BY iimb.item_id
+                  ,iimb.item_no) xicv3_a
+       ,(SELECT
+           iimb.item_id AS item_id
+          ,iimb.item_no AS item_no
+          ,MAX( CASE
+                  WHEN mcst.category_set_name = '商品区分' THEN mcb.segment1
+                  ELSE NULL
+                END ) AS prod_class_code
+          ,MAX( CASE
+                  WHEN mcst.category_set_name = '品目区分' THEN mcb.segment1
+                  ELSE NULL
+                END ) AS item_class_code
+          ,MAX( CASE
+                  WHEN mcst.category_set_name = '群コード' THEN mcb.segment1
+                 ELSE NULL
+                END ) AS crowd_code
+          ,MAX( CASE
+                  WHEN mcst.category_set_name = '経理部用群コード' THEN mcb.segment1
+                  ELSE NULL
+                END ) AS acnt_crowd_code
+         FROM ic_item_mst_b          iimb
+             ,gmi_item_categories    gic
+             ,mtl_categories_b       mcb
+             ,mtl_category_sets_tl   mcst
+        WHERE gic.category_set_id   = mcst.category_set_id
+          AND gic.category_id       = mcb.category_id
+          AND mcst.language         = 'JA'
+          AND mcst.source_lang      = 'JA'
+          AND mcst.category_set_name IN ( '商品区分','品目区分','群コード','経理部用群コード' )
+          AND iimb.item_id          = gic.item_id
+          GROUP BY iimb.item_id
+                  ,iimb.item_no) xicv3_o
+       ,xxwsh_order_headers_all  xoha    -- 受注ヘッダアドオン
+       ,xxwsh_order_lines_all    xola    -- 受注明細アドオン
+       ,xxcmn_lookup_values_v    xlvv    -- クイックコードビューLOOKUP_CODE
+WHERE xrpm.doc_type             = 'PORC'
+  AND xrpm.source_document_code = 'RMA'
+  AND xlvv.lookup_type          = 'XXCMN_DEALINGS_DIV'
+  AND xlvv.meaning              IN ('振替出荷_受入_原','振替出荷_受入_半',
+                                    '振替出荷_出荷','振替出荷_払出')
+  AND xrpm.dealings_div           = xlvv.lookup_code
+  AND ooha.header_id              = rsl.oe_order_header_id
+  AND otta.transaction_type_id    = ooha.order_type_id
+  AND xoha.header_id              = ooha.header_id
+  AND oola.header_id              = ooha.header_id
+  AND oola.line_id                = rsl.oe_order_line_id
+  AND oola.line_id                = xola.line_id
+  AND xicv3_a.item_no             = xola.request_item_code
+  AND xicv3_o.item_no             = xola.shipping_item_code
+  AND xrpm.shipment_provision_div = otta.attribute1
+  AND ((otta.attribute4           <> '2')         -- 在庫調整以外
+      OR  (otta.attribute4       IS NULL))        -- 在庫調整以外
+  AND xrpm.item_div_ahead  IS NOT NULL
+  AND xrpm.item_div_origin IS NOT NULL
+  AND xrpm.prod_div_ahead  IS NULL
+  AND xrpm.prod_div_origin IS NULL
+  AND xrpm.item_div_ahead  = xicv3_a.item_class_code
+  AND xrpm.item_div_origin = xicv3_o.item_class_code
+--
+UNION
+--
+SELECT  xrpm.new_div_account            AS new_div_account            -- 新経理受払区分
+       ,xrpm.dealings_div               AS dealings_div               -- 取引区分
+       ,xrpm.rcv_pay_div                AS rcv_pay_div                -- 受払区分
+       ,xrpm.doc_type                   AS doc_type                   -- 文書タイプ
+       ,xrpm.source_document_code       AS source_document_code       -- ソース文書
+       ,xrpm.transaction_type           AS transaction_type           -- PO取引タイプ
+       ,xrpm.shipment_provision_div     AS shipment_provision_div     -- 出荷支給区分
+       ,xrpm.stock_adjustment_div       AS stock_adjustment_div       -- 在庫調整区分
+       ,xrpm.ship_prov_rcv_pay_category AS ship_prov_rcv_pay_category -- 出荷支給受払カテゴリ
+       ,xrpm.item_div_ahead             AS item_div_ahead             -- 品目区分（振替先）
+       ,xrpm.item_div_origin            AS item_div_origin            -- 品目区分（振替元）
+       ,xrpm.prod_div_ahead             AS prod_div_ahead             -- 商品区分（振替先）
+       ,xrpm.prod_div_origin            AS prod_div_origin            -- 商品区分（振替元）
+       ,xrpm.routing_class              AS routing_class              -- 工順区分
+       ,xrpm.line_type                  AS line_type                  -- ラインタイプ
+       ,xrpm.hit_in_div                 AS hit_in_div                 -- 打込区分
+       ,xrpm.reason_code                AS reason_code                -- 事由コード
+       ,rsl.shipment_header_id          AS doc_id                     -- 文書ID
+       ,rsl.line_num                    AS doc_line                   -- 取引明細番号
+       ,ooha.attribute11                AS result_post                -- 成績部署
+       ,xola.unit_price                 AS unit_price                 -- 販売単価
+       ,oola.attribute3                 AS request_item_code          -- 依頼品目コード
+       ,xoha.deliver_to_id              AS deliver_to_id              -- 出荷先ID
+       ,NULL                            AS item_id                    -- 品目ID
+       ,xicv3.item_class_code           AS item_div                   -- 品目区分
+       ,xicv3.prod_class_code           AS prod_div                   -- 商品区分
+       ,xicv3.crowd_code                AS crowd_code                 -- 郡
+       ,xicv3.acnt_crowd_code           AS acnt_crowd_code            -- 経理郡
+ FROM   xxcmn_rcv_pay_mst        xrpm    -- 受払区分マスタ
+       ,rcv_shipment_lines       rsl     -- 受入明細
+       ,oe_order_headers_all     ooha    -- 受注ヘッダ
+       ,oe_order_lines_all       oola    -- 受注明細
+       ,oe_transaction_types_all otta    -- 受注タイプ
+       ,(SELECT
+           iimb.item_id AS item_id
+          ,iimb.item_no AS item_no
+          ,MAX( CASE
+                  WHEN mcst.category_set_name = '商品区分' THEN mcb.segment1
+                  ELSE NULL
+                END ) AS prod_class_code
+          ,MAX( CASE
+                  WHEN mcst.category_set_name = '品目区分' THEN mcb.segment1
+                  ELSE NULL
+                END ) AS item_class_code
+          ,MAX( CASE
+                  WHEN mcst.category_set_name = '群コード' THEN mcb.segment1
+                 ELSE NULL
+                END ) AS crowd_code
+          ,MAX( CASE
+                  WHEN mcst.category_set_name = '経理部用群コード' THEN mcb.segment1
+                  ELSE NULL
+                END ) AS acnt_crowd_code
+         FROM ic_item_mst_b          iimb
+             ,gmi_item_categories    gic
+             ,mtl_categories_b       mcb
+             ,mtl_category_sets_tl   mcst
+        WHERE gic.category_set_id   = mcst.category_set_id
+          AND gic.category_id       = mcb.category_id
+          AND mcst.language         = 'JA'
+          AND mcst.source_lang      = 'JA'
+          AND mcst.category_set_name IN ( '商品区分','品目区分','群コード','経理部用群コード' )
+          AND iimb.item_id          = gic.item_id
+          GROUP BY iimb.item_id
+                  ,iimb.item_no) xicv3
+       ,xxwsh_order_headers_all  xoha    -- 受注ヘッダアドオン
+       ,xxwsh_order_lines_all    xola    -- 受注明細アドオン
+       ,xxcmn_lookup_values_v    xlvv    -- クイックコードビューLOOKUP_CODE
+WHERE xrpm.doc_type                   = 'PORC'
+  AND xrpm.source_document_code       = 'RMA'
+  AND xlvv.lookup_type                = 'XXCMN_DEALINGS_DIV'
+  AND xlvv.meaning                    IN ('倉替','返品')
+  AND xrpm.dealings_div               = xlvv.lookup_code
+  AND ooha.header_id                  = rsl.oe_order_header_id
+  AND otta.transaction_type_id        = ooha.order_type_id
+  AND xoha.header_id                  = ooha.header_id
+  AND oola.header_id                  = ooha.header_id
+  AND oola.line_id                    = rsl.oe_order_line_id
+  AND oola.line_id                    = xola.line_id
+  AND xicv3.item_no                   = xola.shipping_item_code
+  AND xrpm.shipment_provision_div     = otta.attribute1
+  AND ((otta.attribute4               <> '2')         -- 在庫調整以外
+      OR  (otta.attribute4            IS NULL))       -- 在庫調整以外
+  AND xrpm.ship_prov_rcv_pay_category = otta.attribute11
+--
+UNION
+--
+SELECT  xrpm.new_div_account            AS new_div_account            -- 新経理受払区分
+       ,xrpm.dealings_div               AS dealings_div               -- 取引区分
+       ,xrpm.rcv_pay_div                AS rcv_pay_div                -- 受払区分
+       ,xrpm.doc_type                   AS doc_type                   -- 文書タイプ
+       ,xrpm.source_document_code       AS source_document_code       -- ソース文書
+       ,xrpm.transaction_type           AS transaction_type           -- PO取引タイプ
+       ,xrpm.shipment_provision_div     AS shipment_provision_div     -- 出荷支給区分
+       ,xrpm.stock_adjustment_div       AS stock_adjustment_div       -- 在庫調整区分
+       ,xrpm.ship_prov_rcv_pay_category AS ship_prov_rcv_pay_category -- 出荷支給受払カテゴリ
+       ,xrpm.item_div_ahead             AS item_div_ahead             -- 品目区分（振替先）
+       ,xrpm.item_div_origin            AS item_div_origin            -- 品目区分（振替元）
+       ,xrpm.prod_div_ahead             AS prod_div_ahead             -- 商品区分（振替先）
+       ,xrpm.prod_div_origin            AS prod_div_origin            -- 商品区分（振替元）
+       ,xrpm.routing_class              AS routing_class              -- 工順区分
+       ,xrpm.line_type                  AS line_type                  -- ラインタイプ
+       ,xrpm.hit_in_div                 AS hit_in_div                 -- 打込区分
+       ,xrpm.reason_code                AS reason_code                -- 事由コード
+       ,rsl.shipment_header_id          AS doc_id                     -- 文書ID
+       ,rsl.line_num                    AS doc_line                   -- 取引明細番号
+       ,ooha.attribute11                AS result_post                -- 成績部署
+       ,xola.unit_price                 AS unit_price                 -- 販売単価
+       ,oola.attribute3                 AS request_item_code          -- 依頼品目コード
+       ,xoha.deliver_to_id              AS deliver_to_id              -- 出荷先ID
+       ,NULL                            AS item_id                    -- 品目ID
+       ,xicv3.item_class_code           AS item_div                   -- 品目区分
+       ,xicv3.prod_class_code           AS prod_div                   -- 商品区分
+       ,xicv3.crowd_code                AS crowd_code                 -- 郡
+       ,xicv3.acnt_crowd_code           AS acnt_crowd_code            -- 経理郡
+ FROM   xxcmn_rcv_pay_mst        xrpm    -- 受払区分マスタ
+       ,rcv_shipment_lines       rsl     -- 受入明細
+       ,oe_order_headers_all     ooha    -- 受注ヘッダ
+       ,oe_order_lines_all       oola    -- 受注明細
+       ,oe_transaction_types_all otta    -- 受注タイプ
+       ,(SELECT
+           iimb.item_id AS item_id
+          ,iimb.item_no AS item_no
+          ,MAX( CASE
+                  WHEN mcst.category_set_name = '商品区分' THEN mcb.segment1
+                  ELSE NULL
+                END ) AS prod_class_code
+          ,MAX( CASE
+                  WHEN mcst.category_set_name = '品目区分' THEN mcb.segment1
+                  ELSE NULL
+                END ) AS item_class_code
+          ,MAX( CASE
+                  WHEN mcst.category_set_name = '群コード' THEN mcb.segment1
+                 ELSE NULL
+                END ) AS crowd_code
+          ,MAX( CASE
+                  WHEN mcst.category_set_name = '経理部用群コード' THEN mcb.segment1
+                  ELSE NULL
+                END ) AS acnt_crowd_code
+         FROM ic_item_mst_b          iimb
+             ,gmi_item_categories    gic
+             ,mtl_categories_b       mcb
+             ,mtl_category_sets_tl   mcst
+        WHERE gic.category_set_id   = mcst.category_set_id
+          AND gic.category_id       = mcb.category_id
+          AND mcst.language         = 'JA'
+          AND mcst.source_lang      = 'JA'
+          AND mcst.category_set_name IN ( '商品区分','品目区分','群コード','経理部用群コード' )
+          AND iimb.item_id          = gic.item_id
+          GROUP BY iimb.item_id
+                  ,iimb.item_no) xicv3
+       ,xxwsh_order_headers_all  xoha    -- 受注ヘッダアドオン
+       ,xxwsh_order_lines_all    xola    -- 受注明細アドオン
+       ,xxcmn_lookup_values_v    xlvv    -- クイックコードビューLOOKUP_CODE
+WHERE xrpm.doc_type                   = 'PORC'
+  AND xrpm.source_document_code       = 'RMA'
+  AND xlvv.lookup_type                = 'XXCMN_DEALINGS_DIV'
+  AND xlvv.meaning                    IN ('見本出庫','廃却出庫')
+  AND xrpm.dealings_div               = xlvv.lookup_code
+  AND ooha.header_id                  = rsl.oe_order_header_ID
+  AND otta.transaction_type_id        = ooha.order_type_id
+  AND xoha.header_id                  = ooha.header_id
+  AND oola.header_id                  = ooha.header_id
+  AND oola.line_id                    = rsl.oe_order_line_iD
+  AND oola.line_id                    = xola.line_id
+  AND xicv3.item_no                   = xola.shipping_item_code
+  AND xrpm.stock_adjustment_div       = otta.attribute4
+  AND xrpm.ship_prov_rcv_pay_category = otta.attribute11
+/
+COMMENT ON TABLE XXCMN_RCV_PAY_MST_PORC_RMA_V IS '経理受払区分情報VIEW_購買関連_出荷'
+/
+COMMENT ON COLUMN XXCMN_RCV_PAY_MST_PORC_RMA_V.NEW_DIV_ACCOUNT IS '新経理受払区分'
+/
+COMMENT ON COLUMN XXCMN_RCV_PAY_MST_PORC_RMA_V.DEALINGS_DIV IS '取引区分'
+/
+COMMENT ON COLUMN XXCMN_RCV_PAY_MST_PORC_RMA_V.RCV_PAY_DIV IS '受払区分'
+/
+COMMENT ON COLUMN XXCMN_RCV_PAY_MST_PORC_RMA_V.DOC_TYPE IS '文書タイプ'
+/
+COMMENT ON COLUMN XXCMN_RCV_PAY_MST_PORC_RMA_V.SOURCE_DOCUMENT_CODE IS 'ソース文書'
+/
+COMMENT ON COLUMN XXCMN_RCV_PAY_MST_PORC_RMA_V.TRANSACTION_TYPE IS 'PO取引タイプ'
+/
+COMMENT ON COLUMN XXCMN_RCV_PAY_MST_PORC_RMA_V.SHIPMENT_PROVISION_DIV IS '出荷支給区分'
+/
+COMMENT ON COLUMN XXCMN_RCV_PAY_MST_PORC_RMA_V.STOCK_ADJUSTMENT_DIV IS '在庫調整区分'
+/
+COMMENT ON COLUMN XXCMN_RCV_PAY_MST_PORC_RMA_V.SHIP_PROV_RCV_PAY_CATEGORY IS '出荷支給受払カテゴリ'
+/
+COMMENT ON COLUMN XXCMN_RCV_PAY_MST_PORC_RMA_V.ITEM_DIV_AHEAD IS '品目区分（振替先）'
+/
+COMMENT ON COLUMN XXCMN_RCV_PAY_MST_PORC_RMA_V.ITEM_DIV_ORIGIN IS '品目区分（振替元）'
+/
+COMMENT ON COLUMN XXCMN_RCV_PAY_MST_PORC_RMA_V.PROD_DIV_AHEAD IS '商品区分（振替先）'
+/
+COMMENT ON COLUMN XXCMN_RCV_PAY_MST_PORC_RMA_V.PROD_DIV_ORIGIN IS '商品区分（振替元）'
+/
+COMMENT ON COLUMN XXCMN_RCV_PAY_MST_PORC_RMA_V.ROUTING_CLASS IS '工順区分'
+/
+COMMENT ON COLUMN XXCMN_RCV_PAY_MST_PORC_RMA_V.LINE_TYPE IS 'ラインタイプ'
+/
+COMMENT ON COLUMN XXCMN_RCV_PAY_MST_PORC_RMA_V.HIT_IN_DIV IS '打込区分'
+/
+COMMENT ON COLUMN XXCMN_RCV_PAY_MST_PORC_RMA_V.REASON_CODE IS '事由コード'
+/
+COMMENT ON COLUMN XXCMN_RCV_PAY_MST_PORC_RMA_V.DOC_ID   IS '文書ID'
+/
+COMMENT ON COLUMN XXCMN_RCV_PAY_MST_PORC_RMA_V.DOC_LINE IS '取引明細番号'
+/
+COMMENT ON COLUMN XXCMN_RCV_PAY_MST_PORC_RMA_V.RESULT_POST IS '成績部署'
+/
+COMMENT ON COLUMN XXCMN_RCV_PAY_MST_PORC_RMA_V.UNIT_PRICE IS '販売単価'
+/
+COMMENT ON COLUMN XXCMN_RCV_PAY_MST_PORC_RMA_V.REQUEST_ITEM_CODE IS '依頼品目コード'
+/
+COMMENT ON COLUMN XXCMN_RCV_PAY_MST_PORC_RMA_V.DELIVER_TO_ID IS '出荷先ID'
+/
+COMMENT ON COLUMN XXCMN_RCV_PAY_MST_PORC_RMA_V.ITEM_ID IS '品目ID'
+/
+COMMENT ON COLUMN XXCMN_RCV_PAY_MST_PORC_RMA_V.ITEM_DIV IS '品目区分'
+/
+COMMENT ON COLUMN XXCMN_RCV_PAY_MST_PORC_RMA_V.PROD_DIV IS '商品区分'
+/
+COMMENT ON COLUMN XXCMN_RCV_PAY_MST_PORC_RMA_V.CROWD_CODE IS '郡'
+/
+COMMENT ON COLUMN XXCMN_RCV_PAY_MST_PORC_RMA_V.ACNT_CROWD_CODE IS '経理郡'
+/

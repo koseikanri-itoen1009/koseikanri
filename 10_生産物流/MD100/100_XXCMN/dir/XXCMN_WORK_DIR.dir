@@ -1,0 +1,1 @@
+CREATE DIRECTORY xxcmn_work_dir AS '/home/ebsdev02/work';

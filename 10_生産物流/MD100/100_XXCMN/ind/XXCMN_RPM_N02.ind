@@ -1,0 +1,1 @@
+CREATE INDEX xxcmn.xxcmn_rpm_n02 ON xxcmn.xxcmn_rcv_pay_mst(doc_type,source_document_code,shipment_provision_div,stock_adjustment_div,item_div_ahead,item_div_origin,prod_div_ahead,prod_div_origin,ship_prov_rcv_pay_category) TABLESPACE xxidx;

@@ -1,0 +1,68 @@
+CREATE TABLE xxcmn.xxcmn_rcv_pay_mst
+(
+  new_div_invent                VARCHAR2(3)
+ ,use_div_invent                VARCHAR2(3)
+ ,use_div_invent_rep            VARCHAR2(3)
+ ,use_div_invent_dis            VARCHAR2(3)
+ ,new_div_account               VARCHAR2(3)
+ ,dealings_div                  VARCHAR2(3)
+ ,rcv_pay_div                   VARCHAR2(3)
+ ,doc_type                      VARCHAR2(4)
+ ,source_document_code          VARCHAR2(25)
+ ,transaction_type              VARCHAR2(25)
+ ,shipment_provision_div        VARCHAR2(1)
+ ,stock_adjustment_div          VARCHAR2(1)
+ ,ship_prov_rcv_pay_category    VARCHAR2(2)
+ ,item_div_ahead                VARCHAR2(1)
+ ,item_div_origin               VARCHAR2(1)
+ ,prod_div_ahead                VARCHAR2(1)
+ ,prod_div_origin               VARCHAR2(1)
+ ,routing_class                 VARCHAR2(4)
+ ,line_type                     NUMBER(5)
+ ,hit_in_div                    VARCHAR2(1)
+ ,reason_code                   VARCHAR2(4)
+ ,lot_status                    VARCHAR2(4)
+ ,created_by                    NUMBER(15)
+ ,creation_date                 DATE
+ ,last_updated_by               NUMBER(15)
+ ,last_update_date              DATE
+ ,last_update_login             NUMBER(15)
+ ,request_id                    NUMBER(15)
+ ,program_application_id        NUMBER(15)
+ ,program_id                    NUMBER(15)
+ ,program_update_date           DATE
+);
+--
+COMMENT ON COLUMN xxcmn.xxcmn_rcv_pay_mst.new_div_invent                IS '新区分（在庫用）' ;
+COMMENT ON COLUMN xxcmn.xxcmn_rcv_pay_mst.use_div_invent                IS '在庫使用区分' ;
+COMMENT ON COLUMN xxcmn.xxcmn_rcv_pay_mst.use_div_invent_rep            IS '在庫使用帳票区分' ;
+COMMENT ON COLUMN xxcmn.xxcmn_rcv_pay_mst.use_div_invent_dis            IS '在庫使用画面区分' ;
+COMMENT ON COLUMN xxcmn.xxcmn_rcv_pay_mst.new_div_account               IS '新経理受払区分' ;
+COMMENT ON COLUMN xxcmn.xxcmn_rcv_pay_mst.dealings_div                  IS '取引区分' ;
+COMMENT ON COLUMN xxcmn.xxcmn_rcv_pay_mst.rcv_pay_div                   IS '受払区分' ;
+COMMENT ON COLUMN xxcmn.xxcmn_rcv_pay_mst.doc_type                      IS '文書タイプ' ;
+COMMENT ON COLUMN xxcmn.xxcmn_rcv_pay_mst.source_document_code          IS 'ソース文書' ;
+COMMENT ON COLUMN xxcmn.xxcmn_rcv_pay_mst.transaction_type              IS 'PO取引タイプ' ;
+COMMENT ON COLUMN xxcmn.xxcmn_rcv_pay_mst.shipment_provision_div        IS '出荷支給区分' ;
+COMMENT ON COLUMN xxcmn.xxcmn_rcv_pay_mst.stock_adjustment_div          IS '在庫調整区分' ;
+COMMENT ON COLUMN xxcmn.xxcmn_rcv_pay_mst.ship_prov_rcv_pay_category    IS '出荷支給受払カテゴリ' ;
+COMMENT ON COLUMN xxcmn.xxcmn_rcv_pay_mst.item_div_ahead                IS '品目区分（振替先）' ;
+COMMENT ON COLUMN xxcmn.xxcmn_rcv_pay_mst.item_div_origin               IS '品目区分（振替元）' ;
+COMMENT ON COLUMN xxcmn.xxcmn_rcv_pay_mst.prod_div_ahead                IS '商品区分（振替先）' ;
+COMMENT ON COLUMN xxcmn.xxcmn_rcv_pay_mst.prod_div_origin               IS '商品区分（振替元）' ;
+COMMENT ON COLUMN xxcmn.xxcmn_rcv_pay_mst.routing_class                 IS '工順区分' ;
+COMMENT ON COLUMN xxcmn.xxcmn_rcv_pay_mst.line_type                     IS 'ラインタイプ' ;
+COMMENT ON COLUMN xxcmn.xxcmn_rcv_pay_mst.hit_in_div                    IS '打込区分' ;
+COMMENT ON COLUMN xxcmn.xxcmn_rcv_pay_mst.reason_code                   IS '事由コード' ;
+COMMENT ON COLUMN xxcmn.xxcmn_rcv_pay_mst.lot_status                    IS 'ステータス' ;
+COMMENT ON COLUMN xxcmn.xxcmn_rcv_pay_mst.created_by                    IS '作成者' ;
+COMMENT ON COLUMN xxcmn.xxcmn_rcv_pay_mst.creation_date                 IS '作成日' ;
+COMMENT ON COLUMN xxcmn.xxcmn_rcv_pay_mst.last_updated_by               IS '最終更新者' ;
+COMMENT ON COLUMN xxcmn.xxcmn_rcv_pay_mst.last_update_date              IS '最終更新日' ;
+COMMENT ON COLUMN xxcmn.xxcmn_rcv_pay_mst.last_update_login             IS '最終更新ログイン' ;
+COMMENT ON COLUMN xxcmn.xxcmn_rcv_pay_mst.request_id                    IS '要求ID' ;
+COMMENT ON COLUMN xxcmn.xxcmn_rcv_pay_mst.program_application_id        IS 'コンカレント・プログラムのアプリケーションID' ;
+COMMENT ON COLUMN xxcmn.xxcmn_rcv_pay_mst.program_id                    IS 'コンカレント・プログラムID' ;
+COMMENT ON COLUMN xxcmn.xxcmn_rcv_pay_mst.program_update_date           IS 'プログラムによる更新日' ;
+--
+COMMENT ON TABLE  xxcmn.xxcmn_rcv_pay_mst IS '受払区分アドオンマスタ' ;
