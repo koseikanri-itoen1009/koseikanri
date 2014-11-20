@@ -32,6 +32,7 @@ AS
  *  2008/11/11    1.00 SCS 松尾 泰生    初回作成
  *  2009/04/20    1.01 SCS 萱原 伸哉    障害T1_0564対応 税差額計算処理
  *  2009/07/13    1.02 SCS 廣瀬 真佐人  障害0000344対応 パフォーマンス改善
+ *  2009/07/21    1.03 SCS 松尾 泰生    障害0000819対応 一意制約エラー対応
  *
  *****************************************************************************************/
 --
@@ -126,6 +127,9 @@ AS
   cv_msg_cfr_00017  CONSTANT VARCHAR2(20) := 'APP-XXCFR1-00017'; --データ更新エラーメッセージ
   cv_msg_cfr_00031  CONSTANT VARCHAR2(20) := 'APP-XXCFR1-00031'; --顧客マスタ登録不備エラーメッセージ
   cv_msg_cfr_00065  CONSTANT VARCHAR2(20) := 'APP-XXCFR1-00065'; --請求先顧客コードメッセージ
+-- Modify 2009.07.21 Ver1.03 start
+  cv_msg_cfr_00077  CONSTANT VARCHAR2(20) := 'APP-XXCFR1-00077'; --一意制約エラーメッセージ
+-- Modify 2009.07.21 Ver1.03 end
 --
   -- 日本語辞書参照コード
   cv_dict_cfr_00000002  CONSTANT VARCHAR2(20) := 'CFR000A00002'; -- 営業日付取得関数
@@ -153,6 +157,9 @@ AS
   cv_tkn_cust_name  CONSTANT VARCHAR2(30)  := 'CUST_NAME';       -- 顧客名
   cv_tkn_column     CONSTANT VARCHAR2(30)  := 'COLUMN';          -- カラム名
   cv_tkn_data       CONSTANT VARCHAR2(30)  := 'DATA';            -- データ
+-- Modify 2009.07.21 Ver1.03 start
+  cv_tkn_cut_date   CONSTANT VARCHAR2(30)  := 'CUTOFF_DATE';     -- 締日
+-- Modify 2009.07.21 Ver1.03 end
 --
   -- 使用DB名
   cv_table_xiit       CONSTANT VARCHAR2(100) := 'XXCFR_INV_INFO_TRANSFER';     -- 請求情報引渡テーブル
@@ -1755,6 +1762,11 @@ AS
 --
     -- *** ローカル例外 ***
     acct_info_required_expt  EXCEPTION;      -- 顧客情報必須エラー
+-- Modify 2009.07.21 Ver1.03 start
+    uniq_expt                EXCEPTION;      -- 一意制約エラー
+--
+    PRAGMA EXCEPTION_INIT(uniq_expt, -1);    -- 一意制約エラー
+-- Modify 2009.07.21 Ver1.03 end
 --
   BEGIN
 --
@@ -2308,6 +2320,24 @@ AS
       RETURNING invoice_id INTO gt_invoice_id;                        -- 一括請求書ID
 --
     EXCEPTION
+-- Modify 2009.07.21 Ver1.03 start
+    -- *** 一意制約例外ハンドラ ***
+      WHEN uniq_expt THEN
+        lv_errmsg := SUBSTRB(xxccp_common_pkg.get_msg(
+                               iv_application  => cv_msg_kbn_cfr    
+                              ,iv_name         => cv_msg_cfr_00077  
+                              ,iv_token_name1  => cv_tkn_cut_date  
+                              ,iv_token_value1 => TO_CHAR(id_cutoff_date, 'YYYY/MM/DD')
+                              ,iv_token_name2  => cv_tkn_cust_code  
+                              ,iv_token_value2 => iv_cust_acct_code
+                              ,iv_token_name3  => cv_tkn_cust_name  
+                              ,iv_token_value3 => iv_cust_acct_name)
+                              ,1
+                              ,5000);
+        FND_FILE.PUT_LINE(FND_FILE.OUTPUT,lv_errmsg);
+        ov_retcode := cv_status_warn;
+        RETURN;
+-- Modify 2009.07.21 Ver1.03 end
     -- *** OTHERS例外ハンドラ ***
       WHEN OTHERS THEN
         lv_errmsg := SUBSTRB( xxcmn_common_pkg.get_msg(
