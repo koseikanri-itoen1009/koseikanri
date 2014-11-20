@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCOS008A06C(body)
  * Description      : 出荷依頼実績からの受注作成
  * MD.050           : 出荷依頼実績からの受注作成 MD050_COS_008_A06
- * Version          : 1.0
+ * Version          : 1.1
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -36,6 +36,7 @@ AS
  *  Date          Ver.  Editor           Description
  * ------------- ----- ---------------- -------------------------------------------------
  *  2010/03/23    1.0   H.Itou           新規作成
+ *  2010/05/10    1.1   H.Itou           E_本稼動_02532,E_本稼動_02595
  *
  *****************************************************************************************/
 --
@@ -1199,7 +1200,10 @@ AS
     g_param_rec.input_sales_branch         := iv_input_sales_branch;                                -- 02.入力拠点コード
     g_param_rec.head_sales_branch          := iv_head_sales_branch;                                 -- 03.管轄拠点コード
     g_param_rec.request_no                 := iv_request_no;                                        -- 04.出荷依頼No
-    g_param_rec.entered_by_code            := TO_NUMBER(iv_entered_by_code);                        -- 05.出荷依頼入力者
+-- 2010/05/10 Ver1.1 H.Itou Mod Start E_本稼動_02595
+--    g_param_rec.entered_by_code            := TO_NUMBER(iv_entered_by_code);                        -- 05.出荷依頼入力者
+    g_param_rec.entered_by_code            := iv_entered_by_code;                                   -- 05.出荷依頼入力者
+-- 2010/05/10 Ver1.1 H.Itou Mod End E_本稼動_02595
     g_param_rec.customer_code              := iv_cust_code;                                         -- 06.顧客コード
     g_param_rec.deliver_to                 := iv_deliver_to;                                        -- 07.配送先コード
     g_param_rec.deliver_from               := iv_location_code;                                     -- 08.出庫元コード
@@ -1658,6 +1662,9 @@ AS
 --
     -- *** ローカル変数 ***
     lv_main_sql                    VARCHAR2(32767);        -- メインSQL生成
+-- 2010/05/10 Ver1.1 H.Itou Add Start E_本稼動_02532
+    lv_main_sql2                   VARCHAR2(32767);        -- メインSQL生成
+-- 2010/05/10 Ver1.1 H.Itou Add End E_本稼動_02532
     lv_select                      VARCHAR2(32767);        -- SELECT句
     lv_from                        VARCHAR2(32767);        -- FROM句
     lv_where                       VARCHAR2(32767);        -- WHERE句(共通)
@@ -2141,10 +2148,15 @@ AS
                 ||  lv_where_order_type_id                 -- WHERE句(パラメータ条件)17.出庫形態
                 ||  lv_where_sales_chain_code              -- WHERE句(パラメータ条件)18.販売先チェーン
                 ||  lv_where_delivery_chain_code           -- WHERE句(パラメータ条件)19.納品先チェーン
+-- 2010/05/10 Ver1.1 H.Itou Mod Start E_本稼動_02532
+                ;
+    lv_main_sql2 :=
                     --------------------------------------------------------------------------------------
                     -- 着荷実績日に値がない場合(指示ベース)
                     --------------------------------------------------------------------------------------
-                ||  cv_union_all                           -- UNION ALL
+--                ||  cv_union_all                           -- UNION ALL
+                    cv_union_all                           -- UNION ALL
+-- 2010/05/10 Ver1.1 H.Itou Mod End E_本稼動_02532
                 ||  lv_select                              -- SELECT句
                 ||  lv_from                                -- FROM句
                 ||  lv_where                               -- WHERE句(共通)
@@ -2172,7 +2184,10 @@ AS
     -- ======================================
     -- カーソルOPEN
     -- ======================================
-    OPEN  main_data_cur FOR lv_main_sql
+-- 2010/05/10 Ver1.1 H.Itou Mod Start E_本稼動_02532
+--    OPEN  main_data_cur FOR lv_main_sql
+    OPEN  main_data_cur FOR lv_main_sql || lv_main_sql2
+-- 2010/05/10 Ver1.1 H.Itou Mod End E_本稼動_02532
     USING --------------------------------------------------------------------------------------
           -- 着荷実績日に値がある場合(実績ベース)※指示なし実績でステータス03は対象としない
           --------------------------------------------------------------------------------------
