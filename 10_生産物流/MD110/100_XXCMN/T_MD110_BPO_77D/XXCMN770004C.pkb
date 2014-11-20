@@ -7,7 +7,7 @@ AS
  * Description      : éÛï•ÇªÇÃëºé¿ê—ÉäÉXÉg
  * MD.050/070       : åééüÅYêÿèàóùí†ï[Issue1.0 (T_MD050_BPO_770)
  *                    åééüÅYêÿèàóùí†ï[Issue1.0 (T_MD070_BPO_77D)
- * Version          : 1.18
+ * Version          : 1.19
  *
  * Program List
  * -------------------------- ----------------------------------------------------------
@@ -53,6 +53,7 @@ AS
  *  2008/12/08    1.16  T.Ohashi         ñ{î‘è·äQêîílÇ†ÇÌÇπëŒâû
  *  2008/12/11    1.17  N.Yoshida        ñ{î‘è·äQ580ëŒâû
  *  2008/12/13    1.18  T.Ohashi         ñ{î‘è·äQ580ëŒâû
+ *  2008/12/14    1.19  N.Yoshida        ñ{î‘è·äQ669ëŒâû
  *****************************************************************************************/
 --
 --#######################  å≈íËÉOÉçÅ[ÉoÉãíËêîêÈåæïî START   #######################
@@ -4973,7 +4974,13 @@ AS
             ,iimb.attribute15           cost_mng_clss
             ,iimb.lot_ctl               lot_ctl
             ,xlc.unit_ploce             actual_unit_price
-            ,trn.trans_qty * TO_NUMBER(xrpm.rcv_pay_div) trans_qty
+-- 2008/12/14 v1.18 UPDATE START
+            ,CASE WHEN xrpm.reason_code = cv_reason_911
+                  THEN trn.trans_qty
+                  ELSE trn.trans_qty * TO_NUMBER(xrpm.rcv_pay_div)
+             END                        trans_qty
+--            ,trn.trans_qty * TO_NUMBER(xrpm.rcv_pay_div) trans_qty
+-- 2008/12/14 v1.18 UPDATE END
 -- 2008/10/28 v1.11 UPDATE START
 --            ,DECODE(iimb.lot_ctl,gv_lot_n,NULL,ilm.attribute18) lot_desc
             ,DECODE(xrpm.use_div_invent_dis
@@ -5325,7 +5332,6 @@ AS
             ,iimb.lot_ctl               lot_ctl
             ,xlc.unit_ploce             actual_unit_price
             ,trn.trans_qty * TO_NUMBER(xrpm.rcv_pay_div) trans_qty
--- 2008/10/28 v1.11 UPDATE START
 --            ,DECODE(iimb.lot_ctl,gv_lot_n,NULL,ilm.attribute18) lot_desc
             ,DECODE(xrpm.use_div_invent_dis
                    ,cv_yes, ijm.attribute2
@@ -10100,7 +10106,13 @@ AS
             ,iimb.attribute15           cost_mng_clss
             ,iimb.lot_ctl               lot_ctl
             ,xlc.unit_ploce             actual_unit_price
-            ,trn.trans_qty * TO_NUMBER(xrpm.rcv_pay_div) trans_qty
+-- 2008/12/14 v1.18 UPDATE START
+            ,CASE WHEN xrpm.reason_code = cv_reason_911
+                  THEN trn.trans_qty
+                  ELSE trn.trans_qty * TO_NUMBER(xrpm.rcv_pay_div)
+             END                        trans_qty
+--            ,trn.trans_qty * TO_NUMBER(xrpm.rcv_pay_div) trans_qty
+-- 2008/12/14 v1.18 UPDATE END
 -- 2008/10/28 v1.11 UPDATE START
 --            ,DECODE(iimb.lot_ctl,gv_lot_n,NULL,ilm.attribute18) lot_desc
             ,DECODE(xrpm.use_div_invent_dis
@@ -10455,7 +10467,11 @@ AS
             ,iimb.attribute15           cost_mng_clss
             ,iimb.lot_ctl               lot_ctl
             ,xlc.unit_ploce             actual_unit_price
-            ,trn.trans_qty * TO_NUMBER(xrpm.rcv_pay_div) trans_qty
+-- 2008/12/14 v1.18 UPDATE START
+            ,CASE WHEN xrpm.reason_code = cv_reason_911
+                  THEN trn.trans_qty
+                  ELSE trn.trans_qty * TO_NUMBER(xrpm.rcv_pay_div)
+             END                        trans_qty
 -- 2008/10/28 v1.11 UPDATE START
 --            ,DECODE(iimb.lot_ctl,gv_lot_n,NULL,ilm.attribute18) lot_desc
             ,DECODE(xrpm.use_div_invent_dis

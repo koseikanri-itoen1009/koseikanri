@@ -7,7 +7,7 @@ AS
  * Description      : 出庫実績表
  * MD.050/070       : 月次〆処理(経理)Issue1.0 (T_MD050_BPO_770)
  *                    月次〆処理(経理)Issue1.0 (T_MD070_BPO_77F)
- * Version          : 1.15
+ * Version          : 1.17
  *
  * Program List
  * -------------------------- ----------------------------------------------------------
@@ -50,6 +50,8 @@ AS
  *  2008/11/12    1.13  N.Yoshida        移行データ検証不具合対応(履歴削除)
  *  2008/12/02    1.14  A.Shiina         本番#207対応
  *  2008/12/08    1.15  N.Yoshida        本番障害数値あわせ対応(受注ヘッダの最新フラグを追加)
+ *  2008/12/13    1.16  A.Shiina         本番#428対応
+ *  2008/12/13    1.17  N.Yoshida        本番#428対応(再対応)
  *
  *****************************************************************************************/
 --
@@ -165,6 +167,12 @@ AS
    ,group3_code               VARCHAR2(30)                        -- [集計3]コード
    ,group4_code               VARCHAR2(30)                        -- [集計4]コード
    ,group5_code               VARCHAR2(40)                        -- [集計5]集計郡コード
+-- 2008/12/13 v1.16 ADD START
+   ,group1_name               VARCHAR2(240)                       -- [集計1]名称
+   ,group2_name               VARCHAR2(240)                       -- [集計2]名称
+   ,group3_name               VARCHAR2(240)                       -- [集計3]名称
+   ,group4_name               VARCHAR2(240)                       -- [集計4]名称
+-- 2008/12/13 v1.16 ADD END
    ,req_item_code             VARCHAR2(240)                        -- 出荷品目コード
    ,item_code                 xxcmn_lot_each_item_v.item_code%TYPE        -- 品目コード
    ,req_item_name             xxcmn_item_mst2_v.item_short_name%TYPE      -- 出荷品目名称
@@ -198,11 +206,15 @@ AS
   gt_xml_data_table             XML_DATA ;                  -- ＸＭＬデータタグ表
   gl_xml_idx                    NUMBER DEFAULT 0 ;          -- ＸＭＬデータタグ表のインデックス
 --
+-- 2008/12/13 v1.16 DELETE START
+/*
   gv_gr1_sum_desc               VARCHAR2(16) DEFAULT NULL ; -- 集計１名称
   gv_gr2_sum_desc               VARCHAR2(16) DEFAULT NULL ; -- 集計２名称
   gv_gr3_sum_desc               VARCHAR2(16) DEFAULT NULL ; -- 集計３名称
   gv_gr4_sum_desc               VARCHAR2(16) DEFAULT NULL ; -- 集計４名称
 --
+*/
+-- 2008/12/13 v1.16 DELETE END
   ------------------------------
   -- 取引区分
   ------------------------------
@@ -571,16 +583,22 @@ AS
     lv_from_porc_where      VARCHAR2(32000) ;     -- データ取得用ＳＱＬ
     lv_from_omso_where      VARCHAR2(32000) ;     -- データ取得用ＳＱＬ*/
     lv_where                VARCHAR2(32767) ;     -- データ取得用ＳＱＬ
+    lv_where2               VARCHAR2(32767) ;     -- データ取得用ＳＱＬ
+    lv_where3               VARCHAR2(32767) ;     -- データ取得用ＳＱＬ
     lv_select_main_start            VARCHAR2(32767) ;     -- データ取得用ＳＱＬ
     lv_select_common                VARCHAR2(32767) ;     -- データ取得用ＳＱＬ
     lv_select_main_end              VARCHAR2(32767) ;     -- データ取得用ＳＱＬ
     lv_select_group1                VARCHAR2(32767) ;     -- データ取得用ＳＱＬ
+    lv_select_group1_2              VARCHAR2(32767) ;     -- データ取得用ＳＱＬ
     lv_select_group2                VARCHAR2(32767) ;     -- データ取得用ＳＱＬ
     lv_select_group3                VARCHAR2(32767) ;     -- データ取得用ＳＱＬ
+    lv_select_group3_2              VARCHAR2(32767) ;     -- データ取得用ＳＱＬ
     lv_select_group4                VARCHAR2(32767) ;     -- データ取得用ＳＱＬ
     lv_select_group5                VARCHAR2(32767) ;     -- データ取得用ＳＱＬ
+    lv_select_group5_2              VARCHAR2(32767) ;     -- データ取得用ＳＱＬ
     lv_select_group6                VARCHAR2(32767) ;     -- データ取得用ＳＱＬ
     lv_select_group7                VARCHAR2(32767) ;     -- データ取得用ＳＱＬ
+    lv_select_group7_2              VARCHAR2(32767) ;     -- データ取得用ＳＱＬ
     lv_select_group8                VARCHAR2(32767) ;     -- データ取得用ＳＱＬ
     lv_select_g1_po102_1_hint       VARCHAR2(32767) ;     -- データ取得用ＳＱＬ
     lv_select_g1_po102_2_hint       VARCHAR2(32767) ;     -- データ取得用ＳＱＬ
@@ -715,6 +733,12 @@ AS
     || ' ,mst.group3_code AS group3_code' -- [集計3]コード
     || ' ,mst.group4_code AS group4_code' -- [集計4]コード
     || ' ,mst.group5_code AS group5_code' -- [集計5]コード
+-- 2008/12/13 v1.16 ADD START
+    || ' ,mst.group1_name AS group1_name' -- [集計1]名称
+    || ' ,mst.group2_name AS group2_name' -- [集計2]名称
+    || ' ,mst.group3_name AS group3_name' -- [集計3]名称
+    || ' ,mst.group4_name AS group4_name' -- [集計4]名称
+-- 2008/12/13 v1.16 ADD END
     || ' ,mst.request_item_code AS request_item_code' -- 出荷品目コード
     || ' ,mst.item_code AS item_code' -- 品目コード
     || ' ,MAX(mst.request_item_name) AS request_item_name' -- 出荷品目名称
@@ -788,27 +812,88 @@ AS
        ' ,ooha.attribute11 AS group1_code' -- 成績部署 
     || ' ,mcb2.segment1 AS group2_code' -- 品目区分
     || ' ,itp.whse_code AS group3_code' -- 倉庫
-    || ' ,xpv.party_number AS group4_code' -- 出荷先
+--    || ' ,xpv.party_number AS group4_code' -- 出荷先
+    || ' ,hca.account_number AS group4_code' -- 出荷先
     || ' ,mcb3.segment1 AS group5_code' -- 郡コード or 経理郡コード 
+-- 2008/12/13 v1.16 ADD START
+--    || ' ,xla.location_short_name  AS group1_name' -- 成績部署名称
+    || ' ,NULL                    AS group1_name' -- 成績部署名称
+--    || ' ,mct.description         AS group2_name' -- 品目区分名称
+    || ' ,NULL                    AS group2_name' -- 品目区分名称
+    || ' ,NULL                    AS group3_name' -- 倉庫名称
+    || ' ,xpv.party_short_name    AS group4_name' -- 出荷先名称
+-- 2008/12/13 v1.16 ADD END
     ;
+--
+-- 2008/12/13 v1.16 ADD START
+ -- 共通SELECT group1_2
+    lv_select_group1_2 :=
+       ' ,ooha.attribute11 AS group1_code' -- 成績部署 
+    || ' ,mcb2.segment1 AS group2_code' -- 品目区分
+    || ' ,itp.whse_code AS group3_code' -- 倉庫
+    || ' ,pv.segment1 AS group4_code' -- 支給先
+    || ' ,mcb3.segment1 AS group5_code' -- 郡コード or 経理郡コード 
+--    || ' ,xla.location_short_name  AS group1_name' -- 成績部署名称
+    || ' ,NULL                    AS group1_name' -- 成績部署名称
+--    || ' ,mct.description         AS group2_name' -- 品目区分名称
+    || ' ,NULL                    AS group2_name' -- 品目区分名称
+    || ' ,NULL                    AS group3_name' -- 倉庫名称
+    || ' ,pv.vendor_name          AS group4_name' -- 支給先名称
+    ;
+--
+-- 2008/12/13 v1.16 ADD END
  -- 共通SELECT group2 
     lv_select_group2 :=
-      ' ,ooha.attribute11 AS group1_code' -- 成績部署 
+       ' ,ooha.attribute11 AS group1_code' -- 成績部署 
     || ' ,mcb2.segment1 AS group2_code' -- 品目区分
     || ' ,itp.whse_code AS group3_code' -- 倉庫
     || ' ,NULL AS group4_code' -- NULL
     || ' ,mcb3.segment1 AS group5_code' -- 郡コード or 経理郡コード 
+-- 2008/12/13 v1.16 ADD START
+--    || ' ,xla.location_short_name  AS group1_name' -- 成績部署名称
+    || ' ,NULL                    AS group1_name' -- 成績部署名称
+--    || ' ,mct.description         AS group2_name' -- 品目区分名称
+    || ' ,NULL                    AS group2_name' -- 品目区分名称
+    || ' ,NULL                    AS group3_name' -- 倉庫名称
+    || ' ,NULL                    AS group4_name' -- NULL
+-- 2008/12/13 v1.16 ADD END
     ;
 -- 
  -- 共通SELECT group3 
     lv_select_group3 :=
        ' ,ooha.attribute11 AS group1_code' -- 成績部署 
     || ' ,mcb2.segment1 AS group2_code' -- 品目区分
-    || ' ,xpv.party_number AS group3_code' -- 出荷先
+--    || ' ,xpv.party_number AS group3_code' -- 出荷先
+    || ' ,hca.account_number AS group3_code' -- 出荷先
     || ' ,NULL AS group4_code' -- NULL
     || ' ,mcb3.segment1 AS group5_code' -- 郡コード or 経理郡コード 
+-- 2008/12/13 v1.16 ADD START
+--    || ' ,xla.location_short_name  AS group1_name' -- 成績部署名称
+    || ' ,NULL                    AS group1_name' -- 成績部署名称
+--    || ' ,mct.description         AS group2_name' -- 品目区分名称
+    || ' ,NULL                    AS group2_name' -- 品目区分名称
+    || ' ,xpv.party_short_name    AS group3_name' -- 出荷先名称
+    || ' ,NULL                    AS group4_name' -- NULL
+-- 2008/12/13 v1.16 ADD END
     ;
 -- 
+-- 2008/12/13 v1.16 ADD START
+ -- 共通SELECT group3_2
+    lv_select_group3_2 :=
+       ' ,ooha.attribute11 AS group1_code' -- 成績部署 
+    || ' ,mcb2.segment1 AS group2_code' -- 品目区分
+    || ' ,pv.segment1 AS group3_code' -- 支給先
+    || ' ,NULL AS group4_code' -- NULL
+    || ' ,mcb3.segment1 AS group5_code' -- 郡コード or 経理郡コード 
+--    || ' ,xla.location_short_name  AS group1_name' -- 成績部署名称
+    || ' ,NULL                    AS group1_name' -- 成績部署名称
+--    || ' ,mct.description         AS group2_name' -- 品目区分名称
+    || ' ,NULL                    AS group2_name' -- 品目区分名称
+    || ' ,pv.vendor_name          AS group3_name' -- 支給先名称
+    || ' ,NULL                    AS group4_name' -- NULL
+    ;
+--
+-- 2008/12/13 v1.16 ADD END
  -- 共通SELECT group4 
     lv_select_group4 :=
        ' ,ooha.attribute11 AS group1_code' -- 成績部署 
@@ -816,16 +901,48 @@ AS
     || ' ,NULL AS group3_code' -- NULL
     || ' ,NULL AS group4_code' -- NULL
     || ' ,mcb3.segment1 AS group5_code' -- 郡コード or 経理郡コード 
+-- 2008/12/13 v1.16 ADD START
+--    || ' ,xla.location_short_name  AS group1_name' -- 成績部署名称
+    || ' ,NULL                    AS group1_name' -- 成績部署名称
+--    || ' ,mct.description         AS group2_name' -- 品目区分名称
+    || ' ,NULL                    AS group2_name' -- 品目区分名称
+    || ' ,NULL                    AS group3_name' -- NULL
+    || ' ,NULL                    AS group4_name' -- NULL
+-- 2008/12/13 v1.16 ADD END
     ;
 -- 
  -- 共通SELECT group5 
     lv_select_group5 :=
        ' ,mcb2.segment1 AS group1_code' -- 品目区分 
     || ' ,itp.whse_code AS group2_code' -- 倉庫
-    || ' ,xpv.party_number AS group3_code' -- 出荷先
+--    || ' ,xpv.party_number AS group3_code' -- 出荷先
+    || ' ,hca.account_number AS group3_code' -- 出荷先
     || ' ,NULL AS group4_code' -- NULL
     || ' ,mcb3.segment1 AS group5_code' -- 郡コード or 経理郡コード 
+-- 2008/12/13 v1.16 ADD START
+--    || ' ,mct.description         AS group1_name' -- 品目区分名称
+    || ' ,NULL                    AS group1_name' -- 品目区分名称
+    || ' ,NULL                    AS group2_name' -- 倉庫名称
+    || ' ,xpv.party_short_name    AS group3_name' -- 出荷先名称
+    || ' ,NULL                    AS group4_name' -- NULL
+-- 2008/12/13 v1.16 ADD END
     ;
+--
+-- 2008/12/13 v1.16 ADD START
+ -- 共通SELECT group5_2
+    lv_select_group5_2 :=
+       ' ,mcb2.segment1 AS group1_code' -- 品目区分 
+    || ' ,itp.whse_code AS group2_code' -- 倉庫
+    || ' ,pv.segment1 AS group3_code' -- 支給先
+    || ' ,NULL AS group4_code' -- NULL
+    || ' ,mcb3.segment1 AS group5_code' -- 郡コード or 経理郡コード 
+--    || ' ,mct.description         AS group1_name' -- 品目区分名称
+    || ' ,NULL                    AS group1_name' -- 品目区分名称
+    || ' ,NULL                    AS group2_name' -- 倉庫名称
+    || ' ,pv.vendor_name          AS group3_name' -- 支給先名称
+    || ' ,NULL                    AS group4_name' -- NULL
+    ;
+-- 2008/12/13 v1.16 ADD END
 -- 
  -- 共通SELECT group6 
     lv_select_group6 :=
@@ -834,17 +951,48 @@ AS
     || ' ,NULL AS group3_code' -- NULL
     || ' ,NULL AS group4_code' -- NULL
     || ' ,mcb3.segment1 AS group5_code' -- 郡コード or 経理郡コード 
+-- 2008/12/13 v1.16 ADD START
+--    || ' ,mct.description         AS group1_name' -- 品目区分名称
+    || ' ,NULL                    AS group1_name' -- 品目区分名称
+    || ' ,NULL                    AS group2_name' -- 倉庫名称
+    || ' ,NULL                    AS group3_name' -- NULL
+    || ' ,NULL                    AS group4_name' -- NULL
+-- 2008/12/13 v1.16 ADD END
     ;
 -- 
  -- 共通SELECT group7 
     lv_select_group7 :=
        ' ,mcb2.segment1 AS group1_code' -- 品目区分 
-    || ' ,xpv.party_number AS group2_code' -- 出荷先
+--    || ' ,xpv.party_number AS group2_code' -- 出荷先
+    || ' ,hca.account_number AS group2_code' -- 出荷先
     || ' ,NULL AS group3_code' -- NULL
     || ' ,NULL AS group4_code' -- NULL
     || ' ,mcb3.segment1 AS group5_code' -- 郡コード or 経理郡コード 
+-- 2008/12/13 v1.16 ADD START
+--    || ' ,mct.description         AS group1_name' -- 品目区分名称
+    || ' ,NULL                    AS group1_name' -- 品目区分名称
+    || ' ,xpv.party_short_name    AS group2_name' -- 出荷先名称
+    || ' ,NULL                    AS group3_name' -- NULL
+    || ' ,NULL                    AS group4_name' -- NULL
+-- 2008/12/13 v1.16 ADD END
     ;
 -- 
+-- 2008/12/13 v1.16 ADD START
+ -- 共通SELECT group7_2
+    lv_select_group7_2 :=
+       ' ,mcb2.segment1 AS group1_code' -- 品目区分 
+    || ' ,pv.segment1 AS group2_code' -- 支給先
+    || ' ,NULL AS group3_code' -- NULL
+    || ' ,NULL AS group4_code' -- NULL
+    || ' ,mcb3.segment1 AS group5_code' -- 郡コード or 経理郡コード 
+--    || ' ,mct.description         AS group1_name' -- 品目区分名称
+    || ' ,NULL                    AS group1_name' -- 品目区分名称
+    || ' ,pv.vendor_name          AS group2_name' -- 支給先名称
+    || ' ,NULL                    AS group3_name' -- NULL
+    || ' ,NULL                    AS group4_name' -- NULL
+    ;
+--
+-- 2008/12/13 v1.16 ADD END
  -- 共通SELECT group8 
     lv_select_group8 :=
        ' ,mcb2.segment1 AS group1_code' -- 品目区分 
@@ -852,6 +1000,13 @@ AS
     || ' ,NULL AS group3_code' -- NULL
     || ' ,NULL AS group4_code' -- NULL
     || ' ,mcb3.segment1 AS group5_code' -- 郡コード or 経理郡コード 
+-- 2008/12/13 v1.16 ADD START
+--    || ' ,mct.description         AS group1_name' -- 品目区分名称
+    || ' ,NULL                    AS group1_name' -- 品目区分名称
+    || ' ,NULL                    AS group2_name' -- NULL
+    || ' ,NULL                    AS group3_name' -- NULL
+    || ' ,NULL                    AS group4_name' -- NULL
+-- 2008/12/13 v1.16 ADD END
     ;
 -- 
     lv_select_main_end :=
@@ -862,6 +1017,12 @@ AS
     || ' ,mst.group3_code' -- [集計3]コード
     || ' ,mst.group4_code' -- [集計4]コード
     || ' ,mst.group5_code' -- [集計5]コード
+-- 2008/12/13 v1.16 ADD START
+    || ' ,mst.group1_name' -- [集計1]名称
+    || ' ,mst.group2_name' -- [集計2]名称
+    || ' ,mst.group3_name' -- [集計3]名称
+    || ' ,mst.group4_name' -- [集計4]名称
+-- 2008/12/13 v1.16 ADD END
     || ' ,mst.request_item_code' -- 出荷品目コード
     || ' ,mst.item_code' -- 品目コード
     || ' ORDER BY '
@@ -903,8 +1064,18 @@ AS
     || ' ,xxcmn_item_mst_b ximb2'
     || ' ,xxcmn_stnd_unit_price_v xsupv' -- 標準原価情報View 
     || ' ,xxcmn_party_sites2_v xpsv' -- パーティサイト情報View2 
-    || ' ,xxcmn_parties2_v xpv' -- パーティ情報View2 
+-- 2008/12/13 v1.17 N.Yoshida mod start
+--    || ' ,xxcmn_parties2_v xpv' -- パーティ情報View2 
+--    || ' ,xxcmn_cust_accounts2_v xpv' -- 顧客情報View2 
+    || ' ,xxcmn_parties xpv' -- 顧客情報View2 
+    || ' ,hz_cust_accounts hca'
+-- 2008/12/13 v1.17 N.Yoshida mod start
     || ' ,xxcmn_rcv_pay_mst xrpm'
+-- 2008/12/13 v1.16 ADD START
+--    || ' ,hr_locations_all  hla '
+--    || ' ,xxcmn_locations_all xla '
+--    || ' ,mtl_categories_tl mct '
+-- 2008/12/13 v1.16 ADD END
     || ' WHERE itp.doc_type = ''PORC''' -- 文書タイプ(PORC)
     || ' AND itp.completed_ind = 1' -- 完了フラグ
 --    || ' AND itp.trans_date >= FND_DATE.STRING_TO_DATE(''' || ir_param.proc_from    || ''',''yyyymm'')'
@@ -967,6 +1138,19 @@ AS
     || ' AND xrpm.dealings_div = ''102''' 
     || ' AND xrpm.shipment_provision_div = otta.attribute1' 
     || ' AND xrpm.break_col_06 IS NOT NULL'
+-- 2008/12/13 v1.16 ADD START
+--    || ' AND hla.location_code  = ooha.attribute11'
+--    || ' AND hla.location_id    = xla.location_id'
+--    || ' AND hla.inactive_date  IS NULL'
+--    || ' AND xla.start_date_active <= TRUNC(SYSDATE)'
+--    || ' AND xla.end_date_active   >= TRUNC(SYSDATE)'
+--    || ' AND mct.category_id   = mcb2.category_id'
+    || ' AND hca.party_id =  xpv.party_id'
+--    || ' AND xl.start_date_active  <= TRUNC(SYSDATE)'
+--    || ' AND xl.end_date_active    >= TRUNC(SYSDATE)'
+--    || ' AND mct.source_lang   = ''JA'''
+--    || ' AND mct.language      = ''JA'''
+-- 2008/12/13 v1.16 ADD END
     ;
 --
 -- 
@@ -995,8 +1179,18 @@ AS
     || ' ,xxcmn_item_mst_b ximb2'
     || ' ,xxcmn_stnd_unit_price_v xsupv' -- 標準原価情報View 
     || ' ,xxcmn_party_sites2_v xpsv' -- パーティサイト情報View2 
-    || ' ,xxcmn_parties2_v xpv' -- パーティ情報View2 
+-- 2008/12/13 v1.17 N.Yoshida mod start
+--    || ' ,xxcmn_parties2_v xpv' -- パーティ情報View2 
+--    || ' ,xxcmn_cust_accounts2_v xpv' -- 顧客情報View2 
+    || ' ,xxcmn_parties xpv' -- 顧客情報View2 
+    || ' ,hz_cust_accounts hca'
+-- 2008/12/13 v1.17 N.Yoshida mod start
     || ' ,xxcmn_rcv_pay_mst xrpm'
+-- 2008/12/13 v1.16 ADD START
+--    || ' ,hr_locations_all  hla '
+--    || ' ,xxcmn_locations_all xla '
+--    || ' ,mtl_categories_tl mct '
+-- 2008/12/13 v1.16 ADD END
     || ' WHERE itp.doc_type = ''PORC''' -- 文書タイプ(PORC)
     || ' AND itp.completed_ind = 1' -- 完了フラグ
 --    || ' AND itp.trans_date >= FND_DATE.STRING_TO_DATE(''' || ir_param.proc_from    || ''',''yyyymm'')'
@@ -1057,6 +1251,17 @@ AS
     || ' AND xrpm.dealings_div = ''101''' 
     || ' AND xrpm.shipment_provision_div = otta.attribute1' 
     || ' AND xrpm.break_col_06 IS NOT NULL'
+-- 2008/12/13 v1.16 ADD START
+--    || ' AND hla.location_code  = ooha.attribute11'
+--    || ' AND hla.location_id    = xla.location_id'
+--    || ' AND mct.category_id   = mcb2.category_id'
+--    || ' AND hla.inactive_date  IS NULL'
+--    || ' AND xla.start_date_active <= TRUNC(SYSDATE)'
+--    || ' AND xla.end_date_active   >= TRUNC(SYSDATE)'
+    || ' AND hca.party_id =  xpv.party_id'
+--    || ' AND mct.source_lang   = ''JA'''
+--    || ' AND mct.language      = ''JA'''
+-- 2008/12/13 v1.16 ADD END
     ;
 -- 
  -- PORC_112
@@ -1087,8 +1292,18 @@ AS
 --    || ' ,ic_item_mst_b iimb3'
     || ' ,xxcmn_stnd_unit_price_v xsupv' -- 標準原価情報View 
     || ' ,xxcmn_party_sites2_v xpsv' -- パーティサイト情報View2 
-    || ' ,xxcmn_parties2_v xpv' -- パーティ情報View2 
+-- 2008/12/13 v1.17 N.Yoshida mod start
+--    || ' ,xxcmn_parties2_v xpv' -- パーティ情報View2 
+--    || ' ,xxcmn_cust_accounts2_v xpv' -- 顧客情報View2 
+    || ' ,xxcmn_parties xpv' -- 顧客情報View2 
+    || ' ,hz_cust_accounts hca'
+-- 2008/12/13 v1.17 N.Yoshida mod start
     || ' ,xxcmn_rcv_pay_mst xrpm'
+-- 2008/12/13 v1.16 ADD START
+--    || ' ,hr_locations_all  hla '
+--    || ' ,xxcmn_locations_all xla '
+--    || ' ,mtl_categories_tl mct '
+-- 2008/12/13 v1.16 ADD END
     || ' WHERE itp.doc_type = ''PORC''' -- 文書タイプ(PORC)
     || ' AND itp.completed_ind = 1' -- 完了フラグ
 --    || ' AND itp.trans_date >= FND_DATE.STRING_TO_DATE(''' || ir_param.proc_from    || ''',''yyyymm'')'
@@ -1154,6 +1369,17 @@ AS
     || ' AND xrpm.dealings_div = ''112''' 
     || ' AND xrpm.shipment_provision_div = otta.attribute1' 
     || ' AND xrpm.break_col_06 IS NOT NULL'
+-- 2008/12/13 v1.16 ADD START
+--    || ' AND hla.location_code  = ooha.attribute11'
+--    || ' AND hla.location_id    = xla.location_id'
+--    || ' AND hla.inactive_date  IS NULL'
+--    || ' AND xla.start_date_active <= TRUNC(SYSDATE)'
+--    || ' AND xla.end_date_active   >= TRUNC(SYSDATE)'
+--    || ' AND mct.category_id   = mcb2.category_id'
+    || ' AND hca.party_id =  xpv.party_id'
+--    || ' AND mct.source_lang   = ''JA'''
+--    || ' AND mct.language      = ''JA'''
+-- 2008/12/13 v1.16 ADD END
     ;
 -- 
  -- PORC_103_5
@@ -1182,8 +1408,15 @@ AS
     || ' ,xxcmn_stnd_unit_price_v xsupv' -- 標準原価情報View 
     || ' ,po_vendor_sites_all pvsa' -- 仕入先サイトマスタ 
     || ' ,po_vendors pv' -- 仕入先マスタ 
-    || ' ,xxcmn_parties2_v xpv' -- パーティ情報View2 
+-- 2008/12/13 v1.17 DELETE START
+--    || ' ,xxcmn_parties2_v xpv' -- パーティ情報View2 
+-- 2008/12/13 v1.17 DELETE END
     || ' ,xxcmn_rcv_pay_mst xrpm'
+-- 2008/12/13 v1.16 ADD START
+--    || ' ,hr_locations_all  hla '
+--    || ' ,xxcmn_locations_all xla '
+--    || ' ,mtl_categories_tl mct '
+-- 2008/12/13 v1.16 ADD END
     || ' WHERE itp.doc_type = ''PORC''' -- 文書タイプ(PORC)
     || ' AND itp.completed_ind = 1' -- 完了フラグ
 --    || ' AND itp.trans_date >= FND_DATE.STRING_TO_DATE(''' || ir_param.proc_from    || ''',''yyyymm'')'
@@ -1234,9 +1467,14 @@ AS
     || ' AND xsupv.end_date_active >= TRUNC(itp.trans_date)' 
     || ' AND pvsa.vendor_site_id = xoha.vendor_site_id' 
     || ' AND pv.vendor_id = pvsa.vendor_id' 
-    || ' AND pv.customer_num = xpv.account_number' 
-    || ' AND xpv.start_date_active <= TRUNC(itp.trans_date)' 
-    || ' AND xpv.end_date_active >= TRUNC(itp.trans_date)' 
+-- 2008/12/13 v1.16 UPDATE START
+--    || ' AND pv.customer_num = xpv.account_number' 
+--    || ' AND xoha.customer_id = xpv.party_id' 
+-- 2008/12/13 v1.16 UPDATE END
+-- 2008/12/13 v1.17 DELETE START
+--    || ' AND xpv.start_date_active <= TRUNC(itp.trans_date)' 
+--    || ' AND xpv.end_date_active >= TRUNC(itp.trans_date)' 
+-- 2008/12/13 v1.17 DELETE START
     || ' AND xrpm.doc_type = itp.doc_type' 
     || ' AND xrpm.doc_type = ''PORC'''
     || ' AND xrpm.source_document_code = ''RMA'''
@@ -1247,6 +1485,16 @@ AS
     || ' OR xrpm.item_div_origin IS NULL)' 
     || ' AND xrpm.break_col_06 IS NOT NULL'
     || ' AND xrpm.item_div_origin = mcb2.segment1' 
+-- 2008/12/13 v1.16 ADD START
+--    || ' AND hla.location_code  = ooha.attribute11'
+--    || ' AND hla.location_id    = xla.location_id'
+--    || ' AND mct.category_id   = mcb2.category_id'
+--    || ' AND hla.inactive_date  IS NULL'
+--    || ' AND xla.start_date_active <= TRUNC(SYSDATE)'
+--    || ' AND xla.end_date_active   >= TRUNC(SYSDATE)'
+--    || ' AND mct.source_lang   = ''JA'''
+--    || ' AND mct.language      = ''JA'''
+-- 2008/12/13 v1.16 ADD END
     ;
 -- 
  -- PORC_103_124
@@ -1275,8 +1523,15 @@ AS
     || ' ,xxcmn_stnd_unit_price_v xsupv' -- 標準原価情報View 
     || ' ,po_vendor_sites_all pvsa' -- 仕入先サイトマスタ 
     || ' ,po_vendors pv' -- 仕入先マスタ 
-    || ' ,xxcmn_parties2_v xpv' -- パーティ情報View2 
+-- 2008/12/13 v1.17 DELETE START
+--    || ' ,xxcmn_parties2_v xpv' -- パーティ情報View2 
+-- 2008/12/13 v1.17 DELETE END
     || ' ,xxcmn_rcv_pay_mst xrpm'
+-- 2008/12/13 v1.16 ADD START
+--    || ' ,hr_locations_all  hla '
+--    || ' ,xxcmn_locations_all xla '
+--    || ' ,mtl_categories_tl mct '
+-- 2008/12/13 v1.16 ADD END
     || ' WHERE itp.doc_type = ''PORC''' -- 文書タイプ(PORC)
     || ' AND itp.completed_ind = 1' -- 完了フラグ
 --    || ' AND itp.trans_date >= FND_DATE.STRING_TO_DATE(''' || ir_param.proc_from    || ''',''yyyymm'')'
@@ -1327,9 +1582,14 @@ AS
     || ' AND xsupv.end_date_active >= TRUNC(itp.trans_date)' 
     || ' AND pvsa.vendor_site_id = xoha.vendor_site_id' 
     || ' AND pv.vendor_id = pvsa.vendor_id' 
-    || ' AND pv.customer_num = xpv.account_number' 
-    || ' AND xpv.start_date_active <= TRUNC(itp.trans_date)' 
-    || ' AND xpv.end_date_active >= TRUNC(itp.trans_date)' 
+-- 2008/12/13 v1.16 UPDATE START
+--    || ' AND pv.customer_num = xpv.account_number' 
+--    || ' AND xoha.customer_id = xpv.party_id' 
+-- 2008/12/13 v1.16 UPDATE END
+-- 2008/12/13 v1.17 DELETE START
+--    || ' AND xpv.start_date_active <= TRUNC(itp.trans_date)' 
+--    || ' AND xpv.end_date_active >= TRUNC(itp.trans_date)' 
+-- 2008/12/13 v1.17 DELETE START
     || ' AND xrpm.doc_type = itp.doc_type' 
     || ' AND xrpm.doc_type = ''PORC'''
     || ' AND xrpm.source_document_code = ''RMA'''
@@ -1340,6 +1600,16 @@ AS
     || ' OR xrpm.item_div_origin IS NULL)' 
     || ' AND xrpm.break_col_06 IS NOT NULL'
     || ' AND xrpm.item_div_origin IS NULL' 
+-- 2008/12/13 v1.16 ADD START
+--    || ' AND hla.location_code  = ooha.attribute11'
+--    || ' AND hla.location_id    = xla.location_id'
+--    || ' AND mct.category_id   = mcb2.category_id'
+--    || ' AND hla.inactive_date  IS NULL'
+--    || ' AND xla.start_date_active <= TRUNC(SYSDATE)'
+--    || ' AND xla.end_date_active   >= TRUNC(SYSDATE)'
+--    || ' AND mct.source_lang   = ''JA'''
+--    || ' AND mct.language      = ''JA'''
+-- 2008/12/13 v1.16 ADD END
     ;
 -- 
  -- PORC_105
@@ -1371,8 +1641,15 @@ AS
     || ' ,xxcmn_stnd_unit_price_v xsupv' -- 標準原価情報View 
     || ' ,po_vendor_sites_all pvsa' -- 仕入先サイトマスタ 
     || ' ,po_vendors pv' -- 仕入先マスタ 
-    || ' ,xxcmn_parties2_v xpv' -- パーティ情報View2 
+-- 2008/12/13 v1.17 DELETE START
+--    || ' ,xxcmn_parties2_v xpv' -- パーティ情報View2 
+-- 2008/12/13 v1.17 DELETE END
     || ' ,xxcmn_rcv_pay_mst xrpm'
+-- 2008/12/13 v1.16 ADD START
+--    || ' ,hr_locations_all  hla '
+--    || ' ,xxcmn_locations_all xla '
+--    || ' ,mtl_categories_tl mct '
+-- 2008/12/13 v1.16 ADD END
     || ' WHERE itp.doc_type = ''PORC''' -- 文書タイプ(PORC)
     || ' AND itp.completed_ind = 1' -- 完了フラグ
 --    || ' AND itp.trans_date >= FND_DATE.STRING_TO_DATE(''' || ir_param.proc_from    || ''',''yyyymm'')'
@@ -1428,9 +1705,14 @@ AS
     || ' AND xsupv.end_date_active >= TRUNC(itp.trans_date)' 
     || ' AND pvsa.vendor_site_id = xoha.vendor_site_id' 
     || ' AND pv.vendor_id = pvsa.vendor_id' 
-    || ' AND pv.customer_num = xpv.account_number' 
-    || ' AND xpv.start_date_active <= TRUNC(itp.trans_date)' 
-    || ' AND xpv.end_date_active >= TRUNC(itp.trans_date)' 
+-- 2008/12/13 v1.16 UPDATE START
+--    || ' AND pv.customer_num = xpv.account_number' 
+--    || ' AND xoha.customer_id = xpv.party_id' 
+-- 2008/12/13 v1.16 UPDATE END
+-- 2008/12/13 v1.17 DELETE START
+--    || ' AND xpv.start_date_active <= TRUNC(itp.trans_date)' 
+--    || ' AND xpv.end_date_active >= TRUNC(itp.trans_date)' 
+-- 2008/12/13 v1.17 DELETE START
     || ' AND xrpm.doc_type = itp.doc_type' 
     || ' AND xrpm.doc_type = ''PORC'''
     || ' AND xrpm.source_document_code = ''RMA'''
@@ -1438,6 +1720,16 @@ AS
     || ' AND xrpm.shipment_provision_div = otta.attribute1' 
     || ' AND xrpm.ship_prov_rcv_pay_category = otta.attribute11' 
     || ' AND xrpm.break_col_06 IS NOT NULL'
+-- 2008/12/13 v1.16 ADD START
+--    || ' AND hla.location_code  = ooha.attribute11'
+--    || ' AND hla.location_id    = xla.location_id'
+--    || ' AND mct.category_id   = mcb2.category_id'
+--    || ' AND hla.inactive_date  IS NULL'
+--    || ' AND xla.start_date_active <= TRUNC(SYSDATE)'
+--    || ' AND xla.end_date_active   >= TRUNC(SYSDATE)'
+--    || ' AND mct.source_lang   = ''JA'''
+--    || ' AND mct.language      = ''JA'''
+-- 2008/12/13 v1.16 ADD END
     ;
 -- 
  -- PORC_108
@@ -1471,8 +1763,15 @@ AS
     || ' ,xxcmn_stnd_unit_price_v xsupv' -- 標準原価情報View 
     || ' ,po_vendor_sites_all pvsa' -- 仕入先サイトマスタ 
     || ' ,po_vendors pv' -- 仕入先マスタ 
-    || ' ,xxcmn_parties2_v xpv' -- パーティ情報View2 
+-- 2008/12/13 v1.17 DELETE START
+--    || ' ,xxcmn_parties2_v xpv' -- パーティ情報View2 
+-- 2008/12/13 v1.17 DELETE END
     || ' ,xxcmn_rcv_pay_mst xrpm'
+-- 2008/12/13 v1.16 ADD START
+--    || ' ,hr_locations_all  hla '
+--    || ' ,xxcmn_locations_all xla '
+--    || ' ,mtl_categories_tl mct '
+-- 2008/12/13 v1.16 ADD END
     || ' WHERE itp.doc_type = ''PORC''' -- 文書タイプ(PORC)
     || ' AND itp.completed_ind = 1' -- 完了フラグ
 --    || ' AND itp.trans_date >= FND_DATE.STRING_TO_DATE(''' || ir_param.proc_from    || ''',''yyyymm'')'
@@ -1532,9 +1831,14 @@ AS
     || ' AND xsupv.end_date_active >= TRUNC(itp.trans_date)' 
     || ' AND pvsa.vendor_site_id = xoha.vendor_site_id' 
     || ' AND pv.vendor_id = pvsa.vendor_id' 
-    || ' AND pv.customer_num = xpv.account_number' 
-    || ' AND xpv.start_date_active <= TRUNC(itp.trans_date)' 
-    || ' AND xpv.end_date_active >= TRUNC(itp.trans_date)' 
+-- 2008/12/13 v1.16 UPDATE START
+--    || ' AND pv.customer_num = xpv.account_number' 
+--    || ' AND xoha.customer_id = xpv.party_id' 
+-- 2008/12/13 v1.16 UPDATE END
+-- 2008/12/13 v1.17 DELETE START
+--    || ' AND xpv.start_date_active <= TRUNC(itp.trans_date)' 
+--    || ' AND xpv.end_date_active >= TRUNC(itp.trans_date)' 
+-- 2008/12/13 v1.17 DELETE START
     || ' AND xrpm.doc_type = itp.doc_type' 
     || ' AND xrpm.doc_type = ''PORC'''
     || ' AND xrpm.source_document_code = ''RMA'''
@@ -1542,6 +1846,16 @@ AS
     || ' AND xrpm.shipment_provision_div = otta.attribute1' 
     || ' AND xrpm.ship_prov_rcv_pay_category = otta.attribute11' 
     || ' AND xrpm.break_col_06 IS NOT NULL'
+-- 2008/12/13 v1.16 ADD START
+--    || ' AND hla.location_code  = ooha.attribute11'
+--    || ' AND hla.location_id    = xla.location_id'
+--    || ' AND mct.category_id   = mcb2.category_id'
+--    || ' AND hla.inactive_date  IS NULL'
+--    || ' AND xla.start_date_active <= TRUNC(SYSDATE)'
+--    || ' AND xla.end_date_active   >= TRUNC(SYSDATE)'
+--    || ' AND mct.source_lang   = ''JA'''
+--    || ' AND mct.language      = ''JA'''
+-- 2008/12/13 v1.16 ADD END
     ;
 -- 
  -- OMSO_102
@@ -1569,8 +1883,18 @@ AS
     || ' ,xxcmn_item_mst_b ximb2'
     || ' ,xxcmn_stnd_unit_price_v xsupv' -- 標準原価情報View 
     || ' ,xxcmn_party_sites2_v xpsv' -- パーティサイト情報View2 
-    || ' ,xxcmn_parties2_v xpv' -- パーティ情報View2 
+-- 2008/12/13 v1.17 N.Yoshida mod start
+--    || ' ,xxcmn_parties2_v xpv' -- パーティ情報View2 
+--    || ' ,xxcmn_cust_accounts2_v xpv' -- 顧客情報View2 
+    || ' ,xxcmn_parties xpv' -- 顧客情報View2 
+    || ' ,hz_cust_accounts hca'
+-- 2008/12/13 v1.17 N.Yoshida mod start
     || ' ,xxcmn_rcv_pay_mst xrpm'
+-- 2008/12/13 v1.16 ADD START
+--    || ' ,hr_locations_all  hla '
+--    || ' ,xxcmn_locations_all xla '
+--    || ' ,mtl_categories_tl mct '
+-- 2008/12/13 v1.16 ADD END
     || ' WHERE itp.doc_type = ''OMSO''' 
     || ' AND itp.completed_ind = 1' 
 --    || ' AND itp.trans_date >= FND_DATE.STRING_TO_DATE(''' || ir_param.proc_from    || ''',''yyyymm'')'
@@ -1632,6 +1956,17 @@ AS
     || ' AND xrpm.dealings_div = ''102''' 
     || ' AND xrpm.shipment_provision_div = otta.attribute1' 
     || ' AND xrpm.break_col_06 IS NOT NULL'
+-- 2008/12/13 v1.16 ADD START
+--    || ' AND hla.location_code  = ooha.attribute11'
+--    || ' AND hla.location_id    = xla.location_id'
+--    || ' AND mct.category_id   = mcb2.category_id'
+--    || ' AND hla.inactive_date  IS NULL'
+--    || ' AND xla.start_date_active <= TRUNC(SYSDATE)'
+--    || ' AND xla.end_date_active   >= TRUNC(SYSDATE)'
+    || ' AND hca.party_id =  xpv.party_id'
+--    || ' AND mct.source_lang   = ''JA'''
+--    || ' AND mct.language      = ''JA'''
+-- 2008/12/13 v1.16 ADD END
     ;
 -- 
  -- OMSO_101
@@ -1659,8 +1994,18 @@ AS
     || ' ,xxcmn_item_mst_b ximb2'
     || ' ,xxcmn_stnd_unit_price_v xsupv' -- 標準原価情報View 
     || ' ,xxcmn_party_sites2_v xpsv' -- パーティサイト情報View2 
-    || ' ,xxcmn_parties2_v xpv' -- パーティ情報View2 
+-- 2008/12/13 v1.17 N.Yoshida mod start
+--    || ' ,xxcmn_parties2_v xpv' -- パーティ情報View2 
+--    || ' ,xxcmn_cust_accounts2_v xpv' -- 顧客情報View2 
+    || ' ,xxcmn_parties xpv' -- 顧客情報View2 
+    || ' ,hz_cust_accounts hca'
+-- 2008/12/13 v1.17 N.Yoshida mod start
     || ' ,xxcmn_rcv_pay_mst xrpm'
+-- 2008/12/13 v1.16 ADD START
+--    || ' ,hr_locations_all  hla '
+--    || ' ,xxcmn_locations_all xla '
+--    || ' ,mtl_categories_tl mct '
+-- 2008/12/13 v1.16 ADD END
     || ' WHERE itp.doc_type = ''OMSO''' 
     || ' AND itp.completed_ind = 1' 
 --    || ' AND itp.trans_date >= FND_DATE.STRING_TO_DATE(''' || ir_param.proc_from    || ''',''yyyymm'')'
@@ -1720,6 +2065,17 @@ AS
     || ' AND xrpm.dealings_div = ''101''' 
     || ' AND xrpm.shipment_provision_div = otta.attribute1' 
     || ' AND xrpm.break_col_06 IS NOT NULL'
+-- 2008/12/13 v1.16 ADD START
+--    || ' AND hla.location_code  = ooha.attribute11'
+--    || ' AND hla.location_id    = xla.location_id'
+--    || ' AND mct.category_id   = mcb2.category_id'
+--    || ' AND hla.inactive_date  IS NULL'
+--    || ' AND xla.start_date_active <= TRUNC(SYSDATE)'
+--    || ' AND xla.end_date_active   >= TRUNC(SYSDATE)'
+    || ' AND hca.party_id =  xpv.party_id'
+--    || ' AND mct.source_lang   = ''JA'''
+--    || ' AND mct.language      = ''JA'''
+-- 2008/12/13 v1.16 ADD END
     ;
 -- 
  -- OMSO_112
@@ -1750,8 +2106,18 @@ AS
 --    || ' ,ic_item_mst_b iimb3'
     || ' ,xxcmn_stnd_unit_price_v xsupv' -- 標準原価情報View 
     || ' ,xxcmn_party_sites2_v xpsv' -- パーティサイト情報View2 
-    || ' ,xxcmn_parties2_v xpv' -- パーティ情報View2 
+-- 2008/12/13 v1.17 N.Yoshida mod start
+--    || ' ,xxcmn_parties2_v xpv' -- パーティ情報View2 
+--    || ' ,xxcmn_cust_accounts2_v xpv' -- 顧客情報View2 
+    || ' ,xxcmn_parties xpv' -- 顧客情報View2 
+    || ' ,hz_cust_accounts hca'
+-- 2008/12/13 v1.17 N.Yoshida mod start
     || ' ,xxcmn_rcv_pay_mst xrpm'
+-- 2008/12/13 v1.16 ADD START
+--    || ' ,hr_locations_all  hla '
+--    || ' ,xxcmn_locations_all xla '
+--    || ' ,mtl_categories_tl mct '
+-- 2008/12/13 v1.16 ADD END
     || ' WHERE itp.doc_type = ''OMSO''' 
     || ' AND itp.completed_ind = 1' 
 --    || ' AND itp.trans_date >= FND_DATE.STRING_TO_DATE(''' || ir_param.proc_from    || ''',''yyyymm'')'
@@ -1815,6 +2181,17 @@ AS
     || ' AND xrpm.dealings_div = ''112''' 
     || ' AND xrpm.shipment_provision_div = otta.attribute1' 
     || ' AND xrpm.break_col_06 IS NOT NULL'
+-- 2008/12/13 v1.16 ADD START
+--    || ' AND hla.location_code  = ooha.attribute11'
+--    || ' AND hla.location_id    = xla.location_id'
+--    || ' AND mct.category_id   = mcb2.category_id'
+--    || ' AND hla.inactive_date  IS NULL'
+--    || ' AND xla.start_date_active <= TRUNC(SYSDATE)'
+--    || ' AND xla.end_date_active   >= TRUNC(SYSDATE)'
+    || ' AND hca.party_id =  xpv.party_id'
+--    || ' AND mct.source_lang   = ''JA'''
+--    || ' AND mct.language      = ''JA'''
+-- 2008/12/13 v1.16 ADD END
     ;
 -- 
  -- OMSO_103_5
@@ -1843,8 +2220,15 @@ AS
     || ' ,xxcmn_stnd_unit_price_v xsupv' -- 標準原価情報View 
     || ' ,po_vendor_sites_all pvsa' -- 仕入先サイトマスタ 
     || ' ,po_vendors pv' -- 仕入先マスタ 
-    || ' ,xxcmn_parties2_v xpv' -- パーティ情報View2 
+-- 2008/12/13 v1.17 DELETE START
+--    || ' ,xxcmn_parties2_v xpv' -- パーティ情報View2 
+-- 2008/12/13 v1.17 DELETE END
     || ' ,xxcmn_rcv_pay_mst xrpm'
+-- 2008/12/13 v1.16 ADD START
+--    || ' ,hr_locations_all  hla '
+--    || ' ,xxcmn_locations_all xla '
+--    || ' ,mtl_categories_tl mct '
+-- 2008/12/13 v1.16 ADD END
     || ' WHERE itp.doc_type = ''OMSO''' 
     || ' AND itp.completed_ind = 1' 
 --    || ' AND itp.trans_date >= FND_DATE.STRING_TO_DATE(''' || ir_param.proc_from    || ''',''yyyymm'')'
@@ -1895,9 +2279,14 @@ AS
     || ' AND xsupv.end_date_active >= TRUNC(itp.trans_date)' 
     || ' AND pvsa.vendor_site_id = xoha.vendor_site_id' 
     || ' AND pv.vendor_id = pvsa.vendor_id' 
-    || ' AND pv.customer_num = xpv.account_number' 
-    || ' AND xpv.start_date_active <= TRUNC(itp.trans_date)' 
-    || ' AND xpv.end_date_active >= TRUNC(itp.trans_date)' 
+-- 2008/12/13 v1.16 UPDATE START
+--    || ' AND pv.customer_num = xpv.account_number' 
+--    || ' AND xoha.customer_id = xpv.party_id' 
+-- 2008/12/13 v1.16 UPDATE END
+-- 2008/12/13 v1.17 DELETE START
+--    || ' AND xpv.start_date_active <= TRUNC(itp.trans_date)' 
+--    || ' AND xpv.end_date_active >= TRUNC(itp.trans_date)' 
+-- 2008/12/13 v1.17 DELETE START
     || ' AND xrpm.doc_type = itp.doc_type' 
     || ' AND xrpm.doc_type = ''OMSO'''
     || ' AND xrpm.dealings_div = ''103''' 
@@ -1907,6 +2296,16 @@ AS
     || ' OR xrpm.item_div_origin IS NULL)' 
     || ' AND xrpm.break_col_06 IS NOT NULL'
     || ' AND xrpm.item_div_origin = mcb2.segment1' 
+-- 2008/12/13 v1.16 ADD START
+--    || ' AND hla.location_code  = ooha.attribute11'
+--    || ' AND hla.location_id    = xla.location_id'
+--    || ' AND mct.category_id   = mcb2.category_id'
+--    || ' AND hla.inactive_date  IS NULL'
+--    || ' AND xla.start_date_active <= TRUNC(SYSDATE)'
+--    || ' AND xla.end_date_active   >= TRUNC(SYSDATE)'
+--    || ' AND mct.source_lang   = ''JA'''
+--    || ' AND mct.language      = ''JA'''
+-- 2008/12/13 v1.16 ADD END
     ;
 -- 
  -- OMSO_103_124
@@ -1935,8 +2334,15 @@ AS
     || ' ,xxcmn_stnd_unit_price_v xsupv' -- 標準原価情報View 
     || ' ,po_vendor_sites_all pvsa' -- 仕入先サイトマスタ 
     || ' ,po_vendors pv' -- 仕入先マスタ 
-    || ' ,xxcmn_parties2_v xpv' -- パーティ情報View2 
+-- 2008/12/13 v1.17 DELETE START
+--    || ' ,xxcmn_parties2_v xpv' -- パーティ情報View2 
+-- 2008/12/13 v1.17 DELETE END
     || ' ,xxcmn_rcv_pay_mst xrpm'
+-- 2008/12/13 v1.16 ADD START
+--    || ' ,hr_locations_all  hla '
+--    || ' ,xxcmn_locations_all xla '
+--    || ' ,mtl_categories_tl mct '
+-- 2008/12/13 v1.16 ADD END
     || ' WHERE itp.doc_type = ''OMSO''' 
     || ' AND itp.completed_ind = 1' 
 --    || ' AND itp.trans_date >= FND_DATE.STRING_TO_DATE(''' || ir_param.proc_from    || ''',''yyyymm'')'
@@ -1987,9 +2393,14 @@ AS
     || ' AND xsupv.end_date_active >= TRUNC(itp.trans_date)' 
     || ' AND pvsa.vendor_site_id = xoha.vendor_site_id' 
     || ' AND pv.vendor_id = pvsa.vendor_id' 
-    || ' AND pv.customer_num = xpv.account_number' 
-    || ' AND xpv.start_date_active <= TRUNC(itp.trans_date)' 
-    || ' AND xpv.end_date_active >= TRUNC(itp.trans_date)' 
+-- 2008/12/13 v1.16 UPDATE START
+--    || ' AND pv.customer_num = xpv.account_number' 
+--    || ' AND xoha.customer_id = xpv.party_id' 
+-- 2008/12/13 v1.16 UPDATE END
+-- 2008/12/13 v1.17 DELETE START
+--    || ' AND xpv.start_date_active <= TRUNC(itp.trans_date)' 
+--    || ' AND xpv.end_date_active >= TRUNC(itp.trans_date)' 
+-- 2008/12/13 v1.17 DELETE START
     || ' AND xrpm.doc_type = itp.doc_type' 
     || ' AND xrpm.doc_type = ''OMSO'''
     || ' AND xrpm.dealings_div = ''103''' 
@@ -1999,6 +2410,16 @@ AS
     || ' OR xrpm.item_div_origin IS NULL)' 
     || ' AND xrpm.break_col_06 IS NOT NULL'
     || ' AND xrpm.item_div_origin IS NULL' 
+-- 2008/12/13 v1.16 ADD START
+--    || ' AND hla.location_code  = ooha.attribute11'
+--    || ' AND hla.location_id    = xla.location_id'
+--    || ' AND mct.category_id   = mcb2.category_id'
+--    || ' AND hla.inactive_date  IS NULL'
+--    || ' AND xla.start_date_active <= TRUNC(SYSDATE)'
+--    || ' AND xla.end_date_active   >= TRUNC(SYSDATE)'
+--    || ' AND mct.source_lang   = ''JA'''
+--    || ' AND mct.language      = ''JA'''
+-- 2008/12/13 v1.16 ADD END
     ;
 -- 
  -- OMSO_105
@@ -2030,8 +2451,15 @@ AS
     || ' ,xxcmn_stnd_unit_price_v xsupv' -- 標準原価情報View 
     || ' ,po_vendor_sites_all pvsa' -- 仕入先サイトマスタ 
     || ' ,po_vendors pv' -- 仕入先マスタ 
-    || ' ,xxcmn_parties2_v xpv' -- パーティ情報View2 
+-- 2008/12/13 v1.17 DELETE START
+--    || ' ,xxcmn_parties2_v xpv' -- パーティ情報View2 
+-- 2008/12/13 v1.17 DELETE END
     || ' ,xxcmn_rcv_pay_mst xrpm'
+-- 2008/12/13 v1.16 ADD START
+--    || ' ,hr_locations_all  hla '
+--    || ' ,xxcmn_locations_all xla '
+--    || ' ,mtl_categories_tl mct '
+-- 2008/12/13 v1.16 ADD END
     || ' WHERE itp.doc_type = ''OMSO''' 
     || ' AND itp.completed_ind = 1' 
 --    || ' AND itp.trans_date >= FND_DATE.STRING_TO_DATE(''' || ir_param.proc_from    || ''',''yyyymm'')'
@@ -2086,15 +2514,30 @@ AS
     || ' AND xsupv.end_date_active >= TRUNC(itp.trans_date)' 
     || ' AND pvsa.vendor_site_id = xoha.vendor_site_id' 
     || ' AND pv.vendor_id = pvsa.vendor_id' 
-    || ' AND pv.customer_num = xpv.account_number' 
-    || ' AND xpv.start_date_active <= TRUNC(itp.trans_date)' 
-    || ' AND xpv.end_date_active >= TRUNC(itp.trans_date)' 
+-- 2008/12/13 v1.16 UPDATE START
+--    || ' AND pv.customer_num = xpv.account_number' 
+--    || ' AND xoha.customer_id = xpv.party_id' 
+-- 2008/12/13 v1.16 UPDATE END
+-- 2008/12/13 v1.17 DELETE START
+--    || ' AND xpv.start_date_active <= TRUNC(itp.trans_date)' 
+--    || ' AND xpv.end_date_active >= TRUNC(itp.trans_date)' 
+-- 2008/12/13 v1.17 DELETE START
     || ' AND xrpm.doc_type = itp.doc_type' 
     || ' AND xrpm.doc_type = ''OMSO'''
     || ' AND xrpm.dealings_div = ''105''' 
     || ' AND xrpm.shipment_provision_div = otta.attribute1' 
     || ' AND xrpm.ship_prov_rcv_pay_category = otta.attribute11' 
     || ' AND xrpm.break_col_06 IS NOT NULL'
+-- 2008/12/13 v1.16 ADD START
+--    || ' AND hla.location_code  = ooha.attribute11'
+--    || ' AND hla.location_id    = xla.location_id'
+--    || ' AND mct.category_id   = mcb2.category_id'
+--    || ' AND hla.inactive_date  IS NULL'
+--    || ' AND xla.start_date_active <= TRUNC(SYSDATE)'
+--    || ' AND xla.end_date_active   >= TRUNC(SYSDATE)'
+--    || ' AND mct.source_lang   = ''JA'''
+--    || ' AND mct.language      = ''JA'''
+-- 2008/12/13 v1.16 ADD END
     ;
 -- 
  -- OMSO_108
@@ -2128,8 +2571,15 @@ AS
     || ' ,xxcmn_stnd_unit_price_v xsupv' -- 標準原価情報View 
     || ' ,po_vendor_sites_all pvsa' -- 仕入先サイトマスタ 
     || ' ,po_vendors pv' -- 仕入先マスタ 
-    || ' ,xxcmn_parties2_v xpv' -- パーティ情報View2 
+-- 2008/12/13 v1.17 DELETE START
+--    || ' ,xxcmn_parties2_v xpv' -- パーティ情報View2 
+-- 2008/12/13 v1.17 DELETE END
     || ' ,xxcmn_rcv_pay_mst xrpm'
+-- 2008/12/13 v1.16 ADD START
+--    || ' ,hr_locations_all  hla '
+--    || ' ,xxcmn_locations_all xla '
+--    || ' ,mtl_categories_tl mct '
+-- 2008/12/13 v1.16 ADD END
     || ' WHERE itp.doc_type = ''OMSO''' 
     || ' AND itp.completed_ind = 1' 
 --    || ' AND itp.trans_date >= FND_DATE.STRING_TO_DATE(''' || ir_param.proc_from    || ''',''yyyymm'')'
@@ -2189,15 +2639,30 @@ AS
     || ' AND xsupv.end_date_active >= TRUNC(itp.trans_date)' 
     || ' AND pvsa.vendor_site_id = xoha.vendor_site_id' 
     || ' AND pv.vendor_id = pvsa.vendor_id' 
-    || ' AND pv.customer_num = xpv.account_number' 
-    || ' AND xpv.start_date_active <= TRUNC(itp.trans_date)' 
-    || ' AND xpv.end_date_active >= TRUNC(itp.trans_date)' 
+-- 2008/12/13 v1.16 UPDATE START
+--    || ' AND pv.customer_num = xpv.account_number' 
+--    || ' AND xoha.customer_id = xpv.party_id' 
+-- 2008/12/13 v1.16 UPDATE END
+-- 2008/12/13 v1.17 DELETE START
+--    || ' AND xpv.start_date_active <= TRUNC(itp.trans_date)' 
+--    || ' AND xpv.end_date_active >= TRUNC(itp.trans_date)' 
+-- 2008/12/13 v1.17 DELETE START
     || ' AND xrpm.doc_type = itp.doc_type' 
     || ' AND xrpm.doc_type = ''OMSO'''
     || ' AND xrpm.dealings_div = ''108''' 
     || ' AND xrpm.shipment_provision_div = otta.attribute1' 
     || ' AND xrpm.ship_prov_rcv_pay_category = otta.attribute11' 
     || ' AND xrpm.break_col_06 IS NOT NULL'
+-- 2008/12/13 v1.16 ADD START
+--    || ' AND hla.location_code  = ooha.attribute11'
+--    || ' AND hla.location_id    = xla.location_id'
+--    || ' AND mct.category_id   = mcb2.category_id'
+--    || ' AND hla.inactive_date  IS NULL'
+--    || ' AND xla.start_date_active <= TRUNC(SYSDATE)'
+--    || ' AND xla.end_date_active   >= TRUNC(SYSDATE)'
+--    || ' AND mct.source_lang   = ''JA'''
+--    || ' AND mct.language      = ''JA'''
+-- 2008/12/13 v1.16 ADD END
     ;
 ---------------------------
 --  パターン別ヒント句
@@ -2667,11 +3132,18 @@ AS
     IF  ( ir_param.party_code IS NOT NULL )
     AND ( ir_param.party_code != gc_param_all_code )
     THEN
-      lv_where := lv_where
-        || ' AND xpv.party_number = '''    || ir_param.party_code || ''''
+-- 2008/12/13 v1.17 N.yoshida mod start
+      lv_where2 := lv_where
+        || ' AND xoha.customer_code = '''    || ir_param.party_code || ''''
                ;
+      lv_where3 := lv_where
+        || ' AND xoha.vendor_code   = '''    || ir_param.party_code || ''''
+               ;
+    ELSE
+      lv_where2 := lv_where;
+      lv_where3 := lv_where;
+-- 2008/12/13 v1.17 N.yoshida mod end
     END IF;
---
 --
     -- 集計パターン１設定 (集計：1.成績部署、2.品目区分、3.倉庫、4.出荷先)
     IF  ( ir_param.result_post IS NULL )
@@ -2695,85 +3167,85 @@ AS
                          || lv_select_common
                          || lv_select_group1
                          || lv_select_1_po102
-                         || lv_where
+                         || lv_where2
                          || ' UNION ALL '
                          || lv_select_g1_po101_1_hint
                          || lv_select_common
                          || lv_select_group1
                          || lv_select_1_po101
-                         || lv_where
+                         || lv_where2
                          || ' UNION ALL '
                          || lv_select_g1_po112_1_hint
                          || lv_select_common
                          || lv_select_group1
                          || lv_select_1_po112
-                         || lv_where
+                         || lv_where2
                          || ' UNION ALL '
                          || lv_select_g1_po103x5_1_hint
                          || lv_select_common
-                         || lv_select_group1
+                         || lv_select_group1_2
                          || lv_select_1_po103x5
-                         || lv_where
+                         || lv_where3
                          || ' UNION ALL '
                          || lv_select_g1_po103x124_1_hint
                          || lv_select_common
-                         || lv_select_group1
+                         || lv_select_group1_2
                          || lv_select_1_po103x124
-                         || lv_where
+                         || lv_where3
                          || ' UNION ALL '
                          || lv_select_g1_po105_1_hint
                          || lv_select_common
-                         || lv_select_group1
+                         || lv_select_group1_2
                          || lv_select_1_po105
-                         || lv_where
+                         || lv_where3
                          || ' UNION ALL '
                          || lv_select_g1_po108_1_hint
                          || lv_select_common
-                         || lv_select_group1
+                         || lv_select_group1_2
                          || lv_select_1_po108
-                         || lv_where
+                         || lv_where3
                          || ' UNION ALL '
                          || lv_select_g1_om102_1_hint
                          || lv_select_common
                          || lv_select_group1
                          || lv_select_1_om102
-                         || lv_where
+                         || lv_where2
                          || ' UNION ALL '
                          || lv_select_g1_om101_1_hint
                          || lv_select_common
                          || lv_select_group1
                          || lv_select_1_om101
-                         || lv_where
+                         || lv_where2
                          || ' UNION ALL '
                          || lv_select_g1_om112_1_hint
                          || lv_select_common
                          || lv_select_group1
                          || lv_select_1_om112
-                         || lv_where
+                         || lv_where2
                          || ' UNION ALL '
                          || lv_select_g1_om103x5_1_hint
                          || lv_select_common
-                         || lv_select_group1
+                         || lv_select_group1_2
                          || lv_select_1_om103x5
-                         || lv_where
+                         || lv_where3
                          || ' UNION ALL '
                          || lv_select_g1_om103x124_1_hint
                          || lv_select_common
-                         || lv_select_group1
+                         || lv_select_group1_2
                          || lv_select_1_om103x124
-                         || lv_where
+                         || lv_where3
                          || ' UNION ALL '
                          || lv_select_g1_om105_1_hint
                          || lv_select_common
-                         || lv_select_group1
+                         || lv_select_group1_2
                          || lv_select_1_om105
-                         || lv_where
+                         || lv_where3
                          || ' UNION ALL '
                          || lv_select_g1_om108_1_hint
                          || lv_select_common
-                         || lv_select_group1
+                         || lv_select_group1_2
                          || lv_select_1_om108
-                         || lv_where
+                         || lv_where3
                          || lv_select_main_end
                          ;
         -- バルクフェッチ
@@ -2797,85 +3269,85 @@ AS
                          || lv_select_common
                          || lv_select_group1
                          || lv_select_1_po102
-                         || lv_where
+                         || lv_where2
                          || ' UNION ALL '
                          || lv_select_g1_po101_2_hint
                          || lv_select_common
                          || lv_select_group1
                          || lv_select_1_po101
-                         || lv_where
+                         || lv_where2
                          || ' UNION ALL '
                          || lv_select_g1_po112_2_hint
                          || lv_select_common
                          || lv_select_group1
                          || lv_select_1_po112
-                         || lv_where
+                         || lv_where2
                          || ' UNION ALL '
                          || lv_select_g1_po103x5_2_hint
                          || lv_select_common
-                         || lv_select_group1
+                         || lv_select_group1_2
                          || lv_select_1_po103x5
-                         || lv_where
+                         || lv_where3
                          || ' UNION ALL '
                          || lv_select_g1_po103x124_2_hint
                          || lv_select_common
-                         || lv_select_group1
+                         || lv_select_group1_2
                          || lv_select_1_po103x124
-                         || lv_where
+                         || lv_where3
                          || ' UNION ALL '
                          || lv_select_g1_po105_2_hint
                          || lv_select_common
-                         || lv_select_group1
+                         || lv_select_group1_2
                          || lv_select_1_po105
-                         || lv_where
+                         || lv_where3
                          || ' UNION ALL '
                          || lv_select_g1_po108_2_hint
                          || lv_select_common
-                         || lv_select_group1
+                         || lv_select_group1_2
                          || lv_select_1_po108
-                         || lv_where
+                         || lv_where3
                          || ' UNION ALL '
                          || lv_select_g1_om102_2_hint
                          || lv_select_common
                          || lv_select_group1
                          || lv_select_1_om102
-                         || lv_where
+                         || lv_where2
                          || ' UNION ALL '
                          || lv_select_g1_om101_2_hint
                          || lv_select_common
                          || lv_select_group1
                          || lv_select_1_om101
-                         || lv_where
+                         || lv_where2
                          || ' UNION ALL '
                          || lv_select_g1_om112_2_hint
                          || lv_select_common
                          || lv_select_group1
                          || lv_select_1_om112
-                         || lv_where
+                         || lv_where2
                          || ' UNION ALL '
                          || lv_select_g1_om103x5_2_hint
                          || lv_select_common
-                         || lv_select_group1
+                         || lv_select_group1_2
                          || lv_select_1_om103x5
-                         || lv_where
+                         || lv_where3
                          || ' UNION ALL '
                          || lv_select_g1_om103x124_2_hint
                          || lv_select_common
-                         || lv_select_group1
+                         || lv_select_group1_2
                          || lv_select_1_om103x124
-                         || lv_where
+                         || lv_where3
                          || ' UNION ALL '
                          || lv_select_g1_om105_2_hint
                          || lv_select_common
-                         || lv_select_group1
+                         || lv_select_group1_2
                          || lv_select_1_om105
-                         || lv_where
+                         || lv_where3
                          || ' UNION ALL '
                          || lv_select_g1_om108_2_hint
                          || lv_select_common
-                         || lv_select_group1
+                         || lv_select_group1_2
                          || lv_select_1_om108
-                         || lv_where
+                         || lv_where3
                          || lv_select_main_end
                          ;
         -- バルクフェッチ
@@ -2899,85 +3371,85 @@ AS
                          || lv_select_common
                          || lv_select_group1
                          || lv_select_1_po102
-                         || lv_where
+                         || lv_where2
                          || ' UNION ALL '
                          || lv_select_g1_po101_3_hint
                          || lv_select_common
                          || lv_select_group1
                          || lv_select_1_po101
-                         || lv_where
+                         || lv_where2
                          || ' UNION ALL '
                          || lv_select_g1_po112_3_hint
                          || lv_select_common
                          || lv_select_group1
                          || lv_select_1_po112
-                         || lv_where
+                         || lv_where2
                          || ' UNION ALL '
                          || lv_select_g1_po103x5_3_hint
                          || lv_select_common
-                         || lv_select_group1
+                         || lv_select_group1_2
                          || lv_select_1_po103x5
-                         || lv_where
+                         || lv_where3
                          || ' UNION ALL '
                          || lv_select_g1_po103x124_3_hint
                          || lv_select_common
-                         || lv_select_group1
+                         || lv_select_group1_2
                          || lv_select_1_po103x124
-                         || lv_where
+                         || lv_where3
                          || ' UNION ALL '
                          || lv_select_g1_po105_3_hint
                          || lv_select_common
-                         || lv_select_group1
+                         || lv_select_group1_2
                          || lv_select_1_po105
-                         || lv_where
+                         || lv_where3
                          || ' UNION ALL '
                          || lv_select_g1_po108_3_hint
                          || lv_select_common
-                         || lv_select_group1
+                         || lv_select_group1_2
                          || lv_select_1_po108
-                         || lv_where
+                         || lv_where3
                          || ' UNION ALL '
                          || lv_select_g1_om102_3_hint
                          || lv_select_common
                          || lv_select_group1
                          || lv_select_1_om102
-                         || lv_where
+                         || lv_where2
                          || ' UNION ALL '
                          || lv_select_g1_om101_3_hint
                          || lv_select_common
                          || lv_select_group1
                          || lv_select_1_om101
-                         || lv_where
+                         || lv_where2
                          || ' UNION ALL '
                          || lv_select_g1_om112_3_hint
                          || lv_select_common
                          || lv_select_group1
                          || lv_select_1_om112
-                         || lv_where
+                         || lv_where2
                          || ' UNION ALL '
                          || lv_select_g1_om103x5_3_hint
                          || lv_select_common
-                         || lv_select_group1
+                         || lv_select_group1_2
                          || lv_select_1_om103x5
-                         || lv_where
+                         || lv_where3
                          || ' UNION ALL '
                          || lv_select_g1_om103x124_3_hint
                          || lv_select_common
-                         || lv_select_group1
+                         || lv_select_group1_2
                          || lv_select_1_om103x124
-                         || lv_where
+                         || lv_where3
                          || ' UNION ALL '
                          || lv_select_g1_om105_3_hint
                          || lv_select_common
-                         || lv_select_group1
+                         || lv_select_group1_2
                          || lv_select_1_om105
-                         || lv_where
+                         || lv_where3
                          || ' UNION ALL '
                          || lv_select_g1_om108_3_hint
                          || lv_select_common
-                         || lv_select_group1
+                         || lv_select_group1_2
                          || lv_select_1_om108
-                         || lv_where
+                         || lv_where3
                          || lv_select_main_end
                          ;
         -- バルクフェッチ
@@ -3001,85 +3473,85 @@ AS
                          || lv_select_common
                          || lv_select_group1
                          || lv_select_1_po102
-                         || lv_where
+                         || lv_where2
                          || ' UNION ALL '
                          || lv_select_g1_po101_4_hint
                          || lv_select_common
                          || lv_select_group1
                          || lv_select_1_po101
-                         || lv_where
+                         || lv_where2
                          || ' UNION ALL '
                          || lv_select_g1_po112_4_hint
                          || lv_select_common
                          || lv_select_group1
                          || lv_select_1_po112
-                         || lv_where
+                         || lv_where2
                          || ' UNION ALL '
                          || lv_select_g1_po103x5_4_hint
                          || lv_select_common
-                         || lv_select_group1
+                         || lv_select_group1_2
                          || lv_select_1_po103x5
-                         || lv_where
+                         || lv_where3
                          || ' UNION ALL '
                          || lv_select_g1_po103x124_4_hint
                          || lv_select_common
-                         || lv_select_group1
+                         || lv_select_group1_2
                          || lv_select_1_po103x124
-                         || lv_where
+                         || lv_where3
                          || ' UNION ALL '
                          || lv_select_g1_po105_4_hint
                          || lv_select_common
-                         || lv_select_group1
+                         || lv_select_group1_2
                          || lv_select_1_po105
-                         || lv_where
+                         || lv_where3
                          || ' UNION ALL '
                          || lv_select_g1_po108_4_hint
                          || lv_select_common
-                         || lv_select_group1
+                         || lv_select_group1_2
                          || lv_select_1_po108
-                         || lv_where
+                         || lv_where3
                          || ' UNION ALL '
                          || lv_select_g1_om102_4_hint
                          || lv_select_common
                          || lv_select_group1
                          || lv_select_1_om102
-                         || lv_where
+                         || lv_where2
                          || ' UNION ALL '
                          || lv_select_g1_om101_4_hint
                          || lv_select_common
                          || lv_select_group1
                          || lv_select_1_om101
-                         || lv_where
+                         || lv_where2
                          || ' UNION ALL '
                          || lv_select_g1_om112_4_hint
                          || lv_select_common
                          || lv_select_group1
                          || lv_select_1_om112
-                         || lv_where
+                         || lv_where2
                          || ' UNION ALL '
                          || lv_select_g1_om103x5_4_hint
                          || lv_select_common
-                         || lv_select_group1
+                         || lv_select_group1_2
                          || lv_select_1_om103x5
-                         || lv_where
+                         || lv_where3
                          || ' UNION ALL '
                          || lv_select_g1_om103x124_4_hint
                          || lv_select_common
-                         || lv_select_group1
+                         || lv_select_group1_2
                          || lv_select_1_om103x124
-                         || lv_where
+                         || lv_where3
                          || ' UNION ALL '
                          || lv_select_g1_om105_4_hint
                          || lv_select_common
-                         || lv_select_group1
+                         || lv_select_group1_2
                          || lv_select_1_om105
-                         || lv_where
+                         || lv_where3
                          || ' UNION ALL '
                          || lv_select_g1_om108_4_hint
                          || lv_select_common
-                         || lv_select_group1
+                         || lv_select_group1_2
                          || lv_select_1_om108
-                         || lv_where
+                         || lv_where3
                          || lv_select_main_end
                          ;
         -- バルクフェッチ
@@ -3103,85 +3575,85 @@ AS
                          || lv_select_common
                          || lv_select_group1
                          || lv_select_1_po102
-                         || lv_where
+                         || lv_where2
                          || ' UNION ALL '
                          || lv_select_g1_po101_3_hint
                          || lv_select_common
                          || lv_select_group1
                          || lv_select_1_po101
-                         || lv_where
+                         || lv_where2
                          || ' UNION ALL '
                          || lv_select_g1_po112_3_hint
                          || lv_select_common
                          || lv_select_group1
                          || lv_select_1_po112
-                         || lv_where
+                         || lv_where2
                          || ' UNION ALL '
                          || lv_select_g1_po103x5_3_hint
                          || lv_select_common
-                         || lv_select_group1
+                         || lv_select_group1_2
                          || lv_select_1_po103x5
-                         || lv_where
+                         || lv_where3
                          || ' UNION ALL '
                          || lv_select_g1_po103x124_3_hint
                          || lv_select_common
-                         || lv_select_group1
+                         || lv_select_group1_2
                          || lv_select_1_po103x124
-                         || lv_where
+                         || lv_where3
                          || ' UNION ALL '
                          || lv_select_g1_po105_3_hint
                          || lv_select_common
-                         || lv_select_group1
+                         || lv_select_group1_2
                          || lv_select_1_po105
-                         || lv_where
+                         || lv_where3
                          || ' UNION ALL '
                          || lv_select_g1_po108_3_hint
                          || lv_select_common
-                         || lv_select_group1
+                         || lv_select_group1_2
                          || lv_select_1_po108
-                         || lv_where
+                         || lv_where3
                          || ' UNION ALL '
                          || lv_select_g1_om102_3_hint
                          || lv_select_common
                          || lv_select_group1
                          || lv_select_1_om102
-                         || lv_where
+                         || lv_where2
                          || ' UNION ALL '
                          || lv_select_g1_om101_3_hint
                          || lv_select_common
                          || lv_select_group1
                          || lv_select_1_om101
-                         || lv_where
+                         || lv_where2
                          || ' UNION ALL '
                          || lv_select_g1_om112_3_hint
                          || lv_select_common
                          || lv_select_group1
                          || lv_select_1_om112
-                         || lv_where
+                         || lv_where2
                          || ' UNION ALL '
                          || lv_select_g1_om103x5_3_hint
                          || lv_select_common
-                         || lv_select_group1
+                         || lv_select_group1_2
                          || lv_select_1_om103x5
-                         || lv_where
+                         || lv_where3
                          || ' UNION ALL '
                          || lv_select_g1_om103x124_3_hint
                          || lv_select_common
-                         || lv_select_group1
+                         || lv_select_group1_2
                          || lv_select_1_om103x124
-                         || lv_where
+                         || lv_where3
                          || ' UNION ALL '
                          || lv_select_g1_om105_3_hint
                          || lv_select_common
-                         || lv_select_group1
+                         || lv_select_group1_2
                          || lv_select_1_om105
-                         || lv_where
+                         || lv_where3
                          || ' UNION ALL '
                          || lv_select_g1_om108_3_hint
                          || lv_select_common
-                         || lv_select_group1
+                         || lv_select_group1_2
                          || lv_select_1_om108
-                         || lv_where
+                         || lv_where3
                          || lv_select_main_end
                          ;
         -- バルクフェッチ
@@ -3205,85 +3677,85 @@ AS
                          || lv_select_common
                          || lv_select_group1
                          || lv_select_1_po102
-                         || lv_where
+                         || lv_where2
                          || ' UNION ALL '
                          || lv_select_g1_po101_6_hint
                          || lv_select_common
                          || lv_select_group1
                          || lv_select_1_po101
-                         || lv_where
+                         || lv_where2
                          || ' UNION ALL '
                          || lv_select_g1_po112_6_hint
                          || lv_select_common
                          || lv_select_group1
                          || lv_select_1_po112
-                         || lv_where
+                         || lv_where2
                          || ' UNION ALL '
                          || lv_select_g1_po103x5_6_hint
                          || lv_select_common
-                         || lv_select_group1
+                         || lv_select_group1_2
                          || lv_select_1_po103x5
-                         || lv_where
+                         || lv_where3
                          || ' UNION ALL '
                          || lv_select_g1_po103x124_6_hint
                          || lv_select_common
-                         || lv_select_group1
+                         || lv_select_group1_2
                          || lv_select_1_po103x124
-                         || lv_where
+                         || lv_where3
                          || ' UNION ALL '
                          || lv_select_g1_po105_6_hint
                          || lv_select_common
-                         || lv_select_group1
+                         || lv_select_group1_2
                          || lv_select_1_po105
-                         || lv_where
+                         || lv_where3
                          || ' UNION ALL '
                          || lv_select_g1_po108_6_hint
                          || lv_select_common
-                         || lv_select_group1
+                         || lv_select_group1_2
                          || lv_select_1_po108
-                         || lv_where
+                         || lv_where3
                          || ' UNION ALL '
                          || lv_select_g1_om102_6_hint
                          || lv_select_common
                          || lv_select_group1
                          || lv_select_1_om102
-                         || lv_where
+                         || lv_where2
                          || ' UNION ALL '
                          || lv_select_g1_om101_6_hint
                          || lv_select_common
                          || lv_select_group1
                          || lv_select_1_om101
-                         || lv_where
+                         || lv_where2
                          || ' UNION ALL '
                          || lv_select_g1_om112_6_hint
                          || lv_select_common
                          || lv_select_group1
                          || lv_select_1_om112
-                         || lv_where
+                         || lv_where2
                          || ' UNION ALL '
                          || lv_select_g1_om103x5_6_hint
                          || lv_select_common
-                         || lv_select_group1
+                         || lv_select_group1_2
                          || lv_select_1_om103x5
-                         || lv_where
+                         || lv_where3
                          || ' UNION ALL '
                          || lv_select_g1_om103x124_6_hint
                          || lv_select_common
-                         || lv_select_group1
+                         || lv_select_group1_2
                          || lv_select_1_om103x124
-                         || lv_where
+                         || lv_where3
                          || ' UNION ALL '
                          || lv_select_g1_om105_6_hint
                          || lv_select_common
-                         || lv_select_group1
+                         || lv_select_group1_2
                          || lv_select_1_om105
-                         || lv_where
+                         || lv_where3
                          || ' UNION ALL '
                          || lv_select_g1_om108_6_hint
                          || lv_select_common
-                         || lv_select_group1
+                         || lv_select_group1_2
                          || lv_select_1_om108
-                         || lv_where
+                         || lv_where3
                          || lv_select_main_end
                          ;
         -- バルクフェッチ
@@ -3307,85 +3779,85 @@ AS
                          || lv_select_common
                          || lv_select_group1
                          || lv_select_1_po102
-                         || lv_where
+                         || lv_where2
                          || ' UNION ALL '
                          || lv_select_g1_po101_4_hint
                          || lv_select_common
                          || lv_select_group1
                          || lv_select_1_po101
-                         || lv_where
+                         || lv_where2
                          || ' UNION ALL '
                          || lv_select_g1_po112_4_hint
                          || lv_select_common
                          || lv_select_group1
                          || lv_select_1_po112
-                         || lv_where
+                         || lv_where2
                          || ' UNION ALL '
                          || lv_select_g1_po103x5_4_hint
                          || lv_select_common
-                         || lv_select_group1
+                         || lv_select_group1_2
                          || lv_select_1_po103x5
-                         || lv_where
+                         || lv_where3
                          || ' UNION ALL '
                          || lv_select_g1_po103x124_4_hint
                          || lv_select_common
-                         || lv_select_group1
+                         || lv_select_group1_2
                          || lv_select_1_po103x124
-                         || lv_where
+                         || lv_where3
                          || ' UNION ALL '
                          || lv_select_g1_po105_4_hint
                          || lv_select_common
-                         || lv_select_group1
+                         || lv_select_group1_2
                          || lv_select_1_po105
-                         || lv_where
+                         || lv_where3
                          || ' UNION ALL '
                          || lv_select_g1_po108_4_hint
                          || lv_select_common
-                         || lv_select_group1
+                         || lv_select_group1_2
                          || lv_select_1_po108
-                         || lv_where
+                         || lv_where3
                          || ' UNION ALL '
                          || lv_select_g1_om102_4_hint
                          || lv_select_common
                          || lv_select_group1
                          || lv_select_1_om102
-                         || lv_where
+                         || lv_where2
                          || ' UNION ALL '
                          || lv_select_g1_om101_4_hint
                          || lv_select_common
                          || lv_select_group1
                          || lv_select_1_om101
-                         || lv_where
+                         || lv_where2
                          || ' UNION ALL '
                          || lv_select_g1_om112_4_hint
                          || lv_select_common
                          || lv_select_group1
                          || lv_select_1_om112
-                         || lv_where
+                         || lv_where2
                          || ' UNION ALL '
                          || lv_select_g1_om103x5_4_hint
                          || lv_select_common
-                         || lv_select_group1
+                         || lv_select_group1_2
                          || lv_select_1_om103x5
-                         || lv_where
+                         || lv_where3
                          || ' UNION ALL '
                          || lv_select_g1_om103x124_4_hint
                          || lv_select_common
-                         || lv_select_group1
+                         || lv_select_group1_2
                          || lv_select_1_om103x124
-                         || lv_where
+                         || lv_where3
                          || ' UNION ALL '
                          || lv_select_g1_om105_4_hint
                          || lv_select_common
-                         || lv_select_group1
+                         || lv_select_group1_2
                          || lv_select_1_om105
-                         || lv_where
+                         || lv_where3
                          || ' UNION ALL '
                          || lv_select_g1_om108_4_hint
                          || lv_select_common
-                         || lv_select_group1
+                         || lv_select_group1_2
                          || lv_select_1_om108
-                         || lv_where
+                         || lv_where3
                          || lv_select_main_end
                          ;
         -- バルクフェッチ
@@ -3405,85 +3877,85 @@ AS
                          || lv_select_common
                          || lv_select_group1
                          || lv_select_1_po102
-                         || lv_where
+                         || lv_where2
                          || ' UNION ALL '
                          || lv_select_g1_po101_6_hint
                          || lv_select_common
                          || lv_select_group1
                          || lv_select_1_po101
-                         || lv_where
+                         || lv_where2
                          || ' UNION ALL '
                          || lv_select_g1_po112_6_hint
                          || lv_select_common
                          || lv_select_group1
                          || lv_select_1_po112
-                         || lv_where
+                         || lv_where2
                          || ' UNION ALL '
                          || lv_select_g1_po103x5_6_hint
                          || lv_select_common
-                         || lv_select_group1
+                         || lv_select_group1_2
                          || lv_select_1_po103x5
-                         || lv_where
+                         || lv_where3
                          || ' UNION ALL '
                          || lv_select_g1_po103x124_6_hint
                          || lv_select_common
-                         || lv_select_group1
+                         || lv_select_group1_2
                          || lv_select_1_po103x124
-                         || lv_where
+                         || lv_where3
                          || ' UNION ALL '
                          || lv_select_g1_po105_6_hint
                          || lv_select_common
-                         || lv_select_group1
+                         || lv_select_group1_2
                          || lv_select_1_po105
-                         || lv_where
+                         || lv_where3
                          || ' UNION ALL '
                          || lv_select_g1_po108_6_hint
                          || lv_select_common
-                         || lv_select_group1
+                         || lv_select_group1_2
                          || lv_select_1_po108
-                         || lv_where
+                         || lv_where3
                          || ' UNION ALL '
                          || lv_select_g1_om102_6_hint
                          || lv_select_common
                          || lv_select_group1
                          || lv_select_1_om102
-                         || lv_where
+                         || lv_where2
                          || ' UNION ALL '
                          || lv_select_g1_om101_6_hint
                          || lv_select_common
                          || lv_select_group1
                          || lv_select_1_om101
-                         || lv_where
+                         || lv_where2
                          || ' UNION ALL '
                          || lv_select_g1_om112_6_hint
                          || lv_select_common
                          || lv_select_group1
                          || lv_select_1_om112
-                         || lv_where
+                         || lv_where2
                          || ' UNION ALL '
                          || lv_select_g1_om103x5_6_hint
                          || lv_select_common
-                         || lv_select_group1
+                         || lv_select_group1_2
                          || lv_select_1_om103x5
-                         || lv_where
+                         || lv_where3
                          || ' UNION ALL '
                          || lv_select_g1_om103x124_6_hint
                          || lv_select_common
-                         || lv_select_group1
+                         || lv_select_group1_2
                          || lv_select_1_om103x124
-                         || lv_where
+                         || lv_where3
                          || ' UNION ALL '
                          || lv_select_g1_om105_6_hint
                          || lv_select_common
-                         || lv_select_group1
+                         || lv_select_group1_2
                          || lv_select_1_om105
-                         || lv_where
+                         || lv_where3
                          || ' UNION ALL '
                          || lv_select_g1_om108_6_hint
                          || lv_select_common
-                         || lv_select_group1
+                         || lv_select_group1_2
                          || lv_select_1_om108
-                         || lv_where
+                         || lv_where3
                          || lv_select_main_end
                          ;
         -- バルクフェッチ
@@ -3514,85 +3986,85 @@ AS
                          || lv_select_common
                          || lv_select_group2
                          || lv_select_1_po102
-                         || lv_where
+                         || lv_where2
                          || ' UNION ALL '
                          || lv_select_g1_po101_1_hint
                          || lv_select_common
                          || lv_select_group2
                          || lv_select_1_po101
-                         || lv_where
+                         || lv_where2
                          || ' UNION ALL '
                          || lv_select_g1_po112_1_hint
                          || lv_select_common
                          || lv_select_group2
                          || lv_select_1_po112
-                         || lv_where
+                         || lv_where2
                          || ' UNION ALL '
                          || lv_select_g1_po103x5_1_hint
                          || lv_select_common
                          || lv_select_group2
                          || lv_select_1_po103x5
-                         || lv_where
+                         || lv_where3
                          || ' UNION ALL '
                          || lv_select_g1_po103x124_1_hint
                          || lv_select_common
                          || lv_select_group2
                          || lv_select_1_po103x124
-                         || lv_where
+                         || lv_where3
                          || ' UNION ALL '
                          || lv_select_g1_po105_1_hint
                          || lv_select_common
                          || lv_select_group2
                          || lv_select_1_po105
-                         || lv_where
+                         || lv_where3
                          || ' UNION ALL '
                          || lv_select_g1_po108_1_hint
                          || lv_select_common
                          || lv_select_group2
                          || lv_select_1_po108
-                         || lv_where
+                         || lv_where3
                          || ' UNION ALL '
                          || lv_select_g1_om102_1_hint
                          || lv_select_common
                          || lv_select_group2
                          || lv_select_1_om102
-                         || lv_where
+                         || lv_where2
                          || ' UNION ALL '
                          || lv_select_g1_om101_1_hint
                          || lv_select_common
                          || lv_select_group2
                          || lv_select_1_om101
-                         || lv_where
+                         || lv_where2
                          || ' UNION ALL '
                          || lv_select_g1_om112_1_hint
                          || lv_select_common
                          || lv_select_group2
                          || lv_select_1_om112
-                         || lv_where
+                         || lv_where2
                          || ' UNION ALL '
                          || lv_select_g1_om103x5_1_hint
                          || lv_select_common
                          || lv_select_group2
                          || lv_select_1_om103x5
-                         || lv_where
+                         || lv_where3
                          || ' UNION ALL '
                          || lv_select_g1_om103x124_1_hint
                          || lv_select_common
                          || lv_select_group2
                          || lv_select_1_om103x124
-                         || lv_where
+                         || lv_where3
                          || ' UNION ALL '
                          || lv_select_g1_om105_1_hint
                          || lv_select_common
                          || lv_select_group2
                          || lv_select_1_om105
-                         || lv_where
+                         || lv_where3
                          || ' UNION ALL '
                          || lv_select_g1_om108_1_hint
                          || lv_select_common
                          || lv_select_group2
                          || lv_select_1_om108
-                         || lv_where
+                         || lv_where3
                          || lv_select_main_end
                          ;
         -- バルクフェッチ
@@ -3616,85 +4088,85 @@ AS
                          || lv_select_common
                          || lv_select_group2
                          || lv_select_1_po102
-                         || lv_where
+                         || lv_where2
                          || ' UNION ALL '
                          || lv_select_g1_po101_2_hint
                          || lv_select_common
                          || lv_select_group2
                          || lv_select_1_po101
-                         || lv_where
+                         || lv_where2
                          || ' UNION ALL '
                          || lv_select_g1_po112_2_hint
                          || lv_select_common
                          || lv_select_group2
                          || lv_select_1_po112
-                         || lv_where
+                         || lv_where2
                          || ' UNION ALL '
                          || lv_select_g1_po103x5_2_hint
                          || lv_select_common
                          || lv_select_group2
                          || lv_select_1_po103x5
-                         || lv_where
+                         || lv_where3
                          || ' UNION ALL '
                          || lv_select_g1_po103x124_2_hint
                          || lv_select_common
                          || lv_select_group2
                          || lv_select_1_po103x124
-                         || lv_where
+                         || lv_where3
                          || ' UNION ALL '
                          || lv_select_g1_po105_2_hint
                          || lv_select_common
                          || lv_select_group2
                          || lv_select_1_po105
-                         || lv_where
+                         || lv_where3
                          || ' UNION ALL '
                          || lv_select_g1_po108_2_hint
                          || lv_select_common
                          || lv_select_group2
                          || lv_select_1_po108
-                         || lv_where
+                         || lv_where3
                          || ' UNION ALL '
                          || lv_select_g1_om102_2_hint
                          || lv_select_common
                          || lv_select_group2
                          || lv_select_1_om102
-                         || lv_where
+                         || lv_where2
                          || ' UNION ALL '
                          || lv_select_g1_om101_2_hint
                          || lv_select_common
                          || lv_select_group2
                          || lv_select_1_om101
-                         || lv_where
+                         || lv_where2
                          || ' UNION ALL '
                          || lv_select_g1_om112_2_hint
                          || lv_select_common
                          || lv_select_group2
                          || lv_select_1_om112
-                         || lv_where
+                         || lv_where2
                          || ' UNION ALL '
                          || lv_select_g1_om103x5_2_hint
                          || lv_select_common
                          || lv_select_group2
                          || lv_select_1_om103x5
-                         || lv_where
+                         || lv_where3
                          || ' UNION ALL '
                          || lv_select_g1_om103x124_2_hint
                          || lv_select_common
                          || lv_select_group2
                          || lv_select_1_om103x124
-                         || lv_where
+                         || lv_where3
                          || ' UNION ALL '
                          || lv_select_g1_om105_2_hint
                          || lv_select_common
                          || lv_select_group2
                          || lv_select_1_om105
-                         || lv_where
+                         || lv_where3
                          || ' UNION ALL '
                          || lv_select_g1_om108_2_hint
                          || lv_select_common
                          || lv_select_group2
                          || lv_select_1_om108
-                         || lv_where
+                         || lv_where3
                          || lv_select_main_end
                          ;
         -- バルクフェッチ
@@ -3718,85 +4190,85 @@ AS
                          || lv_select_common
                          || lv_select_group2
                          || lv_select_1_po102
-                         || lv_where
+                         || lv_where2
                          || ' UNION ALL '
                          || lv_select_g1_po101_3_hint
                          || lv_select_common
                          || lv_select_group2
                          || lv_select_1_po101
-                         || lv_where
+                         || lv_where2
                          || ' UNION ALL '
                          || lv_select_g1_po112_3_hint
                          || lv_select_common
                          || lv_select_group2
                          || lv_select_1_po112
-                         || lv_where
+                         || lv_where2
                          || ' UNION ALL '
                          || lv_select_g1_po103x5_3_hint
                          || lv_select_common
                          || lv_select_group2
                          || lv_select_1_po103x5
-                         || lv_where
+                         || lv_where3
                          || ' UNION ALL '
                          || lv_select_g1_po103x124_3_hint
                          || lv_select_common
                          || lv_select_group2
                          || lv_select_1_po103x124
-                         || lv_where
+                         || lv_where3
                          || ' UNION ALL '
                          || lv_select_g1_po105_3_hint
                          || lv_select_common
                          || lv_select_group2
                          || lv_select_1_po105
-                         || lv_where
+                         || lv_where3
                          || ' UNION ALL '
                          || lv_select_g1_po108_3_hint
                          || lv_select_common
                          || lv_select_group2
                          || lv_select_1_po108
-                         || lv_where
+                         || lv_where3
                          || ' UNION ALL '
                          || lv_select_g1_om102_3_hint
                          || lv_select_common
                          || lv_select_group2
                          || lv_select_1_om102
-                         || lv_where
+                         || lv_where2
                          || ' UNION ALL '
                          || lv_select_g1_om101_3_hint
                          || lv_select_common
                          || lv_select_group2
                          || lv_select_1_om101
-                         || lv_where
+                         || lv_where2
                          || ' UNION ALL '
                          || lv_select_g1_om112_3_hint
                          || lv_select_common
                          || lv_select_group2
                          || lv_select_1_om112
-                         || lv_where
+                         || lv_where2
                          || ' UNION ALL '
                          || lv_select_g1_om103x5_3_hint
                          || lv_select_common
                          || lv_select_group2
                          || lv_select_1_om103x5
-                         || lv_where
+                         || lv_where3
                          || ' UNION ALL '
                          || lv_select_g1_om103x124_3_hint
                          || lv_select_common
                          || lv_select_group2
                          || lv_select_1_om103x124
-                         || lv_where
+                         || lv_where3
                          || ' UNION ALL '
                          || lv_select_g1_om105_3_hint
                          || lv_select_common
                          || lv_select_group2
                          || lv_select_1_om105
-                         || lv_where
+                         || lv_where3
                          || ' UNION ALL '
                          || lv_select_g1_om108_3_hint
                          || lv_select_common
                          || lv_select_group2
                          || lv_select_1_om108
-                         || lv_where
+                         || lv_where3
                          || lv_select_main_end
                          ;
         -- バルクフェッチ
@@ -3820,85 +4292,85 @@ AS
                          || lv_select_common
                          || lv_select_group2
                          || lv_select_1_po102
-                         || lv_where
+                         || lv_where2
                          || ' UNION ALL '
                          || lv_select_g1_po101_4_hint
                          || lv_select_common
                          || lv_select_group2
                          || lv_select_1_po101
-                         || lv_where
+                         || lv_where2
                          || ' UNION ALL '
                          || lv_select_g1_po112_4_hint
                          || lv_select_common
                          || lv_select_group2
                          || lv_select_1_po112
-                         || lv_where
+                         || lv_where2
                          || ' UNION ALL '
                          || lv_select_g1_po103x5_4_hint
                          || lv_select_common
                          || lv_select_group2
                          || lv_select_1_po103x5
-                         || lv_where
+                         || lv_where3
                          || ' UNION ALL '
                          || lv_select_g1_po103x124_4_hint
                          || lv_select_common
                          || lv_select_group2
                          || lv_select_1_po103x124
-                         || lv_where
+                         || lv_where3
                          || ' UNION ALL '
                          || lv_select_g1_po105_4_hint
                          || lv_select_common
                          || lv_select_group2
                          || lv_select_1_po105
-                         || lv_where
+                         || lv_where3
                          || ' UNION ALL '
                          || lv_select_g1_po108_4_hint
                          || lv_select_common
                          || lv_select_group2
                          || lv_select_1_po108
-                         || lv_where
+                         || lv_where3
                          || ' UNION ALL '
                          || lv_select_g1_om102_4_hint
                          || lv_select_common
                          || lv_select_group2
                          || lv_select_1_om102
-                         || lv_where
+                         || lv_where2
                          || ' UNION ALL '
                          || lv_select_g1_om101_4_hint
                          || lv_select_common
                          || lv_select_group2
                          || lv_select_1_om101
-                         || lv_where
+                         || lv_where2
                          || ' UNION ALL '
                          || lv_select_g1_om112_4_hint
                          || lv_select_common
                          || lv_select_group2
                          || lv_select_1_om112
-                         || lv_where
+                         || lv_where2
                          || ' UNION ALL '
                          || lv_select_g1_om103x5_4_hint
                          || lv_select_common
                          || lv_select_group2
                          || lv_select_1_om103x5
-                         || lv_where
+                         || lv_where3
                          || ' UNION ALL '
                          || lv_select_g1_om103x124_4_hint
                          || lv_select_common
                          || lv_select_group2
                          || lv_select_1_om103x124
-                         || lv_where
+                         || lv_where3
                          || ' UNION ALL '
                          || lv_select_g1_om105_4_hint
                          || lv_select_common
                          || lv_select_group2
                          || lv_select_1_om105
-                         || lv_where
+                         || lv_where3
                          || ' UNION ALL '
                          || lv_select_g1_om108_4_hint
                          || lv_select_common
                          || lv_select_group2
                          || lv_select_1_om108
-                         || lv_where
+                         || lv_where3
                          || lv_select_main_end
                          ;
         -- バルクフェッチ
@@ -3922,85 +4394,85 @@ AS
                          || lv_select_common
                          || lv_select_group2
                          || lv_select_1_po102
-                         || lv_where
+                         || lv_where2
                          || ' UNION ALL '
                          || lv_select_g1_po101_3_hint
                          || lv_select_common
                          || lv_select_group2
                          || lv_select_1_po101
-                         || lv_where
+                         || lv_where2
                          || ' UNION ALL '
                          || lv_select_g1_po112_3_hint
                          || lv_select_common
                          || lv_select_group2
                          || lv_select_1_po112
-                         || lv_where
+                         || lv_where2
                          || ' UNION ALL '
                          || lv_select_g1_po103x5_3_hint
                          || lv_select_common
                          || lv_select_group2
                          || lv_select_1_po103x5
-                         || lv_where
+                         || lv_where3
                          || ' UNION ALL '
                          || lv_select_g1_po103x124_3_hint
                          || lv_select_common
                          || lv_select_group2
                          || lv_select_1_po103x124
-                         || lv_where
+                         || lv_where3
                          || ' UNION ALL '
                          || lv_select_g1_po105_3_hint
                          || lv_select_common
                          || lv_select_group2
                          || lv_select_1_po105
-                         || lv_where
+                         || lv_where3
                          || ' UNION ALL '
                          || lv_select_g1_po108_3_hint
                          || lv_select_common
                          || lv_select_group2
                          || lv_select_1_po108
-                         || lv_where
+                         || lv_where3
                          || ' UNION ALL '
                          || lv_select_g1_om102_3_hint
                          || lv_select_common
                          || lv_select_group2
                          || lv_select_1_om102
-                         || lv_where
+                         || lv_where2
                          || ' UNION ALL '
                          || lv_select_g1_om101_3_hint
                          || lv_select_common
                          || lv_select_group2
                          || lv_select_1_om101
-                         || lv_where
+                         || lv_where2
                          || ' UNION ALL '
                          || lv_select_g1_om112_3_hint
                          || lv_select_common
                          || lv_select_group2
                          || lv_select_1_om112
-                         || lv_where
+                         || lv_where2
                          || ' UNION ALL '
                          || lv_select_g1_om103x5_3_hint
                          || lv_select_common
                          || lv_select_group2
                          || lv_select_1_om103x5
-                         || lv_where
+                         || lv_where3
                          || ' UNION ALL '
                          || lv_select_g1_om103x124_3_hint
                          || lv_select_common
                          || lv_select_group2
                          || lv_select_1_om103x124
-                         || lv_where
+                         || lv_where3
                          || ' UNION ALL '
                          || lv_select_g1_om105_3_hint
                          || lv_select_common
                          || lv_select_group2
                          || lv_select_1_om105
-                         || lv_where
+                         || lv_where3
                          || ' UNION ALL '
                          || lv_select_g1_om108_3_hint
                          || lv_select_common
                          || lv_select_group2
                          || lv_select_1_om108
-                         || lv_where
+                         || lv_where3
                          || lv_select_main_end
                          ;
         -- バルクフェッチ
@@ -4024,85 +4496,85 @@ AS
                          || lv_select_common
                          || lv_select_group2
                          || lv_select_1_po102
-                         || lv_where
+                         || lv_where2
                          || ' UNION ALL '
                          || lv_select_g1_po101_6_hint
                          || lv_select_common
                          || lv_select_group2
                          || lv_select_1_po101
-                         || lv_where
+                         || lv_where2
                          || ' UNION ALL '
                          || lv_select_g1_po112_6_hint
                          || lv_select_common
                          || lv_select_group2
                          || lv_select_1_po112
-                         || lv_where
+                         || lv_where2
                          || ' UNION ALL '
                          || lv_select_g1_po103x5_6_hint
                          || lv_select_common
                          || lv_select_group2
                          || lv_select_1_po103x5
-                         || lv_where
+                         || lv_where3
                          || ' UNION ALL '
                          || lv_select_g1_po103x124_6_hint
                          || lv_select_common
                          || lv_select_group2
                          || lv_select_1_po103x124
-                         || lv_where
+                         || lv_where3
                          || ' UNION ALL '
                          || lv_select_g1_po105_6_hint
                          || lv_select_common
                          || lv_select_group2
                          || lv_select_1_po105
-                         || lv_where
+                         || lv_where3
                          || ' UNION ALL '
                          || lv_select_g1_po108_6_hint
                          || lv_select_common
                          || lv_select_group2
                          || lv_select_1_po108
-                         || lv_where
+                         || lv_where3
                          || ' UNION ALL '
                          || lv_select_g1_om102_6_hint
                          || lv_select_common
                          || lv_select_group2
                          || lv_select_1_om102
-                         || lv_where
+                         || lv_where2
                          || ' UNION ALL '
                          || lv_select_g1_om101_6_hint
                          || lv_select_common
                          || lv_select_group2
                          || lv_select_1_om101
-                         || lv_where
+                         || lv_where2
                          || ' UNION ALL '
                          || lv_select_g1_om112_6_hint
                          || lv_select_common
                          || lv_select_group2
                          || lv_select_1_om112
-                         || lv_where
+                         || lv_where2
                          || ' UNION ALL '
                          || lv_select_g1_om103x5_6_hint
                          || lv_select_common
                          || lv_select_group2
                          || lv_select_1_om103x5
-                         || lv_where
+                         || lv_where3
                          || ' UNION ALL '
                          || lv_select_g1_om103x124_6_hint
                          || lv_select_common
                          || lv_select_group2
                          || lv_select_1_om103x124
-                         || lv_where
+                         || lv_where3
                          || ' UNION ALL '
                          || lv_select_g1_om105_6_hint
                          || lv_select_common
                          || lv_select_group2
                          || lv_select_1_om105
-                         || lv_where
+                         || lv_where3
                          || ' UNION ALL '
                          || lv_select_g1_om108_6_hint
                          || lv_select_common
                          || lv_select_group2
                          || lv_select_1_om108
-                         || lv_where
+                         || lv_where3
                          || lv_select_main_end
                          ;
         -- バルクフェッチ
@@ -4126,85 +4598,85 @@ AS
                          || lv_select_common
                          || lv_select_group2
                          || lv_select_1_po102
-                         || lv_where
+                         || lv_where2
                          || ' UNION ALL '
                          || lv_select_g1_po101_4_hint
                          || lv_select_common
                          || lv_select_group2
                          || lv_select_1_po101
-                         || lv_where
+                         || lv_where2
                          || ' UNION ALL '
                          || lv_select_g1_po112_4_hint
                          || lv_select_common
                          || lv_select_group2
                          || lv_select_1_po112
-                         || lv_where
+                         || lv_where2
                          || ' UNION ALL '
                          || lv_select_g1_po103x5_4_hint
                          || lv_select_common
                          || lv_select_group2
                          || lv_select_1_po103x5
-                         || lv_where
+                         || lv_where3
                          || ' UNION ALL '
                          || lv_select_g1_po103x124_4_hint
                          || lv_select_common
                          || lv_select_group2
                          || lv_select_1_po103x124
-                         || lv_where
+                         || lv_where3
                          || ' UNION ALL '
                          || lv_select_g1_po105_4_hint
                          || lv_select_common
                          || lv_select_group2
                          || lv_select_1_po105
-                         || lv_where
+                         || lv_where3
                          || ' UNION ALL '
                          || lv_select_g1_po108_4_hint
                          || lv_select_common
                          || lv_select_group2
                          || lv_select_1_po108
-                         || lv_where
+                         || lv_where3
                          || ' UNION ALL '
                          || lv_select_g1_om102_4_hint
                          || lv_select_common
                          || lv_select_group2
                          || lv_select_1_om102
-                         || lv_where
+                         || lv_where2
                          || ' UNION ALL '
                          || lv_select_g1_om101_4_hint
                          || lv_select_common
                          || lv_select_group2
                          || lv_select_1_om101
-                         || lv_where
+                         || lv_where2
                          || ' UNION ALL '
                          || lv_select_g1_om112_4_hint
                          || lv_select_common
                          || lv_select_group2
                          || lv_select_1_om112
-                         || lv_where
+                         || lv_where2
                          || ' UNION ALL '
                          || lv_select_g1_om103x5_4_hint
                          || lv_select_common
                          || lv_select_group2
                          || lv_select_1_om103x5
-                         || lv_where
+                         || lv_where3
                          || ' UNION ALL '
                          || lv_select_g1_om103x124_4_hint
                          || lv_select_common
                          || lv_select_group2
                          || lv_select_1_om103x124
-                         || lv_where
+                         || lv_where3
                          || ' UNION ALL '
                          || lv_select_g1_om105_4_hint
                          || lv_select_common
                          || lv_select_group2
                          || lv_select_1_om105
-                         || lv_where
+                         || lv_where3
                          || ' UNION ALL '
                          || lv_select_g1_om108_4_hint
                          || lv_select_common
                          || lv_select_group2
                          || lv_select_1_om108
-                         || lv_where
+                         || lv_where3
                          || lv_select_main_end
                          ;
         -- バルクフェッチ
@@ -4224,85 +4696,85 @@ AS
                          || lv_select_common
                          || lv_select_group2
                          || lv_select_1_po102
-                         || lv_where
+                         || lv_where2
                          || ' UNION ALL '
                          || lv_select_g1_po101_6_hint
                          || lv_select_common
                          || lv_select_group2
                          || lv_select_1_po101
-                         || lv_where
+                         || lv_where2
                          || ' UNION ALL '
                          || lv_select_g1_po112_6_hint
                          || lv_select_common
                          || lv_select_group2
                          || lv_select_1_po112
-                         || lv_where
+                         || lv_where2
                          || ' UNION ALL '
                          || lv_select_g1_po103x5_6_hint
                          || lv_select_common
                          || lv_select_group2
                          || lv_select_1_po103x5
-                         || lv_where
+                         || lv_where3
                          || ' UNION ALL '
                          || lv_select_g1_po103x124_6_hint
                          || lv_select_common
                          || lv_select_group2
                          || lv_select_1_po103x124
-                         || lv_where
+                         || lv_where3
                          || ' UNION ALL '
                          || lv_select_g1_po105_6_hint
                          || lv_select_common
                          || lv_select_group2
                          || lv_select_1_po105
-                         || lv_where
+                         || lv_where3
                          || ' UNION ALL '
                          || lv_select_g1_po108_6_hint
                          || lv_select_common
                          || lv_select_group2
                          || lv_select_1_po108
-                         || lv_where
+                         || lv_where3
                          || ' UNION ALL '
                          || lv_select_g1_om102_6_hint
                          || lv_select_common
                          || lv_select_group2
                          || lv_select_1_om102
-                         || lv_where
+                         || lv_where2
                          || ' UNION ALL '
                          || lv_select_g1_om101_6_hint
                          || lv_select_common
                          || lv_select_group2
                          || lv_select_1_om101
-                         || lv_where
+                         || lv_where2
                          || ' UNION ALL '
                          || lv_select_g1_om112_6_hint
                          || lv_select_common
                          || lv_select_group2
                          || lv_select_1_om112
-                         || lv_where
+                         || lv_where2
                          || ' UNION ALL '
                          || lv_select_g1_om103x5_6_hint
                          || lv_select_common
                          || lv_select_group2
                          || lv_select_1_om103x5
-                         || lv_where
+                         || lv_where3
                          || ' UNION ALL '
                          || lv_select_g1_om103x124_6_hint
                          || lv_select_common
                          || lv_select_group2
                          || lv_select_1_om103x124
-                         || lv_where
+                         || lv_where3
                          || ' UNION ALL '
                          || lv_select_g1_om105_6_hint
                          || lv_select_common
                          || lv_select_group2
                          || lv_select_1_om105
-                         || lv_where
+                         || lv_where3
                          || ' UNION ALL '
                          || lv_select_g1_om108_6_hint
                          || lv_select_common
                          || lv_select_group2
                          || lv_select_1_om108
-                         || lv_where
+                         || lv_where3
                          || lv_select_main_end
                          ;
         -- バルクフェッチ
@@ -4333,85 +4805,85 @@ AS
                          || lv_select_common
                          || lv_select_group3
                          || lv_select_1_po102
-                         || lv_where
+                         || lv_where2
                          || ' UNION ALL '
                          || lv_select_g1_po101_1_hint
                          || lv_select_common
                          || lv_select_group3
                          || lv_select_1_po101
-                         || lv_where
+                         || lv_where2
                          || ' UNION ALL '
                          || lv_select_g1_po112_1_hint
                          || lv_select_common
                          || lv_select_group3
                          || lv_select_1_po112
-                         || lv_where
+                         || lv_where2
                          || ' UNION ALL '
                          || lv_select_g1_po103x5_1_hint
                          || lv_select_common
-                         || lv_select_group3
+                         || lv_select_group3_2
                          || lv_select_1_po103x5
-                         || lv_where
+                         || lv_where3
                          || ' UNION ALL '
                          || lv_select_g1_po103x124_1_hint
                          || lv_select_common
-                         || lv_select_group3
+                         || lv_select_group3_2
                          || lv_select_1_po103x124
-                         || lv_where
+                         || lv_where3
                          || ' UNION ALL '
                          || lv_select_g1_po105_1_hint
                          || lv_select_common
-                         || lv_select_group3
+                         || lv_select_group3_2
                          || lv_select_1_po105
-                         || lv_where
+                         || lv_where3
                          || ' UNION ALL '
                          || lv_select_g1_po108_1_hint
                          || lv_select_common
-                         || lv_select_group3
+                         || lv_select_group3_2
                          || lv_select_1_po108
-                         || lv_where
+                         || lv_where3
                          || ' UNION ALL '
                          || lv_select_g1_om102_1_hint
                          || lv_select_common
                          || lv_select_group3
                          || lv_select_1_om102
-                         || lv_where
+                         || lv_where2
                          || ' UNION ALL '
                          || lv_select_g1_om101_1_hint
                          || lv_select_common
                          || lv_select_group3
                          || lv_select_1_om101
-                         || lv_where
+                         || lv_where2
                          || ' UNION ALL '
                          || lv_select_g1_om112_1_hint
                          || lv_select_common
                          || lv_select_group3
                          || lv_select_1_om112
-                         || lv_where
+                         || lv_where2
                          || ' UNION ALL '
                          || lv_select_g1_om103x5_1_hint
                          || lv_select_common
-                         || lv_select_group3
+                         || lv_select_group3_2
                          || lv_select_1_om103x5
-                         || lv_where
+                         || lv_where3
                          || ' UNION ALL '
                          || lv_select_g1_om103x124_1_hint
                          || lv_select_common
-                         || lv_select_group3
+                         || lv_select_group3_2
                          || lv_select_1_om103x124
-                         || lv_where
+                         || lv_where3
                          || ' UNION ALL '
                          || lv_select_g1_om105_1_hint
                          || lv_select_common
-                         || lv_select_group3
+                         || lv_select_group3_2
                          || lv_select_1_om105
-                         || lv_where
+                         || lv_where3
                          || ' UNION ALL '
                          || lv_select_g1_om108_1_hint
                          || lv_select_common
-                         || lv_select_group3
+                         || lv_select_group3_2
                          || lv_select_1_om108
-                         || lv_where
+                         || lv_where3
                          || lv_select_main_end
                          ;
         -- バルクフェッチ
@@ -4435,85 +4907,85 @@ AS
                          || lv_select_common
                          || lv_select_group3
                          || lv_select_1_po102
-                         || lv_where
+                         || lv_where2
                          || ' UNION ALL '
                          || lv_select_g1_po101_2_hint
                          || lv_select_common
                          || lv_select_group3
                          || lv_select_1_po101
-                         || lv_where
+                         || lv_where2
                          || ' UNION ALL '
                          || lv_select_g1_po112_2_hint
                          || lv_select_common
                          || lv_select_group3
                          || lv_select_1_po112
-                         || lv_where
+                         || lv_where2
                          || ' UNION ALL '
                          || lv_select_g1_po103x5_2_hint
                          || lv_select_common
-                         || lv_select_group3
+                         || lv_select_group3_2
                          || lv_select_1_po103x5
-                         || lv_where
+                         || lv_where3
                          || ' UNION ALL '
                          || lv_select_g1_po103x124_2_hint
                          || lv_select_common
-                         || lv_select_group3
+                         || lv_select_group3_2
                          || lv_select_1_po103x124
-                         || lv_where
+                         || lv_where3
                          || ' UNION ALL '
                          || lv_select_g1_po105_2_hint
                          || lv_select_common
-                         || lv_select_group3
+                         || lv_select_group3_2
                          || lv_select_1_po105
-                         || lv_where
+                         || lv_where3
                          || ' UNION ALL '
                          || lv_select_g1_po108_2_hint
                          || lv_select_common
-                         || lv_select_group3
+                         || lv_select_group3_2
                          || lv_select_1_po108
-                         || lv_where
+                         || lv_where3
                          || ' UNION ALL '
                          || lv_select_g1_om102_2_hint
                          || lv_select_common
                          || lv_select_group3
                          || lv_select_1_om102
-                         || lv_where
+                         || lv_where2
                          || ' UNION ALL '
                          || lv_select_g1_om101_2_hint
                          || lv_select_common
                          || lv_select_group3
                          || lv_select_1_om101
-                         || lv_where
+                         || lv_where2
                          || ' UNION ALL '
                          || lv_select_g1_om112_2_hint
                          || lv_select_common
                          || lv_select_group3
                          || lv_select_1_om112
-                         || lv_where
+                         || lv_where2
                          || ' UNION ALL '
                          || lv_select_g1_om103x5_2_hint
                          || lv_select_common
-                         || lv_select_group3
+                         || lv_select_group3_2
                          || lv_select_1_om103x5
-                         || lv_where
+                         || lv_where3
                          || ' UNION ALL '
                          || lv_select_g1_om103x124_2_hint
                          || lv_select_common
-                         || lv_select_group3
+                         || lv_select_group3_2
                          || lv_select_1_om103x124
-                         || lv_where
+                         || lv_where3
                          || ' UNION ALL '
                          || lv_select_g1_om105_2_hint
                          || lv_select_common
-                         || lv_select_group3
+                         || lv_select_group3_2
                          || lv_select_1_om105
-                         || lv_where
+                         || lv_where3
                          || ' UNION ALL '
                          || lv_select_g1_om108_2_hint
                          || lv_select_common
-                         || lv_select_group3
+                         || lv_select_group3_2
                          || lv_select_1_om108
-                         || lv_where
+                         || lv_where3
                          || lv_select_main_end
                          ;
         -- バルクフェッチ
@@ -4537,85 +5009,85 @@ AS
                          || lv_select_common
                          || lv_select_group3
                          || lv_select_1_po102
-                         || lv_where
+                         || lv_where2
                          || ' UNION ALL '
                          || lv_select_g1_po101_3_hint
                          || lv_select_common
                          || lv_select_group3
                          || lv_select_1_po101
-                         || lv_where
+                         || lv_where2
                          || ' UNION ALL '
                          || lv_select_g1_po112_3_hint
                          || lv_select_common
                          || lv_select_group3
                          || lv_select_1_po112
-                         || lv_where
+                         || lv_where2
                          || ' UNION ALL '
                          || lv_select_g1_po103x5_3_hint
                          || lv_select_common
-                         || lv_select_group3
+                         || lv_select_group3_2
                          || lv_select_1_po103x5
-                         || lv_where
+                         || lv_where3
                          || ' UNION ALL '
                          || lv_select_g1_po103x124_3_hint
                          || lv_select_common
-                         || lv_select_group3
+                         || lv_select_group3_2
                          || lv_select_1_po103x124
-                         || lv_where
+                         || lv_where3
                          || ' UNION ALL '
                          || lv_select_g1_po105_3_hint
                          || lv_select_common
-                         || lv_select_group3
+                         || lv_select_group3_2
                          || lv_select_1_po105
-                         || lv_where
+                         || lv_where3
                          || ' UNION ALL '
                          || lv_select_g1_po108_3_hint
                          || lv_select_common
-                         || lv_select_group3
+                         || lv_select_group3_2
                          || lv_select_1_po108
-                         || lv_where
+                         || lv_where3
                          || ' UNION ALL '
                          || lv_select_g1_om102_3_hint
                          || lv_select_common
                          || lv_select_group3
                          || lv_select_1_om102
-                         || lv_where
+                         || lv_where2
                          || ' UNION ALL '
                          || lv_select_g1_om101_3_hint
                          || lv_select_common
                          || lv_select_group3
                          || lv_select_1_om101
-                         || lv_where
+                         || lv_where2
                          || ' UNION ALL '
                          || lv_select_g1_om112_3_hint
                          || lv_select_common
                          || lv_select_group3
                          || lv_select_1_om112
-                         || lv_where
+                         || lv_where2
                          || ' UNION ALL '
                          || lv_select_g1_om103x5_3_hint
                          || lv_select_common
-                         || lv_select_group3
+                         || lv_select_group3_2
                          || lv_select_1_om103x5
-                         || lv_where
+                         || lv_where3
                          || ' UNION ALL '
                          || lv_select_g1_om103x124_3_hint
                          || lv_select_common
-                         || lv_select_group3
+                         || lv_select_group3_2
                          || lv_select_1_om103x124
-                         || lv_where
+                         || lv_where3
                          || ' UNION ALL '
                          || lv_select_g1_om105_3_hint
                          || lv_select_common
-                         || lv_select_group3
+                         || lv_select_group3_2
                          || lv_select_1_om105
-                         || lv_where
+                         || lv_where3
                          || ' UNION ALL '
                          || lv_select_g1_om108_3_hint
                          || lv_select_common
-                         || lv_select_group3
+                         || lv_select_group3_2
                          || lv_select_1_om108
-                         || lv_where
+                         || lv_where3
                          || lv_select_main_end
                          ;
         -- バルクフェッチ
@@ -4639,85 +5111,85 @@ AS
                          || lv_select_common
                          || lv_select_group3
                          || lv_select_1_po102
-                         || lv_where
+                         || lv_where2
                          || ' UNION ALL '
                          || lv_select_g1_po101_4_hint
                          || lv_select_common
                          || lv_select_group3
                          || lv_select_1_po101
-                         || lv_where
+                         || lv_where2
                          || ' UNION ALL '
                          || lv_select_g1_po112_4_hint
                          || lv_select_common
                          || lv_select_group3
                          || lv_select_1_po112
-                         || lv_where
+                         || lv_where2
                          || ' UNION ALL '
                          || lv_select_g1_po103x5_4_hint
                          || lv_select_common
-                         || lv_select_group3
+                         || lv_select_group3_2
                          || lv_select_1_po103x5
-                         || lv_where
+                         || lv_where3
                          || ' UNION ALL '
                          || lv_select_g1_po103x124_4_hint
                          || lv_select_common
-                         || lv_select_group3
+                         || lv_select_group3_2
                          || lv_select_1_po103x124
-                         || lv_where
+                         || lv_where3
                          || ' UNION ALL '
                          || lv_select_g1_po105_4_hint
                          || lv_select_common
-                         || lv_select_group3
+                         || lv_select_group3_2
                          || lv_select_1_po105
-                         || lv_where
+                         || lv_where3
                          || ' UNION ALL '
                          || lv_select_g1_po108_4_hint
                          || lv_select_common
-                         || lv_select_group3
+                         || lv_select_group3_2
                          || lv_select_1_po108
-                         || lv_where
+                         || lv_where3
                          || ' UNION ALL '
                          || lv_select_g1_om102_4_hint
                          || lv_select_common
                          || lv_select_group3
                          || lv_select_1_om102
-                         || lv_where
+                         || lv_where2
                          || ' UNION ALL '
                          || lv_select_g1_om101_4_hint
                          || lv_select_common
                          || lv_select_group3
                          || lv_select_1_om101
-                         || lv_where
+                         || lv_where2
                          || ' UNION ALL '
                          || lv_select_g1_om112_4_hint
                          || lv_select_common
                          || lv_select_group3
                          || lv_select_1_om112
-                         || lv_where
+                         || lv_where2
                          || ' UNION ALL '
                          || lv_select_g1_om103x5_4_hint
                          || lv_select_common
-                         || lv_select_group3
+                         || lv_select_group3_2
                          || lv_select_1_om103x5
-                         || lv_where
+                         || lv_where3
                          || ' UNION ALL '
                          || lv_select_g1_om103x124_4_hint
                          || lv_select_common
-                         || lv_select_group3
+                         || lv_select_group3_2
                          || lv_select_1_om103x124
-                         || lv_where
+                         || lv_where3
                          || ' UNION ALL '
                          || lv_select_g1_om105_4_hint
                          || lv_select_common
-                         || lv_select_group3
+                         || lv_select_group3_2
                          || lv_select_1_om105
-                         || lv_where
+                         || lv_where3
                          || ' UNION ALL '
                          || lv_select_g1_om108_4_hint
                          || lv_select_common
-                         || lv_select_group3
+                         || lv_select_group3_2
                          || lv_select_1_om108
-                         || lv_where
+                         || lv_where3
                          || lv_select_main_end
                          ;
         -- バルクフェッチ
@@ -4741,85 +5213,85 @@ AS
                          || lv_select_common
                          || lv_select_group3
                          || lv_select_1_po102
-                         || lv_where
+                         || lv_where2
                          || ' UNION ALL '
                          || lv_select_g1_po101_3_hint
                          || lv_select_common
                          || lv_select_group3
                          || lv_select_1_po101
-                         || lv_where
+                         || lv_where2
                          || ' UNION ALL '
                          || lv_select_g1_po112_3_hint
                          || lv_select_common
                          || lv_select_group3
                          || lv_select_1_po112
-                         || lv_where
+                         || lv_where2
                          || ' UNION ALL '
                          || lv_select_g1_po103x5_3_hint
                          || lv_select_common
-                         || lv_select_group3
+                         || lv_select_group3_2
                          || lv_select_1_po103x5
-                         || lv_where
+                         || lv_where3
                          || ' UNION ALL '
                          || lv_select_g1_po103x124_3_hint
                          || lv_select_common
-                         || lv_select_group3
+                         || lv_select_group3_2
                          || lv_select_1_po103x124
-                         || lv_where
+                         || lv_where3
                          || ' UNION ALL '
                          || lv_select_g1_po105_3_hint
                          || lv_select_common
-                         || lv_select_group3
+                         || lv_select_group3_2
                          || lv_select_1_po105
-                         || lv_where
+                         || lv_where3
                          || ' UNION ALL '
                          || lv_select_g1_po108_3_hint
                          || lv_select_common
-                         || lv_select_group3
+                         || lv_select_group3_2
                          || lv_select_1_po108
-                         || lv_where
+                         || lv_where3
                          || ' UNION ALL '
                          || lv_select_g1_om102_3_hint
                          || lv_select_common
                          || lv_select_group3
                          || lv_select_1_om102
-                         || lv_where
+                         || lv_where2
                          || ' UNION ALL '
                          || lv_select_g1_om101_3_hint
                          || lv_select_common
                          || lv_select_group3
                          || lv_select_1_om101
-                         || lv_where
+                         || lv_where2
                          || ' UNION ALL '
                          || lv_select_g1_om112_3_hint
                          || lv_select_common
                          || lv_select_group3
                          || lv_select_1_om112
-                         || lv_where
+                         || lv_where2
                          || ' UNION ALL '
                          || lv_select_g1_om103x5_3_hint
                          || lv_select_common
-                         || lv_select_group3
+                         || lv_select_group3_2
                          || lv_select_1_om103x5
-                         || lv_where
+                         || lv_where3
                          || ' UNION ALL '
                          || lv_select_g1_om103x124_3_hint
                          || lv_select_common
-                         || lv_select_group3
+                         || lv_select_group3_2
                          || lv_select_1_om103x124
-                         || lv_where
+                         || lv_where3
                          || ' UNION ALL '
                          || lv_select_g1_om105_3_hint
                          || lv_select_common
-                         || lv_select_group3
+                         || lv_select_group3_2
                          || lv_select_1_om105
-                         || lv_where
+                         || lv_where3
                          || ' UNION ALL '
                          || lv_select_g1_om108_3_hint
                          || lv_select_common
-                         || lv_select_group3
+                         || lv_select_group3_2
                          || lv_select_1_om108
-                         || lv_where
+                         || lv_where3
                          || lv_select_main_end
                          ;
         -- バルクフェッチ
@@ -4843,85 +5315,85 @@ AS
                          || lv_select_common
                          || lv_select_group3
                          || lv_select_1_po102
-                         || lv_where
+                         || lv_where2
                          || ' UNION ALL '
                          || lv_select_g1_po101_6_hint
                          || lv_select_common
                          || lv_select_group3
                          || lv_select_1_po101
-                         || lv_where
+                         || lv_where2
                          || ' UNION ALL '
                          || lv_select_g1_po112_6_hint
                          || lv_select_common
                          || lv_select_group3
                          || lv_select_1_po112
-                         || lv_where
+                         || lv_where2
                          || ' UNION ALL '
                          || lv_select_g1_po103x5_6_hint
                          || lv_select_common
-                         || lv_select_group3
+                         || lv_select_group3_2
                          || lv_select_1_po103x5
-                         || lv_where
+                         || lv_where3
                          || ' UNION ALL '
                          || lv_select_g1_po103x124_6_hint
                          || lv_select_common
-                         || lv_select_group3
+                         || lv_select_group3_2
                          || lv_select_1_po103x124
-                         || lv_where
+                         || lv_where3
                          || ' UNION ALL '
                          || lv_select_g1_po105_6_hint
                          || lv_select_common
-                         || lv_select_group3
+                         || lv_select_group3_2
                          || lv_select_1_po105
-                         || lv_where
+                         || lv_where3
                          || ' UNION ALL '
                          || lv_select_g1_po108_6_hint
                          || lv_select_common
-                         || lv_select_group3
+                         || lv_select_group3_2
                          || lv_select_1_po108
-                         || lv_where
+                         || lv_where3
                          || ' UNION ALL '
                          || lv_select_g1_om102_6_hint
                          || lv_select_common
                          || lv_select_group3
                          || lv_select_1_om102
-                         || lv_where
+                         || lv_where2
                          || ' UNION ALL '
                          || lv_select_g1_om101_6_hint
                          || lv_select_common
                          || lv_select_group3
                          || lv_select_1_om101
-                         || lv_where
+                         || lv_where2
                          || ' UNION ALL '
                          || lv_select_g1_om112_6_hint
                          || lv_select_common
                          || lv_select_group3
                          || lv_select_1_om112
-                         || lv_where
+                         || lv_where2
                          || ' UNION ALL '
                          || lv_select_g1_om103x5_6_hint
                          || lv_select_common
-                         || lv_select_group3
+                         || lv_select_group3_2
                          || lv_select_1_om103x5
-                         || lv_where
+                         || lv_where3
                          || ' UNION ALL '
                          || lv_select_g1_om103x124_6_hint
                          || lv_select_common
-                         || lv_select_group3
+                         || lv_select_group3_2
                          || lv_select_1_om103x124
-                         || lv_where
+                         || lv_where3
                          || ' UNION ALL '
                          || lv_select_g1_om105_6_hint
                          || lv_select_common
-                         || lv_select_group3
+                         || lv_select_group3_2
                          || lv_select_1_om105
-                         || lv_where
+                         || lv_where3
                          || ' UNION ALL '
                          || lv_select_g1_om108_6_hint
                          || lv_select_common
-                         || lv_select_group3
+                         || lv_select_group3_2
                          || lv_select_1_om108
-                         || lv_where
+                         || lv_where3
                          || lv_select_main_end
                          ;
         -- バルクフェッチ
@@ -4945,85 +5417,85 @@ AS
                          || lv_select_common
                          || lv_select_group3
                          || lv_select_1_po102
-                         || lv_where
+                         || lv_where2
                          || ' UNION ALL '
                          || lv_select_g1_po101_4_hint
                          || lv_select_common
                          || lv_select_group3
                          || lv_select_1_po101
-                         || lv_where
+                         || lv_where2
                          || ' UNION ALL '
                          || lv_select_g1_po112_4_hint
                          || lv_select_common
                          || lv_select_group3
                          || lv_select_1_po112
-                         || lv_where
+                         || lv_where2
                          || ' UNION ALL '
                          || lv_select_g1_po103x5_4_hint
                          || lv_select_common
-                         || lv_select_group3
+                         || lv_select_group3_2
                          || lv_select_1_po103x5
-                         || lv_where
+                         || lv_where3
                          || ' UNION ALL '
                          || lv_select_g1_po103x124_4_hint
                          || lv_select_common
-                         || lv_select_group3
+                         || lv_select_group3_2
                          || lv_select_1_po103x124
-                         || lv_where
+                         || lv_where3
                          || ' UNION ALL '
                          || lv_select_g1_po105_4_hint
                          || lv_select_common
-                         || lv_select_group3
+                         || lv_select_group3_2
                          || lv_select_1_po105
-                         || lv_where
+                         || lv_where3
                          || ' UNION ALL '
                          || lv_select_g1_po108_4_hint
                          || lv_select_common
-                         || lv_select_group3
+                         || lv_select_group3_2
                          || lv_select_1_po108
-                         || lv_where
+                         || lv_where3
                          || ' UNION ALL '
                          || lv_select_g1_om102_4_hint
                          || lv_select_common
                          || lv_select_group3
                          || lv_select_1_om102
-                         || lv_where
+                         || lv_where2
                          || ' UNION ALL '
                          || lv_select_g1_om101_4_hint
                          || lv_select_common
                          || lv_select_group3
                          || lv_select_1_om101
-                         || lv_where
+                         || lv_where2
                          || ' UNION ALL '
                          || lv_select_g1_om112_4_hint
                          || lv_select_common
                          || lv_select_group3
                          || lv_select_1_om112
-                         || lv_where
+                         || lv_where2
                          || ' UNION ALL '
                          || lv_select_g1_om103x5_4_hint
                          || lv_select_common
-                         || lv_select_group3
+                         || lv_select_group3_2
                          || lv_select_1_om103x5
-                         || lv_where
+                         || lv_where3
                          || ' UNION ALL '
                          || lv_select_g1_om103x124_4_hint
                          || lv_select_common
-                         || lv_select_group3
+                         || lv_select_group3_2
                          || lv_select_1_om103x124
-                         || lv_where
+                         || lv_where3
                          || ' UNION ALL '
                          || lv_select_g1_om105_4_hint
                          || lv_select_common
-                         || lv_select_group3
+                         || lv_select_group3_2
                          || lv_select_1_om105
-                         || lv_where
+                         || lv_where3
                          || ' UNION ALL '
                          || lv_select_g1_om108_4_hint
                          || lv_select_common
-                         || lv_select_group3
+                         || lv_select_group3_2
                          || lv_select_1_om108
-                         || lv_where
+                         || lv_where3
                          || lv_select_main_end
                          ;
         -- バルクフェッチ
@@ -5043,85 +5515,85 @@ AS
                          || lv_select_common
                          || lv_select_group3
                          || lv_select_1_po102
-                         || lv_where
+                         || lv_where2
                          || ' UNION ALL '
                          || lv_select_g1_po101_6_hint
                          || lv_select_common
                          || lv_select_group3
                          || lv_select_1_po101
-                         || lv_where
+                         || lv_where2
                          || ' UNION ALL '
                          || lv_select_g1_po112_6_hint
                          || lv_select_common
                          || lv_select_group3
                          || lv_select_1_po112
-                         || lv_where
+                         || lv_where2
                          || ' UNION ALL '
                          || lv_select_g1_po103x5_6_hint
                          || lv_select_common
-                         || lv_select_group3
+                         || lv_select_group3_2
                          || lv_select_1_po103x5
-                         || lv_where
+                         || lv_where3
                          || ' UNION ALL '
                          || lv_select_g1_po103x124_6_hint
                          || lv_select_common
-                         || lv_select_group3
+                         || lv_select_group3_2
                          || lv_select_1_po103x124
-                         || lv_where
+                         || lv_where3
                          || ' UNION ALL '
                          || lv_select_g1_po105_6_hint
                          || lv_select_common
-                         || lv_select_group3
+                         || lv_select_group3_2
                          || lv_select_1_po105
-                         || lv_where
+                         || lv_where3
                          || ' UNION ALL '
                          || lv_select_g1_po108_6_hint
                          || lv_select_common
-                         || lv_select_group3
+                         || lv_select_group3_2
                          || lv_select_1_po108
-                         || lv_where
+                         || lv_where3
                          || ' UNION ALL '
                          || lv_select_g1_om102_6_hint
                          || lv_select_common
                          || lv_select_group3
                          || lv_select_1_om102
-                         || lv_where
+                         || lv_where2
                          || ' UNION ALL '
                          || lv_select_g1_om101_6_hint
                          || lv_select_common
                          || lv_select_group3
                          || lv_select_1_om101
-                         || lv_where
+                         || lv_where2
                          || ' UNION ALL '
                          || lv_select_g1_om112_6_hint
                          || lv_select_common
                          || lv_select_group3
                          || lv_select_1_om112
-                         || lv_where
+                         || lv_where2
                          || ' UNION ALL '
                          || lv_select_g1_om103x5_6_hint
                          || lv_select_common
-                         || lv_select_group3
+                         || lv_select_group3_2
                          || lv_select_1_om103x5
-                         || lv_where
+                         || lv_where3
                          || ' UNION ALL '
                          || lv_select_g1_om103x124_6_hint
                          || lv_select_common
-                         || lv_select_group3
+                         || lv_select_group3_2
                          || lv_select_1_om103x124
-                         || lv_where
+                         || lv_where3
                          || ' UNION ALL '
                          || lv_select_g1_om105_6_hint
                          || lv_select_common
-                         || lv_select_group3
+                         || lv_select_group3_2
                          || lv_select_1_om105
-                         || lv_where
+                         || lv_where3
                          || ' UNION ALL '
                          || lv_select_g1_om108_6_hint
                          || lv_select_common
-                         || lv_select_group3
+                         || lv_select_group3_2
                          || lv_select_1_om108
-                         || lv_where
+                         || lv_where3
                          || lv_select_main_end
                          ;
         -- バルクフェッチ
@@ -5152,85 +5624,85 @@ AS
                          || lv_select_common
                          || lv_select_group4
                          || lv_select_1_po102
-                         || lv_where
+                         || lv_where2
                          || ' UNION ALL '
                          || lv_select_g1_po101_1_hint
                          || lv_select_common
                          || lv_select_group4
                          || lv_select_1_po101
-                         || lv_where
+                         || lv_where2
                          || ' UNION ALL '
                          || lv_select_g1_po112_1_hint
                          || lv_select_common
                          || lv_select_group4
                          || lv_select_1_po112
-                         || lv_where
+                         || lv_where2
                          || ' UNION ALL '
                          || lv_select_g1_po103x5_1_hint
                          || lv_select_common
                          || lv_select_group4
                          || lv_select_1_po103x5
-                         || lv_where
+                         || lv_where3
                          || ' UNION ALL '
                          || lv_select_g1_po103x124_1_hint
                          || lv_select_common
                          || lv_select_group4
                          || lv_select_1_po103x124
-                         || lv_where
+                         || lv_where3
                          || ' UNION ALL '
                          || lv_select_g1_po105_1_hint
                          || lv_select_common
                          || lv_select_group4
                          || lv_select_1_po105
-                         || lv_where
+                         || lv_where3
                          || ' UNION ALL '
                          || lv_select_g1_po108_1_hint
                          || lv_select_common
                          || lv_select_group4
                          || lv_select_1_po108
-                         || lv_where
+                         || lv_where3
                          || ' UNION ALL '
                          || lv_select_g1_om102_1_hint
                          || lv_select_common
                          || lv_select_group4
                          || lv_select_1_om102
-                         || lv_where
+                         || lv_where2
                          || ' UNION ALL '
                          || lv_select_g1_om101_1_hint
                          || lv_select_common
                          || lv_select_group4
                          || lv_select_1_om101
-                         || lv_where
+                         || lv_where2
                          || ' UNION ALL '
                          || lv_select_g1_om112_1_hint
                          || lv_select_common
                          || lv_select_group4
                          || lv_select_1_om112
-                         || lv_where
+                         || lv_where2
                          || ' UNION ALL '
                          || lv_select_g1_om103x5_1_hint
                          || lv_select_common
                          || lv_select_group4
                          || lv_select_1_om103x5
-                         || lv_where
+                         || lv_where3
                          || ' UNION ALL '
                          || lv_select_g1_om103x124_1_hint
                          || lv_select_common
                          || lv_select_group4
                          || lv_select_1_om103x124
-                         || lv_where
+                         || lv_where3
                          || ' UNION ALL '
                          || lv_select_g1_om105_1_hint
                          || lv_select_common
                          || lv_select_group4
                          || lv_select_1_om105
-                         || lv_where
+                         || lv_where3
                          || ' UNION ALL '
                          || lv_select_g1_om108_1_hint
                          || lv_select_common
                          || lv_select_group4
                          || lv_select_1_om108
-                         || lv_where
+                         || lv_where3
                          || lv_select_main_end
                          ;
         -- バルクフェッチ
@@ -5254,85 +5726,85 @@ AS
                          || lv_select_common
                          || lv_select_group4
                          || lv_select_1_po102
-                         || lv_where
+                         || lv_where2
                          || ' UNION ALL '
                          || lv_select_g1_po101_2_hint
                          || lv_select_common
                          || lv_select_group4
                          || lv_select_1_po101
-                         || lv_where
+                         || lv_where2
                          || ' UNION ALL '
                          || lv_select_g1_po112_2_hint
                          || lv_select_common
                          || lv_select_group4
                          || lv_select_1_po112
-                         || lv_where
+                         || lv_where3
                          || ' UNION ALL '
                          || lv_select_g1_po103x5_2_hint
                          || lv_select_common
                          || lv_select_group4
                          || lv_select_1_po103x5
-                         || lv_where
+                         || lv_where3
                          || ' UNION ALL '
                          || lv_select_g1_po103x124_2_hint
                          || lv_select_common
                          || lv_select_group4
                          || lv_select_1_po103x124
-                         || lv_where
+                         || lv_where3
                          || ' UNION ALL '
                          || lv_select_g1_po105_2_hint
                          || lv_select_common
                          || lv_select_group4
                          || lv_select_1_po105
-                         || lv_where
+                         || lv_where3
                          || ' UNION ALL '
                          || lv_select_g1_po108_2_hint
                          || lv_select_common
                          || lv_select_group4
                          || lv_select_1_po108
-                         || lv_where
+                         || lv_where3
                          || ' UNION ALL '
                          || lv_select_g1_om102_2_hint
                          || lv_select_common
                          || lv_select_group4
                          || lv_select_1_om102
-                         || lv_where
+                         || lv_where2
                          || ' UNION ALL '
                          || lv_select_g1_om101_2_hint
                          || lv_select_common
                          || lv_select_group4
                          || lv_select_1_om101
-                         || lv_where
+                         || lv_where2
                          || ' UNION ALL '
                          || lv_select_g1_om112_2_hint
                          || lv_select_common
                          || lv_select_group4
                          || lv_select_1_om112
-                         || lv_where
+                         || lv_where2
                          || ' UNION ALL '
                          || lv_select_g1_om103x5_2_hint
                          || lv_select_common
                          || lv_select_group4
                          || lv_select_1_om103x5
-                         || lv_where
+                         || lv_where3
                          || ' UNION ALL '
                          || lv_select_g1_om103x124_2_hint
                          || lv_select_common
                          || lv_select_group4
                          || lv_select_1_om103x124
-                         || lv_where
+                         || lv_where3
                          || ' UNION ALL '
                          || lv_select_g1_om105_2_hint
                          || lv_select_common
                          || lv_select_group4
                          || lv_select_1_om105
-                         || lv_where
+                         || lv_where3
                          || ' UNION ALL '
                          || lv_select_g1_om108_2_hint
                          || lv_select_common
                          || lv_select_group4
                          || lv_select_1_om108
-                         || lv_where
+                         || lv_where3
                          || lv_select_main_end
                          ;
         -- バルクフェッチ
@@ -5356,85 +5828,85 @@ AS
                          || lv_select_common
                          || lv_select_group4
                          || lv_select_1_po102
-                         || lv_where
+                         || lv_where2
                          || ' UNION ALL '
                          || lv_select_g1_po101_3_hint
                          || lv_select_common
                          || lv_select_group4
                          || lv_select_1_po101
-                         || lv_where
+                         || lv_where2
                          || ' UNION ALL '
                          || lv_select_g1_po112_3_hint
                          || lv_select_common
                          || lv_select_group4
                          || lv_select_1_po112
-                         || lv_where
+                         || lv_where2
                          || ' UNION ALL '
                          || lv_select_g1_po103x5_3_hint
                          || lv_select_common
                          || lv_select_group4
                          || lv_select_1_po103x5
-                         || lv_where
+                         || lv_where3
                          || ' UNION ALL '
                          || lv_select_g1_po103x124_3_hint
                          || lv_select_common
                          || lv_select_group4
                          || lv_select_1_po103x124
-                         || lv_where
+                         || lv_where3
                          || ' UNION ALL '
                          || lv_select_g1_po105_3_hint
                          || lv_select_common
                          || lv_select_group4
                          || lv_select_1_po105
-                         || lv_where
+                         || lv_where3
                          || ' UNION ALL '
                          || lv_select_g1_po108_3_hint
                          || lv_select_common
                          || lv_select_group4
                          || lv_select_1_po108
-                         || lv_where
+                         || lv_where3
                          || ' UNION ALL '
                          || lv_select_g1_om102_3_hint
                          || lv_select_common
                          || lv_select_group4
                          || lv_select_1_om102
-                         || lv_where
+                         || lv_where2
                          || ' UNION ALL '
                          || lv_select_g1_om101_3_hint
                          || lv_select_common
                          || lv_select_group4
                          || lv_select_1_om101
-                         || lv_where
+                         || lv_where2
                          || ' UNION ALL '
                          || lv_select_g1_om112_3_hint
                          || lv_select_common
                          || lv_select_group4
                          || lv_select_1_om112
-                         || lv_where
+                         || lv_where2
                          || ' UNION ALL '
                          || lv_select_g1_om103x5_3_hint
                          || lv_select_common
                          || lv_select_group4
                          || lv_select_1_om103x5
-                         || lv_where
+                         || lv_where3
                          || ' UNION ALL '
                          || lv_select_g1_om103x124_3_hint
                          || lv_select_common
                          || lv_select_group4
                          || lv_select_1_om103x124
-                         || lv_where
+                         || lv_where3
                          || ' UNION ALL '
                          || lv_select_g1_om105_3_hint
                          || lv_select_common
                          || lv_select_group4
                          || lv_select_1_om105
-                         || lv_where
+                         || lv_where3
                          || ' UNION ALL '
                          || lv_select_g1_om108_3_hint
                          || lv_select_common
                          || lv_select_group4
                          || lv_select_1_om108
-                         || lv_where
+                         || lv_where3
                          || lv_select_main_end
                          ;
         -- バルクフェッチ
@@ -5458,85 +5930,85 @@ AS
                          || lv_select_common
                          || lv_select_group4
                          || lv_select_1_po102
-                         || lv_where
+                         || lv_where2
                          || ' UNION ALL '
                          || lv_select_g1_po101_4_hint
                          || lv_select_common
                          || lv_select_group4
                          || lv_select_1_po101
-                         || lv_where
+                         || lv_where2
                          || ' UNION ALL '
                          || lv_select_g1_po112_4_hint
                          || lv_select_common
                          || lv_select_group4
                          || lv_select_1_po112
-                         || lv_where
+                         || lv_where2
                          || ' UNION ALL '
                          || lv_select_g1_po103x5_4_hint
                          || lv_select_common
                          || lv_select_group4
                          || lv_select_1_po103x5
-                         || lv_where
+                         || lv_where3
                          || ' UNION ALL '
                          || lv_select_g1_po103x124_4_hint
                          || lv_select_common
                          || lv_select_group4
                          || lv_select_1_po103x124
-                         || lv_where
+                         || lv_where3
                          || ' UNION ALL '
                          || lv_select_g1_po105_4_hint
                          || lv_select_common
                          || lv_select_group4
                          || lv_select_1_po105
-                         || lv_where
+                         || lv_where3
                          || ' UNION ALL '
                          || lv_select_g1_po108_4_hint
                          || lv_select_common
                          || lv_select_group4
                          || lv_select_1_po108
-                         || lv_where
+                         || lv_where3
                          || ' UNION ALL '
                          || lv_select_g1_om102_4_hint
                          || lv_select_common
                          || lv_select_group4
                          || lv_select_1_om102
-                         || lv_where
+                         || lv_where2
                          || ' UNION ALL '
                          || lv_select_g1_om101_4_hint
                          || lv_select_common
                          || lv_select_group4
                          || lv_select_1_om101
-                         || lv_where
+                         || lv_where2
                          || ' UNION ALL '
                          || lv_select_g1_om112_4_hint
                          || lv_select_common
                          || lv_select_group4
                          || lv_select_1_om112
-                         || lv_where
+                         || lv_where2
                          || ' UNION ALL '
                          || lv_select_g1_om103x5_4_hint
                          || lv_select_common
                          || lv_select_group4
                          || lv_select_1_om103x5
-                         || lv_where
+                         || lv_where3
                          || ' UNION ALL '
                          || lv_select_g1_om103x124_4_hint
                          || lv_select_common
                          || lv_select_group4
                          || lv_select_1_om103x124
-                         || lv_where
+                         || lv_where3
                          || ' UNION ALL '
                          || lv_select_g1_om105_4_hint
                          || lv_select_common
                          || lv_select_group4
                          || lv_select_1_om105
-                         || lv_where
+                         || lv_where3
                          || ' UNION ALL '
                          || lv_select_g1_om108_4_hint
                          || lv_select_common
                          || lv_select_group4
                          || lv_select_1_om108
-                         || lv_where
+                         || lv_where3
                          || lv_select_main_end
                          ;
         -- バルクフェッチ
@@ -5560,85 +6032,85 @@ AS
                          || lv_select_common
                          || lv_select_group4
                          || lv_select_1_po102
-                         || lv_where
+                         || lv_where2
                          || ' UNION ALL '
                          || lv_select_g1_po101_3_hint
                          || lv_select_common
                          || lv_select_group4
                          || lv_select_1_po101
-                         || lv_where
+                         || lv_where2
                          || ' UNION ALL '
                          || lv_select_g1_po112_3_hint
                          || lv_select_common
                          || lv_select_group4
                          || lv_select_1_po112
-                         || lv_where
+                         || lv_where2
                          || ' UNION ALL '
                          || lv_select_g1_po103x5_3_hint
                          || lv_select_common
                          || lv_select_group4
                          || lv_select_1_po103x5
-                         || lv_where
+                         || lv_where3
                          || ' UNION ALL '
                          || lv_select_g1_po103x124_3_hint
                          || lv_select_common
                          || lv_select_group4
                          || lv_select_1_po103x124
-                         || lv_where
+                         || lv_where3
                          || ' UNION ALL '
                          || lv_select_g1_po105_3_hint
                          || lv_select_common
                          || lv_select_group4
                          || lv_select_1_po105
-                         || lv_where
+                         || lv_where3
                          || ' UNION ALL '
                          || lv_select_g1_po108_3_hint
                          || lv_select_common
                          || lv_select_group4
                          || lv_select_1_po108
-                         || lv_where
+                         || lv_where3
                          || ' UNION ALL '
                          || lv_select_g1_om102_3_hint
                          || lv_select_common
                          || lv_select_group4
                          || lv_select_1_om102
-                         || lv_where
+                         || lv_where2
                          || ' UNION ALL '
                          || lv_select_g1_om101_3_hint
                          || lv_select_common
                          || lv_select_group4
                          || lv_select_1_om101
-                         || lv_where
+                         || lv_where2
                          || ' UNION ALL '
                          || lv_select_g1_om112_3_hint
                          || lv_select_common
                          || lv_select_group4
                          || lv_select_1_om112
-                         || lv_where
+                         || lv_where2
                          || ' UNION ALL '
                          || lv_select_g1_om103x5_3_hint
                          || lv_select_common
                          || lv_select_group4
                          || lv_select_1_om103x5
-                         || lv_where
+                         || lv_where3
                          || ' UNION ALL '
                          || lv_select_g1_om103x124_3_hint
                          || lv_select_common
                          || lv_select_group4
                          || lv_select_1_om103x124
-                         || lv_where
+                         || lv_where3
                          || ' UNION ALL '
                          || lv_select_g1_om105_3_hint
                          || lv_select_common
                          || lv_select_group4
                          || lv_select_1_om105
-                         || lv_where
+                         || lv_where3
                          || ' UNION ALL '
                          || lv_select_g1_om108_3_hint
                          || lv_select_common
                          || lv_select_group4
                          || lv_select_1_om108
-                         || lv_where
+                         || lv_where3
                          || lv_select_main_end
                          ;
         -- バルクフェッチ
@@ -5662,85 +6134,85 @@ AS
                          || lv_select_common
                          || lv_select_group4
                          || lv_select_1_po102
-                         || lv_where
+                         || lv_where2
                          || ' UNION ALL '
                          || lv_select_g1_po101_6_hint
                          || lv_select_common
                          || lv_select_group4
                          || lv_select_1_po101
-                         || lv_where
+                         || lv_where2
                          || ' UNION ALL '
                          || lv_select_g1_po112_6_hint
                          || lv_select_common
                          || lv_select_group4
                          || lv_select_1_po112
-                         || lv_where
+                         || lv_where2
                          || ' UNION ALL '
                          || lv_select_g1_po103x5_6_hint
                          || lv_select_common
                          || lv_select_group4
                          || lv_select_1_po103x5
-                         || lv_where
+                         || lv_where3
                          || ' UNION ALL '
                          || lv_select_g1_po103x124_6_hint
                          || lv_select_common
                          || lv_select_group4
                          || lv_select_1_po103x124
-                         || lv_where
+                         || lv_where3
                          || ' UNION ALL '
                          || lv_select_g1_po105_6_hint
                          || lv_select_common
                          || lv_select_group4
                          || lv_select_1_po105
-                         || lv_where
+                         || lv_where3
                          || ' UNION ALL '
                          || lv_select_g1_po108_6_hint
                          || lv_select_common
                          || lv_select_group4
                          || lv_select_1_po108
-                         || lv_where
+                         || lv_where3
                          || ' UNION ALL '
                          || lv_select_g1_om102_6_hint
                          || lv_select_common
                          || lv_select_group4
                          || lv_select_1_om102
-                         || lv_where
+                         || lv_where2
                          || ' UNION ALL '
                          || lv_select_g1_om101_6_hint
                          || lv_select_common
                          || lv_select_group4
                          || lv_select_1_om101
-                         || lv_where
+                         || lv_where2
                          || ' UNION ALL '
                          || lv_select_g1_om112_6_hint
                          || lv_select_common
                          || lv_select_group4
                          || lv_select_1_om112
-                         || lv_where
+                         || lv_where2
                          || ' UNION ALL '
                          || lv_select_g1_om103x5_6_hint
                          || lv_select_common
                          || lv_select_group4
                          || lv_select_1_om103x5
-                         || lv_where
+                         || lv_where3
                          || ' UNION ALL '
                          || lv_select_g1_om103x124_6_hint
                          || lv_select_common
                          || lv_select_group4
                          || lv_select_1_om103x124
-                         || lv_where
+                         || lv_where3
                          || ' UNION ALL '
                          || lv_select_g1_om105_6_hint
                          || lv_select_common
                          || lv_select_group4
                          || lv_select_1_om105
-                         || lv_where
+                         || lv_where3
                          || ' UNION ALL '
                          || lv_select_g1_om108_6_hint
                          || lv_select_common
                          || lv_select_group4
                          || lv_select_1_om108
-                         || lv_where
+                         || lv_where3
                          || lv_select_main_end
                          ;
         -- バルクフェッチ
@@ -5764,85 +6236,85 @@ AS
                          || lv_select_common
                          || lv_select_group4
                          || lv_select_1_po102
-                         || lv_where
+                         || lv_where2
                          || ' UNION ALL '
                          || lv_select_g1_po101_4_hint
                          || lv_select_common
                          || lv_select_group4
                          || lv_select_1_po101
-                         || lv_where
+                         || lv_where2
                          || ' UNION ALL '
                          || lv_select_g1_po112_4_hint
                          || lv_select_common
                          || lv_select_group4
                          || lv_select_1_po112
-                         || lv_where
+                         || lv_where2
                          || ' UNION ALL '
                          || lv_select_g1_po103x5_4_hint
                          || lv_select_common
                          || lv_select_group4
                          || lv_select_1_po103x5
-                         || lv_where
+                         || lv_where3
                          || ' UNION ALL '
                          || lv_select_g1_po103x124_4_hint
                          || lv_select_common
                          || lv_select_group4
                          || lv_select_1_po103x124
-                         || lv_where
+                         || lv_where3
                          || ' UNION ALL '
                          || lv_select_g1_po105_4_hint
                          || lv_select_common
                          || lv_select_group4
                          || lv_select_1_po105
-                         || lv_where
+                         || lv_where3
                          || ' UNION ALL '
                          || lv_select_g1_po108_4_hint
                          || lv_select_common
                          || lv_select_group4
                          || lv_select_1_po108
-                         || lv_where
+                         || lv_where3
                          || ' UNION ALL '
                          || lv_select_g1_om102_4_hint
                          || lv_select_common
                          || lv_select_group4
                          || lv_select_1_om102
-                         || lv_where
+                         || lv_where2
                          || ' UNION ALL '
                          || lv_select_g1_om101_4_hint
                          || lv_select_common
                          || lv_select_group4
                          || lv_select_1_om101
-                         || lv_where
+                         || lv_where2
                          || ' UNION ALL '
                          || lv_select_g1_om112_4_hint
                          || lv_select_common
                          || lv_select_group4
                          || lv_select_1_om112
-                         || lv_where
+                         || lv_where2
                          || ' UNION ALL '
                          || lv_select_g1_om103x5_4_hint
                          || lv_select_common
                          || lv_select_group4
                          || lv_select_1_om103x5
-                         || lv_where
+                         || lv_where3
                          || ' UNION ALL '
                          || lv_select_g1_om103x124_4_hint
                          || lv_select_common
                          || lv_select_group4
                          || lv_select_1_om103x124
-                         || lv_where
+                         || lv_where3
                          || ' UNION ALL '
                          || lv_select_g1_om105_4_hint
                          || lv_select_common
                          || lv_select_group4
                          || lv_select_1_om105
-                         || lv_where
+                         || lv_where3
                          || ' UNION ALL '
                          || lv_select_g1_om108_4_hint
                          || lv_select_common
                          || lv_select_group4
                          || lv_select_1_om108
-                         || lv_where
+                         || lv_where3
                          || lv_select_main_end
                          ;
         -- バルクフェッチ
@@ -5862,85 +6334,85 @@ AS
                          || lv_select_common
                          || lv_select_group4
                          || lv_select_1_po102
-                         || lv_where
+                         || lv_where2
                          || ' UNION ALL '
                          || lv_select_g1_po101_6_hint
                          || lv_select_common
                          || lv_select_group4
                          || lv_select_1_po101
-                         || lv_where
+                         || lv_where2
                          || ' UNION ALL '
                          || lv_select_g1_po112_6_hint
                          || lv_select_common
                          || lv_select_group4
                          || lv_select_1_po112
-                         || lv_where
+                         || lv_where2
                          || ' UNION ALL '
                          || lv_select_g1_po103x5_6_hint
                          || lv_select_common
                          || lv_select_group4
                          || lv_select_1_po103x5
-                         || lv_where
+                         || lv_where3
                          || ' UNION ALL '
                          || lv_select_g1_po103x124_6_hint
                          || lv_select_common
                          || lv_select_group4
                          || lv_select_1_po103x124
-                         || lv_where
+                         || lv_where3
                          || ' UNION ALL '
                          || lv_select_g1_po105_6_hint
                          || lv_select_common
                          || lv_select_group4
                          || lv_select_1_po105
-                         || lv_where
+                         || lv_where3
                          || ' UNION ALL '
                          || lv_select_g1_po108_6_hint
                          || lv_select_common
                          || lv_select_group4
                          || lv_select_1_po108
-                         || lv_where
+                         || lv_where3
                          || ' UNION ALL '
                          || lv_select_g1_om102_6_hint
                          || lv_select_common
                          || lv_select_group4
                          || lv_select_1_om102
-                         || lv_where
+                         || lv_where2
                          || ' UNION ALL '
                          || lv_select_g1_om101_6_hint
                          || lv_select_common
                          || lv_select_group4
                          || lv_select_1_om101
-                         || lv_where
+                         || lv_where2
                          || ' UNION ALL '
                          || lv_select_g1_om112_6_hint
                          || lv_select_common
                          || lv_select_group4
                          || lv_select_1_om112
-                         || lv_where
+                         || lv_where2
                          || ' UNION ALL '
                          || lv_select_g1_om103x5_6_hint
                          || lv_select_common
                          || lv_select_group4
                          || lv_select_1_om103x5
-                         || lv_where
+                         || lv_where3
                          || ' UNION ALL '
                          || lv_select_g1_om103x124_6_hint
                          || lv_select_common
                          || lv_select_group4
                          || lv_select_1_om103x124
-                         || lv_where
+                         || lv_where3
                          || ' UNION ALL '
                          || lv_select_g1_om105_6_hint
                          || lv_select_common
                          || lv_select_group4
                          || lv_select_1_om105
-                         || lv_where
+                         || lv_where3
                          || ' UNION ALL '
                          || lv_select_g1_om108_6_hint
                          || lv_select_common
                          || lv_select_group4
                          || lv_select_1_om108
-                         || lv_where
+                         || lv_where3
                          || lv_select_main_end
                          ;
         -- バルクフェッチ
@@ -5971,85 +6443,85 @@ AS
                          || lv_select_common
                          || lv_select_group5
                          || lv_select_1_po102
-                         || lv_where
+                         || lv_where2
                          || ' UNION ALL '
                          || lv_select_g1_po101_1_hint
                          || lv_select_common
                          || lv_select_group5
                          || lv_select_1_po101
-                         || lv_where
+                         || lv_where2
                          || ' UNION ALL '
                          || lv_select_g1_po112_1_hint
                          || lv_select_common
                          || lv_select_group5
                          || lv_select_1_po112
-                         || lv_where
+                         || lv_where2
                          || ' UNION ALL '
                          || lv_select_g1_po103x5_1_hint
                          || lv_select_common
-                         || lv_select_group5
+                         || lv_select_group5_2
                          || lv_select_1_po103x5
-                         || lv_where
+                         || lv_where3
                          || ' UNION ALL '
                          || lv_select_g1_po103x124_1_hint
                          || lv_select_common
-                         || lv_select_group5
+                         || lv_select_group5_2
                          || lv_select_1_po103x124
-                         || lv_where
+                         || lv_where3
                          || ' UNION ALL '
                          || lv_select_g1_po105_1_hint
                          || lv_select_common
-                         || lv_select_group5
+                         || lv_select_group5_2
                          || lv_select_1_po105
-                         || lv_where
+                         || lv_where3
                          || ' UNION ALL '
                          || lv_select_g1_po108_1_hint
                          || lv_select_common
-                         || lv_select_group5
+                         || lv_select_group5_2
                          || lv_select_1_po108
-                         || lv_where
+                         || lv_where3
                          || ' UNION ALL '
                          || lv_select_g1_om102_1_hint
                          || lv_select_common
                          || lv_select_group5
                          || lv_select_1_om102
-                         || lv_where
+                         || lv_where2
                          || ' UNION ALL '
                          || lv_select_g1_om101_1_hint
                          || lv_select_common
                          || lv_select_group5
                          || lv_select_1_om101
-                         || lv_where
+                         || lv_where2
                          || ' UNION ALL '
                          || lv_select_g1_om112_1_hint
                          || lv_select_common
                          || lv_select_group5
                          || lv_select_1_om112
-                         || lv_where
+                         || lv_where2
                          || ' UNION ALL '
                          || lv_select_g1_om103x5_1_hint
                          || lv_select_common
-                         || lv_select_group5
+                         || lv_select_group5_2
                          || lv_select_1_om103x5
-                         || lv_where
+                         || lv_where3
                          || ' UNION ALL '
                          || lv_select_g1_om103x124_1_hint
                          || lv_select_common
-                         || lv_select_group5
+                         || lv_select_group5_2
                          || lv_select_1_om103x124
-                         || lv_where
+                         || lv_where3
                          || ' UNION ALL '
                          || lv_select_g1_om105_1_hint
                          || lv_select_common
-                         || lv_select_group5
+                         || lv_select_group5_2
                          || lv_select_1_om105
-                         || lv_where
+                         || lv_where3
                          || ' UNION ALL '
                          || lv_select_g1_om108_1_hint
                          || lv_select_common
-                         || lv_select_group5
+                         || lv_select_group5_2
                          || lv_select_1_om108
-                         || lv_where
+                         || lv_where3
                          || lv_select_main_end
                          ;
         -- バルクフェッチ
@@ -6073,85 +6545,85 @@ AS
                          || lv_select_common
                          || lv_select_group5
                          || lv_select_1_po102
-                         || lv_where
+                         || lv_where2
                          || ' UNION ALL '
                          || lv_select_g1_po101_2_hint
                          || lv_select_common
                          || lv_select_group5
                          || lv_select_1_po101
-                         || lv_where
+                         || lv_where2
                          || ' UNION ALL '
                          || lv_select_g1_po112_2_hint
                          || lv_select_common
                          || lv_select_group5
                          || lv_select_1_po112
-                         || lv_where
+                         || lv_where2
                          || ' UNION ALL '
                          || lv_select_g1_po103x5_2_hint
                          || lv_select_common
-                         || lv_select_group5
+                         || lv_select_group5_2
                          || lv_select_1_po103x5
-                         || lv_where
+                         || lv_where3
                          || ' UNION ALL '
                          || lv_select_g1_po103x124_2_hint
                          || lv_select_common
-                         || lv_select_group5
+                         || lv_select_group5_2
                          || lv_select_1_po103x124
-                         || lv_where
+                         || lv_where3
                          || ' UNION ALL '
                          || lv_select_g1_po105_2_hint
                          || lv_select_common
-                         || lv_select_group5
+                         || lv_select_group5_2
                          || lv_select_1_po105
-                         || lv_where
+                         || lv_where3
                          || ' UNION ALL '
                          || lv_select_g1_po108_2_hint
                          || lv_select_common
-                         || lv_select_group5
+                         || lv_select_group5_2
                          || lv_select_1_po108
-                         || lv_where
+                         || lv_where3
                          || ' UNION ALL '
                          || lv_select_g1_om102_2_hint
                          || lv_select_common
                          || lv_select_group5
                          || lv_select_1_om102
-                         || lv_where
+                         || lv_where2
                          || ' UNION ALL '
                          || lv_select_g1_om101_2_hint
                          || lv_select_common
                          || lv_select_group5
                          || lv_select_1_om101
-                         || lv_where
+                         || lv_where2
                          || ' UNION ALL '
                          || lv_select_g1_om112_2_hint
                          || lv_select_common
                          || lv_select_group5
                          || lv_select_1_om112
-                         || lv_where
+                         || lv_where2
                          || ' UNION ALL '
                          || lv_select_g1_om103x5_2_hint
                          || lv_select_common
-                         || lv_select_group5
+                         || lv_select_group5_2
                          || lv_select_1_om103x5
-                         || lv_where
+                         || lv_where3
                          || ' UNION ALL '
                          || lv_select_g1_om103x124_2_hint
                          || lv_select_common
-                         || lv_select_group5
+                         || lv_select_group5_2
                          || lv_select_1_om103x124
-                         || lv_where
+                         || lv_where3
                          || ' UNION ALL '
                          || lv_select_g1_om105_2_hint
                          || lv_select_common
-                         || lv_select_group5
+                         || lv_select_group5_2
                          || lv_select_1_om105
-                         || lv_where
+                         || lv_where3
                          || ' UNION ALL '
                          || lv_select_g1_om108_2_hint
                          || lv_select_common
-                         || lv_select_group5
+                         || lv_select_group5_2
                          || lv_select_1_om108
-                         || lv_where
+                         || lv_where3
                          || lv_select_main_end
                          ;
         -- バルクフェッチ
@@ -6175,85 +6647,85 @@ AS
                          || lv_select_common
                          || lv_select_group5
                          || lv_select_1_po102
-                         || lv_where
+                         || lv_where2
                          || ' UNION ALL '
                          || lv_select_g1_po101_3_hint
                          || lv_select_common
                          || lv_select_group5
                          || lv_select_1_po101
-                         || lv_where
+                         || lv_where2
                          || ' UNION ALL '
                          || lv_select_g1_po112_3_hint
                          || lv_select_common
                          || lv_select_group5
                          || lv_select_1_po112
-                         || lv_where
+                         || lv_where2
                          || ' UNION ALL '
                          || lv_select_g1_po103x5_3_hint
                          || lv_select_common
-                         || lv_select_group5
+                         || lv_select_group5_2
                          || lv_select_1_po103x5
-                         || lv_where
+                         || lv_where3
                          || ' UNION ALL '
                          || lv_select_g1_po103x124_3_hint
                          || lv_select_common
-                         || lv_select_group5
+                         || lv_select_group5_2
                          || lv_select_1_po103x124
-                         || lv_where
+                         || lv_where3
                          || ' UNION ALL '
                          || lv_select_g1_po105_3_hint
                          || lv_select_common
-                         || lv_select_group5
+                         || lv_select_group5_2
                          || lv_select_1_po105
-                         || lv_where
+                         || lv_where3
                          || ' UNION ALL '
                          || lv_select_g1_po108_3_hint
                          || lv_select_common
-                         || lv_select_group5
+                         || lv_select_group5_2
                          || lv_select_1_po108
-                         || lv_where
+                         || lv_where3
                          || ' UNION ALL '
                          || lv_select_g1_om102_3_hint
                          || lv_select_common
                          || lv_select_group5
                          || lv_select_1_om102
-                         || lv_where
+                         || lv_where2
                          || ' UNION ALL '
                          || lv_select_g1_om101_3_hint
                          || lv_select_common
                          || lv_select_group5
                          || lv_select_1_om101
-                         || lv_where
+                         || lv_where2
                          || ' UNION ALL '
                          || lv_select_g1_om112_3_hint
                          || lv_select_common
                          || lv_select_group5
                          || lv_select_1_om112
-                         || lv_where
+                         || lv_where2
                          || ' UNION ALL '
                          || lv_select_g1_om103x5_3_hint
                          || lv_select_common
-                         || lv_select_group5
+                         || lv_select_group5_2
                          || lv_select_1_om103x5
-                         || lv_where
+                         || lv_where3
                          || ' UNION ALL '
                          || lv_select_g1_om103x124_3_hint
                          || lv_select_common
-                         || lv_select_group5
+                         || lv_select_group5_2
                          || lv_select_1_om103x124
-                         || lv_where
+                         || lv_where3
                          || ' UNION ALL '
                          || lv_select_g1_om105_3_hint
                          || lv_select_common
-                         || lv_select_group5
+                         || lv_select_group5_2
                          || lv_select_1_om105
-                         || lv_where
+                         || lv_where3
                          || ' UNION ALL '
                          || lv_select_g1_om108_3_hint
                          || lv_select_common
-                         || lv_select_group5
+                         || lv_select_group5_2
                          || lv_select_1_om108
-                         || lv_where
+                         || lv_where3
                          || lv_select_main_end
                          ;
         -- バルクフェッチ
@@ -6277,85 +6749,85 @@ AS
                          || lv_select_common
                          || lv_select_group5
                          || lv_select_1_po102
-                         || lv_where
+                         || lv_where2
                          || ' UNION ALL '
                          || lv_select_g1_po101_4_hint
                          || lv_select_common
                          || lv_select_group5
                          || lv_select_1_po101
-                         || lv_where
+                         || lv_where2
                          || ' UNION ALL '
                          || lv_select_g1_po112_4_hint
                          || lv_select_common
                          || lv_select_group5
                          || lv_select_1_po112
-                         || lv_where
+                         || lv_where2
                          || ' UNION ALL '
                          || lv_select_g1_po103x5_4_hint
                          || lv_select_common
-                         || lv_select_group5
+                         || lv_select_group5_2
                          || lv_select_1_po103x5
-                         || lv_where
+                         || lv_where3
                          || ' UNION ALL '
                          || lv_select_g1_po103x124_4_hint
                          || lv_select_common
-                         || lv_select_group5
+                         || lv_select_group5_2
                          || lv_select_1_po103x124
-                         || lv_where
+                         || lv_where3
                          || ' UNION ALL '
                          || lv_select_g1_po105_4_hint
                          || lv_select_common
-                         || lv_select_group5
+                         || lv_select_group5_2
                          || lv_select_1_po105
-                         || lv_where
+                         || lv_where3
                          || ' UNION ALL '
                          || lv_select_g1_po108_4_hint
                          || lv_select_common
-                         || lv_select_group5
+                         || lv_select_group5_2
                          || lv_select_1_po108
-                         || lv_where
+                         || lv_where3
                          || ' UNION ALL '
                          || lv_select_g1_om102_4_hint
                          || lv_select_common
                          || lv_select_group5
                          || lv_select_1_om102
-                         || lv_where
+                         || lv_where2
                          || ' UNION ALL '
                          || lv_select_g1_om101_4_hint
                          || lv_select_common
                          || lv_select_group5
                          || lv_select_1_om101
-                         || lv_where
+                         || lv_where2
                          || ' UNION ALL '
                          || lv_select_g1_om112_4_hint
                          || lv_select_common
                          || lv_select_group5
                          || lv_select_1_om112
-                         || lv_where
+                         || lv_where2
                          || ' UNION ALL '
                          || lv_select_g1_om103x5_4_hint
                          || lv_select_common
-                         || lv_select_group5
+                         || lv_select_group5_2
                          || lv_select_1_om103x5
-                         || lv_where
+                         || lv_where3
                          || ' UNION ALL '
                          || lv_select_g1_om103x124_4_hint
                          || lv_select_common
-                         || lv_select_group5
+                         || lv_select_group5_2
                          || lv_select_1_om103x124
-                         || lv_where
+                         || lv_where3
                          || ' UNION ALL '
                          || lv_select_g1_om105_4_hint
                          || lv_select_common
-                         || lv_select_group5
+                         || lv_select_group5_2
                          || lv_select_1_om105
-                         || lv_where
+                         || lv_where3
                          || ' UNION ALL '
                          || lv_select_g1_om108_4_hint
                          || lv_select_common
-                         || lv_select_group5
+                         || lv_select_group5_2
                          || lv_select_1_om108
-                         || lv_where
+                         || lv_where3
                          || lv_select_main_end
                          ;
         -- バルクフェッチ
@@ -6379,85 +6851,85 @@ AS
                          || lv_select_common
                          || lv_select_group5
                          || lv_select_1_po102
-                         || lv_where
+                         || lv_where2
                          || ' UNION ALL '
                          || lv_select_g1_po101_3_hint
                          || lv_select_common
                          || lv_select_group5
                          || lv_select_1_po101
-                         || lv_where
+                         || lv_where2
                          || ' UNION ALL '
                          || lv_select_g1_po112_3_hint
                          || lv_select_common
                          || lv_select_group5
                          || lv_select_1_po112
-                         || lv_where
+                         || lv_where2
                          || ' UNION ALL '
                          || lv_select_g1_po103x5_3_hint
                          || lv_select_common
-                         || lv_select_group5
+                         || lv_select_group5_2
                          || lv_select_1_po103x5
-                         || lv_where
+                         || lv_where3
                          || ' UNION ALL '
                          || lv_select_g1_po103x124_3_hint
                          || lv_select_common
-                         || lv_select_group5
+                         || lv_select_group5_2
                          || lv_select_1_po103x124
-                         || lv_where
+                         || lv_where3
                          || ' UNION ALL '
                          || lv_select_g1_po105_3_hint
                          || lv_select_common
-                         || lv_select_group5
+                         || lv_select_group5_2
                          || lv_select_1_po105
-                         || lv_where
+                         || lv_where3
                          || ' UNION ALL '
                          || lv_select_g1_po108_3_hint
                          || lv_select_common
-                         || lv_select_group5
+                         || lv_select_group5_2
                          || lv_select_1_po108
-                         || lv_where
+                         || lv_where3
                          || ' UNION ALL '
                          || lv_select_g1_om102_3_hint
                          || lv_select_common
                          || lv_select_group5
                          || lv_select_1_om102
-                         || lv_where
+                         || lv_where2
                          || ' UNION ALL '
                          || lv_select_g1_om101_3_hint
                          || lv_select_common
                          || lv_select_group5
                          || lv_select_1_om101
-                         || lv_where
+                         || lv_where2
                          || ' UNION ALL '
                          || lv_select_g1_om112_3_hint
                          || lv_select_common
                          || lv_select_group5
                          || lv_select_1_om112
-                         || lv_where
+                         || lv_where2
                          || ' UNION ALL '
                          || lv_select_g1_om103x5_3_hint
                          || lv_select_common
-                         || lv_select_group5
+                         || lv_select_group5_2
                          || lv_select_1_om103x5
-                         || lv_where
+                         || lv_where3
                          || ' UNION ALL '
                          || lv_select_g1_om103x124_3_hint
                          || lv_select_common
-                         || lv_select_group5
+                         || lv_select_group5_2
                          || lv_select_1_om103x124
-                         || lv_where
+                         || lv_where3
                          || ' UNION ALL '
                          || lv_select_g1_om105_3_hint
                          || lv_select_common
-                         || lv_select_group5
+                         || lv_select_group5_2
                          || lv_select_1_om105
-                         || lv_where
+                         || lv_where3
                          || ' UNION ALL '
                          || lv_select_g1_om108_3_hint
                          || lv_select_common
-                         || lv_select_group5
+                         || lv_select_group5_2
                          || lv_select_1_om108
-                         || lv_where
+                         || lv_where3
                          || lv_select_main_end
                          ;
         -- バルクフェッチ
@@ -6481,85 +6953,85 @@ AS
                          || lv_select_common
                          || lv_select_group5
                          || lv_select_1_po102
-                         || lv_where
+                         || lv_where2
                          || ' UNION ALL '
                          || lv_select_g1_po101_6_hint
                          || lv_select_common
                          || lv_select_group5
                          || lv_select_1_po101
-                         || lv_where
+                         || lv_where2
                          || ' UNION ALL '
                          || lv_select_g1_po112_6_hint
                          || lv_select_common
                          || lv_select_group5
                          || lv_select_1_po112
-                         || lv_where
+                         || lv_where2
                          || ' UNION ALL '
                          || lv_select_g1_po103x5_6_hint
                          || lv_select_common
-                         || lv_select_group5
+                         || lv_select_group5_2
                          || lv_select_1_po103x5
-                         || lv_where
+                         || lv_where3
                          || ' UNION ALL '
                          || lv_select_g1_po103x124_6_hint
                          || lv_select_common
-                         || lv_select_group5
+                         || lv_select_group5_2
                          || lv_select_1_po103x124
-                         || lv_where
+                         || lv_where3
                          || ' UNION ALL '
                          || lv_select_g1_po105_6_hint
                          || lv_select_common
-                         || lv_select_group5
+                         || lv_select_group5_2
                          || lv_select_1_po105
-                         || lv_where
+                         || lv_where3
                          || ' UNION ALL '
                          || lv_select_g1_po108_6_hint
                          || lv_select_common
-                         || lv_select_group5
+                         || lv_select_group5_2
                          || lv_select_1_po108
-                         || lv_where
+                         || lv_where3
                          || ' UNION ALL '
                          || lv_select_g1_om102_6_hint
                          || lv_select_common
                          || lv_select_group5
                          || lv_select_1_om102
-                         || lv_where
+                         || lv_where2
                          || ' UNION ALL '
                          || lv_select_g1_om101_6_hint
                          || lv_select_common
                          || lv_select_group5
                          || lv_select_1_om101
-                         || lv_where
+                         || lv_where2
                          || ' UNION ALL '
                          || lv_select_g1_om112_6_hint
                          || lv_select_common
                          || lv_select_group5
                          || lv_select_1_om112
-                         || lv_where
+                         || lv_where2
                          || ' UNION ALL '
                          || lv_select_g1_om103x5_6_hint
                          || lv_select_common
-                         || lv_select_group5
+                         || lv_select_group5_2
                          || lv_select_1_om103x5
-                         || lv_where
+                         || lv_where3
                          || ' UNION ALL '
                          || lv_select_g1_om103x124_6_hint
                          || lv_select_common
-                         || lv_select_group5
+                         || lv_select_group5_2
                          || lv_select_1_om103x124
-                         || lv_where
+                         || lv_where3
                          || ' UNION ALL '
                          || lv_select_g1_om105_6_hint
                          || lv_select_common
-                         || lv_select_group5
+                         || lv_select_group5_2
                          || lv_select_1_om105
-                         || lv_where
+                         || lv_where3
                          || ' UNION ALL '
                          || lv_select_g1_om108_6_hint
                          || lv_select_common
-                         || lv_select_group5
+                         || lv_select_group5_2
                          || lv_select_1_om108
-                         || lv_where
+                         || lv_where3
                          || lv_select_main_end
                          ;
         -- バルクフェッチ
@@ -6583,85 +7055,85 @@ AS
                          || lv_select_common
                          || lv_select_group5
                          || lv_select_1_po102
-                         || lv_where
+                         || lv_where2
                          || ' UNION ALL '
                          || lv_select_g1_po101_4_hint
                          || lv_select_common
                          || lv_select_group5
                          || lv_select_1_po101
-                         || lv_where
+                         || lv_where2
                          || ' UNION ALL '
                          || lv_select_g1_po112_4_hint
                          || lv_select_common
                          || lv_select_group5
                          || lv_select_1_po112
-                         || lv_where
+                         || lv_where2
                          || ' UNION ALL '
                          || lv_select_g1_po103x5_4_hint
                          || lv_select_common
-                         || lv_select_group5
+                         || lv_select_group5_2
                          || lv_select_1_po103x5
-                         || lv_where
+                         || lv_where3
                          || ' UNION ALL '
                          || lv_select_g1_po103x124_4_hint
                          || lv_select_common
-                         || lv_select_group5
+                         || lv_select_group5_2
                          || lv_select_1_po103x124
-                         || lv_where
+                         || lv_where3
                          || ' UNION ALL '
                          || lv_select_g1_po105_4_hint
                          || lv_select_common
-                         || lv_select_group5
+                         || lv_select_group5_2
                          || lv_select_1_po105
-                         || lv_where
+                         || lv_where3
                          || ' UNION ALL '
                          || lv_select_g1_po108_4_hint
                          || lv_select_common
-                         || lv_select_group5
+                         || lv_select_group5_2
                          || lv_select_1_po108
-                         || lv_where
+                         || lv_where3
                          || ' UNION ALL '
                          || lv_select_g1_om102_4_hint
                          || lv_select_common
                          || lv_select_group5
                          || lv_select_1_om102
-                         || lv_where
+                         || lv_where2
                          || ' UNION ALL '
                          || lv_select_g1_om101_4_hint
                          || lv_select_common
                          || lv_select_group5
                          || lv_select_1_om101
-                         || lv_where
+                         || lv_where2
                          || ' UNION ALL '
                          || lv_select_g1_om112_4_hint
                          || lv_select_common
                          || lv_select_group5
                          || lv_select_1_om112
-                         || lv_where
+                         || lv_where2
                          || ' UNION ALL '
                          || lv_select_g1_om103x5_4_hint
                          || lv_select_common
-                         || lv_select_group5
+                         || lv_select_group5_2
                          || lv_select_1_om103x5
-                         || lv_where
+                         || lv_where3
                          || ' UNION ALL '
                          || lv_select_g1_om103x124_4_hint
                          || lv_select_common
-                         || lv_select_group5
+                         || lv_select_group5_2
                          || lv_select_1_om103x124
-                         || lv_where
+                         || lv_where3
                          || ' UNION ALL '
                          || lv_select_g1_om105_4_hint
                          || lv_select_common
-                         || lv_select_group5
+                         || lv_select_group5_2
                          || lv_select_1_om105
-                         || lv_where
+                         || lv_where3
                          || ' UNION ALL '
                          || lv_select_g1_om108_4_hint
                          || lv_select_common
-                         || lv_select_group5
+                         || lv_select_group5_2
                          || lv_select_1_om108
-                         || lv_where
+                         || lv_where3
                          || lv_select_main_end
                          ;
         -- バルクフェッチ
@@ -6681,85 +7153,85 @@ AS
                          || lv_select_common
                          || lv_select_group5
                          || lv_select_1_po102
-                         || lv_where
+                         || lv_where2
                          || ' UNION ALL '
                          || lv_select_g1_po101_6_hint
                          || lv_select_common
                          || lv_select_group5
                          || lv_select_1_po101
-                         || lv_where
+                         || lv_where2
                          || ' UNION ALL '
                          || lv_select_g1_po112_6_hint
                          || lv_select_common
                          || lv_select_group5
                          || lv_select_1_po112
-                         || lv_where
+                         || lv_where2
                          || ' UNION ALL '
                          || lv_select_g1_po103x5_6_hint
                          || lv_select_common
-                         || lv_select_group5
+                         || lv_select_group5_2
                          || lv_select_1_po103x5
-                         || lv_where
+                         || lv_where3
                          || ' UNION ALL '
                          || lv_select_g1_po103x124_6_hint
                          || lv_select_common
-                         || lv_select_group5
+                         || lv_select_group5_2
                          || lv_select_1_po103x124
-                         || lv_where
+                         || lv_where3
                          || ' UNION ALL '
                          || lv_select_g1_po105_6_hint
                          || lv_select_common
-                         || lv_select_group5
+                         || lv_select_group5_2
                          || lv_select_1_po105
-                         || lv_where
+                         || lv_where3
                          || ' UNION ALL '
                          || lv_select_g1_po108_6_hint
                          || lv_select_common
-                         || lv_select_group5
+                         || lv_select_group5_2
                          || lv_select_1_po108
-                         || lv_where
+                         || lv_where3
                          || ' UNION ALL '
                          || lv_select_g1_om102_6_hint
                          || lv_select_common
                          || lv_select_group5
                          || lv_select_1_om102
-                         || lv_where
+                         || lv_where2
                          || ' UNION ALL '
                          || lv_select_g1_om101_6_hint
                          || lv_select_common
                          || lv_select_group5
                          || lv_select_1_om101
-                         || lv_where
+                         || lv_where2
                          || ' UNION ALL '
                          || lv_select_g1_om112_6_hint
                          || lv_select_common
                          || lv_select_group5
                          || lv_select_1_om112
-                         || lv_where
+                         || lv_where2
                          || ' UNION ALL '
                          || lv_select_g1_om103x5_6_hint
                          || lv_select_common
-                         || lv_select_group5
+                         || lv_select_group5_2
                          || lv_select_1_om103x5
-                         || lv_where
+                         || lv_where3
                          || ' UNION ALL '
                          || lv_select_g1_om103x124_6_hint
                          || lv_select_common
-                         || lv_select_group5
+                         || lv_select_group5_2
                          || lv_select_1_om103x124
-                         || lv_where
+                         || lv_where3
                          || ' UNION ALL '
                          || lv_select_g1_om105_6_hint
                          || lv_select_common
-                         || lv_select_group5
+                         || lv_select_group5_2
                          || lv_select_1_om105
-                         || lv_where
+                         || lv_where3
                          || ' UNION ALL '
                          || lv_select_g1_om108_6_hint
                          || lv_select_common
-                         || lv_select_group5
+                         || lv_select_group5_2
                          || lv_select_1_om108
-                         || lv_where
+                         || lv_where3
                          || lv_select_main_end
                          ;
         -- バルクフェッチ
@@ -6790,85 +7262,85 @@ AS
                          || lv_select_common
                          || lv_select_group6
                          || lv_select_1_po102
-                         || lv_where
+                         || lv_where2
                          || ' UNION ALL '
                          || lv_select_g1_po101_1_hint
                          || lv_select_common
                          || lv_select_group6
                          || lv_select_1_po101
-                         || lv_where
+                         || lv_where2
                          || ' UNION ALL '
                          || lv_select_g1_po112_1_hint
                          || lv_select_common
                          || lv_select_group6
                          || lv_select_1_po112
-                         || lv_where
+                         || lv_where2
                          || ' UNION ALL '
                          || lv_select_g1_po103x5_1_hint
                          || lv_select_common
                          || lv_select_group6
                          || lv_select_1_po103x5
-                         || lv_where
+                         || lv_where3
                          || ' UNION ALL '
                          || lv_select_g1_po103x124_1_hint
                          || lv_select_common
                          || lv_select_group6
                          || lv_select_1_po103x124
-                         || lv_where
+                         || lv_where3
                          || ' UNION ALL '
                          || lv_select_g1_po105_1_hint
                          || lv_select_common
                          || lv_select_group6
                          || lv_select_1_po105
-                         || lv_where
+                         || lv_where3
                          || ' UNION ALL '
                          || lv_select_g1_po108_1_hint
                          || lv_select_common
                          || lv_select_group6
                          || lv_select_1_po108
-                         || lv_where
+                         || lv_where3
                          || ' UNION ALL '
                          || lv_select_g1_om102_1_hint
                          || lv_select_common
                          || lv_select_group6
                          || lv_select_1_om102
-                         || lv_where
+                         || lv_where2
                          || ' UNION ALL '
                          || lv_select_g1_om101_1_hint
                          || lv_select_common
                          || lv_select_group6
                          || lv_select_1_om101
-                         || lv_where
+                         || lv_where2
                          || ' UNION ALL '
                          || lv_select_g1_om112_1_hint
                          || lv_select_common
                          || lv_select_group6
                          || lv_select_1_om112
-                         || lv_where
+                         || lv_where2
                          || ' UNION ALL '
                          || lv_select_g1_om103x5_1_hint
                          || lv_select_common
                          || lv_select_group6
                          || lv_select_1_om103x5
-                         || lv_where
+                         || lv_where3
                          || ' UNION ALL '
                          || lv_select_g1_om103x124_1_hint
                          || lv_select_common
                          || lv_select_group6
                          || lv_select_1_om103x124
-                         || lv_where
+                         || lv_where3
                          || ' UNION ALL '
                          || lv_select_g1_om105_1_hint
                          || lv_select_common
                          || lv_select_group6
                          || lv_select_1_om105
-                         || lv_where
+                         || lv_where3
                          || ' UNION ALL '
                          || lv_select_g1_om108_1_hint
                          || lv_select_common
                          || lv_select_group6
                          || lv_select_1_om108
-                         || lv_where
+                         || lv_where3
                          || lv_select_main_end
                          ;
         -- バルクフェッチ
@@ -6892,85 +7364,85 @@ AS
                          || lv_select_common
                          || lv_select_group6
                          || lv_select_1_po102
-                         || lv_where
+                         || lv_where2
                          || ' UNION ALL '
                          || lv_select_g1_po101_2_hint
                          || lv_select_common
                          || lv_select_group6
                          || lv_select_1_po101
-                         || lv_where
+                         || lv_where2
                          || ' UNION ALL '
                          || lv_select_g1_po112_2_hint
                          || lv_select_common
                          || lv_select_group6
                          || lv_select_1_po112
-                         || lv_where
+                         || lv_where2
                          || ' UNION ALL '
                          || lv_select_g1_po103x5_2_hint
                          || lv_select_common
                          || lv_select_group6
                          || lv_select_1_po103x5
-                         || lv_where
+                         || lv_where3
                          || ' UNION ALL '
                          || lv_select_g1_po103x124_2_hint
                          || lv_select_common
                          || lv_select_group6
                          || lv_select_1_po103x124
-                         || lv_where
+                         || lv_where3
                          || ' UNION ALL '
                          || lv_select_g1_po105_2_hint
                          || lv_select_common
                          || lv_select_group6
                          || lv_select_1_po105
-                         || lv_where
+                         || lv_where3
                          || ' UNION ALL '
                          || lv_select_g1_po108_2_hint
                          || lv_select_common
                          || lv_select_group6
                          || lv_select_1_po108
-                         || lv_where
+                         || lv_where3
                          || ' UNION ALL '
                          || lv_select_g1_om102_2_hint
                          || lv_select_common
                          || lv_select_group6
                          || lv_select_1_om102
-                         || lv_where
+                         || lv_where2
                          || ' UNION ALL '
                          || lv_select_g1_om101_2_hint
                          || lv_select_common
                          || lv_select_group6
                          || lv_select_1_om101
-                         || lv_where
+                         || lv_where2
                          || ' UNION ALL '
                          || lv_select_g1_om112_2_hint
                          || lv_select_common
                          || lv_select_group6
                          || lv_select_1_om112
-                         || lv_where
+                         || lv_where2
                          || ' UNION ALL '
                          || lv_select_g1_om103x5_2_hint
                          || lv_select_common
                          || lv_select_group6
                          || lv_select_1_om103x5
-                         || lv_where
+                         || lv_where3
                          || ' UNION ALL '
                          || lv_select_g1_om103x124_2_hint
                          || lv_select_common
                          || lv_select_group6
                          || lv_select_1_om103x124
-                         || lv_where
+                         || lv_where3
                          || ' UNION ALL '
                          || lv_select_g1_om105_2_hint
                          || lv_select_common
                          || lv_select_group6
                          || lv_select_1_om105
-                         || lv_where
+                         || lv_where3
                          || ' UNION ALL '
                          || lv_select_g1_om108_2_hint
                          || lv_select_common
                          || lv_select_group6
                          || lv_select_1_om108
-                         || lv_where
+                         || lv_where3
                          || lv_select_main_end
                          ;
         -- バルクフェッチ
@@ -6994,85 +7466,85 @@ AS
                          || lv_select_common
                          || lv_select_group6
                          || lv_select_1_po102
-                         || lv_where
+                         || lv_where2
                          || ' UNION ALL '
                          || lv_select_g1_po101_3_hint
                          || lv_select_common
                          || lv_select_group6
                          || lv_select_1_po101
-                         || lv_where
+                         || lv_where2
                          || ' UNION ALL '
                          || lv_select_g1_po112_3_hint
                          || lv_select_common
                          || lv_select_group6
                          || lv_select_1_po112
-                         || lv_where
+                         || lv_where2
                          || ' UNION ALL '
                          || lv_select_g1_po103x5_3_hint
                          || lv_select_common
                          || lv_select_group6
                          || lv_select_1_po103x5
-                         || lv_where
+                         || lv_where3
                          || ' UNION ALL '
                          || lv_select_g1_po103x124_3_hint
                          || lv_select_common
                          || lv_select_group6
                          || lv_select_1_po103x124
-                         || lv_where
+                         || lv_where3
                          || ' UNION ALL '
                          || lv_select_g1_po105_3_hint
                          || lv_select_common
                          || lv_select_group6
                          || lv_select_1_po105
-                         || lv_where
+                         || lv_where3
                          || ' UNION ALL '
                          || lv_select_g1_po108_3_hint
                          || lv_select_common
                          || lv_select_group6
                          || lv_select_1_po108
-                         || lv_where
+                         || lv_where3
                          || ' UNION ALL '
                          || lv_select_g1_om102_3_hint
                          || lv_select_common
                          || lv_select_group6
                          || lv_select_1_om102
-                         || lv_where
+                         || lv_where2
                          || ' UNION ALL '
                          || lv_select_g1_om101_3_hint
                          || lv_select_common
                          || lv_select_group6
                          || lv_select_1_om101
-                         || lv_where
+                         || lv_where2
                          || ' UNION ALL '
                          || lv_select_g1_om112_3_hint
                          || lv_select_common
                          || lv_select_group6
                          || lv_select_1_om112
-                         || lv_where
+                         || lv_where2
                          || ' UNION ALL '
                          || lv_select_g1_om103x5_3_hint
                          || lv_select_common
                          || lv_select_group6
                          || lv_select_1_om103x5
-                         || lv_where
+                         || lv_where3
                          || ' UNION ALL '
                          || lv_select_g1_om103x124_3_hint
                          || lv_select_common
                          || lv_select_group6
                          || lv_select_1_om103x124
-                         || lv_where
+                         || lv_where3
                          || ' UNION ALL '
                          || lv_select_g1_om105_3_hint
                          || lv_select_common
                          || lv_select_group6
                          || lv_select_1_om105
-                         || lv_where
+                         || lv_where3
                          || ' UNION ALL '
                          || lv_select_g1_om108_3_hint
                          || lv_select_common
                          || lv_select_group6
                          || lv_select_1_om108
-                         || lv_where
+                         || lv_where3
                          || lv_select_main_end
                          ;
         -- バルクフェッチ
@@ -7096,85 +7568,85 @@ AS
                          || lv_select_common
                          || lv_select_group6
                          || lv_select_1_po102
-                         || lv_where
+                         || lv_where2
                          || ' UNION ALL '
                          || lv_select_g1_po101_4_hint
                          || lv_select_common
                          || lv_select_group6
                          || lv_select_1_po101
-                         || lv_where
+                         || lv_where2
                          || ' UNION ALL '
                          || lv_select_g1_po112_4_hint
                          || lv_select_common
                          || lv_select_group6
                          || lv_select_1_po112
-                         || lv_where
+                         || lv_where2
                          || ' UNION ALL '
                          || lv_select_g1_po103x5_4_hint
                          || lv_select_common
                          || lv_select_group6
                          || lv_select_1_po103x5
-                         || lv_where
+                         || lv_where3
                          || ' UNION ALL '
                          || lv_select_g1_po103x124_4_hint
                          || lv_select_common
                          || lv_select_group6
                          || lv_select_1_po103x124
-                         || lv_where
+                         || lv_where3
                          || ' UNION ALL '
                          || lv_select_g1_po105_4_hint
                          || lv_select_common
                          || lv_select_group6
                          || lv_select_1_po105
-                         || lv_where
+                         || lv_where3
                          || ' UNION ALL '
                          || lv_select_g1_po108_4_hint
                          || lv_select_common
                          || lv_select_group6
                          || lv_select_1_po108
-                         || lv_where
+                         || lv_where3
                          || ' UNION ALL '
                          || lv_select_g1_om102_4_hint
                          || lv_select_common
                          || lv_select_group6
                          || lv_select_1_om102
-                         || lv_where
+                         || lv_where2
                          || ' UNION ALL '
                          || lv_select_g1_om101_4_hint
                          || lv_select_common
                          || lv_select_group6
                          || lv_select_1_om101
-                         || lv_where
+                         || lv_where2
                          || ' UNION ALL '
                          || lv_select_g1_om112_4_hint
                          || lv_select_common
                          || lv_select_group6
                          || lv_select_1_om112
-                         || lv_where
+                         || lv_where2
                          || ' UNION ALL '
                          || lv_select_g1_om103x5_4_hint
                          || lv_select_common
                          || lv_select_group6
                          || lv_select_1_om103x5
-                         || lv_where
+                         || lv_where3
                          || ' UNION ALL '
                          || lv_select_g1_om103x124_4_hint
                          || lv_select_common
                          || lv_select_group6
                          || lv_select_1_om103x124
-                         || lv_where
+                         || lv_where3
                          || ' UNION ALL '
                          || lv_select_g1_om105_4_hint
                          || lv_select_common
                          || lv_select_group6
                          || lv_select_1_om105
-                         || lv_where
+                         || lv_where3
                          || ' UNION ALL '
                          || lv_select_g1_om108_4_hint
                          || lv_select_common
                          || lv_select_group6
                          || lv_select_1_om108
-                         || lv_where
+                         || lv_where3
                          || lv_select_main_end
                          ;
         -- バルクフェッチ
@@ -7198,85 +7670,85 @@ AS
                          || lv_select_common
                          || lv_select_group6
                          || lv_select_1_po102
-                         || lv_where
+                         || lv_where2
                          || ' UNION ALL '
                          || lv_select_g1_po101_3_hint
                          || lv_select_common
                          || lv_select_group6
                          || lv_select_1_po101
-                         || lv_where
+                         || lv_where2
                          || ' UNION ALL '
                          || lv_select_g1_po112_3_hint
                          || lv_select_common
                          || lv_select_group6
                          || lv_select_1_po112
-                         || lv_where
+                         || lv_where2
                          || ' UNION ALL '
                          || lv_select_g1_po103x5_3_hint
                          || lv_select_common
                          || lv_select_group6
                          || lv_select_1_po103x5
-                         || lv_where
+                         || lv_where3
                          || ' UNION ALL '
                          || lv_select_g1_po103x124_3_hint
                          || lv_select_common
                          || lv_select_group6
                          || lv_select_1_po103x124
-                         || lv_where
+                         || lv_where3
                          || ' UNION ALL '
                          || lv_select_g1_po105_3_hint
                          || lv_select_common
                          || lv_select_group6
                          || lv_select_1_po105
-                         || lv_where
+                         || lv_where3
                          || ' UNION ALL '
                          || lv_select_g1_po108_3_hint
                          || lv_select_common
                          || lv_select_group6
                          || lv_select_1_po108
-                         || lv_where
+                         || lv_where3
                          || ' UNION ALL '
                          || lv_select_g1_om102_3_hint
                          || lv_select_common
                          || lv_select_group6
                          || lv_select_1_om102
-                         || lv_where
+                         || lv_where2
                          || ' UNION ALL '
                          || lv_select_g1_om101_3_hint
                          || lv_select_common
                          || lv_select_group6
                          || lv_select_1_om101
-                         || lv_where
+                         || lv_where2
                          || ' UNION ALL '
                          || lv_select_g1_om112_3_hint
                          || lv_select_common
                          || lv_select_group6
                          || lv_select_1_om112
-                         || lv_where
+                         || lv_where2
                          || ' UNION ALL '
                          || lv_select_g1_om103x5_3_hint
                          || lv_select_common
                          || lv_select_group6
                          || lv_select_1_om103x5
-                         || lv_where
+                         || lv_where3
                          || ' UNION ALL '
                          || lv_select_g1_om103x124_3_hint
                          || lv_select_common
                          || lv_select_group6
                          || lv_select_1_om103x124
-                         || lv_where
+                         || lv_where3
                          || ' UNION ALL '
                          || lv_select_g1_om105_3_hint
                          || lv_select_common
                          || lv_select_group6
                          || lv_select_1_om105
-                         || lv_where
+                         || lv_where3
                          || ' UNION ALL '
                          || lv_select_g1_om108_3_hint
                          || lv_select_common
                          || lv_select_group6
                          || lv_select_1_om108
-                         || lv_where
+                         || lv_where3
                          || lv_select_main_end
                          ;
         -- バルクフェッチ
@@ -7300,85 +7772,85 @@ AS
                          || lv_select_common
                          || lv_select_group6
                          || lv_select_1_po102
-                         || lv_where
+                         || lv_where2
                          || ' UNION ALL '
                          || lv_select_g1_po101_6_hint
                          || lv_select_common
                          || lv_select_group6
                          || lv_select_1_po101
-                         || lv_where
+                         || lv_where2
                          || ' UNION ALL '
                          || lv_select_g1_po112_6_hint
                          || lv_select_common
                          || lv_select_group6
                          || lv_select_1_po112
-                         || lv_where
+                         || lv_where2
                          || ' UNION ALL '
                          || lv_select_g1_po103x5_6_hint
                          || lv_select_common
                          || lv_select_group6
                          || lv_select_1_po103x5
-                         || lv_where
+                         || lv_where3
                          || ' UNION ALL '
                          || lv_select_g1_po103x124_6_hint
                          || lv_select_common
                          || lv_select_group6
                          || lv_select_1_po103x124
-                         || lv_where
+                         || lv_where3
                          || ' UNION ALL '
                          || lv_select_g1_po105_6_hint
                          || lv_select_common
                          || lv_select_group6
                          || lv_select_1_po105
-                         || lv_where
+                         || lv_where3
                          || ' UNION ALL '
                          || lv_select_g1_po108_6_hint
                          || lv_select_common
                          || lv_select_group6
                          || lv_select_1_po108
-                         || lv_where
+                         || lv_where3
                          || ' UNION ALL '
                          || lv_select_g1_om102_6_hint
                          || lv_select_common
                          || lv_select_group6
                          || lv_select_1_om102
-                         || lv_where
+                         || lv_where2
                          || ' UNION ALL '
                          || lv_select_g1_om101_6_hint
                          || lv_select_common
                          || lv_select_group6
                          || lv_select_1_om101
-                         || lv_where
+                         || lv_where2
                          || ' UNION ALL '
                          || lv_select_g1_om112_6_hint
                          || lv_select_common
                          || lv_select_group6
                          || lv_select_1_om112
-                         || lv_where
+                         || lv_where2
                          || ' UNION ALL '
                          || lv_select_g1_om103x5_6_hint
                          || lv_select_common
                          || lv_select_group6
                          || lv_select_1_om103x5
-                         || lv_where
+                         || lv_where3
                          || ' UNION ALL '
                          || lv_select_g1_om103x124_6_hint
                          || lv_select_common
                          || lv_select_group6
                          || lv_select_1_om103x124
-                         || lv_where
+                         || lv_where3
                          || ' UNION ALL '
                          || lv_select_g1_om105_6_hint
                          || lv_select_common
                          || lv_select_group6
                          || lv_select_1_om105
-                         || lv_where
+                         || lv_where3
                          || ' UNION ALL '
                          || lv_select_g1_om108_6_hint
                          || lv_select_common
                          || lv_select_group6
                          || lv_select_1_om108
-                         || lv_where
+                         || lv_where3
                          || lv_select_main_end
                          ;
         -- バルクフェッチ
@@ -7402,85 +7874,85 @@ AS
                          || lv_select_common
                          || lv_select_group6
                          || lv_select_1_po102
-                         || lv_where
+                         || lv_where2
                          || ' UNION ALL '
                          || lv_select_g1_po101_4_hint
                          || lv_select_common
                          || lv_select_group6
                          || lv_select_1_po101
-                         || lv_where
+                         || lv_where2
                          || ' UNION ALL '
                          || lv_select_g1_po112_4_hint
                          || lv_select_common
                          || lv_select_group6
                          || lv_select_1_po112
-                         || lv_where
+                         || lv_where2
                          || ' UNION ALL '
                          || lv_select_g1_po103x5_4_hint
                          || lv_select_common
                          || lv_select_group6
                          || lv_select_1_po103x5
-                         || lv_where
+                         || lv_where3
                          || ' UNION ALL '
                          || lv_select_g1_po103x124_4_hint
                          || lv_select_common
                          || lv_select_group6
                          || lv_select_1_po103x124
-                         || lv_where
+                         || lv_where3
                          || ' UNION ALL '
                          || lv_select_g1_po105_4_hint
                          || lv_select_common
                          || lv_select_group6
                          || lv_select_1_po105
-                         || lv_where
+                         || lv_where3
                          || ' UNION ALL '
                          || lv_select_g1_po108_4_hint
                          || lv_select_common
                          || lv_select_group6
                          || lv_select_1_po108
-                         || lv_where
+                         || lv_where3
                          || ' UNION ALL '
                          || lv_select_g1_om102_4_hint
                          || lv_select_common
                          || lv_select_group6
                          || lv_select_1_om102
-                         || lv_where
+                         || lv_where2
                          || ' UNION ALL '
                          || lv_select_g1_om101_4_hint
                          || lv_select_common
                          || lv_select_group6
                          || lv_select_1_om101
-                         || lv_where
+                         || lv_where2
                          || ' UNION ALL '
                          || lv_select_g1_om112_4_hint
                          || lv_select_common
                          || lv_select_group6
                          || lv_select_1_om112
-                         || lv_where
+                         || lv_where2
                          || ' UNION ALL '
                          || lv_select_g1_om103x5_4_hint
                          || lv_select_common
                          || lv_select_group6
                          || lv_select_1_om103x5
-                         || lv_where
+                         || lv_where3
                          || ' UNION ALL '
                          || lv_select_g1_om103x124_4_hint
                          || lv_select_common
                          || lv_select_group6
                          || lv_select_1_om103x124
-                         || lv_where
+                         || lv_where3
                          || ' UNION ALL '
                          || lv_select_g1_om105_4_hint
                          || lv_select_common
                          || lv_select_group6
                          || lv_select_1_om105
-                         || lv_where
+                         || lv_where3
                          || ' UNION ALL '
                          || lv_select_g1_om108_4_hint
                          || lv_select_common
                          || lv_select_group6
                          || lv_select_1_om108
-                         || lv_where
+                         || lv_where3
                          || lv_select_main_end
                          ;
         -- バルクフェッチ
@@ -7500,85 +7972,85 @@ AS
                          || lv_select_common
                          || lv_select_group6
                          || lv_select_1_po102
-                         || lv_where
+                         || lv_where2
                          || ' UNION ALL '
                          || lv_select_g1_po101_6_hint
                          || lv_select_common
                          || lv_select_group6
                          || lv_select_1_po101
-                         || lv_where
+                         || lv_where2
                          || ' UNION ALL '
                          || lv_select_g1_po112_6_hint
                          || lv_select_common
                          || lv_select_group6
                          || lv_select_1_po112
-                         || lv_where
+                         || lv_where2
                          || ' UNION ALL '
                          || lv_select_g1_po103x5_6_hint
                          || lv_select_common
                          || lv_select_group6
                          || lv_select_1_po103x5
-                         || lv_where
+                         || lv_where3
                          || ' UNION ALL '
                          || lv_select_g1_po103x124_6_hint
                          || lv_select_common
                          || lv_select_group6
                          || lv_select_1_po103x124
-                         || lv_where
+                         || lv_where3
                          || ' UNION ALL '
                          || lv_select_g1_po105_6_hint
                          || lv_select_common
                          || lv_select_group6
                          || lv_select_1_po105
-                         || lv_where
+                         || lv_where3
                          || ' UNION ALL '
                          || lv_select_g1_po108_6_hint
                          || lv_select_common
                          || lv_select_group6
                          || lv_select_1_po108
-                         || lv_where
+                         || lv_where3
                          || ' UNION ALL '
                          || lv_select_g1_om102_6_hint
                          || lv_select_common
                          || lv_select_group6
                          || lv_select_1_om102
-                         || lv_where
+                         || lv_where2
                          || ' UNION ALL '
                          || lv_select_g1_om101_6_hint
                          || lv_select_common
                          || lv_select_group6
                          || lv_select_1_om101
-                         || lv_where
+                         || lv_where2
                          || ' UNION ALL '
                          || lv_select_g1_om112_6_hint
                          || lv_select_common
                          || lv_select_group6
                          || lv_select_1_om112
-                         || lv_where
+                         || lv_where2
                          || ' UNION ALL '
                          || lv_select_g1_om103x5_6_hint
                          || lv_select_common
                          || lv_select_group6
                          || lv_select_1_om103x5
-                         || lv_where
+                         || lv_where3
                          || ' UNION ALL '
                          || lv_select_g1_om103x124_6_hint
                          || lv_select_common
                          || lv_select_group6
                          || lv_select_1_om103x124
-                         || lv_where
+                         || lv_where3
                          || ' UNION ALL '
                          || lv_select_g1_om105_6_hint
                          || lv_select_common
                          || lv_select_group6
                          || lv_select_1_om105
-                         || lv_where
+                         || lv_where3
                          || ' UNION ALL '
                          || lv_select_g1_om108_6_hint
                          || lv_select_common
                          || lv_select_group6
                          || lv_select_1_om108
-                         || lv_where
+                         || lv_where3
                          || lv_select_main_end
                          ;
         -- バルクフェッチ
@@ -7609,85 +8081,85 @@ AS
                          || lv_select_common
                          || lv_select_group7
                          || lv_select_1_po102
-                         || lv_where
+                         || lv_where2
                          || ' UNION ALL '
                          || lv_select_g1_po101_1_hint
                          || lv_select_common
                          || lv_select_group7
                          || lv_select_1_po101
-                         || lv_where
+                         || lv_where2
                          || ' UNION ALL '
                          || lv_select_g1_po112_1_hint
                          || lv_select_common
                          || lv_select_group7
                          || lv_select_1_po112
-                         || lv_where
+                         || lv_where2
                          || ' UNION ALL '
                          || lv_select_g1_po103x5_1_hint
                          || lv_select_common
-                         || lv_select_group7
+                         || lv_select_group7_2
                          || lv_select_1_po103x5
-                         || lv_where
+                         || lv_where3
                          || ' UNION ALL '
                          || lv_select_g1_po103x124_1_hint
                          || lv_select_common
-                         || lv_select_group7
+                         || lv_select_group7_2
                          || lv_select_1_po103x124
-                         || lv_where
+                         || lv_where3
                          || ' UNION ALL '
                          || lv_select_g1_po105_1_hint
                          || lv_select_common
-                         || lv_select_group7
+                         || lv_select_group7_2
                          || lv_select_1_po105
-                         || lv_where
+                         || lv_where3
                          || ' UNION ALL '
                          || lv_select_g1_po108_1_hint
                          || lv_select_common
-                         || lv_select_group7
+                         || lv_select_group7_2
                          || lv_select_1_po108
-                         || lv_where
+                         || lv_where3
                          || ' UNION ALL '
                          || lv_select_g1_om102_1_hint
                          || lv_select_common
                          || lv_select_group7
                          || lv_select_1_om102
-                         || lv_where
+                         || lv_where2
                          || ' UNION ALL '
                          || lv_select_g1_om101_1_hint
                          || lv_select_common
                          || lv_select_group7
                          || lv_select_1_om101
-                         || lv_where
+                         || lv_where2
                          || ' UNION ALL '
                          || lv_select_g1_om112_1_hint
                          || lv_select_common
                          || lv_select_group7
                          || lv_select_1_om112
-                         || lv_where
+                         || lv_where2
                          || ' UNION ALL '
                          || lv_select_g1_om103x5_1_hint
                          || lv_select_common
-                         || lv_select_group7
+                         || lv_select_group7_2
                          || lv_select_1_om103x5
-                         || lv_where
+                         || lv_where3
                          || ' UNION ALL '
                          || lv_select_g1_om103x124_1_hint
                          || lv_select_common
-                         || lv_select_group7
+                         || lv_select_group7_2
                          || lv_select_1_om103x124
-                         || lv_where
+                         || lv_where3
                          || ' UNION ALL '
                          || lv_select_g1_om105_1_hint
                          || lv_select_common
-                         || lv_select_group7
+                         || lv_select_group7_2
                          || lv_select_1_om105
-                         || lv_where
+                         || lv_where3
                          || ' UNION ALL '
                          || lv_select_g1_om108_1_hint
                          || lv_select_common
-                         || lv_select_group7
+                         || lv_select_group7_2
                          || lv_select_1_om108
-                         || lv_where
+                         || lv_where3
                          || lv_select_main_end
                          ;
         -- バルクフェッチ
@@ -7711,85 +8183,85 @@ AS
                          || lv_select_common
                          || lv_select_group7
                          || lv_select_1_po102
-                         || lv_where
+                         || lv_where2
                          || ' UNION ALL '
                          || lv_select_g1_po101_2_hint
                          || lv_select_common
                          || lv_select_group7
                          || lv_select_1_po101
-                         || lv_where
+                         || lv_where2
                          || ' UNION ALL '
                          || lv_select_g1_po112_2_hint
                          || lv_select_common
                          || lv_select_group7
                          || lv_select_1_po112
-                         || lv_where
+                         || lv_where2
                          || ' UNION ALL '
                          || lv_select_g1_po103x5_2_hint
                          || lv_select_common
-                         || lv_select_group7
+                         || lv_select_group7_2
                          || lv_select_1_po103x5
-                         || lv_where
+                         || lv_where3
                          || ' UNION ALL '
                          || lv_select_g1_po103x124_2_hint
                          || lv_select_common
-                         || lv_select_group7
+                         || lv_select_group7_2
                          || lv_select_1_po103x124
-                         || lv_where
+                         || lv_where3
                          || ' UNION ALL '
                          || lv_select_g1_po105_2_hint
                          || lv_select_common
-                         || lv_select_group7
+                         || lv_select_group7_2
                          || lv_select_1_po105
-                         || lv_where
+                         || lv_where3
                          || ' UNION ALL '
                          || lv_select_g1_po108_2_hint
                          || lv_select_common
-                         || lv_select_group7
+                         || lv_select_group7_2
                          || lv_select_1_po108
-                         || lv_where
+                         || lv_where3
                          || ' UNION ALL '
                          || lv_select_g1_om102_2_hint
                          || lv_select_common
                          || lv_select_group7
                          || lv_select_1_om102
-                         || lv_where
+                         || lv_where2
                          || ' UNION ALL '
                          || lv_select_g1_om101_2_hint
                          || lv_select_common
                          || lv_select_group7
                          || lv_select_1_om101
-                         || lv_where
+                         || lv_where2
                          || ' UNION ALL '
                          || lv_select_g1_om112_2_hint
                          || lv_select_common
                          || lv_select_group7
                          || lv_select_1_om112
-                         || lv_where
+                         || lv_where2
                          || ' UNION ALL '
                          || lv_select_g1_om103x5_2_hint
                          || lv_select_common
-                         || lv_select_group7
+                         || lv_select_group7_2
                          || lv_select_1_om103x5
-                         || lv_where
+                         || lv_where3
                          || ' UNION ALL '
                          || lv_select_g1_om103x124_2_hint
                          || lv_select_common
-                         || lv_select_group7
+                         || lv_select_group7_2
                          || lv_select_1_om103x124
-                         || lv_where
+                         || lv_where3
                          || ' UNION ALL '
                          || lv_select_g1_om105_2_hint
                          || lv_select_common
-                         || lv_select_group7
+                         || lv_select_group7_2
                          || lv_select_1_om105
-                         || lv_where
+                         || lv_where3
                          || ' UNION ALL '
                          || lv_select_g1_om108_2_hint
                          || lv_select_common
-                         || lv_select_group7
+                         || lv_select_group7_2
                          || lv_select_1_om108
-                         || lv_where
+                         || lv_where3
                          || lv_select_main_end
                          ;
         -- バルクフェッチ
@@ -7813,85 +8285,85 @@ AS
                          || lv_select_common
                          || lv_select_group7
                          || lv_select_1_po102
-                         || lv_where
+                         || lv_where2
                          || ' UNION ALL '
                          || lv_select_g1_po101_3_hint
                          || lv_select_common
                          || lv_select_group7
                          || lv_select_1_po101
-                         || lv_where
+                         || lv_where2
                          || ' UNION ALL '
                          || lv_select_g1_po112_3_hint
                          || lv_select_common
                          || lv_select_group7
                          || lv_select_1_po112
-                         || lv_where
+                         || lv_where2
                          || ' UNION ALL '
                          || lv_select_g1_po103x5_3_hint
                          || lv_select_common
-                         || lv_select_group7
+                         || lv_select_group7_2
                          || lv_select_1_po103x5
-                         || lv_where
+                         || lv_where3
                          || ' UNION ALL '
                          || lv_select_g1_po103x124_3_hint
                          || lv_select_common
-                         || lv_select_group7
+                         || lv_select_group7_2
                          || lv_select_1_po103x124
-                         || lv_where
+                         || lv_where3
                          || ' UNION ALL '
                          || lv_select_g1_po105_3_hint
                          || lv_select_common
-                         || lv_select_group7
+                         || lv_select_group7_2
                          || lv_select_1_po105
-                         || lv_where
+                         || lv_where3
                          || ' UNION ALL '
                          || lv_select_g1_po108_3_hint
                          || lv_select_common
-                         || lv_select_group7
+                         || lv_select_group7_2
                          || lv_select_1_po108
-                         || lv_where
+                         || lv_where3
                          || ' UNION ALL '
                          || lv_select_g1_om102_3_hint
                          || lv_select_common
                          || lv_select_group7
                          || lv_select_1_om102
-                         || lv_where
+                         || lv_where2
                          || ' UNION ALL '
                          || lv_select_g1_om101_3_hint
                          || lv_select_common
                          || lv_select_group7
                          || lv_select_1_om101
-                         || lv_where
+                         || lv_where2
                          || ' UNION ALL '
                          || lv_select_g1_om112_3_hint
                          || lv_select_common
                          || lv_select_group7
                          || lv_select_1_om112
-                         || lv_where
+                         || lv_where2
                          || ' UNION ALL '
                          || lv_select_g1_om103x5_3_hint
                          || lv_select_common
-                         || lv_select_group7
+                         || lv_select_group7_2
                          || lv_select_1_om103x5
-                         || lv_where
+                         || lv_where3
                          || ' UNION ALL '
                          || lv_select_g1_om103x124_3_hint
                          || lv_select_common
-                         || lv_select_group7
+                         || lv_select_group7_2
                          || lv_select_1_om103x124
-                         || lv_where
+                         || lv_where3
                          || ' UNION ALL '
                          || lv_select_g1_om105_3_hint
                          || lv_select_common
-                         || lv_select_group7
+                         || lv_select_group7_2
                          || lv_select_1_om105
-                         || lv_where
+                         || lv_where3
                          || ' UNION ALL '
                          || lv_select_g1_om108_3_hint
                          || lv_select_common
-                         || lv_select_group7
+                         || lv_select_group7_2
                          || lv_select_1_om108
-                         || lv_where
+                         || lv_where3
                          || lv_select_main_end
                          ;
         -- バルクフェッチ
@@ -7915,85 +8387,85 @@ AS
                          || lv_select_common
                          || lv_select_group7
                          || lv_select_1_po102
-                         || lv_where
+                         || lv_where2
                          || ' UNION ALL '
                          || lv_select_g1_po101_4_hint
                          || lv_select_common
                          || lv_select_group7
                          || lv_select_1_po101
-                         || lv_where
+                         || lv_where2
                          || ' UNION ALL '
                          || lv_select_g1_po112_4_hint
                          || lv_select_common
                          || lv_select_group7
                          || lv_select_1_po112
-                         || lv_where
+                         || lv_where2
                          || ' UNION ALL '
                          || lv_select_g1_po103x5_4_hint
                          || lv_select_common
-                         || lv_select_group7
+                         || lv_select_group7_2
                          || lv_select_1_po103x5
-                         || lv_where
+                         || lv_where3
                          || ' UNION ALL '
                          || lv_select_g1_po103x124_4_hint
                          || lv_select_common
-                         || lv_select_group7
+                         || lv_select_group7_2
                          || lv_select_1_po103x124
-                         || lv_where
+                         || lv_where3
                          || ' UNION ALL '
                          || lv_select_g1_po105_4_hint
                          || lv_select_common
-                         || lv_select_group7
+                         || lv_select_group7_2
                          || lv_select_1_po105
-                         || lv_where
+                         || lv_where3
                          || ' UNION ALL '
                          || lv_select_g1_po108_4_hint
                          || lv_select_common
-                         || lv_select_group7
+                         || lv_select_group7_2
                          || lv_select_1_po108
-                         || lv_where
+                         || lv_where3
                          || ' UNION ALL '
                          || lv_select_g1_om102_4_hint
                          || lv_select_common
                          || lv_select_group7
                          || lv_select_1_om102
-                         || lv_where
+                         || lv_where2
                          || ' UNION ALL '
                          || lv_select_g1_om101_4_hint
                          || lv_select_common
                          || lv_select_group7
                          || lv_select_1_om101
-                         || lv_where
+                         || lv_where2
                          || ' UNION ALL '
                          || lv_select_g1_om112_4_hint
                          || lv_select_common
                          || lv_select_group7
                          || lv_select_1_om112
-                         || lv_where
+                         || lv_where2
                          || ' UNION ALL '
                          || lv_select_g1_om103x5_4_hint
                          || lv_select_common
-                         || lv_select_group7
+                         || lv_select_group7_2
                          || lv_select_1_om103x5
-                         || lv_where
+                         || lv_where3
                          || ' UNION ALL '
                          || lv_select_g1_om103x124_4_hint
                          || lv_select_common
-                         || lv_select_group7
+                         || lv_select_group7_2
                          || lv_select_1_om103x124
-                         || lv_where
+                         || lv_where3
                          || ' UNION ALL '
                          || lv_select_g1_om105_4_hint
                          || lv_select_common
-                         || lv_select_group7
+                         || lv_select_group7_2
                          || lv_select_1_om105
-                         || lv_where
+                         || lv_where3
                          || ' UNION ALL '
                          || lv_select_g1_om108_4_hint
                          || lv_select_common
-                         || lv_select_group7
+                         || lv_select_group7_2
                          || lv_select_1_om108
-                         || lv_where
+                         || lv_where3
                          || lv_select_main_end
                          ;
         -- バルクフェッチ
@@ -8017,85 +8489,85 @@ AS
                          || lv_select_common
                          || lv_select_group7
                          || lv_select_1_po102
-                         || lv_where
+                         || lv_where2
                          || ' UNION ALL '
                          || lv_select_g1_po101_3_hint
                          || lv_select_common
                          || lv_select_group7
                          || lv_select_1_po101
-                         || lv_where
+                         || lv_where2
                          || ' UNION ALL '
                          || lv_select_g1_po112_3_hint
                          || lv_select_common
                          || lv_select_group7
                          || lv_select_1_po112
-                         || lv_where
+                         || lv_where2
                          || ' UNION ALL '
                          || lv_select_g1_po103x5_3_hint
                          || lv_select_common
-                         || lv_select_group7
+                         || lv_select_group7_2
                          || lv_select_1_po103x5
-                         || lv_where
+                         || lv_where3
                          || ' UNION ALL '
                          || lv_select_g1_po103x124_3_hint
                          || lv_select_common
-                         || lv_select_group7
+                         || lv_select_group7_2
                          || lv_select_1_po103x124
-                         || lv_where
+                         || lv_where3
                          || ' UNION ALL '
                          || lv_select_g1_po105_3_hint
                          || lv_select_common
-                         || lv_select_group7
+                         || lv_select_group7_2
                          || lv_select_1_po105
-                         || lv_where
+                         || lv_where3
                          || ' UNION ALL '
                          || lv_select_g1_po108_3_hint
                          || lv_select_common
-                         || lv_select_group7
+                         || lv_select_group7_2
                          || lv_select_1_po108
-                         || lv_where
+                         || lv_where3
                          || ' UNION ALL '
                          || lv_select_g1_om102_3_hint
                          || lv_select_common
                          || lv_select_group7
                          || lv_select_1_om102
-                         || lv_where
+                         || lv_where2
                          || ' UNION ALL '
                          || lv_select_g1_om101_3_hint
                          || lv_select_common
                          || lv_select_group7
                          || lv_select_1_om101
-                         || lv_where
+                         || lv_where2
                          || ' UNION ALL '
                          || lv_select_g1_om112_3_hint
                          || lv_select_common
                          || lv_select_group7
                          || lv_select_1_om112
-                         || lv_where
+                         || lv_where2
                          || ' UNION ALL '
                          || lv_select_g1_om103x5_3_hint
                          || lv_select_common
-                         || lv_select_group7
+                         || lv_select_group7_2
                          || lv_select_1_om103x5
-                         || lv_where
+                         || lv_where3
                          || ' UNION ALL '
                          || lv_select_g1_om103x124_3_hint
                          || lv_select_common
-                         || lv_select_group7
+                         || lv_select_group7_2
                          || lv_select_1_om103x124
-                         || lv_where
+                         || lv_where3
                          || ' UNION ALL '
                          || lv_select_g1_om105_3_hint
                          || lv_select_common
-                         || lv_select_group7
+                         || lv_select_group7_2
                          || lv_select_1_om105
-                         || lv_where
+                         || lv_where3
                          || ' UNION ALL '
                          || lv_select_g1_om108_3_hint
                          || lv_select_common
-                         || lv_select_group7
+                         || lv_select_group7_2
                          || lv_select_1_om108
-                         || lv_where
+                         || lv_where3
                          || lv_select_main_end
                          ;
         -- バルクフェッチ
@@ -8119,85 +8591,85 @@ AS
                          || lv_select_common
                          || lv_select_group7
                          || lv_select_1_po102
-                         || lv_where
+                         || lv_where2
                          || ' UNION ALL '
                          || lv_select_g1_po101_6_hint
                          || lv_select_common
                          || lv_select_group7
                          || lv_select_1_po101
-                         || lv_where
+                         || lv_where2
                          || ' UNION ALL '
                          || lv_select_g1_po112_6_hint
                          || lv_select_common
                          || lv_select_group7
                          || lv_select_1_po112
-                         || lv_where
+                         || lv_where2
                          || ' UNION ALL '
                          || lv_select_g1_po103x5_6_hint
                          || lv_select_common
-                         || lv_select_group7
+                         || lv_select_group7_2
                          || lv_select_1_po103x5
-                         || lv_where
+                         || lv_where3
                          || ' UNION ALL '
                          || lv_select_g1_po103x124_6_hint
                          || lv_select_common
-                         || lv_select_group7
+                         || lv_select_group7_2
                          || lv_select_1_po103x124
-                         || lv_where
+                         || lv_where3
                          || ' UNION ALL '
                          || lv_select_g1_po105_6_hint
                          || lv_select_common
-                         || lv_select_group7
+                         || lv_select_group7_2
                          || lv_select_1_po105
-                         || lv_where
+                         || lv_where3
                          || ' UNION ALL '
                          || lv_select_g1_po108_6_hint
                          || lv_select_common
-                         || lv_select_group7
+                         || lv_select_group7_2
                          || lv_select_1_po108
-                         || lv_where
+                         || lv_where3
                          || ' UNION ALL '
                          || lv_select_g1_om102_6_hint
                          || lv_select_common
                          || lv_select_group7
                          || lv_select_1_om102
-                         || lv_where
+                         || lv_where2
                          || ' UNION ALL '
                          || lv_select_g1_om101_6_hint
                          || lv_select_common
                          || lv_select_group7
                          || lv_select_1_om101
-                         || lv_where
+                         || lv_where2
                          || ' UNION ALL '
                          || lv_select_g1_om112_6_hint
                          || lv_select_common
                          || lv_select_group7
                          || lv_select_1_om112
-                         || lv_where
+                         || lv_where2
                          || ' UNION ALL '
                          || lv_select_g1_om103x5_6_hint
                          || lv_select_common
-                         || lv_select_group7
+                         || lv_select_group7_2
                          || lv_select_1_om103x5
-                         || lv_where
+                         || lv_where3
                          || ' UNION ALL '
                          || lv_select_g1_om103x124_6_hint
                          || lv_select_common
-                         || lv_select_group7
+                         || lv_select_group7_2
                          || lv_select_1_om103x124
-                         || lv_where
+                         || lv_where3
                          || ' UNION ALL '
                          || lv_select_g1_om105_6_hint
                          || lv_select_common
-                         || lv_select_group7
+                         || lv_select_group7_2
                          || lv_select_1_om105
-                         || lv_where
+                         || lv_where3
                          || ' UNION ALL '
                          || lv_select_g1_om108_6_hint
                          || lv_select_common
-                         || lv_select_group7
+                         || lv_select_group7_2
                          || lv_select_1_om108
-                         || lv_where
+                         || lv_where3
                          || lv_select_main_end
                          ;
         -- バルクフェッチ
@@ -8221,85 +8693,85 @@ AS
                          || lv_select_common
                          || lv_select_group7
                          || lv_select_1_po102
-                         || lv_where
+                         || lv_where2
                          || ' UNION ALL '
                          || lv_select_g1_po101_4_hint
                          || lv_select_common
                          || lv_select_group7
                          || lv_select_1_po101
-                         || lv_where
+                         || lv_where2
                          || ' UNION ALL '
                          || lv_select_g1_po112_4_hint
                          || lv_select_common
                          || lv_select_group7
                          || lv_select_1_po112
-                         || lv_where
+                         || lv_where2
                          || ' UNION ALL '
                          || lv_select_g1_po103x5_4_hint
                          || lv_select_common
-                         || lv_select_group7
+                         || lv_select_group7_2
                          || lv_select_1_po103x5
-                         || lv_where
+                         || lv_where3
                          || ' UNION ALL '
                          || lv_select_g1_po103x124_4_hint
                          || lv_select_common
-                         || lv_select_group7
+                         || lv_select_group7_2
                          || lv_select_1_po103x124
-                         || lv_where
+                         || lv_where3
                          || ' UNION ALL '
                          || lv_select_g1_po105_4_hint
                          || lv_select_common
-                         || lv_select_group7
+                         || lv_select_group7_2
                          || lv_select_1_po105
-                         || lv_where
+                         || lv_where3
                          || ' UNION ALL '
                          || lv_select_g1_po108_4_hint
                          || lv_select_common
-                         || lv_select_group7
+                         || lv_select_group7_2
                          || lv_select_1_po108
-                         || lv_where
+                         || lv_where3
                          || ' UNION ALL '
                          || lv_select_g1_om102_4_hint
                          || lv_select_common
                          || lv_select_group7
                          || lv_select_1_om102
-                         || lv_where
+                         || lv_where2
                          || ' UNION ALL '
                          || lv_select_g1_om101_4_hint
                          || lv_select_common
                          || lv_select_group7
                          || lv_select_1_om101
-                         || lv_where
+                         || lv_where2
                          || ' UNION ALL '
                          || lv_select_g1_om112_4_hint
                          || lv_select_common
                          || lv_select_group7
                          || lv_select_1_om112
-                         || lv_where
+                         || lv_where2
                          || ' UNION ALL '
                          || lv_select_g1_om103x5_4_hint
                          || lv_select_common
-                         || lv_select_group7
+                         || lv_select_group7_2
                          || lv_select_1_om103x5
-                         || lv_where
+                         || lv_where3
                          || ' UNION ALL '
                          || lv_select_g1_om103x124_4_hint
                          || lv_select_common
-                         || lv_select_group7
+                         || lv_select_group7_2
                          || lv_select_1_om103x124
-                         || lv_where
+                         || lv_where3
                          || ' UNION ALL '
                          || lv_select_g1_om105_4_hint
                          || lv_select_common
-                         || lv_select_group7
+                         || lv_select_group7_2
                          || lv_select_1_om105
-                         || lv_where
+                         || lv_where3
                          || ' UNION ALL '
                          || lv_select_g1_om108_4_hint
                          || lv_select_common
-                         || lv_select_group7
+                         || lv_select_group7_2
                          || lv_select_1_om108
-                         || lv_where
+                         || lv_where3
                          || lv_select_main_end
                          ;
         -- バルクフェッチ
@@ -8319,85 +8791,85 @@ AS
                          || lv_select_common
                          || lv_select_group7
                          || lv_select_1_po102
-                         || lv_where
+                         || lv_where2
                          || ' UNION ALL '
                          || lv_select_g1_po101_6_hint
                          || lv_select_common
                          || lv_select_group7
                          || lv_select_1_po101
-                         || lv_where
+                         || lv_where2
                          || ' UNION ALL '
                          || lv_select_g1_po112_6_hint
                          || lv_select_common
                          || lv_select_group7
                          || lv_select_1_po112
-                         || lv_where
+                         || lv_where2
                          || ' UNION ALL '
                          || lv_select_g1_po103x5_6_hint
                          || lv_select_common
-                         || lv_select_group7
+                         || lv_select_group7_2
                          || lv_select_1_po103x5
-                         || lv_where
+                         || lv_where3
                          || ' UNION ALL '
                          || lv_select_g1_po103x124_6_hint
                          || lv_select_common
-                         || lv_select_group7
+                         || lv_select_group7_2
                          || lv_select_1_po103x124
-                         || lv_where
+                         || lv_where3
                          || ' UNION ALL '
                          || lv_select_g1_po105_6_hint
                          || lv_select_common
-                         || lv_select_group7
+                         || lv_select_group7_2
                          || lv_select_1_po105
-                         || lv_where
+                         || lv_where3
                          || ' UNION ALL '
                          || lv_select_g1_po108_6_hint
                          || lv_select_common
-                         || lv_select_group7
+                         || lv_select_group7_2
                          || lv_select_1_po108
-                         || lv_where
+                         || lv_where3
                          || ' UNION ALL '
                          || lv_select_g1_om102_6_hint
                          || lv_select_common
                          || lv_select_group7
                          || lv_select_1_om102
-                         || lv_where
+                         || lv_where2
                          || ' UNION ALL '
                          || lv_select_g1_om101_6_hint
                          || lv_select_common
                          || lv_select_group7
                          || lv_select_1_om101
-                         || lv_where
+                         || lv_where2
                          || ' UNION ALL '
                          || lv_select_g1_om112_6_hint
                          || lv_select_common
                          || lv_select_group7
                          || lv_select_1_om112
-                         || lv_where
+                         || lv_where2
                          || ' UNION ALL '
                          || lv_select_g1_om103x5_6_hint
                          || lv_select_common
-                         || lv_select_group7
+                         || lv_select_group7_2
                          || lv_select_1_om103x5
-                         || lv_where
+                         || lv_where3
                          || ' UNION ALL '
                          || lv_select_g1_om103x124_6_hint
                          || lv_select_common
-                         || lv_select_group7
+                         || lv_select_group7_2
                          || lv_select_1_om103x124
-                         || lv_where
+                         || lv_where3
                          || ' UNION ALL '
                          || lv_select_g1_om105_6_hint
                          || lv_select_common
-                         || lv_select_group7
+                         || lv_select_group7_2
                          || lv_select_1_om105
-                         || lv_where
+                         || lv_where3
                          || ' UNION ALL '
                          || lv_select_g1_om108_6_hint
                          || lv_select_common
-                         || lv_select_group7
+                         || lv_select_group7_2
                          || lv_select_1_om108
-                         || lv_where
+                         || lv_where3
                          || lv_select_main_end
                          ;
         -- バルクフェッチ
@@ -8428,85 +8900,85 @@ AS
                          || lv_select_common
                          || lv_select_group8
                          || lv_select_1_po102
-                         || lv_where
+                         || lv_where2
                          || ' UNION ALL '
                          || lv_select_g1_po101_1_hint
                          || lv_select_common
                          || lv_select_group8
                          || lv_select_1_po101
-                         || lv_where
+                         || lv_where2
                          || ' UNION ALL '
                          || lv_select_g1_po112_1_hint
                          || lv_select_common
                          || lv_select_group8
                          || lv_select_1_po112
-                         || lv_where
+                         || lv_where2
                          || ' UNION ALL '
                          || lv_select_g1_po103x5_1_hint
                          || lv_select_common
                          || lv_select_group8
                          || lv_select_1_po103x5
-                         || lv_where
+                         || lv_where3
                          || ' UNION ALL '
                          || lv_select_g1_po103x124_1_hint
                          || lv_select_common
                          || lv_select_group8
                          || lv_select_1_po103x124
-                         || lv_where
+                         || lv_where3
                          || ' UNION ALL '
                          || lv_select_g1_po105_1_hint
                          || lv_select_common
                          || lv_select_group8
                          || lv_select_1_po105
-                         || lv_where
+                         || lv_where3
                          || ' UNION ALL '
                          || lv_select_g1_po108_1_hint
                          || lv_select_common
                          || lv_select_group8
                          || lv_select_1_po108
-                         || lv_where
+                         || lv_where3
                          || ' UNION ALL '
                          || lv_select_g1_om102_1_hint
                          || lv_select_common
                          || lv_select_group8
                          || lv_select_1_om102
-                         || lv_where
+                         || lv_where2
                          || ' UNION ALL '
                          || lv_select_g1_om101_1_hint
                          || lv_select_common
                          || lv_select_group8
                          || lv_select_1_om101
-                         || lv_where
+                         || lv_where2
                          || ' UNION ALL '
                          || lv_select_g1_om112_1_hint
                          || lv_select_common
                          || lv_select_group8
                          || lv_select_1_om112
-                         || lv_where
+                         || lv_where2
                          || ' UNION ALL '
                          || lv_select_g1_om103x5_1_hint
                          || lv_select_common
                          || lv_select_group8
                          || lv_select_1_om103x5
-                         || lv_where
+                         || lv_where3
                          || ' UNION ALL '
                          || lv_select_g1_om103x124_1_hint
                          || lv_select_common
                          || lv_select_group8
                          || lv_select_1_om103x124
-                         || lv_where
+                         || lv_where3
                          || ' UNION ALL '
                          || lv_select_g1_om105_1_hint
                          || lv_select_common
                          || lv_select_group8
                          || lv_select_1_om105
-                         || lv_where
+                         || lv_where3
                          || ' UNION ALL '
                          || lv_select_g1_om108_1_hint
                          || lv_select_common
                          || lv_select_group8
                          || lv_select_1_om108
-                         || lv_where
+                         || lv_where3
                          || lv_select_main_end
                          ;
         -- バルクフェッチ
@@ -8530,85 +9002,85 @@ AS
                          || lv_select_common
                          || lv_select_group8
                          || lv_select_1_po102
-                         || lv_where
+                         || lv_where2
                          || ' UNION ALL '
                          || lv_select_g1_po101_2_hint
                          || lv_select_common
                          || lv_select_group8
                          || lv_select_1_po101
-                         || lv_where
+                         || lv_where2
                          || ' UNION ALL '
                          || lv_select_g1_po112_2_hint
                          || lv_select_common
                          || lv_select_group8
                          || lv_select_1_po112
-                         || lv_where
+                         || lv_where2
                          || ' UNION ALL '
                          || lv_select_g1_po103x5_2_hint
                          || lv_select_common
                          || lv_select_group8
                          || lv_select_1_po103x5
-                         || lv_where
+                         || lv_where3
                          || ' UNION ALL '
                          || lv_select_g1_po103x124_2_hint
                          || lv_select_common
                          || lv_select_group8
                          || lv_select_1_po103x124
-                         || lv_where
+                         || lv_where3
                          || ' UNION ALL '
                          || lv_select_g1_po105_2_hint
                          || lv_select_common
                          || lv_select_group8
                          || lv_select_1_po105
-                         || lv_where
+                         || lv_where3
                          || ' UNION ALL '
                          || lv_select_g1_po108_2_hint
                          || lv_select_common
                          || lv_select_group8
                          || lv_select_1_po108
-                         || lv_where
+                         || lv_where3
                          || ' UNION ALL '
                          || lv_select_g1_om102_2_hint
                          || lv_select_common
                          || lv_select_group8
                          || lv_select_1_om102
-                         || lv_where
+                         || lv_where2
                          || ' UNION ALL '
                          || lv_select_g1_om101_2_hint
                          || lv_select_common
                          || lv_select_group8
                          || lv_select_1_om101
-                         || lv_where
+                         || lv_where2
                          || ' UNION ALL '
                          || lv_select_g1_om112_2_hint
                          || lv_select_common
                          || lv_select_group8
                          || lv_select_1_om112
-                         || lv_where
+                         || lv_where2
                          || ' UNION ALL '
                          || lv_select_g1_om103x5_2_hint
                          || lv_select_common
                          || lv_select_group8
                          || lv_select_1_om103x5
-                         || lv_where
+                         || lv_where3
                          || ' UNION ALL '
                          || lv_select_g1_om103x124_2_hint
                          || lv_select_common
                          || lv_select_group8
                          || lv_select_1_om103x124
-                         || lv_where
+                         || lv_where3
                          || ' UNION ALL '
                          || lv_select_g1_om105_2_hint
                          || lv_select_common
                          || lv_select_group8
                          || lv_select_1_om105
-                         || lv_where
+                         || lv_where3
                          || ' UNION ALL '
                          || lv_select_g1_om108_2_hint
                          || lv_select_common
                          || lv_select_group8
                          || lv_select_1_om108
-                         || lv_where
+                         || lv_where3
                          || lv_select_main_end
                          ;
         -- バルクフェッチ
@@ -8632,85 +9104,85 @@ AS
                          || lv_select_common
                          || lv_select_group8
                          || lv_select_1_po102
-                         || lv_where
+                         || lv_where2
                          || ' UNION ALL '
                          || lv_select_g1_po101_3_hint
                          || lv_select_common
                          || lv_select_group8
                          || lv_select_1_po101
-                         || lv_where
+                         || lv_where2
                          || ' UNION ALL '
                          || lv_select_g1_po112_3_hint
                          || lv_select_common
                          || lv_select_group8
                          || lv_select_1_po112
-                         || lv_where
+                         || lv_where2
                          || ' UNION ALL '
                          || lv_select_g1_po103x5_3_hint
                          || lv_select_common
                          || lv_select_group8
                          || lv_select_1_po103x5
-                         || lv_where
+                         || lv_where3
                          || ' UNION ALL '
                          || lv_select_g1_po103x124_3_hint
                          || lv_select_common
                          || lv_select_group8
                          || lv_select_1_po103x124
-                         || lv_where
+                         || lv_where3
                          || ' UNION ALL '
                          || lv_select_g1_po105_3_hint
                          || lv_select_common
                          || lv_select_group8
                          || lv_select_1_po105
-                         || lv_where
+                         || lv_where3
                          || ' UNION ALL '
                          || lv_select_g1_po108_3_hint
                          || lv_select_common
                          || lv_select_group8
                          || lv_select_1_po108
-                         || lv_where
+                         || lv_where3
                          || ' UNION ALL '
                          || lv_select_g1_om102_3_hint
                          || lv_select_common
                          || lv_select_group8
                          || lv_select_1_om102
-                         || lv_where
+                         || lv_where2
                          || ' UNION ALL '
                          || lv_select_g1_om101_3_hint
                          || lv_select_common
                          || lv_select_group8
                          || lv_select_1_om101
-                         || lv_where
+                         || lv_where2
                          || ' UNION ALL '
                          || lv_select_g1_om112_3_hint
                          || lv_select_common
                          || lv_select_group8
                          || lv_select_1_om112
-                         || lv_where
+                         || lv_where2
                          || ' UNION ALL '
                          || lv_select_g1_om103x5_3_hint
                          || lv_select_common
                          || lv_select_group8
                          || lv_select_1_om103x5
-                         || lv_where
+                         || lv_where3
                          || ' UNION ALL '
                          || lv_select_g1_om103x124_3_hint
                          || lv_select_common
                          || lv_select_group8
                          || lv_select_1_om103x124
-                         || lv_where
+                         || lv_where3
                          || ' UNION ALL '
                          || lv_select_g1_om105_3_hint
                          || lv_select_common
                          || lv_select_group8
                          || lv_select_1_om105
-                         || lv_where
+                         || lv_where3
                          || ' UNION ALL '
                          || lv_select_g1_om108_3_hint
                          || lv_select_common
                          || lv_select_group8
                          || lv_select_1_om108
-                         || lv_where
+                         || lv_where3
                          || lv_select_main_end
                          ;
         -- バルクフェッチ
@@ -8734,85 +9206,85 @@ AS
                          || lv_select_common
                          || lv_select_group8
                          || lv_select_1_po102
-                         || lv_where
+                         || lv_where2
                          || ' UNION ALL '
                          || lv_select_g1_po101_4_hint
                          || lv_select_common
                          || lv_select_group8
                          || lv_select_1_po101
-                         || lv_where
+                         || lv_where2
                          || ' UNION ALL '
                          || lv_select_g1_po112_4_hint
                          || lv_select_common
                          || lv_select_group8
                          || lv_select_1_po112
-                         || lv_where
+                         || lv_where2
                          || ' UNION ALL '
                          || lv_select_g1_po103x5_4_hint
                          || lv_select_common
                          || lv_select_group8
                          || lv_select_1_po103x5
-                         || lv_where
+                         || lv_where3
                          || ' UNION ALL '
                          || lv_select_g1_po103x124_4_hint
                          || lv_select_common
                          || lv_select_group8
                          || lv_select_1_po103x124
-                         || lv_where
+                         || lv_where3
                          || ' UNION ALL '
                          || lv_select_g1_po105_4_hint
                          || lv_select_common
                          || lv_select_group8
                          || lv_select_1_po105
-                         || lv_where
+                         || lv_where3
                          || ' UNION ALL '
                          || lv_select_g1_po108_4_hint
                          || lv_select_common
                          || lv_select_group8
                          || lv_select_1_po108
-                         || lv_where
+                         || lv_where3
                          || ' UNION ALL '
                          || lv_select_g1_om102_4_hint
                          || lv_select_common
                          || lv_select_group8
                          || lv_select_1_om102
-                         || lv_where
+                         || lv_where2
                          || ' UNION ALL '
                          || lv_select_g1_om101_4_hint
                          || lv_select_common
                          || lv_select_group8
                          || lv_select_1_om101
-                         || lv_where
+                         || lv_where2
                          || ' UNION ALL '
                          || lv_select_g1_om112_4_hint
                          || lv_select_common
                          || lv_select_group8
                          || lv_select_1_om112
-                         || lv_where
+                         || lv_where2
                          || ' UNION ALL '
                          || lv_select_g1_om103x5_4_hint
                          || lv_select_common
                          || lv_select_group8
                          || lv_select_1_om103x5
-                         || lv_where
+                         || lv_where3
                          || ' UNION ALL '
                          || lv_select_g1_om103x124_4_hint
                          || lv_select_common
                          || lv_select_group8
                          || lv_select_1_om103x124
-                         || lv_where
+                         || lv_where3
                          || ' UNION ALL '
                          || lv_select_g1_om105_4_hint
                          || lv_select_common
                          || lv_select_group8
                          || lv_select_1_om105
-                         || lv_where
+                         || lv_where3
                          || ' UNION ALL '
                          || lv_select_g1_om108_4_hint
                          || lv_select_common
                          || lv_select_group8
                          || lv_select_1_om108
-                         || lv_where
+                         || lv_where3
                          || lv_select_main_end
                          ;
         -- バルクフェッチ
@@ -8836,85 +9308,85 @@ AS
                          || lv_select_common
                          || lv_select_group8
                          || lv_select_1_po102
-                         || lv_where
+                         || lv_where2
                          || ' UNION ALL '
                          || lv_select_g1_po101_3_hint
                          || lv_select_common
                          || lv_select_group8
                          || lv_select_1_po101
-                         || lv_where
+                         || lv_where2
                          || ' UNION ALL '
                          || lv_select_g1_po112_3_hint
                          || lv_select_common
                          || lv_select_group8
                          || lv_select_1_po112
-                         || lv_where
+                         || lv_where2
                          || ' UNION ALL '
                          || lv_select_g1_po103x5_3_hint
                          || lv_select_common
                          || lv_select_group8
                          || lv_select_1_po103x5
-                         || lv_where
+                         || lv_where3
                          || ' UNION ALL '
                          || lv_select_g1_po103x124_3_hint
                          || lv_select_common
                          || lv_select_group8
                          || lv_select_1_po103x124
-                         || lv_where
+                         || lv_where3
                          || ' UNION ALL '
                          || lv_select_g1_po105_3_hint
                          || lv_select_common
                          || lv_select_group8
                          || lv_select_1_po105
-                         || lv_where
+                         || lv_where3
                          || ' UNION ALL '
                          || lv_select_g1_po108_3_hint
                          || lv_select_common
                          || lv_select_group8
                          || lv_select_1_po108
-                         || lv_where
+                         || lv_where3
                          || ' UNION ALL '
                          || lv_select_g1_om102_3_hint
                          || lv_select_common
                          || lv_select_group8
                          || lv_select_1_om102
-                         || lv_where
+                         || lv_where2
                          || ' UNION ALL '
                          || lv_select_g1_om101_3_hint
                          || lv_select_common
                          || lv_select_group8
                          || lv_select_1_om101
-                         || lv_where
+                         || lv_where2
                          || ' UNION ALL '
                          || lv_select_g1_om112_3_hint
                          || lv_select_common
                          || lv_select_group8
                          || lv_select_1_om112
-                         || lv_where
+                         || lv_where2
                          || ' UNION ALL '
                          || lv_select_g1_om103x5_3_hint
                          || lv_select_common
                          || lv_select_group8
                          || lv_select_1_om103x5
-                         || lv_where
+                         || lv_where3
                          || ' UNION ALL '
                          || lv_select_g1_om103x124_3_hint
                          || lv_select_common
                          || lv_select_group8
                          || lv_select_1_om103x124
-                         || lv_where
+                         || lv_where3
                          || ' UNION ALL '
                          || lv_select_g1_om105_3_hint
                          || lv_select_common
                          || lv_select_group8
                          || lv_select_1_om105
-                         || lv_where
+                         || lv_where3
                          || ' UNION ALL '
                          || lv_select_g1_om108_3_hint
                          || lv_select_common
                          || lv_select_group8
                          || lv_select_1_om108
-                         || lv_where
+                         || lv_where3
                          || lv_select_main_end
                          ;
         -- バルクフェッチ
@@ -8938,85 +9410,85 @@ AS
                          || lv_select_common
                          || lv_select_group8
                          || lv_select_1_po102
-                         || lv_where
+                         || lv_where2
                          || ' UNION ALL '
                          || lv_select_g1_po101_6_hint
                          || lv_select_common
                          || lv_select_group8
                          || lv_select_1_po101
-                         || lv_where
+                         || lv_where2
                          || ' UNION ALL '
                          || lv_select_g1_po112_6_hint
                          || lv_select_common
                          || lv_select_group8
                          || lv_select_1_po112
-                         || lv_where
+                         || lv_where2
                          || ' UNION ALL '
                          || lv_select_g1_po103x5_6_hint
                          || lv_select_common
                          || lv_select_group8
                          || lv_select_1_po103x5
-                         || lv_where
+                         || lv_where3
                          || ' UNION ALL '
                          || lv_select_g1_po103x124_6_hint
                          || lv_select_common
                          || lv_select_group8
                          || lv_select_1_po103x124
-                         || lv_where
+                         || lv_where3
                          || ' UNION ALL '
                          || lv_select_g1_po105_6_hint
                          || lv_select_common
                          || lv_select_group8
                          || lv_select_1_po105
-                         || lv_where
+                         || lv_where3
                          || ' UNION ALL '
                          || lv_select_g1_po108_6_hint
                          || lv_select_common
                          || lv_select_group8
                          || lv_select_1_po108
-                         || lv_where
+                         || lv_where3
                          || ' UNION ALL '
                          || lv_select_g1_om102_6_hint
                          || lv_select_common
                          || lv_select_group8
                          || lv_select_1_om102
-                         || lv_where
+                         || lv_where2
                          || ' UNION ALL '
                          || lv_select_g1_om101_6_hint
                          || lv_select_common
                          || lv_select_group8
                          || lv_select_1_om101
-                         || lv_where
+                         || lv_where2
                          || ' UNION ALL '
                          || lv_select_g1_om112_6_hint
                          || lv_select_common
                          || lv_select_group8
                          || lv_select_1_om112
-                         || lv_where
+                         || lv_where2
                          || ' UNION ALL '
                          || lv_select_g1_om103x5_6_hint
                          || lv_select_common
                          || lv_select_group8
                          || lv_select_1_om103x5
-                         || lv_where
+                         || lv_where3
                          || ' UNION ALL '
                          || lv_select_g1_om103x124_6_hint
                          || lv_select_common
                          || lv_select_group8
                          || lv_select_1_om103x124
-                         || lv_where
+                         || lv_where3
                          || ' UNION ALL '
                          || lv_select_g1_om105_6_hint
                          || lv_select_common
                          || lv_select_group8
                          || lv_select_1_om105
-                         || lv_where
+                         || lv_where3
                          || ' UNION ALL '
                          || lv_select_g1_om108_6_hint
                          || lv_select_common
                          || lv_select_group8
                          || lv_select_1_om108
-                         || lv_where
+                         || lv_where3
                          || lv_select_main_end
                          ;
         -- バルクフェッチ
@@ -9040,85 +9512,85 @@ AS
                          || lv_select_common
                          || lv_select_group8
                          || lv_select_1_po102
-                         || lv_where
+                         || lv_where2
                          || ' UNION ALL '
                          || lv_select_g1_po101_4_hint
                          || lv_select_common
                          || lv_select_group8
                          || lv_select_1_po101
-                         || lv_where
+                         || lv_where2
                          || ' UNION ALL '
                          || lv_select_g1_po112_4_hint
                          || lv_select_common
                          || lv_select_group8
                          || lv_select_1_po112
-                         || lv_where
+                         || lv_where2
                          || ' UNION ALL '
                          || lv_select_g1_po103x5_4_hint
                          || lv_select_common
                          || lv_select_group8
                          || lv_select_1_po103x5
-                         || lv_where
+                         || lv_where3
                          || ' UNION ALL '
                          || lv_select_g1_po103x124_4_hint
                          || lv_select_common
                          || lv_select_group8
                          || lv_select_1_po103x124
-                         || lv_where
+                         || lv_where3
                          || ' UNION ALL '
                          || lv_select_g1_po105_4_hint
                          || lv_select_common
                          || lv_select_group8
                          || lv_select_1_po105
-                         || lv_where
+                         || lv_where3
                          || ' UNION ALL '
                          || lv_select_g1_po108_4_hint
                          || lv_select_common
                          || lv_select_group8
                          || lv_select_1_po108
-                         || lv_where
+                         || lv_where3
                          || ' UNION ALL '
                          || lv_select_g1_om102_4_hint
                          || lv_select_common
                          || lv_select_group8
                          || lv_select_1_om102
-                         || lv_where
+                         || lv_where2
                          || ' UNION ALL '
                          || lv_select_g1_om101_4_hint
                          || lv_select_common
                          || lv_select_group8
                          || lv_select_1_om101
-                         || lv_where
+                         || lv_where2
                          || ' UNION ALL '
                          || lv_select_g1_om112_4_hint
                          || lv_select_common
                          || lv_select_group8
                          || lv_select_1_om112
-                         || lv_where
+                         || lv_where2
                          || ' UNION ALL '
                          || lv_select_g1_om103x5_4_hint
                          || lv_select_common
                          || lv_select_group8
                          || lv_select_1_om103x5
-                         || lv_where
+                         || lv_where3
                          || ' UNION ALL '
                          || lv_select_g1_om103x124_4_hint
                          || lv_select_common
                          || lv_select_group8
                          || lv_select_1_om103x124
-                         || lv_where
+                         || lv_where3
                          || ' UNION ALL '
                          || lv_select_g1_om105_4_hint
                          || lv_select_common
                          || lv_select_group8
                          || lv_select_1_om105
-                         || lv_where
+                         || lv_where3
                          || ' UNION ALL '
                          || lv_select_g1_om108_4_hint
                          || lv_select_common
                          || lv_select_group8
                          || lv_select_1_om108
-                         || lv_where
+                         || lv_where3
                          || lv_select_main_end
                          ;
         -- バルクフェッチ
@@ -9138,85 +9610,85 @@ AS
                          || lv_select_common
                          || lv_select_group8
                          || lv_select_1_po102
-                         || lv_where
+                         || lv_where2
                          || ' UNION ALL '
                          || lv_select_g1_po101_6_hint
                          || lv_select_common
                          || lv_select_group8
                          || lv_select_1_po101
-                         || lv_where
+                         || lv_where2
                          || ' UNION ALL '
                          || lv_select_g1_po112_6_hint
                          || lv_select_common
                          || lv_select_group8
                          || lv_select_1_po112
-                         || lv_where
+                         || lv_where2
                          || ' UNION ALL '
                          || lv_select_g1_po103x5_6_hint
                          || lv_select_common
                          || lv_select_group8
                          || lv_select_1_po103x5
-                         || lv_where
+                         || lv_where3
                          || ' UNION ALL '
                          || lv_select_g1_po103x124_6_hint
                          || lv_select_common
                          || lv_select_group8
                          || lv_select_1_po103x124
-                         || lv_where
+                         || lv_where3
                          || ' UNION ALL '
                          || lv_select_g1_po105_6_hint
                          || lv_select_common
                          || lv_select_group8
                          || lv_select_1_po105
-                         || lv_where
+                         || lv_where3
                          || ' UNION ALL '
                          || lv_select_g1_po108_6_hint
                          || lv_select_common
                          || lv_select_group8
                          || lv_select_1_po108
-                         || lv_where
+                         || lv_where3
                          || ' UNION ALL '
                          || lv_select_g1_om102_6_hint
                          || lv_select_common
                          || lv_select_group8
                          || lv_select_1_om102
-                         || lv_where
+                         || lv_where2
                          || ' UNION ALL '
                          || lv_select_g1_om101_6_hint
                          || lv_select_common
                          || lv_select_group8
                          || lv_select_1_om101
-                         || lv_where
+                         || lv_where2
                          || ' UNION ALL '
                          || lv_select_g1_om112_6_hint
                          || lv_select_common
                          || lv_select_group8
                          || lv_select_1_om112
-                         || lv_where
+                         || lv_where2
                          || ' UNION ALL '
                          || lv_select_g1_om103x5_6_hint
                          || lv_select_common
                          || lv_select_group8
                          || lv_select_1_om103x5
-                         || lv_where
+                         || lv_where3
                          || ' UNION ALL '
                          || lv_select_g1_om103x124_6_hint
                          || lv_select_common
                          || lv_select_group8
                          || lv_select_1_om103x124
-                         || lv_where
+                         || lv_where3
                          || ' UNION ALL '
                          || lv_select_g1_om105_6_hint
                          || lv_select_common
                          || lv_select_group8
                          || lv_select_1_om105
-                         || lv_where
+                         || lv_where3
                          || ' UNION ALL '
                          || lv_select_g1_om108_6_hint
                          || lv_select_common
                          || lv_select_group8
                          || lv_select_1_om108
-                         || lv_where
+                         || lv_where3
                          || lv_select_main_end
                          ;
         -- バルクフェッチ
@@ -9431,7 +9903,10 @@ AS
     LOOP
       prc_xml_add('g_gr1', 'T');
       prc_xml_add('gr1_code',     'D', gt_main_data(ln_i).group1_code);
-      prc_xml_add('gr1_sum_desc', 'D', gv_gr1_sum_desc);
+-- 2008/12/13 v1.16 UPDATE START
+--      prc_xml_add('gr1_sum_desc', 'D', gv_gr1_sum_desc);
+      prc_xml_add('gr1_sum_desc', 'D', gt_main_data(ln_i).group1_name);
+-- 2008/12/13 v1.16 UPDATE END
       lv_gp_cd1  :=  NVL(gt_main_data(ln_i).group1_code, lc_break_null);
       --=============================================集計２ループ開始
       prc_xml_add('lg_gr2', 'T');
@@ -9441,7 +9916,10 @@ AS
       LOOP
         prc_xml_add('g_gr2', 'T');
         prc_xml_add('gr2_code',     'D', gt_main_data(ln_i).group2_code);
-        prc_xml_add('gr2_sum_desc', 'D', gv_gr2_sum_desc);
+-- 2008/12/13 v1.16 UPDATE START
+--        prc_xml_add('gr2_sum_desc', 'D', gv_gr2_sum_desc);
+        prc_xml_add('gr2_sum_desc', 'D', gt_main_data(ln_i).group2_name);
+-- 2008/12/13 v1.16 UPDATE END
         lv_gp_cd2  :=  NVL(gt_main_data(ln_i).group2_code, lc_break_null);
         --===============================================集計３ループ開始
         prc_xml_add('lg_gr3', 'T');
@@ -9452,7 +9930,10 @@ AS
         LOOP
           prc_xml_add('g_gr3', 'T');
           prc_xml_add('gr3_code',     'D', gt_main_data(ln_i).group3_code);
-          prc_xml_add('gr3_sum_desc', 'D', gv_gr3_sum_desc);
+-- 2008/12/13 v1.16 UPDATE START
+--          prc_xml_add('gr3_sum_desc', 'D', gv_gr3_sum_desc);
+          prc_xml_add('gr3_sum_desc', 'D', gt_main_data(ln_i).group3_name);
+-- 2008/12/13 v1.16 UPDATE END
           lv_gp_cd3  :=  NVL(gt_main_data(ln_i).group3_code, lc_break_null);
           --================================================集計４ループ開始
           prc_xml_add('lg_gr4', 'T');
@@ -9464,7 +9945,10 @@ AS
           LOOP
             prc_xml_add('g_gr4', 'T');
             prc_xml_add('gr4_code',     'D', gt_main_data(ln_i).group4_code);
-            prc_xml_add('gr4_sum_desc', 'D', gv_gr4_sum_desc);
+-- 2008/12/13 v1.16 UPDATE START
+--            prc_xml_add('gr4_sum_desc', 'D', gv_gr4_sum_desc);
+            prc_xml_add('gr4_sum_desc', 'D', gt_main_data(ln_i).group4_name);
+-- 2008/12/13 v1.16 UPDATE END
             lv_gp_cd4  :=  NVL(gt_main_data(ln_i).group4_code, lc_break_null);
             --================================================大郡計ループ開始
             prc_xml_add('lg_crowd_l', 'T');

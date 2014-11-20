@@ -7,7 +7,7 @@ AS
  * Description      : •W€Œ´‰¿“à–ó•\
  * MD.050/070       : ŒŸYØˆ—’ •[Issue1.0 (T_MD050_BPO_770)
  *                    ŒŸYØˆ—’ •[Issue1.0 (T_MD070_BPO_77J)
- * Version          : 1.19
+ * Version          : 1.20
  *
  * Program List
  * -------------------------- ----------------------------------------------------------
@@ -49,6 +49,7 @@ AS
  *  2008/12/07    1.17  N.Yoshida        –{”Ô#496‘Î‰
  *  2008/12/11    1.18  A.Shiina         –{”Ô#580‘Î‰
  *  2008/12/13    1.19  T.Ohashi         –{”Ô#580‘Î‰
+ *  2008/12/14    1.20  N.Yoshida        –{”ÔáŠQ669‘Î‰
  *
  *****************************************************************************************/
 --
@@ -3224,7 +3225,13 @@ AS
     || '        ,SUBSTR(mcb3.segment1, 1, 3)    crowd_low'      --¬ŒQ
     || '        ,SUBSTR(mcb3.segment1, 1, 2)    crowd_mid'      --’†ŒQ
     || '        ,SUBSTR(mcb3.segment1, 1, 1)    crowd_high'     --‘åŒQ
-    || '        ,itc.trans_qty * TO_NUMBER(xrpm.rcv_pay_div) trans_qty'  -- ”—Ê
+-- 2008/12/14 v1.20 UPDATE START
+--    || '        ,itc.trans_qty * TO_NUMBER(xrpm.rcv_pay_div) trans_qty'  -- ”—Ê
+    || '        ,CASE WHEN xrpm.reason_code = ''X911'''
+    || '              THEN itc.trans_qty'
+    || '              ELSE itc.trans_qty * TO_NUMBER(xrpm.rcv_pay_div)'
+    || '         END  trans_qty'                                -- ”—Ê
+-- 2008/12/14 v1.20 UPDATE END
     || '  FROM   ic_tran_cmp               itc'
     || '        ,ic_item_mst_b             iimb'
     || '        ,xxcmn_item_mst_b          ximb'
