@@ -1,5 +1,19 @@
-CREATE OR REPLACE VIEW xxcfr_bill_customers_v
-(
+CREATE OR REPLACE VIEW xxcfr_bill_customers_v(
+/*************************************************************************
+ * 
+ * View Name       : XXCFR_BILL_CUSTOMERS_V
+ * Description     : 請求先顧客ビュー
+ * MD.050          : MD.050_LDM_CFR_001
+ * MD.070          : 
+ * Version         : 1.1
+ * 
+ * Change Record
+ * ------------- ----- ------------ -------------------------------------
+ *  Date          Ver.  Editor       Description
+ * ------------- ----- ------------ -------------------------------------
+ *  2008/11/27    1.0  SCS 吉村 憲司 初回作成
+ *  2009/04/07    1.1  SCS 大川 恵   [障害T1_0383] 取得顧客不正対応
+ ************************************************************************/
   pay_customer_id,                   -- 入金先顧客ID
   pay_customer_number,               -- 入金先顧客コード
   pay_customer_name,                 -- 入金先顧客名
@@ -86,11 +100,20 @@ AS
                             AND     flex_value_set_id   = ffv.flex_value_set_id)) xffvv  --値セット値（所属部門）
            WHERE   xhca.party_id            = xhp.party_id               
            AND     xhca.customer_class_code = '14'
-           AND     xhca.status              = 'A'                       --ステータス
+-- Modify 2009.04.07 Ver1.1 Start
+--           AND     xhca.status              = 'A'                       --ステータス
+-- Modify 2009.04.07 Ver1.1 END
            AND     xhca.cust_account_id     = xhcas.cust_account_id
+-- Modify 2009.04.07 Ver1.1 Start
+           AND     xhcas.org_id             = fnd_profile.value('ORG_ID') -- 請求先顧客所在地
+-- Modify 2009.04.07 Ver1.1 END
            AND     xhcas.bill_to_flag       IS NOT NULL                 --
            AND     xhcas.cust_acct_site_id  = xhcsu.cust_acct_site_id
            AND     xhcsu.site_use_code      = 'BILL_TO'                 --使用目的
+-- Modify 2009.04.07 Ver1.1 Start
+           AND     xhcsu.primary_flag       = 'Y'
+           AND     xhcsu.status             = 'A'                       --ステータス
+-- Modify 2009.04.07 Ver1.1 END
            AND     xhca.cust_account_id     = xhcp.cust_account_id
            AND     xhcp.site_use_id         IS NULL
            AND     xhca.cust_account_id     = xxca.customer_id(+)
@@ -140,11 +163,20 @@ AS
                             AND      flex_value_set_id = ffv.flex_value_set_id)) yffvv  --値セット値（所属部門）
            WHERE   yhca.party_id            = yhp.party_id               
            AND     yhca.customer_class_code = '10'
-           AND     yhca.status              = 'A'                       --ステータス
+-- Modify 2009.04.07 Ver1.1 Start
+--           AND     yhca.status              = 'A'                       --ステータス
+-- Modify 2009.04.07 Ver1.1 END
            AND     yhca.cust_account_id     = yhcas.cust_account_id
            AND     yhcas.bill_to_flag       IS NOT NULL                 --
            AND     yhcas.cust_acct_site_id  = yhcsu.cust_acct_site_id
+-- Modify 2009.04.07 Ver1.1 Start
+           AND     yhcas.org_id             = fnd_profile.value('ORG_ID') -- 請求先顧客所在地
+-- Modify 2009.04.07 Ver1.1 END
            AND     yhcsu.site_use_code      = 'BILL_TO'                 --使用目的
+-- Modify 2009.04.07 Ver1.1 Start
+           AND     yhcsu.primary_flag       = 'Y'
+           AND     yhcsu.status             = 'A'                       --ステータス
+-- Modify 2009.04.07 Ver1.1 END
            AND     yhca.cust_account_id     = yhcp.cust_account_id
            AND     yhcp.site_use_id         IS NULL
            AND     yhca.cust_account_id     = yxca.customer_id(+)
