@@ -7,7 +7,7 @@ AS
  * Description      : 生産物流システムの工場直送出荷実績データから販売実績を作成し、
  *                    販売実績を作成したＯＭ受注をクローズします。
  * MD.050           : 出荷確認（生産物流出荷）  MD050_COS_008_A02
- * Version          : 1.19
+ * Version          : 1.21
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -64,6 +64,7 @@ AS
  *  2009/12/25    1.19  M.Sano           [E_本稼動_00568] デバック処理追加（数量不一致でもクローズされる理由の調査）
  *  2009/12/28    1.20  N.Maeda          [E_本稼動_00568] 基準数量算出関数の引数初期化処理追加
  *                                                        Ver1.19(デバック処理の削除)
+ *  2010/01/05    1.21  N.Maeda          [E_本稼動_00895] ログ出力用フラグの初期設定値設定
  *
  *****************************************************************************************/
 --
@@ -161,8 +162,10 @@ AS
   cv_xxcos_appl_short_nm    CONSTANT  fnd_application.application_short_name%TYPE
                                        :=  'XXCOS';              -- 販物短縮アプリ名
   --販物メッセージ
-  ct_msg_rowtable_lock_err  CONSTANT  fnd_new_messages.message_name%TYPE
-                                       :=  'APP-XXCOS1-00001';   -- ロックエラー
+-- *********** 2010/01/05 1.21 DEL START *********** --
+--  ct_msg_rowtable_lock_err  CONSTANT  fnd_new_messages.message_name%TYPE
+--                                       :=  'APP-XXCOS1-00001';   -- ロックエラー
+-- *********** 2010/01/05 1.21 DEL  END  *********** --
   ct_msg_date_format_err    CONSTANT  fnd_new_messages.message_name%TYPE
                                        :=  'APP-XXCOS1-00002';   -- 日付書式エラー
   ct_msg_nodata_err         CONSTANT  fnd_new_messages.message_name%TYPE
@@ -217,6 +220,10 @@ AS
   cv_msg_update_err         CONSTANT fnd_new_messages.message_name%TYPE
                                        := 'APP-XXCOS1-00011';     -- 更新エラー
 -- ********** 2009/10/19 1.17 K.Satomura  ADD End   ************ --
+-- *********** 2010/01/05 1.21 ADD START *********** --
+  cv_order_line_lock_err    CONSTANT fnd_new_messages.message_name%TYPE
+                                       := 'APP-XXCOS1-11684';  -- 受注明細ロックエラー
+-- *********** 2010/01/05 1.21 ADD  END  *********** --
 
 --
   --トークン
@@ -251,12 +258,17 @@ AS
 -- ********** 2009/10/19 1.17 K.Satomura  ADD Start ************ --
   cv_key_data               CONSTANT  VARCHAR2(100)  := 'KEY_DATA';           -- トークン'KEY_DATA'
 -- ********** 2009/10/19 1.17 K.Satomura  ADD End   ************ --
+-- *********** 2010/01/05 1.21 ADD START *********** --
+  cv_order_line_id          CONSTANT  VARCHAR2(100)  := 'LINE_ID';            -- トークン'LINE_ID'
+-- *********** 2010/01/05 1.21 ADD  END  *********** --
 --
   --メッセージ用文字列
   cv_str_profile_nm                CONSTANT VARCHAR2(100) := 'APP-XXCOS1-00047';  -- MO:営業単位
   cv_str_max_date_nm               CONSTANT VARCHAR2(100) := 'APP-XXCOS1-00056';  -- XXCOS:MAX日付
   cv_str_gl_id_nm                  CONSTANT VARCHAR2(100) := 'APP-XXCOS1-00060';  -- GL会計帳簿ID
-  cv_lock_table                    CONSTANT VARCHAR2(100) := 'APP-XXCOS1-11661';  -- 受注ヘッダ／受注明細
+-- *********** 2010/01/05 1.21 DEL START *********** --
+--  cv_lock_table                    CONSTANT VARCHAR2(100) := 'APP-XXCOS1-11661';  -- 受注ヘッダ／受注明細
+-- *********** 2010/01/05 1.21 DEL  END  *********** --
   cv_dlv_invoice_number            CONSTANT VARCHAR2(100) := 'APP-XXCOS1-11662';  -- 納品伝票番号
   cv_dlv_invoice_class             CONSTANT VARCHAR2(100) := 'APP-XXCOS1-11663';  -- 納品伝票区分
   cv_tax_code                      CONSTANT VARCHAR2(100) := 'APP-XXCOS1-11664';  -- 税金コード
@@ -1217,8 +1229,13 @@ AS
     -- *** ローカル定数 ***
 --
     -- *** ローカル変数 ***
-    lv_lock_table   VARCHAR2(5000);
+-- *********** 2010/01/05 1.21 DEL START *********** --
+--    lv_lock_table   VARCHAR2(5000);
+-- *********** 2010/01/05 1.21 DEL  END  *********** --
 --
+-- *********** 2010/01/05 1.21 ADD START *********** --
+    lt_order_line_id   oe_order_lines_all.line_id%TYPE;
+-- *********** 2010/01/05 1.21 ADD  END  *********** --
     -- *** ローカル・カーソル ***    
     CURSOR order_lines_cur( iv_line_id oe_order_lines_all.line_id%TYPE )
     IS
@@ -1618,6 +1635,10 @@ AS
 --    FOR i IN 1..g_order_data_tab.COUNT LOOP
 --      OPEN order_lines_cur( g_order_data_tab(i).line_id );
     FOR i IN 1..g_order_data_all_tab.COUNT LOOP
+-- *********** 2010/01/05 1.21 ADD START *********** --
+      -- ロックエラー時出力用
+      lt_order_line_id := g_order_data_all_tab(i).line_id;
+-- *********** 2010/01/05 1.21 ADD  END  *********** --
       OPEN order_lines_cur( g_order_data_all_tab(i).line_id );
 /* 2009/07/09 Ver1.11 Mod End   */
       CLOSE order_lines_cur;
@@ -1634,16 +1655,24 @@ AS
       ov_retcode := cv_status_warn;
     -- *** ロックエラー例外ハンドラ ***
     WHEN global_lock_err_expt  THEN
-      lv_lock_table := xxccp_common_pkg.get_msg(
-                         iv_application => cv_xxcos_appl_short_nm,
-                         iv_name        => cv_lock_table
-                        );
+-- *********** 2010/01/05 1.21 MOD START *********** --
+--      lv_lock_table := xxccp_common_pkg.get_msg(
+--                         iv_application => cv_xxcos_appl_short_nm,
+--                         iv_name        => cv_lock_table
+--                        );
+--      ov_errmsg := xxccp_common_pkg.get_msg(
+--                    iv_application => cv_xxcos_appl_short_nm,
+--                    iv_name        => ct_msg_rowtable_lock_err,
+--                    iv_token_name1 => cv_tkn_table,
+--                    iv_token_value1=> lv_lock_table
+--                   );
       ov_errmsg := xxccp_common_pkg.get_msg(
                     iv_application => cv_xxcos_appl_short_nm,
-                    iv_name        => ct_msg_rowtable_lock_err,
-                    iv_token_name1 => cv_tkn_table,
-                    iv_token_value1=> lv_lock_table
+                    iv_name        => cv_order_line_lock_err,
+                    iv_token_name1 => cv_order_line_id,
+                    iv_token_value1=> lt_order_line_id
                    );
+-- *********** 2010/01/05 1.21 MOD  END  *********** --
       ov_errbuf  := SUBSTRB(cv_pkg_name||cv_msg_cont||cv_prg_name||cv_msg_part||ov_errmsg,1,5000);
       ov_retcode := cv_status_error;
 --
@@ -4533,6 +4562,9 @@ AS
 --      END IF;
 /* 2009/12/16 Ver1.18 Del End   */
 --
+-- *********** 2010/01/05 1.21 ADD START *********** --
+      gv_base_code_error_flag := ct_no_flg;
+-- *********** 2010/01/05 1.21 ADD  END  *********** --
       -- ===============================
       -- A-4.項目編集
       -- ===============================
