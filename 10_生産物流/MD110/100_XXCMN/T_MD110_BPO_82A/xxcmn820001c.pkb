@@ -7,7 +7,7 @@ AS
  * Description      : 標準原価取込
  * MD.050           : 標準原価マスタ T_MD050_BPO_820
  * MD.070           : 標準原価取込   T_MD070_BPO_82A
- * Version          : 1.3
+ * Version          : 1.4
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -34,6 +34,7 @@ AS
  *  2008/06/23    1.1   ORACLE 椎名昭圭  適用終了日更新不具合修正
  *  2008/07/09    1.2   Oracle 山根一浩  I_S_192対応
  *  2008/09/10    1.3   Oracle 山根一浩  PT 2-2_18 指摘62対応
+ *  2009/04/09    1.4   SCS丸下          本番障害1395 年度切替対応
  *****************************************************************************************/
 --
 --#######################  固定グローバル定数宣言部 START   #######################
@@ -1174,6 +1175,8 @@ AS
     ld_start_date :=
       FND_DATE.STRING_TO_DATE((lv_sys_year || '/' || cv_year_start_date),'YYYY/MM/DD');
 --
+-- 2009/04/09 DEL START
+/*
     -- 適用開始日チェック1 適用開始日年度がシステム年度以降であること
     IF (ir_report_rec.s_date_active < ld_start_date) THEN
       ir_report_rec.skip_message := xxcmn_common_pkg.get_msg(
@@ -1181,6 +1184,8 @@ AS
         gv_tkn_item_value, TO_CHAR(ir_report_rec.s_date_active, 'YYYY/MM/DD'));
       RAISE check_data_expt;
     END IF;
+*/
+-- 2009/04/09 DEL END
 --
     -- 適用開始日チェック2 適用開始日が5月1日であること
     IF (lv_item_date <> cv_year_start_date) THEN

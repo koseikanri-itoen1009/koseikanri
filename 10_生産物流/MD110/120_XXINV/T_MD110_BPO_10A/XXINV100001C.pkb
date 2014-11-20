@@ -8,7 +8,7 @@ AS
  * Description      : 生産物流(計画)
  * MD.050           : 計画・移動・在庫・販売計画/引取計画 T_MD050_BPO100
  * MD.070           : 計画・移動・在庫・販売計画/引取計画 T_MD070_BPO10A
- * Version          : 1.19
+ * Version          : 1.20
  *
  * Program List
  * -------------------------------- ----------------------------------------------------------
@@ -106,6 +106,7 @@ AS
  *  2009/02/17   1.17 Oracle 加波由香里  本番障害#38対応
  *  2009/02/27   1.18 Oracle 大橋 孝郎   本番#1240対応
  *  2009/04/08   1.19 Oracle 吉元 強樹   本番#1352,1374対応
+ *  2009/04/09   1.20 Oracle 吉元 強樹   本番#1350対応
  *****************************************************************************************/
 --
 --#######################  固定グローバル定数宣言部 START   #######################
@@ -486,6 +487,10 @@ AS
   -- Forecast登録用レコード
   t_forecast_interface_tab_inst   MRP_FORECAST_INTERFACE_PK.t_forecast_interface;
 -- add end 1.11
+-- 2009/04/09 v1.20 T.Yoshimoto Add Start 本番#1350
+  -- Forecast登録用レコード(販売計画マイナス値登録用)
+  t_forecast_interface_tab_inst2   MRP_FORECAST_INTERFACE_PK.t_forecast_interface;
+-- 2009/04/09 v1.20 T.Yoshimoto Add End 本番#1350
 --
 -- 2009/02/17 本番障害#38対応 ADD Start --
 -- =======================================
@@ -8962,6 +8967,10 @@ and mfd.FORECAST_DESIGNATOR = mfi.FORECAST_DESIGNATOR
     ln_quantity                 NUMBER;      -- 全数量
     lb_retcode                  BOOLEAN;
 --
+-- 2009/04/09 v1.20 T.Yoshimoto Add Start 本番#1350
+    ln_if_cnt              NUMBER := 0;                     -- マイナス値レコードカウント
+-- 2009/04/09 v1.20 T.Yoshimoto Add End 本番#1350
+--
     -- *** ローカル・カーソル ***
 --
     -- *** ローカル・レコード ***
@@ -9102,6 +9111,21 @@ and mfd.FORECAST_DESIGNATOR = mfi.FORECAST_DESIGNATOR
     t_forecast_interface_tab_inst(in_if_data_cnt).program_application_id := gn_program_application_id;
     t_forecast_interface_tab_inst(in_if_data_cnt).program_id             := gn_program_id;
     t_forecast_interface_tab_inst(in_if_data_cnt).program_update_date    := gd_who_sysdate;
+--
+-- 2009/04/09 v1.20 T.Yoshimoto Add Start 本番#1350
+    IF (ln_quantity < 0) THEN
+      t_forecast_interface_tab_inst(in_if_data_cnt).quantity  := 0;    -- APIエラー回避の為、暫定値を設定
+      -- マイナス値登録のためのデータセット
+      ln_if_cnt := t_forecast_interface_tab_inst2.COUNT + 1;
+      t_forecast_interface_tab_inst2(ln_if_cnt).forecast_designator    := gv_3f_forecast_designator;
+      t_forecast_interface_tab_inst2(ln_if_cnt).organization_id        := gn_3f_organization_id;
+      t_forecast_interface_tab_inst2(ln_if_cnt).inventory_item_id      := ln_inventory_item_id;
+      t_forecast_interface_tab_inst2(ln_if_cnt).quantity               := ln_quantity;
+      t_forecast_interface_tab_inst2(ln_if_cnt).forecast_date          := in_if_data_tbl(in_if_data_cnt).start_date_active;
+      t_forecast_interface_tab_inst2(ln_if_cnt).attribute5             :=
+                                           in_if_data_tbl(in_if_data_cnt).base_code;
+    END IF;
+-- 2009/04/09 v1.20 T.Yoshimoto Add End 本番#1350
 --
     -- Forecastデータに抽出したインターフェースデータを登録
 --    lb_retcode := MRP_FORECAST_INTERFACE_PK.MRP_FORECAST_INTERFACE(
@@ -11042,6 +11066,30 @@ FND_FILE.PUT_LINE(FND_FILE.LOG,'(A-3)-A-3-3 error....');
         END IF;
       END LOOP serch_error_loop;
     END IF;
+--
+-- 2009/04/09 v1.20 T.Yoshimoto Add Start 本番#1350
+    -- エラーが無い場合
+    IF ( ( ln_error_flg = 0 )
+      AND ( t_forecast_interface_tab_inst2.COUNT > 0 ) ) THEN
+--
+      -- 数量更新処理(マイナス値のみ)
+      FOR ln_data_cnt IN 1..t_forecast_interface_tab_inst2.COUNT LOOP
+        UPDATE mrp_forecast_dates       mfd
+        SET mfd.original_forecast_quantity = t_forecast_interface_tab_inst2(ln_data_cnt).quantity
+           ,mfd.current_forecast_quantity  = t_forecast_interface_tab_inst2(ln_data_cnt).quantity
+        WHERE mfd.forecast_designator = t_forecast_interface_tab_inst2(ln_data_cnt).forecast_designator
+        AND   mfd.inventory_item_id   = t_forecast_interface_tab_inst2(ln_data_cnt).inventory_item_id
+        AND   mfd.organization_id     = t_forecast_interface_tab_inst2(ln_data_cnt).organization_id
+        AND   mfd.attribute5          = t_forecast_interface_tab_inst2(ln_data_cnt).attribute5
+        AND   mfd.forecast_date       = t_forecast_interface_tab_inst2(ln_data_cnt).forecast_date
+        ;
+      END LOOP;
+--
+      -- 登録対象データのレコードの初期化
+      t_forecast_interface_tab_inst2.delete;
+--
+    END IF;
+-- 2009/04/09 v1.20 T.Yoshimoto Add End 本番#1350
 --
     -- 登録対象データのレコードの初期化
     t_forecast_interface_tab_inst.delete;
