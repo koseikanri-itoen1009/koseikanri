@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCOS013A01C (body)
  * Description      : 販売実績情報より仕訳情報を作成し、AR請求取引に連携する処理
  * MD.050           : ARへの販売実績データ連携 MD050_COS_013_A01
- * Version          : 1.16
+ * Version          : 1.17
  * Program List
  * ----------------------------------------------------------------------------------------
  *  Name                   Description
@@ -45,6 +45,7 @@ AS
  *  2009/05/07    1.14  K.KIN            T1_0908
  *  2009/05/07    1.15  K.KIN            T1_0914、T1_0915
  *  2009/05/11    1.16  K.KIN            T1_0453、T1_0938
+ *  2009/05/12    1.17  K.KIN            T1_0693
  *
  *****************************************************************************************/
 --
@@ -163,6 +164,7 @@ AS
   cv_receiv_base_msg        CONSTANT VARCHAR2(20) := 'APP-XXCOS1-12783'; -- 入金拠点が未設定
   cv_org_sys_id_msg         CONSTANT VARCHAR2(20) := 'APP-XXCOS1-12784'; -- 顧客所在地参照IDが未設定
   cv_jour_no_msg            CONSTANT VARCHAR2(20) := 'APP-XXCOS1-12785'; -- 仕訳パターンない
+  cv_receipt_id_msg         CONSTANT VARCHAR2(20) := 'APP-XXCOS1-12789'; -- 支払方法が未設定
 --
   -- トークン
   cv_tkn_pro                CONSTANT  VARCHAR2(20) := 'PROFILE';         -- プロファイル
@@ -1105,7 +1107,7 @@ gt_bulk_card_tbl              g_sales_exp_ttype;                                
            , xsel.pure_amount                  pure_amount             -- 本体金額
            , xsel.tax_amount                   tax_amount              -- 消費税額
            , NVL( xsel.cash_and_card, 0 )      cash_and_card           -- 現金・カード併用額
-           , rcrm.receipt_method_id            rcrm_receipt_id         -- 顧客支払方法ID
+           , rcrmv.receipt_method_id           rcrm_receipt_id         -- 顧客支払方法ID
            , xchv.ship_account_id              xchv_cust_id_s          -- 出荷先顧客ID
            , xchv.bill_account_id              xchv_cust_id_b          -- 請求先顧客ID
            , xchv.bill_account_number          xchv_cust_number_b      -- 請求先顧客コード
@@ -1134,14 +1136,23 @@ gt_bulk_card_tbl              g_sales_exp_ttype;                                
            , hz_cust_acct_sites_all            hcss                    -- 顧客所在地（出荷先）
            , hz_cust_acct_sites_all            hcsb                    -- 顧客所在地（請求先）
            , hz_cust_acct_sites_all            hcsc                    -- 顧客所在地（入金先）
-           , ra_cust_receipt_methods           rcrm                    -- 顧客支払方法
            , xxcos_good_prod_class_v           xgpc                    -- 品目区分View
            , xxcos_cust_hierarchy_v            xchv                    -- 顧客階層ビュー
-           , hz_cust_site_uses_all             scsua                   -- 顧客使用目的
            , ( SELECT DISTINCT
                    mcav.subinventory_code      subinventory_code
                FROM mtl_category_accounts_v    mcav                    -- 専門店View
              ) mcavd
+           , ( SELECT DISTINCT
+                   rcrm.customer_id      customer_id
+                 , receipt_method_id     receipt_method_id
+               FROM ra_cust_receipt_methods           rcrm                    -- 顧客支払方法
+                  , hz_cust_site_uses_all             scsua                   -- 顧客使用目的
+               WHERE rcrm.primary_flag                     = cv_y_flag
+                 AND rcrm.site_use_id                      = scsua.site_use_id
+                 AND gd_process_date BETWEEN               NVL( rcrm.start_date, gd_process_date )
+                                     AND                   NVL( rcrm.end_date,   gd_process_date )
+                 AND scsua.site_use_code                   = cv_site_code
+             ) rcrmv
       WHERE
           xseh.sales_exp_header_id              = xsel.sales_exp_header_id
       AND xseh.dlv_invoice_number               = xsel.dlv_invoice_number
@@ -1202,12 +1213,7 @@ gt_bulk_card_tbl              g_sales_exp_ttype;                                
       AND hcsb.cust_account_id                  = hcab.cust_account_id
       AND hcsc.cust_account_id                  = hcac.cust_account_id
       AND xchv.ship_account_id                  = hcas.cust_account_id
-      AND rcrm.customer_id                      = hcab.cust_account_id
-      AND rcrm.primary_flag                     = cv_y_flag
-      AND rcrm.site_use_id                      = scsua.site_use_id
-      AND gd_process_date BETWEEN               NVL( rcrm.start_date, gd_process_date )
-                          AND                   NVL( rcrm.end_date,   gd_process_date )
-      AND scsua.site_use_code                   = cv_site_code
+      AND rcrmv.customer_id( + )                = hcab.cust_account_id
       AND mcavd.subinventory_code( + )          = xsel.ship_from_subinventory_code
       ORDER BY xseh.sales_exp_header_id
              , xseh.dlv_invoice_number
@@ -1244,6 +1250,60 @@ gt_bulk_card_tbl              g_sales_exp_ttype;                                
     <<gt_sales_exp_tbl2_loop>>
     FOR sale_idx IN 1 .. gt_sales_exp_tbl2.COUNT LOOP
 --
+      IF ( gt_sales_exp_tbl2( sale_idx ).rcrm_receipt_id IS NULL ) THEN
+        --スキップ処理
+        ln_skip_idx := ln_skip_idx + 1;
+        gt_sales_skip_tbl( ln_skip_idx ).sales_exp_header_id
+                                                           := gt_sales_exp_tbl2( sale_idx ).sales_exp_header_id;
+        --支払方法が設定させて未設定
+        lv_errmsg := xxccp_common_pkg.get_msg(
+                        iv_application   => cv_xxcos_short_nm
+                      , iv_name          => cv_receipt_id_msg
+                      , iv_token_name1   => cv_tkn_header_id
+                      , iv_token_value1  => gt_sales_exp_tbl2( sale_idx ).sales_exp_header_id
+                      , iv_token_name2   => cv_tkn_order_no
+                      , iv_token_value2  => gt_sales_exp_tbl2( sale_idx ).dlv_invoice_number
+                      , iv_token_name3   => cv_tkn_cust_code
+                      , iv_token_value3  => gt_sales_exp_tbl2( sale_idx ).ship_to_customer_code
+                    );
+        gn_warn_flag := cv_y_flag;
+        -- 空行出力
+        FND_FILE.PUT_LINE(
+           which  => FND_FILE.LOG
+          ,buff   => cv_blank
+        );
+--
+        -- メッセージ出力
+        FND_FILE.PUT_LINE(
+           which  => FND_FILE.LOG
+          ,buff   => lv_errmsg
+        );
+--
+        -- 空行出力
+        FND_FILE.PUT_LINE(
+           which  => FND_FILE.LOG
+          ,buff   => cv_blank
+        );
+--
+--
+        -- 空行出力
+        FND_FILE.PUT_LINE(
+           which  => FND_FILE.OUTPUT
+          ,buff   => cv_blank
+        );
+--
+        -- メッセージ出力
+        FND_FILE.PUT_LINE(
+           which  => FND_FILE.OUTPUT
+          ,buff   => lv_errmsg
+        );
+--
+        -- 空行出力
+        FND_FILE.PUT_LINE(
+           which  => FND_FILE.OUTPUT
+          ,buff   => cv_blank
+        );
+      END IF;
       --カードVDフラグ
       lv_heiyou_card_flag := cv_n_flag;
       --現金・カード併用
