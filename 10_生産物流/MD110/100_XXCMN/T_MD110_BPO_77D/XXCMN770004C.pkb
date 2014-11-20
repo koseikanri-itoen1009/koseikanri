@@ -7,7 +7,7 @@ AS
  * Description      : éÛï•ÇªÇÃëºé¿ê—ÉäÉXÉg
  * MD.050/070       : åééüÅYêÿèàóùí†ï[Issue1.0 (T_MD050_BPO_770)
  *                    åééüÅYêÿèàóùí†ï[Issue1.0 (T_MD070_BPO_77D)
- * Version          : 1.21
+ * Version          : 1.22
  *
  * Program List
  * -------------------------- ----------------------------------------------------------
@@ -58,6 +58,7 @@ AS
  *                                       é¿ç€å¥âøÇÃéÊìæêÊïœçX Åuxxcmn_lot_cost.unit_ploceÅvÅÀ
  *                                                            Åuic_lots_mst.attribute7Åv 
  *  2008/12/22    1.21  A.Shiina         ñ{î‘è·äQ719ëŒâû
+ *  2008/03/06    1.22  H.Marushita      ñ{î‘è·äQ1274ëŒâû à…ì°âÄç›å…ÇÃÇ›èåèí«â¡
  *****************************************************************************************/
 --
 --#######################  å≈íËÉOÉçÅ[ÉoÉãíËêîêÈåæïî START   #######################
@@ -774,6 +775,7 @@ AS
       AND    xrpm.break_col_04       IS NOT NULL
       AND    xrpm.new_div_account    = iv_div_type
       AND    trn.whse_code           = iwm.whse_code
+      AND    iwm.attribute1          = '0'
       AND    xlv1.lookup_type        = cv_div_type
       AND    xrpm.new_div_account    = xlv1.lookup_code
       AND    (xlv1.start_date_active IS NULL
@@ -909,6 +911,7 @@ AS
 -- 2008/11/11 v1.11 UPDATE END
       AND    xrpm.new_div_account    = iv_div_type
       AND    trn.whse_code           = iwm.whse_code
+      AND    iwm.attribute1          = '0'
       AND    xlv1.lookup_type        = cv_div_type
       AND    xrpm.new_div_account    = xlv1.lookup_code
       AND    (xlv1.start_date_active IS NULL
@@ -1036,6 +1039,7 @@ AS
       AND    xrpm.break_col_04       IS NOT NULL
       AND    xrpm.new_div_account    = iv_div_type
       AND    trn.whse_code           = iwm.whse_code
+      AND    iwm.attribute1          = '0'
       AND    xlv1.lookup_type        = cv_div_type
       AND    xrpm.new_div_account    = xlv1.lookup_code
       AND    (xlv1.start_date_active IS NULL
@@ -1171,6 +1175,7 @@ AS
 -- 2008/11/11 v1.11 UPDATE END
       AND    xrpm.new_div_account    = iv_div_type
       AND    trn.whse_code           = iwm.whse_code
+      AND    iwm.attribute1          = '0'
       AND    xlv1.lookup_type        = cv_div_type
       AND    xrpm.new_div_account    = xlv1.lookup_code
       AND    (xlv1.start_date_active IS NULL
@@ -1308,6 +1313,7 @@ AS
       AND    xrpm.break_col_04       IS NOT NULL
       AND    xrpm.new_div_account    = iv_div_type
       AND    trn.whse_code           = iwm.whse_code
+      AND    iwm.attribute1          = '0'
       AND    xlv1.lookup_type        = cv_div_type
       AND    xrpm.new_div_account    = xlv1.lookup_code
       AND    (xlv1.start_date_active IS NULL
@@ -1442,6 +1448,7 @@ AS
       AND    xrpm.break_col_04       IS NOT NULL
       AND    xrpm.new_div_account    = iv_div_type
       AND    trn.whse_code           = iwm.whse_code
+      AND    iwm.attribute1          = '0'
       AND    xlv1.lookup_type        = cv_div_type
       AND    xrpm.new_div_account    = xlv1.lookup_code
       AND    (xlv1.start_date_active IS NULL
@@ -1576,6 +1583,7 @@ AS
       AND    xrpm.break_col_04       IS NOT NULL
       AND    xrpm.new_div_account    = iv_div_type
       AND    trn.whse_code           = iwm.whse_code
+      AND    iwm.attribute1          = '0'
       AND    xlv1.lookup_type        = cv_div_type
       AND    xrpm.new_div_account    = xlv1.lookup_code
       AND    (xlv1.start_date_active IS NULL
@@ -1714,6 +1722,7 @@ AS
       AND    xrpm.break_col_04       IS NOT NULL
       AND    xrpm.new_div_account    = iv_div_type
       AND    trn.whse_code           = iwm.whse_code
+      AND    iwm.attribute1          = '0'
       AND    xlv1.lookup_type        = cv_div_type
       AND    xrpm.new_div_account    = xlv1.lookup_code
       AND    (xlv1.start_date_active IS NULL
@@ -1845,6 +1854,7 @@ AS
       AND    xrpm.break_col_04       IS NOT NULL
       AND    xrpm.new_div_account    = iv_div_type
       AND    trn.whse_code           = iwm.whse_code
+      AND    iwm.attribute1          = '0'
       AND    xlv1.lookup_type        = cv_div_type
       AND    xrpm.new_div_account    = xlv1.lookup_code
       AND    (xlv1.start_date_active IS NULL
@@ -1971,6 +1981,7 @@ AS
       AND    xrpm.break_col_04       IS NOT NULL
       AND    xrpm.new_div_account    = iv_div_type
       AND    trn.whse_code           = iwm.whse_code
+      AND    iwm.attribute1          = '0'
       AND    xlv1.lookup_type        = cv_div_type
       AND    xrpm.new_div_account    = xlv1.lookup_code
       AND    (xlv1.start_date_active IS NULL
@@ -2115,6 +2126,7 @@ AS
       AND    xrpm.break_col_04       IS NOT NULL
       AND    xrpm.new_div_account    = iv_div_type
       AND    trn.whse_code           = iwm.whse_code
+      AND    iwm.attribute1          = '0'
       AND    xlv1.lookup_type        = cv_div_type
       AND    xrpm.new_div_account    = xlv1.lookup_code
       AND    (xlv1.start_date_active IS NULL
@@ -2253,6 +2265,7 @@ AS
       AND    xrpm.break_col_04       IS NOT NULL
       AND    xrpm.new_div_account    = iv_div_type
       AND    trn.whse_code           = iwm.whse_code
+      AND    iwm.attribute1          = '0'
       AND    xlv1.lookup_type        = cv_div_type
       AND    xrpm.new_div_account    = xlv1.lookup_code
       AND    (xlv1.start_date_active IS NULL
@@ -2398,6 +2411,7 @@ AS
       AND    xrpm.break_col_04       IS NOT NULL
       AND    xrpm.new_div_account    = iv_div_type
       AND    trn.whse_code           = iwm.whse_code
+      AND    iwm.attribute1          = '0'
       AND    xlv1.lookup_type        = cv_div_type
       AND    xrpm.new_div_account    = xlv1.lookup_code
       AND    (xlv1.start_date_active IS NULL
@@ -2538,6 +2552,7 @@ AS
       AND    xrpm.break_col_04       IS NOT NULL
       AND    xrpm.new_div_account    = iv_div_type
       AND    trn.whse_code           = iwm.whse_code
+      AND    iwm.attribute1          = '0'
       AND    xlv1.lookup_type        = cv_div_type
       AND    xrpm.new_div_account    = xlv1.lookup_code
       AND    (xlv1.start_date_active IS NULL
@@ -2675,6 +2690,7 @@ AS
       AND    xrpm.break_col_04       IS NOT NULL
       AND    xrpm.new_div_account    = iv_div_type
       AND    trn.whse_code           = iwm.whse_code
+      AND    iwm.attribute1          = '0'
       AND    xlv1.lookup_type        = cv_div_type
       AND    xrpm.new_div_account    = xlv1.lookup_code
       AND    (xlv1.start_date_active IS NULL
@@ -2807,6 +2823,7 @@ AS
       AND    xrpm.break_col_04       IS NOT NULL
       AND    xrpm.new_div_account    = iv_div_type
       AND    trn.whse_code           = iwm.whse_code
+      AND    iwm.attribute1          = '0'
       AND    xlv1.lookup_type        = cv_div_type
       AND    xrpm.new_div_account    = xlv1.lookup_code
       AND    (xlv1.start_date_active IS NULL
@@ -2959,6 +2976,7 @@ AS
       AND    xrpm.item_div_origin    = mcb3.segment1
 -- 2008/11/19 v1.12 ADD END
       AND    trn.whse_code           = iwm.whse_code
+      AND    iwm.attribute1          = '0'
       AND    xlv1.lookup_type        = cv_div_type
       AND    xrpm.new_div_account    = xlv1.lookup_code
       AND    (xlv1.start_date_active IS NULL
@@ -3103,6 +3121,7 @@ AS
       AND    xrpm.item_div_origin    = mcb3.segment1
 -- 2008/11/19 v1.12 ADD END
       AND    trn.whse_code           = iwm.whse_code
+      AND    iwm.attribute1          = '0'
       AND    xlv1.lookup_type        = cv_div_type
       AND    xrpm.new_div_account    = xlv1.lookup_code
       AND    (xlv1.start_date_active IS NULL
@@ -3235,6 +3254,7 @@ AS
       AND    xrpm.break_col_04       IS NOT NULL
       AND    xrpm.new_div_account    = iv_div_type
       AND    trn.whse_code           = iwm.whse_code
+      AND    iwm.attribute1          = '0'
       AND    xlv1.lookup_type        = cv_div_type
       AND    xrpm.new_div_account    = xlv1.lookup_code
       AND    (xlv1.start_date_active IS NULL
@@ -3361,6 +3381,7 @@ AS
       AND    xrpm.break_col_04       IS NOT NULL
       AND    xrpm.new_div_account    = iv_div_type
       AND    trn.whse_code           = iwm.whse_code
+      AND    iwm.attribute1          = '0'
       AND    xlv1.lookup_type        = cv_div_type
       AND    xrpm.new_div_account    = xlv1.lookup_code
       AND    (xlv1.start_date_active IS NULL
@@ -3507,6 +3528,7 @@ AS
       AND    xrpm.break_col_04       IS NOT NULL
       AND    xrpm.new_div_account    = iv_div_type
       AND    trn.whse_code           = iwm.whse_code
+      AND    iwm.attribute1          = '0'
       AND    xlv1.lookup_type        = cv_div_type
       AND    xrpm.new_div_account    = xlv1.lookup_code
       AND    (xlv1.start_date_active IS NULL
@@ -3643,6 +3665,7 @@ AS
       AND    xrpm.break_col_04       IS NOT NULL
       AND    xrpm.new_div_account    = iv_div_type
       AND    trn.whse_code           = iwm.whse_code
+      AND    iwm.attribute1          = '0'
       AND    xlv1.lookup_type        = cv_div_type
       AND    xrpm.new_div_account    = xlv1.lookup_code
       AND    (xlv1.start_date_active IS NULL
@@ -3786,6 +3809,7 @@ AS
       AND    xrpm.break_col_04       IS NOT NULL
       AND    xrpm.new_div_account    = iv_div_type
       AND    trn.whse_code           = iwm.whse_code
+      AND    iwm.attribute1          = '0'
       AND    xlv1.lookup_type        = cv_div_type
       AND    xrpm.new_div_account    = xlv1.lookup_code
       AND    (xlv1.start_date_active IS NULL
@@ -3915,6 +3939,7 @@ AS
       AND    xrpm.break_col_04       IS NOT NULL
       AND    xrpm.new_div_account    = iv_div_type
       AND    trn.whse_code           = iwm.whse_code
+      AND    iwm.attribute1          = '0'
       AND    xlv1.lookup_type        = cv_div_type
       AND    xrpm.new_div_account    = xlv1.lookup_code
       AND    (xlv1.start_date_active IS NULL
@@ -4017,6 +4042,7 @@ AS
       AND    xrpm.break_col_04       IS NOT NULL
       AND    srct.language(+)        = gc_ja
       AND    trn.whse_code           = iwm.whse_code
+      AND    iwm.attribute1          = '0'
       AND    xlv1.lookup_type        = cv_div_type
       AND    xrpm.new_div_account    = xlv1.lookup_code
       AND    (xlv1.start_date_active IS NULL
@@ -4112,6 +4138,7 @@ AS
       AND    xrpm.new_div_account    = iv_div_type
       AND    xrpm.break_col_04       IS NOT NULL
       AND    trn.whse_code           = iwm.whse_code
+      AND    iwm.attribute1          = '0'
       AND    xlv1.lookup_type        = cv_div_type
       AND    xrpm.new_div_account    = xlv1.lookup_code
       AND    (xlv1.start_date_active IS NULL
@@ -4242,6 +4269,7 @@ AS
       AND    xrpm.break_col_04       IS NOT NULL
       AND    xrpm.new_div_account    = iv_div_type
       AND    trn.whse_code           = iwm.whse_code
+      AND    iwm.attribute1          = '0'
       AND    xlv1.lookup_type        = cv_div_type
       AND    xrpm.new_div_account    = xlv1.lookup_code
       AND    (xlv1.start_date_active IS NULL
@@ -4372,6 +4400,7 @@ AS
       AND    xrpm.break_col_04       IS NOT NULL
       AND    xrpm.new_div_account    = iv_div_type
       AND    trn.whse_code           = iwm.whse_code
+      AND    iwm.attribute1          = '0'
       AND    xlv1.lookup_type        = cv_div_type
       AND    xrpm.new_div_account    = xlv1.lookup_code
       AND    (xlv1.start_date_active IS NULL
@@ -4477,6 +4506,7 @@ AS
       AND    xlv.source_lang         = gc_ja
       AND    xlv.enabled_flag        = cv_yes
       AND    trn.whse_code           = iwm.whse_code
+      AND    iwm.attribute1          = '0'
       AND    xlv1.lookup_type        = cv_div_type
       AND    xrpm.new_div_account    = xlv1.lookup_code
       AND    (xlv1.start_date_active IS NULL
@@ -4560,6 +4590,7 @@ AS
       AND    xrpm.break_col_04       IS NOT NULL
       AND    srct.language(+)        = gc_ja
       AND    trn.whse_code           = iwm.whse_code
+      AND    iwm.attribute1          = '0'
       AND    xlv1.lookup_type        = cv_div_type
       AND    xrpm.new_div_account    = xlv1.lookup_code
       AND    (xlv1.start_date_active IS NULL
@@ -4688,6 +4719,7 @@ AS
       AND    xlv.source_lang         = gc_ja
       AND    xlv.enabled_flag        = cv_yes
       AND    trn.whse_code           = iwm.whse_code
+      AND    iwm.attribute1          = '0'
       AND    xlv1.lookup_type        = cv_div_type
       AND    xrpm.new_div_account    = xlv1.lookup_code
       AND    (xlv1.start_date_active IS NULL
@@ -4817,6 +4849,7 @@ AS
       AND    xrpm.reason_code        = srct.reason_code(+)
       AND    srct.language(+)        = gc_ja
       AND    trn.whse_code           = iwm.whse_code
+      AND    iwm.attribute1          = '0'
       AND    xlv1.lookup_type        = cv_div_type
       AND    xrpm.new_div_account    = xlv1.lookup_code
       AND    (xlv1.start_date_active IS NULL
@@ -4918,6 +4951,7 @@ AS
       AND    xrpm.reason_code        = srct.reason_code(+)
       AND    srct.language(+)        = gc_ja
       AND    trn.whse_code           = iwm.whse_code
+      AND    iwm.attribute1          = '0'
       AND    xlv1.lookup_type        = cv_div_type
       AND    xrpm.new_div_account    = xlv1.lookup_code
       AND    (xlv1.start_date_active IS NULL
@@ -5031,6 +5065,7 @@ AS
       AND    xrpm.reason_code        = srct.reason_code(+)
       AND    srct.language(+)        = gc_ja
       AND    trn.whse_code           = iwm.whse_code
+      AND    iwm.attribute1          = '0'
       AND    xlv1.lookup_type        = cv_div_type
       AND    xrpm.new_div_account    = xlv1.lookup_code
       AND    (xlv1.start_date_active IS NULL
@@ -5156,6 +5191,7 @@ AS
       AND    xrpm.break_col_04       IS NOT NULL
       AND    srct.language(+)        = gc_ja
       AND    trn.whse_code           = iwm.whse_code
+      AND    iwm.attribute1          = '0'
       AND    xlv1.lookup_type        = cv_div_type
       AND    xrpm.new_div_account    = xlv1.lookup_code
       AND    (xlv1.start_date_active IS NULL
@@ -5275,6 +5311,7 @@ AS
       AND    xrpm.break_col_04       IS NOT NULL
       AND    srct.language(+)        = gc_ja
       AND    trn.whse_code           = iwm.whse_code
+      AND    iwm.attribute1          = '0'
       AND    xlv1.lookup_type        = cv_div_type
       AND    xrpm.new_div_account    = xlv1.lookup_code
       AND    (xlv1.start_date_active IS NULL
@@ -5392,6 +5429,7 @@ AS
       AND    xrpm.break_col_04       IS NOT NULL
       AND    srct.language(+)        = gc_ja
       AND    trn.whse_code           = iwm.whse_code
+      AND    iwm.attribute1          = '0'
       AND    xlv1.lookup_type        = cv_div_type
       AND    xrpm.new_div_account    = xlv1.lookup_code
       AND    (xlv1.start_date_active IS NULL
@@ -5510,6 +5548,7 @@ AS
       AND    xrpm.break_col_04       IS NOT NULL
       AND    srct.language(+)        = gc_ja
       AND    trn.whse_code           = iwm.whse_code
+      AND    iwm.attribute1          = '0'
       AND    xlv1.lookup_type        = cv_div_type
       AND    xrpm.new_div_account    = xlv1.lookup_code
       AND    (xlv1.start_date_active IS NULL
@@ -5619,6 +5658,7 @@ AS
       AND    xrpm.break_col_04       IS NOT NULL
       AND    xrpm.new_div_account    = iv_div_type
       AND    trn.whse_code           = iwm.whse_code
+      AND    iwm.attribute1          = '0'
       AND    xlv1.lookup_type        = cv_div_type
       AND    xrpm.new_div_account    = xlv1.lookup_code
       AND    (xlv1.start_date_active IS NULL
@@ -5730,6 +5770,7 @@ AS
       AND    xrpm.break_col_04       IS NOT NULL
       AND    xrpm.new_div_account    = iv_div_type
       AND    trn.whse_code           = iwm.whse_code
+      AND    iwm.attribute1          = '0'
       AND    xlv1.lookup_type        = cv_div_type
       AND    xrpm.new_div_account    = xlv1.lookup_code
       AND    (xlv1.start_date_active IS NULL
@@ -5822,6 +5863,7 @@ AS
       AND    xrpm.break_col_04       IS NOT NULL
       AND    srct.language(+)        = gc_ja
       AND    trn.whse_code           = iwm.whse_code
+      AND    iwm.attribute1          = '0'
       AND    xlv1.lookup_type        = cv_div_type
       AND    xrpm.new_div_account    = xlv1.lookup_code
       AND    (xlv1.start_date_active IS NULL
@@ -5962,6 +6004,7 @@ AS
       AND    xrpm.break_col_04       IS NOT NULL
       AND    xrpm.new_div_account    = iv_div_type
       AND    trn.whse_code           = iwm.whse_code
+      AND    iwm.attribute1          = '0'
       AND    xlv1.lookup_type        = cv_div_type
       AND    xrpm.new_div_account    = xlv1.lookup_code
       AND    (xlv1.start_date_active IS NULL
@@ -6098,6 +6141,7 @@ AS
 -- 2008/11/11 v1.11 UPDATE END
       AND    xrpm.new_div_account    = iv_div_type
       AND    trn.whse_code           = iwm.whse_code
+      AND    iwm.attribute1          = '0'
       AND    xlv1.lookup_type        = cv_div_type
       AND    xrpm.new_div_account    = xlv1.lookup_code
       AND    (xlv1.start_date_active IS NULL
@@ -6226,6 +6270,7 @@ AS
       AND    xrpm.break_col_04       IS NOT NULL
       AND    xrpm.new_div_account    = iv_div_type
       AND    trn.whse_code           = iwm.whse_code
+      AND    iwm.attribute1          = '0'
       AND    xlv1.lookup_type        = cv_div_type
       AND    xrpm.new_div_account    = xlv1.lookup_code
       AND    (xlv1.start_date_active IS NULL
@@ -6362,6 +6407,7 @@ AS
 -- 2008/11/11 v1.11 UPDATE END
       AND    xrpm.new_div_account    = iv_div_type
       AND    trn.whse_code           = iwm.whse_code
+      AND    iwm.attribute1          = '0'
       AND    xlv1.lookup_type        = cv_div_type
       AND    xrpm.new_div_account    = xlv1.lookup_code
       AND    (xlv1.start_date_active IS NULL
@@ -6500,6 +6546,7 @@ AS
       AND    xrpm.break_col_04       IS NOT NULL
       AND    xrpm.new_div_account    = iv_div_type
       AND    trn.whse_code           = iwm.whse_code
+      AND    iwm.attribute1          = '0'
       AND    xlv1.lookup_type        = cv_div_type
       AND    xrpm.new_div_account    = xlv1.lookup_code
       AND    (xlv1.start_date_active IS NULL
@@ -6635,6 +6682,7 @@ AS
       AND    xrpm.break_col_04       IS NOT NULL
       AND    xrpm.new_div_account    = iv_div_type
       AND    trn.whse_code           = iwm.whse_code
+      AND    iwm.attribute1          = '0'
       AND    xlv1.lookup_type        = cv_div_type
       AND    xrpm.new_div_account    = xlv1.lookup_code
       AND    (xlv1.start_date_active IS NULL
@@ -6770,6 +6818,7 @@ AS
       AND    xrpm.break_col_04       IS NOT NULL
       AND    xrpm.new_div_account    = iv_div_type
       AND    trn.whse_code           = iwm.whse_code
+      AND    iwm.attribute1          = '0'
       AND    xlv1.lookup_type        = cv_div_type
       AND    xrpm.new_div_account    = xlv1.lookup_code
       AND    (xlv1.start_date_active IS NULL
@@ -6909,6 +6958,7 @@ AS
       AND    xrpm.break_col_04       IS NOT NULL
       AND    xrpm.new_div_account    = iv_div_type
       AND    trn.whse_code           = iwm.whse_code
+      AND    iwm.attribute1          = '0'
       AND    xlv1.lookup_type        = cv_div_type
       AND    xrpm.new_div_account    = xlv1.lookup_code
       AND    (xlv1.start_date_active IS NULL
@@ -7041,6 +7091,7 @@ AS
       AND    xrpm.break_col_04       IS NOT NULL
       AND    xrpm.new_div_account    = iv_div_type
       AND    trn.whse_code           = iwm.whse_code
+      AND    iwm.attribute1          = '0'
       AND    xlv1.lookup_type        = cv_div_type
       AND    xrpm.new_div_account    = xlv1.lookup_code
       AND    (xlv1.start_date_active IS NULL
@@ -7168,6 +7219,7 @@ AS
       AND    xrpm.break_col_04       IS NOT NULL
       AND    xrpm.new_div_account    = iv_div_type
       AND    trn.whse_code           = iwm.whse_code
+      AND    iwm.attribute1          = '0'
       AND    xlv1.lookup_type        = cv_div_type
       AND    xrpm.new_div_account    = xlv1.lookup_code
       AND    (xlv1.start_date_active IS NULL
@@ -7313,6 +7365,7 @@ AS
       AND    xrpm.break_col_04       IS NOT NULL
       AND    xrpm.new_div_account    = iv_div_type
       AND    trn.whse_code           = iwm.whse_code
+      AND    iwm.attribute1          = '0'
       AND    xlv1.lookup_type        = cv_div_type
       AND    xrpm.new_div_account    = xlv1.lookup_code
       AND    (xlv1.start_date_active IS NULL
@@ -7452,6 +7505,7 @@ AS
       AND    xrpm.break_col_04       IS NOT NULL
       AND    xrpm.new_div_account    = iv_div_type
       AND    trn.whse_code           = iwm.whse_code
+      AND    iwm.attribute1          = '0'
       AND    xlv1.lookup_type        = cv_div_type
       AND    xrpm.new_div_account    = xlv1.lookup_code
       AND    (xlv1.start_date_active IS NULL
@@ -7598,6 +7652,7 @@ AS
       AND    xrpm.break_col_04       IS NOT NULL
       AND    xrpm.new_div_account    = iv_div_type
       AND    trn.whse_code           = iwm.whse_code
+      AND    iwm.attribute1          = '0'
       AND    xlv1.lookup_type        = cv_div_type
       AND    xrpm.new_div_account    = xlv1.lookup_code
       AND    (xlv1.start_date_active IS NULL
@@ -7739,6 +7794,7 @@ AS
       AND    xrpm.break_col_04       IS NOT NULL
       AND    xrpm.new_div_account    = iv_div_type
       AND    trn.whse_code           = iwm.whse_code
+      AND    iwm.attribute1          = '0'
       AND    xlv1.lookup_type        = cv_div_type
       AND    xrpm.new_div_account    = xlv1.lookup_code
       AND    (xlv1.start_date_active IS NULL
@@ -7877,6 +7933,7 @@ AS
       AND    xrpm.break_col_04       IS NOT NULL
       AND    xrpm.new_div_account    = iv_div_type
       AND    trn.whse_code           = iwm.whse_code
+      AND    iwm.attribute1          = '0'
       AND    xlv1.lookup_type        = cv_div_type
       AND    xrpm.new_div_account    = xlv1.lookup_code
       AND    (xlv1.start_date_active IS NULL
@@ -8010,6 +8067,7 @@ AS
       AND    xrpm.break_col_04       IS NOT NULL
       AND    xrpm.new_div_account    = iv_div_type
       AND    trn.whse_code           = iwm.whse_code
+      AND    iwm.attribute1          = '0'
       AND    xlv1.lookup_type        = cv_div_type
       AND    xrpm.new_div_account    = xlv1.lookup_code
       AND    (xlv1.start_date_active IS NULL
@@ -8163,6 +8221,7 @@ AS
       AND    xrpm.item_div_origin    = mcb3.segment1
 -- 2008/11/19 v1.12 ADD END
       AND    trn.whse_code           = iwm.whse_code
+      AND    iwm.attribute1          = '0'
       AND    xlv1.lookup_type        = cv_div_type
       AND    xrpm.new_div_account    = xlv1.lookup_code
       AND    (xlv1.start_date_active IS NULL
@@ -8308,6 +8367,7 @@ AS
       AND    xrpm.item_div_origin    = mcb3.segment1
 -- 2008/11/19 v1.12 ADD END
       AND    trn.whse_code           = iwm.whse_code
+      AND    iwm.attribute1          = '0'
       AND    xlv1.lookup_type        = cv_div_type
       AND    xrpm.new_div_account    = xlv1.lookup_code
       AND    (xlv1.start_date_active IS NULL
@@ -8441,6 +8501,7 @@ AS
       AND    xrpm.break_col_04       IS NOT NULL
       AND    xrpm.new_div_account    = iv_div_type
       AND    trn.whse_code           = iwm.whse_code
+      AND    iwm.attribute1          = '0'
       AND    xlv1.lookup_type        = cv_div_type
       AND    xrpm.new_div_account    = xlv1.lookup_code
       AND    (xlv1.start_date_active IS NULL
@@ -8568,6 +8629,7 @@ AS
       AND    xrpm.break_col_04       IS NOT NULL
       AND    xrpm.new_div_account    = iv_div_type
       AND    trn.whse_code           = iwm.whse_code
+      AND    iwm.attribute1          = '0'
       AND    xlv1.lookup_type        = cv_div_type
       AND    xrpm.new_div_account    = xlv1.lookup_code
       AND    (xlv1.start_date_active IS NULL
@@ -8715,6 +8777,7 @@ AS
       AND    xrpm.break_col_04       IS NOT NULL
       AND    xrpm.new_div_account    = iv_div_type
       AND    trn.whse_code           = iwm.whse_code
+      AND    iwm.attribute1          = '0'
       AND    xlv1.lookup_type        = cv_div_type
       AND    xrpm.new_div_account    = xlv1.lookup_code
       AND    (xlv1.start_date_active IS NULL
@@ -8853,6 +8916,7 @@ AS
       AND    xrpm.break_col_04       IS NOT NULL
       AND    xrpm.new_div_account    = iv_div_type
       AND    trn.whse_code           = iwm.whse_code
+      AND    iwm.attribute1          = '0'
       AND    xlv1.lookup_type        = cv_div_type
       AND    xrpm.new_div_account    = xlv1.lookup_code
       AND    (xlv1.start_date_active IS NULL
@@ -8997,6 +9061,7 @@ AS
       AND    xrpm.break_col_04       IS NOT NULL
       AND    xrpm.new_div_account    = iv_div_type
       AND    trn.whse_code           = iwm.whse_code
+      AND    iwm.attribute1          = '0'
       AND    xlv1.lookup_type        = cv_div_type
       AND    xrpm.new_div_account    = xlv1.lookup_code
       AND    (xlv1.start_date_active IS NULL
@@ -9127,6 +9192,7 @@ AS
       AND    xrpm.break_col_04       IS NOT NULL
       AND    xrpm.new_div_account    = iv_div_type
       AND    trn.whse_code           = iwm.whse_code
+      AND    iwm.attribute1          = '0'
       AND    xlv1.lookup_type        = cv_div_type
       AND    xrpm.new_div_account    = xlv1.lookup_code
       AND    (xlv1.start_date_active IS NULL
@@ -9230,6 +9296,7 @@ AS
       AND    xrpm.break_col_04       IS NOT NULL
       AND    srct.language(+)        = gc_ja
       AND    trn.whse_code           = iwm.whse_code
+      AND    iwm.attribute1          = '0'
       AND    xlv1.lookup_type        = cv_div_type
       AND    xrpm.new_div_account    = xlv1.lookup_code
       AND    (xlv1.start_date_active IS NULL
@@ -9326,6 +9393,7 @@ AS
       AND    xrpm.new_div_account    = iv_div_type
       AND    xrpm.break_col_04       IS NOT NULL
       AND    trn.whse_code           = iwm.whse_code
+      AND    iwm.attribute1          = '0'
       AND    xlv1.lookup_type        = cv_div_type
       AND    xrpm.new_div_account    = xlv1.lookup_code
       AND    (xlv1.start_date_active IS NULL
@@ -9457,6 +9525,7 @@ AS
       AND    xrpm.break_col_04       IS NOT NULL
       AND    xrpm.new_div_account    = iv_div_type
       AND    trn.whse_code           = iwm.whse_code
+      AND    iwm.attribute1          = '0'
       AND    xlv1.lookup_type        = cv_div_type
       AND    xrpm.new_div_account    = xlv1.lookup_code
       AND    (xlv1.start_date_active IS NULL
@@ -9588,6 +9657,7 @@ AS
       AND    xrpm.break_col_04       IS NOT NULL
       AND    xrpm.new_div_account    = iv_div_type
       AND    trn.whse_code           = iwm.whse_code
+      AND    iwm.attribute1          = '0'
       AND    xlv1.lookup_type        = cv_div_type
       AND    xrpm.new_div_account    = xlv1.lookup_code
       AND    (xlv1.start_date_active IS NULL
@@ -9694,6 +9764,7 @@ AS
       AND    xlv.source_lang         = gc_ja
       AND    xlv.enabled_flag        = cv_yes
       AND    trn.whse_code           = iwm.whse_code
+      AND    iwm.attribute1          = '0'
       AND    xlv1.lookup_type        = cv_div_type
       AND    xrpm.new_div_account    = xlv1.lookup_code
       AND    (xlv1.start_date_active IS NULL
@@ -9778,6 +9849,7 @@ AS
       AND    xrpm.break_col_04       IS NOT NULL
       AND    srct.language(+)        = gc_ja
       AND    trn.whse_code           = iwm.whse_code
+      AND    iwm.attribute1          = '0'
       AND    xlv1.lookup_type        = cv_div_type
       AND    xrpm.new_div_account    = xlv1.lookup_code
       AND    (xlv1.start_date_active IS NULL
@@ -9907,6 +9979,7 @@ AS
       AND    xlv.source_lang         = gc_ja
       AND    xlv.enabled_flag        = cv_yes
       AND    trn.whse_code           = iwm.whse_code
+      AND    iwm.attribute1          = '0'
       AND    xlv1.lookup_type        = cv_div_type
       AND    xrpm.new_div_account    = xlv1.lookup_code
       AND    (xlv1.start_date_active IS NULL
@@ -10037,6 +10110,7 @@ AS
       AND    xrpm.reason_code        = srct.reason_code(+)
       AND    srct.language(+)        = gc_ja
       AND    trn.whse_code           = iwm.whse_code
+      AND    iwm.attribute1          = '0'
       AND    xlv1.lookup_type        = cv_div_type
       AND    xrpm.new_div_account    = xlv1.lookup_code
       AND    (xlv1.start_date_active IS NULL
@@ -10139,6 +10213,7 @@ AS
       AND    xrpm.reason_code        = srct.reason_code(+)
       AND    srct.language(+)        = gc_ja
       AND    trn.whse_code           = iwm.whse_code
+      AND    iwm.attribute1          = '0'
       AND    xlv1.lookup_type        = cv_div_type
       AND    xrpm.new_div_account    = xlv1.lookup_code
       AND    (xlv1.start_date_active IS NULL
@@ -10253,6 +10328,7 @@ AS
       AND    xrpm.reason_code        = srct.reason_code(+)
       AND    srct.language(+)        = gc_ja
       AND    trn.whse_code           = iwm.whse_code
+      AND    iwm.attribute1          = '0'
       AND    xlv1.lookup_type        = cv_div_type
       AND    xrpm.new_div_account    = xlv1.lookup_code
       AND    (xlv1.start_date_active IS NULL
@@ -10379,6 +10455,7 @@ AS
       AND    xrpm.break_col_04       IS NOT NULL
       AND    srct.language(+)        = gc_ja
       AND    trn.whse_code           = iwm.whse_code
+      AND    iwm.attribute1          = '0'
       AND    xlv1.lookup_type        = cv_div_type
       AND    xrpm.new_div_account    = xlv1.lookup_code
       AND    (xlv1.start_date_active IS NULL
@@ -10499,6 +10576,7 @@ AS
       AND    xrpm.break_col_04       IS NOT NULL
       AND    srct.language(+)        = gc_ja
       AND    trn.whse_code           = iwm.whse_code
+      AND    iwm.attribute1          = '0'
       AND    xlv1.lookup_type        = cv_div_type
       AND    xrpm.new_div_account    = xlv1.lookup_code
       AND    (xlv1.start_date_active IS NULL
@@ -10618,6 +10696,7 @@ AS
       AND    xrpm.break_col_04       IS NOT NULL
       AND    srct.language(+)        = gc_ja
       AND    trn.whse_code           = iwm.whse_code
+      AND    iwm.attribute1          = '0'
       AND    xlv1.lookup_type        = cv_div_type
       AND    xrpm.new_div_account    = xlv1.lookup_code
       AND    (xlv1.start_date_active IS NULL
@@ -10742,6 +10821,7 @@ AS
       AND    xrpm.break_col_04       IS NOT NULL
       AND    srct.language(+)        = gc_ja
       AND    trn.whse_code           = iwm.whse_code
+      AND    iwm.attribute1          = '0'
       AND    xlv1.lookup_type        = cv_div_type
       AND    xrpm.new_div_account    = xlv1.lookup_code
       AND    (xlv1.start_date_active IS NULL
@@ -10852,6 +10932,7 @@ AS
       AND    xrpm.break_col_04       IS NOT NULL
       AND    xrpm.new_div_account    = iv_div_type
       AND    trn.whse_code           = iwm.whse_code
+      AND    iwm.attribute1          = '0'
       AND    xlv1.lookup_type        = cv_div_type
       AND    xrpm.new_div_account    = xlv1.lookup_code
       AND    (xlv1.start_date_active IS NULL
@@ -10964,6 +11045,7 @@ AS
       AND    xrpm.break_col_04       IS NOT NULL
       AND    xrpm.new_div_account    = iv_div_type
       AND    trn.whse_code           = iwm.whse_code
+      AND    iwm.attribute1          = '0'
       AND    xlv1.lookup_type        = cv_div_type
       AND    xrpm.new_div_account    = xlv1.lookup_code
       AND    (xlv1.start_date_active IS NULL
@@ -11057,6 +11139,7 @@ AS
       AND    xrpm.break_col_04       IS NOT NULL
       AND    srct.language(+)        = gc_ja
       AND    trn.whse_code           = iwm.whse_code
+      AND    iwm.attribute1          = '0'
       AND    xlv1.lookup_type        = cv_div_type
       AND    xrpm.new_div_account    = xlv1.lookup_code
       AND    (xlv1.start_date_active IS NULL
