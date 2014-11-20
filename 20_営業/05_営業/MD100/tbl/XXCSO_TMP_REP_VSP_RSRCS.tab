@@ -1,0 +1,31 @@
+/*************************************************************************
+ * 
+ * TABLE Name      : xxcso_tmp_rep_vsp_rsrcs
+ * Description     : 売上訪問計画管理表営業員集計ワークテーブル
+ * MD.070          : 
+ * Version         : 1.0
+ * 
+ * Change Record
+ * ------------- ----- ------------ -------------------------------------
+ *  Date          Ver.  Editor       Description
+ * ------------- ----- ------------ -------------------------------------
+ *  2009/05/19    1.0  H.Ogawa       初回作成
+ ************************************************************************/
+CREATE GLOBAL TEMPORARY TABLE xxcso.xxcso_tmp_rep_vsp_rsrcs
+(
+  base_code                        VARCHAR2(4)
+ ,group_number                     VARCHAR2(10)
+ ,group_leader_flag                VARCHAR2(1)
+ ,group_grade                      VARCHAR2(2)
+ ,employee_number                  VARCHAR2(5)
+ ,employee_name                    VARCHAR2(48)
+ ,created_by                       NUMBER(15)        NOT NULL
+ ,creation_date                    DATE              NOT NULL
+ ,last_updated_by                  NUMBER(15)        NOT NULL
+ ,last_update_date                 DATE              NOT NULL
+ ,last_update_login                NUMBER(15)
+ ,request_id                       NUMBER(15)
+ ,program_application_id           NUMBER(15)
+ ,program_id                       NUMBER(15)
+ ,program_update_date              DATE
+);
