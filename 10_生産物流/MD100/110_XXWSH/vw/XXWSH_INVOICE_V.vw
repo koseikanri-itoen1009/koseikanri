@@ -120,25 +120,33 @@ WHERE
         OR
         xlv.end_date_active        >= xoha.schedule_ship_date
       )
-  --"顧客.適用開始日"(実績)
-  AND ( xcasv1.start_date_active IS NULL
-        OR
-        xcasv1.start_date_active   <= xoha.shipped_date
+  --"顧客.適用開始日"
+  AND ( DECODE (xoha.req_status
+             , '04' , xcasv1.start_date_active 
+             , '03' , xcasv2.start_date_active)
+             IS NULL 
+        OR 
+        DECODE (xoha.req_status
+             , '04' , xcasv1.start_date_active 
+             , '03' , xcasv2.start_date_active)
+             <=
+        DECODE (xoha.req_status
+             , '04' , xoha.shipped_date 
+             , '03' , xoha.schedule_ship_date)
       )
-  --"顧客.適用終了日"(実績)
-  AND ( xcasv1.end_date_active IS NULL
-        OR
-        xcasv1.end_date_active     >= xoha.shipped_date
-      )
-  --"顧客.適用開始日"(指示)
-  AND ( xcasv2.start_date_active IS NULL
-        OR
-        xcasv2.start_date_active   <= xoha.schedule_ship_date
-      )
-  --"顧客.適用終了日"(指示)
-  AND ( xcasv2.end_date_active IS NULL
-        OR
-        xcasv2.end_date_active     >= xoha.schedule_ship_date
+  --"顧客.適用終了日"
+  AND ( DECODE (xoha.req_status
+             , '04' , xcasv1.end_date_active 
+             , '03' , xcasv2.end_date_active)
+             IS NULL 
+        OR 
+        DECODE (xoha.req_status
+             , '04' , xcasv1.end_date_active 
+             , '03' , xcasv2.end_date_active)
+             >=
+        DECODE (xoha.req_status
+             , '04' , xoha.shipped_date 
+             , '03' , xoha.schedule_ship_date)
       )
   --"顧客情報.適用開始日"
   AND xcav.start_date_active       <= xoha.schedule_ship_date
@@ -240,25 +248,33 @@ WHERE
         OR
         xlv.end_date_active        >= xoha.schedule_ship_date
       )
-  --"仕入先.適用開始日"(実績)
-  AND ( xvsv1.start_date_active IS NULL
+  --"仕入先.適用開始日"
+  AND ( DECODE (xoha.req_status
+             , '08' , xvsv1.start_date_active 
+             , '07' , xvsv2.start_date_active)
+             IS NULL 
         OR 
-        xvsv1.start_date_active    <= xoha.shipped_date
+        DECODE (xoha.req_status
+             , '08' , xvsv1.start_date_active 
+             , '07' , xvsv2.start_date_active)
+             <=
+        DECODE (xoha.req_status
+             , '08' , xoha.shipped_date 
+             , '07' , xoha.schedule_ship_date)
       )
-  --"仕入先.適用終了日"(実績)
-  AND ( xvsv1.end_date_active IS NULL
-        OR
-        xvsv1.end_date_active      >= xoha.shipped_date
-      )--
-  --"仕入先.適用開始日"(指示)
-  AND ( xvsv2.start_date_active IS NULL
+  --"仕入先.適用終了日"
+  AND ( DECODE (xoha.req_status
+             , '08' , xvsv1.end_date_active 
+             , '07' , xvsv2.end_date_active)
+             IS NULL 
         OR 
-        xvsv2.start_date_active    <= xoha.schedule_ship_date
-      )
-  --"仕入先.適用終了日"(指示)
-  AND ( xvsv2.end_date_active IS NULL
-        OR
-        xvsv2.end_date_active      >= xoha.schedule_ship_date
+        DECODE (xoha.req_status
+             , '08' , xvsv1.end_date_active 
+             , '07' , xvsv2.end_date_active)
+             >=
+        DECODE (xoha.req_status
+             , '08' , xoha.shipped_date 
+             , '07' , xoha.schedule_ship_date)
       )
 --------------------------------------------------------------------------------
 UNION ALL
