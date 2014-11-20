@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCOP004A05R(body)
  * Description      : 引取計画立案表出力ワーク登録
  * MD.050           : 引取計画立案表 MD050_COP_004_A05
- * Version          : 1.7
+ * Version          : 1.9
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -33,6 +33,8 @@ AS
  *  2009/10/13    1.5  SCS.Fukada        障害:E_T3_00556対応
  *  2009/10/16    1.6  SCS.Sasaki        障害:0001424対応
  *  2009/10/20    1.7  SCS.Sasaki        障害:0001424対応(PT対応)
+ *  2009/11/17    1.8  SCS.Miyagawa      SVFファイル名対応
+ *  2009/11/27    1.9  SCS.Kikuchi       E_T4_00198	（パフォーマンス）対応
  *
  *****************************************************************************************/
 --
@@ -142,14 +144,30 @@ AS
   cv_api_err_msg_tkn_lbl2     CONSTANT VARCHAR2(100) := 'ERR_MSG';
 
   -- SVF出力対応
-  cv_svf_date_format          CONSTANT VARCHAR2(16)  := 'YYYYMMDDHH24MISS';     -- パラメータ：対象年月書式
-  cv_file_name                CONSTANT VARCHAR2(40)  := 'XXCOP004A05R'
+--★1.8 2009/11/17 Del Start
+--  cv_svf_date_format          CONSTANT VARCHAR2(16)  := 'YYYYMMDDHH24MISS';     -- パラメータ：対象年月書式
+--  cv_file_name                CONSTANT VARCHAR2(40)  := 'XXCOP004A05R'
+--                                                        || TO_CHAR(SYSDATE,cv_svf_date_format)
+--                                                        || '.pdf';              -- 出力ファイル名
+--★1.8 2009/11/17 Del End
+--★1.8 2009/11/17 Add End
+  cv_svf_date_format          CONSTANT VARCHAR2(16)  := 'YYYYMMDD';     -- パラメータ：対象年月書式
+  cv_file_name                CONSTANT VARCHAR2(40)  := cv_pkg_name
                                                         || TO_CHAR(SYSDATE,cv_svf_date_format)
+                                                        || cn_request_id
                                                         || '.pdf';              -- 出力ファイル名
+--★1.8 2009/11/17 Add End
   cv_output_mode              CONSTANT VARCHAR2(1)   := '1';                    -- 出力区分：”１”（ＰＤＦ）
   cv_frm_file                 CONSTANT VARCHAR2(20)  := 'XXCOP004A05S.xml';     -- フォーム様式ファイル名
   cv_vrq_file                 CONSTANT VARCHAR2(20)  := 'XXCOP004A05S.vrq';     -- クエリー様式ファイル名
 --★1.1 2009/03/04 Add End
+
+--20091127_Ver1.9_E_T4_00198_SCS.Kikuchi_ADD_START
+  cv_pgsname_a09c             CONSTANT VARCHAR2(30)  := 'XXCOI006A09C';         -- データ連携制御テーブル用プログラム名
+  cv_err_msg_00048            CONSTANT VARCHAR2(100) := 'APP-XXCOP1-00048';     -- 項目取得失敗メッセージ
+  cv_err_msg_00048_tkn_lbl    CONSTANT VARCHAR2(100) := 'ITEM_NAME';            -- 項目取得失敗メッセージ：トークン名
+  cv_err_msg_00048_tkn_val    CONSTANT VARCHAR2(100) := '最終連携日時';         -- 項目取得失敗メッセージ：設定値
+--20091127_Ver1.9_E_T4_00198_SCS.Kikuchi_ADD_END
 --
 
 --
@@ -238,6 +256,10 @@ AS
 
   -- デバッグ出力判定用
   gv_debug_mode                VARCHAR2(30);
+
+--20091127_Ver1.9_E_T4_00198_SCS.Kikuchi_ADD_START
+  gd_f_last_cooperation_date   DATE;                                -- 前回最終連携日
+--20091127_Ver1.9_E_T4_00198_SCS.Kikuchi_ADD_END
 --
 --
 --
@@ -903,46 +925,72 @@ AS
     -----------------------------------------------------------------
     -- 月次在庫受払表（日次）データ取得
     -----------------------------------------------------------------
+--20091127_Ver1.9_E_T4_00198_SCS.Kikuchi_MOD_START
+    -- 前回最終連携日から帳簿在庫数量を取得する
     SELECT NVL(SUM(book_inventory_quantity),0) book_inventory_quantity
     INTO   ln_book_inventory_quantity
-    FROM   xxcoi_inv_reception_daily                     -- 月次在庫受払表（日次）
-    WHERE  (base_code,organization_id,practice_date,subinventory_code,inventory_item_id) IN
-             ( SELECT base_code
-                    , organization_id
-                    , MAX(practice_date)
-                    , subinventory_code
-                    , inventory_item_id
-               FROM   xxcoi_inv_reception_daily          -- 月次在庫受払表（日次）
-               WHERE  base_code         = g_header_data_tbl(in_header_index).base_code
-               AND    inventory_item_id = g_detail_data_tbl(in_detail_index).inventory_item_id
---20090428_Ver1.2_T1_0838_SCS.Kikuchi_MOD_START
---               AND    practice_date     BETWEEN gd_this_month_start_day
---                                        AND     gd_prev_day
-               AND    practice_date     <= gd_prev_day
---20090428_Ver1.2_T1_0838_SCS.Kikuchi_MOD_END
-               GROUP
-               BY     base_code
-                    , organization_id
-                    , subinventory_code
-                    , inventory_item_id
-             )
+    FROM   xxcoi_inv_reception_daily
+    WHERE  practice_date     = gd_f_last_cooperation_date
+    AND    base_code         = g_header_data_tbl(in_header_index).base_code
+    AND    inventory_item_id = g_detail_data_tbl(in_detail_index).inventory_item_id
     ;
+--    SELECT NVL(SUM(book_inventory_quantity),0) book_inventory_quantity
+--    INTO   ln_book_inventory_quantity
+--    FROM   xxcoi_inv_reception_daily                     -- 月次在庫受払表（日次）
+--    WHERE  (base_code,organization_id,practice_date,subinventory_code,inventory_item_id) IN
+--             ( SELECT base_code
+--                    , organization_id
+--                    , MAX(practice_date)
+--                    , subinventory_code
+--                    , inventory_item_id
+--               FROM   xxcoi_inv_reception_daily          -- 月次在庫受払表（日次）
+--               WHERE  base_code         = g_header_data_tbl(in_header_index).base_code
+--               AND    inventory_item_id = g_detail_data_tbl(in_detail_index).inventory_item_id
+----20090428_Ver1.2_T1_0838_SCS.Kikuchi_MOD_START
+----               AND    practice_date     BETWEEN gd_this_month_start_day
+----                                        AND     gd_prev_day
+--               AND    practice_date     <= gd_prev_day
+----20090428_Ver1.2_T1_0838_SCS.Kikuchi_MOD_END
+--               GROUP
+--               BY     base_code
+--                    , organization_id
+--                    , subinventory_code
+--                    , inventory_item_id
+--             )
+--    ;
+--20091127_Ver1.9_E_T4_00198_SCS.Kikuchi_MOD_END
 
     -----------------------------------------------------------------
     -- 販売実績データ取得
     -----------------------------------------------------------------
-    SELECT NVL(SUM(standard_qty),0) standard_qty
-    INTO   ln_standard_qty
-    FROM   xxcos_sales_exp_headers xseh           -- 販売実績ヘッダ
-    ,      xxcos_sales_exp_lines   xsel           -- 販売実績明細
-    WHERE  xseh.sales_exp_header_id =  xsel.sales_exp_header_id
-    AND    xsel.item_code           =  g_detail_data_tbl(in_detail_index).item_no
-    AND    xsel.delivery_base_code  =  g_header_data_tbl(in_header_index).base_code
-    AND    xseh.dlv_invoice_class   IN (cv_dlv_invoice_class_1,cv_dlv_invoice_class_3)         -- 納品伝票区分
-    AND    xsel.sales_class         IN (cv_sales_class_1,cv_sales_class_5,cv_sales_class_6)    -- 売上区分
-    AND    xseh.delivery_date       BETWEEN gd_this_month_start_day
-                                    AND     gd_prev_day
-    ;
+--20091127_Ver1.9_E_T4_00198_SCS.Kikuchi_MOD_START
+    -- マテリアライズド・ビューから販売実績数を抽出する
+    BEGIN
+      SELECT sum_standard_qty
+      INTO   ln_standard_qty
+      FROM   XXCOP_SALES_EXP_MV
+      WHERE  item_code           =  g_detail_data_tbl(in_detail_index).item_no
+      AND    delivery_base_code  =  g_header_data_tbl(in_header_index).base_code
+      ;
+    EXCEPTION
+      WHEN NO_DATA_FOUND THEN
+        ln_standard_qty := 0;
+    END;
+
+--    SELECT NVL(SUM(standard_qty),0) standard_qty
+--    INTO   ln_standard_qty
+--    FROM   xxcos_sales_exp_headers xseh           -- 販売実績ヘッダ
+--    ,      xxcos_sales_exp_lines   xsel           -- 販売実績明細
+--    WHERE  xseh.sales_exp_header_id =  xsel.sales_exp_header_id
+--    AND    xsel.item_code           =  g_detail_data_tbl(in_detail_index).item_no
+--    AND    xsel.delivery_base_code  =  g_header_data_tbl(in_header_index).base_code
+--    AND    xseh.dlv_invoice_class   IN (cv_dlv_invoice_class_1,cv_dlv_invoice_class_3)         -- 納品伝票区分
+--    AND    xsel.sales_class         IN (cv_sales_class_1,cv_sales_class_5,cv_sales_class_6)    -- 売上区分
+--    AND    xseh.delivery_date       BETWEEN gd_this_month_start_day
+--                                    AND     gd_prev_day
+--    ;
+--20091127_Ver1.9_E_T4_00198_SCS.Kikuchi_MOD_END
+
     -----------------------------------------------------------------
     -- 月次在庫、販売実績をケース換算する
     -----------------------------------------------------------------
@@ -1477,6 +1525,32 @@ AS
       RAISE internal_process_expt;
     END IF;
 --20090428_Ver1.2_T1_0645_SCS.Kikuchi_ADD_END
+
+--20091127_Ver1.9_E_T4_00198_SCS.Kikuchi_ADD_START
+    -- ===================================
+    --  連携日時取得
+    -- ===================================
+    BEGIN
+      SELECT  TRUNC(xcc.last_cooperation_date)        -- 最終連携日時
+      INTO    gd_f_last_cooperation_date              -- 処理日
+      FROM    xxcoi_cooperation_control   xcc         -- データ連携制御テーブル
+      WHERE   xcc.program_short_name = cv_pgsname_a09c
+      ;
+    EXCEPTION
+      WHEN NO_DATA_FOUND THEN
+        gd_f_last_cooperation_date := NULL;
+    END;
+    IF  ( gd_f_last_cooperation_date IS NULL ) THEN
+      lv_errmsg := xxccp_common_pkg.get_msg(
+                     iv_application  => cv_msg_application
+                    ,iv_name         => cv_err_msg_00048
+                    ,iv_token_name1  => cv_err_msg_00048_tkn_lbl
+                    ,iv_token_value1 => cv_err_msg_00048_tkn_val
+                   );
+      gn_error_cnt := gn_error_cnt + 1;
+      RAISE internal_process_expt;
+    END IF;
+--20091127_Ver1.9_E_T4_00198_SCS.Kikuchi_ADD_END
 
     -- ================================================
     --  A-2,A-3 対象拠点・帳票ヘッダ情報取得

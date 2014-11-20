@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCOP004A04R(body)
  * Description      : 引取計画チェックリスト出力ワーク登録
  * MD.050           : 引取計画チェックリスト MD050_COP_004_A04
- * Version          : 1.1
+ * Version          : 1.2
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -25,6 +25,7 @@ AS
  * ------------- ----- ---------------- -------------------------------------------------
  *  2008/11/03    1.0  SCS.Kikuchi       新規作成
  *  2009/03/03    1.1  SCS.Kikuchi       SVF結合対応
+ *  2009/11/17    1.2  SCS.Miyagawa      SVFファイル名対応
  *
  *****************************************************************************************/
 --
@@ -111,10 +112,19 @@ AS
   cv_api_err_msg_tkn_lbl2     CONSTANT VARCHAR2(100) := 'ERR_MSG';
 
   -- SVF出力対応
-  cv_svf_date_format          CONSTANT VARCHAR2(16)  := 'YYYYMMDDHH24MISS';     -- パラメータ：対象年月書式
-  cv_file_name                CONSTANT VARCHAR2(40)  := 'XXCOP004A04R'
+--★1.2 2009/11/17 Del Start
+--  cv_svf_date_format          CONSTANT VARCHAR2(16)  := 'YYYYMMDDHH24MISS';     -- パラメータ：対象年月書式
+--  cv_file_name                CONSTANT VARCHAR2(40)  := 'XXCOP004A04R'
+--                                                        || TO_CHAR(SYSDATE,cv_svf_date_format)
+--                                                        || '.pdf';              -- 出力ファイル名
+--★1.2 2009/11/17 Del End
+--★1.2 2009/11/17 Add Start
+  cv_svf_date_format          CONSTANT VARCHAR2(16)  := 'YYYYMMDD';     -- パラメータ：対象年月書式
+  cv_file_name                CONSTANT VARCHAR2(40)  := cv_pkg_name
                                                         || TO_CHAR(SYSDATE,cv_svf_date_format)
+                                                        || cn_request_id
                                                         || '.pdf';              -- 出力ファイル名
+--★1.2 2009/11/17 Add End
   cv_output_mode              CONSTANT VARCHAR2(1)   := '1';                    -- 出力区分：”１”（ＰＤＦ）
   cv_frm_file                 CONSTANT VARCHAR2(20)  := 'XXCOP004A04S.xml';     -- フォーム様式ファイル名
   cv_vrq_file                 CONSTANT VARCHAR2(20)  := 'XXCOP004A04S.vrq';     -- クエリー様式ファイル名
