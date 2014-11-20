@@ -3147,12 +3147,15 @@ AS
         ,0                                             AS stock_quantity
 -- 2008/10/31 Y.Yamamoto v1.1 update start
 --        ,ABS(itc_out_ad_e_xx.trans_qty)                AS leaving_quantity
-        ,CASE
-          WHEN (xrpm.new_div_invent = '503' ) THEN
-            itc_out_ad_e_xx.trans_qty * -1
-          ELSE
-            itc_out_ad_e_xx.trans_qty
-          END                                             leaving_quantity
+-- 2008/11/28 H.Itou Mod Start 本番障害#142
+--        ,CASE
+--          WHEN (xrpm.new_div_invent = '503' ) THEN
+--            itc_out_ad_e_xx.trans_qty * -1
+--          ELSE
+--            itc_out_ad_e_xx.trans_qty
+--          END                                             leaving_quantity
+        ,itc_out_ad_e_xx.trans_qty * -1                AS leaving_quantity
+-- 2008/11/28 H.Itou Mod End 本番障害#142
 -- 2008/10/31 Y.Yamamoto v1.1 update end
   FROM   ic_adjs_jnl                  iaj_out_ad_e_xx                  -- OPM在庫調整ジャーナル
         ,ic_jrnl_mst                  ijm_out_ad_e_xx                  -- OPMジャーナルマスタ
