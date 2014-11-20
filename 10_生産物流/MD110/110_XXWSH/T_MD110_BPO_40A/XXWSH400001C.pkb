@@ -7,7 +7,7 @@ AS
  * Description      : 引取計画からのリーフ出荷依頼自動作成
  * MD.050/070       : 出荷依頼                              (T_MD050_BPO_400)
  *                    引取計画からのリーフ出荷依頼自動作成  (T_MD070_BPO_40A)
- * Version          : 1.22
+ * Version          : 1.23
  *
  * Program List
  * -------------------------- ----------------------------------------------------------
@@ -62,6 +62,7 @@ AS
  *  2009/06/25    1.20  SCS    伊藤ひとみ  本番障害#1436対応
  *  2009/07/08    1.21  SCS    伊藤ひとみ  本番障害#1525対応
  *  2009/07/13    1.22  SCS    伊藤ひとみ  本番障害#1525対応
+ *  2009/12/09    1.23  SCS    宮川真理子  本番障害#267対応
  *****************************************************************************************/
 --
 --#######################  固定グローバル定数宣言部 START   #######################
@@ -180,8 +181,16 @@ AS
   -- パレット重量
   TYPE l_pallet_weight               IS TABLE OF
                 xxwsh_order_lines_all.pallet_weight%TYPE INDEX BY BINARY_INTEGER;
-  TYPE l_delete_flag               IS TABLE OF
+  TYPE l_delete_flag                 IS TABLE OF
                 xxwsh_order_lines_all.delete_flag%TYPE INDEX BY BINARY_INTEGER;
+-- 2009/12/09 M.Miyagawa Add Start 本番障害#267
+  --出荷依頼インタフェース済フラグ
+  TYPE l_shipping_request_if_flg     IS TABLE OF
+                xxwsh_order_lines_all.shipping_request_if_flg%TYPE INDEX BY BINARY_INTEGER;
+  --出荷実績インタフェース済フラグ
+  TYPE l_shipping_result_if_flg      IS TABLE OF
+                xxwsh_order_lines_all.shipping_result_if_flg%TYPE INDEX BY BINARY_INTEGER;
+-- 2009/12/09 M.Miyagawa Add End 本番障害#267
   TYPE l_created_by                  IS TABLE OF
                 xxwsh_order_lines_all.created_by%TYPE INDEX BY BINARY_INTEGER;
   TYPE l_creation_date               IS TABLE OF
@@ -591,6 +600,10 @@ AS
   gt_l_capacity                l_capacity;               -- 容積   
   gt_l_pallet_weight           l_pallet_weight;          -- パレット重量
   gt_l_delete_flag             l_delete_flag;
+-- 2009/12/09 M.Miyagawa Add Start 本番障害#267
+  gt_l_shipping_request_if_flg l_shipping_request_if_flg;--出荷依頼インタフェース済フラグ
+  gt_l_shipping_result_if_flg  l_shipping_result_if_flg; --出荷実績インタフェース済フラグ
+-- 2009/12/09 M.Miyagawa Add End 本番障害#267
   gt_l_created_by              l_created_by;
   gt_l_creation_date           l_creation_date;
   gt_l_last_updated_by         l_last_updated_by;
@@ -2617,6 +2630,10 @@ AS
     gt_l_capacity(gn_l_cnt)               := NVL(gn_detail_ca,0);      -- 容積
     gt_l_pallet_weight(gn_l_cnt)          := NVL(gn_ttl_prt_we,0);     -- パレット重量
     gt_l_delete_flag(gn_l_cnt)            := 'N';                      -- 削除フラグ
+-- 2009/12/09 M.Miyagawa Add Start 本番障害#267
+    gt_l_shipping_request_if_flg(gn_l_cnt):= 'N';                      -- 出荷依頼インタフェース済フラグ
+    gt_l_shipping_result_if_flg(gn_l_cnt) := 'N';                      -- 出荷実績インタフェース済フラグ
+-- 2009/12/09 M.Miyagawa Add End 本番障害#267
     gt_l_created_by(gn_l_cnt)             := gn_created_by;            -- 作成者
     gt_l_creation_date(gn_l_cnt)          := gd_creation_date;         -- 作成日
     gt_l_last_updated_by(gn_l_cnt)        := gn_last_upd_by;           -- 最終更新者
@@ -3823,6 +3840,10 @@ AS
          ,capacity
          ,pallet_weight
          ,delete_flag
+-- 2009/12/09 M.Miyagawa Add Start 本番障害#267
+         ,shipping_request_if_flg
+         ,shipping_result_if_flg
+-- 2009/12/09 M.Miyagawa Add End 本番障害#267
          ,created_by
          ,creation_date
          ,last_updated_by
@@ -3848,6 +3869,10 @@ AS
          ,gt_l_capacity(i)
          ,gt_l_pallet_weight(i)
          ,gt_l_delete_flag(i)
+-- 2009/12/09 M.Miyagawa Add Start 本番障害#267
+         ,gt_l_shipping_request_if_flg(i)
+         ,gt_l_shipping_result_if_flg(i)
+-- 2009/12/09 M.Miyagawa Add End 本番障害#267
          ,gt_l_created_by(i)
          ,gt_l_creation_date(i)
          ,gt_l_last_updated_by(i)
