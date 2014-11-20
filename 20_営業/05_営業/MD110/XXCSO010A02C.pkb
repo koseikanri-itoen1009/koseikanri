@@ -11,7 +11,7 @@ AS
  *                    ます。
  * MD.050           : MD050_CSO_010_A02_マスタ連携機能
  *
- * Version          : 1.11
+ * Version          : 1.12
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -76,6 +76,7 @@ AS
  *  2009-09-25    1.9   Daisuke.Abe      共通課題IE548
  *  2009-10-15    1.10  Daisuke.Abe      0001537対応
  *  2009-11-26    1.11  Kazuo.Satomura   E_本稼動_00109対応
+ *  2009-12-18    1.12  Daisuke.Abe      E_本稼動_00536対応
  *****************************************************************************************/
   --
   --#######################  固定グローバル定数宣言部 START   #######################
@@ -2921,9 +2922,17 @@ AS
             /* 2009.04.28 K.Satomura 障害番号T1_0733対応 START */
             /* 2009.05.15 K.Satomura 障害番号T1_1010対応 START */
             --,xca.cnvs_date                = cd_process_date           -- 顧客獲得日
+            /* 2009.12.18 D.Abe E_本稼動_00536対応 START */
+            --,xca.cnvs_date                = DECODE(it_mst_regist_info_rec.install_code
+            --                                      ,NULL, xca.cnvs_date
+            --                                      ,cd_process_date)   -- 顧客獲得日
             ,xca.cnvs_date                = DECODE(it_mst_regist_info_rec.install_code
-                                                  ,NULL, xca.cnvs_date
-                                                  ,cd_process_date)   -- 顧客獲得日
+                                                               ,NULL,xca.cnvs_date
+                                                               ,DECODE(xca.cnvs_date,NULL,it_mst_regist_info_rec.install_date
+                                                                                    ,xca.cnvs_date
+                                                                      )
+                                                  ) -- 顧客獲得日
+            /* 2009.12.18 D.Abe E_本稼動_00536対応 END */
             /* 2009.05.15 K.Satomura 障害番号T1_1010対応 END */
             /* 2009.04.28 K.Satomura 障害番号T1_0733対応 END */
             ,xca.last_update_date         = cd_last_update_date       -- 最終更新日
