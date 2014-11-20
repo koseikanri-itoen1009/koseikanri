@@ -7,7 +7,7 @@ AS
  * Description      : 移動指示発注依頼自動作成
  * MD.050           : 生産物流共通（出荷・移動仮引当） T_MD050_BPO921
  * MD.070           : 移動指示発注依頼自動作成 T_MD070_BPO92C
- * Version          : 1.1
+ * Version          : 1.3
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -44,6 +44,9 @@ AS
  *                                      在庫補充ルールが発注で、補充先の直送倉庫区分が直送の場合のみ
  *                                      配送先を設定するように修正。
  *                                      その他の場合にはNULLを設定。(配送先毎の集約を行わないため。)
+ *  2008/07/31   1.3   Oracle 中田 準   ST不具合No522対応
+ *                                      SUBMAINのリターンコード変数の定義誤りによる
+ *                                      エラーハンドリング不備の修正。
  *
  *****************************************************************************************/
 --
@@ -7030,7 +7033,9 @@ debug_log(FND_FILE.LOG,'(C-14)' || cv_prg_name || ' End･････');
     -- ローカル変数
     -- ===============================
     lv_errbuf  VARCHAR2(5000);  -- エラー・メッセージ
-    lv_ret_code VARCHAR2(1);     -- リターン・コード
+-- 2008/07/31 Del Strat Ver1.3 システムテスト不具合#522対応
+--    lv_ret_code VARCHAR2(1);     -- リターン・コード
+-- 2008/07/31 Del End   Ver1.3 システムテスト不具合#522対応
     lv_retcode VARCHAR2(1);     -- リターン・コード
     lv_errmsg  VARCHAR2(5000);  -- ユーザー・エラー・メッセージ
 --
@@ -7184,7 +7189,7 @@ debug_log(FND_FILE.LOG,'(Submain)' || cv_prg_name || ' Start･･･');
       IF (lv_retcode = gv_status_error) THEN
 --
 debug_log(FND_FILE.LOG,'(submain)get_data_loop_out' || to_char(ln_get_data_loop_cnt));
-debug_log(FND_FILE.LOG,'  ' || lv_ret_code);
+debug_log(FND_FILE.LOG,'  ' || lv_retcode);
 debug_log(FND_FILE.LOG,'  ' || lv_errmsg);
 debug_log(FND_FILE.LOG,'  ' || lv_errbuf);
           RAISE global_process_expt;
@@ -7193,7 +7198,7 @@ debug_log(FND_FILE.LOG,'  ' || lv_errbuf);
       ELSIF (lv_retcode = gv_status_warn) THEN
 --
 debug_log(FND_FILE.LOG,'(submain)get_data_loop_out' || to_char(ln_get_data_loop_cnt));
-debug_log(FND_FILE.LOG,'  ' || lv_ret_code);
+debug_log(FND_FILE.LOG,'  ' || lv_retcode);
 debug_log(FND_FILE.LOG,'  ' || lv_errmsg);
 debug_log(FND_FILE.LOG,'  ' || lv_errbuf);
           FND_FILE.PUT_LINE(FND_FILE.OUTPUT,lv_errmsg);
@@ -7316,14 +7321,16 @@ debug_log(FND_FILE.LOG,'  ' || lv_errbuf);
                        iv_arrival_date,           -- 着日指定
                        iv_instruction_post_code,  -- 指示部署指定
                        lv_errbuf,                 -- エラー・メッセージ           --# 固定 #
-                       lv_ret_code,                -- リターン・コード             --# 固定 #
+-- 2008/07/31 Mod Strat Ver1.3 システムテスト不具合#522対応
+                       lv_retcode,                -- リターン・コード             --# 固定 #
+-- 2008/07/31 Mod End   Ver1.3 システムテスト不具合#522対応
                        lv_errmsg);                -- ユーザー・エラー・メッセージ --# 固定 #
 --
         -- エラー処理
         IF (lv_retcode = gv_status_error) THEN
 --
 debug_log(FND_FILE.LOG,'(submain)regi_move_data  ' || to_char(ln_get_zaiko_loop_cnt) || '件目');
-debug_log(FND_FILE.LOG,'  ' || lv_ret_code);
+debug_log(FND_FILE.LOG,'  ' || lv_retcode);
 debug_log(FND_FILE.LOG,'  ' || lv_errmsg);
 debug_log(FND_FILE.LOG,'  ' || lv_errbuf);
 --
@@ -7335,7 +7342,7 @@ debug_log(FND_FILE.LOG,'  ' || lv_errbuf);
           ov_retcode := gv_status_warn;
 --
 debug_log(FND_FILE.LOG,'(submain)regi_move_data  ' || to_char(ln_get_zaiko_loop_cnt) || '件目');
-debug_log(FND_FILE.LOG,'  ' || lv_ret_code);
+debug_log(FND_FILE.LOG,'  ' || lv_retcode);
 debug_log(FND_FILE.LOG,'  ' || lv_errmsg);
 debug_log(FND_FILE.LOG,'  ' || lv_errbuf);
           FND_FILE.PUT_LINE(FND_FILE.OUTPUT,lv_errmsg);
@@ -7359,14 +7366,14 @@ debug_log(FND_FILE.LOG,'  ' || lv_errbuf);
                         iv_arrival_date,           -- 着日指定
                         iv_instruction_post_code,  -- 指示部署指定
                         lv_errbuf,                 -- エラー・メッセージ           --# 固定 #
-                        lv_ret_code,               -- リターン・コード             --# 固定 #
+                        lv_retcode,               -- リターン・コード             --# 固定 #
                         lv_errmsg);                -- ユーザー・エラー・メッセージ --# 固定 #
 --
         -- エラー処理
         IF (lv_retcode = gv_status_error) THEN
 --
 debug_log(FND_FILE.LOG,'(submain)regi_poreq_data  ' || to_char(ln_get_zaiko_loop_cnt) || '件目');
-debug_log(FND_FILE.LOG,'  ' || lv_ret_code);
+debug_log(FND_FILE.LOG,'  ' || lv_retcode);
 debug_log(FND_FILE.LOG,'  ' || lv_errmsg);
 debug_log(FND_FILE.LOG,'  ' || lv_errbuf);
 --
@@ -7378,7 +7385,7 @@ debug_log(FND_FILE.LOG,'  ' || lv_errbuf);
           ov_retcode := gv_status_warn;
 --
 debug_log(FND_FILE.LOG,'(submain)regi_poreq_data  ' || to_char(ln_get_zaiko_loop_cnt) || '件目');
-debug_log(FND_FILE.LOG,'  ' || lv_ret_code);
+debug_log(FND_FILE.LOG,'  ' || lv_retcode);
 debug_log(FND_FILE.LOG,'  ' || lv_errmsg);
 debug_log(FND_FILE.LOG,'  ' || lv_errbuf);
           FND_FILE.PUT_LINE(FND_FILE.OUTPUT,lv_errmsg);
@@ -7393,7 +7400,7 @@ debug_log(FND_FILE.LOG,'  ' || lv_errbuf);
       END IF;
 --
       -- 処理種別が「出荷」の場合
-      IF ((iv_action_type = gv_cons_t_deliv) AND (lv_ret_code = gv_status_normal)) THEN
+      IF ((iv_action_type = gv_cons_t_deliv) AND (lv_retcode = gv_status_normal)) THEN
         -- ===============================================
         -- C-12  受注明細更新 regi_order_detail
         -- ===============================================
@@ -7416,7 +7423,7 @@ debug_log(FND_FILE.LOG,'  ' || lv_errbuf);
 --
 --
       -- 処理種別が「移動」の場合
-      ELSIF ((iv_action_type = gv_cons_t_move) AND (lv_ret_code = gv_status_normal)) THEN
+      ELSIF ((iv_action_type = gv_cons_t_move) AND (lv_retcode = gv_status_normal)) THEN
         -- ===============================================
         -- C-13  移動指示/指示明細更新 regi_move_detail
         -- ===============================================
