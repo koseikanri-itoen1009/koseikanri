@@ -1,0 +1,134 @@
+/*************************************************************************
+ * 
+ * TABLE Name      : xxcso_sp_decision_headers
+ * Description     : ＳＰ専決ヘッダテーブル
+ * MD.070          : 
+ * Version         : 1.1
+ * 
+ * Change Record
+ * ------------- ----- ------------ -------------------------------------
+ *  Date          Ver.  Editor       Description
+ * ------------- ----- ------------ -------------------------------------
+ *  2009/02/01    1.0  T.Maruyama    初回作成
+ *  2009/03/02    1.1  H.Ogawa       STORAGE句を追加
+ ************************************************************************/
+CREATE TABLE xxcso.xxcso_sp_decision_headers
+(
+  sp_decision_header_id           NUMBER            NOT NULL,
+  sp_decision_number              VARCHAR2(30)      NOT NULL,
+  sp_decision_type                VARCHAR2(1)       NOT NULL,
+  status                          VARCHAR2(2)       NOT NULL,
+  application_number              NUMBER(3),
+  application_date                DATE,
+  approval_complete_date          DATE,
+  application_code                VARCHAR2(5),
+  app_base_code                   VARCHAR2(4),
+  application_type                VARCHAR2(1),
+  newold_type                     VARCHAR2(1),
+  sele_number                     NUMBER(3),
+  maker_code                      VARCHAR2(2),
+  standard_type                   VARCHAR2(1),
+  un_number                       VARCHAR2(14),
+  install_date                    DATE,
+  lease_company                   VARCHAR2(50),
+  condition_business_type         VARCHAR2(1),
+  all_container_type              VARCHAR2(1),
+  contract_year_date              NUMBER(2),
+  install_support_amt             NUMBER(8),
+  install_support_amt2            NUMBER(8),
+  payment_cycle                   NUMBER(2),
+  electricity_type                VARCHAR2(1),
+  electricity_amount              NUMBER(5),
+  condition_reason                VARCHAR2(500),
+  bm1_send_type                   VARCHAR2(1),
+  other_content                   VARCHAR2(500),
+  sales_month                     NUMBER(4),
+  sales_year                      NUMBER(7),
+  sales_gross_margin_rate         NUMBER(9,2),
+  year_gross_margin_amt           NUMBER(9,2),
+  bm_rate                         NUMBER(4,2),
+  vd_sales_charge                 NUMBER(9,2),
+  install_support_amt_year        NUMBER(9,2),
+  lease_charge_month              NUMBER(2),
+  construction_charge             NUMBER(4),
+  vd_lease_charge                 NUMBER(9,2),
+  electricity_amt_month           NUMBER(5,2),
+  electricity_amt_year            NUMBER(9,2),
+  transportation_charge           NUMBER(9,2),
+  labor_cost_other                NUMBER(9,2),
+  total_cost                      NUMBER(9,2),
+  operating_profit                NUMBER(9,2),
+  operating_profit_rate           NUMBER(9,2),
+  break_even_point                NUMBER(9,2),
+  created_by                      NUMBER(15)        NOT NULL,
+  creation_date                   DATE              NOT NULL,
+  last_updated_by                 NUMBER(15)        NOT NULL,
+  last_update_date                DATE              NOT NULL,
+  last_update_login               NUMBER(15),
+  request_id                      NUMBER(15),
+  program_application_id          NUMBER(15),
+  program_id                      NUMBER(15),
+  program_update_date             DATE,
+  CONSTRAINT xxcso_sp_decision_headers_pk PRIMARY KEY ( sp_decision_header_id )
+  USING INDEX TABLESPACE xxidx2
+)
+PCTFREE 20 PCTUSED 40 INITRANS 16 STORAGE ( INITIAL 2M)
+;
+--
+COMMENT ON TABLE xxcso.xxcso_sp_decision_headers IS 'ＳＰ専決ヘッダテーブル';
+--
+COMMENT ON COLUMN xxcso.xxcso_sp_decision_headers.sp_decision_header_id                  IS 'ＳＰ専決ヘッダＩＤ';
+COMMENT ON COLUMN xxcso.xxcso_sp_decision_headers.sp_decision_number                     IS 'ＳＰ専決書番号';
+COMMENT ON COLUMN xxcso.xxcso_sp_decision_headers.sp_decision_type                       IS 'ＳＰ専決書種別';
+COMMENT ON COLUMN xxcso.xxcso_sp_decision_headers.status                                 IS 'ステータス';
+COMMENT ON COLUMN xxcso.xxcso_sp_decision_headers.application_number                     IS '申請回数';
+COMMENT ON COLUMN xxcso.xxcso_sp_decision_headers.application_date                       IS '申請日';
+COMMENT ON COLUMN xxcso.xxcso_sp_decision_headers.approval_complete_date                 IS '承認完了日';
+COMMENT ON COLUMN xxcso.xxcso_sp_decision_headers.application_code                       IS '申請者コード';
+COMMENT ON COLUMN xxcso.xxcso_sp_decision_headers.app_base_code                          IS '申請拠点コード';
+COMMENT ON COLUMN xxcso.xxcso_sp_decision_headers.application_type                       IS '申請区分';
+COMMENT ON COLUMN xxcso.xxcso_sp_decision_headers.newold_type                            IS '新台旧台区分';
+COMMENT ON COLUMN xxcso.xxcso_sp_decision_headers.sele_number                            IS 'セレ数';
+COMMENT ON COLUMN xxcso.xxcso_sp_decision_headers.maker_code                             IS 'メーカーコード';
+COMMENT ON COLUMN xxcso.xxcso_sp_decision_headers.standard_type                          IS '規格内外区分';
+COMMENT ON COLUMN xxcso.xxcso_sp_decision_headers.un_number                              IS '機種コード';
+COMMENT ON COLUMN xxcso.xxcso_sp_decision_headers.install_date                           IS '設置日';
+COMMENT ON COLUMN xxcso.xxcso_sp_decision_headers.lease_company                          IS 'リース仲介会社';
+COMMENT ON COLUMN xxcso.xxcso_sp_decision_headers.condition_business_type                IS '取引条件区分';
+COMMENT ON COLUMN xxcso.xxcso_sp_decision_headers.all_container_type                     IS '全容器区分';
+COMMENT ON COLUMN xxcso.xxcso_sp_decision_headers.contract_year_date                     IS '契約年数';
+COMMENT ON COLUMN xxcso.xxcso_sp_decision_headers.install_support_amt                    IS '初回設置協賛金';
+COMMENT ON COLUMN xxcso.xxcso_sp_decision_headers.install_support_amt2                   IS '２回目以降設置協賛金';
+COMMENT ON COLUMN xxcso.xxcso_sp_decision_headers.payment_cycle                          IS '支払サイクル';
+COMMENT ON COLUMN xxcso.xxcso_sp_decision_headers.electricity_type                       IS '電気代区分';
+COMMENT ON COLUMN xxcso.xxcso_sp_decision_headers.electricity_amount                     IS '電気代';
+COMMENT ON COLUMN xxcso.xxcso_sp_decision_headers.condition_reason                       IS '特別条件の理由';
+COMMENT ON COLUMN xxcso.xxcso_sp_decision_headers.bm1_send_type                          IS 'ＢＭ１送付先区分';
+COMMENT ON COLUMN xxcso.xxcso_sp_decision_headers.other_content                          IS '特約事項';
+COMMENT ON COLUMN xxcso.xxcso_sp_decision_headers.sales_month                            IS '月間売上';
+COMMENT ON COLUMN xxcso.xxcso_sp_decision_headers.sales_year                             IS '年間売上';
+COMMENT ON COLUMN xxcso.xxcso_sp_decision_headers.sales_gross_margin_rate                IS '売上粗利率';
+COMMENT ON COLUMN xxcso.xxcso_sp_decision_headers.year_gross_margin_amt                  IS '年間粗利金額';
+COMMENT ON COLUMN xxcso.xxcso_sp_decision_headers.bm_rate                                IS 'ＢＭ率';
+COMMENT ON COLUMN xxcso.xxcso_sp_decision_headers.vd_sales_charge                        IS 'ＶＤ販売手数料';
+COMMENT ON COLUMN xxcso.xxcso_sp_decision_headers.install_support_amt_year               IS '設置協賛金／年';
+COMMENT ON COLUMN xxcso.xxcso_sp_decision_headers.lease_charge_month                     IS 'リース料（月額）';
+COMMENT ON COLUMN xxcso.xxcso_sp_decision_headers.construction_charge                    IS '工事費';
+COMMENT ON COLUMN xxcso.xxcso_sp_decision_headers.vd_lease_charge                        IS 'ＶＤリース料';
+COMMENT ON COLUMN xxcso.xxcso_sp_decision_headers.electricity_amt_month                  IS '電気代（月）';
+COMMENT ON COLUMN xxcso.xxcso_sp_decision_headers.electricity_amt_year                   IS '電気代（年）';
+COMMENT ON COLUMN xxcso.xxcso_sp_decision_headers.transportation_charge                  IS '運送費Ａ';
+COMMENT ON COLUMN xxcso.xxcso_sp_decision_headers.labor_cost_other                       IS '人件費他';
+COMMENT ON COLUMN xxcso.xxcso_sp_decision_headers.total_cost                             IS '費用合計';
+COMMENT ON COLUMN xxcso.xxcso_sp_decision_headers.operating_profit                       IS '営業利益';
+COMMENT ON COLUMN xxcso.xxcso_sp_decision_headers.operating_profit_rate                  IS '営業利益率';
+COMMENT ON COLUMN xxcso.xxcso_sp_decision_headers.break_even_point                       IS '損益分岐点';
+COMMENT ON COLUMN xxcso.xxcso_sp_decision_headers.created_by                             IS '作成者';
+COMMENT ON COLUMN xxcso.xxcso_sp_decision_headers.creation_date                          IS '作成日';
+COMMENT ON COLUMN xxcso.xxcso_sp_decision_headers.last_updated_by                        IS '最終更新者';
+COMMENT ON COLUMN xxcso.xxcso_sp_decision_headers.last_update_date                       IS '最終更新日';
+COMMENT ON COLUMN xxcso.xxcso_sp_decision_headers.last_update_login                      IS '最終更新ログイン';
+COMMENT ON COLUMN xxcso.xxcso_sp_decision_headers.request_id                             IS '要求ID';
+COMMENT ON COLUMN xxcso.xxcso_sp_decision_headers.program_application_id                 IS 'コンカレント・プログラム・アプリケーションID';
+COMMENT ON COLUMN xxcso.xxcso_sp_decision_headers.program_id                             IS 'コンカレント・プログラムID';
+COMMENT ON COLUMN xxcso.xxcso_sp_decision_headers.program_update_date                    IS 'プログラム更新日';

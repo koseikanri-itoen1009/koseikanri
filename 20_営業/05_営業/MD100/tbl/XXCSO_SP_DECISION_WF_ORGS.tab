@@ -1,0 +1,72 @@
+/*************************************************************************
+ * 
+ * TABLE Name      : xxcso_sp_decision_wf_orgs
+ * Description     : ＳＰ専決ＷＦ承認組織マスタ
+ * MD.070          : 
+ * Version         : 1.1
+ * 
+ * Change Record
+ * ------------- ----- ------------ -------------------------------------
+ *  Date          Ver.  Editor       Description
+ * ------------- ----- ------------ -------------------------------------
+ *  2009/02/01    1.0  T.Maruyama    初回作成
+ *  2009/03/02    1.1  H.Ogawa       STORAGE句を追加
+ ************************************************************************/
+CREATE TABLE xxcso.xxcso_sp_decision_wf_orgs
+(
+  wf_approval_org_id              NUMBER(15)        NOT NULL,
+  base_code                       VARCHAR2(4)       NOT NULL,
+  effective_st_date               DATE              NOT NULL,
+  effective_ed_date               DATE,
+  sends_dept_code1                VARCHAR2(4),
+  sends_dept_code2                VARCHAR2(4),
+  sends_dept_code3                VARCHAR2(4),
+  sends_dept_code4                VARCHAR2(4),
+  sends_dept_code5                VARCHAR2(4),
+  sends_dept_code6                VARCHAR2(4),
+  sends_dept_code7                VARCHAR2(4),
+  sends_dept_code8                VARCHAR2(4),
+  sends_dept_code9                VARCHAR2(4),
+  sends_dept_code10               VARCHAR2(4),
+  excerpt                         VARCHAR2(100),
+  created_by                      NUMBER(15)        NOT NULL,
+  creation_date                   DATE              NOT NULL,
+  last_updated_by                 NUMBER(15)        NOT NULL,
+  last_update_date                DATE              NOT NULL,
+  last_update_login               NUMBER(15),
+  request_id                      NUMBER(15),
+  program_application_id          NUMBER(15),
+  program_id                      NUMBER(15),
+  program_update_date             DATE,
+  CONSTRAINT xxcso_sp_decision_wf_orgs_pk PRIMARY KEY ( wf_approval_org_id )
+  USING INDEX TABLESPACE xxidx2
+)
+PCTFREE 10 PCTUSED 40 INITRANS 1 STORAGE ( INITIAL 2M)
+;
+--
+COMMENT ON TABLE xxcso.xxcso_sp_decision_wf_orgs IS 'ＳＰ専決ＷＦ承認組織マスタ';
+--
+COMMENT ON COLUMN xxcso.xxcso_sp_decision_wf_orgs.wf_approval_org_id                     IS 'WF承認組織マスタＩＤ';
+COMMENT ON COLUMN xxcso.xxcso_sp_decision_wf_orgs.base_code                              IS '拠点ＣＤ';
+COMMENT ON COLUMN xxcso.xxcso_sp_decision_wf_orgs.effective_st_date                      IS '有効開始日';
+COMMENT ON COLUMN xxcso.xxcso_sp_decision_wf_orgs.effective_ed_date                      IS '有効終了日';
+COMMENT ON COLUMN xxcso.xxcso_sp_decision_wf_orgs.sends_dept_code1                       IS '回送拠点ＣＤ１';
+COMMENT ON COLUMN xxcso.xxcso_sp_decision_wf_orgs.sends_dept_code2                       IS '回送拠点ＣＤ２';
+COMMENT ON COLUMN xxcso.xxcso_sp_decision_wf_orgs.sends_dept_code3                       IS '回送拠点ＣＤ３';
+COMMENT ON COLUMN xxcso.xxcso_sp_decision_wf_orgs.sends_dept_code4                       IS '回送拠点ＣＤ４';
+COMMENT ON COLUMN xxcso.xxcso_sp_decision_wf_orgs.sends_dept_code5                       IS '回送拠点ＣＤ５';
+COMMENT ON COLUMN xxcso.xxcso_sp_decision_wf_orgs.sends_dept_code6                       IS '回送拠点ＣＤ６';
+COMMENT ON COLUMN xxcso.xxcso_sp_decision_wf_orgs.sends_dept_code7                       IS '回送拠点ＣＤ７';
+COMMENT ON COLUMN xxcso.xxcso_sp_decision_wf_orgs.sends_dept_code8                       IS '回送拠点ＣＤ８';
+COMMENT ON COLUMN xxcso.xxcso_sp_decision_wf_orgs.sends_dept_code9                       IS '回送拠点ＣＤ９';
+COMMENT ON COLUMN xxcso.xxcso_sp_decision_wf_orgs.sends_dept_code10                      IS '回送拠点ＣＤ１０';
+COMMENT ON COLUMN xxcso.xxcso_sp_decision_wf_orgs.excerpt                                IS '摘要';
+COMMENT ON COLUMN xxcso.xxcso_sp_decision_wf_orgs.created_by                             IS '作成者';
+COMMENT ON COLUMN xxcso.xxcso_sp_decision_wf_orgs.creation_date                          IS '作成日';
+COMMENT ON COLUMN xxcso.xxcso_sp_decision_wf_orgs.last_updated_by                        IS '最終更新者';
+COMMENT ON COLUMN xxcso.xxcso_sp_decision_wf_orgs.last_update_date                       IS '最終更新日';
+COMMENT ON COLUMN xxcso.xxcso_sp_decision_wf_orgs.last_update_login                      IS '最終更新ログイン';
+COMMENT ON COLUMN xxcso.xxcso_sp_decision_wf_orgs.request_id                             IS '要求ID';
+COMMENT ON COLUMN xxcso.xxcso_sp_decision_wf_orgs.program_application_id                 IS 'コンカレント・プログラム・アプリケーションID';
+COMMENT ON COLUMN xxcso.xxcso_sp_decision_wf_orgs.program_id                             IS 'コンカレント・プログラムID';
+COMMENT ON COLUMN xxcso.xxcso_sp_decision_wf_orgs.program_update_date                    IS 'プログラム更新日';

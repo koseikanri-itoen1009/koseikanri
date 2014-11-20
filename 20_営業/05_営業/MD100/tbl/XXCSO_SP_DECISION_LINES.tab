@@ -1,0 +1,72 @@
+/*************************************************************************
+ * 
+ * TABLE Name      : xxcso_sp_decision_lines
+ * Description     : ‚r‚oêŒˆ–¾×ƒe[ƒuƒ‹
+ * MD.070          : 
+ * Version         : 1.1
+ * 
+ * Change Record
+ * ------------- ----- ------------ -------------------------------------
+ *  Date          Ver.  Editor       Description
+ * ------------- ----- ------------ -------------------------------------
+ *  2009/02/01    1.0  T.Maruyama    ‰‰ñì¬
+ *  2009/03/02    1.1  H.Ogawa       STORAGE‹å‚ğ’Ç‰Á
+ ************************************************************************/
+CREATE TABLE xxcso.xxcso_sp_decision_lines
+(
+  sp_decision_line_id             NUMBER            NOT NULL,
+  sp_decision_header_id           NUMBER            NOT NULL,
+  sp_container_type               VARCHAR2(10),
+  fixed_price                     NUMBER(4),
+  sales_price                     NUMBER(4),
+  discount_amt                    NUMBER(4),
+  bm_rate_per_sales_price         NUMBER(5,2),
+  bm_amount_per_sales_price       NUMBER(6,2),
+  bm_conv_rate_per_sales_price    NUMBER(9,2),
+  bm1_bm_rate                     NUMBER(4,2),
+  bm1_bm_amount                   NUMBER(5,2),
+  bm2_bm_rate                     NUMBER(4,2),
+  bm2_bm_amount                   NUMBER(5,2),
+  bm3_bm_rate                     NUMBER(4,2),
+  bm3_bm_amount                   NUMBER(5,2),
+  created_by                      NUMBER(15)        NOT NULL,
+  creation_date                   DATE              NOT NULL,
+  last_updated_by                 NUMBER(15)        NOT NULL,
+  last_update_date                DATE              NOT NULL,
+  last_update_login               NUMBER(15),
+  request_id                      NUMBER(15),
+  program_application_id          NUMBER(15),
+  program_id                      NUMBER(15),
+  program_update_date             DATE,
+  CONSTRAINT xxcso_sp_decision_lines_pk PRIMARY KEY ( sp_decision_line_id )
+  USING INDEX TABLESPACE xxidx2
+)
+PCTFREE 20 PCTUSED 60 INITRANS 16 STORAGE ( INITIAL 2M)
+;
+--
+COMMENT ON TABLE xxcso.xxcso_sp_decision_lines IS '‚r‚oêŒˆ–¾×ƒe[ƒuƒ‹';
+--
+COMMENT ON COLUMN xxcso.xxcso_sp_decision_lines.sp_decision_line_id                    IS '‚r‚oêŒˆ–¾×‚h‚c';
+COMMENT ON COLUMN xxcso.xxcso_sp_decision_lines.sp_decision_header_id                  IS '‚r‚oêŒˆƒwƒbƒ_‚h‚c';
+COMMENT ON COLUMN xxcso.xxcso_sp_decision_lines.sp_container_type                      IS '‚r‚o—eŠí‹æ•ª';
+COMMENT ON COLUMN xxcso.xxcso_sp_decision_lines.fixed_price                            IS '’è‰¿';
+COMMENT ON COLUMN xxcso.xxcso_sp_decision_lines.sales_price                            IS '”„‰¿';
+COMMENT ON COLUMN xxcso.xxcso_sp_decision_lines.discount_amt                           IS '’lˆøŠz';
+COMMENT ON COLUMN xxcso.xxcso_sp_decision_lines.bm_rate_per_sales_price                IS '”„‰¿‚P–{“–‚è‚a‚li‘Šzj—¦';
+COMMENT ON COLUMN xxcso.xxcso_sp_decision_lines.bm_amount_per_sales_price              IS '”„‰¿‚P–{“–‚è‚a‚li‘Šzj‹àŠz';
+COMMENT ON COLUMN xxcso.xxcso_sp_decision_lines.bm_conv_rate_per_sales_price           IS '”„‰¿‚P–{“–‚è‚a‚li‘Šzj’è‰¿Š·Z—¦';
+COMMENT ON COLUMN xxcso.xxcso_sp_decision_lines.bm1_bm_rate                            IS '‚a‚l‚P‚a‚l—¦';
+COMMENT ON COLUMN xxcso.xxcso_sp_decision_lines.bm1_bm_amount                          IS '‚a‚l‚P‚a‚l‹àŠz';
+COMMENT ON COLUMN xxcso.xxcso_sp_decision_lines.bm2_bm_rate                            IS '‚a‚l‚Q‚a‚l—¦';
+COMMENT ON COLUMN xxcso.xxcso_sp_decision_lines.bm2_bm_amount                          IS '‚a‚l‚Q‚a‚l‹àŠz';
+COMMENT ON COLUMN xxcso.xxcso_sp_decision_lines.bm3_bm_rate                            IS '‚a‚l‚R‚a‚l—¦';
+COMMENT ON COLUMN xxcso.xxcso_sp_decision_lines.bm3_bm_amount                          IS '‚a‚l‚R‚a‚l‹àŠz';
+COMMENT ON COLUMN xxcso.xxcso_sp_decision_lines.created_by                             IS 'ì¬Ò';
+COMMENT ON COLUMN xxcso.xxcso_sp_decision_lines.creation_date                          IS 'ì¬“ú';
+COMMENT ON COLUMN xxcso.xxcso_sp_decision_lines.last_updated_by                        IS 'ÅIXVÒ';
+COMMENT ON COLUMN xxcso.xxcso_sp_decision_lines.last_update_date                       IS 'ÅIXV“ú';
+COMMENT ON COLUMN xxcso.xxcso_sp_decision_lines.last_update_login                      IS 'ÅIXVƒƒOƒCƒ“';
+COMMENT ON COLUMN xxcso.xxcso_sp_decision_lines.request_id                             IS '—v‹ID';
+COMMENT ON COLUMN xxcso.xxcso_sp_decision_lines.program_application_id                 IS 'ƒRƒ“ƒJƒŒƒ“ƒgEƒvƒƒOƒ‰ƒ€EƒAƒvƒŠƒP[ƒVƒ‡ƒ“ID';
+COMMENT ON COLUMN xxcso.xxcso_sp_decision_lines.program_id                             IS 'ƒRƒ“ƒJƒŒƒ“ƒgEƒvƒƒOƒ‰ƒ€ID';
+COMMENT ON COLUMN xxcso.xxcso_sp_decision_lines.program_update_date                    IS 'ƒvƒƒOƒ‰ƒ€XV“ú';

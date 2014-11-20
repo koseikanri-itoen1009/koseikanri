@@ -1,0 +1,463 @@
+/*************************************************************************
+ * 
+ * TABLE Name      : xxcso_rep_visit_sale_plan
+ * Description     : –K–â”„ãŒv‰æŠÇ—•\’ •[ƒ[ƒNƒe[ƒuƒ‹
+ * MD.070          : 
+ * Version         : 1.1
+ * 
+ * Change Record
+ * ------------- ----- ------------ -------------------------------------
+ *  Date          Ver.  Editor       Description
+ * ------------- ----- ------------ -------------------------------------
+ *  2009/02/01    1.0  T.Maruyama    ‰‰ñì¬
+ *  2009/02/10    1.0  K.Boku        Œ¬”Œ…”•ÏX
+ *  2009/03/02    1.1  H.Ogawa       STORAGE‹å‚ğ’Ç‰Á
+ ************************************************************************/
+CREATE TABLE xxcso.xxcso_rep_visit_sale_plan
+(
+  report_output_no                NUMBER(5),
+  line_kind                       NUMBER(5),
+  line_num                        NUMBER(5),
+  report_id                       VARCHAR2(30),
+  report_name                     VARCHAR2(240),
+  output_date                     DATE,
+  year_month                      DATE,
+  operation_days                  NUMBER(2),
+  operation_all_days              NUMBER(2),
+  up_base_code                    VARCHAR2(4),
+  up_hub_name                     VARCHAR2(40),
+  base_code                       VARCHAR2(4),
+  hub_name                        VARCHAR2(40),
+  group_number                    VARCHAR2(10),
+  group_name                      VARCHAR2(40),
+  employee_number                 VARCHAR2(5),
+  employee_name                   VARCHAR2(48),
+  business_high_type              VARCHAR2(2),
+  business_high_name              VARCHAR2(20),
+  gvm_type                        VARCHAR2(1),
+  account_number                  VARCHAR2(9),
+  customer_name                   VARCHAR2(360),
+  route_no                        VARCHAR2(7),
+  last_year_rslt_sales_amt        NUMBER(12),
+  last_mon_rslt_sales_amt         NUMBER(12),
+  new_customer_num                NUMBER(4),
+  new_vendor_num                  NUMBER(4),
+  new_customer_amt                NUMBER(12),
+  new_vendor_amt                  NUMBER(12),
+  plan_sales_amt                  NUMBER(9),
+  plan_vs_amt_1                   NUMBER(9),
+  rslt_vs_amt_1                   NUMBER(12),
+  rslt_other_sales_amt_1          NUMBER(12),
+  effective_num_1                 NUMBER(6),
+  visit_sign_1                    VARCHAR2(20),
+  plan_vs_amt_2                   NUMBER(9),
+  rslt_vs_amt_2                   NUMBER(12),
+  rslt_other_sales_amt_2          NUMBER(12),
+  effective_num_2                 NUMBER(6),
+  visit_sign_2                    VARCHAR2(20),
+  plan_vs_amt_3                   NUMBER(9),
+  rslt_vs_amt_3                   NUMBER(12),
+  rslt_other_sales_amt_3          NUMBER(12),
+  effective_num_3                 NUMBER(6),
+  visit_sign_3                    VARCHAR2(20),
+  plan_vs_amt_4                   NUMBER(9),
+  rslt_vs_amt_4                   NUMBER(12),
+  rslt_other_sales_amt_4          NUMBER(12),
+  effective_num_4                 NUMBER(6),
+  visit_sign_4                    VARCHAR2(20),
+  plan_vs_amt_5                   NUMBER(9),
+  rslt_vs_amt_5                   NUMBER(12),
+  rslt_other_sales_amt_5          NUMBER(12),
+  effective_num_5                 NUMBER(6),
+  visit_sign_5                    VARCHAR2(20),
+  plan_vs_amt_6                   NUMBER(9),
+  rslt_vs_amt_6                   NUMBER(12),
+  rslt_other_sales_amt_6          NUMBER(12),
+  effective_num_6                 NUMBER(6),
+  visit_sign_6                    VARCHAR2(20),
+  plan_vs_amt_7                   NUMBER(9),
+  rslt_vs_amt_7                   NUMBER(12),
+  rslt_other_sales_amt_7          NUMBER(12),
+  effective_num_7                 NUMBER(6),
+  visit_sign_7                    VARCHAR2(20),
+  plan_vs_amt_8                   NUMBER(9),
+  rslt_vs_amt_8                   NUMBER(12),
+  rslt_other_sales_amt_8          NUMBER(12),
+  effective_num_8                 NUMBER(6),
+  visit_sign_8                    VARCHAR2(20),
+  plan_vs_amt_9                   NUMBER(9),
+  rslt_vs_amt_9                   NUMBER(12),
+  rslt_other_sales_amt_9          NUMBER(12),
+  effective_num_9                 NUMBER(6),
+  visit_sign_9                    VARCHAR2(20),
+  plan_vs_amt_10                  NUMBER(9),
+  rslt_vs_amt_10                  NUMBER(12),
+  rslt_other_sales_amt_10         NUMBER(12),
+  effective_num_10                NUMBER(6),
+  visit_sign_10                   VARCHAR2(20),
+  plan_vs_amt_11                  NUMBER(9),
+  rslt_vs_amt_11                  NUMBER(12),
+  rslt_other_sales_amt_11         NUMBER(12),
+  effective_num_11                NUMBER(6),
+  visit_sign_11                   VARCHAR2(20),
+  plan_vs_amt_12                  NUMBER(9),
+  rslt_vs_amt_12                  NUMBER(12),
+  rslt_other_sales_amt_12         NUMBER(12),
+  effective_num_12                NUMBER(6),
+  visit_sign_12                   VARCHAR2(20),
+  plan_vs_amt_13                  NUMBER(9),
+  rslt_vs_amt_13                  NUMBER(12),
+  rslt_other_sales_amt_13         NUMBER(12),
+  effective_num_13                NUMBER(6),
+  visit_sign_13                   VARCHAR2(20),
+  plan_vs_amt_14                  NUMBER(9),
+  rslt_vs_amt_14                  NUMBER(12),
+  rslt_other_sales_amt_14         NUMBER(12),
+  effective_num_14                NUMBER(6),
+  visit_sign_14                   VARCHAR2(20),
+  plan_vs_amt_15                  NUMBER(9),
+  rslt_vs_amt_15                  NUMBER(12),
+  rslt_other_sales_amt_15         NUMBER(12),
+  effective_num_15                NUMBER(6),
+  visit_sign_15                   VARCHAR2(20),
+  plan_vs_amt_16                  NUMBER(9),
+  rslt_vs_amt_16                  NUMBER(12),
+  rslt_other_sales_amt_16         NUMBER(12),
+  effective_num_16                NUMBER(6),
+  visit_sign_16                   VARCHAR2(20),
+  plan_vs_amt_17                  NUMBER(9),
+  rslt_vs_amt_17                  NUMBER(12),
+  rslt_other_sales_amt_17         NUMBER(12),
+  effective_num_17                NUMBER(6),
+  visit_sign_17                   VARCHAR2(20),
+  plan_vs_amt_18                  NUMBER(9),
+  rslt_vs_amt_18                  NUMBER(12),
+  rslt_other_sales_amt_18         NUMBER(12),
+  effective_num_18                NUMBER(6),
+  visit_sign_18                   VARCHAR2(20),
+  plan_vs_amt_19                  NUMBER(9),
+  rslt_vs_amt_19                  NUMBER(12),
+  rslt_other_sales_amt_19         NUMBER(12),
+  effective_num_19                NUMBER(6),
+  visit_sign_19                   VARCHAR2(20),
+  plan_vs_amt_20                  NUMBER(9),
+  rslt_vs_amt_20                  NUMBER(12),
+  rslt_other_sales_amt_20         NUMBER(12),
+  effective_num_20                NUMBER(6),
+  visit_sign_20                   VARCHAR2(20),
+  plan_vs_amt_21                  NUMBER(9),
+  rslt_vs_amt_21                  NUMBER(12),
+  rslt_other_sales_amt_21         NUMBER(12),
+  effective_num_21                NUMBER(6),
+  visit_sign_21                   VARCHAR2(20),
+  plan_vs_amt_22                  NUMBER(9),
+  rslt_vs_amt_22                  NUMBER(12),
+  rslt_other_sales_amt_22         NUMBER(12),
+  effective_num_22                NUMBER(6),
+  visit_sign_22                   VARCHAR2(20),
+  plan_vs_amt_23                  NUMBER(9),
+  rslt_vs_amt_23                  NUMBER(12),
+  rslt_other_sales_amt_23         NUMBER(12),
+  effective_num_23                NUMBER(6),
+  visit_sign_23                   VARCHAR2(20),
+  plan_vs_amt_24                  NUMBER(9),
+  rslt_vs_amt_24                  NUMBER(12),
+  rslt_other_sales_amt_24         NUMBER(12),
+  effective_num_24                NUMBER(6),
+  visit_sign_24                   VARCHAR2(20),
+  plan_vs_amt_25                  NUMBER(9),
+  rslt_vs_amt_25                  NUMBER(12),
+  rslt_other_sales_amt_25         NUMBER(12),
+  effective_num_25                NUMBER(6),
+  visit_sign_25                   VARCHAR2(20),
+  plan_vs_amt_26                  NUMBER(9),
+  rslt_vs_amt_26                  NUMBER(12),
+  rslt_other_sales_amt_26         NUMBER(12),
+  effective_num_26                NUMBER(6),
+  visit_sign_26                   VARCHAR2(20),
+  plan_vs_amt_27                  NUMBER(9),
+  rslt_vs_amt_27                  NUMBER(12),
+  rslt_other_sales_amt_27         NUMBER(12),
+  effective_num_27                NUMBER(6),
+  visit_sign_27                   VARCHAR2(20),
+  plan_vs_amt_28                  NUMBER(9),
+  rslt_vs_amt_28                  NUMBER(12),
+  rslt_other_sales_amt_28         NUMBER(12),
+  effective_num_28                NUMBER(6),
+  visit_sign_28                   VARCHAR2(20),
+  plan_vs_amt_29                  NUMBER(9),
+  rslt_vs_amt_29                  NUMBER(12),
+  rslt_other_sales_amt_29         NUMBER(12),
+  effective_num_29                NUMBER(6),
+  visit_sign_29                   VARCHAR2(20),
+  plan_vs_amt_30                  NUMBER(9),
+  rslt_vs_amt_30                  NUMBER(12),
+  rslt_other_sales_amt_30         NUMBER(12),
+  effective_num_30                NUMBER(6),
+  visit_sign_30                   VARCHAR2(20),
+  plan_vs_amt_31                  NUMBER(9),
+  rslt_vs_amt_31                  NUMBER(12),
+  rslt_other_sales_amt_31         NUMBER(12),
+  effective_num_31                NUMBER(6),
+  visit_sign_31                   VARCHAR2(20),
+  vis_a_num                       NUMBER(6),
+  vis_b_num                       NUMBER(6),
+  vis_c_num                       NUMBER(6),
+  vis_d_num                       NUMBER(6),
+  vis_e_num                       NUMBER(6),
+  vis_f_num                       NUMBER(6),
+  vis_g_num                       NUMBER(6),
+  vis_h_num                       NUMBER(6),
+  vis_i_num                       NUMBER(6),
+  vis_j_num                       NUMBER(6),
+  vis_k_num                       NUMBER(6),
+  vis_l_num                       NUMBER(6),
+  vis_m_num                       NUMBER(6),
+  vis_n_num                       NUMBER(6),
+  vis_o_num                       NUMBER(6),
+  vis_p_num                       NUMBER(6),
+  vis_q_num                       NUMBER(6),
+  vis_r_num                       NUMBER(6),
+  vis_s_num                       NUMBER(6),
+  vis_t_num                       NUMBER(6),
+  vis_u_num                       NUMBER(6),
+  vis_v_num                       NUMBER(6),
+  vis_w_num                       NUMBER(6),
+  vis_x_num                       NUMBER(6),
+  vis_y_num                       NUMBER(6),
+  vis_z_num                       NUMBER(6),
+  created_by                      NUMBER(15)        NOT NULL,
+  creation_date                   DATE              NOT NULL,
+  last_updated_by                 NUMBER(15)        NOT NULL,
+  last_update_date                DATE              NOT NULL,
+  last_update_login               NUMBER(15),
+  request_id                      NUMBER(15),
+  program_application_id          NUMBER(15),
+  program_id                      NUMBER(15),
+  program_update_date             DATE
+)
+PCTFREE 10 PCTUSED 60 INITRANS 1 STORAGE ( INITIAL 2M)
+;
+--
+COMMENT ON TABLE xxcso.xxcso_rep_visit_sale_plan IS '–K–â”„ãŒv‰æŠÇ—•\’ •[ƒ[ƒNƒe[ƒuƒ‹';
+--
+COMMENT ON COLUMN xxcso.xxcso_rep_visit_sale_plan.report_output_no                       IS '’ •[o—ÍƒZƒbƒg”Ô†';
+COMMENT ON COLUMN xxcso.xxcso_rep_visit_sale_plan.line_kind                              IS '’ •[o—ÍˆÊ’u';
+COMMENT ON COLUMN xxcso.xxcso_rep_visit_sale_plan.line_num                               IS 's”Ô†';
+COMMENT ON COLUMN xxcso.xxcso_rep_visit_sale_plan.report_id                              IS '’ •[‚h‚c';
+COMMENT ON COLUMN xxcso.xxcso_rep_visit_sale_plan.report_name                            IS '’ •[ƒ^ƒCƒgƒ‹';
+COMMENT ON COLUMN xxcso.xxcso_rep_visit_sale_plan.output_date                            IS 'o—Í“ú';
+COMMENT ON COLUMN xxcso.xxcso_rep_visit_sale_plan.year_month                             IS 'Šî€”NŒ';
+COMMENT ON COLUMN xxcso.xxcso_rep_visit_sale_plan.operation_days                         IS '‰Ò“®“ú”';
+COMMENT ON COLUMN xxcso.xxcso_rep_visit_sale_plan.operation_all_days                     IS '‰Ò“®‰Â”\“ú”';
+COMMENT ON COLUMN xxcso.xxcso_rep_visit_sale_plan.up_base_code                           IS '‹’“_ƒR[ƒhiej';
+COMMENT ON COLUMN xxcso.xxcso_rep_visit_sale_plan.up_hub_name                            IS '‹’“_–¼Ìiej';
+COMMENT ON COLUMN xxcso.xxcso_rep_visit_sale_plan.base_code                              IS '‹’“_ƒR[ƒh';
+COMMENT ON COLUMN xxcso.xxcso_rep_visit_sale_plan.hub_name                               IS '‹’“_–¼Ì';
+COMMENT ON COLUMN xxcso.xxcso_rep_visit_sale_plan.group_number                           IS '‰c‹ÆƒOƒ‹[ƒv”Ô†';
+COMMENT ON COLUMN xxcso.xxcso_rep_visit_sale_plan.group_name                             IS '‰c‹ÆƒOƒ‹[ƒv–¼';
+COMMENT ON COLUMN xxcso.xxcso_rep_visit_sale_plan.employee_number                        IS '‰c‹ÆˆõƒR[ƒh';
+COMMENT ON COLUMN xxcso.xxcso_rep_visit_sale_plan.employee_name                          IS '‰c‹Æˆõ–¼';
+COMMENT ON COLUMN xxcso.xxcso_rep_visit_sale_plan.business_high_type                     IS '‹Æ‘Ôi‘å•ª—Şj';
+COMMENT ON COLUMN xxcso.xxcso_rep_visit_sale_plan.business_high_name                     IS '‹Æ‘Ôi‘å•ª—Şj–¼';
+COMMENT ON COLUMN xxcso.xxcso_rep_visit_sale_plan.gvm_type                               IS 'ˆê”Ê^©”Ì‹@^‚l‚b';
+COMMENT ON COLUMN xxcso.xxcso_rep_visit_sale_plan.account_number                         IS 'ŒÚ‹qƒR[ƒh';
+COMMENT ON COLUMN xxcso.xxcso_rep_visit_sale_plan.customer_name                          IS 'ŒÚ‹q–¼';
+COMMENT ON COLUMN xxcso.xxcso_rep_visit_sale_plan.route_no                               IS 'ƒ‹[ƒgNo';
+COMMENT ON COLUMN xxcso.xxcso_rep_visit_sale_plan.last_year_rslt_sales_amt               IS '‘O”NÀÑ';
+COMMENT ON COLUMN xxcso.xxcso_rep_visit_sale_plan.last_mon_rslt_sales_amt                IS 'æŒÀÑ';
+COMMENT ON COLUMN xxcso.xxcso_rep_visit_sale_plan.new_customer_num                       IS 'V‹KŒÚ‹qŒ”';
+COMMENT ON COLUMN xxcso.xxcso_rep_visit_sale_plan.new_vendor_num                         IS 'V‹K‚u‚cŒ”';
+COMMENT ON COLUMN xxcso.xxcso_rep_visit_sale_plan.new_customer_amt                       IS 'V‹KŒÚ‹q”„ãÀÑ';
+COMMENT ON COLUMN xxcso.xxcso_rep_visit_sale_plan.new_vendor_amt                         IS 'V‹K‚u‚c”„ãÀÑ';
+COMMENT ON COLUMN xxcso.xxcso_rep_visit_sale_plan.plan_sales_amt                         IS '”„ã—\Z';
+COMMENT ON COLUMN xxcso.xxcso_rep_visit_sale_plan.plan_vs_amt_1                          IS '‚P“ú|”„ã^–K–âŒv‰æ';
+COMMENT ON COLUMN xxcso.xxcso_rep_visit_sale_plan.rslt_vs_amt_1                          IS '‚P“ú|”„ã^–K–âÀÑ';
+COMMENT ON COLUMN xxcso.xxcso_rep_visit_sale_plan.rslt_other_sales_amt_1                 IS '‚P“ú|”„ãÀÑi‘¼‹’“_”[•i•ªj';
+COMMENT ON COLUMN xxcso.xxcso_rep_visit_sale_plan.effective_num_1                        IS '‚P“ú|—LŒøŒ¬”';
+COMMENT ON COLUMN xxcso.xxcso_rep_visit_sale_plan.visit_sign_1                           IS '‚P“ú|–K–â‹L†';
+COMMENT ON COLUMN xxcso.xxcso_rep_visit_sale_plan.plan_vs_amt_2                          IS '‚Q“ú|”„ã^–K–âŒv‰æ';
+COMMENT ON COLUMN xxcso.xxcso_rep_visit_sale_plan.rslt_vs_amt_2                          IS '‚Q“ú|”„ã^–K–âÀÑ';
+COMMENT ON COLUMN xxcso.xxcso_rep_visit_sale_plan.rslt_other_sales_amt_2                 IS '‚Q“ú|”„ãÀÑi‘¼‹’“_”[•i•ªj';
+COMMENT ON COLUMN xxcso.xxcso_rep_visit_sale_plan.effective_num_2                        IS '‚Q“ú|—LŒøŒ¬”';
+COMMENT ON COLUMN xxcso.xxcso_rep_visit_sale_plan.visit_sign_2                           IS '‚Q“ú|–K–â‹L†';
+COMMENT ON COLUMN xxcso.xxcso_rep_visit_sale_plan.plan_vs_amt_3                          IS '‚R“ú|”„ã^–K–âŒv‰æ';
+COMMENT ON COLUMN xxcso.xxcso_rep_visit_sale_plan.rslt_vs_amt_3                          IS '‚R“ú|”„ã^–K–âÀÑ';
+COMMENT ON COLUMN xxcso.xxcso_rep_visit_sale_plan.rslt_other_sales_amt_3                 IS '‚R“ú|”„ãÀÑi‘¼‹’“_”[•i•ªj';
+COMMENT ON COLUMN xxcso.xxcso_rep_visit_sale_plan.effective_num_3                        IS '‚R“ú|—LŒøŒ¬”';
+COMMENT ON COLUMN xxcso.xxcso_rep_visit_sale_plan.visit_sign_3                           IS '‚R“ú|–K–â‹L†';
+COMMENT ON COLUMN xxcso.xxcso_rep_visit_sale_plan.plan_vs_amt_4                          IS '‚S“ú|”„ã^–K–âŒv‰æ';
+COMMENT ON COLUMN xxcso.xxcso_rep_visit_sale_plan.rslt_vs_amt_4                          IS '‚S“ú|”„ã^–K–âÀÑ';
+COMMENT ON COLUMN xxcso.xxcso_rep_visit_sale_plan.rslt_other_sales_amt_4                 IS '‚S“ú|”„ãÀÑi‘¼‹’“_”[•i•ªj';
+COMMENT ON COLUMN xxcso.xxcso_rep_visit_sale_plan.effective_num_4                        IS '‚S“ú|—LŒøŒ¬”';
+COMMENT ON COLUMN xxcso.xxcso_rep_visit_sale_plan.visit_sign_4                           IS '‚S“ú|–K–â‹L†';
+COMMENT ON COLUMN xxcso.xxcso_rep_visit_sale_plan.plan_vs_amt_5                          IS '‚T“ú|”„ã^–K–âŒv‰æ';
+COMMENT ON COLUMN xxcso.xxcso_rep_visit_sale_plan.rslt_vs_amt_5                          IS '‚T“ú|”„ã^–K–âÀÑ';
+COMMENT ON COLUMN xxcso.xxcso_rep_visit_sale_plan.rslt_other_sales_amt_5                 IS '‚T“ú|”„ãÀÑi‘¼‹’“_”[•i•ªj';
+COMMENT ON COLUMN xxcso.xxcso_rep_visit_sale_plan.effective_num_5                        IS '‚T“ú|—LŒøŒ¬”';
+COMMENT ON COLUMN xxcso.xxcso_rep_visit_sale_plan.visit_sign_5                           IS '‚T“ú|–K–â‹L†';
+COMMENT ON COLUMN xxcso.xxcso_rep_visit_sale_plan.plan_vs_amt_6                          IS '‚U“ú|”„ã^–K–âŒv‰æ';
+COMMENT ON COLUMN xxcso.xxcso_rep_visit_sale_plan.rslt_vs_amt_6                          IS '‚U“ú|”„ã^–K–âÀÑ';
+COMMENT ON COLUMN xxcso.xxcso_rep_visit_sale_plan.rslt_other_sales_amt_6                 IS '‚U“ú|”„ãÀÑi‘¼‹’“_”[•i•ªj';
+COMMENT ON COLUMN xxcso.xxcso_rep_visit_sale_plan.effective_num_6                        IS '‚U“ú|—LŒøŒ¬”';
+COMMENT ON COLUMN xxcso.xxcso_rep_visit_sale_plan.visit_sign_6                           IS '‚U“ú|–K–â‹L†';
+COMMENT ON COLUMN xxcso.xxcso_rep_visit_sale_plan.plan_vs_amt_7                          IS '‚V“ú|”„ã^–K–âŒv‰æ';
+COMMENT ON COLUMN xxcso.xxcso_rep_visit_sale_plan.rslt_vs_amt_7                          IS '‚V“ú|”„ã^–K–âÀÑ';
+COMMENT ON COLUMN xxcso.xxcso_rep_visit_sale_plan.rslt_other_sales_amt_7                 IS '‚V“ú|”„ãÀÑi‘¼‹’“_”[•i•ªj';
+COMMENT ON COLUMN xxcso.xxcso_rep_visit_sale_plan.effective_num_7                        IS '‚V“ú|—LŒøŒ¬”';
+COMMENT ON COLUMN xxcso.xxcso_rep_visit_sale_plan.visit_sign_7                           IS '‚V“ú|–K–â‹L†';
+COMMENT ON COLUMN xxcso.xxcso_rep_visit_sale_plan.plan_vs_amt_8                          IS '‚W“ú|”„ã^–K–âŒv‰æ';
+COMMENT ON COLUMN xxcso.xxcso_rep_visit_sale_plan.rslt_vs_amt_8                          IS '‚W“ú|”„ã^–K–âÀÑ';
+COMMENT ON COLUMN xxcso.xxcso_rep_visit_sale_plan.rslt_other_sales_amt_8                 IS '‚W“ú|”„ãÀÑi‘¼‹’“_”[•i•ªj';
+COMMENT ON COLUMN xxcso.xxcso_rep_visit_sale_plan.effective_num_8                        IS '‚W“ú|—LŒøŒ¬”';
+COMMENT ON COLUMN xxcso.xxcso_rep_visit_sale_plan.visit_sign_8                           IS '‚W“ú|–K–â‹L†';
+COMMENT ON COLUMN xxcso.xxcso_rep_visit_sale_plan.plan_vs_amt_9                          IS '‚X“ú|”„ã^–K–âŒv‰æ';
+COMMENT ON COLUMN xxcso.xxcso_rep_visit_sale_plan.rslt_vs_amt_9                          IS '‚X“ú|”„ã^–K–âÀÑ';
+COMMENT ON COLUMN xxcso.xxcso_rep_visit_sale_plan.rslt_other_sales_amt_9                 IS '‚X“ú|”„ãÀÑi‘¼‹’“_”[•i•ªj';
+COMMENT ON COLUMN xxcso.xxcso_rep_visit_sale_plan.effective_num_9                        IS '‚X“ú|—LŒøŒ¬”';
+COMMENT ON COLUMN xxcso.xxcso_rep_visit_sale_plan.visit_sign_9                           IS '‚X“ú|–K–â‹L†';
+COMMENT ON COLUMN xxcso.xxcso_rep_visit_sale_plan.plan_vs_amt_10                         IS '‚P‚O“ú|”„ã^–K–âŒv‰æ';
+COMMENT ON COLUMN xxcso.xxcso_rep_visit_sale_plan.rslt_vs_amt_10                         IS '‚P‚O“ú|”„ã^–K–âÀÑ';
+COMMENT ON COLUMN xxcso.xxcso_rep_visit_sale_plan.rslt_other_sales_amt_10                IS '‚P‚O“ú|”„ãÀÑi‘¼‹’“_”[•i•ªj';
+COMMENT ON COLUMN xxcso.xxcso_rep_visit_sale_plan.effective_num_10                       IS '‚P‚O“ú|—LŒøŒ¬”';
+COMMENT ON COLUMN xxcso.xxcso_rep_visit_sale_plan.visit_sign_10                          IS '‚P‚O“ú|–K–â‹L†';
+COMMENT ON COLUMN xxcso.xxcso_rep_visit_sale_plan.plan_vs_amt_11                         IS '‚P‚P“ú|”„ã^–K–âŒv‰æ';
+COMMENT ON COLUMN xxcso.xxcso_rep_visit_sale_plan.rslt_vs_amt_11                         IS '‚P‚P“ú|”„ã^–K–âÀÑ';
+COMMENT ON COLUMN xxcso.xxcso_rep_visit_sale_plan.rslt_other_sales_amt_11                IS '‚P‚P“ú|”„ãÀÑi‘¼‹’“_”[•i•ªj';
+COMMENT ON COLUMN xxcso.xxcso_rep_visit_sale_plan.effective_num_11                       IS '‚P‚P“ú|—LŒøŒ¬”';
+COMMENT ON COLUMN xxcso.xxcso_rep_visit_sale_plan.visit_sign_11                          IS '‚P‚P“ú|–K–â‹L†';
+COMMENT ON COLUMN xxcso.xxcso_rep_visit_sale_plan.plan_vs_amt_12                         IS '‚P‚Q“ú|”„ã^–K–âŒv‰æ';
+COMMENT ON COLUMN xxcso.xxcso_rep_visit_sale_plan.rslt_vs_amt_12                         IS '‚P‚Q“ú|”„ã^–K–âÀÑ';
+COMMENT ON COLUMN xxcso.xxcso_rep_visit_sale_plan.rslt_other_sales_amt_12                IS '‚P‚Q“ú|”„ãÀÑi‘¼‹’“_”[•i•ªj';
+COMMENT ON COLUMN xxcso.xxcso_rep_visit_sale_plan.effective_num_12                       IS '‚P‚Q“ú|—LŒøŒ¬”';
+COMMENT ON COLUMN xxcso.xxcso_rep_visit_sale_plan.visit_sign_12                          IS '‚P‚Q“ú|–K–â‹L†';
+COMMENT ON COLUMN xxcso.xxcso_rep_visit_sale_plan.plan_vs_amt_13                         IS '‚P‚R“ú|”„ã^–K–âŒv‰æ';
+COMMENT ON COLUMN xxcso.xxcso_rep_visit_sale_plan.rslt_vs_amt_13                         IS '‚P‚R“ú|”„ã^–K–âÀÑ';
+COMMENT ON COLUMN xxcso.xxcso_rep_visit_sale_plan.rslt_other_sales_amt_13                IS '‚P‚R“ú|”„ãÀÑi‘¼‹’“_”[•i•ªj';
+COMMENT ON COLUMN xxcso.xxcso_rep_visit_sale_plan.effective_num_13                       IS '‚P‚R“ú|—LŒøŒ¬”';
+COMMENT ON COLUMN xxcso.xxcso_rep_visit_sale_plan.visit_sign_13                          IS '‚P‚R“ú|–K–â‹L†';
+COMMENT ON COLUMN xxcso.xxcso_rep_visit_sale_plan.plan_vs_amt_14                         IS '‚P‚S“ú|”„ã^–K–âŒv‰æ';
+COMMENT ON COLUMN xxcso.xxcso_rep_visit_sale_plan.rslt_vs_amt_14                         IS '‚P‚S“ú|”„ã^–K–âÀÑ';
+COMMENT ON COLUMN xxcso.xxcso_rep_visit_sale_plan.rslt_other_sales_amt_14                IS '‚P‚S“ú|”„ãÀÑi‘¼‹’“_”[•i•ªj';
+COMMENT ON COLUMN xxcso.xxcso_rep_visit_sale_plan.effective_num_14                       IS '‚P‚S“ú|—LŒøŒ¬”';
+COMMENT ON COLUMN xxcso.xxcso_rep_visit_sale_plan.visit_sign_14                          IS '‚P‚S“ú|–K–â‹L†';
+COMMENT ON COLUMN xxcso.xxcso_rep_visit_sale_plan.plan_vs_amt_15                         IS '‚P‚T“ú|”„ã^–K–âŒv‰æ';
+COMMENT ON COLUMN xxcso.xxcso_rep_visit_sale_plan.rslt_vs_amt_15                         IS '‚P‚T“ú|”„ã^–K–âÀÑ';
+COMMENT ON COLUMN xxcso.xxcso_rep_visit_sale_plan.rslt_other_sales_amt_15                IS '‚P‚T“ú|”„ãÀÑi‘¼‹’“_”[•i•ªj';
+COMMENT ON COLUMN xxcso.xxcso_rep_visit_sale_plan.effective_num_15                       IS '‚P‚T“ú|—LŒøŒ¬”';
+COMMENT ON COLUMN xxcso.xxcso_rep_visit_sale_plan.visit_sign_15                          IS '‚P‚T“ú|–K–â‹L†';
+COMMENT ON COLUMN xxcso.xxcso_rep_visit_sale_plan.plan_vs_amt_16                         IS '‚P‚U“ú|”„ã^–K–âŒv‰æ';
+COMMENT ON COLUMN xxcso.xxcso_rep_visit_sale_plan.rslt_vs_amt_16                         IS '‚P‚U“ú|”„ã^–K–âÀÑ';
+COMMENT ON COLUMN xxcso.xxcso_rep_visit_sale_plan.rslt_other_sales_amt_16                IS '‚P‚U“ú|”„ãÀÑi‘¼‹’“_”[•i•ªj';
+COMMENT ON COLUMN xxcso.xxcso_rep_visit_sale_plan.effective_num_16                       IS '‚P‚U“ú|—LŒøŒ¬”';
+COMMENT ON COLUMN xxcso.xxcso_rep_visit_sale_plan.visit_sign_16                          IS '‚P‚U“ú|–K–â‹L†';
+COMMENT ON COLUMN xxcso.xxcso_rep_visit_sale_plan.plan_vs_amt_17                         IS '‚P‚V“ú|”„ã^–K–âŒv‰æ';
+COMMENT ON COLUMN xxcso.xxcso_rep_visit_sale_plan.rslt_vs_amt_17                         IS '‚P‚V“ú|”„ã^–K–âÀÑ';
+COMMENT ON COLUMN xxcso.xxcso_rep_visit_sale_plan.rslt_other_sales_amt_17                IS '‚P‚V“ú|”„ãÀÑi‘¼‹’“_”[•i•ªj';
+COMMENT ON COLUMN xxcso.xxcso_rep_visit_sale_plan.effective_num_17                       IS '‚P‚V“ú|—LŒøŒ¬”';
+COMMENT ON COLUMN xxcso.xxcso_rep_visit_sale_plan.visit_sign_17                          IS '‚P‚V“ú|–K–â‹L†';
+COMMENT ON COLUMN xxcso.xxcso_rep_visit_sale_plan.plan_vs_amt_18                         IS '‚P‚W“ú|”„ã^–K–âŒv‰æ';
+COMMENT ON COLUMN xxcso.xxcso_rep_visit_sale_plan.rslt_vs_amt_18                         IS '‚P‚W“ú|”„ã^–K–âÀÑ';
+COMMENT ON COLUMN xxcso.xxcso_rep_visit_sale_plan.rslt_other_sales_amt_18                IS '‚P‚W“ú|”„ãÀÑi‘¼‹’“_”[•i•ªj';
+COMMENT ON COLUMN xxcso.xxcso_rep_visit_sale_plan.effective_num_18                       IS '‚P‚W“ú|—LŒøŒ¬”';
+COMMENT ON COLUMN xxcso.xxcso_rep_visit_sale_plan.visit_sign_18                          IS '‚P‚W“ú|–K–â‹L†';
+COMMENT ON COLUMN xxcso.xxcso_rep_visit_sale_plan.plan_vs_amt_19                         IS '‚P‚X“ú|”„ã^–K–âŒv‰æ';
+COMMENT ON COLUMN xxcso.xxcso_rep_visit_sale_plan.rslt_vs_amt_19                         IS '‚P‚X“ú|”„ã^–K–âÀÑ';
+COMMENT ON COLUMN xxcso.xxcso_rep_visit_sale_plan.rslt_other_sales_amt_19                IS '‚P‚X“ú|”„ãÀÑi‘¼‹’“_”[•i•ªj';
+COMMENT ON COLUMN xxcso.xxcso_rep_visit_sale_plan.effective_num_19                       IS '‚P‚X“ú|—LŒøŒ¬”';
+COMMENT ON COLUMN xxcso.xxcso_rep_visit_sale_plan.visit_sign_19                          IS '‚P‚X“ú|–K–â‹L†';
+COMMENT ON COLUMN xxcso.xxcso_rep_visit_sale_plan.plan_vs_amt_20                         IS '‚Q‚O“ú|”„ã^–K–âŒv‰æ';
+COMMENT ON COLUMN xxcso.xxcso_rep_visit_sale_plan.rslt_vs_amt_20                         IS '‚Q‚O“ú|”„ã^–K–âÀÑ';
+COMMENT ON COLUMN xxcso.xxcso_rep_visit_sale_plan.rslt_other_sales_amt_20                IS '‚Q‚O“ú|”„ãÀÑi‘¼‹’“_”[•i•ªj';
+COMMENT ON COLUMN xxcso.xxcso_rep_visit_sale_plan.effective_num_20                       IS '‚Q‚O“ú|—LŒøŒ¬”';
+COMMENT ON COLUMN xxcso.xxcso_rep_visit_sale_plan.visit_sign_20                          IS '‚Q‚O“ú|–K–â‹L†';
+COMMENT ON COLUMN xxcso.xxcso_rep_visit_sale_plan.plan_vs_amt_21                         IS '‚Q‚P“ú|”„ã^–K–âŒv‰æ';
+COMMENT ON COLUMN xxcso.xxcso_rep_visit_sale_plan.rslt_vs_amt_21                         IS '‚Q‚P“ú|”„ã^–K–âÀÑ';
+COMMENT ON COLUMN xxcso.xxcso_rep_visit_sale_plan.rslt_other_sales_amt_21                IS '‚Q‚P“ú|”„ãÀÑi‘¼‹’“_”[•i•ªj';
+COMMENT ON COLUMN xxcso.xxcso_rep_visit_sale_plan.effective_num_21                       IS '‚Q‚P“ú|—LŒøŒ¬”';
+COMMENT ON COLUMN xxcso.xxcso_rep_visit_sale_plan.visit_sign_21                          IS '‚Q‚P“ú|–K–â‹L†';
+COMMENT ON COLUMN xxcso.xxcso_rep_visit_sale_plan.plan_vs_amt_22                         IS '‚Q‚Q“ú|”„ã^–K–âŒv‰æ';
+COMMENT ON COLUMN xxcso.xxcso_rep_visit_sale_plan.rslt_vs_amt_22                         IS '‚Q‚Q“ú|”„ã^–K–âÀÑ';
+COMMENT ON COLUMN xxcso.xxcso_rep_visit_sale_plan.rslt_other_sales_amt_22                IS '‚Q‚Q“ú|”„ãÀÑi‘¼‹’“_”[•i•ªj';
+COMMENT ON COLUMN xxcso.xxcso_rep_visit_sale_plan.effective_num_22                       IS '‚Q‚Q“ú|—LŒøŒ¬”';
+COMMENT ON COLUMN xxcso.xxcso_rep_visit_sale_plan.visit_sign_22                          IS '‚Q‚Q“ú|–K–â‹L†';
+COMMENT ON COLUMN xxcso.xxcso_rep_visit_sale_plan.plan_vs_amt_23                         IS '‚Q‚R“ú|”„ã^–K–âŒv‰æ';
+COMMENT ON COLUMN xxcso.xxcso_rep_visit_sale_plan.rslt_vs_amt_23                         IS '‚Q‚R“ú|”„ã^–K–âÀÑ';
+COMMENT ON COLUMN xxcso.xxcso_rep_visit_sale_plan.rslt_other_sales_amt_23                IS '‚Q‚R“ú|”„ãÀÑi‘¼‹’“_”[•i•ªj';
+COMMENT ON COLUMN xxcso.xxcso_rep_visit_sale_plan.effective_num_23                       IS '‚Q‚R“ú|—LŒøŒ¬”';
+COMMENT ON COLUMN xxcso.xxcso_rep_visit_sale_plan.visit_sign_23                          IS '‚Q‚R“ú|–K–â‹L†';
+COMMENT ON COLUMN xxcso.xxcso_rep_visit_sale_plan.plan_vs_amt_24                         IS '‚Q‚S“ú|”„ã^–K–âŒv‰æ';
+COMMENT ON COLUMN xxcso.xxcso_rep_visit_sale_plan.rslt_vs_amt_24                         IS '‚Q‚S“ú|”„ã^–K–âÀÑ';
+COMMENT ON COLUMN xxcso.xxcso_rep_visit_sale_plan.rslt_other_sales_amt_24                IS '‚Q‚S“ú|”„ãÀÑi‘¼‹’“_”[•i•ªj';
+COMMENT ON COLUMN xxcso.xxcso_rep_visit_sale_plan.effective_num_24                       IS '‚Q‚S“ú|—LŒøŒ¬”';
+COMMENT ON COLUMN xxcso.xxcso_rep_visit_sale_plan.visit_sign_24                          IS '‚Q‚S“ú|–K–â‹L†';
+COMMENT ON COLUMN xxcso.xxcso_rep_visit_sale_plan.plan_vs_amt_25                         IS '‚Q‚T“ú|”„ã^–K–âŒv‰æ';
+COMMENT ON COLUMN xxcso.xxcso_rep_visit_sale_plan.rslt_vs_amt_25                         IS '‚Q‚T“ú|”„ã^–K–âÀÑ';
+COMMENT ON COLUMN xxcso.xxcso_rep_visit_sale_plan.rslt_other_sales_amt_25                IS '‚Q‚T“ú|”„ãÀÑi‘¼‹’“_”[•i•ªj';
+COMMENT ON COLUMN xxcso.xxcso_rep_visit_sale_plan.effective_num_25                       IS '‚Q‚T“ú|—LŒøŒ¬”';
+COMMENT ON COLUMN xxcso.xxcso_rep_visit_sale_plan.visit_sign_25                          IS '‚Q‚T“ú|–K–â‹L†';
+COMMENT ON COLUMN xxcso.xxcso_rep_visit_sale_plan.plan_vs_amt_26                         IS '‚Q‚U“ú|”„ã^–K–âŒv‰æ';
+COMMENT ON COLUMN xxcso.xxcso_rep_visit_sale_plan.rslt_vs_amt_26                         IS '‚Q‚U“ú|”„ã^–K–âÀÑ';
+COMMENT ON COLUMN xxcso.xxcso_rep_visit_sale_plan.rslt_other_sales_amt_26                IS '‚Q‚U“ú|”„ãÀÑi‘¼‹’“_”[•i•ªj';
+COMMENT ON COLUMN xxcso.xxcso_rep_visit_sale_plan.effective_num_26                       IS '‚Q‚U“ú|—LŒøŒ¬”';
+COMMENT ON COLUMN xxcso.xxcso_rep_visit_sale_plan.visit_sign_26                          IS '‚Q‚U“ú|–K–â‹L†';
+COMMENT ON COLUMN xxcso.xxcso_rep_visit_sale_plan.plan_vs_amt_27                         IS '‚Q‚V“ú|”„ã^–K–âŒv‰æ';
+COMMENT ON COLUMN xxcso.xxcso_rep_visit_sale_plan.rslt_vs_amt_27                         IS '‚Q‚V“ú|”„ã^–K–âÀÑ';
+COMMENT ON COLUMN xxcso.xxcso_rep_visit_sale_plan.rslt_other_sales_amt_27                IS '‚Q‚V“ú|”„ãÀÑi‘¼‹’“_”[•i•ªj';
+COMMENT ON COLUMN xxcso.xxcso_rep_visit_sale_plan.effective_num_27                       IS '‚Q‚V“ú|—LŒøŒ¬”';
+COMMENT ON COLUMN xxcso.xxcso_rep_visit_sale_plan.visit_sign_27                          IS '‚Q‚V“ú|–K–â‹L†';
+COMMENT ON COLUMN xxcso.xxcso_rep_visit_sale_plan.plan_vs_amt_28                         IS '‚Q‚W“ú|”„ã^–K–âŒv‰æ';
+COMMENT ON COLUMN xxcso.xxcso_rep_visit_sale_plan.rslt_vs_amt_28                         IS '‚Q‚W“ú|”„ã^–K–âÀÑ';
+COMMENT ON COLUMN xxcso.xxcso_rep_visit_sale_plan.rslt_other_sales_amt_28                IS '‚Q‚W“ú|”„ãÀÑi‘¼‹’“_”[•i•ªj';
+COMMENT ON COLUMN xxcso.xxcso_rep_visit_sale_plan.effective_num_28                       IS '‚Q‚W“ú|—LŒøŒ¬”';
+COMMENT ON COLUMN xxcso.xxcso_rep_visit_sale_plan.visit_sign_28                          IS '‚Q‚W“ú|–K–â‹L†';
+COMMENT ON COLUMN xxcso.xxcso_rep_visit_sale_plan.plan_vs_amt_29                         IS '‚Q‚X“ú|”„ã^–K–âŒv‰æ';
+COMMENT ON COLUMN xxcso.xxcso_rep_visit_sale_plan.rslt_vs_amt_29                         IS '‚Q‚X“ú|”„ã^–K–âÀÑ';
+COMMENT ON COLUMN xxcso.xxcso_rep_visit_sale_plan.rslt_other_sales_amt_29                IS '‚Q‚X“ú|”„ãÀÑi‘¼‹’“_”[•i•ªj';
+COMMENT ON COLUMN xxcso.xxcso_rep_visit_sale_plan.effective_num_29                       IS '‚Q‚X“ú|—LŒøŒ¬”';
+COMMENT ON COLUMN xxcso.xxcso_rep_visit_sale_plan.visit_sign_29                          IS '‚Q‚X“ú|–K–â‹L†';
+COMMENT ON COLUMN xxcso.xxcso_rep_visit_sale_plan.plan_vs_amt_30                         IS '‚R‚O“ú|”„ã^–K–âŒv‰æ';
+COMMENT ON COLUMN xxcso.xxcso_rep_visit_sale_plan.rslt_vs_amt_30                         IS '‚R‚O“ú|”„ã^–K–âÀÑ';
+COMMENT ON COLUMN xxcso.xxcso_rep_visit_sale_plan.rslt_other_sales_amt_30                IS '‚R‚O“ú|”„ãÀÑi‘¼‹’“_”[•i•ªj';
+COMMENT ON COLUMN xxcso.xxcso_rep_visit_sale_plan.effective_num_30                       IS '‚R‚O“ú|—LŒøŒ¬”';
+COMMENT ON COLUMN xxcso.xxcso_rep_visit_sale_plan.visit_sign_30                          IS '‚R‚O“ú|–K–â‹L†';
+COMMENT ON COLUMN xxcso.xxcso_rep_visit_sale_plan.plan_vs_amt_31                         IS '‚R‚P“ú|”„ã^–K–âŒv‰æ';
+COMMENT ON COLUMN xxcso.xxcso_rep_visit_sale_plan.rslt_vs_amt_31                         IS '‚R‚P“ú|”„ã^–K–âÀÑ';
+COMMENT ON COLUMN xxcso.xxcso_rep_visit_sale_plan.rslt_other_sales_amt_31                IS '‚R‚P“ú|”„ãÀÑi‘¼‹’“_”[•i•ªj';
+COMMENT ON COLUMN xxcso.xxcso_rep_visit_sale_plan.effective_num_31                       IS '‚R‚P“ú|—LŒøŒ¬”';
+COMMENT ON COLUMN xxcso.xxcso_rep_visit_sale_plan.visit_sign_31                          IS '‚R‚P“ú|–K–â‹L†';
+COMMENT ON COLUMN xxcso.xxcso_rep_visit_sale_plan.vis_a_num                              IS '–K–â‚`Œ”';
+COMMENT ON COLUMN xxcso.xxcso_rep_visit_sale_plan.vis_b_num                              IS '–K–â‚aŒ”';
+COMMENT ON COLUMN xxcso.xxcso_rep_visit_sale_plan.vis_c_num                              IS '–K–â‚bŒ”';
+COMMENT ON COLUMN xxcso.xxcso_rep_visit_sale_plan.vis_d_num                              IS '–K–â‚cŒ”';
+COMMENT ON COLUMN xxcso.xxcso_rep_visit_sale_plan.vis_e_num                              IS '–K–â‚dŒ”';
+COMMENT ON COLUMN xxcso.xxcso_rep_visit_sale_plan.vis_f_num                              IS '–K–â‚eŒ”';
+COMMENT ON COLUMN xxcso.xxcso_rep_visit_sale_plan.vis_g_num                              IS '–K–â‚fŒ”';
+COMMENT ON COLUMN xxcso.xxcso_rep_visit_sale_plan.vis_h_num                              IS '–K–â‚gŒ”';
+COMMENT ON COLUMN xxcso.xxcso_rep_visit_sale_plan.vis_i_num                              IS '–K–âú@Œ”';
+COMMENT ON COLUMN xxcso.xxcso_rep_visit_sale_plan.vis_j_num                              IS '–K–â‚iŒ”';
+COMMENT ON COLUMN xxcso.xxcso_rep_visit_sale_plan.vis_k_num                              IS '–K–â‚jŒ”';
+COMMENT ON COLUMN xxcso.xxcso_rep_visit_sale_plan.vis_l_num                              IS '–K–â‚kŒ”';
+COMMENT ON COLUMN xxcso.xxcso_rep_visit_sale_plan.vis_m_num                              IS '–K–â‚lŒ”';
+COMMENT ON COLUMN xxcso.xxcso_rep_visit_sale_plan.vis_n_num                              IS '–K–â‚mŒ”';
+COMMENT ON COLUMN xxcso.xxcso_rep_visit_sale_plan.vis_o_num                              IS '–K–â‚nŒ”';
+COMMENT ON COLUMN xxcso.xxcso_rep_visit_sale_plan.vis_p_num                              IS '–K–â‚oŒ”';
+COMMENT ON COLUMN xxcso.xxcso_rep_visit_sale_plan.vis_q_num                              IS '–K–â‚pŒ”';
+COMMENT ON COLUMN xxcso.xxcso_rep_visit_sale_plan.vis_r_num                              IS '–K–â‚qŒ”';
+COMMENT ON COLUMN xxcso.xxcso_rep_visit_sale_plan.vis_s_num                              IS '–K–â‚rŒ”';
+COMMENT ON COLUMN xxcso.xxcso_rep_visit_sale_plan.vis_t_num                              IS '–K–â‚sŒ”';
+COMMENT ON COLUMN xxcso.xxcso_rep_visit_sale_plan.vis_u_num                              IS '–K–â‚tŒ”';
+COMMENT ON COLUMN xxcso.xxcso_rep_visit_sale_plan.vis_v_num                              IS '–K–â‚uŒ”';
+COMMENT ON COLUMN xxcso.xxcso_rep_visit_sale_plan.vis_w_num                              IS '–K–â‚vŒ”';
+COMMENT ON COLUMN xxcso.xxcso_rep_visit_sale_plan.vis_x_num                              IS '–K–â‚wŒ”';
+COMMENT ON COLUMN xxcso.xxcso_rep_visit_sale_plan.vis_y_num                              IS '–K–â‚xŒ”';
+COMMENT ON COLUMN xxcso.xxcso_rep_visit_sale_plan.vis_z_num                              IS '–K–â‚yŒ”';
+COMMENT ON COLUMN xxcso.xxcso_rep_visit_sale_plan.created_by                             IS 'ì¬Ò';
+COMMENT ON COLUMN xxcso.xxcso_rep_visit_sale_plan.creation_date                          IS 'ì¬“ú';
+COMMENT ON COLUMN xxcso.xxcso_rep_visit_sale_plan.last_updated_by                        IS 'ÅIXVÒ';
+COMMENT ON COLUMN xxcso.xxcso_rep_visit_sale_plan.last_update_date                       IS 'ÅIXV“ú';
+COMMENT ON COLUMN xxcso.xxcso_rep_visit_sale_plan.last_update_login                      IS 'ÅIXVƒƒOƒCƒ“';
+COMMENT ON COLUMN xxcso.xxcso_rep_visit_sale_plan.request_id                             IS '—v‹ID';
+COMMENT ON COLUMN xxcso.xxcso_rep_visit_sale_plan.program_application_id                 IS 'ƒRƒ“ƒJƒŒƒ“ƒgEƒvƒƒOƒ‰ƒ€EƒAƒvƒŠƒP[ƒVƒ‡ƒ“ID';
+COMMENT ON COLUMN xxcso.xxcso_rep_visit_sale_plan.program_id                             IS 'ƒRƒ“ƒJƒŒƒ“ƒgEƒvƒƒOƒ‰ƒ€ID';
+COMMENT ON COLUMN xxcso.xxcso_rep_visit_sale_plan.program_update_date                    IS 'ƒvƒƒOƒ‰ƒ€XV“ú';

@@ -1,0 +1,302 @@
+/*************************************************************************
+ * 
+ * TABLE Name      : xxcso_rep_visit_salesemp
+ * Description     : ‰c‹Æˆõ•Ê–K–âÀÑ•\’ •[ƒ[ƒNƒe[ƒuƒ‹
+ * MD.070          : 
+ * Version         : 1.1
+ * 
+ * Change Record
+ * ------------- ----- ------------ -------------------------------------
+ *  Date          Ver.  Editor       Description
+ * ------------- ----- ------------ -------------------------------------
+ *  2009/02/01    1.0  T.Maruyama    ‰‰ñì¬
+ *  2009/03/02    1.1  H.Ogawa       STORAGE‹å‚ğ’Ç‰Á
+ ************************************************************************/
+CREATE TABLE xxcso.xxcso_rep_visit_salesemp
+(
+  line_num                        NUMBER(5),
+  report_id                       VARCHAR2(30),
+  report_name                     VARCHAR2(240),
+  output_date                     DATE,
+  visit_date                      DATE,
+  base_code                       VARCHAR2(4),
+  hub_name                        VARCHAR2(40),
+  employee_number                 VARCHAR2(5),
+  employee_name                   VARCHAR2(40),
+  total_count                     NUMBER(10),
+  total_count_1                   NUMBER(10),
+  total_count_2                   NUMBER(10),
+  total_count_3                   NUMBER(10),
+  total_count_4                   NUMBER(10),
+  total_count_5                   NUMBER(10),
+  total_count_6                   NUMBER(10),
+  total_count_7                   NUMBER(10),
+  total_count_8                   NUMBER(10),
+  total_count_9                   NUMBER(10),
+  total_count_10                  NUMBER(10),
+  total_count_11                  NUMBER(10),
+  total_count_12                  NUMBER(10),
+  visit_time_1                    VARCHAR2(5),
+  sales_amt_1                     NUMBER(7),
+  account_number_1                VARCHAR2(9),
+  customer_name_1                 VARCHAR2(360),
+  visit_time_2                    VARCHAR2(5),
+  sales_amt_2                     NUMBER(7),
+  account_number_2                VARCHAR2(9),
+  customer_name_2                 VARCHAR2(360),
+  visit_time_3                    VARCHAR2(5),
+  sales_amt_3                     NUMBER(7),
+  account_number_3                VARCHAR2(9),
+  customer_name_3                 VARCHAR2(360),
+  visit_time_4                    VARCHAR2(5),
+  sales_amt_4                     NUMBER(7),
+  account_number_4                VARCHAR2(9),
+  customer_name_4                 VARCHAR2(360),
+  visit_time_5                    VARCHAR2(5),
+  sales_amt_5                     NUMBER(7),
+  account_number_5                VARCHAR2(9),
+  customer_name_5                 VARCHAR2(360),
+  visit_time_6                    VARCHAR2(5),
+  sales_amt_6                     NUMBER(7),
+  account_number_6                VARCHAR2(9),
+  customer_name_6                 VARCHAR2(360),
+  visit_time_7                    VARCHAR2(5),
+  sales_amt_7                     NUMBER(7),
+  account_number_7                VARCHAR2(9),
+  customer_name_7                 VARCHAR2(360),
+  visit_time_8                    VARCHAR2(5),
+  sales_amt_8                     NUMBER(7),
+  account_number_8                VARCHAR2(9),
+  customer_name_8                 VARCHAR2(360),
+  visit_time_9                    VARCHAR2(5),
+  sales_amt_9                     NUMBER(7),
+  account_number_9                VARCHAR2(9),
+  customer_name_9                 VARCHAR2(360),
+  visit_time_10                   VARCHAR2(5),
+  sales_amt_10                    NUMBER(7),
+  account_number_10               VARCHAR2(9),
+  customer_name_10                VARCHAR2(360),
+  visit_time_11                   VARCHAR2(5),
+  sales_amt_11                    NUMBER(7),
+  account_number_11               VARCHAR2(9),
+  customer_name_11                VARCHAR2(360),
+  visit_time_12                   VARCHAR2(5),
+  sales_amt_12                    NUMBER(7),
+  account_number_12               VARCHAR2(9),
+  customer_name_12                VARCHAR2(360),
+  last_total_count                NUMBER(10),
+  last_total_count_1              NUMBER(10),
+  last_total_count_2              NUMBER(10),
+  last_total_count_3              NUMBER(10),
+  last_total_count_4              NUMBER(10),
+  last_total_count_5              NUMBER(10),
+  last_total_count_6              NUMBER(10),
+  last_total_count_7              NUMBER(10),
+  last_total_count_8              NUMBER(10),
+  last_total_count_9              NUMBER(10),
+  last_total_count_10             NUMBER(10),
+  last_total_count_11             NUMBER(10),
+  last_total_count_12             NUMBER(10),
+  last_visit_time_1               VARCHAR2(5),
+  last_sales_amt_1                NUMBER(7),
+  last_account_number_1           VARCHAR2(9),
+  last_customer_name_1            VARCHAR2(360),
+  last_visit_time_2               VARCHAR2(5),
+  last_sales_amt_2                NUMBER(7),
+  last_account_number_2           VARCHAR2(9),
+  last_customer_name_2            VARCHAR2(360),
+  last_visit_time_3               VARCHAR2(5),
+  last_sales_amt_3                NUMBER(7),
+  last_account_number_3           VARCHAR2(9),
+  last_customer_name_3            VARCHAR2(360),
+  last_visit_time_4               VARCHAR2(5),
+  last_sales_amt_4                NUMBER(7),
+  last_account_number_4           VARCHAR2(9),
+  last_customer_name_4            VARCHAR2(360),
+  last_visit_time_5               VARCHAR2(5),
+  last_sales_amt_5                NUMBER(7),
+  last_account_number_5           VARCHAR2(9),
+  last_customer_name_5            VARCHAR2(360),
+  last_visit_time_6               VARCHAR2(5),
+  last_sales_amt_6                NUMBER(7),
+  last_account_number_6           VARCHAR2(9),
+  last_customer_name_6            VARCHAR2(360),
+  last_visit_time_7               VARCHAR2(5),
+  last_sales_amt_7                NUMBER(7),
+  last_account_number_7           VARCHAR2(9),
+  last_customer_name_7            VARCHAR2(360),
+  last_visit_time_8               VARCHAR2(5),
+  last_sales_amt_8                NUMBER(7),
+  last_account_number_8           VARCHAR2(9),
+  last_customer_name_8            VARCHAR2(360),
+  last_visit_time_9               VARCHAR2(5),
+  last_sales_amt_9                NUMBER(7),
+  last_account_number_9           VARCHAR2(9),
+  last_customer_name_9            VARCHAR2(360),
+  last_visit_time_10              VARCHAR2(5),
+  last_sales_amt_10               NUMBER(7),
+  last_account_number_10          VARCHAR2(9),
+  last_customer_name_10           VARCHAR2(360),
+  last_visit_time_11              VARCHAR2(5),
+  last_sales_amt_11               NUMBER(7),
+  last_account_number_11          VARCHAR2(9),
+  last_customer_name_11           VARCHAR2(360),
+  last_visit_time_12              VARCHAR2(5),
+  last_sales_amt_12               NUMBER(7),
+  last_account_number_12          VARCHAR2(9),
+  last_customer_name_12           VARCHAR2(360),
+  created_by                      NUMBER(15)        NOT NULL,
+  creation_date                   DATE              NOT NULL,
+  last_updated_by                 NUMBER(15)        NOT NULL,
+  last_update_date                DATE              NOT NULL,
+  last_update_login               NUMBER(15),
+  request_id                      NUMBER(15),
+  program_application_id          NUMBER(15),
+  program_id                      NUMBER(15),
+  program_update_date             DATE
+)
+PCTFREE 10 PCTUSED 60 INITRANS 1 STORAGE ( INITIAL 2M)
+;
+--
+COMMENT ON TABLE xxcso.xxcso_rep_visit_salesemp IS '‰c‹Æˆõ•Ê–K–âÀÑ•\’ •[ƒ[ƒNƒe[ƒuƒ‹';
+--
+COMMENT ON COLUMN xxcso.xxcso_rep_visit_salesemp.line_num                               IS 's”Ô†';
+COMMENT ON COLUMN xxcso.xxcso_rep_visit_salesemp.report_id                              IS '’ •[‚h‚c';
+COMMENT ON COLUMN xxcso.xxcso_rep_visit_salesemp.report_name                            IS '’ •[ƒ^ƒCƒgƒ‹';
+COMMENT ON COLUMN xxcso.xxcso_rep_visit_salesemp.output_date                            IS 'o—Í“ú';
+COMMENT ON COLUMN xxcso.xxcso_rep_visit_salesemp.visit_date                             IS '–K–â”NŒ“ú';
+COMMENT ON COLUMN xxcso.xxcso_rep_visit_salesemp.base_code                              IS '‹’“_ƒR[ƒh';
+COMMENT ON COLUMN xxcso.xxcso_rep_visit_salesemp.hub_name                               IS '‹’“_–¼Ì';
+COMMENT ON COLUMN xxcso.xxcso_rep_visit_salesemp.employee_number                        IS '‰c‹ÆˆõƒR[ƒh';
+COMMENT ON COLUMN xxcso.xxcso_rep_visit_salesemp.employee_name                          IS '‰c‹Æˆõ–¼';
+COMMENT ON COLUMN xxcso.xxcso_rep_visit_salesemp.total_count                            IS '‘Œ¬”';
+COMMENT ON COLUMN xxcso.xxcso_rep_visit_salesemp.total_count_1                          IS 'Œ¬”Œv‚P';
+COMMENT ON COLUMN xxcso.xxcso_rep_visit_salesemp.total_count_2                          IS 'Œ¬”Œv‚Q';
+COMMENT ON COLUMN xxcso.xxcso_rep_visit_salesemp.total_count_3                          IS 'Œ¬”Œv‚R';
+COMMENT ON COLUMN xxcso.xxcso_rep_visit_salesemp.total_count_4                          IS 'Œ¬”Œv‚S';
+COMMENT ON COLUMN xxcso.xxcso_rep_visit_salesemp.total_count_5                          IS 'Œ¬”Œv‚T';
+COMMENT ON COLUMN xxcso.xxcso_rep_visit_salesemp.total_count_6                          IS 'Œ¬”Œv‚U';
+COMMENT ON COLUMN xxcso.xxcso_rep_visit_salesemp.total_count_7                          IS 'Œ¬”Œv‚V';
+COMMENT ON COLUMN xxcso.xxcso_rep_visit_salesemp.total_count_8                          IS 'Œ¬”Œv‚W';
+COMMENT ON COLUMN xxcso.xxcso_rep_visit_salesemp.total_count_9                          IS 'Œ¬”Œv‚X';
+COMMENT ON COLUMN xxcso.xxcso_rep_visit_salesemp.total_count_10                         IS 'Œ¬”Œv‚P‚O';
+COMMENT ON COLUMN xxcso.xxcso_rep_visit_salesemp.total_count_11                         IS 'Œ¬”Œv‚P‚P';
+COMMENT ON COLUMN xxcso.xxcso_rep_visit_salesemp.total_count_12                         IS 'Œ¬”Œv‚P‚Q';
+COMMENT ON COLUMN xxcso.xxcso_rep_visit_salesemp.visit_time_1                           IS '–K–â‚P';
+COMMENT ON COLUMN xxcso.xxcso_rep_visit_salesemp.sales_amt_1                            IS '”„ã‹àŠz‚P';
+COMMENT ON COLUMN xxcso.xxcso_rep_visit_salesemp.account_number_1                       IS 'ŒÚ‹qƒR[ƒh‚P';
+COMMENT ON COLUMN xxcso.xxcso_rep_visit_salesemp.customer_name_1                        IS 'ŒÚ‹q–¼Ì‚P';
+COMMENT ON COLUMN xxcso.xxcso_rep_visit_salesemp.visit_time_2                           IS '–K–â‚Q';
+COMMENT ON COLUMN xxcso.xxcso_rep_visit_salesemp.sales_amt_2                            IS '”„ã‹àŠz‚Q';
+COMMENT ON COLUMN xxcso.xxcso_rep_visit_salesemp.account_number_2                       IS 'ŒÚ‹qƒR[ƒh‚Q';
+COMMENT ON COLUMN xxcso.xxcso_rep_visit_salesemp.customer_name_2                        IS 'ŒÚ‹q–¼Ì‚Q';
+COMMENT ON COLUMN xxcso.xxcso_rep_visit_salesemp.visit_time_3                           IS '–K–â‚R';
+COMMENT ON COLUMN xxcso.xxcso_rep_visit_salesemp.sales_amt_3                            IS '”„ã‹àŠz‚R';
+COMMENT ON COLUMN xxcso.xxcso_rep_visit_salesemp.account_number_3                       IS 'ŒÚ‹qƒR[ƒh‚R';
+COMMENT ON COLUMN xxcso.xxcso_rep_visit_salesemp.customer_name_3                        IS 'ŒÚ‹q–¼Ì‚R';
+COMMENT ON COLUMN xxcso.xxcso_rep_visit_salesemp.visit_time_4                           IS '–K–â‚S';
+COMMENT ON COLUMN xxcso.xxcso_rep_visit_salesemp.sales_amt_4                            IS '”„ã‹àŠz‚S';
+COMMENT ON COLUMN xxcso.xxcso_rep_visit_salesemp.account_number_4                       IS 'ŒÚ‹qƒR[ƒh‚S';
+COMMENT ON COLUMN xxcso.xxcso_rep_visit_salesemp.customer_name_4                        IS 'ŒÚ‹q–¼Ì‚S';
+COMMENT ON COLUMN xxcso.xxcso_rep_visit_salesemp.visit_time_5                           IS '–K–â‚T';
+COMMENT ON COLUMN xxcso.xxcso_rep_visit_salesemp.sales_amt_5                            IS '”„ã‹àŠz‚T';
+COMMENT ON COLUMN xxcso.xxcso_rep_visit_salesemp.account_number_5                       IS 'ŒÚ‹qƒR[ƒh‚T';
+COMMENT ON COLUMN xxcso.xxcso_rep_visit_salesemp.customer_name_5                        IS 'ŒÚ‹q–¼Ì‚T';
+COMMENT ON COLUMN xxcso.xxcso_rep_visit_salesemp.visit_time_6                           IS '–K–â‚U';
+COMMENT ON COLUMN xxcso.xxcso_rep_visit_salesemp.sales_amt_6                            IS '”„ã‹àŠz‚U';
+COMMENT ON COLUMN xxcso.xxcso_rep_visit_salesemp.account_number_6                       IS 'ŒÚ‹qƒR[ƒh‚U';
+COMMENT ON COLUMN xxcso.xxcso_rep_visit_salesemp.customer_name_6                        IS 'ŒÚ‹q–¼Ì‚U';
+COMMENT ON COLUMN xxcso.xxcso_rep_visit_salesemp.visit_time_7                           IS '–K–â‚V';
+COMMENT ON COLUMN xxcso.xxcso_rep_visit_salesemp.sales_amt_7                            IS '”„ã‹àŠz‚V';
+COMMENT ON COLUMN xxcso.xxcso_rep_visit_salesemp.account_number_7                       IS 'ŒÚ‹qƒR[ƒh‚V';
+COMMENT ON COLUMN xxcso.xxcso_rep_visit_salesemp.customer_name_7                        IS 'ŒÚ‹q–¼Ì‚V';
+COMMENT ON COLUMN xxcso.xxcso_rep_visit_salesemp.visit_time_8                           IS '–K–â‚W';
+COMMENT ON COLUMN xxcso.xxcso_rep_visit_salesemp.sales_amt_8                            IS '”„ã‹àŠz‚W';
+COMMENT ON COLUMN xxcso.xxcso_rep_visit_salesemp.account_number_8                       IS 'ŒÚ‹qƒR[ƒh‚W';
+COMMENT ON COLUMN xxcso.xxcso_rep_visit_salesemp.customer_name_8                        IS 'ŒÚ‹q–¼Ì‚W';
+COMMENT ON COLUMN xxcso.xxcso_rep_visit_salesemp.visit_time_9                           IS '–K–â‚X';
+COMMENT ON COLUMN xxcso.xxcso_rep_visit_salesemp.sales_amt_9                            IS '”„ã‹àŠz‚X';
+COMMENT ON COLUMN xxcso.xxcso_rep_visit_salesemp.account_number_9                       IS 'ŒÚ‹qƒR[ƒh‚X';
+COMMENT ON COLUMN xxcso.xxcso_rep_visit_salesemp.customer_name_9                        IS 'ŒÚ‹q–¼Ì‚X';
+COMMENT ON COLUMN xxcso.xxcso_rep_visit_salesemp.visit_time_10                          IS '–K–â‚P‚O';
+COMMENT ON COLUMN xxcso.xxcso_rep_visit_salesemp.sales_amt_10                           IS '”„ã‹àŠz‚P‚O';
+COMMENT ON COLUMN xxcso.xxcso_rep_visit_salesemp.account_number_10                      IS 'ŒÚ‹qƒR[ƒh‚P‚O';
+COMMENT ON COLUMN xxcso.xxcso_rep_visit_salesemp.customer_name_10                       IS 'ŒÚ‹q–¼Ì‚P‚O';
+COMMENT ON COLUMN xxcso.xxcso_rep_visit_salesemp.visit_time_11                          IS '–K–â‚P‚P';
+COMMENT ON COLUMN xxcso.xxcso_rep_visit_salesemp.sales_amt_11                           IS '”„ã‹àŠz‚P‚P';
+COMMENT ON COLUMN xxcso.xxcso_rep_visit_salesemp.account_number_11                      IS 'ŒÚ‹qƒR[ƒh‚P‚P';
+COMMENT ON COLUMN xxcso.xxcso_rep_visit_salesemp.customer_name_11                       IS 'ŒÚ‹q–¼Ì‚P‚P';
+COMMENT ON COLUMN xxcso.xxcso_rep_visit_salesemp.visit_time_12                          IS '–K–â‚P‚Q';
+COMMENT ON COLUMN xxcso.xxcso_rep_visit_salesemp.sales_amt_12                           IS '”„ã‹àŠz‚P‚Q';
+COMMENT ON COLUMN xxcso.xxcso_rep_visit_salesemp.account_number_12                      IS 'ŒÚ‹qƒR[ƒh‚P‚Q';
+COMMENT ON COLUMN xxcso.xxcso_rep_visit_salesemp.customer_name_12                       IS 'ŒÚ‹q–¼Ì‚P‚Q';
+COMMENT ON COLUMN xxcso.xxcso_rep_visit_salesemp.last_total_count                       IS '‘OT‘Œ¬”';
+COMMENT ON COLUMN xxcso.xxcso_rep_visit_salesemp.last_total_count_1                     IS '‘OTŒ¬”Œv‚P';
+COMMENT ON COLUMN xxcso.xxcso_rep_visit_salesemp.last_total_count_2                     IS '‘OTŒ¬”Œv‚Q';
+COMMENT ON COLUMN xxcso.xxcso_rep_visit_salesemp.last_total_count_3                     IS '‘OTŒ¬”Œv‚R';
+COMMENT ON COLUMN xxcso.xxcso_rep_visit_salesemp.last_total_count_4                     IS '‘OTŒ¬”Œv‚S';
+COMMENT ON COLUMN xxcso.xxcso_rep_visit_salesemp.last_total_count_5                     IS '‘OTŒ¬”Œv‚T';
+COMMENT ON COLUMN xxcso.xxcso_rep_visit_salesemp.last_total_count_6                     IS '‘OTŒ¬”Œv‚U';
+COMMENT ON COLUMN xxcso.xxcso_rep_visit_salesemp.last_total_count_7                     IS '‘OTŒ¬”Œv‚V';
+COMMENT ON COLUMN xxcso.xxcso_rep_visit_salesemp.last_total_count_8                     IS '‘OTŒ¬”Œv‚W';
+COMMENT ON COLUMN xxcso.xxcso_rep_visit_salesemp.last_total_count_9                     IS '‘OTŒ¬”Œv‚X';
+COMMENT ON COLUMN xxcso.xxcso_rep_visit_salesemp.last_total_count_10                    IS '‘OTŒ¬”Œv‚P‚O';
+COMMENT ON COLUMN xxcso.xxcso_rep_visit_salesemp.last_total_count_11                    IS '‘OTŒ¬”Œv‚P‚P';
+COMMENT ON COLUMN xxcso.xxcso_rep_visit_salesemp.last_total_count_12                    IS '‘OTŒ¬”Œv‚P‚Q';
+COMMENT ON COLUMN xxcso.xxcso_rep_visit_salesemp.last_visit_time_1                      IS '‘OT–K–â‚P';
+COMMENT ON COLUMN xxcso.xxcso_rep_visit_salesemp.last_sales_amt_1                       IS '‘OT”„ã‹àŠz‚P';
+COMMENT ON COLUMN xxcso.xxcso_rep_visit_salesemp.last_account_number_1                  IS '‘OTŒÚ‹qƒR[ƒh‚P';
+COMMENT ON COLUMN xxcso.xxcso_rep_visit_salesemp.last_customer_name_1                   IS '‘OTŒÚ‹q–¼Ì‚P';
+COMMENT ON COLUMN xxcso.xxcso_rep_visit_salesemp.last_visit_time_2                      IS '‘OT–K–â‚Q';
+COMMENT ON COLUMN xxcso.xxcso_rep_visit_salesemp.last_sales_amt_2                       IS '‘OT”„ã‹àŠz‚Q';
+COMMENT ON COLUMN xxcso.xxcso_rep_visit_salesemp.last_account_number_2                  IS '‘OTŒÚ‹qƒR[ƒh‚Q';
+COMMENT ON COLUMN xxcso.xxcso_rep_visit_salesemp.last_customer_name_2                   IS '‘OTŒÚ‹q–¼Ì‚Q';
+COMMENT ON COLUMN xxcso.xxcso_rep_visit_salesemp.last_visit_time_3                      IS '‘OT–K–â‚R';
+COMMENT ON COLUMN xxcso.xxcso_rep_visit_salesemp.last_sales_amt_3                       IS '‘OT”„ã‹àŠz‚R';
+COMMENT ON COLUMN xxcso.xxcso_rep_visit_salesemp.last_account_number_3                  IS '‘OTŒÚ‹qƒR[ƒh‚R';
+COMMENT ON COLUMN xxcso.xxcso_rep_visit_salesemp.last_customer_name_3                   IS '‘OTŒÚ‹q–¼Ì‚R';
+COMMENT ON COLUMN xxcso.xxcso_rep_visit_salesemp.last_visit_time_4                      IS '‘OT–K–â‚S';
+COMMENT ON COLUMN xxcso.xxcso_rep_visit_salesemp.last_sales_amt_4                       IS '‘OT”„ã‹àŠz‚S';
+COMMENT ON COLUMN xxcso.xxcso_rep_visit_salesemp.last_account_number_4                  IS '‘OTŒÚ‹qƒR[ƒh‚S';
+COMMENT ON COLUMN xxcso.xxcso_rep_visit_salesemp.last_customer_name_4                   IS '‘OTŒÚ‹q–¼Ì‚S';
+COMMENT ON COLUMN xxcso.xxcso_rep_visit_salesemp.last_visit_time_5                      IS '‘OT–K–â‚T';
+COMMENT ON COLUMN xxcso.xxcso_rep_visit_salesemp.last_sales_amt_5                       IS '‘OT”„ã‹àŠz‚T';
+COMMENT ON COLUMN xxcso.xxcso_rep_visit_salesemp.last_account_number_5                  IS '‘OTŒÚ‹qƒR[ƒh‚T';
+COMMENT ON COLUMN xxcso.xxcso_rep_visit_salesemp.last_customer_name_5                   IS '‘OTŒÚ‹q–¼Ì‚T';
+COMMENT ON COLUMN xxcso.xxcso_rep_visit_salesemp.last_visit_time_6                      IS '‘OT–K–â‚U';
+COMMENT ON COLUMN xxcso.xxcso_rep_visit_salesemp.last_sales_amt_6                       IS '‘OT”„ã‹àŠz‚U';
+COMMENT ON COLUMN xxcso.xxcso_rep_visit_salesemp.last_account_number_6                  IS '‘OTŒÚ‹qƒR[ƒh‚U';
+COMMENT ON COLUMN xxcso.xxcso_rep_visit_salesemp.last_customer_name_6                   IS '‘OTŒÚ‹q–¼Ì‚U';
+COMMENT ON COLUMN xxcso.xxcso_rep_visit_salesemp.last_visit_time_7                      IS '‘OT–K–â‚V';
+COMMENT ON COLUMN xxcso.xxcso_rep_visit_salesemp.last_sales_amt_7                       IS '‘OT”„ã‹àŠz‚V';
+COMMENT ON COLUMN xxcso.xxcso_rep_visit_salesemp.last_account_number_7                  IS '‘OTŒÚ‹qƒR[ƒh‚V';
+COMMENT ON COLUMN xxcso.xxcso_rep_visit_salesemp.last_customer_name_7                   IS '‘OTŒÚ‹q–¼Ì‚V';
+COMMENT ON COLUMN xxcso.xxcso_rep_visit_salesemp.last_visit_time_8                      IS '‘OT–K–â‚W';
+COMMENT ON COLUMN xxcso.xxcso_rep_visit_salesemp.last_sales_amt_8                       IS '‘OT”„ã‹àŠz‚W';
+COMMENT ON COLUMN xxcso.xxcso_rep_visit_salesemp.last_account_number_8                  IS '‘OTŒÚ‹qƒR[ƒh‚W';
+COMMENT ON COLUMN xxcso.xxcso_rep_visit_salesemp.last_customer_name_8                   IS '‘OTŒÚ‹q–¼Ì‚W';
+COMMENT ON COLUMN xxcso.xxcso_rep_visit_salesemp.last_visit_time_9                      IS '‘OT–K–â‚X';
+COMMENT ON COLUMN xxcso.xxcso_rep_visit_salesemp.last_sales_amt_9                       IS '‘OT”„ã‹àŠz‚X';
+COMMENT ON COLUMN xxcso.xxcso_rep_visit_salesemp.last_account_number_9                  IS '‘OTŒÚ‹qƒR[ƒh‚X';
+COMMENT ON COLUMN xxcso.xxcso_rep_visit_salesemp.last_customer_name_9                   IS '‘OTŒÚ‹q–¼Ì‚X';
+COMMENT ON COLUMN xxcso.xxcso_rep_visit_salesemp.last_visit_time_10                     IS '‘OT–K–â‚P‚O';
+COMMENT ON COLUMN xxcso.xxcso_rep_visit_salesemp.last_sales_amt_10                      IS '‘OT”„ã‹àŠz‚P‚O';
+COMMENT ON COLUMN xxcso.xxcso_rep_visit_salesemp.last_account_number_10                 IS '‘OTŒÚ‹qƒR[ƒh‚P‚O';
+COMMENT ON COLUMN xxcso.xxcso_rep_visit_salesemp.last_customer_name_10                  IS '‘OTŒÚ‹q–¼Ì‚P‚O';
+COMMENT ON COLUMN xxcso.xxcso_rep_visit_salesemp.last_visit_time_11                     IS '‘OT–K–â‚P‚P';
+COMMENT ON COLUMN xxcso.xxcso_rep_visit_salesemp.last_sales_amt_11                      IS '‘OT”„ã‹àŠz‚P‚P';
+COMMENT ON COLUMN xxcso.xxcso_rep_visit_salesemp.last_account_number_11                 IS '‘OTŒÚ‹qƒR[ƒh‚P‚P';
+COMMENT ON COLUMN xxcso.xxcso_rep_visit_salesemp.last_customer_name_11                  IS '‘OTŒÚ‹q–¼Ì‚P‚P';
+COMMENT ON COLUMN xxcso.xxcso_rep_visit_salesemp.last_visit_time_12                     IS '‘OT–K–â‚P‚Q';
+COMMENT ON COLUMN xxcso.xxcso_rep_visit_salesemp.last_sales_amt_12                      IS '‘OT”„ã‹àŠz‚P‚Q';
+COMMENT ON COLUMN xxcso.xxcso_rep_visit_salesemp.last_account_number_12                 IS '‘OTŒÚ‹qƒR[ƒh‚P‚Q';
+COMMENT ON COLUMN xxcso.xxcso_rep_visit_salesemp.last_customer_name_12                  IS '‘OTŒÚ‹q–¼Ì‚P‚Q';
+COMMENT ON COLUMN xxcso.xxcso_rep_visit_salesemp.created_by                             IS 'ì¬Ò';
+COMMENT ON COLUMN xxcso.xxcso_rep_visit_salesemp.creation_date                          IS 'ì¬“ú';
+COMMENT ON COLUMN xxcso.xxcso_rep_visit_salesemp.last_updated_by                        IS 'ÅIXVÒ';
+COMMENT ON COLUMN xxcso.xxcso_rep_visit_salesemp.last_update_date                       IS 'ÅIXV“ú';
+COMMENT ON COLUMN xxcso.xxcso_rep_visit_salesemp.last_update_login                      IS 'ÅIXVƒƒOƒCƒ“';
+COMMENT ON COLUMN xxcso.xxcso_rep_visit_salesemp.request_id                             IS '—v‹ID';
+COMMENT ON COLUMN xxcso.xxcso_rep_visit_salesemp.program_application_id                 IS 'ƒRƒ“ƒJƒŒƒ“ƒgEƒvƒƒOƒ‰ƒ€EƒAƒvƒŠƒP[ƒVƒ‡ƒ“ID';
+COMMENT ON COLUMN xxcso.xxcso_rep_visit_salesemp.program_id                             IS 'ƒRƒ“ƒJƒŒƒ“ƒgEƒvƒƒOƒ‰ƒ€ID';
+COMMENT ON COLUMN xxcso.xxcso_rep_visit_salesemp.program_update_date                    IS 'ƒvƒƒOƒ‰ƒ€XV“ú';

@@ -1,0 +1,58 @@
+/*************************************************************************
+ * 
+ * TABLE Name      : xxcso_sales_headers_hist
+ * Description     : 商談決定情報履歴ヘッダテーブル
+ * MD.070          : 
+ * Version         : 1.1
+ * 
+ * Change Record
+ * ------------- ----- ------------ -------------------------------------
+ *  Date          Ver.  Editor       Description
+ * ------------- ----- ------------ -------------------------------------
+ *  2009/02/01    1.0  T.Maruyama    初回作成
+ *  2009/03/02    1.1  H.Ogawa       STORAGE句を追加
+ ************************************************************************/
+CREATE TABLE xxcso.xxcso_sales_headers_hist
+(
+  header_history_id               NUMBER            NOT NULL,
+  lead_id                         NUMBER,
+  lead_number                     VARCHAR2(15),
+  lead_description                VARCHAR2(240),
+  party_name                      VARCHAR2(360),
+  other_content                   VARCHAR2(1200),
+  approval_employee_number        VARCHAR2(30),
+  approval_name                   VARCHAR2(301),
+  created_by                      NUMBER(15)        NOT NULL,
+  creation_date                   DATE              NOT NULL,
+  last_updated_by                 NUMBER(15)        NOT NULL,
+  last_update_date                DATE              NOT NULL,
+  last_update_login               NUMBER(15),
+  request_id                      NUMBER(15),
+  program_application_id          NUMBER(15),
+  program_id                      NUMBER(15),
+  program_update_date             DATE,
+  CONSTRAINT xxcso_sales_headers_hist_pk PRIMARY KEY ( header_history_id )
+  USING INDEX TABLESPACE xxidx2
+)
+PCTFREE 20 PCTUSED 40 INITRANS 8 STORAGE ( INITIAL 2M)
+;
+--
+COMMENT ON TABLE xxcso.xxcso_sales_headers_hist IS '商談決定情報履歴ヘッダテーブル';
+--
+COMMENT ON COLUMN xxcso.xxcso_sales_headers_hist.header_history_id                      IS '商談決定情報履歴ヘッダID';
+COMMENT ON COLUMN xxcso.xxcso_sales_headers_hist.lead_id                                IS '商談ID';
+COMMENT ON COLUMN xxcso.xxcso_sales_headers_hist.lead_number                            IS '商談番号';
+COMMENT ON COLUMN xxcso.xxcso_sales_headers_hist.lead_description                       IS '商談名';
+COMMENT ON COLUMN xxcso.xxcso_sales_headers_hist.party_name                             IS '顧客名';
+COMMENT ON COLUMN xxcso.xxcso_sales_headers_hist.other_content                          IS 'その他・特記事項';
+COMMENT ON COLUMN xxcso.xxcso_sales_headers_hist.approval_employee_number               IS '承認者従業員番号';
+COMMENT ON COLUMN xxcso.xxcso_sales_headers_hist.approval_name                          IS '承認者従業員氏名';
+COMMENT ON COLUMN xxcso.xxcso_sales_headers_hist.created_by                             IS '作成者';
+COMMENT ON COLUMN xxcso.xxcso_sales_headers_hist.creation_date                          IS '作成日';
+COMMENT ON COLUMN xxcso.xxcso_sales_headers_hist.last_updated_by                        IS '最終更新者';
+COMMENT ON COLUMN xxcso.xxcso_sales_headers_hist.last_update_date                       IS '最終更新日';
+COMMENT ON COLUMN xxcso.xxcso_sales_headers_hist.last_update_login                      IS '最終更新ログイン';
+COMMENT ON COLUMN xxcso.xxcso_sales_headers_hist.request_id                             IS '要求ID';
+COMMENT ON COLUMN xxcso.xxcso_sales_headers_hist.program_application_id                 IS 'コンカレント・プログラム・アプリケーションID';
+COMMENT ON COLUMN xxcso.xxcso_sales_headers_hist.program_id                             IS 'コンカレント・プログラムID';
+COMMENT ON COLUMN xxcso.xxcso_sales_headers_hist.program_update_date                    IS 'プログラム更新日';

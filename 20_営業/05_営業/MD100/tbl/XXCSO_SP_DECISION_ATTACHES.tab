@@ -1,0 +1,52 @@
+/*************************************************************************
+ * 
+ * TABLE Name      : xxcso_sp_decision_attaches
+ * Description     : ＳＰ専決添付テーブル
+ * MD.070          : 
+ * Version         : 1.1
+ * 
+ * Change Record
+ * ------------- ----- ------------ -------------------------------------
+ *  Date          Ver.  Editor       Description
+ * ------------- ----- ------------ -------------------------------------
+ *  2009/02/01    1.0  T.Maruyama    初回作成
+ *  2009/03/02    1.1  H.Ogawa       STORAGE句を追加
+ ************************************************************************/
+CREATE TABLE xxcso.xxcso_sp_decision_attaches
+(
+  sp_decision_attach_id           NUMBER(15)        NOT NULL,
+  sp_decision_header_id           NUMBER            NOT NULL,
+  file_name                       VARCHAR2(100),
+  excerpt                         VARCHAR2(100),
+  file_data                       BLOB,
+  created_by                      NUMBER(15)        NOT NULL,
+  creation_date                   DATE              NOT NULL,
+  last_updated_by                 NUMBER(15)        NOT NULL,
+  last_update_date                DATE              NOT NULL,
+  last_update_login               NUMBER(15),
+  request_id                      NUMBER(15),
+  program_application_id          NUMBER(15),
+  program_id                      NUMBER(15),
+  program_update_date             DATE,
+  CONSTRAINT xxcso_sp_decision_attaches_pk PRIMARY KEY ( sp_decision_attach_id )
+  USING INDEX TABLESPACE xxidx2
+)
+PCTFREE 10 PCTUSED 60 INITRANS 1 STORAGE ( INITIAL 2M)
+;
+--
+COMMENT ON TABLE xxcso.xxcso_sp_decision_attaches IS 'ＳＰ専決添付テーブル';
+--
+COMMENT ON COLUMN xxcso.xxcso_sp_decision_attaches.sp_decision_attach_id                  IS 'ＳＰ専決添付ＩＤ';
+COMMENT ON COLUMN xxcso.xxcso_sp_decision_attaches.sp_decision_header_id                  IS 'ＳＰ専決ヘッダＩＤ';
+COMMENT ON COLUMN xxcso.xxcso_sp_decision_attaches.file_name                              IS 'ファイル名';
+COMMENT ON COLUMN xxcso.xxcso_sp_decision_attaches.excerpt                                IS '摘要';
+COMMENT ON COLUMN xxcso.xxcso_sp_decision_attaches.file_data                              IS 'ファイルデータ';
+COMMENT ON COLUMN xxcso.xxcso_sp_decision_attaches.created_by                             IS '作成者';
+COMMENT ON COLUMN xxcso.xxcso_sp_decision_attaches.creation_date                          IS '作成日';
+COMMENT ON COLUMN xxcso.xxcso_sp_decision_attaches.last_updated_by                        IS '最終更新者';
+COMMENT ON COLUMN xxcso.xxcso_sp_decision_attaches.last_update_date                       IS '最終更新日';
+COMMENT ON COLUMN xxcso.xxcso_sp_decision_attaches.last_update_login                      IS '最終更新ログイン';
+COMMENT ON COLUMN xxcso.xxcso_sp_decision_attaches.request_id                             IS '要求ID';
+COMMENT ON COLUMN xxcso.xxcso_sp_decision_attaches.program_application_id                 IS 'コンカレント・プログラム・アプリケーションID';
+COMMENT ON COLUMN xxcso.xxcso_sp_decision_attaches.program_id                             IS 'コンカレント・プログラムID';
+COMMENT ON COLUMN xxcso.xxcso_sp_decision_attaches.program_update_date                    IS 'プログラム更新日';

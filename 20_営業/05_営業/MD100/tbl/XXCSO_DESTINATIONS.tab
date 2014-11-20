@@ -1,0 +1,73 @@
+/*************************************************************************
+ * 
+ * TABLE Name      : xxcso_destinations
+ * Description     : 送付先テーブル
+ * MD.070          : 
+ * Version         : 1.1
+ * 
+ * Change Record
+ * ------------- ----- ------------ -------------------------------------
+ *  Date          Ver.  Editor       Description
+ * ------------- ----- ------------ -------------------------------------
+ *  2009/02/01    1.0  T.Maruyama    初回作成
+ *  2009/03/02    1.1  H.Ogawa       STORAGE句を追加
+ *  2009/03/04    1.1  S.Yoda        桁数変更（郵便番号、都道府県、市区）
+ ************************************************************************/
+CREATE TABLE xxcso.xxcso_destinations
+(
+  delivery_id                     NUMBER            NOT NULL,
+  contract_management_id          NUMBER,
+  supplier_id                     NUMBER,
+  delivery_div                    VARCHAR2(1),
+  payment_name                    VARCHAR2(240),
+  payment_name_alt                VARCHAR2(320),
+  bank_transfer_fee_charge_div    VARCHAR2(1),
+  belling_details_div             VARCHAR2(25),
+  inquery_charge_hub_cd           VARCHAR2(4),
+  post_code                       VARCHAR2(20),
+  prefectures                     VARCHAR2(150),
+  city_ward                       VARCHAR2(25),
+  address_1                       VARCHAR2(240),
+  address_2                       VARCHAR2(240),
+  address_lines_phonetic          VARCHAR2(30),
+  created_by                      NUMBER(15)        NOT NULL,
+  creation_date                   DATE              NOT NULL,
+  last_updated_by                 NUMBER(15)        NOT NULL,
+  last_update_date                DATE              NOT NULL,
+  last_update_login               NUMBER(15),
+  request_id                      NUMBER(15),
+  program_application_id          NUMBER(15),
+  program_id                      NUMBER(15),
+  program_update_date             DATE,
+  CONSTRAINT xxcso_destinations_pk PRIMARY KEY ( delivery_id )
+  USING INDEX TABLESPACE xxidx2
+)
+PCTFREE 20 PCTUSED 40 INITRANS 16 STORAGE ( INITIAL 2M)
+;
+--
+COMMENT ON TABLE xxcso.xxcso_destinations IS '送付先テーブル';
+--
+COMMENT ON COLUMN xxcso.xxcso_destinations.delivery_id                            IS '送付先ID';
+COMMENT ON COLUMN xxcso.xxcso_destinations.contract_management_id                 IS '自動販売機設置契約書ID';
+COMMENT ON COLUMN xxcso.xxcso_destinations.supplier_id                            IS '仕入先ＩＤ';
+COMMENT ON COLUMN xxcso.xxcso_destinations.delivery_div                           IS '送付区分';
+COMMENT ON COLUMN xxcso.xxcso_destinations.payment_name                           IS '支払先名';
+COMMENT ON COLUMN xxcso.xxcso_destinations.payment_name_alt                       IS '支払先名カナ';
+COMMENT ON COLUMN xxcso.xxcso_destinations.bank_transfer_fee_charge_div           IS '振込手数料負担区分';
+COMMENT ON COLUMN xxcso.xxcso_destinations.belling_details_div                    IS '支払明細書区分';
+COMMENT ON COLUMN xxcso.xxcso_destinations.inquery_charge_hub_cd                  IS '問合せ担当拠点コード';
+COMMENT ON COLUMN xxcso.xxcso_destinations.post_code                              IS '郵便番号';
+COMMENT ON COLUMN xxcso.xxcso_destinations.prefectures                            IS '都道府県';
+COMMENT ON COLUMN xxcso.xxcso_destinations.city_ward                              IS '市区';
+COMMENT ON COLUMN xxcso.xxcso_destinations.address_1                              IS '住所１';
+COMMENT ON COLUMN xxcso.xxcso_destinations.address_2                              IS '住所２';
+COMMENT ON COLUMN xxcso.xxcso_destinations.address_lines_phonetic                 IS '電話番号';
+COMMENT ON COLUMN xxcso.xxcso_destinations.created_by                             IS '作成者';
+COMMENT ON COLUMN xxcso.xxcso_destinations.creation_date                          IS '作成日';
+COMMENT ON COLUMN xxcso.xxcso_destinations.last_updated_by                        IS '最終更新者';
+COMMENT ON COLUMN xxcso.xxcso_destinations.last_update_date                       IS '最終更新日';
+COMMENT ON COLUMN xxcso.xxcso_destinations.last_update_login                      IS '最終更新ログイン';
+COMMENT ON COLUMN xxcso.xxcso_destinations.request_id                             IS '要求ID';
+COMMENT ON COLUMN xxcso.xxcso_destinations.program_application_id                 IS 'コンカレント・プログラム・アプリケーションID';
+COMMENT ON COLUMN xxcso.xxcso_destinations.program_id                             IS 'コンカレント・プログラムID';
+COMMENT ON COLUMN xxcso.xxcso_destinations.program_update_date                    IS 'プログラム更新日';

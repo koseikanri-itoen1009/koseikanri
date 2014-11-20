@@ -1,0 +1,82 @@
+/*************************************************************************
+ * 
+ * TABLE Name      : xxcso_quote_lines
+ * Description     : 見積明細テーブル
+ * MD.070          : 
+ * Version         : 1.1
+ * 
+ * Change Record
+ * ------------- ----- ------------ -------------------------------------
+ *  Date          Ver.  Editor       Description
+ * ------------- ----- ------------ -------------------------------------
+ *  2009/02/01    1.0  T.Maruyama    初回作成
+ *  2009/03/02    1.1  H.Ogawa       STORAGE句を追加
+ ************************************************************************/
+CREATE TABLE xxcso.xxcso_quote_lines
+(
+  quote_line_id                   NUMBER(15)        NOT NULL,
+  quote_header_id                 NUMBER(15)        NOT NULL,
+  reference_quote_line_id         NUMBER(15),
+  inventory_item_id               NUMBER(15),
+  quote_div                       VARCHAR2(1),
+  usually_deliv_price             NUMBER(7,2),
+  usually_store_sale_price        NUMBER(8,2),
+  this_time_deliv_price           NUMBER(7,2),
+  this_time_store_sale_price      NUMBER(8,2),
+  quotation_price                 NUMBER(7,2),
+  sales_discount_price            NUMBER(7,2),
+  usuall_net_price                NUMBER(7,2),
+  this_time_net_price             NUMBER(7,2),
+  amount_of_margin                NUMBER(7,2),
+  margin_rate                     NUMBER(5,2),
+  quote_start_date                DATE,
+  quote_end_date                  DATE,
+  remarks                         VARCHAR2(20),
+  line_order                      NUMBER(2),
+  business_price                  NUMBER(15),
+  created_by                      NUMBER(15)        NOT NULL,
+  creation_date                   DATE              NOT NULL,
+  last_updated_by                 NUMBER(15)        NOT NULL,
+  last_update_date                DATE              NOT NULL,
+  last_update_login               NUMBER(15),
+  request_id                      NUMBER(15),
+  program_application_id          NUMBER(15),
+  program_id                      NUMBER(15),
+  program_update_date             DATE,
+  CONSTRAINT xxcso_quote_lines_pk PRIMARY KEY ( quote_line_id )
+  USING INDEX TABLESPACE xxidx2
+)
+PCTFREE 20 PCTUSED 60 INITRANS 8 STORAGE ( INITIAL 2M)
+;
+--
+COMMENT ON TABLE xxcso.xxcso_quote_lines IS '見積明細テーブル';
+--
+COMMENT ON COLUMN xxcso.xxcso_quote_lines.quote_line_id                          IS '見積明細ＩＤ';
+COMMENT ON COLUMN xxcso.xxcso_quote_lines.quote_header_id                        IS '見積ヘッダーＩＤ';
+COMMENT ON COLUMN xxcso.xxcso_quote_lines.reference_quote_line_id                IS '参照用見積明細ＩＤ';
+COMMENT ON COLUMN xxcso.xxcso_quote_lines.inventory_item_id                      IS '品目ＩＤ';
+COMMENT ON COLUMN xxcso.xxcso_quote_lines.quote_div                              IS '見積区分';
+COMMENT ON COLUMN xxcso.xxcso_quote_lines.usually_deliv_price                    IS '通常店納価格';
+COMMENT ON COLUMN xxcso.xxcso_quote_lines.usually_store_sale_price               IS '通常店頭売価';
+COMMENT ON COLUMN xxcso.xxcso_quote_lines.this_time_deliv_price                  IS '今回店納価格';
+COMMENT ON COLUMN xxcso.xxcso_quote_lines.this_time_store_sale_price             IS '今回店頭売価';
+COMMENT ON COLUMN xxcso.xxcso_quote_lines.quotation_price                        IS '建値';
+COMMENT ON COLUMN xxcso.xxcso_quote_lines.sales_discount_price                   IS '売上値引';
+COMMENT ON COLUMN xxcso.xxcso_quote_lines.usuall_net_price                       IS '通常ＮＥＴ価格';
+COMMENT ON COLUMN xxcso.xxcso_quote_lines.this_time_net_price                    IS '今回ＮＥＴ価格';
+COMMENT ON COLUMN xxcso.xxcso_quote_lines.amount_of_margin                       IS 'マージン額';
+COMMENT ON COLUMN xxcso.xxcso_quote_lines.margin_rate                            IS 'マージン率';
+COMMENT ON COLUMN xxcso.xxcso_quote_lines.quote_start_date                       IS '期間（開始）';
+COMMENT ON COLUMN xxcso.xxcso_quote_lines.quote_end_date                         IS '期間（終了）';
+COMMENT ON COLUMN xxcso.xxcso_quote_lines.remarks                                IS '備考';
+COMMENT ON COLUMN xxcso.xxcso_quote_lines.line_order                             IS '並び順';
+COMMENT ON COLUMN xxcso.xxcso_quote_lines.business_price                         IS '営業原価';
+COMMENT ON COLUMN xxcso.xxcso_quote_lines.created_by                             IS '作成者';
+COMMENT ON COLUMN xxcso.xxcso_quote_lines.creation_date                          IS '作成日';
+COMMENT ON COLUMN xxcso.xxcso_quote_lines.last_updated_by                        IS '最終更新者';
+COMMENT ON COLUMN xxcso.xxcso_quote_lines.last_update_date                       IS '最終更新日';
+COMMENT ON COLUMN xxcso.xxcso_quote_lines.last_update_login                      IS '最終更新ログイン';
+COMMENT ON COLUMN xxcso.xxcso_quote_lines.request_id                             IS '要求ID';
+COMMENT ON COLUMN xxcso.xxcso_quote_lines.program_application_id                 IS 'コンカレント・プログラム・アプリケーションID';
+COMMENT ON COLUMN xxcso.xxcso_quote_lines.program_id                             IS 'コンカレント・プログラムID';
+COMMENT ON COLUMN xxcso.xxcso_quote_lines.program_update_date                    IS 'プログラム更新日';

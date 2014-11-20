@@ -1,0 +1,97 @@
+/*************************************************************************
+ * 
+ * TABLE Name      : xxcso_sp_decision_custs
+ * Description     : ＳＰ専決顧客テーブル
+ * MD.070          : 
+ * Version         : 1.1
+ * 
+ * Change Record
+ * ------------- ----- ------------ -------------------------------------
+ *  Date          Ver.  Editor       Description
+ * ------------- ----- ------------ -------------------------------------
+ *  2009/02/01    1.0  T.Maruyama    初回作成
+ *  2009/03/02    1.1  H.Ogawa       STORAGE句を追加
+ *  2009/03/04    1.1  S.Yoda        桁数変更（都道府県、市・区）
+ ************************************************************************/
+CREATE TABLE xxcso.xxcso_sp_decision_custs
+(
+  sp_decision_customer_id         NUMBER            NOT NULL,
+  sp_decision_header_id           NUMBER            NOT NULL,
+  sp_decision_customer_class      VARCHAR2(1)       NOT NULL,
+  party_name                      VARCHAR2(360),
+  party_name_alt                  VARCHAR2(320),
+  postal_code_first               VARCHAR2(3),
+  postal_code_second              VARCHAR2(4),
+  postal_code                     VARCHAR2(7),
+  state                           VARCHAR2(60),
+  city                            VARCHAR2(60),
+  address1                        VARCHAR2(240),
+  address2                        VARCHAR2(240),
+  address_lines_phonetic          VARCHAR2(30),
+  install_name                    VARCHAR2(30),
+  business_condition_type         VARCHAR2(2),
+  business_type                   VARCHAR2(2),
+  install_location                VARCHAR2(2),
+  external_reference_opcl_type    VARCHAR2(1),
+  employee_number                 NUMBER(7),
+  publish_base_code               VARCHAR2(4),
+  representative_name             VARCHAR2(20),
+  transfer_commission_type        VARCHAR2(1),
+  bm_payment_type                 VARCHAR2(1),
+  inquiry_base_code               VARCHAR2(4),
+  new_customer_flag               VARCHAR2(1),
+  customer_id                     NUMBER,
+  same_install_account_flag       VARCHAR2(1),
+  created_by                      NUMBER(15)        NOT NULL,
+  creation_date                   DATE              NOT NULL,
+  last_updated_by                 NUMBER(15)        NOT NULL,
+  last_update_date                DATE              NOT NULL,
+  last_update_login               NUMBER(15),
+  request_id                      NUMBER(15),
+  program_application_id          NUMBER(15),
+  program_id                      NUMBER(15),
+  program_update_date             DATE,
+  CONSTRAINT xxcso_sp_decision_custs_pk PRIMARY KEY ( sp_decision_customer_id )
+  USING INDEX TABLESPACE xxidx2
+)
+PCTFREE 20 PCTUSED 40 INITRANS 16 STORAGE ( INITIAL 2M)
+;
+--
+COMMENT ON TABLE xxcso.xxcso_sp_decision_custs IS 'ＳＰ専決顧客テーブル';
+--
+COMMENT ON COLUMN xxcso.xxcso_sp_decision_custs.sp_decision_customer_id                IS 'ＳＰ専決顧客ＩＤ';
+COMMENT ON COLUMN xxcso.xxcso_sp_decision_custs.sp_decision_header_id                  IS 'ＳＰ専決ヘッダＩＤ';
+COMMENT ON COLUMN xxcso.xxcso_sp_decision_custs.sp_decision_customer_class             IS 'ＳＰ専決顧客区分';
+COMMENT ON COLUMN xxcso.xxcso_sp_decision_custs.party_name                             IS '顧客名';
+COMMENT ON COLUMN xxcso.xxcso_sp_decision_custs.party_name_alt                         IS '顧客名カナ';
+COMMENT ON COLUMN xxcso.xxcso_sp_decision_custs.postal_code_first                      IS '郵便番号（上3桁）';
+COMMENT ON COLUMN xxcso.xxcso_sp_decision_custs.postal_code_second                     IS '郵便番号（下4桁）';
+COMMENT ON COLUMN xxcso.xxcso_sp_decision_custs.postal_code                            IS '郵便番号';
+COMMENT ON COLUMN xxcso.xxcso_sp_decision_custs.state                                  IS '都道府県';
+COMMENT ON COLUMN xxcso.xxcso_sp_decision_custs.city                                   IS '市・区';
+COMMENT ON COLUMN xxcso.xxcso_sp_decision_custs.address1                               IS '住所１';
+COMMENT ON COLUMN xxcso.xxcso_sp_decision_custs.address2                               IS '住所２';
+COMMENT ON COLUMN xxcso.xxcso_sp_decision_custs.address_lines_phonetic                 IS '電話番号';
+COMMENT ON COLUMN xxcso.xxcso_sp_decision_custs.install_name                           IS '設置先名';
+COMMENT ON COLUMN xxcso.xxcso_sp_decision_custs.business_condition_type                IS '業態（小分類）';
+COMMENT ON COLUMN xxcso.xxcso_sp_decision_custs.business_type                          IS '業種区分';
+COMMENT ON COLUMN xxcso.xxcso_sp_decision_custs.install_location                       IS '設置ロケーション';
+COMMENT ON COLUMN xxcso.xxcso_sp_decision_custs.external_reference_opcl_type           IS '物件オープン・クローズ区分';
+COMMENT ON COLUMN xxcso.xxcso_sp_decision_custs.employee_number                        IS '社員数';
+COMMENT ON COLUMN xxcso.xxcso_sp_decision_custs.publish_base_code                      IS '担当拠点コード';
+COMMENT ON COLUMN xxcso.xxcso_sp_decision_custs.representative_name                    IS '代表者名';
+COMMENT ON COLUMN xxcso.xxcso_sp_decision_custs.transfer_commission_type               IS '振込手数料負担区分';
+COMMENT ON COLUMN xxcso.xxcso_sp_decision_custs.bm_payment_type                        IS 'ＢＭ支払区分';
+COMMENT ON COLUMN xxcso.xxcso_sp_decision_custs.inquiry_base_code                      IS '問合せ担当拠点コード';
+COMMENT ON COLUMN xxcso.xxcso_sp_decision_custs.new_customer_flag                      IS '新規顧客フラグ';
+COMMENT ON COLUMN xxcso.xxcso_sp_decision_custs.customer_id                            IS '顧客ID';
+COMMENT ON COLUMN xxcso.xxcso_sp_decision_custs.same_install_account_flag              IS '設置先と同じフラグ';
+COMMENT ON COLUMN xxcso.xxcso_sp_decision_custs.created_by                             IS '作成者';
+COMMENT ON COLUMN xxcso.xxcso_sp_decision_custs.creation_date                          IS '作成日';
+COMMENT ON COLUMN xxcso.xxcso_sp_decision_custs.last_updated_by                        IS '最終更新者';
+COMMENT ON COLUMN xxcso.xxcso_sp_decision_custs.last_update_date                       IS '最終更新日';
+COMMENT ON COLUMN xxcso.xxcso_sp_decision_custs.last_update_login                      IS '最終更新ログイン';
+COMMENT ON COLUMN xxcso.xxcso_sp_decision_custs.request_id                             IS '要求ID';
+COMMENT ON COLUMN xxcso.xxcso_sp_decision_custs.program_application_id                 IS 'コンカレント・プログラム・アプリケーションID';
+COMMENT ON COLUMN xxcso.xxcso_sp_decision_custs.program_id                             IS 'コンカレント・プログラムID';
+COMMENT ON COLUMN xxcso.xxcso_sp_decision_custs.program_update_date                    IS 'プログラム更新日';

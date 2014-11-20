@@ -1,0 +1,52 @@
+/*************************************************************************
+ * 
+ * TABLE Name      : xxcso_pv_sort_column_def
+ * Description     : 汎用検索ソート定義テーブル
+ * MD.070          : 
+ * Version         : 1.1
+ * 
+ * Change Record
+ * ------------- ----- ------------ -------------------------------------
+ *  Date          Ver.  Editor       Description
+ * ------------- ----- ------------ -------------------------------------
+ *  2009/02/01    1.0  T.Maruyama    初回作成
+ *  2009/03/02    1.1  H.Ogawa       STORAGE句を追加
+ ************************************************************************/
+CREATE TABLE xxcso.xxcso_pv_sort_column_def
+(
+  sort_column_def_id              NUMBER            NOT NULL,
+  view_id                         NUMBER            NOT NULL,
+  setup_number                    NUMBER(15),
+  column_code                     VARCHAR2(30),
+  sort_direction_code             VARCHAR2(30),
+  created_by                      NUMBER(15)        NOT NULL,
+  creation_date                   DATE              NOT NULL,
+  last_updated_by                 NUMBER(15)        NOT NULL,
+  last_update_date                DATE              NOT NULL,
+  last_update_login               NUMBER(15),
+  request_id                      NUMBER(15),
+  program_application_id          NUMBER(15),
+  program_id                      NUMBER(15),
+  program_update_date             DATE,
+  CONSTRAINT xxcso_pv_sort_column_def_pk PRIMARY KEY ( sort_column_def_id )
+  USING INDEX TABLESPACE xxidx2
+)
+PCTFREE 20 PCTUSED 60 INITRANS 8 STORAGE ( INITIAL 2M)
+;
+--
+COMMENT ON TABLE xxcso.xxcso_pv_sort_column_def IS '汎用検索ソート定義テーブル';
+--
+COMMENT ON COLUMN xxcso.xxcso_pv_sort_column_def.sort_column_def_id                     IS 'ソート定義ID';
+COMMENT ON COLUMN xxcso.xxcso_pv_sort_column_def.view_id                                IS 'ビューID';
+COMMENT ON COLUMN xxcso.xxcso_pv_sort_column_def.setup_number                           IS '設定順';
+COMMENT ON COLUMN xxcso.xxcso_pv_sort_column_def.column_code                            IS '列コード';
+COMMENT ON COLUMN xxcso.xxcso_pv_sort_column_def.sort_direction_code                    IS 'ソート順コード';
+COMMENT ON COLUMN xxcso.xxcso_pv_sort_column_def.created_by                             IS '作成者';
+COMMENT ON COLUMN xxcso.xxcso_pv_sort_column_def.creation_date                          IS '作成日';
+COMMENT ON COLUMN xxcso.xxcso_pv_sort_column_def.last_updated_by                        IS '最終更新者';
+COMMENT ON COLUMN xxcso.xxcso_pv_sort_column_def.last_update_date                       IS '最終更新日';
+COMMENT ON COLUMN xxcso.xxcso_pv_sort_column_def.last_update_login                      IS '最終更新ログイン';
+COMMENT ON COLUMN xxcso.xxcso_pv_sort_column_def.request_id                             IS '要求ID';
+COMMENT ON COLUMN xxcso.xxcso_pv_sort_column_def.program_application_id                 IS 'コンカレント・プログラム・アプリケーションID';
+COMMENT ON COLUMN xxcso.xxcso_pv_sort_column_def.program_id                             IS 'コンカレント・プログラムID';
+COMMENT ON COLUMN xxcso.xxcso_pv_sort_column_def.program_update_date                    IS 'プログラム更新日';

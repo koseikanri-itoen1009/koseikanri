@@ -1,0 +1,127 @@
+/*************************************************************************
+ * 
+ * TABLE Name      : xxcso_rep_auto_sale_cont
+ * Description     : 自動販売機設置契約書帳票ワークテーブル
+ * MD.070          : 
+ * Version         : 1.1
+ * 
+ * Change Record
+ * ------------- ----- ------------ -------------------------------------
+ *  Date          Ver.  Editor       Description
+ * ------------- ----- ------------ -------------------------------------
+ *  2009/02/16    1.0  T.Maruyama    初回作成
+ *  2009/03/02    1.1  H.Ogawa       STORAGE句を追加
+ *  2009/03/06    1.1  D.Abe        【課題No71】対応による項目サイズの変更
+ *  2009/03/13    1.1  M.Maruyama   【障害No052,055,056
+ *                                    対応による項目サイズの変更
+ ************************************************************************/
+CREATE TABLE xxcso.xxcso_rep_auto_sale_cont
+(
+  install_location                VARCHAR2(2),
+  contract_number                 VARCHAR2(12)      NOT NULL,
+  contract_name                   VARCHAR2(360),
+  contract_period                 NUMBER(2),
+  cancellation_offer_code         VARCHAR2(1),
+  other_content                   VARCHAR2(500),
+  sales_charge_details_delivery   VARCHAR2(240),
+  delivery_address                VARCHAR2(700),
+  install_name                    VARCHAR2(360),
+  install_address                 VARCHAR2(690),
+  install_date                    VARCHAR2(30),
+  bank_name                       VARCHAR2(60),
+  blanches_name                   VARCHAR2(60),
+  account_number                  VARCHAR2(9),
+  bank_account_number             VARCHAR2(30),
+  bank_account_name_kana          VARCHAR2(150),
+  publish_base_code               VARCHAR2(4),
+  publish_base_name               VARCHAR2(60),
+  contract_effect_date            VARCHAR2(30),
+  issue_belonging_address         VARCHAR2(660),
+  issue_belonging_name            VARCHAR2(60),
+  issue_belonging_boss_position   VARCHAR2(150),
+  issue_belonging_boss            VARCHAR2(301),
+  close_day_code                  VARCHAR2(2),
+  transfer_month_code             VARCHAR2(100),
+  transfer_day_code               VARCHAR2(2),
+  exchange_condition              VARCHAR2(30),
+  condition_contents_1            VARCHAR2(150),
+  condition_contents_2            VARCHAR2(150),
+  condition_contents_3            VARCHAR2(150),
+  condition_contents_4            VARCHAR2(150),
+  condition_contents_5            VARCHAR2(150),
+  condition_contents_6            VARCHAR2(150),
+  condition_contents_7            VARCHAR2(150),
+  condition_contents_8            VARCHAR2(150),
+  condition_contents_9            VARCHAR2(150),
+  condition_contents_10           VARCHAR2(150),
+  condition_contents_11           VARCHAR2(150),
+  condition_contents_12           VARCHAR2(150),
+  install_support_amt             NUMBER(8),
+  electricity_information         VARCHAR2(50),
+  transfer_commission_info        VARCHAR2(100),
+  created_by                      NUMBER(15)        NOT NULL,
+  creation_date                   DATE              NOT NULL,
+  last_updated_by                 NUMBER(15)        NOT NULL,
+  last_update_date                DATE              NOT NULL,
+  last_update_login               NUMBER(15),
+  request_id                      NUMBER(15),
+  program_application_id          NUMBER(15),
+  program_id                      NUMBER(15),
+  program_update_date             DATE
+)
+PCTFREE 10 PCTUSED 60 INITRANS 1 STORAGE ( INITIAL 2M)
+;
+--
+COMMENT ON TABLE xxcso.xxcso_rep_auto_sale_cont IS '自動販売機設置契約書帳票ワークテーブル';
+--
+COMMENT ON COLUMN xxcso.xxcso_rep_auto_sale_cont.install_location                       IS '設置ロケーション';
+COMMENT ON COLUMN xxcso.xxcso_rep_auto_sale_cont.contract_number                        IS '契約書番号';
+COMMENT ON COLUMN xxcso.xxcso_rep_auto_sale_cont.contract_name                          IS '契約者名';
+COMMENT ON COLUMN xxcso.xxcso_rep_auto_sale_cont.contract_period                        IS '契約期間';
+COMMENT ON COLUMN xxcso.xxcso_rep_auto_sale_cont.cancellation_offer_code                IS '契約解除申し出';
+COMMENT ON COLUMN xxcso.xxcso_rep_auto_sale_cont.other_content                          IS '特約事項';
+COMMENT ON COLUMN xxcso.xxcso_rep_auto_sale_cont.sales_charge_details_delivery          IS '販売手数料明細書送付先名';
+COMMENT ON COLUMN xxcso.xxcso_rep_auto_sale_cont.delivery_address                       IS '送付先住所';
+COMMENT ON COLUMN xxcso.xxcso_rep_auto_sale_cont.install_name                           IS '設置先名';
+COMMENT ON COLUMN xxcso.xxcso_rep_auto_sale_cont.install_address                        IS '設置先住所';
+COMMENT ON COLUMN xxcso.xxcso_rep_auto_sale_cont.install_date                           IS '設置日';
+COMMENT ON COLUMN xxcso.xxcso_rep_auto_sale_cont.bank_name                              IS '金融機関名';
+COMMENT ON COLUMN xxcso.xxcso_rep_auto_sale_cont.blanches_name                          IS '支店名';
+COMMENT ON COLUMN xxcso.xxcso_rep_auto_sale_cont.account_number                         IS '顧客コード';
+COMMENT ON COLUMN xxcso.xxcso_rep_auto_sale_cont.bank_account_number                    IS '口座番号';
+COMMENT ON COLUMN xxcso.xxcso_rep_auto_sale_cont.bank_account_name_kana                 IS '口座名義カナ';
+COMMENT ON COLUMN xxcso.xxcso_rep_auto_sale_cont.publish_base_code                      IS '担当拠点';
+COMMENT ON COLUMN xxcso.xxcso_rep_auto_sale_cont.publish_base_name                      IS '担当拠点名';
+COMMENT ON COLUMN xxcso.xxcso_rep_auto_sale_cont.contract_effect_date                   IS '契約書発効日';
+COMMENT ON COLUMN xxcso.xxcso_rep_auto_sale_cont.issue_belonging_address                IS '発行元所属住所';
+COMMENT ON COLUMN xxcso.xxcso_rep_auto_sale_cont.issue_belonging_name                   IS '発行元所属名';
+COMMENT ON COLUMN xxcso.xxcso_rep_auto_sale_cont.issue_belonging_boss_position          IS '発行元所属長職位名';
+COMMENT ON COLUMN xxcso.xxcso_rep_auto_sale_cont.issue_belonging_boss                   IS '発行元所属長名';
+COMMENT ON COLUMN xxcso.xxcso_rep_auto_sale_cont.close_day_code                         IS '締日';
+COMMENT ON COLUMN xxcso.xxcso_rep_auto_sale_cont.transfer_month_code                    IS '払い月';
+COMMENT ON COLUMN xxcso.xxcso_rep_auto_sale_cont.transfer_day_code                      IS '払い日';
+COMMENT ON COLUMN xxcso.xxcso_rep_auto_sale_cont.exchange_condition                     IS '取引条件';
+COMMENT ON COLUMN xxcso.xxcso_rep_auto_sale_cont.condition_contents_1                   IS '条件内容1';
+COMMENT ON COLUMN xxcso.xxcso_rep_auto_sale_cont.condition_contents_2                   IS '条件内容2';
+COMMENT ON COLUMN xxcso.xxcso_rep_auto_sale_cont.condition_contents_3                   IS '条件内容3';
+COMMENT ON COLUMN xxcso.xxcso_rep_auto_sale_cont.condition_contents_4                   IS '条件内容4';
+COMMENT ON COLUMN xxcso.xxcso_rep_auto_sale_cont.condition_contents_5                   IS '条件内容5';
+COMMENT ON COLUMN xxcso.xxcso_rep_auto_sale_cont.condition_contents_6                   IS '条件内容6';
+COMMENT ON COLUMN xxcso.xxcso_rep_auto_sale_cont.condition_contents_7                   IS '条件内容7';
+COMMENT ON COLUMN xxcso.xxcso_rep_auto_sale_cont.condition_contents_8                   IS '条件内容8';
+COMMENT ON COLUMN xxcso.xxcso_rep_auto_sale_cont.condition_contents_9                   IS '条件内容9';
+COMMENT ON COLUMN xxcso.xxcso_rep_auto_sale_cont.condition_contents_10                  IS '条件内容10';
+COMMENT ON COLUMN xxcso.xxcso_rep_auto_sale_cont.condition_contents_11                  IS '条件内容11';
+COMMENT ON COLUMN xxcso.xxcso_rep_auto_sale_cont.condition_contents_12                  IS '条件内容12';
+COMMENT ON COLUMN xxcso.xxcso_rep_auto_sale_cont.install_support_amt                    IS '設置協賛金';
+COMMENT ON COLUMN xxcso.xxcso_rep_auto_sale_cont.electricity_information                IS '電気代情報';
+COMMENT ON COLUMN xxcso.xxcso_rep_auto_sale_cont.transfer_commission_info               IS '振り込み手数料情報';
+COMMENT ON COLUMN xxcso.xxcso_rep_auto_sale_cont.created_by                             IS '作成者';
+COMMENT ON COLUMN xxcso.xxcso_rep_auto_sale_cont.creation_date                          IS '作成日';
+COMMENT ON COLUMN xxcso.xxcso_rep_auto_sale_cont.last_updated_by                        IS '最終更新者';
+COMMENT ON COLUMN xxcso.xxcso_rep_auto_sale_cont.last_update_date                       IS '最終更新日';
+COMMENT ON COLUMN xxcso.xxcso_rep_auto_sale_cont.last_update_login                      IS '最終更新ログイン';
+COMMENT ON COLUMN xxcso.xxcso_rep_auto_sale_cont.request_id                             IS '要求ID';
+COMMENT ON COLUMN xxcso.xxcso_rep_auto_sale_cont.program_application_id                 IS 'コンカレント・プログラム・アプリケーションID';
+COMMENT ON COLUMN xxcso.xxcso_rep_auto_sale_cont.program_id                             IS 'コンカレント・プログラムID';
+COMMENT ON COLUMN xxcso.xxcso_rep_auto_sale_cont.program_update_date                    IS 'プログラム更新日';

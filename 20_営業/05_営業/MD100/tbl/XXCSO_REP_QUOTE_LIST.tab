@@ -1,0 +1,116 @@
+/*************************************************************************
+ * 
+ * TABLE Name      : xxcso_rep_quote_list
+ * Description     : 見積帳票ワークテーブル
+ * MD.070          : 
+ * Version         : 1.1
+ * 
+ * Change Record
+ * ------------- ----- ------------ -------------------------------------
+ *  Date          Ver.  Editor       Description
+ * ------------- ----- ------------ -------------------------------------
+ *  2009/02/01    1.0  T.Maruyama    初回作成
+ *  2009/03/02    1.1  H.Ogawa       STORAGE句を追加
+ ************************************************************************/
+CREATE TABLE xxcso.xxcso_rep_quote_list
+(
+  quote_work_id                   NUMBER(15)        NOT NULL,
+  quote_header_id                 NUMBER(15)        NOT NULL,
+  quote_line_id                   NUMBER(15)        NOT NULL,
+  line_order                      NUMBER(2),
+  quote_number                    VARCHAR2(12)      NOT NULL,
+  publish_date                    VARCHAR2(10),
+  customer_name                   VARCHAR2(360),
+  sales_name                      VARCHAR2(360),
+  deliv_place                     VARCHAR2(20),
+  header_payment_condition        VARCHAR2(20),
+  base_addr                       VARCHAR2(240),
+  base_name                       VARCHAR2(60),
+  base_phone_no                   VARCHAR2(15),
+  quote_unit_sale                 VARCHAR2(10),
+  quote_unit_warehouse            VARCHAR2(10),
+  deliv_price_tax_type            VARCHAR2(10),
+  store_price_tax_type            VARCHAR2(10),
+  special_note                    VARCHAR2(100),
+  item_name                       VARCHAR2(20),
+  jan_code                        VARCHAR2(240),
+  standard                        VARCHAR2(10),
+  inc_num                         VARCHAR2(5),
+  sticer_price                    VARCHAR2(240),
+  quote_div                       VARCHAR2(10),
+  quotation_price                 NUMBER(7,2),
+  usually_deliv_price             NUMBER(7,2),
+  usually_store_sale_price        NUMBER(8,2),
+  this_time_deliv_price           NUMBER(7,2),
+  this_time_store_sale_price      NUMBER(8,2),
+  usuall_net_price                NUMBER(7,2),
+  this_time_net_price             NUMBER(7,2),
+  line_payment_condition          NUMBER(7,2),
+  amount_of_margin                NUMBER(7,2),
+  margin_rate                     VARCHAR2(8),
+  quote_start_date                VARCHAR2(10),
+  quote_end_date                  VARCHAR2(10),
+  sales_discount_amt              NUMBER(7,2),
+  remarks                         VARCHAR2(20),
+  created_by                      NUMBER(15),
+  creation_date                   DATE,
+  last_updated_by                 NUMBER(15),
+  last_update_date                DATE,
+  last_update_login               NUMBER(15),
+  request_id                      NUMBER(15),
+  program_application_id          NUMBER(15),
+  program_id                      NUMBER(15),
+  program_update_date             DATE
+)
+PCTFREE 10 PCTUSED 60 INITRANS 1 STORAGE ( INITIAL 2M)
+;
+--
+COMMENT ON TABLE xxcso.xxcso_rep_quote_list IS '見積帳票ワークテーブル';
+--
+COMMENT ON COLUMN xxcso.xxcso_rep_quote_list.quote_work_id                          IS '見積帳票ワークテーブルＩＤ';
+COMMENT ON COLUMN xxcso.xxcso_rep_quote_list.quote_header_id                        IS '見積ヘッダーＩＤ';
+COMMENT ON COLUMN xxcso.xxcso_rep_quote_list.quote_line_id                          IS '見積明細ＩＤ';
+COMMENT ON COLUMN xxcso.xxcso_rep_quote_list.line_order                             IS '並び順';
+COMMENT ON COLUMN xxcso.xxcso_rep_quote_list.quote_number                           IS '見積番号';
+COMMENT ON COLUMN xxcso.xxcso_rep_quote_list.publish_date                           IS '発行日';
+COMMENT ON COLUMN xxcso.xxcso_rep_quote_list.customer_name                          IS '顧客名';
+COMMENT ON COLUMN xxcso.xxcso_rep_quote_list.sales_name                             IS '販売先名';
+COMMENT ON COLUMN xxcso.xxcso_rep_quote_list.deliv_place                            IS '納入場所';
+COMMENT ON COLUMN xxcso.xxcso_rep_quote_list.header_payment_condition               IS 'ヘッダー支払条件';
+COMMENT ON COLUMN xxcso.xxcso_rep_quote_list.base_addr                              IS '拠点住所';
+COMMENT ON COLUMN xxcso.xxcso_rep_quote_list.base_name                              IS '拠点名';
+COMMENT ON COLUMN xxcso.xxcso_rep_quote_list.base_phone_no                          IS '拠点電話番号';
+COMMENT ON COLUMN xxcso.xxcso_rep_quote_list.quote_unit_sale                        IS '見積単位（販売先）';
+COMMENT ON COLUMN xxcso.xxcso_rep_quote_list.quote_unit_warehouse                   IS '見積単位（帳合問屋）';
+COMMENT ON COLUMN xxcso.xxcso_rep_quote_list.deliv_price_tax_type                   IS '店納価格税区分';
+COMMENT ON COLUMN xxcso.xxcso_rep_quote_list.store_price_tax_type                   IS '小売価格税区分';
+COMMENT ON COLUMN xxcso.xxcso_rep_quote_list.special_note                           IS '特記事項';
+COMMENT ON COLUMN xxcso.xxcso_rep_quote_list.item_name                              IS '商品名';
+COMMENT ON COLUMN xxcso.xxcso_rep_quote_list.jan_code                               IS 'JANコード';
+COMMENT ON COLUMN xxcso.xxcso_rep_quote_list.standard                               IS '規格';
+COMMENT ON COLUMN xxcso.xxcso_rep_quote_list.inc_num                                IS '入数';
+COMMENT ON COLUMN xxcso.xxcso_rep_quote_list.sticer_price                           IS 'メーカー希望小売価格';
+COMMENT ON COLUMN xxcso.xxcso_rep_quote_list.quote_div                              IS '見積区分';
+COMMENT ON COLUMN xxcso.xxcso_rep_quote_list.quotation_price                        IS '建値';
+COMMENT ON COLUMN xxcso.xxcso_rep_quote_list.usually_deliv_price                    IS '通常店納価格';
+COMMENT ON COLUMN xxcso.xxcso_rep_quote_list.usually_store_sale_price               IS '通常店頭売価';
+COMMENT ON COLUMN xxcso.xxcso_rep_quote_list.this_time_deliv_price                  IS '今回店納価格';
+COMMENT ON COLUMN xxcso.xxcso_rep_quote_list.this_time_store_sale_price             IS '今回店頭売価';
+COMMENT ON COLUMN xxcso.xxcso_rep_quote_list.usuall_net_price                       IS '通常ＮＥＴ価格';
+COMMENT ON COLUMN xxcso.xxcso_rep_quote_list.this_time_net_price                    IS '今回ＮＥＴ価格';
+COMMENT ON COLUMN xxcso.xxcso_rep_quote_list.line_payment_condition                 IS '明細支払条件';
+COMMENT ON COLUMN xxcso.xxcso_rep_quote_list.amount_of_margin                       IS 'マージン額';
+COMMENT ON COLUMN xxcso.xxcso_rep_quote_list.margin_rate                            IS 'マージン率';
+COMMENT ON COLUMN xxcso.xxcso_rep_quote_list.quote_start_date                       IS '期間（開始）';
+COMMENT ON COLUMN xxcso.xxcso_rep_quote_list.quote_end_date                         IS '期間（終了）';
+COMMENT ON COLUMN xxcso.xxcso_rep_quote_list.sales_discount_amt                     IS '売上値引';
+COMMENT ON COLUMN xxcso.xxcso_rep_quote_list.remarks                                IS '備考';
+COMMENT ON COLUMN xxcso.xxcso_rep_quote_list.created_by                             IS '作成者';
+COMMENT ON COLUMN xxcso.xxcso_rep_quote_list.creation_date                          IS '作成日';
+COMMENT ON COLUMN xxcso.xxcso_rep_quote_list.last_updated_by                        IS '最終更新者';
+COMMENT ON COLUMN xxcso.xxcso_rep_quote_list.last_update_date                       IS '最終更新日';
+COMMENT ON COLUMN xxcso.xxcso_rep_quote_list.last_update_login                      IS '最終更新ログイン';
+COMMENT ON COLUMN xxcso.xxcso_rep_quote_list.request_id                             IS '要求ID';
+COMMENT ON COLUMN xxcso.xxcso_rep_quote_list.program_application_id                 IS 'コンカレント・プログラム・アプリケーションID';
+COMMENT ON COLUMN xxcso.xxcso_rep_quote_list.program_id                             IS 'コンカレント・プログラムID';
+COMMENT ON COLUMN xxcso.xxcso_rep_quote_list.program_update_date                    IS 'プログラム更新日';

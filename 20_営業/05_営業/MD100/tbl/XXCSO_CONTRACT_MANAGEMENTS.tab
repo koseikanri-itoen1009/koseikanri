@@ -1,0 +1,97 @@
+/*************************************************************************
+ * 
+ * TABLE Name      : xxcso_contract_managements
+ * Description     : 契約管理テーブル
+ * MD.070          : 
+ * Version         : 1.1
+ * 
+ * Change Record
+ * ------------- ----- ------------ -------------------------------------
+ *  Date          Ver.  Editor       Description
+ * ------------- ----- ------------ -------------------------------------
+ *  2009/02/01    1.0  T.Maruyama    初回作成
+ *  2009/03/02    1.1  H.Ogawa       STORAGE句を追加
+ *  2009/03/04    1.1  S.Yoda        桁数変更（設置先顧客名）
+ ************************************************************************/
+CREATE TABLE xxcso.xxcso_contract_managements
+(
+  contract_management_id          NUMBER            NOT NULL,
+  contract_number                 VARCHAR2(12)      NOT NULL,
+  contract_format                 VARCHAR2(1),
+  status                          VARCHAR2(1),
+  employee_number                 VARCHAR2(5),
+  sp_decision_header_id           NUMBER            NOT NULL,
+  contract_effect_date            DATE,
+  transfer_month_code             VARCHAR2(2),
+  transfer_day_code               VARCHAR2(2),
+  close_day_code                  VARCHAR2(2),
+  contract_period                 NUMBER,
+  cancellation_offer_code         VARCHAR2(1),
+  contract_customer_id            NUMBER,
+  install_account_id              NUMBER,
+  install_account_number          VARCHAR2(9),
+  install_party_name              VARCHAR2(360),
+  install_postal_code             VARCHAR2(60),
+  install_state                   VARCHAR2(60),
+  install_city                    VARCHAR2(60),
+  install_address1                VARCHAR2(240),
+  install_address2                VARCHAR2(240),
+  install_date                    DATE,
+  install_location                VARCHAR2(1),
+  publish_dept_code               VARCHAR2(4),
+  install_code                    VARCHAR2(10),
+  cooperate_flag                  VARCHAR2(1),
+  batch_proc_status               VARCHAR2(1),
+  created_by                      NUMBER(15)        NOT NULL,
+  creation_date                   DATE              NOT NULL,
+  last_updated_by                 NUMBER(15)        NOT NULL,
+  last_update_date                DATE              NOT NULL,
+  last_update_login               NUMBER(15),
+  request_id                      NUMBER(15),
+  program_application_id          NUMBER(15),
+  program_id                      NUMBER(15),
+  program_update_date             DATE,
+  CONSTRAINT xxcso_contract_managements_pk PRIMARY KEY ( contract_management_id )
+  USING INDEX TABLESPACE xxidx2
+)
+PCTFREE 20 PCTUSED 40 INITRANS 16 STORAGE ( INITIAL 2M)
+;
+--
+COMMENT ON TABLE xxcso.xxcso_contract_managements IS '契約管理テーブル';
+--
+COMMENT ON COLUMN xxcso.xxcso_contract_managements.contract_management_id                 IS '自動販売機設置契約書ID';
+COMMENT ON COLUMN xxcso.xxcso_contract_managements.contract_number                        IS '契約書番号';
+COMMENT ON COLUMN xxcso.xxcso_contract_managements.contract_format                        IS 'フォーマット';
+COMMENT ON COLUMN xxcso.xxcso_contract_managements.status                                 IS 'ステータス';
+COMMENT ON COLUMN xxcso.xxcso_contract_managements.employee_number                        IS '入力者番号';
+COMMENT ON COLUMN xxcso.xxcso_contract_managements.sp_decision_header_id                  IS 'ＳＰ専決ヘッダＩＤ';
+COMMENT ON COLUMN xxcso.xxcso_contract_managements.contract_effect_date                   IS '契約書発効日';
+COMMENT ON COLUMN xxcso.xxcso_contract_managements.transfer_month_code                    IS '振込月';
+COMMENT ON COLUMN xxcso.xxcso_contract_managements.transfer_day_code                      IS '振込日';
+COMMENT ON COLUMN xxcso.xxcso_contract_managements.close_day_code                         IS '締め日';
+COMMENT ON COLUMN xxcso.xxcso_contract_managements.contract_period                        IS '契約期間';
+COMMENT ON COLUMN xxcso.xxcso_contract_managements.cancellation_offer_code                IS '契約解除申し出';
+COMMENT ON COLUMN xxcso.xxcso_contract_managements.contract_customer_id                   IS '契約先ＩＤ';
+COMMENT ON COLUMN xxcso.xxcso_contract_managements.install_account_id                     IS '設置先顧客ＩＤ';
+COMMENT ON COLUMN xxcso.xxcso_contract_managements.install_account_number                 IS '設置先顧客コード';
+COMMENT ON COLUMN xxcso.xxcso_contract_managements.install_party_name                     IS '設置先顧客名';
+COMMENT ON COLUMN xxcso.xxcso_contract_managements.install_postal_code                    IS '設置先郵便番号';
+COMMENT ON COLUMN xxcso.xxcso_contract_managements.install_state                          IS '設置先都道府県';
+COMMENT ON COLUMN xxcso.xxcso_contract_managements.install_city                           IS '設置先市区';
+COMMENT ON COLUMN xxcso.xxcso_contract_managements.install_address1                       IS '設置先住所１';
+COMMENT ON COLUMN xxcso.xxcso_contract_managements.install_address2                       IS '設置先住所２';
+COMMENT ON COLUMN xxcso.xxcso_contract_managements.install_date                           IS '設置日';
+COMMENT ON COLUMN xxcso.xxcso_contract_managements.install_location                       IS '設置場所';
+COMMENT ON COLUMN xxcso.xxcso_contract_managements.publish_dept_code                      IS '担当所属コード';
+COMMENT ON COLUMN xxcso.xxcso_contract_managements.install_code                           IS '物件コード';
+COMMENT ON COLUMN xxcso.xxcso_contract_managements.cooperate_flag                         IS 'マスタ連携フラグ';
+COMMENT ON COLUMN xxcso.xxcso_contract_managements.batch_proc_status                      IS 'バッチ処理ステータス';
+COMMENT ON COLUMN xxcso.xxcso_contract_managements.created_by                             IS '作成者';
+COMMENT ON COLUMN xxcso.xxcso_contract_managements.creation_date                          IS '作成日';
+COMMENT ON COLUMN xxcso.xxcso_contract_managements.last_updated_by                        IS '最終更新者';
+COMMENT ON COLUMN xxcso.xxcso_contract_managements.last_update_date                       IS '最終更新日';
+COMMENT ON COLUMN xxcso.xxcso_contract_managements.last_update_login                      IS '最終更新ログイン';
+COMMENT ON COLUMN xxcso.xxcso_contract_managements.request_id                             IS '要求ID';
+COMMENT ON COLUMN xxcso.xxcso_contract_managements.program_application_id                 IS 'コンカレント・プログラム・アプリケーションID';
+COMMENT ON COLUMN xxcso.xxcso_contract_managements.program_id                             IS 'コンカレント・プログラムID';
+COMMENT ON COLUMN xxcso.xxcso_contract_managements.program_update_date                    IS 'プログラム更新日';

@@ -1,0 +1,184 @@
+/*************************************************************************
+ * 
+ * TABLE Name      : xxcso_sls_prsn_mnthly_plns
+ * Description     : 営業員別月別計画テーブル
+ * MD.070          : 
+ * Version         : 1.1
+ * 
+ * Change Record
+ * ------------- ----- ------------ -------------------------------------
+ *  Date          Ver.  Editor       Description
+ * ------------- ----- ------------ -------------------------------------
+ *  2009/02/01    1.0  T.Maruyama    初回作成
+ *  2009/03/02    1.1  H.Ogawa       STORAGE句を追加
+ ************************************************************************/
+CREATE TABLE xxcso.xxcso_sls_prsn_mnthly_plns
+(
+  sls_prsn_mnthly_pln_id          NUMBER            NOT NULL,
+  base_code                       VARCHAR2(4)       NOT NULL,
+  employee_number                 VARCHAR2(5)       NOT NULL,
+  year_month                      VARCHAR2(6)       NOT NULL,
+  fiscal_year                     VARCHAR2(4)       NOT NULL,
+  input_type                      VARCHAR2(1),
+  group_number                    VARCHAR2(2),
+  group_leader_flag               VARCHAR2(1),
+  group_grade                     VARCHAR2(2),
+  office_rank_name                VARCHAR2(150),
+  pri_rslt_vd_new_serv_amt        NUMBER(9),
+  pri_rslt_vd_next_serv_amt       NUMBER(9),
+  pri_rslt_vd_exist_serv_amt      NUMBER(9),
+  pri_rslt_vd_total_amt           NUMBER(9),
+  pri_rslt_new_serv_amt           NUMBER(9),
+  pri_rslt_next_serv_amt          NUMBER(9),
+  pri_rslt_exist_serv_amt         NUMBER(9),
+  pri_rslt_total_amt              NUMBER(9),
+  pri_rslt_prsn_new_serv_amt      NUMBER(9),
+  pri_rslt_prsn_next_serv_amt     NUMBER(9),
+  pri_rslt_prsn_exist_serv_amt    NUMBER(9),
+  pri_rslt_prsn_total_amt         NUMBER(9),
+  bsc_sls_vd_new_serv_amt         NUMBER(9),
+  bsc_sls_vd_next_serv_amt        NUMBER(9),
+  bsc_sls_vd_exist_serv_amt       NUMBER(9),
+  bsc_sls_vd_total_amt            NUMBER(9),
+  bsc_sls_new_serv_amt            NUMBER(9),
+  bsc_sls_next_serv_amt           NUMBER(9),
+  bsc_sls_exist_serv_amt          NUMBER(9),
+  bsc_sls_total_amt               NUMBER(9),
+  bsc_sls_prsn_new_serv_amt       NUMBER(9),
+  bsc_sls_prsn_next_serv_amt      NUMBER(9),
+  bsc_sls_prsn_exist_serv_amt     NUMBER(9),
+  bsc_sls_prsn_total_amt          NUMBER(9),
+  tgt_sales_vd_new_serv_amt       NUMBER(9),
+  tgt_sales_vd_next_serv_amt      NUMBER(9),
+  tgt_sales_vd_exist_serv_amt     NUMBER(9),
+  tgt_sales_vd_total_amt          NUMBER(9),
+  tgt_sales_new_serv_amt          NUMBER(9),
+  tgt_sales_next_serv_amt         NUMBER(9),
+  tgt_sales_exist_serv_amt        NUMBER(9),
+  tgt_sales_total_amt             NUMBER(9),
+  tgt_sales_prsn_new_serv_amt     NUMBER(9),
+  tgt_sales_prsn_next_serv_amt    NUMBER(9),
+  tgt_sales_prsn_exist_serv_amt   NUMBER(9),
+  tgt_sales_prsn_total_amt        NUMBER(9),
+  rslt_vd_new_serv_amt            NUMBER(9),
+  rslt_vd_next_serv_amt           NUMBER(9),
+  rslt_vd_exist_serv_amt          NUMBER(9),
+  rslt_vd_total_amt               NUMBER(9),
+  rslt_new_serv_amt               NUMBER(9),
+  rslt_next_serv_amt              NUMBER(9),
+  rslt_exist_serv_amt             NUMBER(9),
+  rslt_total_amt                  NUMBER(9),
+  rslt_prsn_new_serv_amt          NUMBER(9),
+  rslt_prsn_next_serv_amt         NUMBER(9),
+  rslt_prsn_exist_serv_amt        NUMBER(9),
+  rslt_prsn_total_amt             NUMBER(9),
+  vis_vd_new_serv_amt             NUMBER(4),
+  vis_vd_next_serv_amt            NUMBER(4),
+  vis_vd_exist_serv_amt           NUMBER(4),
+  vis_vd_total_amt                NUMBER(4),
+  vis_new_serv_amt                NUMBER(4),
+  vis_next_serv_amt               NUMBER(4),
+  vis_exist_serv_amt              NUMBER(4),
+  vis_total_amt                   NUMBER(4),
+  vis_prsn_new_serv_amt           NUMBER(4),
+  vis_prsn_next_serv_amt          NUMBER(4),
+  vis_prsn_exist_serv_amt         NUMBER(4),
+  vis_prsn_total_amt              NUMBER(4),
+  data_last_update_func_type      VARCHAR2(1),
+  created_by                      NUMBER(15)        NOT NULL,
+  creation_date                   DATE              NOT NULL,
+  last_updated_by                 NUMBER(15)        NOT NULL,
+  last_update_date                DATE              NOT NULL,
+  last_update_login               NUMBER(15),
+  request_id                      NUMBER(15),
+  program_application_id          NUMBER(15),
+  program_id                      NUMBER(15),
+  program_update_date             DATE,
+  CONSTRAINT xxcso_sls_prsn_mnthly_plns_pk PRIMARY KEY ( sls_prsn_mnthly_pln_id )
+  USING INDEX TABLESPACE xxidx2
+)
+PCTFREE 10 PCTUSED 60 INITRANS 1 STORAGE ( INITIAL 2M)
+;
+--
+COMMENT ON TABLE xxcso.xxcso_sls_prsn_mnthly_plns IS '営業員別月別計画テーブル';
+--
+COMMENT ON COLUMN xxcso.xxcso_sls_prsn_mnthly_plns.sls_prsn_mnthly_pln_id                 IS '営業員別月別計画ＩＤ';
+COMMENT ON COLUMN xxcso.xxcso_sls_prsn_mnthly_plns.base_code                              IS '拠点ＣＤ';
+COMMENT ON COLUMN xxcso.xxcso_sls_prsn_mnthly_plns.employee_number                        IS '営業員ＣＤ';
+COMMENT ON COLUMN xxcso.xxcso_sls_prsn_mnthly_plns.year_month                             IS '年月';
+COMMENT ON COLUMN xxcso.xxcso_sls_prsn_mnthly_plns.fiscal_year                            IS '年度';
+COMMENT ON COLUMN xxcso.xxcso_sls_prsn_mnthly_plns.input_type                             IS '入力区分';
+COMMENT ON COLUMN xxcso.xxcso_sls_prsn_mnthly_plns.group_number                           IS 'グループ番号';
+COMMENT ON COLUMN xxcso.xxcso_sls_prsn_mnthly_plns.group_leader_flag                      IS 'グループ長区分';
+COMMENT ON COLUMN xxcso.xxcso_sls_prsn_mnthly_plns.group_grade                            IS 'グループ内順序';
+COMMENT ON COLUMN xxcso.xxcso_sls_prsn_mnthly_plns.office_rank_name                       IS '職位名';
+COMMENT ON COLUMN xxcso.xxcso_sls_prsn_mnthly_plns.pri_rslt_vd_new_serv_amt               IS '前年実績（VD：新規貢献）';
+COMMENT ON COLUMN xxcso.xxcso_sls_prsn_mnthly_plns.pri_rslt_vd_next_serv_amt              IS '前年実績（VD：翌年貢献）';
+COMMENT ON COLUMN xxcso.xxcso_sls_prsn_mnthly_plns.pri_rslt_vd_exist_serv_amt             IS '前年実績（VD：既存売上）';
+COMMENT ON COLUMN xxcso.xxcso_sls_prsn_mnthly_plns.pri_rslt_vd_total_amt                  IS '前年実績（VD：計）';
+COMMENT ON COLUMN xxcso.xxcso_sls_prsn_mnthly_plns.pri_rslt_new_serv_amt                  IS '前年実績（VD以外：新規貢献）';
+COMMENT ON COLUMN xxcso.xxcso_sls_prsn_mnthly_plns.pri_rslt_next_serv_amt                 IS '前年実績（VD以外：翌年貢献）';
+COMMENT ON COLUMN xxcso.xxcso_sls_prsn_mnthly_plns.pri_rslt_exist_serv_amt                IS '前年実績（VD以外：既存売上）';
+COMMENT ON COLUMN xxcso.xxcso_sls_prsn_mnthly_plns.pri_rslt_total_amt                     IS '前年実績（VD以外：計）';
+COMMENT ON COLUMN xxcso.xxcso_sls_prsn_mnthly_plns.pri_rslt_prsn_new_serv_amt             IS '前年実績（営業員計：新規貢献）';
+COMMENT ON COLUMN xxcso.xxcso_sls_prsn_mnthly_plns.pri_rslt_prsn_next_serv_amt            IS '前年実績（営業員計：翌年貢献）';
+COMMENT ON COLUMN xxcso.xxcso_sls_prsn_mnthly_plns.pri_rslt_prsn_exist_serv_amt           IS '前年実績（営業員計：既存売上）';
+COMMENT ON COLUMN xxcso.xxcso_sls_prsn_mnthly_plns.pri_rslt_prsn_total_amt                IS '前年実績（営業員計：計）';
+COMMENT ON COLUMN xxcso.xxcso_sls_prsn_mnthly_plns.bsc_sls_vd_new_serv_amt                IS '基本売上（VD：新規貢献）';
+COMMENT ON COLUMN xxcso.xxcso_sls_prsn_mnthly_plns.bsc_sls_vd_next_serv_amt               IS '基本売上（VD：翌年貢献）';
+COMMENT ON COLUMN xxcso.xxcso_sls_prsn_mnthly_plns.bsc_sls_vd_exist_serv_amt              IS '基本売上（VD：既存売上）';
+COMMENT ON COLUMN xxcso.xxcso_sls_prsn_mnthly_plns.bsc_sls_vd_total_amt                   IS '基本売上（VD：計）';
+COMMENT ON COLUMN xxcso.xxcso_sls_prsn_mnthly_plns.bsc_sls_new_serv_amt                   IS '基本売上（VD以外：新規貢献）';
+COMMENT ON COLUMN xxcso.xxcso_sls_prsn_mnthly_plns.bsc_sls_next_serv_amt                  IS '基本売上（VD以外：翌年貢献）';
+COMMENT ON COLUMN xxcso.xxcso_sls_prsn_mnthly_plns.bsc_sls_exist_serv_amt                 IS '基本売上（VD以外：既存売上）';
+COMMENT ON COLUMN xxcso.xxcso_sls_prsn_mnthly_plns.bsc_sls_total_amt                      IS '基本売上（VD以外：計）';
+COMMENT ON COLUMN xxcso.xxcso_sls_prsn_mnthly_plns.bsc_sls_prsn_new_serv_amt              IS '基本売上（営業員計：新規貢献）';
+COMMENT ON COLUMN xxcso.xxcso_sls_prsn_mnthly_plns.bsc_sls_prsn_next_serv_amt             IS '基本売上（営業員計：翌年貢献）';
+COMMENT ON COLUMN xxcso.xxcso_sls_prsn_mnthly_plns.bsc_sls_prsn_exist_serv_amt            IS '基本売上（営業員計：既存売上）';
+COMMENT ON COLUMN xxcso.xxcso_sls_prsn_mnthly_plns.bsc_sls_prsn_total_amt                 IS '基本売上（営業員計：計）';
+COMMENT ON COLUMN xxcso.xxcso_sls_prsn_mnthly_plns.tgt_sales_vd_new_serv_amt              IS '目標売上（VD：新規貢献）';
+COMMENT ON COLUMN xxcso.xxcso_sls_prsn_mnthly_plns.tgt_sales_vd_next_serv_amt             IS '目標売上（VD：翌年貢献）';
+COMMENT ON COLUMN xxcso.xxcso_sls_prsn_mnthly_plns.tgt_sales_vd_exist_serv_amt            IS '目標売上（VD：既存売上）';
+COMMENT ON COLUMN xxcso.xxcso_sls_prsn_mnthly_plns.tgt_sales_vd_total_amt                 IS '目標売上（VD：計）';
+COMMENT ON COLUMN xxcso.xxcso_sls_prsn_mnthly_plns.tgt_sales_new_serv_amt                 IS '目標売上（VD以外：新規貢献）';
+COMMENT ON COLUMN xxcso.xxcso_sls_prsn_mnthly_plns.tgt_sales_next_serv_amt                IS '目標売上（VD以外：翌年貢献）';
+COMMENT ON COLUMN xxcso.xxcso_sls_prsn_mnthly_plns.tgt_sales_exist_serv_amt               IS '目標売上（VD以外：既存売上）';
+COMMENT ON COLUMN xxcso.xxcso_sls_prsn_mnthly_plns.tgt_sales_total_amt                    IS '目標売上（VD以外：計）';
+COMMENT ON COLUMN xxcso.xxcso_sls_prsn_mnthly_plns.tgt_sales_prsn_new_serv_amt            IS '目標売上（営業員計：新規貢献）';
+COMMENT ON COLUMN xxcso.xxcso_sls_prsn_mnthly_plns.tgt_sales_prsn_next_serv_amt           IS '目標売上（営業員計：翌年貢献）';
+COMMENT ON COLUMN xxcso.xxcso_sls_prsn_mnthly_plns.tgt_sales_prsn_exist_serv_amt          IS '目標売上（営業員計：既存売上）';
+COMMENT ON COLUMN xxcso.xxcso_sls_prsn_mnthly_plns.tgt_sales_prsn_total_amt               IS '目標売上（営業員計：計）';
+COMMENT ON COLUMN xxcso.xxcso_sls_prsn_mnthly_plns.rslt_vd_new_serv_amt                   IS '実績（VD：新規貢献）';
+COMMENT ON COLUMN xxcso.xxcso_sls_prsn_mnthly_plns.rslt_vd_next_serv_amt                  IS '実績（VD：翌年貢献）';
+COMMENT ON COLUMN xxcso.xxcso_sls_prsn_mnthly_plns.rslt_vd_exist_serv_amt                 IS '実績（VD：既存売上）';
+COMMENT ON COLUMN xxcso.xxcso_sls_prsn_mnthly_plns.rslt_vd_total_amt                      IS '実績（VD：計）';
+COMMENT ON COLUMN xxcso.xxcso_sls_prsn_mnthly_plns.rslt_new_serv_amt                      IS '実績（VD以外：新規貢献）';
+COMMENT ON COLUMN xxcso.xxcso_sls_prsn_mnthly_plns.rslt_next_serv_amt                     IS '実績（VD以外：翌年貢献）';
+COMMENT ON COLUMN xxcso.xxcso_sls_prsn_mnthly_plns.rslt_exist_serv_amt                    IS '実績（VD以外：既存売上）';
+COMMENT ON COLUMN xxcso.xxcso_sls_prsn_mnthly_plns.rslt_total_amt                         IS '実績（VD以外：計）';
+COMMENT ON COLUMN xxcso.xxcso_sls_prsn_mnthly_plns.rslt_prsn_new_serv_amt                 IS '実績（営業員計：新規貢献）';
+COMMENT ON COLUMN xxcso.xxcso_sls_prsn_mnthly_plns.rslt_prsn_next_serv_amt                IS '実績（営業員計：翌年貢献）';
+COMMENT ON COLUMN xxcso.xxcso_sls_prsn_mnthly_plns.rslt_prsn_exist_serv_amt               IS '実績（営業員計：既存売上）';
+COMMENT ON COLUMN xxcso.xxcso_sls_prsn_mnthly_plns.rslt_prsn_total_amt                    IS '実績（営業員計：計）';
+COMMENT ON COLUMN xxcso.xxcso_sls_prsn_mnthly_plns.vis_vd_new_serv_amt                    IS '訪問（VD：新規貢献）';
+COMMENT ON COLUMN xxcso.xxcso_sls_prsn_mnthly_plns.vis_vd_next_serv_amt                   IS '訪問（VD：翌年貢献）';
+COMMENT ON COLUMN xxcso.xxcso_sls_prsn_mnthly_plns.vis_vd_exist_serv_amt                  IS '訪問（VD：既存売上）';
+COMMENT ON COLUMN xxcso.xxcso_sls_prsn_mnthly_plns.vis_vd_total_amt                       IS '訪問（VD：計）';
+COMMENT ON COLUMN xxcso.xxcso_sls_prsn_mnthly_plns.vis_new_serv_amt                       IS '訪問（VD以外：新規貢献）';
+COMMENT ON COLUMN xxcso.xxcso_sls_prsn_mnthly_plns.vis_next_serv_amt                      IS '訪問（VD以外：翌年貢献）';
+COMMENT ON COLUMN xxcso.xxcso_sls_prsn_mnthly_plns.vis_exist_serv_amt                     IS '訪問（VD以外：既存売上）';
+COMMENT ON COLUMN xxcso.xxcso_sls_prsn_mnthly_plns.vis_total_amt                          IS '訪問（VD以外：計）';
+COMMENT ON COLUMN xxcso.xxcso_sls_prsn_mnthly_plns.vis_prsn_new_serv_amt                  IS '訪問（営業員計：新規貢献）';
+COMMENT ON COLUMN xxcso.xxcso_sls_prsn_mnthly_plns.vis_prsn_next_serv_amt                 IS '訪問（営業員計：翌年貢献）';
+COMMENT ON COLUMN xxcso.xxcso_sls_prsn_mnthly_plns.vis_prsn_exist_serv_amt                IS '訪問（営業員計：既存売上）';
+COMMENT ON COLUMN xxcso.xxcso_sls_prsn_mnthly_plns.vis_prsn_total_amt                     IS '訪問（営業員計：計）';
+COMMENT ON COLUMN xxcso.xxcso_sls_prsn_mnthly_plns.data_last_update_func_type             IS 'データ最終更新機能区分';
+COMMENT ON COLUMN xxcso.xxcso_sls_prsn_mnthly_plns.created_by                             IS '作成者';
+COMMENT ON COLUMN xxcso.xxcso_sls_prsn_mnthly_plns.creation_date                          IS '作成日';
+COMMENT ON COLUMN xxcso.xxcso_sls_prsn_mnthly_plns.last_updated_by                        IS '最終更新者';
+COMMENT ON COLUMN xxcso.xxcso_sls_prsn_mnthly_plns.last_update_date                       IS '最終更新日';
+COMMENT ON COLUMN xxcso.xxcso_sls_prsn_mnthly_plns.last_update_login                      IS '最終更新ログイン';
+COMMENT ON COLUMN xxcso.xxcso_sls_prsn_mnthly_plns.request_id                             IS '要求ID';
+COMMENT ON COLUMN xxcso.xxcso_sls_prsn_mnthly_plns.program_application_id                 IS 'コンカレント・プログラム・アプリケーションID';
+COMMENT ON COLUMN xxcso.xxcso_sls_prsn_mnthly_plns.program_id                             IS 'コンカレント・プログラムID';
+COMMENT ON COLUMN xxcso.xxcso_sls_prsn_mnthly_plns.program_update_date                    IS 'プログラム更新日';

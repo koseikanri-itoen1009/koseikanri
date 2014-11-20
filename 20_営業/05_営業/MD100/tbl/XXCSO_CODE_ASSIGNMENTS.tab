@@ -1,0 +1,50 @@
+/*************************************************************************
+ * 
+ * TABLE Name      : xxcso_code_assignments
+ * Description     : 採番テーブル
+ * MD.070          : 
+ * Version         : 1.1
+ * 
+ * Change Record
+ * ------------- ----- ------------ -------------------------------------
+ *  Date          Ver.  Editor       Description
+ * ------------- ----- ------------ -------------------------------------
+ *  2009/02/01    1.0  T.Maruyama    初回作成
+ *  2009/03/02    1.1  H.Ogawa       STORAGE句を追加
+ ************************************************************************/
+CREATE TABLE xxcso.xxcso_code_assignments
+(
+  code_assignment_type            VARCHAR2(1)       NOT NULL,
+  base_code                       VARCHAR2(4),
+  fiscal_year                     VARCHAR2(4),
+  process_date                    DATE,
+  seq_number                      NUMBER(7)         NOT NULL,
+  created_by                      NUMBER(15),
+  creation_date                   DATE,
+  last_updated_by                 NUMBER(15),
+  last_update_date                DATE,
+  last_update_login               NUMBER(15),
+  request_id                      NUMBER(15),
+  program_application_id          NUMBER(15),
+  program_id                      NUMBER(15),
+  program_update_date             DATE
+)
+PCTFREE 20 PCTUSED 40 INITRANS 16 STORAGE ( INITIAL 2M)
+;
+--
+COMMENT ON TABLE xxcso.xxcso_code_assignments IS '採番テーブル';
+--
+COMMENT ON COLUMN xxcso.xxcso_code_assignments.code_assignment_type                   IS '採番種別';
+COMMENT ON COLUMN xxcso.xxcso_code_assignments.base_code                              IS '拠点コード';
+COMMENT ON COLUMN xxcso.xxcso_code_assignments.fiscal_year                            IS '年度';
+COMMENT ON COLUMN xxcso.xxcso_code_assignments.process_date                           IS '業務処理日付';
+COMMENT ON COLUMN xxcso.xxcso_code_assignments.seq_number                             IS '連番';
+COMMENT ON COLUMN xxcso.xxcso_code_assignments.created_by                             IS '作成者';
+COMMENT ON COLUMN xxcso.xxcso_code_assignments.creation_date                          IS '作成日';
+COMMENT ON COLUMN xxcso.xxcso_code_assignments.last_updated_by                        IS '最終更新者';
+COMMENT ON COLUMN xxcso.xxcso_code_assignments.last_update_date                       IS '最終更新日';
+COMMENT ON COLUMN xxcso.xxcso_code_assignments.last_update_login                      IS '最終更新ログイン';
+COMMENT ON COLUMN xxcso.xxcso_code_assignments.request_id                             IS '要求ID';
+COMMENT ON COLUMN xxcso.xxcso_code_assignments.program_application_id                 IS 'コンカレント・プログラム・アプリケーションID';
+COMMENT ON COLUMN xxcso.xxcso_code_assignments.program_id                             IS 'コンカレント・プログラムID';
+COMMENT ON COLUMN xxcso.xxcso_code_assignments.program_update_date                    IS 'プログラム更新日';

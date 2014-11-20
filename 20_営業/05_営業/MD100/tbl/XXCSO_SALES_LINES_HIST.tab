@@ -1,0 +1,74 @@
+/*************************************************************************
+ * 
+ * TABLE Name      : xxcso_sales_lines_hist
+ * Description     : 商談決定情報履歴明細テーブル
+ * MD.070          : 
+ * Version         : 1.1
+ * 
+ * Change Record
+ * ------------- ----- ------------ -------------------------------------
+ *  Date          Ver.  Editor       Description
+ * ------------- ----- ------------ -------------------------------------
+ *  2009/02/01    1.0  T.Maruyama    初回作成
+ *  2009/03/02    1.1  H.Ogawa       STORAGE句を追加
+ ************************************************************************/
+CREATE TABLE xxcso.xxcso_sales_lines_hist
+(
+  line_history_id                 NUMBER            NOT NULL,
+  header_history_id               NUMBER            NOT NULL,
+  quote_number                    VARCHAR2(12),
+  quote_revision_number           NUMBER(2),
+  inventory_item_id               NUMBER            NOT NULL,
+  sales_class_code                VARCHAR2(30),
+  sales_adopt_class_code          VARCHAR2(30),
+  sales_area_code                 VARCHAR2(30),
+  sales_schedule_date             DATE,
+  deliv_price                     NUMBER(7,2),
+  store_sales_price               NUMBER(8,2),
+  store_sales_price_inc_tax       NUMBER(8,2),
+  quotation_price                 NUMBER(7,2),
+  introduce_terms                 VARCHAR2(60),
+  sales_line_id                   NUMBER,
+  notified_flag                   VARCHAR2(1),
+  created_by                      NUMBER(15)        NOT NULL,
+  creation_date                   DATE              NOT NULL,
+  last_updated_by                 NUMBER(15)        NOT NULL,
+  last_update_date                DATE              NOT NULL,
+  last_update_login               NUMBER(15),
+  request_id                      NUMBER(15),
+  program_application_id          NUMBER(15),
+  program_id                      NUMBER(15),
+  program_update_date             DATE,
+  CONSTRAINT xxcso_sales_lines_hist_pk PRIMARY KEY ( line_history_id )
+  USING INDEX TABLESPACE xxidx2
+)
+PCTFREE 20 PCTUSED 40 INITRANS 8 STORAGE ( INITIAL 2M)
+;
+--
+COMMENT ON TABLE xxcso.xxcso_sales_lines_hist IS '商談決定情報履歴明細テーブル';
+--
+COMMENT ON COLUMN xxcso.xxcso_sales_lines_hist.line_history_id                        IS '商談決定情報履歴明細ID';
+COMMENT ON COLUMN xxcso.xxcso_sales_lines_hist.header_history_id                      IS '商談決定情報履歴ヘッダID';
+COMMENT ON COLUMN xxcso.xxcso_sales_lines_hist.quote_number                           IS '見積番号';
+COMMENT ON COLUMN xxcso.xxcso_sales_lines_hist.quote_revision_number                  IS '見積版';
+COMMENT ON COLUMN xxcso.xxcso_sales_lines_hist.inventory_item_id                      IS '品目ID';
+COMMENT ON COLUMN xxcso.xxcso_sales_lines_hist.sales_class_code                       IS '商品区分コード';
+COMMENT ON COLUMN xxcso.xxcso_sales_lines_hist.sales_adopt_class_code                 IS '採用区分コード';
+COMMENT ON COLUMN xxcso.xxcso_sales_lines_hist.sales_area_code                        IS '販売対象エリアコード';
+COMMENT ON COLUMN xxcso.xxcso_sales_lines_hist.sales_schedule_date                    IS '予定日';
+COMMENT ON COLUMN xxcso.xxcso_sales_lines_hist.deliv_price                            IS '店納価格';
+COMMENT ON COLUMN xxcso.xxcso_sales_lines_hist.store_sales_price                      IS '売価（税抜）';
+COMMENT ON COLUMN xxcso.xxcso_sales_lines_hist.store_sales_price_inc_tax              IS '売価（税込）';
+COMMENT ON COLUMN xxcso.xxcso_sales_lines_hist.quotation_price                        IS '建値';
+COMMENT ON COLUMN xxcso.xxcso_sales_lines_hist.introduce_terms                        IS '導入条件';
+COMMENT ON COLUMN xxcso.xxcso_sales_lines_hist.sales_line_id                          IS '商談決定情報明細ID';
+COMMENT ON COLUMN xxcso.xxcso_sales_lines_hist.notified_flag                          IS '通知済フラグ';
+COMMENT ON COLUMN xxcso.xxcso_sales_lines_hist.created_by                             IS '作成者';
+COMMENT ON COLUMN xxcso.xxcso_sales_lines_hist.creation_date                          IS '作成日';
+COMMENT ON COLUMN xxcso.xxcso_sales_lines_hist.last_updated_by                        IS '最終更新者';
+COMMENT ON COLUMN xxcso.xxcso_sales_lines_hist.last_update_date                       IS '最終更新日';
+COMMENT ON COLUMN xxcso.xxcso_sales_lines_hist.last_update_login                      IS '最終更新ログイン';
+COMMENT ON COLUMN xxcso.xxcso_sales_lines_hist.request_id                             IS '要求ID';
+COMMENT ON COLUMN xxcso.xxcso_sales_lines_hist.program_application_id                 IS 'コンカレント・プログラム・アプリケーションID';
+COMMENT ON COLUMN xxcso.xxcso_sales_lines_hist.program_id                             IS 'コンカレント・プログラムID';
+COMMENT ON COLUMN xxcso.xxcso_sales_lines_hist.program_update_date                    IS 'プログラム更新日';

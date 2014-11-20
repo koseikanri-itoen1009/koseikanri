@@ -1,0 +1,72 @@
+/*************************************************************************
+ * 
+ * TABLE Name      : xxcso_ib_info_h
+ * Description     : 物件関連情報変更履歴テーブル
+ * MD.070          : 
+ * Version         : 1.1
+ * 
+ * Change Record
+ * ------------- ----- ------------ -------------------------------------
+ *  Date          Ver.  Editor       Description
+ * ------------- ----- ------------ -------------------------------------
+ *  2009/02/01    1.0  T.Maruyama    初回作成
+ *  2009/03/02    1.1  H.Ogawa       STORAGE句を追加
+ ************************************************************************/
+CREATE TABLE xxcso.xxcso_ib_info_h
+(
+  install_code                    VARCHAR2(10)      NOT NULL,
+  history_creation_date           DATE              NOT NULL,
+  interface_flag                  VARCHAR2(1)       NOT NULL,
+  po_number                       VARCHAR2(20),
+  manufacturer_name               VARCHAR2(50),
+  age_type                        VARCHAR2(50),
+  un_number                       VARCHAR2(14),
+  install_number                  VARCHAR2(14),
+  quantity                        NUMBER(12),
+  base_code                       VARCHAR2(4),
+  owner_company_type              VARCHAR2(4),
+  install_name                    VARCHAR2(30),
+  install_address                 VARCHAR2(600),
+  logical_delete_flag             VARCHAR2(1)       NOT NULL,
+  account_number                  VARCHAR2(9),
+  created_by                      NUMBER(15)        NOT NULL,
+  creation_date                   DATE              NOT NULL,
+  last_updated_by                 NUMBER(15)        NOT NULL,
+  last_update_date                DATE              NOT NULL,
+  last_update_login               NUMBER(15),
+  request_id                      NUMBER(15),
+  program_application_id          NUMBER(15),
+  program_id                      NUMBER(15),
+  program_update_date             DATE,
+  CONSTRAINT xxcso_ib_info_h_pk PRIMARY KEY ( install_code )
+  USING INDEX TABLESPACE xxidx2
+)
+PCTFREE 10 PCTUSED 60 INITRANS 1 STORAGE ( INITIAL 2M)
+;
+--
+COMMENT ON TABLE xxcso.xxcso_ib_info_h IS '物件関連情報変更履歴テーブル';
+--
+COMMENT ON COLUMN xxcso.xxcso_ib_info_h.install_code                           IS '物件コード';
+COMMENT ON COLUMN xxcso.xxcso_ib_info_h.history_creation_date                  IS '履歴作成日';
+COMMENT ON COLUMN xxcso.xxcso_ib_info_h.interface_flag                         IS '連携済フラグ';
+COMMENT ON COLUMN xxcso.xxcso_ib_info_h.po_number                              IS '発注番号';
+COMMENT ON COLUMN xxcso.xxcso_ib_info_h.manufacturer_name                      IS 'メーカー名';
+COMMENT ON COLUMN xxcso.xxcso_ib_info_h.age_type                               IS '年式';
+COMMENT ON COLUMN xxcso.xxcso_ib_info_h.un_number                              IS '機種';
+COMMENT ON COLUMN xxcso.xxcso_ib_info_h.install_number                         IS '機番';
+COMMENT ON COLUMN xxcso.xxcso_ib_info_h.quantity                               IS '数量';
+COMMENT ON COLUMN xxcso.xxcso_ib_info_h.base_code                              IS '拠点コード';
+COMMENT ON COLUMN xxcso.xxcso_ib_info_h.owner_company_type                     IS '本社／工場区分';
+COMMENT ON COLUMN xxcso.xxcso_ib_info_h.install_name                           IS '設置先名';
+COMMENT ON COLUMN xxcso.xxcso_ib_info_h.install_address                        IS '設置先住所';
+COMMENT ON COLUMN xxcso.xxcso_ib_info_h.logical_delete_flag                    IS '論理削除フラグ';
+COMMENT ON COLUMN xxcso.xxcso_ib_info_h.account_number                         IS '顧客コード';
+COMMENT ON COLUMN xxcso.xxcso_ib_info_h.created_by                             IS '作成者';
+COMMENT ON COLUMN xxcso.xxcso_ib_info_h.creation_date                          IS '作成日';
+COMMENT ON COLUMN xxcso.xxcso_ib_info_h.last_updated_by                        IS '最終更新者';
+COMMENT ON COLUMN xxcso.xxcso_ib_info_h.last_update_date                       IS '最終更新日';
+COMMENT ON COLUMN xxcso.xxcso_ib_info_h.last_update_login                      IS '最終更新ログイン';
+COMMENT ON COLUMN xxcso.xxcso_ib_info_h.request_id                             IS '要求ID';
+COMMENT ON COLUMN xxcso.xxcso_ib_info_h.program_application_id                 IS 'コンカレント・プログラム・アプリケーションID';
+COMMENT ON COLUMN xxcso.xxcso_ib_info_h.program_id                             IS 'コンカレント・プログラムID';
+COMMENT ON COLUMN xxcso.xxcso_ib_info_h.program_update_date                    IS 'プログラム更新日';

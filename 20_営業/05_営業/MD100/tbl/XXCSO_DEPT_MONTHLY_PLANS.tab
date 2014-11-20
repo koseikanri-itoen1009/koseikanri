@@ -1,0 +1,76 @@
+/*************************************************************************
+ * 
+ * TABLE Name      : xxcso_dept_monthly_plans
+ * Description     : 拠点別月別計画テーブル
+ * MD.070          : 
+ * Version         : 1.1
+ * 
+ * Change Record
+ * ------------- ----- ------------ -------------------------------------
+ *  Date          Ver.  Editor       Description
+ * ------------- ----- ------------ -------------------------------------
+ *  2009/02/01    1.0  T.Maruyama    初回作成
+ *  2009/03/02    1.1  H.Ogawa       STORAGE句を追加
+ ************************************************************************/
+CREATE TABLE xxcso.xxcso_dept_monthly_plans
+(
+  dept_monthly_plan_id            NUMBER            NOT NULL,
+  base_code                       VARCHAR2(4)       NOT NULL,
+  year_month                      VARCHAR2(6)       NOT NULL,
+  fiscal_year                     VARCHAR2(4)       NOT NULL,
+  input_div                       VARCHAR2(1),
+  basic_new_service_amt           NUMBER(12),
+  basic_next_service_amt          NUMBER(12),
+  basic_exist_service_amt         NUMBER(12),
+  basic_discount_amt              NUMBER(12),
+  basic_sales_total_amt           NUMBER(12),
+  visit                           NUMBER(12),
+  target_new_service_amt          NUMBER(12),
+  target_next_service_amt         NUMBER(12),
+  target_exist_service_amt        NUMBER(12),
+  target_discount_amt             NUMBER(12),
+  target_sales_total_amt          NUMBER(12),
+  sales_plan_rel_div              VARCHAR2(1)       NOT NULL,
+  created_by                      NUMBER(15)        NOT NULL,
+  creation_date                   DATE              NOT NULL,
+  last_updated_by                 NUMBER(15)        NOT NULL,
+  last_update_date                DATE              NOT NULL,
+  last_update_login               NUMBER(15),
+  request_id                      NUMBER(15),
+  program_application_id          NUMBER(15),
+  program_id                      NUMBER(15),
+  program_update_date             DATE,
+  CONSTRAINT xxcso_dept_monthly_plans_pk PRIMARY KEY ( dept_monthly_plan_id )
+  USING INDEX TABLESPACE xxidx2
+)
+PCTFREE 10 PCTUSED 60 INITRANS 1 STORAGE ( INITIAL 2M)
+;
+--
+COMMENT ON TABLE xxcso.xxcso_dept_monthly_plans IS '拠点別月別計画テーブル';
+--
+COMMENT ON COLUMN xxcso.xxcso_dept_monthly_plans.dept_monthly_plan_id                   IS '拠点別月別計画ＩＤ';
+COMMENT ON COLUMN xxcso.xxcso_dept_monthly_plans.base_code                              IS '拠点ＣＤ';
+COMMENT ON COLUMN xxcso.xxcso_dept_monthly_plans.year_month                             IS '年月';
+COMMENT ON COLUMN xxcso.xxcso_dept_monthly_plans.fiscal_year                            IS '年度';
+COMMENT ON COLUMN xxcso.xxcso_dept_monthly_plans.input_div                              IS '入力区分';
+COMMENT ON COLUMN xxcso.xxcso_dept_monthly_plans.basic_new_service_amt                  IS '基本新規貢献';
+COMMENT ON COLUMN xxcso.xxcso_dept_monthly_plans.basic_next_service_amt                 IS '基本翌年貢献';
+COMMENT ON COLUMN xxcso.xxcso_dept_monthly_plans.basic_exist_service_amt                IS '基本既存売上';
+COMMENT ON COLUMN xxcso.xxcso_dept_monthly_plans.basic_discount_amt                     IS '基本値引';
+COMMENT ON COLUMN xxcso.xxcso_dept_monthly_plans.basic_sales_total_amt                  IS '基本合計売上';
+COMMENT ON COLUMN xxcso.xxcso_dept_monthly_plans.visit                                  IS '訪問';
+COMMENT ON COLUMN xxcso.xxcso_dept_monthly_plans.target_new_service_amt                 IS '目標新規貢献';
+COMMENT ON COLUMN xxcso.xxcso_dept_monthly_plans.target_next_service_amt                IS '目標翌年貢献';
+COMMENT ON COLUMN xxcso.xxcso_dept_monthly_plans.target_exist_service_amt               IS '目標既存売上';
+COMMENT ON COLUMN xxcso.xxcso_dept_monthly_plans.target_discount_amt                    IS '目標値引';
+COMMENT ON COLUMN xxcso.xxcso_dept_monthly_plans.target_sales_total_amt                 IS '目標合計売上';
+COMMENT ON COLUMN xxcso.xxcso_dept_monthly_plans.sales_plan_rel_div                     IS '売上計画開示区分';
+COMMENT ON COLUMN xxcso.xxcso_dept_monthly_plans.created_by                             IS '作成者';
+COMMENT ON COLUMN xxcso.xxcso_dept_monthly_plans.creation_date                          IS '作成日';
+COMMENT ON COLUMN xxcso.xxcso_dept_monthly_plans.last_updated_by                        IS '最終更新者';
+COMMENT ON COLUMN xxcso.xxcso_dept_monthly_plans.last_update_date                       IS '最終更新日';
+COMMENT ON COLUMN xxcso.xxcso_dept_monthly_plans.last_update_login                      IS '最終更新ログイン';
+COMMENT ON COLUMN xxcso.xxcso_dept_monthly_plans.request_id                             IS '要求ID';
+COMMENT ON COLUMN xxcso.xxcso_dept_monthly_plans.program_application_id                 IS 'コンカレント・プログラム・アプリケーションID';
+COMMENT ON COLUMN xxcso.xxcso_dept_monthly_plans.program_id                             IS 'コンカレント・プログラムID';
+COMMENT ON COLUMN xxcso.xxcso_dept_monthly_plans.program_update_date                    IS 'プログラム更新日';

@@ -1,0 +1,172 @@
+/*************************************************************************
+ * 
+ * TABLE Name      : xxcso_in_item_data
+ * Description     : 物件データワークテーブル
+ * MD.070          : 
+ * Version         : 1.1
+ * 
+ * Change Record
+ * ------------- ----- ------------ -------------------------------------
+ *  Date          Ver.  Editor       Description
+ * ------------- ----- ------------ -------------------------------------
+ *  2009/02/01    1.0  T.Maruyama    初回作成
+ *  2009/03/02    1.1  H.Ogawa       STORAGE句を追加
+ ************************************************************************/
+CREATE TABLE xxcso.xxcso_in_item_data
+(
+  install_code                    VARCHAR2(10)      NOT NULL,
+  un_number                       VARCHAR2(14),
+  install_number                  VARCHAR2(14),
+  machinery_kbn                   NUMBER(2),
+  manufacturer_code               VARCHAR2(4),
+  age_type                        VARCHAR2(4),
+  sele_number                     NUMBER(3),
+  special_machine1                VARCHAR2(2),
+  special_machine2                VARCHAR2(2),
+  special_machine3                VARCHAR2(2),
+  first_install_date              NUMBER(8),
+  counter_no                      NUMBER(6),
+  division_code                   VARCHAR2(6),
+  base_code                       VARCHAR2(4),
+  job_company_code                VARCHAR2(6),
+  location_code                   VARCHAR2(4),
+  last_job_slip_no                NUMBER(12),
+  last_job_kbn                    NUMBER(2),
+  last_job_going                  NUMBER(1),
+  last_job_completion_plan_date   NUMBER(8),
+  last_job_completion_date        NUMBER(8),
+  last_maintenance_contents       NUMBER(1),
+  last_install_slip_no            NUMBER(12),
+  last_install_kbn                NUMBER(2),
+  last_install_plan_date          NUMBER(8),
+  last_install_going              NUMBER(1),
+  machinery_status1               NUMBER(2),
+  machinery_status2               NUMBER(2),
+  machinery_status3               NUMBER(2),
+  stock_date                      NUMBER(8),
+  withdraw_company_code           VARCHAR2(6),
+  withdraw_location_code          VARCHAR2(4),
+  install_name                    VARCHAR2(40),
+  install_employee_name           VARCHAR2(20),
+  install_phone_number1           VARCHAR2(6),
+  install_phone_number2           VARCHAR2(6),
+  install_phone_number3           VARCHAR2(6),
+  install_postal_code             NUMBER(7),
+  install_address1                VARCHAR2(8),
+  install_address2                VARCHAR2(20),
+  install_address3                VARCHAR2(20),
+  install_address4                VARCHAR2(40),
+  install_address5                VARCHAR2(20),
+  disposal_approval_date          NUMBER(8),
+  resale_disposal_vendor          VARCHAR2(6),
+  resale_disposal_slip_no         NUMBER(12),
+  owner_company_code              VARCHAR2(4),
+  lease_start_date                NUMBER(8),
+  lease_charge                    NUMBER(7),
+  org_contract_number             VARCHAR2(15),
+  org_contract_line_number        NUMBER(3),
+  contract_date                   NUMBER(8),
+  contract_number                 VARCHAR2(15),
+  contract_line_number            NUMBER(3),
+  resale_disposal_flag            NUMBER(1),
+  resale_completion_kbn           NUMBER(1),
+  delete_flag                     NUMBER(1),
+  creation_employee_number        VARCHAR2(5),
+  creation_section_name           VARCHAR2(6),
+  creation_program_id             VARCHAR2(10),
+  update_employee_number          VARCHAR2(5),
+  update_section_name             VARCHAR2(6),
+  update_program_id               VARCHAR2(10),
+  creation_date_time              DATE,
+  update_date_time                DATE,
+  created_by                      NUMBER(15)        NOT NULL,
+  creation_date                   DATE              NOT NULL,
+  last_updated_by                 NUMBER(15)        NOT NULL,
+  last_update_date                DATE              NOT NULL,
+  last_update_login               NUMBER(15),
+  request_id                      NUMBER(15),
+  program_application_id          NUMBER(15),
+  program_id                      NUMBER(15),
+  program_update_date             DATE,
+  CONSTRAINT xxcso_in_item_data_pk PRIMARY KEY ( install_code )
+  USING INDEX TABLESPACE xxidx2
+)
+PCTFREE 10 PCTUSED 60 INITRANS 1 STORAGE ( INITIAL 2M)
+;
+--
+COMMENT ON TABLE xxcso.xxcso_in_item_data IS '物件データワークテーブル';
+--
+COMMENT ON COLUMN xxcso.xxcso_in_item_data.install_code                           IS '物件コード';
+COMMENT ON COLUMN xxcso.xxcso_in_item_data.un_number                              IS '機種';
+COMMENT ON COLUMN xxcso.xxcso_in_item_data.install_number                         IS '機番';
+COMMENT ON COLUMN xxcso.xxcso_in_item_data.machinery_kbn                          IS '機器区分';
+COMMENT ON COLUMN xxcso.xxcso_in_item_data.manufacturer_code                      IS 'メーカー';
+COMMENT ON COLUMN xxcso.xxcso_in_item_data.age_type                               IS '年式';
+COMMENT ON COLUMN xxcso.xxcso_in_item_data.sele_number                            IS 'セレ数';
+COMMENT ON COLUMN xxcso.xxcso_in_item_data.special_machine1                       IS '特殊機１';
+COMMENT ON COLUMN xxcso.xxcso_in_item_data.special_machine2                       IS '特殊機２';
+COMMENT ON COLUMN xxcso.xxcso_in_item_data.special_machine3                       IS '特殊機３';
+COMMENT ON COLUMN xxcso.xxcso_in_item_data.first_install_date                     IS '初回設置日';
+COMMENT ON COLUMN xxcso.xxcso_in_item_data.counter_no                             IS 'カウンターNo.';
+COMMENT ON COLUMN xxcso.xxcso_in_item_data.division_code                          IS '地区コード';
+COMMENT ON COLUMN xxcso.xxcso_in_item_data.base_code                              IS '拠点コード';
+COMMENT ON COLUMN xxcso.xxcso_in_item_data.job_company_code                       IS '作業会社コード';
+COMMENT ON COLUMN xxcso.xxcso_in_item_data.location_code                          IS '事業所コード';
+COMMENT ON COLUMN xxcso.xxcso_in_item_data.last_job_slip_no                       IS '最終作業伝票No.';
+COMMENT ON COLUMN xxcso.xxcso_in_item_data.last_job_kbn                           IS '最終作業区分';
+COMMENT ON COLUMN xxcso.xxcso_in_item_data.last_job_going                         IS '最終作業進捗';
+COMMENT ON COLUMN xxcso.xxcso_in_item_data.last_job_completion_plan_date          IS '最終作業完了予定日';
+COMMENT ON COLUMN xxcso.xxcso_in_item_data.last_job_completion_date               IS '最終作業完了日';
+COMMENT ON COLUMN xxcso.xxcso_in_item_data.last_maintenance_contents              IS '最終整備内容';
+COMMENT ON COLUMN xxcso.xxcso_in_item_data.last_install_slip_no                   IS '最終設置伝票No.';
+COMMENT ON COLUMN xxcso.xxcso_in_item_data.last_install_kbn                       IS '最終設置区分';
+COMMENT ON COLUMN xxcso.xxcso_in_item_data.last_install_plan_date                 IS '最終設置予定日';
+COMMENT ON COLUMN xxcso.xxcso_in_item_data.last_install_going                     IS '最終設置進捗';
+COMMENT ON COLUMN xxcso.xxcso_in_item_data.machinery_status1                      IS '機器状態1（稼動状態）';
+COMMENT ON COLUMN xxcso.xxcso_in_item_data.machinery_status2                      IS '機器状態2（状態詳細）';
+COMMENT ON COLUMN xxcso.xxcso_in_item_data.machinery_status3                      IS '機器状態3（廃棄情報）';
+COMMENT ON COLUMN xxcso.xxcso_in_item_data.stock_date                             IS '入庫日';
+COMMENT ON COLUMN xxcso.xxcso_in_item_data.withdraw_company_code                  IS '引揚会社コード';
+COMMENT ON COLUMN xxcso.xxcso_in_item_data.withdraw_location_code                 IS '引揚事業所コード';
+COMMENT ON COLUMN xxcso.xxcso_in_item_data.install_name                           IS '設置先名';
+COMMENT ON COLUMN xxcso.xxcso_in_item_data.install_employee_name                  IS '設置先担当者名';
+COMMENT ON COLUMN xxcso.xxcso_in_item_data.install_phone_number1                  IS '設置先TEL１';
+COMMENT ON COLUMN xxcso.xxcso_in_item_data.install_phone_number2                  IS '設置先TEL２';
+COMMENT ON COLUMN xxcso.xxcso_in_item_data.install_phone_number3                  IS '設置先TEL３';
+COMMENT ON COLUMN xxcso.xxcso_in_item_data.install_postal_code                    IS '設置先郵便番号';
+COMMENT ON COLUMN xxcso.xxcso_in_item_data.install_address1                       IS '設置先住所１';
+COMMENT ON COLUMN xxcso.xxcso_in_item_data.install_address2                       IS '設置先住所２';
+COMMENT ON COLUMN xxcso.xxcso_in_item_data.install_address3                       IS '設置先住所３';
+COMMENT ON COLUMN xxcso.xxcso_in_item_data.install_address4                       IS '設置先住所４';
+COMMENT ON COLUMN xxcso.xxcso_in_item_data.install_address5                       IS '設置先住所５';
+COMMENT ON COLUMN xxcso.xxcso_in_item_data.disposal_approval_date                 IS '廃棄決裁日';
+COMMENT ON COLUMN xxcso.xxcso_in_item_data.resale_disposal_vendor                 IS '転売廃棄業者';
+COMMENT ON COLUMN xxcso.xxcso_in_item_data.resale_disposal_slip_no                IS '転売廃棄伝票№';
+COMMENT ON COLUMN xxcso.xxcso_in_item_data.owner_company_code                     IS '所有者';
+COMMENT ON COLUMN xxcso.xxcso_in_item_data.lease_start_date                       IS 'リース開始日';
+COMMENT ON COLUMN xxcso.xxcso_in_item_data.lease_charge                           IS 'リース料';
+COMMENT ON COLUMN xxcso.xxcso_in_item_data.org_contract_number                    IS '原契約番号';
+COMMENT ON COLUMN xxcso.xxcso_in_item_data.org_contract_line_number               IS '原契約番号-枝番';
+COMMENT ON COLUMN xxcso.xxcso_in_item_data.contract_date                          IS '現契約日';
+COMMENT ON COLUMN xxcso.xxcso_in_item_data.contract_number                        IS '現契約番号';
+COMMENT ON COLUMN xxcso.xxcso_in_item_data.contract_line_number                   IS '現契約番号-枝番';
+COMMENT ON COLUMN xxcso.xxcso_in_item_data.resale_disposal_flag                   IS '転売廃棄状況フラグ';
+COMMENT ON COLUMN xxcso.xxcso_in_item_data.resale_completion_kbn                  IS '転売完了区分';
+COMMENT ON COLUMN xxcso.xxcso_in_item_data.delete_flag                            IS '削除フラグ';
+COMMENT ON COLUMN xxcso.xxcso_in_item_data.creation_employee_number               IS '作成担当者コード';
+COMMENT ON COLUMN xxcso.xxcso_in_item_data.creation_section_name                  IS '作成部署コード';
+COMMENT ON COLUMN xxcso.xxcso_in_item_data.creation_program_id                    IS '作成プログラムＩＤ';
+COMMENT ON COLUMN xxcso.xxcso_in_item_data.update_employee_number                 IS '更新担当者コード';
+COMMENT ON COLUMN xxcso.xxcso_in_item_data.update_section_name                    IS '更新部署コード';
+COMMENT ON COLUMN xxcso.xxcso_in_item_data.update_program_id                      IS '更新プログラムＩＤ';
+COMMENT ON COLUMN xxcso.xxcso_in_item_data.creation_date_time                     IS '作成日時時分秒';
+COMMENT ON COLUMN xxcso.xxcso_in_item_data.update_date_time                       IS '更新日時時分秒';
+COMMENT ON COLUMN xxcso.xxcso_in_item_data.created_by                             IS '作成者';
+COMMENT ON COLUMN xxcso.xxcso_in_item_data.creation_date                          IS '作成日';
+COMMENT ON COLUMN xxcso.xxcso_in_item_data.last_updated_by                        IS '最終更新者';
+COMMENT ON COLUMN xxcso.xxcso_in_item_data.last_update_date                       IS '最終更新日';
+COMMENT ON COLUMN xxcso.xxcso_in_item_data.last_update_login                      IS '最終更新ログイン';
+COMMENT ON COLUMN xxcso.xxcso_in_item_data.request_id                             IS '要求ID';
+COMMENT ON COLUMN xxcso.xxcso_in_item_data.program_application_id                 IS 'コンカレント・プログラム・アプリケーションID';
+COMMENT ON COLUMN xxcso.xxcso_in_item_data.program_id                             IS 'コンカレント・プログラムID';
+COMMENT ON COLUMN xxcso.xxcso_in_item_data.program_update_date                    IS 'プログラム更新日';

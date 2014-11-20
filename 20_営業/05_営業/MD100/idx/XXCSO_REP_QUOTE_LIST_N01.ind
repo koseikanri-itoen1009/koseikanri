@@ -1,0 +1,14 @@
+/*************************************************************************
+ * 
+ * INDEX Name      : 
+ * Description     : 
+ * MD.070          : 
+ * Version         : 1.0
+ * 
+ * Change Record
+ * ------------- ----- ------------ -------------------------------------
+ *  Date          Ver.  Editor       Description
+ * ------------- ----- ------------ -------------------------------------
+ *  2009/02/01    1.0  T.Maruyama    èââÒçÏê¨
+ ************************************************************************/
+CREATE INDEX xxcso.xxcso_rep_quote_list_n01 ON xxcso.xxcso_rep_quote_list ( quote_work_id, quote_header_id ) TABLESPACE xxidx2;

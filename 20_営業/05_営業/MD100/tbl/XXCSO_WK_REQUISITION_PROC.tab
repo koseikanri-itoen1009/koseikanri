@@ -1,0 +1,52 @@
+/*************************************************************************
+ * 
+ * TABLE Name      : xxcso_wk_requisition_proc
+ * Description     : 作業依頼／発注情報連携対象テーブル
+ * MD.070          : 
+ * Version         : 1.1
+ * 
+ * Change Record
+ * ------------- ----- ------------ -------------------------------------
+ *  Date          Ver.  Editor       Description
+ * ------------- ----- ------------ -------------------------------------
+ *  2009/02/01    1.0  T.Maruyama    初回作成
+ *  2009/03/02    1.1  H.Ogawa       STORAGE句を追加
+ ************************************************************************/
+CREATE TABLE xxcso.xxcso_wk_requisition_proc
+(
+  requisition_line_id             NUMBER            NOT NULL,
+  requisition_header_id           NUMBER            NOT NULL,
+  line_num                        NUMBER            NOT NULL,
+  interface_flag                  VARCHAR2(1)       NOT NULL,
+  interface_date                  DATE,
+  created_by                      NUMBER(15)        NOT NULL,
+  creation_date                   DATE              NOT NULL,
+  last_updated_by                 NUMBER(15)        NOT NULL,
+  last_update_date                DATE              NOT NULL,
+  last_update_login               NUMBER(15),
+  request_id                      NUMBER(15),
+  program_application_id          NUMBER(15),
+  program_id                      NUMBER(15),
+  program_update_date             DATE,
+  CONSTRAINT xxcso_wk_requisition_proc_pk PRIMARY KEY ( requisition_line_id )
+  USING INDEX TABLESPACE xxidx2
+)
+PCTFREE 10 PCTUSED 60 INITRANS 1 STORAGE ( INITIAL 2M)
+;
+--
+COMMENT ON TABLE xxcso.xxcso_wk_requisition_proc IS '作業依頼／発注情報連携対象テーブル';
+--
+COMMENT ON COLUMN xxcso.xxcso_wk_requisition_proc.requisition_line_id                    IS '発注依頼明細ID';
+COMMENT ON COLUMN xxcso.xxcso_wk_requisition_proc.requisition_header_id                  IS '発注依頼ヘッダID';
+COMMENT ON COLUMN xxcso.xxcso_wk_requisition_proc.line_num                               IS '発注依頼明細番号';
+COMMENT ON COLUMN xxcso.xxcso_wk_requisition_proc.interface_flag                         IS '連携済フラグ';
+COMMENT ON COLUMN xxcso.xxcso_wk_requisition_proc.interface_date                         IS '連携日';
+COMMENT ON COLUMN xxcso.xxcso_wk_requisition_proc.created_by                             IS '作成者';
+COMMENT ON COLUMN xxcso.xxcso_wk_requisition_proc.creation_date                          IS '作成日';
+COMMENT ON COLUMN xxcso.xxcso_wk_requisition_proc.last_updated_by                        IS '最終更新者';
+COMMENT ON COLUMN xxcso.xxcso_wk_requisition_proc.last_update_date                       IS '最終更新日';
+COMMENT ON COLUMN xxcso.xxcso_wk_requisition_proc.last_update_login                      IS '最終更新ログイン';
+COMMENT ON COLUMN xxcso.xxcso_wk_requisition_proc.request_id                             IS '要求ID';
+COMMENT ON COLUMN xxcso.xxcso_wk_requisition_proc.program_application_id                 IS 'コンカレント・プログラム・アプリケーションID';
+COMMENT ON COLUMN xxcso.xxcso_wk_requisition_proc.program_id                             IS 'コンカレント・プログラムID';
+COMMENT ON COLUMN xxcso.xxcso_wk_requisition_proc.program_update_date                    IS 'プログラム更新日';

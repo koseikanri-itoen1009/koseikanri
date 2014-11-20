@@ -1,0 +1,49 @@
+/*************************************************************************
+ * 
+ * TABLE Name      : xxcso_tmp_sales_request
+ * Description     : 商談決定情報承認依頼ワークテーブル
+ * MD.070          : 
+ * Version         : 1.0
+ * 
+ * Change Record
+ * ------------- ----- ------------ -------------------------------------
+ *  Date          Ver.  Editor       Description
+ * ------------- ----- ------------ -------------------------------------
+ *  2009/02/01    1.0  T.Maruyama    初回作成
+ ************************************************************************/
+CREATE GLOBAL TEMPORARY TABLE xxcso.xxcso_tmp_sales_request
+(
+  header_history_id               NUMBER,
+  lead_id                         NUMBER,
+  operation_mode                  VARCHAR2(30),
+  notify_subject                  VARCHAR2(200),
+  notify_comment                  VARCHAR2(500),
+  approval_user_name              VARCHAR2(100),
+  created_by                      NUMBER(15)        NOT NULL,
+  creation_date                   DATE              NOT NULL,
+  last_updated_by                 NUMBER(15)        NOT NULL,
+  last_update_date                DATE              NOT NULL,
+  last_update_login               NUMBER(15),
+  request_id                      NUMBER(15),
+  program_application_id          NUMBER(15),
+  program_id                      NUMBER(15),
+  program_update_date             DATE
+);
+--
+COMMENT ON TABLE xxcso.xxcso_tmp_sales_request IS '商談決定情報承認依頼ワークテーブル';
+--
+COMMENT ON COLUMN xxcso.xxcso_tmp_sales_request.header_history_id                      IS '商談決定情報履歴ヘッダID';
+COMMENT ON COLUMN xxcso.xxcso_tmp_sales_request.lead_id                                IS '商談ID';
+COMMENT ON COLUMN xxcso.xxcso_tmp_sales_request.operation_mode                         IS '操作モード';
+COMMENT ON COLUMN xxcso.xxcso_tmp_sales_request.notify_subject                         IS '通知件名';
+COMMENT ON COLUMN xxcso.xxcso_tmp_sales_request.notify_comment                         IS '通知コメント';
+COMMENT ON COLUMN xxcso.xxcso_tmp_sales_request.approval_user_name                     IS '承認ユーザー名';
+COMMENT ON COLUMN xxcso.xxcso_tmp_sales_request.created_by                             IS '作成者';
+COMMENT ON COLUMN xxcso.xxcso_tmp_sales_request.creation_date                          IS '作成日';
+COMMENT ON COLUMN xxcso.xxcso_tmp_sales_request.last_updated_by                        IS '最終更新者';
+COMMENT ON COLUMN xxcso.xxcso_tmp_sales_request.last_update_date                       IS '最終更新日';
+COMMENT ON COLUMN xxcso.xxcso_tmp_sales_request.last_update_login                      IS '最終更新ログイン';
+COMMENT ON COLUMN xxcso.xxcso_tmp_sales_request.request_id                             IS '要求ID';
+COMMENT ON COLUMN xxcso.xxcso_tmp_sales_request.program_application_id                 IS 'コンカレント・プログラム・アプリケーションID';
+COMMENT ON COLUMN xxcso.xxcso_tmp_sales_request.program_id                             IS 'コンカレント・プログラムID';
+COMMENT ON COLUMN xxcso.xxcso_tmp_sales_request.program_update_date                    IS 'プログラム更新日';

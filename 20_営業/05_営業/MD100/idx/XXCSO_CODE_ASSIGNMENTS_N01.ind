@@ -1,0 +1,14 @@
+/*************************************************************************
+ * 
+ * INDEX Name      : xxcso_code_assignments_n01
+ * Description     : 
+ * MD.070          : 
+ * Version         : 1.0
+ * 
+ * Change Record
+ * ------------- ----- ------------ -------------------------------------
+ *  Date          Ver.  Editor       Description
+ * ------------- ----- ------------ -------------------------------------
+ *  2009/02/01    1.0  T.Maruyama    èââÒçÏê¨
+ ************************************************************************/
+CREATE INDEX xxcso.xxcso_code_assignments_n01 ON xxcso.xxcso_code_assignments ( code_assignment_type, base_code, fiscal_year ) TABLESPACE xxidx2;

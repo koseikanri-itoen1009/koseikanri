@@ -1,0 +1,64 @@
+/*************************************************************************
+ * 
+ * TABLE Name      : xxcso_bank_accounts
+ * Description     : 銀行口座アドオンマスタ
+ * MD.070          : 
+ * Version         : 1.1
+ * 
+ * Change Record
+ * ------------- ----- ------------ -------------------------------------
+ *  Date          Ver.  Editor       Description
+ * ------------- ----- ------------ -------------------------------------
+ *  2009/02/01    1.0  T.Maruyama    初回作成
+ *  2009/03/02    1.1  H.Ogawa       STORAGE句を追加
+ ************************************************************************/
+CREATE TABLE xxcso.xxcso_bank_accounts
+(
+  bank_account_id                 NUMBER            NOT NULL,
+  delivery_id                     NUMBER            NOT NULL,
+  bank_number                     VARCHAR2(30),
+  bank_name                       VARCHAR2(60),
+  branch_number                   VARCHAR2(25),
+  branch_name                     VARCHAR2(60),
+  bank_account_type               VARCHAR2(25),
+  bank_account_number             VARCHAR2(30),
+  bank_account_name_kana          VARCHAR2(150),
+  bank_account_name_kanji         VARCHAR2(240),
+  bank_account_dummy_flag         VARCHAR2(1),
+  created_by                      NUMBER(15)        NOT NULL,
+  creation_date                   DATE              NOT NULL,
+  last_updated_by                 NUMBER(15)        NOT NULL,
+  last_update_date                DATE              NOT NULL,
+  last_update_login               NUMBER(15),
+  request_id                      NUMBER(15),
+  program_application_id          NUMBER(15),
+  program_id                      NUMBER(15),
+  program_update_date             DATE,
+  CONSTRAINT xxcso_bank_accounts_pk PRIMARY KEY ( bank_account_id )
+  USING INDEX TABLESPACE xxidx2
+)
+PCTFREE 20 PCTUSED 40 INITRANS 16 STORAGE ( INITIAL 2M)
+;
+--
+COMMENT ON TABLE xxcso.xxcso_bank_accounts IS '銀行口座アドオンマスタ';
+--
+COMMENT ON COLUMN xxcso.xxcso_bank_accounts.bank_account_id                        IS '銀行口座ＩＤ';
+COMMENT ON COLUMN xxcso.xxcso_bank_accounts.delivery_id                            IS '送付先ID';
+COMMENT ON COLUMN xxcso.xxcso_bank_accounts.bank_number                            IS '銀行番号';
+COMMENT ON COLUMN xxcso.xxcso_bank_accounts.bank_name                              IS '銀行名';
+COMMENT ON COLUMN xxcso.xxcso_bank_accounts.branch_number                          IS '支店番号';
+COMMENT ON COLUMN xxcso.xxcso_bank_accounts.branch_name                            IS '支店名';
+COMMENT ON COLUMN xxcso.xxcso_bank_accounts.bank_account_type                      IS '口座種別';
+COMMENT ON COLUMN xxcso.xxcso_bank_accounts.bank_account_number                    IS '口座番号';
+COMMENT ON COLUMN xxcso.xxcso_bank_accounts.bank_account_name_kana                 IS '口座名義カナ';
+COMMENT ON COLUMN xxcso.xxcso_bank_accounts.bank_account_name_kanji                IS '口座名義漢字';
+COMMENT ON COLUMN xxcso.xxcso_bank_accounts.bank_account_dummy_flag                IS '銀行口座ダミーフラグ';
+COMMENT ON COLUMN xxcso.xxcso_bank_accounts.created_by                             IS '作成者';
+COMMENT ON COLUMN xxcso.xxcso_bank_accounts.creation_date                          IS '作成日';
+COMMENT ON COLUMN xxcso.xxcso_bank_accounts.last_updated_by                        IS '最終更新者';
+COMMENT ON COLUMN xxcso.xxcso_bank_accounts.last_update_date                       IS '最終更新日';
+COMMENT ON COLUMN xxcso.xxcso_bank_accounts.last_update_login                      IS '最終更新ログイン';
+COMMENT ON COLUMN xxcso.xxcso_bank_accounts.request_id                             IS '要求ID';
+COMMENT ON COLUMN xxcso.xxcso_bank_accounts.program_application_id                 IS 'コンカレント・プログラム・アプリケーションID';
+COMMENT ON COLUMN xxcso.xxcso_bank_accounts.program_id                             IS 'コンカレント・プログラムID';
+COMMENT ON COLUMN xxcso.xxcso_bank_accounts.program_update_date                    IS 'プログラム更新日';

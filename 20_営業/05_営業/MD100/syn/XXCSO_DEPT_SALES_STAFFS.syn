@@ -1,0 +1,14 @@
+/*************************************************************************
+ * 
+ * SYNONYM Name    : xxcso_dept_sales_staffs
+ * Description     : 
+ * MD.070          : 
+ * Version         : 1.0
+ * 
+ * Change Record
+ * ------------- ----- ------------ -------------------------------------
+ *  Date          Ver.  Editor       Description
+ * ------------- ----- ------------ -------------------------------------
+ *  2009/02/18    1.0  T.Maruyama    èââÒçÏê¨
+ ************************************************************************/
+ CREATE OR REPLACE SYNONYM apps.xxcso_dept_sales_staffs FOR xxcso.xxcso_dept_sales_staffs;

@@ -1,0 +1,39 @@
+/*************************************************************************
+ * 
+ * TABLE Name      : xxcso_tmp_txn_utility
+ * Description     : 営業トランザクションユーティリティテーブル
+ * MD.070          : 
+ * Version         : 1.0
+ * 
+ * Change Record
+ * ------------- ----- ------------ -------------------------------------
+ *  Date          Ver.  Editor       Description
+ * ------------- ----- ------------ -------------------------------------
+ *  2009/02/01    1.0  T.Maruyama    初回作成
+ ************************************************************************/
+CREATE GLOBAL TEMPORARY TABLE xxcso.xxcso_tmp_txn_utility
+(
+  function_class_name             VARCHAR2(4000),
+  created_by                      NUMBER(15)        NOT NULL,
+  creation_date                   DATE              NOT NULL,
+  last_updated_by                 NUMBER(15)        NOT NULL,
+  last_update_date                DATE              NOT NULL,
+  last_update_login               NUMBER(15),
+  request_id                      NUMBER(15),
+  program_application_id          NUMBER(15),
+  program_id                      NUMBER(15),
+  program_update_date             DATE
+);
+--
+COMMENT ON TABLE xxcso.xxcso_tmp_txn_utility IS '営業トランザクションユーティリティテーブル';
+--
+COMMENT ON COLUMN xxcso.xxcso_tmp_txn_utility.function_class_name                    IS '機能クラス名';
+COMMENT ON COLUMN xxcso.xxcso_tmp_txn_utility.created_by                             IS '作成者';
+COMMENT ON COLUMN xxcso.xxcso_tmp_txn_utility.creation_date                          IS '作成日';
+COMMENT ON COLUMN xxcso.xxcso_tmp_txn_utility.last_updated_by                        IS '最終更新者';
+COMMENT ON COLUMN xxcso.xxcso_tmp_txn_utility.last_update_date                       IS '最終更新日';
+COMMENT ON COLUMN xxcso.xxcso_tmp_txn_utility.last_update_login                      IS '最終更新ログイン';
+COMMENT ON COLUMN xxcso.xxcso_tmp_txn_utility.request_id                             IS '要求ID';
+COMMENT ON COLUMN xxcso.xxcso_tmp_txn_utility.program_application_id                 IS 'コンカレント・プログラム・アプリケーションID';
+COMMENT ON COLUMN xxcso.xxcso_tmp_txn_utility.program_id                             IS 'コンカレント・プログラムID';
+COMMENT ON COLUMN xxcso.xxcso_tmp_txn_utility.program_update_date                    IS 'プログラム更新日';

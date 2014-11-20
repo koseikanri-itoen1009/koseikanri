@@ -1,0 +1,50 @@
+/*************************************************************************
+ * 
+ * TABLE Name      : xxcso_dept_sales_staffs
+ * Description     : 拠点別営業人員テーブル
+ * MD.070          : 
+ * Version         : 1.1
+ * 
+ * Change Record
+ * ------------- ----- ------------ -------------------------------------
+ *  Date          Ver.  Editor       Description
+ * ------------- ----- ------------ -------------------------------------
+ *  2009/02/18    1.0  T.Maruyama    初回作成
+ *  2009/03/02    1.1  H.Ogawa       STORAGE句を追加
+ ************************************************************************/
+ CREATE TABLE xxcso.xxcso_dept_sales_staffs
+(
+  year_month                      VARCHAR2(6)       NOT NULL,
+  base_code                       VARCHAR2(4)       NOT NULL,
+  fiscal_year                     VARCHAR2(4)       NOT NULL,
+  sales_staff                     NUMBER(3),
+  created_by                      NUMBER(15)        NOT NULL,
+  creation_date                   DATE              NOT NULL,
+  last_updated_by                 NUMBER(15)        NOT NULL,
+  last_update_date                DATE              NOT NULL,
+  last_update_login               NUMBER(15),
+  request_id                      NUMBER(15),
+  program_application_id          NUMBER(15),
+  program_id                      NUMBER(15),
+  program_update_date             DATE,
+  CONSTRAINT xxcso_dept_sales_staffs_pk PRIMARY KEY ( year_month, base_code )
+  USING INDEX TABLESPACE xxidx2
+)
+PCTFREE 10 PCTUSED 60 INITRANS 1 STORAGE ( INITIAL 2M)
+;
+--
+COMMENT ON TABLE xxcso.xxcso_dept_sales_staffs IS '拠点別営業人員テーブル';
+--
+COMMENT ON COLUMN xxcso.xxcso_dept_sales_staffs.year_month                             IS '年月';
+COMMENT ON COLUMN xxcso.xxcso_dept_sales_staffs.base_code                              IS '拠点コード';
+COMMENT ON COLUMN xxcso.xxcso_dept_sales_staffs.fiscal_year                            IS '年度';
+COMMENT ON COLUMN xxcso.xxcso_dept_sales_staffs.sales_staff                            IS '営業人員';
+COMMENT ON COLUMN xxcso.xxcso_dept_sales_staffs.created_by                             IS '作成者';
+COMMENT ON COLUMN xxcso.xxcso_dept_sales_staffs.creation_date                          IS '作成日';
+COMMENT ON COLUMN xxcso.xxcso_dept_sales_staffs.last_updated_by                        IS '最終更新者';
+COMMENT ON COLUMN xxcso.xxcso_dept_sales_staffs.last_update_date                       IS '最終更新日';
+COMMENT ON COLUMN xxcso.xxcso_dept_sales_staffs.last_update_login                      IS '最終更新ログイン';
+COMMENT ON COLUMN xxcso.xxcso_dept_sales_staffs.request_id                             IS '要求ID';
+COMMENT ON COLUMN xxcso.xxcso_dept_sales_staffs.program_application_id                 IS 'コンカレント・プログラム・アプリケーションID';
+COMMENT ON COLUMN xxcso.xxcso_dept_sales_staffs.program_id                             IS 'コンカレント・プログラムID';
+COMMENT ON COLUMN xxcso.xxcso_dept_sales_staffs.program_update_date                    IS 'プログラム更新日';

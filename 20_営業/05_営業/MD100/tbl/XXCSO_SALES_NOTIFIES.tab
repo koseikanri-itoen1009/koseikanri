@@ -1,0 +1,62 @@
+/*************************************************************************
+ * 
+ * TABLE Name      : xxcso_sales_notifies
+ * Description     : 商談決定情報通知者リストテーブル
+ * MD.070          : 
+ * Version         : 1.1
+ * 
+ * Change Record
+ * ------------- ----- ------------ -------------------------------------
+ *  Date          Ver.  Editor       Description
+ * ------------- ----- ------------ -------------------------------------
+ *  2009/02/01    1.0  T.Maruyama    初回作成
+ *  2009/03/02    1.1  H.Ogawa       STORAGE句を追加
+ ************************************************************************/
+CREATE TABLE xxcso.xxcso_sales_notifies
+(
+  sales_notice_id                 NUMBER            NOT NULL,
+  header_history_id               NUMBER            NOT NULL,
+  user_name                       VARCHAR2(100)     NOT NULL,
+  employee_number                 VARCHAR2(30),
+  full_name                       VARCHAR2(301),
+  position_name                   VARCHAR2(150),
+  position_sort_code              VARCHAR2(150),
+  base_code                       VARCHAR2(4),
+  base_name                       VARCHAR2(150),
+  notified_flag                   VARCHAR2(1),
+  created_by                      NUMBER(15)        NOT NULL,
+  creation_date                   DATE              NOT NULL,
+  last_updated_by                 NUMBER(15)        NOT NULL,
+  last_update_date                DATE              NOT NULL,
+  last_update_login               NUMBER(15),
+  request_id                      NUMBER(15),
+  program_application_id          NUMBER(15),
+  program_id                      NUMBER(15),
+  program_update_date             DATE,
+  CONSTRAINT xxcso_sales_notifies_pk PRIMARY KEY ( sales_notice_id )
+  USING INDEX TABLESPACE xxidx2
+)
+PCTFREE 20 PCTUSED 40 INITRANS 8 STORAGE ( INITIAL 2M)
+;
+--
+COMMENT ON TABLE xxcso.xxcso_sales_notifies IS '商談決定情報通知者リストテーブル';
+--
+COMMENT ON COLUMN xxcso.xxcso_sales_notifies.sales_notice_id                        IS '通知者リストID';
+COMMENT ON COLUMN xxcso.xxcso_sales_notifies.header_history_id                      IS '商談決定情報履歴ヘッダID';
+COMMENT ON COLUMN xxcso.xxcso_sales_notifies.user_name                              IS 'ユーザー名';
+COMMENT ON COLUMN xxcso.xxcso_sales_notifies.employee_number                        IS '従業員番号';
+COMMENT ON COLUMN xxcso.xxcso_sales_notifies.full_name                              IS '従業員氏名';
+COMMENT ON COLUMN xxcso.xxcso_sales_notifies.position_name                          IS '従業員職位名';
+COMMENT ON COLUMN xxcso.xxcso_sales_notifies.position_sort_code                     IS '従業員職位並順コード';
+COMMENT ON COLUMN xxcso.xxcso_sales_notifies.base_code                              IS '拠点コード';
+COMMENT ON COLUMN xxcso.xxcso_sales_notifies.base_name                              IS '拠点名';
+COMMENT ON COLUMN xxcso.xxcso_sales_notifies.notified_flag                          IS '通知済フラグ';
+COMMENT ON COLUMN xxcso.xxcso_sales_notifies.created_by                             IS '作成者';
+COMMENT ON COLUMN xxcso.xxcso_sales_notifies.creation_date                          IS '作成日';
+COMMENT ON COLUMN xxcso.xxcso_sales_notifies.last_updated_by                        IS '最終更新者';
+COMMENT ON COLUMN xxcso.xxcso_sales_notifies.last_update_date                       IS '最終更新日';
+COMMENT ON COLUMN xxcso.xxcso_sales_notifies.last_update_login                      IS '最終更新ログイン';
+COMMENT ON COLUMN xxcso.xxcso_sales_notifies.request_id                             IS '要求ID';
+COMMENT ON COLUMN xxcso.xxcso_sales_notifies.program_application_id                 IS 'コンカレント・プログラム・アプリケーションID';
+COMMENT ON COLUMN xxcso.xxcso_sales_notifies.program_id                             IS 'コンカレント・プログラムID';
+COMMENT ON COLUMN xxcso.xxcso_sales_notifies.program_update_date                    IS 'プログラム更新日';

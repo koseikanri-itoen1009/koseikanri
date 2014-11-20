@@ -1,0 +1,174 @@
+/*************************************************************************
+ * 
+ * TABLE Name      : xxcso_sum_visit_sale_rep
+ * Description     : 訪問売上計画管理表サマリテーブル
+ * MD.070          : 
+ * Version         : 1.1
+ * 
+ * Change Record
+ * ------------- ----- ------------ -------------------------------------
+ *  Date          Ver.  Editor       Description
+ * ------------- ----- ------------ -------------------------------------
+ *  2009/02/01    1.0  T.Maruyama    初回作成
+ *  2009/03/02    1.1  H.Ogawa       STORAGE句を追加
+ ************************************************************************/
+CREATE TABLE xxcso.xxcso_sum_visit_sale_rep
+(
+  sum_org_type                    VARCHAR2(1)       NOT NULL,
+  sum_org_code                    VARCHAR2(20)      NOT NULL,
+  group_base_code                 VARCHAR2(4)       NOT NULL,
+  month_date_div                  VARCHAR2(1)       NOT NULL,
+  sales_date                      VARCHAR2(8)       NOT NULL,
+  gvm_type                        VARCHAR2(1),
+  cust_new_num                    NUMBER(4),
+  cust_vd_new_num                 NUMBER(4),
+  cust_other_new_num              NUMBER(4),
+  rslt_amt                        NUMBER(12),
+  rslt_new_amt                    NUMBER(12),
+  rslt_vd_new_amt                 NUMBER(12),
+  rslt_vd_amt                     NUMBER(12),
+  rslt_other_new_amt              NUMBER(12),
+  rslt_other_amt                  NUMBER(12),
+  rslt_center_amt                 NUMBER(12),
+  rslt_center_vd_amt              NUMBER(12),
+  rslt_center_other_amt           NUMBER(12),
+  tgt_sales_prsn_total_amt        NUMBER(9),
+  tgt_amt                         NUMBER(9),
+  tgt_new_amt                     NUMBER(9),
+  tgt_vd_new_amt                  NUMBER(9),
+  tgt_vd_amt                      NUMBER(9),
+  tgt_other_new_amt               NUMBER(9),
+  tgt_other_amt                   NUMBER(9),
+  vis_num                         NUMBER(4),
+  vis_new_num                     NUMBER(4),
+  vis_vd_new_num                  NUMBER(4),
+  vis_vd_num                      NUMBER(4),
+  vis_other_new_num               NUMBER(4),
+  vis_other_num                   NUMBER(4),
+  vis_mc_num                      NUMBER(4),
+  vis_sales_num                   NUMBER(4),
+  tgt_vis_num                     NUMBER(4),
+  tgt_vis_new_num                 NUMBER(4),
+  tgt_vis_vd_new_num              NUMBER(4),
+  tgt_vis_vd_num                  NUMBER(4),
+  tgt_vis_other_new_num           NUMBER(4),
+  tgt_vis_other_num               NUMBER(4),
+  tgt_vis_mc_num                  NUMBER(4),
+  vis_a_num                       NUMBER(4),
+  vis_b_num                       NUMBER(4),
+  vis_c_num                       NUMBER(4),
+  vis_d_num                       NUMBER(4),
+  vis_e_num                       NUMBER(4),
+  vis_f_num                       NUMBER(4),
+  vis_g_num                       NUMBER(4),
+  vis_h_num                       NUMBER(4),
+  vis_i_num                       NUMBER(4),
+  vis_j_num                       NUMBER(4),
+  vis_k_num                       NUMBER(4),
+  vis_l_num                       NUMBER(4),
+  vis_m_num                       NUMBER(4),
+  vis_n_num                       NUMBER(4),
+  vis_o_num                       NUMBER(4),
+  vis_p_num                       NUMBER(4),
+  vis_q_num                       NUMBER(4),
+  vis_r_num                       NUMBER(4),
+  vis_s_num                       NUMBER(4),
+  vis_t_num                       NUMBER(4),
+  vis_u_num                       NUMBER(4),
+  vis_v_num                       NUMBER(4),
+  vis_w_num                       NUMBER(4),
+  vis_x_num                       NUMBER(4),
+  vis_y_num                       NUMBER(4),
+  vis_z_num                       NUMBER(4),
+  created_by                      NUMBER(15)        NOT NULL,
+  creation_date                   DATE              NOT NULL,
+  last_updated_by                 NUMBER(15)        NOT NULL,
+  last_update_date                DATE              NOT NULL,
+  last_update_login               NUMBER(15),
+  request_id                      NUMBER(15),
+  program_application_id          NUMBER(15),
+  program_id                      NUMBER(15),
+  program_update_date             DATE,
+  CONSTRAINT xxcso_sum_visit_sale_rep_pk PRIMARY KEY ( sum_org_type, sum_org_code, group_base_code, month_date_div, sales_date )
+  USING INDEX TABLESPACE xxidx2
+)
+PCTFREE 10 PCTUSED 60 INITRANS 1 STORAGE ( INITIAL 2M)
+;
+--
+COMMENT ON TABLE xxcso.xxcso_sum_visit_sale_rep IS '訪問売上計画管理表サマリテーブル';
+--
+COMMENT ON COLUMN xxcso.xxcso_sum_visit_sale_rep.sum_org_type                           IS '集計組織種類';
+COMMENT ON COLUMN xxcso.xxcso_sum_visit_sale_rep.sum_org_code                           IS '集計組織ＣＤ';
+COMMENT ON COLUMN xxcso.xxcso_sum_visit_sale_rep.group_base_code                        IS 'グループ親拠点ＣＤ';
+COMMENT ON COLUMN xxcso.xxcso_sum_visit_sale_rep.month_date_div                         IS '月日区分';
+COMMENT ON COLUMN xxcso.xxcso_sum_visit_sale_rep.sales_date                             IS '販売年月日／販売年月';
+COMMENT ON COLUMN xxcso.xxcso_sum_visit_sale_rep.gvm_type                               IS '一般／自販機／ＭＣ';
+COMMENT ON COLUMN xxcso.xxcso_sum_visit_sale_rep.cust_new_num                           IS '顧客件数（新規）';
+COMMENT ON COLUMN xxcso.xxcso_sum_visit_sale_rep.cust_vd_new_num                        IS '顧客件数（VD：新規）';
+COMMENT ON COLUMN xxcso.xxcso_sum_visit_sale_rep.cust_other_new_num                     IS '顧客件数（VD以外：新規）';
+COMMENT ON COLUMN xxcso.xxcso_sum_visit_sale_rep.rslt_amt                               IS '売上実績';
+COMMENT ON COLUMN xxcso.xxcso_sum_visit_sale_rep.rslt_new_amt                           IS '売上実績（新規）';
+COMMENT ON COLUMN xxcso.xxcso_sum_visit_sale_rep.rslt_vd_new_amt                        IS '売上実績（VD：新規）';
+COMMENT ON COLUMN xxcso.xxcso_sum_visit_sale_rep.rslt_vd_amt                            IS '売上実績（VD）';
+COMMENT ON COLUMN xxcso.xxcso_sum_visit_sale_rep.rslt_other_new_amt                     IS '売上実績（VD以外：新規）';
+COMMENT ON COLUMN xxcso.xxcso_sum_visit_sale_rep.rslt_other_amt                         IS '売上実績（VD以外）';
+COMMENT ON COLUMN xxcso.xxcso_sum_visit_sale_rep.rslt_center_amt                        IS '内他拠点＿売上実績';
+COMMENT ON COLUMN xxcso.xxcso_sum_visit_sale_rep.rslt_center_vd_amt                     IS '内他拠点＿売上実績（VD）';
+COMMENT ON COLUMN xxcso.xxcso_sum_visit_sale_rep.rslt_center_other_amt                  IS '内他拠点＿売上実績（VD以外）';
+COMMENT ON COLUMN xxcso.xxcso_sum_visit_sale_rep.tgt_sales_prsn_total_amt               IS '月別売上予算';
+COMMENT ON COLUMN xxcso.xxcso_sum_visit_sale_rep.tgt_amt                                IS '売上計画';
+COMMENT ON COLUMN xxcso.xxcso_sum_visit_sale_rep.tgt_new_amt                            IS '売上計画（新規）';
+COMMENT ON COLUMN xxcso.xxcso_sum_visit_sale_rep.tgt_vd_new_amt                         IS '売上計画（VD：新規）';
+COMMENT ON COLUMN xxcso.xxcso_sum_visit_sale_rep.tgt_vd_amt                             IS '売上計画（VD）';
+COMMENT ON COLUMN xxcso.xxcso_sum_visit_sale_rep.tgt_other_new_amt                      IS '売上計画（VD以外：新規）';
+COMMENT ON COLUMN xxcso.xxcso_sum_visit_sale_rep.tgt_other_amt                          IS '売上計画（VD以外）';
+COMMENT ON COLUMN xxcso.xxcso_sum_visit_sale_rep.vis_num                                IS '訪問実績';
+COMMENT ON COLUMN xxcso.xxcso_sum_visit_sale_rep.vis_new_num                            IS '訪問実績（新規）';
+COMMENT ON COLUMN xxcso.xxcso_sum_visit_sale_rep.vis_vd_new_num                         IS '訪問実績（VD：新規）';
+COMMENT ON COLUMN xxcso.xxcso_sum_visit_sale_rep.vis_vd_num                             IS '訪問実績（VD）';
+COMMENT ON COLUMN xxcso.xxcso_sum_visit_sale_rep.vis_other_new_num                      IS '訪問実績（VD以外：新規）';
+COMMENT ON COLUMN xxcso.xxcso_sum_visit_sale_rep.vis_other_num                          IS '訪問実績（VD以外）';
+COMMENT ON COLUMN xxcso.xxcso_sum_visit_sale_rep.vis_mc_num                             IS '訪問実績（MC）';
+COMMENT ON COLUMN xxcso.xxcso_sum_visit_sale_rep.vis_sales_num                          IS '有効軒数';
+COMMENT ON COLUMN xxcso.xxcso_sum_visit_sale_rep.tgt_vis_num                            IS '訪問計画';
+COMMENT ON COLUMN xxcso.xxcso_sum_visit_sale_rep.tgt_vis_new_num                        IS '訪問計画（新規）';
+COMMENT ON COLUMN xxcso.xxcso_sum_visit_sale_rep.tgt_vis_vd_new_num                     IS '訪問計画（VD：新規）';
+COMMENT ON COLUMN xxcso.xxcso_sum_visit_sale_rep.tgt_vis_vd_num                         IS '訪問計画（VD）';
+COMMENT ON COLUMN xxcso.xxcso_sum_visit_sale_rep.tgt_vis_other_new_num                  IS '訪問計画（VD以外：新規）';
+COMMENT ON COLUMN xxcso.xxcso_sum_visit_sale_rep.tgt_vis_other_num                      IS '訪問計画（VD以外）';
+COMMENT ON COLUMN xxcso.xxcso_sum_visit_sale_rep.tgt_vis_mc_num                         IS '訪問計画（MC）';
+COMMENT ON COLUMN xxcso.xxcso_sum_visit_sale_rep.vis_a_num                              IS '訪問Ａ件数';
+COMMENT ON COLUMN xxcso.xxcso_sum_visit_sale_rep.vis_b_num                              IS '訪問Ｂ件数';
+COMMENT ON COLUMN xxcso.xxcso_sum_visit_sale_rep.vis_c_num                              IS '訪問Ｃ件数';
+COMMENT ON COLUMN xxcso.xxcso_sum_visit_sale_rep.vis_d_num                              IS '訪問Ｄ件数';
+COMMENT ON COLUMN xxcso.xxcso_sum_visit_sale_rep.vis_e_num                              IS '訪問Ｅ件数';
+COMMENT ON COLUMN xxcso.xxcso_sum_visit_sale_rep.vis_f_num                              IS '訪問Ｆ件数';
+COMMENT ON COLUMN xxcso.xxcso_sum_visit_sale_rep.vis_g_num                              IS '訪問Ｇ件数';
+COMMENT ON COLUMN xxcso.xxcso_sum_visit_sale_rep.vis_h_num                              IS '訪問Ｈ件数';
+COMMENT ON COLUMN xxcso.xxcso_sum_visit_sale_rep.vis_i_num                              IS '訪問ⅰ件数';
+COMMENT ON COLUMN xxcso.xxcso_sum_visit_sale_rep.vis_j_num                              IS '訪問Ｊ件数';
+COMMENT ON COLUMN xxcso.xxcso_sum_visit_sale_rep.vis_k_num                              IS '訪問Ｋ件数';
+COMMENT ON COLUMN xxcso.xxcso_sum_visit_sale_rep.vis_l_num                              IS '訪問Ｌ件数';
+COMMENT ON COLUMN xxcso.xxcso_sum_visit_sale_rep.vis_m_num                              IS '訪問Ｍ件数';
+COMMENT ON COLUMN xxcso.xxcso_sum_visit_sale_rep.vis_n_num                              IS '訪問Ｎ件数';
+COMMENT ON COLUMN xxcso.xxcso_sum_visit_sale_rep.vis_o_num                              IS '訪問Ｏ件数';
+COMMENT ON COLUMN xxcso.xxcso_sum_visit_sale_rep.vis_p_num                              IS '訪問Ｐ件数';
+COMMENT ON COLUMN xxcso.xxcso_sum_visit_sale_rep.vis_q_num                              IS '訪問Ｑ件数';
+COMMENT ON COLUMN xxcso.xxcso_sum_visit_sale_rep.vis_r_num                              IS '訪問Ｒ件数';
+COMMENT ON COLUMN xxcso.xxcso_sum_visit_sale_rep.vis_s_num                              IS '訪問Ｓ件数';
+COMMENT ON COLUMN xxcso.xxcso_sum_visit_sale_rep.vis_t_num                              IS '訪問Ｔ件数';
+COMMENT ON COLUMN xxcso.xxcso_sum_visit_sale_rep.vis_u_num                              IS '訪問Ｕ件数';
+COMMENT ON COLUMN xxcso.xxcso_sum_visit_sale_rep.vis_v_num                              IS '訪問Ｖ件数';
+COMMENT ON COLUMN xxcso.xxcso_sum_visit_sale_rep.vis_w_num                              IS '訪問Ｗ件数';
+COMMENT ON COLUMN xxcso.xxcso_sum_visit_sale_rep.vis_x_num                              IS '訪問Ｘ件数';
+COMMENT ON COLUMN xxcso.xxcso_sum_visit_sale_rep.vis_y_num                              IS '訪問Ｙ件数';
+COMMENT ON COLUMN xxcso.xxcso_sum_visit_sale_rep.vis_z_num                              IS '訪問Ｚ件数';
+COMMENT ON COLUMN xxcso.xxcso_sum_visit_sale_rep.created_by                             IS '作成者';
+COMMENT ON COLUMN xxcso.xxcso_sum_visit_sale_rep.creation_date                          IS '作成日';
+COMMENT ON COLUMN xxcso.xxcso_sum_visit_sale_rep.last_updated_by                        IS '最終更新者';
+COMMENT ON COLUMN xxcso.xxcso_sum_visit_sale_rep.last_update_date                       IS '最終更新日';
+COMMENT ON COLUMN xxcso.xxcso_sum_visit_sale_rep.last_update_login                      IS '最終更新ログイン';
+COMMENT ON COLUMN xxcso.xxcso_sum_visit_sale_rep.request_id                             IS '要求ID';
+COMMENT ON COLUMN xxcso.xxcso_sum_visit_sale_rep.program_application_id                 IS 'コンカレント・プログラム・アプリケーションID';
+COMMENT ON COLUMN xxcso.xxcso_sum_visit_sale_rep.program_id                             IS 'コンカレント・プログラムID';
+COMMENT ON COLUMN xxcso.xxcso_sum_visit_sale_rep.program_update_date                    IS 'プログラム更新日';

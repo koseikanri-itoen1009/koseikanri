@@ -1,0 +1,14 @@
+/*************************************************************************
+ * 
+ * SEQUENCE Name   : xxcso_sp_decision_custs_s01
+ * Description     : 
+ * MD.070          : 
+ * Version         : 1.0
+ * 
+ * Change Record
+ * ------------- ----- ------------ -------------------------------------
+ *  Date          Ver.  Editor       Description
+ * ------------- ----- ------------ -------------------------------------
+ *  2009/02/01    1.0  T.Maruyama    èââÒçÏê¨
+ ************************************************************************/
+CREATE SEQUENCE xxcso.xxcso_sp_decision_custs_s01 MINVALUE 1 MAXVALUE 999999999999999 INCREMENT BY 1 START WITH 1 CACHE 20 NOORDER  NOCYCLE;

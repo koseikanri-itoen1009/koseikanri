@@ -1,0 +1,148 @@
+/*************************************************************************
+ * 
+ * TABLE Name      : xxcso_rep_visit_route_mng
+ * Description     : 訪問総合管理表帳票ワークテーブル
+ * MD.070          : 
+ * Version         : 1.1
+ * 
+ * Change Record
+ * ------------- ----- ------------ -------------------------------------
+ *  Date          Ver.  Editor       Description
+ * ------------- ----- ------------ -------------------------------------
+ *  2009/02/16    1.0  T.Maruyama    初回作成
+ *  2009/03/02    1.1  H.Ogawa       STORAGE句を追加
+ ************************************************************************/
+CREATE TABLE xxcso.xxcso_rep_visit_route_mng
+(
+  line_num                        NUMBER(5),
+  report_id                       VARCHAR2(30),
+  report_name                     VARCHAR2(240),
+  output_date                     DATE,
+  base_date                       DATE,
+  base_date_start                 DATE,
+  base_date_end                   DATE,
+  base_code                       VARCHAR2(4),
+  hub_name                        VARCHAR2(40),
+  employee_number                 VARCHAR2(5),
+  employee_name                   VARCHAR2(40),
+  total_count                     NUMBER(10),
+  day_1                           DATE,
+  week_1                          VARCHAR2(2),
+  total_count_1                   NUMBER(10),
+  account_number_1                VARCHAR2(9),
+  route_no_1                      VARCHAR2(7),
+  customer_name_1                 VARCHAR2(360),
+  day_2                           DATE,
+  week_2                          VARCHAR2(2),
+  total_count_2                   NUMBER(10),
+  account_number_2                VARCHAR2(9),
+  route_no_2                      VARCHAR2(7),
+  customer_name_2                 VARCHAR2(360),
+  day_3                           DATE,
+  week_3                          VARCHAR2(2),
+  total_count_3                   NUMBER(10),
+  account_number_3                VARCHAR2(9),
+  route_no_3                      VARCHAR2(7),
+  customer_name_3                 VARCHAR2(360),
+  day_4                           DATE,
+  week_4                          VARCHAR2(2),
+  total_count_4                   NUMBER(10),
+  account_number_4                VARCHAR2(9),
+  route_no_4                      VARCHAR2(7),
+  customer_name_4                 VARCHAR2(360),
+  day_5                           DATE,
+  week_5                          VARCHAR2(2),
+  total_count_5                   NUMBER(10),
+  account_number_5                VARCHAR2(9),
+  route_no_5                      VARCHAR2(7),
+  customer_name_5                 VARCHAR2(360),
+  day_6                           DATE,
+  week_6                          VARCHAR2(2),
+  total_count_6                   NUMBER(10),
+  account_number_6                VARCHAR2(9),
+  route_no_6                      VARCHAR2(7),
+  customer_name_6                 VARCHAR2(360),
+  day_7                           DATE,
+  week_7                          VARCHAR2(2),
+  total_count_7                   NUMBER(10),
+  account_number_7                VARCHAR2(9),
+  route_no_7                      VARCHAR2(7),
+  customer_name_7                 VARCHAR2(360),
+  created_by                      NUMBER(15)        NOT NULL,
+  creation_date                   DATE              NOT NULL,
+  last_updated_by                 NUMBER(15)        NOT NULL,
+  last_update_date                DATE              NOT NULL,
+  last_update_login               NUMBER(15),
+  request_id                      NUMBER(15),
+  program_application_id          NUMBER(15),
+  program_id                      NUMBER(15),
+  program_update_date             DATE
+)
+PCTFREE 10 PCTUSED 60 INITRANS 1 STORAGE ( INITIAL 2M)
+;
+--
+COMMENT ON TABLE xxcso.xxcso_rep_visit_route_mng IS '訪問総合管理表帳票ワークテーブル';
+--
+COMMENT ON COLUMN xxcso.xxcso_rep_visit_route_mng.line_num                               IS '行番号';
+COMMENT ON COLUMN xxcso.xxcso_rep_visit_route_mng.report_id                              IS '帳票ＩＤ';
+COMMENT ON COLUMN xxcso.xxcso_rep_visit_route_mng.report_name                            IS '帳票タイトル';
+COMMENT ON COLUMN xxcso.xxcso_rep_visit_route_mng.output_date                            IS '出力日時';
+COMMENT ON COLUMN xxcso.xxcso_rep_visit_route_mng.base_date                              IS '基準年月日';
+COMMENT ON COLUMN xxcso.xxcso_rep_visit_route_mng.base_date_start                        IS '基準日START';
+COMMENT ON COLUMN xxcso.xxcso_rep_visit_route_mng.base_date_end                          IS '基準日END';
+COMMENT ON COLUMN xxcso.xxcso_rep_visit_route_mng.base_code                              IS '拠点コード';
+COMMENT ON COLUMN xxcso.xxcso_rep_visit_route_mng.hub_name                               IS '拠点名称';
+COMMENT ON COLUMN xxcso.xxcso_rep_visit_route_mng.employee_number                        IS '営業員コード';
+COMMENT ON COLUMN xxcso.xxcso_rep_visit_route_mng.employee_name                          IS '営業員名';
+COMMENT ON COLUMN xxcso.xxcso_rep_visit_route_mng.total_count                            IS '総軒数';
+COMMENT ON COLUMN xxcso.xxcso_rep_visit_route_mng.day_1                                  IS '月曜日-日';
+COMMENT ON COLUMN xxcso.xxcso_rep_visit_route_mng.week_1                                 IS '月曜日-曜日';
+COMMENT ON COLUMN xxcso.xxcso_rep_visit_route_mng.total_count_1                          IS '月曜日-総軒数';
+COMMENT ON COLUMN xxcso.xxcso_rep_visit_route_mng.account_number_1                       IS '月曜日-顧客コード';
+COMMENT ON COLUMN xxcso.xxcso_rep_visit_route_mng.route_no_1                             IS '月曜日-ルートNo.';
+COMMENT ON COLUMN xxcso.xxcso_rep_visit_route_mng.customer_name_1                        IS '月曜日-顧客名';
+COMMENT ON COLUMN xxcso.xxcso_rep_visit_route_mng.day_2                                  IS '火曜日-日';
+COMMENT ON COLUMN xxcso.xxcso_rep_visit_route_mng.week_2                                 IS '火曜日-曜日';
+COMMENT ON COLUMN xxcso.xxcso_rep_visit_route_mng.total_count_2                          IS '火曜日-総軒数';
+COMMENT ON COLUMN xxcso.xxcso_rep_visit_route_mng.account_number_2                       IS '火曜日-顧客コード';
+COMMENT ON COLUMN xxcso.xxcso_rep_visit_route_mng.route_no_2                             IS '火曜日-ルートNo.';
+COMMENT ON COLUMN xxcso.xxcso_rep_visit_route_mng.customer_name_2                        IS '火曜日-顧客名';
+COMMENT ON COLUMN xxcso.xxcso_rep_visit_route_mng.day_3                                  IS '水曜日-日';
+COMMENT ON COLUMN xxcso.xxcso_rep_visit_route_mng.week_3                                 IS '水曜日-曜日';
+COMMENT ON COLUMN xxcso.xxcso_rep_visit_route_mng.total_count_3                          IS '水曜日-総軒数';
+COMMENT ON COLUMN xxcso.xxcso_rep_visit_route_mng.account_number_3                       IS '水曜日-顧客コード';
+COMMENT ON COLUMN xxcso.xxcso_rep_visit_route_mng.route_no_3                             IS '水曜日-ルートNo.';
+COMMENT ON COLUMN xxcso.xxcso_rep_visit_route_mng.customer_name_3                        IS '水曜日-顧客名';
+COMMENT ON COLUMN xxcso.xxcso_rep_visit_route_mng.day_4                                  IS '木曜日-日';
+COMMENT ON COLUMN xxcso.xxcso_rep_visit_route_mng.week_4                                 IS '木曜日-曜日';
+COMMENT ON COLUMN xxcso.xxcso_rep_visit_route_mng.total_count_4                          IS '木曜日-総軒数';
+COMMENT ON COLUMN xxcso.xxcso_rep_visit_route_mng.account_number_4                       IS '木曜日-顧客コード';
+COMMENT ON COLUMN xxcso.xxcso_rep_visit_route_mng.route_no_4                             IS '木曜日-ルートNo.';
+COMMENT ON COLUMN xxcso.xxcso_rep_visit_route_mng.customer_name_4                        IS '木曜日-顧客名';
+COMMENT ON COLUMN xxcso.xxcso_rep_visit_route_mng.day_5                                  IS '金曜日-日';
+COMMENT ON COLUMN xxcso.xxcso_rep_visit_route_mng.week_5                                 IS '金曜日-曜日';
+COMMENT ON COLUMN xxcso.xxcso_rep_visit_route_mng.total_count_5                          IS '金曜日-総軒数';
+COMMENT ON COLUMN xxcso.xxcso_rep_visit_route_mng.account_number_5                       IS '金曜日-顧客コード';
+COMMENT ON COLUMN xxcso.xxcso_rep_visit_route_mng.route_no_5                             IS '金曜日-ルートNo.';
+COMMENT ON COLUMN xxcso.xxcso_rep_visit_route_mng.customer_name_5                        IS '金曜日-顧客名';
+COMMENT ON COLUMN xxcso.xxcso_rep_visit_route_mng.day_6                                  IS '土曜日-日';
+COMMENT ON COLUMN xxcso.xxcso_rep_visit_route_mng.week_6                                 IS '土曜日-曜日';
+COMMENT ON COLUMN xxcso.xxcso_rep_visit_route_mng.total_count_6                          IS '土曜日-総軒数';
+COMMENT ON COLUMN xxcso.xxcso_rep_visit_route_mng.account_number_6                       IS '土曜日-顧客コード';
+COMMENT ON COLUMN xxcso.xxcso_rep_visit_route_mng.route_no_6                             IS '土曜日-ルートNo.';
+COMMENT ON COLUMN xxcso.xxcso_rep_visit_route_mng.customer_name_6                        IS '土曜日-顧客名';
+COMMENT ON COLUMN xxcso.xxcso_rep_visit_route_mng.day_7                                  IS '日曜日-日';
+COMMENT ON COLUMN xxcso.xxcso_rep_visit_route_mng.week_7                                 IS '日曜日-曜日';
+COMMENT ON COLUMN xxcso.xxcso_rep_visit_route_mng.total_count_7                          IS '日曜日-総軒数';
+COMMENT ON COLUMN xxcso.xxcso_rep_visit_route_mng.account_number_7                       IS '日曜日-顧客コード';
+COMMENT ON COLUMN xxcso.xxcso_rep_visit_route_mng.route_no_7                             IS '日曜日-ルートNo.';
+COMMENT ON COLUMN xxcso.xxcso_rep_visit_route_mng.customer_name_7                        IS '日曜日-顧客名';
+COMMENT ON COLUMN xxcso.xxcso_rep_visit_route_mng.created_by                             IS '作成者';
+COMMENT ON COLUMN xxcso.xxcso_rep_visit_route_mng.creation_date                          IS '作成日';
+COMMENT ON COLUMN xxcso.xxcso_rep_visit_route_mng.last_updated_by                        IS '最終更新者';
+COMMENT ON COLUMN xxcso.xxcso_rep_visit_route_mng.last_update_date                       IS '最終更新日';
+COMMENT ON COLUMN xxcso.xxcso_rep_visit_route_mng.last_update_login                      IS '最終更新ログイン';
+COMMENT ON COLUMN xxcso.xxcso_rep_visit_route_mng.request_id                             IS '要求ID';
+COMMENT ON COLUMN xxcso.xxcso_rep_visit_route_mng.program_application_id                 IS 'コンカレント・プログラム・アプリケーションID';
+COMMENT ON COLUMN xxcso.xxcso_rep_visit_route_mng.program_id                             IS 'コンカレント・プログラムID';
+COMMENT ON COLUMN xxcso.xxcso_rep_visit_route_mng.program_update_date                    IS 'プログラム更新日';

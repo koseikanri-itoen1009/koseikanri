@@ -1,0 +1,14 @@
+/*************************************************************************
+ * 
+ * INDEX Name      : xxcso_pv_view_column_def_n01
+ * Description     : 
+ * MD.070          : 
+ * Version         : 1.0
+ * 
+ * Change Record
+ * ------------- ----- ------------ -------------------------------------
+ *  Date          Ver.  Editor       Description
+ * ------------- ----- ------------ -------------------------------------
+ *  2009/02/01    1.0  T.Maruyama    èââÒçÏê¨
+ ************************************************************************/
+CREATE INDEX xxcso.xxcso_pv_view_column_def_n01 ON xxcso.xxcso_pv_view_column_def ( view_id ) TABLESPACE xxidx2;
