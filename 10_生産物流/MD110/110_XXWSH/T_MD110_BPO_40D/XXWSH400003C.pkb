@@ -57,6 +57,7 @@ AS
  *  2009/03/03    1.26  Y.Kazama         本番障害#1243対応
  *  2009/04/16    1.27  Y.Kazama         本番障害#1398対応
  *  2009/05/14    1.28  H.Itou           本番障害#1398対応
+ *  2009/08/31    1.29  D.Sugahara       本番障害#1601対応
  *****************************************************************************************/
 --
 --#######################  固定グローバル定数宣言部 START   #######################
@@ -2083,7 +2084,7 @@ AS
             (loop_cnt.based_request_quantity IS NOT NULL)) THEN
         -- チェック１
 -- Ver1.15 M.Hokkanji END
-          xxwsh_common910_pkg.check_shipping_judgment('2',                            -- チェック方法
+          xxwsh_common910_pkg.check_shipping_judgment('2',                            -- チェック方法'2'商品部チェック
                                                       loop_cnt.head_sales_branch,     -- D-2拠点コード
 -- Ver1.15 M.Hokkanji START
 -- TE080_400指摘78対応
@@ -2101,8 +2102,10 @@ AS
                                                       ln_retcode);                    -- 処理結果
 --
           IF (( lv_retcode = '0' )
-          AND ( iv_status_kbn = '1' )              -- 締めステータスチェック区分有り
-          AND ( loop_cnt.location_rel_code = '1' ) -- D-2拠点実績有無区分のON（売上拠点=1）
+          AND ( iv_status_kbn = '1' )              -- 締めステータスチェック区分有り(拠点担当）
+--20090831 D.Sugahara V1.29 Mod Start 拠点担当の場合は売上拠点かどうかにかかわらずエラーとする
+--          AND ( loop_cnt.location_rel_code = '1' ) -- D-2拠点実績有無区分のON（売上拠点=1）
+--20090831 D.Sugahara V1.29 Mod End
           AND ( ln_retcode = 1)) THEN
 --
             lv_errmsg := xxcmn_common_pkg.get_msg(gv_cnst_msg_kbn,
@@ -2120,9 +2123,15 @@ AS
                                                        loop_cnt.request_no);
             RAISE global_api_expt;
 --
+--20090831 D.Sugahara V1.29 Mod Start
+--拠点担当の場合は売上拠点かどうかにかかわらずエラーとする
+/*
           ELSIF (( lv_retcode = '0' )
-          AND    ( iv_status_kbn = '1' )              -- 締めステータスチェック区分有り
-          AND    ( loop_cnt.location_rel_code = '2' ) -- D-2拠点実績有無区分のON（売上なし拠点=2）
+          AND    ( iv_status_kbn = '1' )              -- 締めステータスチェック区分有り(拠点担当）
+--20090831 D.Sugahara V1.29 Mod Start
+--          AND    ( loop_cnt.location_rel_code = '2' ) -- D-2拠点実績有無区分のON（売上なし拠点=2）
+          AND    ( loop_cnt.location_rel_code = '0' ) -- D-2拠点実績有無区分のON（売上なし拠点=0）
+--20090831 D.Sugahara V1.29 Mod End
           AND    ( ln_retcode = 1)) THEN
 --
             lv_errmsg := xxcmn_common_pkg.get_msg(gv_cnst_msg_kbn,
@@ -2146,10 +2155,15 @@ AS
               lv_warn_message := lv_warn_message || lv_errmsg || gv_line_feed;
             -- Ver1.18 MARUSHITA END
             END IF;
+*/
+--20090831 D.Sugahara V1.29 Mod End
 --
           ELSIF (( lv_retcode = '0' )
-          AND    ( iv_status_kbn = '2' ) -- 締めステータスチェック区分無し
-          AND    ( loop_cnt.location_rel_code = '2' ) -- D-2拠点実績有無区分のON（売上なし拠点=2）
+          AND    ( iv_status_kbn = '2' ) -- 締めステータスチェック区分無し(物流担当）
+--20090831 D.Sugahara V1.29 Mod Start
+--物流担当の場合は売上拠点かどうかを見ない
+          --AND    ( loop_cnt.location_rel_code = '2' ) -- D-2拠点実績有無区分のON（売上なし拠点=2）
+--20090831 D.Sugahara V1.29 Mod End
           AND    ( ln_retcode = 1 )) THEN
             lv_errmsg := xxcmn_common_pkg.get_msg(gv_cnst_msg_kbn,
                                                        gv_cnst_msg_173,
