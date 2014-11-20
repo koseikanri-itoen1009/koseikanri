@@ -7,12 +7,14 @@ AS
  * Description      : 振替運賃情報更新
  * MD.050           : 運賃計算（振替） T_MD050_BPO_750
  * MD.070           : 振替運賃情報更新 T_MD070_BPO_75C
- * Version          : 1.6
+ * Version          : 1.7
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
  *  Name                   Description
  * ---------------------- ----------------------------------------------------------
+ *  del_deliveryoff_proc   配車解除対象データ削除処理  -- 内部変更#225 追加
+ *
  *  chk_param_proc         パラメータチェック処理(C-1)
  *  get_init               関連データ取得(C-2)
  *
@@ -47,6 +49,7 @@ AS
  *  2008/07/29    1.4  Oracle 山根 一浩  ST障害No484対応
  *  2008/09/03    1.5  Oracle 野村 正幸  内部変更要求201_203
  *  2008/09/22    1.6  Oracle 山根 一浩  T_S_552,T_TE080_BPO_750 指摘4対応
+ *  2008/10/16    1.7  Oracle 野村 正幸  内部変更#225
  *
  *****************************************************************************************/
 --
@@ -202,7 +205,11 @@ AS
     penalty_class        xxwsh_ship_method_v.penalty_class%TYPE,            -- 19.ペナルティ区分
 -- ##### 20080903 Ver.1.5 内部変更要求201_203 start #####
 --    setting_amount       xxwip_leaf_trans_deli_chrgs.setting_amount%TYPE    -- 20.単価(便設定金額)
-    setting_amount       xxwip_transfer_fare_inf.price%TYPE                 -- 20.単価(便設定金額)
+-- ##### 20081016 Ver.1.7 内部変更#225 start #####
+--    setting_amount       xxwip_transfer_fare_inf.price%TYPE                 -- 20.単価(便設定金額)
+    setting_amount       xxwip_transfer_fare_inf.price%TYPE,                 -- 20.単価(便設定金額)
+    delivery_no          xxwsh_order_headers_all.delivery_no%TYPE            -- 配送No
+-- ##### 20081016 Ver.1.7 内部変更#225 end   #####
 -- ##### 20080903 Ver.1.5 内部変更要求201_203 end   #####
   );
 --
@@ -527,6 +534,91 @@ AS
   gn_order_sum_cnt       NUMBER DEFAULT 0; -- 振替運賃情報サマリーアドオン 登録/更新成功件数
   gn_trans_inf_cnt       NUMBER DEFAULT 0; -- 振替情報アドオン             登録/更新成功件数
 --
+-- ##### 20081016 Ver.1.7 内部変更#225 start #####
+--
+  /**********************************************************************************
+   * Procedure Name   : del_deliveryoff_proc
+   * Description      : 配車解除対象データ削除処理
+   ***********************************************************************************/
+  PROCEDURE del_deliveryoff_proc(
+    iv_request_no    IN         VARCHAR2,     -- 依頼No
+    ov_errbuf        OUT NOCOPY VARCHAR2,     -- エラー・メッセージ           --# 固定 #
+    ov_retcode       OUT NOCOPY VARCHAR2,     -- リターン・コード             --# 固定 #
+    ov_errmsg        OUT NOCOPY VARCHAR2)     -- ユーザー・エラー・メッセージ --# 固定 #
+  IS
+    -- ===============================
+    -- 固定ローカル定数
+    -- ===============================
+    cv_prg_name   CONSTANT VARCHAR2(100) := 'del_deliveryoff_proc'; -- プログラム名
+--
+--#####################  固定ローカル変数宣言部 START   ########################
+--
+    lv_errbuf  VARCHAR2(5000);  -- エラー・メッセージ
+    lv_retcode VARCHAR2(1);     -- リターン・コード
+    lv_errmsg  VARCHAR2(5000);  -- ユーザー・エラー・メッセージ
+--
+--###########################  固定部 END   ####################################
+--
+    -- ===============================
+    -- ユーザー宣言部
+    -- ===============================
+    -- *** ローカル定数 ***
+--
+    -- *** ローカル変数 ***
+--
+    -- *** ローカル・カーソル ***
+--
+    -- *** ローカル・レコード ***
+--
+  BEGIN
+--
+--##################  固定ステータス初期化部 START   ###################
+--
+    ov_retcode := gv_status_normal;
+--
+--###########################  固定部 END   ############################
+--
+    -- ***************************************
+    -- ***        実処理の記述             ***
+    -- ***       共通関数の呼び出し        ***
+    -- ***************************************
+--
+    -- ================================================
+    -- = 振替運賃情報アドオン 削除処理
+    -- ================================================
+    DELETE FROM xxwip_transfer_fare_inf
+    WHERE  request_no = iv_request_no;
+--
+    -- ================================================
+    -- = 振替運賃情報サマリーアドオン 削除処理
+    -- ================================================
+    DELETE FROM xxwip_transfer_fare_sum
+    WHERE  request_no = iv_request_no;
+--
+  EXCEPTION
+--
+--#################################  固定例外処理部 START   ####################################
+--
+    -- *** 共通関数例外ハンドラ ***
+    WHEN global_api_expt THEN
+      ov_errmsg  := lv_errmsg;
+      ov_errbuf  := SUBSTRB(gv_pkg_name||gv_msg_cont||cv_prg_name||gv_msg_part||lv_errbuf,1,5000);
+      ov_retcode := gv_status_error;
+    -- *** 共通関数OTHERS例外ハンドラ ***
+    WHEN global_api_others_expt THEN
+      ov_errbuf  := gv_pkg_name||gv_msg_cont||cv_prg_name||gv_msg_part||SQLERRM;
+      ov_retcode := gv_status_error;
+    -- *** OTHERS例外ハンドラ ***
+    WHEN OTHERS THEN
+      ov_errbuf  := gv_pkg_name||gv_msg_cont||cv_prg_name||gv_msg_part||SQLERRM;
+      ov_retcode := gv_status_error;
+--
+--#####################################  固定部 END   ##########################################
+--
+  END del_deliveryoff_proc;
+--
+-- ##### 20081016 Ver.1.7 内部変更#225 end   #####
+--
   /**********************************************************************************
    * Procedure Name   : chk_param_proc
    * Description      : パラメータチェック処理(C-1)
@@ -822,7 +914,11 @@ AS
            xpv.base_major_division,              -- 17.拠点大分類
            xsmv.small_amount_class,              -- 18.小口区分
            xsmv.penalty_class,                   -- 19.ペナルティ区分
-           NULL                                  -- 20.単価(ここではNULLを設定)
+-- ##### 20081016 Ver.1.7 内部変更#225 start #####
+--           NULL                                  -- 20.単価(ここではNULLを設定)
+           NULL ,                                -- 20.単価(ここではNULLを設定)
+           xoha.delivery_no                      -- 配送No
+-- ##### 20081016 Ver.1.7 内部変更#225 end   #####
     BULK COLLECT INTO gt_order_inf_tbl
     FROM   xxwsh_order_headers_all      xoha,    -- 受注ヘッダアドオン
            xxwsh_order_lines_all        xola,    -- 受注明細アドオン
@@ -951,6 +1047,10 @@ AS
     ln_msg_flg          NUMBER;
     lv_tbl_name         VARCHAR2(200);
 --
+-- ##### 20081016 Ver.1.7 内部変更#225 start #####
+    lv_request_no      xxwsh_order_headers_all.request_no%TYPE;   -- 依頼No（保持用）
+-- ##### 20081016 Ver.1.7 内部変更#225 end   #####
+--
     -- *** ローカル・カーソル ***
 --
     -- *** ローカル・レコード ***
@@ -969,377 +1069,420 @@ AS
     -- ***       共通関数の呼び出し        ***
     -- ***************************************
 --
+-- ##### 20081016 Ver.1.7 内部変更#225 start #####
+    -- 依頼No 初期化
+    lv_request_no := NULL;
+-- ##### 20081016 Ver.1.7 内部変更#225 end   #####
+--
     -- 取得した対象データのマスタデータを取得する
     <<gt_order_inf_tbl_loop>>
     FOR ln_index IN gt_order_inf_tbl.FIRST .. gt_order_inf_tbl.LAST LOOP
---2008/09/22 Add
-      ln_msg_flg := 0;
 --
-      -- 受注データ抽出処理.商品区分 = 「リーフ」の場合
-      IF (gt_order_inf_tbl(ln_index).prod_class = gv_prod_class_lef) THEN
-        -- 受注データ抽出処理.小口区分 = 「車立」の場合
-        IF (gt_order_inf_tbl(ln_index).small_amount_class = gv_small_sum_no) THEN
-          -- リーフ振替運賃アドオンマスタより単価(便設定金額)を取得
-          BEGIN
-            SELECT xltdc.setting_amount              -- 単価(便設定金額)
-            INTO   gt_order_inf_tbl(ln_index).setting_amount
-            FROM   xxwip_leaf_trans_deli_chrgs xltdc -- リーフ振替運賃アドオンマスタ
-            WHERE  FND_DATE.STRING_TO_DATE(
-                     gt_order_inf_tbl(ln_index).arrival_yyyymm || '01', 'YYYYMMDD')
-                   BETWEEN xltdc.start_date_active
-                     AND NVL(xltdc.end_date_active
-                            ,FND_DATE.STRING_TO_DATE('99991231', 'YYYYMMDD'));
-          EXCEPTION
-            WHEN NO_DATA_FOUND THEN   --*** データ取得エラー ***
-              -- データが存在しない場合は単価に「0」を設定
-              gt_order_inf_tbl(ln_index).setting_amount := 0;
-              ln_msg_flg := 1;                                    -- 2008/09/22 Add
-          END;
+-- ##### 20081016 Ver.1.7 内部変更#225 start #####
 --
-        -- 受注データ抽出処理.小口区分 = 「小口」の場合
-        ELSIF (gt_order_inf_tbl(ln_index).small_amount_class = gv_small_sum_yes) THEN
-          -- リーフ振替運賃アドオンマスタより単価(便設定金額)を取得
-          BEGIN
-            -- 小口個数によって設定金額を取得
-            SELECT 
-              CASE
-                WHEN (gt_order_inf_tbl(ln_index).small_quantity <= xltdc.upper_limit_number1) THEN
-                  xltdc.setting_amount1
-                WHEN (gt_order_inf_tbl(ln_index).small_quantity <= xltdc.upper_limit_number2) THEN
-                  xltdc.setting_amount2
-                WHEN (gt_order_inf_tbl(ln_index).small_quantity <= xltdc.upper_limit_number3) THEN
-                  xltdc.setting_amount3
-                WHEN (gt_order_inf_tbl(ln_index).small_quantity <= xltdc.upper_limit_number4) THEN
-                  xltdc.setting_amount4
-                WHEN (gt_order_inf_tbl(ln_index).small_quantity <= xltdc.upper_limit_number5) THEN
-                  xltdc.setting_amount5
-                WHEN (gt_order_inf_tbl(ln_index).small_quantity <= xltdc.upper_limit_number6) THEN
-                  xltdc.setting_amount6
-                WHEN (gt_order_inf_tbl(ln_index).small_quantity <= xltdc.upper_limit_number7) THEN
-                  xltdc.setting_amount7
-                WHEN (gt_order_inf_tbl(ln_index).small_quantity <= xltdc.upper_limit_number8) THEN
-                  xltdc.setting_amount8
-                WHEN (gt_order_inf_tbl(ln_index).small_quantity <= xltdc.upper_limit_number9) THEN
-                  xltdc.setting_amount9
-                WHEN (gt_order_inf_tbl(ln_index).small_quantity <= xltdc.upper_limit_number10) THEN
-                   xltdc.setting_amount10
-                ELSE 0
-              END AS setting_amount                   -- 単価(便設定金額)
-            INTO  gt_order_inf_tbl(ln_index).setting_amount
-            FROM  xxwip_leaf_trans_deli_chrgs xltdc -- リーフ振替運賃アドオンマスタ
-            WHERE FND_DATE.STRING_TO_DATE(
-                    gt_order_inf_tbl(ln_index).arrival_yyyymm || '01', 'YYYYMMDD')
-                  BETWEEN xltdc.start_date_active AND xltdc.end_date_active;
-          EXCEPTION
-            WHEN NO_DATA_FOUND THEN   --*** データ取得エラー ***
-              -- データが存在しない場合は単価に「0」を設定
-              gt_order_inf_tbl(ln_index).setting_amount := 0;
-              ln_msg_flg := 1;                                    -- 2008/09/22 Add
-          END;
+      -- ==================================================
+      -- = 配車NoがNULLの場合
+      -- =   配車を解除されている為、振替情報から削除する
+      -- ==================================================
+      IF (gt_order_inf_tbl(ln_index).delivery_no IS NULL ) THEN
 --
-        END IF;
+        -- 依頼番号が変更された場合
+        IF ((lv_request_no IS NULL)
+          OR (gt_order_inf_tbl(ln_index).request_no <> lv_request_no )) THEN
 --
-      -- 受注データ抽出処理.商品区分 = 「ドリンク」の場合
-      ELSIF (gt_order_inf_tbl(ln_index).prod_class = gv_prod_class_drk) THEN
+          -- 削除対象 依頼No 設定（brack用）
+          lv_request_no := gt_order_inf_tbl(ln_index).request_no;
 --
-        BEGIN
-          SELECT CASE
-                   WHEN (gt_order_inf_tbl(ln_index).penalty_class = gv_penalty_no) THEN
-                     xdtdc.setting_amount
-                   WHEN (gt_order_inf_tbl(ln_index).penalty_class = gv_penalty_yes) THEN
-                     xdtdc.penalty_amount
-                   ELSE 0
-                 END AS setting_amount                     -- 便設定金額
-          INTO   gt_order_inf_tbl(ln_index).setting_amount
-          FROM   xxwip_drink_trans_deli_chrgs xdtdc -- ドリンク振替運賃アドオンマスタ
-          WHERE  xdtdc.godds_classification   = gt_order_inf_tbl(ln_index).product_class
-          AND    xdtdc.dellivary_classe       = gt_order_inf_tbl(ln_index).shipping_method_code
-          AND    xdtdc.foothold_macrotaxonomy = gt_order_inf_tbl(ln_index).base_major_division
-          AND    FND_DATE.STRING_TO_DATE(
-                   gt_order_inf_tbl(ln_index).arrival_yyyymm || '01', 'YYYYMMDD')
-                 BETWEEN xdtdc.start_date_active AND xdtdc.end_date_active;
-        EXCEPTION
-          WHEN NO_DATA_FOUND THEN   --*** データ取得エラー ***
-            -- データが存在しない場合は単価に「0」を設定
-            gt_order_inf_tbl(ln_index).setting_amount := 0;
-            ln_msg_flg := 2;                                      -- 2008/09/22 Add
-        END;
---
-      END IF;
---
-      -- 抽出したデータを元に振替運賃情報アドオンの存在チェックを行い、存在する場合はロックを行う
-      BEGIN
-        SELECT xtfi.transfer_fare_inf_id    -- 振替運賃情報ID
-        INTO   ln_trn_fare_inf_id
-        FROM   xxwip_transfer_fare_inf xtfi -- 振替運賃情報アドオン
-        WHERE  xtfi.target_date        = gt_order_inf_tbl(ln_index).arrival_yyyymm
-        AND    xtfi.request_no         = gt_order_inf_tbl(ln_index).request_no
-        AND    xtfi.goods_classe       = gt_order_inf_tbl(ln_index).prod_class
-        AND    xtfi.jurisdicyional_hub = gt_order_inf_tbl(ln_index).head_sales_branch
-        AND    xtfi.item_code          = gt_order_inf_tbl(ln_index).shipping_item_code
-        FOR UPDATE NOWAIT;
---
-        -- 存在する場合は存在チェック用フラグを「1」に設定
-        ln_flg := 1;
---
-      EXCEPTION
-        WHEN NO_DATA_FOUND THEN   --*** データ取得エラー ***
-          -- データが存在しない場合は存在チェック用フラグに「0」を設定
-          ln_flg := 0;
-        WHEN lock_expt THEN   -- *** ロック取得エラー ***
-          lv_errmsg := xxcmn_common_pkg.get_msg(gv_wip_msg_kbn, gv_wip_msg_75c_004,
-                                                gv_tkn_table,   gv_trans_fare_inf_name);
-          lv_errbuf := lv_errmsg;
-          RAISE global_api_expt;
-      END;
---
-      -- 品目IDの取得
-      BEGIN
-        SELECT ximv.item_id            -- 品目ID
-        INTO   lt_item_id
-        FROM   xxcmn_item_mst2_v ximv   -- OPM品目情報VIEW
-        WHERE  ximv.item_no = gt_order_inf_tbl(ln_index).shipping_item_code
-        AND    FND_DATE.STRING_TO_DATE(
-                 gt_order_inf_tbl(ln_index).arrival_yyyymm || '01', 'YYYYMMDD')
-               BETWEEN ximv.start_date_active AND ximv.end_date_active;
-      EXCEPTION
-        WHEN NO_DATA_FOUND OR TOO_MANY_ROWS THEN   -- *** データ取得エラー ***
-          RAISE global_api_expt;
-      END;
---
-      -- 存在しない場合は振替運賃情報アドオン登録用PL/SQL表に格納
-      IF (ln_flg = 0) THEN
---
-        -- 登録用PL/SQL表 件数カウント
-        gn_ins_order_inf_cnt := gn_ins_order_inf_cnt + 1;
---
-        -- 1.振替運賃情報ID 採番
-        SELECT xxwip_transfer_fare_inf_id_s1.NEXTVAL
-        INTO   i_trn_fare_inf_id_tab(gn_ins_order_inf_cnt)
-        FROM   dual;
---
-        -- ****************************************
-        -- * 振替運賃情報データ 登録用PL/SQL表 設定
-        -- ****************************************
-        -- 2.対象年月
-        i_trn_target_date_tab(gn_ins_order_inf_cnt)
-          := gt_order_inf_tbl(ln_index).arrival_yyyymm;
-        -- 3.依頼No
-        i_trn_request_no_tab(gn_ins_order_inf_cnt)
-          := gt_order_inf_tbl(ln_index).request_no;
-        -- 4.商品区分
-        i_trn_goods_classe_tab(gn_ins_order_inf_cnt)
-          := gt_order_inf_tbl(ln_index).prod_class;
-        -- 5.配送日
-        i_trn_delivery_date_tab(gn_ins_order_inf_cnt)
-          := gt_order_inf_tbl(ln_index).arrival_date;
-        -- 6.管轄拠点
-        i_trn_jurisdicyional_hub_tab(gn_ins_order_inf_cnt)
-          := gt_order_inf_tbl(ln_index).head_sales_branch;
-        -- 7.出庫元
-        i_trn_delivery_whs_tab(gn_ins_order_inf_cnt)
-          := gt_order_inf_tbl(ln_index).deliver_from;
-        -- 8.配送先
-        i_trn_ship_to_tab(gn_ins_order_inf_cnt)
-          := gt_order_inf_tbl(ln_index).deliver_to;
-        -- 9.品目コード
-        i_trn_item_code_tab(gn_ins_order_inf_cnt)
-          := gt_order_inf_tbl(ln_index).shipping_item_code;
-        -- 10.単価
-        i_trn_price_tab(gn_ins_order_inf_cnt)
-          := gt_order_inf_tbl(ln_index).setting_amount;
---
-        -- 11.計算数量
-        -- 受注データ抽出処理.商品区分 = 「ドリンク」の場合
-        IF (gt_order_inf_tbl(ln_index).prod_class = gv_prod_class_drk) THEN
--- ********** 20080508 内部変更要求 seq#59 MOD START **********
-/***
-          i_trn_calc_qry_tab(gn_ins_order_inf_cnt) :=
-            TRUNC(xxcmn_common_pkg.rcv_ship_conv_qty(
-                    gv_rcv_to_first                               -- 変換方法
-                   ,lt_item_id                                    -- 品目ID
-                   ,gt_order_inf_tbl(ln_index).shipped_quantity   -- 数量
-                  ));
-***/
-          -- 計算数量変換
-          i_trn_calc_qry_tab(gn_ins_order_inf_cnt) :=
-            xxwip_common3_pkg.deliv_rcv_ship_conv_qty(
-                  gt_order_inf_tbl(ln_index).shipping_item_code -- 品目コード
-                , gt_order_inf_tbl(ln_index).shipped_quantity);    -- 数量
--- ********** 20080508 内部変更要求 seq#59 MOD END   **********
---
-        -- 受注データ抽出処理.商品区分 = 「リーフ」の場合
-        ELSIF (gt_order_inf_tbl(ln_index).prod_class = gv_prod_class_lef) THEN
-          -- 受注データ抽出処理.小口区分 = 「車立」の場合
--- 2008/07/29 Mod ↓
-/*
-          IF (gt_order_inf_tbl(ln_index).prod_class = gv_small_sum_no) THEN
-*/
-          IF (gt_order_inf_tbl(ln_index).small_amount_class = gv_small_sum_no) THEN
--- 2008/07/29 Mod ↑
-            -- 固定で「1」を設定
-            i_trn_calc_qry_tab(gn_ins_order_inf_cnt) := 1;
-          -- 受注データ抽出処理.小口区分 = 「小口」の場合
--- 2008/07/29 Mod ↓
-/*
-          ELSIF (gt_order_inf_tbl(ln_index).prod_class = gv_small_sum_yes) THEN
-*/
-          ELSIF (gt_order_inf_tbl(ln_index).small_amount_class = gv_small_sum_yes) THEN
--- 2008/07/29 Mod ↑
-            -- 受注データ抽出処理.小口個数を設定
-            i_trn_calc_qry_tab(gn_ins_order_inf_cnt) := gt_order_inf_tbl(ln_index).small_quantity;
+          -- 配車解除の削除処理
+          del_deliveryoff_proc(gt_order_inf_tbl(ln_index).request_no ,   -- 依頼No
+                               lv_errbuf ,
+                               lv_retcode ,
+                               lv_errmsg  );
+          IF (lv_retcode = gv_status_error) THEN
+            RAISE global_process_expt;
           END IF;
         END IF;
 --
-        -- 12.実際数量
+      -- ==================================================
+      -- = 配車Noが設定されている場合
+      -- =    振替運賃の対象とする
+      -- ==================================================
+      ELSE
+--
+-- ##### 20081016 Ver.1.7 内部変更#225 end   #####
+--
+--2008/09/22 Add
+        ln_msg_flg := 0;
+--
+        -- 受注データ抽出処理.商品区分 = 「リーフ」の場合
+        IF (gt_order_inf_tbl(ln_index).prod_class = gv_prod_class_lef) THEN
+          -- 受注データ抽出処理.小口区分 = 「車立」の場合
+          IF (gt_order_inf_tbl(ln_index).small_amount_class = gv_small_sum_no) THEN
+            -- リーフ振替運賃アドオンマスタより単価(便設定金額)を取得
+            BEGIN
+              SELECT xltdc.setting_amount              -- 単価(便設定金額)
+              INTO   gt_order_inf_tbl(ln_index).setting_amount
+              FROM   xxwip_leaf_trans_deli_chrgs xltdc -- リーフ振替運賃アドオンマスタ
+              WHERE  FND_DATE.STRING_TO_DATE(
+                       gt_order_inf_tbl(ln_index).arrival_yyyymm || '01', 'YYYYMMDD')
+                     BETWEEN xltdc.start_date_active
+                       AND NVL(xltdc.end_date_active
+                              ,FND_DATE.STRING_TO_DATE('99991231', 'YYYYMMDD'));
+            EXCEPTION
+              WHEN NO_DATA_FOUND THEN   --*** データ取得エラー ***
+                -- データが存在しない場合は単価に「0」を設定
+                gt_order_inf_tbl(ln_index).setting_amount := 0;
+                ln_msg_flg := 1;                                    -- 2008/09/22 Add
+            END;
+--
+          -- 受注データ抽出処理.小口区分 = 「小口」の場合
+          ELSIF (gt_order_inf_tbl(ln_index).small_amount_class = gv_small_sum_yes) THEN
+            -- リーフ振替運賃アドオンマスタより単価(便設定金額)を取得
+            BEGIN
+              -- 小口個数によって設定金額を取得
+              SELECT 
+                CASE
+                  WHEN (gt_order_inf_tbl(ln_index).small_quantity <= xltdc.upper_limit_number1) THEN
+                    xltdc.setting_amount1
+                  WHEN (gt_order_inf_tbl(ln_index).small_quantity <= xltdc.upper_limit_number2) THEN
+                    xltdc.setting_amount2
+                  WHEN (gt_order_inf_tbl(ln_index).small_quantity <= xltdc.upper_limit_number3) THEN
+                    xltdc.setting_amount3
+                  WHEN (gt_order_inf_tbl(ln_index).small_quantity <= xltdc.upper_limit_number4) THEN
+                    xltdc.setting_amount4
+                  WHEN (gt_order_inf_tbl(ln_index).small_quantity <= xltdc.upper_limit_number5) THEN
+                    xltdc.setting_amount5
+                  WHEN (gt_order_inf_tbl(ln_index).small_quantity <= xltdc.upper_limit_number6) THEN
+                    xltdc.setting_amount6
+                  WHEN (gt_order_inf_tbl(ln_index).small_quantity <= xltdc.upper_limit_number7) THEN
+                    xltdc.setting_amount7
+                  WHEN (gt_order_inf_tbl(ln_index).small_quantity <= xltdc.upper_limit_number8) THEN
+                    xltdc.setting_amount8
+                  WHEN (gt_order_inf_tbl(ln_index).small_quantity <= xltdc.upper_limit_number9) THEN
+                    xltdc.setting_amount9
+                  WHEN (gt_order_inf_tbl(ln_index).small_quantity <= xltdc.upper_limit_number10) THEN
+                     xltdc.setting_amount10
+                  ELSE 0
+                END AS setting_amount                   -- 単価(便設定金額)
+              INTO  gt_order_inf_tbl(ln_index).setting_amount
+              FROM  xxwip_leaf_trans_deli_chrgs xltdc -- リーフ振替運賃アドオンマスタ
+              WHERE FND_DATE.STRING_TO_DATE(
+                      gt_order_inf_tbl(ln_index).arrival_yyyymm || '01', 'YYYYMMDD')
+                    BETWEEN xltdc.start_date_active AND xltdc.end_date_active;
+            EXCEPTION
+              WHEN NO_DATA_FOUND THEN   --*** データ取得エラー ***
+                -- データが存在しない場合は単価に「0」を設定
+                gt_order_inf_tbl(ln_index).setting_amount := 0;
+                ln_msg_flg := 1;                                    -- 2008/09/22 Add
+            END;
+--
+          END IF;
+--
+        -- 受注データ抽出処理.商品区分 = 「ドリンク」の場合
+        ELSIF (gt_order_inf_tbl(ln_index).prod_class = gv_prod_class_drk) THEN
+--
+          BEGIN
+            SELECT CASE
+                     WHEN (gt_order_inf_tbl(ln_index).penalty_class = gv_penalty_no) THEN
+                       xdtdc.setting_amount
+                     WHEN (gt_order_inf_tbl(ln_index).penalty_class = gv_penalty_yes) THEN
+                       xdtdc.penalty_amount
+                     ELSE 0
+                   END AS setting_amount                     -- 便設定金額
+            INTO   gt_order_inf_tbl(ln_index).setting_amount
+            FROM   xxwip_drink_trans_deli_chrgs xdtdc -- ドリンク振替運賃アドオンマスタ
+            WHERE  xdtdc.godds_classification   = gt_order_inf_tbl(ln_index).product_class
+            AND    xdtdc.dellivary_classe       = gt_order_inf_tbl(ln_index).shipping_method_code
+            AND    xdtdc.foothold_macrotaxonomy = gt_order_inf_tbl(ln_index).base_major_division
+            AND    FND_DATE.STRING_TO_DATE(
+                     gt_order_inf_tbl(ln_index).arrival_yyyymm || '01', 'YYYYMMDD')
+                   BETWEEN xdtdc.start_date_active AND xdtdc.end_date_active;
+          EXCEPTION
+            WHEN NO_DATA_FOUND THEN   --*** データ取得エラー ***
+              -- データが存在しない場合は単価に「0」を設定
+              gt_order_inf_tbl(ln_index).setting_amount := 0;
+              ln_msg_flg := 2;                                      -- 2008/09/22 Add
+          END;
+--
+        END IF;
+--
+        -- 抽出したデータを元に振替運賃情報アドオンの存在チェックを行い、存在する場合はロックを行う
+        BEGIN
+          SELECT xtfi.transfer_fare_inf_id    -- 振替運賃情報ID
+          INTO   ln_trn_fare_inf_id
+          FROM   xxwip_transfer_fare_inf xtfi -- 振替運賃情報アドオン
+          WHERE  xtfi.target_date        = gt_order_inf_tbl(ln_index).arrival_yyyymm
+          AND    xtfi.request_no         = gt_order_inf_tbl(ln_index).request_no
+          AND    xtfi.goods_classe       = gt_order_inf_tbl(ln_index).prod_class
+          AND    xtfi.jurisdicyional_hub = gt_order_inf_tbl(ln_index).head_sales_branch
+          AND    xtfi.item_code          = gt_order_inf_tbl(ln_index).shipping_item_code
+          FOR UPDATE NOWAIT;
+--
+          -- 存在する場合は存在チェック用フラグを「1」に設定
+          ln_flg := 1;
+--
+        EXCEPTION
+          WHEN NO_DATA_FOUND THEN   --*** データ取得エラー ***
+            -- データが存在しない場合は存在チェック用フラグに「0」を設定
+            ln_flg := 0;
+          WHEN lock_expt THEN   -- *** ロック取得エラー ***
+            lv_errmsg := xxcmn_common_pkg.get_msg(gv_wip_msg_kbn, gv_wip_msg_75c_004,
+                                                  gv_tkn_table,   gv_trans_fare_inf_name);
+            lv_errbuf := lv_errmsg;
+            RAISE global_api_expt;
+        END;
+--
+        -- 品目IDの取得
+        BEGIN
+          SELECT ximv.item_id            -- 品目ID
+          INTO   lt_item_id
+          FROM   xxcmn_item_mst2_v ximv   -- OPM品目情報VIEW
+          WHERE  ximv.item_no = gt_order_inf_tbl(ln_index).shipping_item_code
+          AND    FND_DATE.STRING_TO_DATE(
+                   gt_order_inf_tbl(ln_index).arrival_yyyymm || '01', 'YYYYMMDD')
+                 BETWEEN ximv.start_date_active AND ximv.end_date_active;
+        EXCEPTION
+          WHEN NO_DATA_FOUND OR TOO_MANY_ROWS THEN   -- *** データ取得エラー ***
+            RAISE global_api_expt;
+        END;
+--
+        -- 存在しない場合は振替運賃情報アドオン登録用PL/SQL表に格納
+        IF (ln_flg = 0) THEN
+--
+          -- 登録用PL/SQL表 件数カウント
+          gn_ins_order_inf_cnt := gn_ins_order_inf_cnt + 1;
+--
+          -- 1.振替運賃情報ID 採番
+          SELECT xxwip_transfer_fare_inf_id_s1.NEXTVAL
+          INTO   i_trn_fare_inf_id_tab(gn_ins_order_inf_cnt)
+          FROM   dual;
+--
+          -- ****************************************
+          -- * 振替運賃情報データ 登録用PL/SQL表 設定
+          -- ****************************************
+          -- 2.対象年月
+          i_trn_target_date_tab(gn_ins_order_inf_cnt)
+            := gt_order_inf_tbl(ln_index).arrival_yyyymm;
+          -- 3.依頼No
+          i_trn_request_no_tab(gn_ins_order_inf_cnt)
+            := gt_order_inf_tbl(ln_index).request_no;
+          -- 4.商品区分
+          i_trn_goods_classe_tab(gn_ins_order_inf_cnt)
+            := gt_order_inf_tbl(ln_index).prod_class;
+          -- 5.配送日
+          i_trn_delivery_date_tab(gn_ins_order_inf_cnt)
+            := gt_order_inf_tbl(ln_index).arrival_date;
+          -- 6.管轄拠点
+          i_trn_jurisdicyional_hub_tab(gn_ins_order_inf_cnt)
+            := gt_order_inf_tbl(ln_index).head_sales_branch;
+          -- 7.出庫元
+          i_trn_delivery_whs_tab(gn_ins_order_inf_cnt)
+            := gt_order_inf_tbl(ln_index).deliver_from;
+          -- 8.配送先
+          i_trn_ship_to_tab(gn_ins_order_inf_cnt)
+            := gt_order_inf_tbl(ln_index).deliver_to;
+          -- 9.品目コード
+          i_trn_item_code_tab(gn_ins_order_inf_cnt)
+            := gt_order_inf_tbl(ln_index).shipping_item_code;
+          -- 10.単価
+          i_trn_price_tab(gn_ins_order_inf_cnt)
+            := gt_order_inf_tbl(ln_index).setting_amount;
+--
+          -- 11.計算数量
+          -- 受注データ抽出処理.商品区分 = 「ドリンク」の場合
+          IF (gt_order_inf_tbl(ln_index).prod_class = gv_prod_class_drk) THEN
 -- ********** 20080508 内部変更要求 seq#59 MOD START **********
 /***
-        i_trn_actual_qty_tab(gn_ins_order_inf_cnt) :=
-          TRUNC(xxcmn_common_pkg.rcv_ship_conv_qty(
-                  gv_rcv_to_first                               -- 変換方法
-                 ,lt_item_id                                    -- 品目ID
-                 ,gt_order_inf_tbl(ln_index).shipped_quantity   -- 数量
-               ));
+            i_trn_calc_qry_tab(gn_ins_order_inf_cnt) :=
+              TRUNC(xxcmn_common_pkg.rcv_ship_conv_qty(
+                      gv_rcv_to_first                               -- 変換方法
+                     ,lt_item_id                                    -- 品目ID
+                     ,gt_order_inf_tbl(ln_index).shipped_quantity   -- 数量
+                    ));
 ***/
-        i_trn_actual_qty_tab(gn_ins_order_inf_cnt) :=
-                xxwip_common3_pkg.deliv_rcv_ship_conv_qty(
-                      gt_order_inf_tbl(ln_index).shipping_item_code -- 品目コード
-                    , gt_order_inf_tbl(ln_index).shipped_quantity); -- 数量
+            -- 計算数量変換
+            i_trn_calc_qry_tab(gn_ins_order_inf_cnt) :=
+              xxwip_common3_pkg.deliv_rcv_ship_conv_qty(
+                    gt_order_inf_tbl(ln_index).shipping_item_code -- 品目コード
+                  , gt_order_inf_tbl(ln_index).shipped_quantity);    -- 数量
 -- ********** 20080508 内部変更要求 seq#59 MOD END   **********
 --
-        -- 13.金額
-        i_trn_amount_tab(gn_ins_order_inf_cnt) :=
--- ##### 20080903 Ver.1.5 内部変更要求201_203 start #####
---          gt_order_inf_tbl(ln_index).setting_amount * i_trn_calc_qry_tab(gn_ins_order_inf_cnt);
-          ROUND(gt_order_inf_tbl(ln_index).setting_amount * i_trn_calc_qry_tab(gn_ins_order_inf_cnt));
--- ##### 20080903 Ver.1.5 内部変更要求201_203 end   #####
+          -- 受注データ抽出処理.商品区分 = 「リーフ」の場合
+          ELSIF (gt_order_inf_tbl(ln_index).prod_class = gv_prod_class_lef) THEN
+            -- 受注データ抽出処理.小口区分 = 「車立」の場合
+-- 2008/07/29 Mod ↓
+/*
+            IF (gt_order_inf_tbl(ln_index).prod_class = gv_small_sum_no) THEN
+*/
+            IF (gt_order_inf_tbl(ln_index).small_amount_class = gv_small_sum_no) THEN
+-- 2008/07/29 Mod ↑
+              -- 固定で「1」を設定
+              i_trn_calc_qry_tab(gn_ins_order_inf_cnt) := 1;
+            -- 受注データ抽出処理.小口区分 = 「小口」の場合
+-- 2008/07/29 Mod ↓
+/*
+            ELSIF (gt_order_inf_tbl(ln_index).prod_class = gv_small_sum_yes) THEN
+*/
+            ELSIF (gt_order_inf_tbl(ln_index).small_amount_class = gv_small_sum_yes) THEN
+-- 2008/07/29 Mod ↑
+              -- 受注データ抽出処理.小口個数を設定
+              i_trn_calc_qry_tab(gn_ins_order_inf_cnt) := gt_order_inf_tbl(ln_index).small_quantity;
+            END IF;
+          END IF;
 --
-      -- 存在する場合は振替運賃情報アドオン更新用PL/SQL表に格納
-      ELSIF (ln_flg = 1) THEN
---
-      -- 更新用PL/SQL表 件数カウント
-      gn_upd_order_inf_cnt := gn_upd_order_inf_cnt + 1;
---
-        -- **************************************
-        -- * 振替運賃情報データ 更新用PL/SQL 設定
-        -- **************************************
-        -- 1.振替運賃情報ID
-        u_trn_fare_inf_id_tab(gn_upd_order_inf_cnt) := ln_trn_fare_inf_id;
-        -- 2.対象年月
-        u_trn_target_date_tab(gn_upd_order_inf_cnt)
-          := gt_order_inf_tbl(ln_index).arrival_yyyymm;
-        -- 3.依頼No
-        u_trn_request_no_tab(gn_upd_order_inf_cnt)
-          := gt_order_inf_tbl(ln_index).request_no;
-        -- 4.商品区分
-        u_trn_goods_classe_tab(gn_upd_order_inf_cnt)
-          := gt_order_inf_tbl(ln_index).prod_class;
-        -- 5.配送日
-        u_trn_delivery_date_tab(gn_upd_order_inf_cnt)
-          := gt_order_inf_tbl(ln_index).arrival_date;
-        -- 6.管轄拠点
-        u_trn_jurisdicyional_hub_tab(gn_upd_order_inf_cnt)
-          := gt_order_inf_tbl(ln_index).head_sales_branch;
-        -- 7.出庫元
-        u_trn_delivery_whs_tab(gn_upd_order_inf_cnt)
-          := gt_order_inf_tbl(ln_index).deliver_from;
-        -- 8.配送先
-        u_trn_ship_to_tab(gn_upd_order_inf_cnt)
-          := gt_order_inf_tbl(ln_index).deliver_to;
-        -- 9.品目コード
-        u_trn_item_code_tab(gn_upd_order_inf_cnt)
-          := gt_order_inf_tbl(ln_index).shipping_item_code;
-        -- 10.単価
-        u_trn_price_tab(gn_upd_order_inf_cnt)
-          := gt_order_inf_tbl(ln_index).setting_amount;
---
-        -- 11.計算数量
-        -- 受注データ抽出処理.商品区分 = 「ドリンク」の場合
-        IF (gt_order_inf_tbl(ln_index).prod_class = gv_prod_class_drk) THEN
+          -- 12.実際数量
 -- ********** 20080508 内部変更要求 seq#59 MOD START **********
 /***
-          -- 入出庫換算関数の呼び出し
-          u_trn_calc_qry_tab(gn_upd_order_inf_cnt) :=
+          i_trn_actual_qty_tab(gn_ins_order_inf_cnt) :=
             TRUNC(xxcmn_common_pkg.rcv_ship_conv_qty(
                     gv_rcv_to_first                               -- 変換方法
                    ,lt_item_id                                    -- 品目ID
                    ,gt_order_inf_tbl(ln_index).shipped_quantity   -- 数量
                  ));
 ***/
-          u_trn_calc_qry_tab(gn_upd_order_inf_cnt) :=
-              xxwip_common3_pkg.deliv_rcv_ship_conv_qty(
-                    gt_order_inf_tbl(ln_index).shipping_item_code -- 品目コード
-                  , gt_order_inf_tbl(ln_index).shipped_quantity); -- 数量
+          i_trn_actual_qty_tab(gn_ins_order_inf_cnt) :=
+                  xxwip_common3_pkg.deliv_rcv_ship_conv_qty(
+                        gt_order_inf_tbl(ln_index).shipping_item_code -- 品目コード
+                      , gt_order_inf_tbl(ln_index).shipped_quantity); -- 数量
 -- ********** 20080508 内部変更要求 seq#59 MOD END   **********
 --
-        -- 受注データ抽出処理.商品区分 = 「リーフ」の場合
-        ELSIF (gt_order_inf_tbl(ln_index).prod_class = gv_prod_class_lef) THEN
-          -- 受注データ抽出処理.小口区分 = 「車立」の場合
+          -- 13.金額
+          i_trn_amount_tab(gn_ins_order_inf_cnt) :=
+-- ##### 20080903 Ver.1.5 内部変更要求201_203 start #####
+--          gt_order_inf_tbl(ln_index).setting_amount * i_trn_calc_qry_tab(gn_ins_order_inf_cnt);
+            ROUND(gt_order_inf_tbl(ln_index).setting_amount * i_trn_calc_qry_tab(gn_ins_order_inf_cnt));
+-- ##### 20080903 Ver.1.5 内部変更要求201_203 end   #####
+--
+        -- 存在する場合は振替運賃情報アドオン更新用PL/SQL表に格納
+        ELSIF (ln_flg = 1) THEN
+--
+        -- 更新用PL/SQL表 件数カウント
+        gn_upd_order_inf_cnt := gn_upd_order_inf_cnt + 1;
+--
+          -- **************************************
+          -- * 振替運賃情報データ 更新用PL/SQL 設定
+          -- **************************************
+          -- 1.振替運賃情報ID
+          u_trn_fare_inf_id_tab(gn_upd_order_inf_cnt) := ln_trn_fare_inf_id;
+          -- 2.対象年月
+          u_trn_target_date_tab(gn_upd_order_inf_cnt)
+            := gt_order_inf_tbl(ln_index).arrival_yyyymm;
+          -- 3.依頼No
+          u_trn_request_no_tab(gn_upd_order_inf_cnt)
+            := gt_order_inf_tbl(ln_index).request_no;
+          -- 4.商品区分
+          u_trn_goods_classe_tab(gn_upd_order_inf_cnt)
+            := gt_order_inf_tbl(ln_index).prod_class;
+          -- 5.配送日
+          u_trn_delivery_date_tab(gn_upd_order_inf_cnt)
+            := gt_order_inf_tbl(ln_index).arrival_date;
+          -- 6.管轄拠点
+          u_trn_jurisdicyional_hub_tab(gn_upd_order_inf_cnt)
+            := gt_order_inf_tbl(ln_index).head_sales_branch;
+          -- 7.出庫元
+          u_trn_delivery_whs_tab(gn_upd_order_inf_cnt)
+            := gt_order_inf_tbl(ln_index).deliver_from;
+          -- 8.配送先
+          u_trn_ship_to_tab(gn_upd_order_inf_cnt)
+            := gt_order_inf_tbl(ln_index).deliver_to;
+          -- 9.品目コード
+          u_trn_item_code_tab(gn_upd_order_inf_cnt)
+            := gt_order_inf_tbl(ln_index).shipping_item_code;
+          -- 10.単価
+          u_trn_price_tab(gn_upd_order_inf_cnt)
+            := gt_order_inf_tbl(ln_index).setting_amount;
+--
+          -- 11.計算数量
+          -- 受注データ抽出処理.商品区分 = 「ドリンク」の場合
+          IF (gt_order_inf_tbl(ln_index).prod_class = gv_prod_class_drk) THEN
+-- ********** 20080508 内部変更要求 seq#59 MOD START **********
+/***
+            -- 入出庫換算関数の呼び出し
+            u_trn_calc_qry_tab(gn_upd_order_inf_cnt) :=
+              TRUNC(xxcmn_common_pkg.rcv_ship_conv_qty(
+                      gv_rcv_to_first                               -- 変換方法
+                     ,lt_item_id                                    -- 品目ID
+                     ,gt_order_inf_tbl(ln_index).shipped_quantity   -- 数量
+                   ));
+***/
+            u_trn_calc_qry_tab(gn_upd_order_inf_cnt) :=
+                xxwip_common3_pkg.deliv_rcv_ship_conv_qty(
+                      gt_order_inf_tbl(ln_index).shipping_item_code -- 品目コード
+                    , gt_order_inf_tbl(ln_index).shipped_quantity); -- 数量
+-- ********** 20080508 内部変更要求 seq#59 MOD END   **********
+--
+          -- 受注データ抽出処理.商品区分 = 「リーフ」の場合
+          ELSIF (gt_order_inf_tbl(ln_index).prod_class = gv_prod_class_lef) THEN
+            -- 受注データ抽出処理.小口区分 = 「車立」の場合
 -- 2008/07/29 Mod ↓
 /*
-          IF (gt_order_inf_tbl(ln_index).prod_class = gv_small_sum_no) THEN
+            IF (gt_order_inf_tbl(ln_index).prod_class = gv_small_sum_no) THEN
 */
-          IF (gt_order_inf_tbl(ln_index).small_amount_class = gv_small_sum_no) THEN
+            IF (gt_order_inf_tbl(ln_index).small_amount_class = gv_small_sum_no) THEN
 -- 2008/07/29 Mod ↑
-            -- 固定で「1」を設定
-            u_trn_calc_qry_tab(gn_upd_order_inf_cnt) := 1;
-          -- 受注データ抽出処理.小口区分 = 「小口」の場合
+              -- 固定で「1」を設定
+              u_trn_calc_qry_tab(gn_upd_order_inf_cnt) := 1;
+            -- 受注データ抽出処理.小口区分 = 「小口」の場合
 -- 2008/07/29 Mod ↓
 /*
-          ELSIF (gt_order_inf_tbl(ln_index).prod_class = gv_small_sum_yes) THEN
+            ELSIF (gt_order_inf_tbl(ln_index).prod_class = gv_small_sum_yes) THEN
 */
-          ELSIF (gt_order_inf_tbl(ln_index).small_amount_class = gv_small_sum_yes) THEN
+            ELSIF (gt_order_inf_tbl(ln_index).small_amount_class = gv_small_sum_yes) THEN
 -- 2008/07/29 Mod ↑
-            -- 受注データ抽出処理.小口個数を設定
-            u_trn_calc_qry_tab(gn_upd_order_inf_cnt) := gt_order_inf_tbl(ln_index).small_quantity;
+              -- 受注データ抽出処理.小口個数を設定
+              u_trn_calc_qry_tab(gn_upd_order_inf_cnt) := gt_order_inf_tbl(ln_index).small_quantity;
+            END IF;
           END IF;
-        END IF;
 --
 -- ********** 20080508 内部変更要求 seq#59 MOD START **********
 /***
-        -- 12.実際数量
-        u_trn_actual_qty_tab(gn_upd_order_inf_cnt) :=
-          TRUNC(xxcmn_common_pkg.rcv_ship_conv_qty(
-                  gv_rcv_to_first                               -- 変換方法
-                 ,lt_item_id                                    -- 品目ID
-                 ,gt_order_inf_tbl(ln_index).shipped_quantity   -- 数量
-               ));
+          -- 12.実際数量
+          u_trn_actual_qty_tab(gn_upd_order_inf_cnt) :=
+            TRUNC(xxcmn_common_pkg.rcv_ship_conv_qty(
+                    gv_rcv_to_first                               -- 変換方法
+                   ,lt_item_id                                    -- 品目ID
+                   ,gt_order_inf_tbl(ln_index).shipped_quantity   -- 数量
+                 ));
 ***/
-        u_trn_actual_qty_tab(gn_upd_order_inf_cnt) :=
-              xxwip_common3_pkg.deliv_rcv_ship_conv_qty(
-                    gt_order_inf_tbl(ln_index).shipping_item_code -- 品目コード
-                  , gt_order_inf_tbl(ln_index).shipped_quantity); -- 数量
+          u_trn_actual_qty_tab(gn_upd_order_inf_cnt) :=
+                xxwip_common3_pkg.deliv_rcv_ship_conv_qty(
+                      gt_order_inf_tbl(ln_index).shipping_item_code -- 品目コード
+                    , gt_order_inf_tbl(ln_index).shipped_quantity); -- 数量
 -- ********** 20080508 内部変更要求 seq#59 MOD END   **********
 --
-        -- 13.金額
-        u_trn_amount_tab(gn_upd_order_inf_cnt) :=
+          -- 13.金額
+          u_trn_amount_tab(gn_upd_order_inf_cnt) :=
 -- ##### 20080903 Ver.1.5 内部変更要求201_203 start #####
 --          gt_order_inf_tbl(ln_index).setting_amount * u_trn_calc_qry_tab(gn_upd_order_inf_cnt);
-          ROUND(gt_order_inf_tbl(ln_index).setting_amount * u_trn_calc_qry_tab(gn_upd_order_inf_cnt));
+            ROUND(gt_order_inf_tbl(ln_index).setting_amount * u_trn_calc_qry_tab(gn_upd_order_inf_cnt));
 -- ##### 20080903 Ver.1.5 内部変更要求201_203 end   #####
-      END IF;
---2008/09/22 Add ↓
-      IF (ln_msg_flg > 0) THEN
---
-        -- リーフ
-        IF (ln_msg_flg = 1) THEN
-          lv_tbl_name := cv_reaf_tbl_name;
---
-        -- ドリンク
-        ELSIF (ln_msg_flg = 2) THEN
-          lv_tbl_name := cv_drink_tbl_name;
         END IF;
+--2008/09/22 Add ↓
+        IF (ln_msg_flg > 0) THEN
 --
-        -- メッセージ出力
-        lv_errmsg := xxcmn_common_pkg.get_msg(gv_wip_msg_kbn,
-                                              gv_wip_msg_75c_009,
-                                              gv_tkn_tbl_name,
-                                              lv_tbl_name,
-                                              gv_tkn_req_no,
-                                              gt_order_inf_tbl(ln_index).request_no);
-        FND_FILE.PUT_LINE(FND_FILE.OUTPUT,lv_errmsg);
+          -- リーフ
+          IF (ln_msg_flg = 1) THEN
+            lv_tbl_name := cv_reaf_tbl_name;
+--
+          -- ドリンク
+          ELSIF (ln_msg_flg = 2) THEN
+            lv_tbl_name := cv_drink_tbl_name;
+          END IF;
+--
+          -- メッセージ出力
+          lv_errmsg := xxcmn_common_pkg.get_msg(gv_wip_msg_kbn,
+                                                gv_wip_msg_75c_009,
+                                                gv_tkn_tbl_name,
+                                                lv_tbl_name,
+                                                gv_tkn_req_no,
+                                                gt_order_inf_tbl(ln_index).request_no);
+          FND_FILE.PUT_LINE(FND_FILE.OUTPUT,lv_errmsg);
+        END IF;
+  --2008/09/22 Add ↑
+  --
+-- ##### 20081016 Ver.1.7 内部変更#225 start #####
       END IF;
---2008/09/22 Add ↑
+-- ##### 20081016 Ver.1.7 内部変更#225 end   #####
 --
     END LOOP gt_order_inf_tbl_loop;
 --
@@ -1349,6 +1492,14 @@ AS
       ov_retcode := gv_status_error;
 --
 --#################################  固定例外処理部 START   ####################################
+--
+-- ##### 20081016 Ver.1.7 内部変更#225 start #####
+    -- *** 処理部共通例外ハンドラ ***
+    WHEN global_process_expt THEN
+      ov_errmsg  := lv_errmsg;
+      ov_errbuf  := SUBSTRB(gv_pkg_name||gv_msg_cont||cv_prg_name||gv_msg_part||lv_errbuf,1,5000);
+      ov_retcode := gv_status_error;
+-- ##### 20081016 Ver.1.7 内部変更#225 end   #####
 --
     -- *** 共通関数例外ハンドラ ***
     WHEN global_api_expt THEN
