@@ -1,0 +1,64 @@
+CREATE OR REPLACE PACKAGE xxwsh620002c
+AS
+/*****************************************************************************************
+ * Copyright(c)Oracle Corporation Japan, 2008. All rights reserved.
+ *
+ * Package Name     : xxwsh620002c(spec)
+ * Description      : 出庫配送依頼表
+ * MD.050           : 引当/配車(帳票) T_MD050_BPO_620
+ * MD.070           : 出庫配送依頼表 T_MD070_BPO_62C
+ * Version          : 1.0
+ *
+ * Program List
+ * -------------------- ------------------------------------------------------------
+ *  Name                 Description
+ * -------------------- ------------------------------------------------------------
+ *  main                 コンカレント実行ファイル登録プロシージャ
+ *
+ * Change Record
+ * ------------- ----- ---------------- -------------------------------------------------
+ *  Date          Ver.  Editor           Description
+ * ------------- ----- ---------------- -------------------------------------------------
+ *  2008/04/30    1.0   Yoshitomo Kawasaki 新規作成
+ *
+ *****************************************************************************************/
+--
+--#######################  固定グローバル変数宣言部 START   #######################
+--
+  TYPE xml_rec  IS RECORD (tag_name  VARCHAR2(50)
+                          ,tag_value VARCHAR2(2000)
+                          ,tag_type  CHAR(1));
+--
+  TYPE xml_data IS TABLE OF xml_rec INDEX BY BINARY_INTEGER;
+--
+--################################  固定部 END   ###############################
+--
+  --コンカレント実行ファイル登録プロシージャ
+  PROCEDURE main(
+     errbuf                     OUT    VARCHAR2         --  エラーメッセージ
+    ,retcode                    OUT    VARCHAR2         --  エラーコード
+    ,iv_dept                    IN     VARCHAR2         --  01 : 部署
+    ,iv_plan_decide_kbn         IN     VARCHAR2         --  02 : 予定/確定区分
+    ,iv_ship_from               IN     VARCHAR2         --  03 : 出庫日From
+    ,iv_ship_to                 IN     VARCHAR2         --  04 : 出庫日To
+    ,iv_shukko_haisou_kbn       IN     VARCHAR2         --  05 : 出庫/配送区分
+    ,iv_gyoumu_shubetsu         IN     VARCHAR2         --  06 : 業務種別
+    ,iv_notif_date              IN     VARCHAR2         --  07 : 確定通知実施日
+    ,iv_notif_time_from         IN     VARCHAR2         --  08 : 確定通知実施時間From
+    ,iv_notif_time_to           IN     VARCHAR2         --  09 : 確定通知実施時間To
+    ,iv_freight_carrier_code    IN     VARCHAR2         --  10 : 運送業者
+    ,iv_block1                  IN     VARCHAR2         --  11 : ブロック1
+    ,iv_block2                  IN     VARCHAR2         --  12 : ブロック2
+    ,iv_block3                  IN     VARCHAR2         --  13 : ブロック3
+    ,iv_shipped_locat_code      IN     VARCHAR2         --  14 : 出庫元
+    ,iv_mov_num                 IN     VARCHAR2         --  15 : 依頼No/移動No
+    ,iv_shime_date              IN     VARCHAR2         --  16 : 締め実施日
+    ,iv_shime_time_from         IN     VARCHAR2         --  17 : 締め実施時間From
+    ,iv_shime_time_to           IN     VARCHAR2         --  18 : 締め実施時間To
+    ,iv_online_kbn              IN     VARCHAR2         --  19 : オンライン対象区分
+    ,iv_item_kbn                IN     VARCHAR2         --  20 : 品目区分
+    ,iv_shukko_keitai           IN     VARCHAR2         --  21 : 出庫形態
+    ,iv_unsou_irai_inzi_kbn     IN     VARCHAR2         --  22 : 運送依頼元印字区分
+  );
+END xxwsh620002c;
+/

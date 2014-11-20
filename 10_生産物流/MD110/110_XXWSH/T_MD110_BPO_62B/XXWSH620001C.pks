@@ -1,0 +1,53 @@
+CREATE OR REPLACE PACKAGE xxwsh620001c
+AS
+/*****************************************************************************************
+ * Copyright(c)Oracle Corporation Japan, 2008. All rights reserved.
+ *
+ * Package Name     : xxwsh620001c(spec)
+ * Description      : 在庫不足確認リスト
+ * MD.050           : 引当/配車(帳票) T_MD050_BPO_620
+ * MD.070           : 在庫不足確認リスト T_MD070_BPO_62B
+ * Version          : 1.0
+ *
+ * Program List
+ * -------------------- ------------------------------------------------------------
+ *  Name                 Description
+ * -------------------- ------------------------------------------------------------
+ *  main                 コンカレント実行ファイル登録プロシージャ
+ *
+ * Change Record
+ * ------------- ----- ------------------ -----------------------------------------------
+ *  Date          Ver.  Editor             Description
+ * ------------- ----- ------------------ -----------------------------------------------
+ *  2008/05/05    1.0   Nozomi Kashiwagi   新規作成
+ *
+ *****************************************************************************************/
+--
+--#######################  固定グローバル変数宣言部 START   #######################
+--
+  TYPE xml_rec  IS RECORD (tag_name  VARCHAR2(50)
+                          ,tag_value VARCHAR2(2000)
+                          ,tag_type  CHAR(1)
+                          );
+--
+  TYPE xml_data IS TABLE OF xml_rec INDEX BY BINARY_INTEGER;
+--
+--################################  固定部 END   ###############################
+--
+  --コンカレント実行ファイル登録プロシージャ
+  PROCEDURE main(
+     errbuf                 OUT    VARCHAR2      -- エラーメッセージ
+    ,retcode                OUT    VARCHAR2      -- エラーコード
+    ,iv_block1              IN     VARCHAR2      -- 01:ブロック1
+    ,iv_block2              IN     VARCHAR2      -- 02:ブロック2
+    ,iv_block3              IN     VARCHAR2      -- 03:ブロック3
+    ,iv_tighten_date        IN     VARCHAR2      -- 04:締め実施日
+    ,iv_tighten_time_from   IN     VARCHAR2      -- 05:締め実施時間From
+    ,iv_tighten_time_to     IN     VARCHAR2      -- 06:締め実施時間To
+    ,iv_shipped_cd          IN     VARCHAR2      -- 07:出庫元
+    ,iv_item_cd             IN     VARCHAR2      -- 08:品目
+    ,iv_shipped_date_from   IN     VARCHAR2      -- 09:出庫日From
+    ,iv_shipped_date_to     IN     VARCHAR2      -- 10:出庫日To
+  );
+END xxwsh620001c;
+/
