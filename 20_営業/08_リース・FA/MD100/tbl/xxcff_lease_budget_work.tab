@@ -1,0 +1,109 @@
+/*************************************************************************
+ * 
+ * Table Name      : xxcff_lease_budget_work
+ * Description     : リース料予算ワーク
+ * MD.070          : 
+ * Version         : 1.0
+ * 
+ * Change Record
+ * ------------- ----- ------------- -------------------------------------
+ *  Date          Ver.  Editor       Description
+ * ------------- ----- ------------- -------------------------------------
+ *  2011/12/01    1.0  SCSK 中村健一 初回作成
+ ************************************************************************/
+CREATE TABLE xxcff.xxcff_lease_budget_work(
+     seqno                          NUMBER        NOT NULL
+    ,record_type                    VARCHAR2(1)   NOT NULL
+    ,lease_class                    VARCHAR2(2)   NOT NULL
+    ,lease_class_name               VARCHAR2(12)  NOT NULL
+    ,lease_type                     VARCHAR2(1)
+    ,lease_type_name                VARCHAR2(8)
+    ,chiku_code                     VARCHAR2(5)
+    ,department_code                VARCHAR2(4)   NOT NULL
+    ,department_name                VARCHAR2(240) NOT NULL
+    ,object_name                    VARCHAR2(18)  NOT NULL
+    ,lease_start_year               NUMBER(4)
+    ,may_charge                     NUMBER
+    ,may_number                     NUMBER
+    ,june_charge                    NUMBER
+    ,june_number                    NUMBER
+    ,july_charge                    NUMBER
+    ,july_number                    NUMBER
+    ,august_charge                  NUMBER
+    ,august_number                  NUMBER
+    ,september_charge               NUMBER
+    ,september_number               NUMBER
+    ,october_charge                 NUMBER
+    ,october_number                 NUMBER
+    ,november_charge                NUMBER
+    ,november_number                NUMBER
+    ,december_charge                NUMBER
+    ,december_number                NUMBER
+    ,january_charge                 NUMBER
+    ,january_number                 NUMBER
+    ,february_charge                NUMBER
+    ,february_number                NUMBER
+    ,march_charge                   NUMBER
+    ,march_number                   NUMBER
+    ,april_charge                   NUMBER
+    ,april_number                   NUMBER
+    ,file_id                        NUMBER        NOT NULL
+    ,created_by                     NUMBER(15)    NOT NULL
+    ,creation_date                  DATE          NOT NULL
+    ,last_updated_by                NUMBER(15)    NOT NULL
+    ,last_update_date               DATE          NOT NULL
+    ,last_update_login              NUMBER(15)
+    ,request_id                     NUMBER(15)
+    ,program_application_id         NUMBER(15)
+    ,program_id                     NUMBER(15)
+    ,program_update_date            DATE
+    ,CONSTRAINT xxcff_lease_budget_work_pk PRIMARY KEY (seqno)
+     USING INDEX TABLESPACE xxidx2)
+     TABLESPACE xxdata2 PCTFREE 20 PCTUSED 40 INITRANS 1 STORAGE (INITIAL 64K)
+;
+COMMENT ON TABLE xxcff.xxcff_lease_budget_work IS 'リース料予算ワーク';
+COMMENT ON COLUMN xxcff.xxcff_lease_budget_work.seqno                    IS '通番';
+COMMENT ON COLUMN xxcff.xxcff_lease_budget_work.record_type              IS 'レコード区分';
+COMMENT ON COLUMN xxcff.xxcff_lease_budget_work.lease_class              IS 'リース種別';
+COMMENT ON COLUMN xxcff.xxcff_lease_budget_work.lease_class_name         IS 'リース種別名';
+COMMENT ON COLUMN xxcff.xxcff_lease_budget_work.lease_type               IS 'リース区分';
+COMMENT ON COLUMN xxcff.xxcff_lease_budget_work.lease_type_name          IS 'リース区分名';
+COMMENT ON COLUMN xxcff.xxcff_lease_budget_work.chiku_code               IS '地区';
+COMMENT ON COLUMN xxcff.xxcff_lease_budget_work.department_code          IS '拠点';
+COMMENT ON COLUMN xxcff.xxcff_lease_budget_work.department_name          IS '拠点名';
+COMMENT ON COLUMN xxcff.xxcff_lease_budget_work.object_name              IS '物件';
+COMMENT ON COLUMN xxcff.xxcff_lease_budget_work.lease_start_year         IS 'リース開始年度';
+COMMENT ON COLUMN xxcff.xxcff_lease_budget_work.may_charge               IS '5月_リース料';
+COMMENT ON COLUMN xxcff.xxcff_lease_budget_work.may_number               IS '5月_台数';
+COMMENT ON COLUMN xxcff.xxcff_lease_budget_work.june_charge              IS '6月_リース料';
+COMMENT ON COLUMN xxcff.xxcff_lease_budget_work.june_number              IS '6月_台数';
+COMMENT ON COLUMN xxcff.xxcff_lease_budget_work.july_charge              IS '7月_リース料';
+COMMENT ON COLUMN xxcff.xxcff_lease_budget_work.july_number              IS '7月_台数';
+COMMENT ON COLUMN xxcff.xxcff_lease_budget_work.august_charge            IS '8月_リース料';
+COMMENT ON COLUMN xxcff.xxcff_lease_budget_work.august_number            IS '8月_台数';
+COMMENT ON COLUMN xxcff.xxcff_lease_budget_work.september_charge         IS '9月_リース料';
+COMMENT ON COLUMN xxcff.xxcff_lease_budget_work.september_number         IS '9月_台数';
+COMMENT ON COLUMN xxcff.xxcff_lease_budget_work.october_charge           IS '10月_リース料';
+COMMENT ON COLUMN xxcff.xxcff_lease_budget_work.october_number           IS '10月_台数';
+COMMENT ON COLUMN xxcff.xxcff_lease_budget_work.november_charge          IS '11月_リース料';
+COMMENT ON COLUMN xxcff.xxcff_lease_budget_work.november_number          IS '11月_台数';
+COMMENT ON COLUMN xxcff.xxcff_lease_budget_work.december_charge          IS '12月_リース料';
+COMMENT ON COLUMN xxcff.xxcff_lease_budget_work.december_number          IS '12月_台数';
+COMMENT ON COLUMN xxcff.xxcff_lease_budget_work.january_charge           IS '1月_リース料';
+COMMENT ON COLUMN xxcff.xxcff_lease_budget_work.january_number           IS '1月_台数';
+COMMENT ON COLUMN xxcff.xxcff_lease_budget_work.february_charge          IS '2月_リース料';
+COMMENT ON COLUMN xxcff.xxcff_lease_budget_work.february_number          IS '2月_台数';
+COMMENT ON COLUMN xxcff.xxcff_lease_budget_work.march_charge             IS '3月_リース料';
+COMMENT ON COLUMN xxcff.xxcff_lease_budget_work.march_number             IS '3月_台数';
+COMMENT ON COLUMN xxcff.xxcff_lease_budget_work.april_charge             IS '4月_リース料';
+COMMENT ON COLUMN xxcff.xxcff_lease_budget_work.april_number             IS '4月_台数';
+COMMENT ON COLUMN xxcff.xxcff_lease_budget_work.file_id                  IS 'ファイルID';
+COMMENT ON COLUMN xxcff.xxcff_lease_budget_work.created_by               IS '作成者';
+COMMENT ON COLUMN xxcff.xxcff_lease_budget_work.creation_date            IS '作成日';
+COMMENT ON COLUMN xxcff.xxcff_lease_budget_work.last_updated_by          IS '最終更新者';
+COMMENT ON COLUMN xxcff.xxcff_lease_budget_work.last_update_date         IS '最終更新日';
+COMMENT ON COLUMN xxcff.xxcff_lease_budget_work.last_update_login        IS '最終更新ログイン';
+COMMENT ON COLUMN xxcff.xxcff_lease_budget_work.request_id               IS '要求ID';
+COMMENT ON COLUMN xxcff.xxcff_lease_budget_work.program_application_id   IS 'コンカレント・プログラム・アプリケーションID';
+COMMENT ON COLUMN xxcff.xxcff_lease_budget_work.program_id               IS 'コンカレント・プログラムID';
+COMMENT ON COLUMN xxcff.xxcff_lease_budget_work.program_update_date      IS 'プログラム更新日';
