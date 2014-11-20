@@ -7,7 +7,7 @@ AS
  * Description      : 生産物流(引当、配車)
  * MD.050           : 出荷・引当/配車：生産物流共通（出荷・移動仮引当） T_MD050_BPO_920
  * MD.070           : 出荷・引当/配車：生産物流共通（出荷・移動仮引当） T_MD070_BPO92A
- * Version          : 1.7
+ * Version          : 1.8
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -32,6 +32,7 @@ AS
  *  2009/01/27   1.5   SCS 二瓶          本番障害#332対応（条件：出庫元不備対応）
  *  2009/01/28   1.6   SCS 伊藤          本番障害#1028対応（パラメータに指示部署追加）
  *  2009/01/28   1.7   SCS 二瓶          本番障害#949対応（トレース取得用処理追加）
+ *  2009/02/03   1.8   SCS 二瓶          本番障害#949対応（トレース取得用処理削除）
  *****************************************************************************************/
 --
 --#######################  固定グローバル定数宣言部 START   #######################
@@ -1340,50 +1341,27 @@ AS
       FOR ln_d_cnt IN 1..gn_total_cnt LOOP
         i := i + 1;
         gn_target_cnt := gn_target_cnt + 1;
--- 2009/01/28 D.Nihei Add Start 本番障害#949対応
-        -- 品目コードが「0005000」の場合
-        IF ( gr_demand_tbl(ln_d_cnt).item_code = '0005000' ) THEN
-          reqid_rec(i) := FND_REQUEST.SUBMIT_REQUEST(
-                             application       => 'XXWSH'                           -- アプリケーション短縮名
-                           , program           => 'XXWSH920008C_2'                  -- プログラム名
-                           , argument1         => iv_item_class                     -- 商品区分
-                           , argument2         => iv_action_type                    -- 処理種別
-                           , argument3         => iv_block1                         -- ブロック１
-                           , argument4         => iv_block2                         -- ブロック２
-                           , argument5         => iv_block3                         -- ブロック３
-                           , argument6         => in_deliver_from_id                -- 出庫元
-                           , argument7         => in_deliver_type                   -- 出庫形態
-                           , argument8         => TO_CHAR(ld_loop_date,'YYYY/MM/DD') -- 出庫日From
-                           , argument9         => TO_CHAR(ld_loop_date,'YYYY/MM/DD') -- 出庫日To
-                           , argument10        => gr_demand_tbl(ln_d_cnt).item_code -- 品目コード
-                           , argument11        => iv_instruction_dept               -- 指示部署
-                             );
-        ELSE
--- 2009/01/28 D.Nihei Add End
-          reqid_rec(i) := FND_REQUEST.SUBMIT_REQUEST(
-                             application       => 'XXWSH'                           -- アプリケーション短縮名
-                           , program           => 'XXWSH920008C'                    -- プログラム名
-                           , argument1         => iv_item_class                     -- 商品区分
-                           , argument2         => iv_action_type                    -- 処理種別
-                           , argument3         => iv_block1                         -- ブロック１
-                           , argument4         => iv_block2                         -- ブロック２
-                           , argument5         => iv_block3                         -- ブロック３
-                           , argument6         => in_deliver_from_id                -- 出庫元
-                           , argument7         => in_deliver_type                   -- 出庫形態
+        reqid_rec(i) := FND_REQUEST.SUBMIT_REQUEST(
+                           application       => 'XXWSH'                           -- アプリケーション短縮名
+                         , program           => 'XXWSH920008C'                    -- プログラム名
+                         , argument1         => iv_item_class                     -- 商品区分
+                         , argument2         => iv_action_type                    -- 処理種別
+                         , argument3         => iv_block1                         -- ブロック１
+                         , argument4         => iv_block2                         -- ブロック２
+                         , argument5         => iv_block3                         -- ブロック３
+                         , argument6         => in_deliver_from_id                -- 出庫元
+                         , argument7         => in_deliver_type                   -- 出庫形態
 -- Ver1.3 M.hokkanji Start
-                           , argument8         => TO_CHAR(ld_loop_date,'YYYY/MM/DD') -- 出庫日From
-                           , argument9         => TO_CHAR(ld_loop_date,'YYYY/MM/DD') -- 出庫日To
+                         , argument8         => TO_CHAR(ld_loop_date,'YYYY/MM/DD') -- 出庫日From
+                         , argument9         => TO_CHAR(ld_loop_date,'YYYY/MM/DD') -- 出庫日To
 --                         , argument8         => iv_deliver_date_from              -- 出庫日From
 --                         , argument9         => iv_deliver_date_to                -- 出庫日To
 -- Ver1.3 M.hokkanji End
-                           , argument10        => gr_demand_tbl(ln_d_cnt).item_code -- 品目コード
+                         , argument10        => gr_demand_tbl(ln_d_cnt).item_code -- 品目コード
 -- 2009/01/28 H.Itou Add Start 本番障害#1028対応
-                           , argument11        => iv_instruction_dept               -- 指示部署
+                         , argument11        => iv_instruction_dept               -- 指示部署
 -- 2009/01/28 H.Itou Add End
-                             );
--- 2009/01/28 D.Nihei Add Start 本番障害#949対応
-        END IF;
--- 2009/01/28 D.Nihei Add End
+                           );
         -- エラーの場合
         IF ( reqid_rec(i) = 0 ) THEN
           lv_errmsg := xxcmn_common_pkg.get_msg(
