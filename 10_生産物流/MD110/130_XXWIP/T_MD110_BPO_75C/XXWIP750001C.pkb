@@ -7,7 +7,7 @@ AS
  * Description      : 振替運賃情報更新
  * MD.050           : 運賃計算（振替） T_MD050_BPO_750
  * MD.070           : 振替運賃情報更新 T_MD070_BPO_75C
- * Version          : 1.17
+ * Version          : 1.18
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -61,6 +61,7 @@ AS
  *  2009/01/19    1.15 椎名 昭圭         本番#1003対応
  *  2009/01/27    1.16 野村 正幸         本番#1078対応
  *  2009/04/06    1.17 野村 正幸         年度切替対応
+ *  2009/06/03    1.18 野村 正幸         本番#1505対応
  *
  *****************************************************************************************/
 --
@@ -1028,8 +1029,10 @@ AS
 -- ##### 20081017 Ver.1.8 T_S_465対応 end   #####
 -- ##### 20080903 Ver.1.5 内部変更要求201_203 start #####
     AND    xoha.result_deliver_to           IS NOT NULL   -- 出荷先_実績
-    AND    xoha.result_shipping_method_code IS NOT NULL   -- 配送先_実績
-    AND    xoha.result_freight_carrier_code IS NOT NULL   -- 運送業者_実績
+-- *----------* 2009/06/03 Ver.1.18 本番#1505対応 start *----------*
+--    AND    xoha.result_shipping_method_code IS NOT NULL   -- 配送先_実績
+--    AND    xoha.result_freight_carrier_code IS NOT NULL   -- 運送業者_実績
+-- *----------* 2009/06/03 Ver.1.18 本番#1505対応 end   *----------*
     AND    xoha.arrival_date                IS NOT NULL   -- 着荷日
 -- ##### 20080903 Ver.1.5 内部変更要求201_203 end   #####
 -- ********** 20080508 内部変更要求 seq#75 MOD START **********
@@ -1068,11 +1071,18 @@ AS
 /***
     AND    xsmv.ship_method_code      = xoha.shipping_method_code
 ***/
-    AND    xsmv.ship_method_code      = xoha.result_shipping_method_code
+-- *----------* 2009/06/03 Ver.1.18 本番#1505対応 start *----------*
+--    AND    xsmv.ship_method_code      = xoha.result_shipping_method_code
+    AND    xsmv.ship_method_code(+)      = xoha.result_shipping_method_code
+-- *----------* 2009/06/03 Ver.1.18 本番#1505対応 end   *----------*
 -- ##### 20080609 MOD TE080指摘事項対応 end   #####
     AND    FND_DATE.STRING_TO_DATE(TO_CHAR(xoha.arrival_date, 'YYYYMM') || '01', 'YYYYMMDD')
-      BETWEEN xsmv.start_date_active
-        AND NVL(xsmv.end_date_active, FND_DATE.STRING_TO_DATE('99991231','YYYYMMDD'))
+-- *----------* 2009/06/03 Ver.1.18 本番#1505対応 start *----------*
+--      BETWEEN xsmv.start_date_active
+--        AND NVL(xsmv.end_date_active, FND_DATE.STRING_TO_DATE('99991231','YYYYMMDD'))
+      BETWEEN xsmv.start_date_active(+)
+        AND NVL(xsmv.end_date_active(+), FND_DATE.STRING_TO_DATE('99991231','YYYYMMDD'))
+-- *----------* 2009/06/03 Ver.1.18 本番#1505対応 end   *----------*
     AND    (((gv_closed_day = gv_ktg_no)          -- 関連データ取得.前月運賃締日後の場合
       AND (TO_CHAR(xoha.arrival_date, 'YYYYMM') = TO_CHAR(gd_sysdate, 'YYYYMM')))
         OR (((gv_closed_day = gv_ktg_yes)       -- 関連データ取得.前月運賃締日前の場合

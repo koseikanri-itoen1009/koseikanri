@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCOI006A03C(body)
  * Description      : 月次在庫受払（日次）を元に、月次在庫受払表を作成します。
  * MD.050           : 月次在庫受払表作成<MD050_COI_006_A03>
- * Version          : 1.10
+ * Version          : 1.11
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -44,6 +44,7 @@ AS
  *  2009/05/11    1.8   T.Nakamura       [T1_0839]拠点間移動オーダーを受払データ作成対象に追加
  *  2009/05/14    1.9   H.Sasaki         [T1_0840][T1_0842]倉替数量の集計条件変更
  *  2009/05/21    1.10  H.Sasaki         [T1_1123]棚卸情報検索時に日付条件を追加
+ *  2009/06/04    1.11  H.Sasaki         [T1_1324]当日取引データにて消化VDを対象外とする
  *
  *****************************************************************************************/
 --
@@ -185,6 +186,9 @@ AS
   cv_pgsname_a09c       CONSTANT VARCHAR2(30) :=  'XXCOI006A09C';
   cv_on                 CONSTANT VARCHAR2(1)  :=  '1';        -- 月次在庫受払表作成済み
   cv_off                CONSTANT VARCHAR2(1)  :=  '0';        -- 月次在庫受払表未作成
+-- == 2009/06/04 V1.11 Added START ===============================================================
+  cv_subinv_class_7     CONSTANT VARCHAR2(1)  :=  '7';        -- 保管場所分類（7:消化VD）
+-- == 2009/06/04 V1.11 Added END   ===============================================================
 --
   -- ===============================
   -- ユーザー定義グローバル型
@@ -554,6 +558,9 @@ AS
            ,mmt.inventory_item_id         inventory_item_id     -- 品目ID
            ,mmt.transaction_quantity      transaction_qty       -- 取引数量
            ,xirm.inv_seq                  inventory_seq         -- 受払棚卸SEQ
+-- == 2009/06/04 V1.11 Added START ===============================================================
+           ,msi1.attribute13              subinv_class          -- 保管場所分類
+-- == 2009/06/04 V1.11 Added END   ===============================================================
     FROM    mtl_material_transactions     mmt                   -- 資材取引テーブル
            ,mtl_secondary_inventories     msi1                  -- 保管場所
            ,mtl_secondary_inventories     msi2                  -- 保管場所
@@ -1620,13 +1627,26 @@ AS
             gt_quantity(22)  :=  gt_quantity(22) + ir_daily_trans.transaction_qty;
           END IF;
         WHEN  cv_trans_type_160 THEN
-          IF (ir_daily_trans.transaction_qty   >= 0) THEN
+-- == 2009/06/04 V1.11 Modified START ===============================================================
+--          IF (ir_daily_trans.transaction_qty   >= 0) THEN
+--            -- 23.基準在庫変更入庫
+--            gt_quantity(23)  :=  gt_quantity(23) + ir_daily_trans.transaction_qty;
+--          ELSIF (ir_daily_trans.transaction_qty < 0) THEN
+--            -- 24.基準在庫変更出庫
+--            gt_quantity(24)  :=  gt_quantity(24) + ir_daily_trans.transaction_qty;
+--          END IF;
+--
+          IF (ir_daily_trans.subinv_class = cv_subinv_class_7)  THEN
+            -- 消化VDは対象外
+            NULL;
+          ELSIF (ir_daily_trans.transaction_qty   >= 0) THEN
             -- 23.基準在庫変更入庫
             gt_quantity(23)  :=  gt_quantity(23) + ir_daily_trans.transaction_qty;
           ELSIF (ir_daily_trans.transaction_qty < 0) THEN
             -- 24.基準在庫変更出庫
             gt_quantity(24)  :=  gt_quantity(24) + ir_daily_trans.transaction_qty;
           END IF;
+-- == 2009/06/04 V1.11 Modified END   ===============================================================
         WHEN  cv_trans_type_170 THEN   -- 25.工場返品
           gt_quantity(25)  :=  gt_quantity(25) + ir_daily_trans.transaction_qty;
         WHEN  cv_trans_type_180 THEN   -- 26.工場返品振戻
