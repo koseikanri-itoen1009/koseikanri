@@ -69,11 +69,17 @@ SELECT /* 表示情報 */
       ,ximv.lot_ctl                      lot_ctl                    -- ロット管理区分(1:ロット管理品 0:ロット管理外品)
       ,xoha.result_deliver_to            result_deliver_to          -- 出荷先(コード)
       ,xola.order_line_number            order_line_number          -- 受注明細番号
+-- 2008/07/23 H.Itou ADD Start
+      ,xoha.actual_confirm_class         actual_confirm_class       -- 実績計上済区分
+-- 2008/07/23 H.Itou ADD End
 FROM   xxwsh_order_lines_all             xola                       -- 受注明細アドオン
       ,xxwsh_order_headers_all           xoha                       -- 受注ヘッダアドオン
       ,xxwsh_oe_transaction_types2_v     xottv                      -- 受注タイプ情報VIEW2
       ,xxcmn_item_mst2_v                 ximv                       -- OPM品目マスタ情報VIEW2
-      ,xxcmn_item_categories3_v          xicv                       -- 品目カテゴリ情報VIEW3
+-- 2008/07/23 H.Itou MOD Start
+--      ,xxcmn_item_categories3_v          xicv                       -- 品目カテゴリ情報VIEW3
+      ,xxcmn_item_categories5_v          xicv                       -- 品目カテゴリ情報VIEW5
+-- 2008/07/23 H.Itou MOD End
       ,xxcmn_cust_accounts_v             xcav                       -- 顧客情報VIEW
       ,xxcmn_item_locations_v            xilv                       -- OPM保管場所情報VIEW
 WHERE  
@@ -518,6 +524,16 @@ AND    xoha.latest_external_flag       = 'Y'
       Type="java.lang.String"
       ColumnType="VARCHAR2"
       AliasName="VIEW_ATTR"
+      SQLType="VARCHAR" >
+   </ViewAttribute>
+   <ViewAttribute
+      Name="ActualConfirmClass"
+      IsPersistent="false"
+      Precision="1"
+      Type="java.lang.String"
+      ColumnType="VARCHAR2"
+      AliasName="ACTUAL_CONFIRM_CLASS"
+      Expression="ACTUAL_CONFIRM_CLASS"
       SQLType="VARCHAR" >
    </ViewAttribute>
    <AttrArray Name="KeyAttributes">

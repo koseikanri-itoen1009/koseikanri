@@ -1,7 +1,7 @@
 /*============================================================================
 * ファイル名 : XxwshShipLotInputAMImpl
 * 概要説明   : 入出荷実績ロット入力画面アプリケーションモジュール
-* バージョン : 1.3
+* バージョン : 1.4
 *============================================================================
 * 修正履歴
 * 日付       Ver. 担当者       修正内容
@@ -12,6 +12,8 @@
 *                              すべて登録済出荷実績数量に登録がない場合は
 *                              受注複写処理を行わない。
 * 2008-06-27 1.3  伊藤ひとみ   結合不具合TE080_400#157
+* 2008-07-23 1.4  伊藤ひとみ   内部課題#32  換算する場合で、ケース入数が0以下はエラー
+*                              内部変更#174 実績計上済区分がYの場合のみ受注コピー処理を行う
 *============================================================================
 */
 package itoen.oracle.apps.xxwsh.xxwsh920001j.server;
@@ -124,6 +126,35 @@ public class XxwshShipLotInputAMImpl extends XxcmnOAApplicationModuleImpl
     {
       documentTypeCode = XxwshConstants.DOC_TYPE_SUPPLY; // 30:支給指示
     }
+
+// 2008-07-23 H.Itou ADD START
+    // ************************* //    
+    // *   ケース入数チェック  * //
+    // ************************* //
+    // 呼出画面区分が1:出荷依頼入力画面の場合のみチェック
+    if (XxwshConstants.CALL_PIC_KBN_SHIP_INPUT.equals(callPictureKbn))
+    {
+      // 明細IDから品目コードを取得
+      String itemCode = XxwshUtility.getItemCode(getOADBTransaction(), orderLineId);
+
+       // 換算する場合に、品目のケース入数0以下の値の場合、エラー
+      if (!XxwshUtility.checkNumOfCases(getOADBTransaction(), itemCode))
+      {
+        // 項目制御(戻るボタン以外非表示
+        itemControl(XxcmnConstants.STRING_Y);
+      
+        // トークン生成
+        MessageToken[] tokens = { new MessageToken(XxcmnConstants.TOKEN_ITEM_NO, itemCode) };
+
+        // エラーメッセージ出力
+        throw new OAException(
+          XxcmnConstants.APPL_XXCMN,
+          XxcmnConstants.XXCMN10605,
+          tokens);
+
+      }
+    }   
+// 2008-07-23 H.Itou ADD END
 
     // ********************** //    
     // *   明細検索         * //
@@ -1367,6 +1398,9 @@ public class XxwshShipLotInputAMImpl extends XxcmnOAApplicationModuleImpl
     String recordTypeCode   = (String)lineRow.getAttribute("RecordTypeCode");  // レコードタイプ
     String callPictureKbn   = (String)lineRow.getAttribute("CallPictureKbn");  // 呼出画面区分
     String exeKbn           = (String)lineRow.getAttribute("ExeKbn");          // 起動区分
+// 2008-07-23 H.Itou ADD START
+    String actualConfirmClass = (String)lineRow.getAttribute("ActualConfirmClass"); // 実績計上済区分
+// 2008-07-23 H.Itou ADD END
     Number newOrderHeaderId = null;
     Number newOrderLineId   = null;
 
@@ -1379,25 +1413,41 @@ public class XxwshShipLotInputAMImpl extends XxcmnOAApplicationModuleImpl
 // 2008-06-13 H.Itou MOD END
       || XxwshConstants.XXPO_TRANSACTION_STATUS_ADD.equals(reqStatus))
     {
-      // ************************* //
-      // *  受注情報コピー処理   * //
-      // ************************* //
-      // 実績がすでに計上済なので、履歴を残すため、コピーする。
-      newOrderHeaderId = XxwshUtility.copyOrderData(
+// 2008-07-23 H.Itou ADD START
+      // 実績計上済区分がYの場合のみ、コピー処理実行
+      if (XxcmnConstants.STRING_Y.equals(actualConfirmClass))
+      {
+// 2008-07-23 H.Itou ADD END
+// 2008-07-23 H.Itou MOD START
+        // ************************* //
+        // *  受注情報コピー処理   * //
+        // ************************* //
+        // 実績がすでに計上済なので、履歴を残すため、コピーする。
+        newOrderHeaderId = XxwshUtility.copyOrderData(
+                             getOADBTransaction(),
+                             orderHeaderId);      
+
+        // **************************** //
+        // *  最新受注明細ID取得処理  * //
+        // **************************** //
+        newOrderLineId = XxwshUtility.getOrderLineId(
                            getOADBTransaction(),
-                           orderHeaderId);
+                           newOrderHeaderId,
+                           orderLineNumber);
 
+        lineRow.setAttribute("OrderHeaderId", newOrderHeaderId); // 最新の受注ヘッダアドオンID
+        lineRow.setAttribute("OrderLineId",   newOrderLineId);   // 最新の受注明細アドオンID
 
-      // **************************** //
-      // *  最新受注明細ID取得処理  * //
-      // **************************** //
-      newOrderLineId = XxwshUtility.getOrderLineId(
-                         getOADBTransaction(),
-                         newOrderHeaderId,
-                         orderLineNumber);
-
-      lineRow.setAttribute("OrderHeaderId", newOrderHeaderId); // 最新の受注ヘッダアドオンID
-      lineRow.setAttribute("OrderLineId",   newOrderLineId);   // 最新の受注明細アドオンID
+// 2008-07-23 H.Itou MOD END
+// 2008-07-23 H.Itou ADD START
+      // 実績計上済区分がYでない場合
+      } else
+      {
+        // コピー処理をしないので、IDは変更なし
+        newOrderHeaderId = orderHeaderId;
+        newOrderLineId   = orderLineId;
+      }
+// 2008-07-23 H.Itou ADD END
       
       // ******************************** //
       // *  移動ロット詳細実績登録処理  * //

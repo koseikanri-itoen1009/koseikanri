@@ -1,7 +1,7 @@
 /*============================================================================
 * ファイル名 : XxwshUtility
 * 概要説明   : 出荷・引当/配車共通関数
-* バージョン : 1.2
+* バージョン : 1.3
 *============================================================================
 * 修正履歴
 * 日付       Ver. 担当者       修正内容
@@ -9,6 +9,7 @@
 * 2008-03-27 1.0  伊藤ひとみ   新規作成
 * 2008-06-27 1.1  伊藤ひとみ   結合不具合TE080_400#157
 * 2008-07-02 1.2  二瓶大輔     内部変更要求対応#152
+* 2008-07-23 1.3  伊藤ひとみ   内部課題#32 checkNumOfCases、getItemCode追加
 *============================================================================
 */
 package itoen.oracle.apps.xxwsh.util;
@@ -5668,4 +5669,199 @@ public class XxwshUtility
     }
   } // isOrderLineUpdForOwnConc
 // 2008-06-27 H.Itou ADD End
+// 2008-07-23 H.Itou ADD Start
+ /*****************************************************************************
+   * 品目のケース入数に正しい数値が入っているかチェックするメソッドです。
+   * @param trans            - トランザクション
+   * @param itemCode         - 品目コード
+   * @return boolean         - true :正しい
+   *                         - false:エラー
+   * @throws OAException - OA例外
+   ****************************************************************************/
+  public static boolean checkNumOfCases(
+    OADBTransaction trans,
+    String itemCode
+  ) throws OAException
+  {
+    String apiName     = "checkNumOfCases";
+
+    // PL/SQLの作成
+    StringBuffer sb = new StringBuffer(1000);
+    // 品目区分が5：製品かつ、商品区分が1：リーフOR 2：ドリンクかつ、入出庫換算単位がNULLでない場合
+    // ケース入数がNULLか0以下は、エラー。
+    sb.append("BEGIN                                           ");
+    sb.append("  SELECT COUNT(1) cnt                           ");
+    sb.append("  INTO   :1                                     ");
+    sb.append("  FROM   xxcmn_item_mst_v         ximv          "); // OPM品目マスタ
+    sb.append("        ,xxcmn_item_categories5_v xicv          "); // 品目カテゴリ割当情報VIEW5
+    sb.append("  WHERE  /** 結合条件 **/                       ");
+    sb.append("         ximv.item_id = xicv.item_id            ");
+    sb.append("         /** 抽出条件 **/                       ");
+    sb.append("  AND    xicv.item_class_code       = '5'       "); // 品目区分が5：製品
+    sb.append("  AND    xicv.prod_class_code       IN ('1','2')"); // 商品区分が1：リーフOR 2：ドリンク
+    sb.append("  AND    ximv.conv_unit             IS NOT NULL "); // 入出庫換算単位がNULLでない
+    sb.append("  AND    NVL(ximv.num_of_cases, 0) <= 0         "); // ケース入数が0以下
+    sb.append("  AND    ximv.item_no               = :2        ");
+    sb.append("  AND    ROWNUM = 1;                            ");
+    sb.append("END;                                            ");
+
+    //PL/SQLの設定を行います
+    CallableStatement cstmt
+      = trans.createCallableStatement(sb.toString(), OADBTransaction.DEFAULT);
+  
+    try
+    { 
+      // パラメータ設定(INパラメータ)
+      cstmt.setString(2, itemCode);                    // 品目コード
+      
+      // パラメータ設定(OUTパラメータ)
+      cstmt.registerOutParameter(1, Types.INTEGER);
+      
+      // PL/SQL実行
+      cstmt.execute();
+
+      // OUTパラメータ取得
+      int cnt = cstmt.getInt(1);  // 戻り値
+
+      // データを取得できる場合、換算の必要があるのにケース入数が0以下なので、falseを返す。
+      if (cnt == 1)
+      {
+        // ログ出力
+        XxcmnUtility.writeLog(
+          trans,
+          XxwshConstants.CLASS_XXWSH_UTILITY + XxcmnConstants.DOT + apiName,
+          "ケース入数がNULLか0です。品目コード："+ itemCode,
+          6);
+
+        return false;
+
+      // 0の場合、正常なのでtrueを返す。
+      } else
+      {
+        return true;
+      }
+
+    // PL/SQL実行時例外の場合
+    } catch(SQLException s)
+    {
+        // ロールバック
+        XxwshUtility.rollBack(trans);
+        // ログ出力
+        XxcmnUtility.writeLog(
+          trans,
+          XxwshConstants.CLASS_XXWSH_UTILITY + XxcmnConstants.DOT + apiName,
+          s.toString(),
+          6);
+        // エラーメッセージ出力
+        throw new OAException(
+          XxcmnConstants.APPL_XXCMN, 
+          XxcmnConstants.XXCMN10123);
+
+    } finally
+    {
+      try
+      {
+        //処理中にエラーが発生した場合を想定する
+        cstmt.close();
+      } catch(SQLException s)
+      {
+        // ロールバック
+        XxwshUtility.rollBack(trans);
+        // ログ出力
+        XxcmnUtility.writeLog(
+          trans,
+          XxwshConstants.CLASS_XXWSH_UTILITY + XxcmnConstants.DOT + apiName,
+          s.toString(),
+          6);
+        // エラーメッセージ出力
+        throw new OAException(
+          XxcmnConstants.APPL_XXCMN, 
+          XxcmnConstants.XXCMN10123);
+      }
+    }
+  } // checkNumOfCases
+  
+ /*****************************************************************************
+   * 受注明細から品目コードを取得するメソッドです。
+   * @param trans            - トランザクション
+   * @param orderLlineId     - 受注明細ID
+   * @return String          - 品目コード
+   * @throws OAException - OA例外
+   ****************************************************************************/
+  public static String getItemCode(
+    OADBTransaction trans,
+    String orderLlineId
+  ) throws OAException
+  {
+    String apiName     = "getItemCode";
+
+    // PL/SQLの作成
+    StringBuffer sb = new StringBuffer(1000);
+    sb.append("BEGIN                                                             ");
+    sb.append("  SELECT xola.shipping_item_code  item_code                       ");
+    sb.append("  INTO   :1                                                       ");
+    sb.append("  FROM   xxwsh_order_lines_all    xola                            "); // 受注明細アドオン
+    sb.append("  WHERE  xola.order_line_id = TO_NUMBER(:2);                      ");
+    sb.append("END;                                                              ");
+
+    //PL/SQLの設定を行います
+    CallableStatement cstmt
+      = trans.createCallableStatement(sb.toString(), OADBTransaction.DEFAULT);
+  
+    try
+    { 
+      // パラメータ設定(INパラメータ)
+      cstmt.setString(2, orderLlineId);  // 受注明細ID
+      
+      // パラメータ設定(OUTパラメータ)
+      cstmt.registerOutParameter(1, Types.VARCHAR);
+      
+      // PL/SQL実行
+      cstmt.execute();
+
+      // OUTパラメータ取得
+      String itemCode = cstmt.getString(1);  // 戻り値
+
+      return itemCode;
+
+    // PL/SQL実行時例外の場合
+    } catch(SQLException s)
+    {
+        // ロールバック
+        XxwshUtility.rollBack(trans);
+        // ログ出力
+        XxcmnUtility.writeLog(
+          trans,
+          XxwshConstants.CLASS_XXWSH_UTILITY + XxcmnConstants.DOT + apiName,
+          s.toString(),
+          6);
+        // エラーメッセージ出力
+        throw new OAException(
+          XxcmnConstants.APPL_XXCMN, 
+          XxcmnConstants.XXCMN10123);
+
+    } finally
+    {
+      try
+      {
+        //処理中にエラーが発生した場合を想定する
+        cstmt.close();
+      } catch(SQLException s)
+      {
+        // ロールバック
+        XxwshUtility.rollBack(trans);
+        // ログ出力
+        XxcmnUtility.writeLog(
+          trans,
+          XxwshConstants.CLASS_XXWSH_UTILITY + XxcmnConstants.DOT + apiName,
+          s.toString(),
+          6);
+        // エラーメッセージ出力
+        throw new OAException(
+          XxcmnConstants.APPL_XXCMN, 
+          XxcmnConstants.XXCMN10123);
+      }
+    }
+  } // getItemCode
+// 2008-07-23 H.Itou ADD End
 }
