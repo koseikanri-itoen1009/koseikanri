@@ -3731,12 +3731,10 @@ BEGIN FND_NEW_MESSAGES "XXPO" "APP-XXPO-10230"
 END FND_NEW_MESSAGES
 
 BEGIN FND_NEW_MESSAGES "XXPO" "APP-XXPO-10264"
-  OWNER = "SCS_HITOU"
+  OWNER = "SCS_YTAKAYAMA1"
   LAST_UPDATE_DATE = "2008/07/31"
   MESSAGE_NUMBER = "*NULL*"
-  MESSAGE_TEXT =
- "選択された支給依頼の中に出庫日が未来日付となっているものがあります。\n\
-現在の日付が出庫日以降でなければ、 &TOKEN を行うことができません。"
+  MESSAGE_TEXT = "出庫日が未来日のものは、処理を行うことができません。"
   DESCRIPTION = "出庫日未来日エラー"
   TYPE = "ERROR"
   MAX_LENGTH = "*NULL*"
@@ -3746,12 +3744,10 @@ BEGIN FND_NEW_MESSAGES "XXPO" "APP-XXPO-10264"
 END FND_NEW_MESSAGES
 
 BEGIN FND_NEW_MESSAGES "XXPO" "APP-XXPO-10265"
-  OWNER = "SCS_HITOU"
+  OWNER = "SCS_YTAKAYAMA1"
   LAST_UPDATE_DATE = "2008/07/31"
   MESSAGE_NUMBER = "*NULL*"
-  MESSAGE_TEXT =
- "選択された支給依頼の中に入庫日が未来日付となっているものがあります。\n\
-現在の日付が入庫日以降でなければ、 &TOKEN を行うことができません。"
+  MESSAGE_TEXT = "入庫日が未来日のものは、処理を行うことができません。"
   DESCRIPTION = "入庫日未来日エラー"
   TYPE = "ERROR"
   MAX_LENGTH = "*NULL*"
