@@ -8,7 +8,7 @@ AS
  *                      物件の情報を物件マスタに登録します。
  * MD.050           : MD050_自販機-EBSインタフェース：（IN）物件マスタ情報(IB)
  *                    2009/01/13 16:30
- * Version          : 1.27
+ * Version          : 1.28
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -71,6 +71,7 @@ AS
  *  2010-01-19    1.25  K.Hosoi          E_本稼動_00818,01177対応
  *  2010-01-26    1.26  K.Hosoi          E_本稼動_00533,00319対応
  *  2010-03-01    1.27  K.Hosoi          E_本稼動_01761対応
+ *  2014-05-19    1.28  Y.Shoji          E_本稼動_11853⑧対応
  *****************************************************************************************/
 --
 --#######################  固定グローバル定数宣言部 START   #######################
@@ -227,6 +228,11 @@ AS
   /* 2009.12.11 K.Satomura E_本稼動_00420対応 START */
   ct_comp_kbn_comp        CONSTANT xxcso_in_work_data.completion_kbn%TYPE := 1;
   /* 2009.12.11 K.Satomura E_本稼動_00420対応 END */
+  /* 2014-05-19 Y.Shoji E_本稼動_11853⑧対応 ADD START */
+  cv_lease_type_assets    CONSTANT VARCHAR2(1)   := '4';                 -- リース区分(固定資産税)
+  --参照タイプ
+  cv_xxcs01_lease_kbn     CONSTANT VARCHAR2(100) := 'XXCSO1_LEASE_KBN';  -- リース区分
+  /* 2014-05-19 Y.Shoji E_本稼動_11853⑧対応 ADD END */
   -- DEBUG_LOG用メッセージ
   cv_debug_msg1           CONSTANT VARCHAR2(200) := '<< システム日付取得処理 >>';
   cv_debug_msg2           CONSTANT VARCHAR2(200) := 'od_sysdate = ';
@@ -239,6 +245,9 @@ AS
   cv_debug_msg9           CONSTANT VARCHAR2(200) := 'gv_withdraw_base_code    = ';
   cv_debug_msg10          CONSTANT VARCHAR2(200) := 'gv_jyki_withdraw_base_code = ';
   cv_debug_msg11          CONSTANT VARCHAR2(200) := '<< ロールバックしました >>' ;
+  /* 2014-05-19 Y.Shoji E_本稼動_11853⑧対応 ADD START */
+  cv_debug_msg12          CONSTANT VARCHAR2(200) := 'gv_dclr_place_code = ';
+  /* 2014-05-19 Y.Shoji E_本稼動_11853⑧対応 ADD END */
   cv_debug_msg_copn       CONSTANT VARCHAR2(200) := '<< カーソルをオープンしました >>';
   cv_debug_msg_ccls1      CONSTANT VARCHAR2(200) := '<< カーソルをクローズしました >>';
   cv_debug_msg_ccls2      CONSTANT VARCHAR2(200) := '<< 例外処理内でカーソルをクローズしました >>';
@@ -262,6 +271,9 @@ AS
   gb_cust_cnv_upd_flg     BOOLEAN := FALSE;                              -- 顧客獲得日更新フラグ    
   gv_withdraw_base_code   VARCHAR2(100);                                 -- 引揚拠点コード
   gv_jyki_withdraw_base_code  VARCHAR2(100);                             -- 什器引揚拠点コード
+  /* 2014-05-19 Y.Shoji E_本稼動_11853⑧対応 ADD START */
+  gv_dclr_place_code      VARCHAR2(5);                                   -- 申告地コード
+  /* 2014-05-19 Y.Shoji E_本稼動_11853⑧対応 ADD END */
   gt_inv_mst_org_id       mtl_parameters.organization_id%TYPE;           -- 組織ID
   gt_vld_org_id           mtl_parameters.organization_id%TYPE;           -- 検証組織ID
   gt_txn_type_id          csi_txn_types.transaction_type_id%TYPE;        -- 取引タイプID
@@ -278,6 +290,9 @@ AS
   /* 2009.12.14 K.Hosoi E_本稼動_00466対応 START */
   gd_cnvs_date              DATE;            -- 顧客獲得日
   /* 2009.12.14 K.Hosoi E_本稼動_00466対応 END */
+  /* 2014-05-19 Y.Shoji E_本稼動_11853⑧対応 ADD START */
+  gv_lease_kbn              VARCHAR2(1);     -- リース区分
+  /* 2014-05-19 Y.Shoji E_本稼動_11853⑧対応 ADD END */
 --
   -- 追加属性ID格納用レコード型定義
   TYPE gr_ib_ext_attribs_id_rtype IS RECORD(
@@ -331,6 +346,10 @@ AS
     ,last_inst_cust_code   NUMBER               -- 先月末設置先顧客コード
     ,last_jotai_kbn        NUMBER               -- 先月末機器状態
     ,last_year_month       NUMBER               -- 先月末年月
+    /* 2014-05-19 Y.Shoji E_本稼動_11853⑧対応 ADD START */
+    ,vd_shutoku_kg         NUMBER               -- 取得価格
+    ,dclr_place            NUMBER               -- 申告地
+    /* 2014-05-19 Y.Shoji E_本稼動_11853⑧対応 ADD ENDT */
   );
   -- 追加属性ID格納用レコード変数
   gr_ext_attribs_id_rec   gr_ib_ext_attribs_id_rtype;
@@ -483,6 +502,10 @@ AS
     cv_withdraw_base_code     CONSTANT VARCHAR2(30)  := 'XXCSO1_WITHDRAW_BASE_CODE';
     -- XXCSO:什器引揚拠点コード
     cv_jyki_withdraw_base_code  CONSTANT VARCHAR2(30)  := 'XXCSO1_JYKI_WTHDRW_BASE_CODE';
+    /* 2014-05-19 Y.Shoji E_本稼動_11853⑧対応 ADD START */
+    -- XXCSO:申告地コード
+    cv_dclr_place_code        CONSTANT VARCHAR2(30)  := 'XXCSO1_DCLR_PLACE_CODE';
+    /* 2014-05-19 Y.Shoji E_本稼動_11853⑧対応 ADD END */
 --
     -- ソーストランザクションタイプ
     cv_src_transaction_type   CONSTANT VARCHAR2(30)  := 'IB_UI';
@@ -623,6 +646,12 @@ AS
     cv_i_ext_last_jotai_kbn   CONSTANT VARCHAR2(100) := '先月末機器状態';
     -- 先月末年月
     cv_i_ext_last_year_month  CONSTANT VARCHAR2(100) := '先月末年月';
+    /* 2014-05-19 Y.Shoji E_本稼動_11853⑧対応 ADD START */
+    -- 取得価格
+    cv_i_ext_vd_shutoku_kg    CONSTANT VARCHAR2(100) := '取得価格';
+    -- 申告地
+    cv_i_ext_dclr_place       CONSTANT VARCHAR2(100) := '申告地';
+    /* 2014-05-19 Y.Shoji E_本稼動_11853⑧対応 ADD ENDT */
     -- カウンターNo.
     cv_count_no               CONSTANT VARCHAR2(100) := 'COUNT_NO';
     -- 地区コード
@@ -723,6 +752,12 @@ AS
     cv_last_jotai_kbn         CONSTANT VARCHAR2(100) := 'LAST_JOTAI_KBN';
     -- 先月末年月
     cv_last_year_month        CONSTANT VARCHAR2(100) := 'LAST_YEAR_MONTH';
+    /* 2014-05-19 Y.Shoji E_本稼動_11853⑧対応 ADD START */
+    -- 取得価格
+    cv_vd_shutoku_kg          CONSTANT VARCHAR2(100) := 'VD_SHUTOKU_KG';
+    -- 申告地
+    cv_dclr_place             CONSTANT VARCHAR2(100) := 'DCLR_PLACE';
+    /* 2014-05-19 Y.Shoji E_本稼動_11853⑧対応 ADD END */
 --
     -- INV工場返品倉替先コード
     cv_mfg_fctory_name        CONSTANT VARCHAR2(100) :='「INV工場返品倉替先コード」';
@@ -859,6 +894,12 @@ AS
                     cv_jyki_withdraw_base_code
                    ,gv_jyki_withdraw_base_code
                    ); -- 什器引揚拠点コード
+    /* 2014-05-19 Y.Shoji E_本稼動_11853⑧対応 ADD START */
+    FND_PROFILE.GET(
+                    cv_dclr_place_code
+                   ,gv_dclr_place_code
+                   ); -- 申告地コード
+    /* 2014-05-19 Y.Shoji E_本稼動_11853⑧対応 ADD END */
     -- *** DEBUG_LOG ***
     -- 取得したプロファイル値をログ出力
     fnd_file.put_line(
@@ -869,6 +910,9 @@ AS
                  cv_debug_msg8  || lv_bukken_item        || CHR(10) ||
                  cv_debug_msg9  || gv_withdraw_base_code || CHR(10) ||
                  cv_debug_msg10 || gv_jyki_withdraw_base_code || CHR(10) ||
+                 /* 2014-05-19 Y.Shoji E_本稼動_11853⑧対応 ADD START */
+                 cv_debug_msg12 || gv_dclr_place_code    || CHR(10) ||
+                 /* 2014-05-19 Y.Shoji E_本稼動_11853⑧対応 ADD END */
                  ''
     );
 --
@@ -2281,6 +2325,47 @@ AS
       RAISE global_process_expt;
     END IF;
 --
+    /* 2014-05-19 Y.Shoji E_本稼動_11853⑧対応 ADD START */
+    -- 追加属性ID(取得価格)
+    gr_ext_attribs_id_rec.vd_shutoku_kg := xxcso_ib_common_pkg.get_ib_ext_attribs_id(
+                                              cv_vd_shutoku_kg
+                                             ,ld_process_date);
+    gr_ext_attribs_id_rec.vd_shutoku_kg := NULL;
+    IF (gr_ext_attribs_id_rec.vd_shutoku_kg IS NULL) THEN
+      lv_errmsg := xxccp_common_pkg.get_msg(
+                      iv_application  => cv_app_name                  -- アプリケーション短縮名
+                     ,iv_name         => cv_tkn_number_12             -- メッセージコード
+                     ,iv_token_name1  => cv_tkn_task_nm               -- トークンコード1
+                     ,iv_token_value1 => cv_attribute_id_info         -- トークン値1
+                     ,iv_token_name2  => cv_tkn_attribute_name        -- トークンコード2
+                     ,iv_token_value2 => cv_i_ext_vd_shutoku_kg       -- トークン値2
+                     ,iv_token_name3  => cv_tkn_attribute_code        -- トークンコード3
+                     ,iv_token_value3 => cv_vd_shutoku_kg             -- トークン値3
+                   );
+      lv_errbuf := lv_errmsg;
+      RAISE global_process_expt;
+    END IF;
+--
+    -- 追加属性ID(申告地)
+    gr_ext_attribs_id_rec.dclr_place := xxcso_ib_common_pkg.get_ib_ext_attribs_id(
+                                           cv_dclr_place
+                                          ,ld_process_date);
+    IF (gr_ext_attribs_id_rec.dclr_place IS NULL) THEN
+      lv_errmsg := xxccp_common_pkg.get_msg(
+                      iv_application  => cv_app_name                  -- アプリケーション短縮名
+                     ,iv_name         => cv_tkn_number_12             -- メッセージコード
+                     ,iv_token_name1  => cv_tkn_task_nm               -- トークンコード1
+                     ,iv_token_value1 => cv_attribute_id_info         -- トークン値1
+                     ,iv_token_name2  => cv_tkn_attribute_name        -- トークンコード2
+                     ,iv_token_value2 => cv_i_ext_dclr_place          -- トークン値2
+                     ,iv_token_name3  => cv_tkn_attribute_code        -- トークンコード3
+                     ,iv_token_value3 => cv_dclr_place                -- トークン値3
+                   );
+      lv_errbuf := lv_errmsg;
+      RAISE global_process_expt;
+    END IF;
+--
+    /* 2014-05-19 Y.Shoji E_本稼動_11853⑧対応 ADD END */
     -- =========================================
     -- 参照タイプ「INV工場返品倉替先コード」取得 
     -- =========================================
@@ -3264,6 +3349,12 @@ AS
     cv_mfg_fctory_maker_cd   CONSTANT VARCHAR2(100) := 'メーカーコード ';
     cv_flg_no                CONSTANT VARCHAR2(1) := 'N';                 -- フラグNO
     cv_flg_yes               CONSTANT VARCHAR2(1) := 'Y';                 -- フラグYES
+    /* 2014-05-19 Y.Shoji E_本稼動_11853⑧対応 add START */
+    cv_get_po_data             CONSTANT VARCHAR2(100) := '発注データ';              -- 抽出内容名（発注データ）
+    cv_lease_kbn               CONSTANT VARCHAR2(100) := 'リース区分(新規)';        -- 取得内容名
+    cv_get_price               CONSTANT VARCHAR2(100) := '取得価格(新規)';          -- 取得内容名
+    cv_dclr_place              CONSTANT VARCHAR2(100) := '申告地コード(新規)';      -- 取得内容名
+    /* 2014-05-19 Y.Shoji E_本稼動_11853⑧対応 add END */
 --
     -- *** ローカル変数 ***
     ld_date                    DATE;                    -- 業務処理日付格納用('yyyymmdd'形式)
@@ -3312,6 +3403,16 @@ AS
     lv_owner_cmp_name          VARCHAR2(10);            -- 本社/工場区分名
     lv_init_msg_list           VARCHAR2(2000);          -- メッセージリスト
     lv_first_install_date      VARCHAR2(20);            -- 初回設置日
+    /* 2014-05-19 Y.Shoji E_本稼動_11853⑧対応 add START */
+    lv_get_price               VARCHAR2(10);                                        -- 取得価格(設定用)
+    lv_dclr_place              VARCHAR2(5);                                         -- 申告地(設定用)
+    lt_lease_type_po           po_distributions_all.attribute1%TYPE;                -- リース区分（発注）
+    lt_lease_type_un_numbers   po_un_numbers_vl.attribute13%TYPE;                   -- リース区分（機種マスタ）
+    lt_get_price_po            po_distributions_all.attribute2%TYPE;                -- 取得価格（発注）
+    lt_get_price_un_numbers    po_un_numbers_vl.attribute14%TYPE;                   -- 取得価格（機種マスタ）
+    lt_dclr_place_req          xxcso_requisition_lines_v.declaration_place%TYPE;    -- 申告地(発注依頼)
+    lt_dclr_place_po           po_distributions_all.attribute3%TYPE;                -- 申告地(発注)
+    /* 2014-05-19 Y.Shoji E_本稼動_11853⑧対応 add END */
 
     lv_manufacturer_name       xxcso_ib_info_h.manufacturer_name%type;     -- メーカー名
     lv_manufacturer_code       po_un_numbers_b.attribute2%type;            -- メーカーコード
@@ -3376,17 +3477,49 @@ AS
     -- 1.リース区分抽出
     -- =================
 --
+    -- 1-1.発注搬送からリース区分、申告地、取得価格を取得
     BEGIN
-      SELECT   prlv.lease_type             lease_type                       -- リース区分
+      /* 2014-05-19 Y.Shoji E_本稼動_11853⑧対応 mod START */
+--      SELECT   prlv.lease_type             lease_type                       -- リース区分(発注依頼)
+      SELECT   flvv.lookup_code            lease_type                       -- リース区分(発注依頼)
+      /* 2014-05-19 Y.Shoji E_本稼動_11853⑧対応 mod END   */
+              /* 2014-05-19 Y.Shoji E_本稼動_11853⑧対応 add START */
+              ,pd.attribute1               lease_type_po                    -- リース区分(発注)
+              ,pd.attribute2               get_price_po                     -- 取得価格(発注)
+              ,prlv.declaration_place      declaration_place                -- 申告地(発注依頼)
+              ,pd.attribute3               declaration_place_po             -- 申告地(発注)
+              /* 2014-05-19 Y.Shoji E_本稼動_11853⑧対応 add END */
       INTO     lv_lease_type
+              /* 2014-05-19 Y.Shoji E_本稼動_11853⑧対応 add START */
+              ,lt_lease_type_po
+              ,lt_get_price_po
+              ,lt_dclr_place_req
+              ,lt_dclr_place_po
+              /* 2014-05-19 Y.Shoji E_本稼動_11853⑧対応 add END */
       FROM     xxcso_requisition_lines_v   prlv                             -- 発注依頼明細情報ビュー
-              ,po_requisition_headers      prh                              -- 発注依頼ヘッダビュー
+              ,po_requisition_headers_all  prh                              -- 発注依頼ヘッダビュー
+              /* 2014-05-19 Y.Shoji E_本稼動_11853⑧対応 add START */
+              ,po_req_distributions_all    prd                              -- 発注依頼搬送明細ビュー
+              ,po_distributions_all        pd                               -- 発注搬送明細ビュー
+              ,po_lines_all                pl
+              ,fnd_lookup_values_vl        flvv
+              /* 2014-05-19 Y.Shoji E_本稼動_11853⑧対応 add END */
       /*2010.03.01 K.Hosoi E_本稼動_01761対応 START*/
       --WHERE    prh.segment1               = io_inst_base_data_rec.po_req_number
       --  AND    prh.authorization_status   = cv_approved
       WHERE    prh.segment1               = TO_CHAR(io_inst_base_data_rec.po_req_number)
       /*2010.03.01 K.Hosoi E_本稼動_01761対応 END*/
         AND    prlv.requisition_header_id = prh.requisition_header_id
+        /* 2014-05-19 Y.Shoji E_本稼動_11853⑧対応 add START */
+        AND    prlv.requisition_line_id   = prd.requisition_line_id
+        AND    prd.distribution_id        = pd.req_distribution_id
+        AND    pd.po_line_id              = pl.po_line_id
+        AND    prlv.lease_type            = flvv.attribute1(+)
+        AND    flvv.lookup_type(+)        = cv_xxcs01_lease_kbn
+        AND    (ld_date BETWEEN(NVL(flvv.start_date_active, ld_date)) AND
+                 TRUNC(NVL(flvv.end_date_active, ld_date)))
+        AND    NVL( flvv.enabled_flag, cv_flg_yes) = cv_flg_yes
+        /* 2014-05-19 Y.Shoji E_本稼動_11853⑧対応 add END */
         AND    prlv.line_num              = io_inst_base_data_rec.line_num
         AND    (ld_date BETWEEN(NVL(prlv.lookup_start_date, ld_date)) AND
                  TRUNC(NVL(prlv.lookup_end_date, ld_date)))
@@ -3395,24 +3528,42 @@ AS
       ;
     EXCEPTION
       WHEN NO_DATA_FOUND THEN
-        -- リース区分なし警告
+        -- 発注データなし警告
         lv_errmsg := xxccp_common_pkg.get_msg(
                         iv_application  => cv_app_name                   -- アプリケーション短縮名
                        ,iv_name         => cv_tkn_number_20              -- メッセージコード
-                       ,iv_token_name1  => cv_tkn_seq_no                 -- トークンコード1
-                       ,iv_token_value1 => TO_CHAR(ln_seq_no)            -- トークン値1
-                       ,iv_token_name2  => cv_tkn_slip_num               -- トークンコード2
-                       ,iv_token_value2 => TO_CHAR(ln_slip_num)          -- トークン値2
-                       ,iv_token_name3  => cv_tkn_slip_branch_num        -- トークンコード3
-                       ,iv_token_value3 => TO_CHAR(ln_slip_branch_num)   -- トークン値3
-                       ,iv_token_name4  => cv_tkn_line_num               -- トークンコード4
-                       ,iv_token_value4 => TO_CHAR(ln_line_num)          -- トークン値4
-                       ,iv_token_name5  => cv_tkn_work_kbn               -- トークンコード5
-                       ,iv_token_value5 => TO_CHAR(ln_job_kbn)           -- トークン値5
-                       ,iv_token_name6  => cv_tkn_bukken1                -- トークンコード6
-                       ,iv_token_value6 => lv_install_code1              -- トークン値6
-                       ,iv_token_name7  => cv_tkn_bukken2                -- トークンコード7
-                       ,iv_token_value7 => lv_install_code2              -- トークン値7
+                       /* 2014-05-19 Y.Shoji E_本稼動_11853⑧対応 mod START */
+--                       ,iv_token_name1  => cv_tkn_seq_no                 -- トークンコード1
+--                       ,iv_token_value1 => TO_CHAR(ln_seq_no)            -- トークン値1
+--                       ,iv_token_name2  => cv_tkn_slip_num               -- トークンコード2
+--                       ,iv_token_value2 => TO_CHAR(ln_slip_num)          -- トークン値2
+--                       ,iv_token_name3  => cv_tkn_slip_branch_num        -- トークンコード3
+--                       ,iv_token_value3 => TO_CHAR(ln_slip_branch_num)   -- トークン値3
+--                       ,iv_token_name4  => cv_tkn_line_num               -- トークンコード4
+--                       ,iv_token_value4 => TO_CHAR(ln_line_num)          -- トークン値4
+--                       ,iv_token_name5  => cv_tkn_work_kbn               -- トークンコード5
+--                       ,iv_token_value5 => TO_CHAR(ln_job_kbn)           -- トークン値5
+--                       ,iv_token_name6  => cv_tkn_bukken1                -- トークンコード6
+--                       ,iv_token_value6 => lv_install_code1              -- トークン値6
+--                       ,iv_token_name7  => cv_tkn_bukken2                -- トークンコード7
+--                       ,iv_token_value7 => lv_install_code2              -- トークン値7
+                       ,iv_token_name1  => cv_tkn_item                   -- トークンコード1
+                       ,iv_token_value1 => cv_get_po_data                -- トークン値1
+                       ,iv_token_name2  => cv_tkn_seq_no                 -- トークンコード2
+                       ,iv_token_value2 => TO_CHAR(ln_seq_no)            -- トークン値2
+                       ,iv_token_name3  => cv_tkn_slip_num               -- トークンコード3
+                       ,iv_token_value3 => TO_CHAR(ln_slip_num)          -- トークン値3
+                       ,iv_token_name4  => cv_tkn_slip_branch_num        -- トークンコード4
+                       ,iv_token_value4 => TO_CHAR(ln_slip_branch_num)   -- トークン値4
+                       ,iv_token_name5  => cv_tkn_line_num               -- トークンコード5
+                       ,iv_token_value5 => TO_CHAR(ln_line_num)          -- トークン値5
+                       ,iv_token_name6  => cv_tkn_work_kbn               -- トークンコード6
+                       ,iv_token_value6 => TO_CHAR(ln_job_kbn)           -- トークン値6
+                       ,iv_token_name7  => cv_tkn_bukken1                -- トークンコード7
+                       ,iv_token_value7 => lv_install_code1              -- トークン値7
+                       ,iv_token_name8  => cv_tkn_bukken2                -- トークンコード8
+                       ,iv_token_value8 => lv_install_code2              -- トークン値8
+                       /* 2014-05-19 Y.Shoji E_本稼動_11853⑧対応 mod END */
                      );
         lv_errbuf := lv_errmsg;
         RAISE skip_process_expt;
@@ -3421,28 +3572,50 @@ AS
         lv_errmsg := xxccp_common_pkg.get_msg(
                         iv_application  => cv_app_name                   -- アプリケーション短縮名
                        ,iv_name         => cv_tkn_number_21              -- メッセージコード
-                       ,iv_token_name1  => cv_tkn_seq_no                 -- トークンコード1
-                       ,iv_token_value1 => TO_CHAR(ln_seq_no)            -- トークン値1
-                       ,iv_token_name2  => cv_tkn_slip_num               -- トークンコード2
-                       ,iv_token_value2 => TO_CHAR(ln_slip_num)          -- トークン値2
-                       ,iv_token_name3  => cv_tkn_slip_branch_num        -- トークンコード3
-                       ,iv_token_value3 => TO_CHAR(ln_slip_branch_num)   -- トークン値3
-                       ,iv_token_name4  => cv_tkn_line_num               -- トークンコード4
-                       ,iv_token_value4 => TO_CHAR(ln_line_num)          -- トークン値4
-                       ,iv_token_name5  => cv_tkn_work_kbn               -- トークンコード5
-                       ,iv_token_value5 => TO_CHAR(ln_job_kbn)           -- トークン値5
-                       ,iv_token_name6  => cv_tkn_bukken1                -- トークンコード6
-                       ,iv_token_value6 => lv_install_code1              -- トークン値6
-                       ,iv_token_name7  => cv_tkn_bukken2                -- トークンコード7
-                       ,iv_token_value7 => lv_install_code2              -- トークン値7
-                       ,iv_token_name8  => cv_tkn_errmsg                 -- トークンコード8
-                       ,iv_token_value8 => SQLERRM                       -- トークン値8
+                       /* 2014-05-19 Y.Shoji E_本稼動_11853⑧対応 mod START */
+--                       ,iv_token_name1  => cv_tkn_seq_no                 -- トークンコード1
+--                       ,iv_token_value1 => TO_CHAR(ln_seq_no)            -- トークン値1
+--                       ,iv_token_name2  => cv_tkn_slip_num               -- トークンコード2
+--                       ,iv_token_value2 => TO_CHAR(ln_slip_num)          -- トークン値2
+--                       ,iv_token_name3  => cv_tkn_slip_branch_num        -- トークンコード3
+--                       ,iv_token_value3 => TO_CHAR(ln_slip_branch_num)   -- トークン値3
+--                       ,iv_token_name4  => cv_tkn_line_num               -- トークンコード4
+--                       ,iv_token_value4 => TO_CHAR(ln_line_num)          -- トークン値4
+--                       ,iv_token_name5  => cv_tkn_work_kbn               -- トークンコード5
+--                       ,iv_token_value5 => TO_CHAR(ln_job_kbn)           -- トークン値5
+--                       ,iv_token_name6  => cv_tkn_bukken1                -- トークンコード6
+--                       ,iv_token_value6 => lv_install_code1              -- トークン値6
+--                       ,iv_token_name7  => cv_tkn_bukken2                -- トークンコード7
+--                       ,iv_token_value7 => lv_install_code2              -- トークン値7
+--                       ,iv_token_name8  => cv_tkn_errmsg                 -- トークンコード8
+--                       ,iv_token_value8 => SQLERRM                       -- トークン値8
+                       ,iv_token_name1  => cv_tkn_item                   -- トークンコード1
+                       ,iv_token_value1 => cv_get_po_data                -- トークン値1
+                       ,iv_token_name2  => cv_tkn_seq_no                 -- トークンコード2
+                       ,iv_token_value2 => TO_CHAR(ln_seq_no)            -- トークン値2
+                       ,iv_token_name3  => cv_tkn_slip_num               -- トークンコード3
+                       ,iv_token_value3 => TO_CHAR(ln_slip_num)          -- トークン値3
+                       ,iv_token_name4  => cv_tkn_slip_branch_num        -- トークンコード4
+                       ,iv_token_value4 => TO_CHAR(ln_slip_branch_num)   -- トークン値4
+                       ,iv_token_name5  => cv_tkn_line_num               -- トークンコード5
+                       ,iv_token_value5 => TO_CHAR(ln_line_num)          -- トークン値5
+                       ,iv_token_name6  => cv_tkn_work_kbn               -- トークンコード6
+                       ,iv_token_value6 => TO_CHAR(ln_job_kbn)           -- トークン値6
+                       ,iv_token_name7  => cv_tkn_bukken1                -- トークンコード7
+                       ,iv_token_value7 => lv_install_code1              -- トークン値7
+                       ,iv_token_name8  => cv_tkn_bukken2                -- トークンコード8
+                       ,iv_token_value8 => lv_install_code2              -- トークン値8
+                       ,iv_token_name9  => cv_tkn_errmsg                 -- トークンコード9
+                       ,iv_token_value9 => SQLERRM                       -- トークン値9
+                       /* 2014-05-19 Y.Shoji E_本稼動_11853⑧対応 mod END */
                      );
         lv_errbuf := lv_errmsg;
         RAISE skip_process_expt;
     END;
---    
-    lv_lease_type := SUBSTR(lv_lease_type, cn_num1, cn_num1);
+--
+    /* 2014-05-19 Y.Shoji E_本稼動_11853⑧対応 del START */
+--    lv_lease_type := SUBSTR(lv_lease_type, cn_num1, cn_num1);
+    /* 2014-05-19 Y.Shoji E_本稼動_11853⑧対応 del END   */
     -- ========================
     -- 2.機器状態整合性チェック
     -- ========================
@@ -3584,9 +3757,17 @@ AS
       SELECT punv.attribute2                        -- メーカーコード
             ,punv.attribute3                        -- 年式
             ,SUBSTRB(phcv.hazard_class,1,1)         -- 機器区分（危険度区分）
+            /* 2014-05-19 Y.Shoji E_本稼動_11853⑧対応 add START */
+            ,punv.attribute13                       -- リース区分(機種マスタ)
+            ,punv.attribute14                       -- 取得価格(機種マスタ)
+            /* 2014-05-19 Y.Shoji E_本稼動_11853⑧対応 add END */
       INTO   lv_manufacturer_code
             ,lv_age_type
             ,lv_hazard_class
+            /* 2014-05-19 Y.Shoji E_本稼動_11853⑧対応 add START */
+            ,lt_lease_type_un_numbers
+            ,lt_get_price_un_numbers
+            /* 2014-05-19 Y.Shoji E_本稼動_11853⑧対応 add END*/
       FROM   po_un_numbers_vl     punv               -- 国連番号マスタビュー
             ,po_hazard_classes_vl phcv               -- 危険度区分マスタビュー
       WHERE  punv.un_number        = lv_un_number
@@ -3649,6 +3830,110 @@ AS
         RAISE skip_process_expt;
     END;
 --
+    /* 2014-05-19 Y.Shoji E_本稼動_11853⑧対応 add START */
+    --リース区分の優先判定(発注⇒機種マスタ⇒発注依頼)
+    IF ( lt_lease_type_po IS NOT NULL ) THEN
+      lv_lease_type := lt_lease_type_po;            --発注
+    ELSIF ( lt_lease_type_un_numbers IS NOT NULL ) THEN
+      lv_lease_type := lt_lease_type_un_numbers;    --機種マスタ
+    ELSIF ( lv_lease_type IS NOT  NULL) THEN
+      lv_lease_type := lv_lease_type;               --発注依頼
+    ELSE
+      --リース区分なしエラー
+      lv_errmsg := xxccp_common_pkg.get_msg(
+                      iv_application  => cv_app_name                   -- アプリケーション短縮名
+                     ,iv_name         => cv_tkn_number_20              -- メッセージコード
+                     ,iv_token_name1  => cv_tkn_item                   -- トークンコード1
+                     ,iv_token_value1 => cv_lease_kbn                  -- トークン値1
+                     ,iv_token_name2  => cv_tkn_seq_no                 -- トークンコード2
+                     ,iv_token_value2 => TO_CHAR(ln_seq_no)            -- トークン値2
+                     ,iv_token_name3  => cv_tkn_slip_num               -- トークンコード3
+                     ,iv_token_value3 => TO_CHAR(ln_slip_num)          -- トークン値3
+                     ,iv_token_name4  => cv_tkn_slip_branch_num        -- トークンコード4
+                     ,iv_token_value4 => TO_CHAR(ln_slip_branch_num)   -- トークン値4
+                     ,iv_token_name5  => cv_tkn_line_num               -- トークンコード5
+                     ,iv_token_value5 => TO_CHAR(ln_line_num)          -- トークン値5
+                     ,iv_token_name6  => cv_tkn_work_kbn               -- トークンコード6
+                     ,iv_token_value6 => TO_CHAR(ln_job_kbn)           -- トークン値6
+                     ,iv_token_name7  => cv_tkn_bukken1                -- トークンコード7
+                     ,iv_token_value7 => lv_install_code1              -- トークン値7
+                     ,iv_token_name8  => cv_tkn_bukken2                -- トークンコード8
+                     ,iv_token_value8 => lv_install_code2              -- トークン値8
+                   );
+      lv_errbuf := lv_errmsg;
+      RAISE skip_process_expt;
+    END IF;
+    --リース区分が"固定資産"の場合、取得価格・申告地の値の設定を判定
+    IF ( lv_lease_type = cv_lease_type_assets ) THEN
+--
+      --取得価格の優先判定(発注⇒機種マスタ)
+      IF ( lt_get_price_po IS NOT NULL ) THEN
+        lv_get_price := lt_get_price_po;          --発注
+      ELSIF ( lt_get_price_un_numbers IS NOT NULL ) THEN
+        lv_get_price := lt_get_price_un_numbers;  --機種マスタ
+      ELSE
+        --取得価格なしエラー
+        lv_errmsg := xxccp_common_pkg.get_msg(
+                        iv_application  => cv_app_name                   -- アプリケーション短縮名
+                       ,iv_name         => cv_tkn_number_20              -- メッセージコード
+                       ,iv_token_name1  => cv_tkn_item                   -- トークンコード1
+                       ,iv_token_value1 => cv_get_price                  -- トークン値1
+                       ,iv_token_name2  => cv_tkn_seq_no                 -- トークンコード2
+                       ,iv_token_value2 => TO_CHAR(ln_seq_no)            -- トークン値2
+                       ,iv_token_name3  => cv_tkn_slip_num               -- トークンコード3
+                       ,iv_token_value3 => TO_CHAR(ln_slip_num)          -- トークン値3
+                       ,iv_token_name4  => cv_tkn_slip_branch_num        -- トークンコード4
+                       ,iv_token_value4 => TO_CHAR(ln_slip_branch_num)   -- トークン値4
+                       ,iv_token_name5  => cv_tkn_line_num               -- トークンコード5
+                       ,iv_token_value5 => TO_CHAR(ln_line_num)          -- トークン値5
+                       ,iv_token_name6  => cv_tkn_work_kbn               -- トークンコード6
+                       ,iv_token_value6 => TO_CHAR(ln_job_kbn)           -- トークン値6
+                       ,iv_token_name7  => cv_tkn_bukken1                -- トークンコード7
+                       ,iv_token_value7 => lv_install_code1              -- トークン値7
+                       ,iv_token_name8  => cv_tkn_bukken2                -- トークンコード8
+                       ,iv_token_value8 => lv_install_code2              -- トークン値8
+                     );
+        lv_errbuf := lv_errmsg;
+        RAISE skip_process_expt;
+      END IF;
+--
+      --申告地の優先判定(発注⇒発注依頼)
+      IF ( lt_dclr_place_po IS NOT NULL ) THEN
+        lv_dclr_place := lt_dclr_place_po;  --発注
+      ELSIF ( lt_dclr_place_req IS NOT NULL ) THEN
+        lv_dclr_place := lt_dclr_place_req; --発注依頼
+      ELSE
+        --申告地なしエラー
+        lv_errmsg := xxccp_common_pkg.get_msg(
+                        iv_application  => cv_app_name                   -- アプリケーション短縮名
+                       ,iv_name         => cv_tkn_number_20              -- メッセージコード
+                       ,iv_token_name1  => cv_tkn_item                   -- トークンコード1
+                       ,iv_token_value1 => cv_dclr_place                 -- トークン値1
+                       ,iv_token_name2  => cv_tkn_seq_no                 -- トークンコード2
+                       ,iv_token_value2 => TO_CHAR(ln_seq_no)            -- トークン値2
+                       ,iv_token_name3  => cv_tkn_slip_num               -- トークンコード3
+                       ,iv_token_value3 => TO_CHAR(ln_slip_num)          -- トークン値3
+                       ,iv_token_name4  => cv_tkn_slip_branch_num        -- トークンコード4
+                       ,iv_token_value4 => TO_CHAR(ln_slip_branch_num)   -- トークン値4
+                       ,iv_token_name5  => cv_tkn_line_num               -- トークンコード5
+                       ,iv_token_value5 => TO_CHAR(ln_line_num)          -- トークン値5
+                       ,iv_token_name6  => cv_tkn_work_kbn               -- トークンコード6
+                       ,iv_token_value6 => TO_CHAR(ln_job_kbn)           -- トークン値6
+                       ,iv_token_name7  => cv_tkn_bukken1                -- トークンコード7
+                       ,iv_token_value7 => lv_install_code1              -- トークン値7
+                       ,iv_token_name8  => cv_tkn_bukken2                -- トークンコード8
+                       ,iv_token_value8 => lv_install_code2              -- トークン値8
+                     );
+        lv_errbuf := lv_errmsg;
+        RAISE skip_process_expt;
+      END IF;
+    --リース区分が固定資産以外
+    ELSE
+      --取得価格・申告地はNULLとする
+      lv_get_price  := NULL;
+      lv_dclr_place := NULL;
+    END IF;
+    /* 2014-05-19 Y.Shoji E_本稼動_11853⑧対応 add END */
     -- ================================
     -- 5.登録用インスタンスレコード作成
     -- ================================
@@ -3967,6 +4252,18 @@ AS
     END IF;
     /*2009.09.03 M.Maruyama 0001192対応 END*/
 --
+    /* 2014-05-19 Y.Shoji E_本稼動_11853⑧対応 ADD START */
+    -- 取得価格
+    ln_cnt := ln_cnt + 1;
+    l_ext_attrib_values_tab(ln_cnt).attribute_id    := gr_ext_attribs_id_rec.vd_shutoku_kg;
+    l_ext_attrib_values_tab(ln_cnt).attribute_value := lv_get_price;
+--
+    -- 申告地
+    ln_cnt := ln_cnt + 1;
+    l_ext_attrib_values_tab(ln_cnt).attribute_id    := gr_ext_attribs_id_rec.dclr_place;
+    l_ext_attrib_values_tab(ln_cnt).attribute_value := lv_dclr_place;
+    /* 2014-05-19 Y.Shoji E_本稼動_11853⑧対応 ADD END */
+--
     -- ====================
     -- 7.パーティデータ作成
     -- ====================
@@ -4232,6 +4529,10 @@ AS
           ,install_address                        -- 設置先住所
           ,logical_delete_flag                    -- 論理削除フラグ
           ,account_number                         -- 顧客コード
+          /* 2014-05-19 Y.Shoji E_本稼動_11853⑧対応 ADD START */
+          ,declaration_place                      -- 申告地
+          ,disposal_intaface_flag                -- 廃棄連携フラグ
+          /* 2014-05-19 Y.Shoji E_本稼動_11853⑧対応 ADD END */
           ,created_by                             -- 作成者
           ,creation_date                          -- 作成日
           ,last_updated_by                        -- 最終更新者
@@ -4257,6 +4558,10 @@ AS
           ,lv_install_address                     -- 設置先住所
           ,cv_flg_no                              -- 論理削除フラグ
           ,lv_account_num1                        -- 顧客コード
+          /* 2014-05-19 Y.Shoji E_本稼動_11853⑧対応 ADD START */
+          ,lv_dclr_place                          -- 申告地
+          ,cv_flg_no                              -- 廃棄連携フラグ
+          /* 2014-05-19 Y.Shoji E_本稼動_11853⑧対応 ADD END */
           ,cn_created_by                          -- 作成者
           ,SYSDATE                                -- 作成日
           ,cn_last_updated_by                     -- 最終更新者
@@ -4367,6 +4672,7 @@ AS
     -- ===============================
     -- *** ローカル定数 ***
     cv_install_base_info       CONSTANT VARCHAR2(100)   := 'インストールベースマスタ(物件マスタ)';
+    cv_ex_lease_kbn            CONSTANT VARCHAR2(100)   := 'LEASE_KBN';
 --
     -- *** ローカル変数 ***
     ln_seq_no                  NUMBER;                  -- シーケンス番号
@@ -4407,7 +4713,13 @@ AS
     -- 物件情報抽出
     BEGIN
       SELECT ciins.external_reference                                    -- 外部参照
+    /* 2014-05-19 Y.Shoji E_本稼動_11853⑧対応 ADD START */
+            ,xxcso_ib_common_pkg.get_ib_ext_attribs(ciins.instance_id,cv_ex_lease_kbn) -- リース区分(物件マスタ)
+    /* 2014-05-19 Y.Shoji E_本稼動_11853⑧対応 ADD END */
       INTO   lv_rock_install_code
+    /* 2014-05-19 Y.Shoji E_本稼動_11853⑧対応 ADD START */
+            ,gv_lease_kbn
+    /* 2014-05-19 Y.Shoji E_本稼動_11853⑧対応 ADD END */
       FROM   csi_item_instances ciins                                    -- インストールベースマスタ
       WHERE  ciins.external_reference = lv_install_code
       FOR UPDATE NOWAIT
@@ -4578,6 +4890,9 @@ AS
     cv_ex_last_inst_cust_code CONSTANT VARCHAR2(100) := 'LAST_INST_CUST_CODE';
     cv_ex_last_jotai_kbn      CONSTANT VARCHAR2(100) := 'LAST_JOTAI_KBN';     
     cv_ex_last_year_month     CONSTANT VARCHAR2(100) := 'LAST_YEAR_MONTH';    
+    /* 2014-05-19 Y.Shoji E_本稼動_11853⑧対応 ADD START */
+    cv_ex_dclr_place          CONSTANT VARCHAR2(100) := 'DCLR_PLACE';
+    /* 2014-05-19 Y.Shoji E_本稼動_11853⑧対応 ADD END */
     cv_flg_no                 CONSTANT VARCHAR2(100) := 'N';                 -- フラグNO
     cv_flg_yes                CONSTANT VARCHAR2(100) := 'Y';                 -- フラグYES
     /* 2009.04.13 K.Satomura T1_0418対応 START */
@@ -4592,7 +4907,10 @@ AS
     /* 2009.11.29 T.Maruyama E_本稼動_00120対応 START */
     cv_day_zero              CONSTANT VARCHAR2(1) := '0';
     /* 2009.11.29 T.Maruyama E_本稼動_00120対応 END */
-
+    /* 2014-05-19 Y.Shoji E_本稼動_11853⑧対応 ADD START */
+    cv_dclr_place              CONSTANT VARCHAR2(100) := '申告地コード(更新)';     -- 取得内容名
+    cv_lease_kbn               CONSTANT VARCHAR2(100) := 'リース区分(更新)';       -- 取得内容名
+    /* 2014-05-19 Y.Shoji E_本稼動_11853⑧対応 ADD END */
 --
     -- *** ローカル変数 ***
     ld_date                    DATE;                    -- 業務処理日付格納用('yyyymmdd'形式)
@@ -4653,6 +4971,12 @@ AS
     lv_io_msg_data             VARCHAR2(5000); 
     ln_msg_count               NUMBER;
     ln_io_msg_count            NUMBER;
+    /* 2014-05-19 Y.Shoji E_本稼動_11853⑧対応 ADD START */
+    lt_po_req_number           po_requisition_headers_all.segment1%TYPE;  -- 発注依頼番号
+    lt_line_num                po_requisition_lines_all.line_num%TYPE;    -- 発注依頼明細番号
+    lv_dclr_place              VARCHAR2(5);                               -- 申告地（発注依頼)
+    lv_dclr_place_upd_flg      VARCHAR2(1);                               -- 申告地更新フラグ
+    /* 2014-05-19 Y.Shoji E_本稼動_11853⑧対応 ADD END */
 --
     -- API入出力レコード値格納用
     l_txn_rec                  csi_datastructures_pub.transaction_rec;
@@ -4703,6 +5027,10 @@ AS
     lv_install_number     := io_inst_base_data_rec.install_number;
     ln_instance_id        := io_inst_base_data_rec.instance_id;
     ld_actual_work_date   := TO_DATE(io_inst_base_data_rec.actual_work_date,'YYYY/MM/DD');
+    /* 2014-05-19 Y.Shoji E_本稼動_11853⑧対応 ADD START */
+    lt_po_req_number      := io_inst_base_data_rec.po_req_number;
+    lt_line_num           := io_inst_base_data_rec.line_num;
+    /* 2014-05-19 Y.Shoji E_本稼動_11853⑧対応 ADD END */
 --
     -- ========================
     -- 1.機器状態整合性チェック
@@ -4767,6 +5095,9 @@ AS
     ln_party_site_id  := cn_num0;
     ln_party_id       := cn_num0;
     lv_area_code      := NULL;
+    /* 2014-05-19 Y.Shoji E_本稼動_11853⑧対応 ADD START */
+    lv_dclr_place_upd_flg := cv_flg_no;
+    /* 2014-05-19 Y.Shoji E_本稼動_11853⑧対応 ADD END */
 --
     -- 3.設置機器拡張属性値(更新用)データ作成
 --
@@ -5732,6 +6063,132 @@ AS
       l_ext_attrib_values_tab(ln_cnt).object_version_number := l_ext_attrib_rec.object_version_number;
     END IF;
 --
+    /* 2014-05-19 Y.Shoji E_本稼動_11853⑧対応 ADD START */
+    -- リース区分チェック
+    IF ( gv_lease_kbn IS NULL ) THEN
+            --リース区分なしエラー
+      lv_errmsg := xxccp_common_pkg.get_msg(
+                      iv_application  => cv_app_name                   -- アプリケーション短縮名
+                     ,iv_name         => cv_tkn_number_20              -- メッセージコード
+                     ,iv_token_name1  => cv_tkn_item                   -- トークンコード1
+                     ,iv_token_value1 => cv_lease_kbn                  -- トークン値1
+                     ,iv_token_name2  => cv_tkn_seq_no                 -- トークンコード2
+                     ,iv_token_value2 => TO_CHAR(ln_seq_no)            -- トークン値2
+                     ,iv_token_name3  => cv_tkn_slip_num               -- トークンコード3
+                     ,iv_token_value3 => TO_CHAR(ln_slip_num)          -- トークン値3
+                     ,iv_token_name4  => cv_tkn_slip_branch_num        -- トークンコード4
+                     ,iv_token_value4 => TO_CHAR(ln_slip_branch_num)   -- トークン値4
+                     ,iv_token_name5  => cv_tkn_line_num               -- トークンコード5
+                     ,iv_token_value5 => TO_CHAR(ln_line_num)          -- トークン値5
+                     ,iv_token_name6  => cv_tkn_work_kbn               -- トークンコード6
+                     ,iv_token_value6 => TO_CHAR(ln_job_kbn)           -- トークン値6
+                     ,iv_token_name7  => cv_tkn_bukken1                -- トークンコード7
+                     ,iv_token_value7 => lv_install_code1              -- トークン値7
+                     ,iv_token_name8  => cv_tkn_bukken2                -- トークンコード8
+                     ,iv_token_value8 => lv_install_code2              -- トークン値8
+                   );
+      lv_errbuf := lv_errmsg;
+      RAISE skip_process_expt;
+    END IF;
+    -- ============================
+    -- 3.④申告地(更新用)抽出
+    -- ============================
+    -- リース区分：「固定資産」の場合のみ設定する
+    IF (gv_lease_kbn = cv_lease_type_assets) THEN
+      -- ④-1.旧台設置、旧台代替の場合かつ抽出した物件コードが物件コード１と同一(設置用物件)
+      IF ((ln_job_kbn = cn_jon_kbn_2 OR ln_job_kbn = cn_jon_kbn_4)
+        AND lv_install_code = NVL(lv_install_code1, ' ')) THEN
+        --
+        BEGIN
+          -- 購買依頼から申告地を取得
+          SELECT xrlv.declaration_place dclr_place
+          INTO   lv_dclr_place
+          FROM   po_requisition_headers_all prha
+                ,xxcso_requisition_lines_v  xrlv
+          WHERE  prha.segment1              = lt_po_req_number
+          AND    prha.requisition_header_id = xrlv.requisition_header_id
+          AND    xrlv.line_num              = lt_line_num
+          ;
+        EXCEPTION
+          -- 抽出に失敗した場合
+          WHEN OTHERS THEN
+            lv_errmsg := xxccp_common_pkg.get_msg(
+                            iv_application  => cv_app_name                   -- アプリケーション短縮名
+                           ,iv_name         => cv_tkn_number_21              -- メッセージコード
+                           ,iv_token_name1  => cv_tkn_item                   -- トークンコード1
+                           ,iv_token_value1 => cv_dclr_place                 -- トークン値1
+                           ,iv_token_name2  => cv_tkn_seq_no                 -- トークンコード2
+                           ,iv_token_value2 => TO_CHAR(ln_seq_no)            -- トークン値2
+                           ,iv_token_name3  => cv_tkn_slip_num               -- トークンコード3
+                           ,iv_token_value3 => TO_CHAR(ln_slip_num)          -- トークン値3
+                           ,iv_token_name4  => cv_tkn_slip_branch_num        -- トークンコード4
+                           ,iv_token_value4 => TO_CHAR(ln_slip_branch_num)   -- トークン値4
+                           ,iv_token_name5  => cv_tkn_line_num               -- トークンコード5
+                           ,iv_token_value5 => TO_CHAR(ln_line_num)          -- トークン値5
+                           ,iv_token_name6  => cv_tkn_work_kbn               -- トークンコード6
+                           ,iv_token_value6 => TO_CHAR(ln_job_kbn)           -- トークン値6
+                           ,iv_token_name7  => cv_tkn_bukken1                -- トークンコード7
+                           ,iv_token_value7 => lv_install_code1              -- トークン値7
+                           ,iv_token_name8  => cv_tkn_bukken2                -- トークンコード8
+                           ,iv_token_value8 => lv_install_code2              -- トークン値8
+                           ,iv_token_name9  => cv_tkn_errmsg                 -- トークンコード9
+                           ,iv_token_value9 => SQLERRM                       -- トークン値9
+                         );
+            lv_errbuf := lv_errmsg;
+            RAISE skip_process_expt;
+        END;
+        -- 申告地更新フラグにYをセット
+        lv_dclr_place_upd_flg := cv_flg_yes;
+      -- ④-2.新台代替、旧台代替、引揚の時かつ抽出した物件コードが物件コード２と同一(引揚用物件)
+      ELSIF (( ln_job_kbn = cn_jon_kbn_3 OR ln_job_kbn = cn_jon_kbn_4 OR ln_job_kbn = cn_jon_kbn_5 )
+        AND lv_install_code = lv_install_code2 ) THEN
+          -- プロファイル取得した引揚用の申告地を設定
+          lv_dclr_place := gv_dclr_place_code;
+          -- 申告地更新フラグにYをセット
+          lv_dclr_place_upd_flg := cv_flg_yes;
+      END IF;
+      -- 更新対象の作業区分（④-1、④-2の条件に該当する）の場合
+      IF ( lv_dclr_place_upd_flg = cv_flg_yes ) THEN
+        -- 申告地が取得できた場合、更新する
+        IF (lv_dclr_place IS NOT NULL) THEN
+          -- 申告地の更新
+          l_ext_attrib_rec := xxcso_ib_common_pkg.get_ib_ext_attrib_info2(ln_instance_id, cv_ex_dclr_place);
+          IF (l_ext_attrib_rec.attribute_value_id IS NOT NULL)  THEN 
+            ln_cnt := ln_cnt + 1;
+            l_ext_attrib_values_tab(ln_cnt).attribute_value_id    := l_ext_attrib_rec.attribute_value_id;
+            l_ext_attrib_values_tab(ln_cnt).attribute_value       := lv_dclr_place;
+            l_ext_attrib_values_tab(ln_cnt).attribute_id          := l_ext_attrib_rec.attribute_id;
+            l_ext_attrib_values_tab(ln_cnt).object_version_number := l_ext_attrib_rec.object_version_number;
+          END IF;
+        ELSE
+          -- 申告地なしエラー
+          lv_errmsg := xxccp_common_pkg.get_msg(
+                          iv_application  => cv_app_name                   -- アプリケーション短縮名
+                         ,iv_name         => cv_tkn_number_20              -- メッセージコード
+                         ,iv_token_name1  => cv_tkn_item                   -- トークンコード1
+                         ,iv_token_value1 => cv_dclr_place                 -- トークン値1
+                         ,iv_token_name2  => cv_tkn_seq_no                 -- トークンコード2
+                         ,iv_token_value2 => TO_CHAR(ln_seq_no)            -- トークン値2
+                         ,iv_token_name3  => cv_tkn_slip_num               -- トークンコード3
+                         ,iv_token_value3 => TO_CHAR(ln_slip_num)          -- トークン値3
+                         ,iv_token_name4  => cv_tkn_slip_branch_num        -- トークンコード4
+                         ,iv_token_value4 => TO_CHAR(ln_slip_branch_num)   -- トークン値4
+                         ,iv_token_name5  => cv_tkn_line_num               -- トークンコード5
+                         ,iv_token_value5 => TO_CHAR(ln_line_num)          -- トークン値5
+                         ,iv_token_name6  => cv_tkn_work_kbn               -- トークンコード6
+                         ,iv_token_value6 => TO_CHAR(ln_job_kbn)           -- トークン値6
+                         ,iv_token_name7  => cv_tkn_bukken1                -- トークンコード7
+                         ,iv_token_value7 => lv_install_code1              -- トークン値7
+                         ,iv_token_name8  => cv_tkn_bukken2                -- トークンコード8
+                         ,iv_token_value8 => lv_install_code2              -- トークン値8
+                       );
+          lv_errbuf := lv_errmsg;
+          RAISE skip_process_expt;
+        END IF;
+      --
+      END IF;
+    END IF;
+    /* 2014-05-19 Y.Shoji E_本稼動_11853⑧対応 ADD END */
     -- ================================
     -- 4.インスタンスパーティ情報抽出
     -- ================================
