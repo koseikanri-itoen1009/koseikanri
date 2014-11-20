@@ -30,6 +30,7 @@ AS
  *  Date          Ver.  Editor           Description
  * ------------- ----- ---------------- -------------------------------------------------
  *  2008/11/21    1.0   Y.Goto           V‹Kì¬
+ *  2009/04/10    1.1   SCS.Uda          T1_0464‘Î‰ž
  *
  *****************************************************************************************/
 --
@@ -1453,10 +1454,14 @@ AS
           SELECT COUNT('x')   row_count
           INTO   ln_exists
           FROM   mtl_shipping_network_view msnv
-          WHERE ( msnv.from_organization_code = o_srd_tab(ln_srd_idx).source_org_code
-              AND msnv.to_organization_code   = o_srd_tab(ln_srd_idx).receipt_org_code )
-             OR ( msnv.from_organization_code = o_srd_tab(ln_srd_idx).receipt_org_code
-              AND msnv.to_organization_code   = o_srd_tab(ln_srd_idx).source_org_code );
+--20090410_Ver1.1_T1_0464_SCS.Uda_MOD_START
+--          WHERE ( msnv.from_organization_code = o_srd_tab(ln_srd_idx).source_org_code
+--              AND msnv.to_organization_code   = o_srd_tab(ln_srd_idx).receipt_org_code )
+--             OR ( msnv.from_organization_code = o_srd_tab(ln_srd_idx).receipt_org_code
+--              AND msnv.to_organization_code   = o_srd_tab(ln_srd_idx).source_org_code );
+          WHERE msnv.from_organization_code = o_srd_tab(ln_srd_idx).source_org_code
+            AND msnv.to_organization_code   = o_srd_tab(ln_srd_idx).receipt_org_code;
+--20090410_Ver1.1_T1_0464_SCS.Uda_MOD_END
           IF ( ln_exists = 0 ) THEN
             lv_errmsg := xxccp_common_pkg.get_msg(
                             iv_application  => gv_msg_appl_cont
