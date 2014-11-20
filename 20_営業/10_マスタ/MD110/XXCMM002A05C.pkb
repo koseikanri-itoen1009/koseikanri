@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCMM002A05C(body)
  * Description      : 仕入先マスタデータ連携
  * MD.050           : 仕入先マスタデータ連携 MD050_CMM_002_A05
- * Version          : 1.4
+ * Version          : 1.5
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -35,6 +35,12 @@ AS
  *                                       CSVファイル作成は廃止し、中間テーブルにINSERTを行うように修正
  *  2009/10/02    1.4   SCS 久保島 豊    統合テスト障害0001221の対応
  *                                       仕入先のマッピングを移行に合わせる
+ *  2010/04/12    1.5   SCS 久保島 豊    障害E_本稼動_02240の対応
+ *                                       ・抽出SQLに条件を追加
+ *                                       ・支払グループの導出方法の変更
+ *                                       ・更新対象データチェック方法の変更
+ *                                       ・再雇用者に対する処理の追加
+ *                                       ・仕入先マスタの無効日の設定の変更
  *
  *****************************************************************************************/
 --
@@ -425,6 +431,10 @@ AS
 -- Ver1.2  2009/04/21  Add  障害：T1_0388対応  従業員仕入先サイト対応
             ,pvs.vendor_site_id
 -- End Ver1.2
+-- 2010/04/12 Ver1.5 E_本稼動_02240 add start by Y.Kuboshima
+            ,s.end_date_active AS end_date_active
+            ,pvs.attribute5 AS attribute5
+-- 2010/04/12 Ver1.5 E_本稼動_02240 add end by Y.Kuboshima
     FROM     per_periods_of_service t,
              per_all_assignments_f a,
 -- Ver1.2  2009/04/21  Add  障害：T1_0388対応  従業員仕入先サイト対応
@@ -448,6 +458,9 @@ AS
     AND      pvs.vendor_site_code = cv_site_code_comp
 -- End Ver1.2
     AND      a.period_of_service_id = t.period_of_service_id
+-- 2010/04/12 Ver1.5 E_本稼動_02240 add start by Y.Kuboshima
+    AND      p.last_update_date BETWEEN gd_process_date AND SYSDATE
+-- 2010/04/12 Ver1.5 E_本稼動_02240 add end by Y.Kuboshima
     ORDER BY p.employee_number
   ;
   TYPE g_u_people_data_ttype IS TABLE OF get_u_people_data_cur%ROWTYPE INDEX BY PLS_INTEGER;
@@ -488,6 +501,9 @@ AS
                           WHERE    s.vendor_id = pvs.vendor_id
                           AND      pvs.vendor_site_code = cv_site_code_comp )
 -- End Ver1.2
+-- 2010/04/12 Ver1.5 E_本稼動_02240 add start by Y.Kuboshima
+    AND      p.last_update_date BETWEEN gd_process_date AND SYSDATE
+-- 2010/04/12 Ver1.5 E_本稼動_02240 add end by Y.Kuboshima
     ORDER BY p.employee_number
   ;
   TYPE g_i_people_data_ttype IS TABLE OF get_i_people_data_cur%ROWTYPE INDEX BY PLS_INTEGER;
@@ -1137,6 +1153,9 @@ AS
     cv_t                CONSTANT VARCHAR2(1)  := 'T';                -- 退職した社員
     cv_i                CONSTANT VARCHAR2(1)  := 'I';                -- 異動した社員
     cv_o                CONSTANT VARCHAR2(1)  := 'O';                -- 異動も退職もしなかった社員
+-- 2010/04/12 Ver1.5 E_本稼動_02240 add start by Y.Kuboshima
+    cv_s                CONSTANT VARCHAR2(1)  := 'S';                -- 再雇用社員
+-- 2010/04/12 Ver1.5 E_本稼動_02240 add end by Y.Kuboshima
 --
     -- *** ローカル変数 ***
     ln_loop_cnt         NUMBER;                   -- ループカウンタ
@@ -1269,11 +1288,19 @@ AS
         -- 現在の支払グループ取得(A-3-4)
         --========================================
         BEGIN
+-- 2010/04/12 Ver1.5 E_本稼動_02240 add start by Y.Kuboshima
+          -- 小口現金用の支払グループを生成します。
+          lv_new_pay_group := gt_u_people_data(ln_loop_cnt).ass_attribute3 || '-' || gv_koguti_genkin_nm;
+-- 2010/04/12 Ver1.5 E_本稼動_02240 add end by Y.Kuboshima
           SELECT   '1'
           INTO     lv_ret_flg
           FROM     fnd_lookup_values_vl
           WHERE    lookup_type = gv_group_type_nm
-          AND      attribute2 = gt_u_people_data(ln_loop_cnt).ass_attribute3
+-- 2010/04/12 Ver1.5 E_本稼動_02240 modify start by Y.Kuboshima
+--          AND      attribute2 = gt_u_people_data(ln_loop_cnt).ass_attribute3
+          AND      lookup_code = lv_new_pay_group
+          AND      NVL(attribute3, cv_n_flag) = cv_n_flag
+-- 2010/04/12 Ver1.5 E_本稼動_02240 modify end by Y.Kuboshima
           AND      ROWNUM = 1;
           IF (gt_u_people_data(ln_loop_cnt).ass_attribute3 = gv_pay_bumon_cd) THEN
 -- 2009/10/02 Ver1.4 modify start by Yutaka.Kuboshima
@@ -1320,9 +1347,12 @@ AS
         --========================================
         -- 更新対象データチェック(A-3-5)
         --========================================
-        IF ((gd_process_date <= gt_u_people_data(ln_loop_cnt).actual_termination_date)
-          AND (gt_u_people_data(ln_loop_cnt).actual_termination_date < gd_select_next_date))
-        THEN
+-- 2010/04/12 Ver1.5 E_本稼動_02240 modify start by Y.Kuboshima
+--        IF ((gd_process_date <= gt_u_people_data(ln_loop_cnt).actual_termination_date)
+--          AND (gt_u_people_data(ln_loop_cnt).actual_termination_date < gd_select_next_date))
+--        THEN
+        IF (gt_u_people_data(ln_loop_cnt).actual_termination_date IS NOT NULL) THEN
+-- 2010/04/12 Ver1.5 E_本稼動_02240 modify end by Y.Kuboshima
           -- 退職した社員
           lv_kbn := cv_t;
         ELSIF ((lv_old_pay_group = lv_new_pay_group)
@@ -1331,9 +1361,21 @@ AS
           -- 比較対象を本社総振込支払部門名称 -> 本社総振込支払部門コードに変更
           OR (lv_pay_flg = 'N' AND SUBSTRB(lv_old_pay_group,1,INSTRB(lv_old_pay_group,'-')-1) = gv_pay_bumon_cd))
 -- 2009/10/02 Ver1.4 modify end by Yutaka.Kuboshima
+-- 2010/04/12 Ver1.5 E_本稼動_02240 add start by Y.Kuboshima
+          OR (gt_u_people_data(ln_loop_cnt).ass_attribute3 = gt_u_people_data(ln_loop_cnt).attribute5)
+-- 2010/04/12 Ver1.5 E_本稼動_02240 add end by Y.Kuboshima
         THEN
-          -- 異動も退職もしなかった社員
-          lv_kbn := cv_o;
+-- 2010/04/12 Ver1.5 E_本稼動_02240 modify start by Y.Kuboshima
+--          -- 異動も退職もしなかった社員
+--          lv_kbn := cv_o;
+          IF (gt_u_people_data(ln_loop_cnt).end_date_active IS NOT NULL) THEN
+            -- 再雇用社員
+            lv_kbn := cv_s;
+          ELSE
+            -- 異動も退職もしなかった社員
+            lv_kbn := cv_o;
+          END IF;
+-- 2010/04/12 Ver1.5 E_本稼動_02240 modify end by Y.Kuboshima
         ELSE
           -- 異動した社員
           lv_kbn := cv_i;
@@ -1571,23 +1613,36 @@ AS
               WHEN OTHERS THEN
                 RAISE global_api_others_expt;
             END;
-            -- 異動の場合、無効日に無効日をセット
-            gd_v_end_date_active := ld_end_date_active;
+-- 2010/04/12 Ver1.5 E_本稼動_02240 modify start by Y.Kuboshima
+--            -- 異動の場合、無効日に無効日をセット
+--            gd_v_end_date_active := ld_end_date_active;
+            -- 異動の場合、無効日にNULLをセット
+            gd_v_end_date_active := NULL;
+-- 2010/04/12 Ver1.5 E_本稼動_02240 modify end by Y.Kuboshima
           ELSIF (lv_kbn = cv_t) THEN
-            -- 退職の場合、無効日に退職年月日の次の日をセット
-            gd_v_end_date_active := xxccp_common_pkg2.get_working_day(
-                                        gt_u_people_data(ln_loop_cnt).actual_termination_date
-                                       ,1
-                                       ,gv_cal_code
-                                      );
-            IF (gd_v_end_date_active IS NULL) THEN
-              lv_errmsg := xxccp_common_pkg.get_msg(
-                               iv_application  => cv_msg_kbn_cmm           -- 'XXCMM'
-                              ,iv_name         => cv_msg_00036             -- 次のシステム稼働日取得エラー
-                             );
-              lv_errbuf := lv_errmsg;
-              RAISE global_api_expt;
-            END IF;
+-- 2010/04/12 Ver1.5 E_本稼動_02240 modify start by Y.Kuboshima
+--            -- 退職の場合、無効日に退職年月日の次の日をセット
+--            gd_v_end_date_active := xxccp_common_pkg2.get_working_day(
+--                                        gt_u_people_data(ln_loop_cnt).actual_termination_date
+--                                       ,1
+--                                       ,gv_cal_code
+--                                      );
+--            IF (gd_v_end_date_active IS NULL) THEN
+--              lv_errmsg := xxccp_common_pkg.get_msg(
+--                               iv_application  => cv_msg_kbn_cmm           -- 'XXCMM'
+--                              ,iv_name         => cv_msg_00036             -- 次のシステム稼働日取得エラー
+--                             );
+--              lv_errbuf := lv_errmsg;
+--              RAISE global_api_expt;
+--            END IF;
+            -- 退職の場合、無効日に退職年月日の１ヶ月後をセット
+            gd_v_end_date_active := ADD_MONTHS(gt_u_people_data(ln_loop_cnt).actual_termination_date, 1);
+-- 2010/04/12 Ver1.5 E_本稼動_02240 modify end by Y.Kuboshima
+-- 2010/04/12 Ver1.5 E_本稼動_02240 add start by Y.Kuboshima
+          ELSIF (lv_kbn = cv_s) THEN
+            -- 再雇用の場合、無効日にNULLをセット
+            gd_v_end_date_active := NULL;
+-- 2010/04/12 Ver1.5 E_本稼動_02240 add end by Y.Kuboshima
           END IF;
           --
 -- Ver1.2  2009/04/21  Add  障害：T1_0255対応  シーケンスを取得処理を追加
@@ -2043,8 +2098,12 @@ AS
             l_vend_if_rec.uses_attribute14              := NULL;                                                  -- 銀行口座割当予備14
             l_vend_if_rec.uses_attribute15              := NULL;                                                  -- 銀行口座割当予備15
             l_vend_if_rec.status_flag                   := cv_status_flg;                                         -- ステータスフラグ
-          -- 退社の場合
-          ELSIF (lv_kbn = cv_t) THEN
+-- 2010/04/12 Ver1.5 E_本稼動_02240 modify start by Y.Kuboshima
+--          -- 退社の場合
+--          ELSIF (lv_kbn = cv_t) THEN
+          -- 退社、再雇用の場合
+          ELSIF (lv_kbn IN (cv_t, cv_s)) THEN
+-- 2010/04/12 Ver1.5 E_本稼動_02240 modify start by Y.Kuboshima
             l_vend_if_rec.site_vendor_site_id           := NULL;                                                  -- 仕入先サイト仕入先サイトID
             l_vend_if_rec.site_vendor_site_code         := NULL;                                                  -- 仕入先サイト仕入先サイト名
             l_vend_if_rec.site_address_line1            := NULL;                                                  -- 仕入先サイト所在地1
@@ -2701,11 +2760,19 @@ AS
         -- 支払グループ取得(A-8-3)
         --========================================
         BEGIN
+-- 2010/04/12 Ver1.5 E_本稼動_02240 add start by Y.Kuboshima
+          -- 小口現金用の支払グループを生成します。
+          lv_pay_group := gt_i_people_data(ln_loop_cnt).ass_attribute3 || '-' || gv_koguti_genkin_nm;
+-- 2010/04/12 Ver1.5 E_本稼動_02240 add end by Y.Kuboshima
           SELECT   '1'
           INTO     lv_ret_flg
           FROM     fnd_lookup_values_vl
           WHERE    lookup_type = gv_group_type_nm
-          AND      attribute2 = gt_i_people_data(ln_loop_cnt).ass_attribute3
+-- 2010/04/12 Ver1.5 E_本稼動_02240 modify start by Y.Kuboshima
+--          AND      attribute2 = gt_i_people_data(ln_loop_cnt).ass_attribute3
+          AND      lookup_code = lv_pay_group
+          AND      NVL(attribute3, cv_n_flag) = cv_n_flag
+-- 2010/04/12 Ver1.5 E_本稼動_02240 modify end by Y.Kuboshima
           AND      ROWNUM = 1;
           IF (gt_i_people_data(ln_loop_cnt).ass_attribute3 = gv_pay_bumon_cd) THEN
 -- 2009/10/02 Ver1.4 modify start by Yutaka.Kuboshima
@@ -3107,7 +3174,10 @@ AS
            || TO_MULTI_BYTE(gt_i_people_data(ln_loop_cnt).employee_number),1,80)   -- 仕入先仕入先名
            ,SUBSTRB(cv_9000 || gt_i_people_data(ln_loop_cnt).employee_number,1,30) -- 仕入先仕入先番号
            ,SUBSTRB(gt_i_people_data(ln_loop_cnt).person_id,1,22) -- 仕入先従業員ID
-           ,gv_v_vendor_type                                      -- 仕入先仕入先タイプ
+-- 2010/04/12 Ver1.5 E_本稼動_02240 modify start by Y.Kuboshima
+--           ,gv_v_vendor_type                                      -- 仕入先仕入先タイプ
+           ,gv_vendor_type                                        -- 仕入先仕入先タイプ
+-- 2010/04/12 Ver1.5 E_本稼動_02240 modify end by Y.Kuboshima
 -- 2009/10/02 Ver1.4 modify start by Yutaka.Kuboshima
 --           ,NULL                                                  -- 仕入先支払条件
 --           ,NULL                                                  -- 仕入先支払グループコード
