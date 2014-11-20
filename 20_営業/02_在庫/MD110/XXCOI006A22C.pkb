@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCOI006A22C(body)
  * Description      : 資材取引を元に、VD受払情報を作成します。
  * MD.050           : VD受払データ作成<MD050_COI_006_A22>
- * Version          : 1.1
+ * Version          : 1.3
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -26,6 +26,8 @@ AS
  * ------------- ----- ---------------- -------------------------------------------------
  *  2009/02/06    1.0   H.Sasaki         初版作成
  *  2009/07/31    1.1   N.Abe            [0000638]単位の取得項目修正
+ *  2009/11/11    1.2   N.Abe            [E_最終移行リハ_00539]前月VD受払抽出SQLの修正
+ *  2009/11/14    1.3   H.Sasaki         [E_最終移行リハ_00539]前月VD受払抽出SQLの修正
  *
  *****************************************************************************************/
 --
@@ -385,36 +387,65 @@ AS
     ln_dummy                NUMBER;                                           -- ダミー変数
 --
     -- *** ローカル・カーソル ***
+-- == 2009/11/14 V1.3 Modified START ===============================================================
+--    CURSOR  vd_column_cur
+--    IS
+--      SELECT  xvri_lm.base_code                     base_code                       -- 拠点コード（前月）
+--             ,xvri_lm.practice_date                 practice_date                   -- 年月
+--             ,xvri_lm.inventory_item_id             inventory_item_id               -- 品目ID
+--             ,xvri_lm.month_begin_quantity          month_begin_quantity            -- 月首在庫
+--             ,  xvri_lm.vd_stock
+--              + xvri_lm.vd_move_stock
+--              - xvri_lm.vd_ship
+--              - xvri_lm.vd_move_ship                vd_total_quantity               -- VD入出庫合計
+--             ,xvri_tm.base_code                     this_month_base_code            -- 拠点コード（当月）
+---- == 2009/11/11 V1.2 Modified START ===============================================================
+----             ,vcm.last_month_inventory_quantity     last_month_inventory_quantity   -- 前月末基準在庫数
+--             ,NVL(vcm.last_month_inventory_quantity, 0)
+--                                                    last_month_inventory_quantity   -- 前月末基準在庫数
+---- == 2009/11/11 V1.2 Modified END   ===============================================================
+--      FROM    xxcoi_vd_reception_info   xvri_lm                                     -- VD受払情報（前月）
+--             ,xxcoi_vd_reception_info   xvri_tm                                     -- VD受払情報（当月）
+--             ,(SELECT   xca.past_sale_base_code                   base_code                         -- 前月売上拠点コード
+--                       ,xmvc.last_month_item_id                   inventory_item_id                 -- 前月末品目ID
+--                       ,SUM(xmvc.last_month_inventory_quantity)   last_month_inventory_quantity     -- 前月末基準在庫数
+--               FROM     xxcoi_mst_vd_column     xmvc                                                -- VDコラムマスタ
+--                       ,xxcmm_cust_accounts     xca                                                 -- 顧客追加情報
+--               WHERE    xmvc.customer_id      =   xca.customer_id
+--               AND      xca.business_low_type IN(cv_low_type_24, cv_low_type_25, cv_low_type_27)
+--               GROUP BY xca.past_sale_base_code
+--                       ,xmvc.last_month_item_id
+--              )                         vcm                                         -- コラムマスタ情報
+--      WHERE   xvri_lm.base_code           =   xvri_tm.base_code(+)
+--      AND     xvri_lm.inventory_item_id   =   xvri_tm.inventory_item_id(+)
+--      AND     xvri_lm.practice_date       =   gv_f_last_month
+--      AND     xvri_tm.practice_date(+)    =   TO_CHAR(gd_f_process_date, cv_month)
+---- == 2009/11/11 V1.2 Modified START ===============================================================
+----      AND     xvri_lm.base_code           =   vcm.base_code
+----      AND     xvri_lm.inventory_item_id   =   vcm.inventory_item_id;
+--      AND     xvri_lm.base_code           =   vcm.base_code(+)
+--      AND     xvri_lm.inventory_item_id   =   vcm.inventory_item_id(+);
+---- == 2009/11/11 V1.2 Modified START ===============================================================
+    CURSOR  vd_recp_cur
+    IS
+      SELECT  1
+      FROM    xxcoi_vd_reception_info     xvri
+      WHERE   xvri.practice_date          =   gv_f_last_month
+      FOR UPDATE NOWAIT;
+    --
+    --
     CURSOR  vd_column_cur
     IS
-      SELECT  xvri_lm.base_code                     base_code                       -- 拠点コード（前月）
-             ,xvri_lm.practice_date                 practice_date                   -- 年月
-             ,xvri_lm.inventory_item_id             inventory_item_id               -- 品目ID
-             ,xvri_lm.month_begin_quantity          month_begin_quantity            -- 月首在庫
-             ,  xvri_lm.vd_stock
-              + xvri_lm.vd_move_stock
-              - xvri_lm.vd_ship
-              - xvri_lm.vd_move_ship                vd_total_quantity               -- VD入出庫合計
-             ,xvri_tm.base_code                     this_month_base_code            -- 拠点コード（当月）
-             ,vcm.last_month_inventory_quantity     last_month_inventory_quantity   -- 前月末基準在庫数
-      FROM    xxcoi_vd_reception_info   xvri_lm                                     -- VD受払情報（前月）
-             ,xxcoi_vd_reception_info   xvri_tm                                     -- VD受払情報（当月）
-             ,(SELECT   xca.past_sale_base_code                   base_code                         -- 前月売上拠点コード
-                       ,xmvc.last_month_item_id                   inventory_item_id                 -- 前月末品目ID
-                       ,SUM(xmvc.last_month_inventory_quantity)   last_month_inventory_quantity     -- 前月末基準在庫数
-               FROM     xxcoi_mst_vd_column     xmvc                                                -- VDコラムマスタ
-                       ,xxcmm_cust_accounts     xca                                                 -- 顧客追加情報
-               WHERE    xmvc.customer_id      =   xca.customer_id
-               AND      xca.business_low_type IN(cv_low_type_24, cv_low_type_25, cv_low_type_27)
-               GROUP BY xca.past_sale_base_code
-                       ,xmvc.last_month_item_id
-              )                         vcm                                         -- コラムマスタ情報
-      WHERE   xvri_lm.base_code           =   xvri_tm.base_code(+)
-      AND     xvri_lm.inventory_item_id   =   xvri_tm.inventory_item_id(+)
-      AND     xvri_lm.practice_date       =   gv_f_last_month
-      AND     xvri_tm.practice_date(+)    =   TO_CHAR(gd_f_process_date, cv_month)
-      AND     xvri_lm.base_code           =   vcm.base_code
-      AND     xvri_lm.inventory_item_id   =   vcm.inventory_item_id;
+      SELECT   xca.past_sale_base_code                    base_code                         -- 前月売上拠点コード
+              ,xmvc.last_month_item_id                    inventory_item_id                 -- 前月末品目ID
+              ,SUM(xmvc.last_month_inventory_quantity)    last_month_inventory_quantity     -- 前月末基準在庫数
+      FROM     xxcoi_mst_vd_column      xmvc                                                -- VDコラムマスタ
+              ,xxcmm_cust_accounts      xca                                                 -- 顧客追加情報
+      WHERE    xmvc.customer_id       = xca.customer_id
+      AND      xca.business_low_type  IN(cv_low_type_24, cv_low_type_25, cv_low_type_27)
+      GROUP BY xca.past_sale_base_code
+              ,xmvc.last_month_item_id;
+-- == 2009/11/14 V1.3 Modified END   ===============================================================
 --
     -- *** ローカル・レコード ***
     vd_column_rec   vd_column_cur%ROWTYPE;
@@ -436,200 +467,513 @@ AS
     --メッセージ出力をする必要がある場合は処理を記述
     --==============================================================
 --
+-- == 2009/11/14 V1.3 Modified START ===============================================================
+--    -- ===================================
+--    --  1.前月VD受払データ追加（当月）
+--    -- ===================================
+--    --
+--    <<set_vd_column_loop>>
+--    FOR vd_column_rec IN vd_column_cur LOOP
+--      IF (vd_column_rec.last_month_inventory_quantity = 0) THEN
+--        -- 前月末基準在庫数が０の場合、登録を行わない
+--        NULL;
+--        --
+--      ELSIF (vd_column_rec.this_month_base_code IS NULL) THEN
+--        -- 当月分のVD受払情報が存在しない場合
+--        
+--        -- ===================================
+--        --  標準原価取得
+--        -- ===================================
+--        xxcoi_common_pkg.get_cmpnt_cost(
+--          in_item_id      =>  vd_column_rec.inventory_item_id                 -- 品目ID
+--         ,in_org_id       =>  gn_f_organization_id                            -- 組織ID
+--         ,id_period_date  =>  gd_f_process_date                               -- 対象日
+--         ,ov_cmpnt_cost   =>  lt_standard_cost                                -- 標準原価
+--         ,ov_errbuf       =>  lv_errbuf                                       -- エラーメッセージ
+--         ,ov_retcode      =>  lv_retcode                                      -- リターン・コード
+--         ,ov_errmsg       =>  lv_errmsg                                       -- ユーザー・エラーメッセージ
+--        );
+--        -- 終了パラメータ判定
+--        IF (lt_standard_cost IS NULL) THEN
+--          lv_errmsg   := xxccp_common_pkg.get_msg(
+--                           iv_application  => cv_short_name
+--                          ,iv_name         => cv_msg_xxcoi1_10285
+--                         );
+--          lv_errbuf   := lv_errmsg;
+--          RAISE global_process_expt;
+--        END IF;
+--        --
+--        -- ===================================
+--        --  営業原価取得
+--        -- ===================================
+--        xxcoi_common_pkg.get_discrete_cost(
+--          in_item_id        =>  vd_column_rec.inventory_item_id                 -- 品目ID
+--         ,in_org_id         =>  gn_f_organization_id                            -- 組織ID
+--         ,id_target_date    =>  gd_f_process_date                               -- 対象日
+--         ,ov_discrete_cost  =>  lt_operation_cost                               -- 営業原価
+--         ,ov_errbuf         =>  lv_errbuf                                       -- エラーメッセージ
+--         ,ov_retcode        =>  lv_retcode                                      -- リターン・コード
+--         ,ov_errmsg         =>  lv_errmsg                                       -- ユーザー・エラーメッセージ
+--        );
+--        -- 終了パラメータ判定
+--        IF (lt_operation_cost IS NULL) THEN
+--          lv_errmsg   := xxccp_common_pkg.get_msg(
+--                           iv_application  => cv_short_name
+--                          ,iv_name         => cv_msg_xxcoi1_10293
+--                         );
+--          lv_errbuf   := lv_errmsg;
+--          RAISE global_process_expt;
+--        END IF;
+--        --
+--        INSERT INTO xxcoi_vd_reception_info(
+--          base_code                                     -- 01.拠点コード
+--         ,organization_id                               -- 02.組織ID
+--         ,practice_date                                 -- 03.年月
+--         ,inventory_item_id                             -- 04.品目ID
+--         ,operation_cost                                -- 05.営業原価
+--         ,standard_cost                                 -- 06.標準原価
+--         ,month_begin_quantity                          -- 07.月首在庫
+--         ,vd_stock                                      -- 08.ベンダ入庫
+--         ,vd_move_stock                                 -- 09.ベンダ-移動入庫
+--         ,vd_ship                                       -- 10.ベンダ出庫
+--         ,vd_move_ship                                  -- 11.ベンダ-移動出庫
+--         ,month_end_book_remain_qty                     -- 12.月末帳簿残
+--         ,month_end_quantity                            -- 13.月末在庫
+--         ,inv_wear_account                              -- 14.棚卸減耗費
+--         ,created_by                                    -- 15.作成者
+--         ,creation_date                                 -- 16.作成日
+--         ,last_updated_by                               -- 17.最終更新者
+--         ,last_update_date                              -- 18.最終更新日
+--         ,last_update_login                             -- 19.最終更新ログイン
+--         ,request_id                                    -- 20.要求ID
+--         ,program_application_id                        -- 21.コンカレント・プログラム・アプリケーションID
+--         ,program_id                                    -- 22.コンカレント・プログラムID
+--         ,program_update_date                           -- 23.プログラム更新日
+--        )VALUES(
+--          vd_column_rec.base_code                       -- 01
+--         ,gn_f_organization_id                          -- 02
+--         ,TO_CHAR(gd_f_process_date, cv_month)          -- 03
+--         ,vd_column_rec.inventory_item_id               -- 04
+--         ,lt_operation_cost                             -- 05
+--         ,lt_standard_cost                              -- 06
+--         ,vd_column_rec.last_month_inventory_quantity   -- 07
+--         ,0                                             -- 08
+--         ,0                                             -- 09
+--         ,0                                             -- 10
+--         ,0                                             -- 11
+--         ,0                                             -- 12
+--         ,0                                             -- 13
+--         ,0                                             -- 14
+--         ,cn_created_by                                 -- 15
+--         ,SYSDATE                                       -- 16
+--         ,cn_last_updated_by                            -- 17
+--         ,SYSDATE                                       -- 18
+--         ,cn_last_update_login                          -- 19
+--         ,cn_request_id                                 -- 20
+--         ,cn_program_application_id                     -- 21
+--         ,cn_program_id                                 -- 22
+--         ,SYSDATE                                       -- 23
+--        );
+--        --
+--      ELSE
+--        -- 当月分のVD受払情報が存在する場合
+--        BEGIN
+--          -- ロック取得
+--          SELECT  1
+--          INTO    ln_dummy
+--          FROM    xxcoi_vd_reception_info
+--          WHERE   base_code           = vd_column_rec.base_code
+--          AND     practice_date       = TO_CHAR(gd_f_process_date, cv_month)
+--          AND     inventory_item_id   = vd_column_rec.inventory_item_id
+--          FOR UPDATE NOWAIT;
+--          --
+--        EXCEPTION
+--          WHEN  lock_error_expt THEN
+--            -- VD受払情報ロックエラーメッセージ
+--            lv_errmsg   :=  xxccp_common_pkg.get_msg(
+--                              iv_application  => cv_short_name
+--                             ,iv_name         => cv_msg_xxcoi1_10366
+--                            );
+--            lv_errbuf   :=  lv_errmsg;
+--            RAISE global_process_expt;
+--            --
+--        END;
+--        --
+--        UPDATE  xxcoi_vd_reception_info
+--        SET     month_begin_quantity    = month_begin_quantity  +  vd_column_rec.last_month_inventory_quantity
+--                                                                              -- 07.月首在庫
+--               ,last_updated_by         = cn_last_updated_by                  -- 17.最終更新者
+--               ,last_update_date        = SYSDATE                             -- 18.最終更新日
+--               ,last_update_login       = cn_last_update_login                -- 19.最終更新ログイン
+--               ,request_id              = cn_request_id                       -- 20.要求ID
+--               ,program_application_id  = cn_program_application_id           -- 21.コンカレント・プログラム・アプリケーションID
+--               ,program_id              = cn_program_id                       -- 22.コンカレント・プログラムID
+--               ,program_update_date     = SYSDATE                             -- 23.プログラム更新日
+--        WHERE   base_code               = vd_column_rec.base_code
+--        AND     practice_date           = TO_CHAR(gd_f_process_date, cv_month)
+--        AND     inventory_item_id       = vd_column_rec.inventory_item_id;
+--        --
+--      END IF;
+--      --
+--      -- ===================================
+--      --  2.前月VD受払データ確定
+--      -- ===================================
+--      BEGIN
+--        -- ロック取得
+--        SELECT  1
+--        INTO    ln_dummy
+--        FROM    xxcoi_vd_reception_info
+--        WHERE   base_code           = vd_column_rec.base_code
+--        AND     practice_date       = gv_f_last_month
+--        AND     inventory_item_id   = vd_column_rec.inventory_item_id
+--        FOR UPDATE NOWAIT;
+--        --
+--      EXCEPTION
+--        WHEN  lock_error_expt THEN
+--          -- VD受払情報ロックエラーメッセージ
+--          lv_errmsg   :=  xxccp_common_pkg.get_msg(
+--                            iv_application  => cv_short_name
+--                           ,iv_name         => cv_msg_xxcoi1_10366
+--                          );
+--          lv_errbuf   :=  lv_errmsg;
+--          RAISE global_process_expt;
+--          --
+--      END;
+--      --
+--      UPDATE  xxcoi_vd_reception_info
+--      SET     month_end_book_remain_qty =  month_end_book_remain_qty
+--                                         + vd_column_rec.month_begin_quantity
+--                                         + vd_column_rec.vd_total_quantity                  -- 12.月末帳簿残
+--             ,month_end_quantity        =  vd_column_rec.last_month_inventory_quantity      -- 13.月末在庫
+--             ,inv_wear_account          =  vd_column_rec.month_begin_quantity
+--                                         + vd_column_rec.vd_total_quantity
+--                                         - vd_column_rec.last_month_inventory_quantity      -- 14.棚卸減耗費
+--             ,last_updated_by           =  cn_last_updated_by                               -- 17.最終更新者
+--             ,last_update_date          =  SYSDATE                                          -- 18.最終更新日
+--             ,last_update_login         =  cn_last_update_login                             -- 19.最終更新ログイン
+--             ,request_id                =  cn_request_id                                    -- 20.要求ID
+--             ,program_application_id    =  cn_program_application_id                        -- 21.コンカレント・プログラム・アプリケーションID
+--             ,program_id                =  cn_program_id                                    -- 22.コンカレント・プログラムID
+--             ,program_update_date       =  SYSDATE                                          -- 23.プログラム更新日
+--      WHERE   base_code           = vd_column_rec.base_code
+--      AND     practice_date       = gv_f_last_month
+--      AND     inventory_item_id   = vd_column_rec.inventory_item_id;
+--      --
+--    END LOOP set_vd_column_loop;
     -- ===================================
-    --  1.前月VD受払データ追加（当月）
+    --  月末帳簿残確定
     -- ===================================
+    -- 対象データロック処理
+    OPEN  vd_recp_cur;
+    CLOSE vd_recp_cur;
     --
-    <<set_vd_column_loop>>
+    -- 帳簿残、棚卸減耗算出
+    UPDATE  xxcoi_vd_reception_info
+    SET     month_end_book_remain_qty =  month_end_book_remain_qty
+                                       + month_begin_quantity
+                                       + vd_stock
+                                       + vd_move_stock
+                                       - vd_ship
+                                       - vd_move_ship                           -- 12.月末帳簿残
+           ,inv_wear_account          =  month_begin_quantity
+                                       + vd_stock
+                                       + vd_move_stock
+                                       - vd_ship
+                                       - vd_move_ship                           -- 14.棚卸減耗費
+           ,last_updated_by           =  cn_last_updated_by                     -- 17.最終更新者
+           ,last_update_date          =  SYSDATE                                -- 18.最終更新日
+           ,last_update_login         =  cn_last_update_login                   -- 19.最終更新ログイン
+           ,request_id                =  cn_request_id                          -- 20.要求ID
+           ,program_application_id    =  cn_program_application_id              -- 21.コンカレント・プログラム・アプリケーションID
+           ,program_id                =  cn_program_id                          -- 22.コンカレント・プログラムID
+           ,program_update_date       =  SYSDATE                                -- 23.プログラム更新日
+    WHERE   practice_date         =   gv_f_last_month;
+    --
+    <<set_inv_qty_loop>>
     FOR vd_column_rec IN vd_column_cur LOOP
-      IF (vd_column_rec.last_month_inventory_quantity = 0) THEN
-        -- 前月末基準在庫数が０の場合、登録を行わない
-        NULL;
-        --
-      ELSIF (vd_column_rec.this_month_base_code IS NULL) THEN
-        -- 当月分のVD受払情報が存在しない場合
-        
+      IF( vd_column_rec.last_month_inventory_quantity <> 0) THEN
         -- ===================================
-        --  標準原価取得
+        --  月末在庫確定
         -- ===================================
-        xxcoi_common_pkg.get_cmpnt_cost(
-          in_item_id      =>  vd_column_rec.inventory_item_id                 -- 品目ID
-         ,in_org_id       =>  gn_f_organization_id                            -- 組織ID
-         ,id_period_date  =>  gd_f_process_date                               -- 対象日
-         ,ov_cmpnt_cost   =>  lt_standard_cost                                -- 標準原価
-         ,ov_errbuf       =>  lv_errbuf                                       -- エラーメッセージ
-         ,ov_retcode      =>  lv_retcode                                      -- リターン・コード
-         ,ov_errmsg       =>  lv_errmsg                                       -- ユーザー・エラーメッセージ
-        );
-        -- 終了パラメータ判定
-        IF (lt_standard_cost IS NULL) THEN
-          lv_errmsg   := xxccp_common_pkg.get_msg(
-                           iv_application  => cv_short_name
-                          ,iv_name         => cv_msg_xxcoi1_10285
-                         );
-          lv_errbuf   := lv_errmsg;
-          RAISE global_process_expt;
-        END IF;
-        --
-        -- ===================================
-        --  営業原価取得
-        -- ===================================
-        xxcoi_common_pkg.get_discrete_cost(
-          in_item_id        =>  vd_column_rec.inventory_item_id                 -- 品目ID
-         ,in_org_id         =>  gn_f_organization_id                            -- 組織ID
-         ,id_target_date    =>  gd_f_process_date                               -- 対象日
-         ,ov_discrete_cost  =>  lt_operation_cost                               -- 営業原価
-         ,ov_errbuf         =>  lv_errbuf                                       -- エラーメッセージ
-         ,ov_retcode        =>  lv_retcode                                      -- リターン・コード
-         ,ov_errmsg         =>  lv_errmsg                                       -- ユーザー・エラーメッセージ
-        );
-        -- 終了パラメータ判定
-        IF (lt_operation_cost IS NULL) THEN
-          lv_errmsg   := xxccp_common_pkg.get_msg(
-                           iv_application  => cv_short_name
-                          ,iv_name         => cv_msg_xxcoi1_10293
-                         );
-          lv_errbuf   := lv_errmsg;
-          RAISE global_process_expt;
-        END IF;
-        --
-        INSERT INTO xxcoi_vd_reception_info(
-          base_code                                     -- 01.拠点コード
-         ,organization_id                               -- 02.組織ID
-         ,practice_date                                 -- 03.年月
-         ,inventory_item_id                             -- 04.品目ID
-         ,operation_cost                                -- 05.営業原価
-         ,standard_cost                                 -- 06.標準原価
-         ,month_begin_quantity                          -- 07.月首在庫
-         ,vd_stock                                      -- 08.ベンダ入庫
-         ,vd_move_stock                                 -- 09.ベンダ-移動入庫
-         ,vd_ship                                       -- 10.ベンダ出庫
-         ,vd_move_ship                                  -- 11.ベンダ-移動出庫
-         ,month_end_book_remain_qty                     -- 12.月末帳簿残
-         ,month_end_quantity                            -- 13.月末在庫
-         ,inv_wear_account                              -- 14.棚卸減耗費
-         ,created_by                                    -- 15.作成者
-         ,creation_date                                 -- 16.作成日
-         ,last_updated_by                               -- 17.最終更新者
-         ,last_update_date                              -- 18.最終更新日
-         ,last_update_login                             -- 19.最終更新ログイン
-         ,request_id                                    -- 20.要求ID
-         ,program_application_id                        -- 21.コンカレント・プログラム・アプリケーションID
-         ,program_id                                    -- 22.コンカレント・プログラムID
-         ,program_update_date                           -- 23.プログラム更新日
-        )VALUES(
-          vd_column_rec.base_code                       -- 01
-         ,gn_f_organization_id                          -- 02
-         ,TO_CHAR(gd_f_process_date, cv_month)          -- 03
-         ,vd_column_rec.inventory_item_id               -- 04
-         ,lt_operation_cost                             -- 05
-         ,lt_standard_cost                              -- 06
-         ,vd_column_rec.last_month_inventory_quantity   -- 07
-         ,0                                             -- 08
-         ,0                                             -- 09
-         ,0                                             -- 10
-         ,0                                             -- 11
-         ,0                                             -- 12
-         ,0                                             -- 13
-         ,0                                             -- 14
-         ,cn_created_by                                 -- 15
-         ,SYSDATE                                       -- 16
-         ,cn_last_updated_by                            -- 17
-         ,SYSDATE                                       -- 18
-         ,cn_last_update_login                          -- 19
-         ,cn_request_id                                 -- 20
-         ,cn_program_application_id                     -- 21
-         ,cn_program_id                                 -- 22
-         ,SYSDATE                                       -- 23
-        );
-        --
-      ELSE
-        -- 当月分のVD受払情報が存在する場合
         BEGIN
-          -- ロック取得
           SELECT  1
           INTO    ln_dummy
-          FROM    xxcoi_vd_reception_info
-          WHERE   base_code           = vd_column_rec.base_code
-          AND     practice_date       = TO_CHAR(gd_f_process_date, cv_month)
-          AND     inventory_item_id   = vd_column_rec.inventory_item_id
-          FOR UPDATE NOWAIT;
+          FROM    xxcoi_vd_reception_info   xvri
+          WHERE   xvri.base_code            =   vd_column_rec.base_code
+          AND     xvri.inventory_item_id    =   vd_column_rec.inventory_item_id
+          AND     xvri.practice_date        =   gv_f_last_month
+          AND     ROWNUM  = 1;
+          --
+          -- -----------------------------------
+          --  月末在庫確定
+          -- -----------------------------------
+          UPDATE  xxcoi_vd_reception_info
+          SET     month_end_quantity        =   vd_column_rec.last_month_inventory_quantity     -- 13.月末在庫
+                 ,inv_wear_account          =   inv_wear_account
+                                              - vd_column_rec.last_month_inventory_quantity     -- 14.棚卸減耗費
+                 ,last_updated_by           =  cn_last_updated_by                               -- 17.最終更新者
+                 ,last_update_date          =  SYSDATE                                          -- 18.最終更新日
+                 ,last_update_login         =  cn_last_update_login                             -- 19.最終更新ログイン
+                 ,request_id                =  cn_request_id                                    -- 20.要求ID
+                 ,program_application_id    =  cn_program_application_id                        -- 21.コンカレント・プログラム・アプリケーションID
+                 ,program_id                =  cn_program_id                                    -- 22.コンカレント・プログラムID
+                 ,program_update_date       =  SYSDATE                                          -- 23.プログラム更新日
+          WHERE   base_code             =   vd_column_rec.base_code
+          AND     inventory_item_id     =   vd_column_rec.inventory_item_id
+          AND     practice_date         =   gv_f_last_month;
           --
         EXCEPTION
-          WHEN  lock_error_expt THEN
-            -- VD受払情報ロックエラーメッセージ
-            lv_errmsg   :=  xxccp_common_pkg.get_msg(
-                              iv_application  => cv_short_name
-                             ,iv_name         => cv_msg_xxcoi1_10366
-                            );
-            lv_errbuf   :=  lv_errmsg;
-            RAISE global_process_expt;
+          WHEN NO_DATA_FOUND THEN
+            -- -----------------------------------
+            --  標準原価取得
+            -- -----------------------------------
+            xxcoi_common_pkg.get_cmpnt_cost(
+              in_item_id      =>  vd_column_rec.inventory_item_id                 -- 品目ID
+             ,in_org_id       =>  gn_f_organization_id                            -- 組織ID
+             ,id_period_date  =>  LAST_DAY(TO_DATE(gv_f_last_month, cv_month))    -- 対象日
+             ,ov_cmpnt_cost   =>  lt_standard_cost                                -- 標準原価
+             ,ov_errbuf       =>  lv_errbuf                                       -- エラーメッセージ
+             ,ov_retcode      =>  lv_retcode                                      -- リターン・コード
+             ,ov_errmsg       =>  lv_errmsg                                       -- ユーザー・エラーメッセージ
+            );
+            -- 終了パラメータ判定
+            IF (lt_standard_cost IS NULL) THEN
+              lv_errmsg   := xxccp_common_pkg.get_msg(
+                               iv_application  => cv_short_name
+                              ,iv_name         => cv_msg_xxcoi1_10285
+                             );
+              lv_errbuf   := lv_errmsg;
+              RAISE global_process_expt;
+            END IF;
             --
+            -- -----------------------------------
+            --  営業原価取得
+            -- -----------------------------------
+            xxcoi_common_pkg.get_discrete_cost(
+              in_item_id        =>  vd_column_rec.inventory_item_id                 -- 品目ID
+             ,in_org_id         =>  gn_f_organization_id                            -- 組織ID
+             ,id_target_date    =>  LAST_DAY(TO_DATE(gv_f_last_month, cv_month))    -- 対象日
+             ,ov_discrete_cost  =>  lt_operation_cost                               -- 営業原価
+             ,ov_errbuf         =>  lv_errbuf                                       -- エラーメッセージ
+             ,ov_retcode        =>  lv_retcode                                      -- リターン・コード
+             ,ov_errmsg         =>  lv_errmsg                                       -- ユーザー・エラーメッセージ
+            );
+            -- 終了パラメータ判定
+            IF (lt_operation_cost IS NULL) THEN
+              lv_errmsg   := xxccp_common_pkg.get_msg(
+                               iv_application  => cv_short_name
+                              ,iv_name         => cv_msg_xxcoi1_10293
+                             );
+              lv_errbuf   := lv_errmsg;
+              RAISE global_process_expt;
+            END IF;
+            --
+            -- -----------------------------------
+            --  月末在庫確定
+            -- -----------------------------------
+            INSERT INTO xxcoi_vd_reception_info(
+              base_code                                         -- 01.拠点コード
+             ,organization_id                                   -- 02.組織ID
+             ,practice_date                                     -- 03.年月
+             ,inventory_item_id                                 -- 04.品目ID
+             ,operation_cost                                    -- 05.営業原価
+             ,standard_cost                                     -- 06.標準原価
+             ,month_begin_quantity                              -- 07.月首在庫
+             ,vd_stock                                          -- 08.ベンダ入庫
+             ,vd_move_stock                                     -- 09.ベンダ-移動入庫
+             ,vd_ship                                           -- 10.ベンダ出庫
+             ,vd_move_ship                                      -- 11.ベンダ-移動出庫
+             ,month_end_book_remain_qty                         -- 12.月末帳簿残
+             ,month_end_quantity                                -- 13.月末在庫
+             ,inv_wear_account                                  -- 14.棚卸減耗費
+             ,created_by                                        -- 15.作成者
+             ,creation_date                                     -- 16.作成日
+             ,last_updated_by                                   -- 17.最終更新者
+             ,last_update_date                                  -- 18.最終更新日
+             ,last_update_login                                 -- 19.最終更新ログイン
+             ,request_id                                        -- 20.要求ID
+             ,program_application_id                            -- 21.コンカレント・プログラム・アプリケーションID
+             ,program_id                                        -- 22.コンカレント・プログラムID
+             ,program_update_date                               -- 23.プログラム更新日
+            )VALUES(
+              vd_column_rec.base_code                           -- 01
+             ,gn_f_organization_id                              -- 02
+             ,gv_f_last_month                                   -- 03
+             ,vd_column_rec.inventory_item_id                   -- 04
+             ,lt_operation_cost                                 -- 05
+             ,lt_standard_cost                                  -- 06
+             ,0                                                 -- 07
+             ,0                                                 -- 08
+             ,0                                                 -- 09
+             ,0                                                 -- 10
+             ,0                                                 -- 11
+             ,0                                                 -- 12
+             ,vd_column_rec.last_month_inventory_quantity       -- 13
+             ,vd_column_rec.last_month_inventory_quantity * -1  -- 14
+             ,cn_created_by                                     -- 15
+             ,SYSDATE                                           -- 16
+             ,cn_last_updated_by                                -- 17
+             ,SYSDATE                                           -- 18
+             ,cn_last_update_login                              -- 19
+             ,cn_request_id                                     -- 20
+             ,cn_program_application_id                         -- 21
+             ,cn_program_id                                     -- 22
+             ,SYSDATE                                           -- 23
+            );
         END;
         --
-        UPDATE  xxcoi_vd_reception_info
-        SET     month_begin_quantity    = month_begin_quantity  +  vd_column_rec.last_month_inventory_quantity
-                                                                              -- 07.月首在庫
-               ,last_updated_by         = cn_last_updated_by                  -- 17.最終更新者
-               ,last_update_date        = SYSDATE                             -- 18.最終更新日
-               ,last_update_login       = cn_last_update_login                -- 19.最終更新ログイン
-               ,request_id              = cn_request_id                       -- 20.要求ID
-               ,program_application_id  = cn_program_application_id           -- 21.コンカレント・プログラム・アプリケーションID
-               ,program_id              = cn_program_id                       -- 22.コンカレント・プログラムID
-               ,program_update_date     = SYSDATE                             -- 23.プログラム更新日
-        WHERE   base_code               = vd_column_rec.base_code
-        AND     practice_date           = TO_CHAR(gd_f_process_date, cv_month)
-        AND     inventory_item_id       = vd_column_rec.inventory_item_id;
-        --
-      END IF;
-      --
-      -- ===================================
-      --  2.前月VD受払データ確定
-      -- ===================================
-      BEGIN
-        -- ロック取得
-        SELECT  1
-        INTO    ln_dummy
-        FROM    xxcoi_vd_reception_info
-        WHERE   base_code           = vd_column_rec.base_code
-        AND     practice_date       = gv_f_last_month
-        AND     inventory_item_id   = vd_column_rec.inventory_item_id
-        FOR UPDATE NOWAIT;
-        --
-      EXCEPTION
-        WHEN  lock_error_expt THEN
-          -- VD受払情報ロックエラーメッセージ
-          lv_errmsg   :=  xxccp_common_pkg.get_msg(
-                            iv_application  => cv_short_name
-                           ,iv_name         => cv_msg_xxcoi1_10366
-                          );
-          lv_errbuf   :=  lv_errmsg;
-          RAISE global_process_expt;
+        -- ===================================
+        --  次月の月首在庫確定
+        -- ===================================
+        BEGIN
+          SELECT  1
+          INTO    ln_dummy
+          FROM    xxcoi_vd_reception_info   xvri
+          WHERE   xvri.base_code            =   vd_column_rec.base_code
+          AND     xvri.inventory_item_id    =   vd_column_rec.inventory_item_id
+          AND     xvri.practice_date        =   TO_CHAR(gd_f_process_date, cv_month)
+          AND     ROWNUM  = 1
+          FOR UPDATE NOWAIT;
           --
-      END;
-      --
-      UPDATE  xxcoi_vd_reception_info
-      SET     month_end_book_remain_qty =  month_end_book_remain_qty
-                                         + vd_column_rec.month_begin_quantity
-                                         + vd_column_rec.vd_total_quantity                  -- 12.月末帳簿残
-             ,month_end_quantity        =  vd_column_rec.last_month_inventory_quantity      -- 13.月末在庫
-             ,inv_wear_account          =  vd_column_rec.month_begin_quantity
-                                         + vd_column_rec.vd_total_quantity
-                                         - vd_column_rec.last_month_inventory_quantity      -- 14.棚卸減耗費
-             ,last_updated_by           =  cn_last_updated_by                               -- 17.最終更新者
-             ,last_update_date          =  SYSDATE                                          -- 18.最終更新日
-             ,last_update_login         =  cn_last_update_login                             -- 19.最終更新ログイン
-             ,request_id                =  cn_request_id                                    -- 20.要求ID
-             ,program_application_id    =  cn_program_application_id                        -- 21.コンカレント・プログラム・アプリケーションID
-             ,program_id                =  cn_program_id                                    -- 22.コンカレント・プログラムID
-             ,program_update_date       =  SYSDATE                                          -- 23.プログラム更新日
-      WHERE   base_code           = vd_column_rec.base_code
-      AND     practice_date       = gv_f_last_month
-      AND     inventory_item_id   = vd_column_rec.inventory_item_id;
-      --
-    END LOOP set_vd_column_loop;
+          -- -----------------------------------
+          --  次月の月首在庫確定
+          -- -----------------------------------
+          UPDATE  xxcoi_vd_reception_info
+          SET     month_begin_quantity      =   month_begin_quantity
+                                              + vd_column_rec.last_month_inventory_quantity     -- 07.月首在庫
+                 ,last_updated_by           =   cn_last_updated_by                              -- 17.最終更新者
+                 ,last_update_date          =   SYSDATE                                         -- 18.最終更新日
+                 ,last_update_login         =   cn_last_update_login                            -- 19.最終更新ログイン
+                 ,request_id                =   cn_request_id                                   -- 20.要求ID
+                 ,program_application_id    =   cn_program_application_id                       -- 21.コンカレント・プログラム・アプリケーションID
+                 ,program_id                =   cn_program_id                                   -- 22.コンカレント・プログラムID
+                 ,program_update_date       =   SYSDATE                                         -- 23.プログラム更新日
+          WHERE   base_code             =   vd_column_rec.base_code
+          AND     inventory_item_id     =   vd_column_rec.inventory_item_id
+          AND     practice_date         =   TO_CHAR(gd_f_process_date, cv_month);
+          --
+        EXCEPTION
+          WHEN  NO_DATA_FOUND THEN
+            -- -----------------------------------
+            --  標準原価取得
+            -- -----------------------------------
+            xxcoi_common_pkg.get_cmpnt_cost(
+              in_item_id      =>  vd_column_rec.inventory_item_id           -- 品目ID
+             ,in_org_id       =>  gn_f_organization_id                      -- 組織ID
+             ,id_period_date  =>  gd_f_process_date                         -- 対象日
+             ,ov_cmpnt_cost   =>  lt_standard_cost                          -- 標準原価
+             ,ov_errbuf       =>  lv_errbuf                                 -- エラーメッセージ
+             ,ov_retcode      =>  lv_retcode                                -- リターン・コード
+             ,ov_errmsg       =>  lv_errmsg                                 -- ユーザー・エラーメッセージ
+            );
+            -- 終了パラメータ判定
+            IF (lt_standard_cost IS NULL) THEN
+              lv_errmsg   := xxccp_common_pkg.get_msg(
+                               iv_application  => cv_short_name
+                              ,iv_name         => cv_msg_xxcoi1_10285
+                             );
+              lv_errbuf   := lv_errmsg;
+              RAISE global_process_expt;
+            END IF;
+            --
+            -- -----------------------------------
+            --  営業原価取得
+            -- -----------------------------------
+            xxcoi_common_pkg.get_discrete_cost(
+              in_item_id        =>  vd_column_rec.inventory_item_id         -- 品目ID
+             ,in_org_id         =>  gn_f_organization_id                    -- 組織ID
+             ,id_target_date    =>  gd_f_process_date                       -- 対象日
+             ,ov_discrete_cost  =>  lt_operation_cost                       -- 営業原価
+             ,ov_errbuf         =>  lv_errbuf                               -- エラーメッセージ
+             ,ov_retcode        =>  lv_retcode                              -- リターン・コード
+             ,ov_errmsg         =>  lv_errmsg                               -- ユーザー・エラーメッセージ
+            );
+            -- 終了パラメータ判定
+            IF (lt_operation_cost IS NULL) THEN
+              lv_errmsg   := xxccp_common_pkg.get_msg(
+                               iv_application  => cv_short_name
+                              ,iv_name         => cv_msg_xxcoi1_10293
+                             );
+              lv_errbuf   := lv_errmsg;
+              RAISE global_process_expt;
+            END IF;
+            --
+            -- -----------------------------------
+            --  次月の月首在庫確定
+            -- -----------------------------------
+            INSERT INTO xxcoi_vd_reception_info(
+              base_code                                     -- 01.拠点コード
+             ,organization_id                               -- 02.組織ID
+             ,practice_date                                 -- 03.年月
+             ,inventory_item_id                             -- 04.品目ID
+             ,operation_cost                                -- 05.営業原価
+             ,standard_cost                                 -- 06.標準原価
+             ,month_begin_quantity                          -- 07.月首在庫
+             ,vd_stock                                      -- 08.ベンダ入庫
+             ,vd_move_stock                                 -- 09.ベンダ-移動入庫
+             ,vd_ship                                       -- 10.ベンダ出庫
+             ,vd_move_ship                                  -- 11.ベンダ-移動出庫
+             ,month_end_book_remain_qty                     -- 12.月末帳簿残
+             ,month_end_quantity                            -- 13.月末在庫
+             ,inv_wear_account                              -- 14.棚卸減耗費
+             ,created_by                                    -- 15.作成者
+             ,creation_date                                 -- 16.作成日
+             ,last_updated_by                               -- 17.最終更新者
+             ,last_update_date                              -- 18.最終更新日
+             ,last_update_login                             -- 19.最終更新ログイン
+             ,request_id                                    -- 20.要求ID
+             ,program_application_id                        -- 21.コンカレント・プログラム・アプリケーションID
+             ,program_id                                    -- 22.コンカレント・プログラムID
+             ,program_update_date                           -- 23.プログラム更新日
+            )VALUES(
+              vd_column_rec.base_code                       -- 01
+             ,gn_f_organization_id                          -- 02
+             ,TO_CHAR(gd_f_process_date, cv_month)          -- 03
+             ,vd_column_rec.inventory_item_id               -- 04
+             ,lt_operation_cost                             -- 05
+             ,lt_standard_cost                              -- 06
+             ,vd_column_rec.last_month_inventory_quantity   -- 07
+             ,0                                             -- 08
+             ,0                                             -- 09
+             ,0                                             -- 10
+             ,0                                             -- 11
+             ,0                                             -- 12
+             ,0                                             -- 13
+             ,0                                             -- 14
+             ,cn_created_by                                 -- 15
+             ,SYSDATE                                       -- 16
+             ,cn_last_updated_by                            -- 17
+             ,SYSDATE                                       -- 18
+             ,cn_last_update_login                          -- 19
+             ,cn_request_id                                 -- 20
+             ,cn_program_application_id                     -- 21
+             ,cn_program_id                                 -- 22
+             ,SYSDATE                                       -- 23
+            );
+        END;
+      END IF;
+    END LOOP  set_inv_qty_loop;
+-- == 2009/11/14 V1.3 Modified END   ===============================================================
     --
   EXCEPTION
+-- == 2009/11/14 V1.3 Added START ===============================================================
+    WHEN  lock_error_expt THEN
+      IF (vd_recp_cur%ISOPEN) THEN
+        CLOSE vd_recp_cur;
+      END IF;
+      IF (vd_column_cur%ISOPEN) THEN
+        CLOSE vd_column_cur;
+      END IF;
+      --
+      -- VD受払情報ロックエラーメッセージ
+      ov_errmsg   :=  xxccp_common_pkg.get_msg(
+                        iv_application  => cv_short_name
+                       ,iv_name         => cv_msg_xxcoi1_10366
+                      );
+      ov_errbuf   := SUBSTRB(cv_pkg_name||cv_msg_cont||cv_prg_name||cv_msg_part||ov_errmsg,1,5000);
+      ov_retcode  := cv_status_error;
+      --
+-- == 2009/11/14 V1.3 Added END   ===============================================================
     -- *** 処理部共通例外ハンドラ ***
     WHEN global_process_expt THEN
       IF (vd_column_cur%ISOPEN) THEN
