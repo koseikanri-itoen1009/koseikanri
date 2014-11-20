@@ -7,7 +7,7 @@ AS
  * Description      : 請求ヘッダデータ作成
  * MD.050           : MD050_CFR_003_A02_請求ヘッダデータ作成
  * MD.070           : MD050_CFR_003_A02_請求ヘッダデータ作成
- * Version          : 1.00
+ * Version          : 1.01
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -30,6 +30,7 @@ AS
  *  Date          Ver.  Editor           Description
  * ------------- ----- ---------------- -------------------------------------------------
  *  2008/11/11    1.00 SCS 松尾 泰生    初回作成
+ *  2009/04/20    1.01 SCS 萱原 伸哉    障害T1_0564対応 税差額計算処理
  *
  *****************************************************************************************/
 --
@@ -1877,7 +1878,7 @@ AS
              xxhv.bill_cred_rec_code3                 credit_receiv_code3,    -- 売掛コード3（その他）
              NULL                                     credit_receiv_name3,    -- 売掛コード3（その他）名称
              xxhv.bill_invoice_type                   invoice_output_form,    -- 請求書出力形式
-             xxhv.bill_tax_round_rule                 tax_round_rule          -- 税金－端数処理
+             xxhv.bill_tax_round_rule                         -- 税金－端数処理
       INTO   gt_tax_type,               -- 消費税区分
              gt_tax_gap_trx_id,         -- 税差額取引ID
              gt_tax_gap_amount,         -- 税差額
@@ -2342,19 +2343,34 @@ AS
         SELECT avta.tax_rate                        tax_rate,    -- 税率
                avta.vat_tax_id                      vat_tax_id,  -- 税コードID
                avta.tax_code                        tax_code,    -- 税コード
+--Modify 2009.04.20 Ver1.01 Start
+--               DECODE(gt_tax_round_rule,
+--                        'UP',      CEIL(ABS(SUM(rctl.taxable_amount) * avta.tax_rate / 100))
+--                                     * SIGN(SUM(rctl.taxable_amount)),
+--                        'DOWN',    TRUNC(SUM(rctl.taxable_amount) * avta.tax_rate / 100),
+--                        'NEAREST', ROUND(SUM(rctl.taxable_amount) * avta.tax_rate / 100, 0)
+--                     )                              re_calc_tax_amount,     -- 消費税額(再計算)
                DECODE(gt_tax_round_rule,
-                        'UP',      CEIL(ABS(SUM(rctl.taxable_amount) * avta.tax_rate / 100))
-                                     * SIGN(SUM(rctl.taxable_amount)),
-                        'DOWN',    TRUNC(SUM(rctl.taxable_amount) * avta.tax_rate / 100),
-                        'NEAREST', ROUND(SUM(rctl.taxable_amount) * avta.tax_rate / 100, 0)
-                     )                              re_calc_tax_amount,     -- 消費税額(再計算)
+                        'UP',     CEIL(ABS(SUM(rlli.extended_amount) * avta.tax_rate / 100))
+                                    * SIGN(SUM(rlli.extended_amount)),
+                        'DOWN',    TRUNC(SUM(rlli.extended_amount) * avta.tax_rate / 100),
+                        'NEAREST', ROUND(SUM(rlli.extended_amount) * avta.tax_rate / 100, 0)
+                     )                              re_calc_tax_amount,     -- 消費税額(再計算)  
+--Modify 2009.04.20 Ver1.01 End        
                SUM(rctl.extended_amount)            sum_tax_amount          -- 消費税額合計
         FROM   ra_customer_trx_all        rcta,                -- 取引テーブル
                ra_customer_trx_lines_all  rctl,                -- 取引明細テーブル
+--Modify 2009.04.20 Ver1.01 Start
+               ra_customer_trx_lines_all  rlli,                -- 取引明細テーブル（LINE）
+--Modify 2009.04.20 Ver1.01 End
                ar_vat_tax_all_b           avta                 -- 税金マスタ
         WHERE  rctl.line_type = cv_line_type_tax               -- 明細タイプ
-        AND    rctl.taxable_amount IS NOT NULL                 -- 税金対象額
-        AND    rctl.taxable_amount != 0                        -- 税金対象額
+--Modify 2009.04.20 Ver1.01 Start       
+--        AND    rctl.taxable_amount IS NOT NULL                 -- 税金対象額
+--        AND    rctl.taxable_amount != 0                        -- 税金対象額
+        AND    rlli.extended_amount IS NOT NULL                 -- 明細金額
+        AND    rlli.extended_amount != 0                        -- 明細金額
+--Modify 2009.04.20 Ver1.01 End
         AND    avta.tax_rate IS NOT NULL                       -- 税率
         AND    avta.tax_rate != 0                              -- 税率
         AND    rcta.trx_date <= id_cutoff_date                 -- 締日
@@ -2368,6 +2384,9 @@ AS
         AND    avta.validate_flag = 'Y'           
         AND    gd_process_date BETWEEN NVL(avta.start_date, gd_process_date)
                                    AND NVL(avta.end_date,   gd_process_date)
+--Modify 2009.04.20 Ver1.01 Start   
+        AND    rctl.link_to_cust_trx_line_id = rlli.customer_trx_line_id
+--Modify 2009.04.20 Ver1.01 End                                
         GROUP BY avta.tax_rate,                                -- 税率
                  avta.vat_tax_id,                              -- 税コードID
                  avta.tax_code                                 -- 税コード
