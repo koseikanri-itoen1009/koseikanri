@@ -7,7 +7,7 @@ AS
  * Description      : 振替運賃情報更新
  * MD.050           : 運賃計算（振替） T_MD050_BPO_750
  * MD.070           : 振替運賃情報更新 T_MD070_BPO_75C
- * Version          : 1.13
+ * Version          : 1.14
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -57,6 +57,7 @@ AS
  *  2008/12/06    1.11 Oracle 野村 正幸  本番#532対応
  *  2008/12/13    1.12 Oracle 野村 正幸  本番#721対応
  *  2008/12/15    1.13 野村 正幸         本番#712対応
+ *  2009/01/08    1.14 野村 正幸         本番#961対応
  *
  *****************************************************************************************/
 --
@@ -1042,10 +1043,13 @@ AS
 -- ********** 20080508 内部変更要求 seq#75 MOD END   **********
 --
 -- ##### 20081106 Ver.1.9 統合#563対応 start #####
-    AND 
-      NOT ((xoha.prod_class = gv_prod_class_lef)            -- 商品区分 = リーフの
-            AND (xsmv.small_amount_class = gv_small_sum_no) -- 「0:車立」は除外する
-          )
+-- ##### 20090108 Ver.1.14 本番#961対応 START #####
+-- 小口から車立に変更した際削除する必要があるので、車立も抽出対象とする
+--    AND 
+--      NOT ((xoha.prod_class = gv_prod_class_lef)            -- 商品区分 = リーフの
+--            AND (xsmv.small_amount_class = gv_small_sum_no) -- 「0:車立」は除外する
+--          )
+-- ##### 20090108 Ver.1.14 本番#961対応 END   #####
 -- ##### 20081106 Ver.1.9 統合#563対応 end   #####
 --
     AND    xotv.shipping_shikyu_class = '1'      -- 「1:出荷依頼」
@@ -1219,8 +1223,14 @@ AS
       -- =    振替運賃の対象とする
       -- ==================================================
 --      ELSE
-      -- 振替運賃情報アドオンへの登録は配車のある依頼No
-      IF (gt_order_inf_tbl(ln_index).delivery_no IS NOT NULL ) THEN
+      -- 振替運賃情報アドオンへの登録は配車のある依頼No且つリーフ車立以外
+-- ##### 20090108 Ver.1.14 本番#961対応 START #####
+-- 配送Noが登録されている場合と、リーフ車立以外を対象とする
+--      IF (gt_order_inf_tbl(ln_index).delivery_no IS NOT NULL ) THEN
+      IF ((gt_order_inf_tbl(ln_index).delivery_no IS NOT NULL )
+      AND  NOT ((gt_order_inf_tbl(ln_index).prod_class         = gv_prod_class_lef)
+      AND       (gt_order_inf_tbl(ln_index).small_amount_class = gv_small_sum_no)) ) THEN
+-- ##### 20090108 Ver.1.14 本番#961対応 END   #####
 -- ##### 20081215 Ver.1.13 本番#712対応 END   #####
 --
 -- ##### 20081016 Ver.1.7 内部変更#225 end   #####
