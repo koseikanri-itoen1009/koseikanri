@@ -1,4 +1,4 @@
-CREATE OR REPLACE PACKAGE BODY xxcmn770025c
+create or replace PACKAGE BODY xxcmn770025c
 AS
 /*****************************************************************************************
  * Copyright(c)Oracle Corporation Japan, 2008. All rights reserved.
@@ -7,7 +7,7 @@ AS
  * Description      : 仕入実績表作成
  * MD.050/070       : 月次〆切処理（経理）Issue1.0(T_MD050_BPO_770)
  *                    月次〆切処理（経理）Issue1.0(T_MD070_BPO_77E)
- * Version          : 1.14
+ * Version          : 1.15
  *
  * Program List
  * -------------------- ------------------------------------------------------------
@@ -45,6 +45,7 @@ AS
  *  2008/12/05    1.12  A.Shiina         本番#500対応
  *  2008/12/05    1.13  A.Shiina         本番#473対応
  *  2008/12/12    1.14  A.Shiina         本番#425対応
+ *  2009/01/09    1.15  N.Yoshida        本番#986対応
  *****************************************************************************************/
 --
 --#######################  固定グローバル定数宣言部 START   #######################
@@ -1444,7 +1445,10 @@ AS
       || '      ,mst.stnd_unit_price       AS stnd_unit_price '
 -- 2008/11/19 N.Yoshida mod end 移行データ検証不具合対応
 -- 2008/10/28 H.Itou Mod End
-      || '      ,SUM(mst.stnd_unit_price * mst.trans_qty) AS j_amt '
+-- 2009/01/09 N.Yoshida Mod Start
+--      || '      ,SUM(mst.stnd_unit_price * mst.trans_qty) AS j_amt '
+      || '      ,SUM(ROUND(mst.stnd_unit_price * mst.trans_qty)) AS j_amt '
+-- 2009/01/09 N.Yoshida Mod End
 --      || '      ,SUM(mst.purchases_price * mst.trans_qty) AS s_amt '
 --      || '      ,SUM(mst.purchases_price) AS s_amt '
       || '      ,SUM(mst.powder_price) AS s_amt '
@@ -2353,7 +2357,10 @@ AS
       iot_xml_data_table(iot_xml_idx).tag_value := it_data_rec.stnd_unit_price;
     END IF;
     -- 標準金額
-    ln_standard_amount := ROUND(it_data_rec.stnd_unit_price * ln_qty);
+-- 2009/01/09 N.Yoshida Mod Start
+--    ln_standard_amount := ROUND(it_data_rec.stnd_unit_price * ln_qty);
+    ln_standard_amount := it_data_rec.j_amt;
+-- 2009/01/09 N.Yoshida Mod End
     IF ( ln_standard_amount IS NOT NULL ) THEN
       iot_xml_idx := iot_xml_data_table.COUNT + 1 ;
       iot_xml_data_table(iot_xml_idx).tag_name  := 'standard_amount' ;
