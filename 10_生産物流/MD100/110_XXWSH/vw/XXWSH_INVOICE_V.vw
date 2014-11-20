@@ -198,6 +198,9 @@ WHERE
     BETWEEN xilv.date_from
     AND NVL(xilv.date_to,NVL(xoha.shipped_date,xoha.schedule_ship_date))
 --add end 2008/06/27
+--add start 2009/05/26 本番障害#1493 配送Noがないデータは出さない。
+  AND xoha.delivery_no IS NOT NULL
+--add end 2009/05/26
 --------------------------------------------------------------------------------
 UNION ALL
 --支給依頼情報の抽出
@@ -362,6 +365,9 @@ WHERE
     BETWEEN xilv.date_from
     AND NVL(xilv.date_to,NVL(xoha.shipped_date,xoha.schedule_ship_date))
 --add end 2008/06/27
+--add start 2009/05/26 本番障害#1493 配送Noがないデータは出さない。
+  AND xoha.delivery_no IS NOT NULL
+--add end 2009/05/26
 --------------------------------------------------------------------------------
 UNION ALL
 --移動指示情報の抽出
@@ -508,6 +514,9 @@ WHERE
     BETWEEN xlv2.start_date_active
     AND NVL(xlv2.end_date_active,NVL(xmrih.actual_ship_date,xmrih.schedule_ship_date))
 --mod end 2008/06/27
+--add start 2009/05/26 本番障害#1493 配送Noがないデータは出さない。
+  AND xmrih.delivery_no IS NOT NULL
+--add end 2009/05/26
 ------------------------------------------------------------------------------------
 --add start 2008/06/27
 UNION ALL
