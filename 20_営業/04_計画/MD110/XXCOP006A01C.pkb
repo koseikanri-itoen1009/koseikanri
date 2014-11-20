@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCOP006A01C(body)
  * Description      : 横持計画
  * MD.050           : 横持計画 MD050_COP_006_A01
- * Version          : 1.1
+ * Version          : 1.2
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -37,6 +37,7 @@ AS
  * ------------- ----- ---------------- -------------------------------------------------
  *  2009/01/19    1.0   Y.Goto           新規作成
  *  2009/04/07    1.1   Y.Goto           T1_0273,T1_0274,T1_0289,T1_0366,T1_0367対応
+ *  2009/04/14    1.2   Y.Goto           T1_0539,T1_0541対応
  *
  *****************************************************************************************/
 --
@@ -3980,7 +3981,18 @@ AS
       IF ( lv_value IS NULL ) THEN
         RAISE profile_invalid_expt;
       END IF;
-      gn_dummy_src_org_id := TO_NUMBER(lv_value);
+--20090414_Ver1.2_T1_0541_SCS.Goto_MOD_START
+--      gn_dummy_src_org_id := TO_NUMBER(lv_value);
+      BEGIN
+        SELECT mp.organization_id
+        INTO gn_dummy_src_org_id
+        FROM mtl_parameters mp
+        WHERE mp.organization_code = lv_value;
+      EXCEPTION
+        WHEN NO_DATA_FOUND THEN
+          RAISE profile_invalid_expt;
+      END;
+--20090414_Ver1.2_T1_0541_SCS.Goto_MOD_END
 --
       --鮮度条件バッファ日数
       lv_profile_name := cv_upf_fresh_buffer_days;
@@ -4141,7 +4153,9 @@ AS
             AND cd_sysdate BETWEEN NVL(xsr.start_date_active, cd_sysdate)
                                AND NVL(xsr.end_date_active, cd_sysdate)
         )
-        AND xicv.item_no IN ( '0006999', '0007000', '0007001' )
+--20090414_Ver1.2_T1_0539_SCS.Goto_DEL_START
+--        AND xicv.item_no IN ( '0006999', '0007000', '0007001' )
+--20090414_Ver1.2_T1_0539_SCS.Goto_DEL_END
       ORDER BY xicv.item_no ASC;
 --
     --経路情報の取得
