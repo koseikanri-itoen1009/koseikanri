@@ -1,0 +1,5 @@
+CREATE INDEX ar.xxcfr_jg_zz_ar_tmp_detail_n01 ON ar.jg_zz_ar_tmp_detail(
+  customer_site_id
+ ,code_combination_id
+ ,accounting_date
+) TABLESPACE apps_ts_tx_idx
