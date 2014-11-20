@@ -7,7 +7,7 @@ AS
  * Description      : 請求明細データ作成
  * MD.050           : MD050_CFR_003_A03_請求明細データ作成
  * MD.070           : MD050_CFR_003_A03_請求明細データ作成
- * Version          : 1.00
+ * Version          : 1.30
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -31,6 +31,7 @@ AS
  *  2008/12/08    1.00 SCS 松尾 泰生    初回作成
  *  2009/02/20    1.10 SCS 松尾 泰生    [障害CFR_012]容器群項目追加対応
  *  2009/02/23    1.20 SCS 松尾 泰生    [障害CFR_013]AR部門入力データ売上金額不具合対応
+ *  2009/07/22    1.30 SCS 廣瀬 真佐人  [障害0000763]パフォーマンス改善
  *
  *****************************************************************************************/
 --
@@ -894,10 +895,12 @@ AS
    * Description      : 請求明細データ作成処理(A-3)
    ***********************************************************************************/
   PROCEDURE ins_inv_detail_data(
-    in_invoice_id           IN  NUMBER,       -- 一括請求書ID
-    iv_cust_acct_id         IN  VARCHAR2,     -- 請求先顧客ID
-    id_cutoff_date          IN  DATE,         -- 締日
-    iv_tax_type             IN  VARCHAR2,     -- 消費税区分
+-- Modify 2009.07.22 Ver1.3 Start
+--    in_invoice_id           IN  NUMBER,       -- 一括請求書ID
+--    iv_cust_acct_id         IN  VARCHAR2,     -- 請求先顧客ID
+--    id_cutoff_date          IN  DATE,         -- 締日
+--    iv_tax_type             IN  VARCHAR2,     -- 消費税区分
+-- Modify 2009.07.22 Ver1.3 End
     ov_errbuf               OUT VARCHAR2,     -- エラー・メッセージ           --# 固定 #
     ov_retcode              OUT VARCHAR2,     -- リターン・コード             --# 固定 #
     ov_errmsg               OUT VARCHAR2      -- ユーザー・エラー・メッセージ --# 固定 #
@@ -1012,10 +1015,17 @@ AS
              ROWNUM                            invoice_detail_num,            -- 一括請求書明細No
              inlv.note_line_id                 note_line_id,                  -- 伝票明細No
              inlv.ship_cust_code               ship_cust_code,                -- 納品先顧客コード
-             inlv.ship_cust_name               ship_cust_name,                -- 納品先顧客名
-             inlv.ship_cust_kana_name          ship_cust_kana_name,           -- 納品先顧客カナ名
+-- Modify 2009.07.22 Ver1.3 Start
+--             inlv.ship_cust_name               ship_cust_name,                -- 納品先顧客名
+--             inlv.ship_cust_kana_name          ship_cust_kana_name,           -- 納品先顧客カナ名
+             ship.party_name                   ship_cust_name,                -- 納品先顧客名
+             ship.organization_name_phonetic   ship_cust_kana_name,           -- 納品先顧客カナ名
+-- Modify 2009.07.22 Ver1.3 End
              inlv.sold_location_code           sold_location_code,            -- 売上拠点コード
-             inlv.sold_location_name           sold_location_name,            -- 売上拠点名
+-- Modify 2009.07.22 Ver1.3 Start
+--             inlv.sold_location_name           sold_location_name,            -- 売上拠点名
+             sold.party_name                   sold_location_name,            -- 売上拠点名
+-- Modify 2009.07.22 Ver1.3 End
              inlv.ship_shop_code               ship_shop_code,                -- 納品先店舗コード
              inlv.ship_shop_name               ship_shop_name,                -- 納品先店名
              inlv.vd_num                       vd_num,                        -- 自動販売機番号
@@ -1073,19 +1083,27 @@ AS
              inlv.program_update_date          program_update_date            -- プログラム更新日
       FROM  (
         --請求明細データ(AR部門入力) 
-        SELECT in_invoice_id                                  invoice_id,             -- 一括請求書ID
+-- Modify 2009.07.22 Ver1.3 Start
+--        SELECT in_invoice_id                                  invoice_id,             -- 一括請求書ID
+        SELECT xih.invoice_id                                 invoice_id,             -- 一括請求書ID
+-- Modify 2009.07.22 Ver1.3 End
                NULL                                           note_line_id,           -- 伝票明細No
                hzca.account_number                            ship_cust_code,         -- 納品先顧客コード
-               xxcfr_common_pkg.get_cust_account_name(
-                 hzca.account_number,
-                 cv_get_acct_name_f)                          ship_cust_name,         -- 納品先顧客名
-               xxcfr_common_pkg.get_cust_account_name(
-                 hzca.account_number,
-                 cv_get_acct_name_k)                          ship_cust_kana_name,    -- 納品先顧客カナ名
+-- Modify 2009.07.22 Ver1.3 Start
+--               xxcfr_common_pkg.get_cust_account_name(
+--                 hzca.account_number,
+--                 cv_get_acct_name_f)                          ship_cust_name,         -- 納品先顧客名
+--               xxcfr_common_pkg.get_cust_account_name(
+--                 hzca.account_number,
+--                 cv_get_acct_name_k)                          ship_cust_kana_name,    -- 納品先顧客カナ名
+               hzca.party_id                                  ship_party_id,
+-- Modify 2009.07.22 Ver1.3 End
                xxca.sale_base_code                            sold_location_code,     -- 売上拠点コード
-               xxcfr_common_pkg.get_cust_account_name(
-                 xxca.sale_base_code,
-                 cv_get_acct_name_f)                          sold_location_name,     -- 売上拠点名
+-- Modify 2009.07.22 Ver1.3 Start
+--               xxcfr_common_pkg.get_cust_account_name(
+--                 xxca.sale_base_code,
+--                 cv_get_acct_name_f)                          sold_location_name,     -- 売上拠点名
+-- Modify 2009.07.22 Ver1.3 End
                xxca.store_code                                ship_shop_code,         -- 納品先店舗コード
                xxca.cust_store_name                           ship_shop_name,         -- 納品先店名
                xxca.vendor_machine_number                     vd_num,                 -- 自動販売機番号
@@ -1128,7 +1146,10 @@ AS
                rlta.extended_amount                           tax_amount,             -- 消費税金額
                arta.tax_rate                                  tax_rate,               -- 消費税率
                rlli.extended_amount                           ship_amount,            -- 納品金額
-               DECODE(iv_tax_type,
+-- Modify 2009.07.22 Ver1.3 Start
+--               DECODE(iv_tax_type,
+               DECODE(xih.tax_type,
+-- Modify 2009.07.22 Ver1.3 End
                         cv_tax_div_outtax,   rlli.extended_amount,    -- 外税　：税抜額
                         cv_tax_div_notax,    rlli.extended_amount,    -- 非課税：税抜額
                         cv_tax_div_inslip,   rlli.extended_amount,    -- 内税(伝票)：税抜額
@@ -1148,26 +1169,48 @@ AS
                cn_program_application_id                      program_application_id, -- アプリケーションID
                cn_program_id                                  program_id,             -- プログラムID
                cd_program_update_date                         program_update_date     -- プログラム更新日
-        FROM   ra_customer_trx_all           rcta,              -- 取引テーブル
+        FROM   
+-- Modify 2009.07.22 Ver1.3 Start
+               xxcfr_invoice_headers         xih,               -- アドオン請求書ヘッダ
+--               ra_customer_trx_all           rcta,              -- 取引テーブル
+               ra_customer_trx               rcta,              -- 取引テーブル
+-- Modify 2009.07.22 Ver1.3 End
                hz_cust_accounts              hzca,              -- 顧客マスタ
                xxcmm_cust_accounts           xxca,              -- 顧客追加情報
-               hz_cust_acct_sites_all        hzsa,              -- 顧客所在地
-               ra_customer_trx_lines_all     rlli,              -- 取引明細(明細)テーブル
-               ra_customer_trx_lines_all     rlta,              -- 取引明細(税額)テーブル
-               ra_cust_trx_line_gl_dist_all  rgda,              -- 取引会計情報テーブル
+-- Modify 2009.07.22 Ver1.3 Start
+--               hz_cust_acct_sites_all        hzsa,              -- 顧客所在地
+--               ra_customer_trx_lines_all     rlli,              -- 取引明細(明細)テーブル
+--               ra_customer_trx_lines_all     rlta,              -- 取引明細(税額)テーブル
+--               ra_cust_trx_line_gl_dist_all  rgda,              -- 取引会計情報テーブル
+               hz_cust_acct_sites            hzsa,              -- 顧客所在地
+               ra_customer_trx_lines         rlli,              -- 取引明細(明細)テーブル
+               ra_customer_trx_lines         rlta,              -- 取引明細(税額)テーブル
+               ra_cust_trx_line_gl_dist      rgda,              -- 取引会計情報テーブル
+-- Modify 2009.07.22 Ver1.3 End
                ar_vat_tax_all_b              arta,              -- 税金マスタ
                fnd_lookup_values             fnvd               -- クイックコード(VD顧客区分)
-        WHERE  rcta.trx_date <= id_cutoff_date                  -- 取引日
+-- Modify 2009.07.22 Ver1.3 Start
+--        WHERE  rcta.trx_date <= id_cutoff_date                  -- 取引日
+        WHERE  xih.request_id            = gt_target_request_id       -- ターゲットとなる要求ID
+        AND    rcta.trx_date            <= xih.cutoff_date            -- 取引日
+        AND    rcta.bill_to_customer_id  = xih.bill_cust_account_id   -- 請求先顧客ID
+        AND    xih.org_id                = gn_org_id                      -- 組織ID
+        AND    xih.set_of_books_id       = gn_set_book_id        -- 会計帳簿ID
+-- Modify 2009.07.22 Ver1.3 End
         AND    rcta.attribute7 IN (cv_inv_hold_status_o,
                                    cv_inv_hold_status_r)        -- 請求書保留ステータス
-        AND    rcta.bill_to_customer_id = iv_cust_acct_id       -- 請求先顧客ID
-        AND    rcta.org_id          = gn_org_id                 -- 組織ID
+-- Modify 2009.07.22 Ver1.3 Start
+--        AND    rcta.bill_to_customer_id = iv_cust_acct_id       -- 請求先顧客ID
+--        AND    rcta.org_id          = gn_org_id                 -- 組織ID
+-- Modify 2009.07.22 Ver1.3 End
         AND    rcta.set_of_books_id = gn_set_book_id            -- 会計帳簿ID
         AND    rcta.batch_source_id = gt_arinput_trx_source_id  -- 取引ソース
         AND    rcta.ship_to_customer_id = hzca.cust_account_id(+)
         AND    rcta.ship_to_customer_id = xxca.customer_id(+)
         AND    hzca.cust_account_id = hzsa.cust_account_id(+)
-        AND    hzsa.org_id(+) = gn_org_id
+-- Modify 2009.07.22 Ver1.3 Start
+--        AND    hzsa.org_id(+) = gn_org_id
+-- Modify 2009.07.22 Ver1.3 End
         AND    rcta.customer_trx_id = rlli.customer_trx_id
         AND    rlli.customer_trx_id = rlta.customer_trx_id(+)
         AND    rlli.customer_trx_line_id = rlta.link_to_cust_trx_line_id(+)
@@ -1184,19 +1227,27 @@ AS
         AND    xxca.business_low_type = fnvd.lookup_code(+)
         UNION ALL
         --請求明細データ(販売実績) 
-        SELECT in_invoice_id                                   invoice_id,              -- 一括請求書ID
+-- Modify 2009.07.22 Ver1.3 Start
+--        SELECT in_invoice_id                                   invoice_id,             -- 一括請求書ID
+        SELECT xih.invoice_id                                  invoice_id,             -- 一括請求書ID
+-- Modify 2009.07.22 Ver1.3 End
                xxel.dlv_invoice_line_number                    note_line_id,            -- 伝票明細No
                hzca.account_number                             ship_cust_code,          -- 納品先顧客コード
-               xxcfr_common_pkg.get_cust_account_name(
-                 hzca.account_number,
-                 cv_get_acct_name_f)                           ship_cust_name,          -- 納品先顧客名
-               xxcfr_common_pkg.get_cust_account_name(
-                 hzca.account_number,
-                 cv_get_acct_name_k)                           ship_cust_kana_name,     -- 納品先顧客カナ名
+-- Modify 2009.07.22 Ver1.3 Start
+--               xxcfr_common_pkg.get_cust_account_name(
+--                 hzca.account_number,
+--                 cv_get_acct_name_f)                           ship_cust_name,          -- 納品先顧客名
+--               xxcfr_common_pkg.get_cust_account_name(
+--                 hzca.account_number,
+--                 cv_get_acct_name_k)                           ship_cust_kana_name,     -- 納品先顧客カナ名
+               hzca.party_id                                   ship_party_id,
+-- Modify 2009.07.22 Ver1.3 End
                xxca.sale_base_code                             sold_location_code,      -- 売上拠点コード
-               xxcfr_common_pkg.get_cust_account_name(
-                 xxca.sale_base_code,
-                 cv_get_acct_name_f)                           sold_location_name,      -- 売上拠点名
+-- Modify 2009.07.22 Ver1.3 Start
+--               xxcfr_common_pkg.get_cust_account_name(
+--                 xxca.sale_base_code,
+--                 cv_get_acct_name_f)                           sold_location_name,      -- 売上拠点名
+-- Modify 2009.07.22 Ver1.3 End
                xxca.store_code                                 ship_shop_code,          -- 納品先店舗コード
                xxca.cust_store_name                            ship_shop_name,          -- 納品先店名
                xxca.vendor_machine_number                      vd_num,                  -- 自動販売機番号
@@ -1254,11 +1305,20 @@ AS
                cn_program_application_id                       program_application_id,  -- アプリケーションID
                cn_program_id                                   program_id,              -- プログラムID
                cd_program_update_date                          program_update_date      -- プログラム更新日
-        FROM   ra_customer_trx_all           rcta,           -- 取引テーブル
+        FROM   
+-- Modify 2009.07.22 Ver1.3 Start
+               xxcfr_invoice_headers         xih,               -- アドオン請求書ヘッダ
+--               ra_customer_trx_all           rcta,           -- 取引テーブル
+               ra_customer_trx               rcta,           -- 取引テーブル
+-- Modify 2009.07.22 Ver1.3 End
                hz_cust_accounts              hzca,           -- 顧客マスタ
                xxcmm_cust_accounts           xxca,           -- 顧客追加情報
-               hz_cust_acct_sites_all        hzsa,           -- 顧客所在地
-               ra_customer_trx_lines_all     rlli,           -- 取引明細テーブル
+-- Modify 2009.07.22 Ver1.3 Start
+--               hz_cust_acct_sites_all        hzsa,           -- 顧客所在地
+--               ra_customer_trx_lines_all     rlli,           -- 取引明細テーブル
+               hz_cust_acct_sites            hzsa,           -- 顧客所在地
+               ra_customer_trx_lines         rlli,           -- 取引明細テーブル
+-- Modify 2009.07.22 Ver1.3 End
                xxcos_sales_exp_headers       xxeh,           -- 販売実績ヘッダテーブル
                xxcos_sales_exp_lines         xxel,           -- 販売実績明細テーブル
                xxcos_edi_headers             xedh,           -- EDIヘッダ情報テーブル
@@ -1271,17 +1331,28 @@ AS
                fnd_lookup_values             fvdt,           -- クイックコード(VD顧客区分)
                ic_item_mst_b                 icmb,           -- OPM品目マスタ
                xxcmn_item_mst_b              xxmb            -- OPM品目アドオン
-        WHERE  rcta.trx_date <= id_cutoff_date                  -- 取引日
+-- Modify 2009.07.22 Ver1.3 Start
+--        WHERE  rcta.trx_date <= id_cutoff_date                  -- 取引日
+        WHERE  xih.request_id            = gt_target_request_id       -- ターゲットとなる要求ID
+        AND    rcta.trx_date            <= xih.cutoff_date            -- 取引日
+        AND    rcta.bill_to_customer_id  = xih.bill_cust_account_id   -- 請求先顧客ID
+        AND    xih.org_id                = gn_org_id                      -- 組織ID
+        AND    xih.set_of_books_id       = gn_set_book_id        -- 会計帳簿ID
+-- Modify 2009.07.22 Ver1.3 End
         AND    rcta.attribute7 IN (cv_inv_hold_status_o,
                                    cv_inv_hold_status_r)         -- 請求書保留ステータス
-        AND    rcta.bill_to_customer_id = iv_cust_acct_id        -- 請求先顧客ID
-        AND    rcta.org_id          = gn_org_id                  -- 組織ID
+-- Modify 2009.07.22 Ver1.3 Start
+--        AND    rcta.bill_to_customer_id = iv_cust_acct_id        -- 請求先顧客ID
+--        AND    rcta.org_id          = gn_org_id                  -- 組織ID
+-- Modify 2009.07.22 Ver1.3 End
         AND    rcta.set_of_books_id = gn_set_book_id             -- 会計帳簿ID
         AND    rcta.batch_source_id != gt_arinput_trx_source_id  -- 取引ソース(AR部門入力以外)
         AND    rcta.ship_to_customer_id = hzca.cust_account_id(+)
         AND    rcta.ship_to_customer_id = xxca.customer_id(+)
         AND    hzca.cust_account_id = hzsa.cust_account_id(+)
-        AND    hzsa.org_id(+) = gn_org_id
+-- Modify 2009.07.22 Ver1.3 Start
+--        AND    hzsa.org_id(+) = gn_org_id
+-- Modify 2009.07.22 Ver1.3 End
         AND    rcta.customer_trx_id = rlli.customer_trx_id
         AND    rlli.line_type = cv_line_type_line
         AND    rlli.interface_line_attribute7 = xxeh.sales_exp_header_id  -- 販売実績ヘッダ内部ID
@@ -1304,8 +1375,12 @@ AS
         AND    mtib.segment1 = icmb.item_no(+)
         AND    icmb.item_id  = xxmb.item_id(+)
         AND    xxmb.active_flag(+) = 'Y'
-        AND    id_cutoff_date >= TRUNC(xxmb.start_date_active(+))
-        AND    id_cutoff_date <= NVL(xxmb.end_date_active(+), id_cutoff_date)
+-- Modify 2009.07.22 Ver1.3 Start
+--        AND    id_cutoff_date >= TRUNC(xxmb.start_date_active(+))
+--        AND    id_cutoff_date <= NVL(xxmb.end_date_active(+), id_cutoff_date)
+        AND    xih.cutoff_date >= NVL(TRUNC(xxmb.start_date_active), xih.cutoff_date)
+        AND    xih.cutoff_date <= NVL(xxmb.end_date_active, xih.cutoff_date)
+-- Modify 2009.07.22 Ver1.3 End
         AND    icmb.item_id = xxib.item_id(+)
         AND    fnlv.lookup_type(+)  = cv_lookup_itm_yokigun   -- 参照タイプ(容器群)
         AND    fnlv.language(+)     = USERENV( 'LANG' )
@@ -1327,6 +1402,14 @@ AS
         AND    xxca.business_low_type = fvdt.lookup_code(+)
         
       )  inlv
+-- Modify 2009.07.22 Ver1.3 Start
+     ,hz_parties       ship    -- 
+     ,hz_parties       sold    -- 
+     ,hz_cust_accounts soldca  -- 
+    WHERE inlv.ship_party_id      = ship.party_id
+      AND inlv.sold_location_code = soldca.account_number
+      AND soldca.party_id         = sold.party_id
+-- Modify 2009.07.22 Ver1.3 End
     ;
 --
     --請求明細データ登録件数カウント
@@ -2978,18 +3061,22 @@ AS
       RETURN;
     END IF;
 --
-    --ループ
-    <<for_loop>>
-    FOR ln_loop_cnt IN gt_invoice_id_tab.FIRST..gt_invoice_id_tab.LAST LOOP
+-- Modify 2009.07.22 Ver1.3 Start
+--    --ループ
+--    <<for_loop>>
+--    FOR ln_loop_cnt IN gt_invoice_id_tab.FIRST..gt_invoice_id_tab.LAST LOOP
+-- Modify 2009.07.22 Ver1.3 End
 --
       -- =====================================================
       -- 請求明細データ作成処理 (A-3)
       -- =====================================================
       ins_inv_detail_data(
-         gt_invoice_id_tab(ln_loop_cnt),      -- 一括請求書ID
-         gt_cust_acct_id_tab(ln_loop_cnt),    -- 請求先顧客ID
-         gt_cutoff_date_tab(ln_loop_cnt),     -- 締日
-         gt_tax_type_tab(ln_loop_cnt),        -- 消費税区分
+-- Modify 2009.07.22 Ver1.3 Start
+--         gt_invoice_id_tab(ln_loop_cnt),      -- 一括請求書ID
+--         gt_cust_acct_id_tab(ln_loop_cnt),    -- 請求先顧客ID
+--         gt_cutoff_date_tab(ln_loop_cnt),     -- 締日
+--         gt_tax_type_tab(ln_loop_cnt),        -- 消費税区分
+-- Modify 2009.07.22 Ver1.3 Start
          lv_errbuf,            -- エラー・メッセージ           --# 固定 #
          lv_retcode,           -- リターン・コード             --# 固定 #
          lv_errmsg);           -- ユーザー・エラー・メッセージ --# 固定 #
@@ -2998,6 +3085,11 @@ AS
         RAISE global_process_expt;
       END IF;
 --
+-- Modify 2009.07.22 Ver1.3 Start
+    --ループ
+    <<for_loop>>
+    FOR ln_loop_cnt IN gt_invoice_id_tab.FIRST..gt_invoice_id_tab.LAST LOOP
+-- Modify 2009.07.22 Ver1.3 End
       -- 税差額が発生した場合
       IF (NVL(gt_tax_gap_amt_tab(ln_loop_cnt), 0) != 0) THEN
 --
