@@ -7,7 +7,7 @@ AS
  * Description      : 仕入取引明細表
  * MD.050           : 有償支給帳票Issue1.0(T_MD050_BPO_360)
  * MD.070           : 有償支給帳票Issue1.0(T_MD070_BPO_36G)
- * Version          : 1.27
+ * Version          : 1.28
  *
  * Program List
  * -------------------------- ----------------------------------------------------------
@@ -65,6 +65,7 @@ AS
  *  2009/04/23    1.25  A.Shiina         本番障害#1429対応
  *  2009/05/18    1.26  T.Yoshimoto      本番障害#1478対応
  *  2009/06/02    1.27  T.Yoshimoto      本番障害#1515,1516対応
+ *  2009/07/03    1.28  T.Yoshimoto      本番障害#1560対応
  *****************************************************************************************/
 --
 --#######################  固定グローバル定数宣言部 START   #######################
@@ -1127,7 +1128,10 @@ AS
         ||       ' ,ilm.lot_no )              order1 '       --表示順'
         -- 2008/12/02 ADD START
         -- 受入返品数量×単価=金額
-        || ',ROUND(DECODE( xrart.txns_type ,'|| cv_type_nasi || ', xrart.quantity * -1 ,'
+-- 2009/7/3 v1.28 T.Yoshimoto Mod Start
+--        || ',ROUND(DECODE( xrart.txns_type ,'|| cv_type_nasi || ', xrart.quantity * -1 ,'
+        || ',TRUNC(DECODE( xrart.txns_type ,'|| cv_type_nasi || ', xrart.quantity * -1 ,'
+-- 2009/7/3 v1.XXXX T.Yoshimoto Mod End
         ||                                cv_type_hen  || ', xrart.quantity * -1  '
         ||                                                ', xrart.quantity)  *  '
         || ' DECODE( xrart.txns_type ,'|| cv_type_nasi ||', xrart.kobki_converted_unit_price '
@@ -1137,7 +1141,10 @@ AS
         ||       ' , pl.unit_price),0) gaku '
 -- 2008/12/05 v1.19 UPDATE END
         -- 消費税額計算
-        || ',ROUND(ROUND(DECODE( xrart.txns_type ,'|| cv_type_nasi || ', xrart.quantity * -1 ,'
+-- 2009/7/3 v1.28 T.Yoshimoto Mod End
+--        || ',ROUND(ROUND(DECODE( xrart.txns_type ,'|| cv_type_nasi || ', xrart.quantity * -1 ,'
+        || ',ROUND(TRUNC(DECODE( xrart.txns_type ,'|| cv_type_nasi || ', xrart.quantity * -1 ,'
+-- 2009/7/3 v1.28 T.Yoshimoto Mod End
         ||                                cv_type_hen  || ', xrart.quantity * -1  '
         ||                                                ', xrart.quantity)  *  '
         || ' DECODE( xrart.txns_type ,'|| cv_type_nasi ||', xrart.kobki_converted_unit_price '
