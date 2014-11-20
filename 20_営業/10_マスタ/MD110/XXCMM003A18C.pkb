@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCMM003A18C(body)
  * Description      : 情報系連携IFデータ作成
  * MD.050           : MD050_CMM_003_A18_情報系連携IFデータ作成
- * Version          : 1.2
+ * Version          : 1.3
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -25,6 +25,7 @@ AS
  *  2009/01/28    1.0   Takuya Kaihara   新規作成
  *  2009/02/23    1.1   Takuya Kaihara   ファイルクローズ処理修正
  *  2009/03/09    1.2   Takuya Kaihara   プロファイル値共通化
+ *  2009/05/12    1.3   Yutaka.Kuboshima 障害T1_0176,T1_0831の対応
  *
  *****************************************************************************************/
 --
@@ -369,6 +370,14 @@ AS
     cv_gyotai_chu         CONSTANT VARCHAR2(30)    := 'XXCMM_CUST_GYOTAI_CHU';  --業態(中分類)
     cv_gyotai_dai         CONSTANT VARCHAR2(30)    := 'XXCMM_CUST_GYOTAI_DAI';  --業態(大分類)
     cv_zero_data          CONSTANT VARCHAR2(1)     := '0';                      --サイト左詰
+-- 2009/05/12 Ver1.3 障害T1_0176 add start by Yutaka.Kuboshima
+    cv_organization       CONSTANT VARCHAR2(30)    := 'ORGANIZATION';           --オブジェクトタイプ(組織)
+    cv_yosin_kbn          CONSTANT VARCHAR2(2)     := '13';                     --顧客区分・与信管理先顧客
+    cv_urikake_kbn        CONSTANT VARCHAR2(2)     := '14';                     --顧客区分・売掛管理先顧客
+    cv_seisan_ou          CONSTANT VARCHAR2(20)    := 'ITOE-OU-MFG';            --営業単位(生産OU)
+    cv_site_use_code      CONSTANT VARCHAR2(20)    := 'SITE_USE_CODE';          --参照タイプ(使用目的)
+    cv_other_to           CONSTANT VARCHAR2(10)    := 'OTHER_TO';               --使用目的・その他
+-- 2009/05/12 Ver1.3 障害T1_0176 add end by Yutaka.Kuboshima
 --
     cv_comp_code          CONSTANT VARCHAR2(3)     := '001';                    --会社コード
     cv_auto_ex_flag       CONSTANT VARCHAR2(1)     := '2';                      --自動出展フラグ・関連顧客
@@ -485,8 +494,12 @@ AS
               xca.deli_center_code                           deli_center_code,            --EDI納品センターコード
               xca.deli_center_name                           deli_center_name,            --EDI納品センター名
               xca.edi_forward_number                         edi_forward_number,          --EDI伝送追番
-              arvw.name                                      receipt_methods_name,        --支払方法名
-              hcsu.site_use_code                             site_use_code,               --使用目的
+-- 2009/05/12 Ver1.3 障害T1_0176 modify start by Yutaka.Kuboshima
+--              arvw.name                                      receipt_methods_name,        --支払方法名
+--              hcsu.site_use_code                             site_use_code,               --使用目的
+              TO_MULTI_BYTE(arvw.name)                       receipt_methods_name,        --支払方法名
+              flvsuc.meaning                                 site_use_code,               --使用目的
+-- 2009/05/12 Ver1.3 障害T1_0176 modify end by Yutaka.Kuboshima
               rtsum2.name                                    payment_term2,               --第2支払条件
               rtsum3.name                                    payment_term3,               --第3支払条件
               hcsu.attribute4                                ar_invoice_code,             --売掛コード１(請求書)
@@ -513,7 +526,24 @@ AS
               xca.child_dept_shop_code                       child_dept_shop_code,        --百貨店伝区コード
               xca.past_customer_status                       past_customer_status,        --前月顧客ステータス
               xca.past_final_tran_date                       past_final_tran_date,        --前月最終取引日
-              hca.cust_account_id                            cust_account_id              --顧客ID
+              hca.cust_account_id                            cust_account_id,             --顧客ID
+-- 2009/05/12 Ver1.3 障害T1_0831 add start by Yutaka.Kuboshima
+              hp.party_id                                    party_id,                    --パーティID
+              hl.address4                                    address4,                    --FAX番号
+              hcp.cons_inv_flag                              cons_inv_flag,               --一括請求書発行フラグ
+              TO_MULTI_BYTE(aah.hierarchy_name)              hierarchy_name,              --取引－自動消込基準セット名
+              xmc.approval_date                              approval_date,               --決裁日付
+              xmc.tdb_code                                   tbd_code,                    --TDBコード
+              hcsu.price_list_id                             price_list_id,               --価格表
+              hcsu.tax_header_level_flag                     tax_header_level_flag,       --税金-計算
+              hcsu.tax_rounding_rule                         tax_rounding_rule,           --税金-端数処理
+              xca.cust_update_flag                           cust_update_flag,            --新規/更新フラグ
+              xca.edi_item_code_div                          edi_item_code_div,           --EDI連携品目コード区分
+              xca.edi_chain_code                             edi_chain_code,              --チェーン店コード(EDI)【親レコード用】
+              xca.parnt_dept_shop_code                       parnt_dept_shop_code,        --百貨店伝区コード【親レコード用】
+              xca.card_company_div                           card_company_div,            --カード会社区分
+              xca.card_company                               card_company                 --カード会社コード
+-- 2009/05/12 Ver1.3 障害T1_0831 add end by Yutaka.Kuboshima
       FROM    hz_cust_accounts              hca,                      --顧客マスタ
               hz_locations                  hl,                       --顧客事業所マスタ
               hz_cust_site_uses             hcsu,                     --顧客使用目的マスタ
@@ -525,6 +555,10 @@ AS
               ra_terms                      rtsum,
               ra_terms                      rtsum2,
               ra_terms                      rtsum3,
+-- 2009/05/12 Ver1.3 障害T1_0831 add start by Yutaka.Kuboshima
+              hz_customer_profiles          hcp,                      --顧客プロファイルマスタ
+              ar_autocash_hierarchies       aah,                      --自動入金階層マスタ
+-- 2009/05/12 Ver1.3 障害T1_0831 add end by Yutaka.Kuboshima
               (SELECT lookup_code           lookup_code,
                       attribute1            attribute1
               FROM    fnd_lookup_values flvs
@@ -543,6 +577,14 @@ AS
               AND     lookup_type  = cv_gyotai_dai
               AND     enabled_flag = cv_y_flag)    flvgd,            --クイックコード_参照コード(業態(大分類))
 --
+-- 2009/05/12 Ver1.3 障害T1_0176 add start by Yutaka.Kuboshima
+              (SELECT lookup_code           lookup_code,
+                      meaning               meaning
+              FROM    fnd_lookup_values flvs
+              WHERE   language     = cv_language_ja
+              AND     lookup_type  = cv_site_use_code
+              AND     enabled_flag = cv_y_flag)    flvsuc,           --クイックコード_参照コード(使用目的)
+-- 2009/05/12 Ver1.3 障害T1_0176 add end by Yutaka.Kuboshima
               (SELECT armvw.name            name,
                      rcrmvw.customer_id     customer_id
               FROM   ar_receipt_methods            armvw,    --AR支払方法マスタ
@@ -558,7 +600,10 @@ AS
              (SELECT   hopviw1.party_id              party_id,
                        ereaviw.resource_no           resource_no,
                        ereaviw.resource_s_date       resource_s_date
-              FROM     hz_cust_accounts              hcaviw1,   --顧客マスタ
+-- 2009/05/12 Ver1.3 障害T1_0831 modify start by Yutaka.Kuboshima
+--              FROM     hz_cust_accounts              hcaviw1,   --顧客マスタ
+              FROM     hz_parties                    hcaviw1,   --パーティマスタ
+-- 2009/05/12 Ver1.3 障害T1_0831 modify end by Yutaka.Kuboshima
                        hz_organization_profiles      hopviw1,   --組織プロファイルマスタ
                        ego_resource_agv              ereaviw    --組織プロファイル拡張マスタ(営業員)
               WHERE   (TO_DATE(gv_process_date, cv_fnd_slash_date)
@@ -579,7 +624,10 @@ AS
              (SELECT hopviw2.party_id              party_id,
                      eroaviw.route_no              route_no,
                      eroaviw.route_s_date          route_s_date
-              FROM   hz_cust_accounts              hcaviw2,                --顧客マスタ
+-- 2009/05/12 Ver1.3 障害T1_0831 modify start by Yutaka.Kuboshima
+--              FROM     hz_cust_accounts              hcaviw2,   --顧客マスタ
+              FROM     hz_parties                    hcaviw2,   --パーティマスタ
+-- 2009/05/12 Ver1.3 障害T1_0831 modify end by Yutaka.Kuboshima
                      ego_route_agv                 eroaviw,                --組織プロファイル拡張マスタ(ルート)
                      hz_organization_profiles      hopviw2                 --組織プロファイルマスタ
               WHERE   (TO_DATE(gv_process_date, cv_fnd_slash_date)
@@ -604,8 +652,12 @@ AS
               WHERE rtmon.term_id             = rtlmon.term_id            --支払条件 = 支払条件明細：支払条件ID
               GROUP BY rtmon.term_id) rtmin
 --
-      WHERE   (hca.customer_class_code NOT IN ( cv_cust_base, cv_edi_mult, cv_dep_dist )  --顧客区分(拠点,チェーン,百貨店以外)
+-- 2009/05/12 Ver1.3 障害T1_0176 modify start by Yutaka.Kuboshima
+--      WHERE   (hca.customer_class_code NOT IN ( cv_cust_base, cv_edi_mult, cv_dep_dist )  --顧客区分(拠点,チェーン,百貨店以外)
+--      OR      hca.customer_class_code IS NULL)                             --顧客区分NULL
+      WHERE   (hca.customer_class_code <> cv_cust_base                     --顧客区分(拠点)以外
       OR      hca.customer_class_code IS NULL)                             --顧客区分NULL
+-- 2009/05/12 Ver1.3 障害T1_0176 modify end by Yutaka.Kuboshima
       AND     hca.cust_account_id         = xca.customer_id (+)            --顧客 = 顧客追加：顧客ID
       AND     hca.cust_account_id         = xmc.customer_id (+)            --顧客 = 顧客法人：顧客ID
       AND     flvgs.attribute1            = flvgc.lookup_code (+)          --クイックS = クイックC
@@ -620,7 +672,10 @@ AS
       AND     hp.party_id                 = hps.party_id                   --パーティ = パーティサイト：パーティID
       AND     hps.party_site_id           = hcas.party_site_id             --パーティサイト = 顧客所在地：パーティサイトID
       AND     hca.cust_account_id         = hcas.cust_account_id           --顧客 = 顧客所在地：顧客ID
-      AND     hcsu.site_use_code          = cv_bill_to                     --使用目的 = 請求先
+-- 2009/05/12 Ver1.3 障害T1_0176 modify start by Yutaka.Kuboshima
+--      AND     hcsu.site_use_code          = cv_bill_to                     --使用目的 = 請求先
+      AND     hcsu.site_use_code         IN (cv_bill_to, cv_other_to)      --使用目的 = 請求先 OR その他
+-- 2009/05/12 Ver1.3 障害T1_0176 modify end by Yutaka.Kuboshima
       AND     hcsu.payment_term_id        = rtmin.term_id (+)              --使用目的 = 支払条件：支払条件,支払条件ID
       AND     hcsu.payment_term_id        = rtsum.term_id (+)              --支払条件(締日・払日・サイト)
       AND     hcsu.attribute2             = rtsum2.term_id (+)             --第２支払条件
@@ -631,10 +686,66 @@ AS
                                             WHERE  hcasiv.cust_account_id = hca.cust_account_id
                                             AND    hcasiv.party_site_id   = hpsiv.party_site_id
                                             AND    hpsiv.status             = cv_a_flag)      --ロケーションIDの最小値
+-- 2009/05/12 Ver1.3 障害T1_0176 add start by Yutaka.Kuboshima
+      AND     hcsu.site_use_id              = hcp.site_use_id(+)
+      AND     hcp.autocash_hierarchy_id     = aah.autocash_hierarchy_id(+)
+      AND     hcsu.site_use_code            = flvsuc.lookup_code(+)
+-- 2009/05/12 Ver1.3 障害T1_0176 add end by Yutaka.Kuboshima
       ORDER BY hca.account_number;
 --
     -- 顧客一括更新情報カーソルレコード型
     cust_data_rec cust_data_cur%ROWTYPE;
+--
+-- 2009/05/12 Ver1.3 障害T1_0176 add start by Yutaka.Kuboshima
+    -- 関連顧客取得カーソル
+    CURSOR cust_acct_relate_cur(p_cust_account_id IN NUMBER)
+    IS
+      SELECT hcar.attribute1    attribute1,
+             hca.account_number account_number,
+             hp.party_name      party_name
+      FROM hz_cust_accounts hca,
+           hz_parties hp,
+           hz_cust_acct_relate hcar
+      WHERE hca.party_id                 = hp.party_id
+        AND hca.cust_account_id          = hcar.cust_account_id
+        AND hcar.related_cust_account_id = p_cust_account_id
+        AND hca.customer_class_code      = cv_urikake_kbn
+        AND hcar.status                  = cv_a_flag
+        AND ROWNUM = 1;
+    -- 関連顧客情報カーソルレコード型
+    cust_acct_relate_rec cust_acct_relate_cur%ROWTYPE;
+--
+    -- 生産OU側顧客所在地取得カーソル
+    CURSOR mfg_cust_acct_site_cur(p_cust_account_id IN NUMBER)
+    IS
+      SELECT hcasa.attribute18 attribute18
+      FROM hz_cust_acct_sites_all hcasa,
+           hr_operating_units hou
+      WHERE hcasa.org_id          = hou.organization_id
+        AND hcasa.cust_account_id = p_cust_account_id
+        AND hou.name              = cv_seisan_ou
+        AND ROWNUM = 1;
+    -- 生産OU側顧客所在地取得カーソルレコード型
+    mfg_cust_acct_site_rec mfg_cust_acct_site_cur%ROWTYPE;
+--
+    -- パーティ関連取得カーソル
+    CURSOR hz_relationships_cur(p_party_id IN NUMBER)
+    IS
+      SELECT hca.account_number account_number,
+             hp.party_name      party_name
+      FROM hz_cust_accounts hca,
+           hz_parties hp,
+           hz_relationships hr
+      WHERE hca.party_id            = hp.party_id
+        AND hp.party_id             = hr.subject_id
+        AND hr.object_type          = cv_organization
+        AND hr.object_id            = p_party_id
+        AND hca.customer_class_code = cv_yosin_kbn
+        AND hr.status               = cv_a_flag
+        AND ROWNUM = 1;
+    -- パーティ関連取得カーソルレコード型
+    hz_relationships_rec hz_relationships_cur%ROWTYPE;
+-- 2009/05/12 Ver1.3 障害T1_0176 add end by Yutaka.Kuboshima
 --
   BEGIN
 --
@@ -765,6 +876,20 @@ AS
         END IF;
       END IF;
 --
+-- 2009/05/12 Ver1.3 障害T1_0176 add start by Yutaka.Kuboshima
+      -- 関連顧客情報取得
+      OPEN cust_acct_relate_cur(cust_data_rec.cust_account_id);
+      FETCH cust_acct_relate_cur INTO cust_acct_relate_rec;
+      CLOSE cust_acct_relate_cur;
+      -- 生産OU側顧客所在地情報取得
+      OPEN mfg_cust_acct_site_cur(cust_data_rec.cust_account_id);
+      FETCH mfg_cust_acct_site_cur INTO mfg_cust_acct_site_rec;
+      CLOSE mfg_cust_acct_site_cur;
+      -- パーティ関連情報取得
+      OPEN hz_relationships_cur(cust_data_rec.party_id);
+      FETCH hz_relationships_cur INTO hz_relationships_rec;
+      CLOSE hz_relationships_cur;
+-- 2009/05/12 Ver1.3 障害T1_0176 add end by Yutaka.Kuboshima
       -- ===============================
       -- 出力値設定
       -- ===============================--
@@ -891,6 +1016,28 @@ AS
       lv_output_str := lv_output_str || cv_comma || cv_dqu || SUBSTRB(cust_data_rec.child_dept_shop_code, 1, 3)        || cv_dqu;  --百貨店伝区コード
       lv_output_str := lv_output_str || cv_comma || cv_dqu || SUBSTRB(cust_data_rec.past_customer_status, 1, 2)        || cv_dqu;  --前月顧客ステータス
       lv_output_str := lv_output_str || cv_comma || TO_CHAR(cust_data_rec.past_final_tran_date, cv_fnd_date);                      --前月最終取引日
+-- 2009/05/12 Ver1.3 障害T1_0176 add start by Yutaka.Kuboshima
+      lv_output_str := lv_output_str || cv_comma || cv_dqu || SUBSTRB(hz_relationships_rec.party_name, 1, 100) || cv_dqu;          --与信管理先顧客名称
+      lv_output_str := lv_output_str || cv_comma || cv_dqu || SUBSTRB(hz_relationships_rec.account_number, 1, 9) || cv_dqu;        --与信管理先顧客番号
+      lv_output_str := lv_output_str || cv_comma || cv_dqu || SUBSTRB(cust_data_rec.address4, 1, 30) || cv_dqu;                    --住所4(FAX番号)
+      lv_output_str := lv_output_str || cv_comma || cv_dqu || SUBSTRB(cust_data_rec.cons_inv_flag, 1, 1) || cv_dqu;                --一括請求書発行フラグ
+      lv_output_str := lv_output_str || cv_comma || cv_dqu || SUBSTRB(cust_data_rec.hierarchy_name, 1, 30) || cv_dqu;              --取引－自動消込基準セット名
+      lv_output_str := lv_output_str || cv_comma || cv_dqu || SUBSTRB(mfg_cust_acct_site_rec.attribute18, 1, 9) || cv_dqu;         --配送先コード
+      lv_output_str := lv_output_str || cv_comma || cv_dqu || SUBSTRB(cust_acct_relate_rec.party_name, 1, 100) || cv_dqu;          --関連顧客名称(親)
+      lv_output_str := lv_output_str || cv_comma || cv_dqu || SUBSTRB(cust_acct_relate_rec.account_number, 1, 9) || cv_dqu;        --関連顧客番号(親)
+      lv_output_str := lv_output_str || cv_comma || cv_dqu || SUBSTRB(cust_acct_relate_rec.attribute1, 1, 1) || cv_dqu;            --関連分類
+      lv_output_str := lv_output_str || cv_comma || TO_CHAR(cust_data_rec.approval_date, cv_fnd_date);                             --決裁日付
+      lv_output_str := lv_output_str || cv_comma || cv_dqu || SUBSTRB(cust_data_rec.tbd_code, 1, 12) || cv_dqu;                    --TDBコード
+      lv_output_str := lv_output_str || cv_comma || cv_dqu || SUBSTRB(TO_CHAR(cust_data_rec.price_list_id), 1, 50) || cv_dqu;      --価格表
+      lv_output_str := lv_output_str || cv_comma || cv_dqu || SUBSTRB(cust_data_rec.tax_header_level_flag, 1, 1) || cv_dqu;        --税金－計算
+      lv_output_str := lv_output_str || cv_comma || cv_dqu || SUBSTRB(cust_data_rec.tax_rounding_rule, 1, 7) || cv_dqu;            --税金－端数処理
+      lv_output_str := lv_output_str || cv_comma || cv_dqu || SUBSTRB(cust_data_rec.cust_update_flag, 1, 1) || cv_dqu;             --新規/更新フラグ
+      lv_output_str := lv_output_str || cv_comma || cv_dqu || SUBSTRB(cust_data_rec.edi_item_code_div, 1, 1) || cv_dqu;            --EDI連携品目コード区分
+      lv_output_str := lv_output_str || cv_comma || cv_dqu || SUBSTRB(cust_data_rec.edi_chain_code, 1, 4) || cv_dqu;               --チェーン店コード(EDI)【親レコード用】
+      lv_output_str := lv_output_str || cv_comma || cv_dqu || SUBSTRB(cust_data_rec.parnt_dept_shop_code, 1, 3) || cv_dqu;         --百貨店伝区コード【親レコード用】
+      lv_output_str := lv_output_str || cv_comma || cv_dqu || SUBSTRB(cust_data_rec.card_company_div, 1, 1) || cv_dqu;             --カード会社区分
+      lv_output_str := lv_output_str || cv_comma || cv_dqu || SUBSTRB(cust_data_rec.card_company, 1, 9) || cv_dqu;                 --カード会社コード
+-- 2009/05/12 Ver1.3 障害T1_0176 add end by Yutaka.Kuboshima
       lv_output_str := lv_output_str || cv_comma || lv_coordinated_date;                                                           --連携日時
 --
       --文字列出力
@@ -915,6 +1062,11 @@ AS
 --
       --変数初期化
       lv_output_str           := NULL;
+-- 2009/05/12 Ver1.3 障害T1_0176 add start by Yutaka.Kuboshima
+      cust_acct_relate_rec    := NULL;
+      mfg_cust_acct_site_rec  := NULL;
+      hz_relationships_rec    := NULL;
+-- 2009/05/12 Ver1.3 障害T1_0176 add end by Yutaka.Kuboshima
 --
     END LOOP cust_for_loop;
 --
