@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCOK021A01C(body)
  * Description      : 問屋販売条件請求書Excelアップロード
  * MD.050           : 問屋販売条件請求書Excelアップロード MD050_COK_021_A01
- * Version          : 1.3
+ * Version          : 1.4
  *
  * Program List
  * ---------------------------- ----------------------------------------------------------
@@ -33,6 +33,7 @@ AS
  *  2009/03/10    1.2   K.Yamaguchi      [障害T1_0009]問屋請求書明細テーブル削除処理変更
  *  2009/04/10    1.3   M.Hiruta         [障害T1_0400]数値チェックでマイナス値をチェックできるよう変更
  *                                       [障害T1_0493]妥当性チェックのNULLチェック時に正確な項目を参照するよう修正
+ *  2009/08/27    1.4   T.Taniguchi      [障害0001176]問屋請求書明細テーブル削除条件追加
  *
  *****************************************************************************************/
 --
@@ -561,8 +562,11 @@ AS
                        AND xtwb.cust_code                = xwbh.cust_code
                        AND xtwb.expect_payment_date      = TO_CHAR( xwbh.expect_payment_date, cv_date_format1 )
                        AND xtwb.bill_no                  = xwbl.bill_no
+-- 2009/08/26 Ver.1.4 [障害0001176] SCS T.Taniguchi START
+                       AND xwbl.status IS NULL
+-- 2009/08/26 Ver.1.4 [障害0001176] SCS T.Taniguchi END
                    )
-      FOR UPDATE OF xwbl.wholesale_bill_detail_id
+      FOR UPDATE OF xwbl.wholesale_bill_detail_id NOWAIT
     ;
 --
   BEGIN
@@ -585,6 +589,9 @@ AS
                        AND xtwb.cust_code                = xwbh.cust_code
                        AND xtwb.expect_payment_date      = TO_CHAR( xwbh.expect_payment_date, cv_date_format1 )
                        AND xtwb.bill_no                  = xwbl.bill_no
+-- 2009/08/26 Ver.1.4 [障害0001176] SCS T.Taniguchi START
+                       AND xwbl.status IS NULL
+-- 2009/08/26 Ver.1.4 [障害0001176] SCS T.Taniguchi END
                    )
       ;
     EXCEPTION
