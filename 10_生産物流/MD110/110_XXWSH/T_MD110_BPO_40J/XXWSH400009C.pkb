@@ -30,6 +30,7 @@ AS
  *  2008/06/10    1.1   石渡  賢和       ヘッダ「出力日付」の書式を変更
  *  2008/06/13    1.2   石渡  賢和       不具合対応
  *  2008/06/23    1.3   石渡  賢和       ST不具合対応#106
+ *  2008/07/01    1.4   福田  直樹       ST不具合対応#331 商品区分は入力パラメータから取得
  *
  *****************************************************************************************/
 --
@@ -136,7 +137,8 @@ AS
       iv_order_type_id           VARCHAR2(20),      --   9.出庫形態
       iv_request_no              VARCHAR2(12),      --   10.依頼No.
       iv_req_status              VARCHAR2(20),      --   11.出荷依頼ステータス
-      iv_confirm_request_class   VARCHAR2(20)       --   12.物流担当確認依頼区分
+      iv_confirm_request_class   VARCHAR2(20),      --   12.物流担当確認依頼区分
+      iv_prod_class              VARCHAR2(20)       --   13.商品区分
     ) ;
 --
   -- データ格納用レコード変数
@@ -149,7 +151,7 @@ AS
      ,party_short_name           xxcmn_cust_accounts2_v.party_short_name%TYPE
                                                     -- 顧客
      --,address                    xxcmn_cust_acct_sites2_v.address_line1%TYPE
-     ,address                    VARCHAR2(60)
+     ,address                     VARCHAR2(60)
                                                     -- 配送先住所
      ,address_line1              xxwsh_order_headers_all.head_sales_branch%TYPE
                                                     -- 管轄拠点コード
@@ -340,22 +342,26 @@ AS
                                                     ,5000);
       RAISE global_api_expt;
     END IF;
-    
+--
     ------------------------------------------
     -- プロファイルから商品区分取得
     ------------------------------------------
-    gv_name_prod_class_code := SUBSTRB(FND_PROFILE.VALUE(gv_prf_prod_class_code), 1, 2);
-    -- 取得エラー時
-    IF (gv_name_prod_class_code IS NULL) THEN
-      lv_errmsg  := SUBSTRB(xxcmn_common_pkg.get_msg( gv_application_cmn  -- 'XXCMN'
-                                                     ,gv_err_pro          -- プロファイル取得エラー
-                                                     ,gv_tkn_prof_name    -- トークン
-                                                     ,gv_tkn_msg_prod_class_code     -- メッセージ
-                                                    )
-                                                    ,1
-                                                    ,5000);
-      RAISE global_api_expt;
-    END IF;
+    --商品区分はプロファイルからではなく入力パラメータから取得する
+    --ST不具合対応#331
+    --
+    --gv_name_prod_class_code := SUBSTRB(FND_PROFILE.VALUE(gv_prf_prod_class_code), 1, 2);
+    ---- 取得エラー時
+    --IF (gv_name_prod_class_code IS NULL) THEN
+    --  lv_errmsg  := SUBSTRB(xxcmn_common_pkg.get_msg( gv_application_cmn  -- 'XXCMN'
+    --                                                 ,gv_err_pro          -- プロファイル取得エラー
+    --                                                 ,gv_tkn_prof_name    -- トークン
+    --                                                 ,gv_tkn_msg_prod_class_code     -- メッセージ
+    --                                                )
+    --                                                ,1
+    --                                                ,5000);
+    --  RAISE global_api_expt;
+    --END IF;
+    --
 --
   EXCEPTION
 --
@@ -549,10 +555,11 @@ AS
         iv_ship_date_to              VARCHAR2,      --   6.出庫日To
         iv_arrival_date_from         VARCHAR2,      --   7.着日From
         iv_arrival_date_to           VARCHAR2,      --   8.着日To
-        iv_order_type_id             VARCHAR2,        --   9.出庫形態
+        iv_order_type_id             VARCHAR2,      --   9.出庫形態
         iv_request_no                VARCHAR2,      --   10.依頼No.
         iv_req_status                VARCHAR2,      --   11.出荷依頼ステータス
-        iv_confirm_request_class     VARCHAR2       --   12.物流担当確認依頼区分
+        iv_confirm_request_class     VARCHAR2,      --   12.物流担当確認依頼区分
+        iv_prod_class                VARCHAR2       --   13.商品区分
       )
     IS
       SELECT xoha.request_no                                            -- 依頼no
@@ -743,7 +750,8 @@ AS
                                        -- 受注明細アドオン.依頼品目＝OPM品目マスタ.品目コード
         AND xim2v.item_id                    = xic4v.item_id
                                        -- OPM品目マスタ.品目ID＝OPM品目カテゴリマスタ.品目ID
-        AND xic4v.prod_class_code            = gv_name_prod_class_code
+        --AND xic4v.prod_class_code            = gv_name_prod_class_code
+        AND xic4v.prod_class_code            = iv_prod_class    --ST不具合対応#331
             -- 品目カテゴリマスタ. 商品区分＝プロファイル（商品区分）:1=リーフ,2=ドリンク
         AND xim2v.start_date_active          <= 
             NVL(FND_DATE.STRING_TO_DATE(iv_ship_date_from,gc_char_d_format),
@@ -793,6 +801,7 @@ AS
        ,ir_param.iv_request_no                -- 依頼No.
        ,ir_param.iv_req_status                -- 出荷依頼ステータス
        ,ir_param.iv_confirm_request_class     -- 物流担当確認依頼区分
+       ,ir_param.iv_prod_class                -- 商品区分
       ) ;
     -- バルクフェッチ
     FETCH cur_main_data BULK COLLECT INTO ot_data_rec ;
@@ -1100,6 +1109,7 @@ AS
     iv_request_no              IN  VARCHAR2,      --   10.依頼No.
     iv_req_status              IN  VARCHAR2,      --   11.出荷依頼ステータス
     iv_confirm_request_class   IN  VARCHAR2,      --   12.物流担当確認依頼区分
+    iv_prod_class              IN  VARCHAR2,      --   13.商品区分
     ov_errbuf                  OUT VARCHAR2,      --   エラー・メッセージ           --# 固定 #
     ov_retcode                 OUT VARCHAR2,      --   リターン・コード             --# 固定 #
     ov_errmsg                  OUT VARCHAR2)      --   ユーザー・エラー・メッセージ --# 固定 #
@@ -1156,6 +1166,7 @@ AS
     lr_param_rec.iv_request_no            := iv_request_no;             -- 10.依頼No.
     lr_param_rec.iv_req_status            := iv_req_status;             -- 11.出荷依頼ステータス
     lr_param_rec.iv_confirm_request_class := iv_confirm_request_class;  -- 12.物流担当確認依頼区分
+    lr_param_rec.iv_prod_class            := iv_prod_class;             -- 13.商品区分
 --
     -- =====================================================
     --  関連データ取得
@@ -1273,10 +1284,11 @@ AS
     iv_ship_date_to            IN  VARCHAR2,      --   6.出庫日To
     iv_arrival_date_from       IN  VARCHAR2,      --   7.着日From
     iv_arrival_date_to         IN  VARCHAR2,      --   8.着日To
-    iv_order_type_id           IN  VARCHAR2,        --   9.出庫形態
+    iv_order_type_id           IN  VARCHAR2,      --   9.出庫形態
     iv_request_no              IN  VARCHAR2,      --   10.依頼No.
     iv_req_status              IN  VARCHAR2,      --   11.出荷依頼ステータス
-    iv_confirm_request_class   IN  VARCHAR2       --   12.物流担当確認依頼区分
+    iv_confirm_request_class   IN  VARCHAR2,      --   12.物流担当確認依頼区分
+    iv_prod_class              IN  VARCHAR2       --   13.商品区分
   )
 --
 --###########################  固定部 START   ###########################
@@ -1314,6 +1326,7 @@ AS
       iv_request_no            => iv_request_no,            --   10.依頼No.
       iv_req_status            => iv_req_status,            --   11.出荷依頼ステータス
       iv_confirm_request_class => iv_confirm_request_class, --   12.物流担当確認依頼区分
+      iv_prod_class            => iv_prod_class,            --   13.商品区分
       ov_errbuf                => lv_errbuf,      --   エラー・メッセージ           --# 固定 #
       ov_retcode               => lv_retcode,     --   リターン・コード             --# 固定 #
       ov_errmsg                => lv_errmsg);     --   ユーザー・エラー・メッセージ --# 固定 #

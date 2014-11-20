@@ -23,6 +23,7 @@ AS
  *  2008/06/10    1.1   石渡  賢和       ヘッダ「出力日付」の書式を変更
  *  2008/06/13    1.2   石渡  賢和       ST不具合対応
  *  2008/06/23    1.3   石渡  賢和       ST不具合対応#106
+ *  2008/07/01    1.4   福田  直樹       ST不具合対応#331 商品区分は入力パラメータから取得
  *
  *****************************************************************************************/
 --
@@ -51,7 +52,8 @@ AS
     iv_order_type_id           IN  VARCHAR2,      --   9.出庫形態
     iv_request_no              IN  VARCHAR2,      --   10.依頼No.
     iv_req_status              IN  VARCHAR2,      --   11.出荷依頼ステータス
-    iv_confirm_request_class   IN  VARCHAR2       --   12.物流担当確認依頼区分
+    iv_confirm_request_class   IN  VARCHAR2,      --   12.物流担当確認依頼区分
+    iv_prod_class              IN  VARCHAR2       --   13.商品区分
     );
 --
 END xxwsh400009c;

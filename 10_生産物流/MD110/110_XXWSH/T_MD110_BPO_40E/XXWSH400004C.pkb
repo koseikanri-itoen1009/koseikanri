@@ -7,7 +7,7 @@ AS
  * Description            : 出荷依頼締め関数
  * MD.050                 : T_MD050_BPO_401_出荷依頼
  * MD.070                 : T_MD070_BPO_40E_出荷依頼締め関数
- * Version                : 1.5
+ * Version                : 1.6
  *
  * Program List
  *  ------------------------ ---- ---- --------------------------------------------------
@@ -41,6 +41,7 @@ AS
  *  2008/6/06    1.3   Oracle 石渡賢和 リードタイムチェック時の判定を変更
  *  2008/6/27    1.4   Oracle 上原正好 内部課題56対応 呼出元が画面の場合にも締め管理アドオン登録
  *  2008/6/30    1.5   Oracle 北寒寺正夫 ST不具合対応#326
+ *  2008/7/01    1.6   Oracle 北寒寺正夫 ST不具合対応#338
  *
  *****************************************************************************************/
 --
@@ -1597,7 +1598,10 @@ AS
         -- SQLの実行
         OPEN reupd_status_cur FOR lv_sql
           USING
-            cv_order_type_id_04,
+-- 1.6 UPD START
+--            cv_order_type_id_04,
+            ln_transaction_type_id,
+-- 1.6 UPD END
             cv_prod_class_2,
             cv_prod_class_1,
             cv_code_class_4,
