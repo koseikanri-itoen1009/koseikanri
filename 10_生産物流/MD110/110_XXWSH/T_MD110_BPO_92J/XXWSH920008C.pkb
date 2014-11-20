@@ -7,7 +7,7 @@ AS
  * Description      : 生産物流(引当、配車)
  * MD.050           : 出荷・引当/配車：生産物流共通（出荷・移動仮引当） T_MD050_BPO_920
  * MD.070           : 出荷・引当/配車：生産物流共通（出荷・移動仮引当） T_MD070_BPO_92J
- * Version          : 1.13
+ * Version          : 1.14
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -51,6 +51,7 @@ AS
  *  2009/10/16   1.11  SCS菅原           本番障害#1611対応
  *  2010/01/08   1.12  SCS北寒寺         本番稼働障害#701対応
  *  2010/01/28   1.13  SCS北寒寺         本番稼働障害#1320対応
+ *  2010/02/26   1.14  SCS北寒寺         本番稼働障害#1612対応
  *****************************************************************************************/
 --
 --#######################  固定グローバル定数宣言部 START   #######################
@@ -1533,7 +1534,10 @@ AS
         SELECT  NVL(SUM(mld.actual_quantity), 0)
         FROM    xxinv_mov_req_instr_headers mrih    -- 移動依頼/指示ヘッダ（アドオン）
                ,xxinv_mov_req_instr_lines   mril    -- 移動依頼/指示明細（アドオン）
-               ,xxinv_mov_lot_details       mld     -- 移動ロット詳細（アドオン）
+-- Ver1.14 M.Hokkanji Mod Start
+--               ,xxinv_mov_lot_details       mld     -- 移動ロット詳細（アドオン）
+               ,xxinv_mov_lot_details_v     mld     -- 移動ロット詳細
+-- Ver1.14 M.Hokkanji Mod End
         WHERE   mrih.ship_to_locat_id        = it_loc_id
         AND     mrih.comp_actual_flg         = cv_flag_n
         AND     mrih.status                  IN (cv_status_02, cv_status_03)
@@ -1550,7 +1554,10 @@ AS
         SELECT  NVL(SUM(mld.actual_quantity), 0)
         FROM    xxinv_mov_req_instr_headers mrih    -- 移動依頼/指示ヘッダ（アドオン）
                ,xxinv_mov_req_instr_lines   mril    -- 移動依頼/指示明細（アドオン）
-               ,xxinv_mov_lot_details       mld     -- 移動ロット詳細（アドオン）
+-- Ver1.14 M.Hokkanji Mod Start
+--               ,xxinv_mov_lot_details       mld     -- 移動ロット詳細（アドオン）
+               ,xxinv_mov_lot_details_v     mld     -- 移動ロット詳細
+-- Ver1.14 M.Hokkanji Mod End
         WHERE   mrih.ship_to_locat_id   = it_loc_id
         AND     mrih.comp_actual_flg    = cv_flag_n
         AND     mrih.status             = cv_status_04
@@ -1567,7 +1574,10 @@ AS
         SELECT  NVL(SUM(mld.actual_quantity), 0)
         FROM    xxwsh_order_headers_all    oha   -- 受注ヘッダ（アドオン）
                ,xxwsh_order_lines_all      ola   -- 受注明細（アドオン）
-               ,xxinv_mov_lot_details      mld   -- 移動ロット詳細（アドオン）
+-- Ver1.14 M.Hokkanji Mod Start
+--               ,xxinv_mov_lot_details       mld     -- 移動ロット詳細（アドオン）
+               ,xxinv_mov_lot_details_v    mld   -- 移動ロット詳細
+-- Ver1.14 M.Hokkanji Mod End
                ,oe_transaction_types_all   otta  -- 受注タイプ
         WHERE   oha.deliver_from_id       = it_loc_id
         AND     oha.req_status            = cv_status_03
@@ -1588,7 +1598,10 @@ AS
         SELECT  NVL(SUM(mld.actual_quantity), 0)
         FROM    xxwsh_order_headers_all    oha   -- 受注ヘッダ（アドオン）
                ,xxwsh_order_lines_all      ola   -- 受注明細（アドオン）
-               ,xxinv_mov_lot_details      mld   -- 移動ロット詳細（アドオン）
+-- Ver1.14 M.Hokkanji Mod Start
+--               ,xxinv_mov_lot_details       mld     -- 移動ロット詳細（アドオン）
+               ,xxinv_mov_lot_details_v    mld   -- 移動ロット詳細
+-- Ver1.14 M.Hokkanji Mod End
                ,oe_transaction_types_all   otta  -- 受注タイプ
         WHERE   oha.deliver_from_id       = it_loc_id
         AND     oha.req_status            = cv_status_07
@@ -1609,7 +1622,10 @@ AS
         SELECT  NVL(SUM(mld.actual_quantity), 0)
         FROM    xxinv_mov_req_instr_headers mrih    -- 移動依頼/指示ヘッダ（アドオン）
                ,xxinv_mov_req_instr_lines   mril    -- 移動依頼/指示明細（アドオン）
-               ,xxinv_mov_lot_details       mld     -- 移動ロット詳細（アドオン）
+-- Ver1.14 M.Hokkanji Mod Start
+--               ,xxinv_mov_lot_details       mld     -- 移動ロット詳細（アドオン）
+               ,xxinv_mov_lot_details_v     mld     -- 移動ロット詳細
+-- Ver1.14 M.Hokkanji Mod End
         WHERE   mrih.shipped_locat_id     = it_loc_id
         AND     mrih.comp_actual_flg      = cv_flag_n
         AND     mrih.status               IN (cv_status_02, cv_status_03)
@@ -1626,7 +1642,10 @@ AS
         SELECT  NVL(SUM(mld.actual_quantity), 0)
         FROM    xxinv_mov_req_instr_headers mrih    -- 移動依頼/指示ヘッダ（アドオン）
                ,xxinv_mov_req_instr_lines   mril    -- 移動依頼/指示明細（アドオン）
-               ,xxinv_mov_lot_details       mld     -- 移動ロット詳細（アドオン）
+-- Ver1.14 M.Hokkanji Mod Start
+--               ,xxinv_mov_lot_details       mld     -- 移動ロット詳細（アドオン）
+               ,xxinv_mov_lot_details_v     mld     -- 移動ロット詳細
+-- Ver1.14 M.Hokkanji Mod End
         WHERE   mrih.shipped_locat_id   = it_loc_id
         AND     mrih.comp_actual_flg    = cv_flag_n
         AND     mrih.status             = cv_status_05
@@ -1643,7 +1662,10 @@ AS
         SELECT  NVL(SUM(mld.actual_quantity), 0)
         FROM    gme_batch_header      gbh  -- 生産バッチ
                ,gme_material_details  gmd  -- 生産原料詳細
-               ,xxinv_mov_lot_details mld  -- 移動ロット詳細（アドオン）
+-- Ver1.14 M.Hokkanji Mod Start
+--               ,xxinv_mov_lot_details       mld     -- 移動ロット詳細（アドオン）
+               ,xxinv_mov_lot_details_v  mld     -- 移動ロット詳細
+-- Ver1.14 M.Hokkanji Mod End
                ,gmd_routings_b        grb  -- 工順マスタ
                ,ic_tran_pnd           itp  -- 保留在庫トランザクション
         WHERE   gbh.batch_status       IN (cn_type_1, cn_type_2)
@@ -1670,7 +1692,10 @@ AS
                ,mtl_system_items_b    msib    -- 品目マスタ
                ,po_lines_all          pla     -- 発注明細
                ,po_headers_all        pha     -- 発注ヘッダ
-               ,xxinv_mov_lot_details mld     -- 移動ロット詳細（アドオン）
+-- Ver1.14 M.Hokkanji Mod Start
+--               ,xxinv_mov_lot_details       mld     -- 移動ロット詳細（アドオン）
+               ,xxinv_mov_lot_details_v     mld     -- 移動ロット詳細
+-- Ver1.14 M.Hokkanji Mod End
         WHERE   iimb.item_id           = it_item_id
         AND     msib.segment1          = iimb.item_no
         AND     msib.organization_id   = gt_org_id
@@ -1706,7 +1731,10 @@ AS
         SELECT  NVL(SUM(mld.actual_quantity), 0)
         FROM    xxinv_mov_req_instr_headers mrih    -- 移動依頼/指示ヘッダ（アドオン）
                ,xxinv_mov_req_instr_lines   mril    -- 移動依頼/指示明細（アドオン）
-               ,xxinv_mov_lot_details       mld     -- 移動ロット詳細（アドオン）
+-- Ver1.14 M.Hokkanji Mod Start
+--               ,xxinv_mov_lot_details       mld     -- 移動ロット詳細（アドオン）
+               ,xxinv_mov_lot_details_v     mld     -- 移動ロット詳細
+-- Ver1.14 M.Hokkanji Mod End
                ,mtl_item_locations          mil
         WHERE   mil.attribute5          = it_head_loc
         AND     mil.segment1           <> mil.attribute5
@@ -1726,7 +1754,10 @@ AS
         SELECT  NVL(SUM(mld.actual_quantity), 0)
         FROM    xxinv_mov_req_instr_headers mrih    -- 移動依頼/指示ヘッダ（アドオン）
                ,xxinv_mov_req_instr_lines   mril    -- 移動依頼/指示明細（アドオン）
-               ,xxinv_mov_lot_details       mld     -- 移動ロット詳細（アドオン）
+-- Ver1.14 M.Hokkanji Mod Start
+--               ,xxinv_mov_lot_details       mld     -- 移動ロット詳細（アドオン）
+               ,xxinv_mov_lot_details_v     mld     -- 移動ロット詳細
+-- Ver1.14 M.Hokkanji Mod End
                ,mtl_item_locations          mil
         WHERE   mil.attribute5          = it_head_loc
         AND     mil.segment1           <> mil.attribute5
@@ -1750,7 +1781,10 @@ AS
                         END), 0)
         FROM    xxwsh_order_headers_all    oha  -- 受注ヘッダ（アドオン）
                ,xxwsh_order_lines_all      ola  -- 受注明細（アドオン）
-               ,xxinv_mov_lot_details      mld  -- 移動ロット詳細（アドオン）
+-- Ver1.14 M.Hokkanji Mod Start
+--               ,xxinv_mov_lot_details       mld     -- 移動ロット詳細（アドオン）
+               ,xxinv_mov_lot_details_v    mld     -- 移動ロット詳細
+-- Ver1.14 M.Hokkanji Mod End
                ,oe_transaction_types_all   otta -- 受注タイプ
                ,mtl_item_locations         mil
         WHERE   mil.attribute5            = it_head_loc
@@ -1778,7 +1812,10 @@ AS
                         END), 0)
         FROM    xxwsh_order_headers_all    oha   -- 受注ヘッダ（アドオン）
                ,xxwsh_order_lines_all      ola   -- 受注明細（アドオン）
-               ,xxinv_mov_lot_details      mld   -- 移動ロット詳細（アドオン）
+-- Ver1.14 M.Hokkanji Mod Start
+--               ,xxinv_mov_lot_details       mld     -- 移動ロット詳細（アドオン）
+               ,xxinv_mov_lot_details_v    mld   -- 移動ロット詳細
+-- Ver1.14 M.Hokkanji Mod End
                ,oe_transaction_types_all   otta   -- 受注タイプ
                ,mtl_item_locations         mil
         WHERE   mil.attribute5            = it_head_loc
@@ -1801,7 +1838,10 @@ AS
         SELECT  NVL(SUM(mld.actual_quantity), 0) - NVL(SUM(mld.before_actual_quantity), 0)
         FROM    xxinv_mov_req_instr_headers mrih    -- 移動依頼/指示ヘッダ（アドオン）
                ,xxinv_mov_req_instr_lines   mril    -- 移動依頼/指示明細（アドオン）
-               ,xxinv_mov_lot_details       mld     -- 移動ロット詳細（アドオン）
+-- Ver1.14 M.Hokkanji Mod Start
+--               ,xxinv_mov_lot_details       mld     -- 移動ロット詳細（アドオン）
+               ,xxinv_mov_lot_details_v     mld     -- 移動ロット詳細
+-- Ver1.14 M.Hokkanji Mod End
                ,mtl_item_locations          mil
         WHERE   mil.attribute5          = it_head_loc
         AND     mil.segment1           <> mil.attribute5
@@ -1821,7 +1861,10 @@ AS
         SELECT  NVL(SUM(mld.before_actual_quantity), 0) - NVL(SUM(mld.actual_quantity), 0)
         FROM    xxinv_mov_req_instr_headers mrih    -- 移動依頼/指示ヘッダ（アドオン）
                ,xxinv_mov_req_instr_lines   mril    -- 移動依頼/指示明細（アドオン）
-               ,xxinv_mov_lot_details       mld     -- 移動ロット詳細（アドオン）
+-- Ver1.14 M.Hokkanji Mod Start
+--               ,xxinv_mov_lot_details       mld     -- 移動ロット詳細（アドオン）
+               ,xxinv_mov_lot_details_v     mld     -- 移動ロット詳細
+-- Ver1.14 M.Hokkanji Mod End
                ,mtl_item_locations          mil
         WHERE   mil.attribute5          = it_head_loc
         AND     mil.segment1           <> mil.attribute5
@@ -1852,7 +1895,10 @@ AS
         SELECT  NVL(SUM(mld.actual_quantity), 0)
         FROM    xxinv_mov_req_instr_headers mrih    -- 移動依頼/指示ヘッダ（アドオン）
                ,xxinv_mov_req_instr_lines   mril    -- 移動依頼/指示明細（アドオン）
-               ,xxinv_mov_lot_details       mld     -- 移動ロット詳細（アドオン）
+-- Ver1.14 M.Hokkanji Mod Start
+--               ,xxinv_mov_lot_details       mld     -- 移動ロット詳細（アドオン）
+               ,xxinv_mov_lot_details_v     mld     -- 移動ロット詳細
+-- Ver1.14 M.Hokkanji Mod End
                ,xxwsh_frq_item_locations    xfil
         WHERE   xfil.frq_item_location_code = it_head_loc
         AND     xfil.item_id            = it_item_id
@@ -1872,7 +1918,10 @@ AS
         SELECT  NVL(SUM(mld.actual_quantity), 0)
         FROM    xxinv_mov_req_instr_headers mrih    -- 移動依頼/指示ヘッダ（アドオン）
                ,xxinv_mov_req_instr_lines   mril    -- 移動依頼/指示明細（アドオン）
-               ,xxinv_mov_lot_details       mld     -- 移動ロット詳細（アドオン）
+-- Ver1.14 M.Hokkanji Mod Start
+--               ,xxinv_mov_lot_details       mld     -- 移動ロット詳細（アドオン）
+               ,xxinv_mov_lot_details_v     mld     -- 移動ロット詳細
+-- Ver1.14 M.Hokkanji Mod End
                ,xxwsh_frq_item_locations    xfil
         WHERE   xfil.frq_item_location_code = it_head_loc
         AND     xfil.item_id            = it_item_id
@@ -1896,7 +1945,10 @@ AS
                         END), 0)
         FROM    xxwsh_order_headers_all    oha  -- 受注ヘッダ（アドオン）
                ,xxwsh_order_lines_all      ola  -- 受注明細（アドオン）
-               ,xxinv_mov_lot_details      mld  -- 移動ロット詳細（アドオン）
+-- Ver1.14 M.Hokkanji Mod Start
+--               ,xxinv_mov_lot_details       mld     -- 移動ロット詳細（アドオン）
+               ,xxinv_mov_lot_details_v    mld     -- 移動ロット詳細
+-- Ver1.14 M.Hokkanji Mod End
                ,oe_transaction_types_all   otta -- 受注タイプ
                ,xxwsh_frq_item_locations   xfil
         WHERE   xfil.frq_item_location_code = it_head_loc
@@ -1924,7 +1976,10 @@ AS
                         END), 0)
         FROM    xxwsh_order_headers_all    oha   -- 受注ヘッダ（アドオン）
                ,xxwsh_order_lines_all      ola   -- 受注明細（アドオン）
-               ,xxinv_mov_lot_details      mld   -- 移動ロット詳細（アドオン）
+-- Ver1.14 M.Hokkanji Mod Start
+--               ,xxinv_mov_lot_details       mld     -- 移動ロット詳細（アドオン）
+               ,xxinv_mov_lot_details_v    mld     -- 移動ロット詳細
+-- Ver1.14 M.Hokkanji Mod End
                ,oe_transaction_types_all   otta   -- 受注タイプ
                ,xxwsh_frq_item_locations   xfil
         WHERE   xfil.frq_item_location_code = it_head_loc
@@ -1947,7 +2002,10 @@ AS
         SELECT  NVL(SUM(mld.actual_quantity), 0) - NVL(SUM(mld.before_actual_quantity), 0)
         FROM    xxinv_mov_req_instr_headers mrih    -- 移動依頼/指示ヘッダ（アドオン）
                ,xxinv_mov_req_instr_lines   mril    -- 移動依頼/指示明細（アドオン）
-               ,xxinv_mov_lot_details       mld     -- 移動ロット詳細（アドオン）
+-- Ver1.14 M.Hokkanji Mod Start
+--               ,xxinv_mov_lot_details       mld     -- 移動ロット詳細（アドオン）
+               ,xxinv_mov_lot_details_v     mld     -- 移動ロット詳細
+-- Ver1.14 M.Hokkanji Mod End
                ,xxwsh_frq_item_locations    xfil
         WHERE   xfil.frq_item_location_code = it_head_loc
         AND     xfil.item_id            = it_item_id
@@ -1967,7 +2025,10 @@ AS
         SELECT  NVL(SUM(mld.before_actual_quantity), 0) - NVL(SUM(mld.actual_quantity), 0)
         FROM    xxinv_mov_req_instr_headers mrih    -- 移動依頼/指示ヘッダ（アドオン）
                ,xxinv_mov_req_instr_lines   mril    -- 移動依頼/指示明細（アドオン）
-               ,xxinv_mov_lot_details       mld     -- 移動ロット詳細（アドオン）
+-- Ver1.14 M.Hokkanji Mod Start
+--               ,xxinv_mov_lot_details       mld     -- 移動ロット詳細（アドオン）
+               ,xxinv_mov_lot_details_v     mld     -- 移動ロット詳細
+-- Ver1.14 M.Hokkanji Mod End
                ,xxwsh_frq_item_locations    xfil
         WHERE   xfil.frq_item_location_code = it_head_loc
         AND     xfil.item_id                = it_item_id
@@ -1992,7 +2053,10 @@ AS
         SELECT  NVL(SUM(mld.actual_quantity), 0)
         FROM    xxinv_mov_req_instr_headers mrih    -- 移動依頼/指示ヘッダ（アドオン）
                ,xxinv_mov_req_instr_lines   mril    -- 移動依頼/指示明細（アドオン）
-               ,xxinv_mov_lot_details       mld     -- 移動ロット詳細（アドオン）
+-- Ver1.14 M.Hokkanji Mod Start
+--               ,xxinv_mov_lot_details       mld     -- 移動ロット詳細（アドオン）
+               ,xxinv_mov_lot_details_v     mld     -- 移動ロット詳細
+-- Ver1.14 M.Hokkanji Mod End
                ,mtl_item_locations          mil
         WHERE   mil.attribute5               = it_head_loc
         AND     mrih.ship_to_locat_id        = mil.inventory_location_id
@@ -2011,7 +2075,10 @@ AS
         SELECT  NVL(SUM(mld.actual_quantity), 0)
         FROM    xxinv_mov_req_instr_headers mrih    -- 移動依頼/指示ヘッダ（アドオン）
                ,xxinv_mov_req_instr_lines   mril    -- 移動依頼/指示明細（アドオン）
-               ,xxinv_mov_lot_details       mld     -- 移動ロット詳細（アドオン）
+-- Ver1.14 M.Hokkanji Mod Start
+--               ,xxinv_mov_lot_details       mld     -- 移動ロット詳細（アドオン）
+               ,xxinv_mov_lot_details_v     mld     -- 移動ロット詳細
+-- Ver1.14 M.Hokkanji Mod End
                ,mtl_item_locations          mil
         WHERE   mil.attribute5          = it_head_loc
         AND     mrih.ship_to_locat_id   = mil.inventory_location_id
@@ -2034,7 +2101,10 @@ AS
 -- Ver1.10 M.Hokkanji End
         FROM    xxwsh_order_headers_all    oha   -- 受注ヘッダ（アドオン）
                ,xxwsh_order_lines_all      ola   -- 受注明細（アドオン）
-               ,xxinv_mov_lot_details      mld   -- 移動ロット詳細（アドオン）
+-- Ver1.14 M.Hokkanji Mod Start
+--               ,xxinv_mov_lot_details       mld     -- 移動ロット詳細（アドオン）
+               ,xxinv_mov_lot_details_v    mld   -- 移動ロット詳細
+-- Ver1.14 M.Hokkanji Mod End
                ,oe_transaction_types_all   otta  -- 受注タイプ
                ,mtl_item_locations         mil
         WHERE   mil.attribute5            = it_head_loc
@@ -2061,7 +2131,10 @@ AS
 -- Ver1.10 M.Hokkanji End
         FROM    xxwsh_order_headers_all    oha   -- 受注ヘッダ（アドオン）
                ,xxwsh_order_lines_all      ola   -- 受注明細（アドオン）
-               ,xxinv_mov_lot_details      mld   -- 移動ロット詳細（アドオン）
+-- Ver1.14 M.Hokkanji Mod Start
+--               ,xxinv_mov_lot_details       mld     -- 移動ロット詳細（アドオン）
+               ,xxinv_mov_lot_details_v    mld   -- 移動ロット詳細
+-- Ver1.14 M.Hokkanji Mod End
                ,oe_transaction_types_all   otta  -- 受注タイプ
                ,mtl_item_locations         mil
         WHERE   mil.attribute5            = it_head_loc
@@ -2084,7 +2157,10 @@ AS
         SELECT  NVL(SUM(mld.actual_quantity), 0)
         FROM    xxinv_mov_req_instr_headers mrih    -- 移動依頼/指示ヘッダ（アドオン）
                ,xxinv_mov_req_instr_lines   mril    -- 移動依頼/指示明細（アドオン）
-               ,xxinv_mov_lot_details       mld     -- 移動ロット詳細（アドオン）
+-- Ver1.14 M.Hokkanji Mod Start
+--               ,xxinv_mov_lot_details       mld     -- 移動ロット詳細（アドオン）
+               ,xxinv_mov_lot_details_v     mld     -- 移動ロット詳細
+-- Ver1.14 M.Hokkanji Mod End
                ,mtl_item_locations          mil
         WHERE   mil.attribute5            = it_head_loc
         AND     mrih.shipped_locat_id     = mil.inventory_location_id
@@ -2103,7 +2179,10 @@ AS
         SELECT  NVL(SUM(mld.actual_quantity), 0)
         FROM    xxinv_mov_req_instr_headers mrih    -- 移動依頼/指示ヘッダ（アドオン）
                ,xxinv_mov_req_instr_lines   mril    -- 移動依頼/指示明細（アドオン）
-               ,xxinv_mov_lot_details       mld     -- 移動ロット詳細（アドオン）
+-- Ver1.14 M.Hokkanji Mod Start
+--               ,xxinv_mov_lot_details       mld     -- 移動ロット詳細（アドオン）
+               ,xxinv_mov_lot_details_v     mld     -- 移動ロット詳細
+-- Ver1.14 M.Hokkanji Mod End
                ,mtl_item_locations          mil
         WHERE   mil.attribute5          = it_head_loc
         AND     mrih.shipped_locat_id   = mil.inventory_location_id
@@ -2122,7 +2201,10 @@ AS
         SELECT  NVL(SUM(mld.actual_quantity), 0)
         FROM    gme_batch_header      gbh  -- 生産バッチ
                ,gme_material_details  gmd  -- 生産原料詳細
-               ,xxinv_mov_lot_details mld  -- 移動ロット詳細（アドオン）
+-- Ver1.14 M.Hokkanji Mod Start
+--               ,xxinv_mov_lot_details       mld     -- 移動ロット詳細（アドオン）
+               ,xxinv_mov_lot_details_v     mld     -- 移動ロット詳細
+-- Ver1.14 M.Hokkanji Mod End
                ,gmd_routings_b        grb  -- 工順マスタ
                ,ic_tran_pnd           itp  -- 保留在庫トランザクション
                ,mtl_item_locations    mil
@@ -2155,7 +2237,10 @@ AS
                ,mtl_system_items_b    msib    -- 品目マスタ
                ,po_lines_all          pla     -- 発注明細
                ,po_headers_all        pha     -- 発注ヘッダ
-               ,xxinv_mov_lot_details mld     -- 移動ロット詳細（アドオン）
+-- Ver1.14 M.Hokkanji Mod Start
+--               ,xxinv_mov_lot_details       mld     -- 移動ロット詳細（アドオン）
+               ,xxinv_mov_lot_details_v     mld     -- 移動ロット詳細
+-- Ver1.14 M.Hokkanji Mod End
                ,mtl_item_locations    mil
         WHERE   iimb.item_id           = it_item_id
         AND     msib.segment1          = iimb.item_no
@@ -2177,7 +2262,10 @@ AS
         SELECT  NVL(SUM(mld.actual_quantity), 0)
         FROM    xxinv_mov_req_instr_headers mrih    -- 移動依頼/指示ヘッダ（アドオン）
                ,xxinv_mov_req_instr_lines   mril    -- 移動依頼/指示明細（アドオン）
-               ,xxinv_mov_lot_details       mld     -- 移動ロット詳細（アドオン）
+-- Ver1.14 M.Hokkanji Mod Start
+--               ,xxinv_mov_lot_details       mld     -- 移動ロット詳細（アドオン）
+               ,xxinv_mov_lot_details_v     mld     -- 移動ロット詳細
+-- Ver1.14 M.Hokkanji Mod End
                ,xxwsh_frq_item_locations    xfil
         WHERE   xfil.frq_item_location_code = it_head_loc
         AND     xfil.item_id                 = it_item_id
@@ -2197,7 +2285,10 @@ AS
         SELECT  NVL(SUM(mld.actual_quantity), 0)
         FROM    xxinv_mov_req_instr_headers mrih    -- 移動依頼/指示ヘッダ（アドオン）
                ,xxinv_mov_req_instr_lines   mril    -- 移動依頼/指示明細（アドオン）
-               ,xxinv_mov_lot_details       mld     -- 移動ロット詳細（アドオン）
+-- Ver1.14 M.Hokkanji Mod Start
+--               ,xxinv_mov_lot_details       mld     -- 移動ロット詳細（アドオン）
+               ,xxinv_mov_lot_details_v     mld     -- 移動ロット詳細
+-- Ver1.14 M.Hokkanji Mod End
                ,xxwsh_frq_item_locations    xfil
         WHERE   xfil.frq_item_location_code = it_head_loc
         AND     xfil.item_id            = it_item_id
@@ -2217,7 +2308,10 @@ AS
         SELECT  NVL(SUM(mld.actual_quantity), 0)
         FROM    xxwsh_order_headers_all    oha   -- 受注ヘッダ（アドオン）
                ,xxwsh_order_lines_all      ola   -- 受注明細（アドオン）
-               ,xxinv_mov_lot_details      mld   -- 移動ロット詳細（アドオン）
+-- Ver1.14 M.Hokkanji Mod Start
+--               ,xxinv_mov_lot_details       mld     -- 移動ロット詳細（アドオン）
+               ,xxinv_mov_lot_details_v     mld     -- 移動ロット詳細
+-- Ver1.14 M.Hokkanji Mod End
                ,oe_transaction_types_all   otta  -- 受注タイプ
                ,xxwsh_frq_item_locations   xfil
         WHERE   xfil.frq_item_location_code = it_head_loc
@@ -2241,7 +2335,10 @@ AS
         SELECT  NVL(SUM(mld.actual_quantity), 0)
         FROM    xxwsh_order_headers_all    oha   -- 受注ヘッダ（アドオン）
                ,xxwsh_order_lines_all      ola   -- 受注明細（アドオン）
-               ,xxinv_mov_lot_details      mld   -- 移動ロット詳細（アドオン）
+-- Ver1.14 M.Hokkanji Mod Start
+--               ,xxinv_mov_lot_details       mld     -- 移動ロット詳細（アドオン）
+               ,xxinv_mov_lot_details_v     mld     -- 移動ロット詳細
+-- Ver1.14 M.Hokkanji Mod End
                ,oe_transaction_types_all   otta  -- 受注タイプ
                ,xxwsh_frq_item_locations   xfil
         WHERE   xfil.frq_item_location_code = it_head_loc
@@ -2265,7 +2362,10 @@ AS
         SELECT  NVL(SUM(mld.actual_quantity), 0)
         FROM    xxinv_mov_req_instr_headers mrih    -- 移動依頼/指示ヘッダ（アドオン）
                ,xxinv_mov_req_instr_lines   mril    -- 移動依頼/指示明細（アドオン）
-               ,xxinv_mov_lot_details       mld     -- 移動ロット詳細（アドオン）
+-- Ver1.14 M.Hokkanji Mod Start
+--               ,xxinv_mov_lot_details       mld     -- 移動ロット詳細（アドオン）
+               ,xxinv_mov_lot_details_v     mld     -- 移動ロット詳細
+-- Ver1.14 M.Hokkanji Mod End
                ,xxwsh_frq_item_locations    xfil
         WHERE   xfil.frq_item_location_code = it_head_loc
         AND     xfil.item_id                = it_item_id
@@ -2285,7 +2385,10 @@ AS
         SELECT  NVL(SUM(mld.actual_quantity), 0)
         FROM    xxinv_mov_req_instr_headers mrih    -- 移動依頼/指示ヘッダ（アドオン）
                ,xxinv_mov_req_instr_lines   mril    -- 移動依頼/指示明細（アドオン）
-               ,xxinv_mov_lot_details       mld     -- 移動ロット詳細（アドオン）
+-- Ver1.14 M.Hokkanji Mod Start
+--               ,xxinv_mov_lot_details       mld     -- 移動ロット詳細（アドオン）
+               ,xxinv_mov_lot_details_v     mld     -- 移動ロット詳細
+-- Ver1.14 M.Hokkanji Mod End
                ,xxwsh_frq_item_locations    xfil
         WHERE   xfil.frq_item_location_code = it_head_loc
         AND     xfil.item_id                = it_item_id
@@ -2305,7 +2408,10 @@ AS
         SELECT  NVL(SUM(mld.actual_quantity), 0)
         FROM    gme_batch_header      gbh  -- 生産バッチ
                ,gme_material_details  gmd  -- 生産原料詳細
-               ,xxinv_mov_lot_details mld  -- 移動ロット詳細（アドオン）
+-- Ver1.14 M.Hokkanji Mod Start
+--               ,xxinv_mov_lot_details       mld     -- 移動ロット詳細（アドオン）
+               ,xxinv_mov_lot_details_v     mld     -- 移動ロット詳細
+-- Ver1.14 M.Hokkanji Mod End
                ,gmd_routings_b        grb  -- 工順マスタ
                ,ic_tran_pnd           itp  -- 保留在庫トランザクション
                ,xxwsh_frq_item_locations xfil
@@ -2335,7 +2441,10 @@ AS
                ,mtl_system_items_b    msib    -- 品目マスタ
                ,po_lines_all          pla     -- 発注明細
                ,po_headers_all        pha     -- 発注ヘッダ
-               ,xxinv_mov_lot_details mld     -- 移動ロット詳細（アドオン）
+-- Ver1.14 M.Hokkanji Mod Start
+--               ,xxinv_mov_lot_details       mld     -- 移動ロット詳細（アドオン）
+               ,xxinv_mov_lot_details_v     mld     -- 移動ロット詳細
+-- Ver1.14 M.Hokkanji Mod End
                ,xxwsh_frq_item_locations xfil
         WHERE   iimb.item_id                = it_item_id
         AND     msib.segment1               = iimb.item_no
@@ -2374,7 +2483,10 @@ AS
         SELECT  NVL(SUM(mld.actual_quantity), 0)
         FROM    xxinv_mov_req_instr_headers mrih    -- 移動依頼/指示ヘッダ（アドオン）
                ,xxinv_mov_req_instr_lines   mril    -- 移動依頼/指示明細（アドオン）
-               ,xxinv_mov_lot_details       mld     -- 移動ロット詳細（アドオン）
+-- Ver1.14 M.Hokkanji Mod Start
+--               ,xxinv_mov_lot_details       mld     -- 移動ロット詳細（アドオン）
+               ,xxinv_mov_lot_details_v     mld     -- 移動ロット詳細
+-- Ver1.14 M.Hokkanji Mod End
                ,xxwsh_frq_item_locations    xfil
         WHERE   xfil.item_location_code     = it_loc_code
         AND     xfil.item_id                = it_item_id
@@ -2394,7 +2506,10 @@ AS
         SELECT  NVL(SUM(mld.actual_quantity), 0)
         FROM    xxinv_mov_req_instr_headers mrih    -- 移動依頼/指示ヘッダ（アドオン）
                ,xxinv_mov_req_instr_lines   mril    -- 移動依頼/指示明細（アドオン）
-               ,xxinv_mov_lot_details       mld     -- 移動ロット詳細（アドオン）
+-- Ver1.14 M.Hokkanji Mod Start
+--               ,xxinv_mov_lot_details       mld     -- 移動ロット詳細（アドオン）
+               ,xxinv_mov_lot_details_v     mld     -- 移動ロット詳細
+-- Ver1.14 M.Hokkanji Mod End
                ,xxwsh_frq_item_locations    xfil
         WHERE   xfil.item_location_code     = it_loc_code
         AND     xfil.item_id                = it_item_id
@@ -2418,7 +2533,10 @@ AS
                         END), 0)
         FROM    xxwsh_order_headers_all    oha  -- 受注ヘッダ（アドオン）
                ,xxwsh_order_lines_all      ola  -- 受注明細（アドオン）
-               ,xxinv_mov_lot_details      mld  -- 移動ロット詳細（アドオン）
+-- Ver1.14 M.Hokkanji Mod Start
+--               ,xxinv_mov_lot_details       mld     -- 移動ロット詳細（アドオン）
+               ,xxinv_mov_lot_details_v    mld     -- 移動ロット詳細
+-- Ver1.14 M.Hokkanji Mod End
                ,oe_transaction_types_all   otta -- 受注タイプ
                ,xxwsh_frq_item_locations   xfil
         WHERE   xfil.item_location_code     = it_loc_code
@@ -2446,7 +2564,10 @@ AS
                         END), 0)
         FROM    xxwsh_order_headers_all    oha   -- 受注ヘッダ（アドオン）
                ,xxwsh_order_lines_all      ola   -- 受注明細（アドオン）
-               ,xxinv_mov_lot_details      mld   -- 移動ロット詳細（アドオン）
+-- Ver1.14 M.Hokkanji Mod Start
+--               ,xxinv_mov_lot_details       mld     -- 移動ロット詳細（アドオン）
+               ,xxinv_mov_lot_details_v    mld   -- 移動ロット詳細
+-- Ver1.14 M.Hokkanji Mod End
                ,oe_transaction_types_all   otta   -- 受注タイプ
                ,xxwsh_frq_item_locations   xfil
         WHERE   xfil.item_location_code     = it_loc_code
@@ -2469,7 +2590,10 @@ AS
         SELECT  NVL(SUM(mld.actual_quantity), 0) - NVL(SUM(mld.before_actual_quantity), 0)
         FROM    xxinv_mov_req_instr_headers mrih    -- 移動依頼/指示ヘッダ（アドオン）
                ,xxinv_mov_req_instr_lines   mril    -- 移動依頼/指示明細（アドオン）
-               ,xxinv_mov_lot_details       mld     -- 移動ロット詳細（アドオン）
+-- Ver1.14 M.Hokkanji Mod Start
+--               ,xxinv_mov_lot_details       mld     -- 移動ロット詳細（アドオン）
+               ,xxinv_mov_lot_details_v     mld     -- 移動ロット詳細
+-- Ver1.14 M.Hokkanji Mod End
                ,xxwsh_frq_item_locations    xfil
         WHERE   xfil.item_location_code     = it_loc_code
         AND     xfil.item_id                = it_item_id
@@ -2489,7 +2613,10 @@ AS
         SELECT  NVL(SUM(mld.before_actual_quantity), 0) - NVL(SUM(mld.actual_quantity), 0)
         FROM    xxinv_mov_req_instr_headers mrih    -- 移動依頼/指示ヘッダ（アドオン）
                ,xxinv_mov_req_instr_lines   mril    -- 移動依頼/指示明細（アドオン）
-               ,xxinv_mov_lot_details       mld     -- 移動ロット詳細（アドオン）
+-- Ver1.14 M.Hokkanji Mod Start
+--               ,xxinv_mov_lot_details       mld     -- 移動ロット詳細（アドオン）
+               ,xxinv_mov_lot_details_v     mld     -- 移動ロット詳細
+-- Ver1.14 M.Hokkanji Mod End
                ,xxwsh_frq_item_locations    xfil
         WHERE   xfil.item_location_code     = it_loc_code
         AND     xfil.item_id                = it_item_id
@@ -2514,7 +2641,10 @@ AS
         SELECT  NVL(SUM(mld.actual_quantity), 0)
         FROM    xxinv_mov_req_instr_headers mrih    -- 移動依頼/指示ヘッダ（アドオン）
                ,xxinv_mov_req_instr_lines   mril    -- 移動依頼/指示明細（アドオン）
-               ,xxinv_mov_lot_details       mld     -- 移動ロット詳細（アドオン）
+-- Ver1.14 M.Hokkanji Mod Start
+--               ,xxinv_mov_lot_details       mld     -- 移動ロット詳細（アドオン）
+               ,xxinv_mov_lot_details_v     mld     -- 移動ロット詳細
+-- Ver1.14 M.Hokkanji Mod End
                ,xxwsh_frq_item_locations    xfil
         WHERE   xfil.item_location_code     = it_loc_code
         AND     xfil.item_id                = it_item_id
@@ -2534,7 +2664,10 @@ AS
         SELECT  NVL(SUM(mld.actual_quantity), 0)
         FROM    xxinv_mov_req_instr_headers mrih    -- 移動依頼/指示ヘッダ（アドオン）
                ,xxinv_mov_req_instr_lines   mril    -- 移動依頼/指示明細（アドオン）
-               ,xxinv_mov_lot_details       mld     -- 移動ロット詳細（アドオン）
+-- Ver1.14 M.Hokkanji Mod Start
+--               ,xxinv_mov_lot_details       mld     -- 移動ロット詳細（アドオン）
+               ,xxinv_mov_lot_details_v     mld     -- 移動ロット詳細
+-- Ver1.14 M.Hokkanji Mod End
                ,xxwsh_frq_item_locations    xfil
         WHERE   xfil.item_location_code     = it_loc_code
         AND     xfil.item_id                = it_item_id
@@ -2554,7 +2687,10 @@ AS
         SELECT  NVL(SUM(mld.actual_quantity), 0)
         FROM    xxwsh_order_headers_all    oha   -- 受注ヘッダ（アドオン）
                ,xxwsh_order_lines_all      ola   -- 受注明細（アドオン）
-               ,xxinv_mov_lot_details      mld   -- 移動ロット詳細（アドオン）
+-- Ver1.14 M.Hokkanji Mod Start
+--               ,xxinv_mov_lot_details       mld     -- 移動ロット詳細（アドオン）
+               ,xxinv_mov_lot_details_v    mld   -- 移動ロット詳細
+-- Ver1.14 M.Hokkanji Mod End
                ,oe_transaction_types_all   otta  -- 受注タイプ
                ,xxwsh_frq_item_locations   xfil
         WHERE   xfil.item_location_code     = it_loc_code
@@ -2578,7 +2714,10 @@ AS
         SELECT  NVL(SUM(mld.actual_quantity), 0)
         FROM    xxwsh_order_headers_all    oha   -- 受注ヘッダ（アドオン）
                ,xxwsh_order_lines_all      ola   -- 受注明細（アドオン）
-               ,xxinv_mov_lot_details      mld   -- 移動ロット詳細（アドオン）
+-- Ver1.14 M.Hokkanji Mod Start
+--               ,xxinv_mov_lot_details       mld     -- 移動ロット詳細（アドオン）
+               ,xxinv_mov_lot_details_v    mld     -- 移動ロット詳細
+-- Ver1.14 M.Hokkanji Mod End
                ,oe_transaction_types_all   otta  -- 受注タイプ
                ,xxwsh_frq_item_locations   xfil
         WHERE   xfil.item_location_code     = it_loc_code
@@ -2602,7 +2741,10 @@ AS
         SELECT  NVL(SUM(mld.actual_quantity), 0)
         FROM    xxinv_mov_req_instr_headers mrih    -- 移動依頼/指示ヘッダ（アドオン）
                ,xxinv_mov_req_instr_lines   mril    -- 移動依頼/指示明細（アドオン）
-               ,xxinv_mov_lot_details       mld     -- 移動ロット詳細（アドオン）
+-- Ver1.14 M.Hokkanji Mod Start
+--               ,xxinv_mov_lot_details       mld     -- 移動ロット詳細（アドオン）
+               ,xxinv_mov_lot_details_v     mld     -- 移動ロット詳細
+-- Ver1.14 M.Hokkanji Mod End
                ,xxwsh_frq_item_locations    xfil
         WHERE   xfil.item_location_code     = it_loc_code
         AND     xfil.item_id                = it_item_id
@@ -2622,7 +2764,10 @@ AS
         SELECT  NVL(SUM(mld.actual_quantity), 0)
         FROM    xxinv_mov_req_instr_headers mrih    -- 移動依頼/指示ヘッダ（アドオン）
                ,xxinv_mov_req_instr_lines   mril    -- 移動依頼/指示明細（アドオン）
-               ,xxinv_mov_lot_details       mld     -- 移動ロット詳細（アドオン）
+-- Ver1.14 M.Hokkanji Mod Start
+--               ,xxinv_mov_lot_details       mld     -- 移動ロット詳細（アドオン）
+               ,xxinv_mov_lot_details_v     mld     -- 移動ロット詳細
+-- Ver1.14 M.Hokkanji Mod End
                ,xxwsh_frq_item_locations    xfil
         WHERE   xfil.item_location_code     = it_loc_code
         AND     xfil.item_id                = it_item_id
@@ -2642,7 +2787,10 @@ AS
         SELECT  NVL(SUM(mld.actual_quantity), 0)
         FROM    gme_batch_header      gbh  -- 生産バッチ
                ,gme_material_details  gmd  -- 生産原料詳細
-               ,xxinv_mov_lot_details mld  -- 移動ロット詳細（アドオン）
+-- Ver1.14 M.Hokkanji Mod Start
+--               ,xxinv_mov_lot_details       mld     -- 移動ロット詳細（アドオン）
+               ,xxinv_mov_lot_details_v     mld     -- 移動ロット詳細
+-- Ver1.14 M.Hokkanji Mod End
                ,gmd_routings_b        grb  -- 工順マスタ
                ,ic_tran_pnd           itp  -- 保留在庫トランザクション
                ,xxwsh_frq_item_locations xfil
@@ -2672,7 +2820,10 @@ AS
                ,mtl_system_items_b    msib    -- 品目マスタ
                ,po_lines_all          pla     -- 発注明細
                ,po_headers_all        pha     -- 発注ヘッダ
-               ,xxinv_mov_lot_details mld     -- 移動ロット詳細（アドオン）
+-- Ver1.14 M.Hokkanji Mod Start
+--               ,xxinv_mov_lot_details       mld     -- 移動ロット詳細（アドオン）
+               ,xxinv_mov_lot_details_v     mld     -- 移動ロット詳細
+-- Ver1.14 M.Hokkanji Mod End
                ,xxwsh_frq_item_locations xfil
         WHERE   iimb.item_id                = it_item_id
         AND     msib.segment1               = iimb.item_no
@@ -2710,7 +2861,10 @@ AS
         SELECT  NVL(SUM(mld.actual_quantity), 0)
         FROM    xxinv_mov_req_instr_headers mrih    -- 移動依頼/指示ヘッダ（アドオン）
                ,xxinv_mov_req_instr_lines   mril    -- 移動依頼/指示明細（アドオン）
-               ,xxinv_mov_lot_details       mld     -- 移動ロット詳細（アドオン）
+-- Ver1.14 M.Hokkanji Mod Start
+--               ,xxinv_mov_lot_details       mld     -- 移動ロット詳細（アドオン）
+               ,xxinv_mov_lot_details_v     mld     -- 移動ロット詳細
+-- Ver1.14 M.Hokkanji Mod End
                ,mtl_item_locations          mil
         WHERE   mil.segment1            = it_head_loc
         AND     mrih.ship_to_locat_id   = mil.inventory_location_id
@@ -2729,7 +2883,10 @@ AS
         SELECT  NVL(SUM(mld.actual_quantity), 0)
         FROM    xxinv_mov_req_instr_headers mrih    -- 移動依頼/指示ヘッダ（アドオン）
                ,xxinv_mov_req_instr_lines   mril    -- 移動依頼/指示明細（アドオン）
-               ,xxinv_mov_lot_details       mld     -- 移動ロット詳細（アドオン）
+-- Ver1.14 M.Hokkanji Mod Start
+--               ,xxinv_mov_lot_details       mld     -- 移動ロット詳細（アドオン）
+               ,xxinv_mov_lot_details_v     mld     -- 移動ロット詳細
+-- Ver1.14 M.Hokkanji Mod End
                ,mtl_item_locations          mil
         WHERE   mil.segment1            = it_head_loc
         AND     mrih.shipped_locat_id   = mil.inventory_location_id
@@ -2752,7 +2909,10 @@ AS
                         END), 0)
         FROM    xxwsh_order_headers_all    oha  -- 受注ヘッダ（アドオン）
                ,xxwsh_order_lines_all      ola  -- 受注明細（アドオン）
-               ,xxinv_mov_lot_details      mld  -- 移動ロット詳細（アドオン）
+-- Ver1.14 M.Hokkanji Mod Start
+--               ,xxinv_mov_lot_details       mld     -- 移動ロット詳細（アドオン）
+               ,xxinv_mov_lot_details_v    mld     -- 移動ロット詳細
+-- Ver1.14 M.Hokkanji Mod End
                ,oe_transaction_types_all   otta -- 受注タイプ
                ,mtl_item_locations         mil
         WHERE   mil.segment1              = it_head_loc
@@ -2779,7 +2939,10 @@ AS
                         END), 0)
         FROM    xxwsh_order_headers_all    oha   -- 受注ヘッダ（アドオン）
                ,xxwsh_order_lines_all      ola   -- 受注明細（アドオン）
-               ,xxinv_mov_lot_details      mld   -- 移動ロット詳細（アドオン）
+  -- Ver1.14 M.Hokkanji Mod Start
+--               ,xxinv_mov_lot_details       mld     -- 移動ロット詳細（アドオン）
+               ,xxinv_mov_lot_details_v    mld     -- 移動ロット詳細
+-- Ver1.14 M.Hokkanji Mod End
                ,oe_transaction_types_all   otta   -- 受注タイプ
                ,mtl_item_locations         mil
         WHERE   mil.segment1              = it_head_loc
@@ -2801,7 +2964,10 @@ AS
         SELECT  NVL(SUM(mld.actual_quantity), 0) - NVL(SUM(mld.before_actual_quantity), 0)
         FROM    xxinv_mov_req_instr_headers mrih    -- 移動依頼/指示ヘッダ（アドオン）
                ,xxinv_mov_req_instr_lines   mril    -- 移動依頼/指示明細（アドオン）
-               ,xxinv_mov_lot_details       mld     -- 移動ロット詳細（アドオン）
+-- Ver1.14 M.Hokkanji Mod Start
+--               ,xxinv_mov_lot_details       mld     -- 移動ロット詳細（アドオン）
+               ,xxinv_mov_lot_details_v     mld     -- 移動ロット詳細
+-- Ver1.14 M.Hokkanji Mod End
                ,mtl_item_locations          mil
         WHERE   mil.segment1            = it_head_loc
         AND     mrih.ship_to_locat_id   = mil.inventory_location_id
@@ -2820,7 +2986,10 @@ AS
         SELECT  NVL(SUM(mld.before_actual_quantity), 0) - NVL(SUM(mld.actual_quantity), 0)
         FROM    xxinv_mov_req_instr_headers mrih    -- 移動依頼/指示ヘッダ（アドオン）
                ,xxinv_mov_req_instr_lines   mril    -- 移動依頼/指示明細（アドオン）
-               ,xxinv_mov_lot_details       mld     -- 移動ロット詳細（アドオン）
+-- Ver1.14 M.Hokkanji Mod Start
+--               ,xxinv_mov_lot_details       mld     -- 移動ロット詳細（アドオン）
+               ,xxinv_mov_lot_details_v     mld     -- 移動ロット詳細
+-- Ver1.14 M.Hokkanji Mod End
                ,mtl_item_locations          mil
         WHERE   mil.segment1            = it_head_loc
         AND     mrih.shipped_locat_id   = mil.inventory_location_id
@@ -2844,7 +3013,10 @@ AS
         SELECT  NVL(SUM(mld.actual_quantity), 0)
         FROM    xxinv_mov_req_instr_headers mrih    -- 移動依頼/指示ヘッダ（アドオン）
                ,xxinv_mov_req_instr_lines   mril    -- 移動依頼/指示明細（アドオン）
-               ,xxinv_mov_lot_details       mld     -- 移動ロット詳細（アドオン）
+-- Ver1.14 M.Hokkanji Mod Start
+--               ,xxinv_mov_lot_details       mld     -- 移動ロット詳細（アドオン）
+               ,xxinv_mov_lot_details_v     mld     -- 移動ロット詳細
+-- Ver1.14 M.Hokkanji Mod End
                ,mtl_item_locations          mil
         WHERE   mil.segment1                 = it_head_loc
         AND     mrih.ship_to_locat_id        = mil.inventory_location_id
@@ -2863,7 +3035,10 @@ AS
         SELECT  NVL(SUM(mld.actual_quantity), 0)
         FROM    xxinv_mov_req_instr_headers mrih    -- 移動依頼/指示ヘッダ（アドオン）
                ,xxinv_mov_req_instr_lines   mril    -- 移動依頼/指示明細（アドオン）
-               ,xxinv_mov_lot_details       mld     -- 移動ロット詳細（アドオン）
+-- Ver1.14 M.Hokkanji Mod Start
+--               ,xxinv_mov_lot_details       mld     -- 移動ロット詳細（アドオン）
+               ,xxinv_mov_lot_details_v     mld     -- 移動ロット詳細
+-- Ver1.14 M.Hokkanji Mod End
                ,mtl_item_locations          mil
         WHERE   mil.segment1            = it_head_loc
         AND     mrih.ship_to_locat_id   = mil.inventory_location_id
@@ -2882,7 +3057,10 @@ AS
         SELECT  NVL(SUM(mld.actual_quantity), 0)
         FROM    xxwsh_order_headers_all    oha   -- 受注ヘッダ（アドオン）
                ,xxwsh_order_lines_all      ola   -- 受注明細（アドオン）
-               ,xxinv_mov_lot_details      mld   -- 移動ロット詳細（アドオン）
+-- Ver1.14 M.Hokkanji Mod Start
+--               ,xxinv_mov_lot_details       mld     -- 移動ロット詳細（アドオン）
+               ,xxinv_mov_lot_details_v    mld     -- 移動ロット詳細
+-- Ver1.14 M.Hokkanji Mod End
                ,oe_transaction_types_all   otta  -- 受注タイプ
                ,mtl_item_locations         mil
         WHERE   mil.segment1              = it_head_loc
@@ -2905,7 +3083,10 @@ AS
         SELECT  NVL(SUM(mld.actual_quantity), 0)
         FROM    xxwsh_order_headers_all    oha   -- 受注ヘッダ（アドオン）
                ,xxwsh_order_lines_all      ola   -- 受注明細（アドオン）
-               ,xxinv_mov_lot_details      mld   -- 移動ロット詳細（アドオン）
+-- Ver1.14 M.Hokkanji Mod Start
+--               ,xxinv_mov_lot_details       mld     -- 移動ロット詳細（アドオン）
+               ,xxinv_mov_lot_details_v     mld     -- 移動ロット詳細
+-- Ver1.14 M.Hokkanji Mod End
                ,oe_transaction_types_all   otta  -- 受注タイプ
                ,mtl_item_locations         mil
         WHERE   mil.segment1              = it_head_loc
@@ -2928,7 +3109,10 @@ AS
         SELECT  NVL(SUM(mld.actual_quantity), 0)
         FROM    xxinv_mov_req_instr_headers mrih    -- 移動依頼/指示ヘッダ（アドオン）
                ,xxinv_mov_req_instr_lines   mril    -- 移動依頼/指示明細（アドオン）
-               ,xxinv_mov_lot_details       mld     -- 移動ロット詳細（アドオン）
+-- Ver1.14 M.Hokkanji Mod Start
+--               ,xxinv_mov_lot_details       mld     -- 移動ロット詳細（アドオン）
+               ,xxinv_mov_lot_details_v     mld     -- 移動ロット詳細
+-- Ver1.14 M.Hokkanji Mod End
                ,mtl_item_locations          mil
         WHERE   mil.segment1              = it_head_loc
         AND     mrih.shipped_locat_id     = mil.inventory_location_id
@@ -2947,7 +3131,10 @@ AS
         SELECT  NVL(SUM(mld.actual_quantity), 0)
         FROM    xxinv_mov_req_instr_headers mrih    -- 移動依頼/指示ヘッダ（アドオン）
                ,xxinv_mov_req_instr_lines   mril    -- 移動依頼/指示明細（アドオン）
-               ,xxinv_mov_lot_details       mld     -- 移動ロット詳細（アドオン）
+-- Ver1.14 M.Hokkanji Mod Start
+--               ,xxinv_mov_lot_details       mld     -- 移動ロット詳細（アドオン）
+               ,xxinv_mov_lot_details_v     mld     -- 移動ロット詳細
+-- Ver1.14 M.Hokkanji Mod End
                ,mtl_item_locations          mil
         WHERE   mil.segment1            = it_head_loc
         AND     mrih.shipped_locat_id   = mil.inventory_location_id
@@ -2966,7 +3153,10 @@ AS
         SELECT  NVL(SUM(mld.actual_quantity), 0)
         FROM    gme_batch_header      gbh  -- 生産バッチ
                ,gme_material_details  gmd  -- 生産原料詳細
-               ,xxinv_mov_lot_details mld  -- 移動ロット詳細（アドオン）
+-- Ver1.14 M.Hokkanji Mod Start
+--               ,xxinv_mov_lot_details       mld     -- 移動ロット詳細（アドオン）
+               ,xxinv_mov_lot_details_v     mld     -- 移動ロット詳細
+-- Ver1.14 M.Hokkanji Mod End
                ,gmd_routings_b        grb  -- 工順マスタ
                ,ic_tran_pnd           itp  -- 保留在庫トランザクション
                ,mtl_item_locations    mil
@@ -2995,7 +3185,10 @@ AS
                ,mtl_system_items_b    msib    -- 品目マスタ
                ,po_lines_all          pla     -- 発注明細
                ,po_headers_all        pha     -- 発注ヘッダ
-               ,xxinv_mov_lot_details mld     -- 移動ロット詳細（アドオン）
+-- Ver1.14 M.Hokkanji Mod Start
+--               ,xxinv_mov_lot_details       mld     -- 移動ロット詳細（アドオン）
+               ,xxinv_mov_lot_details_v     mld     -- 移動ロット詳細
+-- Ver1.14 M.Hokkanji Mod End
                ,mtl_item_locations    mil
         WHERE   iimb.item_id           = it_item_id
         AND     msib.segment1          = iimb.item_no
@@ -3035,7 +3228,10 @@ AS
         SELECT  NVL(SUM(mld.actual_quantity), 0)
         FROM    xxinv_mov_req_instr_headers mrih    -- 移動依頼/指示ヘッダ（アドオン）
                ,xxinv_mov_req_instr_lines   mril    -- 移動依頼/指示明細（アドオン）
-               ,xxinv_mov_lot_details       mld     -- 移動ロット詳細（アドオン）
+-- Ver1.14 M.Hokkanji Mod Start
+--               ,xxinv_mov_lot_details       mld     -- 移動ロット詳細（アドオン）
+               ,xxinv_mov_lot_details_v     mld     -- 移動ロット詳細
+-- Ver1.14 M.Hokkanji Mod End
         WHERE   mrih.ship_to_locat_id   = it_loc_id
         AND     mrih.comp_actual_flg    = cv_flag_n
         AND     mrih.status             IN (cv_status_05, cv_status_06)
@@ -3052,7 +3248,10 @@ AS
         SELECT  NVL(SUM(mld.actual_quantity), 0)
         FROM    xxinv_mov_req_instr_headers mrih    -- 移動依頼/指示ヘッダ（アドオン）
                ,xxinv_mov_req_instr_lines   mril    -- 移動依頼/指示明細（アドオン）
-               ,xxinv_mov_lot_details       mld     -- 移動ロット詳細（アドオン）
+-- Ver1.14 M.Hokkanji Mod Start
+--               ,xxinv_mov_lot_details       mld     -- 移動ロット詳細（アドオン）
+               ,xxinv_mov_lot_details_v     mld     -- 移動ロット詳細
+-- Ver1.14 M.Hokkanji Mod End
         WHERE   mrih.shipped_locat_id   = it_loc_id
         AND     mrih.comp_actual_flg    = cv_flag_n
         AND     mrih.status             IN (cv_status_04, cv_status_06)
@@ -3073,7 +3272,10 @@ AS
                         END), 0)
         FROM    xxwsh_order_headers_all    oha  -- 受注ヘッダ（アドオン）
                ,xxwsh_order_lines_all      ola  -- 受注明細（アドオン）
-               ,xxinv_mov_lot_details      mld  -- 移動ロット詳細（アドオン）
+-- Ver1.14 M.Hokkanji Mod Start
+--               ,xxinv_mov_lot_details       mld     -- 移動ロット詳細（アドオン）
+               ,xxinv_mov_lot_details_v     mld     -- 移動ロット詳細
+-- Ver1.14 M.Hokkanji Mod End
                ,oe_transaction_types_all   otta -- 受注タイプ
         WHERE   oha.deliver_from_id       = it_loc_id
         AND     oha.req_status            = cv_status_04
@@ -3098,7 +3300,10 @@ AS
                         END), 0)
         FROM    xxwsh_order_headers_all    oha   -- 受注ヘッダ（アドオン）
                ,xxwsh_order_lines_all      ola   -- 受注明細（アドオン）
-               ,xxinv_mov_lot_details      mld   -- 移動ロット詳細（アドオン）
+-- Ver1.14 M.Hokkanji Mod Start
+--               ,xxinv_mov_lot_details       mld     -- 移動ロット詳細（アドオン）
+               ,xxinv_mov_lot_details_v     mld     -- 移動ロット詳細
+-- Ver1.14 M.Hokkanji Mod End
                ,oe_transaction_types_all   otta   -- 受注タイプ
         WHERE   oha.deliver_from_id       = it_loc_id
         AND     oha.req_status            = cv_status_08
@@ -3118,7 +3323,10 @@ AS
         SELECT  NVL(SUM(mld.actual_quantity), 0) - NVL(SUM(mld.before_actual_quantity), 0)
         FROM    xxinv_mov_req_instr_headers mrih    -- 移動依頼/指示ヘッダ（アドオン）
                ,xxinv_mov_req_instr_lines   mril    -- 移動依頼/指示明細（アドオン）
-               ,xxinv_mov_lot_details       mld     -- 移動ロット詳細（アドオン）
+-- Ver1.14 M.Hokkanji Mod Start
+--               ,xxinv_mov_lot_details       mld     -- 移動ロット詳細（アドオン）
+               ,xxinv_mov_lot_details_v     mld     -- 移動ロット詳細
+-- Ver1.14 M.Hokkanji Mod End
         WHERE   mrih.ship_to_locat_id   = it_loc_id
         AND     mrih.comp_actual_flg    = cv_flag_y
         AND     mrih.correct_actual_flg = cv_flag_y
@@ -3135,7 +3343,10 @@ AS
         SELECT  NVL(SUM(mld.before_actual_quantity), 0) - NVL(SUM(mld.actual_quantity), 0)
         FROM    xxinv_mov_req_instr_headers mrih    -- 移動依頼/指示ヘッダ（アドオン）
                ,xxinv_mov_req_instr_lines   mril    -- 移動依頼/指示明細（アドオン）
-               ,xxinv_mov_lot_details       mld     -- 移動ロット詳細（アドオン）
+-- Ver1.14 M.Hokkanji Mod Start
+--               ,xxinv_mov_lot_details       mld     -- 移動ロット詳細（アドオン）
+               ,xxinv_mov_lot_details_v     mld     -- 移動ロット詳細
+-- Ver1.14 M.Hokkanji Mod End
         WHERE   mrih.shipped_locat_id   = it_loc_id
         AND     mrih.comp_actual_flg    = cv_flag_y
         AND     mrih.correct_actual_flg = cv_flag_y
@@ -4497,7 +4708,10 @@ AS
                      ,mld.item_id  item_id
               FROM    xxinv_mov_req_instr_headers mrih    -- 移動依頼/指示ヘッダ（アドオン）
                      ,xxinv_mov_req_instr_lines   mril    -- 移動依頼/指示明細（アドオン）
-                     ,xxinv_mov_lot_details       mld     -- 移動ロット詳細（アドオン）
+-- Ver1.14 M.Hokkanji Mod Start
+--                   ,xxinv_mov_lot_details       mld     -- 移動ロット詳細（アドオン）
+                     ,xxinv_mov_lot_details_v     mld     -- 移動ロット詳細ビュー
+-- Ver1.14 M.Hokkanji Mod End
               WHERE   mrih.comp_actual_flg        = 'N'
               AND     mrih.status                IN (cv_status_02,cv_status_03)
               AND     mrih.schedule_arrival_date >= gd_open_date -- 予定なのでOPEN日付のデータのみ対象。
@@ -4513,7 +4727,10 @@ AS
                      ,mld.item_id  item_id
               FROM    xxinv_mov_req_instr_headers mrih    -- 移動依頼/指示ヘッダ（アドオン）
                      ,xxinv_mov_req_instr_lines   mril    -- 移動依頼/指示明細（アドオン）
-                     ,xxinv_mov_lot_details       mld     -- 移動ロット詳細（アドオン）
+-- Ver1.14 M.Hokkanji Mod Start
+--                   ,xxinv_mov_lot_details       mld     -- 移動ロット詳細（アドオン）
+                     ,xxinv_mov_lot_details_v     mld     -- 移動ロット詳細ビュー
+-- Ver1.14 M.Hokkanji Mod End
               WHERE   mrih.comp_actual_flg    = gv_cons_flg_no
               AND     mrih.status             = cv_status_04
               AND     NVL(mrih.actual_arrival_date, mrih.schedule_arrival_date) >= gd_open_date  -- 予定なのでOPEN日付のデータのみ対象。
@@ -4533,7 +4750,10 @@ AS
                      ,mld.item_id  item_id
               FROM    xxinv_mov_req_instr_headers mrih    -- 移動依頼/指示ヘッダ（アドオン）
                      ,xxinv_mov_req_instr_lines   mril    -- 移動依頼/指示明細（アドオン）
-                     ,xxinv_mov_lot_details       mld     -- 移動ロット詳細（アドオン）
+-- Ver1.14 M.Hokkanji Mod Start
+--                   ,xxinv_mov_lot_details       mld     -- 移動ロット詳細（アドオン）
+                     ,xxinv_mov_lot_details_v     mld     -- 移動ロット詳細ビュー
+-- Ver1.14 M.Hokkanji Mod End
               WHERE (((mrih.comp_actual_flg    = gv_cons_flg_no)
                   AND (mld.record_type_code    = cv_record_type_code_30)
                   AND (mld.actual_quantity     > cn_zero)) 
@@ -4560,7 +4780,10 @@ AS
                      ,mld.item_id  item_id
               FROM    xxwsh_order_headers_all    oha  -- 受注ヘッダ（アドオン）
                      ,xxwsh_order_lines_all      ola  -- 受注明細（アドオン）
-                     ,xxinv_mov_lot_details      mld  -- 移動ロット詳細（アドオン）
+-- Ver1.14 M.Hokkanji Mod Start
+--                   ,xxinv_mov_lot_details       mld     -- 移動ロット詳細（アドオン）
+                     ,xxinv_mov_lot_details_v     mld     -- 移動ロット詳細ビュー
+-- Ver1.14 M.Hokkanji Mod End
 -- 2010/01/28 M.Hokkanji Ver1.13 Start
                      ,oe_transaction_types_all   otta   -- 受注タイプ
 -- 2010/01/28 M.Hokkanji Ver1.13 End
