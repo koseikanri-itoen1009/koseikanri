@@ -8,16 +8,18 @@ AS
  * Description      : 倉庫毎に日次または月中、月末の受払残高情報を受払残高表に出力します。
  *                    預け先毎に月末の受払残高情報を受払残高表に出力します。
  * MD.050           : 受払残高表(倉庫・預け先)    MD050_COI_006_A15
- * Version          : 1.12
+ * Version          : 1.13
  *
  * Program List
  * -------------------- ------------------------------------------------------------
  *  Name                 Description
  * -------------------- ------------------------------------------------------------
- *  final_svf              SVF起動                  (A-4)
- *                         ﾜｰｸﾃｰﾌﾞﾙﾃﾞｰﾀ削除         (A-5)
+ *  final_svf              SVF起動                  (A-5)
+ *                         ﾜｰｸﾃｰﾌﾞﾙﾃﾞｰﾀ削除         (A-6)
  *  get_daily_data         日次データ取得           (A-3)
+ *                         ﾜｰｸﾃｰﾌﾞﾙﾃﾞｰﾀ登録(日次)   (A-4)
  *  get_month_data         月次データ取得           (A-3)
+ *                         ﾜｰｸﾃｰﾌﾞﾙﾃﾞｰﾀ登録(月次)   (A-4)
  *  init                   初期処理                 (A-1)
  *                         パラメータチェック       (A-2)
  *  submain                メイン処理プロシージャ
@@ -41,6 +43,7 @@ AS
  *  2009/12/22    1.10  N.Abe            [E_本稼動_00222]顧客名称取得方法修正(月次のみ)
  *  2010/04/08    1.11  N.Abe            [E_本稼動_02211]拠点情報ビュー使用部分の修正
  *  2013/01/08    1.12  K.Kiriu          [E_本稼動_10389]パフォーマンス対応
+ *  2013/08/12    1.13  S.Niki           [E_本稼動_10957]パフォーマンス対応
  *
  *****************************************************************************************/
 --
@@ -180,7 +183,7 @@ AS
 --
   /**********************************************************************************
    * Procedure Name   : final_svf
-   * Description      : SVF起動(A-4)
+   * Description      : SVF起動(A-5)
    ***********************************************************************************/
   PROCEDURE final_svf(
     ov_errbuf             OUT VARCHAR2,      -- エラー・メッセージ           --# 固定 #
@@ -283,7 +286,7 @@ AS
 --
   /**********************************************************************************
    * Procedure Name   : get_daily_data
-   * Description      : 日次データ取得(A-2)
+   * Description      : 日次データ取得(A-3)
    ***********************************************************************************/
   PROCEDURE get_daily_data(
     iv_output_kbn         IN  VARCHAR2,      -- 出力区分
@@ -319,7 +322,7 @@ AS
     lv_message                VARCHAR2(500) := NULL;   -- メッセージ
     ln_check_num              NUMBER        := 0;      -- 受払残高票ID
 --
-    -- *** ローカル・カーソル(A-2-2) ***
+    -- *** ローカル・カーソル(A-3-2) ***
     CURSOR daily_cur
     IS
       SELECT
@@ -506,11 +509,11 @@ AS
   LOOP
     FETCH daily_cur INTO daily_rec;
     EXIT WHEN daily_cur%NOTFOUND;
-    -- 受払残高票IDをカウント
+    -- 受払残高情報IDをカウント
     ln_check_num  := ln_check_num  + 1;
     -- 対象件数をカウント
     gn_target_cnt := gn_target_cnt + 1;
-    -- A-3.ワークテーブルデータ登録
+    -- A-4.ワークテーブルデータ登録
     INSERT INTO xxcoi_rep_warehouse_rcpt(
                 slit_id                           -- 受払残高情報ID
                ,inventory_kbn                     -- 棚卸区分
@@ -819,7 +822,7 @@ AS
 --
   /**********************************************************************************
    * Procedure Name   : get_month_data
-   * Description      : 月次データ取得(A-2)
+   * Description      : 月次データ取得(A-3)
    ***********************************************************************************/
   PROCEDURE get_month_data(
     iv_output_kbn         IN  VARCHAR2,      -- 出力区分
@@ -861,6 +864,9 @@ AS
 -- == 2009/09/15 V1.9 Added START ===============================================================
     ln_cnt                    NUMBER;                   -- カウンタ
 -- == 2009/09/15 V1.9 Added END   ===============================================================
+-- == V1.13 Added START ===============================================================
+    ln_cnt2                   NUMBER;                   -- カウンタ2
+-- == V1.13 Added END ===============================================================
 --
     -- *** ローカル・カーソル(A-2-2) ***
 -- == 2009/06/19 V1.3 DELETE START ===============================================================
@@ -1334,10 +1340,77 @@ AS
     -- 管理元拠点の場合
     <<set_base_loop>>
     FOR acct_num_rec  IN  acct_num_cur LOOP
+-- == V1.13 Modified START ===============================================================
+--      -- 対象拠点が管理元拠点の場合、管轄拠点全てを対象とする
+--      ln_cnt  :=  ln_cnt + 1;
+--      acct_data_tab(ln_cnt).account_number  :=  acct_num_rec.account_number;
+--      acct_data_tab(ln_cnt).account_name    :=  acct_num_rec.account_name;
       -- 対象拠点が管理元拠点の場合、管轄拠点全てを対象とする
-      ln_cnt  :=  ln_cnt + 1;
-      acct_data_tab(ln_cnt).account_number  :=  acct_num_rec.account_number;
-      acct_data_tab(ln_cnt).account_name    :=  acct_num_rec.account_name;
+      -- ただしパフォーマンス向上のため、受払表に存在する拠点のみに絞る
+      --
+      -- 初期化
+      ln_cnt2 := 0;
+      --
+      -- 月中の場合
+      IF (iv_inventory_kbn = cv_inv_kbn2) THEN
+        SELECT  /*+ leading(msi irm) */
+                COUNT(1)                     AS cnt
+        INTO    ln_cnt2
+        FROM    mtl_secondary_inventories    msi
+               ,xxcoi_inv_reception_monthly  irm
+        WHERE   msi.attribute7               = acct_num_rec.account_number
+        AND     msi.organization_id          = irm.organization_id
+        AND     msi.attribute7               = irm.base_code
+        AND     msi.secondary_inventory_name = irm.subinventory_code
+        AND     msi.organization_id          = gn_organization_id
+        AND     irm.practice_date            = gd_inventory_date
+        AND     irm.inventory_kbn            = cv_inv_kbn4
+        AND     msi.attribute1               = cv_subinv_1
+        ;
+      -- 月末の場合
+      ELSE
+        -- 倉庫の場合
+        IF (iv_output_kbn = cv_out_kbn1)  THEN
+          SELECT  /*+ leading(msi irm) */
+                  COUNT(1)                     AS cnt
+          INTO    ln_cnt2
+          FROM    mtl_secondary_inventories    msi
+                 ,xxcoi_inv_reception_monthly  irm
+          WHERE   msi.attribute7               = acct_num_rec.account_number
+          AND     msi.organization_id          = irm.organization_id
+          AND     msi.attribute7               = irm.base_code
+          AND     msi.secondary_inventory_name = irm.subinventory_code
+          AND     msi.organization_id          = gn_organization_id
+          AND     irm.practice_month           = gv_inventory_month
+          AND     irm.inventory_kbn            = cv_inv_kbn5
+          AND     msi.attribute1               = cv_subinv_1
+          ;
+        -- 預け先の場合
+        ELSE
+          SELECT  /*+ leading(msi irm) */
+                  COUNT(1)                     AS cnt
+          INTO    ln_cnt2
+          FROM    mtl_secondary_inventories    msi
+                 ,xxcoi_inv_reception_monthly  irm
+          WHERE   msi.attribute7               = acct_num_rec.account_number
+          AND     msi.organization_id          = irm.organization_id
+          AND     msi.attribute7               = irm.base_code
+          AND     msi.secondary_inventory_name = irm.subinventory_code
+          AND     msi.organization_id          = gn_organization_id
+          AND     irm.practice_month           = gv_inventory_month
+          AND     irm.inventory_kbn            = cv_inv_kbn5
+          AND     msi.attribute1               IN (cv_subinv_3, cv_subinv_4)
+          ;
+        END IF;
+      END IF;
+      --
+      IF ( ln_cnt2 > 0 ) THEN
+        ln_cnt := ln_cnt + 1;
+        acct_data_tab(ln_cnt).account_number  :=  acct_num_rec.account_number;
+        acct_data_tab(ln_cnt).account_name    :=  acct_num_rec.account_name;
+      END IF;
+      --
+-- == V1.13 Modified END ===============================================================
     END LOOP set_base_loop;
     --
     IF (ln_cnt = 0) THEN
@@ -1365,9 +1438,24 @@ AS
       -- ===================================
       lv_sql_str  :=  NULL;
       --
-      lv_sql_str  :=    'SELECT '
-                    ||  '/*+ leading(msi irm) */'
-                    ||  'irm.practice_month  irm_practice_month '
+-- == V1.13 Modified START ===============================================================
+--      lv_sql_str  :=    'SELECT '
+--                    ||  '/*+ leading(msi irm) */'
+--                    ||  'irm.practice_month  irm_practice_month '
+      lv_sql_str  :=    'SELECT ';
+      IF (iv_inventory_kbn = cv_inv_kbn2) THEN
+        -- 月中の場合
+        lv_sql_str  :=    lv_sql_str
+                      ||  '/*+ leading(msi irm) INDEX(msi XXCOI_MSI_N01) INDEX(irm XXCOI_INV_RECEPTION_MONTH_N04) */';
+      ELSE
+        -- 月末の場合
+        lv_sql_str  :=    lv_sql_str
+                      ||  '/*+ leading(msi irm) INDEX(msi XXCOI_MSI_N01) INDEX(irm XXCOI_INV_RECEPTION_MONTH_N02) */';
+      END IF;
+      --/
+      lv_sql_str  :=    lv_sql_str
+                    ||  ' irm.practice_month  irm_practice_month '
+-- == V1.13 Modified END ===============================================================
                     ||  ',irm.practice_date  irm_practice_date '
                     ||  ',irm.base_code  irm_base_code '
                     ||  ',NULL '
@@ -1605,7 +1693,7 @@ AS
         gn_target_cnt := gn_target_cnt + 1;
         --
         -- ===================================
-        --  ワークテーブルデータ登録(A-3)
+        --  ワークテーブルデータ登録(A-4)
         -- ===================================
         INSERT INTO xxcoi_rep_warehouse_rcpt(
                     slit_id                           -- 受払残高情報ID
@@ -1966,7 +2054,7 @@ AS
 --
   /**********************************************************************************
    * Procedure Name   : init
-   * Description      : 初期処理
+   * Description      : 初期処理(A-1)
    **********************************************************************************/
   PROCEDURE init(
     iv_output_kbn         IN  VARCHAR2,    -- 出力区分
@@ -2389,7 +2477,7 @@ AS
     END IF;
 --
     -- ===============================
-    -- データ取得(A-2)
+    -- データ取得(A-3)
     -- ===============================
     IF (iv_inventory_kbn = cv_inv_kbn1) THEN
       -- 日次データ取得
