@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCOK008A04C(body)
  * Description      : 売上振替割合の登録
  * MD.050           : 売上振替割合の登録 MD050_COK_008_A04
- * Version          : 1.3
+ * Version          : 1.4
  *
  * Program List
  * -------------------------------- ---------------------------------------------------------
@@ -37,6 +37,7 @@ AS
  * 2009/02/06     1.1   S.Sasaki         [障害COK_019]エラー時IFデータ削除処理追加
  * 2009/02/09     1.2   S.Sasaki         [障害COK_021]売上振替割の値が「0」の場合の対応(「登録」の場合)
  * 2009/02/10     1.3   S.Sasaki         [障害COK_026]必須チェック処理追加
+ * 2009/07/13     1.4   M.Hiruta         [障害0000514]処理対象に顧客ステータス「30:承認済」「50:休止」のデータを追加
  *
  *****************************************************************************************/
   -- =========================
@@ -103,6 +104,10 @@ AS
   cv_1                      CONSTANT VARCHAR2(1)   := '1';       --文字列:1
   cv_12                     CONSTANT VARCHAR2(2)   := '12';      --顧客区分(上様顧客以外)
   cv_40                     CONSTANT VARCHAR2(2)   := '40';      --'顧客'(中止顧客でない)
+-- Start 2009/07/13 Ver_1.4 0000514 M.Hiruta ADD
+  cv_30                     CONSTANT VARCHAR2(2)   := '30';      --'承認済'
+  cv_50                     CONSTANT VARCHAR2(2)   := '50';      --'休止'
+-- End   2009/07/13 Ver_1.4 0000514 M.Hiruta ADD
   --数値
   cn_0                      CONSTANT NUMBER        := 0;         --数値：0
   cn_1                      CONSTANT NUMBER        := 1;         --数値：1
@@ -1444,7 +1449,10 @@ AS
         WHERE   hca.party_id             = hp.party_id
         AND     hca.cust_account_id      = xca.customer_id
         AND     hca.account_number       = iv_selling_from_cust_code
-        AND     hp.duns_number_c         = cv_40
+-- Start 2009/07/13 Ver_1.4 0000514 M.Hiruta REPAIR
+--        AND     hp.duns_number_c         = cv_40
+        AND     hp.duns_number_c        IN( cv_30 , cv_40 , cv_50 )
+-- End   2009/07/13 Ver_1.4 0000514 M.Hiruta REPAIR
         AND     xca.selling_transfer_div = cv_1
         AND     xca.chain_store_code IS NULL
         AND     hca.customer_class_code <> cv_12;
@@ -1543,7 +1551,10 @@ AS
         WHERE  hca.party_id             = hp.party_id
         AND    hca.cust_account_id      = xca.customer_id
         AND    hca.account_number       = iv_selling_to_cust_code
-        AND    hp.duns_number_c         = cv_40
+-- Start 2009/07/13 Ver_1.4 0000514 M.Hiruta REPAIR
+--        AND    hp.duns_number_c         = cv_40
+        AND    hp.duns_number_c        IN( cv_30 , cv_40 , cv_50 )
+-- End   2009/07/13 Ver_1.4 0000514 M.Hiruta REPAIR
         AND    xca.selling_transfer_div = cv_1
         AND    xca.chain_store_code IS NULL
         AND    hca.customer_class_code <> cv_12;

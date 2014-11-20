@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCOK008A06C(body)
  * Description      : 営業システム構築プロジェクト
  * MD.050           : アドオン：売上実績振替情報の作成（振替割合） 販売物流 MD050_COK_008_A06
- * Version          : 1.5
+ * Version          : 1.6
  *
  * Program List
  * --------------------------- ----------------------------------------------------------
@@ -56,6 +56,7 @@ AS
  *                                                    2.振戻データが当月データである場合⇒業務処理日付
  *  2009/07/03    1.5   M.Hiruta         [障害0000422]振戻データ作成処理で作成される業務登録日付を、
  *                                                    業務処理日付へ変更
+ *  2009/07/13    1.6   M.Hiruta         [障害0000514]処理対象に顧客ステータス「30:承認済」「50:休止」のデータを追加
  *
  *****************************************************************************************/
   -- ===============================
@@ -128,7 +129,12 @@ AS
   cv_invoice_class_04       CONSTANT VARCHAR2(1)  := '4';  -- 納品伝票区分:返品訂正
   cv_transfer_div           CONSTANT VARCHAR2(1)  := '1';  -- 振替対象
   cv_cust_class_customer    CONSTANT VARCHAR2(2)  := '10'; -- 顧客区分:顧客
-  cv_duns_number_c          CONSTANT VARCHAR2(2)  := '40'; -- 顧客ステータス:顧客
+-- Start 2009/07/13 Ver_1.6 0000514 M.Hiruta REPAIR
+--  cv_duns_number_c          CONSTANT VARCHAR2(2)  := '40'; -- 顧客ステータス:顧客
+  cv_duns_number_c_30       CONSTANT VARCHAR2(2)  := '30'; -- 顧客ステータス:承認済
+  cv_duns_number_c_40       CONSTANT VARCHAR2(2)  := '40'; -- 顧客ステータス:顧客
+  cv_duns_number_c_50       CONSTANT VARCHAR2(2)  := '50'; -- 顧客ステータス:休止
+-- End   2009/07/13 Ver_1.6 0000514 M.Hiruta REPAIR
   cv_invalid_1_flg          CONSTANT VARCHAR2(1)  := '1';  -- 無効
   cv_invalid_0_flg          CONSTANT VARCHAR2(1)  := '0';  -- 有効
   cv_selling_trns_type      CONSTANT VARCHAR2(1)  := '0';          -- 実績振替区分
@@ -1096,7 +1102,13 @@ AS
       AND    xca.selling_transfer_div     = cv_transfer_div
       AND    xca.chain_store_code        IS NULL
       AND    hca.customer_class_code      = cv_cust_class_customer
-      AND    hp.duns_number_c             = cv_duns_number_c
+-- Start 2009/07/13 Ver_1.6 0000514 M.Hiruta REPAIR
+--      AND    hp.duns_number_c             = cv_duns_number_c
+      AND    hp.duns_number_c            IN ( cv_duns_number_c_30
+                                            , cv_duns_number_c_40
+                                            , cv_duns_number_c_50
+                                            )
+-- End   2009/07/13 Ver_1.6 0000514 M.Hiruta REPAIR
       AND    xseh.dlv_invoice_class      IN ( cv_invoice_class_01
                                             , cv_invoice_class_02
                                             , cv_invoice_class_03
@@ -1405,7 +1417,13 @@ AS
       AND    xca.selling_transfer_div     = cv_transfer_div
       AND    xca.chain_store_code        IS NULL
       AND    hca.customer_class_code      = cv_cust_class_customer
-      AND    hp.duns_number_c             = cv_duns_number_c
+-- Start 2009/07/13 Ver_1.6 0000514 M.Hiruta REPAIR
+--      AND    hp.duns_number_c             = cv_duns_number_c
+      AND    hp.duns_number_c            IN ( cv_duns_number_c_30
+                                            , cv_duns_number_c_40
+                                            , cv_duns_number_c_50
+                                            )
+-- End   2009/07/13 Ver_1.6 0000514 M.Hiruta REPAIR
       AND    xseh.dlv_invoice_class      IN ( cv_invoice_class_01
                                             , cv_invoice_class_02
                                             , cv_invoice_class_03
@@ -1820,11 +1838,23 @@ AS
              AND    xca_to.selling_transfer_div   = cv_transfer_div
              AND    xca_to.chain_store_code      IS NULL
              AND    hca_to.customer_class_code    = cv_cust_class_customer
-             AND    hp_to.duns_number_c           = cv_duns_number_c
+-- Start 2009/07/13 Ver_1.6 0000514 M.Hiruta REPAIR
+--             AND    hp_to.duns_number_c           = cv_duns_number_c
+             AND    hp_to.duns_number_c          IN ( cv_duns_number_c_30
+                                                    , cv_duns_number_c_40
+                                                    , cv_duns_number_c_50
+                                                    )
+-- End   2009/07/13 Ver_1.6 0000514 M.Hiruta REPAIR
              AND    xca_from.selling_transfer_div = cv_transfer_div
              AND    xca_from.chain_store_code    IS NULL
              AND    hca_from.customer_class_code  = cv_cust_class_customer
-             AND    hp_from.duns_number_c         = cv_duns_number_c
+-- Start 2009/07/13 Ver_1.6 0000514 M.Hiruta REPAIR
+--             AND    hp_from.duns_number_c         = cv_duns_number_c
+             AND    hp_from.duns_number_c        IN ( cv_duns_number_c_30
+                                                    , cv_duns_number_c_40
+                                                    , cv_duns_number_c_50
+                                                    )
+-- End   2009/07/13 Ver_1.6 0000514 M.Hiruta REPAIR
              AND    xsti.invalid_flag             = cv_invalid_0_flg
              AND    xsti.start_month             <= gv_current_month
              ) in_A
