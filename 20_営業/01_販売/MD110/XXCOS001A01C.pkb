@@ -1,4 +1,4 @@
-CREATE OR REPLACE PACKAGE BODY XXCOS001A01C
+CREATE OR REPLACE PACKAGE BODY APPS.XXCOS001A01C
 AS
 /*****************************************************************************************
  * Copyright(c)Sumisho Computer Systems Corporation, 2008. All rights reserved.
@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCOS001A01C (body)
  * Description      : 納品データの取込を行う
  * MD.050           : HHT納品データ取込 (MD050_COS_001_A01)
- * Version          : 1.14
+ * Version          : 1.15
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -46,6 +46,8 @@ AS
  *  2009/05/15    1.14  N.Maeda          [T1_0752]訪問有効情報登録共通関数の引数(訪問日時)を修正
  *                                       [T1_1011]エラーリスト出力用拠点名称の取得条件変更
  *                                       [T1_0977]従業員マスタと顧客マスタの取得分割
+ *  2009/09/01    1.15  N.Maeda          [0000929]リソースID取得条件変更[成績者⇒納品者]
+ *                                                H/C妥当性チェックの実行条件修正
  *
  *****************************************************************************************/
 --
@@ -476,8 +478,10 @@ AS
   -- 消費税区分格納用変数
   TYPE g_tax_class IS RECORD
     (
-      tax_cl   xxcos_dlv_headers.consumption_tax_class%TYPE,              -- 変換前の消費税区分
-      dff3     xxcos_dlv_headers.consumption_tax_class%TYPE               -- 変換後の消費税区分
+      tax_cl   xxcos_dlv_headers.consumption_tax_class%TYPE              -- 変換前の消費税区分
+-- ********** 2009/09/01 1.15 N.Maeda DEL START ******** --
+--      dff3     xxcos_dlv_headers.consumption_tax_class%TYPE               -- 変換後の消費税区分
+-- ********** 2009/09/01 1.15 N.Maeda DEL START ******** --
     );
   TYPE g_tab_qck_tax      IS TABLE OF  g_tax_class   INDEX BY PLS_INTEGER;
 --****************************** 2009/04/20 1.11 T.Kitajima DEL START  *****************************--
@@ -1036,8 +1040,10 @@ AS
     -- クイックコード取得：消費税区分
     CURSOR get_tax_class_cur
     IS
-      SELECT  look_val.lookup_code  lookup_code,
-              look_val.attribute3   attribute3
+      SELECT  look_val.lookup_code  lookup_code
+-- ********** 2009/09/01 1.15 N.Maeda DEL START ******** --
+--              look_val.attribute3   attribute3
+-- ********** 2009/09/01 1.15 N.Maeda DEL START ******** --
       FROM    fnd_lookup_values     look_val,
               fnd_lookup_types_tl   types_tl,
               fnd_lookup_types      types,
@@ -2414,8 +2420,11 @@ AS
         BEGIN
           SELECT rivp.resource_id     resource_id            -- リソースID
           INTO   lt_resource_id
-          FROM   xxcos_rs_info_v      rivp                   -- 営業員情報view（成績者）
-          WHERE  rivp.employee_number = lt_performance_code  -- 営業員情報view(成績者).顧客番号 = 抽出した成績者
+          FROM   xxcos_rs_info_v      rivp                   -- 営業員情報view（納品者）
+-- ************* 2009/09/01 N.Maeda 1.15 MOD START ************** --
+          WHERE  rivp.employee_number = lt_dlv_code
+--          WHERE  rivp.employee_number = lt_performance_code  -- 営業員情報view(成績者).顧客番号 = 抽出した成績者
+-- ************* 2009/09/01 N.Maeda 1.15 MOD START ************** --
           AND    lt_dlv_date >= NVL(rivp.effective_start_date, gd_process_date)-- 納品日の適用範囲
           AND   lt_dlv_date <= NVL(rivp.effective_end_date, gd_max_date)
           AND   lt_dlv_date >= rivp.per_effective_start_date
@@ -2560,6 +2569,7 @@ AS
       --==============================================================
       --消費税区分の妥当性チェック（ヘッダ部）
       --==============================================================
+--
       FOR i IN 1..gt_qck_tax.COUNT LOOP
         IF ( gt_qck_tax(i).tax_cl = lt_tax_class ) THEN
           EXIT;
@@ -3149,32 +3159,38 @@ AS
                 gt_select_vd(lv_column_check).column_no := lt_vd_column;  -- コラムNo.
                 gt_select_vd(lv_column_check).hot_cold  := lt_vd_hc;      -- H/C
 --
-                -- H/Cの整合性チェック
-                IF ( lt_h_and_c != lt_vd_hc ) THEN
-                  -- ログ出力
-                  lv_errmsg := xxccp_common_pkg.get_msg( cv_application, cv_msg_hc );
-                  FND_FILE.PUT_LINE( FND_FILE.LOG, lv_errmsg );
-                  ov_retcode := cv_status_warn;
-                  -- エラー変数へ格納
-                  gt_err_base_code(ln_err_no)        := lt_base_code;                 -- 拠点コード
-                  gt_err_base_name(ln_err_no)        := lt_base_name;                 -- 拠点名称
-                  gt_err_data_name(ln_err_no)        := lt_data_name;                 -- データ名称
-                  gt_err_order_no_hht(ln_err_no)     := lt_order_noh_hht;             -- 受注NO(HHT)
-                  gt_err_entry_number(ln_err_no)     := lt_hht_invoice_no;            -- 伝票NO
-                  gt_err_line_no(ln_err_no)          := lt_line_no_hht;               -- 行NO
-                  gt_err_order_no_ebs(ln_err_no)     := lt_order_noh_ebs;             -- 受注NO(EBS)
-                  gt_err_party_num(ln_err_no)        := lt_customer_number;           -- 顧客コード
-                  gt_err_customer_name(ln_err_no)    := lt_customer_name;             -- 顧客名
-                  gt_err_payment_dlv_date(ln_err_no) := lt_dlv_date;                  -- 入金/納品日
-                  gt_err_perform_by_code(ln_err_no)  := lt_performance_code;          -- 成績者コード
-                  gt_err_item_code(ln_err_no)        := lt_item_code;                 -- 品目コード
-                  gt_err_error_message(ln_err_no)    := SUBSTRB( lv_errmsg, 1, 60 );  -- エラー内容
-                  ln_err_no := ln_err_no + 1;
-                  -- エラーフラグ更新
-                  lv_err_flag := cv_hit;
-                END IF;
---
+-- *********** 2009/09/01 N.Maeda 1.15 ADD START ************* --
               END IF;
+-- *********** 2009/09/01 N.Maeda 1.15 ADD  END  ************* --
+--
+              -- H/Cの整合性チェック
+              IF ( lt_h_and_c != lt_vd_hc ) THEN
+                -- ログ出力
+                lv_errmsg := xxccp_common_pkg.get_msg( cv_application, cv_msg_hc );
+                FND_FILE.PUT_LINE( FND_FILE.LOG, lv_errmsg );
+                ov_retcode := cv_status_warn;
+                -- エラー変数へ格納
+                gt_err_base_code(ln_err_no)        := lt_base_code;                 -- 拠点コード
+                gt_err_base_name(ln_err_no)        := lt_base_name;                 -- 拠点名称
+                gt_err_data_name(ln_err_no)        := lt_data_name;                 -- データ名称
+                gt_err_order_no_hht(ln_err_no)     := lt_order_noh_hht;             -- 受注NO(HHT)
+                gt_err_entry_number(ln_err_no)     := lt_hht_invoice_no;            -- 伝票NO
+                gt_err_line_no(ln_err_no)          := lt_line_no_hht;               -- 行NO
+                gt_err_order_no_ebs(ln_err_no)     := lt_order_noh_ebs;             -- 受注NO(EBS)
+                gt_err_party_num(ln_err_no)        := lt_customer_number;           -- 顧客コード
+                gt_err_customer_name(ln_err_no)    := lt_customer_name;             -- 顧客名
+                gt_err_payment_dlv_date(ln_err_no) := lt_dlv_date;                  -- 入金/納品日
+                gt_err_perform_by_code(ln_err_no)  := lt_performance_code;          -- 成績者コード
+                gt_err_item_code(ln_err_no)        := lt_item_code;                 -- 品目コード
+                gt_err_error_message(ln_err_no)    := SUBSTRB( lv_errmsg, 1, 60 );  -- エラー内容
+                ln_err_no := ln_err_no + 1;
+                -- エラーフラグ更新
+                lv_err_flag := cv_hit;
+              END IF;
+--
+-- *********** 2009/09/01 N.Maeda 1.15 DEL START ************* --
+--              END IF;
+-- *********** 2009/09/01 N.Maeda 1.15 DEL  END  ************* --
 --
             EXCEPTION
               WHEN NO_DATA_FOUND THEN
