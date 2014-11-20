@@ -14,6 +14,9 @@
 SELECT  xsdl.sp_decision_line_id
        ,TO_CHAR(xsdl.fixed_price, 'FM999G999G999G999G990') fixed_price
        ,TO_CHAR(xsdl.sales_price, 'FM999G999G999G999G990') sales_price
+-- 2014/02/04 E_本稼動_11397対応 Add Start
+       ,flv.description  card_sales_class
+-- 2014/02/04 E_本稼動_11397対応 Add End
        ,TO_CHAR(xsdl.bm_rate_per_sales_price, 'FM999G999G999G999G990D90') bm_rate_per_sales_price
        ,TO_CHAR(xsdl.bm_amount_per_sales_price, 'FM999G999G999G999G990D90') bm_amount_per_sales_price
        ,TO_CHAR(xsdl.bm_conv_rate_per_sales_price, 'FM999G999G999G999G990D90') bm_conv_rate_per_sales_price
@@ -24,8 +27,15 @@ SELECT  xsdl.sp_decision_line_id
        ,TO_CHAR(xsdl.bm3_bm_rate, 'FM999G999G999G999G990D90') bm3_bm_rate
        ,TO_CHAR(xsdl.bm3_bm_amount, 'FM999G999G999G999G990D90') bm3_bm_amount
 FROM    xxcso_sp_decision_lines xsdl
+-- 2014/02/04 E_本稼動_11397対応 Add Start
+       ,fnd_lookup_values flv
+-- 2014/02/04 E_本稼動_11397対応 Add End
 WHERE   xsdl.sp_decision_header_id = :1
 AND     xsdl.sp_container_type IS NULL
+-- 2014/02/04 E_本稼動_11397対応 Add Start
+AND     flv.lookup_code(+)  =  xsdl.card_sale_class
+AND     flv.lookup_type(+)  = 'XXCOS1_CARD_SALE_CLASS'
+AND     flv.language(+)     = 'JA'
    ]]></SQLQuery>
    <DesignTime>
       <Attr Name="_isCodegen" Value="true" />
@@ -70,6 +80,17 @@ AND     xsdl.sp_container_type IS NULL
       <DesignTime>
          <Attr Name="_DisplaySize" Value="6" />
       </DesignTime>
+   </ViewAttribute>
+   <ViewAttribute
+      Name="CardSalesClass"
+      IsUpdateable="false"
+      IsPersistent="false"
+      Precision="5"
+      Type="java.lang.String"
+      ColumnType="VARCHAR2"
+      AliasName="CARD_SALES_CLASS"
+      Expression="CARD_SALES_CLASS"
+      SQLType="VARCHAR" >
    </ViewAttribute>
    <ViewAttribute
       Name="BmRatePerSalesPrice"

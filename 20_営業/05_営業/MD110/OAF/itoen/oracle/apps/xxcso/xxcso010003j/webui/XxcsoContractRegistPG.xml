@@ -2,29 +2,8 @@
 <!-- dbdrv: exec java oracle/jrad/tools/xml/importer XMLImporter.class java &phase=dat+24 checkfile:~PROD:~PATH:~FILE &fullpath:~PROD:~PATH:~FILE -username &un_apps -password &pw_apps -dbconnection &jdbc_db_addr  -userId "1" -rootPackage /oracle/apps/~PROD  -rootdir &fullpath:~PROD:mds:directory  -->
 <page xmlns:jrad="http://xmlns.oracle.com/jrad" xmlns:oa="http://xmlns.oracle.com/oa" xmlns:ui="http://xmlns.oracle.com/uix/ui" version="9.0.3.8.13_1566" xml:lang="en-US" xmlns:user="http://xmlns.oracle.com/jrad/user" xmlns="http://xmlns.oracle.com/jrad" file-version="$Header$">
    <content>
-      <!--**Attention
-* For KROWN:124532, You must not use multi-byte character in this file.
-* If you use it example prompt, use attributesets.
-
-DESCRIPTION
-Regist CONTRACT_MANAGEMENT information page.
-
-@param ExecuteMode      1 : For Detail
-                        2 : For Copy
-                     NULL : For Create
-@param TransactionKey1  XXCSO_SP_DECISION_HEADERS.SP_DECISION_HEADER_ID
-@param TransactionKey2  XXCSO_CONTRACT_MANAGEMENT.CONTRACT_MANAGEMENT_ID
-
-@see itoen.oracle.apps.xxcso.xxcso010003j.webui.XxcsoContractRegistCO.java
-@see itoen.oracle.apps.xxcso.xxcso010003j.server.XxcsoContractRegistAM.xml
-@see itoen.oracle.apps.xxcso.xxcso010003j.server.XxcsoContractRegistAMImpl.java
-
-HISTORY
-2009/01/27  H.Ogawa        Initialcode drop.
-2009/05/15  N.Yanagitaira  T1_0230
-2009/05/25  N.Yanagitaira  T1_1136
-2012/06/12  K.Kiriu        E_�{�ғ�_09602-->
-      <oa:pageLayout id="PageLayoutRN" amDefName="itoen.oracle.apps.xxcso.xxcso010003j.server.XxcsoContractRegistAM" controllerClass="itoen.oracle.apps.xxcso.xxcso010003j.webui.XxcsoContractRegistCO" use="/itoen/oracle/apps/xxcso/xxcso010003j/attributesets/XxcsoContractRegistAttrSets/PageLayoutRN">
+      <!--**Attention * For KROWN:124532, You must not use multi-byte character in this file. * If you use it example prompt, use attributesets.  DESCRIPTION Regist CONTRACT_MANAGEMENT information page.  @param ExecuteMode      1 : For Detail                         2 : For Copy                      NULL : For Create @param TransactionKey1  XXCSO_SP_DECISION_HEADERS.SP_DECISION_HEADER_ID @param TransactionKey2  XXCSO_CONTRACT_MANAGEMENT.CONTRACT_MANAGEMENT_ID  @see itoen.oracle.apps.xxcso.xxcso010003j.webui.XxcsoContractRegistCO.java @see itoen.oracle.apps.xxcso.xxcso010003j.server.XxcsoContractRegistAM.xml @see itoen.oracle.apps.xxcso.xxcso010003j.server.XxcsoContractRegistAMImpl.java  HISTORY 2009/01/27  H.Ogawa        Initialcode drop. 2009/05/15  N.Yanagitaira  T1_0230 2009/05/25  N.Yanagitaira  T1_1136 2012/06/12  K.Kiriu        E_本稼動_09602 2012/02/07  D.Sugahara     E_本稼動_11397-->
+      <oa:pageLayout id="PageLayoutRN" amDefName="itoen.oracle.apps.xxcso.xxcso010003j.server.XxcsoContractRegistAM" controllerClass="itoen.oracle.apps.xxcso.xxcso010003j.webui.XxcsoContractRegistCO" use="/itoen/oracle/apps/xxcso/xxcso010003j/attributesets/XxcsoContractRegistAttrSets/PageLayoutRN" comment="">
          <ui:corporateBranding>
             <oa:image id="corporateBrandingImage" source="/OA_MEDIA/FNDSSCORP.gif"/>
          </ui:corporateBranding>
@@ -117,6 +96,14 @@ HISTORY
                                                    </ui:columnHeader>
                                                    <ui:contents>
                                                       <oa:messageStyledText id="FixedPrice" viewAttr="FixedPrice"/>
+                                                   </ui:contents>
+                                                </oa:column>
+                                                <oa:column id="CardSalesClassCol">
+                                                   <ui:columnHeader>
+                                                      <oa:sortableHeader id="CardSalesClassColHdr" cellNoWrapFormat="true" use="/itoen/oracle/apps/xxcso/xxcso010003j/attributesets/XxcsoContractRegistAttrSets/CardSalesClassColHdr" prompt="カード売区分"/>
+                                                   </ui:columnHeader>
+                                                   <ui:contents>
+                                                      <oa:messageStyledText id="CardSalesClass" viewAttr="CardSalesClass"/>
                                                    </ui:contents>
                                                 </oa:column>
                                                 <oa:column id="SalesPriceCol">

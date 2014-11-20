@@ -9,7 +9,8 @@
 
 修正履歴
 2009/01/27  小川浩        新規作成
-2012/06/12  桐生和幸      E_本稼動_09602対応-->
+2012/06/12  桐生和幸      E_本稼動_09602対応
+2014/02/04  SCSK菅原      E_本稼動_11397対応-->
 <package version="9.0.3.8.13_1566" xml:lang="en-US" xmlns:oa="http://xmlns.oracle.com/oa" xmlns:jrad="http://xmlns.oracle.com/jrad" xmlns:ui="http://xmlns.oracle.com/uix/ui" xmlns:user="http://xmlns.oracle.com/jrad/user" xmlns="http://xmlns.oracle.com/jrad" file-version="$Header$">
    <attributeSet docName="PageLayoutRN" windowTitle="自販機設置契約情報登録" title="自販機設置契約情報登録"/>
    <attributeSet docName="CancelButton" prompt="戻る"/>
@@ -227,4 +228,5 @@
    <attributeSet docName="BankAccountNum" prompt="口座番号"/>
    <attributeSet docName="BankAccountHolderNameAlt" prompt="口座名義カナ"/>
    <attributeSet docName="RejectButton" prompt="契約取消"/>
+   <attributeSet docName="CardSalesClassColHdr" prompt="カード売区分"/>
 </package>

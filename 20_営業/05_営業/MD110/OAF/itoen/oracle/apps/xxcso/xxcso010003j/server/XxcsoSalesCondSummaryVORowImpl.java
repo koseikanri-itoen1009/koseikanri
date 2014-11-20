@@ -27,15 +27,16 @@ public class XxcsoSalesCondSummaryVORowImpl extends OAViewRowImpl
   protected static final int SPDECISIONLINEID = 0;
   protected static final int FIXEDPRICE = 1;
   protected static final int SALESPRICE = 2;
-  protected static final int BMRATEPERSALESPRICE = 3;
-  protected static final int BMAMOUNTPERSALESPRICE = 4;
-  protected static final int BMCONVRATEPERSALESPRICE = 5;
-  protected static final int BM1BMRATE = 6;
-  protected static final int BM1BMAMOUNT = 7;
-  protected static final int BM2BMRATE = 8;
-  protected static final int BM2BMAMOUNT = 9;
-  protected static final int BM3BMRATE = 10;
-  protected static final int BM3BMAMOUNT = 11;
+  protected static final int CARDSALESCLASS = 3;
+  protected static final int BMRATEPERSALESPRICE = 4;
+  protected static final int BMAMOUNTPERSALESPRICE = 5;
+  protected static final int BMCONVRATEPERSALESPRICE = 6;
+  protected static final int BM1BMRATE = 7;
+  protected static final int BM1BMAMOUNT = 8;
+  protected static final int BM2BMRATE = 9;
+  protected static final int BM2BMAMOUNT = 10;
+  protected static final int BM3BMRATE = 11;
+  protected static final int BM3BMAMOUNT = 12;
   /**
    * 
    * This is the default constructor (do not remove)
@@ -271,6 +272,8 @@ public class XxcsoSalesCondSummaryVORowImpl extends OAViewRowImpl
         return getFixedPrice();
       case SALESPRICE:
         return getSalesPrice();
+      case CARDSALESCLASS:
+        return getCardSalesClass();
       case BMRATEPERSALESPRICE:
         return getBmRatePerSalesPrice();
       case BMAMOUNTPERSALESPRICE:
@@ -339,5 +342,23 @@ public class XxcsoSalesCondSummaryVORowImpl extends OAViewRowImpl
         super.setAttrInvokeAccessor(index, value, attrDef);
         return;
       }
+  }
+
+  /**
+   * 
+   * Gets the attribute value for the calculated attribute CardSalesClass
+   */
+  public String getCardSalesClass()
+  {
+    return (String)getAttributeInternal(CARDSALESCLASS);
+  }
+
+  /**
+   * 
+   * Sets <code>value</code> as the attribute value for the calculated attribute CardSalesClass
+   */
+  public void setCardSalesClass(String value)
+  {
+    setAttributeInternal(CARDSALESCLASS, value);
   }
 }
