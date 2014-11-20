@@ -7,7 +7,7 @@ AS
  * Description      : 生産物流(引当、配車)
  * MD.050           : 出荷・移動インタフェース         T_MD050_BPO_930
  * MD.070           : 外部倉庫入出庫実績インタフェース T_MD070_BPO_93A
- * Version          : 1.61
+ * Version          : 1.62
  *
  * Program List
  * ------------------------------------ -------------------------------------------------
@@ -160,6 +160,7 @@ AS
  *  2009/10/07    1.59 SCS    伊藤ひとみ 本番障害対応#1648,1345 顧客ステータスを条件としないよう修正,顧客発注番号チェック廃止
  *  2009/11/26    1.60 SCS    宮川真理子 本番障害対応#1497 パージ処理の削除条件の保留ステータス条件を削除
  *  2009/12/28    1.61 SCS    伊藤ひとみ 本稼動障害  #695  57A入出庫実績登録処理move_results_regist_processを行わないようにする
+ *  2010/02/02    1.62 SCS    宮川真理子 本稼動障害  #1322 運送業者マスタチェック条件に、運賃区分がONの場合およびOFFでも運送業者入力済の場合を追加
  *****************************************************************************************/
 --
 --#######################  固定グローバル定数宣言部 START   #######################
@@ -7489,11 +7490,17 @@ AS
           ---- 運送業者≠NULLの場合のみチェックします。
           --IF (TRIM(gr_interface_info_rec(i).freight_carrier_code) IS NOT NULL) THEN
           -- 2008/09/12 TE080_930指摘#37 Del Start --------------------------------------
+          -- 2010/02/02 本番障害#1322 MOD Start ----------------------------------------
           -- 2008/09/12 TE080_930指摘#37 Add Start --------------------------------------
           -- 運送業者≠NULLかつ運賃区分=ONの場合のみチェックします。
-          IF ((TRIM(gr_interface_info_rec(i).freight_carrier_code) IS NOT NULL) AND
-              (gr_interface_info_rec(i).freight_charge_class = gv_include_exclude_1)) THEN
+          --IF ((TRIM(gr_interface_info_rec(i).freight_carrier_code) IS NOT NULL) AND
+          --    (gr_interface_info_rec(i).freight_charge_class = gv_include_exclude_1)) THEN
           -- 2008/09/12 TE080_930指摘#37 Add End ----------------------------------------
+          -- 運賃区分=ONの場合または、運賃区分=OFFで運送業者≠NULLの場合チェックします。
+          IF ((NVL(gr_interface_info_rec(i).freight_charge_class, '0') = gv_include_exclude_1)
+            OR ((TRIM(gr_interface_info_rec(i).freight_carrier_code) IS NOT NULL)
+              AND (NVL(gr_interface_info_rec(i).freight_charge_class, '0') = gv_include_exclude_0))) THEN
+          -- 2010/02/02 本番障害#1322 MOD End ----------------------------------------
 --
             -- マスタチェック[運送業者]
             IF (lt_eos_data_type = gv_eos_data_cd_220) THEN     -- 移動出庫
@@ -8109,11 +8116,17 @@ AS
           ---- 運送業者≠NULLの場合のみチェックします。
           --IF (TRIM(gr_interface_info_rec(i).freight_carrier_code) IS NOT NULL) THEN
           -- 2008/09/12 TE080_930指摘#37 Del End ------------------------------------
+          -- 2010/02/02 本番障害#1322 MOD Start ----------------------------------------
           -- 2008/09/12 TE080_930指摘#37 Add Start ----------------------------------
           -- 運送業者≠NULLかつ運賃区分=ONの場合のみチェックします。
-          IF ((TRIM(gr_interface_info_rec(i).freight_carrier_code) IS NOT NULL) AND
-              (gr_interface_info_rec(i).freight_charge_class = gv_include_exclude_1)) THEN
+          --IF ((TRIM(gr_interface_info_rec(i).freight_carrier_code) IS NOT NULL) AND
+          --    (gr_interface_info_rec(i).freight_charge_class = gv_include_exclude_1)) THEN
           -- 2008/09/12 TE080_930指摘#37 Add End ------------------------------------
+          -- 運賃区分=ONの場合または、運賃区分=OFFで運送業者≠NULLの場合チェックします。
+          IF ((NVL(gr_interface_info_rec(i).freight_charge_class, '0') = gv_include_exclude_1)
+            OR ((TRIM(gr_interface_info_rec(i).freight_carrier_code) IS NOT NULL)
+              AND (NVL(gr_interface_info_rec(i).freight_charge_class, '0') = gv_include_exclude_0))) THEN
+          -- 2010/02/02 本番障害#1322 MOD End ----------------------------------------
 --
             -- マスタチェック[運送業者]
             SELECT COUNT(xcv.party_number) item_cnt
