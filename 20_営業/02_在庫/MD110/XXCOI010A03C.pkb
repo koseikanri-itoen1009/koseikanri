@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCOI010A03C(body)
  * Description      : VDコラムマスタHHT連携
  * MD.050           : VDコラムマスタHHT連携 MD050_COI_010_A03
- * Version          : 1.7
+ * Version          : 1.8
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -36,6 +36,7 @@ AS
  *  2011/05/12    1.5   H.Sasaki         [E_本稼動_07319]一顧客の重複情報を排除
  *  2011/10/03    1.6   Y.Horikawa       [E_本稼動_08440]HHT2次開発（販売予測情報連携）
  *  2012/01/17    1.7   Y.Horikawa       [E_本稼動_08919]HHT2次開発（販売予測情報連携）追加対応：次回補充の出力制御対応
+ *  2012/02/20    1.8   Y.Horikawa       [E_本稼動_09140]販売予測算出時にコラム変更日を考慮するように変更
  *
  *****************************************************************************************/
 --
@@ -1211,6 +1212,13 @@ AS
     -- 納品日５が販売予測に利用可能か判断
     IF (it_xmvc_tbl_rec.dlv_date_5 > ld_usable_min_dlv_date) THEN
       ld_past_dlv_date := it_xmvc_tbl_rec.dlv_date_5;
+-- 2012/02/20 V1.8 Add Start =======================================================================
+    ELSIF (it_xmvc_tbl_rec.dlv_date_5 IS NULL) THEN
+      IF (it_xmvc_tbl_rec.column_change_date > ld_usable_min_dlv_date) THEN
+        -- 納品日５ の設定がなく、コラム変更日が利用可能である場合
+        ld_past_dlv_date := it_xmvc_tbl_rec.column_change_date;
+      END IF;
+-- 2012/02/20 V1.8 Add End =======================================================================
     END IF;
 --
     -- 稼働日日数
@@ -1230,12 +1238,18 @@ AS
     --
     -- 補充指示特定キー等の決定
     --
-    IF ((it_xmvc_tbl_rec.column_change_date IS NOT NULL) AND (it_xmvc_tbl_rec.dlv_date_2 IS NULL)) THEN
+-- 2012/02/20 V1.8 Mod Start =======================================================================
+--    IF ((it_xmvc_tbl_rec.column_change_date IS NOT NULL) AND (it_xmvc_tbl_rec.dlv_date_2 IS NULL)) THEN
+    IF ((it_xmvc_tbl_rec.column_change_date IS NOT NULL) AND (it_xmvc_tbl_rec.dlv_date_1 IS NULL)) THEN
+-- 2012/02/20 V1.8 Mod End   =======================================================================
       -- コラム替え時
       lv_supply_inst_specific_cd := cv_change_column;
       ln_supply_instruction_pct := cn_default_supply_inst_pct;
 
-    ELSIF (ld_dlv_date2 IS NULL) THEN
+-- 2012/02/20 V1.8 Mod Start =======================================================================
+--    ELSIF (ld_dlv_date2 IS NULL) THEN
+    ELSIF ((it_xmvc_tbl_rec.column_change_date IS NULL) AND (ld_dlv_date2 IS NULL)) THEN
+-- 2012/02/20 V1.8 Mod End   =======================================================================
       -- 販売予測不可（納品実績が2回以上無し）
       lv_supply_inst_specific_cd := cv_unpredictable;
       ln_supply_instruction_pct := cn_default_supply_inst_pct;
