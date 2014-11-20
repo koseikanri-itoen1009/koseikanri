@@ -8,7 +8,7 @@ AS
  * Description      : 生産物流(計画)
  * MD.050           : 計画・移動・在庫・販売計画/引取計画 T_MD050_BPO100
  * MD.070           : 計画・移動・在庫・販売計画/引取計画 T_MD070_BPO10A
- * Version          : 1.24
+ * Version          : 1.25
  *
  * Program List
  * -------------------------------- ----------------------------------------------------------
@@ -111,6 +111,7 @@ AS
  *  2009/04/16   1.22 Oracle 椎名 昭圭   本番#1407対応
  *  2009/05/19   1.23 Oracle 丸下        本番#1437対応
  *  2009/05/20   1.24 Oracle 丸下        本番#1341対応
+ *  2009/10/08   1.25 Oracle 吉元 強樹   本番#1648対応
  *****************************************************************************************/
 --
 --#######################  固定グローバル定数宣言部 START   #######################
@@ -1492,11 +1493,16 @@ AS
       -- 顧客IDが存在しない場合はエラーとする
       SELECT COUNT(cpv.cust_account_id)
       INTO   ln_select_count
-      FROM   xxcmn_parties2_v       cpv
+-- 2009/10/08 v1.25 T.Yoshimoto Mod Start 本番#1648
+      --FROM   xxcmn_parties2_v       cpv
+      FROM   xxcmn_parties_v       cpv
+-- 2009/10/08 v1.25 T.Yoshimoto Mod End 本番#1648
       WHERE  cpv.account_number      =  iv_account_number
         AND  cpv.customer_class_code =  gv_custmer_class_code_kyoten
-        AND  cpv.start_date_active  <= gd_sysdate_yyyymmdd
-        AND  cpv.end_date_active    >= gd_sysdate_yyyymmdd
+-- 2009/10/08 v1.25 T.Yoshimoto Del Start 本番#1648
+        --AND  cpv.start_date_active  <= gd_sysdate_yyyymmdd
+        --AND  cpv.end_date_active    >= gd_sysdate_yyyymmdd
+-- 2009/10/08 v1.25 T.Yoshimoto Del End 本番#1648
         AND  ROWNUM                  = 1;
 --
     -- 拠点が妥当でない(存在しない)場合の後処理
