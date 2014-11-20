@@ -7,7 +7,7 @@ AS
  * Description      : 入庫依頼表
  * MD.050           : 引当/配車(帳票) T_MD050_BPO_620
  * MD.070           : 入庫依頼表 T_MD070_BPO_62D
- * Version          : 1.3
+ * Version          : 1.5
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -29,6 +29,8 @@ AS
  *  2008/06/23    1.2   Yoshikatu Shindou 配送区分情報VIEWのリレーションを外部結合に変更
  *                                         (システムテスト不具合#228)
  *  2008/07/02    1.3   Satoshi Yunba    禁則文字対応
+ *  2008/07/10    1.4   Akiyoshi Shiina  変更要求対応#92
+ *  2008/07/11    1.5   Masayoshi Uehara ST不具合#441対応
  *
  *****************************************************************************************/
 --
@@ -202,7 +204,10 @@ AS
     ,delivery_no            xmrih.delivery_no%TYPE            -- 配送No
     ,shipping_method_code   xmrih.shipping_method_code%TYPE   -- 配送区分
     ,shipping_method_name   xsmv.ship_method_meaning%TYPE     -- 配送区分（名称）
-    ,career_id              xmrih.career_id%TYPE              -- 運送業者
+-- 2008/07/10 A.Shiina v1.4 UPDATA Start
+--    ,career_id              xmrih.career_id%TYPE              -- 運送業者
+    ,freight_carrier_code   xmrih.freight_carrier_code%TYPE     -- 運送業者
+-- 2008/07/10 A.Shiina v1.4 UPDATA End
     ,career_name            xcv.party_name%TYPE               -- 運送業者名称
     ,shipped_locat_code     xmrih.shipped_locat_code%TYPE     -- 出庫元
     ,shipped_locat_name     xilv2.description%TYPE            -- 出庫元(名称)
@@ -222,6 +227,10 @@ AS
     ,num_qty                NUMBER                            -- 入数
     ,quantity               NUMBER                            -- 数量
     ,conv_unit              VARCHAR2(3)                       -- 入出庫換算単位
+-- 2008/07/10 A.Shiina v1.4 ADD Start
+    ,freight_charge_code    xmrih.freight_charge_class%TYPE   -- 運賃区分(コード)
+    ,complusion_output_kbn  xcv.complusion_output_code%TYPE   -- 強制出力区分
+-- 2008/07/10 A.Shiina v1.4 ADD End
   );
   type_report_data      rec_report_data;
   TYPE list_report_data IS TABLE OF rec_report_data INDEX BY BINARY_INTEGER ;
@@ -242,6 +251,13 @@ AS
   gd_notif_date_from    DATE;                 -- 確定ブロック実施日時_FROM
   gd_notif_date_to      DATE;                 -- 確定ブロック実施日時_TO
 --
+-- 2008/07/10 A.Shiina v1.4 Add Start
+  papf                    per_all_people_f%ROWTYPE; -- 従業員マスタ
+--
+  gv_employee_kbn         papf.attribute3%TYPE;     -- 従業員区分
+  gv_purchase_code        papf.attribute4%TYPE;     -- 仕入先コード
+--
+-- 2008/07/10 A.Shiina v1.4 Add End
   /**********************************************************************************
    * Procedure Name   : prc_initialize
    * Description      : 初期処理
@@ -285,11 +301,29 @@ AS
     -- ===============================================
     gd_common_sysdate := SYSDATE ;    -- システム日付
 --
+-- 2008/07/10 A.Shiina v1.4 Add Start
+    -- ====================================================
+    -- ユーザー情報取得
+    -- ====================================================
+    SELECT  papf.attribute3       -- 従業員区分
+           ,papf.attribute4       -- 仕入先コード
+    INTO    gv_employee_kbn
+           ,gv_purchase_code
+    FROM    fnd_user              fu        -- ユーザーマスタ
+           ,per_all_people_f      papf      -- 従業員マスタ
+    WHERE   fu.user_id            =  FND_GLOBAL.USER_ID
+    AND     papf.person_id        =  fu.employee_id
+    ;
+--
+-- 2008/07/10 A.Shiina v1.4 Add End
     -- ====================================================
     -- パラメータチェック
     -- ====================================================
     -- 予定/確定区分チェック
-    IF (gt_param.plan_decide_kbn = gc_plan_decide_d) THEN
+-- 2008/07/11 M.Uehara v1.5 Mod start
+--    IF (gt_param.plan_decide_kbn = gc_plan_decide_d) THEN
+    IF (gt_param.plan_decide_kbn = gc_plan_decide_d AND gv_employee_kbn = gc_user_kbn_inside) THEN
+-- 2008/07/11 M.Uehara v1.5 Mod end
       IF (gt_param.notif_date IS NULL) THEN
         -- メッセージセット
         lv_errmsg := xxcmn_common_pkg.get_msg( gc_application_wsh
@@ -416,7 +450,10 @@ AS
             ,xmrih.delivery_no             AS  delivery_no               -- 配送No
             ,xmrih.shipping_method_code    AS  shipping_method_code      -- 配送区分
             ,xsmv.ship_method_meaning      AS  shipping_method_name      -- 配送区分(名称)
-            ,xmrih.career_id               AS  career_id                 -- 運送業者
+-- 2008/07/10 A.Shiina v1.4 UPDATA Start
+--            ,xmrih.career_id               AS  career_id                 -- 運送業者
+            ,xmrih.freight_carrier_code    AS  freight_carrier_code      -- 運送業者
+-- 2008/07/10 A.Shiina v1.4 UPDATA End
             ,xcv.party_name                AS  career_name               -- 運送業者名称
             ,xmrih.shipped_locat_code      AS  shipped_locat_code        -- 出庫元
             ,xilv2.description             AS  description_out           -- 出庫元(名称)
@@ -493,6 +530,10 @@ AS
               ) THEN ximv.conv_unit
               ELSE ximv.item_um
              END                           AS  conv_unit                 --入出庫換算単位
+-- 2008/07/10 A.Shiina v1.4 ADD Start
+            ,xmrih.freight_charge_class    AS freight_charge_code        -- 運賃区分
+            ,xcv.complusion_output_code    AS complusion_output_kbn      -- 強制出力区分
+-- 2008/07/10 A.Shiina v1.4 ADD End
       FROM
              xxwsh_carriers_schedule        xcs       -- 配車配送計画(アドオン)
             ,xxinv_mov_req_instr_headers    xmrih     -- 移動依頼/指示ヘッダ（アドオン）
@@ -877,8 +918,36 @@ AS
         prcsub_set_xml_data('delivery_no'      , gt_report_data(i).delivery_no) ;
         prcsub_set_xml_data('delivery_kbn'     , gt_report_data(i).shipping_method_code) ;
         prcsub_set_xml_data('delivery_nm'      , gt_report_data(i).shipping_method_name) ;
-        prcsub_set_xml_data('carrier_cd'       , gt_report_data(i).career_id) ;
+-- 2008/07/10 A.Shiina v1.4 ADD Start
+       -- 以下の条件の場合、運送業者情報を表示する。
+       -- ・従業員区分が'内部'の場合
+       -- ・従業員区分が'外部'で、仕入先コードが設定されている場合（倉庫業者の場合）
+       -- ・従業員区分が'外部'で、｢運賃区分＝対象｣または｢強制出力フラグ＝対象｣の場合
+       IF (
+            (gv_employee_kbn = gc_user_kbn_inside)
+            OR
+            (
+              (gv_employee_kbn = gc_user_kbn_outside)
+                AND (
+                      (gv_purchase_code IS NOT NULL)
+                      OR
+                      (
+                        (gt_report_data(i).freight_charge_code = '1')
+                        OR
+                        (gt_report_data(i).complusion_output_kbn = '1')
+                      )
+                    )
+            )
+          ) THEN
+-- 2008/07/10 A.Shiina v1.4 ADD End
+-- 2008/07/10 A.Shiina v1.4 UPDATA Start
+--        prcsub_set_xml_data('carrier_cd'       , gt_report_data(i).career_id) ;
+        prcsub_set_xml_data('carrier_cd'       , gt_report_data(i).freight_carrier_code) ;
+-- 2008/07/10 A.Shiina v1.4 UPDATA End
         prcsub_set_xml_data('carrier_nm'       , gt_report_data(i).career_name) ;
+-- 2008/07/10 A.Shiina v1.4 ADD Start
+       END IF;
+-- 2008/07/10 A.Shiina v1.4 ADD End
         prcsub_set_xml_data('lg_move_info') ;
       END IF ;
 --
@@ -1289,4 +1358,3 @@ AS
 --
 END xxwsh620003c;
 /
-
