@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCOS001A07C (body)
  * Description      : 入出庫一時表、納品ヘッダ・明細テーブルのデータの抽出を行う
  * MD.050           : VDコラム別取引データ抽出 (MD050_COS_001_A07)
- * Version          : 1.14
+ * Version          : 1.15
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -42,6 +42,7 @@ AS
  *  2009/08/10    1.12  N.Maeda          [0000425]PT対応
  *  2009/09/04    1.13  N.Maeda          [0001211]消費税関連項目取得基準日修正
  *  2009/11/27    1.14  K.Atsushiba      [E_本稼動_00147]PT対応
+ *  2010/02/03    1.15  N.Maeda          [E_本稼動_01441]入出庫データ連携時VDコラム取引用ヘッダ作成条件修正
  *
  *****************************************************************************************/
 --
@@ -1513,6 +1514,10 @@ AS
 --****************************** 2009/04/22 1.7 T.Kitajima ADD START ******************************--
     lt_input_class         xxcos_vd_column_headers.input_class%TYPE;                   -- 入力区分
 --****************************** 2009/04/22 1.7 T.Kitajima ADD  END  ******************************--
+-- ************ 2010/02/03 1.15 N.Maeda MOD START ************ --
+    lt_next_index_customer xxcos_vd_column_headers.customer_number%TYPE;               -- ヘッダ作成判定用顧客コード
+    lv_next_form           VARCHAR(3);                                                 -- ヘッダ作成判定用伝票区分による形態
+-- ************ 2010/02/03 1.15 N.Maeda MOD  END  ************ --
     ln_inv_header_num      NUMBER DEFAULT  '1';                                        -- 入出庫ヘッダ件数ナンバー
     ln_inv_lines_num       NUMBER DEFAULT  '1';                                        -- 入出庫明細件数ナンバー
     ln_line_no             NUMBER DEFAULT  '1';                                        -- 行No.(HHT)
@@ -1787,6 +1792,28 @@ AS
       ln_line_no := ln_line_no + 1;                                -- 行No.(HHT)更新
       ln_inv_lines_num := ln_inv_lines_num + 1;                    -- 入出庫明細件数ナンバー更新
 --
+-- ************ 2010/02/03 1.15 N.Maeda ADD START ************ --
+--
+      -- 最終レコードでなければ次顧客情報を取得します。
+      IF ( inv_no != gn_inv_target_cnt ) THEN
+        --== 次データ出庫側、入庫側判定 ==--
+        FOR i IN 1..gt_qck_invoice_type.COUNT LOOP
+          IF ( gt_qck_invoice_type(i).invoice_type = gt_inv_data(inv_no + 1).invoice_type ) THEN
+            lv_next_form   := gt_qck_invoice_type(i).form;     -- 伝票区分による形態をセット
+            EXIT;
+          END IF;
+        END LOOP;
+--
+        --== 顧客コードセット判定 ==--
+        IF ( lv_next_form = cv_tkn_out ) THEN         -- 出庫側の場合
+          lt_next_index_customer := gt_inv_data(inv_no + 1).out_cus_code;
+        ELSIF ( lv_next_form = cv_tkn_in ) THEN       -- 入庫側の場合
+          lt_next_index_customer := gt_inv_data(inv_no + 1).in_cus_code;
+        END IF;
+      END IF;
+--
+-- ************ 2010/02/03 1.15 N.Maeda ADD  END  ************ --
+--
       IF ( inv_no = gn_inv_target_cnt ) THEN    -- ループが最後の場合
 --
         -- ヘッダ対象件数カウントアップ
@@ -1813,7 +1840,12 @@ AS
         ln_inv_header_num := ln_inv_header_num + 1;                    -- 入出庫ヘッダ件数ナンバー更新
         lv_order_no_flag  := cv_one;                                   -- 受注No.(HHT)取得フラグ更新
 --
-      ELSIF ( lt_invoice_no != gt_inv_data(inv_no + 1).invoice_no ) THEN
+-- ************ 2010/02/03 1.15 N.Maeda MOD START ************ --
+--      ELSIF ( lt_invoice_no != gt_inv_data(inv_no + 1).invoice_no ) THEN
+      ELSIF ( lt_invoice_no != gt_inv_data(inv_no + 1).invoice_no )
+         OR ( lt_base_code  != gt_inv_data(inv_no + 1).base_code )
+         OR ( lt_customer_number != lt_next_index_customer ) THEN
+-- ************ 2010/02/03 1.15 N.Maeda MOD  END  ************ --
 --
         -- ヘッダ対象件数カウントアップ
         gt_tr_count := gt_tr_count + 1;
