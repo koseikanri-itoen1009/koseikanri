@@ -1,7 +1,7 @@
 /*============================================================================
 * ファイル名 : XxcsoQuoteConstants
 * 概要説明   : 帳合問屋用見積入力画面共通固定値クラス
-* バージョン : 1.4
+* バージョン : 1.5
 *============================================================================
 * 修正履歴
 * 日付       Ver. 担当者       修正内容
@@ -12,6 +12,7 @@
 * 2009-06-16 1.2  SCS阿部大輔  【T1_1257】マージン額の変更修正
 * 2009-07-23 1.3  SCS阿部大輔  【0000806】マージン額／マージン率の計算対象変更
 * 2011-11-14 1.4  SCSK桐生和幸 【E_本稼動_08312】問屋見積画面の改修①
+* 2012-09-10 1.5  SCSK穆宏旭   【E_本稼動_09945】見積書の照会方法の変更対応
 *============================================================================
 */
 package itoen.oracle.apps.xxcso.xxcso017002j.util;
@@ -39,6 +40,9 @@ public class XxcsoQuoteConstants
   public static final String TRANDIV_COPY        = "COPY";
   public static final String TRANDIV_REVISION_UP = "REVISION_UP";
   public static final String TRANDIV_CREATE      = "CREATE";
+  // 2012-09-10 Ver1.5 [E_本稼動_09945] Add Start
+  public static final String TRANDIV_READ_ONLY = "READ_ONLY";
+  // 2012-09-10 Ver1.5 [E_本稼動_09945] Add End
 
   /*****************************************************************************
    * URLパラメータ:戻り先画面名称
