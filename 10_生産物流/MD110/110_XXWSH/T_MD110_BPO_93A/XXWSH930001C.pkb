@@ -7,7 +7,7 @@ AS
  * Description      : 生産物流(引当、配車)
  * MD.050           : 出荷・移動インタフェース         T_MD050_BPO_930
  * MD.070           : 外部倉庫入出庫実績インタフェース T_MD070_BPO_93A
- * Version          : 1.12
+ * Version          : 1.13
  *
  * Program List
  * ------------------------------------ -------------------------------------------------
@@ -84,6 +84,7 @@ AS
  *                                       I_S_192対応
  *                                       T_TE110_BPO_280#363対応
  *                                       課題#32,内部変更#173,174
+ *  2008/08/01    1.13 Oracle 椎名 昭圭  ｢出荷先｣マスタチェックエラーメッセージ項目名修正
  *****************************************************************************************/
 --
 --#######################  固定グローバル定数宣言部 START   #######################
@@ -278,6 +279,9 @@ AS
   gv_param1_token07_nm           CONSTANT VARCHAR2(30) := '受注品目';
   gv_param1_token08_nm           CONSTANT VARCHAR2(30) := '入庫倉庫';
   gv_param1_token09_nm           CONSTANT VARCHAR2(30) := '配送区分';
+--********** 2008/08/01 ********** ADD    START ***
+  gv_param1_token10_nm           CONSTANT VARCHAR2(30) := '出荷先';
+--********** 2008/08/01 ********** ADD    END   ***
   gv_table_token01_nm            CONSTANT VARCHAR2(30) := '受注ヘッダ(アドオン)';
   gv_table_token02_nm            CONSTANT VARCHAR2(30) := '移動依頼/指示ヘッダ(アドオン)';
   gv_date_para_1                 CONSTANT VARCHAR2(6)  := '出荷日';
@@ -5532,7 +5536,10 @@ AS
                            gv_msg_kbn          -- 'XXWSH'
                           ,gv_msg_93a_010  -- マスタチェックエラーメッセージ
                           ,gv_param1_token
-                          ,gv_param1_token05_nm                           --エラー項目名
+--********** 2008/08/01 ********** MODIFY START ***
+--                          ,gv_param1_token05_nm                           --エラー項目名
+                          ,gv_param1_token10_nm                           --エラー項目名
+--********** 2008/08/01 ********** MODIFY START ***
                           ,gv_param2_token
                           ,gr_interface_info_rec(i).delivery_no           --IF_H.配送No
                           ,gv_param3_token

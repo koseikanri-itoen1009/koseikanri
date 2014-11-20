@@ -9387,8 +9387,8 @@ BEGIN DESC_FLEX "XXWSH" "$SRS$.XXWSH400007C"
       DISPLAY_SIZE = "30"
       MAXIMUM_DESCRIPTION_LEN = "50"
       CONCATENATION_DESCRIPTION_LEN = "25"
-      FORM_LEFT_PROMPT = "出庫形態ID"
-      FORM_ABOVE_PROMPT = "出庫形態ID"
+      FORM_LEFT_PROMPT = "出庫形態"
+      FORM_ABOVE_PROMPT = "出庫形態"
     END DFF_SEGMENT
     
     BEGIN DFF_SEGMENT "iv_deliver_from" "ATTRIBUTE2"
@@ -9602,7 +9602,7 @@ BEGIN PROGRAM "XXWSH400007C" "XXWSH"
   SRS_FLEX = "XXWSH" "$SRS$.XXWSH400007C"
   AUTO_ANNOTATION =
  "/**\n\
-  * @param iv_order_type_id 出庫形態ID\n\
+  * @param iv_order_type_id 出庫形態\n\
   * @rep:paraminfo {@rep:type XXWSH_ORD_TYPE_SHIP_ONLY} {@rep:displayed Y}\n\
   * @param iv_deliver_from 出荷元\n\
   * @rep:paraminfo {@rep:type XXWSH_ITEM_LOCATION_CODE1} {@rep:displayed Y}\n\
@@ -9668,8 +9668,8 @@ BEGIN DESC_FLEX "XXWSH" "$SRS$.XXWSH400007C_01"
       DISPLAY_SIZE = "30"
       MAXIMUM_DESCRIPTION_LEN = "50"
       CONCATENATION_DESCRIPTION_LEN = "25"
-      FORM_LEFT_PROMPT = "出庫形態ID"
-      FORM_ABOVE_PROMPT = "出庫形態ID"
+      FORM_LEFT_PROMPT = "出庫形態"
+      FORM_ABOVE_PROMPT = "出庫形態"
       DESCRIPTION = "出庫形態"
     END DFF_SEGMENT
     
@@ -9966,8 +9966,8 @@ BEGIN DESC_FLEX "XXWSH" "$SRS$.XXWSH400007C_02"
       DISPLAY_SIZE = "30"
       MAXIMUM_DESCRIPTION_LEN = "50"
       CONCATENATION_DESCRIPTION_LEN = "25"
-      FORM_LEFT_PROMPT = "出庫形態ID"
-      FORM_ABOVE_PROMPT = "出庫形態ID"
+      FORM_LEFT_PROMPT = "出庫形態"
+      FORM_ABOVE_PROMPT = "出庫形態"
       DESCRIPTION = "出庫形態"
     END DFF_SEGMENT
     
@@ -10310,8 +10310,8 @@ BEGIN DESC_FLEX "XXWSH" "$SRS$.XXWSH400007C_03"
       DISPLAY_SIZE = "30"
       MAXIMUM_DESCRIPTION_LEN = "50"
       CONCATENATION_DESCRIPTION_LEN = "25"
-      FORM_LEFT_PROMPT = "出庫形態ID"
-      FORM_ABOVE_PROMPT = "出庫形態ID"
+      FORM_LEFT_PROMPT = "出庫形態"
+      FORM_ABOVE_PROMPT = "出庫形態"
       DESCRIPTION = "出庫形態"
     END DFF_SEGMENT
     
@@ -10604,8 +10604,8 @@ BEGIN DESC_FLEX "XXWSH" "$SRS$.XXWSH400007C_04"
       DISPLAY_SIZE = "30"
       MAXIMUM_DESCRIPTION_LEN = "50"
       CONCATENATION_DESCRIPTION_LEN = "25"
-      FORM_LEFT_PROMPT = "出庫形態ID"
-      FORM_ABOVE_PROMPT = "出庫形態ID"
+      FORM_LEFT_PROMPT = "出庫形態"
+      FORM_ABOVE_PROMPT = "出庫形態"
       DESCRIPTION = "出庫形態"
     END DFF_SEGMENT
     
@@ -13226,8 +13226,8 @@ BEGIN DESC_FLEX "XXWSH" "$SRS$.XXWSH600001C"
       DISPLAY_SIZE = "4"
       MAXIMUM_DESCRIPTION_LEN = "50"
       CONCATENATION_DESCRIPTION_LEN = "25"
-      FORM_LEFT_PROMPT = "運動業者ID"
-      FORM_ABOVE_PROMPT = "運動業者ID"
+      FORM_LEFT_PROMPT = "運送業者"
+      FORM_ABOVE_PROMPT = "運送業者"
       DESCRIPTION = "運送業者"
     END DFF_SEGMENT
     
