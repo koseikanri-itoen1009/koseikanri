@@ -7,7 +7,7 @@ AS
  * Description      : ïWèÄå¥âøì‡ñÛï\
  * MD.050/070       : åééüÅYêÿèàóùí†ï[Issue1.0 (T_MD050_BPO_770)
  *                    åééüÅYêÿèàóùí†ï[Issue1.0 (T_MD070_BPO_77J)
- * Version          : 1.18
+ * Version          : 1.19
  *
  * Program List
  * -------------------------- ----------------------------------------------------------
@@ -48,6 +48,7 @@ AS
  *  2008/12/06    1.16  T.Miyata         ñ{î‘#498ëŒâû
  *  2008/12/07    1.17  N.Yoshida        ñ{î‘#496ëŒâû
  *  2008/12/11    1.18  A.Shiina         ñ{î‘#580ëŒâû
+ *  2008/12/13    1.19  T.Ohashi         ñ{î‘#580ëŒâû
  *
  *****************************************************************************************/
 --
@@ -3469,11 +3470,13 @@ AS
     || '                                    ,''X932'')'
     || '  AND    xrpm.new_div_account    = ''' || ir_param.rcv_pay_div || ''''
     || '  AND    xrpm.break_col_10       IS NOT NULL'
-    || '  AND    xrpm.rcv_pay_div       = CASE'
-    || '                                    WHEN itc.trans_qty >= 0 THEN'
-    || '                                         ''' || cv_rcv_pay_div_plus || ''''
-    || '                                    ELSE ''' || cv_rcv_pay_div_minus || ''''
-    || '                                  END'
+-- 2008/12/13 v1.19 T.Ohashi mod start
+--    || '  AND    xrpm.rcv_pay_div       = CASE'
+--    || '                                    WHEN itc.trans_qty >= 0 THEN'
+--    || '                                         ''' || cv_rcv_pay_div_plus || ''''
+--    || '                                    ELSE ''' || cv_rcv_pay_div_minus || ''''
+--    || '                                  END'
+-- 2008/12/13 v1.19 T.Ohashi mod end
     ;
 --
     lv_select504_09_2 :=
@@ -3490,7 +3493,10 @@ AS
     || '        ,SUBSTR(mcb3.segment1, 1, 3)    crowd_low'      --è¨åQ
     || '        ,SUBSTR(mcb3.segment1, 1, 2)    crowd_mid'      --íÜåQ
     || '        ,SUBSTR(mcb3.segment1, 1, 1)    crowd_high'     --ëÂåQ
-    || '        ,itp.trans_qty            trans_qty'            -- êîó 
+-- 2008/12/13 v1.19 T.Ohashi mod start
+--    || '        ,itp.trans_qty            trans_qty'            -- êîó 
+    || '        ,itp.trans_qty * TO_NUMBER(xrpm.rcv_pay_div) trans_qty'            -- êîó 
+-- 2008/12/13 v1.19 T.Ohashi mod end
     || '  FROM   ic_tran_pnd               itp'
     || '        ,rcv_shipment_lines        rsl'
     || '        ,oe_order_headers_all      ooha'
@@ -3567,7 +3573,10 @@ AS
     || '        ,SUBSTR(mcb3.segment1, 1, 3)    crowd_low'      --è¨åQ
     || '        ,SUBSTR(mcb3.segment1, 1, 2)    crowd_mid'      --íÜåQ
     || '        ,SUBSTR(mcb3.segment1, 1, 1)    crowd_high'     --ëÂåQ
-    || '        ,itp.trans_qty            trans_qty'            -- êîó 
+-- 2008/12/13 v1.19 T.Ohashi mod start
+--    || '        ,itp.trans_qty            trans_qty'            -- êîó 
+    || '        ,itp.trans_qty * TO_NUMBER(xrpm.rcv_pay_div) trans_qty'            -- êîó 
+-- 2008/12/13 v1.19 T.Ohashi mod end
     || '  FROM   ic_tran_pnd               itp'
     || '        ,wsh_delivery_details      wdd'
     || '        ,oe_order_headers_all      ooha'

@@ -7,7 +7,7 @@ AS
  * Description      : 受払その他実績リスト
  * MD.050/070       : 月次〆切処理帳票Issue1.0 (T_MD050_BPO_770)
  *                    月次〆切処理帳票Issue1.0 (T_MD070_BPO_77D)
- * Version          : 1.17
+ * Version          : 1.18
  *
  * Program List
  * -------------------------- ----------------------------------------------------------
@@ -52,6 +52,7 @@ AS
  *  2008/12/04    1.15  T.Miyata         本番#454対応
  *  2008/12/08    1.16  T.Ohashi         本番障害数値あわせ対応
  *  2008/12/11    1.17  N.Yoshida        本番障害580対応
+ *  2008/12/13    1.18  T.Ohashi         本番障害580対応
  *****************************************************************************************/
 --
 --#######################  固定グローバル定数宣言部 START   #######################
@@ -4633,13 +4634,16 @@ AS
             ,iimb.attribute15           cost_mng_clss
             ,iimb.lot_ctl               lot_ctl
             ,xlc.unit_ploce             actual_unit_price
+-- 2008/12/13 v1.18 T.Ohashi mod start
 -- 2008/12/11 v1.17 UPDATE START
 -- 2008/11/11 v1.11 UPDATE START
 --            ,trn.trans_qty * TO_NUMBER(xrpm.rcv_pay_div) trans_qty
 --            ,ABS(trn.trans_qty) * TO_NUMBER(gc_rcv_pay_div_adj) trans_qty
-            ,NVL(trn.trans_qty,0)       trans_qty
+--            ,NVL(trn.trans_qty,0)       trans_qty
+            ,NVL(trn.trans_qty,0) * TO_NUMBER(xrpm.rcv_pay_div) trans_qty
 -- 2008/11/11 v1.11 UPDATE END
 -- 2008/12/11 v1.17 UPDATE END
+-- 2008/12/13 v1.18 T.Ohashi mod end
 -- 2008/10/28 v1.11 UPDATE START
 --            ,DECODE(iimb.lot_ctl,gv_lot_n,NULL,ilm.attribute18) lot_desc
             ,DECODE(xrpm.use_div_invent_dis
@@ -9754,13 +9758,16 @@ AS
             ,iimb.attribute15           cost_mng_clss
             ,iimb.lot_ctl               lot_ctl
             ,xlc.unit_ploce             actual_unit_price
+-- 2008/12/13 v1.18 T.Ohashi mod start
 -- 2008/12/11 v1.17 UPDATE START
 -- 2008/11/11 v1.11 UPDATE START
 --            ,trn.trans_qty * TO_NUMBER(xrpm.rcv_pay_div) trans_qty
 --            ,ABS(trn.trans_qty) * TO_NUMBER(gc_rcv_pay_div_adj) trans_qty
-            ,NVL(trn.trans_qty,0)       trans_qty
+--            ,NVL(trn.trans_qty,0)       trans_qty
+            ,NVL(trn.trans_qty,0) * TO_NUMBER(xrpm.rcv_pay_div) trans_qty
 -- 2008/11/11 v1.11 UPDATE END
 -- 2008/12/11 v1.17 UPDATE END
+-- 2008/12/13 v1.18 T.Ohashi mod end
 -- 2008/10/28 v1.11 UPDATE START
 --            ,DECODE(iimb.lot_ctl,gv_lot_n,NULL,ilm.attribute18) lot_desc
             ,DECODE(xrpm.use_div_invent_dis
