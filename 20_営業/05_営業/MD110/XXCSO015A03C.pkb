@@ -8,7 +8,7 @@ AS
  *                      物件の情報を物件マスタに登録します。
  * MD.050           : MD050_自販機-EBSインタフェース：（IN）物件マスタ情報(IB)
  *                    2009/01/13 16:30
- * Version          : 1.7
+ * Version          : 1.8
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -45,6 +45,8 @@ AS
  *  2009-05-07    1.7   Tomoko.Mori      【T1_0439、0530対応】
  *                                       自販機のみ顧客関連情報更新（T1_0439）
  *                                       設置用物件コード不正エラーチェック（T1_0530）
+ *  2009-05-19    1.8   K.Satomura       【T1_0959対応】発注依頼番号を比較チェック不正
+ *                                       【T1_1066対応】T1_0530対応の取消
  *****************************************************************************************/
 --
 --#######################  固定グローバル定数宣言部 START   #######################
@@ -2448,6 +2450,9 @@ AS
     cn_jon_kbn_3             CONSTANT NUMBER := 3;  -- 新台代替
     cn_jon_kbn_4             CONSTANT NUMBER := 4;  -- 旧台代替
     cn_jon_kbn_5             CONSTANT NUMBER := 5;  -- 引揚
+    /* 2009.05.18 K.Satomura T1_0959対応 START */
+    cn_jon_kbn_6             CONSTANT NUMBER := 6;  -- 店内移動
+    /* 2009.05.18 K.Satomura T1_0959対応 END */
     cv_flg_n                 CONSTANT VARCHAR2(1) := 'N';  -- 新古台フラグ
     cv_flg_y                 CONSTANT VARCHAR2(1) := 'Y';  -- 新古台フラグ
     cv_csi_item_instances    CONSTANT VARCHAR2(100) := 'インストールベースマスタ';  
@@ -2464,9 +2469,11 @@ AS
 --
     -- *** ローカル例外 ***
     skip_process_expt       EXCEPTION;
-  /*20090507_mori_T1_0530 START*/
-    shindai_chk_expt       EXCEPTION;
-  /*20090507_mori_T1_0530 END*/
+    /* 2009.05.18 K.Satomura T1_1066対応 START */
+    --/*20090507_mori_T1_0530 START*/
+    --shindai_chk_expt       EXCEPTION;
+    --/*20090507_mori_T1_0530 END*/
+    /* 2009.05.18 K.Satomura T1_1066対応 END */
 --    
   BEGIN
 --
@@ -2501,46 +2508,60 @@ AS
       WHERE  ciins.external_reference = lv_install_code
       ;
       io_inst_base_data_rec.new_old_flg := SUBSTR(lv_new_old_flag, 1, 1);
-    /*20090507_mori_T1_0530 START*/
-      -- 作業区分が「新台設置」、「新台代替」、かつ作業データの物件コード１が
-      -- 物件データの物件コードと一致であり、新古台フラグが'Y'以外である場合、
-      -- 既に存在する新古台以外の物件が新台として連携されているため、エラーとする。
-      IF (
-              (ln_job_kbn = cn_jon_kbn_1 OR ln_job_kbn = cn_jon_kbn_3)
-          AND (lv_install_code = NVL(lv_install_code1, ' '))
-          AND (NVL(io_inst_base_data_rec.new_old_flg, cv_flg_n) <> cv_flg_y)
-         ) THEN
-        RAISE shindai_chk_expt;
-      END IF;
-    /*20090507_mori_T1_0530 END*/
+      /* 2009.05.19 K.Satomur T1_0959,T1_1066対応 START */
+      --/*20090507_mori_T1_0530 START*/
+      ---- 作業区分が「新台設置」、「新台代替」、かつ作業データの物件コード１が
+      ---- 物件データの物件コードと一致であり、新古台フラグが'Y'以外である場合、
+      ---- 既に存在する新古台以外の物件が新台として連携されているため、エラーとする。
+      --IF (
+      --        (ln_job_kbn = cn_jon_kbn_1 OR ln_job_kbn = cn_jon_kbn_3)
+      --    AND (lv_install_code = NVL(lv_install_code1, ' '))
+      --    AND (NVL(io_inst_base_data_rec.new_old_flg, cv_flg_n) <> cv_flg_y)
+      --   ) THEN
+      --  RAISE shindai_chk_expt;
+      --END IF;
+      --/*20090507_mori_T1_0530 END*/
 --
-      IF (lv_po_req_number < lv_last_po_req_number) THEN
-        RAISE shindai_chk_expt;
+      --IF (lv_po_req_number < lv_last_po_req_number) THEN
+      --  RAISE shindai_chk_expt;
+      --END IF;
+--
+      IF (ln_job_kbn IN (cn_jon_kbn_1, cn_jon_kbn_2, cn_jon_kbn_3, cn_jon_kbn_4, cn_jon_kbn_5, cn_jon_kbn_6)) THEN
+      -- 作業区分が１：新台設置、２：旧台設置、３：新台代替、４：旧台代替、５：引揚、６：店内移動の場合
+        IF (lv_po_req_number < lv_last_po_req_number) THEN
+          RAISE skip_process_expt;
+          --
+        END IF;
+        --
       END IF;
+      /* 2009.05.18 K.Satomura T1_0959,T1_1066対応 END */
+
     EXCEPTION
-    /*20090507_mori_T1_0530 START*/
-      -- 新台、新古台以外の物件が新台設置／新台代替として連携された場合
-      WHEN shindai_chk_expt THEN
-        -- エラーメッセージ作成
-        lv_errmsg := xxccp_common_pkg.get_msg(
-                        iv_application  => cv_app_name                            -- アプリケーション短縮名
-                       ,iv_name         => cv_tkn_number_33                       -- メッセージコード
-                       ,iv_token_name1  => cv_tkn_slip_num                        -- トークンコード1
-                       ,iv_token_value1 => io_inst_base_data_rec.slip_no          -- トークン値1
-                       ,iv_token_name2  => cv_tkn_slip_branch_num                 -- トークンコード2
-                       ,iv_token_value2 => io_inst_base_data_rec.slip_branch_no   -- トークン値2
-                       ,iv_token_name3  => cv_tkn_line_num                        -- トークンコード3
-                       ,iv_token_value3 => io_inst_base_data_rec.line_number      -- トークン値3
-                       ,iv_token_name4  => cv_tkn_work_kbn                        -- トークンコード4
-                       ,iv_token_value4 => io_inst_base_data_rec.job_kbn          -- トークン値4
-                       ,iv_token_name5  => cv_tkn_bukken1                         -- トークンコード5
-                       ,iv_token_value5 => io_inst_base_data_rec.install_code1    -- トークン値5
-                       ,iv_token_name6  => cv_tkn_account_num1                    -- トークンコード6
-                       ,iv_token_value6 => io_inst_base_data_rec.account_number1  -- トークン値6
-                     );
-        lv_errbuf := lv_errmsg;
-        RAISE skip_process_expt;
-    /*20090507_mori_T1_0530 END*/
+    /* 2009.05.18 K.Satomura T1_1066対応 START */
+    --/*20090507_mori_T1_0530 START*/
+    --  -- 新台、新古台以外の物件が新台設置／新台代替として連携された場合
+    --  WHEN shindai_chk_expt THEN
+    --    -- エラーメッセージ作成
+    --    lv_errmsg := xxccp_common_pkg.get_msg(
+    --                    iv_application  => cv_app_name                            -- アプリケーション短縮名
+    --                   ,iv_name         => cv_tkn_number_33                       -- メッセージコード
+    --                   ,iv_token_name1  => cv_tkn_slip_num                        -- トークンコード1
+    --                   ,iv_token_value1 => io_inst_base_data_rec.slip_no          -- トークン値1
+    --                   ,iv_token_name2  => cv_tkn_slip_branch_num                 -- トークンコード2
+    --                   ,iv_token_value2 => io_inst_base_data_rec.slip_branch_no   -- トークン値2
+    --                   ,iv_token_name3  => cv_tkn_line_num                        -- トークンコード3
+    --                   ,iv_token_value3 => io_inst_base_data_rec.line_number      -- トークン値3
+    --                   ,iv_token_name4  => cv_tkn_work_kbn                        -- トークンコード4
+    --                   ,iv_token_value4 => io_inst_base_data_rec.job_kbn          -- トークン値4
+    --                   ,iv_token_name5  => cv_tkn_bukken1                         -- トークンコード5
+    --                   ,iv_token_value5 => io_inst_base_data_rec.install_code1    -- トークン値5
+    --                   ,iv_token_name6  => cv_tkn_account_num1                    -- トークンコード6
+    --                   ,iv_token_value6 => io_inst_base_data_rec.account_number1  -- トークン値6
+    --                 );
+    --    lv_errbuf := lv_errmsg;
+    --    RAISE skip_process_expt;
+    --/*20090507_mori_T1_0530 END*/
+    /* 2009.05.18 K.Satomura T1_1066対応 END */
       -- データなし
       WHEN NO_DATA_FOUND THEN
         -- 作業区分が「新台設置」、「新台代替」、かつ作業データの物件コード１が
