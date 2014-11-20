@@ -30,6 +30,7 @@ AS
  *  Date          Ver.  Editor           Description
  * ------------- ----- ---------------- -------------------------------------------------
  *  2012/10/12    1.0   SCSK谷口         新規作成
+ *  2013/02/12    1.1   SCSK中野         「E_本稼動_09967」対応
  *
  *****************************************************************************************/
 --
@@ -233,6 +234,9 @@ AS
     SELECT  xch.contract_header_id    AS  contract_header_id  -- 契約内部ID
            ,xch.contract_number       AS  contract_number     -- 契約番号
            ,xch.lease_company         AS  lease_company       -- リース会社
+-- Add 2013/02/12 Ver1.1 Start
+           ,xch.contract_date         AS  contract_date       -- リース契約日
+-- Add 2013/02/12 Ver1.1 End
            ,xch.payment_frequency     AS  payment_frequency   -- 支払回数
            ,xch.payment_type          AS  payment_type        -- 頻度
            ,xch.lease_start_date      AS  lease_start_date    -- リース開始日
@@ -935,7 +939,9 @@ AS
     -- 「リース契約日」妥当性チェック
     -- ============================================
     -- リース契約日に入力あり
-    IF (gd_param_contract_date IS NOT NULL) THEN
+-- Del 2013/02/12 Ver1.1 Start
+--    IF (gd_param_contract_date IS NOT NULL) THEN
+-- Del 2013/02/12 Ver1.1 End
 --
       -- リース契約日 ＞ 業務日付 の場合、エラー
       IF (gd_param_contract_date > gd_process_date) THEN
@@ -952,7 +958,10 @@ AS
       END IF;
 --
       -- リース契約日 ＞ リース開始日 の場合、エラー
-      IF ( gd_param_contract_date >
+-- Mod 2013/02/12 Ver1.1 Start
+--      IF ( gd_param_contract_date >
+      IF (NVL(gd_param_contract_date, g_cont_hdr_rec.contract_date) >
+-- Mod 2013/02/12 Ver1.1 End
             NVL(gd_param_lease_start_date, g_cont_hdr_rec.lease_start_date) )
       THEN
         lv_errmsg := xxccp_common_pkg.get_msg(
@@ -968,7 +977,10 @@ AS
       END IF;
 --
       -- リース契約日 ＞ 初回支払日 の場合、エラー
-      IF ( gd_param_contract_date >
+-- Mod 2013/02/12 Ver1.1 Start
+--      IF ( gd_param_contract_date >
+      IF (NVL(gd_param_contract_date, g_cont_hdr_rec.contract_date) >
+-- Mod 2013/02/12 Ver1.1 End
             NVL(gd_param_first_payment_date, g_cont_hdr_rec.first_payment_date) )
       THEN
         lv_errmsg := xxccp_common_pkg.get_msg(
@@ -983,16 +995,23 @@ AS
         RAISE global_process_expt;
       END IF;
 --
-    END IF;
+-- Del 2013/02/12 Ver1.1 Start
+--    END IF;
+-- Del 2013/02/12 Ver1.1 End
 --
     -- ============================================
     -- 「初回支払日」妥当性チェック
     -- ============================================
     -- 初回支払日に入力あり
-    IF (gd_param_first_payment_date IS NOT NULL) THEN
+-- Del 2013/02/12 Ver1.1 Start
+--    IF (gd_param_first_payment_date IS NOT NULL) THEN
+-- Del 2013/02/12 Ver1.1 End
 --
       -- 初回支払日 ＞ ２回目支払日 の場合、エラー
-      IF ( gd_param_first_payment_date >
+-- Mod 2013/02/12 Ver1.1 Start
+--      IF ( gd_param_first_payment_date >
+      IF ( NVL(gd_param_first_payment_date, g_cont_hdr_rec.first_payment_date) >
+-- Mod 2013/02/12 Ver1.1 End
             NVL(gd_param_second_payment_date, g_cont_hdr_rec.second_payment_date) )
       THEN
         lv_errmsg := xxccp_common_pkg.get_msg(
@@ -1007,19 +1026,26 @@ AS
         RAISE global_process_expt;
       END IF;
 --
-    END IF;
+-- Del 2013/02/12 Ver1.1 Start
+--    END IF;
+-- Del 2013/02/12 Ver1.1 End
 --
     -- ============================================
     -- 「２回目支払日」妥当性チェック
     -- ============================================
     -- ２回目支払日に入力あり
-    IF (gd_param_second_payment_date IS NOT NULL) THEN
+-- Del 2013/02/12 Ver1.1 Start
+--    IF (gd_param_second_payment_date IS NOT NULL) THEN
+-- Del 2013/02/12 Ver1.1 End
 --
       -- 頻度 ＝ 月の場合
       IF (g_cont_hdr_rec.payment_type = cv_payment_type_month) THEN
 --
         -- ２回目支払日が初回支払日の翌々月以降でエラー
-        IF ( gd_param_second_payment_date >=
+-- Mod 2013/02/12 Ver1.1 Start
+--        IF ( gd_param_second_payment_date >=
+        IF ( NVL(gd_param_second_payment_date, g_cont_hdr_rec.second_payment_date) >=
+-- Mod 2013/02/12 Ver1.1 End
                ADD_MONTHS( NVL(gd_param_first_payment_date, g_cont_hdr_rec.first_payment_date), 2 ) )
         THEN
           lv_errmsg := xxccp_common_pkg.get_msg(
@@ -1036,7 +1062,10 @@ AS
       ELSIF (g_cont_hdr_rec.payment_type = cv_payment_type_year) THEN
 --
         -- ２回目支払日が初回支払日の翌年度以降でエラー
-        IF ( gd_param_second_payment_date >=
+-- Mod 2013/02/12 Ver1.1 Start
+--        IF ( gd_param_second_payment_date >=
+        IF ( NVL(gd_param_second_payment_date, g_cont_hdr_rec.second_payment_date) >=
+-- Mod 2013/02/12 Ver1.1 End
                ADD_MONTHS( NVL(gd_param_first_payment_date, g_cont_hdr_rec.first_payment_date), 12 ) )
         THEN
           lv_errmsg := xxccp_common_pkg.get_msg(
@@ -1050,7 +1079,9 @@ AS
         END IF;
 --
       END IF;
-    END IF;
+-- Del 2013/02/12 Ver1.1 Start
+--    END IF;
+-- Del 2013/02/12 Ver1.1 End
 --
     --==============================================================
     -- メッセージ出力をする必要がある場合は処理を記述
