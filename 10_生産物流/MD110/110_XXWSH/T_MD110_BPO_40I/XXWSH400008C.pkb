@@ -7,7 +7,7 @@ AS
  * Description      : 生産物流（出荷）
  * MD.050           : 出荷依頼 T_MD050_BPO_401
  * MD.070           : 出荷調整表 T_MD070_BPO_40I
- * Version          : 1.4
+ * Version          : 1.5
  *
  * Program List
  * ---------------------------- ----------------------------------------------------------
@@ -44,6 +44,7 @@ AS
  *  2008/06/26    1.2   ToshikazuIshiwata     システムテスト障害対応(#309)
  *  2008/07/02    1.3   Naoki Fukuda          ST不具合対応(#373)
  *  2008/07/02    1.4   Satoshi Yunba         禁則文字対応
+ *  2008/07/23    1.5   Naoki Fukuda          ST不具合対応(#475)
  *
  *****************************************************************************************/
 --
@@ -2175,9 +2176,15 @@ AS
     -- ====================================================
     -- データ抽出
     -- ====================================================
-    SELECT sub3.request_item_code                 AS item_code           -- 品目コード
-          ,sub2.plan_quantity                     AS plan_quantity       -- 計画数
-          ,sub3.confirm_quantity                  AS confirm_quantity    -- 予実数
+    SELECT 
+          -- 2008/07/23 ST不具合対応#475 start
+          -- sub3.request_item_code                 AS item_code           -- 品目コード
+          --,sub2.plan_quantity                     AS plan_quantity       -- 計画数
+          --,sub3.confirm_quantity                  AS confirm_quantity    -- 予実数
+           ximv.item_no                           AS item_code           -- 品目コード
+          ,NVL(sub2.plan_quantity,0)              AS plan_quantity       -- 計画数
+          ,NVL(sub3.confirm_quantity,0)           AS confirm_quantity    -- 予実数
+          -- 2008/07/23 ST不具合対応#475 End
 --
     BULK COLLECT INTO lt_leaf_zensha_data
 --
@@ -2295,10 +2302,12 @@ AS
         sub1.item_code                       = ximv.item_no
     ------------------------------------------------------------------------
     -- フォーキャスト
-    AND sub2.inventory_item_id               = ximv.inventory_item_id
+    --AND sub2.inventory_item_id               = ximv.inventory_item_id  -- 2008/07/23 ST不具合対応#475
+    AND sub2.inventory_item_id(+)              = ximv.inventory_item_id  -- 2008/07/23 ST不具合対応#475
     ------------------------------------------------------------------------
     -- 受注データ
-    AND sub3.request_item_code               = ximv.item_no
+    --AND sub3.request_item_code               = ximv.item_no  -- 2008/07/23 ST不具合対応#475
+    AND sub3.request_item_code(+)            = ximv.item_no    -- 2008/07/23 ST不具合対応#475
     ------------------------------------------------------------------------
     -- OPM品目情報VIEW条件
     AND ximv.start_date_active             <= id_arrival_date
