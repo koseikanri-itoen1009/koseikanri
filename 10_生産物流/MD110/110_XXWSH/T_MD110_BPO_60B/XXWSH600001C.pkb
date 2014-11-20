@@ -7,7 +7,7 @@ AS
  * Description      : 自動配車配送計画作成処理
  * MD.050           : 配車配送計画 T_MD050_BPO_600
  * MD.070           : 自動配車配送計画作成処理 T_MD070_BPO_60B
- * Version          : 1.5
+ * Version          : 1.6
  *
  * Program List
  * ----------------------------- ---------------------------------------------------------
@@ -38,6 +38,7 @@ AS
  *  2008/07/10    1.3  Oracle M.Hokkanji TE080指摘03対応、ヘッダ積載率再計算対応
  *  2008/07/14    1.4  Oracle 山根一浩   仕様変更No.95対応
  *  2008/08/04    1.5  Oracle M.Hokkanji 結合再テスト不具合対応(400TE080_159原因2)ST#513対応
+ *  2008/08/06    1.6  Oracle M.Hokkanji ST不具合493対応
  *****************************************************************************************/
 --
 --#######################  固定グローバル定数宣言部 START   #######################
@@ -8979,13 +8980,22 @@ debug_log(FND_FILE.LOG,'B15_1.2 移動更新件数：'||to_char(lt_upd_req_no_move_tab.
     BEGIN
       DELETE xxwsh_carriers_schedule xch
        WHERE xch.delivery_no IN (
-               SELECT xcst.delivery_no
+-- Ver1.6 M.Hokkanji Start
+--               SELECT xcst.delivery_no
+               SELECT NVL(xcst.delivery_no,xcst.mixed_no)
+-- Ver1.6 M.Hokkanji End
                  FROM xxwsh_carriers_sort_tmp xcst
-                WHERE xcst.delivery_no IS NOT NULL
-                AND NOT EXISTS (
+-- Ver1.6 M.Hokkanji Start
+                  WHERE NOT EXISTS (
+--                WHERE xcst.delivery_no IS NOT NULL
+--                AND NOT EXISTS (
+-- Ver1.6 M.Hokkanji End
                       SELECT xoh.delivery_no delivery_no
                         FROM xxwsh_order_headers_all xoh
-                       WHERE xoh.delivery_no = xcst.delivery_no
+-- Ver1.6 M.Hokkanji Start
+--                       WHERE xoh.delivery_no = xcst.delivery_no
+                       WHERE NVL(xoh.delivery_no,xoh.mixed_no) = NVL(xcst.delivery_no,xcst.mixed_no)
+-- Ver1.6 M.Hokkanji End
                          AND xoh.latest_external_flag = 'Y')
                 AND NOT EXISTS (
                       SELECT xmrih.delivery_no delivery_no

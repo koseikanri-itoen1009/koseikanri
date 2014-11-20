@@ -69,7 +69,7 @@ CREATE OR REPLACE VIEW apps.xxwsh_carriers_schedule_ln_v
       ,NVL2(xcs.default_line_number,'0','1') default_line           -- Šî€–¾×
       ,xottv.shipping_shikyu_class      transaction_type           -- ˆ—í•ÊƒR[ƒh
       ,xlvv1.meaning                    transaction_type_name       -- ˆ—í•Ê–¼Ì
-      ,xoha.delivery_no                 delivery_no                 -- ”z‘—No
+      ,NVL(xoha.delivery_no,xoha.mixed_no) delivery_no              -- ”z‘—No
       ,xoha.request_no                  request_no                  -- ˆË—ŠNo
       ,xoha.career_id                   career_id                   -- ‰^‘—‹ÆÒID
       ,xoha.freight_carrier_code        freight_carrier_code        -- ‰^‘—‹ÆÒ
@@ -158,7 +158,7 @@ AND   xpv.party_number(+)         = xoha.head_sales_branch            -- ŠÇŠ‹’“
 AND   xpv.customer_class_code(+)  = '1'                               -- ŒÚ‹q‹æ•ª
 AND   xvv.segment1(+)             = xoha.vendor_code                  -- æˆøæ–¼Ì
 AND   xcs.default_line_number (+) = xoha.request_no
-AND   xcs.delivery_no (+)         = xoha.delivery_no
+AND   xcs.delivery_no (+)         = NVL(xoha.delivery_no,xoha.mixed_no)
 AND   xoha.order_type_id          = xottv.transaction_type_id
 AND   xoha.latest_external_flag   = 'Y'
 AND   (    (xottv.shipping_shikyu_class   = '1')
