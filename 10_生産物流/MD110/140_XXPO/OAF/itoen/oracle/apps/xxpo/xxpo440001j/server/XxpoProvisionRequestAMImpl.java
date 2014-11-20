@@ -1,7 +1,7 @@
 /*============================================================================
 * ファイル名 : XxpoProvisionRequestAMImpl
 * 概要説明   : 支給依頼要約アプリケーションモジュール
-* バージョン : 1.14
+* バージョン : 1.15
 *============================================================================
 * 修正履歴
 * 日付       Ver. 担当者       修正内容
@@ -24,6 +24,7 @@
 * 2009-01-20 1.12 吉元強樹     本番障害#739,985対応(第1段階:金確ボタン)
 * 2009-01-22 1.13 吉元強樹     本番障害#739,985対応(第2段階:ヘッダ・明細)
 * 2009-02-03 1.14 二瓶大輔     本番障害#739,985対応(修正漏れ対応)
+* 2009-02-13 1.15 伊藤ひとみ   本番障害#863,1184対応
 *============================================================================
 */
 package itoen.oracle.apps.xxpo.xxpo440001j.server;
@@ -57,7 +58,7 @@ import oracle.jbo.RowSetIterator;
 /***************************************************************************
  * 支給依頼要約画面のアプリケーションモジュールクラスです。
  * @author  ORACLE 二瓶 大輔
- * @version 1.14
+ * @version 1.15
  ***************************************************************************
  */
 public class XxpoProvisionRequestAMImpl extends XxcmnOAApplicationModuleImpl 
@@ -1620,19 +1621,82 @@ public class XxpoProvisionRequestAMImpl extends XxcmnOAApplicationModuleImpl
       Number labelQuantity = (Number)hdrRow.getAttribute("LabelQuantity"); // ラベル枚数
       String sumWeight     = (String)hdrRow.getAttribute("SumWeight");     // 積載重量合計
       String sumCapacity   = (String)hdrRow.getAttribute("SumCapacity");   // 積載容積合計
-      // 更新処理(合計数量、ラベル枚数、小口個数、積載重量合計、積載容積合計)
-      XxpoUtility.updateSummaryInfo(getOADBTransaction(),
-                                    orderHeaderId,
-                                    sumQuantity,
-                                    smallQuantity,
-                                    labelQuantity,
-                                    sumWeight,
-                                    sumCapacity);
+// 2009-02-13 H.Itou Add Add Start 本番障害#863対応 配車解除されない場合もあるので積載効率を再計算。
+      String shipToCode         = (String)hdrRow.getAttribute("ShipToCode");          // 配送先
+      String shipWhseCode       = (String)hdrRow.getAttribute("ShipWhseCode");        // 出庫倉庫
+      String shippingMethodCode = (String)hdrRow.getAttribute("ShippingMethodCode");  // 配送区分
+      Date   shippedDate        = (Date)hdrRow.getAttribute("ShippedDate");           // 出庫日
+      String freightChargeClass = (String)hdrRow.getAttribute("FreightChargeClass");  // 運賃区分
+      String loadEfficiencyWeight = null;
+      String loadEfficiencyCapacity = null;
 
+      // 運賃区分が「対象」の場合、積載効率再計算
+      if (XxcmnConstants.OBJECT_ON.equals(freightChargeClass))
+      {
+        /******************
+         * 重量積載効率算出(積載オーバーでもエラーとならないXxwshUtilityの関数を使用)
+         ******************/
+        HashMap params3 = XxwshUtility.calcLoadEfficiency(
+                           getOADBTransaction(),
+                           sumWeight,
+                           null,
+                           "4",  // 倉庫
+                           shipWhseCode,
+                           "11", // 支給先
+                           shipToCode,
+                           shippingMethodCode, // 設定した配送区分,
+                           shippedDate,
+                           XxcmnUtility.getProfileValue(getOADBTransaction(), "XXCMN_ITEM_DIV_SECURITY"));
+        /******************
+         * 重量積載効率をセット
+         ******************/
+        loadEfficiencyWeight = (String)params3.get("loadEfficiencyWeight");   // 重量積載効率
+
+        /******************
+         * 容積積載効率算出(積載オーバーでもエラーとならないXxwshUtilityの関数を使用)
+         ******************/
+        HashMap params4 = XxwshUtility.calcLoadEfficiency(
+                           getOADBTransaction(),
+                           null,
+                           sumCapacity,
+                           "4",  // 倉庫
+                           shipWhseCode,
+                           "11", // 支給先
+                           shipToCode,
+                           shippingMethodCode, // 設定した配送区分
+                           shippedDate,
+                           XxcmnUtility.getProfileValue(getOADBTransaction(), "XXCMN_ITEM_DIV_SECURITY"));
+        /******************
+         * 容積積載効率をセット
+         ******************/
+        loadEfficiencyCapacity = (String)params4.get("loadEfficiencyCapacity"); // 容積積載効率
+      }
+// 2009-02-13 H.Itou ADD END
+      // 更新処理(合計数量、ラベル枚数、小口個数、積載重量合計、積載容積合計)
+// 2009-02-19 H.Itou MOD START 本番障害#863 配車解除されない場合もあるので積載効率も更新する。
+//      XxpoUtility.updateSummaryInfo(getOADBTransaction(),
+//                                    orderHeaderId,
+//                                    sumQuantity,
+//                                    smallQuantity,
+//                                    labelQuantity,
+//                                    sumWeight,
+//                                    sumCapacity);
+      updateSummaryInfo(orderHeaderId,
+                        sumQuantity,
+                        smallQuantity,
+                        labelQuantity,
+                        sumWeight,
+                        sumCapacity,
+                        loadEfficiencyWeight,
+                        loadEfficiencyCapacity);
+// 2009-02-13 H.Itou MOD END
       /******************
        * 配車解除処理
        ******************/
-      String retCode = XxwshUtility.cancelCareersSchedile(
+// 2009-02-13 H.Itou Add Mod Start 本番障害#863対応 明細を削除した場合は、解除する必要があるか判断する。
+//      String retCode = XxwshUtility.cancelCareersSchedile(
+      String retCode = XxwshUtility.careerCancelOrUpd(
+// 2009-02-13 H.Itou Add Mod End
                          getOADBTransaction(),
                          XxcmnConstants.BIZ_TYPE_PROV,
                          reqNo);
@@ -1927,6 +1991,9 @@ public class XxpoProvisionRequestAMImpl extends XxcmnOAApplicationModuleImpl
 // 2008-10-27 D.Nihei ADD START
     boolean updNotifStatusFlag    = false; // 通知ステータス更新フラグ
 // 2008-10-27 D.Nihei ADD END
+// 2009-02-13 H.Itou ADD START 本番障害#863対応
+    boolean careerCancelOrUpdFlag    = false; // 配車解除判断実行フラグ
+// 2009-02-13 H.Itoui ADD END
 
     /****************************
      * ヘッダ各種情報取得
@@ -2026,10 +2093,14 @@ public class XxpoProvisionRequestAMImpl extends XxcmnOAApplicationModuleImpl
           // 配車解除要否判定(品目ID)
           if (!XxcmnUtility.isEquals(itemId, dbItemId))
           {
-            // 配車解除フラグをtrueにする
-            cancelCarriersFlag = true;  
-
+// 2009-02-13 H.Itou ADD START 本番障害#863対応 重量を変更した場合は解除する必要があるか判断する。
+//            // 配車解除フラグをtrueにする
+//            cancelCarriersFlag = true;  
+          // 配車解除判断実行フラグをtrueに変更
+          careerCancelOrUpdFlag = true;
+// 2009-02-13 H.Itou ADD END
           }
+
           // 更新処理
           updateOrderLine(updRow);
 
@@ -2039,7 +2110,11 @@ public class XxpoProvisionRequestAMImpl extends XxcmnOAApplicationModuleImpl
         }
         // 指示数が変更された場合
         if (!XxcmnUtility.isEquals(XxcmnUtility.commaRemoval(instQuantity), 
-                                   XxcmnUtility.commaRemoval(dbInstQuantity))) 
+// 2009-02-13 H.Itou MOD START
+//                                   XxcmnUtility.commaRemoval(dbInstQuantity)))
+                                   XxcmnUtility.commaRemoval(dbInstQuantity))
+         || !XxcmnUtility.isEquals(itemId, dbItemId))
+// 2009-02-13 H.Itou MOD END
         {
           // 合計数量変更フラグをtrueに変更
           sumQtyFlag = true;
@@ -2073,12 +2148,20 @@ public class XxpoProvisionRequestAMImpl extends XxcmnOAApplicationModuleImpl
          || !XxcmnUtility.isBlankOrNull(reqQuantity)
          || !XxcmnUtility.isBlankOrNull(description)) 
         {
+// 2009-02-13 H.Itou MOD START
+          // 重要明細項目変更フラグをtrueに変更
+          changeLineFlag = true;
+// 2009-02-13 H.Itou MOD END
           // 配車解除要否判定(配車済の場合)
           if (XxpoConstants.RCV_TYPE_3.equals(rcvType)
            || XxpoConstants.RCV_TYPE_4.equals(rcvType)) 
           {
-            // 配車解除フラグをtrueにする
-            cancelCarriersFlag = true;  
+// 2009-02-13 H.Itou MOD START 本番障害#863対応 重量を変更した場合は解除する必要があるか判断する。
+//            // 配車解除フラグをtrueにする
+//            cancelCarriersFlag = true;  
+            // 配車解除判断実行フラグをtrueに変更
+            careerCancelOrUpdFlag = true;
+// 2009-02-13 H.Itou MOD END
 
           }
 // 2008-10-27 D.Nihei ADD START
@@ -2099,7 +2182,10 @@ public class XxpoProvisionRequestAMImpl extends XxcmnOAApplicationModuleImpl
           sumQtyFlag = true;
 
           // ステータスが「出荷実績計上済」の場合は、フラグを立てない。
-          if (!XxpoConstants.PROV_STATUS_SJK.equals(transStatus)) 
+// 2009-02-13 H.Itou MOD START
+//          if (!XxpoConstants.PROV_STATUS_SJK.equals(transStatus)) 
+          if (XxpoConstants.PROV_STATUS_SJK.equals(transStatus)) 
+// 2009-02-13 H.Itou MOD END
           {
             // 重要明細項目変更フラグをfalseに変更
             changeLineFlag = false;  
@@ -2182,30 +2268,34 @@ public class XxpoProvisionRequestAMImpl extends XxcmnOAApplicationModuleImpl
       if (freightOnFlag || changeHdrFlag || changeLineFlag)
       {
         // 重量容積区分によって渡すパラメータをかえる
+// 2009-02-13 H.Itou MOD START 本番障害#1184 積載効率チェックは、重量容積区分の一致する側のみ行うため、2008-07-29の削除を復活。
 // 2008-07-29 D.Nihei DEL START
-//        String sumWeight   = null;
-//        String sumCapacity = null;
-//        // 重量容積区分が、「重量」の場合
-//        if (XxpoConstants.WGHT_CAPA_CLASS_WEIGHT.equals(weightCapaClass)) 
-//        {
-//          sumWeight   = (String)hdrRow.getAttribute("SumWeight");
-//        // それ以外
-//        } else 
-//        {
-//          sumCapacity = (String)hdrRow.getAttribute("SumCapacity");
-//        }
+        String sumWeight   = null;
+        String sumCapacity = null;
+        // 重量容積区分が、「重量」の場合
+        if (XxpoConstants.WGHT_CAPA_CLASS_WEIGHT.equals(weightCapaClass)) 
+        {
+          sumWeight   = (String)hdrRow.getAttribute("SumWeight");
+        // それ以外
+        } else 
+        {
+          sumCapacity = (String)hdrRow.getAttribute("SumCapacity");
+        }
 // 2008-07-29 D.Nihei DEL END
+// 2009-02-13 H.Itou MOD END
         /******************
-         * 重量積載効率チェック(積載効率算出)
+         * 積載効率チェック(積載オーバーはXxpoUtility関数内でチェックしている。)
          ******************/
         HashMap params1 = XxpoUtility.calcLoadEfficiency(
                            getOADBTransaction(),
+// 2009-02-13 H.Itou MOD START 本番障害#1184 積載効率チェックは、重量容積区分の一致する側のみ行うため、2008-07-29の削除を復活。
 // 2008-07-29 D.Nihei MOD START
-//                           sumWeight,
-//                           sumCapacity,
-                           (String)hdrRow.getAttribute("SumWeight"),
-                           null,
+                           sumWeight,
+                           sumCapacity,
+//                           (String)hdrRow.getAttribute("SumWeight"),
+//                           null,
 // 2008-07-29 D.Nihei MOD END
+// 2009-02-13 H.Itou MOD END
                            "4",  // 倉庫
                            shipWhseCode,
                            "11", // 支給先
@@ -2213,15 +2303,60 @@ public class XxpoProvisionRequestAMImpl extends XxcmnOAApplicationModuleImpl
                            maxShipToCode,
                            shippedDate,
                            true);
-        /******************
-         * 各項目をセット
-         ******************/
-        hdrRow.setAttribute("EfficiencyWeight",   params1.get("loadEfficiencyWeight"));   // 重量積載効率
+// 2009-02-13 H.Itou DEL START 本番障害#863 ヘッダにセットする積載効率は最大配送区分で計算しない。
+//        /******************
+//         * 各項目をセット
+//         ******************/
+//        hdrRow.setAttribute("EfficiencyWeight",   params1.get("loadEfficiencyWeight"));   // 重量積載効率
+// 2009-02-13 H.Itou DEL END
+// 2009-02-13 H.Itou DEL START 本番障害#1184 積載効率チェックは、重量容積区分の一致する側のみ行うため削除。
 // 2008-07-29 D.Nihei ADD START
+//        /******************
+//         * 容積積載効率チェック(積載効率算出)
+//         ******************/
+//        HashMap params2 = XxpoUtility.calcLoadEfficiency(
+//                           getOADBTransaction(),
+//                           null,
+//                           (String)hdrRow.getAttribute("SumCapacity"),
+//                           "4",  // 倉庫
+//                           shipWhseCode,
+//                           "11", // 支給先
+//                           shipToCode,
+//                           maxShipToCode,
+//                           shippedDate,
+//                           true);
+// 2009-02-13 H.Itou DEL END
+// 2009-02-13 H.Itou DEL START 本番障害#863 ヘッダにセットする積載効率は最大配送区分で計算しない。
+//        /******************
+//         * 各項目をセット
+//         ******************/
+//// 2008-07-29 D.Nihei ADD END
+//        hdrRow.setAttribute("EfficiencyCapacity", params2.get("loadEfficiencyCapacity")); // 容積積載効率
+// 2009-02-13 H.Itou DEL END
+// 2009-02-13 H.Itou ADD START 本番障害#863
         /******************
-         * 容積積載効率チェック(積載効率算出)
+         * 重量積載効率算出(積載オーバーでもエラーとならないXxwshUtilityの関数を使用)
          ******************/
-        HashMap params2 = XxpoUtility.calcLoadEfficiency(
+        HashMap params3 = XxwshUtility.calcLoadEfficiency(
+                           getOADBTransaction(),
+                           (String)hdrRow.getAttribute("SumWeight"),
+                           null,
+                           "4",  // 倉庫
+                           shipWhseCode,
+                           "11", // 支給先
+                           shipToCode,
+                           (String)hdrRow.getAttribute("ShippingMethodCode"), // 設定した配送区分,
+                           shippedDate,
+                           XxcmnUtility.getProfileValue(getOADBTransaction(), "XXCMN_ITEM_DIV_SECURITY"));
+        /******************
+         * 重量積載効率をセット
+         ******************/
+        hdrRow.setAttribute("EfficiencyWeight",   params3.get("loadEfficiencyWeight"));   // 重量積載効率
+
+        /******************
+         * 容積積載効率算出(積載オーバーでもエラーとならないXxwshUtilityの関数を使用)
+         ******************/
+        HashMap params4 = XxwshUtility.calcLoadEfficiency(
                            getOADBTransaction(),
                            null,
                            (String)hdrRow.getAttribute("SumCapacity"),
@@ -2229,14 +2364,14 @@ public class XxpoProvisionRequestAMImpl extends XxcmnOAApplicationModuleImpl
                            shipWhseCode,
                            "11", // 支給先
                            shipToCode,
-                           maxShipToCode,
+                           (String)hdrRow.getAttribute("ShippingMethodCode"), // 設定した配送区分
                            shippedDate,
-                           true);
+                           XxcmnUtility.getProfileValue(getOADBTransaction(), "XXCMN_ITEM_DIV_SECURITY"));
         /******************
-         * 各項目をセット
+         * 容積積載効率をセット
          ******************/
-// 2008-07-29 D.Nihei ADD END
-        hdrRow.setAttribute("EfficiencyCapacity", params2.get("loadEfficiencyCapacity")); // 容積積載効率
+        hdrRow.setAttribute("EfficiencyCapacity", params4.get("loadEfficiencyCapacity")); // 容積積載効率
+// 2009-02-13 H.Itou ADD END
       }
     }
     /****************************
@@ -2387,6 +2522,29 @@ public class XxpoProvisionRequestAMImpl extends XxcmnOAApplicationModuleImpl
         XxcmnUtility.putErrorMessage(XxpoConstants.TOKEN_NAME_CAN_CAREERS);
 
       }
+// 2009-02-13 H.Itou ADD START 本番障害#863対応
+    } else if (careerCancelOrUpdFlag)
+    {
+      // 配車解除判定関数を実行する。
+      String retCode = XxwshUtility.careerCancelOrUpd(
+                         getOADBTransaction(),
+                         XxcmnConstants.BIZ_TYPE_PROV,
+                         reqNo);
+      // パラメータチェックエラーの場合
+      if (XxcmnConstants.API_PARAM_ERROR.equals(retCode)) 
+      {
+        // 予期せぬエラーメッセージ出力
+        throw new OAException(XxcmnConstants.APPL_XXCMN, 
+                              XxcmnConstants.XXCMN10123
+                              );
+            
+      // 配車処理失敗の場合
+      } else if (XxcmnConstants.API_CANCEL_CARRER_ERROR.equals(retCode)) 
+      {
+        XxcmnUtility.putErrorMessage(XxpoConstants.TOKEN_NAME_CAN_CAREERS);
+
+      }
+// 2009-02-13 H.Itou ADD END
 // 2008-10-27 D.Nihei ADD START
     } else if (updNotifStatusFlag)
     {
@@ -5131,7 +5289,115 @@ public class XxpoProvisionRequestAMImpl extends XxcmnOAApplicationModuleImpl
     
   } // getUpdateArrivalDate
 // 2009-01-20 v1.12 T.Yoshimoto Add End
+// 2009-02-13 H.Itou Add Start 本番障害#863
+  /*****************************************************************************
+   * 受注ヘッダアドオンの合計数量、積載重量合計、積載容積合計、積載効率を更新します。
+   * @param trans        - トランザクション
+   * @param orderHeaderId  - 受注ヘッダアドオンID
+   * @param sumQuantity - 合計数量
+   * @param smallQuantity - 小口個数
+   * @param labelQuantity - ラベル枚数
+   * @param sumWeight - 積載重量合計
+   * @param sumCapacity - 積載容積合計
+   * @param loadEfficiencyWeight - 重量積載効率
+   * @param loadEfficiencyCapacity - 容積積載効率
+   * @throws OAException - OA例外
+   ****************************************************************************/
+  public void updateSummaryInfo(
+    Number orderHeaderId,
+    String sumQuantity,
+    Number smallQuantity,
+    Number labelQuantity,
+    String sumWeight,
+    String sumCapacity,
+  	String loadEfficiencyWeight,
+    String loadEfficiencyCapacity
+    ) throws OAException
+  {
+    String apiName = "updateSummaryInfo";
+    OADBTransaction trans = getOADBTransaction();
+  
+  	int bindCount = 1;
+    //PL/SQLの作成を行います
+    StringBuffer sb = new StringBuffer(1000);
+    sb.append("BEGIN ");
+    sb.append("  UPDATE xxwsh_order_headers_all xoha   "                                    ); // 受注ヘッダアドオン
+    sb.append("  SET    xoha.sum_quantity                = TO_NUMBER(:" + bindCount++ + ") "); // 合計数量
+    sb.append("        ,xoha.small_quantity              = TO_NUMBER(:" + bindCount++ + ") "); // 小口個数
+    sb.append("        ,xoha.label_quantity              = TO_NUMBER(:" + bindCount++ + ") "); // ラベル枚数
+    sb.append("        ,xoha.sum_weight                  = TO_NUMBER(:" + bindCount++ + ") "); // 積載重量合計
+    sb.append("        ,xoha.sum_capacity                = TO_NUMBER(:" + bindCount++ + ") "); // 積載容積合計
+  	sb.append("        ,xoha.loading_efficiency_weight   = TO_NUMBER(:" + bindCount++ + ") "); // 重量積載効率
+    sb.append("        ,xoha.loading_efficiency_capacity = TO_NUMBER(:" + bindCount++ + ") "); // 容積積載効率
+    sb.append("        ,xoha.last_updated_by             = FND_GLOBAL.USER_ID "     ); // 最終更新者
+    sb.append("        ,xoha.last_update_date            = SYSDATE "                ); // 最終更新日
+    sb.append("        ,xoha.last_update_login           = FND_GLOBAL.LOGIN_ID "    ); // 最終更新ログイン
+    sb.append("  WHERE  xoha.order_header_id             = :" + bindCount++ + ";  "         ); // 発注明細アドオンID
+    sb.append("END; ");
+    
+    //PL/SQLの設定を行います
+    CallableStatement cstmt = trans.createCallableStatement(
+                                sb.toString(),
+                                OADBTransaction.DEFAULT);
+    try
+    {
+      bindCount = 1;
+      // パラメータ設定(INパラメータ)
+      cstmt.setString(bindCount++, XxcmnUtility.commaRemoval(sumQuantity)); // 合計数量
+      if (XxcmnUtility.isBlankOrNull(smallQuantity)) 
+      {
+        cstmt.setNull(bindCount++, Types.INTEGER);      // 小口個数
+      } else 
+      {
+        cstmt.setInt(bindCount++, XxcmnUtility.intValue(smallQuantity));      // 小口個数
+      }
+      if (XxcmnUtility.isBlankOrNull(labelQuantity)) 
+      {
+        cstmt.setNull(bindCount++, Types.INTEGER);
+      } else 
+      {
+        cstmt.setInt(bindCount++, XxcmnUtility.intValue(labelQuantity));      // ラベル枚数
+      }
+      cstmt.setString(bindCount++, XxcmnUtility.commaRemoval(sumWeight));   // 積載重量合計
+      cstmt.setString(bindCount++, XxcmnUtility.commaRemoval(sumCapacity)); // 積載容積合計
+      cstmt.setString(bindCount++, loadEfficiencyWeight);                   // 重量積載効率
+      cstmt.setString(bindCount++, loadEfficiencyCapacity);                 // 容積積載効率
+      cstmt.setInt(bindCount++,  XxcmnUtility.intValue(orderHeaderId));     // 受注ヘッダアドオンID
+      //PL/SQL実行
+      cstmt.execute();
+    // PL/SQL実行時例外の場合
+    } catch(SQLException s)
+    {
+      // ロールバック
+      XxpoUtility.rollBack(getOADBTransaction());
+      XxcmnUtility.writeLog(getOADBTransaction(),
+                            XxpoConstants.CLASS_AM_XXPO440001J + XxcmnConstants.DOT + apiName,
+                            s.toString(),
+                            6);
+      throw new OAException(XxcmnConstants.APPL_XXCMN, 
+                            XxcmnConstants.XXCMN10123);
+    } finally
+    {
+      try
+      {
+        // PL/SQLクローズ
+        cstmt.close();
 
+      // close中に例外が発生した場合 
+      } catch(SQLException s)
+      {
+        // ロールバック
+        XxpoUtility.rollBack(getOADBTransaction());
+        XxcmnUtility.writeLog(getOADBTransaction(),
+                              XxpoConstants.CLASS_AM_XXPO440001J + XxcmnConstants.DOT + apiName,
+                              s.toString(),
+                              6);
+        throw new OAException(XxcmnConstants.APPL_XXCMN, 
+                              XxcmnConstants.XXCMN10123);
+      }
+    }
+  } // updateSummaryInfo
+// 2009-02-13 H.Itou Add End
   /**
    * 
    * Sample main for debugging Business Components code using the tester.

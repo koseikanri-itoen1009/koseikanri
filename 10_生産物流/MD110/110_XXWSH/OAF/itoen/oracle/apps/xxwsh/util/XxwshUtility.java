@@ -1,7 +1,7 @@
 /*============================================================================
 * ファイル名 : XxwshUtility
 * 概要説明   : 出荷・引当/配車共通関数
-* バージョン : 1.13
+* バージョン : 1.14
 *============================================================================
 * 修正履歴
 * 日付       Ver. 担当者       修正内容
@@ -20,6 +20,7 @@
 * 2008-12-15 1.11 二瓶大輔     本番障害#648対応
 * 2009-01-22 1.12 伊藤ひとみ   本番障害#1000対応
 * 2009-01-26 1.13 伊藤ひとみ   本番障害#936対応
+* 2009-02-13 1.14 伊藤ひとみ   本番障害#863対応
 *============================================================================
 */
 package itoen.oracle.apps.xxwsh.util;
@@ -41,7 +42,7 @@ import oracle.jbo.domain.Number;
 /***************************************************************************
  * 出荷・引当/配車共通関数クラスです。
  * @author  ORACLE 伊藤ひとみ
- * @version 1.13
+ * @version 1.14
  ***************************************************************************
  */
 public class XxwshUtility 
@@ -6263,4 +6264,116 @@ public class XxwshUtility
     return ret;
   } // getFreshPassDate
 // 2009-01-26 H.Itou ADD END
+// 2009-02-13 H.Itou ADD START 本番障害#863対応
+  /*****************************************************************************
+   * 配車解除するかどうか判断し、配車解除または配車更新を行います。
+   * @param bizType - 業務種別 1:出荷,2:支給,3:移動
+   * @param reqNo   - 依頼No/移動番号
+   * @return String - 戻り値 0:成功,1:パラメータチェックエラー,-1:配車解除失敗
+   * @throws OAException - OA例外
+   ****************************************************************************/
+  public static String careerCancelOrUpd(
+    OADBTransaction trans,
+    String bizType,
+    String requestNo
+  ) throws OAException
+  {
+    String apiName = "careerCancelOrUpd";
+    HashMap ret    = new HashMap();
+    
+    //PL/SQL作成
+    StringBuffer sb = new StringBuffer(1000);
+  	sb.append("DECLARE ");
+    sb.append("BEGIN ");
+    sb.append("  :1 := xxwsh_common_pkg.cancel_careers_schedule( ");
+    sb.append("          iv_biz_type    => :2,  "); // 2.業務種別
+    sb.append("          iv_request_no  => :3,  "); // 3.依頼No/移動番号
+    sb.append("          iv_calcel_flag => '2', "); // 4.配車解除フラグ
+    sb.append("          ov_errmsg      => :4); "); // 5.エラーメッセージ
+    sb.append("END; ");
+
+
+    //PL/SQL設定
+    CallableStatement cstmt
+      = trans.createCallableStatement(sb.toString(), OADBTransaction.DEFAULT);
+
+    try
+    {
+      // パラメータ設定(OUTパラメータ)
+      cstmt.registerOutParameter(1,  Types.VARCHAR); // 1.リターンコード
+      // パラメータ設定(INパラメータ)
+      cstmt.setString(2, bizType);                   // 2.業務種別
+      cstmt.setString(3, requestNo);                 // 3.依頼No/移動番号
+
+      // パラメータ設定(OUTパラメータ)
+      cstmt.registerOutParameter(4,  Types.VARCHAR); // エラーメッセージ
+      
+      //PL/SQL実行
+      cstmt.execute();
+
+      String retCode    = cstmt.getString(1);               // リターンコード
+      String errmsg     = cstmt.getString(4);               // エラーメッセージ
+
+      // API正常終了でない場合、エラー  
+      if (!XxcmnConstants.API_RETURN_NORMAL.equals(retCode))
+      {
+        // ロールバック
+        rollBack(trans);
+        // ログ出力
+        XxcmnUtility.writeLog(
+          trans,
+          XxwshConstants.CLASS_XXWSH_UTILITY + XxcmnConstants.DOT + apiName,
+          errmsg, // エラーメッセージ
+          6);
+        // エラーメッセージ出力
+        throw new OAException(
+          XxcmnConstants.APPL_XXCMN, 
+          XxcmnConstants.XXCMN10123);
+      }
+
+      // 戻り値返却
+      return retCode;
+
+    // PL/SQL実行時例外の場合
+    } catch(SQLException s)
+    {
+      // ロールバック
+      rollBack(trans);
+      // ログ出力
+      XxcmnUtility.writeLog(
+        trans,
+        XxwshConstants.CLASS_XXWSH_UTILITY + XxcmnConstants.DOT + apiName,
+        s.toString(),
+        6);
+      // エラーメッセージ出力
+      throw new OAException(
+        XxcmnConstants.APPL_XXCMN, 
+        XxcmnConstants.XXCMN10123);
+        
+    } finally
+    {
+      try
+      {
+        // PL/SQLクローズ
+        cstmt.close();
+        
+      // クローズ中ににエラーが発生した場合
+      } catch(SQLException s)
+      {
+        // ロールバック
+        rollBack(trans);
+        // ログ出力
+        XxcmnUtility.writeLog(
+          trans,
+          XxwshConstants.CLASS_XXWSH_UTILITY + XxcmnConstants.DOT + apiName,
+          s.toString(),
+          6);
+        // エラーメッセージ出力
+        throw new OAException(
+          XxcmnConstants.APPL_XXCMN, 
+          XxcmnConstants.XXCMN10123);
+      }
+    }
+  } // careerCancelOrUpd
+// 2009-02-13 H.Itou ADD END
 }
