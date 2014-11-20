@@ -12,7 +12,7 @@
  *  2008-03-04    1.0   T.ENDOU          êVãKçÏê¨
  *
  ************************************************************************/
-CREATE TABLE XXINV_STC_INVENTORY_HHT_WORK
+CREATE TABLE xxinv.XXINV_STC_INVENTORY_HHT_WORK
 (
     INVENT_HHT_IF_ID               NUMBER       NOT NULL,
     COMPANY_NAME                   VARCHAR2(5)  NOT NULL,
