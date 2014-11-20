@@ -3,13 +3,14 @@
  *
  * Table Name  : XXCOS_DLV_HEADERS
  * Description : 納品ヘッダテーブル
- * Version     : 1.0
+ * Version     : 1.1
  *
  * Change Record
  * ------------- ----- ---------------- ---------------------------------
  *  Date          Ver.  Editor           Description
  * ------------- ----- ---------------- ---------------------------------
  *  2009/01/30    1.0   SCS S.Miyakoshi  新規作成
+ *  2011/03/16    1.1   SCS S.Ochiai     [E_本稼動_06590] オーダーNo追加
  *
  ****************************************************************************************/
 CREATE TABLE XXCOS.XXCOS_DLV_HEADERS
@@ -45,6 +46,9 @@ CREATE TABLE XXCOS.XXCOS_DLV_HEADERS
   RESULTS_FORWARD_FLAG         VARCHAR2(1),                    --販売実績連携済みフラグ
   RESULTS_FORWARD_DATE         DATE,                           --販売実績連携済み日付
   CANCEL_CORRECT_CLASS         VARCHAR2(1),                    --取消・訂正区分
+-- 2011/03/16 Ver.1.1 S.Ochiai ADD Start
+  ORDER_NUMBER                 VARCHAR2(16),                   --オーダーNo
+-- 2011/03/16 Ver.1.1 S.Ochiai ADD End
   CREATED_BY                   NUMBER(15)    NOT NULL,         --作成者
   CREATION_DATE                DATE          NOT NULL,         --作成日
   LAST_UPDATED_BY              NUMBER(15)    NOT NULL,         --最終更新者
@@ -89,6 +93,9 @@ COMMENT ON COLUMN XXCOS.XXCOS_DLV_HEADERS.STOCK_FORWARD_DATE        IS '入出庫転
 COMMENT ON COLUMN XXCOS.XXCOS_DLV_HEADERS.RESULTS_FORWARD_FLAG      IS '販売実績連携済みフラグ';
 COMMENT ON COLUMN XXCOS.XXCOS_DLV_HEADERS.RESULTS_FORWARD_DATE      IS '販売実績連携済み日付';
 COMMENT ON COLUMN XXCOS.XXCOS_DLV_HEADERS.CANCEL_CORRECT_CLASS      IS '取消・訂正区分';
+-- 2011/03/16 Ver.1.1 S.Ochiai ADD Start
+COMMENT ON COLUMN XXCOS.XXCOS_DLV_HEADERS.ORDER_NUMBER              IS 'オーダーNo';
+-- 2011/03/16 Ver.1.1 S.Ochiai ADD End
 COMMENT ON COLUMN XXCOS.XXCOS_DLV_HEADERS.CREATED_BY                IS '作成者';
 COMMENT ON COLUMN XXCOS.XXCOS_DLV_HEADERS.CREATION_DATE             IS '作成日';
 COMMENT ON COLUMN XXCOS.XXCOS_DLV_HEADERS.LAST_UPDATED_BY           IS '最終更新者';

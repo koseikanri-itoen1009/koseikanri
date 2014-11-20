@@ -3,13 +3,14 @@
  *
  * Table Name  : XXCOS_DLV_HEADERS_WORK
  * Description : î[ïiÉwÉbÉ_ÉèÅ[ÉNÉeÅ[ÉuÉã
- * Version     : 1.0
+ * Version     : 1.1
  *
  * Change Record
  * ------------- ----- ---------------- ---------------------------------
  *  Date          Ver.  Editor           Description
  * ------------- ----- ---------------- ---------------------------------
  *  2009/01/30    1.0   SCS S.Miyakoshi  êVãKçÏê¨
+ *  2011/03/16    1.1   SCS S.Ochiai     [E_ñ{â“ìÆ_06590] ÉIÅ[É_Å[Noí«â¡
  *
  ****************************************************************************************/
 CREATE TABLE XXCOS.XXCOS_DLV_HEADERS_WORK
@@ -39,6 +40,9 @@ CREATE TABLE XXCOS.XXCOS_DLV_HEADERS_WORK
   TAX_INCLUDE                  NUMBER(11),                       --ê≈çûã‡äz
   KEEP_IN_CODE                 VARCHAR2(9),                      --óaÇØêÊÉRÅ[Éh
   DEPARTMENT_SCREEN_CLASS      VARCHAR2(1),                      --ïSâ›ìXâÊñ éÌï 
+-- 2011/03/16 Ver.1.1 S.Ochiai ADD Start
+  ORDER_NUMBER                 VARCHAR2(16),                     --ÉIÅ[É_Å[No
+-- 2011/03/16 Ver.1.1 S.Ochiai ADD End
   RECEIVE_DATE                 DATE,                             --éÛêMì˙éû
   CREATED_BY                   NUMBER(15)    NOT NULL,           --çÏê¨é“
   CREATION_DATE                DATE          NOT NULL,           --çÏê¨ì˙
@@ -78,6 +82,9 @@ COMMENT ON COLUMN XXCOS.XXCOS_DLV_HEADERS_WORK.SALES_CONSUMPTION_TAX     IS 'îÑè
 COMMENT ON COLUMN XXCOS.XXCOS_DLV_HEADERS_WORK.TAX_INCLUDE               IS 'ê≈çûã‡äz';
 COMMENT ON COLUMN XXCOS.XXCOS_DLV_HEADERS_WORK.KEEP_IN_CODE              IS 'óaÇØêÊÉRÅ[Éh';
 COMMENT ON COLUMN XXCOS.XXCOS_DLV_HEADERS_WORK.DEPARTMENT_SCREEN_CLASS   IS 'ïSâ›ìXâÊñ éÌï ';
+-- 2011/03/16 Ver.1.1 S.Ochiai ADD Start
+COMMENT ON COLUMN XXCOS.XXCOS_DLV_HEADERS_WORK.ORDER_NUMBER              IS 'ÉIÅ[É_Å[No';
+-- 2011/03/16 Ver.1.1 S.Ochiai ADD End
 COMMENT ON COLUMN XXCOS.XXCOS_DLV_HEADERS_WORK.RECEIVE_DATE              IS 'éÛêMì˙éû';
 COMMENT ON COLUMN XXCOS.XXCOS_DLV_HEADERS_WORK.CREATED_BY                IS 'çÏê¨é“';
 COMMENT ON COLUMN XXCOS.XXCOS_DLV_HEADERS_WORK.CREATION_DATE             IS 'çÏê¨ì˙';

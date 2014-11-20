@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCOS001A01C (body)
  * Description      : 納品データの取込を行う
  * MD.050           : HHT納品データ取込 (MD050_COS_001_A01)
- * Version          : 1.25
+ * Version          : 1.26
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -58,6 +58,8 @@ AS
  *  2010/01/27    1.23  N.Maeda          [E_本稼動_01191] 処理起動モード3(納品ワークパージ)を追加
  *  2010/02/04    1.24  Y.Kuboshima      [E_T4_00195] 会計カレンダをAR ⇒ INVに修正
  *  2011/02/03    1.25  Y.Kanami         [E_本稼動_02624] データ妥当性チェックの顧客情報取得時の条件追加
+ *  2011/03/16    1.26  S.Ochiai         [E_本稼動_06589,06590] 売上区分＝９（補填）の許可
+ *                                                              オーダーNoの追加
  *
  *****************************************************************************************/
 --
@@ -301,7 +303,11 @@ AS
       sales_tax         xxcos_dlv_headers.sales_consumption_tax%TYPE,   -- 売上消費税額
       tax_include       xxcos_dlv_headers.tax_include%TYPE,             -- 税込金額
       keep_in_code      xxcos_dlv_headers.keep_in_code%TYPE,            -- 預け先コード
-      depart_screen     xxcos_dlv_headers.department_screen_class%TYPE  -- 百貨店画面種別
+-- 2011/03/16 Ver.1.26 S.Ochiai MOD Start
+--      depart_screen     xxcos_dlv_headers.department_screen_class%TYPE  -- 百貨店画面種別
+      depart_screen     xxcos_dlv_headers.department_screen_class%TYPE, -- 百貨店画面種別
+      order_number      xxcos_dlv_headers.order_number%TYPE             -- オーダーNo
+-- 2011/03/16 Ver.1.26 S.Ochiai MOD End
     );
   TYPE g_tab_headwk_data IS TABLE OF g_rec_headwk_data INDEX BY PLS_INTEGER;
 --
@@ -447,6 +453,10 @@ AS
     INDEX BY PLS_INTEGER;   -- 預け先コード
   TYPE g_tab_head_depart_screen     IS TABLE OF xxcos_dlv_headers.department_screen_class%TYPE
     INDEX BY PLS_INTEGER;   -- 百貨店画面種別
+-- 2011/03/16 Ver.1.26 S.Ochiai ADD Start
+  TYPE g_tab_head_order_number      IS TABLE OF xxcos_dlv_headers.order_number%TYPE
+    INDEX BY PLS_INTEGER;   -- オーダーNo
+-- 2011/03/16 Ver.1.26 S.Ochiai ADD End
 --
   -- 納品明細データ登録用変数
   TYPE g_tab_line_order_no_hht     IS TABLE OF xxcos_dlv_lines.order_no_hht%TYPE
@@ -589,6 +599,9 @@ AS
   gt_head_tax_include       g_tab_head_tax_include;         -- 税込金額
   gt_head_keep_in_code      g_tab_head_keep_in_code;        -- 預け先コード
   gt_head_depart_screen     g_tab_head_depart_screen;       -- 百貨店画面種別
+-- 2011/03/16 Ver.1.26 S.Ochiai ADD Start
+  gt_head_order_number      g_tab_head_order_number;        -- オーダーNo
+-- 2011/03/16 Ver.1.26 S.Ochiai ADD End
 --
   -- 納品明細テーブル登録データ
   gt_line_order_no_hht      g_tab_line_order_no_hht;        -- 受注No.（HHT）
@@ -919,7 +932,11 @@ AS
              headers.sales_consumption_tax           sales_consumption_tax,    -- 売上消費税額
              headers.tax_include                     tax_include,              -- 税込金額
              TRIM( headers.keep_in_code )            keep_in_code,             -- 預け先コード
-             TRIM( headers.department_screen_class ) department_screen_class   -- 百貨店画面種別
+-- 2011/03/16 Ver.1.26 S.Ochiai MOD Start
+--             TRIM( headers.department_screen_class ) department_screen_class   -- 百貨店画面種別
+             TRIM( headers.department_screen_class ) department_screen_class,  -- 百貨店画面種別
+             headers.order_number                    order_number              -- オーダーNo
+-- 2011/03/16 Ver.1.26 S.Ochiai MOD End
       FROM   xxcos_dlv_headers_work           headers                   -- 納品ヘッダワークテーブル
       ORDER BY order_no_hht
       FOR UPDATE NOWAIT;
@@ -1904,6 +1921,9 @@ AS
     lt_tax_include          xxcos_dlv_headers.tax_include%TYPE;                -- 税込金額
     lt_keep_in_code         xxcos_dlv_headers.keep_in_code%TYPE;               -- 預け先コード
     lt_department_class     xxcos_dlv_headers.department_screen_class%TYPE;    -- 百貨店画面種別
+-- 2011/03/16 Ver.1.26 S.Ochiai ADD Start
+    lt_order_number         xxcos_dlv_headers.order_number%TYPE;               -- オーダーNo
+-- 2011/03/16 Ver.1.26 S.Ochiai ADD End
 --
     -- 納品明細データ変数
     lt_order_nol_hht        xxcos_dlv_lines.order_no_hht%TYPE;                 -- 受注No.(HHT)
@@ -2030,6 +2050,9 @@ AS
       lt_tax_include      := gt_headers_work_data(ck_no).tax_include;         -- 税込金額
       lt_keep_in_code     := gt_headers_work_data(ck_no).keep_in_code;        -- 預け先コード
       lt_department_class := gt_headers_work_data(ck_no).depart_screen;       -- 百貨店画面種別
+-- 2011/03/16 Ver.1.26 S.Ochiai ADD Start
+      lt_order_number     := gt_headers_work_data(ck_no).order_number;        -- オーダーNo
+-- 2011/03/16 Ver.1.26 S.Ochiai ADD End
 --
   /*-----2009/02/03-----START-------------------------------------------------------------------------------*/
       -- 初期化 --
@@ -3900,6 +3923,9 @@ AS
         gt_head_tax_include(ln_header_ok_no)     := lt_tax_include;          -- 税込金額
         gt_head_keep_in_code(ln_header_ok_no)    := lt_keep_in_code;         -- 預け先コード
         gt_head_depart_screen(ln_header_ok_no)   := lt_department_class;     -- 百貨店画面種別
+-- 2011/03/16 Ver.1.26 S.Ochiai ADD Start
+        gt_head_order_number(ln_header_ok_no)    := lt_order_number;         -- オーダーNo
+-- 2011/03/16 Ver.1.26 S.Ochiai ADD End
         gt_resource_id(ln_header_ok_no)          := lt_resource_id;          -- リソースID
         gt_party_id(ln_header_ok_no)             := lt_party_id;             -- パーティID
         gt_party_name(ln_header_ok_no)           := lt_customer_name;        -- 顧客名称
@@ -4237,6 +4263,9 @@ AS
             results_forward_flag,
             results_forward_date,
             cancel_correct_class,
+-- 2011/03/16 Ver.1.26 S.Ochiai ADD Start
+            order_number,
+-- 2011/03/16 Ver.1.26 S.Ochiai ADD End
             created_by,
             creation_date,
             last_updated_by,
@@ -4280,6 +4309,9 @@ AS
             cv_default,                                  -- 販売実績連携済みフラグ
             NULL,                                        -- 販売実績連携済み日付
             NULL,                                        -- 取消・訂正区分
+-- 2011/03/16 Ver.1.26 S.Ochiai ADD Start
+            gt_head_order_number(i),                     -- オーダーNo
+-- 2011/03/16 Ver.1.26 S.Ochiai ADD End
             cn_created_by,                               -- 作成者
             cd_creation_date,                            -- 作成日
             cn_last_updated_by,                          -- 最終更新者

@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCOS001A05C (body)
  * Description      : 出荷確認処理（HHT納品データ）
  * MD.050           : 出荷確認処理(MD050_COS_001_A05)
- * Version          : 1.27
+ * Version          : 1.28
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -89,6 +89,7 @@ AS
  *                                                 INVカレンダのチェック処理追加
  *                                       [E_本稼動_01764] 入出庫データ(見本)取込時、ヘッダ作成ブレイク条件追加
  *  2010/09/02    1.27  K.Kiriu          [E_本稼動_02635] 汎用エラーリスト出力対応
+ *  2011/03/22    1.28  S.Ochiai         [E_本稼動_06589,06590] オーダーNo連携対応
  *
  *****************************************************************************************/
 --
@@ -3180,6 +3181,9 @@ AS
     lt_results_forward_date      xxcos_dlv_headers.results_forward_date%TYPE;     -- 販売実績連携済日付
     lt_cancel_correct_class      xxcos_dlv_headers.cancel_correct_class%TYPE;     -- 取消・訂正区分
     lt_red_black_flag            xxcos_dlv_headers.red_black_flag%TYPE;           -- 赤黒フラグ
+-- 2011/03/22 Ver.1.28 S.Ochiai ADD Start
+    lt_order_number              xxcos_dlv_headers.order_number%TYPE;             -- オーダーNo
+-- 2011/03/22 Ver.1.28 S.Ochiai ADD End
     --納品明細格納用変数
     lt_lin_order_no_hht          xxcos_dlv_lines.order_no_hht%TYPE;               -- 受注No.（HHT）
     lt_lin_line_no_hht           xxcos_dlv_lines.line_no_hht%TYPE;                -- 行No.（HHT）
@@ -3499,6 +3503,9 @@ AS
                ,dhs.results_forward_flag     -- 販売実績連携済フラグ
                ,dhs.results_forward_date     -- 販売実績連携済日付
                ,dhs.cancel_correct_class     -- 取消・訂正区分
+-- 2011/03/22 Ver.1.28 S.Ochiai ADD Start
+               ,dhs.order_number             -- オーダーNo
+-- 2011/03/22 Ver.1.28 S.Ochiai ADD End
          INTO   lt_row_id
                ,lt_order_no_ebs
                ,lt_base_code
@@ -3528,6 +3535,9 @@ AS
                ,lt_results_forward_flag
                ,lt_results_forward_date
                ,lt_cancel_correct_class
+-- 2011/03/22 Ver.1.28 S.Ochiai ADD Start
+               ,lt_order_number
+-- 2011/03/22 Ver.1.28 S.Ochiai ADD End
          FROM   xxcos_dlv_headers dhs            -- 納品ヘッダ
          WHERE  dhs.order_no_hht        = lt_order_no_hht
          AND    dhs.digestion_ln_number = lt_digestion_ln_number
@@ -6101,7 +6111,10 @@ AS
             gt_head_dlv_by_code( gn_head_data_no )             := lt_dlv_by_code;             -- 納品者コード
             gt_head_business_date( gn_head_data_no )           := gd_process_date;            -- 登録業務日付(初期処理取得)
             gt_head_order_source_id( gn_head_data_no )         := cv_tkn_null;                -- 受注ソースID(NULL設定)
-            gt_head_order_invoice_number( gn_head_data_no )    := cv_tkn_null;                -- 注文伝票番号
+-- 2011/03/22 Ver.1.28 S.Ochiai MOD Start
+--            gt_head_order_invoice_number( gn_head_data_no )    := cv_tkn_null;                -- 注文伝票番号
+            gt_head_order_invoice_number( gn_head_data_no )    := lt_order_number;            -- 注文伝票番号
+-- 2011/03/22 Ver.1.28 S.Ochiai MOD End
             gt_head_order_connection_num( gn_head_data_no )    := cv_tkn_null;                -- 受注関連番号(NULL設定)
             gt_head_ar_interface_flag( gn_head_data_no )       := cv_tkn_n;                   -- AR-IF済フラグ('N')
             gt_head_gl_interface_flag( gn_head_data_no )       := cv_tkn_n;                   -- GL-IF済フラグ('N')
@@ -6348,6 +6361,9 @@ AS
     lt_results_forward_date      xxcos_dlv_headers.results_forward_date%TYPE;     -- 販売実績連携済日付
     lt_cancel_correct_class      xxcos_dlv_headers.cancel_correct_class%TYPE;     -- 取消・訂正区分
     lt_red_black_flag            xxcos_dlv_headers.red_black_flag%TYPE;           -- 赤黒フラグ
+-- 2011/03/22 Ver.1.28 S.Ochiai ADD Start
+    lt_order_number              xxcos_dlv_headers.order_number%TYPE;             -- オーダーNo
+-- 2011/03/22 Ver.1.28 S.Ochiai ADD End
     --納品明細(HHT)格納用変数
     lt_lin_order_no_hht          xxcos_dlv_lines.order_no_hht%TYPE;               -- 受注No.（HHT）
     lt_lin_line_no_hht           xxcos_dlv_lines.line_no_hht%TYPE;                -- 行No.（HHT）
@@ -6667,6 +6683,9 @@ AS
                ,dhs.results_forward_flag     -- 販売実績連携済フラグ
                ,dhs.results_forward_date     -- 販売実績連携済日付
                ,dhs.cancel_correct_class     -- 取消・訂正区分
+-- 2011/03/22 Ver.1.28 S.Ochiai ADD Start
+               ,dhs.order_number             -- オーダーNo
+-- 2011/03/22 Ver.1.28 S.Ochiai ADD End
          INTO   lt_row_id
                ,lt_order_no_ebs
                ,lt_base_code
@@ -6696,6 +6715,9 @@ AS
                ,lt_results_forward_flag
                ,lt_results_forward_date
                ,lt_cancel_correct_class
+-- 2011/03/22 Ver.1.28 S.Ochiai ADD Start
+               ,lt_order_number
+-- 2011/03/22 Ver.1.28 S.Ochiai ADD End
          FROM   xxcos_dlv_headers dhs            -- 納品ヘッダ
          WHERE  dhs.order_no_hht        = lt_order_no_hht
          AND    dhs.digestion_ln_number = lt_digestion_ln_number
@@ -9311,7 +9333,10 @@ AS
             gt_head_dlv_by_code( gn_head_data_no )             := lt_dlv_by_code;               -- 納品者コード
             gt_head_business_date( gn_head_data_no )           := gd_process_date;              -- 登録業務日付(初期処理取得)
             gt_head_order_source_id( gn_head_data_no )         := cv_tkn_null;                  -- 受注ソースID(NULL設定)
-            gt_head_order_invoice_number( gn_head_data_no )    := cv_tkn_null;                  -- 注文伝票番号(NULL設定)
+-- 2011/03/22 Ver.1.28 S.Ochiai MOD Start
+--            gt_head_order_invoice_number( gn_head_data_no )    := cv_tkn_null;                  -- 注文伝票番号(NULL設定)
+            gt_head_order_invoice_number( gn_head_data_no )    := lt_order_number;              -- 注文伝票番号
+-- 2011/03/22 Ver.1.28 S.Ochiai MOD End
             gt_head_order_connection_num( gn_head_data_no )    := cv_tkn_null;                  -- 受注関連番号(NULL設定)
             gt_head_ar_interface_flag( gn_head_data_no )       := cv_tkn_n;                     -- AR-IF済フラグ('N')
             gt_head_gl_interface_flag( gn_head_data_no )       := cv_tkn_n;                     -- GL-IF済フラグ('N')
@@ -9520,6 +9545,9 @@ AS
     lt_results_forward_date      xxcos_dlv_headers.results_forward_date%TYPE;     -- 販売実績連携済日付
     lt_cancel_correct_class      xxcos_dlv_headers.cancel_correct_class%TYPE;     -- 取消・訂正区分
     lt_red_black_flag            xxcos_dlv_headers.red_black_flag%TYPE;           -- 赤黒フラグ
+-- 2011/03/22 Ver.1.28 S.Ochiai ADD Start
+    lt_order_number              xxcos_dlv_headers.order_number%TYPE;             -- オーダーNo
+-- 2011/03/22 Ver.1.28 S.Ochiai ADD End
     --納品明細(HHT)格納用変数
     lt_lin_order_no_hht          xxcos_dlv_lines.order_no_hht%TYPE;               -- 受注No.（HHT）
     lt_lin_line_no_hht           xxcos_dlv_lines.line_no_hht%TYPE;                -- 行No.（HHT）
@@ -9799,6 +9827,9 @@ AS
                  ,dhs.results_forward_flag     -- 販売実績連携済フラグ
                  ,dhs.results_forward_date     -- 販売実績連携済日付
                  ,dhs.cancel_correct_class     -- 取消・訂正区分
+-- 2011/03/22 Ver.1.28 S.Ochiai ADD Start
+                 ,dhs.order_number             -- オーダーNo
+-- 2011/03/22 Ver.1.28 S.Ochiai ADD End
            INTO   lt_row_id
                  ,lt_order_no_ebs
                  ,lt_base_code
@@ -9828,6 +9859,9 @@ AS
                  ,lt_results_forward_flag
                  ,lt_results_forward_date
                  ,lt_cancel_correct_class
+-- 2011/03/22 Ver.1.28 S.Ochiai ADD Start
+                 ,lt_order_number
+-- 2011/03/22 Ver.1.28 S.Ochiai ADD End
            FROM   xxcos_dlv_headers dhs            -- 納品ヘッダ
            WHERE  dhs.order_no_hht        = lt_order_no_hht
            AND    dhs.digestion_ln_number = lt_digestion_ln_number
@@ -12256,7 +12290,10 @@ AS
             gt_head_dlv_by_code( gn_head_data_no )             := lt_dlv_by_code;               -- 納品者コード
             gt_head_business_date( gn_head_data_no )           := gd_process_date;              -- 登録業務日付(初期処理取得)
             gt_head_order_source_id( gn_head_data_no )         := cv_tkn_null;                  -- 受注ソースID(NULL設定)
-            gt_head_order_invoice_number( gn_head_data_no )    := cv_tkn_null;                  -- 注文伝票番号(NULL設定)
+-- 2011/03/22 Ver.1.28 S.Ochiai MOD Start
+--            gt_head_order_invoice_number( gn_head_data_no )    := cv_tkn_null;                  -- 注文伝票番号(NULL設定)
+            gt_head_order_invoice_number( gn_head_data_no )    := lt_order_number;              -- 注文伝票番号
+-- 2011/03/22 Ver.1.28 S.Ochiai MOD End
             gt_head_order_connection_num( gn_head_data_no )    := cv_tkn_null;                  -- 受注関連番号(NULL設定)
             gt_head_ar_interface_flag( gn_head_data_no )       := cv_tkn_n;                     -- AR-IF済フラグ('N')
             gt_head_gl_interface_flag( gn_head_data_no )       := cv_tkn_n;                     -- GL-IF済フラグ('N')
