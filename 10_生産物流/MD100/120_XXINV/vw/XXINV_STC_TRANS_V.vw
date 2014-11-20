@@ -133,14 +133,19 @@ SELECT xstv.whse_code
         AND    pla_in_po.attribute13           = 'N'                    -- 未承諾
         AND    pla_in_po.item_id               = ximv_in_po.inventory_item_id
         AND    ilm_in_po.item_id               = ximv_in_po.item_id
---mod start 2008/06/10
---        AND (( ximv_in_po.lot_ctl              = 1                      -- ロット管理品
---           AND pla_in_po.cancel_flag          <> 'Y'
---           AND pla_in_po.attribute1            = ilm_in_po.lot_no )
---          OR ( ximv_in_po.lot_ctl              = 0 ))                   -- 非ロット管理品
-        AND    pla_in_po.cancel_flag          <> 'Y'
-        AND    pla_in_po.attribute1            = ilm_in_po.lot_no
---mod end 2008/06/10
+--mod start 2008/09/22 変更要求#228 ロット管理外品も抽出するように変更
+----mod start 2008/06/10
+----        AND (( ximv_in_po.lot_ctl              = 1                      -- ロット管理品
+----           AND pla_in_po.cancel_flag          <> 'Y'
+----           AND pla_in_po.attribute1            = ilm_in_po.lot_no )
+----          OR ( ximv_in_po.lot_ctl              = 0 ))                   -- 非ロット管理品
+--        AND    pla_in_po.cancel_flag          <> 'Y'
+--        AND    pla_in_po.attribute1            = ilm_in_po.lot_no
+----mod end 2008/06/10
+        AND (( ximv_in_po.lot_ctl              = 1                      -- ロット管理品
+           AND pla_in_po.attribute1            = ilm_in_po.lot_no )
+          OR ( ximv_in_po.lot_ctl              = 0 ))                   -- 非ロット管理品
+--mod end 2008/09/22
         AND    pha_in_po.attribute5            = xilv_in_po.segment1
         AND    TO_DATE( pha_in_po.attribute4, 'YYYY/MM/DD' )
                                               <= TRUNC( SYSDATE )
@@ -1354,12 +1359,21 @@ SELECT xstv.whse_code
               ,'1'                                            AS status        -- 予定
               ,xrpm_out_ad.new_div_invent
               ,flv_out_ad.meaning
-              ,NULL                                           AS voucher_no
---mod start 2008/06/06
---              ,TO_NUMBER( pla_out_ad.attribute12 )
-              ,xilv_out_ad.inventory_location_id              AS ukebaraisaki_id
---mod end 2008/06/06
-              ,xilv_out_ad.description
+--mod start 2008/09/22 T_TE080_BPO_540 指摘44 伝票No：発注番号
+--              ,NULL                                           AS voucher_no
+              ,pha_out_ad.segment1                            AS voucher_no
+--mod end 2008/09/22
+--mod start 2008/09/22 T_TE080_BPO_540 指摘44 受払先ID：取引先ID
+----mod start 2008/06/06
+----              ,TO_NUMBER( pla_out_ad.attribute12 )
+--              ,xilv_out_ad.inventory_location_id              AS ukebaraisaki_id
+----mod end 2008/06/06
+              ,pha_out_ad.vendor_id                           AS ukebaraisaki_id
+--mod end 2008/09/22
+--mod start 2008/09/22 T_TE080_BPO_540 指摘44 受払先名：正式名
+--              ,xilv_out_ad.description
+              ,xvv_out_ad.vendor_full_name                    AS ukebaraisaki_name
+--mod end 2008/09/22
               ,NULL                                           AS deliver_to_id
               ,NULL                                           AS deliver_to_name
               ,0                                              AS stock_quantity
@@ -1383,6 +1397,9 @@ SELECT xstv.whse_code
 --del start 2008/06/05 rev1.6
 --              ,ic_tran_cmp             itc_out_ad                        -- OPM完了在庫トランザクション
 --del end 2008/06/05 rev1.6
+--add start 2008/09/22 T_TE080_BPO_540 指摘44 受払先名：正式名
+              ,xxcmn_vendors_v         xvv_out_ad                        -- 仕入先情報VIEW
+--add end 2008/09/22
         WHERE  xrpm_out_ad.doc_type             = 'ADJI'
         AND    xrpm_out_ad.reason_code          = 'X977'                 -- 相手先在庫
         AND    xrpm_out_ad.rcv_pay_div          = '-1'                   -- 払出
@@ -1425,6 +1442,9 @@ SELECT xstv.whse_code
         AND    flv_out_ad.lookup_type           = 'XXCMN_NEW_DIVISION'
         AND    flv_out_ad.language              = 'JA'
         AND    flv_out_ad.lookup_code           = xrpm_out_ad.new_div_invent
+--add start 2008/09/22 T_TE080_BPO_540 指摘44 受払先名：正式名
+        AND    pha_out_ad.vendor_id             = xvv_out_ad.vendor_id   -- 仕入先情報VIEW
+--add end 2008/09/22
         UNION ALL
         ------------------------------------------------------------------------
         -- 入庫実績
@@ -1476,7 +1496,13 @@ SELECT xstv.whse_code
         AND    pha_in_po_e.po_header_id          = pla_in_po_e.po_header_id
         AND    pha_in_po_e.attribute5            = xilv_in_po_e.segment1
         AND    pla_in_po_e.item_id               = ximv_in_po_e.inventory_item_id
-        AND    ilm_in_po_e.lot_no                = pla_in_po_e.attribute1(+)
+--mod start 2008/09/22 変更要求#228 ロット管理外品も抽出するように変更
+--        AND    ilm_in_po_e.lot_no                = pla_in_po_e.attribute1(+)
+        AND    ximv_in_po_e.item_id              = ilm_in_po_e.item_id
+        AND (( ximv_in_po_e.lot_ctl              = 1                      -- ロット管理品
+           AND pla_in_po_e.attribute1            = ilm_in_po_e.lot_no )
+          OR ( ximv_in_po_e.lot_ctl              = 0 ))                   -- 非ロット管理品
+--mod end 2008/09/22
         AND    pha_in_po_e.attribute1           IN ( '25'                 -- 受入あり
                                                     ,'30'                 -- 数量確定済
                                                     ,'35' )               -- 金額確定済
@@ -2194,9 +2220,18 @@ SELECT xstv.whse_code
               ,'2'                                            AS status        -- 実績
               ,xrpm_in_ad_e_x97.new_div_invent
               ,flv_in_ad_e_x97.meaning
-              ,NULL                                           AS voucher_no
-              ,xilv_in_ad_e_x97.inventory_location_id         AS ukebaraisaki_id
-              ,xilv_in_ad_e_x97.description
+--mod start 2008/09/22 T_TE080_BPO_540 指摘44 伝票No：ジャーナルNo
+--              ,NULL                                           AS voucher_no
+              ,ijm_in_ad_e_x97.journal_no                     AS voucher_no
+--mod end 2008/09/22
+--mod start 2008/09/22 T_TE080_BPO_540 指摘44 受払先ID：新区分
+--              ,xilv_in_ad_e_x97.inventory_location_id         AS ukebaraisaki_id
+              ,TO_NUMBER( xrpm_in_ad_e_x97.new_div_invent )   AS ukebaraisaki_id
+--mod end 2008/09/22
+--mod start 2008/09/22 T_TE080_BPO_540 指摘44 受払先名：新区分名
+--              ,xilv_in_ad_e_x97.description
+              ,flv_in_ad_e_x97.meaning                        AS ukebaraisaki_name
+--mod end 2008/09/22
               ,NULL                                           AS deliver_to_id
               ,NULL                                           AS deliver_to_name
               ,itc_in_ad_e_x97.trans_qty                      AS leaving_quantity
@@ -2208,6 +2243,10 @@ SELECT xstv.whse_code
               ,xxcmn_rcv_pay_mst       xrpm_in_ad_e_x97                       -- 受払区分アドオンマスタ
               ,fnd_lookup_values       flv_in_ad_e_x97                        -- クイックコード <---- ここまで共通
               ,ic_tran_cmp             itc_in_ad_e_x97                        -- OPM完了在庫トランザクション
+--add start 2008/09/22 T_TE080_BPO_540 指摘44 伝票No：ジャーナルNo
+              ,ic_jrnl_mst             ijm_in_ad_e_x97                        -- OPMジャーナルマスタ
+              ,ic_adjs_jnl             iaj_in_ad_e_x97                        -- OPM在庫調整ジャーナル
+--add end 2008/09/22
         WHERE  xrpm_in_ad_e_x97.doc_type               = 'ADJI'
         AND    xrpm_in_ad_e_x97.reason_code            = 'X977'               -- 相手先在庫
         AND    xrpm_in_ad_e_x97.rcv_pay_div            = '1'                  -- 受入
@@ -2225,7 +2264,78 @@ SELECT xstv.whse_code
         AND    flv_in_ad_e_x97.lookup_type             = 'XXCMN_NEW_DIVISION'
         AND    flv_in_ad_e_x97.language                = 'JA'
         AND    flv_in_ad_e_x97.lookup_code             = xrpm_in_ad_e_x97.new_div_invent
---mod end 2008/06/06
+--add start 2008/09/22 T_TE080_BPO_540 指摘44 伝票No：ジャーナルNo
+        AND    ijm_in_ad_e_x97.journal_id              = iaj_in_ad_e_x97.journal_id   --OPMジャーナルマスタ抽出条件
+        AND    iaj_in_ad_e_x97.doc_id                  = itc_in_ad_e_x97.doc_id       --OPM在庫調整ジャーナル抽出条件
+        AND    iaj_in_ad_e_x97.doc_line                = itc_in_ad_e_x97.doc_line     --OPM在庫調整ジャーナル抽出条件
+--add end 2008/09/22
+--add start 2008/09/22 T_TE080_BPO_540 指摘44 在庫調整 入庫実績(外注出来高)を別SQLで取得するため、条件追加
+        AND    ijm_in_ad_e_x97.attribute1             IS NULL                     --OPMジャーナルマスタ.実績IDがNULL
+--add end 2008/09/22
+--add start 2008/09/22 T_TE080_BPO_540 指摘44 在庫調整 入庫実績(外注出来高)を別SQLで取得
+        UNION ALL
+        -- 在庫調整 入庫実績(外注出来高)
+        SELECT xilv_in_ad_e_x97.whse_code
+              ,xilv_in_ad_e_x97.mtl_organization_id
+              ,xilv_in_ad_e_x97.customer_stock_whse
+              ,xilv_in_ad_e_x97.inventory_location_id
+              ,xilv_in_ad_e_x97.segment1
+              ,xilv_in_ad_e_x97.description
+              ,ximv_in_ad_e_x97.item_id
+              ,ximv_in_ad_e_x97.item_no
+              ,ximv_in_ad_e_x97.item_name
+              ,ximv_in_ad_e_x97.item_short_name
+              ,ximv_in_ad_e_x97.num_of_cases
+              ,ilm_in_ad_e_x97.lot_id
+              ,ilm_in_ad_e_x97.lot_no
+              ,ilm_in_ad_e_x97.attribute1
+              ,ilm_in_ad_e_x97.attribute2
+              ,ilm_in_ad_e_x97.attribute3                                     -- <---- ここまで共通
+              ,itc_in_ad_e_x97.trans_date
+              ,itc_in_ad_e_x97.trans_date
+              ,'2'                                            AS status        -- 実績
+              ,xrpm_in_ad_e_x97.new_div_invent
+              ,flv_in_ad_e_x97.meaning
+              ,NULL                                           AS voucher_no        -- 伝票No
+              ,xvst_in_ad_e_x97.vendor_id                     AS ukebaraisaki_id   -- 受払先ID
+              ,xvv_in_ad_e_x97.vendor_full_name               AS ukebaraisaki_name -- 受払先名
+              ,NULL                                           AS deliver_to_id
+              ,NULL                                           AS deliver_to_name
+              ,itc_in_ad_e_x97.trans_qty                      AS leaving_quantity
+              ,0                                              AS stock_quantity
+              ,ximv_in_ad_e_x97.lot_ctl
+        FROM   xxcmn_item_locations_v  xilv_in_ad_e_x97                       -- OPM保管場所情報VIEW
+              ,xxcmn_item_mst_v        ximv_in_ad_e_x97                       -- OPM品目情報VIEW
+              ,ic_lots_mst             ilm_in_ad_e_x97                        -- OPMロットマスタ
+              ,xxcmn_rcv_pay_mst       xrpm_in_ad_e_x97                       -- 受払区分アドオンマスタ
+              ,fnd_lookup_values       flv_in_ad_e_x97                        -- クイックコード <---- ここまで共通
+              ,ic_tran_cmp             itc_in_ad_e_x97                        -- OPM完了在庫トランザクション
+              ,ic_jrnl_mst             ijm_in_ad_e_x97                        -- OPMジャーナルマスタ
+              ,ic_adjs_jnl             iaj_in_ad_e_x97                        -- OPM在庫調整ジャーナル
+              ,xxpo_vendor_supply_txns xvst_in_ad_e_x97                       -- 外注出来高実績
+              ,xxcmn_vendors_v         xvv_in_ad_e_x97                        -- 仕入先情報
+        WHERE  xrpm_in_ad_e_x97.doc_type               = 'ADJI'
+        AND    xrpm_in_ad_e_x97.reason_code            = 'X977'               -- 相手先在庫
+        AND    xrpm_in_ad_e_x97.rcv_pay_div            = '1'                  -- 受入
+        AND    xrpm_in_ad_e_x97.use_div_invent         = 'Y'
+        AND    itc_in_ad_e_x97.doc_type                = xrpm_in_ad_e_x97.doc_type
+        AND    itc_in_ad_e_x97.reason_code             = xrpm_in_ad_e_x97.reason_code
+        AND    SIGN( itc_in_ad_e_x97.trans_qty )       = xrpm_in_ad_e_x97.rcv_pay_div
+        AND    itc_in_ad_e_x97.item_id                 = ximv_in_ad_e_x97.item_id
+        AND    ilm_in_ad_e_x97.item_id                 = ximv_in_ad_e_x97.item_id
+        AND    itc_in_ad_e_x97.lot_id                  = ilm_in_ad_e_x97.lot_id
+        AND    itc_in_ad_e_x97.whse_code               = xilv_in_ad_e_x97.whse_code
+        AND    itc_in_ad_e_x97.location                = xilv_in_ad_e_x97.segment1
+        AND    flv_in_ad_e_x97.lookup_type             = 'XXCMN_NEW_DIVISION'
+        AND    flv_in_ad_e_x97.language                = 'JA'
+        AND    flv_in_ad_e_x97.lookup_code             = xrpm_in_ad_e_x97.new_div_invent
+        AND    ijm_in_ad_e_x97.journal_id              = iaj_in_ad_e_x97.journal_id   -- OPMジャーナルマスタ抽出条件
+        AND    iaj_in_ad_e_x97.doc_id                  = itc_in_ad_e_x97.doc_id       -- OPM在庫調整ジャーナル抽出条件
+        AND    iaj_in_ad_e_x97.doc_line                = itc_in_ad_e_x97.doc_line     -- OPM在庫調整ジャーナル抽出条件
+        AND    ijm_in_ad_e_x97.attribute1             IS NOT NULL                     -- OPMジャーナルマスタ.実績IDがNULLでない
+        AND    TO_NUMBER(ijm_in_ad_e_x97.attribute1)   = xvst_in_ad_e_x97.txns_id     -- 実績ID
+        AND    xvst_in_ad_e_x97.vendor_id              = xvv_in_ad_e_x97.vendor_id    -- 仕入先ID
+--add end 2008/09/22
         UNION ALL
         -- 在庫調整 入庫実績(浜岡入庫)
         SELECT xilv_in_ad_e_x9.whse_code
@@ -3472,12 +3582,21 @@ SELECT xstv.whse_code
               ,'2'                                            AS status        -- 実績
               ,xrpm_out_ad_e_x97.new_div_invent
               ,flv_out_ad_e_x97.meaning
-              ,NULL                                           AS voucher_no
+--mod start 2008/09/22 T_TE080_BPO_540 指摘44 伝票No：ジャーナルNo
+--              ,NULL                                           AS voucher_no
+              ,ijm_out_ad_e_x97.journal_no                    AS voucher_no
+--mod end 2008/09/22
 --mod start 2008/06/06
---              ,TO_NUMBER( pla_out_ad_e_x97.attribute12)       AS ukebaraisaki_id
-              ,xilv_out_ad_e_x97.inventory_location_id        AS ukebaraisaki_id
+--mod start 2008/09/22 T_TE080_BPO_540 指摘44 受払先ID：新区分
+----              ,TO_NUMBER( pla_out_ad_e_x97.attribute12)       AS ukebaraisaki_id
+--              ,xilv_out_ad_e_x97.inventory_location_id        AS ukebaraisaki_id
+              ,TO_NUMBER( xrpm_out_ad_e_x97.new_div_invent )  AS ukebaraisaki_id
+--mod end 2008/09/22
 --mod end 2008/06/06
-              ,xilv_out_ad_e_x97.description
+--mod start 2008/09/22 T_TE080_BPO_540 指摘44 受払先名：新区分名
+--              ,xilv_out_ad_e_x97.description
+              ,flv_out_ad_e_x97.meaning                       AS ukebaraisaki_name
+--mod end 2008/09/22
               ,NULL                                           AS deliver_to_id
               ,NULL                                           AS deliver_to_name
               ,0                                              AS stock_quantity
@@ -3496,6 +3615,10 @@ SELECT xstv.whse_code
 --              ,po_lines_all            pla_out_ad_e_x97                        -- 発注明細
 --del end 2008/06/06
               ,ic_tran_cmp             itc_out_ad_e_x97                        -- OPM完了在庫トランザクション
+--add start 2008/09/22 T_TE080_BPO_540 指摘44 伝票No：ジャーナルNo
+              ,ic_jrnl_mst             ijm_out_ad_e_x97                        -- OPMジャーナルマスタ
+              ,ic_adjs_jnl             iaj_out_ad_e_x97                        -- OPM在庫調整ジャーナル
+--add end 2008/09/22
         WHERE  xrpm_out_ad_e_x97.doc_type               = 'ADJI'
         AND    xrpm_out_ad_e_x97.reason_code            = 'X977'               -- 相手先在庫
         AND    xrpm_out_ad_e_x97.rcv_pay_div            = '-1'                 -- 払出
@@ -3515,6 +3638,77 @@ SELECT xstv.whse_code
         AND    flv_out_ad_e_x97.lookup_type             = 'XXCMN_NEW_DIVISION'
         AND    flv_out_ad_e_x97.language                = 'JA'
         AND    flv_out_ad_e_x97.lookup_code             = xrpm_out_ad_e_x97.new_div_invent
+--add start 2008/09/22 T_TE080_BPO_540 指摘44 伝票No：ジャーナルNo
+        AND    ijm_out_ad_e_x97.journal_id              = iaj_out_ad_e_x97.journal_id   -- OPMジャーナルマスタ抽出条件
+        AND    iaj_out_ad_e_x97.doc_id                  = itc_out_ad_e_x97.doc_id       -- OPM在庫調整ジャーナル抽出条件
+        AND    iaj_out_ad_e_x97.doc_line                = itc_out_ad_e_x97.doc_line     -- OPM在庫調整ジャーナル抽出条件
+--add end 2008/09/22
+--add start 2008/09/22 T_TE080_BPO_540 指摘44 相手先在庫出庫実績を別SQLで取得するため、条件追加
+        AND    ijm_out_ad_e_x97.attribute1             IS NULL                          -- OPMジャーナルマスタ.実績IDがNULL
+--mod end 2008/09/22
+--add start 2008/09/22 T_TE080_BPO_540 指摘44
+        UNION ALL
+        -- 相手先在庫出庫実績
+        SELECT xilv_out_ad_e_x97.whse_code
+              ,xilv_out_ad_e_x97.mtl_organization_id
+              ,xilv_out_ad_e_x97.customer_stock_whse
+              ,xilv_out_ad_e_x97.inventory_location_id
+              ,xilv_out_ad_e_x97.segment1
+              ,xilv_out_ad_e_x97.description
+              ,ximv_out_ad_e_x97.item_id
+              ,ximv_out_ad_e_x97.item_no
+              ,ximv_out_ad_e_x97.item_name
+              ,ximv_out_ad_e_x97.item_short_name
+              ,ximv_out_ad_e_x97.num_of_cases
+              ,ilm_out_ad_e_x97.lot_id
+              ,ilm_out_ad_e_x97.lot_no
+              ,ilm_out_ad_e_x97.attribute1
+              ,ilm_out_ad_e_x97.attribute2
+              ,ilm_out_ad_e_x97.attribute3                                     -- <---- ここまで共通
+              ,itc_out_ad_e_x97.trans_date
+              ,itc_out_ad_e_x97.trans_date
+              ,'2'                                            AS status        -- 実績
+              ,xrpm_out_ad_e_x97.new_div_invent
+              ,flv_out_ad_e_x97.meaning
+              ,xrart_out_ad_e_x97.source_document_number      AS voucher_no        -- 伝票No
+              ,xrart_out_ad_e_x97.vendor_id                   AS ukebaraisaki_id   -- 受払先ID
+              ,xvv_out_ad_e_x97.vendor_full_name              AS ukebaraisaki_name -- 受払先名
+              ,NULL                                           AS deliver_to_id
+              ,NULL                                           AS deliver_to_name
+              ,0                                              AS stock_quantity
+              ,ABS(itc_out_ad_e_x97.trans_qty)
+              ,ximv_out_ad_e_x97.lot_ctl
+        FROM   xxcmn_item_locations_v  xilv_out_ad_e_x97                       -- OPM保管場所情報VIEW
+              ,xxcmn_item_mst_v        ximv_out_ad_e_x97                       -- OPM品目情報VIEW
+              ,ic_lots_mst             ilm_out_ad_e_x97                        -- OPMロットマスタ
+              ,xxcmn_rcv_pay_mst       xrpm_out_ad_e_x97                       -- 受払区分アドオンマスタ
+              ,fnd_lookup_values       flv_out_ad_e_x97                        -- クイックコード <---- ここまで共通
+              ,ic_tran_cmp             itc_out_ad_e_x97                        -- OPM完了在庫トランザクション
+              ,ic_jrnl_mst             ijm_out_ad_e_x97                        -- OPMジャーナルマスタ
+              ,ic_adjs_jnl             iaj_out_ad_e_x97                        -- OPM在庫調整ジャーナル
+              ,xxpo_rcv_and_rtn_txns   xrart_out_ad_e_x97                      -- 受入返品実績アドオン
+              ,xxcmn_vendors_v         xvv_out_ad_e_x97                        -- 仕入先情報
+        WHERE  xrpm_out_ad_e_x97.doc_type               = 'ADJI'
+        AND    xrpm_out_ad_e_x97.reason_code            = 'X977'               -- 相手先在庫
+        AND    xrpm_out_ad_e_x97.rcv_pay_div            = '-1'                 -- 払出
+        AND    xrpm_out_ad_e_x97.use_div_invent         = 'Y'
+        AND    itc_out_ad_e_x97.reason_code             = xrpm_out_ad_e_x97.reason_code
+        AND    SIGN( itc_out_ad_e_x97.trans_qty )       = xrpm_out_ad_e_x97.rcv_pay_div
+        AND    itc_out_ad_e_x97.item_id                 = ximv_out_ad_e_x97.item_id
+        AND    ilm_out_ad_e_x97.item_id                 = ximv_out_ad_e_x97.item_id
+        AND    itc_out_ad_e_x97.lot_id                  = ilm_out_ad_e_x97.lot_id
+        AND    itc_out_ad_e_x97.whse_code               = xilv_out_ad_e_x97.whse_code
+        AND    itc_out_ad_e_x97.location                = xilv_out_ad_e_x97.segment1
+        AND    flv_out_ad_e_x97.lookup_type             = 'XXCMN_NEW_DIVISION'
+        AND    flv_out_ad_e_x97.language                = 'JA'
+        AND    flv_out_ad_e_x97.lookup_code             = xrpm_out_ad_e_x97.new_div_invent
+        AND    ijm_out_ad_e_x97.journal_id              = iaj_out_ad_e_x97.journal_id   -- OPMジャーナルマスタ抽出条件
+        AND    iaj_out_ad_e_x97.doc_id                  = itc_out_ad_e_x97.doc_id       -- OPM在庫調整ジャーナル抽出条件
+        AND    iaj_out_ad_e_x97.doc_line                = itc_out_ad_e_x97.doc_line     -- OPM在庫調整ジャーナル抽出条件
+        AND    ijm_out_ad_e_x97.attribute1             IS NOT NULL                      -- OPMジャーナルマスタ.実績IDがNULLでない
+        AND    TO_NUMBER(ijm_out_ad_e_x97.attribute1)   = xrart_out_ad_e_x97.txns_id    -- 実績ID
+        AND    xrart_out_ad_e_x97.vendor_id             = xvv_out_ad_e_x97.vendor_id    -- 仕入先ID
+--add end 2008/09/22
 --mod start 2008/06/06
         UNION ALL
         -- 在庫調整 出庫実績(仕入先返品)
