@@ -7,7 +7,7 @@ AS
  * Description      : 返品原料原価差異表
  * MD.050/070       : 月次〆切処理（経理）Issue1.0(T_MD050_BPO_770)
  *                    月次〆切処理（経理）Issue1.0(T_MD070_BPO_77H)
- * Version          : 1.7
+ * Version          : 1.8
  *
  * Program List
  * -------------------- ------------------------------------------------------------
@@ -33,6 +33,7 @@ AS
  *  2008/06/25    1.6   T.Ikehara        特定文字列を出力しようとすると、エラーとなり帳票が出力
  *                                       されない現象への対応
  *  2008/08/26    1.7   A.Shiina         T_TE080_BPO_770 指摘17対応
+ *  2008/10/15    1.8   N.Yoshida        T_S_524対応(PT対応)
  *
  *****************************************************************************************/
 --
@@ -228,6 +229,10 @@ AS
     lc_f_day          CONSTANT VARCHAR2(3)  := '/01';
     lc_f_time         CONSTANT VARCHAR2(10) := ' 00:00:00';
     lc_e_time         CONSTANT VARCHAR2(10) := ' 23:59:59';
+-- 2008/10/15 v1.8 ADD START
+    cn_prod_class_id  CONSTANT NUMBER := TO_NUMBER(FND_PROFILE.VALUE('XXCMN_ITEM_CATEGORY_PROD_CLASS'));
+    cn_item_class_id  CONSTANT NUMBER := TO_NUMBER(FND_PROFILE.VALUE('XXCMN_ITEM_CATEGORY_ITEM_CLASS'));
+-- 2008/10/15 v1.8 ADD END
 --
     lc_prod           CONSTANT VARCHAR2(5)  := 'PROD';    -- 生産関連
     lc_completed      CONSTANT NUMBER       := 1;         -- 完了フラグ：完了
@@ -235,13 +240,17 @@ AS
     lc_product        CONSTANT NUMBER       := 1;         -- 製品
 --
     -- *** ローカル・変数 ***
-    lv_select         VARCHAR2(2000);   -- 共通SELECT
-    lv_from1          VARCHAR2(1000);   -- 共通FROM
-    lv_where1         VARCHAR2(5000);   -- 共通WHERE
-    lv_order_by       VARCHAR2(100);    -- 共通ORDER BY
-    lv_sql1           VARCHAR2(10000);  -- データ取得用ＳＱＬ（REVERSE_IDがNULL用）
-    lv_select_chk     VARCHAR2(200);    -- エラーチェック用SELECT
-    lv_group_by_chk   VARCHAR2(100);    -- エラーチェック用GROUP BY
+-- 2008/10/15 v1.8 UPDATE START
+    lv_select         VARCHAR2(10000);   -- 共通SELECT
+    --lv_from1          VARCHAR2(1000);   -- 共通FROM
+    --lv_order_by       VARCHAR2(100);    -- 共通ORDER BY
+    --lv_sql1           VARCHAR2(10000);  -- データ取得用ＳＱＬ（REVERSE_IDがNULL用）
+    lv_select_chk     VARCHAR2(10000);    -- エラーチェック用SELECT
+    --lv_group_by_chk   VARCHAR2(100);    -- エラーチェック用GROUP BY
+    lv_where1         VARCHAR2(1000);   -- 共通WHERE
+    lv_order          VARCHAR2(1000);    -- 共通ORDER BY
+    lv_group          VARCHAR2(1000);    -- 共通ORDER BY
+-- 2008/10/15 v1.8 UPDATE END
 --
     lv_err_batch_no   VARCHAR2(3200) DEFAULT NULL;  -- バッチのエラーＮｏ
 --
@@ -282,11 +291,276 @@ AS
     gv_exec_end   := TO_CHAR(gd_exec_end, gc_char_d_format) || lc_e_time;
 --
 --
+-- 2008/10/15 v1.8 ADD START
     -- ----------------------------------------------------
-    -- ＳＥＬＥＣＴ句生成
+    -- ＳＱＬ生成（エラーチェック用）
     -- ----------------------------------------------------
-    -- 共通SELECT
+    lv_select_chk :=
+       '      SELECT /*+ leading ( itp1 gic1 mcb1 gic2 mcb2 gmd1 gbh1 grb1 ) */ '
+    || '             gbh1.batch_no        batch_no ' -- バッチＮｏ
+    || '            ,count(gbh1.batch_no) cnt'       -- 同バッチＩＤの件数
+    || '      FROM'
+    || '             ic_tran_pnd               itp1'  -- 保留在庫トランザクション(原料用)
+    || '            ,gmi_item_categories       gic1'
+    || '            ,mtl_categories_b          mcb1'
+    || '            ,gmi_item_categories       gic2'
+    || '            ,mtl_categories_b          mcb2'
+    || '            ,gme_material_details      gmd1'
+    || '            ,gme_batch_header          gbh1'
+    || '            ,gmd_routings_b            grb1'
+    || '            ,xxcmn_rcv_pay_mst         xrpm1' -- 受払マスタ
+    || '            ,gme_material_details      gmd2'
+    || '            ,gme_batch_header          gbh2'
+    || '            ,gmd_routings_b            grb2'
+    || '            ,xxcmn_rcv_pay_mst         xrpm2' -- 受払マスタ
+    || '            ,ic_tran_pnd               itp2'  -- 保留在庫トランザクション(製品用)
+    || '      WHERE  itp1.doc_type         = ''' || lc_prod || ''''
+    || '      AND    itp1.completed_ind   = ''' || lc_completed || ''''    -- 完了
+    || '      AND    itp1.trans_date      >= FND_DATE.STRING_TO_DATE(''' || gv_exec_start || ''',''' || gc_char_dt_format || ''')'
+    || '      AND    itp1.trans_date      <= FND_DATE.STRING_TO_DATE(''' || gv_exec_end  || ''',''' || gc_char_dt_format || ''')'
+    || '      AND    itp1.line_type       = ''' || lc_product || ''''
+    || '      AND    itp1.reverse_id      IS NULL'
+    || '      AND    gic1.item_id         = itp1.item_id'
+    || '      AND    gic1.category_set_id = ''' || cn_prod_class_id || ''''
+    || '      AND    mcb1.category_id     = gic1.category_id'
+    || '      AND    mcb1.segment1        = ''' || ir_param.goods_class || ''''
+    || '      AND    gic2.item_id         = itp1.item_id'
+    || '      AND    gic2.category_set_id = ''' || cn_item_class_id || ''''
+    || '      AND    mcb2.category_id     = gic2.category_id'
+    || '      AND    mcb2.segment1        = ''' || ir_param.item_class || ''''
+    || '      AND    gmd1.batch_id        = itp1.doc_id'
+    || '      AND    gmd1.line_no         = itp1.doc_line'
+    || '      AND    gbh1.batch_id        = gmd1.batch_id'
+    || '      AND    grb1.routing_id      = gbh1.routing_id'
+    || '      AND    xrpm1.doc_type       = itp1.doc_type'
+    || '      AND    xrpm1.line_type      = itp1.line_type'
+    || '      AND    xrpm1.routing_class  = grb1.routing_class'
+    || '      AND    xrpm1.line_type      = gmd1.line_type'
+    || '      AND    xrpm1.break_col_08 IS NOT NULL'
+    || '      AND    (((gmd1.attribute5 IS NULL) AND (xrpm1.hit_in_div IS NULL))'
+    || '             OR (xrpm1.hit_in_div = gmd1.attribute5))'
+    || '      AND    ((xrpm1.routing_class <> ''70'')'
+    || '             OR (xrpm1.routing_class = ''70'''
+    || '                 AND (EXISTS (SELECT 1'
+    || '                              FROM   gme_material_details gmd3'
+    || '                                    ,gmi_item_categories  gic'
+    || '                                    ,mtl_categories_b     mcb'
+    || '                              WHERE  gmd3.batch_id   = gmd1.batch_id'
+    || '                              AND    gmd3.line_no    = gmd1.line_no'
+    || '                              AND    gmd3.line_type  = -1'
+    || '                              AND    gic.item_id     = gmd3.item_id'
+    || '                              AND    gic.category_set_id = ''' || cn_item_class_id || ''''
+    || '                              AND    gic.category_id = mcb.category_id'
+    || '                              AND    mcb.segment1    = xrpm1.item_div_origin))'
+    || '                 AND (EXISTS (SELECT 1'
+    || '                              FROM   gme_material_details gmd4'
+    || '                                    ,gmi_item_categories  gic'
+    || '                                    ,mtl_categories_b     mcb'
+    || '                              WHERE  gmd4.batch_id   = gmd1.batch_id'
+    || '                              AND    gmd4.line_no    = gmd1.line_no'
+    || '                              AND    gmd4.line_type  = 1'
+    || '                              AND    gic.item_id     = gmd4.item_id'
+    || '                              AND    gic.category_set_id = ''' || cn_item_class_id || ''''
+    || '                              AND    gic.category_id = mcb.category_id'
+    || '                              AND    mcb.segment1    = xrpm1.item_div_ahead)))'
+    || '             )'
+    || '      AND    gmd2.batch_id        = itp2.doc_id'
+    || '      AND    gmd2.line_no         = itp2.doc_line'
+    || '      AND    gbh2.batch_id        = gmd2.batch_id'
+    || '      AND    grb2.routing_id      = gbh2.routing_id'
+    || '      AND    xrpm2.doc_type       = itp2.doc_type'
+    || '      AND    xrpm2.line_type      = itp2.line_type'
+    || '      AND    xrpm2.routing_class  = grb2.routing_class'
+    || '      AND    xrpm2.line_type      = gmd2.line_type'
+    || '      AND    xrpm2.break_col_08 IS NOT NULL'
+    || '      AND    (((gmd2.attribute5 IS NULL) AND (xrpm2.hit_in_div IS NULL))'
+    || '             OR (xrpm2.hit_in_div = gmd2.attribute5))'
+    || '      AND    ((xrpm2.routing_class <> ''70'')'
+    || '             OR (xrpm2.routing_class = ''70'''
+    || '                 AND (EXISTS (SELECT 1'
+    || '                              FROM   gme_material_details gmd5'
+    || '                                    ,gmi_item_categories  gic'
+    || '                                    ,mtl_categories_b     mcb'
+    || '                              WHERE  gmd5.batch_id   = gmd2.batch_id'
+    || '                              AND    gmd5.line_no    = gmd2.line_no'
+    || '                              AND    gmd5.line_type  = -1'
+    || '                              AND    gic.item_id     = gmd2.item_id'
+    || '                              AND    gic.category_set_id = ''' || cn_item_class_id || ''''
+    || '                              AND    gic.category_id = mcb.category_id'
+    || '                              AND    mcb.segment1    = xrpm2.item_div_origin))'
+    || '                 AND (EXISTS (SELECT 1'
+    || '                              FROM   gme_material_details gmd6'
+    || '                                    ,gmi_item_categories  gic'
+    || '                                    ,mtl_categories_b     mcb'
+    || '                              WHERE  gmd6.batch_id   = gmd2.batch_id'
+    || '                              AND    gmd6.line_no    = gmd2.line_no'
+    || '                              AND    gmd6.line_type  = 1'
+    || '                              AND    gic.item_id     = gmd6.item_id'
+    || '                              AND    gic.category_set_id = ''' || cn_item_class_id || ''''
+    || '                              AND    gic.category_id = mcb.category_id'
+    || '                              AND    mcb.segment1    = xrpm2.item_div_ahead)))'
+    || '             )'
+    || '      AND    itp1.doc_id          = itp2.doc_id'
+    || '      AND    itp2.doc_type        = ''' || lc_prod || ''''
+    || '      AND    itp2.completed_ind   = ''' || lc_completed || ''''  -- 完了
+    || '      AND    itp2.line_type       = ''' || lc_material || ''''   -- 製品
+    || '      AND    itp2.reverse_id      IS NULL';
+--
+    -- ----------------------------------------------------
+    -- ＳＱＬ生成
+    -- ----------------------------------------------------
     lv_select :=
+       '      SELECT /*+ leading ( itp1 gic1 mcb1 gic2 mcb2 gmd1 gbh1 grb1 ) */'
+    || '             iimb1.item_no                           item_code'           -- 返品原料品目コード
+    || '            ,ximb1.item_short_name                   item_name'           -- 返品原料品目名称
+    || '            ,iimb2.item_no                           product_item_code'   -- 製品品目コード
+    || '            ,ximb2.item_short_name                   product_item_name'   -- 製品品目名称
+    || '            ,itp1.trans_qty * TO_NUMBER(xrpm1.rcv_pay_div) quantity'      -- 受入数量
+    || '            ,xsupv1.stnd_unit_price_gen               standard_cost'      -- 標準原価
+    || '            ,itp2.trans_qty                           turn_qty'           -- 基準数量
+    || '            ,TO_NUMBER(NVL('
+    || '               (SELECT fmd2.attribute5'
+    || '                FROM   fm_matl_dtl               fmd2'     -- フォーミュラディテール
+    || '                WHERE  fmd2.formula_id = gbh2.formula_id'  -- 外部結合を解除
+    || '                AND    fmd2.line_type  = xrpm2.line_type'  -- 外部結合を解除
+    || '                AND    fmd2.line_no    = gmd2.line_no'     -- 外部結合を解除
+    || '               )'
+    || '             ,0))       turn_price'         -- 基準単価
+    || '      FROM   ic_tran_pnd              itp1'    -- 保留在庫トランザクション(原料用)
+    || '            ,gmi_item_categories      gic1'
+    || '            ,mtl_categories_b         mcb1'
+    || '            ,gmi_item_categories      gic2'
+    || '            ,mtl_categories_b         mcb2'
+    || '            ,ic_item_mst_b            iimb1'
+    || '            ,xxcmn_item_mst_b         ximb1'
+    || '            ,gme_material_details     gmd1'
+    || '            ,gme_batch_header         gbh1'
+    || '            ,gmd_routings_b           grb1'
+    || '            ,gme_material_details     gmd2'
+    || '            ,gme_batch_header         gbh2'
+    || '            ,gmd_routings_b           grb2'
+    || '            ,ic_tran_pnd              itp2'    -- 保留在庫トランザクション(製品用)
+    || '            ,ic_item_mst_b            iimb2'
+    || '            ,xxcmn_item_mst_b         ximb2'
+    || '            ,xxcmn_rcv_pay_mst        xrpm1'  -- 受払マスタ
+    || '            ,xxcmn_rcv_pay_mst        xrpm2'  -- 受払マスタ
+--    || '            ,xxcmn_lookup_values_v    xlvv1'
+    || '            ,xxcmn_stnd_unit_price_v  xsupv1'  -- 標準原価情報VIEW
+    || '      WHERE  itp1.doc_type           =  ''' || lc_prod || ''''
+    || '      AND    itp1.completed_ind      =  ''' || lc_completed || ''''    -- 完了
+    || '      AND    itp1.trans_date         >= FND_DATE.STRING_TO_DATE(''' || gv_exec_start || ''',''' || gc_char_dt_format || ''')'
+    || '      AND    itp1.trans_date         <= FND_DATE.STRING_TO_DATE(''' || gv_exec_end || ''','''|| gc_char_dt_format || ''')'
+    || '      AND    itp1.line_type          =  ''' || lc_product || ''''
+    || '      AND    itp1.reverse_id         IS NULL'
+    || '      AND    gic1.item_id            = itp1.item_id'
+    || '      AND    gic1.category_set_id    = ''' || cn_prod_class_id || ''''
+    || '      AND    mcb1.category_id        = gic1.category_id'
+    || '      AND    mcb1.segment1           = ''' || ir_param.goods_class || ''''    -- リーフ
+    || '      AND    gic2.item_id            = itp1.item_id'
+    || '      AND    gic2.category_set_id    = ''' || cn_item_class_id || ''''
+    || '      AND    mcb2.category_id        = gic2.category_id'
+    || '      AND    mcb2.segment1           = ''' || ir_param.item_class || ''''     -- 原料
+    || '      AND    itp1.doc_id             = gmd1.batch_id'
+    || '      AND    itp1.doc_line           = gmd1.line_no'
+    || '      AND    gbh1.batch_id           = gmd1.batch_id'
+    || '      AND    grb1.routing_id         = gbh1.routing_id'
+ /**/
+    || '      AND    itp2.doc_id             = gmd2.batch_id'
+    || '      AND    itp2.doc_line           = gmd2.line_no'
+    || '      AND    gbh2.batch_id           = gmd2.batch_id'
+    || '      AND    grb2.routing_id         = gbh2.routing_id'
+ /**/
+    || '      AND    iimb1.item_id           = itp1.item_id'
+    || '      AND    ximb1.item_id           = iimb1.item_id'
+    || '      AND    ximb1.start_date_active <= TRUNC(itp1.trans_date)'
+    || '      AND    ximb1.end_date_active   >= TRUNC(itp1.trans_date)'
+    || '      AND    itp1.item_id            = xsupv1.item_id'
+    || '      AND    xsupv1.start_date_active <= TRUNC(itp1.trans_date)'
+    || '      AND    xsupv1.end_date_active   >= TRUNC(itp1.trans_date)'
+    || '      AND    itp1.doc_type           = xrpm1.doc_type'
+    || '      AND    itp1.line_type          = xrpm1.line_type'
+    || '      AND    xrpm1.routing_class     = grb1.routing_class'
+    || '      AND    xrpm1.line_type         = gmd1.line_type'
+    || '      AND    xrpm1.break_col_08 IS NOT NULL'
+    || '      AND    (((gmd1.attribute5 IS NULL) AND (xrpm1.hit_in_div IS NULL))'
+    || '             OR ( xrpm1.hit_in_div = gmd1.attribute5))'
+    || '      AND    ((xrpm1.routing_class <> ''70'')'
+    || '             OR (xrpm1.routing_class = ''70'''
+    || '               AND (EXISTS (SELECT 1'
+    || '                            FROM   gme_material_details gmd3'
+    || '                                  ,gmi_item_categories  gic'
+    || '                                  ,mtl_categories_b     mcb'
+    || '                            WHERE  gmd3.batch_id   = gmd1.batch_id'
+    || '                            AND    gmd3.line_no    = gmd1.line_no'
+    || '                            AND    gmd3.line_type  = -1'
+    || '                            AND    gic.item_id     = gmd3.item_id'
+    || '                            AND    gic.category_set_id = ''' || cn_item_class_id || ''''
+    || '                            AND    gic.category_id = mcb.category_id'
+    || '                            AND    mcb.segment1    = xrpm1.item_div_origin))'
+    || '               AND (EXISTS (SELECT 1'
+    || '                            FROM   gme_material_details gmd4'
+    || '                                  ,gmi_item_categories  gic'
+    || '                                  ,mtl_categories_b     mcb'
+    || '                            WHERE  gmd4.batch_id   = gmd1.batch_id'
+    || '                            AND    gmd4.line_no    = gmd1.line_no'
+    || '                            AND    gmd4.line_type  = 1'
+    || '                            AND    gic.item_id     = gmd4.item_id'
+    || '                            AND    gic.category_set_id = ''' || cn_item_class_id || ''''
+    || '                            AND    gic.category_id = mcb.category_id'
+    || '                            AND    mcb.segment1    = xrpm1.item_div_ahead))))'
+/**/
+    || '      AND    itp2.doc_type           = xrpm2.doc_type'
+    || '      AND    itp2.line_type          = xrpm2.line_type'
+    || '      AND    xrpm2.routing_class     = grb2.routing_class'
+    || '      AND    xrpm2.line_type         = gmd2.line_type'
+    || '      AND    xrpm2.break_col_08 IS NOT NULL'
+    || '      AND    (((gmd2.attribute5 IS NULL) AND (xrpm2.hit_in_div IS NULL))'
+    || '             OR ( xrpm2.hit_in_div = gmd2.attribute5))'
+    || '      AND    ((xrpm2.routing_class <> ''70'')'
+    || '             OR (xrpm2.routing_class = ''70'''
+    || '               AND (EXISTS (SELECT 1'
+    || '                            FROM   gme_material_details gmd5'
+    || '                                  ,gmi_item_categories  gic'
+    || '                                  ,mtl_categories_b     mcb'
+    || '                            WHERE  gmd5.batch_id   = gmd2.batch_id'
+    || '                            AND    gmd5.line_no    = gmd2.line_no'
+    || '                            AND    gmd5.line_type  = -1'
+    || '                            AND    gic.item_id     = gmd5.item_id'
+    || '                            AND    gic.category_set_id = ''' || cn_item_class_id || ''''
+    || '                            AND    gic.category_id = mcb.category_id'
+    || '                            AND    mcb.segment1    = xrpm2.item_div_origin))'
+    || '               AND (EXISTS (SELECT 1'
+    || '                            FROM   gme_material_details gmd6'
+    || '                                  ,gmi_item_categories  gic'
+    || '                                  ,mtl_categories_b     mcb'
+    || '                            WHERE  gmd6.batch_id   = gmd2.batch_id'
+    || '                            AND    gmd6.line_no    = gmd2.line_no'
+    || '                            AND    gmd6.line_type  = 1'
+    || '                            AND    gic.item_id     = gmd6.item_id'
+    || '                            AND    gic.category_set_id = ''' || cn_item_class_id || ''''
+    || '                            AND    gic.category_id = mcb.category_id'
+    || '                            AND    mcb.segment1    = xrpm2.item_div_ahead))))'
+/**/
+--    || '      AND    xlvv1.lookup_type       = ''XXCMN_DEALINGS_DIV'''
+--    || '      AND    xrpm1.dealings_div      = xlvv1.lookup_code'
+    || '      AND    itp1.doc_id             = itp2.doc_id'
+    || '      AND    itp2.doc_type           = ''' || lc_prod || ''''
+    || '      AND    itp2.completed_ind      = ''' || lc_completed || ''''        -- 完了
+    || '      AND    itp2.line_type          = ''' || lc_material || ''''         -- 製品
+    || '      AND    itp2.reverse_id         IS NULL'
+    || '      AND    iimb2.item_id           = itp2.item_id'
+    || '      AND    ximb2.item_id           = iimb2.item_id'
+    || '      AND    ximb2.start_date_active <= TRUNC(itp2.trans_date)'
+    || '      AND    ximb2.end_date_active   >= TRUNC(itp2.trans_date)';
+--
+    lv_order  := ' ORDER BY item_code, product_item_code';
+    lv_group  := ' GROUP BY gbh1.batch_no';
+    lv_where1 := ' AND xrpm1.dealings_div  = ''' || ir_param.rcv_pay_div || '''';
+--
+-- 2008/10/15 v1.8 ADD END
+-- 2008/10/15 v1.8 DELETE START
+    -- 共通SELECT
+/*    lv_select :=
           ' SELECT'
       ||  ' xleiv1.item_code                        item_code'          -- 返品原料品目コード
       ||  ',xleiv1.item_short_name                  item_name'          -- 返品原料品目名称
@@ -416,14 +690,27 @@ AS
     -- ＳＱＬ生成（エラーチェック用）
     -- ----------------------------------------------------
 --
-    lv_sql1 := lv_select_chk || lv_from1 || lv_where1 || lv_group_by_chk;
+    lv_sql1 := lv_select_chk || lv_from1 || lv_where1 || lv_group_by_chk;*/
+-- 2008/10/15 v1.8 DELETE END
 --
     -- ----------------------------------------------------
     -- 製品・原料が複数存在する場合はエラー
     -- (製品と原料のどちらかが複数存在する場合は、同じバッチＩＤが複数ある)
     -- ----------------------------------------------------
+--
+-- 2008/10/15 v1.8 UPDATE START
+    -- パラメータ、受払区分が入力されているときに追加
+    IF (ir_param.rcv_pay_div IS NOT NULL) THEN
+      lv_select_chk := lv_select_chk || lv_where1;
+    END IF;
+--
+    -- GROUP BY句の追加
+    lv_select_chk := lv_select_chk || lv_group;
+--
     -- オープン
-    OPEN lc_ref FOR  lv_sql1;
+    --OPEN lc_ref FOR  lv_sql1;
+    OPEN lc_ref FOR  lv_select_chk;
+-- 2008/10/15 v1.8 UPDATE END
     -- バルクフェッチ
     FETCH lc_ref BULK COLLECT INTO gt_check_data;
     -- カーソルクローズ
@@ -457,21 +744,37 @@ AS
     -- ----------------------------------------------------
     -- ＳＱＬ生成
     -- ----------------------------------------------------
-    lv_sql1 := lv_select || lv_from1 || lv_where1;
+-- 2008/10/15 v1.8 UPDATE START
+    /*lv_sql1 := lv_select || lv_from1 || lv_where1;
     IF (lv_err_batch_no IS NOT NULL) THEN
         lv_sql1 := lv_sql1 ||  '  AND xrpmpv1.batch_no not in (' || lv_err_batch_no || ')';
     END IF;
-    lv_sql1 := lv_sql1 || lv_order_by;
+    lv_sql1 := lv_sql1 || lv_order_by;*/
+--
+    -- パラメータ、受払区分が入力されているときに追加
+    IF (ir_param.rcv_pay_div IS NOT NULL) THEN
+      lv_select := lv_select || lv_where1;
+    END IF;
+--
+    -- エラー時のバッチNoが存在する場合に追加
+    IF (lv_err_batch_no IS NOT NULL) THEN
+        lv_select := lv_select || '  AND xrpm1.batch_no not in (' || lv_err_batch_no || ')';
+    END IF;
+--
+    -- ORDER BY句の追加
+    lv_select := lv_select || lv_order;
 --
     -- ----------------------------------------------------
     -- データ抽出
     -- ----------------------------------------------------
     -- オープン
-    OPEN lc_ref FOR  lv_sql1;
+    --OPEN lc_ref FOR  lv_sql1;
+    OPEN lc_ref FOR  lv_select;
     -- バルクフェッチ
     FETCH lc_ref BULK COLLECT INTO ot_data_rec;
     -- カーソルクローズ
     CLOSE lc_ref;
+-- 2008/10/15 v1.8 UPDATE END
 --
 --
   EXCEPTION

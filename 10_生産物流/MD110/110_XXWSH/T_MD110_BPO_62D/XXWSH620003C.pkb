@@ -7,7 +7,7 @@ AS
  * Description      : 入庫依頼表
  * MD.050           : 引当/配車(帳票) T_MD050_BPO_620
  * MD.070           : 入庫依頼表 T_MD070_BPO_62D
- * Version          : 1.7
+ * Version          : 1.8
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -33,6 +33,8 @@ AS
  *  2008/07/11    1.5   Masayoshi Uehara ST不具合#441対応
  *  2008/07/15    1.6   Akiyoshi Shiina  変更要求対応#92修正
  *  2008/08/04    1.7   Takao Ohashi     結合出荷テスト(出荷追加_19)修正
+ *  2008/10/06    1.8   Yuko Kawano      統合指摘#242修正(出庫日FROMを任意に変更)
+ *                                       T_S_501(ソート順の変更),統合指摘#341(配送No未設定時タグ修正)
  *
  *****************************************************************************************/
 --
@@ -125,6 +127,15 @@ AS
   -- 新規修正フラグ
   gc_new_modify_flg_mod      CONSTANT  VARCHAR2(1)  := 'M' ;                 -- 修正
   gc_asterisk                CONSTANT  VARCHAR2(1)  := '*' ;                 -- 固定値「*」
+-- add start 1.8
+  -- 品目区分
+  gv_item_kbn                CONSTANT  VARCHAR2(10) := '品目区分' ;
+  -- 品目区分コード
+  gv_item_cd_prdct           CONSTANT  VARCHAR2(1)  := '5' ;        -- 品目区分:製品
+  gv_item_cd_genryo          CONSTANT  VARCHAR2(1)  := '1' ;        -- 品目区分:原料
+  gv_item_cd_sizai           CONSTANT  VARCHAR2(1)  := '2' ;        -- 品目区分:資材
+  gv_item_cd_hanseihin       CONSTANT  VARCHAR2(1)  := '4' ;        -- 品目区分:半製品
+-- add end   1.8
   ------------------------------
   -- プロファイル関連
   ------------------------------
@@ -140,9 +151,16 @@ AS
   gc_msg_id_no_data          CONSTANT  VARCHAR2(15) := 'APP-XXCMN-10122' ;   -- 帳票0件エラー
   gc_msg_id_not_get_prof     CONSTANT  VARCHAR2(15) := 'APP-XXWSH-12301' ;   -- ﾌﾟﾛﾌｧｲﾙ取得ｴﾗｰ
   gc_msg_id_prm_chk          CONSTANT  VARCHAR2(15) := 'APP-XXWSH-12256' ;   -- ﾊﾟﾗﾒｰﾀﾁｪｯｸｴﾗｰ
+-- add start 1.8
+  gc_msg_id_not_get_data     CONSTANT  VARCHAR2(15) := 'APP-XXWSH-13401' ;   -- データ取得エラー
+-- add end   1.8
   --メッセージ-トークン名
   gc_msg_tkn_nm_parmeta      CONSTANT  VARCHAR2(10) := 'PARMETA' ;           -- パラメータ名
   gc_msg_tkn_nm_prof         CONSTANT  VARCHAR2(10) := 'PROF_NAME' ;         -- プロファイル名
+-- add start 1.8
+  gc_msg_tkn_nm_item         CONSTANT  VARCHAR2(10) := 'ITEM' ;              -- 項目名
+  gc_msg_tkn_nm_value       CONSTANT  VARCHAR2(10)  := 'VALUE' ;             -- 項目値
+-- add end   1.8
   --メッセージ-トークン値
   gc_msg_tkn_val_parmeta     CONSTANT  VARCHAR2(20) := '確定通知実施日' ;
   gc_msg_tkn_val_prof_prod   CONSTANT  VARCHAR2(30) := 'XXCMN：商品区分(セキュリティ)' ;
@@ -222,6 +240,9 @@ AS
     ,item_code              xmril.item_code%TYPE              -- 品目(コード)
     ,item_name              ximv.item_desc1%TYPE              -- 品目(名称)
     ,net                    ximv.net%TYPE                     -- 重量(NET)
+-- add start 1.8
+    ,lot_id                 xmld.lot_id%TYPE                  -- ロットID
+-- add end   1.8
     ,lot_no                 xmld.lot_no%TYPE                  -- ロットNo
     ,prodct_date            ilm.attribute1%TYPE               -- 製造日
     ,best_before_date       ilm.attribute3%TYPE               -- 賞味期限
@@ -235,6 +256,11 @@ AS
     ,complusion_output_kbn  xcv.complusion_output_code%TYPE   -- 強制出力区分
 */-- 2008/07/10 A.Shiina v1.4 ADD End
 -- 2008/07/15 A.Shiina v1.6 UPDATE End
+-- add start 1.8
+    ,sort1                  VARCHAR2(20)
+    ,sort2                  VARCHAR2(20)
+    ,sort3                  NUMBER
+-- add end   1.8
   );
   type_report_data      rec_report_data;
   TYPE list_report_data IS TABLE OF rec_report_data INDEX BY BINARY_INTEGER ;
@@ -262,6 +288,11 @@ AS
   gv_purchase_code        papf.attribute4%TYPE;     -- 仕入先コード
 --
 -- 2008/07/10 A.Shiina v1.4 Add End
+-- add start 1.8
+  -- 品目区分名称
+  gv_item_kbn_name      VARCHAR2(10);
+-- add end   1.8
+--
   /**********************************************************************************
    * Procedure Name   : prc_initialize
    * Description      : 初期処理
@@ -289,8 +320,11 @@ AS
     -- ユーザー宣言部
     -- ===============================
     -- *** ローカル・例外処理 ***
-    prm_check_expt     EXCEPTION ;     -- パラメータチェック例外
-    get_prof_expt      EXCEPTION ;     -- プロファイル取得例外
+    prm_check_expt         EXCEPTION ;     -- パラメータチェック例外
+    get_prof_expt          EXCEPTION ;     -- プロファイル取得例外
+-- add start 1.8
+    get_item_kbn_name_expt EXCEPTION ;     -- 品目区分名称取得例外
+-- add end   1.8
 --
   BEGIN
 --
@@ -304,6 +338,9 @@ AS
     -- 変数初期設定
     -- ===============================================
     gd_common_sysdate := SYSDATE ;    -- システム日付
+-- add start 1.8
+    gv_item_kbn_name  := NULL;        -- 品目区分名称
+-- add end   1.8
 --
 -- 2008/07/10 A.Shiina v1.4 Add Start
     -- ====================================================
@@ -350,7 +387,7 @@ AS
     -- プロファイル値取得
     -- ====================================================
     -- 職責：商品区分(セキュリティ)取得
-    gv_prod_kbn := FND_PROFILE.VALUE(gc_prof_name_item_div) ;
+    gv_prod_kbn := FND_PROFILE.VALUE('XXCMN_ITEM_DIV_SECURITY') ;
     IF (gv_prod_kbn IS NULL) THEN
       lv_errmsg := xxcmn_common_pkg.get_msg( gc_application_wsh
                                             ,gc_msg_id_not_get_prof
@@ -378,6 +415,31 @@ AS
                 , gc_date_fmt_all);
     -- ADD END 2008/06/04 NAKADA
 --
+-- add start 1.8
+    -- 品目区分名称の取得
+    IF ( gt_param.item_kbn IS NOT NULL )
+    THEN
+      BEGIN
+        SELECT xcv.description
+        INTO   gv_item_kbn_name
+        FROM   xxcmn_categories_v xcv
+        WHERE  xcv.category_set_name = gv_item_kbn
+        AND    xcv.segment1 = gt_param.item_kbn
+        ;
+      EXCEPTION
+        WHEN NO_DATA_FOUND OR TOO_MANY_ROWS THEN
+          lv_errmsg := xxcmn_common_pkg.get_msg( gc_application_wsh
+                                                ,gc_msg_id_not_get_data
+                                                ,gc_msg_tkn_nm_item
+                                                ,gv_item_kbn
+                                                ,gc_msg_tkn_nm_value
+                                                ,gt_param.item_kbn
+                                               ) ;
+          RAISE get_item_kbn_name_expt ;
+      END;
+    END IF;
+-- add end   1.8
+--
   EXCEPTION
     --*** パラメータチェック例外ハンドラ ***
     WHEN prm_check_expt THEN
@@ -390,6 +452,14 @@ AS
       ov_errmsg  := lv_errmsg ;
       ov_errbuf  := lv_errmsg ;
       ov_retcode := gv_status_error ;
+    --
+-- add start 1.8
+    --*** 品目区分名称取得例外ハンドラ ***
+    WHEN get_item_kbn_name_expt THEN
+      ov_errmsg  := lv_errmsg ;
+      ov_errbuf  := lv_errmsg ;
+      ov_retcode := gv_status_error ;
+-- add end   1.8
 --
 --#################################  固定例外処理部 START   ####################################
 --
@@ -470,6 +540,9 @@ AS
             ,xmril.item_code               AS  item_code                 -- 品目(コード)
             ,ximv.item_short_name          AS  item_name                 -- 品目(名称)
             ,ximv.net                      AS  net                       -- NET
+-- add start 1.8
+            ,ilm.lot_id                    AS  lot_id                    -- ロットID
+-- add end   1.8
             ,CASE
               WHEN (xmril.reserved_quantity IS NOT NULL) THEN xmld.lot_no
               ELSE NULL
@@ -540,6 +613,36 @@ AS
 --            ,xcv.complusion_output_code    AS complusion_output_kbn      -- 強制出力区分
 ---- 2008/07/10 A.Shiina v1.4 ADD End
 -- 2008/07/15 A.Shiina v1.6 UPDATE End
+-- add start 1.8
+            ,(CASE 
+              WHEN gt_param.item_kbn IS NOT NULL THEN
+                DECODE(xicv4.item_class_code, gv_item_cd_prdct    , ilm.attribute1 , 0 )
+              ELSE
+                '0'
+              END )                        AS  sort1
+            ,(CASE 
+              WHEN gt_param.item_kbn IS NOT NULL THEN
+                DECODE(xicv4.item_class_code, gv_item_cd_prdct    , ilm.attribute2 , 0 )
+              ELSE
+                '0'
+              END )                        AS  sort2
+            ,TO_NUMBER(
+             (CASE 
+              WHEN gt_param.item_kbn IS NOT NULL THEN
+                CASE xicv4.item_class_code
+                WHEN gv_item_cd_genryo THEN
+                  DECODE(ilm.lot_id, 0 , '0' , ilm.lot_no )
+                WHEN gv_item_cd_sizai THEN
+                  DECODE(ilm.lot_id, 0 , '0' , ilm.lot_no )
+                WHEN gv_item_cd_hanseihin THEN
+                  DECODE(ilm.lot_id, 0 , '0' , ilm.lot_no )
+                ELSE
+                  '0'
+                END
+              ELSE
+                '0'
+              END ))                       AS  sort3
+-- add end   1.8
       FROM
              xxwsh_carriers_schedule        xcs       -- 配車配送計画(アドオン)
             ,xxinv_mov_req_instr_headers    xmrih     -- 移動依頼/指示ヘッダ（アドオン）
@@ -570,7 +673,12 @@ AS
         )
         ----------------------------------------------------------------------------------
         -- 出庫日From～To、着日From～To
-        AND  xmrih.schedule_ship_date  >= gt_param.ship_from
+-- mod start 1.8
+--        AND  xmrih.schedule_ship_date  >= gt_param.ship_from
+        AND  (gt_param.ship_from IS NULL
+          OR xmrih.schedule_ship_date  >= gt_param.ship_from
+        )
+-- mod end 1.8
         AND  (gt_param.ship_to IS NULL
           OR  xmrih.schedule_ship_date <= gt_param.ship_to
         )
@@ -708,6 +816,11 @@ AS
             ,delivery_no            ASC   -- 配送No
             ,mov_num                ASC   -- 移動番号
             ,item_code              ASC   -- 品目コード
+-- add start 1.8
+            ,sort1
+            ,sort2
+            ,sort3
+-- add end   1.8
       ;
 --
   BEGIN
@@ -920,7 +1033,10 @@ AS
         prcsub_set_xml_data('chakubi'
           , TO_CHAR(gt_report_data(i).schedule_arrival_date, gc_date_fmt_ymd)) ;
         prcsub_set_xml_data('item_kbn'
-          , gt_param.item_kbn) ;
+-- add start 1.8
+--          , gt_param.item_kbn) ;
+          , gv_item_kbn_name) ;
+-- add end   1.8
         prcsub_set_xml_data('lg_delivery_info') ;
       END IF ;
 --
@@ -1028,6 +1144,12 @@ AS
           lb_dispflg_delivery_no := TRUE ;
           lb_dispflg_move_no     := TRUE ;
         END IF ;
+-- add start 1.8
+        IF (  (lb_dispflg_move_no)
+          AND (lv_tmp_delivery_no IS NULL) ) THEN
+          lb_dispflg_delivery_no := TRUE ;
+        END IF;
+-- add end   1.8
 --
         -- 入庫予定日
         IF (lv_tmp_nyuko_date = gt_report_data(i+1).schedule_arrival_date) THEN
