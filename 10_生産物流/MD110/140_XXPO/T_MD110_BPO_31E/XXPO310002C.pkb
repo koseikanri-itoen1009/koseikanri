@@ -7,7 +7,7 @@ AS
  * Description      : HHT発注情報IF
  * MD.050           : 受入実績            T_MD050_BPO_310
  * MD.070           : HHT発注情報IF       T_MD070_BPO_31E
- * Version          : 1.4
+ * Version          : 1.5
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -29,6 +29,7 @@ AS
  *  2008/05/23    1.2   Oracle 藤井 良平 結合テスト不具合（シナリオ4-1）
  *  2008/07/14    1.3   Oracle 椎名 昭圭 仕様不備障害#I_S_001.4,#I_S_192.1.2,#T_S_435対応
  *  2008/09/01    1.4   Oracle 山根 一浩 T_TE080_BPO_310 指摘9対応
+ *  2008/09/17    1.5   Oracle 大橋 孝郎 指摘204対応
  *****************************************************************************************/
 --
 --#######################  固定グローバル定数宣言部 START   #######################
@@ -74,6 +75,9 @@ AS
   -- ===============================
   -- ユーザー定義例外
   -- ===============================
+-- add start 1.5
+  warning_expt           EXCEPTION;
+-- add end 1.5
 --
   -- ===============================
   -- ユーザー定義グローバル定数
@@ -1039,7 +1043,10 @@ AS
         lv_errmsg := xxcmn_common_pkg.get_msg(gv_app_name,
                                               gv_tkn_number_31e_05);
         lv_errbuf := lv_errmsg;
-        RAISE global_api_expt;
+-- mod start 1.5
+--        RAISE global_api_expt;
+        RAISE warning_expt;
+-- mod end 1.5
       END IF;
 --
       -- ファイルクローズ
@@ -1060,6 +1067,15 @@ AS
     END;
 --
   EXCEPTION
+-- add start 1.5
+    WHEN warning_expt THEN
+      IF (UTL_FILE.IS_OPEN(lf_file_hand)) THEN
+        UTL_FILE.FCLOSE(lf_file_hand);
+      END IF;
+      ov_errmsg  := lv_errmsg;
+      ov_errbuf  := SUBSTRB(gv_pkg_name||gv_msg_dot||cv_prg_name||gv_msg_part||lv_errbuf,1,5000);
+      ov_retcode := gv_status_warn;
+-- add end 1.5
 --
 --#################################  固定例外処理部 START   #######################################
 --
@@ -1323,6 +1339,10 @@ AS
 --
     IF (lv_retcode = gv_status_error) THEN
       RAISE global_process_expt;
+-- add start 1.5
+    ELSIF (lv_retcode = gv_status_warn) THEN
+      RAISE warning_expt;
+-- add end 1.5
     END IF;
 --
     -- ================================
@@ -1338,6 +1358,12 @@ AS
     END IF;
 --
   EXCEPTION
+-- add start 1.5
+    WHEN warning_expt THEN
+      ov_errmsg  := lv_errmsg;
+      ov_errbuf  := SUBSTRB(gv_pkg_name||gv_msg_dot||cv_prg_name||gv_msg_part||lv_errbuf,1,5000);
+      ov_retcode := gv_status_warn;
+-- add end 1.5
 --
 --#################################  固定例外処理部 START   ###################################
 --
@@ -1477,6 +1503,11 @@ AS
       END IF;
       FND_FILE.PUT_LINE(FND_FILE.LOG,lv_errbuf);
       FND_FILE.PUT_LINE(FND_FILE.OUTPUT,lv_errmsg);
+-- add start 1.5
+    ELSIF (lv_retcode = gv_status_warn) THEN
+      FND_FILE.PUT_LINE(FND_FILE.LOG,lv_errbuf);
+      FND_FILE.PUT_LINE(FND_FILE.OUTPUT,lv_errmsg);
+-- add end 1.5
     END IF;
     -- ==================================
     -- リターン・コードのセット、終了処理
