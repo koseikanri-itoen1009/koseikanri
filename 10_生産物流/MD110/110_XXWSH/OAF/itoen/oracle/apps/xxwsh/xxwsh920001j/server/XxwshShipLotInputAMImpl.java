@@ -6,7 +6,8 @@
 * 修正履歴
 * 日付       Ver. 担当者       修正内容
 * ---------- ---- ------------ ----------------------------------------------
-* 2008-03-27 1.0  伊藤ひとみ     新規作成
+* 2008-03-27 1.0  伊藤ひとみ   新規作成
+* 2008-06-13 1.1  伊藤ひとみ   出荷実績計上済でも出荷実績数量に登録がない場合は受注複写処理を行わない。
 *============================================================================
 */
 package itoen.oracle.apps.xxwsh.xxwsh920001j.server;
@@ -1361,14 +1362,20 @@ public class XxwshShipLotInputAMImpl extends XxcmnOAApplicationModuleImpl
     String documentTypeCode = (String)lineRow.getAttribute("DocumentTypeCode");// 文書タイプ
     String recordTypeCode   = (String)lineRow.getAttribute("RecordTypeCode");  // レコードタイプ
     String callPictureKbn   = (String)lineRow.getAttribute("CallPictureKbn");  // 呼出画面区分
-    String exeKbn           = (String)lineRow.getAttribute("ExeKbn");          // 起動区分   
+    String exeKbn           = (String)lineRow.getAttribute("ExeKbn");          // 起動区分
+// 2008-06-13 H.Itou ADD START
+    String shippedQuantity  = (String)lineRow.getAttribute("ShippedQuantity"); // 出荷実績数量    
+// 2008-06-13 H.Itou ADD END
     Number newOrderHeaderId = null;
     Number newOrderLineId   = null;
 
     String actualQtySum = null;
 
     // ステータスが04 出荷実績計上済 OR 08 出荷実績計上済 の場合
-    if (XxwshConstants.TRANSACTION_STATUS_ADD.equals(reqStatus)
+// 2008-06-13 H.Itou MOD START 04 出荷実績計上済かつ、出荷実績数量に登録ありの場合に変更
+    if ((XxwshConstants.TRANSACTION_STATUS_ADD.equals(reqStatus)
+      && !XxcmnUtility.isBlankOrNull(shippedQuantity))
+// 2008-06-13 H.Itou MOD END
       || XxwshConstants.XXPO_TRANSACTION_STATUS_ADD.equals(reqStatus))
     {
       // ************************* //

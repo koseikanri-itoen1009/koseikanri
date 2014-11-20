@@ -69,6 +69,9 @@ SELECT /* 表示情報 */
       ,ximv.lot_ctl                      lot_ctl                    -- ロット管理区分(1:ロット管理品 0:ロット管理外品)
       ,xoha.result_deliver_to            result_deliver_to          -- 出荷先(コード)
       ,xola.order_line_number            order_line_number          -- 受注明細番号
+      -- 2008-06-13 H.itou ADD START
+      ,TO_CHAR(xola.shipped_quantity)    shipped_quantity           -- 出荷実績数量
+      -- 2008-06-13 H.itou ADD END
 FROM   xxwsh_order_lines_all             xola                       -- 受注明細アドオン
       ,xxwsh_order_headers_all           xoha                       -- 受注ヘッダアドオン
       ,xxwsh_oe_transaction_types2_v     xottv                      -- 受注タイプ情報VIEW2
@@ -439,6 +442,16 @@ AND    xoha.latest_external_flag       = 'Y'
       AliasName="ORDER_LINE_NUMBER"
       Expression="ORDER_LINE_NUMBER"
       SQLType="NUMERIC" >
+   </ViewAttribute>
+   <ViewAttribute
+      Name="ShippedQuantity"
+      IsPersistent="false"
+      Precision="255"
+      Type="java.lang.String"
+      ColumnType="VARCHAR2"
+      AliasName="SHIPPED_QUANTITY"
+      Expression="SHIPPED_QUANTITY"
+      SQLType="VARCHAR" >
    </ViewAttribute>
    <ViewAttribute
       Name="CallPictureKbn"
