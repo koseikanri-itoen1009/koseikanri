@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCOI010A02C(body)
  * Description      : 気づき情報IF出力
  * MD.050           : 気づき情報IF出力 MD050_COI_010_A02
- * Version          : 1.1
+ * Version          : 1.2
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -15,10 +15,11 @@ AS
  *  init                   初期処理 (A-1)
  *  chk_main_store_div     メイン倉庫区分チェック (A-3)
  *  get_awareness          気づき情報抽出 (A-4)
+ *  chk_main_repeat        メイン倉庫重複チェック (A-5)
  *  submain                メイン処理プロシージャ
  *                         UTLファイルオープン (A-2)
- *                         気づき情報CSV作成 (A-5)
- *                         UTLファイルクローズ (A-6)
+ *                         気づき情報CSV作成 (A-6)
+ *                         UTLファイルクローズ (A-7)
  *  main                   コンカレント実行ファイル登録プロシージャ
  *
  * Change Record
@@ -28,6 +29,7 @@ AS
  *  2008/12/26    1.0   T.Nakamura       新規作成
  *  2009/03/30    1.1   T.Nakamura       [障害T1_0083]IF項目の桁数を修正
  *                                       [障害T1_0084]IF項目の形式を修正
+ *  2009/04/21    1.2   T.Nakamura       [障害T1_0580]メイン倉庫重複チェックを追加
  *
  *****************************************************************************************/
 --
@@ -100,6 +102,9 @@ AS
   cv_supl_rate_msg            CONSTANT VARCHAR2(100) := 'APP-XXCOI1-10332'; -- 補充率対策メッセージ
   cv_hot_inv_msg              CONSTANT VARCHAR2(100) := 'APP-XXCOI1-10333'; -- ホット在庫対策メッセージ
   cv_column_exist_msg         CONSTANT VARCHAR2(100) := 'APP-XXCOI1-10334'; -- メッセージ.コラムあります
+-- == 2009/04/21 V1.2 Added START ===============================================================
+  cv_main_repeat_err_msg      CONSTANT VARCHAR2(100) := 'APP-XXCOI1-10379'; -- メイン倉庫区分重複エラーメッセージ
+-- == 2009/04/21 V1.2 Added END   ===============================================================
 --
   -- トークン
   cv_tkn_pro_tok              CONSTANT VARCHAR2(20)  := 'PRO_TOK';          -- プロファイル名
@@ -406,9 +411,15 @@ AS
    * Description      : メイン倉庫区分チェック (A-3)
    ***********************************************************************************/
   PROCEDURE chk_main_store_div(
-      ov_errbuf     OUT VARCHAR2      --   エラー・メッセージ           --# 固定 #
+-- == 2009/04/21 V1.2 Moded START ===============================================================
+--      ov_errbuf     OUT VARCHAR2      --   エラー・メッセージ           --# 固定 #
+--    , ov_retcode    OUT VARCHAR2      --   リターン・コード             --# 固定 #
+--    , ov_errmsg     OUT VARCHAR2)     --   ユーザー・エラー・メッセージ --# 固定 #
+      on_chk_cnt    OUT NUMBER        --   チェック件数カウント
+    , ov_errbuf     OUT VARCHAR2      --   エラー・メッセージ           --# 固定 #
     , ov_retcode    OUT VARCHAR2      --   リターン・コード             --# 固定 #
     , ov_errmsg     OUT VARCHAR2)     --   ユーザー・エラー・メッセージ --# 固定 #
+-- == 2009/04/21 V1.2 Moded END   ===============================================================
   IS
     -- ===============================
     -- 固定ローカル定数
@@ -429,6 +440,9 @@ AS
     -- *** ローカル定数 ***
 --
     -- *** ローカル変数 ***
+-- == 2009/04/21 V1.2 Added START ===============================================================
+    ln_chk_cnt  NUMBER;  -- チェック件数カウント
+-- == 2009/04/21 V1.2 Added END   ===============================================================
 --
     -- *** ローカル・カーソル ***
     -- メイン倉庫区分チェック
@@ -456,6 +470,10 @@ AS
 --
 --###########################  固定部 END   ############################
 --
+-- == 2009/04/21 V1.2 Added START ===============================================================
+    -- 変数の初期化
+    ln_chk_cnt  :=  0;
+-- == 2009/04/21 V1.2 Added END   ===============================================================
     <<chk_main_store_div_loop>>
     FOR l_chk_main_store_div_rec IN chk_main_store_div_cur LOOP
       gv_out_msg := xxccp_common_pkg.get_msg(
@@ -473,10 +491,18 @@ AS
           which  => FND_FILE.LOG
         , buff   => SUBSTRB( cv_pkg_name||cv_msg_cont||cv_prg_name||cv_msg_part||gv_out_msg,1,5000 )
       );
-      -- 警告件数カウント
-      gn_warn_cnt := gn_warn_cnt + 1;
+-- == 2009/04/21 V1.2 Moded START ===============================================================
+--      -- 警告件数カウント
+--      gn_warn_cnt := gn_warn_cnt + 1;
+      -- チェック件数カウント
+      ln_chk_cnt := ln_chk_cnt + 1;
+-- == 2009/04/21 V1.2 Moded END   ===============================================================
 --
     END LOOP chk_main_store_div_loop;
+-- == 2009/04/21 V1.2 Added START ===============================================================
+    -- 出力パラメータのセット
+    on_chk_cnt  :=  ln_chk_cnt;
+-- == 2009/04/21 V1.2 Added END   ===============================================================
 --
     --==============================================================
     --メッセージ出力をする必要がある場合は処理を記述
@@ -621,6 +647,126 @@ AS
 --
   END get_awareness;
 --
+-- == 2009/04/21 V1.2 Added START ===============================================================
+  /**********************************************************************************
+   * Procedure Name   : chk_main_repeat
+   * Description      : メイン倉庫重複チェック (A-5)
+   ***********************************************************************************/
+  PROCEDURE chk_main_repeat(
+      iv_base_code  IN  VARCHAR2      --   拠点コード
+    , ob_chk_status OUT BOOLEAN       --   重複チェックステータス
+    , ov_errbuf     OUT VARCHAR2      --   エラー・メッセージ           --# 固定 #
+    , ov_retcode    OUT VARCHAR2      --   リターン・コード             --# 固定 #
+    , ov_errmsg     OUT VARCHAR2)     --   ユーザー・エラー・メッセージ --# 固定 #
+  IS
+    -- ===============================
+    -- 固定ローカル定数
+    -- ===============================
+    cv_prg_name   CONSTANT VARCHAR2(100) := 'chk_main_repeat'; -- プログラム名
+--
+--#######################  固定ローカル変数宣言部 START   ######################
+--
+    lv_errbuf  VARCHAR2(5000);  -- エラー・メッセージ
+    lv_retcode VARCHAR2(1);     -- リターン・コード
+    lv_errmsg  VARCHAR2(5000);  -- ユーザー・エラー・メッセージ
+--
+--###########################  固定部 END   ####################################
+--
+    -- ===============================
+    -- ユーザー宣言部
+    -- ===============================
+    -- *** ローカル定数 ***
+--
+    -- *** ローカル変数 ***
+    lt_base_code       mtl_secondary_inventories.attribute7%TYPE; -- 拠点コード
+    ln_main_store_cnt  NUMBER;                                    -- 拠点内メイン倉庫件数
+--
+    -- *** ローカル・カーソル ***
+--
+    -- *** ローカル・レコード ***
+--
+  BEGIN
+--
+--##################  固定ステータス初期化部 START   ###################
+--
+    ov_retcode := cv_status_normal;
+--
+--###########################  固定部 END   ############################
+--
+    -- 変数の初期化
+    lt_base_code       := NULL;
+    ln_main_store_cnt  := NULL;
+    ob_chk_status      := TRUE;
+--
+    -- メイン倉庫重複チェック
+    SELECT    msi.attribute7             AS base_code             -- 拠点コード
+            , COUNT(1)                   AS main_store_cnt        -- 拠点内メイン倉庫件数
+    INTO      lt_base_code
+            , ln_main_store_cnt
+    FROM      mtl_secondary_inventories  msi                      -- 保管場所マスタ
+    WHERE     msi.attribute6             =  cv_main_store_div_y   -- 抽出条件：メイン倉庫区分が'Y'
+    AND       msi.attribute1             =  cv_subinv_type_store  -- 抽出条件：保管場所区分が'1'
+    AND       NVL( msi.disable_date, TO_DATE( '9999/12/31', 'YYYY/MM/DD' ) )
+                                         >  gd_process_date       -- 取得条件：失効日がNULLか業務日付より後
+    AND       msi.attribute7             =  iv_base_code          -- 取得条件：拠点コード＝入力パラメータ
+    GROUP BY  msi.attribute7                                      -- 集約条件：拠点コード
+    ;
+--
+    -- 同一拠点内にメイン倉庫が複数存在する場合
+    IF ( ln_main_store_cnt > 1 ) THEN
+--
+      -- 重複チェックステータスを更新
+      ob_chk_status := FALSE;
+--
+      -- メイン倉庫重複エラーメッセージ
+      gv_out_msg := xxccp_common_pkg.get_msg(
+                        iv_application  => cv_appl_short_name_xxcoi
+                      , iv_name         => cv_main_repeat_err_msg
+                      , iv_token_name1  => cv_tkn_base_code_tok
+                      , iv_token_value1 => lt_base_code
+                    );
+      -- メッセージ出力
+      FND_FILE.PUT_LINE(
+          which  => FND_FILE.OUTPUT
+        , buff   => gv_out_msg
+      );
+      FND_FILE.PUT_LINE(
+          which  => FND_FILE.LOG
+        , buff   => SUBSTRB( cv_pkg_name||cv_msg_cont||cv_prg_name||cv_msg_part||gv_out_msg,1,5000 )
+      );
+--
+      -- 警告件数カウント
+      gn_warn_cnt := gn_warn_cnt + 1;
+--
+   END IF;
+--
+    --==============================================================
+    --メッセージ出力をする必要がある場合は処理を記述
+    --==============================================================
+--
+  EXCEPTION
+--
+--#################################  固定例外処理部 START   ####################################
+--
+    -- *** 共通関数例外ハンドラ ***
+    WHEN global_api_expt THEN
+      ov_errmsg  := lv_errmsg;
+      ov_errbuf  := SUBSTRB( cv_pkg_name||cv_msg_cont||cv_prg_name||cv_msg_part||lv_errbuf,1,5000 );
+      ov_retcode := cv_status_error;
+    -- *** 共通関数OTHERS例外ハンドラ ***
+    WHEN global_api_others_expt THEN
+      ov_errbuf  := cv_pkg_name||cv_msg_cont||cv_prg_name||cv_msg_part||SQLERRM;
+      ov_retcode := cv_status_error;
+    -- *** OTHERS例外ハンドラ ***
+    WHEN OTHERS THEN
+      ov_errbuf  := cv_pkg_name||cv_msg_cont||cv_prg_name||cv_msg_part||SQLERRM;
+      ov_retcode := cv_status_error;
+--
+--#####################################  固定部 END   ##########################################
+--
+  END chk_main_repeat;
+--
+-- == 2009/04/21 V1.2 Added END   ===============================================================
   /**********************************************************************************
    * Procedure Name   : submain
    * Description      : メイン処理プロシージャ
@@ -664,6 +810,10 @@ AS
     lv_column_exist_msg      VARCHAR2(50);                 -- コラムありますメッセージ
     lv_csv_file              VARCHAR2(1500);               -- CSVファイル
     l_file_handle            UTL_FILE.FILE_TYPE;           -- ファイルハンドル
+-- == 2009/04/21 V1.2 Added START ===============================================================
+    ln_main_chk_cnt          NUMBER;                       -- メイン倉庫区分チェック件数カウント
+    lb_chk_status            BOOLEAN;                      -- メイン倉庫重複チェックステータス
+-- == 2009/04/21 V1.2 Added END   ===============================================================
 --
   BEGIN
 --
@@ -678,6 +828,11 @@ AS
     gn_normal_cnt := 0;
     gn_error_cnt  := 0;
     gn_warn_cnt   := 0;
+-- == 2009/04/21 V1.2 Added START ===============================================================
+    -- ローカル変数の初期化
+    ln_main_chk_cnt := 0;
+    lb_chk_status   := NULL;
+-- == 2009/04/21 V1.2 Added END   ===============================================================
 --
     --*********************************************
     --***      MD.050のフロー図を表す           ***
@@ -723,9 +878,15 @@ AS
     -- メイン倉庫区分チェック(A-3)
     -- ===============================
     chk_main_store_div(
-        ov_errbuf  => lv_errbuf         -- エラー・メッセージ           --# 固定 #
+-- == 2009/04/21 V1.2 Added START ===============================================================
+--        ov_errbuf  => lv_errbuf         -- エラー・メッセージ           --# 固定 #
+--      , ov_retcode => lv_retcode        -- リターン・コード             --# 固定 #
+--      , ov_errmsg  => lv_errmsg         -- ユーザー・エラー・メッセージ --# 固定 #
+        on_chk_cnt => ln_main_chk_cnt   -- メイン倉庫区分チェック件数カウント
+      , ov_errbuf  => lv_errbuf         -- エラー・メッセージ           --# 固定 #
       , ov_retcode => lv_retcode        -- リターン・コード             --# 固定 #
       , ov_errmsg  => lv_errmsg         -- ユーザー・エラー・メッセージ --# 固定 #
+-- == 2009/04/21 V1.2 Added END   ===============================================================
     );
 --
     IF ( lv_retcode = cv_status_error ) THEN
@@ -751,88 +912,183 @@ AS
     <<create_file_loop>>
     FOR i IN 1 .. g_get_awareness_tab.COUNT LOOP
 --
-      -- ===============================
-      -- 気づき情報CSV作成 (A-5)
-      -- ===============================
-      -- 売切れ対策メッセージ取得
-      lv_sold_out_msg     := xxccp_common_pkg.get_msg(
-                                 iv_application  => cv_appl_short_name_xxcoi
-                               , iv_name         => cv_sold_out_msg
-                               , iv_token_name1  => cv_tkn_time
-                               , iv_token_value1 => g_get_awareness_tab(i).sold_out_time
-                             );
-      -- 補充率対策メッセージ取得
-      lv_supl_rate_msg    := xxccp_common_pkg.get_msg(
-                                 iv_application  => cv_appl_short_name_xxcoi
-                               , iv_name         => cv_supl_rate_msg
-                               , iv_token_name1  => cv_tkn_rate
-                               , iv_token_value1 => g_get_awareness_tab(i).supl_rate
-                             );
-      -- ホット在庫対策メッセージ取得
-      lv_hot_inv_msg      := xxccp_common_pkg.get_msg(
-                                 iv_application  => cv_appl_short_name_xxcoi
-                               , iv_name         => cv_hot_inv_msg
-                               , iv_token_name1  => cv_tkn_day
-                               , iv_token_value1 => g_get_awareness_tab(i).hot_inv
-                             );
-      -- メッセージ.コラムあります取得
-      lv_column_exist_msg := xxccp_common_pkg.get_msg(
-                                 iv_application  => cv_appl_short_name_xxcoi
-                               , iv_name         => cv_column_exist_msg
-                             );
-      -- CSVデータを作成
-      lv_csv_file := (
-        cv_encloser || g_get_awareness_tab(i).sale_base_code || cv_encloser || cv_delimiter || --売上拠点コード
-                       g_get_awareness_tab(i).sold_out_time                 || cv_delimiter || --売切れ時間
-                       g_get_awareness_tab(i).supl_rate                     || cv_delimiter || --補充率
-                       g_get_awareness_tab(i).hot_inv                       || cv_delimiter || --ホット在庫
-        cv_encloser || gv_sold_out_msg_color                 || cv_encloser || cv_delimiter || --売切れ対策メッセージ色
--- == 2009/03/30 V1.1 Moded START ===============================================================
---        cv_encloser || lv_sold_out_msg                       || cv_encloser || cv_delimiter || --売切れ対策メッセージ1
-        cv_encloser || TO_MULTI_BYTE( REPLACE( lv_sold_out_msg, ' ' ) )
-                                                             || cv_encloser || cv_delimiter || --売切れ対策メッセージ1
--- == 2009/03/30 V1.1 Moded END   ===============================================================
-        cv_encloser || lv_column_exist_msg                   || cv_encloser || cv_delimiter || --売切れ対策メッセージ2
-        cv_encloser || gv_supl_rate_msg_color                || cv_encloser || cv_delimiter || --補充率対策メッセージ色
--- == 2009/03/30 V1.1 Moded START ===============================================================
---        cv_encloser || lv_supl_rate_msg                      || cv_encloser || cv_delimiter || --補充率対策メッセージ1
-        cv_encloser || TO_MULTI_BYTE( REPLACE( lv_supl_rate_msg, ' ' ) )    
-                                                             || cv_encloser || cv_delimiter || --補充率対策メッセージ1
--- == 2009/03/30 V1.1 Moded END   ===============================================================
-        cv_encloser || lv_column_exist_msg                   || cv_encloser || cv_delimiter || --補充率対策メッセージ2
-        cv_encloser || gv_hot_inv_msg_color                  || cv_encloser || cv_delimiter || --ホット在庫メッセージ色
--- == 2009/03/30 V1.1 Moded START ===============================================================
---        cv_encloser || lv_hot_inv_msg                        || cv_encloser || cv_delimiter || --ホット在庫メッセージ1
-        cv_encloser || TO_MULTI_BYTE( REPLACE( lv_hot_inv_msg, ' ' ) )
-                                                             || cv_encloser || cv_delimiter || --ホット在庫メッセージ1
--- == 2009/03/30 V1.1 Moded END   ===============================================================
-        cv_encloser || lv_column_exist_msg                   || cv_encloser                    --ホット在庫メッセージ2
-      );
+-- == 2009/04/21 V1.2 Moded START ===============================================================
+--      -- ===============================
+--      -- 気づき情報CSV作成 (A-5)
+--      -- ===============================
+--      -- 売切れ対策メッセージ取得
+--      lv_sold_out_msg     := xxccp_common_pkg.get_msg(
+--                                 iv_application  => cv_appl_short_name_xxcoi
+--                               , iv_name         => cv_sold_out_msg
+--                               , iv_token_name1  => cv_tkn_time
+--                               , iv_token_value1 => g_get_awareness_tab(i).sold_out_time
+--                             );
+--      -- 補充率対策メッセージ取得
+--      lv_supl_rate_msg    := xxccp_common_pkg.get_msg(
+--                                 iv_application  => cv_appl_short_name_xxcoi
+--                               , iv_name         => cv_supl_rate_msg
+--                               , iv_token_name1  => cv_tkn_rate
+--                               , iv_token_value1 => g_get_awareness_tab(i).supl_rate
+--                             );
+--      -- ホット在庫対策メッセージ取得
+--      lv_hot_inv_msg      := xxccp_common_pkg.get_msg(
+--                                 iv_application  => cv_appl_short_name_xxcoi
+--                               , iv_name         => cv_hot_inv_msg
+--                               , iv_token_name1  => cv_tkn_day
+--                               , iv_token_value1 => g_get_awareness_tab(i).hot_inv
+--                             );
+--      -- メッセージ.コラムあります取得
+--      lv_column_exist_msg := xxccp_common_pkg.get_msg(
+--                                 iv_application  => cv_appl_short_name_xxcoi
+--                               , iv_name         => cv_column_exist_msg
+--                             );
+--      -- CSVデータを作成
+--      lv_csv_file := (
+--        cv_encloser || g_get_awareness_tab(i).sale_base_code || cv_encloser || cv_delimiter || --売上拠点コード
+--                       g_get_awareness_tab(i).sold_out_time                 || cv_delimiter || --売切れ時間
+--                       g_get_awareness_tab(i).supl_rate                     || cv_delimiter || --補充率
+--                       g_get_awareness_tab(i).hot_inv                       || cv_delimiter || --ホット在庫
+--        cv_encloser || gv_sold_out_msg_color                 || cv_encloser || cv_delimiter || --売切れ対策メッセージ色
+---- == 2009/03/30 V1.1 Moded START ===============================================================
+----        cv_encloser || lv_sold_out_msg                       || cv_encloser || cv_delimiter || --売切れ対策メッセージ1
+--        cv_encloser || TO_MULTI_BYTE( REPLACE( lv_sold_out_msg, ' ' ) )
+--                                                             || cv_encloser || cv_delimiter || --売切れ対策メッセージ1
+---- == 2009/03/30 V1.1 Moded END   ===============================================================
+--        cv_encloser || lv_column_exist_msg                   || cv_encloser || cv_delimiter || --売切れ対策メッセージ2
+--        cv_encloser || gv_supl_rate_msg_color                || cv_encloser || cv_delimiter || --補充率対策メッセージ色
+---- == 2009/03/30 V1.1 Moded START ===============================================================
+----        cv_encloser || lv_supl_rate_msg                      || cv_encloser || cv_delimiter || --補充率対策メッセージ1
+--        cv_encloser || TO_MULTI_BYTE( REPLACE( lv_supl_rate_msg, ' ' ) )    
+--                                                             || cv_encloser || cv_delimiter || --補充率対策メッセージ1
+---- == 2009/03/30 V1.1 Moded END   ===============================================================
+--        cv_encloser || lv_column_exist_msg                   || cv_encloser || cv_delimiter || --補充率対策メッセージ2
+--        cv_encloser || gv_hot_inv_msg_color                  || cv_encloser || cv_delimiter || --ホット在庫メッセージ色
+---- == 2009/03/30 V1.1 Moded START ===============================================================
+----        cv_encloser || lv_hot_inv_msg                        || cv_encloser || cv_delimiter || --ホット在庫メッセージ1
+--        cv_encloser || TO_MULTI_BYTE( REPLACE( lv_hot_inv_msg, ' ' ) )
+--                                                             || cv_encloser || cv_delimiter || --ホット在庫メッセージ1
+---- == 2009/03/30 V1.1 Moded END   ===============================================================
+--        cv_encloser || lv_column_exist_msg                   || cv_encloser                    --ホット在庫メッセージ2
+--      );
+----
+--      -- ===============================
+--      -- CSVデータを出力
+--      -- ===============================
+--      UTL_FILE.PUT_LINE(
+--          file   => l_file_handle
+--        , buffer => lv_csv_file
+--      );
+----
+--      -- ===============================
+--      -- 成功件数カウント
+--      -- ===============================
+--      gn_normal_cnt := gn_normal_cnt + 1;
 --
       -- ===============================
-      -- CSVデータを出力
+      -- メイン倉庫重複チェック (A-5)
       -- ===============================
-      UTL_FILE.PUT_LINE(
-          file   => l_file_handle
-        , buffer => lv_csv_file
+      chk_main_repeat(
+          iv_base_code  => g_get_awareness_tab(i).sale_base_code  -- 拠点コード
+        , ob_chk_status => lb_chk_status     -- 重複チェックステータス
+        , ov_errbuf     => lv_errbuf         -- エラー・メッセージ           --# 固定 #
+        , ov_retcode    => lv_retcode        -- リターン・コード             --# 固定 #
+        , ov_errmsg     => lv_errmsg         -- ユーザー・エラー・メッセージ --# 固定 #
       );
 --
-      -- ===============================
-      -- 成功件数カウント
-      -- ===============================
-      gn_normal_cnt := gn_normal_cnt + 1;
+      IF ( lv_retcode = cv_status_error ) THEN
+        RAISE global_process_expt;
+      END IF;
+--
+      -- 同一拠点内にメイン倉庫が1つの場合
+      IF ( lb_chk_status = TRUE ) THEN
+--
+        -- ===============================
+        -- 気づき情報CSV作成 (A-6)
+        -- ===============================
+        -- 売切れ対策メッセージ取得
+        lv_sold_out_msg     := xxccp_common_pkg.get_msg(
+                                   iv_application  => cv_appl_short_name_xxcoi
+                                 , iv_name         => cv_sold_out_msg
+                                 , iv_token_name1  => cv_tkn_time
+                                 , iv_token_value1 => g_get_awareness_tab(i).sold_out_time
+                               );
+        -- 補充率対策メッセージ取得
+        lv_supl_rate_msg    := xxccp_common_pkg.get_msg(
+                                   iv_application  => cv_appl_short_name_xxcoi
+                                 , iv_name         => cv_supl_rate_msg
+                                 , iv_token_name1  => cv_tkn_rate
+                                 , iv_token_value1 => g_get_awareness_tab(i).supl_rate
+                               );
+        -- ホット在庫対策メッセージ取得
+        lv_hot_inv_msg      := xxccp_common_pkg.get_msg(
+                                   iv_application  => cv_appl_short_name_xxcoi
+                                 , iv_name         => cv_hot_inv_msg
+                                 , iv_token_name1  => cv_tkn_day
+                                 , iv_token_value1 => g_get_awareness_tab(i).hot_inv
+                               );
+        -- メッセージ.コラムあります取得
+        lv_column_exist_msg := xxccp_common_pkg.get_msg(
+                                   iv_application  => cv_appl_short_name_xxcoi
+                                 , iv_name         => cv_column_exist_msg
+                               );
+        -- CSVデータを作成
+        lv_csv_file := (
+          cv_encloser || g_get_awareness_tab(i).sale_base_code || cv_encloser || cv_delimiter || --売上拠点コード
+                         g_get_awareness_tab(i).sold_out_time                 || cv_delimiter || --売切れ時間
+                         g_get_awareness_tab(i).supl_rate                     || cv_delimiter || --補充率
+                         g_get_awareness_tab(i).hot_inv                       || cv_delimiter || --ホット在庫
+          cv_encloser || gv_sold_out_msg_color                 || cv_encloser || cv_delimiter || --売切れ対策メッセージ色
+          cv_encloser || TO_MULTI_BYTE( REPLACE( lv_sold_out_msg, ' ' ) )
+                                                               || cv_encloser || cv_delimiter || --売切れ対策メッセージ1
+          cv_encloser || lv_column_exist_msg                   || cv_encloser || cv_delimiter || --売切れ対策メッセージ2
+          cv_encloser || gv_supl_rate_msg_color                || cv_encloser || cv_delimiter || --補充率対策メッセージ色
+          cv_encloser || TO_MULTI_BYTE( REPLACE( lv_supl_rate_msg, ' ' ) )    
+                                                               || cv_encloser || cv_delimiter || --補充率対策メッセージ1
+          cv_encloser || lv_column_exist_msg                   || cv_encloser || cv_delimiter || --補充率対策メッセージ2
+          cv_encloser || gv_hot_inv_msg_color                  || cv_encloser || cv_delimiter || --ホット在庫メッセージ色
+          cv_encloser || TO_MULTI_BYTE( REPLACE( lv_hot_inv_msg, ' ' ) )
+                                                               || cv_encloser || cv_delimiter || --ホット在庫メッセージ1
+          cv_encloser || lv_column_exist_msg                   || cv_encloser                    --ホット在庫メッセージ2
+        );
+--
+        -- ===============================
+        -- CSVデータを出力
+        -- ===============================
+        UTL_FILE.PUT_LINE(
+            file   => l_file_handle
+          , buffer => lv_csv_file
+        );
+--
+        -- ===============================
+        -- 成功件数カウント
+        -- ===============================
+        gn_normal_cnt := gn_normal_cnt + 1;
+--
+      END IF;
+-- == 2009/04/21 V1.2 Moded END   ===============================================================
 --
     END LOOP create_file_loop;
 --
     -- ===============================
-    -- UTLファイルクローズ (A-6)
+    -- UTLファイルクローズ (A-7)
     -- ===============================
     UTL_FILE.FCLOSE( file => l_file_handle );
 --
+-- == 2009/04/21 V1.2 Moded START ===============================================================
+--    -- ===============================
+--    -- 対象件数カウント
+--    -- ===============================
+--    gn_target_cnt := gn_normal_cnt + gn_warn_cnt;
     -- ===============================
     -- 対象件数カウント
     -- ===============================
-    gn_target_cnt := gn_normal_cnt + gn_warn_cnt;
+    gn_target_cnt := g_get_awareness_tab.COUNT + ln_main_chk_cnt;
+--
+    -- ===============================
+    -- 警告件数カウント
+    -- ===============================
+    gn_warn_cnt := gn_warn_cnt + ln_main_chk_cnt;
+-- == 2009/04/21 V1.2 Moded END   ===============================================================
 --
     -- 警告件数が0件より多い場合、ステータス：警告をセット
     IF ( gn_warn_cnt > 0 ) THEN
