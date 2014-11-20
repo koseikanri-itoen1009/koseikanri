@@ -7,7 +7,7 @@ AS
  * Package Name     : XXCFF016A36C(body)
  * Description      : ƒŠ[ƒXŒ_–ñ–¾×ƒƒ“ƒeƒiƒ“ƒX
  * MD.050           : MD050_CFF_016_A36_ƒŠ[ƒXŒ_–ñ–¾×ƒƒ“ƒeƒiƒ“ƒX.
- * Version          : 1.2
+ * Version          : 1.3
  *
  * Program List
  * ---------------------------- ------------------------------------------------------------
@@ -32,6 +32,7 @@ AS
  *  2012/10/12    1.0   SCSK ŒÃR         V‹Kì¬
  *  2013/07/11    1.1   SCSK ’†‘º         E_–{‰Ò“®_10871 Á”ïÅ‘Î‰
  *  2014/01/31    1.2   SCSK ’†–ì         E_–{‰Ò“®_11242 ƒŠ[ƒXŒ_–ñ–¾×XV‚Ì•s‹ï‡‘Î‰
+ *  2014/05/19    1.3   SCSK ’†–ì         E_–{‰Ò“®_11852 TœŠzXV•s‹ï‡‘Î‰
  *
  *****************************************************************************************/
 --
@@ -209,6 +210,10 @@ AS
   gt_second_tax_charge    xxcff_contract_lines.second_tax_charge%TYPE;     -- 2‰ñ–ÚˆÈ~Á”ïÅŠz_ƒŠ[ƒX—¿
   gt_first_deduction      xxcff_contract_lines.first_deduction%TYPE;       -- ‰‰ñŒŠzƒŠ[ƒX—¿_TœŠz
   gt_second_deduction     xxcff_contract_lines.second_deduction%TYPE;      -- 2‰ñ–ÚˆÈ~ŒŠzƒŠ[ƒX—¿_TœŠz
+-- Add 2014/05/19 Ver.1.3 Start
+  gt_first_tax_deduction  xxcff_contract_lines.first_tax_deduction%TYPE;   -- ‰‰ñŒŠzÁ”ïÅŠz_TœŠz
+  gt_second_tax_deduction xxcff_contract_lines.second_tax_deduction%TYPE;  -- 2‰ñ–ÚˆÈ~Á”ïÅŠz_TœŠz
+-- Add 2014/05/19 Ver.1.3 End
   gt_estimated_cash_price xxcff_contract_lines.estimated_cash_price%TYPE;  -- Œ©ÏŒ»‹àw“ü‰¿Šz
   gt_life_in_months       xxcff_contract_lines.life_in_months%TYPE;        -- –@’è‘Ï—p”N”
   gt_contract_header_id   xxcff_contract_headers.contract_header_id%TYPE;  -- Œ_–ñ“à•”ID
@@ -797,6 +802,11 @@ AS
     ln_gross_tax_charge     xxcff_contract_lines.gross_tax_charge%TYPE;     -- ‘ŠzÁ”ïÅ_ƒŠ[ƒX—¿
     ln_gross_total_charge   xxcff_contract_lines.gross_total_charge%TYPE;   -- ‘ŠzŒv_ƒŠ[ƒX—¿
     ln_estimated_cash_price xxcff_contract_lines.estimated_cash_price%TYPE; -- Œ©ÏŒ»‹àw“ü‰¿Šz
+-- Add 2014/05/19 Ver.1.3 Start
+    ln_gross_deduction       xxcff_contract_lines.gross_deduction%TYPE;       -- ‘ŠzƒŠ[ƒX—¿_TœŠz
+    ln_gross_tax_deduction   xxcff_contract_lines.gross_tax_deduction%TYPE;   -- ‘ŠzÁ”ïÅ_TœŠz
+    ln_gross_total_deduction xxcff_contract_lines.gross_total_deduction%TYPE; -- ‘ŠzŒv_TœŠz
+-- Add 2014/05/19 Ver.1.3 End
 --
     -- *** ƒ[ƒJƒ‹EƒJ[ƒ\ƒ‹ ***
 --
@@ -840,6 +850,14 @@ AS
     ln_gross_total_charge  := ln_first_total_charge + (ln_second_total_charge * ln_payment_frequency);
     -- Œ©ÏŒ»‹àw“ü‰¿Šz
     ln_estimated_cash_price := NVL(gr_param.estimated_cash_price,gt_estimated_cash_price);
+-- Add 2014/05/19 Ver.1.3 Start
+    -- ‘ŠzƒŠ[ƒX—¿_TœŠz
+    ln_gross_deduction       := gt_first_deduction + (gt_second_deduction * ln_payment_frequency);
+    -- ‘ŠzÁ”ïÅ_TœŠz
+    ln_gross_tax_deduction   := gt_first_tax_deduction + (gt_second_tax_deduction * ln_payment_frequency);
+    -- ‘ŠzŒv_TœŠz
+    ln_gross_total_deduction := ln_gross_deduction + ln_gross_tax_deduction;
+-- Add 2014/05/19 Ver.1.3 End
 --
     -- =====================================
     -- ƒŠ[ƒXŒ_–ñ–¾×‚ÌƒƒbƒN‚ğæ“¾
@@ -878,6 +896,11 @@ AS
              ,xcl.gross_charge            = ln_gross_charge                 -- ‘ŠzƒŠ[ƒX—¿_ƒŠ[ƒX—¿
              ,xcl.gross_tax_charge        = ln_gross_tax_charge             -- ‘ŠzÁ”ïÅ_ƒŠ[ƒX—¿
              ,xcl.gross_total_charge      = ln_gross_total_charge           -- ‘ŠzŒv_ƒŠ[ƒX—¿
+-- Add 2014/05/19 Ver.1.3 Start
+             ,xcl.gross_deduction         = ln_gross_deduction              -- ‘ŠzƒŠ[ƒX—¿_TœŠz
+             ,xcl.gross_tax_deduction     = ln_gross_tax_deduction          -- ‘ŠzÁ”ïÅ_TœŠz
+             ,xcl.gross_total_deduction   = ln_gross_total_deduction        -- ‘ŠzŒv_TœŠz
+-- Add 2014/05/19 Ver.1.3 End
              ,xcl.estimated_cash_price    = ln_estimated_cash_price         -- Œ©ÏŒ»‹àw“ü‰¿Šz
 -- Add 2013/07/11 Ver.1.1 Start
              ,xcl.tax_code                = NVL(gr_param.tax_code, xcl.tax_code) -- Å‹àƒR[ƒh
@@ -1959,6 +1982,10 @@ AS
         ,xcl.second_tax_charge                 AS second_tax_charge
         ,xcl.first_deduction                   AS first_deduction
         ,xcl.second_deduction                  AS second_deduction
+-- Add 2014/05/19 Ver.1.3 Start
+        ,xcl.first_tax_deduction               AS first_tax_deduction
+        ,xcl.second_tax_deduction              AS second_tax_deduction
+-- Add 2014/05/19 Ver.1.3 End
         ,xcl.estimated_cash_price              AS estimated_cash_price
         ,xcl.life_in_months                    AS life_in_months
         ,xch.contract_header_id                AS contract_header_id
@@ -1973,6 +2000,10 @@ AS
         ,gt_second_tax_charge          -- 2‰ñ–ÚˆÈ~Á”ïÅŠz_ƒŠ[ƒX—¿
         ,gt_first_deduction            -- ‰‰ñŒŠzƒŠ[ƒX—¿_TœŠz
         ,gt_second_deduction           -- 2‰ñ–ÚˆÈ~ŒŠzƒŠ[ƒX—¿_TœŠz
+-- Add 2014/05/19 Ver.1.3 Start
+        ,gt_first_tax_deduction        -- ‰‰ñŒŠzÁ”ïÅŠz_TœŠz
+        ,gt_second_tax_deduction       -- 2‰ñ–ÚˆÈ~Á”ïÅŠz_TœŠz
+-- Add 2014/05/19 Ver.1.3 End
         ,gt_estimated_cash_price       -- Œ©ÏŒ»‹àw“ü‰¿Šz
         ,gt_life_in_months             -- –@’è‘Ï—p”N”
         ,gt_contract_header_id         -- Œ_–ñ“à•”ID

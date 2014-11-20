@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCFF016A35C(body)
  * Description      : リース契約メンテナンス
  * MD.050           : MD050_CFF_016_A35_リース契約メンテナンス
- * Version          : 1.4
+ * Version          : 1.5
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -34,6 +34,7 @@ AS
  *  2013/02/27    1.2   SCSK中村         「E_本稼動_09967」対応 入力パラメータチェック追加
  *  2013/03/11    1.3   SCSK中村         「E_本稼動_09967」対応 3回目以降支払日をパラメータより削除（非表示）
  *  2013/07/05    1.4   SCSK中村         「E_本稼動_10871」対応 消費税増税対応
+ *  2014/05/19    1.5   SCSK中野         「E_本稼動_11852」対応 控除額更新不具合対応
  *
  *****************************************************************************************/
 --
@@ -2705,6 +2706,15 @@ AS
          ,gross_tax_charge            = first_tax_charge + second_tax_charge * ( g_cont_line_tab(gn_rec_no).payment_frequency - 1 )
           -- 総額計_リース料
          ,gross_total_charge          = first_total_charge + second_total_charge * ( g_cont_line_tab(gn_rec_no).payment_frequency - 1 )
+-- Add 2014/05/19 Ver.1.5 Start
+          -- 総額_控除額
+         ,gross_deduction             = first_deduction + second_deduction * ( g_cont_line_tab(gn_rec_no).payment_frequency - 1 )
+          -- 総額消費税_控除額
+         ,gross_tax_deduction         = first_tax_deduction + second_tax_deduction * ( g_cont_line_tab(gn_rec_no).payment_frequency - 1 )
+          -- 総額計_控除額
+         ,gross_total_deduction       = ( first_deduction + second_deduction * ( g_cont_line_tab(gn_rec_no).payment_frequency - 1 ) )
+                                      + ( first_tax_deduction + second_tax_deduction * ( g_cont_line_tab(gn_rec_no).payment_frequency - 1 ) )
+-- Add 2014/05/19 Ver.1.5 End
           --
          ,present_value               = ln_present_value                -- 現在価値
          ,original_cost               = ln_original_cost                -- 取得価額
