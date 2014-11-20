@@ -7,7 +7,7 @@ AS
  * Description      : 生産物流システムの工場直送出荷実績データから販売実績を作成し、
  *                    販売実績を作成したＯＭ受注をクローズします。
  * MD.050           : 出荷確認（生産物流出荷）  MD050_COS_008_A02
- * Version          : 1.24
+ * Version          : 1.25
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -68,6 +68,7 @@ AS
  *  2010/01/20    1.22  N.Maeda          [E_本稼動_01252] 納品日エラー対応
  *  2010/02/04    1.23  M.Hokkanji       [E_T4_00195] 会計期間情報取得関数パラメータ修正[AR → INV]
  *  2010/03/09    1.24  N.Maeda          [E_本稼動_01725] 販売実績.売上拠点の前月売上拠点連携条件修正
+ *  2010/05/26    1.25  M.Sano           [E_本稼動_02518] 検収日違い対応
  *
  *****************************************************************************************/
 --
@@ -227,7 +228,10 @@ AS
   cv_order_line_lock_err    CONSTANT fnd_new_messages.message_name%TYPE
                                        := 'APP-XXCOS1-11684';  -- 受注明細ロックエラー
 -- *********** 2010/01/05 1.21 ADD  END  *********** --
-
+/* 2010/05/26 Ver1.25 M.Sano Add Start */
+  cv_msg_err_inspect_err    CONSTANT fnd_new_messages.message_name%TYPE
+                                       := 'APP-XXCOS1-11685';  -- 検収予定日不一致エラー
+/* 2010/05/26 Ver1.25 M.Sano Add End   */
 --
   --トークン
   cv_tkn_para_date          CONSTANT  VARCHAR2(100)  :=  'PARA_DATE';      -- 処理日付
@@ -264,6 +268,9 @@ AS
 -- *********** 2010/01/05 1.21 ADD START *********** --
   cv_order_line_id          CONSTANT  VARCHAR2(100)  := 'LINE_ID';            -- トークン'LINE_ID'
 -- *********** 2010/01/05 1.21 ADD  END  *********** --
+/* 2010/05/26 Ver1.25 M.Sano Add Start */
+  cv_tkn_chk_date           CONSTANT  VARCHAR2(100)  := 'CHK_INS_DATE';       --チェック対象の検収日
+/* 2010/05/26 Ver1.25 M.Sano Add End   */
 --
   --メッセージ用文字列
   cv_str_profile_nm                CONSTANT VARCHAR2(100) := 'APP-XXCOS1-00047';  -- MO:営業単位
@@ -2925,6 +2932,10 @@ AS
     ld_request_date       xxcos_sales_exp_headers.delivery_date%TYPE;       -- 最終履歴納品予定日
     lv_base_uom           xxcos_sales_exp_lines.standard_uom_code%TYPE;     -- 基準単位
     ln_base_quantity      xxcos_sales_exp_lines.standard_qty%TYPE;          -- 基準数量 
+/* 2010/05/26 Ver1.25 M.Sano Add Start */
+    lt_last_inspect_date  xxcos_sales_exp_headers.inspect_date%TYPE;        -- 最終履歴検収予定日
+    lt_last_order_number  oe_order_headers_all.order_number%TYPE;           -- 受注番号
+/* 2010/05/26 Ver1.25 M.Sano Add End   */
 -- ******* 2009/12/28 1.20 DEL START *******--
 --/* 2009/12/25 Ver1.19 Add Start */
 --    lv_log_msg            VARCHAR2(10000);  -- デバック出力用文字列
@@ -2945,6 +2956,9 @@ AS
 --      , order_number    oe_order_headers_all.order_number%TYPE        -- 受注番号
 --/* 2009/12/25 Ver1.19 Add End   */
 -- ******* 2009/12/28 1.20 DEL  END  *******--
+/* 2010/05/26 Ver1.25 M.Sano Add Start */
+      , order_number    oe_order_headers_all.order_number%TYPE        -- 受注番号
+/* 2010/05/26 Ver1.25 M.Sano Add End   */
     );
 -- ******* 2010/01/20 1.22 N.Maeda ADD START ****** --
     TYPE sum_quantity_rtype IS RECORD(
@@ -3030,6 +3044,9 @@ AS
 --        , ooha.order_number                                               AS order_number -- 受注番号
 --/* 2009/12/25 Ver1.19 Add End   */
 -- ******* 2009/12/28 1.20 DEL  END  *******--
+/* 2010/05/26 Ver1.25 M.Sano Add Start */
+        , ooha.order_number                                               AS order_number -- 受注番号
+/* 2010/05/26 Ver1.25 M.Sano Add End   */
         BULK COLLECT INTO
           quantity_tab
         FROM
@@ -3129,6 +3146,11 @@ AS
           sum_quantity_tab( lv_index_key ).sum_quantity := NVL(sum_quantity_tab( lv_index_key ).sum_quantity , 0) + ln_base_quantity;
           -- 出荷依頼と品目単位にサマリ
           ln_all_sum_quantity := ln_all_sum_quantity + ln_base_quantity;
+/* 2010/05/26 Ver1.25 M.Sano Add Start */
+          -- 最終履歴レコードの受注情報の受注番号と検収予定日を取得
+          lt_last_inspect_date := quantity_tab(i).inspect_date;
+          lt_last_order_number := quantity_tab(i).order_number;
+/* 2010/05/26 Ver1.25 M.Sano Add End   */
 --
 --
 --/* 2009/12/16 Ver1.18 Add Start */
@@ -3299,128 +3321,161 @@ AS
 --        END IF;
 --
 --
-          -- 
-          lv_check_quantity_flg := NULL;
-          lv_loop_index_key     := sum_quantity_tab.FIRST;
-          -- 
-          <<sum_check_loop>>
-          WHILE  lv_loop_index_key  IS NOT NULL LOOP
-            IF ( sum_quantity_tab.EXISTS( lv_loop_index_key ) ) THEN
-              -- ユーザ・エラーメッセージの初期化
-              lv_errmsg := NULL;
-              -- 納品予定日
-              ld_request_date      := sum_quantity_tab( lv_loop_index_key ).request_date;
-              -- 検収予定日
-              ld_inspect_date      := sum_quantity_tab( lv_loop_index_key ).inspect_date;
-              -- 受注数量サマリ
-              ln_base_quantity_sum := sum_quantity_tab( lv_loop_index_key ).sum_quantity;
+        -- 
+        lv_check_quantity_flg := NULL;
+        lv_loop_index_key     := sum_quantity_tab.FIRST;
+        -- 
+        <<sum_check_loop>>
+        WHILE  lv_loop_index_key  IS NOT NULL LOOP
+          IF ( sum_quantity_tab.EXISTS( lv_loop_index_key ) ) THEN
+            -- ユーザ・エラーメッセージの初期化
+            lv_errmsg := NULL;
+            -- 納品予定日
+            ld_request_date      := sum_quantity_tab( lv_loop_index_key ).request_date;
+            -- 検収予定日
+            ld_inspect_date      := sum_quantity_tab( lv_loop_index_key ).inspect_date;
+            -- 受注数量サマリ
+            ln_base_quantity_sum := sum_quantity_tab( lv_loop_index_key ).sum_quantity;
 --
-              IF ( ln_base_quantity_sum != 0 ) THEN
-                -- ===============================
-                -- 1.検収日逆転チェック
-                -- ===============================
-                -- 検収予定日と着荷日を比較
-                IF ( ld_inspect_date IS NOT NULL AND ld_inspect_date < g_order_req_tab( lv_now ).arrival_date ) THEN
-                  lv_errmsg := lv_errmsg
-                            || xxccp_common_pkg.get_msg(
-                                iv_application => cv_xxcos_appl_short_nm,
-                                iv_name        => ct_msg_reverse_date_err,
-                                iv_token_name1 => cv_tkn_target_date,
-                                iv_token_value1=> xxccp_common_pkg.get_msg(
-                                                      iv_application => cv_xxcos_appl_short_nm,
-                                                      iv_name        => cv_inspect_date
-                                                  ),
-                                iv_token_name2 => cv_tkn_kdate,
-                                iv_token_value2=> TO_CHAR(ld_inspect_date, cv_fmt_date),        -- 最終履歴検収予定日
-                                iv_token_name3 => cv_tkn_sdate,
-                                iv_token_value3=> TO_CHAR(g_order_req_tab( lv_now ).arrival_date, cv_fmt_date), -- 着荷日
-                                iv_token_name4 => cv_tkn_req_no,
-                                iv_token_value4=> g_order_req_tab( lv_now ).request_no          -- 依頼No
-                              )
-                            || cv_line_feed;
-                  g_order_req_tab( lv_now ).check_status := cn_check_status_error;
-                END IF;
---
-                -- ===============================
-                -- 2.納品日不一致チェック
-                -- ===============================
-                -- 納品予定日と着荷日を比較
-                IF ( ld_request_date != g_order_req_tab( lv_now ).arrival_date ) THEN
-                  lv_errmsg := lv_errmsg
-                            || xxccp_common_pkg.get_msg(
-                                iv_application => cv_xxcos_appl_short_nm,
-                                iv_name        => ct_msg_dlv_date_err,
-                                iv_token_name1 => cv_tkn_req_no,
-                                iv_token_value1=> g_order_req_tab( lv_now ).request_no,         -- 依頼No
-                                iv_token_name2 => cv_tkn_item_code,
-                                iv_token_value2=> g_order_req_tab( lv_now ).shipping_item_code, -- 品目
-                                iv_token_name3 => cv_tkn_kdate,
-                                iv_token_value3=> TO_CHAR(ld_request_date, cv_fmt_date),        -- 納品日
-                                iv_token_name4 => cv_tkn_sdate,
-                                iv_token_value4=> TO_CHAR(g_order_req_tab( lv_now ).arrival_date, cv_fmt_date)  -- 着荷日
-                              )
-                            || cv_line_feed;
-                  g_order_req_tab( lv_now ).check_status := cn_check_status_error;
-                END IF;
---
-              END IF;
-              --( 関数で使用する為、コンカレント出力へ出力。）
-              IF ( lv_errmsg IS NOT NULL ) THEN
-                --メッセージ出力
-                --空行挿入
-                FND_FILE.PUT_LINE(
-                   which  => FND_FILE.OUTPUT
-                  ,buff   => ''
-                );
-                FND_FILE.PUT_LINE(
-                   which  => FND_FILE.OUTPUT
-                  ,buff   => lv_errmsg     --エラーメッセージ
-                );
-              lv_errmsg := NULL;
-              END IF;
---
-              IF ( ( ln_base_quantity_sum = 0 ) AND ( ln_all_sum_quantity != g_order_req_tab( lv_now ).shipped_quantity ) )
-              OR ( ln_base_quantity_sum != 0 )  AND ( lv_check_quantity_flg IS NULL ) THEN
-                -- ===============================
-                -- 3.基準数量不一致チェック
-                -- ===============================
-                -- ＯＭ受注の基準数量の合計と生産側の出荷実績数量を比較
-                IF ( g_order_req_tab( lv_now ).shipped_quantity != ln_base_quantity_sum ) THEN
-                  lv_errmsg := lv_errmsg
-                            || xxccp_common_pkg.get_msg(
-                                iv_application => cv_xxcos_appl_short_nm,
-                                iv_name        => ct_msg_quantity_sum_err,
-                                iv_token_name1 => cv_tkn_req_no,
-                                iv_token_value1=> g_order_req_tab( lv_now ).request_no,         -- 依頼No
-                                iv_token_name2 => cv_tkn_item_code,
-                                iv_token_value2=> g_order_req_tab( lv_now ).shipping_item_code  -- 品目
+            IF ( ln_base_quantity_sum != 0 ) THEN
+              -- ===============================
+              -- 1.検収日逆転チェック
+              -- ===============================
+              -- 検収予定日と着荷日を比較
+              IF ( ld_inspect_date IS NOT NULL AND ld_inspect_date < g_order_req_tab( lv_now ).arrival_date ) THEN
+                lv_errmsg := lv_errmsg
+                          || xxccp_common_pkg.get_msg(
+                              iv_application => cv_xxcos_appl_short_nm,
+                              iv_name        => ct_msg_reverse_date_err,
+                              iv_token_name1 => cv_tkn_target_date,
+                              iv_token_value1=> xxccp_common_pkg.get_msg(
+                                                    iv_application => cv_xxcos_appl_short_nm,
+                                                    iv_name        => cv_inspect_date
+                                                ),
+                              iv_token_name2 => cv_tkn_kdate,
+                              iv_token_value2=> TO_CHAR(ld_inspect_date, cv_fmt_date),        -- 最終履歴検収予定日
+                              iv_token_name3 => cv_tkn_sdate,
+                              iv_token_value3=> TO_CHAR(g_order_req_tab( lv_now ).arrival_date, cv_fmt_date), -- 着荷日
+                              iv_token_name4 => cv_tkn_req_no,
+                              iv_token_value4=> g_order_req_tab( lv_now ).request_no          -- 依頼No
                             )
-                            || cv_line_feed;
-                  g_order_req_tab( lv_now ).check_status := cn_check_status_error;
-                END IF;
---
-                END IF;
-                -- チェック済みフラグ
-                lv_check_quantity_flg := ct_yes_flg;
+                          || cv_line_feed;
+                g_order_req_tab( lv_now ).check_status := cn_check_status_error;
               END IF;
-              --
-                IF ( lv_errmsg IS NOT NULL ) THEN
-                  --メッセージ出力
-                  --空行挿入
-                  FND_FILE.PUT_LINE(
-                     which  => FND_FILE.OUTPUT
-                    ,buff   => ''
-                  );
-                  FND_FILE.PUT_LINE(
-                     which  => FND_FILE.OUTPUT
-                    ,buff   => lv_errmsg     --エラーメッセージ
-                  );
+/* 2010/05/26 Ver1.25 M.Sano Add Start */
+              -- ===============================
+              -- 2.同一出荷依頼･品目内の
+              --   検収日不一致チェック
+              -- ===============================
+              IF (   ( lt_last_inspect_date IS NOT NULL AND ld_inspect_date IS NULL )
+                  OR ( lt_last_inspect_date IS NULL AND ld_inspect_date IS NOT NULL )
+                  OR ( lt_last_inspect_date <> ld_inspect_date ) ) THEN
+                lv_errmsg := lv_errmsg
+                          || xxccp_common_pkg.get_msg(
+                              iv_application => cv_xxcos_appl_short_nm
+                             ,iv_name        => cv_msg_err_inspect_err
+                             ,iv_token_name1 => cv_tkn_req_no
+                             ,iv_token_value1=> g_order_req_tab( lv_now ).request_no          -- 依頼No
+                             ,iv_token_name2 => cv_tkn_item_code
+                             ,iv_token_value2=> g_order_req_tab( lv_now ).shipping_item_code  -- 品目
+                             ,iv_token_name3 => cv_tkn_kdate
+                             ,iv_token_value3=> TO_CHAR(ld_inspect_date, cv_fmt_date)         -- 検収予定日
+                             ,iv_token_name4 => cv_tkn_order_number
+                             ,iv_token_value4=> lt_last_order_number                          -- 受注番号
+                             ,iv_token_name5 => cv_tkn_chk_date
+                             ,iv_token_value5=> TO_CHAR(lt_last_inspect_date, cv_fmt_date)    -- 着荷日
+                            )
+                          || cv_line_feed;
+                g_order_req_tab( lv_now ).check_status := cn_check_status_error;
+              END IF;
+/* 2010/05/26 Ver1.25 M.Sano Add End   */
+--
+              -- ===============================
+              -- 3.納品日不一致チェック
+              -- ===============================
+              -- 納品予定日と着荷日を比較
+              IF ( ld_request_date != g_order_req_tab( lv_now ).arrival_date ) THEN
+                lv_errmsg := lv_errmsg
+                          || xxccp_common_pkg.get_msg(
+                              iv_application => cv_xxcos_appl_short_nm,
+                              iv_name        => ct_msg_dlv_date_err,
+                              iv_token_name1 => cv_tkn_req_no,
+                              iv_token_value1=> g_order_req_tab( lv_now ).request_no,         -- 依頼No
+                              iv_token_name2 => cv_tkn_item_code,
+                              iv_token_value2=> g_order_req_tab( lv_now ).shipping_item_code, -- 品目
+                              iv_token_name3 => cv_tkn_kdate,
+                              iv_token_value3=> TO_CHAR(ld_request_date, cv_fmt_date),        -- 納品日
+                              iv_token_name4 => cv_tkn_sdate,
+                              iv_token_value4=> TO_CHAR(g_order_req_tab( lv_now ).arrival_date, cv_fmt_date)  -- 着荷日
+                            )
+                          || cv_line_feed;
+                g_order_req_tab( lv_now ).check_status := cn_check_status_error;
+              END IF;
+--
+            END IF;
+            --( 関数で使用する為、コンカレント出力へ出力。）
+            IF ( lv_errmsg IS NOT NULL ) THEN
+              --メッセージ出力
+              --空行挿入
+              FND_FILE.PUT_LINE(
+                 which  => FND_FILE.OUTPUT
+                ,buff   => ''
+              );
+              FND_FILE.PUT_LINE(
+                 which  => FND_FILE.OUTPUT
+                ,buff   => lv_errmsg     --エラーメッセージ
+              );
+              lv_errmsg := NULL;
             END IF;
 --
-            -- 次のindexを取得
-            lv_loop_index_key := sum_quantity_tab.NEXT( lv_loop_index_key );
+            IF ( ( ln_base_quantity_sum = 0 ) AND ( ln_all_sum_quantity != g_order_req_tab( lv_now ).shipped_quantity ) )
+            OR ( ln_base_quantity_sum != 0 )  AND ( lv_check_quantity_flg IS NULL ) THEN
+              -- ===============================
+              -- 4.基準数量不一致チェック
+              -- ===============================
+              -- ＯＭ受注の基準数量の合計と生産側の出荷実績数量を比較
+              IF ( g_order_req_tab( lv_now ).shipped_quantity != ln_base_quantity_sum ) THEN
+                lv_errmsg := lv_errmsg
+                          || xxccp_common_pkg.get_msg(
+                              iv_application => cv_xxcos_appl_short_nm,
+                              iv_name        => ct_msg_quantity_sum_err,
+                              iv_token_name1 => cv_tkn_req_no,
+                              iv_token_value1=> g_order_req_tab( lv_now ).request_no,         -- 依頼No
+                              iv_token_name2 => cv_tkn_item_code,
+                              iv_token_value2=> g_order_req_tab( lv_now ).shipping_item_code  -- 品目
+                          )
+                          || cv_line_feed;
+                g_order_req_tab( lv_now ).check_status := cn_check_status_error;
+/* 2010/05/26 Ver1.25 M.Sano Add Start */
+                -- チェック済みフラグ
+                lv_check_quantity_flg := ct_yes_flg;
+/* 2010/05/26 Ver1.25 M.Sano Add End   */
+              END IF;
 --
-          END LOOP sum_check_loop;
+            END IF;
+/* 2010/05/26 Ver1.25 M.Sano Del Start */
+--            -- チェック済みフラグ
+--            lv_check_quantity_flg := ct_yes_flg;
+/* 2010/05/26 Ver1.25 M.Sano Del End   */
+          END IF;
+          --
+          IF ( lv_errmsg IS NOT NULL ) THEN
+            --メッセージ出力
+            --空行挿入
+            FND_FILE.PUT_LINE(
+               which  => FND_FILE.OUTPUT
+              ,buff   => ''
+            );
+            FND_FILE.PUT_LINE(
+               which  => FND_FILE.OUTPUT
+              ,buff   => lv_errmsg     --エラーメッセージ
+            );
+          END IF;
+--
+          -- 次のindexを取得
+          lv_loop_index_key := sum_quantity_tab.NEXT( lv_loop_index_key );
+--
+        END LOOP sum_check_loop;
 --
 -- ******* 2010/01/20 1.22 N.Maeda MOD  END  ****** --
 -- ******* 2009/12/28 1.20 DEL START *******--
