@@ -29,6 +29,7 @@ AS
  *  Date          Ver.  Editor           Description
  * ------------- ----- ---------------- -------------------------------------------------
  *  2009/09/25    1.00 SCS 安川 智博    初回作成
+ *  2009/11/11    1.10 SCS 安川 智博    共通課題「I_E_664」対応
  *
  *****************************************************************************************/
 --
@@ -798,26 +799,114 @@ AS
     'FROM xxcmm_cust_accounts xxca10, '||                                     -- 顧客10顧客追加情報
     '     xxcmm_cust_accounts xxca20, '||                                     -- 顧客20顧客追加情報
     '     hz_cust_accounts    hzca10 '||                                      -- 顧客10顧客マスタ
-    'WHERE xxca10.invoice_printing_unit IN ('''||cv_invoice_printing_unit_a3||''','||
-                                           ''''||cv_invoice_printing_unit_a4||''') '||   -- 請求書印刷単位
+-- Modify 2009-11-11 Ver1.10 Start
+--    'WHERE xxca10.invoice_printing_unit IN ('''||cv_invoice_printing_unit_a3||''','||
+--                                           ''''||cv_invoice_printing_unit_a4||''') '||   -- 請求書印刷単位
+    'WHERE xxca10.invoice_printing_unit = '''||cv_invoice_printing_unit_a3||''' '||      -- 請求書印刷単位
+-- Modify 2009-11-11 Ver1.10 End
     'AND   hzca10.customer_class_code = '''||cv_customer_class_code10||''' '||           -- 顧客区分:10
     'AND   xxca10.customer_id = hzca10.cust_account_id '||
     'AND   xxca10.invoice_code = xxca20.customer_code '||
-    'AND   xxca20.customer_code = :iv_customer_code20 ';
+    'AND   xxca20.customer_code = :iv_customer_code20 '||
+-- Modify 2009-11-11 Ver1.10 Start
+    'UNION ALL '||
+    'SELECT xxca10.customer_id           AS customer_id, '||           -- 顧客ID
+    '       xxca10.customer_code         AS customer_code, '||         -- 顧客コード
+    '       xxca10.invoice_printing_unit AS invoice_printing_unit, '|| -- 請求書印刷単位
+    '       xxca10.bill_base_code        AS bill_base_code '||         -- 請求拠点コード
+    'FROM xxcmm_cust_accounts xxca10, '||                                     -- 顧客10顧客追加情報
+    '     xxcmm_cust_accounts xxca20, '||                                     -- 顧客20顧客追加情報
+    '     xxcmm_cust_accounts xxca21, '||                                     -- 顧客21顧客追加情報
+    '     hz_cust_accounts    hzca10 '||                                      -- 顧客10顧客マスタ
+    'WHERE xxca10.invoice_printing_unit = '''||cv_invoice_printing_unit_a4||''' '||     -- 請求書印刷単位
+    'AND   hzca10.customer_class_code = '''||cv_customer_class_code10||''' '||          -- 顧客区分:10
+    'AND   xxca10.customer_id = hzca10.cust_account_id '||
+    'AND   xxca10.invoice_code = xxca20.customer_code '||
+    'AND   xxca20.enclose_invoice_code = xxca21.customer_code '||
+    'AND EXISTS (SELECT ''X'' '||
+    '            FROM xxcmm_cust_accounts xxca20_sub '||
+    '            WHERE xxca20_sub.customer_code = :iv_customer_code20 '||
+    '            AND   xxca20_sub.enclose_invoice_code = xxca21.customer_code) ';
+-- Modify 2009-11-11 Ver1.10 End
 --
     -- 顧客10取得カーソル文字列(顧客指定時)
-    cv_get_10account_cur   CONSTANT VARCHAR2(3000) := 
-    'SELECT xxca.customer_id           AS customer_id, '||           -- 顧客ID
-    '       xxca.customer_code         AS customer_code, '||         -- 顧客コード
-    '       xxca.invoice_printing_unit AS invoice_printing_unit, '|| -- 請求書印刷単位
-    '       xxca.bill_base_code        AS bill_base_code '||         -- 請求拠点コード
-    'FROM xxcmm_cust_accounts xxca, '||                                     -- 顧客追加情報
-    '     hz_cust_accounts    hzca '||                                      -- 顧客マスタ
-    'WHERE xxca.invoice_printing_unit IN ('''||cv_invoice_printing_unit_a5||''','||
-                                         ''''||cv_invoice_printing_unit_a6||''') '||    -- 請求書印刷単位
-    'AND   hzca.customer_class_code = '''||cv_customer_class_code10||''' '||            -- 顧客区分:10
-    'AND   xxca.customer_id = hzca.cust_account_id '||
-    'AND   xxca.customer_code = :iv_customer_code10 ';
+-- Modify 2009-11-11 Ver1.10 Start
+    cv_get_10account_cur   CONSTANT VARCHAR2(5000) := 
+--    'SELECT xxca.customer_id           AS customer_id, '||           -- 顧客ID
+--    '       xxca.customer_code         AS customer_code, '||         -- 顧客コード
+--    '       xxca.invoice_printing_unit AS invoice_printing_unit, '|| -- 請求書印刷単位
+--    '       xxca.bill_base_code        AS bill_base_code '||         -- 請求拠点コード
+--    'FROM xxcmm_cust_accounts xxca, '||                                     -- 顧客追加情報
+--    '     hz_cust_accounts    hzca '||                                      -- 顧客マスタ
+--    'WHERE xxca.invoice_printing_unit IN ('''||cv_invoice_printing_unit_a5||''','||
+--                                         ''''||cv_invoice_printing_unit_a6||''') '||    -- 請求書印刷単位
+--    'AND   hzca.customer_class_code = '''||cv_customer_class_code10||''' '||            -- 顧客区分:10
+--    'AND   xxca.customer_id = hzca.cust_account_id '||
+--    'AND   xxca.customer_code = :iv_customer_code10 ';
+    'SELECT xxca10.customer_id           AS customer_id, '||           -- 顧客ID
+    '       xxca10.customer_code         AS customer_code, '||         -- 顧客コード
+    '       xxca10.invoice_printing_unit AS invoice_printing_unit, '|| -- 請求書印刷単位
+    '       xxca10.bill_base_code        AS bill_base_code '||         -- 請求拠点コード
+    'FROM xxcmm_cust_accounts xxca10, '||                                     -- 顧客10顧客追加情報
+    '     hz_cust_accounts    hzca10, '||                                     -- 顧客10顧客マスタ
+    '     hz_cust_acct_sites  hasa10, '||                                     -- 顧客10顧客所在地
+    '     hz_cust_site_uses   hsua10, '||                                     -- 顧客10顧客使用目的
+    '     hz_cust_accounts    hzca14, '||                                     -- 顧客14顧客マスタ
+    '     hz_cust_acct_relate hcar14, '||                                     -- 顧客関連マスタ
+    '     hz_cust_acct_sites  hasa14, '||                                     -- 顧客14顧客所在地
+    '     hz_cust_site_uses   hsua14 '||                                      -- 顧客14顧客使用目的
+    'WHERE xxca10.invoice_printing_unit = '''||cv_invoice_printing_unit_a5||''' '||    -- 請求書印刷単位
+    'AND   hzca10.customer_class_code = '''||cv_customer_class_code10||''' '||         -- 顧客区分:10
+    'AND   xxca10.customer_id = hzca10.cust_account_id '||
+    'AND   hzca14.cust_account_id = hcar14.cust_account_id '||
+    'AND   hcar14.related_cust_account_id = hzca10.cust_account_id '||
+    'AND   hzca14.customer_class_code = '''||cv_customer_class_code14||''' '||
+    'AND   hcar14.status = '''||cv_acct_relate_status||''' '||
+    'AND   hcar14.attribute1 = '''||cv_acct_relate_type_bill||''' '||
+    'AND   hzca14.cust_account_id = hasa14.cust_account_id '||
+    'AND   hasa14.cust_acct_site_id = hsua14.cust_acct_site_id '||
+    'AND   hsua14.site_use_code = '''||cv_site_use_code_bill_to||''' '||
+    'AND   hzca10.cust_account_id = hasa10.cust_account_id '||
+    'AND   hasa10.cust_acct_site_id = hsua10.cust_acct_site_id '||
+    'AND   hsua10.bill_to_site_use_id = hsua14.site_use_id '||
+    'AND EXISTS (SELECT ''X'' '||
+    '            FROM hz_cust_accounts          bill_hzca_1, '||             --顧客14顧客マスタ
+    '                 hz_cust_accounts          ship_hzca_1, '||             --顧客10顧客マスタ
+    '                 hz_cust_acct_sites        bill_hasa_1, '||             --顧客14顧客所在地
+    '                 hz_cust_site_uses         bill_hsua_1, '||             --顧客14顧客使用目的
+    '                 hz_cust_acct_relate       bill_hcar_1, '||             --顧客関連マスタ(請求関連)
+    '                 hz_cust_acct_sites        ship_hasa_1, '||             --顧客10顧客所在地
+    '                 hz_cust_site_uses         ship_hsua_1 '||              --顧客10顧客使用目的
+    '            WHERE ship_hzca_1.account_number = :iv_customer_code10 '||
+    '            AND   bill_hzca_1.account_number = hzca14.account_number '||
+    '            AND   bill_hzca_1.cust_account_id = bill_hcar_1.cust_account_id '||                   --顧客14顧客マスタ.顧客ID = 顧客関連マスタ.顧客ID
+    '            AND   bill_hcar_1.related_cust_account_id = ship_hzca_1.cust_account_id '||           --顧客関連マスタ.関連先顧客ID = 顧客10顧客マスタ.顧客ID
+    '            AND   bill_hzca_1.customer_class_code = '''||cv_customer_class_code14||''' '||        --顧客14顧客マスタ.顧客区分 = '14'(売掛管理先顧客)
+    '            AND   bill_hcar_1.status = '''||cv_acct_relate_status||''' '||                        --顧客関連マスタ.ステータス = ‘A’
+    '            AND   bill_hcar_1.attribute1 = '''||cv_acct_relate_type_bill||''' '||                 --顧客関連マスタ.関連分類 = ‘1’ (請求)
+    '            AND   bill_hzca_1.cust_account_id = bill_hasa_1.cust_account_id '||                   --顧客14顧客マスタ.顧客ID = 顧客14顧客所在地.顧客ID
+    '            AND   bill_hasa_1.cust_acct_site_id = bill_hsua_1.cust_acct_site_id '||               --顧客14顧客所在地.顧客所在地ID = 顧客14顧客使用目的.顧客所在地ID
+    '            AND   bill_hsua_1.site_use_code = '''||cv_site_use_code_bill_to||''' '||              --顧客14顧客使用目的.使用目的 = 'BILL_TO'(請求先)
+    '            AND   ship_hzca_1.cust_account_id = ship_hasa_1.cust_account_id '||                   --顧客10顧客マスタ.顧客ID = 顧客10顧客所在地.顧客ID
+    '            AND   ship_hasa_1.cust_acct_site_id = ship_hsua_1.cust_acct_site_id '||               --顧客10顧客所在地.顧客所在地ID = 顧客10顧客使用目的.顧客所在地ID
+    '            AND   ship_hsua_1.bill_to_site_use_id = bill_hsua_1.site_use_id) '||                  --顧客10顧客使用目的.請求先事業所ID = 顧客14顧客使用目的.使用目的ID
+    'UNION ALL '||
+    'SELECT xxca10.customer_id           AS customer_id, '||           -- 顧客ID
+    '       xxca10.customer_code         AS customer_code, '||         -- 顧客コード
+    '       xxca10.invoice_printing_unit AS invoice_printing_unit, '|| -- 請求書印刷単位
+    '       xxca10.bill_base_code        AS bill_base_code '||         -- 請求拠点コード
+    'FROM xxcmm_cust_accounts xxca10, '||                                     -- 顧客10顧客追加情報
+    '     xxcmm_cust_accounts xxca20, '||                                     -- 顧客20顧客追加情報
+    '     hz_cust_accounts    hzca10 '||                                      -- 顧客10顧客マスタ
+    'WHERE xxca10.invoice_printing_unit = '''||cv_invoice_printing_unit_a6||''' '||      -- 請求書印刷単位
+    'AND   hzca10.customer_class_code = '''||cv_customer_class_code10||''' '||           -- 顧客区分:10
+    'AND   xxca10.customer_id = hzca10.cust_account_id '||
+    'AND   xxca10.invoice_code = xxca20.customer_code '||
+    'AND   EXISTS (SELECT ''X'' '||
+    '              FROM xxcmm_cust_accounts xxca10_sub '||
+    '              WHERE xxca10_sub.customer_code = :iv_customer_code10 '||
+    '              AND   xxca10_sub.invoice_code = xxca20.customer_code) ';
+-- Modify 2009-11-11 Ver1.10 End
 --
     -- 顧客14取得カーソル
     CURSOR get_14account_cur(
@@ -1018,10 +1107,16 @@ AS
         OPEN get_all_account_cur FOR cv_get_21account_cur USING iv_customer_code21;
       -- 請求書用顧客指定時
       ELSIF (iv_customer_code20 IS NOT NULL) THEN
-        OPEN get_all_account_cur FOR cv_get_20account_cur USING iv_customer_code20;
+-- Modify 2009-11-11 Ver1.10 Start
+--        OPEN get_all_account_cur FOR cv_get_20account_cur USING iv_customer_code20;
+        OPEN get_all_account_cur FOR cv_get_20account_cur USING iv_customer_code20,iv_customer_code20;
+-- Modify 2009-11-11 Ver1.10 End
       -- 顧客指定時
       ELSIF (iv_customer_code10 IS NOT NULL) THEN
-        OPEN get_all_account_cur FOR cv_get_10account_cur USING iv_customer_code10;
+-- Modify 2009-11-11 Ver1.10 Start
+--        OPEN get_all_account_cur FOR cv_get_10account_cur USING iv_customer_code10;
+        OPEN get_all_account_cur FOR cv_get_10account_cur USING iv_customer_code10,iv_customer_code10;
+-- Modify 2009-11-11 Ver1.10 End
       -- パラメータ指定なし時
       ELSE
         OPEN get_all_account_cur FOR cv_get_all_account_cur;
