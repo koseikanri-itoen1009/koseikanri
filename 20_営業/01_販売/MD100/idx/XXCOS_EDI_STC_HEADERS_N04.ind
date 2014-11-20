@@ -1,0 +1,2 @@
+CREATE INDEX xxcos.xxcos_edi_stc_headers_n04 ON xxcos.xxcos_edi_stc_headers (move_order_num) TABLESPACE xxidx2
+/
