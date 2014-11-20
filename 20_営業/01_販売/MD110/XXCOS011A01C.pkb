@@ -7,7 +7,7 @@ AS
  * Description      : SQL-LOADERによってEDI納品返品情報ワークテーブルに取込まれたEDI返品確定データを
  *                    EDIヘッダ情報テーブル、EDI明細情報テーブルにそれぞれ登録します。
  * MD.050           : 返品確定データ取込（MD050_COS_011_A01）
- * Version          : 1.7
+ * Version          : 1.8
  *
  * Program List
  * ----------------------------------- ----------------------------------------------------------
@@ -59,6 +59,7 @@ AS
  *  2009/08/06    1.5   M.Sano          [0000644]レビュー指摘対応
  *  2009/09/28    1.6   K.Satomura      [0001156,0001289]
  *  2010/03/02    1.7   M.Sano          [E_本稼動_01159]パラメータ(チェーン店)に「DEFAULT NULL」追加
+ *  2010/04/23    1.8   T.Yoshimoto     [E_本稼動_02427]chain_peculiar_area_header登録データ変更
  *
  *****************************************************************************************/
 --
@@ -1328,7 +1329,10 @@ AS
        k3_column                    xxcos_edi_headers.k3_column%TYPE,               -- Ｋ－３欄
        l3_column                    xxcos_edi_headers.l3_column%TYPE,               -- Ｌ－３欄
                                                                  -- チェーン店固有エリア（ヘッダー）
-       chain_pecarea_head           xxcos_edi_headers.chain_peculiar_area_header%TYPE,
+-- 2010/04/23 v1.8 T.Yoshimoto Mod Start 本稼動#2427
+--       chain_pecarea_head           xxcos_edi_headers.chain_peculiar_area_header%TYPE,
+       chain_pe_area_head           xxcos_edi_headers.chain_peculiar_area_header%TYPE,
+-- 2010/04/23 v1.8 T.Yoshimoto Mod Start 本稼動#2427
                                                                  -- 受注関連番号
        order_connect_num            xxcos_edi_headers.order_connection_number%TYPE,
                                                                  -- （伝票計）発注数量（バラ）
@@ -2705,7 +2709,10 @@ AS
                 -- Ｌ－３欄
     gt_req_edi_headers_data(in_line_cnt1).l3_column      := gt_edideli_work_data(in_line_cnt).l3_column;
                 -- チェーン店固有エリア（ヘッダー）
-    gt_req_edi_headers_data(in_line_cnt1).chain_pecarea_head
+-- 2010/04/23 v1.8 T.Yoshimoto Mod Start 本稼動#2427
+--    gt_req_edi_headers_data(in_line_cnt1).chain_pecarea_head
+    gt_req_edi_headers_data(in_line_cnt1).chain_pe_area_head
+-- 2010/04/23 v1.8 T.Yoshimoto Mod End 本稼動#2427
                                                    := gt_edideli_work_data(in_line_cnt).chain_peculiar_area_header;
                 -- 受注関連番号
     gt_req_edi_headers_data(in_line_cnt1).order_connect_num
@@ -4601,7 +4608,10 @@ AS
           gt_req_edi_headers_data(ln_no).j3_column,              -- Ｊ－３欄
           gt_req_edi_headers_data(ln_no).k3_column,              -- Ｋ－３欄
           gt_req_edi_headers_data(ln_no).l3_column,              -- Ｌ－３欄
-          gt_req_edi_headers_data(ln_no).chain_pe_area_foot,     -- チェーン店固有エリア（ヘッダー）
+-- 2010/04/23 v1.8 T.Yoshimoto Mod Start 本稼動#2427
+--          gt_req_edi_headers_data(ln_no).chain_pe_area_foot,     -- チェーン店固有エリア（ヘッダー）
+          gt_req_edi_headers_data(ln_no).chain_pe_area_head,     -- チェーン店固有エリア（ヘッダー）
+-- 2010/04/23 v1.8 T.Yoshimoto Mod End 本稼動#2427
           gt_req_edi_headers_data(ln_no).order_connect_num,      -- 受注関連番号
           gt_req_edi_headers_data(ln_no).inv_indv_order_qty,     -- （伝票計）発注数量（バラ）
           gt_req_edi_headers_data(ln_no).inv_case_order_qty,     -- （伝票計）発注数量（ケース）
