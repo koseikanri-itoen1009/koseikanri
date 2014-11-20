@@ -1,4 +1,4 @@
-CREATE OR REPLACE PACKAGE BODY XXCOS001A05C
+CREATE OR REPLACE PACKAGE BODY APPS.XXCOS001A05C
 AS
 /*****************************************************************************************
  * Copyright(c)Sumisho Computer Systems Corporation, 2008. All rights reserved.
@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCOS001A05C (body)
  * Description      : 出荷確認処理（HHT納品データ）
  * MD.050           : 出荷確認処理(MD050_COS_001_A05)
- * Version          : 1.19
+ * Version          : 1.20
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -76,6 +76,7 @@ AS
  *  2009/08/06    1.18  N.Maeda          [0000424] PT考慮
  *  2009/08/10    1.18  N.Maeda          [0000424] レビュー指摘対応
  *  2009/08/12    1.19  N.Maeda          [0001010] 従業員情報取得条件追加
+ *  2009/08/21    1.20  N.Maeda          [0001141] 前月売上拠点の考慮追加
  *
  *****************************************************************************************/
 --
@@ -222,6 +223,9 @@ AS
 --  cv_msg_truns_count          CONSTANT VARCHAR2(20)  := 'APP-XXCOS1-00182';   -- 入出庫一時表カウント
   cv_msg_truns_create_count   CONSTANT VARCHAR2(20)  := 'APP-XXCOS1-00183';   -- 入出庫一時表ヘッダ生成カウント
 --******************************* 2009/05/01 N.Maeda Var1.16 ADD END   ***************************************
+-- ************* 2009/08/21 1.20 N.Maeda ADD START *************--
+  cv_past_sale_base_get_err     CONSTANT VARCHAR2(20) := 'APP-XXCOS1-00188';
+-- ************* 2009/08/21 1.20 N.Maeda ADD  END  *************--
 --******************************* 2009/05/18 N.Maeda Var1.15 ADD START ***************************************
   ct_msg_fiscal_period_err    CONSTANT fnd_new_messages.message_name%TYPE
                                        :=  'APP-XXCOS1-00175';   -- 会計期間取得エラー
@@ -247,6 +251,10 @@ AS
   cv_digestion_ln_number      CONSTANT VARCHAR2(20)  := 'DIGESTION_LN_NUMBER';  -- 枝番
   cv_invoice_no               CONSTANT VARCHAR2(20)  := 'INVOICE_NO';           -- HHT伝票番号
 --******************************* 2009/06/23 N.Maeda Var1.17 ADD END   ***************************************
+-- ************* 2009/08/21 1.20 N.Maeda ADD START *************--
+  cv_cust_code     CONSTANT VARCHAR2(20)  := 'CUST_CODE';
+  cv_dlv_date      CONSTANT VARCHAR2(20)  := 'DLV_DATE';
+-- ************* 2009/08/21 1.20 N.Maeda ADD  END  *************--
   -- データ取得用固定値
 --  cn_cust_s                   CONSTANT NUMBER  := 30;                           -- 顧客
 --  cn_cust_v                   CONSTANT NUMBER  := 40;                           -- 上様
@@ -323,6 +331,9 @@ AS
   cv_stand_date               CONSTANT VARCHAR2(25) := 'YYYY/MM/DD HH24:MI:SS'; -- 日時形式
   cv_short_day                CONSTANT VARCHAR2(25) := 'YYYY/MM/DD';            -- 日付形式
   cv_short_time               CONSTANT VARCHAR2(25) := 'HH24:MI:SS';            -- 時間形式
+-- ************* 2009/08/21 1.20 N.Maeda ADD START *************--
+  cv_month_type                  CONSTANT VARCHAR(25)  := 'YYYY/MM';
+-- ************* 2009/08/21 1.20 N.Maeda ADD  END  *************--
   cv_tkn_ti                   CONSTANT VARCHAR(10)  := ':';                     -- コロン
   cv_amount_up                CONSTANT VARCHAR(5)   := 'UP';                    -- 消費税_端数(切上)
   cv_amount_down              CONSTANT VARCHAR(5)   := 'DOWN';                  -- 消費税_端数(切捨て)
@@ -1858,7 +1869,11 @@ AS
 --******************************* 2009/05/13 N.Maeda Var1.14 ADD START ***************************************
     lt_normal_class                   fnd_lookup_values.attribute1%TYPE;               -- 納品伝票区分(通常)
     lt_correct_class                  fnd_lookup_values.attribute1%TYPE;               -- 納品伝票区分(取消・訂正)
---******************************* 2009/05/13 N.Maeda Var1.14 ADD END *****************************************lt_ins_invoice_type
+--******************************* 2009/05/13 N.Maeda Var1.14 ADD END *****************************************
+-- ************* 2009/08/21 1.20 N.Maeda ADD START *************--
+  lt_mon_sale_base_code                xxcmm_cust_accounts.sale_base_code%TYPE;
+  lt_past_sale_base_code               xxcmm_cust_accounts.past_sale_base_code%TYPE;
+-- ************* 2009/08/21 1.20 N.Maeda ADD  END  *************--
 --
   BEGIN
 --
@@ -2009,30 +2024,58 @@ AS
       -- 顧客マスタ付帯情報の導出
       -- ===============================
       BEGIN
--- ************** 2009/05/13 1.13 N.Maeda MOD START ****************************************************************
-        SELECT  xca.sale_base_code            -- 売上拠点コード
---                --hca.tax_rounding_rule --税金-端数処理
--- ************** 2009/04/16 1.12 N.Maeda ADD START ****************************************************************
---                xch.cash_receiv_base_code,  -- 入金拠点コード
--- ************** 2009/04/16 1.12 N.Maeda ADD  END  ****************************************************************
---                xch.bill_tax_round_rule     -- 税金-端数処理(サイト)
-        INTO    lt_sale_base_code
--- ************** 2009/04/16 1.12 N.Maeda ADD START ****************************************************************
---                lt_cash_receiv_base_code,
--- ************** 2009/04/16 1.12 N.Maeda ADD  END  ****************************************************************
---                lt_tax_odd
-        FROM    hz_cust_accounts hca,      -- 顧客マスタ
+-- ***************** 2009/08/21 1.20 N.Maeda MOD START ******************** --
+        SELECT   xca.sale_base_code        sale_base_code        -- 売上拠点コード
+                ,xca.past_sale_base_code   past_sale_base_code   -- 前月売上拠点コード
+        INTO    lt_mon_sale_base_code
+                ,lt_past_sale_base_code
+        FROM    hz_cust_accounts hca,     -- 顧客マスタ
                 xxcmm_cust_accounts xca   -- 顧客追加情報
---                xxcos_cust_hierarchy_v xch -- 顧客階層ビュー
         WHERE   hca.cust_account_id = xca.customer_id
---        AND     xch.ship_account_id = hca.cust_account_id
---        AND     xch.ship_account_id = xca.customer_id
         AND     hca.account_number = TO_CHAR( lt_head_inside_cust_code );
---        AND     hca.customer_class_code IN ( cv_customer_type_c, cv_customer_type_u )
---        AND     hca.party_id IN ( SELECT  hpt.party_id
---                                  FROM    hz_parties hpt
---                                  WHERE   hpt.duns_number_c   IN ( cv_cust_s , cv_cust_v , cv_cost_p ) );
--- ************** 2009/05/13 1.13 N.Maeda MOD  END  ****************************************************************
+--
+        IF ( TO_CHAR( gd_process_date , cv_month_type ) = TO_CHAR( lt_head_invoice_date , cv_month_type  ) ) THEN  -- 同一月の場合当月売上拠点
+          lt_sale_base_code := lt_mon_sale_base_code;
+        ELSE                                                                        -- その他前月売上拠点
+          IF ( lt_past_sale_base_code IS NULL ) THEN
+            lv_state_flg    := cv_status_warn;
+            gn_wae_data_num := gn_wae_data_num + 1 ;
+            gt_msg_war_data(gn_wae_data_num) := xxccp_common_pkg.get_msg(
+                                                iv_application   => cv_application,            --アプリケーション短縮名
+                                                iv_name          => cv_past_sale_base_get_err, --メッセージコード
+                                                iv_token_name1   => cv_cust_code,              --トークン(顧客コード)
+                                                iv_token_value1  => lt_head_inside_cust_code,        --トークン値1
+                                                iv_token_name2   => cv_dlv_date,               --トークンコード2(納品日)
+                                                iv_token_value2  => TO_CHAR( lt_head_invoice_date,cv_short_day ) );         --トークン値2
+          ELSE
+            lt_sale_base_code := lt_past_sale_base_code;
+          END IF;
+        END IF;
+---- ************** 2009/05/13 1.13 N.Maeda MOD START ****************************************************************
+--        SELECT  xca.sale_base_code            -- 売上拠点コード
+----                --hca.tax_rounding_rule --税金-端数処理
+---- ************** 2009/04/16 1.12 N.Maeda ADD START ****************************************************************
+----                xch.cash_receiv_base_code,  -- 入金拠点コード
+---- ************** 2009/04/16 1.12 N.Maeda ADD  END  ****************************************************************
+----                xch.bill_tax_round_rule     -- 税金-端数処理(サイト)
+--        INTO    lt_sale_base_code
+---- ************** 2009/04/16 1.12 N.Maeda ADD START ****************************************************************
+----                lt_cash_receiv_base_code,
+---- ************** 2009/04/16 1.12 N.Maeda ADD  END  ****************************************************************
+----                lt_tax_odd
+--        FROM    hz_cust_accounts hca,      -- 顧客マスタ
+--                xxcmm_cust_accounts xca   -- 顧客追加情報
+----                xxcos_cust_hierarchy_v xch -- 顧客階層ビュー
+--        WHERE   hca.cust_account_id = xca.customer_id
+----        AND     xch.ship_account_id = hca.cust_account_id
+----        AND     xch.ship_account_id = xca.customer_id
+--        AND     hca.account_number = TO_CHAR( lt_head_inside_cust_code );
+----        AND     hca.customer_class_code IN ( cv_customer_type_c, cv_customer_type_u )
+----        AND     hca.party_id IN ( SELECT  hpt.party_id
+----                                  FROM    hz_parties hpt
+----                                  WHERE   hpt.duns_number_c   IN ( cv_cust_s , cv_cust_v , cv_cost_p ) );
+---- ************** 2009/05/13 1.13 N.Maeda MOD  END  ****************************************************************
+-- ***************** 2009/08/21 1.20 N.Maeda MOD  END  ******************** --
       EXCEPTION
         WHEN NO_DATA_FOUND THEN
           -- ログ出力
@@ -2816,6 +2859,10 @@ AS
   lt_order_no_hht_err             xxcos_dlv_headers.order_no_hht%TYPE;             -- 受注No.(HHT)
   lt_order_no_hht_ok              xxcos_dlv_headers.order_no_hht%TYPE;
 --******************************* 2009/06/23 N.Maeda Var1.17 MOD  END  ***************************************
+-- ************* 2009/08/21 1.20 N.Maeda ADD START *************--
+  lt_mon_sale_base_code                xxcmm_cust_accounts.sale_base_code%TYPE;
+  lt_past_sale_base_code               xxcmm_cust_accounts.past_sale_base_code%TYPE;
+-- ************* 2009/08/21 1.20 N.Maeda ADD  END  *************--
 --
     -- *** ローカル・カーソル ***
 --******************************* 2009/06/23 N.Maeda Var1.17 ADD START ***************************************
@@ -3050,30 +3097,70 @@ AS
           --=========================
           BEGIN
 -- ****************** 2009/08/10 1.18 N.Maeda MOD START **************************************************************--
-            SELECT  /*+
-                      USE_NL(xch.cust_hier.cash_hcar_3)
-                      USE_NL(xch.cust_hier.bill_hasa_3)
-                      USE_NL(xch.cust_hier.bill_hasa_4)
-                    */
-                    xch.ship_sale_base_code,         -- 売上拠点コード
-                    xch.cash_receiv_base_code,  -- 入金拠点コード
-                    xch.bill_tax_round_rule     -- 税金-端数処理(サイト)
-            INTO    lt_sale_base_code,
-                    lt_cash_receiv_base_code,
-                    lt_tax_odd
-            FROM    hz_cust_accounts hca,       -- 顧客マスタ
-                    xxcos_cust_hierarchy_v xch  -- 顧客階層ビュー
-            WHERE   xch.ship_account_id = hca.cust_account_id
-            AND     hca.account_number  = TO_CHAR( lt_customer_number )
+-- ***************** 2009/08/21 1.20 N.Maeda MOD START ******************** --
+            SELECT  /*+ leading(xch) */
+                    xca.sale_base_code         sale_base_code        -- 売上拠点コード
+                    ,xch.cash_receiv_base_code cash_receiv_base_code -- 入金拠点コード
+                    ,xch.bill_tax_round_rule   bill_tax_round_rule   -- 税金-端数処理(サイト)
+                    ,xca.past_sale_base_code   past_sale_base_code   -- 前月売上拠点コード
+            INTO    lt_mon_sale_base_code
+                    ,lt_cash_receiv_base_code
+                    ,lt_tax_odd
+                    ,lt_past_sale_base_code
+            FROM    hz_cust_accounts        hca    -- 顧客マスタ
+                    ,xxcmm_cust_accounts    xca   -- 顧客追加情報
+                    ,xxcos_cust_hierarchy_v xch   -- 顧客階層ビュー
+                    ,hz_parties             hpt   -- パーティーマスタ
+            WHERE   hca.cust_account_id     =  xca.customer_id
+            AND     xch.ship_account_number =  xca.customer_code
+            AND     hca.account_number      =  lt_customer_number
+            AND     hca.party_id            =  hpt.party_id
             AND     hca.customer_class_code IN ( cv_customer_type_c, cv_customer_type_u )
-            AND     EXISTS
-                    ( SELECT 'Y'
-                      FROM   hz_parties hpt
-                      WHERE  hpt.party_id = hca.party_id
-                      AND    ( ( hpt.duns_number_c = cv_cust_s )
-                        OR     ( hpt.duns_number_c = cv_cust_v )
-                        OR     ( hpt.duns_number_c = cv_cost_p ) )
-                     );
+            AND     hpt.duns_number_c       IN ( cv_cust_s , cv_cust_v , cv_cost_p );
+--
+            IF ( TO_CHAR( gd_process_date , cv_month_type ) = TO_CHAR( lt_dlv_date , cv_month_type  ) ) THEN  -- 同一月の場合当月売上拠点
+              lt_sale_base_code := lt_mon_sale_base_code;
+            ELSE                                                                        -- その他前月売上拠点
+              IF ( lt_past_sale_base_code IS NULL ) THEN
+                lv_state_flg    := cv_status_warn;
+                gn_wae_data_num := gn_wae_data_num + 1 ;
+                gt_msg_war_data(gn_wae_data_num) := xxccp_common_pkg.get_msg(
+                                                    iv_application   => cv_application,            --アプリケーション短縮名
+                                                    iv_name          => cv_past_sale_base_get_err, --メッセージコード
+                                                    iv_token_name1   => cv_cust_code,              --トークン(顧客コード)
+                                                    iv_token_value1  => lt_customer_number,        --トークン値1
+                                                    iv_token_name2   => cv_dlv_date,               --トークンコード2(納品日)
+                                                    iv_token_value2  => TO_CHAR( lt_dlv_date,cv_short_day ) );         --トークン値2
+              ELSE
+                lt_sale_base_code := lt_past_sale_base_code;
+              END IF;
+            END IF;
+--
+--            SELECT  /*+
+--                      USE_NL(xch.cust_hier.cash_hcar_3)
+--                      USE_NL(xch.cust_hier.bill_hasa_3)
+--                      USE_NL(xch.cust_hier.bill_hasa_4)
+--                    */
+--                    xch.ship_sale_base_code,         -- 売上拠点コード
+--                    xch.cash_receiv_base_code,  -- 入金拠点コード
+--                    xch.bill_tax_round_rule     -- 税金-端数処理(サイト)
+--            INTO    lt_sale_base_code,
+--                    lt_cash_receiv_base_code,
+--                    lt_tax_odd
+--            FROM    hz_cust_accounts hca,       -- 顧客マスタ
+--                    xxcos_cust_hierarchy_v xch  -- 顧客階層ビュー
+--            WHERE   xch.ship_account_id = hca.cust_account_id
+--            AND     hca.account_number  = TO_CHAR( lt_customer_number )
+--            AND     hca.customer_class_code IN ( cv_customer_type_c, cv_customer_type_u )
+--            AND     EXISTS
+--                    ( SELECT 'Y'
+--                      FROM   hz_parties hpt
+--                      WHERE  hpt.party_id = hca.party_id
+--                      AND    ( ( hpt.duns_number_c = cv_cust_s )
+--                        OR     ( hpt.duns_number_c = cv_cust_v )
+--                        OR     ( hpt.duns_number_c = cv_cost_p ) )
+--                     );
+-- ***************** 2009/08/21 1.20 N.Maeda MOD  END  ******************** --
 --            SELECT  xca.sale_base_code, --売上拠点コード
 --    -- ************** 2009/04/16 1.12 N.Maeda ADD START ****************************************************************
 --                    xch.cash_receiv_base_code,  --入金拠点コード
@@ -3138,7 +3225,7 @@ AS
                                                     iv_token_value2  => gv_tkn2 );         --トークン値2
     --******************************* 2009/04/16 N.Maeda Var1.12 MOD END   *****************************************
           END;
-    --
+--
           --========================
           --消費税コードの導出(HHT)
           --========================
@@ -3212,7 +3299,8 @@ AS
                                                     iv_token_value2  => gv_tkn2 );         --トークン値2
     --******************************* 2009/04/16 N.Maeda Var1.12 MOD END   *****************************************
           END;
-    --
+--
+--
           --====================
           --消費税マスタ情報取得
           --====================
@@ -5656,6 +5744,10 @@ AS
   lt_order_no_hht_err             xxcos_dlv_headers.order_no_hht%TYPE;             -- 受注No.(HHT)
   lt_order_no_hht_ok              xxcos_dlv_headers.order_no_hht%TYPE;
 --******************************* 2009/06/23 N.Maeda Var1.17 MOD  END  ***************************************
+-- ************* 2009/08/21 1.20 N.Maeda ADD START *************--
+  lt_mon_sale_base_code                xxcmm_cust_accounts.sale_base_code%TYPE;
+  lt_past_sale_base_code               xxcmm_cust_accounts.past_sale_base_code%TYPE;
+-- ************* 2009/08/21 1.20 N.Maeda ADD  END  *************--
 --
     -- *** ローカル・カーソル ***
   CURSOR get_sales_exp_cur
@@ -5898,30 +5990,69 @@ AS
           --=========================
           BEGIN
 -- ****************** 2009/08/10 1.18 N.Maeda MOD START **************************************************************--
-            SELECT  /*+
-                      USE_NL(xch.cust_hier.cash_hcar_3)
-                      USE_NL(xch.cust_hier.bill_hasa_3)
-                      USE_NL(xch.cust_hier.bill_hasa_4)
-                    */
-                    xch.ship_sale_base_code,         -- 売上拠点コード
-                    xch.cash_receiv_base_code,  -- 入金拠点コード
-                    xch.bill_tax_round_rule     -- 税金-端数処理(サイト)
-            INTO    lt_sale_base_code,
-                    lt_cash_receiv_base_code,
-                    lt_tax_odd
-            FROM    hz_cust_accounts hca,       -- 顧客マスタ
-                    xxcos_cust_hierarchy_v xch  -- 顧客階層ビュー
-            WHERE   xch.ship_account_id = hca.cust_account_id
-            AND     hca.account_number  = TO_CHAR( lt_customer_number )
+-- ***************** 2009/08/21 1.20 N.Maeda MOD START ******************** --
+            SELECT  /*+ leading(xch) */
+                    xca.sale_base_code         sale_base_code        -- 売上拠点コード
+                    ,xch.cash_receiv_base_code cash_receiv_base_code -- 入金拠点コード
+                    ,xch.bill_tax_round_rule   bill_tax_round_rule   -- 税金-端数処理(サイト)
+                    ,xca.past_sale_base_code   past_sale_base_code   -- 前月売上拠点コード
+            INTO    lt_mon_sale_base_code
+                    ,lt_cash_receiv_base_code
+                    ,lt_tax_odd
+                    ,lt_past_sale_base_code
+            FROM    hz_cust_accounts        hca    -- 顧客マスタ
+                    ,xxcmm_cust_accounts    xca   -- 顧客追加情報
+                    ,xxcos_cust_hierarchy_v xch   -- 顧客階層ビュー
+                    ,hz_parties             hpt   -- パーティーマスタ
+            WHERE   hca.cust_account_id     =  xca.customer_id
+            AND     xch.ship_account_number =  xca.customer_code
+            AND     hca.account_number      =  lt_customer_number
+            AND     hca.party_id            =  hpt.party_id
             AND     hca.customer_class_code IN ( cv_customer_type_c, cv_customer_type_u )
-            AND     EXISTS
-                    ( SELECT 'Y'
-                      FROM   hz_parties hpt
-                      WHERE  hpt.party_id = hca.party_id
-                      AND    ( ( hpt.duns_number_c = cv_cust_s )
-                        OR     ( hpt.duns_number_c = cv_cust_v )
-                        OR     ( hpt.duns_number_c = cv_cost_p ) )
-                     );
+            AND     hpt.duns_number_c       IN ( cv_cust_s , cv_cust_v , cv_cost_p );
+--
+            IF ( TO_CHAR( gd_process_date , cv_month_type ) = TO_CHAR( lt_dlv_date , cv_month_type  ) ) THEN  -- 同一月の場合当月売上拠点
+              lt_sale_base_code := lt_mon_sale_base_code;
+            ELSE                                                                        -- その他前月売上拠点
+              IF ( lt_past_sale_base_code IS NULL ) THEN
+                lv_state_flg    := cv_status_warn;
+                gn_wae_data_num := gn_wae_data_num + 1 ;
+                gt_msg_war_data(gn_wae_data_num) := xxccp_common_pkg.get_msg(
+                                                    iv_application   => cv_application,            --アプリケーション短縮名
+                                                    iv_name          => cv_past_sale_base_get_err, --メッセージコード
+                                                    iv_token_name1   => cv_cust_code,              --トークン(顧客コード)
+                                                    iv_token_value1  => lt_customer_number,        --トークン値1
+                                                    iv_token_name2   => cv_dlv_date,               --トークンコード2(納品日)
+                                                    iv_token_value2  => TO_CHAR( lt_dlv_date,cv_short_day ) );         --トークン値2
+              ELSE
+                lt_sale_base_code := lt_past_sale_base_code;
+              END IF;
+            END IF;
+--            SELECT  /*+
+--                      USE_NL(xch.cust_hier.cash_hcar_3)
+--                      USE_NL(xch.cust_hier.bill_hasa_3)
+--                      USE_NL(xch.cust_hier.bill_hasa_4)
+--                    */
+--                    xch.ship_sale_base_code,         -- 売上拠点コード
+--                    xch.cash_receiv_base_code,  -- 入金拠点コード
+--                    xch.bill_tax_round_rule     -- 税金-端数処理(サイト)
+--            INTO    lt_sale_base_code,
+--                    lt_cash_receiv_base_code,
+--                    lt_tax_odd
+--            FROM    hz_cust_accounts hca,       -- 顧客マスタ
+--                    xxcos_cust_hierarchy_v xch  -- 顧客階層ビュー
+--            WHERE   xch.ship_account_id = hca.cust_account_id
+--            AND     hca.account_number  = TO_CHAR( lt_customer_number )
+--            AND     hca.customer_class_code IN ( cv_customer_type_c, cv_customer_type_u )
+--            AND     EXISTS
+--                    ( SELECT 'Y'
+--                      FROM   hz_parties hpt
+--                      WHERE  hpt.party_id = hca.party_id
+--                      AND    ( ( hpt.duns_number_c = cv_cust_s )
+--                        OR     ( hpt.duns_number_c = cv_cust_v )
+--                        OR     ( hpt.duns_number_c = cv_cost_p ) )
+--                     );
+-- ***************** 2009/08/21 1.20 N.Maeda MOD  END  ******************** --
 --            SELECT  xca.sale_base_code, --売上拠点コード
 --    -- ************** 2009/04/16 1.12 N.Maeda ADD START ****************************************************************
 --                    xch.cash_receiv_base_code,  --入金拠点コード
@@ -8477,6 +8608,10 @@ AS
   lt_order_no_hht_err             xxcos_dlv_headers.order_no_hht%TYPE;             -- 受注No.(HHT)
   lt_order_no_hht_ok              xxcos_dlv_headers.order_no_hht%TYPE;
 --******************************* 2009/06/23 N.Maeda Var1.17 MOD  END  ***************************************
+-- ************* 2009/08/21 1.20 N.Maeda ADD START *************--
+  lt_mon_sale_base_code                xxcmm_cust_accounts.sale_base_code%TYPE;
+  lt_past_sale_base_code               xxcmm_cust_accounts.past_sale_base_code%TYPE;
+-- ************* 2009/08/21 1.20 N.Maeda ADD  END  *************--
 --
     -- *** ローカル・カーソル ***
 --******************************* 2009/06/23 N.Maeda Var1.17 ADD START ***************************************
@@ -8690,30 +8825,70 @@ AS
           --=========================
           BEGIN
 -- ****************** 2009/08/10 1.18 N.Maeda MOD START **************************************************************--
-            SELECT  /*+
-                      USE_NL(xch.cust_hier.cash_hcar_3)
-                      USE_NL(xch.cust_hier.bill_hasa_3)
-                      USE_NL(xch.cust_hier.bill_hasa_4)
-                    */
-                    xch.ship_sale_base_code,         -- 売上拠点コード
-                    xch.cash_receiv_base_code,  -- 入金拠点コード
-                    xch.bill_tax_round_rule     -- 税金-端数処理(サイト)
-            INTO    lt_sale_base_code,
-                    lt_cash_receiv_base_code,
-                    lt_tax_odd
-            FROM    hz_cust_accounts hca,       -- 顧客マスタ
-                    xxcos_cust_hierarchy_v xch  -- 顧客階層ビュー
-            WHERE   xch.ship_account_id = hca.cust_account_id
-            AND     hca.account_number  = TO_CHAR( lt_customer_number )
+-- ************* 2009/08/21 1.20 N.Maeda MOD START *************--
+            SELECT  /*+ leading(xch) */
+                    xca.sale_base_code         sale_base_code        -- 売上拠点コード
+                   ,xch.cash_receiv_base_code cash_receiv_base_code -- 入金拠点コード
+                   ,xch.bill_tax_round_rule   bill_tax_round_rule   -- 税金-端数処理(サイト)
+                   ,xca.past_sale_base_code   past_sale_base_code   -- 前月売上拠点コード
+            INTO    lt_mon_sale_base_code
+                   ,lt_cash_receiv_base_code
+                   ,lt_tax_odd
+                   ,lt_past_sale_base_code
+            FROM    hz_cust_accounts        hca    -- 顧客マスタ
+                   ,xxcmm_cust_accounts    xca   -- 顧客追加情報
+                   ,xxcos_cust_hierarchy_v xch   -- 顧客階層ビュー
+                   ,hz_parties             hpt   -- パーティーマスタ
+            WHERE   hca.cust_account_id     =  xca.customer_id
+            AND     xch.ship_account_number =  xca.customer_code
+            AND     hca.account_number      =  lt_customer_number
+            AND     hca.party_id            =  hpt.party_id
             AND     hca.customer_class_code IN ( cv_customer_type_c, cv_customer_type_u )
-            AND     EXISTS
-                    ( SELECT 'Y'
-                      FROM   hz_parties hpt
-                      WHERE  hpt.party_id = hca.party_id
-                      AND    ( ( hpt.duns_number_c = cv_cust_s )
-                        OR     ( hpt.duns_number_c = cv_cust_v )
-                        OR     ( hpt.duns_number_c = cv_cost_p ) )
-                     );
+            AND     hpt.duns_number_c       IN ( cv_cust_s , cv_cust_v , cv_cost_p );
+--
+            IF ( TO_CHAR( gd_process_date , cv_month_type ) = TO_CHAR( lt_dlv_date , cv_month_type  ) ) THEN  -- 同一月の場合当月売上拠点
+              lt_sale_base_code := lt_mon_sale_base_code;
+            ELSE                                                                        -- その他前月売上拠点
+              IF ( lt_past_sale_base_code IS NULL ) THEN
+                lv_state_flg    := cv_status_warn;
+                gn_wae_data_num := gn_wae_data_num + 1 ;
+                gt_msg_war_data(gn_wae_data_num) := xxccp_common_pkg.get_msg(
+                                                    iv_application   => cv_application,            --アプリケーション短縮名
+                                                    iv_name          => cv_past_sale_base_get_err, --メッセージコード
+                                                    iv_token_name1   => cv_cust_code,              --トークン(顧客コード)
+                                                    iv_token_value1  => lt_customer_number,        --トークン値1
+                                                    iv_token_name2   => cv_dlv_date,               --トークンコード2(納品日)
+                                                    iv_token_value2  => TO_CHAR( lt_dlv_date,cv_short_day ) );         --トークン値2
+              ELSE
+                lt_sale_base_code := lt_past_sale_base_code;
+              END IF;
+            END IF;
+--
+--            SELECT  /*+
+--                      USE_NL(xch.cust_hier.cash_hcar_3)
+--                      USE_NL(xch.cust_hier.bill_hasa_3)
+--                      USE_NL(xch.cust_hier.bill_hasa_4)
+--                    */
+--                    xch.ship_sale_base_code,         -- 売上拠点コード
+--                    xch.cash_receiv_base_code,  -- 入金拠点コード
+--                    xch.bill_tax_round_rule     -- 税金-端数処理(サイト)
+--            INTO    lt_sale_base_code,
+--                    lt_cash_receiv_base_code,
+--                    lt_tax_odd
+--            FROM    hz_cust_accounts hca,       -- 顧客マスタ
+--                    xxcos_cust_hierarchy_v xch  -- 顧客階層ビュー
+--            WHERE   xch.ship_account_id = hca.cust_account_id
+--            AND     hca.account_number  = TO_CHAR( lt_customer_number )
+--            AND     hca.customer_class_code IN ( cv_customer_type_c, cv_customer_type_u )
+--            AND     EXISTS
+--                    ( SELECT 'Y'
+--                      FROM   hz_parties hpt
+--                      WHERE  hpt.party_id = hca.party_id
+--                      AND    ( ( hpt.duns_number_c = cv_cust_s )
+--                        OR     ( hpt.duns_number_c = cv_cust_v )
+--                        OR     ( hpt.duns_number_c = cv_cost_p ) )
+--                     );
+-- ************* 2009/08/21 1.20 N.Maeda MOD  END  *************--
 ---- ********* 2009/08/06 1.18 N.Maeda ADD START **************************** --
 --            SELECT
 --                  /*+
@@ -8786,7 +8961,7 @@ AS
                                                     iv_token_value2  => gv_tkn2 );         --トークン値2
     --******************************* 2009/04/16 N.Maeda Var1.12 MOD END *****************************************
           END;
-    --
+--
           -- ========================
           -- 消費税コードの導出(HHT)
           -- ========================

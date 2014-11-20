@@ -1,4 +1,4 @@
-CREATE OR REPLACE PACKAGE BODY XXCOS001A03C
+CREATE OR REPLACE PACKAGE BODY APPS.XXCOS001A03C
 AS
 /*****************************************************************************************
  * Copyright(c)Sumisho Computer Systems Corporation, 2008. All rights reserved.
@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCOS001A03C (body)
  * Description      : VD納品データ作成
  * MD.050           : VD納品データ作成(MD050_COS_001_A03)
- * Version          : 1.16
+ * Version          : 1.17
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -62,6 +62,7 @@ AS
  *  2009/07/31            N.Maeda          [0000831] レビュー再指摘対応
  *  2009/08/12    1.16    N.Maeda          [0000900] クイックコード取得方法修正
  *                                         [0001010] 従業員ビュー取得条件追加
+ *  2009/08/21    1.17    N.Maeda          [0001141] 前月売上拠点の考慮追加
  *
  *****************************************************************************************/
 --
@@ -172,6 +173,9 @@ AS
   cv_stand_date                  CONSTANT VARCHAR(25)  := 'YYYY/MM/DD HH24:MI:SS';
   cv_short_day                   CONSTANT VARCHAR(25)  := 'YYYY/MM/DD';
 --  cv_short_time                  CONSTANT VARCHAR(25)  := 'HH24:MI:SS';
+-- ************* 2009/08/21 1.17 N.Maeda ADD START *************--
+  cv_month_type                  CONSTANT VARCHAR(25)  := 'YYYY/MM';
+-- ************* 2009/08/21 1.17 N.Maeda ADD  END  *************--
   cv_amount_up                   CONSTANT VARCHAR(5)   := 'UP';
   cv_amount_down                 CONSTANT VARCHAR(5)   := 'DOWN';
   cv_amount_nearest              CONSTANT VARCHAR(10)  := 'NEAREST';
@@ -258,6 +262,9 @@ AS
   cv_msg_tab_xxcos_sal_exp_head CONSTANT VARCHAR2(20) := 'APP-XXCOS1-00086';  -- 販売実績ヘッダ
   cv_msg_tab_xxcos_sal_exp_line CONSTANT VARCHAR2(20) := 'APP-XXCOS1-00087';  -- 販売実績明細
   cv_msg_tab_ins_err            CONSTANT VARCHAR2(20) := 'APP-XXCOS1-10351';  -- 登録エラー
+-- ************* 2009/08/21 1.17 N.Maeda ADD START *************--
+  cv_past_sale_base_get_err     CONSTANT VARCHAR2(20) := 'APP-XXCOS1-00188';
+-- ************* 2009/08/21 1.17 N.Maeda ADD  END  *************--
   -- メッセージ出力
 --******************************* 2009/06/01 N.Maeda Var1.14 MOD START ***************************************
 --  cv_msg_count_he_target      CONSTANT VARCHAR2(20)  := 'APP-XXCOS1-00141';   -- ヘッダ対象件数
@@ -286,6 +293,10 @@ AS
   cv_tkn_colmun    CONSTANT VARCHAR2(20)  := 'COLMUN';               -- テーブル列名
   cv_key_data      CONSTANT VARCHAR2(20)  := 'KEY_DATA';             -- 編集されたキー情報
   cv_target_cnt    CONSTANT VARCHAR2(20)  := 'COUNT';                -- 対象件数
+-- ************* 2009/08/21 1.17 N.Maeda ADD START *************--
+  cv_cust_code     CONSTANT VARCHAR2(20)  := 'CUST_CODE';
+  cv_dlv_date      CONSTANT VARCHAR2(20)  := 'DLV_DATE';
+-- ************* 2009/08/21 1.17 N.Maeda ADD  END  *************--
 --
   -- ===============================
   -- ユーザー定義グローバル型
@@ -1388,6 +1399,10 @@ AS
   ln_sales_exp_count              NUMBER :=0 ;                                          -- 更新対象販売実績件数カウント
   ln_set_sales_exp_count          NUMBER :=0 ;                                          -- 更新販売実績件数カウント
 --
+-- ************* 2009/08/21 1.17 N.Maeda ADD START *************--
+  lt_mon_sale_base_code                xxcmm_cust_accounts.sale_base_code%TYPE;
+  lt_past_sale_base_code               xxcmm_cust_accounts.past_sale_base_code%TYPE;
+-- ************* 2009/08/21 1.17 N.Maeda ADD  END  *************--
     -- *** ローカル・カーソル ***
   CURSOR get_sales_exp_cur
     IS
@@ -1478,19 +1493,46 @@ AS
                 xca.sale_base_code         sale_base_code        -- 売上拠点コード
                 ,xch.cash_receiv_base_code cash_receiv_base_code -- 入金拠点コード
                 ,xch.bill_tax_round_rule   bill_tax_round_rule   -- 税金-端数処理(サイト)
-        INTO    lt_sale_base_code
+-- ************* 2009/08/21 1.17 N.Maeda MOD START *************--
+                ,xca.past_sale_base_code   past_sale_base_code
+--        INTO    lt_sale_base_code
+        INTO    lt_mon_sale_base_code
+-- ************* 2009/08/21 1.17 N.Maeda MOD  END  *************--
                 ,lt_cash_receiv_base_code
                 ,lt_tax_odd
+-- ************* 2009/08/21 1.17 N.Maeda ADD START *************--
+                ,lt_past_sale_base_code
+-- ************* 2009/08/21 1.17 N.Maeda ADD  END  *************--
         FROM    hz_cust_accounts       hca    -- 顧客マスタ
                 ,xxcmm_cust_accounts    xca   -- 顧客追加情報
                 ,xxcos_cust_hierarchy_v xch   -- 顧客階層ビュー
                 ,hz_parties             hpt   -- パーティーマスタ
-        WHERE   hca.cust_account_id     = xca.customer_id
-        AND     xch.ship_account_number = xca.customer_code
+        WHERE   hca.cust_account_id     =  xca.customer_id
+        AND     xch.ship_account_number =  xca.customer_code
         AND     hca.account_number      =  lt_customer_number
         AND     hca.party_id            =  hpt.party_id
         AND     hca.customer_class_code IN ( cv_customer_type_c, cv_customer_type_u )
         AND     hpt.duns_number_c       IN ( cv_cust_s , cv_cust_v , cv_cost_p );
+--
+-- ************* 2009/08/21 1.17 N.Maeda ADD START *************--
+        IF ( TO_CHAR( gd_process_date , cv_month_type ) = TO_CHAR( lt_dlv_date , cv_month_type  ) ) THEN  -- 同一月の場合当月売上拠点
+          lt_sale_base_code := lt_mon_sale_base_code;
+        ELSE                                                                        -- その他前月売上拠点
+          IF ( lt_past_sale_base_code IS NULL ) THEN
+            lv_state_flg    := cv_status_warn;
+            gn_wae_data_num := gn_wae_data_num + 1 ;
+            gt_msg_war_data(gn_wae_data_num) := xxccp_common_pkg.get_msg(
+                                                iv_application   => cv_application,            --アプリケーション短縮名
+                                                iv_name          => cv_past_sale_base_get_err, --メッセージコード
+                                                iv_token_name1   => cv_cust_code,              --トークン(顧客コード)
+                                                iv_token_value1  => lt_customer_number,        --トークン値1
+                                                iv_token_name2   => cv_dlv_date,               --トークンコード2(納品日)
+                                                iv_token_value2  => TO_CHAR( lt_dlv_date,cv_short_day ) );         --トークン値2
+          ELSE
+            lt_sale_base_code := lt_past_sale_base_code;
+          END IF;
+        END IF;
+-- ************* 2009/08/21 1.17 N.Maeda ADD  END  *************--
 --
 --        SELECT  xca.sale_base_code, --売上拠点コード
 ---- ************** 2009/04/16 1.10 N.Maeda ADD START ****************************************************************
@@ -1593,7 +1635,7 @@ AS
 --******************************* 2009/08/12 N.Maeda Ver1.16 MOD END *****************************************
       EXCEPTION
         WHEN NO_DATA_FOUND THEN
-          -- ログ出力          
+          -- ログ出力
           gv_tkn1   := xxccp_common_pkg.get_msg(cv_application, cv_msg_lookup_mst );
           --キー編集処理
 --******************************* 2009/04/16 N.Maeda Var1.10 MOD START ***************************************
@@ -1662,7 +1704,7 @@ AS
           gt_msg_war_data(gn_wae_data_num) := xxccp_common_pkg.get_msg(
                                                 iv_application   => cv_application,    --アプリケーション短縮名
                                                 iv_name          => cv_msg_no_data,    --メッセージコード
-                                                iv_token_name1   => cv_tkn_table, --トークンコード1
+                                                iv_token_name1   => cv_tkn_table,      --トークンコード1
                                                 iv_token_value1  => gv_tkn1,           --トークン値1
                                                 iv_token_name2   => cv_key_data,       --トークンコード2
                                                 iv_token_value2  => gv_tkn2 );         --トークン値2
