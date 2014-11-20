@@ -65,18 +65,18 @@ public class XxcsoContractSearchCO extends OAControllerImpl
     if ( am == null )
     {
       OADialogPage dialogPage = new OADialogPage(STATE_LOSS_ERROR);
-      pageContext.redirectToDialogPage(dialogPage);      
+      pageContext.redirectToDialogPage(dialogPage);
     }
     //初期化処理
     am.invokeMethod("initDetails");
 
-    //Tableリージョンの表示行数設定関数    
+    //Tableリージョンの表示行数設定関数
     OAException oaeMsg
       = XxcsoUtils.setAdvancedTableRows(
-          pageContext,
-          webBean,
-          XxcsoContractConstants.REGION_NAME,
-          XxcsoContractConstants.VIEW_SIZE
+          pageContext
+         ,webBean
+         ,XxcsoContractConstants.REGION_NAME
+         ,XxcsoContractConstants.VIEW_SIZE
         );
 
     if ( oaeMsg != null )
@@ -110,12 +110,12 @@ public class XxcsoContractSearchCO extends OAControllerImpl
     {
       //メニュー画面に遷移
       pageContext.forwardImmediately(
-        XxcsoConstants.FUNC_OA_HOME_PAGE,
-        OAWebBeanConstants.KEEP_MENU_CONTEXT,
-        null,
-        null,
-        true,
-        OAWebBeanConstants.ADD_BREAD_CRUMB_NO
+        XxcsoConstants.FUNC_OA_HOME_PAGE
+       ,OAWebBeanConstants.KEEP_MENU_CONTEXT
+       ,null
+       ,null
+       ,true
+       ,OAWebBeanConstants.ADD_BREAD_CRUMB_NO
       );
     }
 
@@ -128,7 +128,7 @@ public class XxcsoContractSearchCO extends OAControllerImpl
     //消去ボタン
     if ( pageContext.getParameter("ClearButton") != null )
     {
-      am.invokeMethod("ClearBtn");
+      am.invokeMethod("handleClearButton");
     }
 
     //契約書作成ボタン
@@ -148,12 +148,12 @@ public class XxcsoContractSearchCO extends OAControllerImpl
         HashMap params = (HashMap)am.invokeMethod("getUrlParamNew");
         //登録更新画面に遷移
         pageContext.forwardImmediately(
-          XxcsoConstants.FUNC_CONTRACT_REGIST_PG,
-          OAWebBeanConstants.KEEP_MENU_CONTEXT,
-          null,
-          params,
-          true,
-          OAWebBeanConstants.ADD_BREAD_CRUMB_NO
+          XxcsoConstants.FUNC_CONTRACT_REGIST_PG
+         ,OAWebBeanConstants.KEEP_MENU_CONTEXT
+         ,null
+         ,params
+         ,true
+         ,OAWebBeanConstants.ADD_BREAD_CRUMB_NO
         );
       }
     }
@@ -180,12 +180,12 @@ public class XxcsoContractSearchCO extends OAControllerImpl
         HashMap params = (HashMap)am.invokeMethod("getUrlParamCopy");
         //登録更新画面に遷移
         pageContext.forwardImmediately(
-          XxcsoConstants.FUNC_CONTRACT_REGIST_PG,
-          OAWebBeanConstants.KEEP_MENU_CONTEXT,
-          null,
-          params,
-          true,
-          OAWebBeanConstants.ADD_BREAD_CRUMB_NO
+          XxcsoConstants.FUNC_CONTRACT_REGIST_PG
+         ,OAWebBeanConstants.KEEP_MENU_CONTEXT
+         ,null
+         ,params
+         ,true
+         ,OAWebBeanConstants.ADD_BREAD_CRUMB_NO
         );
       }
     }
@@ -199,7 +199,7 @@ public class XxcsoContractSearchCO extends OAControllerImpl
         XxcsoContractConstants.CONSTANT_COM_KBN2
       };
       //明細選択チェック
-      Boolean returnValue = (Boolean)am.invokeMethod("selCheck",mode);
+      Boolean returnValue = (Boolean)am.invokeMethod("selCheck", mode);
 
       if ( ! returnValue.booleanValue() )
       {
@@ -209,7 +209,7 @@ public class XxcsoContractSearchCO extends OAControllerImpl
       else
       {
         // マスタ連携チェック
-        returnValue = (Boolean)am.invokeMethod("handleCooperateChk");
+        returnValue = (Boolean)am.invokeMethod("cooperateCheck");
         if ( ! returnValue.booleanValue() )
         {
           OAException confirmMsg = (OAException)am.invokeMethod("getMessage");
@@ -225,12 +225,12 @@ public class XxcsoContractSearchCO extends OAControllerImpl
           HashMap params = (HashMap)am.invokeMethod("getUrlParamDetails");
           //登録更新画面に遷移
           pageContext.forwardImmediately(
-            XxcsoConstants.FUNC_CONTRACT_REGIST_PG,
-            OAWebBeanConstants.KEEP_MENU_CONTEXT,
-            null,
-            params,
-            true,
-            OAWebBeanConstants.ADD_BREAD_CRUMB_NO
+            XxcsoConstants.FUNC_CONTRACT_REGIST_PG
+           ,OAWebBeanConstants.KEEP_MENU_CONTEXT
+           ,null
+           ,params
+           ,true
+           ,OAWebBeanConstants.ADD_BREAD_CRUMB_NO
           );
         }
       }
@@ -255,7 +255,7 @@ public class XxcsoContractSearchCO extends OAControllerImpl
       else
       {
         // マスタ連携チェック
-        returnValue = (Boolean)am.invokeMethod("handleCooperateChk");
+        returnValue = (Boolean)am.invokeMethod("cooperateCheck");
         if ( ! returnValue.booleanValue() )
         {
           OAException confirmMsg = (OAException)am.invokeMethod("getMessage");
@@ -268,7 +268,6 @@ public class XxcsoContractSearchCO extends OAControllerImpl
         else
         {
           // PDF処理をCALL
-          XxcsoUtils.debug(pageContext, "PDF出力処理");
           am.invokeMethod("handlePdfCreateButton");
         }
       }
@@ -287,12 +286,12 @@ public class XxcsoContractSearchCO extends OAControllerImpl
       HashMap params = (HashMap)am.invokeMethod("getUrlParamDetails");
       //登録更新画面に遷移
       pageContext.forwardImmediately(
-        XxcsoConstants.FUNC_CONTRACT_REGIST_PG,
-        OAWebBeanConstants.KEEP_MENU_CONTEXT,
-        null,
-        params,
-        true,
-        OAWebBeanConstants.ADD_BREAD_CRUMB_NO
+        XxcsoConstants.FUNC_CONTRACT_REGIST_PG
+       ,OAWebBeanConstants.KEEP_MENU_CONTEXT
+       ,null
+       ,params
+       ,true
+       ,OAWebBeanConstants.ADD_BREAD_CRUMB_NO
       );
     }
 
