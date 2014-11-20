@@ -16,6 +16,7 @@ AS
  *  out_log_inparam        入力パラメータ値ログ出力     (A-1)
  *  get_profile_value      プロファイル取得処理         (A-2)
  *  get_del_period         保持対象外日付取得処理       (A-3)
+ *  del_tax_gap_list       税差額取引情報削除処理       (A-4)
  *  del_inv_detail         請求明細情報削除処理         (A-4)
  *  del_inv_header         請求ヘッダ情報削除処理       (A-5)
  *  submain                メイン処理プロシージャ
@@ -25,7 +26,8 @@ AS
  * ------------- ----- ---------------- -------------------------------------------------
  *  Date          Ver.  Editor           Description
  * ------------- ----- ---------------- -------------------------------------------------
- *  2008-10-31    1.0  SCS 大川 恵      初回作成
+ *  2008-10-31    1.00 SCS 大川 恵      初回作成
+ *  2009-07-23    1.01 SCS 松尾 泰生    障害0000841対応 税差額取引データ削除対応
  *
  *****************************************************************************************/
 --
@@ -62,6 +64,10 @@ AS
   gn_normal_h_cnt  NUMBER;                   -- 正常件数(ヘッダ)
   gn_target_d_cnt  NUMBER;                   -- 対象件数(明細)
   gn_normal_d_cnt  NUMBER;                   -- 正常件数(明細)
+-- Modify 2009.07.23 Ver1.01 start
+  gn_target_t_cnt  NUMBER;                   -- 対象件数(税差額取引)
+  gn_normal_t_cnt  NUMBER;                   -- 正常件数(税差額取引)
+-- Modify 2009.07.23 Ver1.01 end
   gn_error_cnt     NUMBER;                   -- エラー件数
 --
 --################################  固定部 END   ##################################
@@ -113,6 +119,9 @@ AS
   cv_msg_003a01_012  CONSTANT VARCHAR2(20) := 'APP-XXCFR1-00006'; --業務処理日付取得エラーメッセージ
   cv_msg_003a01_013  CONSTANT VARCHAR2(20) := 'APP-XXCFR1-00003'; --ロックエラーメッセージ
   cv_msg_003a01_014  CONSTANT VARCHAR2(20) := 'APP-XXCFR1-00007'; --データ削除エラーメッセージ
+-- Modify 2009.07.23 Ver1.01 start
+  cv_msg_003a01_015  CONSTANT VARCHAR2(20) := 'APP-XXCFR1-00078'; --件数タイトル：税差額取引
+-- Modify 2009.07.23 Ver1.01 end
 --
   -- トークン
   cv_tkn_prof        CONSTANT VARCHAR2(15) := 'PROF_NAME';        -- プロファイル名
@@ -125,6 +134,9 @@ AS
   -- 使用DB名
   cv_tkn_d_tab       CONSTANT VARCHAR2(50) := 'XXCFR_INVOICE_LINES';   -- 請求明細情報テーブル
   cv_tkn_h_tab       CONSTANT VARCHAR2(50) := 'XXCFR_INVOICE_HEADERS'; -- 請求ヘッダ情報テーブル
+-- Modify 2009.07.23 Ver1.01 start
+  cv_tkn_t_tab       CONSTANT VARCHAR2(50) := 'XXCFR_TAX_GAP_TRX_LIST';  -- 税差額取引テーブル
+-- Modify 2009.07.23 Ver1.01 end
   -- メッセージ出力区分
   cv_file_type_out   CONSTANT VARCHAR2(50) := 'OUTPUT';
   cv_file_type_log   CONSTANT VARCHAR2(50) := 'LOG';
@@ -403,6 +415,145 @@ AS
 --#####################################  固定部 END   ##########################################
 --
   END get_del_period;
+--
+-- Modify 2009.07.23 Ver1.01 start
+  /**********************************************************************************
+   * Procedure Name   : del_tax_gap_list
+   * Description      : 税差額取引情報削除処理 (A-4)
+   ***********************************************************************************/
+  PROCEDURE del_tax_gap_list(
+    ov_errbuf           OUT NOCOPY VARCHAR2,   -- エラー・メッセージ           --# 固定 #
+    ov_retcode          OUT NOCOPY VARCHAR2,   -- リターン・コード             --# 固定 #
+    ov_errmsg           OUT NOCOPY VARCHAR2)   -- ユーザー・エラー・メッセージ --# 固定 #
+  IS
+    -- ===============================
+    -- 固定ローカル定数
+    -- ===============================
+    cv_prg_name   CONSTANT VARCHAR2(100) := 'del_tax_gap_list'; -- プログラム名
+--
+--#####################  固定ローカル変数宣言部 START   ########################
+--
+    lv_errbuf  VARCHAR2(5000);  -- エラー・メッセージ
+    lv_retcode VARCHAR2(1);     -- リターン・コード
+    lv_errmsg  VARCHAR2(5000);  -- ユーザー・エラー・メッセージ
+--
+--###########################  固定部 END   ####################################
+--
+    -- ===============================
+    -- ユーザー宣言部
+    -- ===============================
+    -- *** ローカル定数 ***
+--
+    -- *** ローカル変数 ***
+    ln_del_t_count NUMBER :=0;
+--
+    -- *** ローカル・カーソル ***
+    -- テーブルロックカーソル
+    CURSOR del_table_tax_cur
+    IS
+      SELECT xtg.invoice_id invoice_id
+      FROM   xxcfr_tax_gap_trx_list xtg
+      WHERE  EXISTS(
+        SELECT 'x'
+        FROM   xxcfr_invoice_headers xih
+        WHERE  xih.invoice_id = xtg.invoice_id        -- 一括請求書ID
+        AND    xih.inv_creation_date <= gd_del_date ) -- 請求書保持対象外日付
+        FOR UPDATE OF xtg.invoice_id NOWAIT;
+--
+    -- *** ローカル・レコード ***
+--
+  xxcfr_del_t_rec  del_table_tax_cur%ROWTYPE;
+--
+  BEGIN
+--
+--##################  固定ステータス初期化部 START   ###################
+--
+    ov_retcode := cv_status_normal;
+--
+--###########################  固定部 END   ############################
+--
+    -- ***************************************
+    -- ***        実処理の記述             ***
+    -- ***       共通関数の呼び出し        ***
+    -- ***************************************
+--
+    -- カーソルオープン
+    OPEN del_table_tax_cur;
+    BEGIN
+      <<delete_tax_gap_loop>>
+      LOOP
+        FETCH del_table_tax_cur INTO xxcfr_del_t_rec;
+        EXIT delete_tax_gap_loop WHEN del_table_tax_cur%NOTFOUND;
+        --対象データを削除
+        DELETE FROM xxcfr_tax_gap_trx_list xtg
+        WHERE  CURRENT OF del_table_tax_cur;
+        -- 処理件数カウント
+        ln_del_t_count := ln_del_t_count + 1; 
+      END LOOP delete_tax_gap_loop;
+    EXCEPTION
+--
+      WHEN OTHERS THEN
+        lv_errmsg := SUBSTRB(xxccp_common_pkg.get_msg(
+                                 cv_msg_kbn_cfr    -- 'XXCFR'
+                                ,cv_msg_003a01_014 -- データ削除エラー
+                                ,cv_tkn_table      -- トークン'TABLE'
+                                ,xxcfr_common_pkg.get_table_comment(cv_tkn_t_tab))
+                                                   -- 税差額取引テーブル
+                            ,1
+                            ,5000);
+        lv_errbuf := lv_errmsg ||cv_msg_part|| SQLERRM;
+        -- カーソルクローズ
+        CLOSE del_table_tax_cur;
+        RAISE global_api_expt;
+    END;
+--
+    -- 処理件数のセット
+    gn_target_t_cnt := ln_del_t_count;
+    gn_normal_t_cnt := ln_del_t_count;
+    -- カーソルクローズ
+    CLOSE del_table_tax_cur;
+--
+  EXCEPTION
+--
+    WHEN lock_expt THEN  -- テーブルロックエラー
+      lv_errmsg := SUBSTRB( xxcmn_common_pkg.get_msg(
+                                cv_msg_kbn_cfr       -- 'XXCFR'
+                               ,cv_msg_003a01_013    -- テーブルロックエラー
+                               ,cv_tkn_table         -- トークン'TABLE'
+                               ,xxcfr_common_pkg.get_table_comment(cv_tkn_t_tab) )
+                                                     -- 税差額取引テーブル
+                          ,1
+                          ,5000);
+      lv_errbuf  := lv_errmsg ||cv_msg_part|| SQLERRM;
+      ov_errmsg  := lv_errmsg;
+      ov_errbuf  := SUBSTRB(cv_pkg_name||cv_msg_cont||cv_prg_name||cv_msg_part||lv_errbuf
+                           ,1
+                           ,5000);
+      ov_retcode := cv_status_error;
+--
+--#################################  固定例外処理部 START   ####################################
+--
+    -- *** 共通関数例外ハンドラ ***
+    WHEN global_api_expt THEN
+      ov_errmsg  := lv_errmsg;
+      ov_errbuf  := SUBSTRB(
+                            cv_pkg_name||cv_msg_cont||cv_prg_name||cv_msg_part||lv_errbuf
+                           ,1
+                           ,5000);
+      ov_retcode := cv_status_error;
+    -- *** 共通関数OTHERS例外ハンドラ ***
+    WHEN global_api_others_expt THEN
+      ov_errbuf  := cv_pkg_name||cv_msg_cont||cv_prg_name||cv_msg_part||SQLERRM;
+      ov_retcode := cv_status_error;
+    -- *** OTHERS例外ハンドラ ***
+    WHEN OTHERS THEN
+      ov_errbuf  := cv_pkg_name||cv_msg_cont||cv_prg_name||cv_msg_part||SQLERRM;
+      ov_retcode := cv_status_error;
+--
+--#####################################  固定部 END   ##########################################
+--
+  END del_tax_gap_list;
+-- Modify 2009.07.23 Ver1.01 end
 --
   /**********************************************************************************
    * Procedure Name   : del_inv_detail
@@ -715,6 +866,10 @@ AS
     gn_normal_h_cnt := 0;
     gn_target_d_cnt := 0;
     gn_normal_d_cnt := 0;
+-- Modify 2009.07.23 Ver1.01 start
+    gn_target_t_cnt := 0;
+    gn_normal_t_cnt := 0;
+-- Modify 2009.07.23 Ver1.01 end
     gn_error_cnt    := 0;
 --
     --*********************************************
@@ -758,6 +913,20 @@ AS
       RAISE global_process_expt;
     END IF;
 --
+-- Modify 2009.07.23 Ver1.01 start
+    -- =====================================================
+    --  税差額取引削除処理 (A-4)
+    -- =====================================================
+    del_tax_gap_list(
+       lv_errbuf             -- エラー・メッセージ           --# 固定 #
+      ,lv_retcode            -- リターン・コード             --# 固定 #
+      ,lv_errmsg);           -- ユーザー・エラー・メッセージ --# 固定 #
+    IF (lv_retcode = cv_status_error) THEN
+      --(エラー処理)
+      RAISE global_process_expt;
+    END IF;
+--
+-- Modify 2009.07.23 Ver1.01 end
     -- =====================================================
     --  請求明細情報削除処理 (A-4)
     -- =====================================================
@@ -872,6 +1041,10 @@ AS
       gn_normal_h_cnt := 0;
       gn_target_d_cnt := 0;
       gn_normal_d_cnt := 0;
+-- Modify 2009.07.23 Ver1.01 start
+      gn_target_t_cnt := 0;
+      gn_normal_t_cnt := 0;
+-- Modify 2009.07.23 Ver1.01 end
       gn_error_cnt    := 1;
     END IF;
 --
@@ -987,6 +1160,53 @@ AS
        which  => FND_FILE.OUTPUT
       ,buff   => gv_out_msg
     );
+-- Modify 2009.07.23 Ver1.01 start
+    --件数タイトル：税差額取引
+    gv_out_msg := xxccp_common_pkg.get_msg(
+                                           iv_application  => cv_msg_kbn_cfr
+                                          ,iv_name         => cv_msg_003a01_015
+                  );
+    fnd_file.put_line(
+       which  => FND_FILE.OUTPUT
+      ,buff   => gv_out_msg
+    );
+    --
+    --対象件数出力
+    gv_out_msg := xxccp_common_pkg.get_msg(
+                                           iv_application  => cv_msg_kbn_ccp
+                                          ,iv_name         => cv_msg_003a01_001
+                                          ,iv_token_name1  => 'COUNT'
+                                          ,iv_token_value1 => TO_CHAR(gn_target_t_cnt)
+                  );
+    fnd_file.put_line(
+       which  => FND_FILE.OUTPUT
+      ,buff   => gv_out_msg
+    );
+    --
+    --成功件数出力
+    gv_out_msg := xxccp_common_pkg.get_msg(
+                                           iv_application  => cv_msg_kbn_ccp
+                                          ,iv_name         => cv_msg_003a01_002
+                                          ,iv_token_name1  => 'COUNT'
+                                          ,iv_token_value1 => TO_CHAR(gn_normal_t_cnt)
+                  );
+    fnd_file.put_line(
+       which  => FND_FILE.OUTPUT
+      ,buff   => gv_out_msg
+    );
+    --
+    --エラー件数出力
+    gv_out_msg := xxccp_common_pkg.get_msg(
+                                           iv_application  => cv_msg_kbn_ccp
+                                          ,iv_name         => cv_msg_003a01_003
+                                          ,iv_token_name1  => 'COUNT'
+                                          ,iv_token_value1 => TO_CHAR(gn_error_cnt)
+                  );
+    fnd_file.put_line(
+       which  => FND_FILE.OUTPUT
+      ,buff   => gv_out_msg
+    );
+-- Modify 2009.07.23 Ver1.01 end
     --
     --終了メッセージ
     IF (lv_retcode = cv_status_normal) THEN
