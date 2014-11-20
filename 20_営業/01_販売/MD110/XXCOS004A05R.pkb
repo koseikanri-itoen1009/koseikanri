@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCOS004A05R (body)
  * Description      : 消化VD別掛率チェックリスト
  * MD.050           : 消化VD別掛率チェックリスト MD050_COS_004_A05
- * Version          : 1.8
+ * Version          : 1.9
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -35,6 +35,7 @@ AS
  *                                       [0001378]出力桁数修正対応
  *  2009/10/16    1.7   S.Miyakoshi      [0001543]差額＝0の出力可能対応
  *  2010/02/23    1.8   K.Atsushiba      [E_本稼動_01670]異常掛率対応
+ *  2011/04/18    1.9   Oukou            [E_本稼動_07098]消化計算後出力可能対応
  *
  *****************************************************************************************/
 --
@@ -152,6 +153,10 @@ AS
                                      := 'APP-XXCOS1-11103';         --帳票ワークテーブル
   ct_msg_name_err           CONSTANT fnd_new_messages.message_name%TYPE
                                      := 'APP-XXCOS1-00055';         --拠点コード
+/* 2011/04/18 Ver1.9 ADD Start */
+  ct_msg_parameter1         CONSTANT fnd_new_messages.message_name%TYPE
+                                     := 'APP-XXCOS1-11104';         --パラメータ出力メッセージ
+/* 2011/04/18 Ver1.9 ADD Start */
   --トークン
   cv_tkn_table              CONSTANT VARCHAR2(100) := 'TABLE';                --テーブル
   cv_tkn_profile            CONSTANT VARCHAR2(100) := 'PROFILE';              --プロファイル
@@ -160,6 +165,9 @@ AS
   cv_tkn_api_name           CONSTANT VARCHAR2(100) := 'API_NAME';             --ＡＰＩ名称
   cv_tkn_param1             CONSTANT VARCHAR2(100) := 'PARAM1';               --第１入力パラメータ
   cv_tkn_param2             CONSTANT VARCHAR2(100) := 'PARAM2';               --第２入力パラメータ
+/* 2011/04/18 Ver1.9 ADD Start */
+  cv_tkn_param3             CONSTANT VARCHAR2(100) := 'PARAM3';               --第３入力パラメータ
+/* 2011/04/18 Ver1.9 ADD END   */
   cv_tkn_request            CONSTANT VARCHAR2(100) := 'REQUEST';              --要求ＩＤ
   cv_tkn_profile_name       CONSTANT VARCHAR2(100) := 'PROFILE_NAME';         --プロファイル値
   cv_tkn_in_param           CONSTANT VARCHAR2(100) := 'IN_PARAM';             --入力パラメータ
@@ -225,6 +233,9 @@ AS
   --パラメータ
   gv_sales_base_code              VARCHAR2(100);                      -- 拠点コード
   gv_customer_number              VARCHAR2(100);                      -- 顧客コード
+/* 2011/04/18 Ver1.9 ADD Start */
+  gd_due_date                     DATE;                               -- 締日
+/* 2011/04/18 Ver1.9 ADD End   */
   --初期取得
   gd_process_date                 DATE;                               -- 業務日付
   gd_max_date                     DATE;                               -- MAX日付
@@ -239,6 +250,9 @@ AS
   PROCEDURE init(
     iv_sales_base_code        IN      VARCHAR2,                       -- 拠点コード
     iv_customer_number        IN      VARCHAR2,                       -- 顧客コード
+/* 2011/04/18 Ver1.9 ADD Start */
+    iv_due_date               IN      VARCHAR2,                       -- 締日
+/* 2011/04/18 Ver1.9 ADD End   */
     ov_errbuf     OUT VARCHAR2,     --   エラー・メッセージ           --# 固定 #
     ov_retcode    OUT VARCHAR2,     --   リターン・コード             --# 固定 #
     ov_errmsg     OUT VARCHAR2)     --   ユーザー・エラー・メッセージ --# 固定 #
@@ -279,14 +293,29 @@ AS
     --==================================
     -- 1.パラメータ出力
     --==================================
-    lv_errmsg               := xxccp_common_pkg.get_msg(
-        iv_application        => ct_xxcos_appl_short_name,
-        iv_name               => ct_msg_parameter,
-        iv_token_name1        => cv_tkn_param1,
-        iv_token_value1       => iv_sales_base_code,
-        iv_token_name2        => cv_tkn_param2,
-        iv_token_value2       => iv_customer_number
-      );
+/* 2011/04/18 Ver1.9 MOD Start */
+    IF ( iv_due_date IS NULL ) THEN
+      lv_errmsg               := xxccp_common_pkg.get_msg(
+          iv_application        => ct_xxcos_appl_short_name,
+          iv_name               => ct_msg_parameter,
+          iv_token_name1        => cv_tkn_param1,
+          iv_token_value1       => iv_sales_base_code,
+          iv_token_name2        => cv_tkn_param2,
+          iv_token_value2       => iv_customer_number
+        );
+    ELSE
+      lv_errmsg               := xxccp_common_pkg.get_msg(
+          iv_application        => ct_xxcos_appl_short_name,
+          iv_name               => ct_msg_parameter1,
+          iv_token_name1        => cv_tkn_param1,
+          iv_token_value1       => iv_sales_base_code,
+          iv_token_name2        => cv_tkn_param2,
+          iv_token_value2       => iv_customer_number,
+          iv_token_name3        => cv_tkn_param3,
+          iv_token_value3       => iv_due_date
+        );
+    END IF;
+/* 2011/04/18 Ver1.9 MOD End   */
     --
     FND_FILE.PUT_LINE(
       which => FND_FILE.LOG,
@@ -303,6 +332,9 @@ AS
     --==================================
     gv_sales_base_code      := iv_sales_base_code;
     gv_customer_number      := iv_customer_number;
+/* 2011/04/18 Ver1.9 ADD Start */
+    gd_due_date             := TO_DATE(iv_due_date, cv_fmt_date);
+/* 2011/04/18 Ver1.9 ADD End   */
     --==============================================================
     --メッセージ出力をする必要がある場合は処理を記述
     --==============================================================
@@ -614,9 +646,88 @@ AS
 --              ) ;
       ;
 -- ******************** 2009/10/16 1.7 S.Miyakoshi MOD  END  ********************* --
+/* 2011/04/18 Ver1.9 ADD Start */
+    CURSOR confirm_data_cur
+    IS
+      SELECT xsvdh.digestion_due_date             digestion_due_date,               --消化計算締年月日
+             xsvdh.sales_base_code                sales_base_code,                  --売上拠点コード
+             hpb.party_name                       sales_base_name,                  --拠点名称
+             xsvdh.performance_by_code            performance_by_code,              --成績計上者コード
+             papf.per_information18               per_information18,                --氏
+             papf.per_information19               per_information19,                --名
+             xsvdh.customer_number                customer_number,                  --顧客コード
+             hpc.party_name                       party_name,                       --顧客名称
+             xsvdh.ar_sales_amount                ar_sales_amount,                  --売上金額
+             xsvdh.sales_amount                   sales_amount,                     --販売金額
+             xsvdh.balance_amount                 balance_amount,                   --差額
+             xsvdh.digestion_calc_rate            digestion_calc_rate,              --消化計算掛率
+             xsvdh.master_rate                    master_rate,                      --マスタ掛率
+             xsvdh.uncalculate_class              uncalculate_class,                --未計算区分
+             flv.description                      confirmation_message              --確認メッセージ
+       FROM  xxcos_vd_digestion_hdrs              xsvdh,                            --消化VD用消化計算ヘッダテーブル
+             hz_cust_accounts                     hcaeb,                            --顧客マスタ_拠点
+             hz_parties                           hpb,                              --パーティマスタ_拠点
+             hz_cust_accounts                     hcaec,                            --顧客マスタ_顧客
+             hz_parties                           hpc,                              --パーティマスタ_顧客
+             fnd_lookup_values                    flv,                              --クイックコード値マスタ
+             per_all_people_f                     papf                              --従業員マスタ
+      WHERE  xsvdh.sales_base_code = hcaeb.account_number
+      AND    hcaeb.party_id                       = hpb.party_id
+      AND    EXISTS (SELECT flv.meaning meaning
+                     FROM   fnd_lookup_values             flv
+                     WHERE  flv.lookup_type                               = ct_qct_cust_type
+                     AND    flv.lookup_code                               LIKE ct_qcc_cust_type
+                     AND    flv.start_date_active                         <= xsvdh.digestion_due_date
+                     AND    NVL( flv.end_date_active, gd_max_date )       >= xsvdh.digestion_due_date
+                     AND    flv.enabled_flag                              = ct_enabled_flag_yes
+                     AND    flv.language                                  = ct_user_lang
+                     AND    flv.meaning                                   = hcaeb.customer_class_code
+                    ) --顧客マスタ.顧客区分 = 1(拠点)
+      AND    xsvdh.cust_account_id                         = hcaec.cust_account_id
+      AND    hcaec.party_id                                = hpc.party_id
+      AND    flv.lookup_type                               = ct_sct_cust_type
+      AND    flv.lookup_code                               = xsvdh.uncalculate_class
+      AND    flv.start_date_active                         <= xsvdh.digestion_due_date
+      AND    NVL( flv.end_date_active, gd_max_date )       >= xsvdh.digestion_due_date
+      AND    flv.language                                  = ct_user_lang
+      AND    flv.enabled_flag                              = ct_enabled_flag_yes
+      AND    xsvdh.sales_result_creation_flag              = ct_make_flag_yes
+      AND    xsvdh.digestion_due_date                      = gd_due_date
+      AND    xsvdh.sales_base_code IN(
+                    SELECT
+                      gv_sales_base_code sales_base_code
+                    FROM
+                      DUAL
+                    UNION
+                    SELECT hcae.account_number account_number      --拠点コード
+                    FROM   hz_cust_accounts    hcae,
+                           xxcmm_cust_accounts xcae
+                    WHERE  hcae.cust_account_id = xcae.customer_id --顧客マスタ.顧客ID =顧客アドオン.顧客ID
+                    AND    EXISTS (SELECT flv.meaning
+                                    FROM   fnd_lookup_values             flv
+                                    WHERE  flv.lookup_type                               = ct_qct_cust_type
+                                    AND    flv.lookup_code                               LIKE ct_qcc_cust_type
+                                    AND    flv.start_date_active                         <= xsvdh.digestion_due_date
+                                    AND    NVL( flv.end_date_active, gd_max_date )       >= xsvdh.digestion_due_date
+                                    AND    flv.enabled_flag                              = ct_enabled_flag_yes
+                                    AND    flv.language                                  = ct_user_lang
+                                    AND    flv.meaning                                   = hcae.customer_class_code
+                                   ) --顧客マスタ.顧客区分 = 1(拠点)
+                    AND    xcae.management_base_code = gv_sales_base_code
+                                     --顧客顧客アドオン.管理元拠点コード = INパラ拠点コード
+             ) --消化VD用消化計算ヘッダテーブル.売上拠点コード IN
+      AND     xsvdh.customer_number      = NVL( gv_customer_number, xsvdh.customer_number )
+      AND     xsvdh.performance_by_code  = papf.employee_number(+)
+      AND     xsvdh.digestion_due_date   >= papf.effective_start_date(+)
+      AND     xsvdh.digestion_due_date   <= papf.effective_end_date(+)
+      ;
+/* 2011/04/18 Ver1.9 ADD END */
 --
     -- *** ローカル・レコード ***
     l_data_rec                          data_cur%ROWTYPE;
+/* 2011/04/18 Ver1.9 ADD START */
+    l_confirm_data_rec                  confirm_data_cur%ROWTYPE;
+/* 2011/04/18 Ver1.9 ADD END   */
 --
   BEGIN
 --
@@ -631,86 +742,153 @@ AS
     --==================================
     -- 1.データ取得
     --==================================
-    <<loop_get_data>>
-    FOR l_data_rec IN data_cur
-    LOOP
-      -- レコードIDの取得
-      BEGIN
-        SELECT
-          xxcos_rep_dig_dv_list_s01.NEXTVAL  record_id
-        INTO
-          ln_record_id
-        FROM
-          dual
-        ;
-      END;
-      ln_idx                  := ln_idx + 1;
-      --
-      g_rpt_data_tab(ln_idx).record_id                    := ln_record_id;                     --レコードid
-      g_rpt_data_tab(ln_idx).digestion_date               := l_data_rec.digestion_due_date;    --消化計算締年月日
-      g_rpt_data_tab(ln_idx).base_code                    := l_data_rec.sales_base_code;       --売上拠点コード
-      g_rpt_data_tab(ln_idx).base_name                    := SUBSTRB( l_data_rec.sales_base_name,
-                                                          cn_pos_star, cn_base_name_length );  --売上拠点名称
-      g_rpt_data_tab(ln_idx).employee_num                 := l_data_rec.performance_by_code;   --営業員コード
-      g_rpt_data_tab(ln_idx).employee_name                := SUBSTRB( l_data_rec.per_information18 
-                                                          || l_data_rec.per_information19,
-                                                          cn_pos_star, cn_employee_name_length );
-      g_rpt_data_tab(ln_idx).party_num                    := l_data_rec.customer_number;       --顧客コード
-      g_rpt_data_tab(ln_idx).customer_name                := SUBSTRB( l_data_rec.party_name,
-                                                          cn_pos_star, cn_party_name_length ); --顧客名称
-      g_rpt_data_tab(ln_idx).dlv_invoice_amount           := l_data_rec.ar_sales_amount;       --納品伝票金額
+/* 2011/04/18 Ver1.9 ADD START */
+    IF ( gd_due_date IS NULL ) THEN
+/* 2011/04/18 Ver1.9 ADD END   */
+      <<loop_get_data>>
+      FOR l_data_rec IN data_cur
+      LOOP
+        -- レコードIDの取得
+        BEGIN
+          SELECT
+            xxcos_rep_dig_dv_list_s01.NEXTVAL  record_id
+          INTO
+            ln_record_id
+          FROM
+            dual
+          ;
+        END;
+        ln_idx                  := ln_idx + 1;
+        --
+        g_rpt_data_tab(ln_idx).record_id                    := ln_record_id;                     --レコードid
+        g_rpt_data_tab(ln_idx).digestion_date               := l_data_rec.digestion_due_date;    --消化計算締年月日
+        g_rpt_data_tab(ln_idx).base_code                    := l_data_rec.sales_base_code;       --売上拠点コード
+        g_rpt_data_tab(ln_idx).base_name                    := SUBSTRB( l_data_rec.sales_base_name,
+                                                            cn_pos_star, cn_base_name_length );  --売上拠点名称
+        g_rpt_data_tab(ln_idx).employee_num                 := l_data_rec.performance_by_code;   --営業員コード
+        g_rpt_data_tab(ln_idx).employee_name                := SUBSTRB( l_data_rec.per_information18 
+                                                            || l_data_rec.per_information19,
+                                                            cn_pos_star, cn_employee_name_length );
+        g_rpt_data_tab(ln_idx).party_num                    := l_data_rec.customer_number;       --顧客コード
+        g_rpt_data_tab(ln_idx).customer_name                := SUBSTRB( l_data_rec.party_name,
+                                                            cn_pos_star, cn_party_name_length ); --顧客名称
+        g_rpt_data_tab(ln_idx).dlv_invoice_amount           := l_data_rec.ar_sales_amount;       --納品伝票金額
 -- ******************** 2009/09/25 1.6 N.Maeda DEL START ********************* --
 --      g_rpt_data_tab(ln_idx).digest_sale_amount           := l_data_rec.sales_amount;          --設定掛率金額
 --      g_rpt_data_tab(ln_idx).balance                      := l_data_rec.balance_amount;        --差額
 -- ******************** 2009/09/25 1.6 N.Maeda DEL  END  ********************* --
 -- ******************** 2010/02/23 1.8 K.Aatsushiba MOD START ********************* --
-      IF ( l_data_rec.uncalculate_class  IN (  ct_uncalculate_class_normal
-                                              ,ct_uncalculate_class_abnormal)) THEN
+        IF ( l_data_rec.uncalculate_class  IN (  ct_uncalculate_class_normal
+                                                ,ct_uncalculate_class_abnormal)) THEN
 --      IF ( l_data_rec.uncalculate_class  = ct_uncalculate_class_normal ) THEN
 -- ******************** 2010/02/23 1.8 K.Aatsushiba MOD END ********************* --
 -- ******************** 2009/09/25 1.6 N.Maeda MOD START ********************* --
-        g_rpt_data_tab(ln_idx).account_rate               :=  SUBSTRB( ( TO_CHAR( l_data_rec.digestion_calc_rate, cv_fmt_tax )
-                                                                      || cv_pr_tax),1,8);
+          g_rpt_data_tab(ln_idx).account_rate               :=  SUBSTRB( ( TO_CHAR( l_data_rec.digestion_calc_rate, cv_fmt_tax )
+                                                                        || cv_pr_tax),1,8);
 --        g_rpt_data_tab(ln_idx).account_rate               := TO_CHAR( l_data_rec.digestion_calc_rate, cv_fmt_tax )
 --                                                          || cv_pr_tax;
 -- ******************** 2009/09/25 1.6 N.Maeda MOD  END  ********************* --
 -- ******************** 2009/09/25 1.6 N.Maeda ADD START ********************* --
-        g_rpt_data_tab(ln_idx).balance                    := l_data_rec.balance_amount;                --差額
+          g_rpt_data_tab(ln_idx).balance                    := l_data_rec.balance_amount;                --差額
 -- ******************** 2009/09/25 1.6 N.Maeda ADD  END  ********************* --
-      ELSE
-        g_rpt_data_tab(ln_idx).account_rate               := gv_no_add;                         --消化計算掛率
+        ELSE
+          g_rpt_data_tab(ln_idx).account_rate               := gv_no_add;                         --消化計算掛率
 -- ******************** 2009/09/25 1.6 N.Maeda ADD START ********************* --
-        g_rpt_data_tab(ln_idx).balance                    := cn_amount_zero;                    --差額
+          g_rpt_data_tab(ln_idx).balance                    := cn_amount_zero;                    --差額
 -- ******************** 2009/09/25 1.6 N.Maeda ADD  END  ********************* --
-      END IF;
+        END IF;
 -- ******************** 2009/09/25 1.6 N.Maeda MOD START ********************* --
 -- ******************** 2009/09/25 1.6 N.Maeda ADD START ********************* --
-      g_rpt_data_tab(ln_idx).digest_sale_amount         := ROUND( l_data_rec.sales_amount 
-                                                                    * ( l_data_rec.master_rate / 100 ) ); --設定掛率金額
+        g_rpt_data_tab(ln_idx).digest_sale_amount         := ROUND( l_data_rec.sales_amount 
+                                                                      * ( l_data_rec.master_rate / 100 ) ); --設定掛率金額
 -- ******************** 2009/09/25 1.6 N.Maeda ADD  END  ********************* --
-      g_rpt_data_tab(ln_idx).setting_account_rate         := SUBSTRB( ( TO_CHAR( l_data_rec.master_rate, cv_fmt_tax )
-                                                                      || cv_pr_tax ),1,8);
+        g_rpt_data_tab(ln_idx).setting_account_rate         := SUBSTRB( ( TO_CHAR( l_data_rec.master_rate, cv_fmt_tax )
+                                                                        || cv_pr_tax ),1,8);
 --      g_rpt_data_tab(ln_idx).setting_account_rate         := TO_CHAR( l_data_rec.master_rate, cv_fmt_tax )
 --                                                          || cv_pr_tax;
 -- ******************** 2009/09/25 1.6 N.Maeda MOD  END  ********************* --
-      g_rpt_data_tab(ln_idx).uncalculate_class            := l_data_rec.uncalculate_class;     --未計算区分
-      IF ( l_data_rec.uncalculate_class  <> ct_uncalculate_class_normal ) THEN
+        g_rpt_data_tab(ln_idx).uncalculate_class            := l_data_rec.uncalculate_class;     --未計算区分
+        IF ( l_data_rec.uncalculate_class  <> ct_uncalculate_class_normal ) THEN
 -- ******************** 2009/09/25 1.6 N.Maeda MOD START ********************* --
-        g_rpt_data_tab(ln_idx).confirmation_message       := SUBSTRB(l_data_rec.confirmation_message,1,40);  --確認メッセージ
+          g_rpt_data_tab(ln_idx).confirmation_message       := SUBSTRB(l_data_rec.confirmation_message,1,40);  --確認メッセージ
 --        g_rpt_data_tab(ln_idx).confirmation_message       := l_data_rec.confirmation_message;  --確認メッセージ
 -- ******************** 2009/09/25 1.6 N.Maeda MOD  END  ********************* --
-      END IF;
-      g_rpt_data_tab(ln_idx).created_by                   := cn_created_by;
-      g_rpt_data_tab(ln_idx).creation_date                := cd_creation_date;
-      g_rpt_data_tab(ln_idx).last_updated_by              := cn_last_updated_by;
-      g_rpt_data_tab(ln_idx).last_update_date             := cd_last_update_date;
-      g_rpt_data_tab(ln_idx).last_update_login            := cn_last_update_login;
-      g_rpt_data_tab(ln_idx).request_id                   := cn_request_id;
-      g_rpt_data_tab(ln_idx).program_application_id       := cn_program_application_id;
-      g_rpt_data_tab(ln_idx).program_id                   := cn_program_id;
-      g_rpt_data_tab(ln_idx).program_update_date          := cd_program_update_date;
-      --
-    END LOOP loop_get_data;
+        END IF;
+        g_rpt_data_tab(ln_idx).created_by                   := cn_created_by;
+        g_rpt_data_tab(ln_idx).creation_date                := cd_creation_date;
+        g_rpt_data_tab(ln_idx).last_updated_by              := cn_last_updated_by;
+        g_rpt_data_tab(ln_idx).last_update_date             := cd_last_update_date;
+        g_rpt_data_tab(ln_idx).last_update_login            := cn_last_update_login;
+        g_rpt_data_tab(ln_idx).request_id                   := cn_request_id;
+        g_rpt_data_tab(ln_idx).program_application_id       := cn_program_application_id;
+        g_rpt_data_tab(ln_idx).program_id                   := cn_program_id;
+        g_rpt_data_tab(ln_idx).program_update_date          := cd_program_update_date;
+/* 2011/04/18 Ver1.9 ADD Start */
+        g_rpt_data_tab(ln_idx).digestion_due_date           := NULL;
+/* 2011/04/18 Ver1.9 ADD END   */
+        --
+      END LOOP loop_get_data;
+/* 2011/04/18 Ver1.9 ADD START */
+    ELSE
+      <<loop_get_data>>
+      FOR l_confirm_data_rec IN confirm_data_cur
+      LOOP
+        -- レコードIDの取得
+        BEGIN
+          SELECT
+            xxcos_rep_dig_dv_list_s01.NEXTVAL  record_id
+          INTO
+            ln_record_id
+          FROM
+            dual
+          ;
+        END;
+        ln_idx                  := ln_idx + 1;
+        --
+        g_rpt_data_tab(ln_idx).record_id                    := ln_record_id;                             --レコードid
+        g_rpt_data_tab(ln_idx).digestion_date               := l_confirm_data_rec.digestion_due_date;    --消化計算締年月日
+        g_rpt_data_tab(ln_idx).base_code                    := l_confirm_data_rec.sales_base_code;       --売上拠点コード
+        g_rpt_data_tab(ln_idx).base_name                    := SUBSTRB( l_confirm_data_rec.sales_base_name,
+                                                            cn_pos_star, cn_base_name_length );          --売上拠点名称
+        g_rpt_data_tab(ln_idx).employee_num                 := l_confirm_data_rec.performance_by_code;   --営業員コード
+        g_rpt_data_tab(ln_idx).employee_name                := SUBSTRB( l_confirm_data_rec.per_information18 
+                                                            || l_confirm_data_rec.per_information19,
+                                                            cn_pos_star, cn_employee_name_length );
+        g_rpt_data_tab(ln_idx).party_num                    := l_confirm_data_rec.customer_number;       --顧客コード
+        g_rpt_data_tab(ln_idx).customer_name                := SUBSTRB( l_confirm_data_rec.party_name,
+                                                            cn_pos_star, cn_party_name_length );         --顧客名称
+        g_rpt_data_tab(ln_idx).dlv_invoice_amount           := l_confirm_data_rec.ar_sales_amount;       --納品伝票金額
+        IF ( l_confirm_data_rec.uncalculate_class  IN (  ct_uncalculate_class_normal
+                                                ,ct_uncalculate_class_abnormal)) THEN
+          g_rpt_data_tab(ln_idx).account_rate               :=  SUBSTRB( ( TO_CHAR( l_confirm_data_rec.digestion_calc_rate, cv_fmt_tax )
+                                                                        || cv_pr_tax),1,8);
+          g_rpt_data_tab(ln_idx).balance                    := l_confirm_data_rec.balance_amount;        --差額
+        ELSE
+          g_rpt_data_tab(ln_idx).account_rate               := gv_no_add;                                --消化計算掛率
+          g_rpt_data_tab(ln_idx).balance                    := cn_amount_zero;                           --差額
+        END IF;
+        g_rpt_data_tab(ln_idx).digest_sale_amount         := ROUND( l_confirm_data_rec.sales_amount 
+                                                                      * ( l_confirm_data_rec.master_rate / 100 ) );    --設定掛率金額
+        g_rpt_data_tab(ln_idx).setting_account_rate         := SUBSTRB( ( TO_CHAR( l_confirm_data_rec.master_rate, cv_fmt_tax )
+                                                                        || cv_pr_tax ),1,8);
+        g_rpt_data_tab(ln_idx).uncalculate_class            := l_confirm_data_rec.uncalculate_class;                   --未計算区分
+        IF ( l_confirm_data_rec.uncalculate_class  <> ct_uncalculate_class_normal ) THEN
+          g_rpt_data_tab(ln_idx).confirmation_message       := SUBSTRB(l_confirm_data_rec.confirmation_message,1,40);  --確認メッセージ
+        END IF;
+        g_rpt_data_tab(ln_idx).created_by                   := cn_created_by;
+        g_rpt_data_tab(ln_idx).creation_date                := cd_creation_date;
+        g_rpt_data_tab(ln_idx).last_updated_by              := cn_last_updated_by;
+        g_rpt_data_tab(ln_idx).last_update_date             := cd_last_update_date;
+        g_rpt_data_tab(ln_idx).last_update_login            := cn_last_update_login;
+        g_rpt_data_tab(ln_idx).request_id                   := cn_request_id;
+        g_rpt_data_tab(ln_idx).program_application_id       := cn_program_application_id;
+        g_rpt_data_tab(ln_idx).program_id                   := cn_program_id;
+        g_rpt_data_tab(ln_idx).program_update_date          := cd_program_update_date;
+        g_rpt_data_tab(ln_idx).digestion_due_date           := gd_due_date;
+        --
+      END LOOP loop_get_data;
+    END IF;
+/* 2011/04/18 Ver1.9 ADD END   */
 --
     IF ( g_rpt_data_tab.COUNT = 0 ) THEN
       NULL;
@@ -1146,6 +1324,9 @@ AS
   PROCEDURE submain(
     iv_sales_base_code      IN      VARCHAR2,       -- 1.拠点
     iv_customer_number      IN      VARCHAR2,       -- 2.顧客コード
+/* 2011/04/18 Ver1.9 ADD Start */
+    iv_due_date             IN      VARCHAR2,       -- 3.締日
+/* 2011/04/18 Ver1.9 ADD End   */
     ov_errbuf     OUT VARCHAR2,     --   エラー・メッセージ           --# 固定 #
     ov_retcode    OUT VARCHAR2,     --   リターン・コード             --# 固定 #
     ov_errmsg     OUT VARCHAR2)     --   ユーザー・エラー・メッセージ --# 固定 #
@@ -1191,6 +1372,9 @@ AS
     init(
       iv_sales_base_code        => iv_sales_base_code,         -- 1.拠点
       iv_customer_number        => iv_customer_number,         -- 2.顧客コード
+/* 2011/04/18 Ver1.9 ADD Start */
+      iv_due_date               => iv_due_date,                -- 3.締日
+/* 2011/04/18 Ver1.9 ADD End   */
       ov_errbuf                 => lv_errbuf,                  -- エラー・メッセージ
       ov_retcode                => lv_retcode,                 -- リターン・コード
       ov_errmsg                 => lv_errmsg                   -- ユーザー・エラー・メッセージ
@@ -1328,6 +1512,9 @@ AS
     retcode       OUT VARCHAR2,      --   リターン・コード    --# 固定 #
     iv_sales_base_code      IN      VARCHAR2,       -- 1.拠点
     iv_customer_number      IN      VARCHAR2        -- 2.顧客コード
+/* 2011/04/18 Ver1.9 ADD Start */
+   ,iv_due_date             IN      VARCHAR2        -- 3.締日
+/* 2011/04/18 Ver1.9 ADD End   */
   )
 --
 --
@@ -1384,6 +1571,9 @@ AS
     submain(
       iv_sales_base_code,                -- 1.拠点
       iv_customer_number,                -- 2．顧客コード
+/* 2011/04/18 Ver1.9 ADD Start */
+      iv_due_date,                       -- 3.締日
+/* 2011/04/18 Ver1.9 ADD End   */
       lv_errbuf,   -- エラー・メッセージ           --# 固定 #
       lv_retcode,  -- リターン・コード             --# 固定 #
       lv_errmsg    -- ユーザー・エラー・メッセージ --# 固定 #

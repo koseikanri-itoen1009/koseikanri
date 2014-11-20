@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCOS004A05R (spec)
  * Description      : 消化VD別掛率チェックリスト
  * MD.050           : 消化VD別掛率チェックリスト MD050_COS_004_A05
- * Version          : 1.8
+ * Version          : 1.9
  *
  * Program List
  * -------------------- ------------------------------------------------------------
@@ -27,6 +27,7 @@ AS
  *  2009/09/25    1.6   N.Maeda          [0001155]設定掛率金額の設定値修正
  *  2009/10/16    1.7   S.Miyakoshi      [0001543]差額＝0の出力可能対応
  *  2010/02/23    1.8   K.Atsushiba      [E_本稼動_01670]異常掛率対応
+ *  2011/04/14    1.9   Oukou            [E_本稼動_07098]消化計算後出力可能対応
  *
  *****************************************************************************************/
 --
@@ -36,6 +37,9 @@ AS
     retcode       OUT    VARCHAR2,         --   エラーコード     #固定#
     iv_sales_base_code        IN      VARCHAR2,         -- 1.拠点コード
     iv_customer_number        IN      VARCHAR2          -- 2.顧客コード
+/* 2011/04/14 Ver1.9 ADD Start */
+   ,iv_due_date               IN      VARCHAR2          -- 3.締日
+/* 2011/04/14 Ver1.9 ADD End   */
   );
 END XXCOS004A05R;
 /
