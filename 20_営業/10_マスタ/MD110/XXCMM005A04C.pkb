@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCMM005A04C(body)
  * Description      : 所属マスタIF出力（自販機管理）
  * MD.050           : 所属マスタIF出力（自販機管理） MD050_CMM_005_A04
- * Version          : 1.4
+ * Version          : 1.6
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -30,6 +30,7 @@ AS
  *  2009/04/20    1.3   Yutaka.Kuboshima 障害T1_0590の対応
  *  2009/05/15    1.4   Yutaka.Kuboshima 障害T1_1026の対応
  *  2009/05/21    1.5   Yutaka.Kuboshima 障害T1_1129の対応
+ *  2009/06/05    1.6   Yutaka.Kuboshima 障害T1_1320の対応
  *
  *****************************************************************************************/
 --
@@ -159,6 +160,9 @@ AS
   cv_y_flag           CONSTANT VARCHAR2(1)  := 'Y';                           -- 有効フラグ(Y)
   cv_language_ja      CONSTANT VARCHAR2(2)  := 'JA';                          -- 言語(JA)
 -- 2009/05/21 Ver1.5 add end by Yutaka.Kuboshima
+-- 2009/06/05 Ver1.6 add start by Yutaka.Kuboshima
+  cv_cust_sts_stop    CONSTANT VARCHAR2(2)  := '90';                          -- 顧客ステータス(中止決裁済)
+-- 2009/06/05 Ver1.6 add end by Yutaka.Kuboshima
 -- 
   -- ===============================
   -- ユーザー定義グローバル型
@@ -186,7 +190,12 @@ AS
     ,phone                 xxcmn_parties.phone%TYPE                         -- 電話番号
     ,fax                   xxcmn_parties.fax%TYPE                           -- FAX番号
     ,xpty_last_update_date xxcmn_parties.last_update_date%TYPE              -- 最終更新日
-    ,flex_value_set_id     xxcmm_hierarchy_dept_v.flex_value_set_id%TYPE     -- 値セットID
+    ,flex_value_set_id     xxcmm_hierarchy_dept_v.flex_value_set_id%TYPE    -- 値セットID
+-- 2009/06/05 Ver1.6 add start by Yutaka.Kuboshima
+    ,stop_approval_date    xxcmm_cust_accounts.stop_approval_date%TYPE      -- 中止決裁日
+    ,customer_status       hz_parties.duns_number_c%TYPE                    -- 顧客ステータス
+    ,hp_last_update_date   hz_parties.last_update_date%TYPE                 -- 最終更新日
+-- 2009/06/05 Ver1.6 add end by Yutaka.Kuboshima
   );
 --
   -- 所属マスタIF出力（自販機管理）レイアウト テーブルタイプ
@@ -652,18 +661,38 @@ AS
             ,xpty.fax                  fax                    -- FAX番号
             ,xpty.last_update_date     xpty_last_update_date  -- 最終更新日
             ,xhdv.flex_value_set_id    flex_value_set_id      -- 値セットID
+-- 2009/06/05 Ver1.6 add start by Yutaka.Kuboshima
+            ,xca.stop_approval_date    stop_approval_date     -- 中止決裁日
+            ,hp.duns_number_c          customer_status        -- 顧客ステータス
+            ,hp.last_update_date       hp_last_update_date    -- 最終更新日
+-- 2009/06/05 Ver1.6 add start by Yutaka.Kuboshima
       FROM   xxcmm_hierarchy_dept_v   xhdv  -- (TABLE)部門階層ビュー
             ,hz_cust_accounts         hzac  -- (TABLE)顧客マスタ
             ,xxcmn_parties            xpty  -- (TABLE)パーティアドオンマスタ
+-- 2009/06/05 Ver1.6 add start by Yutaka.Kuboshima
+            ,xxcmm_cust_accounts      xca   -- (TABLE)顧客追加情報マスタ
+            ,hz_parties               hp    -- (TABLE)パーティマスタ
+-- 2009/06/05 Ver1.6 add start by Yutaka.Kuboshima
       WHERE  xhdv.dpt6_cd             = hzac.account_number
       AND    hzac.customer_class_code = '1' -- 抽出対象：拠点
       AND    hzac.party_id            = xpty.party_id
-      AND    xpty.start_date_active BETWEEN id_last_update_date_from
-                                        AND id_last_update_date_to
+-- 2009/06/05 Ver1.6 add start by Yutaka.Kuboshima
+      AND    hzac.party_id            = hp.party_id
+      AND    hzac.cust_account_id     = xca.customer_id
+-- 2009/06/05 Ver1.6 add start by Yutaka.Kuboshima
+-- 2009/06/05 Ver1.6 delete start by Yutaka.Kuboshima
+--      AND    xpty.start_date_active BETWEEN id_last_update_date_from
+--                                        AND id_last_update_date_to
+-- 2009/06/05 Ver1.6 delete end by Yutaka.Kuboshima
       AND    (  ( xhdv.last_update_date BETWEEN id_last_update_date_from
                                             AND id_last_update_date_to  )
              OR ( xpty.last_update_date BETWEEN id_last_update_date_from 
-                                            AND id_last_update_date_to  ) )
+                                            AND id_last_update_date_to  ) 
+-- 2009/06/05 Ver1.6 add start by Yutaka.Kuboshima
+             OR (  hp.last_update_date  BETWEEN id_last_update_date_from
+                                            AND id_last_update_date_to
+               AND hp.duns_number_c = cv_cust_sts_stop ) )
+-- 2009/06/05 Ver1.6 add end by Yutaka.Kuboshima
       ORDER BY
              xhdv.dpt6_cd ASC
       ;
@@ -800,6 +829,10 @@ AS
     lv_last_update_date     VARCHAR2(14);                -- 最終更新日時年月日時分秒時分秒
 -- 2009/04/20 Ver1.3 modify start by Yutaka.Kuboshima
 --
+-- 2009/06/05 Ver1.6 add start by Yutaka.Kuboshima
+    lv_end_date_active      VARCHAR2(8);
+-- 2009/06/05 Ver1.6 add end by Yutaka.Kuboshima
+--
   BEGIN
 --
 --##################  固定ステータス初期化部 START   ###################
@@ -902,10 +935,33 @@ AS
 --
       -- ■ 最終更新日時時分秒を取得
       IF ( gt_out_tab(ln_idx).xhdv_last_update_date > gt_out_tab(ln_idx).xpty_last_update_date ) THEN
-        lv_last_update_date := TO_CHAR(gt_out_tab(ln_idx).xhdv_last_update_date, cv_last_update_fmt);
+-- 2009/06/05 Ver1.6 modify start by Yutaka.Kuboshima
+--        lv_last_update_date := TO_CHAR(gt_out_tab(ln_idx).xhdv_last_update_date, cv_last_update_fmt);
+        IF ( gt_out_tab(ln_idx).xhdv_last_update_date > gt_out_tab(ln_idx).hp_last_update_date ) THEN
+          lv_last_update_date := TO_CHAR(gt_out_tab(ln_idx).xhdv_last_update_date, cv_last_update_fmt);
+        ELSE
+          lv_last_update_date := TO_CHAR(gt_out_tab(ln_idx).hp_last_update_date, cv_last_update_fmt);
+        END IF;
+-- 2009/06/05 Ver1.6 modify end by Yutaka.Kuboshima
       ELSE
-        lv_last_update_date := TO_CHAR(gt_out_tab(ln_idx).xpty_last_update_date, cv_last_update_fmt);
+-- 2009/06/05 Ver1.6 modify start by Yutaka.Kuboshima
+--        lv_last_update_date := TO_CHAR(gt_out_tab(ln_idx).xpty_last_update_date, cv_last_update_fmt);
+        IF ( gt_out_tab(ln_idx).xpty_last_update_date > gt_out_tab(ln_idx).hp_last_update_date ) THEN
+          lv_last_update_date := TO_CHAR(gt_out_tab(ln_idx).xpty_last_update_date, cv_last_update_fmt);
+        ELSE
+          lv_last_update_date := TO_CHAR(gt_out_tab(ln_idx).hp_last_update_date, cv_last_update_fmt);
+        END IF;
+-- 2009/06/05 Ver1.6 modify end by Yutaka.Kuboshima
       END IF;
+--
+-- 2009/06/05 Ver1.6 add start by Yutaka.Kuboshima
+      -- ■ 適用終了日を取得
+      IF ( gt_out_tab(ln_idx).customer_status = cv_cust_sts_stop ) THEN
+        lv_end_date_active := TO_CHAR(gt_out_tab(ln_idx).stop_approval_date, cv_date_format2);
+      ELSE
+        lv_end_date_active := TO_CHAR(gt_out_tab(ln_idx).end_date_active, cv_date_format2);
+      END IF;
+-- 2009/06/05 Ver1.6 add start by Yutaka.Kuboshima
 --
       -- ■ 出力データ作成
       -- 1.利用者区分
@@ -917,7 +973,10 @@ AS
       -- 4.適用開始日
       lv_outline := lv_outline || cv_sep || TO_CHAR(gt_out_tab(ln_idx).start_date_active, cv_date_format2);
       -- 5.適用終了日
-      lv_outline := lv_outline || cv_sep || TO_CHAR(gt_out_tab(ln_idx).end_date_active, cv_date_format2);
+-- 2009/06/05 Ver1.6 modify start by Yutaka.Kuboshima
+--      lv_outline := lv_outline || cv_sep || TO_CHAR(gt_out_tab(ln_idx).end_date_active, cv_date_format2);
+      lv_outline := lv_outline || cv_sep || lv_end_date_active;
+-- 2009/06/05 Ver1.6 modify end by Yutaka.Kuboshima
       -- 6.所属名（正式名）
       lv_outline := lv_outline || cv_sep || cv_dqu || SUBSTRB(gt_out_tab(ln_idx).party_name, 1, 40) || cv_dqu;
       -- 7.所属名（略称）
