@@ -29,6 +29,7 @@ CREATE OR REPLACE PACKAGE BODY XXCFR003A12C AS
  *  2009-01-30    1.0   SCS 大川 恵   初回作成
  *  2009-02-20    1.1   SCS 大川 恵   [障害CFR_009] VD請求額更新不具合対応
  *  2009-02-20    1.2   SCS 大川 恵   [障害CFR_014] VD顧客区分によるBM金額出力制御対応
+ *  2009-04-13    1.3   SCS 萱原 伸哉 T1_0129 BM金額取得、BM単価/率/額取得対応
  ************************************************************************/
 --
 --#######################  固定グローバル定数宣言部 START   #######################
@@ -476,37 +477,59 @@ CREATE OR REPLACE PACKAGE BODY XXCFR003A12C AS
              xcbs3.rebate_rate    bm3_rate,    -- BM3率
              xcbs3.rebate_amt     bm3_amt      -- BM3単価
       FROM   (SELECT DISTINCT
-                      x1.selling_amt_tax, -- 割戻率
-                      x1.rebate_rate,     -- 割戻額
-                      x1.rebate_amt       -- 売上金額(税込)
+-- Modify 2009.04.13 Ver1.3 Start
+--                      x1.selling_amt_tax, -- 売上金額(税込)
+                      x1.selling_price, -- 売価金額
+-- Modify 2009.04.13 Ver1.3 End
+                      x1.rebate_rate,     -- 割戻率
+                      x1.rebate_amt       -- 割戻額
               FROM    xxcok_cond_bm_support x1 -- 条件別販手販協テーブル1
               WHERE   x1.delivery_cust_code = iv_delivery_cust_code  -- 納品先顧客コード
                 AND   x1.closing_date       = id_target_date         -- 締日
                 AND   x1.calc_type          = ct_calc_type_10        -- 計算条件
                 AND   x1.supplier_code      = ct_sc_bm1              -- 仕入先コード
-                AND   x1.selling_amt_tax    = in_unit_price) xcbs1,  -- 単価
+-- Modify 2009.04.13 Ver1.3 Start
+--                AND   x1.selling_amt_tax    = in_unit_price) xcbs1,  -- 単価
+                AND   x1.selling_price    = in_unit_price) xcbs1,  -- 単価
+-- Modify 2009.04.13 Ver1.3 End                
               (SELECT DISTINCT
-                      x2.selling_amt_tax,  -- 割戻率
-                      x2.rebate_rate,      -- 割戻額
-                      x2.rebate_amt        -- 売上金額(税込)
+-- Modify 2009.04.13 Ver1.3 Start
+--                      x1.selling_amt_tax, -- 売上金額(税込)
+                      x2.selling_price, -- 売価金額
+-- Modify 2009.04.13 Ver1.3 End
+                      x2.rebate_rate,      -- 割戻率
+                      x2.rebate_amt        -- 割戻額
               FROM    xxcok_cond_bm_support x2 -- 条件別販手販協テーブル2
               WHERE   x2.delivery_cust_code = iv_delivery_cust_code  -- 納品先顧客コード
                 AND   x2.closing_date       = id_target_date         -- 締日
                 AND   x2.calc_type          = ct_calc_type_10        -- 計算条件
                 AND   x2.supplier_code      = ct_sc_bm2              -- 仕入先コード
-                AND   x2.selling_amt_tax    = in_unit_price) xcbs2,  -- 単価
+-- Modify 2009.04.13 Ver1.3 Start
+--                AND   x2.selling_amt_tax    = in_unit_price) xcbs2,  -- 単価
+                AND   x2.selling_price    = in_unit_price) xcbs2,  -- 単価
+-- Modify 2009.04.13 Ver1.3 End
               (SELECT DISTINCT
-                      x3.selling_amt_tax,  -- 割戻率
-                      x3.rebate_rate,      -- 割戻額
-                      x3.rebate_amt        -- 売上金額(税込)
+-- Modify 2009.04.13 Ver1.3 Start
+--                      x1.selling_amt_tax, -- 売上金額(税込)
+                      x3.selling_price, -- 売価金額
+-- Modify 2009.04.13 Ver1.3 End
+                      x3.rebate_rate,      -- 割戻率
+                      x3.rebate_amt        -- 割戻額
               FROM    xxcok_cond_bm_support x3 -- 条件別販手販協テーブル3
               WHERE   x3.delivery_cust_code = iv_delivery_cust_code  -- 納品先顧客コード
                 AND   x3.closing_date       = id_target_date         -- 締日
                 AND   x3.calc_type          = ct_calc_type_10        -- 計算条件
                 AND   x3.supplier_code      = ct_sc_bm3              -- 仕入先コード
-                AND   x3.selling_amt_tax    = in_unit_price) xcbs3   -- 単価
-      WHERE   xcbs1.selling_amt_tax   = xcbs2.selling_amt_tax(+)
-        AND   xcbs1.selling_amt_tax   = xcbs3.selling_amt_tax(+);
+-- Modify 2009.04.13 Ver1.3 Start
+--                AND   x3.selling_amt_tax    = in_unit_price) xcbs3   -- 単価
+                AND   x3.selling_price    = in_unit_price) xcbs3   -- 単価
+-- Modify 2009.04.13 Ver1.3 End
+-- Modify 2009.04.13 Ver1.3 Start
+--      WHERE   xcbs1.selling_amt_tax   = xcbs2.selling_amt_tax(+)
+--        AND   xcbs1.selling_amt_tax   = xcbs3.selling_amt_tax(+);
+      WHERE   xcbs1.selling_price   = xcbs2.selling_price(+)
+        AND   xcbs1.selling_price   = xcbs3.selling_price(+);
+-- Modify 2009.04.13 Ver1.3 Start
       --
      get_bm_rate_rec   get_bm_rate_cur%ROWTYPE;
 --
@@ -648,7 +671,10 @@ CREATE OR REPLACE PACKAGE BODY XXCFR003A12C AS
              DECODE(xcbs.supplier_code,ct_sc_bm1,xcbs.rebate_amt
                     ,NULL)
            ) bm1_amt,                                                  -- BM1額
-           SUM(DECODE(xcbs.supplier_code,ct_sc_bm1,xcbs.cond_bm_amt_tax
+-- Modify 2009.04.13 Ver1.3 Start
+--           SUM(DECODE(xcbs.supplier_code,ct_sc_bm1,xcbs.cond_bm_amt_tax
+           SUM(DECODE(xcbs.supplier_code,ct_sc_bm1,xcbs.csh_rcpt_discount_amt
+-- Modify 2009.04.13 Ver1.3 End
                     ,NULL)
             ) bm1_all,                                                 -- BM1金額
            AVG(
@@ -659,7 +685,10 @@ CREATE OR REPLACE PACKAGE BODY XXCFR003A12C AS
              DECODE(xcbs.supplier_code,ct_sc_bm2,xcbs.rebate_amt
                     ,NULL)
            ) bm2_amt,                                                  -- BM2額
-           SUM(DECODE(xcbs.supplier_code,ct_sc_bm2,xcbs.cond_bm_amt_tax
+-- Modify 2009.04.13 Ver1.3 Start
+--           SUM(DECODE(xcbs.supplier_code,ct_sc_bm2,xcbs.cond_bm_amt_tax
+           SUM(DECODE(xcbs.supplier_code,ct_sc_bm2,xcbs.csh_rcpt_discount_amt
+-- Modify 2009.04.13 Ver1.3 End
                    ,NULL)
             ) bm2_all,                                                 -- BM2金額
            AVG(
@@ -670,7 +699,10 @@ CREATE OR REPLACE PACKAGE BODY XXCFR003A12C AS
              DECODE(xcbs.supplier_code,ct_sc_bm3,xcbs.rebate_amt
                     ,NULL)
            ) bm3_amt,                                                  -- BM3額
-           SUM(DECODE(xcbs.supplier_code,ct_sc_bm3,xcbs.cond_bm_amt_tax
+-- Modify 2009.04.13 Ver1.3 Start
+--           SUM(DECODE(xcbs.supplier_code,ct_sc_bm3,xcbs.cond_bm_amt_tax
+           SUM(DECODE(xcbs.supplier_code,ct_sc_bm3,xcbs.csh_rcpt_discount_amt
+-- Modify 2009.04.13 Ver1.3 End
                      ,NULL)
            ) bm3_all                                                   -- BM3金額
     INTO   gt_inv_tab(in_num).bm_rate1,
@@ -686,7 +718,10 @@ CREATE OR REPLACE PACKAGE BODY XXCFR003A12C AS
     WHERE   xcbs.delivery_cust_code = iv_delivery_cust_code  -- 納品先顧客コード
       AND xcbs.closing_date     = id_target_date             -- 締日
       AND xcbs.calc_type        = ct_calc_type_10            -- 計算条件
-      AND xcbs.selling_amt_tax  = in_unit_price              -- 売上金額(税込)
+-- Modify 2009.04.13 Ver1.3 Start
+--      AND xcbs.selling_amt_tax  = in_unit_price              -- 売上金額(税込)
+      AND xcbs.selling_price  = in_unit_price              -- 売価金額
+-- Modify 2009.04.13 Ver1.3 End
     ;
     -- BM出力を行わない場合、BM率・BM単価にNULLを設定
     IF (iv_get_bm_price = 'N') THEN

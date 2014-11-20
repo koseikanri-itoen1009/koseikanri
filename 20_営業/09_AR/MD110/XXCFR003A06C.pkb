@@ -28,6 +28,7 @@ create or replace PACKAGE BODY XXCFR003A06C AS
  * ------------- ----- ------------- -------------------------------------
  *  2008-11-19    1.0  SCS ‹g‘º Œ›i  ‰‰ñì¬
  *  2009-02-20    1.1  SCS ‘åì Œb    [áŠQCFR_009] VD¿‹ŠzXV•s‹ï‡‘Î‰
+ *  2009-04-13    1.2  SCS ŠŒ´ LÆ  T1_0129 BM‹àŠzæ“¾•s‰Â‘Î‰
  ************************************************************************/
 --
 --#######################  ŒÅ’èƒOƒ[ƒoƒ‹’è”éŒ¾•” START   #######################
@@ -622,7 +623,10 @@ create or replace PACKAGE BODY XXCFR003A06C AS
                       ,NULL)
              ) bm1_amt,
              SUM(
-               DECODE(xcbs.supplier_code,ct_sc_bm1,xcbs.cond_bm_amt_tax
+-- Modify 2009.04.12 Ver1.2 Start
+--               DECODE(xcbs.supplier_code,ct_sc_bm1,xcbs.cond_bm_amt_tax
+               DECODE(xcbs.supplier_code,ct_sc_bm1,xcbs.csh_rcpt_discount_amt
+-- Modify 2009.04.12 Ver1.2 End               
                       ,NULL)
              ) bm1_all,
              AVG(
@@ -634,7 +638,10 @@ create or replace PACKAGE BODY XXCFR003A06C AS
                       ,NULL)
              ) bm2_amt,
              SUM(
-               DECODE(xcbs.supplier_code,ct_sc_bm2,xcbs.cond_bm_amt_tax
+-- Modify 2009.04.12 Ver1.2 Start
+--               DECODE(xcbs.supplier_code,ct_sc_bm2,xcbs.cond_bm_amt_tax
+               DECODE(xcbs.supplier_code,ct_sc_bm2,xcbs.csh_rcpt_discount_amt
+-- Modify 2009.04.12 Ver1.2 End
                       ,NULL)
              ) bm2_all,
              AVG(
@@ -646,7 +653,10 @@ create or replace PACKAGE BODY XXCFR003A06C AS
                       ,NULL)
              ) bm3_amt,
              SUM(
-               DECODE(xcbs.supplier_code,ct_sc_bm3,xcbs.cond_bm_amt_tax
+-- Modify 2009.04.12 Ver1.2 Start
+--               DECODE(xcbs.supplier_code,ct_sc_bm3,xcbs.cond_bm_amt_tax
+               DECODE(xcbs.supplier_code,ct_sc_bm3,xcbs.csh_rcpt_discount_amt
+-- Modify 2009.04.12 Ver1.2 End
                       ,NULL)
              ) bm3_all,
              SUM(electric_amt_tax)        electric_amt

@@ -28,6 +28,7 @@ create or replace PACKAGE BODY XXCFR003A11C AS
  * ------------- ----- ---------------- -------------------------------------
  *  2009-01-19    1.0   SCS ãgë∫ åõéi    èââÒçÏê¨
  *  2009-02-20    1.1   SCS ëÂêÏ åb      [è·äQCFR_009] VDêøãÅäzçXêVïsãÔçáëŒâû
+ *  2009-04-13    1.2   SCS äûå¥ êLç∆    T1_0129 BMã‡äzéÊìæ,BMíPâø/ó¶/äzéÊìæëŒâû
  ************************************************************************/
 --
 --#######################  å≈íËÉOÉçÅ[ÉoÉãíËêîêÈåæïî START   #######################
@@ -465,7 +466,10 @@ create or replace PACKAGE BODY XXCFR003A11C AS
              xcbs3.rebate_rate    bm3_rate,    -- BM1ó¶
              xcbs3.rebate_amt     bm3_amt      -- BM1íPâø
       FROM   (SELECT DISTINCT
-                      x1.selling_amt_tax,
+-- Modify 2009.04.13 Ver1.2 Start
+--                      x1.selling_amt_tax,
+                      x1.selling_price,
+-- Modify 2009.04.13 Ver1.2 End
                       x1.rebate_rate,
                       x1.rebate_amt
               FROM    xxcok_cond_bm_support x1
@@ -477,9 +481,15 @@ create or replace PACKAGE BODY XXCFR003A11C AS
               AND     x1.closing_date       = id_target_date
               AND     x1.calc_type          = ct_calc_type_10
               AND     x1.supplier_code      = ct_sc_bm1
-              AND     x1.selling_amt_tax    = in_unit_price) xcbs1,
+-- Modify 2009.04.13 Ver1.2 Start
+--              AND     x1.selling_amt_tax    = in_unit_price) xcbs1,
+              AND     x1.selling_price    = in_unit_price) xcbs1,
+-- Modify 2009.04.13 Ver1.2 End
               (SELECT DISTINCT
-                      x2.selling_amt_tax,
+-- Modify 2009.04.13 Ver1.2 Start
+--                      x2.selling_amt_tax,
+                      x2.selling_price,
+-- Modify 2009.04.13 Ver1.2 End
                       x2.rebate_rate,
                       x2.rebate_amt
               FROM    xxcok_cond_bm_support x2
@@ -491,9 +501,15 @@ create or replace PACKAGE BODY XXCFR003A11C AS
               AND     x2.closing_date       = id_target_date
               AND     x2.calc_type          = ct_calc_type_10
               AND     x2.supplier_code      = ct_sc_bm2
-              AND     x2.selling_amt_tax    = in_unit_price) xcbs2,
+-- Modify 2009.04.13 Ver1.2 Start
+--              AND     x2.selling_amt_tax    = in_unit_price) xcbs2,
+              AND     x2.selling_price    = in_unit_price) xcbs2,
+-- Modify 2009.04.13 Ver1.2 End              
               (SELECT DISTINCT
-                      x3.selling_amt_tax,
+-- Modify 2009.04.13 Ver1.2 Start
+--                      x3.selling_amt_tax,
+                      x3.selling_price,
+-- Modify 2009.04.13 Ver1.2 End                      
                       x3.rebate_rate,
                       x3.rebate_amt
               FROM    xxcok_cond_bm_support x3
@@ -505,9 +521,16 @@ create or replace PACKAGE BODY XXCFR003A11C AS
               AND     x3.closing_date       = id_target_date
               AND     x3.calc_type          = ct_calc_type_10
               AND     x3.supplier_code      = ct_sc_bm3
-              AND     x3.selling_amt_tax    = in_unit_price) xcbs3
-      WHERE   xcbs1.selling_amt_tax   = xcbs2.selling_amt_tax(+)
-      AND     xcbs1.selling_amt_tax   = xcbs3.selling_amt_tax(+);
+-- Modify 2009.04.13 Ver1.2 Start
+--              AND     x3.selling_amt_tax    = in_unit_price) xcbs3
+              AND     x3.selling_price    = in_unit_price) xcbs3
+-- Modify 2009.04.13 Ver1.2 End
+-- Modify 2009.04.13 Ver1.2 Start              
+--      WHERE   xcbs1.selling_amt_tax   = xcbs2.selling_amt_tax(+)
+--      AND     xcbs1.selling_amt_tax   = xcbs3.selling_amt_tax(+);
+      WHERE   xcbs1.selling_price   = xcbs2.selling_price(+)
+      AND     xcbs1.selling_price   = xcbs3.selling_price(+);
+-- Modify 2009.04.13 Ver1.2 End
       --
      get_bm_rate_rec   get_bm_rate_cur%ROWTYPE;
 --
@@ -651,7 +674,10 @@ create or replace PACKAGE BODY XXCFR003A11C AS
                       ,NULL)
              ) bm1_amt,
              SUM(
-               DECODE(xcbs.supplier_code,ct_sc_bm1,xcbs.cond_bm_amt_tax
+-- Modify 2009.04.13 Ver1.2 Start
+--               DECODE(xcbs.supplier_code,ct_sc_bm1,xcbs.cond_bm_amt_tax
+               DECODE(xcbs.supplier_code,ct_sc_bm1,xcbs.csh_rcpt_discount_amt
+-- Modify 2009.04.13 Ver1.2 End
                       ,NULL)
              ) bm1_all,
              AVG(
@@ -663,7 +689,10 @@ create or replace PACKAGE BODY XXCFR003A11C AS
                       ,NULL)
              ) bm2_amt,
              SUM(
-               DECODE(xcbs.supplier_code,ct_sc_bm2,xcbs.cond_bm_amt_tax
+-- Modify 2009.04.13 Ver1.2 Start
+--               DECODE(xcbs.supplier_code,ct_sc_bm2,xcbs.cond_bm_amt_tax
+               DECODE(xcbs.supplier_code,ct_sc_bm2,xcbs.csh_rcpt_discount_amt
+-- Modify 2009.04.13 Ver1.2 End
                       ,NULL)
              ) bm2_all,
              AVG(
@@ -675,7 +704,10 @@ create or replace PACKAGE BODY XXCFR003A11C AS
                       ,NULL)
              ) bm3_amt,
              SUM(
-               DECODE(xcbs.supplier_code,ct_sc_bm3,xcbs.cond_bm_amt_tax
+-- Modify 2009.04.13 Ver1.2 Start
+--               DECODE(xcbs.supplier_code,ct_sc_bm3,xcbs.cond_bm_amt_tax
+               DECODE(xcbs.supplier_code,ct_sc_bm3,xcbs.csh_rcpt_discount_amt
+-- Modify 2009.04.13 Ver1.2 End
                       ,NULL)
              ) bm3_all
     INTO     g_inv_tab(in_num).bm_rate1,
@@ -696,7 +728,10 @@ create or replace PACKAGE BODY XXCFR003A11C AS
                  )
     AND   closing_date     = id_target_date
     AND   calc_type        = ct_calc_type_10
-    AND   selling_amt_tax  = in_unit_price;
+-- Modify 2009.04.13 Ver1.2 Start
+--    AND   selling_amt_tax  = in_unit_price;
+    AND   xcbs.selling_price  = in_unit_price;
+-- Modify 2009.04.13 Ver1.2 End
     --
     IF (iv_get_bm_price = 'N') THEN
       g_inv_tab(in_num).bm_rate1       := NULL;
