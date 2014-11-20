@@ -7,7 +7,7 @@ AS
  * Description      : 仕入実績作成処理
  * MD.050           : 受入実績            T_MD050_BPO_310
  * MD.070           : 仕入実績作成        T_MD070_BPO_31D
- * Version          : 1.9
+ * Version          : 1.10
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -44,6 +44,7 @@ AS
  *  2008/12/06    1.7   Oracle 伊藤 ひとみ 本番障害No528対応
  *  2009/12/02    1.8   SCS    吉元 強樹 本稼動障害#263
  *  2011/06/07    1.9   SCSK   窪 和重   本稼動障害#1786対応
+ *  2012/03/06    1.10  SCSK   中村 健一 本稼動障害#9118対応
  *****************************************************************************************/
 --
 --#######################  固定グローバル定数宣言部 START   #######################
@@ -2527,6 +2528,10 @@ AS
     lv_errbuf  VARCHAR2(5000);  -- エラー・メッセージ
     lv_retcode VARCHAR2(1);     -- リターン・コード
     lv_errmsg  VARCHAR2(5000);  -- ユーザー・エラー・メッセージ
+-- 2012/03/06 v1.10 K.Nakamura Add Start
+    ln_po_header_id  po_headers_all.po_header_id%TYPE;  -- 発注ヘッダID
+    ln_xsrm_cnt      NUMBER;                            -- 仕入実績作成処理管理TBL件数
+-- 2012/03/06 v1.10 K.Nakamura Add End
 --
   BEGIN
 --
@@ -2637,6 +2642,52 @@ AS
     --終了ステータスがエラーの場合はROLLBACKする
     IF (retcode = gv_status_error) THEN
       ROLLBACK;
+-- 2012/03/06 v1.10 K.Nakamura Add Start
+      -- ================================
+      -- D-13.仕入実績作成処理管理TBLの削除(エラー発生時)
+      -- ================================
+      -- 発注番号入力あり
+      IF (iv_po_number IS NOT NULL) THEN
+        BEGIN
+          SELECT pha.po_header_id po_header_id
+          INTO   ln_po_header_id
+          FROM   po_headers_all   pha
+          WHERE  pha.segment1   = iv_po_number
+          AND    ROWNUM         = 1;
+        --
+        EXCEPTION
+          -- メッセージは出力済みのため
+          WHEN NO_DATA_FOUND THEN
+            NULL;
+        END;
+        --
+        IF (ln_po_header_id IS NOT NULL) THEN
+          -- 件数確認
+          SELECT COUNT(xsrm.po_header_id)     xsrm_cnt
+          INTO   ln_xsrm_cnt
+          FROM   xxpo_stock_result_manegement xsrm
+          WHERE  xsrm.po_header_id = ln_po_header_id;
+          -- COMMIT前にエラーが発生した場合、削除データが存在するため
+          IF (ln_xsrm_cnt > 0) THEN
+            BEGIN
+              -- 仕入実績情報削除 関数実施
+              xxpo_common3_pkg.delete_result(
+                                 ln_po_header_id       -- 発注ヘッダID
+                                ,lv_errbuf             -- エラー・メッセージ           --# 固定 #
+                                ,lv_retcode            -- リターン・コード             --# 固定 #
+                                ,lv_errmsg             -- ユーザー・エラー・メッセージ --# 固定 #
+                               );
+              -- 異常終了は暗黙ロールバックされるため、COMMIT発行
+              COMMIT;
+            --
+            EXCEPTION
+              WHEN OTHERS THEN
+                FND_FILE.PUT_LINE(FND_FILE.LOG,gv_pkg_name||gv_msg_dot||cv_prg_name||gv_msg_part||SQLERRM);
+            END;
+          END IF;
+        END IF;
+      END IF;
+-- 2012/03/06 v1.10 K.Nakamura Add End
     END IF;
 --
   EXCEPTION
