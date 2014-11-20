@@ -7,7 +7,7 @@ AS
  * Description      : 出荷依頼情報抽出
  * MD.050           : 出荷依頼         T_MD050_BPO_401
  * MD.070           : 出荷依頼情報抽出 T_MD070_BPO_40F
- * Version          : 1.7
+ * Version          : 1.8
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -38,6 +38,7 @@ AS
  *  2008/08/22    1.5   Oracle 山根 一浩 T_S_597対応
  *  2008/09/04    1.6   Oracle 山根 一浩 PT 3-3_23 指摘37対応
  *  2008/09/18    1.7   Oracle 伊藤 ひとみ T_TE080_BPO_400 指摘79,T_S_630対応
+ *  2008/11/06    1.8   Oracle 伊藤 ひとみ 統合テスト指摘560対応
  *****************************************************************************************/
 --
 --#######################  固定グローバル定数宣言部 START   #######################
@@ -1616,7 +1617,10 @@ AS
             IF (ln_len > 9) THEN
               lv_data := lv_data || cv_sep_com || cutoff_str(mst_rec.cust_po_number,ln_len,9);
             ELSE
-              lv_data := lv_data || cv_sep_com || mst_rec.cust_po_number;
+-- 2008/11/06 1.17 Mod ↓ 9桁未満は左0埋めを行い9桁にする。
+--              lv_data := lv_data || cv_sep_com || mst_rec.cust_po_number;
+              lv_data := lv_data || cv_sep_com || LPAD(mst_rec.cust_po_number, 9, '0');
+-- 2008/11/06 1.17 Mod ↑
             END IF;
 --
             lv_data := lv_data || cv_sep_com || mst_rec.v_shipped_date;     -- 発送日(YYYYMMDD)
