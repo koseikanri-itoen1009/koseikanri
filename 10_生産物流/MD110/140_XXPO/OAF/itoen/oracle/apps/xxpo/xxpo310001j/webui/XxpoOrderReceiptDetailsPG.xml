@@ -220,17 +220,17 @@
                            <ui:subTabs>
                               <oa:subTabBar id="OrderDetailsSubTabBar">
                                  <ui:contents>
-                                    <oa:link id="OrderDetails1Link" text="1">
+                                    <oa:link id="OrderDetails1Link" text="　　1　　">
                                        <ui:primaryClientAction>
                                           <ui:fireAction event="OrderDetails1Link" id="fireAction1"/>
                                        </ui:primaryClientAction>
                                     </oa:link>
-                                    <oa:link id="OrderDetails2Link" text="2">
+                                    <oa:link id="OrderDetails2Link" text="　　2　　">
                                        <ui:primaryClientAction>
                                           <ui:fireAction event="OrderDetails2Link" id="fireAction2"/>
                                        </ui:primaryClientAction>
                                     </oa:link>
-                                    <oa:link id="OrderDetails3Link" text="3">
+                                    <oa:link id="OrderDetails3Link" text="　　3　　">
                                        <ui:primaryClientAction>
                                           <ui:fireAction event="OrderDetails3Link" id="fireAction3"/>
                                        </ui:primaryClientAction>

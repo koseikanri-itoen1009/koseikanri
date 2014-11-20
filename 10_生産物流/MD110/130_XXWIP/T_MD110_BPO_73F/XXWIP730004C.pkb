@@ -7,7 +7,7 @@ AS
  * Description      : 支払運賃チェックリスト
  * MD.050/070       : 運賃計算（トランザクション）  (T_MD050_BPO_734)
  *                    支払運賃チェックリスト        (T_MD070_BPO_73F)
- * Version          : 1.3
+ * Version          : 1.4
  *
  * Program List
  * ---------------------------- ----------------------------------------------------------
@@ -29,6 +29,7 @@ AS
  *  2008/05/23    1.1   Masayuki Ikeda   結合テスト障害対応
  *  2008/07/02    1.2   Satoshi Yunba    禁則文字「'」「"」「<」「>」「&」対応
  *  2008/07/15    1.3   Masayuki Nomura  ST障害対応#444
+ *  2008/07/15    1.4   Masayuki Nomura  ST障害対応#444（記号対応）
  *
  *****************************************************************************************/
 --
@@ -617,9 +618,43 @@ AS
 -- S 2008/05/23 1.1 MOD BY M.Ikeda ------------------------------------------------------------ S --
 --      AND   xd.invoice_no             BETWEEN gr_param.invoice_no_from    -- 送り状No
 --                                      AND     gr_param.invoice_no_to      --
-      AND   NVL( xd.invoice_no, gr_param.invoice_no_from )
-                                      BETWEEN gr_param.invoice_no_from    -- 送り状No
-                                      AND     gr_param.invoice_no_to      --
+-- ##### 20080715 1.4 ST障害対応#444（記号対応） START #####
+--      AND   NVL( xd.invoice_no, gr_param.invoice_no_from )
+--                                      BETWEEN gr_param.invoice_no_from    -- 送り状No
+--                                      AND     gr_param.invoice_no_to      --
+      AND   (
+              -- 送り状No From To がNULLの場合
+              (
+                    (gr_param.invoice_no_from IS NULL)
+                AND (gr_param.invoice_no_to   IS NULL)
+              )
+              OR
+              -- 送り状No From To が両方 NOT NULL の場合
+              (
+                    (xd.invoice_no            IS NOT NULL) 
+                AND (gr_param.invoice_no_from IS NOT NULL)
+                AND (gr_param.invoice_no_to   IS NOT NULL)
+                AND (xd.invoice_no >= gr_param.invoice_no_from)
+                AND (xd.invoice_no <= gr_param.invoice_no_to)
+              )
+              OR
+              -- 送り状No To がNOT NULLの場合
+              (
+                    (xd.invoice_no            IS NOT NULL)
+                AND (gr_param.invoice_no_from IS NULL)
+                AND (gr_param.invoice_no_to   IS NOT NULL)
+                AND (xd.invoice_no <= gr_param.invoice_no_to)
+              )
+              -- 送り状No From が NOT NULL の場合
+              OR
+              (
+                    (xd.invoice_no            IS NOT NULL) 
+                AND (gr_param.invoice_no_from IS NOT NULL)
+                AND (gr_param.invoice_no_to   IS NULL)
+                AND (xd.invoice_no >= gr_param.invoice_no_from)
+              )
+            )
+-- ##### 20080715 1.4 ST障害対応#444（記号対応） END   #####
 -- E 2008/05/23 1.1 MOD BY M.Ikeda ------------------------------------------------------------ E --
 -- S 2008/05/23 1.1 MOD BY M.Ikeda ------------------------------------------------------------ S --
 --      AND   (  gr_param.order_type       IS NULL
@@ -1612,8 +1647,12 @@ AS
        ,iv_delivery_no_to     => NVL( iv_delivery_no_to   , lc_delivery_no_max )
        ,iv_request_no_from    => NVL( iv_request_no_from  , lc_request_no_min )
        ,iv_request_no_to      => NVL( iv_request_no_to    , lc_request_no_max )
-       ,iv_invoice_no_from    => NVL( iv_invoice_no_from  , lc_invoice_no_min )
-       ,iv_invoice_no_to      => NVL( iv_invoice_no_to    , lc_invoice_no_max )
+-- ##### 20080715 1.4 ST障害対応#444（記号対応） START #####
+--       ,iv_invoice_no_from    => NVL( iv_invoice_no_from  , lc_invoice_no_min )
+--       ,iv_invoice_no_to      => NVL( iv_invoice_no_to    , lc_invoice_no_max )
+       ,iv_invoice_no_from    => iv_invoice_no_from
+       ,iv_invoice_no_to      => iv_invoice_no_to
+-- ##### 20080715 1.4 ST障害対応#444（記号対応） END   #####
        ,iv_order_type         => iv_order_type         -- 20 : 受注タイプ
        ,iv_wc_class           => iv_wc_class           -- 21 : 重量容積区分
        ,iv_outside_contract   => iv_outside_contract   -- 22 : 契約外

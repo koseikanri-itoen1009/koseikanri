@@ -211,17 +211,17 @@
                            <ui:subTabs>
                               <oa:subTabBar id="subTabBar">
                                  <ui:contents>
-                                    <oa:link id="Line01Link" text="1">
+                                    <oa:link id="Line01Link" text="　　1　　">
                                        <ui:primaryClientAction>
                                           <ui:fireAction event="Line01Link"/>
                                        </ui:primaryClientAction>
                                     </oa:link>
-                                    <oa:link id="Line02Link" text="2">
+                                    <oa:link id="Line02Link" text="　　2　　">
                                        <ui:primaryClientAction>
                                           <ui:fireAction event="Line02Link"/>
                                        </ui:primaryClientAction>
                                     </oa:link>
-                                    <oa:link id="Line03Link" text="3">
+                                    <oa:link id="Line03Link" text="　　3　　">
                                        <ui:primaryClientAction>
                                           <ui:fireAction event="Line03Link"/>
                                        </ui:primaryClientAction>
