@@ -6,7 +6,7 @@ AS
  * Package Name     : xxcok_common_pkg(body)
  * Description      : 個別開発領域・共通関数
  * MD.070           : MD070_IPO_COK_共通関数
- * Version          : 1.13
+ * Version          : 1.14
  *
  * Program List
  * --------------------------   ------------------------------------------------------------
@@ -58,6 +58,7 @@ AS
  *                                                        ・突合せ方法の仕様変更
  *                                                        ・請求単位（ボール）対応
  *                                                        ・見積に税込額が設定されている場合の対応
+ *  2010/12/13    1.14  SCS S.Niki       [E_本稼動_01844] 担当営業員が複数設定されている場合は警告終了
  *
  *****************************************************************************************/
   -- ==============================
@@ -736,6 +737,11 @@ AS
     WHEN NO_DATA_FOUND THEN
       -- 該当するレコードが存在しなかった場合はNULLを返す
       RETURN NULL;
+-- 2010/12/13 Ver.1.14 [障害E_本稼動_01844] SCS S.Niki ADD START
+    WHEN TOO_MANY_ROWS THEN
+      -- 担当営業員を複数件取得した場合場合はNULLを返す
+      RETURN NULL;
+-- 2010/12/13 Ver.1.14 [障害E_本稼動_01844] SCS S.Niki ADD END
     WHEN OTHERS THEN
       RAISE_APPLICATION_ERROR(
         -20000, cv_pkg_name || cv_sepa_period || cv_prg_name || cv_sepa_colon || SQLERRM
