@@ -7,6 +7,7 @@
 * “ú•t       Ver. ’S“–Ò       C³“à—e
 * ---------- ---- ------------ ----------------------------------------------
 * 2008-12-07 1.0  SCS–ö•½’¼l  V‹Kì¬
+* 2009-04-24 1.1  SCS–ö•½’¼l  [STáŠQT1_634]ì‹ÆˆË—Š’†ƒtƒ‰ƒO’Ç‰Á‘Î‰
 *============================================================================
 */
 package itoen.oracle.apps.xxcso.xxcso012001j.server;
@@ -1171,6 +1172,20 @@ public class XxcsoPvRegistAMImpl extends OAApplicationModuleImpl
     );
     where780LookupVo.executeQuery();
 
+// 2009/04/24 [STáŠQT1_634] Add Start
+    XxcsoLookupListVOImpl where790LookupVo = getXxcsoWhere790LookupVO();
+    if (where790LookupVo == null)
+    {
+      throw XxcsoMessage.createInstanceLostError("XxcsoWhere790LookupVO");
+    }
+    where790LookupVo.initQuery(
+      "XXCSO1_OP_REQUEST_FLAG"
+     ,null
+     ,"lookup_code"
+    );
+    where790LookupVo.executeQuery();
+// 2009/04/24 [STáŠQT1_634] Add End
+
     XxcsoUtils.debug(txt, "[END]");
 
   }
@@ -2185,6 +2200,15 @@ public class XxcsoPvRegistAMImpl extends OAApplicationModuleImpl
   public XxcsoVendorTypeListVOImpl getXxcsoVendorTypeListVO1()
   {
     return (XxcsoVendorTypeListVOImpl)findViewObject("XxcsoVendorTypeListVO1");
+  }
+
+  /**
+   * 
+   * Container's getter for XxcsoWhere790LookupVO
+   */
+  public XxcsoLookupListVOImpl getXxcsoWhere790LookupVO()
+  {
+    return (XxcsoLookupListVOImpl)findViewObject("XxcsoWhere790LookupVO");
   }
 
 

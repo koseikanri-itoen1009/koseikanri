@@ -193,6 +193,10 @@
       Name="XxcsoVendorTypeListVO1"
       ViewObjectName="itoen.oracle.apps.xxcso.xxcso012001j.poplist.server.XxcsoVendorTypeListVO" >
    </ViewUsage>
+   <ViewUsage
+      Name="XxcsoWhere790LookupVO"
+      ViewObjectName="itoen.oracle.apps.xxcso.common.poplist.server.XxcsoLookupListVO" >
+   </ViewUsage>
    <ViewLinkUsage
       Name="XxcsoPvDefViewColumnVL1"
       ViewLinkObjectName="itoen.oracle.apps.xxcso.xxcso012001j.server.XxcsoPvDefViewColumnVL"

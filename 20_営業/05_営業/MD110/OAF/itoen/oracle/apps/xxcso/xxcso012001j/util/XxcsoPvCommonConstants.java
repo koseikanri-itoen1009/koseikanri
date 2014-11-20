@@ -7,6 +7,7 @@
 * 日付       Ver. 担当者       修正内容
 * ---------- ---- ------------ ----------------------------------------------
 * 2008-12-09 1.0  SCS柳平直人  新規作成
+* 2009-04-24 1.1  SCS柳平直人  [ST障害T1_634]作業依頼中フラグ追加対応
 *============================================================================
 */
 package itoen.oracle.apps.xxcso.xxcso012001j.util;
@@ -71,7 +72,10 @@ public class XxcsoPvCommonConstants
   public static final String SORT_LINE_CAPTION2       = "ソート";
   public static final String ADD_VIEW_NAME_COPY       = "の複製";
 
-  public static final int    EXTRACT_SIZE             = 78;
+// 2009/04/24 [ST障害T1_634] Mod Start
+//  public static final int    EXTRACT_SIZE             = 78;
+  public static final int    EXTRACT_SIZE             = 79;
+// 2009/04/24 [ST障害T1_634] Mod End
   public static final String EXTRACT_RENDER           = "ExtractRender";
   public static final String EXTRACT_AND              = "1";
   public static final String EXTRACT_OR               = "2";

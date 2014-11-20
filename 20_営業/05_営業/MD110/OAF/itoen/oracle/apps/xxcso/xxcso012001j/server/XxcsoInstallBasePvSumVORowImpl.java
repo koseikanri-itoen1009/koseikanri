@@ -105,11 +105,12 @@ public class XxcsoInstallBasePvSumVORowImpl extends OAViewRowImpl
   protected static final int CANCELLATIONDATE = 75;
   protected static final int MAKERNAME = 76;
   protected static final int SAFETYLEVEL = 77;
-  protected static final int INSTANCEID = 78;
-  protected static final int INSTALLCODE = 79;
-  protected static final int INSTANCETYPECODE = 80;
-  protected static final int INSTALLACCOUNTID = 81;
-  protected static final int INSTALLPARTYID = 82;
+  protected static final int OPREQUESTFLAG = 78;
+  protected static final int INSTANCEID = 79;
+  protected static final int INSTALLCODE = 80;
+  protected static final int INSTANCETYPECODE = 81;
+  protected static final int INSTALLACCOUNTID = 82;
+  protected static final int INSTALLPARTYID = 83;
   /**
    * 
    * This is the default constructor (do not remove)
@@ -281,6 +282,8 @@ public class XxcsoInstallBasePvSumVORowImpl extends OAViewRowImpl
         return getMakerName();
       case SAFETYLEVEL:
         return getSafetyLevel();
+      case OPREQUESTFLAG:
+        return getOpRequestFlag();
       case INSTANCEID:
         return getInstanceId();
       case INSTALLCODE:
@@ -1960,23 +1963,7 @@ public class XxcsoInstallBasePvSumVORowImpl extends OAViewRowImpl
     setAttributeInternal(DEPTCODE, value);
   }
 
-  /**
-   * 
-   * Gets the attribute value for the calculated attribute InstanceId
-   */
-  public Number getInstanceId()
-  {
-    return (Number)getAttributeInternal(INSTANCEID);
-  }
 
-  /**
-   * 
-   * Sets <code>value</code> as the attribute value for the calculated attribute InstanceId
-   */
-  public void setInstanceId(Number value)
-  {
-    setAttributeInternal(INSTANCEID, value);
-  }
 
   /**
    * 
@@ -1998,23 +1985,7 @@ public class XxcsoInstallBasePvSumVORowImpl extends OAViewRowImpl
 
 
 
-  /**
-   * 
-   * Gets the attribute value for the calculated attribute InstallPartyId
-   */
-  public Number getInstallPartyId()
-  {
-    return (Number)getAttributeInternal(INSTALLPARTYID);
-  }
 
-  /**
-   * 
-   * Sets <code>value</code> as the attribute value for the calculated attribute InstallPartyId
-   */
-  public void setInstallPartyId(Number value)
-  {
-    setAttributeInternal(INSTALLPARTYID, value);
-  }
 
   /**
    * 
@@ -2050,5 +2021,59 @@ public class XxcsoInstallBasePvSumVORowImpl extends OAViewRowImpl
   public void setInstallAccountId(String value)
   {
     setAttributeInternal(INSTALLACCOUNTID, value);
+  }
+
+  /**
+   * 
+   * Gets the attribute value for the calculated attribute OpRequestFlag
+   */
+  public String getOpRequestFlag()
+  {
+    return (String)getAttributeInternal(OPREQUESTFLAG);
+  }
+
+  /**
+   * 
+   * Sets <code>value</code> as the attribute value for the calculated attribute OpRequestFlag
+   */
+  public void setOpRequestFlag(String value)
+  {
+    setAttributeInternal(OPREQUESTFLAG, value);
+  }
+
+  /**
+   * 
+   * Gets the attribute value for the calculated attribute InstanceId
+   */
+  public Number getInstanceId()
+  {
+    return (Number)getAttributeInternal(INSTANCEID);
+  }
+
+  /**
+   * 
+   * Sets <code>value</code> as the attribute value for the calculated attribute InstanceId
+   */
+  public void setInstanceId(Number value)
+  {
+    setAttributeInternal(INSTANCEID, value);
+  }
+
+  /**
+   * 
+   * Gets the attribute value for the calculated attribute InstallPartyId
+   */
+  public Number getInstallPartyId()
+  {
+    return (Number)getAttributeInternal(INSTALLPARTYID);
+  }
+
+  /**
+   * 
+   * Sets <code>value</code> as the attribute value for the calculated attribute InstallPartyId
+   */
+  public void setInstallPartyId(Number value)
+  {
+    setAttributeInternal(INSTALLPARTYID, value);
   }
 }
