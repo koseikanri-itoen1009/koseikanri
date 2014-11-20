@@ -7,7 +7,7 @@ AS
  * Description      : 仕入取引明細表
  * MD.050           : 有償支給帳票Issue1.0(T_MD050_BPO_360)
  * MD.070           : 有償支給帳票Issue1.0(T_MD070_BPO_36G)
- * Version          : 1.31
+ * Version          : 1.32
  *
  * Program List
  * -------------------------- ----------------------------------------------------------
@@ -69,6 +69,7 @@ AS
  *  2009/07/06    1.29  T.Yoshimoto      本番障害#1565対応
  *  2009/08/10    1.30  T.Yoshimoto      本番障害#1596対応
  *  2009/09/24    1.31  T.Yoshimoto      本番障害#1523対応
+ *  2010/01/12    1.32  T.Yoshimoto      E_本稼動#892対応
  *****************************************************************************************/
 --
 --#######################  固定グローバル定数宣言部 START   #######################
@@ -866,8 +867,11 @@ AS
     -- ----------------------------------------------------
     -- ＳＥＬＥＣＴ句生成
     -- ----------------------------------------------------
-    lv_dept := 'DECODE( xrart.txns_type ,' || cv_type_nasi
-      ||            ' , xrart.department_code, ph.attribute10)';
+-- 2010/01/12 v1.32 T.Yoshimoto Mod Start E_本稼動#892
+--    lv_dept := 'DECODE( xrart.txns_type ,' || cv_type_nasi
+--      ||            ' , xrart.department_code, ph.attribute10)';
+    lv_dept := 'xrart.department_code';
+-- 2010/01/12 v1.32 T.Yoshimoto Mod End E_本稼動#892
 --
     lv_assen := 'DECODE( xrart.txns_type , ' || cv_type_nasi
       ||             ' , xvv_assen.segment1 , xvv_med.segment1) ';
@@ -1027,8 +1031,11 @@ AS
       --見出し
       lv_select := lv_select
         || ', ' || lv_dept ||                ' dept_code'                       --大キー部署コード
-        || ',DECODE( xrart.txns_type ,'|| cv_type_nasi ||', xlv.location_name'
-        ||       ' , xlv_p.location_name)        dept_name '                    --部署名
+-- 2010/01/12 v1.32 T.Yoshimoto Mod Start E_本稼動#892
+--        || ',DECODE( xrart.txns_type ,'|| cv_type_nasi ||', xlv.location_name'
+--        ||       ' , xlv_p.location_name)        dept_name '                    --部署名
+        || ',xlv.location_name                 dept_name'                       --部署名
+-- 2010/01/12 v1.32 T.Yoshimoto Mod End E_本稼動#892
         || ',xvv_part.segment1                 siire_no'                        --取引先仕入先番号
         || ',xvv_part.vendor_short_name        siire_sht'                       --略称
         || ' , ' || lv_assen || ' assen_no '                                    --斡旋者仕入先番号
@@ -1240,12 +1247,14 @@ AS
       ||            ' ON (  xpha.po_header_number = ph.segment1 ) '
       || '          INNER JOIN po_lines_all pl '                 --発注明細
       ||            ' ON (  pl.po_header_id = ph.po_header_id ) '
-      || '          INNER JOIN xxcmn_locations2_v xlv_p '        --事業所情報view
-      ||            ' ON (  xlv_p.location_code = ph.attribute10 '
-      ||              ' AND TO_CHAR(xlv_p.start_date_active,'''||gc_char_d_format||''')'
-      ||                  ' <= ph.attribute4 '
-      ||              ' AND TO_CHAR(xlv_p.end_date_active,  '''||gc_char_d_format||''')'
-      ||                  ' >= ph.attribute4 )'
+-- 2010/01/12 v1.32 T.Yoshimoto Del Start E_本稼動#892
+--      || '          INNER JOIN xxcmn_locations2_v xlv_p '        --事業所情報view
+--      ||            ' ON (  xlv_p.location_code = ph.attribute10 '
+--      ||              ' AND TO_CHAR(xlv_p.start_date_active,'''||gc_char_d_format||''')'
+--      ||                  ' <= ph.attribute4 '
+--      ||              ' AND TO_CHAR(xlv_p.end_date_active,  '''||gc_char_d_format||''')'
+--      ||                  ' >= ph.attribute4 )'
+-- 2010/01/12 v1.32 T.Yoshimoto Del End E_本稼動#892
       || '          INNER JOIN po_line_locations_all pll '       --納入明細
       ||            ' ON (  pll.po_line_id = pl.po_line_id ) '
       || '          LEFT JOIN xxcmn_vendors2_v xvv_med '        --仕入先情報(斡旋者)
