@@ -7,7 +7,7 @@ AS
  * Description      : 出来高実績取込処理
  * MD.050           : 取引先オンライン T_MD050_BPO_940
  * MD.070           : 出来高実績取込処理 T_MD070_BPO_94B
- * Version          : 1.8
+ * Version          : 1.9
  * Program List
  * ------------------------- ----------------------------------------------------------
  *  Name                      Description
@@ -39,6 +39,7 @@ AS
  *  2008/12/26    1.6   SCS    伊藤 ひとみ  本番障害#809
  *  2009/02/09    1.7   SCS    吉田 夏樹    本番#15、#1178対応
  *  2009/03/13    1.8   SCS    伊藤 ひとみ  本番#32対応
+ *  2009/03/24    1.9   SCS    飯田 甫      本番障害#1317対応
  *****************************************************************************************/
 --
 --#######################  固定グローバル定数宣言部 START   #######################
@@ -120,6 +121,9 @@ AS
   gv_msg_xxpo10215        CONSTANT VARCHAR2(100) := 'APP-XXPO-10215';  -- メッセージ:APP-XXPO-10215 取引先関連チェックエラー
   gv_msg_xxpo10257        CONSTANT VARCHAR2(100) := 'APP-XXPO-10257';  -- メッセージ:APP-XXPO-10257 ロット管理外品エラー
   gv_msg_xxpo30051        CONSTANT VARCHAR2(100) := 'APP-XXPO-30051';  -- メッセージ:APP-XXPO-30051 入力パラメータ(見出し)
+-- 2009/03/24 H.Iida Add Start 本番障害#1317対応
+  gv_msg_xxpo10288        CONSTANT VARCHAR2(100) := 'APP-XXPO-10288';  -- メッセージ:APP-XXPO-10288 未来日エラー
+-- 2009/03/24 H.Iida Add End
 --
   -- トークン
   gv_tkn_ng_profile       CONSTANT VARCHAR2(100) := 'NG_PROFILE';
@@ -164,6 +168,9 @@ AS
 -- 2008/12/02 H.Itou Add Start 本番障害#171
   gv_tkn_koyu_code           CONSTANT VARCHAR2(100) := '工場固有記号:';
 -- 2008/12/02 H.Itou Add End
+-- 2009/03/24 H.Iida Add Start 本番障害#1317対応
+  gv_tkn_manufactured_date   CONSTANT VARCHAR2(100) := '生産日';
+-- 2009/03/24 H.Iida Add End
 --
   -- セキュリティ区分
   gv_security_kbn_in         CONSTANT VARCHAR2(1) := '1'; -- セキュリティ区分 伊藤園ユーザー
@@ -1121,6 +1128,39 @@ AS
       END IF;
 -- 2008/12/02 H.Itou Add End
     END IF;
+--
+-- 2009/03/24 H.Iida Add Start 本番障害#1317対応
+    -- ===========================
+    -- 生産日未来日チェック
+    -- ===========================
+    -- 処理タイプが「1：相手先在庫管理」で且つ、生産日が未来日の場合、警告
+    IF ((gr_main_data.product_result_type = gv_product_result_type_inv)
+      AND (TRUNC(gr_main_data.manufactured_date) > TRUNC(SYSDATE)))
+    THEN
+      -- 警告メッセージ出力
+      lv_errmsg  := SUBSTRB(
+                      xxcmn_common_pkg.get_msg(
+                        gv_xxpo                    -- モジュール名略称:XXPO
+                       ,gv_msg_xxpo10288           -- メッセージ:APP-XXPO-10288 未来日エラー
+                       ,gv_tkn_item                -- トークン:ITEM
+                       ,gv_tkn_manufactured_date)  -- 製造日
+                     ,1,5000);
+--
+      -- すでに警告の場合は、ダンプ不要
+      IF (ov_retcode <> gv_status_warn) THEN
+        -- 警告ダンプPL/SQL表にダンプをセット
+        gn_warn_msg_cnt := gn_warn_msg_cnt + 1;
+        warn_dump_tab(gn_warn_msg_cnt) := gr_main_data.data_dump;
+      END IF;
+--
+      -- 警告ダンプPL/SQL表に警告メッセージをセット
+      gn_warn_msg_cnt := gn_warn_msg_cnt + 1;
+      warn_dump_tab(gn_warn_msg_cnt) := lv_errmsg;
+--
+      -- リターン・コードに警告をセット
+      ov_retcode := gv_status_warn;
+    END IF;
+-- 2009/03/24 H.Iida Add End
 --
     -- ===========================
     -- 生産日クローズチェック
