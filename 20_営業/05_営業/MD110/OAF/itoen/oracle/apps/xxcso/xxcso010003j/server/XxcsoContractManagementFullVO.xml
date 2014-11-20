@@ -153,8 +153,12 @@ SELECT XxcsoContractManagementsEO.CONTRACT_MANAGEMENT_ID
                 FROM   xxcso_contract_managements xcm2
                 WHERE  xcm2.install_account_number = 
                             XxcsoContractManagementsEO.install_account_number
-                AND    xcm2.contract_number        > 
-                            XxcsoContractManagementsEO.CONTRACT_NUMBER
+-- 2012/08/10 E_–{‰Ò“®_09914‘Î‰ž Mod Start
+--                AND    xcm2.contract_number        > 
+--                            XxcsoContractManagementsEO.CONTRACT_NUMBER
+                AND    xcm2.contract_management_id > 
+                            XxcsoContractManagementsEO.CONTRACT_MANAGEMENT_ID
+-- 2012/08/10 E_–{‰Ò“®_09914‘Î‰ž Mod End
                 AND    ((xcm2.status = '1' AND xcm2.cooperate_flag IS NOT NULL)
                         OR
                         (xcm2.status = '0')

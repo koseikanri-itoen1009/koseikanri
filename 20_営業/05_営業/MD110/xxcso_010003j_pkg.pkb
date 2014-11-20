@@ -6,7 +6,7 @@ AS
  * Package Name     : xxcso_010003j_pkg(BODY)
  * Description      : 自動販売機設置契約情報登録更新_共通関数
  * MD.050/070       : 
- * Version          : 1.11
+ * Version          : 1.12
  *
  * Program List
  *  ------------------------- ---- ----- --------------------------------------------------
@@ -54,6 +54,7 @@ AS
  *  2010/11/17    1.9   S.Arizumi        E_本稼動_01954対応
  *  2011/01/06    1.10  K.Kiriu          E_本稼動_02498対応
  *  2011/06/06    1.11  K.Kiriu          E_本稼動_01963対応
+ *  2012/08/10    1.12  K.Kiriu          E_本稼動_09914対応
  *****************************************************************************************/
 --
   -- ===============================
@@ -1689,7 +1690,10 @@ AS
                           WHERE  xcms.contract_number = iv_contract_number
                         )                                                       -- 自分自身以外
                 ORDER BY
-                        xcm.contract_number DESC
+/* 2012/08/10 Ver1.12 K.Kiriu E_本稼動_09914対応 START */
+--                        xcm.contract_number DESC
+                        xcm.contract_management_id DESC
+/* 2012/08/10 Ver1.12 K.Kiriu E_本稼動_09914対応 End   */
               ) bfct
       WHERE   ROWNUM < 3  --過去直近の２契約のみ(最大で未連携と連携済の２伝票をチェックする為)
       ;

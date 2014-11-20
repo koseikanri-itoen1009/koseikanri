@@ -6,7 +6,7 @@ AS
  * Function Name    : xxcso_010001j_pkg(BODY)
  * Description      : 権限判定関数(XXCSOユーティリティ）
  * MD.050/070       : 
- * Version          : 1.3
+ * Version          : 1.4
  *
  * Program List
  *  ------------------------- ---- ----- --------------------------------------------------
@@ -26,6 +26,7 @@ AS
  *  2009-05-01    1.1   Tomoko.Mori      T1_0897対応
  *  2009/09/09    1.2   D.Abe            統合テスト障害対応(0001323)
  *  2010/02/10    1.3   D.Abe            E_本稼動_01538対応
+ *  2012/08/10    1.4   K.kiriu          E_本稼動_09914対応
  *
  *****************************************************************************************/
 --
@@ -223,6 +224,9 @@ AS
     -- ===============================
     lv_contract_number       xxcso_contract_managements.contract_number%TYPE;
     ln_count                 NUMBER;
+/* 2012/08/10 K.Kiriu E_本稼動_09914対応 Add Start */
+    ln_contract_id           xxcso_contract_managements.contract_management_id%TYPE;
+/* 2012/08/10 K.Kiriu E_本稼動_09914対応 Add End   */
   BEGIN
 --
     lv_contract_number := NULL;
@@ -238,6 +242,14 @@ AS
     -- 作成中の場合、最新契約書をチェック
     IF ( ln_count <> 0 ) THEN
       BEGIN
+/* 2012/08/10 K.Kiriu E_本稼動_09914対応 Add Start */
+        --契約書IDを取得
+        SELECT xcm.contract_management_id contract_management_id
+        INTO   ln_contract_id
+        FROM   xxcso_contract_managements xcm
+        WHERE  xcm.contract_number = iv_contract_number
+        ;
+/* 2012/08/10 K.Kiriu E_本稼動_09914対応 Add End   */
         -- 顧客コードに紐付く最新の契約書を取得
         SELECT xcm.contract_number
         INTO   lv_contract_number
@@ -247,7 +259,10 @@ AS
                SELECT MAX(xcm2.contract_number)
                FROM   xxcso_contract_managements xcm2
                WHERE  xcm2.install_account_number = iv_account_number --顧客コード
-               AND    xcm2.contract_number        > iv_contract_number --契約書番号
+/* 2012/08/10 K.Kiriu E_本稼動_09914対応 Mod Start */
+--               AND    xcm2.contract_number        > iv_contract_number --契約書番号
+               AND    xcm2.contract_management_id > ln_contract_id --契約書ID
+/* 2012/08/10 K.Kiriu E_本稼動_09914対応 Mod End   */
                AND    ( (xcm2.status = cv_contract_status_submit
                         AND
                          xcm2.cooperate_flag    IS NOT NULL
