@@ -7,7 +7,7 @@ AS
  * Description      : 在庫（帳票）
  * MD.050/070       : 在庫（帳票）Issue1.0  (T_MD050_BPO_550)
  *                    受払残高リスト        (T_MD070_BPO_55A)
- * Version          : 1.28
+ * Version          : 1.29
  *
  * Program List
  * -------------------------- ----------------------------------------------------------
@@ -55,6 +55,7 @@ AS
  *  2008/12/07    1.26  Natsuki Yoshida    本番指摘 #520対応
  *  2008/12/07    1.27  Yasuhisa Yamamoto  統合指摘 #503,509対応
  *  2008/12/07    1.28  Yasuhisa Yamamoto  統合指摘 #509対応
+ *  2008/12/07    1.29  Yasuhisa Yamamoto  統合指摘 #466対応
  *****************************************************************************************/
 --
 --#######################  固定グローバル定数宣言部 START   #######################
@@ -1400,7 +1401,16 @@ AS
                           ,itp_omso.item_id
                           ,itp_omso.lot_id
                           ,itp_omso.trans_date
-                          ,itp_omso.trans_qty
+-- 08/12/07 Y.Yamamoto ADD v1.29 start
+--                          ,itp_omso.trans_qty
+                          ,CASE
+                           WHEN (xrpm7v.new_div_invent = '104'
+                             AND xrpm7v.category_code = 'RETURN' ) THEN
+                             ABS( itp_omso.trans_qty ) * -1
+                           ELSE
+                             itp_omso.trans_qty
+                           END                       trans_qty
+-- 08/12/07 Y.Yamamoto ADD v1.29 end
                           ,xrpm7v.rcv_pay_div
 -- 08/05/07 Y.Yamamoto ADD v1.1 Start
                           ,0  AS month_stock_be                 -- 前月末在庫数
@@ -1490,7 +1500,16 @@ AS
                           ,itp_porc.item_id
                           ,itp_porc.lot_id
                           ,itp_porc.trans_date
-                          ,itp_porc.trans_qty
+-- 08/12/07 Y.Yamamoto ADD v1.29 start
+--                          ,itp_porc.trans_qty
+                          ,CASE
+                           WHEN (xrpm8v.new_div_invent = '104'
+                             AND xrpm8v.category_code = 'RETURN' ) THEN
+                             ABS( itp_porc.trans_qty ) * -1
+                           ELSE
+                             itp_porc.trans_qty
+                           END                       trans_qty
+-- 08/12/07 Y.Yamamoto ADD v1.29 end
                           ,xrpm8v.rcv_pay_div
 -- 08/05/07 Y.Yamamoto ADD v1.1 Start
                           ,0  AS month_stock_be                 -- 前月末在庫数
