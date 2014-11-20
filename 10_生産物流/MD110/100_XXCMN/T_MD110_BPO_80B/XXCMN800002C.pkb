@@ -7,7 +7,7 @@ AS
  * Description      : 品目マスタインタフェース
  * MD.050           : マスタインタフェース T_MD050_BPO_800
  * MD.070           : 品目インタフェース T_MD070_BPO_80B
- * Version          : 1.12
+ * Version          : 1.13
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -79,6 +79,7 @@ AS
  *  2008/09/08    1.10  Oracle 山根 一浩 T_S_628対応
  *  2008/09/16    1.11  Oracle 山根一浩  T_S_421対応
  *  2008/09/29    1.12  Oracle 山根一浩  T_S_546,T_S_547対応
+ *  2008/10/02    1.13  Oracle 椎名 昭圭 統合障害＃293対応
  *****************************************************************************************/
 --
 --#######################  固定グローバル定数宣言部 START   #######################
@@ -386,7 +387,12 @@ AS
     -- 以前の件数
     row_ins_cnt           NUMBER,                                   -- 登録件数
     row_upd_cnt           NUMBER,                                   -- 更新件数
-    row_del_cnt           NUMBER                                    -- 削除件数
+-- 2008/10/02 UPDATE START
+--    row_del_cnt           NUMBER                                    -- 削除件数
+    row_del_cnt           NUMBER,                                   -- 削除件数
+    cldr_n_flg            BOOLEAN,                            -- 原価カレンダ存在チェックフラグ
+    cldr_n_msg            VARCHAR2(1000)                      -- 原価カレンダ存在チェックメッセージ
+-- 2008/10/02 UPDATE END
   );
 --
   -- 各マスタへ反映するデータを格納する結合配列
@@ -3636,6 +3642,22 @@ AS
 --
 -- 2008/08/27 Add ↓
       IF (ir_masters_rec.period_code IS NULL) THEN
+-- 2008/10/02 v1.13 ADD START
+       -- 更新
+       IF (ir_masters_rec.proc_code = gn_proc_update) THEN
+--
+        -- 原価カレンダ存在チェックフラグをオン
+        ir_masters_rec.cldr_n_flg := TRUE;
+        ir_masters_rec.cldr_n_msg := xxcmn_common_pkg.get_msg(gv_msg_kbn,
+                                                  gv_msg_80b_023,
+                                                  gv_tkn_item_name,  cv_item_name,
+                                                  gv_tkn_item_value, cv_start_date,
+                                                  gv_tkn_table_name, cv_table_name);
+--
+       ELSE
+        ir_masters_rec.cldr_n_flg := FALSE;
+        ir_masters_rec.cldr_n_msg := NULL;
+-- 2008/10/02 v1.13 ADD END
         set_error_status(ir_status_rec,
                          xxcmn_common_pkg.get_msg(gv_msg_kbn,
                                                   gv_msg_80b_023,
@@ -3649,12 +3671,35 @@ AS
         IF (lv_retcode = gv_status_error) THEN
           RAISE check_sub_main_expt;
         END IF;
+-- 2008/10/02 v1.13 ADD START
+       END IF;
+      ELSE
+        ir_masters_rec.cldr_n_flg := FALSE;
+        ir_masters_rec.cldr_n_msg := NULL;
+-- 2008/10/02 v1.13 ADD END
       END IF;
 -- 2008/08/27 Add ↑
 --
     EXCEPTION
       WHEN NO_DATA_FOUND THEN
         ir_masters_rec.period_code := NULL;
+-- 2008/10/02 v1.13 ADD START
+        -- 更新
+        IF (ir_masters_rec.proc_code = gn_proc_update) THEN
+--
+         -- 原価カレンダ存在チェックフラグをオン
+         ir_masters_rec.cldr_n_flg := TRUE;
+         ir_masters_rec.cldr_n_msg := xxcmn_common_pkg.get_msg(gv_msg_kbn,
+                                                   gv_msg_80b_023,
+                                                   gv_tkn_item_name,  cv_item_name,
+                                                   gv_tkn_item_value, cv_start_date,
+                                                   gv_tkn_table_name, cv_table_name);
+--
+        ELSE
+          ir_masters_rec.cldr_n_flg := FALSE;
+          ir_masters_rec.cldr_n_msg := NULL;
+--
+-- 2008/10/02 v1.13 ADD END
 -- 2008/08/27 Add ↓
         set_error_status(ir_status_rec,
                          xxcmn_common_pkg.get_msg(gv_msg_kbn,
@@ -3670,6 +3715,9 @@ AS
           RAISE check_sub_main_expt;
         END IF;
 -- 2008/08/27 Add ↑
+-- 2008/10/02 v1.13 ADD START
+        END IF;
+-- 2008/10/02 v1.13 ADD END
 --
       WHEN OTHERS THEN
         RAISE global_api_others_expt;
@@ -4550,6 +4598,23 @@ AS
           -- 入力あり
           IF (ir_masters_rec.cmpntcls_mast(i).cost_price IS NOT NULL) THEN
 --
+-- 2008/10/02 v1.13 ADD START
+--------------------------------------------------------------------------------
+-- LOG START
+--------------------------------------------------------------------------------
+           FND_FILE.PUT_LINE( FND_FILE.LOG, '品名コード：'
+                                            || ir_masters_rec.item_code
+                                            || ', '
+                                            || 'コンポーネント区分名：'
+                                            || ir_masters_rec.cmpntcls_mast(i).cost_cmpntcls_desc);
+           FND_FILE.PUT_LINE( FND_FILE.LOG, '単価：'
+                                            || ln_price);
+           FND_FILE.PUT_LINE( FND_FILE.LOG, '金額'
+                                            || ir_masters_rec.cmpntcls_mast(i).cost_price);
+--------------------------------------------------------------------------------
+-- LOG END
+--------------------------------------------------------------------------------
+-- 2008/10/02 v1.13 ADD END
             -- 金額の比較
             IF (NVL(ln_price,-1) <> ir_masters_rec.cmpntcls_mast(i).cost_price) THEN
               ln_flg := 1;
@@ -6611,6 +6676,9 @@ AS
           IF (it_report_tbl(ln_log_cnt).seq_number =
               it_upd_mast_tbl(ln_exec_cnt).seq_number) THEN
 --
+-- 2008/10/02 ADD START
+           IF (NOT it_upd_mast_tbl(ln_exec_cnt).cldr_n_flg) THEN
+-- 2008/10/02 ADD END
             -- 品目原価更新処理
             cmpt_update_proc(it_report_tbl(ln_log_cnt),
                              it_upd_mast_tbl(ln_exec_cnt),
@@ -6622,6 +6690,9 @@ AS
               RAISE global_api_expt;
             END IF;
 --
+-- 2008/10/02 ADD START
+           END IF;
+-- 2008/10/02 ADD END
             -- 品目更新処理
             item_update_proc(it_report_tbl(ln_log_cnt),
                              it_upd_mast_tbl(ln_exec_cnt),
@@ -7503,6 +7574,24 @@ AS
 --
         -- 更新
         ELSIF (lr_masters_rec.proc_code = gn_proc_update) THEN
+-- 2008/10/02 v1.13 ADD START
+         -- 原価カレンダ存在チェックフラグがオンの場合
+         IF (lr_masters_rec.cldr_n_flg) THEN
+--
+          -- 期間の取得ワーニング
+          set_warok_status(lr_status_rec,
+                           lr_masters_rec.cldr_n_msg,
+                           lv_errbuf,
+                           lv_retcode,
+                           lv_errmsg);
+--
+          IF (lv_retcode = gv_status_error) THEN
+            RAISE check_sub_main_expt;
+          END IF;
+--
+         ELSE
+--
+-- 2008/10/02 v1.13 ADD END
           -- ===============================
           -- 品目原価更新分チェック(B-9)
           -- ===============================
@@ -7516,6 +7605,8 @@ AS
             RAISE check_sub_main_expt;
           END IF;
 --
+-- 2008/10/02 v1.13 DELETE START
+/*
           IF ((is_row_status_nomal(lr_status_rec))
            OR (is_row_status_warok(lr_status_rec))) THEN
             -- ===============================
@@ -7524,6 +7615,11 @@ AS
             lt_cmpt_upd_mast(ln_cmpt_upd_cnt) := lr_masters_rec;
             ln_cmpt_upd_cnt := ln_cmpt_upd_cnt + 1;
           END IF;
+*/
+-- 2008/10/02 v1.13 DELETE END
+-- 2008/10/02 v1.13 ADD START
+         END IF;
+-- 2008/10/02 v1.13 ADD END
         END IF;
       END IF;
 --
