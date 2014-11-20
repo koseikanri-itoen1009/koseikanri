@@ -8,7 +8,7 @@ AS
  *                    CSVファイルを作成します。
  * MD.050           : MD050_自販機-EBSインタフェース：（OUT）作業依頼／発注情報(iPro,PO)
  *                    2008/12/19 16:30
- * Version          : 1.11
+ * Version          : 1.12
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -47,6 +47,7 @@ AS
  *  2009-05-22    1.9   K.Satomura       ＳＴ障害対応(T1_1142対応)
  *  2009-05-22    1.10  K.Satomura       ＳＴ障害対応(T1_1152対応)
  *  2009-05-27    1.11  M.Maruyama       ＳＴ障害対応(T1_1218対応)
+ *  2009-07-09    1.12  D.Abe            SCS障害対応(0000465対応)
  *****************************************************************************************/
 --
 --#######################  固定グローバル定数宣言部 START   #######################
@@ -3526,6 +3527,12 @@ AS
     -- 依頼ルート
     cn_rout_no                CONSTANT NUMBER       :=  2;
  --
+/* 20090709_abe_0000465 START*/
+    cv_concrete_board         CONSTANT VARCHAR2(30) :=  'コンクリート板要';
+/* 20090709_abe_0000465 END*/
+
+
+
     -- *** ローカル変数 ***
     -- OUTパラメータ格納用
     ld_sysdate                DATE;           -- システム日付
@@ -4226,7 +4233,11 @@ AS
         lv_remarks  := '';
 --
         -- コンクリート板
-        IF(l_get_ipro_po_data_rec.concrete_board IS NOT NULL) THEN
+/* 20090709_abe_0000465 START*/
+        IF(l_get_ipro_po_data_rec.concrete_board IS NOT NULL
+             AND l_get_ipro_po_data_rec.concrete_board = cv_concrete_board) THEN
+        --IF(l_get_ipro_po_data_rec.concrete_board IS NOT NULL) THEN
+/* 20090709_abe_0000465 END*/
           lv_remarks  := l_get_ipro_po_data_rec.concrete_board;
         END IF;
 --
