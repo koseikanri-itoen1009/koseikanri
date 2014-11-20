@@ -1,4 +1,4 @@
-CREATE OR REPLACE PACKAGE BODY XXCOS010A05R
+CREATE OR REPLACE PACKAGE BODY APPS.XXCOS010A05R
 AS
 /*****************************************************************************************
  * Copyright(c)Sumisho Computer Systems Corporation, 2008. All rights reserved.
@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCOS010A05R(body)
  * Description      : 受注エラーリスト
  * MD.050           : 受注エラーリスト MD050_COS_010_A05
- * Version          : 1.5
+ * Version          : 1.6
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -32,6 +32,7 @@ AS
  *  2009/06/19    1.3   N.Nishimura      [T1_1437]データパージ不具合対応
  *  2009/07/23    1.4   N.Maeda          [0000300]ロック処理修正
  *  2009/08/03    1.5   M.Sano           [0000902]受注エラーリストの終了ステータス変更
+ *  2009/09/29    1.6   N.Maeda          [0001338]プロシージャexecute_svfの独立トランザクション化
  *
  *****************************************************************************************/
 --
@@ -454,6 +455,11 @@ AS
     -- ===============================
     -- ユーザー宣言部
     -- ===============================
+--
+-- ********* 2009/09/29 N.Maeda 1.6 ADD START ********* --
+    PRAGMA AUTONOMOUS_TRANSACTION; -- 独立トランザクション
+-- ********* 2009/09/29 N.Maeda 1.6 ADD  END  ********* --
+--
     -- *** ローカル定数 ***
 --
     -- *** ローカル変数 ***
@@ -792,7 +798,9 @@ AS
    ,ov_errmsg     OUT VARCHAR2     --   ユーザー・エラー・メッセージ --# 固定 #
   )
   IS
-    PRAGMA AUTONOMOUS_TRANSACTION;
+-- ********* 2009/09/29 N.Maeda 1.6 DEL START ********* --
+--    PRAGMA AUTONOMOUS_TRANSACTION;
+-- ********* 2009/09/29 N.Maeda 1.6 DEL  END  ********* --
 --
     -- ===============================
     -- 固定ローカル定数
@@ -1333,6 +1341,13 @@ AS
       lv_errbuf_svf  := lv_errbuf;
       lv_retcode_svf := lv_retcode;
       lv_errmsg_svf  := lv_errmsg;
+--
+-- *********** 2009/09/29 N.Maeda 1.6 ADD START ************* --
+      IF ( lv_retcode_svf != cv_status_normal  ) THEN
+        ROLLBACK;
+      END IF;
+-- *********** 2009/09/29 N.Maeda 1.6 ADD  END  ************* --
+--
 -- 2009/06/19  Ver1.3 T1_1437  Mod End
 --
       -- ===============================================

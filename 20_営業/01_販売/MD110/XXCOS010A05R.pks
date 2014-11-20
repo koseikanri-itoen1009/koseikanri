@@ -1,4 +1,4 @@
-CREATE OR REPLACE PACKAGE XXCOS010A05R
+CREATE OR REPLACE PACKAGE APPS.XXCOS010A05R
 AS
 /*****************************************************************************************
  * Copyright(c)Sumisho Computer Systems Corporation, 2008. All rights reserved.
@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCOS010A05R(spec)
  * Description      : 受注エラーリスト
  * MD.050           : 受注エラーリスト MD050_COS_010_A05
- * Version          : 1.5
+ * Version          : 1.6
  *
  * Program List
  * -------------------- ------------------------------------------------------------
@@ -24,6 +24,7 @@ AS
  *  2009/06/19    1.3   N.Nishimura      [T1_1437]データパージ不具合対応
  *  2009/07/23    1.4   N.Maeda          [0000300]ロック処理修正
  *  2009/08/03    1.5   M.Sano           [0000902]受注エラーリストの終了ステータス変更
+ *  2009/09/29    1.6   N.Maeda          [0001338]プロシージャexecute_svfの独立トランザクション化
  *
  *****************************************************************************************/
 --
