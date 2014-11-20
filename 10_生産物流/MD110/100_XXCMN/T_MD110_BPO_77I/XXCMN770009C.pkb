@@ -7,7 +7,7 @@ AS
  * Description      : 他勘定振替原価差異表
  * MD.050/070       : 月次〆切処理帳票Issue1.0(T_MD050_BPO_770)
  *                  : 月次〆切処理帳票Issue1.0(T_MD070_BPO_77I)
- * Version          : 1.19
+ * Version          : 1.20
  *
  * Program List
  * -------------------------- ----------------------------------------------------------
@@ -52,6 +52,7 @@ AS
  *  2009/05/12    1.17  M.Nomura         本番#1469対応
  *  2009/05/29    1.18  Marushita        本番障害1511対応
  *  2009/11/30    1.19  Marushita        本番#200対応
+ *  2012/03/02    1.20  Y.Horikawa       E_本稼動_08939対応
  *
  *****************************************************************************************/
 --
@@ -1946,10 +1947,13 @@ AS
       -- OMSO5 :経理受払区分購買関連 (受入_原、受入_半)
       -- ----------------------------------------------------
 --      SELECT /*+ leading (xoha xola iimb gic1 mcb1 gic2 mcb2 ooha otta xrpm wdd itp) use_nl (xoha xola iimb gic1 mcb1 gic2 mcb2 ooha otta xrpm wdd itp) */
--- 2009/11/30 MOD START
---      SELECT /*+ leading (xoha ooha otta xola iimb gic1 mcb1 gic2 mcb2 wdd itp) use_nl (xoha ooha otta xola iimb gic1 mcb1 gic2 mcb2 wdd itp) */
-      SELECT 
--- 2009/11/30 MOD END
+-- 2012/03/02 Mod Start
+---- 2009/11/30 MOD START
+----      SELECT /*+ leading (xoha ooha otta xola iimb gic1 mcb1 gic2 mcb2 wdd itp) use_nl (xoha ooha otta xola iimb gic1 mcb1 gic2 mcb2 wdd itp) */
+--      SELECT 
+---- 2009/11/30 MOD END
+      SELECT /*+ leading (xoha otta xola wdd itp gic4 mcb4) use_nl (xoha otta xola wdd itp gic4 mcb4) index(wdd wsh_delivery_details_n3) */
+-- 2012/03/02 Mod End
              iimb2.item_no               item_code_from
             ,ximb2.item_short_name       item_name_from
             ,iimb.item_no                item_code_to
@@ -3743,11 +3747,14 @@ AS
       -- ----------------------------------------------------
       -- OMSO5 :経理受払区分購買関連 (受入_原、受入_半)
       -- ----------------------------------------------------
---      SELECT /*+ leading (xoha xola iimb gic1 mcb1 gic2 mcb2 ooha otta xrpm wdd itp) use_nl (xoha xola iimb gic1 mcb1 gic2 mcb2 ooha otta xrpm wdd itp) */
--- 2009/11/30 MOD START
---      SELECT /*+ leading (xoha ooha otta xola iimb gic1 mcb1 gic2 mcb2 wdd itp) use_nl (xoha ooha otta xola iimb gic1 mcb1 gic2 mcb2 wdd itp) */
-      SELECT 
--- 2009/11/30 MOD END
+--2012/03/02 Mod Start
+----      SELECT /*+ leading (xoha xola iimb gic1 mcb1 gic2 mcb2 ooha otta xrpm wdd itp) use_nl (xoha xola iimb gic1 mcb1 gic2 mcb2 ooha otta xrpm wdd itp) */
+---- 2009/11/30 MOD START
+----      SELECT /*+ leading (xoha ooha otta xola iimb gic1 mcb1 gic2 mcb2 wdd itp) use_nl (xoha ooha otta xola iimb gic1 mcb1 gic2 mcb2 wdd itp) */
+--      SELECT 
+---- 2009/11/30 MOD END
+      SELECT /*+ leading (xoha otta xola wdd itp gic4 mcb4) use_nl (xoha otta xola wdd itp gic4 mcb4) index(wdd wsh_delivery_details_n3) */
+--2012/03/02 Mod End
              iimb2.item_no               item_code_from
             ,ximb2.item_short_name       item_name_from
             ,iimb.item_no                item_code_to
@@ -5543,11 +5550,14 @@ AS
       -- ----------------------------------------------------
       -- OMSO5 :経理受払区分購買関連 (受入_原、受入_半)
       -- ----------------------------------------------------
---      SELECT /*+ leading (xoha xola iimb gic1 mcb1 gic2 mcb2 ooha otta xrpm wdd itp) use_nl (xoha xola iimb gic1 mcb1 gic2 mcb2 ooha otta xrpm wdd itp) */
--- 2009/11/30 MOD START
---      SELECT /*+ leading (xoha ooha otta xola iimb gic1 mcb1 gic2 mcb2 wdd itp) use_nl (xoha ooha otta xola iimb gic1 mcb1 gic2 mcb2 wdd itp) */
-      SELECT 
--- 2009/11/30 MOD END
+--2012/03/02 Mod Start
+----      SELECT /*+ leading (xoha xola iimb gic1 mcb1 gic2 mcb2 ooha otta xrpm wdd itp) use_nl (xoha xola iimb gic1 mcb1 gic2 mcb2 ooha otta xrpm wdd itp) */
+---- 2009/11/30 MOD START
+----      SELECT /*+ leading (xoha ooha otta xola iimb gic1 mcb1 gic2 mcb2 wdd itp) use_nl (xoha ooha otta xola iimb gic1 mcb1 gic2 mcb2 wdd itp) */
+--      SELECT 
+---- 2009/11/30 MOD END
+      SELECT /*+ leading (xoha otta xola wdd itp gic4 mcb4) use_nl (xoha otta xola wdd itp gic4 mcb4) index(wdd wsh_delivery_details_n3) */
+--2012/03/02 Mod End
              iimb2.item_no               item_code_from
             ,ximb2.item_short_name       item_name_from
             ,iimb.item_no                item_code_to
@@ -7353,11 +7363,14 @@ AS
       -- ----------------------------------------------------
       -- OMSO5 :経理受払区分購買関連 (受入_原、受入_半)
       -- ----------------------------------------------------
---      SELECT /*+ leading (xoha xola iimb gic1 mcb1 gic2 mcb2 ooha otta xrpm wdd itp) use_nl (xoha xola iimb gic1 mcb1 gic2 mcb2 ooha otta xrpm wdd itp) */
--- 2009/11/30 MOD START
---      SELECT /*+ leading (xoha ooha otta xola iimb gic1 mcb1 gic2 mcb2 wdd itp) use_nl (xoha ooha otta xola iimb gic1 mcb1 gic2 mcb2 wdd itp) */
-      SELECT 
--- 2009/11/30 MOD END
+--2012/03/02 Mod Start
+----      SELECT /*+ leading (xoha xola iimb gic1 mcb1 gic2 mcb2 ooha otta xrpm wdd itp) use_nl (xoha xola iimb gic1 mcb1 gic2 mcb2 ooha otta xrpm wdd itp) */
+---- 2009/11/30 MOD START
+----      SELECT /*+ leading (xoha ooha otta xola iimb gic1 mcb1 gic2 mcb2 wdd itp) use_nl (xoha ooha otta xola iimb gic1 mcb1 gic2 mcb2 wdd itp) */
+--      SELECT 
+---- 2009/11/30 MOD END
+      SELECT /*+ leading (xoha otta xola wdd itp gic4 mcb4) use_nl (xoha otta xola wdd itp gic4 mcb4) index(wdd wsh_delivery_details_n3) */
+--2012/03/02 Mod End
              iimb2.item_no               item_code_from
             ,ximb2.item_short_name       item_name_from
             ,iimb.item_no                item_code_to
