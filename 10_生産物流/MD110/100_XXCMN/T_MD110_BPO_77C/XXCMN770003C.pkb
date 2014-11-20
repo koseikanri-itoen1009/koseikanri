@@ -7,7 +7,7 @@ AS
  * Description      : Žó•¥Žc‚•\i‡Uj
  * MD.050/070       : ŒŽŽŸYØˆ—’ •[Issue1.0(T_MD050_BPO_770)
  *                  : ŒŽŽŸYØˆ—’ •[Issue1.0(T_MD070_BPO_77C)
- * Version          : 1.7
+ * Version          : 1.8
  *
  * Program List
  * -------------------------- ------------------------------------------------------------
@@ -43,6 +43,7 @@ AS
  *                                       ‚³‚ê‚È‚¢Œ»Û‚Ö‚Ì‘Î‰ž
  *  2008/08/05    1.7   R.Tomoyose       ŽQÆƒrƒ…[‚Ì•ÏXuxxcmn_rcv_pay_mst_porc_rma_vv¨
  *                                                       uxxcmn_rcv_pay_mst_porc_rma03_vv
+ *  2008/08/28    1.8   A.Shiina         Žæˆø”—Ê‚ÍŽæ“¾Žž‚ÉŽó•¥‹æ•ª‚ðŠ|‚¯‚éB
  *
  *****************************************************************************************/
 --
@@ -758,7 +759,10 @@ AS
                      || ' NULL                 AS  whse_name, ';
     END IF;
     lv_select_xfer := lv_select_xfer
-                   || ' itp.trans_qty          AS  trans_qty, '  -- Žæˆø”—Ê
+-- 2008/08/28 v1.8 UPDATE START
+--                   || ' itp.trans_qty          AS  trans_qty, '  -- Žæˆø”—Ê
+                   || ' itp.trans_qty * TO_NUMBER(xfer_v.rcv_pay_div) AS  trans_qty, '  -- Žæˆø”—Ê
+-- 2008/08/28 v1.8 UPDATE END
                    || ' itp.trans_date         AS  trans_date, '  -- Žæˆø“ú
                    || ' xfer_v.dealings_div_name AS  div_name, ' -- Žæˆø‹æ•ª–¼
                    || ' xfer_v.rcv_pay_div     AS  pay_div, ';    -- Žó•¥‹æ•ª
@@ -819,7 +823,10 @@ AS
                      || ' NULL                 AS whse_name, ';
     END IF;
     lv_select_trni := lv_select_trni
-                   || ' itc.trans_qty          AS  trans_qty, '  -- Žæˆø”—Ê
+-- 2008/08/28 v1.8 UPDATE START
+--                   || ' itc.trans_qty          AS  trans_qty, '  -- Žæˆø”—Ê
+                   || ' itc.trans_qty * TO_NUMBER(trni_v.rcv_pay_div) AS  trans_qty, '  -- Žæˆø”—Ê
+-- 2008/08/28 v1.8 UPDATE END
                    || ' itc.trans_date         AS  trans_date, '  -- Žæˆø“ú
                    || ' trni_v.dealings_div_name AS  div_name, ' -- Žæˆø‹æ•ª–¼
                    || ' trni_v.rcv_pay_div     AS  pay_div, ';   -- Žó•¥‹æ•ª
@@ -884,7 +891,10 @@ AS
                        || ' NULL                 AS whse_name, ';
     END IF;
     lv_select_adji_1 := lv_select_adji_1
-                     || ' itc.trans_qty          AS  trans_qty, '  -- Žæˆø”—Ê
+-- 2008/08/28 v1.8 UPDATE START
+--                     || ' itc.trans_qty          AS  trans_qty, '  -- Žæˆø”—Ê
+                     || ' itc.trans_qty * TO_NUMBER(adji_v.rcv_pay_div) AS  trans_qty, ' -- Žæˆø”—Ê
+-- 2008/08/28 v1.8 UPDATE END
                      || ' itc.trans_date         AS  trans_date, '  -- Žæˆø“ú
                      || ' adji_v.dealings_div_name AS  div_name, ' -- Žæˆø‹æ•ª–¼
                      || ' adji_v.rcv_pay_div     AS  pay_div, ';   -- Žó•¥‹æ•ª
@@ -943,7 +953,10 @@ AS
                        || ' NULL                 AS  whse_name, ';
     END IF;
     lv_select_adji_2 := lv_select_adji_2
-                     || ' itc.trans_qty          AS  trans_qty, '  -- Žæˆø”—Ê
+-- 2008/08/28 v1.8 UPDATE START
+--                     || ' itc.trans_qty          AS  trans_qty, '  -- Žæˆø”—Ê
+                     || ' itc.trans_qty * TO_NUMBER(adji_v.rcv_pay_div) AS  trans_qty, ' -- Žæˆø”—Ê
+-- 2008/08/28 v1.8 UPDATE END
                      || ' itc.trans_date         AS  trans_date, '  -- Žæˆø“ú
                      || ' adji_v.dealings_div_name AS  div_name, ' -- Žæˆø‹æ•ª–¼
                      || ' adji_v.rcv_pay_div     AS  pay_div, ';   -- Žó•¥‹æ•ª
@@ -1004,7 +1017,10 @@ AS
                        || ' NULL                 AS  whse_name, ';
     END IF;
     lv_select_adji_3 := lv_select_adji_3
-                     || ' itc.trans_qty          AS  trans_qty, '  -- Žæˆø”—Ê
+-- 2008/08/28 v1.8 UPDATE START
+--                     || ' itc.trans_qty          AS  trans_qty, '  -- Žæˆø”—Ê
+                     || ' itc.trans_qty * TO_NUMBER(adji_v.rcv_pay_div) AS  trans_qty, ' -- Žæˆø”—Ê
+-- 2008/08/28 v1.8 UPDATE END
                      || ' itc.trans_date         AS  trans_date, '  -- Žæˆø“ú
                      || ' adji_v.dealings_div_name AS  div_name, ' -- Žæˆø‹æ•ª–¼
                      || ' adji_v.rcv_pay_div     AS  pay_div, ';   -- Žó•¥‹æ•ª
@@ -1072,7 +1088,10 @@ AS
                        || ' NULL                 AS whse_name, ';
     END IF;
     lv_select_adji_4 := lv_select_adji_4
-                     || ' itc.trans_qty          AS  trans_qty, '  -- Žæˆø”—Ê
+-- 2008/08/28 v1.8 UPDATE START
+--                     || ' itc.trans_qty          AS  trans_qty, '  -- Žæˆø”—Ê
+                     || ' itc.trans_qty * TO_NUMBER(adji_v.rcv_pay_div) AS  trans_qty, ' -- Žæˆø”—Ê
+-- 2008/08/28 v1.8 UPDATE END
                      || ' itc.trans_date         AS  trans_date, '  -- Žæˆø“ú
                      || ' adji_v.dealings_div_name AS  div_name, ' -- Žæˆø‹æ•ª–¼
                      || ' adji_v.rcv_pay_div     AS  pay_div, ';   -- Žó•¥‹æ•ª
@@ -1136,7 +1155,10 @@ AS
                      || ' NULL                 AS whse_name, ';
     END IF;
     lv_select_prod := lv_select_prod
-                   || ' itp.trans_qty          AS trans_qty, '
+-- 2008/08/28 v1.8 UPDATE START
+--                   || ' itp.trans_qty          AS trans_qty, '
+                   || ' itp.trans_qty * TO_NUMBER(prod_v.rcv_pay_div) AS trans_qty, '
+-- 2008/08/28 v1.8 UPDATE END
                    || ' itp.trans_date         AS trans_date, '
                    || ' prod_v.dealings_div_name AS  div_name, ' -- Žæˆø‹æ•ª–¼
                    || ' prod_v.rcv_pay_div     AS pay_div, ';   -- Žó•¥‹æ•ª
@@ -1234,7 +1256,10 @@ AS
                      || ' NULL                 AS whse_name, ';
     END IF;
     lv_select_omso := lv_select_omso
-                   || ' itp.trans_qty          AS  trans_qty, '  -- Žæˆø”—Ê
+-- 2008/08/28 v1.8 UPDATE START
+--                   || ' itp.trans_qty          AS  trans_qty, '  -- Žæˆø”—Ê
+                   || ' itp.trans_qty * TO_NUMBER(omso_v.rcv_pay_div) AS  trans_qty, '  -- Žæˆø”—Ê
+-- 2008/08/28 v1.8 UPDATE END
                    || ' itp.trans_date         AS  trans_date, '  -- Žæˆø“ú
                    || ' omso_v.dealings_div_name AS  div_name, ' -- Žæˆø‹æ•ª–¼
                    || ' omso_v.rcv_pay_div     AS  pay_div, ';   -- Žó•¥‹æ•ª
@@ -1286,7 +1311,10 @@ AS
                      || ' NULL                 AS whse_name, ';
     END IF;
     lv_select_porc := lv_select_porc
-                   || ' itp.trans_qty          AS  trans_qty, '  -- Žæˆø”—Ê
+-- 2008/08/28 v1.8 UPDATE START
+--                   || ' itp.trans_qty          AS  trans_qty, '  -- Žæˆø”—Ê
+                   || ' itp.trans_qty * TO_NUMBER(porc_v.rcv_pay_div) AS  trans_qty, '  -- Žæˆø”—Ê
+-- 2008/08/28 v1.8 UPDATE END
                    || ' itp.trans_date         AS  trans_date, '  -- Žæˆø“ú
                    || ' porc_v.dealings_div_name AS  div_name, ' -- Žæˆø‹æ•ª–¼
                    || ' porc_v.rcv_pay_div     AS  pay_div, ';   -- Žó•¥‹æ•ª
@@ -1464,13 +1492,20 @@ AS
 --
     IF (( ln_col_pos >= cn_one )
       AND ( ln_col_pos <= gc_print_pos_max )) THEN
-      IF (gt_main_data(in_pos).pay_div = cv_one ) THEN
-      --”—Ê‰ÁŽZ
-        qty(ln_col_pos) :=  qty(ln_col_pos) + gt_main_data(in_pos).trans_qty;
-      ELSIF (gt_main_data(in_pos).div_name = gv_div_name ) THEN --’I‰µŒ¸‚Ìê‡
-        qty(ln_col_pos) :=  qty(ln_col_pos) + (gt_main_data(in_pos).trans_qty);
+-- 2008/08/28 v1.8 UPDATE START
+--      IF (gt_main_data(in_pos).pay_div = cv_one ) THEN
+--      --”—Ê‰ÁŽZ
+--        qty(ln_col_pos) :=  qty(ln_col_pos) + gt_main_data(in_pos).trans_qty;
+--      ELSIF (gt_main_data(in_pos).div_name = gv_div_name ) THEN --’I‰µŒ¸‚Ìê‡
+--        qty(ln_col_pos) :=  qty(ln_col_pos) + (gt_main_data(in_pos).trans_qty);
+--      ELSE
+--        qty(ln_col_pos) :=  qty(ln_col_pos) + (gt_main_data(in_pos).trans_qty * cn_min);
+      IF (gt_main_data(in_pos).div_name = gv_div_name ) THEN --’I‰µŒ¸‚Ìê‡
+        qty(ln_col_pos) :=  qty(ln_col_pos)
+          + (gt_main_data(in_pos).trans_qty / gt_main_data(in_pos).pay_div);
       ELSE
-        qty(ln_col_pos) :=  qty(ln_col_pos) + (gt_main_data(in_pos).trans_qty * cn_min);
+        qty(ln_col_pos) :=  qty(ln_col_pos) + (gt_main_data(in_pos).trans_qty);
+-- 2008/08/28 v1.8 UPDATE END
       --‹àŠz‰ÁŽZ
       END IF;
       IF ( gt_main_data(in_pos).cost_div = gc_cost_ac ) THEN

@@ -6,7 +6,7 @@ AS
  * Package Name           : xxwsh_common910_pkg(BODY)
  * Description            : 共通関数(BODY)
  * MD.070(CMD.050)        : なし
- * Version                : 1.14
+ * Version                : 1.15
  *
  * Program List
  *  -------------------- ---- ----- --------------------------------------------------
@@ -48,6 +48,7 @@ AS
  *  2008/07/30   1.13  ORACLE高山洋平   [出荷可否チェック]内部変更要求#182対応
  *  2008/08/04   1.14  ORACLE伊藤ひとみ [積載効率チェック(積載効率算出)] 変更要求対応#95のバグ対応
  *  2008/08/06   1.14  ORACLE伊藤ひとみ [積載効率チェック(積載効率算出)] 変更要求対応#164対応
+ *  2008/08/22   1.15  ORACLE伊藤ひとみ [出荷可否チェック] PT 2-2_15 指摘20
  *****************************************************************************************/
 --
 --#######################  固定グローバル定数宣言部 START   #######################
@@ -185,8 +186,8 @@ AS
     ln_max_palette_steps  NUMBER;                                         -- パレット当り最大段数
     ln_num_of_cases       NUMBER;                                         -- ケース入数
     lv_conv_unit          xxcmn_item_mst_v.conv_unit%TYPE;                -- 入出庫換算単位
-    lv_prod_class_code    xxcmn_item_categories4_v.prod_class_code%TYPE;  -- 商品区分
-    lv_item_class_code    xxcmn_item_categories4_v.item_class_code%TYPE;  -- 品目区分
+    lv_prod_class_code    xxcmn_item_categories5_v.prod_class_code%TYPE;  -- 商品区分
+    lv_item_class_code    xxcmn_item_categories5_v.item_class_code%TYPE;  -- 品目区分
 --
     ln_pallet_qty         NUMBER DEFAULT 0;                               -- パレット枚数
     ln_pallet_sum_weight  NUMBER DEFAULT 0;                               -- 合計パレット重量
@@ -277,7 +278,7 @@ AS
               lv_prod_class_code,
               lv_item_class_code
       FROM    xxcmn_item_mst2_v         ximv,      -- OPM品目情報VIEW2
-              xxcmn_item_categories4_v  xicv       -- OPM品目カテゴリ割当情報VIEW4
+              xxcmn_item_categories5_v  xicv       -- OPM品目カテゴリ割当情報VIEW5
       WHERE   ximv.item_no           =  iv_item_no
         AND   xicv.item_id           =  ximv.item_id
         AND   ROWNUM                 =  1
@@ -2854,46 +2855,98 @@ AS
 -- 2008/07/08_1.10_UPDATA_End
         -- 出荷依頼の抽出
         BEGIN
-          SELECT
-            NVL(SUM( CASE
-                   -- ステータスが指示(01,02,03)の場合
-                   WHEN ( xoha.req_status IN ( cv_request_status_01,
-                                               cv_request_status_02,
-                                               cv_request_status_03  ))
-                     THEN
-                       (  xola.quantity )                  -- 明細.数量＋数量
-                   -- ステータスが実績(04)の場合
-                   WHEN ( xoha.req_status  =   cv_request_status_04 )
-                     THEN
-                       (  xola.shipped_quantity  )          -- 明細.出荷実績数量＋数量
-                 END ),0)  + in_amount
+-- 2008/08/22 H.Itou Mod Start PT 2-2_15 指摘20
+--          SELECT
+--            NVL(SUM( CASE
+--                   -- ステータスが指示(01,02,03)の場合
+--                   WHEN ( xoha.req_status IN ( cv_request_status_01,
+--                                               cv_request_status_02,
+--                                               cv_request_status_03  ))
+--                     THEN
+--                       (  xola.quantity )                  -- 明細.数量＋数量
+--                   -- ステータスが実績(04)の場合
+--                   WHEN ( xoha.req_status  =   cv_request_status_04 )
+--                     THEN
+--                       (  xola.shipped_quantity  )          -- 明細.出荷実績数量＋数量
+--                 END ),0)  + in_amount
+--          INTO   ln_sum_ship_qty
+--          FROM   xxwsh_order_headers_all       xoha,                   -- 受注ヘッダアドオン
+--                 xxwsh_order_lines_all         xola,                   -- 受注明細アドオン
+--                 xxwsh_oe_transaction_types2_v xottv                   -- 受注タイプ情報View
+--          WHERE  xoha.deliver_from_id            = in_deliver_from_id     -- 出荷元ID
+--            AND  xoha.head_sales_branch          = iv_base_cd             -- 管轄拠点
+--            AND  xoha.latest_external_flag       = cv_yes                 -- 最新フラグ
+--            AND  xoha.req_status                <> cv_request_status_99   -- ステータス(取消以外)
+--            AND  xottv.transaction_type_id       = xoha.order_type_id     -- 受注タイプID
+--            AND  xottv.order_category_code       = cv_order               -- 受注カテゴリ
+--            AND  xottv.shipping_shikyu_class     = cv_shipping_shikyu_class_01
+--                                                                          -- 出荷支給区分
+--                 -- 指示の場合「着荷予定日」と、実績の場合「着荷日」と比較
+--            AND  ( ( ( xoha.req_status    IN ( cv_request_status_01,
+--                                               cv_request_status_02,
+--                                               cv_request_status_03  ))
+--                    AND
+--                     ( to_char(xoha.schedule_arrival_date, cv_format_yyyymm )
+--                                                 = to_char( id_date , cv_format_yyyymm )))
+--                 OR (( xoha.req_status     =   cv_request_status_04  )
+--                    AND
+--                     ( to_char(xoha.arrival_date, cv_format_yyyymm )
+--                                                 = to_char( id_date , cv_format_yyyymm ))))
+--            AND  xola.order_header_id            = xoha.order_header_id   -- 受注ヘッダID
+--            AND  xola.shipping_inventory_item_id = in_item_id             -- 品目ID
+--            AND  ((iv_request_no IS NULL) OR (xoha.request_no <> iv_request_no))  -- 依頼No
+--            AND  NVL( xola.delete_flag, cv_no ) <> cv_yes;                -- 削除フラグ('Y'以外)
+--
+          SELECT NVL(SUM(subsql.quantity),0)  + in_amount
           INTO   ln_sum_ship_qty
-          FROM   xxwsh_order_headers_all       xoha,                   -- 受注ヘッダアドオン
-                 xxwsh_order_lines_all         xola,                   -- 受注明細アドオン
-                 xxwsh_oe_transaction_types2_v xottv                   -- 受注タイプ情報View
-          WHERE  xoha.deliver_from_id            = in_deliver_from_id     -- 出荷元ID
-            AND  xoha.head_sales_branch          = iv_base_cd             -- 管轄拠点
-            AND  xoha.latest_external_flag       = cv_yes                 -- 最新フラグ
-            AND  xoha.req_status                <> cv_request_status_99   -- ステータス(取消以外)
-            AND  xottv.transaction_type_id       = xoha.order_type_id     -- 受注タイプID
-            AND  xottv.order_category_code       = cv_order               -- 受注カテゴリ
-            AND  xottv.shipping_shikyu_class     = cv_shipping_shikyu_class_01
-                                                                          -- 出荷支給区分
-                 -- 指示の場合「着荷予定日」と、実績の場合「着荷日」と比較
-            AND  ( ( ( xoha.req_status    IN ( cv_request_status_01,
-                                               cv_request_status_02,
-                                               cv_request_status_03  ))
-                    AND
-                     ( to_char(xoha.schedule_arrival_date, cv_format_yyyymm )
-                                                 = to_char( id_date , cv_format_yyyymm )))
-                 OR (( xoha.req_status     =   cv_request_status_04  )
-                    AND
-                     ( to_char(xoha.arrival_date, cv_format_yyyymm )
-                                                 = to_char( id_date , cv_format_yyyymm ))))
-            AND  xola.order_header_id            = xoha.order_header_id   -- 受注ヘッダID
-            AND  xola.shipping_inventory_item_id = in_item_id             -- 品目ID
-            AND  ((iv_request_no IS NULL) OR (xoha.request_no <> iv_request_no))  -- 依頼No
-            AND  NVL( xola.delete_flag, cv_no ) <> cv_yes;                -- 削除フラグ('Y'以外)
+          FROM  (-- ステータスが入力中～締済の場合
+                 SELECT xola.quantity                 quantity                            -- 明細.数量
+                 FROM   xxwsh_order_headers_all       xoha,                               -- 受注ヘッダアドオン
+                        xxwsh_order_lines_all         xola,                               -- 受注明細アドオン
+                        xxwsh_oe_transaction_types2_v xottv                               -- 受注タイプ情報View
+                 WHERE  xoha.deliver_from_id            = in_deliver_from_id              -- 出荷元ID
+                 AND    xoha.head_sales_branch          = iv_base_cd                      -- 管轄拠点
+                 AND    xoha.latest_external_flag       = cv_yes                          -- 最新フラグ
+                 AND    xoha.req_status                <> cv_request_status_99            -- ステータス(取消以外)
+                 AND    xottv.transaction_type_id       = xoha.order_type_id              -- 受注タイプID
+                 AND    xottv.order_category_code       = cv_order                        -- 受注カテゴリ
+                 AND    xottv.shipping_shikyu_class     = cv_shipping_shikyu_class_01     -- 出荷支給区分
+                 AND    xoha.req_status              IN ( cv_request_status_01,           -- ステータス01:入力中
+                                                          cv_request_status_02,           -- ステータス02:拠点確定
+                                                          cv_request_status_03  )         -- ステータス03:締め済み
+                 AND    TO_CHAR(xoha.schedule_arrival_date, cv_format_yyyymm )            -- 着荷予定日
+                                                        = TO_CHAR( id_date , cv_format_yyyymm )
+                 AND    xola.order_header_id            = xoha.order_header_id            -- 受注ヘッダID
+                 AND    xola.shipping_inventory_item_id = in_item_id                      -- 品目ID
+                 AND  ((iv_request_no                  IS NULL)                           -- 依頼No
+                   OR  (xoha.request_no                <> iv_request_no))
+                 AND    NVL( xola.delete_flag, cv_no ) <> cv_yes                          -- 削除フラグ('Y'以外)
+                 -------------------------
+                 UNION ALL
+                 -------------------------
+                 -- ステータスが出荷実績確定済の場合
+                 SELECT xola.shipped_quantity         quantity                            -- 明細.出荷実績数量
+                 FROM   xxwsh_order_headers_all       xoha,                               -- 受注ヘッダアドオン
+                        xxwsh_order_lines_all         xola,                               -- 受注明細アドオン
+                        xxwsh_oe_transaction_types2_v xottv                               -- 受注タイプ情報View
+                 WHERE  xoha.deliver_from_id            = in_deliver_from_id              -- 出荷元ID
+                 AND    xoha.head_sales_branch          = iv_base_cd                      -- 管轄拠点
+                 AND    xoha.latest_external_flag       = cv_yes                          -- 最新フラグ
+                 AND    xoha.req_status                <> cv_request_status_99            -- ステータス(取消以外)
+                 AND    xottv.transaction_type_id       = xoha.order_type_id              -- 受注タイプID
+                 AND    xottv.order_category_code       = cv_order                        -- 受注カテゴリ
+                 AND    xottv.shipping_shikyu_class     = cv_shipping_shikyu_class_01     -- 出荷支給区分
+                 AND    xoha.req_status                 = cv_request_status_04            -- ステータス04:出荷実績確定済
+                 AND    TO_CHAR(xoha.arrival_date, cv_format_yyyymm )                     -- 着荷日
+                                                        = TO_CHAR( id_date , cv_format_yyyymm )
+                 AND    xola.order_header_id            = xoha.order_header_id            -- 受注ヘッダID
+                 AND    xola.shipping_inventory_item_id = in_item_id                      -- 品目ID
+                 AND  ((iv_request_no                  IS NULL)                           -- 依頼No
+                   OR  (xoha.request_no                <> iv_request_no))
+                 AND    NVL( xola.delete_flag, cv_no ) <> cv_yes                          -- 削除フラグ('Y'以外)
+                ) subsql
+          ;
+-- 2008/08/22 H.Itou Mod End
         EXCEPTION
           WHEN NO_DATA_FOUND THEN
             NULL;
@@ -2935,47 +2988,97 @@ AS
         --
         -- 出荷依頼の抽出
         BEGIN
-          SELECT
-            NVL(SUM( CASE
-                   WHEN ( xoha.req_status IN ( cv_request_status_01,
-                                               cv_request_status_02,
-                                               cv_request_status_03  ))
-                     THEN
-                       (  xola.quantity )
-                   WHEN ( xoha.req_status  =   cv_request_status_04 )
-                     THEN
-                       (  xola.shipped_quantity )
-                 END ), 0) + in_amount
+-- 2008/08/22 H.Itou Mod Start PT 2-2_15 指摘20
+--          SELECT
+--            NVL(SUM( CASE
+--                   WHEN ( xoha.req_status IN ( cv_request_status_01,
+--                                               cv_request_status_02,
+--                                               cv_request_status_03  ))
+--                     THEN
+--                       (  xola.quantity )
+--                   WHEN ( xoha.req_status  =   cv_request_status_04 )
+--                     THEN
+--                       (  xola.shipped_quantity )
+--                 END ), 0) + in_amount
+--          INTO   ln_sum_ship_qty
+--          FROM   xxwsh_order_headers_all       xoha,
+--                 xxwsh_order_lines_all         xola,
+--                 xxwsh_oe_transaction_types2_v xottv
+--          WHERE  xoha.head_sales_branch          = iv_base_cd                      -- 拠点コード
+--            AND  xoha.latest_external_flag       = cv_yes                          -- 最新フラグ
+--            AND  xoha.req_status                <> cv_request_status_99            -- ステータス取消以外
+--            AND  xottv.transaction_type_id       = xoha.order_type_id              -- 受注タイプID
+--            AND  xottv.order_category_code       = cv_order                        -- 受注カテゴリ
+--            AND  xottv.shipping_shikyu_class     = cv_shipping_shikyu_class_01     -- 出荷支給区分
+--                 -- 指示の場合「着荷予定日」と、実績の場合「着荷日」と比較
+--            AND  ( ( ( xoha.req_status IN ( cv_request_status_01,
+--                                            cv_request_status_02,
+--                                            cv_request_status_03  ))
+--                    AND
+--                     (( xoha.schedule_arrival_date   >= trunc( ln_min_start_date ) )
+--                     AND
+--                      ( xoha.schedule_arrival_date   <= trunc( ln_max_end_date   ) ))
+--                 )
+--                 OR
+--                 (( xoha.req_status = cv_request_status_04  )
+--                   AND
+--                   ((   xoha.arrival_date            >= trunc( ln_min_start_date ) )
+--                   AND
+--                    (   xoha.arrival_date            <= trunc( ln_max_end_date   ) ))
+--                 ) )
+--            AND  xola.order_header_id            = xoha.order_header_id            -- 受注ヘッダID
+--            AND  xola.shipping_inventory_item_id = in_item_id                      -- 品目ID
+--            AND  ((iv_request_no IS NULL) OR (xoha.request_no <> iv_request_no))   -- 依頼No
+--            AND  NVL( xola.delete_flag, cv_no ) <> cv_yes;                         -- 削除フラグ
+--
+          SELECT NVL(SUM(subsql.quantity),0)  + in_amount
           INTO   ln_sum_ship_qty
-          FROM   xxwsh_order_headers_all       xoha,
-                 xxwsh_order_lines_all         xola,
-                 xxwsh_oe_transaction_types2_v xottv
-          WHERE  xoha.head_sales_branch          = iv_base_cd                      -- 拠点コード
-            AND  xoha.latest_external_flag       = cv_yes                          -- 最新フラグ
-            AND  xoha.req_status                <> cv_request_status_99            -- ステータス取消以外
-            AND  xottv.transaction_type_id       = xoha.order_type_id              -- 受注タイプID
-            AND  xottv.order_category_code       = cv_order                        -- 受注カテゴリ
-            AND  xottv.shipping_shikyu_class     = cv_shipping_shikyu_class_01     -- 出荷支給区分
-                 -- 指示の場合「着荷予定日」と、実績の場合「着荷日」と比較
-            AND  ( ( ( xoha.req_status IN ( cv_request_status_01,
-                                            cv_request_status_02,
-                                            cv_request_status_03  ))
-                    AND
-                     (( xoha.schedule_arrival_date   >= trunc( ln_min_start_date ) )
-                     AND
-                      ( xoha.schedule_arrival_date   <= trunc( ln_max_end_date   ) ))
-                 )
-                 OR
-                 (( xoha.req_status = cv_request_status_04  )
-                   AND
-                   ((   xoha.arrival_date            >= trunc( ln_min_start_date ) )
-                   AND
-                    (   xoha.arrival_date            <= trunc( ln_max_end_date   ) ))
-                 ) )
-            AND  xola.order_header_id            = xoha.order_header_id            -- 受注ヘッダID
-            AND  xola.shipping_inventory_item_id = in_item_id                      -- 品目ID
-            AND  ((iv_request_no IS NULL) OR (xoha.request_no <> iv_request_no))   -- 依頼No
-            AND  NVL( xola.delete_flag, cv_no ) <> cv_yes;                         -- 削除フラグ
+          FROM  (-- ステータスが入力中～締済の場合
+                 SELECT xola.quantity                 quantity                            -- 明細.数量
+                 FROM   xxwsh_order_headers_all       xoha                                -- 受注ヘッダアドオン
+                       ,xxwsh_order_lines_all         xola                                -- 受注明細アドオン
+                       ,xxwsh_oe_transaction_types2_v xottv                               -- 受注タイプ情報VIEW
+                 WHERE  xoha.head_sales_branch          = iv_base_cd                      -- 拠点コード
+                 AND    xoha.latest_external_flag       = cv_yes                          -- 最新フラグ
+                 AND    xoha.req_status                <> cv_request_status_99            -- ステータス取消以外
+                 AND    xottv.transaction_type_id       = xoha.order_type_id              -- 受注タイプID
+                 AND    xottv.order_category_code       = cv_order                        -- 受注カテゴリ
+                 AND    xottv.shipping_shikyu_class     = cv_shipping_shikyu_class_01     -- 出荷支給区分
+                 AND    xoha.req_status              IN ( cv_request_status_01,           -- ステータス01:入力中
+                                                          cv_request_status_02,           -- ステータス02:拠点確定
+                                                          cv_request_status_03  )         -- ステータス03:締め済み
+                 AND    xoha.schedule_arrival_date     >= TRUNC( ln_min_start_date )      -- 着荷予定日
+                 AND    xoha.schedule_arrival_date     <= TRUNC( ln_max_end_date   )      -- 着荷予定日
+                 AND    xola.order_header_id            = xoha.order_header_id            -- 受注ヘッダID
+                 AND    xola.shipping_inventory_item_id = in_item_id                      -- 品目ID
+                 AND  ((iv_request_no                  IS NULL)                           -- 依頼No
+                   OR  (xoha.request_no                <> iv_request_no))
+                 AND    NVL( xola.delete_flag, cv_no ) <> cv_yes                          -- 削除フラグ
+                 -------------------------
+                 UNION ALL
+                 -------------------------
+                 -- ステータスが出荷実績確定済の場合
+                 SELECT xola.shipped_quantity         quantity                            -- 明細.出荷実績数量
+                 FROM   xxwsh_order_headers_all       xoha                                -- 受注ヘッダアドオン
+                       ,xxwsh_order_lines_all         xola                                -- 受注明細アドオン
+                       ,xxwsh_oe_transaction_types2_v xottv                               -- 受注タイプ情報VIEW
+                 WHERE  xoha.head_sales_branch          = iv_base_cd                      -- 拠点コード
+                 AND    xoha.latest_external_flag       = cv_yes                          -- 最新フラグ
+                 AND    xoha.req_status                <> cv_request_status_99            -- ステータス取消以外
+                 AND    xottv.transaction_type_id       = xoha.order_type_id              -- 受注タイプID
+                 AND    xottv.order_category_code       = cv_order                        -- 受注カテゴリ
+                 AND    xottv.shipping_shikyu_class     = cv_shipping_shikyu_class_01     -- 出荷支給区分
+                 AND    xoha.req_status                 = cv_request_status_04            -- ステータス04:出荷実績計上済
+                 AND    xoha.arrival_date              >= TRUNC( ln_min_start_date )      -- 着荷日
+                 AND    xoha.arrival_date              <= TRUNC( ln_max_end_date   )      -- 着荷日
+                 AND    xola.order_header_id            = xoha.order_header_id            -- 受注ヘッダID
+                 AND    xola.shipping_inventory_item_id = in_item_id                      -- 品目ID
+                 AND  ((iv_request_no                 IS NULL)                            -- 依頼No
+                   OR  (xoha.request_no               <> iv_request_no))
+                 AND    NVL( xola.delete_flag, cv_no ) <> cv_yes                          -- 削除フラグ
+                ) subsql
+          ;
+-- 2008/08/22 H.Itou Mod End
         EXCEPTION
           WHEN NO_DATA_FOUND THEN
             NULL;
@@ -3045,48 +3148,99 @@ AS
           --
           -- 出荷依頼の抽出
           BEGIN
-            SELECT
-              NVL(SUM( CASE
-                     WHEN ( xoha.req_status IN ( cv_request_status_01,
-                                                 cv_request_status_02,
-                                                 cv_request_status_03  ))
-                       THEN
-                         (  xola.quantity         )
-                     WHEN ( xoha.req_status  =   cv_request_status_04 )
-                       THEN
-                         (  xola.shipped_quantity )
-                   END ),0)    + in_amount
-                   ,count(*)
+-- 2008/08/22 H.Itou Mod Start PT 2-2_15 指摘20
+--            SELECT
+--              NVL(SUM( CASE
+--                     WHEN ( xoha.req_status IN ( cv_request_status_01,
+--                                                 cv_request_status_02,
+--                                                 cv_request_status_03  ))
+--                       THEN
+--                         (  xola.quantity         )
+--                     WHEN ( xoha.req_status  =   cv_request_status_04 )
+--                       THEN
+--                         (  xola.shipped_quantity )
+--                   END ),0)    + in_amount
+--                   ,count(*)
+--            INTO   ln_sum_ship_qty,ln_forecast_cnt
+--            FROM   xxwsh_order_headers_all       xoha,
+--                   xxwsh_order_lines_all         xola,
+--                   xxwsh_oe_transaction_types2_v xottv
+--            WHERE  xoha.deliver_from_id           = in_deliver_from_id            -- 出荷元
+--              AND  xoha.latest_external_flag      = cv_yes                        -- 最新フラグ
+--              AND  xoha.req_status               <> cv_request_status_99          -- ステータス取消以外
+--              AND  xottv.transaction_type_id      = xoha.order_type_id            -- 受注タイプID
+--              AND  xottv.order_category_code      = cv_order                      -- 受注カテゴリ
+--              AND  xottv.shipping_shikyu_class    = cv_shipping_shikyu_class_01   -- 出荷支給区分
+--                   -- 指示の場合「出荷予定日」と、実績の場合「出荷日」と比較
+--              AND  ( ( ( xoha.req_status IN ( cv_request_status_01,
+--                                              cv_request_status_02,
+--                                              cv_request_status_03  ))
+--                      AND
+--                       (( xoha.schedule_ship_date   >= trunc( ln_min_start_date ) )
+--                       AND
+--                        ( xoha.schedule_ship_date   <= trunc( ln_max_end_date   ) ))
+--                   )
+--                   OR
+--                   (( xoha.req_status = cv_request_status_04  )
+--                     AND
+--                     ((   xoha.shipped_date         >= trunc( ln_min_start_date ) )
+--                     AND
+--                      (   xoha.shipped_date         <= trunc( ln_max_end_date ) ))
+--                   ) )
+--              AND  xola.order_header_id            = xoha.order_header_id            -- 受注ヘッダID
+--              AND  xola.shipping_inventory_item_id = in_item_id                      -- 品目ID
+--              AND  ((iv_request_no IS NULL) OR (xoha.request_no <> iv_request_no))   -- 依頼No
+--              AND  NVL( xola.delete_flag, cv_no ) <> cv_yes;                         -- 削除フラグ
+--
+            SELECT NVL(SUM(subsql.quantity),0)  + in_amount
+                  ,COUNT(*)                                                                 -- フォーキャスト数
             INTO   ln_sum_ship_qty,ln_forecast_cnt
-            FROM   xxwsh_order_headers_all       xoha,
-                   xxwsh_order_lines_all         xola,
-                   xxwsh_oe_transaction_types2_v xottv
-            WHERE  xoha.deliver_from_id           = in_deliver_from_id            -- 出荷元
-              AND  xoha.latest_external_flag      = cv_yes                        -- 最新フラグ
-              AND  xoha.req_status               <> cv_request_status_99          -- ステータス取消以外
-              AND  xottv.transaction_type_id      = xoha.order_type_id            -- 受注タイプID
-              AND  xottv.order_category_code      = cv_order                      -- 受注カテゴリ
-              AND  xottv.shipping_shikyu_class    = cv_shipping_shikyu_class_01   -- 出荷支給区分
-                   -- 指示の場合「出荷予定日」と、実績の場合「出荷日」と比較
-              AND  ( ( ( xoha.req_status IN ( cv_request_status_01,
-                                              cv_request_status_02,
-                                              cv_request_status_03  ))
-                      AND
-                       (( xoha.schedule_ship_date   >= trunc( ln_min_start_date ) )
-                       AND
-                        ( xoha.schedule_ship_date   <= trunc( ln_max_end_date   ) ))
-                   )
-                   OR
-                   (( xoha.req_status = cv_request_status_04  )
-                     AND
-                     ((   xoha.shipped_date         >= trunc( ln_min_start_date ) )
-                     AND
-                      (   xoha.shipped_date         <= trunc( ln_max_end_date ) ))
-                   ) )
-              AND  xola.order_header_id            = xoha.order_header_id            -- 受注ヘッダID
-              AND  xola.shipping_inventory_item_id = in_item_id                      -- 品目ID
-              AND  ((iv_request_no IS NULL) OR (xoha.request_no <> iv_request_no))   -- 依頼No
-              AND  NVL( xola.delete_flag, cv_no ) <> cv_yes;                         -- 削除フラグ
+            FROM  (-- ステータスが入力中～締済の場合
+                   SELECT xola.quantity                 quantity                            -- 明細.数量
+                   FROM   xxwsh_order_headers_all       xoha                                -- 受注ヘッダアドオン
+                         ,xxwsh_order_lines_all         xola                                -- 受注明細アドオン
+                         ,xxwsh_oe_transaction_types2_v xottv                               -- 受注タイプ情報VIEW
+                   WHERE  xoha.deliver_from_id            = in_deliver_from_id              -- 出荷元
+                   AND    xoha.latest_external_flag       = cv_yes                          -- 最新フラグ
+                   AND    xoha.req_status                <> cv_request_status_99            -- ステータス取消以外
+                   AND    xottv.transaction_type_id       = xoha.order_type_id              -- 受注タイプID
+                   AND    xottv.order_category_code       = cv_order                        -- 受注カテゴリ
+                   AND    xottv.shipping_shikyu_class     = cv_shipping_shikyu_class_01     -- 出荷支給区分
+                   AND    xoha.req_status              IN ( cv_request_status_01,           -- ステータス01:入力中
+                                                            cv_request_status_02,           -- ステータス02:拠点確定
+                                                            cv_request_status_03  )         -- ステータス03:締め済み
+                   AND    xoha.schedule_ship_date        >= TRUNC( ln_min_start_date )      -- 出荷予定日
+                   AND    xoha.schedule_ship_date        <= TRUNC( ln_max_end_date   )      -- 出荷予定日
+                   AND    xola.order_header_id            = xoha.order_header_id            -- 受注ヘッダID
+                   AND    xola.shipping_inventory_item_id = in_item_id                      -- 品目ID
+                   AND  ((iv_request_no                  IS NULL)                           -- 依頼No
+                     OR  (xoha.request_no                <> iv_request_no))
+                   AND    NVL( xola.delete_flag, cv_no ) <> cv_yes                          -- 削除フラグ
+                   -------------------------
+                   UNION ALL
+                   -------------------------
+                   -- ステータスが出荷実績確定済の場合
+                   SELECT xola.shipped_quantity         quantity                            -- 明細.出荷実績数量
+                   FROM   xxwsh_order_headers_all       xoha                                -- 受注ヘッダアドオン
+                         ,xxwsh_order_lines_all         xola                                -- 受注明細アドオン
+                         ,xxwsh_oe_transaction_types2_v xottv                               -- 受注タイプ情報VIEW
+                   WHERE  xoha.deliver_from_id            = in_deliver_from_id              -- 出荷元
+                   AND    xoha.latest_external_flag       = cv_yes                          -- 最新フラグ
+                   AND    xoha.req_status                <> cv_request_status_99            -- ステータス取消以外
+                   AND    xottv.transaction_type_id       = xoha.order_type_id              -- 受注タイプID
+                   AND    xottv.order_category_code       = cv_order                        -- 受注カテゴリ
+                   AND    xottv.shipping_shikyu_class     = cv_shipping_shikyu_class_01     -- 出荷支給区分
+                   AND    xoha.req_status                 = cv_request_status_04            -- ステータス04:出荷実績計上済
+                   AND    xoha.shipped_date              >= TRUNC( ln_min_start_date )      -- 出荷日
+                   AND    xoha.shipped_date              <= TRUNC( ln_max_end_date   )      -- 出荷日
+                   AND    xola.order_header_id            = xoha.order_header_id            -- 受注ヘッダID
+                   AND    xola.shipping_inventory_item_id = in_item_id                      -- 品目ID
+                   AND  ((iv_request_no                  IS NULL)                           -- 依頼No
+                     OR  (xoha.request_no                <> iv_request_no))
+                   AND    NVL( xola.delete_flag, cv_no ) <> cv_yes                          -- 削除フラグ
+                  ) subsql
+            ;
+-- 2008/08/22 H.Itou Mod End
           EXCEPTION
             WHEN NO_DATA_FOUND THEN
               NULL;
@@ -3146,48 +3300,100 @@ AS
         --
         -- 出荷依頼の抽出
         BEGIN
-          SELECT
-            NVL(SUM( CASE
-                   WHEN ( xoha.req_status IN ( cv_request_status_01,
-                                               cv_request_status_02,
-                                               cv_request_status_03  ))
-                     THEN
-                       (  xola.quantity          )
-                   WHEN ( xoha.req_status  =   cv_request_status_04 )
-                     THEN
-                       (  xola.shipped_quantity  )
-                 END ),0)  + in_amount
+-- 2008/08/22 H.Itou Mod Start PT 2-2_15 指摘20
+--          SELECT
+--            NVL(SUM( CASE
+--                   WHEN ( xoha.req_status IN ( cv_request_status_01,
+--                                               cv_request_status_02,
+--                                               cv_request_status_03  ))
+--                     THEN
+--                       (  xola.quantity          )
+--                   WHEN ( xoha.req_status  =   cv_request_status_04 )
+--                     THEN
+--                       (  xola.shipped_quantity  )
+--                 END ),0)  + in_amount
+--          INTO   ln_sum_ship_qty
+--          FROM   xxwsh_order_headers_all       xoha,
+--                 xxwsh_order_lines_all         xola,
+--                 xxwsh_oe_transaction_types2_v xottv
+--          WHERE  xoha.deliver_from_id           = in_deliver_from_id          -- 出荷元
+--            AND  xoha.head_sales_branch         = iv_base_cd                  -- 拠点コード
+--            AND  xoha.latest_external_flag      = cv_yes                      -- 最新フラグ
+--            AND  xoha.req_status               <> cv_request_status_99        -- ステータス取消以外
+--            AND  xottv.transaction_type_id      = xoha.order_type_id          -- 受注タイプID
+--            AND  xottv.order_category_code      = cv_order                    -- 受注カテゴリ
+--            AND  xottv.shipping_shikyu_class    = cv_shipping_shikyu_class_01 -- 出荷支給区分
+--                 -- 指示の場合「出荷予定日」と、実績の場合「出荷日」と比較
+--            AND  ( ( ( xoha.req_status IN ( cv_request_status_01,
+--                                            cv_request_status_02,
+--                                            cv_request_status_03  ))
+--                   AND
+--                    (( xoha.schedule_ship_date  >= trunc( ln_min_start_date ) )
+--                   AND
+--                     ( xoha.schedule_ship_date  <= trunc( ln_max_end_date ) ))
+--                 )
+--                 OR
+--                 ( ( xoha.req_status = cv_request_status_04  )
+--                   AND
+--                   ((  xoha.shipped_date        >= trunc( ln_min_start_date ) )
+--                   AND
+--                    (  xoha.shipped_date        <= trunc( ln_max_end_date ) ))
+--                 ) )
+--            AND  xola.order_header_id            = xoha.order_header_id            -- 受注ヘッダID
+--            AND  xola.shipping_inventory_item_id = in_item_id                      -- 品目ID
+--            AND  ((iv_request_no IS NULL) OR (xoha.request_no <> iv_request_no))   -- 依頼No
+--            AND  NVL( xola.delete_flag, cv_no ) <> cv_yes;                         -- 削除フラグ
+--
+          SELECT NVL(SUM(subsql.quantity),0)  + in_amount
           INTO   ln_sum_ship_qty
-          FROM   xxwsh_order_headers_all       xoha,
-                 xxwsh_order_lines_all         xola,
-                 xxwsh_oe_transaction_types2_v xottv
-          WHERE  xoha.deliver_from_id           = in_deliver_from_id          -- 出荷元
-            AND  xoha.head_sales_branch         = iv_base_cd                  -- 拠点コード
-            AND  xoha.latest_external_flag      = cv_yes                      -- 最新フラグ
-            AND  xoha.req_status               <> cv_request_status_99        -- ステータス取消以外
-            AND  xottv.transaction_type_id      = xoha.order_type_id          -- 受注タイプID
-            AND  xottv.order_category_code      = cv_order                    -- 受注カテゴリ
-            AND  xottv.shipping_shikyu_class    = cv_shipping_shikyu_class_01 -- 出荷支給区分
-                 -- 指示の場合「出荷予定日」と、実績の場合「出荷日」と比較
-            AND  ( ( ( xoha.req_status IN ( cv_request_status_01,
-                                            cv_request_status_02,
-                                            cv_request_status_03  ))
-                   AND
-                    (( xoha.schedule_ship_date  >= trunc( ln_min_start_date ) )
-                   AND
-                     ( xoha.schedule_ship_date  <= trunc( ln_max_end_date ) ))
-                 )
-                 OR
-                 ( ( xoha.req_status = cv_request_status_04  )
-                   AND
-                   ((  xoha.shipped_date        >= trunc( ln_min_start_date ) )
-                   AND
-                    (  xoha.shipped_date        <= trunc( ln_max_end_date ) ))
-                 ) )
-            AND  xola.order_header_id            = xoha.order_header_id            -- 受注ヘッダID
-            AND  xola.shipping_inventory_item_id = in_item_id                      -- 品目ID
-            AND  ((iv_request_no IS NULL) OR (xoha.request_no <> iv_request_no))   -- 依頼No
-            AND  NVL( xola.delete_flag, cv_no ) <> cv_yes;                         -- 削除フラグ
+          FROM  (-- ステータスが入力中～締済の場合
+                 SELECT xola.quantity                 quantity                            -- 明細.数量
+                 FROM   xxwsh_order_headers_all       xoha                                -- 受注ヘッダアドオン
+                       ,xxwsh_order_lines_all         xola                                -- 受注明細アドオン
+                       ,xxwsh_oe_transaction_types2_v xottv                               -- 受注タイプ情報VIEW
+                 WHERE  xoha.deliver_from_id            = in_deliver_from_id              -- 出荷元
+                 AND    xoha.head_sales_branch          = iv_base_cd                      -- 拠点コード
+                 AND    xoha.latest_external_flag       = cv_yes                          -- 最新フラグ
+                 AND    xoha.req_status                <> cv_request_status_99            -- ステータス取消以外
+                 AND    xottv.transaction_type_id       = xoha.order_type_id              -- 受注タイプID
+                 AND    xottv.order_category_code       = cv_order                        -- 受注カテゴリ
+                 AND    xottv.shipping_shikyu_class     = cv_shipping_shikyu_class_01     -- 出荷支給区分
+                 AND    xoha.req_status              IN ( cv_request_status_01,            -- ステータス01:入力中
+                                                          cv_request_status_02,            -- ステータス02:拠点確定
+                                                          cv_request_status_03  )          -- ステータス03:締め済み
+                 AND    xoha.schedule_ship_date        >= TRUNC( ln_min_start_date )
+                 AND    xoha.schedule_ship_date        <= TRUNC( ln_max_end_date   )
+                 AND    xola.order_header_id            = xoha.order_header_id            -- 受注ヘッダID
+                 AND    xola.shipping_inventory_item_id = in_item_id                      -- 品目ID
+                 AND  ((iv_request_no                  IS NULL)                           -- 依頼No
+                   OR  (xoha.request_no                <> iv_request_no))
+                 AND    NVL( xola.delete_flag, cv_no ) <> cv_yes                          -- 削除フラグ
+                 -------------------------
+                 UNION ALL
+                 -------------------------
+                 -- ステータスが出荷実績確定済の場合
+                 SELECT xola.shipped_quantity         quantity                            -- 明細.出荷実績数量
+                 FROM   xxwsh_order_headers_all       xoha                                -- 受注ヘッダアドオン
+                       ,xxwsh_order_lines_all         xola                                -- 受注明細アドオン
+                       ,xxwsh_oe_transaction_types2_v xottv                               -- 受注タイプ情報VIEW
+                 WHERE  xoha.deliver_from_id            = in_deliver_from_id              -- 出荷元
+                 AND    xoha.head_sales_branch          = iv_base_cd                      -- 拠点コード
+                 AND    xoha.latest_external_flag       = cv_yes                          -- 最新フラグ
+                 AND    xoha.req_status                <> cv_request_status_99            -- ステータス取消以外
+                 AND    xottv.transaction_type_id       = xoha.order_type_id              -- 受注タイプID
+                 AND    xottv.order_category_code       = cv_order                        -- 受注カテゴリ
+                 AND    xottv.shipping_shikyu_class     = cv_shipping_shikyu_class_01     -- 出荷支給区分
+                 AND    xoha.req_status                 = cv_request_status_04            -- ステータス04:出荷実績計上済
+                 AND    xoha.shipped_date              >= TRUNC( ln_min_start_date )      -- 出荷日
+                 AND    xoha.shipped_date              <= TRUNC( ln_max_end_date   )      -- 出荷日
+                 AND    xola.order_header_id            = xoha.order_header_id            -- 受注ヘッダID
+                 AND    xola.shipping_inventory_item_id = in_item_id                      -- 品目ID
+                 AND  ((iv_request_no                  IS NULL)                           -- 依頼No
+                   OR  (xoha.request_no                <> iv_request_no))
+                 AND    NVL( xola.delete_flag, cv_no ) <> cv_yes                          -- 削除フラグ
+                 ) subsql
+          ;
+-- 2008/08/22 H.Itou Mod End
         EXCEPTION
           WHEN NO_DATA_FOUND THEN
             NULL;

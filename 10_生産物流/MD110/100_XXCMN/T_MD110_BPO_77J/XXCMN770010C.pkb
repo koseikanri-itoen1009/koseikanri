@@ -7,7 +7,7 @@ AS
  * Description      : 標準原価内訳表
  * MD.050/070       : 月次〆切処理帳票Issue1.0 (T_MD050_BPO_770)
  *                    月次〆切処理帳票Issue1.0 (T_MD070_BPO_77J)
- * Version          : 1.8
+ * Version          : 1.9
  *
  * Program List
  * -------------------------- ----------------------------------------------------------
@@ -37,6 +37,7 @@ AS
  *  2008/07/23    1.7   Y.Ishikawa       XXCMN_ITEM_CATEGORIES3_V→XXCMN_ITEM_CATEGORIES6_V変更
  *  2008/08/07    1.8   Y.Majikina       参照するVIEWをXXCMN_RCV_PAY_MST_PORC_RMA_V →
  *                                       XXCMN_RCV_PAY_MST_PORC_RMA10_Vへ変更
+ *  2008/08/28    1.9   A.Shiina         T_TE080_BPO_770 指摘19対応
  *
  *****************************************************************************************/
 --
@@ -590,7 +591,10 @@ AS
     -- ----------------------------------------------------
     -- 1:移動積送あり
     lv_from_xfer := lv_select_inner
-                 || ' it.trans_qty trans_qty ' -- 数量
+-- 2008/08/28 v1.9 UPDATE START
+--                 || ' it.trans_qty trans_qty ' -- 数量
+                 || ' it.trans_qty * TO_NUMBER(xrpmxv.rcv_pay_div) trans_qty ' -- 数量
+-- 2008/08/28 v1.9 UPDATE END
                  -- from
                  || ' FROM '
                  || ' ic_tran_pnd               it,     '
@@ -621,7 +625,10 @@ AS
                  ;
     -- 2:移動積送なし
     lv_from_trni := lv_select_inner
-                 || ' it.trans_qty trans_qty ' -- 数量
+-- 2008/08/28 v1.9 UPDATE START
+--                 || ' it.trans_qty trans_qty ' -- 数量
+                 || ' it.trans_qty * TO_NUMBER(xrpmtv.rcv_pay_div) trans_qty ' -- 数量
+-- 2008/08/28 v1.9 UPDATE END
                  || ' FROM '
                  || ' ic_tran_cmp               it, '
                  || ' xxcmn_rcv_pay_mst_trni_v  xrpmtv, '
@@ -655,7 +662,10 @@ AS
                  ;
     -- 3:生産関連：reverse_id is null
     lv_from_prod_1 := lv_select_inner
-                   || ' it.trans_qty trans_qty ' -- 数量
+-- 2008/08/28 v1.9 UPDATE START
+--                   || ' it.trans_qty trans_qty ' -- 数量
+                   || ' it.trans_qty * TO_NUMBER(xrpmpv.rcv_pay_div) trans_qty ' -- 数量
+-- 2008/08/28 v1.9 UPDATE END
                    || ' FROM '
                    || ' ic_tran_pnd                 it, '
                    || ' xxcmn_rcv_pay_mst_prod_v    xrpmpv, '
@@ -681,7 +691,10 @@ AS
                    ;
     -- 4:在庫調整：(仕入先返品、浜岡受入、相手先在庫、移動実績訂正、黙視品目受払、その他受払以外)
     lv_from_adji_1 := lv_select_inner
-                   || ' it.trans_qty trans_qty ' -- 数量
+-- 2008/08/28 v1.9 UPDATE START
+--                   || ' it.trans_qty trans_qty ' -- 数量
+                   || ' it.trans_qty * TO_NUMBER(xrpmav.rcv_pay_div) trans_qty ' -- 数量
+-- 2008/08/28 v1.9 UPDATE END
                    || ' FROM '
                    || ' ic_tran_cmp               it, '
                    || ' xxcmn_rcv_pay_mst_adji_v  xrpmav, '
@@ -707,7 +720,10 @@ AS
                    ;
     -- 5:在庫調整：仕入先返品
     lv_from_adji_2 := lv_select_inner
-                   || ' it.trans_qty trans_qty ' -- 数量
+-- 2008/08/28 v1.9 UPDATE START
+--                   || ' it.trans_qty trans_qty ' -- 数量
+                   || ' it.trans_qty * TO_NUMBER(xrpmav.rcv_pay_div) trans_qty ' -- 数量
+-- 2008/08/28 v1.9 UPDATE END
                    || ' FROM '
                    || ' ic_tran_cmp               it, '         -- opm完了在庫トラン
                    || ' ic_adjs_jnl               iaj, '        -- opm在庫調整ジャーナル
@@ -736,7 +752,10 @@ AS
                    ;
     -- 6:在庫調整：浜岡受入
     lv_from_adji_3 := lv_select_inner
-                   || ' it.trans_qty trans_qty ' -- 数量
+-- 2008/08/28 v1.9 UPDATE START
+--                   || ' it.trans_qty trans_qty ' -- 数量
+                   || ' it.trans_qty * TO_NUMBER(xrpmav.rcv_pay_div) trans_qty ' -- 数量
+-- 2008/08/28 v1.9 UPDATE END
                    -- from
                    || ' FROM '
                    || ' ic_tran_cmp               it, '         -- opm完了在庫トラン
@@ -766,7 +785,10 @@ AS
                    ;
     -- 7:在庫調整(黙視品目払出、その他払出)
     lv_from_adji_4 := lv_select_inner
-                   || ' it.trans_qty trans_qty ' -- 数量
+-- 2008/08/28 v1.9 UPDATE START
+--                   || ' it.trans_qty trans_qty ' -- 数量
+                   || ' it.trans_qty * TO_NUMBER(xrpmav.rcv_pay_div) trans_qty ' -- 数量
+-- 2008/08/28 v1.9 UPDATE END
                    || ' FROM '
                    || ' ic_tran_cmp               it,     '
                    || ' xxcmn_rcv_pay_mst_adji_v  xrpmav, '
@@ -793,7 +815,10 @@ AS
                    ;
      -- 8:在庫調整：移動実績訂正
     lv_from_adji_5 := lv_select_inner
-                   || ' it.trans_qty trans_qty ' -- 数量
+-- 2008/08/28 v1.9 UPDATE START
+--                 || ' it.trans_qty trans_qty ' -- 数量
+                 || ' it.trans_qty * TO_NUMBER(xrpmav.rcv_pay_div) trans_qty ' -- 数量
+-- 2008/08/28 v1.9 UPDATE END
                    || ' FROM '
                    || ' ic_tran_cmp               it,     ' -- opm完了在庫トラン
                    || ' ic_adjs_jnl               iaj,    ' -- opm在庫調整ジャーナル
@@ -829,6 +854,8 @@ AS
                    ;
     -- 9:購買関連：文書タイプRMA
     lv_from_porc_1 := lv_select_inner
+-- 2008/08/28 v1.9 UPDATE START
+/*
                    || ' NVL2(xrpmprv.item_id, '
                    ||      ' it.trans_qty, '
                    ||      ' DECODE(xrpmprv.dealings_div_name,''' || gv_haiki || ''' '
@@ -836,6 +863,13 @@ AS
                    ||      '       , ''' || gv_mihon || ''' '
                    ||      '       ,it.trans_qty '
                    ||      ',it.trans_qty * TO_NUMBER(xrpmprv.rcv_pay_div))) trans_qty ' -- 数量
+*/
+                   || ' DECODE(xrpmprv.dealings_div_name,''' || gv_haiki || ''' '
+                   || '       ,it.trans_qty '
+                   || '       , ''' || gv_mihon || ''' '
+                   || '       ,it.trans_qty '
+                   || ',it.trans_qty * TO_NUMBER(xrpmprv.rcv_pay_div)) trans_qty ' -- 数量
+-- 2008/08/28 v1.9 UPDATE END
                    || ' FROM '
                    || ' ic_tran_pnd                    it,      '
                    || ' xxcmn_rcv_pay_mst_porc_rma10_v xrpmprv, '
@@ -856,7 +890,10 @@ AS
                    ;
     -- 10:購買関連：文書タイプPO
     lv_from_porc_2 := lv_select_inner
-                   || ' it.trans_qty trans_qty ' -- 数量
+-- 2008/08/28 v1.9 UPDATE START
+--                   || ' it.trans_qty trans_qty ' -- 数量
+                   || ' it.trans_qty * TO_NUMBER(xrpmppv.rcv_pay_div) trans_qty ' -- 数量
+-- 2008/08/28 v1.9 UPDATE END
                    || ' FROM '
                    || ' ic_tran_pnd                 it, '
                    || ' xxcmn_rcv_pay_mst_porc_po_v xrpmppv, '
@@ -878,6 +915,8 @@ AS
                    ;
     -- 11:受注関連
     lv_from_omso := lv_select_inner
+-- 2008/08/28 v1.9 UPDATE START
+/*
                  || ' NVL2(xrpmov.item_id, '
                  ||      ' it.trans_qty, '
                  ||      ' DECODE(xrpmov.dealings_div_name,''' || gv_haiki || ''' '
@@ -885,6 +924,13 @@ AS
                  ||      '       , ''' || gv_mihon || ''' '
                  ||      '       ,it.trans_qty '
                  ||      ',it.trans_qty * TO_NUMBER(xrpmov.rcv_pay_div))) trans_qty ' -- 数量
+*/
+                 || ' DECODE(xrpmov.dealings_div_name,''' || gv_haiki || ''' '
+                 || '       ,it.trans_qty '
+                 || '       , ''' || gv_mihon || ''' '
+                 || '       ,it.trans_qty '
+                 || ',it.trans_qty * TO_NUMBER(xrpmov.rcv_pay_div)) trans_qty ' -- 数量
+-- 2008/08/28 v1.9 UPDATE END
                  || ' FROM '
                  || ' ic_tran_pnd               it, '
                  || ' xxcmn_rcv_pay_mst_omso_v  xrpmov, '

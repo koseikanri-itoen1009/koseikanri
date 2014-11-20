@@ -7,7 +7,7 @@ AS
  * Description      : 受払残高表（Ⅰ）製品
  * MD.050/070       : 月次〆切処理帳票Issue1.0 (T_MD050_BPO_770)
  *                    月次〆切処理帳票Issue1.0 (T_MD070_BPO_77B)
- * Version          : 1.9
+ * Version          : 1.10
  *
  * Program List
  * -------------------------- ----------------------------------------------------------
@@ -43,6 +43,7 @@ AS
  *  2008/08/20    1.7   A.Shiina         T_TE080_BPO_770 指摘9対応
  *  2008/08/22    1.8   A.Shiina         T_TE080_BPO_770 指摘14対応
  *  2008/08/27    1.9   A.Shiina         T_TE080_BPO_770 指摘20対応
+ *  2008/08/28    1.10  A.Shiina         取引数量は取得時に受払区分を掛ける。
  *
  *****************************************************************************************/
 --
@@ -632,7 +633,10 @@ AS
     lv_select1 := lv_select1
               || ',trn.item_id              item_id'           -- 品目ID
               || ',trn.lot_id               lot_id'            -- ロットID
-              || ',trn.trans_qty            trans_qty'         -- 取引数量
+-- 2008/08/28 v1.10 UPDATE START
+--              || ',trn.trans_qty            trans_qty'         -- 取引数量
+              || ',trn.trans_qty * TO_NUMBER(xrpmxv.rcv_pay_div)  trans_qty'         -- 取引数量
+-- 2008/08/28 v1.10 UPDATE END
               || ',xleiv.item_attribute15   cost_mng_clss'     -- 原価管理区分
               || ',xleiv.lot_ctl            lot_ctl'           -- ロット管理
               || ',xleiv.actual_unit_price  actual_unit_price' -- 実際単価
@@ -1659,11 +1663,13 @@ AS
           IF (lv_cost_kbn = gc_cost_st ) THEN
             ln_amount := ln_unit_price * ln_quantity;
           END IF;
+-- 2008/08/28 v1.10 UPDATE START
           -- 払出項目の場合
-          IF (lb_payout = TRUE) THEN
-            ln_quantity := ln_quantity * -1;
-            ln_amount   := ln_amount * -1;
-          END IF;
+--          IF (lb_payout = TRUE) THEN
+--            ln_quantity := ln_quantity * -1;
+--            ln_amount   := ln_amount * -1;
+--          END IF;
+-- 2008/08/28 v1.10 UPDATE END
 -- 2008/08/22 v1.8 ADD START
           IF (lb_revi = TRUE) THEN
             ln_quantity := ln_quantity * -1;
@@ -1833,11 +1839,13 @@ AS
           IF (lv_cost_kbn = gc_cost_st ) THEN
             ln_amount := ln_unit_price * ln_quantity;
           END IF;
+-- 2008/08/28 v1.10 UPDATE START
           -- 払出項目の場合
-          IF (lb_payout = TRUE) THEN
-            ln_quantity := ln_quantity * -1;
-            ln_amount   := ln_amount * -1;
-          END IF;
+--          IF (lb_payout = TRUE) THEN
+--            ln_quantity := ln_quantity * -1;
+--            ln_amount   := ln_amount * -1;
+--          END IF;
+-- 2008/08/28 v1.10 UPDATE END
 -- 2008/08/22 v1.8 ADD START
           IF (lb_revi = TRUE) THEN
             ln_quantity := ln_quantity * -1;
@@ -1994,11 +2002,13 @@ AS
           IF (lv_cost_kbn = gc_cost_st ) THEN
             ln_amount := ln_unit_price * ln_quantity;
           END IF;
+-- 2008/08/28 v1.10 UPDATE START
           -- 払出項目の場合
-          IF (lb_payout = TRUE) THEN
-            ln_quantity := ln_quantity * -1;
-            ln_amount   := ln_amount * -1;
-          END IF;
+--          IF (lb_payout = TRUE) THEN
+--            ln_quantity := ln_quantity * -1;
+--            ln_amount   := ln_amount * -1;
+--          END IF;
+-- 2008/08/28 v1.10 UPDATE END
 -- 2008/08/22 v1.8 ADD START
           IF (lb_revi = TRUE) THEN
             ln_quantity := ln_quantity * -1;
@@ -2147,11 +2157,13 @@ AS
           IF (lv_cost_kbn = gc_cost_st ) THEN
             ln_amount := ln_unit_price * ln_quantity;
           END IF;
+-- 2008/08/28 v1.10 UPDATE START
           -- 払出項目の場合
-          IF (lb_payout = TRUE) THEN
-            ln_quantity := ln_quantity * -1;
-            ln_amount   := ln_amount * -1;
-          END IF;
+--          IF (lb_payout = TRUE) THEN
+--            ln_quantity := ln_quantity * -1;
+--            ln_amount   := ln_amount * -1;
+--          END IF;
+-- 2008/08/28 v1.10 UPDATE END
 -- 2008/08/22 v1.8 ADD START
           IF (lb_revi = TRUE) THEN
             ln_quantity := ln_quantity * -1;
@@ -2292,11 +2304,13 @@ AS
           IF (lv_cost_kbn = gc_cost_st ) THEN
             ln_amount := ln_unit_price * ln_quantity;
           END IF;
+-- 2008/08/28 v1.10 UPDATE START
           -- 払出項目の場合
-          IF (lb_payout = TRUE) THEN
-            ln_quantity := ln_quantity * -1;
-            ln_amount   := ln_amount * -1;
-          END IF;
+--          IF (lb_payout = TRUE) THEN
+--            ln_quantity := ln_quantity * -1;
+--            ln_amount   := ln_amount * -1;
+--          END IF;
+-- 2008/08/28 v1.10 UPDATE END
 -- 2008/08/22 v1.8 ADD START
           IF (lb_revi = TRUE) THEN
             ln_quantity := ln_quantity * -1;
@@ -2439,11 +2453,13 @@ AS
           IF (lv_cost_kbn = gc_cost_st ) THEN
             ln_amount := ln_unit_price * ln_quantity;
           END IF;
+-- 2008/08/28 v1.10 UPDATE START
           -- 払出項目の場合
-          IF (lb_payout = TRUE) THEN
-            ln_quantity := ln_quantity * -1;
-            ln_amount   := ln_amount * -1;
-          END IF;
+--          IF (lb_payout = TRUE) THEN
+--            ln_quantity := ln_quantity * -1;
+--            ln_amount   := ln_amount * -1;
+--          END IF;
+-- 2008/08/28 v1.10 UPDATE END
 -- 2008/08/22 v1.8 ADD START
           IF (lb_revi = TRUE) THEN
             ln_quantity := ln_quantity * -1;
@@ -2611,11 +2627,13 @@ AS
           IF (lv_cost_kbn = gc_cost_st ) THEN
             ln_amount := ln_unit_price * ln_quantity;
           END IF;
+-- 2008/08/28 v1.10 UPDATE START
           -- 払出項目の場合
-          IF (lb_payout = TRUE) THEN
-            ln_quantity := ln_quantity * -1;
-            ln_amount   := ln_amount * -1;
-          END IF;
+--          IF (lb_payout = TRUE) THEN
+--            ln_quantity := ln_quantity * -1;
+--            ln_amount   := ln_amount * -1;
+--          END IF;
+-- 2008/08/28 v1.10 UPDATE END
 -- 2008/08/22 v1.8 ADD START
           IF (lb_revi = TRUE) THEN
             ln_quantity := ln_quantity * -1;
@@ -2782,11 +2800,13 @@ AS
     IF (lv_cost_kbn = gc_cost_st ) THEN
       ln_amount := ln_unit_price * ln_quantity;
     END IF;
+-- 2008/08/28 v1.10 UPDATE START
     -- 払出項目の場合
-    IF (lb_payout = TRUE) THEN
-      ln_quantity := ln_quantity * -1;
-      ln_amount   := ln_amount * -1;
-    END IF;
+--    IF (lb_payout = TRUE) THEN
+--      ln_quantity := ln_quantity * -1;
+--      ln_amount   := ln_amount * -1;
+--    END IF;
+-- 2008/08/28 v1.10 UPDATE END
 -- 2008/08/22 v1.8 ADD START
     IF (lb_revi = TRUE) THEN
       ln_quantity := ln_quantity * -1;
