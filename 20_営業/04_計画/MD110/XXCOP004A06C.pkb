@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCOP004A06C(body)
  * Description      : 引取計画(情報系IF)
  * MD.050           : 引取計画(情報系IF) MD050_COP_004_A06
- * Version          : ver1.1
+ * Version          : ver1.3
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -28,6 +28,7 @@ AS
  *  2008/11/06    1.0   SCS.Uchida       新規作成
  *  2009/02/16    1.1   SCS.Fukada       結合障害012対応(A-1：ディレクトリ名取得処理変更)
  *  2009/02/20    1.2   SCS.Fukada       結合障害013対応(デバッグメッセージを削除)
+ *  2009/06/24    1.3   SCS.Kikuchi      障害:0000026対応
  *
  *****************************************************************************************/
 --#######################  固定グローバル定数宣言部 START   #######################
@@ -857,26 +858,58 @@ AS
     -- *** ローカルRECORD型 ***
     CURSOR l_h_plan_info_cur
     IS
-      SELECT lv_company_cd                    c_cd                                      -- 会社コード [ローカル変数]
-            ,TO_CHAR(mfda.forecast_date,'YYYYMM')  fsda                                 -- フォーキャスト開始日
-            ,mfda.attribute5                  b_cd                                      -- 拠点コード(DFF5)
-            ,iimb.item_no                     i_no                                      -- 品目（商品コード）
-            ,SUM(mfda.original_forecast_quantity)  fo_q                                 -- 数量
-            ,ld_conv_date                     coda                                      -- 連携日時 [ローカル変数]
-      FROM   mrp_forecast_dates               mfda                                      -- フォーキャスト日付
-            ,mrp_forecast_designators         mfde                                      -- フォーキャスト名
-            ,ic_item_mst_b                    iimb                                      -- OPM品目マスタ
-            ,xxcop_item_categories1_v         xicv                                      -- 【共通view】計画_品目カテゴリビュー1
-      WHERE  mfda.forecast_designator  =  mfde.forecast_designator                      --フォーキャスト名比較
-      AND    mfda.organization_id      =  mfde.organization_id                          --在庫組織ID比較
-      AND    mfde.attribute1           =  '01'                                          --フォーキャスト分類(1引取計画)
-      AND    mfda.inventory_item_id    =  xicv.inventory_item_id                        --品目ID比較1(INV品目ID)
-      AND    xicv.item_id              =  iimb.item_id                                  --品目ID比較2(OPM品目ID)
-      AND    TO_CHAR(mfda.forecast_date,'YYYYMM') >= TO_CHAR(ld_last_if_date,'YYYYMM')  --当月以降のデータ
-      GROUP BY TO_CHAR(mfda.forecast_date,'YYYYMM')
-              ,mfda.attribute5
-              ,iimb.item_no
-    ;
+--20090624_Ver1.3_0000026_SCS.Kikuchi_MOD_START
+      SELECT lv_company_cd   c_cd                                                         -- 会社コード [ローカル変数]
+      ,      fsda            fsda
+      ,      b_cd            b_cd
+      ,      i_no            i_no
+      ,      SUM(fo_q)       fo_q
+      ,      ld_conv_date    coda                                                         -- 連携日時 [ローカル変数]
+      FROM
+      (
+        SELECT TO_CHAR(mfda.forecast_date,'YYYYMM')  fsda                                 -- フォーキャスト開始日
+              ,mfda.attribute5                  b_cd                                      -- 拠点コード(DFF5)
+              ,( SELECT xicv.item_no
+                 FROM   xxcop_item_categories1_v xicv
+                 WHERE  xicv.inventory_item_id = mfda.inventory_item_id
+                 AND    TRUNC(SYSDATE) BETWEEN xicv.START_DATE_ACTIVE AND xicv.END_DATE_ACTIVE
+               ) i_no                                                                     -- 品目（商品コード）
+              ,mfda.original_forecast_quantity  fo_q                                      -- 数量
+        FROM   mrp_forecast_dates               mfda                                      -- フォーキャスト日付
+              ,mrp_forecast_designators         mfde                                      -- フォーキャスト名
+        WHERE  mfda.forecast_designator  =  mfde.forecast_designator                      --フォーキャスト名比較
+        AND    mfda.organization_id      =  mfde.organization_id                          --在庫組織ID比較
+        AND    mfde.attribute1           =  '01'                                          --フォーキャスト分類(1引取計画)
+        AND    mfda.forecast_date   BETWEEN TRUNC(ld_last_if_date,'MM')
+                                        AND mfda.forecast_date                            --当月以降のデータ
+      )
+      WHERE    i_no IS NOT NULL                                                           --品目カテゴリビューに存在しないデータは対象外
+      GROUP BY fsda
+      ,        b_cd
+      ,        i_no
+      ;
+--      SELECT lv_company_cd                    c_cd                                      -- 会社コード [ローカル変数]
+--            ,TO_CHAR(mfda.forecast_date,'YYYYMM')  fsda                                 -- フォーキャスト開始日
+--            ,mfda.attribute5                  b_cd                                      -- 拠点コード(DFF5)
+--            ,iimb.item_no                     i_no                                      -- 品目（商品コード）
+--            ,SUM(mfda.original_forecast_quantity)  fo_q                                 -- 数量
+--            ,ld_conv_date                     coda                                      -- 連携日時 [ローカル変数]
+--      FROM   mrp_forecast_dates               mfda                                      -- フォーキャスト日付
+--            ,mrp_forecast_designators         mfde                                      -- フォーキャスト名
+--            ,ic_item_mst_b                    iimb                                      -- OPM品目マスタ
+--            ,xxcop_item_categories1_v         xicv                                      -- 【共通view】計画_品目カテゴリビュー1
+--      WHERE  mfda.forecast_designator  =  mfde.forecast_designator                      --フォーキャスト名比較
+--      AND    mfda.organization_id      =  mfde.organization_id                          --在庫組織ID比較
+--      AND    mfde.attribute1           =  '01'                                          --フォーキャスト分類(1引取計画)
+--      AND    mfda.inventory_item_id    =  xicv.inventory_item_id                        --品目ID比較1(INV品目ID)
+--      AND    xicv.item_id              =  iimb.item_id                                  --品目ID比較2(OPM品目ID)
+--      AND    TO_CHAR(mfda.forecast_date,'YYYYMM') >= TO_CHAR(ld_last_if_date,'YYYYMM')  --当月以降のデータ
+--      GROUP BY TO_CHAR(mfda.forecast_date,'YYYYMM')
+--              ,mfda.attribute5
+--              ,iimb.item_no
+--      ;
+--20090624_Ver1.3_0000026_SCS.Kikuchi_MOD_END
+
 --
     -- *** ローカル・レコード ***
     l_h_plan_info_rec l_h_plan_info_cur%ROWTYPE;
