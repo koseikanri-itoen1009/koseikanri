@@ -44,6 +44,7 @@ AS
  *  2008/11/29    1.13  N.Yoshida        本番#215対応
  *  2008/12/02    1.14  N.Yoshida        本番#345対応(振替入庫、緑営１、緑営２追加対応)
  *                                       本番#385対応
+ *  2008/12/06    1.15  T.Miyata         本番#495,498対応
  *
  *****************************************************************************************/
 --
@@ -2150,7 +2151,10 @@ AS
     || '  AND    xoha.req_status           = ''04'''
     || '  AND    otta.attribute1           = ''1'''
     || '  AND    xrpm.new_div_account      = ''' || ir_param.rcv_pay_div || ''''
-    || '  AND    xrpm.dealings_div         = ''109'''
+-- 2008/12/06 v1.15 miyata update start
+--    || '  AND    xrpm.dealings_div         = ''109'''
+    || '  AND    xrpm.dealings_div         = ''110'''
+-- 2008/12/06 v1.15 miyata update end
     || '  AND    xrpm.shipment_provision_div = ''1'''
     || '  AND    xrpm.ship_prov_rcv_pay_category = otta.attribute11'
     || '  AND    xrpm.break_col_10         IS NOT NULL'
@@ -2229,7 +2233,10 @@ AS
     || '  AND    xrpm.doc_type             = itp.doc_type'
     || '  AND    xrpm.doc_type             = ''OMSO'''
     || '  AND    xrpm.new_div_account      = ''' || ir_param.rcv_pay_div || ''''
-    || '  AND    xrpm.dealings_div         = ''109'''
+-- 2008/12/06 v1.15 miyata update start
+--    || '  AND    xrpm.dealings_div         = ''109'''
+    || '  AND    xrpm.dealings_div         = ''110'''
+-- 2008/12/06 v1.15 miyata update end
     || '  AND    xoha.req_status           = ''04'''
     || '  AND    otta.attribute1           = ''1'''
     || '  AND    xrpm.shipment_provision_div = ''1'''
@@ -5893,7 +5900,14 @@ AS
         -- 包装費
         prc_set_xml('Z','pack_cost', round(gt_main_data(i).pack_cost * ln_quantity));
         -- その他経費
-        prc_set_xml('Z','other_expense_cost',round(gt_main_data(i).other_expense_cost * ln_quantity));
+-- 2008/12/06 v1.15 miyata update start
+--        prc_set_xml('Z','other_expense_cost',round(gt_main_data(i).other_expense_cost * ln_quantity));
+        prc_set_xml('Z','other_expense_cost', ( round(gt_main_data(i).unit_price * ln_quantity)
+                                               - round(gt_main_data(i).raw_material_cost * ln_quantity)
+                                               - round(gt_main_data(i).agein_cost * ln_quantity)
+                                               - round(gt_main_data(i).material_cost * ln_quantity)
+                                               - round(gt_main_data(i).pack_cost * ln_quantity)));
+-- 2008/12/06 v1.15 miyata update end
 -- 2008/12/03 v1.14 yoshida update end
 -- 2008/11/29 v1.13 yoshida update end
         -- 品目コードＧ終了タグ
