@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCOI004A04R(body)
  * Description      : VD機内在庫表
  * MD.050           : MD050_COI_004_A04
- * Version          : 1.0
+ * Version          : 1.2
  *
  * Program List
  * ------------------------ --------------------------------------------------------
@@ -28,6 +28,8 @@ AS
  *  2009/03/05    1.1   H.Wada           障害番号 #032
  *                                         ・取得件数0件処理修正
  *                                         ・SVF共通関数呼出前コミット処理追加
+ *  2009/05/19    1.2   T.Nakamura       [T1_0980]ワークテーブルデータ登録項目に出力期間を追加
+ *                                       [T1_0991]VD機内在庫表のH/Cに出力する値を変更
  *
  *****************************************************************************************/
 --
@@ -107,6 +109,10 @@ AS
   cv_msg_coi_10153            CONSTANT VARCHAR2(16) := 'APP-XXCOI1-10153'; -- パラメータ営業員メッセージ
   cv_msg_coi_10154            CONSTANT VARCHAR2(16) := 'APP-XXCOI1-10154'; -- パラメータ顧客メッセージ
   cv_msg_coi_10155            CONSTANT VARCHAR2(16) := 'APP-XXCOI1-10155'; -- ロック取得エラーメッセージ
+-- == 2009/05/19 V1.2 Added START ==================================================================
+  cv_msg_coi_10383            CONSTANT VARCHAR2(16) := 'APP-XXCOI1-10383'; -- 出力期間内容取得エラーメッセージ
+  cv_log                      CONSTANT VARCHAR2(3)  := 'LOG';              -- コンカレントヘッダ出力先
+-- == 2009/05/19 V1.2 Added END   ==================================================================
   -- トークン
   cv_tkn_name_p_base          CONSTANT VARCHAR2(6)  := 'P_BASE';
   cv_tkn_name_p_term          CONSTANT VARCHAR2(6)  := 'P_TERM';
@@ -116,6 +122,10 @@ AS
   cv_tkn_name_p_customer      CONSTANT VARCHAR2(10) := 'P_CUSTOMER';
   cv_tkn_api_name             CONSTANT VARCHAR2(8)  := 'API_NAME';
   cv_val_submit_svf_request   CONSTANT VARCHAR2(18) := 'SUBMIT_SVF_REQUEST';
+-- == 2009/05/19 V1.2 Added START ==================================================================
+  cv_tkn_lookup_type          CONSTANT VARCHAR2(20) := 'LOOKUP_TYPE';            -- 参照タイプ
+  cv_tkn_lookup_code          CONSTANT VARCHAR2(20) := 'LOOKUP_CODE';            -- 参照コード
+-- == 2009/05/19 V1.2 Added END   ==================================================================
 --
   -- ===============================
   -- ユーザー定義グローバル型
@@ -149,6 +159,9 @@ AS
   gv_customer_10              VARCHAR2(9);                           -- 19.顧客10
   gv_customer_11              VARCHAR2(9);                           -- 20.顧客11
   gv_customer_12              VARCHAR2(9);                           -- 21.顧客12
+-- == 2009/05/19 V1.2 Added START ==================================================================
+  gv_output_period_meaning    VARCHAR2(4);                           -- 出力期間内容
+-- == 2009/05/19 V1.2 Added END   ==================================================================
 --
   gt_vd_inv_wk_tab   vd_inv_wk_ttype;   -- VD機内在庫表ワークテーブル格納用
 --
@@ -431,6 +444,9 @@ AS
      ,sele_qnt                                              --   7.セレ数
      ,charge_business_member_code                           --   8.営業担当者コード
      ,charge_business_member_name                           --   9.営業担当者名
+-- == 2009/05/19 V1.2 Added START ==================================================================
+     ,output_period                                         --  出力期間
+-- == 2009/05/19 V1.2 Added END   ==================================================================
      ,column_no1                                            --  10.コラム№1
      ,column_no2                                            --  11.コラム№2
      ,column_no3                                            --  12.コラム№3
@@ -787,6 +803,9 @@ AS
      ,TO_NUMBER(ir_coi_vd_inv_wk_rec(7))                    --   7.セレ数
      ,SUBSTRB(ir_coi_vd_inv_wk_rec(8), 1, 30)               --   8.営業担当者コード
      ,ir_coi_vd_inv_wk_rec(9)                               --   9.営業担当者名
+-- == 2009/05/19 V1.2 Added START ==================================================================
+     ,gv_output_period_meaning                              --  出力期間
+-- == 2009/05/19 V1.2 Added END   ==================================================================
      ,TO_NUMBER(ir_coi_vd_inv_wk_rec(10))                   --  10.コラム№1
      ,TO_NUMBER(ir_coi_vd_inv_wk_rec(11))                   --  11.コラム№2
      ,TO_NUMBER(ir_coi_vd_inv_wk_rec(12))                   --  12.コラム№3
@@ -1011,62 +1030,120 @@ AS
      ,TO_NUMBER(ir_coi_vd_inv_wk_rec(231))                  -- 231.単価54
      ,TO_NUMBER(ir_coi_vd_inv_wk_rec(232))                  -- 232.単価55
      ,TO_NUMBER(ir_coi_vd_inv_wk_rec(233))                  -- 233.単価56
-     ,SUBSTRB(ir_coi_vd_inv_wk_rec(234), 1, 1)              -- 234.H/C1
-     ,SUBSTRB(ir_coi_vd_inv_wk_rec(235), 1, 1)              -- 235.H/C2
-     ,SUBSTRB(ir_coi_vd_inv_wk_rec(236), 1, 1)              -- 236.H/C3
-     ,SUBSTRB(ir_coi_vd_inv_wk_rec(237), 1, 1)              -- 237.H/C4
-     ,SUBSTRB(ir_coi_vd_inv_wk_rec(238), 1, 1)              -- 238.H/C5
-     ,SUBSTRB(ir_coi_vd_inv_wk_rec(239), 1, 1)              -- 239.H/C6
-     ,SUBSTRB(ir_coi_vd_inv_wk_rec(240), 1, 1)              -- 240.H/C7
-     ,SUBSTRB(ir_coi_vd_inv_wk_rec(241), 1, 1)              -- 241.H/C8
-     ,SUBSTRB(ir_coi_vd_inv_wk_rec(242), 1, 1)              -- 242.H/C9
-     ,SUBSTRB(ir_coi_vd_inv_wk_rec(243), 1, 1)              -- 243.H/C10
-     ,SUBSTRB(ir_coi_vd_inv_wk_rec(244), 1, 1)              -- 244.H/C11
-     ,SUBSTRB(ir_coi_vd_inv_wk_rec(245), 1, 1)              -- 245.H/C12
-     ,SUBSTRB(ir_coi_vd_inv_wk_rec(246), 1, 1)              -- 246.H/C13
-     ,SUBSTRB(ir_coi_vd_inv_wk_rec(247), 1, 1)              -- 247.H/C14
-     ,SUBSTRB(ir_coi_vd_inv_wk_rec(248), 1, 1)              -- 248.H/C15
-     ,SUBSTRB(ir_coi_vd_inv_wk_rec(249), 1, 1)              -- 249.H/C16
-     ,SUBSTRB(ir_coi_vd_inv_wk_rec(250), 1, 1)              -- 250.H/C17
-     ,SUBSTRB(ir_coi_vd_inv_wk_rec(251), 1, 1)              -- 251.H/C18
-     ,SUBSTRB(ir_coi_vd_inv_wk_rec(252), 1, 1)              -- 252.H/C19
-     ,SUBSTRB(ir_coi_vd_inv_wk_rec(253), 1, 1)              -- 253.H/C20
-     ,SUBSTRB(ir_coi_vd_inv_wk_rec(254), 1, 1)              -- 254.H/C21
-     ,SUBSTRB(ir_coi_vd_inv_wk_rec(255), 1, 1)              -- 255.H/C22
-     ,SUBSTRB(ir_coi_vd_inv_wk_rec(256), 1, 1)              -- 256.H/C23
-     ,SUBSTRB(ir_coi_vd_inv_wk_rec(257), 1, 1)              -- 257.H/C24
-     ,SUBSTRB(ir_coi_vd_inv_wk_rec(258), 1, 1)              -- 258.H/C25
-     ,SUBSTRB(ir_coi_vd_inv_wk_rec(259), 1, 1)              -- 259.H/C26
-     ,SUBSTRB(ir_coi_vd_inv_wk_rec(260), 1, 1)              -- 260.H/C27
-     ,SUBSTRB(ir_coi_vd_inv_wk_rec(261), 1, 1)              -- 261.H/C28
-     ,SUBSTRB(ir_coi_vd_inv_wk_rec(262), 1, 1)              -- 262.H/C29
-     ,SUBSTRB(ir_coi_vd_inv_wk_rec(263), 1, 1)              -- 263.H/C30
-     ,SUBSTRB(ir_coi_vd_inv_wk_rec(264), 1, 1)              -- 264.H/C31
-     ,SUBSTRB(ir_coi_vd_inv_wk_rec(265), 1, 1)              -- 265.H/C32
-     ,SUBSTRB(ir_coi_vd_inv_wk_rec(266), 1, 1)              -- 266.H/C33
-     ,SUBSTRB(ir_coi_vd_inv_wk_rec(267), 1, 1)              -- 267.H/C34
-     ,SUBSTRB(ir_coi_vd_inv_wk_rec(268), 1, 1)              -- 268.H/C35
-     ,SUBSTRB(ir_coi_vd_inv_wk_rec(269), 1, 1)              -- 269.H/C36
-     ,SUBSTRB(ir_coi_vd_inv_wk_rec(270), 1, 1)              -- 270.H/C37
-     ,SUBSTRB(ir_coi_vd_inv_wk_rec(271), 1, 1)              -- 271.H/C38
-     ,SUBSTRB(ir_coi_vd_inv_wk_rec(272), 1, 1)              -- 272.H/C39
-     ,SUBSTRB(ir_coi_vd_inv_wk_rec(273), 1, 1)              -- 273.H/C40
-     ,SUBSTRB(ir_coi_vd_inv_wk_rec(274), 1, 1)              -- 274.H/C41
-     ,SUBSTRB(ir_coi_vd_inv_wk_rec(275), 1, 1)              -- 275.H/C42
-     ,SUBSTRB(ir_coi_vd_inv_wk_rec(276), 1, 1)              -- 276.H/C43
-     ,SUBSTRB(ir_coi_vd_inv_wk_rec(277), 1, 1)              -- 277.H/C44
-     ,SUBSTRB(ir_coi_vd_inv_wk_rec(278), 1, 1)              -- 278.H/C45
-     ,SUBSTRB(ir_coi_vd_inv_wk_rec(279), 1, 1)              -- 279.H/C46
-     ,SUBSTRB(ir_coi_vd_inv_wk_rec(280), 1, 1)              -- 280.H/C47
-     ,SUBSTRB(ir_coi_vd_inv_wk_rec(281), 1, 1)              -- 281.H/C48
-     ,SUBSTRB(ir_coi_vd_inv_wk_rec(282), 1, 1)              -- 282.H/C49
-     ,SUBSTRB(ir_coi_vd_inv_wk_rec(283), 1, 1)              -- 283.H/C50
-     ,SUBSTRB(ir_coi_vd_inv_wk_rec(284), 1, 1)              -- 284.H/C51
-     ,SUBSTRB(ir_coi_vd_inv_wk_rec(285), 1, 1)              -- 285.H/C52
-     ,SUBSTRB(ir_coi_vd_inv_wk_rec(286), 1, 1)              -- 286.H/C53
-     ,SUBSTRB(ir_coi_vd_inv_wk_rec(287), 1, 1)              -- 287.H/C54
-     ,SUBSTRB(ir_coi_vd_inv_wk_rec(288), 1, 1)              -- 288.H/C55
-     ,SUBSTRB(ir_coi_vd_inv_wk_rec(289), 1, 1)              -- 289.H/C56
+-- == 2009/05/19 V1.2 Modified START ===============================================================
+--     ,SUBSTRB(ir_coi_vd_inv_wk_rec(234), 1, 1)              -- 234.H/C1
+--     ,SUBSTRB(ir_coi_vd_inv_wk_rec(235), 1, 1)              -- 235.H/C2
+--     ,SUBSTRB(ir_coi_vd_inv_wk_rec(236), 1, 1)              -- 236.H/C3
+--     ,SUBSTRB(ir_coi_vd_inv_wk_rec(237), 1, 1)              -- 237.H/C4
+--     ,SUBSTRB(ir_coi_vd_inv_wk_rec(238), 1, 1)              -- 238.H/C5
+--     ,SUBSTRB(ir_coi_vd_inv_wk_rec(239), 1, 1)              -- 239.H/C6
+--     ,SUBSTRB(ir_coi_vd_inv_wk_rec(240), 1, 1)              -- 240.H/C7
+--     ,SUBSTRB(ir_coi_vd_inv_wk_rec(241), 1, 1)              -- 241.H/C8
+--     ,SUBSTRB(ir_coi_vd_inv_wk_rec(242), 1, 1)              -- 242.H/C9
+--     ,SUBSTRB(ir_coi_vd_inv_wk_rec(243), 1, 1)              -- 243.H/C10
+--     ,SUBSTRB(ir_coi_vd_inv_wk_rec(244), 1, 1)              -- 244.H/C11
+--     ,SUBSTRB(ir_coi_vd_inv_wk_rec(245), 1, 1)              -- 245.H/C12
+--     ,SUBSTRB(ir_coi_vd_inv_wk_rec(246), 1, 1)              -- 246.H/C13
+--     ,SUBSTRB(ir_coi_vd_inv_wk_rec(247), 1, 1)              -- 247.H/C14
+--     ,SUBSTRB(ir_coi_vd_inv_wk_rec(248), 1, 1)              -- 248.H/C15
+--     ,SUBSTRB(ir_coi_vd_inv_wk_rec(249), 1, 1)              -- 249.H/C16
+--     ,SUBSTRB(ir_coi_vd_inv_wk_rec(250), 1, 1)              -- 250.H/C17
+--     ,SUBSTRB(ir_coi_vd_inv_wk_rec(251), 1, 1)              -- 251.H/C18
+--     ,SUBSTRB(ir_coi_vd_inv_wk_rec(252), 1, 1)              -- 252.H/C19
+--     ,SUBSTRB(ir_coi_vd_inv_wk_rec(253), 1, 1)              -- 253.H/C20
+--     ,SUBSTRB(ir_coi_vd_inv_wk_rec(254), 1, 1)              -- 254.H/C21
+--     ,SUBSTRB(ir_coi_vd_inv_wk_rec(255), 1, 1)              -- 255.H/C22
+--     ,SUBSTRB(ir_coi_vd_inv_wk_rec(256), 1, 1)              -- 256.H/C23
+--     ,SUBSTRB(ir_coi_vd_inv_wk_rec(257), 1, 1)              -- 257.H/C24
+--     ,SUBSTRB(ir_coi_vd_inv_wk_rec(258), 1, 1)              -- 258.H/C25
+--     ,SUBSTRB(ir_coi_vd_inv_wk_rec(259), 1, 1)              -- 259.H/C26
+--     ,SUBSTRB(ir_coi_vd_inv_wk_rec(260), 1, 1)              -- 260.H/C27
+--     ,SUBSTRB(ir_coi_vd_inv_wk_rec(261), 1, 1)              -- 261.H/C28
+--     ,SUBSTRB(ir_coi_vd_inv_wk_rec(262), 1, 1)              -- 262.H/C29
+--     ,SUBSTRB(ir_coi_vd_inv_wk_rec(263), 1, 1)              -- 263.H/C30
+--     ,SUBSTRB(ir_coi_vd_inv_wk_rec(264), 1, 1)              -- 264.H/C31
+--     ,SUBSTRB(ir_coi_vd_inv_wk_rec(265), 1, 1)              -- 265.H/C32
+--     ,SUBSTRB(ir_coi_vd_inv_wk_rec(266), 1, 1)              -- 266.H/C33
+--     ,SUBSTRB(ir_coi_vd_inv_wk_rec(267), 1, 1)              -- 267.H/C34
+--     ,SUBSTRB(ir_coi_vd_inv_wk_rec(268), 1, 1)              -- 268.H/C35
+--     ,SUBSTRB(ir_coi_vd_inv_wk_rec(269), 1, 1)              -- 269.H/C36
+--     ,SUBSTRB(ir_coi_vd_inv_wk_rec(270), 1, 1)              -- 270.H/C37
+--     ,SUBSTRB(ir_coi_vd_inv_wk_rec(271), 1, 1)              -- 271.H/C38
+--     ,SUBSTRB(ir_coi_vd_inv_wk_rec(272), 1, 1)              -- 272.H/C39
+--     ,SUBSTRB(ir_coi_vd_inv_wk_rec(273), 1, 1)              -- 273.H/C40
+--     ,SUBSTRB(ir_coi_vd_inv_wk_rec(274), 1, 1)              -- 274.H/C41
+--     ,SUBSTRB(ir_coi_vd_inv_wk_rec(275), 1, 1)              -- 275.H/C42
+--     ,SUBSTRB(ir_coi_vd_inv_wk_rec(276), 1, 1)              -- 276.H/C43
+--     ,SUBSTRB(ir_coi_vd_inv_wk_rec(277), 1, 1)              -- 277.H/C44
+--     ,SUBSTRB(ir_coi_vd_inv_wk_rec(278), 1, 1)              -- 278.H/C45
+--     ,SUBSTRB(ir_coi_vd_inv_wk_rec(279), 1, 1)              -- 279.H/C46
+--     ,SUBSTRB(ir_coi_vd_inv_wk_rec(280), 1, 1)              -- 280.H/C47
+--     ,SUBSTRB(ir_coi_vd_inv_wk_rec(281), 1, 1)              -- 281.H/C48
+--     ,SUBSTRB(ir_coi_vd_inv_wk_rec(282), 1, 1)              -- 282.H/C49
+--     ,SUBSTRB(ir_coi_vd_inv_wk_rec(283), 1, 1)              -- 283.H/C50
+--     ,SUBSTRB(ir_coi_vd_inv_wk_rec(284), 1, 1)              -- 284.H/C51
+--     ,SUBSTRB(ir_coi_vd_inv_wk_rec(285), 1, 1)              -- 285.H/C52
+--     ,SUBSTRB(ir_coi_vd_inv_wk_rec(286), 1, 1)              -- 286.H/C53
+--     ,SUBSTRB(ir_coi_vd_inv_wk_rec(287), 1, 1)              -- 287.H/C54
+--     ,SUBSTRB(ir_coi_vd_inv_wk_rec(288), 1, 1)              -- 288.H/C55
+--     ,SUBSTRB(ir_coi_vd_inv_wk_rec(289), 1, 1)              -- 289.H/C56
+     ,DECODE(SUBSTRB(ir_coi_vd_inv_wk_rec(234), 1, 1), '3', 'H', '1', 'C', '')  -- 234.H/C1
+     ,DECODE(SUBSTRB(ir_coi_vd_inv_wk_rec(235), 1, 1), '3', 'H', '1', 'C', '')  -- 235.H/C2
+     ,DECODE(SUBSTRB(ir_coi_vd_inv_wk_rec(236), 1, 1), '3', 'H', '1', 'C', '')  -- 236.H/C3
+     ,DECODE(SUBSTRB(ir_coi_vd_inv_wk_rec(237), 1, 1), '3', 'H', '1', 'C', '')  -- 237.H/C4
+     ,DECODE(SUBSTRB(ir_coi_vd_inv_wk_rec(238), 1, 1), '3', 'H', '1', 'C', '')  -- 238.H/C5
+     ,DECODE(SUBSTRB(ir_coi_vd_inv_wk_rec(239), 1, 1), '3', 'H', '1', 'C', '')  -- 239.H/C6
+     ,DECODE(SUBSTRB(ir_coi_vd_inv_wk_rec(240), 1, 1), '3', 'H', '1', 'C', '')  -- 240.H/C7
+     ,DECODE(SUBSTRB(ir_coi_vd_inv_wk_rec(241), 1, 1), '3', 'H', '1', 'C', '')  -- 241.H/C8
+     ,DECODE(SUBSTRB(ir_coi_vd_inv_wk_rec(242), 1, 1), '3', 'H', '1', 'C', '')  -- 242.H/C9
+     ,DECODE(SUBSTRB(ir_coi_vd_inv_wk_rec(243), 1, 1), '3', 'H', '1', 'C', '')  -- 243.H/C10
+     ,DECODE(SUBSTRB(ir_coi_vd_inv_wk_rec(244), 1, 1), '3', 'H', '1', 'C', '')  -- 244.H/C11
+     ,DECODE(SUBSTRB(ir_coi_vd_inv_wk_rec(245), 1, 1), '3', 'H', '1', 'C', '')  -- 245.H/C12
+     ,DECODE(SUBSTRB(ir_coi_vd_inv_wk_rec(246), 1, 1), '3', 'H', '1', 'C', '')  -- 246.H/C13
+     ,DECODE(SUBSTRB(ir_coi_vd_inv_wk_rec(247), 1, 1), '3', 'H', '1', 'C', '')  -- 247.H/C14
+     ,DECODE(SUBSTRB(ir_coi_vd_inv_wk_rec(248), 1, 1), '3', 'H', '1', 'C', '')  -- 248.H/C15
+     ,DECODE(SUBSTRB(ir_coi_vd_inv_wk_rec(249), 1, 1), '3', 'H', '1', 'C', '')  -- 249.H/C16
+     ,DECODE(SUBSTRB(ir_coi_vd_inv_wk_rec(250), 1, 1), '3', 'H', '1', 'C', '')  -- 250.H/C17
+     ,DECODE(SUBSTRB(ir_coi_vd_inv_wk_rec(251), 1, 1), '3', 'H', '1', 'C', '')  -- 251.H/C18
+     ,DECODE(SUBSTRB(ir_coi_vd_inv_wk_rec(252), 1, 1), '3', 'H', '1', 'C', '')  -- 252.H/C19
+     ,DECODE(SUBSTRB(ir_coi_vd_inv_wk_rec(253), 1, 1), '3', 'H', '1', 'C', '')  -- 253.H/C20
+     ,DECODE(SUBSTRB(ir_coi_vd_inv_wk_rec(254), 1, 1), '3', 'H', '1', 'C', '')  -- 254.H/C21
+     ,DECODE(SUBSTRB(ir_coi_vd_inv_wk_rec(255), 1, 1), '3', 'H', '1', 'C', '')  -- 255.H/C22
+     ,DECODE(SUBSTRB(ir_coi_vd_inv_wk_rec(256), 1, 1), '3', 'H', '1', 'C', '')  -- 256.H/C23
+     ,DECODE(SUBSTRB(ir_coi_vd_inv_wk_rec(257), 1, 1), '3', 'H', '1', 'C', '')  -- 257.H/C24
+     ,DECODE(SUBSTRB(ir_coi_vd_inv_wk_rec(258), 1, 1), '3', 'H', '1', 'C', '')  -- 258.H/C25
+     ,DECODE(SUBSTRB(ir_coi_vd_inv_wk_rec(259), 1, 1), '3', 'H', '1', 'C', '')  -- 259.H/C26
+     ,DECODE(SUBSTRB(ir_coi_vd_inv_wk_rec(260), 1, 1), '3', 'H', '1', 'C', '')  -- 260.H/C27
+     ,DECODE(SUBSTRB(ir_coi_vd_inv_wk_rec(261), 1, 1), '3', 'H', '1', 'C', '')  -- 261.H/C28
+     ,DECODE(SUBSTRB(ir_coi_vd_inv_wk_rec(262), 1, 1), '3', 'H', '1', 'C', '')  -- 262.H/C29
+     ,DECODE(SUBSTRB(ir_coi_vd_inv_wk_rec(263), 1, 1), '3', 'H', '1', 'C', '')  -- 263.H/C30
+     ,DECODE(SUBSTRB(ir_coi_vd_inv_wk_rec(264), 1, 1), '3', 'H', '1', 'C', '')  -- 264.H/C31
+     ,DECODE(SUBSTRB(ir_coi_vd_inv_wk_rec(265), 1, 1), '3', 'H', '1', 'C', '')  -- 265.H/C32
+     ,DECODE(SUBSTRB(ir_coi_vd_inv_wk_rec(266), 1, 1), '3', 'H', '1', 'C', '')  -- 266.H/C33
+     ,DECODE(SUBSTRB(ir_coi_vd_inv_wk_rec(267), 1, 1), '3', 'H', '1', 'C', '')  -- 267.H/C34
+     ,DECODE(SUBSTRB(ir_coi_vd_inv_wk_rec(268), 1, 1), '3', 'H', '1', 'C', '')  -- 268.H/C35
+     ,DECODE(SUBSTRB(ir_coi_vd_inv_wk_rec(269), 1, 1), '3', 'H', '1', 'C', '')  -- 269.H/C36
+     ,DECODE(SUBSTRB(ir_coi_vd_inv_wk_rec(270), 1, 1), '3', 'H', '1', 'C', '')  -- 270.H/C37
+     ,DECODE(SUBSTRB(ir_coi_vd_inv_wk_rec(271), 1, 1), '3', 'H', '1', 'C', '')  -- 271.H/C38
+     ,DECODE(SUBSTRB(ir_coi_vd_inv_wk_rec(272), 1, 1), '3', 'H', '1', 'C', '')  -- 272.H/C39
+     ,DECODE(SUBSTRB(ir_coi_vd_inv_wk_rec(273), 1, 1), '3', 'H', '1', 'C', '')  -- 273.H/C40
+     ,DECODE(SUBSTRB(ir_coi_vd_inv_wk_rec(274), 1, 1), '3', 'H', '1', 'C', '')  -- 274.H/C41
+     ,DECODE(SUBSTRB(ir_coi_vd_inv_wk_rec(275), 1, 1), '3', 'H', '1', 'C', '')  -- 275.H/C42
+     ,DECODE(SUBSTRB(ir_coi_vd_inv_wk_rec(276), 1, 1), '3', 'H', '1', 'C', '')  -- 276.H/C43
+     ,DECODE(SUBSTRB(ir_coi_vd_inv_wk_rec(277), 1, 1), '3', 'H', '1', 'C', '')  -- 277.H/C44
+     ,DECODE(SUBSTRB(ir_coi_vd_inv_wk_rec(278), 1, 1), '3', 'H', '1', 'C', '')  -- 278.H/C45
+     ,DECODE(SUBSTRB(ir_coi_vd_inv_wk_rec(279), 1, 1), '3', 'H', '1', 'C', '')  -- 279.H/C46
+     ,DECODE(SUBSTRB(ir_coi_vd_inv_wk_rec(280), 1, 1), '3', 'H', '1', 'C', '')  -- 280.H/C47
+     ,DECODE(SUBSTRB(ir_coi_vd_inv_wk_rec(281), 1, 1), '3', 'H', '1', 'C', '')  -- 281.H/C48
+     ,DECODE(SUBSTRB(ir_coi_vd_inv_wk_rec(282), 1, 1), '3', 'H', '1', 'C', '')  -- 282.H/C49
+     ,DECODE(SUBSTRB(ir_coi_vd_inv_wk_rec(283), 1, 1), '3', 'H', '1', 'C', '')  -- 283.H/C50
+     ,DECODE(SUBSTRB(ir_coi_vd_inv_wk_rec(284), 1, 1), '3', 'H', '1', 'C', '')  -- 284.H/C51
+     ,DECODE(SUBSTRB(ir_coi_vd_inv_wk_rec(285), 1, 1), '3', 'H', '1', 'C', '')  -- 285.H/C52
+     ,DECODE(SUBSTRB(ir_coi_vd_inv_wk_rec(286), 1, 1), '3', 'H', '1', 'C', '')  -- 286.H/C53
+     ,DECODE(SUBSTRB(ir_coi_vd_inv_wk_rec(287), 1, 1), '3', 'H', '1', 'C', '')  -- 287.H/C54
+     ,DECODE(SUBSTRB(ir_coi_vd_inv_wk_rec(288), 1, 1), '3', 'H', '1', 'C', '')  -- 288.H/C55
+     ,DECODE(SUBSTRB(ir_coi_vd_inv_wk_rec(289), 1, 1), '3', 'H', '1', 'C', '')  -- 289.H/C56
+-- == 2009/05/19 V1.2 Modified END   ===============================================================
      ,TO_NUMBER(ir_coi_vd_inv_wk_rec(290))                  -- 290.数量1
      ,TO_NUMBER(ir_coi_vd_inv_wk_rec(291))                  -- 291.数量2
      ,TO_NUMBER(ir_coi_vd_inv_wk_rec(292))                  -- 292.数量3
@@ -1179,6 +1256,9 @@ AS
     -- ユーザー宣言部
     -- ===============================
     -- *** ローカル定数 ***
+-- == 2009/05/19 V1.2 Added START ==================================================================
+    cv_lookup_type          CONSTANT VARCHAR2(30) := 'XXCOI1_VD_OUTPUT_PERIOD';  -- 参照タイプ
+-- == 2009/05/19 V1.2 Added END   ==================================================================
 --
     -- *** ローカル変数 ***
     lv_param_msg   VARCHAR2(5000);
@@ -1452,6 +1532,27 @@ AS
       , buff   => ''
     );
 --
+-- == 2009/05/19 V1.2 Added START ==================================================================
+    -- ===============================
+    -- 出力期間内容取得
+    -- ===============================
+    gv_output_period_meaning := xxcoi_common_pkg.get_meaning(cv_lookup_type, gv_output_period);
+    --
+    -- リターンコードがNULLの場合はエラー
+    IF ( gv_output_period_meaning IS NULL ) THEN
+      lv_errmsg := xxccp_common_pkg.get_msg(
+                      iv_application  => cv_msg_kbn_coi
+                     ,iv_name         => cv_msg_coi_10383
+                     ,iv_token_name1  => cv_tkn_lookup_type
+                     ,iv_token_value1 => cv_lookup_type
+                     ,iv_token_name2  => cv_tkn_lookup_code
+                     ,iv_token_value2 => gv_output_period
+                   );
+      lv_errbuf := lv_errmsg;
+      RAISE global_api_expt;
+    END IF;
+--
+-- == 2009/05/19 V1.2 Added END   ==================================================================
     --==============================================================
     --メッセージ出力をする必要がある場合は処理を記述
     --==============================================================
@@ -2160,9 +2261,15 @@ AS
     -- 固定出力
     -- コンカレントヘッダメッセージ出力関数の呼び出し
     xxccp_common_pkg.put_log_header(
-       ov_retcode => lv_retcode
+-- == 2009/05/19 V1.2 Modified START ==================================================================
+--       ov_retcode => lv_retcode
+--      ,ov_errbuf  => lv_errbuf
+--      ,ov_errmsg  => lv_errmsg);
+       iv_which   => cv_log
+      ,ov_retcode => lv_retcode
       ,ov_errbuf  => lv_errbuf
       ,ov_errmsg  => lv_errmsg);
+-- == 2009/05/19 V1.2 Modified END   ==================================================================
 --
     IF (lv_retcode = cv_status_error) THEN
       RAISE global_api_others_expt;
