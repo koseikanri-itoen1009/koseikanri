@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCOK008A06C(body)
  * Description      : 営業システム構築プロジェクト
  * MD.050           : 売上実績振替情報の作成（振替割合） MD050_COK_008_A06
- * Version          : 2.0
+ * Version          : 2.1
  *
  * Program List
  * --------------------------- ----------------------------------------------------------
@@ -51,6 +51,8 @@ AS
  *  2009/07/13    1.6   M.Hiruta         [障害0000514]処理対象に顧客ステータス「30:承認済」「50:休止」のデータを追加
  *  2009/08/24    1.7   M.Hiruta         [障害0001152]顧客名を格納する変数の宣言をTYPE型へ変更
  *  2009/08/13    2.0   K.Yamaguchi      [障害0000952]パフォーマンス改善（再作成）
+ *  2009/09/28    2.1   K.Yamaguchi      [E_T3_00590]振替割合が100％でない場合の対応
+ *                                                   納品数量がゼロの場合の対応
  *
  *****************************************************************************************/
   --==================================================
@@ -95,6 +97,9 @@ AS
   cv_msg_cok_10035                 CONSTANT VARCHAR2(50)    := 'APP-XXCOK1-10035';
   cv_msg_cok_10036                 CONSTANT VARCHAR2(50)    := 'APP-XXCOK1-10036';
   cv_msg_cok_10452                 CONSTANT VARCHAR2(50)    := 'APP-XXCOK1-10452';
+-- 2009/09/28 Ver.2.1 [E_T3_00590] SCS K.Yamaguchi ADD START
+  cv_msg_cok_10463                 CONSTANT VARCHAR2(50)    := 'APP-XXCOK1-10463';
+-- 2009/09/28 Ver.2.1 [E_T3_00590] SCS K.Yamaguchi ADD END
   -- トークン
   cv_tkn_count                     CONSTANT VARCHAR2(30)    := 'COUNT';
   cv_tkn_customer_code             CONSTANT VARCHAR2(30)    := 'CUSTOMER_CODE';
@@ -255,6 +260,9 @@ AS
            )                                                            AS sales_cost_sum           -- 売上原価
          , xseh.tax_code                                                AS tax_code                 -- 税金コード
          , xseh.tax_rate                                                AS tax_rate                 -- 消費税率
+-- 2009/09/28 Ver.2.1 [E_T3_00590] SCS K.Yamaguchi ADD START
+         , xsel.dlv_unit_price                                          AS dlv_unit_price           -- 納品単価
+-- 2009/09/28 Ver.2.1 [E_T3_00590] SCS K.Yamaguchi ADD END
     FROM xxcok_selling_from_info   xsfi             -- 売上振替元情報
        , hz_cust_accounts          ship_hca         -- 【出荷先】顧客マスタ
        , xxcmm_cust_accounts       ship_xca         -- 【出荷先】顧客追加情報
@@ -350,9 +358,14 @@ AS
          , xsel.dlv_uom_code
          , xseh.tax_code
          , xseh.tax_rate
-         -- 販売実績明細の売上金額÷販売数量（単価）が違う場合は別レコードとする
-         , ( xsel.sale_amount / xsel.dlv_qty )
-  HAVING ROUND( SUM( xsel.dlv_qty ), 0 ) <> 0
+-- 2009/09/28 Ver.2.1 [E_T3_00590] SCS K.Yamaguchi REPAIR START
+--         -- 販売実績明細の売上金額÷販売数量（単価）が違う場合は別レコードとする
+--         , ( xsel.sale_amount / xsel.dlv_qty )
+         , xsel.dlv_unit_price
+-- 2009/09/28 Ver.2.1 [E_T3_00590] SCS K.Yamaguchi REPAIR END
+-- 2009/09/28 Ver.2.1 [E_T3_00590] SCS K.Yamaguchi DELETE START
+--  HAVING ROUND( SUM( xsel.dlv_qty ), 0 ) <> 0
+-- 2009/09/28 Ver.2.1 [E_T3_00590] SCS K.Yamaguchi DELETE END
   ;
   -- 売上振替先情報取得
   CURSOR get_selling_to_cur(
@@ -569,7 +582,9 @@ AS
   , in_sales_amount                IN  NUMBER          -- 売上金額
   , in_pure_amount                 IN  NUMBER          -- 本体金額
   , in_sales_cost                  IN  NUMBER          -- 売上原価
-  , in_dlv_unit_price              IN  NUMBER          -- 納品単価
+-- 2009/09/28 Ver.2.1 [E_T3_00590] SCS K.Yamaguchi DELETE START
+--  , in_dlv_unit_price              IN  NUMBER          -- 納品単価
+-- 2009/09/28 Ver.2.1 [E_T3_00590] SCS K.Yamaguchi DELETE END
   )
   IS
     --==================================================
@@ -664,7 +679,10 @@ AS
     , i_selling_from_rec.item_code                -- item_code
     , in_dlv_qty                                  -- qty
     , i_selling_from_rec.dlv_uom_code             -- unit_type
-    , in_dlv_unit_price                           -- delivery_unit_price
+-- 2009/09/28 Ver.2.1 [E_T3_00590] SCS K.Yamaguchi REPAIR START
+--    , in_dlv_unit_price                           -- delivery_unit_price
+    , i_selling_from_rec.dlv_unit_price           -- delivery_unit_price
+-- 2009/09/28 Ver.2.1 [E_T3_00590] SCS K.Yamaguchi REPAIR END
     , in_sales_amount                             -- selling_amt
     , in_pure_amount                              -- selling_amt_no_tax
     , in_sales_cost                               -- trading_cost
@@ -766,12 +784,18 @@ AS
     ln_sales_amount                NUMBER         DEFAULT 0;                    -- 売上金額
     ln_pure_amount                 NUMBER         DEFAULT 0;                    -- 本体金額
     ln_sales_cost                  NUMBER         DEFAULT 0;                    -- 売上原価
-    ln_dlv_unit_price              NUMBER         DEFAULT 0;                    -- 納品単価
+-- 2009/09/28 Ver.2.1 [E_T3_00590] SCS K.Yamaguchi DELETE START
+--    ln_dlv_unit_price              NUMBER         DEFAULT 0;                    -- 納品単価
+-- 2009/09/28 Ver.2.1 [E_T3_00590] SCS K.Yamaguchi DELETE END
     -- 端数計算用集計変数
     ln_dlv_qty_sum                 NUMBER         DEFAULT 0;                    -- 納品数量
     ln_sales_amount_sum            NUMBER         DEFAULT 0;                    -- 売上金額
     ln_pure_amount_sum             NUMBER         DEFAULT 0;                    -- 本体金額
     ln_sales_cost_sum              NUMBER         DEFAULT 0;                    -- 売上原価
+-- 2009/09/28 Ver.2.1 [E_T3_00590] SCS K.Yamaguchi ADD START
+    -- 振替割合チェック
+    ln_selling_trns_rate_total     NUMBER         DEFAULT 0;                    -- 振替割合の合計が100とならない場合はエラー
+-- 2009/09/28 Ver.2.1 [E_T3_00590] SCS K.Yamaguchi ADD END
     --==================================================
     -- ローカルコレクション変数
     --==================================================
@@ -822,30 +846,45 @@ AS
       --==================================================
       -- 按分計算(A-5)
       --==================================================
+-- 2009/09/28 Ver.2.1 [E_T3_00590] SCS K.Yamaguchi REPAIR START
+--      -- 納品数量
+--      ln_dlv_qty       := ROUND( i_selling_from_rec.dlv_qty_sum      * l_get_selling_to_tab(i).selling_trns_rate / 100, 0 );"
+--      IF( ln_dlv_qty = 0 ) THEN"
+--        -- 売上金額"
+--        ln_sales_amount  := 0;"
+--        -- 本体金額"
+--        ln_pure_amount   := 0;"
+--        -- 売上原価"
+--        ln_sales_cost    := 0;"
+--      ELSE
+--        -- 売上金額
+--        ln_sales_amount  := ROUND( i_selling_from_rec.sales_amount_sum * l_get_selling_to_tab(i).selling_trns_rate / 100, 0 );
+--        -- 本体金額
+--        ln_pure_amount   := ROUND( i_selling_from_rec.pure_amount_sum  * l_get_selling_to_tab(i).selling_trns_rate / 100, 0 );
+--        -- 売上原価
+--        ln_sales_cost    := ROUND( i_selling_from_rec.sales_cost_sum   * l_get_selling_to_tab(i).selling_trns_rate / 100, 0 );
+--      END IF;
+--      -- 端数計算用集計
+--      IF( ln_dlv_qty <> 0 ) THEN
+--        ln_dlv_qty_sum      := ln_dlv_qty_sum      + ln_dlv_qty;
+--        ln_sales_amount_sum := ln_sales_amount_sum + ln_sales_amount;
+--        ln_pure_amount_sum  := ln_pure_amount_sum  + ln_pure_amount;
+--        ln_sales_cost_sum   := ln_sales_cost_sum   + ln_sales_cost;
+--      END IF;
       -- 納品数量
       ln_dlv_qty       := ROUND( i_selling_from_rec.dlv_qty_sum      * l_get_selling_to_tab(i).selling_trns_rate / 100, 0 );
-      IF( ln_dlv_qty = 0 ) THEN
-        -- 売上金額
-        ln_sales_amount  := 0;
-        -- 本体金額
-        ln_pure_amount   := 0;
-        -- 売上原価
-        ln_sales_cost    := 0;
-      ELSE
-        -- 売上金額
-        ln_sales_amount  := ROUND( i_selling_from_rec.sales_amount_sum * l_get_selling_to_tab(i).selling_trns_rate / 100, 0 );
-        -- 本体金額
-        ln_pure_amount   := ROUND( i_selling_from_rec.pure_amount_sum  * l_get_selling_to_tab(i).selling_trns_rate / 100, 0 );
-        -- 売上原価
-        ln_sales_cost    := ROUND( i_selling_from_rec.sales_cost_sum   * l_get_selling_to_tab(i).selling_trns_rate / 100, 0 );
-      END IF;
+      -- 売上金額
+      ln_sales_amount  := ROUND( i_selling_from_rec.sales_amount_sum * l_get_selling_to_tab(i).selling_trns_rate / 100, 0 );
+      -- 本体金額
+      ln_pure_amount   := ROUND( i_selling_from_rec.pure_amount_sum  * l_get_selling_to_tab(i).selling_trns_rate / 100, 0 );
+      -- 売上原価
+      ln_sales_cost    := ROUND( i_selling_from_rec.sales_cost_sum   * l_get_selling_to_tab(i).selling_trns_rate / 100, 0 );
       -- 端数計算用集計
-      IF( ln_dlv_qty <> 0 ) THEN
-        ln_dlv_qty_sum      := ln_dlv_qty_sum      + ln_dlv_qty;
-        ln_sales_amount_sum := ln_sales_amount_sum + ln_sales_amount;
-        ln_pure_amount_sum  := ln_pure_amount_sum  + ln_pure_amount;
-        ln_sales_cost_sum   := ln_sales_cost_sum   + ln_sales_cost;
-      END IF;
+      ln_dlv_qty_sum      := ln_dlv_qty_sum      + ln_dlv_qty;
+      ln_sales_amount_sum := ln_sales_amount_sum + ln_sales_amount;
+      ln_pure_amount_sum  := ln_pure_amount_sum  + ln_pure_amount;
+      ln_sales_cost_sum   := ln_sales_cost_sum   + ln_sales_cost;
+-- 2009/09/28 Ver.2.1 [E_T3_00590] SCS K.Yamaguchi REPAIR END
       -- 端数調整
       IF( i = l_get_selling_to_tab.LAST ) THEN
         -- 納品数量
@@ -873,32 +912,82 @@ AS
         -- 売上原価
         ln_sales_cost_out   := ln_sales_cost;
       ELSE
-        IF( ln_dlv_qty <> 0 ) THEN
-          -- 納品単価
-          ln_dlv_unit_price := ROUND( ln_sales_amount / ln_dlv_qty, 1 );
-          insert_xsti(
-            ov_errbuf               => lv_errbuf                                     -- エラー・メッセージ
-          , ov_retcode              => lv_retcode                                    -- リターン・コード
-          , ov_errmsg               => lv_errmsg                                     -- ユーザー・エラー・メッセージ
-          , i_selling_from_rec      => i_selling_from_rec                            -- 売上振替元情報
-          , iv_base_code            => l_get_selling_to_tab(i).selling_to_base_code  -- 売上振替先拠点コード
-          , iv_cust_code            => l_get_selling_to_tab(i).selling_to_cust_code  -- 売上振替先顧客コード
-          , iv_selling_emp_code     => l_get_selling_to_tab(i).sales_staff_code      -- 売上振替先営業担当コード
-          , in_dlv_qty              => ln_dlv_qty                                    -- 売上振替先納品数量
-          , in_sales_amount         => ln_sales_amount                               -- 売上振替先売上金額
-          , in_pure_amount          => ln_pure_amount                                -- 売上振替先本体金額
-          , in_sales_cost           => ln_sales_cost                                 -- 売上振替先売上原価
-          , in_dlv_unit_price       => ln_dlv_unit_price                             -- 売上振替先納品単価
-          );
-          IF( lv_retcode = cv_status_error ) THEN
-            lv_end_retcode := cv_status_error;
-            RAISE global_process_expt;
-          ELSIF( lv_retcode = cv_status_warn ) THEN
-            RAISE warning_skip_expt;
-          END IF;
+-- 2009/09/28 Ver.2.1 [E_T3_00590] SCS K.Yamaguchi REPAIR START
+--        IF( ln_dlv_qty <> 0 ) THEN
+--          -- 納品単価
+--          ln_dlv_unit_price := ROUND( ln_sales_amount / ln_dlv_qty, 1 );
+--          insert_xsti(
+--            ov_errbuf               => lv_errbuf                                     -- エラー・メッセージ
+--          , ov_retcode              => lv_retcode                                    -- リターン・コード
+--          , ov_errmsg               => lv_errmsg                                     -- ユーザー・エラー・メッセージ
+--          , i_selling_from_rec      => i_selling_from_rec                            -- 売上振替元情報
+--          , iv_base_code            => l_get_selling_to_tab(i).selling_to_base_code  -- 売上振替先拠点コード
+--          , iv_cust_code            => l_get_selling_to_tab(i).selling_to_cust_code  -- 売上振替先顧客コード
+--          , iv_selling_emp_code     => l_get_selling_to_tab(i).sales_staff_code      -- 売上振替先営業担当コード
+--          , in_dlv_qty              => ln_dlv_qty                                    -- 売上振替先納品数量
+--          , in_sales_amount         => ln_sales_amount                               -- 売上振替先売上金額
+--          , in_pure_amount          => ln_pure_amount                                -- 売上振替先本体金額
+--          , in_sales_cost           => ln_sales_cost                                 -- 売上振替先売上原価
+--          , in_dlv_unit_price       => ln_dlv_unit_price                             -- 売上振替先納品単価
+--          );
+--          IF( lv_retcode = cv_status_error ) THEN
+--            lv_end_retcode := cv_status_error;
+--            RAISE global_process_expt;
+--          ELSIF( lv_retcode = cv_status_warn ) THEN
+--            RAISE warning_skip_expt;
+--          END IF;
+--        END IF;
+        insert_xsti(
+          ov_errbuf               => lv_errbuf                                     -- エラー・メッセージ
+        , ov_retcode              => lv_retcode                                    -- リターン・コード
+        , ov_errmsg               => lv_errmsg                                     -- ユーザー・エラー・メッセージ
+        , i_selling_from_rec      => i_selling_from_rec                            -- 売上振替元情報
+        , iv_base_code            => l_get_selling_to_tab(i).selling_to_base_code  -- 売上振替先拠点コード
+        , iv_cust_code            => l_get_selling_to_tab(i).selling_to_cust_code  -- 売上振替先顧客コード
+        , iv_selling_emp_code     => l_get_selling_to_tab(i).sales_staff_code      -- 売上振替先営業担当コード
+        , in_dlv_qty              => ln_dlv_qty                                    -- 売上振替先納品数量
+        , in_sales_amount         => ln_sales_amount                               -- 売上振替先売上金額
+        , in_pure_amount          => ln_pure_amount                                -- 売上振替先本体金額
+        , in_sales_cost           => ln_sales_cost                                 -- 売上振替先売上原価
+        );
+        IF( lv_retcode = cv_status_error ) THEN
+          lv_end_retcode := cv_status_error;
+          RAISE global_process_expt;
+        ELSIF( lv_retcode = cv_status_warn ) THEN
+          RAISE warning_skip_expt;
         END IF;
+-- 2009/09/28 Ver.2.1 [E_T3_00590] SCS K.Yamaguchi REPAIR END
       END IF;
+-- 2009/09/28 Ver.2.1 [E_T3_00590] SCS K.Yamaguchi ADD START
+      --==================================================
+      -- 振替割合チェック用集計
+      --==================================================
+      ln_selling_trns_rate_total := ln_selling_trns_rate_total + l_get_selling_to_tab(i).selling_trns_rate;
+-- 2009/09/28 Ver.2.1 [E_T3_00590] SCS K.Yamaguchi ADD END
     END LOOP sub_loop;
+-- 2009/09/28 Ver.2.1 [E_T3_00590] SCS K.Yamaguchi ADD START
+    --==================================================
+    -- 振替割合チェック
+    --==================================================
+    IF( ln_selling_trns_rate_total <> 100 ) THEN
+      lv_outmsg  := xxccp_common_pkg.get_msg(
+                      iv_application          => cv_appl_short_name_cok
+                    , iv_name                 => cv_msg_cok_10463
+                    , iv_token_name1          => cv_tkn_from_location_code
+                    , iv_token_value1         => i_selling_from_rec.sales_base_code
+                    , iv_token_name2          => cv_tkn_from_customer_code
+                    , iv_token_value2         => i_selling_from_rec.ship_cust_code
+                    , iv_token_name3          => cv_tkn_item_code
+                    , iv_token_value3         => i_selling_from_rec.item_code
+                    );
+      lb_retcode := xxcok_common_pkg.put_message_f(
+                      in_which                => FND_FILE.OUTPUT
+                    , iv_message              => lv_outmsg
+                    , in_new_line             => 0
+                    );
+      RAISE warning_skip_expt;
+    END IF;
+-- 2009/09/28 Ver.2.1 [E_T3_00590] SCS K.Yamaguchi ADD END
     --==================================================
     -- 出力パラメータ設定
     --==================================================
@@ -973,7 +1062,9 @@ AS
     ln_sales_amount_counter        NUMBER         DEFAULT 0;                    -- 売上金額（相殺）
     ln_pure_amount_counter         NUMBER         DEFAULT 0;                    -- 本体金額（相殺）
     ln_sales_cost_counter          NUMBER         DEFAULT 0;                    -- 売上原価（相殺）
-    ln_dlv_unit_price_counter      NUMBER         DEFAULT 0;                    -- 納品単価（相殺）
+-- 2009/09/28 Ver.2.1 [E_T3_00590] SCS K.Yamaguchi DELETE START
+--    ln_dlv_unit_price_counter      NUMBER         DEFAULT 0;                    -- 納品単価（相殺）
+-- 2009/09/28 Ver.2.1 [E_T3_00590] SCS K.Yamaguchi DELETE END
 --
   BEGIN
     --==================================================
@@ -1066,30 +1157,51 @@ AS
         ln_pure_amount_counter     := get_selling_from_rec.pure_amount_sum  * -1 + ln_pure_amount;
         -- 売上原価（相殺）
         ln_sales_cost_counter      := get_selling_from_rec.sales_cost_sum   * -1 + ln_sales_cost;
-        IF( ln_dlv_qty_counter <> 0 ) THEN
-          -- 納品単価（相殺）
-          ln_dlv_unit_price_counter  := ROUND( ln_sales_amount_counter / ln_dlv_qty_counter, 1 );
-          insert_xsti(
-            ov_errbuf               => lv_errbuf                                  -- エラー・メッセージ
-          , ov_retcode              => lv_retcode                                 -- リターン・コード
-          , ov_errmsg               => lv_errmsg                                  -- ユーザー・エラー・メッセージ
-          , i_selling_from_rec      => get_selling_from_rec                       -- 売上振替元情報
-          , iv_base_code            => get_selling_from_rec.sales_base_code       -- 売上振替元拠点コード
-          , iv_cust_code            => get_selling_from_rec.ship_cust_code        -- 売上振替元顧客コード
-          , iv_selling_emp_code     => get_selling_from_rec.sales_staff_code      -- 売上振替元営業担当コード
-          , in_dlv_qty              => ln_dlv_qty_counter                         -- 納品数量（相殺）
-          , in_sales_amount         => ln_sales_amount_counter                    -- 売上金額（相殺）
-          , in_pure_amount          => ln_pure_amount_counter                     -- 本体金額（相殺）
-          , in_sales_cost           => ln_sales_cost_counter                      -- 売上原価（相殺）
-          , in_dlv_unit_price       => ln_dlv_unit_price_counter                  -- 納品単価（相殺）
-          );
-          IF( lv_retcode = cv_status_error ) THEN
-            lv_end_retcode := cv_status_error;
-            RAISE global_process_expt;
-          ELSIF( lv_retcode = cv_status_warn ) THEN
-            RAISE warning_skip_expt;
-          END IF;
+-- 2009/09/28 Ver.2.1 [E_T3_00590] SCS K.Yamaguchi REPAIR START
+--        IF( ln_dlv_qty_counter <> 0 ) THEN
+--          -- 納品単価（相殺）
+--          ln_dlv_unit_price_counter  := ROUND( ln_sales_amount_counter / ln_dlv_qty_counter, 1 );
+--          insert_xsti(
+--            ov_errbuf               => lv_errbuf                                  -- エラー・メッセージ
+--          , ov_retcode              => lv_retcode                                 -- リターン・コード
+--          , ov_errmsg               => lv_errmsg                                  -- ユーザー・エラー・メッセージ
+--          , i_selling_from_rec      => get_selling_from_rec                       -- 売上振替元情報
+--          , iv_base_code            => get_selling_from_rec.sales_base_code       -- 売上振替元拠点コード
+--          , iv_cust_code            => get_selling_from_rec.ship_cust_code        -- 売上振替元顧客コード
+--          , iv_selling_emp_code     => get_selling_from_rec.sales_staff_code      -- 売上振替元営業担当コード
+--          , in_dlv_qty              => ln_dlv_qty_counter                         -- 納品数量（相殺）
+--          , in_sales_amount         => ln_sales_amount_counter                    -- 売上金額（相殺）
+--          , in_pure_amount          => ln_pure_amount_counter                     -- 本体金額（相殺）
+--          , in_sales_cost           => ln_sales_cost_counter                      -- 売上原価（相殺）
+--          , in_dlv_unit_price       => ln_dlv_unit_price_counter                  -- 納品単価（相殺）
+--          );
+--          IF( lv_retcode = cv_status_error ) THEN
+--            lv_end_retcode := cv_status_error;
+--            RAISE global_process_expt;
+--          ELSIF( lv_retcode = cv_status_warn ) THEN
+--            RAISE warning_skip_expt;
+--          END IF;
+--        END IF;
+        insert_xsti(
+          ov_errbuf               => lv_errbuf                                  -- エラー・メッセージ
+        , ov_retcode              => lv_retcode                                 -- リターン・コード
+        , ov_errmsg               => lv_errmsg                                  -- ユーザー・エラー・メッセージ
+        , i_selling_from_rec      => get_selling_from_rec                       -- 売上振替元情報
+        , iv_base_code            => get_selling_from_rec.sales_base_code       -- 売上振替元拠点コード
+        , iv_cust_code            => get_selling_from_rec.ship_cust_code        -- 売上振替元顧客コード
+        , iv_selling_emp_code     => get_selling_from_rec.sales_staff_code      -- 売上振替元営業担当コード
+        , in_dlv_qty              => ln_dlv_qty_counter                         -- 納品数量（相殺）
+        , in_sales_amount         => ln_sales_amount_counter                    -- 売上金額（相殺）
+        , in_pure_amount          => ln_pure_amount_counter                     -- 本体金額（相殺）
+        , in_sales_cost           => ln_sales_cost_counter                      -- 売上原価（相殺）
+        );
+        IF( lv_retcode = cv_status_error ) THEN
+          lv_end_retcode := cv_status_error;
+          RAISE global_process_expt;
+        ELSIF( lv_retcode = cv_status_warn ) THEN
+          RAISE warning_skip_expt;
         END IF;
+-- 2009/09/28 Ver.2.1 [E_T3_00590] SCS K.Yamaguchi REPAIR END
         --==================================================
         -- 正常件数カウント
         --==================================================
