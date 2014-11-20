@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCOS015A01C(body)
  * Description      : 情報系システム向け販売実績データの作成を行う
  * MD.050           : 情報系システム向け販売実績データの作成 MD050_COS_015_A01
- * Version          : 1.0
+ * Version          : 2.2
  *
  * Program List
  * --------------------------- ----------------------------------------------------------
@@ -45,7 +45,17 @@ AS
  *  2009/02/19    1.9   K.Atsushiba      SCS_104 対応 消化計算の黒伝連携
  *  2009/02/20    2.0   K.Atsushiba      パラメータのログファイル出力対応
  *  2009/03/25    2.1   S.Kayahara       最終行にスラッシュ追加
- *
+ *  2009/03/30    2.2   N.Maeda          【ST障害T1-0035対応対応】
+ *                                       販売実績データ抽出時、下記内容データ条件の削除
+ *                                       ・取引データ(取引タイプ「売掛金訂正」(元情報あり)) 
+ *                                       ・取引データ(取引タイプ「売掛金訂正」(元情報なし)) 
+ *                                       【ST障害T1-0187対応対応】
+ *                                       ・検収予定日のフォーマットを「YYYY/MM/DD」から「YYYYMMDD」に変更する。
+ *                                       ・以下の項目をダブルクォーテーションで囲む
+ *                                         会社コード,伝票番号,顧客コード,商品コード,物件コード,
+ *                                         Ｈ／Ｃ,売上拠点コード,成績者コード,カード売り区分,
+ *                                         納品拠点コード,売上返品区分,売上区分,納品形態区分,
+ *                                         コラムNo,消費税区分(税コード?),請求先顧客コード,
  *
  *****************************************************************************************/
 --
@@ -167,10 +177,11 @@ AS
   cv_gyotai_sho_mst_t         CONSTANT VARCHAR2(50) := 'XXCOS1_GYOTAI_SHO_MST_004_A01';   -- 業態区分
   cv_gyotai_sho_mst_c         CONSTANT VARCHAR2(50) := 'XXCOS_004_A01%';                  -- 業態区分
   cv_txn_type_01              CONSTANT VARCHAR2(50) := 'XXCOS_015_A01_01';                -- 直販売上
-  cv_txn_type_02              CONSTANT VARCHAR2(50) := 'XXCOS_015_A01_02';                -- ｲﾝｼｮｯﾌﾟ売上
-  cv_txn_type_03              CONSTANT VARCHAR2(50) := 'XXCOS_015_A01_03';                -- 売掛金訂正
+--  cv_txn_type_02              CONSTANT VARCHAR2(50) := 'XXCOS_015_A01_02';                -- ｲﾝｼｮｯﾌﾟ売上
+--  cv_txn_type_03              CONSTANT VARCHAR2(50) := 'XXCOS_015_A01_03';                -- 売掛金訂正*/
+  cv_txn_sales_type           CONSTANT VARCHAR2(50) := 'XXCOS_015_A01_%';                 -- 取引タイプ
   -- 日付フォーマット
-  cv_date_format              CONSTANT VARCHAR2(20) := 'YYYY/MM/DD';
+--  cv_date_format              CONSTANT VARCHAR2(20) := 'YYYY/MM/DD';
   cv_date_format_non_sep      CONSTANT VARCHAR2(20) := 'YYYYMMDD';
   cv_datetime_format          CONSTANT VARCHAR2(20) := 'YYYYMMDDHH24MISS';
   -- 切捨て時間要素
@@ -196,6 +207,7 @@ AS
   cv_flag_no                  CONSTANT VARCHAR2(1)  := 'N';            -- フラグ:No
   cv_delimiter                CONSTANT VARCHAR2(1)  := ',';            -- デリミタ
   cv_val_y                    CONSTANT VARCHAR2(1)  := 'Y';            -- 値：Y
+  cv_d_cot                    CONSTANT VARCHAR2(1)  := '"';            -- ダブルクォーテーション
   -- 使用目的
   cv_site_ship_to             CONSTANT VARCHAR2(10) := 'SHIP_TO';      -- 出荷先
   cv_site_bill_to             CONSTANT VARCHAR2(10) := 'BILL_TO';      -- 請求先
@@ -351,8 +363,9 @@ AS
          AND    rctta.org_id                = gt_org_id                     -- 営業単位
          AND    rctta.name                  = flv.meaning                   -- 名前
          AND    flv.lookup_type             = cv_ref_t_txn_type_mst         -- タイプ
-         AND    flv.lookup_code             IN  (cv_txn_type_01
-                                                ,cv_txn_type_02)            -- コード
+         /*AND    flv.lookup_code             IN  (cv_txn_type_01
+                                                ,cv_txn_type_02)            -- コード*/
+         AND    flv.lookup_code             LIKE ( cv_txn_sales_type )      -- コード
          AND    flv.attribute1              = cv_val_y                      -- 属性1
          AND    flv.language                = USERENV('LANG')               -- 言語
          AND    rcta.cust_trx_type_id       = rctta.cust_trx_type_id        -- 取引タイプID
@@ -367,7 +380,7 @@ AS
          AND    rcta.complete_flag          = cv_val_y
          AND    rctlgda.gl_date       BETWEEN  TRUNC(id_delivery_date,cv_trunc_fmt)
                                       AND      LAST_DAY(id_delivery_date)   -- GL記帳日
-         UNION ALL 
+         /*UNION ALL 
          -- 取引データ(取引タイプ「売掛金訂正」(元情報あり))
          SELECT  rcta.trx_date                 trx_date                     -- 取引日
                 ,rcta.trx_number               trx_number                   -- 取引番号
@@ -405,6 +418,7 @@ AS
          AND    flv_src.lookup_type                = cv_ref_t_txn_type_mst        -- タイプ
          AND    flv_src.lookup_code             IN  (cv_txn_type_01
                                                 ,cv_txn_type_02)                  -- コード
+--         AND    flv.lookup_code             LIKE ( cv_txn_sales_type )            -- コード
          AND    flv_src.attribute1                 = cv_val_y                     -- 属性1
          AND    flv_src.language                   = USERENV('LANG')              -- 言語
          AND    rcta.previous_customer_trx_id  = rcta_src.customer_trx_id         -- 取引ID
@@ -470,7 +484,7 @@ AS
          AND    rctlgda.set_of_books_id        = TO_NUMBER(gt_book_id)
          AND    rcta.complete_flag             = cv_val_y
          AND    rctlgda.gl_date       BETWEEN  TRUNC(id_delivery_date,cv_trunc_fmt)
-                                      AND      LAST_DAY(id_delivery_date)   -- GL記帳日
+                                      AND      LAST_DAY(id_delivery_date)   -- GL記帳日*/
       ) cust 
       WHERE  cust.customer_trx_id      = tax.customer_trx_id(+)
       AND    cust.customer_trx_line_id = tax.link_to_cust_trx_line_id(+)
@@ -1384,30 +1398,55 @@ AS
     -- ===============================
     -- 併用（現金レコード）、併用以外データの出力
     lv_buffer :=
-      gt_company_code                                                               || cv_delimiter -- 会社コード
-      || TO_CHAR(it_sales_actual.xseh_delivery_date,cv_date_format_non_sep)         || cv_delimiter -- 納品日
-      || TO_CHAR(it_sales_actual.xseh_dlv_invoice_number)                           || cv_delimiter -- 伝票番号
-      || TO_CHAR(it_sales_actual.xsel_dlv_invoice_line_number)                      || cv_delimiter -- 行No
-      || it_sales_actual.xseh_ship_to_customer_code                                 || cv_delimiter -- 顧客コード
-      || it_sales_actual.xsel_item_code                                             || cv_delimiter -- 商品コード
-      || get_external_code(it_sales_actual.hca_cust_account_id)                     || cv_delimiter -- 物件コード
-      || NVL(it_sales_actual.xsel_hot_cold_class,gt_hc_class)                       || cv_delimiter -- H/C
-      || it_sales_actual.xseh_sales_base_code                                       || cv_delimiter -- 売上拠点コード
-      || NVL(it_sales_actual.xseh_results_employee_code,cv_def_results_employee_cd) || cv_delimiter -- 成績者コード
-      || NVL(it_sales_actual.xseh_card_sale_class,cv_def_card_sale_class)           || cv_delimiter -- カード売上区分
-      || it_sales_actual.xsel_delivery_base_code                                    || cv_delimiter -- 納品拠点コード
-      || edit_sales_amount(ln_sales_amount_cash)                                    || cv_delimiter -- 売上金額
-      || ln_sales_quantity_cash                                                     || cv_delimiter -- 売上数量
-      || ln_tax_cash                                                                || cv_delimiter -- 消費税額
-      || it_sales_actual.xseh_dlv_invoice_class                                     || cv_delimiter -- 売上返品区分
-      || it_sales_actual.xsel_sales_class                                           || cv_delimiter -- 売上区分
-      || it_sales_actual.xsel_delivery_pattern_class                                || cv_delimiter -- 納品形態区分
-      || NVL(it_sales_actual.xsel_column_no,cv_def_column_no)                       || cv_delimiter -- カラムNo
-      || TO_CHAR(it_sales_actual.xseh_inspect_date,cv_date_format)                  || cv_delimiter -- 検収予定日
-      || it_sales_actual.xsel_std_unit_price_excluded                               || cv_delimiter -- 納品単価
-      || it_sales_actual.xseh_tax_code                                              || cv_delimiter -- 税コード
-      || it_sales_actual.xchv_bill_account_number                                   || cv_delimiter -- 請求先顧客コード
-      || TO_CHAR(gd_system_date,cv_datetime_format);                                                -- 連携日時
+      cv_d_cot || gt_company_code || cv_d_cot                                        || cv_delimiter
+      -- 会社コード
+      || TO_CHAR(it_sales_actual.xseh_delivery_date,cv_date_format_non_sep)          || cv_delimiter
+      -- 納品日
+      || cv_d_cot || TO_CHAR(it_sales_actual.xseh_dlv_invoice_number) || cv_d_cot    || cv_delimiter
+      -- 伝票番号
+      || TO_CHAR(it_sales_actual.xsel_dlv_invoice_line_number)                       || cv_delimiter
+      -- 行No
+      || cv_d_cot || it_sales_actual.xseh_ship_to_customer_code       || cv_d_cot    || cv_delimiter 
+      -- 顧客コード
+      || cv_d_cot || it_sales_actual.xsel_item_code                   || cv_d_cot    || cv_delimiter 
+      -- 商品コード
+      || cv_d_cot || get_external_code(it_sales_actual.hca_cust_account_id) || cv_d_cot || cv_delimiter 
+      -- 物件コード
+      || cv_d_cot || NVL(it_sales_actual.xsel_hot_cold_class,gt_hc_class)   || cv_d_cot || cv_delimiter 
+      -- H/C
+      || cv_d_cot || it_sales_actual.xseh_sales_base_code || cv_d_cot                || cv_delimiter 
+      -- 売上拠点コード
+      || cv_d_cot || NVL(it_sales_actual.xseh_results_employee_code,cv_def_results_employee_cd) || cv_d_cot || cv_delimiter 
+      -- 成績者コード
+      || cv_d_cot || NVL(it_sales_actual.xseh_card_sale_class,cv_def_card_sale_class) || cv_d_cot || cv_delimiter 
+      -- カード売上区分
+      || cv_d_cot || it_sales_actual.xsel_delivery_base_code || cv_d_cot             || cv_delimiter 
+      -- 納品拠点コード
+      || edit_sales_amount(ln_sales_amount_cash)                                     || cv_delimiter 
+      -- 売上金額
+      || ln_sales_quantity_cash                                                      || cv_delimiter 
+      -- 売上数量
+      || ln_tax_cash                                                                 || cv_delimiter 
+      -- 消費税額
+      || cv_d_cot || it_sales_actual.xseh_dlv_invoice_class || cv_d_cot              || cv_delimiter 
+      -- 売上返品区分
+      || cv_d_cot || it_sales_actual.xsel_sales_class || cv_d_cot                    || cv_delimiter 
+      -- 売上区分
+      || cv_d_cot || it_sales_actual.xsel_delivery_pattern_class || cv_d_cot         || cv_delimiter 
+      -- 納品形態区分
+      || cv_d_cot || NVL(it_sales_actual.xsel_column_no,cv_def_column_no) || cv_d_cot || cv_delimiter 
+      -- コラムNo
+--      || TO_CHAR(it_sales_actual.xseh_inspect_date,cv_date_format)                  || cv_delimiter -- 検収予定日
+      || TO_CHAR(it_sales_actual.xseh_inspect_date,cv_date_format_non_sep)                  || cv_delimiter 
+      -- 検収予定日
+      || it_sales_actual.xsel_std_unit_price_excluded                                || cv_delimiter 
+      -- 納品単価
+      || cv_d_cot || it_sales_actual.xseh_tax_code || cv_d_cot                       || cv_delimiter 
+      -- 税コード
+      || cv_d_cot || it_sales_actual.xchv_bill_account_number || cv_d_cot            || cv_delimiter 
+      -- 請求先顧客コード
+      || TO_CHAR(gd_system_date,cv_datetime_format);
+      -- 連携日時
 --
     -- CSVファイル出力
     UTL_FILE.PUT_LINE(
@@ -1420,30 +1459,55 @@ AS
     IF ( ln_card_rec_flag = cn_output_flag_on) THEN
       -- 併用（カード）データの出力
       lv_buffer :=
-        gt_company_code                                                               || cv_delimiter -- 会社コード
-        || TO_CHAR(it_sales_actual.xseh_delivery_date,cv_date_format_non_sep)         || cv_delimiter -- 納品日
-        || TO_CHAR(it_sales_actual.xseh_dlv_invoice_number)                           || cv_delimiter -- 伝票番号
-        || TO_CHAR(it_sales_actual.xsel_dlv_invoice_line_number)                      || cv_delimiter -- 行No
-        || it_sales_actual.xseh_ship_to_customer_code                                 || cv_delimiter -- 顧客コード
-        || it_sales_actual.xsel_item_code                                             || cv_delimiter -- 商品コード
-        || get_external_code(it_sales_actual.hca_cust_account_id)                     || cv_delimiter -- 物件コード
-        || NVL(it_sales_actual.xsel_hot_cold_class,gt_hc_class)                       || cv_delimiter -- H/C
-        || it_sales_actual.xseh_sales_base_code                                       || cv_delimiter -- 売上拠点コード
-        || NVL(it_sales_actual.xseh_results_employee_code,cv_def_results_employee_cd) || cv_delimiter -- 成績者コード
-        || NVL(it_sales_actual.xseh_card_sale_class,cv_def_card_sale_class)           || cv_delimiter -- カード売上区分
-        || it_sales_actual.xsel_delivery_base_code                                    || cv_delimiter -- 納品拠点コード
-        || edit_sales_amount(ln_sales_amount_card)                                    || cv_delimiter -- 売上金額
-        || ln_sales_quantity_card                                                     || cv_delimiter -- 売上数量
-        || ln_tax_card                                                                || cv_delimiter -- 消費税額
-        || it_sales_actual.xseh_dlv_invoice_class                                     || cv_delimiter -- 売上返品区分
-        || it_sales_actual.xsel_sales_class                                           || cv_delimiter -- 売上区分
-        || it_sales_actual.xsel_delivery_pattern_class                                || cv_delimiter -- 納品形態区分
-        || NVL(it_sales_actual.xsel_column_no,cv_def_column_no)                       || cv_delimiter -- コラムNo
-        || TO_CHAR(it_sales_actual.xseh_inspect_date,cv_date_format)                  || cv_delimiter -- 検収予定日
-        || it_sales_actual.xsel_std_unit_price_excluded                               || cv_delimiter -- 納品単価
-        || it_sales_actual.xseh_tax_code                                              || cv_delimiter -- 税コード
-        || it_sales_actual.xchv_cash_account_number                                   || cv_delimiter -- 入金先顧客コード
-        || TO_CHAR(gd_system_date,cv_datetime_format);                                                -- 連携日時
+        cv_d_cot || gt_company_code || cv_d_cot                                       || cv_delimiter 
+        -- 会社コード
+        || TO_CHAR(it_sales_actual.xseh_delivery_date,cv_date_format_non_sep)         || cv_delimiter 
+        -- 納品日
+        || cv_d_cot || TO_CHAR(it_sales_actual.xseh_dlv_invoice_number) || cv_d_cot   || cv_delimiter 
+        -- 伝票番号
+        || TO_CHAR(it_sales_actual.xsel_dlv_invoice_line_number)                      || cv_delimiter 
+        -- 行No
+        || cv_d_cot || it_sales_actual.xseh_ship_to_customer_code || cv_d_cot         || cv_delimiter 
+        -- 顧客コード
+        || cv_d_cot || it_sales_actual.xsel_item_code || cv_d_cot                     || cv_delimiter 
+        -- 商品コード
+        || cv_d_cot || get_external_code(it_sales_actual.hca_cust_account_id) || cv_d_cot || cv_delimiter 
+        -- 物件コード
+        || cv_d_cot || NVL(it_sales_actual.xsel_hot_cold_class,gt_hc_class) || cv_d_cot || cv_delimiter 
+        -- H/C
+        || cv_d_cot || it_sales_actual.xseh_sales_base_code || cv_d_cot               || cv_delimiter 
+        -- 売上拠点コード
+        || cv_d_cot || NVL(it_sales_actual.xseh_results_employee_code,cv_def_results_employee_cd) || cv_d_cot || cv_delimiter 
+        -- 成績者コード
+        || cv_d_cot || NVL(it_sales_actual.xseh_card_sale_class,cv_def_card_sale_class) || cv_d_cot || cv_delimiter 
+        -- カード売上区分
+        || cv_d_cot || it_sales_actual.xsel_delivery_base_code || cv_d_cot            || cv_delimiter 
+        -- 納品拠点コード
+        || edit_sales_amount(ln_sales_amount_card)                                    || cv_delimiter 
+        -- 売上金額
+        || ln_sales_quantity_card                                                     || cv_delimiter 
+        -- 売上数量
+        || ln_tax_card                                                                || cv_delimiter 
+        -- 消費税額
+        || cv_d_cot || it_sales_actual.xseh_dlv_invoice_class || cv_d_cot             || cv_delimiter 
+        -- 売上返品区分
+        || cv_d_cot || it_sales_actual.xsel_sales_class || cv_d_cot                   || cv_delimiter 
+        -- 売上区分
+        || cv_d_cot || it_sales_actual.xsel_delivery_pattern_class || cv_d_cot        || cv_delimiter 
+        -- 納品形態区分
+        || cv_d_cot || NVL(it_sales_actual.xsel_column_no,cv_def_column_no) || cv_d_cot || cv_delimiter 
+        -- コラムNo
+--        || TO_CHAR(it_sales_actual.xseh_inspect_date,cv_date_format)                  || cv_delimiter -- 検収予定日
+        || TO_CHAR(it_sales_actual.xseh_inspect_date,cv_date_format_non_sep)          || cv_delimiter 
+        -- 検収予定日
+        || it_sales_actual.xsel_std_unit_price_excluded                               || cv_delimiter 
+        -- 納品単価
+        || cv_d_cot || it_sales_actual.xseh_tax_code || cv_d_cot                      || cv_delimiter 
+        -- 税コード
+        || it_sales_actual.xchv_cash_account_number                                   || cv_delimiter 
+        -- 入金先顧客コード
+        || TO_CHAR(gd_system_date,cv_datetime_format);
+        -- 連携日時
 --
       -- CSVファイル出力
       UTL_FILE.PUT_LINE(
@@ -1697,29 +1761,29 @@ AS
     FOR ln_idx IN gt_ar_deal_tbl.FIRST..gt_ar_deal_tbl.LAST LOOP
       --
       lv_buffer :=
-        gt_company_code                                                          || cv_delimiter    -- 会社コード
+        cv_d_cot || gt_company_code || cv_d_cot                                  || cv_delimiter    -- 会社コード
         || TO_CHAR(gt_ar_deal_tbl(ln_idx).rcta_trx_date,cv_date_format_non_sep)  || cv_delimiter    -- 納品日
-        || TO_CHAR(gt_ar_deal_tbl(ln_idx).rcta_trx_number)                       || cv_delimiter    -- 伝票番号
+        || cv_d_cot || TO_CHAR(gt_ar_deal_tbl(ln_idx).rcta_trx_number) || cv_d_cot || cv_delimiter    -- 伝票番号
         || TO_CHAR(gt_ar_deal_tbl(ln_idx).rctla_line_number)                     || cv_delimiter    -- 行No
-        || it_sales_rec.xseh_ship_to_customer_code                               || cv_delimiter    -- 顧客コード
-        || gt_ar_deal_tbl(ln_idx).puroduct_code                                  || cv_delimiter    -- 商品コード
-        || get_external_code(it_sales_rec.hca_cust_account_id)                   || cv_delimiter    -- 物件コード
-        || gt_hc_class                                                           || cv_delimiter    -- H/C
-        || gt_ar_deal_tbl(ln_idx).delivery_base_code                             || cv_delimiter    -- 売上拠点コード
-        || cv_def_results_employee_cd                                            || cv_delimiter    -- 成績者コード
-        || cv_def_card_sale_class                                                || cv_delimiter    -- カード売上区分
-        || cv_def_delivery_base_code                                             || cv_delimiter    -- 納品拠点コード
+        || cv_d_cot || it_sales_rec.xseh_ship_to_customer_code || cv_d_cot       || cv_delimiter    -- 顧客コード
+        || cv_d_cot || gt_ar_deal_tbl(ln_idx).puroduct_code || cv_d_cot          || cv_delimiter    -- 商品コード
+        || cv_d_cot || get_external_code(it_sales_rec.hca_cust_account_id) || cv_d_cot || cv_delimiter -- 物件コード
+        || cv_d_cot || gt_hc_class || cv_d_cot                                   || cv_delimiter    -- H/C
+        || cv_d_cot || gt_ar_deal_tbl(ln_idx).delivery_base_code || cv_d_cot     || cv_delimiter    -- 売上拠点コード
+        || cv_d_cot || cv_def_results_employee_cd || cv_d_cot                    || cv_delimiter    -- 成績者コード
+        || cv_d_cot || cv_def_card_sale_class || cv_d_cot                        || cv_delimiter    -- カード売上区分
+        || cv_d_cot || cv_def_delivery_base_code || cv_d_cot                     || cv_delimiter    -- 納品拠点コード
         || (-1) * edit_sales_amount(gt_ar_deal_tbl(ln_idx).rctla_revenue_amount) || cv_delimiter    -- 売上金額
         || cn_non_sales_quantity                                                 || cv_delimiter    -- 売上数量
         || (-1) * gt_ar_deal_tbl(ln_idx).rctla_t_revenue_amount                  || cv_delimiter    -- 消費税額
-        || lt_dlv_invoice_class                                                  || cv_delimiter    -- 売上返品区分
-        || it_sales_rec.xsel_sales_class                                         || cv_delimiter    -- 売上区分
-        || gt_dlv_ptn_cls                                                        || cv_delimiter    -- 納品形態区分
+        || cv_d_cot || lt_dlv_invoice_class || cv_d_cot                          || cv_delimiter    -- 売上返品区分
+        || cv_d_cot || it_sales_rec.xsel_sales_class || cv_d_cot                 || cv_delimiter    -- 売上区分
+        || cv_d_cot || gt_dlv_ptn_cls || cv_d_cot                                || cv_delimiter    -- 納品形態区分
         || cv_def_column_no                                                      || cv_delimiter    -- カラムNo
         || cv_blank                                                              || cv_delimiter    -- 検収予定日
         || cn_non_std_unit_price                                                 || cv_delimiter    -- 納品単価
-        || gt_ar_deal_tbl(ln_idx).avtab_tax_code                                 || cv_delimiter    -- 税コード
-        || it_sales_rec.xchv_bill_account_number                                 || cv_delimiter    -- 請求先顧客コード
+        || cv_d_cot || gt_ar_deal_tbl(ln_idx).avtab_tax_code || cv_d_cot         || cv_delimiter    -- 税コード
+        || cv_d_cot || it_sales_rec.xchv_bill_account_number || cv_d_cot         || cv_delimiter    -- 請求先顧客コード
         || TO_CHAR(gd_system_date,cv_datetime_format);                                              -- 連携日時
   --
       -- CSVファイル出力
