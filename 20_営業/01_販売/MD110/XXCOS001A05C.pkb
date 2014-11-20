@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCOS001A05C (body)
  * Description      : 出荷確認処理（HHT納品データ）
  * MD.050           : 出荷確認処理(MD050_COS_001_A05)
- * Version          : 1.30
+ * Version          : 1.31
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -93,6 +93,7 @@ AS
  *  2011/04/05    1.29  T.Ishiwata       [E_本稼動_01433] OM受注クローズ時の抽出条件変更
  *  2011/04/26    1.30  Y.Nishino        [E_本稼動_07244] OM受注のオーダーNo連携対応
  *                                                        オーダーNo内のスペース削除対応
+ *  2011/07/04    1.31  T.Ishiwata       [E_本稼動_07848] OM受注のオーダーNo初期化対応
  *
  *****************************************************************************************/
 --
@@ -5944,6 +5945,10 @@ AS
 --            END;
 -- ************ 2009/10/13 1.22 N.Maeda DEL  END  *********** --
     --
+-- 2011/07/04 1.31 T.Ishiwata ADD START
+            -- OM受注オーダーNoの初期化
+            lt_order_invoice_number := NULL;
+-- 2011/07/04 1.31 T.Ishiwata ADD END
     --******************************* 2009/04/16 N.Maeda Var1.12 MOD START ***************************************
     --        IF ( gn_om_data_cnt > 0 ) THEN
             IF ( gn_om_data_cnt > 0 ) AND ( lv_state_flg <> cv_status_warn )THEN
@@ -9189,6 +9194,10 @@ AS
               lt_set_tax_amount_sum := ( lt_tax_amount_sum * ( -1 ) );
             END IF;
     --
+-- 2011/07/04 1.31 T.Ishiwata ADD START
+            -- OM受注オーダーNoの初期化
+            lt_order_invoice_number := NULL;
+-- 2011/07/04 1.31 T.Ishiwata ADD END
     --******************************* 2009/05/12 N.Maeda Var1.13 ADD START *************************************
             IF ( NVL( lt_order_no_ebs, 0 ) <> 0 ) AND ( lt_red_black_flag = cv_black_flag)
 -- ************ 2009/10/13 N.Maeda MOD START *********** --
