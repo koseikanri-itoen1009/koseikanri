@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCOS002A06R(body)
  * Description      : 自販機販売報告書
  * MD.050           : 自販機販売報告書 <MD050_COS_002_A06>
- * Version          : 1.0
+ * Version          : 1.1
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -27,6 +27,8 @@ AS
  *  Date          Ver.  Editor           Description
  * ------------- ----- ---------------- -------------------------------------------------
  * 2012/02/16    1.0   K.Kiriu          新規作成
+ * 2012/12/19    1.1   K.Onotsuka       E_本稼働_10275対応[入力パラメータ.顧客コード(仕入先コード)で重複しているデータは、
+ *                                                         配列格納処理から除外する]
  *
  *****************************************************************************************/
 --
@@ -205,6 +207,9 @@ AS
   TYPE g_cust_ttype  IS TABLE OF hz_cust_accounts.account_number%TYPE INDEX BY BINARY_INTEGER; -- 顧客指定で実行時用
   TYPE g_vend_ttype  IS TABLE OF po_vendors.segment1%TYPE             INDEX BY BINARY_INTEGER; -- 仕入先指定で実行時用
   TYPE g_sales_ttype IS TABLE OF xxcos_rep_vd_sales_list%ROWTYPE      INDEX BY BINARY_INTEGER; -- 帳票ワークテーブル
+-- 2012/12/19 Ver.1.1 Onotsuka E_本稼動_10275 ADD START
+  TYPE g_chk_ttype   IS TABLE OF NUMBER INDEX BY VARCHAR2(30); --パラメータチェック用
+-- 2012/12/19 Ver.1.1 Onotsuka E_本稼動_10275 ADD END
   -- ===============================
   -- ユーザー定義グローバル配列
   -- ===============================
@@ -661,6 +666,9 @@ AS
     -- *** ローカル配列 ***
     l_cust_tab  g_cust_ttype;        -- 顧客指定用
     l_vend_tab  g_vend_ttype;        -- 仕入先指定用
+-- 2012/12/19 Ver.1.1 Onotsuka E_本稼動_10275 ADD START
+    l_chk_tab   g_chk_ttype;         -- パラメータチェック用
+-- 2012/12/19 Ver.1.1 Onotsuka E_本稼動_10275 ADD END
 --
     -- *** ローカル変数 ***
     ln_cnt        BINARY_INTEGER := 0; -- 配列添え字
@@ -701,12 +709,27 @@ AS
       << cust_loop >>
       FOR i IN 1.. g_cust_tab.COUNT LOOP
         IF ( g_cust_tab(i) IS NOT NULL ) THEN
-          ln_cnt             := ln_cnt + 1;
-          l_cust_tab(ln_cnt) := g_cust_tab(i);
+-- 2012/12/19 Ver.1.1 Onotsuka E_本稼動_10275 ADD START
+          --パラメータに同一顧客が2つ以上設定されていないかチェック
+          IF ( l_chk_tab.EXISTS( g_cust_tab(i) ) ) THEN
+            --同一顧客が既に存在する場合、設定しない
+            NULL;
+          ELSE
+-- 2012/12/19 Ver.1.1 Onotsuka E_本稼動_10275 ADD END
+            ln_cnt             := ln_cnt + 1;
+            l_cust_tab(ln_cnt) := g_cust_tab(i);
+-- 2012/12/19 Ver.1.1 Onotsuka E_本稼動_10275 ADD START
+            l_chk_tab( g_cust_tab(i) ) := 1; --チェック用配列にダミー値設定
+          END IF;
+-- 2012/12/19 Ver.1.1 Onotsuka E_本稼動_10275 ADD END
         END IF;
       END LOOP cust_loop;
       -- グローバル配列削除
       g_cust_tab.DELETE;
+-- 2012/12/19 Ver.1.1 Onotsuka E_本稼動_10275 ADD START
+      -- チェック用の配列削除
+      l_chk_tab.DELETE;
+-- 2012/12/19 Ver.1.1 Onotsuka E_本稼動_10275 ADD END
 --
       BEGIN
         -----------------------------------------
@@ -874,12 +897,27 @@ AS
       << vend_loop >>
       FOR i IN 1.. g_vend_tab.COUNT LOOP
         IF ( g_vend_tab(i) IS NOT NULL ) THEN
-          ln_cnt             := ln_cnt + 1;
-          l_vend_tab(ln_cnt) := g_vend_tab(i);
+-- 2012/12/19 Ver.1.1 Onotsuka E_本稼動_10275 ADD START
+          --パラメータに同一仕入先が2つ以上設定されていないかチェック
+          IF ( l_chk_tab.EXISTS( g_vend_tab(i) ) ) THEN
+            --同一仕入先が既に存在する場合、設定しない
+            NULL;
+          ELSE
+-- 2012/12/19 Ver.1.1 Onotsuka E_本稼動_10275 ADD END
+            ln_cnt             := ln_cnt + 1;
+            l_vend_tab(ln_cnt) := g_vend_tab(i);
+-- 2012/12/19 Ver.1.1 Onotsuka E_本稼動_10275 ADD START
+            l_chk_tab( g_vend_tab(i) ) := 1; --チェック用配列にダミー値設定
+          END IF;
+-- 2012/12/19 Ver.1.1 Onotsuka E_本稼動_10275 ADD END
         END IF;
       END LOOP vend_loop;
       -- グローバル配列削除
       g_vend_tab.DELETE;
+-- 2012/12/19 Ver.1.1 Onotsuka E_本稼動_10275 ADD START
+      -- チェック用の配列削除
+      l_chk_tab.DELETE;
+-- 2012/12/19 Ver.1.1 Onotsuka E_本稼動_10275 ADD END
 --
       BEGIN
         -----------------------------------------
