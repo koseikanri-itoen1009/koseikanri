@@ -5,7 +5,7 @@
 ## Program Name     : ZBZZEXINBOUND                                             ##
 ## Description      : EDIƒVƒXƒeƒ€—pI/F˜AŒg‹@”\iINBOUND)                        ##
 ## MD.070           : MD070_IPO_CCP_ƒVƒFƒ‹                                      ##
-## Version          : 1.10                                                      ##
+## Version          : 1.13                                                      ##
 ##                                                                              ##
 ## Parameter List                                                               ##
 ## -------- ----------------------------------------------------------          ##
@@ -48,6 +48,10 @@
 ##                                         “ú–{Œê‚ÌƒpƒXî•ñ‚ğæ“¾‚·‚é‚æ‚¤C³   ##
 ##  2009/08/19    1.10  Masayuki.Sano    áŠQ”Ô†[0000835]                      ##
 ##                                         ˆêƒtƒ@ƒCƒ‹–¼•ÏX                   ##
+##  2009/11/25    1.12  Masayuki.Sano    áŠQ”Ô†[E_–{‰Ò“®_00056]               ##
+##                                         SQL-Loader“®ì•s³‘Î‰               ##
+##  2010/09/21    1.13  Nobuo.Koyama     áŠQ”Ô†[E_–{‰Ò“®_04934]               ##
+##                                         SANƒT[ƒoƒtƒ@ƒCƒ‹‘¶İƒ`ƒFƒbƒN’Ç‰Á    ##
 ##                                                                              ##
 ##################################################################################
                                                                                 
@@ -59,7 +63,7 @@
 
 C_appl_name="XXCCP"           #ƒAƒvƒŠƒP[ƒVƒ‡ƒ“’Zk–¼
 C_program_id="ZBZZEXINBOUND"  #ƒvƒƒOƒ‰ƒ€ID
-L_logpath="/var/log/jp1/T3"   #ƒƒOƒtƒ@ƒCƒ‹ƒpƒX[ŠÂ‹«ˆË‘¶’l]
+L_logpath="/var/tmp/jp1/log"  #ƒƒOƒtƒ@ƒCƒ‹ƒpƒX[ŠÂ‹«ˆË‘¶’l]
 #2009/04/15 ADD Ver.1.7 BY Masayuki.Sano START
 L_tmppath="/var/tmp"          #ˆêƒtƒ@ƒCƒ‹ƒpƒX[ŠÂ‹«ˆË‘¶’l]
 #2009/04/15 ADD Ver.1.7 BY Masayuki.Sano START
@@ -72,6 +76,9 @@ C_ret_code_norm=0     #³íI—¹
 C_ret_code_warn=4     #ŒxI—¹
 C_ret_code_eror=8     #ˆÙíI—¹
 #2009/04/06 UPDATE BY Masayuki.Sano Ver.1.5 End
+# 2010/09/21 Ver.1.13 Nobuo.Koyama Add Start
+C_ret_code_nofile=5   #SANƒtƒ@ƒCƒ‹‚È‚µI—¹
+# 2010/09/21 Ver.1.13 Nobuo.Koyama Add End
 
 # “ú
 C_date=$(/bin/date "+%Y%m%d%H%M%S") #ˆ—“ú
@@ -136,6 +143,9 @@ C_log_msg_00020="NASƒT[ƒo“à‚ÌI/Fƒtƒ@ƒCƒ‹‚Ìíœ‚É¸”s‚µ‚Ü‚µ‚½B"
 C_log_msg_00021="ƒ[ƒNƒe[ƒuƒ‹‚Ìƒf[ƒ^íœ‚É¸”s‚µ‚Ü‚µ‚½B"
 C_log_msg_00022="IFƒtƒ@ƒCƒ‹‘Ş”ğæƒfƒBƒŒƒNƒgƒŠ‚Ö‚ÌˆÚ“®‚É¸”s‚µ‚Ü‚µ‚½B"
 C_log_msg_00023="‘Ş”ğæƒfƒBƒŒƒNƒgƒŠ“à‚ÌƒoƒbƒNƒAƒbƒvƒtƒ@ƒCƒ‹‚Ìíœ‚É¸”s‚µ‚Ü‚µ‚½B"
+# 2010/09/21 Ver.1.13 Nobuo.Koyama Add Start
+C_log_msg_00024="SANƒT[ƒo‚ÉÀs‘ÎÛ‚Ìƒtƒ@ƒCƒ‹‚ª‘¶İ‚µ‚Ü‚¹‚ñB"
+# 2010/09/21 Ver.1.13 Nobuo.Koyama Add End
 #2009/04/15 ADD Ver.1.7 BY Masayuki.Sano START
 
 ################################################################################
@@ -153,7 +163,10 @@ C_log_msg_00023="‘Ş”ğæƒfƒBƒŒƒNƒgƒŠ“à‚ÌƒoƒbƒNƒAƒbƒvƒtƒ@ƒCƒ‹‚Ìíœ‚É¸”s‚µ‚Ü‚µ‚½
 #===============================================================================
 output_log()
 {
-  echo `date "+%Y/%m/%d %H:%M:%S"` ${@} >> ${L_logfile}
+#2009/11/25 MOD Ver.1.12 Start
+#  echo `date "+%Y/%m/%d %H:%M:%S"` ${@} >> ${L_logfile}
+  echo $$-`date "+%Y/%m/%d %H:%M:%S"` ${@} >> ${L_logfile}
+#2009/11/25 MOD Ver.1.12 End
 }
 
 #===============================================================================
@@ -1072,6 +1085,20 @@ G_path_san="${G_dire_san}/${2}"                                 #I/Fƒtƒ@ƒCƒ‹(SAN
 G_path_nas="${G_dire_nas}/${2}"                                 #I/Fƒtƒ@ƒCƒ‹(NASƒT[ƒo)ƒpƒX
 G_path_esc="${G_drie_esc}/${G_base_if}_${C_date}.${G_exte_if}"  #I/Fƒtƒ@ƒCƒ‹(‘Ş”ğ—p)ƒpƒX
 
+# 2010/09/21 Ver.1.13 Nobuo.Koyama Add Start
+#===============================================================================
+#4.I/Fƒtƒ@ƒCƒ‹iSANƒT[ƒoj‚Ì‘¶İƒ`ƒFƒbƒN
+#===============================================================================
+#SANƒT[ƒo‚ÖI/Fƒtƒ@ƒCƒ‹‚ª‘¶İ‚·‚é‚©ƒ`ƒFƒbƒN‚·‚é
+#E‘¶İ‚µ‚È‚¢Ë–ß‚è’l(5)‚ğƒZƒbƒg‚µ‚Äˆ—I—¹
+if [ ! -f "${G_path_san}" ]
+then
+  output_log "${C_log_msg_00024}"
+  shell_end ${C_ret_code_nofile}
+  exit ${C_ret_code_nofile}
+fi
+# 2010/09/21 Ver.1.13 Nobuo.Koyama Add End
+
 #===============================================================================
 #4.I/Fƒtƒ@ƒCƒ‹iNASƒT[ƒoj‚Ì‘¶İƒ`ƒFƒbƒN
 #===============================================================================
@@ -1220,9 +1247,12 @@ then
     L_exit_code=${?}
     if [ ${L_exit_code} -ne 0 ]
     then
-#2009/04/15 ADD Ver.1.7 BY Masayuki.Sano START
-      shell_end ${C_ret_code_eror}
-#2009/04/15 ADD Ver.1.7 BY Masayuki.Sano END
+#2009/11/25 MOD Ver.1.12 Start
+##2009/04/15 ADD Ver.1.7 BY Masayuki.Sano START
+#      shell_end ${C_ret_code_eror}
+##2009/04/15 ADD Ver.1.7 BY Masayuki.Sano END
+      shell_end ${L_exit_code}
+#2009/11/25 MOD Ver.1.12 End
       exit ${L_exit_code}
     fi
 #2009/02/27 UPDATE BY M.Sano Œ‹‡ƒeƒXƒg“®ì•s³‘Î‰ END
@@ -1233,7 +1263,10 @@ then
   else
     #SQL Loader‚É‚Äæ‚è‚ñ‚¾ƒf[ƒ^íœ
     #EˆÙíI—¹¨–ß‚è’l(7)‚ğƒZƒbƒg‚µ‚Äˆ—I—¹
-    SQL_LOADER_DELETE "${2}"
+#2009/11/25 MOD Ver.1.12 Start
+#    SQL_LOADER_DELETE "${2}"
+    SQL_LOADER_DELETE "${G_path_nas}"
+#2009/11/25 MOD Ver.1.12 End
     L_ret_code=${?}
 #2009/04/15 DELETE Ver.1.7 BY Masayuki.Sano START
 #    if [ ${L_ret_code} -ne 0 ]

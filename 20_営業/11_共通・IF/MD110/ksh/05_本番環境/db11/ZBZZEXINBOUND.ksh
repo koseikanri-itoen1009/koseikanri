@@ -5,7 +5,7 @@
 ## Program Name     : ZBZZEXINBOUND                                             ##
 ## Description      : EDIシステム用I/F連携機能（INBOUND)                        ##
 ## MD.070           : MD070_IPO_CCP_シェル                                      ##
-## Version          : 1.12                                                      ##
+## Version          : 1.13                                                      ##
 ##                                                                              ##
 ## Parameter List                                                               ##
 ## -------- ----------------------------------------------------------          ##
@@ -51,6 +51,8 @@
 ##  2009/11/23    1.11  Shigeto.Niki     一時ファイルパス修正                   ##
 ##  2009/11/25    1.12  Masayuki.Sano    障害番号[E_本稼動_00056]               ##
 ##                                         SQL-Loader動作不正対応               ##
+##  2010/09/21    1.13  Nobuo.Koyama     障害番号[E_本稼動_04934]               ##
+##                                         SANサーバファイル存在チェック追加    ##
 ##                                                                              ##
 ##################################################################################
                                                                                 
@@ -77,6 +79,9 @@ C_ret_code_norm=0     #正常終了
 C_ret_code_warn=4     #警告終了
 C_ret_code_eror=8     #異常終了
 #2009/04/06 UPDATE BY Masayuki.Sano Ver.1.5 End
+# 2010/09/21 Ver.1.13 Nobuo.Koyama Add Start
+C_ret_code_nofile=5   #SANファイルなし終了
+# 2010/09/21 Ver.1.13 Nobuo.Koyama Add End
 
 # 日時
 C_date=$(/bin/date "+%Y%m%d%H%M%S") #処理日時
@@ -141,6 +146,9 @@ C_log_msg_00020="NASサーバ内のI/Fファイルの削除に失敗しました。"
 C_log_msg_00021="ワークテーブルのデータ削除に失敗しました。"
 C_log_msg_00022="IFファイル退避先ディレクトリへの移動に失敗しました。"
 C_log_msg_00023="退避先ディレクトリ内のバックアップファイルの削除に失敗しました。"
+# 2010/09/21 Ver.1.13 Nobuo.Koyama Add Start
+C_log_msg_00024="SANサーバに実行対象のファイルが存在しません。"
+# 2010/09/21 Ver.1.13 Nobuo.Koyama Add End
 #2009/04/15 ADD Ver.1.7 BY Masayuki.Sano START
 
 ################################################################################
@@ -1079,6 +1087,20 @@ G_exte_if=$(echo "${2}" | sed -e 's/^'"${G_base_if}"'\.//')     #I/Fファイルの拡
 G_path_san="${G_dire_san}/${2}"                                 #I/Fファイル(SANサーバ)パス
 G_path_nas="${G_dire_nas}/${2}"                                 #I/Fファイル(NASサーバ)パス
 G_path_esc="${G_drie_esc}/${G_base_if}_${C_date}.${G_exte_if}"  #I/Fファイル(退避用)パス
+
+# 2010/09/21 Ver.1.13 Nobuo.Koyama Add Start
+#===============================================================================
+#4.I/Fファイル（SANサーバ）の存在チェック
+#===============================================================================
+#SANサーバへI/Fファイルが存在するかチェックする
+#・存在しない⇒戻り値(5)をセットして処理終了
+if [ ! -f "${G_path_san}" ]
+then
+  output_log "${C_log_msg_00024}"
+  shell_end ${C_ret_code_nofile}
+  exit ${C_ret_code_nofile}
+fi
+# 2010/09/21 Ver.1.13 Nobuo.Koyama Add End
 
 #===============================================================================
 #4.I/Fファイル（NASサーバ）の存在チェック
