@@ -7,7 +7,7 @@ AS
  * Description      : 出庫指示確認表
  * MD.050           : 引当/配車(帳票) T_MD050_BPO_621
  * MD.070           : 出庫指示確認表 T_MD070_BPO_62G
- * Version          : 1.6
+ * Version          : 1.8
  *
  * Program List
  * ---------------------------- ----------------------------------------------------------
@@ -35,6 +35,8 @@ AS
  *  2008/07/02    1.5   Akiyoshi Shiina       変更要求対応#92
  *                                            禁則文字「'」「"」「<」「>」「＆」対応
  *  2008/07/11    1.6   Kazuo Kumamoto        結合テスト障害対応(単位出力制御)
+ *  2008/08/05    1.7   Yasuhisa Yamamoto     内部変更要求対応
+ *  2008/09/25    1.8   Yasuhisa Yamamoto     T_TE080_BPO_620 #36,41、使用不備障害T_S_479,501
  *
  *****************************************************************************************/
 --
@@ -107,6 +109,11 @@ AS
   -- 品目・商品区分
   gv_prod_cd_drink           CONSTANT  VARCHAR2(1)  := '2' ;        -- 商品区分:ドリンク
   gv_item_cd_prdct           CONSTANT  VARCHAR2(1)  := '5' ;        -- 品目区分:製品
+-- 2008/09/29 Y.Yamamoto v1.8 ADD Start
+  gv_item_cd_genryo          CONSTANT  VARCHAR2(1)  := '1' ;        -- 品目区分:原料
+  gv_item_cd_sizai           CONSTANT  VARCHAR2(1)  := '2' ;        -- 品目区分:資材
+  gv_item_cd_hanseihin       CONSTANT  VARCHAR2(1)  := '4' ;        -- 品目区分:半製品
+-- 2008/09/29 Y.Yamamoto v1.8 ADD End
   -- 自動手動引当区分
   gv_auto_manual_kbn_a       CONSTANT  VARCHAR2(10) := '10' ;       -- 自動
   -- 小口区分
@@ -276,6 +283,12 @@ AS
     -- 強制出力区分
     ,complusion_output_kbn            xxcmn_carriers2_v.complusion_output_code%TYPE
 -- 2008/07/02 A.Shiina v1.5 ADD End
+-- 2008/09/25 Y.Yamamoto v1.8 ADD Start
+    -- ロットID
+    ,lot_id                       ic_lots_mst.lot_id%TYPE
+    -- 品目区分
+    ,item_class_code            xxcmn_item_categories5_v.item_class_code%TYPE
+-- 2008/09/25 Y.Yamamoto v1.8 ADD End
   );
   TYPE type_report_data_tbl IS TABLE OF type_report_data_rec INDEX BY PLS_INTEGER ;
 --
@@ -1217,6 +1230,10 @@ AS
     || ' ,freight_charge_code '             -- 運賃区分(コード)
     || ' ,complusion_output_kbn '           -- 強制出力区分
 -- 2008/07/02 A.Shiina v1.5 ADD End
+-- 2008/09/25 Y.Yamamoto v1.8 ADD Start
+    || ' ,lot_id '                          -- ロットID
+    || ' ,item_class_code '                 -- 品目区分
+-- 2008/09/25 Y.Yamamoto v1.8 ADD End
     ;
 --
     IF ( gr_param.gyoumu_kbn = gv_biz_type_cd_ship OR gr_param.gyoumu_kbn IS NULL ) THEN
@@ -1354,16 +1371,28 @@ AS
       || '    WHEN xsm2v.small_amount_class = ''' || gv_small_kbn_obj || ''' THEN'
       || '      CASE'
       || '        WHEN xoha.weight_capacity_class = ''' || gv_wei_cap_kbn_w || ''''
-      || '        THEN xoha.sum_weight'
+-- 2008/08/05 Y.Yamamoto v1.7 Update Start
+--      || '        THEN xoha.sum_weight'
+      || '        THEN CEIL(TRUNC(xoha.sum_weight,1))'
+-- 2008/08/05 Y.Yamamoto v1.7 Update End
       || '        WHEN xoha.weight_capacity_class = ''' || gv_wei_cap_kbn_c || ''''
-      || '        THEN xoha.sum_capacity'
+-- 2008/08/05 Y.Yamamoto v1.7 Update Start
+--      || '        THEN xoha.sum_capacity'
+      || '        THEN CEIL(TRUNC(xoha.sum_capacity,1))'
+-- 2008/08/05 Y.Yamamoto v1.7 Update End
       || '      END'
       || '    WHEN xsm2v.small_amount_class = ''' || gv_small_kbn_not_obj || ''' THEN'
       || '      CASE'
       || '        WHEN xoha.weight_capacity_class = ''' || gv_wei_cap_kbn_w || ''' THEN'
-      || '          xoha.sum_pallet_weight + xoha.sum_weight'
+-- 2008/08/05 Y.Yamamoto v1.7 Update Start
+--      || '          xoha.sum_pallet_weight + xoha.sum_weight'
+      || '          CEIL(TRUNC(xoha.sum_pallet_weight + xoha.sum_weight,1))'
+-- 2008/08/05 Y.Yamamoto v1.7 Update End
       || '        WHEN xoha.weight_capacity_class = ''' || gv_wei_cap_kbn_c || ''' THEN'
-      || '          xoha.sum_pallet_weight + xoha.sum_capacity'
+-- 2008/08/05 Y.Yamamoto v1.7 Update Start
+--      || '          xoha.sum_pallet_weight + xoha.sum_capacity'
+      || '          CEIL(TRUNC(xoha.sum_pallet_weight + xoha.sum_capacity,1))'
+-- 2008/08/05 Y.Yamamoto v1.7 Update End
       || '      END'
       || '    WHEN xsm2v.small_amount_class IS NULL THEN'
       || '      NULL '
@@ -1385,6 +1414,10 @@ AS
       || ' ,xlv2v1.lookup_code               AS  freight_charge_code'     -- 運賃区分(コード)
       || ' ,xc2v.complusion_output_code      AS  complusion_output_kbn'   -- 強制出力区分
 -- 2008/07/02 A.Shiina v1.5 ADD End
+-- 2008/09/25 Y.Yamamoto v1.8 ADD Start
+      || ' ,NVL(ilm.lot_id, 0)               AS  lot_id '                 -- ロットID
+      || ' ,xic4v.item_class_code            AS  item_class_code'         -- 品目区分
+-- 2008/09/25 Y.Yamamoto v1.8 ADD End
       ;
 --
       -- ================================================================================
@@ -1402,7 +1435,10 @@ AS
       || ' ,xxcmn_locations2_v                xl2v'       -- 事業所情報VIEW2
       || ' ,xxwsh_order_lines_all             xola'       -- 受注明細アドオン
       || ' ,xxcmn_item_mst2_v                 xim2v'      -- OPM品目情報VIEW2
-      || ' ,xxcmn_item_categories4_v          xic4v'      -- OPM品目カテゴリ割当情報VIEW4
+-- 2008/08/05 Y.Yamamoto v1.7 Update Start
+--      || ' ,xxcmn_item_categories4_v          xic4v'      -- OPM品目カテゴリ割当情報VIEW4
+      || ' ,xxcmn_item_categories5_v          xic4v'      -- OPM品目カテゴリ割当情報VIEW5
+-- 2008/08/05 Y.Yamamoto v1.7 Update End
       || ' ,xxinv_mov_lot_details             xmld'       -- 移動ロット詳細(アドオン)
       || ' ,ic_lots_mst                       ilm'        -- OPMロットマスタ
       || ' ,xxwsh_ship_method2_v              xsm2v'      -- 配送区分情報VIEW2
@@ -1503,6 +1539,9 @@ AS
       || '       OR'
       || '          xola.delete_flag               <>  ''Y'''
       || '       )'
+-- 2008/08/05 Y.Yamamoto v1.7 ADD Start
+      || ' AND   xola.quantity                      >   0'
+-- 2008/08/05 Y.Yamamoto v1.7 ADD End
            -------------------------------------------------------------------------------
            -- OPM品目情報VIEW2
            -------------------------------------------------------------------------------
@@ -1659,7 +1698,10 @@ AS
       || '    WHEN  (   ( xic4v.item_class_code = ''' || gv_item_cd_prdct || ''' )'
       || '          AND ( xic4v.prod_class_code  = ''' || gv_prod_cd_drink || ''' )'
       || '          AND     ( xim2v.conv_unit IS NOT NULL  ) ) THEN'
-      || '      TRUNC(xmril.request_qty / TO_NUMBER('
+-- 2008/09/25 Y.Yamamoto v1.8 Update Start
+--      || '      TRUNC(xmril.request_qty / TO_NUMBER('
+      || '      TRUNC(xmril.first_instruct_qty / TO_NUMBER('
+-- 2008/09/25 Y.Yamamoto v1.8 Update End
       || '                                        CASE'
       || '                                          WHEN ( xim2v.num_of_cases > 0 ) THEN'
       || '                                            xim2v.num_of_cases'
@@ -1668,7 +1710,10 @@ AS
       || '                                        END'
       || '                                      ), 3)'
       || '    ELSE'
-      || '      xmril.request_qty'
+-- 2008/09/29 Y.Yamamoto v1.8 Update Start
+--      || '      xmril.request_qty'
+      || '      xmril.first_instruct_qty'
+-- 2008/09/29 Y.Yamamoto v1.8 Update End
       || '    END                                 AS  request_quantity'        -- 依頼数量
       || ' ,CASE'
       || '    WHEN  (   ( xic4v.item_class_code = ''' || gv_item_cd_prdct || ''' )'
@@ -1752,16 +1797,28 @@ AS
       || '    WHEN xsm2v.small_amount_class = ''' || gv_small_kbn_obj || ''' THEN'
       || '      CASE'
       || '        WHEN xmrih.weight_capacity_class = ''' || gv_wei_cap_kbn_w || ''''
-      || '        THEN xmrih.sum_weight'
+-- 2008/08/05 Y.Yamamoto v1.7 Update Start
+--      || '        THEN xmrih.sum_weight'
+      || '        THEN CEIL(TRUNC(xmrih.sum_weight,1))'
+-- 2008/08/05 Y.Yamamoto v1.7 Update End
       || '        WHEN xmrih.weight_capacity_class = ''' || gv_wei_cap_kbn_c || ''''
-      || '        THEN xmrih.sum_capacity'
+-- 2008/08/05 Y.Yamamoto v1.7 Update Start
+--      || '        THEN xmrih.sum_capacity'
+      || '        THEN CEIL(TRUNC(xmrih.sum_capacity,1))'
+-- 2008/08/05 Y.Yamamoto v1.7 Update End
       || '      END'
       || '    WHEN xsm2v.small_amount_class = ''' || gv_small_kbn_not_obj || ''' THEN'
       || '      CASE'
       || '        WHEN xmrih.weight_capacity_class = ''' || gv_wei_cap_kbn_w || ''' THEN'
-      || '          xmrih.sum_pallet_weight + xmrih.sum_weight'
+-- 2008/08/05 Y.Yamamoto v1.7 Update Start
+--      || '          xmrih.sum_pallet_weight + xmrih.sum_weight'
+      || '          CEIL(TRUNC(xmrih.sum_pallet_weight + xmrih.sum_weight,1))'
+-- 2008/08/05 Y.Yamamoto v1.7 Update End
       || '        WHEN xmrih.weight_capacity_class = ''' || gv_wei_cap_kbn_c || ''' THEN'
-      || '          xmrih.sum_pallet_weight + xmrih.sum_capacity'
+-- 2008/08/05 Y.Yamamoto v1.7 Update Start
+--      || '          xmrih.sum_pallet_weight + xmrih.sum_capacity'
+      || '          CEIL(TRUNC(xmrih.sum_pallet_weight + xmrih.sum_capacity,1))'
+-- 2008/08/05 Y.Yamamoto v1.7 Update End
       || '      END'
       || '    WHEN xsm2v.small_amount_class IS NULL THEN'
       || '      NULL '
@@ -1783,6 +1840,10 @@ AS
       || ' ,xlv2v1.lookup_code                    AS  freight_charge_code'     -- 運賃区分(コード)
       || ' ,xc2v.complusion_output_code           AS complusion_output_kbn'    -- 強制出力区分
 -- 2008/07/02 A.Shiina v1.5 ADD End
+-- 2008/09/25 Y.Yamamoto v1.8 ADD Start
+      || ' ,NVL(ilm.lot_id, 0)                    AS  lot_id '                 -- ロットID
+      || ' ,xic4v.item_class_code                 AS  item_class_code'         -- 品目区分
+-- 2008/09/25 Y.Yamamoto v1.8 ADD End
       ;
 --
       -- ================================================================================
@@ -1797,7 +1858,10 @@ AS
       || ' ,per_all_people_f                     papf'         -- 従業員マスタ
       || ' ,xxinv_mov_req_instr_lines            xmril'        -- 移動依頼/指示明細(アドオン)
       || ' ,xxcmn_item_mst2_v                    xim2v'        -- OPM品目情報VIEW2
-      || ' ,xxcmn_item_categories4_v             xic4v'        -- OPM品目カテゴリ割当情報VIEW4
+-- 2008/08/05 Y.Yamamoto v1.7 Update Start
+--      || ' ,xxcmn_item_categories4_v             xic4v'        -- OPM品目カテゴリ割当情報VIEW4
+      || ' ,xxcmn_item_categories5_v             xic4v'        -- OPM品目カテゴリ割当情報VIEW5
+-- 2008/08/05 Y.Yamamoto v1.7 Update End
       || ' ,xxinv_mov_lot_details                xmld'         -- 移動ロット詳細(アドオン)
       || ' ,ic_lots_mst                          ilm'          -- OPMロットマスタ
       || ' ,xxwsh_ship_method2_v                 xsm2v'        -- 配送区分情報VIEW2
@@ -1849,6 +1913,9 @@ AS
       || '       OR'
       || '          xmril.delete_flg            <>  ''Y'''
       || '       )'
+-- 2008/08/05 Y.Yamamoto v1.7 ADD Start
+      || ' AND   xmril.instruct_qty              >   0'
+-- 2008/08/05 Y.Yamamoto v1.7 ADD End
            -------------------------------------------------------------------------------
            -- OPM品目情報VIEW2
            -------------------------------------------------------------------------------
@@ -1966,6 +2033,13 @@ AS
     || '  screen_update_date'
     || ' ,req_mov_no'
     || ' ,meisai_number'
+-- 2008/09/25 Y.Yamamoto v1.8 ADD Start
+    || ' ,DECODE(item_class_code, ''' || gv_item_cd_prdct     || ''', make_date )'
+    || ' ,DECODE(item_class_code, ''' || gv_item_cd_prdct     || ''', koyu_kigou )'
+    || ' ,DECODE(item_class_code, ''' || gv_item_cd_genryo    || ''', TO_NUMBER( DECODE( lot_id, 0 , ''0'', lot_no) )'
+    || '                        , ''' || gv_item_cd_sizai     || ''', TO_NUMBER( DECODE( lot_id, 0 , ''0'', lot_no) )'
+    || '                        , ''' || gv_item_cd_hanseihin || ''', TO_NUMBER( DECODE( lot_id, 0 , ''0'', lot_no) ) )'
+-- 2008/09/25 Y.Yamamoto v1.8 ADD End
     ;
 --
     -- ====================================================

@@ -7,7 +7,7 @@ AS
  * Description      : ＨＨＴ入出庫配車確定情報抽出処理
  * MD.050           : T_MD050_BPO_601_配車配送計画
  * MD.070           : T_MD070_BPO_60F_ＨＨＴ入出庫配車確定情報抽出処理
- * Version          : 1.13
+ * Version          : 1.14
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -52,6 +52,8 @@ AS
  *  2008/08/29    1.12  N.Fukuda         取消ヘッダに品目数量・ロット数量に0がセットされている
  *  2008/09/09    1.13  N.Fukuda         TE080_600指摘#30対応
  *  2008/09/10    1.13  N.Fukuda         参照Viewの変更(パーティから顧客に変更)
+ *  2008/09/25    1.14  M.Nomura         統合#26対応
+ *
  *****************************************************************************************/
 --
 --#######################  固定グローバル定数宣言部 START   #######################
@@ -372,6 +374,9 @@ AS
      ,in_whse_inout_div         xxcmn_item_locations_v.whse_inside_outside_div%TYPE   -- 入 倉庫 内外倉庫区分
 -- ##### 20080619 1.5 ST不具合#193 END   #####
      ,reserve1         xxwsh_hht_stock_deliv_info_tmp.reserve1%TYPE   -- 引取/小口区分（予備１） -- 2008/07/22 I_S_001 Add
+-- ##### 20080925 Ver.1.14 統合#26対応 START #####
+     ,notif_date         xxwsh_hht_stock_deliv_info_tmp.notif_date%TYPE -- 確定通知実施日時
+-- ##### 20080925 Ver.1.14 統合#26対応 END   #####
     ) ;
   TYPE tab_main_data IS TABLE OF rec_main_data INDEX BY BINARY_INTEGER ;
   gt_main_data  tab_main_data ;
@@ -473,6 +478,10 @@ AS
        xxwsh_hht_stock_deliv_info_tmp.line_number%TYPE INDEX BY BINARY_INTEGER ;
   TYPE t_data_type               IS TABLE OF
        xxwsh_hht_stock_deliv_info_tmp.data_type%TYPE INDEX BY BINARY_INTEGER ;
+-- ##### 20080925 Ver.1.14 統合#26対応 START #####
+  TYPE t_notif_date              IS TABLE OF
+       xxwsh_hht_stock_deliv_info_tmp.notif_date%TYPE INDEX BY BINARY_INTEGER ;
+-- ##### 20080925 Ver.1.14 統合#26対応 END   #####
   gt_corporation_name         t_corporation_name ;
   gt_data_class               t_data_class ;
   gt_transfer_branch_no       t_transfer_branch_no ;
@@ -520,6 +529,9 @@ AS
   gt_update_date              t_update_date ;
   gt_line_number              t_line_number ;
   gt_data_type                t_data_type ;
+-- ##### 20080925 Ver.1.14 統合#26対応 START #####
+  gt_notif_date                t_notif_date ;
+-- ##### 20080925 Ver.1.14 統合#26対応 END   #####
   gn_cre_idx                  NUMBER DEFAULT 0 ;
 --
   -- 警告メッセージ用配列変数
@@ -937,6 +949,9 @@ AS
             ,in_whse_inout_div                -- 41:内外倉庫区分：入
 -- ##### 20080619 1.5 ST不具合#193 END   #####
             ,reserve1                         -- 43:小口/引取区分（予備１）
+-- ##### 20080925 Ver.1.14 統合#26対応 START #####
+            ,main.notif_date                  --   :確定通知実施日時
+-- ##### 20080925 Ver.1.14 統合#26対応 END   #####
       FROM
         (
         -- ========================================================================================
@@ -1022,6 +1037,9 @@ AS
                  ELSE                  gc_small_class                --小口
                END                                AS reserve1        -- 引取/小口区分（予備１）
                -- 2008/07/22 I_S_001 Add End -------------------------------------------
+-- ##### 20080925 Ver.1.14 統合#26対応 START #####
+              ,xoha.notif_date                    AS notif_date   -- 確定通知実施日時
+-- ##### 20080925 Ver.1.14 統合#26対応 END   #####
         FROM xxwsh_order_headers_all    xoha      -- 受注ヘッダアドオン
             ,xxwsh_order_lines_all      xola      -- 受注明細アドオン
             --,oe_transaction_types_all   otta      -- 受注タイプ           -- 2008/07/22 I_S_001 Del
@@ -1127,10 +1145,22 @@ AS
                         WHERE xhdi.request_no = xoha.request_no )
                 )
               OR
+-- ##### 20080925 Ver.1.14 統合#26対応 START #####
+                (
+-- ##### 20080925 Ver.1.14 統合#26対応 END   #####
                 (   xoha.notif_status          = gc_notif_status_c      -- 確定通知済
                 AND xoha.prev_notif_status     = gc_notif_status_r      -- 再通知要
                 AND xoha.req_status           IN (gc_req_status_syu_3   -- 締め済  -- 2008/08/29 TE080_600指摘#27(1) Add
                                                  ,gc_req_status_syu_5)  -- 取消    -- 2008/08/29 TE080_600指摘#27(1) Add
+-- ##### 20080925 Ver.1.14 統合#26対応 START #####
+              -- トランザクションの確定通知実施日時が、通知済入出庫配送計画情報より以前の場合は除外
+                AND NOT EXISTS
+                      ( SELECT 1
+                        FROM xxwsh_hht_delivery_info  xhdi
+                        WHERE xhdi.request_no  = xoha.request_no
+                        AND   xhdi.notif_date >= xoha.notif_date )
+                )
+-- ##### 20080925 Ver.1.14 統合#26対応 END   #####
                 )
               )
         --AND   xoha.req_status                  = gc_req_status_syu_3    -- 締め済  -- 2008/08/29 TE080_600指摘#27(1) Del
@@ -1244,6 +1274,9 @@ AS
               ,xil2.whse_inside_outside_div       AS in_whse_inout_div    -- 内外倉庫区分：入
 -- ##### 20080619 1.5 ST不具合#193 END   #####
               ,NULL                               AS reserve1  -- 引取/小口区分（予備１）-- 2008/07/22 I_S_001 Add
+-- ##### 20080925 Ver.1.14 統合#26対応 START #####
+              ,xmrih.notif_date                   AS notif_date   -- 確定通知実施日時
+-- ##### 20080925 Ver.1.14 統合#26対応 END   #####
         FROM xxinv_mov_req_instr_headers    xmrih     -- 移動依頼指示ヘッダアドオン
             ,xxinv_mov_req_instr_lines      xmril     -- 移動依頼指示明細アドオン
             ,xxcmn_item_locations_v         xil1      -- OPM保管場所情報VIEW（配送元）
@@ -1330,11 +1363,23 @@ AS
                         WHERE xhdi.request_no = xmrih.mov_num )
                 )
               OR
+-- ##### 20080925 Ver.1.14 統合#26対応 START #####
+                (
+-- ##### 20080925 Ver.1.14 統合#26対応 END   #####
                 (   xmrih.notif_status        = gc_notif_status_c       -- 確定通知済
                 AND xmrih.prev_notif_status   = gc_notif_status_r       -- 再通知要
                 AND xmrih.status              IN( gc_mov_status_cmp     -- 依頼済  -- 2008/08/29 TE080_600指摘#27(1) Add
                                                  ,gc_mov_status_adj     -- 調整中  -- 2008/08/29 TE080_600指摘#27(1) Add
                                                  ,gc_mov_status_ccl )   -- 取消    -- 2008/08/29 TE080_600指摘#27(1) Add
+-- ##### 20080925 Ver.1.14 統合#26対応 START #####
+              -- トランザクションの確定通知実施日時が、通知済入出庫配送計画情報より以前の場合は除外
+                AND NOT EXISTS
+                      ( SELECT 1
+                        FROM xxwsh_hht_delivery_info  xhdi
+                        WHERE xhdi.request_no  = xmrih.mov_num
+                        AND   xhdi.notif_date >= xmrih.notif_date )
+                )
+-- ##### 20080925 Ver.1.14 統合#26対応 END   #####
                 )
               )
         --AND   xmrih.status               IN( gc_mov_status_cmp      -- 依頼済  -- 2008/08/29 TE080_600指摘#27(1) Del
@@ -1542,6 +1587,9 @@ AS
     gt_update_date(gn_cre_idx)            := SYSDATE ;                            -- 更新日時
     gt_line_number(gn_cre_idx)            := NULL ;                               -- 明細番号
     gt_data_type(gn_cre_idx)              := ir_main_data.data_type ;             -- データタイプ
+-- ##### 20080925 Ver.1.14 統合#26対応 START #####
+    gt_notif_date(gn_cre_idx)             := ir_main_data.notif_date ;            -- 確定通知実施日時
+-- ##### 20080925 Ver.1.14 統合#26対応 END   #####
 --
   EXCEPTION
 --##### 固定例外処理部 START ######################################################################
@@ -1662,6 +1710,9 @@ AS
     gt_update_date(gn_cre_idx)            := SYSDATE ;                  -- 更新日時
     gt_line_number(gn_cre_idx)            := ir_main_data.line_number ; -- 明細番号
     gt_data_type(gn_cre_idx)              := ir_main_data.data_type ;   -- データタイプ
+-- ##### 20080925 Ver.1.14 統合#26対応 START #####
+    gt_notif_date(gn_cre_idx)             := ir_main_data.notif_date ;            -- 確定通知実施日時
+-- ##### 20080925 Ver.1.14 統合#26対応 END   #####
 --
     -------------------------------------------------------
     -- ロット管理品の場合
@@ -2111,6 +2162,9 @@ AS
             ,xhdi.update_date
             ,xhdi.line_number
             ,xhdi.data_type
+-- ##### 20080925 Ver.1.14 統合#26対応 START #####
+            ,xhdi.notif_date
+-- ##### 20080925 Ver.1.14 統合#26対応 END   #####
       FROM xxwsh_hht_delivery_info    xhdi
       WHERE xhdi.request_no = p_request_no
       ORDER BY xhdi.request_no                -- 依頼No
@@ -2201,6 +2255,9 @@ AS
       gt_update_date(gn_cre_idx)            := SYSDATE ;
       gt_line_number(gn_cre_idx)            := re_can_data.line_number ;
       gt_data_type(gn_cre_idx)              := re_can_data.data_type ;
+-- ##### 20080925 Ver.1.14 統合#26対応 START #####
+      gt_notif_date(gn_cre_idx)             := re_can_data.notif_date ; -- 確定通知実施日時
+-- ##### 20080925 Ver.1.14 統合#26対応 END   #####
 --
     END LOOP can_data_loop ;
 --
@@ -2311,6 +2368,9 @@ AS
          ,update_date                             -- 更新日時
          ,line_number                             -- 明細番号
          ,data_type                               -- データタイプ
+-- ##### 20080925 Ver.1.14 統合#26対応 START #####
+         ,notif_date                              -- 確定通知実施日時
+-- ##### 20080925 Ver.1.14 統合#26対応 END   #####
         )
       VALUES
         (
@@ -2361,6 +2421,9 @@ AS
          ,gt_update_date(ln_cnt)                  -- 更新日時
          ,gt_line_number(ln_cnt)                  -- 明細番号
          ,gt_data_type(ln_cnt)                    -- データタイプ
+-- ##### 20080925 Ver.1.14 統合#26対応 START #####
+         ,gt_notif_date(ln_cnt)                   -- 確定通知実施日時
+-- ##### 20080925 Ver.1.14 統合#26対応 END   #####
         ) ;
 --
   EXCEPTION
@@ -2491,6 +2554,9 @@ AS
             ,xhsdit.update_date               -- 更新日時
             ,xhsdit.line_number               -- 明細番号
             ,xhsdit.data_type                 -- データタイプ
+-- ##### 20080925 Ver.1.14 統合#26対応 START #####
+            ,xhsdit.notif_date                -- 確定通知実施日時
+-- ##### 20080925 Ver.1.14 統合#26対応 END   #####
       FROM xxwsh_hht_stock_deliv_info_tmp   xhsdit
       ORDER BY xhsdit.new_modify_del_class   DESC   -- データ区分   （降順）
               ,xhsdit.data_type                     -- データタイプ （昇順）
@@ -2741,6 +2807,67 @@ AS
     -- ＣＳＶ出力データ登録
     -- ====================================================
     INSERT INTO xxwsh_hht_delivery_info
+-- ##### 20080925 Ver.1.14 統合#26対応 START #####
+              (   hht_delivery_info_id           -- HHT通知済入出庫配車確定情報ＩＤ
+                , corporation_name               -- 会社名
+                , data_class                     -- データ種別
+                , transfer_branch_no             -- 伝送用枝番
+                , delivery_no                    -- 配送No
+                , request_no                     -- 依頼No
+                , reserve                        -- 予備
+                , head_sales_branch              -- 拠点コード
+                , head_sales_branch_name         -- 管轄拠点名称
+                , shipped_locat_code             -- 出庫倉庫コード
+                , shipped_locat_name             -- 出庫倉庫名称
+                , ship_to_locat_code             -- 入庫倉庫コード
+                , ship_to_locat_name             -- 入庫倉庫名称
+                , freight_carrier_code           -- 運送業者コード
+                , freight_carrier_name           -- 運送業者名
+                , deliver_to                     -- 配送先コード
+                , deliver_to_name                -- 配送先名
+                , schedule_ship_date             -- 発日
+                , schedule_arrival_date          -- 着日
+                , shipping_method_code           -- 配送区分
+                , weight                         -- 重量/容積
+                , mixed_no                       -- 混載元依頼№
+                , collected_pallet_qty           -- パレット回収枚数
+                , arrival_time_from              -- 着荷時間指定(FROM)
+                , arrival_time_to                -- 着荷時間指定(TO)
+                , cust_po_number                 -- 顧客発注番号
+                , description                    -- 摘要
+                , status                         -- ステータス
+                , freight_charge_class           -- 運賃区分
+                , pallet_sum_quantity            -- パレット使用枚数
+                , reserve1                       -- 予備１
+                , reserve2                       -- 予備２
+                , reserve3                       -- 予備３
+                , reserve4                       -- 予備４
+                , report_dept                    -- 報告部署
+                , item_code                      -- 品目コード
+                , item_name                      -- 品目名
+                , item_uom_code                  -- 品目単位
+                , item_quantity                  -- 品目数量
+                , lot_no                         -- ロット番号
+                , lot_date                       -- 製造日
+                , best_bfr_date                  -- 賞味期限
+                , lot_sign                       -- 固有記号
+                , lot_quantity                   -- ロット数量
+                , new_modify_del_class           -- データ区分
+                , update_date                    -- 更新日時
+                , line_number                    -- 明細番号
+                , data_type                      -- データタイプ
+                , notif_date                     -- 確定通知実施日時
+                , created_by                     -- 作成者
+                , creation_date                  -- 作成日
+                , last_updated_by                -- 最終更新者
+                , last_update_date               -- 最終更新日
+                , last_update_login              -- 最終更新ログイン
+                , request_id                     -- 要求ID
+                , program_application_id         -- コンカレント・プログラム・アプリケーションID
+                , program_id                     -- コンカレント・プログラムID
+                , program_update_date            -- プログラム更新日
+              )
+-- ##### 20080925 Ver.1.14 統合#26対応 END   #####
       SELECT xxwsh_hht_delivery_info_s1.NEXTVAL
             ,xhsdit.corporation_name          -- 会社名
             ,xhsdit.data_class                -- データ種別
@@ -2789,6 +2916,9 @@ AS
             ,xhsdit.update_date               -- 更新日時
             ,xhsdit.line_number               -- 明細番号
             ,xhsdit.data_type                 -- データタイプ
+-- ##### 20080925 Ver.1.14 統合#26対応 START #####
+            ,xhsdit.notif_date                -- 確定通知実施日時
+-- ##### 20080925 Ver.1.14 統合#26対応 END   #####
             ,gn_created_by                    -- 作成者
             ,SYSDATE                          -- 作成日
             ,gn_last_updated_by               -- 最終更新者

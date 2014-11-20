@@ -7,7 +7,7 @@ AS
  * Description      : 入出庫配送計画情報抽出処理
  * MD.050           : T_MD050_BPO_601_配車配送計画
  * MD.070           : T_MD070_BPO_60E_入出庫配送計画情報抽出処理
- * Version          : 1.18
+ * Version          : 1.20
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -57,6 +57,8 @@ AS
  *  2008/09/09    1.17  N.Fukuda         TE080_600指摘#30対応
  *  2008/09/10    1.17  N.Fukuda         参照Viewの変更(パーティから顧客に変更)
  *  2008/09/19    1.18  M.Nomura         T_S_453 460 468対応
+ *  2008/09/25    1.19  M.Nomura         TE080_600指摘#31対応
+ *  2008/09/25    1.20  M.Nomura         統合#26対応
  *
  *****************************************************************************************/
 --
@@ -273,6 +275,11 @@ AS
   gd_date_to          DATE ;    -- 基準日付To
   gn_prof_del_date    NUMBER ;  -- 削除基準日数
 --
+-- ##### 20080925 Ver.1.19 TE080_600指摘#31対応 START #####
+  gd_ship_date_from   DATE ;    -- 出庫日From
+  gd_ship_date_to     DATE ;    -- 出庫日To
+-- ##### 20080925 Ver.1.19 TE080_600指摘#31対応 END   #####
+--
 -- ##### 20080919 Ver.1.18 T_S_453 460 468対応 START #####
   gv_filetimes        VARCHAR2(14);   -- YYYYMMDDHH24MISS形式
 -- ##### 20080919 Ver.1.18 T_S_453 460 468対応 END   #####
@@ -327,6 +334,10 @@ AS
      ,date_fix          VARCHAR2(20)  -- 06 : 確定通知実施日
      ,fix_from          VARCHAR2(10)  -- 07 : 確定通知実施時間From
      ,fix_to            VARCHAR2(10)  -- 08 : 確定通知実施時間To
+-- ##### 20080925 Ver.1.19 TE080_600指摘#31対応 START #####
+     ,ship_date_from    VARCHAR2(10)  --    : 出庫日From
+     ,ship_date_to      VARCHAR2(10)  --    : 出庫日To
+-- ##### 20080925 Ver.1.19 TE080_600指摘#31対応 END   #####
     ) ;
   gr_param              rec_param_data ;
 --
@@ -381,6 +392,9 @@ AS
      ,lot_class                 xxwsh_stock_delivery_info_tmp2.lot_class%TYPE
      ,line_id                   xxwsh_stock_delivery_info_tmp2.line_id%TYPE
      ,item_id                   xxwsh_stock_delivery_info_tmp2.item_id%TYPE
+-- ##### 20080925 Ver.1.20 統合#26対応 START #####
+     ,notif_date                xxwsh_stock_delivery_info_tmp2.notif_date%TYPE
+-- ##### 20080925 Ver.1.20 統合#26対応 END   #####
      ,mov_lot_dtl_id            xxinv_mov_lot_details.mov_lot_dtl_id%TYPE
     ) ;
   TYPE tab_main_data IS TABLE OF rec_main_data INDEX BY BINARY_INTEGER ;
@@ -489,6 +503,10 @@ AS
        xxwsh_stock_delivery_info_tmp.eos_freight_carrier%TYPE INDEX BY BINARY_INTEGER ;
   TYPE t_eos_csv_output          IS TABLE OF
        xxwsh_stock_delivery_info_tmp.eos_csv_output%TYPE INDEX BY BINARY_INTEGER ;
+-- ##### 20080925 Ver.1.20 統合#26対応 START #####
+  TYPE t_notif_date              IS TABLE OF
+       xxwsh_stock_delivery_info_tmp.notif_date%TYPE INDEX BY BINARY_INTEGER ;
+-- ##### 20080925 Ver.1.20 統合#26対応 END   #####
   gt_corporation_name        t_corporation_name ;
   gt_data_class              t_data_class ;
   gt_transfer_branch_no      t_transfer_branch_no ;
@@ -539,6 +557,9 @@ AS
   gt_eos_shipped_locat       t_eos_shipped_locat ;
   gt_eos_freight_carrier     t_eos_freight_carrier ;
   gt_eos_csv_output          t_eos_csv_output ;
+-- ##### 20080925 Ver.1.20 統合#26対応 START #####
+  gt_notif_date              t_notif_date ;
+-- ##### 20080925 Ver.1.20 統合#26対応 END   #####
   gn_cre_idx    NUMBER := 0 ;
 --
   -- 警告メッセージ用配列変数
@@ -575,6 +596,13 @@ AS
     lc_p_name_time_cutoff   CONSTANT VARCHAR2(50) := '締め実施時間' ;
     lc_p_name_date_fix      CONSTANT VARCHAR2(50) := '確定通知実施日' ;
     lc_p_name_time_fix      CONSTANT VARCHAR2(50) := '確定通知実施時間' ;
+-- ##### 20080925 Ver.1.19 TE080_600指摘#31対応 START #####
+    lc_p_name_shipdateF     CONSTANT VARCHAR2(50) := '出庫日From' ;
+    lc_p_name_shipdateT     CONSTANT VARCHAR2(50) := '出庫日To' ;
+    lc_p_name_shipdate      CONSTANT VARCHAR2(50) := '出庫日' ;
+    lc_msg_code_03          CONSTANT VARCHAR2(50) := 'APP-XXWSH-11114' ;  -- 日付範囲エラーメッセージ
+    lc_tok_name_02          CONSTANT VARCHAR2(50) := 'DATE_NAME' ;
+-- ##### 20080925 Ver.1.19 TE080_600指摘#31対応 END   #####
     lc_msg_code_01          CONSTANT VARCHAR2(50) := 'APP-XXWSH-11251' ;  -- 未入力
     lc_msg_code_02          CONSTANT VARCHAR2(50) := 'APP-XXWSH-11905' ;  -- 時間逆転
     lc_tok_name             CONSTANT VARCHAR2(50) := 'PARAMETER' ;
@@ -586,11 +614,17 @@ AS
     -- ==================================================
     lv_msg_code       VARCHAR2(100) ;
     lv_tok_val        VARCHAR2(100) ;
+-- ##### 20080925 Ver.1.19 TE080_600指摘#31対応 START #####
+    lv_tok_name       VARCHAR2(100) ;
+-- ##### 20080925 Ver.1.19 TE080_600指摘#31対応 END   #####
 --
     -- ==================================================
     -- 例外宣言
     -- ==================================================
     ex_param_error    EXCEPTION ;
+-- ##### 20080925 Ver.1.19 TE080_600指摘#31対応 START #####
+    ex_param_error_02 EXCEPTION ;
+-- ##### 20080925 Ver.1.19 TE080_600指摘#31対応 END   #####
 --
   BEGIN
 --
@@ -614,10 +648,48 @@ AS
       -- 逆転チェック
       -- ----------------------------------------------------
       lv_msg_code := lc_msg_code_02 ;
+-- ##### 20080925 Ver.1.19 TE080_600指摘#31対応 START #####
+      lv_tok_name := lc_tok_name ;
+-- ##### 20080925 Ver.1.19 TE080_600指摘#31対応 END   #####
       IF ( gd_date_from > gd_date_to ) THEN
         lv_tok_val := lc_p_name_time_cutoff ;
         RAISE ex_param_error ;
       END IF ;
+--
+-- ##### 20080925 Ver.1.19 TE080_600指摘#31対応 START #####
+      -- ----------------------------------------------------
+      -- 必須チェック
+      -- ----------------------------------------------------
+      lv_msg_code := lc_msg_code_01 ;
+      lv_tok_name := lc_tok_name ;
+      -- 出庫日From
+      IF ( gr_param.ship_date_from IS NULL ) THEN
+        lv_tok_val  := lc_p_name_shipdateF ;
+        RAISE ex_param_error ;
+      END IF ;
+--
+      -- 出庫日To
+      IF ( gr_param.ship_date_to IS NULL ) THEN
+        lv_tok_val  := lc_p_name_shipdateT ;
+        RAISE ex_param_error ;
+      END IF ;
+--
+      -- 出庫日From
+      gd_ship_date_from := FND_DATE.CANONICAL_TO_DATE( gr_param.ship_date_from ) ;
+      -- 出庫日To
+      gd_ship_date_to   := FND_DATE.CANONICAL_TO_DATE( gr_param.ship_date_to ) ;
+--
+      -- ----------------------------------------------------
+      -- 日付範囲エラーメッセージ
+      -- ----------------------------------------------------
+      lv_msg_code := lc_msg_code_03 ;
+      lv_tok_name := lc_tok_name_02 ;
+      IF ( gd_ship_date_from > gd_ship_date_to ) THEN
+        lv_tok_val := lc_p_name_shipdate ;
+        RAISE ex_param_error ;
+      END IF ;
+--
+-- ##### 20080925 Ver.1.19 TE080_600指摘#31対応 END   #####
 --
     -- ====================================================
     -- 予定確定区分が「確定」の場合
@@ -627,6 +699,9 @@ AS
       -- 必須チェック
       -- ----------------------------------------------------
       lv_msg_code := lc_msg_code_01 ;
+-- ##### 20080925 Ver.1.19 TE080_600指摘#31対応 START #####
+      lv_tok_name := lc_tok_name ;
+-- ##### 20080925 Ver.1.19 TE080_600指摘#31対応 END   #####
       -- 確定通知実施日
       IF ( gr_param.date_fix IS NULL ) THEN
         lv_tok_val  := lc_p_name_date_fix ;
@@ -641,6 +716,9 @@ AS
       -- 逆転チェック
       -- ----------------------------------------------------
       lv_msg_code := lc_msg_code_02 ;
+-- ##### 20080925 Ver.1.19 TE080_600指摘#31対応 START #####
+      lv_tok_name := lc_tok_name ;
+-- ##### 20080925 Ver.1.19 TE080_600指摘#31対応 END   #####
       IF ( gd_date_from > gd_date_to ) THEN
         lv_tok_val := lc_p_name_date_fix ;
         RAISE ex_param_error ;
@@ -656,12 +734,16 @@ AS
       lv_errmsg := xxcmn_common_pkg.get_msg
                     ( iv_application    => gc_appl_sname_wsh
                      ,iv_name           => lv_msg_code
-                     ,iv_token_name1    => lc_tok_name
+-- ##### 20080925 Ver.1.19 TE080_600指摘#31対応 START #####
+--                     ,iv_token_name1    => lc_tok_name
+                     ,iv_token_name1    => lv_tok_name
+-- ##### 20080925 Ver.1.19 TE080_600指摘#31対応 END   #####
                      ,iv_token_value1   => lv_tok_val
                     ) ;
       ov_errmsg  := lv_errmsg ;
       ov_errbuf  := lv_errmsg ;
       ov_retcode := gv_status_error ;
+--
 --##### 固定例外処理部 START ######################################################################
 --
     -- *** 共通関数例外ハンドラ ***
@@ -1049,6 +1131,9 @@ AS
             ,xola.quantity                            -- 43:数量
             ,xim.num_of_cases                         -- 44:ケース入数
             ,xim.lot_ctl                              -- 45:ロット使用
+-- ##### 20080925 Ver.1.20 統合#26対応 START #####
+            ,xoha.notif_date                          --   :確定通知実施日時
+-- ##### 20080925 Ver.1.20 統合#26対応 END   #####
       FROM xxwsh_order_headers_all    xoha      -- 受注ヘッダアドオン
           ,xxwsh_order_lines_all      xola      -- 受注明細アドオン
           ,oe_transaction_types_all   otta      -- 受注タイプ
@@ -1227,6 +1312,9 @@ AS
             ,xola.quantity                            -- 43:数量
             ,xim.num_of_cases                         -- 44:ケース入数
             ,xim.lot_ctl                              -- 45:ロット使用
+-- ##### 20080925 Ver.1.20 統合#26対応 START #####
+            ,xoha.notif_date                          --   :確定通知実施日時
+-- ##### 20080925 Ver.1.20 統合#26対応 END   #####
       FROM xxwsh_order_headers_all    xoha      -- 受注ヘッダアドオン
           ,xxwsh_order_lines_all      xola      -- 受注明細アドオン
           ,oe_transaction_types_all   otta      -- 受注タイプ
@@ -1298,6 +1386,13 @@ AS
 -- ##### 20080612 Ver.1.7 商品セキュリティ対応 END   #####
       AND   xoha.req_status           IN( gc_req_status_shi_3   -- 受領済
                                          ,gc_req_status_shi_5 ) -- 取消
+--
+-- ##### 20080925 Ver.1.19 TE080_600指摘#31対応 START #####
+      ----------------------------------------------------------------------------------------------
+      -- 出庫日From To
+      AND   xoha.schedule_ship_date BETWEEN gd_ship_date_from AND gd_ship_date_to
+-- ##### 20080925 Ver.1.19 TE080_600指摘#31対応 END   #####
+--
 -- M.HOKKANJI Ver1.9 START
 -- 2008/09/01 v1.16 delete Y.Yamamoto start
       -- パラメータが確定の場合のみ日付を参照
@@ -1393,6 +1488,9 @@ AS
             ,xmril.instruct_qty                       -- 43:数量
             ,xim.num_of_cases                         -- 44:ケース入数
             ,xim.lot_ctl                              -- 45:ロット使用
+-- ##### 20080925 Ver.1.20 統合#26対応 START #####
+            ,xmrih.notif_date                         --   :確定通知実施日時
+-- ##### 20080925 Ver.1.20 統合#26対応 END   #####
       FROM xxinv_mov_req_instr_headers    xmrih     -- 移動依頼指示ヘッダアドオン
           ,xxinv_mov_req_instr_lines      xmril     -- 移動依頼指示明細アドオン
           ,xxcmn_item_locations_v         xil1      -- OPM保管場所情報VIEW（配送元）
@@ -1479,6 +1577,11 @@ AS
 --              BETWEEN gd_date_from AND gd_date_to
       AND   gd_date_from BETWEEN gd_date_from
                              AND gd_date_to
+-- ##### 20080925 Ver.1.19 TE080_600指摘#31対応 START #####
+      ----------------------------------------------------------------------------------------------
+      -- 出庫日From To
+      AND   xmrih.schedule_ship_date BETWEEN gd_ship_date_from AND gd_ship_date_to
+-- ##### 20080925 Ver.1.19 TE080_600指摘#31対応 END   #####
 -- 2008/09/01 v1.16 update Y.Yamamoto end
       ;
     -- ====================================================
@@ -1563,6 +1666,9 @@ AS
             ,xola.quantity                            -- 43:数量
             ,xim.num_of_cases                         -- 44:ケース入数
             ,xim.lot_ctl                              -- 45:ロット使用
+-- ##### 20080925 Ver.1.20 統合#26対応 START #####
+            ,xoha.notif_date                          --   :確定通知実施日時
+-- ##### 20080925 Ver.1.20 統合#26対応 END   #####
       FROM xxwsh_order_headers_all    xoha      -- 受注ヘッダアドオン
           ,xxwsh_order_lines_all      xola      -- 受注明細アドオン
           ,oe_transaction_types_all   otta      -- 受注タイプ
@@ -1737,6 +1843,9 @@ AS
             ,xola.quantity                            -- 43:数量
             ,xim.num_of_cases                         -- 44:ケース入数
             ,xim.lot_ctl                              -- 45:ロット使用
+-- ##### 20080925 Ver.1.20 統合#26対応 START #####
+            ,xoha.notif_date                          --   :確定通知実施日時
+-- ##### 20080925 Ver.1.20 統合#26対応 END   #####
       FROM xxwsh_order_headers_all    xoha      -- 受注ヘッダアドオン
           ,xxwsh_order_lines_all      xola      -- 受注明細アドオン
           ,oe_transaction_types_all   otta      -- 受注タイプ
@@ -1905,6 +2014,9 @@ AS
             ,xmril.instruct_qty                       -- 43:数量
             ,xim.num_of_cases                         -- 44:ケース入数
             ,xim.lot_ctl                              -- 45:ロット使用
+-- ##### 20080925 Ver.1.20 統合#26対応 START #####
+            ,xmrih.notif_date                         --   :確定通知実施日時
+-- ##### 20080925 Ver.1.20 統合#26対応 END   #####
       FROM xxinv_mov_req_instr_headers    xmrih     -- 移動依頼指示ヘッダアドオン
           ,xxinv_mov_req_instr_lines      xmril     -- 移動依頼指示明細アドオン
           ,xxcmn_item_locations_v         xil1      -- OPM保管場所情報VIEW（配送元）
@@ -2121,6 +2233,9 @@ AS
               ||    ',wsdit2.lot_class'                 -- ロット管理区分
               ||    ',wsdit2.line_id'                   -- 明細ID
               ||    ',wsdit2.item_id'                   -- 品目ID
+-- ##### 20080925 Ver.1.20 統合#26対応 START #####
+              ||    ',wsdit2.notif_date'                -- 確定通知実施日時
+-- ##### 20080925 Ver.1.20 統合#26対応 END   #####
               ||    ',imld.mov_lot_dtl_id'              -- ロット詳細ID
               ;
     -- ====================================================
@@ -2192,7 +2307,18 @@ AS
           || ' OR'
           || ' (   wsdit2.notif_status      = ''' || gc_notif_status_c || ''''  -- 確定通知済
           || ' AND wsdit2.prev_notif_status = ''' || gc_notif_status_r || ''''  -- 再通知要
-          || ' ))'
+-- ##### 20080925 Ver.1.20 統合#26対応 START #####
+--          || ' ))'
+          || ' )'
+              -- トランザクションの確定通知実施日時が、通知済入出庫配送計画情報より以前の場合は除外
+              || ' AND  NOT EXISTS'
+                        || '( SELECT 1'
+                        || '  FROM xxwsh_notif_delivery_info xndi'
+                        || '  WHERE xndi.request_no  = wsdit2.request_no '
+                        || '  AND   xndi.notif_date >= wsdit2.notif_date '
+                        || '  AND   rownum <= 1 )'
+          || ' )'
+-- ##### 20080925 Ver.1.20 統合#26対応 END   #####
           ;
 --
     END IF ;
@@ -2446,6 +2572,10 @@ AS
     gt_eos_freight_carrier(gn_cre_idx)    := ir_main_data.eos_freight_carrier ; -- EOS宛先：運送業者
     gt_eos_csv_output(gn_cre_idx)         := iv_eos_csv_output ;                -- EOS宛先：CSV
 --
+-- ##### 20080925 Ver.1.20 統合#26対応 START #####
+    gt_notif_date(gn_cre_idx)             := ir_main_data.notif_date ;          -- 確定通知実施日時
+-- ##### 20080925 Ver.1.20 統合#26対応 END   #####
+--
   EXCEPTION
 --##### 固定例外処理部 START #######################################################################
 --
@@ -2573,6 +2703,9 @@ AS
 -- ##### 20080623 Ver.1.9 EOS宛先対応 END   #####
     gt_eos_freight_carrier(gn_cre_idx)    := ir_main_data.eos_freight_carrier ; -- EOS宛先：運送業者
     gt_eos_csv_output(gn_cre_idx)         := iv_eos_csv_output ;                -- EOS宛先：CSV
+-- ##### 20080925 Ver.1.20 統合#26対応 START #####
+    gt_notif_date(gn_cre_idx)             := ir_main_data.notif_date ;          -- 確定通知実施日時
+-- ##### 20080925 Ver.1.20 統合#26対応 END   #####
 --
     -------------------------------------------------------
     -- ロット管理品の場合
@@ -3543,6 +3676,9 @@ AS
             ,xndi.eos_shipped_locat           -- EOS宛先（出庫倉庫）
             ,xndi.eos_freight_carrier         -- EOS宛先（運送業者）
             ,xndi.eos_csv_output              -- EOS宛先（CSV出力）
+-- ##### 20080925 Ver.1.20 統合#26対応 START #####
+            ,xndi.notif_date                  -- 確定通知実施日時
+-- ##### 20080925 Ver.1.20 統合#26対応 END   #####
       FROM xxwsh_notif_delivery_info  xndi
       WHERE xndi.request_no = p_request_no
       ORDER BY xndi.request_no                -- 依頼No
@@ -3637,6 +3773,10 @@ AS
       gt_eos_shipped_locat(gn_cre_idx)      := re_can_data.eos_shipped_locat ;
       gt_eos_freight_carrier(gn_cre_idx)    := re_can_data.eos_freight_carrier ;
       gt_eos_csv_output(gn_cre_idx)         := re_can_data.eos_csv_output ;
+--
+-- ##### 20080925 Ver.1.20 統合#26対応 START #####
+      gt_notif_date(gn_cre_idx)             := re_can_data.notif_date ;
+-- ##### 20080925 Ver.1.20 統合#26対応 END   #####
 --
     END LOOP can_data_loop ;
 --
@@ -3750,6 +3890,9 @@ AS
          ,eos_shipped_locat                                 -- EOS宛先（出庫倉庫）
          ,eos_freight_carrier                               -- EOS宛先（運送業者）
          ,eos_csv_output                                    -- EOS宛先（CSV出力）
+-- ##### 20080925 Ver.1.20 統合#26対応 START #####
+         ,notif_date                                        -- 確定通知実施日時
+-- ##### 20080925 Ver.1.20 統合#26対応 END   #####
         )
       VALUES
         (
@@ -3803,6 +3946,9 @@ AS
          ,gt_eos_shipped_locat(ln_cnt)            -- EOS宛先（出庫倉庫）
          ,gt_eos_freight_carrier(ln_cnt)          -- EOS宛先（運送業者）
          ,gt_eos_csv_output(ln_cnt)               -- EOS宛先（CSV出力）
+-- ##### 20080925 Ver.1.20 統合#26対応 START #####
+         ,gt_notif_date(ln_cnt)                   -- 確定通知実施日時
+-- ##### 20080925 Ver.1.20 統合#26対応 END   #####
         ) ;
 --
   EXCEPTION
@@ -3948,6 +4094,9 @@ AS
             ,xsdit.eos_shipped_locat        -- EOS宛先（出庫倉庫）
             ,xsdit.eos_freight_carrier      -- EOS宛先（運送業者）
             ,xsdit.eos_csv_output           -- EOS宛先（CSV出力）
+-- ##### 20080925 Ver.1.20 統合#26対応 START #####
+            ,xsdit.notif_date               -- 確定通知実施日時
+-- ##### 20080925 Ver.1.20 統合#26対応 END   #####
       FROM xxwsh_stock_delivery_info_tmp    xsdit
       WHERE xsdit.eos_csv_output = p_eos_csv_output
       ORDER BY xsdit.new_modify_del_class   DESC    -- データ区分   （降順）
@@ -4285,6 +4434,70 @@ AS
     -- ＣＳＶ出力データ登録
     -- ====================================================
     INSERT INTO xxwsh_notif_delivery_info
+-- ##### 20080925 Ver.1.20 統合#26対応 START #####
+            (   notif_delivery_info_id    -- 通知済入出庫配送計画情報ID
+              , corporation_name          -- 会社名
+              , data_class                -- データ種別
+              , transfer_branch_no        -- 伝送用枝番
+              , delivery_no               -- 配送No
+              , request_no                -- 依頼No
+              , reserve                   -- 予備
+              , head_sales_branch         -- 拠点コード
+              , head_sales_branch_name    -- 管轄拠点名称
+              , shipped_locat_code        -- 出庫倉庫コード
+              , shipped_locat_name        -- 出庫倉庫名称
+              , ship_to_locat_code        -- 入庫倉庫コード
+              , ship_to_locat_name        -- 入庫倉庫名称
+              , freight_carrier_code      -- 運送業者コード
+              , freight_carrier_name      -- 運送業者名
+              , deliver_to                -- 配送先コード
+              , deliver_to_name           -- 配送先名
+              , schedule_ship_date        -- 発日
+              , schedule_arrival_date     -- 着日
+              , shipping_method_code      -- 配送区分
+              , weight                    -- 重量/容積
+              , mixed_no                  -- 混載元依頼№
+              , collected_pallet_qty      -- パレット回収枚数
+              , arrival_time_from         -- 着荷時間指定(FROM)
+              , arrival_time_to           -- 着荷時間指定(TO)
+              , cust_po_number            -- 顧客発注番号
+              , description               -- 摘要
+              , status                    -- ステータス
+              , freight_charge_class      -- 運賃区分
+              , pallet_sum_quantity       -- パレット使用枚数
+              , reserve1                  -- 予備１
+              , reserve2                  -- 予備２
+              , reserve3                  -- 予備３
+              , reserve4                  -- 予備４
+              , report_dept               -- 報告部署
+              , item_code                 -- 品目コード
+              , item_name                 -- 品目名
+              , item_uom_code             -- 品目単位
+              , item_quantity             -- 品目数量
+              , lot_no                    -- ロット番号
+              , lot_date                  -- 製造日
+              , best_bfr_date             -- 賞味期限
+              , lot_sign                  -- 固有記号
+              , lot_quantity              -- ロット数量
+              , new_modify_del_class      -- データ区分
+              , update_date               -- 更新日時
+              , line_number               -- 明細番号
+              , data_type                 -- データタイプ
+              , eos_shipped_locat         -- EOS宛先(出庫倉庫)
+              , eos_freight_carrier       -- EOS宛先(運送業者)
+              , eos_csv_output            -- EOS宛先(CSV出力)
+              , notif_date                -- 確定通知実施日時
+              , created_by                -- 作成者
+              , creation_date             -- 作成日
+              , last_updated_by           -- 最終更新者
+              , last_update_date          -- 最終更新日
+              , last_update_login         -- 最終更新ログイン
+              , request_id                -- 要求ID
+              , program_application_id    -- コンカレント・プログラム・アプリケーションID
+              , program_id                -- コンカレント・プログラムID
+              , program_update_date       -- プログラム更新日
+            )
+-- ##### 20080925 Ver.1.20 統合#26対応 END   #####
       SELECT xxwsh_notif_delivery_info_s1.NEXTVAL   -- 通知済入出庫配送計画情報ID
             ,corporation_name         -- 会社名
             ,data_class               -- データ種別
@@ -4336,6 +4549,9 @@ AS
             ,eos_shipped_locat        -- EOS宛先（出庫倉庫）
             ,eos_freight_carrier      -- EOS宛先（運送業者）
             ,eos_csv_output           -- EOS宛先（CSV出力）
+-- ##### 20080925 Ver.1.20 統合#26対応 START #####
+            ,notif_date               -- 確定通知実施日時
+-- ##### 20080925 Ver.1.20 統合#26対応 END   #####
             ,gn_created_by               -- 作成者
             ,SYSDATE                     -- 作成日
             ,gn_last_updated_by          -- 最終更新者
@@ -4405,6 +4621,10 @@ AS
      ,iv_date_fix         IN  VARCHAR2          -- 15 : 確定通知実施日
      ,iv_fix_from         IN  VARCHAR2          -- 16 : 確定通知実施時間From
      ,iv_fix_to           IN  VARCHAR2          -- 17 : 確定通知実施時間To
+-- ##### 20080925 Ver.1.19 TE080_600指摘#31対応 START #####
+     ,iv_ship_date_from   IN  VARCHAR2          -- 18 : 出庫日From
+     ,iv_ship_date_to     IN  VARCHAR2          -- 19 : 出庫日To
+-- ##### 20080925 Ver.1.19 TE080_600指摘#31対応 END   #####
      ,ov_errbuf           OUT NOCOPY VARCHAR2   -- エラー・メッセージ
      ,ov_retcode          OUT NOCOPY VARCHAR2   -- リターン・コード
      ,ov_errmsg           OUT NOCOPY VARCHAR2   -- ユーザー・エラー・メッセージ
@@ -4477,6 +4697,11 @@ AS
     gr_param.cutoff_to   := ' ' || gr_param.cutoff_to   || ':00' ;
     gr_param.fix_from    := ' ' || gr_param.fix_from    || ':00' ;
     gr_param.fix_to      := ' ' || gr_param.fix_to      || ':00' ;
+--
+-- ##### 20080925 Ver.1.19 TE080_600指摘#31対応 START #####
+    gr_param.ship_date_from := SUBSTR(iv_ship_date_from, 1, 10) ;   -- 出庫日From
+    gr_param.ship_date_to   := SUBSTR(iv_ship_date_to,   1, 10) ;   -- 出庫日To
+-- ##### 20080925 Ver.1.19 TE080_600指摘#31対応 END   #####
 --
     --------------------------------------------------
     -- ＷＨＯカラム取得
@@ -4743,6 +4968,10 @@ AS
      ,iv_date_fix         IN  VARCHAR2          -- 15 : 確定通知実施日
      ,iv_fix_from         IN  VARCHAR2          -- 16 : 確定通知実施時間From
      ,iv_fix_to           IN  VARCHAR2          -- 17 : 確定通知実施時間To
+-- ##### 20080925 Ver.1.19 TE080_600指摘#31対応 START #####
+     ,iv_ship_date_from   IN  VARCHAR2          -- 18 : 出庫日From
+     ,iv_ship_date_to     IN  VARCHAR2          -- 19 : 出庫日To
+-- ##### 20080925 Ver.1.19 TE080_600指摘#31対応 END   #####
   )
 --
 --###########################  固定部 START   ###########################
@@ -4820,6 +5049,10 @@ AS
        ,iv_date_fix         => iv_date_fix     -- 15 : 確定通知実施日
        ,iv_fix_from         => iv_fix_from     -- 16 : 確定通知実施時間From
        ,iv_fix_to           => iv_fix_to       -- 17 : 確定通知実施時間To
+-- ##### 20080925 Ver.1.19 TE080_600指摘#31対応 START #####
+       ,iv_ship_date_from   => iv_ship_date_from  -- 18 : 出庫日From
+       ,iv_ship_date_to     => iv_ship_date_to    -- 19 : 出庫日To
+-- ##### 20080925 Ver.1.19 TE080_600指摘#31対応 END   #####
        ,ov_errbuf           => lv_errbuf       -- エラー・メッセージ
        ,ov_retcode          => lv_retcode      -- リターン・コード
        ,ov_errmsg           => lv_errmsg       -- ユーザー・エラー・メッセージ
@@ -4873,6 +5106,10 @@ AS
     FND_FILE.PUT_LINE( FND_FILE.OUTPUT, '　確定通知実施日　　　：' || iv_date_fix    ) ;
     FND_FILE.PUT_LINE( FND_FILE.OUTPUT, '　確定通知実施時間From：' || iv_fix_from    ) ;
     FND_FILE.PUT_LINE( FND_FILE.OUTPUT, '　確定通知実施時間To　：' || iv_fix_to      ) ;
+-- ##### 20080925 Ver.1.19 TE080_600指摘#31対応 START #####
+    FND_FILE.PUT_LINE( FND_FILE.OUTPUT, '　出庫日From　　　　　：' || iv_ship_date_from ) ;
+    FND_FILE.PUT_LINE( FND_FILE.OUTPUT, '　出庫日To　　　　　　：' || iv_ship_date_to   ) ;
+-- ##### 20080925 Ver.1.19 TE080_600指摘#31対応 END   #####
 --
     FND_FILE.PUT_LINE( FND_FILE.OUTPUT, gv_sep_msg ) ;   --区切り文字列出力
 --
