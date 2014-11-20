@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCOK014A01C(body)
  * Description      : 販売実績情報・手数料計算条件からの販売手数料計算処理
  * MD.050           : 条件別販手販協計算処理 MD050_COK_014_A01
- * Version          : 3.4
+ * Version          : 3.5
  *
  * Program List
  * -------------------- ------------------------------------------------------------
@@ -64,6 +64,7 @@ AS
  *  2009/10/19    3.2   K.Yamaguchi      [障害E_T3_00631] 消費税コード取得方法を変更
  *  2009/10/27    3.3   K.Yamaguchi      [障害E_T4_00094] 即時払いの場合にAR連携を行うように修正
  *  2009/11/09    3.4   K.Yamaguchi      [仕様変更I_E_633] 入金値引の対象となる非在庫品目を取得できるように変更
+ *  2009/12/10    3.5   K.Yamaguchi      [E_本稼動_00363] 支払日で営業日が考慮されていない点を修正
  *
  *****************************************************************************************/
   --==================================================
@@ -4171,7 +4172,10 @@ END insert_xt0c;
                               AND ld_bm_support_period_to_1  ) THEN
         lv_fix_term_name              := i_get_cust_data_rec.term_name1;
         ld_fix_close_date             := ld_close_date1;
-        ld_fix_expect_payment_date    := ld_pay_date1;
+-- 2009/12/10 Ver.3.5 [E_本稼動_00363] SCS K.Yamaguchi REPAIR START
+--        ld_fix_expect_payment_date    := ld_pay_date1;
+        ld_fix_expect_payment_date    := ld_expect_payment_date1;
+-- 2009/12/10 Ver.3.5 [E_本稼動_00363] SCS K.Yamaguchi REPAIR END
         ld_fix_bm_support_period_from := ld_bm_support_period_from_1;
         ld_fix_bm_support_period_to   := ld_bm_support_period_to_1;
       END IF;
@@ -4250,7 +4254,10 @@ END insert_xt0c;
                               AND ld_bm_support_period_to_2  ) THEN
         lv_fix_term_name              := i_get_cust_data_rec.term_name2;
         ld_fix_close_date             := ld_close_date2;
-        ld_fix_expect_payment_date    := ld_pay_date2;
+-- 2009/12/10 Ver.3.5 [E_本稼動_00363] SCS K.Yamaguchi REPAIR START
+--        ld_fix_expect_payment_date    := ld_pay_date2;
+        ld_fix_expect_payment_date    := ld_expect_payment_date2;
+-- 2009/12/10 Ver.3.5 [E_本稼動_00363] SCS K.Yamaguchi REPAIR END
         ld_fix_bm_support_period_from := ld_bm_support_period_from_2;
         ld_fix_bm_support_period_to   := ld_bm_support_period_to_2;
       END IF;
@@ -4329,7 +4336,10 @@ END insert_xt0c;
                               AND ld_bm_support_period_to_3  ) THEN
         lv_fix_term_name              := i_get_cust_data_rec.term_name3;
         ld_fix_close_date             := ld_close_date3;
-        ld_fix_expect_payment_date    := ld_pay_date3;
+-- 2009/12/10 Ver.3.5 [E_本稼動_00363] SCS K.Yamaguchi REPAIR START
+--        ld_fix_expect_payment_date    := ld_pay_date3;
+        ld_fix_expect_payment_date    := ld_expect_payment_date3;
+-- 2009/12/10 Ver.3.5 [E_本稼動_00363] SCS K.Yamaguchi REPAIR END
         ld_fix_bm_support_period_from := ld_bm_support_period_from_3;
         ld_fix_bm_support_period_to   := ld_bm_support_period_to_3;
       END IF;
