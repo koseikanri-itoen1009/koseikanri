@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCMM003A18C(body)
  * Description      : 情報系連携IFデータ作成
  * MD.050           : MD050_CMM_003_A18_情報系連携IFデータ作成
- * Version          : 1.9
+ * Version          : 1.10
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -30,9 +30,10 @@ AS
  *  2009/05/29    1.5   Yutaka.Kuboshima 障害T1_1263の対応
  *  2009/06/09    1.6   Yutaka.Kuboshima 障害T1_1364の対応
  *  2009/09/30    1.7   Yutaka.Kuboshima 障害0001350の対応
- *  2009/11/28    1.8   Hiroshi.Oshida   障害 本稼動_00151の対応
- *  2009/11/23    1.9   Yutaka.Kuboshima 障害 本番_00341の対応
-*
+ *  2009/11/28    1.8   Hiroshi.Oshida   障害E_本稼動_00151の対応
+ *  2009/11/23    1.9   Yutaka.Kuboshima 障害E_本番_00341の対応
+ *  2009/12/02    1.10  Yutaka.Kuboshima 障害E_本稼動_00262の対応
+ *
  *****************************************************************************************/
 --
 --#######################  固定グローバル定数宣言部 START   #######################
@@ -564,7 +565,9 @@ AS
               TO_MULTI_BYTE(aah.hierarchy_name)              hierarchy_name,              --取引－自動消込基準セット名
               xmc.approval_date                              approval_date,               --決裁日付
               xmc.tdb_code                                   tbd_code,                    --TDBコード
-              hcsu.price_list_id                             price_list_id,               --価格表
+-- 2009/12/02 Ver1.10 障害E_本稼動_00262 delete start by Yutaka.Kuboshima
+--              hcsu.price_list_id                             price_list_id,               --価格表
+-- 2009/12/02 Ver1.10 障害E_本稼動_00262 delete end by Yutaka.Kuboshima
               hcsu.tax_header_level_flag                     tax_header_level_flag,       --税金-計算
               hcsu.tax_rounding_rule                         tax_rounding_rule,           --税金-端数処理
               xca.cust_update_flag                           cust_update_flag,            --新規/更新フラグ
@@ -578,6 +581,10 @@ AS
               xca.invoice_code                               invoice_code,                --請求書用コード
               xca.enclose_invoice_code                       enclose_invoice_code         --統括請求書用コード
 -- 2009/09/30 Ver1.7 障害0001350 add end by Yutaka.Kuboshima
+--
+-- 2009/12/02 Ver1.10 障害E_本稼動_00262 add start by Yutaka.Kuboshima
+             ,hcas.cust_acct_site_id                         cust_acct_site_id            --顧客所在地ID
+-- 2009/12/02 Ver1.10 障害E_本稼動_00262 add end by Yutaka.Kuboshima
       FROM    hz_cust_accounts              hca,                      --顧客マスタ
               hz_locations                  hl,                       --顧客事業所マスタ
               hz_cust_site_uses             hcsu,                     --顧客使用目的マスタ
@@ -629,6 +636,10 @@ AS
                      BETWEEN rcrmvw.start_date
                      AND NVL(rcrmvw.end_date, TO_DATE(cv_eff_last_date, cv_fnd_slash_date)))
               AND    armvw.receipt_method_id = rcrmvw.receipt_method_id         --AR支払方法 = 支払方法情報：支払方法ID
+-- 2009/12/02 Ver1.10 障害E_本稼動_00262 add start by Yutaka.Kuboshima
+              AND    hcsuvw.site_use_code    = cv_bill_to
+              AND    hcsuvw.status           = cv_a_flag
+-- 2009/12/02 Ver1.10 障害E_本稼動_00262 add end by Yutaka.Kuboshima
               AND    hcsuvw.site_use_id      = rcrmvw.site_use_id)  arvw,       --使用目的   = 支払方法情報：顧客所在地使用ID
 --
              (SELECT   hopviw1.party_id              party_id,
@@ -796,6 +807,25 @@ AS
     hz_relationships_rec hz_relationships_cur%ROWTYPE;
 -- 2009/05/12 Ver1.3 障害T1_0176 add end by Yutaka.Kuboshima
 --
+-- 2009/12/02 Ver1.10 障害E_本稼動_00262 add start by Yutaka.Kuboshima
+    -- 請求先に紐付く価格表を出力していたが、
+    -- 正しくは出荷先に紐付く価格表を出力するのが正しい
+    --
+    -- 価格表取得カーソル
+    CURSOR price_list_cur(p_cust_acct_site_id IN NUMBER)
+    IS
+      SELECT price_list_id price_list_id
+      FROM   hz_cust_acct_sites hcas
+            ,hz_cust_site_uses hcsu
+      WHERE  hcas.cust_acct_site_id = hcsu.cust_acct_site_id
+        AND  hcsu.site_use_code     = cv_ship_to
+        AND  hcsu.status            = cv_a_flag
+        AND  hcas.cust_acct_site_id = p_cust_acct_site_id
+        AND  ROWNUM = 1;
+    -- 価格表取得カーソルレコード型
+    price_list_rec price_list_cur%ROWTYPE;
+-- 2009/12/02 Ver1.10 障害E_本稼動_00262 add end by Yutaka.Kuboshima
+--
   BEGIN
 --
 --##################  固定ステータス初期化部 START   ###################
@@ -953,9 +983,18 @@ AS
       FETCH hz_relationships_cur INTO hz_relationships_rec;
       CLOSE hz_relationships_cur;
 -- 2009/05/12 Ver1.3 障害T1_0176 add end by Yutaka.Kuboshima
+--
+-- 2009/12/02 Ver1.10 障害E_本稼動_00262 add start by Yutaka.Kuboshima
+      -- 価格表取得
+      OPEN price_list_cur(cust_data_rec.cust_acct_site_id);
+      FETCH price_list_cur INTO price_list_rec;
+      CLOSE price_list_cur;
+-- 2009/12/02 Ver1.10 障害E_本稼動_00262 add end by Yutaka.Kuboshima
+--
       -- ===============================
       -- 出力値設定
-      -- ===============================--
+      -- ===============================
+--
 --
 -- 2009/06/09 Ver1.6 add start by Yutaka.Kuboshima
       -- 顧客名称設定
@@ -1165,7 +1204,10 @@ AS
       lv_output_str := lv_output_str || cv_comma || cv_dqu || SUBSTRB(cust_acct_relate_rec.attribute1, 1, 1) || cv_dqu;            --関連分類
       lv_output_str := lv_output_str || cv_comma || TO_CHAR(cust_data_rec.approval_date, cv_fnd_date);                             --決裁日付
       lv_output_str := lv_output_str || cv_comma || cv_dqu || SUBSTRB(cust_data_rec.tbd_code, 1, 12) || cv_dqu;                    --TDBコード
-      lv_output_str := lv_output_str || cv_comma || cv_dqu || SUBSTRB(TO_CHAR(cust_data_rec.price_list_id), 1, 50) || cv_dqu;      --価格表
+-- 2009/12/02 Ver1.10 障害E_本稼動_00262 modify start by Yutaka.Kuboshima
+--      lv_output_str := lv_output_str || cv_comma || cv_dqu || SUBSTRB(TO_CHAR(cust_data_rec.price_list_id), 1, 50) || cv_dqu;      --価格表
+      lv_output_str := lv_output_str || cv_comma || cv_dqu || SUBSTRB(TO_CHAR(price_list_rec.price_list_id), 1, 50) || cv_dqu;      --価格表
+-- 2009/12/02 Ver1.10 障害E_本稼動_00262 modify end by Yutaka.Kuboshima
       lv_output_str := lv_output_str || cv_comma || cv_dqu || SUBSTRB(cust_data_rec.tax_header_level_flag, 1, 1) || cv_dqu;        --税金－計算
       lv_output_str := lv_output_str || cv_comma || cv_dqu || SUBSTRB(cust_data_rec.tax_rounding_rule, 1, 7) || cv_dqu;            --税金－端数処理
       lv_output_str := lv_output_str || cv_comma || cv_dqu || SUBSTRB(cust_data_rec.cust_update_flag, 1, 1) || cv_dqu;             --新規/更新フラグ
