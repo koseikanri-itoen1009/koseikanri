@@ -25,6 +25,7 @@ AS
  *  2009/01/09    1.0   SCS 福間 貴子    初回作成
  *  2009/04/24    1.1   Yutaka.Kuboshima 障害T1_0799の対応
  *  2009/06/08    1.2   H.Yoshikawa      障害T1_1135の対応
+ *  2009/06/17    1.3   H.Yoshikawa      障害T1_1481の対応(営業員番号の設定誤り修正)
  *
  *****************************************************************************************/
 --
@@ -217,7 +218,10 @@ AS
 --
   -- 出力するリソース情報を格納するレコードを定義
   TYPE g_rs_data_rtype IS RECORD(
-    resource_number                VARCHAR2(5)          -- 営業員コード
+-- Ver1.3  2009/06/17  Mod 営業員番号の抽出誤りを修正
+--    resource_number                VARCHAR2(5)          -- 営業員コード
+    source_number                  VARCHAR2(5)          -- 営業員コード
+-- End1.3
    ,resource_name                  VARCHAR2(20)         -- 営業員名
    ,resource_department            VARCHAR2(4)          -- 拠点コード
    ,inactive_date                  VARCHAR2(8)          -- 無効日
@@ -636,7 +640,10 @@ AS
       -- リソースグループ役割有効データ抽出
       SELECT    cv_flag_active      AS  data_div       -- データ区分(有効)
                ,jrrm.denorm_mgr_id                     -- リソースグループ役割ID
-               ,jrse.resource_number                   -- 営業員番号
+-- Ver1.3  2009/06/17  Mod 営業員番号の抽出誤りを修正
+--               ,jrse.resource_number                   -- 営業員番号
+               ,papf.employee_number                     -- 営業員番号
+-- End1.3
                ,jrrm.resource_id                       -- リソースID
                ,jrrm.group_id                          -- グループID
                ,jrrm.person_id                         -- 従業員ID
@@ -677,7 +684,10 @@ AS
       -- リソースグループ役割無効データ抽出
       SELECT    cv_flag_inactive    AS  data_div       -- データ区分(無効)
                ,jrrm.denorm_mgr_id                     -- リソースグループ役割ID
-               ,jrse.resource_number                   -- 営業員番号
+-- Ver1.3  2009/06/17  Mod 営業員番号の抽出誤りを修正
+--               ,jrse.resource_number                   -- 営業員番号
+               ,papf.employee_number                   -- 営業員番号
+-- End1.3
                ,jrrm.resource_id                       -- リソースID
                ,jrrm.group_id                          -- グループID
                ,jrrm.person_id                         -- 従業員ID
@@ -711,7 +721,10 @@ AS
       AND       jrgv.group_id                   = jrrm.group_id
       AND       xabv.base_code                  = jrgv.attribute1
       --
-      ORDER BY  resource_number
+-- Ver1.3  2009/06/17  Mod 営業員番号の抽出誤りを修正
+--      ORDER BY  resource_number
+      ORDER BY  employee_number
+-- End1.3
                ,data_div
                ,start_date_active  DESC
                ,last_update_date   DESC;
@@ -788,7 +801,10 @@ AS
         IF ( get_act_rs_data_cur%NOTFOUND ) THEN
           -- 出力データ格納(無効分)
           ln_stack_cnt := ln_stack_cnt + 1;
-          g_rs_data_tab(ln_stack_cnt).resource_number     := SUBSTRB( l_get_rs_data_rec.resource_number, 1, 5 );
+-- Ver1.3  2009/06/17  Mod 営業員番号の抽出誤りを修正
+--          g_rs_data_tab(ln_stack_cnt).resource_number     := SUBSTRB( l_get_rs_data_rec.resource_number, 1, 5 );
+          g_rs_data_tab(ln_stack_cnt).source_number       := SUBSTRB( l_get_rs_data_rec.employee_number, 1, 5 );
+-- End1.3
           g_rs_data_tab(ln_stack_cnt).resource_name       := SUBSTRB( l_get_rs_data_rec.emp_name, 1, 20 );
           g_rs_data_tab(ln_stack_cnt).resource_department := SUBSTRB( l_get_rs_data_rec.base_code, 1, 4 );
           g_rs_data_tab(ln_stack_cnt).inactive_date       := TO_CHAR( l_get_rs_data_rec.end_date_active, 'YYYYMMDD' );
@@ -800,7 +816,10 @@ AS
           OR  ( l_get_rs_data_rec.data_div = cv_flag_inactive ) THEN
             -- 出力データ格納(有効分)
             ln_stack_cnt := ln_stack_cnt + 1;
-            g_rs_data_tab(ln_stack_cnt).resource_number     := SUBSTRB( l_get_rs_data_rec.resource_number, 1, 5 );
+-- Ver1.3  2009/06/17  Mod 営業員番号の抽出誤りを修正
+--            g_rs_data_tab(ln_stack_cnt).resource_number     := SUBSTRB( l_get_rs_data_rec.resource_number, 1, 5 );
+            g_rs_data_tab(ln_stack_cnt).source_number       := SUBSTRB( l_get_rs_data_rec.employee_number, 1, 5 );
+-- End1.3
             g_rs_data_tab(ln_stack_cnt).resource_name       := SUBSTRB( l_get_rs_data_rec.emp_name, 1, 20 );
             g_rs_data_tab(ln_stack_cnt).resource_department := SUBSTRB( l_act_rs_data_rec.base_code, 1, 4 );
             g_rs_data_tab(ln_stack_cnt).inactive_date       := NULL;
@@ -973,7 +992,10 @@ AS
 -- Ver1.2  2009/06/08  Add  ファイル出力を全面改修のため追加
     <<output_rs_data_loop>>
     FOR ln_loop_cnt IN g_rs_data_tab.FIRST..g_rs_data_tab.LAST LOOP
-      lv_csv_text := cv_enclosed || g_rs_data_tab(ln_loop_cnt).resource_number     || cv_enclosed || cv_delimiter  -- 営業員コード
+-- Ver1.3  2009/06/17  Mod 営業員番号の抽出誤りを修正
+--      lv_csv_text := cv_enclosed || g_rs_data_tab(ln_loop_cnt).resource_number     || cv_enclosed || cv_delimiter  -- 営業員コード
+      lv_csv_text := cv_enclosed || g_rs_data_tab(ln_loop_cnt).source_number       || cv_enclosed || cv_delimiter  -- 営業員コード
+-- End1.3
                   || cv_enclosed || g_rs_data_tab(ln_loop_cnt).resource_name       || cv_enclosed || cv_delimiter  -- 営業員名
                   || cv_enclosed || g_rs_data_tab(ln_loop_cnt).resource_department || cv_enclosed || cv_delimiter  -- 拠点コード
                                  || g_rs_data_tab(ln_loop_cnt).inactive_date                      || cv_delimiter  -- 無効日
@@ -1001,7 +1023,10 @@ AS
                           ,iv_token_name1  => cv_tkn_word        -- トークン(NG_WORD)
                           ,iv_token_value1 => cv_tkn_word1       -- NG_WORD
                           ,iv_token_name2  => cv_tkn_data        -- トークン(NG_DATA)
-                          ,iv_token_value2 => g_rs_data_tab(ln_loop_cnt).resource_number
+-- Ver1.3  2009/06/17  Mod 営業員番号の抽出誤りを修正
+--                          ,iv_token_value2 => g_rs_data_tab(ln_loop_cnt).resource_number
+                          ,iv_token_value2 => g_rs_data_tab(ln_loop_cnt).source_number
+-- End1.3
                                                                  -- NG_WORDのDATA
                          );
           lv_errbuf := lv_errmsg;
