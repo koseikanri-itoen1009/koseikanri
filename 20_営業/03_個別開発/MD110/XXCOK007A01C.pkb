@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCOK007A01C(body)
  * Description      : 売上実績振替情報作成(EDI)
  * MD.050           : 売上実績振替情報作成(EDI) MD050_COK_007_A01
- * Version          : 1.2
+ * Version          : 1.3
  *
  * Program List
  * -------------------------------- ---------------------------------------------------------
@@ -32,6 +32,7 @@ AS
  *  2008/11/25    1.0   S.Sasaki         新規作成
  *  2009/02/03    1.1   S.Sasaki         [障害COK_007]一時表レイアウト変更の対応
  *  2009/02/12    1.2   S.Sasaki         [障害COK_031]顧客受注可能フラグ、売上対象区分チェック追加
+ *  2009/05/14    1.3   M.Hiruta         [障害T1_1003]文字列バッファ修正
  *
  *****************************************************************************************/
   -- =========================
@@ -1066,7 +1067,10 @@ AS
     lv_retcode       VARCHAR2(1)    DEFAULT NULL;   --リターン・コード
     lv_errmsg        VARCHAR2(5000) DEFAULT NULL;   --ユーザー・エラー・メッセージ
     lv_msg           VARCHAR2(5000) DEFAULT NULL;   --メッセージ取得変数
-    lv_account_name  VARCHAR2(30)   DEFAULT NULL;   --顧客名
+-- Start 2009/05/15 Ver_1.3 T1_1003 M.Hiruta
+--    lv_account_name  VARCHAR2(30)   DEFAULT NULL;   --顧客名
+    lv_account_name  hz_cust_accounts.account_name%TYPE  DEFAULT NULL; --顧客名
+-- End   2009/05/15 Ver_1.3 T1_1003 M.Hiruta
     lb_retcode       BOOLEAN        DEFAULT NULL;   --メッセージ出力の戻り値
     -- =======================
     -- ローカル例外
