@@ -7,7 +7,7 @@ AS
  * Description      : 入庫依頼表
  * MD.050           : 引当/配車(帳票) T_MD050_BPO_620
  * MD.070           : 入庫依頼表 T_MD070_BPO_62D
- * Version          : 1.6
+ * Version          : 1.7
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -32,6 +32,7 @@ AS
  *  2008/07/10    1.4   Akiyoshi Shiina  変更要求対応#92
  *  2008/07/11    1.5   Masayoshi Uehara ST不具合#441対応
  *  2008/07/15    1.6   Akiyoshi Shiina  変更要求対応#92修正
+ *  2008/08/04    1.7   Takao Ohashi     結合出荷テスト(出荷追加_19)修正
  *
  *****************************************************************************************/
 --
@@ -1017,7 +1018,11 @@ AS
         END IF ;
 --
         -- 配送No
-        IF (lv_tmp_delivery_no = gt_report_data(i+1).delivery_no) THEN
+-- mod start 1.7
+--        IF (lv_tmp_delivery_no = gt_report_data(i+1).delivery_no) THEN
+        IF (lv_tmp_delivery_no = gt_report_data(i+1).delivery_no)
+          OR (lv_tmp_delivery_no IS NULL) THEN
+-- mod end 1.7
           lb_dispflg_delivery_no := FALSE ;
         ELSE
           lb_dispflg_delivery_no := TRUE ;

@@ -7,7 +7,7 @@ AS
  * Description      : 出庫配送依頼表
  * MD.050           : 引当/配車(帳票) T_MD050_BPO_620
  * MD.070           : 出庫配送依頼表 T_MD070_BPO_62C
- * Version          : 1.11
+ * Version          : 1.12
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -43,6 +43,7 @@ AS
  *                                       1.10.2 支給の配送先等の情報取得先を変更。
  *                                       1.10.3 配送先が混載している場合は全ての配送先を出力する。
  *  2008/07/17    1.11  Satoshi Takemoto 結合テスト不具合対応(変更要求対応#92,#98)
+ *  2008/08/04    1.12  Takao Ohashi     結合出荷テスト(出荷追加_18,19,20)修正
  *
  *****************************************************************************************/
 --
@@ -1643,7 +1644,10 @@ AS
     || ' WHEN ( xmril.reserved_quantity > 0 ) THEN' 
     || ' CASE ' 
     || ' WHEN ( xic4v.prod_class_code = '''|| gc_prod_cd_drink ||'''' 
-    || ' AND xic4v.item_class_code = '''|| gc_item_cd_prdct ||''' ) THEN' 
+-- mod start 1.12
+--    || ' AND xic4v.item_class_code = '''|| gc_item_cd_prdct ||''' ) THEN' 
+    || ' AND xic4v.item_class_code = '''|| gc_item_cd_prdct ||'''' 
+    || ' AND xim2v.conv_unit IS NOT NULL ) THEN' 
     || ' xmld.actual_quantity / TO_NUMBER( '
     || ' CASE WHEN xim2v.num_of_cases > 0 '
     || ' THEN  xim2v.num_of_cases '
@@ -1656,7 +1660,10 @@ AS
     || ' OR (xmril.reserved_quantity = 0 ) ) THEN' 
     || ' CASE ' 
     || ' WHEN ( xic4v.prod_class_code = '''|| gc_prod_cd_drink ||'''' 
-    || ' AND xic4v.item_class_code = '''|| gc_item_cd_prdct ||''' ) THEN' 
+--    || ' AND xic4v.item_class_code = '''|| gc_item_cd_prdct ||''' ) THEN' 
+    || ' AND xic4v.item_class_code = '''|| gc_item_cd_prdct ||'''' 
+    || ' AND xim2v.conv_unit IS NOT NULL ) THEN' 
+-- mod end 1.12
     || ' xmril.instruct_qty / TO_NUMBER( '
     || ' CASE WHEN xim2v.num_of_cases > 0 '
     || ' THEN  xim2v.num_of_cases '
@@ -2578,7 +2585,11 @@ AS
         END IF ;
 --
         -- 配送No
-        IF ( lv_tmp_delivery_no = gt_report_data(i + 1).delivery_no ) THEN
+-- mod start 1.12
+--        IF ( lv_tmp_delivery_no = gt_report_data(i + 1).delivery_no ) THEN
+        IF ( lv_tmp_delivery_no = gt_report_data(i + 1).delivery_no ) 
+          OR (lv_tmp_delivery_no IS NULL) THEN
+-- mod end 1.12
           lb_dispflg_delivery_no        :=  FALSE ;
         ELSE
           lb_dispflg_delivery_no        :=  TRUE ;
@@ -2605,7 +2616,11 @@ AS
         END IF ;
 --
         -- 運送業者
-        IF ( lv_tmp_carrier_code = gt_report_data(i + 1).freight_carrier_code ) THEN
+-- mod start 1.12
+--        IF ( lv_tmp_carrier_code = gt_report_data(i + 1).freight_carrier_code ) THEN
+        IF ( lv_tmp_carrier_code = gt_report_data(i + 1).freight_carrier_code ) 
+          OR (lv_tmp_carrier_code IS NULL) THEN
+-- mod end 1.12
           lb_dispflg_career_info        :=  FALSE ;
         ELSE
           lb_dispflg_career_info        :=  TRUE ;
