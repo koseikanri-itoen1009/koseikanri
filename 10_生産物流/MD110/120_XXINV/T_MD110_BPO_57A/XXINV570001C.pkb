@@ -7,7 +7,7 @@ AS
  * Description      : 移動入出庫実績登録
  * MD.050           : 移動入出庫実績登録(T_MD050_BPO_570)
  * MD.070           : 移動入出庫実績登録(T_MD070_BPO_57A)
- * Version          : 1.4
+ * Version          : 1.5
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -33,6 +33,7 @@ AS
  *  2008/06/02    1.2   Kazuo Kumamoto   結合テスト障害対応(出庫実績数量≠入庫実績数量のステータス変更)
  *  2008/07/24    1.3   Takao Ohashi     T_TE080_BPO_540 指摘5対応
  *  2008/08/21    1.4   Yuko  Kawano     内部変更要求対応 #202
+ *  2008/09/26    1.5   Yuko  Kawano     統合テスト指摘#156,課題T_S_457,T_S_629対応
  *
  *****************************************************************************************/
 --
@@ -60,6 +61,10 @@ AS
   gn_normal_cnt    NUMBER;      -- 正常件数
   gn_error_cnt     NUMBER;      -- エラー件数
   gn_warn_cnt      NUMBER;      -- スキップ件数
+--2008/09/26 Y.Kawano Add Start
+  gn_out_cnt      NUMBER;      -- 対象外件数
+--2008/09/26 Y.Kawano Add End
+--
 --
 --################################  固定部 END   ##################################
 --
@@ -101,6 +106,12 @@ AS
   gv_c_msg_57a_006   CONSTANT VARCHAR2(15) := 'APP-XXINV-10009'; -- データ取得失敗
   gv_c_msg_57a_007   CONSTANT VARCHAR2(15) := 'APP-XXINV-10008'; -- データ取得不可
 --
+--2008/09/26 Y.Kawano Add Start
+  gv_c_msg_57a_008   CONSTANT VARCHAR2(15) := 'APP-XXINV-10174'; -- 同一入出庫保管倉庫エラー
+  gv_c_msg_57a_009   CONSTANT VARCHAR2(15) := 'APP-XXINV-10175'; -- 手持数量なしエラー
+  gv_c_msg_57a_010   CONSTANT VARCHAR2(15) := 'APP-XXCMN-10002'; -- プロファイル取得エラー
+--2008/09/26 Y.Kawano Add End
+--
   -- トークン
   gv_c_tkn_parameter           CONSTANT VARCHAR2(30)  := 'PARAMETER';
   gv_c_tkn_value               CONSTANT VARCHAR2(30)  := 'VALUE';
@@ -113,6 +124,13 @@ AS
   gv_c_tkn_ship_to_day         CONSTANT VARCHAR2(30)  := 'SHIP_TO_DAY';
   gv_c_tkn_errmsg              CONSTANT VARCHAR2(30)  := 'ERR_MSG';
   gv_c_tkn_msg                 CONSTANT VARCHAR2(30)  := 'MSG';
+--2008/09/26 Y.Kawano Add Start
+  gv_c_tkn_profile             CONSTANT VARCHAR2(30)  := 'NG_PROFILE';
+--
+  gv_c_tkn_shipped_loct        CONSTANT VARCHAR2(30)  := 'SHIPPED_LOCATION';
+  gv_c_tkn_ship_to_loct        CONSTANT VARCHAR2(30)  := 'SHIP_TO_LOCATION';
+--2008/09/26 Y.Kawano Add End
+--
   gv_c_tkn_parameter_val       CONSTANT VARCHAR2(30)  := '移動番号';
   gv_c_tkn_table               CONSTANT VARCHAR2(30)  := 'TABLE';
   gv_c_tkn_table_val           CONSTANT VARCHAR2(60)  := '移動依頼/指示ヘッダ(アドオン)';
@@ -130,6 +148,10 @@ AS
   gv_c_tkn_val_lot_num         CONSTANT VARCHAR2(60)  := 'ロットNo';
   gv_c_tkn_val_o_date          CONSTANT VARCHAR2(60)  := '出庫実績日';
   gv_c_tkn_val_i_date          CONSTANT VARCHAR2(60)  := '入庫実績日';
+--
+--2008/09/26 Y.Kawano Add Start
+  gv_c_tkn_prf_start_day       CONSTANT VARCHAR2(60)  := 'XXINV:在庫転送用ユーザー';
+--2008/09/26 Y.Kawano Add End
 --
   gv_c_out_date                CONSTANT VARCHAR2(60)   := '出庫実績日';
   gv_c_in_date                 CONSTANT VARCHAR2(60)   := '入庫実績日';
@@ -215,6 +237,9 @@ AS
    ,lot_in_actual_quantity  xxinv_mov_lot_details.actual_quantity%TYPE           -- 実績数量[入庫]
    ,ng_flag                 NUMBER                                               -- NGフラグ
    ,skip_flag               NUMBER                                               -- skipフラグ
+--2008/09/26 Y.Kawano Add Start
+   ,exist_flag              NUMBER                                               -- 存在チェックフラグ
+--2008/09/26 Y.Kawano Add End
    ,err_msg                 varchar2(5000)                                       -- エラー内容
   );
 --
@@ -228,6 +253,11 @@ AS
   TYPE mov_hdr_rec IS RECORD(
     mov_hdr_id            xxinv_mov_req_instr_headers.mov_hdr_id%TYPE,         -- 移動ヘッダID
     mov_num               xxinv_mov_req_instr_headers.mov_num%TYPE             -- 移動番号
+--2008/09/26 Y.Kawano Add Start
+   ,skip_flag             NUMBER                                               -- skipフラグ
+   ,exist_flag            NUMBER                                               -- 存在チェックフラグ
+   ,out_flag              NUMBER                                               -- 処理対象外フラグ
+--2008/09/26 Y.Kawano Add End
   );
 --
   -- 更新対象を格納するPLSQL表
@@ -321,6 +351,11 @@ AS
   gn_prog_appl_id           NUMBER;           -- ｺﾝｶﾚﾝﾄ・ﾌﾟﾛｸﾞﾗﾑのｱﾌﾟﾘｹｰｼｮﾝID
   gn_conc_program_id        NUMBER;           -- コンカレント・プログラムID
 --
+--
+--2008/09/26 Y.Kawano Add Start
+    gv_xfer_user_name       VARCHAR2(100);    -- ユーザ名
+--2008/09/26 Y.Kawano Add End
+--
   gn_created_by             NUMBER(15);                      -- 作成者
   gd_creation_date          DATE;                            -- 作成日
   gv_check_proc_retcode     VARCHAR2(1);                     -- 妥当性チェックステータス
@@ -393,10 +428,28 @@ AS
     gn_conc_program_id  := FND_GLOBAL.CONC_PROGRAM_ID;      -- コンカレント・プログラムID
     gv_user_name        := FND_GLOBAL.USER_NAME;            -- ユーザー名
 --
+--2008/09/26 Y.Kawano Add Start
+    gv_xfer_user_name   := FND_PROFILE.VALUE('XXINV_XFER_USER');
+--
+    -- プロファイルが取得できない場合はエラー
+    IF (gv_xfer_user_name IS NULL) THEN
+      lv_errmsg := xxcmn_common_pkg.get_msg(gv_c_msg_kbn_cmn,
+                                            gv_c_msg_57a_010,         -- プロファイル取得エラー
+                                            gv_c_tkn_profile,         -- トークンPROFILE
+                                            gv_c_tkn_prf_start_day    -- XXINV:在庫転送用ユーザー
+                                            );
+       lv_errbuf := lv_errmsg;
+       RAISE global_api_expt;
+    END IF;
+--2008/09/26 Y.Kawano Add End
+--
     -- 初期化
     gn_normal_cnt    := 0;
     gn_warn_cnt      := 0;
     gn_target_cnt    := 0;
+--2008/09/26 Y.Kawano Add Start
+    gn_out_cnt       := 0;
+--2008/09/26 Y.Kawano Add End
 --
     ------------------------------------------
     -- 入力パラメータ移動番号の存在チェック
@@ -977,9 +1030,13 @@ AS
     ln_tmp_idx           NUMBER;
     ln_idx               NUMBER;
 --
---2008/08/21 Y.Kawano add start
+--2008/08/21 Y.Kawano Add Start
     lv_err_flg           VARCHAR(1);              -- エラーチェック用フラグ
---2008/08/21 Y.Kawano add start
+--2008/08/21 Y.Kawano Add End
+--2008/09/26 Y.Kawano Add Start
+    ln_exist             NUMBER;                  -- 存在チェック用フラグ
+    lt_bef_mov_num       xxinv_mov_req_instr_headers.mov_num%TYPE;    -- 移動番号wk用
+--2008/09/26 Y.Kawano Add End
 --
   BEGIN
 --
@@ -1019,6 +1076,10 @@ AS
 --add start 1.2
       move_data_rec_tbl(gn_rec_idx).skip_flag := 0;
 --add end 1.2
+--2008/09/26 Y.Kawano Add Start
+      ln_exist                                 := 0;
+      move_data_rec_tbl(gn_rec_idx).exist_flag := 0;
+--2008/09/26 Y.Kawano Add End
 --
       -- **************************************************
       -- *** 出庫実績数量と入庫実績数量の比較
@@ -1033,6 +1094,78 @@ AS
 --add end 1.2
 --
       END IF;
+--
+--2008/09/26 Y.Kawano Add Start
+      -- 前処理でエラーでない場合
+      IF ( move_data_rec_tbl(gn_rec_idx).ng_flag = 0 ) THEN
+        -- **************************************************
+        -- *** 出庫元保管倉庫と入庫先保管倉庫の比較
+        -- **************************************************
+        -- 出庫元保管倉庫と入庫先保管倉庫が同じ保管倉庫の場合
+        IF ( move_data_rec_tbl(gn_rec_idx).shipped_locat_id
+                = move_data_rec_tbl(gn_rec_idx).ship_to_locat_id ) THEN
+--
+          -- エラーメッセージ
+          lv_wk_errmsg := xxcmn_common_pkg.get_msg(gv_c_msg_kbn_inv,
+                                                   gv_c_msg_57a_008,      -- 同一入出庫保管倉庫エラー
+                                                   gv_c_tkn_mov_num,      -- トークン移動番号
+                                                   move_data_rec_tbl(gn_rec_idx).mov_num,
+                                                   gv_c_tkn_shipped_loct, -- トークン出庫元保管倉庫
+                                                   move_data_rec_tbl(gn_rec_idx).shipped_locat_code,
+                                                   gv_c_tkn_ship_to_loct, -- トークン入庫先保管倉庫
+                                                   move_data_rec_tbl(gn_rec_idx).ship_to_locat_code
+                                                   );
+          -- 後続処理対象外
+          move_data_rec_tbl(gn_rec_idx).ng_flag := 1;  -- NGフラグ
+          -- エラー内容格納
+          move_data_rec_tbl(gn_rec_idx).err_msg := lv_wk_errmsg;
+--
+        END IF;
+      END IF;
+--
+      -- 前処理でエラーでない場合
+      IF ( move_data_rec_tbl(gn_rec_idx).ng_flag = 0 ) THEN
+        -- **************************************************
+        -- *** 出庫元保管倉庫の手持数量存在チェック
+        -- **************************************************
+        -- 移動タイプが積送ありの場合
+        IF ( move_data_rec_tbl(gn_rec_idx).mov_type = gv_c_move_type_y ) THEN
+--
+          SELECT COUNT(1)
+          INTO   ln_exist
+          FROM   ic_loct_inv ili
+          WHERE  ili.location = move_data_rec_tbl(gn_rec_idx).shipped_locat_code
+          AND    ili.item_id  = move_data_rec_tbl(gn_rec_idx).item_id
+          AND    ili.lot_id   = move_data_rec_tbl(gn_rec_idx).lot_id
+          ;
+          -- 手持数量が存在しない場合
+          IF ( ln_exist = 0 ) THEN
+--
+            -- 警告メッセージ
+            lv_wk_errmsg
+              := xxcmn_common_pkg.get_msg(gv_c_msg_kbn_inv,     -- 'XXINV'
+                                          gv_c_msg_57a_009,     -- 手持数量なしエラー
+                                          gv_c_tkn_shipped_loct,-- トークン出庫元保管倉庫
+                                          move_data_rec_tbl(gn_rec_idx).shipped_locat_code,
+                                          gv_c_tkn_item,        -- トークン品目
+                                          move_data_rec_tbl(gn_rec_idx).item_code,
+                                          gv_c_tkn_lot_num,     -- トークンロットNo
+                                          move_data_rec_tbl(gn_rec_idx).lot_no,
+                                          gv_c_tkn_mov_num,     -- トークン移動番号
+                                          move_data_rec_tbl(gn_rec_idx).mov_num
+                                         );
+--
+            -- 後続処理対象外
+            move_data_rec_tbl(gn_rec_idx).ng_flag    := 1;         -- NGフラグ
+            -- エラー内容格納
+            move_data_rec_tbl(gn_rec_idx).err_msg    := lv_wk_errmsg;
+            -- 存在エラーチェックフラグ
+            move_data_rec_tbl(gn_rec_idx).exist_flag := 1;  -- 存在チェックフラグ
+--
+          END IF;
+        END IF;
+      END IF;
+--2008/09/26 Y.Kawano Add End
 --
       -- 前処理でエラーでない場合
       IF ( move_data_rec_tbl(gn_rec_idx).ng_flag = 0 ) THEN
@@ -1224,10 +1357,17 @@ AS
           -- スキップ件数(移動番号単位)
 --mod start 1.2
 --          gn_warn_cnt := gn_warn_cnt + 1;
+--2008/09/26 Y.Kawano Mod Start
+--          --出庫実績数量≠入庫実績数量の場合は加算しない
+--          IF (move_data_rec_tbl(gn_rec_idx).skip_flag = 0) THEN
           --出庫実績数量≠入庫実績数量の場合は加算しない
-          IF (move_data_rec_tbl(gn_rec_idx).skip_flag = 0) THEN
+          --出庫元の手持数量が存在しない場合は加算しない
+          IF (  (move_data_rec_tbl(gn_rec_idx).skip_flag = 0) 
+            AND (move_data_rec_tbl(gn_rec_idx).exist_flag = 0) ) 
+          THEN
             gn_warn_cnt := gn_warn_cnt + 1;
           END IF;
+--2008/09/26 Y.Kawano Mod End
 --mod end 1.2
 --
           IF (move_data_rec_tbl(gn_rec_idx).err_msg IS NOT NULL) THEN
@@ -1251,6 +1391,25 @@ AS
           ---------
 --
           err_mov_tmp_rec_tbl(ln_tmp_idx).mov_num := move_data_rec_tbl(gn_rec_idx).mov_num;
+--2008/09/26 Y.Kawano Add Start
+          -- 出庫元の手持数量が存在しない場合は対象外とする
+          IF ( move_data_rec_tbl(gn_rec_idx).skip_flag = 1 ) THEN
+            --スキップフラグ格納
+            err_mov_tmp_rec_tbl(ln_tmp_idx).skip_flag := 1;
+            --対象外フラグ格納
+            err_mov_tmp_rec_tbl(ln_tmp_idx).out_flag := 1;
+          END IF;
+          --
+          -- 出庫実績数量≠入庫実績数量の場合は対象外とする
+          IF ( move_data_rec_tbl(gn_rec_idx).exist_flag = 1 ) 
+          THEN
+            --存在チェックフラグ格納
+            err_mov_tmp_rec_tbl(ln_tmp_idx).exist_flag := 1;
+            --対象外フラグ格納
+            err_mov_tmp_rec_tbl(ln_tmp_idx).out_flag := 1;
+          END IF;
+--2008/09/26 Y.Kawano Add End
+--
           ln_tmp_idx := ln_tmp_idx + 1;
 --
         END IF;
@@ -1258,8 +1417,7 @@ AS
 --
     END LOOP data_loop;
 --
---2008/08/21 Y.Kawano mod start
---
+--2008/08/21 Y.Kawano Mod Start
 --    <<rec_loop>>
 --    FOR gn_rec_idx IN 1 .. move_data_rec_tbl.COUNT LOOP
 --
@@ -1305,7 +1463,14 @@ AS
           -- エラー移動番号の場合
           IF move_data_rec_tbl(gn_rec_idx).mov_num = err_mov_tmp_rec_tbl(ln_tmp_idx).mov_num THEN
 --
-             lv_err_flg := gv_c_ynkbn_y;
+            lv_err_flg := gv_c_ynkbn_y;
+--
+--2008/09/26 Y.Kawano Add Start
+            --同一移動番号配下に1件でも対象外が含まれる場合、全データを対象外とする。
+            IF (err_mov_tmp_rec_tbl(ln_tmp_idx).out_flag = 1) THEN
+              move_data_rec_tbl(gn_rec_idx).ng_flag := 1;
+            END IF;
+--2008/09/26 Y.Kawano Add End
 --
           END IF;
 --
@@ -1328,8 +1493,42 @@ AS
       move_target_tbl := move_data_rec_tbl;
 --
     END IF;
+--2008/08/21 Y.Kawano Mod End
 --
---2008/08/21 Y.Kawano mod end
+--2008/09/26 Y.Kawano Add Start
+    -- スキップ件数取得
+      <<skip_loop>>
+    FOR ln_tmp_idx IN 1 .. err_mov_tmp_rec_tbl.COUNT LOOP
+      --初期化
+      lt_bef_mov_num := NULL;
+      --
+      IF ( ( err_mov_tmp_rec_tbl(ln_tmp_idx).mov_num <> lt_bef_mov_num )
+        OR ( lt_bef_mov_num is null ) )
+      THEN
+        -- 出庫元の手持数量が存在しない場合は1伝票1スキップ件数とする
+        IF ( err_mov_tmp_rec_tbl(ln_tmp_idx).exist_flag = 1 ) 
+        THEN
+          gn_warn_cnt := gn_warn_cnt + 1;
+        END IF;
+        -- 出庫実績数量≠入庫実績数量の場合は対象外件数とする
+        IF ( err_mov_tmp_rec_tbl(ln_tmp_idx).skip_flag = 1 )
+        THEN
+          gn_out_cnt := gn_out_cnt + 1;
+        END IF;
+      --
+      END IF;
+      --
+      --移動番号退避
+      lt_bef_mov_num := err_mov_tmp_rec_tbl(ln_tmp_idx).mov_num;
+--
+    END LOOP skip_loop;
+    --
+    --対象外件数が存在する場合、対象件数から減数する
+    IF ( gn_out_cnt <> 0 )
+    THEN
+      gn_target_cnt := gn_target_cnt - gn_out_cnt;
+    END IF;
+--2008/09/26 Y.Kawano Add End
 --
     -- スキップ件数が0件でない場合
     IF gn_warn_cnt <> 0 THEN
@@ -4325,6 +4524,7 @@ AS
     -- ***************************************
 --
     IF move_api_rec_tbl.exists(1) THEN
+--
       <<xfer_loop>>
       FOR gn_rec_idx IN 1 .. move_api_rec_tbl.COUNT LOOP
 --
@@ -4353,7 +4553,11 @@ AS
         l_xfer_rec.reason_code            := gv_reason_code;         -- 移動実績
         l_xfer_rec.comments               := NULL;
         l_xfer_rec.attribute1             := move_api_rec_tbl(gn_rec_idx).attribute1;
-        l_xfer_rec.user_name              := gv_user_name;
+--
+--2008/09/26 Y.Kawano Mod Start
+--        l_xfer_rec.user_name              := gv_user_name;
+        l_xfer_rec.user_name              := gv_xfer_user_name;
+--2008/09/26 Y.Kawano Mod End
 --
         -----------------------------------
         -- API実行 Insert
@@ -4410,7 +4614,11 @@ AS
         l_xfer_rec.transfer_no                 := l_ic_xfer_mst_row.transfer_no;
         l_xfer_rec.orgn_code                   := l_ic_xfer_mst_row.orgn_code;
         l_xfer_rec.reason_code                 := gv_reason_code;
-        l_xfer_rec.user_name                   := gv_user_name;
+--
+--2008/09/26 Y.Kawano Mod Start
+--        l_xfer_rec.user_name                   := gv_user_name;
+        l_xfer_rec.user_name                   := gv_xfer_user_name;
+--2008/09/26 Y.Kawano Mod End
 --
         -----------------------------------
         -- API実行 Release
@@ -4464,7 +4672,12 @@ AS
         l_xfer_rec.transfer_no                 := l_ic_xfer_mst_row.transfer_no;
         l_xfer_rec.orgn_code                   := l_ic_xfer_mst_row.orgn_code;
         l_xfer_rec.reason_code                 := gv_reason_code;
-        l_xfer_rec.user_name                   := gv_user_name;
+--
+--2008/09/26 Y.Kawano Mod Start
+--        l_xfer_rec.user_name                   := gv_user_name;
+        l_xfer_rec.user_name                   := gv_xfer_user_name;
+--2008/09/26 Y.Kawano Mod End
+--
 --
         -----------------------------------
         -- API実行 Receive
@@ -4764,9 +4977,11 @@ AS
 --            ,program_id             = gn_conc_program_id
 --            ,program_update_date    = gd_sysdate
 --      WHERE mov_hdr_id        = move_data_rec_tbl(gn_rec_idx).mov_hdr_id;
+--
       IF ((lt_pre_mov_hdr_id IS NULL AND move_data_rec_tbl(gn_rec_idx).ng_flag = 0) 
            OR (lt_pre_mov_hdr_id <> move_data_rec_tbl(gn_rec_idx).mov_hdr_id AND move_data_rec_tbl(gn_rec_idx).ng_flag = 0)
            OR (lt_pre_mov_hdr_id = move_data_rec_tbl(gn_rec_idx).mov_hdr_id AND lt_pre_ng_flag = 0))THEN
+--
         -- フラグ更新
         UPDATE XXINV_MOV_REQ_INSTR_HEADERS
         SET    comp_actual_flg        = gv_c_ynkbn_y  -- 実績計上済フラグ=ON
