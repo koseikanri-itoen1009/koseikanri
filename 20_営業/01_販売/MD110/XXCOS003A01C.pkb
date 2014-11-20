@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCOS003A01C(body)
  * Description      : HHT向け納品予定データ作成
  * MD.050           : HHT向け納品予定データ作成 MD050_COS_003_A01
- * Version          : 1.2
+ * Version          : 1.3
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -25,6 +25,7 @@ AS
  *  2008/11/26   1.0    K.Okaguchi       新規作成
  *  2009/02/24   1.1    T.Nakamura       [障害COS_130] メッセージ出力、ログ出力への出力内容の追加・修正
  *  2009/04/15   1.2    N.Maeda          [ST障害No.T1_0067対応] ファイル出力時のCHAR型VARCHAR型以外への｢"｣付加の削除
+ *  2009/05/01   1.3    T.Kitajima       [T1_0678]マッピング不正対応
  *
  *****************************************************************************************/
 --
@@ -203,6 +204,12 @@ AS
          , xieh.edi_header_info_id         edi_header_info_id         --EDIヘッダ情報テーブル．受注ヘッダ情報ID
          , xiel.selling_price              selling_price              --EDI明細情報テーブル．売価単価
          , xiel.edi_line_info_id           edi_line_info_id           --EDI明細情報テーブル．EDI明細情報ID
+--******************************* 2009/05/01 1.3 T.Kitajima ADD START *******************************--
+         , xiel.product_code2              product_code2              --EDI明細情報テーブル．商品コード２
+         , NVL(  xiel.product_name2_alt
+                ,xiel.product_name1_alt 
+              )                            product_name_alt           --EDI明細情報テーブル．商品名２（カナ）or 商品名１（カナ）
+--******************************* 2009/05/01 1.3 T.Kitajima ADD  END  *******************************--
          , oola.ordered_quantity           ordered_quantity           --受注明細テーブル．数量
          , oola.unit_selling_price         unit_selling_price         --受注明細テーブル．販売単価
          , oola.line_number                line_number                --受注明細テーブル．明細番号
@@ -972,37 +979,41 @@ AS
         gv_transaction_status := NULL;
       END IF;
 --
-      BEGIN
-        SELECT mcis.customer_item_number
-              ,mcis.customer_item_desc
-        INTO   gv_customer_item_number
-              ,gv_customer_item_desc
-        FROM   mtl_customer_items              mcis                   -- 顧客品目
-              ,mtl_customer_item_xrefs         mcix                   -- 顧客品目相互参照
-              ,mtl_parameters                  mtpa
-              ,hz_cust_accounts                cust_acct              -- 顧客マスタ（10：顧客）
-              ,hz_cust_accounts                chain_acct             -- 顧客マスタ（18：チェーン店）
-              ,xxcmm_cust_accounts             cust_addon             -- 顧客アドオン（10：顧客）
-              ,xxcmm_cust_accounts             chain_addon            -- 顧客アドオン（18：チェーン店）
-        WHERE  mcix.inventory_item_id          =  main_rec.inventory_item_id
-        AND    mcix.customer_item_id           =  mcis.customer_item_id
-        AND    mcix.master_organization_id     =  mtpa.master_organization_id
-        AND    cust_addon.customer_id          =  main_rec.sold_to_org_id
-        AND    cust_addon.customer_id          =  cust_acct.cust_account_id
-        AND    cust_acct.customer_class_code   =  cv_cust_class_cust
-        AND    cust_addon.chain_store_code     =  chain_addon.chain_store_code
-        AND    chain_acct.cust_account_id      =  chain_addon.customer_id
-        AND    chain_acct.customer_class_code  =  cv_cust_class_chain
-        AND    mcis.customer_id                =  chain_addon.customer_id
-        AND    mcis.attribute1                 =  main_rec.order_quantity_uom
-        AND    mcis.item_definition_level      =  cv_customer
-        AND    mtpa.organization_code          =  gv_organization_code
-        ;
-      EXCEPTION
-        WHEN NO_DATA_FOUND THEN
-          gv_customer_item_number := NULL;
-          gv_customer_item_desc   := NULL;
-      END;
+--****************************** 2009/05/01 1.3 T.Kitajima MOD START ******************************--
+--      BEGIN
+--        SELECT mcis.customer_item_number
+--              ,mcis.customer_item_desc
+--        INTO   gv_customer_item_number
+--              ,gv_customer_item_desc
+--        FROM   mtl_customer_items              mcis                   -- 顧客品目
+--              ,mtl_customer_item_xrefs         mcix                   -- 顧客品目相互参照
+--              ,mtl_parameters                  mtpa
+--              ,hz_cust_accounts                cust_acct              -- 顧客マスタ（10：顧客）
+--              ,hz_cust_accounts                chain_acct             -- 顧客マスタ（18：チェーン店）
+--              ,xxcmm_cust_accounts             cust_addon             -- 顧客アドオン（10：顧客）
+--              ,xxcmm_cust_accounts             chain_addon            -- 顧客アドオン（18：チェーン店）
+--        WHERE  mcix.inventory_item_id          =  main_rec.inventory_item_id
+--        AND    mcix.customer_item_id           =  mcis.customer_item_id
+--        AND    mcix.master_organization_id     =  mtpa.master_organization_id
+--        AND    cust_addon.customer_id          =  main_rec.sold_to_org_id
+--        AND    cust_addon.customer_id          =  cust_acct.cust_account_id
+--        AND    cust_acct.customer_class_code   =  cv_cust_class_cust
+--        AND    cust_addon.chain_store_code     =  chain_addon.chain_store_code
+--        AND    chain_acct.cust_account_id      =  chain_addon.customer_id
+--        AND    chain_acct.customer_class_code  =  cv_cust_class_chain
+--        AND    mcis.customer_id                =  chain_addon.customer_id
+--        AND    mcis.attribute1                 =  main_rec.order_quantity_uom
+--        AND    mcis.item_definition_level      =  cv_customer
+--        AND    mtpa.organization_code          =  gv_organization_code
+--        ;
+--      EXCEPTION
+--        WHEN NO_DATA_FOUND THEN
+--          gv_customer_item_number := NULL;
+--          gv_customer_item_desc   := NULL;
+--      END;
+      gv_customer_item_number := main_rec.product_code2;
+      gv_customer_item_desc   := main_rec.product_name_alt;
+--****************************** 2009/05/01 1.3 T.Kitajima MOD  END  ******************************--
 --
       -- ===============================
       -- A-10 データチェック

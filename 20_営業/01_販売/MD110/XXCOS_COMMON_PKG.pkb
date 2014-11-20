@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCOS_COMMON_PKG(body)
  * Description      : 共通関数パッケージ(販売)
  * MD.070           : 共通関数    MD070_IPO_COS
- * Version          : 1.0
+ * Version          : 1.1
  *
  * Program List
  * --------------------------- ------ ---------- -----------------------------------------
@@ -26,6 +26,7 @@ AS
  *  Date          Ver.  Editor           Description
  * ------------- ----- ---------------- -------------------------------------------------
  *  2008/11/21    1.0   SCS              新規作成
+ *  2009/04/30    1.1   T.Kitajima       [T1_0710]get_delivered_from 出荷拠点コード取得方法変更
  *
  *****************************************************************************************/
 --
@@ -1578,6 +1579,9 @@ AS
     -- *** ローカル変数 ***
     lt_main_subinv_flag                 mtl_secondary_inventories.attribute6%TYPE;         -- メイン倉庫
     lt_subinv_type                      mtl_secondary_inventories.attribute13%TYPE;        -- 保管場所分類
+--****************************** 2009/04/30 1.1 T.Kitajima ADD START ******************************--
+    lt_ship_base_code                   mtl_secondary_inventories.attribute7%TYPE;         -- 出荷拠点コード
+--****************************** 2009/04/30 1.1 T.Kitajima ADD  END  ******************************--
     lv_key_info                         VARCHAR2(5000);
 --
     -- *** ローカル・カーソル ***
@@ -1618,13 +1622,15 @@ AS
       lv_key_info := cv_str_sales_base;
       RAISE global_nothing_expt;
     END IF;
-    --==================================
-    --1-1-3.出荷拠点チェック
-    --==================================
-    IF ( iv_ship_base_code IS NULL ) THEN
-      lv_key_info := cv_str_ship_base;
-      RAISE global_nothing_expt;
-    END IF;
+--****************************** 2009/04/30 1.1 T.Kitajima DEL START ******************************--
+--    --==================================
+--    --1-1-3.出荷拠点チェック
+--    --==================================
+--    IF ( iv_ship_base_code IS NULL ) THEN
+--      lv_key_info := cv_str_ship_base;
+--      RAISE global_nothing_expt;
+--    END IF;
+--****************************** 2009/04/30 1.1 T.Kitajima DEL  END  ******************************--
     --==================================
     --1-2.在庫組織コードおよび在庫組織ＩＤが
     --    NULLの場合、在庫組織コードを取得
@@ -1718,13 +1724,26 @@ AS
     --2.保管場所情報取得
     --==============================================================
     BEGIN
+--****************************** 2009/04/30 1.1 T.Kitajima MOD START ******************************--
+--      SELECT msi.attribute6                main_subinv_class,
+--             msi.attribute13               subinv_type
+--             msi.attribute13               subinv_type,
+--      INTO   lt_main_subinv_flag,
+--             lt_subinv_type
+--      FROM   mtl_secondary_inventories     msi
+--      WHERE  msi.secondary_inventory_name  =   iv_subinventory_code
+--      AND    msi.organization_id           =   ion_organization_id
+--
       SELECT msi.attribute6                main_subinv_class,
-             msi.attribute13               subinv_type
+             msi.attribute13               subinv_type,
+             msi.attribute7                ship_base_code
       INTO   lt_main_subinv_flag,
-             lt_subinv_type
+             lt_subinv_type,
+             lt_ship_base_code
       FROM   mtl_secondary_inventories     msi
       WHERE  msi.secondary_inventory_name  =   iv_subinventory_code
       AND    msi.organization_id           =   ion_organization_id
+--****************************** 2009/04/30 1.1 T.Kitajima MOD  END  ******************************--
       ;
     EXCEPTION
       WHEN NO_DATA_FOUND THEN
@@ -1761,7 +1780,10 @@ AS
         ov_delivered_from     :=  cv_delivered_from_car;              --営業車
       ELSIF ( lt_subinv_type = ct_subinv_type_direct ) THEN
         ov_delivered_from     :=  cv_delivered_from_direct;           --工場直送
-      ELSIF ( iv_sales_base_code != iv_ship_base_code ) THEN
+--****************************** 2009/04/30 1.1 T.Kitajima MOD START ******************************--
+--      ELSIF ( iv_sales_base_code != iv_ship_base_code ) THEN
+      ELSIF ( iv_sales_base_code != lt_ship_base_code ) THEN
+--****************************** 2009/04/30 1.1 T.Kitajima MOD  END  ******************************--
         ov_delivered_from     :=  cv_delivered_from_sales;            --他拠点倉庫売上
       ELSE
         ov_delivered_from     :=  cv_delivered_from_other;            --他倉庫
