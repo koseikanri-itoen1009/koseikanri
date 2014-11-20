@@ -7,7 +7,7 @@ AS
  * Description      : 入出庫情報差異リスト（出庫基準）
  * MD.050/070       : 生産物流共通（出荷・移動インタフェース）Issue1.0(T_MD050_BPO_930)
  *                    生産物流共通（出荷・移動インタフェース）Issue1.0(T_MD070_BPO_93C)
- * Version          : 1.2
+ * Version          : 1.3
  *
  * Program List
  * ---------------------------- ----------------------------------------------------------
@@ -31,6 +31,7 @@ AS
  *  2008/02/19    1.0   Masayuki Ikeda   新規作成
  *  2008/06/23    1.1   Oohashi  Takao   不具合ログ対応
  *  2008/06/25    1.2   Oohashi  Takao   不具合ログ対応
+ *  2008/06/30    1.3   Oohashi  Takao   不具合ログ対応
  *
  *****************************************************************************************/
 --
@@ -263,6 +264,9 @@ AS
 -- add start ver1.2
      ,lot_id           NUMBER         -- ロットID
 -- add end ver1.2
+-- add start ver1.3
+     ,prod_class_code VARCHAR(100)    -- 商品区分
+-- add end ver1.3
     ) ;
 --
   -- ===============================
@@ -1516,50 +1520,107 @@ AS
 --                    END )
               ,SUM( CASE
                       WHEN (xmld.record_type_code = gc_rec_type_inst) THEN 
+-- mod start ver1.3
                         CASE 
-                          WHEN xicv.item_class_code = '5'             -- 品目区分が製品
-                           AND ir_get_data.conv_unit IS NOT NULL THEN -- 入出庫換算単位がNULLでない
-                              -- 換算する
+                          WHEN ir_get_data.order_type = gc_sp_class_ship THEN -- 業務種別が出荷
+                            CASE 
+                              WHEN xicv.item_class_code = '5'             -- 品目区分が製品
+                               AND ir_get_data.conv_unit IS NOT NULL THEN -- 入出庫換算単位がNULLでない
+                                  -- 換算する
 -- mod start ver1.2
 --                              (xmld.actual_quantity/ir_get_data.num_of_cases)
-                              ROUND((xmld.actual_quantity/ir_get_data.num_of_cases),3)
+                                  ROUND((xmld.actual_quantity/ir_get_data.num_of_cases),3)
 -- mod end ver1.2
-                        ELSE
+                            ELSE
+                                  -- 換算しない
+                                  xmld.actual_quantity
+                            END
+                          WHEN ir_get_data.order_type = gc_sp_class_prov THEN -- 業務種別が支給
                               -- 換算しない
-                              (xmld.actual_quantity/1)
+                              xmld.actual_quantity
+                        ELSE
+                            CASE 
+                              WHEN xicv.item_class_code = '5'             -- 品目区分が製品
+                               AND ir_get_data.conv_unit IS NOT NULL      -- 入出庫換算単位がNULLでない
+                               AND ir_get_data.prod_class_code = '2' THEN -- 商品区分がドリンク
+                                  -- 換算する
+                                  ROUND((xmld.actual_quantity/ir_get_data.num_of_cases),3)
+                            ELSE
+                                  -- 換算しない
+                                  xmld.actual_quantity
+                            END
                         END
+-- mod end ver1.3
                       ELSE 0
                     END )                                    -- 依頼数
               ,SUM( CASE
                       WHEN (xmld.record_type_code = gc_rec_type_dlvr) THEN 
+-- mod start ver1.3
                         CASE 
-                          WHEN xicv.item_class_code = '5'             -- 品目区分が製品
-                           AND ir_get_data.conv_unit IS NOT NULL THEN -- 入出庫換算単位がNULLでない
-                              -- 換算する
+                          WHEN ir_get_data.order_type = gc_sp_class_ship THEN -- 業務種別が出荷
+                            CASE 
+                              WHEN xicv.item_class_code = '5'             -- 品目区分が製品
+                               AND ir_get_data.conv_unit IS NOT NULL THEN -- 入出庫換算単位がNULLでない
+                                  -- 換算する
 -- mod start ver1.2
 --                              (xmld.actual_quantity/ir_get_data.num_of_cases)
-                              ROUND((xmld.actual_quantity/ir_get_data.num_of_cases),3)
+                                  ROUND((xmld.actual_quantity/ir_get_data.num_of_cases),3)
 -- mod end ver1.2
-                        ELSE
+                            ELSE
+                                  -- 換算しない
+                                  xmld.actual_quantity
+                            END
+                          WHEN ir_get_data.order_type = gc_sp_class_prov THEN -- 業務種別が支給
                               -- 換算しない
-                              (xmld.actual_quantity/1)
+                              xmld.actual_quantity
+                        ELSE
+                            CASE 
+                              WHEN xicv.item_class_code = '5'             -- 品目区分が製品
+                               AND ir_get_data.conv_unit IS NOT NULL      -- 入出庫換算単位がNULLでない
+                               AND ir_get_data.prod_class_code = '2' THEN -- 商品区分がドリンク
+                                  -- 換算する
+                                  ROUND((xmld.actual_quantity/ir_get_data.num_of_cases),3)
+                            ELSE
+                                  -- 換算しない
+                                  xmld.actual_quantity
+                            END
                         END
+-- mod end ver1.3
                       ELSE 0
                     END )                                    -- 入庫数
               ,SUM( CASE
                       WHEN (xmld.record_type_code = gc_rec_type_stck) THEN 
+-- mod start ver1.3
                         CASE 
-                          WHEN xicv.item_class_code = '5'             -- 品目区分が製品
-                           AND ir_get_data.conv_unit IS NOT NULL THEN -- 入出庫換算単位がNULLでない
-                              -- 換算する
+                          WHEN ir_get_data.order_type = gc_sp_class_ship THEN -- 業務種別が出荷
+                            CASE 
+                              WHEN xicv.item_class_code = '5'             -- 品目区分が製品
+                               AND ir_get_data.conv_unit IS NOT NULL THEN -- 入出庫換算単位がNULLでない
+                                  -- 換算する
 -- mod start ver1.2
 --                              (xmld.actual_quantity/ir_get_data.num_of_cases)
-                              ROUND((xmld.actual_quantity/ir_get_data.num_of_cases),3)
+                                  ROUND((xmld.actual_quantity/ir_get_data.num_of_cases),3)
 -- mod end ver1.2
-                        ELSE
+                            ELSE
+                                  -- 換算しない
+                                  xmld.actual_quantity
+                            END
+                          WHEN ir_get_data.order_type = gc_sp_class_prov THEN -- 業務種別が支給
                               -- 換算しない
-                              (xmld.actual_quantity/1)
+                              xmld.actual_quantity
+                        ELSE
+                            CASE 
+                              WHEN xicv.item_class_code = '5'             -- 品目区分が製品
+                               AND ir_get_data.conv_unit IS NOT NULL      -- 入出庫換算単位がNULLでない
+                               AND ir_get_data.prod_class_code = '2' THEN -- 商品区分がドリンク
+                                  -- 換算する
+                                  ROUND((xmld.actual_quantity/ir_get_data.num_of_cases),3)
+                            ELSE
+                                  -- 換算しない
+                                  xmld.actual_quantity
+                            END
                         END
+-- mod end ver1.3
                       ELSE 0
                     END )                                    -- 出庫数
 -- mod end ver1.1
@@ -2523,6 +2584,9 @@ AS
 -- add start ver1.2
             ,xmld.lot_id                  AS lot_id                -- ロットID
 -- add end ver1.2
+-- add start ver1.3
+            ,xicv.prod_class_code         AS prod_class_code       -- 商品区分
+-- add end ver1.3
       FROM xxinv_mov_req_instr_headers    xmrih   -- 移動依頼/指示ヘッダアドオン
           ,xxinv_mov_req_instr_lines      xmril   -- 移動依頼/指示明細アドオン
 -- add start ver1.2
@@ -2632,6 +2696,9 @@ AS
 -- add start ver1.2
             ,xmld.lot_id                  AS lot_id                -- ロットID
 -- add end ver1.2
+-- add start ver1.3
+            ,xicv.prod_class_code         AS prod_class_code       -- 商品区分
+-- add end ver1.3
       FROM xxinv_mov_req_instr_headers    xmrih   -- 移動依頼/指示ヘッダアドオン
           ,xxinv_mov_req_instr_lines      xmril   -- 移動依頼/指示明細アドオン
 -- add start ver1.2
@@ -2847,6 +2914,9 @@ AS
 -- add start ver1.2
         lr_get_data.lot_id           := re_main.lot_id ;            -- ロットID
 -- add end ver1.2
+-- add start ver1.3
+        lr_get_data.prod_class_code  := re_main.prod_class_code ;   -- 商品区分
+-- add end ver1.3
 --
         --------------------------------------------------
         -- 中間テーブル登録データ設定
