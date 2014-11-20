@@ -61,7 +61,24 @@ AS
           hca.attribute9,
           hca.attribute10,
           hca.attribute11,
-          hca.attribute12,
+-- 2009/10/27 Y.Kawano Mod Start –{”Ô#1675
+--          hca.attribute12,
+          CASE hca.customer_class_code
+          WHEN '1' THEN
+            CASE hp.duns_number_c
+            WHEN '30' THEN '0'
+            WHEN '40' THEN '0'
+            WHEN '99' THEN '0'
+            ELSE '2'
+            END
+          WHEN '10' THEN
+            CASE hp.duns_number_c
+            WHEN '30' THEN '0'
+            WHEN '40' THEN '0'
+            ELSE '2'
+            END
+          END cust_enable_flag,
+-- 2009/10/27 Y.Kawano Mod End –{”Ô#1675
           NULL,
           hca.attribute14,
           hca.attribute15,
