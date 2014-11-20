@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCOS013A03C (body)
  * Description      : 販売実績情報より仕訳情報を作成し、一般会計OIFに連携する処理
  * MD.050           : GLへの販売実績データ連携 MD050_COS_013_A03
- * Version          : 1.9
+ * Version          : 1.10
  * Program List
  * ----------------------------------------------------------------------------------------
  *  Name                   Description
@@ -37,6 +37,8 @@ AS
  *  2009/09/14    1.9   K.Atsushiba      [0001177]PT対応
  *                                       [0001360]BULK処理によるPGA領域不足対応
  *                                       [0001330]パフォーマンス対応
+ *  2009/10/07    1.10  N.Maeda          [0001321]処理対象取得条件修正、(ワーニングデータ('W')、未処理データ('N'))
+ *                                                連携フラグ更新処理追加(ワーニングエラー('W')、処理対象外('S'))
  *
  *****************************************************************************************/
 --
@@ -145,6 +147,11 @@ AS
   cv_prof_bulk_msg          CONSTANT VARCHAR2(20) := 'APP-XXCOS1-12886';  -- 結果セット取得件数（バルク）
   cv_prof_journal_msg       CONSTANT VARCHAR2(20) := 'APP-XXCOS1-12887';  -- 仕訳バッチ作成件数
 --****************************** 2009/09/14 1.9 Atsushiba  ADD START ******************************--
+-- ***************** 2009/10/07 1.10 N.Maeda ADD START ***************** --
+  cv_sales_exp_h_nomal      CONSTANT VARCHAR2(20) := 'APP-XXCOS1-12888';
+  cv_sales_exp_h_warn       CONSTANT VARCHAR2(20) := 'APP-XXCOS1-12889';
+  cv_sales_exp_h_elig       CONSTANT VARCHAR2(20) := 'APP-XXCOS1-12890';
+-- ***************** 2009/10/07 1.10 N.Maeda ADD  END  ***************** --
 --
   -- トークン
   cv_tkn_pro                CONSTANT  VARCHAR2(20) := 'PROFILE';         -- プロファイル
@@ -179,6 +186,10 @@ AS
   cv_n_flag                 CONSTANT  VARCHAR2(1)  := 'N';               -- フラグ値:N
   cv_card_class             CONSTANT  VARCHAR2(1)  := '1';               -- カード売り区分：カード= 1
   cv_cash_class             CONSTANT  VARCHAR2(1)  := '0';               -- カード売り区分：現金= 0
+-- ***************** 2009/10/07 1.10 N.Maeda ADD START ***************** --
+  cv_w_flag                 CONSTANT  VARCHAR2(1)  := 'W';               -- フラグ値:W(警告)
+  cv_s_flag                 CONSTANT  VARCHAR2(1)  := 'S';               -- フラグ値:S(対象外)
+-- ***************** 2009/10/07 1.10 N.Maeda ADD  END  ***************** --
 --
   -- クイックコードタイプ
   ct_qct_gyotai_sho         CONSTANT  VARCHAR2(50) := 'XXCOS1_GYOTAI_SHO_MST_013_A03';  -- 業態小分類特定マスタ
@@ -216,6 +227,9 @@ AS
   cn_bulk_collect_count    NUMBER;                            -- 結果セット取得件数
   cn_journal_batch_count   NUMBER;                            -- 仕訳バッチ作成件数
   cn_commit_exec_flag      NUMBER DEFAULT 0;     -- コミット実行フラグ(0:未実行,1:実行あり)
+-- ***************** 2009/10/07 1.10 N.Maeda ADD START ***************** --
+  gn_last_flag             NUMBER DEFAULT 0;
+-- ***************** 2009/10/07 1.10 N.Maeda ADD  END  ***************** --
 --
 --****************************** 2009/09/14 1.9 Atsushiba  ADD END ******************************--
 --
@@ -324,6 +338,10 @@ AS
   TYPE g_sales_h_ttype    IS TABLE OF ROWID                INDEX BY BINARY_INTEGER;
   gt_sales_h_tbl                      g_sales_h_ttype;                              -- 販売実績フラグ更新用
   gt_sales_h_tbl2                     g_sales_h_ttype;                              -- 販売実績フラグ更新用
+-- ***************** 2009/10/07 1.10 N.Maeda ADD START ***************** --
+  gt_sales_h_tbl_work_w               g_sales_h_ttype;                              -- 販売実績フラグ更新用(警告データワーク)
+  gt_sales_h_tbl_w                    g_sales_h_ttype;                              -- 販売実績フラグ更新用(警告データ)
+-- ***************** 2009/10/07 1.10 N.Maeda ADD  END  ***************** --
 --
   TYPE g_jour_cls_ttype   IS TABLE OF gr_jour_cls_rec      INDEX BY BINARY_INTEGER;
   gt_jour_cls_tbl                     g_jour_cls_ttype;                             -- 仕訳パターン
@@ -338,6 +356,9 @@ AS
 --****************************** 2009/09/14 1.9 Atsushiba  ADD START ******************************--
 --
   gt_sales_exp_wk_tbl                 g_sales_exp_ttype;                            -- 販売実績データ(作業用)
+-- ***************** 2009/10/07 1.10 N.Maeda ADD START ***************** --
+  gt_sales_exp_evacu_tbl              g_sales_exp_ttype;                            -- 販売実績データ(退避用)
+-- ***************** 2009/10/07 1.10 N.Maeda ADD  END  ***************** --
   --
   TYPE g_sales_header_ttype IS TABLE OF NUMBER INDEX BY VARCHAR(100);
   gt_sales_header_tbl                 g_sales_header_ttype;
@@ -411,7 +432,11 @@ AS
     WHERE
         xseh.sales_exp_header_id             = xsel.sales_exp_header_id
     AND xseh.dlv_invoice_number              = xsel.dlv_invoice_number
-    AND xseh.gl_interface_flag               = cv_n_flag
+-- ***************** 2009/10/07 1.10 N.Maeda MOD START ***************** --
+--    AND xseh.gl_interface_flag               = cv_n_flag
+    AND ( xseh.gl_interface_flag             = cv_n_flag
+          OR xseh.gl_interface_flag          = cv_w_flag )
+-- ***************** 2009/10/07 1.10 N.Maeda MOD  END  ***************** --
     AND xseh.inspect_date                   <= gd_process_date
     AND xsel.item_code                      <> gv_var_elec_item_cd
     AND hca.account_number                   = xseh.ship_to_customer_code
@@ -528,7 +553,10 @@ AS
     ct_var_elec_item_cd      CONSTANT VARCHAR2(30) := 'XXCOS1_ELECTRIC_FEE_ITEM_CODE';
                                                                       -- XXCOS:変動電気料(品目コード)
 --****************************** 2009/09/14 1.9 Atsushiba  ADD START ******************************--
-    ct_bulk_collect_count    CONSTANT VARCHAR2(30) := 'XXCOS1_BULK_COLLECT_COUNT';  -- 結果セット取得件数（バルク）
+-- ***************** 2009/10/07 1.10 N.Maeda MOD START ***************** --
+--    ct_bulk_collect_count    CONSTANT VARCHAR2(30) := 'XXCOS1_BULK_COLLECT_COUNT';  -- 結果セット取得件数（バルク）
+    ct_bulk_collect_count    CONSTANT VARCHAR2(30) := 'XXCOS1_GL_BULK_COLLECT_COUNT';  -- 結果セット取得件数（バルク）
+-- ***************** 2009/10/07 1.10 N.Maeda MOD  END  ***************** --
     ct_journal_batch_count   CONSTANT VARCHAR2(30) := 'XXCOS1_JOURNAL_BATCH_COUNT'; -- 仕訳バッチ作成件数
 --****************************** 2009/09/14 1.9 Atsushiba  ADD END ******************************--
 --
@@ -1829,6 +1857,9 @@ AS
     ln_index           NUMBER;
     sale_idx           NUMBER;
 --******************************* 2009/03/26 1.4 T.Kitajima ADD  END  ****************************
+-- ***************** 2009/10/07 1.10 N.Maeda ADD START ***************** --
+    ln_warn_ind        NUMBER;                                             -- 警告データindex用
+-- ***************** 2009/10/07 1.10 N.Maeda ADD  END  ***************** --
 --
     -- 集計キー(販売実績)
 --****************************** 2009/05/13 1.6 T.Kitajima MOD START ******************************--
@@ -2235,6 +2266,9 @@ AS
 --
       -- 販売実績ヘッダ更新のため：ROWIDの設定
       gt_sales_h_tbl( sale_idx )            := gt_sales_exp_tbl( sale_idx ).xseh_rowid;
+-- ***************** 2009/10/07 1.10 N.Maeda ADD START ***************** --
+      gt_sales_h_tbl_work_w( sale_idx )     := gt_sales_exp_tbl( sale_idx ).xseh_rowid;
+-- ***************** 2009/10/07 1.10 N.Maeda ADD  END  ***************** --
 --
       --=====================================
       --３.GL一般会計OIFデータの集約
@@ -2575,6 +2609,10 @@ AS
           END IF;
           lv_err_code   := cv_status_normal;
           ov_retcode    := cv_status_warn;
+-- ***************** 2009/10/07 1.10 N.Maeda ADD START ***************** --
+        ELSE
+          gt_sales_h_tbl_work_w.DELETE(ln_sale_idx,sale_idx);
+-- ***************** 2009/10/07 1.10 N.Maeda ADD  END  ***************** --
         END IF;
 --
         ln_index_work := ln_gl_idx + 1;
@@ -2640,12 +2678,25 @@ AS
     END LOOP;
 --
     ln_index := 1;
+-- ***************** 2009/10/07 1.10 N.Maeda ADD START ***************** --
+    ln_warn_ind := 1;
+-- ***************** 2009/10/07 1.10 N.Maeda ADD  END  ***************** --
     FOR i IN 1 .. gn_target_cnt LOOP
       IF ( gt_sales_h_tbl.EXISTS(i) ) THEN
         gt_sales_h_tbl2(ln_index) := gt_sales_h_tbl(i);
         ln_index := ln_index + 1;
       END IF;
+-- ***************** 2009/10/07 1.10 N.Maeda ADD START ***************** --
+      IF ( gt_sales_h_tbl_work_w.EXISTS(i) ) THEN
+        gt_sales_h_tbl_w( ln_warn_ind )  := gt_sales_h_tbl_work_w(i);
+        ln_warn_ind := ln_warn_ind + 1;
+        gt_sales_h_tbl_work_w.DELETE(i);
+      END IF;
+-- ***************** 2009/10/07 1.10 N.Maeda ADD  END  ***************** --
     END LOOP;
+-- ***************** 2009/10/07 1.10 N.Maeda ADD START ***************** --
+    gt_sales_h_tbl_work_w.DELETE;
+-- ***************** 2009/10/07 1.10 N.Maeda ADD  END  ***************** --
 --******************************** 2009/03/26 1.4 T.Kitajima ADD  END  *****************************
 --
   EXCEPTION
@@ -2858,33 +2909,109 @@ AS
     --==============================================================
 --
     -- 処理対象データのインタフェース済フラグを一括更新する
-    BEGIN
-      <<update_interface_flag>>
+-- ***************** 2009/10/07 1.10 N.Maeda ADD START ***************** --
+    IF ( gn_last_flag = 0 ) THEN
+-- ***************** 2009/10/07 1.10 N.Maeda ADD  END  ***************** --
+-- ***************** 2009/10/07 1.10 N.Maeda ADD START ***************** --
+      IF ( gt_sales_h_tbl2.COUNT > 0 ) THEN
+          -- 正常データ更新
+-- ***************** 2009/10/07 1.10 N.Maeda ADD  END  ***************** --
+        BEGIN
+          <<update_interface_flag>>
 --******************************** 2009/03/26 1.4 T.Kitajima MOD START *****************************
 --      FORALL i IN gt_sales_h_tbl.FIRST..gt_sales_h_tbl.LAST
-      FORALL i IN gt_sales_h_tbl2.FIRST..gt_sales_h_tbl2.LAST
+          FORALL i IN gt_sales_h_tbl2.FIRST..gt_sales_h_tbl2.LAST
 --******************************** 2009/03/26 1.4 T.Kitajima MOD  END  *****************************
+            UPDATE
+              xxcos_sales_exp_headers      xseh
+            SET
+              xseh.gl_interface_flag      = cv_y_flag,                           -- GLインタフェース済フラグ
+              xseh.last_updated_by        = cn_last_updated_by,                  -- 最終更新者
+              xseh.last_update_date       = cd_last_update_date,                 -- 最終更新日
+              xseh.last_update_login      = cn_last_update_login,                -- 最終更新ログイン
+              xseh.request_id             = cn_request_id,                       -- 要求ID
+              xseh.program_application_id = cn_program_application_id,           -- コンカレント・プログラム・アプリID
+              xseh.program_id             = cn_program_id,                       -- コンカレント・プログラムID
+              xseh.program_update_date    = cd_program_update_date               -- プログラム更新日
+            WHERE
+--******************************** 2009/03/26 1.4 T.Kitajima MOD START *****************************
+--          xseh.rowid                  = gt_sales_h_tbl( i );                 -- 販売実績ROWID
+              xseh.rowid                  = gt_sales_h_tbl2( i );                 -- 販売実績ROWID
+--******************************** 2009/03/26 1.4 T.Kitajima MOD  END  *****************************
+--
+          EXCEPTION
+            WHEN OTHERS THEN
+-- ***************** 2009/10/07 1.10 N.Maeda ADD START ***************** --
+              lv_tbl_nm    := xxccp_common_pkg.get_msg(
+                                  iv_application  => cv_xxcos_short_nm
+                                , iv_name         => cv_sales_exp_h_nomal
+                             );
+-- ***************** 2009/10/07 1.10 N.Maeda ADD  END  ***************** --
+              RAISE global_update_data_expt;
+          END;
+-- ***************** 2009/10/07 1.10 N.Maeda ADD START ***************** --
+        END IF;
+-- ***************** 2009/10/07 1.10 N.Maeda ADD  END  ***************** --
+--
+-- ***************** 2009/10/07 1.10 N.Maeda ADD START ***************** --
+        IF ( gt_sales_h_tbl_w.COUNT > 0 ) THEN
+          -- 警告データ更新
+          BEGIN
+            FORALL w IN gt_sales_h_tbl_w.FIRST..gt_sales_h_tbl_w.LAST
+              UPDATE
+                xxcos_sales_exp_headers      xseh
+              SET
+                xseh.gl_interface_flag      = cv_w_flag,                           -- GLインタフェース済フラグ
+                xseh.last_updated_by        = cn_last_updated_by,                  -- 最終更新者
+                xseh.last_update_date       = cd_last_update_date,                 -- 最終更新日
+                xseh.last_update_login      = cn_last_update_login,                -- 最終更新ログイン
+                xseh.request_id             = cn_request_id,                       -- 要求ID
+                xseh.program_application_id = cn_program_application_id,           -- コンカレント・プログラム・アプリID
+                xseh.program_id             = cn_program_id,                       -- コンカレント・プログラムID
+                xseh.program_update_date    = cd_program_update_date               -- プログラム更新日
+              WHERE
+                xseh.rowid                  = gt_sales_h_tbl_w(w)
+                ;
+          EXCEPTION
+            WHEN OTHERS THEN
+              lv_tbl_nm    := xxccp_common_pkg.get_msg(
+                                  iv_application  => cv_xxcos_short_nm
+                                , iv_name         => cv_sales_exp_h_warn
+                             );
+              RAISE global_update_data_expt;
+          END;
+        END IF;
+--
+    ELSE
+        -- 対象外データ更新
+      BEGIN
         UPDATE
           xxcos_sales_exp_headers      xseh
         SET
-          xseh.gl_interface_flag      = cv_y_flag,                           -- GLインタフェース済フラグ
+          xseh.gl_interface_flag      = cv_s_flag,                           -- GLインタフェース済フラグ
           xseh.last_updated_by        = cn_last_updated_by,                  -- 最終更新者
           xseh.last_update_date       = cd_last_update_date,                 -- 最終更新日
           xseh.last_update_login      = cn_last_update_login,                -- 最終更新ログイン
           xseh.request_id             = cn_request_id,                       -- 要求ID
           xseh.program_application_id = cn_program_application_id,           -- コンカレント・プログラム・アプリID
           xseh.program_id             = cn_program_id,                       -- コンカレント・プログラムID
-          xseh.program_update_date    = cd_program_update_date               -- プログラム更新日
+          xseh.program_update_date    = cd_program_update_date             -- プログラム更新日
         WHERE
---******************************** 2009/03/26 1.4 T.Kitajima MOD START *****************************
---          xseh.rowid                  = gt_sales_h_tbl( i );                 -- 販売実績ROWID
-          xseh.rowid                  = gt_sales_h_tbl2( i );                 -- 販売実績ROWID
---******************************** 2009/03/26 1.4 T.Kitajima MOD  END  *****************************
---
+          xseh.gl_interface_flag      = cv_n_flag
+        AND
+          xseh.inspect_date           <= gd_process_date
+          ;
       EXCEPTION
         WHEN OTHERS THEN
+          lv_tbl_nm    := xxccp_common_pkg.get_msg(
+                              iv_application  => cv_xxcos_short_nm
+                            , iv_name         => cv_sales_exp_h_elig
+                         );
           RAISE global_update_data_expt;
-    END;
+      END;
+--      END IF;
+    END IF;
+-- ***************** 2009/10/07 1.10 N.Maeda ADD  END  ***************** --
 --
     --==============================================================
     --メッセージ出力をする必要がある場合は処理を記述
@@ -2895,10 +3022,12 @@ AS
       -- 更新に失敗した場合
       -- エラー件数設定
       gn_error_cnt := gn_target_cnt;
-      lv_tbl_nm    := xxccp_common_pkg.get_msg(
-                          iv_application  => cv_xxcos_short_nm
-                        , iv_name         => cv_tkn_sales_msg
-                     );
+-- ***************** 2009/10/07 1.10 N.Maeda DEL START ***************** --
+--      lv_tbl_nm    := xxccp_common_pkg.get_msg(
+--                          iv_application  => cv_xxcos_short_nm
+--                        , iv_name         => cv_tkn_sales_msg
+--                     );
+-- ***************** 2009/10/07 1.10 N.Maeda DEL  END  ***************** --
       ov_errmsg    := xxccp_common_pkg.get_msg(
                           iv_application  => cv_xxcos_short_nm
                         , iv_name         => cv_data_update_msg
@@ -2976,6 +3105,9 @@ AS
     lv_table_name          VARCHAR2(100);
 --
 --****************************** 2009/09/14 1.9 Atsushiba  ADD END ******************************--
+-- ***************** 2009/10/07 1.10 N.Maeda ADD START ***************** --
+    ln_last_dara_count     NUMBER DEFAULT 0;
+-- ***************** 2009/10/07 1.10 N.Maeda ADD  END  ***************** --
 --
     -- ===============================
     -- ローカル・カーソル
@@ -3053,8 +3185,17 @@ AS
         ln_fetch_end_flag := 1;
       END IF;
       --
+-- ***************** 2009/10/07 1.10 N.Maeda ADD START ***************** --
+      IF ( ln_fetch_end_flag = 1 ) AND ( gt_sales_exp_wk_tbl.COUNT = 0 ) THEN
+          gt_sales_exp_wk_tbl := gt_sales_exp_evacu_tbl;
+          gt_sales_exp_evacu_tbl.DELETE;
+          gn_target_cnt       := gn_target_cnt - gt_sales_exp_wk_tbl.COUNT;
+          ln_target_wk_cnt    := ln_target_wk_cnt - gt_sales_exp_wk_tbl.COUNT;
+      END IF;
+-- ***************** 2009/10/07 1.10 N.Maeda ADD  END  ***************** --
       <<journal_loop>>
       FOR ln_idx IN 1..gt_sales_exp_wk_tbl.COUNT LOOP
+-- 
         -- 販売実績IDの件数が基準値以上かつ販売実績IDがブレイク
         -- または、フェッチ読込終了かつ配列の最後
         IF ( ( gt_sales_header_tbl.COUNT >= cn_journal_batch_count
@@ -3062,7 +3203,11 @@ AS
              OR ( ln_fetch_end_flag = 1 AND ln_idx = gt_sales_exp_wk_tbl.COUNT )
            )
         THEN
-         --
+          --
+-- ***************** 2009/10/07 1.10 N.Maeda ADD START ***************** --
+          ln_last_dara_count := 0;
+          gt_sales_exp_evacu_tbl.DELETE;
+-- ***************** 2009/10/07 1.10 N.Maeda ADD  END  ***************** --
           -- フェッチ読込終了かつ配列の最後の場合
           IF ( ln_fetch_end_flag = 1 AND ln_idx = gt_sales_exp_wk_tbl.COUNT ) THEN
             gn_target_cnt := gn_target_cnt + 1;
@@ -3198,8 +3343,18 @@ AS
           ln_sales_idx := 1;
           gn_target_cnt := 0;
           gn_warn_cnt := 0;
+-- ***************** 2009/10/07 1.10 N.Maeda ADD START ***************** --
+          gt_sales_h_tbl_w.DELETE;       -- 販売実績データ用(警告)
+          gt_sales_h_tbl_work_w.DELETE;
+-- ***************** 2009/10/07 1.10 N.Maeda ADD  END  ***************** --
 --
         END IF;
+-- ***************** 2009/10/07 1.10 N.Maeda ADD START ***************** --
+        IF ( cn_bulk_collect_count = gt_sales_exp_wk_tbl.COUNT ) THEN
+          ln_last_dara_count := ln_last_dara_count + 1;
+          gt_sales_exp_evacu_tbl( ln_last_dara_count ) := gt_sales_exp_wk_tbl(ln_idx);
+        END IF;
+-- ***************** 2009/10/07 1.10 N.Maeda ADD  END  ***************** --
         gt_sales_exp_tbl(ln_sales_idx) := gt_sales_exp_wk_tbl(ln_idx);
         ln_sales_idx := ln_sales_idx + 1;
         gt_sales_header_tbl(TO_CHAR(gt_sales_exp_wk_tbl(ln_idx).sales_exp_header_id)) := NULL;
@@ -3212,6 +3367,21 @@ AS
     --
     gn_target_cnt := ln_target_wk_cnt;
     gn_warn_cnt   := ln_warn_wk_cnt;
+-- ***************** 2009/10/07 1.10 N.Maeda ADD START ***************** --
+    gn_last_flag := 1;
+    -- ===============================
+    -- A-6.販売実績データの更新処理
+    -- ===============================
+    upd_data(
+        ov_errbuf  => lv_errbuf           -- エラー・メッセージ
+      , ov_retcode => lv_retcode          -- リターン・コード
+      , ov_errmsg  => lv_errmsg           -- ユーザー・エラー・メッセージ
+            );
+    IF ( lv_retcode = cv_status_error ) THEN
+      gn_error_cnt := 1;
+      RAISE global_update_data_expt;
+    END IF;
+-- ***************** 2009/10/07 1.10 N.Maeda ADD  END  ***************** --
     --
     IF ((gn_warn_cnt > 0 )
         OR ( lv_retcode_tmp = cv_status_warn )) THEN
@@ -3352,6 +3522,10 @@ AS
         CLOSE sales_data_cur;
       END IF;
 --****************************** 2009/09/14 1.9 Atsushiba  ADD END ******************************--
+-- ***************** 2009/10/07 1.10 N.Maeda ADD START ***************** --
+      gn_target_cnt := ln_target_wk_cnt;
+      gn_warn_cnt   := ln_warn_wk_cnt;
+-- ***************** 2009/10/07 1.10 N.Maeda ADD  END  ***************** --
       ov_errmsg  := lv_errmsg;
       ov_errbuf  := SUBSTRB(cv_pkg_name||cv_msg_cont||cv_prg_name||cv_msg_part||lv_errbuf,1,5000);
       ov_retcode := cv_status_error;
