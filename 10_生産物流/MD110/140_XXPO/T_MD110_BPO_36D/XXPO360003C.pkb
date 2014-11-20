@@ -7,7 +7,7 @@ AS
  * Description      : 入庫予定表
  * MD.050/070       : 有償支給帳票Issue1.0 (T_MD050_BPO_360)
  *                    有償支給帳票Issue1.0 (T_MD070_BPO_36D)
- * Version          : 1.3
+ * Version          : 1.5
  *
  * Program List
  * -------------------------- ----------------------------------------------------------
@@ -28,6 +28,9 @@ AS
  *  2008/05/14    1.1   H.Yamazato       不具合ID3～5対応
  *  2008/05/19    1.2   Y.Ishikawa       外部ユーザー時に警告終了になる
  *  2008/05/20    1.3   Y.Majikina       セキュリティ外部倉庫の不具合対応
+ *  2008/06/10    1.4   Y.Ishikawa       ロットマスタに同じロットNoが存在する場合、
+ *                                       2明細出力される
+ *  2008/06/17    1.5   I.Higa           xxpo_categories_vを使用しないようにする
  *
  *****************************************************************************************/
 --
@@ -67,6 +70,7 @@ AS
   ------------------------------
   gc_cat_set_goods_class        CONSTANT VARCHAR2(100) := '商品区分' ;
   gc_cat_set_item_class         CONSTANT VARCHAR2(100) := '品目区分' ;
+  gv_language                   CONSTANT VARCHAR2(3)   := 'JA';             -- 言語
 --
   ------------------------------
   -- エラーメッセージ関連
@@ -82,6 +86,12 @@ AS
   ------------------------------
   gc_char_d_format        CONSTANT VARCHAR2(30) := 'YYYY/MM/DD' ;
   gc_char_dt_format       CONSTANT VARCHAR2(30) := 'YYYY/MM/DD HH24:MI:SS' ;
+--
+  -- ロット管理区分
+  gv_lot_n_div                CONSTANT VARCHAR2(1) := '0'; -- ロット管理なし
+--
+  -- ロットデフォルト名
+  gv_lot_default         CONSTANT ic_lots_mst.lot_no%TYPE  := 'DEFAULTLOT'; --デフォルトロット名
 --
   -- ===============================
   -- ユーザー定義グローバル型
@@ -445,7 +455,8 @@ AS
               || ',itm.item_no                    AS item_code'        -- 品目コード
               || ',itm.item_short_name            AS item_name'        -- 品目名
               || ',pln.attribute3                 AS add_code'         -- 付帯コード
-              || ',lot.lot_no                     AS lot_no'           -- ロットＮｏ
+              || ',DECODE(itm.lot_ctl,'           || gv_lot_n_div
+              || '  ,NULL,lot.lot_no)             AS lot_no'          -- ロットＮｏ
               || ',lot.attribute1                 AS make_date'        -- 製造年月日
               || ',lot.attribute3                 AS period_date'      -- 賞味期限
               || ',lot.attribute2                 AS prop_mark'        -- 固有記号
@@ -474,8 +485,32 @@ AS
             || ',xxcmn_vendors2_v         vnd'     -- 仕入先情報VIEW
             || ',xxcmn_item_mst2_v        itm'     -- OPM品目情報VIEW
             || ',xxcmn_item_locations2_v  itmv'    -- OPM保管場所情報VIEW
-            || ',xxpo_categories_v        ctgg'    -- XXPOカテゴリ情報VIEW（商品）
-            || ',xxpo_categories_v        ctgi'    -- XXPOカテゴリ情報VIEW（品目）
+             -- XXPOカテゴリ情報VIEW（商品）
+            || ' ,(SELECT mcb.segment1  AS category_code '
+            || ' ,mct.description  AS category_description'
+            || '  FROM   mtl_category_sets_tl  mcst, '
+            || ' mtl_category_sets_b   mcsb, '
+            || ' mtl_categories_b      mcb, '
+            || ' mtl_categories_tl     mct '
+            || ' WHERE  mcsb.category_set_id   = mcst.category_set_id '
+            || ' AND    mcst.language          = ''' || gv_language || ''''
+            || ' AND    mcsb.structure_id      = mcb.structure_id '
+            || ' AND    mcb.category_id        = mct.category_id '
+            || ' AND    mct.language           = ''' || gv_language || ''''
+            || ' AND    mcst.category_set_name = ''' || gc_cat_set_goods_class || '''' || ') ctgg '
+             -- XXPOカテゴリ情報VIEW（品目）
+            || ' ,(SELECT mcb.segment1  AS category_code '
+            || ' ,mct.description  AS category_description'
+            || '  FROM   mtl_category_sets_tl  mcst, '
+            || ' mtl_category_sets_b   mcsb, '
+            || ' mtl_categories_b      mcb, '
+            || ' mtl_categories_tl     mct '
+            || ' WHERE  mcsb.category_set_id   = mcst.category_set_id '
+            || ' AND    mcst.language          = ''' || gv_language || ''''
+            || ' AND    mcsb.structure_id      = mcb.structure_id '
+            || ' AND    mcb.category_id        = mct.category_id '
+            || ' AND    mct.language           = ''' || gv_language || ''''
+            || ' AND    mcst.category_set_name = ''' || gc_cat_set_item_class || '''' || ') ctgi '
             || ',xxcmn_item_categories4_v gic'     -- OPM品目カテゴリ割当
             || ',ic_lots_mst              lot'     -- OPMロットマスタ
             ;
@@ -504,8 +539,11 @@ AS
     ---------------------------------------------------------------------------------------------
     -- ロット＆品目の絞込み条件
     lv_where := lv_where
-             || ' AND pln.attribute1         = lot.lot_no  (+)'
              || ' AND pln.item_id            = itm.inventory_item_id'
+             || ' AND itm.item_id            = lot.item_id'
+             || ' AND DECODE(itm.lot_ctl,' || gv_lot_n_div   || ','''
+                                           || gv_lot_default || ''''
+                                           || ',pln.attribute1) = lot.lot_no '
              || ' AND FND_DATE.STRING_TO_DATE(''' || ir_param.dlv_from || ''','''
                                                   || gc_char_d_format  || ''')'
              || '     BETWEEN itm.start_date_active AND itm.end_date_active'
@@ -521,7 +559,6 @@ AS
     lv_where := lv_where
              || ' AND itm.item_id                          = gic.item_id'
              || ' AND gic.prod_class_code                  = ctgg.category_code'
-             || ' AND ''' || gc_cat_set_goods_class || ''' = ctgg.category_set_name'
              ;
     -- 商品区分が入力されている場合
     IF (ir_param.goods_class IS NOT NULL) THEN
@@ -533,7 +570,6 @@ AS
     -- 品目カテゴリ（品目区分）の絞込み条件
     lv_where := lv_where
              || ' AND gic.item_class_code                 = ctgi.category_code'
-             || ' AND ''' || gc_cat_set_item_class || ''' = ctgi.category_set_name'
              ;
     -- 品目区分が入力されている場合
     IF (ir_param.item_class IS NOT NULL) THEN

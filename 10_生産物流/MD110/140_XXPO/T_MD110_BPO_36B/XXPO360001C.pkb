@@ -7,7 +7,7 @@ AS
  * Description      : 発注書
  * MD.050/070       : 仕入（帳票）Issue1.0(T_MD050_BPO_360)
  *                    仕入（帳票）Issue1.0(T_MD070_BPO_36B)
- * Version          : 1.4
+ * Version          : 1.6
  *
  * Program List
  * -------------------- ------------------------------------------------------------
@@ -31,6 +31,9 @@ AS
  *  2008/05/19    1.2   Y.Ishikawa       斡旋者IDが存在しない場合でも出力するように変更
  *  2008/05/20    1.3   T.Endou          セキュリティ外部倉庫の不具合対応
  *  2008/05/20    1.4   T.Endou          入出庫換算単位がある場合の、仕入金額計算方法ミス修正
+ *  2008/06/10    1.5   Y.Ishikawa       ロットマスタに同じロットNoが存在する場合、2明細出力される
+ *  2008/06/17    1.6   T.Ikehara        TEMP領域エラー回避のため、xxpo_categories_vを
+ *                                       使用しないようにする
  *
  *****************************************************************************************/
 --
@@ -101,6 +104,12 @@ AS
   gv_goods_classe_drink  CONSTANT VARCHAR2(1) := '2'; -- 商品区分：2(ドリンク)
   -- 製品区分
   gv_item_class_products CONSTANT VARCHAR2(1) := '5'; -- 品目区分：5(製品)
+--
+  -- ロット管理区分
+  gv_lot_n_div           CONSTANT VARCHAR2(1) := '0'; -- ロット管理なし
+--
+  -- ロットデフォルト名
+  gv_lot_default CONSTANT ic_lots_mst.lot_no%TYPE  := 'DEFAULTLOT'; --デフォルトロット名
 --
   -- ===============================
   -- ユーザー定義グローバル型
@@ -544,7 +553,8 @@ AS
               || ',polo.attribute8       AS levy_amount'                -- 賦課金額
               || ',xim.item_no           AS item_no'                    -- 品目コード
               || ',xim.item_name         AS item_nm'                    -- 品目名称
-              || ',iclt.lot_no           AS lot_no'                     -- ロットＮｏ
+              || ',DECODE(xim.lot_ctl,'  || gv_lot_n_div
+              || '  ,NULL,iclt.lot_no)   AS lot_no'                     -- ロットＮｏ
               || ',iclt.attribute1       AS manu_date'                  -- 製造年月日
               || ',iclt.attribute3       AS use_by_date'                -- 賞味期限
               || ',iclt.attribute2       AS peculiar_mark'              -- 固有記号
@@ -608,8 +618,26 @@ AS
             || ',po_line_locations_all      polo'  -- 納入明細
             || ',ic_lots_mst                iclt'  -- opmロットマスタ
             || ',xxcmn_item_mst2_v          xim'   -- opm品目情報view
-            || ',xxpo_categories_v          xpoc1' -- xxpoカテゴリ情報view(商品区分)
-            || ',xxpo_categories_v          xpoc2' -- xxpoカテゴリ情報view(品目区分)
+            || ',(SELECT mcb.segment1  AS category_code '
+            || ',  mcb.category_id AS category_id '
+            || ',  mcst.category_set_id AS category_set_id '
+            || '  FROM   mtl_category_sets_tl  mcst, '
+            || '   mtl_category_sets_b   mcsb, '
+            || '   mtl_categories_b      mcb '
+            || '  WHERE mcsb.category_set_id  = mcst.category_set_id '
+            || '  AND   mcst.language         = ''' || cv_ja || ''''
+            || '  AND   mcsb.structure_id     = mcb.structure_id '
+            || '  AND  mcst.category_set_name = '''|| gc_cat_set_goods_class || '''' || ') xpoc1'
+            || ',(SELECT mcb.segment1  AS category_code '
+            || ',  mcb.category_id AS category_id '
+            || ',  mcst.category_set_id AS category_set_id '
+            || '  FROM   mtl_category_sets_tl  mcst, '
+            || '   mtl_category_sets_b   mcsb, '
+            || '   mtl_categories_b      mcb '
+            || '  WHERE mcsb.category_set_id  = mcst.category_set_id '
+            || '  AND   mcst.language         = ''' || cv_ja || ''''
+            || '  AND   mcsb.structure_id     = mcb.structure_id '
+            || '  AND   mcst.category_set_name = ''' || gc_cat_set_item_class || '''' || ') xpoc2'
             || ',xxcmn_item_categories2_v   xic1'  -- opm品目カテゴリ割当view(商品区分)
             || ',xxcmn_item_categories2_v   xic2'  -- opm品目カテゴリ割当view(品目区分)
             || ',xxcmn_vendors2_v           xve1'  -- 仕入先情報view(取引)
@@ -691,8 +719,11 @@ AS
     ---------------------------------------------------------------------------------------------
     -- ロット＆品目の絞込み条件
     lv_where := lv_where
-             || ' AND pol.attribute1         = iclt.lot_no  (+)'
              || ' AND pol.item_id            = xim.inventory_item_id'
+             || ' AND xim.item_id            = iclt.item_id'
+             || ' AND DECODE(xim.lot_ctl,' || gv_lot_n_div   || ','''
+                                           || gv_lot_default || ''''
+                                           || ',pol.attribute1) = iclt.lot_no '
              || ' AND FND_DATE.STRING_TO_DATE(''' || ir_param.delivery_date_from || ''','''
                                                   || gc_char_d_format  || ''')'
              || '     BETWEEN xim.start_date_active AND xim.end_date_active'
@@ -703,7 +734,6 @@ AS
              || ' AND xim.item_id                          = xic1.item_id'
              || ' AND xic1.category_set_id                 = xpoc1.category_set_id'
              || ' AND xic1.category_id                     = xpoc1.category_id'
-             || ' AND ''' || gc_cat_set_goods_class || ''' = xpoc1.category_set_name'
              ;
     -- 商品区分が入力されている場合
     IF (ir_param.product_type IS NOT NULL) THEN
@@ -717,7 +747,6 @@ AS
              || ' AND xim.item_id                          = xic2.item_id'
              || ' AND xic2.category_set_id                 = xpoc2.category_set_id'
              || ' AND xic2.category_id                     = xpoc2.category_id'
-             || ' AND ''' || gc_cat_set_item_class || '''  = xpoc2.category_set_name'
              ;
     -- 品目区分が入力されている場合
     IF (ir_param.item_type IS NOT NULL) THEN

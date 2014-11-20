@@ -7,7 +7,7 @@ AS
  * Description      : 発注依頼書
  * MD.050/070       : 発注依頼作成Issue1.0  (T_MD050_BPO_380)
  *                    発注依頼作成Issue1.0  (T_MD070_BPO_38B)
- * Version          : 1.0
+ * Version          : 1.1
  *
  * Program List
  * -------------------------- ----------------------------------------------------------
@@ -23,7 +23,9 @@ AS
  * ------------- ----- ---------------- -------------------------------------------------
  *  Date          Ver.  Editor           Description
  * ------------- ----- ---------------- -------------------------------------------------
- *  2008/03/06    1.0   Syogo Chinen      新規作成
+ *  2008/03/06    1.0   Syogo Chinen     新規作成
+ *  2008/06/17    1.1   T.Ikehara        TEMP領域エラー回避のため、xxpo_categories_vを
+ *                                       使用しないようにする
  *
  *****************************************************************************************/
 --
@@ -323,6 +325,8 @@ AS
     lc_drop_ship_type2      VARCHAR2(30) := '出荷' ;     -- 直送区分
     lc_drop_ship_type3      VARCHAR2(30) := '支給' ;     -- 直送区分
 --
+    cv_ja          CONSTANT VARCHAR2(10) := 'JA' ;       -- 日本語
+--
     -- *** ローカル・例外処理 ***
     no_data_expt            EXCEPTION ;           -- 取得レコードなし
 --
@@ -399,8 +403,24 @@ AS
       || ',xxcmn_locations2_v                   xl'                 -- 事業所情報VIEW
       || ',xxcmn_item_locations2_v              xilv'               -- OPM保管場所情報VIEW
       || ',xxcmn_item_categories4_v             xicv'               -- OPM品目カテゴリ割当情報VIEW
-      || ',xxpo_categories_v                    ctgg'               -- XXPOカテゴリ情報VIEW（商品
-      || ',xxpo_categories_v                    ctgi'               -- XXPOカテゴリ情報VIEW（品目
+      || ',(SELECT mcb.segment1  AS category_code '    -- XXPOカテゴリ情報VIEW（商品
+      || ',        mcst.category_set_name '
+      || '  FROM   mtl_category_sets_tl  mcst, '
+      || '   mtl_category_sets_b   mcsb, '
+      || '   mtl_categories_b      mcb '
+      || '  WHERE mcsb.category_set_id  = mcst.category_set_id '
+      || '  AND   mcst.language         = ''' || cv_ja || ''''
+      || '  AND   mcsb.structure_id     = mcb.structure_id '
+      || '  AND   mcst.category_set_name = ''' || gc_cat_set_prod_class || '''' || ') ctgg'
+      || ',(SELECT mcb.segment1  AS category_code '    -- XXPOカテゴリ情報VIEW（品目
+      || ',        mcst.category_set_name '
+      || '  FROM   mtl_category_sets_tl  mcst, '
+      || '   mtl_category_sets_b   mcsb, '
+      || '   mtl_categories_b      mcb '
+      || '  WHERE mcsb.category_set_id  = mcst.category_set_id '
+      || '  AND   mcst.language         = ''' || cv_ja || ''''
+      || '  AND   mcsb.structure_id     = mcb.structure_id '
+      || '  AND   mcst.category_set_name = ''' || gc_cat_set_item_class || '''' || ') ctgi'
       || ',fnd_lookup_values                    flv '               -- クイックコード
       || ',xxcmn_party_sites2_v                 xpsv'               -- パーティサイト情報VIEW
       || ',xxcmn_vendor_sites2_v                xvsv'               -- 仕入先サイト情報VIEW
@@ -518,7 +538,7 @@ AS
                                              || gc_char_dt_format  || ''') >= xilv.date_from'
         || ' AND (   ( xilv.date_to IS NULL)'
         || '      OR (    (xilv.date_to IS NOT NULL)'
-        || '          AND (xilv.date_to >= FND_DATE.STRING_TO_DATE(''' || gr_param.iv_promised_date_t
+        || '        AND (xilv.date_to >= FND_DATE.STRING_TO_DATE(''' || gr_param.iv_promised_date_t
                                                   || ''',''' || gc_char_dt_format  || '''))))'
         || ' AND FND_DATE.STRING_TO_DATE(''' || gr_param.iv_promised_date_t || ''','''
                                              || gc_char_dt_format || ''')'
@@ -533,7 +553,6 @@ AS
     lv_where := lv_where
       || ' AND ximv.item_id                          = xicv.item_id'
       || ' AND xicv.prod_class_code                  = ctgg.category_code '
-      || ' AND ''' || gc_cat_set_prod_class || ''' = ctgg.category_set_name '
       ;
     -- 商品区分が入力されている場合
     IF (gr_param.iv_prod_class_code IS NOT NULL) THEN
@@ -545,7 +564,6 @@ AS
     -- 品目カテゴリ（品目区分）の絞込み条件
     lv_where := lv_where
       || ' AND xicv.item_class_code    = ctgi.category_code'
-      || ' AND ctgi.category_set_name = ''' || gc_cat_set_item_class || ''''
       ;
     -- 品目区分が入力されている場合
     IF (gr_param.iv_item_class_code IS NOT NULL) THEN
@@ -1318,27 +1336,6 @@ AS
       FND_FILE.PUT_LINE( FND_FILE.OUTPUT, '</root>' ) ;
 --
     END IF ;
---
-    -- --------------------------------------------------
-    -- 担当部署または担当者名が取得できなかった場合
-    -- --------------------------------------------------
---
-    IF ( gv_user_dept IS NULL ) THEN
-      lv_worn_msg := xxcmn_common_pkg.get_msg( gc_application_po
-                                          ,gv_msg_xxpo10082) ;
-      FND_FILE.PUT_LINE(FND_FILE.LOG,lv_worn_msg) ;
-    END IF ;
---
-    IF ( TRIM(gv_user_name) IS NULL ) THEN
-      lv_worn_msg := xxcmn_common_pkg.get_msg( gc_application_po
-                                          ,gv_msg_xxpo10081) ;
-      FND_FILE.PUT_LINE(FND_FILE.LOG,lv_worn_msg) ;
-    END IF ;
---
-    IF  (gv_user_dept IS NULL)
-     OR (gv_user_name IS NULL) THEN
-      lv_retcode := gv_status_warn ;
-    END IF;
 --
     -- ==================================================
     -- 終了ステータス設定

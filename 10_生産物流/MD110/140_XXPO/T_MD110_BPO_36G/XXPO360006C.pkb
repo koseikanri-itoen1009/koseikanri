@@ -7,7 +7,7 @@ AS
  * Description      : 仕入取引明細表
  * MD.050           : 有償支給帳票Issue1.0(T_MD050_BPO_360)
  * MD.070           : 有償支給帳票Issue1.0(T_MD070_BPO_36G)
- * Version          : 1.11
+ * Version          : 1.13
  *
  * Program List
  * -------------------------- ----------------------------------------------------------
@@ -45,6 +45,9 @@ AS
  *  2008/05/29    1.10  T.Endou          納入日の範囲指定は、すべて受入返品アドオンを使用する
  *                                       修正はしてあったが、帳票に表示する部分も修正する。
  *  2008/06/03    1.11  T.Endou          担当部署または担当者名が未取得時は正常終了に修正
+ *  2008/06/11    1.12  T.Endou          発注なし仕入先返品の場合、返品アドオンの斡旋者IDを使用する
+ *  2008/06/17    1.13  T.Ikehara        TEMP領域エラー回避のため、xxpo_categories_vを
+ *                                       使用しないようにする
  *
  *****************************************************************************************/
 --
@@ -70,6 +73,7 @@ AS
   -- ===============================
   gv_pkg_name             CONSTANT VARCHAR2(20) := 'xxpo360006c' ;   -- パッケージ名
   gv_print_name           CONSTANT VARCHAR2(20) := '仕入取引明細表' ;    -- 帳票名
+  gv_lot_n_div            CONSTANT VARCHAR2(1) := '0';               -- ロット管理なし
 --
   ------------------------------
   -- クイックコード関連
@@ -822,7 +826,7 @@ AS
       ||            ' , xrart.department_code, ph.attribute10)';
 --
     lv_assen := 'DECODE( xrart.txns_type , ' || cv_type_nasi
-      ||             ' , NULL , xvv_med.segment1) ';
+      ||             ' , xvv_assen.segment1 , xvv_med.segment1) ';
 --
     IF (gr_param_rec.out_flg = gv_out_syukei) THEN
       --入力パラメータ＝3.集計
@@ -838,7 +842,7 @@ AS
         || ' , ' || lv_assen || ' assen_no '
         || ' , LPAD(NVL(' || lv_assen || ' , '|| cv_code_format||'), 4, '|| cv_zero ||')'
         ||                                                                       ' assen_order '
-        || ' , DECODE( xrart.txns_type , ' || cv_type_nasi || ' , NULL '
+        || ' , DECODE( xrart.txns_type , ' || cv_type_nasi || ' , xvv_assen.vendor_short_name '
         ||                           ' , xvv_med.vendor_short_name) assen_sht '
         || ' , NULL po_header_id '
         || ' , NULL txns_date '
@@ -874,7 +878,7 @@ AS
         || ' , NULL fukakin_type '
         || ' , NULL fukakin_name '
         || ' , NULL fukakin '
-        || ' , MAX(NVL(DECODE( xrart.txns_type ,' || cv_type_nasi || ', NVL(flv_u_tax.lookup_code , 0) '
+        || ' , MAX(NVL(DECODE(xrart.txns_type,' || cv_type_nasi || ',NVL(flv_u_tax.lookup_code,0) '
         ||                               ' , flv_p_tax.lookup_code) , 0))  zeiritu '
         || ' , NULL  order1 '
         ;
@@ -910,7 +914,7 @@ AS
         || ' , ' || lv_assen || ' assen_no '                                    --斡旋者仕入先番号
         || ' , LPAD(NVL(' || lv_assen || ' , '|| cv_code_format||'), 4, '|| cv_zero ||')'
         ||                                                     ' assen_order '  --斡旋者順序
-        || ' , DECODE( xrart.txns_type , ' || cv_type_nasi || ' , NULL '
+        || ' , DECODE( xrart.txns_type , ' || cv_type_nasi || ' , xvv_assen.vendor_short_name '
         ||                           ' , xvv_med.vendor_short_name) assen_sht '
         ;
       --明細
@@ -943,7 +947,7 @@ AS
         || ',DECODE( xrart.txns_type ,' || cv_type_nasi  || ', xrart.fukakin_price * -1 '
         ||                          ',' || cv_type_hen   || ', xrart.fukakin_price * -1 '
         ||       ', pll.attribute8)           fukakin_price ' --賦課金額
-        || ',ilm.lot_no                       lot_no '       --ロットno
+        || ',DECODE(ximv.lot_ctl,'   || gv_lot_n_div || ',NULL,ilm.lot_no) AS lot_no '-- ロットNO
         || ',DECODE( xrart.txns_type ,'|| cv_type_nasi || ', xrart.quantity * -1 '
         || ',DECODE(xrart.txns_type,'  || cv_type_hen  || ', xrart.quantity * -1 '
         || ', xrart.quantity))  quantity '  --受入返品数量
@@ -993,10 +997,19 @@ AS
       ||  ' ON (  gic.item_id  = ximv.item_id ) '
       || 'INNER JOIN xxcmn_item_categories3_v xic3 '              --品目カテゴリ割当3
       ||  ' ON (  xic3.item_id   = gic.item_id ) '
-      || 'INNER JOIN xxpo_categories_v  xgcv '                    --xxpoカテゴリview
+      || 'INNER JOIN (SELECT mcb.segment1  AS category_code '
+      || ',  mcb.category_id AS category_id '
+      || ',  mcst.category_set_id AS category_set_id '
+      || ',  mcst.category_set_name '
+      || '  FROM   mtl_category_sets_tl  mcst, '
+      || '   mtl_category_sets_b   mcsb, '
+      || '   mtl_categories_b      mcb '
+      || '  WHERE mcsb.category_set_id  = mcst.category_set_id '
+      || '  AND   mcst.language         = ''' || gc_language_code || ''''
+      || '  AND   mcsb.structure_id     = mcb.structure_id '
+      || '  AND   mcst.category_set_name = ''' || gc_cat_set_item_class || '''' || ') xgcv'
       ||  ' ON (  xgcv.category_set_id   = gic.category_set_id '
-      ||    ' AND xgcv.category_id       = gic.category_id '
-      ||    ' AND xgcv.category_set_name = '''|| gc_cat_set_item_class ||''') ' --'品目区分'
+      ||    ' AND xgcv.category_id       = gic.category_id ) '
       || 'INNER JOIN xxcmn_locations2_v xlv '                     --事業所情報view
       ||  ' ON (  xlv.location_code = xrart.department_code '
       ||    ' AND xlv.start_date_active <= xrart.txns_date '
@@ -1005,6 +1018,10 @@ AS
       ||  ' ON (  xvv_part.vendor_id = xrart.vendor_id '
       ||    ' AND xvv_part.start_date_active <= xrart.txns_date '
       ||    ' AND xvv_part.end_date_active   >= xrart.txns_date ) '
+      || 'LEFT JOIN xxcmn_vendors2_v xvv_assen '                  --仕入先情報(斡旋先)
+      ||  ' ON (  xvv_assen.vendor_id = xrart.assen_vendor_id '
+      ||    ' AND xvv_assen.start_date_active <= xrart.txns_date '
+      ||    ' AND xvv_assen.end_date_active   >= xrart.txns_date ) '
       || 'INNER JOIN fnd_lookup_values flv_u_tax '                --クイックコード(消費税)
       ||  ' ON (  flv_u_tax.lookup_type = ' || cv_type_tax_rate
       ||    ' AND flv_u_tax.language = ' || cv_ja
@@ -1208,8 +1225,10 @@ AS
         ||                            ', xlv.description       , xlv_p.description) '
         || ' , xvv_part.segment1 '
         || ' , xvv_part.vendor_short_name '
-        || ' , DECODE( xrart.txns_type ,' || cv_type_nasi || ',NULL,xvv_med.segment1) '
-        || ' , DECODE( xrart.txns_type ,' || cv_type_nasi || ',NULL,xvv_med.vendor_short_name) '
+        || ' , DECODE( xrart.txns_type ,' || cv_type_nasi || ','
+        || '     xvv_assen.segment1,xvv_med.segment1) '
+        || ' , DECODE( xrart.txns_type ,' || cv_type_nasi || ',xvv_assen.vendor_short_name,'
+        || '     xvv_med.vendor_short_name) '
         || ' , xrart.rcv_rtn_uom '
         ;
     END IF;

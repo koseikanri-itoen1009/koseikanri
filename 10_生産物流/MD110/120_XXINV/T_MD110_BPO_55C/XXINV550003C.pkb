@@ -34,6 +34,7 @@ AS
  *                                      内部変更要求対応(Seq)
  *  2008/6/03     1.2  Takao Ohashi     結合テスト不具合
  *  2008/6/06     1.3  Takao Ohashi     結合テスト不具合
+ *  2008/6/17     1.4  Kazuo Kumamoto   結合テスト不具合(ソート順変更・受入だけの伝票は先に出力)
  *
  *****************************************************************************************/
 --
@@ -1937,6 +1938,13 @@ AS
      dept_code
     ,item_location_code
     ,item_div_type
+--add start 1.4
+    ,CASE
+       WHEN rcv_item_no IS NOT NULL AND pay_item_no IS NULL
+         THEN 1
+         ELSE 2
+     END
+--add end 1.4
 --mod start 1.3
     ,pay_reason_code
     ,entry_no
