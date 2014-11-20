@@ -7,7 +7,7 @@ AS
  * Description      : 仕入・有償・移動情報抽出処理
  * MD.050           : 生産物流共通                  T_MD050_BPO_940
  * MD.070           : 仕入・有償・移動情報抽出処理  T_MD070_BPO_94D
- * Version          : 1.4
+ * Version          : 1.5
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -35,6 +35,7 @@ AS
  *  2008/09/02    1.2   Oracle 山根 一浩 T_S_626,T_TE080_BPO_940 指摘10対応
  *  2008/09/18    1.3   Oracle 大橋 孝郎 T_S_460対応
  *  2008/11/26    1.4   Oracle 吉田 夏樹 本番#113対応
+ *  2009/02/04    1.5   Oracle 吉田 夏樹 本番#15対応
  *****************************************************************************************/
 --
 --#######################  固定グローバル定数宣言部 START   #######################
@@ -966,7 +967,10 @@ AS
     END IF;
 --
     -- 納入日/出庫日
-    gd_ship_date_to := FND_DATE.STRING_TO_DATE(iv_ship_date_to,'YYYY/MM/DD');
+-- 2009/02/04 v1.5 N.Yoshida Mod Start
+--    gd_ship_date_to := FND_DATE.STRING_TO_DATE(iv_ship_date_to,'YYYY/MM/DD');
+    gd_ship_date_to := FND_DATE.STRING_TO_DATE(iv_ship_date_to,'YYYY/MM/DD HH24:MI:SS');
+-- 2009/02/04 v1.5 N.Yoshida Mod End
     IF (gd_ship_date_to IS NULL) THEN
       lv_errmsg := xxcmn_common_pkg.get_msg(gv_app_name,
                                             gv_tkn_number_94d_03,
@@ -975,7 +979,10 @@ AS
       lv_errbuf := lv_errmsg;
       RAISE global_api_expt;
     END IF;
-    gd_ship_date_from := FND_DATE.STRING_TO_DATE(iv_ship_date_from,'YYYY/MM/DD');
+-- 2009/02/04 v1.5 N.Yoshida Mod Start
+--    gd_ship_date_from := FND_DATE.STRING_TO_DATE(iv_ship_date_from,'YYYY/MM/DD');
+    gd_ship_date_from := FND_DATE.STRING_TO_DATE(iv_ship_date_from,'YYYY/MM/DD HH24:MI:SS');
+-- 2009/02/04 v1.5 N.Yoshida Mod End
     IF (gd_ship_date_from IS NULL) THEN
       lv_errmsg := xxcmn_common_pkg.get_msg(gv_app_name,
                                             gv_tkn_number_94d_03,
@@ -994,7 +1001,10 @@ AS
 --
     -- 入庫日
     IF (iv_arrival_date_to IS NOT NULL) THEN
-      gd_arrival_date_to := FND_DATE.STRING_TO_DATE(iv_arrival_date_to,'YYYY/MM/DD');
+-- 2009/02/04 v1.5 N.Yoshida Mod Start
+--      gd_arrival_date_to := FND_DATE.STRING_TO_DATE(iv_arrival_date_to,'YYYY/MM/DD');
+      gd_arrival_date_to := FND_DATE.STRING_TO_DATE(iv_arrival_date_to,'YYYY/MM/DD HH24:MI:SS');
+-- 2009/02/04 v1.5 N.Yoshida Mod End
       IF (gd_arrival_date_to IS NULL) THEN
         lv_errmsg := xxcmn_common_pkg.get_msg(gv_app_name,
                                               gv_tkn_number_94d_03,
@@ -1005,7 +1015,10 @@ AS
       END IF;
     END IF;
     IF (iv_arrival_date_from IS NOT NULL) THEN
-      gd_arrival_date_from := FND_DATE.STRING_TO_DATE(iv_arrival_date_from,'YYYY/MM/DD');
+-- 2009/02/04 v1.5 N.Yoshida Mod Start
+--      gd_arrival_date_from := FND_DATE.STRING_TO_DATE(iv_arrival_date_from,'YYYY/MM/DD');
+      gd_arrival_date_from := FND_DATE.STRING_TO_DATE(iv_arrival_date_from,'YYYY/MM/DD HH24:MI:SS');
+-- 2009/02/04 v1.5 N.Yoshida Mod End
       IF (gd_arrival_date_from IS NULL) THEN
         lv_errmsg := xxcmn_common_pkg.get_msg(gv_app_name,
                                               gv_tkn_number_94d_03,
@@ -1122,10 +1135,16 @@ AS
     gv_arvl_code         := iv_arvl_code;
     gv_vendor_site_code  := iv_vendor_site_code;
     gv_carrier_code      := iv_carrier_code;
-    gv_ship_date_from    := iv_ship_date_from;
-    gv_ship_date_to      := iv_ship_date_to;
-    gv_arrival_date_from := iv_arrival_date_from;
-    gv_arrival_date_to   := iv_arrival_date_to;
+-- 2009/02/04 v1.5 N.Yoshida Mod Start
+--    gv_ship_date_from    := iv_ship_date_from;
+--    gv_ship_date_to      := iv_ship_date_to;
+--    gv_arrival_date_from := iv_arrival_date_from;
+--    gv_arrival_date_to   := iv_arrival_date_to;
+    gv_ship_date_from    := TO_CHAR(gd_ship_date_from, 'YYYY/MM/DD');
+    gv_ship_date_to      := TO_CHAR(gd_ship_date_to, 'YYYY/MM/DD');
+    gv_arrival_date_from := TO_CHAR(gd_arrival_date_from, 'YYYY/MM/DD');
+    gv_arrival_date_to   := TO_CHAR(gd_arrival_date_to, 'YYYY/MM/DD');
+-- 2009/02/04 v1.5 N.Yoshida Mod End
     gv_instruction_dept  := iv_instruction_dept;
     gv_item_no           := iv_item_no;
     gv_update_time_from  := iv_update_time_from;

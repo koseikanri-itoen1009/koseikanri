@@ -7,7 +7,7 @@ AS
  * Description      : 支給依頼取込処理
  * MD.050           : 取引先オンライン T_MD050_BPO_940
  * MD.070           : 支給依頼取込処理 T_MD070_BPO_94F
- * Version          : 1.9
+ * Version          : 1.10
  *
  * Program List
  * -------------------------- ------------------------------------------------------------
@@ -43,6 +43,7 @@ AS
  *  2008/08/28    1.7   Oracle 山根一浩    T_TE080_BPO_940 指摘16対応
  *  2008/10/08    1.8   Oracle 伊藤ひとみ  統合テスト指摘240対応
  *  2008/10/31    1.9   Oracle 伊藤ひとみ  統合テスト指摘528対応
+ *  2009/02/09    1.10  Oracle 吉田 夏樹   本番#15対応
  *****************************************************************************************/
 --
 --#######################  固定グローバル定数宣言部 START   #######################
@@ -2854,8 +2855,12 @@ AS
       gt_ph_freight_charge_class_tbl(gn_i)          :=  gt_freight_charge_class_tbl(gn_i);
 -- 2008/07/17 v1.3 End
       gt_ph_shikyu_inst_class_tbl(gn_i)             :=  NULL;
-      gt_ph_sk_inst_rcv_class_tbl(gn_i)             :=  NULL;
-      gt_ph_amount_fix_class_tbl(gn_i)              :=  NULL;
+-- 2009/02/09 v1.10 N.Yoshida Mod Start
+--      gt_ph_sk_inst_rcv_class_tbl(gn_i)             :=  NULL;
+--      gt_ph_amount_fix_class_tbl(gn_i)              :=  NULL;
+      gt_ph_sk_inst_rcv_class_tbl(gn_i)             :=  '2';
+      gt_ph_amount_fix_class_tbl(gn_i)              :=  '2';
+-- 2009/02/09 v1.10 N.Yoshida Mod End
       gt_ph_takeback_class_tbl(gn_i)                :=  gt_takeback_class_tbl(gn_i);
       gt_ph_deliver_from_id_tbl(gn_i)               :=  gt_inventory_location_id_tbl(gn_i);
       gt_ph_deliver_from_tbl(gn_i)                  :=  gt_shipped_locat_code_tbl(gn_i);
@@ -2915,11 +2920,17 @@ AS
       gt_ph_shipped_date_tbl(gn_i)                  :=  NULL;
       gt_ph_arrival_date_tbl(gn_i)                  :=  NULL;
       gt_ph_weight_ca_class_tbl(gn_i)               :=  gt_weight_capacity_class_tbl(gn_i);
-      gt_ph_actual_confirm_class_tbl(gn_i)          :=  NULL;
+-- 2009/02/09 v1.10 N.Yoshida Mod Start
+--      gt_ph_actual_confirm_class_tbl(gn_i)          :=  NULL;
+      gt_ph_actual_confirm_class_tbl(gn_i)          :=  cv_no;
+-- 2009/02/09 v1.10 N.Yoshida Mod End
       gt_ph_notif_status_tbl(gn_i)                  :=  cv_notif_status;
       gt_ph_prev_notif_status_tbl(gn_i)             :=  NULL;
       gt_ph_notif_date_tbl(gn_i)                    :=  NULL;
-      gt_ph_new_modify_flg_tbl(gn_i)                :=  NULL;
+-- 2009/02/09 v1.10 N.Yoshida Mod Start
+--      gt_ph_new_modify_flg_tbl(gn_i)                :=  NULL;
+      gt_ph_new_modify_flg_tbl(gn_i)                :=  cv_no;
+-- 2009/02/09 v1.10 N.Yoshida Mod End
       gt_ph_process_status_tbl(gn_i)                :=  NULL;
       gt_ph_perform_manage_dept_tbl(gn_i)           :=  gt_req_department_code_tbl(gn_i);
       gt_ph_instruction_dept_tbl(gn_i)              :=

@@ -7,7 +7,7 @@ AS
  * Description      : 出来高実績取込処理
  * MD.050           : 取引先オンライン T_MD050_BPO_940
  * MD.070           : 出来高実績取込処理 T_MD070_BPO_94B
- * Version          : 1.6
+ * Version          : 1.7
  * Program List
  * ------------------------- ----------------------------------------------------------
  *  Name                      Description
@@ -37,6 +37,7 @@ AS
  *  2008/12/02    1.4   Oracle 伊藤ひとみ   本番障害#171
  *  2008/12/24    1.5   Oracle 山本 恭久    本番障害#743
  *  2008/12/26    1.6   Oracle 伊藤 ひとみ  本番障害#809
+ *  2009/02/09    1.7   Oracle 吉田 夏樹    本番#15、#1178対応
  *****************************************************************************************/
 --
 --#######################  固定グローバル定数宣言部 START   #######################
@@ -1002,12 +1003,31 @@ AS
         -- ===========================
         -- 固有記号マスタ存在チェック
         -- ===========================
+-- 2009/02/10 v1.7 N.Yoshida Mod Start
+--        SELECT COUNT(1) cnt
+--        INTO   ln_cnt
+--        FROM   xxcmn_lookup_values_v  xlvv            -- クイックコード情報V
+--        WHERE  xlvv.lookup_type = gv_plant_uniqe_sign -- タイプ：XXCMN_PLANT_UNIQE_SIGN
+--        AND    xlvv.lookup_code = gr_main_data.koyu_code
+--        ;
         SELECT COUNT(1) cnt
         INTO   ln_cnt
-        FROM   xxcmn_lookup_values_v  xlvv            -- クイックコード情報V
-        WHERE  xlvv.lookup_type = gv_plant_uniqe_sign -- タイプ：XXCMN_PLANT_UNIQE_SIGN
-        AND    xlvv.lookup_code = gr_main_data.koyu_code
+        FROM   xxpo_price_headers  xph                           -- 仕入･標準単価ヘッダ
+        WHERE  xph.item_id             = gr_main_data.item_id    -- 品目ID
+        AND    xph.vendor_id           = gr_main_data.vendor_id  -- 取引先ID
+        AND    xph.factory_id          = gr_main_data.factory_id -- 工場ID
+        AND    xph.koyu_code           = gr_main_data.koyu_code  -- 固有記号
+        AND    xph.futai_code          = gv_futai_code_0         -- 付帯コード
+        AND    xph.price_type          = gv_price_type_po        -- マスタ区分1:仕入
+        AND    xph.supply_to_code      IS NULL                   -- 支給先コード
+        AND    (((gr_main_data.unit_price_calc_code = gv_unit_price_calc_code_prod)      -- 仕入単価導入日タイプが1:製造日の場合、条件が製造日
+          AND  (xph.start_date_active <= gr_main_data.producted_date)      -- 適用開始日 <= 製造日
+          AND  (xph.end_date_active   >= gr_main_data.producted_date))     -- 適用終了日 >= 製造日
+        OR     ((gr_main_data.unit_price_calc_code  = gv_unit_price_calc_code_loc)       -- 仕入単価導入日タイプが2:納入日の場合、条件が生産日
+          AND  (xph.start_date_active <= gr_main_data.manufactured_date)   -- 適用開始日 <= 生産日
+          AND  (xph.end_date_active   >= gr_main_data.manufactured_date))) -- 適用終了日 >= 生産日
         ;
+-- 2009/02/10 v1.7 N.Yoshida Mod End
 --
         -- マスタに登録がない場合
         IF (ln_cnt = 0) THEN
@@ -1045,12 +1065,31 @@ AS
       -- ===========================
       -- 固有記号マスタ存在チェック
       -- ===========================
+-- 2009/02/10 v1.7 N.Yoshida Mod Start
+--      SELECT COUNT(1) cnt
+--      INTO   ln_cnt
+--      FROM   xxcmn_lookup_values_v  xlvv            -- クイックコード情報V
+--      WHERE  xlvv.lookup_type = gv_plant_uniqe_sign -- タイプ：XXCMN_PLANT_UNIQE_SIGN
+--      AND    xlvv.lookup_code = gr_main_data.koyu_code
+--      ;
       SELECT COUNT(1) cnt
       INTO   ln_cnt
-      FROM   xxcmn_lookup_values_v  xlvv            -- クイックコード情報V
-      WHERE  xlvv.lookup_type = gv_plant_uniqe_sign -- タイプ：XXCMN_PLANT_UNIQE_SIGN
-      AND    xlvv.lookup_code = gr_main_data.koyu_code
+      FROM   xxpo_price_headers  xph                           -- 仕入･標準単価ヘッダ
+      WHERE  xph.item_id             = gr_main_data.item_id    -- 品目ID
+      AND    xph.vendor_id           = gr_main_data.vendor_id  -- 取引先ID
+      AND    xph.factory_id          = gr_main_data.factory_id -- 工場ID
+      AND    xph.koyu_code           = gr_main_data.koyu_code  -- 固有記号
+      AND    xph.futai_code          = gv_futai_code_0         -- 付帯コード
+      AND    xph.price_type          = gv_price_type_po        -- マスタ区分1:仕入
+      AND    xph.supply_to_code      IS NULL                   -- 支給先コード
+      AND    (((gr_main_data.unit_price_calc_code = gv_unit_price_calc_code_prod)      -- 仕入単価導入日タイプが1:製造日の場合、条件が製造日
+        AND  (xph.start_date_active <= gr_main_data.producted_date)      -- 適用開始日 <= 製造日
+        AND  (xph.end_date_active   >= gr_main_data.producted_date))     -- 適用終了日 >= 製造日
+      OR     ((gr_main_data.unit_price_calc_code  = gv_unit_price_calc_code_loc)       -- 仕入単価導入日タイプが2:納入日の場合、条件が生産日
+        AND  (xph.start_date_active <= gr_main_data.manufactured_date)   -- 適用開始日 <= 生産日
+        AND  (xph.end_date_active   >= gr_main_data.manufactured_date))) -- 適用終了日 >= 生産日
       ;
+-- 2009/02/10 v1.7 N.Yoshida Mod End
 --
       -- マスタに登録がない場合
       IF (ln_cnt = 0) THEN

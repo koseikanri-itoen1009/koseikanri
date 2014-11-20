@@ -8,7 +8,7 @@ AS
  * Description      : ロット在庫情報抽出処理
  * MD.050           : 生産物流共通                  T_MD050_BPO_940
  * MD.070           : ロット在庫情報抽出処理        T_MD070_BPO_94C
- * Version          : 1.4
+ * Version          : 1.5
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -32,6 +32,7 @@ AS
  *  2008/08/04    1.2   Oracle 吉田 夏樹 PT対応
  *  2008/08/19    1.3   Oracle 山根 一浩 仕様不備・指摘15
  *  2008/09/17    1.4   Oracle 大橋 孝郎 T_S_460対応
+ *  2009/02/04    1.5   Oracle 吉田 夏樹 本番#15対応
  *****************************************************************************************/
 --
 --#######################  固定グローバル定数宣言部 START   #######################
@@ -186,8 +187,12 @@ AS
   gv_vendor_id                VARCHAR2(20);  --  8.取引先            (任意)
   gv_item_no                  VARCHAR2(20);  --  9.品目              (任意)
   gv_lot_no                   VARCHAR2(20);  --  10.ロット           (任意)
-  gv_manufacture_date         VARCHAR2(10);  --  11.製造日           (任意)
-  gv_expiration_date          VARCHAR2(10);  --  12.賞味期限         (任意)
+-- 2009/02/04 v1.5 N.Yoshida Mod Start
+--  gv_manufacture_date         VARCHAR2(10);  --  11.製造日           (任意)
+--  gv_expiration_date          VARCHAR2(10);  --  12.賞味期限         (任意)
+  gv_manufacture_date         VARCHAR2(20);  --  11.製造日           (任意)
+  gv_expiration_date          VARCHAR2(20);  --  12.賞味期限         (任意)
+-- 2009/02/04 v1.5 N.Yoshida Mod End
   gv_uniqe_sign               VARCHAR2(20);  --  13.固有記号         (任意)
   gv_mf_factory               VARCHAR2(20);  --  14.製造工場         (任意)
   gv_mf_lot                   VARCHAR2(20);  --  15.製造ロット       (任意)
@@ -298,8 +303,10 @@ AS
     gv_vendor_id         := iv_vendor_id;         --  8.取引先
     gv_item_no           := iv_item_no;           --  9.品目
     gv_lot_no            := iv_lot_no;            -- 10.ロット
-    gv_manufacture_date  := iv_manufacture_date;  -- 11.製造日
-    gv_expiration_date   := iv_expiration_date;   -- 12.賞味期限
+-- 2009/02/04 v1.5 N.Yoshida Mod Start
+--    gv_manufacture_date  := iv_manufacture_date;  -- 11.製造日
+--    gv_expiration_date   := iv_expiration_date;   -- 12.賞味期限
+-- 2009/02/04 v1.5 N.Yoshida Mod End
     gv_uniqe_sign        := iv_uniqe_sign;        -- 13.固有記号
     gv_mf_factory        := iv_mf_factory;        -- 14.製造工場
     gv_mf_lot            := iv_mf_lot;            -- 15.製造ロット
@@ -308,11 +315,18 @@ AS
     gv_r2                := iv_r2;                -- 18.R2
     gv_sec_class         := iv_sec_class;         -- 19.セキュリティ区分
 --
+-- 2009/02/04 v1.5 N.Yoshida Mod Start
     -- 製造日を日付型へ変更
-    gd_manufacture_date := FND_DATE.STRING_TO_DATE(gv_manufacture_date,'YYYY/MM/DD');
+--    gd_manufacture_date := FND_DATE.STRING_TO_DATE(gv_manufacture_date,'YYYY/MM/DD');
+    gd_manufacture_date := FND_DATE.STRING_TO_DATE(iv_manufacture_date,'YYYY/MM/DD HH24:MI:SS');
 --
     -- 賞味期限を日付型へ変更
-    gd_expiration_date  := FND_DATE.STRING_TO_DATE(gv_expiration_date,'YYYY/MM/DD');
+--    gd_expiration_date  := FND_DATE.STRING_TO_DATE(gv_expiration_date,'YYYY/MM/DD');
+    gd_expiration_date  := FND_DATE.STRING_TO_DATE(iv_expiration_date,'YYYY/MM/DD HH24:MI:SS');
+--
+    gv_manufacture_date := TO_CHAR(gd_manufacture_date,'YYYY/MM/DD');
+    gv_expiration_date  := TO_CHAR(gd_expiration_date,'YYYY/MM/DD');
+-- 2009/02/04 v1.5 N.Yoshida Mod End
 --
     -- WFに関連する情報を取得
     xxcmn_common_pkg.get_outbound_info(

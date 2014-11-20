@@ -7,7 +7,7 @@ AS
  * Description      : ロット引当情報取込処理
  * MD.050           : 取引先オンライン T_MD050_BPO_940
  * MD.070           : ロット引当情報取込処理 T_MD070_BPO_94H
- * Version          : 1.4
+ * Version          : 1.5
  * Program List
  * --------------------------- ----------------------------------------------------------
  *  Name                        Description
@@ -37,6 +37,7 @@ AS
  *  2008/07/29    1.2  Oracle 吉田夏樹   ST不具合対応(採番なし)
  *  2008/08/22    1.3  Oracle 山根一浩   T_TE080_BPO_940 指摘4,指摘5,指摘17対応
  *  2008/10/08    1.4  Oracle 伊藤ひとみ 統合テスト指摘240対応
+ *  2009/02/09    1.5  Oracle 吉田 夏樹  本番#15対応
  *****************************************************************************************/
 --
 --#######################  固定グローバル定数宣言部 START   #######################
@@ -121,6 +122,13 @@ AS
   gv_msg_xxpo10262        CONSTANT VARCHAR2(100) := 'APP-XXPO-10262';  -- メッセージ:APP-XXPO-10262  引当情報不足エラー
   gv_msg_xxcmn10604       CONSTANT VARCHAR2(100) := 'APP-XXCMN-10604'; -- メッセージ:APP-XXCMN-10604 ケース入数エラー
   gv_msg_xxpo10267        CONSTANT VARCHAR2(100) := 'APP-XXPO-10267';  -- メッセージ:APP-XXPO-10267  ロットステータスエラー 2008/08/22 Add
+-- 2009/02/13 v1.5 N.Yoshida Mod Start
+  gv_msg_xxpo10280        CONSTANT VARCHAR2(100) := 'APP-XXPO-10280';  -- メッセージ:APP-XXPO-10280  不正エラー
+  gv_msg_xxpo10281        CONSTANT VARCHAR2(100) := 'APP-XXPO-10281';  -- メッセージ:APP-XXPO-10281  同一ロットエラー
+  gv_msg_xxpo10282        CONSTANT VARCHAR2(100) := 'APP-XXPO-10282';  -- メッセージ:APP-XXPO-10282  受注ヘッダ存在エラー
+  gv_msg_xxpo10283        CONSTANT VARCHAR2(100) := 'APP-XXPO-10283';  -- メッセージ:APP-XXPO-10283  受注明細存在エラー
+  gv_msg_xxpo10284        CONSTANT VARCHAR2(100) := 'APP-XXPO-10284';  -- メッセージ:APP-XXPO-10284  引当数量エラー
+-- 2009/02/13 v1.5 N.Yoshida Mod End
 --
   -- トークン
   gv_tkn_ng_profile       CONSTANT VARCHAR2(100) := 'NG_PROFILE';
@@ -1286,9 +1294,14 @@ AS
     AND    xoha.deliver_from          = xilv.segment1(+)
     AND    xilv.frequent_whse         = xilv2.segment1(+)
     AND    xola.shipping_inventory_item_id = ximv2.inventory_item_id(+)
-    AND    ximv.item_id               = xicv.item_id
-    AND    xlri.lot_no                = ilm.lot_no
-    AND    ilm.item_id                = ximv.item_id
+    AND    ximv.item_id               = xicv.item_id(+)
+-- 2009/02/10 v1.5 N.Yoshida Mod Start
+--    AND    xlri.lot_no                = ilm.lot_no
+--    AND    ilm.item_id                = ximv.item_id
+    AND    xlri.lot_no                = ilm.lot_no(+)
+    AND   ((ximv.item_id IS NULL OR ilm.item_id IS NULL)
+     OR    (ximv.item_id IS NOT NULL AND ilm.item_id IS NOT NULL AND ximv.item_id = ilm.item_id))
+-- 2009/02/10 v1.5 N.Yoshida Mod End
     AND   (xola.request_no IS NULL
      OR    (ximv.start_date_active    <= NVL(xoha.shipped_date, xoha.schedule_ship_date)
     AND     ximv.end_date_active      >= NVL(xoha.shipped_date, xoha.schedule_ship_date)))
@@ -1590,9 +1603,14 @@ AS
       lv_errmsg  := SUBSTRB(
                       xxcmn_common_pkg.get_msg(
                         gv_xxpo               -- モジュール名略称:XXPO
-                       ,gv_msg_xxpo10234     -- メッセージ:APP-XXPO-10234 存在チェックエラー
-                       ,gv_tkn_table          -- トークン:TABLE
-                       ,gv_tkn_xxpo_headers_all)    -- 受注ヘッダアドオン
+-- 2009/02/13 v1.5 N.Yoshida Mod Start
+--                       ,gv_msg_xxpo10234     -- メッセージ:APP-XXPO-10234 存在チェックエラー
+--                       ,gv_tkn_table          -- トークン:TABLE
+--                       ,gv_tkn_xxpo_headers_all)    -- 受注ヘッダアドオン
+                       ,gv_msg_xxpo10282              -- メッセージ:APP-XXPO-10282 受注ヘッダ存在エラー
+                       ,gv_tkn_request_no             -- トークン:REQUEST_NO
+                       ,gt_lr_request_no_tbl(gn_i))   -- 受注ヘッダアドオン
+-- 2009/02/13 v1.5 N.Yoshida Mod End
                        ,1,5000);
       lv_errbuf := lv_errmsg;
       RAISE global_api_expt;
@@ -1614,14 +1632,70 @@ AS
       lv_errmsg  := SUBSTRB(
                       xxcmn_common_pkg.get_msg(
                         gv_xxpo                -- モジュール名略称:XXPO
-                       ,gv_msg_xxpo10234       -- メッセージ:APP-XXPO-10234 存在チェックエラー
-                       ,gv_tkn_table           -- トークン:TABLE
-                       ,gv_tkn_xxpo_lines_all) -- 受注明細アドオン
+-- 2009/02/13 v1.5 N.Yoshida Mod Start
+--                       ,gv_msg_xxpo10234       -- メッセージ:APP-XXPO-10234 存在チェックエラー
+--                       ,gv_tkn_table           -- トークン:TABLE
+--                       ,gv_tkn_xxpo_lines_all) -- 受注明細アドオン
+                       ,gv_msg_xxpo10283            -- メッセージ:APP-XXPO-10283 受注明細存在エラー
+                       ,gv_tkn_request_no           -- トークン:REQUEST_NO
+                       ,gt_lr_request_no_tbl(gn_i)  -- 依頼No.
+                       ,gv_tkn_item_no              -- トークン:ITEM_NO
+                       ,gt_lr_item_code_tbl(gn_i))  -- 品目コード
+-- 2009/02/13 v1.5 N.Yoshida Mod End
                        ,1,5000);
       lv_errbuf := lv_errmsg;
       RAISE global_api_expt;
 --
     END IF;
+--
+-- 2009/02/10 v1.5 N.Yoshida Mod Start
+    -- ===========================
+    -- 不正ロットチェック
+    -- ===========================
+    -- ロット引当情報IFテーブルのロットNoが存在しない場合、エラーとする。
+    IF (gt_lr_lot_id_tbl(gn_i) IS NULL) THEN
+      lv_errmsg  := SUBSTRB(
+                      xxcmn_common_pkg.get_msg(
+                        gv_xxpo                    -- モジュール名略称:XXPO
+                       ,gv_msg_xxpo10280           -- メッセージ:APP-XXPO-10280 不正エラー
+                       ,gv_tkn_request_no          -- トークン:REQUEST_NO
+                       ,gt_lr_request_no_tbl(gn_i) -- 依頼No.
+                       ,gv_tkn_item_no             -- トークン:ITEM_NO
+                       ,gt_lr_item_code_tbl(gn_i)    -- 品目コード
+                       ,gv_tkn_lot_no              -- トークン:LOT_NO
+                       ,gt_lr_lot_no_tbl(gn_i))    -- ロットNo.
+                       ,1,5000);
+      lv_errbuf := lv_errmsg;
+      RAISE global_api_expt;
+    END IF;
+--
+    -- ロット引当情報IFテーブルに同一の依頼No、品目コード、ロットNoが存在する場合、エラーとする。
+    SELECT COUNT(1)
+    INTO   ln_cnt
+    FROM   xxpo_lot_reserve_if     xlri
+    WHERE  xlri.request_no         = gt_lr_request_no_tbl(gn_i)  -- 依頼No.
+    AND    xlri.item_code          = gt_lr_item_code_tbl(gn_i)   -- 品目コード
+    AND    xlri.lot_no             = gt_lr_lot_no_tbl(gn_i)      -- ロットNo
+    ;
+--
+    -- 2件以上の場合、エラー(自身も対象となる為)
+    IF (ln_cnt > 1) THEN
+      lv_errmsg  := SUBSTRB(
+                      xxcmn_common_pkg.get_msg(
+                        gv_xxpo                    -- モジュール名略称:XXPO
+                       ,gv_msg_xxpo10281           -- メッセージ:APP-XXPO-10281 同一ロットエラー
+                       ,gv_tkn_request_no          -- トークン:REQUEST_NO
+                       ,gt_lr_request_no_tbl(gn_i) -- 依頼No.
+                       ,gv_tkn_item_no             -- トークン:ITEM_NO
+                       ,gt_lr_item_code_tbl(gn_i)    -- 品目コード
+                       ,gv_tkn_lot_no              -- トークン:LOT_NO
+                       ,gt_lr_lot_no_tbl(gn_i))    -- ロットNo.
+                       ,1,5000);
+      lv_errbuf := lv_errmsg;
+      RAISE global_api_expt;
+--
+    END IF;
+-- 2009/02/10 v1.5 N.Yoshida Mod End
 --
 -- 2008/08/22 Add ↓
     -- ===========================
@@ -1696,9 +1770,20 @@ AS
       lv_errmsg  := SUBSTRB(
                       xxcmn_common_pkg.get_msg(
                         gv_xxpo                -- モジュール名略称:XXPO
-                       ,gv_msg_xxpo10255       -- メッセージ:APP-XXPO-10255 数値0以下エラー
-                       ,gv_tkn_item            -- トークン:ITEM
-                       ,gv_tkn_reserve_qty)    -- 引当数量
+-- 2009/02/13 v1.5 N.Yoshida Mod Start
+--                       ,gv_msg_xxpo10255       -- メッセージ:APP-XXPO-10255 数値0以下エラー
+--                       ,gv_tkn_item            -- トークン:ITEM
+--                       ,gv_tkn_reserve_qty)    -- 引当数量
+                       ,gv_msg_xxpo10284           -- メッセージ:APP-XXPO-10284 引当数量エラー
+                       ,gv_tkn_item                -- トークン:ITEM
+                       ,gv_tkn_reserve_qty         -- 引当数量
+                       ,gv_tkn_request_no          -- トークン:REQUEST_NO
+                       ,gt_lr_request_no_tbl(gn_i) -- 依頼No.
+                       ,gv_tkn_item_no             -- トークン:ITEM_NO
+                       ,gt_lr_item_code_tbl(gn_i)  -- 品目コード
+                       ,gv_tkn_lot_no              -- トークン:LOT_NO
+                       ,gt_lr_lot_no_tbl(gn_i))    -- ロットNo.
+-- 2009/02/13 v1.5 N.Yoshida Mod End
                        ,1,5000);
       lv_errbuf := lv_errmsg;
       RAISE global_api_expt;
