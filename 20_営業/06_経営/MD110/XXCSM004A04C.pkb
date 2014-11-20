@@ -7,7 +7,7 @@ AS
  * Description      : 顧客マスタから新規獲得した顧客を抽出し、新規獲得ポイント顧客別履歴テーブル
  *                  : にデータを登録します。
  * MD.050           : 新規獲得ポイント集計（新規獲得ポイント集計処理）MD050_CSM_004_A04
- * Version          : 1.5
+ * Version          : 1.6
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -49,6 +49,7 @@ AS
  *  2009/07/07    1.3   M.Ohtsuki      ［SCS障害管理番号0000254］部署コード取得条件の不具合
  *  2009/07/14    1.4   M.Ohtsuki      ［SCS障害管理番号0000663］想定外エラー発生時の不具合
  *  2009/07/29    1.5   T.Tsukino      ［SCS障害管理番号0000815］パフォーマンス障害対応
+ *  2009/08/17    1.6   T.Tsukino      ［SCS障害管理番号0000870］中止顧客判定期間の不具合追加 
  *****************************************************************************************/
 --
 --#######################  固定グローバル定数宣言部 START   #######################
@@ -142,6 +143,9 @@ AS
 --  cv_post_level_name        CONSTANT VARCHAR2(100) := 'XXCSM1_CALC_POINT_POST_LEVEL';               -- ポイント算出用部署階層
 --//+DEL END   2009/07/07 0000254 M.Ohtsuki
   cv_set_of_bks_id_name     CONSTANT VARCHAR2(100) := 'GL_SET_OF_BKS_ID';                           -- 会計帳簿ID
+--//+ADD START 2009/07/30 0000870 T.Tsukino
+  cv_min_deal_period        CONSTANT VARCHAR2(100) := 'XXCSM1_MIN_DEALINGS_PERIOD';                 -- 新規獲得ポイント最低取引期間
+--//+ADD END   2009/07/30 0000870 T.Tsukino
   cv_closing_status_o       CONSTANT VARCHAR2(1)   := 'O';                                          -- 会計期間ステータス(オープン)
 --//+DEL START 2009/04/27 T1_0713 M.Ohtsuki
 --  cv_closing_status_p       CONSTANT VARCHAR2(1)   := 'P';                                          -- 会計期間ステータス(永久クローズ)
@@ -209,6 +213,9 @@ AS
   -- ユーザー定義グローバル変数
   -- ===============================
   gd_process_date           DATE;                                                                   -- 業務日付
+--//+ADD START 2009/07/30 0000870 T.Tsukino
+  gv_min_deal_period        VARCHAR2(10);                                                           -- 新規獲得ポイント最低取引期間
+--//+ADD END   2009/07/30 0000870 T.Tsukino
 --//+DEL START   2009/07/07 0000254 M.Ohtsuki
 --  gv_post_level             VARCHAR2(100);                                                          -- ポイント算出用部署階層
 --//+DEL END     2009/07/07 0000254 M.Ohtsuki
@@ -318,6 +325,10 @@ AS
 --//+DEL END     2009/07/07 0000254 M.Ohtsuki
     FND_PROFILE.GET(name => cv_set_of_bks_id_name
                    ,val  => gt_set_of_bks_id);                                                      -- 会計帳簿ID
+--//+ADD START 2009/07/30 0000870 T.Tsukino
+    FND_PROFILE.GET(name => cv_min_deal_period
+                   ,val  => gv_min_deal_period);                                                      -- 新規獲得ポイント最低取引期間
+--//+ADD END   2009/07/30 0000870 T.Tsukinoi
 --//+UPD START   2009/07/07 0000254 M.Ohtsuki
 --    IF ( gv_post_level IS NULL) THEN                                                                -- ポイント算出用部署階層の場合
 --      lv_tkn_value    := cv_post_level_name;
@@ -329,6 +340,11 @@ AS
       lv_tkn_value    := cv_set_of_bks_id_name;
     END IF;
 --//+UPD START   2009/07/07 0000254 M.Ohtsuki
+--//+ADD START 2009/07/30 0000870 T.Tsukino
+    IF (gv_min_deal_period IS NULL) THEN  
+      lv_tkn_value    := cv_min_deal_period;
+    END IF;
+--//+ADD END   2009/07/30 0000870 T.Tsukino
     IF (lv_tkn_value IS NOT NULL) THEN                                                              -- 取得に失敗した場合
       lv_errmsg := xxccp_common_pkg.get_msg(
                                             iv_application  => cv_appl_short_name_csm               -- アプリケーション短縮名
@@ -1318,14 +1334,53 @@ AS
           END IF;                                                                                   -- 紹介従業員が未確定の場合の終了
 --
         END IF;                                                                                     -- 紹介従業員ありの場合の終了
+--//+ADD START 2009/08/17 0000870 T.Tsukino
+        -- 獲得営業員が確定の場合のみ処理を行う。
+        IF (lt_decision_flg_get = cv_kakutei) THEN
+          -- ========================================
+          -- A-9 ポイント付与判定取得処理
+          -- ========================================
+          -- 1.初回取引日から新規獲得ポイント最低取引期間内に中止顧客なった場合、ポイント付与しない。
+          IF (set_new_point_rec.duns_number_c = cv_sts_stop )                                       -- 中止顧客の場合
+            AND (TRUNC(set_new_point_rec.stop_approval_date)
+              <=  TRUNC(set_new_point_rec.start_tran_date
+                     + TO_NUMBER(gv_min_deal_period))) 
+          THEN
+            lt_decision_flg_upd := cv_kakutei;                                                      -- 確定フラグを確定とする。
+            lt_evaluration_kbn  := cv_grant_ng;                                                     -- ポイント付与しない
+            -- ========================================
+            -- A-11 ワークテープル確定フラグ／新規評価対象区分更新処理  獲得営業員／紹介従業員の両方を更新する。
+            -- ========================================
+            update_work_table(
+              it_year => it_year                                                                    -- 対象年度
+             ,it_account_number => set_new_point_rec.account_number                                 -- 顧客コード
+             ,it_decision_flg => lt_decision_flg_upd                                                -- 更新用確定フラグ
+             ,it_evaluration_kbn => lt_evaluration_kbn                                              -- 新規評価対象区分
+             ,ov_errbuf  => lv_errbuf                                                               -- エラー・メッセージ
+             ,ov_retcode => lv_retcode                                                              -- リターン・コード
+             ,ov_errmsg  => lv_errmsg                                                               -- ユーザー・エラー・メッセージ
+            );
+            -- エラーならば、顧客単位で処理をスキップする。
+            IF (lv_retcode <> cv_status_normal) THEN
+              RAISE global_process_expt;
+            END IF;
+          END IF;
+        END IF;
+--//+ADD END   2009/08/17 0000870 T.Tsukino
         -- 獲得営業員が未確定の場合のみ処理を行う。
         IF (lt_decision_flg_get = cv_mikakutei) THEN
           -- ========================================
           -- A-9 ポイント付与判定取得処理
           -- ========================================
-          -- 1.初回取引日から９０日以内に中止顧客なった場合、ポイント付与しない。
+          -- 1.初回取引日から新規獲得ポイント最低取引期間内に中止顧客なった場合、ポイント付与しない。
           IF (set_new_point_rec.duns_number_c = cv_sts_stop )                                       -- 中止顧客の場合
-            AND (TRUNC(set_new_point_rec.stop_approval_date) < TRUNC(set_new_point_rec.start_tran_date + 90 )) THEN -- 90日以内に中止顧客となった。
+--//+UPD START 2009/07/30 0000870 T.Tsukino
+--            AND (TRUNC(set_new_point_rec.stop_approval_date) < TRUNC(set_new_point_rec.start_tran_date + 90 )) THEN -- 90日以内に中止顧客となった。
+            AND (TRUNC(set_new_point_rec.stop_approval_date)
+              <=  TRUNC(set_new_point_rec.start_tran_date
+                     + TO_NUMBER(gv_min_deal_period))) 
+          THEN
+--//+UPD END   2009/07/30 0000870 T.Tsukino
               lt_evaluration_kbn := cv_grant_ng;                                                      
           ELSE
           -- 2.ポイント付与条件取得
