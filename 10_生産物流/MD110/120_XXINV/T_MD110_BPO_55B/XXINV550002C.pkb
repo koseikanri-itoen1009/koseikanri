@@ -7,7 +7,7 @@ AS
  * Description      : 受払台帳作成
  * MD.050/070       : 在庫(帳票)Draft2A (T_MD050_BPO_550)
  *                    受払台帳Draft1A   (T_MD070_BPO_55B)
- * Version          : 1.24
+ * Version          : 1.25
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -52,6 +52,7 @@ AS
  *  2008/11/20    1.22  Naoki Fukuda     統合テスト障害696対応
  *  2008/11/21    1.23  Natsuki Yoshida  統合テスト障害687対応 (大幅な修正の為、履歴を残しておりません)
  *  2008/11/28    1.24  Hitomi Itou      本番障害#227対応
+ *  2008/12/02    1.25  Natsuki Yoshida  本番障害#327対応
  *****************************************************************************************/
 --
 --#######################  固定グローバル定数宣言部 START   #######################
@@ -3367,7 +3368,10 @@ AS
         ------------------------------
         -- 1.発注実績情報
         ------------------------------
-        SELECT /*+ leading(pha pla rsl itp iimb gic1 mcb1 gic2 mcb2 rt xrart xrpm pv xv mil iwm) use_nl(pha pla rsl itp iimb gic1 mcb1 gic2 mcb2 rt xrart xrpm pv xv mil iwm) */
+-- mod start 1.25
+        --SELECT /*+ leading(pha pla rsl itp iimb gic1 mcb1 gic2 mcb2 rt xrart xrpm pv xv mil iwm) use_nl(pha pla rsl itp iimb gic1 mcb1 gic2 mcb2 rt xrart xrpm pv xv mil iwm) */
+        SELECT /*+ leading(pha pla rsl rt itp gic1 mcb1 gic2 mcb2) use_nl(pha pla rsl rt itp gic1 mcb1 gic2 mcb2) */
+-- mod end 1.25
           gv_trtry_po                                         territory           --領域(発注)
          ,iimb.item_id                                        item_id             --品目ID
          ,itp.lot_id                                          lot_id              --ロットID
@@ -3448,10 +3452,14 @@ AS
         --パラメータによる絞込み(品目区分)
         AND mcb2.segment1 = civ_item_div
         --カテゴリセットが商品区分である品目
-        AND iimb.item_id = gic1.item_id
+-- mod start 1.25
+        --AND iimb.item_id = gic1.item_id
+        AND itp.item_id = gic1.item_id
         AND gic1.category_set_id    = cn_prod_class_id
         --カテゴリセットが品目区分である品目
-        AND iimb.item_id = gic2.item_id
+        --AND iimb.item_id = gic2.item_id
+        AND itp.item_id = gic2.item_id
+-- mod end 1.25
         AND gic2.category_set_id   = cn_item_class_id
         AND mcb1.category_id       = gic1.category_id
         AND mcb2.category_id       = gic2.category_id
@@ -3516,7 +3524,10 @@ AS
         (
 -------------------------------------------------------------------------------------------------------------------
          --積送あり(出庫実績)
-         SELECT /*+ leading(xmrih xmril xmld mil itp ixm gic1 mcb1 gic2 mcb2) use_nl(xmrih xmril xmld mil itp ixm gic1 mcb1 gic2 mcb2) */
+-- mod start 1.25
+         --SELECT /*+ leading(xmrih xmril xmld mil itp ixm gic1 mcb1 gic2 mcb2) use_nl(xmrih xmril xmld mil itp ixm gic1 mcb1 gic2 mcb2) */
+         SELECT /*+ leading(xmrih xmril xmld ixm itp gic1 mcb1 gic2 mcb2) use_nl(xmrih xmril xmld ixm itp gic1 mcb1 gic2 mcb2) */
+-- mod end 1.25
            xmrih.mov_hdr_id                                mov_hdr_id              --移動ヘッダID
           ,gv_rectype_out                                  record_type             --レコードタイプ
           ,xmrih.comp_actual_flg                           comp_actual_flg         --実績計上済フラグ
@@ -3562,7 +3573,10 @@ AS
          AND xmld.document_type_code = gv_dctype_move                             --文書タイプ
          AND xmld.record_type_code = gv_rectype_out                               --レコードタイプ
          AND xmrih.shipped_locat_id = mil.inventory_location_id                   --保管倉庫ID
-         AND xmril.mov_line_id = ixm.attribute1                                   --文書ソースID
+-- mod start 1.25
+         --AND xmril.mov_line_id = ixm.attribute1                                   --文書ソースID
+         AND TO_CHAR(xmril.mov_line_id) = ixm.attribute1                                   --文書ソースID
+-- mod start 1.25
          AND itp.doc_type = 'XFER'                                                --文書タイプ
          AND xmrih.actual_arrival_date                                            --入庫実績日
             BETWEEN TO_DATE(civ_ymd_from,gv_fmt_ymd)
@@ -3589,7 +3603,10 @@ AS
              AND   ROWNUM   = 1
              )
          UNION ALL -- 積送あり(入庫実績)
-         SELECT /*+ leading(xmrih xmril xmld mil itp ixm gic1 mcb1 gic2 mcb2) use_nl(xmrih xmril xmld mil itp ixm gic1 mcb1 gic2 mcb2) */
+-- mod start 1.25
+         --SELECT /*+ leading(xmrih xmril xmld mil itp ixm gic1 mcb1 gic2 mcb2) use_nl(xmrih xmril xmld mil itp ixm gic1 mcb1 gic2 mcb2) */
+         SELECT /*+ leading(xmrih xmril xmld ixm itp gic1 mcb1 gic2 mcb2) use_nl(xmrih xmril xmld ixm itp gic1 mcb1 gic2 mcb2) */
+-- mod end 1.25
            xmrih.mov_hdr_id                                mov_hdr_id              --移動ヘッダID
           ,gv_rectype_in                                   record_type             --レコードタイプ
           ,xmrih.comp_actual_flg                           comp_actual_flg         --実績計上済フラグ
@@ -3638,7 +3655,9 @@ AS
             BETWEEN TO_DATE(civ_ymd_from,gv_fmt_ymd)
             AND TO_DATE(civ_ymd_to,gv_fmt_ymd)
          AND xmrih.ship_to_locat_id = mil.inventory_location_id                          --保管倉庫ID
-         AND xmril.mov_line_id = ixm.attribute1                                   --文書ソースID
+-- mod start 1.25
+         AND TO_CHAR(xmril.mov_line_id) = ixm.attribute1                                   --文書ソースID
+-- mod end 1.25
          AND itp.doc_type = 'XFER'                                                --文書タイプ
          AND gic1.item_id = itp.item_id
          AND gic1.category_set_id = cn_item_class_id
@@ -3663,7 +3682,10 @@ AS
              )
          UNION ALL
          --積送あり(ADJI)(出庫実績)
-         SELECT
+-- mod start 1.25
+         --SELECT
+         SELECT /*+ leading(xmrih xmril xmld ijm iaj itc gic1 mcb1 gic2 mcb2) use_nl(xmrih xmril xmld ijm iaj itc gic1 mcb1 gic2 mcb2) */
+-- mod end 1.25
            xmrih.mov_hdr_id                                mov_hdr_id              --移動ヘッダID
           ,gv_rectype_out                                  record_type             --レコードタイプ
           ,xmrih.comp_actual_flg                           comp_actual_flg         --実績計上済フラグ
@@ -3724,7 +3746,10 @@ AS
                BETWEEN TO_DATE(civ_ymd_from,gv_fmt_ymd)
                AND TO_DATE(civ_ymd_to,gv_fmt_ymd)
          AND xmrih.shipped_locat_id = mil3.inventory_location_id                          --保管倉庫ID
-         AND xmril.mov_line_id = ijm.attribute1                                   --文書ソースID
+-- mod start 1.25
+         --AND xmril.mov_line_id = ijm.attribute1                                   --文書ソースID
+         AND TO_CHAR(xmril.mov_line_id) = ijm.attribute1                                   --文書ソースID
+-- mod end 1.25
          AND ijm.journal_id = iaj.journal_id                                      --ジャーナルID
          AND mil3.segment1 = iaj.location                                         --保管倉庫コード
          AND itc.doc_type = 'ADJI'                                                --文書タイプ
@@ -3742,7 +3767,10 @@ AS
          AND xmld.lot_id (+) = itc.lot_id  
          UNION ALL
          --積送あり(ADJI) (入庫実績)
-         SELECT 
+-- mod start 1.25
+         --SELECT
+         SELECT /*+ leading(xmrih xmril xmld ijm iaj itc gic1 mcb1 gic2 mcb2) use_nl(xmrih xmril xmld ijm iaj itc gic1 mcb1 gic2 mcb2) */
+-- mod end 1.25
            xmrih.mov_hdr_id                                mov_hdr_id              --移動ヘッダID
           ,gv_rectype_in                                   record_type             --レコードタイプ
           ,xmrih.comp_actual_flg                           comp_actual_flg         --実績計上済フラグ
@@ -3802,7 +3830,10 @@ AS
             BETWEEN TO_DATE(civ_ymd_from,gv_fmt_ymd)
             AND TO_DATE(civ_ymd_to,gv_fmt_ymd)
          AND xmrih.ship_to_locat_id = mil3.inventory_location_id                          --保管倉庫ID
-         AND xmril.mov_line_id = ijm.attribute1                                   --文書ソースID
+-- mod start 1.25
+         --AND xmril.mov_line_id = ijm.attribute1                                   --文書ソースID
+         AND TO_CHAR(xmril.mov_line_id) = ijm.attribute1                                   --文書ソースID
+-- mod end 1.25
          AND ijm.journal_id = iaj.journal_id                                      --ジャーナルID
          AND mil3.segment1 = iaj.location                                         --保管倉庫コード
          AND itc.doc_type = 'ADJI'                                                --文書タイプ
@@ -3824,7 +3855,10 @@ AS
 -------------------------------------------------------------------------------------------------------------------
          UNION ALL
          --積送なし (出庫実績)
-         SELECT /*+ leading(xmrih xmril xmld mil itc ija ijm gic1 mcb1 gic2 mcb2) use_nl(xmrih xmril xmld mil itc ija ijm gic1 mcb1 gic2 mcb2) */
+-- mod start 1.25
+         --SELECT /*+ leading(xmrih xmril xmld mil itc ija ijm gic1 mcb1 gic2 mcb2) use_nl(xmrih xmril xmld mil itc ija ijm gic1 mcb1 gic2 mcb2) */
+         SELECT /*+ leading(xmrih xmril xmld ijm iaj itc gic1 mcb1 gic2 mcb2) use_nl(xmrih xmril xmld ijm iaj itc gic1 mcb1 gic2 mcb2) */
+-- mod end 1.25
            xmrih.mov_hdr_id                                mov_hdr_id              --移動ヘッダID
           ,gv_rectype_out                                  record_type             --レコードタイプ
           ,xmrih.comp_actual_flg                           comp_actual_flg         --実績計上済フラグ
@@ -3872,7 +3906,10 @@ AS
          AND xmld.document_type_code = gv_dctype_move                             --文書タイプ
          AND xmld.record_type_code = gv_rectype_out                            --レコードタイプ
          AND xmrih.shipped_locat_id = mil.inventory_location_id                          --保管倉庫ID
-         AND xmril.mov_line_id = ijm.attribute1                                   --文書ソースID
+-- mod start 1.25
+         --AND xmril.mov_line_id = ijm.attribute1                                   --文書ソースID
+         AND TO_CHAR(xmril.mov_line_id) = ijm.attribute1                                   --文書ソースID
+-- mod end 1.25
          AND ijm.journal_id = iaj.journal_id                                      --ジャーナルID
          AND mil.segment1 = iaj.location                                         --保管倉庫コード
          AND itc.doc_type IN ('TRNI','ADJI')                                      --文書タイプ
@@ -3901,7 +3938,10 @@ AS
              )
          UNION ALL
          --積送なし (入庫実績)
-         SELECT /*+ leading(xmrih xmril xmld mil itc ija ijm gic1 mcb1 gic2 mcb2) use_nl(xmrih xmril xmld mil itc ija ijm gic1 mcb1 gic2 mcb2) */
+-- mod start 1.25
+         --SELECT /*+ leading(xmrih xmril xmld mil itc ija ijm gic1 mcb1 gic2 mcb2) use_nl(xmrih xmril xmld mil itc ija ijm gic1 mcb1 gic2 mcb2) */
+         SELECT /*+ leading(xmrih xmril xmld ijm iaj itc gic1 mcb1 gic2 mcb2) use_nl(xmrih xmril xmld ijm iaj itc gic1 mcb1 gic2 mcb2) */
+-- mod end 1.25
            xmrih.mov_hdr_id                                mov_hdr_id              --移動ヘッダID
           ,gv_rectype_in                                   record_type             --レコードタイプ
           ,xmrih.comp_actual_flg                           comp_actual_flg         --実績計上済フラグ
@@ -3949,7 +3989,10 @@ AS
          AND xmld.document_type_code = gv_dctype_move                             --文書タイプ
          AND xmld.record_type_code = gv_rectype_in                            --レコードタイプ
          AND xmrih.ship_to_locat_id = mil.inventory_location_id                          --保管倉庫ID
-         AND xmril.mov_line_id = ijm.attribute1                                   --文書ソースID
+-- mod start 1.25
+         --AND xmril.mov_line_id = ijm.attribute1                                   --文書ソースID
+         AND TO_CHAR(xmril.mov_line_id) = ijm.attribute1                                   --文書ソースID
+-- mod end 1.25
          AND ijm.journal_id = iaj.journal_id                                      --ジャーナルID
          AND mil.segment1 = iaj.location                                         --保管倉庫コード
          AND itc.doc_type IN ('TRNI','ADJI')                                      --文書タイプ
@@ -4060,10 +4103,13 @@ AS
          ,sh_info.rcv_pay_div                                 rcv_pay_div         --受払区分
         ----------------------------------------------------------------------------------------
         FROM ( --OMSO関連情報
+-- mod start 1.25
 -- 2008/11/28 H.Itou add Start 本番障害#227
 --          SELECT
-          SELECT /*+ leading(xoha ooha otta xola rsl itp gic1 mcb1 gic3 mcb3 iimb2 gic2 mcb2) use_nl(xoha ooha otta xola rsl itp gic1 mcb1 gic3 mcb3 iimb2 gic2 mcb2) */
+--          SELECT /*+ leading(xoha ooha otta xola rsl itp gic1 mcb1 gic3 mcb3 iimb2 gic2 mcb2) use_nl(xoha ooha otta xola rsl itp gic1 mcb1 gic3 mcb3 iimb2 gic2 mcb2) */
+          SELECT /*+ leading(xoha ooha otta xola wdd itp gic1 mcb1 gic3 mcb3 iimb2 gic2 mcb2) use_nl(xoha ooha otta xola wdd itp gic1 mcb1 gic3 mcb3 iimb2 gic2 mcb2) */
 -- 2008/11/28 H.Itou add End
+-- mod end 1.25
             itp.doc_type                                  doc_type            --文書タイプ
            ,itp.item_id                                   item_id             --品目ID
            ,itp.whse_code                                 whse_code           --倉庫コード
@@ -4248,10 +4294,13 @@ AS
            ,otta.order_category_code
           UNION ALL
            -- PORC関連
+-- mod start 1.25
 -- 2008/11/28 H.Itou Mod Start 本番障害#227
 --          SELECT
-          SELECT /*+ leading(xoha ooha otta xola wdd itp gic1 mcb1 gic3 mcb3 iimb2 gic2 mcb2) use_nl(xoha ooha otta xola wdd itp gic1 mcb1 gic3 mcb3 iimb2 gic2 mcb2) */
+--          SELECT /*+ leading(xoha ooha otta xola wdd itp gic1 mcb1 gic3 mcb3 iimb2 gic2 mcb2) use_nl(xoha ooha otta xola wdd itp gic1 mcb1 gic3 mcb3 iimb2 gic2 mcb2) */
+          SELECT /*+ leading(xoha ooha otta xola rsl itp gic1 mcb1 gic3 mcb3 iimb2 gic2 mcb2) use_nl(xoha ooha otta xola rsl itp gic1 mcb1 gic3 mcb3 iimb2 gic2 mcb2) */
 -- 2008/11/28 H.Itou Mod End
+-- mod end 1.25
             itp.doc_type                                  doc_type            --文書タイプ
            ,itp.item_id                                   item_id             --品目ID
            ,itp.whse_code                                 whse_code           --倉庫コード
@@ -4480,7 +4529,10 @@ AS
          ,rt_info.rcv_pay_div                                 rcv_pay_div         --受払区分
         ----------------------------------------------------------------------------------------
         FROM (
-          SELECT /*+ leading(xrpm otta rsl ooha xoha itp gic1 mcb1 gic2 mcb2 mil iwm) use_nl(xrpm otta rsl ooha xoha itp gic1 mcb1 gic2 mcb2 mil iwm) */
+-- mod start 1.25
+          --SELECT /*+ leading(xrpm otta rsl ooha xoha itp gic1 mcb1 gic2 mcb2 mil iwm) use_nl(xrpm otta rsl ooha xoha itp gic1 mcb1 gic2 mcb2 mil iwm) */
+          SELECT /*+ leading(xoha ooha otta rsl itp gic1 mcb1 gic2 mcb2) use_nl(xoha ooha otta rsl itp gic1 mcb1 gic2 mcb2) */
+-- mod end 1.25
             xoha.header_id                                    header_id           --受注ヘッダID
            ,itp.whse_code                                     whse_code           --倉庫コード
            ,iwm.whse_name                                     whse_name           --倉庫名
@@ -5461,7 +5513,10 @@ AS
         ------------------------------
         -- 1.発注実績情報
         ------------------------------
-        SELECT /*+ leading(pha pla rsl itp iimb gic1 mcb1 gic2 mcb2 rt xrart xrpm pv xv mil iwm) use_nl(pha pla rsl itp iimb gic1 mcb1 gic2 mcb2 rt xrart xrpm pv xv mil iwm) */
+-- mod start 1.25
+        --SELECT /*+ leading(pha pla rsl itp iimb gic1 mcb1 gic2 mcb2 rt xrart xrpm pv xv mil iwm) use_nl(pha pla rsl itp iimb gic1 mcb1 gic2 mcb2 rt xrart xrpm pv xv mil iwm) */
+        SELECT /*+ leading(pha pla rsl rt itp gic1 mcb1 gic2 mcb2) use_nl(pha pla rsl rt itp gic1 mcb1 gic2 mcb2) */
+-- mod end 1.25
           gv_trtry_po                                         territory           --領域(発注)
          ,iimb.item_id                                        item_id             --品目ID
          ,itp.lot_id                                          lot_id              --ロットID
@@ -5610,7 +5665,10 @@ AS
         (
 -------------------------------------------------------------------------------------------------------------------
          --積送あり(出庫実績)
-         SELECT /*+ leading(xmrih xmril xmld mil itp ixm gic1 mcb1 gic2 mcb2) use_nl(xmrih xmril xmld mil itp ixm gic1 mcb1 gic2 mcb2) */
+-- mod start 1.25
+         --SELECT /*+ leading(xmrih xmril xmld mil itp ixm gic1 mcb1 gic2 mcb2) use_nl(xmrih xmril xmld mil itp ixm gic1 mcb1 gic2 mcb2) */
+         SELECT /*+ leading(xmrih xmril xmld ixm itp gic1 mcb1 gic2 mcb2) use_nl(xmrih xmril xmld ixm itp gic1 mcb1 gic2 mcb2) */
+-- mod end 1.25
            xmrih.mov_hdr_id                                mov_hdr_id              --移動ヘッダID
           ,gv_rectype_out                                  record_type             --レコードタイプ
           ,xmrih.comp_actual_flg                           comp_actual_flg         --実績計上済フラグ
@@ -5656,7 +5714,10 @@ AS
          AND xmld.document_type_code = gv_dctype_move                             --文書タイプ
          AND xmld.record_type_code = gv_rectype_out                               --レコードタイプ
          AND xmrih.shipped_locat_id = mil.inventory_location_id                   --保管倉庫ID
-         AND xmril.mov_line_id = ixm.attribute1                                   --文書ソースID
+-- mod start 1.25
+         --AND xmril.mov_line_id = ixm.attribute1                                   --文書ソースID
+         AND TO_CHAR(xmril.mov_line_id) = ixm.attribute1                                   --文書ソースID
+-- mod end 1.25
          AND itp.doc_type = 'XFER'                                                --文書タイプ
          AND xmrih.actual_ship_date                                            --入庫実績日
             BETWEEN TO_DATE(civ_ymd_from,gv_fmt_ymd)
@@ -5683,7 +5744,10 @@ AS
              AND   ROWNUM   = 1
              )
          UNION ALL -- 積送あり(入庫実績)
-         SELECT /*+ leading(xmrih xmril xmld mil itp ixm gic1 mcb1 gic2 mcb2) use_nl(xmrih xmril xmld mil itp ixm gic1 mcb1 gic2 mcb2) */
+-- mod start 1.25
+         --SELECT /*+ leading(xmrih xmril xmld mil itp ixm gic1 mcb1 gic2 mcb2) use_nl(xmrih xmril xmld mil itp ixm gic1 mcb1 gic2 mcb2) */
+         SELECT /*+ leading(xmrih xmril xmld ixm itp gic1 mcb1 gic2 mcb2) use_nl(xmrih xmril xmld ixm itp gic1 mcb1 gic2 mcb2) */
+-- mod end 1.25
            xmrih.mov_hdr_id                                mov_hdr_id              --移動ヘッダID
           ,gv_rectype_in                                   record_type             --レコードタイプ
           ,xmrih.comp_actual_flg                           comp_actual_flg         --実績計上済フラグ
@@ -5732,7 +5796,10 @@ AS
             BETWEEN TO_DATE(civ_ymd_from,gv_fmt_ymd)
             AND TO_DATE(civ_ymd_to,gv_fmt_ymd)
          AND xmrih.ship_to_locat_id = mil.inventory_location_id                          --保管倉庫ID
-         AND xmril.mov_line_id = ixm.attribute1                                   --文書ソースID
+-- mod start 1.25
+         --AND xmril.mov_line_id = ixm.attribute1                                   --文書ソースID
+         AND TO_CHAR(xmril.mov_line_id) = ixm.attribute1                                   --文書ソースID
+-- mod end 1.25
          AND itp.doc_type = 'XFER'                                                --文書タイプ
          AND gic1.item_id = itp.item_id
          AND gic1.category_set_id = cn_item_class_id
@@ -5757,7 +5824,10 @@ AS
              )
          UNION ALL
          --積送あり(ADJI)(出庫実績)
-         SELECT
+-- mod start 1.25
+         --SELECT
+         SELECT /*+ leading(xmrih xmril xmld ijm iaj itc gic1 mcb1 gic2 mcb2) use_nl(xmrih xmril xmld ijm iaj itc gic1 mcb1 gic2 mcb2) */
+-- mod end 1.25
            xmrih.mov_hdr_id                                mov_hdr_id              --移動ヘッダID
           ,gv_rectype_out                                  record_type             --レコードタイプ
           ,xmrih.comp_actual_flg                           comp_actual_flg         --実績計上済フラグ
@@ -5818,7 +5888,10 @@ AS
                BETWEEN TO_DATE(civ_ymd_from,gv_fmt_ymd)
                AND TO_DATE(civ_ymd_to,gv_fmt_ymd)
          AND xmrih.shipped_locat_id = mil3.inventory_location_id                          --保管倉庫ID
-         AND xmril.mov_line_id = ijm.attribute1                                   --文書ソースID
+-- mod start 1.25
+         --AND xmril.mov_line_id = ijm.attribute1                                   --文書ソースID
+         AND TO_CHAR(xmril.mov_line_id) = ijm.attribute1                                   --文書ソースID
+-- mod end 1.25
          AND ijm.journal_id = iaj.journal_id                                      --ジャーナルID
          AND mil3.segment1 = iaj.location                                         --保管倉庫コード
          AND itc.doc_type = 'ADJI'                                                --文書タイプ
@@ -5836,7 +5909,10 @@ AS
          AND xmld.lot_id (+) = itc.lot_id  
          UNION ALL
          --積送あり(ADJI) (入庫実績)
-         SELECT 
+-- mod start 1.25
+         --SELECT 
+         SELECT /*+ leading(xmrih xmril xmld ijm iaj itc gic1 mcb1 gic2 mcb2) use_nl(xmrih xmril xmld ijm iaj itc gic1 mcb1 gic2 mcb2) */
+-- mod end 1.25
            xmrih.mov_hdr_id                                mov_hdr_id              --移動ヘッダID
           ,gv_rectype_in                                   record_type             --レコードタイプ
           ,xmrih.comp_actual_flg                           comp_actual_flg         --実績計上済フラグ
@@ -5896,7 +5972,10 @@ AS
             BETWEEN TO_DATE(civ_ymd_from,gv_fmt_ymd)
             AND TO_DATE(civ_ymd_to,gv_fmt_ymd)
          AND xmrih.ship_to_locat_id = mil3.inventory_location_id                          --保管倉庫ID
-         AND xmril.mov_line_id = ijm.attribute1                                   --文書ソースID
+-- mod start 1.25
+         --AND xmril.mov_line_id = ijm.attribute1                                   --文書ソースID
+         AND TO_CHAR(xmril.mov_line_id) = ijm.attribute1                                   --文書ソースID
+-- mod end 1.25
          AND ijm.journal_id = iaj.journal_id                                      --ジャーナルID
          AND mil3.segment1 = iaj.location                                         --保管倉庫コード
          AND itc.doc_type = 'ADJI'                                                --文書タイプ
@@ -5918,7 +5997,10 @@ AS
 -------------------------------------------------------------------------------------------------------------------
          UNION ALL
          --積送なし (出庫実績)
-         SELECT /*+ leading(xmrih xmril xmld mil itc ija ijm gic1 mcb1 gic2 mcb2) use_nl(xmrih xmril xmld mil itc ija ijm gic1 mcb1 gic2 mcb2) */
+-- mod start 1.25
+         --SELECT /*+ leading(xmrih xmril xmld mil itc ija ijm gic1 mcb1 gic2 mcb2) use_nl(xmrih xmril xmld mil itc ija ijm gic1 mcb1 gic2 mcb2) */
+         SELECT /*+ leading(xmrih xmril xmld ijm iaj itc gic1 mcb1 gic2 mcb2) use_nl(xmrih xmril xmld ijm iaj itc gic1 mcb1 gic2 mcb2) */
+-- mod end 1.25
            xmrih.mov_hdr_id                                mov_hdr_id              --移動ヘッダID
           ,gv_rectype_out                                  record_type             --レコードタイプ
           ,xmrih.comp_actual_flg                           comp_actual_flg         --実績計上済フラグ
@@ -5966,7 +6048,10 @@ AS
          AND xmld.document_type_code = gv_dctype_move                             --文書タイプ
          AND xmld.record_type_code = gv_rectype_out                            --レコードタイプ
          AND xmrih.shipped_locat_id = mil.inventory_location_id                          --保管倉庫ID
-         AND xmril.mov_line_id = ijm.attribute1                                   --文書ソースID
+-- mod start 1.25
+         --AND xmril.mov_line_id = ijm.attribute1                                   --文書ソースID
+         AND TO_CHAR(xmril.mov_line_id) = ijm.attribute1                                   --文書ソースID
+-- mod end 1.25
          AND ijm.journal_id = iaj.journal_id                                      --ジャーナルID
          AND mil.segment1 = iaj.location                                         --保管倉庫コード
          AND itc.doc_type IN ('TRNI','ADJI')                                      --文書タイプ
@@ -5995,7 +6080,10 @@ AS
              )
          UNION ALL
          --積送なし (入庫実績)
-         SELECT /*+ leading(xmrih xmril xmld mil itc ija ijm gic1 mcb1 gic2 mcb2) use_nl(xmrih xmril xmld mil itc ija ijm gic1 mcb1 gic2 mcb2) */
+-- mod start 1.25
+         --SELECT /*+ leading(xmrih xmril xmld mil itc ija ijm gic1 mcb1 gic2 mcb2) use_nl(xmrih xmril xmld mil itc ija ijm gic1 mcb1 gic2 mcb2) */
+         SELECT /*+ leading(xmrih xmril xmld ijm iaj itc gic1 mcb1 gic2 mcb2) use_nl(xmrih xmril xmld ijm iaj itc gic1 mcb1 gic2 mcb2) */
+-- mod end 1.25
            xmrih.mov_hdr_id                                mov_hdr_id              --移動ヘッダID
           ,gv_rectype_in                                   record_type             --レコードタイプ
           ,xmrih.comp_actual_flg                           comp_actual_flg         --実績計上済フラグ
@@ -6043,7 +6131,10 @@ AS
          AND xmld.document_type_code = gv_dctype_move                             --文書タイプ
          AND xmld.record_type_code = gv_rectype_in                            --レコードタイプ
          AND xmrih.ship_to_locat_id = mil.inventory_location_id                          --保管倉庫ID
-         AND xmril.mov_line_id = ijm.attribute1                                   --文書ソースID
+-- mod start 1.25
+         --AND xmril.mov_line_id = ijm.attribute1                                   --文書ソースID
+         AND TO_CHAR(xmril.mov_line_id) = ijm.attribute1                                   --文書ソースID
+-- mod end 1.25
          AND ijm.journal_id = iaj.journal_id                                      --ジャーナルID
          AND mil.segment1 = iaj.location                                         --保管倉庫コード
          AND itc.doc_type IN ('TRNI','ADJI')                                      --文書タイプ
@@ -6154,7 +6245,10 @@ AS
          ,sh_info.rcv_pay_div                                 rcv_pay_div         --受払区分
         ----------------------------------------------------------------------------------------
         FROM ( --OMSO関連情報
-          SELECT
+-- mod start 1.25
+          --SELECT
+          SELECT /*+ leading(xoha ooha otta xola wdd itp gic1 mcb1 gic3 mcb3 iimb2 gic2 mcb2) use_nl(xoha ooha otta xola wdd itp gic1 mcb1 gic3 mcb3 iimb2 gic2 mcb2) */
+-- mod end 1.25
             itp.doc_type                                  doc_type            --文書タイプ
            ,itp.item_id                                   item_id             --品目ID
            ,itp.whse_code                                 whse_code           --倉庫コード
@@ -6205,16 +6299,23 @@ AS
            ,ic_tran_pnd                                   itp                 --OPM保留在庫トランザクション
            ,wsh_delivery_details                          wdd                 --出荷搬送明細
            ,oe_order_headers_all                          ooha                --受注ヘッダ
-          WHERE ooha.header_id = xoha.header_id                                --受注ヘッダID
+-- mod start 1.25
+          --WHERE ooha.header_id = xoha.header_id                                --受注ヘッダID
+          WHERE  wdd.delivery_detail_id  = itp.line_detail_id
+          AND wdd.source_header_id    = xoha.header_id
+          AND wdd.source_line_id      = xola.line_id
+          AND xoha.header_id          = ooha.header_id
+          AND xola.order_header_id    = xoha.order_header_id
           AND itp.doc_type = 'OMSO'
           AND itp.completed_ind = gv_tran_cmp                                 --完了フラグ
-          AND itp.line_id = wdd.source_line_id                                --ソース明細ID
-          AND wdd.org_id = ooha.org_id                                        --組織ID
-          AND wdd.source_header_id = ooha.header_id                           --受注ヘッダID
+          --AND itp.line_id = wdd.source_line_id                                --ソース明細ID
+          --AND wdd.org_id = ooha.org_id                                        --組織ID
+          --AND wdd.source_header_id = ooha.header_id                           --受注ヘッダID
           AND xoha.req_status IN (gv_recsts_shipped,gv_recsts_shipped2)             --ステータス
           AND xoha.actual_confirm_class = gv_confirm_yes                            --実績計上区分
           AND xoha.latest_external_flag = gv_latest_yes                             --最新フラグ
-          AND xoha.order_header_id = xola.order_header_id                         --受注アドオンヘッダID
+          --AND xoha.order_header_id = xola.order_header_id                         --受注アドオンヘッダID
+-- mod end 1.25
           AND ooha.order_type_id = otta.transaction_type_id                    --受注タイプID
           AND xola.shipping_item_code = iimb.item_no                            --品目コード
           AND itp.item_id         = iimb.item_id                            --品目ID
@@ -6223,13 +6324,13 @@ AS
             BETWEEN ximb.start_date_active
             AND ximb.end_date_active
           --  AND NVL(ximb.end_date_active,itp.trans_date)                    --適用開始日・終了日
-          AND iimb.item_id = gic1.item_id                                     --品目ID
-          AND gic1.item_id = iimb.item_id
+          --AND iimb.item_id = gic1.item_id                                     --品目ID
+          AND gic1.item_id = itp.item_id
           AND gic1.category_set_id = cn_item_class_id
           AND gic1.category_id = mcb1.category_id
           AND mcb1.segment1 = civ_item_div
-          AND iimb.item_id = gic3.item_id                                     --品目ID
-          AND gic3.item_id = iimb.item_id
+          --AND iimb.item_id = gic3.item_id                                     --品目ID
+          AND gic3.item_id = itp.item_id
           AND gic3.category_set_id = cn_prod_class_id
           AND gic3.category_id = mcb3.category_id
           AND mcb3.segment1 = civ_prod_div
@@ -6241,7 +6342,7 @@ AS
           AND itp.trans_date
             BETWEEN ximb2.start_date_active
             AND ximb2.end_date_active
-          AND gic2.item_id = iimb2.item_id                                     --品目ID
+          --AND gic2.item_id = iimb2.item_id                                     --品目ID
           AND xoha.result_deliver_to_id = hps.party_site_id(+)
           AND xoha.vendor_site_id = xvsa.vendor_site_id(+)
           AND NVL(xvsa.start_date_active,TO_DATE('1900/01/01',gv_fmt_ymd)) <= TO_DATE(civ_ymd_from,gv_fmt_ymd)
@@ -6313,7 +6414,10 @@ AS
            ,otta.order_category_code
           UNION ALL
            -- PORC関連
-          SELECT
+-- mod start 1.25
+          --SELECT
+          SELECT /*+ leading(xoha ooha otta xola rsl itp gic1 mcb1 gic3 mcb3 iimb2 gic2 mcb2) use_nl(xoha ooha otta xola rsl itp gic1 mcb1 gic3 mcb3 iimb2 gic2 mcb2) */
+-- mod end 1.25
             itp.doc_type                                  doc_type            --文書タイプ
            ,itp.item_id                                   item_id             --品目ID
            ,itp.whse_code                                 whse_code           --倉庫コード
@@ -6366,17 +6470,25 @@ AS
            ,ic_tran_pnd                                       itp                 --OPM保留在庫トランザクション
            ,rcv_shipment_lines                                rsl             --受入明細
            ,oe_order_headers_all                              ooha                --受注ヘッダ
-          WHERE ooha.header_id = xoha.header_id                                --受注ヘッダID
+-- mod start 1.25
+          --WHERE ooha.header_id = xoha.header_id                                --受注ヘッダID
+          WHERE rsl.shipment_header_id  = itp.doc_id
+          AND rsl.line_num            = itp.doc_line
+          AND rsl.oe_order_header_id  = xola.header_id
+          AND rsl.oe_order_line_id    = xola.line_id
+          AND xoha.header_id          = ooha.header_id
+          AND xola.order_header_id    = xoha.order_header_id
           AND itp.doc_type = 'PORC'
           AND rsl.source_document_code = 'RMA'                                --ソース文書
           AND itp.completed_ind = gv_tran_cmp                                         --完了フラグ
-          AND itp.doc_id = rsl.shipment_header_id                             --受入ヘッダID
-          AND itp.doc_line = rsl.line_num                                     --明細番号
-          AND rsl.oe_order_header_id = ooha.header_id                         --受注ヘッダID
+          --AND itp.doc_id = rsl.shipment_header_id                             --受入ヘッダID
+          --AND itp.doc_line = rsl.line_num                                     --明細番号
+          --AND rsl.oe_order_header_id = ooha.header_id                         --受注ヘッダID
           AND xoha.req_status IN (gv_recsts_shipped,gv_recsts_shipped2)             --ステータス
           AND xoha.actual_confirm_class = gv_confirm_yes                            --実績計上区分
           AND xoha.latest_external_flag = gv_latest_yes                             --最新フラグ
-          AND xoha.order_header_id = xola.order_header_id                         --受注アドオンヘッダID
+          --AND xoha.order_header_id = xola.order_header_id                         --受注アドオンヘッダID
+-- mod end 1.25
           AND ooha.order_type_id = otta.transaction_type_id                    --受注タイプID
           AND xola.shipping_item_code = iimb.item_no                            --品目コード
           AND itp.item_id         = iimb.item_id                            --品目ID
@@ -6384,13 +6496,13 @@ AS
           AND itp.trans_date
             BETWEEN ximb.start_date_active
             AND ximb.end_date_active
-          AND iimb.item_id = gic1.item_id                                     --品目ID
-          AND gic1.item_id = iimb.item_id
+          --AND iimb.item_id = gic1.item_id                                     --品目ID
+          AND gic1.item_id = itp.item_id
           AND gic1.category_set_id = cn_item_class_id
           AND gic1.category_id = mcb1.category_id
           AND mcb1.segment1 = civ_item_div
-          AND iimb.item_id = gic3.item_id                                     --品目ID
-          AND gic3.item_id = iimb.item_id
+          --AND iimb.item_id = gic3.item_id                                     --品目ID
+          AND gic3.item_id = itp.item_id
           AND gic3.category_set_id = cn_prod_class_id
           AND gic3.category_id = mcb3.category_id
           AND mcb3.segment1 = civ_prod_div
@@ -6402,7 +6514,7 @@ AS
           AND itp.trans_date
             BETWEEN ximb2.start_date_active
             AND ximb2.end_date_active
-          AND gic2.item_id = iimb2.item_id                                     --品目ID
+          --AND gic2.item_id = iimb2.item_id                                     --品目ID
           AND xoha.result_deliver_to_id = hps.party_site_id(+)
           AND xoha.vendor_site_id = xvsa.vendor_site_id(+)
           AND NVL(xvsa.start_date_active,TO_DATE('1900/01/01',gv_fmt_ymd)) <= TO_DATE(civ_ymd_from,gv_fmt_ymd)
@@ -6510,7 +6622,10 @@ AS
          ,rt_info.rcv_pay_div                                 rcv_pay_div         --受払区分
         ----------------------------------------------------------------------------------------
         FROM (
-          SELECT /*+ leading(xrpm otta rsl ooha xoha itp gic1 mcb1 gic2 mcb2 mil iwm) use_nl(xrpm otta rsl ooha xoha itp gic1 mcb1 gic2 mcb2 mil iwm) */
+-- mod start 1.25
+          --SELECT /*+ leading(xrpm otta rsl ooha xoha itp gic1 mcb1 gic2 mcb2 mil iwm) use_nl(xrpm otta rsl ooha xoha itp gic1 mcb1 gic2 mcb2 mil iwm) */
+          SELECT /*+ leading(xoha ooha otta rsl itp gic1 mcb1 gic2 mcb2) use_nl(xoha ooha otta rsl itp gic1 mcb1 gic2 mcb2) */
+-- mod end 1.25
             xoha.header_id                                    header_id           --受注ヘッダID
            ,itp.whse_code                                     whse_code           --倉庫コード
            ,iwm.whse_name                                     whse_name           --倉庫名
