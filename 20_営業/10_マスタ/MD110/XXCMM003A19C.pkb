@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCMM003A19C(body)
  * Description      : HHT連携IFデータ作成
  * MD.050           : MD050_CMM_003_A19_HHT系連携IFデータ作成
- * Version          : 1.3
+ * Version          : 1.4
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -26,6 +26,7 @@ AS
  *  2009/03/09    1.1   Takuya Kaihara   プロファイル値共通化
  *  2009/04/13    1.2   Yutaka.Kuboshima 障害T1_0499,T1_0509の対応
  *  2009/04/28    1.3   Yutaka.Kuboshima 障害T1_0831の対応
+ *  2009/06/09    1.4   Yutaka.Kuboshima 障害T1_1364の対応
  *
  *****************************************************************************************/
 --
@@ -426,6 +427,10 @@ AS
     cv_ver_line           CONSTANT VARCHAR2(1)      := '|';                       --縦棒
     cv_null_sts           CONSTANT VARCHAR2(1)      := NULL;                      --NULLデータ
 --
+-- 2009/06/09 Ver1.6 add start by Yutaka.Kuboshima
+    cv_single_byte_err1   CONSTANT VARCHAR2(30)    := 'ﾊﾝｶｸｴﾗｰ';                --半角エラー時のダミー値1
+    cv_single_byte_err2   CONSTANT VARCHAR2(30)    := '99-9999-9999';           --半角エラー時のダミー値2
+-- 2009/06/09 Ver1.6 add end by Yutaka.Kuboshima
     -- *** ローカル変数 ***
     lv_output_str                  VARCHAR2(4095)   := NULL;                      --出力文字列格納用変数
     ln_output_cnt                  NUMBER           := 0;                         --出力件数
@@ -433,6 +438,12 @@ AS
     lv_note_work                   VARCHAR2(5000)   := NULL;                      --ノート作業用変数
     lv_note_str                    VARCHAR2(5000)   := NULL;                      --ノート
 --
+-- 2009/06/09 Ver1.4 add start by Yutaka.Kuboshima
+    lv_customer_name               VARCHAR2(1500);                              --顧客名称
+    lv_customer_name_kana          VARCHAR2(1500);                              --顧客名カナ
+    lv_address1                    VARCHAR2(1500);                              --住所１
+    lv_address_lines_phonetic      VARCHAR2(1500);                              --電話番号
+-- 2009/06/09 Ver1.4 add end by Yutaka.Kuboshima
 --
     -- ===============================
     -- ローカル・カーソル
@@ -772,10 +783,31 @@ AS
 -- 2009/04/13 Ver1.2 add end by Yutaka.Kuboshima
       -- ===============================
       -- 出力値設定
-      -- ===============================--
+      -- ===============================
+-- 2009/06/09 Ver1.4 add start by Yutaka.Kuboshima
+      -- 顧客名称設定
+      lv_customer_name            := xxcso_util_common_pkg.conv_multi_byte(cust_data_rec.party_name);
+      -- 顧客名カナ設定
+      lv_customer_name_kana       := xxccp_common_pkg.chg_double_to_single_byte(cust_data_rec.org_name_phonetic);
+      -- 半角変換不可文字が存在する場合
+      IF (LENGTH(lv_customer_name_kana) <> LENGTHB(lv_customer_name_kana)) THEN
+        lv_customer_name_kana := cv_single_byte_err1;
+      END IF;
+      -- 住所１設定
+      lv_address1                 := xxcso_util_common_pkg.conv_multi_byte(cust_data_rec.address1);
+      -- 電話番号設定
+      lv_address_lines_phonetic   := xxccp_common_pkg.chg_double_to_single_byte(cust_data_rec.address_lines_phonetic);
+      -- 半角変換不可文字が存在する場合
+      IF (LENGTH(lv_address_lines_phonetic) <> LENGTHB(lv_address_lines_phonetic)) THEN
+        lv_address_lines_phonetic := cv_single_byte_err2;
+      END IF;
+-- 2009/06/09 Ver1.4 add end by Yutaka.Kuboshima
       --出力文字列作成
       lv_output_str := lv_output_str || cv_dqu   || NVL(SUBSTRB(cust_data_rec.account_number, 1, 9), cv_date_null)                    || cv_dqu;  --顧客コード
-      lv_output_str := lv_output_str || cv_comma || cv_dqu || NVL(SUBSTRB(cust_data_rec.party_name, 1, 50), cv_date_null)             || cv_dqu;  --顧客名称
+-- 2009/06/09 Ver1.4 modify start by Yutaka.Kuboshima
+--      lv_output_str := lv_output_str || cv_comma || cv_dqu || NVL(SUBSTRB(cust_data_rec.party_name, 1, 50), cv_date_null)             || cv_dqu;  --顧客名称
+      lv_output_str := lv_output_str || cv_comma || cv_dqu || NVL(SUBSTRB(lv_customer_name, 1, 50), cv_date_null)                     || cv_dqu;  --顧客名称
+-- 2009/06/09 Ver1.4 modify start by Yutaka.Kuboshima
       lv_output_str := lv_output_str || cv_comma || cv_dqu || NVL(SUBSTRB(cust_data_rec.tax_div, 1, 1), cv_date_null)                 || cv_dqu;  --消費税区分
       lv_output_str := lv_output_str || cv_comma || cv_dqu || NVL(SUBSTRB(cust_data_rec.vd_contract_form, 1, 1), cv_date_null)        || cv_dqu;  --ベンダ契約形態
       lv_output_str := lv_output_str || cv_comma || cv_dqu || NVL(SUBSTRB(cust_data_rec.mode_div, 1, 1), cv_date_null)                || cv_dqu;  --態様区分
@@ -786,9 +818,14 @@ AS
       lv_output_str := lv_output_str || cv_comma || cv_dqu || NVL(SUBSTRB(cust_data_rec.vd_cust_class_cd, 1, 1), cv_date_null)        || cv_dqu;  --ＶＤ顧客区分
       lv_output_str := lv_output_str || cv_comma || cv_dqu || NVL(SUBSTRB(cust_data_rec.duns_number_c, 1, 2), cv_date_null)           || cv_dqu;  --顧客ステータスコード
       lv_output_str := lv_output_str || cv_comma || SUBSTRB(NVL(TO_CHAR(cust_data_rec.change_amount), cv_null_code), 1, 5);                       --つり銭
-      lv_output_str := lv_output_str || cv_comma || cv_dqu || NVL(SUBSTRB(cust_data_rec.org_name_phonetic, 1, 30), cv_date_null)      || cv_dqu;  --顧客名カナ
-      lv_output_str := lv_output_str || cv_comma || cv_dqu || NVL(SUBSTRB(cust_data_rec.address1, 1, 60), cv_date_null)               || cv_dqu;  --住所１
-      lv_output_str := lv_output_str || cv_comma || cv_dqu || NVL(SUBSTRB(cust_data_rec.address_lines_phonetic, 1, 15), cv_date_null) || cv_dqu;  --電話番号
+-- 2009/06/09 Ver1.4 modify start by Yutaka.Kuboshima
+--      lv_output_str := lv_output_str || cv_comma || cv_dqu || NVL(SUBSTRB(cust_data_rec.org_name_phonetic, 1, 30), cv_date_null)      || cv_dqu;  --顧客名カナ
+--      lv_output_str := lv_output_str || cv_comma || cv_dqu || NVL(SUBSTRB(cust_data_rec.address1, 1, 60), cv_date_null)               || cv_dqu;  --住所１
+--      lv_output_str := lv_output_str || cv_comma || cv_dqu || NVL(SUBSTRB(cust_data_rec.address_lines_phonetic, 1, 15), cv_date_null) || cv_dqu;  --電話番号
+      lv_output_str := lv_output_str || cv_comma || cv_dqu || NVL(SUBSTRB(lv_customer_name_kana, 1, 30), cv_date_null)                || cv_dqu;  --顧客名カナ
+      lv_output_str := lv_output_str || cv_comma || cv_dqu || NVL(SUBSTRB(lv_address1, 1, 60), cv_date_null)                          || cv_dqu;  --住所１
+      lv_output_str := lv_output_str || cv_comma || cv_dqu || NVL(SUBSTRB(lv_address_lines_phonetic, 1, 15), cv_date_null)            || cv_dqu;  --電話番号
+-- 2009/06/09 Ver1.4 modify start by Yutaka.Kuboshima
       lv_output_str := lv_output_str || cv_comma || cv_dqu || NVL(SUBSTRB(lv_note_str, 1, 2000), cv_date_null)                        || cv_dqu;  --ノート
       lv_output_str := lv_output_str || cv_comma || cv_dqu || NVL(SUBSTRB(cust_data_rec.sale_base_code, 1, 4), cv_date_null)          || cv_dqu;  --売上拠点コード
       lv_output_str := lv_output_str || cv_comma || cv_dqu || NVL(SUBSTRB(cust_data_rec.past_sale_base_code, 1, 4), cv_date_null)     || cv_dqu;  --前月売上拠点コード
@@ -826,6 +863,12 @@ AS
       --変数初期化
       lv_output_str := NULL;
       lv_note_str   := NULL;
+-- 2009/06/09 Ver1.4 add start by Yutaka.Kuboshima
+      lv_customer_name          := NULL;
+      lv_customer_name_kana     := NULL;
+      lv_address1               := NULL;
+      lv_address_lines_phonetic := NULL;
+-- 2009/06/09 Ver1.4 add end by Yutaka.Kuboshima
 --
     END LOOP cust_for_loop;
 --
