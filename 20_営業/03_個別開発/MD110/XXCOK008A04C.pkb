@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCOK008A04C(body)
  * Description      : 売上振替割合の登録
  * MD.050           : 売上振替割合の登録 MD050_COK_008_A04
- * Version          : 1.4
+ * Version          : 1.5
  *
  * Program List
  * -------------------------------- ---------------------------------------------------------
@@ -38,6 +38,7 @@ AS
  * 2009/02/09     1.2   S.Sasaki         [障害COK_021]売上振替割の値が「0」の場合の対応(「登録」の場合)
  * 2009/02/10     1.3   S.Sasaki         [障害COK_026]必須チェック処理追加
  * 2009/07/13     1.4   M.Hiruta         [障害0000514]処理対象に顧客ステータス「30:承認済」「50:休止」のデータを追加
+ * 2009/09/09     1.5   S.Moriyama       [障害0001303]拠点セキュリティ機能追加　振替元拠点と所属拠点が異なる場合は警告とする
  *
  *****************************************************************************************/
   -- =========================
@@ -81,6 +82,9 @@ AS
   cv_message_00028          CONSTANT VARCHAR2(500) := 'APP-XXCOK1-00028'; --業務日付取得エラー
   cv_message_10450          CONSTANT VARCHAR2(500) := 'APP-XXCOK1-10450'; --売上振替割合数値ＮＧ警告(登録)メッセージ
   cv_message_10451          CONSTANT VARCHAR2(500) := 'APP-XXCOK1-10451'; --必須項目未設定エラーメッセージ
+-- 2009/09/09 Ver.1.5 [障害0001303] SCS S.Moriyama ADD START
+  cv_message_10458          CONSTANT VARCHAR2(500) := 'APP-XXCOK1-10458'; --所属拠点外アップロードエラーメッセージ
+-- 2009/09/09 Ver.1.5 [障害0001303] SCS S.Moriyama ADD END
   cv_message_90000          CONSTANT VARCHAR2(500) := 'APP-XXCCP1-90000'; --対象件数メッセージ
   cv_message_90001          CONSTANT VARCHAR2(500) := 'APP-XXCCP1-90001'; --成功件数メッセージ
   cv_message_90002          CONSTANT VARCHAR2(500) := 'APP-XXCCP1-90002'; --エラー件数メッセージ
@@ -1099,6 +1103,15 @@ AS
                                     AND    xtsr.selling_from_cust_code = xsri.selling_from_cust_code
                                     AND    xtsr.selling_to_cust_code   = xsri.selling_to_cust_code
                                    )
+-- 2009/09/09 Ver.1.5 [障害0001303] SCS S.Moriyama ADD START
+                AND     EXISTS (
+                                    SELECT 'X'
+                                    FROM   xxcok_tmp_selling_rate xtsr
+                                    WHERE  xtsr.file_id    = in_file_id
+                                    AND    xtsr.error_flag = cv_0
+                                    AND    xtsr.selling_from_base_code = xsri.selling_from_base_code
+                                   )
+-- 2009/09/09 Ver.1.5 [障害0001303] SCS S.Moriyama ADD END
                ) inline_view_a
       GROUP BY  selling_from_base_code
               , selling_from_cust_code;
@@ -1323,6 +1336,10 @@ AS
     ln_selling  NUMBER         DEFAULT 0;      --売上振替割合書式チェック変数
     ln_rownum   NUMBER         DEFAULT 0;      --ROWNUM
     lb_retcode  BOOLEAN        DEFAULT TRUE;   --メッセージ出力の戻り値
+-- 2009/09/09 Ver.1.5 [障害0001303] SCS S.Moriyama ADD START
+    ln_base_cnt NUMBER;
+-- 2009/09/09 Ver.1.5 [障害0001303] SCS S.Moriyama ADD END
+
     -- =======================
     -- ローカル例外
     -- =======================
@@ -1710,6 +1727,45 @@ AS
                     );
       RAISE data_warn_expt;
     END IF;
+-- 2009/09/09 Ver.1.5 [障害0001303] SCS S.Moriyama ADD START
+    -- =============================================================================
+    -- 11.売上振替元拠点コードと実行ユーザーの所属拠点チェック
+    -- =============================================================================
+    BEGIN
+      SELECT COUNT(base_code)
+        INTO ln_base_cnt
+        FROM xxcok_lov_base_code_v xlbc
+       WHERE xlbc.base_code = iv_selling_from_base_code
+         AND ROWNUM = 1
+      ;
+    EXCEPTION
+      WHEN OTHERS THEN
+        ln_base_cnt := cn_0;
+    END;
+--
+    IF ( ln_base_cnt = cn_0 ) THEN
+      lv_msg := xxccp_common_pkg.get_msg(
+                  iv_application  => cv_xxcok_appl_name
+                , iv_name         => cv_message_10458
+                , iv_token_name1  => cv_token_kubun
+                , iv_token_value1 => iv_valid_invalid_type
+                , iv_token_name2  => cv_token_from_base
+                , iv_token_value2 => iv_selling_from_base_code
+                , iv_token_name3  => cv_token_from_cust
+                , iv_token_value3 => iv_selling_from_cust_code
+                , iv_token_name4  => cv_token_to_cust
+                , iv_token_value4 => iv_selling_to_cust_code
+                , iv_token_name5  => cv_token_rate
+                , iv_token_value5 => TO_CHAR( in_selling_trns_rate )
+                );
+      lb_retcode := xxcok_common_pkg.put_message_f(
+                      in_which    => FND_FILE.OUTPUT     --出力区分
+                    , iv_message  => lv_msg              --メッセージ
+                    , in_new_line => 0                   --改行
+                    );
+      RAISE data_warn_expt;
+    END IF;
+-- 2009/09/09 Ver.1.5 [障害0001303] SCS S.Moriyama ADD END
   EXCEPTION
     -- *** データチェックで警告の場合 ***
     WHEN data_warn_expt THEN
