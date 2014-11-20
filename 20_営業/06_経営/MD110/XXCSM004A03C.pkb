@@ -7,7 +7,7 @@ AS
  * Description      : 従業員マスタと資格ポイントマスタから各営業員の資格ポイントを算出し、
  *                  : 新規獲得ポイント顧客別履歴テーブルに登録します。
  * MD.050           : MD050_CSM_004_A03_新規獲得ポイント集計（資格ポイント集計処理）
- * Version          : 1.7
+ * Version          : 1.8
  *
  * Program List
  * -------------------- ------------------------------------------------------------
@@ -35,6 +35,7 @@ AS
  *  2009/07/27    1.5   T.Tsukino       ［SCS障害管理番号0000786］パフォーマンス障害
  *  2009/08/24    1.6   T.Tsukino       ［SCS障害管理番号0001150］障害№0001150対応(発令日の判定方法の不備）
  *  2009/09/03    1.7   K.Kubo          ［SCS障害管理番号0001286］発令日の判定方法の不備(営業員以外から営業員への異動)
+ *  2009/10/22    1.8   T.Tsukino       ［障害管理番号E-T4-00065］抽出対象営業員の資格コード判定の追加対応
  *****************************************************************************************/
 --
 --#######################  固定グローバル定数宣言部 START   #######################
@@ -910,6 +911,9 @@ AS
 --//+ADD START 2009/08/24 0001150 T.Tsukino
     cv_tougetsu_date           CONSTANT VARCHAR2(2) := '01';                          -- 当月比較用一日日付
 --//ADD END 2009/08/24 0001150 T.Tsukino   
+--//+ADD START 2009/10/22 E-T4-00065 T.Tsukino
+    cv_point_countcd           CONSTANT VARCHAR2(20) := 'XXCSM1_POINT_COUNTCD';       --参照タイプ：資格カウント対象コード
+--//+ADD END 2009/10/22 E-T4-00065 T.Tsukino
 --
     -- *** ローカル変数 ***
     lv_kyoten_cd               PER_ALL_ASSIGNMENTS_F.ASS_ATTRIBUTE5%TYPE;              --  拠点コード
@@ -987,6 +991,17 @@ AS
                               OR ppf.attribute19 IS NULL)                 --職種コード（新）がNULL
 --//+UPD END   2009/04/15 T1_0568 M.Ohtsuki
                       AND    SUBSTRB(paaf.ass_attribute2,1,6) >= TO_CHAR(gd_process_date,'YYYYMM')) --前月以前に営業員でなくなった従業員を除外
+--//+ADD START 2009/10/22 E-T4-00065 T.Tsukino
+      AND     EXISTS (SELECT 'X'
+                      FROM   fnd_lookup_values  flv                      --クイックコード値
+                      WHERE  flv.lookup_type = cv_point_countcd          --参照タイプ：資格カウント対象コード
+                      AND    flv.language    = 'JA'                      --言語
+                      AND    NVL(flv.start_date_active,gd_process_date) <= gd_process_date    --有効開始日<=業務日付
+                      AND    NVL(flv.end_date_active,gd_process_date) >= gd_process_date      --有効終了日>=業務日付
+                      AND    flv.enabled_flag = 'Y'
+                      AND    (flv.lookup_code =  ppf.attribute7          --資格コード（新）が資格カウント対象コード
+                              OR flv.lookup_code = ppf.attribute9))        --資格コード（旧）が資格カウント対象コード
+--//+ADD END 2009/10/22 E-T4-00065 T.Tsukino
       UNION ALL
       --従業員の職種が新部署のみで営業員のケース
 --//+DEL  START  2009/07/27 0000786 T.Tsukino
@@ -1047,6 +1062,17 @@ AS
 --//+UPD END   2009/04/15 T1_0568 M.Ohtsuki
                       AND    flv.lookup_code =  ppf.attribute19          --職種コード（新）が営業員
                       AND    SUBSTRB(paaf.ass_attribute2,1,6) <= TO_CHAR(gd_process_date,'YYYYMM')) --翌月以降に営業員でとなる従業員を除外
+--//+ADD START 2009/10/22 E-T4-00065 T.Tsukino
+      AND     EXISTS (SELECT 'X'
+                      FROM   fnd_lookup_values  flv                      --クイックコード値
+                      WHERE  flv.lookup_type = cv_point_countcd          --参照タイプ：資格カウント対象コード
+                      AND    flv.language    = 'JA'                      --言語
+                      AND    NVL(flv.start_date_active,gd_process_date) <= gd_process_date    --有効開始日<=業務日付
+                      AND    NVL(flv.end_date_active,gd_process_date) >= gd_process_date      --有効終了日>=業務日付
+                      AND    flv.enabled_flag = 'Y'
+                      AND    (flv.lookup_code =  ppf.attribute7          --資格コード（新）が資格カウント対象コード
+                              OR flv.lookup_code = ppf.attribute9))        --資格コード（旧）が資格カウント対象コード
+--//+ADD END 2009/10/22 E-T4-00065 T.Tsukino
       UNION ALL
       --従業員の職種が新・旧部署ともに営業員のケース
       SELECT
@@ -1096,6 +1122,17 @@ AS
                       AND    flv.enabled_flag = 'Y'
                       AND    flv.lookup_code =  ppf.attribute21          --職種コード（旧）が営業員
                       AND    flv.lookup_code =  ppf.attribute19)         --職種コード（新）が営業員
+--//+ADD START 2009/10/22 E-T4-00065 T.Tsukino
+      AND     EXISTS (SELECT 'X'
+                      FROM   fnd_lookup_values  flv                      --クイックコード値
+                      WHERE  flv.lookup_type = cv_point_countcd          --参照タイプ：資格カウント対象コード
+                      AND    flv.language    = 'JA'                      --言語
+                      AND    NVL(flv.start_date_active,gd_process_date) <= gd_process_date    --有効開始日<=業務日付
+                      AND    NVL(flv.end_date_active,gd_process_date) >= gd_process_date      --有効終了日>=業務日付
+                      AND    flv.enabled_flag = 'Y'
+                      AND    (flv.lookup_code =  ppf.attribute7          --資格コード（新）が資格カウント対象コード
+                              OR flv.lookup_code = ppf.attribute9))        --資格コード（旧）が資格カウント対象コード
+--//+ADD END 2009/10/22 E-T4-00065 T.Tsukino
     ;
     -- *** ローカル・レコード ***
     get_eigyo_date_rec    get_eigyo_date_cur%ROWTYPE;
