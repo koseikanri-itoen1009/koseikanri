@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCOI010A02C(body)
  * Description      : 気づき情報IF出力
  * MD.050           : 気づき情報IF出力 MD050_COI_010_A02
- * Version          : 1.3
+ * Version          : 1.4
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -31,6 +31,7 @@ AS
  *                                       [障害T1_0084]IF項目の形式を修正
  *  2009/04/21    1.2   T.Nakamura       [障害T1_0580]メイン倉庫重複チェックを追加
  *  2010/02/16    1.3   N.Abe            [E_本稼動_01593]保管場所の無効日を参照
+ *  2011/10/19    1.4   Y.Horikawa       [E_本稼動_08440]補充率から在庫日数に出力内容を変更
  *
  *****************************************************************************************/
 --
@@ -92,7 +93,9 @@ AS
   cv_no_data_msg              CONSTANT VARCHAR2(100) := 'APP-XXCOI1-00008'; -- 対象データなしメッセージ
   cv_proc_date_get_err_msg    CONSTANT VARCHAR2(100) := 'APP-XXCOI1-00011'; -- 業務日付取得エラーメッセージ
   cv_sold_out_mc_get_err_msg  CONSTANT VARCHAR2(100) := 'APP-XXCOI1-10322'; -- 売切れ対策メッセージ色取得エラー
-  cv_supl_rate_mc_get_err_msg CONSTANT VARCHAR2(100) := 'APP-XXCOI1-10323'; -- 補充率対策メッセージ色取得エラー
+-- == 2011/10/19 V1.4 Del START ===============================================================
+--  cv_supl_rate_mc_get_err_msg CONSTANT VARCHAR2(100) := 'APP-XXCOI1-10323'; -- 補充率対策メッセージ色取得エラー
+-- == 2011/10/19 V1.4 Del END   ===============================================================
   cv_hot_inv_mc_get_err_msg   CONSTANT VARCHAR2(100) := 'APP-XXCOI1-10324'; -- ホット在庫対策メッセージ色取得エラー
   cv_dire_name_get_err_msg    CONSTANT VARCHAR2(100) := 'APP-XXCOI1-00003'; -- ディレクトリ名取得エラーメッセージ
   cv_dire_path_get_err_msg    CONSTANT VARCHAR2(100) := 'APP-XXCOI1-00029'; -- ディレクトリフルパス取得エラーメッセージ
@@ -100,12 +103,19 @@ AS
   cv_file_remain_err_msg      CONSTANT VARCHAR2(100) := 'APP-XXCOI1-00027'; -- ファイル存在チェックエラーメッセージ
   cv_main_store_d_err_msg     CONSTANT VARCHAR2(100) := 'APP-XXCOI1-10009'; -- メイン倉庫区分チェックエラーメッセージ
   cv_sold_out_msg             CONSTANT VARCHAR2(100) := 'APP-XXCOI1-10331'; -- 売切れ対策メッセージ
-  cv_supl_rate_msg            CONSTANT VARCHAR2(100) := 'APP-XXCOI1-10332'; -- 補充率対策メッセージ
+-- == 2011/10/19 V1.4 Del START ===============================================================
+--  cv_supl_rate_msg            CONSTANT VARCHAR2(100) := 'APP-XXCOI1-10332'; -- 補充率対策メッセージ
+-- == 2011/10/19 V1.4 Del END   ===============================================================
   cv_hot_inv_msg              CONSTANT VARCHAR2(100) := 'APP-XXCOI1-10333'; -- ホット在庫対策メッセージ
   cv_column_exist_msg         CONSTANT VARCHAR2(100) := 'APP-XXCOI1-10334'; -- メッセージ.コラムあります
 -- == 2009/04/21 V1.2 Added START ===============================================================
   cv_main_repeat_err_msg      CONSTANT VARCHAR2(100) := 'APP-XXCOI1-10379'; -- メイン倉庫区分重複エラーメッセージ
 -- == 2009/04/21 V1.2 Added END   ===============================================================
+-- == 2011/10/19 V1.4 Add START ===============================================================
+  cv_inv_days_mc_get_err_msg  CONSTANT VARCHAR2(100) := 'APP-XXCOI1-10446'; -- 在庫日数対策メッセージ色取得エラー
+  cv_inv_days_get_err_msg     CONSTANT VARCHAR2(100) := 'APP-XXCOI1-10447'; -- 在庫日数取得エラー
+  cv_inv_days_msg             CONSTANT VARCHAR2(100) := 'APP-XXCOI1-10448'; -- 在庫日数対策メッセージ
+-- == 2011/10/19 V1.4 Add END   ===============================================================
 --
   -- トークン
   cv_tkn_pro_tok              CONSTANT VARCHAR2(20)  := 'PRO_TOK';          -- プロファイル名
@@ -115,6 +125,9 @@ AS
   cv_tkn_time                 CONSTANT VARCHAR2(20)  := 'TIME';             -- 時間
   cv_tkn_rate                 CONSTANT VARCHAR2(20)  := 'RATE';             -- 率
   cv_tkn_day                  CONSTANT VARCHAR2(20)  := 'DAY';              -- 日数
+-- == 2011/10/19 V1.4 Add START ===============================================================
+  cv_tkn_month                CONSTANT VARCHAR2(20)  := 'MONTH';            -- 月数
+-- == 2011/10/19 V1.4 Add END   ===============================================================
 --
   cv_subinv_type_store        CONSTANT VARCHAR2(1)   := '1';                -- 保管場所区分：倉庫
   cv_main_store_div_y         CONSTANT VARCHAR2(1)   := 'Y';                -- メイン倉庫区分：'Y'
@@ -127,10 +140,16 @@ AS
   -- ===============================
   gd_process_date        DATE;                -- 業務日付
   gv_sold_out_msg_color  VARCHAR2(100);       -- 売切れ対策メッセージ色
-  gv_supl_rate_msg_color VARCHAR2(100);       -- 補充率対策メッセージ色
+-- == 2011/10/19 V1.4 Del START ===============================================================
+--  gv_supl_rate_msg_color VARCHAR2(100);       -- 補充率対策メッセージ色
+-- == 2011/10/19 V1.4 Del END   ===============================================================
   gv_hot_inv_msg_color   VARCHAR2(100);       -- ホット在庫対策メッセージ色
   gv_dire_name           VARCHAR2(50);        -- ディレクトリ名
   gv_file_name           VARCHAR2(50);        -- ファイル名
+-- == 2011/10/19 V1.4 Add START ===============================================================
+  gv_inv_days_msg_color  VARCHAR2(100);       -- 在庫日数対策メッセージ色
+  gn_inventory_days      NUMBER;              -- 在庫日数
+-- == 2011/10/19 V1.4 Add END   ===============================================================
 --
   -- ===============================
   -- ユーザー定義グローバルカーソル
@@ -140,7 +159,9 @@ AS
   IS
     SELECT   msi.attribute7             AS sale_base_code                   -- 売上拠点コード
            , msi.attribute8             AS sold_out_time                    -- 売切れ時間
-           , msi.attribute9             AS supl_rate                        -- 補充率
+-- == 2011/10/19 V1.4 Del START ===============================================================
+--           , msi.attribute9             AS supl_rate                        -- 補充率
+-- == 2011/10/19 V1.4 Del END   ===============================================================
            , msi.attribute10            AS hot_inv                          -- ホット在庫
     FROM     mtl_secondary_inventories  msi                                 -- 保管場所マスタ
            , hz_cust_accounts           hca                                 -- 顧客マスタ
@@ -200,10 +221,18 @@ AS
     cv_prf_file_awareness      CONSTANT VARCHAR2(30) := 'XXCOI1_FILE_AWARENESS';
     -- プロファイル XXCOI:売切れ対策メッセージ色
     cv_prf_sold_out_msg_color  CONSTANT VARCHAR2(30) := 'XXCOI1_SOLD_OUT_MSG_COLOR';
-    -- プロファイル XXCOI:補充率対策メッセージ色
-    cv_prf_supl_rate_msg_color CONSTANT VARCHAR2(30) := 'XXCOI1_SUPL_RATE_MSG_COLOR';
+-- == 2011/10/19 V1.4 Del START ===============================================================
+--    -- プロファイル XXCOI:補充率対策メッセージ色
+--    cv_prf_supl_rate_msg_color CONSTANT VARCHAR2(30) := 'XXCOI1_SUPL_RATE_MSG_COLOR';
+-- == 2011/10/19 V1.4 Del END   ===============================================================
     -- プロファイル XXCOI:ホット在庫対策メッセージ色
     cv_prf_hot_inv_msg_color   CONSTANT VARCHAR2(30) := 'XXCOI1_HOT_INV_MSG_COLOR';
+-- == 2011/10/19 V1.4 Add START ===============================================================
+    -- プロファイル XXCOI:在庫日数
+    cv_prf_inv_days            CONSTANT VARCHAR2(30) := 'XXCOI1_INVENTORY_DAYS';
+    -- プロファイル XXCOI:在庫日数対策メッセージ色
+    cv_prf_inv_days_msg_color  CONSTANT VARCHAR2(30) := 'XXCOI1_INV_DAYS_MSG_COLOR';
+-- == 2011/10/19 V1.4 Add END   ===============================================================
 --
     cv_slash                   CONSTANT VARCHAR2(1)  := '/';  -- スラッシュ
 --
@@ -279,21 +308,55 @@ AS
       RAISE global_api_expt;
     END IF;
 --
+-- == 2011/10/19 V1.4 Add START ===============================================================
     -- ==============================================================
-    -- プロファイル：補充率対策メッセージ色取得
+    -- プロファイル：在庫日数取得
     -- ==============================================================
-    gv_supl_rate_msg_color := fnd_profile.value( cv_prf_supl_rate_msg_color );
-    -- 補充率対策メッセージ色が取得できない場合
-    IF ( gv_supl_rate_msg_color IS NULL ) THEN
+    gn_inventory_days := TO_NUMBER(fnd_profile.value( cv_prf_inv_days ));
+    -- 在庫日数が取得できない場合
+    IF ( gn_inventory_days IS NULL ) THEN
       lv_errmsg := xxccp_common_pkg.get_msg(
                        iv_application  => cv_appl_short_name_xxcoi
-                     , iv_name         => cv_supl_rate_mc_get_err_msg
+                     , iv_name         => cv_inv_days_get_err_msg
                      , iv_token_name1  => cv_tkn_pro_tok
-                     , iv_token_value1 => cv_prf_supl_rate_msg_color
+                     , iv_token_value1 => cv_prf_inv_days
                    );
       lv_errbuf := lv_errmsg;
       RAISE global_api_expt;
     END IF;
+    -- ==============================================================
+    -- プロファイル：在庫日数対策メッセージ色取得
+    -- ==============================================================
+    gv_inv_days_msg_color := fnd_profile.value( cv_prf_inv_days_msg_color );
+    -- 在庫日数対策メッセージ色が取得できない場合
+    IF ( gv_inv_days_msg_color IS NULL ) THEN
+      lv_errmsg := xxccp_common_pkg.get_msg(
+                       iv_application  => cv_appl_short_name_xxcoi
+                     , iv_name         => cv_inv_days_mc_get_err_msg
+                     , iv_token_name1  => cv_tkn_pro_tok
+                     , iv_token_value1 => cv_prf_inv_days_msg_color
+                   );
+      lv_errbuf := lv_errmsg;
+      RAISE global_api_expt;
+    END IF;
+-- == 2011/10/19 V1.4 Add END   ===============================================================
+-- == 2011/10/19 V1.4 Del START ===============================================================
+--    -- ==============================================================
+--    -- プロファイル：補充率対策メッセージ色取得
+--    -- ==============================================================
+--    gv_supl_rate_msg_color := fnd_profile.value( cv_prf_supl_rate_msg_color );
+--    -- 補充率対策メッセージ色が取得できない場合
+--    IF ( gv_supl_rate_msg_color IS NULL ) THEN
+--      lv_errmsg := xxccp_common_pkg.get_msg(
+--                       iv_application  => cv_appl_short_name_xxcoi
+--                     , iv_name         => cv_supl_rate_mc_get_err_msg
+--                     , iv_token_name1  => cv_tkn_pro_tok
+--                     , iv_token_value1 => cv_prf_supl_rate_msg_color
+--                   );
+--      lv_errbuf := lv_errmsg;
+--      RAISE global_api_expt;
+--    END IF;
+-- == 2011/10/19 V1.4 Del End   ===============================================================
 --
     -- ==============================================================
     -- プロファイル：ホット在庫対策メッセージ色取得
@@ -808,13 +871,22 @@ AS
     cv_open_mode             CONSTANT VARCHAR2(1)   := 'w';              -- オープンモード：書き込み
     cv_delimiter             CONSTANT VARCHAR2(1)   := ',';              -- 区切り文字
     cv_encloser              CONSTANT VARCHAR2(1)   := '"';              -- 括り文字
+-- == 2011/10/19 V1.4 Add START ===============================================================
+    cn_days_per_month        CONSTANT NUMBER  := 30;  -- ひと月当りの日数
+-- == 2011/10/19 V1.4 Add END   ===============================================================
 --
     -- *** ローカル変数 ***
     ln_file_length           NUMBER;                       -- ファイルの長さの変数
     ln_block_size            NUMBER;                       -- ブロックサイズの変数
     lb_fexists               BOOLEAN;                      -- ファイル存在チェック結果
     lv_sold_out_msg          VARCHAR2(50);                 -- 売切れ対策メッセージ
-    lv_supl_rate_msg         VARCHAR2(50);                 -- 補充率対策メッセージ
+-- == 2011/10/19 V1.4 Del START ===============================================================
+--    lv_supl_rate_msg         VARCHAR2(50);                 -- 補充率対策メッセージ
+-- == 2011/10/19 V1.4 Del END   ===============================================================
+-- == 2011/10/19 V1.4 Add START ===============================================================
+    lt_inv_days_msg          fnd_new_messages.message_text%TYPE;  -- 在庫日数対策メッセージ
+    ln_months                NUMBER;                       -- 月数
+-- == 2011/10/19 V1.4 Add END   ===============================================================
     lv_hot_inv_msg           VARCHAR2(50);                 -- ホット在庫対策メッセージ
     lv_column_exist_msg      VARCHAR2(50);                 -- コラムありますメッセージ
     lv_csv_file              VARCHAR2(1500);               -- CSVファイル
@@ -915,6 +987,9 @@ AS
       RAISE global_process_expt;
     END IF;
 --
+-- == 2011/10/19 V1.4 Add START ===============================================================
+    ln_months := floor(gn_inventory_days / cn_days_per_month);
+-- == 2011/10/19 V1.4 Add END   ===============================================================
     -- ===============================
     -- ループ開始
     -- ===============================
@@ -1021,13 +1096,24 @@ AS
                                  , iv_token_name1  => cv_tkn_time
                                  , iv_token_value1 => g_get_awareness_tab(i).sold_out_time
                                );
-        -- 補充率対策メッセージ取得
-        lv_supl_rate_msg    := xxccp_common_pkg.get_msg(
+-- == 2011/10/19 V1.4 Add START ===============================================================
+        -- 在庫日数対策メッセージ取得
+        lt_inv_days_msg     := xxccp_common_pkg.get_msg(
                                    iv_application  => cv_appl_short_name_xxcoi
-                                 , iv_name         => cv_supl_rate_msg
-                                 , iv_token_name1  => cv_tkn_rate
-                                 , iv_token_value1 => g_get_awareness_tab(i).supl_rate
+                                 , iv_name         => cv_inv_days_msg
+                                 , iv_token_name1  => cv_tkn_month
+                                 , iv_token_value1 => ln_months
                                );
+-- == 2011/10/19 V1.4 Del END   ===============================================================
+-- == 2011/10/19 V1.4 Del START ===============================================================
+--        -- 補充率対策メッセージ取得
+--        lv_supl_rate_msg    := xxccp_common_pkg.get_msg(
+--                                   iv_application  => cv_appl_short_name_xxcoi
+--                                 , iv_name         => cv_supl_rate_msg
+--                                 , iv_token_name1  => cv_tkn_rate
+--                                 , iv_token_value1 => g_get_awareness_tab(i).supl_rate
+--                               );
+-- == 2011/10/19 V1.4 Del END   ===============================================================
         -- ホット在庫対策メッセージ取得
         lv_hot_inv_msg      := xxccp_common_pkg.get_msg(
                                    iv_application  => cv_appl_short_name_xxcoi
@@ -1044,16 +1130,25 @@ AS
         lv_csv_file := (
           cv_encloser || g_get_awareness_tab(i).sale_base_code || cv_encloser || cv_delimiter || --売上拠点コード
                          g_get_awareness_tab(i).sold_out_time                 || cv_delimiter || --売切れ時間
-                         g_get_awareness_tab(i).supl_rate                     || cv_delimiter || --補充率
+-- == 2011/10/19 V1.4 Mod START ===============================================================
+--                         g_get_awareness_tab(i).supl_rate                     || cv_delimiter || --補充率
+                         gn_inventory_days                                    || cv_delimiter || --在庫日数
+-- == 2011/10/19 V1.4 Mod END   ===============================================================
                          g_get_awareness_tab(i).hot_inv                       || cv_delimiter || --ホット在庫
           cv_encloser || gv_sold_out_msg_color                 || cv_encloser || cv_delimiter || --売切れ対策メッセージ色
           cv_encloser || TO_MULTI_BYTE( REPLACE( lv_sold_out_msg, ' ' ) )
                                                                || cv_encloser || cv_delimiter || --売切れ対策メッセージ1
           cv_encloser || lv_column_exist_msg                   || cv_encloser || cv_delimiter || --売切れ対策メッセージ2
-          cv_encloser || gv_supl_rate_msg_color                || cv_encloser || cv_delimiter || --補充率対策メッセージ色
-          cv_encloser || TO_MULTI_BYTE( REPLACE( lv_supl_rate_msg, ' ' ) )    
-                                                               || cv_encloser || cv_delimiter || --補充率対策メッセージ1
-          cv_encloser || lv_column_exist_msg                   || cv_encloser || cv_delimiter || --補充率対策メッセージ2
+-- == 2011/10/19 V1.4 Mod START ===============================================================
+--          cv_encloser || gv_supl_rate_msg_color                || cv_encloser || cv_delimiter || --補充率対策メッセージ色
+--          cv_encloser || TO_MULTI_BYTE( REPLACE( lv_supl_rate_msg, ' ' ) )    
+--                                                               || cv_encloser || cv_delimiter || --補充率対策メッセージ1
+--          cv_encloser || lv_column_exist_msg                   || cv_encloser || cv_delimiter || --補充率対策メッセージ2
+          cv_encloser || gv_inv_days_msg_color                 || cv_encloser || cv_delimiter || --在庫日数対策メッセージ色
+          cv_encloser || TO_MULTI_BYTE( REPLACE( lt_inv_days_msg, ' ' ) )    
+                                                               || cv_encloser || cv_delimiter || --在庫日数対策メッセージ1
+          cv_encloser || lv_column_exist_msg                   || cv_encloser || cv_delimiter || --在庫日数対策メッセージ2
+-- == 2011/10/19 V1.4 Mod END ===============================================================
           cv_encloser || gv_hot_inv_msg_color                  || cv_encloser || cv_delimiter || --ホット在庫メッセージ色
           cv_encloser || TO_MULTI_BYTE( REPLACE( lv_hot_inv_msg, ' ' ) )
                                                                || cv_encloser || cv_delimiter || --ホット在庫メッセージ1
