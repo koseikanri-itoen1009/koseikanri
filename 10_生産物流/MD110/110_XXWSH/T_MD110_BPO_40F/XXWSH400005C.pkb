@@ -7,7 +7,7 @@ AS
  * Description      : 出荷依頼情報抽出
  * MD.050           : 出荷依頼         T_MD050_BPO_401
  * MD.070           : 出荷依頼情報抽出 T_MD070_BPO_40F
- * Version          : 2.1
+ * Version          : 2.2
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -42,6 +42,7 @@ AS
  *  2008/12/01    1.9   Oracle 吉田 夏樹 本番#291対応
  *  2008/12/03    2.0   Oracle 宮田      本番#255対応
  *  2008/12/24    2.1   Oracle 椎名 昭圭 本番#827対応
+ *  2009/01/21    2.2   Oracle 上原 正好 本番#1010対応
  *****************************************************************************************/
 --
 --#######################  固定グローバル定数宣言部 START   #######################
@@ -732,6 +733,9 @@ AS
 -- 2008/12/01 1.9  Mod ↑
       AND    NVL(otta.adjs_class,gv_adjs_class_req) <> gv_adjs_class_adj    -- 在庫調整以外
       AND    NVL(xola.shipping_result_if_flg, gv_flag_off )  = gv_flag_off  -- 出力済み以外
+-- 2009/01/21 2.2 Add start
+      AND    xoha.actual_confirm_class = gv_flag_on                         -- 実績計上済区分が'Y'
+-- 2009/01/21 2.2 Add end
       ORDER BY xoha.request_no,xola.request_item_code;
 --
     -- *** ローカル・レコード ***
