@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCOS015A01C(body)
  * Description      : 情報系システム向け販売実績データの作成を行う
  * MD.050           : 情報系システム向け販売実績データの作成 MD050_COS_015_A01
- * Version          : 2.17
+ * Version          : 2.18
  *
  * Program List
  * --------------------------- ----------------------------------------------------------
@@ -78,6 +78,8 @@ AS
  *  2010/02/02    2.15  K.Atsushiba      [E_本稼動_01386]消化VDのAR(速報用)対応
  *  2010/02/16    2.16  K.Atsushiba      [E_本稼動_01398]GL記帳日から販売実績の納品日に変更(AR取引情報)
  *  2010/02/23    2.17  K.Atsushiba      [E_本稼動_01675]ARの伝票番号から販売実績の納品伝票番号に変更(AR取引情報)
+ *  2010/03/17    2.18  S.Miyakoshi      [E_本稼動_01907]顧客使用目的、顧客所在地からの抽出時に有効条件追加
+ *                                       [E_本稼動_01916]MC顧客連携漏れの対応
  *
  *****************************************************************************************/
 --
@@ -256,6 +258,9 @@ AS
   cv_trunc_fmt                CONSTANT VARCHAR2(2) := 'MM';
   -- 有効無効フラグ
   cv_enabled_flag             CONSTANT VARCHAR2(1) := 'Y';             -- 有効
+-- ************* 2010/03/17 2.18 S.Miyakoshi ADD START ************* --
+  cv_enabled_flag_a           CONSTANT VARCHAR2(1) := 'A';             -- 有効
+-- ************* 2010/03/17 2.18 S.Miyakoshi ADD  END  ************* --
   -- NULL時の代替値
   cv_def_article_code         CONSTANT VARCHAR2(10) := '0000000000';   -- 物件コード
   cv_def_results_employee_cd  CONSTANT VARCHAR2(10) := '00000';        -- 成績者コード
@@ -468,7 +473,10 @@ AS
            ,NVL(xsel.cash_and_card,
                 cn_non_cash_and_card)           xsel_cash_and_card             -- 現金・カード併用額
            ,NULL                                xchv_bill_tax_round_rule       -- 税金－端数処理
-           ,NULL                                xseh_create_class              -- 作成元区分
+-- ************* 2010/03/17 2.18 S.Miyakoshi MOD START ************* --
+--           ,NULL                                xseh_create_class              -- 作成元区分
+           ,xseh.create_class                   xseh_create_class              -- 作成元区分
+-- ************* 2010/03/17 2.18 S.Miyakoshi MOD  END  ************* --
            ,NULL                                xchv_ship_account_id           -- 出荷先顧客ID
            ,hca.cust_account_id                 hca_cust_account_id            -- 顧客アカウントID
            ,NULL                                xchv_ship_account_name         -- 出荷先顧客名
@@ -508,6 +516,11 @@ AS
     AND    bill_hcara.org_id(+)            = gt_org_id
     AND    bill_hcara.cust_account_id   = hca_r.cust_account_id(+)
     AND    hca.account_number     = xseh.ship_to_customer_code     -- 出荷先顧客コード
+-- ************* 2010/03/17 2.18 S.Miyakoshi ADD START ************* --
+    AND    bill_hcsua.status(+)            = cv_enabled_flag_a     --顧客使用目的.ステータス = 'A'(有効)
+    AND    bill_hcsua.primary_flag(+)      = cv_enabled_flag       --顧客使用目的.主フラグ   = 'Y'(有効)
+    AND    bill_hcasa.status(+)            = cv_enabled_flag_a     --顧客所在地.ステータス   = 'A'(有効)
+-- ************* 2010/03/17 2.18 S.Miyakoshi ADD  END  ************* --
 --    AND    uses_hcasa.cust_acct_site_id(+) = bill_hcsua.cust_acct_site_id
 --    AND    uses_hca.cust_account_id(+)    = uses_hcasa.cust_account_id
 -- **************** 2009/09/25 2.10 N.Maeda MOD START **************** --
