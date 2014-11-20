@@ -6,7 +6,7 @@ AS
  * Package Name           : xxwsh_common910_pkg(BODY)
  * Description            : 共通関数(BODY)
  * MD.070(CMD.050)        : なし
- * Version                : 1.12
+ * Version                : 1.13
  *
  * Program List
  *  -------------------- ---- ----- --------------------------------------------------
@@ -45,6 +45,7 @@ AS
  *  2008/07/08   1.10  ORACLE椎名昭圭   [出荷可否チェック] ST不具合#405対応
  *  2008/07/14   1.11  ORACLE福田直樹   [積載効率チェック(積載効率算出)] 変更要求対応#95
  *  2008/07/17   1.12  ORACLE福田直樹   [積載効率チェック(積載効率算出)] 変更要求対応#95のバグ対応
+ *  2008/07/30   1.13  ORACLE高山洋平   [出荷可否チェック]内部変更要求#182対応
  *
  *****************************************************************************************/
 --
@@ -2799,13 +2800,22 @@ AS
       WHEN ( iv_check_class = cv_check_class_3 ) THEN
         --(1) 出荷停止日チェック
         BEGIN
+          -- 2008/07/30 内部変更要求#182 UPD START
+          --SELECT  COUNT(*)
+          --INTO    ln_item_cnt
+          --FROM    xxcmn_item_mst2_v  ximv   -- OPM品目情報View2
+          --WHERE   ximv.inventory_item_id   =  in_item_id
+          --  AND   ximv.obsolete_date      <=  trunc( id_date )
+          --  AND   ximv.start_date_active  <=  trunc( id_date )
+          --  AND   ximv.end_date_active    >=  trunc( id_date );
           SELECT  COUNT(*)
           INTO    ln_item_cnt
           FROM    xxcmn_item_mst2_v  ximv   -- OPM品目情報View2
           WHERE   ximv.inventory_item_id   =  in_item_id
-            AND   ximv.obsolete_date      <=  trunc( id_date )
+            AND   ximv.shipping_end_date  <=  trunc( id_date )
             AND   ximv.start_date_active  <=  trunc( id_date )
             AND   ximv.end_date_active    >=  trunc( id_date );
+          -- 2008/07/30 内部変更要求#182 UPD END
         EXCEPTION
           WHEN OTHERS THEN
             RAISE global_api_expt;
