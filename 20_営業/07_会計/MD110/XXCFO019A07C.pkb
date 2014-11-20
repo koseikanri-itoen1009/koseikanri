@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCFO019A07C(body)
  * Description      : 電子帳簿AR入金の情報系システム連携
  * MD.050           : 電子帳簿AR入金の情報系システム連携 <MD050_CFO_019_A07>
- * Version          : 1.3
+ * Version          : 1.4
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -31,6 +31,7 @@ AS
  *  2012-10-05    1.1   N.Sugiura      結合テスト障害対応[障害No24:消込時のGL転送管理ID取得元変更]
  *  2012-10-16    1.2   N.Sugiura      結合テスト障害対応[障害No30:入金履歴テーブルの結合条件誤り]
  *  2012-10-17    1.3   N.Sugiura      結合テスト障害対応[障害No31:消込テーブルの条件不足]
+ *  2012-11-13    1.4   N.Sugiura      結合テスト障害対応[障害No40:手動実行時の入金データ、消込データ取得方法変更]
  *
  *****************************************************************************************/
 --
@@ -270,6 +271,9 @@ AS
   gn_csh_rcpt_hist_id_to      NUMBER;          -- 4.入金履歴ID（To）
   gv_doc_seq_value            VARCHAR2(100);   -- 5.入金文書番号
   gv_exec_kbn                 VARCHAR2(1);     -- 6.定期手動区分
+--2012/11/13 ADD Start
+  gv_data_type                VARCHAR2(4);     -- 7.データタイプ
+--2012/11/13 ADD End
 --
   -- テーブル型
   g_item_name_tab             g_item_name_ttype;          -- 項目名称
@@ -317,6 +321,9 @@ AS
     iv_id_to                 IN  VARCHAR2,     -- 4.入金履歴ID（To）
     iv_doc_seq_value         IN  VARCHAR2,     -- 5.入金文書番号
     iv_exec_kbn              IN  VARCHAR2,     -- 6.定期手動区分
+--2012/11/13 ADD Start
+    iv_data_type             IN  VARCHAR2,     -- 7.データタイプ
+--2012/11/13 ADD End
     ov_errbuf                OUT VARCHAR2,     -- エラー・メッセージ           --# 固定 #
     ov_retcode               OUT VARCHAR2,     -- リターン・コード             --# 固定 #
     ov_errmsg                OUT VARCHAR2)     -- ユーザー・エラー・メッセージ --# 固定 #
@@ -426,6 +433,9 @@ AS
       , iv_conc_param4                  =>        iv_id_to                  -- 4.入金履歴ID（To）
       , iv_conc_param5                  =>        iv_doc_seq_value          -- 5.入金文書番号
       , iv_conc_param6                  =>        iv_exec_kbn               -- 6.定期手動区分
+--2012/11/13 ADD Start
+      , iv_conc_param7                  =>        iv_data_type              -- 7.データタイプ
+--2012/11/13 ADD End
       , ov_errbuf                       =>        lv_errbuf                 -- エラー・メッセージ           --# 固定 #
       , ov_retcode                      =>        lv_retcode                -- リターン・コード             --# 固定 #
       , ov_errmsg                       =>        lv_errmsg);               -- ユーザー・エラー・メッセージ --# 固定 #
@@ -443,6 +453,9 @@ AS
       , iv_conc_param4                  =>        iv_id_to                  -- 4.入金履歴ID（To）
       , iv_conc_param5                  =>        iv_doc_seq_value          -- 5.入金文書番号
       , iv_conc_param6                  =>        iv_exec_kbn               -- 6.定期手動区分
+--2012/11/13 ADD Start
+      , iv_conc_param7                  =>        iv_data_type              -- 7.データタイプ
+--2012/11/13 ADD End
       , ov_errbuf                       =>        lv_errbuf                 -- エラー・メッセージ           --# 固定 #
       , ov_retcode                      =>        lv_retcode                -- リターン・コード             --# 固定 #
       , ov_errmsg                       =>        lv_errmsg);               -- ユーザー・エラー・メッセージ --# 固定 #
@@ -699,6 +712,9 @@ AS
     gn_csh_rcpt_hist_id_to   := TO_NUMBER(iv_id_to);                  -- 4.入金履歴ID（To）
     gv_doc_seq_value         := iv_doc_seq_value;                     -- 5.入金文書番号
     gv_exec_kbn              := iv_exec_kbn;                          -- 6.定期手動区分
+--2012/11/13 ADD Start
+    gv_data_type             := iv_data_type;                         -- 7.データタイプ
+--2012/11/13 ADD End
 --
     --==============================================================
     --メッセージ出力をする必要がある場合は処理を記述
@@ -2378,11 +2394,573 @@ AS
         ORDER BY cash_receipt_id , cash_receipt_history_id
     ;
 --
-    -- 対象データ取得カーソル(手動実行1：入金履歴ID(FROM)、入金履歴ID(TO)を入力)
-    CURSOR get_manual_cur1
+--2012/11/13 DEL Start
+--    -- 対象データ取得カーソル(手動実行1：入金履歴ID(FROM)、入金履歴ID(TO)を入力)
+--    CURSOR get_manual_cur1
+--    IS
+--      SELECT /*+ LEADING(acrh acrh2 acr) USE_NL(acrh acr acrh2 abaa abb arm) INDEX(acrh ar_cash_receipt_history_u1)
+--                 INDEX(acrh ar_cash_receipt_history_u2) INDEX(abaa ap_bank_accounts_u1) INDEX(abb ap_bank_branches_u1)
+--                 INDEX(arm ar_receipt_methods_u1) */
+--             gt_cash_receipt_meaning             AS cash_recon_type               -- タイプ(固定値：入金)
+--            ,acr.cash_receipt_id                 AS cash_receipt_id               -- 入金ID
+--            ,TO_CHAR(acrh.gl_date
+--                     ,cv_date_format_ymd)        AS gl_date                       -- 計上日
+--            ,acr.receipt_number                  AS receipt_number                -- 入金番号
+--            ,acr.doc_sequence_value              AS doc_sequence_value            -- 入金文書番号
+--            ,acr.receipt_method_id               AS receipt_method_id             -- 支払方法ID
+--            ,arm.name                            AS name                          -- 支払方法
+--            ,TO_CHAR(acr.receipt_date
+--                     ,cv_date_format_ymd)        AS receipt_date                  -- 入金日
+--            ,(SELECT hca.account_number
+--                FROM hz_cust_accounts hca
+--               WHERE acr.pay_from_customer = hca.cust_account_id) 
+--                                                 AS account_number                -- 入金顧客コード
+--            ,(SELECT hp.party_name
+--                FROM hz_cust_accounts hca
+--                    ,hz_parties hp
+--               WHERE acr.pay_from_customer = hca.cust_account_id
+--                 AND hca.party_id           = hp.party_id)
+--                                                 AS party_name                    -- 入金顧客名
+--            ,acr.amount                          AS amount                        -- 入金額
+--            ,abb.bank_number                     AS bank_number                   -- 銀行番号
+--            ,abb.bank_name                       AS bank_name                     -- 銀行名
+--            ,abb.bank_num                        AS bank_num                      -- 支店番号
+--            ,abb.bank_branch_name                AS bank_branch_name              -- 支店名
+--            ,abaa.bank_account_num               AS bank_account_num              -- 送金銀行口座番号
+--            ,abaa.bank_account_name              AS bank_account_name             -- 送金銀行口座名
+--            ,acr.attribute1                      AS attribute1                    -- 振込依頼人名カナ
+--            ,acr.attribute2                      AS attribute2                    -- 拠点コード
+--            ,acr.attribute3                      AS attribute3                    -- 納品先顧客コード
+--            ,acrh.cash_receipt_history_id        AS cash_receipt_history_id       -- 入金履歴ID
+--            ,acrh.status                         AS status                        -- ステータス
+--            ,TO_CHAR(acrh.trx_date
+--                     ,cv_date_format_ymd)        AS trx_date                      -- 取引日
+--            ,acrh.amount                         AS amount_hist                   -- 正味金額_履歴
+--            ,acrh.factor_discount_amount         AS factor_discount_amount_hist   -- 銀行手数料_履歴
+--            ,decode(acrh.status,cv_reversed,
+--              - NVL(acrh.amount,0),
+--                NVL(acrh.amount,0) - NVL(acrh2.amount,0))
+--                                                 AS real_amount                   -- 正味金額_計上額                                                               
+--            ,decode(acrh.status,cv_reversed,
+--              - NVL(acrh.factor_discount_amount,0),
+--                NVL(acrh.factor_discount_amount,0) - NVL(acrh2.factor_discount_amount,0) )
+--                                                 AS real_factor_discount_amount   -- 銀行手数料_計上額
+--            ,NULL                                AS apply_date                    -- 消込日
+--            ,NULL                                AS amount_applied                -- 消込金額
+--            ,NULL                                AS applied_customer_trx_id       -- 消込対象取引ID
+--            ,NULL                                AS trx_number                    -- 消込対象取引番号
+--            ,acr.currency_code                   AS currency_code                 -- 入金通貨
+--            ,gdct.user_conversion_type           AS user_conversion_type          -- レートタイプ
+--            ,TO_CHAR(acrh.exchange_date
+--                     ,cv_date_format_ymd)        AS exchange_date                 -- 換算日
+--            ,acrh.exchange_rate                  AS exchange_rate                 -- 換算レート
+--            ,decode(acrh.status,cv_reversed,
+--              - NVL(acrh.acctd_amount,0),
+--                NVL(acrh.acctd_amount,0) - NVL(acrh2.acctd_amount,0))
+--                                                 AS acctd_amount                  -- 正味金額_機能通貨計上額                                                               
+--            ,decode(acrh.status,cv_reversed,
+--              -NVL(acrh.acctd_factor_discount_amount,0),
+--               NVL(acrh.acctd_factor_discount_amount,0) - NVL(acrh2.acctd_factor_discount_amount,0))
+--                                                 AS acctd_factor_discount_amount  -- 銀行手数料_機能通貨計上額
+--            ,NULL                                AS amount_applied_from           -- 配賦入金金額
+--            ,NULL                                AS acctd_amount_applied_from     -- 機能通貨配賦入金金額
+--            ,NULL                                AS invoice_currency_code         -- 消込対象取引通貨
+--            ,NULL                                AS acctd_amount_applied_to       -- 機能通貨消込金額
+--            ,TO_CHAR(SYSDATE
+--                     ,cv_date_format_ymdhms)     AS transfer_date                 -- 連携日時
+--            ,acrh.posting_control_id             AS posting_control_id            -- GL転送管理ID
+--            ,NULL                                AS receivable_application_id     -- 消込ID
+--            ,cv_data_type_0                      AS data_type                     -- データタイプ('0':今回連携分)
+--        FROM ar_cash_receipts_all acr          -- 入金テーブル
+--            ,ar_cash_receipt_history_all acrh  -- 入金履歴テーブル
+--            ,ar_cash_receipt_history_all acrh2 -- 入金履歴テーブル(前回)
+--            ,ar_receipt_methods arm            -- 支払方法テーブル
+--            ,ap_bank_accounts_all abaa         -- 銀行口座マスタ
+--            ,ap_bank_branches abb              -- 銀行支店マスタ
+--            ,gl_daily_conversion_types gdct    -- GLレートマスタ
+--        WHERE acr.cash_receipt_id              = acrh.cash_receipt_id
+--        AND acr.receipt_method_id              = arm.receipt_method_id
+----2012/10/16 MOD Start
+----        AND acrh.reversal_cash_receipt_hist_id = acrh2.cash_receipt_history_id(+)
+--        AND acrh.cash_receipt_history_id       = acrh2.reversal_cash_receipt_hist_id(+)
+----2012/10/16 MOD End
+--        AND acr.remittance_bank_account_id     = abaa.bank_account_id
+--        AND abaa.bank_branch_id                = abb.bank_branch_id
+--        AND acrh.exchange_rate_type            = gdct.conversion_type (+)
+--        AND acrh.org_id                        = gn_org_id
+--        AND acrh.cash_receipt_history_id BETWEEN gn_csh_rcpt_hist_id_from AND gn_csh_rcpt_hist_id_to
+--      UNION ALL
+--      SELECT /*+ LEADING(acrh acr araa) USE_NL(acrh acr abaa abb arm araa) INDEX(acrh ar_cash_receipt_history_u1)
+--                 INDEX(acrh ar_cash_receipt_history_u2) INDEX(abaa ap_bank_accounts_u1) INDEX(abb ap_bank_branches_u1)
+--                 INDEX(arm ar_receipt_methods_u1) */
+--             gt_recon_meaning                    AS cash_recon_type               -- タイプ(固定値：消込)
+--            ,acr.cash_receipt_id                 AS cash_receipt_id               -- 入金ID
+--            ,TO_CHAR(araa.gl_date
+--                     ,cv_date_format_ymd)        AS gl_date                       -- 計上日
+--            ,acr.receipt_number                  AS receipt_number                -- 入金番号
+--            ,acr.doc_sequence_value              AS doc_sequence_value            -- 入金文書番号
+--            ,acr.receipt_method_id               AS receipt_method_id             -- 支払方法ID
+--            ,arm.name                            AS name                          -- 支払方法
+--            ,TO_CHAR(acr.receipt_date
+--                     ,cv_date_format_ymd)        AS receipt_date                  -- 入金日
+--            ,(SELECT hca.account_number
+--                FROM hz_cust_accounts hca
+--               WHERE acr.pay_from_customer = hca.cust_account_id) 
+--                                                 AS account_number                -- 入金顧客コード
+--            ,(SELECT hp.party_name
+--                FROM hz_cust_accounts hca
+--                    ,hz_parties hp
+--               WHERE acr.pay_from_customer = hca.cust_account_id
+--                 AND hca.party_id           = hp.party_id)   
+--                                                 AS party_name                    -- 入金顧客名
+--            ,acr.amount                          AS amount                        -- 入金額
+--            ,abb.bank_number                     AS bank_number                   -- 銀行番号
+--            ,abb.bank_name                       AS bank_name                     -- 銀行名
+--            ,abb.bank_num                        AS bank_num                      -- 支店番号
+--            ,abb.bank_branch_name                AS bank_branch_name              -- 支店名
+--            ,abaa.bank_account_num               AS bank_account_num              -- 送金銀行口座番号
+--            ,abaa.bank_account_name              AS bank_account_name             -- 送金銀行口座名
+--            ,acr.attribute1                      AS attribute1                    -- 振込依頼人名カナ
+--            ,acr.attribute2                      AS attribute2                    -- 拠点コード
+--            ,acr.attribute3                      AS attribute3                    -- 納品先顧客コード
+--            ,acrh.cash_receipt_history_id        AS cash_receipt_history_id       -- 入金履歴ID
+--            ,acrh.status                         AS status                        -- ステータス
+--            ,TO_CHAR(acrh.trx_date
+--                     ,cv_date_format_ymd)        AS trx_date                      -- 取引日
+--            ,acrh.amount                         AS amount_hist                   -- 正味金額_履歴
+--            ,acrh.factor_discount_amount         AS factor_discount_amount_hist   -- 銀行手数料_履歴
+--            ,NULL                                AS real_amount                   -- 正味金額_計上額
+--            ,NULL                                AS real_factor_discount_amount   -- 銀行手数料_計上額
+--            ,TO_CHAR(araa.apply_date
+--                     ,cv_date_format_ymd)        AS apply_date                    -- 消込日
+--            ,araa.amount_applied                 AS amount_applied                -- 消込金額
+--            ,araa.applied_customer_trx_id        AS applied_customer_trx_id       -- 消込対象取引ID
+--            ,rct.trx_number                      AS trx_number                    -- 消込対象取引番号
+--            ,acr.currency_code                   AS currency_code                 -- 通貨
+--            ,gdct.user_conversion_type           AS user_conversion_type          -- レートタイプ
+--            ,TO_CHAR(acrh.exchange_date
+--                     ,cv_date_format_ymd)        AS exchange_date                 -- 換算日
+--            ,acrh.exchange_rate                  AS exchange_rate                 -- 換算レート
+--            ,NULL                                AS acctd_amount                  -- 正味金額_機能通貨計上額
+--            ,NULL                                AS acctd_factor_discount_amount  -- 銀行手数料_機能通貨計上額
+--            ,araa.amount_applied_from            AS amount_applied_from           -- 配賦入金金額
+--            ,araa.acctd_amount_applied_from      AS acctd_amount_applied_from     -- 機能通貨配賦入金金額
+--            ,rct.invoice_currency_code           AS invoice_currency_code         -- 消込対象取引通貨
+--            ,araa.acctd_amount_applied_to        AS acctd_amount_applied_to       -- 機能通貨消込金額
+--            ,TO_CHAR(SYSDATE
+--                     ,cv_date_format_ymdhms)     AS transfer_date                 -- 連携日時
+----2012/10/05 MOD Start
+----            ,acrh.posting_control_id             AS posting_control_id            -- GL転送管理ID
+--            ,araa.posting_control_id             AS posting_control_id            -- GL転送管理ID
+----2012/10/05 MOD End
+--            ,araa.receivable_application_id      AS receivable_application_id     -- 消込ID
+--            ,cv_data_type_0                      AS data_type                     -- データタイプ('0':今回連携分)
+--        FROM ar_cash_receipts_all acr             -- 入金テーブル
+--            ,ar_cash_receipt_history_all acrh     -- 入金履歴テーブル
+--            ,ar_receivable_applications_all araa  -- 入金消込テーブル
+--            ,ar_receipt_methods arm               -- 支払方法テーブル
+--            ,ap_bank_accounts_all abaa            -- 銀行口座マスタ
+--            ,ap_bank_branches abb                 -- 銀行支店マスタ
+--            ,gl_daily_conversion_types gdct       -- GLレートマスタ
+--            ,ra_customer_trx_all rct              -- 取引ヘッダテーブル
+--        WHERE acr.cash_receipt_id          = acrh.cash_receipt_id
+--        AND acr.remittance_bank_account_id = abaa.bank_account_id
+--        AND abaa.bank_branch_id            = abb.bank_branch_id
+--        AND acr.receipt_method_id          = arm.receipt_method_id
+--        AND acrh.exchange_rate_type        = gdct.conversion_type(+)
+--        AND acr.cash_receipt_id            = araa.cash_receipt_id
+--        AND acrh.cash_receipt_history_id   = araa.cash_receipt_history_id
+--        AND araa.applied_customer_trx_id   = rct.customer_trx_id(+)
+----2012/10/17 MOD Start
+----        AND araa.status                    = cv_app
+--        AND araa.status                    IN ( cv_app , cv_activity )
+----2012/10/17 MOD End
+--        AND acrh.org_id                    = gn_org_id
+--        AND araa.application_type          = cv_cash
+--        AND acrh.cash_receipt_history_id BETWEEN gn_csh_rcpt_hist_id_from AND gn_csh_rcpt_hist_id_to
+--        ORDER BY cash_receipt_id , cash_receipt_history_id
+--    ;
+----
+--    -- 対象データ取得カーソル(手動実行2：入金番号を入力)
+--    CURSOR get_manual_cur2
+--    IS
+--      SELECT /*+ LEADING(acrh acrh2 acr) USE_NL(acrh acr acrh2 abaa abb arm) INDEX(acrh ar_cash_receipt_history_u1)
+--                 INDEX(acrh ar_cash_receipt_history_u2) INDEX(abaa ap_bank_accounts_u1) INDEX(abb ap_bank_branches_u1)
+--                 INDEX(arm ar_receipt_methods_u1) */
+--             gt_cash_receipt_meaning             AS cash_recon_type               -- タイプ(固定値：入金)
+--            ,acr.cash_receipt_id                 AS cash_receipt_id               -- 入金ID
+--            ,TO_CHAR(acrh.gl_date
+--                     ,cv_date_format_ymd)        AS gl_date                       -- 計上日
+--            ,acr.receipt_number                  AS receipt_number                -- 入金番号
+--            ,acr.doc_sequence_value              AS doc_sequence_value            -- 入金文書番号
+--            ,acr.receipt_method_id               AS receipt_method_id             -- 支払方法ID
+--            ,arm.name                            AS name                          -- 支払方法
+--            ,TO_CHAR(acr.receipt_date
+--                     ,cv_date_format_ymd)        AS receipt_date                  -- 入金日
+--            ,(SELECT hca.account_number
+--                FROM hz_cust_accounts hca
+--               WHERE acr.pay_from_customer = hca.cust_account_id) 
+--                                                 AS account_number                -- 入金顧客コード
+--            ,(SELECT hp.party_name
+--                FROM hz_cust_accounts hca
+--                    ,hz_parties hp
+--               WHERE acr.pay_from_customer = hca.cust_account_id
+--                 AND hca.party_id           = hp.party_id)
+--                                                 AS party_name                    -- 入金顧客名
+--            ,acr.amount                          AS amount                        -- 入金額
+--            ,abb.bank_number                     AS bank_number                   -- 銀行番号
+--            ,abb.bank_name                       AS bank_name                     -- 銀行名
+--            ,abb.bank_num                        AS bank_num                      -- 支店番号
+--            ,abb.bank_branch_name                AS bank_branch_name              -- 支店名
+--            ,abaa.bank_account_num               AS bank_account_num              -- 送金銀行口座番号
+--            ,abaa.bank_account_name              AS bank_account_name             -- 送金銀行口座名
+--            ,acr.attribute1                      AS attribute1                    -- 振込依頼人名カナ
+--            ,acr.attribute2                      AS attribute2                    -- 拠点コード
+--            ,acr.attribute3                      AS attribute3                    -- 納品先顧客コード
+--            ,acrh.cash_receipt_history_id        AS cash_receipt_history_id       -- 入金履歴ID
+--            ,acrh.status                         AS status                        -- ステータス
+--            ,TO_CHAR(acrh.trx_date
+--                     ,cv_date_format_ymd)        AS trx_date                      -- 取引日
+--            ,acrh.amount                         AS amount_hist                   -- 正味金額_履歴
+--            ,acrh.factor_discount_amount         AS factor_discount_amount_hist   -- 銀行手数料_履歴
+--            ,decode(acrh.status,cv_reversed,
+--              - NVL(acrh.amount,0),
+--                NVL(acrh.amount,0) - NVL(acrh2.amount,0))
+--                                                 AS real_amount                   -- 正味金額_計上額                                                               
+--            ,decode(acrh.status,cv_reversed,
+--              - NVL(acrh.factor_discount_amount,0),
+--                NVL(acrh.factor_discount_amount,0) - NVL(acrh2.factor_discount_amount,0) )
+--                                                 AS real_factor_discount_amount   -- 銀行手数料_計上額
+--            ,NULL                                AS apply_date                    -- 消込日
+--            ,NULL                                AS amount_applied                -- 消込金額
+--            ,NULL                                AS applied_customer_trx_id       -- 消込対象取引ID
+--            ,NULL                                AS trx_number                    -- 消込対象取引番号
+--            ,acr.currency_code                   AS currency_code                 -- 入金通貨
+--            ,gdct.user_conversion_type           AS user_conversion_type          -- レートタイプ
+--            ,TO_CHAR(acrh.exchange_date
+--                     ,cv_date_format_ymd)        AS exchange_date                 -- 換算日
+--            ,acrh.exchange_rate                  AS exchange_rate                 -- 換算レート
+--            ,decode(acrh.status,cv_reversed,
+--              - NVL(acrh.acctd_amount,0),
+--                NVL(acrh.acctd_amount,0) - NVL(acrh2.acctd_amount,0))
+--                                                 AS acctd_amount                  -- 正味金額_機能通貨計上額                                                               
+--            ,decode(acrh.status,cv_reversed,
+--              -NVL(acrh.acctd_factor_discount_amount,0),
+--               NVL(acrh.acctd_factor_discount_amount,0) - NVL(acrh2.acctd_factor_discount_amount,0))
+--                                                 AS acctd_factor_discount_amount  -- 銀行手数料_機能通貨計上額
+--            ,NULL                                AS amount_applied_from           -- 配賦入金金額
+--            ,NULL                                AS acctd_amount_applied_from     -- 機能通貨配賦入金金額
+--            ,NULL                                AS invoice_currency_code         -- 消込対象取引通貨
+--            ,NULL                                AS acctd_amount_applied_to       -- 機能通貨消込金額
+--            ,TO_CHAR(SYSDATE
+--                     ,cv_date_format_ymdhms)     AS transfer_date                 -- 連携日時
+--            ,acrh.posting_control_id             AS posting_control_id            -- GL転送管理ID
+--            ,NULL                                AS receivable_application_id     -- 消込ID
+--            ,cv_data_type_0                      AS data_type                     -- データタイプ('0':今回連携分)
+--        FROM ar_cash_receipts_all acr          -- 入金テーブル
+--            ,ar_cash_receipt_history_all acrh  -- 入金履歴テーブル
+--            ,ar_cash_receipt_history_all acrh2 -- 入金履歴テーブル(前回)
+--            ,ar_receipt_methods arm            -- 支払方法テーブル
+--            ,ap_bank_accounts_all abaa         -- 銀行口座マスタ
+--            ,ap_bank_branches abb              -- 銀行支店マスタ
+--            ,gl_daily_conversion_types gdct    -- GLレートマスタ
+--        WHERE acr.cash_receipt_id              = acrh.cash_receipt_id
+--        AND acr.receipt_method_id              = arm.receipt_method_id
+----2012/10/16 MOD Start
+----        AND acrh.reversal_cash_receipt_hist_id = acrh2.cash_receipt_history_id(+)
+--        AND acrh.cash_receipt_history_id       = acrh2.reversal_cash_receipt_hist_id(+)
+----2012/10/16 MOD End
+--        AND acr.remittance_bank_account_id     = abaa.bank_account_id
+--        AND abaa.bank_branch_id                = abb.bank_branch_id
+--        AND acrh.exchange_rate_type            = gdct.conversion_type (+)
+--        AND acrh.org_id                        = gn_org_id
+--        AND  acr.cash_receipt_id               = gn_cash_receipt_id
+--      UNION ALL
+--      SELECT /*+ LEADING(acrh acr araa) USE_NL(acrh acr abaa abb arm araa) INDEX(acrh ar_cash_receipt_history_u1)
+--                 INDEX(acrh ar_cash_receipt_history_u2) INDEX(abaa ap_bank_accounts_u1) INDEX(abb ap_bank_branches_u1)
+--                 INDEX(arm ar_receipt_methods_u1) */
+--             gt_recon_meaning                    AS cash_recon_type               -- タイプ(固定値：消込)
+--            ,acr.cash_receipt_id                 AS cash_receipt_id               -- 入金ID
+--            ,TO_CHAR(araa.gl_date
+--                     ,cv_date_format_ymd)        AS gl_date                       -- 計上日
+--            ,acr.receipt_number                  AS receipt_number                -- 入金番号
+--            ,acr.doc_sequence_value              AS doc_sequence_value            -- 入金文書番号
+--            ,acr.receipt_method_id               AS receipt_method_id             -- 支払方法ID
+--            ,arm.name                            AS name                          -- 支払方法
+--            ,TO_CHAR(acr.receipt_date
+--                     ,cv_date_format_ymd)        AS receipt_date                  -- 入金日
+--            ,(SELECT hca.account_number
+--                FROM hz_cust_accounts hca
+--               WHERE acr.pay_from_customer = hca.cust_account_id) 
+--                                                 AS account_number                -- 入金顧客コード
+--            ,(SELECT hp.party_name
+--                FROM hz_cust_accounts hca
+--                    ,hz_parties hp
+--               WHERE acr.pay_from_customer = hca.cust_account_id
+--                 AND hca.party_id           = hp.party_id)   
+--                                                 AS party_name                    -- 入金顧客名
+--            ,acr.amount                          AS amount                        -- 入金額
+--            ,abb.bank_number                     AS bank_number                   -- 銀行番号
+--            ,abb.bank_name                       AS bank_name                     -- 銀行名
+--            ,abb.bank_num                        AS bank_num                      -- 支店番号
+--            ,abb.bank_branch_name                AS bank_branch_name              -- 支店名
+--            ,abaa.bank_account_num               AS bank_account_num              -- 送金銀行口座番号
+--            ,abaa.bank_account_name              AS bank_account_name             -- 送金銀行口座名
+--            ,acr.attribute1                      AS attribute1                    -- 振込依頼人名カナ
+--            ,acr.attribute2                      AS attribute2                    -- 拠点コード
+--            ,acr.attribute3                      AS attribute3                    -- 納品先顧客コード
+--            ,acrh.cash_receipt_history_id        AS cash_receipt_history_id       -- 入金履歴ID
+--            ,acrh.status                         AS status                        -- ステータス
+--            ,TO_CHAR(acrh.trx_date
+--                     ,cv_date_format_ymd)        AS trx_date                      -- 取引日
+--            ,acrh.amount                         AS amount_hist                   -- 正味金額_履歴
+--            ,acrh.factor_discount_amount         AS factor_discount_amount_hist   -- 銀行手数料_履歴
+--            ,NULL                                AS real_amount                   -- 正味金額_計上額
+--            ,NULL                                AS real_factor_discount_amount   -- 銀行手数料_計上額
+--            ,TO_CHAR(araa.apply_date
+--                     ,cv_date_format_ymd)        AS apply_date                    -- 消込日
+--            ,araa.amount_applied                 AS amount_applied                -- 消込金額
+--            ,araa.applied_customer_trx_id        AS applied_customer_trx_id       -- 消込対象取引ID
+--            ,rct.trx_number                      AS trx_number                    -- 消込対象取引番号
+--            ,acr.currency_code                   AS currency_code                 -- 通貨
+--            ,gdct.user_conversion_type           AS user_conversion_type          -- レートタイプ
+--            ,TO_CHAR(acrh.exchange_date
+--                     ,cv_date_format_ymd)        AS exchange_date                 -- 換算日
+--            ,acrh.exchange_rate                  AS exchange_rate                 -- 換算レート
+--            ,NULL                                AS acctd_amount                  -- 正味金額_機能通貨計上額
+--            ,NULL                                AS acctd_factor_discount_amount  -- 銀行手数料_機能通貨計上額
+--            ,araa.amount_applied_from            AS amount_applied_from           -- 配賦入金金額
+--            ,araa.acctd_amount_applied_from      AS acctd_amount_applied_from     -- 機能通貨配賦入金金額
+--            ,rct.invoice_currency_code           AS invoice_currency_code         -- 消込対象取引通貨
+--            ,araa.acctd_amount_applied_to        AS acctd_amount_applied_to       -- 機能通貨消込金額
+--            ,TO_CHAR(SYSDATE
+--                     ,cv_date_format_ymdhms)     AS transfer_date                 -- 連携日時
+----2012/10/05 MOD Start
+----            ,acrh.posting_control_id             AS posting_control_id            -- GL転送管理ID
+--            ,araa.posting_control_id             AS posting_control_id            -- GL転送管理ID
+----2012/10/05 MOD End
+--            ,araa.receivable_application_id      AS receivable_application_id     -- 消込ID
+--            ,cv_data_type_0                      AS data_type                     -- データタイプ('0':今回連携分)
+--        FROM ar_cash_receipts_all acr             -- 入金テーブル
+--            ,ar_cash_receipt_history_all acrh     -- 入金履歴テーブル
+--            ,ar_receivable_applications_all araa  -- 入金消込テーブル
+--            ,ar_receipt_methods arm               -- 支払方法テーブル
+--            ,ap_bank_accounts_all abaa            -- 銀行口座マスタ
+--            ,ap_bank_branches abb                 -- 銀行支店マスタ
+--            ,gl_daily_conversion_types gdct       -- GLレートマスタ
+--            ,ra_customer_trx_all rct              -- 取引ヘッダテーブル
+--        WHERE acr.cash_receipt_id          = acrh.cash_receipt_id
+--        AND acr.remittance_bank_account_id = abaa.bank_account_id
+--        AND abaa.bank_branch_id            = abb.bank_branch_id
+--        AND acr.receipt_method_id          = arm.receipt_method_id
+--        AND acrh.exchange_rate_type        = gdct.conversion_type(+)
+--        AND acr.cash_receipt_id            = araa.cash_receipt_id
+--        AND acrh.cash_receipt_history_id   = araa.cash_receipt_history_id
+--        AND araa.applied_customer_trx_id   = rct.customer_trx_id(+)
+----2012/10/17 MOD Start
+----        AND araa.status                    = cv_app
+--        AND araa.status                    IN ( cv_app , cv_activity )
+----2012/10/17 MOD End
+--        AND acrh.org_id                    = gn_org_id
+--        AND araa.application_type          = cv_cash
+--        AND acr.cash_receipt_id            = gn_cash_receipt_id
+--        ORDER BY cash_receipt_id , cash_receipt_history_id
+--    ;
+----
+--    -- 対象データ取得カーソル(手動実行3：入金履歴ID(FROM)、入金履歴ID(TO)、入金番号を入力)
+--    CURSOR get_manual_cur3
+--    IS
+--      SELECT /*+ LEADING(acrh acrh2 acr) USE_NL(acrh acr acrh2 abaa abb arm) INDEX(acrh ar_cash_receipt_history_u1)
+--                 INDEX(acrh ar_cash_receipt_history_u2) INDEX(abaa ap_bank_accounts_u1) INDEX(abb ap_bank_branches_u1)
+--                 INDEX(arm ar_receipt_methods_u1) */
+--             gt_cash_receipt_meaning             AS cash_recon_type               -- タイプ(固定値：入金)
+--            ,acr.cash_receipt_id                 AS cash_receipt_id               -- 入金ID
+--            ,TO_CHAR(acrh.gl_date
+--                     ,cv_date_format_ymd)        AS gl_date                       -- 計上日
+--            ,acr.receipt_number                  AS receipt_number                -- 入金番号
+--            ,acr.doc_sequence_value              AS doc_sequence_value            -- 入金文書番号
+--            ,acr.receipt_method_id               AS receipt_method_id             -- 支払方法ID
+--            ,arm.name                            AS name                          -- 支払方法
+--            ,TO_CHAR(acr.receipt_date
+--                     ,cv_date_format_ymd)        AS receipt_date                  -- 入金日
+--            ,(SELECT hca.account_number
+--                FROM hz_cust_accounts hca
+--               WHERE acr.pay_from_customer = hca.cust_account_id) 
+--                                                 AS account_number                -- 入金顧客コード
+--            ,(SELECT hp.party_name
+--                FROM hz_cust_accounts hca
+--                    ,hz_parties hp
+--               WHERE acr.pay_from_customer = hca.cust_account_id
+--                 AND hca.party_id           = hp.party_id)
+--                                                 AS party_name                    -- 入金顧客名
+--            ,acr.amount                          AS amount                        -- 入金額
+--            ,abb.bank_number                     AS bank_number                   -- 銀行番号
+--            ,abb.bank_name                       AS bank_name                     -- 銀行名
+--            ,abb.bank_num                        AS bank_num                      -- 支店番号
+--            ,abb.bank_branch_name                AS bank_branch_name              -- 支店名
+--            ,abaa.bank_account_num               AS bank_account_num              -- 送金銀行口座番号
+--            ,abaa.bank_account_name              AS bank_account_name             -- 送金銀行口座名
+--            ,acr.attribute1                      AS attribute1                    -- 振込依頼人名カナ
+--            ,acr.attribute2                      AS attribute2                    -- 拠点コード
+--            ,acr.attribute3                      AS attribute3                    -- 納品先顧客コード
+--            ,acrh.cash_receipt_history_id        AS cash_receipt_history_id       -- 入金履歴ID
+--            ,acrh.status                         AS status                        -- ステータス
+--            ,TO_CHAR(acrh.trx_date
+--                     ,cv_date_format_ymd)        AS trx_date                      -- 取引日
+--            ,acrh.amount                         AS amount_hist                   -- 正味金額_履歴
+--            ,acrh.factor_discount_amount         AS factor_discount_amount_hist   -- 銀行手数料_履歴
+--            ,decode(acrh.status,cv_reversed,
+--              - NVL(acrh.amount,0),
+--                NVL(acrh.amount,0) - NVL(acrh2.amount,0))
+--                                                 AS real_amount                   -- 正味金額_計上額                                                               
+--            ,decode(acrh.status,cv_reversed,
+--              - NVL(acrh.factor_discount_amount,0),
+--                NVL(acrh.factor_discount_amount,0) - NVL(acrh2.factor_discount_amount,0) )
+--                                                 AS real_factor_discount_amount   -- 銀行手数料_計上額
+--            ,NULL                                AS apply_date                    -- 消込日
+--            ,NULL                                AS amount_applied                -- 消込金額
+--            ,NULL                                AS applied_customer_trx_id       -- 消込対象取引ID
+--            ,NULL                                AS trx_number                    -- 消込対象取引番号
+--            ,acr.currency_code                   AS currency_code                 -- 入金通貨
+--            ,gdct.user_conversion_type           AS user_conversion_type          -- レートタイプ
+--            ,TO_CHAR(acrh.exchange_date
+--                     ,cv_date_format_ymd)        AS exchange_date                 -- 換算日
+--            ,acrh.exchange_rate                  AS exchange_rate                 -- 換算レート
+--            ,decode(acrh.status,cv_reversed,
+--              - NVL(acrh.acctd_amount,0),
+--                NVL(acrh.acctd_amount,0) - NVL(acrh2.acctd_amount,0))
+--                                                 AS acctd_amount                  -- 正味金額_機能通貨計上額                                                               
+--            ,decode(acrh.status,cv_reversed,
+--              -NVL(acrh.acctd_factor_discount_amount,0),
+--               NVL(acrh.acctd_factor_discount_amount,0) - NVL(acrh2.acctd_factor_discount_amount,0))
+--                                                 AS acctd_factor_discount_amount  -- 銀行手数料_機能通貨計上額
+--            ,NULL                                AS amount_applied_from           -- 配賦入金金額
+--            ,NULL                                AS acctd_amount_applied_from     -- 機能通貨配賦入金金額
+--            ,NULL                                AS invoice_currency_code         -- 消込対象取引通貨
+--            ,NULL                                AS acctd_amount_applied_to       -- 機能通貨消込金額
+--            ,TO_CHAR(SYSDATE
+--                     ,cv_date_format_ymdhms)     AS transfer_date                 -- 連携日時
+--            ,acrh.posting_control_id             AS posting_control_id            -- GL転送管理ID
+--            ,NULL                                AS receivable_application_id     -- 消込ID
+--            ,cv_data_type_0                      AS data_type                     -- データタイプ('0':今回連携分)
+--        FROM ar_cash_receipts_all acr          -- 入金テーブル
+--            ,ar_cash_receipt_history_all acrh  -- 入金履歴テーブル
+--            ,ar_cash_receipt_history_all acrh2 -- 入金履歴テーブル(前回)
+--            ,ar_receipt_methods arm            -- 支払方法テーブル
+--            ,ap_bank_accounts_all abaa         -- 銀行口座マスタ
+--            ,ap_bank_branches abb              -- 銀行支店マスタ
+--            ,gl_daily_conversion_types gdct    -- GLレートマスタ
+--        WHERE acr.cash_receipt_id              = acrh.cash_receipt_id
+--        AND acr.receipt_method_id              = arm.receipt_method_id
+----2012/10/16 MOD Start
+----        AND acrh.reversal_cash_receipt_hist_id = acrh2.cash_receipt_history_id(+)
+--        AND acrh.cash_receipt_history_id       = acrh2.reversal_cash_receipt_hist_id(+)
+----2012/10/16 MOD End
+--        AND acr.remittance_bank_account_id     = abaa.bank_account_id
+--        AND abaa.bank_branch_id                = abb.bank_branch_id
+--        AND acrh.exchange_rate_type            = gdct.conversion_type (+)
+--        AND acrh.org_id                        = gn_org_id
+--        AND acrh.cash_receipt_history_id BETWEEN gn_csh_rcpt_hist_id_from AND gn_csh_rcpt_hist_id_to
+--        AND acr.cash_receipt_id                = gn_cash_receipt_id
+--      UNION ALL
+--      SELECT /*+ LEADING(acrh acr araa) USE_NL(acrh acr abaa abb arm araa) INDEX(acrh ar_cash_receipt_history_u1)
+--                 INDEX(acrh ar_cash_receipt_history_u2) INDEX(abaa ap_bank_accounts_u1) INDEX(abb ap_bank_branches_u1)
+--                 INDEX(arm ar_receipt_methods_u1) */
+--             gt_recon_meaning                    AS cash_recon_type               -- タイプ(固定値：消込)
+--            ,acr.cash_receipt_id                 AS cash_receipt_id               -- 入金ID
+--            ,TO_CHAR(araa.gl_date
+--                     ,cv_date_format_ymd)        AS gl_date                       -- 計上日
+--            ,acr.receipt_number                  AS receipt_number                -- 入金番号
+--            ,acr.doc_sequence_value              AS doc_sequence_value            -- 入金文書番号
+--            ,acr.receipt_method_id               AS receipt_method_id             -- 支払方法ID
+--            ,arm.name                            AS name                          -- 支払方法
+--            ,TO_CHAR(acr.receipt_date
+--                     ,cv_date_format_ymd)        AS receipt_date                  -- 入金日
+--            ,(SELECT hca.account_number
+--                FROM hz_cust_accounts hca
+--               WHERE acr.pay_from_customer = hca.cust_account_id) 
+--                                                 AS account_number                -- 入金顧客コード
+--            ,(SELECT hp.party_name
+--                FROM hz_cust_accounts hca
+--                    ,hz_parties hp
+--               WHERE acr.pay_from_customer = hca.cust_account_id
+--                 AND hca.party_id           = hp.party_id)   
+--                                                 AS party_name                    -- 入金顧客名
+--            ,acr.amount                          AS amount                        -- 入金額
+--            ,abb.bank_number                     AS bank_number                   -- 銀行番号
+--            ,abb.bank_name                       AS bank_name                     -- 銀行名
+--            ,abb.bank_num                        AS bank_num                      -- 支店番号
+--            ,abb.bank_branch_name                AS bank_branch_name              -- 支店名
+--            ,abaa.bank_account_num               AS bank_account_num              -- 送金銀行口座番号
+--            ,abaa.bank_account_name              AS bank_account_name             -- 送金銀行口座名
+--            ,acr.attribute1                      AS attribute1                    -- 振込依頼人名カナ
+--            ,acr.attribute2                      AS attribute2                    -- 拠点コード
+--            ,acr.attribute3                      AS attribute3                    -- 納品先顧客コード
+--            ,acrh.cash_receipt_history_id        AS cash_receipt_history_id       -- 入金履歴ID
+--            ,acrh.status                         AS status                        -- ステータス
+--            ,TO_CHAR(acrh.trx_date
+--                     ,cv_date_format_ymd)        AS trx_date                      -- 取引日
+--            ,acrh.amount                         AS amount_hist                   -- 正味金額_履歴
+--            ,acrh.factor_discount_amount         AS factor_discount_amount_hist   -- 銀行手数料_履歴
+--            ,NULL                                AS real_amount                   -- 正味金額_計上額
+--            ,NULL                                AS real_factor_discount_amount   -- 銀行手数料_計上額
+--            ,TO_CHAR(araa.apply_date
+--                     ,cv_date_format_ymd)        AS apply_date                    -- 消込日
+--            ,araa.amount_applied                 AS amount_applied                -- 消込金額
+--            ,araa.applied_customer_trx_id        AS applied_customer_trx_id       -- 消込対象取引ID
+--            ,rct.trx_number                      AS trx_number                    -- 消込対象取引番号
+--            ,acr.currency_code                   AS currency_code                 -- 通貨
+--            ,gdct.user_conversion_type           AS user_conversion_type          -- レートタイプ
+--            ,TO_CHAR(acrh.exchange_date
+--                     ,cv_date_format_ymd)        AS exchange_date                 -- 換算日
+--            ,acrh.exchange_rate                  AS exchange_rate                 -- 換算レート
+--            ,NULL                                AS acctd_amount                  -- 正味金額_機能通貨計上額
+--            ,NULL                                AS acctd_factor_discount_amount  -- 銀行手数料_機能通貨計上額
+--            ,araa.amount_applied_from            AS amount_applied_from           -- 配賦入金金額
+--            ,araa.acctd_amount_applied_from      AS acctd_amount_applied_from     -- 機能通貨配賦入金金額
+--            ,rct.invoice_currency_code           AS invoice_currency_code         -- 消込対象取引通貨
+--            ,araa.acctd_amount_applied_to        AS acctd_amount_applied_to       -- 機能通貨消込金額
+--            ,TO_CHAR(SYSDATE
+--                     ,cv_date_format_ymdhms)     AS transfer_date                 -- 連携日時
+----2012/10/05 MOD Start
+----            ,acrh.posting_control_id             AS posting_control_id            -- GL転送管理ID
+--            ,araa.posting_control_id             AS posting_control_id            -- GL転送管理ID
+----2012/10/05 MOD End
+--            ,araa.receivable_application_id      AS receivable_application_id     -- 消込ID
+--            ,cv_data_type_0                      AS data_type                     -- データタイプ('0':今回連携分)
+--        FROM ar_cash_receipts_all acr             -- 入金テーブル
+--            ,ar_cash_receipt_history_all acrh     -- 入金履歴テーブル
+--            ,ar_receivable_applications_all araa  -- 入金消込テーブル
+--            ,ar_receipt_methods arm               -- 支払方法テーブル
+--            ,ap_bank_accounts_all abaa            -- 銀行口座マスタ
+--            ,ap_bank_branches abb                 -- 銀行支店マスタ
+--            ,gl_daily_conversion_types gdct       -- GLレートマスタ
+--            ,ra_customer_trx_all rct              -- 取引ヘッダテーブル
+--        WHERE acr.cash_receipt_id          = acrh.cash_receipt_id
+--        AND acr.remittance_bank_account_id = abaa.bank_account_id
+--        AND abaa.bank_branch_id            = abb.bank_branch_id
+--        AND acr.receipt_method_id          = arm.receipt_method_id
+--        AND acrh.exchange_rate_type        = gdct.conversion_type(+)
+--        AND acr.cash_receipt_id            = araa.cash_receipt_id
+--        AND acrh.cash_receipt_history_id   = araa.cash_receipt_history_id
+--        AND araa.applied_customer_trx_id   = rct.customer_trx_id(+)
+----2012/10/17 MOD Start
+----        AND araa.status                    = cv_app
+--        AND araa.status                    IN ( cv_app , cv_activity )
+----2012/10/17 MOD End
+--        AND acrh.org_id                    = gn_org_id
+--        AND araa.application_type          = cv_cash
+--        AND acrh.cash_receipt_history_id BETWEEN gn_csh_rcpt_hist_id_from AND gn_csh_rcpt_hist_id_to
+--        AND acr.cash_receipt_id                = gn_cash_receipt_id
+--        ORDER BY cash_receipt_id , cash_receipt_history_id
+--    ;
+--2012/11/13 DEL End
+--2012/11/13 ADD Start
+    -- 対象データ取得カーソル(手動実行1：タイプが「入金」、且つ、入金消込ID(FROM)、入金消込ID(TO)を入力)
+    CURSOR get_manual_c_cur1
     IS
       SELECT /*+ LEADING(acrh acrh2 acr) USE_NL(acrh acr acrh2 abaa abb arm) INDEX(acrh ar_cash_receipt_history_u1)
-                 INDEX(acrh ar_cash_receipt_history_u2) INDEX(abaa ap_bank_accounts_u1) INDEX(abb ap_bank_branches_u1)
+                 INDEX(acrh ar_cash_receipt_history_u2) INDEX( ap_bank_accounts_u1) INDEX(abb ap_bank_branches_u1)
                  INDEX(arm ar_receipt_methods_u1) */
              gt_cash_receipt_meaning             AS cash_recon_type               -- タイプ(固定値：入金)
             ,acr.cash_receipt_id                 AS cash_receipt_id               -- 入金ID
@@ -2463,17 +3041,17 @@ AS
             ,gl_daily_conversion_types gdct    -- GLレートマスタ
         WHERE acr.cash_receipt_id              = acrh.cash_receipt_id
         AND acr.receipt_method_id              = arm.receipt_method_id
---2012/10/16 MOD Start
---        AND acrh.reversal_cash_receipt_hist_id = acrh2.cash_receipt_history_id(+)
         AND acrh.cash_receipt_history_id       = acrh2.reversal_cash_receipt_hist_id(+)
---2012/10/16 MOD End
         AND acr.remittance_bank_account_id     = abaa.bank_account_id
         AND abaa.bank_branch_id                = abb.bank_branch_id
         AND acrh.exchange_rate_type            = gdct.conversion_type (+)
         AND acrh.org_id                        = gn_org_id
-        AND acrh.cash_receipt_history_id BETWEEN gn_csh_rcpt_hist_id_from AND gn_csh_rcpt_hist_id_to
-      UNION ALL
-      SELECT /*+ LEADING(acrh acr araa) USE_NL(acrh acr abaa abb arm araa) INDEX(acrh ar_cash_receipt_history_u1)
+        AND acrh.cash_receipt_history_id BETWEEN gn_csh_rcpt_hist_id_from AND gn_csh_rcpt_hist_id_to  -- 入金履歴ID
+        ;
+    -- 対象データ取得カーソル(手動実行2：タイプが「消込」、且つ、入金消込ID(FROM)、入金消込ID(TO)を入力)
+    CURSOR get_manual_r_cur2
+    IS
+      SELECT /*+ LEADING(araa acr acrh) USE_NL(araa acr acrh abaa abb arm) INDEX(acrh ar_cash_receipt_history_u1)
                  INDEX(acrh ar_cash_receipt_history_u2) INDEX(abaa ap_bank_accounts_u1) INDEX(abb ap_bank_branches_u1)
                  INDEX(arm ar_receipt_methods_u1) */
              gt_recon_meaning                    AS cash_recon_type               -- タイプ(固定値：消込)
@@ -2532,10 +3110,7 @@ AS
             ,araa.acctd_amount_applied_to        AS acctd_amount_applied_to       -- 機能通貨消込金額
             ,TO_CHAR(SYSDATE
                      ,cv_date_format_ymdhms)     AS transfer_date                 -- 連携日時
---2012/10/05 MOD Start
---            ,acrh.posting_control_id             AS posting_control_id            -- GL転送管理ID
             ,araa.posting_control_id             AS posting_control_id            -- GL転送管理ID
---2012/10/05 MOD End
             ,araa.receivable_application_id      AS receivable_application_id     -- 消込ID
             ,cv_data_type_0                      AS data_type                     -- データタイプ('0':今回連携分)
         FROM ar_cash_receipts_all acr             -- 入金テーブル
@@ -2554,18 +3129,15 @@ AS
         AND acr.cash_receipt_id            = araa.cash_receipt_id
         AND acrh.cash_receipt_history_id   = araa.cash_receipt_history_id
         AND araa.applied_customer_trx_id   = rct.customer_trx_id(+)
---2012/10/17 MOD Start
---        AND araa.status                    = cv_app
         AND araa.status                    IN ( cv_app , cv_activity )
---2012/10/17 MOD End
         AND acrh.org_id                    = gn_org_id
         AND araa.application_type          = cv_cash
-        AND acrh.cash_receipt_history_id BETWEEN gn_csh_rcpt_hist_id_from AND gn_csh_rcpt_hist_id_to
+        AND araa.receivable_application_id BETWEEN gn_csh_rcpt_hist_id_from AND gn_csh_rcpt_hist_id_to  -- 消込ID
         ORDER BY cash_receipt_id , cash_receipt_history_id
     ;
 --
-    -- 対象データ取得カーソル(手動実行2：入金番号を入力)
-    CURSOR get_manual_cur2
+    -- 対象データ取得カーソル(手動実行3：タイプが「入金」、且つ、入金番号を入力)
+    CURSOR get_manual_c_cur3
     IS
       SELECT /*+ LEADING(acrh acrh2 acr) USE_NL(acrh acr acrh2 abaa abb arm) INDEX(acrh ar_cash_receipt_history_u1)
                  INDEX(acrh ar_cash_receipt_history_u2) INDEX(abaa ap_bank_accounts_u1) INDEX(abb ap_bank_branches_u1)
@@ -2649,17 +3221,18 @@ AS
             ,gl_daily_conversion_types gdct    -- GLレートマスタ
         WHERE acr.cash_receipt_id              = acrh.cash_receipt_id
         AND acr.receipt_method_id              = arm.receipt_method_id
---2012/10/16 MOD Start
---        AND acrh.reversal_cash_receipt_hist_id = acrh2.cash_receipt_history_id(+)
         AND acrh.cash_receipt_history_id       = acrh2.reversal_cash_receipt_hist_id(+)
---2012/10/16 MOD End
         AND acr.remittance_bank_account_id     = abaa.bank_account_id
         AND abaa.bank_branch_id                = abb.bank_branch_id
         AND acrh.exchange_rate_type            = gdct.conversion_type (+)
         AND acrh.org_id                        = gn_org_id
         AND  acr.cash_receipt_id               = gn_cash_receipt_id
-      UNION ALL
-      SELECT /*+ LEADING(acrh acr araa) USE_NL(acrh acr abaa abb arm araa) INDEX(acrh ar_cash_receipt_history_u1)
+    ;
+--
+    -- 対象データ取得カーソル(手動実行4：タイプが「消込」、且つ、入金番号を入力)
+    CURSOR get_manual_r_cur4
+    IS
+      SELECT /*+ LEADING(araa acrh acr) USE_NL(araa acrh acr abaa abb arm) INDEX(acrh ar_cash_receipt_history_u1)
                  INDEX(acrh ar_cash_receipt_history_u2) INDEX(abaa ap_bank_accounts_u1) INDEX(abb ap_bank_branches_u1)
                  INDEX(arm ar_receipt_methods_u1) */
              gt_recon_meaning                    AS cash_recon_type               -- タイプ(固定値：消込)
@@ -2718,10 +3291,7 @@ AS
             ,araa.acctd_amount_applied_to        AS acctd_amount_applied_to       -- 機能通貨消込金額
             ,TO_CHAR(SYSDATE
                      ,cv_date_format_ymdhms)     AS transfer_date                 -- 連携日時
---2012/10/05 MOD Start
---            ,acrh.posting_control_id             AS posting_control_id            -- GL転送管理ID
             ,araa.posting_control_id             AS posting_control_id            -- GL転送管理ID
---2012/10/05 MOD End
             ,araa.receivable_application_id      AS receivable_application_id     -- 消込ID
             ,cv_data_type_0                      AS data_type                     -- データタイプ('0':今回連携分)
         FROM ar_cash_receipts_all acr             -- 入金テーブル
@@ -2740,18 +3310,15 @@ AS
         AND acr.cash_receipt_id            = araa.cash_receipt_id
         AND acrh.cash_receipt_history_id   = araa.cash_receipt_history_id
         AND araa.applied_customer_trx_id   = rct.customer_trx_id(+)
---2012/10/17 MOD Start
---        AND araa.status                    = cv_app
         AND araa.status                    IN ( cv_app , cv_activity )
---2012/10/17 MOD End
         AND acrh.org_id                    = gn_org_id
         AND araa.application_type          = cv_cash
         AND acr.cash_receipt_id            = gn_cash_receipt_id
         ORDER BY cash_receipt_id , cash_receipt_history_id
     ;
 --
-    -- 対象データ取得カーソル(手動実行3：入金履歴ID(FROM)、入金履歴ID(TO)、入金番号を入力)
-    CURSOR get_manual_cur3
+    -- 対象データ取得カーソル(手動実行5：タイプが「入金」、且つ、入金履歴ID(FROM)、入金履歴ID(TO)、入金番号を入力)
+    CURSOR get_manual_c_cur5
     IS
       SELECT /*+ LEADING(acrh acrh2 acr) USE_NL(acrh acr acrh2 abaa abb arm) INDEX(acrh ar_cash_receipt_history_u1)
                  INDEX(acrh ar_cash_receipt_history_u2) INDEX(abaa ap_bank_accounts_u1) INDEX(abb ap_bank_branches_u1)
@@ -2835,18 +3402,18 @@ AS
             ,gl_daily_conversion_types gdct    -- GLレートマスタ
         WHERE acr.cash_receipt_id              = acrh.cash_receipt_id
         AND acr.receipt_method_id              = arm.receipt_method_id
---2012/10/16 MOD Start
---        AND acrh.reversal_cash_receipt_hist_id = acrh2.cash_receipt_history_id(+)
         AND acrh.cash_receipt_history_id       = acrh2.reversal_cash_receipt_hist_id(+)
---2012/10/16 MOD End
         AND acr.remittance_bank_account_id     = abaa.bank_account_id
         AND abaa.bank_branch_id                = abb.bank_branch_id
         AND acrh.exchange_rate_type            = gdct.conversion_type (+)
         AND acrh.org_id                        = gn_org_id
-        AND acrh.cash_receipt_history_id BETWEEN gn_csh_rcpt_hist_id_from AND gn_csh_rcpt_hist_id_to
+        AND acrh.cash_receipt_history_id BETWEEN gn_csh_rcpt_hist_id_from AND gn_csh_rcpt_hist_id_to  -- 入金履歴ID
         AND acr.cash_receipt_id                = gn_cash_receipt_id
-      UNION ALL
-      SELECT /*+ LEADING(acrh acr araa) USE_NL(acrh acr abaa abb arm araa) INDEX(acrh ar_cash_receipt_history_u1)
+    ;
+    -- 対象データ取得カーソル(手動実行6：タイプが「消込」、且つ、入金履歴ID(FROM)、入金履歴ID(TO)、入金番号を入力)
+    CURSOR get_manual_r_cur6
+    IS
+      SELECT /*+ LEADING(araa acrh acr) USE_NL(araa acrh acr abaa abb arm) INDEX(acrh ar_cash_receipt_history_u1)
                  INDEX(acrh ar_cash_receipt_history_u2) INDEX(abaa ap_bank_accounts_u1) INDEX(abb ap_bank_branches_u1)
                  INDEX(arm ar_receipt_methods_u1) */
              gt_recon_meaning                    AS cash_recon_type               -- タイプ(固定値：消込)
@@ -2905,10 +3472,7 @@ AS
             ,araa.acctd_amount_applied_to        AS acctd_amount_applied_to       -- 機能通貨消込金額
             ,TO_CHAR(SYSDATE
                      ,cv_date_format_ymdhms)     AS transfer_date                 -- 連携日時
---2012/10/05 MOD Start
---            ,acrh.posting_control_id             AS posting_control_id            -- GL転送管理ID
             ,araa.posting_control_id             AS posting_control_id            -- GL転送管理ID
---2012/10/05 MOD End
             ,araa.receivable_application_id      AS receivable_application_id     -- 消込ID
             ,cv_data_type_0                      AS data_type                     -- データタイプ('0':今回連携分)
         FROM ar_cash_receipts_all acr             -- 入金テーブル
@@ -2927,16 +3491,14 @@ AS
         AND acr.cash_receipt_id            = araa.cash_receipt_id
         AND acrh.cash_receipt_history_id   = araa.cash_receipt_history_id
         AND araa.applied_customer_trx_id   = rct.customer_trx_id(+)
---2012/10/17 MOD Start
---        AND araa.status                    = cv_app
         AND araa.status                    IN ( cv_app , cv_activity )
---2012/10/17 MOD End
         AND acrh.org_id                    = gn_org_id
         AND araa.application_type          = cv_cash
-        AND acrh.cash_receipt_history_id BETWEEN gn_csh_rcpt_hist_id_from AND gn_csh_rcpt_hist_id_to
+        AND araa.receivable_application_id BETWEEN gn_csh_rcpt_hist_id_from AND gn_csh_rcpt_hist_id_to  -- 消込ID
         AND acr.cash_receipt_id                = gn_cash_receipt_id
         ORDER BY cash_receipt_id , cash_receipt_history_id
     ;
+--2012/11/13 ADD End
 --
     get_data_expt             EXCEPTION;
 --
@@ -2954,63 +3516,181 @@ AS
     -- 定期手動区分が'1'（手動）の場合
     IF ( gv_exec_kbn = cv_exec_manual ) THEN
 --
-      -- 手動実行1：入金履歴ID(FROM)、入金履歴ID(TO)を入力
+      -- 手動実行1,2：入金履歴ID(FROM)、入金履歴ID(TO)を入力
       IF ( ( gn_csh_rcpt_hist_id_from IS NOT NULL ) AND ( gn_csh_rcpt_hist_id_to IS NOT NULL)
         AND ( gn_cash_receipt_id IS NULL ) )
       THEN
-        --カーソルオープン
-        OPEN get_manual_cur1;
+--2012/11/13 DEL Start
+--        --カーソルオープン
+--        OPEN get_manual_cur1;
+--        <<get_manual_loop1>>
+--        LOOP
+--        FETCH get_manual_cur1 INTO
+--              g_data_tab(1)  -- タイプ
+--            , g_data_tab(2)  -- 入金ID
+--            , g_data_tab(3)  -- 計上日
+--            , g_data_tab(4)  -- 入金番号
+--            , g_data_tab(5)  -- 入金文書番号
+--            , g_data_tab(6)  -- 支払方法ID
+--            , g_data_tab(7)  -- 支払方法
+--            , g_data_tab(8)  -- 入金日
+--            , g_data_tab(9)  -- 入金顧客コード
+--            , g_data_tab(10) -- 入金顧客名
+--            , g_data_tab(11) -- 入金額
+--            , g_data_tab(12) -- 銀行番号
+--            , g_data_tab(13) -- 銀行名
+--            , g_data_tab(14) -- 支店番号
+--            , g_data_tab(15) -- 支店名
+--            , g_data_tab(16) -- 送金銀行口座番号
+--            , g_data_tab(17) -- 送金銀行口座名
+--            , g_data_tab(18) -- 振込依頼人名カナ
+--            , g_data_tab(19) -- 拠点コード
+--            , g_data_tab(20) -- 納品先顧客コード
+--            , g_data_tab(21) -- 入金履歴ID
+--            , g_data_tab(22) -- ステータス
+--            , g_data_tab(23) -- 取引日
+--            , g_data_tab(24) -- 正味金額_履歴
+--            , g_data_tab(25) -- 銀行手数料_履歴
+--            , g_data_tab(26) -- 正味金額_計上額
+--            , g_data_tab(27) -- 銀行手数料_計上額
+--            , g_data_tab(28) -- 消込日
+--            , g_data_tab(29) -- 消込金額
+--            , g_data_tab(30) -- 消込対象取引ID
+--            , g_data_tab(31) -- 消込対象取引番号
+--            , g_data_tab(32) -- 入金通貨
+--            , g_data_tab(33) -- レートタイプ
+--            , g_data_tab(34) -- 換算日
+--            , g_data_tab(35) -- 換算レート
+--            , g_data_tab(36) -- 正味金額_機能通貨計上額
+--            , g_data_tab(37) -- 銀行手数料_機能通貨計上額
+--            , g_data_tab(38) -- 配賦入金金額
+--            , g_data_tab(39) -- 機能通貨配賦入金金額
+--            , g_data_tab(40) -- 消込対象取引通貨
+--            , g_data_tab(41) -- 機能通貨消込金額機能通貨消込金額
+--            , g_data_tab(42) -- 連携日時                                -- ここまでがチェックとCSV出力対象(DFFに登録する)
+--            , g_data_tab(43) -- GL転送管理ID                            -- チェック、CSVファイル出力対象外
+--            , g_data_tab(44) -- 消込ID                                  -- チェック、CSVファイル出力対象外
+--            , g_data_tab(45) -- データタイプ                            -- チェック、CSVファイル出力対象外
+--            ;
+--          EXIT WHEN get_manual_cur1%NOTFOUND;
+--
+--2012/11/13 DEL End
+--2012/11/13 ADD Start
+        -- 手動実行1：タイプが「入金」、且つ、入金消込ID(FROM)、入金消込ID(TO)を入力)
+        IF ( gv_data_type = gt_cash_receipt_meaning ) THEN  -- タイプ「入金」
+          --カーソルオープン
+          OPEN get_manual_c_cur1;
+        -- 手動実行2：タイプが「消込」、且つ、入金消込ID(FROM)、入金消込ID(TO)を入力
+        ELSIF ( gv_data_type = gt_recon_meaning ) THEN
+          OPEN get_manual_r_cur2;
+        END IF;
+--
         <<get_manual_loop1>>
         LOOP
-        FETCH get_manual_cur1 INTO
-              g_data_tab(1)  -- タイプ
-            , g_data_tab(2)  -- 入金ID
-            , g_data_tab(3)  -- 計上日
-            , g_data_tab(4)  -- 入金番号
-            , g_data_tab(5)  -- 入金文書番号
-            , g_data_tab(6)  -- 支払方法ID
-            , g_data_tab(7)  -- 支払方法
-            , g_data_tab(8)  -- 入金日
-            , g_data_tab(9)  -- 入金顧客コード
-            , g_data_tab(10) -- 入金顧客名
-            , g_data_tab(11) -- 入金額
-            , g_data_tab(12) -- 銀行番号
-            , g_data_tab(13) -- 銀行名
-            , g_data_tab(14) -- 支店番号
-            , g_data_tab(15) -- 支店名
-            , g_data_tab(16) -- 送金銀行口座番号
-            , g_data_tab(17) -- 送金銀行口座名
-            , g_data_tab(18) -- 振込依頼人名カナ
-            , g_data_tab(19) -- 拠点コード
-            , g_data_tab(20) -- 納品先顧客コード
-            , g_data_tab(21) -- 入金履歴ID
-            , g_data_tab(22) -- ステータス
-            , g_data_tab(23) -- 取引日
-            , g_data_tab(24) -- 正味金額_履歴
-            , g_data_tab(25) -- 銀行手数料_履歴
-            , g_data_tab(26) -- 正味金額_計上額
-            , g_data_tab(27) -- 銀行手数料_計上額
-            , g_data_tab(28) -- 消込日
-            , g_data_tab(29) -- 消込金額
-            , g_data_tab(30) -- 消込対象取引ID
-            , g_data_tab(31) -- 消込対象取引番号
-            , g_data_tab(32) -- 入金通貨
-            , g_data_tab(33) -- レートタイプ
-            , g_data_tab(34) -- 換算日
-            , g_data_tab(35) -- 換算レート
-            , g_data_tab(36) -- 正味金額_機能通貨計上額
-            , g_data_tab(37) -- 銀行手数料_機能通貨計上額
-            , g_data_tab(38) -- 配賦入金金額
-            , g_data_tab(39) -- 機能通貨配賦入金金額
-            , g_data_tab(40) -- 消込対象取引通貨
-            , g_data_tab(41) -- 機能通貨消込金額機能通貨消込金額
-            , g_data_tab(42) -- 連携日時                                -- ここまでがチェックとCSV出力対象(DFFに登録する)
-            , g_data_tab(43) -- GL転送管理ID                            -- チェック、CSVファイル出力対象外
-            , g_data_tab(44) -- 消込ID                                  -- チェック、CSVファイル出力対象外
-            , g_data_tab(45) -- データタイプ                            -- チェック、CSVファイル出力対象外
-            ;
-          EXIT WHEN get_manual_cur1%NOTFOUND;
+          -- 手動実行1：タイプが「入金」、且つ、入金消込ID(FROM)、入金消込ID(TO)を入力)
+          IF ( gv_data_type = gt_cash_receipt_meaning ) THEN  -- タイプ「入金」
+            FETCH get_manual_c_cur1 INTO
+                  g_data_tab(1)  -- タイプ
+                , g_data_tab(2)  -- 入金ID
+                , g_data_tab(3)  -- 計上日
+                , g_data_tab(4)  -- 入金番号
+                , g_data_tab(5)  -- 入金文書番号
+                , g_data_tab(6)  -- 支払方法ID
+                , g_data_tab(7)  -- 支払方法
+                , g_data_tab(8)  -- 入金日
+                , g_data_tab(9)  -- 入金顧客コード
+                , g_data_tab(10) -- 入金顧客名
+                , g_data_tab(11) -- 入金額
+                , g_data_tab(12) -- 銀行番号
+                , g_data_tab(13) -- 銀行名
+                , g_data_tab(14) -- 支店番号
+                , g_data_tab(15) -- 支店名
+                , g_data_tab(16) -- 送金銀行口座番号
+                , g_data_tab(17) -- 送金銀行口座名
+                , g_data_tab(18) -- 振込依頼人名カナ
+                , g_data_tab(19) -- 拠点コード
+                , g_data_tab(20) -- 納品先顧客コード
+                , g_data_tab(21) -- 入金履歴ID
+                , g_data_tab(22) -- ステータス
+                , g_data_tab(23) -- 取引日
+                , g_data_tab(24) -- 正味金額_履歴
+                , g_data_tab(25) -- 銀行手数料_履歴
+                , g_data_tab(26) -- 正味金額_計上額
+                , g_data_tab(27) -- 銀行手数料_計上額
+                , g_data_tab(28) -- 消込日
+                , g_data_tab(29) -- 消込金額
+                , g_data_tab(30) -- 消込対象取引ID
+                , g_data_tab(31) -- 消込対象取引番号
+                , g_data_tab(32) -- 入金通貨
+                , g_data_tab(33) -- レートタイプ
+                , g_data_tab(34) -- 換算日
+                , g_data_tab(35) -- 換算レート
+                , g_data_tab(36) -- 正味金額_機能通貨計上額
+                , g_data_tab(37) -- 銀行手数料_機能通貨計上額
+                , g_data_tab(38) -- 配賦入金金額
+                , g_data_tab(39) -- 機能通貨配賦入金金額
+                , g_data_tab(40) -- 消込対象取引通貨
+                , g_data_tab(41) -- 機能通貨消込金額機能通貨消込金額
+                , g_data_tab(42) -- 連携日時                                -- ここまでがチェックとCSV出力対象(DFFに登録する)
+                , g_data_tab(43) -- GL転送管理ID                            -- チェック、CSVファイル出力対象外
+                , g_data_tab(44) -- 消込ID                                  -- チェック、CSVファイル出力対象外
+                , g_data_tab(45) -- データタイプ                            -- チェック、CSVファイル出力対象外
+                ;
+            EXIT WHEN get_manual_c_cur1%NOTFOUND;
+          -- 手動実行2：タイプが「消込」、且つ、入金消込ID(FROM)、入金消込ID(TO)を入力
+          ELSIF ( gv_data_type = gt_recon_meaning ) THEN
+            FETCH get_manual_r_cur2 INTO
+                  g_data_tab(1)  -- タイプ
+                , g_data_tab(2)  -- 入金ID
+                , g_data_tab(3)  -- 計上日
+                , g_data_tab(4)  -- 入金番号
+                , g_data_tab(5)  -- 入金文書番号
+                , g_data_tab(6)  -- 支払方法ID
+                , g_data_tab(7)  -- 支払方法
+                , g_data_tab(8)  -- 入金日
+                , g_data_tab(9)  -- 入金顧客コード
+                , g_data_tab(10) -- 入金顧客名
+                , g_data_tab(11) -- 入金額
+                , g_data_tab(12) -- 銀行番号
+                , g_data_tab(13) -- 銀行名
+                , g_data_tab(14) -- 支店番号
+                , g_data_tab(15) -- 支店名
+                , g_data_tab(16) -- 送金銀行口座番号
+                , g_data_tab(17) -- 送金銀行口座名
+                , g_data_tab(18) -- 振込依頼人名カナ
+                , g_data_tab(19) -- 拠点コード
+                , g_data_tab(20) -- 納品先顧客コード
+                , g_data_tab(21) -- 入金履歴ID
+                , g_data_tab(22) -- ステータス
+                , g_data_tab(23) -- 取引日
+                , g_data_tab(24) -- 正味金額_履歴
+                , g_data_tab(25) -- 銀行手数料_履歴
+                , g_data_tab(26) -- 正味金額_計上額
+                , g_data_tab(27) -- 銀行手数料_計上額
+                , g_data_tab(28) -- 消込日
+                , g_data_tab(29) -- 消込金額
+                , g_data_tab(30) -- 消込対象取引ID
+                , g_data_tab(31) -- 消込対象取引番号
+                , g_data_tab(32) -- 入金通貨
+                , g_data_tab(33) -- レートタイプ
+                , g_data_tab(34) -- 換算日
+                , g_data_tab(35) -- 換算レート
+                , g_data_tab(36) -- 正味金額_機能通貨計上額
+                , g_data_tab(37) -- 銀行手数料_機能通貨計上額
+                , g_data_tab(38) -- 配賦入金金額
+                , g_data_tab(39) -- 機能通貨配賦入金金額
+                , g_data_tab(40) -- 消込対象取引通貨
+                , g_data_tab(41) -- 機能通貨消込金額機能通貨消込金額
+                , g_data_tab(42) -- 連携日時                                -- ここまでがチェックとCSV出力対象(DFFに登録する)
+                , g_data_tab(43) -- GL転送管理ID                            -- チェック、CSVファイル出力対象外
+                , g_data_tab(44) -- 消込ID                                  -- チェック、CSVファイル出力対象外
+                , g_data_tab(45) -- データタイプ                            -- チェック、CSVファイル出力対象外
+                ;
+            EXIT WHEN get_manual_r_cur2%NOTFOUND;
 --
+          END IF;
+--
+--2012/11/13 ADD End
           --==============================================================
           -- 以下、処理対象
           --==============================================================
@@ -3070,64 +3750,188 @@ AS
 --
         END LOOP get_manual_loop1;
 --
-        CLOSE get_manual_cur1;
+--2012/11/13 MOD Start
+--        CLOSE get_manual_cur1;
+        IF ( gv_data_type = gt_cash_receipt_meaning ) THEN
+          CLOSE get_manual_c_cur1;
+        ELSIF ( gv_data_type = gt_recon_meaning ) THEN
+          CLOSE get_manual_r_cur2;
+        END IF;
+--2012/11/13 MOD End
 --
-      -- 手動実行2：入金履歴番号を入力
+      -- 手動実行3,4：入金履歴番号を入力
       ELSIF ( ( gn_csh_rcpt_hist_id_from IS NULL ) AND ( gn_csh_rcpt_hist_id_to IS NULL)
         AND ( gn_cash_receipt_id IS NOT NULL ) )
       THEN
-        --カーソルオープン
-        OPEN get_manual_cur2;
+--2012/11/13 DEL Start
+--        --カーソルオープン
+--        OPEN get_manual_cur2;
+--        <<get_manual_loop2>>
+--        LOOP
+--        FETCH get_manual_cur2 INTO
+--              g_data_tab(1)  -- タイプ
+--            , g_data_tab(2)  -- 入金ID
+--            , g_data_tab(3)  -- 計上日
+--            , g_data_tab(4)  -- 入金番号
+--            , g_data_tab(5)  -- 入金文書番号
+--            , g_data_tab(6)  -- 支払方法ID
+--            , g_data_tab(7)  -- 支払方法
+--            , g_data_tab(8)  -- 入金日
+--            , g_data_tab(9)  -- 入金顧客コード
+--            , g_data_tab(10) -- 入金顧客名
+--            , g_data_tab(11) -- 入金額
+--            , g_data_tab(12) -- 銀行番号
+--            , g_data_tab(13) -- 銀行名
+--            , g_data_tab(14) -- 支店番号
+--            , g_data_tab(15) -- 支店名
+--            , g_data_tab(16) -- 送金銀行口座番号
+--            , g_data_tab(17) -- 送金銀行口座名
+--            , g_data_tab(18) -- 振込依頼人名カナ
+--            , g_data_tab(19) -- 拠点コード
+--            , g_data_tab(20) -- 納品先顧客コード
+--            , g_data_tab(21) -- 入金履歴ID
+--            , g_data_tab(22) -- ステータス
+--            , g_data_tab(23) -- 取引日
+--            , g_data_tab(24) -- 正味金額_履歴
+--            , g_data_tab(25) -- 銀行手数料_履歴
+--            , g_data_tab(26) -- 正味金額_計上額
+--            , g_data_tab(27) -- 銀行手数料_計上額
+--            , g_data_tab(28) -- 消込日
+--            , g_data_tab(29) -- 消込金額
+--            , g_data_tab(30) -- 消込対象取引ID
+--            , g_data_tab(31) -- 消込対象取引番号
+--            , g_data_tab(32) -- 入金通貨
+--            , g_data_tab(33) -- レートタイプ
+--            , g_data_tab(34) -- 換算日
+--            , g_data_tab(35) -- 換算レート
+--            , g_data_tab(36) -- 正味金額_機能通貨計上額
+--            , g_data_tab(37) -- 銀行手数料_機能通貨計上額
+--            , g_data_tab(38) -- 配賦入金金額
+--            , g_data_tab(39) -- 機能通貨配賦入金金額
+--            , g_data_tab(40) -- 消込対象取引通貨
+--            , g_data_tab(41) -- 機能通貨消込金額機能通貨消込金額
+--            , g_data_tab(42) -- 連携日時                                -- ここまでがチェックとCSV出力対象(DFFに登録する)
+--            , g_data_tab(43) -- GL転送管理ID                            -- チェック、CSVファイル出力対象外
+--            , g_data_tab(44) -- 消込ID                                  -- チェック、CSVファイル出力対象外
+--            , g_data_tab(45) -- データタイプ                            -- チェック、CSVファイル出力対象外
+--            ;
+--          EXIT WHEN get_manual_cur2%NOTFOUND;
+--2012/11/13 DEL End
+--2012/11/13 ADD Start
+        -- 手動実行3：タイプが「入金」、且つ、入金番号を入力)
+        IF ( gv_data_type = gt_cash_receipt_meaning ) THEN  -- タイプ「入金」
+          --カーソルオープン
+          OPEN get_manual_c_cur3;
+        -- 手動実行4：タイプが「消込」、且つ、入金番号を入力
+        ELSIF ( gv_data_type = gt_recon_meaning ) THEN
+          OPEN get_manual_r_cur4;
+        END IF;
+--
         <<get_manual_loop2>>
         LOOP
-        FETCH get_manual_cur2 INTO
-              g_data_tab(1)  -- タイプ
-            , g_data_tab(2)  -- 入金ID
-            , g_data_tab(3)  -- 計上日
-            , g_data_tab(4)  -- 入金番号
-            , g_data_tab(5)  -- 入金文書番号
-            , g_data_tab(6)  -- 支払方法ID
-            , g_data_tab(7)  -- 支払方法
-            , g_data_tab(8)  -- 入金日
-            , g_data_tab(9)  -- 入金顧客コード
-            , g_data_tab(10) -- 入金顧客名
-            , g_data_tab(11) -- 入金額
-            , g_data_tab(12) -- 銀行番号
-            , g_data_tab(13) -- 銀行名
-            , g_data_tab(14) -- 支店番号
-            , g_data_tab(15) -- 支店名
-            , g_data_tab(16) -- 送金銀行口座番号
-            , g_data_tab(17) -- 送金銀行口座名
-            , g_data_tab(18) -- 振込依頼人名カナ
-            , g_data_tab(19) -- 拠点コード
-            , g_data_tab(20) -- 納品先顧客コード
-            , g_data_tab(21) -- 入金履歴ID
-            , g_data_tab(22) -- ステータス
-            , g_data_tab(23) -- 取引日
-            , g_data_tab(24) -- 正味金額_履歴
-            , g_data_tab(25) -- 銀行手数料_履歴
-            , g_data_tab(26) -- 正味金額_計上額
-            , g_data_tab(27) -- 銀行手数料_計上額
-            , g_data_tab(28) -- 消込日
-            , g_data_tab(29) -- 消込金額
-            , g_data_tab(30) -- 消込対象取引ID
-            , g_data_tab(31) -- 消込対象取引番号
-            , g_data_tab(32) -- 入金通貨
-            , g_data_tab(33) -- レートタイプ
-            , g_data_tab(34) -- 換算日
-            , g_data_tab(35) -- 換算レート
-            , g_data_tab(36) -- 正味金額_機能通貨計上額
-            , g_data_tab(37) -- 銀行手数料_機能通貨計上額
-            , g_data_tab(38) -- 配賦入金金額
-            , g_data_tab(39) -- 機能通貨配賦入金金額
-            , g_data_tab(40) -- 消込対象取引通貨
-            , g_data_tab(41) -- 機能通貨消込金額機能通貨消込金額
-            , g_data_tab(42) -- 連携日時                                -- ここまでがチェックとCSV出力対象(DFFに登録する)
-            , g_data_tab(43) -- GL転送管理ID                            -- チェック、CSVファイル出力対象外
-            , g_data_tab(44) -- 消込ID                                  -- チェック、CSVファイル出力対象外
-            , g_data_tab(45) -- データタイプ                            -- チェック、CSVファイル出力対象外
-            ;
-          EXIT WHEN get_manual_cur2%NOTFOUND;
+          -- 手動実行3：タイプが「入金」、且つ、入金番号を入力)
+          IF ( gv_data_type = gt_cash_receipt_meaning ) THEN  -- タイプ「入金」
+            FETCH get_manual_c_cur3 INTO
+                  g_data_tab(1)  -- タイプ
+                , g_data_tab(2)  -- 入金ID
+                , g_data_tab(3)  -- 計上日
+                , g_data_tab(4)  -- 入金番号
+                , g_data_tab(5)  -- 入金文書番号
+                , g_data_tab(6)  -- 支払方法ID
+                , g_data_tab(7)  -- 支払方法
+                , g_data_tab(8)  -- 入金日
+                , g_data_tab(9)  -- 入金顧客コード
+                , g_data_tab(10) -- 入金顧客名
+                , g_data_tab(11) -- 入金額
+                , g_data_tab(12) -- 銀行番号
+                , g_data_tab(13) -- 銀行名
+                , g_data_tab(14) -- 支店番号
+                , g_data_tab(15) -- 支店名
+                , g_data_tab(16) -- 送金銀行口座番号
+                , g_data_tab(17) -- 送金銀行口座名
+                , g_data_tab(18) -- 振込依頼人名カナ
+                , g_data_tab(19) -- 拠点コード
+                , g_data_tab(20) -- 納品先顧客コード
+                , g_data_tab(21) -- 入金履歴ID
+                , g_data_tab(22) -- ステータス
+                , g_data_tab(23) -- 取引日
+                , g_data_tab(24) -- 正味金額_履歴
+                , g_data_tab(25) -- 銀行手数料_履歴
+                , g_data_tab(26) -- 正味金額_計上額
+                , g_data_tab(27) -- 銀行手数料_計上額
+                , g_data_tab(28) -- 消込日
+                , g_data_tab(29) -- 消込金額
+                , g_data_tab(30) -- 消込対象取引ID
+                , g_data_tab(31) -- 消込対象取引番号
+                , g_data_tab(32) -- 入金通貨
+                , g_data_tab(33) -- レートタイプ
+                , g_data_tab(34) -- 換算日
+                , g_data_tab(35) -- 換算レート
+                , g_data_tab(36) -- 正味金額_機能通貨計上額
+                , g_data_tab(37) -- 銀行手数料_機能通貨計上額
+                , g_data_tab(38) -- 配賦入金金額
+                , g_data_tab(39) -- 機能通貨配賦入金金額
+                , g_data_tab(40) -- 消込対象取引通貨
+                , g_data_tab(41) -- 機能通貨消込金額機能通貨消込金額
+                , g_data_tab(42) -- 連携日時                                -- ここまでがチェックとCSV出力対象(DFFに登録する)
+                , g_data_tab(43) -- GL転送管理ID                            -- チェック、CSVファイル出力対象外
+                , g_data_tab(44) -- 消込ID                                  -- チェック、CSVファイル出力対象外
+                , g_data_tab(45) -- データタイプ                            -- チェック、CSVファイル出力対象外
+                ;
+            EXIT WHEN get_manual_c_cur3%NOTFOUND;
+          -- 手動実行4：タイプが「消込」、且つ、入金番号を入力
+          ELSIF ( gv_data_type = gt_recon_meaning ) THEN
+            FETCH get_manual_r_cur4 INTO
+                  g_data_tab(1)  -- タイプ
+                , g_data_tab(2)  -- 入金ID
+                , g_data_tab(3)  -- 計上日
+                , g_data_tab(4)  -- 入金番号
+                , g_data_tab(5)  -- 入金文書番号
+                , g_data_tab(6)  -- 支払方法ID
+                , g_data_tab(7)  -- 支払方法
+                , g_data_tab(8)  -- 入金日
+                , g_data_tab(9)  -- 入金顧客コード
+                , g_data_tab(10) -- 入金顧客名
+                , g_data_tab(11) -- 入金額
+                , g_data_tab(12) -- 銀行番号
+                , g_data_tab(13) -- 銀行名
+                , g_data_tab(14) -- 支店番号
+                , g_data_tab(15) -- 支店名
+                , g_data_tab(16) -- 送金銀行口座番号
+                , g_data_tab(17) -- 送金銀行口座名
+                , g_data_tab(18) -- 振込依頼人名カナ
+                , g_data_tab(19) -- 拠点コード
+                , g_data_tab(20) -- 納品先顧客コード
+                , g_data_tab(21) -- 入金履歴ID
+                , g_data_tab(22) -- ステータス
+                , g_data_tab(23) -- 取引日
+                , g_data_tab(24) -- 正味金額_履歴
+                , g_data_tab(25) -- 銀行手数料_履歴
+                , g_data_tab(26) -- 正味金額_計上額
+                , g_data_tab(27) -- 銀行手数料_計上額
+                , g_data_tab(28) -- 消込日
+                , g_data_tab(29) -- 消込金額
+                , g_data_tab(30) -- 消込対象取引ID
+                , g_data_tab(31) -- 消込対象取引番号
+                , g_data_tab(32) -- 入金通貨
+                , g_data_tab(33) -- レートタイプ
+                , g_data_tab(34) -- 換算日
+                , g_data_tab(35) -- 換算レート
+                , g_data_tab(36) -- 正味金額_機能通貨計上額
+                , g_data_tab(37) -- 銀行手数料_機能通貨計上額
+                , g_data_tab(38) -- 配賦入金金額
+                , g_data_tab(39) -- 機能通貨配賦入金金額
+                , g_data_tab(40) -- 消込対象取引通貨
+                , g_data_tab(41) -- 機能通貨消込金額機能通貨消込金額
+                , g_data_tab(42) -- 連携日時                                -- ここまでがチェックとCSV出力対象(DFFに登録する)
+                , g_data_tab(43) -- GL転送管理ID                            -- チェック、CSVファイル出力対象外
+                , g_data_tab(44) -- 消込ID                                  -- チェック、CSVファイル出力対象外
+                , g_data_tab(45) -- データタイプ                            -- チェック、CSVファイル出力対象外
+                ;
+            EXIT WHEN get_manual_r_cur4%NOTFOUND;
+--
+          END IF;
+--2012/11/13 ADD End
 --
           --==============================================================
           -- 以下、処理対象
@@ -3188,64 +3992,188 @@ AS
 --
         END LOOP get_manual_loop2;
 --
-        CLOSE get_manual_cur2;
+--2012/11/13 MOD Start
+--        CLOSE get_manual_cur2;
+        IF ( gv_data_type = gt_cash_receipt_meaning ) THEN
+          CLOSE get_manual_c_cur3;
+        ELSIF ( gv_data_type = gt_recon_meaning ) THEN
+          CLOSE get_manual_r_cur4;
+        END IF;
+--2012/11/13 MOD End
 --
       ELSIF ( ( gn_csh_rcpt_hist_id_from IS NOT NULL ) AND ( gn_csh_rcpt_hist_id_to IS NOT NULL)
         AND ( gn_cash_receipt_id IS NOT NULL ) )
       THEN
 --
-        --カーソルオープン
-        OPEN get_manual_cur3;
+--2012/11/13 DEL Start
+--        --カーソルオープン
+--        OPEN get_manual_cur3;
+--        <<get_manual_loop3>>
+--        LOOP
+--        FETCH get_manual_cur3 INTO
+--              g_data_tab(1)  -- タイプ
+--            , g_data_tab(2)  -- 入金ID
+--            , g_data_tab(3)  -- 計上日
+--            , g_data_tab(4)  -- 入金番号
+--            , g_data_tab(5)  -- 入金文書番号
+--            , g_data_tab(6)  -- 支払方法ID
+--            , g_data_tab(7)  -- 支払方法
+--            , g_data_tab(8)  -- 入金日
+--            , g_data_tab(9)  -- 入金顧客コード
+--            , g_data_tab(10) -- 入金顧客名
+--            , g_data_tab(11) -- 入金額
+--            , g_data_tab(12) -- 銀行番号
+--            , g_data_tab(13) -- 銀行名
+--            , g_data_tab(14) -- 支店番号
+--            , g_data_tab(15) -- 支店名
+--            , g_data_tab(16) -- 送金銀行口座番号
+--            , g_data_tab(17) -- 送金銀行口座名
+--            , g_data_tab(18) -- 振込依頼人名カナ
+--            , g_data_tab(19) -- 拠点コード
+--            , g_data_tab(20) -- 納品先顧客コード
+--            , g_data_tab(21) -- 入金履歴ID
+--            , g_data_tab(22) -- ステータス
+--            , g_data_tab(23) -- 取引日
+--            , g_data_tab(24) -- 正味金額_履歴
+--            , g_data_tab(25) -- 銀行手数料_履歴
+--            , g_data_tab(26) -- 正味金額_計上額
+--            , g_data_tab(27) -- 銀行手数料_計上額
+--            , g_data_tab(28) -- 消込日
+--            , g_data_tab(29) -- 消込金額
+--            , g_data_tab(30) -- 消込対象取引ID
+--            , g_data_tab(31) -- 消込対象取引番号
+--            , g_data_tab(32) -- 入金通貨
+--            , g_data_tab(33) -- レートタイプ
+--            , g_data_tab(34) -- 換算日
+--            , g_data_tab(35) -- 換算レート
+--            , g_data_tab(36) -- 正味金額_機能通貨計上額
+--            , g_data_tab(37) -- 銀行手数料_機能通貨計上額
+--            , g_data_tab(38) -- 配賦入金金額
+--            , g_data_tab(39) -- 機能通貨配賦入金金額
+--            , g_data_tab(40) -- 消込対象取引通貨
+--            , g_data_tab(41) -- 機能通貨消込金額機能通貨消込金額
+--            , g_data_tab(42) -- 連携日時                                -- ここまでがチェックとCSV出力対象(DFFに登録する)
+--            , g_data_tab(43) -- GL転送管理ID                            -- チェック、CSVファイル出力対象外
+--            , g_data_tab(44) -- 消込ID                                  -- チェック、CSVファイル出力対象外
+--            , g_data_tab(45) -- データタイプ                            -- チェック、CSVファイル出力対象外
+--            ;
+--          EXIT WHEN get_manual_cur3%NOTFOUND;
+--2012/11/13 DEL End
+--2012/11/13 ADD Start
+        -- 手動実行5：タイプが「入金」、且つ、入金履歴ID(FROM)、入金履歴ID(TO)、入金番号を入力
+        IF ( gv_data_type = gt_cash_receipt_meaning ) THEN  -- タイプ「入金」
+          --カーソルオープン
+          OPEN get_manual_c_cur5;
+        -- 手動実行6：タイプが「消込」、且つ、入金履歴ID(FROM)、入金履歴ID(TO)、入金番号を入力
+        ELSIF ( gv_data_type = gt_recon_meaning ) THEN
+          OPEN get_manual_r_cur6;
+        END IF;
+--
         <<get_manual_loop3>>
         LOOP
-        FETCH get_manual_cur3 INTO
-              g_data_tab(1)  -- タイプ
-            , g_data_tab(2)  -- 入金ID
-            , g_data_tab(3)  -- 計上日
-            , g_data_tab(4)  -- 入金番号
-            , g_data_tab(5)  -- 入金文書番号
-            , g_data_tab(6)  -- 支払方法ID
-            , g_data_tab(7)  -- 支払方法
-            , g_data_tab(8)  -- 入金日
-            , g_data_tab(9)  -- 入金顧客コード
-            , g_data_tab(10) -- 入金顧客名
-            , g_data_tab(11) -- 入金額
-            , g_data_tab(12) -- 銀行番号
-            , g_data_tab(13) -- 銀行名
-            , g_data_tab(14) -- 支店番号
-            , g_data_tab(15) -- 支店名
-            , g_data_tab(16) -- 送金銀行口座番号
-            , g_data_tab(17) -- 送金銀行口座名
-            , g_data_tab(18) -- 振込依頼人名カナ
-            , g_data_tab(19) -- 拠点コード
-            , g_data_tab(20) -- 納品先顧客コード
-            , g_data_tab(21) -- 入金履歴ID
-            , g_data_tab(22) -- ステータス
-            , g_data_tab(23) -- 取引日
-            , g_data_tab(24) -- 正味金額_履歴
-            , g_data_tab(25) -- 銀行手数料_履歴
-            , g_data_tab(26) -- 正味金額_計上額
-            , g_data_tab(27) -- 銀行手数料_計上額
-            , g_data_tab(28) -- 消込日
-            , g_data_tab(29) -- 消込金額
-            , g_data_tab(30) -- 消込対象取引ID
-            , g_data_tab(31) -- 消込対象取引番号
-            , g_data_tab(32) -- 入金通貨
-            , g_data_tab(33) -- レートタイプ
-            , g_data_tab(34) -- 換算日
-            , g_data_tab(35) -- 換算レート
-            , g_data_tab(36) -- 正味金額_機能通貨計上額
-            , g_data_tab(37) -- 銀行手数料_機能通貨計上額
-            , g_data_tab(38) -- 配賦入金金額
-            , g_data_tab(39) -- 機能通貨配賦入金金額
-            , g_data_tab(40) -- 消込対象取引通貨
-            , g_data_tab(41) -- 機能通貨消込金額機能通貨消込金額
-            , g_data_tab(42) -- 連携日時                                -- ここまでがチェックとCSV出力対象(DFFに登録する)
-            , g_data_tab(43) -- GL転送管理ID                            -- チェック、CSVファイル出力対象外
-            , g_data_tab(44) -- 消込ID                                  -- チェック、CSVファイル出力対象外
-            , g_data_tab(45) -- データタイプ                            -- チェック、CSVファイル出力対象外
-            ;
-          EXIT WHEN get_manual_cur3%NOTFOUND;
+          -- 手動実行5：タイプが「入金」、且つ、入金履歴ID(FROM)、入金履歴ID(TO)、入金番号を入力
+          IF ( gv_data_type = gt_cash_receipt_meaning ) THEN  -- タイプ「入金」
+            FETCH get_manual_c_cur5 INTO
+                  g_data_tab(1)  -- タイプ
+                , g_data_tab(2)  -- 入金ID
+                , g_data_tab(3)  -- 計上日
+                , g_data_tab(4)  -- 入金番号
+                , g_data_tab(5)  -- 入金文書番号
+                , g_data_tab(6)  -- 支払方法ID
+                , g_data_tab(7)  -- 支払方法
+                , g_data_tab(8)  -- 入金日
+                , g_data_tab(9)  -- 入金顧客コード
+                , g_data_tab(10) -- 入金顧客名
+                , g_data_tab(11) -- 入金額
+                , g_data_tab(12) -- 銀行番号
+                , g_data_tab(13) -- 銀行名
+                , g_data_tab(14) -- 支店番号
+                , g_data_tab(15) -- 支店名
+                , g_data_tab(16) -- 送金銀行口座番号
+                , g_data_tab(17) -- 送金銀行口座名
+                , g_data_tab(18) -- 振込依頼人名カナ
+                , g_data_tab(19) -- 拠点コード
+                , g_data_tab(20) -- 納品先顧客コード
+                , g_data_tab(21) -- 入金履歴ID
+                , g_data_tab(22) -- ステータス
+                , g_data_tab(23) -- 取引日
+                , g_data_tab(24) -- 正味金額_履歴
+                , g_data_tab(25) -- 銀行手数料_履歴
+                , g_data_tab(26) -- 正味金額_計上額
+                , g_data_tab(27) -- 銀行手数料_計上額
+                , g_data_tab(28) -- 消込日
+                , g_data_tab(29) -- 消込金額
+                , g_data_tab(30) -- 消込対象取引ID
+                , g_data_tab(31) -- 消込対象取引番号
+                , g_data_tab(32) -- 入金通貨
+                , g_data_tab(33) -- レートタイプ
+                , g_data_tab(34) -- 換算日
+                , g_data_tab(35) -- 換算レート
+                , g_data_tab(36) -- 正味金額_機能通貨計上額
+                , g_data_tab(37) -- 銀行手数料_機能通貨計上額
+                , g_data_tab(38) -- 配賦入金金額
+                , g_data_tab(39) -- 機能通貨配賦入金金額
+                , g_data_tab(40) -- 消込対象取引通貨
+                , g_data_tab(41) -- 機能通貨消込金額機能通貨消込金額
+                , g_data_tab(42) -- 連携日時                                -- ここまでがチェックとCSV出力対象(DFFに登録する)
+                , g_data_tab(43) -- GL転送管理ID                            -- チェック、CSVファイル出力対象外
+                , g_data_tab(44) -- 消込ID                                  -- チェック、CSVファイル出力対象外
+                , g_data_tab(45) -- データタイプ                            -- チェック、CSVファイル出力対象外
+                ;
+            EXIT WHEN get_manual_c_cur5%NOTFOUND;
+          -- 手動実行6：タイプが「消込」、且つ、入金履歴ID(FROM)、入金履歴ID(TO)、入金番号を入力
+          ELSIF ( gv_data_type = gt_recon_meaning ) THEN
+            FETCH get_manual_r_cur6 INTO
+                  g_data_tab(1)  -- タイプ
+                , g_data_tab(2)  -- 入金ID
+                , g_data_tab(3)  -- 計上日
+                , g_data_tab(4)  -- 入金番号
+                , g_data_tab(5)  -- 入金文書番号
+                , g_data_tab(6)  -- 支払方法ID
+                , g_data_tab(7)  -- 支払方法
+                , g_data_tab(8)  -- 入金日
+                , g_data_tab(9)  -- 入金顧客コード
+                , g_data_tab(10) -- 入金顧客名
+                , g_data_tab(11) -- 入金額
+                , g_data_tab(12) -- 銀行番号
+                , g_data_tab(13) -- 銀行名
+                , g_data_tab(14) -- 支店番号
+                , g_data_tab(15) -- 支店名
+                , g_data_tab(16) -- 送金銀行口座番号
+                , g_data_tab(17) -- 送金銀行口座名
+                , g_data_tab(18) -- 振込依頼人名カナ
+                , g_data_tab(19) -- 拠点コード
+                , g_data_tab(20) -- 納品先顧客コード
+                , g_data_tab(21) -- 入金履歴ID
+                , g_data_tab(22) -- ステータス
+                , g_data_tab(23) -- 取引日
+                , g_data_tab(24) -- 正味金額_履歴
+                , g_data_tab(25) -- 銀行手数料_履歴
+                , g_data_tab(26) -- 正味金額_計上額
+                , g_data_tab(27) -- 銀行手数料_計上額
+                , g_data_tab(28) -- 消込日
+                , g_data_tab(29) -- 消込金額
+                , g_data_tab(30) -- 消込対象取引ID
+                , g_data_tab(31) -- 消込対象取引番号
+                , g_data_tab(32) -- 入金通貨
+                , g_data_tab(33) -- レートタイプ
+                , g_data_tab(34) -- 換算日
+                , g_data_tab(35) -- 換算レート
+                , g_data_tab(36) -- 正味金額_機能通貨計上額
+                , g_data_tab(37) -- 銀行手数料_機能通貨計上額
+                , g_data_tab(38) -- 配賦入金金額
+                , g_data_tab(39) -- 機能通貨配賦入金金額
+                , g_data_tab(40) -- 消込対象取引通貨
+                , g_data_tab(41) -- 機能通貨消込金額機能通貨消込金額
+                , g_data_tab(42) -- 連携日時                                -- ここまでがチェックとCSV出力対象(DFFに登録する)
+                , g_data_tab(43) -- GL転送管理ID                            -- チェック、CSVファイル出力対象外
+                , g_data_tab(44) -- 消込ID                                  -- チェック、CSVファイル出力対象外
+                , g_data_tab(45) -- データタイプ                            -- チェック、CSVファイル出力対象外
+                ;
+            EXIT WHEN get_manual_r_cur6%NOTFOUND;
+--
+          END IF;
+--2012/11/13 ADD End
 --
           --==============================================================
           -- 以下、処理対象
@@ -3306,7 +4234,14 @@ AS
 --
         END LOOP get_manual_loop3;
 --
-        CLOSE get_manual_cur3;
+--2012/11/13 MOD Start
+--        CLOSE get_manual_cur3;
+        IF ( gv_data_type = gt_cash_receipt_meaning ) THEN
+          CLOSE get_manual_c_cur5;
+        ELSIF ( gv_data_type = gt_recon_meaning ) THEN
+          CLOSE get_manual_r_cur6;
+        END IF;
+--2012/11/13 MOD End
 --
       END IF;
 --
@@ -3493,15 +4428,35 @@ AS
     WHEN OTHERS THEN
       ov_errbuf  := cv_pkg_name||cv_msg_cont||cv_prg_name||cv_msg_part||SQLERRM;
       ov_retcode := cv_status_error;
-      IF ( get_manual_cur1%ISOPEN ) THEN
-        CLOSE get_manual_cur1;
+--2012/11/13 MOD Start
+--      IF ( get_manual_cur1%ISOPEN ) THEN
+--        CLOSE get_manual_cur1;
+--      END IF;
+--      IF ( get_manual_cur2%ISOPEN ) THEN
+--        CLOSE get_manual_cur2;
+--      END IF;
+--      IF ( get_manual_cur3%ISOPEN ) THEN
+--        CLOSE get_manual_cur3;
+--      END IF;
+      IF ( get_manual_c_cur1%ISOPEN ) THEN
+        CLOSE get_manual_c_cur1;
       END IF;
-      IF ( get_manual_cur2%ISOPEN ) THEN
-        CLOSE get_manual_cur2;
+      IF ( get_manual_r_cur2%ISOPEN ) THEN
+        CLOSE get_manual_r_cur2;
       END IF;
-      IF ( get_manual_cur3%ISOPEN ) THEN
-        CLOSE get_manual_cur3;
+      IF ( get_manual_c_cur3%ISOPEN ) THEN
+        CLOSE get_manual_c_cur3;
       END IF;
+      IF ( get_manual_r_cur4%ISOPEN ) THEN
+        CLOSE get_manual_r_cur4;
+      END IF;
+      IF ( get_manual_c_cur5%ISOPEN ) THEN
+        CLOSE get_manual_c_cur5;
+      END IF;
+      IF ( get_manual_r_cur6%ISOPEN ) THEN
+        CLOSE get_manual_r_cur6;
+      END IF;
+--2012/11/13 MOD End
 --
 --#####################################  固定部 END   ##########################################
 --
@@ -3829,6 +4784,9 @@ AS
     iv_id_to                 IN  VARCHAR2,  -- 4.入金履歴ID（To）
     iv_doc_seq_value         IN  VARCHAR2,  -- 5.入金文書番号
     iv_exec_kbn              IN  VARCHAR2,  -- 6.定期手動区分
+--2012/11/13 ADD Start
+    iv_data_type             IN  VARCHAR2,  -- 7.データタイプ
+--2012/11/13 ADD End
     ov_errbuf                OUT VARCHAR2,  -- エラー・メッセージ           --# 固定 #
     ov_retcode               OUT VARCHAR2,  -- リターン・コード             --# 固定 #
     ov_errmsg                OUT VARCHAR2)  -- ユーザー・エラー・メッセージ --# 固定 #
@@ -3893,6 +4851,9 @@ AS
       iv_id_to                 => iv_id_to,                 -- 4.入金履歴ID（To）
       iv_doc_seq_value         => iv_doc_seq_value,         -- 5.入金文書番号
       iv_exec_kbn              => iv_exec_kbn,              -- 6.定期手動区分
+--2012/11/13 ADD Start
+      iv_data_type             => iv_data_type,             -- 7.データタイプ
+--2012/11/13 ADD End
       ov_errbuf                => lv_errbuf,                -- エラー・メッセージ           --# 固定 #
       ov_retcode               => lv_retcode,               -- リターン・コード             --# 固定 #
       ov_errmsg                => lv_errmsg);               -- ユーザー・エラー・メッセージ --# 固定 #
@@ -3996,7 +4957,11 @@ AS
     iv_id_from               IN  VARCHAR2,    -- 3.入金履歴ID（From）
     iv_id_to                 IN  VARCHAR2,    -- 4.入金履歴ID（To）
     iv_doc_seq_value         IN  VARCHAR2,    -- 5.入金文書番号
-    iv_exec_kbn              IN  VARCHAR2     -- 6.定期手動区分
+--2012/11/13 MOD Start
+--    iv_exec_kbn              IN  VARCHAR2     -- 6.定期手動区分
+    iv_exec_kbn              IN  VARCHAR2,             -- 6.定期手動区分
+    iv_data_type             IN  VARCHAR2 DEFAULT NULL -- 7.データタイプ
+--2012/11/13 MOD End
   )
 --
 --
@@ -4054,6 +5019,9 @@ AS
       ,iv_id_to                                    -- 4.入金履歴ID（To）
       ,iv_doc_seq_value                            -- 5.入金文書番号
       ,iv_exec_kbn                                 -- 6.定期手動区分
+--2012/11/13 MOD Start
+      ,iv_data_type                                -- 7.データタイプ
+--2012/11/13 MOD End
       ,lv_errbuf   -- エラー・メッセージ           --# 固定 #
       ,lv_retcode  -- リターン・コード             --# 固定 #
       ,lv_errmsg   -- ユーザー・エラー・メッセージ --# 固定 #
