@@ -12,6 +12,7 @@ CREATE TABLE xxinv.xxinv_mov_lot_details
   actual_quantity           NUMBER,
   before_actual_quantity    NUMBER,
   automanual_reserve_class  VARCHAR2(2),
+  actual_confirm_class      VARCHAR2(1)     DEFAULT 'N', -- 2010/02/17 ADD E_–{‰Ò“®_01612
   created_by                NUMBER(15,0)    NOT NULL,
   creation_date             DATE            NOT NULL,
   last_updated_by           NUMBER(15,0)    NOT NULL,
@@ -37,6 +38,7 @@ COMMENT ON COLUMN xxinv.xxinv_mov_lot_details.actual_date              IS 'ÀÑ“
 COMMENT ON COLUMN xxinv.xxinv_mov_lot_details.actual_quantity          IS 'ÀÑ”—Ê';
 COMMENT ON COLUMN xxinv.xxinv_mov_lot_details.before_actual_quantity   IS '’ù³‘OÀÑ”—Ê';
 COMMENT ON COLUMN xxinv.xxinv_mov_lot_details.automanual_reserve_class IS '©“®è“®ˆø“–‹æ•ª';
+COMMENT ON COLUMN xxinv.xxinv_mov_lot_details.actual_confirm_class     IS 'ÀÑŒvãÏƒtƒ‰ƒO';
 COMMENT ON COLUMN xxinv.xxinv_mov_lot_details.created_by               IS 'ì¬Ò';
 COMMENT ON COLUMN xxinv.xxinv_mov_lot_details.creation_date            IS 'ì¬“ú';
 COMMENT ON COLUMN xxinv.xxinv_mov_lot_details.last_updated_by          IS 'ÅIXVÒ';
