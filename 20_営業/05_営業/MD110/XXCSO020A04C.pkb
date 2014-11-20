@@ -47,7 +47,15 @@ AS
  *                                       ・見積情報検索の条件を有効日付とステータスを追加
  *                                       ・機種コードが未入力の場合は危険分類ＩＤを取得し
  *                                         ないよう修正
- *                                       ・従業員情報取得の条件をログインユーザーＩＤへ変更
+ *                                       ・従業員情報取得の条件をログインユーザーＩＤへ変
+ *                                         更
+ *  2009-03/23    1.1   Kazuo.Satomura   システムテスト障害対応(障害番号T1_0095,100,104)
+ *                                       ・バイヤーＩＤをログイン従業員ＩＤから見積ヘッダ
+ *                                         のエージェントＩＤへ変更
+ *                                       ・見積検索時の条件を有効開始日～有効終了日から
+ *                                         開始日～終了日へ変更
+ *                                       ・搬送先事業所ＩＤ、搬送先事業所コード、搬送先要
+ *                                         求者ＩＤをログインのユーザーＩＤから取得
  *****************************************************************************************/
   --
   --#######################  固定グローバル定数宣言部 START   #######################
@@ -173,13 +181,14 @@ AS
   cv_debug_msg19 CONSTANT VARCHAR2(200) := 'category_id = ';
   cv_debug_msg27 CONSTANT VARCHAR2(200) := '<< 発注情報 >>';
   cv_debug_msg28 CONSTANT VARCHAR2(200) := 'vendor_id             = ';
-  cv_debug_msg29 CONSTANT VARCHAR2(200) := 'ship_to_location_id   = ';
   cv_debug_msg26 CONSTANT VARCHAR2(200) := 'item_description      = ';
   cv_debug_msg23 CONSTANT VARCHAR2(200) := 'unit_meas_lookup_code = ';
   cv_debug_msg22 CONSTANT VARCHAR2(200) := 'unit_price            = ';
   cv_debug_msg30 CONSTANT VARCHAR2(200) := 'quantity              = ';
-  cv_debug_msg31 CONSTANT VARCHAR2(200) := 'location_code         = ';
-  cv_debug_msg32 CONSTANT VARCHAR2(200) := '<< 搬送先組織ＩＤ >>';
+  cv_debug_msg32 CONSTANT VARCHAR2(200) := '<< 搬送先情報 >>';
+  cv_debug_msg29 CONSTANT VARCHAR2(200) := 'ship_to_location_id       = ';
+  cv_debug_msg31 CONSTANT VARCHAR2(200) := 'ship_to_location_code     = ';
+  cv_debug_msg59 CONSTANT VARCHAR2(200) := 'ship_to_person_id         = ';
   cv_debug_msg33 CONSTANT VARCHAR2(200) := 'inventory_organization_id = ';
   cv_debug_msg34 CONSTANT VARCHAR2(200) := '<< 費用勘定科目ＩＤ >>';
   cv_debug_msg35 CONSTANT VARCHAR2(200) := 'code_combination_id = ';
@@ -233,16 +242,18 @@ AS
     ,category_id     mtl_categories_b.category_id%TYPE        -- 品目ＩＤ
     -- 発注情報
     ,po_header_id          po_headers.po_header_id%TYPE        -- 見積ヘッダーＩＤ
+    ,agent_id              po_headers.agent_id%TYPE            -- エージェントＩＤ
     ,vendor_id             po_headers.vendor_id%TYPE           -- 仕入先ＩＤ
-    ,ship_to_location_id   po_headers.ship_to_location_id%TYPE -- 出荷先事業所ＩＤ
     ,line_num              po_lines.line_num%TYPE              -- 明細番号
     ,item_description      po_lines.item_description%TYPE      -- 品目適用
     ,unit_meas_lookup_code po_lines.unit_meas_lookup_code%TYPE -- 単位
     ,unit_price            po_lines.unit_price%TYPE            -- 価格
     ,quantity              po_lines.quantity%TYPE              -- 数量
-    ,location_code         hr_locations.location_code%TYPE     -- 事業所コード
-    -- 搬送先組織ＩＤ
-    ,inventory_organization_id NUMBER -- 搬送先組織ＩＤ取得
+    -- 搬送先情報
+    ,ship_to_location_id       xxcso_locations_v.location_id%TYPE -- 搬送先事業所ＩＤ
+    ,ship_to_location_code     xxcso_locations_v.dept_code%TYPE   -- 搬送先事業所コード
+    ,ship_to_person_id         xxcso_employees_v2.person_id%TYPE  -- 搬送先要求者ＩＤ
+    ,inventory_organization_id NUMBER                             -- 搬送先組織ＩＤ
     -- 費用勘定科目ＩＤ
     ,code_combination_id per_employees_current_x.default_code_combination_id%TYPE -- 費用勘定科目ＩＤ
     -- 顧客情報
@@ -829,34 +840,30 @@ AS
     -- ============================
     BEGIN
       SELECT phe.po_header_id          po_header_id          -- 見積ヘッダＩＤ
+            ,phe.agent_id              agent_id              -- エージェントＩＤ
             ,phe.vendor_id             vendor_id             -- 仕入先ＩＤ
-            ,phe.ship_to_location_id   ship_to_location_id   -- 出荷先事業所ＩＤ
             ,pli.line_num              line_num              -- 明細番号
             ,pli.item_description      item_description      -- 品目適用
             ,pli.unit_meas_lookup_code unit_meas_lookup_code -- 単位
             ,pli.unit_price            unit_price            -- 価格
             ,pli.quantity              quantity              -- 数量
-            ,hlo.location_code         location_code         -- 事業所コード
       INTO   iot_mst_regist_info_rec.po_header_id          -- 見積ヘッダＩＤ
+            ,iot_mst_regist_info_rec.agent_id              -- エージェントＩＤ
             ,iot_mst_regist_info_rec.vendor_id             -- 仕入先ＩＤ
-            ,iot_mst_regist_info_rec.ship_to_location_id   -- 出荷先事業所ＩＤ
             ,iot_mst_regist_info_rec.line_num              -- 明細番号
             ,iot_mst_regist_info_rec.item_description      -- 品目適用
             ,iot_mst_regist_info_rec.unit_meas_lookup_code -- 単位
             ,iot_mst_regist_info_rec.unit_price            -- 価格
             ,iot_mst_regist_info_rec.quantity              -- 数量
-            ,iot_mst_regist_info_rec.location_code         -- 事業所コード
       FROM   po_headers   phe -- 見積ヘッダビュー
             ,po_lines     pli -- 見積明細ビュー
-            ,hr_locations hlo -- 事業所マスタビュー
-      WHERE  pli.category_id                           =  iot_mst_regist_info_rec.category_id
-      AND    pli.po_header_id                          =  phe.po_header_id
-      AND    phe.type_lookup_code                      =  cv_price_type
-      AND    phe.quotation_class_code                  =  cv_quotation_class_code
-      AND    TRUNC(NVL(phe.start_date_active,SYSDATE)) <= TRUNC(cd_process_date)
-      AND    TRUNC(NVL(phe.end_date_active,SYSDATE))   >= TRUNC(cd_process_date)
-      AND    phe.status_lookup_code                    =  cv_status_active
-      AND    phe.ship_to_location_id                   =  hlo.location_id
+      WHERE  pli.category_id                     =  iot_mst_regist_info_rec.category_id
+      AND    pli.po_header_id                    =  phe.po_header_id
+      AND    phe.type_lookup_code                =  cv_price_type
+      AND    phe.quotation_class_code            =  cv_quotation_class_code
+      AND    TRUNC(NVL(phe.start_date, SYSDATE)) <= TRUNC(cd_process_date)
+      AND    TRUNC(NVL(phe.end_date, SYSDATE))   >= TRUNC(cd_process_date)
+      AND    phe.status_lookup_code              =  cv_status_active
       ;
       --
     EXCEPTION
@@ -890,12 +897,10 @@ AS
        which  => fnd_file.log
       ,buff   => cv_debug_msg27 || CHR(10) ||
                  cv_debug_msg28 || iot_mst_regist_info_rec.vendor_id             || CHR(10) ||
-                 cv_debug_msg29 || iot_mst_regist_info_rec.ship_to_location_id   || CHR(10) ||
                  cv_debug_msg26 || iot_mst_regist_info_rec.item_description      || CHR(10) ||
                  cv_debug_msg23 || iot_mst_regist_info_rec.unit_meas_lookup_code || CHR(10) ||
                  cv_debug_msg22 || iot_mst_regist_info_rec.unit_price            || CHR(10) ||
                  cv_debug_msg30 || iot_mst_regist_info_rec.quantity              || CHR(10) ||
-                 cv_debug_msg31 || iot_mst_regist_info_rec.location_code         || CHR(10) ||
                  ''
     );
     -- *** DEBUG_LOG END ***
@@ -930,7 +935,7 @@ AS
   --
   /**********************************************************************************
    * Procedure Name   : get_inv_org_id
-   * Description      : 搬送先組織ＩＤ取得処理(A-6)
+   * Description      : 搬送先組織情報取得処理(A-6)
    ***********************************************************************************/
   PROCEDURE get_inv_org_id(
      iot_mst_regist_info_rec IN OUT NOCOPY g_mst_regist_info_rtype -- マスタ登録情報
@@ -958,8 +963,10 @@ AS
     -- ===============================
     -- *** ローカル定数 ***
     -- トークン用定数
+    cv_tkn_value_iniv_info   CONSTANT VARCHAR2(30) := '搬送先情報';
     cv_tkn_value_iniv_org_id CONSTANT VARCHAR2(30) := '搬送先組織ＩＤ';
-    cv_tkn_value_key_name    CONSTANT VARCHAR2(30) := '出荷先事業所ＩＤ';
+    cv_tkn_value_key_name1   CONSTANT VARCHAR2(30) := 'ユーザーＩＤ';
+    cv_tkn_value_key_name2   CONSTANT VARCHAR2(30) := '出荷先事業所ＩＤ';
     --
     -- *** ローカル変数 ***
     --
@@ -970,6 +977,39 @@ AS
     ov_retcode := cv_status_normal;
     --
     --###########################  固定部 END   ############################
+    --
+    -- ============================
+    -- 搬送先情報取得
+    -- ============================
+    BEGIN
+      SELECT xlv.location_id ship_to_location_id   -- 搬送先事業所ＩＤ
+            ,xlv.dept_code   ship_to_location_code -- 搬送先事業所コード
+            ,xev.person_id   ship_to_person_id     -- 搬送先要求者ＩＤ
+      INTO   iot_mst_regist_info_rec.ship_to_location_id
+            ,iot_mst_regist_info_rec.ship_to_location_code
+            ,iot_mst_regist_info_rec.ship_to_person_id
+      FROM   xxcso_employees_v2 xev -- 従業員マスタ（最新）ビュー
+            ,xxcso_locations_v  xlv -- 事業所マスタ（最新）ビュー
+      WHERE  xev.user_id            = fnd_global.user_id
+      AND    xev.work_base_code_new = xlv.dept_code
+      ;
+      --
+    EXCEPTION
+      WHEN OTHERS THEN
+        lv_errbuf := xxccp_common_pkg.get_msg(
+                        iv_application  => cv_sales_appl_short_name -- アプリケーション短縮名
+                       ,iv_name         => cv_tkn_number_03         -- メッセージコード
+                       ,iv_token_name1  => cv_tkn_action            -- トークンコード1
+                       ,iv_token_value1 => cv_tkn_value_iniv_info   -- トークン値1
+                       ,iv_token_name2  => cv_tkn_key_name          -- トークンコード2
+                       ,iv_token_value2 => cv_tkn_value_key_name1   -- トークン値2
+                       ,iv_token_name3  => cv_tkn_key_id            -- トークンコード3
+                       ,iv_token_value3 => fnd_global.user_id       -- トークン値3
+                     );
+        --
+        RAISE global_api_expt;
+        --
+    END;
     --
     -- ============================
     -- 搬送先組織ＩＤ取得
@@ -990,7 +1030,7 @@ AS
                        ,iv_token_name1  => cv_tkn_action                               -- トークンコード1
                        ,iv_token_value1 => cv_tkn_value_iniv_org_id                    -- トークン値1
                        ,iv_token_name2  => cv_tkn_key_name                             -- トークンコード2
-                       ,iv_token_value2 => cv_tkn_value_key_name                       -- トークン値2
+                       ,iv_token_value2 => cv_tkn_value_key_name2                      -- トークン値2
                        ,iv_token_name3  => cv_tkn_key_id                               -- トークンコード3
                        ,iv_token_value3 => iot_mst_regist_info_rec.ship_to_location_id -- トークン値3
                      );
@@ -1000,10 +1040,13 @@ AS
     END;
     --
     -- *** DEBUG_LOG START ***
-    -- 搬送先組織ＩＤをログ出力
+    -- 搬送先情報をログ出力
     fnd_file.put_line(
        which  => fnd_file.log
       ,buff   => cv_debug_msg32 || CHR(10) ||
+                 cv_debug_msg29 || iot_mst_regist_info_rec.ship_to_location_id       || CHR(10) ||
+                 cv_debug_msg31 || iot_mst_regist_info_rec.ship_to_location_code     || CHR(10) ||
+                 cv_debug_msg59 || iot_mst_regist_info_rec.ship_to_person_id         || CHR(10) ||
                  cv_debug_msg33 || iot_mst_regist_info_rec.inventory_organization_id || CHR(10) ||
                  ''
     );
@@ -1330,9 +1373,9 @@ AS
         ,lt_hazard_class_id                               -- 危険分類
         ,it_mst_regist_info_rec.inventory_organization_id -- 搬送先組織ＩＤ
         ,it_mst_regist_info_rec.ship_to_location_id       -- 搬送先事業所ＩＤ
-        ,it_mst_regist_info_rec.location_code             -- 搬送先事業所コード
-        ,it_mst_regist_info_rec.person_id                 -- 搬送先要求者ＩＤ
-        ,it_mst_regist_info_rec.person_id                 -- SUGGESTED_BUYER_ID
+        ,it_mst_regist_info_rec.ship_to_location_code     -- 搬送先事業所コード
+        ,it_mst_regist_info_rec.ship_to_person_id         -- 搬送先要求者ＩＤ
+        ,it_mst_regist_info_rec.agent_id                  -- SUGGESTED_BUYER_ID
         ,it_mst_regist_info_rec.vendor_id                 -- SUGGESTED_VENDOR_ID
         ,cd_sysdate                                       -- 希望入手日
         ,it_mst_regist_info_rec.user_name                 -- 作成者名
@@ -1432,7 +1475,7 @@ AS
     -- *** ローカル定数 ***
     cv_application CONSTANT VARCHAR2(2)  := 'PO';
     cv_program     CONSTANT VARCHAR2(20) := 'REQIMPORT';
-    cv_argument6   CONSTANT VARCHAR2(2)  := 'NO';
+    cv_argument6   CONSTANT VARCHAR2(2)  := 'N';
     --
     -- トークン用定数
     cv_tkn_value_proc_name CONSTANT VARCHAR2(100) := '購買依頼インポート処理';
