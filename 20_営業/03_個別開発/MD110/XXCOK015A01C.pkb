@@ -36,6 +36,7 @@ AS
  *  2009/07/15    1.6   K.Yamaguchi      [障害0000688] 宛名2行目を修正
  *  2009/08/24    1.7   T.Taniguchi      [障害0001160] 顧客名２、宛名２の編集修正
  *  2009/09/19    2.0   S.Moriyama       [障害0001309] 変更管理番号I_E_540対応（台別内訳明細出力）
+ *  2009/10/14    2.1   S.Moriyama       [変更依頼I_E_573] 宛名、住所の取得元を変更
  *
  *****************************************************************************************/
   -- ===============================================
@@ -131,6 +132,7 @@ AS
   cv_prof_edi_data_type_line CONSTANT VARCHAR2(40)    := 'XXCOK1_ISETO_EDI_DATA_TYPE_LINE';  -- XXCOK:イセトーEDIデータ区分_明細
   cv_prof_edi_data_type_fee  CONSTANT VARCHAR2(40)    := 'XXCOK1_ISETO_EDI_DATA_TYPE_FEE';   -- XXCOK:イセトーEDIデータ区分_手数料
   cv_prof_edi_data_type_sum  CONSTANT VARCHAR2(40)    := 'XXCOK1_ISETO_EDI_DATA_TYPE_SUM';   -- XXCOK:イセトーEDIデータ区分_合計
+  cv_prof_org_id             CONSTANT VARCHAR2(40)    := 'ORG_ID';                           -- 組織ID
   -- セパレータ
   cv_msg_part                CONSTANT VARCHAR2(3)     := ' : ';
   cv_msg_cont                CONSTANT VARCHAR2(1)     := '.';
@@ -162,7 +164,8 @@ AS
   cv_edi_if_status_0         CONSTANT VARCHAR2(1)     := '0';                   -- 未処理
   cv_edi_if_status_1         CONSTANT VARCHAR2(1)     := '1';                   -- 処理済
   -- BM支払区分
-  cv_bm_pay_class            CONSTANT VARCHAR2(1)     := '1';                   -- 本振(案内有)
+  cv_bm_pay_class_1          CONSTANT VARCHAR2(1)     := '1';                   -- 本振(案内有)
+  cv_bm_pay_class_2          CONSTANT VARCHAR2(1)     := '2';                   -- 本振(案内無)
   -- 主銀行フラグ
   cv_primary_flag            CONSTANT VARCHAR2(1)     := 'Y';                   -- 主銀行
   -- 銀行手数料負担者
@@ -187,6 +190,7 @@ AS
   gd_close_date              DATE   DEFAULT NULL;                               -- 締め日
   gd_schedule_date           DATE   DEFAULT NULL;                               -- 支払予定日
   gd_pay_date                DATE   DEFAULT NULL;                               -- 支払日
+  gv_prof_org_id             VARCHAR2(40) DEFAULT NULL;                         -- 組織ID
   gv_i_dire_path             fnd_profile_option_values.profile_option_value%TYPE DEFAULT NULL; -- イセトー_ディレクトリパス
   gv_i_file_name             fnd_profile_option_values.profile_option_value%TYPE DEFAULT NULL; -- イセトー_ファイル名
   gv_bm_period_to            fnd_profile_option_values.profile_option_value%TYPE DEFAULT NULL; -- 販手販協計算処理期間（To）
@@ -212,11 +216,18 @@ AS
     SELECT /*+ INDEX( xbb, xxcok_backmargin_balance_n05 )
                LEADING( xbb , pv , pvs , cntct_hca , cntct_hp , cntct_hcas , cntct_hps ) */
            xbb.supplier_code               AS payee_code                        -- 【支払先】仕入先コード
-         , pv.vendor_name                  AS payee_name                        -- 【支払先】宛名
+-- 2009/10/14 Ver.2.1 [変更依頼I_E_573] SCS S.Moriyama UPD START
+--         , pv.vendor_name                  AS payee_name                        -- 【支払先】宛名
+         , pvs.attribute1                  AS payee_name                        -- 【支払先】宛名
+-- 2009/10/14 Ver.2.1 [変更依頼I_E_573] SCS S.Moriyama UPD END
          , pvs.zip                         AS payee_zip                         -- 【支払先】郵便番号
-         , pvs.city          ||
-           pvs.address_line1 ||
+-- 2009/10/14 Ver.2.1 [変更依頼I_E_573] SCS S.Moriyama UPD START
+--         , pvs.city          ||
+--           pvs.address_line1 ||
+--           pvs.address_line2               AS payee_address                     -- 【支払先】住所
+         , pvs.address_line1 ||
            pvs.address_line2               AS payee_address                     -- 【支払先】住所
+-- 2009/10/14 Ver.2.1 [変更依頼I_E_573] SCS S.Moriyama UPD END
          , pvs.attribute5                  AS cntct_base_code                   -- 【問合せ】拠点コード
          , cntct_hp.party_name             AS cntct_base_name                   -- 【問合せ】拠点名
          , cntct_hl.city     ||
@@ -231,6 +242,7 @@ AS
          , abb.bank_branch_name            AS payee_bank_branch_name            -- 【支払先】支店名
          , aba.account_holder_name_alt     AS payee_bank_holder_name_alt        -- 【支払先】口座名
          , pvs.bank_charge_bearer          AS payee_bank_charge_bearer          -- 【支払先】振込手数料
+         , pvs.attribute4                  AS payee_bm_pay_class                -- 【支払先】BM支払区分
          , NVL( SUM( CASE
                        WHEN pvs.hold_all_payments_flag =  cv_enabled_flag THEN cn_number_0
                        WHEN xbb.resv_flag              =  cv_enabled_flag THEN cn_number_0
@@ -274,8 +286,9 @@ AS
        AND pv.segment1                   =  xbb.supplier_code
        AND pv.vendor_id                  =  pvs.vendor_id
        AND pvs.vendor_site_code          =  xbb.supplier_site_code
-       AND pvs.attribute4                =  cv_bm_pay_class
+       AND pvs.attribute4                IN ( cv_bm_pay_class_1 , cv_bm_pay_class_2 )
        AND TRUNC( gd_process_date )      <  NVL( pvs.inactive_date, TRUNC( gd_process_date ) + 1 )
+       AND pvs.org_id                    =  TO_NUMBER( gv_prof_org_id )
        AND cntct_hca.account_number      =  pvs.attribute5
        AND cntct_hp.party_id             =  cntct_hca.party_id
        AND cntct_hca.cust_account_id     =  cntct_hcas.cust_account_id
@@ -290,9 +303,14 @@ AS
        AND aba.bank_account_id           =  abau.external_bank_account_id
        AND abb.bank_branch_id            =  aba.bank_branch_id
     GROUP BY  xbb.supplier_code
-            , pv.vendor_name
+-- 2009/10/14 Ver.2.1 [変更依頼I_E_573] SCS S.Moriyama UPD START
+--            , pv.vendor_name
+            , pvs.attribute1
+-- 2009/10/14 Ver.2.1 [変更依頼I_E_573] SCS S.Moriyama UPD END
             , pvs.zip
-            , pvs.city
+-- 2009/10/14 Ver.2.1 [変更依頼I_E_573] SCS S.Moriyama DEL START
+--            , pvs.city
+-- 2009/10/14 Ver.2.1 [変更依頼I_E_573] SCS S.Moriyama DEL END
             , pvs.address_line1
             , pvs.address_line2
             , pvs.attribute5
@@ -309,15 +327,16 @@ AS
             , abb.bank_branch_name
             , aba.account_holder_name_alt
             , pvs.bank_charge_bearer
+            , pvs.attribute4
     ORDER BY  cntct_hl.address3
             , pvs.attribute5
             , aba.account_holder_name_alt
             , xbb.supplier_code
     ;
 --
-    -- ===============================================
-    -- カーソル
-    -- ===============================================
+  -- ===============================================
+  -- カーソル
+  -- ===============================================
   CURSOR g_bm_line_cur(
       it_supplier_code             IN xxcok_backmargin_balance.supplier_code%TYPE
     , it_closing_date_start        IN xxcok_backmargin_balance.closing_date%TYPE
@@ -574,9 +593,9 @@ AS
            || cv_separator_char || SUBSTRB( it_bm_data_rec.cntct_base_zip , 1 , 8 )        -- 拠点郵便番号
            || cv_separator_char || SUBSTRB( it_bm_data_rec.cntct_base_phone , 1 , 15 )     -- 拠点電話番号
            || cv_separator_char || TO_CHAR( it_bm_data_rec.closing_date_end , cv_format_ee
-                                                                 , cv_nls_param)           -- 年号
+                                                                 , cv_nls_param )          -- 年号
            || cv_separator_char || TO_CHAR( it_bm_data_rec.closing_date_end , cv_format_ee_year
-                                                                 , cv_nls_param)           -- 年月分
+                                                                 , cv_nls_param )          -- 年月分
            || cv_separator_char || TO_CHAR( gd_pay_date , cv_format_mmdd )                 -- 支払日
            || cv_separator_char || SUBSTRB( it_bm_data_rec.payee_bank_number , 1 , 4 )     -- 銀行コード
            || cv_separator_char || SUBSTRB( it_bm_data_rec.payee_bank_name , 1 , 20 )      -- 銀行名
@@ -1310,60 +1329,67 @@ AS
       END IF;
 --
       -- ===============================================
-      -- BM - 振込手数料 < 1 の場合は出力を行わない
+      -- イセトー連携はBM支払区分:1(本振)のみとする
       -- ===============================================
-      IF ( l_bm_data_rec.payment_amt_tax - gn_bank_fee < cn_number_1 ) THEN
-        lv_output_error := cv_edi_output_error_kbn;
-        gn_skip_cnt := gn_skip_cnt + cn_number_1;
-        lv_errmsg       := xxccp_common_pkg.get_msg(
-                             iv_application   => cv_appli_short_name_xxcok
-                           , iv_name          => cv_msg_xxcok1_10009
-                           , iv_token_name1   => cv_token_conn_loc
-                           , iv_token_value1  => l_bm_data_rec.cntct_base_code
-                           , iv_token_name2   => cv_token_vendor_code
-                           , iv_token_value2  => l_bm_data_rec.payee_code
-                           , iv_token_name3   => cv_token_close_date
-                           , iv_token_value3  => TO_CHAR( l_bm_data_rec.closing_date_start , cv_format_yyyy_mm_dd )
-                           , iv_token_name4   => cv_token_due_date
-                           , iv_token_value4  => TO_CHAR( l_bm_data_rec.expect_payment_date_start , cv_format_yyyy_mm_dd )
-                           );
-        lb_msg_return   := xxcok_common_pkg.put_message_f(
-                             in_which         => FND_FILE.LOG
-                           , iv_message       => lv_errmsg
-                           , in_new_line      => cn_number_0
-                           );
-        ov_retcode := cv_status_warn;
-      ELSE
+      IF ( l_bm_data_rec.payee_bm_pay_class = cv_bm_pay_class_1 ) THEN
         -- ===============================================
-        -- 連携データ妥当性チェック(A-5)
+        -- BM - 振込手数料 < 1 の場合は出力を行わない
         -- ===============================================
-        chk_bm_data(
-          ov_errbuf      => lv_errbuf
-        , ov_retcode     => lv_retcode
-        , ov_errmsg      => lv_errmsg
-        , it_bm_data_rec => l_bm_data_rec
-        );
-        IF ( lv_retcode = cv_status_normal ) THEN
+        IF ( l_bm_data_rec.payment_amt_tax - gn_bank_fee < cn_number_1 ) THEN
+          lv_output_error := cv_edi_output_error_kbn;
+          gn_skip_cnt := gn_skip_cnt + cn_number_1;
+          lv_errmsg       := xxccp_common_pkg.get_msg(
+                               iv_application   => cv_appli_short_name_xxcok
+                             , iv_name          => cv_msg_xxcok1_10009
+                             , iv_token_name1   => cv_token_conn_loc
+                             , iv_token_value1  => l_bm_data_rec.cntct_base_code
+                             , iv_token_name2   => cv_token_vendor_code
+                             , iv_token_value2  => l_bm_data_rec.payee_code
+                             , iv_token_name3   => cv_token_close_date
+                             , iv_token_value3  => TO_CHAR( l_bm_data_rec.closing_date_start , cv_format_yyyy_mm_dd )
+                             , iv_token_name4   => cv_token_due_date
+                             , iv_token_value4  => TO_CHAR( l_bm_data_rec.expect_payment_date_start , cv_format_yyyy_mm_dd )
+                             );
+          lb_msg_return   := xxcok_common_pkg.put_message_f(
+                               in_which         => FND_FILE.LOG
+                             , iv_message       => lv_errmsg
+                             , in_new_line      => cn_number_0
+                             );
+          ov_retcode := cv_status_warn;
+        ELSE
           -- ===============================================
-          -- 連携データ出力(A-6)
+          -- 連携データ妥当性チェック(A-5)
           -- ===============================================
-          put_record(
+          chk_bm_data(
             ov_errbuf      => lv_errbuf
           , ov_retcode     => lv_retcode
           , ov_errmsg      => lv_errmsg
           , it_bm_data_rec => l_bm_data_rec
           );
-          IF ( lv_retcode = cv_status_error ) THEN
+          IF ( lv_retcode = cv_status_normal ) THEN
+            -- ===============================================
+            -- 連携データ出力(A-6)
+            -- ===============================================
+            put_record(
+              ov_errbuf      => lv_errbuf
+            , ov_retcode     => lv_retcode
+            , ov_errmsg      => lv_errmsg
+            , it_bm_data_rec => l_bm_data_rec
+            );
+            IF ( lv_retcode = cv_status_error ) THEN
+              RAISE global_process_expt;
+            ELSE
+              gn_normal_cnt := gn_normal_cnt + cn_number_1;
+            END IF;
+          ELSIF ( lv_retcode = cv_status_warn ) THEN
+            lv_output_error := cv_edi_output_error_kbn;
+            gn_skip_cnt := gn_skip_cnt + cn_number_1;
+          ELSIF ( lv_retcode = cv_status_error ) THEN
             RAISE global_process_expt;
-          ELSE
-            gn_normal_cnt := gn_normal_cnt + cn_number_1;
           END IF;
-        ELSIF ( lv_retcode = cv_status_warn ) THEN
-          lv_output_error := cv_edi_output_error_kbn;
-          gn_skip_cnt := gn_skip_cnt + cn_number_1;
-        ELSIF ( lv_retcode = cv_status_error ) THEN
-          RAISE global_process_expt;
         END IF;
+      ELSE
+        gn_skip_cnt := gn_skip_cnt + cn_number_1;
       END IF;
 --
       -- ===============================================
@@ -1393,6 +1419,7 @@ AS
                          || TO_CHAR( l_bm_data_rec.payment_amt_tax ) || cv_msg_canm  -- BM金額
                          || TO_CHAR( gn_bank_fee )                   || cv_msg_canm  -- 振手料
                          || TO_CHAR( ln_total_payment_amt_tax )      || cv_msg_canm  -- 総支払額
+                         || l_bm_data_rec.payee_bm_pay_class         || cv_msg_canm  -- BM支払区分
                          || lv_output_error ;                                        -- エラー
 --
       -- ===============================================
@@ -1776,6 +1803,26 @@ AS
                          , iv_token_name1   => cv_token_profile
                          , iv_token_value1  => cv_prof_edi_data_type_sum
                          );
+      lb_msg_return   := xxcok_common_pkg.put_message_f(
+                           in_which         => FND_FILE.LOG
+                         , iv_message       => lv_outmsg
+                         , in_new_line      => cn_number_0
+                         );
+      RAISE init_fail_expt;
+    END IF;
+    -- ===============================================
+    -- プロファイル取得(組織ID)
+    -- ===============================================
+    gv_prof_org_id := FND_PROFILE.VALUE(
+                        cv_prof_org_id
+                      );
+    IF ( gv_prof_org_id IS NULL ) THEN
+      lv_outmsg  := xxccp_common_pkg.get_msg(
+                      iv_application  => cv_appli_short_name_xxcok
+                    , iv_name         => cv_msg_xxcok1_00003
+                    , iv_token_name1  => cv_token_profile
+                    , iv_token_value1 => cv_prof_org_id
+                    );
       lb_msg_return   := xxcok_common_pkg.put_message_f(
                            in_which         => FND_FILE.LOG
                          , iv_message       => lv_outmsg
