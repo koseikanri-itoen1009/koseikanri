@@ -1,0 +1,7 @@
+CREATE INDEX xxcok.xxcok_cond_bm_support_n07
+ON xxcok.xxcok_cond_bm_support(
+     delivery_cust_code
+   , amt_fix_status
+)
+TABLESPACE xxidx2
+/
