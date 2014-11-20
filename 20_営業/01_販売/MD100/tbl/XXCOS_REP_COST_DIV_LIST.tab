@@ -3,7 +3,7 @@
  *
  * Table Name  : XXCOS_REP_COST_DIV_LIST
  * Description : å¥âøäÑÇÍÉ`ÉFÉbÉNÉäÉXÉgí†ï[ÉèÅ[ÉNÉeÅ[ÉuÉã
- * Version     : 1.1
+ * Version     : 1.2
  *
  * Change Record
  * ------------- ----- ---------------- ---------------------------------
@@ -12,6 +12,7 @@
  *  2009/01/30    1.0   SCS H.Ri       êVãKçÏê¨
  *  2009/10/02    1.1   SCS S.Miyakoshi  [0001378]åÖÇ†Ç”ÇÍëŒâû DLV_UNIT_PRICE(NUMBER(8,2)Å®NUMBER(13,2))
  *                                                             SALE_AMOUNT(NUMBER(15,0)Å®NUMBER)
+ *  2011/06/20    1.2   SCS T.Ishiwata   [E_ñ{â“ìÆ_07097]àŸèÌä|ó¶âµíPâøÉ`ÉFÉbÉNëŒâû
  *
  ****************************************************************************************/
 CREATE TABLE XXCOS.XXCOS_REP_COST_DIV_LIST
@@ -24,7 +25,10 @@ CREATE TABLE XXCOS.XXCOS_REP_COST_DIV_LIST
     EMPLOYEE_BASE_CODE        VARCHAR2(5),                                 --âcã∆íSìñé“ÉRÅ[Éh
     EMPLOYEE_BASE_NAME        VARCHAR2(14),                                --âcã∆íSìñé“ñº
     DELIVER_TO_CODE           VARCHAR2(9),                                 --èoâ◊êÊÉRÅ[Éh
-    DELIVER_TO_NAME           VARCHAR2(30),                                --èoâ◊êÊñº
+-- 2011/06/20 Ver1.12 T.Ishiwata Mod Start
+--    DELIVER_TO_NAME           VARCHAR2(30),                                --èoâ◊êÊñº
+    DELIVER_TO_NAME           VARCHAR2(28),                                --èoâ◊êÊñº
+-- 2011/06/20 Ver1.12 T.Ishiwata Mod End
     DLV_DATE                  DATE,                                        --î[ïiì˙
     DLV_INVOICE_NUMBER        VARCHAR2(12),                                --î[ïiì`ï[î‘çÜ
     ITEM_CODE                 VARCHAR2(7),                                 --ïiñ⁄ÉRÅ[Éh
@@ -33,6 +37,10 @@ CREATE TABLE XXCOS.XXCOS_REP_COST_DIV_LIST
     UOM_CODE                  VARCHAR2(3),                                 --íPà 
     DLV_UNIT_PRICE            NUMBER(13,2),                                --î[ïiíPâø
     SALE_AMOUNT               NUMBER,                                      --îÑè„ã‡äz
+-- 2011/06/20 Ver1.12 T.Ishiwata Add Start
+    UNIT_PRICE_CHECK_MARK     VARCHAR2(2),                                 --àŸèÌä|ó¶âµâøäiÉ`ÉFÉbÉN(ï\é¶óp)
+    UNIT_PRICE_CHECK_SORT     VARCHAR2(1),                                      --àŸèÌä|ó¶âµâøäiÉ`ÉFÉbÉN(É\Å[Égóp)
+-- 2011/06/20 Ver1.12 T.Ishiwata Add End
     CREATED_BY                NUMBER(15,0)        NOT NULL,                --çÏê¨é“
     CREATION_DATE             DATE                NOT NULL,                --çÏê¨ì˙
     LAST_UPDATED_BY           NUMBER(15,0)        NOT NULL,                --ç≈èIçXêVé“
@@ -63,6 +71,10 @@ COMMENT ON COLUMN XXCOS.XXCOS_REP_COST_DIV_LIST.QUANTITY                   IS 'ê
 COMMENT ON COLUMN XXCOS.XXCOS_REP_COST_DIV_LIST.UOM_CODE                   IS 'íPà ';
 COMMENT ON COLUMN XXCOS.XXCOS_REP_COST_DIV_LIST.DLV_UNIT_PRICE             IS 'î[ïiíPâø';
 COMMENT ON COLUMN XXCOS.XXCOS_REP_COST_DIV_LIST.SALE_AMOUNT                IS 'îÑè„ã‡äz';
+-- 2011/06/20 Ver1.12 T.Ishiwata Add Start
+COMMENT ON COLUMN XXCOS.XXCOS_REP_COST_DIV_LIST.UNIT_PRICE_CHECK_MARK      IS 'àŸèÌä|ó¶âµâøäiÉ`ÉFÉbÉN(ï\é¶óp)';
+COMMENT ON COLUMN XXCOS.XXCOS_REP_COST_DIV_LIST.UNIT_PRICE_CHECK_SORT      IS 'àŸèÌä|ó¶âµâøäiÉ`ÉFÉbÉN(É\Å[Égóp)';
+-- 2011/06/20 Ver1.12 T.Ishiwata Add End
 COMMENT ON COLUMN XXCOS.XXCOS_REP_COST_DIV_LIST.CREATED_BY                 IS 'çÏê¨é“';
 COMMENT ON COLUMN XXCOS.XXCOS_REP_COST_DIV_LIST.CREATION_DATE              IS 'çÏê¨ì˙';
 COMMENT ON COLUMN XXCOS.XXCOS_REP_COST_DIV_LIST.LAST_UPDATED_BY            IS 'ç≈èIçXêVé“';

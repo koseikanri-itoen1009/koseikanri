@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCOS009A03R (body)
  * Description      : 原価割れチェックリスト
  * MD.050           : 原価割れチェックリスト MD050_COS_009_A03
- * Version          : 1.11
+ * Version          : 1.12
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -39,6 +39,7 @@ AS
  *  2010/02/17    1.9   N.Maeda          [E_本稼動_01553]INパラメータ(納品日)妥当性チェック内容の修正
  *  2010/05/24    1.10  Y.Kuboshima      [E_本稼動_02630]出荷先顧客の絞込みで前月売上拠点コードを考慮するよう修正
  *  2011/04/20    1.11  S.Ochiai         [E_本稼動_01772]ＨＨＴ画面入力、ＨＨＴ連携データの原価割れ情報も表示させるよう修正
+ *  2011/06/20    1.12  T.Ishiwata       [E_本稼動_07097]異常掛率卸価格チェック対応
  *
  *****************************************************************************************/
 --
@@ -154,6 +155,10 @@ AS
 -- ************************ 2010/01/18 S.Miyakoshi Var1.8 ADD START ************************ --
   cv_msg_login_view         CONSTANT  VARCHAR2(100) :=  'APP-XXCOS1-00119';    -- ログイン拠点情報VIEW
 -- ************************ 2010/01/18 S.Miyakoshi Var1.8 ADD  END  ************************ --
+-- 2011/06/20 Ver1.12 T.Ishiwata Add Start
+  cv_msg_check_mark         CONSTANT  VARCHAR2(100) :=  'APP-XXCOS1-10607';    -- 異常掛率卸価格チェック記号
+  cv_msg_fixed_price_err    CONSTANT  VARCHAR2(100) :=  'APP-XXCOS1-11860';    -- 定価取得エラーメッセージ
+-- 2011/06/20 Ver1.12 T.Ishiwata Add End
   --トークン名
   cv_tkn_nm_account         CONSTANT  VARCHAR2(100) :=  'ACCOUNT_NAME';        --会計期間種別名称
   cv_tkn_nm_para_date       CONSTANT  VARCHAR2(100) :=  'PARA_DATE';           --納品日(FROM)または納品日(TO)
@@ -173,6 +178,10 @@ AS
   cv_tkn_nm_profile2        CONSTANT  VARCHAR2(100) :=  'PRO_TOK';             --プロファイル名(在庫領域)
   cv_tkn_nm_org_cd          CONSTANT  VARCHAR2(100) :=  'ORG_CODE_TOK';        --在庫組織コード
   cv_tkn_nm_acc_type        CONSTANT  VARCHAR2(100) :=  'TYPE';                --会計期間区分参照タイプ
+-- 2011/06/20 Ver1.12 T.Ishiwata Add Start
+  cv_tkn_nm_item_cd         CONSTANT  VARCHAR2(100) :=  'ITEM_CODE';           --品目コード
+  cv_tkn_nm_dlv_date        CONSTANT  VARCHAR2(100) :=  'DLV_DATE';            --納品日
+-- 2011/06/20 Ver1.12 T.Ishiwata Add End
   --トークン値
   cv_msg_vl_acc_cls_ar      CONSTANT  VARCHAR2(100) :=  'AR';                  --AR
   cv_msg_vl_date_from       CONSTANT  VARCHAR2(100) :=  'APP-XXCOS1-11854';    --納品日FROM
@@ -186,6 +195,14 @@ AS
 -- ******** 2010/02/17 1.9 N.Maeda MOD START ******** --
   cv_msg_vl_target_month    CONSTANT  VARCHAR2(100) :=  'APP-XXCOS1-11859';    --原価割れチェックリスト取得対象月数
 -- ******** 2010/02/17 1.9 N.Maeda MOD  END  ******** --
+-- 2011/06/20 Ver1.12 T.Ishiwata Add Start
+  cv_msg_vl_min_price_rate  CONSTANT  VARCHAR2(100) :=  'APP-XXCOS1-11861';    --最低卸価格掛率
+  cv_msg_vl_item_hst        CONSTANT  VARCHAR2(100) :=  'APP-XXCOS1-00220';    --品目変更履歴アドオン
+--
+--異常掛率卸価格チェックのソート順
+  cv_unit_price_check_sort1 CONSTANT  VARCHAR2(1)   :=  '1';                   -- 異常掛率卸価格チェックのソート順１
+  cv_unit_price_check_sort2 CONSTANT  VARCHAR2(1)   :=  '2';                   -- 異常掛率卸価格チェックのソート順２
+-- 2011/06/20 Ver1.12 T.Ishiwata Add End
   --日付フォーマット
   cv_yyyymmdd               CONSTANT  VARCHAR2(100) :=  'YYYYMMDD';            --YYYYMMDD型
   cv_yyyy_mm_dd             CONSTANT  VARCHAR2(100) :=  'YYYY/MM/DD';          --YYYY/MM/DD型
@@ -200,6 +217,10 @@ AS
   cv_lang                   CONSTANT  VARCHAR2(100) :=  USERENV( 'LANG' );     --言語
   cv_type_acc               CONSTANT  VARCHAR2(100) :=  'XXCOS1_ACCOUNT_PERIOD';  --会計期間の種別
   cv_diff_y                 CONSTANT  VARCHAR2(100) :=  'Y';                   --Y
+-- 2011/06/20 Ver1.12 T.Ishiwata Add Start
+  cv_yes                    CONSTANT  VARCHAR2(100) :=  'Y';
+  cv_no                     CONSTANT  VARCHAR2(100) :=  'N';
+-- 2011/06/20 Ver1.12 T.Ishiwata Add End
 -- 2011/04/20 Ver1.11 Del Start
 --  cv_ord_src_type           CONSTANT  VARCHAR2(100) :=  'XXCOS1_ODR_SRC_MST_009_A03';
 --                                                                               --受注ソースのクイックタイプ
@@ -228,6 +249,9 @@ AS
 -- ******** 2010/02/17 1.9 N.Maeda MOD START ******** --
   cv_prof_target_month      CONSTANT  VARCHAR2(100) :=  'XXCOS1_BELOW_COST_CL_TARGET_MONTH'; -- プロファイル名(原価割れチェックリスト取得対象月数)
 -- ******** 2010/02/17 1.9 N.Maeda MOD  END  ******** --
+-- 2011/06/20 Ver1.12 T.Ishiwata Add Start
+  cv_prof_min_price_rate    CONSTANT  VARCHAR2(100) :=  'XXCOS1_MINIMUM_PRICE_RATE';         -- プロファイル名(最低卸価格掛率)
+-- 2011/06/20 Ver1.12 T.Ishiwata Add End
 --
   -- ===============================
   -- ユーザー定義グローバル型
@@ -264,6 +288,10 @@ AS
   gv_base_code              hz_cust_accounts.account_number%TYPE;               --拠点コード
   gv_base_name              hz_parties.party_name%TYPE;                         --拠点名称
 -- ************************ 2010/01/18 S.Miyakoshi Var1.8 ADD  END  ************************ --
+-- 2011/06/20 Ver1.12 T.Ishiwata Add Start
+  gn_minimum_price_rate     NUMBER;                                             --最低卸価格掛率(%)
+  gv_check_mark             VARCHAR2(2);                                        --異常掛率卸価格チェック記号
+-- 2011/06/20 Ver1.12 T.Ishiwata Add End
 --
   /**********************************************************************************
    * Procedure Name   : init
@@ -492,6 +520,29 @@ AS
       RAISE global_api_expt;
     END IF;
 -- ******** 2010/02/17 1.9 N.Maeda MOD  END  ******** --
+-- 2011/06/20 Ver1.12 T.Ishiwata Add Start
+    --========================================
+    -- 9.最低卸価格掛率取得処理
+    --========================================
+    gn_minimum_price_rate := TO_NUMBER(FND_PROFILE.VALUE( cv_prof_min_price_rate ));
+    IF ( gn_minimum_price_rate IS NULL ) THEN
+--
+      lv_errmsg     :=  xxccp_common_pkg.get_msg( iv_application  =>  cv_xxcos_short_name
+                                                 ,iv_name         =>  cv_msg_prof_err
+                                                 ,iv_token_name1  =>  cv_tkn_nm_profile1
+                                                 ,iv_token_value1 =>  cv_msg_vl_min_price_rate
+                                                );
+      lv_errbuf     := lv_errmsg;
+      RAISE global_api_expt;
+    END IF;
+--
+    --========================================
+    -- 10.異常掛率卸価格チェック記号取得処理
+    --========================================
+    gv_check_mark   :=  xxccp_common_pkg.get_msg(  iv_application => cv_xxcos_short_name
+                                                  ,iv_name        => cv_msg_check_mark
+                                                );
+-- 2011/06/20 Ver1.12 T.Ishiwata Add End
 --
 --#################################  固定例外処理部 START   ####################################
 --
@@ -871,6 +922,10 @@ AS
     ld_process_first_day      DATE;                                   --業務日付の月の1日
     ld_proc_process_first_day DATE;                                   --業務日付の前月の1日
 -- ************************ 2010/05/24 Y.Kuboshima Ver1.10 ADD END   *********************** --
+-- 2011/06/20 Ver1.12 T.Ishiwata Add Start
+    ln_old_fixed_price        xxcmm_system_items_b_hst.fixed_price%TYPE;  --定価・旧
+    lv_fixed_er_flg           VARCHAR2(1);                                --定価取得エラーフラグ
+-- 2011/06/20 Ver1.12 T.Ishiwata Add End
 --
     -- *** ローカル・カーソル ***
     CURSOR data_cur
@@ -916,6 +971,10 @@ AS
         sel.standard_uom_code             unit,             --単位
         sel.standard_unit_price_excluded  dlv_price,        --納品単価
         sel.business_cost                 biz_cost          --営業原価
+-- 2011/06/20 Ver1.12 T.Ishiwata Add Start
+       ,NULL                              unit_price_check_mark,  --異常掛率卸価格チェック(表示用)
+        cv_unit_price_check_sort1         unit_price_check_sort   --異常掛率卸価格チェック(ソート用)
+-- 2011/06/20 Ver1.12 T.Ishiwata Add End
       FROM    
         xxcos_sales_exp_headers seh,                        --販売実績ヘッダ
         xxcos_sales_exp_lines   sel,                        --販売実績明細
@@ -1279,6 +1338,10 @@ AS
         sel.standard_uom_code             unit,             --単位
         sel.standard_unit_price_excluded  dlv_price,        --納品単価
         sel.business_cost                 biz_cost          --営業原価
+-- 2011/06/20 Ver1.12 T.Ishiwata Add Start
+       ,NULL                              unit_price_check_mark,  --異常掛率卸価格チェック(表示用)
+        cv_unit_price_check_sort1         unit_price_check_sort   --異常掛率卸価格チェック(ソート用)
+-- 2011/06/20 Ver1.12 T.Ishiwata Add End
       FROM    
         xxcos_sales_exp_headers seh,                        --販売実績ヘッダ
         xxcos_sales_exp_lines   sel,                        --販売実績明細
@@ -1559,8 +1622,252 @@ AS
       AND   seh.delivery_date         <= ximb.end_date_active     --納品日<=OPM品目アドオン.適用終了日
       ;
 --
+-- 2011/06/20 Ver1.12 T.Ishiwata Add Start
+    -- 異常掛率卸単価情報カーソル
+    CURSOR rate_check_cur
+    IS
+      --作成元区分が店舗別掛率作成以外
+      SELECT  
+        /*+
+          USE_NL  ( seh )
+          INDEX   ( seh xxcos_sales_exp_headers_n01 )
+        */
+        seh.sales_base_code                      base_code,             --売上拠点コード
+        gv_base_name                             base_name,             --売上拠点名
+        seh.results_employee_code                emp_code,              --営業担当者コード
+        papf.per_information18 || ' ' || papf.per_information19
+                                                 emp_name,              --営業担当者名
+        seh.ship_to_customer_code                ship_to_cd,            --出荷先コード
+        hp.party_name                            ship_to_nm,            --出荷先名
+        seh.delivery_date                        dlv_date,              --納品日
+        seh.dlv_invoice_number                   dlv_slip_num,          --納品伝票番号
+        sel.item_code                            item_cd,               --品目コード
+        ximb.item_short_name                     item_nm,               --品目名
+        sel.standard_qty                         quantity,              --数量
+        sel.standard_uom_code                    unit,                  --単位
+        sel.standard_unit_price_excluded         dlv_price,             --納品単価
+        sel.business_cost                        biz_cost,              --営業原価
+        TO_DATE(iimb.attribute6, cv_yyyy_mm_dd ) price_start_date,      --定価適用開始日
+        gv_check_mark                            unit_price_check_mark, --異常掛率卸価格チェック(表示用)
+        cv_unit_price_check_sort2                unit_price_check_sort  --異常掛率卸価格チェック(ソート用)
+      FROM    
+        xxcos_sales_exp_headers seh,                            --販売実績ヘッダ
+        xxcos_sales_exp_lines   sel,                            --販売実績明細
+        per_all_people_f        papf,                           --従業員マスタ
+        hz_cust_accounts        hca,                            --顧客マスタ
+        hz_parties              hp,                             --パーティ
+        mtl_system_items_b      msib,                           --Disc品目マスタ
+        ic_item_mst_b           iimb,                           --OPM品目マスタ
+        xxcmn_item_mst_b        ximb                            --OPM品目アドオン
+      WHERE seh.sales_exp_header_id = sel.sales_exp_header_id   --販売実績ヘッダID
+      --作成元区分のクイック参照
+      AND   EXISTS(
+              SELECT  'Y'                    ext_flg
+              FROM    fnd_lookup_values      look_val
+              WHERE   look_val.language      = cv_lang
+              AND     look_val.lookup_type   = cv_mk_org_type
+              AND     look_val.lookup_code   LIKE cv_mk_org_code1
+              AND     look_val.meaning       = seh.create_class
+              AND     gd_proc_date           >= NVL( look_val.start_date_active, gd_min_date )
+              AND     gd_proc_date           <= NVL( look_val.end_date_active, gd_max_date )
+              AND     look_val.enabled_flag  = ct_enabled_flg_y
+                  )
+      --売上区分のクイック参照
+      AND   NOT EXISTS(
+              SELECT  'Y'                    ext_flg
+              FROM    fnd_lookup_values      look_val
+              WHERE   look_val.language      = cv_lang
+              AND     look_val.lookup_type   = cv_sl_cls_type
+              AND     look_val.lookup_code   LIKE cv_sl_cls_code1
+              AND     look_val.meaning       = sel.sales_class
+              AND     gd_proc_date           >= NVL( look_val.start_date_active, gd_min_date )
+              AND     gd_proc_date           <= NVL( look_val.end_date_active, gd_max_date )
+              AND     look_val.enabled_flag  = ct_enabled_flg_y
+                  )
+      --非在庫品目コードのクイック参照
+      AND   NOT EXISTS(
+              SELECT  'Y'                    ext_flg
+              FROM    fnd_lookup_values      look_val
+              WHERE   look_val.language      = cv_lang
+              AND     look_val.lookup_type   = cv_no_inv_item_type
+              AND     look_val.lookup_code   = sel.item_code
+              AND     gd_proc_date           >= NVL( look_val.start_date_active, gd_min_date )
+              AND     gd_proc_date           <= NVL( look_val.end_date_active, gd_max_date )
+              AND     look_val.enabled_flag  = ct_enabled_flg_y
+                      )
+      --売上拠点コードを絞込み
+      AND   seh.sales_base_code     = gv_base_code
+      --納品日を絞込み
+      AND   seh.delivery_date      >= id_dlv_date_from 
+      AND   seh.delivery_date      <= id_dlv_date_to
+      --営業担当を絞込み
+      AND  ( ( iv_sale_emp_code IS NULL )
+             OR ( iv_sale_emp_code IS NOT NULL AND iv_sale_emp_code = seh.results_employee_code ) )
+      --出荷先を絞込み
+      --入力パラメータ「顧客コード」の指定なしは、拠点コードで絞込み
+      AND ( ( iv_ship_to_code IS NULL AND EXISTS( SELECT 'Y' 
+                                                  FROM   hz_cust_accounts    hca1,
+                                                         xxcmm_cust_accounts xca1,
+                                                         fnd_lookup_values   look_val
+                                                  WHERE  hca1.cust_account_id      = xca1.customer_id 
+                                                  AND  ( ( TRUNC( seh.delivery_date, cv_mm )  = ld_process_first_day
+                                                      AND  seh.sales_base_code = xca1.sale_base_code )
+                                                    OR   ( TRUNC( seh.delivery_date, cv_mm ) <= ld_proc_process_first_day
+                                                      AND  seh.sales_base_code = xca1.past_sale_base_code ) )
+                                                  AND    look_val.language         = cv_lang
+                                                  AND    look_val.lookup_type      = cv_cus_cls_type
+                                                  AND    look_val.lookup_code   LIKE cv_cus_cls_code
+                                                  AND    look_val.meaning          = hca1.customer_class_code
+                                                  AND    gd_proc_date             >= NVL( look_val.start_date_active, gd_min_date )
+                                                  AND    gd_proc_date             <= NVL( look_val.end_date_active  , gd_max_date )
+                                                  AND    look_val.enabled_flag     = ct_enabled_flg_y
+                                                  AND    seh.ship_to_customer_code = hca1.account_number ) )
+            --入力パラメータ「顧客コード」の指定あり
+            OR ( iv_ship_to_code IS NOT NULL AND iv_ship_to_code = seh.ship_to_customer_code ) )
+      -- 納品単価(税抜基準単価) >= 営業原価 (原価割れの対象を省く)
+      AND   sel.standard_unit_price_excluded >= sel.business_cost
+      -- 納品単価(税抜基準単価) <  異常掛率卸単価(定価×最低卸価格掛率÷100)
+      AND   (     ( TO_DATE(iimb.attribute6,cv_yyyy_mm_dd) > seh.delivery_date ) 
+            OR
+              (   ( TO_DATE(iimb.attribute6,cv_yyyy_mm_dd) <= seh.delivery_date ) 
+              AND ( sel.standard_unit_price_excluded < TO_NUMBER( iimb.attribute5 ) * gn_minimum_price_rate / 100 ))    -- 新定価
+            )
+      AND   seh.results_employee_code = papf.employee_number       --従業員コード
+      AND   seh.delivery_date         >= papf.effective_start_date --納品日>=従業員マスタ.適用開始日
+      AND   seh.delivery_date         <= papf.effective_end_date   --納品日<=従業員マスタ.適用終了日
+      AND   seh.ship_to_customer_code = hca.account_number        --出荷先コード
+      AND   hca.party_id              = hp.party_id               --パーティーID
+      AND   sel.item_code             = msib.segment1             --品目コード
+      AND   msib.organization_id      = gt_org_id                 --在庫組織ID
+      AND   msib.segment1             = iimb.item_no              --OPM品目コード
+      AND   iimb.item_id              = ximb.item_id              --OPMアドオン品目ID
+      AND   seh.delivery_date         >= ximb.start_date_active   --納品日>=OPM品目アドオン.適用開始日
+      AND   seh.delivery_date         <= ximb.end_date_active     --納品日<=OPM品目アドオン.適用終了日
+--
+      UNION ALL
+      --作成元が消化計算の商品別売上計算（百貨店・インショップ／専門店・直営）機能のSQL
+      SELECT  
+        /*+
+          USE_NL  ( seh )
+          INDEX   ( seh xxcos_sales_exp_headers_n01 )
+        */
+        seh.sales_base_code                      base_code,              --売上拠点コード
+        gv_base_name                             base_name,              --売上拠点名
+        seh.results_employee_code                emp_code,               --営業担当者コード
+        papf.per_information18 || ' ' || papf.per_information19
+                                                 emp_name,               --営業担当者名
+        seh.ship_to_customer_code                ship_to_cd,             --出荷先コード
+        hp.party_name                            ship_to_nm,             --出荷先名
+        seh.delivery_date                        dlv_date,               --納品日
+        seh.dlv_invoice_number                   dlv_slip_num,           --納品伝票番号
+        sel.item_code                            item_cd,                --品目コード
+        ximb.item_short_name                     item_nm,                --品目名
+        sel.standard_qty                         quantity,               --数量
+        sel.standard_uom_code                    unit,                   --単位
+        sel.standard_unit_price_excluded         dlv_price,              --納品単価
+        sel.business_cost                        biz_cost,               --営業原価
+        TO_DATE(iimb.attribute6, cv_yyyy_mm_dd)  price_start_date,       --定価適用開始日
+        gv_check_mark                            unit_price_check_mark,  --異常掛率卸価格チェック(表示用)
+        cv_unit_price_check_sort2                unit_price_check_sort   --異常掛率卸価格チェック(ソート用)
+      FROM    
+        xxcos_sales_exp_headers seh,                        --販売実績ヘッダ
+        xxcos_sales_exp_lines   sel,                        --販売実績明細
+        per_all_people_f        papf,                       --従業員マスタ
+        hz_cust_accounts        hca,                        --顧客マスタ
+        hz_parties              hp,                         --パーティ
+        mtl_system_items_b      msib,                       --Disc品目マスタ
+        ic_item_mst_b           iimb,                       --OPM品目マスタ
+        xxcmn_item_mst_b        ximb                        --OPM品目アドオン
+      WHERE seh.sales_exp_header_id = sel.sales_exp_header_id                         --販売実績ヘッダID
+      --作成元区分のクイック参照
+      AND   EXISTS(
+              SELECT  'Y'                   ext_flg
+              FROM    fnd_lookup_values     look_val
+              WHERE   look_val.language     = cv_lang
+              AND     look_val.lookup_type  = cv_mk_org_type
+              AND     look_val.lookup_code  LIKE cv_mk_org_code2
+              AND     look_val.meaning      = seh.create_class
+              AND     gd_proc_date          >= NVL( look_val.start_date_active, gd_min_date )
+              AND     gd_proc_date          <= NVL( look_val.end_date_active, gd_max_date )
+              AND     look_val.enabled_flag = ct_enabled_flg_y
+                  )
+      --売上区分のクイック参照
+      AND   EXISTS(
+              SELECT  'Y'                   ext_flg
+              FROM    fnd_lookup_values     look_val
+              WHERE   look_val.language     = cv_lang
+              AND     look_val.lookup_type  = cv_sl_cls_type
+              AND     look_val.lookup_code  LIKE cv_sl_cls_code2
+              AND     look_val.meaning      = sel.sales_class
+              AND     gd_proc_date          >= NVL( look_val.start_date_active, gd_min_date )
+              AND     gd_proc_date          <= NVL( look_val.end_date_active, gd_max_date )
+              AND     look_val.enabled_flag = ct_enabled_flg_y
+                  )
+      --非在庫品目コードのクイック参照
+      AND   NOT EXISTS(
+              SELECT  'Y'                   ext_flg
+              FROM    fnd_lookup_values     look_val
+              WHERE   look_val.language     = cv_lang
+              AND     look_val.lookup_type  = cv_no_inv_item_type
+              AND     look_val.lookup_code  = sel.item_code
+              AND     gd_proc_date          >= NVL( look_val.start_date_active, gd_min_date )
+              AND     gd_proc_date          <= NVL( look_val.end_date_active, gd_max_date )
+              AND     look_val.enabled_flag = ct_enabled_flg_y
+                      )
+      --売上拠点コードを絞込み
+      AND   seh.sales_base_code   = gv_base_code
+      --納品日を絞込み
+      AND   seh.delivery_date    >= id_dlv_date_from 
+      AND   seh.delivery_date    <= id_dlv_date_to
+      --営業担当を絞込み
+      AND   ( ( iv_sale_emp_code IS NULL )
+              OR ( iv_sale_emp_code IS NOT NULL AND iv_sale_emp_code = seh.results_employee_code ) )
+      --出荷先を絞込み
+      AND  ( ( iv_ship_to_code IS NULL AND EXISTS( SELECT 'Y' 
+                                                   FROM   hz_cust_accounts    hca1,
+                                                          xxcmm_cust_accounts xca1,
+                                                          fnd_lookup_values   look_val
+                                                   WHERE  hca1.cust_account_id  = xca1.customer_id 
+                                                   AND  ( ( TRUNC( seh.delivery_date, cv_mm )  = ld_process_first_day
+                                                       AND  seh.sales_base_code  = xca1.sale_base_code )
+                                                     OR   ( TRUNC( seh.delivery_date, cv_mm ) <= ld_proc_process_first_day
+                                                       AND  seh.sales_base_code  = xca1.past_sale_base_code ) )
+                                                   AND    look_val.language     = cv_lang
+                                                   AND    look_val.lookup_type = cv_cus_cls_type
+                                                   AND    look_val.lookup_code LIKE cv_cus_cls_code
+                                                   AND    look_val.meaning     = hca1.customer_class_code
+                                                   AND    gd_proc_date >= NVL( look_val.start_date_active, gd_min_date )
+                                                   AND    gd_proc_date <= NVL( look_val.end_date_active, gd_max_date )
+                                                   AND    look_val.enabled_flag = ct_enabled_flg_y
+                                                   AND    seh.ship_to_customer_code = hca1.account_number ) )
+             OR ( iv_ship_to_code IS NOT NULL AND iv_ship_to_code = seh.ship_to_customer_code ) )
+      -- 納品単価(税抜基準単価) >= 営業原価 (原価割れの対象を省く)
+      AND   sel.standard_unit_price_excluded >= sel.business_cost
+      -- 納品単価(税抜基準単価) <  異常掛率卸単価(定価×最低卸価格掛率÷100)
+      AND   (     ( TO_DATE(iimb.attribute6,cv_yyyy_mm_dd) > seh.delivery_date ) 
+            OR
+              (   ( TO_DATE(iimb.attribute6,cv_yyyy_mm_dd) <= seh.delivery_date ) 
+              AND ( sel.standard_unit_price_excluded < TO_NUMBER( iimb.attribute5 ) * gn_minimum_price_rate / 100 ))    -- 新定価
+            )
+      AND   seh.results_employee_code = papf.employee_number       --従業員コード
+      AND   seh.delivery_date         >= papf.effective_start_date --納品日>=従業員マスタ.適用開始日
+      AND   seh.delivery_date         <= papf.effective_end_date   --納品日<=従業員マスタ.適用終了日
+      AND   seh.ship_to_customer_code = hca.account_number        --出荷先コード
+      AND   hca.party_id              = hp.party_id               --パーティーID
+      AND   sel.item_code             = msib.segment1             --品目コード
+      AND   msib.organization_id      = gt_org_id                 --在庫組織ID
+      AND   msib.segment1             = iimb.item_no              --OPM品目コード
+      AND   iimb.item_id              = ximb.item_id              --OPMアドオン品目ID
+      AND   seh.delivery_date         >= ximb.start_date_active   --納品日>=OPM品目アドオン.適用開始日
+      AND   seh.delivery_date         <= ximb.end_date_active     --納品日<=OPM品目アドオン.適用終了日
+      ;
+-- 2011/06/20 Ver1.12 T.Ishiwata Add End
+--
     -- *** ローカル・レコード ***
     l_data_rec                data_cur%ROWTYPE;
+-- 2011/06/20 Ver1.12 T.Ishiwata Add Start
+    l_rate_check_rec          rate_check_cur%ROWTYPE;
+-- 2011/06/20 Ver1.12 T.Ishiwata Add End
 --
   BEGIN
 --
@@ -1614,8 +1921,11 @@ AS
       g_report_data_tab(ln_idx).employee_base_name     := SUBSTRB( l_data_rec.emp_name, 1, 14 );
                                                                                        --営業担当者名
       g_report_data_tab(ln_idx).deliver_to_code        := l_data_rec.ship_to_cd;       --出荷先コード
-      g_report_data_tab(ln_idx).deliver_to_name        := SUBSTRB( l_data_rec.ship_to_nm, 1, 30 );
+-- 2011/06/20 Ver1.12 T.Ishiwata Mod Start
+--      g_report_data_tab(ln_idx).deliver_to_name        := SUBSTRB( l_data_rec.ship_to_nm, 1, 30 );
+      g_report_data_tab(ln_idx).deliver_to_name        := SUBSTRB( l_data_rec.ship_to_nm, 1, 28 );
                                                                                        --出荷先名
+-- 2011/06/20 Ver1.12 T.Ishiwata Mod End
       g_report_data_tab(ln_idx).dlv_date               := l_data_rec.dlv_date;         --納品日
       g_report_data_tab(ln_idx).dlv_invoice_number     := l_data_rec.dlv_slip_num;     --納品伝票番号
       g_report_data_tab(ln_idx).item_code              := l_data_rec.item_cd;          --品目コード
@@ -1634,6 +1944,10 @@ AS
       g_report_data_tab(ln_idx).program_application_id := cn_program_application_id;   --ｺﾝｶﾚﾝﾄ･ﾌﾟﾛｸﾞﾗﾑ･ｱﾌﾟﾘｹｰｼｮﾝID
       g_report_data_tab(ln_idx).program_id             := cn_program_id;               --ｺﾝｶﾚﾝﾄ･ﾌﾟﾛｸﾞﾗﾑID
       g_report_data_tab(ln_idx).program_update_date    := cd_program_update_date;      --ﾌﾟﾛｸﾞﾗﾑ更新日
+-- 2011/06/20 Ver1.12 T.Ishiwata Add Start
+      g_report_data_tab(ln_idx).unit_price_check_mark  := l_data_rec.unit_price_check_mark; --異常掛率卸価格チェック(表示用)
+      g_report_data_tab(ln_idx).unit_price_check_sort  := l_data_rec.unit_price_check_sort; --異常掛率卸価格チェック(ソート用)
+-- 2011/06/20 Ver1.12 T.Ishiwata Add End
       --営業原価先行チェック
       IF ( l_data_rec.biz_cost IS NULL ) THEN
         --警告件数計上
@@ -1656,6 +1970,171 @@ AS
         END IF;
       END IF;
     END LOOP loop_get_data;
+-- 2011/06/20 Ver1.12 T.Ishiwata Add Start
+    -- 異常掛率卸単価チェックデータ取得
+    <<get_rate_check_data>>
+    FOR l_rate_check_rec IN rate_check_cur LOOP
+--
+      -- 初期化
+      lv_fixed_er_flg := 'N';
+      --
+      IF( l_rate_check_rec.price_start_date > l_rate_check_rec.dlv_date ) THEN
+        -- 旧定価の取得
+        BEGIN
+          SELECT
+            item_h.fixed_price
+          INTO
+            ln_old_fixed_price
+          FROM
+            ( SELECT
+                xsibh.fixed_price  AS fixed_price
+              FROM
+                xxcmm_system_items_b_hst xsibh                         -- 品目変更履歴アドオン
+              WHERE
+                   xsibh.item_code     = l_rate_check_rec.item_cd      -- 品目コード
+              AND  xsibh.apply_date   <= l_rate_check_rec.dlv_date     -- 適用日≦納品日
+              AND  xsibh.fixed_price  IS NOT NULL                      -- 定価が改訂された
+              AND  xsibh.apply_flag    = cv_yes                        -- 適用済み
+              ORDER BY
+                 xsibh.apply_date desc
+                ,xsibh.item_hst_id desc
+            ) item_h
+          WHERE
+            ROWNUM = 1                                                 -- 先頭1件目のみ
+          ;
+        EXCEPTION
+          WHEN NO_DATA_FOUND THEN
+            --メッセージ取得
+            lv_errmsg  :=  xxccp_common_pkg.get_msg(
+                               iv_application   =>  cv_xxcos_short_name
+                              ,iv_name          =>  cv_msg_fixed_price_err
+                              ,iv_token_name1   =>  cv_tkn_nm_item_cd
+                              ,iv_token_value1  =>  l_rate_check_rec.item_cd
+                              ,iv_token_name2   =>  cv_tkn_nm_dlv_date
+                              ,iv_token_value2  =>  TO_CHAR( l_rate_check_rec.dlv_date, cv_yyyy_mm_dd )
+                              );
+            --メッセージ出力
+            FND_FILE.PUT_LINE(
+               which  => FND_FILE.LOG
+              ,buff   => lv_errmsg --ユーザー・警告・メッセージ
+            );
+            lv_fixed_er_flg := cv_yes;
+          WHEN OTHERS THEN
+            --メッセージ取得
+            lv_errmsg  :=  xxccp_common_pkg.get_msg(
+                               iv_application   =>  cv_xxcos_short_name
+                              ,iv_name          =>  cv_msg_select_err
+                              ,iv_token_name1   =>  cv_tkn_nm_table_name
+                              ,iv_token_value1  =>  cv_msg_vl_item_hst
+                              ,iv_token_name2   =>  cv_tkn_nm_key_data
+                              ,iv_token_value2  =>  SQLERRM
+                              );
+            --メッセージ出力
+            FND_FILE.PUT_LINE(
+               which  => FND_FILE.LOG
+              ,buff   => lv_errmsg --ユーザー・警告・メッセージ
+            );
+            RAISE global_api_others_expt;
+        END;
+--
+        IF (   ( lv_fixed_er_flg = cv_no )
+           AND ( l_rate_check_rec.dlv_price < (ln_old_fixed_price  * gn_minimum_price_rate / 100 ))) THEN
+          --
+          -- 旧単価で異常掛率卸単価チェック
+          BEGIN
+            -- レコードIDの取得
+            SELECT
+              xxcos_rep_cost_div_list_s01.NEXTVAL     redord_id
+            INTO
+              lt_record_id
+            FROM
+              dual
+            ;
+            --
+            ln_idx := ln_idx + 1;
+            g_report_data_tab(ln_idx).record_id              := lt_record_id;                       --レコードID
+            g_report_data_tab(ln_idx).base_code              := l_rate_check_rec.base_code;        --拠点コード
+            g_report_data_tab(ln_idx).base_name              := SUBSTRB( l_rate_check_rec.base_name, 1, 40 );
+                                                                                                   --拠点名称
+            g_report_data_tab(ln_idx).dlv_date_start         := id_dlv_date_from;                  --納品日開始
+            g_report_data_tab(ln_idx).dlv_date_end           := id_dlv_date_to;                    --納品日終了
+            g_report_data_tab(ln_idx).employee_base_code     := l_rate_check_rec.emp_code;         --営業担当者コード
+            g_report_data_tab(ln_idx).employee_base_name     := SUBSTRB( l_rate_check_rec.emp_name, 1, 14 );
+                                                                                                   --営業担当者名
+            g_report_data_tab(ln_idx).deliver_to_code        := l_rate_check_rec.ship_to_cd;       --出荷先コード
+            g_report_data_tab(ln_idx).deliver_to_name        := SUBSTRB( l_rate_check_rec.ship_to_nm, 1, 28 );
+                                                                                                   --出荷先名
+            g_report_data_tab(ln_idx).dlv_date               := l_rate_check_rec.dlv_date;         --納品日
+            g_report_data_tab(ln_idx).dlv_invoice_number     := l_rate_check_rec.dlv_slip_num;     --納品伝票番号
+            g_report_data_tab(ln_idx).item_code              := l_rate_check_rec.item_cd;          --品目コード
+            g_report_data_tab(ln_idx).order_item_name        := l_rate_check_rec.item_nm;          --受注品名
+            g_report_data_tab(ln_idx).quantity               := l_rate_check_rec.quantity;         --数量
+            g_report_data_tab(ln_idx).uom_code               := l_rate_check_rec.unit;             --単位
+            g_report_data_tab(ln_idx).dlv_unit_price         := l_rate_check_rec.dlv_price;        --納品単価
+            g_report_data_tab(ln_idx).sale_amount            := l_rate_check_rec.quantity * l_rate_check_rec.dlv_price;
+                                                                                                   --売上金額
+            g_report_data_tab(ln_idx).created_by             := cn_created_by;                     --作成者
+            g_report_data_tab(ln_idx).creation_date          := cd_creation_date;                  --作成日
+            g_report_data_tab(ln_idx).last_updated_by        := cn_last_updated_by;                --最終更新者
+            g_report_data_tab(ln_idx).last_update_date       := cd_last_update_date;               --最終更新日
+            g_report_data_tab(ln_idx).last_update_login      := cn_last_update_login;              --最終更新ﾛｸﾞｲﾝ
+            g_report_data_tab(ln_idx).request_id             := cn_request_id;                     --要求ID
+            g_report_data_tab(ln_idx).program_application_id := cn_program_application_id;         --ｺﾝｶﾚﾝﾄ･ﾌﾟﾛｸﾞﾗﾑ･ｱﾌﾟﾘｹｰｼｮﾝID
+            g_report_data_tab(ln_idx).program_id             := cn_program_id;                     --ｺﾝｶﾚﾝﾄ･ﾌﾟﾛｸﾞﾗﾑID
+            g_report_data_tab(ln_idx).program_update_date    := cd_program_update_date;            --ﾌﾟﾛｸﾞﾗﾑ更新日
+            g_report_data_tab(ln_idx).unit_price_check_mark  := l_rate_check_rec.unit_price_check_mark; --異常掛率卸価格チェック(表示用)
+            g_report_data_tab(ln_idx).unit_price_check_sort  := l_rate_check_rec.unit_price_check_sort; --異常掛率卸価格チェック(ソート用)
+          END;
+        END IF;
+      ELSE
+        -- 新単価で異常掛率卸単価チェック
+        BEGIN
+          -- レコードIDの取得
+          SELECT
+            xxcos_rep_cost_div_list_s01.NEXTVAL     redord_id
+          INTO
+            lt_record_id
+          FROM
+            dual
+          ;
+          --
+          ln_idx := ln_idx + 1;
+          g_report_data_tab(ln_idx).record_id              := lt_record_id;                        --レコードID
+          g_report_data_tab(ln_idx).base_code              := l_rate_check_rec.base_code;          --拠点コード
+          g_report_data_tab(ln_idx).base_name              := SUBSTRB( l_rate_check_rec.base_name, 1, 40 );
+                                                                                                   --拠点名称
+          g_report_data_tab(ln_idx).dlv_date_start         := id_dlv_date_from;                    --納品日開始
+          g_report_data_tab(ln_idx).dlv_date_end           := id_dlv_date_to;                      --納品日終了
+          g_report_data_tab(ln_idx).employee_base_code     := l_rate_check_rec.emp_code;           --営業担当者コード
+          g_report_data_tab(ln_idx).employee_base_name     := SUBSTRB( l_rate_check_rec.emp_name, 1, 14 );
+                                                                                                   --営業担当者名
+          g_report_data_tab(ln_idx).deliver_to_code        := l_rate_check_rec.ship_to_cd;         --出荷先コード
+          g_report_data_tab(ln_idx).deliver_to_name        := SUBSTRB( l_rate_check_rec.ship_to_nm, 1, 28 );
+                                                                                                   --出荷先名
+          g_report_data_tab(ln_idx).dlv_date               := l_rate_check_rec.dlv_date;           --納品日
+          g_report_data_tab(ln_idx).dlv_invoice_number     := l_rate_check_rec.dlv_slip_num;       --納品伝票番号
+          g_report_data_tab(ln_idx).item_code              := l_rate_check_rec.item_cd;            --品目コード
+          g_report_data_tab(ln_idx).order_item_name        := l_rate_check_rec.item_nm;            --受注品名
+          g_report_data_tab(ln_idx).quantity               := l_rate_check_rec.quantity;           --数量
+          g_report_data_tab(ln_idx).uom_code               := l_rate_check_rec.unit;               --単位
+          g_report_data_tab(ln_idx).dlv_unit_price         := l_rate_check_rec.dlv_price;          --納品単価
+          g_report_data_tab(ln_idx).sale_amount            := l_rate_check_rec.quantity * l_rate_check_rec.dlv_price;
+                                                                                                   --売上金額
+          g_report_data_tab(ln_idx).created_by             := cn_created_by;                       --作成者
+          g_report_data_tab(ln_idx).creation_date          := cd_creation_date;                    --作成日
+          g_report_data_tab(ln_idx).last_updated_by        := cn_last_updated_by;                  --最終更新者
+          g_report_data_tab(ln_idx).last_update_date       := cd_last_update_date;                 --最終更新日
+          g_report_data_tab(ln_idx).last_update_login      := cn_last_update_login;                --最終更新ﾛｸﾞｲﾝ
+          g_report_data_tab(ln_idx).request_id             := cn_request_id;                       --要求ID
+          g_report_data_tab(ln_idx).program_application_id := cn_program_application_id;           --ｺﾝｶﾚﾝﾄ･ﾌﾟﾛｸﾞﾗﾑ･ｱﾌﾟﾘｹｰｼｮﾝID
+          g_report_data_tab(ln_idx).program_id             := cn_program_id;                       --ｺﾝｶﾚﾝﾄ･ﾌﾟﾛｸﾞﾗﾑID
+          g_report_data_tab(ln_idx).program_update_date    := cd_program_update_date;              --ﾌﾟﾛｸﾞﾗﾑ更新日
+          g_report_data_tab(ln_idx).unit_price_check_mark  := l_rate_check_rec.unit_price_check_mark; --異常掛率卸価格チェック(表示用)
+          g_report_data_tab(ln_idx).unit_price_check_sort  := l_rate_check_rec.unit_price_check_sort; --異常掛率卸価格チェック(ソート用)
+        END;
+      END IF;
+   END LOOP get_rate_check_data;
+-- 2011/06/20 Ver1.12 T.Ishiwata Add End
 -- ************************ 2010/01/18 S.Miyakoshi Var1.8 ADD START ************************ --
     END LOOP;
 -- ************************ 2010/01/18 S.Miyakoshi Var1.8 ADD  END  ************************ --
