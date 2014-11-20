@@ -7,7 +7,7 @@ AS
  * Description      : 在庫（帳票）
  * MD.050/070       : 在庫（帳票）Issue1.0  (T_MD050_BPO_550)
  *                    受払残高リスト        (T_MD070_BPO_55A)
- * Version          : 1.30
+ * Version          : 1.31
  *
  * Program List
  * -------------------------- ----------------------------------------------------------
@@ -57,6 +57,7 @@ AS
  *  2008/12/07    1.28  Yasuhisa Yamamoto  統合指摘 #509対応
  *  2008/12/07    1.29  Yasuhisa Yamamoto  統合指摘 #466対応
  *  2008/12/09    1.30  Yasuhisa Yamamoto  統合指摘 #472対応
+ *  2008/12/09    1.31  Yasuhisa Yamamoto  統合指摘 #472対応
  *****************************************************************************************/
 --
 --#######################  固定グローバル定数宣言部 START   #######################
@@ -1397,6 +1398,78 @@ AS
                                                             AND     gd_date_ym_last
                     AND    xilv_shipped_out.whse_code            <> xilv_ship_to_out.whse_code             -- 出庫保管場所と入庫保管場所の倉庫コードが違うもの
 -- 08/12/04 H.Itou Update v1.25 End
+-- 08/12/09 Y.Yamamoto add v1.31 start
+                    -- 文書タイプ"XFER"（積送あり移動）と"TRNI"（積送なし移動）の訂正中データの抽出（入庫）
+                    UNION ALL
+                    SELECT 
+                           xilv_ship_to_in_up.whse_code      whse_code        -- 入庫倉庫
+                          ,xmrih_in_up.ship_to_locat_code    location         -- 入庫保管場所
+                          ,xmld_in_up.item_id                item_id          -- 品目ID
+                          ,xmld_in_up.lot_id                 lot_id           -- ロットID
+                          ,xmrih_in_up.actual_arrival_date   trans_date       -- 入庫日
+                          ,xmld_in_up.before_actual_quantity trans_qty        -- 訂正前実績数量
+                          ,gc_rcv_pay_div_uke                rcv_pay_div      -- 受払区分:受入(固定)
+                          ,0                                 month_stock_be   -- 前月末在庫数
+                          ,0                                 cargo_stock_be   -- 前月積送中在庫数
+                          ,0                                 month_stock_nw   -- 当月末在庫数
+                          ,0                                 cargo_stock_nw   -- 当月積送中在庫数
+                          ,0                                 case_amt         -- 棚卸ケース数
+                          ,0                                 loose_amt        -- 棚卸バラ
+                          ,1                                 trans_cnt        -- トランザクション系データの抽出確認用
+                    FROM   xxinv_mov_req_instr_headers       xmrih_in_up         -- 移動ヘッダ
+                          ,xxinv_mov_req_instr_lines         xmril_in_up         -- 移動明細
+                          ,xxinv_mov_lot_details             xmld_in_up          -- 移動ロット詳細
+                          ,xxcmn_item_locations_v            xilv_ship_to_in_up  -- OPM保管場所情報VIEW(入庫保管場所)
+                          ,xxcmn_item_locations_v            xilv_shipped_in_up  -- OPM保管場所情報VIEW(出庫保管場所)
+                    WHERE  xmrih_in_up.mov_hdr_id                   = xmril_in_up.mov_hdr_id                     -- 結合条件 移動ヘッダ = 移動明細
+                    AND    xmrih_in_up.ship_to_locat_id             = xilv_ship_to_in_up.inventory_location_id   -- 結合条件 移動ヘッダ = OPM保管場所情報VIEW(入庫保管場所)
+                    AND    xmrih_in_up.shipped_locat_id             = xilv_shipped_in_up.inventory_location_id   -- 結合条件 移動ヘッダ = OPM保管場所情報VIEW(出庫保管場所)
+                    AND    xmril_in_up.mov_line_id                  = xmld_in_up.mov_line_id                     -- 結合条件 移動明細   = 移動ロット詳細
+                    AND    xmld_in_up.document_type_code            = gc_document_type_code_inv               -- 文書タイプ：移動
+                    AND    xmld_in_up.record_type_code              = gc_record_type_code_ship_to             -- レコードタイプ：入庫実績
+                    AND    xmril_in_up.delete_flg                   = gc_n                                    -- 削除フラグ：OFF
+                    AND    xmrih_in_up.comp_actual_flg              = gc_y                                    -- 実績計上済フラグ：計上済
+                    AND    NVL(xmrih_in_up.correct_actual_flg,gc_n) = gc_y                                    -- 実績訂正済フラグ：実績訂正
+                    AND    xmrih_in_up.status                       = gc_status_finish                        -- ステータス：入出庫報告有
+                    AND    xmrih_in_up.actual_arrival_date    BETWEEN gd_date_ym_first                        -- 日付
+                                                              AND     gd_date_ym_last
+                    AND    xilv_shipped_in_up.whse_code            <> xilv_ship_to_in_up.whse_code -- 出庫保管場所と入庫保管場所の倉庫コードが違うもの
+                    -- 文書タイプ"XFER"（積送あり移動）"TRNI"（積送なし移動）の訂正中データの抽出（出庫）
+                    UNION ALL
+                    SELECT 
+                           xilv_shipped_out_up.whse_code             whse_code        -- 出庫倉庫
+                          ,xmrih_out_up.shipped_locat_code           location         -- 出庫保管場所
+                          ,xmld_out_up.item_id                       item_id          -- 品目ID
+                          ,xmld_out_up.lot_id                        lot_id           -- ロットID
+                          ,xmrih_out_up.actual_ship_date             trans_date       -- 出庫日
+                          ,xmld_out_up.before_actual_quantity * (-1) trans_qty        -- 訂正前実績数量
+                          ,gc_rcv_pay_div_harai                      rcv_pay_div      -- 受払区分:払出(固定)
+                          ,0                                         month_stock_be   -- 前月末在庫数
+                          ,0                                         cargo_stock_be   -- 前月積送中在庫数
+                          ,0                                         month_stock_nw   -- 当月末在庫数
+                          ,0                                         cargo_stock_nw   -- 当月積送中在庫数
+                          ,0                                         case_amt         -- 棚卸ケース数
+                          ,0                                         loose_amt        -- 棚卸バラ
+                          ,1                                         trans_cnt        -- トランザクション系データの抽出確認用
+                    FROM   xxinv_mov_req_instr_headers               xmrih_out_up        -- 移動ヘッダ
+                          ,xxinv_mov_req_instr_lines                 xmril_out_up        -- 移動明細
+                          ,xxinv_mov_lot_details                     xmld_out_up         -- 移動ロット詳細
+                          ,xxcmn_item_locations_v                    xilv_ship_to_out_up -- OPM保管場所情報VIEW(入庫保管場所)
+                          ,xxcmn_item_locations_v                    xilv_shipped_out_up -- OPM保管場所情報VIEW(出庫保管場所)
+                    WHERE  xmrih_out_up.mov_hdr_id                   = xmril_out_up.mov_hdr_id                   -- 結合条件 移動ヘッダ = 移動明細
+                    AND    xmrih_out_up.ship_to_locat_id             = xilv_ship_to_out_up.inventory_location_id -- 結合条件 移動ヘッダ = OPM保管場所情報VIEW(入庫保管場所)
+                    AND    xmrih_out_up.shipped_locat_id             = xilv_shipped_out_up.inventory_location_id -- 結合条件 移動ヘッダ = OPM保管場所情報VIEW(出庫保管場所)
+                    AND    xmril_out_up.mov_line_id                  = xmld_out_up.mov_line_id                   -- 結合条件 移動明細   = 移動ロット詳細
+                    AND    xmld_out_up.document_type_code            = gc_document_type_code_inv              -- 文書タイプ：移動
+                    AND    xmld_out_up.record_type_code              = gc_record_type_code_shipped            -- レコードタイプ：出庫実績
+                    AND    xmril_out_up.delete_flg                   = gc_n                                   -- 削除フラグ：OFF
+                    AND    xmrih_out_up.comp_actual_flg              = gc_y                                   -- 実績計上済フラグ：計上済
+                    AND    NVL(xmrih_out_up.correct_actual_flg,gc_n) = gc_y                                   -- 実績訂正済フラグ：実績訂正
+                    AND    xmrih_out_up.status                       = gc_status_finish                       -- ステータス：入出庫報告有
+                    AND    xmrih_out_up.actual_arrival_date    BETWEEN gd_date_ym_first                       -- 日付
+                                                               AND     gd_date_ym_last
+                    AND    xilv_shipped_out_up.whse_code            <> xilv_ship_to_out_up.whse_code             -- 出庫保管場所と入庫保管場所の倉庫コードが違うもの
+-- 08/12/09 Y.Yamamoto add v1.31 end
 --                    UNION  -- 文書タイプ"OMSO"（受注）の抽出
                     UNION ALL  -- 文書タイプ"OMSO"（受注）の抽出
 -- 08/06/07 Y.Yamamoto Update v2.1 End
@@ -2401,6 +2474,78 @@ AS
                                                             AND     gd_date_ym_last
                     AND    xilv_shipped_out.whse_code            <> xilv_ship_to_out.whse_code             -- 出庫保管場所と入庫保管場所の倉庫コードが違うもの
 -- 08/12/04 H.Itou Update v1.25 End
+-- 08/12/09 Y.Yamamoto add v1.31 start
+                    -- 文書タイプ"XFER"（積送あり移動）と"TRNI"（積送なし移動）の訂正中データの抽出（入庫）
+                    UNION ALL
+                    SELECT 
+                           xilv_ship_to_in_up.whse_code      whse_code        -- 入庫倉庫
+                          ,xmrih_in_up.ship_to_locat_code    location         -- 入庫保管場所
+                          ,xmld_in_up.item_id                item_id          -- 品目ID
+                          ,xmld_in_up.lot_id                 lot_id           -- ロットID
+                          ,xmrih_in_up.actual_arrival_date   trans_date       -- 入庫日
+                          ,xmld_in_up.before_actual_quantity trans_qty        -- 訂正前実績数量
+                          ,gc_rcv_pay_div_uke                rcv_pay_div      -- 受払区分:受入(固定)
+                          ,0                                 month_stock_be   -- 前月末在庫数
+                          ,0                                 cargo_stock_be   -- 前月積送中在庫数
+                          ,0                                 month_stock_nw   -- 当月末在庫数
+                          ,0                                 cargo_stock_nw   -- 当月積送中在庫数
+                          ,0                                 case_amt         -- 棚卸ケース数
+                          ,0                                 loose_amt        -- 棚卸バラ
+                          ,1                                 trans_cnt        -- トランザクション系データの抽出確認用
+                    FROM   xxinv_mov_req_instr_headers       xmrih_in_up         -- 移動ヘッダ
+                          ,xxinv_mov_req_instr_lines         xmril_in_up         -- 移動明細
+                          ,xxinv_mov_lot_details             xmld_in_up          -- 移動ロット詳細
+                          ,xxcmn_item_locations_v            xilv_ship_to_in_up  -- OPM保管場所情報VIEW(入庫保管場所)
+                          ,xxcmn_item_locations_v            xilv_shipped_in_up  -- OPM保管場所情報VIEW(出庫保管場所)
+                    WHERE  xmrih_in_up.mov_hdr_id                   = xmril_in_up.mov_hdr_id                     -- 結合条件 移動ヘッダ = 移動明細
+                    AND    xmrih_in_up.ship_to_locat_id             = xilv_ship_to_in_up.inventory_location_id   -- 結合条件 移動ヘッダ = OPM保管場所情報VIEW(入庫保管場所)
+                    AND    xmrih_in_up.shipped_locat_id             = xilv_shipped_in_up.inventory_location_id   -- 結合条件 移動ヘッダ = OPM保管場所情報VIEW(出庫保管場所)
+                    AND    xmril_in_up.mov_line_id                  = xmld_in_up.mov_line_id                     -- 結合条件 移動明細   = 移動ロット詳細
+                    AND    xmld_in_up.document_type_code            = gc_document_type_code_inv               -- 文書タイプ：移動
+                    AND    xmld_in_up.record_type_code              = gc_record_type_code_ship_to             -- レコードタイプ：入庫実績
+                    AND    xmril_in_up.delete_flg                   = gc_n                                    -- 削除フラグ：OFF
+                    AND    xmrih_in_up.comp_actual_flg              = gc_y                                    -- 実績計上済フラグ：計上済
+                    AND    NVL(xmrih_in_up.correct_actual_flg,gc_n) = gc_y                                    -- 実績訂正済フラグ：実績訂正
+                    AND    xmrih_in_up.status                       = gc_status_finish                        -- ステータス：入出庫報告有
+                    AND    xmrih_in_up.actual_arrival_date    BETWEEN gd_date_ym_first                        -- 日付
+                                                              AND     gd_date_ym_last
+                    AND    xilv_shipped_in_up.whse_code            <> xilv_ship_to_in_up.whse_code -- 出庫保管場所と入庫保管場所の倉庫コードが違うもの
+                    -- 文書タイプ"XFER"（積送あり移動）"TRNI"（積送なし移動）の訂正中データの抽出（出庫）
+                    UNION ALL
+                    SELECT 
+                           xilv_shipped_out_up.whse_code             whse_code        -- 出庫倉庫
+                          ,xmrih_out_up.shipped_locat_code           location         -- 出庫保管場所
+                          ,xmld_out_up.item_id                       item_id          -- 品目ID
+                          ,xmld_out_up.lot_id                        lot_id           -- ロットID
+                          ,xmrih_out_up.actual_ship_date             trans_date       -- 出庫日
+                          ,xmld_out_up.before_actual_quantity * (-1) trans_qty        -- 訂正前実績数量
+                          ,gc_rcv_pay_div_harai                      rcv_pay_div      -- 受払区分:払出(固定)
+                          ,0                                         month_stock_be   -- 前月末在庫数
+                          ,0                                         cargo_stock_be   -- 前月積送中在庫数
+                          ,0                                         month_stock_nw   -- 当月末在庫数
+                          ,0                                         cargo_stock_nw   -- 当月積送中在庫数
+                          ,0                                         case_amt         -- 棚卸ケース数
+                          ,0                                         loose_amt        -- 棚卸バラ
+                          ,1                                         trans_cnt        -- トランザクション系データの抽出確認用
+                    FROM   xxinv_mov_req_instr_headers               xmrih_out_up        -- 移動ヘッダ
+                          ,xxinv_mov_req_instr_lines                 xmril_out_up        -- 移動明細
+                          ,xxinv_mov_lot_details                     xmld_out_up         -- 移動ロット詳細
+                          ,xxcmn_item_locations_v                    xilv_ship_to_out_up -- OPM保管場所情報VIEW(入庫保管場所)
+                          ,xxcmn_item_locations_v                    xilv_shipped_out_up -- OPM保管場所情報VIEW(出庫保管場所)
+                    WHERE  xmrih_out_up.mov_hdr_id                   = xmril_out_up.mov_hdr_id                   -- 結合条件 移動ヘッダ = 移動明細
+                    AND    xmrih_out_up.ship_to_locat_id             = xilv_ship_to_out_up.inventory_location_id -- 結合条件 移動ヘッダ = OPM保管場所情報VIEW(入庫保管場所)
+                    AND    xmrih_out_up.shipped_locat_id             = xilv_shipped_out_up.inventory_location_id -- 結合条件 移動ヘッダ = OPM保管場所情報VIEW(出庫保管場所)
+                    AND    xmril_out_up.mov_line_id                  = xmld_out_up.mov_line_id                   -- 結合条件 移動明細   = 移動ロット詳細
+                    AND    xmld_out_up.document_type_code            = gc_document_type_code_inv              -- 文書タイプ：移動
+                    AND    xmld_out_up.record_type_code              = gc_record_type_code_shipped            -- レコードタイプ：出庫実績
+                    AND    xmril_out_up.delete_flg                   = gc_n                                   -- 削除フラグ：OFF
+                    AND    xmrih_out_up.comp_actual_flg              = gc_y                                   -- 実績計上済フラグ：計上済
+                    AND    NVL(xmrih_out_up.correct_actual_flg,gc_n) = gc_y                                   -- 実績訂正済フラグ：実績訂正
+                    AND    xmrih_out_up.status                       = gc_status_finish                       -- ステータス：入出庫報告有
+                    AND    xmrih_out_up.actual_arrival_date    BETWEEN gd_date_ym_first                       -- 日付
+                                                               AND     gd_date_ym_last
+                    AND    xilv_shipped_out_up.whse_code            <> xilv_ship_to_out_up.whse_code             -- 出庫保管場所と入庫保管場所の倉庫コードが違うもの
+-- 08/12/09 Y.Yamamoto add v1.31 end
 --
 -- 08/06/07 Y.Yamamoto Update v2.1 Start
 --                    UNION  -- 文書タイプ"OMSO"（受注）の抽出
