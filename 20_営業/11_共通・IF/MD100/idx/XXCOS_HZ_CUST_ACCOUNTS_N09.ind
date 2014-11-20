@@ -1,2 +1,0 @@
-CREATE INDEX ar.xxcos_hz_cust_accounts_n09 ON hz_cust_accounts (cust_account_id,party_id,account_number) TABLESPACE apps_ts_tx_idx;
-/

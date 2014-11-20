@@ -1,2 +1,0 @@
-CREATE INDEX ar.xxcos_hz_parties_n14 ON hz_parties (party_id,party_name,email_address,gsa_indicator_flag) TABLESPACE apps_ts_tx_idx
-

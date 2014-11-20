@@ -1,2 +1,0 @@
-CREATE INDEX ar.xxcos_ra_terms_tl_n02 ON ra_terms_tl (language,term_id,name) TABLESPACE apps_ts_tx_idx;
-

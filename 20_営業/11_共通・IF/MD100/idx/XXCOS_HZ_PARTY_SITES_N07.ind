@@ -1,2 +1,0 @@
-CREATE INDEX ar.xxcos_hz_party_sites_n07 ON hz_party_sites (party_site_id,location_id) TABLESPACE apps_ts_tx_idx;
-

@@ -1,2 +1,0 @@
-CREATE INDEX ar.xxcos_hz_parties_n15 ON hz_parties (party_id,person_pre_name_adjunct,person_first_name,person_last_name) TABLESPACE apps_ts_tx_idx;
-
