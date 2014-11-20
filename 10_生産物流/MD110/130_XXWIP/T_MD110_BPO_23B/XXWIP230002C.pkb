@@ -8,7 +8,7 @@ AS
  * Description      : 生産帳票機能（生産日報）
  * MD.050/070       : 生産帳票機能（生産日報）Issue1.0  (T_MD050_BPO_230)
  *                    生産帳票機能（生産日報）          (T_MD070_BPO_23B)
- * Version          : 1.8
+ * Version          : 1.9
  *
  * Program List
  * ---------------------------- ----------------------------------------------------------
@@ -49,6 +49,7 @@ AS
  *  2008/12/02    1.6   Daisuke  Nihei      本番障害#325対応
  *  2008/12/17    1.7   Daisuke  Nihei      本番障害#709対応
  *  2008/12/24    1.8   Akiyoshi Shiina     本番障害#849,#823対応
+ *  2008/12/25    1.9   Akiyoshi Shiina     本番障害#823再対応
  *****************************************************************************************/
 --
 --#######################  固定グローバル定数宣言部 START   #######################
@@ -360,7 +361,10 @@ AS
 **/
     BEGIN
 --
-      lv_validate_date_tmp := TO_CHAR(FND_DATE.CANONICAL_TO_DATE(iv_validate_date),gv_date_format1) ;
+-- 2008/12/25 v1.9 UPDATE START
+--      lv_validate_date_tmp := TO_CHAR(FND_DATE.CANONICAL_TO_DATE(iv_validate_date),gv_date_format1) ;
+      lv_validate_date_tmp := TO_CHAR(FND_DATE.CANONICAL_TO_DATE(iv_validate_date),iv_date_format) ;
+-- 2008/12/25 v1.9 UPDATE END
 --
     EXCEPTION
 --
@@ -369,11 +373,16 @@ AS
         RAISE date_format_expt ;
     END ;
     -- 指定フォーマットへの変換
+-- 2008/12/25 v1.9 UPDATE START
+/*
 -- 2008/12/24 v1.8 UPDATE START
 --    od_change_date := FND_DATE.STRING_TO_DATE(lv_validate_date_tmp
 --                                             ,iv_date_format) ;
     od_change_date := TRUNC(TO_DATE(lv_validate_date_tmp, gv_date_format1)) ;
 -- 2008/12/24 v1.8 UPDATE END
+*/
+    od_change_date := FND_DATE.STRING_TO_DATE(lv_validate_date_tmp, iv_date_format) ;
+-- 2008/12/25 v1.9 UPDATE END
 --
   EXCEPTION
 --
