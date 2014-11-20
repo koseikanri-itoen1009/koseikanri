@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCOS002A02R(body)
  * Description      : 営業報告日報
  * MD.050           : 営業報告日報 MD050_COS_002_A02
- * Version          : 1.11
+ * Version          : 1.10
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -51,7 +51,6 @@ AS
  *                                       [0001273]集金のみの抽出条件不正対応
  *  2009/10/30    1.9   M.Sano           [0001373]参照ビュー変更：XXCOS_RS_INFO_V⇒XXCOS_RS_INFO2_V
  *  2009/12/17    1.10  S.Miyakoshi      [E_本稼動_00500](A-2)集約項目に「納品者」を追加
- *  2009/12/24    1.11  K.Atsushiba      [E_本稼動_00596]入金額の表示不良対応
  *
  *****************************************************************************************/
 --
@@ -813,10 +812,6 @@ AS
     -- ユーザー宣言部
     -- ===============================
     -- *** ローカル定数 ***
--- 2009/12/24 Ver1.11 Add Start
-    cv_date_fmt         VARCHAR2(20) := 'YYYYMMDDHH24MISS';
-    cv_input_date_fmt   VARCHAR2(20) := 'YYYY/MM/DD';
--- 2009/12/24 Ver1.11 Add End
     -- *** ローカル変数 ***
     -- キー情報
     lv_key_info                           VARCHAR2(5000);
@@ -858,34 +853,10 @@ AS
     --  合計入金額情報 テーブル型
     l_payment_total_tab                   g_payment_total_ttype;
 -- ******************** 2009/07/08 Var.1.7 T.Tominaga ADD END    ******************************************
--- 2009/12/24 Ver1.11 Add Start
-  lv_pay_index                             VARCHAR2(1000);
-  lv_pre_index                             VARCHAR2(1000);
-  ln_dlv_index                             NUMBER;
-  TYPE  l_dlv_payment_total_ttype          IS  TABLE OF  NUMBER  INDEX BY VARCHAR2(1000);
-  lt_ldv_pay_total_tbl                     l_dlv_payment_total_ttype;
--- 2009/12/24 Ver1.11 Add End
 --
     -- ===============================
     -- ローカル・カーソル
     -- ===============================
--- 2009/12/24 Ver1.11 Add Start
-  CURSOR get_payment_cur (
-     ipd_delivery_date        IN  DATE
-    ,ipv_delivery_base_code   IN  VARCHAR2
-  ) IS
-    SELECT   xp.base_code          base_code
-            ,xp.customer_number    customer_number
-            ,xp.payment_amount     payment_amount
-            ,xp.payment_date       payment_date
-            ,xp.hht_invoice_no     hht_invoice_no
-    FROM    xxcos_payment   xp
-    WHERE   xp.payment_date = ipd_delivery_date
-    AND     xp.base_code    = ipv_delivery_base_code;
-  --
-  TYPE lt_payment_tbl_ttype IS TABLE OF get_payment_cur%ROWTYPE INDEX BY BINARY_INTEGER;
-  lt_payment_tbl            lt_payment_tbl_ttype;
--- 2009/12/24 Ver1.11 Add End
 --
   BEGIN
 --
@@ -920,21 +891,6 @@ AS
     CLOSE delivery_cur;
 --
 --
--- 2009/12/24 Ver1.11 Add Start
-    --  ===============================
-    --  入金データ抽出
-    --  ===============================
-    -- カーソル・オープン
-    OPEN get_payment_cur (
-       ipd_delivery_date      => TO_DATE(iv_delivery_date, cv_input_date_fmt)               -- 納品日
-      ,ipv_delivery_base_code => iv_delivery_base_code                                      -- 拠点コード
-    );
-    -- レコード読込
-    FETCH get_payment_cur  BULK COLLECT  INTO  lt_payment_tbl;
-    --
-    -- カーソル・クローズ
-    CLOSE get_payment_cur;
--- 2009/12/24 Ver1.11 Add End
     -- ===============================
     -- A-3.納品実績データ挿入
     -- ===============================
@@ -1004,23 +960,21 @@ AS
 --****************************** 2009/07/22 1.7 T.Tominaga MOD START ******************************--
 --            ln_pretax_payment :=  l_delivery_data_tab(lp_idx).pretax_payment;
 --****************************** 2009/07/08 1.7 T.Tominaga ADD END   ******************************--
--- 2009/12/24 Ver1.11 Del Start
---            -- 入金額の取得
---            BEGIN
---              SELECT SUM(paym.payment_amount)
---              INTO   ln_pretax_payment
---              FROM   xxcos_payment  paym
---              WHERE  paym.base_code           = l_delivery_data_tab(lp_idx).base_code
---              AND    paym.customer_number     = l_delivery_data_tab(lp_idx).party_num
---              AND    paym.payment_date        = l_delivery_data_tab(lp_idx).dlv_date
---              AND    paym.hht_invoice_no      = l_delivery_data_tab(lp_idx).hht_invoice_no
---              HAVING SUM(paym.payment_amount) <>  0;
+            -- 入金額の取得
+            BEGIN
+              SELECT SUM(paym.payment_amount)
+              INTO   ln_pretax_payment
+              FROM   xxcos_payment  paym
+              WHERE  paym.base_code           = l_delivery_data_tab(lp_idx).base_code
+              AND    paym.customer_number     = l_delivery_data_tab(lp_idx).party_num
+              AND    paym.payment_date        = l_delivery_data_tab(lp_idx).dlv_date
+              AND    paym.hht_invoice_no      = l_delivery_data_tab(lp_idx).hht_invoice_no
+              HAVING SUM(paym.payment_amount) <>  0;
 --
---            EXCEPTION
---              WHEN NO_DATA_FOUND THEN
---                ln_pretax_payment := NULL;
---            END;
--- 2009/12/24 Ver1.11 Del End
+            EXCEPTION
+              WHEN NO_DATA_FOUND THEN
+                ln_pretax_payment := NULL;
+            END;
 --****************************** 2009/07/22 1.7 T.Tominaga MOD END   ******************************--
           END IF;
 --
@@ -1129,123 +1083,6 @@ AS
     --  0件の場合登録処理をスキップ
     END IF;
 --
--- 2009/12/24 Ver1.11 Add Start
-   IF ( lt_payment_tbl.COUNT > 0 ) THEN
-     <<rep_loop>>
-     FOR ln_rep_idx IN l_xxcos_rep_bus_report_tab.FIRST..l_xxcos_rep_bus_report_tab.LAST LOOP
-       <<payment_loop>>
-       FOR ln_idx IN 1..lt_payment_tbl.COUNT LOOP
-         IF ( ( lt_payment_tbl.EXISTS(ln_idx) = TRUE )
-               AND
-              ( lt_payment_tbl(ln_idx).base_code = l_xxcos_rep_bus_report_tab(ln_rep_idx).base_code )            -- 拠点
-               AND
-              ( lt_payment_tbl(ln_idx).customer_number = l_xxcos_rep_bus_report_tab(ln_rep_idx).party_num )      -- 顧客コード
-               AND
-              ( lt_payment_tbl(ln_idx).payment_date = l_xxcos_rep_bus_report_tab(ln_rep_idx).dlv_date )          -- 納品日
-               AND
-              ( lt_payment_tbl(ln_idx).hht_invoice_no = l_xxcos_rep_bus_report_tab(ln_rep_idx).hht_invoice_no )  -- 納品伝票番号
-               AND
-              ( lt_payment_tbl(ln_idx).payment_amount = l_xxcos_rep_bus_report_tab(ln_rep_idx).aftertax_sale )   -- 入金額
-           )
-         THEN
-           -- 入金額と売上額が一致した場合、その金額を設定
-           l_xxcos_rep_bus_report_tab(ln_rep_idx).pretax_payment := lt_payment_tbl(ln_idx).payment_amount;
-           --
-           -- 入金PL/SQL表から削除
-           lt_payment_tbl.DELETE(ln_idx);
-           --
-           -- ループを抜ける
-           EXIT;
-         END IF;
-       END LOOP payment_loop;
-     END LOOP rep_loop;
-     --
-     -- 納品実績に関連付けできなかった入金をヘッダ単位に合算する
-     <<sum_payment_loop>>
-     FOR ln_idx IN 1..lt_payment_tbl.COUNT LOOP
-       IF ( lt_payment_tbl.EXISTS(ln_idx) = TRUE ) THEN
-         lv_pay_index := TO_CHAR( lt_payment_tbl(ln_idx).payment_date, cv_date_fmt )
-                         || lt_payment_tbl(ln_idx).base_code
-                         || lt_payment_tbl(ln_idx).customer_number
-                         || lt_payment_tbl(ln_idx).hht_invoice_no;
-         IF ( lt_ldv_pay_total_tbl.EXISTS(lv_pay_index) = TRUE ) THEN
-           -- データがPL/SQL表に存在ある場合、合算する
-           lt_ldv_pay_total_tbl(lv_pay_index) := lt_ldv_pay_total_tbl(lv_pay_index) + lt_payment_tbl(ln_idx).payment_amount;
-         ELSE
-           -- PL/SQL表に登録する
-           lt_ldv_pay_total_tbl(lv_pay_index) := lt_payment_tbl(ln_idx).payment_amount;
-         END IF;
-       END IF;
-     END LOOP alloc_payment_loop;
-    END IF;
-    --
-    -- 合算した入金額を訪問時間順に割り振る
-    <<alloc_payment>>
-    FOR ln_idx IN l_xxcos_rep_bus_report_tab.FIRST..l_xxcos_rep_bus_report_tab.LAST LOOP
-      IF ( l_xxcos_rep_bus_report_tab(ln_idx).pretax_payment IS NULL ) THEN
-        lv_pay_index := TO_CHAR( l_xxcos_rep_bus_report_tab(ln_idx).dlv_date, cv_date_fmt )
-                        || l_xxcos_rep_bus_report_tab(ln_idx).base_code
-                        || l_xxcos_rep_bus_report_tab(ln_idx).party_num
-                        || l_xxcos_rep_bus_report_tab(ln_idx).hht_invoice_no;
-        --
-        -- 変数初期化
-        ln_pretax_payment := NULL;
-        --
-        IF ( lt_ldv_pay_total_tbl.EXISTS(lv_pay_index) AND lt_ldv_pay_total_tbl(lv_pay_index) > 0 ) THEN
-          -- 入金データがある場合
-          IF ( lt_ldv_pay_total_tbl(lv_pay_index) > l_xxcos_rep_bus_report_tab(ln_idx).aftertax_sale ) THEN
-            -- 入金額のほうが大きい場合
-            ln_pretax_payment := l_xxcos_rep_bus_report_tab(ln_idx).aftertax_sale;
-            lt_ldv_pay_total_tbl(lv_pay_index) := lt_ldv_pay_total_tbl(lv_pay_index) - l_xxcos_rep_bus_report_tab(ln_idx).aftertax_sale;
-          ELSE
-            -- 入金額のほうが小さい場合
-            ln_pretax_payment := lt_ldv_pay_total_tbl(lv_pay_index);
-            lt_ldv_pay_total_tbl(lv_pay_index) := 0;
-          END IF;
-        END IF;
-        -- 入金額を設定
-        l_xxcos_rep_bus_report_tab(ln_idx).pretax_payment := ln_pretax_payment;
-      END IF;
-    END LOOP alloc_payment;
-    --
-    -- 入金額が売上金額より多く入力された場合、訪問時間が古い納品実績に出力する
-    <<lot_payment>>
-    FOR ln_idx IN l_xxcos_rep_bus_report_tab.FIRST..l_xxcos_rep_bus_report_tab.LAST LOOP
-      -- インデックスキー作成
-      lv_pay_index := TO_CHAR( l_xxcos_rep_bus_report_tab(ln_idx).dlv_date, cv_date_fmt )
-                      || l_xxcos_rep_bus_report_tab(ln_idx).base_code
-                      || l_xxcos_rep_bus_report_tab(ln_idx).party_num
-                      || l_xxcos_rep_bus_report_tab(ln_idx).hht_invoice_no;
-      --
-      IF ( ln_idx = l_xxcos_rep_bus_report_tab.FIRST ) THEN
-        -- 1回目のループの場合
-        lv_pre_index := lv_pay_index;
-        ln_dlv_index := ln_idx;
-      END IF;
-      --
-      IF ( ( lv_pre_index != lv_pay_index ) 
-           OR
-           ( ln_idx = l_xxcos_rep_bus_report_tab.LAST )
-         )
-      THEN
-        -- インデックスがブレイク又は最終レコードの場合
-        IF ( ln_idx = l_xxcos_rep_bus_report_tab.LAST ) THEN
-          -- 最終レコードの場合、インデックスキーを再設定
-          lv_pre_index := lv_pay_index;
-          ln_dlv_index := ln_idx;
-        END IF;
-        --
-        IF ( lt_ldv_pay_total_tbl.EXISTS(lv_pay_index) AND lt_ldv_pay_total_tbl(lv_pay_index) > 0 ) THEN
-          -- 入金データがあり且つ残高がある場合
-          l_xxcos_rep_bus_report_tab(ln_dlv_index).pretax_payment := l_xxcos_rep_bus_report_tab(ln_dlv_index).pretax_payment
-                                                               + lt_ldv_pay_total_tbl(lv_pre_index);
-        END IF;
-      END IF;
-      --
-      lv_pre_index := lv_pay_index;
-      ln_dlv_index := ln_idx;
-    END LOOP lot_payment;
--- 2009/12/24 Ver1.11 Add End
     BEGIN
       FORALL  lp_idx  IN  INDICES OF  l_xxcos_rep_bus_report_tab  SAVE EXCEPTIONS
         INSERT
@@ -1398,40 +1235,20 @@ AS
 --
     -- *** 処理部共通例外ハンドラ ***
     WHEN global_process_expt THEN
--- 2009/12/24 Ver1.11 Add Start
-      IF ( get_payment_cur%ISOPEN ) THEN
-        CLOSE get_payment_cur;
-      END IF;
--- 2009/12/24 Ver1.11 Add End
       ov_errmsg  := lv_errmsg;
       ov_errbuf  := SUBSTRB(cv_pkg_name||cv_msg_cont||cv_prg_name||cv_msg_part||lv_errbuf,1,5000);
       ov_retcode := cv_status_error;
     -- *** 共通関数例外ハンドラ ***
     WHEN global_api_expt THEN
--- 2009/12/24 Ver1.11 Add Start
-      IF ( get_payment_cur%ISOPEN ) THEN
-        CLOSE get_payment_cur;
-      END IF;
--- 2009/12/24 Ver1.11 Add End
       ov_errmsg  := lv_errmsg;
       ov_errbuf  := SUBSTRB(cv_pkg_name||cv_msg_cont||cv_prg_name||cv_msg_part||lv_errbuf,1,5000);
       ov_retcode := cv_status_error;
     -- *** 共通関数OTHERS例外ハンドラ ***
     WHEN global_api_others_expt THEN
--- 2009/12/24 Ver1.11 Add Start
-      IF ( get_payment_cur%ISOPEN ) THEN
-        CLOSE get_payment_cur;
-      END IF;
--- 2009/12/24 Ver1.11 Add End
       ov_errbuf  := cv_pkg_name||cv_msg_cont||cv_prg_name||cv_msg_part||SQLERRM;
       ov_retcode := cv_status_error;
     -- *** OTHERS例外ハンドラ ***
     WHEN OTHERS THEN
--- 2009/12/24 Ver1.11 Add Start
-      IF ( get_payment_cur%ISOPEN ) THEN
-        CLOSE get_payment_cur;
-      END IF;
--- 2009/12/24 Ver1.11 Add End
       ov_errbuf  := cv_pkg_name||cv_msg_cont||cv_prg_name||cv_msg_part||SQLERRM;
       ov_retcode := cv_status_error;
 --
