@@ -9,7 +9,7 @@
 ##        作成者  ：   Oracle 堀井           2008/03/31 1.0.1                 ##
 ##        更新履歴：   Oracle 堀井           2008/03/31 1.0.1                 ##
 ##                       初版                                                 ##
-##        更新履歴：   Oracle 吉野           2008/09/02 1.0.2                 ##
+##        更新履歴：   Oracle 吉野           2008/10/30 1.0.3                 ##
 ##                      購買オープン・インタフェースで処理されたデータのパージ##
 ##                      を追加                                                ##
 ##   [戻り値]                                                                 ##
@@ -640,8 +640,8 @@ L_rogushuturyoku "廃止された一般 ファイル マネージャ データパージ 終了"
 ### 購買オープン・インタフェースで処理されたデータのパージ ###
 L_rogushuturyoku "購買オープン・インタフェースで処理されたデータのパージ 開始"
 
-L_app_syokuseki_tansyukumei="PO"                           #職責のアプリケーション短縮名
-L_syokusekimei="Purchasing Super User"                     #職責の名称
+L_app_syokuseki_tansyukumei="SYSADMIN"                     #職責のアプリケーション短縮名
+L_syokusekimei="System Administrator"                      #職責の名称
 L_yuzamei="SYSADMIN"                                       #ユーザ名
 L_konkarento_app_tansyukumei="PO"                          #プログラムアプリケーション短縮名
 L_konkarentomei="POXPOIPR"                                 #プログラムアプリケーション名
