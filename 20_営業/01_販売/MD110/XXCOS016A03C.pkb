@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCOS016A03C(body)
  * Description      : 人事システム向け、販売実績賞与データ(I/F)作成処理
  * MD.050           : A03_人事システム向け販売実績データの作成（月次・賞与） COS_016_A03
- * Version          : 1.8
+ * Version          : 1.9
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -44,6 +44,7 @@ AS
  *  2010/01/22    1.6   S.Miyakoshi      [E_本稼動_01234](A-15)異常終了時のログ出力内容の変更
  *  2010/04/20    1.7   K.Atsushiba      [E_本稼動_02151]本部コード対応
  *  2010/05/26    1.8   S.Miyakoshi      [E_本稼動_02774]月中退職者が未計上の対応
+ *  2013/08/12    1.9   K.Kiriu          [E_本稼動_02011]実績振替の入金値引の対応
  *
  *****************************************************************************************/
 --
@@ -109,6 +110,9 @@ AS
   global_insert_expt        EXCEPTION;  --登録
   global_update_expt        EXCEPTION;  --更新
   global_no_data_expt       EXCEPTION;  --対象データ０件エラー
+-- == 2013/08/12 1.9 Add START ===============================================================
+  global_get_profile_expt   EXCEPTION;  --プロファイル取得例外
+-- == 2013/08/12 1.9 Add END   ===============================================================
   -- ===============================
   -- ユーザー定義グローバル定数
   -- ===============================
@@ -119,6 +123,10 @@ AS
   --販物メッセージ
   cv_msg_table_lock_err     CONSTANT fnd_new_messages.message_name%TYPE
                                      := 'APP-XXCOS1-00001';   --テーブルロックエラーメッセージ
+-- == 2013/08/12 1.9 Add START ===============================================================
+  cv_msg_get_profile_err    CONSTANT  fnd_new_messages.message_name%TYPE
+                                     := 'APP-XXCOS1-00004';   --プロファイル取得エラー
+-- == 2013/08/12 1.9 Add END   ===============================================================
   cv_msg_insert_data_err    CONSTANT fnd_new_messages.message_name%TYPE
                                      := 'APP-XXCOS1-00010';   --データ登録エラーメッセージ
   cv_msg_get_update_err     CONSTANT fnd_new_messages.message_name%TYPE
@@ -167,11 +175,18 @@ AS
                                      := 'APP-XXCOS1-13468';   --人事システム向け販売実績（賞与）テーブル
   cv_msg_mem16_data         CONSTANT fnd_new_messages.message_name%TYPE
                                      := 'APP-XXCOS1-13469';   --従業員view
+-- == 2013/08/12 1.9 Add START ===============================================================
+  cv_msg_mem17_data         CONSTANT fnd_new_messages.message_name%TYPE
+                                     := 'APP-XXCOS1-13470';   --プロファイル名
+-- == 2013/08/12 1.9 Add END   ===============================================================
   --トークン
   cv_tkn_table              CONSTANT VARCHAR2(10)  :=  'TABLE_NAME';       --テーブル名称
   cb_tkn_table_on           CONSTANT VARCHAR2(10)  :=  'TABLE';            --テーブル名称
   cv_tkn_key_data           CONSTANT VARCHAR2(10)  :=  'KEY_DATA';         --キーデータ
   cv_tkn_parm_data          CONSTANT VARCHAR2(10)  :=  'PARAME1';          --パラメータ1
+-- == 2013/08/12 1.9 Add START ===============================================================
+  cv_tkn_profile            CONSTANT VARCHAR2(10)  :=  'PROFILE';           --プロファイル
+-- == 2013/08/12 1.9 Add END   ===============================================================
   --メッセージ用文字列
   cv_str_result_cd          CONSTANT VARCHAR2(50)  := xxccp_common_pkg.get_msg(
                                                          iv_application        =>  cv_current_appl_short_nm
@@ -237,6 +252,12 @@ AS
                                                          iv_application        =>  cv_current_appl_short_nm
                                                         ,iv_name               =>  cv_msg_mem16_data
                                                       ); --従業員VIEW
+-- == 2013/08/12 1.9 Add START ===============================================================
+  cv_str_profile_nm         CONSTANT  VARCHAR2(50)  := xxccp_common_pkg.get_msg(
+                                                         iv_application        =>  cv_current_appl_short_nm
+                                                        ,iv_name               =>  cv_msg_mem17_data
+                                                      ); --プロファイル名
+-- == 2013/08/12 1.9 Add END   ===============================================================
   cv_format_yyyymm          CONSTANT VARCHAR2(7)   := 'YYYY/MM';                         -- 日付フォーマット YYYY/MM
   cv_format_yyyymmdd        CONSTANT VARCHAR2(10)  := 'YYYY/MM/DD';                      -- 日付フォーマット YYYY/MM/DD
   cv_month_tbl_name         CONSTANT VARCHAR2(36)  := 'XXCOS.XXCOS_FOR_ADPS_MONTHLY_IF';
@@ -249,10 +270,18 @@ AS
   cn_counter_class_8        CONSTANT NUMBER        := 8;                                 -- 新規ベンダー件数
   cn_number_class_9         CONSTANT NUMBER        := 9;                                 -- 新規/什器ポイント
   cn_number_class_11        CONSTANT NUMBER        := 11;                                -- 資格ポイント
+-- == 2013/08/12 1.9 Add START ===============================================================
+  --プロファイル名称
+  cv_profile_p_discounts    CONSTANT  fnd_profile_options.profile_option_name%TYPE
+                                      :=  'XXCOS1_PAYMENT_DISCOUNTS_CODE';               -- 入金値引コード
+-- == 2013/08/12 1.9 Add END   ===============================================================
 --
   -- ===============================
   -- ユーザー定義グローバル型
   -- ===============================
+-- == 2013/08/12 1.9 Add START ===============================================================
+  gv_payment_discounts     VARCHAR2(255);                                                -- 入金値引コード
+-- == 2013/08/12 1.9 Add END   ===============================================================
 --
   -- ===============================
   -- ユーザー定義グローバル変数
@@ -598,6 +627,30 @@ AS
     END IF;
     
 --
+-- == 2013/08/12 1.9 Add START ===============================================================
+    --==============================================
+    -- 2.入金値引コード
+    --==============================================
+    gv_payment_discounts := FND_PROFILE.value(cv_profile_p_discounts);
+    --入金値引コード未取得
+    IF ( gv_payment_discounts IS NULL ) THEN
+      --キー情報編集
+      XXCOS_COMMON_PKG.makeup_key_info(
+                                     ov_errbuf      =>  lv_errbuf          --エラー・メッセージ
+                                    ,ov_retcode     =>  lv_retcode         --リターンコード
+                                    ,ov_errmsg      =>  lv_errmsg          --ユーザ・エラー・メッセージ
+                                    ,ov_key_info    =>  lv_key_info        --編集されたキー情報
+                                    ,iv_item_name1  =>  cv_str_profile_nm
+                                    ,iv_data_value1 =>  cv_Profile_p_discounts
+                                    );
+      --メッセージ
+      IF ( lv_retcode = cv_status_normal ) THEN
+        RAISE global_get_profile_expt;
+      ELSE
+        RAISE global_api_expt;
+      END IF;
+    END IF;
+-- == 2010/08/12 1.9 Add END   ===============================================================
     --==============================================================
     --メッセージ出力をする必要がある場合は処理を記述
     --==============================================================
@@ -612,6 +665,18 @@ AS
       ov_errbuf  := SUBSTRB(cv_pkg_name||cv_msg_cont||cv_prg_name||cv_msg_part||ov_errmsg,1,5000);
       ov_retcode := cv_status_error;
 --
+-- == 2013/08/12 1.9 Add START ===============================================================
+    -- *** プロファイル例外ハンドラ ***
+    WHEN global_get_profile_expt    THEN
+      ov_errmsg               :=  xxccp_common_pkg.get_msg(
+        iv_application        =>  cv_current_appl_short_nm,
+        iv_name               =>  cv_msg_get_profile_err,
+        iv_token_name1        =>  cv_tkn_profile,
+        iv_token_value1       =>  lv_key_info
+      );
+      ov_errbuf  := SUBSTRB(cv_pkg_name||cv_msg_cont||cv_prg_name||cv_msg_part||ov_errmsg,1,5000);
+      ov_retcode := cv_status_error;
+-- == 2010/08/12 1.9 Add END   ===============================================================
 --#################################  固定例外処理部 START   ####################################
 --
     -- *** 共通関数例外ハンドラ ***
@@ -853,10 +918,32 @@ AS
              NVL( SUM( sale_amount-business_cost ),0 )
       INTO   it_xxcos_for_adps_monthly_if.p_sale_amount,
              it_xxcos_for_adps_bonus_if.p_sale_gross
-      FROM   xxcos_rep_bus_s_group_sum
-      WHERE  results_employee_code = iv_person_code
-        AND  sale_base_code        = iv_base_code
-        AND  dlv_date BETWEEN id_this_date AND id_next_date
+-- == 2013/08/12 1.9 Mod START ===============================================================
+--      FROM   xxcos_rep_bus_s_group_sum
+--      WHERE  results_employee_code = iv_person_code
+--        AND  sale_base_code        = iv_base_code
+--        AND  dlv_date BETWEEN id_this_date AND id_next_date
+      FROM   xxcos_rep_bus_s_group_sum xrbsgs
+      WHERE  xrbsgs.results_employee_code = iv_person_code
+        AND  xrbsgs.sale_base_code        = iv_base_code
+        AND  xrbsgs.dlv_date BETWEEN id_this_date AND id_next_date
+        AND  (
+               ( xrbsgs.sales_transfer_div <> cn_1 )
+               OR
+               ( xrbsgs.policy_group_code <> (
+                   SELECT CASE
+                            WHEN  iimb.attribute3 <=  TO_CHAR(xrbsgs.dlv_date, cv_format_yyyymmdd)
+                            OR    iimb.attribute3 IS  NULL THEN
+                              iimb.attribute2
+                            ELSE
+                              iimb.attribute1
+                          END
+                   FROM   ic_item_mst_b iimb
+                   WHERE  iimb.item_no = gv_payment_discounts
+                 )
+               )
+             )  --実績振替の入金値引以外
+-- == 2013/08/12 1.9 Mod END   ===============================================================
       ;
     EXCEPTION
       WHEN NO_DATA_FOUND THEN

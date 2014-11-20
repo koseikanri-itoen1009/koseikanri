@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCOK008A06C(body)
  * Description      : 営業システム構築プロジェクト
  * MD.050           : 売上実績振替情報の作成（振替割合） MD050_COK_008_A06
- * Version          : 2.6
+ * Version          : 2.7
  *
  * Program List
  * --------------------------- ----------------------------------------------------------
@@ -58,6 +58,7 @@ AS
  *  2009/12/04    2.4   K.Yamaguchi      [E_本稼動_00292]振替元顧客はチェーン店コード(EDI)が設定されている場合にも対象とする
  *  2010/01/26    2.5   K.Yamaguchi      [E_本稼動_01297]売上原価は按分後の数量（基準単位）に営業原価を掛けて算出
  *  2010/02/08    2.6   K.Kiriu          [E_本稼動_01550]会計期間取得時の参照カレンダー変更(AR⇒INV)
+ *  2013/08/12    2.7   K.Kiriu          [E_本稼動_02011]入金時値引の反映対応
  *  
  *****************************************************************************************/
   --==================================================
@@ -68,6 +69,9 @@ AS
   -- アプリケーション短縮名
   cv_appl_short_name_cok           CONSTANT VARCHAR2(10)    := 'XXCOK';
   cv_appl_short_name_ccp           CONSTANT VARCHAR2(10)    := 'XXCCP';
+-- 2013/08/12 Ver.2.7 [E_本稼動_02011] SCSK K.Kiriu ADD START
+  cv_appl_short_name_coi           CONSTANT VARCHAR2(10)    := 'XXCOI';
+-- 2013/08/12 Ver.2.7 [E_本稼動_02011] SCSK K.Kiriu ADD END
   cv_appl_short_name_gl            CONSTANT VARCHAR2(10)    := 'SQLGL';
 -- 2010/02/08 Ver.2.6 [E_本稼動_01550] SCS K.Kiriu DELETE START
 --  cv_appl_short_name_ar            CONSTANT VARCHAR2(10)    := 'AR';
@@ -107,6 +111,10 @@ AS
 -- 2009/09/28 Ver.2.1 [E_T3_00590] SCS K.Yamaguchi ADD START
   cv_msg_cok_10463                 CONSTANT VARCHAR2(50)    := 'APP-XXCOK1-10463';
 -- 2009/09/28 Ver.2.1 [E_T3_00590] SCS K.Yamaguchi ADD END
+-- 2013/08/12 Ver.2.7 [E_本稼動_02011] SCSK K.Kiriu ADD START
+  cv_msg_coi_00006                 CONSTANT VARCHAR2(50)    := 'APP-XXCOI1-00006';
+  cv_msg_cok_00056                 CONSTANT VARCHAR2(50)    := 'APP-XXCOK1-00056';
+-- 2013/08/12 Ver.2.7 [E_本稼動_02011] SCSK K.Kiriu ADD END
   -- トークン
   cv_tkn_count                     CONSTANT VARCHAR2(30)    := 'COUNT';
   cv_tkn_customer_code             CONSTANT VARCHAR2(30)    := 'CUSTOMER_CODE';
@@ -126,11 +134,19 @@ AS
   cv_tkn_tanto_loc_code            CONSTANT VARCHAR2(30)    := 'TANTO_LOC_CODE';
   cv_tkn_to_customer_code          CONSTANT VARCHAR2(30)    := 'TO_CUSTOMER_CODE';
   cv_tkn_to_location_code          CONSTANT VARCHAR2(30)    := 'TO_LOCATION_CODE';
+-- 2013/08/12 Ver.2.7 [E_本稼動_02011] SCSK K.Kiriu ADD START
+  cv_tkn_org_code                  CONSTANT VARCHAR2(30)    := 'ORG_CODE_TOK';
+-- 2013/08/12 Ver.2.7 [E_本稼動_02011] SCSK K.Kiriu ADD END
   -- セパレータ
   cv_msg_part                      CONSTANT VARCHAR2(3)     := ' : ';
   cv_msg_cont                      CONSTANT VARCHAR2(3)     := '.';
   -- プロファイル・オプション名
   cv_profile_name_01               CONSTANT VARCHAR2(50)    := 'GL_SET_OF_BKS_ID';                  -- 会計帳簿ID
+-- 2013/08/12 Ver.2.7 [E_本稼動_02011] SCSK K.Kiriu ADD START
+  cv_profile_name_02               CONSTANT VARCHAR2(50)    := 'XXCOS1_PAYMENT_DISCOUNTS_CODE';     -- 入金値引
+  cv_profile_name_03               CONSTANT VARCHAR2(50)    := 'XXCOI1_ORGANIZATION_CODE';          -- 在庫組織コード
+  cv_profile_name_04               CONSTANT VARCHAR2(50)    := 'XXCOK1_VENDOR_DUMMY_CODE';          -- 仕入先ダミーコード
+-- 2013/08/12 Ver.2.7 [E_本稼動_02011] SCSK K.Kiriu ADD END
   -- 共通関数メッセージ出力区分
   cv_which_log                     CONSTANT VARCHAR2(10)    := 'LOG';
   -- 入力パラメータ・情報種別
@@ -189,6 +205,17 @@ AS
   cv_get_period_inv                CONSTANT VARCHAR2(2)     := '01';   --INV会計期間取得
   cv_period_status                 CONSTANT VARCHAR2(4)     := 'OPEN'; -- 会計期間ステータス(オープン)
 -- 2010/02/08 Ver.2.6 [E_本稼動_01550] SCS K.Kiriu ADD END
+-- 2013/08/12 Ver.2.7 [E_本稼動_02011] SCSK K.Kiriu ADD START
+  cn_dlv_qty                       CONSTANT NUMBER(1)       := 0;      -- 入金値引の数量
+  cn_business_cost                 CONSTANT NUMBER(1)       := 0;      -- 入金値引の営業原価
+  cn_dlv_unit_price                CONSTANT NUMBER(1)       := 0;      -- 入金値引の納品単価
+  --入金値引取得条件
+  cv_amt_fix_status                CONSTANT VARCHAR2(1)     := '1';         -- 金額確定済
+  cv_ar_interface_status           CONSTANT VARCHAR2(1)     := '1';         -- AR連携済
+  --データ判定用
+  cn_sales_exp                     CONSTANT NUMBER(1)       := 1;           -- 販売実績
+  cn_payment_discounts             CONSTANT NUMBER(1)       := 2;           -- 入金値引
+-- 2013/08/12 Ver.2.7 [E_本稼動_02011] SCSK K.Kiriu ADD END
   --==================================================
   -- グローバル変数
   --==================================================
@@ -205,6 +232,11 @@ AS
   gd_target_date_from              DATE          DEFAULT NULL;   -- 振替対象期間（From）
   gd_target_date_to                DATE          DEFAULT NULL;   -- 振替対象期間（To）
   gt_selling_trns_info_id_min      xxcok_selling_trns_info.selling_trns_info_id%TYPE DEFAULT NULL; -- 売上振替情報登録最小ID
+-- 2013/08/12 Ver.2.7 [E_本稼動_02011] SCSK K.Kiriu ADD START
+  gt_item_code                     mtl_system_items_b.segment1%TYPE DEFAULT NULL;                  -- 入金値引コード
+  gt_uom_code                      mtl_system_items_b.primary_uom_code%TYPE DEFAULT NULL;          -- 入金値引の基準単位
+  gt_supplier_dummy                xxcok_cond_bm_support.supplier_code%TYPE DEFAULT NULL;          -- 仕入先ダミーコード
+-- 2013/08/12 Ver.2.7 [E_本稼動_02011] SCSK K.Kiriu ADD END
   --==================================================
   -- 共通例外
   --==================================================
@@ -281,6 +313,9 @@ AS
 -- 2009/09/28 Ver.2.1 [E_T3_00590] SCS K.Yamaguchi ADD START
          , xsel.dlv_unit_price                                          AS dlv_unit_price           -- 納品単価
 -- 2009/09/28 Ver.2.1 [E_T3_00590] SCS K.Yamaguchi ADD END
+-- 2013/08/12 Ver.2.7 [E_本稼動_02011] SCSK K.Kiriu ADD START
+         , cn_sales_exp                                                 AS data_type                -- データ種別(実績)
+-- 2013/08/12 Ver.2.7 [E_本稼動_02011] SCSK K.Kiriu ADD END
     FROM xxcok_selling_from_info   xsfi             -- 売上振替元情報
        , hz_cust_accounts          ship_hca         -- 【出荷先】顧客マスタ
        , xxcmm_cust_accounts       ship_xca         -- 【出荷先】顧客追加情報
@@ -395,6 +430,131 @@ AS
 -- 2009/09/28 Ver.2.1 [E_T3_00590] SCS K.Yamaguchi DELETE START
 --  HAVING ROUND( SUM( xsel.dlv_qty ), 0 ) <> 0
 -- 2009/09/28 Ver.2.1 [E_T3_00590] SCS K.Yamaguchi DELETE END
+-- 2013/08/12 Ver.2.7 [E_本稼動_02011] SCSK K.Kiriu ADD START
+    UNION ALL
+    --入金値引情報
+    SELECT /*+
+               LEADING( xsfi2 )
+               USE_NL( xsfi2 xcbs )
+           */
+           LAST_DAY( xcbs.closing_date )                                AS selling_date 
+         , xsfi2.selling_from_base_code                                 AS sales_base_code          -- 売上振替元拠点コード
+         , xsfi2.selling_from_cust_code                                 AS ship_cust_code           -- 売上振替元顧客コード
+         , ship_hp2.party_name                                          AS ship_party_name          -- 売上振替元顧客名
+         , xxcok_common_pkg.get_sales_staff_code_f(
+             xsfi2.selling_from_cust_code
+           , LAST_DAY( xcbs.closing_date )
+           )                                                            AS sales_staff_code         -- 売上振替元担当営業コード
+         , ship_xca2.business_low_type                                  AS ship_cust_gyotai_sho     -- 業態（小分類）
+         , xcbs.demand_to_cust_code                                     AS bill_cust_code           -- 請求先顧客コード
+         , gt_item_code                                                 AS item_code                -- 品目コード
+         , cn_dlv_qty                                                   AS dlv_qty_sum              -- 納品数量
+         , gt_uom_code                                                  AS dlv_uom_code             -- 納品単位
+         , SUM( xcbs.csh_rcpt_discount_amt )                            AS sales_amount_sum         -- 売上金額
+         , SUM( xcbs.csh_rcpt_discount_amt
+                     - xcbs.csh_rcpt_discount_amt_tax )                 AS pure_amount_sum          -- 本体金額
+         , cn_business_cost                                             AS business_cost            -- 営業原価
+         , xcbs.tax_code                                                AS tax_code                 -- 税金コード
+         , xcbs.tax_rate                                                AS tax_rate                 -- 消費税率
+         , cn_dlv_unit_price                                            AS dlv_unit_price           -- 納品単価
+         , cn_payment_discounts                                         AS data_type                -- データ種別(入金)
+    FROM xxcok_selling_from_info   xsfi2            -- 売上振替元情報
+       , xxcok_cond_bm_support     xcbs             -- 条件別販手販協テーブル
+       , hz_cust_accounts          ship_hca2        -- 【出荷先】顧客マスタ
+       , hz_parties                ship_hp2         -- 【出荷先】顧客パーティ
+       , xxcmm_cust_accounts       ship_xca2        -- 【出荷先】顧客追加情報
+    WHERE gv_param_info_class           = cv_info_class_decision --情報種別が1(確定)
+      AND xsfi2.selling_from_base_code  = xcbs.base_code
+      AND xsfi2.selling_from_cust_code  = xcbs.delivery_cust_code
+      AND xcbs.closing_date       BETWEEN gd_target_date_from
+                                      AND LAST_DAY( gd_target_date_from )
+      AND xcbs.supplier_code            = gt_supplier_dummy      -- 仕入先CD(ダミー)
+      AND xcbs.amt_fix_status           = cv_amt_fix_status      -- 金額確定ステータス：1 確定
+      AND xcbs.ar_interface_status      = cv_ar_interface_status -- AR連携ステータス  ：1 連携済
+      AND xsfi2.selling_from_cust_code  = ship_hca2.account_number
+      AND ship_hca2.customer_class_code = cv_customer_class_customer
+      AND ship_hca2.party_id            = ship_hp2.party_id
+      AND ship_hp2.duns_number_c       IN (  cv_customer_status_30
+                                           , cv_customer_status_40
+                                           , cv_customer_status_50
+                                         )
+      AND ship_hca2.cust_account_id      = ship_xca2.customer_id
+      AND ship_xca2.selling_transfer_div = cv_xca_transfer_div_on
+      AND EXISTS ( SELECT 'X'
+                   FROM hz_cust_acct_sites   ship_hcas2   -- 【出荷先】顧客所在地
+                      , hz_party_sites       ship_hps2    -- 【出荷先】顧客パーティサイト
+                      , hz_cust_site_uses    ship_hcsu2   -- 【出荷先】顧客使用目的
+                      , hz_cust_site_uses    bill_hcsu2   -- 【請求先】顧客使用目的
+                      , hz_cust_acct_sites   bill_hcas2   -- 【請求先】顧客所在地
+                      , hz_cust_accounts     bill_hca2    -- 【請求先】顧客マスタ
+                   WHERE ship_hcas2.cust_account_id         = ship_hca2.cust_account_id
+                     AND ship_hps2.party_id                 = ship_hp2.party_id
+                     AND ship_hcas2.party_site_id           = ship_hps2.party_site_id
+                     AND ship_hcas2.cust_acct_site_id       = ship_hcsu2.cust_acct_site_id
+                     AND ship_hcsu2.site_use_code           = cv_site_use_code_ship
+                     AND ship_hcsu2.bill_to_site_use_id     = bill_hcsu2.site_use_id
+                     AND bill_hcsu2.site_use_code           = cv_site_use_code_bill
+                     AND ship_hcsu2.status                  = cv_cust_status_available
+                     AND bill_hcsu2.status                  = cv_cust_status_available
+                     AND bill_hcsu2.cust_acct_site_id       = bill_hcas2.cust_acct_site_id
+                     AND bill_hcas2.cust_account_id         = bill_hca2.cust_account_id
+                     AND ROWNUM                             = 1
+                 )
+      AND EXISTS ( SELECT 'X'
+                   FROM xxcos_sales_exp_headers   xseh2            -- 販売実績ヘッダー
+                      , xxcos_sales_exp_lines     xsel2            -- 販売実績明細
+                   WHERE 
+                         xseh2.sales_base_code              = xsfi2.selling_from_base_code
+                     AND xseh2.ship_to_customer_code        = xsfi2.selling_from_cust_code
+                     AND xseh2.delivery_date          BETWEEN gd_target_date_from
+                                                          AND LAST_DAY( gd_target_date_from )
+                     AND xseh2.dlv_invoice_class           IN (  cv_invoice_class_01
+                                                               , cv_invoice_class_02
+                                                               , cv_invoice_class_03
+                                                               , cv_invoice_class_04
+                                                              )
+                     AND xseh2.sales_exp_header_id          = xsel2.sales_exp_header_id
+                     AND xsel2.business_cost               IS NOT NULL
+                     AND ROWNUM                             = 1
+                 )
+      AND EXISTS ( SELECT 'X'
+                   FROM xxcok_selling_to_info        xsti2
+                      , xxcok_selling_rate_info      xsri2
+                      , hz_cust_accounts             hca2
+                      , xxcmm_cust_accounts          xca2
+                      , hz_parties                   hp2
+                   WHERE xsti2.selling_from_info_id       = xsfi2.selling_from_info_id
+                     AND xsti2.selling_to_cust_code       = xsri2.selling_to_cust_code
+                     AND xsti2.start_month               <= TO_CHAR( gd_process_date, 'RRRRMM' )
+                     AND xsti2.invalid_flag               = cv_invalid_flag_valid
+                     AND xsri2.selling_from_base_code     = xsfi2.selling_from_base_code
+                     AND xsri2.selling_from_cust_code     = ship_hca2.account_number
+                     AND xsri2.invalid_flag               = cv_invalid_flag_valid
+                     AND xsti2.selling_to_cust_code       = hca2.account_number
+                     AND hca2.customer_class_code         = cv_customer_class_customer
+                     AND hca2.cust_account_id             = xca2.customer_id
+                     AND xca2.selling_transfer_div        = cv_xca_transfer_div_on
+                     AND hca2.party_id                    = hp2.party_id
+                     AND hp2.duns_number_c               IN (  cv_customer_status_30
+                                                             , cv_customer_status_40
+                                                             , cv_customer_status_50
+                                                            )
+                     AND ROWNUM                           = 1
+          )
+  GROUP BY
+           LAST_DAY( xcbs.closing_date )
+         , xsfi2.selling_from_base_code
+         , xsfi2.selling_from_cust_code
+         , ship_hp2.party_name
+         , xxcok_common_pkg.get_sales_staff_code_f(
+             xsfi2.selling_from_cust_code
+           , LAST_DAY( xcbs.closing_date )
+           )
+         , ship_xca2.business_low_type
+         , xcbs.demand_to_cust_code
+         , xcbs.tax_code
+         , xcbs.tax_rate
+-- 2013/08/12 Ver.2.7 [E_本稼動_02011] SCSK K.Kiriu ADD END
   ;
   -- 売上振替先情報取得
   CURSOR get_selling_to_cur(
@@ -631,12 +791,31 @@ AS
     lv_errmsg                      VARCHAR2(5000) DEFAULT NULL;                 -- ユーザー・エラー・メッセージ
     lv_outmsg                      VARCHAR2(5000) DEFAULT NULL;                 -- 出力用メッセージ
     lb_retcode                     BOOLEAN        DEFAULT TRUE;                 -- メッセージ出力関数戻り値
+-- 2013/08/12 Ver.2.7 [E_本稼動_02011] SCSK K.Kiriu ADD START
+    lt_sales_amount                xxcok_selling_trns_info.selling_amt%TYPE;
+    lt_pure_amount                 xxcok_selling_trns_info.selling_amt_no_tax%TYPE;
+-- 2013/08/12 Ver.2.7 [E_本稼動_02011] SCSK K.Kiriu ADD END
 --
   BEGIN
     --==================================================
     -- ステータス初期化
     --==================================================
     lv_end_retcode := cv_status_normal;
+-- 2013/08/12 Ver.2.7 [E_本稼動_02011] SCSK K.Kiriu ADD START
+--
+    --入金値引データは符号を逆転する
+    IF ( i_selling_from_rec.data_type = cn_payment_discounts ) THEN
+      -- 売上金額
+      lt_sales_amount := in_sales_amount * -1;
+      -- 本体金額
+      lt_pure_amount  := in_pure_amount * -1;
+    ELSE
+      -- 売上金額
+      lt_sales_amount := in_sales_amount;
+      -- 本体金額
+      lt_pure_amount  := in_pure_amount;
+    END IF;
+-- 2013/08/12 Ver.2.7 [E_本稼動_02011] SCSK K.Kiriu ADD END
     --==================================================
     -- 売上振替情報の登録
     --==================================================
@@ -717,8 +896,12 @@ AS
 --    , in_dlv_unit_price                           -- delivery_unit_price
     , i_selling_from_rec.dlv_unit_price           -- delivery_unit_price
 -- 2009/09/28 Ver.2.1 [E_T3_00590] SCS K.Yamaguchi REPAIR END
-    , in_sales_amount                             -- selling_amt
-    , in_pure_amount                              -- selling_amt_no_tax
+-- 2013/08/12 Ver.2.7 [E_本稼動_02011] SCSK K.Kiriu REPAIR START
+--    , in_sales_amount                             -- selling_amt
+--    , in_pure_amount                              -- selling_amt_no_tax
+    , lt_sales_amount                             -- selling_amt
+    , lt_pure_amount                              -- selling_amt_no_tax
+-- 2013/08/12 Ver.2.7 [E_本稼動_02011] SCSK K.Kiriu REPAIR END
     , in_sales_cost                               -- trading_cost
     , NULL                                        -- selling_cost_amt
     , i_selling_from_rec.tax_code                 -- tax_code
@@ -1690,6 +1873,10 @@ AS
     ld_target_date_from            DATE           DEFAULT NULL;                 -- 会計期間関数OUT取得用(ダミー)
     ld_target_date_to              DATE           DEFAULT NULL;                 -- 会計期間関数OUT取得用(ダミー)
 -- 2010/02/08 Ver.2.6 [E_本稼動_01550] SCS K.Kiriu REPAIR END
+-- 2013/08/12 Ver.2.7 [E_本稼動_02011] SCSK K.Kiriu ADD START
+    lv_organization_code           VARCHAR2(50)   DEFAULT NULL;                 -- 在庫組織コード
+    ln_organization_id             NUMBER         DEFAULT NULL;                 -- 在庫組織ID
+-- 2013/08/12 Ver.2.7 [E_本稼動_02011] SCSK K.Kiriu ADD END
 --
   BEGIN
     --==================================================
@@ -1860,6 +2047,101 @@ AS
     INTO gt_selling_trns_info_id_min
     FROM DUAL
     ;
+-- 2013/08/12 Ver.2.7 [E_本稼動_02011] SCSK K.Kiriu ADD START
+    --==================================================
+    -- 入金値引の品目情報取得
+    --==================================================
+    --情報種別が"1"(確定）の場合
+    IF ( gv_param_info_class = cv_info_class_decision ) THEN
+      --プロファイル(入金値引取得)
+      gt_item_code := FND_PROFILE.VALUE( cv_profile_name_02 );
+      IF( gt_item_code IS NULL ) THEN
+        lv_outmsg  := xxccp_common_pkg.get_msg(
+                        iv_application          => cv_appl_short_name_cok
+                      , iv_name                 => cv_msg_cok_00003
+                      , iv_token_name1          => cv_tkn_profile
+                      , iv_token_value1         => cv_profile_name_02
+                      );
+        lb_retcode := xxcok_common_pkg.put_message_f(
+                        in_which                => FND_FILE.OUTPUT
+                      , iv_message              => lv_outmsg
+                      , in_new_line             => 0
+                      );
+        RAISE error_proc_expt;
+      END IF;
+      --プロファイル(在庫組織コード)
+      lv_organization_code := FND_PROFILE.VALUE( cv_profile_name_03 );
+      IF( lv_organization_code IS NULL ) THEN
+        lv_outmsg  := xxccp_common_pkg.get_msg(
+                        iv_application          => cv_appl_short_name_cok
+                      , iv_name                 => cv_msg_cok_00003
+                      , iv_token_name1          => cv_tkn_profile
+                      , iv_token_value1         => cv_profile_name_03
+                      );
+        lb_retcode := xxcok_common_pkg.put_message_f(
+                        in_which                => FND_FILE.OUTPUT
+                      , iv_message              => lv_outmsg
+                      , in_new_line             => 0
+                      );
+        RAISE error_proc_expt;
+      END IF;
+      --在庫組織ID
+      ln_organization_id := xxcoi_common_pkg.get_organization_id( lv_organization_code );
+      IF ( ln_organization_id IS NULL ) THEN
+        lv_outmsg  := xxccp_common_pkg.get_msg(
+                        iv_application          => cv_appl_short_name_coi
+                      , iv_name                 => cv_msg_coi_00006
+                      , iv_token_name1          => cv_tkn_org_code
+                      , iv_token_value1         => lv_organization_code
+                      );
+        lb_retcode := xxcok_common_pkg.put_message_f(
+                        in_which                => FND_FILE.OUTPUT
+                      , iv_message              => lv_outmsg
+                      , in_new_line             => 0
+                      );
+        RAISE error_proc_expt;
+      END IF;
+      --プロファイル(仕入先ダミーコード)
+      gt_supplier_dummy := FND_PROFILE.VALUE( cv_profile_name_04 );
+      IF( gt_supplier_dummy IS NULL ) THEN
+        lv_outmsg  := xxccp_common_pkg.get_msg(
+                        iv_application          => cv_appl_short_name_cok
+                      , iv_name                 => cv_msg_cok_00003
+                      , iv_token_name1          => cv_tkn_profile
+                      , iv_token_value1         => cv_profile_name_04
+                      );
+        lb_retcode := xxcok_common_pkg.put_message_f(
+                        in_which                => FND_FILE.OUTPUT
+                      , iv_message              => lv_outmsg
+                      , in_new_line             => 0
+                      );
+        RAISE error_proc_expt;
+      END IF;
+      --品目情報取得
+      BEGIN
+        SELECT msib.primary_uom_code
+          INTO gt_uom_code
+          FROM mtl_system_items_b msib
+         WHERE msib.segment1        = gt_item_code
+           AND msib.organization_id = ln_organization_id
+         ;
+      EXCEPTION
+        WHEN OTHERS THEN
+          lv_outmsg  := xxccp_common_pkg.get_msg(
+                          iv_application          => cv_appl_short_name_cok
+                        , iv_name                 => cv_msg_cok_00056
+                        , iv_token_name1          => cv_tkn_item_code
+                        , iv_token_value1         => gt_item_code
+                        );
+          lb_retcode := xxcok_common_pkg.put_message_f(
+                          in_which                => FND_FILE.OUTPUT
+                        , iv_message              => lv_outmsg
+                        , in_new_line             => 0
+                        );
+          RAISE error_proc_expt;
+      END;
+    END IF;
+-- 2013/08/12 Ver.2.7 [E_本稼動_02011] SCSK K.Kiriu ADD END
     --==================================================
     -- 出力パラメータ設定
     --==================================================

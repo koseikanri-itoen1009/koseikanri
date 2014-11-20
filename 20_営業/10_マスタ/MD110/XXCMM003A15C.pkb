@@ -11,7 +11,7 @@ AS
  *                    発生していない顧客を判断します。
  *                    （未取引客チェックリストに出力されます。）
  * MD.050           : 最終取引日更新 MD050_CMM_003_A15
- * Version          : Issue3.6
+ * Version          : Issue3.7
  *
  * Program List
  * -------------------- -----------------------------------------------------------------
@@ -39,6 +39,7 @@ AS
  *  2009/12/18    1.4   Yutaka.Kuboshima 障害E_本稼動_00540の対応
  *  2009/12/21    1.5   Yutaka.Kuboshima 障害E_本稼動_00416の対応
  *  2009/12/30    1.6   Yutaka.Kuboshima 障害E_本稼動_00778の対応
+ *  2013/08/12    1.7   Kazuyuki.Kiriu   障害E_本稼動_02011の対応
  *
  *****************************************************************************************/
 --
@@ -133,6 +134,9 @@ AS
   cv_profile_ctrl_cal       CONSTANT VARCHAR2(26) := 'XXCMM1_003A00_SYS_CAL_CODE';  -- ｼｽﾃﾑ稼働日ｶﾚﾝﾀﾞｺｰﾄﾞ定義ﾌﾟﾛﾌｧｲﾙ
   cv_profile_gl_cal         CONSTANT VARCHAR2(26) := 'XXCMM1_003A00_GL_PERIOD_MN';  -- 会計カレンダ名定義ﾌﾟﾛﾌｧｲﾙ
   cv_profile_ar_bks         CONSTANT VARCHAR2(25) := 'XXCMM1_003A15_AR_BOOKS_NM';   -- 営業帳簿定義名ﾌﾟﾛﾌｧｲﾙ
+-- 2013/08/12 Ver1.7 E_本稼動_02011 add start by Kazuyuki.Kiriu
+  cv_profile_p_discounts    CONSTANT VARCHAR2(29) := 'XXCOS1_PAYMENT_DISCOUNTS_CODE'; -- 入金値引コードﾌﾟﾛﾌｧｲﾙ
+-- 2013/08/12 Ver1.7 E_本稼動_02011 add end by Kazuyuki.Kiriu
   cv_lang_ja                CONSTANT VARCHAR2(2)  := 'JA';                          -- 言語（日本）
   cv_flag_yes               CONSTANT VARCHAR2(1)  := 'Y';                           -- フラグ（Yes）
   cv_flag_no                CONSTANT VARCHAR2(1)  := 'N';                           -- フラグ（No）
@@ -192,6 +196,9 @@ AS
   gd_first_month_day     DATE;           -- 業務月1日
   gd_pre_first_month_day DATE;           -- 前月1日
 -- 2009/12/21 Ver1.5 E_本稼動_00416 add end by Yutaka.Kuboshima
+-- 2013/08/12 Ver1.7 E_本稼動_02011 add start by Kazuyuki.Kiriu
+  gv_p_discounts        VARCHAR2(30);    -- 入金値引コード値
+-- 2013/08/12 Ver1.7 E_本稼動_02011 add end by Kazuyuki.Kiriu
   --
 --
   -- ===============================
@@ -342,6 +349,9 @@ AS
 --                  )
 -- 2009/08/31 Ver1.3 delete end by Yutaka.Kuboshima
                  xsti.registration_date  BETWEEN gd_para_proc_date_f AND gd_para_proc_date_t
+-- 2013/08/12 Ver1.7 E_本稼動_02011 add start by Kazuyuki.Kiriu
+              AND xsti.item_code <> gv_p_discounts  --入金値引以外
+-- 2013/08/12 Ver1.7 E_本稼動_02011 add end by Kazuyuki.Kiriu
           )   xfid
         GROUP BY
           xfid.cust_code
@@ -899,6 +909,20 @@ AS
       lv_errbuf := lv_errmsg;
       RAISE global_api_expt;
     END IF;
+-- 2013/08/12 Ver1.7 E_本稼動_02011 add start by Kazuyuki.Kiriu
+    -- 入金値引コード取得
+    gv_p_discounts := fnd_profile.value(cv_profile_p_discounts);
+    IF (gv_p_discounts IS NULL) THEN
+      lv_errmsg :=  xxccp_common_pkg.get_msg(
+                      iv_application    =>  cv_apl_name_cmm,       -- アプリケーション短縮名
+                      iv_name           =>  cv_msg_xxcmm_00002,    -- プロファイル取得エラー
+                      iv_token_name1    =>  cv_tkn_ng_profile,     -- トークン(NG_PROFILE)
+                      iv_token_value1   =>  cv_profile_p_discounts -- プロファイル定義名
+                     );
+      lv_errbuf := lv_errmsg;
+      RAISE global_api_expt;
+    END IF;
+-- 2013/08/12 Ver1.7 E_本稼動_02011 add end by Kazuyuki.Kiriu
     --
     --
     -- 業務日付取得

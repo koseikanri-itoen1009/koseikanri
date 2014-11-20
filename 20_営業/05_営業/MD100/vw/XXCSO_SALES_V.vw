@@ -3,7 +3,7 @@
  * VIEW Name       : xxcso_sales_v
  * Description     : 共通用：売上実績ビュー
  * MD.070          : 
- * Version         : 1.3
+ * Version         : 1.4
  * 
  * Change Record
  * ------------- ----- ------------ -------------------------------------
@@ -14,6 +14,7 @@
  *  2009/03/09    1.1  M.Maruyama    販売実績ヘッダ.取消・訂正区分追加
  *  2009/04/22    1.2  K.Satomura    システムテスト障害対応(T1_0743)
  *  2009/05/21    1.3  K.Satomura    システムテスト障害対応(T1_1036)
+ *  2013/08/12    1.4  K.Kiriu       実績振替の入金時値引対応(E_本稼動_02011)
  ************************************************************************/
 CREATE OR REPLACE VIEW apps.xxcso_sales_v
 (
@@ -79,10 +80,16 @@ SELECT  xsti.cust_code                 -- 顧客コード
        /* 2009.04.22 K.Satomura T1_1036対応 END */
 FROM    xxcok_selling_trns_info xsti   -- 売上実績振替情報テーブル
 WHERE  NOT EXISTS 
-       ( -- 品目コード<>変動電気料品目コード
+       ( -- 品目コード<>変動電気料・入金値引品目コード
          SELECT 'X'
          FROM   DUAL
-         WHERE  xsti.item_code = fnd_profile.value('XXCOS1_ELECTRIC_FEE_ITEM_CODE')
+/* 2013.08.12 K.Kiriu E_本稼動_02011 MOD START */
+--         WHERE  xsti.item_code = fnd_profile.value('XXCOS1_ELECTRIC_FEE_ITEM_CODE')
+         WHERE  xsti.item_code IN (
+            fnd_profile.value('XXCOS1_ELECTRIC_FEE_ITEM_CODE')
+           ,fnd_profile.value('XXCOS1_PAYMENT_DISCOUNTS_CODE')
+         )
+/* 2013.08.12 K.Kiriu E_本稼動_02011 MOD END */
        )
 WITH READ ONLY
 ;
