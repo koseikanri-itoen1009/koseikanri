@@ -7,7 +7,7 @@ AS
  * Description      : 物流構成アドオンインポート
  * MD.050           : 物流構成マスタ T_MD050_BPO_890
  * MD.070           : 物流構成アドオンインポート T_MD070_BPO_89B
- * Version          : 1.5
+ * Version          : 1.6
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -27,15 +27,16 @@ AS
  *  main                   コンカレント実行ファイル登録プロシージャ
  *
  * Change Record
- * ------------- ----- ---------------- -------------------------------------------------
- *  Date          Ver.  Editor           Description
- * ------------- ----- ---------------- -------------------------------------------------
- *  2007/12/10    1.0   ORACLE 青木祐介  main新規作成
- *  2008/04/17    1.1   ORACLE 丸下博宣  拠点、配送先が指定なしの場合存在チェックを実施しない
- *  2008/05/23    1.2   ORACLE 椎名昭圭  内部変更要求#110対応
- *  2008/06/09    1.3   ORACLE 椎名昭圭  仕入先配送先チェックの不具合修正
- *  2008/10/29    1.4   ORACLE 吉元強樹  統合指摘#251対応
- *  2008/11/11    1.5   ORACLE 伊藤ひとみ仕入先サイト参照先不正対応
+ * ------------- ----- ----------------- -------------------------------------------------
+ *  Date          Ver.  Editor            Description
+ * ------------- ----- ----------------- -------------------------------------------------
+ *  2007/12/10    1.0   ORACLE 青木祐介   main新規作成
+ *  2008/04/17    1.1   ORACLE 丸下博宣   拠点、配送先が指定なしの場合存在チェックを実施しない
+ *  2008/05/23    1.2   ORACLE 椎名昭圭   内部変更要求#110対応
+ *  2008/06/09    1.3   ORACLE 椎名昭圭   仕入先配送先チェックの不具合修正
+ *  2008/10/29    1.4   ORACLE 吉元強樹   統合指摘#251対応
+ *  2008/11/11    1.5   ORACLE 伊藤ひとみ 仕入先サイト参照先不正対応
+ *  2008/11/17    1.6   ORACLE 伊藤ひとみ 統合テスト指摘491対応
  *****************************************************************************************/
 --
 --#######################  固定グローバル定数宣言部 START   #######################
@@ -99,6 +100,9 @@ AS
   gn_data_status_warn  CONSTANT NUMBER := 2; -- 警告
   --プロファイル
   gv_prf_max_date      CONSTANT VARCHAR2(15) := 'XXCMN_MAX_DATE';
+-- 2008/11/17 H.Itou Add Start 統合テスト指摘491
+  gv_prf_mgr_type2_base_code CONSTANT VARCHAR2(30) := 'XXCMN_MGR_TYPE2_BASE_CODE'; -- XXCMN:物流構成マスタ管理タイプ２拠点コード
+-- 2008/11/17 H.Itou Add End
   --トークン
   gv_tkn_ng_profile           CONSTANT VARCHAR2(15) := 'NG_PROFILE';
   gv_tkn_table                CONSTANT VARCHAR2(15) := 'TABLE';
@@ -119,6 +123,9 @@ AS
   gv_tkn_object1              CONSTANT VARCHAR2(15) := 'OBJECT1';
   gv_tkn_object2              CONSTANT VARCHAR2(15) := 'OBJECT2';
 -- 2008/10/29 v1.4 T.Yoshimoto Add End 統合#251
+-- 2008/11/17 H.Itou Add Start 統合テスト指摘491
+  gv_tkn_item                 CONSTANT VARCHAR2(15) := 'ITEM';
+-- 2008/11/17 H.Itou Add End
   --メッセージ番号
   gv_msg_data_normal      CONSTANT VARCHAR2(15) := 'APP-XXCMN-00005'; -- 成功データ(見出し)
   gv_msg_data_error       CONSTANT VARCHAR2(15) := 'APP-XXCMN-00006'; -- エラーデータ(見出し)
@@ -145,6 +152,11 @@ AS
   gv_msg_rep_whse2        CONSTANT VARCHAR2(15) := 'APP-XXCMN-10158'; -- 倉庫重複2NG
 -- 2008/10/29 v1.4 T.Yoshimoto Add End 統合#251
   gv_msg_ng_base_ship_to  CONSTANT VARCHAR2(15) := 'APP-XXCMN-10132'; -- 拠点／配送先NG
+-- 2008/11/17 H.Itou Add Start 統合テスト指摘491
+  gv_msg_xxcmn_10606      CONSTANT VARCHAR2(15) := 'APP-XXCMN-10606'; -- 指定不可エラー
+  gv_msg_xxcmn_10607      CONSTANT VARCHAR2(15) := 'APP-XXCMN-10607'; -- 移動元保管場所キーチェックエラー
+  gv_msg_xxcmn_10608      CONSTANT VARCHAR2(15) := 'APP-XXCMN-10608'; -- 主キー重複NG(管理タイプ2用)
+-- 2008/11/17 H.Itou Add Start 統合テスト指摘491
 --
   -- 対象DB名
   gv_xxcmn_sr_lines_if CONSTANT VARCHAR2(100) := '物流構成アドオンインタフェース';
@@ -154,6 +166,15 @@ AS
   gv_colmun2           CONSTANT VARCHAR2(100) := '移動元倉庫1';
   gv_colmun3           CONSTANT VARCHAR2(100) := '移動元倉庫2';
 -- 2008/10/29 v1.4 T.Yoshimoto Add End 統合#251
+-- 2008/11/17 H.Itou Add Start 統合テスト指摘491
+  gv_colmun4           CONSTANT VARCHAR2(100) := '仕入先サイト1';
+  gv_colmun5           CONSTANT VARCHAR2(100) := '仕入先サイト2';
+  gv_colmun6           CONSTANT VARCHAR2(100) := '計画商品フラグ';
+-- 2008/11/17 H.Itou Add End
+-- 2008/11/17 H.Itou Add Start 統合テスト指摘491
+  -- ダミーコード
+  gv_no_ship_to_code   CONSTANT VARCHAR2(10) := '000000000'; -- 配送先コード（指定なし）
+-- 2008/11/17 H.Itou Add End
 --
   -- ===============================
   -- ユーザー定義グローバル型
@@ -189,6 +210,9 @@ AS
   -- ===============================
 --
   gv_max_date            VARCHAR2(10); -- 最大日付
+-- 2008/11/17 H.Itou Add Start 統合テスト指摘491
+  gv_dummy_base_code     VARCHAR2(10); -- XXCMN:物流構成マスタ管理タイプ２拠点コード
+-- 2008/11/17 H.Itou Add End
   gn_data_status         NUMBER := 0;  -- データチェックステータス
   gn_request_id_cnt      NUMBER := 0;  -- リクエストID数
   gt_sr_line_tbl         sr_line_tbl;
@@ -817,40 +841,100 @@ AS
     -- ***************************************
 --
 --
-    BEGIN
-      -- 前歴の物流構成アドオンIDを取得
-      SELECT xsr.sourcing_rules_id
-      INTO ln_sr_id
-      FROM xxcmn_sourcing_rules xsr,
-        (SELECT xsr.item_code AS item_code,
-                xsr.base_code  AS base_code,
-                xsr.ship_to_code AS ship_to_code,
-                MAX(xsr.start_date_active) AS start_date
-        FROM xxcmn_sourcing_rules xsr -- 物流構成アドオンマスタ
-        WHERE xsr.item_code = ir_sr_line_rec.item_code
-          AND xsr.base_code = ir_sr_line_rec.base_code
-          AND xsr.ship_to_code = ir_sr_line_rec.ship_to_code
-          AND xsr.start_date_active < ir_sr_line_rec.start_date_active
-        GROUP BY xsr.item_code,xsr.base_code,xsr.ship_to_code) max_data
-      WHERE max_data.item_code   = xsr.item_code
-        AND max_data.base_code   = xsr.base_code
-        AND max_data.ship_to_code = xsr.ship_to_code
-        AND max_data.start_date   = xsr.start_date_active 
-        AND ROWNUM = 1;
+-- 2008/11/17 H.Itou Add Start 統合テスト指摘491
+    --【管理タイプ2：品目在庫補充元管理】
+    IF ((ir_sr_line_rec.base_code    = gv_dummy_base_code)         -- 拠点コードがダミーコード(AAAA)
+    AND (ir_sr_line_rec.ship_to_code = gv_no_ship_to_code)) THEN   -- 配送先がダミーコード(000000000)
+      BEGIN
+        -- 前歴の物流構成アドオンIDを取得
+        SELECT xsr.sourcing_rules_id   sourcing_rules_id -- 物流構成アドオンID
+        INTO   ln_sr_id
+        FROM   xxcmn_sourcing_rules    xsr               -- 物流構成アドオンマスタ
+             ,(SELECT xsr.item_code              item_code                       -- 品目コード
+                     ,xsr.base_code              base_code                       -- 拠点コード
+                     ,xsr.ship_to_code           ship_to_code                    -- 配送先コード
+                     ,xsr.delivery_whse_code     delivery_whse_code              -- 出庫倉庫コード
+                     ,MAX(xsr.start_date_active) start_date                      -- 適用開始日
+               FROM   xxcmn_sourcing_rules       xsr                             -- 物流構成アドオンマスタ
+               WHERE  xsr.item_code          = ir_sr_line_rec.item_code          -- 品目コード
+               AND    xsr.base_code          = ir_sr_line_rec.base_code          -- 拠点コード
+               AND    xsr.ship_to_code       = ir_sr_line_rec.ship_to_code       -- 配送先コード
+               AND    xsr.delivery_whse_code = ir_sr_line_rec.delivery_whse_code -- 出庫倉庫コード
+               AND    xsr.start_date_active  < ir_sr_line_rec.start_date_active  -- 適用開始日
+               GROUP BY xsr.item_code
+                       ,xsr.base_code
+                       ,xsr.ship_to_code
+                       ,xsr.delivery_whse_code
+              )                        max_data          -- 自レコードより前歴の中で最新のレコード
+        WHERE  max_data.item_code          = xsr.item_code          -- 品目コード
+        AND    max_data.base_code          = xsr.base_code          -- 拠点コード
+        AND    max_data.ship_to_code       = xsr.ship_to_code       -- 配送先コード
+        AND    max_data.delivery_whse_code = xsr.delivery_whse_code -- 出庫倉庫コード
+        AND    max_data.start_date         = xsr.start_date_active  -- 適用開始日
+        AND    ROWNUM = 1
+        ;
 --
-    EXCEPTION
-      WHEN NO_DATA_FOUND THEN
-      NULL;
-    END ;
+      EXCEPTION
+        WHEN NO_DATA_FOUND THEN
+          NULL;
+      END ;
 --
-    -- 後歴の適用開始日を取得
-    SELECT MIN(xsr.start_date_active) AS start_date
-    INTO ld_start_date
-    FROM xxcmn_sourcing_rules xsr -- 物流構成アドオンマスタ
-    WHERE xsr.item_code = ir_sr_line_rec.item_code
-      AND xsr.base_code = ir_sr_line_rec.base_code
-      AND xsr.ship_to_code = ir_sr_line_rec.ship_to_code
-      AND xsr.start_date_active > ir_sr_line_rec.start_date_active;
+      -- 後歴の適用開始日を取得
+      SELECT MIN(xsr.start_date_active) start_date -- 自レコードより高歴の中で古いレコード
+      INTO   ld_start_date
+      FROM   xxcmn_sourcing_rules       xsr        -- 物流構成アドオンマスタ
+      WHERE  xsr.item_code          = ir_sr_line_rec.item_code          -- 品目コード
+      AND    xsr.base_code          = ir_sr_line_rec.base_code          -- 拠点コード
+      AND    xsr.ship_to_code       = ir_sr_line_rec.ship_to_code       -- 配送先コード
+      AND    xsr.delivery_whse_code = ir_sr_line_rec.delivery_whse_code -- 出庫倉庫コード
+      AND    xsr.start_date_active  > ir_sr_line_rec.start_date_active  -- 適用開始日
+      ;
+--
+    --【管理タイプ1：品目出荷元倉庫・計画商品管理】
+    ELSE
+-- 2008/11/17 H.Itou Add End
+      BEGIN
+        -- 前歴の物流構成アドオンIDを取得
+        SELECT xsr.sourcing_rules_id   sourcing_rules_id -- 物流構成アドオンID
+        INTO   ln_sr_id
+        FROM   xxcmn_sourcing_rules    xsr               -- 物流構成アドオンマスタ
+             ,(SELECT xsr.item_code              item_code                      -- 品目コード
+                     ,xsr.base_code              base_code                      -- 拠点コード
+                     ,xsr.ship_to_code           ship_to_code                   -- 配送先コード
+                     ,MAX(xsr.start_date_active) start_date                     -- 適用開始日
+               FROM   xxcmn_sourcing_rules       xsr                            -- 物流構成アドオンマスタ
+               WHERE  xsr.item_code          = ir_sr_line_rec.item_code         -- 品目コード
+               AND    xsr.base_code          = ir_sr_line_rec.base_code         -- 拠点コード
+               AND    xsr.ship_to_code       = ir_sr_line_rec.ship_to_code      -- 配送先コード
+               AND    xsr.start_date_active  < ir_sr_line_rec.start_date_active -- 適用開始日
+               GROUP BY xsr.item_code
+                       ,xsr.base_code
+                       ,xsr.ship_to_code
+              )                        max_data          -- 自レコードより前歴の中で最新のレコード
+        WHERE  max_data.item_code          = xsr.item_code          -- 品目コード
+        AND    max_data.base_code          = xsr.base_code          -- 拠点コード
+        AND    max_data.ship_to_code       = xsr.ship_to_code       -- 配送先コード
+        AND    max_data.start_date         = xsr.start_date_active  -- 適用開始日
+        AND    ROWNUM = 1
+        ;
+--
+      EXCEPTION
+        WHEN NO_DATA_FOUND THEN
+        NULL;
+      END ;
+--
+      -- 後歴の適用開始日を取得
+      SELECT MIN(xsr.start_date_active) start_date -- 自レコードより高歴の中で古いレコード
+      INTO   ld_start_date
+      FROM   xxcmn_sourcing_rules       xsr        -- 物流構成アドオンマスタ
+      WHERE  xsr.item_code          = ir_sr_line_rec.item_code         -- 品目コード
+      AND    xsr.base_code          = ir_sr_line_rec.base_code         -- 拠点コード
+      AND    xsr.ship_to_code       = ir_sr_line_rec.ship_to_code      -- 配送先コード
+      AND    xsr.start_date_active  > ir_sr_line_rec.start_date_active -- 適用開始日
+      ;
+-- 2008/11/17 H.Itou Add Start 統合テスト指摘491
+    END IF;
+-- 2008/11/17 H.Itou Add End
 --
     -- 適用終了日の編集
     -- 登録対象データに適用開始日が存在している場合
@@ -863,7 +947,7 @@ AS
       -- 最大適用日を設定する
       ld_start_date:= FND_DATE.STRING_TO_DATE(gv_max_date,'YYYY/MM/DD');
     ELSE
-      -- 取得した後歴の適用終了日を元に設定する
+      -- 取得した後歴の適用開始日を元に設定する
       ld_start_date := ld_start_date-1;
     END IF;
 --
@@ -1109,38 +1193,110 @@ AS
 --
 --###########################  固定部 END   ############################
 --
-    -- ***************************************
-    -- ***        実処理の記述             ***
-    -- ***       共通関数の呼び出し        ***
-    -- ***************************************
+-- 2008/11/17 H.Itou Add Start 統合テスト指摘491
+    -- ==========================================
+    --  項目チェック(B-2) 入力不可項目チェック
+    -- ==========================================
+    --【管理タイプ2：品目在庫補充元管理】
+    IF ((ir_sr_line.base_code    = gv_dummy_base_code)         -- 拠点コードがダミーコード(AAAA)
+    AND (ir_sr_line.ship_to_code = gv_no_ship_to_code)) THEN   -- 配送先がダミーコード(000000000)
+      -- 計画商品フラグをYESは不可
+      IF (ir_sr_line.plan_item_flag = 1) THEN
+        ir_sr_line.message := xxcmn_common_pkg.get_msg(
+                                gv_msg_kbn                                       -- アプリケーション：XXCMN
+                               ,gv_msg_ng_plan_item_flg                          -- メッセージ：APP-XXCMN-10129  計画商品フラグ存在NG
+                               ,gv_tkn_ng_item_code    ,ir_sr_line.item_code     -- トークン：NG_ITEM_CODE
+                               ,gv_tkn_ng_base_code    ,ir_sr_line.base_code     -- トークン：NG_BASE_CODE
+                               ,gv_tkn_ng_ship_to_code ,ir_sr_line.ship_to_code  -- トークン：NG_SHIP_TO_CODE
+                               ,gv_tkn_s_date_act      ,TO_CHAR(ir_sr_line.start_date_active,'YYYY/MM/DD') -- トークン：S_DATE_ACT
+                               );
+        RAISE check_data_expt;
+      END IF;
 --
-    -- 品目存在チェック
-    SELECT COUNT(ximv.item_id)
-    INTO ln_count
-    FROM xxcmn_item_mst2_v ximv    -- OPM品目情報VIEW
-    WHERE ximv.item_no = ir_sr_line.item_code
-      AND ximv.obsolete_date IS NULL
-      AND ROWNUM = 1;
+    --【管理タイプ1：品目出荷元倉庫・計画商品管理】
+    ELSE
+      -- 移動元倉庫1は入力不可
+      IF (ir_sr_line.move_from_whse_code1 IS NOT NULL) THEN
+        ir_sr_line.message := xxcmn_common_pkg.get_msg(
+                                gv_msg_kbn                                       -- アプリケーション：XXCMN
+                               ,gv_msg_xxcmn_10606                               -- メッセージ：APP-XXCMN-10606  指定不可エラー
+                               ,gv_tkn_ng_base_code    ,ir_sr_line.base_code     -- トークン：NG_BASE_CODE
+                               ,gv_tkn_ng_ship_to_code ,ir_sr_line.ship_to_code  -- トークン：NG_SHIP_TO_CODE
+                               ,gv_tkn_item            ,gv_colmun2               -- トークン：ITEM = 移動元倉庫1
+                               );
+        RAISE check_data_expt;
+      END IF;
 --
-    IF (ln_count = 0) THEN
-    -- 品目存在チェックNG
-      ir_sr_line.message := xxcmn_common_pkg.get_msg(gv_msg_kbn, gv_msg_ng_item,
-                              gv_tkn_ng_item_code, ir_sr_line.item_code);
-      RAISE check_data_expt;
+      -- 移動元倉庫2は入力不可
+      IF (ir_sr_line.move_from_whse_code2 IS NOT NULL) THEN
+        ir_sr_line.message := xxcmn_common_pkg.get_msg(
+                                gv_msg_kbn                                       -- アプリケーション：XXCMN
+                               ,gv_msg_xxcmn_10606                               -- メッセージ：APP-XXCMN-10606  指定不可エラー
+                               ,gv_tkn_ng_base_code    ,ir_sr_line.base_code     -- トークン：NG_BASE_CODE
+                               ,gv_tkn_ng_ship_to_code ,ir_sr_line.ship_to_code  -- トークン：NG_SHIP_TO_CODE
+                               ,gv_tkn_item            ,gv_colmun3               -- トークン：ITEM = 移動元倉庫2
+                               );
+        RAISE check_data_expt;
+      END IF;
+--
+      -- 仕入先サイト1は入力不可
+      IF (ir_sr_line.vendor_site_code1 IS NOT NULL) THEN
+        ir_sr_line.message := xxcmn_common_pkg.get_msg(
+                                gv_msg_kbn                                       -- アプリケーション：XXCMN
+                               ,gv_msg_xxcmn_10606                               -- メッセージ：APP-XXCMN-10606  指定不可エラー
+                               ,gv_tkn_ng_base_code    ,ir_sr_line.base_code     -- トークン：NG_BASE_CODE
+                               ,gv_tkn_ng_ship_to_code ,ir_sr_line.ship_to_code  -- トークン：NG_SHIP_TO_CODE
+                               ,gv_tkn_item            ,gv_colmun4               -- トークン：ITEM = 仕入先サイト1
+                               );
+        RAISE check_data_expt;
+      END IF;
+--
+      -- 仕入先サイト2は入力不可
+      IF (ir_sr_line.vendor_site_code2 IS NOT NULL) THEN
+        ir_sr_line.message := xxcmn_common_pkg.get_msg(
+                                gv_msg_kbn                                       -- アプリケーション：XXCMN
+                               ,gv_msg_xxcmn_10606                               -- メッセージ：APP-XXCMN-10606  指定不可エラー
+                               ,gv_tkn_ng_base_code    ,ir_sr_line.base_code     -- トークン：NG_BASE_CODE
+                               ,gv_tkn_ng_ship_to_code ,ir_sr_line.ship_to_code  -- トークン：NG_SHIP_TO_CODE
+                               ,gv_tkn_item            ,gv_colmun5               -- トークン：ITEM = 仕入先サイト2
+                               );
+        RAISE check_data_expt;
+      END IF;
     END IF;
+-- 2008/11/17 H.Itou Add End
+    -- =======================================
+    --  項目チェック(B-2) マスタ存在チェック
+    -- =======================================
+    -- ダミーコードでない時、品目存在チェック
+    IF (ir_sr_line.item_code <> cv_z_item_code) THEN
+      -- 品目存在チェック
+      SELECT COUNT(ximv.item_id)
+      INTO ln_count
+      FROM xxcmn_item_mst2_v ximv    -- OPM品目情報VIEW
+      WHERE ximv.item_no = ir_sr_line.item_code
+        AND ximv.obsolete_date IS NULL
+        AND ROWNUM = 1;
 --
-    -- 品目適用日付チェック
-    SELECT COUNT(ximv.item_id)
-    INTO ln_count
-    FROM xxcmn_item_mst_v ximv    -- OPM品目情報VIEW
-    WHERE ximv.item_no = ir_sr_line.item_code
-      AND ROWNUM = 1;
+      IF (ln_count = 0) THEN
+      -- 品目存在チェックNG
+        ir_sr_line.message := xxcmn_common_pkg.get_msg(gv_msg_kbn, gv_msg_ng_item,
+                                gv_tkn_ng_item_code, ir_sr_line.item_code);
+        RAISE check_data_expt;
+      END IF;
 --
-    IF (ln_count = 0) THEN
-    -- 品目適用日付チェックNG
-      ir_sr_line.message := xxcmn_common_pkg.get_msg(gv_msg_kbn, gv_msg_ng_d_item,
-                              gv_tkn_ng_item_code, ir_sr_line.item_code);
-      RAISE check_data_expt;
+      -- 品目適用日付チェック
+      SELECT COUNT(ximv.item_id)
+      INTO ln_count
+      FROM xxcmn_item_mst_v ximv    -- OPM品目情報VIEW
+      WHERE ximv.item_no = ir_sr_line.item_code
+        AND ROWNUM = 1;
+--
+      IF (ln_count = 0) THEN
+      -- 品目適用日付チェックNG
+        ir_sr_line.message := xxcmn_common_pkg.get_msg(gv_msg_kbn, gv_msg_ng_d_item,
+                                gv_tkn_ng_item_code, ir_sr_line.item_code);
+        RAISE check_data_expt;
+      END IF;
     END IF;
 --
     IF (ir_sr_line.base_code <> cv_no_base_code) THEN
@@ -1356,29 +1512,155 @@ AS
       RAISE check_data_expt;
     END IF;
 --
-    -- 重複チェック(B-3)
-    -- 主キー重複チェック
-    SELECT COUNT(xsli.item_code)
-    INTO ln_count
-    FROM xxcmn_sr_lines_if xsli -- 物流構成アドオンインタフェース
-    WHERE xsli.item_code = ir_sr_line.item_code                  --品目コード
-      AND xsli.base_code = ir_sr_line.base_code                  --拠点コード
-      AND xsli.ship_to_code = ir_sr_line.ship_to_code            --配送先コード
-      AND xsli.start_date_active = ir_sr_line.start_date_active; --適用開始日
--- 
-    IF (ln_count > 1 ) THEN
-      -- 主キー重複チェックNG
-      ir_sr_line.message := xxcmn_common_pkg.get_msg(gv_msg_kbn, gv_msg_rep_key,
-                              gv_tkn_ng_item_code, ir_sr_line.item_code,
-                              gv_tkn_ng_base_code, ir_sr_line.base_code,
-                              gv_tkn_ng_ship_to_code, ir_sr_line.ship_to_code,
-                              gv_tkn_s_date_act,
-                              TO_CHAR(ir_sr_line.start_date_active, 'YYYY/MM/DD'));
-      RAISE check_data_expt;
+-- 2008/11/17 H.Itou Mod Start 統合テスト指摘491
+--    -- 主キー重複チェック
+--    SELECT COUNT(xsli.item_code) cnt
+--    INTO   ln_count
+--    FROM   xxcmn_sr_lines_if     xsli                              -- 物流構成アドオンインタフェース
+--    WHERE  xsli.item_code          = ir_sr_line.item_code          -- 品目コード
+--    AND    xsli.base_code          = ir_sr_line.base_code          -- 拠点コード
+--    AND    xsli.ship_to_code       = ir_sr_line.ship_to_code       -- 配送先コード
+--    AND    xsli.delivery_whse_code = ir_sr_line.delivery_whse_code -- 出庫倉庫コード
+--    AND    xsli.start_date_active  = ir_sr_line.start_date_active  -- 適用開始日
+--    ;
+---- 
+--    IF (ln_count > 1 ) THEN
+--      -- 主キー重複チェックNG
+--      ir_sr_line.message := xxcmn_common_pkg.get_msg(gv_msg_kbn, gv_msg_rep_key,
+--                              gv_tkn_ng_item_code, ir_sr_line.item_code,
+--                              gv_tkn_ng_base_code, ir_sr_line.base_code,
+--                              gv_tkn_ng_ship_to_code, ir_sr_line.ship_to_code,
+--                              gv_tkn_s_date_act,
+--                              TO_CHAR(ir_sr_line.start_date_active, 'YYYY/MM/DD'));
+--      RAISE check_data_expt;
+----
+--    END IF ;
 --
-    END IF ;
+    -- ======================================================
+    --  重複チェック(B-3)【管理タイプ2：品目在庫補充元管理】
+    -- ======================================================
+    IF ((ir_sr_line.base_code    = gv_dummy_base_code)         -- 拠点コードがダミーコード(AAAA)
+    AND (ir_sr_line.ship_to_code = gv_no_ship_to_code)) THEN   -- 配送先がダミーコード(000000000)
+      -- -----------------------------------------------------------------------------------------
+      -- 重複チェック(※キー：品目コード・拠点コード・配送先コード・出庫倉庫コード・適用開始日)
+      -- -----------------------------------------------------------------------------------------
+      SELECT COUNT(1) cnt
+      INTO   ln_count
+      FROM   xxcmn_sr_lines_if     xsli                              -- 物流構成アドオンインタフェース
+      WHERE  xsli.item_code          = ir_sr_line.item_code          -- 品目コード
+      AND    xsli.base_code          = ir_sr_line.base_code          -- 拠点コード
+      AND    xsli.ship_to_code       = ir_sr_line.ship_to_code       -- 配送先コード
+      AND    xsli.delivery_whse_code = ir_sr_line.delivery_whse_code -- 出庫倉庫コード
+      AND    xsli.start_date_active  = ir_sr_line.start_date_active  -- 適用開始日
+      ;
 --
-    -- 拠点／配送先チェック(B-4)
+      IF (ln_count > 1 ) THEN
+        ir_sr_line.message := xxcmn_common_pkg.get_msg(
+                                gv_msg_kbn                                             -- アプリケーション：XXCMN
+                               ,gv_msg_xxcmn_10608                                     -- メッセージ：APP-XXCMN-10608 主キー重複NG(管理タイプ2用)
+                               ,gv_tkn_ng_item_code    ,ir_sr_line.item_code           -- トークン：NG_ITEM_CODE
+                               ,gv_tkn_ng_base_code    ,ir_sr_line.base_code           -- トークン：NG_BASE_CODE
+                               ,gv_tkn_ng_ship_to_code ,ir_sr_line.ship_to_code        -- トークン：NG_SHIP_TO_CODE
+                               ,gv_tkn_ng_whse_code    ,ir_sr_line.delivery_whse_code  -- トークン：NG_WHSE_CODE
+                               ,gv_tkn_s_date_act      ,TO_CHAR(ir_sr_line.start_date_active, 'YYYY/MM/DD') -- トークン：S_DATE_ACT
+                               );
+        RAISE check_data_expt;
+--
+      END IF ;
+--
+      ---------------------------------------------------------------------------------------------------
+      -- 移動元保管場所チェック
+      --   キーがIF・マスタにある場合(※キー：品目コード・拠点コード・配送先コード・移動元保管倉庫コード1・適用開始日)
+      --   移動元保管場所コード2・仕入先サイトコード1・仕入先サイトコード2すべてが同一でなければエラー
+      ---------------------------------------------------------------------------------------------------
+      SELECT COUNT(1)  cnt
+      INTO   ln_count
+      FROM  ( --------------------------
+              -- IF重複レコード取得
+              --------------------------
+              SELECT xsli.move_from_whse_code2 move_from_whse_code2              -- 移動元保管倉庫コード2
+                    ,xsli.vendor_site_code1    vendor_site_code1                 -- 仕入先サイトコード1
+                    ,xsli.vendor_site_code2    vendor_site_code2                 -- 仕入先サイトコード2
+              FROM   xxcmn_sr_lines_if         xsli                              -- 物流構成アドオンインタフェース
+              WHERE  xsli.item_code            = ir_sr_line.item_code            -- 品目コード           (キー項目)
+              AND    xsli.base_code            = ir_sr_line.base_code            -- 拠点コード           (キー項目)
+              AND    xsli.ship_to_code         = ir_sr_line.ship_to_code         -- 配送先コード         (キー項目)
+              AND    xsli.move_from_whse_code1 = ir_sr_line.move_from_whse_code1 -- 移動元保管倉庫コード1(キー項目)
+              AND    xsli.start_date_active    = ir_sr_line.start_date_active    -- 適用開始日           (キー項目)
+--
+              --------------------------
+              -- マスタ重複レコード取得
+              --------------------------
+              UNION ALL
+              SELECT xsr.move_from_whse_code2 move_from_whse_code2              -- 移動元保管倉庫コード2
+                    ,xsr.vendor_site_code1    vendor_site_code1                 -- 仕入先サイトコード1
+                    ,xsr.vendor_site_code2    vendor_site_code2                 -- 仕入先サイトコード2
+              FROM   xxcmn_sourcing_rules      xsr                              -- 物流構成アドオンマスタ
+              WHERE  xsr.item_code            = ir_sr_line.item_code            -- 品目コード           (キー項目)
+              AND    xsr.base_code            = ir_sr_line.base_code            -- 拠点コード           (キー項目)
+              AND    xsr.ship_to_code         = ir_sr_line.ship_to_code         -- 配送先コード         (キー項目)
+              AND    xsr.move_from_whse_code1 = ir_sr_line.move_from_whse_code1 -- 移動元保管倉庫コード1(キー項目)
+              AND    xsr.start_date_active    = ir_sr_line.start_date_active    -- 適用開始日           (キー項目)
+              AND    NOT EXISTS(                                                -- 洗い替えするマスタの場合は削除するので比較対象外
+                       SELECT 1
+                       FROM   xxcmn_sourcing_rules xsr1
+                       WHERE  xsr1.sourcing_rules_id = xsr.sourcing_rules_id
+                       AND    xsr1.sourcing_rules_id = ir_sr_line.sourcing_rules_id)
+            )  subsql
+      WHERE  ROWNUM = 1
+      AND   (NVL(subsql.move_from_whse_code2, '*') <> NVL(ir_sr_line.move_from_whse_code2, '*') -- 移動元保管倉庫コード2
+        OR   NVL(subsql.vendor_site_code1,    '*') <> NVL(ir_sr_line.vendor_site_code1,    '*') -- 仕入先サイトコード1
+        OR   NVL(subsql.vendor_site_code2,    '*') <> NVL(ir_sr_line.vendor_site_code2,    '*'))-- 仕入先サイトコード2
+      ;
+--
+      IF (ln_count = 1 ) THEN
+        ir_sr_line.message := xxcmn_common_pkg.get_msg(
+                                gv_msg_kbn                                               -- アプリケーション：XXCMN
+                               ,gv_msg_xxcmn_10607                                       -- メッセージ：APP-XXCMN-10607 移動元保管場所キーチェックエラー
+                               ,gv_tkn_ng_item_code    ,ir_sr_line.item_code             -- トークン：NG_ITEM_CODE
+                               ,gv_tkn_ng_base_code    ,ir_sr_line.base_code             -- トークン：NG_BASE_CODE
+                               ,gv_tkn_ng_ship_to_code ,ir_sr_line.ship_to_code          -- トークン：NG_SHIP_TO_CODE
+                               ,gv_tkn_ng_whse_code    ,ir_sr_line.move_from_whse_code1  -- トークン：NG_WHSE_CODE
+                               ,gv_tkn_s_date_act      ,TO_CHAR(ir_sr_line.start_date_active, 'YYYY/MM/DD') -- トークン：S_DATE_ACT
+                               );
+        RAISE check_data_expt;
+--
+      END IF ;
+--
+    -- ================================================================
+    --  重複チェック(B-3)【管理タイプ1：品目出荷元倉庫・計画商品管理】
+    -- ================================================================
+    ELSE
+      -------------------------------------------------------------------------------
+      -- 重複チェック(※キー：品目コード・拠点コード・配送先コード・適用開始日)
+      -------------------------------------------------------------------------------
+      SELECT COUNT(1) cnt
+      INTO   ln_count
+      FROM   xxcmn_sr_lines_if     xsli                              -- 物流構成アドオンインタフェース
+      WHERE  xsli.item_code          = ir_sr_line.item_code          -- 品目コード
+      AND    xsli.base_code          = ir_sr_line.base_code          -- 拠点コード
+      AND    xsli.ship_to_code       = ir_sr_line.ship_to_code       -- 配送先コード
+      AND    xsli.start_date_active  = ir_sr_line.start_date_active  -- 適用開始日
+      ;
+--
+      IF (ln_count > 1 ) THEN
+        ir_sr_line.message := xxcmn_common_pkg.get_msg(
+                                gv_msg_kbn                                       -- アプリケーション：XXCMN
+                               ,gv_msg_rep_key                                   -- メッセージ：APP-XXCMN-10055 主キー重複NG
+                               ,gv_tkn_ng_item_code    ,ir_sr_line.item_code     -- トークン：NG_ITEM_CODE
+                               ,gv_tkn_ng_base_code    ,ir_sr_line.base_code     -- トークン：NG_BASE_CODE
+                               ,gv_tkn_ng_ship_to_code ,ir_sr_line.ship_to_code  -- トークン：NG_SHIP_TO_CODE
+                               ,gv_tkn_s_date_act      ,TO_CHAR(ir_sr_line.start_date_active, 'YYYY/MM/DD') -- トークン：S_DATE_ACT
+                               );
+        RAISE check_data_expt;
+--
+      END IF;
+    END IF;
+-- 2008/11/17 H.Itou Mod End
+--
+    -- =======================================
+    --  拠点／配送先チェック(B-4)
+    -- =======================================
     IF ((ir_sr_line.base_code = cv_no_base_code)
         AND (ir_sr_line.ship_to_code = cv_no_ship_to_code))
       OR
@@ -1394,10 +1676,6 @@ AS
       RAISE check_data_expt;
     END IF;
     ir_sr_line.row_level_status := gn_data_status_normal;
---
-    --==============================================================
-    --メッセージ出力（エラー以外）をする必要がある場合は処理を記述
-    --==============================================================
 --
   EXCEPTION
     --*** データチェック処理エラー ***
@@ -1453,6 +1731,9 @@ AS
     -- ===============================
     -- *** ローカル定数 ***
     cv_max_pro_date CONSTANT VARCHAR2(20) := 'MAX日付';
+-- 2008/11/17 H.Itou Add Start 統合テスト指摘491
+    cv_mgr_type2_base_code_name    CONSTANT VARCHAR2(100) := 'XXCMN:物流構成マスタ管理タイプ２拠点コード';
+-- 2008/11/17 H.Itou Add End
 --
     -- *** ローカル変数 ***
     lv_max_date  VARCHAR2(10);
@@ -1477,6 +1758,12 @@ AS
     --最大日付取得
     lv_max_date := SUBSTR(FND_PROFILE.VALUE(gv_prf_max_date),1,10);
 --
+-- 2008/11/17 H.Itou Add Start 統合テスト指摘491
+    -- XXCMN:物流構成マスタ管理タイプ２拠点コード
+    gv_dummy_base_code := SUBSTRB(FND_PROFILE.VALUE(gv_prf_mgr_type2_base_code),1,10);
+--
+-- 2008/11/17 H.Itou Add End
+--
     -- プロファイルが取得できない場合はエラー
     IF (lv_max_date IS NULL) THEN
       lv_errmsg := xxcmn_common_pkg.get_msg(gv_msg_kbn,        gv_msg_no_profile,
@@ -1485,6 +1772,18 @@ AS
       RAISE global_api_expt;
     END IF;
 --
+-- 2008/11/17 H.Itou Add Start 統合テスト指摘491
+    -- XXCMN:物流構成マスタ管理タイプ２拠点コードが取得できない場合、エラー
+    IF (gv_dummy_base_code IS NULL) THEN
+      lv_errmsg := xxcmn_common_pkg.get_msg(
+                     gv_msg_kbn                                      -- アプリケーション：XXCMN
+                    ,gv_msg_no_profile                               -- APP-XXCMN-10002 プロファイル取得エラー
+                    ,gv_tkn_ng_profile ,cv_mgr_type2_base_code_name  -- トークン：NG_PROFLIE = XXCMN:物流構成マスタ管理タイプ２拠点コード
+                    );
+      lv_errbuf := lv_errmsg;
+      RAISE global_api_expt;
+    END IF;
+-- 2008/11/17 H.Itou Add End
     gv_max_date := lv_max_date; -- 最大日付に設定
     --==============================================================
     --メッセージ出力（エラー以外）をする必要がある場合は処理を記述
@@ -1570,49 +1869,97 @@ AS
 --
     -- 前歴＋後歴のロックカーソル xsr_lock_start_end_cur
     CURSOR xsr_lock_start_end_cur IS
-      SELECT xsr.item_code
-            ,xsr.base_code
-            ,xsr.ship_to_code
-      FROM xxcmn_sr_lines_if xsli  -- 物流構成アドオンインタフェース
+    SELECT xsr.item_code     item_code
+          ,xsr.base_code     base_code
+          ,xsr.ship_to_code  ship_to_code
+-- 2008/11/17 H.Itou Add Start 統合テスト指摘491
+          ,xsli.item_code    if_item_code
+-- 2008/11/17 H.Itou Add End
+    FROM   xxcmn_sr_lines_if    xsli  -- 物流構成アドオンインタフェース
           ,xxcmn_sourcing_rules xsr 
-      WHERE  xsli.item_code         = xsr.item_code
-      AND    xsli.base_code         = xsr.base_code
-      AND    xsli.ship_to_code      = xsr.ship_to_code
-      FOR UPDATE OF xsr.item_code
-                    ,xsr.base_code
-                    ,xsr.ship_to_code
-                    ,xsr.start_date_active 
-      NOWAIT;
+    WHERE  xsli.item_code         = xsr.item_code
+    AND    xsli.base_code         = xsr.base_code
+    AND    xsli.ship_to_code      = xsr.ship_to_code
+    FOR UPDATE OF  xsr.item_code
+                  ,xsr.base_code
+                  ,xsr.ship_to_code
+                  ,xsr.start_date_active 
+-- 2008/11/17 H.Itou Add Start 統合テスト指摘491
+                  ,xsli.item_code
+-- 2008/11/17 H.Itou Add End
+    NOWAIT;
 --
     -- 物流構成アドオンインタフェース取得カーソル get_sr_line_cur
     CURSOR get_sr_line_cur IS
-    SELECT xsli.item_code            -- 品目コード
-          ,xsli.base_code            -- 拠点コード
-          ,xsli.ship_to_code         -- 配送先コード
-          ,xsli.start_date_active    -- 適用開始日
-          ,xsli.end_date_active      -- 適用終了日
-          ,xsli.delivery_whse_code   -- 出庫倉庫コード
-          ,xsli.move_from_whse_code1 -- 移動元倉庫コード1
-          ,xsli.move_from_whse_code2 -- 移動元倉庫コード2
-          ,xsli.vendor_site_code1    -- 仕入先サイトコード1
-          ,xsli.vendor_site_code2    -- 仕入先サイトコード2
-          ,xsli.plan_item_flag       -- 計画商品フラグ
-          ,xsr.sourcing_rules_id     -- 物流構成アドオンID
-    FROM xxcmn_sr_lines_if xsli      -- 物流構成アドオンインタフェーステーブル
-        ,xxcmn_sourcing_rules xsr    -- 物流構成アドオンマスタ
-    WHERE xsli.item_code = xsr.item_code(+)
-      AND xsli.base_code = xsr.base_code(+)
-      AND xsli.ship_to_code = xsr.ship_to_code(+)
-      AND xsli.start_date_active = xsr.start_date_active(+)
-    ORDER BY xsli.item_code
-            ,xsli.base_code
-            ,xsli.ship_to_code
-            ,xsli.start_date_active
-    FOR UPDATE OF xsli.item_code
-                  ,xsli.base_code
-                  ,xsli.ship_to_code
-                  ,xsli.start_date_active
-    NOWAIT;
+    -- ============================================
+    -- 管理タイプ1：品目出荷元倉庫・計画商品管理
+    -- ============================================
+    SELECT xsli.item_code            item_code                 -- 品目コード
+          ,xsli.base_code            base_code                 -- 拠点コード
+          ,xsli.ship_to_code         ship_to_code              -- 配送先コード
+          ,xsli.start_date_active    start_date_active         -- 適用開始日
+          ,xsli.end_date_active      end_date_active           -- 適用終了日
+          ,xsli.delivery_whse_code   delivery_whse_code        -- 出庫倉庫コード
+          ,xsli.move_from_whse_code1 move_from_whse_code1      -- 移動元倉庫コード1
+          ,xsli.move_from_whse_code2 move_from_whse_code2      -- 移動元倉庫コード2
+          ,xsli.vendor_site_code1    vendor_site_code1         -- 仕入先サイトコード1
+          ,xsli.vendor_site_code2    vendor_site_code2         -- 仕入先サイトコード2
+          ,xsli.plan_item_flag       plan_item_flag            -- 計画商品フラグ
+          ,xsr.sourcing_rules_id     sourcing_rules_id         -- 物流構成アドオンID(洗い替え対象ID)
+    FROM   xxcmn_sr_lines_if         xsli                      -- 物流構成アドオンインタフェーステーブル
+          ,xxcmn_sourcing_rules      xsr                       -- 物流構成アドオンマスタ
+    WHERE  xsli.item_code          = xsr.item_code(+)          -- 品目コード    (キー項目)
+    AND    xsli.base_code          = xsr.base_code(+)          -- 拠点コード    (キー項目)
+    AND    xsli.ship_to_code       = xsr.ship_to_code(+)       -- 配送先        (キー項目)
+    AND    xsli.start_date_active  = xsr.start_date_active(+)  -- 適用開始日    (キー項目)
+-- 2008/11/17 H.Itou Add Start 統合テスト指摘491
+    AND    NOT ((xsli.base_code          = gv_dummy_base_code) -- 拠点コードがダミー(AAAA)でない
+            AND (xsli.ship_to_code       = gv_no_ship_to_code))-- 配送先コードがダミー(000000000)でない
+    -- ============================================
+    -- 管理タイプ2：品目在庫補充元管理
+    -- ============================================
+    UNION ALL
+    SELECT xsli.item_code            item_code                 -- 品目コード
+          ,xsli.base_code            base_code                 -- 拠点コード
+          ,xsli.ship_to_code         ship_to_code              -- 配送先コード
+          ,xsli.start_date_active    start_date_active         -- 適用開始日
+          ,xsli.end_date_active      end_date_active           -- 適用終了日
+          ,xsli.delivery_whse_code   delivery_whse_code        -- 出庫倉庫コード
+          ,xsli.move_from_whse_code1 move_from_whse_code1      -- 移動元倉庫コード1
+          ,xsli.move_from_whse_code2 move_from_whse_code2      -- 移動元倉庫コード2
+          ,xsli.vendor_site_code1    vendor_site_code1         -- 仕入先サイトコード1
+          ,xsli.vendor_site_code2    vendor_site_code2         -- 仕入先サイトコード2
+          ,xsli.plan_item_flag       plan_item_flag            -- 計画商品フラグ
+          ,xsr.sourcing_rules_id     sourcing_rules_id         -- 物流構成アドオンID(洗い替え対象ID)
+    FROM   xxcmn_sr_lines_if         xsli                      -- 物流構成アドオンインタフェーステーブル
+          ,xxcmn_sourcing_rules      xsr                       -- 物流構成アドオンマスタ
+    WHERE  xsli.item_code          = xsr.item_code(+)          -- 品目コード    (キー項目)
+    AND    xsli.base_code          = xsr.base_code(+)          -- 拠点コード    (キー項目)
+    AND    xsli.ship_to_code       = xsr.ship_to_code(+)       -- 配送先        (キー項目)
+    AND    xsli.delivery_whse_code = xsr.delivery_whse_code(+) -- 出荷先保管倉庫(キー項目)
+    AND    xsli.start_date_active  = xsr.start_date_active(+)  -- 適用開始日    (キー項目)
+    AND    xsli.base_code          = gv_dummy_base_code        -- 拠点コードがダミー(AAAA)
+    AND    xsli.ship_to_code       = gv_no_ship_to_code        -- 配送先コードがダミー(000000000)
+-- 2008/11/17 H.Itou Add End
+-- 2008/11/17 H.Itou Mod Start 統合テスト指摘491
+--    ORDER BY xsli.item_code
+--            ,xsli.base_code
+--            ,xsli.ship_to_code
+--            ,xsli.start_date_active
+    ORDER BY item_code
+            ,base_code
+            ,ship_to_code
+            ,start_date_active
+            ,delivery_whse_code
+-- 2008/11/17 H.Itou Mod End
+-- 2008/11/17 H.Itou Del Start 統合テスト指摘491
+--    FOR UPDATE OF xsli.item_code
+--                  ,xsli.base_code
+--                  ,xsli.ship_to_code
+--                  ,xsli.start_date_active
+--    NOWAIT
+-- 2008/11/17 H.Itou Del End
+    ;
 --
   BEGIN
 --

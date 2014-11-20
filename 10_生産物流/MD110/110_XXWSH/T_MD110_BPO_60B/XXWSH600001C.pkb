@@ -7,7 +7,7 @@ AS
  * Description      : 自動配車配送計画作成処理
  * MD.050           : 配車配送計画 T_MD050_BPO_600
  * MD.070           : 自動配車配送計画作成処理 T_MD070_BPO_60B
- * Version          : 1.12
+ * Version          : 1.13
  *
  * Program List
  * ----------------------------- ---------------------------------------------------------
@@ -45,6 +45,7 @@ AS
  *  2008/10/16    1.10 Oracle H.Itou     T_S_625,統合テスト指摘369
  *  2008/10/24    1.11 Oracle H.Itou     T_TE080_BPO_600指摘26
  *  2008/10/30    1.12 Oracle H.Itou     統合テスト指摘526
+ *  2008/11/19    1.13 Oracle H.Itou     統合テスト指摘666
  *****************************************************************************************/
 --
 --#######################  固定グローバル定数宣言部 START   #######################
@@ -6786,7 +6787,10 @@ debug_log(FND_FILE.LOG,'配送区分:' || lv_mixed_ship_method );
           , iv_code_class2                => lv_cdkbn_2_opt           -- コード区分２
           , iv_entering_despatching_code2 => first_deliver_to
                                                                       -- 入出庫場所２
-          , iv_ship_method                => lv_mixed_ship_method     -- 配送区分
+-- 2008/11/19 H.Itou Mod Start 統合テスト指摘666 出荷方法アドオンマスタに混載配送区分のデータは登録しないので、配送区分でチェック実施。
+--          , iv_ship_method                => lv_mixed_ship_method     -- 配送区分
+          , iv_ship_method                => lv_ship_optimization     -- 配送区分
+-- 2008/11/19 H.Itou Mod End
           , ov_consolidate_flag           => lv_consolid_flag_ships
                                                                       -- 混載可否フラグ:配送区分
           , ov_errbuf                     => lv_errbuf
@@ -6831,7 +6835,10 @@ debug_log(FND_FILE.LOG,'配送区分:' || lv_mixed_ship_method );
           , iv_code_class2                => lv_cdkbn_2_con           -- コード区分２
           , iv_entering_despatching_code2 => lt_intensive_tab(ln_child_no).deliver_to
                                                                       -- 入出庫場所２
-          , iv_ship_method                => lv_mixed_ship_method     -- 配送区分
+-- 2008/11/19 H.Itou Mod Start 統合テスト指摘666 出荷方法アドオンマスタに混載配送区分のデータは登録しないので、配送区分でチェック実施。
+--          , iv_ship_method                => lv_mixed_ship_method     -- 配送区分
+          , iv_ship_method                => lv_ship_optimization     -- 配送区分
+-- 2008/11/19 H.Itou Mod End
           , ov_consolidate_flag           => lv_consolid_flag_ships
                                                                       -- 混載可否フラグ:配送区分
           , ov_errbuf                     => lv_errbuf
