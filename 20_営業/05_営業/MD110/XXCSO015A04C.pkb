@@ -9,7 +9,7 @@ AS
  *                    
  * MD050            : MD050_CSO_015_A04_自販機-EBSインタフェース：（OUT）物件マスタ情報
  *                    
- * Version          : 1.2
+ * Version          : 1.3
  *
  * Program List
  * ---------------------------- ----------------------------------------------------------
@@ -38,7 +38,7 @@ AS
  *  2009-02-06    1.0   kyo              新規作成
  *  2009-03-13    1.1   abe              拠点変更データの障害時対応
  *  2009-03-16    1.2   N.Yabuki         作業依頼／発注情報処理結果テーブルのWHOカラム更新処理追加
- *
+ *  2009-04-13    1.3   K.Satomura       システムテスト障害対応(T1_0409)
  *****************************************************************************************/
 --
 --#######################  固定グローバル定数宣言部 START   #######################
@@ -1774,6 +1774,9 @@ AS
                                                                   TRUNC(TO_DATE(cii.attribute7, cv_final_format)))
              AND gv_date_value IS NOT NULL)
             OR  (gv_date_value IS NULL))
+        /* 2009.04.13 K.Satomura T1_0409対応 START */
+        AND xcav.past_sale_base_code IS NOT NULL
+        /* 2009.04.13 K.Satomura T1_0409対応 END */
         ;
     -- 廃棄作業依頼情報データ抽出
     CURSOR bukken_info_dis_work_data_cur
