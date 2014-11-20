@@ -36,6 +36,7 @@ AS
  *  2009/02/27    1.1   Yutaka.Kuboshima 顧客ステータス更新処理を変更
  *  2009/05/27    1.2   Yutaka.Kuboshima 障害T1_0816,T1_0863の対応
  *  2009/08/31    1.3   Yutaka.Kuboshima 障害0001229の対応
+ *  2009/12/18    1.4   Yutaka.Kuboshima 障害E_本稼動_00540の対応
  *
  *****************************************************************************************/
 --
@@ -531,11 +532,19 @@ AS
 -- 2009/05/27 Ver1.2 障害T1_0816 modify start by Yutaka.Kuboshima
 --    lv_step := 'A-4.1';
     lv_step := 'A-4.2';
--- 2009/05/27 Ver1.2 障害T1_0816 modify start by Yutaka.Kuboshima
+-- 2009/05/27 Ver1.2 障害T1_0816 modify end by Yutaka.Kuboshima
     IF (gv_prev_month_cls_status = cv_cal_status_close) THEN
       ld_past_final_tran_date :=  iv_rec.past_final_tran_date;
     ELSE
-      ld_past_final_tran_date :=  iv_rec.past_new_fnl_trn_dt;
+-- 2009/12/16 Ver1.4 E_本稼動_00540 modify start by Yutaka.Kuboshima
+--      ld_past_final_tran_date :=  iv_rec.past_new_fnl_trn_dt;
+      -- 前月最新取引日が前月最終取引日より未来の場合は更新
+      IF (iv_rec.past_new_fnl_trn_dt > NVL(iv_rec.past_final_tran_date, cd_min_date)) THEN
+        ld_past_final_tran_date :=  iv_rec.past_new_fnl_trn_dt;
+      ELSE
+        ld_past_final_tran_date :=  iv_rec.past_final_tran_date;
+      END IF;
+-- 2009/12/16 Ver1.4 E_本稼動_00540 modify end by Yutaka.Kuboshima
     END IF;
     -- 最終訪問日
 -- 2009/05/27 Ver1.2 delete start by Yutaka.Kuboshima
