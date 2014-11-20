@@ -7,7 +7,7 @@ AS
  * Description      : 顧客マスタから新規獲得した顧客を抽出し、新規獲得ポイント顧客別履歴テーブル
  *                  : にデータを登録します。
  * MD.050           : 新規獲得ポイント集計（新規獲得ポイント集計処理）MD050_CSM_004_A04
- * Version          : 1.3
+ * Version          : 1.4
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -47,6 +47,7 @@ AS
  *  2009/04/22    1.2   M.Ohtsuki      ［障害T1_0704］コード定義書の不具合
  *  2009/04/22    1.2   M.Ohtsuki      ［障害T1_0713］情報確定判定処理の不具合
  *  2009/07/07    1.3   M.Ohtsuki      ［SCS障害管理番号0000254］部署コード取得条件の不具合
+ *  2009/07/14    1.4   M.Ohtsuki      ［SCS障害管理番号0000663］想定外エラー発生時の不具合
  *****************************************************************************************/
 --
 --#######################  固定グローバル定数宣言部 START   #######################
@@ -572,7 +573,12 @@ AS
     );
 
     -- 所属拠点取得に失敗した場合
-    IF   (lv_retcode <> cv_status_normal) THEN
+--//+UPD START 2009/07/14 0000663 M.Ohtsuki
+--    IF   (lv_retcode <> cv_status_normal) THEN
+--↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓
+    IF   (lv_retcode <> cv_status_normal) 
+      OR (lt_location_cd IS NULL) THEN                                                              -- 拠点コード
+--//+UPD END   2009/07/14 0000663 M.Ohtsuki
       lv_errmsg := xxccp_common_pkg.get_msg(
                    iv_application  => cv_appl_short_name_csm                                        -- アプリケーション短縮名
                   ,iv_name         => cv_err_loca_msg                                               -- 所属拠点不明エラー
@@ -581,7 +587,11 @@ AS
                   ,iv_token_name2  => cv_gcd_tkn                                                    -- 顧客獲得日トークン名
                   ,iv_token_value2 => it_cnvs_date                                                  -- 顧客獲得日
                  );
-      RAISE global_process_expt;
+--//+UPD START 2009/07/14 0000663 M.Ohtsuki
+--      RAISE global_process_expt;
+--↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓
+      RAISE global_skip_expt;
+--//+UPD END   2009/07/14 0000663 M.Ohtsuki
     END IF;
     -- 3.拠点コード、カスタムプロファイルの階層を基に、xxcsm:部門ビューから部署コードを取得します。
     --   取得できない場合、顧客単位でスキップします。
@@ -629,7 +639,11 @@ AS
                     ,iv_token_value2 => lt_location_cd                                              -- 拠点コード
                    );
         lv_errbuf := lv_errmsg;
-        RAISE global_process_expt;
+--//+UPD START 2009/07/14 0000663 M.Ohtsuki
+--      RAISE global_process_expt;
+--↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓
+      RAISE global_skip_expt;
+--//+UPD END    2009/07/14 0000663 M.Ohtsuki
       END IF;
 --//+ADD END    2009/07/07 0000254 M.Ohtsuki
     EXCEPTION
@@ -643,7 +657,11 @@ AS
                     ,iv_token_value2 => lt_location_cd                                              -- 拠点コード
                    );
         lv_errbuf := lv_errmsg;
-        RAISE global_process_expt;
+--//+UPD START 2009/07/14 0000663 M.Ohtsuki
+--      RAISE global_process_expt;
+--↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓
+      RAISE global_skip_expt;
+--//+UPD END   2009/07/14 0000663 M.Ohtsuki
     END;   
     -- 4.対象従業員の資格コード、職務コード、職種コードを取得します。
     xxcsm_common_pkg.get_employee_info(
@@ -659,6 +677,10 @@ AS
     );
     -- 資格等の取得に失敗した場合、顧客単位にスキップします。
     IF     (lv_retcode <> cv_status_normal) 
+--//+ADD START 2009/07/14 0000663 M.Ohtsuki
+        OR (lv_qualificate_cd IS NULL)                                                              -- 資格コード
+        OR (lv_job_type_cd    IS NULL)                                                              -- 職種コード
+--//+ADD END   2009/07/14 0000663 M.Ohtsuki
         OR (lv_duties_cd IS NULL) THEN                                                              
         lv_errmsg := xxccp_common_pkg.get_msg(
                    iv_application  => cv_appl_short_name_csm                                        -- アプリケーション短縮名
@@ -670,7 +692,11 @@ AS
                   ,iv_token_name3  => cv_gcd_tkn                                                    -- 顧客獲得日トークン名
                   ,iv_token_value3 => it_cnvs_date                                                  -- 顧客獲得日
                  );
-      RAISE global_process_expt;
+--//+UPD START 2009/07/14 0000663 M.Ohtsuki
+--      RAISE global_process_expt;
+--↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓
+      RAISE global_skip_expt;
+--//+UPD END   2009/07/14 0000663 M.Ohtsuki
     END IF;
     -- 5.顧客獲得時従業員ワークテーブルへ作成／更新を行ないます。
     -- ===============================
@@ -752,6 +778,12 @@ AS
     END IF;
 
   EXCEPTION
+--//+ADD START 2009/07/14 0000663 M.Ohtsuki
+    WHEN global_skip_expt THEN
+      ov_errmsg  := lv_errmsg;
+      ov_errbuf  := SUBSTRB(cv_pkg_name||cv_msg_cont||cv_prg_name||cv_msg_part||lv_errbuf,1,4000);
+      ov_retcode := cv_status_warn;
+--//+ADD END   2009/07/14 0000663 M.Ohtsuki
 --
 --#################################  固定例外処理部 START   ####################################
 --
@@ -1211,7 +1243,16 @@ AS
            ,ov_errmsg           => lv_errmsg                                                        -- ユーザー・エラー・メッセージ  
           );
           -- エラーならば、顧客単位で処理をスキップする。
-          IF (lv_retcode <> cv_status_normal) THEN
+--//+ADD START 2009/07/14 0000663 M.Ohtsuki
+          IF (lv_retcode = cv_status_error) THEN
+            RAISE global_process_expt;
+          END IF;
+--//+ADD END   2009/07/14 0000663 M.Ohtsuki            
+--//+UPD START 2009/07/14 0000663 M.Ohtsuki
+--          IF (lv_retcode <> cv_status_normal) THEN
+--↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓
+          IF (lv_retcode = cv_status_warn) THEN
+--//+UPD END   2009/07/14 0000663 M.Ohtsuki
             RAISE global_skip_expt;                                                                 -- 次の顧客へ
           END IF;
         END IF;
@@ -1256,7 +1297,16 @@ AS
              ,ov_errmsg  => lv_errmsg                                                               -- ユーザー・エラー・メッセージ  
             );
             -- エラーならば、顧客単位で処理をスキップする。
-            IF (lv_retcode <> cv_status_normal) THEN
+--//+ADD START 2009/07/14 0000663 M.Ohtsuki
+          IF (lv_retcode = cv_status_error) THEN
+            RAISE global_process_expt;
+          END IF;
+--//+ADD END   2009/07/14 0000663 M.Ohtsuki            
+--//+UPD START 2009/07/14 0000663 M.Ohtsuki
+--          IF (lv_retcode <> cv_status_normal) THEN
+--↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓
+          IF (lv_retcode = cv_status_warn) THEN
+--//+UPD END   2009/07/14 0000663 M.Ohtsuki
               RAISE global_skip_expt;                                                               -- 次の顧客へ
             END IF;
           END IF;                                                                                   -- 紹介従業員が未確定の場合の終了
@@ -1499,7 +1549,11 @@ AS
           );
           -- エラーならば、顧客単位で処理をスキップする。
           IF (lv_retcode <> cv_status_normal) THEN
-            RAISE global_skip_expt;                                                                 -- 次の顧客へ
+--//+UPD START 2009/07/14 0000663 M.Ohtsuki
+--            RAISE global_skip_expt;                                                                 -- 次の顧客へ
+--↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓
+            RAISE global_process_expt;
+--//+UPD END   2009/07/14 0000663 M.Ohtsuki
           END IF;
         END IF;                                                                                     -- 獲得営業員が未確定の終了
         -- ========================================
@@ -1527,7 +1581,11 @@ AS
           );
           -- エラーならば、顧客単位で処理をスキップする。
           IF (lv_retcode <> cv_status_normal) THEN
-            RAISE global_skip_expt;                                                                 -- 次の顧客へ
+--//+UPD START 2009/07/14 0000663 M.Ohtsuki
+--            RAISE global_skip_expt;                                                                 -- 次の顧客へ
+--↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓
+            RAISE global_process_expt;
+--//+UPD END   2009/07/14 0000663 M.Ohtsuki
           END IF;
         END IF;     
         -- 獲得者の登録 
@@ -1545,7 +1603,11 @@ AS
         );
         -- エラーならば、顧客単位で処理をスキップする。
         IF (lv_retcode <> cv_status_normal) THEN
-          RAISE global_skip_expt;                                                                   -- 次の顧客へ
+--//+UPD START 2009/07/14 0000663 M.Ohtsuki
+--            RAISE global_skip_expt;                                                                 -- 次の顧客へ
+--↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓
+            RAISE global_process_expt;
+--//+UPD END   2009/07/14 0000663 M.Ohtsuki
         END IF;
 --
       EXCEPTION

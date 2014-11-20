@@ -7,7 +7,7 @@ AS
  * Description      : 従業員マスタと資格ポイントマスタから各営業員の資格ポイントを算出し、
  *                  : 新規獲得ポイント顧客別履歴テーブルに登録します。
  * MD.050           : MD050_CSM_004_A03_新規獲得ポイント集計（資格ポイント集計処理）
- * Version          : 1.3
+ * Version          : 1.4
  *
  * Program List
  * -------------------- ------------------------------------------------------------
@@ -31,6 +31,7 @@ AS
  *  2009-04-15    1.1   M.Ohtsuki       ［T1_0568］新・旧職務コードNULL値の対応
  *  2009-07-01    1.2   M.Ohtsuki       ［SCS障害管理番号0000253］対応
  *  2009/07/07    1.3   M.Ohtsuki       ［SCS障害管理番号0000254］部署コード取得条件の不具合
+ *  2009/07/14    1.4   M.Ohtsuki       ［SCS障害管理番号0000663］想定外エラー発生時の不具合
  *****************************************************************************************/
 --
 --#######################  固定グローバル定数宣言部 START   #######################
@@ -464,7 +465,11 @@ AS
 --
       ov_errmsg  := lv_errmsg;
       ov_errbuf  := SUBSTRB(cv_pkg_name||cv_msg_cont||cv_prg_name||cv_msg_part||lv_errbuf,1,4000);
-      ov_retcode := cv_status_error;   -- ステータス:エラー
+--//+UPD  START  2009/07/14 0000663 M.Ohtsuki
+--      ov_retcode := cv_status_error;   -- ステータス:エラー
+--↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓
+      ov_retcode := cv_status_warn;   -- ステータス:警告
+--//+UPD  END    2009/07/14 0000663 M.Ohtsuki
     -- *** 部署データ抽出例外ハンドラ ***
     WHEN NO_DATA_FOUND THEN
       -- エラーメッセージ取得
@@ -480,7 +485,11 @@ AS
 --
       ov_errmsg  := lv_errmsg;
       ov_errbuf  := SUBSTRB(cv_pkg_name||cv_msg_cont||cv_prg_name||cv_msg_part||lv_errbuf,1,4000);
-      ov_retcode := cv_status_error;   -- ステータス:エラー
+--//+UPD  START  2009/07/14 0000663 M.Ohtsuki
+--      ov_retcode := cv_status_error;   -- ステータス:エラー
+--↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓
+      ov_retcode := cv_status_warn;   -- ステータス:警告
+--//+UPD  END    2009/07/14 0000663 M.Ohtsuki
 --
 --#################################  固定例外処理部 START   ####################################
 --
@@ -578,7 +587,11 @@ AS
       on_shikaku_point := NULL;
       ov_errmsg        := lv_errmsg;
       ov_errbuf        := SUBSTRB(cv_pkg_name||cv_msg_cont||cv_prg_name||cv_msg_part||lv_errbuf,1,4000);
-      ov_retcode       := cv_status_error;   -- ステータス:エラー
+--//+UPD  START  2009/07/14 0000663 M.Ohtsuki
+--      ov_retcode := cv_status_error;   -- ステータス:エラー
+--↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓
+      ov_retcode := cv_status_warn;   -- ステータス:警告
+--//\UPD  END    2009/07/14 0000663 M.Ohtsuki
     -- *** 資格ポイント未存在例外ハンドラ ***
     WHEN NO_DATA_FOUND THEN
       -- エラーメッセージ取得
@@ -599,7 +612,11 @@ AS
       on_shikaku_point := NULL;
       ov_errmsg        := lv_errmsg;
       ov_errbuf        := SUBSTRB(cv_pkg_name||cv_msg_cont||cv_prg_name||cv_msg_part||lv_errbuf,1,4000);
-      ov_retcode       := cv_status_error;   -- ステータス:エラー
+--//+UPD  START  2009/07/14 0000663 M.Ohtsuki
+--      ov_retcode := cv_status_error;   -- ステータス:エラー
+--↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓
+      ov_retcode := cv_status_warn;   -- ステータス:警告
+--//\UPD  END    2009/07/14 0000663 M.Ohtsuki
 --
 --#################################  固定例外処理部 START   ####################################
 --
@@ -699,7 +716,11 @@ AS
 --
       ov_errmsg  := lv_errmsg;
       ov_errbuf  := SUBSTRB(cv_pkg_name||cv_msg_cont||cv_prg_name||cv_msg_part||lv_errbuf,1,4000);
-      ov_retcode := cv_status_error;   -- ステータス:エラー
+--//+UPD  START  2009/07/14 0000663 M.Ohtsuki
+--      ov_retcode := cv_status_error;   -- ステータス:エラー
+--↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓
+      ov_retcode := cv_status_warn;   -- ステータス:警告
+--//+UPD  END    2009/07/14 0000663 M.Ohtsuki
 --
 --#################################  固定例外処理部 START   ####################################
 --
@@ -834,7 +855,11 @@ AS
 --
       ov_errmsg  := lv_errmsg;
       ov_errbuf  := SUBSTRB(cv_pkg_name||cv_msg_cont||cv_prg_name||cv_msg_part||lv_errbuf,1,4000);
-      ov_retcode := cv_status_error;   -- ステータス:エラー
+--//+UPD  START  2009/07/14 0000663 M.Ohtsuki
+--      ov_retcode := cv_status_error;   -- ステータス:エラー
+--↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓
+      ov_retcode := cv_status_warn;   -- ステータス:警告
+--//+UPD  END    2009/07/14 0000663 M.Ohtsuki
 --
 --
 --#################################  固定例外処理部 START   ####################################
@@ -1116,7 +1141,16 @@ AS
              ,ov_errmsg           =>   lv_errmsg
              );
             -- エラーならば、処理をスキップする。
-            IF (lv_retcode <> cv_status_normal) THEN
+--//+ADD START 2009/07/14 0000663 M.Ohtsuki
+            IF (lv_retcode = cv_status_error) THEN
+              RAISE global_process_expt;
+            END IF;
+--//+ADD END   2009/07/14 0000663 M.Ohtsuki            
+--//+UPD START 2009/07/14 0000663 M.Ohtsuki
+--            IF (lv_retcode <> cv_status_normal) THEN
+--↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓
+            IF (lv_retcode = cv_status_warn) THEN
+--//+UPD END   2009/07/14 0000663 M.Ohtsuki
               RAISE global_skip_expt;
             END IF;
             -- ================================================
@@ -1133,7 +1167,16 @@ AS
               ,ov_errmsg           =>   lv_errmsg
               );
             -- エラーならば、処理をスキップする。
-            IF (lv_retcode <> cv_status_normal) THEN
+--//+ADD START 2009/07/14 0000663 M.Ohtsuki
+            IF (lv_retcode = cv_status_error) THEN
+              RAISE global_process_expt;
+            END IF;
+--//+ADD END   2009/07/14 0000663 M.Ohtsuki            
+--//+UPD START 2009/07/14 0000663 M.Ohtsuki
+--            IF (lv_retcode <> cv_status_normal) THEN
+--↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓
+            IF (lv_retcode = cv_status_warn) THEN
+--//+UPD END   2009/07/14 0000663 M.Ohtsuki
               RAISE global_skip_expt;
             END IF;
             --旧のデータ取得
@@ -1149,7 +1192,16 @@ AS
               ,ov_errmsg           =>   lv_errmsg
               );
             -- エラーならば、処理をスキップする。
-            IF (lv_retcode <> cv_status_normal) THEN
+--//+ADD START 2009/07/14 0000663 M.Ohtsuki
+            IF (lv_retcode = cv_status_error) THEN
+              RAISE global_process_expt;
+            END IF;
+--//+ADD END   2009/07/14 0000663 M.Ohtsuki            
+--//+UPD START 2009/07/14 0000663 M.Ohtsuki
+--            IF (lv_retcode <> cv_status_normal) THEN
+--↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓
+            IF (lv_retcode = cv_status_warn) THEN
+--//+UPD END   2009/07/14 0000663 M.Ohtsuki
               RAISE global_skip_expt;
             END IF;
             -- ================================================
@@ -1166,7 +1218,16 @@ AS
               ,ov_errmsg           =>   lv_errmsg
               );
             -- エラーならば、処理をスキップする。
-            IF (lv_retcode <> cv_status_normal) THEN
+--//+ADD START 2009/07/14 0000663 M.Ohtsuki
+            IF (lv_retcode = cv_status_error) THEN
+              RAISE global_process_expt;
+            END IF;
+--//+ADD END   2009/07/14 0000663 M.Ohtsuki            
+--//+UPD START 2009/07/14 0000663 M.Ohtsuki
+--            IF (lv_retcode <> cv_status_normal) THEN
+--↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓
+            IF (lv_retcode = cv_status_warn) THEN
+--//+UPD END   2009/07/14 0000663 M.Ohtsuki
               RAISE global_skip_expt;
             END IF;
             --<<新/旧データの資格ポイントの比較>>---------------------------------------------------
@@ -1196,7 +1257,16 @@ AS
               ,ov_errmsg            => lv_errmsg                                       -- ユーザー・エラー・メッセージ
               );
             -- エラーならば、処理をスキップする。
-            IF (lv_retcode <> cv_status_normal) THEN
+--//+ADD START 2009/07/14 0000663 M.Ohtsuki
+            IF (lv_retcode = cv_status_error) THEN
+              RAISE global_process_expt;
+            END IF;
+--//+ADD END   2009/07/14 0000663 M.Ohtsuki            
+--//+UPD START 2009/07/14 0000663 M.Ohtsuki
+--            IF (lv_retcode <> cv_status_normal) THEN
+--↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓
+            IF (lv_retcode = cv_status_warn) THEN
+--//+UPD END   2009/07/14 0000663 M.Ohtsuki
               RAISE global_skip_expt;
             END IF;
             -- ======================================
@@ -1214,7 +1284,16 @@ AS
               ,ov_errmsg            => lv_errmsg                                       -- ユーザー・エラー・メッセージ
               );
             -- エラーならば、処理をスキップする。
-            IF (lv_retcode <> cv_status_normal) THEN
+--//+ADD START 2009/07/14 0000663 M.Ohtsuki
+            IF (lv_retcode = cv_status_error) THEN
+              RAISE global_process_expt;
+            END IF;
+--//+ADD END   2009/07/14 0000663 M.Ohtsuki            
+--//+UPD START 2009/07/14 0000663 M.Ohtsuki
+--            IF (lv_retcode <> cv_status_normal) THEN
+--↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓
+            IF (lv_retcode = cv_status_warn) THEN
+--//+UPD END   2009/07/14 0000663 M.Ohtsuki
               RAISE global_skip_expt;
             END IF;
           --資格ポイント抽出    処理不要の場合①
@@ -1240,7 +1319,16 @@ AS
               ,ov_errmsg           =>   lv_errmsg
               );
             -- エラーならば、処理をスキップする。
-            IF (lv_retcode <> cv_status_normal) THEN
+--//+ADD START 2009/07/14 0000663 M.Ohtsuki
+            IF (lv_retcode = cv_status_error) THEN
+              RAISE global_process_expt;
+            END IF;
+--//+ADD END   2009/07/14 0000663 M.Ohtsuki            
+--//+UPD START 2009/07/14 0000663 M.Ohtsuki
+--            IF (lv_retcode <> cv_status_normal) THEN
+--↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓
+            IF (lv_retcode = cv_status_warn) THEN
+--//+UPD END   2009/07/14 0000663 M.Ohtsuki
               RAISE global_skip_expt;
             END IF;
             -- ======================================
@@ -1253,7 +1341,16 @@ AS
               ,ov_errmsg            => lv_errmsg                                       -- ユーザー・エラー・メッセージ
               );
             -- エラーならば、処理をスキップする。
-            IF (lv_retcode <> cv_status_normal) THEN
+--//+ADD START 2009/07/14 0000663 M.Ohtsuki
+            IF (lv_retcode = cv_status_error) THEN
+              RAISE global_process_expt;
+            END IF;
+--//+ADD END   2009/07/14 0000663 M.Ohtsuki            
+--//+UPD START 2009/07/14 0000663 M.Ohtsuki
+--            IF (lv_retcode <> cv_status_normal) THEN
+--↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓
+            IF (lv_retcode = cv_status_warn) THEN
+--//+UPD END   2009/07/14 0000663 M.Ohtsuki
               RAISE global_skip_expt;
             END IF;
             -- ======================================
@@ -1271,7 +1368,16 @@ AS
               ,ov_errmsg            => lv_errmsg                                       -- ユーザー・エラー・メッセージ
               );
             -- エラーならば、処理をスキップする。
-            IF (lv_retcode <> cv_status_normal) THEN
+--//+ADD START 2009/07/14 0000663 M.Ohtsuki
+            IF (lv_retcode = cv_status_error) THEN
+              RAISE global_process_expt;
+            END IF;
+--//+ADD END   2009/07/14 0000663 M.Ohtsuki            
+--//+UPD START 2009/07/14 0000663 M.Ohtsuki
+--            IF (lv_retcode <> cv_status_normal) THEN
+--↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓
+            IF (lv_retcode = cv_status_warn) THEN
+--//+UPD END   2009/07/14 0000663 M.Ohtsuki
               RAISE global_skip_expt;
             END IF;
           --資格ポイント抽出処理不要の場合②
@@ -1297,7 +1403,16 @@ AS
               ,ov_errmsg           =>   lv_errmsg
               );
             -- エラーならば、処理をスキップする。
-            IF (lv_retcode <> cv_status_normal) THEN
+--//+ADD START 2009/07/14 0000663 M.Ohtsuki
+            IF (lv_retcode = cv_status_error) THEN
+              RAISE global_process_expt;
+            END IF;
+--//+ADD END   2009/07/14 0000663 M.Ohtsuki            
+--//+UPD START 2009/07/14 0000663 M.Ohtsuki
+--            IF (lv_retcode <> cv_status_normal) THEN
+--↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓
+            IF (lv_retcode = cv_status_warn) THEN
+--//+UPD END   2009/07/14 0000663 M.Ohtsuki
               RAISE global_skip_expt;
             END IF;
             -- ======================================
@@ -1310,7 +1425,16 @@ AS
               ,ov_errmsg            => lv_errmsg                                       -- ユーザー・エラー・メッセージ
               );
             -- エラーならば、処理をスキップする。
-            IF (lv_retcode <> cv_status_normal) THEN
+--//+ADD START 2009/07/14 0000663 M.Ohtsuki
+            IF (lv_retcode = cv_status_error) THEN
+              RAISE global_process_expt;
+            END IF;
+--//+ADD END   2009/07/14 0000663 M.Ohtsuki            
+--//+UPD START 2009/07/14 0000663 M.Ohtsuki
+--            IF (lv_retcode <> cv_status_normal) THEN
+--↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓
+            IF (lv_retcode = cv_status_warn) THEN
+--//+UPD END   2009/07/14 0000663 M.Ohtsuki
               RAISE global_skip_expt;
             END IF;
             -- ======================================
@@ -1328,7 +1452,16 @@ AS
               ,ov_errmsg            => lv_errmsg                                       -- ユーザー・エラー・メッセージ
               );
             -- エラーならば、処理をスキップする。
-            IF (lv_retcode <> cv_status_normal) THEN
+--//+ADD START 2009/07/14 0000663 M.Ohtsuki
+            IF (lv_retcode = cv_status_error) THEN
+              RAISE global_process_expt;
+            END IF;
+--//+ADD END   2009/07/14 0000663 M.Ohtsuki            
+--//+UPD START 2009/07/14 0000663 M.Ohtsuki
+--            IF (lv_retcode <> cv_status_normal) THEN
+--↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓
+            IF (lv_retcode = cv_status_warn) THEN
+--//+UPD END   2009/07/14 0000663 M.Ohtsuki
               RAISE global_skip_expt;
             END IF;
           END IF;
@@ -1352,7 +1485,16 @@ AS
             ,ov_errmsg           =>   lv_errmsg
             );
             -- エラーならば、処理をスキップする。
-            IF (lv_retcode <> cv_status_normal) THEN
+--//+ADD START 2009/07/14 0000663 M.Ohtsuki
+            IF (lv_retcode = cv_status_error) THEN
+              RAISE global_process_expt;
+            END IF;
+--//+ADD END   2009/07/14 0000663 M.Ohtsuki            
+--//+UPD START 2009/07/14 0000663 M.Ohtsuki
+--            IF (lv_retcode <> cv_status_normal) THEN
+--↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓
+            IF (lv_retcode = cv_status_warn) THEN
+--//+UPD END   2009/07/14 0000663 M.Ohtsuki
               RAISE global_skip_expt;
             END IF;
          -- ================================================
@@ -1369,7 +1511,16 @@ AS
             ,ov_errmsg           =>   lv_errmsg
             );
             -- エラーならば、処理をスキップする。
-            IF (lv_retcode <> cv_status_normal) THEN
+--//+ADD START 2009/07/14 0000663 M.Ohtsuki
+            IF (lv_retcode = cv_status_error) THEN
+              RAISE global_process_expt;
+            END IF;
+--//+ADD END   2009/07/14 0000663 M.Ohtsuki            
+--//+UPD START 2009/07/14 0000663 M.Ohtsuki
+--            IF (lv_retcode <> cv_status_normal) THEN
+--↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓
+            IF (lv_retcode = cv_status_warn) THEN
+--//+UPD END   2009/07/14 0000663 M.Ohtsuki
               RAISE global_skip_expt;
             END IF;
         -- ======================================
@@ -1382,7 +1533,16 @@ AS
             ,ov_errmsg            => lv_errmsg                                       -- ユーザー・エラー・メッセージ
             );
             -- エラーならば、処理をスキップする。
-            IF (lv_retcode <> cv_status_normal) THEN
+--//+ADD START 2009/07/14 0000663 M.Ohtsuki
+            IF (lv_retcode = cv_status_error) THEN
+              RAISE global_process_expt;
+            END IF;
+--//+ADD END   2009/07/14 0000663 M.Ohtsuki            
+--//+UPD START 2009/07/14 0000663 M.Ohtsuki
+--            IF (lv_retcode <> cv_status_normal) THEN
+--↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓
+            IF (lv_retcode = cv_status_warn) THEN
+--//+UPD END   2009/07/14 0000663 M.Ohtsuki
               RAISE global_skip_expt;
             END IF;
         -- ======================================
@@ -1400,7 +1560,16 @@ AS
             ,ov_errmsg            => lv_errmsg                                       -- ユーザー・エラー・メッセージ
             );
             -- エラーならば、処理をスキップする。
-            IF (lv_retcode <> cv_status_normal) THEN
+--//+ADD START 2009/07/14 0000663 M.Ohtsuki
+            IF (lv_retcode = cv_status_error) THEN
+              RAISE global_process_expt;
+            END IF;
+--//+ADD END   2009/07/14 0000663 M.Ohtsuki            
+--//+UPD START 2009/07/14 0000663 M.Ohtsuki
+--            IF (lv_retcode <> cv_status_normal) THEN
+--↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓
+            IF (lv_retcode = cv_status_warn) THEN
+--//+UPD END   2009/07/14 0000663 M.Ohtsuki
               RAISE global_skip_expt;
             END IF;
         ELSIF (get_eigyo_date_rec.hatsureibi < gv_inprocess_date) THEN            -- 発令日＜入力日付'YYYYMM'
@@ -1423,7 +1592,16 @@ AS
             ,ov_errmsg           =>   lv_errmsg
             );
             -- エラーならば、処理をスキップする。
-            IF (lv_retcode <> cv_status_normal) THEN
+--//+ADD START 2009/07/14 0000663 M.Ohtsuki
+            IF (lv_retcode = cv_status_error) THEN
+              RAISE global_process_expt;
+            END IF;
+--//+ADD END   2009/07/14 0000663 M.Ohtsuki            
+--//+UPD START 2009/07/14 0000663 M.Ohtsuki
+--            IF (lv_retcode <> cv_status_normal) THEN
+--↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓
+            IF (lv_retcode = cv_status_warn) THEN
+--//+UPD END   2009/07/14 0000663 M.Ohtsuki
               RAISE global_skip_expt;
             END IF;
          -- ================================================
@@ -1440,7 +1618,16 @@ AS
             ,ov_errmsg           =>   lv_errmsg
             );
             -- エラーならば、処理をスキップする。
-            IF (lv_retcode <> cv_status_normal) THEN
+--//+ADD START 2009/07/14 0000663 M.Ohtsuki
+            IF (lv_retcode = cv_status_error) THEN
+              RAISE global_process_expt;
+            END IF;
+--//+ADD END   2009/07/14 0000663 M.Ohtsuki            
+--//+UPD START 2009/07/14 0000663 M.Ohtsuki
+--            IF (lv_retcode <> cv_status_normal) THEN
+--↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓
+            IF (lv_retcode = cv_status_warn) THEN
+--//+UPD END   2009/07/14 0000663 M.Ohtsuki
               RAISE global_skip_expt;
             END IF;
         -- ======================================
@@ -1453,7 +1640,16 @@ AS
             ,ov_errmsg            => lv_errmsg                                       -- ユーザー・エラー・メッセージ
             );
             -- エラーならば、処理をスキップする。
-            IF (lv_retcode <> cv_status_normal) THEN
+--//+ADD START 2009/07/14 0000663 M.Ohtsuki
+            IF (lv_retcode = cv_status_error) THEN
+              RAISE global_process_expt;
+            END IF;
+--//+ADD END   2009/07/14 0000663 M.Ohtsuki            
+--//+UPD START 2009/07/14 0000663 M.Ohtsuki
+--            IF (lv_retcode <> cv_status_normal) THEN
+--↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓
+            IF (lv_retcode = cv_status_warn) THEN
+--//+UPD END   2009/07/14 0000663 M.Ohtsuki
               RAISE global_skip_expt;
             END IF;
         -- ======================================
@@ -1471,7 +1667,16 @@ AS
             ,ov_errmsg            => lv_errmsg                                       -- ユーザー・エラー・メッセージ
             );
             -- エラーならば、処理をスキップする。
-            IF (lv_retcode <> cv_status_normal) THEN
+--//+ADD START 2009/07/14 0000663 M.Ohtsuki
+            IF (lv_retcode = cv_status_error) THEN
+              RAISE global_process_expt;
+            END IF;
+--//+ADD END   2009/07/14 0000663 M.Ohtsuki            
+--//+UPD START 2009/07/14 0000663 M.Ohtsuki
+--            IF (lv_retcode <> cv_status_normal) THEN
+--↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓
+            IF (lv_retcode = cv_status_warn) THEN
+--//+UPD END   2009/07/14 0000663 M.Ohtsuki
               RAISE global_skip_expt;
             END IF;
         END IF;
