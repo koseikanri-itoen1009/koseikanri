@@ -7,7 +7,7 @@ AS
  * Description      : 配送先マスタインターフェース(Outbound)
  * MD.050           : マスタインタフェース T_MD050_BPO_800
  * MD.070           : 配送先マスタインタフェース T_MD070_BPO_80F
- * Version          : 1.6
+ * Version          : 1.7
  *
  * Program List
  * -------------------- ------------------------------------------------------------
@@ -31,6 +31,7 @@ AS
  *  2008/06/12    1.4  Oracle 丸下       日付項目書式変更
  *  2008/07/11    1.5  Oracle 椎名 昭圭  仕様不備障害#I_S_192.1.2対応
  *  2008/09/18    1.6  Oracle 山根 一浩  T_S_460,T_S_453,T_S_575,T_S_559対応
+ *  2008/10/08    1.7  Oracle 椎名 昭圭  I_S_329対応
  *
  *****************************************************************************************/
 --
@@ -109,7 +110,10 @@ AS
   -- 配送先マスタ情報を格納するレコード(出荷)
   TYPE ship_mst_rec IS RECORD(
     party_site_id      hz_party_sites.party_site_id%TYPE,        -- パーティサイトID
-    attribute18        hz_cust_acct_sites_all.attribute18%TYPE,  -- 配送先コード
+--2008/10/08 Mod ↓
+--    attribute18        hz_cust_acct_sites_all.attribute18%TYPE,  -- 配送先コード
+    attribute18        hz_locations.province%TYPE,  -- 配送先コード
+--2008/10/08 Mod ↑
     base_code          xxcmn_party_sites.base_code%TYPE,         -- 拠点コード
     party_site_name    xxcmn_party_sites.party_site_name%TYPE,   -- 配送先名称
     address_line1      xxcmn_party_sites.address_line1%TYPE,     -- 住所1
@@ -242,7 +246,10 @@ AS
     IF ((iv_ship_type IS NULL) OR
        (iv_ship_type = gv_ship)) THEN
       SELECT hps.party_site_id,          -- パーティサイトID
-             hcas.attribute18,           -- 配送先コード
+--2008/10/08 Mod ↓
+--             hcas.attribute18,           -- 配送先コード
+             hzl.province,-- 配送先コード
+--2008/10/08 Mod ↑
              xps.base_code,              -- 拠点コード
              xps.party_site_name,        -- 正式名
              xps.address_line1,          -- 住所1
@@ -278,13 +285,20 @@ AS
             hz_party_sites          hps,  -- パーティサイトマスタ
             xxcmn_party_sites       xps,  -- パーティサイトアドオンマスタ
             hz_cust_accounts        hca,  -- 顧客マスタ
-            hz_cust_acct_sites_all  hcas  -- 顧客所在地マスタ
+--2008/10/08 Mod ↓
+--            hz_cust_acct_sites_all  hcas  -- 顧客所在地マスタ
+            hz_cust_acct_sites_all  hcas,  -- 顧客所在地マスタ
+            hz_locations            hzl
+--2008/10/08 Mod ↑
       WHERE hca.customer_class_code   <> cv_cust_class
       AND   hps.party_site_id         =  xps.party_site_id
       AND   hps.party_site_id         =  hcas.party_site_id
       AND   hps.party_id              =  hp.party_id
       AND   hp.party_id               =  hca.party_id
       AND   hcas.org_id               =  FND_PROFILE.VALUE('ORG_ID')
+--2008/10/08 Mod ↓
+      AND     hps.location_id         = hzl.location_id
+--2008/10/08 Mod ↑
       AND   (EXISTS (
               SELECT 1
               FROM   hz_party_sites  hps1
@@ -301,7 +315,10 @@ AS
               AND    xps1.last_update_date < gd_sysdate
               AND    ROWNUM = 1)
             )
-      ORDER BY hcas.attribute18, xps.start_date_active;
+--2008/10/08 Mod ↓
+--      ORDER BY hcas.attribute18, xps.start_date_active;
+      ORDER BY hzl.province, xps.start_date_active;
+--2008/10/08 Mod ↑
 --
     END IF;
 --
