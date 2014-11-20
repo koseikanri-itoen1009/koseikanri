@@ -9,7 +9,7 @@ AS
  *                    
  * MD050            : MD050_CSO_015_A04_自販機-EBSインタフェース：（OUT）物件マスタ情報
  *                    
- * Version          : 1.8
+ * Version          : 1.9
  *
  * Program List
  * ---------------------------- ----------------------------------------------------------
@@ -24,6 +24,7 @@ AS
  *  update_wk_reqst_tbl         作業依頼／発注情報処理結果テーブル更新(A-12)
  *  close_csv_file              CSVファイルクローズ処理 (A-14)
  *  update_wk_data_tbl          作業データテーブル更新(A-18)
+ *  update_cust_shift_tbl       顧客移行情報テーブル更新(A-19)
  *  submain                     メイン処理プロシージャ
  *                                セーブポイント(ファイルクローズ失敗用)発行(A-4)
  *                                拠点変更物件マスタ情報抽出 (A-5)
@@ -44,7 +45,8 @@ AS
  *  2009-05-22    1.5   Tomoko.Mori      T1_1131対応 地区コード不正
  *  2009-05-29    1.6   K.Satomura       T1_1017対応
  *  2009-06-18    1.7   K.Satomura       T1_1017再修正対応
- *  2009-06-24    1.8   M.Ohtsuki       【SCS障害管理番号_0000158】対応 
+ *  2009-06-24    1.8   M.Ohtsuki       【SCS障害管理番号_0000158】対応
+ *  2009-08-11    1.9   K.Satomura      【SCS障害管理番号_0001000】対応
  *****************************************************************************************/
 --
 --#######################  固定グローバル定数宣言部 START   #######################
@@ -146,7 +148,11 @@ AS
   cv_tkn_number_23  CONSTANT VARCHAR2(100) := 'APP-XXCSO1-00100';  -- 取引タイプID取得エラー
   cv_tkn_number_24  CONSTANT VARCHAR2(100) := 'APP-XXCSO1-00101';  -- 取引タイプID抽出エラー
   cv_tkn_number_25  CONSTANT VARCHAR2(100) := 'APP-XXCSO1-00158';  -- データ登録、更新失敗
-
+  /* 2009.08.11 K.Satomura 0001000対応 START */
+  cv_tkn_number_26  CONSTANT VARCHAR2(100) := 'APP-XXCSO1-00505';  -- 対象件数メッセージ
+  cv_tkn_number_27  CONSTANT VARCHAR2(100) := 'APP-XXCSO1-00506';  -- 成功件数メッセージ
+  cv_tkn_number_28  CONSTANT VARCHAR2(100) := 'APP-XXCSO1-00507';  -- エラー件数メッセージ
+  /* 2009.08.11 K.Satomura 0001000対応 START */
   -- トークンコード
   cv_tkn_bukken          CONSTANT VARCHAR2(20) := 'BUKKEN';                -- 物件コード
   cv_tkn_err_msg         CONSTANT VARCHAR2(20) := 'ERR_MSG';               -- エラーメッセージ
@@ -168,6 +174,10 @@ AS
   cv_tkn_status          CONSTANT VARCHAR2(20) := 'STATUS';                -- リターンステータス(日付書式チェック結果)
   cv_tkn_message         CONSTANT VARCHAR2(20) := 'MESSAGE';               -- メッセージ 
   cv_tkn_src_tran_type   CONSTANT VARCHAR2(20) := 'SRC_TRAN_TYPE';
+  /* 2009.08.11 K.Satomura 0001000対応 START */
+  cv_tkn_proc_name       CONSTANT VARCHAR2(20) := 'PROC_NAME'; -- 処理名
+  cv_tkn_count           CONSTANT VARCHAR2(20) := 'COUNT';     -- 件数
+  /* 2009.08.11 K.Satomura 0001000対応 END */
 
 --
   cb_true                CONSTANT BOOLEAN := TRUE;
@@ -207,6 +217,18 @@ AS
   -- ユーザー定義グローバル変数
   -- ===============================
   gb_rollback_upd_flg    BOOLEAN;                                     -- ロールバック判断
+  /* 2009.08.11 K.Satomura 0001000対応 START */
+  gn_disposal_count      NUMBER; -- 廃棄作業依頼対象件数
+  gn_device_count        NUMBER; -- 機器区分対象件数
+  gn_base_change_count   NUMBER; -- 拠点変更物件対象件数
+  gn_disposal_norm_count NUMBER; -- 廃棄作業依頼正常件数
+  gn_device_norm_count   NUMBER; -- 機器区分正常件数
+  gn_base_chg_norm_count NUMBER; -- 拠点変更物件正常件数
+  gn_disposal_err_count  NUMBER; -- 廃棄作業依頼エラー件数
+  gn_device_err_count    NUMBER; -- 機器区分エラー件数
+  gn_base_chg_err_count  NUMBER; -- 拠点変更物件エラー件数
+  /* 2009.08.11 K.Satomura 0001000対応 END */
+
   -- ファイル・ハンドルの宣言
   gf_file_hand    UTL_FILE.FILE_TYPE;
   gt_txn_type_id  csi_txn_types.transaction_type_id%TYPE;        -- 取引タイプID
@@ -229,6 +251,9 @@ AS
       ,kiki_kbn              csi_item_instances.instance_type_code%TYPE           -- 機器区分
       ,seq_no                xxcso_in_work_data.seq_no%TYPE                       -- シーケンス番号
       /* 2009.05.29 K.Satomura T1_1017対応 END */
+      /* 2009.08.11 K.Satomura 0001000対応 START */
+      ,cust_shift_id         xxcok_cust_shift_info.cust_shift_id%TYPE             -- 顧客移行情報ID
+      /* 2009.08.11 K.Satomura 0001000 対応 END */
     );
   --*** ロック例外 ***
   global_lock_expt        EXCEPTION;                                 -- ロック例外
@@ -305,21 +330,23 @@ AS
       ,buff   => lv_init_msg || CHR(10) ||
                  ''
     );
+    /* 2009.08.11 K.Satomura 0001000対応 START */
     -- 拠点変更・廃棄情報CSV出力処理区分が「’1’廃棄情報出力処理」、
     -- 或いは’「2’拠点変更出力処理」であるかのチェック
-    IF (NVL(gv_csv_process_kbn, ' ') <> cv_csv_proc_kbn_1 
-          AND NVL(gv_csv_process_kbn, ' ') <> cv_csv_proc_kbn_2) THEN
+    --IF (NVL(gv_csv_process_kbn, ' ') <> cv_csv_proc_kbn_1 
+    --      AND NVL(gv_csv_process_kbn, ' ') <> cv_csv_proc_kbn_2) THEN
 --
-      lv_errmsg := xxccp_common_pkg.get_msg(
-              iv_application  => cv_app_name                 -- アプリケーション短縮名
-             ,iv_name         => cv_tkn_number_02            -- メッセージコード
-             ,iv_token_name1  => cv_tkn_csv_proc_kbn
-             ,iv_token_value1 => gv_csv_process_kbn
-      );
-      lv_errbuf  := lv_errmsg || SQLERRM;
-      RAISE global_api_expt;
+    --  lv_errmsg := xxccp_common_pkg.get_msg(
+    --          iv_application  => cv_app_name                 -- アプリケーション短縮名
+    --         ,iv_name         => cv_tkn_number_02            -- メッセージコード
+    --         ,iv_token_name1  => cv_tkn_csv_proc_kbn
+    --         ,iv_token_value1 => gv_csv_process_kbn
+    --  );
+    --  lv_errbuf  := lv_errmsg || SQLERRM;
+    --  RAISE global_api_expt;
 --
-    END IF;      
+    --END IF;
+    /* 2009.08.11 K.Satomura 0001000対応 END */
     -- パラメータ処理日付が「NULL」であるかのチェック
     IF (gv_date_value IS NOT NULL) THEN
       -- 日付書式チェック
@@ -992,6 +1019,9 @@ AS
     in_instance_id           IN  csi_item_instances.instance_id%TYPE,           -- インスタンスID
     in_object_version_number IN csi_item_instances.object_version_number%TYPE,  -- オブジェクトバージョン
     iv_external_reference    IN csi_item_instances.external_reference%TYPE,     -- 物件コード
+    /* 2009.08.11 K.Satomura 0001000対応 START */
+    id_process_date          IN DATE,
+    /* 2009.08.11 K.Satomura 0001000対応 END */
     ov_errbuf       OUT NOCOPY VARCHAR2,               -- エラー・メッセージ           --# 固定 #
     ov_retcode      OUT NOCOPY VARCHAR2,               -- リターン・コード             --# 固定 #
     ov_errmsg       OUT NOCOPY VARCHAR2                -- ユーザー・エラー・メッセージ --# 固定 #
@@ -1060,7 +1090,10 @@ AS
     l_instance_rec.program_application_id     := cn_program_application_id;    -- PROGRAM_APPLICATION_ID
     l_instance_rec.program_id                 := cn_program_id;                -- PROGRAM_ID
     l_instance_rec.program_update_date        := cd_program_update_date;       -- PROGRAM_UPDATE_DATE
-    l_instance_rec.attribute7                 := TO_CHAR(SYSDATE,'YYYY/MM/DD');
+    /* 2009.08.11 K.Satomura 0001000対応 START */
+    --l_instance_rec.attribute7                 := TO_CHAR(SYSDATE,'YYYY/MM/DD');
+    l_instance_rec.attribute7                 := TO_CHAR(id_process_date, 'YYYY/MM/DD');
+    /* 2009.08.11 K.Satomura 0001000対応 END */
     -- 取引レコードデータ作成
     l_txn_rec.transaction_date                   := SYSDATE;
     l_txn_rec.source_transaction_date            := SYSDATE;
@@ -1865,6 +1898,170 @@ AS
     --
   END update_wk_data_tbl;
   /* 2009.05.29 K.Satomura T1_1017対応 END */
+  /* 2009.08.11 K.Satomura 0001000対応 START */
+  /**********************************************************************************
+   * Procedure Name   : update_cust_shift_tbl
+   * Description      : 顧客移行情報テーブル更新 (A-19)
+   ***********************************************************************************/
+  PROCEDURE update_cust_shift_tbl(
+     i_get_rec  IN         g_value_rtype -- 抽出出力データ
+    ,ov_errbuf  OUT NOCOPY VARCHAR2      -- エラー・メッセージ           --# 固定 #
+    ,ov_retcode OUT NOCOPY VARCHAR2      -- リターン・コード             --# 固定 #
+    ,ov_errmsg  OUT NOCOPY VARCHAR2      -- ユーザー・エラー・メッセージ --# 固定 #
+  )
+  IS
+    -- ===============================
+    -- 固定ローカル定数
+    -- ===============================
+    cv_prg_name CONSTANT VARCHAR2(100) := 'update_cust_shift_tbl'; -- プログラム名
+    --
+    --#######################  固定ローカル変数宣言部 START   ######################
+    --
+    lv_errbuf  VARCHAR2(5000);  -- エラー・メッセージ
+    lv_retcode VARCHAR2(1);     -- リターン・コード
+    lv_errmsg  VARCHAR2(5000);  -- ユーザー・エラー・メッセージ
+    --
+    --###########################  固定部 END   ####################################
+    --
+    -- ===============================
+    -- ユーザー宣言部
+    -- ===============================
+    -- *** ローカル定数 ***
+    cv_cust_shift_info_table CONSTANT VARCHAR2(100) := '顧客移行情報テーブル';
+    cv_flag_on               CONSTANT VARCHAR2(1)   := '1';
+    cv_process_upd           CONSTANT VARCHAR2(100) := '更新';
+    --
+    -- *** ローカル変数 ***
+    ln_rowid ROWID;
+    --
+    -- *** ローカル・レコード ***
+    -- *** ローカル例外 ***
+    skip_process_expt EXCEPTION; -- データ出力処理例外
+    --
+  BEGIN
+    --
+    --##################  固定ステータス初期化部 START   ###################
+    --
+    ov_retcode := cv_status_normal;
+    --
+    --###########################  固定部 END   ############################
+    --
+    BEGIN
+      SELECT xcs.ROWID
+      INTO   ln_rowid
+      FROM   xxcok_cust_shift_info xcs -- 顧客移行情報テーブル
+      WHERE  xcs.cust_shift_id = i_get_rec.cust_shift_id
+      FOR UPDATE NOWAIT
+      ;
+    EXCEPTION
+      WHEN global_lock_expt THEN
+        -- ロック失敗した場合の例外
+        lv_errmsg := xxccp_common_pkg.get_msg(
+                        iv_application  => cv_app_name                              -- アプリケーション短縮名
+                       ,iv_name         => cv_tkn_number_13                         -- メッセージコード
+                       ,iv_token_name1  => cv_tkn_table                             -- トークンコード1
+                       ,iv_token_value1 => cv_cust_shift_info_table                 -- トークン値1
+                       ,iv_token_name2  => cv_tkn_req_line_id                       -- トークンコード2
+                       ,iv_token_value2 => TO_CHAR(i_get_rec.requisition_line_id)   -- トークン値2
+                       ,iv_token_name3  => cv_tkn_req_header_id                     -- トークンコード3
+                       ,iv_token_value3 => TO_CHAR(i_get_rec.requisition_header_id) -- トークン値3
+                       ,iv_token_name4  => cv_tkn_line_num                          -- トークンコード4
+                       ,iv_token_value4 => TO_CHAR(i_get_rec.line_num)              -- トークン値4
+                     );
+        --
+        lv_errbuf := lv_errmsg;
+        RAISE skip_process_expt;
+        --
+      WHEN OTHERS THEN
+        -- 抽出に失敗した場合の例外
+        lv_errmsg := xxccp_common_pkg.get_msg(
+                        iv_application  => cv_app_name                              -- アプリケーション短縮名
+                       ,iv_name         => cv_tkn_number_21                         -- メッセージコード
+                       ,iv_token_name1  => cv_tkn_table                             -- トークンコード1
+                       ,iv_token_value1 => cv_cust_shift_info_table                 -- トークン値1
+                       ,iv_token_name2  => cv_tkn_req_line_id                       -- トークンコード2
+                       ,iv_token_value2 => TO_CHAR(i_get_rec.requisition_line_id)   -- トークン値2
+                       ,iv_token_name3  => cv_tkn_req_header_id                     -- トークンコード3
+                       ,iv_token_value3 => TO_CHAR(i_get_rec.requisition_header_id) -- トークン値3
+                       ,iv_token_name4  => cv_tkn_line_num                          -- トークンコード4
+                       ,iv_token_value4 => TO_CHAR(i_get_rec.line_num)              -- トークン値4
+                       ,iv_token_name5  => cv_tkn_err_msg                           -- トークンコード5
+                       ,iv_token_value5 => SQLERRM                                  -- トークン値5
+                     );
+        --
+        lv_errbuf := lv_errmsg;
+        RAISE skip_process_expt;
+        --
+    END;
+    --
+    -- 顧客移行情報テーブル更新
+    BEGIN
+      UPDATE xxcok_cust_shift_info xiw -- 顧客移行情報テーブル
+      SET    business_vd_if_flag    = cv_flag_on                -- 営業自販機連携情報フラグ
+            ,last_updated_by        = cn_last_updated_by        -- 最終更新者
+            ,last_update_date       = cd_last_update_date       -- 最終更新日
+            ,last_update_login      = cn_last_update_login      -- 最終更新ログイン
+            ,request_id             = cn_request_id             -- 要求ID
+            ,program_application_id = cn_program_application_id -- コンカレント・プログラム・アプリケーションID
+            ,program_id             = cn_program_id             -- コンカレント・プログラムID
+            ,program_update_date    = cd_program_update_date    -- プログラム更新日
+      WHERE  ROWID = ln_rowid
+      ;
+    EXCEPTION
+      -- 更新に失敗した場合の例外
+      WHEN OTHERS THEN
+        gb_rollback_upd_flg := TRUE;
+        lv_errmsg := xxccp_common_pkg.get_msg(
+                        iv_application  => cv_app_name                              -- アプリケーション短縮名
+                       ,iv_name         => cv_tkn_number_14                         -- メッセージコード
+                       ,iv_token_name1  => cv_tkn_table                             -- トークンコード1
+                       ,iv_token_value1 => cv_cust_shift_info_table                 -- トークン値1
+                       ,iv_token_name2  => cv_tkn_process                           -- トークンコード2
+                       ,iv_token_value2 => cv_process_upd                           -- トークン値2
+                       ,iv_token_name3  => cv_tkn_req_line_id                       -- トークンコード3
+                       ,iv_token_value3 => TO_CHAR(i_get_rec.requisition_line_id)   -- トークン値3
+                       ,iv_token_name4  => cv_tkn_req_header_id                     -- トークンコード4
+                       ,iv_token_value4 => TO_CHAR(i_get_rec.requisition_header_id) -- トークン値4
+                       ,iv_token_name5  => cv_tkn_line_num                          -- トークンコード5
+                       ,iv_token_value5 => TO_CHAR(i_get_rec.line_num)              -- トークン値5
+                       ,iv_token_name6  => cv_tkn_err_msg                           -- トークンコード6
+                       ,iv_token_value6 => SQLERRM                                  -- トークン値6
+                     );
+        --
+        lv_errbuf := lv_errmsg;
+        RAISE skip_process_expt;
+        --
+    END;
+    --
+  EXCEPTION
+    WHEN skip_process_expt THEN
+      -- *** ファイル処理例外ハンドラ ***
+      ov_errmsg  := lv_errmsg;
+      ov_errbuf  := SUBSTRB(cv_pkg_name||cv_msg_cont||cv_prg_name||cv_msg_part||lv_errbuf,1,5000);
+      ov_retcode := cv_status_error;
+    --
+    --#################################  固定例外処理部 START   ####################################
+    --
+    WHEN global_api_expt THEN
+      -- *** 共通関数例外ハンドラ ***
+      ov_errmsg  := lv_errmsg;
+      ov_errbuf  := SUBSTRB(cv_pkg_name||cv_msg_cont||cv_prg_name||cv_msg_part||lv_errbuf,1,5000);
+      ov_retcode := cv_status_error;
+      --
+    WHEN global_api_others_expt THEN
+      -- *** 共通関数OTHERS例外ハンドラ ***
+      ov_errbuf  := cv_pkg_name||cv_msg_cont||cv_prg_name||cv_msg_part||SQLERRM;
+      ov_retcode := cv_status_error;
+      --
+    WHEN OTHERS THEN
+      -- *** OTHERS例外ハンドラ ***
+      ov_errbuf  := cv_pkg_name||cv_msg_cont||cv_prg_name||cv_msg_part||SQLERRM;
+      ov_retcode := cv_status_error;
+    --
+    --#####################################  固定部 END   ##########################################
+    --
+  END update_cust_shift_tbl;
+  /* 2009.08.11 K.Satomura 0001000対応 END */
   /**********************************************************************************
    * Procedure Name   : submain
    * Description      : メイン処理プロシージャ
@@ -1913,6 +2110,10 @@ AS
     cv_hz_status_active     CONSTANT VARCHAR2(1)   := 'A'; -- ステータス＝有効
     cv_work_ipro_data2      CONSTANT VARCHAR2(100) := '廃棄作業依頼情報（機器区分）';
     /* 2009.05.29 K.Satomura T1_1017対応 END */
+    /* 2009.08.11 K.Satomura 0001000対応 START */
+    cv_flag_on              CONSTANT VARCHAR2(1)   := '1';
+    cv_flag_off             CONSTANT VARCHAR2(1)   := '0';
+    /* 2009.08.11 K.Satomura 0001000対応 END */
     -- *** ローカル変数 ***
     lv_sub_retcode         VARCHAR2(1);                                 -- サーブメイン用リターン・コード
     lv_sub_msg             VARCHAR2(5000);                              -- 警告用メッセージ
@@ -1942,8 +2143,10 @@ AS
     -- メッセージ出力用
     lv_msg          VARCHAR2(2000);
     /* 2009.05.29 K.Satomura T1_1017対応 START */
-    ln_disposal_count     NUMBER; -- 廃棄作業依頼情報データ件数
-    ln_device_count       NUMBER; -- 機器区分情報データ件数
+    /* 2009.08.11 K.Satomura 0001000対応 START */
+    --ln_disposal_count     NUMBER; -- 廃棄作業依頼情報データ件数
+    --ln_device_count       NUMBER; -- 機器区分情報データ件数
+    /* 2009.08.11 K.Satomura 0001000対応 EMD */
     lt_instance_type_code csi_item_instances.instance_type_code%TYPE;
     lt_seq_no             xxcso_in_work_data.seq_no%TYPE;
     /* 2009.05.29 K.Satomura T1_1017対応 END */
@@ -1960,21 +2163,51 @@ AS
             ,xabv.old_head_office_code old_head_office_code   -- 旧本部コード
             ,xabv.row_order row_order                         -- 拠点並び順
             ,cii.object_version_number object_version_number  -- オブジェクトバージョン
+            /* 2009.08.11 K.Satomura 0001000対応 START */
+            ,xcs.cust_shift_id cust_shift_id                  -- 顧客移行情報ID
+            /* 2009.08.11 K.Satomura 0001000対応 END */
       FROM   csi_item_instances cii                           -- インストールベースマスタ
             ,xxcso_cust_accounts_v xcav                       -- 顧客マスタビュー
             ,xxcso_aff_base_v xabv                            -- AFF部門マスタビュー
+            /* 2009.08.11 K.Satomura 0001000対応 START */
+            ,xxcok_cust_shift_info xcs                        -- 顧客移行情報テーブル
+            /* 2009.08.11 K.Satomura 0001000対応 END */
       WHERE cii.owner_party_account_id = xcav.cust_account_id
-        AND NVL(xcav.sale_base_code, ' ') <> NVL(xcav.past_sale_base_code, ' ')
+        /* 2009.08.11 K.Satomura 0001000対応 START */
+        --AND NVL(xcav.sale_base_code, ' ') <> NVL(xcav.past_sale_base_code, ' ')
+        /* 2009.08.11 K.Satomura 0001000対応 END */
         AND xcav.sale_base_code = xabv.base_code
         AND NVL(xabv.start_date_active,ld_process_date_t) <= ld_process_date_t
         AND NVL(xabv.end_date_active,ld_process_date_t) >= ld_process_date_t
         AND xcav.account_status = cv_active_status
-        AND ((TRUNC(TO_DATE(cii.attribute7, cv_final_format)) = NVL(TRUNC(TO_DATE(gv_date_value, cv_final_format)),
-                                                                  TRUNC(TO_DATE(cii.attribute7, cv_final_format)))
-             AND gv_date_value IS NOT NULL)
-            OR  (gv_date_value IS NULL))
+        /* 2009.08.11 K.Satomura 0001000対応 START */
+        AND xcav.rsv_sale_base_code IS NULL
+        AND xcav.account_number     = xcs.cust_code
+        AND xcs.status              = cv_active_status
+        AND xcs.base_split_flag     = cv_flag_on
+        /* 2009.08.11 K.Satomura 0001000対応 END */
+        AND (
+              (
+                    TRUNC(TO_DATE(cii.attribute7, cv_final_format)) = NVL(TRUNC(TO_DATE(gv_date_value, cv_final_format)),
+                                                                        TRUNC(TO_DATE(cii.attribute7, cv_final_format)))
+              /* 2009.08.11 K.Satomura 0001000対応 START */
+                --AND gv_date_value IS NOT NULL)
+                AND gv_date_value IS NOT NULL
+                AND xcs.business_vd_if_flag = cv_flag_on
+              )
+              /* 2009.08.11 K.Satomura 0001000対応 END */
+            OR
+              (
+                    gv_date_value IS NULL
+                /* 2009.08.11 K.Satomura 0001000対応 START */
+                AND xcs.business_vd_if_flag = cv_flag_off
+                /* 2009.08.11 K.Satomura 0001000対応 END */
+              )
+            )
         /* 2009.04.13 K.Satomura T1_0409対応 START */
-        AND xcav.past_sale_base_code IS NOT NULL
+        /* 2009.08.11 K.Satomura 0001000対応 START */
+        --AND xcav.past_sale_base_code IS NOT NULL
+        /* 2009.08.11 K.Satomura 0001000対応 END */
         /* 2009.04.13 K.Satomura T1_0409対応 END */
         ;
     -- 廃棄作業依頼情報データ抽出
@@ -2058,10 +2291,16 @@ AS
          xiw.vdms_interface_date = TO_DATE(gv_date_value, cv_final_format)))                        -- 自販機S連携日 = 入力パラメータ.処理日付
     /* 2009.06.24 M.Ohtsuki 【SCS障害管理番号_0000158】対応 END */
       AND    cii.external_reference    = xiw.install_code1
-      AND    prh.segment1              = TO_CHAR(xiw.po_number)
+      /* 2009.08.11 K.Satomura 0001000対応 START */
+      --AND    prh.segment1              = TO_CHAR(xiw.po_number)
+      AND    prh.segment1              = TO_CHAR(xiw.po_req_number)
+      /* 2009.08.11 K.Satomura 0001000対応 END */
       AND    prh.authorization_status  = cv_status_app
       AND    prh.requisition_header_id = xrl.requisition_header_id
-      AND    xrl.line_num              = xiw.po_line_number
+      /* 2009.08.11 K.Satomura 0001000対応 START */
+      --AND    xrl.line_num              = xiw.po_line_number
+      AND    xrl.line_num              = xiw.line_num
+      /* 2009.08.11 K.Satomura 0001000対応 END */
       AND    (
                (
                      ld_process_date_t BETWEEN TRUNC(NVL(xrl.lookup_start_date, ld_process_date_t))
@@ -2106,6 +2345,17 @@ AS
     gn_target_cnt := 0;
     gn_normal_cnt := 0;
     gn_error_cnt  := 0;
+    /* 2009.08.11 K.Satomura 0001000対応 START */
+    gn_disposal_count      := 0;
+    gn_device_count        := 0;
+    gn_base_change_count   := 0;
+    gn_disposal_norm_count := 0;
+    gn_device_norm_count   := 0;
+    gn_base_chg_norm_count := 0;
+    gn_disposal_err_count  := 0;
+    gn_device_err_count    := 0;
+    gn_base_chg_err_count  := 0;
+    /* 2009.08.11 K.Satomura 0001000対応 END */
 --
     -- ローカル変数初期化
     gb_rollback_upd_flg := cb_false;
@@ -2155,703 +2405,742 @@ AS
       RAISE global_process_expt;
     END IF;
 --
-    IF (gv_csv_process_kbn = cv_csv_proc_kbn_1) THEN  -- 廃棄情報出力処理
+    /* 2009.08.11 K.Satomura 0001000対応 START */
+    --IF (gv_csv_process_kbn = cv_csv_proc_kbn_1) THEN  -- 廃棄情報出力処理
+    /* 2009.08.11 K.Satomura 0001000対応 END */
 --
-      -- =================================================
-      -- A-9.廃棄作業依頼情報データ抽出
-      -- =================================================
+    -- =================================================
+    -- A-9.廃棄作業依頼情報データ抽出
+    -- =================================================
 --
-      -- カーソルオープン
-      OPEN bukken_info_dis_work_data_cur;
-      -- *** DEBUG_LOG ***
-      -- カーソルオープンしたことをログ出力
-      fnd_file.put_line(
-         which  => FND_FILE.LOG
-        ,buff   => cv_debug_msg_copn || CHR(10) ||
-                   ''
-      );
+    -- カーソルオープン
+    OPEN bukken_info_dis_work_data_cur;
+    -- *** DEBUG_LOG ***
+    -- カーソルオープンしたことをログ出力
+    fnd_file.put_line(
+       which  => FND_FILE.LOG
+      ,buff   => cv_debug_msg_copn || CHR(10) ||
+                 ''
+    );
 --
-      <<get_disposal_data_loop>>
-      LOOP
+    <<get_disposal_data_loop>>
+    LOOP
 --
-        BEGIN
-          FETCH bukken_info_dis_work_data_cur INTO l_dis_work_data_cur;
-        EXCEPTION
-          WHEN OTHERS THEN
-            -- データ抽出エラーメッセージ
-            lv_errmsg := xxccp_common_pkg.get_msg(
-                                 iv_application  => cv_app_name               -- アプリケーション短縮名
-                                ,iv_name         => cv_tkn_number_08          -- メッセージコード
-                                ,iv_token_name1  => cv_tkn_table              -- トークンコード1
-                                ,iv_token_value1 => cv_work_ipro_data         -- トークン値1
-                                ,iv_token_name2  => cv_tkn_err_msg            -- トークンコード2
-                                ,iv_token_value2 => SQLERRM                   -- トークン値2
-                );
-            lv_errbuf  := lv_errmsg||SQLERRM;
-            RAISE global_process_expt;
-        END;
---
-        BEGIN
-          -- データ初期化
-          lv_sub_msg := NULL;
-          lv_sub_buf := NULL;
-          -- レコード変数初期化
-          l_get_rec         := NULL;
-          -- 処理対象件数格納
-          /* 2009.05.29 K.Satomura T1_1017対応 START */
-          --gn_target_cnt := bukken_info_dis_work_data_cur%ROWCOUNT;
-          ln_disposal_count := bukken_info_dis_work_data_cur%ROWCOUNT;
-          /* 2009.05.29 K.Satomura T1_1017対応 END */
-          -- 対象件数が0件の場合
-          EXIT WHEN bukken_info_dis_work_data_cur%NOTFOUND
-          OR  bukken_info_dis_work_data_cur%ROWCOUNT = 0;
-          -- 取得データをローカル変数に格納
-          lt_req_line_id        := l_dis_work_data_cur.requisition_line_id;      -- 発注依頼明細ID
-          lt_external_reference := l_dis_work_data_cur.abolishment_install_code; -- 物件コード
-          lt_instance_id        := l_dis_work_data_cur.instance_id;              -- インスタンスID
-          lt_old_head_offi_code := l_dis_work_data_cur.old_head_office_code;     -- 旧本部コード
-          lt_row_order          := l_dis_work_data_cur.row_order;                -- 拠点並び順
-          lt_sale_base_code     := l_dis_work_data_cur.sale_base_code;           -- 拠点(部門)コード
-          lt_req_header_id      := l_dis_work_data_cur.requisition_header_id;
-            -- ログ用発注依頼ヘッダID
-          lt_line_num            := l_dis_work_data_cur.line_num;            -- ログ用発注依頼明細番号
-          -- 機器状態3(廃棄情報)と廃棄決裁日の追加属性値を抽出
-          -- 機器状態3(廃棄情報)
-          lt_jotai_kbn3 := xxcso_ib_common_pkg.get_ib_ext_attribs2(
-                              in_instance_id    => lt_instance_id           -- インスタンスID
-                             ,iv_attribute_code => cv_jotai_kbn3            -- 属性コード
-          );
---
-          lv_format := 'YYYY/MM/DD';
-          -- 廃棄決裁日
-          lt_haiki_date := xxcso_ib_common_pkg.get_ib_ext_attribs2(
-                              in_instance_id    => lt_instance_id           -- インスタンスID
-                             ,iv_attribute_code => cv_haikikessai_dt        -- 属性コード
-          );
-          IF (lt_haiki_date IS NOT NULL) THEN
-            --取得したパラメータの書式が指定された日付の書式（YYYYMMDD）であるかを確認
-            lb_check_date_value := xxcso_util_common_pkg.check_date(
-                                          iv_date         => lt_haiki_date
-                                         ,iv_date_format  => lv_format
-            );
-            --リターンステータスが「FALSE」の場合,例外処理を行う
-            IF (lb_check_date_value = cb_false) THEN
-              lv_sub_msg := xxccp_common_pkg.get_msg(
+      BEGIN
+        FETCH bukken_info_dis_work_data_cur INTO l_dis_work_data_cur;
+      EXCEPTION
+        WHEN OTHERS THEN
+          -- データ抽出エラーメッセージ
+          lv_errmsg := xxccp_common_pkg.get_msg(
                                iv_application  => cv_app_name               -- アプリケーション短縮名
-                              ,iv_name         => cv_tkn_number_20          -- メッセージコード
-                              ,iv_token_name1  => cv_tkn_value              -- トークンコード1
-                              ,iv_token_value1 => lt_haiki_date             -- トークン値1パラメータ
-                              ,iv_token_name2  => cv_tkn_status             -- トークンコード2
-                              ,iv_token_value2 => cv_false                  -- トークン値2リターンステータス
-                              ,iv_token_name3  => cv_tkn_message            -- トークンコード3
-                              ,iv_token_value3 => NULL                      -- トークン値3リターンメッセージ
+                              ,iv_name         => cv_tkn_number_08          -- メッセージコード
+                              ,iv_token_name1  => cv_tkn_table              -- トークンコード1
+                              ,iv_token_value1 => cv_work_ipro_data         -- トークン値1
+                              ,iv_token_name2  => cv_tkn_err_msg            -- トークンコード2
+                              ,iv_token_value2 => SQLERRM                   -- トークン値2
               );
-              lv_sub_msg  := lv_sub_msg||cv_bukken_cd||lt_external_reference;
-              lv_sub_buf  := lv_sub_msg;
-              RAISE select_warn_expt;
-            END IF;
-            lt_haiki_date := TO_CHAR(TO_DATE(lt_haiki_date,'yyyy/mm/dd'), 'yyyymmdd');
-          END IF;
--- DEBUG
-          fnd_file.put_line(
-             which  => FND_FILE.LOG
-            ,buff   => '機器状態３(廃棄情報)：' || lt_jotai_kbn3 ||CHR(10) ||
-                       '廃棄決裁日：' || lt_haiki_date ||
-                       ''
+          lv_errbuf  := lv_errmsg||SQLERRM;
+          RAISE global_process_expt;
+      END;
+--
+      BEGIN
+        -- データ初期化
+        lv_sub_msg := NULL;
+        lv_sub_buf := NULL;
+        -- レコード変数初期化
+        l_get_rec         := NULL;
+        -- 処理対象件数格納
+        /* 2009.05.29 K.Satomura T1_1017対応 START */
+        /* 2009.08.11 K.Satomura 0001000対応 START */
+        --gn_target_cnt := bukken_info_dis_work_data_cur%ROWCOUNT;
+        gn_disposal_count := bukken_info_dis_work_data_cur%ROWCOUNT;
+        /* 2009.08.11 K.Satomura 0001000対応 END */
+        /* 2009.05.29 K.Satomura T1_1017対応 END */
+        -- 対象件数が0件の場合
+        EXIT WHEN bukken_info_dis_work_data_cur%NOTFOUND
+        OR  bukken_info_dis_work_data_cur%ROWCOUNT = 0;
+        -- 取得データをローカル変数に格納
+        lt_req_line_id        := l_dis_work_data_cur.requisition_line_id;      -- 発注依頼明細ID
+        lt_external_reference := l_dis_work_data_cur.abolishment_install_code; -- 物件コード
+        lt_instance_id        := l_dis_work_data_cur.instance_id;              -- インスタンスID
+        lt_old_head_offi_code := l_dis_work_data_cur.old_head_office_code;     -- 旧本部コード
+        lt_row_order          := l_dis_work_data_cur.row_order;                -- 拠点並び順
+        lt_sale_base_code     := l_dis_work_data_cur.sale_base_code;           -- 拠点(部門)コード
+        lt_req_header_id      := l_dis_work_data_cur.requisition_header_id;
+        -- ログ用発注依頼ヘッダID
+        lt_line_num            := l_dis_work_data_cur.line_num;            -- ログ用発注依頼明細番号
+        -- 機器状態3(廃棄情報)と廃棄決裁日の追加属性値を抽出
+        -- 機器状態3(廃棄情報)
+        lt_jotai_kbn3 := xxcso_ib_common_pkg.get_ib_ext_attribs2(
+                            in_instance_id    => lt_instance_id           -- インスタンスID
+                           ,iv_attribute_code => cv_jotai_kbn3            -- 属性コード
+        );
+--
+        lv_format := 'YYYY/MM/DD';
+        -- 廃棄決裁日
+        lt_haiki_date := xxcso_ib_common_pkg.get_ib_ext_attribs2(
+                            in_instance_id    => lt_instance_id           -- インスタンスID
+                           ,iv_attribute_code => cv_haikikessai_dt        -- 属性コード
+        );
+        IF (lt_haiki_date IS NOT NULL) THEN
+          --取得したパラメータの書式が指定された日付の書式（YYYYMMDD）であるかを確認
+          lb_check_date_value := xxcso_util_common_pkg.check_date(
+                                        iv_date         => lt_haiki_date
+                                       ,iv_date_format  => lv_format
           );
--- DEBUG
---
-          -- 取得データを抽出出力データに格納
-          l_get_rec.external_reference    := lt_external_reference;      -- 物件コード
-          l_get_rec.old_head_office_code  := lt_old_head_offi_code;      -- 旧本部コード
-          l_get_rec.row_order             := lt_row_order;               -- 拠点並び順
-          l_get_rec.sale_base_code        := lt_sale_base_code;          -- 拠点(部門)コード
-          l_get_rec.jotai_kbn3            := lt_jotai_kbn3;              -- 機器状態3(廃棄情報)
-          l_get_rec.haiki_date            := lt_haiki_date;              -- 廃棄決裁日
-          l_get_rec.requisition_line_id   := lt_req_line_id;             -- 発注依頼明細ID
-          l_get_rec.requisition_header_id := lt_req_header_id;           -- ログ用発注依頼ヘッダID
-          l_get_rec.line_num              := lt_line_num;                -- ログ用発注依頼明細番号
-          
---
-          -- ================================================================
-          -- A-10 禁則文字チェック
-          -- ================================================================
-          chk_str(
-             i_get_rec        => l_get_rec        -- 抽出出力データ
-            ,ov_errbuf        => lv_sub_buf       -- エラー・メッセージ            --# 固定 #
-            ,ov_retcode       => lv_sub_retcode   -- リターン・コード              --# 固定 #
-            ,ov_errmsg        => lv_sub_msg       -- ユーザー・エラー・メッセージ  --# 固定 #
-          );
---
-          IF (lv_sub_retcode = cv_status_error) THEN
-            RAISE select_warn_expt;
-          END IF;
---
-          -- ================================================================
-          -- A-11 セーブポイント(廃棄作業依頼情報連携失敗)発行
-          -- ================================================================
-          SAVEPOINT bukken_info_disposal_work;
---
-          /* 2009.06.18 K.Satomura T1_1017再修正対応 START */
-          IF (gv_date_value IS NULL) THEN
-          /* 2009.06.18 K.Satomura T1_1017再修正対応 END */
-            -- ================================================================
-            -- A-12 作業依頼／発注情報処理結果テーブル更新
-            -- ================================================================
-            update_wk_reqst_tbl(
-               i_get_rec        => l_get_rec         -- 抽出出力データ
-              ,id_process_date  => ld_process_date   -- 業務処理日
-              ,ov_errbuf        => lv_sub_buf        -- エラー・メッセージ          --# 固定 #
-              ,ov_retcode       => lv_sub_retcode    -- リターン・コード            --# 固定 #
-              ,ov_errmsg        => lv_sub_msg        -- ユーザー・エラー・メッセージ  --# 固定 #
+          --リターンステータスが「FALSE」の場合,例外処理を行う
+          IF (lb_check_date_value = cb_false) THEN
+            lv_sub_msg := xxccp_common_pkg.get_msg(
+                             iv_application  => cv_app_name               -- アプリケーション短縮名
+                            ,iv_name         => cv_tkn_number_20          -- メッセージコード
+                            ,iv_token_name1  => cv_tkn_value              -- トークンコード1
+                            ,iv_token_value1 => lt_haiki_date             -- トークン値1パラメータ
+                            ,iv_token_name2  => cv_tkn_status             -- トークンコード2
+                            ,iv_token_value2 => cv_false                  -- トークン値2リターンステータス
+                            ,iv_token_name3  => cv_tkn_message            -- トークンコード3
+                            ,iv_token_value3 => NULL                      -- トークン値3リターンメッセージ
             );
---
-            IF (lv_sub_retcode = cv_status_error) THEN
-              RAISE select_warn_expt;
-            END IF;
-          /* 2009.06.18 K.Satomura T1_1017再修正対応 START */
+            lv_sub_msg  := lv_sub_msg||cv_bukken_cd||lt_external_reference;
+            lv_sub_buf  := lv_sub_msg;
+            RAISE select_warn_expt;
           END IF;
-          /* 2009.06.18 K.Satomura T1_1017再修正対応 END */
+          lt_haiki_date := TO_CHAR(TO_DATE(lt_haiki_date,'yyyy/mm/dd'), 'yyyymmdd');
+        END IF;
+-- DEBUG
+        fnd_file.put_line(
+           which  => FND_FILE.LOG
+          ,buff   => '機器状態３(廃棄情報)：' || lt_jotai_kbn3 ||CHR(10) ||
+                     '廃棄決裁日：' || lt_haiki_date ||
+                     ''
+        );
+-- DEBUG
 --
-          -- ================================================================
-          -- A-13 廃棄作業依頼情報データCSV出力
-          -- ================================================================
+        -- 取得データを抽出出力データに格納
+        l_get_rec.external_reference    := lt_external_reference;      -- 物件コード
+        l_get_rec.old_head_office_code  := lt_old_head_offi_code;      -- 旧本部コード
+        l_get_rec.row_order             := lt_row_order;               -- 拠点並び順
+        l_get_rec.sale_base_code        := lt_sale_base_code;          -- 拠点(部門)コード
+        l_get_rec.jotai_kbn3            := lt_jotai_kbn3;              -- 機器状態3(廃棄情報)
+        l_get_rec.haiki_date            := lt_haiki_date;              -- 廃棄決裁日
+        l_get_rec.requisition_line_id   := lt_req_line_id;             -- 発注依頼明細ID
+        l_get_rec.requisition_header_id := lt_req_header_id;           -- ログ用発注依頼ヘッダID
+        l_get_rec.line_num              := lt_line_num;                -- ログ用発注依頼明細番号
 --
-          create_csv_rec(
-             i_get_rec        => l_get_rec        -- 拠点変更物件マスタ情報
-            ,ov_errbuf        => lv_sub_buf       -- エラー・メッセージ            --# 固定 #
-            ,ov_retcode       => lv_sub_retcode   -- リターン・コード              --# 固定 #
-            ,ov_errmsg        => lv_sub_msg       -- ユーザー・エラー・メッセージ    --# 固定 #
+        -- ================================================================
+        -- A-10 禁則文字チェック
+        -- ================================================================
+        chk_str(
+           i_get_rec        => l_get_rec        -- 抽出出力データ
+          ,ov_errbuf        => lv_sub_buf       -- エラー・メッセージ            --# 固定 #
+          ,ov_retcode       => lv_sub_retcode   -- リターン・コード              --# 固定 #
+          ,ov_errmsg        => lv_sub_msg       -- ユーザー・エラー・メッセージ  --# 固定 #
+        );
+--
+        IF (lv_sub_retcode = cv_status_error) THEN
+          RAISE select_warn_expt;
+        END IF;
+--
+        -- ================================================================
+        -- A-11 セーブポイント(廃棄作業依頼情報連携失敗)発行
+        -- ================================================================
+        SAVEPOINT bukken_info_disposal_work;
+--
+        /* 2009.06.18 K.Satomura T1_1017再修正対応 START */
+        IF (gv_date_value IS NULL) THEN
+        /* 2009.06.18 K.Satomura T1_1017再修正対応 END */
+          -- ================================================================
+          -- A-12 作業依頼／発注情報処理結果テーブル更新
+          -- ================================================================
+          update_wk_reqst_tbl(
+             i_get_rec        => l_get_rec         -- 抽出出力データ
+            ,id_process_date  => ld_process_date   -- 業務処理日
+            ,ov_errbuf        => lv_sub_buf        -- エラー・メッセージ          --# 固定 #
+            ,ov_retcode       => lv_sub_retcode    -- リターン・コード            --# 固定 #
+            ,ov_errmsg        => lv_sub_msg        -- ユーザー・エラー・メッセージ  --# 固定 #
           );
 --
           IF (lv_sub_retcode = cv_status_error) THEN
-            gb_rollback_upd_flg := TRUE;
             RAISE select_warn_expt;
           END IF;
+        /* 2009.06.18 K.Satomura T1_1017再修正対応 START */
+        END IF;
+        /* 2009.06.18 K.Satomura T1_1017再修正対応 END */
 --
-          -- 出力に成功した場合
-          lv_sub_msg :=  xxccp_common_pkg.get_msg(
-                            iv_application  => cv_app_name                   -- アプリケーション短縮名
-                           ,iv_name         => cv_tkn_number_17              -- メッセージコード
-                           ,iv_token_name1  => cv_tkn_req_line_id            -- トークンコード1
-                           ,iv_token_value1 => TO_CHAR(lt_req_line_id)       -- トークン値1
-                           ,iv_token_name2  => cv_tkn_req_header_id          -- トークンコード2
-                           ,iv_token_value2 => TO_CHAR(lt_req_header_id)     -- トークン値2
-                           ,iv_token_name3  => cv_tkn_line_num               -- トークンコード3
-                           ,iv_token_value3 => TO_CHAR(lt_line_num)          -- トークン値3
-                          );
-          -- 出力に出力
+        -- ================================================================
+        -- A-13 廃棄作業依頼情報データCSV出力
+        -- ================================================================
+--
+        create_csv_rec(
+           i_get_rec        => l_get_rec        -- 拠点変更物件マスタ情報
+          ,ov_errbuf        => lv_sub_buf       -- エラー・メッセージ            --# 固定 #
+          ,ov_retcode       => lv_sub_retcode   -- リターン・コード              --# 固定 #
+          ,ov_errmsg        => lv_sub_msg       -- ユーザー・エラー・メッセージ    --# 固定 #
+        );
+--
+        IF (lv_sub_retcode = cv_status_error) THEN
+          gb_rollback_upd_flg := TRUE;
+          RAISE select_warn_expt;
+        END IF;
+--
+        -- 出力に成功した場合
+        lv_sub_msg :=  xxccp_common_pkg.get_msg(
+                          iv_application  => cv_app_name                   -- アプリケーション短縮名
+                         ,iv_name         => cv_tkn_number_17              -- メッセージコード
+                         ,iv_token_name1  => cv_tkn_req_line_id            -- トークンコード1
+                         ,iv_token_value1 => TO_CHAR(lt_req_line_id)       -- トークン値1
+                         ,iv_token_name2  => cv_tkn_req_header_id          -- トークンコード2
+                         ,iv_token_value2 => TO_CHAR(lt_req_header_id)     -- トークン値2
+                         ,iv_token_name3  => cv_tkn_line_num               -- トークンコード3
+                         ,iv_token_value3 => TO_CHAR(lt_line_num)          -- トークン値3
+                        );
+        -- 出力に出力
+        fnd_file.put_line(
+           which  => FND_FILE.OUTPUT
+          ,buff   => lv_sub_msg
+        );
+        -- ログに出力
+        fnd_file.put_line(
+           which  => FND_FILE.LOG
+          ,buff   => cv_pkg_name||cv_msg_cont||
+                     cv_prg_name||cv_msg_part||
+                     lv_sub_msg 
+        );
+--          
+        --成功件数カウント
+        /* 2009.08.11 K.Satomura 0001000対応 START */
+        --gn_normal_cnt := gn_normal_cnt + 1;
+        gn_disposal_norm_count := gn_disposal_norm_count + 1;
+        /* 2009.08.11 K.Satomura 0001000対応 DND */
+--
+      EXCEPTION
+        -- *** データ抽出時の警告例外ハンドラ ***
+        WHEN select_warn_expt THEN
+          --エラー件数カウント
+          /* 2009.08.11 K.Satomura 0001000対応 START */
+          --gn_error_cnt  := gn_error_cnt + 1;
+          gn_disposal_err_count := gn_disposal_err_count + 1;
+          /* 2009.08.11 K.Satomura 0001000対応 DND */
+          --
+          lv_sub_retcode := cv_status_warn;
+          ov_retcode     := lv_sub_retcode;
+          --警告出力
           fnd_file.put_line(
              which  => FND_FILE.OUTPUT
-            ,buff   => lv_sub_msg
+            ,buff   => lv_sub_msg                  --ユーザー・エラーメッセージ
           );
-          -- ログに出力
           fnd_file.put_line(
              which  => FND_FILE.LOG
             ,buff   => cv_pkg_name||cv_msg_cont||
                        cv_prg_name||cv_msg_part||
-                       lv_sub_msg 
+                       lv_sub_buf 
           );
---          
-          --成功件数カウント
-          gn_normal_cnt := gn_normal_cnt + 1;
---
-        EXCEPTION
-          -- *** データ抽出時の警告例外ハンドラ ***
-          WHEN select_warn_expt THEN
-            --エラー件数カウント
-            gn_error_cnt  := gn_error_cnt + 1;
-            --
-            lv_sub_retcode := cv_status_warn;
-            ov_retcode     := lv_sub_retcode;
-            --警告出力
-            fnd_file.put_line(
-               which  => FND_FILE.OUTPUT
-              ,buff   => lv_sub_msg                  --ユーザー・エラーメッセージ
-            );
-            fnd_file.put_line(
-               which  => FND_FILE.LOG
-              ,buff   => cv_pkg_name||cv_msg_cont||
-                         cv_prg_name||cv_msg_part||
-                         lv_sub_buf 
-            );
-            -- ロールバック
-            IF gb_rollback_upd_flg = TRUE THEN
-              ROLLBACK TO SAVEPOINT bukken_info_disposal_work;          -- ROLLBACK
-              gb_rollback_upd_flg := FALSE;
-              -- ログ出力
-              fnd_file.put_line(
-                 which  => FND_FILE.LOG
-                ,buff   => '' || CHR(10) ||cv_debug_msg12|| CHR(10) || ''
-              );
-            END IF;
-          -- *** スキップ例外OTHERSハンドラ ***
-          WHEN OTHERS THEN
-            --エラー件数カウント
-            gn_error_cnt  := gn_error_cnt + 1;
-            --
-            lv_sub_retcode := cv_status_warn;
-            ov_retcode     := lv_sub_retcode;
+          -- ロールバック
+          IF gb_rollback_upd_flg = TRUE THEN
+            ROLLBACK TO SAVEPOINT bukken_info_disposal_work;          -- ROLLBACK
+            gb_rollback_upd_flg := FALSE;
             -- ログ出力
             fnd_file.put_line(
                which  => FND_FILE.LOG
-              ,buff   => cv_pkg_name||cv_msg_cont||
-                         cv_prg_name||cv_msg_part||
-                         lv_sub_buf ||SQLERRM
+              ,buff   => '' || CHR(10) ||cv_debug_msg12|| CHR(10) || ''
             );
-            -- ロールバック
-            IF gb_rollback_upd_flg = TRUE THEN
-              ROLLBACK TO SAVEPOINT bukken_info_disposal_work;          -- ROLLBACK
-              gb_rollback_upd_flg := FALSE;
-              -- ログ出力
-              fnd_file.put_line(
-                 which  => FND_FILE.LOG
-                ,buff   => '' || CHR(10) ||cv_debug_msg12|| CHR(10) || ''
-              );
-            END IF;
-        END;
-      END LOOP get_locaton_data_loop;
---
-      -- カーソルクローズ
-      CLOSE bukken_info_dis_work_data_cur;
-      -- *** DEBUG_LOG ***
-      -- カーソルクローズしたことをログ出力
-      fnd_file.put_line(
-         which  => FND_FILE.LOG
-        ,buff   => cv_debug_msg_ccls1 || CHR(10) ||
-                   ''
-      );
---
-      /* 2009.05.29 K.Satomura T1_1017対応 START */
-      -- =================================================
-      -- A-17.廃棄作業依頼情報（機器区分）データ抽出
-      -- =================================================
-      -- カーソルオープン
-      OPEN bukken_info_device_data_cur;
-      -- *** DEBUG_LOG ***
-      -- カーソルオープンしたことをログ出力
-      fnd_file.put_line(
-         which  => FND_FILE.LOG
-        ,buff   => cv_debug_msg_copn || CHR(10) || ''
-      );
-      --
-      <<get_device_data_loop>>
-      LOOP
-        BEGIN
-          FETCH bukken_info_device_data_cur INTO l_div_work_data_cur;
+          END IF;
+        -- *** スキップ例外OTHERSハンドラ ***
+        WHEN OTHERS THEN
+          --エラー件数カウント
+          /* 2009.08.11 K.Satomura 0001000対応 START */
+          --gn_error_cnt  := gn_error_cnt + 1;
+          gn_disposal_err_count := gn_disposal_err_count + 1;
+          /* 2009.08.11 K.Satomura 0001000対応 DND */
           --
-        EXCEPTION
-          WHEN OTHERS THEN
-            -- データ抽出エラーメッセージ
-            lv_errmsg := xxccp_common_pkg.get_msg(
-                            iv_application  => cv_app_name        -- アプリケーション短縮名
-                           ,iv_name         => cv_tkn_number_08   -- メッセージコード
-                           ,iv_token_name1  => cv_tkn_table       -- トークンコード1
-                           ,iv_token_value1 => cv_work_ipro_data2 -- トークン値1
-                           ,iv_token_name2  => cv_tkn_err_msg     -- トークンコード2
-                           ,iv_token_value2 => SQLERRM            -- トークン値2
-                         );
-            --
-            lv_errbuf := lv_errmsg || SQLERRM;
-            RAISE global_process_expt;
-            --
-        END;
+          lv_sub_retcode := cv_status_warn;
+          ov_retcode     := lv_sub_retcode;
+          -- ログ出力
+          fnd_file.put_line(
+             which  => FND_FILE.LOG
+            ,buff   => cv_pkg_name||cv_msg_cont||
+                       cv_prg_name||cv_msg_part||
+                       lv_sub_buf ||SQLERRM
+          );
+          -- ロールバック
+          IF gb_rollback_upd_flg = TRUE THEN
+            ROLLBACK TO SAVEPOINT bukken_info_disposal_work;          -- ROLLBACK
+            gb_rollback_upd_flg := FALSE;
+            -- ログ出力
+            fnd_file.put_line(
+               which  => FND_FILE.LOG
+              ,buff   => '' || CHR(10) ||cv_debug_msg12|| CHR(10) || ''
+            );
+          END IF;
+      END;
+    END LOOP get_locaton_data_loop;
+--
+    -- カーソルクローズ
+    CLOSE bukken_info_dis_work_data_cur;
+    -- *** DEBUG_LOG ***
+    -- カーソルクローズしたことをログ出力
+    fnd_file.put_line(
+       which  => FND_FILE.LOG
+      ,buff   => cv_debug_msg_ccls1 || CHR(10) ||
+                 ''
+    );
+--
+    /* 2009.05.29 K.Satomura T1_1017対応 START */
+    -- =================================================
+    -- A-17.廃棄作業依頼情報（機器区分）データ抽出
+    -- =================================================
+    -- カーソルオープン
+    OPEN bukken_info_device_data_cur;
+    -- *** DEBUG_LOG ***
+    -- カーソルオープンしたことをログ出力
+    fnd_file.put_line(
+       which  => FND_FILE.LOG
+      ,buff   => cv_debug_msg_copn || CHR(10) || ''
+    );
+    --
+    <<get_device_data_loop>>
+    LOOP
+      BEGIN
+        FETCH bukken_info_device_data_cur INTO l_div_work_data_cur;
         --
-        BEGIN
-          -- データ初期化
-          lv_sub_msg := NULL;
-          lv_sub_buf := NULL;
+      EXCEPTION
+        WHEN OTHERS THEN
+          -- データ抽出エラーメッセージ
+          lv_errmsg := xxccp_common_pkg.get_msg(
+                          iv_application  => cv_app_name        -- アプリケーション短縮名
+                         ,iv_name         => cv_tkn_number_08   -- メッセージコード
+                         ,iv_token_name1  => cv_tkn_table       -- トークンコード1
+                         ,iv_token_value1 => cv_work_ipro_data2 -- トークン値1
+                         ,iv_token_name2  => cv_tkn_err_msg     -- トークンコード2
+                         ,iv_token_value2 => SQLERRM            -- トークン値2
+                       );
           --
-          -- レコード変数初期化
-          l_get_rec := NULL;
+          lv_errbuf := lv_errmsg || SQLERRM;
+          RAISE global_process_expt;
           --
-          -- 処理対象件数格納
-          ln_device_count := bukken_info_device_data_cur%ROWCOUNT;
-          --
-          -- 対象件数が0件の場合
-          EXIT WHEN bukken_info_device_data_cur%NOTFOUND
-          OR bukken_info_device_data_cur%ROWCOUNT = 0;
-          --
-          -- 取得データをローカル変数に格納
-          lt_req_line_id        := l_div_work_data_cur.requisition_line_id;   -- 発注依頼明細ＩＤ
-          lt_external_reference := l_div_work_data_cur.install_code1;         -- 物件コード
-          lt_instance_id        := l_div_work_data_cur.instance_id;           -- インスタンスＩＤ
-          lt_old_head_offi_code := l_div_work_data_cur.old_head_office_code;  -- 旧本部コード
-          lt_row_order          := l_div_work_data_cur.row_order;             -- 拠点並び順
-          lt_sale_base_code     := l_div_work_data_cur.sale_base_code;        -- 拠点(部門)コード
-          lt_req_header_id      := l_div_work_data_cur.requisition_header_id; -- ログ用発注依頼ヘッダＩＤ
-          lt_instance_type_code := l_div_work_data_cur.instance_type_code;    -- 機器区分
-          lt_seq_no             := l_div_work_data_cur.seq_no;                -- シーケンス番号
-          --
-          -- ログ用発注依頼ヘッダID
-          lt_line_num := l_div_work_data_cur.line_num; -- ログ用発注依頼明細番号
-          --
-          -- 機器状態3(廃棄情報)と廃棄決裁日の追加属性値を抽出
-          -- 機器状態3(廃棄情報)
-          lt_jotai_kbn3 := xxcso_ib_common_pkg.get_ib_ext_attribs2(
-                              in_instance_id    => lt_instance_id -- インスタンスＩＤ
-                             ,iv_attribute_code => cv_jotai_kbn3  -- 属性コード
+      END;
+      --
+      BEGIN
+        -- データ初期化
+        lv_sub_msg := NULL;
+        lv_sub_buf := NULL;
+        --
+        -- レコード変数初期化
+        l_get_rec := NULL;
+        --
+        -- 処理対象件数格納
+        /* 2009.08.11 K.Satomura 0001000対応 START */
+        --ln_device_count := bukken_info_device_data_cur%ROWCOUNT;
+        gn_device_count := bukken_info_device_data_cur%ROWCOUNT;
+        /* 2009.08.11 K.Satomura 0001000対応 END */
+        --
+        -- 対象件数が0件の場合
+        EXIT WHEN bukken_info_device_data_cur%NOTFOUND
+        OR bukken_info_device_data_cur%ROWCOUNT = 0;
+        --
+        -- 取得データをローカル変数に格納
+        lt_req_line_id        := l_div_work_data_cur.requisition_line_id;   -- 発注依頼明細ＩＤ
+        lt_external_reference := l_div_work_data_cur.install_code1;         -- 物件コード
+        lt_instance_id        := l_div_work_data_cur.instance_id;           -- インスタンスＩＤ
+        lt_old_head_offi_code := l_div_work_data_cur.old_head_office_code;  -- 旧本部コード
+        lt_row_order          := l_div_work_data_cur.row_order;             -- 拠点並び順
+        lt_sale_base_code     := l_div_work_data_cur.sale_base_code;        -- 拠点(部門)コード
+        lt_req_header_id      := l_div_work_data_cur.requisition_header_id; -- ログ用発注依頼ヘッダＩＤ
+        lt_instance_type_code := l_div_work_data_cur.instance_type_code;    -- 機器区分
+        lt_seq_no             := l_div_work_data_cur.seq_no;                -- シーケンス番号
+        --
+        -- ログ用発注依頼ヘッダID
+        lt_line_num := l_div_work_data_cur.line_num; -- ログ用発注依頼明細番号
+        --
+        -- 機器状態3(廃棄情報)と廃棄決裁日の追加属性値を抽出
+        -- 機器状態3(廃棄情報)
+        lt_jotai_kbn3 := xxcso_ib_common_pkg.get_ib_ext_attribs2(
+                            in_instance_id    => lt_instance_id -- インスタンスＩＤ
+                           ,iv_attribute_code => cv_jotai_kbn3  -- 属性コード
+        );
+        --
+        lv_format := 'YYYY/MM/DD';
+        --
+        -- 廃棄決裁日
+        lt_haiki_date := xxcso_ib_common_pkg.get_ib_ext_attribs2(
+                            in_instance_id    => lt_instance_id    -- インスタンスＩＤ
+                           ,iv_attribute_code => cv_haikikessai_dt -- 属性コード
+        );
+        --
+        IF (lt_haiki_date IS NOT NULL) THEN
+          --取得したパラメータの書式が指定された日付の書式（YYYYMMDD）であるかを確認
+          lb_check_date_value := xxcso_util_common_pkg.check_date(
+                                    iv_date        => lt_haiki_date
+                                   ,iv_date_format => lv_format
           );
           --
-          lv_format := 'YYYY/MM/DD';
-          --
-          -- 廃棄決裁日
-          lt_haiki_date := xxcso_ib_common_pkg.get_ib_ext_attribs2(
-                              in_instance_id    => lt_instance_id    -- インスタンスＩＤ
-                             ,iv_attribute_code => cv_haikikessai_dt -- 属性コード
-          );
-          --
-          IF (lt_haiki_date IS NOT NULL) THEN
-            --取得したパラメータの書式が指定された日付の書式（YYYYMMDD）であるかを確認
-            lb_check_date_value := xxcso_util_common_pkg.check_date(
-                                      iv_date        => lt_haiki_date
-                                     ,iv_date_format => lv_format
-            );
+          --リターンステータスが「FALSE」の場合,例外処理を行う
+          IF (lb_check_date_value = cb_false) THEN
+            lv_sub_msg := xxccp_common_pkg.get_msg(
+                             iv_application  => cv_app_name      -- アプリケーション短縮名
+                            ,iv_name         => cv_tkn_number_20 -- メッセージコード
+                            ,iv_token_name1  => cv_tkn_value     -- トークンコード1
+                            ,iv_token_value1 => lt_haiki_date    -- トークン値1パラメータ
+                            ,iv_token_name2  => cv_tkn_status    -- トークンコード2
+                            ,iv_token_value2 => cv_false         -- トークン値2リターンステータス
+                            ,iv_token_name3  => cv_tkn_message   -- トークンコード3
+                            ,iv_token_value3 => NULL             -- トークン値3リターンメッセージ
+                          );
             --
-            --リターンステータスが「FALSE」の場合,例外処理を行う
-            IF (lb_check_date_value = cb_false) THEN
-              lv_sub_msg := xxccp_common_pkg.get_msg(
-                               iv_application  => cv_app_name      -- アプリケーション短縮名
-                              ,iv_name         => cv_tkn_number_20 -- メッセージコード
-                              ,iv_token_name1  => cv_tkn_value     -- トークンコード1
-                              ,iv_token_value1 => lt_haiki_date    -- トークン値1パラメータ
-                              ,iv_token_name2  => cv_tkn_status    -- トークンコード2
-                              ,iv_token_value2 => cv_false         -- トークン値2リターンステータス
-                              ,iv_token_name3  => cv_tkn_message   -- トークンコード3
-                              ,iv_token_value3 => NULL             -- トークン値3リターンメッセージ
-                            );
-              --
-              lv_sub_msg := lv_sub_msg || cv_bukken_cd || lt_external_reference;
-              lv_sub_buf := lv_sub_msg;
-              RAISE select_warn_expt;
-              --
-            END IF;
-            --
-            lt_haiki_date := TO_CHAR(TO_DATE(lt_haiki_date,'yyyy/mm/dd'), 'yyyymmdd');
+            lv_sub_msg := lv_sub_msg || cv_bukken_cd || lt_external_reference;
+            lv_sub_buf := lv_sub_msg;
+            RAISE select_warn_expt;
             --
           END IF;
           --
-          fnd_file.put_line(
-             which  => FND_FILE.LOG
-            ,buff   => '機器状態３(廃棄情報)：' || lt_jotai_kbn3 ||CHR(10) ||
-                       '廃棄決裁日：' || lt_haiki_date || ''
-          );
+          lt_haiki_date := TO_CHAR(TO_DATE(lt_haiki_date,'yyyy/mm/dd'), 'yyyymmdd');
           --
-          -- 取得データを抽出出力データに格納
-          l_get_rec.external_reference    := lt_external_reference; -- 物件コード
-          l_get_rec.old_head_office_code  := lt_old_head_offi_code; -- 旧本部コード
-          l_get_rec.row_order             := lt_row_order;          -- 拠点並び順
-          l_get_rec.sale_base_code        := lt_sale_base_code;     -- 拠点(部門)コード
-          l_get_rec.jotai_kbn3            := lt_jotai_kbn3;         -- 機器状態3(廃棄情報)
-          l_get_rec.haiki_date            := lt_haiki_date;         -- 廃棄決裁日
-          l_get_rec.requisition_line_id   := lt_req_line_id;        -- 発注依頼明細ID
-          l_get_rec.requisition_header_id := lt_req_header_id;      -- ログ用発注依頼ヘッダID
-          l_get_rec.line_num              := lt_line_num;           -- ログ用発注依頼明細番号
-          l_get_rec.kiki_kbn              := lt_instance_type_code; -- 機器区分
-          l_get_rec.seq_no                := lt_seq_no;             -- シーケンス番号
+        END IF;
+        --
+        fnd_file.put_line(
+           which  => FND_FILE.LOG
+          ,buff   => '機器状態３(廃棄情報)：' || lt_jotai_kbn3 ||CHR(10) ||
+                     '廃棄決裁日：' || lt_haiki_date || ''
+        );
+        --
+        -- 取得データを抽出出力データに格納
+        l_get_rec.external_reference    := lt_external_reference; -- 物件コード
+        l_get_rec.old_head_office_code  := lt_old_head_offi_code; -- 旧本部コード
+        l_get_rec.row_order             := lt_row_order;          -- 拠点並び順
+        l_get_rec.sale_base_code        := lt_sale_base_code;     -- 拠点(部門)コード
+        l_get_rec.jotai_kbn3            := lt_jotai_kbn3;         -- 機器状態3(廃棄情報)
+        l_get_rec.haiki_date            := lt_haiki_date;         -- 廃棄決裁日
+        l_get_rec.requisition_line_id   := lt_req_line_id;        -- 発注依頼明細ID
+        l_get_rec.requisition_header_id := lt_req_header_id;      -- ログ用発注依頼ヘッダID
+        l_get_rec.line_num              := lt_line_num;           -- ログ用発注依頼明細番号
+        l_get_rec.kiki_kbn              := lt_instance_type_code; -- 機器区分
+        l_get_rec.seq_no                := lt_seq_no;             -- シーケンス番号
+        --
+        -- ================================================================
+        -- A-10 禁則文字チェック
+        -- ================================================================
+        chk_str(
+           i_get_rec  => l_get_rec      -- 抽出出力データ
+          ,ov_errbuf  => lv_sub_buf     -- エラー・メッセージ           --# 固定 #
+          ,ov_retcode => lv_sub_retcode -- リターン・コード             --# 固定 #
+          ,ov_errmsg  => lv_sub_msg     -- ユーザー・エラー・メッセージ --# 固定 #
+        );
+        --
+        IF (lv_sub_retcode = cv_status_error) THEN
+          RAISE select_warn_expt;
           --
+        END IF;
+        --
+        -- ================================================================
+        -- A-11 セーブポイント(廃棄作業依頼情報連携失敗)発行
+        -- ================================================================
+        SAVEPOINT bukken_info_device_work;
+        --
+        /* 2009.06.18 K.Satomura T1_1017再修正対応 START */
+        IF (gv_date_value IS NULL) THEN
+        /* 2009.06.18 K.Satomura T1_1017再修正対応 END */
           -- ================================================================
-          -- A-10 禁則文字チェック
+          -- A-18 作業データテーブル更新
           -- ================================================================
-          chk_str(
-             i_get_rec  => l_get_rec      -- 抽出出力データ
-            ,ov_errbuf  => lv_sub_buf     -- エラー・メッセージ           --# 固定 #
-            ,ov_retcode => lv_sub_retcode -- リターン・コード             --# 固定 #
-            ,ov_errmsg  => lv_sub_msg     -- ユーザー・エラー・メッセージ --# 固定 #
+          update_wk_data_tbl(
+             i_get_rec       => l_get_rec       -- 抽出出力データ
+            ,id_process_date => ld_process_date -- 業務処理日
+            ,ov_errbuf       => lv_sub_buf      -- エラー・メッセージ           --# 固定 #
+            ,ov_retcode      => lv_sub_retcode  -- リターン・コード             --# 固定 #
+            ,ov_errmsg       => lv_sub_msg      -- ユーザー・エラー・メッセージ --# 固定 #
           );
           --
           IF (lv_sub_retcode = cv_status_error) THEN
             RAISE select_warn_expt;
             --
           END IF;
+        /* 2009.06.18 K.Satomura T1_1017再修正対応 START */
+        END IF;
+        /* 2009.06.18 K.Satomura T1_1017再修正対応 END */
+        --
+        -- ================================================================
+        -- A-13 廃棄作業依頼情報データCSV出力
+        -- ================================================================
+        create_csv_rec(
+           i_get_rec  => l_get_rec      -- 拠点変更物件マスタ情報
+          ,ov_errbuf  => lv_sub_buf     -- エラー・メッセージ           --# 固定 #
+          ,ov_retcode => lv_sub_retcode -- リターン・コード             --# 固定 #
+          ,ov_errmsg  => lv_sub_msg     -- ユーザー・エラー・メッセージ --# 固定 #
+        );
+        --
+        IF (lv_sub_retcode = cv_status_error) THEN
+          gb_rollback_upd_flg := TRUE;
+          RAISE select_warn_expt;
           --
-          -- ================================================================
-          -- A-11 セーブポイント(廃棄作業依頼情報連携失敗)発行
-          -- ================================================================
-          SAVEPOINT bukken_info_device_work;
+        END IF;
+        --
+        -- 出力に成功した場合
+        lv_sub_msg := xxccp_common_pkg.get_msg(
+                         iv_application  => cv_app_name               -- アプリケーション短縮名
+                        ,iv_name         => cv_tkn_number_17          -- メッセージコード
+                        ,iv_token_name1  => cv_tkn_req_line_id        -- トークンコード1
+                        ,iv_token_value1 => TO_CHAR(lt_req_line_id)   -- トークン値1
+                        ,iv_token_name2  => cv_tkn_req_header_id      -- トークンコード2
+                        ,iv_token_value2 => TO_CHAR(lt_req_header_id) -- トークン値2
+                        ,iv_token_name3  => cv_tkn_line_num           -- トークンコード3
+                        ,iv_token_value3 => TO_CHAR(lt_line_num)      -- トークン値3
+                      );
+        --
+        -- 出力に出力
+        fnd_file.put_line(
+           which  => FND_FILE.OUTPUT
+          ,buff   => lv_sub_msg
+        );
+        --
+        -- ログに出力
+        fnd_file.put_line(
+           which  => FND_FILE.LOG
+          ,buff   => cv_pkg_name || cv_msg_cont || cv_prg_name || cv_msg_part || lv_sub_msg
+        );
+        --
+        --成功件数カウント
+        /* 2009.08.11 K.Satomura 0001000対応 START */
+        --gn_normal_cnt := gn_normal_cnt + 1;
+        gn_device_norm_count := gn_device_norm_count + 1;
+        /* 2009.08.11 K.Satomura 0001000対応 END */
+        --
+      EXCEPTION
+        -- *** データ抽出時の警告例外ハンドラ ***
+        WHEN select_warn_expt THEN
+          --エラー件数カウント
+          /* 2009.08.11 K.Satomura 0001000対応 START */
+          --gn_error_cnt := gn_error_cnt + 1;
+          gn_device_err_count := gn_device_err_count + 1;
+          /* 2009.08.11 K.Satomura 0001000対応 END */
           --
-          /* 2009.06.18 K.Satomura T1_1017再修正対応 START */
-          IF (gv_date_value IS NULL) THEN
-          /* 2009.06.18 K.Satomura T1_1017再修正対応 END */
-            -- ================================================================
-            -- A-18 作業データテーブル更新
-            -- ================================================================
-            update_wk_data_tbl(
-               i_get_rec       => l_get_rec       -- 抽出出力データ
-              ,id_process_date => ld_process_date -- 業務処理日
-              ,ov_errbuf       => lv_sub_buf      -- エラー・メッセージ           --# 固定 #
-              ,ov_retcode      => lv_sub_retcode  -- リターン・コード             --# 固定 #
-              ,ov_errmsg       => lv_sub_msg      -- ユーザー・エラー・メッセージ --# 固定 #
-            );
-            --
-            IF (lv_sub_retcode = cv_status_error) THEN
-              RAISE select_warn_expt;
-              --
-            END IF;
-          /* 2009.06.18 K.Satomura T1_1017再修正対応 START */
-          END IF;
-          /* 2009.06.18 K.Satomura T1_1017再修正対応 END */
+          lv_sub_retcode := cv_status_warn;
+          ov_retcode     := lv_sub_retcode;
           --
-          -- ================================================================
-          -- A-13 廃棄作業依頼情報データCSV出力
-          -- ================================================================
-          create_csv_rec(
-             i_get_rec  => l_get_rec      -- 拠点変更物件マスタ情報
-            ,ov_errbuf  => lv_sub_buf     -- エラー・メッセージ           --# 固定 #
-            ,ov_retcode => lv_sub_retcode -- リターン・コード             --# 固定 #
-            ,ov_errmsg  => lv_sub_msg     -- ユーザー・エラー・メッセージ --# 固定 #
-          );
-          --
-          IF (lv_sub_retcode = cv_status_error) THEN
-            gb_rollback_upd_flg := TRUE;
-            RAISE select_warn_expt;
-            --
-          END IF;
-          --
-          -- 出力に成功した場合
-          lv_sub_msg := xxccp_common_pkg.get_msg(
-                           iv_application  => cv_app_name               -- アプリケーション短縮名
-                          ,iv_name         => cv_tkn_number_17          -- メッセージコード
-                          ,iv_token_name1  => cv_tkn_req_line_id        -- トークンコード1
-                          ,iv_token_value1 => TO_CHAR(lt_req_line_id)   -- トークン値1
-                          ,iv_token_name2  => cv_tkn_req_header_id      -- トークンコード2
-                          ,iv_token_value2 => TO_CHAR(lt_req_header_id) -- トークン値2
-                          ,iv_token_name3  => cv_tkn_line_num           -- トークンコード3
-                          ,iv_token_value3 => TO_CHAR(lt_line_num)      -- トークン値3
-                        );
-          --
-          -- 出力に出力
+          --警告出力
           fnd_file.put_line(
-             which  => FND_FILE.OUTPUT
-            ,buff   => lv_sub_msg
+             which  => fnd_file.output
+            ,buff   => lv_sub_msg --ユーザー・エラーメッセージ
           );
           --
-          -- ログに出力
           fnd_file.put_line(
-             which  => FND_FILE.LOG
-            ,buff   => cv_pkg_name || cv_msg_cont || cv_prg_name || cv_msg_part || lv_sub_msg
+             which  => fnd_file.log
+            ,buff   => cv_pkg_name || cv_msg_cont || cv_prg_name || cv_msg_part || lv_sub_buf
           );
           --
-          --成功件数カウント
-          gn_normal_cnt := gn_normal_cnt + 1;
-          --
-        EXCEPTION
-          -- *** データ抽出時の警告例外ハンドラ ***
-          WHEN select_warn_expt THEN
-            --エラー件数カウント
-            gn_error_cnt := gn_error_cnt + 1;
-            --
-            lv_sub_retcode := cv_status_warn;
-            ov_retcode     := lv_sub_retcode;
-            --
-            --警告出力
-            fnd_file.put_line(
-               which  => fnd_file.output
-              ,buff   => lv_sub_msg --ユーザー・エラーメッセージ
-            );
-            --
-            fnd_file.put_line(
-               which  => fnd_file.log
-              ,buff   => cv_pkg_name || cv_msg_cont || cv_prg_name || cv_msg_part || lv_sub_buf
-            );
-            --
-            -- ロールバック
-            IF (gb_rollback_upd_flg = TRUE) THEN
-              ROLLBACK TO SAVEPOINT bukken_info_device_work; -- ROLLBACK
-              gb_rollback_upd_flg := FALSE;
-              --
-              -- ログ出力
-              fnd_file.put_line(
-                 which  => FND_FILE.LOG
-                ,buff   => '' || CHR(10) || cv_debug_msg12 || CHR(10) || ''
-              );
-              --
-            END IF;
-            --
-          -- *** スキップ例外OTHERSハンドラ ***
-          WHEN OTHERS THEN
-            --エラー件数カウント
-            gn_error_cnt := gn_error_cnt + 1;
-            --
-            lv_sub_retcode := cv_status_warn;
-            ov_retcode     := lv_sub_retcode;
+          -- ロールバック
+          IF (gb_rollback_upd_flg = TRUE) THEN
+            ROLLBACK TO SAVEPOINT bukken_info_device_work; -- ROLLBACK
+            gb_rollback_upd_flg := FALSE;
             --
             -- ログ出力
             fnd_file.put_line(
                which  => FND_FILE.LOG
-              ,buff   => cv_pkg_name || cv_msg_cont || cv_prg_name || cv_msg_part || lv_sub_buf || SQLERRM
+              ,buff   => '' || CHR(10) || cv_debug_msg12 || CHR(10) || ''
             );
             --
-            -- ロールバック
-            IF (gb_rollback_upd_flg = TRUE) THEN
-              ROLLBACK TO SAVEPOINT bukken_info_device_work; -- ROLLBACK
-              gb_rollback_upd_flg := FALSE;
-              --
-              -- ログ出力
-              fnd_file.put_line(
-                 which  => FND_FILE.LOG
-                ,buff   => '' || CHR(10) || cv_debug_msg12 || CHR(10) || ''
-              );
-              --
-            END IF;
+          END IF;
+          --
+        -- *** スキップ例外OTHERSハンドラ ***
+        WHEN OTHERS THEN
+          --エラー件数カウント
+          /* 2009.08.11 K.Satomura 0001000対応 START */
+          --gn_error_cnt := gn_error_cnt + 1;
+          gn_device_err_count := gn_device_err_count + 1;
+          /* 2009.08.11 K.Satomura 0001000対応 END */
+          --
+          lv_sub_retcode := cv_status_warn;
+          ov_retcode     := lv_sub_retcode;
+          --
+          -- ログ出力
+          fnd_file.put_line(
+             which  => FND_FILE.LOG
+            ,buff   => cv_pkg_name || cv_msg_cont || cv_prg_name || cv_msg_part || lv_sub_buf || SQLERRM
+          );
+          --
+          -- ロールバック
+          IF (gb_rollback_upd_flg = TRUE) THEN
+            ROLLBACK TO SAVEPOINT bukken_info_device_work; -- ROLLBACK
+            gb_rollback_upd_flg := FALSE;
             --
-        END;
-        --
-      END LOOP get_device_data_loop;
-      --
-      -- カーソルクローズ
-      CLOSE bukken_info_device_data_cur;
-      -- *** DEBUG_LOG ***
-      -- カーソルクローズしたことをログ出力
-      fnd_file.put_line(
-         which  => fnd_file.log
-        ,buff   => cv_debug_msg_ccls1 || CHR(10) || ''
-      );
-      --
-      gn_target_cnt := ln_disposal_count + ln_device_count;
-      --
-      -- *** DEBUG_LOG ***
-      -- 内訳件数をログ出力
-      fnd_file.put_line(
-         which  => fnd_file.log
-        ,buff   => cv_debug_msg_13   || ln_disposal_count || CHR(10) || ''
-      );
-      --
-      fnd_file.put_line(
-         which  => fnd_file.log
-        ,buff   => cv_debug_msg_14 || ln_device_count || CHR(10) || ''
-      );
-      --
-      /* 2009.05.29 K.Satomura T1_1017対応 END */
-
-    ELSIF (gv_csv_process_kbn = cv_csv_proc_kbn_2) THEN -- 拠点変更出力処理
---
-      -- =================================================
-      -- A-5.拠点変更物件マスタ情報抽出
-      -- =================================================
---
-      -- カーソルオープン
-      OPEN bukken_info_location_data_cur;
-      -- *** DEBUG_LOG ***
-      -- カーソルオープンしたことをログ出力
-      fnd_file.put_line(
-         which  => FND_FILE.LOG
-        ,buff   => cv_debug_msg_copn || CHR(10) ||
-                   ''
-      );
---
-      <<get_locaton_data_loop>>
-      LOOP
---
-        BEGIN
-          FETCH bukken_info_location_data_cur INTO l_location_data_cur;
-        EXCEPTION
-          WHEN OTHERS THEN
-            -- データ抽出エラーメッセージ
-            lv_errmsg := xxccp_common_pkg.get_msg(
-                                 iv_application  => cv_app_name               -- アプリケーション短縮名
-                                ,iv_name         => cv_tkn_number_08          -- メッセージコード
-                                ,iv_token_name1  => cv_tkn_table              -- トークンコード1
-                                ,iv_token_value1 => cv_bukken_data            -- トークン値1
-                                ,iv_token_name2  => cv_tkn_err_msg            -- トークンコード2
-                                ,iv_token_value2 => SQLERRM                   -- トークン値2
-                );
-            lv_errbuf  := lv_errmsg||SQLERRM;
-            RAISE global_process_expt;
-        END;
---
-        BEGIN
-          -- データ初期化
-          lv_sub_msg := NULL;
-          lv_sub_buf := NULL;
-          -- レコード変数初期化
-          l_get_rec         := NULL;
-          -- 処理対象件数格納
-          gn_target_cnt := bukken_info_location_data_cur%ROWCOUNT;
-          -- 対象件数がO件の場合
-          EXIT WHEN bukken_info_location_data_cur%NOTFOUND
-          OR  bukken_info_location_data_cur%ROWCOUNT = 0;
-          -- 取得データをローカル変数に格納
-          lt_instance_id         := l_location_data_cur.instance_id;            -- インスタンスID
-          lt_external_reference  := l_location_data_cur.external_reference;     -- 物件コード
-          lt_attribute1_cd       := l_location_data_cur.attribute1_cd;          -- 機種
-          lt_cust_account_id     := l_location_data_cur.cust_account_id;        -- アカウントID
-          lt_sale_base_code      := l_location_data_cur.sale_base_code;         -- 売上拠点コード
-          lt_past_sale_base_code := l_location_data_cur.past_sale_base_code;    -- 前月売上拠点コ
-          lt_old_head_offi_code  := l_location_data_cur.old_head_office_code;   -- 旧本部コード
-          lt_row_order           := l_location_data_cur.row_order;              -- 拠点並び順
-          lt_object_version_number := l_location_data_cur.object_version_number;-- オブジェクトバージョン
-          -- 機器状態3(廃棄情報)と廃棄決裁日の追加属性値を抽出
-          -- 機器状態3(廃棄情報)
-          lt_jotai_kbn3 := xxcso_ib_common_pkg.get_ib_ext_attribs2(
-                              in_instance_id    => lt_instance_id           -- インスタンスID
-                             ,iv_attribute_code => cv_jotai_kbn3            -- 属性コード
-          );
---
-          -- 廃棄決裁日
-          lv_format     := 'YYYY/MM/DD';
-          lt_haiki_date := xxcso_ib_common_pkg.get_ib_ext_attribs2(
-                              in_instance_id    => lt_instance_id           -- インスタンスID
-                             ,iv_attribute_code => cv_haikikessai_dt        -- 属性コード
-          );
---          
-          IF (lt_haiki_date IS NOT NULL) THEN
-            --取得したパラメータの書式が指定された日付の書式（YYYYMMDD）であるかを確認
-            lb_check_date_value := xxcso_util_common_pkg.check_date(
-                                          iv_date         => lt_haiki_date
-                                         ,iv_date_format  => lv_format
+            -- ログ出力
+            fnd_file.put_line(
+               which  => FND_FILE.LOG
+              ,buff   => '' || CHR(10) || cv_debug_msg12 || CHR(10) || ''
             );
-            --リターンステータスが「FALSE」の場合,例外処理を行う
-            IF (lb_check_date_value = FALSE) THEN
-              lv_sub_msg := xxccp_common_pkg.get_msg(
+            --
+          END IF;
+          --
+      END;
+      --
+    END LOOP get_device_data_loop;
+    --
+    -- カーソルクローズ
+    CLOSE bukken_info_device_data_cur;
+    -- *** DEBUG_LOG ***
+    -- カーソルクローズしたことをログ出力
+    fnd_file.put_line(
+       which  => fnd_file.log
+      ,buff   => cv_debug_msg_ccls1 || CHR(10) || ''
+    );
+    --
+    /* 2009.08.11 K.Satomura 0001000対応 START */
+    --gn_target_cnt := ln_disposal_count + ln_device_count;
+    ----
+    ---- *** DEBUG_LOG ***
+    ---- 内訳件数をログ出力
+    --fnd_file.put_line(
+    --   which  => fnd_file.log
+    --  ,buff   => cv_debug_msg_13   || ln_disposal_count || CHR(10) || ''
+    --);
+    ----
+    --fnd_file.put_line(
+    --   which  => fnd_file.log
+    --  ,buff   => cv_debug_msg_14 || ln_device_count || CHR(10) || ''
+    --);
+    /* 2009.08.11 K.Satomura 0001000対応 END */
+    --
+    /* 2009.05.29 K.Satomura T1_1017対応 END */
+    /* 2009.08.11 K.Satomura 0001000対応 START */
+    --ELSIF (gv_csv_process_kbn = cv_csv_proc_kbn_2) THEN -- 拠点変更出力処理
+    /* 2009.08.11 K.Satomura 0001000対応 END */
+--
+    -- =================================================
+    -- A-5.拠点変更物件マスタ情報抽出
+    -- =================================================
+--
+    -- カーソルオープン
+    OPEN bukken_info_location_data_cur;
+    -- *** DEBUG_LOG ***
+    -- カーソルオープンしたことをログ出力
+    fnd_file.put_line(
+       which  => FND_FILE.LOG
+      ,buff   => cv_debug_msg_copn || CHR(10) ||
+                 ''
+    );
+--
+    <<get_locaton_data_loop>>
+    LOOP
+--
+      BEGIN
+        FETCH bukken_info_location_data_cur INTO l_location_data_cur;
+      EXCEPTION
+        WHEN OTHERS THEN
+          -- データ抽出エラーメッセージ
+          lv_errmsg := xxccp_common_pkg.get_msg(
                                iv_application  => cv_app_name               -- アプリケーション短縮名
-                              ,iv_name         => cv_tkn_number_20          -- メッセージコード
-                              ,iv_token_name1  => cv_tkn_value              -- トークンコード1
-                              ,iv_token_value1 => lt_haiki_date             -- トークン値1パラメータ
-                              ,iv_token_name2  => cv_tkn_status             -- トークンコード2
-                              ,iv_token_value2 => cv_false                  -- トークン値2リターンステータス
-                              ,iv_token_name3  => cv_tkn_message            -- トークンコード3
-                              ,iv_token_value3 => NULL                      -- トークン値3リターンメッセージ
+                              ,iv_name         => cv_tkn_number_08          -- メッセージコード
+                              ,iv_token_name1  => cv_tkn_table              -- トークンコード1
+                              ,iv_token_value1 => cv_bukken_data            -- トークン値1
+                              ,iv_token_name2  => cv_tkn_err_msg            -- トークンコード2
+                              ,iv_token_value2 => SQLERRM                   -- トークン値2
               );
-              lv_sub_msg  := lv_sub_msg||cv_bukken_cd||lt_external_reference;
-              lv_sub_buf  := lv_sub_msg;
-              RAISE select_warn_expt;
-            END IF;
-            lt_haiki_date := TO_CHAR(TO_DATE(lt_haiki_date,'yyyy/mm/dd'), 'yyyymmdd');
-          END IF;
+          lv_errbuf  := lv_errmsg||SQLERRM;
+          RAISE global_process_expt;
+      END;
 --
-          -- 取得データを抽出出力データに格納
-          l_get_rec.external_reference   := lt_external_reference;      -- 物件コード
-          l_get_rec.old_head_office_code := lt_old_head_offi_code;      -- 旧本部コード
-          l_get_rec.row_order            := lt_row_order;               -- 拠点並び順
-          l_get_rec.sale_base_code       := lt_sale_base_code;          -- 拠点(部門)コード
-          l_get_rec.jotai_kbn3           := lt_jotai_kbn3;              -- 機器状態(廃棄情報)
-          l_get_rec.haiki_date           := lt_haiki_date;              -- 廃棄決裁日
+      BEGIN
+        -- データ初期化
+        lv_sub_msg := NULL;
+        lv_sub_buf := NULL;
+        -- レコード変数初期化
+        l_get_rec         := NULL;
+        -- 処理対象件数格納
+        /* 2009.08.11 K.Satomura 0001000対応 START */
+        --gn_target_cnt := bukken_info_location_data_cur%ROWCOUNT;
+        gn_base_change_count := bukken_info_location_data_cur%ROWCOUNT;
+        /* 2009.08.11 K.Satomura 0001000対応 END */
+        -- 対象件数がO件の場合
+        EXIT WHEN bukken_info_location_data_cur%NOTFOUND
+        OR  bukken_info_location_data_cur%ROWCOUNT = 0;
+        -- 取得データをローカル変数に格納
+        lt_instance_id         := l_location_data_cur.instance_id;            -- インスタンスID
+        lt_external_reference  := l_location_data_cur.external_reference;     -- 物件コード
+        lt_attribute1_cd       := l_location_data_cur.attribute1_cd;          -- 機種
+        lt_cust_account_id     := l_location_data_cur.cust_account_id;        -- アカウントID
+        lt_sale_base_code      := l_location_data_cur.sale_base_code;         -- 売上拠点コード
+        lt_past_sale_base_code := l_location_data_cur.past_sale_base_code;    -- 前月売上拠点コ
+        lt_old_head_offi_code  := l_location_data_cur.old_head_office_code;   -- 旧本部コード
+        lt_row_order           := l_location_data_cur.row_order;              -- 拠点並び順
+        lt_object_version_number := l_location_data_cur.object_version_number;-- オブジェクトバージョン
+        -- 機器状態3(廃棄情報)と廃棄決裁日の追加属性値を抽出
+        -- 機器状態3(廃棄情報)
+        lt_jotai_kbn3 := xxcso_ib_common_pkg.get_ib_ext_attribs2(
+                            in_instance_id    => lt_instance_id           -- インスタンスID
+                           ,iv_attribute_code => cv_jotai_kbn3            -- 属性コード
+        );
 --
-          -- ================================================================
-          -- A-6 禁則文字チェック
-          -- ================================================================
-          chk_str(
-             i_get_rec        => l_get_rec        -- 抽出出力データ
-            ,ov_errbuf        => lv_sub_buf       -- エラー・メッセージ            --# 固定 #
-            ,ov_retcode       => lv_sub_retcode   -- リターン・コード              --# 固定 #
-            ,ov_errmsg        => lv_sub_msg       -- ユーザー・エラー・メッセージ  --# 固定 #
+        -- 廃棄決裁日
+        lv_format     := 'YYYY/MM/DD';
+        lt_haiki_date := xxcso_ib_common_pkg.get_ib_ext_attribs2(
+                            in_instance_id    => lt_instance_id           -- インスタンスID
+                           ,iv_attribute_code => cv_haikikessai_dt        -- 属性コード
+        );
+--          
+        IF (lt_haiki_date IS NOT NULL) THEN
+          --取得したパラメータの書式が指定された日付の書式（YYYYMMDD）であるかを確認
+          lb_check_date_value := xxcso_util_common_pkg.check_date(
+                                        iv_date         => lt_haiki_date
+                                       ,iv_date_format  => lv_format
           );
---
-          IF (lv_sub_retcode = cv_status_error) THEN
+          --リターンステータスが「FALSE」の場合,例外処理を行う
+          IF (lb_check_date_value = FALSE) THEN
+            lv_sub_msg := xxccp_common_pkg.get_msg(
+                             iv_application  => cv_app_name               -- アプリケーション短縮名
+                            ,iv_name         => cv_tkn_number_20          -- メッセージコード
+                            ,iv_token_name1  => cv_tkn_value              -- トークンコード1
+                            ,iv_token_value1 => lt_haiki_date             -- トークン値1パラメータ
+                            ,iv_token_name2  => cv_tkn_status             -- トークンコード2
+                            ,iv_token_value2 => cv_false                  -- トークン値2リターンステータス
+                            ,iv_token_name3  => cv_tkn_message            -- トークンコード3
+                            ,iv_token_value3 => NULL                      -- トークン値3リターンメッセージ
+            );
+            lv_sub_msg  := lv_sub_msg||cv_bukken_cd||lt_external_reference;
+            lv_sub_buf  := lv_sub_msg;
             RAISE select_warn_expt;
           END IF;
+          lt_haiki_date := TO_CHAR(TO_DATE(lt_haiki_date,'yyyy/mm/dd'), 'yyyymmdd');
+        END IF;
 --
-          -- ================================================================
-          -- A-7 拠点変更物件マスタ情報更新
-          -- ================================================================
-          -- セーブポイント設定(更新失敗用)
-          --
-          SAVEPOINT item_proc_up;
+        -- 取得データを抽出出力データに格納
+        l_get_rec.external_reference   := lt_external_reference;      -- 物件コード
+        l_get_rec.old_head_office_code := lt_old_head_offi_code;      -- 旧本部コード
+        l_get_rec.row_order            := lt_row_order;               -- 拠点並び順
+        l_get_rec.sale_base_code       := lt_sale_base_code;          -- 拠点(部門)コード
+        l_get_rec.jotai_kbn3           := lt_jotai_kbn3;              -- 機器状態(廃棄情報)
+        l_get_rec.haiki_date           := lt_haiki_date;              -- 廃棄決裁日
+        /* 2009.08.11 K.Satomura 0001000対応 START */
+        l_get_rec.cust_shift_id        := l_location_data_cur.cust_shift_id; -- 顧客移行情報ID
+        /* 2009.08.11 K.Satomura 0001000対応 END */
+--
+        -- ================================================================
+        -- A-6 禁則文字チェック
+        -- ================================================================
+        chk_str(
+           i_get_rec        => l_get_rec        -- 抽出出力データ
+          ,ov_errbuf        => lv_sub_buf       -- エラー・メッセージ            --# 固定 #
+          ,ov_retcode       => lv_sub_retcode   -- リターン・コード              --# 固定 #
+          ,ov_errmsg        => lv_sub_msg       -- ユーザー・エラー・メッセージ  --# 固定 #
+        );
+--
+        IF (lv_sub_retcode = cv_status_error) THEN
+          RAISE select_warn_expt;
+        END IF;
+--
+        -- ================================================================
+        -- A-7 拠点変更物件マスタ情報更新
+        -- ================================================================
+        -- セーブポイント設定(更新失敗用)
+        --
+        SAVEPOINT item_proc_up;
+        /* 2009.08.11 K.Satomura 0001000対応 START */
+        IF (gv_date_value IS NULL) THEN
+        /* 2009.08.11 K.Satomura 0001000対応 END */
           update_item_instance(
              in_instance_id           => lt_instance_id            -- インスタンスID
             ,in_object_version_number => lt_object_version_number  -- オブジェクトバージョン
             ,iv_external_reference    => lt_external_reference     -- 物件コード
+            /* 2009.08.11 K.Satomura 0001000対応 START */
+            ,id_process_date          => ld_process_date           -- 業務処理日
+            /* 2009.08.11 K.Satomura 0001000対応 END */
             ,ov_errbuf        => lv_sub_buf       -- エラー・メッセージ            --# 固定 #
             ,ov_retcode       => lv_sub_retcode   -- リターン・コード              --# 固定 #
             ,ov_errmsg        => lv_sub_msg       -- ユーザー・エラー・メッセージ  --# 固定 #
@@ -2866,93 +3155,119 @@ AS
             );
             RAISE select_warn_expt;
           END IF;
-
---
-          -- ================================================================
-          -- A-8 拠点変更物件マスタ情報CSV出力
-          -- ================================================================
---
-          create_csv_rec(
-             i_get_rec        => l_get_rec        -- 拠点変更物件マスタ情報
-            ,ov_errbuf        => lv_sub_buf       -- エラー・メッセージ            --# 固定 #
-            ,ov_retcode       => lv_sub_retcode   -- リターン・コード              --# 固定 #
-            ,ov_errmsg        => lv_sub_msg       -- ユーザー・エラー・メッセージ  --# 固定 #
+        /* 2009.08.11 K.Satomura 0001000対応 START */
+          update_cust_shift_tbl(
+             i_get_rec  => l_get_rec      -- 抽出出力データ
+            ,ov_errbuf  => lv_sub_buf     -- エラー・メッセージ           --# 固定 #
+            ,ov_retcode => lv_sub_retcode -- リターン・コード             --# 固定 #
+            ,ov_errmsg  => lv_sub_msg     -- ユーザー・エラー・メッセージ --# 固定 #
           );
---
+          --
           IF (lv_sub_retcode = cv_status_error) THEN
             RAISE select_warn_expt;
+            --
           END IF;
+          --
+        END IF;
+        /* 2009.08.11 K.Satomura 0001000対応 END */
 --
-          -- 出力に成功した場合
-          lv_sub_msg :=  xxccp_common_pkg.get_msg(
-                            iv_application  => cv_app_name                   -- アプリケーション短縮名
-                           ,iv_name         => cv_tkn_number_16              -- メッセージコード
-                           ,iv_token_name1  => cv_tkn_bukken                 -- トークンコード1
-                           ,iv_token_value1 => l_get_rec.external_reference  -- トークン値1
-                          );
-          -- 出力に出力
+        -- ================================================================
+        -- A-8 拠点変更物件マスタ情報CSV出力
+        -- ================================================================
+--
+        create_csv_rec(
+           i_get_rec        => l_get_rec        -- 拠点変更物件マスタ情報
+          ,ov_errbuf        => lv_sub_buf       -- エラー・メッセージ            --# 固定 #
+          ,ov_retcode       => lv_sub_retcode   -- リターン・コード              --# 固定 #
+          ,ov_errmsg        => lv_sub_msg       -- ユーザー・エラー・メッセージ  --# 固定 #
+        );
+--
+        IF (lv_sub_retcode = cv_status_error) THEN
+          RAISE select_warn_expt;
+        END IF;
+--
+        -- 出力に成功した場合
+        lv_sub_msg :=  xxccp_common_pkg.get_msg(
+                          iv_application  => cv_app_name                   -- アプリケーション短縮名
+                         ,iv_name         => cv_tkn_number_16              -- メッセージコード
+                         ,iv_token_name1  => cv_tkn_bukken                 -- トークンコード1
+                         ,iv_token_value1 => l_get_rec.external_reference  -- トークン値1
+                        );
+        -- 出力に出力
+        fnd_file.put_line(
+           which  => FND_FILE.OUTPUT
+          ,buff   => lv_sub_msg
+        );
+        -- ログに出力
+        fnd_file.put_line(
+           which  => FND_FILE.LOG
+          ,buff   => cv_pkg_name||cv_msg_cont||
+                     cv_prg_name||cv_msg_part||
+                     lv_sub_msg 
+        );
+--          
+        --成功件数カウント
+        /* 2009.08.11 K.Satomura 0001000対応 START */
+        --gn_normal_cnt := gn_normal_cnt + 1;
+        gn_base_chg_norm_count := gn_base_chg_norm_count + 1;
+        /* 2009.08.11 K.Satomura 0001000対応 END */
+--
+      EXCEPTION
+        -- *** データ抽出時の警告例外ハンドラ ***
+        WHEN select_warn_expt THEN
+          --エラー件数カウント
+          /* 2009.08.11 K.Satomura 0001000対応 START */
+          --gn_error_cnt  := gn_error_cnt + 1;
+          gn_base_chg_err_count := gn_base_chg_err_count + 1;
+          /* 2009.08.11 K.Satomura 0001000対応 END */
+          --
+          lv_sub_retcode := cv_status_warn;
+          ov_retcode     := lv_sub_retcode;
+          --警告出力
           fnd_file.put_line(
              which  => FND_FILE.OUTPUT
-            ,buff   => lv_sub_msg
+            ,buff   => lv_sub_msg                  --ユーザー・エラーメッセージ
           );
-          -- ログに出力
           fnd_file.put_line(
              which  => FND_FILE.LOG
             ,buff   => cv_pkg_name||cv_msg_cont||
                        cv_prg_name||cv_msg_part||
-                       lv_sub_msg 
+                       lv_sub_buf 
           );
---          
-          --成功件数カウント
-          gn_normal_cnt := gn_normal_cnt + 1;
+        -- *** データ抽出時の警告例外ハンドラ ***
+        WHEN OTHERS THEN
+          --エラー件数カウント
+          /* 2009.08.11 K.Satomura 0001000対応 START */
+          --gn_error_cnt  := gn_error_cnt + 1;
+          gn_base_chg_err_count := gn_base_chg_err_count + 1;
+          /* 2009.08.11 K.Satomura 0001000対応 END */
+          --
+          lv_sub_retcode := cv_status_warn;
+          ov_retcode     := lv_sub_retcode;
+          --警告出力
+          fnd_file.put_line(
+             which  => FND_FILE.LOG
+            ,buff   => cv_pkg_name||cv_msg_cont||
+                       cv_prg_name||cv_msg_part||
+                       lv_sub_buf 
+          );
+      END;
+    END LOOP get_locaton_data_loop;
 --
-        EXCEPTION
-          -- *** データ抽出時の警告例外ハンドラ ***
-          WHEN select_warn_expt THEN
-            --エラー件数カウント
-            gn_error_cnt  := gn_error_cnt + 1;
-            --
-            lv_sub_retcode := cv_status_warn;
-            ov_retcode     := lv_sub_retcode;
-            --警告出力
-            fnd_file.put_line(
-               which  => FND_FILE.OUTPUT
-              ,buff   => lv_sub_msg                  --ユーザー・エラーメッセージ
-            );
-            fnd_file.put_line(
-               which  => FND_FILE.LOG
-              ,buff   => cv_pkg_name||cv_msg_cont||
-                         cv_prg_name||cv_msg_part||
-                         lv_sub_buf 
-            );
-          -- *** データ抽出時の警告例外ハンドラ ***
-          WHEN OTHERS THEN
-            --エラー件数カウント
-            gn_error_cnt  := gn_error_cnt + 1;
-            --
-            lv_sub_retcode := cv_status_warn;
-            ov_retcode     := lv_sub_retcode;
-            --警告出力
-            fnd_file.put_line(
-               which  => FND_FILE.LOG
-              ,buff   => cv_pkg_name||cv_msg_cont||
-                         cv_prg_name||cv_msg_part||
-                         lv_sub_buf 
-            );
-        END;
-      END LOOP get_locaton_data_loop;
+    -- カーソルクローズ
+    CLOSE bukken_info_location_data_cur;
+    -- *** DEBUG_LOG ***
+    -- カーソルクローズしたことをログ出力
+    fnd_file.put_line(
+       which  => FND_FILE.LOG
+      ,buff   => cv_debug_msg_ccls1 || CHR(10) ||
+                 ''
+    );
 --
-      -- カーソルクローズ
-      CLOSE bukken_info_location_data_cur;
-      -- *** DEBUG_LOG ***
-      -- カーソルクローズしたことをログ出力
-      fnd_file.put_line(
-         which  => FND_FILE.LOG
-        ,buff   => cv_debug_msg_ccls1 || CHR(10) ||
-                   ''
-      );
---
-    END IF;
+    /* 2009.08.11 K.Satomura 0001000対応 START */
+    --END IF;
+    gn_target_cnt := gn_disposal_count + gn_device_count + gn_base_change_count;
+    /* 2009.08.11 K.Satomura 0001000対応 END */
 --
     -- 処理対象件数が0件の場合
     IF (gn_target_cnt = 0) THEN
@@ -3256,6 +3571,11 @@ AS
     cv_normal_msg      CONSTANT VARCHAR2(100) := 'APP-XXCCP1-90004'; -- 正常終了メッセージ
     cv_warn_msg        CONSTANT VARCHAR2(100) := 'APP-XXCCP1-90005'; -- 警告終了メッセージ
     cv_error_msg       CONSTANT VARCHAR2(100) := 'APP-XXCCP1-90006'; -- エラー終了
+    /* 2009.08.11 K.Satomura 0001000対応 START */
+    cv_disposal        CONSTANT VARCHAR2(100) := '廃棄作業依頼';
+    cv_device          CONSTANT VARCHAR2(100) := '機器区分';
+    cv_base_change     CONSTANT VARCHAR2(100) := '拠点変更';
+    /* 2009.08.11 K.Satomura 0001000対応 END */
     -- ===============================
     -- ローカル変数
     -- ===============================
@@ -3318,41 +3638,182 @@ AS
       ,buff   => ''
     );
     --対象件数出力
-    gv_out_msg := xxccp_common_pkg.get_msg(
-                     iv_application  => cv_appl_short_name
-                    ,iv_name         => cv_target_rec_msg
-                    ,iv_token_name1  => cv_cnt_token
-                    ,iv_token_value1 => TO_CHAR(gn_target_cnt)
-                   );
-    fnd_file.put_line(
-       which  => FND_FILE.OUTPUT
-      ,buff   => gv_out_msg
-    );
- --
-    --成功件数出力
-    gv_out_msg := xxccp_common_pkg.get_msg(
-                     iv_application  => cv_appl_short_name
-                    ,iv_name         => cv_success_rec_msg
-                    ,iv_token_name1  => cv_cnt_token
-                    ,iv_token_value1 => TO_CHAR(gn_normal_cnt)
-                   );
-    fnd_file.put_line(
-       which  => FND_FILE.OUTPUT
-      ,buff   => gv_out_msg
-    );
+    /* 2009.08.11 K.Satomura 0001000対応 START */
+    --gv_out_msg := xxccp_common_pkg.get_msg(
+    --                 iv_application  => cv_appl_short_name
+    --                ,iv_name         => cv_target_rec_msg
+    --                ,iv_token_name1  => cv_cnt_token
+    --                ,iv_token_value1 => TO_CHAR(gn_target_cnt)
+    --               );
+    --fnd_file.put_line(
+    --   which  => FND_FILE.OUTPUT
+    --  ,buff   => gv_out_msg
+    --);
+--
+    ----成功件数出力
+    --gv_out_msg := xxccp_common_pkg.get_msg(
+    --                 iv_application  => cv_appl_short_name
+    --                ,iv_name         => cv_success_rec_msg
+    --                ,iv_token_name1  => cv_cnt_token
+    --                ,iv_token_value1 => TO_CHAR(gn_normal_cnt)
+    --               );
+    --fnd_file.put_line(
+    --   which  => FND_FILE.OUTPUT
+    --  ,buff   => gv_out_msg
+    --);
 --
     --エラー件数出力
+    --gv_out_msg := xxccp_common_pkg.get_msg(
+    --                 iv_application  => cv_appl_short_name
+    --                ,iv_name         => cv_error_rec_msg
+    --                ,iv_token_name1  => cv_cnt_token
+    --                ,iv_token_value1 => TO_CHAR(gn_error_cnt)
+    --               );
+    --fnd_file.put_line(
+    --   which  => FND_FILE.OUTPUT
+    --  ,buff   => gv_out_msg
+    --);
+    --
+    -- 廃棄作業依頼対象件数
     gv_out_msg := xxccp_common_pkg.get_msg(
-                     iv_application  => cv_appl_short_name
-                    ,iv_name         => cv_error_rec_msg
-                    ,iv_token_name1  => cv_cnt_token
-                    ,iv_token_value1 => TO_CHAR(gn_error_cnt)
+                     iv_application  => cv_app_name
+                    ,iv_name         => cv_tkn_number_26
+                    ,iv_token_name1  => cv_tkn_proc_name
+                    ,iv_token_value1 => cv_disposal
+                    ,iv_token_name2  => cv_tkn_count
+                    ,iv_token_value2 => TO_CHAR(gn_disposal_count)
+                  );
+    --
+    fnd_file.put_line(
+       which  => FND_FILE.OUTPUT
+      ,buff   => gv_out_msg
+    );
+    --
+    -- 機器区分対象件数
+    gv_out_msg := xxccp_common_pkg.get_msg(
+                     iv_application  => cv_app_name
+                    ,iv_name         => cv_tkn_number_26
+                    ,iv_token_name1  => cv_tkn_proc_name
+                    ,iv_token_value1 => cv_device
+                    ,iv_token_name2  => cv_tkn_count
+                    ,iv_token_value2 => TO_CHAR(gn_device_count)
+                  );
+    --
+    fnd_file.put_line(
+       which  => FND_FILE.OUTPUT
+      ,buff   => gv_out_msg
+    );
+    --
+    -- 拠点変更対象件数
+    gv_out_msg := xxccp_common_pkg.get_msg(
+                     iv_application  => cv_app_name
+                    ,iv_name         => cv_tkn_number_26
+                    ,iv_token_name1  => cv_tkn_proc_name
+                    ,iv_token_value1 => cv_base_change
+                    ,iv_token_name2  => cv_tkn_count
+                    ,iv_token_value2 => TO_CHAR(gn_base_change_count)
+                  );
+    --
+    fnd_file.put_line(
+       which  => FND_FILE.OUTPUT
+      ,buff   => gv_out_msg
+    );
+    --
+    fnd_file.put_line(
+       which  => FND_FILE.OUTPUT
+      ,buff   => ''
+    );
+    --
+    -- 廃棄作業依頼正常件数出力
+    gv_out_msg := xxccp_common_pkg.get_msg(
+                     iv_application  => cv_app_name
+                    ,iv_name         => cv_tkn_number_27
+                    ,iv_token_name1  => cv_tkn_proc_name
+                    ,iv_token_value1 => cv_disposal
+                    ,iv_token_name2  => cv_tkn_count
+                    ,iv_token_value2 => TO_CHAR(gn_disposal_norm_count)
                    );
     fnd_file.put_line(
        which  => FND_FILE.OUTPUT
       ,buff   => gv_out_msg
     );
     --
+    -- 機器区分正常件数出力
+    gv_out_msg := xxccp_common_pkg.get_msg(
+                     iv_application  => cv_app_name
+                    ,iv_name         => cv_tkn_number_27
+                    ,iv_token_name1  => cv_tkn_proc_name
+                    ,iv_token_value1 => cv_device
+                    ,iv_token_name2  => cv_tkn_count
+                    ,iv_token_value2 => TO_CHAR(gn_device_norm_count)
+                   );
+    fnd_file.put_line(
+       which  => FND_FILE.OUTPUT
+      ,buff   => gv_out_msg
+    );
+    --
+    -- 拠点変更正常件数出力
+    gv_out_msg := xxccp_common_pkg.get_msg(
+                     iv_application  => cv_app_name
+                    ,iv_name         => cv_tkn_number_27
+                    ,iv_token_name1  => cv_tkn_proc_name
+                    ,iv_token_value1 => cv_base_change
+                    ,iv_token_name2  => cv_tkn_count
+                    ,iv_token_value2 => TO_CHAR(gn_base_chg_norm_count)
+                   );
+    fnd_file.put_line(
+       which  => FND_FILE.OUTPUT
+      ,buff   => gv_out_msg
+    );
+    --
+    fnd_file.put_line(
+       which  => FND_FILE.OUTPUT
+      ,buff   => ''
+    );
+    --
+    -- 廃棄作業依頼エラー件数出力
+    gv_out_msg := xxccp_common_pkg.get_msg(
+                     iv_application  => cv_app_name
+                    ,iv_name         => cv_tkn_number_28
+                    ,iv_token_name1  => cv_tkn_proc_name
+                    ,iv_token_value1 => cv_disposal
+                    ,iv_token_name2  => cv_tkn_count
+                    ,iv_token_value2 => TO_CHAR(gn_disposal_err_count)
+                   );
+    fnd_file.put_line(
+       which  => FND_FILE.OUTPUT
+      ,buff   => gv_out_msg
+    );
+    --
+    -- 機器区分エラー件数出力
+    gv_out_msg := xxccp_common_pkg.get_msg(
+                     iv_application  => cv_app_name
+                    ,iv_name         => cv_tkn_number_28
+                    ,iv_token_name1  => cv_tkn_proc_name
+                    ,iv_token_value1 => cv_device
+                    ,iv_token_name2  => cv_tkn_count
+                    ,iv_token_value2 => TO_CHAR(gn_device_err_count)
+                   );
+    fnd_file.put_line(
+       which  => FND_FILE.OUTPUT
+      ,buff   => gv_out_msg
+    );
+    --
+    -- 拠点変更エラー件数出力
+    gv_out_msg := xxccp_common_pkg.get_msg(
+                     iv_application  => cv_app_name
+                    ,iv_name         => cv_tkn_number_28
+                    ,iv_token_name1  => cv_tkn_proc_name
+                    ,iv_token_value1 => cv_base_change
+                    ,iv_token_name2  => cv_tkn_count
+                    ,iv_token_value2 => TO_CHAR(gn_base_chg_err_count)
+                   );
+    fnd_file.put_line(
+       which  => FND_FILE.OUTPUT
+      ,buff   => gv_out_msg
+    );
+    --
+    /* 2009.08.11 K.Satomura 0001000対応 END */
     --終了メッセージ
     IF (lv_retcode = cv_status_normal) THEN
       lv_message_code := cv_normal_msg;
