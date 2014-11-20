@@ -28,6 +28,7 @@ AS
  *  2008/06/24    1.1   Masayoshi Uehara   支給の場合、パラメータ配送先/入庫先のリレーションを
  *                                         vendor_site_codeに変更。
  *  2008/07/02    1.2   Satoshi Yunba    禁則文字対応
+ *  2008/07/18    1.3   Hitomi Itou      ST不具合#465対応 出庫元・ブロックの抽出条件を変更
  *
  *****************************************************************************************/
 --
@@ -383,15 +384,20 @@ AS
              OR
              xoha.deliver_to                   = gt_param.deliver_to )
                                                                       -- パラメータ：配送先/入庫先
-      AND (
-             (gt_param.deliver_from IS NULL
-              OR
-              xoha.deliver_from                = gt_param.deliver_from )  -- パラメータ：出庫元
-          OR
-             (gt_param.block IS NULL
-              OR
-              xil2v.distribution_block         = gt_param.block )         -- パラメータ：ブロック
-          )
+--Mod start 2008/07/18 H.Itou
+--      AND (
+--             (gt_param.deliver_from IS NULL
+--              OR
+--              xoha.deliver_from                = gt_param.deliver_from )  -- パラメータ：出庫元
+--          OR
+--             (gt_param.block IS NULL
+--              OR
+--              xil2v.distribution_block         = gt_param.block )         -- パラメータ：ブロック
+--          )
+      AND  (((gt_param.deliver_from IS NULL) AND  (gt_param.block IS NULL))  -- パラメータ：出庫元、パラメータ：ブロックがNULLの場合、条件としない。
+        OR  xoha.deliver_from         =  gt_param.deliver_from               -- パラメータ：出庫元がNULLでない場合、条件に追加
+        OR  xil2v.distribution_block  =  gt_param.block)                     -- パラメータ：ブロックがNULLでない場合、条件に追加
+--Mod end 2008/07/18 H.Itou
       AND   TRUNC( xoha.schedule_ship_date )   = TRUNC( gt_param.date_from )  -- パラメータ：出庫日
       AND   xoha.latest_external_flag          = gc_latest_external_flag
       -------------------------------------------------------------------------------
@@ -520,15 +526,20 @@ AS
              --Mod end 2008/06/24 uehara
                                                                        -- パラメータ：配送先/入庫先
       AND   xoha.req_status                    <> gc_req_status_torikeshi  -- 取消
-      AND (
-             ((gt_param.deliver_from IS NULL
-               OR
-               xoha.deliver_from                = gt_param.deliver_from )  -- パラメータ：出庫元
-          OR
-             (gt_param.block IS NULL
-              OR
-              xil2v.distribution_block          = gt_param.block ))         -- パラメータ：ブロック
-          )
+--Mod start 2008/07/18 H.Itou
+--      AND (
+--             (gt_param.deliver_from IS NULL
+--              OR
+--              xoha.deliver_from                = gt_param.deliver_from )  -- パラメータ：出庫元
+--          OR
+--             (gt_param.block IS NULL
+--              OR
+--              xil2v.distribution_block         = gt_param.block )         -- パラメータ：ブロック
+--          )
+      AND  (((gt_param.deliver_from IS NULL) AND  (gt_param.block IS NULL))  -- パラメータ：出庫元、パラメータ：ブロックがNULLの場合、条件としない。
+        OR  xoha.deliver_from         =  gt_param.deliver_from               -- パラメータ：出庫元がNULLでない場合、条件に追加
+        OR  xil2v.distribution_block  =  gt_param.block)                     -- パラメータ：ブロックがNULLでない場合、条件に追加
+--Mod end 2008/07/18 H.Itou
       AND   xoha.schedule_ship_date             = gt_param.date_from       -- パラメータ：出庫日
       AND   xoha.latest_external_flag           = gc_latest_external_flag
       -------------------------------------------------------------------------------
@@ -688,15 +699,20 @@ AS
            OR
            xmrih.ship_to_locat_code             = gt_param.deliver_to )
                                                                       -- パラメータ：配送先/入庫先
-      AND (
-             (gt_param.deliver_from IS NULL
-              OR
-              xmrih.shipped_locat_code          = gt_param.deliver_from )   -- パラメータ：出庫元
-          OR
-             (gt_param.block IS NULL
-              OR
-              xil2v1.distribution_block         = gt_param.block )          -- パラメータ：ブロック
-          )
+--Mod start 2008/07/18 H.Itou
+--      AND (
+--             (gt_param.deliver_from IS NULL
+--              OR
+--              xmrih.shipped_locat_code          = gt_param.deliver_from )   -- パラメータ：出庫元
+--          OR
+--             (gt_param.block IS NULL
+--              OR
+--              xil2v1.distribution_block         = gt_param.block )          -- パラメータ：ブロック
+--          )
+      AND  (((gt_param.deliver_from IS NULL) AND  (gt_param.block IS NULL))  -- パラメータ：出庫元、パラメータ：ブロックがNULLの場合、条件としない。
+        OR  xmrih.shipped_locat_code   =  gt_param.deliver_from               -- パラメータ：出庫元がNULLでない場合、条件に追加
+        OR  xil2v1.distribution_block  =  gt_param.block)                     -- パラメータ：ブロックがNULLでない場合、条件に追加
+--Mod end 2008/07/18 H.Itou
       AND xmrih.schedule_ship_date              = gt_param.date_from        -- パラメータ：出庫日
       -------------------------------------------------------------------------------
       -- 移動依頼/指示明細(アドオン)
