@@ -7,7 +7,7 @@ AS
  * Description      : 請求更新処理
  * MD.050           : 運賃計算（月次）   T_MD050_BPO_740
  * MD.070           : 請求更新           T_MD070_BPO_74B
- * Version          : 1.0
+ * Version          : 1.1
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -31,6 +31,7 @@ AS
  *  Date          Ver.  Editor           Description
  * ------------- ----- ---------------- -------------------------------------------------
  *  2008/04/14    1.0  Oracle 和田 大輝  初回作成
+ *  2008/09/29    1.1  Oracle 吉田 夏樹  T_S_614対応
  *
  *****************************************************************************************/
 --
@@ -139,7 +140,9 @@ AS
     consumption_tax        NUMBER,                                          -- 消費税
     cong_charge_sum        NUMBER,                                          -- 通行料等
     amount_bil_sum         NUMBER,                                          -- 請求調整合計額
-    tax_free_bil_sum       NUMBER,                                          -- 消費税調整合計
+    tax_bil_sum            NUMBER,                                          -- 課税調整合計
+    tax_free_bil_sum       NUMBER,                                          -- 非課税調整合計
+    adj_tax_extra_sum      NUMBER,                                          -- 消費税調整合計
 --
     billing_name           xxwip_billing_mst.billing_name%TYPE,             -- 請求先名
     post_no                xxwip_billing_mst.post_no%TYPE,                  -- 郵便番号
@@ -163,7 +166,8 @@ AS
     month_tax              NUMBER,                                          -- 消費税（月）
     cong_charge_sum        NUMBER,                                          -- 通行料等
     amount_bil_sum         NUMBER,                                          -- 請求調整合計額
-    tax_free_bil_sum       NUMBER                                           -- 消費税調整合計
+    tax_bil_sum            NUMBER,                                          -- 課税調整合計
+    adj_tax_extra_sum      NUMBER                                           -- 消費税調整合計
   );
 --
   -- 対象データ情報を格納するテーブル型の定義
@@ -551,11 +555,15 @@ AS
       , dhc.judgement_yyyymm          -- 請求年月
       , dhc.consumption_tax_classe    -- 消費税区分
       , SUM(dhc.charged_amount)       -- 今月売上額
-      , SUM(dhc.line_tax)             -- 消費税（明細）
+-- 2008/09/29 1.1 N.Yoshida start
+      --, SUM(dhc.line_tax)             -- 消費税（明細）
+      , NULL                          -- 消費税（明細）
       , NULL                          -- 消費税（月）   (ここでは NULL を設定)
       , SUM(dhc.congestion_charge)    -- 通行料等
       , NULL                          -- 請求調整合計額 (ここでは NULL を設定)
+      , NULL                          -- 課税調整額     (ここでは NULL を設定)
       , NULL                          -- 消費税調整額   (ここでは NULL を設定)
+-- 2008/09/29 1.1 N.Yoshida end
     BULK COLLECT INTO gt_billing_tbl
     FROM
         (
@@ -569,7 +577,9 @@ AS
                  , NVL(xd.picking_charge, 0)              AS  picking_charge      -- ピッキング料
                  , NVL(xd.many_rate, 0)                   AS  many_rate           -- 諸料金
                  , xdc.half_adjust_classe                 AS  half_adjust_classe  -- 四捨五入区分
-                 , CASE                                                           -- 明細単位の消費税
+-- 2008/09/29 1.1 N.Yoshida start
+                 , NULL                                   AS  line_tax            -- 明細単位の消費税
+                 /*, CASE                                                           -- 明細単位の消費税
                     -- 四捨五入区分が切り上げ
                     WHEN (xdc.half_adjust_classe = gv_half_adjust_cls_up) THEN
                       TRUNC(
@@ -594,7 +604,8 @@ AS
                          NVL(xd.many_rate, 0))
                        * (TO_NUMBER(gv_consumption_tax) * 0.01)
                       )
-                    END line_tax
+                    END line_tax*/
+-- 2008/09/29 1.1 N.Yoshida end
           FROM    xxwip_deliverys        xd        -- 運賃ヘッダーアドオン
                 , xxwip_delivery_company xdc       -- 運賃用運送業者マスタ
           WHERE     TO_CHAR(xd.judgement_date, 'YYYYMM') = TO_CHAR(id_sysdate, 'YYYYMM')
@@ -699,8 +710,10 @@ AS
       -- ==================================================
       -- 消費税（月）の算出 （今月売上額 × 消費税）
       -- ==================================================
-      gt_billing_tbl(ln_index).month_tax :=
-          (gt_billing_tbl(ln_index).charged_amt_sum * (TO_NUMBER(gv_consumption_tax) * 0.01));
+-- 2008/09/29 1.1 N.Yoshida start
+      --gt_billing_tbl(ln_index).month_tax :=
+      --    (gt_billing_tbl(ln_index).charged_amt_sum * (TO_NUMBER(gv_consumption_tax) * 0.01));
+-- 2008/09/29 1.1 N.Yoshida end
 --
       -- ==============================
       -- 初回 設定
@@ -714,7 +727,8 @@ AS
         gt_masters_tbl(ln_mas_cnt).charged_amt_sum  := gt_billing_tbl(ln_index).charged_amt_sum;
 --
         -- *** 消費税 ***
-        -- 消費税区分＝「月」の場合
+-- 2008/09/29 1.1 N.Yoshida start
+        /*-- 消費税区分＝「月」の場合
         IF (gt_billing_tbl(ln_index).consumption_tax_classe = gv_cons_tax_cls_month) THEN
           gt_masters_tbl(ln_mas_cnt).consumption_tax  := gt_billing_tbl(ln_index).month_tax;
 --
@@ -725,7 +739,8 @@ AS
         -- 上記以外の場合
         ELSE 
           gt_masters_tbl(ln_mas_cnt).consumption_tax  := 0;
-        END IF;
+        END IF;*/
+-- 2008/09/29 1.1 N.Yoshida end
 --
         -- *** 通行料等 ***
         gt_masters_tbl(ln_mas_cnt).cong_charge_sum  := gt_billing_tbl(ln_index).cong_charge_sum;
@@ -741,7 +756,8 @@ AS
           gt_masters_tbl(ln_mas_cnt).charged_amt_sum + gt_billing_tbl(ln_index).charged_amt_sum;
 --
         -- *** 消費税 ***
-        -- 消費税区分 ＝「月」 の場合
+-- 2008/09/29 1.1 N.Yoshida start
+        /*-- 消費税区分 ＝「月」 の場合
         IF (gt_billing_tbl(ln_index).consumption_tax_classe = gv_cons_tax_cls_month) THEN
           gt_masters_tbl(ln_mas_cnt).consumption_tax  := 
             gt_masters_tbl(ln_mas_cnt).consumption_tax + gt_billing_tbl(ln_index).month_tax;
@@ -754,7 +770,8 @@ AS
         -- 上記以外の場合
         ELSE 
           gt_masters_tbl(ln_mas_cnt).consumption_tax  := 0;
-        END IF;
+        END IF;*/
+-- 2008/09/29 1.1 N.Yoshida end
 --
         -- *** 通行料等 ***
         gt_masters_tbl(ln_mas_cnt).cong_charge_sum  :=
@@ -764,6 +781,7 @@ AS
       -- 請求先コードか請求年月が違う場合
       -- ==============================
       ELSE
+--
         -- カウントアップ
         ln_mas_cnt := ln_mas_cnt + 1;
         -- *** 請求先コード ***
@@ -774,7 +792,8 @@ AS
         gt_masters_tbl(ln_mas_cnt).charged_amt_sum  := gt_billing_tbl(ln_index).charged_amt_sum;
 --
         -- *** 消費税 ***
-        -- 消費税区分 ＝「月」の場合
+-- 2008/09/29 1.1 N.Yoshida start
+        /*-- 消費税区分 ＝「月」の場合
         IF (gt_billing_tbl(ln_index).consumption_tax_classe = gv_cons_tax_cls_month) THEN
           gt_masters_tbl(ln_mas_cnt).consumption_tax  := gt_billing_tbl(ln_index).month_tax;
 --
@@ -785,7 +804,8 @@ AS
         -- 上記以外の場合
         ELSE 
           gt_masters_tbl(ln_mas_cnt).consumption_tax  := 0;
-        END IF;
+        END IF;*/
+-- 2008/09/29 1.1 N.Yoshida end
 --
         -- *** 通行料等 ***
         gt_masters_tbl(ln_mas_cnt).cong_charge_sum  := gt_billing_tbl(ln_index).cong_charge_sum;
@@ -801,11 +821,14 @@ AS
     FOR ln_index IN gt_masters_tbl.FIRST .. gt_masters_tbl.LAST LOOP
 --
       BEGIN
+-- 2008/09/29 1.1 N.Yoshida start
         -- 運賃調整アドオンマスタより金額取得
         SELECT    SUM(adj_charges.billing_sum)
                 , SUM(adj_charges.billing_tax_sum)
+                , SUM(adj_charges.adj_tax_extra)
         INTO      gt_masters_tbl(ln_index).amount_bil_sum       -- 請求調整合計額
-                , gt_masters_tbl(ln_index).tax_free_bil_sum     -- 消費税調整合計
+                , gt_masters_tbl(ln_index).tax_bil_sum          -- 課税調整合計
+                , gt_masters_tbl(ln_index).adj_tax_extra_sum    -- 消費税調整合計
         FROM
           (
             SELECT    xac.billing_code AS billing_code
@@ -815,13 +838,13 @@ AS
                       NVL(amount_billing2, 0) + 
                       NVL(amount_billing3, 0) + 
                       NVL(amount_billing4, 0) + 
-                      NVL(amount_billing5, 0) +
-                      NVL(adj_tax_extra, 0)
+                      NVL(amount_billing5, 0)
                     ) AS billing_sum             -- 請求金額計（請求金額１～５を加算）
                     ,(
                       CASE    -- 請求金額1
                         WHEN (NVL(xac.tax_free_billing1, gv_tax_free_bil_off) <> gv_tax_free_bil_on) THEN
-                          CASE
+                          NVL(amount_billing1, 0)
+                          /*CASE
                             WHEN (xdc.half_adjust_classe = gv_half_adjust_cls_up) THEN    -- 切上
                               CEIL(NVL(amount_billing1, 0) * (TO_NUMBER(gv_consumption_tax) * 0.01))
                             WHEN (xdc.half_adjust_classe = gv_half_adjust_cls_down) THEN  -- 切捨
@@ -829,12 +852,13 @@ AS
                             WHEN (xdc.half_adjust_classe = gv_half_adjust_cls_rnd) THEN   -- 四捨五入
                               ROUND(NVL(amount_billing1, 0) * (TO_NUMBER(gv_consumption_tax) * 0.01))
                             ELSE 0
-                          END
+                          END*/
                         ELSE 0
                       END +
                       CASE    -- 請求金額2
                         WHEN (NVL(xac.tax_free_billing2, gv_tax_free_bil_off) <> gv_tax_free_bil_on) THEN
-                          CASE
+                          NVL(amount_billing2, 0)
+                          /*CASE
                             WHEN (xdc.half_adjust_classe = gv_half_adjust_cls_up) THEN    -- 切上
                               CEIL(NVL(amount_billing2, 0) * (TO_NUMBER(gv_consumption_tax) * 0.01))
                             WHEN (xdc.half_adjust_classe = gv_half_adjust_cls_down) THEN  -- 切捨
@@ -842,12 +866,13 @@ AS
                             WHEN (xdc.half_adjust_classe = gv_half_adjust_cls_rnd) THEN   -- 四捨五入
                               ROUND(NVL(amount_billing2, 0) * (TO_NUMBER(gv_consumption_tax) * 0.01))
                             ELSE 0
-                          END
+                          END*/
                         ELSE 0
                       END +
                       CASE    -- 請求金額3
                         WHEN (NVL(xac.tax_free_billing3, gv_tax_free_bil_off) <> gv_tax_free_bil_on) THEN
-                          CASE
+                          NVL(amount_billing3, 0)
+                          /*CASE
                             WHEN (xdc.half_adjust_classe = gv_half_adjust_cls_up) THEN    -- 切上
                               CEIL(NVL(amount_billing3, 0) * (TO_NUMBER(gv_consumption_tax) * 0.01))
                             WHEN (xdc.half_adjust_classe = gv_half_adjust_cls_down) THEN  -- 切捨
@@ -855,12 +880,13 @@ AS
                             WHEN (xdc.half_adjust_classe = gv_half_adjust_cls_rnd) THEN   -- 四捨五入
                               ROUND(NVL(amount_billing3, 0) * (TO_NUMBER(gv_consumption_tax) * 0.01))
                             ELSE 0
-                          END
+                          END*/
                         ELSE 0
                       END +
                       CASE    -- 請求金額4
                         WHEN (NVL(xac.tax_free_billing4, gv_tax_free_bil_off) <> gv_tax_free_bil_on) THEN
-                          CASE
+                          NVL(amount_billing4, 0)
+                          /*CASE
                             WHEN (xdc.half_adjust_classe = gv_half_adjust_cls_up) THEN    -- 切上
                               CEIL(NVL(amount_billing4, 0) * (TO_NUMBER(gv_consumption_tax) * 0.01))
                             WHEN (xdc.half_adjust_classe = gv_half_adjust_cls_down) THEN  -- 切捨
@@ -868,12 +894,13 @@ AS
                             WHEN (xdc.half_adjust_classe = gv_half_adjust_cls_rnd) THEN   -- 四捨五入
                               ROUND(NVL(amount_billing4, 0) * (TO_NUMBER(gv_consumption_tax) * 0.01))
                             ELSE 0
-                          END
+                          END*/
                         ELSE 0
                       END +
                       CASE    -- 請求金額5
                         WHEN (NVL(xac.tax_free_billing5, gv_tax_free_bil_off) <> gv_tax_free_bil_on) THEN
-                          CASE
+                          NVL(amount_billing5, 0)
+                          /*CASE
                             WHEN (xdc.half_adjust_classe = gv_half_adjust_cls_up) THEN    -- 切上
                               CEIL(NVL(amount_billing5, 0) * (TO_NUMBER(gv_consumption_tax) * 0.01))
                             WHEN (xdc.half_adjust_classe = gv_half_adjust_cls_down) THEN  -- 切捨
@@ -881,11 +908,11 @@ AS
                             WHEN (xdc.half_adjust_classe = gv_half_adjust_cls_rnd) THEN   -- 四捨五入
                               ROUND(NVL(amount_billing5, 0) * (TO_NUMBER(gv_consumption_tax) * 0.01))
                             ELSE 0
-                          END
+                          END*/
                         ELSE 0
-                      END +
-                      NVL(adj_tax_extra, 0)       -- 消費税調整
+                      END
                     ) AS billing_tax_sum
+                    , NVL(adj_tax_extra, 0) AS adj_tax_extra  -- 消費税調整
             FROM    xxwip_adj_charges       xac   -- 運賃調整アドオン
                   , xxwip_delivery_company  xdc   -- 運賃用運送業者マスタ
             WHERE   xac.goods_classe            =   xdc.goods_classe
@@ -900,8 +927,10 @@ AS
       EXCEPTION
         WHEN NO_DATA_FOUND THEN
           gt_masters_tbl(ln_index).amount_bil_sum   := 0;    -- 請求調整合計額
-          gt_masters_tbl(ln_index).tax_free_bil_sum := 0;    -- 消費税調整合計
+          gt_masters_tbl(ln_index).tax_bil_sum := 0;         -- 課税調整合計
+          gt_masters_tbl(ln_index).adj_tax_extra_sum := 0;   -- 消費税調整合計
       END;
+-- 2008/09/29 1.1 N.Yoshida end
 --
     END LOOP gt_billing_tbl_loop;
 --
@@ -1163,6 +1192,9 @@ AS
 --
     -- *** ローカル変数 ***
     lt_billing_id   xxwip_billing_mst.billing_mst_id%TYPE; -- 請求先アドオンマスタID(更新用)
+-- 2008/09/29 1.1 N.Yoshida start
+    ln_consumption_tax                             NUMBER; -- 消費税(計算用)
+-- 2008/09/29 1.1 N.Yoshida end
 --
     -- *** ローカル・カーソル ***
 --
@@ -1200,6 +1232,14 @@ AS
                                                 gv_tkn_table,     gv_billing_mst_name);
           RAISE global_api_expt;
       END;
+--
+-- 2008/09/29 1.1 N.Yoshida start
+      -- 消費税の計算：((今月売上額(運賃ヘッダ分)＋課税調整合計)×消費税率×0.01)＋消費税調整合計
+      ln_consumption_tax := TRUNC((NVL(gt_masters_tbl(ln_index).charged_amt_sum, 0) + 
+                                     NVL(gt_masters_tbl(ln_index).tax_bil_sum, 0)) * 
+                                       (TO_NUMBER(gv_consumption_tax) * 0.01))      +
+                            NVL(gt_masters_tbl(ln_index).adj_tax_extra_sum, 0);
+-- 2008/09/29 1.1 N.Yoshida end
 --
       -- データが存在しない場合
       IF (lt_billing_id IS NULL) THEN
@@ -1241,12 +1281,14 @@ AS
           NVL(gt_masters_tbl(ln_index).amount_receipt_money, 0) -
           NVL(gt_masters_tbl(ln_index).amount_adjustment,    0);
         -- 今回請求金額
+-- 2008/09/29 1.1 N.Yoshida start
         i_bil_chrg_amt_tab(gn_i_bil_tab_cnt) :=
           NVL(gt_masters_tbl(ln_index).charged_amt_sum,  0) +
-          NVL(gt_masters_tbl(ln_index).consumption_tax,  0) +
+          --NVL(gt_masters_tbl(ln_index).consumption_tax,  0) +
           NVL(gt_masters_tbl(ln_index).cong_charge_sum,  0) +
           NVL(gt_masters_tbl(ln_index).amount_bil_sum,   0) +
-          NVL(gt_masters_tbl(ln_index).tax_free_bil_sum, 0);
+          ln_consumption_tax;
+-- 2008/09/29 1.1 N.Yoshida end
         -- 請求金額合計
         i_bil_chrg_amt_ttl_tab(gn_i_bil_tab_cnt) :=
           NVL(i_bil_chrg_amt_tab(gn_i_bil_tab_cnt),   0) +
@@ -1256,9 +1298,11 @@ AS
           NVL(gt_masters_tbl(ln_index).charged_amt_sum, 0) +
           NVL(gt_masters_tbl(ln_index).amount_bil_sum,   0);
         -- 消費税
-        i_bil_consumption_tax_tab(gn_i_bil_tab_cnt) :=
-          NVL(gt_masters_tbl(ln_index).consumption_tax,  0) +
-          NVL(gt_masters_tbl(ln_index).tax_free_bil_sum, 0);
+-- 2008/09/29 1.1 N.Yoshida start
+        i_bil_consumption_tax_tab(gn_i_bil_tab_cnt) := 
+          --NVL(gt_masters_tbl(ln_index).consumption_tax,  0) +
+          ln_consumption_tax;
+-- 2008/09/29 1.1 N.Yoshida end
         -- 通行料等
         i_bil_cn_chrg_tab(gn_i_bil_tab_cnt) :=
           NVL(gt_masters_tbl(ln_index).cong_charge_sum, 0);
@@ -1301,12 +1345,14 @@ AS
           NVL(gt_masters_tbl(ln_index).amount_receipt_money, 0) -
           NVL(gt_masters_tbl(ln_index).amount_adjustment,    0);
         -- 今回請求金額
+-- 2008/09/29 1.1 N.Yoshida start
         u_bil_chrg_amt_tab(gn_u_bil_tab_cnt) :=
           NVL(gt_masters_tbl(ln_index).charged_amt_sum,  0) +
-          NVL(gt_masters_tbl(ln_index).consumption_tax,  0) +
+          --NVL(gt_masters_tbl(ln_index).consumption_tax,  0) +
           NVL(gt_masters_tbl(ln_index).cong_charge_sum,  0) +
           NVL(gt_masters_tbl(ln_index).amount_bil_sum,   0) +
-          NVL(gt_masters_tbl(ln_index).tax_free_bil_sum, 0);
+          ln_consumption_tax;
+-- 2008/09/29 1.1 N.Yoshida end
         -- 請求金額合計
         u_bil_chrg_amt_ttl_tab(gn_u_bil_tab_cnt) :=
           NVL(u_bil_chrg_amt_tab(gn_u_bil_tab_cnt),   0) +
@@ -1316,9 +1362,11 @@ AS
           NVL(gt_masters_tbl(ln_index).charged_amt_sum, 0) +
           NVL(gt_masters_tbl(ln_index).amount_bil_sum,   0);
         -- 消費税
+-- 2008/09/29 1.1 N.Yoshida start
         u_bil_consumption_tax_tab(gn_u_bil_tab_cnt) :=
-          NVL(gt_masters_tbl(ln_index).consumption_tax,  0) +
-          NVL(gt_masters_tbl(ln_index).tax_free_bil_sum, 0);
+          --NVL(gt_masters_tbl(ln_index).consumption_tax,  0) +
+          ln_consumption_tax;
+-- 2008/09/29 1.1 N.Yoshida end
         -- 通行料等
         u_bil_cn_chrg_tab(gn_u_bil_tab_cnt) :=
           NVL(gt_masters_tbl(ln_index).cong_charge_sum, 0);

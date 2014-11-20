@@ -1,13 +1,14 @@
 /*============================================================================
 * ファイル名 : XxwshReserveLotAMImpl
 * 概要説明   : 引当ロット入力:登録アプリケーションモジュール
-* バージョン : 1.1
+* バージョン : 1.2
 *============================================================================
 * 修正履歴
 * 日付       Ver. 担当者       修正内容
 * ---------- ---- ------------ ----------------------------------------------
 * 2008-03-17 1.0  北寒寺正夫     新規作成
 * 2008-08-07 1.1  二瓶　大輔     内部変更要求#166,#173
+* 2008-10-07 1.2  伊藤ひとみ     統合テスト指摘240対応
 *============================================================================
 */
 package itoen.oracle.apps.xxwsh.xxwsh920002j.server;
@@ -34,7 +35,7 @@ import oracle.jbo.domain.Number;
 /***************************************************************************
  * 仮引当ロット入力画面のアプリケーションモジュールクラスです。
  * @author  ORACLE 北寒寺 正夫
- * @version 1.1
+ * @version 1.2
  ***************************************************************************
  */
  
@@ -1206,7 +1207,11 @@ public class XxwshReserveLotAMImpl extends XxcmnOAApplicationModuleImpl
     HashMap paramsRet = XxwshUtility.calcTotalValue(
                           getOADBTransaction(),
                           itemCode,
-                          sumReservedQuantityItem.toString());
+                          sumReservedQuantityItem.toString(),
+// 2008-10-07 H.Itou Add Start 統合テスト指摘240
+                          scheduleShipDate
+// 2008-10-07 H.Itou Add End
+                          );
     // 取得した重量がNULL以外の場合
     if (!XxcmnUtility.isBlankOrNull((String)paramsRet.get("sumWeight")))
     {

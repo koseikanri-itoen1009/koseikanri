@@ -1,7 +1,7 @@
 /*============================================================================
 * ファイル名 : XxwshUtility
 * 概要説明   : 出荷・引当/配車共通関数
-* バージョン : 1.6
+* バージョン : 1.7
 *============================================================================
 * 修正履歴
 * 日付       Ver. 担当者       修正内容
@@ -13,6 +13,7 @@
 * 2008-08-01 1.4  伊藤ひとみ   内部変更要求#176対応
 * 2008-08-07 1.5  二瓶大輔　   内部変更要求#166対応
 * 2008-09-19 1.6  伊藤ひとみ   T_TE080_BPO_400指摘76対応
+* 2008-10-07 1.7  伊藤ひとみ   統合テスト指摘240対応
 *============================================================================
 */
 package itoen.oracle.apps.xxwsh.util;
@@ -34,7 +35,7 @@ import oracle.jbo.domain.Number;
 /***************************************************************************
  * 出荷・引当/配車共通関数クラスです。
  * @author  ORACLE 伊藤ひとみ
- * @version 1.6
+ * @version 1.7
  ***************************************************************************
  */
 public class XxwshUtility 
@@ -3002,13 +3003,17 @@ public class XxwshUtility
    * 合計数量・合計容積を算出します。
    * @param itemNo   - 品目コード
    * @param quantity - 数量
+   * @param standardDate - 基準日
    * @return HashMap  - 戻り値群
    * @throws OAException - OA例外
    ****************************************************************************/
   public static HashMap calcTotalValue(
     OADBTransaction trans,
     String itemNo,
-    String quantity
+    String quantity,
+// 2008-10-07 H.Itou Add Start 統合テスト指摘240
+    Date standardDate
+// 2008-10-07 H.Itou Add End
   ) throws  OAException
   {
     String apiName = "calcTotalValue";
@@ -3031,10 +3036,18 @@ public class XxwshUtility
     sb.append("   ,on_sum_weight        => ln_sum_weight ");
     sb.append("   ,on_sum_capacity      => ln_sum_capacity ");
     sb.append("   ,on_sum_pallet_weight => ln_sum_pallet_weight ");
+// 2008-10-07 H.Itou Add Start 統合テスト指摘240
+    sb.append("   ,id_standard_date     => :6 ");
+// 2008-10-07 H.Itou Add End
     sb.append("  ); ");
-    sb.append("  :6 := TO_CHAR(ln_sum_weight);        ");
-    sb.append("  :7 := TO_CHAR(ln_sum_capacity);      ");
-    sb.append("  :8 := TO_CHAR(ln_sum_pallet_weight); ");
+// 2008-10-07 H.Itou Mod Start 統合テスト指摘240
+//    sb.append("  :6 := TO_CHAR(ln_sum_weight);        ");
+//    sb.append("  :7 := TO_CHAR(ln_sum_capacity);      ");
+//    sb.append("  :8 := TO_CHAR(ln_sum_pallet_weight); ");
+    sb.append("  :7 := TO_CHAR(ln_sum_weight);        ");
+    sb.append("  :8 := TO_CHAR(ln_sum_capacity);      ");
+    sb.append("  :9 := TO_CHAR(ln_sum_pallet_weight); ");
+// 2008-10-07 H.Itou Mod End
     sb.append("END; ");
 
     // PL/SQLの設定を行います。
@@ -3052,6 +3065,9 @@ public class XxwshUtility
       cstmt.registerOutParameter(i++, Types.VARCHAR, 1);         // ステータスコード
       cstmt.registerOutParameter(i++, Types.VARCHAR, 5000);      // エラーメッセージ
       cstmt.registerOutParameter(i++, Types.VARCHAR, 5000);      // システムメッセージ
+// 2008-10-07 H.Itou Add Start 統合テスト指摘240
+      cstmt.setDate(i++, XxcmnUtility.dateValue(standardDate)); // 基準日
+// 2008-10-07 H.Itou Add End
       cstmt.registerOutParameter(i++, Types.VARCHAR);
       cstmt.registerOutParameter(i++, Types.VARCHAR);
       cstmt.registerOutParameter(i++, Types.VARCHAR);
@@ -3063,9 +3079,14 @@ public class XxwshUtility
       String retCode         = cstmt.getString(3);  // リターンコード
       String errMsg          = cstmt.getString(4);  // エラーメッセージ
       String systemMsg       = cstmt.getString(5);  // システムメッセージ
-      String sumWeight       = cstmt.getString(6);  // 重量
-      String sumCapacity     = cstmt.getString(7);  // 容積
-      String sumPalletWeight = cstmt.getString(8);  // パレット重量
+// 2008-10-07 H.Itou Mod Start 統合テスト指摘240
+//      String sumWeight       = cstmt.getString(6);  // 重量
+//      String sumCapacity     = cstmt.getString(7);  // 容積
+//      String sumPalletWeight = cstmt.getString(8);  // パレット重量
+      String sumWeight       = cstmt.getString(7);  // 重量
+      String sumCapacity     = cstmt.getString(8);  // 容積
+      String sumPalletWeight = cstmt.getString(9);  // パレット重量
+// 2008-10-07 H.Itou Mod End
 
       // 戻り値取得
       retHashMap.put("retCode",         retCode);
