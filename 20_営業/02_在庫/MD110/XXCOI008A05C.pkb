@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCOI008A05C(body)
  * Description      : 情報系システムへの連携の為、EBSのVDコラムマスタ(アドオン)をCSVファイルに出力
  * MD.050           : VDコラムマスタ情報系連携 <MD050_COI_008_A05>
- * Version          : 1.0
+ * Version          : 1.1
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -25,6 +25,7 @@ AS
  *  Date          Ver.  Editor           Description
  * ------------- ----- ---------------- -------------------------------------------------
  *  2008/12/24    1.0   S.Kanda          新規作成
+ *  2009/06/11    1.1   H.Sasaki         [T1_1416]携抽出対象顧客ステータスを変更
  *
  *****************************************************************************************/
 --
@@ -108,6 +109,9 @@ AS
   cv_tkn_file_name          CONSTANT VARCHAR2(10)  := 'FILE_NAME';     -- ファイル名用
   -- SQL記述用
   cv_duns_number_90         CONSTANT VARCHAR2(30)  := '90';            -- 顧客ステータス：中止決裁済
+-- == 2009/06/11 V1.1 Added START ===============================================================
+  cv_duns_number_80         CONSTANT VARCHAR2(30)  := '80';            -- 顧客ステータス：更生債権
+-- == 2009/06/11 V1.1 Added END   ===============================================================
   cn_inv_quantity_0         CONSTANT NUMBER        := 0;               -- 基準在庫数 比較値
   --
   --ファイルオープンモード
@@ -498,7 +502,10 @@ AS
             , mtl_system_items_b   msib        -- 品目マスタ
             , csi_item_instances   cii         -- 物件マスタ
             , hz_parties           hp          -- パーティ
-      WHERE  hp.duns_number_c         <>  cv_duns_number_90           -- 顧客ステータス：中止決裁済
+-- == 2009/06/11 V1.1 Modified START ===============================================================
+--      WHERE  hp.duns_number_c         <>  cv_duns_number_90           -- 顧客ステータス：中止決裁済
+      WHERE  hp.duns_number_c         NOT IN ( cv_duns_number_90 , cv_duns_number_80 )  -- 顧客ステータス
+-- == 2009/06/11 V1.1 Modified END   ===============================================================
       AND    hp.party_id              =   hca.party_id                -- パーティID
       AND    xmvc.inventory_quantity  <>  cn_inv_quantity_0           -- 基準在庫数が'0'以外
       AND    hca.cust_account_id      =   xmvc.customer_id            -- 顧客ID
