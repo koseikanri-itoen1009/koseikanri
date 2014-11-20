@@ -3,7 +3,7 @@
  *
  * Table Name  : XXCOI_INV_RECEPTION_SUM
  * Description : 月次在庫受払表（累計）
- * Version     : 1.1
+ * Version     : 1.2
  *
  * Change Record
  * ------------- ----- ---------------- ---------------------------------
@@ -11,6 +11,7 @@
  * ------------- ----- ---------------- ---------------------------------
  *  2009/04/01    1.0   H.Sasaki         新規作成
  *  2009/05/29    1.1   S.Moriyama       PKよりORGANIZATION_IDを除外
+ *  2009/08/18    1.2   N.Abe            STANDARD_COSTを7,2→9,2へ修正
  *
  ************************************************************************/
  CREATE TABLE xxcoi.xxcoi_inv_reception_sum (
@@ -21,7 +22,7 @@
     ,practice_date                  VARCHAR2(6)   NOT NULL
     ,inventory_item_id              NUMBER        NOT NULL
     ,operation_cost                 NUMBER(7)
-    ,standard_cost                  NUMBER(7,2)
+    ,standard_cost                  NUMBER(9,2)
     ,sales_shipped                  NUMBER(11,2)
     ,sales_shipped_b                NUMBER(11,2)
     ,return_goods                   NUMBER(11,2)

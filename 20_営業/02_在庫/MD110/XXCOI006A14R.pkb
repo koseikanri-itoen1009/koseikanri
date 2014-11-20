@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCOI006A14R(body)
  * Description      : 受払残高表（営業員）
  * MD.050           : 受払残高表（営業員） <MD050_COI_A14>
- * Version          : 1.3
+ * Version          : 1.4
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -28,6 +28,7 @@ AS
  *  2009/07/14    1.1   N.Abe            [0000462]群コード取得方法修正
  *  2009/07/22    1.2   H.Sasaki         [0000685]パラメータ日付項目のPT対応
  *  2009/08/04    1.3   H.Sasaki         [0000895]PT対応
+ *  2009/08/18    1.4   N.Abe            [0001090]出力桁数の修正
  *
  *****************************************************************************************/
 --
@@ -142,7 +143,10 @@ AS
               /*+ leading(msi papf xird) */
 -- == 2009/08/04 V1.3 Added END   ===============================================================
               papf.employee_number                emp_no              -- 1.営業員コード
-             ,papf.per_information18 || papf.per_information19
+-- == 2009/08/18 V1.4 Modified START ===============================================================
+--             ,papf.per_information18 || papf.per_information19
+             ,SUBSTRB(papf.per_information18, 1, 10) || SUBSTRB(papf.per_information19, 1, 10)
+-- == 2009/08/18 V1.4 Modified END   ===============================================================
                                                   emp_name            -- 2.営業員名称（漢字姓＋漢字名）
 -- == 2009/07/14 V1.1 Modified START ===============================================================
 --             ,SUBSTR(iimb.attribute2, 1, 3)       policy_group        -- 3.群コード
@@ -231,7 +235,10 @@ AS
               /*+ leading(msi papf xirm) */
 -- == 2009/08/04 V1.3 Added END   ===============================================================
               papf.employee_number                emp_no              -- 1.営業員コード
-             ,papf.per_information18 || papf.per_information19
+-- == 2009/08/18 V1.4 Modified START ===============================================================
+--             ,papf.per_information18 || papf.per_information19
+             ,SUBSTRB(papf.per_information18, 1, 10) || SUBSTRB(papf.per_information19, 1, 10)
+-- == 2009/08/18 V1.4 Modified END   ===============================================================
                                                   emp_name            -- 2.営業員名称（漢字姓＋漢字名）
 -- == 2009/07/14 V1.1 Modified START ===============================================================
 --             ,SUBSTR(iimb.attribute2, 1, 3)       policy_group        -- 3.群コード
@@ -584,7 +591,10 @@ AS
     --====================================
     IF (iv_business IS NOT NULL) THEN
       BEGIN
-        SELECT  papf.per_information18 || papf.per_information19  emp_name
+-- == 2009/08/18 V1.4 Modified START ===============================================================
+--        SELECT  papf.per_information18 || papf.per_information19  emp_name
+        SELECT  SUBSTRB(papf.per_information18, 1, 10) || SUBSTRB(papf.per_information19, 1, 10)  emp_name
+-- == 2009/08/18 V1.4 Modified END   ===============================================================
         INTO    lv_emp_name
         FROM    per_all_people_f  papf
         WHERE   papf.employee_number       = iv_business

@@ -7,7 +7,7 @@ AS
  * Package Name     : XXCOI003A05R(body)
  * Description      : 入庫差異確認リスト
  * MD.050           : 入庫差異確認リスト MD050_COI_003_A05
- * Version          : 1.1
+ * Version          : 1.2
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -29,7 +29,8 @@ AS
  *  Date          Ver.  Editor           Description
  * ------------- ----- ---------------- -------------------------------------------------
  *  2009/01/20    1.0   SCS.Tsuboi       新規作成
- *  2009/08/06    1.1   N.ABe            [0000945]パフォーマンス改善
+ *  2009/08/06    1.1   N.Abe            [0000945]パフォーマンス改善
+ *  2009/08/18    1.2   N.Abe            [0001090]出力桁数の修正
  *
  *****************************************************************************************/
 --
@@ -142,7 +143,10 @@ AS
   TYPE gr_hht_info_rec IS RECORD(
       outside_code              VARCHAR2(13)                                     -- 出庫側コード
     , outside_location_code     VARCHAR2(13)                                     -- 出庫側コード
-    , outside_location_name     VARCHAR2(40)                                     -- 出庫場所名
+-- == 2009/08/18 V1.2 Modified START ===============================================================
+--    , outside_location_name     VARCHAR2(40)                                     -- 出庫場所名
+    , outside_location_name     VARCHAR2(240)                                    -- 出庫場所名
+-- == 2009/08/18 V1.2 Modified END   ===============================================================
     , invoice_date               xxcoi_hht_inv_transactions.invoice_date%TYPE    -- 伝票日付
     , item_code                  xxcoi_hht_inv_transactions.item_code%TYPE       -- 商品コード
     , item_name                  xxcmn_item_mst_b.item_short_name%TYPE           -- 商品名
@@ -150,7 +154,10 @@ AS
     , inside_qty                 NUMBER                                          -- 入庫側数量
     , inside_code                VARCHAR2(13)                                     -- 出庫側コード
     , inside_location_code       VARCHAR2(13)                                    -- 入庫側コード
-    , inside_location_name       VARCHAR2(40)                                    -- 入庫場所名
+-- == 2009/08/18 V1.2 Modified START ===============================================================
+--    , inside_location_name       VARCHAR2(40)                                    -- 入庫場所名
+    , inside_location_name       VARCHAR2(240)                                    -- 入庫場所名
+-- == 2009/08/18 V1.2 Modified END   ===============================================================
   );
 --
   --  HHT情報格納用テーブル
@@ -645,14 +652,20 @@ AS
        ,gr_param.output_standard                                                    -- 出力基準コード
        ,gv_output_standard_name                                                     -- 出力基準名
        ,gt_hht_info_tab( gn_hht_info_loop_cnt ).outside_location_code               -- 出庫場所
-       ,gt_hht_info_tab( gn_hht_info_loop_cnt ).outside_location_name               -- 出庫場所名
+-- == 2009/08/18 V1.2 Modified START ===============================================================
+--       ,gt_hht_info_tab( gn_hht_info_loop_cnt ).outside_location_name               -- 出庫場所名
+       ,SUBSTRB(gt_hht_info_tab( gn_hht_info_loop_cnt ).outside_location_name, 1, 40) -- 出庫場所名
+-- == 2009/08/18 V1.2 Modified END   ===============================================================
        ,gt_hht_info_tab( gn_hht_info_loop_cnt ).invoice_date                        -- 伝票日付
        ,gt_hht_info_tab( gn_hht_info_loop_cnt ).item_code                           -- 商品コード
        ,gt_hht_info_tab( gn_hht_info_loop_cnt ).item_name                           -- 商品名
        ,gt_hht_info_tab( gn_hht_info_loop_cnt ).outside_qty                         -- 出庫数量
        ,gt_hht_info_tab( gn_hht_info_loop_cnt ).inside_qty                          -- 入庫数量
        ,gt_hht_info_tab( gn_hht_info_loop_cnt ).inside_location_code                -- 入庫場所
-       ,gt_hht_info_tab( gn_hht_info_loop_cnt ).inside_location_name                -- 入庫場所名
+-- == 2009/08/18 V1.2 Modified START ===============================================================
+--       ,gt_hht_info_tab( gn_hht_info_loop_cnt ).inside_location_name                -- 入庫場所名
+       ,SUBSTRB(gt_hht_info_tab( gn_hht_info_loop_cnt ).inside_location_name, 1, 40)  -- 入庫場所名
+-- == 2009/08/18 V1.2 Modified END   ===============================================================
        ,NULL                                                               -- 0件メッセージ
        --WHOカラム
        ,cn_created_by

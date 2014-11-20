@@ -8,7 +8,7 @@ AS
  * Description      : 倉庫毎に日次または月中、月末の受払残高情報を受払残高表に出力します。
  *                    預け先毎に月末の受払残高情報を受払残高表に出力します。
  * MD.050           : 受払残高表(倉庫・預け先)    MD050_COI_006_A15
- * Version          : 1.6
+ * Version          : 1.7
  *
  * Program List
  * -------------------- ------------------------------------------------------------
@@ -34,6 +34,7 @@ AS
  *  2009/07/22    1.4   H.Sasaki         [0000685]パラメータ日付項目のPT対応
  *  2009/08/06    1.5   H.Sasaki         [0000893]PT対応
  *  2009/08/10    1.6   N.Abe            [0000809]消化VD保管場所の出力対応
+ *  2009/08/19    1.7   N.Abe            [0001090]出力桁数の修正
  *
  *****************************************************************************************/
 --
@@ -1330,9 +1331,14 @@ AS
                ,DECODE(iv_output_kbn,cv_out_kbn1
                ,month_rec.msi_warehouse_code
                ,month_rec.msi_left_base_code)                             -- 倉庫/預け先コード
-               ,DECODE(iv_output_kbn,cv_out_kbn1
+-- == 2009/08/19 V1.7 Modified START ===============================================================
+--               ,DECODE(iv_output_kbn,cv_out_kbn1
+--               ,month_rec.msi_warehouse_name
+--               ,month_rec.hca_left_base_name)                             -- 倉庫/預け先名称
+               ,SUBSTRB(DECODE(iv_output_kbn,cv_out_kbn1
                ,month_rec.msi_warehouse_name
-               ,month_rec.hca_left_base_name)                             -- 倉庫/預け先名称
+               ,month_rec.hca_left_base_name), 1, 50)                     -- 倉庫/預け先名称
+-- == 2009/08/19 V1.7 Modified END   ===============================================================
                ,month_rec.iib_gun_code                                    -- 群コード
                ,month_rec.iib_item_no                                     -- 商品コード
                ,month_rec.imb_item_short_name                             -- 商品名称
@@ -1531,7 +1537,10 @@ AS
                ,DECODE(iv_output_kbn,cv_out_kbn1
                ,iv_warehouse
                ,iv_left_base)                     -- 倉庫/預け先コード
-               ,gv_warehouse                      -- 倉庫/預け先名称
+-- == 2009/08/19 V1.7 Modified START ===============================================================
+--               ,gv_warehouse                      -- 倉庫/預け先名称
+               ,SUBSTRB(gv_warehouse, 1, 50)      -- 倉庫/預け先名称
+-- == 2009/08/19 V1.7 Modified END   ===============================================================
                ,lv_message                        -- メッセージ
                ,SYSDATE                           -- 最終更新日
                ,cn_last_updated_by                -- 最終更新者
