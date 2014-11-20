@@ -7,7 +7,7 @@ AS
  * Description      : 要求の発行画面から、品目毎の明細および棚卸数量を帳票に出力します。
  *                    帳票に出力した棚卸結果データには処理済フラグ"Y"を設定します。
  * MD.050           : 棚卸チェックリスト    MD050_COI_006_A08
- * Version          : 1.9
+ * Version          : 1.10
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -36,6 +36,7 @@ AS
  *  2009/08/07    1.7   N.Abe            [0000945]パフォーマンス改善
  *  2009/09/08    1.8   H.Sasaki         [0001266]OPM品目アドオンの版管理対応
  *  2009/09/15    1.9   N.Abe            [0001264]パフォーマンス改善
+ *  2010/04/30    1.10  N.Abe            [E_本稼動_02076]取込順の取得方法変更
  *
  *****************************************************************************************/
 --
@@ -556,10 +557,13 @@ AS
                 ||  ',xir.case_qty  xir_case_qty '
                 ||  ',xir.quantity  xir_quantity '
                 ||  ',xir.quality_goods_kbn  xir_quality_goods_kbn '
-                ||  ',ROW_NUMBER() OVER '
-                ||  '(PARTITION BY xir.base_code, msi.secondary_inventory_name '
-                ||  'ORDER BY  xir.creation_date, xir.input_order '
-                ||  ') xir_input_order ';
+-- == 2010/04/30 V1.10 Modified START ===============================================================
+--                ||  ',ROW_NUMBER() OVER '
+--                ||  '(PARTITION BY xir.base_code, msi.secondary_inventory_name '
+--                ||  'ORDER BY  xir.creation_date, xir.input_order '
+--                ||  ') xir_input_order ';
+                ||  ',xir.input_order  xir_input_order ';
+-- == 2010/04/30 V1.10 Modified END   ===============================================================
   -- FROM句
   lv_sql_str  :=    lv_sql_str
                 ||  'FROM '

@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCOI006A21C(body)
  * Description      : 棚卸結果作成
  * MD.050           : HHT棚卸結果データ取込 <MD050_COI_A21>
- * Version          : 1.10
+ * Version          : 1.11
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -42,6 +42,7 @@ AS
  *  2009/11/29    1.8   N.Abe            [E_本稼動_00134]棚卸しデータ取込順の採番方法修正
  *  2009/12/01    1.9   H.Sasaki         [E_本稼動_00245]データソート順の変更
  *  2010/03/23    1.10  Y.Goto           [E_本稼動_01943]拠点の有効チェックを追加
+ *  2010/05/12    1.11  N.Abe            [E_本稼動_02076]棚卸しデータ取込順の採番方法修正
  *
  *****************************************************************************************/
 --
@@ -2314,6 +2315,12 @@ AS
     lt_subinventory_code    mtl_secondary_inventories.secondary_inventory_name%TYPE;  --保管場所
     lv_fiscal_date          VARCHAR2(6);                                              --在庫会計期間
     lt_inventory_seq        xxcoi_inv_control.inventory_seq%TYPE;                     --棚卸SEQ
+-- == 2010/05/12 V1.11 Added START ===============================================================
+    lt_pre_base_code        xxcoi_in_inv_result_file_if.base_code%TYPE;
+    lt_pre_inventory_kbn    xxcoi_in_inv_result_file_if.inventory_kbn%TYPE;
+    lt_pre_inventory_place  xxcoi_in_inv_result_file_if.inventory_place%TYPE;
+    lt_input_order          xxcoi_inv_result.input_order%TYPE;
+-- == 2010/05/12 V1.11 Added END   ===============================================================
 --
     -- ===============================
     -- ローカル・カーソル
@@ -2571,6 +2578,40 @@ AS
             lt_inventory_seq := get_inv_data_rec.inventory_seq;
           END IF;
 --
+-- == 2010/05/12 V1.11 Added START ===============================================================
+          -- 拠点、棚卸区分、棚卸場所が変わったら、取込順の最大値を取得する。
+          IF     (((lt_pre_base_code                IS NULL)
+              OR  (get_inv_data_rec.base_code       <> lt_pre_base_code))
+            OR   ((lt_pre_inventory_kbn             IS NULL)
+              OR  (get_inv_data_rec.inventory_kbn   <> lt_pre_inventory_kbn))
+            OR   ((lt_pre_inventory_place           IS NULL)
+              OR  (get_inv_data_rec.inventory_place <> lt_pre_inventory_place)))
+          THEN
+            --変数へ格納
+            lt_pre_base_code        := get_inv_data_rec.base_code;
+            lt_pre_inventory_kbn    := get_inv_data_rec.inventory_kbn;
+            lt_pre_inventory_place  := get_inv_data_rec.inventory_place;
+            --取込順の最大値取得
+            BEGIN
+              SELECT NVL(MAX(xir.input_order),0) input_order
+              INTO   lt_input_order
+              FROM   xxcoi_inv_control xic
+                    ,xxcoi_inv_result  xir
+              WHERE  xic.base_code            = get_inv_data_rec.base_code
+              AND    xic.inventory_kbn        = get_inv_data_rec.inventory_kbn
+              AND    xic.inventory_year_month = TO_CHAR(get_inv_data_rec.inventory_date, 'YYYYMM')
+              AND    xic.inventory_place      = get_inv_data_rec.inventory_place
+              AND    xic.inventory_seq        = xir.inventory_seq
+              ;
+            EXCEPTION
+              WHEN OTHERS THEN
+                lt_input_order := 0;
+            END;
+          END IF;
+--
+          --取込順に最大値を加算
+          get_inv_data_rec.input_order := get_inv_data_rec.input_order + lt_input_order;
+-- == 2010/05/12 V1.11 Added END   ===============================================================
           -- ===============================
           -- <HHT棚卸結果出力 B-6>
           -- ===============================
