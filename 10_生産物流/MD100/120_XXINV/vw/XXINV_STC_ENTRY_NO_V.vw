@@ -3,17 +3,17 @@ CREATE OR REPLACE VIEW xxinv_stc_entry_no_v
   ENTRY_NO
 )
 AS 
-SELECT DISTINCT TO_CHAR(gbh1.BATCH_NO) AS ENTRY_NO
+SELECT DISTINCT TO_CHAR(gbh1.batch_no) AS ENTRY_NO
 FROM   xxcmn_rcv_pay_mst            xrpm1                 -- ó•¥‹æ•ªƒAƒhƒIƒ“ƒ}ƒXƒ^
       ,gme_batch_header             gbh1                  -- ¶Yƒoƒbƒ`
       ,gme_material_details         gmd1                  -- ¶YŒ´—¿Ú×
       ,gmd_routings_b               grb1                  -- H‡ƒ}ƒXƒ^
       ,ic_tran_pnd                  itp1                  -- OPM•Û—¯İŒÉƒgƒ‰ƒ“ƒUƒNƒVƒ‡ƒ“
 WHERE  gbh1.batch_id                = gmd1.batch_id
-AND (( xrpm1.NEW_DIV_INVENT        IN ('310','311','320','321')
-    AND xrpm1.LINE_TYPE             = -1 )
-  OR   xrpm1.NEW_DIV_INVENT         = xrpm1.NEW_DIV_INVENT )
-AND    xrpm1.USE_DIV_INVENT_REP     = 'Y'
+AND (( xrpm1.new_div_invent        IN ('310','311','320','321')
+    AND xrpm1.line_type             = -1 )
+  OR   xrpm1.new_div_invent         = xrpm1.new_div_invent )
+AND    xrpm1.use_div_invent_rep     = 'Y'
 AND    itp1.doc_type                = xrpm1.doc_type
 AND    gbh1.batch_id                = gmd1.batch_id
 AND    itp1.doc_id                  = gmd1.batch_id
@@ -27,13 +27,13 @@ AND    xrpm1.line_type              = gmd1.line_type
 AND (( gmd1.attribute5             IS NULL )
   OR ( xrpm1.hit_in_div             = gmd1.attribute5 ))
 UNION
-SELECT DISTINCT ijm2.attribute1 AS ENTRY_NO
+SELECT DISTINCT ijm2.journal_no AS ENTRY_NO
 FROM   xxcmn_rcv_pay_mst            xrpm2                       -- ó•¥‹æ•ªƒAƒhƒIƒ“ƒ}ƒXƒ^
       ,ic_adjs_jnl                  iaj2                        -- OPMİŒÉ’²®ƒWƒƒ[ƒiƒ‹
       ,ic_jrnl_mst                  ijm2                        -- OPMƒWƒƒ[ƒiƒ‹ƒ}ƒXƒ^
       ,ic_tran_cmp                  itc2                        -- OPMŠ®—¹İŒÉƒgƒ‰ƒ“ƒUƒNƒVƒ‡ƒ“
 WHERE  xrpm2.doc_type               = 'ADJI'
-AND    xrpm2.USE_DIV_INVENT_REP     = 'Y'
+AND    xrpm2.use_div_invent_rep     = 'Y'
 AND    itc2.doc_type                = xrpm2.doc_type
 AND    itc2.reason_code             = xrpm2.reason_code
 AND    SIGN( itc2.trans_qty )       = xrpm2.rcv_pay_div
@@ -48,10 +48,12 @@ FROM   xxcmn_rcv_pay_mst            xrpm3                 -- ó•¥‹æ•ªƒAƒhƒIƒ“ƒ}ƒ
       ,oe_transaction_types_all     otta3                 -- ó’ƒ^ƒCƒv
       ,xxwsh_order_headers_all      xoha3                 -- ó’ƒwƒbƒ_(ƒAƒhƒIƒ“)
 WHERE  xrpm3.doc_type               = 'OMSO'
-AND    xrpm3.USE_DIV_INVENT_REP     = 'Y'
+AND    xrpm3.use_div_invent_rep     = 'Y'
 AND    xoha3.order_header_id        = xola3.order_header_id
 AND    xoha3.order_type_id          = otta3.transaction_type_id
-AND    xrpm3.shipment_provision_div = otta3.attribute1
+AND    NVL(xrpm3.shipment_provision_div,otta3.attribute1) = otta3.attribute1
+AND    xrpm3.STOCK_ADJUSTMENT_DIV = '2'
+AND    xrpm3.ship_prov_rcv_pay_category =  otta3.attribute11
 ;
 --
 COMMENT ON COLUMN xxinv_stc_entry_no_v.ENTRY_NO  IS '“`•[No';
