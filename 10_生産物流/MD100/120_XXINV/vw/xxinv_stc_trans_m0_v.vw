@@ -2157,7 +2157,10 @@ AS
   AND    itc_in_ad_e_x9.doc_type                = iaj_in_ad_e_x9.trans_type
   AND    itc_in_ad_e_x9.doc_id                  = iaj_in_ad_e_x9.doc_id
   AND    itc_in_ad_e_x9.doc_line                = iaj_in_ad_e_x9.doc_line
-  AND    ijm_in_ad_e_x9.attribute1              = xnpt_in_ad_e_x9.entry_number
+-- 2009/11/06 #1685 Y.Fukami update start
+--  AND    ijm_in_ad_e_x9.attribute1              = xnpt_in_ad_e_x9.entry_number
+  AND    ijm_in_ad_e_x9.attribute1              = xnpt_in_ad_e_x9.txns_id
+-- 2009/11/06 #1685 Y.Fukami update end
 -- 2008/12/24 #809 Y.Yamamoto add start
 -- 2008/12/29 #809 Y.Yamamoto delete start
 --  AND    ijm_in_ad_e_x9.attribute4              = 'Y'
