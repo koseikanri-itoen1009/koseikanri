@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCMM003A19C(body)
  * Description      : HHT連携IFデータ作成
  * MD.050           : MD050_CMM_003_A19_HHT系連携IFデータ作成
- * Version          : 1.8
+ * Version          : 1.9
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -31,6 +31,7 @@ AS
  *  2009/11/23    1.6   Yutaka.Kuboshima 障害E_本番_00329の対応
  *  2009/12/06    1.7   Yutaka.Kuboshima 障害E_本稼動_00327の対応
  *  2009/12/09    1.8   Yutaka.Kuboshima 障害E_本稼動_00371の対応
+ *  2011/03/07    1.9   Naoki.Horigome   障害E_本稼動_05329の対応 
  *
  *****************************************************************************************/
 --
@@ -414,7 +415,7 @@ AS
 -- 2009/04/13 Ver1.2 add end by Yutaka.Kuboshima
     cv_cust_cd            CONSTANT VARCHAR2(2)      := '10';                      --顧客区分(顧客)
     cv_ucust_cd           CONSTANT VARCHAR2(2)      := '12';                      --顧客区分(上様顧客)
-    cv_round_cd           CONSTANT VARCHAR2(2)      := '15';                      --顧客区分(巡回)
+    cv_round_cd           CONSTANT VARCHAR2(2)      := '15';                      --顧客区分(店舗営業)
     cv_plan_cd            CONSTANT VARCHAR2(2)      := '17';                      --顧客区分(計画立案用)
     cv_mc_sts             CONSTANT VARCHAR2(2)      := '20';                      --顧客ステータス(MC)
     cv_vd_24              CONSTANT VARCHAR2(2)      := '24';                      --フルサービス(消化)VD
@@ -1015,7 +1016,15 @@ AS
       AND    hcas.cust_acct_site_id = hcsu.cust_acct_site_id       --顧客所在地マスタ     = 使用目的マスタ    ：顧客サイトID
       AND    xca.business_low_type  = flvgs.lookup_code (+)        --LOOKUP_参照(業態小)  = 顧客追加情報マスタ: 業態分類(小分類)
       AND    hcsu.payment_term_id   = rt.term_id (+)               --使用目的マスタ       = 支払条件マスタ    : 支払条件ID
-      AND    hcsu.site_use_code     IN ( cv_bill_to, cv_other_to ) --使用目的マスタ(請求先・その他)
+-- 2011/03/07 Ver1.9 E_本稼動_05329 modify start by Naoki.Horigome
+--      AND    hcsu.site_use_code     IN ( cv_bill_to, cv_other_to ) --使用目的マスタ(請求先・その他)
+      --顧客区分(顧客)、顧客区分(上様顧客)の場合は、使用目的(請求先）を抽出
+      AND    ((NVL(hca.customer_class_code, cv_cust_cd) IN (cv_cust_cd, cv_ucust_cd)
+      AND    hcsu.site_use_code          = cv_bill_to)
+      --顧客区分(店舗営業)、顧客区分(計画立案用)の場合は、使用目的(その他）を抽出
+      OR     (NVL(hca.customer_class_code, cv_cust_cd)  IN (cv_round_cd, cv_plan_cd)
+      AND    hcsu.site_use_code          = cv_other_to))
+-- 2011/03/07 Ver1.9 E_本稼動_05329 modify end by Naoki.Horigome
       AND    hcsu.status            = cv_a_flag
       AND    hl.location_id         = (SELECT MIN(hpsiv.location_id)
                                       FROM    hz_cust_acct_sites     hcasiv,
