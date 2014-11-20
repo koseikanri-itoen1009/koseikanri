@@ -7,7 +7,7 @@ AS
  * Description      : 顧客の標準画面よりメンテナンスされた名称・住所情報を、
  *                  : パーティアドオンマスタへ反映し、内容の同期を行います。
  * MD.050           : 生産顧客情報同期 MD050_CMM_005_A04
- * Version          : 1.3
+ * Version          : 1.4
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -30,6 +30,7 @@ AS
  *  2010/02/15    1.2   Yutaka.Kuboshima 障害E_本稼動_01419 差分テーブルにパーティサイトアドオンを追加
  *                                                          パーティアドオンの初期値を変更
  *  2010/02/18    1.3   Yutaka.Kuboshima 障害E_本稼動_01419 PT対応
+ *  2010/02/23    1.4   Yutaka.Kuboshima 障害E_本稼動_01419 連携項目チェックエラー時でも正常終了するよう修正
  *
  *****************************************************************************************/
 --
@@ -1189,10 +1190,13 @@ AS
         lb_is_checked := TRUE;
     END IF;
 --
-  -- ステータスのチェック
-  IF ( lb_is_checked = TRUE ) THEN
-    RAISE size_over_expt;
-  END IF;
+-- 2010/02/23 Ver1.4 E_本稼動_01419 delete start by Yutaka.Kuboshima
+-- チェックエラー時でも正常終了させるため削除
+--  -- ステータスのチェック
+--  IF ( lb_is_checked = TRUE ) THEN
+--    RAISE size_over_expt;
+--  END IF;
+-- 2010/02/23 Ver1.4 E_本稼動_01419 delete end by Yutaka.Kuboshima
 --
   EXCEPTION
     -- *** 生産連携項目サイズオーバ例外 ***
