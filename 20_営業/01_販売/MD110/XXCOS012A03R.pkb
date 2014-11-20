@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCOS012A03R (body)
  * Description      : ピックリスト（出荷先・製品・販売先別）
  * MD.050           : ピックリスト（出荷先・製品・販売先別） MD050_COS_012_A03
- * Version          : 1.8
+ * Version          : 1.10
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -45,6 +45,7 @@ AS
  *  2009/07/13    1.7   M.Sano           [0000063]情報区分によるデータ作成対象の制御
  *  2009/07/27    1.8   N.Maeda          [T1_1437]データパージ不具合対応
  *  2009/08/12    1.9   M.Sano           [0000008]ピッキングリスト性能懸念対応
+ *  2009/08/19    1.10  N.Maeda          [0000889]特売区分対応
  *
  *****************************************************************************************/
 --
@@ -167,6 +168,12 @@ AS
                                      := 'APP-XXCOS1-12704';           --帳票ワークテーブル
   ct_msg_bargain_cls_tblnm  CONSTANT fnd_new_messages.message_name%TYPE
                                      := 'APP-XXCOS1-12705';           --定番特売区分クイックコードマスタ
+-- *********** 2009/08/19 1.10 N.Maeda ADD START ****************** --
+  ct_msg_teiban_get_err     CONSTANT fnd_new_messages.message_name%TYPE
+                                     := 'APP-XXCOS1-00186';           --定番情報取得エラー
+  ct_msg_tokuban_get_err    CONSTANT fnd_new_messages.message_name%TYPE
+                                     := 'APP-XXCOS1-00187';           --特番情報取得エラー
+-- *********** 2009/08/19 1.10 N.Maeda ADD  END  ****************** --
   --トークン
   cv_tkn_table              CONSTANT VARCHAR2(100) := 'TABLE';                  --テーブル
   cv_tkn_date_from          CONSTANT VARCHAR2(100) := 'DATE_FROM';              --日付（From)
@@ -305,6 +312,10 @@ AS
   cv_time_min               CONSTANT VARCHAR2(8)  := '00:00:00';
   cv_time_max               CONSTANT VARCHAR2(8)  := '23:59:59';
 /* 2009/08/12 Ver1.9 Add End   */
+-- *********** 2009/08/19 1.10 N.Maeda ADD START ****************** --
+  cv_teiban_flag_yes        CONSTANT VARCHAR2(1)   := 'Y';            --定番
+  cv_teiban_flag_no         CONSTANT VARCHAR2(1)   := 'N';            --特番
+-- *********** 2009/08/19 1.10 N.Maeda ADD  END  ****************** --
   -- ===============================
   -- ユーザー定義グローバル型
   -- ===============================
@@ -341,6 +352,12 @@ AS
   --特定マスタのクイックコード生成用
   gt_qcc_sale_class                   fnd_lookup_values.lookup_code%TYPE;
                                                                       -- 売上区分用
+-- *********** 2009/08/19 1.10 N.Maeda ADD START ****************** --
+  gt_teiban_code                      fnd_lookup_values.lookup_code%TYPE;
+  gt_teiban_name                      fnd_lookup_values.meaning%TYPE;
+  gt_tokuban_code                     fnd_lookup_values.lookup_code%TYPE;
+  gt_tokuban_name                     fnd_lookup_values.meaning%TYPE;
+-- *********** 2009/08/19 1.10 N.Maeda ADD  END  ****************** --
 --
   -- ===============================
   -- ユーザー定義関数
@@ -692,6 +709,56 @@ AS
       RAISE global_date_reversal_expt;
     END IF;
 --
+-- *********** 2009/08/19 1.10 N.Maeda ADD START ****************** --
+  -- ==================================
+  --  定番特売区分名称取得
+  -- ==================================
+  -- 定番名称-コード取得
+  BEGIN
+    SELECT  flv.meaning               teiban_name    -- 「定番」
+           ,flv.lookup_code           teiban_code    -- 「01」
+    INTO    gt_teiban_name
+           ,gt_teiban_code
+    FROM    fnd_lookup_values         flv                             --クイックコードマスタ
+    WHERE   flv.lookup_type           = ct_qct_bargain_class
+    AND     flv.attribute1            = cv_teiban_flag_yes
+    AND     TRUNC( gd_process_date ) >= flv.start_date_active
+    AND     TRUNC( gd_process_date ) <= NVL( flv.end_date_active, gd_max_date )
+    AND     flv.language              = ct_lang
+    AND     flv.enabled_flag          = ct_enabled_flag_yes;
+  EXCEPTION
+    WHEN OTHERS THEN
+      lv_errbuf := xxccp_common_pkg.get_msg(
+                                   iv_application   => ct_xxcos_appl_short_name,
+                                   iv_name          => ct_msg_teiban_get_err
+                                 );
+      lv_errbuf := lv_errbuf;
+      RAISE global_api_expt;
+  END;
+  -- 特売名称-コード取得
+  BEGIN
+    SELECT  flv.meaning               tokuban_name    -- 「特番」
+           ,flv.lookup_code           tokuban_code    -- 「02」
+    INTO    gt_tokuban_name
+           ,gt_tokuban_code
+    FROM    fnd_lookup_values         flv                             --クイックコードマスタ
+    WHERE   flv.lookup_type           = ct_qct_bargain_class
+    AND     flv.attribute1            = cv_teiban_flag_no
+    AND     TRUNC( gd_process_date ) >= flv.start_date_active
+    AND     TRUNC( gd_process_date ) <= NVL( flv.end_date_active, gd_max_date )
+    AND     flv.language              = ct_lang
+    AND     flv.enabled_flag          = ct_enabled_flag_yes;
+  EXCEPTION
+    WHEN OTHERS THEN
+      lv_errbuf := xxccp_common_pkg.get_msg(
+                                   iv_application   => ct_xxcos_appl_short_name,
+                                   iv_name          => ct_msg_tokuban_get_err
+                                 );
+      lv_errbuf := lv_errbuf;
+      RAISE global_api_expt;
+  END;
+--
+-- *********** 2009/08/19 1.10 N.Maeda ADD  END  ****************** --
   EXCEPTION
     -- *** 業務日付取得例外ハンドラ ***
     WHEN global_proc_date_err_expt THEN
@@ -1291,7 +1358,17 @@ AS
             xca1.store_code                   store_code,                     --店舗コード
             xca1.cust_store_name              cust_store_name,                --店舗名
             ooha.cust_po_number               slip_no,                        --伝票NO
-            scm.sale_class_name               bargain_class_name,             --定番特売区分名称
+-- *********** 2009/08/19 1.10 N.Maeda MOD START ****************** --
+--            scm.sale_class_name               bargain_class_name,             --定番特売区分名称
+            CASE
+              WHEN ( xeh.ar_sale_class = gt_teiban_code ) THEN  -- 定番の場合
+                gt_teiban_name
+              WHEN ( xeh.ar_sale_class = gt_tokuban_code ) THEN -- 特番の場合
+                gt_tokuban_name
+              ELSE                                              -- その他の場合
+                gt_tokuban_name
+            END                               bargain_class_name,             --定番特売区分名称
+-- *********** 2009/08/19 1.10 N.Maeda MOD  END  ****************** --
             TRIM( SUBSTRB( xca1.delivery_order, 1, 7 ) )
                                               delivery_order1,                --配送順（月、水、金）
             TRIM( NVL( SUBSTRB( xca1.delivery_order, 8, 7 ), SUBSTRB( xca1.delivery_order, 1, 7 ) ) )
@@ -1342,35 +1419,37 @@ AS
               AND flv.language                = ct_lang
 /* 2009/08/12 Ver1.9 Mod End   */
               AND flv.enabled_flag            = ct_enabled_flag_yes
-            ) scdm,                                                           --売上区分初期値マスタ
-            (
-              SELECT
-                flv.meaning                   sale_class,                     --売上区分
-                flv.description               sale_class_name,                --売上区分名
-                flv.start_date_active         start_date_active,              --有効開始日
-                NVL( flv.end_date_active, gd_max_date )
-                                              end_date_active                 --有効終了日
-              FROM
-/* 2009/08/12 Ver1.9 Del Start */
---                fnd_application               fa,                             --アプリケーションマスタ
---                fnd_lookup_types              flt,                            --クイックコードタイプマスタ
-/* 2009/08/12 Ver1.9 Del End   */
-                fnd_lookup_values             flv                             --クイックコードマスタ
-              WHERE
-/* 2009/08/12 Ver1.9 Mod Start */
---                fa.application_id             = flt.application_id
---              AND flt.lookup_type             = flv.lookup_type
---              AND fa.application_short_name   = ct_xxcos_appl_short_name
---              AND flt.lookup_type             = ct_qct_sale_class
-                  flv.lookup_type             = ct_qct_sale_class
-/* 2009/08/12 Ver1.9 Mod End   */
-              AND flv.lookup_code             LIKE ct_qcc_sale_class || cv_multi
-/* 2009/08/12 Ver1.9 Mod Start */
---              AND flv.language                = USERENV( 'LANG' )
-              AND flv.language                = ct_lang
-/* 2009/08/12 Ver1.9 Mod End   */
-              AND flv.enabled_flag            = ct_enabled_flag_yes
-            ) scm                                                             --売上区分マスタ
+            ) scdm                                                           --売上区分初期値マスタ
+-- *********** 2009/08/19 1.10 N.Maeda DEL START ****************** --
+--            (
+--              SELECT
+--                flv.meaning                   sale_class,                     --売上区分
+--                flv.description               sale_class_name,                --売上区分名
+--                flv.start_date_active         start_date_active,              --有効開始日
+--                NVL( flv.end_date_active, gd_max_date )
+--                                              end_date_active                 --有効終了日
+--              FROM
+--/* 2009/08/12 Ver1.9 Del Start */
+----                fnd_application               fa,                             --アプリケーションマスタ
+----                fnd_lookup_types              flt,                            --クイックコードタイプマスタ
+--/* 2009/08/12 Ver1.9 Del End   */
+--                fnd_lookup_values             flv                             --クイックコードマスタ
+--              WHERE
+--/* 2009/08/12 Ver1.9 Mod Start */
+----                fa.application_id             = flt.application_id
+----              AND flt.lookup_type             = flv.lookup_type
+----              AND fa.application_short_name   = ct_xxcos_appl_short_name
+----              AND flt.lookup_type             = ct_qct_sale_class
+--                  flv.lookup_type             = ct_qct_sale_class
+--/* 2009/08/12 Ver1.9 Mod End   */
+--              AND flv.lookup_code             LIKE ct_qcc_sale_class || cv_multi
+--/* 2009/08/12 Ver1.9 Mod Start */
+----              AND flv.language                = USERENV( 'LANG' )
+--              AND flv.language                = ct_lang
+--/* 2009/08/12 Ver1.9 Mod End   */
+--              AND flv.enabled_flag            = ct_enabled_flag_yes
+--            ) scm                                                             --売上区分マスタ
+-- *********** 2009/08/19 1.10 N.Maeda DEL END  ****************** --
           WHERE
             ooha.header_id                    = oola.header_id
           AND ooha.order_source_id            = oos.order_source_id
@@ -1600,41 +1679,46 @@ AS
                           AND     gd_process_date      <= NVL(look_val.end_date_active, gd_max_date)
                           AND     look_val.enabled_flag = ct_enabled_flag_yes
                           AND     look_val.lookup_type =  ct_qct_edi_item_err_type ))
-          AND EXISTS(
-                SELECT
-                  cv_exists_flag_yes          exists_flag
-                FROM
-/* 2009/08/12 Ver1.9 Del Start */
---                  fnd_application             fa,                             --アプリケーションマスタ
---                  fnd_lookup_types            flt,                            --クイックコードタイプマスタ
-/* 2009/08/12 Ver1.9 Del End   */
-                  fnd_lookup_values           flv                             --クイックコードマスタ
-                WHERE
-/* 2009/08/12 Ver1.9 Mod Start */
---                  fa.application_id           = flt.application_id
---                AND flt.lookup_type           = flv.lookup_type
---                AND fa.application_short_name = ct_xxcos_appl_short_name
---                AND flt.lookup_type           = ct_qct_sale_class
-                    flv.lookup_type           = ct_qct_sale_class
-/* 2009/08/12 Ver1.9 Mod End   */
-                AND flv.lookup_code           LIKE gt_qcc_sale_class
-                AND flv.meaning               = NVL( oola.attribute5, scdm.sale_class_default )
-                AND TRUNC( ooha.ordered_date )
-                                              >= flv.start_date_active
-                AND TRUNC( ooha.ordered_date )
-                                              <= NVL( flv.end_date_active, gd_max_date )
-/* 2009/08/12 Ver1.9 Mod Start */
---                AND flv.language              = USERENV( 'LANG' )
-                AND flv.language              = ct_lang
-/* 2009/08/12 Ver1.9 Mod End   */
-                AND flv.enabled_flag          = ct_enabled_flag_yes
-/* 2009/08/12 Ver1.9 Del Start */
---                AND ROWNUM                    = 1
-/* 2009/08/12 Ver1.9 Del End   */
-              )
-          AND scm.sale_class                  = NVL( oola.attribute5, scdm.sale_class_default )
-          AND TRUNC( ooha.ordered_date )      >= scm.start_date_active
-          AND TRUNC( ooha.ordered_date )      <= scm.end_date_active
+-- *********** 2009/08/19 1.10 N.Maeda MOD START ****************** --
+          AND ( ( (  gv_bargain_class <> cv_bargain_class_all ) AND ( gv_bargain_class = xeh.ar_sale_class ) )
+            OR ( gv_bargain_class = cv_bargain_class_all ) )
+--
+--          AND EXISTS(
+--                SELECT
+--                  cv_exists_flag_yes          exists_flag
+--                FROM
+--/* 2009/08/12 Ver1.9 Del Start */
+----                  fnd_application             fa,                             --アプリケーションマスタ
+----                  fnd_lookup_types            flt,                            --クイックコードタイプマスタ
+--/* 2009/08/12 Ver1.9 Del End   */
+--                  fnd_lookup_values           flv                             --クイックコードマスタ
+--                WHERE
+--/* 2009/08/12 Ver1.9 Mod Start */
+----                  fa.application_id           = flt.application_id
+----                AND flt.lookup_type           = flv.lookup_type
+----                AND fa.application_short_name = ct_xxcos_appl_short_name
+----                AND flt.lookup_type           = ct_qct_sale_class
+--                    flv.lookup_type           = ct_qct_sale_class
+--/* 2009/08/12 Ver1.9 Mod End   */
+--                AND flv.lookup_code           LIKE gt_qcc_sale_class
+--                AND flv.meaning               = NVL( oola.attribute5, scdm.sale_class_default )
+--                AND TRUNC( ooha.ordered_date )
+--                                              >= flv.start_date_active
+--                AND TRUNC( ooha.ordered_date )
+--                                              <= NVL( flv.end_date_active, gd_max_date )
+--/* 2009/08/12 Ver1.9 Mod Start */
+----                AND flv.language              = USERENV( 'LANG' )
+--                AND flv.language              = ct_lang
+--/* 2009/08/12 Ver1.9 Mod End   */
+--                AND flv.enabled_flag          = ct_enabled_flag_yes
+--/* 2009/08/12 Ver1.9 Del Start */
+----                AND ROWNUM                    = 1
+--/* 2009/08/12 Ver1.9 Del End   */
+--              )
+--          AND scm.sale_class                  = NVL( oola.attribute5, scdm.sale_class_default )
+--          AND TRUNC( ooha.ordered_date )      >= scm.start_date_active
+--          AND TRUNC( ooha.ordered_date )      <= scm.end_date_active
+-- *********** 2009/08/19 1.10 N.Maeda MOD  END  ****************** --
 -- 2009/07/13 Ver1.7 Add Start *
           AND (   ooha.global_attribute3 IS NULL
                OR ooha.global_attribute3 IN ( cv_info_class_01, cv_info_class_02 ) )
