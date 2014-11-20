@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCOS013A02C (body)
  * Description      : INVへの販売実績データ連携
  * MD.050           : INVへの販売実績データ連携 MD050_COS_013_A02
- * Version          : 1.8
+ * Version          : 1.9
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -36,6 +36,7 @@ AS
  *  2009/07/16    1.7   K.Kiriu          [0000701]PT対応
  *  2009/07/29    1.8   N.Maeda          [0000863]PT対応
  *  2009/08/06    1.8   N.Maeda          [0000942]PT対応
+ *  2009/08/24    1.9   N.Maeda          [0001141]納品日考慮対応
  *
  *****************************************************************************************/
 --
@@ -1248,7 +1249,10 @@ AS
     iv_segment5           IN VARCHAR2,      --  顧客コード
     iv_segment6           IN VARCHAR2,      --  企業コード
     iv_segment7           IN VARCHAR2,      --  予備１コード
-    iv_segment8           IN VARCHAR2       --  予備２コード
+    iv_segment8           IN VARCHAR2,      --  予備２コード
+-- ********* 2009/08/24 1.9 N.Maeda ADD START ********* --
+    id_dlv_date           IN DATE
+-- ********* 2009/08/24 1.9 N.Maeda ADD  END  ********* --
     ) RETURN NUMBER                         --  勘定科目ID
   IS
     -- ===============================
@@ -1300,7 +1304,10 @@ AS
     END IF;
     --該当勘定科目ID(CCID)は取得されていない場合、共通関数より取得。
     lt_ccid := xxcok_common_pkg.get_code_combination_id_f(
-                                              gd_proc_date,   --処理日
+-- ********* 2009/08/24 1.9 N.Maeda MOD START ********* --
+                                              id_dlv_date,    --納品日
+--                                              gd_proc_date,   --処理日
+-- ********* 2009/08/24 1.9 N.Maeda MOD  END  ********* --
                                               iv_segment1,    --会社コード
                                               iv_segment2,    --部門コード
                                               iv_segment3,    --勘定科目コード
@@ -1979,7 +1986,11 @@ AS
                                  gv_cust_dummy,
                                  gv_ent_dummy,
                                  gv_res1_dummy,
-                                 gv_res2_dummy);
+                                 gv_res2_dummy,
+-- ********* 2009/08/24 1.9 N.Maeda ADD START ********* --
+                                 g_sales_exp_tab(i).dlv_date
+-- ********* 2009/08/24 1.9 N.Maeda ADD  END  ********* --
+                                 );
             IF ( lt_ccid IS NULL ) THEN
               --処理済のデータをリカバリします。
               <<rec2_loop>>

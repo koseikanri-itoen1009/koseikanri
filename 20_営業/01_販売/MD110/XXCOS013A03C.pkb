@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCOS013A03C (body)
  * Description      : 販売実績情報より仕訳情報を作成し、一般会計OIFに連携する処理
  * MD.050           : GLへの販売実績データ連携 MD050_COS_013_A03
- * Version          : 1.7
+ * Version          : 1.8
  * Program List
  * ----------------------------------------------------------------------------------------
  *  Name                   Description
@@ -33,6 +33,7 @@ AS
  *  2009/04/30    1.5   T.Miyata         [T1_0891]最終行に[/]付与
  *  2009/05/13    1.6   T.Kitajima       [T1_0764]OIF連携不正データ修正
  *  2009/07/06    1.7   T.Tominaga       [0000235]対象データ無しメッセージのトークン削除
+ *  2009/08/25    1.8   M.Sano           [0001166]CCID取得関数の入力パラメータを変更
  *
  *****************************************************************************************/
 --
@@ -1339,7 +1340,10 @@ AS
     ELSE
       -- CCID取得共通関数よりCCIDを取得する
       lt_ccid := xxcok_common_pkg.get_code_combination_id_f (
-                     gd_process_date
+--****************************** 2009/08/25 1.8 M.Sano     MOD START ******************************--
+--                     gd_process_date
+                     gt_sales_exp_tbl( in_sale_idx ).delivery_date
+--****************************** 2009/08/25 1.8 M.Sano     MOD  END  ******************************--
                    , gv_company_code
 --****************************** 2009/05/13 1.6 T.Kitajima MOD START ******************************--
 --                   , NVL( gt_jour_cls_tbl( in_jcls_idx ).segment2,
@@ -1405,6 +1409,12 @@ AS
            which  => FND_FILE.OUTPUT
           ,buff   => lv_errmsg
         );
+--****************************** 2009/08/25 1.8 M.Sano     ADD START ******************************--
+        FND_FILE.PUT_LINE(
+           which  => FND_FILE.OUTPUT
+          ,buff   => ''
+        );
+--****************************** 2009/08/25 1.8 M.Sano     ADD  END  ******************************--
 --******************************** 2009/03/26 1.4 T.Kitajima ADD  END  *****************************
         lv_errbuf  := lv_errmsg;
         RAISE non_ccid_expt;
