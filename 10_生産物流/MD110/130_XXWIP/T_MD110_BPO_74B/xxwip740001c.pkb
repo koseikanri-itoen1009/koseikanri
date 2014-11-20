@@ -7,7 +7,7 @@ AS
  * Description      : 請求更新処理
  * MD.050           : 運賃計算（月次）   T_MD050_BPO_740
  * MD.070           : 請求更新           T_MD070_BPO_74B
- * Version          : 1.1
+ * Version          : 1.2
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -32,6 +32,7 @@ AS
  * ------------- ----- ---------------- -------------------------------------------------
  *  2008/04/14    1.0  Oracle 和田 大輝  初回作成
  *  2008/09/29    1.1  Oracle 吉田 夏樹  T_S_614対応
+ *  2008/10/21    1.2  Oracle 野村 正幸  T_S_571対応
  *
  *****************************************************************************************/
 --
@@ -551,8 +552,14 @@ AS
     -- ==============================================================
 --
     SELECT
+-- ##### 20081021 Ver.1.2 T_S_571対応 START #####
+/*****  項目別名付与の為、コメントアウト
         dhc.billing_code              -- 請求先コード
       , dhc.judgement_yyyymm          -- 請求年月
+*****/
+        dhc.billing_code      AS billing_code     -- 請求先コード
+      , dhc.judgement_yyyymm  AS billing_date     -- 請求年月
+-- ##### 20081021 Ver.1.2 T_S_571対応 END   #####
       , dhc.consumption_tax_classe    -- 消費税区分
       , SUM(dhc.charged_amount)       -- 今月売上額
 -- 2008/09/29 1.1 N.Yoshida start
@@ -625,8 +632,42 @@ AS
                   , dhc.consumption_tax_classe  -- 消費税区分
                   , dhc.billing_code            -- 請求先コード
                   , dhc.judgement_yyyymm        -- 請求年月
+--
+-- ##### 20081021 Ver.1.2 T_S_571対応 START #####
+--
+--  運賃調整のみ登録されている情報を取得する為
+--  運賃調整のデータをUNIONして0円で抽出する
+--
+/*****
         ORDER BY    dhc.billing_code 
                   , dhc.judgement_yyyymm;
+*****/
+    UNION
+    -- ============================================================
+    -- 運賃調整の請求先コードと請求年月を集約して取得
+    --     今月売上額と通行料は0で設定（金額を計上しない）
+    -- ここで運賃調整だけに存在する請求先コードを
+    --     対象データとして抽出する。
+    -- ============================================================
+    SELECT  xac.billing_code  AS billing_code   -- 請求先コード
+          , xac.billing_date  AS billing_date   -- 請求年月
+          , NULL                                -- 消費税区分     (ここでは NULL を設定)
+          , 0                                   -- 今月売上額     (調整だけは  0 を設定)
+          , NULL                                -- 消費税（明細） (ここでは NULL を設定)
+          , NULL                                -- 消費税（月）   (ここでは NULL を設定)
+          , 0                                   -- 通行料等       (調整だけは  0 を設定)
+          , NULL                                -- 請求調整合計額 (ここでは NULL を設定)
+          , NULL                                -- 課税調整額     (ここでは NULL を設定)
+          , NULL                                -- 消費税調整額   (ここでは NULL を設定)
+    FROM    xxwip_adj_charges xac     -- 運賃調整アドオン
+    WHERE   xac.billing_date  =  TO_CHAR(id_sysdate, 'YYYYMM')
+    GROUP BY   xac.billing_code
+             , xac.billing_date
+    ORDER BY   billing_code   -- 請求先コード
+             , billing_date   -- 請求年月
+    ;
+--
+-- ##### 20081021 Ver.1.2 T_S_571対応 END   #####
 --
   EXCEPTION
 --
@@ -914,12 +955,19 @@ AS
                     ) AS billing_tax_sum
                     , NVL(adj_tax_extra, 0) AS adj_tax_extra  -- 消費税調整
             FROM    xxwip_adj_charges       xac   -- 運賃調整アドオン
-                  , xxwip_delivery_company  xdc   -- 運賃用運送業者マスタ
-            WHERE   xac.goods_classe            =   xdc.goods_classe
-            AND     xac.delivery_company_code   =   xdc.delivery_company_code
-            AND     xdc.start_date_active       <=  TO_DATE(xac.billing_date || '01','YYYYMMDD')
-            AND     xdc.end_date_active         >=  TO_DATE(xac.billing_date || '01','YYYYMMDD')
-            AND     xac.billing_code            =   gt_masters_tbl(ln_index).billing_code
+-- ##### 20081021 Ver.1.2 T_S_571対応 START #####
+-- 運賃調整と運送業者の依存関係がなくなったため
+-- 結合をしないよう、コメントアウト
+--                  , xxwip_delivery_company  xdc   -- 運賃用運送業者マスタ
+-- ##### 20081021 Ver.1.2 T_S_571対応 END   #####
+-- ##### 20081021 Ver.1.2 T_S_571対応 START #####
+--            WHERE   xac.goods_classe            =   xdc.goods_classe
+--            AND     xac.delivery_company_code   =   xdc.delivery_company_code
+--            AND     xdc.start_date_active       <=  TO_DATE(xac.billing_date || '01','YYYYMMDD')
+--            AND     xdc.end_date_active         >=  TO_DATE(xac.billing_date || '01','YYYYMMDD')
+--            AND     xac.billing_code            =   gt_masters_tbl(ln_index).billing_code
+            WHERE   xac.billing_code            =   gt_masters_tbl(ln_index).billing_code
+-- ##### 20081021 Ver.1.2 T_S_571対応 END   #####
             AND     xac.billing_date            =   gt_masters_tbl(ln_index).billing_date
           ) adj_charges
         GROUP BY   adj_charges.billing_code
