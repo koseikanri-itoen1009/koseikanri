@@ -7,6 +7,7 @@
 * 日付       Ver. 担当者       修正内容
 * ---------- ---- ------------ ----------------------------------------------
 * 2008-12-27 1.0  SCS小川浩     新規作成
+* 2009-04-20 1.1  SCS柳平直人   [ST障害T1_0302]返却ボタン押下後表示不正対応
 *============================================================================
 */
 package itoen.oracle.apps.xxcso.xxcso020001j.util;
@@ -1259,6 +1260,9 @@ public class XxcsoSpDecisionPropertyUtils
     boolean confirmFlag = false;
     boolean approveFlag = false;
     String loginEmployeeNumber = initRow.getEmployeeNumber();
+// 2009-04-20 [ST障害T1_0302] Add Start
+    boolean contReturnSelfFlag = false;
+// 2009-04-20 [ST障害T1_0302] Add End
     while ( sendRow != null )
     {
       String approveCode = sendRow.getApproveCode();
@@ -1293,6 +1297,20 @@ public class XxcsoSpDecisionPropertyUtils
           }
         }
       }
+// 2009-04-20 [ST障害T1_0302] Add Start
+      String approvalContent = sendRow.getApprovalContent();
+      if ( XxcsoSpDecisionConstants.APPR_CONT_RETURN.equals( approvalContent ) )
+      {
+        if ( approveCode.equals( loginEmployeeNumber ) )
+        {
+          contReturnSelfFlag = true;
+        }
+        else
+        {
+          contReturnSelfFlag = false;
+        }
+      }
+// 2009-04-20 [ST障害T1_0302] Add End
       
       sendRow = (XxcsoSpDecisionSendFullVORowImpl)sendVo.next();
     }
@@ -1344,6 +1362,14 @@ public class XxcsoSpDecisionPropertyUtils
       // ステータスが入力中、否決以外の場合は、提出ボタンを非表示
       initRow.setSubmitButtonRender(                 Boolean.FALSE );
     }
+
+// 2009-04-20 [ST障害T1_0302] Add Start
+    if ( contReturnSelfFlag )
+    {
+      // 決裁内容が返却の場合は提出ボタンを非表示
+      initRow.setSubmitButtonRender(                 Boolean.FALSE );
+    }
+// 2009-04-20 [ST障害T1_0302] Add End
 
     /////////////////////////////////////
     // 確認ボタン、返却ボタンの表示／非表示を設定

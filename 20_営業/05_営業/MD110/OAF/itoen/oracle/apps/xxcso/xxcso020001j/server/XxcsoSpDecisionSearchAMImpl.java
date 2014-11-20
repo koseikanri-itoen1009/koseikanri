@@ -7,6 +7,7 @@
 * “ú•t       Ver. ’S“–Ò       C³“à—e
 * ---------- ---- ------------ ----------------------------------------------
 * 2008-12-16 1.0  SCS¬ì_     V‹Kì¬
+* 2009-04-20 1.1  SCS–ö•½’¼l   [STáŠQT1_0619]Á‹ƒ{ƒ^ƒ“‰Šú‰»•s³‘Î‰
 *============================================================================
 */
 package itoen.oracle.apps.xxcso.xxcso020001j.server;
@@ -127,7 +128,22 @@ public class XxcsoSpDecisionSearchAMImpl extends OAApplicationModuleImpl
     initRow = (XxcsoSpDecisionSearchInitVORowImpl)initVo.first();
     initRow.setEmployeeNumber(null);
     initRow.setFullName(null);
-    
+// 2009-04-20 [STáŠQT1_0302] Add Start
+    if ( XxcsoSpDecisionConstants.APPROVE_MODE.equals(
+        initRow.getSearchClass())
+    )
+    {
+      initRow.setApplyBaseUserRender(Boolean.FALSE);
+      initRow.setCopyButtonRender(Boolean.FALSE);
+    }
+    else
+    {
+      initRow.setApplyBaseUserRender(Boolean.TRUE);
+      initRow.setCopyButtonRender(Boolean.TRUE);
+    }
+    initRow.setDetailButtonRender(Boolean.TRUE);
+// 2009-04-20 [STáŠQT1_0302] Add End
+
     XxcsoUtils.debug(txn, "[END]");
   }
 
