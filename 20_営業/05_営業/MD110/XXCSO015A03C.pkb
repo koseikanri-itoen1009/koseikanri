@@ -8,7 +8,7 @@ AS
  *                      物件の情報を物件マスタに登録します。
  * MD.050           : MD050_自販機-EBSインタフェース：（IN）物件マスタ情報(IB)
  *                    2009/01/13 16:30
- * Version          : 1.12
+ * Version          : 1.13
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -51,6 +51,7 @@ AS
  *  2009-05-28    1.10  M.Ohtsuki        【T1_1203対応】先月データ更新障害の対応
  *  2009-06-01    1.11  K.Satomura       【T1_1107対応】
  *  2009-06-04    1.12  K.Satomura       【T1_1107再修正対応】
+ *  2009-06-15    1.13  K.Satomura       【T1_1239対応】
  *****************************************************************************************/
 --
 --#######################  固定グローバル定数宣言部 START   #######################
@@ -315,6 +316,9 @@ AS
      ,job_kbn                     NUMBER          -- 作業区分
      ,install_code1               VARCHAR2(10)    -- 物件コード１（設置用）
      ,install_code2               VARCHAR2(10)    -- 物件コード２（引揚用）
+     /* 2009.06.15 K.Satomura T1_1239対応 START */
+     ,completion_kbn              NUMBER          -- 完了区分
+     /* 2009.06.15 K.Satomura T1_1239対応 END */
      ,safe_setting_standard       VARCHAR2(1)     -- 安全設置基準
      ,install_code                VARCHAR2(10)    -- 物件コード
      ,un_number                   VARCHAR2(14)    -- 機種
@@ -4291,6 +4295,9 @@ AS
     /* 2009.04.27 K.Satomura T1_0490対応 START */
     cv_ex_jotai_kbn3          CONSTANT VARCHAR2(100) := 'JOTAI_KBN3';
     /* 2009.04.27 K.Satomura T1_0490対応 END */
+    /* 2009.06.01 K.Satomura T1_1107対応 START */
+    ct_comp_kbn_comp         CONSTANT xxcso_in_work_data.completion_kbn%TYPE := 1;
+    /* 2009.06.01 K.Satomura T1_1107対応 END */
 --
     -- *** ローカル変数 ***
     ld_date                    DATE;                    -- 業務処理日付格納用('yyyymmdd'形式)
@@ -5272,35 +5279,44 @@ AS
     END IF; 
     l_instance_rec.instance_id                := ln_instance_id;               -- インスタンスID
     l_instance_rec.external_reference         := lv_install_code;              -- 外部参照
-    l_instance_rec.inv_master_organization_id := gt_inv_mst_org_id;            -- 在庫マスター組織ID
-    l_instance_rec.instance_status_id         := ln_instance_status_id;        -- インスタンスステータスID
-    /* 2009.04.13 K.Satomura T1_0418対応 START*/
-    --l_instance_rec.instance_type_code         := TO_CHAR(ln_machinery_kbn);    -- インスタンスタイプコード
-    l_instance_rec.instance_type_code         := TO_CHAR(lv_hazard_class);    -- インスタンスタイプコード
-    /* 2009.04.13 K.Satomura T1_0418対応 END*/
-    IF (ln_party_site_id IS NOT NULL) THEN
-      l_instance_rec.location_type_code       := cv_location_type_code;        -- 現行事業所タイプ
-      l_instance_rec.location_id              := ln_party_site_id;             -- 現行事業所ID
+    /* 2009.06.15 K.Satomura T1_1239対応 SATRT */
+    IF (io_inst_base_data_rec.completion_kbn = ct_comp_kbn_comp) THEN
+    /* 2009.06.15 K.Satomura T1_1239対応 END */
+      l_instance_rec.inv_master_organization_id := gt_inv_mst_org_id;            -- 在庫マスター組織ID
+      l_instance_rec.instance_status_id         := ln_instance_status_id;        -- インスタンスステータスID
+      /* 2009.04.13 K.Satomura T1_0418対応 START*/
+      --l_instance_rec.instance_type_code         := TO_CHAR(ln_machinery_kbn);    -- インスタンスタイプコード
+      l_instance_rec.instance_type_code         := TO_CHAR(lv_hazard_class);    -- インスタンスタイプコード
+      /* 2009.04.13 K.Satomura T1_0418対応 END*/
+      IF (ln_party_site_id IS NOT NULL) THEN
+        l_instance_rec.location_type_code       := cv_location_type_code;        -- 現行事業所タイプ
+        l_instance_rec.location_id              := ln_party_site_id;             -- 現行事業所ID
+      END IF;
+      IF (ln_job_kbn = cn_jon_kbn_1 OR ln_job_kbn = cn_jon_kbn_2 OR
+          ln_job_kbn = cn_jon_kbn_3 OR ln_job_kbn = cn_jon_kbn_4 OR
+          ln_job_kbn = cn_jon_kbn_5) THEN
+        l_instance_rec.install_date             := ld_install_date;              -- 導入日
+      END IF;
+      l_instance_rec.attribute1                 := lv_un_number;                 -- 機種(コード)
+      l_instance_rec.attribute2                 := lv_install_number;            -- 機番
+      /* 2009.05.26 M.Ohtsuki T1_1141対応 START*/
+      IF (io_inst_base_data_rec.new_old_flg = cv_flg_yes) THEN                                        -- 新古台フラグがYの場合
+        l_instance_rec.attribute3 := TO_CHAR(TO_DATE(TO_CHAR(
+          io_inst_base_data_rec.first_install_date),'yyyy/mm/dd'), 'yyyy/mm/dd hh24:mi:ss'); -- 初回設置日
+      END IF;
+      /* 2009.05.26 M.Ohtsuki T1_1141対応 END*/
+      l_instance_rec.attribute4                 := cv_flg_no;                    -- 作業依頼中フラグ
+      l_instance_rec.attribute5                 := cv_flg_no;                    -- 新古台フラグ
+      IF (io_inst_base_data_rec.po_req_number IS NOT NULL AND
+          io_inst_base_data_rec.po_req_number <> 0) THEN
+        l_instance_rec.attribute6                 := io_inst_base_data_rec.po_req_number;  -- 最終発注依頼番号
+      END IF;
+    /* 2009.06.15 K.Satomura T1_1239対応 SATRT */
+    ELSE
+      l_instance_rec.attribute4 := cv_flg_no; -- 作業依頼中フラグ
+      --
     END IF;
-    IF (ln_job_kbn = cn_jon_kbn_1 OR ln_job_kbn = cn_jon_kbn_2 OR
-        ln_job_kbn = cn_jon_kbn_3 OR ln_job_kbn = cn_jon_kbn_4 OR
-        ln_job_kbn = cn_jon_kbn_5) THEN
-      l_instance_rec.install_date             := ld_install_date;              -- 導入日
-    END IF;
-    l_instance_rec.attribute1                 := lv_un_number;                 -- 機種(コード)
-    l_instance_rec.attribute2                 := lv_install_number;            -- 機番
-    /* 2009.05.26 M.Ohtsuki T1_1141対応 START*/
-    IF (io_inst_base_data_rec.new_old_flg = cv_flg_yes) THEN                                        -- 新古台フラグがYの場合
-      l_instance_rec.attribute3 := TO_CHAR(TO_DATE(TO_CHAR(
-        io_inst_base_data_rec.first_install_date),'yyyy/mm/dd'), 'yyyy/mm/dd hh24:mi:ss'); -- 初回設置日
-    END IF;
-    /* 2009.05.26 M.Ohtsuki T1_1141対応 END*/
-    l_instance_rec.attribute4                 := cv_flg_no;                    -- 作業依頼中フラグ
-    l_instance_rec.attribute5                 := cv_flg_no;                    -- 新古台フラグ
-    IF (io_inst_base_data_rec.po_req_number IS NOT NULL AND
-        io_inst_base_data_rec.po_req_number <> 0) THEN
-      l_instance_rec.attribute6                 := io_inst_base_data_rec.po_req_number;  -- 最終発注依頼番号
-    END IF;
+    /* 2009.06.15 K.Satomura T1_1239対応 END */
     l_instance_rec.object_version_number      := 
       io_inst_base_data_rec.object_version1;                                   -- オブジェクトバージョン番号
     l_instance_rec.request_id                 := cn_request_id;                -- REQUEST_ID
@@ -6743,6 +6759,9 @@ AS
     cv_inst_base_info         CONSTANT  VARCHAR2(100)   := '(IN)物件マスタ情報';
     cv_update_process1        CONSTANT  VARCHAR2(100)   := '「50(休止)」→「40(顧客)」';
     cv_update_process2        CONSTANT  VARCHAR2(100)   := '「30(承認済)」→「40(顧客)」';
+    /* 2009.06.15 K.Satomura T1_1239対応 START */
+    cv_comp_kbn_comp          CONSTANT  VARCHAR2(100)   := '1'; -- 完了区分＝完了
+    /* 2009.06.15 K.Satomura T1_1239対応 END */
 --
     -- *** ローカル変数 ***
     ld_sysdate                DATE;                    -- システム日付
@@ -6772,6 +6791,9 @@ AS
               ,xciwd.job_kbn                        job_kbn                     -- 作業区分
               ,xciwd.install_code1                  install_code1               -- 物件コード１（設置用）
               ,xciwd.install_code2                  install_code2               -- 物件コード２（引揚用）
+              /* 2009.06.15 K.Satomura T1_1239対応 START */
+              ,xciwd.completion_kbn                 completion_kbn              -- 完了区分
+              /* 2009.06.15 K.Satomura T1_1239対応 END */
               ,xciwd.safe_setting_standard          safe_setting_standard       -- 安全設置基準
               ,xciid.install_code                   install_code                -- 物件コード
               ,xciid.un_number                      un_number                   -- 機種
@@ -6816,8 +6838,11 @@ AS
               ,xciwd.actual_work_date               actual_work_date            -- 実作業日
       FROM     xxcso_in_work_data    xciwd
               ,xxcso_in_item_data    xciid
-      WHERE    xciwd.completion_kbn   = cn_kbn1
-        AND    (
+      /* 2009.06.15 K.Satomura T1_1239対応 START */
+      --WHERE    xciwd.completion_kbn   = cn_kbn1
+      --  AND    (
+      WHERE    (
+      /* 2009.06.15 K.Satomura T1_1239対応 END */
                  (
                        xciid.install_code                   = NVL(xciwd.install_code1, ' ')
                    AND xciwd.install1_processed_flag        = cv_no
@@ -6840,7 +6865,7 @@ AS
          --/* 2009.06.01 K.Satomura T1_1107対応 END */
          /* 2009.06.04 K.Satomura T1_1107再修正対応 END */
       ORDER BY xciwd.actual_work_date
-              ,xciwd.actual_work_time2 
+              ,xciwd.actual_work_time2
     ;
 --
     -- *** ローカル・レコード ***
@@ -6977,6 +7002,9 @@ AS
         l_g_get_data_rec.po_req_number             := l_inst_base_data_rec.po_req_number;             
         l_g_get_data_rec.line_num                  := l_inst_base_data_rec.line_num;                  
         l_g_get_data_rec.actual_work_date          := l_inst_base_data_rec.actual_work_date;          
+        /* 2009.06.15 K.Satomura T1_1239対応 START */
+        l_g_get_data_rec.completion_kbn            := l_inst_base_data_rec.completion_kbn;
+        /* 2009.06.15 K.Satomura T1_1239対応 END */
 --
         -- メッセージ格納用
         ln_seq_no                     := l_inst_base_data_rec.seq_no;                    
@@ -7120,22 +7148,26 @@ AS
         -- A-10.顧客アドオンマスタとパーティマスタ更新処理
         -- ====================================================
 --
-        update_cust_or_party(
-           io_inst_base_data_rec   => l_g_get_data_rec --(IN)物件マスタ情報
-          ,id_process_date         => ld_process_date  -- 業務処理日付
-          ,ov_errbuf               => lv_errbuf        -- エラー・メッセージ            --# 固定 #
-          ,ov_retcode              => lv_sub_retcode   -- リターン・コード              --# 固定 #
-          ,ov_errmsg               => lv_errmsg        -- ユーザー・エラー・メッセージ  --# 固定 #
-        );
+        /* 2009.06.15 K.Satomura T1_1239対応 START */
+        IF (l_g_get_data_rec.completion_kbn = cv_comp_kbn_comp) THEN
+        /* 2009.06.15 K.Satomura T1_1239対応 END */
+          update_cust_or_party(
+             io_inst_base_data_rec   => l_g_get_data_rec --(IN)物件マスタ情報
+            ,id_process_date         => ld_process_date  -- 業務処理日付
+            ,ov_errbuf               => lv_errbuf        -- エラー・メッセージ            --# 固定 #
+            ,ov_retcode              => lv_sub_retcode   -- リターン・コード              --# 固定 #
+            ,ov_errmsg               => lv_errmsg        -- ユーザー・エラー・メッセージ  --# 固定 #
+          );
 --
-        IF (lv_sub_retcode = cv_status_error) THEN
-          RAISE global_process_expt;
-        ELSIF (lv_sub_retcode = cv_status_warn) THEN
-          RAISE skip_process_expt;
+          IF (lv_sub_retcode = cv_status_error) THEN
+            RAISE global_process_expt;
+          ELSIF (lv_sub_retcode = cv_status_warn) THEN
+            RAISE skip_process_expt;
+          END IF;
+        /* 2009.06.15 K.Satomura T1_1239対応 START */
         END IF;
+        /* 2009.06.15 K.Satomura T1_1239対応 END */
 --
-
-
         -- ===================================
         -- A-11.連携済正常メッセージ出力処理
         -- ===================================
