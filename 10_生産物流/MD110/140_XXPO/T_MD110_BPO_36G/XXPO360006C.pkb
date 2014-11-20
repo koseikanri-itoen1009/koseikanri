@@ -7,7 +7,7 @@ AS
  * Description      : d“üæˆø–¾×•\
  * MD.050           : —Lx‹‹’ •[Issue1.0(T_MD050_BPO_360)
  * MD.070           : —Lx‹‹’ •[Issue1.0(T_MD070_BPO_36G)
- * Version          : 1.19
+ * Version          : 1.21
  *
  * Program List
  * -------------------------- ----------------------------------------------------------
@@ -56,6 +56,7 @@ AS
  *  2008/12/03    1.18  H.Marushita      –{”ÔáŠQ#374‘Î‰
  *  2008/12/05    1.19  A.Shiina         –{”ÔáŠQ#499,#506‘Î‰
  *  2008/12/07    1.20  N.Yoshida        –{”ÔáŠQ#533‘Î‰
+ *  2009/01/09    1.21  N.Yoshida        –{”ÔáŠQ#984‘Î‰
  *
  *****************************************************************************************/
 --
@@ -181,21 +182,30 @@ AS
 --     ,kobikigo        xxpo_rcv_and_rtn_txns.kobki_converted_unit_price%TYPE --•²ˆøŒã’P‰¿
      ,kobikigo        NUMBER                                                --•²ˆøŒã’P‰¿
 -- 2008/12/05 v1.19 UPDATE END
-     ,kousen_price    xxpo_rcv_and_rtn_txns.kousen_price%TYPE               --—a‚èŒû‘K‹àŠz
-     ,fukakin_price   xxpo_rcv_and_rtn_txns.fukakin_price%TYPE              --•Š‰Û‹àŠz
+-- 2009/01/09 v1.21 UPDATE START
+--     ,kousen_price    xxpo_rcv_and_rtn_txns.kousen_price%TYPE               --—a‚èŒû‘K‹àŠz
+--     ,fukakin_price   xxpo_rcv_and_rtn_txns.fukakin_price%TYPE              --•Š‰Û‹àŠz
+     ,kousen_price    NUMBER                                                --—a‚èŒû‘K‹àŠz
+     ,fukakin_price   NUMBER                                                --•Š‰Û‹àŠz
      ,lot_no          ic_lots_mst.lot_no%TYPE                               --ƒƒbƒgno
-     ,quantity        xxpo_rcv_and_rtn_txns.quantity%TYPE           --ó“ü•Ô•i”—Ê
+--     ,quantity        xxpo_rcv_and_rtn_txns.quantity%TYPE           --ó“ü•Ô•i”—Ê
+     ,quantity        NUMBER                                                --ó“ü•Ô•i”—Ê
+-- 2009/01/09 v1.21 UPDATE END
 -- 2008/12/05 v1.19 UPDATE START
 --     ,unit_price      xxpo_rcv_and_rtn_txns.unit_price%TYPE                 --’P‰¿
      ,unit_price      NUMBER                                                --’P‰¿
 -- 2008/12/05 v1.19 UPDATE END
      ,kousen_type     xxpo_rcv_and_rtn_txns.kousen_type%TYPE                --Œû‘K‹æ•ª
      ,kousen_name     fnd_lookup_values.meaning%TYPE                        --Œû‘K‹æ•ª–¼
-     ,kousen          xxpo_rcv_and_rtn_txns.kousen_rate_or_unit_price%TYPE  --Œû‘K
+-- 2009/01/09 v1.21 UPDATE START
+--     ,kousen          xxpo_rcv_and_rtn_txns.kousen_rate_or_unit_price%TYPE  --Œû‘K
+     ,kousen          NUMBER                                                --Œû‘K
      ,rcv_rtn_uom     xxpo_rcv_and_rtn_txns.rcv_rtn_uom%TYPE                --ó“ü•Ô•i’PˆÊ
      ,fukakin_type    xxpo_rcv_and_rtn_txns.fukakin_type%TYPE               --•Š‰Û‹à‹æ•ª
      ,fukakin_name    fnd_lookup_values.meaning%TYPE                        --•Š‰Û‹à‹æ•ª–¼
-     ,fukakin         xxpo_rcv_and_rtn_txns.fukakin_rate_or_unit_price%TYPE --•Š‰Û‹à
+--     ,fukakin         xxpo_rcv_and_rtn_txns.fukakin_rate_or_unit_price%TYPE --•Š‰Û‹à
+     ,fukakin         NUMBER                                                --•Š‰Û‹à
+-- 2009/01/09 v1.21 UPDATE END
      ,zeiritu         fnd_lookup_values.lookup_code%TYPE                    --Å—¦
      ,order1          fnd_lookup_values.lookup_code%TYPE                    --•\¦‡
      ,gaku            NUMBER                                                --‹àŠz(•²ˆøŒã’P‰¿*ó“ü•Ô•i”—Ê)
