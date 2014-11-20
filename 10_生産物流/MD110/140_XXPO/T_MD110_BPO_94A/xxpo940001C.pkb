@@ -7,7 +7,7 @@ AS
  * Description      : 出来高実績のアップロード
  * MD.050           : 取引先オンライン         T_MD050_BPO_940
  * MD.070           : 出来高実績のアップロード T_MD070_BPO_94A
- * Version          : 1.1
+ * Version          : 1.2
  *
  * Program List
  * ------------------------- ----------------------------------------------------------
@@ -27,6 +27,7 @@ AS
  * ------------- ----- ---------------- -------------------------------------------------
  *  2008/06/09    1.0   Oracle 新藤義勝   初回作成
  *  2008/07/08    1.1   Oracle 山根一浩   I_S_192対応
+ *  2008/08/12    1.2   Oracle 伊藤ひとみ T_TE080_BPO_940 指摘1 更新日のチェックを行わない
  *****************************************************************************************/
 --
 --#######################  固定グローバル定数宣言部 START   #######################
@@ -942,30 +943,31 @@ AS
           RAISE global_api_expt;
         END IF;
 --
-        -- ==============================
-        -- 更新日時
-        -- ==============================
-        xxcmn_common3_pkg.upload_item_check(gv_c_last_update_date,
-                                            fdata_tbl(ln_index).last_update_date,
-                                            NULL,
-                                            NULL,
-                                            xxcmn_common3_pkg.gv_null_ok,
-                                            xxcmn_common3_pkg.gv_attr_dat,
-                                            lv_errbuf,
-                                            lv_retcode,
-                                            lv_errmsg);
-
-        -- 項目チェックエラー
-        IF (lv_retcode = gv_status_warn) THEN
-          fdata_tbl(ln_index).err_message := fdata_tbl(ln_index).err_message
-                                              || lv_errmsg
-                                              || lv_line_feed;
-        -- プロシージャー異常終了
-        ELSIF (lv_retcode = gv_status_error) THEN
-          lv_errbuf := lv_errmsg;
-          RAISE global_api_expt;
-        END IF;        
+-- 2008/08/12 H.Itou DEL START T_TE080_BPO_940 指摘1
+--        -- ==============================
+--        -- 更新日時
+--        -- ==============================
+--        xxcmn_common3_pkg.upload_item_check(gv_c_last_update_date,
+--                                            fdata_tbl(ln_index).last_update_date,
+--                                            NULL,
+--                                            NULL,
+--                                            xxcmn_common3_pkg.gv_null_ok,
+--                                            xxcmn_common3_pkg.gv_attr_dat,
+--                                            lv_errbuf,
+--                                            lv_retcode,
+--                                            lv_errmsg);
 --
+--        -- 項目チェックエラー
+--        IF (lv_retcode = gv_status_warn) THEN
+--          fdata_tbl(ln_index).err_message := fdata_tbl(ln_index).err_message
+--                                              || lv_errmsg
+--                                              || lv_line_feed;
+--        -- プロシージャー異常終了
+--        ELSIF (lv_retcode = gv_status_error) THEN
+--          lv_errbuf := lv_errmsg;
+--          RAISE global_api_expt;
+--        END IF;        
+-- 2008/08/12 H.Itou DEL END
       END IF;
 --
       -- **************************************************
@@ -1117,9 +1119,11 @@ AS
       gt_producted_quantity_tab(ln_index)   := TO_NUMBER(fdata_tbl(ln_index).producted_quantity);
       -- 摘要
       gt_description_tab(ln_index)          := fdata_tbl(ln_index).description;
-      -- 更新日時
-      gt_last_update_date_tab(ln_index)     
-                                   := TO_DATE(fdata_tbl(ln_index).last_update_date,'YYYY/MM/DD');
+-- 2008/08/12 H.Itou DEL START T_TE080_BPO_940 指摘1
+--      -- 更新日時
+--      gt_last_update_date_tab(ln_index)     
+--                                   := TO_DATE(fdata_tbl(ln_index).last_update_date,'YYYY/MM/DD');
+-- 2008/08/12 H.Itou DEL END
 --
     END LOOP fdata_loop;
 --
