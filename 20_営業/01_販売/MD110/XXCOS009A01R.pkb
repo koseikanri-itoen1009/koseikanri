@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCOS009A01R (body)
  * Description      : 受注一覧リスト
  * MD.050           : 受注一覧リスト MD050_COS_009_A01
- * Version          : 1.9
+ * Version          : 1.10
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -40,6 +40,7 @@ AS
  *                                       [E_本稼動_00583]伝票区分、分類区分出力対応
  *                                       [E_本稼動_00700]明細金額の端数処理変更対応
  *  2010/01/22    1.9   Y.Kikuchi        [E_本稼動_00408]伝票計出力対応
+ *  2010/03/08    1.10  M.Sano           [E_本稼動_01657]数量の参照元変更
  *
  *****************************************************************************************/
 --
@@ -1234,7 +1235,15 @@ AS
         ,oola.ordered_item                     AS order_item_no              -- 受注品番号
         ,ximb.item_short_name                  AS order_item_name            -- 受注品目名
         ,otta.order_category_code              AS order_category_code        -- カテゴリ
-        ,oola.ordered_quantity                 AS quantity                   -- 数量
+/* 2010/03/08 Ver1.10 Add Start */
+--        ,oola.ordered_quantity                 AS quantity                   -- 数量
+        ,NVL( ( SELECT xel.sum_order_qty
+                FROM   xxcos_edi_lines        xel
+                WHERE  xel.edi_header_info_id = xeh.edi_header_info_id
+                AND    xel.order_connection_line_number
+                                              = oola.orig_sys_line_ref )
+             , oola.ordered_quantity )         AS quantity                   -- 数量
+/* 2010/03/08 Ver1.10 Add End   */
         ,oola.order_quantity_uom               AS uom_code                   -- 受注単位
         ,oola.unit_selling_price               AS dlv_unit_price             -- 販売単価
         ,oola.subinventory                     AS locat_code                 -- 保管場所コード
@@ -1288,6 +1297,9 @@ AS
         ,xxcmm_cust_accounts       xca_c   -- 顧客アドオン(チェーン店)
         ,hz_parties                hp_c    -- パーティマスタ(チェーン店)
 /* 2009/12/28 Ver1.8 Add End   */
+/* 2010/03/08 Ver1.10 Add Start */
+        ,xxcos_edi_headers         xeh     -- EDIヘッダ情報
+/* 2010/03/08 Ver1.10 Add End   */
       WHERE
       -- 受注ヘッダ.受注ヘッダID＝受注明細.受注ヘッダID
       ooha.header_id                        = oola.header_id
@@ -1395,6 +1407,10 @@ AS
       --顧客マスタ(チェーン店).パーティID＝パーティマスタ(チェーン店).パーティID
       AND hca_c.party_id                    = hp_c.party_id
 /* 2009/12/28 Ver1.9 Add End   */
+/* 2010/03/08 Ver1.10 Add Start */
+      --EDIヘッダ.受注関連番号＝受注ヘッダ.外部システム受注番号
+      AND xeh.order_connection_number       = ooha.orig_sys_document_ref
+/* 2010/03/08 Ver1.10 Add End   */
       AND ( 
 /* 2009/12/28 Ver1.9 Mod Start */
 --        --EDI取込の場合
