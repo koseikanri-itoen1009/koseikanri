@@ -11,7 +11,7 @@ AS
  *                    発生していない顧客を判断します。
  *                    （未取引客チェックリストに出力されます。）
  * MD.050           : 最終取引日更新 MD050_CMM_003_A15
- * Version          : Draft3A
+ * Version          : Issue3.5
  *
  * Program List
  * -------------------- -----------------------------------------------------------------
@@ -37,6 +37,7 @@ AS
  *  2009/05/27    1.2   Yutaka.Kuboshima 障害T1_0816,T1_0863の対応
  *  2009/08/31    1.3   Yutaka.Kuboshima 障害0001229の対応
  *  2009/12/18    1.4   Yutaka.Kuboshima 障害E_本稼動_00540の対応
+ *  2009/12/21    1.5   Yutaka.Kuboshima 障害E_本稼動_00416の対応
  *
  *****************************************************************************************/
 --
@@ -149,6 +150,9 @@ AS
   cv_cust_status_cust       CONSTANT VARCHAR2(2)  := '40';                          -- 顧客ステータス（顧客）
   cv_apl_short_nm_ar        CONSTANT VARCHAR2(2)  := 'AR';                          -- ｱﾌﾟﾘｹｰｼｮﾝ短縮名（AR）
   cv_cal_status_close       CONSTANT VARCHAR2(1)  := 'C';                           -- カレンダステータス（クローズ）
+-- 2009/12/21 Ver1.5 E_本稼動_00416 add start by Yutaka.Kuboshima
+  cv_cal_status_open        CONSTANT VARCHAR2(1)  := 'O';                           -- カレンダステータス（オープン）
+-- 2009/12/21 Ver1.5 E_本稼動_00416 add end by Yutaka.Kuboshima
   cv_gyotai_chu_vd          CONSTANT VARCHAR2(2)  := '11';                          -- 業態中分類（VD）
   cd_min_date               CONSTANT DATE         := TO_DATE('1900/01/01', cv_date_fmt);  -- 最小日付
   cv_sel_trn_type_exchg     CONSTANT VARCHAR2(1)  := '0';                           -- 実績振替区分（振替割合）
@@ -160,6 +164,10 @@ AS
   cv_gyotai_sho_vd24        CONSTANT VARCHAR2(2)  := '24';                          -- 業態小分類（フルサービス（消化）ＶＤ）
   cv_gyotai_sho_vd25        CONSTANT VARCHAR2(2)  := '25';                          -- 業態小分類（フルサービスＶＤ）
 -- 2009/05/27 Ver1.2 障害T1_0863 add end by Yutaka.Kuboshima
+  --
+-- 2009/12/21 Ver1.5 E_本稼動_00416 add start by Yutaka.Kuboshima
+  cv_gyotai_sho_vd27        CONSTANT VARCHAR2(2)  := '27';                          -- 業態小分類（消化ＶＤ）
+-- 2009/12/21 Ver1.5 E_本稼動_00416 add end by Yutaka.Kuboshima
   --
   cv_para01_name            CONSTANT VARCHAR2(12) := '処理日(FROM)';                -- ｺﾝｶﾚﾝﾄ･ﾊﾟﾗﾒｰﾀ名01
   cv_para02_name            CONSTANT VARCHAR2(12) := '処理日(TO)  ';                -- ｺﾝｶﾚﾝﾄ･ﾊﾟﾗﾒｰﾀ名02
@@ -179,6 +187,10 @@ AS
   gd_para_proc_date_t   DATE;           -- 処理日(To)
   gd_last_month_day     DATE;           -- 前月末日
   gv_prev_month_cls_status  gl_period_statuses.closing_status%TYPE; -- 会計カレンダ・前月クローズステータス
+-- 2009/12/21 Ver1.5 E_本稼動_00416 add start by Yutaka.Kuboshima
+  gd_first_month_day     DATE;           -- 業務月1日
+  gd_pre_first_month_day DATE;           -- 前月1日
+-- 2009/12/21 Ver1.5 E_本稼動_00416 add end by Yutaka.Kuboshima
   --
 --
   -- ===============================
@@ -192,7 +204,7 @@ AS
     SELECT
 -- 2009/08/31 Ver1.3 add start by Yutaka.Kuboshima
 --    ヒント句の追加
-      /*+ FIRST_ROWS LEADING(fidt) USE_NL(hzca,hzpt,xcac)*/
+      /*+ FIRST_ROWS LEADING(fidt) USE_NL(hzca hzpt xcac)*/
 -- 2009/08/31 Ver1.3 add end by Yutaka.Kuboshima
       hzca.cust_account_id        AS  cust_id,                -- 顧客ID
       hzca.party_id               AS  party_id,               -- パーティID
@@ -216,24 +228,54 @@ AS
       hzpt.ROWID                  AS  hzpt_rowid,             -- レコードID（パーティ）
       xcac.ROWID                  AS  xcac_rowid,             -- レコードID（顧客追加情報）
 -- 2009/05/27 Ver.12 障害T1_0816,T1_0863 add start by Yutaka.Kuboshima
-      fidt.old_tran_date          AS  old_tran_date,          -- 最前取引日
+--
+-- 2009/12/21 Ver1.5 E_本稼動_00416 delete start by Yutaka.Kuboshima
+--      fidt.old_tran_date          AS  old_tran_date,          -- 最前取引日
+-- 2009/12/21 Ver1.5 E_本稼動_00416 delete end by Yutaka.Kuboshima
+--
       xcac.business_low_type      AS  business_low_type       -- 業態小分類
 -- 2009/05/27 Ver.12 障害T1_0816,T1_0863 add end by Yutaka.Kuboshima
+--
+-- 2009/12/21 Ver1.5 E_本稼動_00416 add start by Yutaka.Kuboshima
+     ,fidt.month_old_tran_date    AS  month_old_tran_date     -- 当月最前取引日
+     ,fidt.past_old_tran_date     AS  past_old_tran_date      -- 前月最前取引日
+-- 2009/12/21 Ver1.5 E_本稼動_00416 add end by Yutaka.Kuboshima
+--
     FROM
       (
         SELECT
           xfid.cust_code              AS  cust_code,
           MAX(xfid.new_tran_date)     AS  new_tran_date,
 -- 2009/05/27 Ver1.3 障害T1_0863 add start by Yutaka.Kuboshima
-          MIN(xfid.new_tran_date)     AS  old_tran_date,
+-- 2009/12/21 Ver1.5 E_本稼動_00416 delete start by Yutaka.Kuboshima
+--          MIN(xfid.new_tran_date)     AS  old_tran_date,
+-- 2009/12/21 Ver1.5 E_本稼動_00416 delete end by Yutaka.Kuboshima
 -- 2009/05/27 Ver1.3 障害T1_0863 add end by Yutaka.Kuboshima
           MAX(xfid.past_deli_date)    AS  past_deli_date
+--
+-- 2009/12/21 Ver1.5 E_本稼動_00416 add start by Yutaka.Kuboshima
+         ,MIN(xfid.month_tran_date)   AS  month_old_tran_date
+         ,MIN(xfid.past_tran_date)    AS  past_old_tran_date
+-- 2009/12/21 Ver1.5 E_本稼動_00416 add end by Yutaka.Kuboshima
+--
         FROM
           (
             -- 販売実績情報
             SELECT
               xseh.ship_to_customer_code    AS  cust_code,        -- 顧客コード【納品先】
               xseh.delivery_date            AS  new_tran_date,    -- 納品日（最新取引日）
+-- 2009/12/21 Ver1.5 E_本稼動_00416 add start by Yutaka.Kuboshima
+              CASE WHEN (TRUNC(xseh.delivery_date) >= gd_first_month_day) THEN
+                xseh.delivery_date
+              ELSE
+                NULL
+              END                           AS  month_tran_date,  -- 当月最前取引日(未来月含)
+              CASE WHEN (TRUNC(xseh.delivery_date) >= gd_pre_first_month_day) THEN
+                xseh.delivery_date
+              ELSE
+                NULL
+              END                           AS  past_tran_date,   -- 前月最前取引日(当月、未来含)
+-- 2009/12/21 Ver1.5 E_本稼動_00416 add end by Yutaka.Kuboshima
               CASE WHEN (TRUNC(xseh.delivery_date) <= gd_last_month_day) THEN
                 xseh.delivery_date
               ELSE
@@ -263,6 +305,18 @@ AS
             SELECT
               xsti.cust_code                AS  cust_code,      -- 顧客コード
               xsti.selling_date             AS  new_tran_date,  -- 計上日（最新取引日）
+-- 2009/12/21 Ver1.5 E_本稼動_00416 add start by Yutaka.Kuboshima
+              CASE WHEN (TRUNC(xsti.selling_date) >= gd_first_month_day) THEN
+                xsti.selling_date
+              ELSE
+                NULL
+              END                           AS  month_tran_date,  -- 当月最前取引日(未来月含)
+              CASE WHEN (TRUNC(xsti.selling_date) >= gd_pre_first_month_day) THEN
+                xsti.selling_date
+              ELSE
+                NULL
+              END                           AS  past_tran_date,   -- 前月最前取引日(当月、未来含)
+-- 2009/12/21 Ver1.5 E_本稼動_00416 add end by Yutaka.Kuboshima
               CASE WHEN (TRUNC(xsti.selling_date) <= gd_last_month_day) THEN
                 xsti.selling_date
               ELSE
@@ -498,6 +552,10 @@ AS
     ld_final_tran_date        xxcmm_cust_accounts.final_tran_date%TYPE;       -- 最終取引日
 -- 2009/05/27 Ver1.2 障害T1_0816 add end by Yutaka.Kuboshima
 --
+-- 2009/12/21 Ver1.5 E_本稼動_00416 add start by Yutaka.Kuboshima
+    ld_old_tran_date          DATE;                                           -- 最前取引日
+-- 2009/12/21 Ver1.5 E_本稼動_00416 add end by Yutaka.Kuboshima
+--
     -- *** ローカル・カーソル ***
 --
     -- *** ローカル・レコード ***
@@ -516,6 +574,18 @@ AS
     -- ***************************************
     --
     -- 更新項目編集
+    --
+-- 2009/12/21 Ver1.5 E_本稼動_00416 add start by Yutaka.Kuboshima
+    -- 前月会計期間がクローズの場合
+    IF (gv_prev_month_cls_status = cv_cal_status_close) THEN
+      -- 最前取引日に当月最前取引日をセット
+      ld_old_tran_date := iv_rec.month_old_tran_date;
+    -- 前月会計期間がオープンの場合
+    ELSIF (gv_prev_month_cls_status = cv_cal_status_open) THEN
+      -- 最前取引日に前月最前取引日をセット
+      ld_old_tran_date := iv_rec.past_old_tran_date;
+    END IF;
+-- 2009/12/21 Ver1.5 E_本稼動_00416 add start by Yutaka.Kuboshima
     --
 -- 2009/05/27 Ver1.2 障害T1_0816 add start by Yutaka.Kuboshima
     -- 最終取引日
@@ -571,21 +641,58 @@ AS
 --        ld_cnvs_date  :=  iv_rec.cnvs_date;
 --      END IF;
 --    END IF;
-    IF (iv_rec.cnvs_date IS NULL)
-      AND (iv_rec.cust_status = cv_cust_status_admit)
-        AND (iv_rec.business_low_type NOT IN (cv_gyotai_sho_vd24, cv_gyotai_sho_vd25))
-    THEN
-      ld_cnvs_date := iv_rec.old_tran_date;
+-- 2009/12/21 Ver1.5 E_本稼動_00416 modify start by Yutaka.Kuboshima
+--    IF (iv_rec.cnvs_date IS NULL)
+--      AND (iv_rec.cust_status = cv_cust_status_admit)
+--        AND (iv_rec.business_low_type NOT IN (cv_gyotai_sho_vd24, cv_gyotai_sho_vd25))
+--    THEN
+--      ld_cnvs_date := iv_rec.old_tran_date;
+--    ELSE
+--      ld_cnvs_date := iv_rec.cnvs_date;
+--    END IF;
+    -- 業態小分類が'24','25','27'以外の場合
+    IF (iv_rec.business_low_type NOT IN (cv_gyotai_sho_vd24, cv_gyotai_sho_vd25, cv_gyotai_sho_vd27)) THEN
+      -- 顧客獲得日がNULLの場合
+      IF (iv_rec.cnvs_date IS NULL) THEN
+        -- 最前取引日をセット
+        ld_cnvs_date := ld_old_tran_date;
+      ELSE
+        -- 最前取引日が顧客獲得日より前の場合
+        IF (iv_rec.cnvs_date > ld_old_tran_date) THEN
+          -- 最前取引日をセット
+          ld_cnvs_date := ld_old_tran_date;
+        ELSE
+          -- 顧客獲得日をセット
+          ld_cnvs_date := iv_rec.cnvs_date;
+        END IF;
+      END IF;
     ELSE
+      -- 顧客獲得日をセット
       ld_cnvs_date := iv_rec.cnvs_date;
     END IF;
+-- 2009/12/21 Ver1.5 E_本稼動_00416 modify end by Yutaka.Kuboshima
+    --
 -- 2009/05/27 Ver1.2 障害T1_0811,T1_0863 modify end by Yutaka.Kuboshima
     -- 初回取引日
     lv_step := 'A-4.4';
     IF (iv_rec.start_tran_date IS NULL) THEN
-      ld_start_tran_date    :=  iv_rec.new_tran_date;
+-- 2009/12/21 Ver1.5 E_本稼動_00416 modify start by Yutaka.Kuboshima
+-- 最新取引日 -> 最前取引日に変更
+--      ld_start_tran_date    :=  iv_rec.new_tran_date;
+      ld_start_tran_date    :=  ld_old_tran_date;
+-- 2009/12/21 Ver1.5 E_本稼動_00416 modify end by Yutaka.Kuboshima
     ELSE
-      ld_start_tran_date    :=  iv_rec.start_tran_date;
+-- 2009/12/21 Ver1.5 E_本稼動_00416 modify start by Yutaka.Kuboshima
+--      ld_start_tran_date    :=  iv_rec.start_tran_date;
+      -- 最前取引日が初回取引日より前の場合
+      IF  (iv_rec.start_tran_date > ld_old_tran_date) THEN
+        -- 最前取引日をセット
+        ld_start_tran_date := ld_old_tran_date;
+      ELSE
+        -- 初回取引日をセット
+        ld_start_tran_date := iv_rec.start_tran_date;
+      END IF;
+-- 2009/12/21 Ver1.5 E_本稼動_00416 modify end by Yutaka.Kuboshima
     END IF;
     --
     -- 最終取引日更新SQL文
@@ -909,6 +1016,18 @@ AS
     --
     gd_last_month_day   :=  LAST_DAY(ADD_MONTHS(gd_now_proc_date, -1));
     --
+-- 2009/12/21 Ver1.5 E_本稼動_00416 add start by Yutaka.Kuboshima
+    -- 業務月1日
+    lv_step := 'A-1.8';
+    --
+    gd_first_month_day     := TRUNC(gd_now_proc_date, 'MM');
+    --
+    -- 前月1日
+    lv_step := 'A-1.9';
+    --
+    gd_pre_first_month_day := TRUNC(ADD_MONTHS(gd_now_proc_date, -1), 'MM');
+    --
+-- 2009/12/21 Ver1.5 E_本稼動_00416 add end by Yutaka.Kuboshima
     --
     --==============================================================
     --メッセージ出力をする必要がある場合は処理を記述
