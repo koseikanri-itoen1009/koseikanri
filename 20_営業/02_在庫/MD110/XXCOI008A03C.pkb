@@ -6,14 +6,14 @@ AS
  * Package Name     : XXCOI008A03C(body)
  * Description      : 情報系システムへの連携の為、EBSの月次在庫受払表(アドオン)をCSVファイルに出力
  * MD.050           : 月別受払残高情報系連携 <MD050_COI_008_A03>
- * Version          : 1.5
+ * Version          : 1.6
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
  *  Name                   Description
  * ---------------------- ----------------------------------------------------------
  *  init                   初期処理(A-1)
- *  create_csv_p           累計情報なし棚卸データCSV作成(A-9)
+ *  create_csv_i           累計情報なし棚卸データCSV作成(A-9)
  *  create_csv_p           受払(在庫)CSVの作成(A-6)
  *  get_inv_info_p         棚卸情報取得(A-5)
  *  recept_month_cur_p     月次在庫受払表(累計)情報の抽出(A-4)
@@ -37,6 +37,7 @@ AS
  *                                                        連携しないよう修正
  *  2010/03/10    1.4   H.Sasaki         [E_本稼動_01856] 月初数量が取得できない場合0を設定
  *  2010/05/21    1.5   N.Abe            [E_本稼動_02770] 消化VD補充の入出庫を追加
+ *  2010/05/21    1.6   H.Sasaki         [E_本稼動_07381] 月首、棚卸、減耗の算出方法を変更
  *
  *****************************************************************************************/
 --
@@ -1192,6 +1193,10 @@ AS
     -- *** ローカル定数 ***
 --
     -- *** ローカル変数 ***
+-- == 2011/06/02 V1.6 Added START ===============================================================
+    lt_inv_result         xxcoi_inv_reception_monthly.inv_result%TYPE;
+    lt_inv_result_bad     xxcoi_inv_reception_monthly.inv_result_bad%TYPE;
+-- == 2011/06/02 V1.6 Added END   ===============================================================
 --
     -- *** ローカル・カーソル ***
 --
@@ -1224,6 +1229,9 @@ AS
           BEGIN
             -- 月首棚卸高を取得
             SELECT xirm.inv_result                                                      -- 棚卸結果
+-- == 2011/06/02 V1.6 Added START ===============================================================
+                 + xirm.inv_result_bad                                                  -- 棚卸結果（不良品）
+-- == 2011/06/02 V1.6 Added END   ===============================================================
             INTO   gn_month_begin_quantity
             FROM   xxcoi_inv_reception_monthly   xirm                                   -- 月次在庫受払表テーブル
             WHERE  xirm.organization_id        = ir_recept_month_rec.organization_id    -- A-4で取得した組織ID
@@ -1241,11 +1249,49 @@ AS
             WHEN NO_DATA_FOUND THEN
               gn_month_begin_quantity := 0;
           END;
+-- == 2011/06/02 V1.6 Added START ===============================================================
+          -- 棚卸結果を取得
+          SELECT  SUM(CASE WHEN xir.quality_goods_kbn = '0'
+                        THEN  xir.case_qty * xir.case_in_qty + xir.quantity
+                        ELSE  0
+                      END
+                  )
+                , SUM(CASE WHEN xir.quality_goods_kbn = '1'
+                        THEN  xir.case_qty * xir.case_in_qty + xir.quantity
+                        ELSE  0
+                      END
+                  )
+          INTO    lt_inv_result
+                , lt_inv_result_bad
+          FROM    xxcoi_inv_control           xic
+                , xxcoi_inv_result            xir
+                , mtl_system_items_b          msib
+          WHERE   xic.inventory_seq         =   xir.inventory_seq
+          AND     xir.item_code             =   msib.segment1
+          AND     xic.inventory_kbn         =   cv_inv_kbn_2
+          AND     xic.subinventory_code     =   ir_recept_month_rec.subinventory_code
+          AND     xic.inventory_year_month  =   ir_recept_month_rec.practice_date
+          AND     msib.inventory_item_id    =   ir_recept_month_rec.inventory_item_id
+          AND     msib.organization_id      =   ir_recept_month_rec.organization_id;
+          --
+          --  月次在庫受払表(累計)の年月に紐付く棚卸数、棚卸数（不良品）、減耗数(=帳簿在庫 - (棚卸数 + 棚卸数（不良品）))
+          gn_inv_result     := NVL(lt_inv_result, 0);
+          gn_inv_result_bad := NVL(lt_inv_result_bad, 0);
+          gn_inv_wear       := ir_recept_month_rec.book_inventory_quantity - (gn_inv_result + gn_inv_result_bad);
+-- == 2011/06/02 V1.6 Added END   ===============================================================
 --
         -- 月次在庫受払表(累計)の年月＝業務日付の年月の場合
         ELSE
           gn_month_begin_quantity := 0;
 --
+-- == 2011/06/02 V1.6 Added START ===============================================================
+          -- 棚卸結果を取得
+          gn_inv_result     := ir_recept_month_rec.book_inventory_quantity;
+          -- 棚卸結果(不良品)を取得
+          gn_inv_result_bad := 0;
+          -- 棚卸減耗を取得
+          gn_inv_wear       := 0;
+-- == 2011/06/02 V1.6 Added END   ===============================================================
         END IF;
 --
       -- 在庫会計期間の件数＝1件の場合（前月締め処理後）
@@ -1254,6 +1300,9 @@ AS
         BEGIN
           -- 月首棚卸高を取得
           SELECT xirm.inv_result                                                      -- 棚卸結果
+-- == 2011/06/02 V1.6 Added START ===============================================================
+               + xirm.inv_result_bad                                                  -- 棚卸結果（不良品）
+-- == 2011/06/02 V1.6 Added END   ===============================================================
           INTO   gn_month_begin_quantity
           FROM   xxcoi_inv_reception_monthly   xirm                                   -- 月次在庫受払表テーブル
           WHERE  xirm.organization_id        = ir_recept_month_rec.organization_id    -- A-4で取得した組織ID
@@ -1271,15 +1320,25 @@ AS
           WHEN NO_DATA_FOUND THEN
             gn_month_begin_quantity := 0;
         END;
+-- == 2011/06/02 V1.6 Added START ===============================================================
+        -- 棚卸結果を取得
+        gn_inv_result     := ir_recept_month_rec.book_inventory_quantity;
+        -- 棚卸結果(不良品)を取得
+        gn_inv_result_bad := 0;
+        -- 棚卸減耗を取得
+        gn_inv_wear       := 0;
+-- == 2011/06/02 V1.6 Added END   ===============================================================
 --
       END IF;
 --
-      -- 棚卸結果を取得
-      gn_inv_result     := ir_recept_month_rec.book_inventory_quantity;
-      -- 棚卸結果(不良品)を取得
-      gn_inv_result_bad := 0;
-      -- 棚卸減耗を取得
-      gn_inv_wear       := 0;
+-- == 2011/06/02 V1.6 Deleted START ===============================================================
+--      -- 棚卸結果を取得
+--      gn_inv_result     := ir_recept_month_rec.book_inventory_quantity;
+--      -- 棚卸結果(不良品)を取得
+--      gn_inv_result_bad := 0;
+--      -- 棚卸減耗を取得
+--      gn_inv_wear       := 0;
+-- == 2011/06/02 V1.6 Deleted END   ===============================================================
 --
     -- パラメータ「処理区分」が「1：月次」の場合
     ELSE
@@ -1338,6 +1397,9 @@ AS
         -- 月首棚卸高を取得
         BEGIN
           SELECT xirm.inv_result                                                      -- 棚卸結果
+-- == 2011/06/02 V1.6 Added START ===============================================================
+               + xirm.inv_result_bad                                                  -- 棚卸結果（不良品）
+-- == 2011/06/02 V1.6 Added END   ===============================================================
           INTO   gn_month_begin_quantity
           FROM   xxcoi_inv_reception_monthly   xirm                                   -- 月次在庫受払表テーブル
           WHERE  xirm.organization_id        = ir_recept_month_rec.organization_id    -- A-4で取得した組織ID
