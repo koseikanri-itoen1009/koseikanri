@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCOK007A01C(body)
  * Description      : 売上実績振替情報作成(EDI)
  * MD.050           : 売上実績振替情報作成(EDI) MD050_COK_007_A01
- * Version          : 1.12
+ * Version          : 1.13
  *
  * Program List
  * -------------------------------- ---------------------------------------------------------
@@ -53,6 +53,7 @@ AS
  *                                                       店舗納品日が当月の場合：売上拠点
  *                                                       担当営業員の処理日を「業務日付 -> 店舗納品日」に修正
  *                                                       顧客使用目的マスタの抽出条件に有効フラグを追加
+ *  2010/02/18    1.13  S.Moriyama       [E_本稼動_00911]納品日先日付のEDI実績振替は一時表までの登録としスキップする
  *
  *****************************************************************************************/
   -- =========================
@@ -2529,6 +2530,9 @@ AS
                                        cv_1, cv_0,
                                        cv_2 )
       AND       iv_file_name = xwest.if_file_name
+-- 2010/02/18 Ver.1.13 [障害E_本稼動_00911] SCS S.Moriyama ADD START
+      AND       xwest.store_delivery_date <= gd_prdate
+-- 2010/02/18 Ver.1.13 [障害E_本稼動_00911] SCS S.Moriyama ADD END
       ORDER BY  store_delivery_date     ASC
               , slip_no                 ASC
               , line_no                 ASC
