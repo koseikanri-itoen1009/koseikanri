@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCMM002A01C(body)
  * Description      : 社員データ取込処理
  * MD.050           : MD050_CMM_002_A01_社員データ取込
- * Version          : Issue3.14
+ * Version          : Issue3.15
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -106,6 +106,8 @@ AS
  *  2010/02/25    1.16 SCS 仁木 重人     障害E_本稼動_01581 対応
  *                                       ・購買担当マスタの有効開始日に「発令日」を設定
  *                                       ・出荷ロールマスタの有効開始日を「業務日付」->「発令日」に変更
+ *  2010/03/02    1.17 SCS 久保島 豊     障害E_本稼動01810 対応
+ *                                       ・PT対応 ユーザー職責マスタ(fnd_user_resp_groups_all)の取得方法変更
  *
  *****************************************************************************************/
 --
@@ -353,6 +355,11 @@ AS
   cv_flex_aff_bumon            CONSTANT VARCHAR2(30)  := 'XX03_DEPARTMENT';     -- 値セット名(AFF部門)
   cv_no                        CONSTANT VARCHAR2(1)   := 'N';                   -- 有効フラグ(N)
 -- 2009/08/06 Ver1.10 障害0000510,0000869,0000910 add start by Yutaka.Kuboshima
+--
+-- 2010/03/02 Ver1.17 E_本稼動_XXXXX add start by Yutaka.Kuboshima
+  cn_partition_id              CONSTANT NUMBER        := 2;                     -- パーティションID
+  cv_role_orig_system          CONSTANT VARCHAR2(10)  := 'FND_RESP';            -- ロールシステム名
+-- 2010/03/02 Ver1.17 E_本稼動_XXXXX add end by Yutaka.Kuboshima
   --
   -- ===============================
   -- ユーザー定義グローバル型
@@ -626,6 +633,9 @@ AS
 -- 2009/10/29 Ver1.12 add start by Yutaka.Kuboshima
   gv_retcode                   VARCHAR2(1);          -- 処理結果
 -- 2009/10/29 Ver1.12 add end by Yutaka.Kuboshima
+-- 2010/03/02 Ver1.17 E_本稼動_XXXXX add start by Yutaka.Kuboshima
+  gn_security_group_id         NUMBER;               -- セキュリティグループID
+-- 2010/03/02 Ver1.17 E_本稼動_XXXXX add end by Yutaka.Kuboshima
   -- 定数
   gn_created_by                NUMBER;               -- 作成者
   gd_creation_date             DATE;                 -- 作成日
@@ -4914,6 +4924,9 @@ AS
              xwpr.application_short_name    application_short_name,
              xwpr.start_date            start_date,
              xwpr.end_date              end_date
+-- 2010/03/02 Ver1.17 E_本稼動_XXXXX add start by Yutaka.Kuboshima
+            ,xwpr.application_id        application_id
+-- 2010/03/02 Ver1.17 E_本稼動_XXXXX add end by Yutaka.Kuboshima
       FROM   xxcmm_wk_people_resp xwpr
       WHERE  xwpr.employee_number = ir_masters_rec.employee_number
       AND    xwpr.responsibility_id > 0
@@ -4922,12 +4935,36 @@ AS
     -- ユーザー職責マスタ
     CURSOR furg_cur(in_responsibility_id in number)
     IS
-      SELECT fug.responsibility_application_id  responsibility_application_id,
-             fug.security_group_id              security_group_id
-      FROM   fnd_user_resp_groups_all fug                  -- ユーザー職責マスタ
-      WHERE  fug.user_id           = ir_masters_rec.user_id
-      AND    fug.responsibility_id = in_responsibility_id
-      AND    ROWNUM = 1;
+-- 2010/03/02 Ver1.17 E_本稼動_XXXXX modify start by Yutaka.Kuboshima
+--========================================
+-- PT対応内容
+-- 抽出項目：
+-- responsibility_application_id 
+--  →職責自動割当ワークのapplication_idで代用
+-- security_group_id
+--  →fnd_global.security_group_id(security_group_idは一つしか登録されていないから問題ないはず…)
+-- 抽出条件：fnd_user_resp_groups_allをばらして
+--           パーティションIDを指定する。
+--========================================
+--      SELECT fug.responsibility_application_id  responsibility_application_id,
+--             fug.security_group_id              security_group_id
+--      FROM   fnd_user_resp_groups_all fug                  -- ユーザー職責マスタ
+--      WHERE  fug.user_id           = ir_masters_rec.user_id
+--      AND    fug.responsibility_id = in_responsibility_id
+--      AND    ROWNUM = 1;
+      SELECT 'X'
+      FROM   wf_user_role_assignments wura
+            ,wf_local_user_roles      wlur
+      WHERE  wura.role_name           = wlur.role_name
+        AND  wura.user_name           = wlur.user_name
+        AND  wlur.role_orig_system    = cv_role_orig_system
+        AND  wlur.partition_id        = cn_partition_id
+        AND  wura.partition_id        = cn_partition_id
+        AND  wura.user_name           = ir_masters_rec.employee_number
+        AND  wlur.role_orig_system_id = in_responsibility_id
+        AND  rownum                   = 1
+      ;
+-- 2010/03/02 Ver1.17 E_本稼動_XXXXX modify end by Yutaka.Kuboshima
     --
     -- *** ローカル・レコード ***
 --
@@ -4955,8 +4992,12 @@ AS
           FND_USER_RESP_GROUPS_API.UPDATE_ASSIGNMENT(
              USER_ID                       => wk_pr1_rec.user_id
             ,RESPONSIBILITY_ID             => wk_pr1_rec.responsibility_id
-            ,RESPONSIBILITY_APPLICATION_ID => furg_rec.responsibility_application_id
-            ,SECURITY_GROUP_ID             => furg_rec.security_group_id
+-- 2010/03/02 Ver1.17 E_本稼動_XXXXX modify start by Yutaka.Kuboshima
+--            ,RESPONSIBILITY_APPLICATION_ID => furg_rec.responsibility_application_id
+--            ,SECURITY_GROUP_ID             => furg_rec.security_group_id
+            ,RESPONSIBILITY_APPLICATION_ID => wk_pr1_rec.application_id
+            ,SECURITY_GROUP_ID             => gn_security_group_id
+-- 2010/03/02 Ver1.17 E_本稼動_XXXXX modify end by Yutaka.Kuboshima
             ,START_DATE                    => wk_pr1_rec.start_date
             ,END_DATE                      => wk_pr1_rec.end_date
             ,DESCRIPTION                   => gv_const_y
@@ -7810,6 +7851,14 @@ AS
     FROM      fnd_application_vl
     WHERE     application_short_name = cv_appl_short_nm_icx;
 -- End Ver1.4
+--
+-- 2010/03/02 Ver1.17 E_本稼動_XXXXX add start by Yutaka.Kuboshima
+    -- ===============================
+    -- セキュリティグループIDの取得
+    -- ※職責マスタの更新で使用
+    -- ===============================
+    gn_security_group_id := FND_GLOBAL.SECURITY_GROUP_ID;
+-- 2010/03/02 Ver1.17 E_本稼動_XXXXX add end by Yutaka.Kuboshima
     --
     -- ===============================
     -- 社員インタフェース０件チェック
