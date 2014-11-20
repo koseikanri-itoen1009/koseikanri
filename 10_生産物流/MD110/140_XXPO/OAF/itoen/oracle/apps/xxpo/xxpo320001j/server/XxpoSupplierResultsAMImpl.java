@@ -1,7 +1,7 @@
 /*============================================================================
 * ファイル名 : XxpoSupplierResultsAMImpl
 * 概要説明   : 仕入先出荷実績入力:検索アプリケーションモジュール
-* バージョン : 1.6
+* バージョン : 1.7
 *============================================================================
 * 修正履歴
 * 日付       Ver. 担当者       修正内容
@@ -15,6 +15,7 @@
 * 2008-11-04 1.4  二瓶大輔     統合障害#51,103、104対応
 * 2008-12-06 1.5  伊藤ひとみ   本番障害#528対応
 * 2008-12-16 1.6  吉元強樹     本番障害#689,753対応
+* 2011-06-01 1.7  窪和重       本番障害#1786対応
 *============================================================================
 */
 package itoen.oracle.apps.xxpo.xxpo320001j.server;
@@ -379,11 +380,44 @@ public class XxpoSupplierResultsAMImpl extends XxcmnOAApplicationModuleImpl
   {
 
     boolean retFlag;
+// 2011-06-01 v1.7 K.Kubo Add Start
+    Number headerId     = (Number)row.getAttribute("HeaderId");      // 発注ヘッダID
+    String headerNumber = (String)row.getAttribute("HeaderNumber");  // 発注番号
+
+    // *************************************************** //
+    // * 処理:仕入実績情報チェック                       * //
+    // *************************************************** //
+    String retFlag2 = XxpoUtility.chkStockResult(
+                                    getOADBTransaction(),     // トランザクション
+                                    headerId                  // 発注ヘッダID
+                      );
+    // 同一データが存在する場合（エラーが返ってきた場合）
+    if (!(XxcmnConstants.RETURN_NOT_EXE.equals(retFlag2)))
+    {
+      // ************************ //
+      // * エラーメッセージ出力 * //
+      // ************************ //
+      exceptions.add( new OAAttrValException(
+                            OAAttrValException.TYP_VIEW_OBJECT,
+                            vo.getName(),
+                            row.getKey(),
+                            "HeaderNumber",
+                            headerNumber,
+                            XxcmnConstants.APPL_XXPO,
+                            XxpoConstants.XXPO10294,
+                            null));
+
+      // エラーあり
+      return true;
+    }
+// 2011-06-01 v1.7 K.Kubo Add End
 
     // *************************************************** //
     // * 処理3:出庫実績存在チェック                         * //
     // *************************************************** //
-    String headerNumber = (String)row.getAttribute("HeaderNumber"); // 発注番号
+// 2011-06-01 v1.7 K.Kubo DEL Start
+//    String headerNumber = (String)row.getAttribute("HeaderNumber"); // 発注番号
+// 2011-06-01 v1.7 K.Kubo DEL End
 
     // 出庫実績チェック
     String chkFlag = XxpoUtility.chkDeliveryResults(
@@ -540,6 +574,40 @@ public class XxpoSupplierResultsAMImpl extends XxcmnOAApplicationModuleImpl
       return true;
     }
    
+// 2011-06-01 v1.7 K.Kubo Add Start
+    // 事前チェックで問題ない且つ、
+    // 直送区分が『支給』(3)且つ、支給No.が取得できる場合のみ
+    // 仕入実績作成処理管理Tblにデータを登録
+    if(XxpoConstants.DSHIP_PROVISION.equals(dShipCode) 
+      && !XxcmnUtility.isBlankOrNull(requestNumber)) 
+    {
+
+      // ************************ //
+      // * 仕入実績情報登録     * //
+      // ************************ //
+      String retFlag3 = XxpoUtility.insStockResult(
+                                      getOADBTransaction()      // トランザクション
+                                     ,headerId                  // 発注ヘッダID
+                                     ,headerNumber              // 発注番号
+                        );
+      // 正常終了でない場合
+      if (XxcmnConstants.RETURN_NOT_EXE.equals(retFlag3))
+      {
+        //トークン生成
+        MessageToken[] tokens = { new MessageToken(XxpoConstants.TOKEN_PROCESS,
+                                                   XxpoConstants.TOKEN_NAME_STOCK_RESULT_MANEGEMENT) };
+        throw new OAAttrValException(
+                              OAAttrValException.TYP_VIEW_OBJECT,
+                              vo.getName(),
+                              row.getKey(),
+                              "HeaderNumber",
+                              headerNumber,
+                              XxcmnConstants.APPL_XXCMN,
+                              XxcmnConstants.XXCMN05002,
+                              tokens);
+      }
+    }
+// 2011-06-01 v1.7 K.Kubo Add End
     // エラー無し
     return false;
   } // 
@@ -1267,6 +1335,41 @@ public class XxpoSupplierResultsAMImpl extends XxcmnOAApplicationModuleImpl
     // 1行目を取得
     OARow supplierResultsMakeHdrVORow = (OARow)supplierResultsMakeHdrVo.first();
 
+// 2011-06-01 v1.7 K.Kubo Add Start
+    // 仕入実績作成処理管理Tblにデータが存在する場合、
+    // 処理を中断する。
+    String headerNumber = (String)supplierResultsMakeHdrVORow.getAttribute("HeaderNumber"); // 発注No取得
+    Number headerId     = (Number)supplierResultsMakeHdrVORow.getAttribute("HeaderId");     // 発注ヘッダID取得
+
+    // *************************************************** //
+    // * 処理:仕入実績情報チェック                       * //
+    // *************************************************** //
+    String retFlag  = XxpoUtility.chkStockResult(
+                                    getOADBTransaction(),     // トランザクション
+                                    headerId                  // 発注ヘッダID
+                      );
+    // 同一データが存在する場合（エラーが返ってきた場合）
+    if (!(XxcmnConstants.RETURN_NOT_EXE.equals(retFlag)))
+    {
+      // ************************ //
+      // * エラーメッセージ出力 * //
+      // ************************ //
+      exceptions.add( new OAAttrValException(
+                            OAAttrValException.TYP_VIEW_OBJECT,
+                            supplierResultsMakeHdrVo.getName(),
+                            supplierResultsMakeHdrVORow.getKey(),
+                            "HeaderId",
+                            headerId,
+                            XxcmnConstants.APPL_XXPO,
+                            XxpoConstants.XXPO10294));
+    }
+    // 例外があった場合、例外メッセージを出力し、処理終了
+    if (exceptions.size() > 0)
+    {
+      OAException.raiseBundledOAException(exceptions);
+    }
+
+// 2011-06-01 v1.7 K.Kubo Add End
 
     // ******************************* //
     // *   在庫クローズチェック      * //
@@ -1328,8 +1431,10 @@ public class XxpoSupplierResultsAMImpl extends XxcmnOAApplicationModuleImpl
     String statusDisp =
       (String)supplierResultsMakeHdrVORow.getAttribute("StatusDisp"); // ステータス名取得
 // 2008-10-22 T.Yoshimoto Aod START
-    String headerNumber =
-      (String)supplierResultsMakeHdrVORow.getAttribute("HeaderNumber"); // 発注No取得
+// 2011-06-01 v1.7 K.Kubo DEL Start
+//    String headerNumber =
+//      (String)supplierResultsMakeHdrVORow.getAttribute("HeaderNumber"); // 発注No取得
+// 2011-06-01 v1.7 K.Kubo DEL End
 // 2008-10-22 T.Yoshimoto Aod END      
     if (XxpoConstants.STATUS_FINISH_DECISION_MONEY.equals(statusCode))
     {
@@ -1394,6 +1499,53 @@ public class XxpoSupplierResultsAMImpl extends XxcmnOAApplicationModuleImpl
 
       supplierResultsDetailsVo.next();
     }
+// 2011-06-01 v1.7 K.Kubo Add Start
+    // 事前チェックで問題ない場合、
+    // 仕入実績作成処理管理Tblにデータを登録
+
+    // 仕入先出荷実績情報:登録ヘッダーVO取得
+    OAViewObject supplierResultsMakeHdrVo = getXxpoSupplierResultsMakeHdrVO1();
+    // 1行目を取得
+    OARow supplierResultsMakeHdrVORow = (OARow)supplierResultsMakeHdrVo.first();
+
+    // 直送区分及び、支給Noを取得
+    String dShipCode     = (String)supplierResultsMakeHdrVORow.getAttribute("DropshipCode"); // 直送区分コード
+    String requestNumber = (String)supplierResultsMakeHdrVORow.getAttribute("RequestNumber");// 支給No
+
+    // 直送区分が『支給』(3)且つ、支給No.が取得できる場合のみ
+    // 仕入実績作成処理管理Tblにデータを登録
+    if(XxpoConstants.DSHIP_PROVISION.equals(dShipCode) 
+      && !XxcmnUtility.isBlankOrNull(requestNumber))
+    {
+      String headerNumber = (String)supplierResultsMakeHdrVORow.getAttribute("HeaderNumber"); // 発注No取得
+      Number headerId     = (Number)supplierResultsMakeHdrVORow.getAttribute("HeaderId");     // 発注ヘッダID取得
+  
+      // ************************ //
+      // * 仕入実績情報登録     * //
+      // ************************ //
+      String retFlag2 = XxpoUtility.insStockResult(
+                                      getOADBTransaction()      // トランザクション
+                                     ,headerId                  // 発注ヘッダID
+                                     ,headerNumber              // 発注番号
+                        );
+      // 正常終了でない場合
+      if (XxcmnConstants.RETURN_NOT_EXE.equals(retFlag2))
+      {
+        //トークン生成
+        MessageToken[] tokens = { new MessageToken(XxpoConstants.TOKEN_PROCESS,
+                                                   XxpoConstants.TOKEN_NAME_STOCK_RESULT_MANEGEMENT) };
+        throw new OAAttrValException(
+                              OAAttrValException.TYP_VIEW_OBJECT,
+                              supplierResultsMakeHdrVo.getName(),
+                              supplierResultsMakeHdrVORow.getKey(),
+                              "HeaderNumber",
+                              headerNumber,
+                              XxcmnConstants.APPL_XXCMN,
+                              XxcmnConstants.XXCMN05002,
+                              tokens);
+      }
+    }
+// 2011-06-01 v1.7 K.Kubo Add End
   }
 
   /***************************************************************************

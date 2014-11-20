@@ -1,7 +1,7 @@
 /*============================================================================
 * ファイル名 : XxpoConstants
 * 概要説明   : 仕入共通定数
-* バージョン : 1.8
+* バージョン : 1.9
 *============================================================================
 * 修正履歴
 * 日付       Ver. 担当者       修正内容
@@ -16,6 +16,7 @@
 * 2009-02-06 1.6  伊藤ひとみ     本番障害#1147対応
 * 2009-03-06 1.7  飯田  甫       本番障害#1131対応
 * 2009-05-12 1.8  吉元  強樹     本番障害#1458対応
+* 2011-06-01 1.9  窪    和重     本番障害#1786対応
 *============================================================================
 */
 package itoen.oracle.apps.xxpo.util;
@@ -249,6 +250,11 @@ public class XxpoConstants
   /** メッセージ：APP-XXPO-10291 処理起動エラー */
   public static final String XXPO10291   = "APP-XXPO-10291";
 // 2009-05-12 v1.8 T.Yoshimoto Add End 本番#1458
+// 2011-06-01 v1.9 K.Kubo Add Start 本番#1786
+  /** メッセージ：APP-XXPO-10294 処理起動エラー */
+  public static final String XXPO10294   = "APP-XXPO-10294";
+// 2011-06-01 v1.9 K.Kubo Add End   本番#1786
+
   /** トークン：ENTRY */
   public static final String TOKEN_ENTRY       = "ENTRY";
   /** トークン：DATA */
@@ -375,6 +381,12 @@ public class XxpoConstants
   /** トークン名称：相手先在庫管理倉庫 */
   public static final String TOKEN_CUSTOMER_STOCK_WHSE_AITE = "相手先在庫管理倉庫";
 // 2008-10-23 H.Itou Add END
+// 2011-06-01 v1.9 K.Kubo Add Start 本番#1786
+  /** トークン名称：仕入実績情報登録 */
+  public static final String TOKEN_NAME_STOCK_RESULT_MANEGEMENT = "仕入実績情報登録";
+  /** トークン名称：仕入実績情報チェック */
+  public static final String TOKEN_NAME_CHK_STOCK_RESULT_MANE = "仕入実績情報チェック";
+// 2011-06-01 v1.9 K.Kubo Add End   本番#1786
   /** アプリケーション短縮名：XXPO⇒使用不可 */
   public static final String APPL_XXPO = "XXPO";
   /** 試験有無区分：1 有 */

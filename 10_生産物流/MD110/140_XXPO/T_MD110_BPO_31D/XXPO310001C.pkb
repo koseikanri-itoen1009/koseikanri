@@ -1,4 +1,4 @@
-CREATE OR REPLACE PACKAGE BODY xxpo310001c
+create or replace PACKAGE BODY xxpo310001c
 AS
 /*****************************************************************************************
  * Copyright(c)Oracle Corporation Japan, 2008. All rights reserved.
@@ -7,7 +7,7 @@ AS
  * Description      : 仕入実績作成処理
  * MD.050           : 受入実績            T_MD050_BPO_310
  * MD.070           : 仕入実績作成        T_MD070_BPO_31D
- * Version          : 1.8
+ * Version          : 1.9
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -43,6 +43,7 @@ AS
  *  2008/12/04    1.6   Oracle 吉元 強樹 本番障害No420対応
  *  2008/12/06    1.7   Oracle 伊藤 ひとみ 本番障害No528対応
  *  2009/12/02    1.8   SCS    吉元 強樹 本稼動障害#263
+ *  2011/06/07    1.9   SCSK   窪 和重   本稼動障害#1786対応
  *****************************************************************************************/
 --
 --#######################  固定グローバル定数宣言部 START   #######################
@@ -2436,6 +2437,23 @@ AS
     IF (lv_retcode = gv_status_error) THEN
       RAISE global_process_expt;
     END IF;
+--
+-- 2011/06/07 v1.9 K.Kubo Add Start
+    -- ================================
+    -- D-12.仕入実績作成処理管理TBLの削除
+    -- ================================
+    -- 仕入実績情報削除 関数実施
+    xxpo_common3_pkg.delete_result(
+                       mst_rec.po_header_id  -- 発注ヘッダID
+                      ,lv_errbuf             -- エラー・メッセージ           --# 固定 #
+                      ,lv_retcode            -- リターン・コード             --# 固定 #
+                      ,lv_errmsg             -- ユーザー・エラー・メッセージ --# 固定 #
+                     );
+--
+    IF (lv_retcode = gv_status_error) THEN
+      RAISE global_process_expt;
+    END IF;
+-- 2011/06/07 v1.9 K.Kubo Add End
 --
     -- ================================
     -- D-10.受入オープンIFのデータ反映

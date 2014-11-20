@@ -1,4 +1,4 @@
-CREATE OR REPLACE PACKAGE BODY xxpo320001c
+create or replace PACKAGE BODY xxpo320001c
 AS
 /*****************************************************************************************
  * Copyright(c)Oracle Corporation Japan, 2008. All rights reserved.
@@ -7,7 +7,7 @@ AS
  * Description      : 直送仕入・出荷実績作成処理
  * MD.050           : 仕入先出荷実績         T_MD050_BPO_320
  * MD.070           : 直送仕入・出荷実績作成 T_MD070_BPO_32B
- * Version          : 1.19
+ * Version          : 1.20
  *
  * Program List
  * -------------------- ------------------------------------------------------------
@@ -68,6 +68,7 @@ AS
  *  2009/03/30    1.17  Oracle 飯田 甫   本番障害No1346対応
  *  2009/09/17    1.18  SCS    吉元 強樹 本番障害No1632対応
  *  2009/12/02    1.19  SCS    吉元 強樹 本稼動障害#263
+ *  2011/06/07    1.20  SCS    窪 和重   本稼動障害#1786
  *****************************************************************************************/
 --
 --#######################  固定グローバル定数宣言部 START   #######################
@@ -98,6 +99,9 @@ AS
 -- 2009/01/15 v1.16 T.Yoshimoto Add Start
   gn_group_id_cnt  NUMBER := 0;               -- GROUP_ID(カウント)
 -- 2009/01/15 v1.16 T.Yoshimoto Add End
+-- 2011/06/07 v1.20 K.Kubo Add Start E_本稼動_01786
+  gn_po_header_id  po_headers_all.po_header_id%TYPE;  -- 発注ヘッダID
+-- 2011/06/07 v1.20 K.Kubo Add End
 --
 --################################  固定部 END   ##################################
 --
@@ -4721,6 +4725,10 @@ AS
       mst_rec.def_qty6  := TO_NUMBER(lr_po_data_rec.l_attribute6);
       mst_rec.def_qty7  := TO_NUMBER(lr_po_data_rec.l_attribute7);
 --
+-- 2011/06/07 v1.20 K.Kubo Add Start E_本稼動_01786
+      gn_po_header_id             := lr_po_data_rec.po_header_id;               -- 発注ヘッダID
+-- 2011/06/07 v1.20 K.Kubo Add End
+--
       BEGIN
         SELECT mil.organization_id
               ,mil.subinventory_code
@@ -5129,6 +5137,23 @@ AS
       END IF;
     END IF;
 --
+-- 2011/06/07 v1.20 K.Kubo Add Start
+    -- ================================
+    -- B-20.仕入実績作成処理管理TBLの削除
+    -- ================================
+    -- 仕入実績情報削除 関数実施
+    xxpo_common3_pkg.delete_result(
+       gn_po_header_id -- (IN)発注ヘッダＩＤ
+      ,lv_errbuf       -- (OUT)エラー・メッセージ           --# 固定 #
+      ,lv_retcode      -- (OUT)リターン・コード             --# 固定 #
+      ,lv_errmsg       -- (OUT)ユーザー・エラー・メッセージ --# 固定 #
+    );
+
+    IF (lv_retcode = gv_status_error) THEN
+      RAISE global_process_expt;
+    END IF;
+-- 2011/06/07 v1.20 K.Kubo Add End
+
     -- ================================
     -- B-6.出荷実績作成パターン判定
     -- ================================

@@ -1,7 +1,7 @@
 /*============================================================================
 * ファイル名 : XxpoUtility
 * 概要説明   : 仕入共通関数
-* バージョン : 1.27
+* バージョン : 1.28
 *============================================================================
 * 修正履歴
 * 日付       Ver. 担当者       修正内容
@@ -35,6 +35,7 @@
 * 2009-02-27 1.25 伊藤ひとみ   本番障害#32対応
 * 2009-05-13 1.26 吉元強樹     本番障害#1282対応
 * 2009-07-08 1.27 伊藤ひとみ   本番障害#1566対応
+* 2011-06-01 1.28 窪和重       本番障害#1786対応
 *============================================================================
 */
 package itoen.oracle.apps.xxpo.util;
@@ -11159,4 +11160,172 @@ public class XxpoUtility
     }
   } // updArrivalDate 
 // 2009-01-20 v1.22 T.Yoshimoto Add End
+// 2011-06-01 v1.28 K.Kubo Add Start
+  /*****************************************************************************
+   * 仕入実績情報をチェックします。
+   * @param OADBTransaction  - トランザクション
+   * @param Number           - 発注ヘッダID
+   * @return String          - チェック結果
+   * @throws OAException     - OA例外
+   ****************************************************************************/
+  public static String chkStockResult(
+    OADBTransaction trans,   // トランザクション
+    Number poHeaderId        // 発注ヘッダID
+  ) throws OAException
+  {
+    String apiName  = "chkStockResult"; // API名
+    String retCode;   // リターンコード
+    
+    // PL/SQL作成
+    StringBuffer sb = new StringBuffer(1000);
+    sb.append("BEGIN "                                       );
+    sb.append("  :1 := xxpo_common3_pkg.check_result( "      ); // (OUT)チェック結果
+    sb.append("          in_po_header_id  => TO_NUMBER(:2) " ); // (IN) 発注ヘッダID
+    sb.append("        );  "                                 );
+    sb.append("END; "                                        );
+
+    //PL/SQL設定
+    CallableStatement cstmt
+      = trans.createCallableStatement(sb.toString(), OADBTransaction.DEFAULT);
+
+    try
+    {
+      // パラメータ設定(INパラメータ)
+      cstmt.setInt(2, XxcmnUtility.intValue(poHeaderId)); // 発注ヘッダID
+      
+      // パラメータ設定(OUTパラメータ)
+      cstmt.registerOutParameter(1, Types.VARCHAR);        // 戻り値
+      
+      //PL/SQL実行
+      cstmt.execute();
+      
+      // 戻り値取得
+      retCode  = cstmt.getString(1); // リターンコード
+      
+    // PL/SQL実行時例外の場合
+    } catch(SQLException s)
+    {
+      // ロールバック
+      rollBack(trans);
+      XxcmnUtility.writeLog(trans,
+                            XxpoConstants.CLASS_XXPO_UTILITY + XxcmnConstants.DOT + apiName,
+                            s.toString(),
+                            6);
+      //トークン生成
+      MessageToken[] tokens = { new MessageToken(XxpoConstants.TOKEN_PROCESS,
+                                                 XxpoConstants.TOKEN_NAME_CHK_STOCK_RESULT_MANE) };
+      // エラーメッセージ出力
+      throw new OAException(XxcmnConstants.APPL_XXCMN, 
+                             XxcmnConstants.XXCMN05002, 
+                             tokens);
+    } finally
+    {
+      try
+      {
+        //処理中にエラーが発生した場合を想定する
+        cstmt.close();
+      } catch(SQLException s)
+      {
+        // ロールバック
+        rollBack(trans);
+        XxcmnUtility.writeLog(trans,
+                              XxpoConstants.CLASS_XXPO_UTILITY + XxcmnConstants.DOT + apiName,
+                              s.toString(),
+                              6);
+        // エラーメッセージ出力
+        throw new OAException(XxcmnConstants.APPL_XXCMN, 
+                              XxcmnConstants.XXCMN10123);
+      }
+    }
+    return retCode;
+  } // chkStockResult
+
+  /*****************************************************************************
+   * 仕入実績情報を登録します。
+   * @param OADBTransaction  - トランザクション
+   * @param Number           - 発注ヘッダID
+   * @param String           - 発注番号
+   * @throws OAException     - OA例外
+   ****************************************************************************/
+  public static String insStockResult(
+    OADBTransaction trans    // トランザクション
+   ,Number headerId          // 発注ヘッダID
+   ,String headerNumber      // 発注番号
+  ) throws OAException
+  {
+    String apiName  = "insStockResult"; // API名
+    String retCode;   // リターンコード
+    
+    // PL/SQL作成
+    StringBuffer sb = new StringBuffer(1000);
+    sb.append("BEGIN "                                                 );
+    sb.append("  :1 := xxpo_common3_pkg.insert_result( "               ); // (OUT)チェック結果
+    sb.append("          in_po_header_id      => TO_NUMBER(:2) "       ); // (IN) 発注ヘッダID
+    sb.append("         ,iv_po_header_number  => TO_CHAR(:3) "         ); // (IN) 発注番号
+    sb.append("         ,in_created_by        => FND_GLOBAL.USER_ID "  ); // (IN) 作成者
+    sb.append("         ,id_creation_date     => SYSDATE "             ); // (IN) 作成日
+    sb.append("         ,in_last_updated_by   => FND_GLOBAL.USER_ID "  ); // (IN) 最終更新者
+    sb.append("         ,id_last_update_date  => SYSDATE "             ); // (IN) 最終更新日
+    sb.append("         ,in_last_update_login => FND_GLOBAL.LOGIN_ID " ); // (IN) 最終更新ログイン
+    sb.append("        );  "                                     );
+    sb.append("END; "                                            );
+
+    //PL/SQL設定
+    CallableStatement cstmt
+      = trans.createCallableStatement(sb.toString(), OADBTransaction.DEFAULT);
+
+    try
+    {
+      // パラメータ設定(INパラメータ)
+      cstmt.setInt(2, XxcmnUtility.intValue(headerId));             // 発注ヘッダID
+      cstmt.setString(3, headerNumber);                             // 発注番号
+      
+      // パラメータ設定(OUTパラメータ)
+      cstmt.registerOutParameter(1, Types.VARCHAR);        // 戻り値
+      
+      //PL/SQL実行
+      cstmt.execute();
+      
+      // 戻り値取得
+      retCode  = cstmt.getString(1); // リターンコード
+      
+    // PL/SQL実行時例外の場合
+    } catch(SQLException s)
+    {
+      // ロールバック
+      rollBack(trans);
+      XxcmnUtility.writeLog(trans,
+                            XxpoConstants.CLASS_XXPO_UTILITY + XxcmnConstants.DOT + apiName,
+                            s.toString(),
+                            6);
+      //トークン生成
+      MessageToken[] tokens = { new MessageToken(XxpoConstants.TOKEN_PROCESS,
+                                                 XxpoConstants.TOKEN_NAME_STOCK_RESULT_MANEGEMENT) };
+      // エラーメッセージ出力
+      throw new OAException(XxcmnConstants.APPL_XXCMN, 
+                             XxcmnConstants.XXCMN05002, 
+                             tokens);
+    } finally
+    {
+      try
+      {
+        //処理中にエラーが発生した場合を想定する
+        cstmt.close();
+      } catch(SQLException s)
+      {
+        // ロールバック
+        rollBack(trans);
+        XxcmnUtility.writeLog(trans,
+                              XxpoConstants.CLASS_XXPO_UTILITY + XxcmnConstants.DOT + apiName,
+                              s.toString(),
+                              6);
+        // エラーメッセージ出力
+        throw new OAException(XxcmnConstants.APPL_XXCMN, 
+                              XxcmnConstants.XXCMN10123);
+      }
+    }
+    return retCode;
+  } // insStockResult
+
+// 2011-06-01 v1.28 K.Kubo Add End
 }
