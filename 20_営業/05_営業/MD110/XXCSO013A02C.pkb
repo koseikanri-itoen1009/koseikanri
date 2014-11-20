@@ -7,7 +7,7 @@ AS
  * Description      : 自販機管理システムから連携されたリース物件に関連する作業の情報を、
  *                    リースアドオンに反映します。
  * MD.050           :  MD050_CSO_013_A02_CSI→FAインタフェース：（OUT）リース資産情報
- * Version          : 1.1
+ * Version          : 1.2
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -34,6 +34,7 @@ AS
  * ------------- ----- ---------------- -------------------------------------------------
  *  2009-02-02    1.0   Tomoko.Mori      新規作成
  *  2009-04-01    1.1   Kazuo.Satomura   T1_0148,0149対応
+ *  2009-04-03    1.2   Kazuo.Satomura   T1_0269対応
  *****************************************************************************************/
 --
 --#######################  固定グローバル定数宣言部 START   #######################
@@ -1930,6 +1931,15 @@ AS
        ,install_address         = gv_installation_address                     -- 設置先住所
        ,logical_delete_flag     = g_get_xxcso_ib_info_h_rec.new_active_flag   -- 論理削除フラグ
        ,account_number          = gv_customer_code                            -- 顧客コード
+       /* 2009.04.03 K.Satomura T1_0269対応 START */
+       ,last_updated_by         = cn_last_updated_by                          -- 最終更新者
+       ,last_update_date        = cd_last_update_date                         -- 最終更新日
+       ,last_update_login       = cn_last_update_login                        -- 最終更新ログイン
+       ,request_id              = cn_request_id                               -- 要求ID
+       ,program_application_id  = cn_program_application_id                   -- コンカレント・プログラム・アプリケーションID
+       ,program_id              = cn_program_id                               -- コンカレント・プログラムID
+       ,program_update_date     = cd_program_update_date                      -- プログラム更新日
+       /* 2009.04.03 K.Satomura T1_0269対応 END */
       WHERE install_code = g_get_xxcso_ib_info_h_rec.object_code
       ;
     EXCEPTION
