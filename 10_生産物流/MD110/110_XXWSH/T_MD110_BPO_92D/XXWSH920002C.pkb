@@ -7,7 +7,7 @@ AS
  * Description      : 引当解除処理
  * MD.050/070       : 生産物流共通(出荷･移動仮引当)(T_MD050_BPO_920)
  *                    引当解除処理                 (T_MD070_BPO_92D)
- * Version          : 1.4
+ * Version          : 1.5
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -32,7 +32,7 @@ AS
  *  2008/06/12    1.2   Masao Hokkanji    T_TE080_BPO920不具合ログNo24対応
  *  2008/06/13    1.3   Masao Hokkanji    抽出条件変更対応
  *  2008/12/01    1.4   SCS Miyata        ロック対応
- *
+ *  2009/01/27    1.5   SCS Itou          本番障害#1028対応
  *****************************************************************************************/
 --
 --#######################  固定グローバル定数宣言部 START   #######################
@@ -62,6 +62,9 @@ AS
      ,del_type     VARCHAR2(10)  -- 出庫形態
      ,del_d_from   VARCHAR2(10)  -- 出庫日From
      ,del_d_to     VARCHAR2(10)  -- 出庫日To
+-- 2009/01/27 H.Itou Add Start 本番障害#1028対応
+     ,instruction_dept xxwsh_order_headers_all.instruction_dept%TYPE -- 指示部署
+-- 2009/01/27 H.Itou Add End
     );
 --
   -- 出荷依頼対象データ格納用レコード変数
@@ -178,6 +181,9 @@ AS
   gv_sql_in_para_2     VARCHAR2(1000);      -- 入力Ｐ任意部分2(出庫元のみ入力有)
   gv_sql_in_para_3     VARCHAR2(1000);      -- 入力Ｐ任意部分3(ブロック１～３、出庫元入力有)
   gv_sql_in_para_4     VARCHAR2(1000);      -- 入力Ｐ任意部分4(出庫形態 入力有)
+-- 2009/01/27 H.Itou Add Start 本番障害#1028対応
+  gv_sql_in_para_5     VARCHAR2(1000);      -- 入力Ｐ任意部分5（指示部署 入力有）
+-- 2009/01/27 H.Itou Add End
 --
   gr_param             rec_param_data;      -- 入力パラメータ
   gt_order_line        tab_data_order_line; -- 出荷依頼対象取得データ
@@ -393,6 +399,7 @@ AS
       AND   xola.delete_flag              <> gv_yes                -- 削除フラグ「Ｙ」以外
       AND   xola.automanual_reserve_class  = gv_auto               -- 自動手動引当区分「自動引当」
       AND   xola.order_line_id             = xmld.mov_line_id      -- 明細ID
+      AND   xmld.document_type_code        = gv_ship_req           -- 文書タイプ「出荷依頼」
       FOR UPDATE 
       ;
 --
@@ -454,6 +461,7 @@ AS
         AND   xola.delete_flag             <> :para_delete              -- 削除フラグ「Ｙ」以外
         AND   xola.automanual_reserve_class = :para_auto                -- 自動手動引当区分「自動引当」
         AND   xola.order_line_id            = xmld.mov_line_id          -- 明細ID
+        AND   xmld.document_type_code       = ''' || gv_ship_req  || '''  -- 文書タイプ「出荷依頼」
       ';
 -- M.Hokkanji Ver1.3 START
 -- ヘッダに紐付く明細に実績数量が入力されているデータが一件でもある場合対象外
@@ -477,6 +485,10 @@ AS
                         ';
     -- 入力Ｐ任意部分4（出庫形態 入力有）
     gv_sql_in_para_4 := ' AND xoha.order_type_id            = :para_del_type';   -- 入力Ｐ「出庫形態」
+-- 2009/01/27 H.Itou Add Start 本番障害#1028対応
+    -- 入力Ｐ任意部分5（指示部署 入力有）
+    gv_sql_in_para_5 := ' AND xoha.instruction_dept         = ''' || gr_param.instruction_dept || '''';   -- 入力Ｐ「指示部署」
+-- 2009/01/27 H.Itou Add End
 --
     -------------------------------------------------------------
     -- データ抽出用SQL作成
@@ -507,6 +519,13 @@ AS
     IF (gr_param.del_type IS NOT NULL) THEN
       gv_sql_sel := gv_sql_sel || gv_sql_in_para_4;  -- 入力Ｐ任意部分4結合
     END IF;
+--
+-- 2009/01/27 H.Itou Add Start 本番障害#1028対応
+    -- 入力Ｐ「指示部署」の入力チェック
+    IF (gr_param.instruction_dept IS NOT NULL) THEN
+      gv_sql_sel := gv_sql_sel || gv_sql_in_para_5;  -- 入力Ｐ任意部分5結合
+    END IF;
+-- 2009/01/27 H.Itou Add End
 --
     ---------------------------------
     -- 作成SQL文実行
@@ -756,6 +775,7 @@ AS
       AND   xmril.delete_flg              <> gv_yes                 -- 削除フラグ「Ｙ」以外
       AND   xmril.automanual_reserve_class = gv_auto                -- 自動手動引当区分「自動引当」
       AND   xmril.mov_line_id              = xmld.mov_line_id       -- 移動明細ID
+      AND   xmld.document_type_code        = gv_move_req            -- 文書タイプ「移動指示」
       FOR UPDATE 
       ;
 --
@@ -815,6 +835,7 @@ AS
         AND   xmril.delete_flg              <> :para_delete        -- 削除フラグ「Ｙ」以外
         AND   xmril.automanual_reserve_class = :para_auto          -- 自動手動引当区分「自動引当」
         AND   xmril.mov_line_id              = xmld.mov_line_id    -- 移動明細ID
+        AND   xmld.document_type_code        = ''' || gv_move_req || ''' -- 文書タイプ「移動指示」
       ';
 -- M.Hokkanji Ver1.3 START
 -- ヘッダに紐付く明細に実績数量が入力されているデータが一件でもある場合対象外
@@ -840,6 +861,10 @@ AS
                             OR xilv.distribution_block  = :para_block3)      -- 物流ブロック
                           OR   xmrih.shipped_locat_code = :para_del_from_id) -- 出庫元保管場所
                         ';
+-- 2009/01/27 H.Itou Add Start 本番障害#1028対応
+    -- 入力Ｐ任意部分5（指示部署 入力有）
+    gv_sql_in_para_5 := ' AND xmrih.instruction_post_code = ''' || gr_param.instruction_dept || '''';   -- 入力Ｐ「指示部署」
+-- 2009/01/27 H.Itou Add End
 --
     -------------------------------------------------------------
     -- データ抽出用SQL作成
@@ -865,6 +890,13 @@ AS
     ELSIF (gr_param.del_from_id IS NOT NULL) THEN
       gv_sql_sel := gv_sql_sel || gv_sql_in_para_2;  -- 入力Ｐ任意部分2結合
     END IF;
+--
+-- 2009/01/27 H.Itou Add Start 本番障害#1028対応
+    -- 入力Ｐ「指示部署」の入力チェック
+    IF (gr_param.instruction_dept IS NOT NULL) THEN
+      gv_sql_sel := gv_sql_sel || gv_sql_in_para_5;  -- 入力Ｐ任意部分5結合
+    END IF;
+-- 2009/01/27 H.Itou Add End
 --
     ---------------------------------
     -- 作成SQL文実行
@@ -1362,6 +1394,9 @@ AS
      ,iv_deliver_type        IN  VARCHAR2   -- 7.出庫形態
      ,iv_deliver_date_from   IN  VARCHAR2   -- 8.出庫日From
      ,iv_deliver_date_to     IN  VARCHAR2   -- 9.出庫日To
+-- 2009/01/27 H.Itou Add Start 本番障害#1028対応
+     ,iv_instruction_dept    IN  VARCHAR2   -- 10.指示部署
+-- 2009/01/27 H.Itou Add End
      ,ov_errbuf              OUT VARCHAR2   --   エラー・メッセージ           --# 固定 #
      ,ov_retcode             OUT VARCHAR2   --   リターン・コード             --# 固定 #
      ,ov_errmsg              OUT VARCHAR2   --   ユーザー・エラー・メッセージ --# 固定 #
@@ -1404,6 +1439,9 @@ AS
     gr_param.del_type     := iv_deliver_type;            -- 出庫形態
     gr_param.del_d_from   := iv_deliver_date_from;       -- 出庫日From
     gr_param.del_d_to     := iv_deliver_date_to;         -- 出庫日To
+-- 2009/01/27 H.Itou Add Start 本番障害#1028対応
+    gr_param.instruction_dept := iv_instruction_dept;    -- 指示部署
+-- 2009/01/27 H.Itou Add End
 --
     -- 開始時のシステム現在日付を代入
     gd_sysdate             := SYSDATE;
@@ -1573,6 +1611,9 @@ AS
      ,iv_deliver_type       IN  VARCHAR2      -- 7.出庫形態
      ,iv_deliver_date_from  IN  VARCHAR2      -- 8.出庫日From
      ,iv_deliver_date_to    IN  VARCHAR2      -- 9.出庫日To
+-- 2009/01/27 H.Itou Add Start 本番障害#1028対応
+     ,iv_instruction_dept   IN  VARCHAR2      -- 10.指示部署
+-- 2009/01/27 H.Itou Add End
     )
 --
 --###########################  固定部 START   ###########################
@@ -1669,6 +1710,11 @@ AS
     gv_out_msg := xxcmn_common_pkg.get_msg('XXWSH','APP-XXWSH-12963','D_TO',iv_deliver_date_to);
     FND_FILE.PUT_LINE(FND_FILE.OUTPUT,gv_out_msg);
 --
+-- 2009/01/27 H.Itou Add Start 本番障害#1028対応
+    -- 入力パラメータ「指示部署」出力
+    gv_out_msg := '指示部署： ' || iv_instruction_dept;
+    FND_FILE.PUT_LINE(FND_FILE.OUTPUT,gv_out_msg);
+-- 2009/01/27 H.Itou Add End
     --区切り文字列出力
     FND_FILE.PUT_LINE(FND_FILE.OUTPUT,gv_sep_msg);
 --
@@ -1686,6 +1732,9 @@ AS
        ,iv_deliver_type      => iv_deliver_type       -- 7.出庫形態
        ,iv_deliver_date_from => iv_deliver_date_from  -- 8.出庫日From
        ,iv_deliver_date_to   => iv_deliver_date_to    -- 9.出庫日To
+-- 2009/01/27 H.Itou Add Start 本番障害#1028対応
+       ,iv_instruction_dept  => iv_instruction_dept   -- 10.指示部署
+-- 2009/01/27 H.Itou Add End
        ,ov_errbuf            => lv_errbuf             -- エラー・メッセージ           --# 固定 #
        ,ov_retcode           => lv_retcode            -- リターン・コード             --# 固定 #
        ,ov_errmsg            => lv_errmsg             -- ユーザー・エラー・メッセージ --# 固定 #

@@ -1,4 +1,4 @@
-CREATE or REPLACE PACKAGE BODY xxwsh920009c
+CREATE OR REPLACE PACKAGE BODY xxwsh920009c
 AS
 /*****************************************************************************************
  * Copyright(c)Oracle Corporation Japan, 2008. All rights reserved.
@@ -15,12 +15,12 @@ AS
  *  ------------------------ ---- ---- --------------------------------------------------
  *  release_lock             P         ロック解除関数
  *  main                     P         メイン
- * ------------- ----------- --------- --------------------------------------------------
- *  Date         Ver.  Editor          Description
- * ------------- ----- --------------- --------------------------------------------------
- *  2008/12/01    1.0  MIYATA.          新規作成
- *  2009/01/19    1.1  M.Nomura         本番#1038対応
- *
+ * ------------- ----- ---------------- -------------------------------------------------
+ *  Date          Ver.  Editor           Description
+ * ------------- ----- ---------------- -------------------------------------------------
+ *  2008/12/01   1.0   T.MIYATA         初回作成
+ *  2009/01/19   1.1   M.Nomura         本番#1038対応
+ *  2009/01/27   1.2   H.Itou           本番#1028対応
  *****************************************************************************************/
 --
 
@@ -329,7 +329,7 @@ AS
    * Description      : コンカレント実行ファイル登録プロシージャ
    **********************************************************************************/
   PROCEDURE main(
-    errbuf        OUT NOCOPY VARCHAR2       --  エラー・メッセージ
+     errbuf        OUT NOCOPY VARCHAR2       --  エラー・メッセージ
     ,retcode       OUT NOCOPY VARCHAR2       --  リターン・コード
     ,iv_item_class         IN  VARCHAR2      -- 1.商品区分
     ,iv_action_type        IN  VARCHAR2      -- 2.処理種別
@@ -340,6 +340,9 @@ AS
     ,iv_deliver_type       IN  VARCHAR2      -- 7.出庫形態
     ,iv_deliver_date_from  IN  VARCHAR2      -- 8.出庫日From
     ,iv_deliver_date_to    IN  VARCHAR2      -- 9.出庫日To
+-- ##### 20090127 Ver.1.2 本番#1038対応 START #####
+    ,iv_instruction_dept   IN  VARCHAR2      -- 10.指示部署
+-- ##### 20090127 Ver.1.2 本番#1038対応 END   #####
     )
   IS
     -- ===============================
@@ -371,7 +374,10 @@ AS
       Argument6   => iv_deliver_from_id,
       Argument7   => iv_deliver_type,
       Argument8   => iv_deliver_date_from,
-      Argument9   => iv_deliver_date_to
+      Argument9   => iv_deliver_date_to,
+-- ##### 20090127 Ver.1.2 本番#1038対応 START #####
+      Argument10  => iv_instruction_dept
+-- ##### 20090127 Ver.1.2 本番#1038対応 END   #####
       );
     if ln_reqid > 0 then
       commit;

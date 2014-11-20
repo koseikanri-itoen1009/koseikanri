@@ -7,7 +7,7 @@ AS
  * Description      : 引当解除処理
  * MD.050/070       : 生産物流共通（出荷・移動仮引当）(T_MD050_BPO_920)
  *                    引当解除処理                    (T_MD070_BPO_92D)
- * Version          : 1.4
+ * Version          : 1.5
  *
  * Program List
  * -------------------- ------------------------------------------------------------
@@ -24,7 +24,7 @@ AS
  *  2008/06/12    1.2   Masao Hokkanji    T_TE080_BPO920不具合ログNo24対応
  *  2008/06/13    1.3   Masao Hokkanji    抽出条件変更対応
  *  2008/12/01    1.4   SCS Miyata        ロック対応
- *
+ *  2009/01/27    1.5   SCS Itou          本番障害#1028対応
  *****************************************************************************************/
 --
   --コンカレント実行ファイル登録プロシージャ
@@ -41,6 +41,9 @@ AS
      ,iv_deliver_type       IN     VARCHAR2         -- 7.出庫形態
      ,iv_deliver_date_from  IN     VARCHAR2         -- 8.出庫日From
      ,iv_deliver_date_to    IN     VARCHAR2         -- 9.出庫日To
+-- 2009/01/27 H.Itou Add Start 本番障害#1028対応
+     ,iv_instruction_dept   IN     VARCHAR2         -- 10.指示部署
+-- 2009/01/27 H.Itou Add End
     );
 END xxwsh920002c;
 /
