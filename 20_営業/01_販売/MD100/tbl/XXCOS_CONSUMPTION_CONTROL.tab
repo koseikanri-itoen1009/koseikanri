@@ -1,0 +1,53 @@
+/*****************************************************************************************
+ * Copyright(c)SCSK Corporation, 2011. All rights reserved.
+ *
+ * Table Name  : xxcos_consumption_control 
+ * Description : 消化計算AR管理テーブル
+ * Version     : 1.0
+ *
+ * Change Record
+ * ------------- ----- ---------------- ---------------------------------
+ *  Date          Ver.  Editor           Description
+ * ------------- ----- ---------------- ---------------------------------
+ *  2014/04/02    1.0   SCSK K.Nakamura  新規作成
+ *
+ ****************************************************************************************/
+CREATE TABLE xxcos.xxcos_consumption_control(
+  customer_trx_id         NUMBER         NOT NULL
+ ,trx_number              VARCHAR2(20)   NOT NULL
+ ,cust_account_id         NUMBER         NOT NULL
+ ,account_number          VARCHAR2(30)   NOT NULL
+ ,due_date                DATE           NOT NULL
+ ,gl_date_from            DATE
+ ,gl_date_to              DATE
+ ,created_by              NUMBER(15,0)   NOT NULL
+ ,creation_date           DATE           NOT NULL
+ ,last_updated_by         NUMBER(15,0)   NOT NULL
+ ,last_update_date        DATE           NOT NULL
+ ,last_update_login       NUMBER(15,0)
+ ,request_id              NUMBER(15,0)
+ ,program_application_id  NUMBER(15,0)
+ ,program_id              NUMBER(15,0)
+ ,program_update_date     DATE
+ ,CONSTRAINT xxcos_consumption_control_pk PRIMARY KEY ( customer_trx_id  )
+  USING INDEX TABLESPACE xxidx2
+);
+--
+COMMENT ON COLUMN xxcos.xxcos_consumption_control.customer_trx_id         IS  'AR取引ID';
+COMMENT ON COLUMN xxcos.xxcos_consumption_control.trx_number              IS  'AR取引番号';
+COMMENT ON COLUMN xxcos.xxcos_consumption_control.cust_account_id         IS  '顧客ID';
+COMMENT ON COLUMN xxcos.xxcos_consumption_control.account_number          IS  '顧客コード';
+COMMENT ON COLUMN xxcos.xxcos_consumption_control.due_date                IS  '締日';
+COMMENT ON COLUMN xxcos.xxcos_consumption_control.gl_date_from            IS  'GL記帳日FROM';
+COMMENT ON COLUMN xxcos.xxcos_consumption_control.gl_date_to              IS  'GL記帳日TO';
+COMMENT ON COLUMN xxcos.xxcos_consumption_control.created_by              IS  '作成者';
+COMMENT ON COLUMN xxcos.xxcos_consumption_control.creation_date           IS  '作成日';
+COMMENT ON COLUMN xxcos.xxcos_consumption_control.last_updated_by         IS  '最終更新者';
+COMMENT ON COLUMN xxcos.xxcos_consumption_control.last_update_date        IS  '最終更新日';
+COMMENT ON COLUMN xxcos.xxcos_consumption_control.last_update_login       IS  '最終更新ログイン';
+COMMENT ON COLUMN xxcos.xxcos_consumption_control.request_id              IS  '要求ID';
+COMMENT ON COLUMN xxcos.xxcos_consumption_control.program_application_id  IS  'コンカレント・プログラム・アプリケーションID';
+COMMENT ON COLUMN xxcos.xxcos_consumption_control.program_id              IS  'コンカレント・プログラムID';
+COMMENT ON COLUMN xxcos.xxcos_consumption_control.program_update_date     IS  'プログラム更新日';
+--
+COMMENT ON TABLE  xxcos.xxcos_consumption_control                         IS  '消化計算AR管理テーブル';

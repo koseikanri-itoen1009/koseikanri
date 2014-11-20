@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCOS004A04C (body)
  * Description      : 消化ＶＤ納品データ作成
  * MD.050           : 消化ＶＤ納品データ作成 MD050_COS_004_A04
- * Version          : 1.31
+ * Version          : 1.32
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -73,6 +73,7 @@ AS
  *  2010/04/06   1.29  H.Sasaki          [E_本稼動_01688]集約フラグを追加
  *  2010/04/28   1.30  K.Atsushiba       [E_本稼動_02483]販売実績登録エラー対応
  *  2010/10/28   1.31  K.Kiriu           [E_本稼動_05352]参照カレンダ変更対応
+ *  2014/04/22   1.32  K.Nakamura        [E_本稼働_09071]消化締め後のAR入力対応
  *
  *****************************************************************************************/
 --
@@ -256,6 +257,10 @@ AS
   ct_msg_xxcos_11072            CONSTANT  fnd_new_messages.message_name%TYPE
                                           :=  'APP-XXCOS1-11072';
 -- == 2010/04/06 V1.29 Added END   ===============================================================
+/* 2014/04/22 Ver1.32 Add Start */
+  ct_msg_inser_control_err      CONSTANT  fnd_new_messages.message_name%TYPE
+                                          :=  'APP-XXCOS1-11073';
+/* 2014/04/22 Ver1.32 Add End   */
   --クイックコードタイプ
   ct_qct_regular_type          CONSTANT  fnd_lookup_types.lookup_type%TYPE
                                       := 'XXCOS1_REGULAR_ANY_CLASS';       --定期随時
@@ -562,7 +567,9 @@ AS
 --******************************* 2009/06/10 1.16 T.Kitajima MOD START ******************************--
   TYPE g_tab_item_sum_quantity_tab IS TABLE OF g_item_sum_quantity INDEX BY xxcos_vd_digestion_lns.item_code%TYPE; --品目数量サマリ用配列
 --******************************* 2009/06/10 1.16 T.Kitajima MOD  END  ******************************--
---
+/* 2014/04/22 Ver1.32 Add Start */
+  TYPE g_tab_consumption_control   IS TABLE OF xxcos_consumption_control%ROWTYPE INDEX BY PLS_INTEGER;   --消化計算AR管理テーブル
+/* 2014/04/22 Ver1.32 Add End   */--
   -- ===============================
   -- ユーザー定義グローバル変数
   -- ===============================
@@ -580,6 +587,11 @@ AS
 --******************************* 2009/06/10 1.16 T.Kitajima MOD START ******************************--
   g_tab_item_sum_quantity             g_tab_item_sum_quantity_tab; --品目数量サマリ用配列
 --******************************* 2009/06/10 1.16 T.Kitajima MOD  END  ******************************--
+/* 2014/04/22 Ver1.32 Add Start */
+  gn_ind                              PLS_INTEGER := 0;              -- 消化計算AR管理テーブル一時格納用配列用索引
+  gt_tab_cons_control_work            g_tab_consumption_control;     -- 消化計算AR管理テーブル一時格納用
+  gt_tab_cons_control_ins             g_tab_consumption_control;     -- 消化計算AR管理テーブルINSERT用
+/* 2014/04/22 Ver1.32 Add End   */
   gv_exec_div                         VARCHAR2(100);                 --定期随時区分
   gv_base_code                        VARCHAR2(100);                 --拠点コード
   gv_customer_number                  VARCHAR2(100);                 --顧客コード
@@ -886,6 +898,9 @@ AS
     id_start_gl_date               IN      DATE,                      --  3.開始GL記帳日
     id_end_gl_date                 IN      DATE,                      --  4.終了GL記帳日
     in_ar_sales_amount             IN      NUMBER,                    --  5.売上金額合計
+/* 2014/04/22 Ver1.32 Add Start */
+    iv_exec_div                    IN      VARCHAR2,                  --  6.定期随時区分
+/* 2014/04/22 Ver1.32 Add End   */
     ov_errbuf     OUT VARCHAR2,     --   エラー・メッセージ           --# 固定 #
     ov_retcode    OUT VARCHAR2,     --   リターン・コード             --# 固定 #
     ov_errmsg     OUT VARCHAR2)     --   ユーザー・エラー・メッセージ --# 固定 #
@@ -913,14 +928,27 @@ AS
     ln_tax_amount                       NUMBER;                       --消費税額合計
     ln_work_tax_amount                  NUMBER;                       --ワーク用消費税額
     lv_out_msg                          VARCHAR2(5000);
+/* 2014/04/22 Ver1.32 Add Start */
+    -- *** ローカル型 ***
+    TYPE l_tab_check_data IS TABLE OF VARCHAR2(1) INDEX BY VARCHAR2(15); --重複データチェック用
+    lt_tab_check_data    l_tab_check_data;
+/* 2014/04/22 Ver1.32 Add End   */
 --
     -- *** ローカル・カーソル ***
     -- AR取引情報取得(本体額)
     CURSOR ar_cur
     IS
-      SELECT
+/* 2014/04/22 Ver1.32 Mod Start */
+--      SELECT
+      SELECT /*+ LEADING(rcta rctla rctlgda rctta) */
+/* 2014/04/22 Ver1.32 Mod End   */
         rctla.extended_amount               extended_amount,                --本体金額
-        rctla.customer_trx_line_id          customer_trx_line_id            --取引明細ID
+/* 2014/04/22 Ver1.32 Mod Start */
+--        rctla.customer_trx_line_id          customer_trx_line_id            --取引明細ID
+        rctla.customer_trx_line_id          customer_trx_line_id,           --取引明細ID
+        rcta.customer_trx_id                customer_trx_id,                --AR取引ID
+        rcta.trx_number                     trx_number                      --取引番号
+/* 2014/04/22 Ver1.32 Mod End   */
       FROM
         ra_customer_trx_all                 rcta,                           --請求取引情報テーブル
         ra_customer_trx_lines_all           rctla,                          --請求取引明細テーブル
@@ -995,42 +1023,83 @@ AS
     FOR ar_rec IN ar_cur LOOP
       --セット
       l_ar_rec                := ar_rec;
-      -- ワーク用消費税額
-      ln_work_tax_amount      := cn_amount_default;
+/* 2014/04/22 Ver1.32 Add Start */
+      --随時の時のみ実行
+      IF ( iv_exec_div = cn_0 ) THEN
+/* 2014/04/22 Ver1.32 Add End   */
+        -- ワーク用消費税額
+        ln_work_tax_amount      := cn_amount_default;
+        -- ===================================================
+        --2.AR取引情報(税金額）
+        -- ===================================================
+        <<tax_loop>>
+        FOR tax_rec IN tax_cur LOOP
+          --
+          l_tax_rec             := tax_rec;
+          ln_work_tax_amount    := ln_work_tax_amount + l_tax_rec.tax_amount;
+          --
+        END LOOP tax_loop;
+        -- ===================================================
+        -- A-6  売上金額集計処理
+        -- ===================================================
+        ln_ar_amount            := ln_ar_amount + l_ar_rec.extended_amount + ln_work_tax_amount;
+/* 2014/04/22 Ver1.32 Add Start */
+      END IF;
       -- ===================================================
-      --2.AR取引情報(税金額）
+      --3.消化計算AR管理テーブル一時格納用設定
       -- ===================================================
-      <<tax_loop>>
-      FOR tax_rec IN tax_cur LOOP
-        --
-        l_tax_rec             := tax_rec;
-        ln_work_tax_amount    := ln_work_tax_amount + l_tax_rec.tax_amount;
-        --
-      END LOOP tax_loop;
-      -- ===================================================
-      -- A-6  売上金額集計処理
-      -- ===================================================
-      ln_ar_amount            := ln_ar_amount + l_ar_rec.extended_amount + ln_work_tax_amount;
+      --消化計算AR管理テーブル作成の為、重複するAR取引IDのデータを省く
+      IF ( lt_tab_check_data.EXISTS( TO_CHAR(l_ar_rec.customer_trx_id ) ) ) THEN
+        NULL;
+      ELSE
+        gn_ind := gn_ind + 1;
+        gt_tab_cons_control_work(gn_ind).customer_trx_id        := l_ar_rec.customer_trx_id;   --AR取引ID
+        gt_tab_cons_control_work(gn_ind).trx_number             := l_ar_rec.trx_number;        --AR取引番号
+        gt_tab_cons_control_work(gn_ind).cust_account_id        := it_cust_account_id;         --顧客ID
+        gt_tab_cons_control_work(gn_ind).account_number         := it_customer_number;         --顧客コード
+        gt_tab_cons_control_work(gn_ind).due_date               := id_end_gl_date;             --締日
+        gt_tab_cons_control_work(gn_ind).gl_date_from           := id_start_gl_date;           --GL記帳日FROM
+        gt_tab_cons_control_work(gn_ind).gl_date_to             := id_end_gl_date;             --GL記帳日TO
+        gt_tab_cons_control_work(gn_ind).created_by             := cn_created_by;              --作成者
+        gt_tab_cons_control_work(gn_ind).creation_date          := cd_creation_date;           --作成日
+        gt_tab_cons_control_work(gn_ind).last_updated_by        := cn_last_updated_by;         --最終更新者
+        gt_tab_cons_control_work(gn_ind).last_update_date       := cd_last_update_date;        --最終更新日
+        gt_tab_cons_control_work(gn_ind).last_update_login      := cn_last_update_login;       --最終更新ログイン
+        gt_tab_cons_control_work(gn_ind).request_id             := cn_request_id;              --要求ID
+        gt_tab_cons_control_work(gn_ind).program_application_id := cn_program_application_id;  --コンカレント・プログラム・アプリケーションID
+        gt_tab_cons_control_work(gn_ind).program_id             := cn_program_id;              --コンカレント・プログラムID
+        gt_tab_cons_control_work(gn_ind).program_update_date    := cd_program_update_date;     --プログラム更新日
+        --重複チェック判定用変数に値を設定
+        lt_tab_check_data( TO_CHAR(l_ar_rec.customer_trx_id ) ) := cv_1;
+      END IF;
+/* 2014/04/22 Ver1.32 Add End   */
     --
     END LOOP ar_loop;
     --
 --
-    -- 金額比較
-    IF ( ROUND( ln_ar_amount ) !=  in_ar_sales_amount ) THEN
-      -- 金額不一致メッセージ
-      lv_out_msg    := xxccp_common_pkg.get_msg(
-                         iv_application        => ct_xxcos_appl_short_name,
-                         iv_name               => ct_msg_ar_amount_err,
-                         iv_token_name1        => cv_tkn_parm_data1,
-                         iv_token_value1       => it_customer_number,
-                         iv_token_name2        => cv_tkn_parm_data2,
-                         iv_token_value2       => TO_CHAR( id_start_gl_date , cv_fmt_date ),
-                         iv_token_name3        => cv_tkn_parm_data3,
-                         iv_token_value3       => TO_CHAR( id_end_gl_date , cv_fmt_date )
-                       );
-      RAISE global_ar_data_err_expt;
-    END IF;
+/* 2014/04/22 Ver1.32 Add Start */
+    --随時の時のみチェック実施
+    IF ( iv_exec_div = cn_0 ) THEN
+/* 2014/04/22 Ver1.32 Add End   */
+      -- 金額比較
+      IF ( ROUND( ln_ar_amount ) !=  in_ar_sales_amount ) THEN
+        -- 金額不一致メッセージ
+        lv_out_msg    := xxccp_common_pkg.get_msg(
+                           iv_application        => ct_xxcos_appl_short_name,
+                           iv_name               => ct_msg_ar_amount_err,
+                           iv_token_name1        => cv_tkn_parm_data1,
+                           iv_token_value1       => it_customer_number,
+                           iv_token_name2        => cv_tkn_parm_data2,
+                           iv_token_value2       => TO_CHAR( id_start_gl_date , cv_fmt_date ),
+                           iv_token_name3        => cv_tkn_parm_data3,
+                           iv_token_value3       => TO_CHAR( id_end_gl_date , cv_fmt_date )
+                         );
+        RAISE global_ar_data_err_expt;
+      END IF;
     --
+/* 2014/04/22 Ver1.32 Add Start */
+    END IF;
+/* 2014/04/22 Ver1.32 Add End   */
 --
   EXCEPTION
     WHEN global_ar_data_err_expt THEN
@@ -2747,8 +2816,10 @@ AS
     ln_amount_work         NUMBER;        --売上金額計算WORK
     ln_amount_work_max     NUMBER;        --最大売上金額計算WORK
     ln_tax_work            NUMBER;        --消費税金額計算WORK
-    ln_tax_work_calccomp   NUMBER;        --消費税金額計算WORK（計算完了）
-    ln_i_max               NUMBER;        --テーブル変数から読み込んだ最大売上金額を持つレコードの一時保管インデックス
+/* 2014/04/22 Ver1.32 Del Start */
+--    ln_tax_work_calccomp   NUMBER;        --消費税金額計算WORK（計算完了）
+--    ln_i_max               NUMBER;        --テーブル変数から読み込んだ最大売上金額を持つレコードの一時保管インデックス
+/* 2014/04/22 Ver1.32 Del End   */
     ln_m_max               NUMBER;        --テーブル変数に書き出した最大売上金額を持つレコードの一時保管インデックス
     lv_discrete_cost       VARCHAR2(12);  --営業原価
     ln_err_line_flag       NUMBER;        --エラー明細フラグ
@@ -2767,7 +2838,9 @@ AS
     lv_out_msg             VARCHAR(5000);
 /* 2010/01/12 Ver1.22 Add Start */
     ln_tax_amount_total          NUMBER;     -- 税額合計(明細)
-    ln_ar_tax_total              NUMBER;     -- AR税金額合計
+/* 2014/04/22 Ver1.32 Del Start */
+--    ln_ar_tax_total              NUMBER;     -- AR税金額合計
+/* 2014/04/22 Ver1.32 Del End   */
     ln_tax_rounding_af           NUMBER;     -- 端数処理後の税額
     ln_max_tax                   NUMBER;     -- 最大の消化計算掛率済み品目別販売金額の税額
     ln_difference_tax            NUMBER;     -- 税額差額
@@ -3498,7 +3571,7 @@ AS
 --          ELSIF ( gt_tab_work_data(ln_i).tax_rounding_rule = cv_tax_rounding_rule_NEAREST ) THEN --四捨五入
 --            ln_tax_work_calccomp                                    := gt_tab_work_data(ln_i).unit_price - ROUND( ln_tax_work );
 --          ELSE
---            RAISE global_api_others_expt;
+--            RAISE global_api_others_expt;ln_line_index
 --          END IF;
 --          --
 --          gt_tab_sales_exp_lines(ln_m).standard_unit_price          := gt_tab_work_data(ln_i).unit_price;                --基準単価
@@ -3612,7 +3685,9 @@ AS
           ln_max_tax := ln_tax_rounding_af;
 /* 2010/01/12 Ver1.22 Add End */
 --****************************** 2009/05/25 1.15 T.Kitajima MOD  END  ******************************--
-          ln_i_max := ln_i; --現在の読込テーブルインデックス
+/* 2014/04/22 Ver1.32 Del Start */
+--          ln_i_max := ln_i; --現在の読込テーブルインデックス
+/* 2014/04/22 Ver1.32 Del End   */
           ln_m_max := ln_m; --現在の書出テーブルインデックス
         END IF;
         --
@@ -3659,26 +3734,34 @@ AS
 --
           -- 品目単位数量サマリの初期化
           g_tab_item_sum_quantity.DELETE;
-          --
-          -- ===================================================
-          -- A-9  AR取引情報取得処理
-          -- ===================================================
-          get_cust_trx(
-            it_cust_account_id            => gt_tab_work_data(ln_i).cust_account_id,        --  1.顧客ID
-            it_customer_number            => gt_tab_work_data(ln_i).customer_number,        --  2.顧客コード
-            id_start_gl_date              => NVL( gt_tab_work_data(ln_i).pre_digestion_due_date + 1, gd_min_date ),
-                                                                                            --  3.開始GL記帳日
-            id_end_gl_date                => gt_tab_work_data(ln_i).digestion_due_date,     --  4.終了GL記帳日
-            in_ar_sales_amount            => gt_tab_work_data(ln_i).ar_sales_amount,         --  5.売上金額合計
-            ov_errbuf                     => lv_errbuf,                 -- エラー・メッセージ
-            ov_retcode                    => lv_retcode,                -- リターン・コード
-            ov_errmsg                     => lv_errmsg                  -- ユーザー・エラー・メッセージ
-          );
-          --
-          IF ( lv_retcode <> cv_status_normal ) THEN
-            RAISE global_process_expt;
-          END IF;
+/* 2014/04/22 Ver1.32 Add Start */
         END IF;
+/* 2014/04/22 Ver1.32 Add End   */
+        --
+        -- ===================================================
+        -- A-9  AR取引情報取得処理
+        -- ===================================================
+        get_cust_trx(
+          it_cust_account_id            => gt_tab_work_data(ln_i).cust_account_id,        --  1.顧客ID
+          it_customer_number            => gt_tab_work_data(ln_i).customer_number,        --  2.顧客コード
+          id_start_gl_date              => NVL( gt_tab_work_data(ln_i).pre_digestion_due_date + 1, gd_min_date ),
+                                                                                          --  3.開始GL記帳日
+          id_end_gl_date                => gt_tab_work_data(ln_i).digestion_due_date,     --  4.終了GL記帳日
+          in_ar_sales_amount            => gt_tab_work_data(ln_i).ar_sales_amount,         --  5.売上金額合計
+/* 2014/04/22 Ver1.32 Add Start */
+          iv_exec_div                   => iv_exec_div,                                   --  6.定期随時区分
+/* 2014/04/22 Ver1.32 Add End   */
+          ov_errbuf                     => lv_errbuf,                 -- エラー・メッセージ
+          ov_retcode                    => lv_retcode,                -- リターン・コード
+          ov_errmsg                     => lv_errmsg                  -- ユーザー・エラー・メッセージ
+        );
+        --
+        IF ( lv_retcode <> cv_status_normal ) THEN
+          RAISE global_process_expt;
+        END IF;
+/* 2014/04/22 Ver1.32 Del Start */
+--        END IF;
+/* 2014/04/22 Ver1.32 Del End   */
 --
 --****************************** 2010/02/08 1.25 N.Maeda ADD  END  ******************************--
 --
@@ -3698,12 +3781,33 @@ AS
           --納品明細番号初期化
           ln_line_index := 1;
 --**************************** 2009/03/30 1.10 T.kitajima ADD  END  ****************************
+/* 2014/04/22 Ver1.32 Add Start */
+          --初期化
+          ln_amount_work_total := cn_0; --消化計算掛率済み品目別販売金額の合計額計算
+          ln_tax_amount_total  := cn_0; --消化計算掛率済み品目別税金額の合計額計算
+          ln_amount_work_max   := NULL; --最大の消化計算掛率済み品目別販売金額
+          ln_max_tax           := cn_0; --最大の消化計算掛率済み品目別販売金額の税額
+          ln_tax_rounding_af   := cn_0; --端数処理後の税額
+          ln_m_max             := cn_0; --テーブル変数に書き出した最大売上金額を持つレコードの一時保管インデックス
+/* 2014/04/22 Ver1.32 Add End   */
 -- 2010/04/28 Ver.1.30 Add Start
           -- 販売実績登録用PL/SQL表からレコードを削除
           IF ( gt_tab_sales_exp_headers.EXISTS(ln_h) = TRUE ) THEN
             gt_tab_sales_exp_headers.DELETE(ln_h);
           END IF;
 -- 2010/04/28 Ver.1.30 Add End
+/* 2014/04/22 Ver1.32 Add Start */
+          --対象外となったデータは消化計算AR管理テーブルを作成しないので配列から削除
+          <<not_ins_loop>>
+          FOR i IN 1..gn_ind LOOP
+            IF ( gt_tab_cons_control_work.EXISTS(i) ) THEN
+              --顧客が対象外データと同一の場合
+              IF ( gt_tab_cons_control_work(i).account_number = gt_tab_work_data(ln_i).customer_number ) THEN
+                gt_tab_cons_control_work.DELETE(i);
+              END IF;
+            END IF;
+          END LOOP not_ins_loop;
+/* 2014/04/22 Ver1.32 Add End   */
         ELSE --存在しなかった
           --ヘッダデータ設定
 /* 2010/02/01 Ver1.24 Mod Start */
@@ -3869,13 +3973,17 @@ AS
 --          ln_amount_work_max         := cn_0;
           ln_amount_work_max         := NULL;
 --****************************** 2009/05/25 1.15 T.Kitajima MOD  END  ******************************--
-          ln_i_max                   := cn_0;
+/* 2014/04/22 Ver1.32 Del Start */
+--          ln_i_max                   := cn_0;
+/* 2014/04/22 Ver1.32 Del End   */
           ln_m_max                   := cn_0;
 --****************************** 2009/04/27 1.13 N.Maeda    ADD  END  ******************************--
 --
 /* 2010/01/12 Ver1.22 Add Start */
           ln_tax_amount_total     := cn_0;
-          ln_ar_tax_total         := cn_0;
+/* 2014/04/22 Ver1.32 Del Start */
+--          ln_ar_tax_total         := cn_0;
+/* 2014/04/22 Ver1.32 Del End   */
           ln_tax_rounding_af      := cn_0;
           ln_max_tax              := cn_0;
           ln_difference_tax       := cn_0;
@@ -3922,6 +4030,20 @@ AS
         ln_index := ln_index + cn_1;
       END IF;
     END LOOP;
+/* 2014/04/22 Ver1.32 Add Start */
+    --初期化
+    ln_index := cn_1;
+    --消化計算AR管理テーブル作成対象分ループする
+    FOR ln_i IN 1..gn_ind LOOP
+      IF ( gt_tab_cons_control_work.EXISTS(ln_i) ) THEN
+        --BULK INSERTの為、配列を疎⇒密にする
+        gt_tab_cons_control_ins(ln_index) := gt_tab_cons_control_work(ln_i);
+        ln_index := ln_index + 1;
+      END IF;
+    END LOOP;
+    --配列削除
+    gt_tab_cons_control_work.DELETE;
+/* 2014/04/22 Ver1.32 Add End   */
     --==============================================================
     --メッセージ出力をする必要がある場合は処理を記述
     --==============================================================
@@ -4208,6 +4330,9 @@ AS
 -- == 2010/04/06 V1.29 Added END   ===============================================================
     -- *** ローカル変数 ***
     ln_i  NUMBER;  --カウンター
+/* 2014/04/22 Ver1.32 Add Start */
+    lv_msg VARCHAR2(2000);
+/* 2014/04/22 Ver1.32 Add End   */
 --
     -- *** ローカル・カーソル ***
 --****************************** 2009/06/09 1.16 T.Kitajima ADD START ******************************--
@@ -4599,6 +4724,24 @@ AS
       END;
     END IF;
 -- == 2010/04/06 V1.29 Added END   ===============================================================
+/* 2014/04/22 Ver1.32 Add Start */
+    -- ===============================
+    -- 4.消化計算AR管理テーブル作成処理
+    -- ===============================
+    BEGIN
+      --消化計算で取得したAR取引データ特定の為の管理テーブルを作成
+      FORALL i IN 1..gt_tab_cons_control_ins.COUNT SAVE EXCEPTIONS
+        INSERT INTO
+          xxcos_consumption_control
+        VALUES
+          gt_tab_cons_control_ins(i)
+        ;
+    EXCEPTION
+      WHEN OTHERS THEN
+        lv_msg := SQLERRM;
+        RAISE global_insert_expt;
+    END;
+/* 2014/04/22 Ver1.32 Add End   */
     --==============================================================
     --メッセージ出力をする必要がある場合は処理を記述
     --==============================================================
@@ -4632,6 +4775,18 @@ AS
       ov_retcode := cv_status_error;
 --
 --****************************** 2009/06/09 1.16 T.Kitajima ADD  END  ******************************--
+/* 2014/04/22 Ver1.32 Add Start */
+    --消化計算AR管理テーブル登録例外
+    WHEN global_insert_expt THEN
+      ov_errmsg  := xxccp_common_pkg.get_msg(
+                      iv_application        =>  ct_xxcos_appl_short_name,
+                      iv_name               =>  ct_msg_inser_control_err,
+                      iv_token_name1        =>  cv_tkn_parm_data1,
+                      iv_token_value1       =>  lv_msg
+      );
+      ov_errbuf  := SUBSTRB(cv_pkg_name||cv_msg_cont||cv_prg_name||cv_msg_part||ov_errmsg,1,5000);
+      ov_retcode := cv_status_error;
+/* 2014/04/22 Ver1.32 Add End   */
 --#####################################  固定部 START ##########################################
     -- *** 処理部共通例外ハンドラ ***
     WHEN global_process_expt THEN

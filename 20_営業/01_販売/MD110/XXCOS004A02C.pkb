@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCOS004A02C (body)
  * Description      : 商品別売上計算
  * MD.050           : 商品別売上計算 MD050_COS_004_A02
- * Version          : 1.18
+ * Version          : 1.19
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -54,6 +54,7 @@ AS
  *                                       を追加
  *  2010/03/25    1.18  M.Hokkanji       [E_本稼働_02015]店舗別消化計算情報のチェック処理
  *                                       を修正
+ *  2014/04/22    1.19  K.Nakamura       [E_本稼働_09071]消化締め後のAR入力対応
  *
  *****************************************************************************************/
 --
@@ -207,6 +208,10 @@ AS
   ct_msg_max_date           CONSTANT  fnd_new_messages.message_name%TYPE
                                       := 'APP-XXCOS1-00056';               --XXCOS:MAX日付
 --******************************* 2010/02/15 1.17 M.Hokkanji ADD END   **************************************************************
+/* 2014/04/22 Ver1.19 Add Start */
+  ct_msg_inser_control_err  CONSTANT  fnd_new_messages.message_name%TYPE
+                                      := 'APP-XXCOS1-10978';               --消化計算AR管理テーブル登録エラーメッセージ
+/* 2014/04/22 Ver1.19 Add End   */
   --クイックコードタイプ
   ct_qct_regular_type       CONSTANT  fnd_lookup_types.lookup_type%TYPE
                                       := 'XXCOS1_REGULAR_ANY_CLASS';       --定期随時
@@ -362,6 +367,9 @@ AS
   cv_exec_div_0             CONSTANT  VARCHAR2(1) := '0';         --定期随時区分(随時)
   cv_exec_div_1             CONSTANT  VARCHAR2(1) := '1';         --定期随時区分(定期)
 --******************************* 2010/02/15 1.17 M.Hokkanji ADD END   **************************************************************
+/* 2014/04/22 Ver1.19 Add Start */
+  cv_1                      CONSTANT  VARCHAR2(1) := '1';         -- 固定値
+/* 2014/04/22 Ver1.19 Add End   */
   -- ===============================
   -- ユーザー定義グローバル型
   -- ===============================
@@ -414,6 +422,9 @@ AS
   TYPE g_tab_work_data             IS TABLE OF g_rec_work_data INDEX BY PLS_INTEGER;                     --店舗別用消化計算データ格納用変数
   TYPE g_tab_sales_exp_headers     IS TABLE OF xxcos_sales_exp_headers%ROWTYPE INDEX BY PLS_INTEGER;     --販売実績ヘッダ
   TYPE g_tab_sales_exp_lines       IS TABLE OF xxcos_sales_exp_lines%ROWTYPE INDEX BY PLS_INTEGER;       --販売実績明細
+/* 2014/04/22 Ver1.19 Add Start */
+  TYPE g_tab_consumption_control   IS TABLE OF xxcos_consumption_control%ROWTYPE INDEX BY PLS_INTEGER;   --消化計算AR管理テーブル
+/* 2014/04/22 Ver1.19 Add End   */
 --
   -- ===============================
   -- ユーザー定義グローバル変数
@@ -446,6 +457,11 @@ AS
   gv_month_date                   VARCHAR(6);                            -- 前月(年月)
   gd_max_date                     DATE;                                  -- MAX日付
 --******************************* 2010/02/15 1.17 M.Hokkanji ADD END   **************************************************************
+/* 2014/04/22 Ver1.19 Add Start */
+  gn_ind                          PLS_INTEGER := 0;                      -- 消化計算AR管理テーブル一時格納用の添え字
+  gt_tab_cons_control_work        g_tab_consumption_control;             -- 消化計算AR管理テーブル一時格納用
+  gt_tab_cons_control_ins         g_tab_consumption_control;             -- 消化計算AR管理テーブルINSERT用
+/* 2014/04/22 Ver1.19 Add End   */
 --
   /**********************************************************************************
    * Procedure Name   : init
@@ -1559,7 +1575,9 @@ AS
     ln_after_quantity      NUMBER;        --換算後数量
     ln_content             NUMBER;        --品入数
     ln_main_body_total     NUMBER;        --本体金額合計
-    ln_business_cost_total NUMBER;        --営業原価合計
+/* 2014/04/22 Ver1.19 Del Start */
+--    ln_business_cost_total NUMBER;        --営業原価合計
+/* 2014/04/22 Ver1.19 Del End   */
     ln_header_id           NUMBER;        --ヘッダID
     ln_line_id             NUMBER;        --明細ID
     ln_difference_money    NUMBER;        --差異金額
@@ -1593,7 +1611,9 @@ AS
     ln_m                   := 1;
     ln_h                   := 1;
     ln_main_body_total     := 0;
-    ln_business_cost_total := 0;
+/* 2014/04/22 Ver1.19 Del Start */
+--    ln_business_cost_total := 0;
+/* 2014/04/22 Ver1.19 Del End   */
     ln_difference_money    := 0;
     lv_err_work            := cv_status_normal;
     ln_index               := 1;
@@ -1775,8 +1795,10 @@ AS
         --3.売上計算
         --本体金額合計
         ln_main_body_total     := ln_main_body_total     + gt_tab_sales_exp_lines(ln_m).pure_amount;
-        --営業原価合計
-        ln_business_cost_total := ln_business_cost_total + gt_tab_sales_exp_lines(ln_m).business_cost;
+/* 2014/04/22 Ver1.19 Del Start */
+--        --営業原価合計
+--        ln_business_cost_total := ln_business_cost_total + gt_tab_sales_exp_lines(ln_m).business_cost;
+/* 2014/04/22 Ver1.19 Del End   */
         --取得カウントが最大を超えたか
         IF ( gt_tab_work_data.COUNT < ln_i + 1 ) THEN
           ln_make_flg := 1;
@@ -1911,7 +1933,9 @@ AS
           END IF;
           --合計金額初期化
           ln_main_body_total     := 0;
-          ln_business_cost_total := 0;
+/* 2014/04/22 Ver1.19 Del Start */
+--          ln_business_cost_total := 0;
+/* 2014/04/22 Ver1.19 Del End   */
           ln_difference_money    := 0;
           --ヘッダカウントUP
           ln_h := ln_h + 1;
@@ -1936,6 +1960,11 @@ AS
           ln_index := ln_m + 1;
         END IF;
       ELSE
+/* 2014/04/22 Ver1.19 Add Start */
+        --初期化（次の正常レコードに影響するため）
+        ln_main_body_total := 0; --本体金額合計
+        ln_line_index      := 1; --納品明細番号
+/* 2014/04/22 Ver1.19 Add End   */
         --取得カウントが最大を超えたか
         IF ( gt_tab_work_data.COUNT < ln_i + 1 ) THEN
           ln_make_flg := 1;
@@ -1961,6 +1990,18 @@ AS
           gn_target_cnt := gn_target_cnt +1;
           --次のINDEX値を保管
           ln_index := ln_m + 1;
+/* 2014/04/22 Ver1.19 Add Start */
+          --対象外となったデータは消化計算AR管理テーブルを作成しないので配列から削除
+          <<not_ins_loop>>
+          FOR i IN 1..gn_ind LOOP
+            IF ( gt_tab_cons_control_work.EXISTS(i) ) THEN
+              --顧客が対象外データと同一の場合
+              IF ( gt_tab_cons_control_work(i).account_number = gt_tab_work_data(ln_i).customer_number ) THEN
+                gt_tab_cons_control_work.DELETE(i);
+              END IF;
+            END IF;
+          END LOOP not_ins_loop;
+/* 2014/04/22 Ver1.19 Add End   */
         END IF;
       END IF;
       --明細カウントUP
@@ -1990,6 +2031,20 @@ AS
         END IF;
       END IF;
     END LOOP;
+/* 2014/04/22 Ver1.19 Add Start */
+    --初期化
+    ln_index := 1;
+    --消化計算AR管理テーブル作成対象分ループする
+    FOR ln_i IN 1..gn_ind LOOP
+      IF ( gt_tab_cons_control_work.EXISTS(ln_i) ) THEN
+        --BULK INSERTの為、配列を疎⇒密にする
+        gt_tab_cons_control_ins(ln_index) := gt_tab_cons_control_work(ln_i);
+        ln_index := ln_index + 1;
+      END IF;
+    END LOOP;
+    --配列削除
+    gt_tab_cons_control_work.DELETE;
+/* 2014/04/22 Ver1.19 Add End   */
     --==============================================================
     --メッセージ出力をする必要がある場合は処理を記述
     --==============================================================
@@ -2221,6 +2276,9 @@ AS
 --
     -- *** ローカル変数 ***
     ln_i  NUMBER;  --カウンター
+/* 2014/04/22 Ver1.19 Add Start */
+    lv_msg VARCHAR2(2000);
+/* 2014/04/22 Ver1.19 Add End   */
 --
     -- *** ローカル・カーソル ***
 --****************************** 2009/06/09 1.12 T.Kitajima ADD START ******************************--
@@ -2527,6 +2585,24 @@ AS
         RAISE global_up_inv_expt;
     END;
 --
+/* 2014/04/22 Ver1.19 Add Start */
+    -- ===============================
+    -- 4.消化計算AR管理テーブル作成処理
+    -- ===============================
+    BEGIN
+      --消化計算で取得したAR取引データ特定の為の管理テーブルを作成
+      FORALL i IN 1..gt_tab_cons_control_ins.COUNT SAVE EXCEPTIONS
+        INSERT INTO
+          xxcos_consumption_control
+        VALUES
+          gt_tab_cons_control_ins(i)
+        ;
+    EXCEPTION
+      WHEN OTHERS THEN
+        lv_msg := SQLERRM;
+        RAISE global_insert_expt;
+    END;
+/* 2014/04/22 Ver1.19 Add End   */
     --==============================================================
     --メッセージ出力をする必要がある場合は処理を記述
     --==============================================================
@@ -2560,6 +2636,18 @@ AS
       ov_retcode := cv_status_error;
 --
 --****************************** 2009/06/09 1.12 T.Kitajima ADD  END  ******************************--
+/* 2014/04/22 Ver1.19 Add Start */
+    --消化計算AR管理テーブル登録例外
+    WHEN global_insert_expt THEN
+      ov_errmsg := xxccp_common_pkg.get_msg(
+                      iv_application        =>  ct_xxcos_appl_short_name,
+                      iv_name               =>  ct_msg_inser_control_err,
+                      iv_token_name1        =>  cv_tkn_parm_data1,
+                      iv_token_value1       =>  lv_msg
+                   );
+      ov_errbuf  := SUBSTRB(cv_pkg_name||cv_msg_cont||cv_prg_name||cv_msg_part||ov_errmsg,1,5000);
+      ov_retcode := cv_status_error;
+/* 2014/04/22 Ver1.19 Add End   */
 --#####################################  固定部 START ##########################################
     -- *** 共通関数OTHERS例外ハンドラ ***
     WHEN global_api_others_expt THEN
@@ -2581,6 +2669,9 @@ AS
    ***********************************************************************************/
   PROCEDURE ar_chk(
     it_rec_work_data IN g_rec_work_data, --顧客情報
+/* 2014/04/22 Ver1.19 Add Start */
+    iv_exec_div      IN VARCHAR2,        --定期随時区分
+/* 2014/04/22 Ver1.19 Add End   */
     ov_errbuf     OUT VARCHAR2,     --   エラー・メッセージ           --# 固定 #
     ov_retcode    OUT VARCHAR2,     --   リターン・コード             --# 固定 #
     ov_errmsg     OUT VARCHAR2)     --   ユーザー・エラー・メッセージ --# 固定 #
@@ -2606,7 +2697,23 @@ AS
     -- *** ローカル変数 ***
     ln_extended_amount   ra_customer_trx_lines_all.extended_amount%TYPE; --本体金額(AR)
     ln_ar_sales_amount   xxcos_shop_digestion_hdrs.ar_sales_amount%TYPE; --店舗別売上金額
-    
+/* 2014/04/22 Ver1.19 Add Start */
+    ln_ar_data_cnt       NUMBER      := 0;                               --AR取引データ件数
+--
+    -- AR取引データ取得用変数
+    TYPE l_rec_ar_data IS RECORD
+      (
+        customer_trx_id  ra_customer_trx_all.customer_trx_id%TYPE,       --AR取引ID
+        trx_number       ra_customer_trx_all.trx_number%TYPE,            --取引番号
+        extended_amount  ra_customer_trx_lines_all.extended_amount%TYPE  --本体金額
+    );
+--
+    -- *** ローカル型 ***
+    TYPE l_tab_ar_data    IS TABLE OF l_rec_ar_data INDEX BY PLS_INTEGER; --ARデータ取得用
+    TYPE l_tab_check_data IS TABLE OF VARCHAR2(1) INDEX BY VARCHAR2(15);  --重複データチェック用
+    lt_tab_ar_data       l_tab_ar_data;
+    lt_tab_check_data    l_tab_check_data;
+/* 2014/04/22 Ver1.19 Add End   */
 --
     -- *** ローカル・カーソル ***
 --
@@ -2624,8 +2731,16 @@ AS
     -- 初期化
     BEGIN
       -- AR金額取得
-      SELECT SUM(rctla.extended_amount)          extended_amount      --本体金額
-        INTO ln_extended_amount
+/* 2014/04/22 Ver1.19 Mod Start */
+--      SELECT SUM(rctla.extended_amount)          extended_amount      --本体金額
+--        INTO ln_extended_amount
+      SELECT /*+ LEADING(rcta rctla rctlgda rctta) */
+             rcta.customer_trx_id                customer_trx_id,     --AR取引ID
+             rcta.trx_number                     trx_number,          --取引番号
+             rctla.extended_amount               extended_amount      --本体金額
+      BULK COLLECT INTO 
+             lt_tab_ar_data
+/* 2014/04/22 Ver1.19 Mod End   */
         FROM ra_customer_trx_all                 rcta,                --AR取引情報テーブル
              ra_customer_trx_lines_all           rctla,               --AR取引明細テーブル
              ra_cust_trx_line_gl_dist_all        rctlgda,             --AR取引明細会計配分テーブル
@@ -2650,36 +2765,94 @@ AS
                        AND flv.enabled_flag  =    ct_enabled_flag_yes
                        AND flv.language      =    ct_lang
              );
-      -- 取得に失敗した場合
-      IF (ln_extended_amount IS NULL ) THEN
-        RAISE global_ar_chk_err_expt;
-      END IF;
+/* 2014/04/22 Ver1.19 Del Start */
+--      -- 取得に失敗した場合
+--      IF (ln_extended_amount IS NULL ) THEN
+--        RAISE global_ar_chk_err_expt;
+--      END IF;
+/* 2014/04/22 Ver1.19 Del End   */
     EXCEPTION
       WHEN NO_DATA_FOUND THEN
-        RAISE global_ar_chk_err_expt;
+/* 2014/04/22 Ver1.19 Mod Start */
+--        RAISE global_ar_chk_err_expt;
+        NULL;
+/* 2014/04/22 Ver1.19 Mod End   */
     END;
-    -- 店舗別用消化計算ヘッダテーブルから店舗別売上金額を取得
-    BEGIN
-      SELECT xsdh.ar_sales_amount extended_amount
-        INTO ln_ar_sales_amount
-        FROM xxcos_shop_digestion_hdrs xsdh--店舗別用消化計算ヘッダテーブル
-       WHERE xsdh.cust_account_id = it_rec_work_data.cust_account_id
-         AND xsdh.sales_base_code = it_rec_work_data.past_sale_base_code
-         AND xsdh.digestion_due_date = gd_last_month_date;
-      -- 取得に失敗した場合
-      IF (ln_ar_sales_amount IS NULL ) THEN
+/* 2014/04/22 Ver1.19 Add Start */
+--
+    --随時の場合のデータ存在チェックの為、取得件数を設定
+    ln_ar_data_cnt     := lt_tab_ar_data.COUNT;
+    --初期化
+    ln_extended_amount := 0;
+--
+    <<get_ar_data_loop>>
+    FOR i IN 1..ln_ar_data_cnt LOOP
+      --消化計算AR管理テーブル作成の為、重複するAR取引IDのデータを省く
+      IF ( lt_tab_check_data.EXISTS( TO_CHAR( lt_tab_ar_data(i).customer_trx_id ) ) ) THEN
+        NULL;
+      ELSE
+        gn_ind := gn_ind + 1;
+        --消化計算AR管理テーブル一時格納用配列にデータを挿入
+        gt_tab_cons_control_work(gn_ind).customer_trx_id        := lt_tab_ar_data(i).customer_trx_id;    --AR取引ID
+        gt_tab_cons_control_work(gn_ind).trx_number             := lt_tab_ar_data(i).trx_number;         --AR取引番号
+        gt_tab_cons_control_work(gn_ind).cust_account_id        := it_rec_work_data.cust_account_id;     --顧客ID
+        gt_tab_cons_control_work(gn_ind).account_number         := it_rec_work_data.customer_number;     --顧客コード
+        gt_tab_cons_control_work(gn_ind).due_date               := it_rec_work_data.digestion_due_date;  --締日
+        gt_tab_cons_control_work(gn_ind).gl_date_from           := gd_begi_month_date;                   --GL記帳日FROM
+        gt_tab_cons_control_work(gn_ind).gl_date_to             := gd_last_month_date;                   --GL記帳日TO
+        gt_tab_cons_control_work(gn_ind).created_by             := cn_created_by;                        --作成者
+        gt_tab_cons_control_work(gn_ind).creation_date          := cd_creation_date;                     --作成日
+        gt_tab_cons_control_work(gn_ind).last_updated_by        := cn_last_updated_by;                   --最終更新者
+        gt_tab_cons_control_work(gn_ind).last_update_date       := cd_last_update_date;                  --最終更新日
+        gt_tab_cons_control_work(gn_ind).last_update_login      := cn_last_update_login;                 --最終更新ログイン
+        gt_tab_cons_control_work(gn_ind).request_id             := cn_request_id;                        --要求ID
+        gt_tab_cons_control_work(gn_ind).program_application_id := cn_program_application_id;            --コンカレント・プログラム・アプリケーションID
+        gt_tab_cons_control_work(gn_ind).program_id             := cn_program_id;                        --コンカレント・プログラムID
+        gt_tab_cons_control_work(gn_ind).program_update_date    := cd_program_update_date;               --プログラム更新日
+        --重複チェック判定用変数に値を設定
+        lt_tab_check_data( TO_CHAR( lt_tab_ar_data(i).customer_trx_id ) ) := cv_1;
+      END IF;
+      --金額チェック用の変数に金額を加算する
+      ln_extended_amount := ln_extended_amount + lt_tab_ar_data(i).extended_amount;
+    END LOOP get_ar_data_loop;
+    --配列削除
+    lt_tab_ar_data.DELETE;
+    lt_tab_check_data.DELETE;
+--
+    --随時の場合のみAR取引との金額チェックを実施
+    IF ( iv_exec_div = cv_exec_div_0 ) THEN
+--
+      --AR取引データがない場合、エラー
+      IF ( ln_ar_data_cnt = 0 ) THEN
         RAISE global_ar_chk_err_expt;
       END IF;
-    EXCEPTION
-      WHEN NO_DATA_FOUND THEN
+--
+/* 2014/04/22 Ver1.19 Add End   */
+      -- 店舗別用消化計算ヘッダテーブルから店舗別売上金額を取得
+      BEGIN
+        SELECT xsdh.ar_sales_amount extended_amount
+          INTO ln_ar_sales_amount
+          FROM xxcos_shop_digestion_hdrs xsdh--店舗別用消化計算ヘッダテーブル
+         WHERE xsdh.cust_account_id = it_rec_work_data.cust_account_id
+           AND xsdh.sales_base_code = it_rec_work_data.past_sale_base_code
+           AND xsdh.digestion_due_date = gd_last_month_date;
+        -- 取得に失敗した場合
+        IF (ln_ar_sales_amount IS NULL ) THEN
+          RAISE global_ar_chk_err_expt;
+        END IF;
+      EXCEPTION
+        WHEN NO_DATA_FOUND THEN
+          RAISE global_ar_chk_err_expt;
+      END;
+      -- ARから取得した金額と店舗別用消化計算ヘッダテーブルから取得した金額が一致しないもしくは
+      -- ARから取得した金額が0の場合ARチェックエラーとする。
+      IF ((ln_extended_amount <> ln_ar_sales_amount) OR
+          (ln_ar_sales_amount = 0) ) THEN
         RAISE global_ar_chk_err_expt;
-    END;
-    -- ARから取得した金額と店舗別用消化計算ヘッダテーブルから取得した金額が一致しないもしくは
-    -- ARから取得した金額が0の場合ARチェックエラーとする。
-    IF ((ln_extended_amount <> ln_ar_sales_amount) OR
-        (ln_ar_sales_amount = 0) ) THEN
-      RAISE global_ar_chk_err_expt;
+      END IF;
+/* 2014/04/22 Ver1.19 Add Start */
     END IF;
+/* 2014/04/22 Ver1.19 Add End   */
 --
   EXCEPTION
     -- *** ARチェックエラー ***
@@ -3049,32 +3222,40 @@ AS
       RAISE global_common_expt;
     END IF;
 --******************************* 2010/02/15 1.17 M.Hokkanji ADD START **************************************************************
-    --==============================================================
-    --随時実行の場合、店舗別用消化計算が最新かどうかチェックを行います。
-    --==============================================================
-    IF ( iv_exec_div = cv_exec_div_0 ) THEN
-      <<gt_tab_work_data_loop>>
-      FOR ln_i IN 1..gt_tab_work_data.COUNT LOOP
-        --==============================================================
-        --ループの初回か顧客が変更された場合にチェック処理を行います。
-        --==============================================================
-        IF (lv_customer_number IS NULL OR
-            lv_customer_number <> gt_tab_work_data(ln_i).customer_number) THEN
-          -- ===============================
-          -- A-9.ARデータチェック処理
-          -- ===============================
-          ar_chk(
-             gt_tab_work_data(ln_i)                -- 店舗別用消化計算データ
-            ,lv_errbuf                             -- エラー・メッセージ           --# 固定 #
-            ,lv_retcode                            -- リターン・コード             --# 固定 #
-            ,lv_errmsg                             -- ユーザー・エラー・メッセージ --# 固定 #
-          );
-          IF ( lv_retcode != cv_status_normal ) THEN
-            RAISE global_common_expt;
-          END IF;
-          -- ===============================
-          -- A-10.INVデータチェック処理
-          -- ===============================
+/* 2014/04/22 Ver1.19 Del Start */
+--    --==============================================================
+--    --随時実行の場合、店舗別用消化計算が最新かどうかチェックを行います。
+--    --==============================================================
+--    IF ( iv_exec_div = cv_exec_div_0 ) THEN
+/* 2014/04/22 Ver1.19 Del End   */
+    <<gt_tab_work_data_loop>>
+    FOR ln_i IN 1..gt_tab_work_data.COUNT LOOP
+      --==============================================================
+      --ループの初回か顧客が変更された場合にチェック処理を行います。
+      --==============================================================
+      IF (lv_customer_number IS NULL OR
+          lv_customer_number <> gt_tab_work_data(ln_i).customer_number) THEN
+        -- ===============================
+        -- A-9.ARデータチェック処理
+        -- ===============================
+        ar_chk(
+           gt_tab_work_data(ln_i)                -- 店舗別用消化計算データ
+/* 2014/04/22 Ver1.19 Add Start */
+          ,iv_exec_div                           -- 定期随時区分
+/* 2014/04/22 Ver1.19 Add End   */
+          ,lv_errbuf                             -- エラー・メッセージ           --# 固定 #
+          ,lv_retcode                            -- リターン・コード             --# 固定 #
+          ,lv_errmsg                             -- ユーザー・エラー・メッセージ --# 固定 #
+        );
+        IF ( lv_retcode != cv_status_normal ) THEN
+          RAISE global_common_expt;
+        END IF;
+        -- ===============================
+        -- A-10.INVデータチェック処理(随時のみ)
+        -- ===============================
+/* 2014/04/22 Ver1.19 Add Start */
+        IF ( iv_exec_div = cv_exec_div_0 ) THEN
+/* 2014/04/22 Ver1.19 Add End   */
           inv_chk(
              gt_tab_work_data(ln_i)                -- 店舗別用消化計算データ
             ,lv_errbuf                             -- エラー・メッセージ           --# 固定 #
@@ -3084,11 +3265,16 @@ AS
           IF ( lv_retcode != cv_status_normal ) THEN
             RAISE global_common_expt;
           END IF;
-          lv_customer_number := gt_tab_work_data(ln_i).customer_number;
-          ln_cust_account_id := gt_tab_work_data(ln_i).cust_account_id;
+/* 2014/04/22 Ver1.19 Add Start */
         END IF;
-      END LOOP gt_tab_work_data_loop;
-    END IF;
+/* 2014/04/22 Ver1.19 Add End   */
+        lv_customer_number := gt_tab_work_data(ln_i).customer_number;
+        ln_cust_account_id := gt_tab_work_data(ln_i).cust_account_id;
+      END IF;
+    END LOOP gt_tab_work_data_loop;
+/* 2014/04/22 Ver1.19 Del Start */
+--    END IF;
+/* 2014/04/22 Ver1.19 Del End   */
 --******************************* 2010/02/15 1.17 M.Hokkanji ADD END   **************************************************************
     -- ===============================
     -- A-4．商品別売上算処理

@@ -1,0 +1,6 @@
+CREATE INDEX xxcos.xxcos_consumption_control_n01 ON xxcos.xxcos_consumption_control (
+  cust_account_id  -- ŒÚ‹qID
+ ,due_date         -- ’÷“ú
+)
+TABLESPACE xxidx2
+;

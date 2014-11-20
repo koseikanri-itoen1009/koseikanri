@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCOS015A01C(body)
  * Description      : 情報系システム向け販売実績データの作成を行う
  * MD.050           : 情報系システム向け販売実績データの作成 MD050_COS_015_A01
- * Version          : 2.20
+ * Version          : 2.21
  *
  * Program List
  * --------------------------- ----------------------------------------------------------
@@ -82,6 +82,7 @@ AS
  *                                       [E_本稼動_01916]MC顧客連携漏れの対応
  *  2011/01/12    2.19  K.Kiriu          [E_本稼動_02458]PT対応
  *  2011/03/30    2.20  Y.Nishino        [E_本稼動_04976]情報系への連携項目追加
+ *  2014/04/14    2.21  K.Nakamura       [E_本稼働_09071]消化締め後のAR入力対応
  *
  *****************************************************************************************/
 --
@@ -241,8 +242,10 @@ AS
   cv_ref_t_hc_class           CONSTANT VARCHAR2(50) := 'XXCOS1_HC_CLASS';                 -- H/C区分
   cv_ref_t_txn_type_mst       CONSTANT VARCHAR2(50) := 'XXCOS1_AR_TXN_TYPE_MST_015_A01';  -- 取引タイプ特定マスタ
   cv_non_inv_item_mst_t       CONSTANT VARCHAR2(50) := 'XXCOS1_NO_INV_ITEM_CODE';         -- 非在庫品目
-  cv_gyotai_sho_mst_t         CONSTANT VARCHAR2(50) := 'XXCOS1_GYOTAI_SHO_MST_004_A01';   -- 業態区分
-  cv_gyotai_sho_mst_c         CONSTANT VARCHAR2(50) := 'XXCOS_004_A01%';                  -- 業態区分
+/* 2014/04/14 Ver2.21 Del Start */
+--  cv_gyotai_sho_mst_t         CONSTANT VARCHAR2(50) := 'XXCOS1_GYOTAI_SHO_MST_004_A01';   -- 業態区分
+--  cv_gyotai_sho_mst_c         CONSTANT VARCHAR2(50) := 'XXCOS_004_A01%';                  -- 業態区分
+/* 2014/04/14 Ver2.21 Del End   */
   cv_txn_type_01              CONSTANT VARCHAR2(50) := 'XXCOS_015_A01_01';                -- 直販売上
 --  cv_txn_type_02              CONSTANT VARCHAR2(50) := 'XXCOS_015_A01_02';                -- ｲﾝｼｮｯﾌﾟ売上
 --  cv_txn_type_03              CONSTANT VARCHAR2(50) := 'XXCOS_015_A01_03';                -- 売掛金訂正*/
@@ -253,7 +256,7 @@ AS
   -- 日付フォーマット
 /* 2009/12/29 Ver2.13 Mod Start */
   cv_date_format              CONSTANT VARCHAR2(20) := 'YYYY/MM/DD';
-/* 2009/12/29 Ver2.13 Mod Start */
+/* 2009/12/29 Ver2.13 Mod End */
   cv_date_format_non_sep      CONSTANT VARCHAR2(20) := 'YYYYMMDD';
   cv_datetime_format          CONSTANT VARCHAR2(20) := 'YYYYMMDDHH24MISS';
   -- 切捨て時間要素
@@ -291,7 +294,9 @@ AS
 --****************************** 2009/04/23 2.3 1 T.Kitajima ADD START ******************************--
   -- H/C
   cv_h_c_cold                 CONSTANT VARCHAR2(1) := '1';             -- COLD
-  cv_h_c_hot                  CONSTANT VARCHAR2(1) := '3';             -- HOT
+/* 2014/04/14 Ver2.21 Del Start */
+--  cv_h_c_hot                  CONSTANT VARCHAR2(1) := '3';             -- HOT
+/* 2014/04/14 Ver2.21 Del End   */
 --****************************** 2009/04/23 2.3 1 T.Kitajima ADD  END  ******************************--
 --****************************** 2009/04/23 2.3 4 T.Kitajima ADD START ******************************--
   cn_sub_1                    CONSTANT NUMBER      := 1;               -- 
@@ -597,7 +602,13 @@ AS
 -- 2010/02/02 Ver.2.15 Mod End
       ,in_ship_account_id   NUMBER)        -- 出荷先顧客ID
     IS
-      SELECT  cust.trx_date                 rcta_trx_date                -- 取引日
+/* 2014/04/14 Ver2.21 Mod Start */
+--      SELECT  cust.trx_date                 rcta_trx_date                -- 取引日
+      SELECT  /*+
+                LEADING(cust.xcc)
+              */
+              cust.trx_date                 rcta_trx_date                -- 取引日
+/* 2014/04/14 Ver2.21 Mod End   */
              ,cust.trx_number               rcta_trx_number              -- 取引番号
              ,cust.puroduct_code            puroduct_code                -- 商品コード
              ,cust.line_number              rctla_line_number            -- 取引明細番号
@@ -650,7 +661,14 @@ AS
       ) line,
       (
          -- 取引データ(取引タイプ「請求書」)
-         SELECT rcta.trx_date                  trx_date                -- 取引日
+/* 2014/04/14 Ver2.21 Mod Start */
+--         SELECT rcta.trx_date                  trx_date                -- 取引日
+         SELECT  /*+
+                   LEADING(xcc)
+                   INDEX(xcc xxcos_consumption_control_n01)
+                 */
+                 rcta.trx_date                  trx_date               -- 取引日
+/* 2014/04/14 Ver2.21 Mod End   */
                 ,rcta.trx_number               trx_number              -- 取引番号
                 ,rctta.attribute3              puroduct_code           -- 商品コード
                 ,rctla.line_number             line_number             -- 取引明細番号
@@ -678,6 +696,9 @@ AS
 -- 2010/02/02 Ver.2.15 Add Start
                 ,xxcfr_sales_data_reletes      xsdr                         -- 売上実績連携済テーブル
 -- 2010/02/02 Ver.2.15 Add End
+/* 2014/04/14 Ver2.21 Add Start */
+                ,xxcos_consumption_control      xcc                         -- 消化計算AR管理テーブル
+/* 2014/04/14 Ver2.21 Add End   */
          WHERE  rcta.org_id                 = gt_org_id                     -- 営業単位ID
          AND    rcta.customer_trx_id        = rctla.customer_trx_id         -- 取引データID
 -- 2010/02/02 Ver.2.15 Add Start
@@ -707,7 +728,9 @@ AS
 ----****************************** 2009/05/29 2.5 T.Kitajima ADD  END  ******************************
 --         AND    hcsua.site_use_id           = rcta.ship_to_site_use_id
 --         AND    hcsua.site_use_code         = cv_site_ship_to
-         AND    rcta.ship_to_customer_id    = in_ship_account_id
+/* 2014/04/14 Ver2.21 Del Start */
+--         AND    rcta.ship_to_customer_id    = in_ship_account_id
+/* 2014/04/14 Ver2.21 Del End   */
 /* 2011/01/12 Ver2.19 Mod End   */
          AND    rctla.customer_trx_id       = rctlgda.customer_trx_id       -- 取引データID
          AND    rctla.customer_trx_line_id  = rctlgda.customer_trx_line_id
@@ -719,6 +742,12 @@ AS
 --         AND    rctlgda.gl_date       BETWEEN  TRUNC(id_delivery_date,cv_trunc_fmt)
 --                                      AND      LAST_DAY(id_delivery_date)   -- GL記帳日
 -- 2010/02/02 Ver.2.15 Mod End
+/* 2014/04/14 Ver2.21 Add Start */
+         AND    xcc.cust_account_id         = in_ship_account_id            -- 顧客ID
+         AND    xcc.due_date          BETWEEN id_gl_date_from
+                                      AND     id_gl_date_to                 -- 締日
+         AND    xcc.customer_trx_id         = rcta.customer_trx_id          -- 取引情報データID
+/* 2014/04/14 Ver2.21 Add End   */
          /*UNION ALL 
          -- 取引データ(取引タイプ「売掛金訂正」(元情報あり))
          SELECT  rcta.trx_date                 trx_date                     -- 取引日
@@ -1464,7 +1493,9 @@ AS
     lv_type_name       VARCHAR2(50);
 --
     -- *** ローカル・レコード ***
-    lt_ar_deal_rec     get_ar_deal_info_cur%ROWTYPE;
+/* 2014/04/14 Ver2.21 Del Start */
+--    lt_ar_deal_rec     get_ar_deal_info_cur%ROWTYPE;
+/* 2014/04/14 Ver2.21 Del End   */
 --
     -- *** ローカル例外 ***
     sales_actual_extra_expt       EXCEPTION;    -- 売上明細データ抽出エラー
@@ -2278,7 +2309,9 @@ AS
     lv_type_name            VARCHAR2(50);
     --
     -- *** ローカル・レコード型 ***
-    it_ar_deal_rec          get_ar_deal_info_cur%ROWTYPE;
+/* 2014/04/14 Ver2.21 Del Start */
+--    it_ar_deal_rec          get_ar_deal_info_cur%ROWTYPE;
+/* 2014/04/14 Ver2.21 Del End   */
     --
     -- *** ローカル例外 ***
     non_lookup_value_expt   EXCEPTION;
@@ -2515,9 +2548,13 @@ AS
     cv_interface_flag_comp    CONSTANT VARCHAR2(1) := 'Y';   -- インターフェース済み
 --
     -- *** ローカル変数 ***
-    lv_item_name              VARCHAR2(255);      -- 項目名
+/* 2014/04/14 Ver2.21 Del Start */
+--    lv_item_name              VARCHAR2(255);      -- 項目名
+/* 2014/04/14 Ver2.21 Del End   */
     lv_table_name             VARCHAR2(255);      -- テーブル名
-    ln_dlv_invoice_number     NUMBER;
+/* 2014/04/14 Ver2.21 Del Start */
+--    ln_dlv_invoice_number     NUMBER;
+/* 2014/04/14 Ver2.21 Del End   */
 -- ************** 2009/09/28 2.11 N.Maeda ADD START **************** --
     lv_update_err_info        VARCHAR2(5000);     -- 更新エラー詳細
 -- ************** 2009/09/28 2.11 N.Maeda ADD  END  **************** --
@@ -2861,18 +2898,18 @@ AS
 -- 2010/02/02 Ver.2.15 Add Start
         IF ( g_sales_actual_rec.xseh_create_class <> gt_mk_org_cls_vd ) THEN
 -- 2010/02/02 Ver.2.15 Add Start
-        --==================================
-        -- 売上実績CSV作成(A-4)
-        --==================================
-        output_for_seles_actual(
-           it_sales_actual => g_sales_actual_rec     -- 売上実績レコード型
-          ,ov_errbuf       => lv_errbuf              -- エラー・メッセージ
-          ,ov_retcode      => lv_retcode             -- リターン・コード
-          ,ov_errmsg       => lv_errmsg);            -- ユーザー・エラー・メッセージ
-        --
-        IF ( lv_retcode = cv_status_error ) THEN
-          RAISE sub_program_expt;
-        END IF;
+          --==================================
+          -- 売上実績CSV作成(A-4)
+          --==================================
+          output_for_seles_actual(
+             it_sales_actual => g_sales_actual_rec     -- 売上実績レコード型
+            ,ov_errbuf       => lv_errbuf              -- エラー・メッセージ
+            ,ov_retcode      => lv_retcode             -- リターン・コード
+            ,ov_errmsg       => lv_errmsg);            -- ユーザー・エラー・メッセージ
+          --
+          IF ( lv_retcode = cv_status_error ) THEN
+            RAISE sub_program_expt;
+          END IF;
 -- 2010/02/02 Ver.2.15 Add Start
         END IF;
 -- 2010/02/02 Ver.2.15 Add Start
@@ -3024,21 +3061,21 @@ AS
             g_ar_output_vd_tbl(lv_index) := NULL;
           END IF;
 --
-        IF ( g_vd_digestion_err_tbl.EXISTS(TO_CHAR(g_sales_actual_rec.sales_exp_header_id)) = FALSE ) THEN
-          -- エラーテーブルに販売実績ヘッダが設定されていない場合
-          --==================================
-          -- 売上実績CSV作成(A-4)
-          --==================================
-          output_for_seles_actual(
-             it_sales_actual => g_sales_actual_rec     -- 売上実績レコード型
-            ,ov_errbuf       => lv_errbuf              -- エラー・メッセージ
-            ,ov_retcode      => lv_retcode             -- リターン・コード
-            ,ov_errmsg       => lv_errmsg);            -- ユーザー・エラー・メッセージ
-          --
-          IF ( lv_retcode = cv_status_error ) THEN
-            RAISE sub_program_expt;
+          IF ( g_vd_digestion_err_tbl.EXISTS(TO_CHAR(g_sales_actual_rec.sales_exp_header_id)) = FALSE ) THEN
+            -- エラーテーブルに販売実績ヘッダが設定されていない場合
+            --==================================
+            -- 売上実績CSV作成(A-4)
+            --==================================
+            output_for_seles_actual(
+               it_sales_actual => g_sales_actual_rec     -- 売上実績レコード型
+              ,ov_errbuf       => lv_errbuf              -- エラー・メッセージ
+              ,ov_retcode      => lv_retcode             -- リターン・コード
+              ,ov_errmsg       => lv_errmsg);            -- ユーザー・エラー・メッセージ
+            --
+            IF ( lv_retcode = cv_status_error ) THEN
+              RAISE sub_program_expt;
+            END IF;
           END IF;
-        END IF;
 -- 2010/02/02 Ver.2.15 Add End
         END IF;
 --
@@ -3046,9 +3083,9 @@ AS
         -- 消化VDの消化計算情報の取得エラーが発生していない場合、フラグ更新用テーブルに設定
         IF ( g_vd_digestion_err_tbl.EXISTS(TO_CHAR(g_sales_actual_rec.sales_exp_header_id)) = FALSE ) THEN
 -- 2010/02/02 Ver.2.15 Add End
-        -- ROWIDと納品伝票番号を内部テーブルに設定
-        g_sales_h_tbl(gn_sales_h_count) := g_sales_actual_rec.xseh_rowid;
-        gn_sales_h_count := gn_sales_h_count + 1;
+          -- ROWIDと納品伝票番号を内部テーブルに設定
+          g_sales_h_tbl(gn_sales_h_count) := g_sales_actual_rec.xseh_rowid;
+          gn_sales_h_count := gn_sales_h_count + 1;
 -- 2010/02/02 Ver.2.15 Add Start
         END IF;
 -- 2010/02/02 Ver.2.15 Add End
@@ -3071,16 +3108,16 @@ AS
 -- 2010/02/02 Ver.2.15 Add End
         IF ( g_sales_h_tbl.COUNT > 0 ) THEN
 -- 2010/02/02 Ver.2.15 Add End
-        -- ===============================
-        -- A-7.売上実績ヘッダステータス更新
-        -- ===============================
-        update_sales_header_status(
-           ov_errbuf   => lv_errbuf        -- エラー・メッセージ
-          ,ov_retcode  => lv_retcode       -- リターン・コード
-          ,ov_errmsg   => lv_errmsg);      -- ユーザ・エラー・メッセージ
-        IF ( lv_retcode = cv_status_error ) THEN
-          RAISE sub_program_expt;
-        END IF;
+          -- ===============================
+          -- A-7.売上実績ヘッダステータス更新
+          -- ===============================
+          update_sales_header_status(
+             ov_errbuf   => lv_errbuf        -- エラー・メッセージ
+            ,ov_retcode  => lv_retcode       -- リターン・コード
+            ,ov_errmsg   => lv_errmsg);      -- ユーザ・エラー・メッセージ
+          IF ( lv_retcode = cv_status_error ) THEN
+            RAISE sub_program_expt;
+          END IF;
 -- 2010/02/02 Ver.2.15 Add End
         END IF;
 -- 2010/02/02 Ver.2.15 Add End
