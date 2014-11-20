@@ -28,6 +28,7 @@ AS
  *  Date          Ver.  Editor           Description
  * ------------- ----- ---------------- -------------------------------------------------
  *  2008/01/13    1.0   SCS Okuyama      新規作成
+ *  2009/05/21    1.1   Yutaka.Kuboshima 障害T1_1134の対応
  *
  *****************************************************************************************/
 --
@@ -133,6 +134,9 @@ AS
   gv_cal_code           VARCHAR2(10);   -- システム稼働日カレンダコード値
   gv_para_proc_date     VARCHAR2(10);   -- 処理日
   gd_para_proc_date     DATE;           -- 処理日
+-- 2009/05/21 Ver1.1 add start by Yutaka.Kuboshima
+  gv_para_proc_month    VARCHAR2(6);    -- 処理日月(YYYYMM)
+-- 2009/05/21 Ver1.1 add end by Yutaka.Kuboshima
   gd_next_proc_date     DATE;           -- 翌業務日付
   gv_now_proc_month     VARCHAR2(6);    -- 業務日付月(YYYYMM)
   gv_next_proc_month    VARCHAR2(6);    -- 翌業務日付月(YYYYMM)
@@ -184,7 +188,10 @@ AS
       AND (
                 (xcac.rsv_sale_base_act_date <= gd_next_proc_date)
             OR  (
-                      (gv_now_proc_month <> gv_next_proc_month)
+-- 2009/05/21 Ver1.1 modify start by Yutaka.Kuboshima
+--                      (gv_now_proc_month <> gv_next_proc_month)
+                      (gv_para_proc_month <> gv_next_proc_month)
+-- 2009/05/21 Ver1.1 modify end by Yutaka.Kuboshima
                   AND
                       (
                               ((cv_sgl_space || xcac.past_sale_base_code)   <>  (cv_sgl_space || xcac.sale_base_code))
@@ -259,7 +266,10 @@ AS
       xcac.past_sale_base_code    = (
                                       CASE  WHEN
                                               (
-                                                    (gv_now_proc_month <> gv_next_proc_month)
+-- 2009/05/21 Ver1.1 modify start by Yutaka.Kuboshima
+--                                                    (gv_now_proc_month <> gv_next_proc_month)
+                                                    (gv_para_proc_month <> gv_next_proc_month)
+-- 2009/05/21 Ver1.1 modify end by Yutaka.Kuboshima
                                                 AND ((cv_sgl_space || iv_rec.past_sale_base_code)
                                                             <> (cv_sgl_space || iv_rec.sale_base_code))
                                               ) THEN
@@ -305,7 +315,10 @@ AS
       xcac.past_final_tran_date   = (
                                       CASE  WHEN
                                               (
-                                                    (gv_now_proc_month <> gv_next_proc_month)
+-- 2009/05/21 Ver1.1 modify start by Yutaka.Kuboshima
+--                                                    (gv_now_proc_month <> gv_next_proc_month)
+                                                    (gv_para_proc_month <> gv_next_proc_month)
+-- 2009/05/21 Ver1.1 modify end by Yutaka.Kuboshima
                                                 AND ((cv_sgl_space || iv_rec.past_final_tran_date)
                                                           <> (cv_sgl_space || iv_rec.final_tran_date))
                                               ) THEN
@@ -318,7 +331,10 @@ AS
       xcac.past_customer_status   = (
                                       CASE  WHEN
                                               (
-                                                    (gv_now_proc_month <> gv_next_proc_month)
+-- 2009/05/21 Ver1.1 modify start by Yutaka.Kuboshima
+--                                                    (gv_now_proc_month <> gv_next_proc_month)
+                                                    (gv_para_proc_month <> gv_next_proc_month)
+-- 2009/05/21 Ver1.1 modify end by Yutaka.Kuboshima
                                                 AND ((cv_sgl_space || iv_rec.past_customer_status)
                                                             <> (cv_sgl_space || iv_rec.customer_status))
                                               ) THEN
@@ -565,6 +581,9 @@ AS
     --
     gv_para_proc_date :=  lv_proc_date;
     gd_para_proc_date :=  TO_DATE(lv_proc_date, cv_date_fmt);
+-- 2009/05/21 Ver1.1 add start by Yutaka.Kuboshima
+    gv_para_proc_month := TO_CHAR(gd_para_proc_date, cv_month_fmt);
+-- 2009/05/21 Ver1.1 add end by Yutaka.Kuboshima
     --
     -- 翌業務日付取得
     --
