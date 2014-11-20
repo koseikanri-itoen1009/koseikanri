@@ -7,7 +7,7 @@ AS
  * Description      : 実際原価洗替処理
  * MD.050           : ロット別実際原価計算 T_MD050_BPO_790
  * MD.070           : 実際原価洗替処理 T_MD070_BPO_79D
- * Version          : 1.2
+ * Version          : 1.3
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -27,6 +27,7 @@ AS
  *  2008/2/20     1.0   R.Matusita       新規作成
  *  2008/04/25    1.1   Marushita        TE080_BPO_790 不具合ID 2,3
  *  2008/06/03    1.2   Marushita        TE080_BPO_790 不具合ID 4
+ *  2008/09/11    1.3   A.Shiina         処理対象レコードが0件の場合、正常終了とする。
  *
  *****************************************************************************************/
 --
@@ -78,6 +79,9 @@ AS
 --
   PRAGMA EXCEPTION_INIT(lock_expt, -54);   -- ロック取得例外
 --
+-- 2008/09/11 ADD START
+  no_data_expt              EXCEPTION;     -- 取得データ0件時例外
+-- 2008/09/11 ADD END
 --
   -- ===============================
   -- ユーザー定義グローバル定数
@@ -267,6 +271,9 @@ AS
 --
   gd_date     DATE;           -- SYSDATE格納
   gn_user_id  NUMBER(15,0);   -- USER_ID格納
+-- 2008/09/11 ADD START
+  gn_no_data  NUMBER;         -- 取得データ0件時用変数
+-- 2008/09/11 ADD END
 --
   /**********************************************************************************
    * Procedure Name   : get_lot_cost
@@ -304,6 +311,11 @@ AS
 --
   BEGIN
 --
+-- 2008/09/11 ADD START
+-- 取得データ0件時用変数の初期化
+   gn_no_data := 0;
+--
+-- 2008/09/11 ADD END
 --##################  固定ステータス初期化部 START   ###################
 --
     ov_retcode := gv_status_normal;
@@ -434,6 +446,9 @@ AS
                     gv_xxcmn            -- モジュール名略称：XXCMN マスタ・経理共通
                    ,gv_msg_xxcmn10036   -- メッセージ：APP-XXCMN-10036 データ取得エラー
                    ),1,5000);
+-- 2008/09/11 ADD START
+      gn_no_data := 1;     -- 取得データ0件時用変数
+-- 2008/09/11 ADD END
       RAISE global_api_expt;
     END IF;
 --
@@ -903,7 +918,12 @@ AS
      , ov_retcode => lv_retcode   -- リターン・コード             --# 固定 #
      , ov_errmsg  => lv_errmsg    -- ユーザー・エラー・メッセージ --# 固定 #
     );
-    IF (lv_retcode = gv_status_error) THEN
+-- 2008/09/11 UPDATE START
+--    IF (lv_retcode = gv_status_error) THEN
+--      RAISE global_process_expt;
+    IF (gn_no_data = 1) THEN
+      RAISE no_data_expt;
+    ELSIF (lv_retcode = gv_status_error) THEN
       RAISE global_process_expt;
     END IF;
 --
@@ -935,6 +955,14 @@ AS
 --
   EXCEPTION
 --
+-- 2008/09/11 ADD START
+    -- 取得データ0件時例外
+    WHEN no_data_expt THEN
+      ov_errmsg  := lv_errmsg;
+      ov_errbuf  := SUBSTRB(gv_pkg_name||gv_msg_cont||cv_prg_name||gv_msg_part||lv_errbuf,1,5000);
+      ov_retcode := gv_status_normal;
+--
+-- 2008/09/11 ADD END
 --#################################  固定例外処理部 START   ###################################
 --
     -- *** 処理部共通例外ハンドラ ***
