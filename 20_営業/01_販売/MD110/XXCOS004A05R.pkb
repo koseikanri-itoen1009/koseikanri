@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCOS004A05R (body)
  * Description      : 消化VD別掛率チェックリスト
  * MD.050           : 消化VD別掛率チェックリスト MD050_COS_004_A05
- * Version          : 1.3
+ * Version          : 1.4
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -29,6 +29,7 @@ AS
  *  2009/02/04    1.1   K.Kin            [COS_015]顧客名の桁数あふれ不具合対応
  *  2009/02/24    1.2   K.Kin            基準日条件追加
  *  2009/02/26    1.3   K.Kin            削除処理のコメント削除
+ *  2009/04/20    1.4   T.Kitajima       [T1_0662]従業員マスタとの外部結合
  *
  *****************************************************************************************/
 --
@@ -569,9 +570,9 @@ AS
                                      --顧客顧客アドオン.管理元拠点コード = INパラ拠点コード
              )--消化VD用消化計算ヘッダテーブル.売上拠点コード IN
       AND     xsvdh.customer_number      = NVL( gv_customer_number, xsvdh.customer_number )
-      AND     xsvdh.performance_by_code  = papf.employee_number
-      AND     xsvdh.digestion_due_date   >= papf.effective_start_date
-      AND     xsvdh.digestion_due_date   <= papf.effective_end_date
+      AND     xsvdh.performance_by_code  = papf.employee_number(+)
+      AND     xsvdh.digestion_due_date   >= papf.effective_start_date(+)
+      AND     xsvdh.digestion_due_date   <= papf.effective_end_date(+)
       AND     ( xsvdh.balance_amount      <> cn_amount_zero
               OR ( xsvdh.ar_sales_amount  = cn_amount_zero
                  AND xsvdh.sales_amount  = cn_amount_zero

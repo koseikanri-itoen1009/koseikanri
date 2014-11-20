@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCOS004A02C (body)
  * Description      : 商品別売上計算
  * MD.050           : 商品別売上計算 MD050_COS_004_A02
- * Version          : 1.7
+ * Version          : 1.8
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -35,6 +35,7 @@ AS
  *  2009/02/19    1.5   T.kitajima       納品形態区分 メイン倉庫対応
  *  2009/02/24    1.6   T.kitajima       パラメータのログファイル出力対応
  *  2009/03/30    1.7   T.kitajima       [T1_0189]販売実績明細.納品明細番号の採番方法変更
+ *  2009/04/20    1.8   T.kitajima       [T1_0657]データ取得0件エラー→警告終了へ
  *
  *****************************************************************************************/
 --
@@ -1111,7 +1112,11 @@ AS
         iv_name               =>  cv_msg_nodata_err
       );
       ov_errbuf  := SUBSTRB(cv_pkg_name||cv_msg_cont||cv_prg_name||cv_msg_part||ov_errmsg,1,5000);
-      ov_retcode := cv_status_error;
+--****************************** 2009/04/20 1.8 T.kitajima MOD START ******************************--
+--      ov_retcode := cv_status_error;
+      ov_retcode := cv_status_warn;
+--****************************** 2009/04/20 1.8 T.kitajima MOD  END  ******************************--
+--
     -- *** SQL SELECT エラー ***
     WHEN global_select_err_expt    THEN
       ov_errmsg               :=  xxccp_common_pkg.get_msg(

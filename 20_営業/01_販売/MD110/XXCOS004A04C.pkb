@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCOS004A04C (body)
  * Description      : 消化ＶＤ納品データ作成
  * MD.050           : 消化ＶＤ納品データ作成 MD050_COS_004_A04
- * Version          : 1.10
+ * Version          : 1.11
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -39,6 +39,7 @@ AS
  *  2009/03/23   1.9   T.Kitajima        [T1_0099]INV会計期による
  *                                                出荷元保管場所、納品形態、納品拠点取得方法修正
  *  2009/03/30   1.10  T.Kitajima        [T1_0189]販売実績明細.納品明細番号の採番方法を変更
+ *  2009/04/20   1.11  T.kitajima        [T1_0657]データ取得0件エラー→警告終了へ
  *
  *****************************************************************************************/
 --
@@ -1253,7 +1254,10 @@ AS
         iv_name               =>  cv_msg_nodata_err
       );
       ov_errbuf  := SUBSTRB(cv_pkg_name||cv_msg_cont||cv_prg_name||cv_msg_part||ov_errmsg,1,5000);
-      ov_retcode := cv_status_error;
+--****************************** 2009/04/20 1.11 T.kitajima MOD START ******************************--
+--      ov_retcode := cv_status_error;
+      ov_retcode := cv_status_warn;
+--****************************** 2009/04/20 1.11 T.kitajima MOD  END  ******************************--
     -- *** SQL SELECT エラー ***
     WHEN global_select_err_expt    THEN
       ov_errmsg               :=  xxccp_common_pkg.get_msg(
