@@ -8,7 +8,7 @@ AS
  *                    CSVファイルを作成します。
  * MD.050           :  MD050_CSO_016_A04_情報系-EBSインターフェース：
  *                     (OUT)訪問実績データ
- * Version          : 1.7
+ * Version          : 1.8
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -43,6 +43,7 @@ AS
  *  2009-06-05    1.5   Kazuo.Satomura   システムテスト障害対応(T1_0478再修正)
  *  2009-07-21    1.6   Kazuo.Satomura   統合テスト障害対応(0000070)
  *  2009-09-09    1.7   Daisuke.Abe      統合テスト障害対応(0001323)
+ *  2009-10-07    1.8   Daisuke.Abe      障害対応(0001454)
  *****************************************************************************************/
 --
 --#######################  固定グローバル定数宣言部 START   #######################
@@ -77,7 +78,10 @@ AS
   gn_target_cnt    NUMBER;                    -- 対象件数
   gn_normal_cnt    NUMBER;                    -- 正常件数
   gn_error_cnt     NUMBER;                    -- エラー件数
-  gn_warn_cnt      NUMBER;                    -- スキップ件数
+  /* 2009.10.07 D.Abe 0001454対応 START */
+  --gn_warn_cnt      NUMBER;                    -- スキップ件数
+  gn_skip_cnt      NUMBER;                    -- スキップ件数
+  /* 2009.10.07 D.Abe 0001454対応 END */
 --
 --################################  固定部 END   ##################################
 --
@@ -149,6 +153,12 @@ AS
   cv_debug_msg15         CONSTANT VARCHAR2(200) := '更新日TO : ';
   cv_debug_msg16         CONSTANT VARCHAR2(200) := 'lv_tsk_stts = ';
   cv_debug_msg17         CONSTANT VARCHAR2(200) := 'lv_ib_del_stts = ';
+  /* 2009.10.07 D.Abe 0001454対応 START */
+  cv_debug_msg18         CONSTANT VARCHAR2(200) := '訪問回数 = ';
+  cv_debug_msg19         CONSTANT VARCHAR2(200) := 'パーティID = ';
+  cv_debug_msg20         CONSTANT VARCHAR2(200) := '訪問時顧客ステータス = ';
+  cv_debug_msg21         CONSTANT VARCHAR2(200) := '訪問日 = ';
+  /* 2009.10.07 D.Abe 0001454対応 END */
   cv_debug_msg_fnm       CONSTANT VARCHAR2(200) := 'filename = ';
   cv_debug_msg_fcls      CONSTANT VARCHAR2(200) := '<< 例外処理内でCSVファイルをクローズしました >>';
   cv_debug_msg_ccls1     CONSTANT VARCHAR2(200) := '<< 例外処理内で訪問実績データ抽出カーソルをクローズしました >>';
@@ -157,6 +167,9 @@ AS
   cv_debug_msg_err1      CONSTANT VARCHAR2(200) := 'global_process_expt';
   cv_debug_msg_err2      CONSTANT VARCHAR2(200) := 'global_api_others_expt';
   cv_debug_msg_err3      CONSTANT VARCHAR2(200) := 'others例外';
+  /* 2009.10.07 D.Abe 0001454対応 START */
+  cv_debug_msg_skip1     CONSTANT VARCHAR2(200) := '<< MC訪問のためスキップしました >>';
+  /* 2009.10.07 D.Abe 0001454対応 END */
 --
   cv_w                   CONSTANT VARCHAR2(1)   := 'w';  -- CSVファイルオープンモード
   -- ===============================
@@ -1574,6 +1587,12 @@ AS
     cv_task_type_visit    CONSTANT VARCHAR2(30)  := 'XXCSO1_TASK_TYPE_VISIT';
     cv_src_obj_tp_cd_opp  CONSTANT VARCHAR2(100) := 'OPPORTUNITY'; -- ソースタイプ
     /* 2009.04.22 K.Satomura T1_0478対応 END */
+    /* 2009.10.07 D.Abe 0001454対応 START */
+    cv_cust_status10    CONSTANT VARCHAR2(2)     := '10';           -- 顧客ステータス(MC候補)
+    cv_cust_status20    CONSTANT VARCHAR2(2)     := '20';           -- 顧客ステータス(MC)
+    cv_cust_status25    CONSTANT VARCHAR2(2)     := '25';           -- 顧客ステータス(SP承認)
+    cv_cust_status30    CONSTANT VARCHAR2(2)     := '30';           -- 顧客ステータス(承認済)
+    /* 2009.10.07 D.Abe 0001454対応 END */
     -- *** ローカル変数 ***
     -- OUTパラメータ格納用
     lv_from_value   VARCHAR2(2000); -- パラメータ更新日 FROM
@@ -1663,6 +1682,9 @@ AS
             ,jtb.attribute12                       attribute12             -- 登録元区分
             ,jtb.attribute13                       attribute13             -- 登録元ソース番号
             ,ppf.employee_number                   employee_number         -- 営業員コード
+            /* 2009.10.07 D.Abe 0001454対応 START */
+            ,jtb.attribute14                       attribute14             -- 顧客ステータス
+            /* 2009.10.07 D.Abe 0001454対応 END */
       FROM   jtf_tasks_b           jtb -- タスクテーブル
             ,per_people_f          ppf -- 従業員マスタ
             ,jtf_rs_resource_extns jrr -- リソースマスタ
@@ -1720,6 +1742,9 @@ AS
             ,jtb.attribute12                       attribute12             -- 登録元区分
             ,jtb.attribute13                       attribute13             -- 登録元ソース番号
             ,ppf.employee_number                   employee_number         -- 営業員コード
+            /* 2009.10.07 D.Abe 0001454対応 START */
+            ,jtb.attribute14                       attribute14             -- 顧客ステータス
+            /* 2009.10.07 D.Abe 0001454対応 END */
       FROM   jtf_tasks_b           jtb -- タスクテーブル
             ,per_people_f          ppf -- 従業員マスタ
             ,jtf_rs_resource_extns jrr -- リソースマスタ
@@ -1784,6 +1809,9 @@ AS
             ,jtb.attribute12                       attribute12             -- 登録元区分
             ,jtb.attribute13                       attribute13             -- 登録元ソース番号
             ,ppf.employee_number                   employee_number         -- 営業員コード
+            /* 2009.10.07 D.Abe 0001454対応 START */
+            ,jtb.attribute14                       attribute14             -- 顧客ステータス
+            /* 2009.10.07 D.Abe 0001454対応 END */
       FROM   jtf_tasks_b           jtb -- タスクテーブル
             ,per_people_f          ppf -- 従業員マスタ
             ,jtf_rs_resource_extns jrr -- リソースマスタ
@@ -1844,6 +1872,9 @@ AS
             ,jtb.attribute12                       attribute12             -- 登録元区分
             ,jtb.attribute13                       attribute13             -- 登録元ソース番号
             ,ppf.employee_number                   employee_number         -- 営業員コード
+            /* 2009.10.07 D.Abe 0001454対応 START */
+            ,jtb.attribute14                       attribute14             -- 顧客ステータス
+            /* 2009.10.07 D.Abe 0001454対応 END */
       FROM   jtf_tasks_b           jtb -- タスクテーブル
             ,per_people_f          ppf -- 従業員マスタ
             ,jtf_rs_resource_extns jrr -- リソースマスタ
@@ -1920,6 +1951,9 @@ AS
     l_get_data_rec            g_get_data_rtype;
     -- *** ローカル例外 ***
     error_skip_data_expt           EXCEPTION;   -- 処理スキップ例外
+    /* 2009.10.07 D.Abe 0001454対応 START */
+    status_skip_data_expt          EXCEPTION;   -- 処理対象外例外
+    /* 2009.10.07 D.Abe 0001454対応 END */
 --
   BEGIN
 --
@@ -1934,6 +1968,9 @@ AS
     gn_target_cnt := 0;
     gn_normal_cnt := 0;
     gn_error_cnt  := 0;
+    /* 2009.10.07 D.Abe 0001454対応 START */
+    gn_skip_cnt  := 0;
+    /* 2009.10.07 D.Abe 0001454対応 END */
     -- INパラメータ格納
     lv_from_value := iv_from_value;  -- パラメータ更新日 FROM
     lv_to_value   := iv_to_value;    -- パラメータ更新日 TO
@@ -2044,6 +2081,17 @@ AS
         EXIT WHEN get_vst_rslt_data_cur%NOTFOUND
         OR  get_vst_rslt_data_cur%ROWCOUNT = 0;
 --
+
+        /* 2009.10.07 D.Abe 0001454対応 START */
+        -- 顧客ステータスがNOT NULLかつ,10(MC候補),20(MC),25(SP承認済),30(承認済)の場合スキップ
+        IF ((l_get_vst_rslt_dt_rec.attribute14 IS NOT NULL) AND 
+            (l_get_vst_rslt_dt_rec.attribute14 IN ( cv_cust_status10,
+                                                    cv_cust_status20,
+                                                    cv_cust_status25,
+                                                    cv_cust_status30))) THEN
+          RAISE status_skip_data_expt;
+        END IF;
+        /* 2009.10.07 D.Abe 0001454対応 END */
         -- レコード変数初期化
         l_get_data_rec := NULL;
         -- 取得データを格納
@@ -2233,6 +2281,24 @@ AS
         );
         -- 全体の処理ステータスに警告セット
         ov_retcode := cv_status_warn;
+--
+        /* 2009.10.07 D.Abe 0001454対応 START */
+        -- MC訪問のためスキップ
+        WHEN status_skip_data_expt THEN
+        -- スキップ件数カウント
+        gn_skip_cnt := gn_skip_cnt + 1;
+        -- *** DEBUG_LOG ***
+        -- データスキップしたことをログ出力
+        fnd_file.put_line(
+           which  => FND_FILE.LOG
+          ,buff   => cv_debug_msg_skip1 || CHR(10) ||
+                     cv_debug_msg18 || l_get_vst_rslt_dt_rec.task_id || CHR(10) ||
+                     cv_debug_msg19 || l_get_vst_rslt_dt_rec.source_object_id || CHR(10) ||
+                     cv_debug_msg20 || l_get_vst_rslt_dt_rec.attribute14 || CHR(10) ||
+                     cv_debug_msg21 || TO_CHAR(l_get_vst_rslt_dt_rec.actual_end_date ,'yyyymmdd')|| CHR(10) ||
+                     ''
+        );
+        /* 2009.10.07 D.Abe 0001454対応 END */
 --
       END;
 --
@@ -2561,6 +2627,19 @@ AS
        which  => FND_FILE.OUTPUT
       ,buff   => gv_out_msg
     );
+    /* 2009.10.07 D.Abe 0001454対応 START */
+    -- スキップ件数出力
+    gv_out_msg := xxccp_common_pkg.get_msg(
+                     iv_application  => cv_appl_short_name
+                    ,iv_name         => cv_skip_rec_msg
+                    ,iv_token_name1  => cv_cnt_token
+                    ,iv_token_value1 => TO_CHAR(gn_skip_cnt)
+                   );
+    fnd_file.put_line(
+       which  => FND_FILE.OUTPUT
+      ,buff   => gv_out_msg
+    );
+    /* 2009.10.07 D.Abe 0001454対応 END */
     --
     --終了メッセージ
     IF (lv_retcode = cv_status_normal) THEN
