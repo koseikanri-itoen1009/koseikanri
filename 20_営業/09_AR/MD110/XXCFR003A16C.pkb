@@ -7,7 +7,7 @@ AS
  * Description      : 標準請求書税抜
  * MD.050           : MD050_CFR_003_A16_標準請求書税抜
  * MD.070           : MD050_CFR_003_A16_標準請求書税抜
- * Version          : 1.8
+ * Version          : 1.9
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -40,6 +40,7 @@ AS
  *  2010/02/02    1.6  SCS 安川 智博    [E_本稼動_01503] 同一顧客-複数使用目的対応
  *  2010/12/10    1.7  SCS 石渡 賢和    [E_本稼動_05401] パラメータ「請求書発行サイクル」の追加
  *  2011/01/17    1.8  SCS 廣瀬 真佐人  [E_本稼動_00580] ソート順に店舗コード追加
+ *  2011/03/10    1.9  SCS 石渡 賢和    [E_本稼動_06753] ソート順の店舗コードの例外条件追加
  *
  *****************************************************************************************/
 --
@@ -1532,7 +1533,14 @@ AS
                      account.account_holder_name||' '||                               -- 口座名義人
                      account.account_holder_name_alt)                                 -- 口座名義人カナ名
                    END                                                                account_data     , -- 振込口座情報
-                   xil.ship_cust_code                                                 ship_cust_code   , -- 納品先顧客コード
+-- Modify 2011.03.10 Ver1.9 Start
+--                  xil.ship_cust_code                                                 ship_cust_code   , -- 納品先顧客コード
+                   DECODE(all_account_rec.invoice_printing_unit
+                         ,cv_invoice_printing_unit_n2                 -- 請求書印刷単位が３の場合は、ソート順としない。
+                         ,NULL
+                         ,xil.ship_cust_code
+                   )                                                                  ship_cust_code   , -- 納品先顧客コード
+-- Modify 2011.03.10 Ver1.9 End
                    hzp.party_name                                                     ship_cust_name   , -- 納品先顧客名
 -- Add 2011.01.17 Ver1.8 Start
                    DECODE(all_account_rec.invoice_printing_unit
@@ -1540,7 +1548,14 @@ AS
                          ,lr_main_data.cash_account_number
                          ,NULL                         -- 単独店である時は、ソート順に考慮しない。(店舗コードが1番目となる)
                    )                                                                  bill_account_number,  -- 請求顧客コード(ソート順)
-                   LPAD(NVL(all_account_rec.store_code,'0'),10,'0')                   store_code       , -- 店舗コード(ソート用)
+-- Modify 2011.03.10 Ver1.9 Start
+--                   LPAD(NVL(all_account_rec.store_code,'0'),10,'0')                   store_code       , -- 店舗コード(ソート用)
+                   DECODE(all_account_rec.invoice_printing_unit
+                         ,cv_invoice_printing_unit_n2                 -- 請求書印刷単位が３の場合は、ソート順としない。
+                         ,NULL
+                         ,LPAD(NVL(all_account_rec.store_code,'0'),10,'0')
+                   )                                                                  store_code       , -- 店舗コード(ソート用)
+-- Modify 2011.03.10 Ver1.9 End
 -- Add 2011.01.17 Ver1.8 End
                    TO_CHAR(DECODE(xil.acceptance_date,
                                   NULL,xil.delivery_date,
@@ -1776,11 +1791,17 @@ AS
                      account.account_holder_name||' '||                               -- 口座名義人
                      account.account_holder_name_alt)                                 -- 口座名義人カナ名
                    END                                                                account_data     , -- 振込口座情報
-                   xil.ship_cust_code                                                 ship_cust_code   , -- 納品先顧客コード
+-- Modify 2011.03.10 Ver1.9 Start
+--                   xil.ship_cust_code                                                 ship_cust_code   , -- 納品先顧客コード
+                   NULL                                                               ship_cust_code   , -- 納品先顧客コード
+-- Modify 2011.03.10 Ver1.9 End
                    hzp.party_name                                                     ship_cust_name   , -- 納品先顧客名
 -- Add 2011.01.17 Ver1.8 Start
                    get_20account_rec.bill_account_number                              bill_account_number,  -- 請求顧客コード(ソート順)
-                   LPAD(NVL(all_account_rec.store_code,'0'),10,'0')                   store_code       , -- 店舗コード(ソート用)
+-- Modify 2011.03.10 Ver1.9 Start
+--                   LPAD(NVL(all_account_rec.store_code,'0'),10,'0')                   store_code       , -- 店舗コード(ソート用)
+                   NULL                                                               store_code       , -- 店舗コード(ソート用)
+-- Modify 2011.03.10 Ver1.9 End
 -- Add 2011.01.17 Ver1.8 End
                    TO_CHAR(DECODE(xil.acceptance_date,
                                   NULL,xil.delivery_date,

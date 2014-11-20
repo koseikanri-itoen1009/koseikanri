@@ -7,7 +7,7 @@ AS
  * Description      : 標準請求書税込(店舗別内訳)
  * MD.050           : MD050_CFR_003_A18_標準請求書税込(店舗別内訳)
  * MD.070           : MD050_CFR_003_A18_標準請求書税込(店舗別内訳)
- * Version          : 1.40
+ * Version          : 1.50
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -33,6 +33,7 @@ AS
  *  2010/02/03    1.20 SCS 安川 智博    障害「E_本稼動_01503」対応
  *  2010/12/10    1.30 SCS 石渡 賢和    障害「E_本稼動_05401」対応
  *  2011/01/17    1.40 SCS 廣瀬 真佐人  障害「E_本稼動_00580」対応
+ *  2011/03/10    1.50 SCS 石渡 賢和    障害「E_本稼動_06753」対応
  *
  *****************************************************************************************/
 --
@@ -1572,8 +1573,12 @@ AS
                      hzp.party_name                                                     ship_cust_name   , -- 納品先顧客名
 -- Add 2011.01.17 Ver1.40 Start
                      NULL                                                               store_code         ,  -- 店舗コード
-                     LPAD(NVL(all_account_rec.store_code,'0'),10,'0')                   store_code_sort    ,  -- 店舗コード(ソート用)
-                     all_account_rec.customer_code                                      ship_account_number,  -- 納品先顧客コード(ソート用)
+-- Modify 2011.03.10 Ver1.50 Start
+--                    LPAD(NVL(all_account_rec.store_code,'0'),10,'0')                   store_code_sort    ,  -- 店舗コード(ソート用)
+--                    all_account_rec.customer_code                                      ship_account_number,  -- 納品先顧客コード(ソート用)
+                     NULL                                                               store_code_sort    ,  -- 店舗コード(ソート用)
+                     NULL                                                               ship_account_number,  -- 納品先顧客コード(ソート用)
+-- Modify 2011.03.10 Ver1.50 End
                      xxca.invoice_code                                                  invo_account_number,  -- 請求用顧客コード(ソート用)
 -- Add 2011.01.17 Ver1.40 End
                      TO_CHAR(DECODE(xil.acceptance_date,
@@ -2076,8 +2081,12 @@ AS
                      hzp.party_name                                                     ship_cust_name   , -- 納品先顧客名
 -- Add 2011.01.17 Ver1.40 Start
                      NULL                                                               store_code         ,  -- 店舗コード
-                     LPAD(NVL(all_account_rec.store_code,'0'),10,'0')                   store_code_sort    ,  -- 店舗コード(ソート用)
-                     all_account_rec.customer_code                                      ship_account_number,  -- 納品先顧客コード(ソート用)
+-- Modify 2011.03.10 Ver1.50 Start
+--                    LPAD(NVL(all_account_rec.store_code,'0'),10,'0')                   store_code_sort    ,  -- 店舗コード(ソート用)
+--                    all_account_rec.customer_code                                      ship_account_number,  -- 納品先顧客コード(ソート用)
+                     NULL                                                               store_code_sort    ,  -- 店舗コード(ソート用)
+                     NULL                                                               ship_account_number,  -- 納品先顧客コード(ソート用)
+-- Modify 2011.03.10 Ver1.50 End
                      xxca.invoice_code                                                  invo_account_number,  -- 請求用顧客コード(ソート用)
 -- Add 2011.01.17 Ver1.40 End
                      TO_CHAR(DECODE(xil.acceptance_date,
