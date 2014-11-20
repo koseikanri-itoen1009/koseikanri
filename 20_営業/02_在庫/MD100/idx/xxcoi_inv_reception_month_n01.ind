@@ -10,15 +10,16 @@
  *  Date          Ver.  Editor           Description
  * ------------- ----- ---------------- ---------------------------------
  *  2009/05/29    1.0   S.Moriyama       êVãKçÏê¨
+ *  2009/08/24    1.1   H.Sasaki         [0001003]çÄñ⁄èáèòÇïœçX
  *
  ************************************************************************/
 CREATE INDEX XXCOI.XXCOI_INV_RECEPTION_MONTH_N01
 ON XXCOI.XXCOI_INV_RECEPTION_MONTHLY
 (
-  BASE_CODE
- ,ORGANIZATION_ID
- ,SUBINVENTORY_CODE
- ,INVENTORY_KBN
+  SUBINVENTORY_CODE
  ,INVENTORY_ITEM_ID
+ ,INVENTORY_KBN
+ ,ORGANIZATION_ID
+ ,BASE_CODE
 )
 TABLESPACE XXIDX2;
