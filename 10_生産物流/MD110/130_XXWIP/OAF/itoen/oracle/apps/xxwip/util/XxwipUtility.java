@@ -1,7 +1,7 @@
 /*============================================================================
 * ファイル名 : XxwipUtility
 * 概要説明   : 生産共通関数
-* バージョン : 1.3
+* バージョン : 1.4
 *============================================================================
 * 修正履歴
 * 日付       Ver. 担当者       修正内容
@@ -10,6 +10,7 @@
 * 2008-06-27 1.1  二瓶大輔     addメソッド追加
 * 2008-10-31 1.2  二瓶大輔     在庫会計クローズ関数追加
 * 2009-02-04 1.3  二瓶大輔     本番障害#4
+* 2009-02-09 1.4  二瓶大輔     本番障害#32
 *============================================================================
 */
 package itoen.oracle.apps.xxwip.util;
@@ -33,7 +34,7 @@ import oracle.jbo.domain.Number;
 /***************************************************************************
  * 生産共通関数クラスです。
  * @author  ORACLE 二瓶 大輔
- * @version 1.3
+ * @version 1.4
  ***************************************************************************
  */
 public class XxwipUtility 
@@ -1578,6 +1579,7 @@ public class XxwipUtility
    * @param itemId - 品目ID
    * @param batchId - バッチID
    * @param qtNumber - 検査依頼No
+   * @param qty - 数量
    ****************************************************************************/
   public static String doQtInspection(
     OADBTransaction trans,
@@ -1585,31 +1587,61 @@ public class XxwipUtility
     Number lotId,
     Number itemId,
     Number batchId,
-    String qtNumber
+    String qtNumber,
+// 2009-02-09 v1.4 D.Nihei Add Start 本番障害#32対応
+    String qty
+// 2009-02-09 v1.4 D.Nihei Add End
   ) throws OAException
   {
     String apiName = "doQtInspection";
     String exeType = XxcmnConstants.RETURN_NOT_EXE;
     //PL/SQLの作成を取得を行います
-    StringBuffer sb = new StringBuffer(100);
+    StringBuffer sb = new StringBuffer(3000);
+// 2009-02-09 v1.4 D.Nihei Add Start 本番障害#32対応
+    sb.append("DECLARE ");
+    sb.append("  ln_cnt          NUMBER;      ");
+    sb.append("  lv_disposal_div VARCHAR2(1); ");
+    sb.append("  lt_item_id      ic_lots_mst.item_id%TYPE; ");
+    sb.append("  lt_lot_id       ic_lots_mst.lot_id%TYPE;  ");
+// 2009-02-09 v1.4 D.Nihei Add End
     sb.append("BEGIN ");
-    sb.append("  xxwip_common_pkg.make_qt_inspection( ");
-    sb.append("    it_division          => 1     "); // 区分：生産(固定)
-    sb.append("   ,iv_disposal_div      => :1    "); // 処理区分
-    sb.append("   ,it_lot_id            => :2    "); // ロットID
-    sb.append("   ,it_item_id           => :3    "); // 品目ID
-    sb.append("   ,iv_qt_object         => null  ");
-    sb.append("   ,it_batch_id          => :4    "); // バッチID
-    sb.append("   ,it_batch_po_id       => null  ");
-    sb.append("   ,it_qty               => null  ");
-    sb.append("   ,it_prod_dely_date    => null  ");
-    sb.append("   ,it_vendor_line       => null  ");
-    sb.append("   ,it_qt_inspect_req_no => :5    "); // 検査依頼No
-    sb.append("   ,ot_qt_inspect_req_no => :6    "); // 検査依頼No
-    sb.append("   ,ov_errbuf            => :7    ");
-    sb.append("   ,ov_retcode           => :8    ");
-    sb.append("   ,ov_errmsg            => :9    ");
-    sb.append("  ); ");
+// 2009-02-09 v1.4 D.Nihei Add Start 本番障害#32対応
+    sb.append("  lv_disposal_div  := :1; ");
+    sb.append("  lt_lot_id        := :2; ");
+    sb.append("  lt_item_id       := :3; ");
+    sb.append("  SELECT COUNT(1) ");
+    sb.append("  INTO   ln_cnt   ");
+    sb.append("  FROM   ic_lots_mst ilm ");
+    sb.append("  WHERE  ilm.item_id     = lt_item_id ");
+    sb.append("  AND    ilm.lot_id      = lt_lot_id  ");
+    sb.append("  AND    ilm.attribute24 = '5'        ");
+    sb.append("  ; ");
+    sb.append("  IF ( ln_cnt > 0 ) THEN ");
+// 2009-02-09 v1.4 D.Nihei Add End
+    sb.append("    xxwip_common_pkg.make_qt_inspection( ");
+    sb.append("      it_division          => 1    "); // 区分：生産(固定)
+    sb.append("     ,iv_disposal_div      => lv_disposal_div  "); // 処理区分
+    sb.append("     ,it_lot_id            => lt_lot_id        "); // ロットID
+    sb.append("     ,it_item_id           => lt_item_id       "); // 品目ID
+    sb.append("     ,iv_qt_object         => null ");
+    sb.append("     ,it_batch_id          => :4   "); // バッチID
+    sb.append("     ,it_batch_po_id       => null ");
+// 2009-02-09 v1.4 D.Nihei Add Start 本番障害#32対応
+    sb.append("     ,it_qty               => TO_NUMBER(:5) ");
+// 2009-02-09 v1.4 D.Nihei Add End
+    sb.append("     ,it_prod_dely_date    => null ");
+    sb.append("     ,it_vendor_line       => null ");
+    sb.append("     ,it_qt_inspect_req_no => :6   "); // 検査依頼No
+    sb.append("     ,ot_qt_inspect_req_no => :7   "); // 検査依頼No
+    sb.append("     ,ov_errbuf            => :8   ");
+    sb.append("     ,ov_retcode           => :9   ");
+    sb.append("     ,ov_errmsg            => :10  ");
+    sb.append("    ); ");
+// 2009-02-09 v1.4 D.Nihei Add Start 本番障害#32対応
+    sb.append("  ELSE ");
+    sb.append("    NULL; ");
+    sb.append("  END IF; ");
+// 2009-02-09 v1.4 D.Nihei Add End
     sb.append("END; ");
 
     //PL/SQLの設定を行います
@@ -1624,6 +1656,9 @@ public class XxwipUtility
       cstmt.setInt(i++, XxcmnUtility.intValue(lotId));
       cstmt.setInt(i++, XxcmnUtility.intValue(itemId));
       cstmt.setInt(i++, XxcmnUtility.intValue(batchId));
+// 2009-02-09 v1.4 D.Nihei Add Start 本番障害#32対応
+      cstmt.setString(i++, qty);
+// 2009-02-09 v1.4 D.Nihei Add End
       cstmt.setString(i++, qtNumber);
       cstmt.registerOutParameter(i++, Types.VARCHAR);
       cstmt.registerOutParameter(i++, Types.VARCHAR, 5000); 
@@ -1631,7 +1666,7 @@ public class XxwipUtility
       cstmt.registerOutParameter(i++, Types.VARCHAR, 5000); 
       cstmt.execute();
 
-      String retCode = cstmt.getString(8);
+      String retCode = cstmt.getString(9);
       if (XxcmnConstants.API_RETURN_NORMAL.equals(retCode)) 
       {
         exeType = XxcmnConstants.RETURN_SUCCESS;
@@ -1645,7 +1680,7 @@ public class XxwipUtility
         rollBack(trans, XxwipConstants.SAVE_POINT_XXWIP200001J);
         XxcmnUtility.writeLog(trans,
                               XxwipConstants.CLASS_XXWIP_UTILITY + XxcmnConstants.DOT + apiName,
-                              cstmt.getString(7) + cstmt.getString(9),
+                              cstmt.getString(8) + cstmt.getString(10),
                               6);
         //トークンを生成します。
         MessageToken[] tokens = { new MessageToken(XxwipConstants.TOKEN_API_NAME,

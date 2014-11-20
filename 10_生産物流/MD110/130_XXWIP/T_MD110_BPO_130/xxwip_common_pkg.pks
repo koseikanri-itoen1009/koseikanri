@@ -6,7 +6,7 @@ AS
  * Package Name           : xxwip_common_pkg(SPEC)
  * Description            : 共通関数(XXWIP)(SPEC)
  * MD.070(CMD.050)        : なし
- * Version                : 1.19
+ * Version                : 1.20
  *
  * Program List
  *  -------------------- ---- ----- --------------------------------------------------
@@ -54,6 +54,7 @@ AS
  *  2009/01/15   1.18  Oracle 二瓶 大輔   本番障害#836恒久対応Ⅱ(業務ステータス更新関数)
  *  2009/01/30   1.19  Oracle 二瓶 大輔   本番障害#4対応(ランク3追加)
  *                                        本番障害#666対応(実績開始日修正)
+ *  2009/02/16   1.20  Oracle 二瓶 大輔   本番障害#1198対応
  *****************************************************************************************/
 --
   -- ステータス更新関数
@@ -68,7 +69,10 @@ AS
   -- バッチNo取得関数
   FUNCTION get_batch_no(
     it_batch_id    gme_batch_header.batch_id%TYPE)      -- 1.更新対象のバッチID
-  RETURN NUMBER;
+-- 2009/02/16 D.Nihei Mod Start 内部変更要求#189
+--  RETURN NUMBER;
+  RETURN VARCHAR2;
+-- 2009/02/16 D.Nihei Mod End
 --
   -- 原料明細追加関数
   PROCEDURE insert_material_line(

@@ -7,7 +7,7 @@ AS
  * Description      : 発注単価洗替処理
  * MD.050           : 仕入単価／標準原価マスタ登録 Issue1.0  T_MD050_BPO_870
  * MD.070           : 仕入単価／標準原価マスタ登録 Issue1.0  T_MD070_BPO_870
- * Version          : 1.11
+ * Version          : 1.12
  *
  * Program List
  * --------------------------- ----------------------------------------------------------
@@ -55,6 +55,7 @@ AS
  *  2008/12/04    1.9   Oracle二瓶大輔   本番障害#381対応(TRUNC削除)
  *  2008/12/19    1.10  H.Marushita      本番障害#794対応
  *  2008/12/25    1.11  T.Yoshimoto      発注EBS標準ステータス:未承認対応
+ *  2009/02/16    1.12  A.Shiina         本番#1135対応
  *
  *****************************************************************************************/
 --
@@ -253,6 +254,10 @@ AS
     conv_unit            xxcmn_item_mst_v.conv_unit%TYPE,             -- 入出庫換算単位
     item_id              xxcmn_item_mst_v.item_id%TYPE,               -- 品目ID
     item_no              xxcmn_item_mst_v.item_no%TYPE,               -- 品目番号
+-- 2009/02/16 v1.12 ADD START
+    prod_class_code     xxcmn_item_categories5_v.prod_class_code%TYPE, -- 商品区分
+    item_class_code     xxcmn_item_categories5_v.item_class_code%TYPE, -- 品目区分
+-- 2009/02/16 v1.12 ADD END
     cost_manage_code     xxcmn_item_mst_v.cost_manage_code%TYPE       -- 原価管理区分
     );
 --
@@ -578,6 +583,10 @@ AS
           || ' ,ximv.conv_unit            AS  conv_unit'             -- 入出庫換算単位
           || ' ,ximv.item_id              AS  item_id'               -- 品目ID
           || ' ,ximv.item_no              AS  item_no'               -- 品目番号
+-- 2009/02/16 v1.12 ADD START
+          || ' ,xicv.prod_class_code      AS  prod_class_code'       -- 商品区分
+          || ' ,xicv.item_class_code      AS  item_class_code'       -- 品目区分
+-- 2009/02/16 v1.12 ADD END
           || ' ,ximv.cost_manage_code     AS  cost_manage_code';     -- 原価管理区分
 --
     cv_po_ok       CONSTANT VARCHAR2(10) := '20';                 -- 発注作成済
@@ -650,6 +659,9 @@ AS
       ||     ' ,po_lines_all          pla'                    -- 発注明細
       ||     ' ,po_line_locations_all plla'                   -- 発注納入明細
       ||     ' ,xxcmn_item_mst_v      ximv'                   -- OPM品目情報VIEW
+-- 2009/02/16 v1.12 ADD START
+      ||     ' ,xxcmn_item_categories5_v xicv'
+-- 2009/02/16 v1.12 ADD END
       ||     ' WHERE  pha.attribute4 > ' || '''' || lv_close_date || ''''; -- 納入日
 --
     -- 取引先がパラメータに入力されていた場合条件追加
@@ -677,6 +689,9 @@ AS
       ||     ' AND pla.po_header_id             = plla.po_header_id'           -- 発注ヘッダID
       ||     ' AND pla.po_line_id               = plla.po_line_id'             -- 発注明細ID
       ||     ' AND pla.item_id                  = ximv.inventory_item_id'      -- 品目ID
+-- 2009/02/16 v1.12 ADD START
+      ||     ' AND ximv.item_id                 = xicv.item_id'
+-- 2009/02/16 v1.12 ADD END
       ||     ' AND xxcmn_common_pkg.get_category_desc(ximv.item_no,'
       ||     ''''|| gv_cat_set_item_class || '''' || ')  = ' || '''' || iv_item_type_name || ''''
       ||     ' AND xxcmn_common_pkg.get_category_desc(ximv.item_no,'
@@ -1205,6 +1220,9 @@ AS
     ln_result             NUMBER;                            -- API関数戻り値
     ltbl_api_errors       PO_API_ERRORS_REC_TYPE;            -- APIエラー戻り値
     lv_out_msg            VARCHAR2(2000);                    -- ログメッセージ
+-- 2009/02/16 v1.12 ADD START
+    lv_revision_num       po_headers_all.revision_num%TYPE;  -- 発注番号
+-- 2009/02/16 v1.12 ADD END
 --
     -- *** ローカル・カーソル ***
     -- <カーソル名>
@@ -1220,13 +1238,25 @@ AS
 --###########################  固定部 END   ############################
 --
 --
+-- 2009/02/16 v1.12 ADD START
+    -- バージョンの取得
+    SELECT pha.revision_num
+    INTO   lv_revision_num
+    FROM   po_headers_all  pha
+    WHERE  pha.segment1 = ir_po_data.po_no
+    ;
+--
+-- 2009/02/16 v1.12 ADD END
     -- ===============================
     -- 発注変更API実行
     -- ===============================
     ln_result := PO_CHANGE_API1_S.UPDATE_PO(
                    x_po_number               => ir_po_data.po_no,                 -- 発注番号
                    x_release_number          => NULL,                             -- リリース番号
-                   x_revision_number         => ir_po_data.revision_num,          -- バージョン番号
+-- 2009/02/16 v1.12 UPDATE START
+--                   x_revision_number         => ir_po_data.revision_num,          -- バージョン番号
+                   x_revision_number         => lv_revision_num,                  -- バージョン番号
+-- 2009/02/16 v1.12 UPDATE END
                    x_line_number             => ir_po_data.po_l_no,               -- 発注明細番号
                    x_shipment_number         => NULL,                             -- 納入明細番号
                    new_quantity              => NULL,                             -- 数量
@@ -1364,6 +1394,10 @@ AS
     -- ===============================
     -- *** ローカル定数 ***
 --
+-- 2009/02/16 v1.12 ADD START
+    cv_drink                  CONSTANT VARCHAR2(1) := '2'; -- ドリンク
+    cv_prod                   CONSTANT VARCHAR2(1) := '5'; -- 製品
+-- 2009/02/16 v1.12 ADD END
     -- *** ローカル変数 ***
     ln_quantity               NUMBER DEFAULT 0;            -- 数量
     ln_kona                   NUMBER DEFAULT 0;            -- 粉引額
@@ -1394,6 +1428,8 @@ AS
       ln_quantity := TRUNC(TO_NUMBER(ir_po_data.rcv_quantity));
     END IF;
 */
+-- 2009/02/16 v1.12 UPDATE START
+/*
     IF (ir_po_data.status > gv_po_stats) THEN
 -- 2008/12/04 v1.9 D.Nihei Mod Start 本番障害#381対応
 --      ln_quantity := TRUNC(TO_NUMBER(ir_po_data.rcv_quantity));
@@ -1405,10 +1441,26 @@ AS
       ln_quantity := TO_NUMBER(ir_po_data.po_quantity);
 -- 2008/12/04 v1.9 D.Nihei Mod End
     END IF;
+*/
+    ln_quantity := TO_NUMBER(ir_po_data.po_quantity);
+-- 2009/02/16 v1.12 UPDATE END
 --2008/09/24 Mod ↑
 --
+-- 2009/02/16 v1.12 UPDATE START
+/*
     -- 品目がドリンク製品の場合(単位と発注単位が異なる場合)は 数量 = 数量 * ケース入数
     IF (ir_po_data.base_uom <> ir_po_data.po_uom) THEN
+*/
+    -- 入出庫換算単位がNULLでない、かつ
+    -- ドリンク製品の場合、かつ
+    -- ケース入り数が1以上の場合は、数量 = 数量 * ケース入数
+    IF (
+         (ir_po_data.conv_unit IS NOT NULL)
+           AND (ir_po_data.prod_class_code = cv_drink)
+             AND (ir_po_data.item_class_code = cv_prod)
+               AND (ir_po_data.num_of_cases > 0)
+       ) THEN
+-- 2009/02/16 v1.12 UPDATE END
 -- 2008/12/04 v1.9 D.Nihei Mod Start 本番障害#381対応
 --      ln_quantity := TRUNC(ln_quantity * TO_NUMBER(ir_po_data.num_of_cases));
       ln_quantity := ln_quantity * TO_NUMBER(ir_po_data.num_of_cases);

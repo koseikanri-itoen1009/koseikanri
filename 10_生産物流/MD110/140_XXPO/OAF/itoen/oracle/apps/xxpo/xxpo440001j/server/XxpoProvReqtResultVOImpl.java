@@ -1,13 +1,14 @@
 /*============================================================================
 * ファイル名 : XxpoProvReqtResultVOImpl
 * 概要説明   : 支給指示要約結果ビューオブジェクト
-* バージョン : 1.1
+* バージョン : 1.2
 *============================================================================
 * 修正履歴
 * 日付       Ver. 担当者       修正内容
 * ---------- ---- ------------ ----------------------------------------------
 * 2008-03-05 1.0  二瓶大輔     新規作成
 * 2008-06-09 1.1  二瓶大輔     変更要求#42対応
+* 2009-02-16 1.2  二瓶大輔     本番障害#469対応
 *============================================================================
 */
 package itoen.oracle.apps.xxpo.xxpo440001j.server;
@@ -24,7 +25,7 @@ import oracle.jbo.domain.Number;
 /***************************************************************************
  * 支給指示要約結果ビューオブジェクトクラスです。
  * @author  ORACLE 二瓶 大輔
- * @version 1.1
+ * @version 1.2
  ***************************************************************************
  */
 public class XxpoProvReqtResultVOImpl extends OAViewObjectImpl 
@@ -152,7 +153,7 @@ public class XxpoProvReqtResultVOImpl extends OAViewObjectImpl
       // Where句生成
       whereClause.append("shipped_date <= :" + bindCount++);
       //検索値をセット
-      parameters.add(shipDateTo);      
+      parameters.add(shipDateTo);
     }
     // 入庫日Fromが入力されていた場合
     if (!XxcmnUtility.isBlankOrNull(arvlDateFrom))
@@ -215,6 +216,22 @@ public class XxpoProvReqtResultVOImpl extends OAViewObjectImpl
 
     // 検索条件をVOにセット
     setWhereClause(whereClause.toString());
+
+// 2009-02-16 v1.2 D.Nihei Add Start 本番障害#469対応
+    // ヒント句を以下の条件の場合使用する。
+    if (!XxcmnUtility.isBlankOrNull(transStatus)
+      && XxcmnUtility.isBlankOrNull(vendorCode)
+      && XxcmnUtility.isBlankOrNull(shipToCode)
+      && XxcmnUtility.isBlankOrNull(shipWhseCode)
+      && XxcmnUtility.isBlankOrNull(reqNo)
+      && XxcmnUtility.isBlankOrNull(shipToNo)) 
+    {
+        setQueryOptimizerHint(" index(QRSLT.xoha xxwsh_oh_n29) ");
+    } else
+    {
+        setQueryOptimizerHint(null);
+    }
+// 2009-02-16 v1.2 D.Nihei Add End
 
     // バインド値が設定されていた場合
     if (bindCount > 0)

@@ -1,7 +1,7 @@
 /*============================================================================
 * ファイル名 : XxwipVolumeActualAMImpl
 * 概要説明   : 出来高実績入力アプリケーションモジュール
-* バージョン : 1.9
+* バージョン : 1.10
 *============================================================================
 * 修正履歴
 * 日付       Ver. 担当者       修正内容
@@ -19,6 +19,7 @@
 * 2009-01-20 1.8  二瓶大輔     本番障害#1055
 * 2009-02-04 1.9  二瓶大輔     本番障害#4
 *                              本番障害#666
+* 2009-02-09 1.10 二瓶大輔     本番障害#32
 *============================================================================
 */
 package itoen.oracle.apps.xxwip.xxwip200001j.server;
@@ -53,7 +54,7 @@ import oracle.jbo.domain.Number;
 /***************************************************************************
  * 出来高実績入力画面のアプリケーションモジュールクラスです。
  * @author  ORACLE 二瓶 大輔
- * @version 1.9
+ * @version 1.10
  ***************************************************************************
  */
 public class XxwipVolumeActualAMImpl extends XxcmnOAApplicationModuleImpl 
@@ -717,6 +718,13 @@ public class XxwipVolumeActualAMImpl extends XxcmnOAApplicationModuleImpl
       {
         OAException.raiseBundledOAException(exceptions);
       }
+// 2009-02-09 v1.10 D.Nihei Add Start 本番障害#32対応
+      // 品質検査
+      if (XxcmnConstants.RETURN_WARN.equals(doQtInspection())) 
+      {
+        warnFlag = true;
+      }
+// 2009-02-09 v1.10 D.Nihei Add End
       // 0実績処理を実行
       zeroExecute();
       exeFlag = true;
@@ -1817,6 +1825,48 @@ public class XxwipVolumeActualAMImpl extends XxcmnOAApplicationModuleImpl
     // 更新行削除
     } else
     {
+// 2009-02-09 v1.10 D.Nihei Add Start 本番障害#32対応
+      if (XxwipConstants.TAB_TYPE_CO_PROD.equals(tabType)) 
+      {
+        // 削除行取得
+        try 
+        {
+          row = (OARow)vo.getFirstFilteredRow("MaterialDetailId", new Number(mtlDtlId));
+        } catch (Exception ex) 
+        {
+          doRollBack();
+          throw new OAException(XxcmnConstants.APPL_XXCMN, 
+                                XxcmnConstants.XXCMN10123);
+        }
+        if (row != null) 
+        {
+          // 各種情報を取得します。
+          Number lotId         = (Number)row.getAttribute("LotId");           // ロットID
+          String baseActualQty = (String)row.getAttribute("BaseActualQty");   // 実績数量(DB)
+          Number itemId        = (Number)row.getAttribute("ItemId");          // 品目ID
+          Number nBatchId      = (Number)row.getAttribute("BatchId");         // バッチID
+          // 品質検査Noを取得する。
+          String qtNumber = getQtNumber(itemId, lotId);
+          // 品質検査NoがNull以外の場合
+          if (!XxcmnUtility.isBlankOrNull(qtNumber)) 
+          {
+            // 差分数量を取得(0-出来高数量(DB)) 
+            String qty = XxwipUtility.subtract(getOADBTransaction(),
+                           XxcmnConstants.STRING_ZERO,
+                           baseActualQty);
+            // 更新(マイナス訂正)
+            XxwipUtility.doQtInspection(
+              getOADBTransaction(),
+              "2",
+              lotId,
+              itemId,
+              nBatchId,
+              qtNumber,
+              qty);
+          }
+        }
+      }
+// 2009-02-09 v1.10 D.Nihei Add End
       // 引数を設定します。
       HashMap params = new HashMap();
       params.put("batchId",  batchId);
@@ -1870,6 +1920,9 @@ public class XxwipVolumeActualAMImpl extends XxcmnOAApplicationModuleImpl
     String location    = (String)row.getAttribute("DeliveryLocation"); // 保管場所
     String whseCode    = (String)row.getAttribute("WipWhseCode");      // 倉庫コード
     Number batchId     = (Number)row.getAttribute("BatchId");          // バッチID
+// 2009-02-09 v1.10 D.Nihei Add Start 本番障害#32対応
+    String retCode     = null;  // 品質検査戻り値格納用
+// 2009-02-09 v1.10 D.Nihei Add End
 
     // 完成品の場合
     if (XxwipConstants.LINE_TYPE_PROD.equals(lineType))
@@ -1903,9 +1956,36 @@ public class XxwipVolumeActualAMImpl extends XxcmnOAApplicationModuleImpl
       // トランザクションIDがnullでは無い場合
       } else 
       {
+// 2009-02-09 v1.10 D.Nihei Add Start 本番障害#32対応
+        // ====================================
+        // ロットの付け替えが発生した場合
+        // ====================================
+        if (!XxcmnUtility.chkCompareNumeric(3, lotId, baseLotId))
+        {
+          // 品質検査Noを取得する。
+          String baseQtNumber = getQtNumber(itemId, baseLotId);
+          // 品質検査NoがNull以外の場合
+          if (!XxcmnUtility.isBlankOrNull(baseQtNumber)) 
+          {
+            // 差分数量を取得(0-出来高数量(DB)) 
+            String qty = XxwipUtility.subtract(getOADBTransaction(),
+                           XxcmnConstants.STRING_ZERO,
+                           baseActualQty);
+            // 更新(マイナス訂正)
+            XxwipUtility.doQtInspection(
+              getOADBTransaction(),
+              "2",
+              baseLotId,
+              itemId,
+              batchId,
+              baseQtNumber,
+              qty);
+          }
+        }
+// 2009-02-09 v1.10 D.Nihei Add End
         // ロットID、生産日、実績数量が変更された場合
-        if (!XxcmnUtility.isEquals(baseLotId,     lotId)
-         || !XxcmnUtility.isEquals(productDate,   baseProductDate)
+        if (!XxcmnUtility.isEquals(baseLotId,  lotId)
+         || !XxcmnUtility.isEquals(productDate, baseProductDate)
 // 2008-12-24 v.1.6 D.Nihei Add Start 本番障害#836
 //         || !XxcmnUtility.isEquals(baseActualQty, actualQty)) 
          || !XxcmnUtility.chkCompareNumeric(3, baseActualQty, actualQty)) 
@@ -1940,6 +2020,9 @@ public class XxwipVolumeActualAMImpl extends XxcmnOAApplicationModuleImpl
           String actualQty     = (String)row.getAttribute("ActualQty");       // 実績数量
           String baseActualQty = (String)row.getAttribute("BaseActualQty");   // 実績数量(DB)
           Number mtlDtlId      = (Number)row.getAttribute("MaterialDetailId");// 生産原料詳細ID   
+// 2009-02-09 v1.10 D.Nihei Add Start 本番障害#32対応
+          Number itemId        = (Number)row.getAttribute("ItemId");
+// 2009-02-09 v1.10 D.Nihei Add End
           // 引数を設定します。
           HashMap params = new HashMap();
           params.put("batchId",     batchId);
@@ -1960,6 +2043,33 @@ public class XxwipVolumeActualAMImpl extends XxcmnOAApplicationModuleImpl
           // トランザクションIDがnullでは無い場合
           } else 
           {
+// 2009-02-09 v1.10 D.Nihei Add Start 本番障害#32対応
+            // ====================================
+            // ロットの付け替えが発生した場合
+            // ====================================
+            if (!XxcmnUtility.chkCompareNumeric(3, lotId, baseLotId))
+            {
+              // 品質検査Noを取得する。
+              String baseQtNumber = getQtNumber(itemId, baseLotId);
+              // 品質検査NoがNull以外の場合
+              if (!XxcmnUtility.isBlankOrNull(baseQtNumber)) 
+              {
+                // 差分数量を取得(0-出来高数量(DB)) 
+                String qty = XxwipUtility.subtract(getOADBTransaction(),
+                               XxcmnConstants.STRING_ZERO,
+                               baseActualQty);
+                // 更新(マイナス訂正)
+                XxwipUtility.doQtInspection(
+                  getOADBTransaction(),
+                  "2",
+                  baseLotId,
+                  itemId,
+                  batchId,
+                  baseQtNumber,
+                  qty);
+              }
+            }
+// 2009-02-09 v1.10 D.Nihei Add End
             if (!XxcmnUtility.isEquals(baseLotId, lotId) 
 // 2008-12-24 v.1.6 D.Nihei Add Start 本番障害#836
 //             || !XxcmnUtility.isEquals(baseActualQty, actualQty)) 
@@ -2058,6 +2168,161 @@ public class XxwipVolumeActualAMImpl extends XxcmnOAApplicationModuleImpl
     }        
   } // getRowLock
 
+// 2009-02-09 v1.10 D.Nihei Mod Start 本番障害#32対応
+//  /***************************************************************************
+//   * 品質検査を行うメソッドです。
+//   * @throws OAException - OA例外
+//   ***************************************************************************
+//   */
+//  public String doQtInspection() throws OAException 
+//  {
+//    OAViewObject vo = null;
+//    OARow row       = null;
+//    CallableStatement cstmt = null;
+//    String exeType  = XxcmnConstants.RETURN_NOT_EXE;
+//    boolean warnFlag   = false; // 正常終了フラグ
+//    boolean exeFlag    = false; // 警告終了フラグ
+//
+//    // ヘッダ情報を取得します。
+//    vo  = getXxwipBatchHeaderVO1();
+//    row = (OARow)vo.first();
+//    String qtType = (String)row.getAttribute("QtType");
+//    // 品質検査有無区分がYの場合
+//    if (XxwipConstants.QT_TYPE_ON.equals(qtType)) 
+//    {
+//      // 各種情報を取得
+//      Number lotId   = (Number)row.getAttribute("LotId");
+//      Number itemId  = (Number)row.getAttribute("ItemId");
+//      Number batchId = (Number)row.getAttribute("BatchId");
+//      // 品質検査Noを取得する。
+//      String qtNumber = getQtNumber(itemId, lotId);
+//      String retCode  = null;
+//      // 品質検査NoがNullの場合
+//      if (XxcmnUtility.isBlankOrNull(qtNumber)) 
+//      {
+//        // 新規
+//        retCode = XxwipUtility.doQtInspection(
+//                    getOADBTransaction(),
+//                    "1",
+//                    lotId,
+//                    itemId,
+//                    batchId,
+//                    null);
+//        if (XxcmnConstants.RETURN_WARN.equals(retCode)) 
+//        {
+//          warnFlag = true;  
+//        } else if (XxcmnConstants.RETURN_SUCCESS.equals(retCode))
+//        {
+//          exeFlag  = true;
+//        }
+//      // 製造日、出来高数が変更された場合
+//      } else if (!XxcmnUtility.isEquals(row.getAttribute("MakerDate"), 
+//                                        row.getAttribute("BaseMakerDate"))
+//// 2008-12-24 v.1.6 D.Nihei Add Start 本番障害#836
+////              || !XxcmnUtility.isEquals(row.getAttribute("ActualQty"),   
+////                                        row.getAttribute("BaseActualQty"))) 
+//             || !XxcmnUtility.chkCompareNumeric(3, row.getAttribute("ActualQty")
+//                                                 , row.getAttribute("BaseActualQty")))
+//// 2008-12-24 v.1.6 D.Nihei Add End
+//      {
+//        // 更新
+//        retCode = XxwipUtility.doQtInspection(
+//                    getOADBTransaction(),
+//                    "2",
+//                    lotId,
+//                    itemId,
+//                    batchId,
+//                    qtNumber);
+//        if (XxcmnConstants.RETURN_WARN.equals(retCode)) 
+//        {
+//          warnFlag = true;  
+//        } else if (XxcmnConstants.RETURN_SUCCESS.equals(retCode))
+//        {
+//          exeFlag  = true;
+//        }
+//      }
+//    }
+//    // 完成品の製造日を退避
+//    Date bhMakerDate     = (Date)row.getAttribute("MakerDate");
+//    Date bhBaseMakerDate = (Date)row.getAttribute("BaseMakerDate");
+//    // 副産物情報
+//    OAViewObject coProdVo = getXxwipBatchCoProdVO1();
+//    int fetchedRowCount   = coProdVo.getFetchedRowCount();
+//    Row[] coProdRows      = coProdVo.getAllRowsInRange();
+//    if ((coProdRows != null) && (coProdRows.length > 0))
+//    {
+//      for (int i = 0; i < coProdRows.length; i++)
+//      {
+//        row = (OARow)coProdRows[i];
+//        // 各種情報を取得します。
+//        qtType = (String)row.getAttribute("QtType");
+//        // 品質検査有無区分がYの場合
+//        if (XxwipConstants.QT_TYPE_ON.equals(qtType)) 
+//        {
+//          // 各種情報を取得
+//          Number lotId   = (Number)row.getAttribute("LotId");
+//          Number itemId  = (Number)row.getAttribute("ItemId");
+//          Number batchId = (Number)row.getAttribute("BatchId");
+//          // 品質検査Noを取得する。
+//          String qtNumber = (String)row.getAttribute("QtNumber");
+//          String retCode  = null;
+//          // 品質検査NoがNullの場合
+//          if (XxcmnUtility.isBlankOrNull(qtNumber)) 
+//          {
+//            // 新規
+//            retCode = XxwipUtility.doQtInspection(
+//                        getOADBTransaction(),
+//                        "1",
+//                        lotId,
+//                        itemId,
+//                        batchId,
+//                        null);
+//            if (XxcmnConstants.RETURN_WARN.equals(retCode)) 
+//            {
+//              warnFlag = true;  
+//            } else if (XxcmnConstants.RETURN_SUCCESS.equals(retCode))
+//            {
+//              exeFlag  = true;
+//            }
+//          // 製造日、出来高数が変更された場合
+//          } else if (!XxcmnUtility.isEquals(bhMakerDate, bhBaseMakerDate)
+//// 2008-12-24 v.1.6 D.Nihei Add Start 本番障害#836
+////                  || !XxcmnUtility.isEquals(row.getAttribute("ActualQty"), 
+////                                            row.getAttribute("BaseActualQty"))) 
+//             || !XxcmnUtility.chkCompareNumeric(3, row.getAttribute("ActualQty")
+//                                                 , row.getAttribute("BaseActualQty")))
+//// 2008-12-24 v.1.6 D.Nihei Add End
+//          {
+//            // 更新
+//            exeType = XxwipUtility.doQtInspection(
+//                        getOADBTransaction(),
+//                        "2",
+//                        lotId,
+//                        itemId,
+//                        batchId,
+//                        qtNumber);
+//            if (XxcmnConstants.RETURN_WARN.equals(retCode)) 
+//            {
+//              warnFlag = true;  
+//            } else if (XxcmnConstants.RETURN_SUCCESS.equals(retCode))
+//            {
+//              exeFlag  = true;
+//            }
+//          }
+//        }
+//      }
+//    }
+//    // 正常終了フラグがtrueの場合
+//    if (exeFlag) 
+//    {
+//      exeType = XxcmnConstants.RETURN_SUCCESS;
+//    // 警告終了フラグがtrueの場合
+//    } else if (warnFlag)
+//    {
+//      exeType = XxcmnConstants.RETURN_WARN;
+//    }
+//    return exeType;
+//  } // doQtInspection
   /***************************************************************************
    * 品質検査を行うメソッドです。
    * @throws OAException - OA例外
@@ -2065,38 +2330,63 @@ public class XxwipVolumeActualAMImpl extends XxcmnOAApplicationModuleImpl
    */
   public String doQtInspection() throws OAException 
   {
-    OAViewObject vo = null;
-    OARow row       = null;
-    CallableStatement cstmt = null;
-    String exeType  = XxcmnConstants.RETURN_NOT_EXE;
-    boolean warnFlag   = false; // 正常終了フラグ
-    boolean exeFlag    = false; // 警告終了フラグ
+
+
+
+    String exeType    = XxcmnConstants.RETURN_NOT_EXE;
+    boolean warnFlag = false; // 正常終了フラグ
+    boolean exeFlag  = false; // 警告終了フラグ
+    String retCode    = null;  // 品質検査戻り値格納用
 
     // ヘッダ情報を取得します。
-    vo  = getXxwipBatchHeaderVO1();
-    row = (OARow)vo.first();
-    String qtType = (String)row.getAttribute("QtType");
+    XxwipBatchHeaderVOImpl vo  = getXxwipBatchHeaderVO1();
+    OARow row = (OARow)vo.first();
+    String qtType        = (String)row.getAttribute("QtType");
+    Date bhMakerDate     = (Date)row.getAttribute("MakerDate");
+    Date bhBaseMakerDate = (Date)row.getAttribute("BaseMakerDate");
+    Number batchId       = (Number)row.getAttribute("BatchId");
+
     // 品質検査有無区分がYの場合
     if (XxwipConstants.QT_TYPE_ON.equals(qtType)) 
     {
       // 各種情報を取得
-      Number lotId   = (Number)row.getAttribute("LotId");
-      Number itemId  = (Number)row.getAttribute("ItemId");
-      Number batchId = (Number)row.getAttribute("BatchId");
+      Number lotId         = (Number)row.getAttribute("LotId");
+      Number itemId        = (Number)row.getAttribute("ItemId");
+      Number baseLotId     = (Number)row.getAttribute("BaseLotId");
+      String actualQty     = (String)row.getAttribute("ActualQty");
+      String baseActualQty = (String)row.getAttribute("BaseActualQty");
       // 品質検査Noを取得する。
-      String qtNumber = getQtNumber(itemId, lotId);
-      String retCode  = null;
-      // 品質検査NoがNullの場合
-      if (XxcmnUtility.isBlankOrNull(qtNumber)) 
+      String qtNumber      = getQtNumber(itemId, lotId);
+      // ====================================
+      // ロットID(DB)がNullの場合
+      // ====================================
+      if (XxcmnUtility.isBlankOrNull(baseLotId)) 
       {
-        // 新規
-        retCode = XxwipUtility.doQtInspection(
-                    getOADBTransaction(),
-                    "1",
-                    lotId,
-                    itemId,
-                    batchId,
-                    null);
+        // 品質検査NoがNullの場合
+        if (XxcmnUtility.isBlankOrNull(qtNumber)) 
+        {
+          // 新規
+          retCode = XxwipUtility.doQtInspection(
+                      getOADBTransaction(),
+                      "1",
+                      lotId,
+                      itemId,
+                      batchId,
+                      null,
+                      actualQty);
+        // 品質検査NoがNull以外の場合
+        } else
+        {
+          // 更新
+          retCode = XxwipUtility.doQtInspection(
+                      getOADBTransaction(),
+                      "2",
+                      lotId,
+                      itemId,
+                      batchId,
+                      qtNumber,
+                      actualQty);
+        }
         if (XxcmnConstants.RETURN_WARN.equals(retCode)) 
         {
           warnFlag = true;  
@@ -2104,40 +2394,74 @@ public class XxwipVolumeActualAMImpl extends XxcmnOAApplicationModuleImpl
         {
           exeFlag  = true;
         }
-      // 製造日、出来高数が変更された場合
-      } else if (!XxcmnUtility.isEquals(row.getAttribute("MakerDate"), 
-                                        row.getAttribute("BaseMakerDate"))
-// 2008-12-24 v.1.6 D.Nihei Add Start 本番障害#836
-//              || !XxcmnUtility.isEquals(row.getAttribute("ActualQty"),   
-//                                        row.getAttribute("BaseActualQty"))) 
-             || !XxcmnUtility.chkCompareNumeric(3, row.getAttribute("ActualQty")
-                                                 , row.getAttribute("BaseActualQty")))
-// 2008-12-24 v.1.6 D.Nihei Add End
+      // ====================================
+      // ロットID(DB)がNull以外の場合
+      // ====================================
+      } else
       {
-        // 更新
-        retCode = XxwipUtility.doQtInspection(
-                    getOADBTransaction(),
-                    "2",
-                    lotId,
-                    itemId,
-                    batchId,
-                    qtNumber);
-        if (XxcmnConstants.RETURN_WARN.equals(retCode)) 
+        // 品質検査NoがNullの場合
+        if (XxcmnUtility.isBlankOrNull(qtNumber)) 
         {
-          warnFlag = true;  
-        } else if (XxcmnConstants.RETURN_SUCCESS.equals(retCode))
+          // 新規
+          retCode = XxwipUtility.doQtInspection(
+                      getOADBTransaction(),
+                      "1",
+                      lotId,
+                      itemId,
+                      batchId,
+                      null,
+                      actualQty);
+          if (XxcmnConstants.RETURN_WARN.equals(retCode)) 
+          {
+            warnFlag = true;  
+          } else if (XxcmnConstants.RETURN_SUCCESS.equals(retCode))
+          {
+            exeFlag  = true;
+          }
+        // 品質検査NoがNull以外の場合
+        } else
         {
-          exeFlag  = true;
+          // 製造日、出来高数が変更された場合
+          if (!XxcmnUtility.isEquals(bhMakerDate, bhBaseMakerDate)
+           || !XxcmnUtility.chkCompareNumeric(3, actualQty, baseActualQty))
+          {
+            String qty = actualQty; 
+            // 数量訂正の場合
+            if (XxcmnUtility.chkCompareNumeric(3, lotId, baseLotId)) 
+
+
+            {
+              // 差分数量を取得
+              qty = XxwipUtility.subtract(getOADBTransaction(),
+                      actualQty,
+                      baseActualQty);
+            }
+            // 更新
+            retCode = XxwipUtility.doQtInspection(
+                        getOADBTransaction(),
+                        "2",
+                        lotId,
+                        itemId,
+                        batchId,
+                        qtNumber,
+                        qty);
+            if (XxcmnConstants.RETURN_WARN.equals(retCode)) 
+            {
+              warnFlag = true;  
+            } else if (XxcmnConstants.RETURN_SUCCESS.equals(retCode))
+            {
+              exeFlag  = true;
+            }
+          }
         }
       }
     }
-    // 完成品の製造日を退避
-    Date bhMakerDate     = (Date)row.getAttribute("MakerDate");
-    Date bhBaseMakerDate = (Date)row.getAttribute("BaseMakerDate");
+
+
     // 副産物情報
-    OAViewObject coProdVo = getXxwipBatchCoProdVO1();
-    int fetchedRowCount   = coProdVo.getFetchedRowCount();
-    Row[] coProdRows      = coProdVo.getAllRowsInRange();
+    XxwipBatchCoProdVOImpl coProdVo = getXxwipBatchCoProdVO1();
+
+    Row[] coProdRows = coProdVo.getAllRowsInRange();
     if ((coProdRows != null) && (coProdRows.length > 0))
     {
       for (int i = 0; i < coProdRows.length; i++)
@@ -2149,23 +2473,43 @@ public class XxwipVolumeActualAMImpl extends XxcmnOAApplicationModuleImpl
         if (XxwipConstants.QT_TYPE_ON.equals(qtType)) 
         {
           // 各種情報を取得
-          Number lotId   = (Number)row.getAttribute("LotId");
-          Number itemId  = (Number)row.getAttribute("ItemId");
-          Number batchId = (Number)row.getAttribute("BatchId");
+          Number itemId        = (Number)row.getAttribute("ItemId");
+          Number lotId         = (Number)row.getAttribute("LotId");
+          Number baseLotId     = (Number)row.getAttribute("BaseLotId");
+          String actualQty     = (String)row.getAttribute("ActualQty");
+          String baseActualQty = (String)row.getAttribute("BaseActualQty");
           // 品質検査Noを取得する。
-          String qtNumber = (String)row.getAttribute("QtNumber");
-          String retCode  = null;
-          // 品質検査NoがNullの場合
-          if (XxcmnUtility.isBlankOrNull(qtNumber)) 
+          String qtNumber      = getQtNumber(itemId, lotId);
+          // ====================================
+          // ロットID(DB)がNullの場合
+          // ====================================
+          if (XxcmnUtility.isBlankOrNull(baseLotId)) 
           {
-            // 新規
-            retCode = XxwipUtility.doQtInspection(
-                        getOADBTransaction(),
-                        "1",
-                        lotId,
-                        itemId,
-                        batchId,
-                        null);
+            // 品質検査NoがNullの場合
+            if (XxcmnUtility.isBlankOrNull(qtNumber)) 
+            {
+              // 新規
+              retCode = XxwipUtility.doQtInspection(
+                          getOADBTransaction(),
+                          "1",
+                          lotId,
+                          itemId,
+                          batchId,
+                          null,
+                          actualQty);
+            // 品質検査NoがNull以外の場合
+            } else
+            {
+              // 更新
+              retCode = XxwipUtility.doQtInspection(
+                          getOADBTransaction(),
+                          "2",
+                          lotId,
+                          itemId,
+                          batchId,
+                          qtNumber,
+                          actualQty);
+            }
             if (XxcmnConstants.RETURN_WARN.equals(retCode)) 
             {
               warnFlag = true;  
@@ -2173,29 +2517,64 @@ public class XxwipVolumeActualAMImpl extends XxcmnOAApplicationModuleImpl
             {
               exeFlag  = true;
             }
-          // 製造日、出来高数が変更された場合
-          } else if (!XxcmnUtility.isEquals(bhMakerDate, bhBaseMakerDate)
-// 2008-12-24 v.1.6 D.Nihei Add Start 本番障害#836
-//                  || !XxcmnUtility.isEquals(row.getAttribute("ActualQty"), 
-//                                            row.getAttribute("BaseActualQty"))) 
-             || !XxcmnUtility.chkCompareNumeric(3, row.getAttribute("ActualQty")
-                                                 , row.getAttribute("BaseActualQty")))
-// 2008-12-24 v.1.6 D.Nihei Add End
+          // ====================================
+          // ロットID(DB)がNull以外の場合
+          // ====================================
+          } else
           {
-            // 更新
-            exeType = XxwipUtility.doQtInspection(
-                        getOADBTransaction(),
-                        "2",
-                        lotId,
-                        itemId,
-                        batchId,
-                        qtNumber);
-            if (XxcmnConstants.RETURN_WARN.equals(retCode)) 
+            // 品質検査NoがNullの場合
+            if (XxcmnUtility.isBlankOrNull(qtNumber)) 
             {
-              warnFlag = true;  
-            } else if (XxcmnConstants.RETURN_SUCCESS.equals(retCode))
+              // 新規
+              retCode = XxwipUtility.doQtInspection(
+                          getOADBTransaction(),
+                          "1",
+                          lotId,
+                          itemId,
+                          batchId,
+                          null,
+                          actualQty);
+              if (XxcmnConstants.RETURN_WARN.equals(retCode)) 
+              {
+                warnFlag = true;  
+              } else if (XxcmnConstants.RETURN_SUCCESS.equals(retCode))
+              {
+                exeFlag  = true;
+              }
+            // 品質検査NoがNull以外の場合
+            } else
             {
-              exeFlag  = true;
+              // 製造日、出来高数が変更された場合
+              if (!XxcmnUtility.isEquals(bhMakerDate, bhBaseMakerDate)
+               || !XxcmnUtility.chkCompareNumeric(3, actualQty, baseActualQty))
+              {
+                String qty = actualQty; 
+                // 数量訂正の場合
+                if (XxcmnUtility.chkCompareNumeric(3, lotId, baseLotId)) 
+
+                {
+                  // 差分数量を取得
+                  qty = XxwipUtility.subtract(getOADBTransaction(),
+                          actualQty,
+                          baseActualQty);
+                }
+                // 更新
+                retCode = XxwipUtility.doQtInspection(
+                            getOADBTransaction(),
+                            "2",
+                            lotId,
+                            itemId,
+                            batchId,
+                            qtNumber,
+                            qty);
+                if (XxcmnConstants.RETURN_WARN.equals(retCode)) 
+                {
+                  warnFlag = true;  
+                } else if (XxcmnConstants.RETURN_SUCCESS.equals(retCode))
+                {
+                  exeFlag  = true;
+                }
+              }
             }
           }
         }
@@ -2212,7 +2591,7 @@ public class XxwipVolumeActualAMImpl extends XxcmnOAApplicationModuleImpl
     }
     return exeType;
   } // doQtInspection
-
+// 2009-02-09 v1.10 D.Nihei Mod End
   /***************************************************************************
    * 排他制御チェックを行うメソッドです。
    ***************************************************************************
@@ -3013,8 +3392,8 @@ public class XxwipVolumeActualAMImpl extends XxcmnOAApplicationModuleImpl
     // バッチヘッダ情報VO取得
     XxwipBatchHeaderVOImpl vo  = getXxwipBatchHeaderVO1();
     OARow row = (OARow)vo.first();
-    // 生産原料詳細ID
-    Number mtlDtlId      = (Number)row.getAttribute("MaterialDetailId");
+    // バッチID
+    Number batchId       = (Number)row.getAttribute("BatchId");
     // 生産日
     Date productDate     = (Date)row.getAttribute("ProductDate");
     // 生産日(DB)
@@ -3033,7 +3412,9 @@ public class XxwipVolumeActualAMImpl extends XxcmnOAApplicationModuleImpl
     sb.append("       , gmd.last_updated_by    = FND_GLOBAL.USER_ID "      ); // 最終更新者
     sb.append("       , gmd.last_update_date   = SYSDATE "                 ); // 最終更新日
     sb.append("       , gmd.last_update_login  = FND_GLOBAL.LOGIN_ID "     ); // 最終更新ログイン
-    sb.append("  WHERE  gmd.material_detail_id = :2 ;"                     ); // 生産原料詳細ID
+    sb.append("  WHERE  gmd.batch_id    = :2      "); // バッチID
+    sb.append("  AND    gmd.attribute24 IS NULL   "); // 原料削除フラグ
+    sb.append("  AND    gmd.line_type   IN(1, 2) ;"); // ラインタイプ
     sb.append("END; ");
 
     //PL/SQLの設定を行います
@@ -3045,7 +3426,7 @@ public class XxwipVolumeActualAMImpl extends XxcmnOAApplicationModuleImpl
       int i = 1;
       // パラメータ設定(INパラメータ)
       cstmt.setDate(i++, XxcmnUtility.dateValue(productDate)); // 生産日
-      cstmt.setInt(i++,  XxcmnUtility.intValue(mtlDtlId));     // 生産原料詳細ID
+      cstmt.setInt(i++,  XxcmnUtility.intValue(batchId));      // バッチID
      
       //PL/SQL実行
       cstmt.execute();

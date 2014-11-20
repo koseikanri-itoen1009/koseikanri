@@ -6,7 +6,7 @@ AS
  * Package Name           : xxwip_common_pkg(BODY)
  * Description            : 共通関数(XXWIP)(BODY)
  * MD.070(CMD.050)        : なし
- * Version                : 1.19
+ * Version                : 1.20
  *
  * Program List
  *  --------------------   ---- ----- --------------------------------------------------
@@ -65,6 +65,7 @@ AS
  *  2009/01/15   1.18  Oracle 二瓶 大輔   本番障害#836恒久対応Ⅱ(業務ステータス更新関数)
  *  2009/01/30   1.19  Oracle 二瓶 大輔   本番障害#4対応(ランク3追加)
  *                                        本番障害#666対応(実績開始日修正)
+ *  2009/02/16   1.20  Oracle 二瓶 大輔   本番障害#1198対応
  *****************************************************************************************/
 --
 --###############################  固定グローバル定数宣言部 START   ###############################
@@ -315,29 +316,16 @@ AS
     WHERE  gbh.batch_id = in_batch_id
     ;
 --
--- 2009/01/30 D.Nihei MOD START 本番障害#666対応
---    -- *************************************************
---    -- ***  生産日を取得、NULLの場合はシステム日付を取得
---    -- *************************************************
---    SELECT NVL( FND_DATE.STRING_TO_DATE( gmd.attribute11, 'YYYY/MM/DD' ), TRUNC( SYSDATE ) )
---    INTO   ld_date
---    FROM   gme_material_details gmd     -- 生産原料詳細
---    WHERE  gmd.batch_id  = in_batch_id
---    AND    gmd.line_type = gn_prod
---    AND    ROWNUM        = 1
---    ;
     -- *************************************************
-    -- ***  生産予定日を取得、NULLの場合はシステム日付を取得
-    -- ***  (妥当性ルール内に実績開始日を設定しなければいけない為)
+    -- ***  生産日を取得、NULLの場合はシステム日付を取得
     -- *************************************************
-    SELECT TRUNC( NVL( gbh.plan_start_date, SYSDATE ) )
+    SELECT NVL( FND_DATE.STRING_TO_DATE( gmd.attribute11, 'YYYY/MM/DD' ), TRUNC( SYSDATE ) )
     INTO   ld_date
-    FROM   gme_batch_header     gbh     -- 生産バッチヘッダ
-    WHERE  gbh.batch_id  = in_batch_id
-
-
+    FROM   gme_material_details gmd     -- 生産原料詳細
+    WHERE  gmd.batch_id  = in_batch_id
+    AND    gmd.line_type = gn_prod
+    AND    ROWNUM        = 1
     ;
--- 2009/01/30 D.Nihei MOD END
 --
     -- バッチステータスが保留中、更新ステータスが完了の場合、バッチステータスをWIPに更新
     IF (
@@ -528,7 +516,10 @@ AS
   FUNCTION get_batch_no(
     it_batch_id gme_batch_header.batch_id%TYPE
   )
-    RETURN NUMBER
+-- 2009/02/16 D.Nihei Mod Start 内部変更要求#189
+--    RETURN NUMBER
+    RETURN VARCHAR2
+-- 2009/02/16 D.Nihei Mod End
   IS
     -- ===============================
     -- 固定ローカル定数
@@ -811,9 +802,6 @@ AS
     lt_expiration_date      gme_material_details.attribute10%TYPE;        -- 賞味期限日
     lt_prouct_date          gme_material_details.attribute11%TYPE;        -- 生産日
     lt_maker_date           gme_material_details.attribute17%TYPE;        -- 製造日
-
-
-
 --
     -- *** ローカル・カーソル ***
 --
@@ -1274,7 +1262,6 @@ AS
     -- *** ローカル変数 ***
     ln_message_count      NUMBER;         -- メッセージカウント
     lv_message_list       VARCHAR2(200);  -- メッセージリスト
-
 --
     -- *** ローカル・カーソル ***
 --
@@ -1472,9 +1459,6 @@ AS
     ir_ic_lots_mst_out.attribute19 := lr_ic_lots_mst.attribute19;
 -- 2009/01/30 D.Nihei ADD END
     ir_ic_lots_mst_out.attribute22 := lr_ic_lots_mst.attribute22;
-
-
-
   EXCEPTION
     --*** API例外 ***
     WHEN api_expt THEN
@@ -3042,9 +3026,6 @@ AS
     lr_xxwip_qt_inspection.lot_id         := it_lot_id;                            -- ロットID
     lr_xxwip_qt_inspection.prod_dely_date := lr_xxwip_qt_inspection.product_date;  -- 生産/納入日
     lr_xxwip_qt_inspection.batch_po_id    := it_batch_id;                          -- 番号
-
-
-
 --
     -- 処理区分が2:更新の場合
     -- 登録済の品質検査依頼情報の検査日のいづれかに入力がある場合
@@ -3694,18 +3675,6 @@ AS
             ,xqi.vendor_line             = lr_xxwip_qt_inspection.vendor_line            -- 仕入先コード/ラインNo
             ,xqi.product_date            = lr_xxwip_qt_inspection.product_date           -- 製造日
             ,xqi.qty                     = lr_xxwip_qt_inspection.qty                    -- 数量
-
-
-
-
-
-
-
-
-
-
-
-
             ,xqi.prod_dely_date          = lr_xxwip_qt_inspection.prod_dely_date         -- 生産/納入日
 -- 2008/07/14 H.Itou DEL START 検査予定日・結果は更新不要
 --            ,xqi.inspect_due_date1       = lr_xxwip_qt_inspection.inspect_due_date1      -- 検査予定日１
@@ -3763,9 +3732,6 @@ AS
   /*********************************************************************************/
   PROCEDURE qt_update_lot_dff_api(
     ir_xxwip_qt_inspection  IN xxwip_qt_inspection%ROWTYPE, -- IN 1.xxwip_qt_inspectionレコード型
-
-
-
     ov_errbuf               OUT NOCOPY VARCHAR2,                   -- エラー・メッセージ           --# 固定 #
     ov_retcode              OUT NOCOPY VARCHAR2,                   -- リターン・コード             --# 固定 #
     ov_errmsg               OUT NOCOPY VARCHAR2                    -- ユーザー・エラー・メッセージ --# 固定 #
@@ -3847,17 +3813,6 @@ AS
           ,ilm.attribute21                           attribute21
           ,lr_xxwip_qt_inspection.qt_inspect_req_no  attribute22
           ,ilm.attribute23                           attribute23
-
-
-
-
-
-
-
-
-
-
-
           ,ilm.attribute24                           attribute24
           ,ilm.attribute25                           attribute25
           ,ilm.attribute26                           attribute26
@@ -4236,9 +4191,6 @@ AS
          ,it_lot_id               => it_lot_id                  -- IN  2.ロットID
          ,it_item_id              => it_item_id                 -- IN  3.品目ID
          ,iv_disposal_div         => iv_disposal_div            -- IN  4.処理区分
-
-
-
          ,ir_xxwip_qt_inspection  => lr_xxwip_qt_inspection_now -- IN  5.xxwip_qt_inspectionレコード型
          ,or_xxwip_qt_inspection  => lr_xxwip_qt_inspection     -- OUT 1.xxwip_qt_inspectionレコード型
          ,ov_errbuf               => lv_errbuf                  -- エラー・メッセージ           --# 固定 #
@@ -4368,9 +4320,6 @@ AS
       DELETE xxwip_qt_inspection   xqi   -- 品質検査依頼情報
       WHERE  xqi.qt_inspect_req_no  = it_qt_inspect_req_no    -- 検査依頼No
       ;
-
-
-
 --
     END IF;
 --
@@ -4379,9 +4328,6 @@ AS
     -- =============================
     qt_update_lot_dff_api(
       ir_xxwip_qt_inspection  => lr_xxwip_qt_inspection -- IN 1.xxwip_qt_inspectionレコード型
-
-
-
      ,ov_errbuf               => lv_errbuf              -- エラー・メッセージ           --# 固定 #
      ,ov_retcode              => lv_retcode             -- リターン・コード             --# 固定 #
      ,ov_errmsg               => lv_errmsg              -- ユーザー・エラー・メッセージ --# 固定 #
