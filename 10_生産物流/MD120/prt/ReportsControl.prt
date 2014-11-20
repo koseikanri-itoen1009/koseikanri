@@ -1,0 +1,19 @@
+printer "ABCDEFG"
+
+height   70
+width    120
+
+between pages control(L)
+
+return        ""
+linefeed      control(J)
+
+code "20"     hex(1C)hex(57)hex(01)
+code "21"     hex(1C)hex(57)hex(00)
+code "22"     hex(1B)hex(57)hex(01)
+code "23"     hex(1B)hex(57)hex(00)
+code "24"     hex(1B)hex(77)hex(01)
+code "25"     hex(1B)hex(77)hex(00)
+code "40"     hex(0F)
+code "41"     hex(12)
+
