@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCOI001A01C(body)
  * Description      : 生産物流システムから営業システムへの出荷依頼データの抽出・データ連携を行う
  * MD.050           : 入庫情報取得 MD050_COI_001_A01
- * Version          : 1.6
+ * Version          : 1.7
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -48,6 +48,7 @@ AS
  *                                                出荷依頼ステータス04対象のサマリ、詳細の更新情報の変更
  *  2009/05/14    1.5   H.Sasaki         [T1_0387]入庫情報一時表の存在チェック条件を修正
  *  2009/06/03    1.6   H.Sasaki         [T1_1186]サマリ、明細カーソルのPT
+ *  2009/07/13    1.7   H.Sasaki         [0000495]入庫情報サマリ抽出カーソルのPT対応
  *
  *****************************************************************************************/
 --
@@ -730,7 +731,11 @@ AS
 --              , imbp.item_no
 --      ;
 --
-      SELECT  xoha.req_status                  AS req_status          -- 出荷依頼ステータス
+      SELECT
+-- == 2009/07/13 V1.7 Added START ===============================================================
+              /*+ leading(ottt otta xoha xola) use_nl(xoha xola msib imbc imbp ximb hps hl) */
+-- == 2009/07/13 V1.7 Added END   ===============================================================
+              xoha.req_status                  AS req_status          -- 出荷依頼ステータス
             , CASE WHEN xoha.req_status = gt_ship_status_result THEN
                 xoha.result_deliver_to ELSE xoha.deliver_to END
                                                AS result_deliver_to   -- 出荷先_実績

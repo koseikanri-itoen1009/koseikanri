@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCOI008A05C(body)
  * Description      : 情報系システムへの連携の為、EBSのVDコラムマスタ(アドオン)をCSVファイルに出力
  * MD.050           : VDコラムマスタ情報系連携 <MD050_COI_008_A05>
- * Version          : 1.1
+ * Version          : 1.2
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -26,6 +26,7 @@ AS
  * ------------- ----- ---------------- -------------------------------------------------
  *  2008/12/24    1.0   S.Kanda          新規作成
  *  2009/06/11    1.1   H.Sasaki         [T1_1416]携抽出対象顧客ステータスを変更
+ *  2009/07/13    1.2   H.Sasaki         [0000494]VDコラムマスタ情報取得のPT対応
  *
  *****************************************************************************************/
 --
@@ -489,7 +490,11 @@ AS
     -- VDコラムマスタ情報取得
     CURSOR vd_column_cur
     IS
-      SELECT  xmvc.column_no                      -- コラムNO.
+      SELECT
+-- == 2009/07/13 V1.2 Added START ===============================================================
+              /*+ use_nl(hp hca cii xmvc msib) index( hp hz_parties_n17 )*/
+-- == 2009/07/13 V1.2 Added END   ===============================================================
+              xmvc.column_no                      -- コラムNO.
             , xmvc.price                          -- 単価
             , xmvc.inventory_quantity             -- 基準在庫数
             , xmvc.last_month_inventory_quantity  -- 前月基準在庫数
@@ -502,10 +507,13 @@ AS
             , mtl_system_items_b   msib        -- 品目マスタ
             , csi_item_instances   cii         -- 物件マスタ
             , hz_parties           hp          -- パーティ
--- == 2009/06/11 V1.1 Modified START ===============================================================
---      WHERE  hp.duns_number_c         <>  cv_duns_number_90           -- 顧客ステータス：中止決裁済
-      WHERE  hp.duns_number_c         NOT IN ( cv_duns_number_90 , cv_duns_number_80 )  -- 顧客ステータス
--- == 2009/06/11 V1.1 Modified END   ===============================================================
+-- == 2009/07/13 V1.2 Modified START ===============================================================
+---- == 2009/06/11 V1.1 Modified START ===============================================================
+----      WHERE  hp.duns_number_c         <>  cv_duns_number_90           -- 顧客ステータス：中止決裁済
+--      WHERE  hp.duns_number_c         NOT IN ( cv_duns_number_90 , cv_duns_number_80 )  -- 顧客ステータス
+---- == 2009/06/11 V1.1 Modified END   ===============================================================
+      WHERE  hp.duns_number_c         <   cv_duns_number_80           -- 顧客ステータス
+-- == 2009/07/13 V1.2 Modified END   ===============================================================
       AND    hp.party_id              =   hca.party_id                -- パーティID
       AND    xmvc.inventory_quantity  <>  cn_inv_quantity_0           -- 基準在庫数が'0'以外
       AND    hca.cust_account_id      =   xmvc.customer_id            -- 顧客ID
