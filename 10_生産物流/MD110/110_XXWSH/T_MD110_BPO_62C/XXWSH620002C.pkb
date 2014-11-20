@@ -7,7 +7,7 @@ AS
  * Description      : 出庫配送依頼表
  * MD.050           : 引当/配車(帳票) T_MD050_BPO_620
  * MD.070           : 出庫配送依頼表 T_MD070_BPO_62C
- * Version          : 1.20
+ * Version          : 1.21
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -55,6 +55,7 @@ AS
  *  2009/02/04    1.19  Y.Kanami         本番#41対応
  *                                       重量容積の計算でパレット重量加算を削除する
  *  2009/04/24    1.20  H.Itou           本番#1398対応
+ *  2009/12/15    1.21  H.Itou           本稼動障害#XXXX対応
  *
  *****************************************************************************************/
 --
@@ -334,7 +335,10 @@ AS
     ,sum_weightm_capacity_t     VARCHAR2(240)                         -- 単位
     ,tehai_no                   xmrih.batch_no%TYPE                   -- 手配No
     ,prev_delivery_no           xoha.prev_delivery_no%TYPE            -- 前回配送No
-    ,po_no                      xoha.po_no%TYPE                       -- PoNo
+-- 2009/12/15 H.Itou Mod Start 本稼動障害#XXXX
+--    ,po_no                      xoha.po_no%TYPE                       -- PoNo
+    ,po_no                      xoha.cust_po_number%TYPE              -- PoNo
+-- 2009/12/15 H.Itou Mod End
     ,jpr_user_code              xcas2v.jpr_user_code%TYPE             -- JPRユーザコード
     ,collected_pallet_qty       xoha.collected_pallet_qty%TYPE        -- パレット回収枚数
     ,shipping_instructions      xoha.shipping_instructions%TYPE       -- 摘要
