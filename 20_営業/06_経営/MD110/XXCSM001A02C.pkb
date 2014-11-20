@@ -1,4 +1,4 @@
-create or replace PACKAGE BODY XXCSM001A02C
+CREATE OR REPLACE PACKAGE BODY XXCSM001A02C
 AS
 /*****************************************************************************************
  * Copyright(c)Sumisho Computer Systems Corporation, 2008. All rights reserved.
@@ -7,7 +7,7 @@ AS
  * Description      : EBS(ファイルアップロードIF)に取込まれた年間計画データを
  *                  : 販売計画テーブル(アドオン)に取込みます。
  * MD.050           : 予算データチェック取込    MD050_CSM_001_A02
- * Version          : 1.2
+ * Version          : 1.3
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -39,7 +39,8 @@ AS
  *  2009/02/10    1.1   SCS K.Yamada     [障害CT004]取込項目順の変更対応
  *  2009/02/12    1.1   SCS K.Yamada     [障害CT012]不要なログ出力を削除
  *  2009/03/16    1.2   SCS M.Ohtsuki    [障害T1_0011]メッセージ不正の対応
- *
+ *  2009/04/06    1.3   SCS M.Ohtsuki    [障害T1_0241]開始日取得NVL対応
+ *  2009/04/06    1.3   SCS M.Ohtsuki    [障害T1_0250]項目順不具合の対応
  *****************************************************************************************/
 --
 --#######################  固定グローバル定数宣言部 START   #######################
@@ -331,7 +332,11 @@ AS
       AND    flv.lookup_code        = TO_CHAR(gv_format)
       AND    flv.language           = USERENV('LANG')                                               -- 言語('JA')
       AND    flv.enabled_flag       = 'Y'                                                           -- 使用可能フラグ
-      AND    flv.start_date_active <= gd_process_date                                               -- 適用開始日
+--//+UPD START 2009/04/06 T1_0241 M.Ohtsuki
+--      AND    flv.start_date_active <= gd_process_date                                               -- 適用開始日
+--↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓適用開始日NVL対応
+      AND    NVL(flv.start_date_active,gd_process_date) <= gd_process_date                          -- 適用開始日
+--//+UPD END   2009/04/06 T1_0241 M.Ohtsuki
       AND    NVL(flv.end_date_active,SYSDATE)   >= gd_process_date;                                 -- 適用終了日
 --
     --==============================================================
@@ -635,11 +640,19 @@ AS
          ,spare_10                                                                                  -- 予備１０
          )
         VALUES(
-          lt_plan_item_tab(1)                                                                       -- 予算年度
-         ,lt_plan_item_tab(2)                                                                       -- 年月
-         ,lt_plan_item_tab(3)                                                                       -- 拠点コード
-         ,lt_plan_item_tab(4)                                                                       -- 実働日
-         ,lt_plan_item_tab(5)                                                                       -- 計画人員
+--//+UPD START 2009/04/06 T1_0250 M.Ohtsuki
+--          lt_plan_item_tab(1)                                                                       -- 予算年度
+--         ,lt_plan_item_tab(2)                                                                       -- 年月
+--         ,lt_plan_item_tab(3)                                                                       -- 拠点コード
+--         ,lt_plan_item_tab(4)                                                                       -- 実働日
+--         ,lt_plan_item_tab(5)                                                                       -- 計画人員
+--↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓--CSVファイルの項目順修正
+          lt_plan_item_tab(2)                                                                       -- 予算年度
+         ,lt_plan_item_tab(3)                                                                       -- 年月
+         ,lt_plan_item_tab(1)                                                                       -- 拠点コード
+         ,lt_plan_item_tab(5)                                                                       -- 実働日
+         ,lt_plan_item_tab(4)                                                                       -- 計画人員
+--//+UPD END   2009/04/06 T1_0250 M.Ohtsuki
          ,lt_plan_item_tab(6)                                                                       -- 量販店売上計画
          ,lt_plan_item_tab(7)                                                                       -- CVS売上計画
          ,lt_plan_item_tab(8)                                                                       -- 問屋売上計画
@@ -1601,7 +1614,11 @@ AS
                 ,NVL((wsp.vend_machine_total      * 1000),0)     vend_machine_total                 -- 自販機計画費用合計
                 ,NVL((wsp.vend_machine_profit     * 1000),0)     vend_machine_profit                -- 拠点自販機利益
                 ,NVL(wsp.deficit_num                     ,0)     deficit_num                        -- 赤字台数
-                ,NVL(wsp.par_machine                     ,0)     par_machine                        -- パーマシン
+--//+UPD START 2009/04/06 T1_0250 M.Ohtsuki
+--                ,NVL(wsp.par_machine                     ,0)     par_machine                        -- パーマシン
+--↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓
+                ,NVL((wsp.par_machine             * 1000),0)     par_machine                        -- パーマシン
+--//+UPD END   2009/04/06 T1_0250 M.Ohtsuki
                 ,NVL(wsp.possession_num                  ,0)     possession_num                     -- 保有台数
                 ,NVL(wsp.stock_num                       ,0)     stock_num                          -- 在庫台数
                 ,NVL(wsp.operation_num                   ,0)     operation_num                      -- 稼働台数
