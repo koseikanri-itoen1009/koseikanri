@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCOS008A03R (body)
  * Description      : 直送受注例外データリスト
  * MD.050           : 直送受注例外データリスト MD050_COS_008_A03
- * Version          : 1.8
+ * Version          : 1.10
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -33,6 +33,9 @@ AS
  *  2009/06/25    1.6   N.Nishimura      [T1_1437]データパージ不具合対応
  *  2009/07/08    1.7   N.Maeda          [0000484]出荷品目を依頼品目に変更
  *  2009/07/27    1.8   N.Maeda          [0000834]単位設定取得箇所変更対応
+ *  2009/10/05    1.9   K.Satomura       [0001369]納品予定日をプロファイルオプション値以降の
+ *                                                日時を対象とする
+ *  2009/10/07    1.10  K.Satomura       [0001378]帳票ワークテーブルの桁あふれ対応
  *
  *****************************************************************************************/
 --
@@ -146,10 +149,16 @@ AS
   cv_msg_vl_request_id      CONSTANT  VARCHAR2(100) := 'APP-XXCOS1-11702';    -- リクエストID
   cv_msg_vl_table_name      CONSTANT  VARCHAR2(100) := 'APP-XXCOS1-11703';    -- 直送受注例外データリスト帳票ワークテーブル
   cv_msg_vl_lookup_name     CONSTANT  VARCHAR2(100) := 'APP-XXCOS1-00066';    -- クイックコードマスタ
+-- ******************** 2009/10/05 1.9 K.Satomura ADD START ******************************* --
+  cv_msg_vl_trans_st_dt     CONSTANT  VARCHAR2(100) := 'APP-XXCOS1-00196';    -- XXCOS:工場直送例外リスト対象開始年月日
+-- ******************** 2009/10/05 1.9 K.Satomura ADD END   ******************************* --
 --
   --プロファイル
   cv_prof_org_id            CONSTANT  VARCHAR2(100) := 'ORG_ID';              -- 営業単位
   cv_prof_max_date          CONSTANT  VARCHAR2(100) := 'XXCOS1_MAX_DATE';     -- プロファイル名(MAX日付)
+-- ******************** 2009/10/05 1.9 K.Satomura ADD START ******************************* --
+  cv_prof_trans_st_dt       CONSTANT  VARCHAR2(100) := 'XXCOS1_TRANS_START_YMD'; -- 工場直送例外リスト対象開始年月日
+-- ******************** 2009/10/05 1.9 K.Satomura ADD END   ******************************* --
 --
   --クイックタイプ
   -- 保管場所分類直送特定マスタ
@@ -192,12 +201,20 @@ AS
 --
   -- 調査など例外抽出のSQLを特定する為に項目。調査時は値をセットして下さい。
   -- データ区分
-  cv_data_class_1           CONSTANT  VARCHAR2(1)   := '';                   -- 例外１取得ＳＱＬ
-  cv_data_class_2           CONSTANT  VARCHAR2(1)   := '';                   -- 例外２取得ＳＱＬ
-  cv_data_class_3           CONSTANT  VARCHAR2(1)   := '';                   -- 例外３－１取得ＳＱＬ
-  cv_data_class_4           CONSTANT  VARCHAR2(1)   := '';                   -- 例外３－２取得ＳＱＬ
-  cv_data_class_5           CONSTANT  VARCHAR2(1)   := '';                   -- 例外４取得ＳＱＬ
-  cv_data_class_6           CONSTANT  VARCHAR2(1)   := '';                   -- 例外５取得ＳＱＬ
+-- ******************** 2009/10/05 1.9 K.Satomura MOD START ******************************* --
+  --cv_data_class_1           CONSTANT  VARCHAR2(1)   := '';                   -- 例外１取得ＳＱＬ
+  --cv_data_class_2           CONSTANT  VARCHAR2(1)   := '';                   -- 例外２取得ＳＱＬ
+  --cv_data_class_3           CONSTANT  VARCHAR2(1)   := '';                   -- 例外３－１取得ＳＱＬ
+  --cv_data_class_4           CONSTANT  VARCHAR2(1)   := '';                   -- 例外３－２取得ＳＱＬ
+  --cv_data_class_5           CONSTANT  VARCHAR2(1)   := '';                   -- 例外４取得ＳＱＬ
+  --cv_data_class_6           CONSTANT  VARCHAR2(1)   := '';                   -- 例外５取得ＳＱＬ
+  cv_data_class_1           CONSTANT  VARCHAR2(1)   := '1';                   -- 例外１取得ＳＱＬ
+  cv_data_class_2           CONSTANT  VARCHAR2(1)   := '2';                   -- 例外２取得ＳＱＬ
+  cv_data_class_3           CONSTANT  VARCHAR2(1)   := '3';                   -- 例外３－１取得ＳＱＬ
+  cv_data_class_4           CONSTANT  VARCHAR2(1)   := '4';                   -- 例外３－２取得ＳＱＬ
+  cv_data_class_5           CONSTANT  VARCHAR2(1)   := '5';                   -- 例外４取得ＳＱＬ
+  cv_data_class_6           CONSTANT  VARCHAR2(1)   := '6';                   -- 例外５取得ＳＱＬ
+-- ******************** 2009/10/05 1.9 K.Satomura MOD END   ******************************* --
 --
 --****************************** 2009/04/10 1.3 T.Kitajima ADD START ******************************--
   cn_ship_zero              CONSTANT  NUMBER        := 0;                    -- 出荷実績0
@@ -222,6 +239,9 @@ AS
   --保管場所分類
   gv_subinventory_class  VARCHAR2(2);
 --
+-- ******************** 2009/10/05 1.9 K.Satomura ADD START ******************************* --
+  gd_trans_start_date    DATE; -- 工場直送例外リスト対象開始年月日
+-- ******************** 2009/10/05 1.9 K.Satomura ADD END   ******************************* --
 --
   /**********************************************************************************
    * Procedure Name   : init
@@ -256,6 +276,9 @@ AS
     lv_profile_name  VARCHAR2(5000);
     lv_max_date      VARCHAR2(5000);
     lv_table_name    VARCHAR2(5000);
+-- ******************** 2009/10/05 1.9 K.Satomura ADD START ******************************* --
+    lv_trans_start_date VARCHAR2(1000);
+-- ******************** 2009/10/05 1.9 K.Satomura ADD END   ******************************* --
 --
     -- *** ローカル・カーソル ***
 --
@@ -364,6 +387,26 @@ AS
        RAISE global_select_data_expt;
    END;
 --
+-- ******************** 2009/10/05 1.9 K.Satomura ADD START ******************************* --
+    --==============================================================
+    -- 6.プロファイルの取得(XXCOS:工場直送例外リスト対象開始年月日)
+    --==============================================================
+    lv_trans_start_date := fnd_profile.value(cv_prof_trans_st_dt);
+    --
+    -- プロファイルが取得できない場合はエラー
+    IF ( lv_trans_start_date IS NULL ) THEN
+      lv_profile_name := xxccp_common_pkg.get_msg(
+                           iv_application => cv_xxcos_short_name,
+                           iv_name        => cv_msg_vl_trans_st_dt
+                         );
+      --
+      RAISE global_profile_expt;
+      --
+    END IF;
+    --
+    gd_trans_start_date := TO_DATE(lv_trans_start_date, cv_fmt_date);
+    --
+-- ******************** 2009/10/05 1.9 K.Satomura ADD END   ******************************* --
 --
   EXCEPTION
     -- プロファイル取得例外
@@ -464,7 +507,10 @@ AS
         ,ooa1.order_number               order_number             -- 受注ﾍｯﾀﾞ.受注番号           ：受注番号
         ,ooa1.order_line_no              order_line_no            -- 受注明細.明細番号           ：受注明細No
         ,ooa2.line_no                    line_no                  -- 受注明細ｱﾄﾞｵﾝ.明細番号      ：明細No
-        ,ooa1.deliver_requested_no       deliver_requested_no     -- 受注ﾍｯﾀﾞｱﾄﾞｵﾝ.依頼No        ：出荷依頼No
+-- ******************** 2009/10/07 1.10 K.Satomura MOD START ******************************* --
+--        ,ooa1.deliver_requested_no       deliver_requested_no     -- 受注ﾍｯﾀﾞｱﾄﾞｵﾝ.依頼No        ：出荷依頼No
+        ,SUBSTRB(ooa1.deliver_requested_no, 1, 12) deliver_requested_no     -- 受注ﾍｯﾀﾞｱﾄﾞｵﾝ.依頼No        ：出荷依頼No
+-- ******************** 2009/10/07 1.10 K.Satomura MOD END   ******************************* --
         ,ooa1.deliver_from_whse_number   deliver_from_whse_number -- 受注ﾍｯﾀﾞｱﾄﾞｵﾝ.出荷元保管場所：出荷元倉庫番号
         ,ooa1.deliver_from_whse_name     deliver_from_whse_name   -- 保管場所.保管場所名称       ：出荷元倉庫名
         ,ooa1.customer_number            customer_number          -- 受注ﾍｯﾀﾞｱﾄﾞｵﾝ.顧客          ：顧客番号
@@ -745,7 +791,10 @@ AS
         ,ooa1.order_number               order_number             -- 受注ﾍｯﾀﾞ.受注番号           ：受注番号
         ,ooa1.order_line_no              order_line_no            -- 受注明細.明細番号           ：受注明細No
         ,ooa2.line_no                    line_no                  -- 受注明細ｱﾄﾞｵﾝ.明細番号      ：明細No
-        ,ooa1.deliver_requested_no       deliver_requested_no     -- 受注ﾍｯﾀﾞｱﾄﾞｵﾝ.依頼No        ：出荷依頼No
+-- ******************** 2009/10/07 1.10 K.Satomura MOD START ******************************* --
+--        ,ooa1.deliver_requested_no       deliver_requested_no     -- 受注ﾍｯﾀﾞｱﾄﾞｵﾝ.依頼No        ：出荷依頼No
+        ,SUBSTRB(ooa1.deliver_requested_no, 1, 12) deliver_requested_no     -- 受注ﾍｯﾀﾞｱﾄﾞｵﾝ.依頼No        ：出荷依頼No
+-- ******************** 2009/10/07 1.10 K.Satomura MOD END   ******************************* --
         ,ooa1.deliver_from_whse_number   deliver_from_whse_number -- 受注ﾍｯﾀﾞｱﾄﾞｵﾝ.出荷元保管場所：出荷元倉庫番号
         ,ooa1.deliver_from_whse_name     deliver_from_whse_name   -- 保管場所.保管場所名称       ：出荷元倉庫名
         ,ooa1.customer_number            customer_number          -- 受注ﾍｯﾀﾞｱﾄﾞｵﾝ.顧客          ：顧客番号
@@ -1015,7 +1064,10 @@ AS
         ,ooha.order_number          order_number             -- 受注ﾍｯﾀﾞ.受注番号           ：受注番号
         ,oola.line_number           order_line_no            -- 受注明細.明細番号           ：受注明細No
         ,NULL                       line_no                  -- 受注明細ｱﾄﾞｵﾝ.明細番号      ：明細No
-        ,oola.packing_instructions  deliver_requested_no     -- 受注明細.梱包指示           ：出荷依頼No
+-- ******************** 2009/10/07 1.10 K.Satomura MOD START ******************************* --
+--        ,oola.packing_instructions  deliver_requested_no     -- 受注明細.梱包指示           ：出荷依頼No
+        ,SUBSTRB(oola.packing_instructions, 1, 12) deliver_requested_no     -- 受注明細.梱包指示           ：出荷依頼No
+-- ******************** 2009/10/07 1.10 K.Satomura MOD END   ******************************* --
         ,oola.subinventory          deliver_from_whse_number -- 受注明細.保管場所           ：出荷元倉庫番号
         ,mtsi.description           deliver_from_whse_name   -- 保管場所.保管場所名称       ：出荷元倉庫名
         ,hca.account_number         customer_number          -- 顧客ﾏｽﾀ.顧客ｺｰﾄﾞ            ：顧客番号
@@ -1365,7 +1417,10 @@ AS
         ,ooha.order_number          order_number             -- 受注ﾍｯﾀﾞ.受注番号           ：受注番号
         ,oola.line_number           order_line_no            -- 受注明細.明細番号           ：受注明細No
         ,NULL                       line_no                  -- 受注明細ｱﾄﾞｵﾝ.明細番号      ：明細No
-        ,oola.packing_instructions  deliver_requested_no     -- 受注明細.梱包指示           ：出荷依頼No
+-- ******************** 2009/10/07 1.10 K.Satomura MOD START ******************************* --
+--        ,oola.packing_instructions  deliver_requested_no     -- 受注明細.梱包指示           ：出荷依頼No
+        ,SUBSTRB(oola.packing_instructions, 1, 12) deliver_requested_no     -- 受注明細.梱包指示           ：出荷依頼No
+-- ******************** 2009/10/07 1.10 K.Satomura MOD END   ******************************* --
         ,oola.subinventory          deliver_from_whse_number -- 受注明細.保管場所           ：出荷元倉庫番号
         ,mtsi.description           deliver_from_whse_name   -- 保管場所.保管場所名称       ：出荷元倉庫名
         ,hca.account_number         customer_number          -- 顧客ﾏｽﾀ.顧客ｺｰﾄﾞ            ：顧客番号
@@ -1490,57 +1545,72 @@ AS
     --==================================
     <<loop_get_data>>
     FOR l_data_rec IN data_cur LOOP
-      -- レコードIDの取得
-      BEGIN
+-- ******************** 2009/10/05 1.9 K.Satomura ADD START ******************************* --
+      IF (
+           (     l_data_rec.data_class IN (cv_data_class_1, cv_data_class_2, cv_data_class_3, cv_data_class_6)
+             AND l_data_rec.schedule_dlv_date >= TRUNC(gd_trans_start_date)
+           )
+         OR
+           (     l_data_rec.data_class IN (cv_data_class_4, cv_data_class_5)
+             AND l_data_rec.arrival_date >= TRUNC(gd_trans_start_date)
+           )
+         )
+      THEN
+-- ******************** 2009/10/05 1.9 K.Satomura ADD END   ******************************* --
+        -- レコードIDの取得
+        BEGIN
 --
-        SELECT
-          xxcos_rep_direct_list_s01.nextval
-        INTO
-          ln_record_id
-        FROM
-          dual
-        ;
-      END;
+          SELECT
+            xxcos_rep_direct_list_s01.nextval
+          INTO
+            ln_record_id
+          FROM
+            dual
+          ;
+        END;
 --
-      -- カウントアップ
-      ln_idx := ln_idx + 1;
+        -- カウントアップ
+        ln_idx := ln_idx + 1;
 --
-      -- 変数へ格納
-      gt_rpt_data_tab( ln_idx ).record_id                := ln_record_id;                          -- レコードID 
-      gt_rpt_data_tab( ln_idx ).base_code                := l_data_rec.base_code;                  -- 拠点コード
-                                                                                                   -- 拠点名称
-      gt_rpt_data_tab( ln_idx ).base_name                := SUBSTRB( l_data_rec.base_name, 1, 40 );
-      gt_rpt_data_tab( ln_idx ).order_number             := l_data_rec.order_number;               -- 受注番号
-      gt_rpt_data_tab( ln_idx ).order_line_no            := l_data_rec.order_line_no;              -- 受注明細No.
-      gt_rpt_data_tab( ln_idx ).line_no                  := l_data_rec.line_no;                    -- 明細No.
-      gt_rpt_data_tab( ln_idx ).deliver_requested_no     := l_data_rec.deliver_requested_no;       -- 出荷依頼No
-      gt_rpt_data_tab( ln_idx ).deliver_from_whse_number := l_data_rec.deliver_from_whse_number;   -- 出荷元倉庫番号
-                                                                                                   -- 出荷元倉庫名
-      gt_rpt_data_tab( ln_idx ).deliver_from_whse_name   := SUBSTRB( l_data_rec.deliver_from_whse_name, 1, 20 );
-      gt_rpt_data_tab( ln_idx ).customer_number          := l_data_rec.customer_number;            -- 顧客番号
-                                                                                                   -- 顧客名
-      gt_rpt_data_tab( ln_idx ).customer_name            := SUBSTRB( l_data_rec.customer_name, 1, 20 );
-      gt_rpt_data_tab( ln_idx ).item_code                := l_data_rec.item_code;                  -- 品目コード
-      gt_rpt_data_tab( ln_idx ).item_name                := SUBSTRB( l_data_rec.item_name, 1, 20 );-- 品名
-      gt_rpt_data_tab( ln_idx ).schedule_dlv_date        := l_data_rec.schedule_dlv_date;          -- 納品予定日
-                                                                                                   -- 検収予定日
-      gt_rpt_data_tab( ln_idx ).schedule_inspect_date    := TO_DATE( l_data_rec.schedule_inspect_date, cv_yyyymmddhhmiss );
-      gt_rpt_data_tab( ln_idx ).arrival_date             := l_data_rec.arrival_date;               -- 着日
-      gt_rpt_data_tab( ln_idx ).order_quantity           := l_data_rec.order_quantity;             -- 受注数
-      gt_rpt_data_tab( ln_idx ).deliver_actual_quantity  := l_data_rec.deliver_actual_quantity;    -- 出荷実績数
-      gt_rpt_data_tab( ln_idx ).uom_code                 := l_data_rec.uom_code;                   -- 単位
-      gt_rpt_data_tab( ln_idx ).output_quantity          := l_data_rec.output_quantity;            -- 差異数
-      gt_rpt_data_tab( ln_idx ).data_class               := l_data_rec.data_class;                 -- データ区分
-      gt_rpt_data_tab( ln_idx ).created_by               := cn_created_by;                         -- 作成者
-      gt_rpt_data_tab( ln_idx ).creation_date            := cd_creation_date;                      -- 作成日
-      gt_rpt_data_tab( ln_idx ).last_updated_by          := cn_last_updated_by;                    -- 最終更新者
-      gt_rpt_data_tab( ln_idx ).last_update_date         := cd_last_update_date;                   -- 最終更新日
-      gt_rpt_data_tab( ln_idx ).last_update_login        := cn_last_update_login;                  -- 最終更新ﾛｸﾞｲﾝ
-      gt_rpt_data_tab( ln_idx ).request_id               := cn_request_id;                         -- 要求ID
-      gt_rpt_data_tab( ln_idx ).program_application_id   := cn_program_application_id;             -- ｺﾝｶﾚﾝﾄ･ﾌﾟﾛｸﾞﾗﾑ･ｱﾌﾟﾘｹｰｼｮﾝID
-      gt_rpt_data_tab( ln_idx ).program_id               := cn_program_id;                         -- ｺﾝｶﾚﾝﾄ･ﾌﾟﾛｸﾞﾗﾑID
-      gt_rpt_data_tab( ln_idx ).program_update_date      := cd_program_update_date;                -- ﾌﾟﾛｸﾞﾗﾑ更新日
+        -- 変数へ格納
+        gt_rpt_data_tab( ln_idx ).record_id                := ln_record_id;                          -- レコードID 
+        gt_rpt_data_tab( ln_idx ).base_code                := l_data_rec.base_code;                  -- 拠点コード
+                                                                                                     -- 拠点名称
+        gt_rpt_data_tab( ln_idx ).base_name                := SUBSTRB( l_data_rec.base_name, 1, 40 );
+        gt_rpt_data_tab( ln_idx ).order_number             := l_data_rec.order_number;               -- 受注番号
+        gt_rpt_data_tab( ln_idx ).order_line_no            := l_data_rec.order_line_no;              -- 受注明細No.
+        gt_rpt_data_tab( ln_idx ).line_no                  := l_data_rec.line_no;                    -- 明細No.
+        gt_rpt_data_tab( ln_idx ).deliver_requested_no     := l_data_rec.deliver_requested_no;       -- 出荷依頼No
+        gt_rpt_data_tab( ln_idx ).deliver_from_whse_number := l_data_rec.deliver_from_whse_number;   -- 出荷元倉庫番号
+                                                                                                     -- 出荷元倉庫名
+        gt_rpt_data_tab( ln_idx ).deliver_from_whse_name   := SUBSTRB( l_data_rec.deliver_from_whse_name, 1, 20 );
+        gt_rpt_data_tab( ln_idx ).customer_number          := l_data_rec.customer_number;            -- 顧客番号
+                                                                                                     -- 顧客名
+        gt_rpt_data_tab( ln_idx ).customer_name            := SUBSTRB( l_data_rec.customer_name, 1, 20 );
+        gt_rpt_data_tab( ln_idx ).item_code                := l_data_rec.item_code;                  -- 品目コード
+        gt_rpt_data_tab( ln_idx ).item_name                := SUBSTRB( l_data_rec.item_name, 1, 20 );-- 品名
+        gt_rpt_data_tab( ln_idx ).schedule_dlv_date        := l_data_rec.schedule_dlv_date;          -- 納品予定日
+                                                                                                     -- 検収予定日
+        gt_rpt_data_tab( ln_idx ).schedule_inspect_date    := TO_DATE( l_data_rec.schedule_inspect_date, cv_yyyymmddhhmiss );
+        gt_rpt_data_tab( ln_idx ).arrival_date             := l_data_rec.arrival_date;               -- 着日
+        gt_rpt_data_tab( ln_idx ).order_quantity           := l_data_rec.order_quantity;             -- 受注数
+        gt_rpt_data_tab( ln_idx ).deliver_actual_quantity  := l_data_rec.deliver_actual_quantity;    -- 出荷実績数
+        gt_rpt_data_tab( ln_idx ).uom_code                 := l_data_rec.uom_code;                   -- 単位
+        gt_rpt_data_tab( ln_idx ).output_quantity          := l_data_rec.output_quantity;            -- 差異数
+        gt_rpt_data_tab( ln_idx ).data_class               := l_data_rec.data_class;                 -- データ区分
+        gt_rpt_data_tab( ln_idx ).created_by               := cn_created_by;                         -- 作成者
+        gt_rpt_data_tab( ln_idx ).creation_date            := cd_creation_date;                      -- 作成日
+        gt_rpt_data_tab( ln_idx ).last_updated_by          := cn_last_updated_by;                    -- 最終更新者
+        gt_rpt_data_tab( ln_idx ).last_update_date         := cd_last_update_date;                   -- 最終更新日
+        gt_rpt_data_tab( ln_idx ).last_update_login        := cn_last_update_login;                  -- 最終更新ﾛｸﾞｲﾝ
+        gt_rpt_data_tab( ln_idx ).request_id               := cn_request_id;                         -- 要求ID
+        gt_rpt_data_tab( ln_idx ).program_application_id   := cn_program_application_id;             -- ｺﾝｶﾚﾝﾄ･ﾌﾟﾛｸﾞﾗﾑ･ｱﾌﾟﾘｹｰｼｮﾝID
+        gt_rpt_data_tab( ln_idx ).program_id               := cn_program_id;                         -- ｺﾝｶﾚﾝﾄ･ﾌﾟﾛｸﾞﾗﾑID
+        gt_rpt_data_tab( ln_idx ).program_update_date      := cd_program_update_date;                -- ﾌﾟﾛｸﾞﾗﾑ更新日
 --
+-- ******************** 2009/10/05 1.9 K.Satomura ADD START ******************************* --
+      END IF;
+-- ******************** 2009/10/05 1.9 K.Satomura ADD END   ******************************* --
     END LOOP loop_get_data;
 --
     --処理件数カウント
