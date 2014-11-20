@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCOP006A01C(body)
  * Description      : 横持計画
  * MD.050           : 横持計画 MD050_COP_006_A01
- * Version          : 1.0
+ * Version          : 1.1
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -23,7 +23,8 @@ AS
  * ------------- ----- ---------------- -------------------------------------------------
  *  Date          Ver.  Editor           Description
  * ------------- ----- ---------------- -------------------------------------------------
- *  2009/11/13    1.0   M.Hokkanji      新規作成
+ *  2009/11/13    1.0   M.Hokkanji       新規作成
+ *  2010/01/07    1.1   Y.Goto           E_本稼動_00936
  *
  *****************************************************************************************/
 --
@@ -1316,6 +1317,10 @@ AS
             ,xwypo.delivery_unit                              delivery_unit
             ,xwypo.palette_max_cs_qty                         palette_max_cs_qty
             ,xwypo.palette_max_step_qty                       palette_max_step_qty
+--20100107_Ver1.1_E_本稼動_00936_SCS.Goto_ADD_START
+            ,xwypo.crowd_class_code                           crowd_class_code
+            ,xwypo.expiration_day                             expiration_day
+--20100107_Ver1.1_E_本稼動_00936_SCS.Goto_ADD_END
             ,xwypo.before_lot_stock                           before_lot_stock
             ,xwypo.after_lot_stock                            after_lot_stock
             ,xwypo.safety_stock_quantity                      safety_stock_quantity
@@ -1420,6 +1425,13 @@ AS
                  || l_xwypo_rec.rcpt_loct_name
                  || cv_csv_delimiter
       ;
+--20100107_Ver1.1_E_本稼動_00936_SCS.Goto_ADD_START
+      --群コード
+      lv_csvbuff := lv_csvbuff
+                 || l_xwypo_rec.crowd_class_code
+                 || cv_csv_delimiter
+      ;
+--20100107_Ver1.1_E_本稼動_00936_SCS.Goto_ADD_END
       --品目コード
       lv_csvbuff := lv_csvbuff
                  || l_xwypo_rec.item_no
@@ -1440,6 +1452,13 @@ AS
                  || TO_CHAR(l_xwypo_rec.manufacture_date, cv_csv_date_format)
                  || cv_csv_delimiter
       ;
+--20100107_Ver1.1_E_本稼動_00936_SCS.Goto_ADD_START
+      --賞味期間
+      lv_csvbuff := lv_csvbuff
+                 || TO_CHAR(l_xwypo_rec.expiration_day)
+                 || cv_csv_delimiter
+      ;
+--20100107_Ver1.1_E_本稼動_00936_SCS.Goto_ADD_END
       --品質
       lv_csvbuff := lv_csvbuff
                  || l_xwypo_rec.lot_meaning

@@ -3,7 +3,7 @@
  *
  * View Name       : XXCOP_WK_YOKO_PLAN_OUTPUT
  * Description     : 横持計画出力ワークテーブル
- * Version         : 3.0
+ * Version         : 3.1
  *
  * Change Record
  * ------------- ----- ---------------- ---------------------------------
@@ -14,6 +14,7 @@
  *  2009-04-15    1.2   SCS.Goto        T1_0565対応
  *  2009-10-05    2.0   SCS.Goto        0000669対応(共通課題IE479)
  *  2009-11-24    3.0   SCS.Goto        I_E_479_019
+ *  2010-01-07    3.1   SCS.Goto        E_本稼動_00936
  *
  ************************************************************************/
 CREATE TABLE XXCOP.XXCOP_WK_YOKO_PLAN_OUTPUT (
@@ -43,6 +44,10 @@ CREATE TABLE XXCOP.XXCOP_WK_YOKO_PLAN_OUTPUT (
     ,num_of_case                    NUMBER
     ,palette_max_cs_qty             NUMBER
     ,palette_max_step_qty           NUMBER
+--20100107_Ver3.1_E_本稼動_00936_SCS.Goto_ADD_START
+    ,crowd_class_code               VARCHAR2(40)
+    ,expiration_day                 NUMBER
+--20100107_Ver3.1_E_本稼動_00936_SCS.Goto_ADD_END
     ,delivery_unit                  VARCHAR2(10)
     ,before_stock                   NUMBER
     ,after_stock                    NUMBER
@@ -131,6 +136,12 @@ COMMENT ON COLUMN xxcop.xxcop_wk_yoko_plan_output.palette_max_cs_qty            
 /
 COMMENT ON COLUMN xxcop.xxcop_wk_yoko_plan_output.palette_max_step_qty           IS '段数'
 /
+--20100107_Ver3.1_E_本稼動_00936_SCS.Goto_ADD_START
+COMMENT ON COLUMN xxcop.xxcop_wk_yoko_plan_output.crowd_class_code               IS '群コード'
+/
+COMMENT ON COLUMN xxcop.xxcop_wk_yoko_plan_output.expiration_day                 IS '賞味期間'
+/
+--20100107_Ver3.1_E_本稼動_00936_SCS.Goto_ADD_END
 COMMENT ON COLUMN xxcop.xxcop_wk_yoko_plan_output.delivery_unit                  IS '配送単位'
 /
 COMMENT ON COLUMN xxcop.xxcop_wk_yoko_plan_output.before_stock                   IS '横持前在庫'

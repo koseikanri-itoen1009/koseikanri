@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCOP006A011C(body)
  * Description      : 横持計画
  * MD.050           : 横持計画 MD050_COP_006_A01
- * Version          : 3.1
+ * Version          : 3.2
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -63,6 +63,7 @@ AS
  *  2009/11/19    2.10  Y.Goto           I_E_479_017
  *  2009/11/30    3.0   Y.Goto           I_E_479_019(横持計画パラレル化対応、アプリPT対応、プログラムIDの変更)
  *  2009/12/17    3.1   Y.Goto           E_本稼動_00519
+ *  2010/01/07    3.2   Y.Goto           E_本稼動_00936
  *
  *****************************************************************************************/
 --
@@ -353,6 +354,10 @@ AS
   --出力対象フラグ
   cv_output_off             CONSTANT VARCHAR2(1)   := '0';                      -- 対象外
   cv_output_on              CONSTANT VARCHAR2(1)   := '1';                      -- 対象
+--20100107_Ver3.2_E_本稼動_00936_SCS.Goto_ADD_START
+  --品目カテゴリ
+  cv_category_crowd_class   CONSTANT VARCHAR2(8)   := '群コード';               -- 群コード
+--20100107_Ver3.2_E_本稼動_00936_SCS.Goto_ADD_END
 --
   -- ===============================
   -- ユーザー定義グローバル型
@@ -2083,14 +2088,17 @@ AS
               <<ship_div_balance_loop>>
               FOR ln_ship_idx IN io_gbqt_tab.FIRST .. io_gbqt_tab.LAST LOOP
                 IF (l_ship_lot_tab(ln_ship_idx).stock_proc_flag = cv_planning_yes) THEN
-                  --ロット別バランス計画数の計算
-                  --端数は優先順位の高い鮮度条件に引き当てる
-                  ln_lot_freshness_quantity := CEIL(ln_lot_quantity
-                                                  * io_gbqt_tab(ln_ship_idx).shipping_pace
-                                                  / ln_shipping_pace
-                                               );
-                  l_ship_lot_tab(ln_ship_idx).lot_quantity := ln_lot_freshness_quantity
-                                                            - l_ship_lot_tab(ln_ship_idx).adjust_quantity;
+--20100107_Ver3.2_E_本稼動_00936_SCS.Goto_ADD_START
+                  IF (io_gbqt_tab(ln_ship_idx).shipping_pace > 0) THEN
+--20100107_Ver3.2_E_本稼動_00936_SCS.Goto_ADD_END
+                    --ロット別バランス計画数の計算
+                    --端数は優先順位の高い鮮度条件に引き当てる
+                    ln_lot_freshness_quantity := CEIL(ln_lot_quantity
+                                                    * io_gbqt_tab(ln_ship_idx).shipping_pace
+                                                    / ln_shipping_pace
+                                                 );
+                    l_ship_lot_tab(ln_ship_idx).lot_quantity := ln_lot_freshness_quantity
+                                                              - l_ship_lot_tab(ln_ship_idx).adjust_quantity;
 --20091217_Ver3.1_E_本稼動_00519_SCS.Goto_DEL_START
 --                  --横持後在庫数が上限
 --                  l_ship_lot_tab(ln_ship_idx).lot_quantity := LEAST(l_ship_lot_tab(ln_ship_idx).lot_quantity
@@ -2108,18 +2116,21 @@ AS
 --                    EXIT ship_div_balance_loop;
 --                  END IF;
 --20091217_Ver3.1_E_本稼動_00519_SCS.Goto_DEL_END
-                  --ロット別バランス計画数の合計
-                  ln_balance_quantity := ln_balance_quantity + l_ship_lot_tab(ln_ship_idx).lot_quantity;
-                  --鮮度条件別在庫に引当したロット在庫数を減算
-                  ln_lot_quantity := ln_lot_quantity - ln_lot_freshness_quantity;
-                  ln_shipping_pace := ln_shipping_pace - io_gbqt_tab(ln_ship_idx).shipping_pace;
-                  --ロット在庫数の符号と鮮度条件別ロット在庫数の符号が違う場合、按分から除外する
-                  IF (SIGN(l_xliv_rec.loct_onhand) <> SIGN(l_ship_lot_tab(ln_ship_idx).lot_quantity)) THEN
-                    lv_stock_proc_flag  := cv_planning_no;
-                    --鮮度条件別ロット在庫数の初期化
-                    l_ship_lot_tab(ln_ship_idx).lot_quantity := 0;
-                    l_ship_lot_tab(ln_ship_idx).stock_proc_flag := cv_planning_omit;
+                    --ロット別バランス計画数の合計
+                    ln_balance_quantity := ln_balance_quantity + l_ship_lot_tab(ln_ship_idx).lot_quantity;
+                    --鮮度条件別在庫に引当したロット在庫数を減算
+                    ln_lot_quantity := ln_lot_quantity - ln_lot_freshness_quantity;
+                    ln_shipping_pace := ln_shipping_pace - io_gbqt_tab(ln_ship_idx).shipping_pace;
+                    --ロット在庫数の符号と鮮度条件別ロット在庫数の符号が違う場合、按分から除外する
+                    IF (SIGN(l_xliv_rec.loct_onhand) <> SIGN(l_ship_lot_tab(ln_ship_idx).lot_quantity)) THEN
+                      lv_stock_proc_flag  := cv_planning_no;
+                      --鮮度条件別ロット在庫数の初期化
+                      l_ship_lot_tab(ln_ship_idx).lot_quantity := 0;
+                      l_ship_lot_tab(ln_ship_idx).stock_proc_flag := cv_planning_omit;
+                    END IF;
+--20100107_Ver3.2_E_本稼動_00936_SCS.Goto_ADD_START
                   END IF;
+--20100107_Ver3.2_E_本稼動_00936_SCS.Goto_ADD_END
                 END IF;
               END LOOP ship_div_balance_loop;
               IF (lv_stock_proc_flag = cv_planning_yes) THEN
@@ -2812,6 +2823,10 @@ AS
             ,xwyp.sy_disable_date                             sy_disable_date
             ,xwyp.sy_maxmum_quantity                          sy_maxmum_quantity
             ,xwyp.sy_stocked_quantity                         sy_stocked_quantity
+--20100107_Ver3.2_E_本稼動_00936_SCS.Goto_ADD_START
+            ,xwyp.crowd_class_code                            crowd_class_code
+            ,xwyp.expiration_day                              expiration_day
+--20100107_Ver3.2_E_本稼動_00936_SCS.Goto_ADD_END
             ,xwyp.created_by                                  created_by
             ,xwyp.creation_date                               creation_date
             ,xwyp.last_updated_by                             last_updated_by
@@ -3119,6 +3134,10 @@ AS
                                   ,o_xwypo_tab(ln_rcpt_idx).sy_disable_date
                                   ,o_xwypo_tab(ln_rcpt_idx).sy_maxmum_quantity
                                   ,o_xwypo_tab(ln_rcpt_idx).sy_stocked_quantity
+--20100107_Ver3.2_E_本稼動_00936_SCS.Goto_ADD_START
+                                  ,o_xwypo_tab(ln_rcpt_idx).crowd_class_code
+                                  ,o_xwypo_tab(ln_rcpt_idx).expiration_day
+--20100107_Ver3.2_E_本稼動_00936_SCS.Goto_ADD_END
                                   ,o_xwypo_tab(ln_rcpt_idx).created_by
                                   ,o_xwypo_tab(ln_rcpt_idx).creation_date
                                   ,o_xwypo_tab(ln_rcpt_idx).last_updated_by
@@ -3961,7 +3980,9 @@ AS
     ld_critical_date          DATE;         --鮮度条件基準日
     ln_allocate_quantity      NUMBER;       --引当数
     ln_safety_fill            NUMBER;       --安全在庫数を満たした鮮度条件のカウント
-    ln_max_fill               NUMBER;       --最大在庫数を満たした鮮度条件のカウント
+--20100107_Ver3.2_E_本稼動_00936_SCS.Goto_DEL_START
+--    ln_max_fill               NUMBER;       --最大在庫数を満たした鮮度条件のカウント
+--20100107_Ver3.2_E_本稼動_00936_SCS.Goto_DEL_END
     ln_exists                 NUMBER;
     ln_stock_quantity         NUMBER;       --引当在庫数合計
 --
@@ -4085,7 +4106,9 @@ AS
     ld_critical_date          := NULL;
     ln_allocate_quantity      := NULL;
     ln_safety_fill            := NULL;
-    ln_max_fill               := NULL;
+--20100107_Ver3.2_E_本稼動_00936_SCS.Goto_DEL_START
+--    ln_max_fill               := NULL;
+--20100107_Ver3.2_E_本稼動_00936_SCS.Goto_DEL_END
     ln_exists                 := NULL;
     ln_stock_quantity         := 0;
 --
@@ -4134,12 +4157,18 @@ AS
                           || l_xliv_rec.loct_onhand                               || ','
         );
         ln_safety_fill := 0;
-        ln_max_fill    := 0;
+--20100107_Ver3.2_E_本稼動_00936_SCS.Goto_DEL_START
+--        ln_max_fill    := 0;
+--20100107_Ver3.2_E_本稼動_00936_SCS.Goto_DEL_END
         --優先順位の低い順に鮮度条件に合致するかチェック
         <<gsqt_loop>>
         FOR ln_gsqt_idx IN io_gfqt_tab.FIRST .. io_gfqt_tab.LAST LOOP
-          --引当数が最大在庫数より小さい場合、鮮度条件に合致するかチェック
-          IF (io_gfqt_tab(ln_gsqt_idx).max_stock_quantity > io_gfqt_tab(ln_gsqt_idx).allocate_quantity) THEN
+--20100107_Ver3.2_E_本稼動_00936_SCS.Goto_MOD_START
+--          --引当数が最大在庫数より小さい場合、鮮度条件に合致するかチェック
+--          IF (io_gfqt_tab(ln_gsqt_idx).max_stock_quantity > io_gfqt_tab(ln_gsqt_idx).allocate_quantity) THEN
+          --引当数が安全在庫数より小さい場合、鮮度条件に合致するかチェック
+          IF (io_gfqt_tab(ln_gsqt_idx).safety_stock_quantity > io_gfqt_tab(ln_gsqt_idx).allocate_quantity) THEN
+--20100107_Ver3.2_E_本稼動_00936_SCS.Goto_MOD_END
             --鮮度条件基準日取得関数
             ld_critical_date := xxcop_common_pkg2.get_critical_date_f(
                                    iv_freshness_class        => io_gfqt_tab(ln_gsqt_idx).freshness_class
@@ -4152,11 +4181,18 @@ AS
                                 );
             --鮮度条件に合致した場合、鮮度条件に引当
             IF (gd_planning_date <= ld_critical_date) THEN
-              --引当数を計算
-              ln_allocate_quantity := LEAST((io_gfqt_tab(ln_gsqt_idx).max_stock_quantity
+--20100107_Ver3.2_E_本稼動_00936_SCS.Goto_MOD_START
+--              --引当数を計算
+--              ln_allocate_quantity := LEAST((io_gfqt_tab(ln_gsqt_idx).max_stock_quantity
+--                                           - io_gfqt_tab(ln_gsqt_idx).allocate_quantity)
+--                                           , l_xliv_rec.loct_onhand
+--                                      );
+              --安全在庫数まで引当数を計算
+              ln_allocate_quantity := LEAST((io_gfqt_tab(ln_gsqt_idx).safety_stock_quantity
                                            - io_gfqt_tab(ln_gsqt_idx).allocate_quantity)
                                            , l_xliv_rec.loct_onhand
                                       );
+--20100107_Ver3.2_E_本稼動_00936_SCS.Goto_MOD_END
               io_gfqt_tab(ln_gsqt_idx).allocate_quantity := io_gfqt_tab(ln_gsqt_idx).allocate_quantity
                                                           + ln_allocate_quantity;
               l_xliv_rec.loct_onhand := l_xliv_rec.loct_onhand - ln_allocate_quantity;
@@ -4167,20 +4203,29 @@ AS
           IF (io_gfqt_tab(ln_gsqt_idx).safety_stock_quantity <= io_gfqt_tab(ln_gsqt_idx).allocate_quantity) THEN
             ln_safety_fill := ln_safety_fill + 1;
           END IF;
-          --最大在庫数以上引当された場合
-          IF (io_gfqt_tab(ln_gsqt_idx).max_stock_quantity    <= io_gfqt_tab(ln_gsqt_idx).allocate_quantity) THEN
-            ln_max_fill := ln_max_fill + 1;
-          END IF;
+--20100107_Ver3.2_E_本稼動_00936_SCS.Goto_DEL_START
+--          --最大在庫数以上引当された場合
+--          IF (io_gfqt_tab(ln_gsqt_idx).max_stock_quantity    <= io_gfqt_tab(ln_gsqt_idx).allocate_quantity) THEN
+--            ln_max_fill := ln_max_fill + 1;
+--          END IF;
+--20100107_Ver3.2_E_本稼動_00936_SCS.Goto_DEL_END
           --引当後のロット在庫数が0の場合は次のロット
           IF (l_xliv_rec.loct_onhand = 0) THEN
             EXIT gsqt_loop;
           END IF;
         END LOOP gsqt_loop;
-        --全ての鮮度条件で最大在庫数まで引当した場合、終了
-        IF (io_gfqt_tab.COUNT = ln_max_fill) THEN
+--20100107_Ver3.2_E_本稼動_00936_SCS.Goto_MOD_START
+--        --全ての鮮度条件で最大在庫数まで引当した場合、終了
+--        IF (io_gfqt_tab.COUNT = ln_max_fill) THEN
+--          ov_stock_result := cv_enough;
+--          EXIT xliv_loop;
+--        END IF;
+        --全ての鮮度条件で安全在庫数まで引当した場合、終了
+        IF (io_gfqt_tab.COUNT = ln_safety_fill) THEN
           ov_stock_result := cv_enough;
           EXIT xliv_loop;
         END IF;
+--20100107_Ver3.2_E_本稼動_00936_SCS.Goto_MOD_END
       EXCEPTION
         WHEN lot_skip_expt THEN
           NULL;
@@ -4196,7 +4241,6 @@ AS
       ,iv_value       => cv_indent_2 || cv_prg_name || ':'
                       || 'safety_stock_quantity:'
                       || ln_safety_fill             || ','
-                      || ln_max_fill                || ','
                       || ln_stock_quantity          || ','
     );
 --
@@ -6170,7 +6214,9 @@ AS
     lv_effective              VARCHAR2(1);    --特別横持計画有効判定
     ln_work_day               NUMBER;         --計画立案日の稼働日チェック
     ld_planning_date          DATE;           --計画立案日
-    ln_planning_count         NUMBER;         --計画立案経路のカウント
+--20100107_Ver3.2_E_本稼動_00936_SCS.Goto_DEL_START
+--    ln_planning_count         NUMBER;         --計画立案経路のカウント
+--20100107_Ver3.2_E_本稼動_00936_SCS.Goto_DEL_END
 --
     -- *** ローカル・カーソル ***
 --
@@ -6191,6 +6237,9 @@ AS
                       , 0, 1
                       , ximb.palette_max_step_qty
                  ), 1)                                        palette_max_step_qty        --段数
+--20100107_Ver3.2_E_本稼動_00936_SCS.Goto_ADD_START
+            ,ximb.expiration_day                              expiration_day              --賞味期間
+--20100107_Ver3.2_E_本稼動_00936_SCS.Goto_ADD_END
       FROM   ic_item_mst_b             iimb      --OPM品目マスタ
             ,xxcmn_item_mst_b          ximb      --OPM品目アドオンマスタ
             ,mtl_system_items_b        msib      --DISC品目マスタ
@@ -6509,16 +6558,26 @@ AS
     lv_effective              := NULL;
     ln_work_day               := NULL;
     ld_planning_date          := NULL;
-    ln_planning_count         := NULL;
+--20100107_Ver3.2_E_本稼動_00936_SCS.Goto_DEL_START
+--    ln_planning_count         := NULL;
+--20100107_Ver3.2_E_本稼動_00936_SCS.Goto_DEL_END
     l_xwyp_rec                := NULL;
     l_gfct_tab.DELETE;
 --
-    ld_planning_date := gd_planning_date_to;
+--20100107_Ver3.2_E_本稼動_00936_SCS.Goto_MOD_START
+--    ld_planning_date := gd_planning_date_to;
+    ld_planning_date := gd_planning_date_from;
+--20100107_Ver3.2_E_本稼動_00936_SCS.Goto_MOD_END
     <<planning_loop>>
-    LOOP
+--20100107_Ver3.2_E_本稼動_00936_SCS.Goto_MOD_START
+--    LOOP
+    WHILE (ld_planning_date <= gd_planning_date_to) LOOP
+--20100107_Ver3.2_E_本稼動_00936_SCS.Goto_MOD_END
       BEGIN
         --計画立案日で初期化
-        ln_planning_count := 0;
+--20100107_Ver3.2_E_本稼動_00936_SCS.Goto_DEL_START
+--        ln_planning_count := 0;
+--20100107_Ver3.2_E_本稼動_00936_SCS.Goto_DEL_END
         OPEN item_cur( ld_planning_date );
         <<item_loop>>
         LOOP
@@ -6531,6 +6590,9 @@ AS
                                ,l_xwyp_rec.num_of_case
                                ,l_xwyp_rec.palette_max_cs_qty
                                ,l_xwyp_rec.palette_max_step_qty
+--20100107_Ver3.2_E_本稼動_00936_SCS.Goto_ADD_START
+                               ,l_xwyp_rec.expiration_day
+--20100107_Ver3.2_E_本稼動_00936_SCS.Goto_ADD_END
             ;
             EXIT WHEN item_cur%NOTFOUND;
             --ケース入数チェック
@@ -6543,6 +6605,14 @@ AS
                            );
               RAISE internal_api_expt;
             END IF;
+--
+--20100107_Ver3.2_E_本稼動_00936_SCS.Goto_ADD_START
+            --品目カテゴリ取得(群コード)
+            l_xwyp_rec.crowd_class_code := xxcop_common_pkg2.get_item_category_f(
+                                              iv_category_set => cv_category_crowd_class
+                                             ,in_item_id      => l_xwyp_rec.item_id
+                                           );
+--20100107_Ver3.2_E_本稼動_00936_SCS.Goto_ADD_END
 --
             OPEN msr_cur( ld_planning_date, l_xwyp_rec.inventory_item_id );
             <<msr_loop>>
@@ -6749,16 +6819,23 @@ AS
                   END IF;
                 END IF;
                 --計画立案フラグの設定
-                IF (l_xwyp_rec.receipt_date >= gd_planning_date_from) THEN
+--20100107_Ver3.2_E_本稼動_00936_SCS.Goto_MOD_START
+--                IF (l_xwyp_rec.receipt_date >= gd_planning_date_from) THEN
+--                  IF (ln_work_day > 0) THEN
+--                    l_xwyp_rec.planning_flag := cv_planning_yes;
+--                  ELSE
+--                    l_xwyp_rec.planning_flag := cv_planning_no;
+--                  END IF;
+--                  ln_planning_count := ln_planning_count + 1;
+--                ELSE
+--                  l_xwyp_rec.planning_flag := cv_planning_no;
+--                END IF;
                   IF (ln_work_day > 0) THEN
                     l_xwyp_rec.planning_flag := cv_planning_yes;
                   ELSE
                     l_xwyp_rec.planning_flag := cv_planning_no;
                   END IF;
-                  ln_planning_count := ln_planning_count + 1;
-                ELSE
-                  l_xwyp_rec.planning_flag := cv_planning_no;
-                END IF;
+--20100107_Ver3.2_E_本稼動_00936_SCS.Goto_MOD_END
                 -- ===============================
                 -- B-13．横持計画物流ワークテーブル登録
                 -- ===============================
@@ -6802,12 +6879,18 @@ AS
         WHEN obsolete_skip_expt THEN
           NULL;
       END;
-      --計画立案日の終了判定
-      IF (ln_planning_count = 0) THEN
-        EXIT planning_loop;
-      END IF;
-      -- 計画立案日をデクリメント
-      ld_planning_date := ld_planning_date - 1;
+--20100107_Ver3.2_E_本稼動_00936_SCS.Goto_DEL_START
+--      --計画立案日の終了判定
+--      IF (ln_planning_count = 0) THEN
+--        EXIT planning_loop;
+--      END IF;
+--20100107_Ver3.2_E_本稼動_00936_SCS.Goto_DEL_END
+--20100107_Ver3.2_E_本稼動_00936_SCS.Goto_MOD_START
+--      -- 計画立案日をデクリメント
+--      ld_planning_date := ld_planning_date - 1;
+      -- 計画立案日をインクリメント
+      ld_planning_date := ld_planning_date + 1;
+--20100107_Ver3.2_E_本稼動_00936_SCS.Goto_MOD_END
     END LOOP planning_loop;
 --
     --対象件数の確認
