@@ -62,8 +62,7 @@ AS
   cv_msg_xxccp1_90004         CONSTANT VARCHAR2(30)   :=  'APP-XXCCP1-90004';  -- 正常終了
   cv_msg_xxccp1_90005         CONSTANT VARCHAR2(30)   :=  'APP-XXCCP1-90005';  -- 警告終了
   cv_msg_xxccp1_90006         CONSTANT VARCHAR2(30)   :=  'APP-XXCCP1-90006';  -- エラー終了全ロールバック
-  cv_msg_xxccp1_90008         CONSTANT VARCHAR2(30)   :=  'APP-XXCCP1-90008';  -- コンカレント入力パラメータなし
-
+  --
   cv_msg_xxcoi_10387          CONSTANT VARCHAR2(30)   :=  'APP-XXCOI1-10387';  -- コンカレント入力パラメータなしメッセージ
   cv_msg_xxcoi_10388          CONSTANT VARCHAR2(30)   :=  'APP-XXCOI1-10388';  -- 取引OIF更新エラー
   cv_msg_xxcoi_10389          CONSTANT VARCHAR2(30)   :=  'APP-XXCOI1-10389';  -- 取引ワーカー起動メッセージ
@@ -760,7 +759,7 @@ AS
     -- ===============================================
     -- 完了チェック待機時間の取得
     -- ===============================================
-    gn_check_wait_second  :=  fnd_profile.value(cv_prf_check_wait_second);
+    gn_check_wait_second  :=  NVL(fnd_profile.value(cv_prf_check_wait_second), 60);
 --
   EXCEPTION
     -- *** 処理部共通例外ハンドラ ***
@@ -844,7 +843,7 @@ AS
     -- ２）資材取引OIFテーブル情報抽出処理
     -- ３）資材取引OIFヘッダID取得処理
     -- ===============================================
-	get_trans_oif_data(
+    get_trans_oif_data(
       ov_errbuf   => lv_errbuf
     , ov_retcode  => lv_retcode
     , ov_errmsg   => lv_errmsg
