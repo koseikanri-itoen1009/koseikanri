@@ -1,4 +1,4 @@
-CREATE OR REPLACE PACKAGE BODY xxinv570001c
+create or replace PACKAGE BODY xxinv570001c
 AS
 /*****************************************************************************************
  * Copyright(c)Oracle Corporation Japan, 2008. All rights reserved.
@@ -7,7 +7,7 @@ AS
  * Description      : 移動入出庫実績登録
  * MD.050           : 移動入出庫実績登録(T_MD050_BPO_570)
  * MD.070           : 移動入出庫実績登録(T_MD070_BPO_57A)
- * Version          : 1.22
+ * Version          : 1.23
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -52,6 +52,7 @@ AS
  *  2009/02/19    1.20  Akiyoshi Shiina  本番障害#1194(ロックエラーを警告にする)
  *  2009/02/24    1.21  Akiyoshi Shiina  再対応_本番障害#1179(ロット実績数量0が存在する移動実績情報の処理)
  *  2009/06/09    1.22  Hitomi Itou      本番障害#1526(最新標準データ抽出はMAX(最終更新日)とする)
+ *  2010/03/02    1.23  Mariko Miyagawa  E_本稼動_01612(処理対象データの移動ロット詳細フラグをYにする)
  *****************************************************************************************/
 --
 --#######################  固定グローバル定数宣言部 START   #######################
@@ -156,6 +157,9 @@ AS
   gv_c_tkn_table               CONSTANT VARCHAR2(30)  := 'TABLE';
   gv_c_tkn_table_val           CONSTANT VARCHAR2(60)  := '移動依頼/指示ヘッダ(アドオン)';
   gv_c_tkn_err_val             CONSTANT VARCHAR2(60)  := '移動依頼/指示情報';
+-- 2010/03/02 M.Miyagawa Add Start
+  gv_c_tkn_table_val_lot       CONSTANT VARCHAR2(60)  := '移動ロット詳細';
+-- 2010/03/02 M.Miyagawa Add End
 --mod start 1.3
 --  gv_c_tkn_api_val_a           CONSTANT VARCHAR2(60)  := '在庫数量API';
 --  gv_c_tkn_api_val_x           CONSTANT VARCHAR2(60)  := '在庫転送API';
@@ -361,6 +365,11 @@ AS
 --
   TYPE trni_api_tbl IS TABLE OF trni_api_rec INDEX BY BINARY_INTEGER;
   trni_api_rec_tbl      trni_api_tbl;  -- TRNI用
+--
+-- 2010/03/02 M.Miyagawa Add Start E_本稼動_01612対応
+  TYPE mov_lot_lock_type IS TABLE OF NUMBER(1) INDEX BY BINARY_INTEGER;
+  mov_lot_lock_rec     mov_lot_lock_type;  -- 移動ロット詳細ロック取得用
+-- 2010/03/02 M.Miyagawa Add End
 --
   -- ===============================
   -- ユーザー定義グローバル変数
@@ -826,13 +835,16 @@ AS
     -- *** ローカル定数 ***
 --
     -- *** ローカル変数 ***
-    lv_mov_num        xxinv_mov_req_instr_headers.MOV_NUM%TYPE;          -- 移動番号
-    ln_location_id    xxcmn_item_locations_v.inventory_location_id%TYPE; -- 保管倉庫ID
-    ln_item_id        ic_tran_pnd.item_id%TYPE;                          -- 品目ID
-    ln_lot_id         ic_tran_pnd.lot_id%TYPE;                           -- ロットID
-    lv_location       ic_tran_pnd.location%TYPE;                         -- 保管倉庫コード
-    lv_mov_line_id    ic_xfer_mst.attribute1%TYPE;                       -- 移動明細ID
-    lv_mov_num_bk     xxinv_mov_req_instr_headers.MOV_NUM%TYPE;          -- 移動番号
+    lv_mov_num               xxinv_mov_req_instr_headers.MOV_NUM%TYPE;          -- 移動番号
+    ln_location_id           xxcmn_item_locations_v.inventory_location_id%TYPE; -- 保管倉庫ID
+    ln_item_id               ic_tran_pnd.item_id%TYPE;                          -- 品目ID
+    ln_lot_id                ic_tran_pnd.lot_id%TYPE;                           -- ロットID
+    lv_location              ic_tran_pnd.location%TYPE;                         -- 保管倉庫コード
+    lv_mov_line_id           ic_xfer_mst.attribute1%TYPE;                       -- 移動明細ID
+    lv_mov_num_bk            xxinv_mov_req_instr_headers.MOV_NUM%TYPE;          -- 移動番号
+-- 2010/03/02 M.Miyagawa Add Start E_本稼動_01612対応
+    lv_c_tkn_table_val       VARCHAR(60);                                       -- ロックエラー時テーブル名取得用
+-- 2010/03/02 M.Miyagawa Add End
 --
     -- *** ローカル・カーソル ***
 --
@@ -1253,6 +1265,10 @@ AS
     -- *** 移動依頼/指示データ取得
     -- **************************************************
 --
+-- 2010/03/02 M.Miyagawa Add Start E_本稼動_01612対応
+    lv_c_tkn_table_val := gv_c_tkn_table_val; -- ロックエラー時テーブル名 '移動依頼/指示ヘッダ(アドオン)'
+-- 2010/03/02 M.Miyagawa Add End
+--    
     -- **************************************************
     -- パラメータ移動番号が指定されている場合
     -- **************************************************
@@ -1304,8 +1320,8 @@ AS
         EXIT when xxinv_mov_num_cur%NOTFOUND;
 --
         -- 対象データ
-        IF (move_data_rec_tbl(gn_rec_idx).mov_num <> lv_mov_num_bk) 
-        OR (lv_mov_num_bk IS NULL) 
+        IF (move_data_rec_tbl(gn_rec_idx).mov_num <> lv_mov_num_bk)
+        OR (lv_mov_num_bk IS NULL)
         THEN
 --
           -- 対象件数インクリメント
@@ -1323,6 +1339,8 @@ AS
         -- 0件の場合、正常終了にする
         gn_no_data_flg := 1;
       END IF;
+--
+--
       -- カーソルクローズ
       CLOSE xxinv_mov_num_cur;
 --
@@ -1376,7 +1394,7 @@ AS
 --
         -- 対象データ
         IF (move_data_rec_tbl(gn_rec_idx).mov_num <> lv_mov_num_bk)
-        OR (lv_mov_num_bk IS NULL) 
+        OR (lv_mov_num_bk IS NULL)
         THEN
 --
           -- 対象件数インクリメント
@@ -1389,7 +1407,7 @@ AS
         gn_rec_idx := gn_rec_idx + 1;
 --
       END LOOP xxinv_mov_cur_loop;
--- 
+--
       IF gn_target_cnt = 0 THEN
         -- 0件の場合、正常終了にする
         gn_no_data_flg := 1;
@@ -1399,6 +1417,24 @@ AS
       CLOSE xxinv_move_cur;
 --
     END IF;
+-- 2010/03/02 M.Miyagawa Add Start E_本稼動_01612対応
+    lv_c_tkn_table_val := gv_c_tkn_table_val_lot; -- '移動ロット詳細'
+--
+    <<mov_lot_lock_loop>>
+    FOR gn_rec_idx IN 1 .. move_data_rec_tbl.COUNT LOOP
+      --移動ロット詳細ロック取得
+      SELECT 1
+      BULK   COLLECT INTO mov_lot_lock_rec
+      FROM   XXINV_MOV_LOT_DETAILS xmld
+      WHERE  xmld.mov_line_id         IN (SELECT xmril.mov_line_id
+                                          FROM   xxinv_mov_req_instr_lines    xmril
+                                          WHERE  xmril.mov_hdr_id = move_data_rec_tbl(gn_rec_idx).mov_hdr_id
+                                         )
+       AND   xmld.document_type_code   = gv_c_document_type
+      FOR UPDATE NOWAIT;
+    END LOOP mov_lot_lock_loop;
+-- 2010/03/02 M.Miyagawa Add End
+--
     --==============================================================
     --メッセージ出力（エラー以外）をする必要がある場合は処理を記述
     --==============================================================
@@ -1409,6 +1445,10 @@ AS
       IF (xxinv_move_cur%ISOPEN) THEN
         CLOSE xxinv_move_cur;
       END IF;
+-- 2010/03/02 M.Miyagawa Add Start E_本稼動_01612対応
+-- 移動ロット詳細ロックエラー時処理件数クリア
+      gn_target_cnt := 0;
+-- 2010/03/02 M.Miyagawa Add End
       -- エラーメッセージ取得
 -- 2009/02/19 v1.20 UPDATE START
 --      lv_errmsg := xxcmn_common_pkg.get_msg(gv_c_msg_kbn_inv,
@@ -1417,7 +1457,10 @@ AS
 -- 2009/02/19 v1.20 UPDATE END
                                             gv_c_msg_57a_002,   -- ロックエラー
                                             gv_c_tkn_table,     -- トークンTABLE
-                                            gv_c_tkn_table_val  -- トークン値
+-- 2010/03/02 M.Miyagawa Mod Start E_本稼動_01612対応
+                                            lv_c_tkn_table_val  -- トークン値
+--                                            gv_c_tkn_table_val  -- トークン値
+-- 2010/03/02 M.Miyagawa Mod End
                                             );
       lv_errbuf  := lv_errmsg;
       ov_errmsg  := lv_errmsg;
@@ -1948,7 +1991,7 @@ AS
       -- 初期化
       out_err_tbl(gn_rec_idx).out_msg := '0';
 --
-      IF ((move_data_rec_tbl(gn_rec_idx).mov_num <> lv_err_mov_num) 
+      IF ((move_data_rec_tbl(gn_rec_idx).mov_num <> lv_err_mov_num)
       OR (lv_err_mov_num IS NULL))
       THEN
         -----------------------------------------------
@@ -1997,8 +2040,8 @@ AS
 --          IF (move_data_rec_tbl(gn_rec_idx).skip_flag = 0) THEN
           --出庫実績数量≠入庫実績数量の場合は加算しない
           --出庫元の手持数量が存在しない場合は加算しない
-          IF (  (move_data_rec_tbl(gn_rec_idx).skip_flag = 0) 
-            AND (move_data_rec_tbl(gn_rec_idx).exist_flag = 0) ) 
+          IF (  (move_data_rec_tbl(gn_rec_idx).skip_flag = 0)
+            AND (move_data_rec_tbl(gn_rec_idx).exist_flag = 0) )
           THEN
             gn_warn_cnt := gn_warn_cnt + 1;
           END IF;
@@ -2036,7 +2079,7 @@ AS
           END IF;
           --
           -- 出庫実績数量≠入庫実績数量の場合は対象外とする
-          IF ( move_data_rec_tbl(gn_rec_idx).exist_flag = 1 ) 
+          IF ( move_data_rec_tbl(gn_rec_idx).exist_flag = 1 )
           THEN
             --存在チェックフラグ格納
             err_mov_tmp_rec_tbl(ln_tmp_idx).exist_flag := 1;
@@ -2141,7 +2184,7 @@ AS
         OR ( lt_bef_mov_num is null ) )
       THEN
         -- 出庫元の手持数量が存在しない場合は1伝票1スキップ件数とする
-        IF ( err_mov_tmp_rec_tbl(ln_tmp_idx).exist_flag = 1 ) 
+        IF ( err_mov_tmp_rec_tbl(ln_tmp_idx).exist_flag = 1 )
         THEN
           gn_warn_cnt := gn_warn_cnt + 1;
         END IF;
@@ -2788,7 +2831,7 @@ AS
                         CLOSE xxcmn_locations_cur;
 --
                       EXCEPTION
-                        WHEN NO_DATA_FOUND THEN                             -- データ取得エラー 
+                        WHEN NO_DATA_FOUND THEN                             -- データ取得エラー
                           -- エラーフラグ
                           ln_err_flg  := 1;
                           IF (xxcmn_locations_cur%ISOPEN) THEN
@@ -2810,7 +2853,7 @@ AS
                           err_mov_rec_tbl(gn_rec_idx).mov_hdr_id := move_target_tbl(gn_rec_idx).mov_hdr_id;
                           err_mov_rec_tbl(gn_rec_idx).mov_num    := move_target_tbl(gn_rec_idx).mov_num;
 --
-                        WHEN TOO_MANY_ROWS THEN                             -- データ取得エラー 
+                        WHEN TOO_MANY_ROWS THEN                             -- データ取得エラー
                           -- エラーフラグ
                           ln_err_flg  := 1;
 --
@@ -3076,7 +3119,7 @@ AS
                           CLOSE xxcmn_locations_cur;
 --
                         EXCEPTION
-                          WHEN NO_DATA_FOUND THEN                             -- データ取得エラー 
+                          WHEN NO_DATA_FOUND THEN                             -- データ取得エラー
                             -- エラーフラグ
                             ln_err_flg  := 1;
                             IF (xxcmn_locations_cur%ISOPEN) THEN
@@ -3098,7 +3141,7 @@ AS
                             err_mov_rec_tbl(gn_rec_idx).mov_hdr_id := move_target_tbl(gn_rec_idx).mov_hdr_id;
                             err_mov_rec_tbl(gn_rec_idx).mov_num    := move_target_tbl(gn_rec_idx).mov_num;
 --
-                          WHEN TOO_MANY_ROWS THEN                             -- データ取得エラー 
+                          WHEN TOO_MANY_ROWS THEN                             -- データ取得エラー
                             -- エラーフラグ
                             ln_err_flg  := 1;
 --
@@ -3202,12 +3245,12 @@ AS
                 END IF;--(q)
 --
               --===========================================================
-              -- 実績(保留トラン)の日付と移動ヘッダアドオンの実績日が同じ場合 
+              -- 実績(保留トラン)の日付と移動ヘッダアドオンの実績日が同じ場合
               -- →数量が変更されているデータのみ処理対象にする
               --===========================================================
               ELSE  --(r)
 -- add start 1.9
-                IF((move_target_tbl(gn_rec_idx).lot_out_actual_quantity = move_target_tbl(gn_rec_idx).lot_out_bf_act_quantity) 
+                IF((move_target_tbl(gn_rec_idx).lot_out_actual_quantity = move_target_tbl(gn_rec_idx).lot_out_bf_act_quantity)
                   AND (move_target_tbl(gn_rec_idx).lot_in_actual_quantity = move_target_tbl(gn_rec_idx).lot_in_bf_act_quantity))
                 THEN  --(j)
                   NULL;
@@ -3342,7 +3385,7 @@ AS
                           CLOSE xxcmn_locations_cur;
 --
                         EXCEPTION
-                          WHEN NO_DATA_FOUND THEN                             -- データ取得エラー 
+                          WHEN NO_DATA_FOUND THEN                             -- データ取得エラー
                             -- エラーフラグ
                             ln_err_flg  := 1;
                             IF (xxcmn_locations_cur%ISOPEN) THEN
@@ -3364,7 +3407,7 @@ AS
                             err_mov_rec_tbl(gn_rec_idx).mov_hdr_id := move_target_tbl(gn_rec_idx).mov_hdr_id;
                             err_mov_rec_tbl(gn_rec_idx).mov_num    := move_target_tbl(gn_rec_idx).mov_num;
 --
-                          WHEN TOO_MANY_ROWS THEN                             -- データ取得エラー 
+                          WHEN TOO_MANY_ROWS THEN                             -- データ取得エラー
                             -- エラーフラグ
                             ln_err_flg  := 1;
 --
@@ -3491,7 +3534,7 @@ AS
                         -- 赤作る
                         ------------------------------------------------------------------
                         IF  ( (move_target_tbl(gn_rec_idx).lot_out_actual_quantity
-                                                        <> move_target_tbl(gn_rec_idx).lot_out_bf_act_quantity) 
+                                                        <> move_target_tbl(gn_rec_idx).lot_out_bf_act_quantity)
                           AND (move_target_tbl(gn_rec_idx).lot_in_actual_quantity
                                                         <> move_target_tbl(gn_rec_idx).lot_in_bf_act_quantity)
                           AND (move_target_tbl(gn_rec_idx).lot_out_bf_act_quantity <> 0)
@@ -3580,7 +3623,7 @@ AS
                               CLOSE xxcmn_locations_cur;
 --
                             EXCEPTION
-                              WHEN NO_DATA_FOUND THEN                             -- データ取得エラー 
+                              WHEN NO_DATA_FOUND THEN                             -- データ取得エラー
                                 -- エラーフラグ
                                 ln_err_flg  := 1;
                                 IF (xxcmn_locations_cur%ISOPEN) THEN
@@ -3602,7 +3645,7 @@ AS
                                 err_mov_rec_tbl(gn_rec_idx).mov_hdr_id := move_target_tbl(gn_rec_idx).mov_hdr_id;
                                 err_mov_rec_tbl(gn_rec_idx).mov_num    := move_target_tbl(gn_rec_idx).mov_num;
 --
-                              WHEN TOO_MANY_ROWS THEN                             -- データ取得エラー 
+                              WHEN TOO_MANY_ROWS THEN                             -- データ取得エラー
                                 -- エラーフラグ
                                 ln_err_flg  := 1;
 --
@@ -3805,7 +3848,7 @@ AS
                               CLOSE xxcmn_locations_cur;
 --
                             EXCEPTION
-                              WHEN NO_DATA_FOUND THEN                             -- データ取得エラー 
+                              WHEN NO_DATA_FOUND THEN                             -- データ取得エラー
                                 -- エラーフラグ
                                 ln_err_flg  := 1;
                                 IF (xxcmn_locations_cur%ISOPEN) THEN
@@ -3827,7 +3870,7 @@ AS
                                 err_mov_rec_tbl(gn_rec_idx).mov_hdr_id := move_target_tbl(gn_rec_idx).mov_hdr_id;
                                 err_mov_rec_tbl(gn_rec_idx).mov_num    := move_target_tbl(gn_rec_idx).mov_num;
 --
-                              WHEN TOO_MANY_ROWS THEN                             -- データ取得エラー 
+                              WHEN TOO_MANY_ROWS THEN                             -- データ取得エラー
                                 -- エラーフラグ
                                 ln_err_flg  := 1;
 --
@@ -4357,7 +4400,7 @@ AS
                         CLOSE xxcmn_locations_cur;
 --
                       EXCEPTION
-                        WHEN NO_DATA_FOUND THEN                             -- データ取得エラー 
+                        WHEN NO_DATA_FOUND THEN                             -- データ取得エラー
                           -- エラーフラグ
                           ln_err_flg  := 1;
                           IF (xxcmn_locations_cur%ISOPEN) THEN
@@ -4379,7 +4422,7 @@ AS
                           err_mov_rec_tbl(gn_rec_idx).mov_hdr_id := move_target_tbl(gn_rec_idx).mov_hdr_id;
                           err_mov_rec_tbl(gn_rec_idx).mov_num    := move_target_tbl(gn_rec_idx).mov_num;
 --
-                        WHEN TOO_MANY_ROWS THEN                             -- データ取得エラー 
+                        WHEN TOO_MANY_ROWS THEN                             -- データ取得エラー
                           -- エラーフラグ
                           ln_err_flg  := 1;
 --
@@ -4623,7 +4666,7 @@ AS
                           CLOSE xxcmn_locations_cur;
 --
                         EXCEPTION
-                          WHEN NO_DATA_FOUND THEN                             -- データ取得エラー 
+                          WHEN NO_DATA_FOUND THEN                             -- データ取得エラー
                             -- エラーフラグ
                             ln_err_flg  := 1;
                             IF (xxcmn_locations_cur%ISOPEN) THEN
@@ -4645,7 +4688,7 @@ AS
                             err_mov_rec_tbl(gn_rec_idx).mov_hdr_id := move_target_tbl(gn_rec_idx).mov_hdr_id;
                             err_mov_rec_tbl(gn_rec_idx).mov_num    := move_target_tbl(gn_rec_idx).mov_num;
 --
-                          WHEN TOO_MANY_ROWS THEN                             -- データ取得エラー 
+                          WHEN TOO_MANY_ROWS THEN                             -- データ取得エラー
                             -- エラーフラグ
                             ln_err_flg  := 1;
 --
@@ -4698,7 +4741,7 @@ AS
                           FND_FILE.PUT_LINE(FND_FILE.LOG,'【26】trni実績格納  End');
 --
                         END IF;  -- (M)
-                      
+
 --
                       -----------------------------------------------------
                       -- 実績(cmp)の数量が0でない場合
@@ -4736,7 +4779,7 @@ AS
                 END IF;  -- (D)
 --
               --===========================================================
-              -- 実績(cmp)の日付と移動ヘッダアドオンの実績日が同じ場合 
+              -- 実績(cmp)の日付と移動ヘッダアドオンの実績日が同じ場合
               -- →数量が変更されているデータのみ処理対象にする
               --===========================================================
               ELSE  -- (B)
@@ -4875,7 +4918,7 @@ AS
                         CLOSE xxcmn_locations_cur;
 --
                       EXCEPTION
-                        WHEN NO_DATA_FOUND THEN                             -- データ取得エラー 
+                        WHEN NO_DATA_FOUND THEN                             -- データ取得エラー
                           -- エラーフラグ
                           ln_err_flg  := 1;
                           IF (xxcmn_locations_cur%ISOPEN) THEN
@@ -4897,7 +4940,7 @@ AS
                           err_mov_rec_tbl(gn_rec_idx).mov_hdr_id := move_target_tbl(gn_rec_idx).mov_hdr_id;
                           err_mov_rec_tbl(gn_rec_idx).mov_num    := move_target_tbl(gn_rec_idx).mov_num;
 --
-                        WHEN TOO_MANY_ROWS THEN                             -- データ取得エラー 
+                        WHEN TOO_MANY_ROWS THEN                             -- データ取得エラー
                           -- エラーフラグ
                           ln_err_flg  := 1;
 --
@@ -5013,7 +5056,7 @@ AS
                       -- 赤作る
                       ------------------------------------------------------------------
                       IF  ( (move_target_tbl(gn_rec_idx).lot_out_actual_quantity
-                                                      <> move_target_tbl(gn_rec_idx).lot_out_bf_act_quantity) 
+                                                      <> move_target_tbl(gn_rec_idx).lot_out_bf_act_quantity)
                         AND (move_target_tbl(gn_rec_idx).lot_in_actual_quantity
                                                       <> move_target_tbl(gn_rec_idx).lot_in_bf_act_quantity)
                         AND (move_target_tbl(gn_rec_idx).lot_out_bf_act_quantity <> 0)
@@ -5113,7 +5156,7 @@ AS
                             CLOSE xxcmn_locations_cur;
 --
                           EXCEPTION
-                            WHEN NO_DATA_FOUND THEN                             -- データ取得エラー 
+                            WHEN NO_DATA_FOUND THEN                             -- データ取得エラー
                               -- エラーフラグ
                               ln_err_flg  := 1;
                               IF (xxcmn_locations_cur%ISOPEN) THEN
@@ -5135,7 +5178,7 @@ AS
                               err_mov_rec_tbl(gn_rec_idx).mov_hdr_id := move_target_tbl(gn_rec_idx).mov_hdr_id;
                               err_mov_rec_tbl(gn_rec_idx).mov_num    := move_target_tbl(gn_rec_idx).mov_num;
 --
-                            WHEN TOO_MANY_ROWS THEN                             -- データ取得エラー 
+                            WHEN TOO_MANY_ROWS THEN                             -- データ取得エラー
                               -- エラーフラグ
                               ln_err_flg  := 1;
 --
@@ -5331,7 +5374,7 @@ AS
                             CLOSE xxcmn_locations_cur;
 --
                           EXCEPTION
-                            WHEN NO_DATA_FOUND THEN                             -- データ取得エラー 
+                            WHEN NO_DATA_FOUND THEN                             -- データ取得エラー
                               -- エラーフラグ
                               ln_err_flg  := 1;
                               IF (xxcmn_locations_cur%ISOPEN) THEN
@@ -5353,7 +5396,7 @@ AS
                               err_mov_rec_tbl(gn_rec_idx).mov_hdr_id := move_target_tbl(gn_rec_idx).mov_hdr_id;
                               err_mov_rec_tbl(gn_rec_idx).mov_num    := move_target_tbl(gn_rec_idx).mov_num;
 --
-                            WHEN TOO_MANY_ROWS THEN                             -- データ取得エラー 
+                            WHEN TOO_MANY_ROWS THEN                             -- データ取得エラー
                               -- エラーフラグ
                               ln_err_flg  := 1;
 --
@@ -6442,7 +6485,7 @@ AS
 --            ,program_update_date    = gd_sysdate
 --      WHERE mov_hdr_id        = move_data_rec_tbl(gn_rec_idx).mov_hdr_id;
 --
-      IF ((lt_pre_mov_hdr_id IS NULL AND move_data_rec_tbl(gn_rec_idx).ng_flag = 0) 
+      IF ((lt_pre_mov_hdr_id IS NULL AND move_data_rec_tbl(gn_rec_idx).ng_flag = 0)
         OR (lt_pre_mov_hdr_id <> move_data_rec_tbl(gn_rec_idx).mov_hdr_id AND move_data_rec_tbl(gn_rec_idx).ng_flag = 0)
         OR (lt_pre_mov_hdr_id = move_data_rec_tbl(gn_rec_idx).mov_hdr_id AND lt_pre_ng_flag = 0))THEN
 --
@@ -6458,6 +6501,26 @@ AS
               ,program_id             = gn_conc_program_id
               ,program_update_date    = gd_sysdate
         WHERE mov_hdr_id        = move_data_rec_tbl(gn_rec_idx).mov_hdr_id;
+--
+-- 2010/03/02 M.Miyagawa Add Start E_本稼動_01612対応
+        -- 実績計上済フラグ更新
+        UPDATE XXINV_MOV_LOT_DETAILS xmld
+        SET    xmld.actual_confirm_class   = gv_c_ynkbn_y
+              ,xmld.last_updated_by        = gn_user_id
+              ,xmld.last_update_date       = gd_sysdate
+              ,xmld.last_update_login      = gn_login_id
+              ,xmld.request_id             = gn_conc_request_id
+              ,xmld.program_application_id = gn_prog_appl_id
+              ,xmld.program_id             = gn_conc_program_id
+              ,xmld.program_update_date    = gd_sysdate
+        WHERE  xmld.mov_line_id            IN (SELECT xmril.mov_line_id
+                                               FROM   xxinv_mov_req_instr_lines    xmril
+                                               WHERE  xmril.mov_hdr_id = move_data_rec_tbl(gn_rec_idx).mov_hdr_id
+                                              )
+          AND  xmld.document_type_code     = gv_c_document_type
+               ;
+-- 2010/03/02 M.Miyagawa Add End
+--
         -- 訂正前実績数量更新(出庫)
         UPDATE XXINV_MOV_LOT_DETAILS
 --2008/12/17 Y.Kawano Upd Start
@@ -6799,6 +6862,14 @@ AS
         update_flg_proc(lv_errbuf,              -- エラー・メッセージ           --# 固定 #
                         lv_retcode,             -- リターン・コード             --# 固定 #
                         lv_errmsg);             -- ユーザー・エラー・メッセージ --# 固定 #
+--
+-- 2010/03/02 M.Miyagawa Add Start E_本稼動_01612対応
+        -- エラーの場合
+        IF (lv_retcode = gv_status_error) THEN
+          gn_error_cnt := gn_target_cnt - gn_warn_cnt;
+          RAISE global_process_expt;
+        END IF;
+-- 2010/03/02 M.Miyagawa Add End
       END IF;
 --
       FND_FILE.PUT_LINE(FND_FILE.LOG,'---update_flg_proc end  ---');
