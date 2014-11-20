@@ -3,7 +3,7 @@
  *
  * View Name       : XXCOS_CREATED_BY_OWN_BASE_V
  * Description     : 全ユーザ所属する自拠点ビュー
- * Version         : 1.2
+ * Version         : 1.3
  *
  * Change Record
  * ------------- ----- ---------------- ---------------------------------
@@ -12,6 +12,7 @@
  *  2009/01/21    1.0   T.Tyou           新規作成
  *  2009/07/22    1.1   M.Maruyama       障害番号0000640 対応
  *  2009/09/03    1.2   M.Sano           障害番号0001227 対応
+ *  2009/10/16    1.3   K.Atsushiba      障害番号0001113 対応
  ************************************************************************/
 CREATE OR REPLACE VIEW apps.xxcos_created_by_own_base_v (
   base_code,                            --拠点コード
@@ -32,7 +33,10 @@ AS
                                              )
                                            )
           THEN paaf.ass_attribute5
-          ELSE paaf.ass_attribute4
+-- 2009/10/16 Ver1.3 Mod Start
+          ELSE paaf.ass_attribute6                                              --拠点コード（旧）
+--          ELSE paaf.ass_attribute4                                              --拠点コード（旧）
+-- 2009/10/16 Ver1.3 Mod Start
         END                             own_base_code,
         pd.process_date                 process_date,
         fu.user_id                      user_id

@@ -3,7 +3,7 @@
  *
  * View Name       : xxcos_login_base_info_v
  * Description     : ログインユーザ拠点ビュー
- * Version         : 1.3
+ * Version         : 1.4
  *
  * Change Record
  * ------------- ----- ---------------- ---------------------------------
@@ -13,7 +13,7 @@
  *  2009/07/17    1.1   K.Atsushiba      障害番号0000488 対応
  *  2009/07/22    1.2   M.Maruyama       障害番号0000640 対応
  *  2009/09/03    1.3   M.Sano           障害番号0001227 対応
- *
+ *  2009/10/16    1.4   K.Atsushiba      障害番号0001113 対応
  ************************************************************************/
 CREATE OR REPLACE VIEW apps.xxcos_login_base_info_v (
   base_code,                            --拠点コード
@@ -45,7 +45,10 @@ AS
                                              )
 --  2009/07/17 Ver1.1 Mod End
           THEN paaf.ass_attribute5                                              --拠点コード（新）
-          ELSE paaf.ass_attribute4                                              --拠点コード（旧）
+-- 2009/10/16 Ver1.3 Mod Start
+          ELSE paaf.ass_attribute6                                              --拠点コード（旧）
+--          ELSE paaf.ass_attribute4                                              --拠点コード（旧）
+-- 2009/10/16 Ver1.3 Mod Start
         END own_base_code,
         pd.process_date                 process_date                            --業務日付
       FROM
