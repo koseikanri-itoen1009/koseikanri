@@ -1,0 +1,23 @@
+CREATE TABLE xxcsm.xxcsm_wk_vending_pnt(
+     year_month                 VARCHAR2(100)
+    ,customer_cd                VARCHAR2(100)
+    ,location_cd                VARCHAR2(100)
+    ,employee_cd                VARCHAR2(100)
+    ,get_intro_kbn              VARCHAR2(100)
+    ,point                      VARCHAR2(100))
+ PCTFREE 10 PCTUSED 40 INITRANS 10 STORAGE ( INITIAL 2M)
+/
+COMMENT ON TABLE xxcsm.xxcsm_wk_vending_pnt                   IS '什器ポイントワークテーブル'
+/
+COMMENT ON COLUMN xxcsm.xxcsm_wk_vending_pnt.year_month       IS '獲得年月'
+/
+COMMENT ON COLUMN xxcsm.xxcsm_wk_vending_pnt.customer_cd      IS '顧客コード'
+/
+COMMENT ON COLUMN xxcsm.xxcsm_wk_vending_pnt.location_cd      IS '拠点コード'
+/
+COMMENT ON COLUMN xxcsm.xxcsm_wk_vending_pnt.employee_cd      IS '従業員コード'
+/
+COMMENT ON COLUMN xxcsm.xxcsm_wk_vending_pnt.get_intro_kbn    IS '獲得・紹介区分'
+/
+COMMENT ON COLUMN xxcsm.xxcsm_wk_vending_pnt.point            IS 'ポイント'
+/
