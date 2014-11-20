@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCOS009A06R (body)
  * Description      : EDI”[•i—\’è–¢”[ƒŠƒXƒg
  * MD.050           : EDI”[•i—\’è–¢”[ƒŠƒXƒg MD050_COS_009_A06
- * Version          : 1.5
+ * Version          : 1.6
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -32,6 +32,7 @@ AS
  *                                       ‘ÎÛƒf[ƒ^0Œ‚Ìê‡AŒxI—¹‚©‚ç³íI—¹‚É•ÏX
  *  2009/06/26    1.4   N.Nishimura      áŠQ‘Î‰[T1_1437]ƒf[ƒ^ƒp[ƒW•s‹ï‡‘Î‰
  *  2009/07/13    1.5   K.Kiriu          áŠQ‘Î‰[0000488]PT‘Î‰
+ *  2009/10/09    1.6   M.Sano           áŠQ‘Î‰[0001378]’ •[ƒe[ƒuƒ‹‚ÌŒ…‚ ‚Ó‚ê‘Î‰
  *
  *****************************************************************************************/
 --
@@ -586,14 +587,20 @@ AS
       ln_idx := ln_idx + 1;
       g_report_data_tab(ln_idx).record_id              := lt_record_id;                --ƒŒƒR[ƒhID
       g_report_data_tab(ln_idx).base_code              := l_data_rec.base_code;        --‹’“_ƒR[ƒh
-      g_report_data_tab(ln_idx).base_name              := l_data_rec.base_name;        --‹’“_–¼Ì
+/* 2009/10/08 Ver1.6 Mod Start */
+--      g_report_data_tab(ln_idx).base_name              := l_data_rec.base_name;        --‹’“_–¼Ì
+      g_report_data_tab(ln_idx).base_name              := SUBSTRB( l_data_rec.base_name, 1, 40 ); --‹’“_–¼Ì
+/* 2009/10/08 Ver1.6 Mod End   */
       g_report_data_tab(ln_idx).schedule_dlv_date      := l_data_rec.req_date;         --”[•i—\’è“ú
       g_report_data_tab(ln_idx).employee_base_code     := l_data_rec.emp_code;         --‰c‹Æ’S“–ÒƒR[ƒh
       g_report_data_tab(ln_idx).employee_base_name     := SUBSTRB( l_data_rec.emp_name, 1, 12 );  --‰c‹Æ’S“–Ò–¼
       g_report_data_tab(ln_idx).customer_number        := l_data_rec.cust_code;                   --ŒÚ‹q”Ô†
       g_report_data_tab(ln_idx).customer_name          := SUBSTRB( l_data_rec.cust_name, 1, 20 ); --ŒÚ‹q–¼
       g_report_data_tab(ln_idx).order_number           := l_data_rec.order_no;         --ó’”Ô†
-      g_report_data_tab(ln_idx).entry_number           := l_data_rec.entry_no;         --“`•[”Ô†
+/* 2009/10/08 Ver1.6 Mod Start */
+--      g_report_data_tab(ln_idx).entry_number           := l_data_rec.entry_no;         --“`•[”Ô†
+      g_report_data_tab(ln_idx).entry_number           := SUBSTRB( l_data_rec.entry_no, 1, 12 );  --“`•[”Ô†
+/* 2009/10/08 Ver1.6 Mod End   */
       g_report_data_tab(ln_idx).amount                 := l_data_rec.amount;           --‹àŠz
       g_report_data_tab(ln_idx).ordered_date           := l_data_rec.ord_date;         --ó’“ú                        
       g_report_data_tab(ln_idx).created_by             := cn_created_by;               --ì¬Ò
