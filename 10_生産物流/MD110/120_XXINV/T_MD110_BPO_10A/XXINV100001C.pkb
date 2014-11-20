@@ -8,7 +8,7 @@ AS
  * Description      : 生産物流(計画)
  * MD.050           : 計画・移動・在庫・販売計画/引取計画 T_MD050_BPO100
  * MD.070           : 計画・移動・在庫・販売計画/引取計画 T_MD070_BPO10A
- * Version          : 1.23
+ * Version          : 1.24
  *
  * Program List
  * -------------------------------- ----------------------------------------------------------
@@ -110,6 +110,7 @@ AS
  *  2009/04/13   1.21 Oracle 吉元 強樹   本番#1350対応,メッセージ出力不具合対応(エラー重複表示)
  *  2009/04/16   1.22 Oracle 椎名 昭圭   本番#1407対応
  *  2009/05/19   1.23 Oracle 丸下        本番#1437対応
+ *  2009/05/20   1.24 Oracle 丸下        本番#1341対応
  *****************************************************************************************/
 --
 --#######################  固定グローバル定数宣言部 START   #######################
@@ -538,6 +539,86 @@ AS
     ov_errmsg                OUT NOCOPY VARCHAR2  -- ユーザー・エラー・メッセージ --# 固定 #
   );
 -- 2009/02/17 本番障害#38対応 ADD End   --
+-- 2009/05/20 ADD START
+  /**********************************************************************************
+   * Procedure Name   : del_if_all
+   * Description      : Forecast区分レベルでIFデータを削除する
+   ***********************************************************************************/
+  PROCEDURE del_if_all(
+    iv_forecast_designator   IN  VARCHAR2,         -- Forecast区分
+    ov_errbuf                OUT NOCOPY VARCHAR2,  -- エラー・メッセージ           --# 固定 #
+    ov_retcode               OUT NOCOPY VARCHAR2,  -- リターン・コード             --# 固定 #
+    ov_errmsg                OUT NOCOPY VARCHAR2)  -- ユーザー・エラー・メッセージ --# 固定 #
+  IS
+    -- ===============================
+    -- 固定ローカル定数
+    -- ===============================
+    cv_prg_name   CONSTANT VARCHAR2(100) := 'del_if_all'; -- プログラム名
+--
+--#####################  固定ローカル変数宣言部 START   ########################
+--
+    lv_errbuf  VARCHAR2(5000);  -- エラー・メッセージ
+    lv_retcode VARCHAR2(1);     -- リターン・コード
+    lv_errmsg  VARCHAR2(5000);  -- ユーザー・エラー・メッセージ
+--
+--###########################  固定部 END   ####################################
+--
+    -- ===============================
+    -- ユーザー宣言部
+    -- ===============================
+    -- *** ローカル定数 ***
+--
+    -- *** ローカル変数 ***
+--
+    -- *** ローカル・カーソル ***
+--
+    -- *** ローカル・レコード ***
+--
+  BEGIN
+--
+--##################  固定ステータス初期化部 START   ###################
+--
+    ov_retcode := gv_status_normal;
+--
+--###########################  固定部 END   ############################
+--
+    -- ***************************************
+    -- ***        実処理の記述             ***
+    -- ***       共通関数の呼び出し        ***
+    -- ***************************************
+--
+    -- IFデータをクリアする
+    DELETE 
+    FROM xxinv_mrp_forecast_interface mfi
+    WHERE  mfi.forecast_designator = iv_forecast_designator  -- Forecast分類
+    AND    mfi.created_by          = gn_created_by           -- 作成者=ログインユーザ
+    ;
+    -- 削除を完了するためコミットを実行する
+    COMMIT;
+--
+  EXCEPTION
+--
+--#################################  固定例外処理部 START   ####################################
+--
+    -- *** 共通関数例外ハンドラ ***
+    WHEN global_api_expt THEN
+      ov_errmsg  := lv_errmsg;
+      ov_errbuf  := SUBSTRB(gv_pkg_name||gv_msg_cont||cv_prg_name||gv_msg_part||lv_errbuf,1,5000);
+      ov_retcode := gv_status_error;
+    -- *** 共通関数OTHERS例外ハンドラ ***
+    WHEN global_api_others_expt THEN
+      ov_errbuf  := gv_pkg_name||gv_msg_cont||cv_prg_name||gv_msg_part||SQLERRM;
+      ov_retcode := gv_status_error;
+    -- *** OTHERS例外ハンドラ ***
+    WHEN OTHERS THEN
+      ov_errbuf  := gv_pkg_name||gv_msg_cont||cv_prg_name||gv_msg_part||SQLERRM;
+      ov_retcode := gv_status_error;
+--
+--#####################################  固定部 END   ##########################################
+--
+  END del_if_all;
+--
+-- 2009/05/20 ADD END
 --
   /**********************************************************************************
    * Procedure Name   : if_data_disp
@@ -2338,7 +2419,7 @@ AS
                                                           -- 引取計画必須チェックエラー
                                                         ,1
                                                         ,5000);
-          FND_FILE.PUT_LINE(FND_FILE.OUTPUT,lv_errmsg);
+          FND_FILE.PUT_LINE(FND_FILE.LOG,lv_errmsg);
         END LOOP null_data_loop1;
         RAISE null_expt;
       END IF;
@@ -2387,7 +2468,7 @@ AS
                                                           -- 計画商品必須チェックエラー
                                                         ,1
                                                         ,5000);
-          FND_FILE.PUT_LINE(FND_FILE.OUTPUT,lv_errmsg);
+          FND_FILE.PUT_LINE(FND_FILE.LOG,lv_errmsg);
         END LOOP null_data_loop2;
         RAISE null_expt;
       END IF;
@@ -2436,7 +2517,7 @@ AS
                                                           -- 販売計画必須チェックエラー
                                                         ,1
                                                         ,5000);
-          FND_FILE.PUT_LINE(FND_FILE.OUTPUT,lv_errmsg);
+          FND_FILE.PUT_LINE(FND_FILE.LOG,lv_errmsg);
         END LOOP null_data_loop5;
         RAISE null_expt;
       END IF;
@@ -2485,7 +2566,7 @@ AS
                                                           -- 出荷数制限A必須チェックエラー
                                                         ,1
                                                         ,5000);
-          FND_FILE.PUT_LINE(FND_FILE.OUTPUT,lv_errmsg);
+          FND_FILE.PUT_LINE(FND_FILE.LOG,lv_errmsg);
         END LOOP null_data_loop3;
         RAISE null_expt;
       END IF;
@@ -2534,7 +2615,7 @@ AS
                                                         -- 出荷数制限B必須チェックエラー
                                                         ,1
                                                         ,5000);
-          FND_FILE.PUT_LINE(FND_FILE.OUTPUT,lv_errmsg);
+          FND_FILE.PUT_LINE(FND_FILE.LOG,lv_errmsg);
         END LOOP null_data_loop4;
         RAISE null_expt;
       END IF;
@@ -2545,6 +2626,10 @@ AS
       ov_errmsg  := lv_errmsg;
       ov_errbuf  := SUBSTRB(gv_pkg_name||gv_msg_cont||cv_prg_name||gv_msg_part||lv_errbuf,1,5000);
       ov_retcode := gv_status_error;
+      -- 2009/05/20 ADD START
+      del_if_all(iv_forecast_designator,lv_errbuf,lv_retcode,lv_errmsg);
+      FND_FILE.PUT_LINE(FND_FILE.LOG,'INTERFACE DATA DELETED');
+      -- 2009/05/20 ADD END
 --
 --#################################  固定例外処理部 START   ####################################
 --
