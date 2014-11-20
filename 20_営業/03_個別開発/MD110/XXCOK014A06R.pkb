@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCOK014A06R(body)
  * Description      : 条件別販手販協計算処理実行時に販手条件マスタ未登録の販売実績をエラーリストに出力
  * MD.050           : 自販機販手条件エラーリスト MD050_COK_014_A06
- * Version          : 1.3
+ * Version          : 1.4
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -29,6 +29,7 @@ AS
  *  2009/03/02    1.1   M.Hiruta         [障害COK_066] 容器区分取得方法変更
  *  2009/03/25    1.2   S.Kayahara       最終行にスラッシュ追加
  *  2009/03/02    1.3   K.Yamaguchi      [障害T1_0510] 売上拠点情報取得SQL文の不足対応
+ *  2009/09/01    1.4   S.Moriyama       [障害0001230] OPM品目マスタ取得条件追加
  *
  *****************************************************************************************/
   -- ===============================================
@@ -61,6 +62,9 @@ AS
   cv_msg_code_00046          CONSTANT VARCHAR2(50)  := 'APP-XXCOK1-00046';          -- 顧客情報複数件取得エラー
   cv_msg_code_00056          CONSTANT VARCHAR2(50)  := 'APP-XXCOK1-00056';          -- 品目情報取得エラー
   cv_msg_code_00015          CONSTANT VARCHAR2(50)  := 'APP-XXCOK1-00015';          -- 容器情報取得エラー
+-- 2009/09/01 Ver.1.4 [障害0001230] SCS S.Moriyama ADD START
+  cv_msg_code_00028          CONSTANT VARCHAR2(50)  := 'APP-XXCOK1-00028';          -- 業務処理日付取得エラー
+-- 2009/09/01 Ver.1.4 [障害0001230] SCS S.Moriyama ADD END
   cv_msg_code_00040          CONSTANT VARCHAR2(50)  := 'APP-XXCOK1-00040';          -- SVF起動APIエラー
   cv_msg_code_10321          CONSTANT VARCHAR2(50)  := 'APP-XXCOK1-10321';          -- ロック取得エラー
   cv_msg_code_10397          CONSTANT VARCHAR2(50)  := 'APP-XXCOK1-10397';          -- データ削除エラー
@@ -134,6 +138,9 @@ AS
   gt_base_code              xxcok_bm_contract_err.base_code%TYPE DEFAULT NULL;  -- 拠点コード(入力パラメータ)
   gt_selling_base_code_bkup hz_cust_accounts.account_number%TYPE DEFAULT NULL;  -- 売上計上拠点コード
   gt_cust_code_bkup         hz_locations.address3%TYPE           DEFAULT NULL;  -- 地区コード
+-- 2009/09/01 Ver.1.4 [障害0001230] SCS S.Moriyama ADD START
+  gd_process_date           DATE                                 DEFAULT NULL;  -- 業務処理日付
+-- 2009/09/01 Ver.1.4 [障害0001230] SCS S.Moriyama ADD END
   -- ファイル名称
   gv_file_name              VARCHAR2(100)                        DEFAULT NULL;  -- SVF出力ファイル名
   -- ===============================================
@@ -153,7 +160,7 @@ AS
          , xbce.closing_date         AS closing_date              -- 締め日
          , item.item_short_name      AS item_short_name           -- 品目・略名
          , cont.container_name       AS container_name            -- 容器名
-    FROM   xxcok_bm_contract_err     xbce                         -- 販促条件エラーテーブル
+    FROM   xxcok_bm_contract_err     xbce                         -- 販手条件エラーテーブル
          , ( SELECT msib.segment1         AS item_code            -- 品目コード
                   , ximb.item_short_name  AS item_short_name      -- 品目・略名
              FROM   mtl_system_items_b    msib                    -- 品目マスタ
@@ -162,6 +169,10 @@ AS
              WHERE  msib.organization_id  = gn_org_id
              AND    msib.segment1         = iimb.item_no
              AND    iimb.item_id          = ximb.item_id
+-- 2009/09/01 Ver.1.4 [障害0001230] SCS S.Moriyama ADD START
+             AND    gd_process_date BETWEEN ximb.start_date_active
+                                    AND NVL ( ximb.end_date_active , gd_process_date )
+-- 2009/09/01 Ver.1.4 [障害0001230] SCS S.Moriyama ADD END
            ) item
 -- Start 2009/03/03 M.Hiruta
 --         , ( SELECT xlvv.lookup_code      AS container_type_code  -- 容器コード
@@ -954,6 +965,24 @@ AS
                     );
       RAISE get_data_err_expt;
     END IF;
+-- 2009/09/01 Ver.1.4 [障害0001230] SCS S.Moriyama ADD START
+    -- ===============================================
+    -- 業務処理日付取得
+    -- ===============================================
+    gd_process_date := xxccp_common_pkg2.get_process_date;
+    IF ( gd_process_date IS NULL ) THEN
+      lv_errmsg  := xxccp_common_pkg.get_msg(
+                      iv_application  => cv_xxcok_appl_short_name
+                    , iv_name         => cv_msg_code_00028
+                    );
+      lb_retcode := xxcok_common_pkg.put_message_f(
+                      in_which    => FND_FILE.LOG
+                    , iv_message  => lv_errmsg
+                    , in_new_line => cn_number_0
+                    );
+      RAISE get_data_err_expt;
+    END IF;
+-- 2009/09/01 Ver.1.4 [障害0001230] SCS S.Moriyama ADD END
 --
   EXCEPTION
     -- *** データ取得エラー ***
