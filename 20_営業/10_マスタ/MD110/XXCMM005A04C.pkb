@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCMM005A04C(body)
  * Description      : 所属マスタIF出力（自販機管理）
  * MD.050           : 所属マスタIF出力（自販機管理） MD050_CMM_005_A04
- * Version          : 1.2
+ * Version          : 1.3
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -27,6 +27,7 @@ AS
  *  2009/02/12    1.0   Masayuki.Sano    新規作成
  *  2009/02/26    1.1   Masayuki.Sano    結合テスト動作不正対応
  *  2009/03/09    1.2   Yuuki.Nakamura   ファイル出力先プロファイル名称変更
+ *  2009/04/20    1.3   Yutaka.Kuboshima 障害T1_0590の対応
  *
  *****************************************************************************************/
 --
@@ -97,6 +98,9 @@ AS
   cv_pro_out_file_dir CONSTANT VARCHAR2(50) := 'XXCMM1_JIHANKI_OUT_DIR';        -- CSVファイル出力先
 --ver.1.2 2009/03/09 mod by Yuuki.Nakamura end
   cv_pro_out_file_fil CONSTANT VARCHAR2(50) := 'XXCMM1_005A04_OUT_FILE_FIL';  -- CSVファイル名
+-- 2009/04/20 Ver1.3 add start by Yutaka.Kuboshima
+  cv_aff_dept_dummy_cd CONSTANT VARCHAR2(50)  := 'XXCMM1_AFF_DEPT_DUMMY_CD';    -- AFFダミー部門コード
+-- 2009/04/20 Ver1.3 add end by Yutaka.Kuboshima
   -- ■ メッセージ・コード（エラー）
   cv_msg_00002        CONSTANT VARCHAR2(20) := 'APP-XXCMM1-00002';            -- プロファイル取得エラー
   cv_msg_00010        CONSTANT VARCHAR2(20) := 'APP-XXCMM1-00010';            -- CSVファイル存在チェック
@@ -136,10 +140,16 @@ AS
   cv_tvl_auto_en      CONSTANT VARCHAR2(1)  := ']';              -- ｺﾝｶﾚﾝﾄ･ﾊﾟﾗﾒｰﾀ名_自動(終了)
   cv_tvl_para_st      CONSTANT VARCHAR2(1)  := '[';              -- ｺﾝｶﾚﾝﾄ･ﾊﾟﾗﾒｰﾀ名(開始)
   cv_tvl_para_en      CONSTANT VARCHAR2(1)  := ']';              -- ｺﾝｶﾚﾝﾄ･ﾊﾟﾗﾒｰﾀ名(終了)
+-- 2009/04/20 Ver1.3 add start by Yutaka.Kuboshima
+  cv_tvl_dummy_code   CONSTANT VARCHAR2(50)  := 'AFFダミー部門コード';        -- AFFダミー部門コード
+-- 2009/04/20 Ver1.3 add end by Yutaka.Kuboshima
   -- ■ その他
   cv_date_format      CONSTANT VARCHAR2(10)  := 'YYYY/MM/DD';
   cv_date_format2     CONSTANT VARCHAR2(8)   := 'YYYYMMDD';
   cv_datetime_format  CONSTANT VARCHAR2(21)  := 'YYYY/MM/DD HH24:MI:SS';
+-- 2009/04/20 Ver1.3 add start by Yutaka.Kuboshima
+  cv_flag_parent      CONSTANT VARCHAR2(1)   := 'P';                          -- フラグ：P(親)
+-- 2009/04/20 Ver1.3 add end by Yutaka.Kuboshima
 -- 
   -- ===============================
   -- ユーザー定義グローバル型
@@ -183,6 +193,9 @@ AS
   -- 処理用
   gv_csv_file_dir       fnd_profile_option_values.profile_option_value%TYPE;  -- CSVファイル出力先
   gv_csv_file_name      fnd_profile_option_values.profile_option_value%TYPE;  -- CSVファイル名
+-- 2009/04/20 Ver1.3 add start by Yutaka.Kuboshima
+  gv_aff_dept_dummy_cd  fnd_profile_option_values.profile_option_value%TYPE;  -- AFFダミー部門コード
+-- 2009/04/20 Ver1.3 add end by Yutaka.Kuboshima
   gf_file_handler       UTL_FILE.FILE_TYPE;                                   -- CSVファイル出力用ハンドラ
   gt_out_tab            output_data_ttype;                                    -- 所属マスタIF出力データ
 --
@@ -257,6 +270,21 @@ AS
       RAISE global_api_expt;
     END IF;
 --
+-- 2009/04/20 Ver1.3 add start by Yutaka.Kuboshima
+    -- XXCMM:AFFダミー部門コードを取得
+    gv_aff_dept_dummy_cd := FND_PROFILE.VALUE(cv_aff_dept_dummy_cd);
+    -- XXCMM:AFFダミー部門コードの取得内容チェック
+    IF ( gv_aff_dept_dummy_cd IS NULL) THEN
+      lv_errmsg := xxccp_common_pkg.get_msg(
+                      iv_application  => cv_app_name_xxcmm    -- マスタ
+                     ,iv_name         => cv_msg_00002         -- エラー  :プロファイル取得エラー
+                     ,iv_token_name1  => cv_tok_ng_profile    -- トークン:NG_PROFILE
+                     ,iv_token_value1 => cv_tvl_dummy_code    -- 値      :AFFダミー部門コード
+                   );
+      lv_errbuf := lv_errmsg;
+      RAISE global_api_expt;
+    END IF;
+-- 2009/04/20 Ver1.3 add end by Yutaka.Kuboshima
     --==============================================================
     --２．CSVファイル存在チェックを行います。
     --==============================================================
@@ -477,13 +505,26 @@ AS
       AND    xxccp_common_pkg2.get_process_date BETWEEN
                    NVL(ffvl.start_date_active, TO_DATE('19000101','YYYYMMDD'))
                AND NVL(ffvl.end_date_active, TO_DATE('99991231','YYYYMMDD'))
+-- 2009/04/20 Ver1.3 add start by Yutaka.Kuboshima
+      AND    ffvl.flex_value <> gv_aff_dept_dummy_cd
+-- 2009/04/20 Ver1.3 add end by Yutaka.Kuboshima
       AND    NOT EXISTS (
                SELECT 'X'
                FROM   fnd_flex_value_norm_hierarchy ffvh
                WHERE  ffvh.flex_value_set_id = ffvl.flex_value_set_id
                AND    ffvl.flex_value BETWEEN ffvh.child_flex_value_low
                                           AND ffvh.child_flex_value_high
+-- 2009/04/20 Ver1.3 add start by Yutaka.Kuboshima
+               AND    ffvh.range_attribute   = cv_flag_parent
              )
+      AND    EXISTS (
+               SELECT 'X'
+               FROM   fnd_flex_value_norm_hierarchy ffvh2
+               WHERE  ffvh2.flex_value_set_id = ffvl.flex_value_set_id
+               AND    ffvh2.parent_flex_value = ffvl.flex_value
+               AND    ffvh2.range_attribute   = cv_flag_parent
+             )
+-- 2009/04/20 Ver1.3 add end by Yutaka.Kuboshima
       ;
     EXCEPTION
       WHEN OTHERS THEN
@@ -724,7 +765,10 @@ AS
     cv_update_dept          CONSTANT VARCHAR2(6)   := '999999';     -- 更新部署
     cv_update_prog_id       CONSTANT VARCHAR2(10)  := 'BUKKEN_2UD'; -- 更新プログラムID
     -- フォーマット
-    cv_last_update_fmt      CONSTANT VARCHAR2(10)  := 'DDHH24MISS'; -- 最終更新日時時分秒フォーマット
+-- 2009/04/20 Ver1.3 modify start by Yutaka.Kuboshima
+--    cv_last_update_fmt      CONSTANT VARCHAR2(10)  := 'DDHH24MISS'; -- 最終更新日時時分秒フォーマット
+    cv_last_update_fmt      CONSTANT VARCHAR2(16)  := 'YYYYMMDDHH24MISS'; -- 最終更新日時年月日時分秒フォーマット
+-- 2009/04/20 Ver1.3 modify start by Yutaka.Kuboshima
     -- *** ローカル変数 ***
     lv_outline              VARCHAR2(2400);                         -- 出力内容(行)
     ln_idx                  NUMBER;
@@ -740,7 +784,10 @@ AS
     lv_phone_3              xxcmn_parties.phone%TYPE;   -- 電話番号3
     lv_district_code        VARCHAR2(6);                -- 地区コード
     lv_district_name        VARCHAR2(16);               -- 地区名称
-    lv_last_update_date     VARCHAR2(8);                -- 最終更新日時時分秒
+-- 2009/04/20 Ver1.3 modify start by Yutaka.Kuboshima
+--    lv_last_update_date     VARCHAR2(8);                -- 最終更新日時時分秒
+    lv_last_update_date     VARCHAR2(14);                -- 最終更新日時年月日時分秒時分秒
+-- 2009/04/20 Ver1.3 modify start by Yutaka.Kuboshima
 --
   BEGIN
 --
@@ -868,7 +915,10 @@ AS
       -- 13.所属住所
       lv_outline := lv_outline || cv_sep || cv_dqu || lv_address_line || cv_dqu;
       -- 14.郵便番号
-      lv_outline := lv_outline || cv_sep || SUBSTRB(gt_out_tab(ln_idx).zip, 1, 20);
+-- 2009/04/20 Ver1.3 modify start by Yutaka.Kuboshima
+--      lv_outline := lv_outline || cv_sep || SUBSTRB(gt_out_tab(ln_idx).zip, 1, 20);
+      lv_outline := lv_outline || cv_sep || cv_dqu || SUBSTRB(gt_out_tab(ln_idx).zip, 1, 7) || cv_dqu;
+-- 2009/04/20 Ver1.3 modify end by Yutaka.Kuboshima
       -- 15.電話番号１
       lv_outline := lv_outline || cv_sep || cv_dqu || lv_phone_1 || cv_dqu;
       -- 16.電話番号２

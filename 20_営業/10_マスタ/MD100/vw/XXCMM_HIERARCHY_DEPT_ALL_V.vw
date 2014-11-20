@@ -742,6 +742,9 @@ FROM
           AND ffvt.language             =  'JA'
           AND ffvl.summary_flag         =  'Y'
           AND ffvs.flex_value_set_name  =  'XX03_DEPARTMENT'
+-- 2009/04/20 è·äQT1_0590 add start by Yutaka.Kuboshima
+          AND ffvl.flex_value          <>  fnd_profile.value('XXCMM1_AFF_DEPT_DUMMY_CD')
+-- 2009/04/20 è·äQT1_0590 add end by Yutaka.Kuboshima
           AND NOT EXISTS(
                 SELECT
                   'X'
@@ -750,7 +753,20 @@ FROM
                 WHERE
                       ffvh.flex_value_set_id =  ffvl.flex_value_set_id
                   AND ffvl.flex_value BETWEEN ffvh.child_flex_value_low AND ffvh.child_flex_value_high
+-- 2009/04/20 è·äQT1_0590 add start by Yutaka.Kuboshima
+                  AND ffvh.range_attribute   =  'P'
               )
+          AND EXISTS(
+                SELECT 
+                  'X'
+                FROM
+                  fnd_flex_value_norm_hierarchy ffvh2
+                WHERE
+                      ffvh2.flex_value_set_id = ffvl.flex_value_set_id
+                  AND ffvh2.parent_flex_value = ffvl.flex_value
+                  AND ffvh2.range_attribute   =  'P'
+              )
+-- 2009/04/20 è·äQT1_0590 add end by Yutaka.Kuboshima
         /* â∫ëwïîñÂéÊìæ */
         UNION ALL
         SELECT
@@ -781,6 +797,17 @@ FROM
           AND ffvs.flex_value_set_name  =  'XX03_DEPARTMENT'
           AND ffvh.flex_value_set_id    =  ffvl.flex_value_set_id
           AND ffvl.flex_value BETWEEN ffvh.child_flex_value_low AND ffvh.child_flex_value_high
+-- 2009/04/20 è·äQT1_0590 add start by Yutaka.Kuboshima
+          AND NOT EXISTS(
+                    SELECT
+                      'X'
+                    FROM 
+                      fnd_flex_value_norm_hierarchy ffvh2
+                    WHERE 
+                          ffvh.parent_flex_value   =  fnd_profile.value('XXCMM1_AFF_DEPT_DUMMY_CD')
+                      AND ffvh2.flex_value_set_id  =  ffvl.flex_value_set_id
+                        )
+-- 2009/04/20 è·äQT1_0590 add end by Yutaka.Kuboshima
       ) FFV
       START WITH ffv.flex_value = ffv.parent_flex_value
       CONNECT BY PRIOR ffv.flex_value = ffv.parent_flex_value

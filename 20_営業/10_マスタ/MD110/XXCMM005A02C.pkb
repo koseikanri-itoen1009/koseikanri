@@ -38,6 +38,7 @@ AS
  * ------------- ----- ---------------- -------------------------------------------------
  *  2009/01/28    1.0  T.Matsumoto       main新規作成
  *  2009/03/09    1.1  Takuya Kaihara   プロファイル値共通化
+ *  2009/04/20    1.2  Yutaka.Kuboshima  障害T1_0590の対応
  *
  *****************************************************************************************/
 --
@@ -123,9 +124,15 @@ AS
   cv_tknv_csv_fl_dir          CONSTANT VARCHAR2(100) := 'XXCMM:情報系(OUTBOUND)連携用CSVファイル出力先';
   cv_tknv_csv_fl_name         CONSTANT VARCHAR2(100) := '組織マスタ（情報系）連携用CSVファイル名';
   cv_tknv_base_code           CONSTANT VARCHAR2(100) := '拠点コード'; 
+-- 2009/04/20 Ver1.2 add start by Yutaka.Kuboshima
+  cv_tknv_dummy_dept_code     CONSTANT VARCHAR2(100) := 'AFFダミー部門コード'; 
+-- 2009/04/20 Ver1.2 add end by Yutaka.Kuboshima
   -- カスタム・プロファイル名：組織マスタ(情報系)
   cv_csv_fl_dir               CONSTANT VARCHAR2(50)  := 'XXCMM1_JYOHO_OUT_DIR';           -- 連携用CSVファイル出力先
   cv_csv_fl_name              CONSTANT VARCHAR2(50)  := 'XXCMM1_005A02_OUT_FILE_FIL';     -- 連携用CSVファイル名称
+-- 2009/04/20 Ver1.2 add start by Yutaka.Kuboshima
+  cv_aff_dept_dummy_cd        CONSTANT VARCHAR2(50)  := 'XXCMM1_AFF_DEPT_DUMMY_CD';       -- AFFダミー部門コード
+-- 2009/04/20 Ver1.2 add end by Yutaka.Kuboshima
   -- 値セット名
   cv_dept_valset_name         CONSTANT VARCHAR2(50)  := 'XX03_DEPARTMENT';                -- 部門
   -- その他
@@ -133,6 +140,9 @@ AS
   cv_csv_mode_w               CONSTANT VARCHAR2(1)   := 'w';                              -- Fopen：上書きモード
   cv_dqu                      CONSTANT VARCHAR2(1)   := '"';                              -- ダブルクォーテーション
   cv_sep                      CONSTANT VARCHAR2(1)   := ',';                              -- カンマ
+-- 2009/04/20 Ver1.2 add start by Yutaka.Kuboshima
+  cv_flag_parent              CONSTANT VARCHAR2(1)   := 'P';                              -- フラグ：P(親)
+-- 2009/04/20 Ver1.2 add end by Yutaka.Kuboshima
 --
   -- ===============================
   -- ユーザー定義グローバル型
@@ -179,6 +189,9 @@ AS
   -- カスタム・プロファイル値：取得用
   gt_out_file_dir             fnd_profile_option_values.profile_option_value%TYPE;        -- 連携用CSVファイル出力先
   gt_out_file_name            fnd_profile_option_values.profile_option_value%TYPE;        -- 連携用CSVファイル名称
+-- 2009/04/20 Ver1.2 add start by Yutaka.Kuboshima
+  gv_aff_dept_dummy_cd        fnd_profile_option_values.profile_option_value%TYPE;        -- AFFダミー部門コード
+-- 2009/04/20 Ver1.2 add end by Yutaka.Kuboshima
 --
   gf_file_hand                UTL_FILE.FILE_TYPE;                                         -- CSVファイル出力用ハンドラ
   g_csv_organ_tab             xxcmm005a02c_ttype;                                         -- 組織IF出力データ
@@ -258,6 +271,17 @@ AS
       RAISE profile_expt;
     END IF;
 --
+-- 2009/04/20 Ver1.2 add start by Yutaka.Kuboshima
+    -- カスタム・プロファイル値：AFFダミー部門コードの取得
+    lv_step := 'A-1.3';
+    lv_message_token     := cv_tknv_dummy_dept_code;
+    gv_aff_dept_dummy_cd := FND_PROFILE.VALUE(cv_aff_dept_dummy_cd);
+    -- 連携用CSVファイル出力先の取得内容チェック
+    IF ( gv_aff_dept_dummy_cd IS NULL) THEN
+      --
+      RAISE profile_expt;
+    END IF;
+-- 2009/04/20 Ver1.2 add end by Yutaka.Kuboshima
     -- CSVファイル存在チェック
     lv_step := 'A-1.3';
     UTL_FILE.FGETATTR(
@@ -1201,6 +1225,9 @@ AS
           ffvs.flex_value_set_name    = cv_dept_valset_name
     AND   ffv.summary_flag            = cv_flag_yes
     AND   ffvs.flex_value_set_id      = ffv.flex_value_set_id
+-- 2009/04/20 Ver1.2 add start by Yutaka.Kuboshima
+    AND   ffv.flex_value             <> gv_aff_dept_dummy_cd
+-- 2009/04/20 Ver1.2 add end by Yutaka.Kuboshima
     AND   NOT EXISTS (
                         SELECT
                             'X'
@@ -1209,8 +1236,21 @@ AS
                         WHERE
                             ffvh.flex_value_set_id =  ffv.flex_value_set_id
                         AND (ffv.flex_value BETWEEN ffvh.child_flex_value_low AND ffvh.child_flex_value_high)
+-- 2009/04/20 Ver1.2 add start by Yutaka.Kuboshima
+                        AND ffvh.range_attribute   = cv_flag_parent
                         )
+    AND   EXISTS (
+                    SELECT
+                        'X'
+                    FROM
+                        fnd_flex_value_norm_hierarchy ffvh2
+                    WHERE
+                        ffvh2.flex_value_set_id = ffv.flex_value_set_id
+                    AND ffvh2.parent_flex_value = ffv.flex_value
+                    AND ffvh2.range_attribute   = cv_flag_parent
+                    )
     ;
+-- 2009/04/20 Ver1.2 add end by Yutaka.Kuboshima
     -- 最上位部門の数をチェックする
     lv_step := 'A-3.2';
     IF ( ln_upper_sec_cnt <> 1 ) THEN

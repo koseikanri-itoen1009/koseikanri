@@ -28,6 +28,7 @@ AS
  *  2009/02/26    1.1   Masayuki.Sano    結合テスト動作不正対応
  *  2009/02/27    1.2   Masayuki.Sano    結合テスト動作不正対応(出力不正)
  *  2009/03/09    1.3   Yuuki.Nakamura   ファイル出力先プロファイル名称変更
+ *  2009/04/20    1.4   Yutaka.Kuboshima 障害T1_0590の対応
  *
  *****************************************************************************************/
 --
@@ -94,6 +95,9 @@ AS
   cv_pro_out_file_dir CONSTANT VARCHAR2(50) := 'XXCMM1_WORKFLOW_OUT_DIR';     -- 連携用CSVファイル出力先
 --ver.1.3 2009/03/09 mod by Yuuki.Nakamura end
   cv_pro_out_file_fil CONSTANT VARCHAR2(50) := 'XXCMM1_005A05_OUT_FILE_FIL';  -- 連携用CSVファイル名
+-- 2009/04/20 Ver1.4 add start by Yutaka.Kuboshima
+  cv_aff_dept_dummy_cd CONSTANT VARCHAR2(50)  := 'XXCMM1_AFF_DEPT_DUMMY_CD';    -- AFFダミー部門コード
+-- 2009/04/20 Ver1.4 add end by Yutaka.Kuboshima
   -- ■ メッセージ・コード(エラー)
   cv_msg_00002        CONSTANT VARCHAR2(20) := 'APP-XXCMM1-00002';            -- プロファイル取得エラー
   cv_msg_00010        CONSTANT VARCHAR2(20) := 'APP-XXCMM1-00010';            -- CSVファイル存在チェック
@@ -124,6 +128,13 @@ AS
   cv_tvl_out_file_fil CONSTANT VARCHAR2(50) := '拠点マスタ（ワークフロー）連携用CSVファイル名';
   cv_tvl_base_code    CONSTANT VARCHAR2(20) := '拠点コード';
   cv_tvl_ffv_set_name CONSTANT VARCHAR2(20) := 'XX03_DEPARTMENT';
+-- 2009/04/20 Ver1.4 add start by Yutaka.Kuboshima
+  cv_tvl_dummy_code   CONSTANT VARCHAR2(50)  := 'AFFダミー部門コード';        -- AFFダミー部門コード
+-- 2009/04/20 Ver1.4 add end by Yutaka.Kuboshima
+--
+-- 2009/04/20 Ver1.4 add start by Yutaka.Kuboshima
+  cv_flag_parent      CONSTANT VARCHAR2(1)  := 'P';                           -- フラグ：P(親)
+-- 2009/04/20 Ver1.4 add end by Yutaka.Kuboshima
 -- 
   -- ===============================
   -- ユーザー定義グローバル型
@@ -158,6 +169,10 @@ AS
                                         -- 拠点マスタIF出力（ワークフロー）連携用CSVファイル出力先
   gv_csv_file_name      fnd_profile_option_values.profile_option_value%TYPE;  
                                         -- 拠点マスタIF出力（ワークフロー）連携用CSVファイル名
+-- 2009/04/20 Ver1.3 add start by Yutaka.Kuboshima
+  gv_aff_dept_dummy_cd  fnd_profile_option_values.profile_option_value%TYPE;
+                                        -- AFFダミー部門コード
+-- 2009/04/20 Ver1.3 add end by Yutaka.Kuboshima
   gf_file_handler       UTL_FILE.FILE_TYPE;                                   
                                         -- CSVファイル出力用ハンドラ
   gt_csv_out_tab        output_data_ttype;                                   
@@ -232,6 +247,21 @@ AS
       RAISE global_api_expt;
     END IF;
 --
+-- 2009/04/20 Ver1.4 add start by Yutaka.Kuboshima
+    -- XXCMM:AFFダミー部門コードを取得
+    gv_aff_dept_dummy_cd := FND_PROFILE.VALUE(cv_aff_dept_dummy_cd);
+    -- XXCMM:AFFダミー部門コードの取得内容チェック
+    IF ( gv_aff_dept_dummy_cd IS NULL) THEN
+      lv_errmsg := xxccp_common_pkg.get_msg(
+                      iv_application  => cv_app_name_xxcmm    -- マスタ
+                     ,iv_name         => cv_msg_00002         -- エラー  :プロファイル取得エラー
+                     ,iv_token_name1  => cv_tok_ng_profile    -- トークン:NG_PROFILE
+                     ,iv_token_value1 => cv_tvl_dummy_code    -- 値      :AFFダミー部門コード
+                   );
+      lv_errbuf := lv_errmsg;
+      RAISE global_api_expt;
+    END IF;
+-- 2009/04/20 Ver1.4 add end by Yutaka.Kuboshima
     --==============================================================
     --２．CSVファイル存在チェックを行います。
     --==============================================================
@@ -432,13 +462,26 @@ AS
       AND    xxccp_common_pkg2.get_process_date BETWEEN
                    NVL(ffvl.start_date_active, TO_DATE('19000101','YYYYMMDD'))
                AND NVL(ffvl.end_date_active, TO_DATE('99991231','YYYYMMDD'))
+-- 2009/04/20 Ver1.4 add start by Yutaka.Kuboshima
+      AND    ffvl.flex_value <> gv_aff_dept_dummy_cd
+-- 2009/04/20 Ver1.4 add end by Yutaka.Kuboshima
       AND    NOT EXISTS (
                SELECT 'X'
                FROM   fnd_flex_value_norm_hierarchy ffvh
                WHERE  ffvh.flex_value_set_id = ffvl.flex_value_set_id
                AND    ffvl.flex_value BETWEEN ffvh.child_flex_value_low
                                           AND ffvh.child_flex_value_high
+-- 2009/04/20 Ver1.4 add start by Yutaka.Kuboshima
+               AND    ffvh.range_attribute   = cv_flag_parent
              )
+      AND    EXISTS (
+               SELECT 'X'
+               FROM   fnd_flex_value_norm_hierarchy ffvh2
+               WHERE  ffvh2.flex_value_set_id = ffvl.flex_value_set_id
+               AND    ffvh2.parent_flex_value = ffvl.flex_value
+               AND    ffvh2.range_attribute   = cv_flag_parent
+             )
+-- 2009/04/20 Ver1.4 add end by Yutaka.Kuboshima
       ;
     EXCEPTION
       WHEN OTHERS THEN
