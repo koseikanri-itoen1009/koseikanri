@@ -25,7 +25,8 @@ AS
  * ------------- ----- ---------------- -------------------------------------------------
  *  2009/02/12    1.0   Akinori Takeshita   新規作成
  *  2009-03-09    1.1   Yutaka.Kuboshima    ファイル出力先のプロファイルの変更
- *  2009-04-02    1.2   Yutaka.kuboshima    障害T1_0182、T1_0254の対応
+ *  2009-04-02    1.2   Yutaka.Kuboshima    障害T1_0182、T1_0254の対応
+ *  2009-04-15    1.3   Yutaka.Kuboshima    障害T1_0577の対応
  *
  *****************************************************************************************/
 --
@@ -389,12 +390,16 @@ AS
       lv_output_str := lv_output_str || cv_comma || cv_dqu || SUBSTRB(ref_type, 1, 30) || cv_dqu;     --参照タイプ
       lv_output_str := lv_output_str || cv_comma || cv_dqu || SUBSTRB(ref_code, 1, 30) || cv_dqu;     --参照コード
       lv_output_str := lv_output_str || cv_comma || cv_dqu || SUBSTRB(ref_name, 1, 80) || cv_dqu;     --名称
+-- 2009/04/15 Ver1.3 modify start by Yutaka.Kuboshima
 -- 2009/04/02 Ver1.2 modify start by Yutaka.Kuboshima
 --      lv_output_str := lv_output_str || cv_comma || cv_dqu || SUBSTRB(pt_ref_type, 1, 30) || cv_dqu;  --親参照タイプ
 --      lv_output_str := lv_output_str || cv_comma || cv_dqu || SUBSTRB(pt_ref_code, 1, 30) || cv_dqu;  --親参照コード
-      lv_output_str := lv_output_str || cv_comma || cv_dqu || SUBSTRB(pt_ref_code, 1, 30) || cv_dqu;  --親参照コード
+--      lv_output_str := lv_output_str || cv_comma || cv_dqu || SUBSTRB(pt_ref_code, 1, 30) || cv_dqu;  --親参照コード
+--      lv_output_str := lv_output_str || cv_comma || cv_dqu || SUBSTRB(pt_ref_type, 1, 30) || cv_dqu;  --親参照タイプ
       lv_output_str := lv_output_str || cv_comma || cv_dqu || SUBSTRB(pt_ref_type, 1, 30) || cv_dqu;  --親参照タイプ
+      lv_output_str := lv_output_str || cv_comma || cv_dqu || SUBSTRB(pt_ref_code, 1, 30) || cv_dqu;  --親参照コード
 -- 2009/04/02 Ver1.2 modify end by Yutaka.Kuboshima
+-- 2009/04/15 Ver1.3 modify end by Yutaka.Kuboshima
       --CSVファイル出力
       UTL_FILE.PUT_LINE(if_file_handler,lv_output_str);
 
