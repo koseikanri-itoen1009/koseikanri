@@ -4,10 +4,10 @@ AS
  * Copyright(c)Oracle Corporation Japan, 2008. All rights reserved.
  *
  * Package Name     : xxwsh930004C(spec)
- * Description      : 入出庫情報差異リスト（出庫基準）
+ * Description      : 入出庫情報差異リスト（入庫基準）
  * MD.050/070       : 生産物流共通（出荷・移動インタフェース）Issue1.0(T_MD050_BPO_930)
  *                    生産物流共通（出荷・移動インタフェース）Issue1.0(T_MD070_BPO_93D)
- * Version          : 1.16
+ * Version          : 1.17
  *
  * Program List
  * -------------------- ------------------------------------------------------------
@@ -39,6 +39,7 @@ AS
  *  2009/01/06    1.14  Oracle吉田夏樹   本番障害#929対応
  *  2009/01/20    1.15  Oracle山本恭久   本番障害#806,#814,#975対応
  *  2009/01/28    1.16  Oracle山本恭久   本番障害#1044対応
+ *  2009/03/31    1.17  Oracle椎名昭圭   本番障害#1290対応
  *****************************************************************************************/
 --
 --#######################  固定グローバル変数宣言部 START   #######################
@@ -68,6 +69,9 @@ AS
      ,iv_ship_to_locat_code IN     VARCHAR2         -- 10 : 出庫元
      ,iv_online_type        IN     VARCHAR2         -- 11 : オンライン対象区分
      ,iv_request_no         IN     VARCHAR2         -- 12 : 依頼No／移動No
+-- 2009/03/31 v1.17 ADD START
+     ,iv_mov_type           IN     VARCHAR2         -- 13 : 移動タイプ
+-- 2009/03/31 v1.17 ADD END
     ) ;
 --
 END xxwsh930004c ;

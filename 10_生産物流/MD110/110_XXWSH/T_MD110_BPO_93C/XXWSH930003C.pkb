@@ -7,7 +7,7 @@ AS
  * Description      : 入出庫情報差異リスト（出庫基準）
  * MD.050/070       : 生産物流共通（出荷・移動インタフェース）Issue1.0(T_MD050_BPO_930)
  *                    生産物流共通（出荷・移動インタフェース）Issue1.0(T_MD070_BPO_93C)
- * Version          : 1.18
+ * Version          : 1.19
  *
  * Program List
  * ---------------------------- ----------------------------------------------------------
@@ -52,6 +52,7 @@ AS
  *  2009/01/06    1.16  Natsuki  Yoshida 本番障害#929対応
  *  2009/01/20    1.17 Yasuhisa Yamamoto 本番障害#806,#814,#975対応
  *  2009/01/27    1.18 Yasuhisa Yamamoto 本番障害#1044対応
+ *  2009/03/30    1.19  Akyoshi Shiina   本番障害#1290対応
  *****************************************************************************************/
 --
 --#######################  固定グローバル定数宣言部 START   #######################
@@ -218,6 +219,9 @@ AS
      ,deliver_from      VARCHAR2(4)         -- 12 : 出庫元
      ,online_type       VARCHAR2(1)         -- 13 : オンライン対象区分
      ,request_no        VARCHAR2(12)        -- 14 : 依頼No／移動No
+-- 2009/03/30 v1.19 ADD START
+     ,mov_type          VARCHAR2(1)         -- 15 : 移動タイプ
+-- 2009/03/30 v1.19 ADD END
     ) ;
   -- 中間テーブル登録用レコード変数
   TYPE rec_temp_tab_data IS RECORD 
@@ -1677,10 +1681,13 @@ AS
         SELECT COUNT( xmrih.mov_hdr_id )
         INTO   ln_temp_cnt
         FROM   xxinv_mov_req_instr_headers    xmrih   -- 移動依頼/指示ヘッダアドオン
-        WHERE xmrih.career_id             = ir_get_data.career_id
-        AND   xmrih.shipping_method_code  = ir_get_data.ship_method_code
-        AND   xmrih.schedule_ship_date    = ir_get_data.ship_date
-        AND   xmrih.schedule_arrival_date = ir_get_data.arvl_date
+-- 2009/03/30 v1.19 UPDATE START
+--        WHERE xmrih.career_id             = ir_get_data.career_id
+--        AND   xmrih.shipping_method_code  = ir_get_data.ship_method_code
+--        AND   xmrih.schedule_ship_date    = ir_get_data.ship_date
+--        AND   xmrih.schedule_arrival_date = ir_get_data.arvl_date
+        WHERE NVL(xmrih.no_instr_actual_class, 'N') <> 'Y'
+-- 2009/03/30 v1.19 UPDATE END
         AND   xmrih.mov_num               = or_temp_tab.request_no  -- 移動Ｎｏ
         ;
       END IF ;
@@ -4151,7 +4158,10 @@ AS
                                            ,gc_mov_status_del       -- 出庫報告有
                                            ,gc_mov_status_stc       -- 入庫報告有
                                            ,gc_mov_status_dsr )     -- 入出庫報告有
-        AND   xmrih.mov_type              = gc_mov_type_y
+-- 2009/03/30 v1.19 UPDATE START
+--        AND   xmrih.mov_type              = gc_mov_type_y
+        AND   xmrih.mov_type              = gr_param.mov_type
+-- 2009/03/30 v1.19 UPDATE END
         AND   xmrih.instruction_post_code = NVL( gr_param.dept_code, xmrih.instruction_post_code )  -- パラメータ条件．指示部署
         AND   xmrih.mov_num               = NVL( gr_param.request_no, xmrih.mov_num )  -- パラメータ条件．依頼Ｎｏ
         AND   xmrih.shipped_locat_code    = NVL( gr_param.deliver_from, xmrih.shipped_locat_code )  -- パラメータ条件．出庫元
@@ -4283,7 +4293,10 @@ AS
                                            ,gc_mov_status_del       -- 出庫報告有
                                            ,gc_mov_status_stc       -- 入庫報告有
                                            ,gc_mov_status_dsr )     -- 入出庫報告有
-        AND   xmrih.mov_type              = gc_mov_type_y
+-- 2009/03/30 v1.19 UPDATE START
+--        AND   xmrih.mov_type              = gc_mov_type_y
+        AND   xmrih.mov_type              = gr_param.mov_type
+-- 2009/03/30 v1.19 UPDATE END
         AND   xmrih.instruction_post_code = NVL( gr_param.dept_code, xmrih.instruction_post_code )  -- パラメータ条件．指示部署
         AND   xmrih.mov_num               = NVL( gr_param.request_no, xmrih.mov_num )  -- パラメータ条件．依頼Ｎｏ
         AND   xmrih.shipped_locat_code    = NVL( gr_param.deliver_from, xmrih.shipped_locat_code )  -- パラメータ条件．出庫元
@@ -4884,6 +4897,9 @@ AS
      ,iv_deliver_from       IN     VARCHAR2         -- 12 : 出庫元
      ,iv_online_type        IN     VARCHAR2         -- 13 : オンライン対象区分
      ,iv_request_no         IN     VARCHAR2         -- 14 : 依頼No／移動No
+-- 2009/03/30 v1.19 ADD START
+     ,iv_mov_type           IN     VARCHAR2         -- 15 : 移動タイプ
+-- 2009/03/30 v1.19 ADD END
      ,ov_errbuf            OUT     VARCHAR2         -- エラー・メッセージ           --# 固定 #
      ,ov_retcode           OUT     VARCHAR2         -- リターン・コード             --# 固定 #
      ,ov_errmsg            OUT     VARCHAR2         -- ユーザー・エラー・メッセージ --# 固定 #
@@ -4940,6 +4956,9 @@ AS
     gr_param.deliver_from     := iv_deliver_from ;                            -- 出庫元
     gr_param.online_type      := iv_online_type ;                             -- オンライン対象区分
     gr_param.request_no       := iv_request_no ;                              -- 依頼No／移動No
+-- 2009/03/30 v1.19 ADD START
+    gr_param.mov_type         := iv_mov_type ;                                -- 移動タイプ
+-- 2009/03/30 v1.19 ADD END
     -- -----------------------------------------------------
     -- ログイン情報退避（ＷＨＯカラム用）
     -- -----------------------------------------------------
@@ -5101,6 +5120,9 @@ AS
      ,iv_deliver_from       IN     VARCHAR2         -- 12 : 出庫元
      ,iv_online_type        IN     VARCHAR2         -- 13 : オンライン対象区分
      ,iv_request_no         IN     VARCHAR2         -- 14 : 依頼No／移動No
+-- 2009/03/30 v1.19 ADD START
+     ,iv_mov_type           IN     VARCHAR2         -- 15 : 移動タイプ
+-- 2009/03/30 v1.19 ADD END
     )
 --
 --###########################  固定部 START   ###########################
@@ -5141,6 +5163,9 @@ AS
        ,iv_deliver_from   => iv_deliver_from                      -- 12 : 出庫元
        ,iv_online_type    => iv_online_type                       -- 13 : オンライン対象区分
        ,iv_request_no     => iv_request_no                        -- 14 : 依頼No／移動No
+-- 2009/03/30 v1.19 ADD START
+       ,iv_mov_type       => iv_mov_type                          -- 15 : 移動タイプ
+-- 2009/03/30 v1.19 ADD END
        ,ov_errbuf         => lv_errbuf                            -- エラー・メッセージ
        ,ov_retcode        => lv_retcode                           -- リターン・コード
        ,ov_errmsg         => lv_errmsg                            -- ユーザー・エラー・メッセージ

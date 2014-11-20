@@ -7,7 +7,7 @@ AS
  * Description      : 入出庫情報差異リスト（入庫基準）
  * MD.050/070       : 生産物流共通（出荷・移動インタフェース）Issue1.0(T_MD050_BPO_930)
  *                    生産物流共通（出荷・移動インタフェース）Issue1.0(T_MD070_BPO_93D)
- * Version          : 1.16
+ * Version          : 1.17
  *
  * Program List
  * ---------------------------- ----------------------------------------------------------
@@ -47,6 +47,7 @@ AS
  *  2009/01/06    1.14  Oracle吉田夏樹   本番障害#929対応
  *  2009/01/20    1.15  Oracle山本恭久   本番障害#806,#814,#975対応
  *  2009/01/28    1.16  Oracle山本恭久   本番障害#1044対応
+ *  2009/03/31    1.17  Oracle椎名昭圭   本番障害#1290対応
  *****************************************************************************************/
 --
 --#######################  固定グローバル定数宣言部 START   #######################
@@ -172,6 +173,9 @@ AS
      ,ship_to_locat_code    VARCHAR2(4)         -- 10 : 入庫先
      ,online_type           VARCHAR2(1)         -- 11 : オンライン対象区分
      ,request_no            VARCHAR2(12)        -- 12 : 移動No
+-- 2009/03/31 v1.17 ADD START
+     ,mov_type              VARCHAR2(1)         -- 13 : 移動タイプ
+-- 2009/03/31 v1.17 ADD END
     ) ;
 --    
   -- 中間テーブル登録用レコード変数
@@ -2170,7 +2174,10 @@ AS
                                          ,gc_mov_status_del       -- 出庫報告有
                                          ,gc_mov_status_stc       -- 入庫報告有
                                          ,gc_mov_status_dsr )     -- 入出庫報告有
-      AND   xmrih.mov_type              = gc_mov_type_y           -- 積送あり
+-- 2009/03/31 v1.17 UPDATE START
+--      AND   xmrih.mov_type              = gc_mov_type_y           -- 積送あり
+      AND   xmrih.mov_type              = gr_param.mov_type
+-- 2009/03/31 v1.17 UPDATE END
       -- パラメータ条件．指示部署
       AND   xmrih.instruction_post_code = NVL( gr_param.dept_code, xmrih.instruction_post_code )
       -- パラメータ条件．移動Ｎｏ
@@ -2357,7 +2364,10 @@ AS
                                          ,gc_mov_status_del       -- 出庫報告有
                                          ,gc_mov_status_stc       -- 入庫報告有
                                          ,gc_mov_status_dsr )     -- 入出庫報告有
-      AND   xmrih.mov_type              = gc_mov_type_y
+-- 2009/03/31 v1.17 UPDATE START
+--      AND   xmrih.mov_type              = gc_mov_type_y
+      AND   xmrih.mov_type              = gr_param.mov_type
+-- 2009/03/31 v1.17 UPDATE END
       -- パラメータ条件．指示部署
       AND   xmrih.instruction_post_code = NVL( gr_param.dept_code, xmrih.instruction_post_code )
       -- パラメータ条件．移動Ｎｏ
@@ -2944,6 +2954,9 @@ AS
      ,iv_ship_to_locat_code   IN     VARCHAR2         -- 10 : 入庫先
      ,iv_online_type          IN     VARCHAR2         -- 11 : オンライン対象区分
      ,iv_request_no           IN     VARCHAR2         -- 12 : 移動No
+-- 2009/03/31 v1.17 ADD START
+     ,iv_mov_type             IN     VARCHAR2         -- 13 : 移動タイプ
+-- 2009/03/31 v1.17 ADD END
      ,ov_errbuf              OUT     VARCHAR2         -- エラー・メッセージ           --# 固定 #
      ,ov_retcode             OUT     VARCHAR2         -- リターン・コード             --# 固定 #
      ,ov_errmsg              OUT     VARCHAR2         -- ユーザー・エラー・メッセージ --# 固定 #
@@ -2998,6 +3011,9 @@ AS
     gr_param.ship_to_locat_code := iv_ship_to_locat_code ;                                -- 入庫先
     gr_param.online_type        := iv_online_type ;                                       -- オンライン対象区分
     gr_param.request_no         := iv_request_no ;                                        -- 移動No
+-- 2009/03/31 v1.17 ADD START
+    gr_param.mov_type           := iv_mov_type ;                                          -- 移動タイプ
+-- 2009/03/31 v1.17 ADD END
     -- -----------------------------------------------------
     -- ログイン情報退避（ＷＨＯカラム用）
     -- -----------------------------------------------------
@@ -3170,6 +3186,9 @@ AS
      ,iv_ship_to_locat_code  IN     VARCHAR2         -- 10 : 入庫先
      ,iv_online_type         IN     VARCHAR2         -- 11 : オンライン対象区分
      ,iv_request_no          IN     VARCHAR2         -- 12 : 移動No
+-- 2009/03/31 v1.17 ADD START
+     ,iv_mov_type            IN     VARCHAR2         -- 13 : 移動タイプ
+-- 2009/03/31 v1.17 ADD END
     )
 --
 --###########################  固定部 START   ###########################
@@ -3208,6 +3227,9 @@ AS
        ,iv_ship_to_locat_code => iv_ship_to_locat_code               -- 10 : 入庫先
        ,iv_online_type        => iv_online_type                      -- 11 : オンライン対象区分
        ,iv_request_no         => iv_request_no                       -- 12 : 移動No
+-- 2009/03/31 v1.17 ADD START
+       ,iv_mov_type           => iv_mov_type                         -- 13 : 移動タイプ
+-- 2009/03/31 v1.17 ADD END
        ,ov_errbuf             => lv_errbuf                           -- エラー・メッセージ
        ,ov_retcode            => lv_retcode                          -- リターン・コード
        ,ov_errmsg             => lv_errmsg                           -- ユーザー・エラー・メッセージ
