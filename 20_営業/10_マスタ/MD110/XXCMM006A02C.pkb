@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCMM006A02C(body)
  * Description      : 管理マスタIF出力(HHT)
  * MD.050           : 管理マスタIF出力(HHT) MD050_CMM_006_A02
- * Version          : 1.0
+ * Version          : 1.1
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -23,6 +23,7 @@ AS
  *  Date          Ver.  Editor           Description
  * ------------- ----- ---------------- -------------------------------------------------
  *  2008/12/25    1.0   SCS 福間 貴子    初回作成
+ *  2013/07/19    1.1   SCSK 渡辺良介    E_本稼動_10937 対応
  *
  *****************************************************************************************/
 --
@@ -141,12 +142,18 @@ AS
   CURSOR get_tax_data_cur
   IS
     SELECT   tax_rate,
-             start_date,
+-- 2013/07/19 v1.1 R.Watanabe Mod Start E_本稼動_10937
+--             start_date,
+             TO_DATE(attribute3,'YYYYMMDD') start_date,    --有効日（自）
+-- 2013/07/19 v1.1 R.Watanabe Mod End E_本稼動_10937
              last_update_date
     FROM     ap_tax_codes_all
     WHERE    name LIKE cv_where_name || '%'
     AND      enabled_flag = cv_on_flg
-    ORDER BY start_date DESC
+-- 2013/07/19 v1.1 R.Watanabe Mod Start E_本稼動_10937
+--    ORDER BY start_date DESC
+    ORDER BY attribute3 DESC
+-- 2013/07/19 v1.1 R.Watanabe Mod End E_本稼動_10937
   ;
   TYPE g_tax_data_ttype IS TABLE OF get_tax_data_cur%ROWTYPE INDEX BY PLS_INTEGER;
   gt_tax_data            g_tax_data_ttype;
