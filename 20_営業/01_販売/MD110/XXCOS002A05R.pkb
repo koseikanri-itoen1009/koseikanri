@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCOS002A05R (body)
  * Description      : 納品書チェックリスト
  * MD.050           : 納品書チェックリスト MD050_COS_002_A05
- * Version          : 1.18
+ * Version          : 1.19
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -66,6 +66,9 @@ AS
  *  2009/09/30    1.16  S.Miyakoshi      障害[0001378]帳票テーブルの桁あふれ対応
  *  2009/11/27    1.17  K.Atsushiba      [E_本稼動_00128]営業員を指定時に他営業員のデータが出力されないように変更
  *  2009/12/12    1.18  N.Maeda          [E_本稼動_00140]ソート順修正に伴う取得項目、設定項目の追加
+ *  2009/12/17    1.19  K.Atsushiba      [E_本稼動_00521]入金データが納品実績の入金欄に表示されない対応
+ *                                       [E_本稼動_00522]売上値引きが表示されない対応
+ *                                       [E_本稼動_00532]納品実績データの重複表示対応
  *
  *****************************************************************************************/
 --
@@ -163,6 +166,9 @@ AS
   cv_msg_dlv_by_code            CONSTANT VARCHAR2(20)  := 'APP-XXCOS1-10608';   -- 営業員
   cv_msg_hht_invoice_no         CONSTANT VARCHAR2(20)  := 'APP-XXCOS1-10609';   -- HHT伝票No
   cv_msg_sale_header_table      CONSTANT VARCHAR2(20)  := 'APP-XXCOS1-10610';   -- 販売実績ヘッダテーブル
+-- 2009/12/17 Ver.1.19 Add Start
+  cv_msg_payment_update_err     CONSTANT VARCHAR2(20)  := 'APP-XXCOS1-10611';   -- 入金データ更新
+-- 2009/12/17 Ver.1.19 Add End
 --
   -- トークン
   cv_tkn_in_param               CONSTANT VARCHAR2(100) := 'IN_PARAM';           -- 入力パラメータ
@@ -174,6 +180,12 @@ AS
   cv_tkn_para_delivery_base     CONSTANT VARCHAR2(100) := 'PARAM2';             -- 拠点
   cv_tkn_para_dlv_by_code       CONSTANT VARCHAR2(100) := 'PARAM3';             -- 営業員
   cv_tkn_para_hht_invoice       CONSTANT VARCHAR2(100) := 'PARAM4';             -- HHT伝票No
+-- 2009/12/17 Ver.1.19 Add Start
+  cv_tkn_hht_invoice_no         CONSTANT VARCHAR2(100) := 'HHT_INVOICE_NO';     -- 納品伝票番号
+  cv_tkn_customer_number        CONSTANT VARCHAR2(100) := 'CUSTOMER_NUMBER';    -- 顧客
+  cv_tkn_payment_date           CONSTANT VARCHAR2(100) := 'PAYMENT_DATE';       -- 入金日
+-- 2009/12/17 Ver.1.19 Add End
+
 --
   -- クイックコード（作成元区分）
   ct_qck_org_cls_type           CONSTANT fnd_lookup_types.lookup_type%TYPE := 'XXCOS1_MK_ORG_CLS_MST_002_A05';
@@ -1018,7 +1030,9 @@ AS
              ,seh.create_class                AS create_class                 -- 作成元区分
 -- **************** 2009/12/12 1.18 N.Maeda ADD START **************** --
              ,seh.hht_dlv_input_date          AS hht_dlv_input_date           -- HHT納品入力日時
-             ,sel.dlv_invoice_line_number     AS dlv_invoice_line_number      -- 納品明細番号
+-- 2009/12/17 Ver.1.19 Del Start
+--             ,sel.dlv_invoice_line_number     AS dlv_invoice_line_number      -- 納品明細番号
+-- 2009/12/17 Ver.1.19 Del End
 -- **************** 2009/12/12 1.18 N.Maeda ADD  END  **************** --
              ,SUM(
                CASE sel.item_code
@@ -1070,7 +1084,9 @@ AS
              ,seh.create_class                       -- 作成元区分
 -- **************** 2009/12/12 1.18 N.Maeda ADD START **************** --
              ,seh.hht_dlv_input_date                 -- HHT納品入力日時
-             ,sel.dlv_invoice_line_number            -- 納品明細番号
+-- 2009/12/17 Ver.1.19 Del Start
+--             ,sel.dlv_invoice_line_number            -- 納品明細番号
+-- 2009/12/17 Ver.1.19 Del End
 -- **************** 2009/12/12 1.18 N.Maeda ADD  END  **************** --
          ) disc         -- 売上値引額
         ,(
@@ -1140,7 +1156,10 @@ AS
              ,seh.consumption_tax_class              AS consumption_tax_class           -- 消費税区分
              ,seh.invoice_class                      AS invoice_class                   -- 伝票区分
              ,seh.create_class                       AS create_class                    -- 作成元区分
-             ,MAX( sel.sales_class )                 AS sale_class                      -- 売上区分
+-- 2009/12/17 Ver.1.19 Mod Start
+             ,sel.sales_class                        AS sale_class                      -- 売上区分
+--             ,MAX( sel.sales_class )                 AS sale_class                      -- 売上区分
+-- 2009/12/17 Ver.1.19 Mod End
              ,sel.item_code                          AS item_code                       -- 品目コード
              ,SUM( sel.standard_qty )                AS quantity                        -- 数量
              ,sel.standard_unit_price                AS wholesale_unit_ploce            -- 卸単価
@@ -1235,6 +1254,9 @@ AS
              ,seh.hht_dlv_input_date                 -- HHT納品入力日時
              ,sel.dlv_invoice_line_number            -- 納品明細番号
 -- **************** 2009/12/12 1.18 N.Maeda ADD  END  **************** --
+-- 2009/12/17 Ver.1.19 Add Start
+             ,sel.sales_class
+-- 2009/12/17 Ver.1.19 Add End
          ) infd     -- 明細情報
         ,(
             SELECT  look_val.meaning      meaning 
@@ -1393,6 +1415,10 @@ AS
       AND cust.party_id              = parc.party_id                                                     -- 顧客マスタ_顧客＝パーティ_顧客
       AND infh.create_class IN ( orct.meaning )                                                          -- 作成元区分＝クイックコード
       AND infh.results_employee_code = ppf.employee_number(+)
+-- 2009/12/17 Ver.1.19 Add Start
+      AND infh.hht_dlv_input_date    = disc.hht_dlv_input_date                                           -- ヘッダ.HHT納品入力日時 = 値引.HHT納品入力日時
+      AND infh.hht_dlv_input_date    = infd.hht_dlv_input_date                                           -- ヘッダ.HHT納品入力日時 = 明細.HHT納品入力日時
+-- 2009/12/17 Ver.1.19 Add End
 -- 2009/08/24 Ver.1.14 M.Sano Mod Start
       AND infh.delivery_date        >= ppf.effective_start_date(+)
       AND infh.delivery_date        <= ppf.effective_end_date(+)
@@ -1428,7 +1454,9 @@ AS
       AND cuac.business_low_type     = gysm1.meaning(+)
       AND infd.quantity             != cn_zero                                                           -- 納品数量 != 0
 -- **************** 2009/12/12 1.18 N.Maeda ADD START **************** --
-      AND disc.dlv_invoice_line_number = infd.dlv_invoice_line_number                -- 納品明細番号
+-- 2009/12/17 Ver.1.19 Del Start
+--      AND disc.dlv_invoice_line_number = infd.dlv_invoice_line_number                -- 納品明細番号
+-- 2009/12/17 Ver.1.19 Del End
 -- **************** 2009/12/12 1.18 N.Maeda ADD  END  **************** --
       ;
 -- ******************** 2009/06/02 Var.1.9 T.Tominaga MOD END    ******************************************
@@ -1990,10 +2018,49 @@ AS
 --
     -- *** ローカル変数 ***
     ld_delivery_date  DATE;       -- パラメータ変換後の納品日
+-- 2009/12/17 Ver.1.19 Add Start
+    ln_payment_cnt         NUMBER;    -- 取得入金件数
+    ln_no_dlv_data         NUMBER;    -- 納品データ有無フラグ
+-- 2009/12/17 Ver.1.19 Add End
 --
     -- *** ローカル・カーソル ***
+-- 2009/12/17 Ver.1.19 Add Start
+    -- 入金データ抽出
+    CURSOR get_payment_cur (
+      id_delivery_date  IN  DATE        -- 納品日
+    )
+    IS
+      SELECT  xrdcl.rowid         row_id
+             ,xrdcl.employee_num  employee_num                        -- 営業員コード
+             ,xrdcl.dlv_date      dlv_date                            -- 納品日
+             ,xrdcl.party_num     party_num                           -- 顧客コード
+             ,xrdcl.entry_number  entry_number                        -- 伝票番号
+             ,xrdcl.base_code     base_code                           -- 拠点コード
+             ,xrdcl.target_date   target_date                         -- 対象日時
+             ,NULL                dlv_card_sale_class                 -- カード売り区分
+             ,NULL                dlv_input_class                     -- 入力区分
+             ,NULL                dlv_invoice_class                   -- 伝票区分
+             ,NULL                dlv_invoice_class_code              -- 伝票区分コード
+             ,NULL                dlv_visit_time                      -- 訪問日時
+             ,NULL                dlv_dlv_date                        -- 納品日
+      FROM    xxcos_rep_dlv_chk_list    xrdcl           -- 納品書チェックリスト帳票ワークテーブル
+             ,fnd_lookup_values         flv             -- ルックアップ
+      WHERE  xrdcl.request_id      = cn_request_id
+      AND    xrdcl.payment_class   = flv.meaning
+      AND    flv.lookup_type       = ct_qck_money_class
+      AND    flv.enabled_flag      = cv_yes
+      AND    flv.language          = ct_lang
+      AND    id_delivery_date      >= NVL( flv.start_date_active, id_delivery_date )
+      AND    id_delivery_date      <= NVL( flv.end_date_active, id_delivery_date )
+      ;
+      --
+-- 2009/12/17 Ver.1.19 Add Start
 --
     -- *** ローカル・レコード ***
+-- 2009/12/17 Ver.1.19 Add Start
+    TYPE g_payment_data_ttype IS TABLE OF get_payment_cur%ROWTYPE INDEX BY BINARY_INTEGER;
+    gt_payment_tbl            g_payment_data_ttype;
+-- 2009/12/17 Ver.1.19 Add End
 --
 --
   BEGIN
@@ -2242,6 +2309,106 @@ AS
         lv_errbuf := lv_errmsg;
         RAISE global_api_expt;
     END;
+-- 2009/12/17 Ver.1.19 Add Start
+  -- 登録した入金データ抽出
+  -- カーソル・オープン
+  OPEN get_payment_cur (
+           id_delivery_date  => ld_delivery_date             -- 納品日
+       );
+  --
+  -- レコード読込
+  FETCH get_payment_cur BULK COLLECT INTO gt_payment_tbl;
+  --
+  -- レコード件数取得
+  ln_payment_cnt := gt_payment_tbl.COUNT;
+  --
+  IF ( ln_payment_cnt > 0 ) THEN
+    <<payment_loop>>
+    FOR ln_idx IN 1..ln_payment_cnt LOOP
+      ln_no_dlv_data := 0;
+      -- 入金データがある場合
+      BEGIN
+        -- 同一顧客、納品伝票番号で、上記で取得した検収日内で最小の訪問日時を取得
+        SELECT MIN(xrdcl.visit_time)
+        INTO   gt_payment_tbl(ln_idx).dlv_visit_time
+        FROM   xxcos_rep_dlv_chk_list    xrdcl                -- 納品書チェックリスト帳票ワークテーブル
+        WHERE  xrdcl.request_id      = cn_request_id
+        AND    xrdcl.target_date     = gt_payment_tbl(ln_idx).target_date       -- 対象日付
+        AND    xrdcl.base_code       = gt_payment_tbl(ln_idx).base_code         -- 拠点コード
+        AND    xrdcl.employee_num    = gt_payment_tbl(ln_idx).employee_num      -- 営業員コード
+        AND    xrdcl.entry_number    = gt_payment_tbl(ln_idx).entry_number      -- 伝票番号
+        AND    xrdcl.party_num       = gt_payment_tbl(ln_idx).party_num         -- 顧客コード
+        AND    xrdcl.visit_time      IS NOT NULL
+        ;
+        -- 同一顧客、納品伝票番号で最小の検収日を取得
+        SELECT MIN(xrdcl.dlv_date)
+        INTO   gt_payment_tbl(ln_idx).dlv_dlv_date
+        FROM   xxcos_rep_dlv_chk_list    xrdcl                -- 納品書チェックリスト帳票ワークテーブル
+        WHERE  xrdcl.request_id      = cn_request_id
+        AND    xrdcl.target_date     = gt_payment_tbl(ln_idx).target_date       -- 対象日付
+        AND    xrdcl.base_code       = gt_payment_tbl(ln_idx).base_code         -- 拠点コード
+        AND    xrdcl.employee_num    = gt_payment_tbl(ln_idx).employee_num      -- 営業員コード
+        AND    xrdcl.entry_number    = gt_payment_tbl(ln_idx).entry_number      -- 伝票番号
+        AND    xrdcl.party_num       = gt_payment_tbl(ln_idx).party_num         -- 顧客コード
+        AND    xrdcl.visit_time      = gt_payment_tbl(ln_idx).dlv_visit_time    -- 訪問日時
+        AND    xrdcl.visit_time      IS NOT NULL
+        AND    rownum  = 1
+        ;
+        --
+        SELECT   xrdcl.card_sale_class                          -- カード売り区分
+                ,xrdcl.input_class                              -- 入力区分
+                ,xrdcl.invoice_class                            -- 伝票区分
+                ,xrdcl.invoice_classification_code              -- 伝票分類コード
+        INTO     gt_payment_tbl(ln_idx).dlv_card_sale_class
+                ,gt_payment_tbl(ln_idx).dlv_input_class
+                ,gt_payment_tbl(ln_idx).dlv_invoice_class
+                ,gt_payment_tbl(ln_idx).dlv_invoice_class_code
+        FROM   xxcos_rep_dlv_chk_list    xrdcl           -- 納品書チェックリスト帳票ワークテーブル
+        WHERE  xrdcl.request_id      = cn_request_id                            -- 要求ID
+        AND    xrdcl.target_date     = gt_payment_tbl(ln_idx).target_date       -- 対象日付
+        AND    xrdcl.base_code       = gt_payment_tbl(ln_idx).base_code         -- 拠点コード
+        AND    xrdcl.employee_num    = gt_payment_tbl(ln_idx).employee_num      -- 営業員コード
+        AND    xrdcl.entry_number    = gt_payment_tbl(ln_idx).entry_number      -- 伝票番号
+        AND    xrdcl.party_num       = gt_payment_tbl(ln_idx).party_num         -- 顧客コード
+        AND    xrdcl.visit_time      = gt_payment_tbl(ln_idx).dlv_visit_time    -- 訪問日時
+        AND    xrdcl.dlv_date        = gt_payment_tbl(ln_idx).dlv_dlv_date      -- 検収日
+        AND    rownum  = 1
+        ;
+      EXCEPTION
+        WHEN OTHERS THEN
+          ln_no_dlv_data := 1;
+      END;
+      --
+      IF ( ln_no_dlv_data = 0 ) THEN
+        BEGIN
+          UPDATE  xxcos_rep_dlv_chk_list   xrdcl
+          SET     xrdcl.card_sale_class              = gt_payment_tbl(ln_idx).dlv_card_sale_class                -- カード売り区分
+                 ,xrdcl.input_class                  = gt_payment_tbl(ln_idx).dlv_input_class                    -- 入力区分
+                 ,xrdcl.invoice_class                = gt_payment_tbl(ln_idx).dlv_invoice_class                  -- 伝票区分
+                 ,xrdcl.invoice_classification_code  = gt_payment_tbl(ln_idx).dlv_invoice_class_code             -- 伝票分類コード
+                 ,xrdcl.visit_time                   = gt_payment_tbl(ln_idx).dlv_visit_time                     -- 訪問日時
+                 ,xrdcl.dlv_date                     = gt_payment_tbl(ln_idx).dlv_dlv_date                       -- 納品日
+          WHERE  xrdcl.rowid                         = gt_payment_tbl(ln_idx).row_id
+          ;
+        EXCEPTION
+          WHEN OTHERS THEN
+            lv_errmsg := xxccp_common_pkg.get_msg(
+               iv_application  => cv_application
+              ,iv_name         => cv_msg_payment_update_err
+              ,iv_token_name1  => cv_tkn_hht_invoice_no                          -- 納品伝票番号
+              ,iv_token_value1 => gt_payment_tbl(ln_idx).entry_number
+              ,iv_token_name2  => cv_tkn_customer_number                              -- 顧客
+              ,iv_token_value2 => gt_payment_tbl(ln_idx).party_num
+              ,iv_token_name3  => cv_tkn_payment_date                               -- 入金日
+              ,iv_token_value3 => TO_CHAR(gt_payment_tbl(ln_idx).dlv_date,cv_fmt_date_default)
+            );
+          lv_errbuf := lv_errmsg;
+          RAISE global_api_expt;
+        END;
+      END IF;
+    END LOOP payment_loop;
+  END IF;
+-- 2009/12/17 Ver.1.19 Add End
 --
   EXCEPTION
 --
