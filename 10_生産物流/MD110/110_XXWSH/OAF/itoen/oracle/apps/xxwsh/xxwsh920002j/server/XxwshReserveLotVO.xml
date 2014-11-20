@@ -33,7 +33,10 @@ SELECT lm.lot_no
       ,lm.stock_form
       ,lm.manufacturers_factory
       ,lm.vendor_short_name
-      ,(lm.stock_qty + lm.demsup_qty) can_enc_qty
+-- 2009/12/04 H.Itou 本稼動障害#11 Mod Start lm.demsup_qty、lm.stock_qtyを抽出するたびに引当可能数・手持在庫関数を呼ぶので、問い合わせ実行後にLOOPで計算するように修正。
+--      ,(lm.stock_qty + lm.demsup_qty) can_enc_qty
+      ,lm.demsup_qty can_enc_qty
+-- 2009/12/04 H.Itou 本稼動障害#11 Mod End
       ,lm.stock_qty
       ,lm.actual_quantity
       ,lm.automanual_reserve_class
@@ -44,21 +47,27 @@ SELECT lm.lot_no
       ,lm.last_updated_by
       ,lm.last_update_date
       ,lm.last_update_login
-      ,TO_CHAR((CASE :0
-                WHEN '1' THEN (lm.stock_qty + lm.demsup_qty) / TO_NUMBER(:1)
-                         ELSE (lm.stock_qty + lm.demsup_qty)
-                END),'FM999,999,990.000') show_can_enc_qty -- 引当可能数(表示用)
-      ,TO_CHAR((CASE :2
-                WHEN '1' THEN lm.stock_qty / TO_NUMBER(:3)
-                         ELSE lm.stock_qty
-                END),'FM999,999,990.000') show_stock_qty   -- 手持在庫数(表示用)
+-- 2009/12/04 H.Itou 本稼動障害#11 Mod Start lm.demsup_qty、lm.stock_qtyを抽出するたびに引当可能数・手持在庫関数を呼ぶので、問い合わせ実行後にLOOPで計算するように修正。
+--      ,TO_CHAR((CASE :0
+--                WHEN '1' THEN (lm.stock_qty + lm.demsup_qty) / TO_NUMBER(:1)
+--                         ELSE (lm.stock_qty + lm.demsup_qty)
+--                END),'FM999,999,990.000') show_can_enc_qty -- 引当可能数(表示用)
+      ,NULL show_can_enc_qty
+-- 2009/12/04 H.Itou 本稼動障害#11 Mod End
+-- 2009/12/04 H.Itou 本稼動障害#11 Mod Start lm.demsup_qty、lm.stock_qtyを抽出するたびに引当可能数・手持在庫関数を呼ぶので、問い合わせ実行後にLOOPで計算するように修正。
+--      ,TO_CHAR((CASE :2
+--                WHEN '1' THEN lm.stock_qty / TO_NUMBER(:3)
+--                         ELSE lm.stock_qty
+--                END),'FM999,999,990.000') show_stock_qty   -- 手持在庫数(表示用)
+      ,NULL show_stock_qty
+-- 2009/12/04 H.Itou 本稼動障害#11 Mod End
       ,lm.show_actual_quantity
       ,lm.pay_provision_m_reserve
       ,lm.move_inst_m_reserve
       ,lm.ship_req_m_reserve
 FROM (
 SELECT ilm.lot_no                            lot_no,                                 -- ロットNo
-       (CASE TO_NUMBER(:4)
+       (CASE TO_NUMBER(:0)
         WHEN 1 THEN ilm.lot_no
                ELSE NULL
         END)                                 show_lot_no,                            -- ロットNo(表示用)
@@ -102,33 +111,88 @@ SELECT ilm.lot_no                            lot_no,                            
            ELSE
              NULL
          END)                                memo3,
-       xlv1.meaning                          type,                                   -- タイプ
-       xlv2.meaning                          product_home,                           -- 産地
-       xlv3.meaning                          tea_period_dev,                         -- 茶期
-       xlv4.meaning                          stock_form,                             -- 仕入形態
+-- 2009/12/04 H.Itou 本稼動障害#11 Mod Start
+--       xlv1.meaning                          type,                                   -- タイプ
+--       xlv2.meaning                          product_home,                           -- 産地
+--       xlv3.meaning                          tea_period_dev,                         -- 茶期
+--       xlv4.meaning                          stock_form,                             -- 仕入形態
+       CASE
+         WHEN (ilm.attribute13 IS NULL) THEN NULL
+         ELSE (SELECT xlv.meaning           type
+               FROM   xxcmn_lookup_values_v xlv    -- クイックコード情報VIEW(タイプ用)
+               WHERE  xlv.lookup_type = 'XXCMN_L08'
+               AND    xlv.lookup_code = ilm.attribute13
+               )
+       END                                   type,                                   -- タイプ
+       CASE
+         WHEN (ilm.attribute12 IS NULL) THEN NULL
+         ELSE (SELECT xlv.meaning           product_home
+               FROM   xxcmn_lookup_values_v xlv    -- クイックコード情報VIEW(産地用)
+               WHERE  xlv.lookup_type = 'XXCMN_L07'
+               AND    xlv.lookup_code = ilm.attribute12
+               )
+       END                                   product_home,                           -- 産地
+       CASE
+         WHEN (ilm.attribute10 IS NULL) THEN NULL
+         ELSE (SELECT xlv.meaning           tea_period_dev
+               FROM   xxcmn_lookup_values_v xlv    -- クイックコード情報VIEW(茶期用)
+               WHERE  xlv.lookup_type = 'XXCMN_L06'
+               AND    xlv.lookup_code = ilm.attribute10
+               )
+       END                                   tea_period_dev,                         -- 茶期
+       CASE
+         WHEN (ilm.attribute9 IS NULL) THEN NULL
+         ELSE (SELECT xlv.meaning           stock_form
+               FROM   xxcmn_lookup_values_v xlv    -- クイックコード情報VIEW(仕入形態用)
+               WHERE  xlv.lookup_type = 'XXCMN_L05'
+               AND    xlv.lookup_code = ilm.attribute9
+               )
+       END                                   stock_form,                             -- 仕入形態
+-- 2009/12/04 H.Itou 本稼動障害#11 Mod End
        ilm.attribute20                       manufacturers_factory,                  -- 原料製造工場
-       SUBSTRB(xvv.vendor_short_name,1,10)   vendor_short_name,                      -- 取引先
+-- 2009/12/04 H.Itou 本稼動障害#11 Mod Start
+--       SUBSTRB(xvv.vendor_short_name,1,10)   vendor_short_name,                      -- 取引先
+       CASE
+         WHEN (ilm.attribute8 IS NULL) THEN NULL
+         ELSE (SELECT SUBSTRB(xvv.vendor_short_name,1,10) vendor_short_name
+               FROM   xxcmn_vendors2_v                    xvv     -- 仕入先情報VIEW2
+               WHERE  xvv.segment1 = ilm.attribute8
+               AND    :1   BETWEEN xvv.start_date_active(+)
+                           AND     NVL(xvv.end_date_active(+), :2)
+               )
+       END                                   vendor_short_name,                      -- 取引先
+-- 2009/12/04 H.Itou 本稼動障害#11 Mod End
        NVL(xxwsh_common_get_qty_pkg.get_demsup_qty(
                                        ilm.item_id
-                                      ,TO_NUMBER(:5)                                 -- LotCtl
+                                      ,TO_NUMBER(:3)                                 -- LotCtl
                                       ,ilm.lot_id
                                       ,ilm.lot_no
-                                      ,TO_NUMBER(:6)                                 -- FND_PROFILE.VALUE('XXCMN_MASTER_ORG_ID')
-                                      ,TO_DATE(:7,'YYYY/MM/DD HH24:MI:SS')           -- ScheduleShipDate
-                                      ,TO_DATE(:8,'YYYY/MM/DD')                      -- FND_PROFILE.VALUE('XXCMN_MAX_DATE')
-                                      ,TO_NUMBER(:9)                                 -- InputInventoryLocationId
-                                      ,:10                                           -- InputInventoryLocationCode
-                                      ,:11                                           -- FrequentWhseCode
-                                      ,:12                                           -- FND_PROFILE.VALUE('XXCMN_DUMMY_FREQUENT_WHSE')
+                                      ,TO_NUMBER(:4)                                 -- FND_PROFILE.VALUE('XXCMN_MASTER_ORG_ID')
+                                      ,TO_DATE(:5,'YYYY/MM/DD HH24:MI:SS')           -- ScheduleShipDate
+                                      ,TO_DATE(:6,'YYYY/MM/DD')                      -- FND_PROFILE.VALUE('XXCMN_MAX_DATE')
+                                      ,TO_NUMBER(:7)                                 -- InputInventoryLocationId
+                                      ,:8                                            -- InputInventoryLocationCode
+                                      ,:9                                            -- FrequentWhseCode
+                                      ,:10                                           -- FND_PROFILE.VALUE('XXCMN_DUMMY_FREQUENT_WHSE')
           ),0)                               demsup_qty,
        NVL(xxwsh_common_get_qty_pkg.get_stock_qty(
                                       ilm.item_id
-                                     ,TO_NUMBER(:13)                                 -- LotCtl
+                                     ,TO_NUMBER(:11)                                 -- LotCtl
                                      ,ilm.lot_id
-                                     ,TO_NUMBER(:14)                                 -- InputInventoryLocationId
+                                     ,TO_NUMBER(:12)                                 -- InputInventoryLocationId
           ),0)                               stock_qty,
        NVL(xmld.actual_quantity,0)           actual_quantity,                        -- 引当数量
-       xlv5.meaning                          automanual_reserve_class,               -- 自動手動引当区分
+-- 2009/12/04 H.Itou 本稼動障害#11 Mod Start
+--       xlv5.meaning                          automanual_reserve_class,               -- 自動手動引当区分
+       CASE
+         WHEN (xmld.automanual_reserve_class IS NULL) THEN NULL
+         ELSE (SELECT xlv.meaning           automanual_reserve_class
+               FROM   xxcmn_lookup_values_v xlv    -- クイックコード情報VIEW(自動手動引当区分用)
+               WHERE  xlv.lookup_type = 'XXINV_AM_RESERVE_CLASS'
+               AND    xlv.lookup_code = xmld.automanual_reserve_class
+               )
+       END                                   automanual_reserve_class,               -- 自動手動引当区分
+-- 2009/12/04 H.Itou 本稼動障害#11 Mod End
        xlsv.status_desc                      lot_status_name,                        -- ロットステータス(名称)
        xmld.mov_lot_dtl_id                   mov_lot_dtl_id,                         -- ロット詳細ID
        xmld.created_by                       created_by,                             -- 作成者
@@ -136,7 +200,7 @@ SELECT ilm.lot_no                            lot_no,                            
        xmld.last_updated_by                  last_updated_by,                        -- 最終更新者
        xmld.last_update_date                 last_update_date,                       -- 最終更新日
        xmld.last_update_login                last_update_login,                      -- 最終更新ログイン
-       TO_CHAR((CASE :15 WHEN '1' THEN NVL(xmld.actual_quantity,0) / :16
+       TO_CHAR((CASE :13 WHEN '1' THEN NVL(xmld.actual_quantity,0) / :14
                                   ELSE NVL(xmld.actual_quantity,0)
                 END),'FM999999990.000')      show_actual_quantity,                    -- 引当数量(表示用)
        xlsv.pay_provision_m_reserve            pay_provision_m_reserve,                 -- 有償支給(手動引当)
@@ -144,34 +208,151 @@ SELECT ilm.lot_no                            lot_no,                            
        xlsv.ship_req_m_reserve                 ship_req_m_reserve                       -- 出荷依頼(手動引当)
  FROM  ic_lots_mst           ilm,     -- ロットマスタ
        xxinv_mov_lot_details xmld,    -- 移動ロット詳細(アドオン)
-       xxcmn_lookup_values_v xlv1,    -- クイックコード情報VIEW(タイプ用)
-       xxcmn_lookup_values_v xlv2,    -- クイックコード情報VIEW(産地用)
-       xxcmn_lookup_values_v xlv3,    -- クイックコード情報VIEW(茶期用)
-       xxcmn_lookup_values_v xlv4,    -- クイックコード情報VIEW(仕入形態用)
-       xxcmn_lookup_values_v xlv5,    -- クイックコード情報VIEW(自動手動引当区分用)
-       xxcmn_vendors2_v      xvv,     -- 仕入先情報VIEW2
+-- 2009/12/04 H.Itou 本稼動障害#11 Add Start
+       -- 引当済ロットか、全倉庫で手持在庫・入庫予定・入庫実績があるロットのみ抽出。(出庫のみ取得できても、画面表示しないため抽出不要)
+      (
+         -- 手持在庫が0より多いロット
+         SELECT ili.lot_id   lot_id
+               ,ili.item_id  item_id
+         FROM   ic_loct_inv  ili
+         WHERE  ili.item_id = TO_NUMBER(:15)
+         AND    ili.loct_onhand > 0
+         UNION
+         -- S1)供給数  移動入庫予定
+         SELECT  mld.lot_id   lot_id
+                ,mld.item_id  item_id
+         FROM    xxinv_mov_req_instr_headers mrih    -- 移動依頼/指示ヘッダ（アドオン）
+                ,xxinv_mov_req_instr_lines   mril    -- 移動依頼/指示明細（アドオン）
+                ,xxinv_mov_lot_details       mld     -- 移動ロット詳細（アドオン）
+         WHERE   mrih.comp_actual_flg        = 'N'
+         AND     mrih.status                IN ('02','03')
+         AND     mrih.schedule_arrival_date >= TO_DATE(:16, 'YYYY/MM/DD') -- 予定なのでOPEN日付のデータのみ対象。
+         AND     mrih.mov_hdr_id             = mril.mov_hdr_id
+         AND     mril.mov_line_id            = mld.mov_line_id
+         AND     mril.delete_flg             = 'N'
+         AND     mld.item_id                 = TO_NUMBER(:17)
+         AND     mld.document_type_code      = '20'
+         AND     mld.record_type_code        = '10'
+         UNION
+         -- S2)供給数  発注受入予定
+         SELECT  ilm.lot_id   lot_id
+                ,ilm.item_id  item_id
+         FROM    ic_item_mst_b      iimb
+                ,mtl_system_items_b msib
+                ,ic_lots_mst        ilm
+                ,po_lines_all       pla
+                ,po_headers_all     pha
+         WHERE   iimb.item_id           = TO_NUMBER(:18)
+         AND     msib.segment1          = iimb.item_no
+         AND     msib.organization_id   = TO_NUMBER(:19)
+         AND     msib.inventory_item_id = pla.item_id
+         AND     iimb.item_id           = ilm.item_id
+         AND     pla.attribute1         = ilm.lot_no
+         AND     pla.attribute13        = 'N'
+         AND     pla.cancel_flag        = 'N'
+         AND     pla.po_header_id       = pha.po_header_id
+         AND     pha.attribute1        IN ('20','25')
+         AND     pha.attribute4        >= :20 -- 予定なのでOPEN日付のデータのみ対象。
+         UNION
+         -- S3)供給数  生産入庫予定
+         SELECT  itp.lot_id   lot_id
+                ,itp.item_id  item_id
+         FROM    gme_batch_header      gbh  -- 生産バッチ
+                ,gme_material_details  gmd  -- 生産原料詳細
+                ,ic_tran_pnd           itp  -- OPM保留在庫トランザクション
+         WHERE   gbh.batch_status      IN (1,2)
+         AND     gbh.batch_id           = gmd.batch_id
+         AND     gmd.line_type         IN (1,2)
+         AND     gmd.item_id            = TO_NUMBER(:21)
+         AND     gmd.material_detail_id = itp.line_id
+         AND     itp.completed_ind      = 0
+         AND     itp.doc_type           = 'PROD'
+         AND     itp.delete_mark        = 0
+         AND     itp.trans_date        >= TO_DATE(:22, 'YYYY/MM/DD')  -- 予定なのでOPEN日付のデータのみ対象。
+         UNION
+         -- S4)供給数  実績計上済の移動出庫実績
+         SELECT  mld.lot_id   lot_id
+                ,mld.item_id  item_id
+         FROM    xxinv_mov_req_instr_headers mrih    -- 移動依頼/指示ヘッダ（アドオン）
+                ,xxinv_mov_req_instr_lines   mril    -- 移動依頼/指示明細（アドオン）
+                ,xxinv_mov_lot_details       mld     -- 移動ロット詳細（アドオン）
+         WHERE   mrih.comp_actual_flg    = 'N'
+         AND     mrih.status             = '04'
+         AND     NVL(mrih.actual_arrival_date, mrih.schedule_arrival_date) >= TO_DATE(:23, 'YYYY/MM/DD')  -- 予定なのでOPEN日付のデータのみ対象。
+         AND     mrih.mov_hdr_id         = mril.mov_hdr_id
+         AND     mril.mov_line_id        = mld.mov_line_id
+         AND     mril.delete_flg         = 'N'
+         AND     mld.item_id             = TO_NUMBER(:24)
+         AND     mld.document_type_code  = '20'
+         AND     mld.record_type_code    = '20'
+         AND     mld.actual_quantity     > 0
+         UNION
+         -- I1)実績未取在庫数  移動入庫（入出庫報告有）
+         -- I2)実績未取在庫数  移動入庫（入庫報告有）
+         -- I7)実績未取在庫数  移動入庫訂正（入出庫報告有）
+         SELECT  mld.lot_id   lot_id
+                ,mld.item_id  item_id
+         FROM    xxinv_mov_req_instr_headers mrih    -- 移動依頼/指示ヘッダ（アドオン）
+                ,xxinv_mov_req_instr_lines   mril    -- 移動依頼/指示明細（アドオン）
+                ,xxinv_mov_lot_details       mld     -- 移動ロット詳細（アドオン）
+         WHERE (((mrih.comp_actual_flg    = 'N'))
+           OR   ((mrih.comp_actual_flg    = 'Y')
+             AND (mrih.correct_actual_flg = 'Y')))
+         AND     mrih.status            IN ('05','06')
+         AND     mrih.mov_hdr_id         = mril.mov_hdr_id
+         AND     mril.mov_line_id        = mld.mov_line_id
+         AND     mril.delete_flg         = 'N'
+         AND     mld.item_id             = TO_NUMBER(:25)
+         AND     mld.document_type_code  = '20'
+         AND     mld.record_type_code    = '30'
+         AND     mld.actual_date        >= TO_DATE(:26, 'YYYY/MM/DD')  -- 実績計上前なのでOPEN日付のデータのみ対象。
+         AND     mld.actual_quantity     > 0
+         UNION
+         -- 引当済ロット
+         SELECT xmld.lot_id   lot_id
+               ,xmld.item_id  item_id
+         FROM   xxinv_mov_lot_details xmld    -- 移動ロット詳細(アドオン)
+         WHERE  xmld.mov_line_id        = TO_NUMBER(:27)
+         AND    xmld.document_type_code = :28
+         AND    xmld.record_type_code   = '10'
+       )                     enable_lot,
+-- 2009/12/04 H.Itou 本稼動障害#11 Add End
+-- 2009/12/04 H.Itou 本稼動障害#11 Del Start SELECT句で取得する。
+--       xxcmn_lookup_values_v xlv1,    -- クイックコード情報VIEW(タイプ用)
+--       xxcmn_lookup_values_v xlv2,    -- クイックコード情報VIEW(産地用)
+--       xxcmn_lookup_values_v xlv3,    -- クイックコード情報VIEW(茶期用)
+--       xxcmn_lookup_values_v xlv4,    -- クイックコード情報VIEW(仕入形態用)
+--       xxcmn_lookup_values_v xlv5,    -- クイックコード情報VIEW(自動手動引当区分用)
+--       xxcmn_vendors2_v      xvv,     -- 仕入先情報VIEW2
+-- 2009/12/04 H.Itou 本稼動障害#11 Del End
        xxcmn_lot_status_v    xlsv     -- ロットステータスビュー
-WHERE  ilm.item_id                = TO_NUMBER(:17)
+WHERE  ilm.item_id                = TO_NUMBER(:29)
+-- 2009/12/04 H.Itou 本稼動障害#11 Add Start 有効数のあるロットのみ抽出。
+  AND  ilm.item_id                = enable_lot.item_id
+  AND  ilm.lot_id                 = enable_lot.lot_id
+-- 2009/12/04 H.Itou 本稼動障害#11 Add End
   AND  xlsv.lot_status(+)         = ilm.attribute23
-  AND  xlsv.prod_class_code(+)    = :18
-  AND  xmld.mov_line_id(+)        = TO_NUMBER(:19)
-  AND  xmld.document_type_code(+) = :20
+  AND  xlsv.prod_class_code(+)    = :30
+  AND  xmld.mov_line_id(+)        = TO_NUMBER(:31)
+  AND  xmld.document_type_code(+) = :32
   AND  xmld.record_type_code(+)   = '10'
   AND  xmld.item_id(+)            = ilm.item_id
   AND  xmld.lot_id(+)             = ilm.lot_id
-  AND  xlv1.lookup_type(+)        = 'XXCMN_L08'
-  AND  xlv1.lookup_code(+)        = ilm.attribute13
-  AND  xlv2.lookup_type(+)        = 'XXCMN_L07'
-  AND  xlv2.lookup_code(+)        = ilm.attribute12
-  AND  xlv3.lookup_type(+)        = 'XXCMN_L06'
-  AND  xlv3.lookup_code(+)        = ilm.attribute10
-  AND  xlv4.lookup_type(+)        = 'XXCMN_L05'
-  AND  xlv4.lookup_code(+)        = ilm.attribute10
-  AND  xlv5.lookup_type(+)        = 'XXINV_AM_RESERVE_CLASS'
-  AND  xlv5.lookup_code(+)        = xmld.automanual_reserve_class
-  AND  xvv.segment1(+)            = ilm.attribute8
-  AND  :21   BETWEEN xvv.start_date_active(+)
-             AND     NVL(xvv.end_date_active(+), :22)
+-- 2009/12/04 H.Itou 本稼動障害#11 Del Start SELECT句で取得する。
+--  AND  xlv1.lookup_type(+)        = 'XXCMN_L08'
+--  AND  xlv1.lookup_code(+)        = ilm.attribute13
+--  AND  xlv2.lookup_type(+)        = 'XXCMN_L07'
+--  AND  xlv2.lookup_code(+)        = ilm.attribute12
+--  AND  xlv3.lookup_type(+)        = 'XXCMN_L06'
+--  AND  xlv3.lookup_code(+)        = ilm.attribute10
+--  AND  xlv4.lookup_type(+)        = 'XXCMN_L05'
+--  AND  xlv4.lookup_code(+)        = ilm.attribute10
+--  AND  xlv5.lookup_type(+)        = 'XXINV_AM_RESERVE_CLASS'
+--  AND  xlv5.lookup_code(+)        = xmld.automanual_reserve_class
+--  AND  xvv.segment1(+)            = ilm.attribute8
+--  AND  :21   BETWEEN xvv.start_date_active(+)
+--             AND     NVL(xvv.end_date_active(+), :22)
+-- 2009/12/04 H.Itou 本稼動障害#11 Del End
 ) lm
 WHERE ((NVL(lm.actual_quantity,0) > 0)
       OR (lm.stock_qty + lm.demsup_qty > 0))

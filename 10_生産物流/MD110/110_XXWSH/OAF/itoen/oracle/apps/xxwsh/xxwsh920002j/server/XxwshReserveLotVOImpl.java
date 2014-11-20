@@ -1,12 +1,13 @@
 /*============================================================================
 * ファイル名 : XxwshReserveLotVOImpl
 * 概要説明   : 手持数・引当可能数一覧(ロット管理品)リージョンビューオブジェクト
-* バージョン : 1.0
+* バージョン : 1.1
 *============================================================================
 * 修正履歴
 * 日付       Ver. 担当者       修正内容
 * ---------- ---- ------------ ----------------------------------------------
 * 2008-12-25 1.0  二瓶　大輔     新規作成 本番#771対応
+* 2009-12-04 1.1  伊藤  ひとみ   本稼動障害#11対応
 *============================================================================
 */
 package itoen.oracle.apps.xxwsh.xxwsh920002j.server;
@@ -62,6 +63,9 @@ public class XxwshReserveLotVOImpl extends OAViewObjectImpl
       String masterOrgId                = (String)params.get("MasterOrgId");                 // 在庫組織ID
       String maxDate                    = (String)params.get("MaxDate");                     // 最大日付
       String dummyFrequentWhse          = (String)params.get("DummyFrequentWhse");           // ダミー倉庫
+// 2009-12-04 H.Itou Add Start 本稼動障害#11
+      String openDate                   = (String)params.get("OpenDate");                    // オープン日付
+// 2009-12-04 H.Itou Add End 本稼動障害#11
  
       // WHERE句を初期化
       setWhereClauseParams(null); // Always reset
@@ -69,29 +73,53 @@ public class XxwshReserveLotVOImpl extends OAViewObjectImpl
       setWhereClause(null);
       // バインド変数に値をセット
       int i = 0;
-      setWhereClauseParam(i++, convUnitUseKbn);             //  0:入出庫換算単位使用区分
-      setWhereClauseParam(i++, numOfCases);                 //  1:ケース入数
-      setWhereClauseParam(i++, convUnitUseKbn);             //  2:入出庫換算単位使用区分
-      setWhereClauseParam(i++, numOfCases);                 //  3:ケース入数
-      setWhereClauseParam(i++, lotCtl);                     //  4:ロット管理
-      setWhereClauseParam(i++, lotCtl);                     //  5:ロット管理
-      setWhereClauseParam(i++, masterOrgId);                //  6:在庫組織ID
-      setWhereClauseParam(i++, scheduleShipDate);           //  7:出庫予定日
-      setWhereClauseParam(i++, maxDate);                    //  8:最大日付
-      setWhereClauseParam(i++, inputInventoryLocationId);   //  9:入力保管倉庫ID
-      setWhereClauseParam(i++, inputInventoryLocationCode); // 10:入力保管倉庫コード
-      setWhereClauseParam(i++, frequentWhseCode);           // 11:代表倉庫
-      setWhereClauseParam(i++, dummyFrequentWhse);          // 12:ダミー倉庫
-      setWhereClauseParam(i++, lotCtl);                     // 13:ロット管理
-      setWhereClauseParam(i++, inputInventoryLocationId);   // 14:入力保管倉庫ID
-      setWhereClauseParam(i++, convUnitUseKbn);             // 15:入出庫換算単位使用区分
-      setWhereClauseParam(i++, numOfCases);                 // 16:ケース入数
+// 2009-12-04 H.Itou Del Start 本稼動障害#11 換算はデータ取得後行うため。
+//      setWhereClauseParam(i++, convUnitUseKbn);             //  0:入出庫換算単位使用区分
+//      setWhereClauseParam(i++, numOfCases);                 //  1:ケース入数
+//      setWhereClauseParam(i++, convUnitUseKbn);             //  2:入出庫換算単位使用区分
+//      setWhereClauseParam(i++, numOfCases);                 //  3:ケース入数
+// 2009-12-04 H.Itou Del End
+      setWhereClauseParam(i++, lotCtl);                     //  0:ロット管理
+// 2009-12-04 H.Itou Add Start 本稼動障害#11
+      setWhereClauseParam(i++, scheduleShipDate);           //  1:出庫予定日
+      setWhereClauseParam(i++, scheduleShipDate);           //  2:出庫予定日
+// 2009-12-04 H.Itou Add End 本稼動障害#11
+      setWhereClauseParam(i++, lotCtl);                     //  3:ロット管理
+      setWhereClauseParam(i++, masterOrgId);                //  4:在庫組織ID
+      setWhereClauseParam(i++, scheduleShipDate);           //  5:出庫予定日
+      setWhereClauseParam(i++, maxDate);                    //  6:最大日付
+      setWhereClauseParam(i++, inputInventoryLocationId);   //  7:入力保管倉庫ID
+      setWhereClauseParam(i++, inputInventoryLocationCode); //  8:入力保管倉庫コード
+      setWhereClauseParam(i++, frequentWhseCode);           //  9:代表倉庫
+      setWhereClauseParam(i++, dummyFrequentWhse);          // 10:ダミー倉庫
+      setWhereClauseParam(i++, lotCtl);                     // 11:ロット管理
+      setWhereClauseParam(i++, inputInventoryLocationId);   // 12:入力保管倉庫ID
+      setWhereClauseParam(i++, convUnitUseKbn);             // 13:入出庫換算単位使用区分
+      setWhereClauseParam(i++, numOfCases);                 // 14:ケース入数
+// 2009-12-04 H.Itou Add Start 本稼動障害#11
+      setWhereClauseParam(i++, itemId);                     // 15:品目ID
+      setWhereClauseParam(i++, openDate);                   // 16:オープン日付
       setWhereClauseParam(i++, itemId);                     // 17:品目ID
-      setWhereClauseParam(i++, prodClass);                  // 18:商品区分
-      setWhereClauseParam(i++, lineId);                     // 19:明細ID
-      setWhereClauseParam(i++, documentTypeCode);           // 20:文書タイプ
-      setWhereClauseParam(i++, scheduleShipDate);           // 21:出庫予定日
-      setWhereClauseParam(i++, scheduleShipDate);           // 22:出庫予定日
+      setWhereClauseParam(i++, itemId);                     // 18:品目ID
+      setWhereClauseParam(i++, masterOrgId);                // 19:在庫組織ID
+      setWhereClauseParam(i++, openDate);                   // 20:オープン日付
+      setWhereClauseParam(i++, itemId);                     // 21:品目ID
+      setWhereClauseParam(i++, openDate);                   // 22:オープン日付
+      setWhereClauseParam(i++, openDate);                   // 23:オープン日付
+      setWhereClauseParam(i++, itemId);                     // 24:品目ID
+      setWhereClauseParam(i++, itemId);                     // 25:品目ID
+      setWhereClauseParam(i++, openDate);                   // 26:オープン日付
+      setWhereClauseParam(i++, lineId);                     // 27:明細ID
+      setWhereClauseParam(i++, documentTypeCode);           // 28:文書タイプ
+// 2009-12-04 H.Itou Add End 本稼動障害#11
+      setWhereClauseParam(i++, itemId);                     // 29:品目ID
+      setWhereClauseParam(i++, prodClass);                  // 30:商品区分
+      setWhereClauseParam(i++, lineId);                     // 31:明細ID
+      setWhereClauseParam(i++, documentTypeCode);           // 32:文書タイプ
+// 2009-12-04 H.Itou Del Start 本稼動障害#11 上に移動。
+//      setWhereClauseParam(i++, scheduleShipDate);           // 21:出庫予定日
+//      setWhereClauseParam(i++, scheduleShipDate);           // 22:出庫予定日
+// 2009-12-04 H.Itou Del End 本稼動障害#11
 
       // ロット管理品の場合条件をセット
       if (XxwshConstants.LOT_CTL_Y.equals(lotCtl.toString()))

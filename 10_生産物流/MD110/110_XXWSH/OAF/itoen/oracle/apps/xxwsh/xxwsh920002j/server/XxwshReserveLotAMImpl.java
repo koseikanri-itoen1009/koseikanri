@@ -1,7 +1,7 @@
 /*============================================================================
 * ファイル名 : XxwshReserveLotAMImpl
 * 概要説明   : 引当ロット入力:登録アプリケーションモジュール
-* バージョン : 1.10
+* バージョン : 1.11
 *============================================================================
 * 修正履歴
 * 日付       Ver. 担当者       修正内容
@@ -18,6 +18,7 @@
 * 2009-01-26 1.9  伊藤ひとみ     本番障害#936対応
 * 2009-02-17 1.10 二瓶　大輔     本番障害#863対応
 *                                本番障害#1034対応
+* 2009-12-04 1.11 伊藤ひとみ     本稼動障害#11対応
 *============================================================================
 */
 package itoen.oracle.apps.xxwsh.xxwsh920002j.server;
@@ -33,11 +34,16 @@ import itoen.oracle.apps.xxwsh.util.XxwshUtility;
 
 import java.math.BigDecimal;
 
+import java.sql.CallableStatement;
+import java.sql.SQLException;
+import java.sql.Types;
+
 import oracle.apps.fnd.common.MessageToken;
 import oracle.apps.fnd.framework.OAAttrValException;
 import oracle.apps.fnd.framework.OAException;
 import oracle.apps.fnd.framework.OARow;
 import oracle.apps.fnd.framework.OAViewObject;
+import oracle.apps.fnd.framework.server.OADBTransaction;
 import oracle.apps.fnd.framework.server.OAViewObjectImpl;
 
 import oracle.jbo.AttributeDef;
@@ -49,7 +55,7 @@ import oracle.jbo.domain.Number;
 /***************************************************************************
  * 仮引当ロット入力画面のアプリケーションモジュールクラスです。
  * @author  ORACLE 北寒寺 正夫
- * @version 1.10
+ * @version 1.11
  ***************************************************************************
  */
  
@@ -150,6 +156,9 @@ public class XxwshReserveLotAMImpl extends XxcmnOAApplicationModuleImpl
     data.put("MaxDate",                   getOADBTransaction().getProfile("XXCMN_MAX_DATE"));             // 最大日付
     data.put("DummyFrequentWhse",         getOADBTransaction().getProfile("XXCMN_DUMMY_FREQUENT_WHSE"));  // ダミー倉庫
 // 2008-12-25 D.Nihei Add End
+// 2009-12-04 H.Itou Add Start 本稼動障害#11
+    data.put("OpenDate",                  XxwshUtility.getOpenDate(getOADBTransaction()));  // オープン日付
+// 2009-12-04 H.Itou Add End 本稼動障害#11
     XxwshStockCanEncQtyVOImpl vo = getXxwshStockCanEncQtyVO1();
 // 2008-12-25 D.Nihei Add Start
     // 1行もない場合、空行作成
@@ -176,6 +185,29 @@ public class XxwshReserveLotAMImpl extends XxcmnOAApplicationModuleImpl
     {
       XxwshReserveLotVOImpl lotVo = getXxwshReserveLotVO1();
       lotVo.initQuery(data);
+// 2009-12-04 H.Itou Add Start lm.demsup_qty、lm.stock_qtyを抽出するたびに引当可能数・手持在庫関数を呼ぶので、問い合わせ実行後に計算する。
+      lotVo.first();
+      while (lotVo.getCurrentRow() != null)
+      {
+        OARow lotRow = (OARow)lotVo.getCurrentRow();
+
+        Number demsupQty = (Number)lotRow.getAttribute("CanEncQty"); // 引当可能数
+        Number stockQty  = (Number)lotRow.getAttribute("StockQty");  // 手持在庫数
+
+        // 表示用引当可能数、手持在庫数取得
+        HashMap ret = getShowQty(demsupQty, stockQty);
+        Number canEncQty     = (Number)ret.get("canEncQty");     // 引当可能数＋手持在庫
+        String showCanEncQty = (String)ret.get("showCanEncQty"); // 引当可能数＋手持在庫数(表示用)
+        String showStockQty  = (String)ret.get("showStockQty");  // 手持在庫数(表示用)
+
+        // VOにセット
+        lotRow.setAttribute("CanEncQty", canEncQty);
+        lotRow.setAttribute("ShowCanEncQty", showCanEncQty);
+        lotRow.setAttribute("ShowStockQty", showStockQty);
+        
+        lotVo.next();
+      }
+// 2009-12-04 H.Itou Add End
       copyRows(lotVo, vo);
       
     // ロット管理品外の場合
@@ -2693,6 +2725,142 @@ public class XxwshReserveLotAMImpl extends XxcmnOAApplicationModuleImpl
 
   } // copyRows
 // 2008-12-25 D.Nihei Add End
+// 2009-12-04 H.Itou Add Start 本稼動障害#11
+  /*****************************************************************************
+   * 引当可能数、手持在庫数を画面表示用にフォーマットします。
+   * @param demsupQty    - 引当可能数
+   * @param stockQty     - 手持在庫数
+   * @return HashMap     - 戻り値群(canEncQty 引当可能数＋手持在庫数,showCanEncQty 引当可能数＋手持在庫数(表示用), showStockQty 手持在庫数(表示用))
+   * @throws OAException - OA例外
+   ****************************************************************************/
+  public HashMap getShowQty(
+    Number demsupQty,
+    Number stockQty
+  ) throws OAException
+  {
+    String apiName = "getShowQty";  // API名
+    HashMap ret = new HashMap();
+    OADBTransaction trans = getOADBTransaction();
+
+    // バインド変数
+    int paramBind  = 1;
+    // PL/SQL作成
+    StringBuffer sb = new StringBuffer(1000);
+    sb.append("DECLARE                                                                         ");
+    sb.append("  ln_demsup_qty        NUMBER;                                                  ");
+    sb.append("  ln_stock_qty         NUMBER;                                                  ");
+    sb.append("  lv_conv_unit_use_kbn VARCHAR2(1);                                             ");
+    sb.append("  ln_num_of_cases      NUMBER;                                                  ");
+    sb.append("  ln_can_enc_qty       NUMBER;                                                  ");
+    sb.append("  lv_show_can_enc_qty  VARCHAR2(100);                                           ");
+    sb.append("  lv_show_stock_qty    VARCHAR2(100);                                           ");
+    sb.append("BEGIN                                                                           ");
+                 // INパラメータ
+    sb.append("  ln_demsup_qty        := :" + paramBind++ + ";                                 ");
+    sb.append("  ln_stock_qty         := :" + paramBind++ + ";                                 ");
+    sb.append("  lv_conv_unit_use_kbn := :" + paramBind++ + ";                                 ");
+    sb.append("  ln_num_of_cases      := TO_NUMBER(:" + paramBind++ + ");                      ");
+    sb.append("  SELECT NVL((ln_stock_qty + ln_demsup_qty),0)   can_enc_qty                    "); // 引当可能数＋手持在庫数
+    sb.append("        ,TO_CHAR((CASE lv_conv_unit_use_kbn                                     ");
+    sb.append("                WHEN '1' THEN (ln_stock_qty + ln_demsup_qty) / ln_num_of_cases  ");
+    sb.append("                         ELSE (ln_stock_qty + ln_demsup_qty)                    ");
+    sb.append("                END),'FM999,999,990.000') show_can_enc_qty                      "); // 引当可能数＋手持在庫数(表示用)
+    sb.append("        ,TO_CHAR((CASE lv_conv_unit_use_kbn                                     ");
+    sb.append("                WHEN '1' THEN ln_stock_qty / ln_num_of_cases                    ");
+    sb.append("                         ELSE ln_stock_qty                                      ");
+    sb.append("                END),'FM999,999,990.000') show_stock_qty                        "); // 手持在庫数(表示用)
+    sb.append("  INTO   ln_can_enc_qty                                                         ");
+    sb.append("        ,lv_show_can_enc_qty                                                    ");
+    sb.append("        ,lv_show_stock_qty                                                      ");
+    sb.append("  FROM   DUAL;                                                                  ");
+                 // OUTパラメータ
+    sb.append("  :" + paramBind++ + " := ln_can_enc_qty;                                       ");
+    sb.append("  :" + paramBind++ + " := lv_show_can_enc_qty;                                  ");
+    sb.append("  :" + paramBind++ + " := lv_show_stock_qty;                                    ");
+    sb.append("END;                                                                            ");
+
+    // PL/SQL設定
+    CallableStatement cstmt
+      = trans.createCallableStatement(sb.toString(), OADBTransaction.DEFAULT);
+
+    // 検索条件表示リージョンを取得
+    OAViewObject hvo = getXxwshSearchVO1();
+    // 検索条件表示リージョンの一行目を取得
+    OARow hRow       = (OARow)hvo.first();
+    String convUnitUseKbn = (String)hRow.getAttribute("ConvUnitUseKbn"); // 入出庫換算単位使用区分
+    String numOfCases     = (String)hRow.getAttribute("NumOfCases");     // ケース入数
+
+    try 
+    {
+      // INパラメータ設定
+      paramBind  = 1;
+      cstmt.setDouble(paramBind++, XxcmnUtility.doubleValue(demsupQty));  // IN:引当可能数
+      cstmt.setDouble(paramBind++, XxcmnUtility.doubleValue(stockQty));   // IN:手持在庫数
+      cstmt.setString(paramBind++, convUnitUseKbn);                       // IN:入出庫換算単位使用区分
+      cstmt.setString(paramBind++, numOfCases);                           // IN:ケース入数
+
+      // OUTパラメータ設定
+      int outParamStart = paramBind; // OUTパラメータ開始を保持。
+      cstmt.registerOutParameter(paramBind++, Types.DOUBLE);  // OUT:引当可能数＋手持在庫
+      cstmt.registerOutParameter(paramBind++, Types.VARCHAR); // OUT:引当可能数＋手持在庫数(表示用)
+      cstmt.registerOutParameter(paramBind++, Types.VARCHAR); // OUT:手持在庫数(表示用)
+
+      // PL/SQL実行
+      cstmt.execute();
+
+      // OUTパラメータ取得
+      paramBind  = outParamStart;
+      Number canEncQty     = new Number(cstmt.getDouble(paramBind++)); // OUT:引当可能数＋手持在庫
+      String showCanEncQty = cstmt.getString(paramBind++);             // OUT:引当可能数＋手持在庫数(表示用)
+      String showStockQty  = cstmt.getString(paramBind++);             // OUT:手持在庫数(表示用)
+
+      ret.put("canEncQty",     canEncQty);         // OUT:引当可能数＋手持在庫
+      ret.put("showCanEncQty", showCanEncQty);     // OUT:引当可能数＋手持在庫数(表示用)
+      ret.put("showStockQty",  showStockQty);      // OUT:手持在庫数(表示用)
+
+      // 戻り値返却
+      return ret;
+
+    } catch(SQLException s)
+    {
+      // ロールバック
+      XxwshUtility.rollBack(trans);
+
+      // ログ出力
+      XxcmnUtility.writeLog(trans,
+                            XxwshConstants.CLASS_XXWSH_UTILITY + XxcmnConstants.DOT + apiName,
+                            s.toString(),
+                            6);
+
+      // エラーメッセージ出力
+      throw new OAException(XxcmnConstants.APPL_XXCMN, 
+                             XxcmnConstants.XXCMN10123
+                             );
+
+    } finally 
+    {
+      try
+      {
+        // 処理中にエラーが発生した場合を想定する
+        cstmt.close();
+      } catch(SQLException s)
+      {
+        // ロールバック
+        XxwshUtility.rollBack(trans);
+
+        // ログ出力
+        XxcmnUtility.writeLog(trans,
+                              XxwshConstants.CLASS_XXWSH_UTILITY + XxcmnConstants.DOT + apiName,
+                              s.toString(),
+                              6);
+
+        // エラーメッセージ出力
+        throw new OAException(XxcmnConstants.APPL_XXCMN, 
+                              XxcmnConstants.XXCMN10123);
+      }
+    }
+  } // getShowQty
+// 2009-12-04 H.Itou Add End
 
   /**
    * 
