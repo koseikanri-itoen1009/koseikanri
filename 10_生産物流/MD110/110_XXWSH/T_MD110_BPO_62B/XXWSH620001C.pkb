@@ -7,7 +7,7 @@ AS
  * Description      : 在庫不足確認リスト
  * MD.050           : 引当/配車(帳票) T_MD050_BPO_620
  * MD.070           : 在庫不足確認リスト T_MD070_BPO_62B
- * Version          : 1.8
+ * Version          : 2.0
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -40,6 +40,7 @@ AS
  *  2009/01/07    1.7   Akiyoshi Shiina    本番障害#873
  *  2009/01/14    1.8   Hisanobu Sakuma    本番障害#661
  *  2009/01/20    1.9   Hisanobu Sakuma    本番障害#800
+ *  2009/01/21    2.0   Hisanobu Sakuma    本番障害#1065
  *****************************************************************************************/
 --
 --#######################  固定グローバル定数宣言部 START   #######################
@@ -1298,9 +1299,15 @@ AS
     ln_ins_qty           NUMBER DEFAULT 0;                                  -- 不足数の集計値
     ln_report_data_cnt   NUMBER DEFAULT 0;                                  -- 出力データ（ワーク）用配列カウンタ
 -- 2009/01/14 v1.8 ADD END
--- 2009/01/20 v1.9 ADD START
-    lv_req_move_no       xoha.request_no%TYPE DEFAULT NULL ;                -- 依頼No/移動No
--- 2009/01/20 v1.9 ADD END
+---- 2009/01/20 v1.9 ADD START
+--    lv_req_move_no       xoha.request_no%TYPE DEFAULT NULL ;                -- 依頼No/移動No
+---- 2009/01/20 v1.9 ADD END
+-- 2009/01/21 v2.0 ADD START
+    lv_block_cd_null          xilv.distribution_block%TYPE DEFAULT NULL ;        -- 空白項目作成用（ブロックコード）
+    lv_tmp_shipped_cd_null    type_report_data.shipped_cd%TYPE DEFAULT NULL ;    -- 空白項目作成用（出庫元コード）
+    lv_tmp_item_cd_null       type_report_data.item_cd%TYPE DEFAULT NULL ;       -- 空白項目作成用（品目コード）
+    lv_req_move_no_null       xoha.request_no%TYPE DEFAULT NULL ;                -- 空白項目作成用（依頼No/移動No）
+-- 2009/01/21 v2.0 ADD END
 --
   BEGIN
 --
@@ -2334,8 +2341,15 @@ AS
           FOR ln_line_loop_cnt IN ln_report_data_fr..ln_report_data_to LOOP
             ln_report_data_cnt := ln_report_data_cnt + 1;
 -- 2009/01/20 v1.9 ADD START
-            -- 依頼No/移動Noが前のレコードと同じ場合
-            IF  (lv_req_move_no = gt_report_data(ln_line_loop_cnt).req_move_no) THEN
+-- 2009/01/21 v2.0 MOD START
+--            -- 依頼No/移動Noが前のレコードと同じ場合
+            -- 空白作成項目データの場合
+--            IF  (lv_req_move_no = gt_report_data(ln_line_loop_cnt).req_move_no) THEN
+            IF  (lv_block_cd_null       = gt_report_data(ln_line_loop_cnt).block_cd)          -- 空白項目作成用（ブロックコード）
+            AND (lv_tmp_shipped_cd_null = gt_report_data(ln_line_loop_cnt).shipped_cd)        -- 空白項目作成用（出庫元コード）
+            AND (lv_tmp_item_cd_null    = gt_report_data(ln_line_loop_cnt).item_cd)           -- 空白項目作成用（品目コード）
+            AND (lv_req_move_no_null    = gt_report_data(ln_line_loop_cnt).req_move_no) THEN  -- 空白項目作成用（依頼No/移動No）
+-- 2009/01/21 v2.0 MOD END
               gt_report_data(ln_line_loop_cnt).req_move_no     :=  NULL;      -- 依頼No/移動No
               gt_report_data(ln_line_loop_cnt).base_cd         :=  NULL;      -- 管轄拠点
               gt_report_data(ln_line_loop_cnt).base_nm         :=  NULL;      -- 管轄拠点名称
@@ -2343,9 +2357,18 @@ AS
               gt_report_data(ln_line_loop_cnt).delivery_to_nm  :=  NULL;      -- 配送先名称
               gt_report_data(ln_line_loop_cnt).description     :=  NULL;      -- 摘要
               gt_report_data(ln_line_loop_cnt).conf_req        :=  NULL;      -- 確認依頼
-            -- 依頼No/移動Noが前のレコードと異なる場合
+-- 2009/01/21 v2.0 MOD START
+--            -- 依頼No/移動Noが前のレコードと異なる場合
+            -- 空白作成項目データでない場合
+-- 2009/01/21 v2.0 MOD END
             ELSE
-              lv_req_move_no := gt_report_data(ln_line_loop_cnt).req_move_no;
+-- 2009/01/21 v2.0 MOD START
+--              lv_req_move_no := gt_report_data(ln_line_loop_cnt).req_move_no;
+              lv_block_cd_null       := gt_report_data(ln_line_loop_cnt).block_cd;        -- 空白項目作成用（ブロックコード）
+              lv_tmp_shipped_cd_null := gt_report_data(ln_line_loop_cnt).shipped_cd;      -- 空白項目作成用（出庫元コード）
+              lv_tmp_item_cd_null    := gt_report_data(ln_line_loop_cnt).item_cd;         -- 空白項目作成用（品目コード）
+              lv_req_move_no_null    := gt_report_data(ln_line_loop_cnt).req_move_no;     -- 空白項目作成用（依頼No/移動No）
+-- 2009/01/21 v2.0 MOD END
             END IF;
 -- 2009/01/20 v1.9 ADD END
             lt_report_data(ln_report_data_cnt) := gt_report_data(ln_line_loop_cnt);
@@ -2368,8 +2391,15 @@ AS
       FOR ln_line_loop_cnt IN ln_report_data_fr..ln_report_data_to LOOP
           ln_report_data_cnt := ln_report_data_cnt + 1;
 -- 2009/01/20 v1.9 ADD START
-          -- 依頼No/移動Noが前のレコードと同じ場合
-          IF  (lv_req_move_no = gt_report_data(ln_line_loop_cnt).req_move_no) THEN
+-- 2009/01/21 v2.0 MOD START
+--          -- 依頼No/移動Noが前のレコードと同じ場合
+          -- 空白作成項目データの場合
+--          IF  (lv_req_move_no = gt_report_data(ln_line_loop_cnt).req_move_no) THEN
+          IF  (lv_block_cd_null       = gt_report_data(ln_line_loop_cnt).block_cd)          -- 空白項目作成用（ブロックコード）
+          AND (lv_tmp_shipped_cd_null = gt_report_data(ln_line_loop_cnt).shipped_cd)        -- 空白項目作成用（出庫元コード）
+          AND (lv_tmp_item_cd_null    = gt_report_data(ln_line_loop_cnt).item_cd)           -- 空白項目作成用（品目コード）
+          AND (lv_req_move_no_null    = gt_report_data(ln_line_loop_cnt).req_move_no) THEN  -- 空白項目作成用（依頼No/移動No）
+-- 2009/01/21 v2.0 MOD END
             gt_report_data(ln_line_loop_cnt).req_move_no     :=  NULL;      -- 依頼No/移動No
             gt_report_data(ln_line_loop_cnt).base_cd         :=  NULL;      -- 管轄拠点
             gt_report_data(ln_line_loop_cnt).base_nm         :=  NULL;      -- 管轄拠点名称
@@ -2379,7 +2409,13 @@ AS
             gt_report_data(ln_line_loop_cnt).conf_req        :=  NULL;      -- 確認依頼
           -- 依頼No/移動Noが前のレコードと異なる場合
           ELSE
-            lv_req_move_no := gt_report_data(ln_line_loop_cnt).req_move_no;
+-- 2009/01/21 v2.0 MOD START
+--            lv_req_move_no := gt_report_data(ln_line_loop_cnt).req_move_no;
+            lv_block_cd_null       := gt_report_data(ln_line_loop_cnt).block_cd;        -- 空白項目作成用（ブロックコード）
+            lv_tmp_shipped_cd_null := gt_report_data(ln_line_loop_cnt).shipped_cd;      -- 空白項目作成用（出庫元コード）
+            lv_tmp_item_cd_null    := gt_report_data(ln_line_loop_cnt).item_cd;         -- 空白項目作成用（品目コード）
+            lv_req_move_no_null    := gt_report_data(ln_line_loop_cnt).req_move_no;     -- 空白項目作成用（依頼No/移動No）
+-- 2009/01/21 v2.0 MOD END
           END IF;
 -- 2009/01/20 v1.9 ADD END
           lt_report_data(ln_report_data_cnt) := gt_report_data(ln_line_loop_cnt);
