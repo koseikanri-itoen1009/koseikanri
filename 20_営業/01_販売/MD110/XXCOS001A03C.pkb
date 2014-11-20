@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCOS001A03C (body)
  * Description      : VD納品データ作成
  * MD.050           : VD納品データ作成(MD050_COS_001_A03)
- * Version          : 1.15
+ * Version          : 1.16
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -60,6 +60,8 @@ AS
  *  2009/07/24    1.15    N.Maeda          [0000831] 顧客付帯情報取得条件変更
  *  2009/07/29            N.Maeda          [0000831] レビュー指摘対応
  *  2009/07/31            N.Maeda          [0000831] レビュー再指摘対応
+ *  2009/08/12    1.16    N.Maeda          [0000900] クイックコード取得方法修正
+ *                                         [0001010] 従業員ビュー取得条件追加
  *
  *****************************************************************************************/
 --
@@ -208,6 +210,9 @@ AS
   --AR会計期間区分値
   cv_fiscal_period_ar           CONSTANT  VARCHAR2(2) := '02';  --AR
 --******************************* 2009/05/20 N.Maeda Var1.13 ADD END *****************************************
+--******************************* 2009/08/12 N.Maeda Ver1.16 ADD START ***************************************
+  ct_user_lang                  CONSTANT  fnd_lookup_values.language%TYPE :=  USERENV( 'LANG' );
+--******************************* 2009/08/12 N.Maeda Ver1.16 ADD END *****************************************
   --エラーコード
   cv_msg_pro         CONSTANT VARCHAR2(20)  := 'APP-XXCOS1-00004';         -- プロファイル取得エラー
   cv_msg_max_date    CONSTANT VARCHAR2(20)  := 'APP-XXCOS1-00056';         -- XXCOS:MAX日付
@@ -1548,30 +1553,44 @@ AS
       --消費税コードの導出
       --========================
       BEGIN
+--******************************* 2009/08/12 N.Maeda Ver1.16 MOD START ***************************************
         SELECT  look_val.attribute2,  --消費税コード
                 look_val.attribute3   --販売実績連携時の消費税区分
         INTO    lt_consum_code,
                 lt_consum_type
-        FROM    fnd_lookup_values     look_val,  --クイックコード
-                fnd_lookup_types_tl   types_tl,  --
-                fnd_lookup_types      types,     --
-                fnd_application_tl    appl,      --
-                fnd_application       app        --
-        WHERE   appl.application_id   = types.application_id
-        AND     app.application_id    = appl.application_id
-        AND     types_tl.lookup_type  = look_val.lookup_type
-        AND     types.lookup_type     = types_tl.lookup_type
-        AND     types.security_group_id   = types_tl.security_group_id
-        AND     types.view_application_id = types_tl.view_application_id
-        AND     types_tl.language = USERENV( 'LANG' )
-        AND     look_val.language = USERENV( 'LANG' )
-        AND     appl.language     = USERENV( 'LANG' )
-        AND     app.application_short_name = cv_application
+        FROM    fnd_lookup_values     look_val
+        WHERE   look_val.language = ct_user_lang
         AND     gd_process_date      >= look_val.start_date_active
         AND     gd_process_date      <= NVL(look_val.end_date_active, gd_max_date)
         AND     look_val.enabled_flag = cv_tkn_yes
         AND     look_val.lookup_type = cv_lookup_type
         AND     look_val.lookup_code = lt_consumption_tax_class;
+--
+--        SELECT  look_val.attribute2,  --消費税コード
+--                look_val.attribute3   --販売実績連携時の消費税区分
+--        INTO    lt_consum_code,
+--                lt_consum_type
+--        FROM    fnd_lookup_values     look_val,  --クイックコード
+--                fnd_lookup_types_tl   types_tl,  --
+--                fnd_lookup_types      types,     --
+--                fnd_application_tl    appl,      --
+--                fnd_application       app        --
+--        WHERE   appl.application_id   = types.application_id
+--        AND     app.application_id    = appl.application_id
+--        AND     types_tl.lookup_type  = look_val.lookup_type
+--        AND     types.lookup_type     = types_tl.lookup_type
+--        AND     types.security_group_id   = types_tl.security_group_id
+--        AND     types.view_application_id = types_tl.view_application_id
+--        AND     types_tl.language = USERENV( 'LANG' )
+--        AND     look_val.language = USERENV( 'LANG' )
+--        AND     appl.language     = USERENV( 'LANG' )
+--        AND     app.application_short_name = cv_application
+--        AND     gd_process_date      >= look_val.start_date_active
+--        AND     gd_process_date      <= NVL(look_val.end_date_active, gd_max_date)
+--        AND     look_val.enabled_flag = cv_tkn_yes
+--        AND     look_val.lookup_type = cv_lookup_type
+--        AND     look_val.lookup_code = lt_consumption_tax_class;
+--******************************* 2009/08/12 N.Maeda Ver1.16 MOD END *****************************************
       EXCEPTION
         WHEN NO_DATA_FOUND THEN
           -- ログ出力          
@@ -1708,28 +1727,40 @@ AS
 /*--==============2009/2/3-END===========================--*/
           --参照コードマスタ：営業車の保管場所分類コード取得
           BEGIN
+--******************************* 2009/08/12 N.Maeda Ver1.16 MOD START ***************************************
             SELECT  look_val.meaning      --保管場所分類コード
             INTO    lt_location_type_code
-            FROM    fnd_lookup_values     look_val,
-                    fnd_lookup_types_tl   types_tl,
-                    fnd_lookup_types      types,
-                    fnd_application_tl    appl,
-                    fnd_application       app
-            WHERE   appl.application_id   = types.application_id
-            AND     app.application_id    = appl.application_id
-            AND     types_tl.lookup_type  = look_val.lookup_type
-            AND     types.lookup_type     = types_tl.lookup_type
-            AND     types.security_group_id   = types_tl.security_group_id
-            AND     types.view_application_id = types_tl.view_application_id
-            AND     types_tl.language = USERENV( 'LANG' )
-            AND     look_val.language = USERENV( 'LANG' )
-            AND     appl.language     = USERENV( 'LANG' )
+            FROM    fnd_lookup_values     look_val
+            WHERE   look_val.language     = ct_user_lang
             AND     gd_process_date      >= look_val.start_date_active
             AND     gd_process_date      <= NVL(look_val.end_date_active, gd_max_date)
-            AND     app.application_short_name = cv_application
             AND     look_val.enabled_flag = cv_tkn_yes
-            AND     look_val.lookup_type = cv_xxcos1_hokan_mst_001_a05
-            AND     look_val.lookup_code = cv_xxcos_001_a05_05;
+            AND     look_val.lookup_type  = cv_xxcos1_hokan_mst_001_a05
+            AND     look_val.lookup_code  = cv_xxcos_001_a05_05;
+--
+--            SELECT  look_val.meaning      --保管場所分類コード
+--            INTO    lt_location_type_code
+--            FROM    fnd_lookup_values     look_val,
+--                    fnd_lookup_types_tl   types_tl,
+--                    fnd_lookup_types      types,
+--                    fnd_application_tl    appl,
+--                    fnd_application       app
+--            WHERE   appl.application_id   = types.application_id
+--            AND     app.application_id    = appl.application_id
+--            AND     types_tl.lookup_type  = look_val.lookup_type
+--            AND     types.lookup_type     = types_tl.lookup_type
+--            AND     types.security_group_id   = types_tl.security_group_id
+--            AND     types.view_application_id = types_tl.view_application_id
+--            AND     types_tl.language = USERENV( 'LANG' )
+--            AND     look_val.language = USERENV( 'LANG' )
+--            AND     appl.language     = USERENV( 'LANG' )
+--            AND     gd_process_date      >= look_val.start_date_active
+--            AND     gd_process_date      <= NVL(look_val.end_date_active, gd_max_date)
+--            AND     app.application_short_name = cv_application
+--            AND     look_val.enabled_flag = cv_tkn_yes
+--            AND     look_val.lookup_type = cv_xxcos1_hokan_mst_001_a05
+--            AND     look_val.lookup_code = cv_xxcos_001_a05_05;
+--******************************* 2009/08/12 N.Maeda Ver1.16 MOD END *****************************************
           EXCEPTION
             WHEN NO_DATA_FOUND THEN
               -- ログ出力
@@ -1796,28 +1827,40 @@ AS
 /*--==============2009/2/3-END=========================--*/
           --参照コードマスタ：百貨店の保管場所分類コード取得
           BEGIN
+--******************************* 2009/08/12 N.Maeda Ver1.16 MOD START ***************************************
             SELECT  look_val.meaning    --保管場所分類コード
             INTO    lt_depart_location_type_code
-            FROM    fnd_lookup_values     look_val,
-                    fnd_lookup_types_tl   types_tl,
-                    fnd_lookup_types      types,
-                    fnd_application_tl    appl,
-                    fnd_application       app
-            WHERE   appl.application_id   = types.application_id
-            AND     app.application_id    = appl.application_id
-            AND     types_tl.lookup_type  = look_val.lookup_type
-            AND     types.lookup_type     = types_tl.lookup_type
-            AND     types.security_group_id   = types_tl.security_group_id
-            AND     types.view_application_id = types_tl.view_application_id
-            AND     types_tl.language = USERENV( 'LANG' )
-            AND     look_val.language = USERENV( 'LANG' )
-            AND     appl.language     = USERENV( 'LANG' )
+            FROM    fnd_lookup_values     look_val
+            WHERE   look_val.language = ct_user_lang
             AND     gd_process_date   >= look_val.start_date_active
             AND     gd_process_date   <= NVL(look_val.end_date_active, gd_max_date)
-            AND     app.application_short_name = cv_application
             AND     look_val.enabled_flag = cv_tkn_yes
             AND     look_val.lookup_type = cv_xxcos1_hokan_mst_001_a05
             AND     look_val.lookup_code = cv_xxcos_001_a05_09;
+--
+--            SELECT  look_val.meaning    --保管場所分類コード
+--            INTO    lt_depart_location_type_code
+--            FROM    fnd_lookup_values     look_val,
+--                    fnd_lookup_types_tl   types_tl,
+--                    fnd_lookup_types      types,
+--                    fnd_application_tl    appl,
+--                    fnd_application       app
+--            WHERE   appl.application_id   = types.application_id
+--            AND     app.application_id    = appl.application_id
+--            AND     types_tl.lookup_type  = look_val.lookup_type
+--            AND     types.lookup_type     = types_tl.lookup_type
+--            AND     types.security_group_id   = types_tl.security_group_id
+--            AND     types.view_application_id = types_tl.view_application_id
+--            AND     types_tl.language = USERENV( 'LANG' )
+--            AND     look_val.language = USERENV( 'LANG' )
+--            AND     appl.language     = USERENV( 'LANG' )
+--            AND     gd_process_date   >= look_val.start_date_active
+--            AND     gd_process_date   <= NVL(look_val.end_date_active, gd_max_date)
+--            AND     app.application_short_name = cv_application
+--            AND     look_val.enabled_flag = cv_tkn_yes
+--            AND     look_val.lookup_type = cv_xxcos1_hokan_mst_001_a05
+--            AND     look_val.lookup_code = cv_xxcos_001_a05_09;
+--******************************* 2009/08/12 N.Maeda Ver1.16 MOD END *****************************************
           EXCEPTION
             WHEN NO_DATA_FOUND THEN
               -- ログ出力          
@@ -1892,27 +1935,41 @@ AS
                                            lv_retcode, 
                                            lv_errmsg );
       IF ( lv_retcode <> cv_status_normal ) THEN
---******************************* 2009/04/16 N.Maeda Var1.10 MOD START ***************************************
+--******************************* 2009/04/16 N.Maeda Ver1.10 MOD START ***************************************
 --        RAISE delivered_from_err_expt;
         lv_state_flg    := cv_status_warn;
         gn_wae_data_num := gn_wae_data_num + 1 ;
         gt_msg_war_data(gn_wae_data_num) := xxccp_common_pkg.get_msg(
                                                 iv_application   => cv_application,
                                                 iv_name          => cv_msg_delivered_from_err );
---******************************* 2009/04/16 N.Maeda Var1.10 MOD END *****************************************
+--******************************* 2009/04/16 N.Maeda Ver1.10 MOD END *****************************************
       END IF;
       --====================
       --納品拠点の導出(明細)
       --====================
       BEGIN
-        SELECT rin_v.base_code  --拠点コード
-        INTO lt_dlv_base_code
-        FROM xxcos_rs_info_v rin_v   --従業員情報view
-        WHERE rin_v.employee_number = lt_dlv_by_code
-/*--==============2009/2/3-START=========================--*/
-        AND   NVL( rin_v.effective_start_date, lt_dlv_date ) <= lt_dlv_date
-        AND   NVL( rin_v.effective_end_date, lt_dlv_date ) >= lt_dlv_date;
-/*--==============2009/2/3-END=========================--*/
+--******************************* 2009/08/12 N.Maeda Ver1.16 MOD START ***************************************
+        SELECT rin_v.base_code  base_code    -- 拠点コード
+        INTO   lt_dlv_base_code
+        FROM   xxcos_rs_info_v  rin_v        -- 従業員情報view
+        WHERE  rin_v.employee_number = lt_dlv_by_code
+        AND    NVL( rin_v.effective_start_date     , lt_dlv_date )  <= lt_dlv_date
+        AND    NVL( rin_v.effective_end_date       , lt_dlv_date )  >= lt_dlv_date
+        AND    NVL( rin_v.per_effective_start_date , lt_dlv_date )  <= lt_dlv_date
+        AND    NVL( rin_v.per_effective_end_date   , lt_dlv_date )  >= lt_dlv_date
+        AND    NVL( rin_v.paa_effective_start_date , lt_dlv_date )  <= lt_dlv_date
+        AND    NVL( rin_v.paa_effective_end_date   , lt_dlv_date )  >= lt_dlv_date
+        ;
+--
+--        SELECT rin_v.base_code  --拠点コード
+--        INTO lt_dlv_base_code
+--        FROM xxcos_rs_info_v rin_v   --従業員情報view
+--        WHERE rin_v.employee_number = lt_dlv_by_code
+--/*--==============2009/2/3-START=========================--*/
+--        AND   NVL( rin_v.effective_start_date, lt_dlv_date ) <= lt_dlv_date
+--        AND   NVL( rin_v.effective_end_date, lt_dlv_date ) >= lt_dlv_date;
+--/*--==============2009/2/3-END=========================--*/
+--******************************* 2009/08/12 N.Maeda Ver1.16 MOD END *****************************************
       EXCEPTION
         WHEN NO_DATA_FOUND THEN
             -- ログ出力          
@@ -1987,36 +2044,50 @@ AS
         --納品伝票入力区分の導出(ヘッダ)
         --==========================
       BEGIN
---******************************* 2009/05/20 N.Maeda Var1.13 MOD START ***************************************
---          SELECT  DECODE(lt_cancel_correct_class, 
---                         cv_tkn_null, look_val.attribute4,        -- 通常時(納品伝票区分(販売実績入力区分))
---                         cv_correct_class, look_val.attribute5,   -- 取消時(納品伝票区分(販売実績入力区分))
---                         cv_cancel_class, look_val.attribute5)    -- 訂正(納品伝票区分(販売実績入力区分))
+--******************************* 2009/08/12 N.Maeda Ver1.16 MOD START ***************************************
           SELECT  DECODE( lt_digestion_ln_number,
                          cn_cons_tkn_zero, look_val.attribute4,        -- 通常時(納品伝票区分(販売実績入力区分))
                          look_val.attribute5)                          -- 取消・訂正(納品伝票区分(販売実績入力区分))
---******************************* 2009/05/20 N.Maeda Var1.13 MOD END *****************************************
           INTO    lt_ins_invoice_type
-          FROM    fnd_lookup_values     look_val,
-                  fnd_lookup_types_tl   types_tl,
-                  fnd_lookup_types      types,
-                  fnd_application_tl    appl,
-                  fnd_application       app
-          WHERE   appl.application_id   = types.application_id
-          AND     app.application_id    = appl.application_id
-          AND     types_tl.lookup_type  = look_val.lookup_type
-          AND     types.lookup_type     = types_tl.lookup_type
-          AND     types.security_group_id   = types_tl.security_group_id
-          AND     types.view_application_id = types_tl.view_application_id
-          AND     types_tl.language = USERENV( 'LANG' )
-          AND     look_val.language = USERENV( 'LANG' )
-          AND     appl.language     = USERENV( 'LANG' )
+          FROM    fnd_lookup_values     look_val
+          WHERE   look_val.language     = ct_user_lang
           AND     gd_process_date      >= look_val.start_date_active
           AND     gd_process_date      <= NVL(look_val.end_date_active, gd_max_date)
-          AND     app.application_short_name = cv_application
           AND     look_val.enabled_flag = cv_tkn_yes
-          AND     look_val.lookup_type = cv_xxcos1_input_class
-          AND     look_val.lookup_code = lt_input_class;
+          AND     look_val.lookup_type  = cv_xxcos1_input_class
+          AND     look_val.lookup_code  = lt_input_class;
+--
+----******************************* 2009/05/20 N.Maeda Var1.13 MOD START ***************************************
+----          SELECT  DECODE(lt_cancel_correct_class, 
+----                         cv_tkn_null, look_val.attribute4,        -- 通常時(納品伝票区分(販売実績入力区分))
+----                         cv_correct_class, look_val.attribute5,   -- 取消時(納品伝票区分(販売実績入力区分))
+----                         cv_cancel_class, look_val.attribute5)    -- 訂正(納品伝票区分(販売実績入力区分))
+--          SELECT  DECODE( lt_digestion_ln_number,
+--                         cn_cons_tkn_zero, look_val.attribute4,        -- 通常時(納品伝票区分(販売実績入力区分))
+--                         look_val.attribute5)                          -- 取消・訂正(納品伝票区分(販売実績入力区分))
+----******************************* 2009/05/20 N.Maeda Var1.13 MOD END *****************************************
+--          INTO    lt_ins_invoice_type
+--          FROM    fnd_lookup_values     look_val,
+--                  fnd_lookup_types_tl   types_tl,
+--                  fnd_lookup_types      types,
+--                  fnd_application_tl    appl,
+--                  fnd_application       app
+--          WHERE   appl.application_id   = types.application_id
+--          AND     app.application_id    = appl.application_id
+--          AND     types_tl.lookup_type  = look_val.lookup_type
+--          AND     types.lookup_type     = types_tl.lookup_type
+--          AND     types.security_group_id   = types_tl.security_group_id
+--          AND     types.view_application_id = types_tl.view_application_id
+--          AND     types_tl.language = USERENV( 'LANG' )
+--          AND     look_val.language = USERENV( 'LANG' )
+--          AND     appl.language     = USERENV( 'LANG' )
+--          AND     gd_process_date      >= look_val.start_date_active
+--          AND     gd_process_date      <= NVL(look_val.end_date_active, gd_max_date)
+--          AND     app.application_short_name = cv_application
+--          AND     look_val.enabled_flag = cv_tkn_yes
+--          AND     look_val.lookup_type = cv_xxcos1_input_class
+--          AND     look_val.lookup_code = lt_input_class;
+--******************************* 2009/08/12 N.Maeda Ver1.16 MOD END *****************************************
         EXCEPTION
           WHEN NO_DATA_FOUND THEN
             -- ログ出力
@@ -3162,7 +3233,16 @@ AS
   -- VDコラム別取引明細情報
   CURSOR get_lines_data_cur
   IS
-    SELECT vcl.order_no_hht,                  -- 受注No.(HHT)
+    SELECT 
+--******************************* 2009/08/12 N.Maeda Ver1.16 ADD START ***************************************
+           /*+
+            leading(vch)
+            use_nl(vcl)
+            INDEX ( vch XXCOS_VD_COLUMN_HEADERS_N01 )
+            INDEX ( vcl XXCOS_VD_COLUMN_LINES_N01 )
+           */
+--******************************* 2009/08/12 N.Maeda Ver1.16 ADD END *****************************************
+           vcl.order_no_hht,                  -- 受注No.(HHT)
            vcl.line_no_hht,                   -- 行No.(HHT)
            vcl.digestion_ln_number,           -- 枝番
            vcl.order_no_ebs,                  -- 受注No.(EBS)
