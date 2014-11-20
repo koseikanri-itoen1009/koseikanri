@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCOS004A05R (body)
  * Description      : 消化VD別掛率チェックリスト
  * MD.050           : 消化VD別掛率チェックリスト MD050_COS_004_A05
- * Version          : 1.5
+ * Version          : 1.7
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -33,6 +33,7 @@ AS
  *  2009/06/19    1.5   K.Kiriu          [T1_1437]データパージ不具合対応
  *  2009/09/25    1.6   N.Maeda          [0001155]設定掛率金額の設定値修正
  *                                       [0001378]出力桁数修正対応
+ *  2009/10/16    1.7   S.Miyakoshi      [0001543]差額＝0の出力可能対応
  *
  *****************************************************************************************/
 --
@@ -600,11 +601,14 @@ AS
       AND     xsvdh.performance_by_code  = papf.employee_number(+)
       AND     xsvdh.digestion_due_date   >= papf.effective_start_date(+)
       AND     xsvdh.digestion_due_date   <= papf.effective_end_date(+)
-      AND     ( xsvdh.balance_amount      <> cn_amount_zero
-              OR ( xsvdh.ar_sales_amount  = cn_amount_zero
-                 AND xsvdh.sales_amount  = cn_amount_zero
-                 )
-              ) ;
+-- ******************** 2009/10/16 1.7 S.Miyakoshi MOD START ********************* --
+--      AND     ( xsvdh.balance_amount      <> cn_amount_zero
+--              OR ( xsvdh.ar_sales_amount  = cn_amount_zero
+--                 AND xsvdh.sales_amount  = cn_amount_zero
+--                 )
+--              ) ;
+      ;
+-- ******************** 2009/10/16 1.7 S.Miyakoshi MOD  END  ********************* --
 --
     -- *** ローカル・レコード ***
     l_data_rec                          data_cur%ROWTYPE;
