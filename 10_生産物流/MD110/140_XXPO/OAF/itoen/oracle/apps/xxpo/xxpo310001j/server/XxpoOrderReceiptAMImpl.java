@@ -1,7 +1,7 @@
 /*============================================================================
 * ファイル名 : XxpoOrderReceiptAMImpl
 * 概要説明   : 受入実績作成:受入実績作成アプリケーションモジュール
-* バージョン : 1.10
+* バージョン : 1.11
 *============================================================================
 * 修正履歴
 * 日付       Ver. 担当者       修正内容
@@ -17,6 +17,7 @@
 * 2008-12-05 1.8  伊藤ひとみ   本番障害#481対応
 * 2009-01-16 1.9  吉元強樹     本番障害#1006対応
 * 2009-01-27 1.10 吉元強樹     本番障害#1092対応
+* 2009-03-11 1.11 飯田  甫     本番障害#1270対応
 *============================================================================
 */
 package itoen.oracle.apps.xxpo.xxpo310001j.server;
@@ -52,7 +53,7 @@ import itoen.oracle.apps.xxpo.util.XxpoUtility;
 /***************************************************************************
  * 受入実績作成:受入実績作成アプリケーションモジュールです。
  * @author  SCS 吉元 強樹
- * @version 1.7
+ * @version 1.11
  ***************************************************************************
  */
 public class XxpoOrderReceiptAMImpl extends XxcmnOAApplicationModuleImpl 
@@ -5103,12 +5104,18 @@ public class XxpoOrderReceiptAMImpl extends XxcmnOAApplicationModuleImpl
     //double dRcvRtnQuantity = Double.parseDouble((String)receiptDetailsVORow.getAttribute("RcvRtnQuantity"));
     String rcvRtnQuantity = (String)receiptDetailsVORow.getAttribute("RcvRtnQuantity");
     rcvRtnQuantity = XxcmnUtility.commaRemoval(rcvRtnQuantity);
-    double dRcvRtnQuantity = Double.parseDouble(rcvRtnQuantity);
+// 2009-03-11 H.Iida MOD START 本番障害#1270
+//    double dRcvRtnQuantity = Double.parseDouble(rcvRtnQuantity);
+    BigDecimal bRcvRtnQuantity = new BigDecimal(String.valueOf(rcvRtnQuantity));
+// 2009-03-11 H.Iida MOD END
 // 20080526 mod yoshimoto End
 
     // 訂正前受入数量を取得
     Number quantity   =(Number)receiptDetailsVORow.getAttribute("Quantity");
-    double dQuantity  = Double.parseDouble(quantity.toString());
+// 2009-03-11 H.Iida MOD START 本番障害#1270
+//    double dQuantity  = Double.parseDouble(quantity.toString());
+    BigDecimal bQuantity = new BigDecimal(String.valueOf(quantity));
+// 2009-03-11 H.Iida MOD END
     
 
     // ************************************ //
@@ -5137,22 +5144,32 @@ public class XxpoOrderReceiptAMImpl extends XxcmnOAApplicationModuleImpl
     // 換算が必要な場合
     if (conversionFlag) 
     {
-      double dItemAmount = Double.parseDouble(sItemAmount); // 入数
+// 2009-03-11 H.Iida MOD START 本番障害#1270
+//      double dItemAmount = Double.parseDouble(sItemAmount); // 入数
+      BigDecimal bItemAmount = new BigDecimal(String.valueOf(sItemAmount));
 
       // 受入数量(訂正分)
-      double dSubRcvRtnQuantity = (dRcvRtnQuantity * dItemAmount) - dQuantity;
+//      double dSubRcvRtnQuantity = (dRcvRtnQuantity * dItemAmount) - dQuantity;
+      BigDecimal bmSubRcvRtnQuantity = bRcvRtnQuantity.multiply(bItemAmount);
+      BigDecimal bsSubRcvRtnQuantity = bmSubRcvRtnQuantity.subtract(bQuantity);
 
       // 受入数量(換算注意)
-      setParams.put("RcvRtnQuantity", new Double(dSubRcvRtnQuantity).toString());
+//      setParams.put("RcvRtnQuantity", new Double(dSubRcvRtnQuantity).toString());
+      setParams.put("RcvRtnQuantity", bsSubRcvRtnQuantity.toString());
+// 2009-03-11 H.Iida MOD END
 
     // 換算が不要な場合
     } else
     {
 
+// 2009-03-11 H.Iida MOD START 本番障害#1270
       // 受入数量(訂正分)
-      double dSubRcvRtnQuantity = dRcvRtnQuantity - dQuantity;
+//      double dSubRcvRtnQuantity = dRcvRtnQuantity - dQuantity;
+      BigDecimal bsSubRcvRtnQuantity = bRcvRtnQuantity.subtract(bQuantity);
 
-      setParams.put("RcvRtnQuantity", new Double(dSubRcvRtnQuantity).toString());
+//      setParams.put("RcvRtnQuantity", new Double(dSubRcvRtnQuantity).toString());
+      setParams.put("RcvRtnQuantity", bsSubRcvRtnQuantity.toString());
+// 2009-03-11 H.Iida MOD END
 
     }
 
@@ -5285,13 +5302,19 @@ public class XxpoOrderReceiptAMImpl extends XxcmnOAApplicationModuleImpl
 
     // 訂正前受入数量を取得
     Number quantity   =(Number)receiptDetailsVORow.getAttribute("Quantity");
-    double dQuantity  = Double.parseDouble(quantity.toString());
+// 2009-03-11 H.Iida MOD START 本番障害#1270
+//    double dQuantity  = Double.parseDouble(quantity.toString());
+    BigDecimal bQuantity = new BigDecimal(String.valueOf(quantity));
+// 2009-03-11 H.Iida MOD END
 
     // 受入数量を取得
     String rcvRtnQuantity = (String)receiptDetailsVORow.getAttribute("RcvRtnQuantity");
     rcvRtnQuantity = XxcmnUtility.commaRemoval(rcvRtnQuantity);
     //double dRcvRtnQuantity = Double.parseDouble((String)receiptDetailsVORow.getAttribute("RcvRtnQuantity"));
-    double dRcvRtnQuantity = Double.parseDouble(rcvRtnQuantity);
+// 2009-03-11 H.Iida MOD START 本番障害#1270
+//    double dRcvRtnQuantity = Double.parseDouble(rcvRtnQuantity);
+    BigDecimal bRcvRtnQuantity = new BigDecimal(String.valueOf(rcvRtnQuantity));
+// 2009-03-11 H.Iida MOD END
 
     // ************************************ //
     // * パラメータを設定                 * //
@@ -5309,22 +5332,34 @@ public class XxpoOrderReceiptAMImpl extends XxcmnOAApplicationModuleImpl
     if (conversionFlag) 
     {
 
-      double dItemAmount = Double.parseDouble(sItemAmount); // 入数
+// 2009-03-11 H.Iida MOD START 本番障害#1270
+//      double dItemAmount = Double.parseDouble(sItemAmount); // 入数
+      BigDecimal bItemAmount = new BigDecimal(String.valueOf(sItemAmount));
 
       // 受入数量(訂正分)
-      double dSubRcvRtnQuantity = (dRcvRtnQuantity * dItemAmount) - dQuantity;
+//      double dSubRcvRtnQuantity = (dRcvRtnQuantity * dItemAmount) - dQuantity;
+      BigDecimal bmSubRcvRtnQuantity = bRcvRtnQuantity.multiply(bItemAmount);
+      BigDecimal bsSubRcvRtnQuantity = bmSubRcvRtnQuantity.subtract(bQuantity);
 
       // 受入数量(換算注意)
-      setParams.put("RcvRtnQuantity", new Double(dSubRcvRtnQuantity).toString());
+//      setParams.put("RcvRtnQuantity", new Double(dSubRcvRtnQuantity).toString());
+      setParams.put("RcvRtnQuantity", bsSubRcvRtnQuantity.toString());
+
+// 2009-03-11 H.Iida MOD END
 
     // 換算が不要な場合
     } else
     {
 
+// 2009-03-11 H.Iida MOD START 本番障害#1270
       // 受入数量(訂正分)
-      double dSubRcvRtnQuantity = dRcvRtnQuantity - dQuantity;
+//      double dSubRcvRtnQuantity = dRcvRtnQuantity - dQuantity;
+      BigDecimal bsSubRcvRtnQuantity = bRcvRtnQuantity.subtract(bQuantity);
 
-      setParams.put("RcvRtnQuantity", new Double(dSubRcvRtnQuantity).toString());
+//      setParams.put("RcvRtnQuantity", new Double(dSubRcvRtnQuantity).toString());
+      setParams.put("RcvRtnQuantity", bsSubRcvRtnQuantity.toString());
+
+// 2009-03-11 H.Iida MOD END
 
     }
 
@@ -5377,13 +5412,19 @@ public class XxpoOrderReceiptAMImpl extends XxcmnOAApplicationModuleImpl
 
     // 訂正前受入数量を取得
     Number quantity   =(Number)receiptDetailsVORow.getAttribute("Quantity");
-    double dQuantity  = Double.parseDouble(quantity.toString());
+// 2009-03-11 H.Iida MOD START 本番障害#1270
+//    double dQuantity  = Double.parseDouble(quantity.toString());
+    BigDecimal bQuantity = new BigDecimal(String.valueOf(quantity));
+// 2009-03-11 H.Iida MOD END
 
     // 受入数量を取得
     String rcvRtnQuantity = (String)receiptDetailsVORow.getAttribute("RcvRtnQuantity");
     rcvRtnQuantity = XxcmnUtility.commaRemoval(rcvRtnQuantity);
     //double dRcvRtnQuantity = Double.parseDouble((String)receiptDetailsVORow.getAttribute("RcvRtnQuantity"));
-    double dRcvRtnQuantity = Double.parseDouble(rcvRtnQuantity);
+// 2009-03-11 H.Iida MOD START 本番障害#1270
+//    double dRcvRtnQuantity = Double.parseDouble(rcvRtnQuantity);
+    BigDecimal bRcvRtnQuantity = new BigDecimal(String.valueOf(rcvRtnQuantity));
+// 2009-03-11 H.Iida MOD END
 
     // ************************************ //
     // * パラメータを設定                 * //
@@ -5406,21 +5447,31 @@ public class XxpoOrderReceiptAMImpl extends XxcmnOAApplicationModuleImpl
     // 換算が必要な場合
     if (conversionFlag) 
     {
-      double dItemAmount = Double.parseDouble(sItemAmount); // 入数
+// 2009-03-11 H.Iida MOD START 本番障害#1270
+//      double dItemAmount = Double.parseDouble(sItemAmount); // 入数
+      BigDecimal bItemAmount = new BigDecimal(String.valueOf(sItemAmount));
 
       // 受入数量(訂正分)
-      double dSubRcvRtnQuantity = (dRcvRtnQuantity * dItemAmount) - dQuantity;
+//      double dSubRcvRtnQuantity = (dRcvRtnQuantity * dItemAmount) - dQuantity;
+      BigDecimal bmSubRcvRtnQuantity = bRcvRtnQuantity.multiply(bItemAmount);
+      BigDecimal bsSubRcvRtnQuantity = bmSubRcvRtnQuantity.subtract(bQuantity);
 
       // 受入数量(換算注意)
-      setParams.put("RcvRtnQuantity", new Double(dSubRcvRtnQuantity).toString());
+//      setParams.put("RcvRtnQuantity", new Double(dSubRcvRtnQuantity).toString());
+      setParams.put("RcvRtnQuantity", bsSubRcvRtnQuantity.toString());
+// 2009-03-11 H.Iida MOD END
 
     // 換算が不要な場合
     } else
     {
+// 2009-03-11 H.Iida MOD START 本番障害#1270
       // 受入数量(訂正分)
-      double dSubRcvRtnQuantity = dRcvRtnQuantity - dQuantity;
+//      double dSubRcvRtnQuantity = dRcvRtnQuantity - dQuantity;
+      BigDecimal bsSubRcvRtnQuantity = bRcvRtnQuantity.subtract(bQuantity);
 
-      setParams.put("RcvRtnQuantity", new Double(dSubRcvRtnQuantity).toString());
+//      setParams.put("RcvRtnQuantity", new Double(dSubRcvRtnQuantity).toString());
+      setParams.put("RcvRtnQuantity", bsSubRcvRtnQuantity.toString());
+// 2009-03-11 H.Iida MOD END
     }
 
 
