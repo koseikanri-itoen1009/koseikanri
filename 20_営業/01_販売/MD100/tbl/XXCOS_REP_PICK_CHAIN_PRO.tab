@@ -15,6 +15,9 @@
  *                                                            CASE_NUM(NUMBER(7,0)¨NUMBER)
  *                                                            INDIVI(NUMBER(7,0)¨NUMBER)
  *                                                            QUANTITY(NUMBER(10,0)¨NUMBER)
+ *  2010/03/03    1.3   N.Maeda         [E_–{‰Ò“®_01594]
+ *                                        ’è”Ô“Á”„‹æ•ªiƒwƒbƒ_j:REGULAR_SALE_CLASS_HEAD ’Ç‰Á
+ *                                        ’è”Ô“Á”„‹æ•ªi–¾×j  :REGULAR_SALE_CLASS_LINE ’Ç‰Á
  *
  ****************************************************************************************/
 CREATE TABLE XXCOS.XXCOS_REP_PICK_CHAIN_PRO
@@ -38,6 +41,8 @@ CREATE TABLE XXCOS.XXCOS_REP_PICK_CHAIN_PRO
     CASE_NUM                      NUMBER,                            --ƒP[ƒX
     INDIVI                        NUMBER,                            --ƒoƒ‰
     QUANTITY                      NUMBER,                            --”—Ê
+    REGULAR_SALE_CLASS_HEAD       VARCHAR2(4),                       --’è”Ô“Á”„‹æ•ªiƒwƒbƒ_j
+    REGULAR_SALE_CLASS_LINE       VARCHAR2(4),                       --’è”Ô“Á”„‹æ•ªi–¾×j
     CREATED_BY                    NUMBER(15,0)    NOT NULL,          --ì¬ŽÒ
     CREATION_DATE                 DATE            NOT NULL,          --ì¬“ú
     LAST_UPDATED_BY               NUMBER(15,0)    NOT NULL,          --ÅIXVŽÒ
@@ -70,6 +75,8 @@ COMMENT ON COLUMN XXCOS.XXCOS_REP_PICK_CHAIN_PRO.CONTENT                   IS '“
 COMMENT ON COLUMN XXCOS.XXCOS_REP_PICK_CHAIN_PRO.CASE_NUM                  IS 'ƒP[ƒX';
 COMMENT ON COLUMN XXCOS.XXCOS_REP_PICK_CHAIN_PRO.INDIVI                    IS 'ƒoƒ‰';
 COMMENT ON COLUMN XXCOS.XXCOS_REP_PICK_CHAIN_PRO.QUANTITY                  IS '”—Ê';
+COMMENT ON COLUMN XXCOS.XXCOS_REP_PICK_CHAIN_PRO.REGULAR_SALE_CLASS_HEAD   IS '’è”Ô“Á”„‹æ•ªiƒwƒbƒ_j';
+COMMENT ON COLUMN XXCOS.XXCOS_REP_PICK_CHAIN_PRO.REGULAR_SALE_CLASS_LINE   IS '’è”Ô“Á”„‹æ•ªi–¾×j';
 COMMENT ON COLUMN XXCOS.XXCOS_REP_PICK_CHAIN_PRO.CREATED_BY                IS 'ì¬ŽÒ';
 COMMENT ON COLUMN XXCOS.XXCOS_REP_PICK_CHAIN_PRO.CREATION_DATE             IS 'ì¬“ú';
 COMMENT ON COLUMN XXCOS.XXCOS_REP_PICK_CHAIN_PRO.LAST_UPDATED_BY           IS 'ÅIXVŽÒ';

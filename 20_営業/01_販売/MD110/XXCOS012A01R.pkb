@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCOS012A01R (body)
  * Description      : ピックリスト（チェーン・製品別トータル）
  * MD.050           : ピックリスト（チェーン・製品別トータル） MD050_COS_012_A01
- * Version          : 1.9
+ * Version          : 1.10
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -52,6 +52,8 @@ AS
  *                                        ・エラー品目の明細レベル集約条件を商品コード２のみにする
  *                                        ・単位換算マスタの結合条件：無効日も外部結合項目に追加する
  *                                        ・クイックコード適用開始日～終了日判定日付を受注日に変更する
+ *  2010/03/03    1.10  N.Maeda          [E_本稼動_01594]
+ *                                       ・定番特売区分による出力制御追加
  *
  *****************************************************************************************/
 --
@@ -116,6 +118,12 @@ AS
   global_delete_data_expt   EXCEPTION;
   global_nodata_expt        EXCEPTION;
   global_get_profile_expt   EXCEPTION;
+-- ********** 2010/03/03 1.10 N.Maeda ADD START ********** --
+  global_lookup_code_expt   EXCEPTION;
+  global_get_bargain_expt   EXCEPTION;
+  global_get_fixture_expt   EXCEPTION;
+  global_proc_date_err_expt EXCEPTION;
+-- ********** 2010/03/03 1.10 N.Maeda ADD  END  ********** --
   --*** 処理対象データロック例外 ***
   global_data_lock_expt     EXCEPTION;
 --
@@ -187,6 +195,16 @@ AS
   ct_msg_get_hon_uom        CONSTANT fnd_new_messages.message_name%TYPE
                                      := 'APP-XXCOS1-12605';           -- XXCOS:本単位コード(メッセージ文字列)
 -- 2010/02/12 Ver1.9 Add End   *
+-- ********** 2010/03/03 1.10 N.Maeda ADD START ********** --
+  ct_msg_bargain_cls_tblnm  CONSTANT fnd_new_messages.message_name%TYPE
+                                     := 'APP-XXCOS1-12606';           --定番特売区分クイックコードマスタ
+  ct_msg_get_fixture_err    CONSTANT fnd_new_messages.message_name%TYPE
+                                     := 'APP-XXCOS1-00186';           --定番情報取得エラー
+  ct_msg_get_bargain_err    CONSTANT fnd_new_messages.message_name%TYPE
+                                     := 'APP-XXCOS1-00187';           --特売情報取得エラー
+  ct_msg_process_date_err   CONSTANT fnd_new_messages.message_name%TYPE
+                                     := 'APP-XXCOS1-00014';           --業務日付取得エラー
+-- ********** 2010/03/03 1.10 N.Maeda ADD  END  ********** --
   --トークン
   cv_tkn_table              CONSTANT VARCHAR2(100) := 'TABLE';                  --テーブル
   cv_tkn_date_from          CONSTANT VARCHAR2(100) := 'DATE_FROM';              --日付（From)
@@ -202,6 +220,9 @@ AS
 -- 2010/02/12 Ver1.9 Add Start *
   cv_tkn_param5             CONSTANT VARCHAR2(100) := 'PARAM5';                 --第５入力パラメータ
 -- 2010/02/12 Ver1.9 Add End   *
+-- ********** 2010/03/03 1.10 N.Maeda ADD START ********** --
+  cv_tkn_param6             CONSTANT VARCHAR2(100) := 'PARAM6';                 --第６入力パラメータ
+-- ********** 2010/03/03 1.10 N.Maeda ADD  END  ********** --
   cv_tkn_request            CONSTANT VARCHAR2(100) := 'REQUEST';                --要求ＩＤ
 -- 2010/02/12 Ver1.9 Add Start *
   cv_tkn_nm_profile2        CONSTANT VARCHAR2(100) :=  'PRO_TOK';               --プロファイル名(在庫領域)
@@ -231,6 +252,14 @@ AS
                                      := 'XXCOS1_EDI_ITEM_ERR_TYPE';
   ct_xxcos1_no_inv_item_code CONSTANT fnd_lookup_types.lookup_type%TYPE
                                       := 'XXCOS1_NO_INV_ITEM_CODE';
+-- ********** 2010/03/03 1.10 N.Maeda ADD START ********** --
+  ct_qct_sale_class         CONSTANT fnd_lookup_types.lookup_type%TYPE
+                                     := 'XXCOS1_SALE_CLASS_MST_012_A02';
+  ct_qct_sale_class_default CONSTANT fnd_lookup_types.lookup_type%TYPE
+                                     := 'XXCOS1_SALE_CLASS_MST';
+  ct_qct_bargain_class      CONSTANT fnd_lookup_types.lookup_type%TYPE
+                                     := 'XXCOS1_BARGAIN_CLASS';
+-- ********** 2010/03/03 1.10 N.Maeda ADD  END  ********** --
   --クイックコード
   ct_qcc_order_type         CONSTANT fnd_lookup_values.lookup_code%TYPE
                                      := 'XXCOS_012_A01%';
@@ -242,6 +271,17 @@ AS
                                      := 'XXCOS_012_A01_1%';
   ct_qcc_cus_class_mst2     CONSTANT fnd_lookup_values.lookup_code%TYPE
                                      := 'XXCOS_012_A01_2%';
+-- ********** 2010/03/03 1.10 N.Maeda ADD START ********** --
+  ct_qcc_sale_class         CONSTANT fnd_lookup_values.lookup_code%TYPE
+                                     := 'XXCOS_012_A02_';
+  ct_qcc_sale_class_default CONSTANT fnd_lookup_values.lookup_code%TYPE
+                                     := 'XXCOS_%';
+  --
+  cv_multi                  CONSTANT VARCHAR2(1)   := '%';
+  --受注タイプ（明細）
+  ct_tran_type_code_line    CONSTANT oe_transaction_types_all.transaction_type_code%TYPE
+                                     := 'LINE';                       --LINE
+-- ********** 2010/03/03 1.10 N.Maeda ADD  END  ********** --
   --使用可能フラグ定数
   ct_enabled_flag_yes       CONSTANT fnd_lookup_values.enabled_flag%TYPE
                                      := 'Y';                          --使用可能
@@ -312,6 +352,12 @@ AS
   cv_time_min               CONSTANT VARCHAR2(8)  := '00:00:00';
   cv_time_max               CONSTANT VARCHAR2(8)  := '23:59:59';
 -- 2009/08/10 Ver1.7 Del End   *
+-- ********** 2010/03/03 1.10 N.Maeda ADD START ********** --
+  -- 定番特売区分
+  cv_bargain_class_all      CONSTANT VARCHAR2(2)   := '00';           --全て
+  cv_bargain_class_fixture  CONSTANT VARCHAR2(1)   := 'Y';            --定番特売区分：定番
+  cv_bargain_class_bargain  CONSTANT VARCHAR2(1)   := 'N';            --定番特売区分：特売
+-- ********** 2010/03/03 1.10 N.Maeda ADD  END  ********** --
 --
   -- ===============================
   -- ユーザー定義グローバル型
@@ -335,7 +381,26 @@ AS
 -- 2010/02/12 Ver1.9 Add Start *
   gv_sales_output_type                VARCHAR2(1);                    -- 売上対象出力区分
 -- 2010/02/12 Ver1.9 Add End   *
+-- ********** 2010/03/03 1.10 N.Maeda ADD START ********** --
+   gt_qcc_sale_class                  fnd_lookup_values.lookup_code%TYPE;
+                                                                      -- 売上区分用
+   gv_bargain_class                   fnd_lookup_values.lookup_code%TYPE;
+                                                                      -- 定番特売区分
+   gt_bargain_class_name              fnd_lookup_values.meaning%TYPE;
+                                                                      -- 定番特売区分（ヘッダ）名称
+   gt_fixture_code                    fnd_lookup_values.lookup_code%TYPE;
+                                                                      -- 定番特売区分コード：定番
+   gt_fixture_name                    fnd_lookup_values.lookup_code%TYPE;
+                                                                      -- 定番特売区分名称  ：定番
+   gt_bargain_code                    fnd_lookup_values.lookup_code%TYPE;
+                                                                      -- 定番特売区分コード：特売
+   gt_bargain_name                    fnd_lookup_values.lookup_code%TYPE;
+                                                                      -- 定番特売区分名称  ：特売
+-- ********** 2010/03/03 1.10 N.Maeda ADD  END  ********** --
   --初期取得
+-- ********** 2010/03/03 1.10 N.Maeda ADD START ********** --
+  gd_process_date                     DATE;                           -- 業務日付
+-- ********** 2010/03/03 1.10 N.Maeda ADD  END  ********** --
 -- 2010/02/12 Ver1.9 Del Start *
 --  gd_process_date                     DATE;                           -- 業務日付
 -- 2010/02/12 Ver1.9 Del End   *
@@ -427,6 +492,9 @@ AS
     iv_login_chain_store_code IN      VARCHAR2,         -- 2.チェーン店
     iv_request_date_from      IN      VARCHAR2,         -- 3.着日（From）
     iv_request_date_to        IN      VARCHAR2,         -- 4.着日（To）
+-- ********** 2010/03/03 1.10 N.Maeda ADD START ********** --
+    iv_bargain_class          IN      VARCHAR2,         -- 6.定番特売区分
+-- ********** 2010/03/03 1.10 N.Maeda ADD  END  ********** --
 -- 2010/02/12 Ver1.9 Add Start *
     iv_sales_output_type      IN      VARCHAR2,         -- 5.売上対象出力区分
 -- 2010/02/12 Ver1.9 Add End   *
@@ -484,7 +552,12 @@ AS
 --                                   iv_token_value4       => iv_request_date_to
                                    iv_token_value4       => iv_request_date_to,
                                    iv_token_name5        => cv_tkn_param5,
-                                   iv_token_value5       => iv_sales_output_type
+-- ********** 2010/03/03 1.10 N.Maeda MOD START ********** --
+--                                   iv_token_value5       => iv_sales_output_type
+                                   iv_token_value5       => iv_bargain_class,
+                                   iv_token_name6        => cv_tkn_param6,
+                                   iv_token_value6       => iv_sales_output_type
+-- ********** 2010/03/03 1.10 N.Maeda MOD  END  ********** --
 -- 2010/02/12 Ver1.9 Add End *
                                  );
     --
@@ -516,6 +589,10 @@ AS
     gv_sales_output_type        := iv_sales_output_type;
 -- 2010/02/12 Ver1.9 Add End *
 -- 2009/08/10 Ver1.7 Mod Start *
+-- ********** 2010/03/03 1.10 N.Maeda ADD START ********** --
+   -- 定番特売区分
+   gv_bargain_class             := iv_bargain_class;
+-- ********** 2010/03/03 1.10 N.Maeda ADD  END  ********** --
 --
     --==============================================================
     --メッセージ出力をする必要がある場合は処理を記述
@@ -577,6 +654,9 @@ AS
 -- 2010/02/12 Ver1.9 Add Start *
     lt_org_cd        mtl_parameters.organization_code%TYPE;  -- 在庫組織コード
 -- 2010/02/12 Ver1.9 Add End   *
+-- ********** 2010/03/03 1.10 N.Maeda ADD START ********** --
+    lv_table_name    VARCHAR2(5000);
+-- ********** 2010/03/03 1.10 N.Maeda ADD  END  ********** --
 --
     -- *** ローカル・カーソル ***
 --
@@ -601,6 +681,16 @@ AS
 --    END IF;
 ----
 -- 2010/02/12 Ver1.9 Del End   *
+-- ********** 2010/03/03 1.10 N.Maeda ADD START ********** --
+    --==================================
+    -- 1.業務日付取得
+    --==================================
+    gd_process_date           := TRUNC( xxccp_common_pkg2.get_process_date );
+--
+    IF ( gd_process_date IS NULL ) THEN
+      RAISE global_proc_date_err_expt;
+    END IF;
+-- ********** 2010/03/03 1.10 N.Maeda ADD  END  ********** --
     --==================================
     -- 2.MO:営業単位
     --==================================
@@ -660,6 +750,92 @@ AS
       RAISE global_date_reversal_expt;
     END IF;
 --
+-- ********** 2010/03/03 1.10 N.Maeda ADD START ********** --
+    --==================================
+    -- 6.定番特売区分（ヘッダ）チェック
+    --==================================
+--
+    BEGIN
+      SELECT
+        flv.meaning                     bargain_class_name
+      INTO
+        gt_bargain_class_name
+      FROM
+        fnd_lookup_values               flv
+      WHERE
+          flv.lookup_type               = ct_qct_bargain_class
+      AND flv.lookup_code               = gv_bargain_class
+      AND gd_process_date               >= flv.start_date_active
+      AND gd_process_date               <= NVL( flv.end_date_active, gd_max_date )
+      AND flv.language                  = ct_lang
+      AND flv.enabled_flag              = ct_enabled_flag_yes
+      ;
+    EXCEPTION
+      WHEN OTHERS THEN
+        lv_table_name         := xxccp_common_pkg.get_msg(
+                                   iv_application        => ct_xxcos_appl_short_name,
+                                   iv_name               => ct_msg_bargain_cls_tblnm
+                                 );
+        RAISE global_lookup_code_expt;
+    END;
+    --定番特売区分（ヘッダ） が全ての場合、名称をNULLクリアする。
+    IF ( gv_bargain_class = cv_bargain_class_all ) THEN
+      gt_bargain_class_name   := NULL;
+    END IF;
+--
+--
+    --==================================
+    -- 7.定番特売区分「定番」取得
+    --==================================
+--
+    BEGIN
+      SELECT
+        flv.lookup_code                 fixture_code                --定番特売区分：定番のコード値
+       ,flv.meaning                     fixture_name                --定番特売区分：定番の名称
+      INTO
+        gt_fixture_code
+       ,gt_fixture_name
+      FROM
+        fnd_lookup_values               flv
+      WHERE
+          flv.lookup_type               = ct_qct_bargain_class
+      AND flv.attribute1                = cv_bargain_class_fixture  --取得対象 = 定番
+      AND gd_process_date               >= flv.start_date_active
+      AND gd_process_date               <= NVL( flv.end_date_active, gd_max_date )
+      AND flv.language                  = ct_lang
+      AND flv.enabled_flag              = ct_enabled_flag_yes
+      ;
+    EXCEPTION
+      WHEN OTHERS THEN
+        RAISE global_get_fixture_expt;
+    END;
+--
+    --==================================
+    -- 8.定番特売区分「特売」取得
+    --==================================
+--
+    BEGIN
+      SELECT
+        flv.lookup_code                 bargain_code                --定番特売区分：特売のコード値
+       ,flv.meaning                     bargain_name                --定番特売区分：特売の名称
+      INTO
+        gt_bargain_code
+       ,gt_bargain_name
+      FROM
+        fnd_lookup_values               flv
+      WHERE
+          flv.lookup_type               = ct_qct_bargain_class
+      AND flv.attribute1                = cv_bargain_class_bargain  --取得対象 = 特売
+      AND gd_process_date               >= flv.start_date_active
+      AND gd_process_date               <= NVL( flv.end_date_active, gd_max_date )
+      AND flv.language                  = ct_lang
+      AND flv.enabled_flag              = ct_enabled_flag_yes
+      ;
+    EXCEPTION
+      WHEN OTHERS THEN
+        RAISE global_get_bargain_expt;
+    END;
+-- ********** 2010/03/03 1.10 N.Maeda ADD  END  ********** --
 -- 2010/02/12 Ver1.9 Add Start *
 --
     --========================================
@@ -747,6 +923,44 @@ AS
                                  );
       ov_errbuf  := SUBSTRB(cv_pkg_name||cv_msg_cont||cv_prg_name||cv_msg_part||ov_errmsg,1,5000);
       ov_retcode := cv_status_error;
+-- ********** 2010/03/03 1.10 N.Maeda ADD START ********** --
+    -- *** 定番情報取得例外ハンドラ ***
+    WHEN global_get_fixture_expt THEN
+      ov_errmsg               := xxccp_common_pkg.get_msg(
+                                   iv_application        => ct_xxcos_appl_short_name,
+                                   iv_name               => ct_msg_get_fixture_err
+                                 );
+      ov_errbuf  := SUBSTRB(cv_pkg_name||cv_msg_cont||cv_prg_name||cv_msg_part||ov_errmsg,1,5000);
+      ov_retcode := cv_status_error;
+    -- *** 特売情報取得例外ハンドラ ***
+    WHEN global_get_bargain_expt THEN
+      ov_errmsg               := xxccp_common_pkg.get_msg(
+                                   iv_application        => ct_xxcos_appl_short_name,
+                                   iv_name               => ct_msg_get_bargain_err
+                                 );
+      ov_errbuf  := SUBSTRB(cv_pkg_name||cv_msg_cont||cv_prg_name||cv_msg_part||ov_errmsg,1,5000);
+      ov_retcode := cv_status_error;
+    -- *** クイックコードマスタ例外ハンドラ ***
+    WHEN global_lookup_code_expt THEN
+      ov_errmsg               := xxccp_common_pkg.get_msg(
+                                   iv_application        => ct_xxcos_appl_short_name,
+                                   iv_name               => ct_msg_select_data_err,
+                                   iv_token_name1        => cv_tkn_table_name,
+                                   iv_token_value1       => lv_table_name,
+                                   iv_token_name2        => cv_tkn_key_data,
+                                   iv_token_value2       => NULL
+                                 );
+      ov_errbuf  := SUBSTRB(cv_pkg_name||cv_msg_cont||cv_prg_name||cv_msg_part||ov_errmsg,1,5000);
+      ov_retcode := cv_status_error;
+    -- *** 業務日付取得例外ハンドラ ***
+    WHEN global_proc_date_err_expt THEN
+      ov_errmsg               := xxccp_common_pkg.get_msg(
+                                   iv_application        => ct_xxcos_appl_short_name,
+                                   iv_name               => ct_msg_process_date_err
+                                 );
+      ov_errbuf  := SUBSTRB(cv_pkg_name||cv_msg_cont||cv_prg_name||cv_msg_part||ov_errmsg,1,5000);
+      ov_retcode := cv_status_error;
+-- ********** 2010/03/03 1.10 N.Maeda ADD  END  ********** --
 --
 --#################################  固定例外処理部 START   #######################################
 --
@@ -853,6 +1067,10 @@ AS
 -- 2010/02/12 Ver1.9 Mod End   *
     lt_key_case_content                 mtl_uom_class_conversions.conversion_rate%TYPE;
                                                                       --ケース入数
+-- ********** 2010/03/03 1.10 N.Maeda ADD START ********** --
+    lt_key_bargain_class_name           fnd_lookup_values.description%TYPE;
+                                                                      --定番特売区分名称
+-- ********** 2010/03/03 1.10 N.Maeda ADD  END  ********** --
 --
     -- *** ローカル・カーソル ***
     CURSOR data_cur
@@ -891,7 +1109,11 @@ AS
           ELSE rpcpi.order_quantity_uom
         END                                   order_quantity_uom,             --受注単位コード
 -- 2010/02/12 Ver1.9 Mod End   *
-        rpcpi.ordered_quantity                ordered_quantity                --受注数量
+-- ********** 2010/03/03 1.10 N.Maeda MOD START ********** --
+--        rpcpi.ordered_quantity                ordered_quantity                --受注数量
+        rpcpi.ordered_quantity                ordered_quantity,                --受注数量
+        rpcpi.bargain_class_name              bargain_class_name              --定番特売区分名称
+-- ********** 2010/03/03 1.10 N.Maeda MOD  END  ********** --
       FROM
         mtl_uom_class_conversions             mucc,                           --単位変換マスタ
         (
@@ -946,7 +1168,11 @@ AS
 -- 2010/02/12 Ver1.9 Add Start *
 --            oola.ordered_quantity             ordered_quantity                --受注数量
             oola.ordered_quantity             ordered_quantity,               --受注数量
-            cv_sales_output_type_1            sales_output_type               --売上対象出力区分
+-- ********** 2010/03/03 1.10 N.Maeda MOD START ********** --
+--            cv_sales_output_type_1            sales_output_type               --売上対象出力区分
+            cv_sales_output_type_1            sales_output_type,              --売上対象出力区分
+            scm.sale_class_name               bargain_class_name              --定番特売区分名称
+-- ********** 2010/03/03 1.10 N.Maeda MOD  END  ********** --
 -- 2010/02/12 Ver1.9 Add End   *
           FROM
             oe_order_headers_all              ooha,                           --受注ヘッダテーブル
@@ -954,6 +1180,10 @@ AS
             oe_order_sources                  oos,                            --受注ソースマスタ
             oe_transaction_types_all          otta,                           --受注タイプマスタ
             oe_transaction_types_tl           ottt,                           --受注タイプ翻訳マスタ
+-- ********** 2010/03/03 1.10 N.Maeda MOD START ********** --
+            oe_transaction_types_all          otta2,                          --受注タイプマスタ
+            oe_transaction_types_tl           ottt2,                          --受注タイプ翻訳マスタ
+-- ********** 2010/03/03 1.10 N.Maeda MOD  END  ********** --
             hz_cust_accounts                  hca1,                           --顧客マスタ
             xxcmm_cust_accounts               xca1,                           --アカウントアドオンマスタ
             hz_cust_accounts                  hca2,                           --顧客拠点マスタ
@@ -962,7 +1192,40 @@ AS
             hz_parties                        hp3,                            --パーティチェーン店マスタ
             xxcmm_cust_accounts               xca3,                           --アカウントアドオンチェーン店マスタ
             mtl_secondary_inventories         msi,                            --保管場所マスタ
-            mtl_system_items_b                msib                            --品目マスタ
+-- ********** 2010/03/03 1.10 N.Maeda MOD START ********** --
+--            mtl_system_items_b                msib                            --品目マスタ
+            mtl_system_items_b                msib,                           --品目マスタ
+            (
+              SELECT
+                flv.meaning                   line_type_name,                 --明細タイプ名
+                flv.attribute1                sale_class_default,             --売上区分初期値
+                flv.start_date_active         start_date_active,              --有効開始日
+                NVL( flv.end_date_active, gd_max_date )
+                                              end_date_active                 --有効終了日
+              FROM
+                fnd_lookup_values             flv                             --クイックコードマスタ
+              WHERE
+                  flv.lookup_type             = ct_qct_sale_class_default
+              AND flv.lookup_code             LIKE ct_qcc_sale_class_default
+              AND flv.language                = ct_lang
+              AND flv.enabled_flag            = ct_enabled_flag_yes
+            ) scdm,                                                           --売上区分初期値マスタ
+            (
+              SELECT
+                flv.meaning                   sale_class,                     --売上区分
+                flv.description               sale_class_name,                --売上区分名
+                flv.start_date_active         start_date_active,              --有効開始日
+                NVL( flv.end_date_active, gd_max_date )
+                                              end_date_active                 --有効終了日
+              FROM
+                fnd_lookup_values             flv                             --クイックコードマスタ
+              WHERE
+                  flv.lookup_type             = ct_qct_sale_class
+              AND flv.lookup_code             LIKE gt_qcc_sale_class
+              AND flv.language                = ct_lang
+              AND flv.enabled_flag            = ct_enabled_flag_yes
+            ) scm                                                             --売上区分マスタ
+-- ********** 2010/03/03 1.10 N.Maeda MOD  END  ********** --
           WHERE
 -- 2010/02/12 Ver1.9 Add Start *
 --              ooha.header_id                    = oola.header_id
@@ -1042,6 +1305,18 @@ AS
 --          AND ottt.language                   = USERENV( 'LANG' )
           AND ottt.language                   = ct_lang
 -- 2009/08/10 Ver1.7 Mod End   *
+-- ********** 2010/03/03 1.10 N.Maeda ADD START ********** --
+          AND oola.line_type_id               = otta2.transaction_type_id
+          AND otta2.transaction_type_id       = ottt2.transaction_type_id
+          AND otta2.transaction_type_code     = ct_tran_type_code_line
+          AND ottt2.language                  = ct_lang
+          AND scdm.line_type_name             = ottt2.name
+          AND TRUNC( ooha.ordered_date )      >= scdm.start_date_active
+          AND TRUNC( ooha.ordered_date )      <= scdm.end_date_active
+          AND scm.sale_class                  = NVL( oola.attribute5, scdm.sale_class_default )
+          AND TRUNC( ooha.ordered_date )      >= scm.start_date_active
+          AND TRUNC( ooha.ordered_date )      <= scm.end_date_active
+-- ********** 2010/03/03 1.10 N.Maeda ADD  END  ********** --
           AND ooha.flow_status_code           = ct_hdr_status_booked
           AND oola.flow_status_code           NOT IN ( ct_ln_status_closed, ct_ln_status_cancelled )
 -- 2009/08/10 Ver1.7 Mod Start *
@@ -1203,7 +1478,16 @@ AS
 -- 2010/02/12 Ver1.9 Add Start *
 --            oola.ordered_quantity             ordered_quantity                --受注数量
             oola.ordered_quantity             ordered_quantity,               --受注数量
-            cv_sales_output_type_1                                            --売上対象出力区分
+-- ********** 2010/03/03 1.10 N.Maeda MOD START ********** --
+--            cv_sales_output_type_1                                            --売上対象出力区分
+            cv_sales_output_type_1,                                           --売上対象出力区分
+            CASE
+              WHEN xeh.ar_sale_class = gt_fixture_code THEN
+                gt_fixture_name
+              ELSE
+                gt_bargain_name
+            END                               bargain_class_name              --定番特売区分名称
+-- ********** 2010/03/03 1.10 N.Maeda MOD  END  ********** --
 -- 2010/02/12 Ver1.9 Add End   *
           FROM
             oe_order_headers_all              ooha,                           --受注ヘッダテーブル
@@ -1211,6 +1495,10 @@ AS
             oe_order_sources                  oos,                            --受注ソースマスタ
             oe_transaction_types_all          otta,                           --受注タイプマスタ
             oe_transaction_types_tl           ottt,                           --受注タイプ翻訳マスタ
+-- ********** 2010/03/03 1.10 N.Maeda MOD START ********** --
+            oe_transaction_types_all          otta2,                          --受注タイプマスタ
+            oe_transaction_types_tl           ottt2,                          --受注タイプ翻訳マスタ
+-- ********** 2010/03/03 1.10 N.Maeda MOD  END  ********** --
             hz_cust_accounts                  hca1,                           --顧客マスタ
             xxcmm_cust_accounts               xca1,                           --アカウントアドオンマスタ
             hz_cust_accounts                  hca2,                           --顧客拠点マスタ
@@ -1221,7 +1509,25 @@ AS
             mtl_secondary_inventories         msi,                            --保管場所マスタ
             mtl_system_items_b                msib,                           --品目マスタ
             xxcos_edi_headers                 xeh,                            --EDIヘッダ情報テーブル
-            xxcos_edi_lines                   xel                             --EDI明細情報テーブル
+-- ********** 2010/03/03 1.10 N.Maeda MOD START ********** --
+--            xxcos_edi_lines                   xel                             --EDI明細情報テーブル
+            xxcos_edi_lines                   xel,                            --EDI明細情報テーブル
+            (
+              SELECT
+                flv.meaning                   line_type_name,                 --明細タイプ名
+                flv.attribute1                sale_class_default,             --売上区分初期値
+                flv.start_date_active         start_date_active,              --有効開始日
+                NVL( flv.end_date_active, gd_max_date )
+                                              end_date_active                 --有効終了日
+              FROM
+                fnd_lookup_values             flv                             --クイックコードマスタ
+              WHERE
+                  flv.lookup_type             = ct_qct_sale_class_default
+              AND flv.lookup_code             LIKE ct_qcc_sale_class_default
+              AND flv.language                = ct_lang
+              AND flv.enabled_flag            = ct_enabled_flag_yes
+            ) scdm                                                            --売上区分初期値マスタ
+-- ********** 2010/03/03 1.10 N.Maeda MOD  END  ********** --
           WHERE
 -- 2010/02/12 Ver1.9 Add Start *
 --              ooha.header_id                    = oola.header_id
@@ -1297,6 +1603,12 @@ AS
 --          AND ottt.language                   = USERENV( 'LANG' )
           AND ottt.language                   = ct_lang
 -- 2009/08/10 Ver1.7 Mod End   *
+-- ********** 2010/03/03 1.10 N.Maeda ADD START ********** --
+          AND oola.line_type_id               = otta2.transaction_type_id
+          AND otta2.transaction_type_id       = ottt2.transaction_type_id
+          AND otta2.transaction_type_code     = ct_tran_type_code_line
+          AND ottt2.language                  = ct_lang
+-- ********** 2010/03/03 1.10 N.Maeda ADD  END  ********** --
           AND ooha.flow_status_code           IN ( ct_hdr_status_booked, ct_hdr_status_entered )
           AND oola.flow_status_code           NOT IN ( ct_ln_status_closed, ct_ln_status_cancelled )
 -- 2009/08/10 Ver1.7 Mod Start *
@@ -1393,6 +1705,13 @@ AS
           AND xel.order_connection_line_number  = oola.orig_sys_line_ref
 --****************************** 2009/06/05 1.3 T.Kitajima MOD  END  ******************************--
           AND ooha.org_id                     = gn_org_id
+-- ********** 2010/03/03 1.10 N.Maeda ADD START ********** --
+          AND scdm.line_type_name             = ottt2.name
+          AND TRUNC( ooha.ordered_date )      >= scdm.start_date_active
+          AND TRUNC( ooha.ordered_date )      <= scdm.end_date_active
+          AND (   ( cv_bargain_class_all = gv_bargain_class )
+               OR ( xeh.ar_sale_class    = gv_bargain_class )   )
+-- ********** 2010/03/03 1.10 N.Maeda ADD  END  ********** --
 -- 2009/07/10 Ver1.6 Add Start *
           AND (   ooha.global_attribute3 IS NULL
 -- 2010/02/12 Ver1.9 Mod Start *
@@ -1477,7 +1796,7 @@ AS
             hp2.party_name                                   base_name,             --拠点名称
             xca1.ship_storage_code                           subinventory,          --倉庫（出荷元保管場所(EDI)）
             msi.description                                  subinventory_name,     --倉庫名
-            xeh.edi_chain_code                              chain_store_code,      --チェーン店コード
+            xeh.edi_chain_code                               chain_store_code,      --チェーン店コード
             hp3.party_name                                   chain_store_name,      --チェーン店名
             xca1.deli_center_code                            deli_center_code,      --センターコード
             xca1.deli_center_name                            deli_center_name,      --センター名
@@ -1499,7 +1818,16 @@ AS
                       , xeh.creation_date ) )                ordered_date,          --受注日（発注日）
             xel.line_uom                                     order_quantity_uom,    --受注単位コード（明細単位）
             NVL( xel.sum_order_qty ,0 )                      ordered_quantity,      --受注数量（発注数量（合計・バラ））
-            cv_sales_output_type_2                                                  --売上対象出力区分
+-- ********** 2010/03/03 1.10 N.Maeda ADD START ********** --
+--            cv_sales_output_type_2                                                  --売上対象出力区分
+            cv_sales_output_type_2,                                                 --売上対象出力区分
+            CASE
+              WHEN xeh.ar_sale_class = gt_fixture_code THEN
+                gt_fixture_name
+              ELSE
+                gt_bargain_name
+            END                               bargain_class_name              --定番特売区分名称
+-- ********** 2010/03/03 1.10 N.Maeda ADD  END  ********** --
           FROM
             hz_cust_accounts                  hca1,                           --顧客マスタ
             xxcmm_cust_accounts               xca1,                           --アカウントアドオンマスタ
@@ -1598,6 +1926,10 @@ AS
                                                        <= NVL(look_val.end_date_active, gd_max_date)
                           AND     look_val.enabled_flag = ct_enabled_flag_yes
                           AND     look_val.lookup_type =  ct_qct_edi_item_err_type ))
+-- ********** 2010/03/03 1.10 N.Maeda ADD START ********** --
+          AND (   ( cv_bargain_class_all = gv_bargain_class )
+               OR ( xeh.ar_sale_class    = gv_bargain_class )   )
+-- ********** 2010/03/03 1.10 N.Maeda ADD  END  ********** --
 -- 2010/02/12 Ver1.9 Add End   *
       ) rpcpi
       WHERE
@@ -1622,6 +1954,9 @@ AS
         rpcpi.deli_center_name,                                               --センター名
         rpcpi.edi_district_code,                                              --地区コード
         rpcpi.edi_district_name,                                              --地区名
+-- ********** 2010/03/03 1.10 N.Maeda ADD START ********** --
+        rpcpi.bargain_class_name,                                             --定番特売区分名称
+-- ********** 2010/03/03 1.10 N.Maeda ADD  END  ********** --
         rpcpi.schedule_ship_date,                                             --出荷日
         rpcpi.request_date,                                                   --着日
 -- 2010/02/12 Ver1.9 Add Start *
@@ -1663,6 +1998,9 @@ AS
       lt_key_deli_center_name         := l_data_rec.deli_center_name;
       lt_key_edi_district_code        := l_data_rec.edi_district_code;
       lt_key_edi_district_name        := l_data_rec.edi_district_name;
+-- ********** 2010/03/03 1.10 N.Maeda ADD START ********** --
+      lt_key_bargain_class_name       := l_data_rec.bargain_class_name;
+-- ********** 2010/03/03 1.10 N.Maeda ADD  END  ********** --
       lt_key_schedule_ship_date       := l_data_rec.schedule_ship_date;
       lt_key_request_date             := l_data_rec.request_date;
       lt_key_inventory_item_id        := l_data_rec.inventory_item_id;
@@ -1715,6 +2053,9 @@ AS
       g_rpt_data_tab(ln_idx).area_name                    := lt_key_edi_district_name;
       g_rpt_data_tab(ln_idx).shipped_date                 := lt_key_schedule_ship_date;
       g_rpt_data_tab(ln_idx).arrival_date                 := lt_key_request_date;
+-- ********** 2010/03/03 1.10 N.Maeda ADD START ********** --
+      g_rpt_data_tab(ln_idx).regular_sale_class_head      := SUBSTRB( gt_bargain_class_name, 1, 4 );
+-- ********** 2010/03/03 1.10 N.Maeda ADD  END  ********** --
 --****************************** 2009/06/09 1.4 T.Kitajima MOD START ******************************--
 --      g_rpt_data_tab(ln_idx).item_code                    := CASE
 --                                                               WHEN ( lv_key_edi_item_err_flag =
@@ -1762,6 +2103,9 @@ AS
       END IF;
 --****************************** 2009/06/09 1.4 T.Kitajima MOD  END  ******************************--
       g_rpt_data_tab(ln_idx).quantity                     := ln_quantity;
+-- ********** 2010/03/03 1.10 N.Maeda ADD START ********** --
+      g_rpt_data_tab(ln_idx).regular_sale_class_line      := SUBSTRB( lt_key_bargain_class_name, 1, 4 );
+-- ********** 2010/03/03 1.10 N.Maeda ADD  END  ********** --
       g_rpt_data_tab(ln_idx).created_by                   := cn_created_by;
       g_rpt_data_tab(ln_idx).creation_date                := cd_creation_date;
       g_rpt_data_tab(ln_idx).last_updated_by              := cn_last_updated_by;
@@ -1842,9 +2186,20 @@ AS
     lt_key_item_code2                     := NULL;            --商品コード２
     lt_key_item_name2                     := NULL;            --商品名２
     lt_key_case_content                   := NULL;            --ケース入数
+-- ********** 2010/03/03 1.10 N.Maeda ADD START ********** --
+    lt_key_bargain_class_name             := NULL;            --定番特売区分名称
+-- ********** 2010/03/03 1.10 N.Maeda ADD  END  ********** --
     --
     ln_quantity := 0;
     --
+-- ********** 2010/03/03 1.10 N.Maeda ADD START ********** --
+    --【手入力受注】売上区分マスタ絞込み条件の生成(定番特売区分絞込み条件)--
+    IF ( gv_bargain_class                 = cv_bargain_class_all ) THEN
+      gt_qcc_sale_class                   := ct_qcc_sale_class || cv_multi;
+    ELSE
+      gt_qcc_sale_class                   := ct_qcc_sale_class || gv_bargain_class || cv_multi;
+    END IF;
+-- ********** 2010/03/03 1.10 N.Maeda ADD  END  ********** --
 --
     --==================================
     -- 1.データ取得
@@ -1863,6 +2218,9 @@ AS
         AND ( lt_key_deli_center_name     IS NULL )           --センター名
         AND ( lt_key_edi_district_code    IS NULL )           --地区コード
         AND ( lt_key_edi_district_name    IS NULL )           --地区名
+-- ********** 2010/03/03 1.10 N.Maeda ADD START ********** --
+        AND ( lt_key_bargain_class_name   IS NULL )           --定番特売区分名称
+-- ********** 2010/03/03 1.10 N.Maeda ADD  END  ********** --
         AND ( lt_key_schedule_ship_date   IS NULL )           --出荷日
         AND ( lt_key_request_date         IS NULL )           --着日
         AND ( lt_key_inventory_item_id    IS NULL )           --品目ID
@@ -1889,6 +2247,9 @@ AS
           AND ( comp_char( lt_key_deli_center_name, l_data_rec.deli_center_name ) )         --センター名
           AND ( comp_char( lt_key_edi_district_code, l_data_rec.edi_district_code ) )       --地区コード
           AND ( comp_char( lt_key_edi_district_name, l_data_rec.edi_district_name ) )       --地区名
+-- ********** 2010/03/03 1.10 N.Maeda ADD START ********** --
+          AND ( comp_char( lt_key_bargain_class_name, l_data_rec.bargain_class_name ) )     --定番特売区分名称
+-- ********** 2010/03/03 1.10 N.Maeda ADD  END  ********** --
           AND ( comp_date( lt_key_schedule_ship_date, l_data_rec.schedule_ship_date ) )     --出荷日
           AND ( comp_date( lt_key_request_date, l_data_rec.request_date ) )                 --着日
 -- 2010/02/12 Ver1.9 Mod Start *
@@ -1944,6 +2305,9 @@ AS
         AND ( lt_key_deli_center_name     IS NULL )           --センター名
         AND ( lt_key_edi_district_code    IS NULL )           --地区コード
         AND ( lt_key_edi_district_name    IS NULL )           --地区名
+-- ********** 2010/03/03 1.10 N.Maeda ADD START ********** --
+        AND ( lt_key_bargain_class_name   IS NULL )           --定番特売区分名称
+-- ********** 2010/03/03 1.10 N.Maeda ADD  END  ********** --
         AND ( lt_key_schedule_ship_date   IS NULL )           --出荷日
         AND ( lt_key_request_date         IS NULL )           --着日
         AND ( lt_key_inventory_item_id    IS NULL )           --品目ID
@@ -2396,8 +2760,11 @@ AS
     iv_login_chain_store_code IN      VARCHAR2,         -- 2.チェーン店
     iv_request_date_from      IN      VARCHAR2,         -- 3.着日（From）
     iv_request_date_to        IN      VARCHAR2,         -- 4.着日（To）
+-- ********** 2010/03/03 1.10 N.Maeda ADD START ********** --
+    iv_bargain_class          IN      VARCHAR2,         -- 5.定番特売区分
+-- ********** 2010/03/03 1.10 N.Maeda ADD  END  ********** --
 -- 2010/02/12 Ver1.9 Add Start *
-    iv_sales_output_type      IN      VARCHAR2,         -- 5.売上対象出力区分
+    iv_sales_output_type      IN      VARCHAR2,         -- 6.売上対象出力区分
 -- 2010/02/12 Ver1.9 Add End   *
     ov_errbuf     OUT VARCHAR2,     --   エラー・メッセージ           --# 固定 #
     ov_retcode    OUT VARCHAR2,     --   リターン・コード             --# 固定 #
@@ -2445,8 +2812,11 @@ AS
       iv_login_chain_store_code => iv_login_chain_store_code,   -- 2.チェーン店
       iv_request_date_from      => iv_request_date_from,        -- 3.着日（From）
       iv_request_date_to        => iv_request_date_to,          -- 4.着日（To）
+-- ********** 2010/03/03 1.10 N.Maeda ADD START ********** --
+      iv_bargain_class          => iv_bargain_class,            -- 5.定番特売区分
+-- ********** 2010/03/03 1.10 N.Maeda ADD  END  ********** --
 -- 2010/02/12 Ver1.9 Add Start *
-      iv_sales_output_type      => iv_sales_output_type,        -- 5.売上対象出力区分
+      iv_sales_output_type      => iv_sales_output_type,        -- 6.売上対象出力区分
 -- 2010/02/12 Ver1.9 Add End   *
       ov_errbuf                 => lv_errbuf,                   -- エラー・メッセージ
       ov_retcode                => lv_retcode,                  -- リターン・コード
@@ -2590,7 +2960,10 @@ AS
 -- 2010/02/12 Ver1.9 Add Start *
 --    iv_request_date_to        IN      VARCHAR2          -- 4.着日（To）
     iv_request_date_to        IN      VARCHAR2,         -- 4.着日（To）
-    iv_sales_output_type      IN      VARCHAR2          -- 5.売上対象出力区分
+-- ********** 2010/03/03 1.10 N.Maeda ADD START ********** --
+    iv_bargain_class          IN      VARCHAR2,         -- 5.定番特売区分
+-- ********** 2010/03/03 1.10 N.Maeda ADD  END  ********** --
+    iv_sales_output_type      IN      VARCHAR2         -- 6.売上対象出力区分
 -- 2010/02/12 Ver1.9 Add End   *
   )
 --
@@ -2650,8 +3023,11 @@ AS
       ,iv_login_chain_store_code           -- 2.チェーン店
       ,iv_request_date_from                -- 3.着日（From）
       ,iv_request_date_to                  -- 4.着日（To）
+-- ********** 2010/03/03 1.10 N.Maeda ADD START ********** --
+      ,iv_bargain_class                    -- 5.定番特売区分
+-- ********** 2010/03/03 1.10 N.Maeda ADD  END  ********** --
 -- 2010/02/12 Ver1.9 Add Start *
-      ,iv_sales_output_type                -- 5.売上対象出力区分
+      ,iv_sales_output_type                -- 6.売上対象出力区分
 -- 2010/02/12 Ver1.9 Add End   *
       ,lv_errbuf   -- エラー・メッセージ           --# 固定 #
       ,lv_retcode  -- リターン・コード             --# 固定 #
