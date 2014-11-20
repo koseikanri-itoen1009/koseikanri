@@ -7,7 +7,7 @@ AS
  * Description      : 販売手数料（自販機）の計算結果を情報系システムに
  *                    連携するインターフェースファイルを作成します
  * MD.050           : 情報系システムIFファイル作成-条件別販手販協  MD050_COK_014_A02
- * Version          : 1.5
+ * Version          : 1.6
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -40,6 +40,8 @@ AS
  *                                                     取得するよう修正
  *  2009/03/26    1.5   M.Hiruta         [障害T1_0162] ファイル出力処理において納品数量がNULLである場合
  *                                                     0へ置換するよう修正
+ *  2009/04/17    1.6   K.Yamaguchi      [障害T1_0641] 契約管理テーブルの締め日、支払日がNULLの場合には、
+ *                                                     プロファイル XXCOK1_FB_TERM_NAME の値を使用する。
  *
  *****************************************************************************************/
 --
@@ -88,6 +90,9 @@ AS
   cv_prof_bs_dire_path       CONSTANT VARCHAR2(50)  := 'XXCOK1_BM_SUPPORT_DIRE_PATH';      -- 条件別販手販協ディレクトリオブジェクト
   cv_prof_bs_file_name       CONSTANT VARCHAR2(50)  := 'XXCOK1_BM_SUPPORT_FILE_NAME';      -- 条件別販手販協ファイル名
   cv_prof_uom_code_hon       CONSTANT VARCHAR2(50)  := 'XXCOK1_UOM_CODE_HON';              -- 単位コード(本)
+-- 2009/04/17 Ver.1.6 [障害T1_0641] SCS K.Yamaguchi ADD START
+  cv_prof_fb_term_name       CONSTANT VARCHAR2(50)  := 'XXCOK1_FB_TERM_NAME';              -- FB支払条件
+-- 2009/04/17 Ver.1.6 [障害T1_0641] SCS K.Yamaguchi ADD END
   -- トークン
   cv_token_count             CONSTANT VARCHAR2(5)   := 'COUNT';                            -- 処理件数
   cv_token_business_date     CONSTANT VARCHAR2(30)  := 'BUSINESS_DATE';                    -- 業務日付
@@ -128,6 +133,9 @@ AS
   gt_prof_bs_dire_path      fnd_profile_option_values.profile_option_value%TYPE;    -- 条件別販手販協ディレクトリオブジェクト
   gt_prof_bs_file_name      fnd_profile_option_values.profile_option_value%TYPE;    -- 条件別販手販協ファイル名
   gt_prof_uom_code_hon      fnd_profile_option_values.profile_option_value%TYPE;    -- 単位コード(本)
+-- 2009/04/17 Ver.1.6 [障害T1_0641] SCS K.Yamaguchi ADD START
+  gt_prof_fb_term_name      fnd_profile_option_values.profile_option_value%TYPE;    -- FB支払条件
+-- 2009/04/17 Ver.1.6 [障害T1_0641] SCS K.Yamaguchi ADD END
   -- 変数
   gv_bs_dire_path           VARCHAR2(1000) DEFAULT NULL;                            -- 条件別販手販協ディレクトリパス
   gd_sysdate                DATE           DEFAULT NULL;                            -- システム日付
@@ -426,6 +434,14 @@ AS
       lv_err_profile := cv_prof_uom_code_hon;
       RAISE no_prifile_expt;
     END IF;
+-- 2009/04/17 Ver.1.6 [障害T1_0641] SCS K.Yamaguchi ADD START
+    -- FB支払条件 プロファイルを取得する
+    gt_prof_fb_term_name := FND_PROFILE.VALUE( cv_prof_fb_term_name );
+    IF( gt_prof_fb_term_name IS NULL ) THEN
+      lv_err_profile := cv_prof_fb_term_name;
+      RAISE no_prifile_expt;
+    END IF;
+-- 2009/04/17 Ver.1.6 [障害T1_0641] SCS K.Yamaguchi ADD END
     -- ディレクトリオブジェクトよりパスを取得する
     gv_bs_dire_path := xxcok_common_pkg.get_directory_path_f(
                          iv_directory_name => gt_prof_bs_dire_path
@@ -622,9 +638,20 @@ AS
   BEGIN
     -- ステータス初期化
     ov_retcode := cv_status_normal;
-    -- 取得したデータを結合し支払条件を設定する
-    lv_pay_cond := gt_cust_info_tab( in_ci_cnt ).close_day_code    || '_' ||
-                   gt_cust_info_tab( in_ci_cnt ).transfer_day_code || '_' || cv_00;
+-- 2009/04/17 Ver.1.6 [障害T1_0641] SCS K.Yamaguchi REPAIR START
+--    -- 取得したデータを結合し支払条件を設定する
+--    lv_pay_cond := gt_cust_info_tab( in_ci_cnt ).close_day_code    || '_' ||
+--                   gt_cust_info_tab( in_ci_cnt ).transfer_day_code || '_' || cv_00;
+    IF(    ( gt_cust_info_tab( in_ci_cnt ).close_day_code    IS NULL )
+        OR ( gt_cust_info_tab( in_ci_cnt ).transfer_day_code IS NULL )
+    ) THEN
+      lv_pay_cond := gt_prof_fb_term_name;
+    ELSE
+      -- 取得したデータを結合し支払条件を設定する
+      lv_pay_cond := gt_cust_info_tab( in_ci_cnt ).close_day_code    || '_' ||
+                     gt_cust_info_tab( in_ci_cnt ).transfer_day_code || '_' || cv_00;
+    END IF;
+-- 2009/04/17 Ver.1.6 [障害T1_0641] SCS K.Yamaguchi REPAIR END
     -- 業務処理日付－２営業日を取得する
     ld_business_date := xxcok_common_pkg.get_operating_day_f(
                           id_proc_date => gd_business_date     -- 処理日
