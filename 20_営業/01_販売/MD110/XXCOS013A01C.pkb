@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCOS013A01C (body)
  * Description      : 販売実績情報より仕訳情報を作成し、AR請求取引に連携する処理
  * MD.050           : ARへの販売実績データ連携 MD050_COS_013_A01
- * Version          : 1.4
+ * Version          : 1.5
  * Program List
  * ----------------------------------------------------------------------------------------
  *  Name                   Description
@@ -33,6 +33,8 @@ AS
  *  2009/02/23    1.3   R.HAN            税コードの結合条件を追加
  *  2009/03/25    1.4   K.KIN            T1_0015、T1_0019、T1_0052、T1_0053、
  *                                       T1_0056、T1_0057、T1_0144対応
+ *  2009/03/25    1.5   K.KIN            T1_0407
+ *
  *****************************************************************************************/
 --
 --#######################  固定グローバル定数宣言部 START  ###############################
@@ -1960,6 +1962,10 @@ gt_bulk_card_tbl              g_sales_exp_ttype;                                
                                                         -- 通貨
         gt_ar_interface_tbl( ln_ar_idx ).amount         := ln_amount;
                                                         -- 収益行：本体金額
+        IF ( gt_sales_norm_tbl2( ln_trx_idx ).tax_code = gt_in_tax_cls ) THEN
+          --外税時、金額は本体＋税金
+          gt_ar_interface_tbl( ln_ar_idx ).amount       := ln_amount + ln_tax;
+        END IF;
         gt_ar_interface_tbl( ln_ar_idx ).cust_trx_type_name
                                                         := lv_trx_type_nm;
                                                         -- 取引タイプ名
@@ -3346,6 +3352,10 @@ gt_bulk_card_tbl              g_sales_exp_ttype;                                
                                                         -- 通貨
         gt_ar_interface_tbl( ln_ar_idx ).amount         := ln_amount;
                                                         -- 収益行：本体金額
+        IF ( gt_sales_bulk_tbl2( ln_trx_idx ).tax_code = gt_in_tax_cls ) THEN
+          --外税時、金額は本体＋税金
+          gt_ar_interface_tbl( ln_ar_idx ).amount       := ln_amount + ln_tax;
+        END IF;
         gt_ar_interface_tbl( ln_ar_idx ).cust_trx_type_name
                                                         := lv_trx_type_nm;
                                                         -- 取引タイプ名
