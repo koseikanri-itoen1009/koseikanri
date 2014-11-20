@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCFO019A07C(body)
  * Description      : 電子帳簿AR入金の情報系システム連携
  * MD.050           : 電子帳簿AR入金の情報系システム連携 <MD050_CFO_019_A07>
- * Version          : 1.4
+ * Version          : 1.5
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -32,6 +32,7 @@ AS
  *  2012-10-16    1.2   N.Sugiura      結合テスト障害対応[障害No30:入金履歴テーブルの結合条件誤り]
  *  2012-10-17    1.3   N.Sugiura      結合テスト障害対応[障害No31:消込テーブルの条件不足]
  *  2012-11-13    1.4   N.Sugiura      結合テスト障害対応[障害No40:手動実行時の入金データ、消込データ取得方法変更]
+ *  2012-12-18    1.5   T.Ishiwata     性能改善
  *
  *****************************************************************************************/
 --
@@ -2026,6 +2027,7 @@ AS
     -- 対象データ取得カーソル(定期実行)
     CURSOR get_fixed_period_cur
     IS
+      -- 管理テーブルデータ：入金
       SELECT /*+ LEADING(acrh acrh2 acr) USE_NL(acrh acr acrh2 abaa abb arm) INDEX(acrh ar_cash_receipt_history_u1)
                  INDEX(acrh ar_cash_receipt_history_u2) INDEX(abaa ap_bank_accounts_u1) INDEX(abb ap_bank_branches_u1)
                  INDEX(arm ar_receipt_methods_u1) */
@@ -2118,9 +2120,19 @@ AS
         AND acrh.org_id                        = gn_org_id
         AND acrh.cash_receipt_history_id BETWEEN gn_cash_id_from AND gn_cash_id_to
       UNION ALL
-      SELECT /*+ LEADING(acrh acr araa) USE_NL(acrh acr araa abaa abb arm) INDEX(acrh ar_cash_receipt_history_u1)
-                 INDEX(acrh ar_cash_receipt_history_u2) INDEX(abaa ap_bank_accounts_u1) INDEX(abb ap_bank_branches_u1)
+--2012/12/18 Ver.1.5 Mod Start
+      -- 管理テーブルデータ：消込
+--      SELECT /*+ LEADING(acrh acr araa) USE_NL(acrh acr araa abaa abb arm) INDEX(acrh ar_cash_receipt_history_u1)
+--                 INDEX(acrh ar_cash_receipt_history_u2) INDEX(abaa ap_bank_accounts_u1) INDEX(abb ap_bank_branches_u1)
+--                 INDEX(arm ar_receipt_methods_u1) */
+      SELECT /*+ LEADING(araa acrh acr)
+                 USE_NL(acrh acr araa abaa abb arm)
+                 INDEX(acrh ar_cash_receipt_history_u1)
+                 INDEX(acrh ar_cash_receipt_history_u2)
+                 INDEX(abaa ap_bank_accounts_u1)
+                 INDEX(abb ap_bank_branches_u1)
                  INDEX(arm ar_receipt_methods_u1) */
+--2012/12/18 Ver.1.5 Mod End
              gt_recon_meaning                    AS cash_recon_type               -- タイプ(固定値：消込)
             ,acr.cash_receipt_id                 AS cash_receipt_id               -- 入金ID
             ,TO_CHAR(araa.gl_date
@@ -2207,9 +2219,19 @@ AS
         AND araa.application_type          = cv_cash
         AND araa.receivable_application_id BETWEEN gn_recon_id_from AND gn_recon_id_to
       UNION ALL
-      SELECT  /*+ LEADING(acrh acrh2 acr) USE_NL(acrh acr acrh2 abaa abb arm) INDEX(acrh ar_cash_receipt_history_u1)
-                 INDEX(acrh ar_cash_receipt_history_u2) INDEX(abaa ap_bank_accounts_u1) INDEX(abb ap_bank_branches_u1)
-                 INDEX(arm ar_receipt_methods_u1) */
+--2012/12/18 Ver.1.5 Mod Start
+      -- 未連携テーブルデータ：入金
+--      SELECT  /*+ LEADING(acrh acrh2 acr) USE_NL(acrh acr acrh2 abaa abb arm) INDEX(acrh ar_cash_receipt_history_u1)
+--                 INDEX(acrh ar_cash_receipt_history_u2) INDEX(abaa ap_bank_accounts_u1) INDEX(abb ap_bank_branches_u1)
+--                 INDEX(arm ar_receipt_methods_u1) */
+      SELECT  /*+ LEADING(xacwc acrh acrh2 acr) 
+                  USE_NL(acrh acr acrh2 abaa abb arm) 
+                  INDEX(acrh ar_cash_receipt_history_u1)
+                  INDEX(acrh ar_cash_receipt_history_u2)
+                  INDEX(abaa ap_bank_accounts_u1)
+                  INDEX(abb ap_bank_branches_u1)
+                  INDEX(arm ar_receipt_methods_u1) */
+--2012/12/18 Ver.1.5 Mod End
              gt_cash_receipt_meaning             AS cash_recon_type               -- タイプ(固定値：入金)
             ,acr.cash_receipt_id                 AS cash_receipt_id               -- 入金ID
             ,TO_CHAR(acrh.gl_date
@@ -2301,9 +2323,18 @@ AS
         AND xacwc.control_id                   = acrh.cash_receipt_history_id
         AND acrh.org_id                        = gn_org_id
       UNION ALL
-      SELECT /*+ LEADING(acrh acr araa) USE_NL(acrh acr araa abaa abb arm) INDEX(acrh ar_cash_receipt_history_u1)
-                 INDEX(acrh ar_cash_receipt_history_u2) INDEX(abaa ap_bank_accounts_u1) INDEX(abb ap_bank_branches_u1)
+--2012/12/18 Ver.1.5 Mod Start
+      --未連携テーブルデータ：消込
+--      SELECT /*+ LEADING(acrh acr araa) USE_NL(acrh acr araa abaa abb arm) INDEX(acrh ar_cash_receipt_history_u1)
+--                 INDEX(acrh ar_cash_receipt_history_u2) INDEX(abaa ap_bank_accounts_u1) INDEX(abb ap_bank_branches_u1)
+--                 INDEX(arm ar_receipt_methods_u1) */
+      SELECT /*+ LEADING(xacwc araa)
+                 USE_NL(acrh acr araa abaa abb arm)
+                 INDEX(acrh ar_cash_receipt_history_u1)
+                 INDEX(acrh ar_cash_receipt_history_u2)
+                 INDEX(abaa ap_bank_accounts_u1) INDEX(abb ap_bank_branches_u1)
                  INDEX(arm ar_receipt_methods_u1) */
+--2012/12/18 Ver.1.5 Mod ENd
              gt_recon_meaning                    AS cash_recon_type               -- タイプ(固定値：消込)
             ,acr.cash_receipt_id                 AS cash_receipt_id               -- 入金ID
             ,TO_CHAR(araa.gl_date
@@ -4691,7 +4722,11 @@ AS
       ;
 --
       --当日作成された消込IDの最大値を取得
-      SELECT NVL(MAX(araa.receivable_application_id), ln_recon_ctl_id) AS receivable_application_id
+--2012/12/18 Ver.1.5 Mod Start
+--      SELECT NVL(MAX(araa.receivable_application_id), ln_recon_ctl_id) AS receivable_application_id
+      SELECT /*+ INDEX(araa AR_RECEIVABLE_APPLICATIONS_U1) */
+             NVL(MAX(araa.receivable_application_id), ln_recon_ctl_id) AS receivable_application_id
+--2012/12/18 Ver.1.5 Mod End
         INTO ln_receivable_application_id
         FROM ar_receivable_applications_all araa
        WHERE araa.receivable_application_id > ln_recon_ctl_id

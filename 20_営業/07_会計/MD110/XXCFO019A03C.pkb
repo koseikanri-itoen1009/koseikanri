@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCFO019A03C(body)
  * Description      : 電子帳簿販売実績の情報系システム連携
  * MD.050           : 電子帳簿販売実績の情報系システム連携 <MD050_CFO_019_A03>
- * Version          : 1.2
+ * Version          : 1.3
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -32,6 +32,7 @@ AS
  *  2012/08/27    1.0   T.Osawa          新規作成
  *  2012/10/31    1.1   N.Sugiura        [結合テスト障害No29] エラー内容を出力ファイルに出力する
  *  2012/11/28    1.2   T.Osawa          管理テーブル更新、ＡＲ取引取得エラー
+ *  2012/12/18    1.3   T.Ishiwata       性能改善対応
  *
  *****************************************************************************************/
 --
@@ -2310,7 +2311,12 @@ AS
     -- 販売実績（定期実行）
     CURSOR get_sales_exp_fixed_cur
     IS
-      SELECT    '1'                                     AS  data_type                           --データタイプ
+-- 2012/12/18 Ver.1.3 Mod Start
+--      SELECT    '1'                                     AS  data_type                           --データタイプ
+      -- 管理テーブルからの対象データ
+      SELECT  /*+ LEADING(xseh) USE_NL(xseh xsel) INDEX(xseh XXCOS_SALES_EXP_HEADERS_PK) */
+                '1'                                     AS  data_type                           --データタイプ
+-- 2012/12/18 Ver.1.3 Mod End
               -- XXCOS_SALES_EXP_LINE（販売実績ヘッダ）
               , xseh.sales_exp_header_id                AS  sales_exp_header_id                 --販売実績ヘッダID
               , xseh.dlv_invoice_number                 AS  dlv_invoice_number                  --納品伝票番号
@@ -2554,7 +2560,12 @@ AS
       AND       xseh.sales_exp_header_id                >=        gt_id_from + 1
       AND       xseh.sales_exp_header_id                <=        gt_id_to  
       UNION ALL
-      SELECT    '2'                                     AS  data_type                           --データタイプ（未連携）
+-- 2012/12/18 Ver.1.3 Mod Start
+--      SELECT    '2'                                     AS  data_type                           --データタイプ（未連携）
+      -- 未連携テーブルからの対象データ
+      SELECT  /*+ LEADING(xsew xseh xsel) USE_NL(xsew xseh xsel)   */
+                '2'                                     AS  data_type                           --データタイプ（未連携）
+-- 2012/12/18 Ver.1.3 Mod End
               -- XXCOS_SALES_EXP_LINE（販売実績ヘッダ）
               , xseh.sales_exp_header_id                AS  sales_exp_header_id                 --販売実績ヘッダID
               , xseh.dlv_invoice_number                 AS  dlv_invoice_number                  --納品伝票番号
@@ -3391,8 +3402,13 @@ AS
 --      INTO      lt_sales_exp_header_id_max
 --      FROM      xxcos_sales_exp_headers         xseh
 --      WHERE     xseh.business_date              <=      gd_prdate
-        SELECT    NVL(MAX(xseh.sales_exp_header_id), ln_ctl_max_sales_exp_header_id)   
+-- 2012/12/18 Ver.1.3 Mod Start
+--        SELECT    NVL(MAX(xseh.sales_exp_header_id), ln_ctl_max_sales_exp_header_id)   
+--                                                  AS    max_sales_exp_header_id
+        SELECT /*+ INDEX(xseh XXCOS_SALES_EXP_HEADERS_PK) */
+                  NVL(MAX(xseh.sales_exp_header_id), ln_ctl_max_sales_exp_header_id)   
                                                   AS    max_sales_exp_header_id
+-- 2012/12/18 Ver.1.3 Mod End
         INTO      lt_sales_exp_header_id_max
         FROM      xxcos_sales_exp_headers         xseh
         WHERE     xseh.sales_exp_header_id        >       ln_ctl_max_sales_exp_header_id
