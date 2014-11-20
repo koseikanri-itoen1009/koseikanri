@@ -7,7 +7,7 @@ AS
  * Package Name     : XXCFF010A16C(body)
  * Description      : リース仕訳作成
  * MD.050           : MD050_CFF_010_A16_リース仕訳作成
- * Version          : 1.4
+ * Version          : 1.5
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -49,6 +49,7 @@ AS
  *  2009/04/17    1.2   SCS礒崎祐次      [障害T1_0356]リース料部門賦課仕訳の配賦先部門の取得先変更対応
  *  2009/05/14    1.3   SCS礒崎祐次      [障害T1_0874]資産仕訳時の設定内容変更対応
  *  2009/05/26    1.4   SCS松中俊樹      [障害T1_1157]振替時の控除額から消費税分を削除
+ *  2009/05/27    1.5   SCS山岸謙一      [障害T1_1223]顧客コードの仕訳への設定は自販機のみとする改修
  *
  *****************************************************************************************/
 --
@@ -587,7 +588,12 @@ AS
            ,pay_plan.period_name             AS period_name        -- 会計期間
            ,ctrct_line.lease_kind            AS lease_kind         -- リース種類
            ,obj_head.lease_class             AS lease_class        -- リース種別
-           ,les_class_v.vdsh_flag            AS vdsh_flag          -- 自販機SHフラグ
+           -- T1_1223 2009/05/27 MOD START
+           --,les_class_v.vdsh_flag            AS vdsh_flag          -- 自販機SHフラグ
+           ,(case when les_class_v.vdsh_flag = 'Y'
+                   and les_class_v.vd_cust_flag = 'Y' then
+                       'Y' else 'N' end)     AS vdsh_flag          -- 自販機SHフラグ
+           -- T1_1223 2009/05/27 MOD END
            ,ctrct_head.lease_type            AS lease_type         -- リース区分
            ,obj_head.department_code         AS department_code    -- 管理部門
            ,obj_head.owner_company           AS owner_company      -- 本社工場区分
