@@ -10,7 +10,7 @@ AS
  *                    順に表示します。(ルートNoを表示します。)
  *                     日付欄の右端に1日の件数を表示します。
  * MD.050           : MD050_CSO_019_A06_訪問総合管理表
- * Version          : 1.1
+ * Version          : 1.3
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -37,7 +37,7 @@ AS
  *  2009-03-03    1.1   Kazuyo.Hosoi     SVF起動API埋め込み
  *  2009-03-11    1.1   Kazuyo.Hosoi     【障害対応047】顧客区分、ステータス抽出条件変更
  *  2009-05-01    1.2   Tomoko.Mori      T1_0897対応
- *
+ *  2009-05-11    1.3   Kazuo.Satomura   T1_0926対応
  *****************************************************************************************/
 --
 --#######################  固定グローバル定数宣言部 START   #######################
@@ -157,7 +157,10 @@ AS
   gd_day_6               DATE;                         -- 土曜日-日
   gd_day_7               DATE;                         -- 日曜日-日
 --
-  gn_cnt                 NUMBER DEFAULT 0;             -- 配列用カウンタ
+  /* 2009.05.11 K.Satomura T1_0926対応 START */
+  --gn_cnt                 NUMBER DEFAULT 0;             -- 配列用カウンタ
+  gn_cnt                 NUMBER DEFAULT 1;             -- 配列用カウンタ
+  /* 2009.05.11 K.Satomura T1_0926対応 END */
   -- ===============================
   -- ユーザー定義グローバル型
   -- ===============================
@@ -708,14 +711,31 @@ AS
     -- 軒数計の更新
     -- ======================
     -- 総件数のカウントアップ
-    gn_total_count := gn_total_count + 1;
+    /* 2009.05.11 K.Satomura T1_0926対応 START */
+    --gn_total_count := gn_total_count + 1;
+    IF (i_prsn_dt_vst_pln_rec.account_number IS NOT NULL) THEN
+      gn_total_count := gn_total_count + 1;
+      --
+    END IF;
+    /* 2009.05.11 K.Satomura T1_0926対応 END */
 --
     -- 軒数計のカウントアップ
     -- 月曜日の場合
     IF (lv_visit_dayname = cv_visit_dayname_mon) THEN
-      gn_total_count_1 := gn_total_count_1 + 1;
-      -- 配列用カウンタへ格納
-      gn_cnt := gn_total_count_1;
+      /* 2009.05.11 K.Satomura T1_0926対応 START */
+      --gn_total_count_1 := gn_total_count_1 + 1;
+      ---- 配列用カウンタへ格納
+      --gn_cnt := gn_total_count_1;
+      IF (i_prsn_dt_vst_pln_rec.account_number IS NOT NULL) THEN
+        gn_total_count_1 := gn_total_count_1 + 1;
+        gn_cnt           := gn_total_count_1;
+        --
+      ELSE
+        gn_cnt := 1;
+        --
+      END IF;
+      --
+      /* 2009.05.11 K.Satomura T1_0926対応 END */
       -- 配列へのデータ格納
       g_rep_vst_rt_mng_tab(gn_cnt).line_num         := gn_cnt;                                -- 行番号
       gd_day_1                                      := id_base_date;                          -- 日
@@ -725,9 +745,20 @@ AS
 --
     -- 火曜日の場合
     ELSIF (lv_visit_dayname = cv_visit_dayname_tue) THEN
-      gn_total_count_2 := gn_total_count_2 + 1;
-      -- 配列用カウンタへ格納
-      gn_cnt := gn_total_count_2;
+      /* 2009.05.11 K.Satomura T1_0926対応 START */
+      --gn_total_count_2 := gn_total_count_2 + 1;
+      ---- 配列用カウンタへ格納
+      --gn_cnt := gn_total_count_2;
+      IF (i_prsn_dt_vst_pln_rec.account_number IS NOT NULL) THEN
+        gn_total_count_2 := gn_total_count_2 + 1;
+        gn_cnt           := gn_total_count_2;
+        --
+      ELSE
+        gn_cnt := 1;
+        --
+      END IF;
+      --
+      /* 2009.05.11 K.Satomura T1_0926対応 END */
       -- 配列へのデータ格納
       g_rep_vst_rt_mng_tab(gn_cnt).line_num         := gn_cnt;                                -- 行番号
       gd_day_2                                      := id_base_date;                          -- 日
@@ -737,9 +768,20 @@ AS
 --
     -- 水曜日の場合
     ELSIF (lv_visit_dayname = cv_visit_dayname_wed) THEN
-      gn_total_count_3 := gn_total_count_3 + 1;
-      -- 配列用カウンタへ格納
-      gn_cnt := gn_total_count_3;
+      /* 2009.05.11 K.Satomura T1_0926対応 START */
+      --gn_total_count_3 := gn_total_count_3 + 1;
+      ---- 配列用カウンタへ格納
+      --gn_cnt := gn_total_count_3;
+      IF (i_prsn_dt_vst_pln_rec.account_number IS NOT NULL) THEN
+        gn_total_count_3 := gn_total_count_3 + 1;
+        gn_cnt           := gn_total_count_3;
+        --
+      ELSE
+        gn_cnt := 1;
+        --
+      END IF;
+      --
+      /* 2009.05.11 K.Satomura T1_0926対応 END */
       -- 配列へのデータ格納
       g_rep_vst_rt_mng_tab(gn_cnt).line_num         := gn_cnt;                                -- 行番号
       gd_day_3                                      := id_base_date;                          -- 日
@@ -749,9 +791,20 @@ AS
 --
     -- 木曜日の場合
     ELSIF (lv_visit_dayname = cv_visit_dayname_thu) THEN
-      gn_total_count_4 := gn_total_count_4 + 1;
-      -- 配列用カウンタへ格納
-      gn_cnt := gn_total_count_4;
+      /* 2009.05.11 K.Satomura T1_0926対応 START */
+      --gn_total_count_4 := gn_total_count_4 + 1;
+      ---- 配列用カウンタへ格納
+      --gn_cnt := gn_total_count_4;
+      IF (i_prsn_dt_vst_pln_rec.account_number IS NOT NULL) THEN
+        gn_total_count_4 := gn_total_count_4 + 1;
+        gn_cnt           := gn_total_count_4;
+        --
+      ELSE
+        gn_cnt := 1;
+        --
+      END IF;
+      --
+      /* 2009.05.11 K.Satomura T1_0926対応 END */
       -- 配列へのデータ格納
       g_rep_vst_rt_mng_tab(gn_cnt).line_num         := gn_cnt;                                -- 行番号
       gd_day_4                                      := id_base_date;                          -- 日
@@ -761,9 +814,20 @@ AS
 --
     -- 金曜日の場合
     ELSIF (lv_visit_dayname = cv_visit_dayname_fri) THEN
-      gn_total_count_5 := gn_total_count_5 + 1;
-      -- 配列用カウンタへ格納
-      gn_cnt := gn_total_count_5;
+      /* 2009.05.11 K.Satomura T1_0926対応 START */
+      --gn_total_count_5 := gn_total_count_5 + 1;
+      ---- 配列用カウンタへ格納
+      --gn_cnt := gn_total_count_5;
+      IF (i_prsn_dt_vst_pln_rec.account_number IS NOT NULL) THEN
+        gn_total_count_5 := gn_total_count_5 + 1;
+        gn_cnt           := gn_total_count_5;
+        --
+      ELSE
+        gn_cnt := 1;
+        --
+      END IF;
+      --
+      /* 2009.05.11 K.Satomura T1_0926対応 END */
       -- 配列へのデータ格納
       g_rep_vst_rt_mng_tab(gn_cnt).line_num         := gn_cnt;                                -- 行番号
       gd_day_5                                      := id_base_date;                          -- 日
@@ -773,9 +837,20 @@ AS
 --
     -- 土曜日の場合
     ELSIF (lv_visit_dayname = cv_visit_dayname_sat) THEN
-      gn_total_count_6 := gn_total_count_6 + 1;
-      -- 配列用カウンタへ格納
-      gn_cnt := gn_total_count_6;
+      /* 2009.05.11 K.Satomura T1_0926対応 START */
+      --gn_total_count_6 := gn_total_count_6 + 1;
+      ---- 配列用カウンタへ格納
+      --gn_cnt := gn_total_count_6;
+      IF (i_prsn_dt_vst_pln_rec.account_number IS NOT NULL) THEN
+        gn_total_count_6 := gn_total_count_6 + 1;
+        gn_cnt           := gn_total_count_6;
+        --
+      ELSE
+        gn_cnt := 1;
+        --
+      END IF;
+      --
+      /* 2009.05.11 K.Satomura T1_0926対応 END */
       -- 配列へのデータ格納
       g_rep_vst_rt_mng_tab(gn_cnt).line_num         := gn_cnt;                                -- 行番号
       gd_day_6                                      := id_base_date;                          -- 日
@@ -785,9 +860,20 @@ AS
 --
     -- 日曜日の場合
     ELSIF (lv_visit_dayname = cv_visit_dayname_sun) THEN
-      gn_total_count_7 := gn_total_count_7 + 1;
-      -- 配列用カウンタへ格納
-      gn_cnt := gn_total_count_7;
+      /* 2009.05.11 K.Satomura T1_0926対応 START */
+      --gn_total_count_7 := gn_total_count_7 + 1;
+      ---- 配列用カウンタへ格納
+      --gn_cnt := gn_total_count_7;
+      IF (i_prsn_dt_vst_pln_rec.account_number IS NOT NULL) THEN
+        gn_total_count_7 := gn_total_count_7 + 1;
+        gn_cnt           := gn_total_count_7;
+        --
+      ELSE
+        gn_cnt := 1;
+        --
+      END IF;
+      --
+      /* 2009.05.11 K.Satomura T1_0926対応 END */
       -- 配列へのデータ格納
       g_rep_vst_rt_mng_tab(gn_cnt).line_num         := gn_cnt;                                -- 行番号
       gd_day_7                                      := id_base_date;                          -- 日
@@ -870,7 +956,10 @@ AS
 --
     BEGIN
       <<insert_row_loop>>
-      FOR i IN 1..g_rep_vst_rt_mng_tab.COUNT LOOP
+      /* 2009.05.11 K.Satomura T1_0926対応 START */
+      --FOR i IN 1..g_rep_vst_rt_mng_tab.COUNT LOOP
+      FOR i IN g_rep_vst_rt_mng_tab.FIRST..g_rep_vst_rt_mng_tab.LAST LOOP
+      /* 2009.05.11 K.Satomura T1_0926対応 END */
         -- ======================
         -- ワークテーブルデータ登録
         -- ======================
@@ -1306,6 +1395,9 @@ AS
     lv_errbuf_svf     VARCHAR2(5000);   -- エラー・メッセージ
     lv_retcode_svf    VARCHAR2(1);      -- リターン・コード
     lv_errmsg_svf     VARCHAR2(5000);   -- ユーザー・エラー・メッセージ
+    /* 2009.05.11 K.Satomura T1_0926対応 START */
+    ln_day_count      NUMBER; -- 各曜日単位の訪問件数
+    /* 2009.05.11 K.Satomura T1_0926対応 END */
     -- *** ローカル・カーソル ***
     -- 営業員別時間別訪問実績 抽出カーソル 
     CURSOR get_prsn_dt_vst_pln_cur(
@@ -1396,6 +1488,9 @@ AS
     gn_target_cnt := 0;
     gn_normal_cnt := 0;
     gn_error_cnt  := 0;
+    /* 2009.05.11 K.Satomura T1_0926対応 START */
+    g_rep_vst_rt_mng_tab.DELETE;
+    /* 2009.05.11 K.Satomura T1_0926対応 END */
 --
     -- ========================================
     -- A-1.初期処理
@@ -1463,6 +1558,9 @@ AS
         ld_base_date := ld_base_date + 1;
       END IF;
 --
+      /* 2009.05.11 K.Satomura T1_0926対応 START */
+      ln_day_count := 0;
+      /* 2009.05.11 K.Satomura T1_0926対応 END */
       -- カーソルオープン
       OPEN  get_prsn_dt_vst_pln_cur(
                id_base_date        => ld_base_date        -- ループ用基準日
@@ -1491,6 +1589,9 @@ AS
 --
         -- 処理対象件数カウントアップ
         gn_target_cnt := gn_target_cnt + 1;
+        /* 2009.05.11 K.Satomura T1_0926対応 START */
+        ln_day_count  := ln_day_count + 1;
+        /* 2009.05.11 K.Satomura T1_0926対応 END */
 --
         -- レコード変数初期化
         l_prsn_dt_vst_pln_rec := NULL;
@@ -1518,6 +1619,29 @@ AS
       END LOOP get_prsn_dt_vst_pln_loop2;
       -- カーソルクローズ
       CLOSE get_prsn_dt_vst_pln_cur;
+      /* 2009.05.11 K.Satomura T1_0926対応 START */
+      IF (ln_day_count = 0) THEN
+        -- 現在対象となっている曜日の訪問実績が存在しない場合、日付のみ出力する。
+        l_prsn_dt_vst_pln_rec := NULL;
+        --
+        -- ========================================
+        -- A-5.配列の追加、更新
+        -- ========================================
+        ins_upd_lines(
+           id_base_date           => ld_base_date          -- ループ用基準日
+          ,i_prsn_dt_vst_pln_rec  => l_prsn_dt_vst_pln_rec -- 営業員別日別訪問計画データ
+          ,ov_errbuf              => lv_errbuf             -- エラー・メッセージ            --# 固定 #
+          ,ov_retcode             => lv_retcode            -- リターン・コード              --# 固定 #
+          ,ov_errmsg              => lv_errmsg             -- ユーザー・エラー・メッセージ  --# 固定 #
+        );
+        --
+        IF (lv_retcode = cv_status_error) THEN
+          RAISE global_process_expt;
+        END IF;
+        --
+      END IF;
+      --
+      /* 2009.05.11 K.Satomura T1_0926対応 END */
       -- LOOP件数をカウントアップ
       ln_loop_cnt := ln_loop_cnt + 1;
 --
@@ -1578,7 +1702,7 @@ AS
         ,ov_retcode    => lv_retcode                   -- リターン・コード              --# 固定 #
         ,ov_errmsg     => lv_errmsg                    -- ユーザー・エラー・メッセージ  --# 固定 #
       );
---
+
       IF (lv_retcode = cv_status_error) THEN
         RAISE global_process_expt;
       END IF;
