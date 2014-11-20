@@ -66,6 +66,7 @@ AS
  *                                       国際CSV取込時「締め時間」「オーダーNo」「出荷日」の任意項目化、配送先コード取得処理の削除
  *  2009/12/07          N.Maeda          [E_本稼動_00086] 出荷予定日の導出条件修正
  *  2009/12/16    1.16  N.Maeda          [E_本稼動_00495] 締め時間のNULL判定用IF文設定箇所修正
+ *  2009/12/28    1.17  N.Maeda          [E_本稼動_00683]出荷予定日取得関数による翌稼働日算出の追加。
  *
  *****************************************************************************************/
 --
@@ -3364,6 +3365,9 @@ AS
     -- ユーザー宣言部
     -- ===============================
     -- *** ローカル定数 ***
+-- ****** 2009/12/28 1.17 N.Maeda ADD START ****** --
+    cn_type           CONSTANT NUMBER := 1;
+-- ****** 2009/12/28 1.17 N.Maeda ADD  END  ****** --
     -- *** ローカル変数 ***
     ln_ret            NUMBER;
     --
@@ -3383,6 +3387,9 @@ AS
     lv_warehous_name     VARCHAR2(50);    --作業用
     lv_read_name         VARCHAR2(50);    --作業用
     lv_item_class_name   VARCHAR2(50);    --作業用
+-- ****** 2009/12/28 1.17 N.Maeda ADD START ****** --
+    ld_work_day     DATE;            --翌稼動日付
+-- ****** 2009/12/28 1.17 N.Maeda ADD  END  ****** --
     -- *** ローカル・カーソル ***
     -- *** ローカル・レコード ***
 --
@@ -3716,20 +3723,48 @@ AS
     );
 -- ************** 2009/10/30 1.13 N.Maeda ADD  END  ************** --
 --
-    ---------------------------
-    --7.出荷予定日
-    ---------------------------
-    ln_ret := xxwsh_common_pkg.get_oprtn_day(
-      id_date            => id_delivery_date,   -- 1.<納品日>
-      iv_whse_code       => NULL,               -- 2.<出荷先保管場所 >
-      iv_deliver_to_code => iv_delivery_code,   -- 3.<配送先コード>
-      in_lead_time       => ln_delivery_lt,     -- 4.<配送LT >
-      iv_prod_class      => iv_item_class_code, -- 5.<商品区分コード >
-      od_oprtn_day       => od_ship_due_date    -- 1.<出荷予定日    >
-    );
-    IF (ln_ret != cv_status_normal )THEN
-      RAISE global_operation_day_err_expt;
+-- ****** 2009/12/28 1.17 N.Maeda ADD START ****** --
+   -- 配送LTが0であった場合、出荷予定日 = 納品日
+    IF ( ln_delivery_lt = 0 ) THEN
+      od_ship_due_date := id_delivery_date;
+    ELSE
+      ---------------------------
+      -- 出荷予定日算出用日付取得
+      ---------------------------
+      ln_ret := xxwsh_common_pkg.get_oprtn_day(
+        id_date            => id_delivery_date,   -- 1.<納品日>
+        iv_whse_code       => NULL,               -- 2.<出荷先保管場所 >
+        iv_deliver_to_code => iv_delivery_code,   -- 3.<配送先コード>
+        in_lead_time       => 0,                  -- 4.<配送LT >
+        iv_prod_class      => iv_item_class_code, -- 5.<商品区分コード >
+        in_type            => cn_type,             -- 
+        od_oprtn_day       => ld_work_day        -- 1.<翌稼働日日付>
+        );
+      IF (ln_ret != cv_status_normal )THEN
+        RAISE global_operation_day_err_expt;
+      END IF;
+--
+-- ****** 2009/12/28 1.17 N.Maeda ADD  END  ****** --
+      ---------------------------
+      --7.出荷予定日
+      ---------------------------
+      ln_ret := xxwsh_common_pkg.get_oprtn_day(
+-- ****** 2009/12/28 1.17 N.Maeda MOD START ****** --
+--        id_date            => id_delivery_date,   -- 1.<納品日>
+        id_date            => ld_work_day     ,   -- 1.<納品日>
+-- ****** 2009/12/28 1.17 N.Maeda MOD  END  ****** --
+        iv_whse_code       => NULL,               -- 2.<出荷先保管場所 >
+        iv_deliver_to_code => iv_delivery_code,   -- 3.<配送先コード>
+        in_lead_time       => ln_delivery_lt,     -- 4.<配送LT >
+        iv_prod_class      => iv_item_class_code, -- 5.<商品区分コード >
+        od_oprtn_day       => od_ship_due_date    -- 1.<出荷予定日    >
+        );
+      IF (ln_ret != cv_status_normal )THEN
+        RAISE global_operation_day_err_expt;
+      END IF;
+-- ****** 2009/12/28 1.17 N.Maeda ADD START ****** --
     END IF;
+-- ****** 2009/12/28 1.17 N.Maeda ADD  END  ****** --
   EXCEPTION
     --物流構成アドオンマスタ
     WHEN global_ship_due_date_expt THEN
