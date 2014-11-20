@@ -8,7 +8,7 @@ AS
  *                    その結果を発注依頼に返します。
  * MD.050           : MD050_CSO_011_A01_作業依頼（発注依頼）時のインストールベースチェック機能
  *
- * Version          : 1.31
+ * Version          : 1.32
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -106,6 +106,9 @@ AS
  *                                          (入力チェック区分=10 引揚関連情報入力チェック2)
  *  2010-12-07    1.31 K.Kiriu           【E_本稼動_05751】
  *                                        ・廃棄決裁時の機器状態３のチェックを「NULL、予定無し、廃棄予定以外の場合エラー」に変更
+ *  2013-04-04    1.32 T.Ishiwata        【E_本稼動_10321】
+ *                                        ・新台設置、新台代替のときにAPPS_SOURCE_CODEがNULLかどうかチェックするように変更
+ *
  *****************************************************************************************/
   --
   --#######################  固定グローバル定数宣言部 START   #######################
@@ -265,6 +268,9 @@ AS
   cv_tkn_number_64  CONSTANT VARCHAR2(100) := 'APP-XXCSO1-00599';  -- 作業会社妥当性チェックエラーメッセージ
   cv_tkn_number_65  CONSTANT VARCHAR2(100) := 'APP-XXCSO1-00600';  -- 作業希望日妥当性チェックエラーメッセージ
   /* 2010.03.08 K.Hosoi E_本稼動_01838,01839対応 START */
+  /* 2013.04.04 T.Ishiwata E_本稼動_10321対応 START */
+  cv_tkn_number_66  CONSTANT VARCHAR2(100) := 'APP-XXCSO1-00647';  -- アプリケーションソースコードチェックエラーメッセージ
+  /* 2013.04.04 T.Ishiwata E_本稼動_10321対応 END   */
   --
   -- トークンコード
   cv_tkn_param_nm       CONSTANT VARCHAR2(20) := 'PARAM_NAME';
@@ -507,6 +513,9 @@ AS
     , category_id               xxcso_requisition_lines_v.category_id%TYPE              -- カテゴリID
     , maker_code                po_un_numbers_vl.attribute2%TYPE                        -- メーカコード
 /* 20090708_abe_0000464 END*/
+/* 2013.04.04 T.Ishiwata E_本稼動_10321対応 START */
+    , apps_source_code          po_requisition_headers.apps_source_code%TYPE            -- アプリケーションソースコード
+/* 2013.04.04 T.Ishiwata E_本稼動_10321対応 END   */
   );
   --
   -- 物件情報
@@ -1137,6 +1146,9 @@ AS
               )  maker_code     -- メーカーコード
            /* 2009.12.24 K.Hosoi E_本稼動_00563対応 END */
 /* 20090708_abe_0000464 END*/
+           /* 2013.04.04 T.Ishiwata E_本稼動_10321対応 START */
+           , prh.apps_source_code           apps_source_code          -- アプリケーションソースコード
+           /* 2013.04.04 T.Ishiwata E_本稼動_10321対応 END   */
       INTO   o_requisition_rec.requisition_header_id     -- 発注依頼ヘッダID
            , o_requisition_rec.requisition_line_id       -- 発注依頼明細ID
            , o_requisition_rec.requisition_number        -- 発注依頼番号
@@ -1173,6 +1185,9 @@ AS
            , o_requisition_rec.category_id               -- カテゴリID
            , o_requisition_rec.maker_code                -- メーカーコード
 /* 20090708_abe_0000464 END*/
+           /* 2013.04.04 T.Ishiwata E_本稼動_10321対応 START */
+           , o_requisition_rec.apps_source_code          -- アプリケーションソースコード
+           /* 2013.04.04 T.Ishiwata E_本稼動_10321対応 END   */
       FROM   po_requisition_headers     prh
            , xxcso_requisition_lines_v  xrlv
       WHERE  prh.segment1               = iv_requisition_number
@@ -7023,6 +7038,21 @@ AS
       -- カテゴリ区分が「新台設置」の場合
       --------------------------------------------------
       IF ( l_requisition_rec.category_kbn = cv_category_kbn_new_install ) THEN
+        /* 2013.04.04 T.Ishiwata E_本稼動_10321対応 START */
+        -- ================================================
+        -- A-26. アプリケーションソースコードチェック処理
+        -- ================================================
+        -- アプリケーションソースコードがNULLならばエラー
+        IF ( l_requisition_rec.apps_source_code IS NULL ) THEN
+          lv_errbuf := xxccp_common_pkg.get_msg(
+                           iv_application  => cv_sales_appl_short_name             -- アプリケーション短縮名
+                         , iv_name         => cv_tkn_number_66                     -- メッセージコード
+                         , iv_token_name1  => cv_tkn_req_num                       -- トークンコード1
+                         , iv_token_value1 => l_requisition_rec.requisition_number -- トークン値1
+                       );
+          RAISE global_process_expt;
+        END IF;
+        /* 2013.04.04 T.Ishiwata E_本稼動_10321対応 END   */
         -- ========================================
         -- A-3. 入力チェック処理
         -- ========================================
@@ -7334,6 +7364,22 @@ AS
       -- カテゴリ区分が「新台代替」の場合
       --------------------------------------------------
       ELSIF ( l_requisition_rec.category_kbn = cv_category_kbn_new_replace ) THEN
+        /* 2013.04.04 T.Ishiwata E_本稼動_10321対応 START */
+        -- ================================================
+        -- A-26. アプリケーションソースコードチェック処理
+        -- ================================================
+        -- アプリケーションソースコードがNULLならばエラー
+        IF ( l_requisition_rec.apps_source_code IS NULL ) THEN
+          lv_errbuf := xxccp_common_pkg.get_msg(
+                           iv_application  => cv_sales_appl_short_name             -- アプリケーション短縮名
+                         , iv_name         => cv_tkn_number_66                     -- メッセージコード
+                         , iv_token_name1  => cv_tkn_req_num                       -- トークンコード1
+                         , iv_token_value1 => l_requisition_rec.requisition_number -- トークン値1
+                       );
+          RAISE global_process_expt;
+        END IF;
+        /* 2013.04.04 T.Ishiwata E_本稼動_10321対応 END   */
+        --
         -- ========================================
         -- A-3. 入力チェック処理
         -- ========================================
