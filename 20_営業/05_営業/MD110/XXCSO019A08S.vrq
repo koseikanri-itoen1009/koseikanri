@@ -5,7 +5,7 @@ MBSPACE="　"
 ENCODING=MS932
 
 [FILEOPTION]
-REPORTFILE=C:\Documents and Settings\maruyama.mio\デスクトップ\03_0311_障害047_顧客セキュリティ要件対応\XXCSO019A08S.xml
+REPORTFILE=D:\SVF\tebs05\FORM\XXCSO019A08S.xml
 SORT=1
 MODE=5
 
@@ -20,13 +20,13 @@ HEIGHT=325
 
 [DATABASE]
 KIND=ODBC
-JDBC=開発環境
-LIBRARYPATH1=C:\sqlDeveloper\jdbc\lib\ojdbc14.jar
+JDBC=OracleType4TEBS05
+LIBRARYPATH1=D:\oracle\product\10.2.0\client_1\jdbc\lib\ojdbc14.jar
 CLASSNAME=oracle.jdbc.driver.OracleDriver
 DATABASEURL=jdbc:oracle:thin:@{0}:{1}:{2}
-PARAM1="DBQ=h03130.itoen.co.jp"
-PARAM2="PORT=1522"
-PARAM3="SID=ebsd01"
+PARAM1="DBQ=tebsdb21"
+PARAM2="PORT=1527"
+PARAM3="SID=tebs05"
 FORMAT=1
 RTMODE=1
 CONNECT=""
