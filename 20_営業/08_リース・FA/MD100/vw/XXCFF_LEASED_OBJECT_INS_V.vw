@@ -1,0 +1,259 @@
+CREATE OR REPLACE VIEW APPS.XXCFF_LEASED_OBJECT_INS_V
+AS 
+SELECT xoh.object_header_id              AS o_object_header_id             -- 物件内部ID
+     , xoh.object_code                   AS o_object_code                  -- 物件コード
+     , xlcv.lease_class_code             AS o_lease_class_code             -- リース種別コード
+     , xlcv.lease_class_name             AS o_lease_class_name             -- リース種別
+     , xoh.lease_type                    AS o_lease_type                   -- リース区分
+     , xoh.re_lease_times                AS o_re_lease_times               -- 再リース回数
+     , xoh.po_number                     AS o_po_number                    -- 発注番号
+     , xoh.registration_number           AS o_registration_number          -- 登録番号
+     , xoh.age_type                      AS o_age_type                     -- 年式
+     , xoh.model                         AS o_model                        -- 機種
+     , xoh.serial_number                 AS o_serial_number                -- 機番
+     , xoh.quantity                      AS o_quantity                     -- 数量
+     , xoh.manufacturer_name             AS o_manufacturer_name            -- メーカー名
+     , xdv.department_code               AS o_department_code              -- 管理部門コード
+     , xdv.department_name               AS o_department_name              -- 管理部門
+     , xocv.owner_company_code           AS o_owner_company_code           -- 本社工場コード
+     , xocv.owner_company_name           AS o_owner_company_name           -- 本社工場
+     , xoh.installation_address          AS o_installation_address         -- 現設置場所
+     , xoh.installation_place            AS o_installation_place           -- 現設置先
+     , xoh.chassis_number                AS o_chassis_number               -- 車台番号
+     , xoh.re_lease_flag                 AS o_re_lease_flag                -- 再リース要フラグ
+     , xctv.cancellation_type_code       AS o_cancellation_type_code       -- 解約区分コード
+     , xctv.cancellation_type_name       AS o_cancellation_type_name       -- 解約区分
+     , xoh.cancellation_date             AS o_cancellation_date            -- 中途解約日
+     , xoh.dissolution_date              AS o_dissolution_date             -- 中途解約キャンセル日
+     , xoh.bond_acceptance_flag          AS o_bond_acceptance_flag         -- 証書受領フラグ
+     , xoh.bond_acceptance_date          AS o_bond_acceptance_date         -- 証書受領日
+     , xoh.expiration_date               AS o_expiration_date              -- 満了日
+     , xosv.object_status_code           AS o_object_status_code           -- 物件ステータスコード
+     , xosv.object_status_name           AS o_object_status_name           -- 物件ステータス
+     , xoh.active_flag                   AS o_active_flag                  -- 物件有効フラグ
+     , xoh.info_sys_if_date              AS o_info_sys_if_date             -- リース管理情報連携日
+     , xoh.customer_code                 AS o_customer_code                -- 顧客コード
+     , xoh.generation_date               AS o_generation_date              -- 発生日
+     , xoh.created_by                    AS o_created_by                   -- 作成者
+     , xoh.creation_date                 AS o_creation_date                -- 作成日
+     , xoh.last_updated_by               AS o_last_updated_by              -- 最終更新者
+     , xoh.last_update_date              AS o_last_update_date             -- 最終更新日
+     , xoh.last_update_login             AS o_last_update_login            -- 最終更新ログイン
+     , xoh.created_by                    AS created_by                     -- 作成者
+     , xoh.creation_date                 AS creation_date                  -- 作成日
+     , xoh.last_updated_by               AS last_updated_by                -- 最終更新者
+     , xoh.last_update_date              AS last_update_date               -- 最終更新日
+     , xoh.last_update_login             AS last_update_login              -- 最終更新ログイン
+     , xoh.request_id                    AS o_request_id                   -- 要求ID
+     , xoh.program_application_id        AS o_program_application_id       -- プログラムアプリケーションID
+     , xoh.program_id                    AS o_program_id                   -- プログラムID
+     , xoh.program_update_date           AS o_program_update_date          -- プログラム更新日
+     , xctmp.contract_number             AS c_contract_number              -- 契約番号
+     , xctmp.lease_start_date            AS c_lease_start_date             -- リース開始日
+     , xctmp.lease_end_date              AS c_lease_end_date               -- リース終了日
+     , xctmp.re_lease_times              AS c_re_lease_times               -- 再リース回数
+     , xctmp.comments                    AS c_comments                     -- 件名
+     , xctmp.lease_company_code          AS c_lease_company_code           -- リース会社コード
+     , xctmp.lease_company_name          AS c_lease_company_name           -- リース会社名
+     , xctmp.lease_kind_code             AS c_lease_kind_code              -- リース種類コード
+     , xctmp.lease_kind_name             AS c_lease_kind_name              -- リース種類名
+     , xctmp.lease_type_code             AS c_lease_type_code              -- リース区分コード
+     , xctmp.lease_type_name             AS c_lease_type_name              -- リース区分名
+     , xctmp.contract_status_code        AS c_contract_status_code         -- 契約ステータスコード
+     , xctmp.contract_status_name        AS c_contract_status_name         -- 契約ステータス名
+     , xctmp.contract_line_id            AS c_contract_line_id             -- 契約明細内部ID
+     , xctmp.contract_header_id          AS c_contract_header_id           -- 契約内部ID
+     , xctmp.contract_line_num           AS c_contract_line_num            -- 契約枝番
+     , xctmp.contract_status             AS c_contract_status              -- 契約ステータス
+     , xctmp.second_total                AS c_second_total                 -- リース料総額
+     , xctmp.first_charge                AS c_first_charge                 -- 初回月額リース料_リース料
+     , xctmp.first_tax_charge            AS c_first_tax_charge             -- 初回消費税額_リース料
+     , xctmp.first_total_charge          AS c_first_total_charge           -- 初回計_リース料
+     , xctmp.second_charge               AS c_second_charge                -- 2回目以降月額リース料_リース料
+     , xctmp.second_tax_charge           AS c_second_tax_charge            -- 2回目以降消費税額_リース料
+     , xctmp.second_total_charge         AS c_second_total_charge          -- 2回目以降計_リース料
+     , xctmp.first_deduction             AS c_first_deduction              -- 初回月額リース料_控除額
+     , xctmp.first_tax_deduction         AS c_first_tax_deduction          -- 初回月額消費税額_控除額
+     , xctmp.first_total_deduction       AS c_first_total_deduction        -- 初回計_控除額
+     , xctmp.second_deduction            AS c_second_deduction             -- 2回目以降月額リース料_控除額
+     , xctmp.second_tax_deduction        AS c_second_tax_deduction         -- 2回目以降消費税額_控除額
+     , xctmp.second_total_deduction      AS c_second_total_deduction       -- 2回目以降計_控除額
+     , xctmp.gross_charge                AS c_gross_charge                 -- 総額リース料_リース料
+     , xctmp.gross_tax_charge            AS c_gross_tax_charge             -- 総額消費税_リース料
+     , xctmp.gross_total_charge          AS c_gross_total_charge           -- 総額計_リース料
+     , xctmp.gross_deduction             AS c_gross_deduction              -- 総額リース料_控除額
+     , xctmp.gross_tax_deduction         AS c_gross_tax_deduction          -- 総額消費税_控除額
+     , xctmp.gross_total_deduction       AS c_gross_total_deduction        -- 総額計_控除額
+     , xctmp.lease_kind                  AS c_lease_kind                   -- リース種類
+     , xctmp.estimated_cash_price        AS c_estimated_cash_price         -- 見積現金購入価額
+     , xctmp.present_value_discount_rate AS c_present_value_discount_rate  -- 現在価値割引率
+     , xctmp.present_value               AS c_present_value                -- 現在価値
+     , xctmp.life_in_months              AS c_life_in_months               -- 法定耐用年数
+     , xctmp.original_cost               AS c_original_cost                -- 取得価額
+     , xctmp.calc_interested_rate        AS c_calc_interested_rate         -- 計算利子率
+     , xctmp.object_header_id            AS c_object_header_id             -- 物件内部ID
+     , xctmp.asset_category              AS c_asset_category               -- 資産種類
+     , xctmp.expiration_date             AS c_expiration_date              -- 満了日
+     , xctmp.cancellation_date           AS c_cancellation_date            -- 中途解約日
+     , xctmp.vd_if_date                  AS c_vd_if_date                   -- リース契約情報連携日
+     , xctmp.info_sys_if_date            AS c_info_sys_if_date             -- リース管理情報連携日
+     , xctmp.first_installation_address  AS c_first_installation_address   -- 初回設置場所
+     , xctmp.first_installation_place    AS c_first_installation_place     -- 初回設置先
+     , xctmp.created_by                  AS c_created_by                   -- 作成者
+     , xctmp.creation_date               AS c_creation_date                -- 作成日
+     , xctmp.last_updated_by             AS c_last_updated_by              -- 最終更新者
+     , xctmp.last_update_date            AS c_last_update_date             -- 最終更新日
+     , xctmp.last_update_login           AS c_last_update_login            -- 最終更新ログイン
+     , xctmp.request_id                  AS c_request_id                   -- 要求ID
+     , xctmp.program_application_id      AS c_program_application_id       -- プログラムアプリケーションID
+     , xctmp.program_id                  AS c_program_id                   -- プログラムID
+     , xctmp.program_update_date         AS c_program_update_date          -- プログラム更新日
+     , NULL                              AS update_flag                    -- 更新フラグ
+FROM   xxcff_object_headers       xoh    -- リース物件
+     , (SELECT  temp.contract_number             AS contract_number             -- 契約番号
+              , temp.lease_start_date            AS lease_start_date            -- リース開始日
+              , temp.lease_end_date              AS lease_end_date              -- リース終了日
+              , temp.re_lease_times              AS re_lease_times              -- 再リース回数
+              , temp.comments                    AS comments                    -- 件名
+              , xlcv.lease_company_code          AS lease_company_code          -- リース会社コード
+              , xlcv.lease_company_name          AS lease_company_name          -- リース会社名
+              , xlkv.lease_kind_code             AS lease_kind_code             -- リース種類コード
+              , xlkv.lease_kind_name             AS lease_kind_name             -- リース種類名
+              , xltv.lease_type_code             AS lease_type_code             -- リース区分コード
+              , xltv.lease_type_name             AS lease_type_name             -- リース区分名
+              , xcsv.contract_status_code        AS contract_status_code        -- 契約ステータスコード
+              , xcsv.contract_status_name        AS contract_status_name        -- 契約ステータス名
+              , temp.contract_line_id            AS contract_line_id            -- 契約明細内部ID
+              , temp.contract_header_id          AS contract_header_id          -- 契約内部ID
+              , temp.contract_line_num           AS contract_line_num           -- 契約枝番
+              , temp.contract_status             AS contract_status             -- 契約ステータス
+              , temp.second_total                AS second_total                -- リース料総額
+              , temp.first_charge                AS first_charge                -- 初回月額リース料_リース料
+              , temp.first_tax_charge            AS first_tax_charge            -- 初回消費税額_リース料
+              , temp.first_total_charge          AS first_total_charge          -- 初回計_リース料
+              , temp.second_charge               AS second_charge               -- 2回目以降月額リース料_リース料
+              , temp.second_tax_charge           AS second_tax_charge           -- 2回目以降消費税額_リース料
+              , temp.second_total_charge         AS second_total_charge         -- 2回目以降計_リース料
+              , temp.first_deduction             AS first_deduction             -- 初回月額リース料_控除額
+              , temp.first_tax_deduction         AS first_tax_deduction         -- 初回月額消費税額_控除額
+              , temp.first_total_deduction       AS first_total_deduction       -- 初回計_控除額
+              , temp.second_deduction            AS second_deduction            -- 2回目以降月額リース料_控除額
+              , temp.second_tax_deduction        AS second_tax_deduction        -- 2回目以降消費税額_控除額
+              , temp.second_total_deduction      AS second_total_deduction      -- 2回目以降計_控除額
+              , temp.gross_charge                AS gross_charge                -- 総額リース料_リース料
+              , temp.gross_tax_charge            AS gross_tax_charge            -- 総額消費税_リース料
+              , temp.gross_total_charge          AS gross_total_charge          -- 総額計_リース料
+              , temp.gross_deduction             AS gross_deduction             -- 総額リース料_控除額
+              , temp.gross_tax_deduction         AS gross_tax_deduction         -- 総額消費税_控除額
+              , temp.gross_total_deduction       AS gross_total_deduction       -- 総額計_控除額
+              , temp.lease_kind                  AS lease_kind                  -- リース種類
+              , temp.estimated_cash_price        AS estimated_cash_price        -- 見積現金購入価額
+              , temp.present_value_discount_rate AS present_value_discount_rate -- 現在価値割引率
+              , temp.present_value               AS present_value               -- 現在価値
+              , temp.life_in_months              AS life_in_months              -- 法定耐用年数
+              , temp.original_cost               AS original_cost               -- 取得価額
+              , temp.calc_interested_rate        AS calc_interested_rate        -- 計算利子率
+              , temp.object_header_id            AS object_header_id            -- 物件内部ID
+              , temp.asset_category              AS asset_category              -- 資産種類
+              , temp.expiration_date             AS expiration_date             -- 満了日
+              , temp.cancellation_date           AS cancellation_date           -- 中途解約日
+              , temp.vd_if_date                  AS vd_if_date                  -- リース契約情報連携日
+              , temp.info_sys_if_date            AS info_sys_if_date            -- リース管理情報連携日
+              , temp.first_installation_address  AS first_installation_address  -- 初回設置場所
+              , temp.first_installation_place    AS first_installation_place    -- 初回設置先
+              , temp.created_by                  AS created_by                  -- 作成者
+              , temp.creation_date               AS creation_date               -- 作成日
+              , temp.last_updated_by             AS last_updated_by             -- 最終更新者
+              , temp.last_update_date            AS last_update_date            -- 最終更新日
+              , temp.last_update_login           AS last_update_login           -- 最終更新ログイン
+              , temp.request_id                  AS request_id                  -- 要求ID
+              , temp.program_application_id      AS program_application_id      -- プログラムアプリケーションID
+              , temp.program_id                  AS program_id                  -- プログラムID
+              , temp.program_update_date         AS program_update_date         -- プログラム更新日
+        FROM    (SELECT  RANK() OVER( partition BY xcl.object_header_id
+                                      ORDER     BY xch.re_lease_times DESC
+                             )                           AS ranking  -- 物件内部ID単位で再リース回数の降順に採番
+                       , xch.contract_number             AS contract_number             -- 契約番号
+                       , xch.lease_start_date            AS lease_start_date            -- リース開始日
+                       , xch.lease_end_date              AS lease_end_date              -- リース終了日
+                       , xch.re_lease_times              AS re_lease_times              -- 再リース回数
+                       , xch.comments                    AS comments                    -- 件名
+                       , xch.lease_type                  AS lease_type                  -- リース区分
+                       , xch.lease_company               AS lease_company               -- リース会社
+                       , xcl.contract_line_id            AS contract_line_id            -- 契約明細内部ID
+                       , xcl.contract_header_id          AS contract_header_id          -- 契約内部ID
+                       , xcl.contract_line_num           AS contract_line_num           -- 契約枝番
+                       , xcl.contract_status             AS contract_status             -- 契約ステータス
+                       , xcl.second_total_charge         
+                       + xcl.second_total_deduction      AS second_total                -- リース料総額
+                       , xcl.first_charge                AS first_charge                -- 初回月額リース料_リース料
+                       , xcl.first_tax_charge            AS first_tax_charge            -- 初回消費税額_リース料
+                       , xcl.first_total_charge          AS first_total_charge          -- 初回計_リース料
+                       , xcl.second_charge               AS second_charge               -- 2回目以降月額リース料_リース料
+                       , xcl.second_tax_charge           AS second_tax_charge           -- 2回目以降消費税額_リース料
+                       , xcl.second_total_charge         AS second_total_charge         -- 2回目以降計_リース料
+                       , xcl.first_deduction             AS first_deduction             -- 初回月額リース料_控除額
+                       , xcl.first_tax_deduction         AS first_tax_deduction         -- 初回月額消費税額_控除額
+                       , xcl.first_total_deduction       AS first_total_deduction       -- 初回計_控除額
+                       , xcl.second_deduction            AS second_deduction            -- 2回目以降月額リース料_控除額
+                       , xcl.second_tax_deduction        AS second_tax_deduction        -- 2回目以降消費税額_控除額
+                       , xcl.second_total_deduction      AS second_total_deduction      -- 2回目以降計_控除額
+                       , xcl.gross_charge                AS gross_charge                -- 総額リース料_リース料
+                       , xcl.gross_tax_charge            AS gross_tax_charge            -- 総額消費税_リース料
+                       , xcl.gross_total_charge          AS gross_total_charge          -- 総額計_リース料
+                       , xcl.gross_deduction             AS gross_deduction             -- 総額リース料_控除額
+                       , xcl.gross_tax_deduction         AS gross_tax_deduction         -- 総額消費税_控除額
+                       , xcl.gross_total_deduction       AS gross_total_deduction       -- 総額計_控除額
+                       , xcl.lease_kind                  AS lease_kind                  -- リース種類
+                       , xcl.estimated_cash_price        AS estimated_cash_price        -- 見積現金購入価額
+                       , xcl.present_value_discount_rate AS present_value_discount_rate -- 現在価値割引率
+                       , xcl.present_value               AS present_value               -- 現在価値
+                       , xcl.life_in_months              AS life_in_months              -- 法定耐用年数
+                       , xcl.original_cost               AS original_cost               -- 取得価額
+                       , xcl.calc_interested_rate        AS calc_interested_rate        -- 計算利子率
+                       , xcl.object_header_id            AS object_header_id            -- 物件内部ID
+                       , xcl.asset_category              AS asset_category              -- 資産種類
+                       , xcl.expiration_date             AS expiration_date             -- 満了日
+                       , xcl.cancellation_date           AS cancellation_date           -- 中途解約日
+                       , xcl.vd_if_date                  AS vd_if_date                  -- リース契約情報連携日
+                       , xcl.info_sys_if_date            AS info_sys_if_date            -- リース管理情報連携日
+                       , xcl.first_installation_address  AS first_installation_address  -- 初回設置場所
+                       , xcl.first_installation_place    AS first_installation_place    -- 初回設置先
+                       , xcl.created_by                  AS created_by                  -- 作成者
+                       , xcl.creation_date               AS creation_date               -- 作成日
+                       , xcl.last_updated_by             AS last_updated_by             -- 最終更新者
+                       , xcl.last_update_date            AS last_update_date            -- 最終更新日
+                       , xcl.last_update_login           AS last_update_login           -- 最終更新ログイン
+                       , xcl.request_id                  AS request_id                  -- 要求ID
+                       , xcl.program_application_id      AS program_application_id      -- プログラムアプリケーションID
+                       , xcl.program_id                  AS program_id                  -- プログラムID
+                       , xcl.program_update_date         AS program_update_date         -- プログラム更新日
+                 FROM    xxcff_contract_headers  xch   -- リース契約
+                       , xxcff_contract_lines    xcl   -- リース契約明細
+                 WHERE   xch.contract_header_id = xcl.contract_header_id  -- 契約内部ID
+                )                        temp  -- 契約
+              , xxcff_lease_company_v    xlcv  -- リース会社
+              , xxcff_lease_kind_v       xlkv  -- リース種類
+              , xxcff_lease_type_v       xltv  -- リース区分
+              , xxcff_contract_status_v  xcsv  -- 契約ステータス
+        WHERE   temp.lease_company   = xlcv.lease_company_code  -- リース会社コード
+        AND     temp.lease_kind      = xlkv.lease_kind_code  -- リース種類コード
+        AND     temp.lease_type      = xltv.lease_type_code  -- リース区分コード
+        AND     temp.contract_status = xcsv.contract_status_code  -- 契約ステータスコード
+        AND     xcsv.table_class     = '1'  -- 履歴ステータス以外
+        AND     temp.ranking         = 1    -- 契約明細の最新
+     )                            xctmp  -- 契約関連
+     , xxcff_lease_class_v        xlcv   -- リース種別ビュー
+     , xxcff_department_v         xdv    -- 管理部門ビュー
+     , xxcff_object_status_v      xosv   -- 物件ステータスビュー
+     , xxcff_owner_company_v      xocv   -- 本社工場ビュー
+     , xxcff_cancellation_type_v  xctv   -- 解約区分ビュー
+WHERE  xoh.object_header_id  = xctmp.object_header_id(+)  -- 物件内部ID
+AND    xoh.lease_class       = xlcv.lease_class_code  -- リース種別コード
+AND    xoh.department_code   = xdv.department_code  -- 管理部門コード
+AND    xoh.object_status     = xosv.object_status_code  -- 物件ステータスコード
+AND    xoh.owner_company     = xocv.owner_company_code  -- 本社工場コード
+AND    xoh.cancellation_type = xctv.cancellation_type_code(+)  -- 解約区分コード
+AND    xosv.table_class      = '1'  -- 履歴ステータス以外
+AND    xdv.summary_flag      = 'N'  -- 親値を含まない;
+ 
