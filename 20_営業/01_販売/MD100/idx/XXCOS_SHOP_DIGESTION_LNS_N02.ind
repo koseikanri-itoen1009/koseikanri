@@ -1,0 +1,5 @@
+CREATE INDEX xxcos.xxcos_shop_digestion_lns_n02  ON  xxcos.xxcos_shop_digestion_lns  (
+  shop_digestion_hdr_id
+)
+TABLESPACE xxidx2
+;
