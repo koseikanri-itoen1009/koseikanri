@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCSM004A05C(body)
  * Description      : 資格ポイント・新規獲得ポイント情報系システムI/F
  * MD.050           : 資格ポイント・新規獲得ポイント情報系システムI/F MD050_CSM_004_A05
- * Version          : 1.0
+ * Version          : 1.1
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -23,6 +23,7 @@ AS
  *  Date          Ver.  Editor           Description
  * ------------- ----- ---------------- -------------------------------------------------
  *  2009/01/05    1.0   S.Son            新規作成
+ *  2009/07/01    1.1   T.Tsukino        ［SCS障害管理番号0000256］対応
  *
  *****************************************************************************************/
 --
@@ -49,6 +50,9 @@ AS
   cv_msg_wquot              CONSTANT VARCHAR2(1) := '"';
   --
   cv_xxcsm                  CONSTANT VARCHAR2(100) := 'XXCSM'; 
+--//+ADD START 2009/07/01 0000256 T.Tsukino
+  cv_xxccp                  CONSTANT VARCHAR2(5)   := 'XXCCP';           -- 共通関数アプリケーションID
+--//+ADD START 2009/07/01 0000256 T.Tsukino
   --メッセージーコード
   cv_msg_00111              CONSTANT VARCHAR2(100) := 'APP-XXCSM1-00111';       --想定外エラーメッセージ
   cv_msg_90008              CONSTANT VARCHAR2(100) := 'APP-XXCCP1-90008';       --入力パラメータ無しメッセージ
@@ -178,7 +182,10 @@ AS
 --①入力パラメータ無しをメッセージ出力
     --対象年度
     lv_no_pram_msg := xxccp_common_pkg.get_msg(
-                                             iv_application  => cv_xxcsm
+--//+UPD START 2009/07/01 0000256 T.Tsukino
+--                                             iv_application  => cv_xxcsm
+                                               iv_application  => cv_xxccp
+--//+UPD START 2009/07/01 0000256 T.Tsukino
                                             ,iv_name         => cv_msg_90008
                                             );
     FND_FILE.PUT_LINE(FND_FILE.LOG,lv_no_pram_msg);
