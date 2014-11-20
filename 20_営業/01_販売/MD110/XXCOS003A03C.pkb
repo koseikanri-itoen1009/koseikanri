@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCOS003A03C(body)
  * Description      : ベンダ納品実績情報作成
  * MD.050           : ベンダ納品実績情報作成 MD050_COS_003_A03
- * Version          : 1.2
+ * Version          : 1.3
  *
  * Program List     
  * ---------------------- ----------------------------------------------------------
@@ -29,6 +29,7 @@ AS
  *  2009/01/05   1.0    K.Okaguchi       新規作成
  *  2009/02/24   1.1    T.Nakamura       [障害COS_130] メッセージ出力、ログ出力への出力内容の追加・修正
  *  2009/06/10   1.2    T.Tominaga       [障害T1_1408] エラーメッセージの納品日の書式を’YYYY/MM/DD’に変更
+ *  2009/12/11   1.3    N.Yoshida        [本稼動_00399] 訂正・取消データ時はマイナス金額を設定するよう修正
  *
  *****************************************************************************************/
 --
@@ -98,6 +99,10 @@ AS
   cv_tkn_key_data         CONSTANT VARCHAR2(20) := 'KEY_DATA';
   cv_flag_off             CONSTANT VARCHAR2(1)  := 'N';
   cv_flag_on              CONSTANT VARCHAR2(1)  := 'Y';
+-- 2009/12/11 N.Yoshida Ver.1.3 Add Start
+  cv_flag_red             CONSTANT VARCHAR2(1)  := '0';            -- 赤黒フラグ(赤)
+  cn_num_conv             CONSTANT NUMBER       := -1;             -- マイナス値算出用
+-- 2009/12/11 N.Yoshida Ver.1.3 Add End
   cv_tkn_lock             CONSTANT VARCHAR2(20) := 'TABLE';               -- ロックエラー
   cn_lock_error_code      CONSTANT NUMBER       := -54;
   cv_msg_lock             CONSTANT VARCHAR2(20) := 'APP-XXCOS1-00001';    -- ロック取得エラー
@@ -176,7 +181,13 @@ AS
     SELECT xvch.customer_number     customer_number       --顧客コード
           ,xvch.dlv_date            dlv_date              --納品日
           ,xvch.dlv_time            dlv_time              --時間
-          ,xvch.total_amount        total_amount          --合計金額
+-- 2009/12/11 N.Yoshida Ver.1.3 Mod Start
+--          ,xvch.total_amount        total_amount          --合計金額
+          ,CASE WHEN xvch.red_black_flag = cv_flag_red
+                THEN xvch.total_amount * cn_num_conv
+                ELSE xvch.total_amount
+           END                      total_amount          --合計金額
+-- 2009/12/11 N.Yoshida Ver.1.3 Mod End
           ,xvch.order_no_hht        order_no_hht          --受注No.（HHT）
           ,xvch.digestion_ln_number digestion_ln_number   --枝番
           ,xvch.base_code           base_code             --拠点コード
