@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCOK007A01C(body)
  * Description      : 売上実績振替情報作成(EDI)
  * MD.050           : 売上実績振替情報作成(EDI) MD050_COK_007_A01
- * Version          : 1.6
+ * Version          : 1.7
  *
  * Program List
  * -------------------------------- ---------------------------------------------------------
@@ -38,6 +38,9 @@ AS
  *                                                    前スペースを除去するよう修正
  *  2009/07/13    1.6   M.Hiruta         [障害0000514]処理対象に顧客ステータス「30:承認済」「50:休止」のデータを追加
  *                                                    APではなく、ARの税コードマスタを使用するよう修正
+ *  2009/08/13    1.7   M.Hiruta         [障害0000997]EDIワークテーブルから納品単価と原価金額を取得する際の
+ *                                                    取得箇所を修正
+ *                                                    顧客名の取得元をパーティマスタへ修正
  *
  *****************************************************************************************/
   -- =========================
@@ -578,7 +581,10 @@ AS
   , in_sum_selling_amt         IN  NUMBER      --売上金額
   , in_sum_selling_amt_no_tax  IN  NUMBER      --売上金額（税抜き）
   , in_sum_trading_cost        IN  NUMBER      --営業原価
-  , in_shipment_cost_amt       IN  NUMBER      --原価金額（出荷）
+-- Start 2009/08/13 Ver.1.7 0000997 M.Hiruta REPAIR
+--  , in_shipment_cost_amt       IN  NUMBER      --原価金額（出荷）
+  , in_order_cost_amt          IN  NUMBER      --原価金額（発注）
+-- End   2009/08/13 Ver.1.7 0000997 M.Hiruta REPAIR
   , iv_tax_type                IN  VARCHAR2    --消費税区分
   , in_tax_rate                IN  NUMBER      --消費税率
   , iv_selling_from_base_code  IN  VARCHAR2    --売上振替元拠点コード
@@ -726,7 +732,10 @@ AS
       , in_sum_selling_amt                    --selling_amt
       , in_sum_selling_amt_no_tax             --selling_amt_no_tax
       , in_sum_trading_cost                   --trading_cost
-      , in_shipment_cost_amt                  --selling_cost_amt
+-- Start 2009/08/13 Ver.1.7 0000997 M.Hiruta REPAIR
+--      , in_shipment_cost_amt                  --selling_cost_amt
+      , in_order_cost_amt                     --selling_cost_amt
+-- End   2009/08/13 Ver.1.7 0000997 M.Hiruta REPAIR
       , lv_tax_code                           --tax_code
       , in_tax_rate                           --tax_rate
       , iv_selling_from_base_code             --delivery_base_code
@@ -825,7 +834,10 @@ AS
               , xtest.tax_type                 AS tax_type                  --消費税区分
               , xtest.tax_rate                 AS tax_rate                  --消費税率
               , SUM(xtest.trading_cost)        AS sum_trading_cost          --営業原価
-              , xtest.shipment_cost_amt        AS shipment_cost_amt         --原価金額（出荷）
+-- Start 2009/08/13 Ver.1.7 0000997 M.Hiruta REPAIR
+--              , xtest.shipment_cost_amt        AS shipment_cost_amt         --原価金額（出荷）
+              , xtest.order_cost_amt           AS order_cost_amt            --原価金額（発注）
+-- End   2009/08/13 Ver.1.7 0000997 M.Hiruta REPAIR
               , xtest.selling_from_base_code   AS selling_from_base_code    --売上振替元拠点コード
               , xtest.selling_from_cust_code   AS selling_from_cust_code    --売上振替元顧客コード
               , xtest.edi_chain_store_code     AS edi_chain_store_code      --EDIチェーン店コード
@@ -843,7 +855,10 @@ AS
               , delivery_unit_price
               , tax_type
               , tax_rate
-              , shipment_cost_amt
+-- Start 2009/08/13 Ver.1.7 0000997 M.Hiruta REPAIR
+--              , shipment_cost_amt
+              , order_cost_amt
+-- End   2009/08/13 Ver.1.7 0000997 M.Hiruta REPAIR
               , selling_from_base_code
               , selling_from_cust_code
               , edi_chain_store_code
@@ -889,7 +904,10 @@ AS
       , in_sum_selling_amt         => l_tmp_edi_cur_tab( ln_idx ).sum_selling_amt           --売上金額
       , in_sum_selling_amt_no_tax  => l_tmp_edi_cur_tab( ln_idx ).sum_selling_amt_no_tax    --売上金額（税抜き）
       , in_sum_trading_cost        => l_tmp_edi_cur_tab( ln_idx ).sum_trading_cost          --営業原価
-      , in_shipment_cost_amt       => l_tmp_edi_cur_tab( ln_idx ).shipment_cost_amt         --原価金額（出荷）
+-- Start 2009/08/13 Ver.1.7 0000997 M.Hiruta REPAIR
+--      , in_shipment_cost_amt       => l_tmp_edi_cur_tab( ln_idx ).shipment_cost_amt         --原価金額（出荷）
+      , in_order_cost_amt          => l_tmp_edi_cur_tab( ln_idx ).order_cost_amt            --原価金額（発注）
+-- End   2009/08/13 Ver.1.7 0000997 M.Hiruta REPAIR
       , iv_tax_type                => l_tmp_edi_cur_tab( ln_idx ).tax_type                  --消費税区分
       , in_tax_rate                => l_tmp_edi_cur_tab( ln_idx ).tax_rate                  --消費税率
       , iv_selling_from_base_code  => l_tmp_edi_cur_tab( ln_idx ).selling_from_base_code    --売上振替元拠点コード
@@ -962,7 +980,10 @@ AS
     , tax_type                                   --消費税区分
     , tax_rate                                   --消費税率
     , trading_cost                               --営業原価
-    , shipment_cost_amt                          --原価金額（出荷）
+-- Start 2009/08/13 Ver.1.7 0000997 M.Hiruta REPAIR
+--    , shipment_cost_amt                          --原価金額（出荷）
+    , order_cost_amt                             --原価金額（発注）
+-- End   2009/08/13 Ver.1.7 0000997 M.Hiruta REPAIR
     , selling_from_base_code                     --売上振替元拠点コード
     , selling_from_cust_code                     --売上振替元顧客コード
     , edi_chain_store_code                       --EDIチェーン店コード
@@ -988,7 +1009,10 @@ AS
     , it_from_cust_rec.tax_type                  --tax_type
     , it_from_cust_rec.tax_rate                  --tax_rate
     , it_from_cust_rec.trading_cost              --trading_cost
-    , it_from_cust_rec.shipment_cost_amt         --shipment_cost_amt
+-- Start 2009/08/13 Ver.1.7 0000997 M.Hiruta REPAIR
+--    , it_from_cust_rec.shipment_cost_amt         --shipment_cost_amt
+    , it_from_cust_rec.order_cost_amt            --order_cost_amt
+-- End   2009/08/13 Ver.1.7 0000997 M.Hiruta REPAIR
     , it_from_cust_rec.selling_from_base_code    --selling_from_base_code
     , it_from_cust_rec.selling_from_cust_code    --selling_from_cust_code
     , it_from_cust_rec.edi_chain_store_code      --edi_chain_store_code
@@ -1014,7 +1038,10 @@ AS
     , tax_type                                 --消費税区分
     , tax_rate                                 --消費税率
     , trading_cost                             --営業原価
-    , shipment_cost_amt                        --原価金額（出荷）
+-- Start 2009/08/13 Ver.1.7 0000997 M.Hiruta REPAIR
+--    , shipment_cost_amt                        --原価金額（出荷）
+    , order_cost_amt                           --原価金額（発注）
+-- End   2009/08/13 Ver.1.7 0000997 M.Hiruta REPAIR
     , selling_from_base_code                   --売上振替元拠点コード
     , selling_from_cust_code                   --売上振替元顧客コード
     , edi_chain_store_code                     --EDIチェーン店コード
@@ -1040,7 +1067,10 @@ AS
     , it_to_cust_rec.tax_type                  --tax_type
     , it_to_cust_rec.tax_rate                  --tax_rate
     , it_to_cust_rec.trading_cost              --trading_cost
-    , it_to_cust_rec.shipment_cost_amt         --shipment_cost_amt
+-- Start 2009/08/13 Ver.1.7 0000997 M.Hiruta REPAIR
+--    , it_to_cust_rec.shipment_cost_amt         --shipment_cost_amt
+    , it_to_cust_rec.order_cost_amt            --order_cost_amt
+-- End   2009/08/13 Ver.1.7 0000997 M.Hiruta REPAIR
     , it_to_cust_rec.selling_from_base_code    --selling_from_base_code
     , it_to_cust_rec.selling_from_cust_code    --selling_from_cust_code
     , it_to_cust_rec.edi_chain_store_code      --edi_chain_store_code
@@ -1071,7 +1101,10 @@ AS
   , iv_message_code         IN  VARCHAR2    --メッセージコード
   , iv_edi_chain_store_code IN  VARCHAR2    --EDIチェーン店コード
   , iv_code                 IN  VARCHAR2    --納入先センターコード・店コード
-  , in_shipment_unit_price  IN  NUMBER      --納品単価
+-- Start 2009/08/13 Ver.1.7 0000997 M.Hiruta REPAIR
+--  , in_shipment_unit_price  IN  NUMBER      --納品単価
+  , in_order_unit_price     IN  NUMBER      --納品単価
+-- End   2009/08/13 Ver.1.7 0000997 M.Hiruta REPAIR
   , iv_token                IN  VARCHAR2    --トークン名
   , ov_sale_base_code       OUT VARCHAR2    --拠点コード
   , ov_account_number       OUT VARCHAR2    --顧客コード
@@ -1092,7 +1125,10 @@ AS
     lv_msg           VARCHAR2(5000) DEFAULT NULL;   --メッセージ取得変数
 -- Start 2009/05/15 Ver_1.3 T1_1003 M.Hiruta
 --    lv_account_name  VARCHAR2(30)   DEFAULT NULL;   --顧客名
-    lv_account_name  hz_cust_accounts.account_name%TYPE  DEFAULT NULL; --顧客名
+-- Start 2009/08/13 Ver.1.7 0000997 M.Hiruta REPAIR
+--    lv_account_name  hz_cust_accounts.account_name%TYPE  DEFAULT NULL; --顧客名
+    lv_account_name  hz_parties.party_name%TYPE  DEFAULT NULL; --顧客名
+-- End   2009/08/13 Ver.1.7 0000997 M.Hiruta REPAIR
 -- End   2009/05/15 Ver_1.3 T1_1003 M.Hiruta
     lb_retcode       BOOLEAN        DEFAULT NULL;   --メッセージ出力の戻り値
     -- =======================
@@ -1107,7 +1143,10 @@ AS
     -- =============================================================================
     BEGIN
       SELECT  hca.account_number    AS account_number      --顧客コード
-            , hca.account_name      AS account_name        --顧客名
+-- Start 2009/08/13 Ver.1.7 0000997 M.Hiruta REPAIR
+--            , hca.account_name      AS account_name        --顧客名
+            , hp.party_name         AS account_name        --顧客名
+-- End   2009/08/13 Ver.1.7 0000997 M.Hiruta REPAIR
             , xca.sale_base_code    AS sale_base_code      --売上担当拠点コード
             , xca.business_low_type AS business_low_type   --業態(小分類)
             , hcsua.price_list_id   AS price_list_id       --価格表ID
@@ -1193,11 +1232,18 @@ AS
     -- B-2.で取得した納品単価がNULL、または、0の場合、かつ
     -- 上記で取得した価格表IDに値が設定されていない場合、例外処理
     -- =============================================================================
-    IF ( (   ( in_shipment_unit_price IS NULL )
-          OR ( in_shipment_unit_price = cn_0  )
+-- Start 2009/08/13 Ver.1.7 0000997 M.Hiruta REPAIR
+--    IF ( (   ( in_shipment_unit_price IS NULL )
+--          OR ( in_shipment_unit_price = cn_0  )
+--         )
+--         AND ( on_price_list_id IS NULL )
+--       ) THEN
+    IF ( (   ( in_order_unit_price IS NULL )
+          OR ( in_order_unit_price = cn_0  )
          )
          AND ( on_price_list_id IS NULL )
        ) THEN
+-- End   2009/08/13 Ver.1.7 0000997 M.Hiruta REPAIR
       lv_msg := xxccp_common_pkg.get_msg(
                   iv_application  => cv_xxcok_appl_name
                 , iv_name         => cv_message_10095
@@ -1249,9 +1295,15 @@ AS
   , iv_delivery_to_center_code IN  VARCHAR2                             --納入先センターコード
   , iv_store_code              IN  VARCHAR2                             --店コード
   , in_order_qty_sum           IN  NUMBER                               --数量
-  , in_shipment_unit_price     IN  NUMBER                               --納品単価
+-- Start 2009/08/13 Ver.1.7 0000997 M.Hiruta REPAIR
+--  , in_shipment_unit_price     IN  NUMBER                               --納品単価
+  , in_order_unit_price        IN  NUMBER                               --納品単価
+-- End   2009/08/13 Ver.1.7 0000997 M.Hiruta REPAIR
   , iv_goods_code_2            IN  VARCHAR2                             --商品コード2
-  , in_shipment_cost_amt       IN  NUMBER)                              --原価金額(出荷)
+-- Start 2009/08/13 Ver.1.7 0000997 M.Hiruta REPAIR
+--  , in_shipment_cost_amt       IN  NUMBER)                              --原価金額(出荷)
+  , in_order_cost_amt          IN  NUMBER)                              --原価金額(発注)
+-- End   2009/08/13 Ver.1.7 0000997 M.Hiruta REPAIR
   IS
     -- =======================
     -- ローカル定数
@@ -1321,8 +1373,12 @@ AS
   BEGIN
     ov_retcode := cv_status_normal;
     -- *** レコード型に値をセット(原価金額(出荷)) ***
-    ot_from_cust_rec.shipment_cost_amt := in_shipment_cost_amt;
-    ot_to_cust_rec.shipment_cost_amt   := in_shipment_cost_amt;
+-- Start 2009/08/13 Ver.1.7 0000997 M.Hiruta REPAIR
+--    ot_from_cust_rec.shipment_cost_amt := in_shipment_cost_amt;
+--    ot_to_cust_rec.shipment_cost_amt   := in_shipment_cost_amt;
+    ot_from_cust_rec.order_cost_amt := in_order_cost_amt;
+    ot_to_cust_rec.order_cost_amt   := in_order_cost_amt;
+-- End   2009/08/13 Ver.1.7 0000997 M.Hiruta REPAIR
     -- *** レコード型に値をセット(商品コード) ***
     ot_from_cust_rec.goods_code := iv_goods_code_2;
     ot_to_cust_rec.goods_code   := iv_goods_code_2;
@@ -1559,7 +1615,10 @@ AS
     , iv_message_code         => cv_message_10076             --メッセージコード
     , iv_edi_chain_store_code => iv_edi_chain_store_code      --EDIチェーン店コード
     , iv_code                 => iv_delivery_to_center_code   --納入先センターコード
-    , in_shipment_unit_price  => in_shipment_unit_price       --納品単価
+-- Start 2009/08/13 Ver.1.7 0000997 M.Hiruta REPAIR
+--    , in_shipment_unit_price  => in_shipment_unit_price       --納品単価
+    , in_order_unit_price     => in_order_unit_price          --納品単価
+-- End   2009/08/13 Ver.1.7 0000997 M.Hiruta REPAIR
     , iv_token                => cv_token_center_code         --トークン名
     , ov_sale_base_code       => lv_sale_base_code            --拠点コード
     , ov_account_number       => lv_from_account_number       --顧客コード
@@ -1591,7 +1650,10 @@ AS
     , iv_message_code         => cv_message_10077             --メッセージコード
     , iv_edi_chain_store_code => iv_edi_chain_store_code      --EDIチェーン店コード
     , iv_code                 => iv_store_code                --店コード
-    , in_shipment_unit_price  => in_shipment_unit_price       --納品単価
+-- Start 2009/08/13 Ver.1.7 0000997 M.Hiruta REPAIR
+--    , in_shipment_unit_price  => in_shipment_unit_price       --納品単価
+    , in_order_unit_price     => in_order_unit_price          --納品単価
+-- End   2009/08/13 Ver.1.7 0000997 M.Hiruta REPAIR
     , iv_token                => cv_token_store_code          --トークン名
     , ov_sale_base_code       => lv_sale_base_code            --拠点コード
     , ov_account_number       => lv_to_account_number         --顧客コード
@@ -1927,7 +1989,10 @@ AS
     -- 6.納品単価の取得
     -- =============================================================================
     -- *** B-2で取得した納品単価を設定 ***
-    ln_unit_price := in_shipment_unit_price;
+-- Start 2009/08/13 Ver.1.7 0000997 M.Hiruta REPAIR
+--    ln_unit_price := in_shipment_unit_price;
+    ln_unit_price := in_order_unit_price;
+-- End   2009/08/13 Ver.1.7 0000997 M.Hiruta REPAIR
     -- =============================================================================
     -- (1)B-2で取得した納品単価がNULL、または、0の場合、共通関数より単価を取得
     -- =============================================================================
@@ -2179,8 +2244,12 @@ AS
               , LTRIM( xwest.goods_code_2 )            AS goods_code_2              --商品コード2
 -- End   2009/06/08 Ver_1.5 T1_1354 M.Hiruta
               , xwest.order_qty_sum           AS order_qty_sum             --数量(発注数量(合計、バラ))
-              , xwest.shipment_unit_price     AS shipment_unit_price       --納品単価(原単価(出荷))
-              , xwest.shipment_cost_amt       AS shipment_cost_amt         --原価金額(出荷)
+-- Start 2009/08/13 Ver.1.7 0000997 M.Hiruta REPAIR
+--              , xwest.shipment_unit_price     AS shipment_unit_price       --納品単価(原単価(出荷))
+--              , xwest.shipment_cost_amt       AS shipment_cost_amt         --原価金額(出荷)
+              , xwest.order_unit_price        AS order_unit_price          --納品単価(原単価(発注))
+              , xwest.order_cost_amt          AS order_cost_amt            --原価金額(発注)
+-- End   2009/08/13 Ver.1.7 0000997 M.Hiruta REPAIR
       FROM      xxcok_wk_edi_selling_trns xwest
       WHERE     xwest.status = DECODE( iv_execution_type,
                                        cv_1, cv_0,
@@ -2233,9 +2302,15 @@ AS
       , iv_delivery_to_center_code => l_get_wk_edi_cur_tab( ln_idx ).delivery_to_center_code   --納入先センターコード
       , iv_store_code              => l_get_wk_edi_cur_tab( ln_idx ).store_code                --店コード
       , in_order_qty_sum           => l_get_wk_edi_cur_tab( ln_idx ).order_qty_sum             --数量
-      , in_shipment_unit_price     => l_get_wk_edi_cur_tab( ln_idx ).shipment_unit_price       --納品単価
+-- Start 2009/08/13 Ver.1.7 0000997 M.Hiruta REPAIR
+--      , in_shipment_unit_price     => l_get_wk_edi_cur_tab( ln_idx ).shipment_unit_price       --納品単価
+      , in_order_unit_price        => l_get_wk_edi_cur_tab( ln_idx ).order_unit_price          --納品単価
+-- End   2009/08/13 Ver.1.7 0000997 M.Hiruta REPAIR
       , iv_goods_code_2            => l_get_wk_edi_cur_tab( ln_idx ).goods_code_2              --商品コード2
-      , in_shipment_cost_amt       => l_get_wk_edi_cur_tab( ln_idx ).shipment_cost_amt         --原価金額(出荷)
+-- Start 2009/08/13 Ver.1.7 0000997 M.Hiruta REPAIR
+--      , in_shipment_cost_amt       => l_get_wk_edi_cur_tab( ln_idx ).shipment_cost_amt         --原価金額(出荷)
+      , in_order_cost_amt          => l_get_wk_edi_cur_tab( ln_idx ).order_cost_amt            --原価金額(発注)
+-- End   2009/08/13 Ver.1.7 0000997 M.Hiruta REPAIR
       );
       IF ( lv_retcode = cv_status_warn ) THEN
         ov_retcode := cv_status_warn;
@@ -2268,7 +2343,10 @@ AS
         , iv_delivery_to_center_code => l_get_wk_edi_cur_tab( ln_idx ).delivery_to_center_code --納入先センターコード
         , iv_store_code              => l_get_wk_edi_cur_tab( ln_idx ).store_code              --店コード
         , iv_goods_code              => l_get_wk_edi_cur_tab( ln_idx ).goods_code_2            --商品コード
-        , in_delivery_unit_price     => l_get_wk_edi_cur_tab( ln_idx ).shipment_unit_price     --納品単価
+-- Start 2009/08/13 Ver.1.7 0000997 M.Hiruta REPAIR
+--        , in_delivery_unit_price     => l_get_wk_edi_cur_tab( ln_idx ).shipment_unit_price     --納品単価
+        , in_delivery_unit_price     => l_get_wk_edi_cur_tab( ln_idx ).order_unit_price        --納品単価
+-- End   2009/08/13 Ver.1.7 0000997 M.Hiruta REPAIR
         );
         IF ( lv_retcode = cv_status_error ) THEN
           RAISE global_process_expt;
