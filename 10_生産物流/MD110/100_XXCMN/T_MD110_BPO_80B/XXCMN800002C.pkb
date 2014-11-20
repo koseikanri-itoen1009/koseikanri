@@ -7,7 +7,7 @@ AS
  * Description      : 品目マスタインタフェース
  * MD.050           : マスタインタフェース T_MD050_BPO_800
  * MD.070           : 品目インタフェース T_MD070_BPO_80B
- * Version          : 1.14
+ * Version          : 1.15
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -81,6 +81,7 @@ AS
  *  2008/09/29    1.12  Oracle 山根一浩  T_S_546,T_S_547対応
  *  2008/10/02    1.13  Oracle 椎名 昭圭 統合障害＃293対応
  *  2008/10/10    1.14  Oracle 椎名 昭圭 T_S_442対応にあわせ原価内訳取得方法統一
+ *  2008/10/21    1.15  Oracle 丸下 博宣 I_S_431対応
  *****************************************************************************************/
 --
 --#######################  固定グローバル定数宣言部 START   #######################
@@ -4062,6 +4063,9 @@ AS
             ,obsolete_date            = ir_masters_rec.abolition_date       -- 廃止日(製造中止)
             ,rate_class               = ir_masters_rec.rate_code            -- 率区分
             ,raw_material_consumption = ir_masters_rec.raw_mate_consumption -- 原料使用量
+-- 2008/10/21 ADD START
+            ,active_flag              = gv_active_flag_mi -- 適用済フラグ
+-- 2008/10/21 ADD END
             ,last_updated_by          = gn_user_id
             ,last_update_date         = gd_sysdate
             ,last_update_login        = gn_login_id

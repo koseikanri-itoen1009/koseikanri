@@ -7,7 +7,7 @@ AS
  * Description      : 発注書
  * MD.050/070       : 仕入（帳票）Issue1.0(T_MD050_BPO_360)
  *                    仕入（帳票）Issue1.0(T_MD070_BPO_36B)
- * Version          : 1.8
+ * Version          : 1.9
  *
  * Program List
  * -------------------- ------------------------------------------------------------
@@ -38,6 +38,7 @@ AS
  *                                       されない現象への対応
  *  2008/06/27    1.8   R.Tomoyose       明細が最大行出力（６行出力）の時に、
  *                                       合計が次ページに表示される現象を修正
+ *  2008/10/21    1.9   T.Ohashi         指摘382対応
  *
  *****************************************************************************************/
 --
@@ -1510,18 +1511,25 @@ AS
                                                                 ir_param.site_use) ;
       END IF;
       -- 仕入金額
-      IF ( (gt_main_data(i).product_type = gv_goods_classe_drink)         -- ドリンク かつ
-        AND (gt_main_data(i).item_type = gv_item_class_products)          -- 製品 かつ
-        AND (gt_main_data(i).base_uom <> gt_main_data(i).unit_of_measure) -- 入出庫換算単位あり
-        ) THEN
+-- mod start 1.9
+--      IF ( (gt_main_data(i).product_type = gv_goods_classe_drink)         -- ドリンク かつ
+--        AND (gt_main_data(i).item_type = gv_item_class_products)          -- 製品 かつ
+--        AND (gt_main_data(i).base_uom <> gt_main_data(i).unit_of_measure) -- 入出庫換算単位あり
+--        ) THEN
           --［数量×在庫入数×単価］
-          ln_purchase_amount := ROUND((NVL(gt_main_data(i).quantity , 0) *
-                                  TO_NUMBER(NVL(gt_main_data(i).inventory_quantity , 0))) *
-                                  NVL(gt_main_data(i).unit_price , 0));
-      ELSE
-          ln_purchase_amount := ROUND(NVL(gt_main_data(i).quantity , 0) *
-                                  NVL(gt_main_data(i).unit_price , 0));
-      END IF;
+--          ln_purchase_amount := ROUND((NVL(gt_main_data(i).quantity , 0) *
+--                                  TO_NUMBER(NVL(gt_main_data(i).inventory_quantity , 0))) *
+--                                  NVL(gt_main_data(i).unit_price , 0));
+          -- ［数量×在庫入数×単価］
+--      ELSE
+--          ln_purchase_amount := ROUND(NVL(gt_main_data(i).quantity , 0) *
+--                                  NVL(gt_main_data(i).unit_price , 0));
+--      END IF;
+      -- ［粉引後金額-預り口銭金額-賦課金額］
+      ln_purchase_amount := TRUNC(gt_main_data(i).amount - 
+                              gt_main_data(i).commission_amount - 
+                              gt_main_data(i).levy_amount);
+-- mod end 1.9
       IF (ln_purchase_amount <> 0) THEN
         gl_xml_idx := gt_xml_data_table.COUNT + 1 ;
         gt_xml_data_table(gl_xml_idx).tag_name  := 'purchase_amount' ;
