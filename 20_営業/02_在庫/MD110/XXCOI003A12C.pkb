@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCOI003A12C(body)
  * Description      : HHT入出庫データ抽出
  * MD.050           : HHT入出庫データ抽出 MD050_COI_003_A12
- * Version          : 1.3
+ * Version          : 1.4
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -29,6 +29,7 @@ AS
  *  2009/02/18    1.1   K.Nakamura       [障害COI_011] 入出庫ジャーナル処理区分'0'の処理ステータス対応
  *  2009/04/21    1.2   H.Sasaki         [T1_0654]取込データの前後スペース削除
  *  2009/05/15    1.3   H.Sasaki         [T1_0785]データ抽出順序の変更
+ *  2009/06/01    1.4   H.Sasaki         [T1_1272]
  *
  *****************************************************************************************/
 --
@@ -388,30 +389,68 @@ AS
     -- 顧客移項情報取得
     CURSOR hht_inv_if_cur
     IS
--- == 2009/04/21 V1.2 Modified START ===============================================================
-      SELECT 
+-- == 2009/06/01 V1.4 Modified START ===============================================================
+---- == 2009/04/21 V1.2 Modified START ===============================================================
+--      SELECT 
+----             ROWID                          AS hht_rowid                -- ROWID
+----            ,xihit.interface_id             AS interface_id             -- インターフェースID
+----            ,xihit.base_code                AS base_code                -- 拠点コード
+----            ,xihit.record_type              AS record_type              -- レコード種別
+----            ,xihit.employee_num             AS employee_num             -- 営業員コード
+----            ,xihit.invoice_no               AS invoice_no               -- 伝票№
+----            ,xihit.item_code                AS item_code                -- 品目コード（品名コード）
+----            ,xihit.case_quantity            AS case_quantity            -- ケース数
+----            ,xihit.case_in_quantity         AS case_in_quantity         -- 入数
+----            ,xihit.quantity                 AS quantity                 -- 本数
+----            ,xihit.invoice_type             AS invoice_type             -- 伝票区分
+----            ,xihit.base_delivery_flag       AS base_delivery_flag       -- 拠点間倉替フラグ
+----            ,xihit.outside_code             AS outside_code             -- 出庫側コード
+----            ,xihit.inside_code              AS inside_code              -- 入庫側コード
+----            ,xihit.invoice_date             AS invoice_date             -- 伝票日付
+----            ,xihit.column_no                AS column_no                -- コラム№
+----            ,xihit.unit_price               AS unit_price               -- 単価
+----            ,xihit.hot_cold_div             AS hot_cold_div             -- h/c
+----            ,xihit.department_flag          AS department_flag          -- 百貨店フラグ
+----            ,xihit.other_base_code          AS other_base_code          -- 他拠点コード
+----            ,xihit.interface_date           AS interface_date           -- 受信日時
+----
 --             ROWID                          AS hht_rowid                -- ROWID
 --            ,xihit.interface_id             AS interface_id             -- インターフェースID
---            ,xihit.base_code                AS base_code                -- 拠点コード
---            ,xihit.record_type              AS record_type              -- レコード種別
---            ,xihit.employee_num             AS employee_num             -- 営業員コード
---            ,xihit.invoice_no               AS invoice_no               -- 伝票№
---            ,xihit.item_code                AS item_code                -- 品目コード（品名コード）
+--            ,TRIM(xihit.base_code)          AS base_code                -- 拠点コード
+--            ,TRIM(xihit.record_type)        AS record_type              -- レコード種別
+--            ,TRIM(xihit.employee_num)       AS employee_num             -- 営業員コード
+--            ,TRIM(xihit.invoice_no)         AS invoice_no               -- 伝票№
+--            ,TRIM(xihit.item_code)          AS item_code                -- 品目コード（品名コード）
 --            ,xihit.case_quantity            AS case_quantity            -- ケース数
 --            ,xihit.case_in_quantity         AS case_in_quantity         -- 入数
 --            ,xihit.quantity                 AS quantity                 -- 本数
---            ,xihit.invoice_type             AS invoice_type             -- 伝票区分
---            ,xihit.base_delivery_flag       AS base_delivery_flag       -- 拠点間倉替フラグ
---            ,xihit.outside_code             AS outside_code             -- 出庫側コード
---            ,xihit.inside_code              AS inside_code              -- 入庫側コード
+--            ,TRIM(xihit.invoice_type)       AS invoice_type             -- 伝票区分
+--            ,TRIM(xihit.base_delivery_flag) AS base_delivery_flag       -- 拠点間倉替フラグ
+--            ,TRIM(xihit.outside_code)       AS outside_code             -- 出庫側コード
+--            ,TRIM(xihit.inside_code)        AS inside_code              -- 入庫側コード
 --            ,xihit.invoice_date             AS invoice_date             -- 伝票日付
---            ,xihit.column_no                AS column_no                -- コラム№
+--            ,TRIM(xihit.column_no)          AS column_no                -- コラム№
 --            ,xihit.unit_price               AS unit_price               -- 単価
---            ,xihit.hot_cold_div             AS hot_cold_div             -- h/c
---            ,xihit.department_flag          AS department_flag          -- 百貨店フラグ
---            ,xihit.other_base_code          AS other_base_code          -- 他拠点コード
+--            ,TRIM(xihit.hot_cold_div)       AS hot_cold_div             -- h/c
+--            ,TRIM(xihit.department_flag)    AS department_flag          -- 百貨店フラグ
+--            ,TRIM(xihit.other_base_code)    AS other_base_code          -- 他拠点コード
 --            ,xihit.interface_date           AS interface_date           -- 受信日時
---
+---- == 2009/04/21 V1.2 Modified END   ===============================================================
+--      FROM   xxcoi_in_hht_inv_transactions xihit                        -- HHT入出庫情報IF
+--      WHERE  TRUNC( NVL(xihit.invoice_date , gd_process_date ) ) <= TRUNC( gd_process_date )
+---- == 2009/05/15 V1.3 Modified START ===============================================================
+----      ORDER BY
+----             xihit.base_code
+----            ,xihit.record_type
+----            ,xihit.invoice_type
+----            ,xihit.department_flag
+----            ,xihit.invoice_no
+----            ,xihit.column_no
+----            ,xihit.item_code
+--      ORDER BY
+--             xihit.interface_id
+-- == 2009/05/15 V1.3 Modified END   ===============================================================
+      SELECT
              ROWID                          AS hht_rowid                -- ROWID
             ,xihit.interface_id             AS interface_id             -- インターフェースID
             ,TRIM(xihit.base_code)          AS base_code                -- 拠点コード
@@ -424,8 +463,66 @@ AS
             ,xihit.quantity                 AS quantity                 -- 本数
             ,TRIM(xihit.invoice_type)       AS invoice_type             -- 伝票区分
             ,TRIM(xihit.base_delivery_flag) AS base_delivery_flag       -- 拠点間倉替フラグ
-            ,TRIM(xihit.outside_code)       AS outside_code             -- 出庫側コード
-            ,TRIM(xihit.inside_code)        AS inside_code              -- 入庫側コード
+            ,CASE   TRIM(xihit.record_type)
+                WHEN  '20'  THEN          SUBSTRB(TRIM(xihit.outside_code), -5, 5)
+                WHEN  '30'  THEN
+                  CASE  TRIM(xihit.invoice_type)
+                    WHEN  '1'  THEN       SUBSTRB(TRIM(xihit.outside_code), -2, 2)
+                    WHEN  '2'  THEN       SUBSTRB(TRIM(xihit.outside_code), -5, 5)
+                    WHEN  '3'  THEN
+                      CASE  TRIM(xihit.department_flag)
+                        WHEN  '7'  THEN   TRIM(xihit.outside_code)
+                        WHEN  '8'  THEN   TRIM(xihit.outside_code)
+                        ELSE              SUBSTRB(TRIM(xihit.outside_code), -2, 2)
+                      END
+                    WHEN  '4'  THEN
+                      CASE  TRIM(xihit.department_flag)
+                        WHEN  '4'  THEN   TRIM(xihit.outside_code)
+                        WHEN  '5'  THEN   SUBSTRB(TRIM(xihit.outside_code), -4, 4)
+                        ELSE              SUBSTRB(TRIM(xihit.outside_code), -2, 2)
+                      END
+                    WHEN  '6'  THEN       SUBSTRB(TRIM(xihit.outside_code), -5, 5)
+                    WHEN  '9'  THEN       SUBSTRB(TRIM(xihit.outside_code), -2, 2)
+                    ELSE                  TRIM(xihit.outside_code)
+                  END
+                WHEN  '40'  THEN
+                  CASE  TRIM(xihit.invoice_type)
+                    WHEN  '0'  THEN       SUBSTRB(TRIM(xihit.outside_code), -5, 5)
+                    WHEN  '1'  THEN       SUBSTRB(TRIM(xihit.outside_code), -2, 2)
+                    ELSE                  TRIM(xihit.outside_code)
+                  END
+                ELSE                      TRIM(xihit.outside_code)
+             END                            AS outside_code             -- 出庫側コード
+            ,CASE   TRIM(xihit.record_type)
+                WHEN  '30'  THEN
+                  CASE  TRIM(xihit.invoice_type)
+                    WHEN  '1'  THEN
+                      CASE  TRIM(xihit.department_flag)
+                        WHEN  '7'  THEN   SUBSTRB(TRIM(xihit.inside_code), -2, 2)
+                        WHEN  '8'  THEN   SUBSTRB(TRIM(xihit.inside_code), -2, 2)
+                        ELSE              SUBSTRB(TRIM(xihit.inside_code), -5, 5)
+                      END
+                    WHEN  '2'  THEN       SUBSTRB(TRIM(xihit.inside_code), -2, 2)
+                    WHEN  '3'  THEN
+                      CASE  TRIM(xihit.department_flag)
+                        WHEN  '7'  THEN   TRIM(xihit.inside_code)
+                        WHEN  '8'  THEN   TRIM(xihit.inside_code)
+                        ELSE              SUBSTRB(TRIM(xihit.inside_code), -2, 2)
+                      END
+                    WHEN  '4'  THEN       TRIM(xihit.inside_code)
+                    WHEN  '5'  THEN
+                      CASE  TRIM(xihit.department_flag)
+                        WHEN  '3'  THEN   TRIM(xihit.inside_code)
+                        WHEN  '6'  THEN   SUBSTRB(TRIM(xihit.inside_code), -4, 4)
+                        ELSE              SUBSTRB(TRIM(xihit.inside_code), -2, 2)
+                      END
+                    WHEN  '6'  THEN       TRIM(xihit.inside_code)
+                    WHEN  '7'  THEN       SUBSTRB(TRIM(xihit.inside_code), -5, 5)
+                    WHEN  '9'  THEN       SUBSTRB(TRIM(xihit.inside_code), -4, 4)
+                    ELSE                  TRIM(xihit.inside_code)
+                  END
+                ELSE                      TRIM(xihit.inside_code)
+             END                            AS inside_code              -- 入庫側コード
             ,xihit.invoice_date             AS invoice_date             -- 伝票日付
             ,TRIM(xihit.column_no)          AS column_no                -- コラム№
             ,xihit.unit_price               AS unit_price               -- 単価
@@ -433,21 +530,11 @@ AS
             ,TRIM(xihit.department_flag)    AS department_flag          -- 百貨店フラグ
             ,TRIM(xihit.other_base_code)    AS other_base_code          -- 他拠点コード
             ,xihit.interface_date           AS interface_date           -- 受信日時
--- == 2009/04/21 V1.2 Modified END   ===============================================================
       FROM   xxcoi_in_hht_inv_transactions xihit                        -- HHT入出庫情報IF
       WHERE  TRUNC( NVL(xihit.invoice_date , gd_process_date ) ) <= TRUNC( gd_process_date )
--- == 2009/05/15 V1.3 Modified START ===============================================================
---      ORDER BY
---             xihit.base_code
---            ,xihit.record_type
---            ,xihit.invoice_type
---            ,xihit.department_flag
---            ,xihit.invoice_no
---            ,xihit.column_no
---            ,xihit.item_code
       ORDER BY
              xihit.interface_id
--- == 2009/05/15 V1.3 Modified END   ===============================================================
+-- == 2009/06/01 V1.4 Modified END   ===============================================================
       FOR UPDATE NOWAIT;
 --
     no_data_expt    EXCEPTION;                                          -- 対象データなし

@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCOS004A02C (body)
  * Description      : 商品別売上計算
  * MD.050           : 商品別売上計算 MD050_COS_004_A02
- * Version          : 1.10
+ * Version          : 1.11
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -39,6 +39,7 @@ AS
  *  2009/04/28    1.9   N.Maeda          [T1_0769]数量系、金額系の算出方法の修正
  *  2009/05/07    1.10  T.kitajima       [T1_0888]納品拠点取得方法変更
  *                                       [T1_0714]在庫品目数量0除外対応
+ *  2009/05/26    1.11  T.kitajima       [T1_1217]単価四捨五入
  *
  *****************************************************************************************/
 --
@@ -1378,12 +1379,20 @@ AS
                                                                            (gt_tab_work_data(ln_i).digestion_calc_rate / 100),0);
                                                                                                                          --売上金額
         gt_tab_sales_exp_lines(ln_m).pure_amount                  := gt_tab_sales_exp_lines(ln_m).sale_amount;           --本体金額
+--******************************* 2009/05/26 1.11 T.Kitajima MOD START *******************************--
+--        gt_tab_sales_exp_lines(ln_m).dlv_unit_price               :=
+--                            TRUNC( ( gt_tab_sales_exp_lines(ln_m).sale_amount / gt_tab_sales_exp_lines(ln_m).dlv_qty ) , 2 );  --納品単価
+--        gt_tab_sales_exp_lines(ln_m).standard_unit_price_excluded :=
+--                            TRUNC( ( gt_tab_sales_exp_lines(ln_m).pure_amount / gt_tab_sales_exp_lines(ln_m).dlv_qty ) , 2 );  --税抜基準単価
+--        gt_tab_sales_exp_lines(ln_m).standard_unit_price          :=
+--                            TRUNC( ( gt_tab_sales_exp_lines(ln_m).sale_amount / gt_tab_sales_exp_lines(ln_m).standard_qty ) , 2 ); --基準単価
         gt_tab_sales_exp_lines(ln_m).dlv_unit_price               :=
-                            TRUNC( ( gt_tab_sales_exp_lines(ln_m).sale_amount / gt_tab_sales_exp_lines(ln_m).dlv_qty ) , 2 );  --納品単価
+                            ROUND( ( gt_tab_sales_exp_lines(ln_m).sale_amount / gt_tab_sales_exp_lines(ln_m).dlv_qty ) , 2 );  --納品単価
         gt_tab_sales_exp_lines(ln_m).standard_unit_price_excluded :=
-                            TRUNC( ( gt_tab_sales_exp_lines(ln_m).pure_amount / gt_tab_sales_exp_lines(ln_m).dlv_qty ) , 2 );  --税抜基準単価
+                            ROUND( ( gt_tab_sales_exp_lines(ln_m).pure_amount / gt_tab_sales_exp_lines(ln_m).dlv_qty ) , 2 );  --税抜基準単価
         gt_tab_sales_exp_lines(ln_m).standard_unit_price          :=
-                            TRUNC( ( gt_tab_sales_exp_lines(ln_m).sale_amount / gt_tab_sales_exp_lines(ln_m).standard_qty ) , 2 ); --基準単価
+                            ROUND( ( gt_tab_sales_exp_lines(ln_m).sale_amount / gt_tab_sales_exp_lines(ln_m).standard_qty ) , 2 ); --基準単価
+--******************************* 2009/05/26 1.11 T.Kitajima MOD  END *******************************--
 --******************************* 2009/04/28 1.9 N.Maeda MOD  END  **************************************************************
         --赤黒フラグ取得
         IF ( gt_tab_sales_exp_lines(ln_m).sale_amount < 0 ) THEN
