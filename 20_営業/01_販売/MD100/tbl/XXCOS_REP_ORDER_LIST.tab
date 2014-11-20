@@ -3,7 +3,7 @@
  *
  * Table Name  : XXCOS_REP_ORDER_LIST
  * Description : Žó’ˆê——ƒŠƒXƒg’ •[ƒ[ƒNƒe[ƒuƒ‹
- * Version     : 1.0
+ * Version     : 1.2
  *
  * Change Record
  * ------------- ----- ---------------- ---------------------------------
@@ -15,6 +15,11 @@
  *                                     ”—Ê      NUMBER(9,2)  Ë NUMBER(13,2)‚É•ÏX
  *                                     ”[•i’P‰¿  NUMBER(8,2)  Ë NUMBER(13,2)‚É•ÏX
  *                                     Žó’‹àŠz  NUMBER(12,0) Ë NUMBER‚É•ÏX
+ *  2009/12/28    1.2   SCS K.Kiriu    [E_–{‰Ò“®_00407]EDI’ •[Äo—Í‘Î‰ž
+ *                                     [E_–{‰Ò“®_00409]ƒ`ƒF[ƒ““XƒR[ƒh’Ç‰Á
+ *                                     [E_–{‰Ò“®_00583]“`•[‹æ•ªA•ª—Þ‹æ•ª’Ç‰Á
+ *  2010/01/22    1.2   SCS K.Kikuchi  [E_–{‰Ò“®_00408]“`•[”Ô†Œvo—Í‘Î‰ž
+ *                                                     ƒŒƒR[ƒhƒ^ƒCƒv,Žó’‹àŠz‡Œv’Ç‰Á
  *
  ****************************************************************************************/
 CREATE TABLE XXCOS.XXCOS_REP_ORDER_LIST 
@@ -23,18 +28,31 @@ CREATE TABLE XXCOS.XXCOS_REP_ORDER_LIST
     ORDER_SOURCE                   VARCHAR2(16),                     --Žó’ƒ\[ƒX
     ENTERED_BY_CODE                VARCHAR2(5),                      --“ü—ÍŽÒƒR[ƒh
     ENTERED_BY_NAME                VARCHAR2(40),                     --“ü—ÍŽÒ–¼
-    ORDER_NUMBER                   NUMBER(9),                        --Žó’”Ô† 
+/* 2009/10/02 Ver1.1 Mod Start */
+--    ORDER_NUMBER                   NUMBER(9),                        --Žó’”Ô† 
+    ORDER_NUMBER                   NUMBER,                           --Žó’”Ô† 
+/* 2009/10/02 Ver1.1 Mod End */
     PARTY_ORDER_NUMBER             VARCHAR2(12),                     --ŒÚ‹q”­’”Ô†
-    LINE_NUMBER                    NUMBER(3),                        --–¾×”Ô† 
+/* 2009/10/02 Ver1.1 Mod Start */
+--    LINE_NUMBER                    NUMBER(3),                        --–¾×”Ô† 
+    LINE_NUMBER                    NUMBER,                           --–¾×”Ô† 
+/* 2009/10/02 Ver1.1 Mod End */
     ORDER_NO                       VARCHAR2(16),                     --ƒI[ƒ_[No.
     SHIPPED_DATE                   DATE,                             --o‰×“ú 
     DLV_DATE                       DATE,                             --”[•i“ú 
     ORDER_ITEM_NO                  VARCHAR2(7),                      --Žó’•i”Ô† 
     ORDER_ITEM_NAME                VARCHAR2(20),                     --Žó’•i–¼ 
-    QUANTITY                       NUMBER(9,2),                      --”—Ê 
+/* 2009/10/02 Ver1.1 Mod Start */
+--    QUANTITY                       NUMBER(9,2),                      --”—Ê 
+    QUANTITY                       NUMBER(13,2),                     --”—Ê 
+/* 2009/10/02 Ver1.1 Mod End */
     UOM_CODE                       VARCHAR2(3),                      --’PˆÊ 
-    DLV_UNIT_PRICE                 NUMBER(8,2),                      --”[•i’P‰¿ 
-    ORDER_AMOUNT                   NUMBER(12,0),                     --Žó’‹àŠz 
+/* 2009/10/02 Ver1.1 Mod Start */
+--    DLV_UNIT_PRICE                 NUMBER(8,2),                      --”[•i’P‰¿ 
+--    ORDER_AMOUNT                   NUMBER(12,0),                     --Žó’‹àŠz 
+    DLV_UNIT_PRICE                 NUMBER(13,2),                     --”[•i’P‰¿ 
+    ORDER_AMOUNT                   NUMBER,                           --Žó’‹àŠz 
+/* 2009/10/02 Ver1.1 Mod End */
     LOCAT_CODE                     VARCHAR2(10),                     --•ÛŠÇêŠƒR[ƒh 
     LOCAT_NAME                     VARCHAR2(10),                     --•ÛŠÇêŠ–¼Ì 
     SHIPPING_INSTRUCTIONS          VARCHAR2(26),                     --o‰×ŽwŽ¦ 
@@ -42,6 +60,23 @@ CREATE TABLE XXCOS.XXCOS_REP_ORDER_LIST
     BASE_EMPLOYEE_NAME             VARCHAR2(12),                     --’S“–‰c‹Æ–¼Ì 
     DELIVER_FROM_CODE              VARCHAR2(9),                      --o‰×æƒR[ƒh 
     DELIVER_TO_NAME                VARCHAR2(40),                     --o‰×æ–¼Ì 
+/* 2009/12/28 Ver1.2 Add Start */
+    INVOICE_CLASS                  VARCHAR2(2),                      --“`•[‹æ•ª
+    CLASSIFICATION_CLASS           VARCHAR2(4),                      --•ª—Þ‹æ•ª
+    REPORT_OUTPUT_TYPE             VARCHAR2(10),                     --o—Í‹æ•ª
+    EDI_RE_OUTPUT_FLAG             VARCHAR2(1),                      --EDIÄo—Íƒtƒ‰ƒO
+    CHAIN_CODE                     VARCHAR2(4),                      --ƒ`ƒF[ƒ““XƒR[ƒh
+    CHAIN_NAME                     VARCHAR2(360),                    --ƒ`ƒF[ƒ““X–¼Ì
+    ORDER_CREATION_DATE_FROM       DATE,                             --ŽóM“ú(FROM)
+    ORDER_CREATION_DATE_TO         DATE,                             --ŽóM“ú(TO)
+    DLV_DATE_HEADER_FROM           DATE,                             --”[•i“ú(ƒwƒbƒ_)(FROM)
+    DLV_DATE_HEADER_TO             DATE,                             --”[•i“ú(ƒwƒbƒ_)(TO)
+/* 2009/12/28 Ver1.2 Add End   */
+/* 2010/01/22 Ver1.3 Add Start */
+    RECORD_TYPE                    NUMBER,                           --ƒŒƒR[ƒhƒ^ƒCƒv
+    ORDER_AMOUNT_TOTAL             NUMBER,                           --Žó’‹àŠz‡Œv
+    DLV_DATE_HEADER                DATE,                             --”[•i“ú(ƒwƒbƒ_)
+/* 2010/01/22 Ver1.3 Add End */
     CREATED_BY                     NUMBER(15,0)    NOT NULL,         --ì¬ŽÒ
     CREATION_DATE                  DATE            NOT NULL,         --ì¬“ú
     LAST_UPDATED_BY                NUMBER(15,0)    NOT NULL,         --ÅIXVŽÒ
@@ -78,6 +113,18 @@ COMMENT ON COLUMN XXCOS.XXCOS_REP_ORDER_LIST.BASE_EMPLOYEE_NUM             IS '’
 COMMENT ON COLUMN XXCOS.XXCOS_REP_ORDER_LIST.BASE_EMPLOYEE_NAME            IS '’S“–‰c‹Æ–¼Ì ';
 COMMENT ON COLUMN XXCOS.XXCOS_REP_ORDER_LIST.DELIVER_FROM_CODE             IS 'o‰×æƒR[ƒh ';
 COMMENT ON COLUMN XXCOS.XXCOS_REP_ORDER_LIST.DELIVER_TO_NAME               IS 'o‰×æ–¼Ì ';
+/* 2009/12/28 Ver1.2 Add Start */
+COMMENT ON COLUMN XXCOS.XXCOS_REP_ORDER_LIST.INVOICE_CLASS                 IS '“`•[‹æ•ª';
+COMMENT ON COLUMN XXCOS.XXCOS_REP_ORDER_LIST.CLASSIFICATION_CLASS          IS '•ª—Þ‹æ•ª';
+COMMENT ON COLUMN XXCOS.XXCOS_REP_ORDER_LIST.REPORT_OUTPUT_TYPE            IS 'o—Í‹æ•ª';
+COMMENT ON COLUMN XXCOS.XXCOS_REP_ORDER_LIST.EDI_RE_OUTPUT_FLAG            IS 'EDIÄo—Íƒtƒ‰ƒO';
+COMMENT ON COLUMN XXCOS.XXCOS_REP_ORDER_LIST.CHAIN_CODE                    IS 'ƒ`ƒF[ƒ““XƒR[ƒh';
+COMMENT ON COLUMN XXCOS.XXCOS_REP_ORDER_LIST.CHAIN_NAME                    IS 'ƒ`ƒF[ƒ““X–¼Ì';
+COMMENT ON COLUMN XXCOS.XXCOS_REP_ORDER_LIST.ORDER_CREATION_DATE_FROM      IS 'ŽóM“ú(FROM)';
+COMMENT ON COLUMN XXCOS.XXCOS_REP_ORDER_LIST.ORDER_CREATION_DATE_TO        IS 'ŽóM“ú(TO)';
+COMMENT ON COLUMN XXCOS.XXCOS_REP_ORDER_LIST.DLV_DATE_HEADER_FROM          IS '”[•i“ú(ƒwƒbƒ_)(FROM)';
+COMMENT ON COLUMN XXCOS.XXCOS_REP_ORDER_LIST.DLV_DATE_HEADER_TO            IS '”[•i“ú(ƒwƒbƒ_)(TO)';
+/* 2009/12/28 Ver1.2 Add Start */
 COMMENT ON COLUMN XXCOS.XXCOS_REP_ORDER_LIST.CREATED_BY                    IS 'ì¬ŽÒ';
 COMMENT ON COLUMN XXCOS.XXCOS_REP_ORDER_LIST.CREATION_DATE                 IS 'ì¬“ú';
 COMMENT ON COLUMN XXCOS.XXCOS_REP_ORDER_LIST.LAST_UPDATED_BY               IS 'ÅIXVŽÒ';
@@ -87,5 +134,10 @@ COMMENT ON COLUMN XXCOS.XXCOS_REP_ORDER_LIST.REQUEST_ID                    IS '—
 COMMENT ON COLUMN XXCOS.XXCOS_REP_ORDER_LIST.PROGRAM_APPLICATION_ID        IS 'ƒRƒ“ƒJƒŒƒ“ƒgEƒvƒƒOƒ‰ƒ€EƒAƒvƒŠƒP[ƒVƒ‡ƒ“ID';
 COMMENT ON COLUMN XXCOS.XXCOS_REP_ORDER_LIST.PROGRAM_ID                    IS 'ƒRƒ“ƒJƒŒƒ“ƒgEƒvƒƒOƒ‰ƒ€ID';
 COMMENT ON COLUMN XXCOS.XXCOS_REP_ORDER_LIST.PROGRAM_UPDATE_DATE           IS 'ƒvƒƒOƒ‰ƒ€XV“ú';
- --
+/* 2010/01/22 Ver1.3 Add Start */
+COMMENT ON COLUMN XXCOS.XXCOS_REP_ORDER_LIST.RECORD_TYPE                   IS 'ƒŒƒR[ƒhƒ^ƒCƒv';
+COMMENT ON COLUMN XXCOS.XXCOS_REP_ORDER_LIST.ORDER_AMOUNT_TOTAL            IS 'Žó’‹àŠz‡Œv';
+COMMENT ON COLUMN XXCOS.XXCOS_REP_ORDER_LIST.DLV_DATE_HEADER               IS '”[•i“ú(ƒwƒbƒ_)';
+/* 2010/01/22 Ver1.3 Add End */
+--
 COMMENT ON TABLE  XXCOS.XXCOS_REP_ORDER_LIST                               IS 'Žó’ˆê——ƒŠƒXƒg’ •[ƒ[ƒNƒe[ƒuƒ‹';

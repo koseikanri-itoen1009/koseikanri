@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCOS009A01R (spec)
  * Description      : 受注一覧リスト
  * MD.050           : 受注一覧リスト MD050_COS_009_A01
- * Version          : 1.8
+ * Version          : 1.9
  *
  * Program List
  * -------------------- ------------------------------------------------------------
@@ -27,6 +27,11 @@ AS
  *  2009/07/13    1.6   K.Kiriu          [0000063]情報区分の課題対応
  *  2009/07/29    1.7   T.Tominaga       [0000271]受注ソースがEDI受注とそれ以外とでカーソルを分ける（EDI受注のみロック）
  *  2009/10/02    1.8   N.Maeda          [0001338]execute_svfの独立トランザクション化
+ *  2009/12/28    1.9   K.Kiriui         [E_本稼動_00407]EDI帳票再出力対応
+ *                                       [E_本稼動_00409]帳票出力順序変更対応
+ *                                       [E_本稼動_00583]伝票区分、分類区分出力対応
+ *                                       [E_本稼動_00700]明細金額の端数処理変更対応
+ *  2010/01/22    1.9   Y.Kikuchi        [E_本稼動_00408]伝票計出力対応
  *
  *****************************************************************************************/
 --
@@ -45,7 +50,16 @@ AS
     iv_entered_by_code              IN     VARCHAR2,         --   入力者コード
     iv_ship_to_code                 IN     VARCHAR2,         --   出荷先コード
     iv_subinventory                 IN     VARCHAR2,         --   保管場所
-    iv_order_number                 IN     VARCHAR2          --   受注番号
+/* 2009/12/28 Ver1.9 Mod Start */
+--    iv_order_number                 IN     VARCHAR2          --   受注番号
+    iv_order_number                 IN     VARCHAR2,         --   受注番号
+    iv_output_type                  IN     VARCHAR2,         --   出力区分
+    iv_chain_code                   IN     VARCHAR2,         --   チェーン店コード
+    iv_order_creation_date_from     IN     VARCHAR2,         --   受信日(FROM)
+    iv_order_creation_date_to       IN     VARCHAR2,         --   受信日(TO)
+    iv_ordered_date_h_from          IN     VARCHAR2,         --   納品日(ヘッダ)(FROM)
+    iv_ordered_date_h_to            IN     VARCHAR2          --   納品日(ヘッダ)(TO)
+/* 2009/12/28 Ver1.9 Mod End   */
   );
 END XXCOS009A01R;
 /
