@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCMM003A29C(body)
  * Description      : 顧客一括更新
  * MD.050           : MD050_CMM_003_A29_顧客一括更新
- * Version          : 1.7
+ * Version          : 1.8
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -33,6 +33,8 @@ AS
  *                                                          CSV項目数のチェックを追加
  *                                                          実行した職責によるセキュリティを追加
  *  2011/11/28    1.7   窪 和重          障害E_本稼動_07553対応 EDI関連の項目追加
+ *  2012/03/13    1.8   仁木 重人        障害E_本稼動_009272対応 訪問対象区分の項目追加
+ *                                                               情報欄を最終項目に修正
  *
  *****************************************************************************************/
 --
@@ -311,6 +313,10 @@ AS
   cv_torihikisaki_code        CONSTANT VARCHAR2(12)  := '取引先コード';                    --取引先コード
   cv_tsukagatazaiko_kbn       CONSTANT VARCHAR2(30)  := 'XXCMM_CUST_TSUKAGATAZAIKO_KBN';   --参照コード・通過在庫型区分
 -- 2011/12/05 Ver1.7 E_本稼動_07553 add end   by K.Kubo
+-- 2012/03/13 Ver1.8 E_本稼動_09272 add start by S.Niki
+  cv_vist_target_div          CONSTANT VARCHAR2(30)  := '訪問対象区分';                    --訪問対象区分
+  cv_homon_taisyo_kbn         CONSTANT VARCHAR2(30)  := 'XXCMM_CUST_HOMON_TAISYO_KBN';     --参照コード・訪問対象区分
+-- 2012/03/13 Ver1.8 E_本稼動_09272 add end by S.Niki
 --
   -- ===============================
   -- ユーザー定義グローバル型
@@ -490,6 +496,10 @@ AS
     lv_chain_store_db           xxcmm_cust_accounts.chain_store_code%TYPE;    --顧客追加情報存在確認用変数
     lv_tsukagatazaiko_div_db    xxcmm_cust_accounts.tsukagatazaiko_div%TYPE;  --顧客追加情報存在確認用変数
 -- 2011/12/05 Ver1.7 E_本稼動_07553 add end   by K.Kubo
+-- 2012/03/13 Ver1.8 E_本稼動_09272 add start by S.Niki
+    lv_vist_target_div          VARCHAR2(100)   := NULL;                  --ローカル変数・訪問対象区分
+    lv_vist_target_div_mst      xxcmm_cust_accounts.vist_target_div%TYPE; --訪問対象区分確認用変数
+-- 2012/03/13 Ver1.8 E_本稼動_09272 add end by S.Niki
     -- ===============================
     -- ローカル・カーソル
     -- ===============================
@@ -866,6 +876,19 @@ AS
     -- 顧客追加情報チェックカーソルレコード型
     check_db_customer_rec  check_db_customer_cur%ROWTYPE;
 -- 2011/12/05 Ver1.7 E_本稼動_07553 add end   by K.Kubo
+-- 2012/03/13 Ver1.8 E_本稼動_09272 add start by S.Niki
+    -- 訪問対象区分チェックカーソル
+    CURSOR check_homon_taisyo_kbn_cur(
+      iv_vist_target_div IN VARCHAR2)
+    IS
+      SELECT flvv.lookup_code      homon_taisyo_kbn
+      FROM   fnd_lookup_values_vl  flvv
+      WHERE  flvv.lookup_type = cv_homon_taisyo_kbn
+      AND    flvv.lookup_code = iv_vist_target_div
+      ;
+    -- 訪問対象区分チェックカーソルレコード型
+    check_homon_taisyo_kbn_rec  check_homon_taisyo_kbn_cur%ROWTYPE;
+-- 2012/03/13 Ver1.8 E_本稼動_09272 add end by S.Niki
 --
   BEGIN
 --
@@ -4278,7 +4301,10 @@ AS
         -- 配送順（EDI） 取得
         lv_delivery_order := xxccp_common_pkg.char_delim_partition(  lv_temp
                                                                     ,cv_comma
-                                                                    ,48);
+-- 2012/03/13 Ver1.8 E_本稼動_09272 mod start by S.Niki
+--                                                                    ,48);
+                                                                    ,47);
+-- 2012/03/13 Ver1.8 E_本稼動_09272 mod end by S.Niki
         --配送順（EDI） 型・桁数チェック
         xxccp_common_pkg2.upload_item_check( cv_delivery_order        --配送順（EDI）
                                             ,lv_delivery_order        --配送順（EDI）
@@ -4320,7 +4346,10 @@ AS
         -- EDI地区コード（EDI） 取得
         lv_edi_district_code := xxccp_common_pkg.char_delim_partition(  lv_temp
                                                                        ,cv_comma
-                                                                       ,49);
+-- 2012/03/13 Ver1.8 E_本稼動_09272 mod start by S.Niki
+--                                                                       ,49);
+                                                                       ,48);
+-- 2012/03/13 Ver1.8 E_本稼動_09272 mod end by S.Niki
         --EDI地区コード（EDI） 型・桁数チェック
         xxccp_common_pkg2.upload_item_check( cv_edi_district_code     --EDI地区コード（EDI）
                                             ,lv_edi_district_code     --EDI地区コード（EDI）
@@ -4382,7 +4411,10 @@ AS
         -- EDI地区名（EDI） 取得
         lv_edi_district_name := xxccp_common_pkg.char_delim_partition(  lv_temp
                                                                        ,cv_comma
-                                                                       ,50);
+-- 2012/03/13 Ver1.8 E_本稼動_09272 mod start by S.Niki
+--                                                                       ,50);
+                                                                       ,49);
+-- 2012/03/13 Ver1.8 E_本稼動_09272 mod end by S.Niki
         --EDI地区名（EDI） 型・桁数チェック
         xxccp_common_pkg2.upload_item_check( cv_edi_district_name     --EDI地区名（EDI）
                                             ,lv_edi_district_name     --EDI地区名（EDI）
@@ -4446,7 +4478,10 @@ AS
         -- EDI地区名カナ（EDI） 取得
         lv_edi_district_kana := xxccp_common_pkg.char_delim_partition(  lv_temp
                                                                        ,cv_comma
-                                                                       ,51);
+-- 2012/03/13 Ver1.8 E_本稼動_09272 mod start by S.Niki
+--                                                                       ,51);
+                                                                       ,50);
+-- 2012/03/13 Ver1.8 E_本稼動_09272 mod end by S.Niki
         --EDI地区名カナ（EDI） 型・桁数チェック
         xxccp_common_pkg2.upload_item_check( cv_edi_district_kana     --EDI地区名カナ（EDI）
                                             ,lv_edi_district_kana     --EDI地区名カナ（EDI）
@@ -4508,7 +4543,10 @@ AS
         -- 通過在庫型区分（EDI） 取得
         lv_tsukagatazaiko_div := xxccp_common_pkg.char_delim_partition(  lv_temp
                                                                         ,cv_comma
-                                                                        ,52);
+-- 2012/03/13 Ver1.8 E_本稼動_09272 mod start by S.Niki
+--                                                                        ,52);
+                                                                        ,51);
+-- 2012/03/13 Ver1.8 E_本稼動_09272 mod end by S.Niki
         --通過在庫型区分（EDI） 型・桁数チェック
         xxccp_common_pkg2.upload_item_check( cv_tsukagatazaiko_div    --通過在庫型区分（EDI）
                                             ,lv_tsukagatazaiko_div    --通過在庫型区分（EDI）
@@ -4642,7 +4680,10 @@ AS
         -- EDI納品センターコード 取得
         lv_deli_center_code := xxccp_common_pkg.char_delim_partition(  lv_temp
                                                                       ,cv_comma
-                                                                      ,53);
+-- 2012/03/13 Ver1.8 E_本稼動_09272 mod start by S.Niki
+--                                                                      ,53);
+                                                                      ,52);
+-- 2012/03/13 Ver1.8 E_本稼動_09272 mod end by S.Niki
         --EDI納品センターコード 型・桁数チェック
         xxccp_common_pkg2.upload_item_check( cv_deli_center_code      --EDI納品センターコード
                                             ,lv_deli_center_code      --EDI納品センターコード
@@ -4684,7 +4725,10 @@ AS
         -- EDI納品センター名 取得
         lv_deli_center_name := xxccp_common_pkg.char_delim_partition(  lv_temp
                                                                       ,cv_comma
-                                                                      ,54);
+-- 2012/03/13 Ver1.8 E_本稼動_09272 mod start by S.Niki
+--                                                                      ,54);
+                                                                      ,53);
+-- 2012/03/13 Ver1.8 E_本稼動_09272 mod end by S.Niki
         --EDI納品センター名 型・桁数チェック
         xxccp_common_pkg2.upload_item_check( cv_deli_center_name      --EDI納品センター名
                                             ,lv_deli_center_name      --EDI納品センター名
@@ -4726,7 +4770,10 @@ AS
         -- EDI伝送追番 取得
         lv_edi_forward_number := xxccp_common_pkg.char_delim_partition(  lv_temp
                                                                         ,cv_comma
-                                                                        ,55);
+-- 2012/03/13 Ver1.8 E_本稼動_09272 mod start by S.Niki
+--                                                                        ,55);
+                                                                        ,54);
+-- 2012/03/13 Ver1.8 E_本稼動_09272 mod end by S.Niki
         --EDI伝送追番 型・桁数チェック
         xxccp_common_pkg2.upload_item_check( cv_edi_forward_number    --EDI伝送追番
                                             ,lv_edi_forward_number    --EDI伝送追番
@@ -4768,7 +4815,10 @@ AS
         -- 顧客店舗名称 取得
         lv_cust_store_name := xxccp_common_pkg.char_delim_partition(  lv_temp
                                                                      ,cv_comma
-                                                                     ,56);
+-- 2012/03/13 Ver1.8 E_本稼動_09272 mod start by S.Niki
+--                                                                     ,56);
+                                                                     ,55);
+-- 2012/03/13 Ver1.8 E_本稼動_09272 mod end by S.Niki
         --顧客店舗名称 型・桁数チェック
         xxccp_common_pkg2.upload_item_check( cv_cust_store_name       --顧客店舗名称
                                             ,lv_cust_store_name       --顧客店舗名称
@@ -4832,7 +4882,10 @@ AS
         -- 取引先コード 取得
         lv_torihikisaki_code := xxccp_common_pkg.char_delim_partition(  lv_temp
                                                                        ,cv_comma
-                                                                       ,57);
+-- 2012/03/13 Ver1.8 E_本稼動_09272 mod start by S.Niki
+--                                                                       ,57);
+                                                                       ,56);
+-- 2012/03/13 Ver1.8 E_本稼動_09272 mod end by S.Niki
         --取引先コード 型・桁数チェック
         xxccp_common_pkg2.upload_item_check( cv_torihikisaki_code     --取引先コード
                                             ,lv_torihikisaki_code     --取引先コード
@@ -4889,6 +4942,74 @@ AS
         END IF;
 --
 -- 2011/12/05 Ver1.7 E_本稼動_07553 add end   by K.Kubo
+-- 2012/03/13 Ver1.8 E_本稼動_09272 add start by S.Niki
+        --訪問対象区分取得
+        lv_vist_target_div := xxccp_common_pkg.char_delim_partition(  lv_temp
+                                                                     ,cv_comma
+                                                                     ,57);
+        --訪問対象区分が-でない場合
+        IF (lv_vist_target_div <> cv_null_bar) THEN
+          --訪問対象区分存在チェック
+          << check_homon_taisyo_kbn_loop >>
+          FOR check_homon_taisyo_kbn_rec IN check_homon_taisyo_kbn_cur( lv_vist_target_div )
+          LOOP
+            lv_vist_target_div_mst := check_homon_taisyo_kbn_rec.homon_taisyo_kbn;
+          END LOOP check_homon_taisyo_kbn_loop;
+          IF (lv_vist_target_div_mst IS NULL) THEN
+            lv_check_status   := cv_status_error;
+            lv_retcode        := cv_status_error;
+            --訪問対象区分チェックエラーメッセージ取得
+            gv_out_msg := xxccp_common_pkg.get_msg(
+                             iv_application  => gv_xxcmm_msg_kbn
+                            ,iv_name         => cv_lookup_err_msg
+                            ,iv_token_name1  => cv_cust_code
+                            ,iv_token_value1 => lv_customer_code
+                            ,iv_token_name2  => cv_col_name
+                            ,iv_token_value2 => cv_vist_target_div
+                            ,iv_token_name3  => cv_input_val
+                            ,iv_token_value3 => lv_vist_target_div
+                           );
+            FND_FILE.PUT_LINE(
+               which  => FND_FILE.LOG
+              ,buff   => gv_out_msg);
+          END IF;
+--
+          --訪問対象区分型・桁数チェック
+          xxccp_common_pkg2.upload_item_check( cv_vist_target_div     --訪問対象区分
+                                              ,lv_vist_target_div     --訪問対象区分
+                                              ,1                      --項目長
+                                              ,NULL                   --項目長（小数点以下）
+                                              ,cv_null_ok             --必須フラグ
+                                              ,cv_element_vc2         --属性（0・検証なし、1、数値、2、日付）
+                                              ,lv_item_errbuf         --エラーバッファ
+                                              ,lv_item_retcode        --エラーコード
+                                              ,lv_item_errmsg);       --エラーメッセージ
+          --訪問対象区分型・桁数チェックエラー時
+          IF (lv_item_retcode <> cv_status_normal) THEN
+            lv_check_status := cv_status_error;
+            lv_retcode      := cv_status_error;
+            --訪問対象区分エラーメッセージ取得
+            gv_out_msg := xxccp_common_pkg.get_msg(
+                             iv_application  => gv_xxcmm_msg_kbn
+                            ,iv_name         => cv_val_form_err_msg
+                            ,iv_token_name1  => cv_cust_code
+                            ,iv_token_value1 => lv_customer_code
+                            ,iv_token_name2  => cv_col_name
+                            ,iv_token_value2 => cv_vist_target_div
+                            ,iv_token_name3  => cv_input_val
+                            ,iv_token_value3 => lv_vist_target_div
+                           );
+            FND_FILE.PUT_LINE(
+               which  => FND_FILE.LOG
+              ,buff   => gv_out_msg
+            );
+            FND_FILE.PUT_LINE(
+               which  => FND_FILE.LOG
+              ,buff   => lv_item_errmsg
+            );
+          END IF;
+        END IF;
+-- 2012/03/13 Ver1.8 E_本稼動_09272 add end by S.Niki
         --
         IF (lv_check_status = cv_status_normal) THEN
           BEGIN
@@ -4951,6 +5072,9 @@ AS
               ,cust_store_name
               ,torihikisaki_code
 -- 2011/12/05 Ver1.7 E_本稼動_07553 add end   by K.Kubo
+-- 2012/03/13 Ver1.8 E_本稼動_09272 add start by S.Niki
+              ,vist_target_div           --訪問対象区分
+-- 2012/03/13 Ver1.8 E_本稼動_09272 add end by S.Niki
               ,created_by
               ,creation_date
               ,last_updated_by
@@ -5019,6 +5143,9 @@ AS
               ,lv_cust_store_name
               ,lv_torihikisaki_code
 -- 2011/12/05 Ver1.7 E_本稼動_07553 add end   by K.Kubo
+-- 2012/03/13 Ver1.8 E_本稼動_09272 add start by S.Niki
+              ,lv_vist_target_div        --訪問対象区分
+-- 2012/03/13 Ver1.8 E_本稼動_09272 add end by S.Niki
               ,fnd_global.user_id
               ,sysdate
               ,fnd_global.user_id
@@ -5114,6 +5241,9 @@ AS
       lv_torihikisaki_code        := NULL;
       lv_tsukagatazaiko_flag      := NULL;
 -- 2011/12/05 Ver1.7 E_本稼動_07553 add end   by K.Kubo
+-- 2012/03/13 Ver1.8 E_本稼動_09272 add start by S.Niki
+      lv_vist_target_div          := NULL;  --訪問対象区分
+-- 2012/03/13 Ver1.8 E_本稼動_09272 add end by S.Niki
     END LOOP cust_data_wk_loop;
 --
     --データエラー時メッセージ設定（コンカレント出力）
@@ -5384,6 +5514,10 @@ AS
              ,xwcbr.torihikisaki_code     torihikisaki_code           --取引先コード
              ,xca.torihikisaki_code       addon_torihikisaki_code     --顧客追加情報・取引先コード
 -- 2011/12/05 Ver1.7 E_本稼動_07553 add end   by K.Kubo
+-- 2012/03/13 Ver1.8 E_本稼動_09272 add start by S.Niki
+             ,xwcbr.vist_target_div       vist_target_div             --訪問対象区分
+             ,xca.vist_target_div         addon_vist_target_div       --顧客追加情報・訪問対象区分
+-- 2012/03/13 Ver1.8 E_本稼動_09272 add end by S.Niki
       FROM    hz_cust_accounts     hca,
               hz_cust_acct_sites   hcas,
               hz_cust_site_uses    hcsu,
@@ -6389,6 +6523,23 @@ AS
     END IF;
 --
 -- 2011/12/05 Ver1.7 E_本稼動_07553 add end   by K.Kubo
+-- 2012/03/13 Ver1.8 E_本稼動_09272 add start by S.Niki
+    -- ===============================
+    -- 訪問対象区分
+    -- ===============================
+    -- 訪問対象区分が'-'の場合
+    IF (cust_data_rec.vist_target_div = cv_null_bar) THEN
+      -- NULLをセット
+      l_xxcmm_cust_accounts.vist_target_div := NULL;
+    -- 訪問対象区分がNULLの場合
+    ELSIF (cust_data_rec.vist_target_div IS NULL) THEN
+      -- 更新前の値をセット
+      l_xxcmm_cust_accounts.vist_target_div := cust_data_rec.addon_vist_target_div;
+    ELSE
+      -- CSVの項目値をセット
+      l_xxcmm_cust_accounts.vist_target_div := cust_data_rec.vist_target_div;
+    END IF;
+-- 2012/03/13 Ver1.8 E_本稼動_09272 add end by S.Niki
     --
     -- ===============================
     -- 顧客追加情報マスタ更新
@@ -6429,6 +6580,9 @@ AS
           ,xca.cust_store_name        = l_xxcmm_cust_accounts.cust_store_name            --顧客店舗名称
           ,xca.torihikisaki_code      = l_xxcmm_cust_accounts.torihikisaki_code          --取引先コード
 -- 2011/12/05 Ver1.7 E_本稼動_07553 add end   by K.Kubo
+-- 2012/03/13 Ver1.8 E_本稼動_09272 add start by S.Niki
+          ,xca.vist_target_div        = l_xxcmm_cust_accounts.vist_target_div            --訪問対象区分
+-- 2012/03/13 Ver1.8 E_本稼動_09272 add end by S.Niki
           ,xca.last_updated_by        = cn_last_updated_by                               --最終更新者
           ,xca.last_update_date       = cd_last_update_date                              --最終更新日
           ,xca.request_id             = cn_request_id                                    --要求ID

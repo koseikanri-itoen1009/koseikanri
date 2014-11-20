@@ -1,3 +1,22 @@
+/*************************************************************************
+ * Copyright(c)Sumisho Computer Systems Corporation, 2009. All rights reserved.
+ * 
+ * TABLE Name      : xxcmm_wk_cust_batch_regist
+ * Description     : å⁄ãqàÍäáçXêVópÉèÅ[ÉN
+ * MD.070          : 
+ * Version         : 1.4
+ * 
+ * Change Record
+ * ------------- ----- ------------ -------------------------------------
+ *  Date          Ver.  Editor       Description
+ * ------------- ----- ------------ -------------------------------------
+ *  2009/01/20    1.0  Y.Nakamura    èââÒçÏê¨
+ *  2009/10/21    1.1  Y.Kuboshima   è·äQ0001350
+ *  2010/04/16    1.2  Y.Kuboshima   è·äQE_ñ{â“ìÆ_02295
+ *  2011/12/05    1.3  K.Kubo        è·äQE_ñ{â“ìÆ_07553
+ *  2012/03/13    1.4  S.Niki        è·äQE_ñ{â“ìÆ_09272
+ *
+ ************************************************************************/
 CREATE TABLE xxcmm.xxcmm_wk_cust_batch_regist
 (
   FILE_ID                 NUMBER        NOT NULL,
@@ -58,6 +77,9 @@ CREATE TABLE xxcmm.xxcmm_wk_cust_batch_regist
   CUST_STORE_NAME         VARCHAR2(30),
   TORIHIKISAKI_CODE       VARCHAR2(8),
 -- 2011/12/05 add end   by K.Kubo
+-- 2012/03/13 Ver1.4 add start by S.Niki
+  VIST_TARGET_DIV         VARCHAR2(1),
+-- 2012/03/13 Ver1.4 add end by S.Niki
   CREATED_BY              NUMBER(15,0) NOT NULL,
   CREATION_DATE           DATE NOT NULL,
   LAST_UPDATED_BY         NUMBER(15,0) NOT NULL,
@@ -183,6 +205,10 @@ COMMENT ON COLUMN xxcmm.xxcmm_wk_cust_batch_regist.cust_store_name IS 'å⁄ãqìXï‹ñ
 COMMENT ON COLUMN xxcmm.xxcmm_wk_cust_batch_regist.torihikisaki_code IS 'éÊà¯êÊÉRÅ[Éh'
 /
 -- 2011/12/05 add end   by K.Kubo
+-- 2012/03/13 Ver1.4 add start by S.Niki
+COMMENT ON COLUMN xxcmm.xxcmm_wk_cust_batch_regist.vist_target_div IS 'ñKñ‚ëŒè€ãÊï™'
+/
+-- 2012/03/13 Ver1.4 add end by S.Niki
 COMMENT ON COLUMN xxcmm.xxcmm_wk_cust_batch_regist.created_by IS 'çÏê¨é“'
 /
 COMMENT ON COLUMN xxcmm.xxcmm_wk_cust_batch_regist.creation_date IS 'çÏê¨ì˙'

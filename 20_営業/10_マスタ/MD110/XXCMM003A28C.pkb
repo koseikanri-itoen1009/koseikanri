@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCMM003A28C(body)
  * Description      : 顧客一括更新用ＣＳＶダウンロード
  * MD.050           : MD050_CMM_003_A28_顧客一括更新用CSVダウンロード
- * Version          : 1.5
+ * Version          : 1.6
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -28,6 +28,8 @@ AS
  *  2009/10/20    1.3   久保島 豊        障害0001350対応
  *  2010/04/16    1.4   久保島 豊        障害E_本稼動_02295対応 出荷元保管場所の項目追加
  *  2011/11/28    1.5   窪 和重          障害E_本稼動_07553対応 EDI関連の項目追加
+ *  2012/03/13    1.6   仁木 重人        障害E_本稼動_009272対応 訪問対象区分の項目追加
+ *                                                               情報欄を最終項目に修正
  *
  *****************************************************************************************/
 --
@@ -501,6 +503,9 @@ AS
               ,xca.cust_store_name                    cust_store_name       --顧客店舗名称
               ,xca.torihikisaki_code                  torihikisaki_code     --取引先コード
 -- 2011/11/28 Ver1.5 add end by K.Kubo
+-- 2012/03/13 Ver1.6 E_本稼動_09272 add start by S.Niki
+              ,xca.vist_target_div                    vist_target_div       --訪問対象区分
+-- 2012/03/13 Ver1.6 E_本稼動_09272 add end by S.Niki
       FROM     hz_cust_accounts     hca,
                hz_cust_acct_sites   hcas,
                hz_cust_site_uses    hcsu,
@@ -886,7 +891,9 @@ AS
 -- 2010/04/16 Ver1.4 E_本稼動_02295 add start by Y.Kuboshima
         lv_output_str := lv_output_str || cv_comma || SUBSTRB(cust_data_rec.ship_storage_code,1,10);   --出荷元保管場所
 -- 2010/04/16 Ver1.4 E_本稼動_02295 add end by Y.Kuboshima
-        lv_output_str := lv_output_str || cv_comma || SUBSTRB(lv_information,1,100);                   --情報欄
+-- 2012/03/13 Ver1.6 E_本稼動_09272 del start by S.Niki
+--        lv_output_str := lv_output_str || cv_comma || SUBSTRB(lv_information,1,100);                   --情報欄
+-- 2012/03/13 Ver1.6 E_本稼動_09272 del end by S.Niki
 -- 2011/11/28 Ver1.5 add start by K.Kubo
         lv_output_str := lv_output_str || cv_comma || SUBSTRB(cust_data_rec.delivery_order,1,14);      --配送順（EDI）
         lv_output_str := lv_output_str || cv_comma || SUBSTRB(cust_data_rec.edi_district_code,1,8);    --EDI地区コード（EDI)
@@ -899,6 +906,10 @@ AS
         lv_output_str := lv_output_str || cv_comma || SUBSTRB(cust_data_rec.cust_store_name,1,30);     --顧客店舗名称
         lv_output_str := lv_output_str || cv_comma || SUBSTRB(cust_data_rec.torihikisaki_code,1,8);    --取引先コード
 -- 2011/11/28 Ver1.5 add end by K.Kubo
+-- 2012/03/13 Ver1.6 E_本稼動_09272 add start by S.Niki
+        lv_output_str := lv_output_str || cv_comma || SUBSTRB(cust_data_rec.vist_target_div,1,1);      --訪問対象区分
+        lv_output_str := lv_output_str || cv_comma || SUBSTRB(lv_information,1,100);                   --情報欄
+-- 2012/03/13 Ver1.6 E_本稼動_09272 add end by S.Niki
 --
         --文字列出力
         BEGIN
