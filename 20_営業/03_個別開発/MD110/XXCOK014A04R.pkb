@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCOK014A04R(body)
  * Description      : 「支払先」「売上計上拠点」「顧客」単位に販手残高情報を出力
  * MD.050           : 自販機販手残高一覧 MD050_COK_014_A04
- * Version          : 1.5
+ * Version          : 1.6
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -36,8 +36,9 @@ AS
  *  2009/03/02    1.3   SCS M.Hiruta     [障害COK_068]
  *                                       1.自拠点含むのデータ抽出条件修正
  *                                       2.当月BM及び電気料を当月分のみ集計
- *  2009/04/17    1.4   SCS T.Taniguchi  [障害COK_647] 桁数修正
- *  2009/04/23    1.5   SCS T.Taniguchi  [障害COK_684] 問合せ拠点修正
+ *  2009/04/17    1.4   SCS T.Taniguchi  [障害T1_0647] 桁数修正
+ *  2009/04/23    1.5   SCS T.Taniguchi  [障害T1_0684] 問合せ拠点修正
+ *  2009/05/19    1.6   SCS T.Taniguchi  [障害T1_1070] グローバルカーソルのソート順追加
  *
  *****************************************************************************************/
   -- ===============================================
@@ -84,7 +85,9 @@ AS
   cv_msg_code_90004          CONSTANT VARCHAR2(16)  := 'APP-XXCCP1-90004';          -- 正常終了
   cv_msg_code_90005          CONSTANT VARCHAR2(16)  := 'APP-XXCCP1-90005';          -- 警告終了
   cv_msg_code_90006          CONSTANT VARCHAR2(16)  := 'APP-XXCCP1-90006';          -- エラー終了全ロールバック
-  cv_msg_code_00013          CONSTANT VARCHAR2(16)  := 'APP-XXCOK1-00013';          -- 在庫組織ID取得エラー
+-- 2009/05/19 Ver.1.6 [障害T1_1070] SCS T.Taniguchi START
+--  cv_msg_code_00013          CONSTANT VARCHAR2(16)  := 'APP-XXCOK1-00013';          -- 在庫組織ID取得エラー
+-- 2009/05/19 Ver.1.6 [障害T1_1070] SCS T.Taniguchi END
   cv_msg_code_10393          CONSTANT VARCHAR2(16)  := 'APP-XXCOK1-10393';          -- 削除エラー
   cv_msg_code_10394          CONSTANT VARCHAR2(16)  := 'APP-XXCOK1-10394';          -- ロックエラー
   cv_msg_code_00028          CONSTANT VARCHAR2(16)  := 'APP-XXCOK1-00028';          -- 業務処理日付取得エラー
@@ -103,7 +106,9 @@ AS
   cv_token_ref_base_cd       CONSTANT VARCHAR2(13)  := 'REF_BASE_CODE';
   cv_token_selling_base_cd   CONSTANT VARCHAR2(17)  := 'SELLING_BASE_CODE';
   cv_token_target_disp       CONSTANT VARCHAR2(11)  := 'TARGET_DISP';
-  cv_token_org_code          CONSTANT VARCHAR2(8)   := 'ORG_CODE';
+-- 2009/05/19 Ver.1.6 [障害T1_1070] SCS T.Taniguchi START
+--  cv_token_org_code          CONSTANT VARCHAR2(8)   := 'ORG_CODE';
+-- 2009/05/19 Ver.1.6 [障害T1_1070] SCS T.Taniguchi END
   cv_token_request_id        CONSTANT VARCHAR2(10)  := 'REQUEST_ID';
   -- プロファイル
   cv_prof_aff2_dept_act      CONSTANT VARCHAR2(20)  := 'XXCOK1_AFF2_DEPT_ACT';               --部門コード_業務管理部
@@ -112,7 +117,9 @@ AS
   cv_prof_bk_trns_fee_we     CONSTANT VARCHAR2(23)  := 'XXCOK1_BANK_TRNS_FEE_WE';            --振込手数料_当方
   cv_prof_bk_trns_fee_ctpty  CONSTANT VARCHAR2(26)  := 'XXCOK1_BANK_TRNS_FEE_CTPTY';         --振込手数料_相手方
   cv_prof_pay_res_name       CONSTANT VARCHAR2(34)  := 'XXCOK1_BL_LIST_PROMPT_PAY_RES_NAME'; --残高一覧_保留見出し
-  cv_prof_org_code_sales     CONSTANT VARCHAR2(25)  := 'XXCOK1_ORG_CODE_SALES';              --在庫組織コード_営業組織
+-- 2009/05/19 Ver.1.6 [障害T1_1070] SCS T.Taniguchi START
+--  cv_prof_org_code_sales     CONSTANT VARCHAR2(25)  := 'XXCOK1_ORG_CODE_SALES';              --在庫組織コード_営業組織
+-- 2009/05/19 Ver.1.6 [障害T1_1070] SCS T.Taniguchi END
   cv_prof_org_id             CONSTANT VARCHAR2(6)   := 'ORG_ID';                             --営業単位ID
   -- フォーマット
   cv_format_yyyymmdd         CONSTANT VARCHAR2(8)   := 'YYYYMMDD';
@@ -160,8 +167,10 @@ AS
   gv_ref_base_code           VARCHAR2(4)   DEFAULT NULL; -- 問合せ担当拠点
   gv_selling_base_code       VARCHAR2(4)   DEFAULT NULL; -- 売上計上拠点
   gv_target_disp             VARCHAR2(12)  DEFAULT NULL; -- 表示対象
-  gv_org_code                VARCHAR2(50)  DEFAULT NULL; -- 在庫組織コード_営業組織
-  gn_organization_id         NUMBER        DEFAULT NULL; -- 在庫組織ID
+-- 2009/05/19 Ver.1.6 [障害T1_1070] SCS T.Taniguchi START
+--  gv_org_code                VARCHAR2(50)  DEFAULT NULL; -- 在庫組織コード_営業組織
+--  gn_organization_id         NUMBER        DEFAULT NULL; -- 在庫組織ID
+-- 2009/05/19 Ver.1.6 [障害T1_1070] SCS T.Taniguchi END
   gv_no_data_msg             VARCHAR2(30)  DEFAULT NULL; -- 対象データなしメッセージ
   gn_index                   NUMBER        DEFAULT 0;    -- 索引
   gn_org_id                  NUMBER        DEFAULT NULL; -- 営業単位ID
@@ -316,6 +325,9 @@ AS
     ORDER BY  supplier_code       -- 仕入先コード
              ,base_code           -- 拠点コード
              ,cust_code           -- 顧客コード
+-- 2009/05/19 Ver.1.6 [障害T1_1070] SCS T.Taniguchi START
+             ,expect_payment_date -- 支払予定日
+-- 2009/05/19 Ver.1.6 [障害T1_1070] SCS T.Taniguchi END
     ;
 --
   g_target_rec g_target_cur%ROWTYPE;
@@ -474,7 +486,10 @@ AS
       , iv_output_mode   => cv_output_mode                -- 出力区分
       , iv_frm_file      => cv_frm_file                   -- フォーム様式ファイル名
       , iv_vrq_file      => cv_vrq_file                   -- クエリー様式ファイル名
-      , iv_org_id        => TO_CHAR( gn_organization_id ) -- ORG_ID
+-- 2009/05/19 Ver.1.6 [障害T1_1070] SCS T.Taniguchi START
+--      , iv_org_id        => TO_CHAR( gn_organization_id ) -- ORG_ID
+      , iv_org_id        => gn_org_id                     -- ORG_ID
+-- 2009/05/19 Ver.1.6 [障害T1_1070] SCS T.Taniguchi END
       , iv_user_name     => fnd_global.user_name          -- ログイン・ユーザ名
       , iv_resp_name     => fnd_global.resp_name          -- ログイン・ユーザ職責名
       , iv_doc_name      => NULL                          -- 文書名
@@ -704,9 +719,14 @@ AS
       OR ( gt_cust_code_bk         <> i_target_rec.cust_code )
       OR ( iv_last_record_flg = cv_flag_y ) THEN
       -- 集計した前月までの未払、および当月BM、電気料が0円以下の場合は作成しない
-      IF ( gt_unpaid_last_month_sum <= 0 )
-        AND ( gt_bm_this_month_sum  <= 0 )
-        AND ( gt_electric_amt_sum   <= 0 )
+-- 2009/05/20 Ver.1.6 [障害T1_1070] SCS T.Taniguchi START
+--      IF ( gt_unpaid_last_month_sum <= 0 )
+--        AND ( gt_bm_this_month_sum  <= 0 )
+--        AND ( gt_electric_amt_sum   <= 0 )
+      IF ( gt_unpaid_last_month_sum = 0 )
+        AND ( gt_bm_this_month_sum  = 0 )
+        AND ( gt_electric_amt_sum   = 0 )
+-- 2009/05/20 Ver.1.6 [障害T1_1070] SCS T.Taniguchi END
         AND ( gn_index > 0 ) THEN
         -------------------------
         -- 退避・集計項目の初期化
@@ -739,50 +759,56 @@ AS
         gt_closing_date_bk        := NULL;
         gt_section_code_bk        := NULL;
       ELSE
-        -- インデックスの発番
-        gn_index := gn_index + 1;
-        ----------------
-        -- PL/SQL表格納
-        ----------------
+-- 2009/05/20 Ver.1.6 [障害T1_1070] SCS T.Taniguchi START
+        IF ( gt_unpaid_last_month_sum <> 0 )
+          OR ( gt_bm_this_month_sum  <> 0 )
+          OR ( gt_electric_amt_sum   <> 0 ) THEN
+-- 2009/05/20 Ver.1.6 [障害T1_1070] SCS T.Taniguchi END
+          -- インデックスの発番
+          gn_index := gn_index + 1;
+          ----------------
+          -- PL/SQL表格納
+          ----------------
 -- 2009/04/23 Ver.1.5 [障害T1_0684] SCS T.Taniguchi START
         -- BM支払区分より、問合せ担当拠点に設定する値を判定する
 --        IF ( gt_bm_type_bk IN ( cv_bm_payment_type3 ,cv_bm_payment_type4 ) ) THEN
 --          g_bm_balance_ttype( gn_index ).REF_BASE_CODE := gt_selling_base_code_bk; -- 問合せ担当拠点コード
 --          g_bm_balance_ttype( gn_index ).REF_BASE_NAME := gt_selling_base_name_bk; -- 問合せ担当拠点名
 --        ELSE
-        g_bm_balance_ttype( gn_index ).REF_BASE_CODE             := gt_ref_base_code_bk;       -- 問合せ担当拠点コード
-        g_bm_balance_ttype( gn_index ).REF_BASE_NAME             := gt_ref_base_name_bk;       -- 問合せ担当拠点名
+          g_bm_balance_ttype( gn_index ).REF_BASE_CODE             := gt_ref_base_code_bk;       -- 問合せ担当拠点コード
+          g_bm_balance_ttype( gn_index ).REF_BASE_NAME             := gt_ref_base_name_bk;       -- 問合せ担当拠点名
 --        END IF;
 -- 2009/04/23 Ver.1.5 [障害T1_0684] SCS T.Taniguchi END
 --
-        g_bm_balance_ttype( gn_index ).PAYMENT_CODE              := gt_payment_code_bk;        -- 支払先コード
-        g_bm_balance_ttype( gn_index ).PAYMENT_NAME              := gt_payment_name_bk;        -- 支払先名
-        g_bm_balance_ttype( gn_index ).BANK_NO                   := gt_bank_no_bk;             -- 銀行番号
-        g_bm_balance_ttype( gn_index ).BANK_NAME                 := gt_bank_name_bk;           -- 銀行名
-        g_bm_balance_ttype( gn_index ).BANK_BRANCH_NO            := gt_bank_branch_no_bk;      -- 銀行支店番号
-        g_bm_balance_ttype( gn_index ).BANK_BRANCH_NAME          := gt_bank_branch_name_bk;    -- 銀行支店名
-        g_bm_balance_ttype( gn_index ).BANK_ACCT_TYPE            := gt_bank_acct_type_bk;      -- 口座種別
-        g_bm_balance_ttype( gn_index ).BANK_ACCT_TYPE_NAME       := gt_bank_acct_type_name_bk; -- 口座種別名
-        g_bm_balance_ttype( gn_index ).BANK_ACCT_NO              := gt_bank_acct_no_bk;        -- 口座番号
-        g_bm_balance_ttype( gn_index ).BANK_ACCT_NAME            := gt_bank_acct_name_bk;      -- 銀行口座名
-        g_bm_balance_ttype( gn_index ).BM_PAYMENT_TYPE           := gt_bm_payment_type_bk;     -- BM支払区分
-        g_bm_balance_ttype( gn_index ).BANK_TRNS_FEE             := gt_bank_trns_fee_bk;       -- 振込手数料
-        g_bm_balance_ttype( gn_index ).PAYMENT_STOP              := gt_payment_stop_bk;        -- 支払停止
-        g_bm_balance_ttype( gn_index ).SELLING_BASE_CODE         := gt_selling_base_code_bk;   -- 売上計上拠点ｺｰﾄﾞ
-        g_bm_balance_ttype( gn_index ).SELLING_BASE_NAME         := gt_selling_base_name_bk;   -- 売上計上拠点名
-        g_bm_balance_ttype( gn_index ).WARNNING_MARK             := gt_warnning_mark_bk;       -- 警告マーク
-        g_bm_balance_ttype( gn_index ).CUST_CODE                 := gt_cust_code_bk;           -- 顧客コード
-        g_bm_balance_ttype( gn_index ).CUST_NAME                 := gt_cust_name_bk;           -- 顧客名
-        g_bm_balance_ttype( gn_index ).UNPAID_LAST_MONTH         := gt_unpaid_last_month_sum;  -- 前月までの未払
-        g_bm_balance_ttype( gn_index ).BM_THIS_MONTH             := gt_bm_this_month_sum;      -- 当月BM
-        g_bm_balance_ttype( gn_index ).ELECTRIC_AMT              := gt_electric_amt_sum;       -- 電気料
-        g_bm_balance_ttype( gn_index ).UNPAID_BALANCE            := gt_unpaid_balance_sum;     -- 未払残高
-        g_bm_balance_ttype( gn_index ).RESV_PAYMENT              := gt_resv_payment_bk;        -- 支払保留
-        g_bm_balance_ttype( gn_index ).PAYMENT_DATE              := gt_payment_date_bk;        -- 支払日
-        g_bm_balance_ttype( gn_index ).CLOSING_DATE              := gt_closing_date_bk;        -- 締め日
-        g_bm_balance_ttype( gn_index ).SELLING_BASE_SECTION_CODE := gt_section_code_bk;        -- 地区コード
-        -- 対象件数変数に件数を設定
-        gn_target_cnt             := gn_index;
+          g_bm_balance_ttype( gn_index ).PAYMENT_CODE              := gt_payment_code_bk;        -- 支払先コード
+          g_bm_balance_ttype( gn_index ).PAYMENT_NAME              := gt_payment_name_bk;        -- 支払先名
+          g_bm_balance_ttype( gn_index ).BANK_NO                   := gt_bank_no_bk;             -- 銀行番号
+          g_bm_balance_ttype( gn_index ).BANK_NAME                 := gt_bank_name_bk;           -- 銀行名
+          g_bm_balance_ttype( gn_index ).BANK_BRANCH_NO            := gt_bank_branch_no_bk;      -- 銀行支店番号
+          g_bm_balance_ttype( gn_index ).BANK_BRANCH_NAME          := gt_bank_branch_name_bk;    -- 銀行支店名
+          g_bm_balance_ttype( gn_index ).BANK_ACCT_TYPE            := gt_bank_acct_type_bk;      -- 口座種別
+          g_bm_balance_ttype( gn_index ).BANK_ACCT_TYPE_NAME       := gt_bank_acct_type_name_bk; -- 口座種別名
+          g_bm_balance_ttype( gn_index ).BANK_ACCT_NO              := gt_bank_acct_no_bk;        -- 口座番号
+          g_bm_balance_ttype( gn_index ).BANK_ACCT_NAME            := gt_bank_acct_name_bk;      -- 銀行口座名
+          g_bm_balance_ttype( gn_index ).BM_PAYMENT_TYPE           := gt_bm_payment_type_bk;     -- BM支払区分
+          g_bm_balance_ttype( gn_index ).BANK_TRNS_FEE             := gt_bank_trns_fee_bk;       -- 振込手数料
+          g_bm_balance_ttype( gn_index ).PAYMENT_STOP              := gt_payment_stop_bk;        -- 支払停止
+          g_bm_balance_ttype( gn_index ).SELLING_BASE_CODE         := gt_selling_base_code_bk;   -- 売上計上拠点ｺｰﾄﾞ
+          g_bm_balance_ttype( gn_index ).SELLING_BASE_NAME         := gt_selling_base_name_bk;   -- 売上計上拠点名
+          g_bm_balance_ttype( gn_index ).WARNNING_MARK             := gt_warnning_mark_bk;       -- 警告マーク
+          g_bm_balance_ttype( gn_index ).CUST_CODE                 := gt_cust_code_bk;           -- 顧客コード
+          g_bm_balance_ttype( gn_index ).CUST_NAME                 := gt_cust_name_bk;           -- 顧客名
+          g_bm_balance_ttype( gn_index ).UNPAID_LAST_MONTH         := gt_unpaid_last_month_sum;  -- 前月までの未払
+          g_bm_balance_ttype( gn_index ).BM_THIS_MONTH             := gt_bm_this_month_sum;      -- 当月BM
+          g_bm_balance_ttype( gn_index ).ELECTRIC_AMT              := gt_electric_amt_sum;       -- 電気料
+          g_bm_balance_ttype( gn_index ).UNPAID_BALANCE            := gt_unpaid_balance_sum;     -- 未払残高
+          g_bm_balance_ttype( gn_index ).RESV_PAYMENT              := gt_resv_payment_bk;        -- 支払保留
+          g_bm_balance_ttype( gn_index ).PAYMENT_DATE              := gt_payment_date_bk;        -- 支払日
+          g_bm_balance_ttype( gn_index ).CLOSING_DATE              := gt_closing_date_bk;        -- 締め日
+          g_bm_balance_ttype( gn_index ).SELLING_BASE_SECTION_CODE := gt_section_code_bk;        -- 地区コード
+          -- 対象件数変数に件数を設定
+          gn_target_cnt             := gn_index;
+        END IF;
         -------------------------
         -- 退避・集計項目の初期化
         -------------------------
@@ -1053,6 +1079,10 @@ AS
               AND   abaua.primary_flag                       = cv_flag_y
               AND   NVL( TRUNC( abaua.start_date ), TRUNC( gd_process_date ) ) <= TRUNC( gd_process_date )
               AND   NVL( TRUNC( abaua.end_date )  , TRUNC( gd_process_date ) ) >= TRUNC( gd_process_date )
+-- 2009/05/19 Ver.1.6 [障害T1_1070] SCS T.Taniguchi START
+              AND   abaua.org_id                             = gn_org_id
+              AND   abaa.org_id                              = gn_org_id
+-- 2009/05/19 Ver.1.6 [障害T1_1070] SCS T.Taniguchi END
               ) bank_data
       WHERE  pv.vendor_id             = pvsa.vendor_id
       AND    pvsa.vendor_id           = bank_data.vendor_id(+)
@@ -1591,11 +1621,17 @@ AS
     -- 登録判定
     -- ===============================================
     IF ( ln_loop_cnt = 0 )
+-- 2009/05/19 Ver.1.6 [障害T1_1070] SCS T.Taniguchi START
+      OR ( gn_index = 0 )
+-- 2009/05/19 Ver.1.6 [障害T1_1070] SCS T.Taniguchi END
       OR ( ( g_bm_balance_ttype( gn_index ).UNPAID_LAST_MONTH = 0 )
        AND ( g_bm_balance_ttype( gn_index ).BM_THIS_MONTH = 0 )
        AND ( g_bm_balance_ttype( gn_index ).ELECTRIC_AMT = 0 ) ) THEN
       -- 対象データなし
       gn_target_cnt := 0;
+-- 2009/05/19 Ver.1.6 [障害T1_1070] SCS T.Taniguchi START
+      gn_index      := 1;
+-- 2009/05/19 Ver.1.6 [障害T1_1070] SCS T.Taniguchi END
       --項目のクリア(集計した前月までの未払、および当月BM、電気料が0円以下の場合を考慮)
       g_bm_balance_ttype( gn_index ).REF_BASE_CODE             := NULL;
       g_bm_balance_ttype( gn_index ).REF_BASE_NAME             := NULL;
@@ -1891,11 +1927,13 @@ AS
     -- ===============================================
     -- プロファイル取得(在庫組織コード_営業組織)
     -- ===============================================
-    gv_org_code := FND_PROFILE.VALUE( cv_prof_org_code_sales );
-    IF ( gv_org_code IS NULL ) THEN
-      lv_profile_nm := cv_prof_org_code_sales;
-      RAISE no_profile_expt;
-    END IF;
+-- 2009/05/19 Ver.1.6 [障害T1_1070] SCS T.Taniguchi END
+--    gv_org_code := FND_PROFILE.VALUE( cv_prof_org_code_sales );
+--    IF ( gv_org_code IS NULL ) THEN
+--      lv_profile_nm := cv_prof_org_code_sales;
+--      RAISE no_profile_expt;
+--    END IF;
+-- 2009/05/19 Ver.1.6 [障害T1_1070] SCS T.Taniguchi END
     -- ===============================================
     -- プロファイル取得(営業単位ID)
     -- ===============================================
@@ -1907,21 +1945,23 @@ AS
     -- ===============================================
     -- 在庫組織ID取得
     -- ===============================================
-    gn_organization_id := xxcoi_common_pkg.get_organization_id( gv_org_code );
-    IF ( gn_organization_id IS NULL ) THEN
-      lv_errmsg  := xxccp_common_pkg.get_msg(
-                      iv_application  => cv_xxcok_appl_short_name
-                    , iv_name         => cv_msg_code_00013
-                    , iv_token_name1  => cv_token_org_code
-                    , iv_token_value1 => gv_org_code
-                    );
-      lb_retcode := xxcok_common_pkg.put_message_f(
-                      in_which    => FND_FILE.LOG
-                    , iv_message  => lv_errmsg
-                    , in_new_line => cn_number_0
-                    );
-      RAISE init_fail_expt;
-    END IF;
+-- 2009/05/19 Ver.1.6 [障害T1_1070] SCS T.Taniguchi START
+--    gn_organization_id := xxcoi_common_pkg.get_organization_id( gv_org_code );
+--    IF ( gn_organization_id IS NULL ) THEN
+--      lv_errmsg  := xxccp_common_pkg.get_msg(
+--                      iv_application  => cv_xxcok_appl_short_name
+--                    , iv_name         => cv_msg_code_00013
+--                    , iv_token_name1  => cv_token_org_code
+--                    , iv_token_value1 => gv_org_code
+--                    );
+--      lb_retcode := xxcok_common_pkg.put_message_f(
+--                      in_which    => FND_FILE.LOG
+--                    , iv_message  => lv_errmsg
+--                    , in_new_line => cn_number_0
+--                    );
+--      RAISE init_fail_expt;
+--    END IF;
+-- 2009/05/19 Ver.1.6 [障害T1_1070] SCS T.Taniguchi END
     -- ===============================================
     -- 拠点セキュリティーチェック
     -- ===============================================
