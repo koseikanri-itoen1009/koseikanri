@@ -7,7 +7,7 @@ AS
  * Description      : 要求の発行画面から、営業員ごとに指定日を含む月の1日～指定日まで
  *                    訪問実績の無い顧客を表示します。
  * MD.050           : MD050_CSO_019_A08_未訪問顧客一覧表
- * Version          : 1.1
+ * Version          : 1.4
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -35,6 +35,7 @@ AS
  *  2009-03-19    1.1   Mio.Maruyama     【障害対応070】SVF起動関数コール位置修正(submain)
  *  2009-04-22    1.2   Daisuke.Abe      【T1_0680】ルートNO対応
  *  2009-05-01    1.3   Tomoko.Mori      T1_0897対応
+ *  2009-05-14    1.4   Makoto.Ohtsuki   【T1_0790】出力条件の変更
  *
  *****************************************************************************************/
 --
@@ -106,6 +107,9 @@ AS
   cv_tkn_number_07       CONSTANT VARCHAR2(100) := 'APP-XXCSO1-00140';  -- 明細0件メッセージ
   cv_tkn_number_08       CONSTANT VARCHAR2(100) := 'APP-XXCSO1-00132';  -- 年月日の型違いメッセージ
   cv_tkn_number_09       CONSTANT VARCHAR2(100) := 'APP-XXCSO1-00157';  -- 年月日の未来日メッセージ
+      /* 20090514_Ohtsuki_T1_0790 START*/
+  cv_tkn_number_10       CONSTANT VARCHAR2(100) := 'APP-XXCSO1-00014';  -- プロファイル取得エラーメッセージ
+      /* 20090514_Ohtsuki_T1_0790 END  */
   -- トークンコード
   cv_tkn_param_nm        CONSTANT VARCHAR2(20) := 'PARAM_NAME';
   cv_tkn_val             CONSTANT VARCHAR2(20) := 'VALUE';
@@ -117,6 +121,9 @@ AS
   cv_tkn_err_msg         CONSTANT VARCHAR2(20) := 'ERR_MSG';
   cv_tkn_api_nm          CONSTANT VARCHAR2(20) := 'API_NAME';
   cv_tkn_entry           CONSTANT VARCHAR2(20) := 'ENTRY';
+      /* 20090514_Ohtsuki_T1_0790 START*/
+  cv_tkn_prof_nm         CONSTANT VARCHAR2(20) := 'PROF_NAME';
+      /* 20090514_Ohtsuki_T1_0790 END  */
   --
   cv_msg_prnthss_l       CONSTANT VARCHAR2(1)  := '(';
   cv_msg_prnthss_r       CONSTANT VARCHAR2(1)  := ')';
@@ -323,11 +330,18 @@ AS
     -- *** ローカル定数 ***
     cv_crnt_dt          CONSTANT VARCHAR2(100)   := '基準日';
     cv_first_dt         CONSTANT VARCHAR2(100)   := '基準日の月初';
+      /* 20090514_Ohtsuki_T1_0790 START*/
+    cv_emp_flg           CONSTANT VARCHAR2(100) := 'XXCSO1_ALL_EMP_SEL_FLG_08C';                    -- XXCSO:配下従業員出力可能フラグ
+    cv_emp_flg_yes       CONSTANT VARCHAR2(30) := 'Y';
+      /* 20090514_Ohtsuki_T1_0790 END  */
     -- *** ローカル変数 ***
     ld_sysdate          DATE;                  -- システム日付
     ld_current_date     DATE;                  -- 基準日
     ld_first_date       DATE;                  -- 基準日の月初
     lv_retcd            VARCHAR2(5);           -- 共通関数戻り値格納
+      /* 20090514_Ohtsuki_T1_0790 START*/
+    lv_emp_flg           VARCHAR2(10);                                                              -- プロファイル取得用
+      /* 20090514_Ohtsuki_T1_0790 END  */
     -- メッセージ出力用
     lv_msg              VARCHAR2(5000);
     -- *** ローカル例外 ***
@@ -409,11 +423,33 @@ AS
     -- ===========================
     -- 従業員コード判定
     -- ===========================
-    lv_retcd   := xxcso_util_common_pkg.chk_responsibility(
-                    in_user_id     => cn_user_id       -- ログインユーザＩＤ
-                   ,in_resp_id     => cn_resp_id       -- 職位ＩＤ
-                   ,iv_report_type => cv_rep_tp        -- 帳票タイプ（1:営業員別、2:営業員グループ別、その他は指定不可）
-                  );
+      /* 20090514_Ohtsuki_T1_0790 START*/
+--    lv_retcd   := xxcso_util_common_pkg.chk_responsibility(
+--                    in_user_id     => cn_user_id       -- ログインユーザＩＤ
+--                   ,in_resp_id     => cn_resp_id       -- 職位ＩＤ
+--                   ,iv_report_type => cv_rep_tp        -- 帳票タイプ（1:営業員別、2:営業員グループ別、その他は指定不可）
+--                  );
+--↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓
+-- プロファイル値取得
+    lv_emp_flg := FND_PROFILE.VALUE(cv_emp_flg);
+--
+    IF (lv_emp_flg IS NULL) THEN                                                                    -- プロファイルの取得に失敗した場合
+      lv_errmsg := xxccp_common_pkg.get_msg(
+                                            iv_application  => cv_app_name                          -- アプリケーション短縮名
+                                           ,iv_name         => cv_tkn_number_10                     -- メッセージコード
+                                           ,iv_token_name1  => cv_tkn_prof_nm                       -- トークンコード
+                                           ,iv_token_value1 => cv_emp_flg                           -- トークン値
+                                           );
+      lv_errbuf := lv_errmsg;
+      RAISE chk_param_expt;
+    END IF;
+--
+    IF (lv_emp_flg = cv_emp_flg_yes) THEN                                                           -- 出力可能フラグ = 'Y'の場合
+      lv_retcd := cv_false;
+    ELSE
+      lv_retcd := cv_true;
+    END IF;
+      /* 20090514_Ohtsuki_T1_0790 END*/
     -- OUTパラメータの設定
     od_current_date      := ld_current_date;    -- 基準日
     od_first_date        := ld_first_date;      -- 基準日の月初
