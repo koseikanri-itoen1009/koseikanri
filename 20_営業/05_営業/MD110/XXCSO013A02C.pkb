@@ -7,7 +7,7 @@ AS
  * Description      : 自販機管理システムから連携されたリース物件に関連する作業の情報を、
  *                    リースアドオンに反映します。
  * MD.050           :  MD050_CSO_013_A02_CSI→FAインタフェース：（OUT）リース資産情報
- * Version          : 1.8
+ * Version          : 1.9
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -41,6 +41,7 @@ AS
  *  2009-04-28    1.6   Tomoko.Mori      T1_0758対応
  *  2009-05-01    1.7   Tomoko.Mori      T1_0897対応
  *  2009-05-14    1.8   Kazuo.Satomura   T1_0413対応,SQLをコーディング規約通りに修正
+ *  2009-05-20    1.9   Kazuo.Satomura   T1_1095対応
  *****************************************************************************************/
 --
 --#######################  固定グローバル定数宣言部 START   #######################
@@ -949,7 +950,10 @@ AS
     -- ========================================
     BEGIN
     --
-      SELECT xiwd.po_number
+      /* 2009.05.20 K.Satomura T1_1095対応 START */
+      --SELECT xiwd.po_number
+      SELECT MAX(xiwd.po_number)
+      /* 2009.05.20 K.Satomura T1_1095対応 END */
       INTO   gn_po_number
       FROM   xxcso_in_work_data xiwd
       WHERE  xiwd.install_code1           = g_get_xxcso_ib_info_h_rec.object_code -- 物件コード
@@ -957,7 +961,9 @@ AS
       AND    xiwd.completion_kbn          = cv_comp_kbn_ok                        -- 完了区分
       AND    xiwd.install1_processed_flag = cv_yes                                -- 物件1処理済フラグ
       /* 2009.04.08 K.Satomura T1_0372対応 START */
-      GROUP BY xiwd.po_number
+      /* 2009.05.20 K.Satomura T1_1095対応 START */
+      --GROUP BY xiwd.po_number
+      /* 2009.05.20 K.Satomura T1_1095対応 END */
       /* 2009.04.08 K.Satomura T1_0372対応 END */
       ;
     EXCEPTION
@@ -991,6 +997,24 @@ AS
         RAISE g_sql_err_expt;
     END;
 --
+    /* 2009.05.20 K.Satomura T1_1095対応 START */
+    IF (gn_po_number IS NULL) THEN
+      -- 検索結果が0件である場合
+      lv_errmsg := xxccp_common_pkg.get_msg(
+                     iv_application  => cv_app_name      --アプリケーション短縮名
+                    ,iv_name         => cv_tkn_number_20 --メッセージコード
+                    ,iv_token_name1  => cv_tkn_task_name
+                    ,iv_token_value1 => cv_tkn_msg_po_num
+                    ,iv_token_name2  => cv_tkn_bukken
+                    ,iv_token_value2 => g_get_xxcso_ib_info_h_rec.object_code
+                   );
+      --
+      lv_errbuf := lv_errmsg || SQLERRM;
+      ov_retcode := cv_status_warn;
+      RAISE g_sql_err_expt;
+      --
+    END IF;
+    /* 2009.05.20 K.Satomura T1_1095対応 END */
 --
   EXCEPTION
 --
