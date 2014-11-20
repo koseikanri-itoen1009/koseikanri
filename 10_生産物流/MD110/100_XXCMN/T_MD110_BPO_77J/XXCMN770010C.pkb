@@ -7,7 +7,7 @@ AS
  * Description      : •W€Œ´‰¿“à–ó•\
  * MD.050/070       : ŒŸYØˆ—’ •[Issue1.0 (T_MD050_BPO_770)
  *                    ŒŸYØˆ—’ •[Issue1.0 (T_MD070_BPO_77J)
- * Version          : 1.22
+ * Version          : 1.23
  *
  * Program List
  * -------------------------- ----------------------------------------------------------
@@ -52,6 +52,7 @@ AS
  *  2008/12/14    1.20  N.Yoshida        –{”ÔáŠQ669‘Î‰
  *  2008/12/15    1.21  N.Yoshida        –{”ÔáŠQ727‘Î‰
  *  2008/12/22    1.22  N.Yoshida        –{”ÔáŠQ825A828‘Î‰
+ *  2009/01/15    1.23  N.Yoshida        –{”ÔáŠQ1023‘Î‰
  *
  *****************************************************************************************/
 --
@@ -1127,7 +1128,10 @@ AS
     || '  AND    mcb4.segment1             = ''5'''
     || '  AND    mcb4.segment1             = xrpm.item_div_origin'
     || '  AND    gic5.item_id              = itp.item_id'
-    || '  AND    gic5.category_set_id      = ''' || cn_item_class_id || ''''
+-- 2009/01/15 v1.23 N.Yoshida mod start
+--    || '  AND    gic5.category_set_id      = ''' || cn_item_class_id || ''''
+    || '  AND    gic5.category_set_id      = ''' || cn_prod_class_id || ''''
+-- 2009/01/15 v1.23 N.Yoshida mod end
     || '  AND    gic5.category_id          = mcb5.category_id'
     || '  AND    mcb5.segment1             = xrpm.prod_div_origin'
     || '  AND    xrpm.doc_type             = itp.doc_type'
@@ -1317,7 +1321,10 @@ AS
     || '  AND    mcb4.segment1             = ''5'''
     || '  AND    mcb4.segment1             = xrpm.item_div_origin'
     || '  AND    gic5.item_id              = itp.item_id'
-    || '  AND    gic5.category_set_id      = ''' || cn_item_class_id || ''''
+-- 2009/01/15 v1.23 N.Yoshida mod start
+--    || '  AND    gic5.category_set_id      = ''' || cn_item_class_id || ''''
+    || '  AND    gic5.category_set_id      = ''' || cn_prod_class_id || ''''
+-- 2009/01/15 v1.23 N.Yoshida mod end
     || '  AND    gic5.category_id          = mcb5.category_id'
     || '  AND    mcb5.segment1             = xrpm.prod_div_origin'
     || '  AND    xrpm.doc_type             = itp.doc_type'
