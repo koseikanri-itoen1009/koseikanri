@@ -7,7 +7,7 @@ AS
  * Description      : 倉替返品情報インターフェース
  * MD.050           : 倉替返品 T_MD050_BPO_430
  * MD.070           : 倉替返品情報インターフェース T_MD070_BPO_43B
- * Version          : 1.11
+ * Version          : 1.12
  *
  * Program List
  * -------------------------  ----------------------------------------------------------
@@ -51,6 +51,7 @@ AS
  *  2009/01/13    1.9   Hitomi Itou      本番問合せ#981対応
  *  2009/01/15    1.10  Masayoshi Uehara 本番問合せ#1019対応
  *  2009/01/22    1.11  ORACLE山本恭久   本番問合せ#1037対応
+ *  2009/04/09    1.12  SCS丸下          本番障害#1346
  *****************************************************************************************/
 --
 --#######################  固定グローバル定数宣言部 START   #######################
@@ -1194,6 +1195,9 @@ AS
       FROM   xxcmn_cust_accounts_v    hzp,                  -- 顧客情報View
              xxcmn_cust_acct_sites_v  xps                   -- 顧客サイト情報VIEW
       WHERE  hzp.party_number = it_input_base_code      -- 組織番号=入力拠点コード
+-- 2009/04/09 ADD START
+        AND  hzp.customer_class_code IN ('1','10')
+-- 2009/04/09 ADD END
         AND  hzp.party_id     = xps.party_id            -- パーティID
         AND  xps.primary_flag = 'Y';                    -- 主フラグ
 --
