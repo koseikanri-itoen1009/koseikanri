@@ -7,7 +7,7 @@ AS
  * Description      : 支払運賃データ自動作成
  * MD.050           : 運賃計算（トランザクション） T_MD050_BPO_730
  * MD.070           : 支払運賃データ自動作成 T_MD070_BPO_73A
- * Version          : 1.14
+ * Version          : 1.15
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -107,6 +107,7 @@ AS
  *  2008/11/07    1.12 Oracle 野村       統合#584対応
  *  2008/11/25    1.13 Oracle 吉田       本番#104対応
  *  2008/11/28    1.14 Oracle 椎名       本番#201対応
+ *  2008/12/09    1.15 Oracle 野村       本番#595対応
  *
  *****************************************************************************************/
 --
@@ -1502,7 +1503,10 @@ AS
             , NVL(xoha.arrival_date, xoha.schedule_arrival_date) judgement_date  -- 判断日
             , xoha.prod_class                     prod_class                   -- 商品区分
             , xoha.weight_capacity_class          weight_capacity_class        -- 重量容積区分
-            , xoha.small_quantity                 small_quantity               -- 小口個数
+-- ##### 20080717 Ver.1.15 本番#595対応 START #####
+--            , xoha.small_quantity                 small_quantity               -- 小口個数
+            , NVL(xoha.small_quantity, 0)           small_quantity               -- 小口個数
+-- ##### 20080717 Ver.1.15 本番#595対応 END   #####
             , gv_type_shikyu                      order_type                   -- タイプ
             , xoha.no_cont_freight_class          no_cont_freight_class        -- 契約外運賃区分
             , xoha.transfer_location_code         transfer_location_code       -- 振替先
@@ -1572,7 +1576,10 @@ AS
             , NVL(xoha.arrival_date, xoha.schedule_arrival_date) judgement_date   -- 判断日
             , xoha.prod_class                     prod_class                   -- 商品区分
             , xoha.weight_capacity_class          weight_capacity_class        -- 重量容積区分
-            , xoha.small_quantity                 small_quantity               -- 小口個数
+-- ##### 20080717 Ver.1.15 本番#595対応 START #####
+--            , xoha.small_quantity                 small_quantity               -- 小口個数
+            , NVL(xoha.small_quantity, 0)           small_quantity               -- 小口個数
+-- ##### 20080717 Ver.1.15 本番#595対応 END   #####
             , gv_type_ship                        order_type                   -- タイプ
             , xoha.no_cont_freight_class          no_cont_freight_class        -- 契約外運賃区分
             , xoha.transfer_location_code         transfer_location_code       -- 振替先
@@ -1642,7 +1649,10 @@ AS
             ,xoha.shipped_date                    judgement_date               -- 判断日
             , xoha.prod_class                     prod_class                   -- 商品区分
             , xoha.weight_capacity_class          weight_capacity_class        -- 重量容積区分
-            , xoha.small_quantity                 small_quantity               -- 小口個数
+-- ##### 20080717 Ver.1.15 本番#595対応 START #####
+--            , xoha.small_quantity                 small_quantity               -- 小口個数
+            , NVL(xoha.small_quantity, 0)           small_quantity               -- 小口個数
+-- ##### 20080717 Ver.1.15 本番#595対応 END   #####
             , gv_type_shikyu                      order_type                   -- タイプ
             , xoha.no_cont_freight_class          no_cont_freight_class        -- 契約外運賃区分
             , xoha.transfer_location_code         transfer_location_code       -- 振替先
@@ -1711,7 +1721,10 @@ AS
             , xoha.shipped_date                   judgement_date               -- 判断日
             , xoha.prod_class                     prod_class                   -- 商品区分
             , xoha.weight_capacity_class          weight_capacity_class        -- 重量容積区分
-            , xoha.small_quantity                 small_quantity               -- 小口個数
+-- ##### 20080717 Ver.1.15 本番#595対応 START #####
+--            , xoha.small_quantity                 small_quantity               -- 小口個数
+            , NVL(xoha.small_quantity, 0)           small_quantity               -- 小口個数
+-- ##### 20080717 Ver.1.15 本番#595対応 END   #####
             ,gv_type_ship                         order_type                   -- タイプ
             , xoha.no_cont_freight_class          no_cont_freight_class        -- 契約外運賃区分
             , xoha.transfer_location_code         transfer_location_code       -- 振替先
@@ -2874,7 +2887,10 @@ AS
               , NVL(xmrih.actual_arrival_date, xmrih.schedule_arrival_date) judgement_date   -- 判断日
               , xmrih.item_class                                  item_class                 -- 商品区分
               , xmrih.weight_capacity_class                       weight_capacity_class      -- 重量容積区分
-              , xmrih.small_quantity                              small_quantity             -- 小口個数
+-- ##### 20080717 Ver.1.15 本番#595対応 START #####
+---              , xmrih.small_quantity                              small_quantity             -- 小口個数
+              , NVL(xmrih.small_quantity, 0)                         small_quantity             -- 小口個数
+-- ##### 20080717 Ver.1.15 本番#595対応 END   #####
               , xmrih.sum_quantity                                sum_quantity               -- 合計数量
               , gv_type_move                                      order_type                 -- タイプ（３：移動）
               , xmrih.no_cont_freight_class                       no_cont_freight_class      -- 契約外運賃区分
@@ -2938,7 +2954,10 @@ AS
               , xmrih.actual_ship_date                            judgement_date             -- 判断日
               , xmrih.item_class                                  item_class                 -- 商品区分
               , xmrih.weight_capacity_class                       weight_capacity_class      -- 重量容積区分
-              , xmrih.small_quantity                              small_quantity             -- 小口個数
+-- ##### 20080717 Ver.1.15 本番#595対応 START #####
+--              , xmrih.small_quantity                              small_quantity             -- 小口個数
+              , NVL(xmrih.small_quantity, 0)                        small_quantity             -- 小口個数
+-- ##### 20080717 Ver.1.15 本番#595対応 END   #####
               , xmrih.sum_quantity                                sum_quantity               -- 合計数量
               , gv_type_move                                      order_type                 -- タイプ（３：移動）
               , xmrih.no_cont_freight_class                       no_cont_freight_class      -- 契約外運賃区分
