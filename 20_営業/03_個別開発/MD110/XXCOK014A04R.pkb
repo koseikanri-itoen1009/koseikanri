@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCOK014A04R(body)
  * Description      : 「支払先」「売上計上拠点」「顧客」単位に販手残高情報を出力
  * MD.050           : 自販機販手残高一覧 MD050_COK_014_A04
- * Version          : 1.7
+ * Version          : 1.8
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -40,6 +40,7 @@ AS
  *  2009/04/23    1.5   SCS T.Taniguchi  [障害T1_0684] 問合せ拠点修正
  *  2009/05/19    1.6   SCS T.Taniguchi  [障害T1_1070] グローバルカーソルのソート順追加
  *  2009/07/15    1.7   SCS T.Taniguchi  [障害0000689] 銀行手数料負担者、全支払の保留フラグの取得先変更
+ *  2009/09/17    1.8   SCS S.Moriyama   [障害0001390] パラメータ制御変更に伴う所属部門業務管理部チェックを削除
  *
  *****************************************************************************************/
   -- ===============================================
@@ -1984,23 +1985,25 @@ AS
 --      RAISE init_fail_expt;
 --    END IF;
 -- 2009/05/19 Ver.1.6 [障害T1_1070] SCS T.Taniguchi END
-    -- ===============================================
-    -- 拠点セキュリティーチェック
-    -- ===============================================
-    IF ( gv_aff2_dept_act <> gv_base_code ) THEN
-      IF ( iv_selling_base_code IS NULL ) AND ( iv_ref_base_code IS NULL ) THEN
-        lv_errmsg  := xxccp_common_pkg.get_msg(
-                        iv_application  => cv_xxcok_appl_short_name
-                      , iv_name         => cv_msg_code_10372
-                      );
-        lb_retcode := xxcok_common_pkg.put_message_f(
-                        in_which    => FND_FILE.LOG
-                      , iv_message  => lv_errmsg
-                      , in_new_line => cn_number_0
-                      );
-        RAISE init_fail_expt;
-      END IF;
-    END IF;
+-- 2009/09/17 Ver.1.8 [障害0001390] SCS S.Moriyama DEL START
+--    -- ===============================================
+--    -- 拠点セキュリティーチェック
+--    -- ===============================================
+--    IF ( gv_aff2_dept_act <> gv_base_code ) THEN
+--      IF ( iv_selling_base_code IS NULL ) AND ( iv_ref_base_code IS NULL ) THEN
+--        lv_errmsg  := xxccp_common_pkg.get_msg(
+--                        iv_application  => cv_xxcok_appl_short_name
+--                      , iv_name         => cv_msg_code_10372
+--                      );
+--        lb_retcode := xxcok_common_pkg.put_message_f(
+--                        in_which    => FND_FILE.LOG
+--                      , iv_message  => lv_errmsg
+--                      , in_new_line => cn_number_0
+--                      );
+--        RAISE init_fail_expt;
+--      END IF;
+--    END IF;
+-- 2009/09/17 Ver.1.8 [障害0001390] SCS S.Moriyama DEL END
     -- =============================================
     -- 業務処理日付取得
     -- =============================================
