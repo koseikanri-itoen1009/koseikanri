@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCOS002A02R(body)
  * Description      : 営業報告日報
  * MD.050           : 営業報告日報 MD050_COS_002_A02
- * Version          : 1.11
+ * Version          : 1.13
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -53,6 +53,7 @@ AS
  *  2009/12/17    1.10  S.Miyakoshi      [E_本稼動_00500](A-2)集約項目に「納品者」を追加
  *  2009/12/24    1.11  K.Atsushiba      [E_本稼動_00596]入金額の表示不良対応
  *  2010/01/06    1.12  K.Atsushiba      [E_本稼動_00827]帳票が出力されない対応
+ *  2010/02/04    1.13  N.Maeda          [E_本稼動_01472] 入金額差額出力判定修正
  *
  *****************************************************************************************/
 --
@@ -1239,17 +1240,21 @@ AS
         ln_dlv_index := ln_idx;
       END IF;
       --
-      IF ( ( lv_pre_index != lv_pay_index ) 
-           OR
-           ( ln_idx = l_xxcos_rep_bus_report_tab.LAST )
-         )
-      THEN
-        -- インデックスがブレイク又は最終レコードの場合
-        IF ( ln_idx = l_xxcos_rep_bus_report_tab.LAST ) THEN
-          -- 最終レコードの場合、インデックスキーを再設定
-          lv_pre_index := lv_pay_index;
-          ln_dlv_index := ln_idx;
-        END IF;
+-- ********** 2010/02/04 1.13 N.Maeda MOD START ********** --
+--      IF ( ( lv_pre_index != lv_pay_index ) 
+--           OR
+--           ( ln_idx = l_xxcos_rep_bus_report_tab.LAST )
+--         )
+--      THEN
+--        -- インデックスがブレイク又は最終レコードの場合
+--        IF ( ln_idx = l_xxcos_rep_bus_report_tab.LAST ) THEN
+--          -- 最終レコードの場合、インデックスキーを再設定
+--          lv_pre_index := lv_pay_index;
+--          ln_dlv_index := ln_idx;
+--        END IF;
+      IF ( lv_pre_index != lv_pay_index ) THEN
+      -- インデックスがブレイクした場合
+-- ********** 2010/02/04 1.13 N.Maeda MOD  END  ********** --
         --
 -- 2009/12/24 Ver1.11 Mod Start
         IF ( lt_ldv_pay_total_tbl.EXISTS(lv_pre_index) AND lt_ldv_pay_total_tbl(lv_pre_index) > 0 ) THEN
@@ -1263,7 +1268,15 @@ AS
       --
       lv_pre_index := lv_pay_index;
       ln_dlv_index := ln_idx;
+--
     END LOOP lot_payment;
+-- ********** 2010/02/04 1.13 N.Maeda ADD START ********** --
+    IF ( lt_ldv_pay_total_tbl.EXISTS(lv_pre_index) AND lt_ldv_pay_total_tbl(lv_pre_index) > 0 ) THEN
+    -- 最終インデックスのデータに売上額と入金額に差異がある場合
+      l_xxcos_rep_bus_report_tab(ln_dlv_index).pretax_payment := l_xxcos_rep_bus_report_tab(ln_dlv_index).pretax_payment
+                                                           + lt_ldv_pay_total_tbl(lv_pre_index);
+    END IF;
+-- ********** 2010/02/04 1.13 N.Maeda ADD  END  ********** --
 -- 2009/12/24 Ver1.11 Add End
 -- 2010/01/06 Ver1.12 Add Start
     END IF;    -- 納品に関連付けられない入金がない場合は、スキップ
