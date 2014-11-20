@@ -7,7 +7,7 @@ AS
  * Description      : ê∂éYå¥âøç∑àŸï\
  * MD.050           : óLèûéxããí†ï[Issue1.0(T_MD050_BPO_770)
  * MD.070           : óLèûéxããí†ï[Issue1.0(T_MD070_BPO_77G)
- * Version          : 1.16
+ * Version          : 1.17
  *
  * Program List
  * -------------------------- ----------------------------------------------------------
@@ -44,6 +44,7 @@ AS
  *  2008/12/04    1.14  T.Mitaya         ñ{î‘#379ëŒâû
  *  2009/01/16    1.15  N.Yoshida        ñ{î‘#1031ëŒâû
  *  2009/06/22    1.16  Marushita        ñ{î‘#1541ëŒâû
+ *  2009/06/29    1.17  Marushita        ñ{î‘#1554ëŒâû
  *
  *****************************************************************************************/
 --
@@ -572,6 +573,9 @@ AS
 --                     AND  mcb2.segment1 <>   gc_sizai  
                      AND  mcb4.segment1 <>   gc_sizai  
 -- 2008/12/04 v1.14 UPDATE END
+-- 2009/06/29 ADD START
+                     AND  NVL(xrpm.hit_in_div,'N') <> gc_y 
+-- 2009/06/29 ADD END
                      THEN ROUND((itp.trans_qty * TO_NUMBER(xrpm.rcv_pay_div))
                                         * DECODE(iimb.attribute15
 -- 2008/11/19 v1.12 UPDATE START
@@ -613,6 +617,9 @@ AS
            ,xxcmn_stnd_unit_price_v  xcup2    --ïWèÄå¥âøèÓïÒView
 -- 2008/11/19 v1.12 ADD END
            ,gme_material_details     gmd1     -- 
+-- 2009/06/29 ADD START
+           ,gme_material_details     gmd4     -- 
+-- 2009/06/29 ADD END
            ,gme_batch_header         gbh1     -- 
            ,gmd_routings_b           grb1     -- 
            ,xxcmn_rcv_pay_mst        xrpm
@@ -669,8 +676,16 @@ AS
 -- 2008/12/04 v1.14 ADD END
       --AND    gmd1.line_type         = xrpm.line_type
       AND    gmd1.line_type         = gc_kan
-      AND    ( ( ( gmd1.attribute5 IS NULL ) AND ( xrpm.hit_in_div IS NULL ) )
-             OR ( xrpm.hit_in_div        = gmd1.attribute5 ) )
+-- 2009/06/29 MOD START
+--      AND    ( ( ( gmd1.attribute5 IS NULL ) AND ( xrpm.hit_in_div IS NULL ) )
+--             OR ( xrpm.hit_in_div        = gmd1.attribute5 ) )
+      AND    itp.doc_id            = gmd4.batch_id
+      AND    itp.item_id           = gmd4.item_id
+      AND    itp.line_type         = gmd4.line_type
+      AND    itp.line_id           = gmd4.material_detail_id
+      AND    ( ( ( gmd4.attribute5 IS NULL ) AND ( xrpm.hit_in_div IS NULL ) )
+             OR ( xrpm.hit_in_div        = gmd4.attribute5 ) )
+-- 2009/06/29 MOD END
       AND    xrpm.break_col_07       IS NOT NULL
       AND    ((xrpm.routing_class    <> '70')  --PTN A
              OR (xrpm.routing_class     = '70' --PTN B
@@ -981,6 +996,9 @@ AS
 --                     AND  mcb2.segment1 <>   gc_sizai  
                      AND  mcb4.segment1 <>   gc_sizai  
 -- 2009/01/16 v1.15 N.Yoshida mod end
+-- 2009/06/29 ADD START
+                     AND  NVL(xrpm.hit_in_div,'N') <> gc_y 
+-- 2009/06/29 ADD END
                      THEN ROUND((itp.trans_qty * TO_NUMBER(xrpm.rcv_pay_div))
                        * DECODE(iimb.attribute15
                                ,gc_cost_st
@@ -1118,6 +1136,9 @@ AS
            ,xxcmn_item_mst_b         ximb2
            ,xxcmn_lot_cost           xlc
            ,gme_material_details     gmd1     -- 
+-- 2009/06/29 ADD START
+           ,gme_material_details     gmd4     -- 
+-- 2009/06/29 ADD END
            ,gme_batch_header         gbh1     -- 
            ,gmd_routings_b           grb1     -- 
            ,xxcmn_rcv_pay_mst xrpm
@@ -1163,8 +1184,16 @@ AS
       AND    gmd1.item_id          = iimb2.item_id
       AND    iimb2.item_id         = ximb2.item_id
       AND    gmd1.line_type        = gc_kan
-      AND    ( ( ( gmd1.attribute5 IS NULL ) AND ( xrpm.hit_in_div IS NULL ) )
-             OR ( xrpm.hit_in_div        = gmd1.attribute5 ) )
+-- 2009/06/29 MOD START
+--      AND    ( ( ( gmd1.attribute5 IS NULL ) AND ( xrpm.hit_in_div IS NULL ) )
+--             OR ( xrpm.hit_in_div        = gmd1.attribute5 ) )
+      AND    itp.doc_id            = gmd4.batch_id
+      AND    itp.item_id           = gmd4.item_id
+      AND    itp.line_type         = gmd4.line_type
+      AND    itp.line_id           = gmd4.material_detail_id
+      AND    ( ( ( gmd4.attribute5 IS NULL ) AND ( xrpm.hit_in_div IS NULL ) )
+             OR ( xrpm.hit_in_div        = gmd4.attribute5 ) )
+-- 2009/06/29 MOD END
       AND    xrpm.break_col_07       IS NOT NULL
       AND    ((xrpm.routing_class    <> '70')  --PTN A
              OR (xrpm.routing_class     = '70' --PTN B
