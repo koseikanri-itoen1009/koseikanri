@@ -5,7 +5,7 @@
 ## Program Name     : ZBZZEXINBOUND                                             ##
 ## Description      : EDIシステム用I/F連携機能（INBOUND)                        ##
 ## MD.070           : MD070_IPO_CCP_シェル                                      ##
-## Version          : 1.9                                                       ##
+## Version          : 1.10                                                      ##
 ##                                                                              ##
 ## Parameter List                                                               ##
 ## -------- ----------------------------------------------------------          ##
@@ -25,7 +25,7 @@
 ##  2009/02/23    1.2   Masayuki.Sano    結合テスト動作不正対応                 ##
 ##                                       ･パラメータのファイル⇒フルパスへ変更  ##
 ##  2009/02/27    1.3   Masayuki.Sano    結合テスト動作不正対応                 ##
-##                                       ・SQL Loaderを用いた場合の　　　　　　 ##
+##                                       ・SQL Loaderを用いた場合の             ##
 ##                                         業務コンカレントのパラメータは　　　 ##
 ##                                         ファイル名にフルパスを指定　　　　　 ##
 ##                                       ・SQL Loaderを用ない場合の　　　　　　 ##
@@ -46,6 +46,8 @@
 ##                                           (デフォルト60秒→1秒)              ##
 ##  2009/07/17    1.9   Shigeto.Niki     障害番号[E_T3_00341]                   ##
 ##                                         日本語のパス情報を取得するよう修正   ##
+##  2009/08/19    1.10  Masayuki.Sano    障害番号[0000835]                      ##
+##                                         一時ファイル名変更                   ##
 ##                                                                              ##
 ##################################################################################
                                                                                 
@@ -57,9 +59,9 @@
 
 C_appl_name="XXCCP"           #アプリケーション短縮名
 C_program_id="ZBZZEXINBOUND"  #プログラムID
-L_logpath="/var/tmp/jp1/log"  #ログファイルパス
+L_logpath="/var/log/jp1/T3"   #ログファイルパス[環境依存値]
 #2009/04/15 ADD Ver.1.7 BY Masayuki.Sano START
-L_tmppath="/var/tmp"
+L_tmppath="/var/tmp"          #一時ファイルパス[環境依存値]
 #2009/04/15 ADD Ver.1.7 BY Masayuki.Sano START
 
 # 戻り値
@@ -90,18 +92,26 @@ L_envfile=${L_cmddir}/ZBZZAPPS2.env
 #ログファイル関連
 L_logfile="${L_logpath}/"`/bin/basename ${L_cmdname} .ksh`"_${L_hostname}_${L_execdate}.log"
 
-#一時ファイル
-#2009/04/15 UPDATE Ver.1.7 BY Masayuki.Sano START
-#L_tmpbase=/var/tmp/${L_cmdname}.$$
-L_tmpbase="${L_tmppath}/${L_cmdname}.$$"
-#2009/04/15 UPDATE Ver.1.7 BY Masayuki.Sano END
-L_std_out=${L_tmpbase}.stdout
-L_err_out=${L_tmpbase}.errout
-L_path_ou_sldr="${L_tmpbase}.${C_date}.ctl"
-L_path_sql_log="${L_tmpbase}.${C_date}.log"
-#2009/04/15 ADD Ver.1.7 BY Masayuki.Sano START
-#SQL-Loaderログファイルパス
-L_path_log_sldr="/var/tmp/`/bin/basename ${L_cmdname} .ksh`_$$_${C_date}.log"
+# 2009/08/19 Ver1.10 Mod START
+##一時ファイル
+##2009/04/15 UPDATE Ver.1.7 BY Masayuki.Sano START
+##L_tmpbase=/var/tmp/${L_cmdname}.$$
+#L_tmpbase="${L_tmppath}/${L_cmdname}.$$"
+##2009/04/15 UPDATE Ver.1.7 BY Masayuki.Sano END
+#L_std_out=${L_tmpbase}.stdout
+#L_err_out=${L_tmpbase}.errout
+#L_path_ou_sldr="${L_tmpbase}.${C_date}.ctl"
+#L_path_sql_log="${L_tmpbase}.${C_date}.log"
+##2009/04/15 ADD Ver.1.7 BY Masayuki.Sano START
+##SQL-Loaderログファイルパス
+#L_path_log_sldr="/var/tmp/`/bin/basename ${L_cmdname} .ksh`_$$_${C_date}.log"
+#一時ファイル一覧
+L_tmpbase="${L_cmdname}.${C_date}.$$"
+L_std_out=${L_tmppath}/${L_tmpbase}.stdout.tmp        #一時ファイル（正常）
+L_err_out=${L_tmppath}/${L_tmpbase}.errout.tmp        #一時ファイル（異常）
+L_path_sql_log="${L_tmppath}/${L_tmpbase}.log.tmp"    #一時ファイル（SQL関連)
+L_path_ou_sldr="${L_tmppath}/${L_tmpbase}.ctl.tmp"    #SQL-Loader制御ファイル
+# 2009/08/19 Ver1.10 Mod End
 #エラーメッセージ一覧
 C_log_msg_00001="Parameter Error"
 C_log_msg_00002="設定情報の値が不正です。（アプリケーション短縮名(職責)）"
@@ -785,12 +795,19 @@ SQL_LOADER_EXECUTE()
   G_path_nas_tmp=`echo "${G_path_nas}" | sed 's/\\//\\\\\\//g'`
   sed -e 's/\?\?\?\?\?\?\?\?\?\?\?/'"${G_path_nas_tmp}"'/g' "${G_path_sldr}" > "${L_path_ou_sldr}"
 
+# 2009/08/19 Ver1.10 Add START
+  #SQL-Loader実行ログのパスを取得
+  L_path_log_sldr="${L_tmppath}/${G_base_if}_${C_date}_$$.log.tmp"
+# 2009/08/19 Ver1.10 Add End
+
   #SQL-Loader実行
 #2009/04/15 UPDATE Ver.1.7 BY Masayuki.Sano START
 #  sqlldr userid=apps/apps control="${L_path_ou_sldr}" errors=0 > "${L_path_sql_log}"
 #  L_ret_code=${?}
-  #(SQL-Loader実行ログのパスを取得)
-  L_path_log_sldr="${L_tmppath}/${G_base_if}_${C_date}.log"
+# 2009/08/19 Ver1.10 Del START
+#  #(SQL-Loader実行ログのパスを取得)
+#  L_path_log_sldr="${L_tmppath}/${G_base_if}_${C_date}.log"
+# 2009/08/19 Ver1.10 Del END
   sqlldr userid=apps/apps control="${L_path_ou_sldr}" log="${L_path_log_sldr}" errors=0 > ${L_path_sql_log} 2>${L_err_out}
   L_ret_code=${?}
 #2009/04/15 UPDATE Ver.1.7 BY Masayuki.Sano END
