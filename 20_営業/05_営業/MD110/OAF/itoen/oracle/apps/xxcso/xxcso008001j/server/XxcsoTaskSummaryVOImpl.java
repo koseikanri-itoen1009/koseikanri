@@ -8,6 +8,7 @@
 * ---------- ---- ------------ ----------------------------------------------
 * 2008-11-06 1.0  SCS–ö•½’¼l  V‹Kì¬
 * 2009-04-09 1.1  SCS–ö•½’¼l  [STáŠQT1_0422]¤’kƒ^ƒXƒNæ“¾•s³‘Î‰
+* 2009-06-23 1.2  SCS–ö•½’¼l  [áŠQ0000101]ƒXƒPƒWƒ…[ƒ‹•\¦«”\‰ü‘P‘Î‰
 *============================================================================
 */
 package itoen.oracle.apps.xxcso.xxcso008001j.server;
@@ -47,11 +48,23 @@ public class XxcsoTaskSummaryVOImpl extends OAViewObjectImpl
 
     // ƒoƒCƒ“ƒh‚Ö‚Ì’l‚Ìİ’è
     int idx = 0;
+// 2009-06-23 [áŠQ0000100] Add Start
+    setWhereClauseParam(idx++, appDate);
+    setWhereClauseParam(idx++, appDate);
+// 2009-06-23 [áŠQ0000100] Add End
     setWhereClauseParam(idx++, resourceId);
     setWhereClauseParam(idx++, resourceId);
+// 2009-06-23 [áŠQ0000100] Add Start
+    setWhereClauseParam(idx++, appDate);
+    setWhereClauseParam(idx++, appDate);
+// 2009-06-23 [áŠQ0000100] Add End
 // 2009-04-08 [STáŠQT1_0422] Add Start
     setWhereClauseParam(idx++, resourceId);
     setWhereClauseParam(idx++, resourceId);
+// 2009-06-23 [áŠQ0000100] Add Start
+    setWhereClauseParam(idx++, appDate);
+    setWhereClauseParam(idx++, appDate);
+// 2009-06-23 [áŠQ0000100] Add End
     setWhereClauseParam(idx++, resourceId);
     setWhereClauseParam(idx++, resourceId);
 // 2009-04-08 [STáŠQT1_0422] Add End

@@ -7,6 +7,7 @@
 * “ú•t       Ver. ’S“–Ò       C³“à—e
 * ---------- ---- ------------ ----------------------------------------------
 * 2008-11-06 1.0  SCS–ö•½’¼l  V‹Kì¬
+* 2009-06-23 1.1  SCS–ö•½’¼l  [áŠQ0000100]’S“–Ò‘I‘ğ«”\‰ü‘P‘Î‰
 *============================================================================
 */
 package itoen.oracle.apps.xxcso.xxcso008001j.server;
@@ -46,6 +47,11 @@ public class XxcsoEmpSelSummaryVOImpl extends OAViewObjectImpl
     setWhereClauseParam(idx++, baseCd);
     setWhereClauseParam(idx++, baseCd);
     setWhereClauseParam(idx++, baseCd);
+// 2009-06-23 [áŠQ0000100] Add Start
+    setWhereClauseParam(idx++, baseCd);
+    setWhereClauseParam(idx++, baseCd);
+    setWhereClauseParam(idx++, baseCd);
+// 2009-06-23 [áŠQ0000100] Add End
 
     // SQLÀs
     executeQuery();

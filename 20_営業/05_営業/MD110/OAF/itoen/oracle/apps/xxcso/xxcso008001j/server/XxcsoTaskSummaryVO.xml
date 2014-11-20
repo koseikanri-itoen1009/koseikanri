@@ -46,13 +46,17 @@ FROM    (
           WHERE   jtv.source_object_type_code = 'TASK'
             AND   jtv.owner_type_code         = 'RS_EMPLOYEE'
             AND   jtv.deleted_flag            = 'N'
+            AND   TRUNC(NVL(jtv.actual_end_date, jtv.scheduled_end_date))
+                                             >= TO_DATE(:1, 'yyyy/mm/dd') - 7
+            AND   TRUNC(NVL(jtv.actual_end_date, jtv.scheduled_end_date))
+                                             <= TO_DATE(:2, 'yyyy/mm/dd') + 14
             AND   (
                     (jtv.task_status_id = FND_PROFILE.VALUE('XXCSO1_TASK_STATUS_OPEN_ID'))
                     OR
                     (jtv.task_status_id = FND_PROFILE.VALUE('XXCSO1_TASK_STATUS_CLOSED_ID'))
                   )
             AND   (
-                    (jtv.owner_id = :1)
+                    (jtv.owner_id = :3)
                     OR
                     (
                       EXISTS
@@ -61,7 +65,7 @@ FROM    (
                         FROM    jtf_task_all_assignments jtaa
                         WHERE   jtaa.resource_type_code = 'RS_EMPLOYEE'
                           AND   jtaa.task_id            = jtv.task_id
-                          AND   jtaa.resource_id        = :2
+                          AND   jtaa.resource_id        = :4
                       )
                     )
                   )
@@ -83,13 +87,17 @@ FROM    (
           WHERE   jtv.source_object_type_code = 'PARTY'
             AND   jtv.owner_type_code         = 'RS_EMPLOYEE'
             AND   jtv.deleted_flag            = 'N'
+            AND   TRUNC(NVL(jtv.actual_end_date, jtv.scheduled_end_date))
+                                             >= TO_DATE(:5, 'yyyy/mm/dd') - 7
+            AND   TRUNC(NVL(jtv.actual_end_date, jtv.scheduled_end_date))
+                                             <= TO_DATE(:6, 'yyyy/mm/dd') + 14
             AND   (
                     (jtv.task_status_id = FND_PROFILE.VALUE('XXCSO1_TASK_STATUS_OPEN_ID'))
                     OR
                     (jtv.task_status_id = FND_PROFILE.VALUE('XXCSO1_TASK_STATUS_CLOSED_ID'))
                   )
             AND   (
-                    (jtv.owner_id = :3)
+                    (jtv.owner_id = :7)
                     OR
                     (
                       EXISTS
@@ -98,7 +106,7 @@ FROM    (
                         FROM    jtf_task_all_assignments jtaa
                         WHERE   jtaa.resource_type_code = 'RS_EMPLOYEE'
                           AND   jtaa.task_id            = jtv.task_id
-                          AND   jtaa.resource_id        = :4
+                          AND   jtaa.resource_id        = :8
                       )
                     )
                   )
@@ -122,13 +130,17 @@ FROM    (
           WHERE   jtv.source_object_type_code = 'OPPORTUNITY'
             AND   jtv.owner_type_code         = 'RS_EMPLOYEE'
             AND   jtv.deleted_flag            = 'N'
+            AND   TRUNC(NVL(jtv.actual_end_date, jtv.scheduled_end_date))
+                                             >= TO_DATE(:9, 'yyyy/mm/dd') - 7
+            AND   TRUNC(NVL(jtv.actual_end_date, jtv.scheduled_end_date))
+                                             <= TO_DATE(:10, 'yyyy/mm/dd') + 14
             AND   (
                     (jtv.task_status_id = FND_PROFILE.VALUE('XXCSO1_TASK_STATUS_OPEN_ID'))
                     OR
                     (jtv.task_status_id = FND_PROFILE.VALUE('XXCSO1_TASK_STATUS_CLOSED_ID'))
                   )
             AND   (
-                    (jtv.owner_id = :5)
+                    (jtv.owner_id = :11)
                     OR
                     (
                       EXISTS
@@ -137,7 +149,7 @@ FROM    (
                         FROM    jtf_task_all_assignments jtaa
                         WHERE   jtaa.resource_type_code = 'RS_EMPLOYEE'
                           AND   jtaa.task_id            = jtv.task_id
-                          AND   jtaa.resource_id        = :6
+                          AND   jtaa.resource_id        = :12
                       )
                     )
                   )
@@ -190,8 +202,8 @@ FROM    (
                    FROM DUAL
                 ) two_week
                ,(
-                   SELECT  TO_DATE(:7, 'yyyy/mm/dd') -
-                             DECODE(TO_NUMBER(TO_CHAR(TO_DATE(:8, 'yyyy/mm/dd'), 'D')), 1, 8, TO_NUMBER(TO_CHAR(TO_DATE(:9, 'yyyy/mm/dd'), 'D')))
+                   SELECT  TO_DATE(:13, 'yyyy/mm/dd') -
+                             DECODE(TO_NUMBER(TO_CHAR(TO_DATE(:14, 'yyyy/mm/dd'), 'D')), 1, 8, TO_NUMBER(TO_CHAR(TO_DATE(:15, 'yyyy/mm/dd'), 'D')))
                              + 2 AS monday
                    FROM    DUAL
                 ) first_day
