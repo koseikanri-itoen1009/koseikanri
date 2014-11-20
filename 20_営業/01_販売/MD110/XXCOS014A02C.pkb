@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCOS014A02C (body)
  * Description      : 納品書用データ作成(EDI)
  * MD.050           : 納品書用データ作成(EDI) MD050_COS_014_A02
- * Version          : 1.12
+ * Version          : 1.13
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -45,6 +45,7 @@ AS
  *  2009/08/13    1.11  N.Maeda          [0000441] レビュー指摘対応
  *  2009/09/08    1.12  M.Sano           [0001211] 税関連項目取得基準日修正
  *  2009/09/15    1.12  M.Sano           [0001211] レビュー指摘対応
+ *  2010/01/04    1.13  M.Sano           [E_本稼動_00738] 受注連携済フラグ「S(対象外)」追加に伴う修正
  *
  *****************************************************************************************/
 --
@@ -237,6 +238,9 @@ AS
   cv_enabled_flag                 CONSTANT VARCHAR2(1) := 'Y';                                    --有効フラグ.有効
   cv_order_forward_flag_y         CONSTANT VARCHAR2(1) := 'Y';                                    --受注連携済フラグ.有効
   cv_order_forward_flag_n         CONSTANT VARCHAR2(1) := 'N';                                    --受注連携済フラグ.無効
+/* 2010/01/04 Ver1.13 Add Start */
+  cv_order_forward_flag_s         CONSTANT VARCHAR2(1) := 'S';                                    --受注連携済フラグ.対象外
+/* 2010/01/04 Ver1.13 Add End   */
   cv_select_block_1               CONSTANT VARCHAR2(1) := '1';                                    --変換後顧客コードがNULL以外のEDIヘッダデータ
   cv_select_block_2               CONSTANT VARCHAR2(1) := '2';                                    --変換後顧客コードがNULLのEDIヘッダ
 /* 2009/09/15 Ver1.12 Add End   */
@@ -3698,10 +3702,14 @@ AS
                              ,TO_CHAR( NULL )          outbound_flag       --OUTBOUND可否
                       FROM   xxcos_edi_headers         xeh         --EDIヘッダ
                              ,xxcos_edi_lines          xel         --EDI明細
-/* 2009/09/15 Ver1.12 Mod Start */
---                      WHERE   xeh.order_forward_flag        = 'N'                        --受注未連携
-                      WHERE   xeh.order_forward_flag        = cv_order_forward_flag_n    --受注未連携
-/* 2009/09/15 Ver1.12 Mod End   */
+/* 2010/01/04 Ver1.13 Add Start */
+--/* 2009/09/15 Ver1.12 Mod Start */
+----                      WHERE   xeh.order_forward_flag        = 'N'                        --受注未連携
+--                      WHERE   xeh.order_forward_flag        = cv_order_forward_flag_n    --受注未連携
+--/* 2009/09/15 Ver1.12 Mod End   */
+                      WHERE   xeh.order_forward_flag       IN ( cv_order_forward_flag_n
+                                                              , cv_order_forward_flag_s )
+/* 2010/01/04 Ver1.13 Add End   */
                       AND     xeh.edi_header_info_id        = xel.edi_header_info_id
 -- ************ 2009/08/12 N.Maeda 1.11 ADD START ***************** --
                       AND     xeh.data_type_code = i_input_rec.data_type_code

@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCOS010A03C (body)
  * Description      : 納品確定データ取込機能
  * MD.050           : 納品確定データ取込(MD050_COS_010_A03)
- * Version          : 1.15
+ * Version          : 1.16
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -65,6 +65,9 @@ AS
  *  2009/11/19    1.13  N.Maeda          [共通課題I_E_688] 集約条件追加
  *  2009/11/25    1.14  K.Atsushiba      [E_本稼動_00098]ブレイクキーに店舗納品日追加、ブレイク条件にNULL考慮
  *  2009/11/29    1.15  N.Maeda          [E_本稼動_00185] 重複データ検索時条件修正
+ *  2009/12/28    1.16  M.Sano           [E_本稼動_00738]
+ *                                       ・必須チェック外のレコード作成時の受注連携済フラグのセット値変更
+ *                                       ・項目「通過在庫型区分」の追加
  *
  *****************************************************************************************/
 --
@@ -241,6 +244,9 @@ AS
   cv_error_delete_flag   CONSTANT VARCHAR2(10)  := 'Y';                         -- EDIエラー削除フラグ
   cv_cust_item_def_level CONSTANT VARCHAR2(10)  := '1';                         -- 顧客マスタ：定義レベル
   cv_order_forward_flag  CONSTANT VARCHAR2(10)  := 'N';                         -- 受注連携済フラグ：デフォルト
+-- 2009/12/28 M.Sano Ver.1.14 add Start
+  cv_order_forward_no    CONSTANT VARCHAR2(10)  := 'S';                         -- 受注連携済フラグ：連携対象外
+-- 2009/12/28 M.Sano Ver.1.14 add End
   cv_edi_delivery_flag   CONSTANT VARCHAR2(10)  := 'N';                         -- EDI納品予定送信済フラグ：デフォルト
   cv_hht_delivery_flag   CONSTANT VARCHAR2(10)  := 'N';                         -- HHT納品予定連携済フラグ：デフォルト
   cv_cust_status_active  CONSTANT VARCHAR2(10)  := 'A';                         -- 顧客マスタステータス：A（有効）
@@ -1018,6 +1024,10 @@ AS
       price_list_header_id                   xxcos_edi_headers.price_list_header_id%TYPE,                -- 価格表ヘッダID
       item_code                              xxcos_edi_lines.item_code%TYPE,                             -- 品目コード
       line_uom                               xxcos_edi_lines.line_uom%TYPE,                              -- 明細単位
+-- 2009/12/28 M.Sano Ver.1.14 add Start
+      order_forward_flag                     xxcos_edi_headers.order_forward_flag%TYPE,                  -- 受注連携済フラグ
+      tsukagatazaiko_div                     xxcos_edi_headers.tsukagatazaiko_div%TYPE,                  -- 通過在庫型区分
+-- 2009/12/28 M.Sano Ver.1.14 add End
       check_status                           xxcos_edi_delivery_work.err_status%TYPE                     -- チェックステータス
     );
 --
@@ -1566,6 +1576,10 @@ AS
     INDEX BY PLS_INTEGER;     -- EDI納品予定送信済フラグ
   TYPE g_price_list_header_id_ttype          IS TABLE OF xxcos_edi_headers.price_list_header_id%TYPE
     INDEX BY PLS_INTEGER;     -- 価格表ヘッダID
+-- 2009/12/28 M.Sano Ver.1.14 add Start
+  TYPE g_tsukagatazaiko_div_ttype            IS TABLE OF xxcos_edi_headers.tsukagatazaiko_div%TYPE
+    INDEX BY PLS_INTEGER;     -- 通過在庫型区分
+-- 2009/12/28 M.Sano Ver.1.14 add End
 --
   -- EDI明細情報テーブル テーブルタイプ定義
   TYPE g_edi_lines_ttype                     IS TABLE OF xxcos_edi_lines%ROWTYPE
@@ -2071,6 +2085,9 @@ AS
   gt_upd_creation_class                      g_creation_class_ttype;            -- 作成元区分
   gt_upd_edi_delivery_sche_flag              g_edi_delivery_sche_flag_ttype;    -- EDI納品予定送信済フラグ
   gt_upd_price_list_header_id                g_price_list_header_id_ttype;      -- 価格表ヘッダID
+-- 2009/12/28 M.Sano Ver.1.14 add Start
+  gt_upd_tsukagatazaiko_div                  g_tsukagatazaiko_div_ttype;         -- 通過在庫型区分
+-- 2009/12/28 M.Sano Ver.1.14 add End
 --
   --  EDI明細情報インサート用変数
   gt_edi_lines                               g_edi_lines_ttype;                 -- EDI明細情報テーブル
@@ -3849,6 +3866,19 @@ AS
 --
       -- 変換後顧客コードを設定
       gt_edi_work(ln_idx).conv_customer_code := lt_cust_info_rec.conv_cust_code;
+-- 2009/12/28 M.Sano Ver.1.14 add Start
+--
+      -- 通過在庫型区分を設定
+      gt_edi_work(ln_idx).tsukagatazaiko_div := lt_cust_info_rec.tsukagatazaiko_div;
+--
+      -- 受注連携済フラグを設定
+      -- ・エラーチェック ⇒ あり：受注連携済フラグ「N」 なし：受注連携済フラグ「S」
+      IF (  gv_error_check_flag = cv_yes ) THEN
+        gt_edi_work(gt_edi_work.first).order_forward_flag := cv_order_forward_flag;
+      ELSE
+        gt_edi_work(gt_edi_work.first).order_forward_flag := cv_order_forward_no;
+      END IF;
+-- 2009/12/28 M.Sano Ver.1.14 add End
 --
       ----------------------------------------
       -- 単価情報を設定
@@ -4398,6 +4428,10 @@ AS
     gt_edi_work(ln_idx).price_list_header_id           := NULL;                                          -- 価格表ヘッダID
     gt_edi_work(ln_idx).item_code                      := NULL;                                          -- 品目コード
     gt_edi_work(ln_idx).line_uom                       := NULL;                                          -- 明細単位
+-- 2009/12/28 M.Sano Ver.1.14 add Start
+    gt_edi_work(ln_idx).tsukagatazaiko_div             := NULL;                                          -- 通過在庫型区分
+    gt_edi_work(ln_idx).order_forward_flag             := NULL;                                          -- 受注連携済フラグ
+-- 2009/12/28 M.Sano Ver.1.14 add End
     gt_edi_work(ln_idx).check_status                   := cv_edi_status_normal;                          -- チェックステータス
 --
   EXCEPTION
@@ -4933,10 +4967,16 @@ AS
     gt_edi_headers(ln_idx).total_invoice_qty                := it_edi_work.total_invoice_qty;                 -- トータル伝票枚数
     gt_edi_headers(ln_idx).chain_peculiar_area_footer       := it_edi_work.chain_peculiar_area_footer;        -- チェーン店固有エリア（フッター）
     gt_edi_headers(ln_idx).conv_customer_code               := it_edi_work.conv_customer_code;                -- 変換後顧客コード
-    gt_edi_headers(ln_idx).order_forward_flag               := cv_order_forward_flag;                         -- 受注連携済フラグ
+-- 2009/12/28 M.Sano Ver.1.14 mod Start
+--    gt_edi_headers(ln_idx).order_forward_flag               := cv_order_forward_flag;                         -- 受注連携済フラグ
+    gt_edi_headers(ln_idx).order_forward_flag               := it_edi_work.order_forward_flag;                -- 受注連携済フラグ
+-- 2009/12/28 M.Sano Ver.1.14 mod End
     gt_edi_headers(ln_idx).creation_class                   := gv_creation_class;                             -- 作成元区分：納品確定
     gt_edi_headers(ln_idx).edi_delivery_schedule_flag       := cv_edi_delivery_flag;                          -- EDI納品予定送信済フラグ
     gt_edi_headers(ln_idx).price_list_header_id             := it_edi_work.price_list_header_id;              -- 価格表ヘッダID
+-- 2009/12/28 M.Sano Ver.1.14 add Start
+    gt_edi_headers(ln_idx).tsukagatazaiko_div               := it_edi_work.tsukagatazaiko_div;                -- 通過在庫型区分
+-- 2009/12/28 M.Sano Ver.1.14 add End
     gt_edi_headers(ln_idx).created_by                       := cn_created_by;                                 -- 作成者
     gt_edi_headers(ln_idx).creation_date                    := cd_creation_date;                              -- 作成日
     gt_edi_headers(ln_idx).last_updated_by                  := cn_last_updated_by;                            -- 最終更新者
@@ -5284,6 +5324,9 @@ AS
 --  gt_upd_creation_class(ln_idx)                      := cv_creation_class                              -- 作成元区分
 --  gt_upd_edi_delivery_sche_flag(ln_idx)              := cv_edi_delivery_flag;                          -- EDI納品予定送信済フラグ
     gt_upd_price_list_header_id(ln_idx)                := it_edi_work.price_list_header_id;              -- 価格表ヘッダID
+-- 2009/12/28 M.Sano Ver.1.14 add Start
+    gt_upd_tsukagatazaiko_div(ln_idx)                  := it_edi_work.tsukagatazaiko_div;                -- 通過在庫型区分
+-- 2009/12/28 M.Sano Ver.1.14 add End
 --
   EXCEPTION
 --
@@ -6322,6 +6365,9 @@ AS
 --            edi_delivery_schedule_flag          = gt_upd_edi_delivery_sche_flag(ln_idx),     -- EDI納品予定送信済フラグ
               price_list_header_id                = NVL( gt_upd_price_list_header_id(ln_idx), price_list_header_id ),
                                                                                                -- 価格表ヘッダID
+-- 2009/12/28 M.Sano Ver.1.14 add Start
+              tsukagatazaiko_div                  = gt_upd_tsukagatazaiko_div(ln_idx),         -- 通過在庫型区分
+-- 2009/12/28 M.Sano Ver.1.14 add End
               last_updated_by                     = cn_last_updated_by,                        -- 最終更新者
               last_update_date                    = cd_last_update_date,                       -- 最終更新日
               last_update_login                   = cn_last_update_login,                      -- 最終更新ログイン

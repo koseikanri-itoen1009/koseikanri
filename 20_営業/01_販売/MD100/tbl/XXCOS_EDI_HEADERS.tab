@@ -11,6 +11,8 @@
  * ------------- ----- ---------------- ---------------------------------
  *  2009/01/30    1.0   SCS K.Okaguchi   新規作成
  *  2009/06/11    1.1   SCS K.Kiriu      [T1_1352]納品書(受注情報)出力障害対応
+ *  2009/12/28    1.2   M.Sano           [E_本稼動_00738]
+ *                                       ・項目「通過在庫型区分」の追加
  *
  ****************************************************************************************/
 CREATE TABLE  XXCOS.XXCOS_EDI_HEADERS(
@@ -283,6 +285,9 @@ CREATE TABLE  XXCOS.XXCOS_EDI_HEADERS(
  ,DELIV_SLIP_FLAG_AREA_CHAIN      VARCHAR2(240)       NULL                                -- 納品書発行フラグエリア（チェーン店様式）
  ,DELIV_SLIP_FLAG_AREA_CMN        VARCHAR2(240)       NULL                                -- 納品書発行フラグエリア（共通様式）
 /* 2009/06/11 Ver1.1 Add End   */
+/* 2009/12/28 Ver1.2 Add Start */
+ ,TSUKAGATAZAIKO_DIV              VARCHAR2(10)        NULL                                -- 通過在庫型区分
+/* 2009/12/28 Ver1.2 Add Start */
  ,CREATED_BY                      NUMBER(15)          NOT NULL                            --作成者
  ,CREATION_DATE                   DATE                NOT NULL                            --作成日
  ,LAST_UPDATED_BY                 NUMBER(15)          NOT NULL                            --最終更新者
@@ -565,6 +570,9 @@ COMMENT ON COLUMN XXCOS.XXCOS_EDI_HEADERS.PRICE_LIST_HEADER_ID                  
 COMMENT ON COLUMN XXCOS.XXCOS_EDI_HEADERS.DELIV_SLIP_FLAG_AREA_CHAIN                 IS  '納品書発行フラグエリア（チェーン店様式）';
 COMMENT ON COLUMN XXCOS.XXCOS_EDI_HEADERS.DELIV_SLIP_FLAG_AREA_CMN                   IS  '納品書発行フラグエリア（共通様式）';
 /* 2009/06/11 Ver1.1 Add End   */
+/* 2009/12/28 Ver1.2 Add Start */
+COMMENT ON COLUMN XXCOS.XXCOS_EDI_HEADERS.TSUKAGATAZAIKO_DIV                         IS  '通過在庫型区分(EDI取込時)';
+/* 2009/12/28 Ver1.2 Add End  */
 COMMENT ON COLUMN XXCOS.XXCOS_EDI_HEADERS.CREATED_BY                                 IS '作成者';
 COMMENT ON COLUMN XXCOS.XXCOS_EDI_HEADERS.CREATION_DATE                              IS '作成日';
 COMMENT ON COLUMN XXCOS.XXCOS_EDI_HEADERS.LAST_UPDATED_BY                            IS '最終更新者';

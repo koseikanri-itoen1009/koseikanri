@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCOS010A01C (body)
  * Description      : 受注データ取込機能
  * MD.050           : 受注データ取込(MD050_COS_010_A01)
- * Version          : 1.13
+ * Version          : 1.14
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -65,6 +65,9 @@ AS
  *  2009/11/25    1.12  K.Atsushiba      [E_本稼動_00098]ブレイクキーに店舗納品日追加、ブレイク条件にNULL考慮
  *                                       顧客チェックにOTHERS例外追加
  *  2009/11/29    1.13  N.Maeda          [E_本稼動_00185] 重複データ検索時条件修正
+ *  2009/12/28    1.14  M.Sano           [E_本稼動_00738]
+ *                                       ・必須チェック外のレコード作成時の受注連携済フラグのセット値変更
+ *                                       ・項目「通過在庫型区分」の追加
  *
  *****************************************************************************************/
 --
@@ -214,6 +217,9 @@ AS
   cv_qck_edi_exe         CONSTANT VARCHAR2(50)  := 'XXCOS1_EDI_EXE_TYPE';       -- 実行区分
   cv_qck_creation_class  CONSTANT VARCHAR2(50)  := 'XXCOS1_EDI_CREATE_CLASS';   -- EDI作成元区分
   cv_qck_edi_err_type    CONSTANT VARCHAR2(50)  := 'XXCOS1_EDI_ITEM_ERR_TYPE';  -- EDI品目エラータイプ
+-- 2009/12/28 M.Sano Ver.1.14 add Start
+  cv_order_class         CONSTANT VARCHAR2(50)  := 'XXCOS1_EDI_ORDER_CLASS';    -- 受注データ(受注納品確定区分11,12,24)
+-- 2009/12/28 M.Sano Ver.1.14 add End
   -- その他定数
   cv_exe_type_new        CONSTANT VARCHAR2(10)  := '0';                         -- 実行区分：新規
   cv_exe_type_retry      CONSTANT VARCHAR2(10)  := '1';                         -- 実行区分：再実施
@@ -240,6 +246,9 @@ AS
   cv_error_delete_flag   CONSTANT VARCHAR2(10)  := 'Y';                         -- EDIエラー削除フラグ
   cv_cust_item_def_level CONSTANT VARCHAR2(10)  := '1';                         -- 顧客マスタ：定義レベル
   cv_order_forward_flag  CONSTANT VARCHAR2(10)  := 'N';                         -- 受注連携済フラグ：デフォルト
+-- 2009/12/28 M.Sano Ver.1.14 add Start
+  cv_order_forward_no    CONSTANT VARCHAR2(10)  := 'S';                         -- 受注連携済フラグ：連携対象外
+-- 2009/12/28 M.Sano Ver.1.14 add End
   cv_edi_delivery_flag   CONSTANT VARCHAR2(10)  := 'N';                         -- EDI納品予定送信済フラグ：デフォルト
   cv_hht_delivery_flag   CONSTANT VARCHAR2(10)  := 'N';                         -- HHT納品予定連携済フラグ：デフォルト
   cv_cust_status_active  CONSTANT VARCHAR2(10)  := 'A';                         -- 顧客マスタステータス：A（有効）
@@ -1013,6 +1022,10 @@ AS
       price_list_header_id                   xxcos_edi_headers.price_list_header_id%TYPE,                -- 価格表ヘッダID
       item_code                              xxcos_edi_lines.item_code%TYPE,                             -- 品目コード
       line_uom                               xxcos_edi_lines.line_uom%TYPE,                              -- 明細単位
+-- 2009/12/28 M.Sano Ver.1.14 add Start
+      order_forward_flag                     xxcos_edi_headers.order_forward_flag%TYPE,                  -- 受注連携済フラグ
+      tsukagatazaiko_div                     xxcos_edi_headers.tsukagatazaiko_div%TYPE,                  -- 通過在庫型区分
+-- 2009/12/28 M.Sano Ver.1.14 add End
       check_status                           xxcos_edi_order_work.err_status%TYPE                        -- チェックステータス
     );
 --
@@ -1561,6 +1574,10 @@ AS
     INDEX BY PLS_INTEGER;     -- EDI納品予定送信済フラグ
   TYPE g_price_list_header_id_ttype          IS TABLE OF xxcos_edi_headers.price_list_header_id%TYPE
     INDEX BY PLS_INTEGER;     -- 価格表ヘッダID
+-- 2009/12/28 M.Sano Ver.1.14 add Start
+  TYPE g_tsukagatazaiko_div_ttype            IS TABLE OF xxcos_edi_headers.tsukagatazaiko_div%TYPE
+    INDEX BY PLS_INTEGER;     -- 通過在庫型区分
+-- 2009/12/28 M.Sano Ver.1.14 add End
 --
   -- EDI明細情報テーブル テーブルタイプ定義
   TYPE g_edi_lines_ttype                     IS TABLE OF xxcos_edi_lines%ROWTYPE
@@ -1765,6 +1782,12 @@ AS
   -- EDI品目エラータイプ定義
   TYPE g_edi_item_err_type_ttype             IS TABLE OF VARCHAR2(20) INDEX BY VARCHAR2(1);
 --
+-- 2009/12/28 M.Sano Ver.1.14 add Start
+  -- 通過在庫型区分タイプ定義
+  TYPE g_lookup_tsukagata_div_ttype     IS TABLE OF xxcmm_cust_accounts.tsukagatazaiko_div%TYPE
+    INDEX BY xxcmm_cust_accounts.tsukagatazaiko_div%TYPE;
+--
+-- 2009/12/28 M.Sano Ver.1.14 add End
   -- ===============================
   -- ユーザー定義グローバル変数
   -- ===============================
@@ -2064,6 +2087,9 @@ AS
   gt_upd_creation_class                      g_creation_class_ttype;            -- 作成元区分
   gt_upd_edi_delivery_sche_flag              g_edi_delivery_sche_flag_ttype;    -- EDI納品予定送信済フラグ
   gt_upd_price_list_header_id                g_price_list_header_id_ttype;      -- 価格表ヘッダID
+-- 2009/12/28 M.Sano Ver.1.14 add Start
+  gt_upd_tsukagatazaiko_div                  g_tsukagatazaiko_div_ttype;        -- 通過在庫型区分
+-- 2009/12/28 M.Sano Ver.1.14 add End
 --
   --  EDI明細情報インサート用変数
   gt_edi_lines                               g_edi_lines_ttype;                 -- EDI明細情報テーブル
@@ -2171,6 +2197,10 @@ AS
   -- EDI品目エラータイプ変数
   gt_edi_item_err_type                       g_edi_item_err_type_ttype;
 --
+-- 2009/12/28 M.Sano Ver.1.14 add Start
+  -- 通過在庫型区分タイプ変数
+  gt_lookup_tsukagata_divs                   g_lookup_tsukagata_div_ttype;
+-- 2009/12/28 M.Sano Ver.1.14 add End
 --
   /**********************************************************************************
    * Procedure Name   : proc_msg_output
@@ -2413,12 +2443,29 @@ AS
       BETWEEN lup_values.start_date_active
       AND     NVL( lup_values.end_date_active, TRUNC( SYSDATE ) );
 --
+-- 2009/12/28 M.Sano Ver.1.14 add Start
+    -- 受注作成対象の通過在庫型区分カーソル
+    CURSOR tsukagatazaiko_div_cur
+    IS
+      SELECT  lup_values.meaning        tsukagatazaiko_div            -- 通過在庫型区分
+      FROM    fnd_lookup_values         lup_values
+      WHERE   lup_values.language       = cv_default_language
+      AND     lup_values.enabled_flag   = cv_enabled
+      AND     lup_values.lookup_type    = cv_order_class              -- 受注納品確定区分・受注
+      AND     TRUNC( SYSDATE )
+      BETWEEN lup_values.start_date_active
+      AND     NVL( lup_values.end_date_active, TRUNC( SYSDATE ) );
+--
+-- 2009/12/28 M.Sano Ver.1.14 add End
     -- *** ローカル定数 ***
 --
     -- *** ローカル変数 ***
     lv_organization_cd   fnd_profile_option_values.profile_option_value%TYPE := NULL;     -- 在庫組織コード
     lt_create_class_rec  edi_create_class_cur%ROWTYPE;                -- EDI作成元区分カーソル レコード変数
     l_err_type_rec       edi_item_err_type_cur%ROWTYPE;               -- EDI品目エラータイプカーソル レコード変数
+-- 2009/12/28 M.Sano Ver.1.14 add Start
+    lt_tsukagata_div_rec tsukagatazaiko_div_cur%ROWTYPE;              --受注作成対象の通過在庫型区分カーソル レコード変数
+-- 2009/12/28 M.Sano Ver.1.14 add End
 --
     -- *** ローカル・カーソル ***
 --
@@ -2564,6 +2611,18 @@ AS
       proc_msg_output( cv_prg_name, lv_errbuf );
       ov_retcode := cv_status_error;
     END IF;
+-- 2009/12/28 M.Sano Ver.1.14 add Start
+--
+    --==============================================================
+    -- 受注作成対象の通過在庫型区分取得
+    --==============================================================
+    gt_lookup_tsukagata_divs.DELETE;
+--
+    <<loop_set_edi_err_type>>
+    FOR lt_tsukagata_div_rec IN tsukagatazaiko_div_cur LOOP
+      gt_lookup_tsukagata_divs(lt_tsukagata_div_rec.tsukagatazaiko_div) := lt_tsukagata_div_rec.tsukagatazaiko_div;
+    END LOOP;
+-- 2009/12/28 M.Sano Ver.1.14 add End
 --
   EXCEPTION
 --
@@ -2847,6 +2906,9 @@ AS
     TYPE l_cust_info_rtype IS RECORD
       (
         conv_cust_code        hz_cust_accounts.account_number%TYPE,             -- 顧客コード
+-- 2009/12/28 M.Sano Ver.1.14 add Start
+        tsukagatazaiko_div    xxcmm_cust_accounts.tsukagatazaiko_div%TYPE,      -- 通過在庫型区分
+-- 2009/12/28 M.Sano Ver.1.14 add End
         price_list_id         hz_cust_site_uses_all.price_list_id%TYPE          -- 価格表ID
       );
 --
@@ -3015,8 +3077,14 @@ AS
       ot_cust_info_rec.price_list_id  := NULL;
 --
       SELECT  accounts.account_number,                                          -- 顧客コード
+-- 2009/12/28 M.Sano Ver.1.14 add Start
+              addon.tsukagatazaiko_div,                                         -- 通過在庫型区分(EDI)
+-- 2009/12/28 M.Sano Ver.1.14 add End
               uses.price_list_id                                                -- 価格表ID
       INTO    ot_cust_info_rec.conv_cust_code,
+-- 2009/12/28 M.Sano Ver.1.14 add Start
+              ot_cust_info_rec.tsukagatazaiko_div,
+-- 2009/12/28 M.Sano Ver.1.14 add End
               ot_cust_info_rec.price_list_id
       FROM    hz_cust_accounts               accounts,                          -- 顧客マスタ
               xxcmm_cust_accounts            addon,                             -- 顧客アドオン
@@ -3805,6 +3873,20 @@ AS
 --
       -- 変換後顧客コードを設定
       gt_edi_work(ln_idx).conv_customer_code := lt_cust_info_rec.conv_cust_code;
+-- 2009/12/28 M.Sano Ver.1.14 add Start
+--
+      -- 通過在庫型区分を設定
+      gt_edi_work(ln_idx).tsukagatazaiko_div := lt_cust_info_rec.tsukagatazaiko_div;
+--
+      -- 受注連携済フラグを設定
+      IF (  gt_lookup_tsukagata_divs.EXISTS(lt_cust_info_rec.tsukagatazaiko_div)
+        AND gn_check_record_flag = cn_check_record_yes
+      ) THEN
+        gt_edi_work(gt_edi_work.first).order_forward_flag := cv_order_forward_flag;
+      ELSE
+        gt_edi_work(gt_edi_work.first).order_forward_flag := cv_order_forward_no;
+      END IF;
+-- 2009/12/28 M.Sano Ver.1.14 add End
 --
       ----------------------------------------
       -- 単価情報を設定
@@ -4332,6 +4414,10 @@ AS
     gt_edi_work(ln_idx).price_list_header_id           := NULL;                                          -- 価格表ヘッダID
     gt_edi_work(ln_idx).item_code                      := NULL;                                          -- 品目コード
     gt_edi_work(ln_idx).line_uom                       := NULL;                                          -- 明細単位
+-- 2009/12/28 M.Sano Ver.1.14 add Start
+    gt_edi_work(ln_idx).tsukagatazaiko_div             := NULL;                                          -- 通過在庫型区分
+    gt_edi_work(ln_idx).order_forward_flag             := NULL;                                          -- 受注連携済フラグ
+-- 2009/12/28 M.Sano Ver.1.14 add End
     gt_edi_work(ln_idx).check_status                   := cv_edi_status_normal;                          -- チェックステータス
 --
   EXCEPTION
@@ -4866,10 +4952,16 @@ AS
     gt_edi_headers(ln_idx).total_invoice_qty                := it_edi_work.total_invoice_qty;                 -- トータル伝票枚数
     gt_edi_headers(ln_idx).chain_peculiar_area_footer       := it_edi_work.chain_peculiar_area_footer;        -- チェーン店固有エリア（フッター）
     gt_edi_headers(ln_idx).conv_customer_code               := it_edi_work.conv_customer_code;                -- 変換後顧客コード
-    gt_edi_headers(ln_idx).order_forward_flag               := cv_order_forward_flag;                         -- 受注連携済フラグ
+-- 2009/12/28 M.Sano Ver.1.14 mod Start
+--    gt_edi_headers(ln_idx).order_forward_flag               := cv_order_forward_flag;                         -- 受注連携済フラグ
+    gt_edi_headers(ln_idx).order_forward_flag               := it_edi_work.order_forward_flag;                -- 受注連携済フラグ
+-- 2009/12/28 M.Sano Ver.1.14 mod End
     gt_edi_headers(ln_idx).creation_class                   := gv_creation_class;                             -- 作成元区分：受注
     gt_edi_headers(ln_idx).edi_delivery_schedule_flag       := cv_edi_delivery_flag;                          -- EDI納品予定送信済フラグ
     gt_edi_headers(ln_idx).price_list_header_id             := it_edi_work.price_list_header_id;              -- 価格表ヘッダID
+-- 2009/12/28 M.Sano Ver.1.14 add Start
+    gt_edi_headers(ln_idx).tsukagatazaiko_div               := it_edi_work.tsukagatazaiko_div;                -- 通過在庫型区分
+-- 2009/12/28 M.Sano Ver.1.14 add End
     gt_edi_headers(ln_idx).created_by                       := cn_created_by;                                 -- 作成者
     gt_edi_headers(ln_idx).creation_date                    := cd_creation_date;                              -- 作成日
     gt_edi_headers(ln_idx).last_updated_by                  := cn_last_updated_by;                            -- 最終更新者
@@ -5216,6 +5308,9 @@ AS
 --  gt_upd_order_forward_flag(ln_idx)                  := cv_order_forward_flag;                         -- 受注連携済フラグ
 --  gt_upd_creation_class(ln_idx)                      := cv_creation_class                              -- 作成元区分
 --  gt_upd_edi_delivery_sche_flag(ln_idx)              := cv_edi_delivery_flag;                          -- EDI納品予定送信済フラグ
+-- 2009/12/28 M.Sano Ver.1.14 add Start
+    gt_upd_tsukagatazaiko_div(ln_idx)                  := it_edi_work.tsukagatazaiko_div;                -- 通過在庫型区分
+-- 2009/12/28 M.Sano Ver.1.14 add End
     gt_upd_price_list_header_id(ln_idx)                := it_edi_work.price_list_header_id;              -- 価格表ヘッダID
 --
   EXCEPTION
@@ -6251,6 +6346,9 @@ AS
 --            edi_delivery_schedule_flag          = gt_upd_edi_delivery_sche_flag(ln_idx),     -- EDI納品予定送信済フラグ
               price_list_header_id                = NVL( gt_upd_price_list_header_id(ln_idx), price_list_header_id ),
                                                                                                -- 価格表ヘッダID
+-- 2009/12/28 M.Sano Ver.1.14 add Start
+              tsukagatazaiko_div                  = gt_upd_tsukagatazaiko_div(ln_idx),             -- 通過在庫型区分
+-- 2009/12/28 M.Sano Ver.1.14 add End
               last_updated_by                     = cn_last_updated_by,                        -- 最終更新者
               last_update_date                    = cd_last_update_date,                       -- 最終更新日
               last_update_login                   = cn_last_update_login,                      -- 最終更新ログイン
