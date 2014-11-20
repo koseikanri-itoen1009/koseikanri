@@ -6,7 +6,7 @@ AS
  * Package Name           : xxwsh_common_get_qty_pkg(BODY)
  * Description            : 共通関数引当数(BODY)
  * MD.070(CMD.050)        : なし
- * Version                : 1.0
+ * Version                : 1.1
  *
  * Program List
  *  ----------------------   ---- ----- --------------------------------------------------
@@ -20,6 +20,7 @@ AS
  *  Date         Ver.  Editor           Description
  * ------------ ----- ---------------- -----------------------------------------------
  *  2008/12/25   1.0   Oracle 北寒寺正夫 新規作成
+ *  2009/01/21   1.1   SCS二瓶           本番障害#1020
  *****************************************************************************************/
 --
   cv_doc_type_10 CONSTANT VARCHAR2(2) := '10';
@@ -84,7 +85,7 @@ AS
     --対象倉庫の需給数を取得するカーソル
     CURSOR get_demsup_self_cur (id_target_date IN DATE) IS
       SELECT
-        (
+        ( -- S1)供給数  移動入庫予定
         SELECT  NVL(SUM(mld.actual_quantity), 0)
         FROM    xxinv_mov_req_instr_headers mrih    -- 移動依頼/指示ヘッダ（アドオン）
                ,xxinv_mov_req_instr_lines   mril    -- 移動依頼/指示明細（アドオン）
@@ -100,7 +101,8 @@ AS
         AND     mld.lot_id              = it_lot_id
         AND     mld.document_type_code  = cv_doc_type_20
         AND     mld.record_type_code    = cv_rec_type_10
-        ) + (
+        ) + 
+        ( -- S2)供給数  発注受入予定
         SELECT  NVL(SUM(pla.quantity), 0)
         FROM    ic_item_mst_b      iimb
                ,mtl_system_items_b msib
@@ -117,7 +119,8 @@ AS
         AND     pha.attribute1        IN (cv_status_20,cv_status_25)
         AND     pha.attribute4        <= TO_CHAR(id_target_date,'YYYY/MM/DD')
         AND     pha.attribute5         = it_loc_code
-        ) + (
+        ) + 
+        ( -- S3)供給数  生産入庫予定
         SELECT  NVL(SUM(mld.actual_quantity), 0)
         FROM    gme_batch_header      gbh  -- 生産バッチ
                ,gme_material_details  gmd  -- 生産原料詳細
@@ -142,7 +145,8 @@ AS
         -- yoshida 2008/12/18 v1.17 add start
         AND     itp.delete_mark        = cn_type_0
         -- yoshida 2008/12/18 v1.17 add end
-        ) + (
+        ) + 
+        ( -- S4)供給数  実績計上済の移動出庫実績
         SELECT  NVL(SUM(mld.actual_quantity), 0)
         FROM    xxinv_mov_req_instr_headers mrih    -- 移動依頼/指示ヘッダ（アドオン）
                ,xxinv_mov_req_instr_lines   mril    -- 移動依頼/指示明細（アドオン）
@@ -158,7 +162,8 @@ AS
         AND     mld.lot_id              = it_lot_id
         AND     mld.document_type_code  = cv_doc_type_20
         AND     mld.record_type_code    = cv_rec_type_20
-        ) - (
+        ) - 
+        ( -- D1)需要数  実績未計上の出荷依頼
         SELECT  NVL(SUM(mld.actual_quantity), 0)
         FROM    xxwsh_order_headers_all    oha   -- 受注ヘッダ（アドオン）
                ,xxwsh_order_lines_all      ola   -- 受注明細（アドオン）
@@ -178,7 +183,8 @@ AS
         AND     mld.record_type_code      = cv_rec_type_10
         AND     otta.attribute1           = cv_type_1
         AND     otta.transaction_type_id  = oha.order_type_id
-        ) - (
+        ) - 
+        ( -- D2)需要数  実績未計上の支給指示
         SELECT  NVL(SUM(mld.actual_quantity), 0)
         FROM    xxwsh_order_headers_all    oha   -- 受注ヘッダ（アドオン）
                ,xxwsh_order_lines_all      ola   -- 受注明細（アドオン）
@@ -198,7 +204,8 @@ AS
         AND     mld.record_type_code      = cv_rec_type_10
         AND     otta.attribute1           = cv_type_2
         AND     otta.transaction_type_id  = oha.order_type_id
-        ) - (
+        ) - 
+        ( -- D3)需要数  実績未計上の移動指示
         SELECT  NVL(SUM(mld.actual_quantity), 0)
         FROM    xxinv_mov_req_instr_headers mrih    -- 移動依頼/指示ヘッダ（アドオン）
                ,xxinv_mov_req_instr_lines   mril    -- 移動依頼/指示明細（アドオン）
@@ -214,7 +221,8 @@ AS
         AND     mld.lot_id              = it_lot_id
         AND     mld.document_type_code  = cv_doc_type_20
         AND     mld.record_type_code    = cv_rec_type_10
-        ) - (
+        ) - 
+        ( -- D4)需要数  実績計上済の移動入庫実績
         SELECT  NVL(SUM(mld.actual_quantity), 0)
         FROM    xxinv_mov_req_instr_headers mrih    -- 移動依頼/指示ヘッダ（アドオン）
                ,xxinv_mov_req_instr_lines   mril    -- 移動依頼/指示明細（アドオン）
@@ -230,7 +238,8 @@ AS
         AND     mld.lot_id              = it_lot_id
         AND     mld.document_type_code  = cv_doc_type_20
         AND     mld.record_type_code    = cv_doc_type_30
-        ) - (
+        ) - 
+        ( -- D5)需要数  実績未計上の生産投入予定
         SELECT  NVL(SUM(mld.actual_quantity), 0)
         FROM    gme_batch_header      gbh  -- 生産バッチ
                ,gme_material_details  gmd  -- 生産原料詳細
@@ -254,7 +263,8 @@ AS
         AND     itp.doc_type           = cv_doc_type_pr
         AND     itp.delete_mark        = cn_type_0
         AND     itp.completed_ind      = cn_type_0
-        ) - (
+        ) - 
+        ( -- D6)需要数  実績未計上の相手先倉庫発注入庫予定
         SELECT  NVL(SUM(mld.actual_quantity), 0)
         FROM    ic_item_mst_b         iimb
                ,mtl_system_items_b    msib    -- 品目マスタ
@@ -281,7 +291,7 @@ AS
     --対象倉庫の子倉庫の在庫数を取得するカーソル
     CURSOR get_stock_child_cur IS
       SELECT
-        (
+        ( -- I0)EBS手持在庫取得
         SELECT NVL(SUM(ili.loct_onhand),0)
         FROM   ic_loct_inv ili
               ,mtl_item_locations mil
@@ -290,7 +300,9 @@ AS
         AND    ili.location                = mil.segment1
         AND    mil.segment1               <> mil.attribute5
         AND    mil.attribute5              = it_head_loc
-        ) + (
+        ) + 
+        ( -- I1)実績未取在庫数  移動入庫（入出庫報告有）
+          -- I2)実績未取在庫数  移動入庫（入庫報告有）
         SELECT  NVL(SUM(mld.actual_quantity), 0)
         FROM    xxinv_mov_req_instr_headers mrih    -- 移動依頼/指示ヘッダ（アドオン）
                ,xxinv_mov_req_instr_lines   mril    -- 移動依頼/指示明細（アドオン）
@@ -308,7 +320,9 @@ AS
         AND     mld.lot_id              = it_lot_id
         AND     mld.document_type_code  = cv_doc_type_20
         AND     mld.record_type_code    = cv_rec_type_30
-        ) - (
+        ) - 
+        ( -- I3)実績未取在庫数  移動出庫（入出庫報告有）
+          -- I4)実績未取在庫数  移動出庫（出庫報告有）
         SELECT  NVL(SUM(mld.actual_quantity), 0)
         FROM    xxinv_mov_req_instr_headers mrih    -- 移動依頼/指示ヘッダ（アドオン）
                ,xxinv_mov_req_instr_lines   mril    -- 移動依頼/指示明細（アドオン）
@@ -326,7 +340,8 @@ AS
         AND     mld.lot_id              = it_lot_id
         AND     mld.document_type_code  = cv_doc_type_20
         AND     mld.record_type_code    = cv_rec_type_20
-        ) - (
+        ) - 
+        ( -- I5)実績未取在庫数  出荷
         SELECT  NVL(
                   SUM(
                     CASE otta.order_category_code
@@ -352,10 +367,14 @@ AS
         AND     mld.item_id               = it_item_id
         AND     mld.lot_id                = it_lot_id
         AND     mld.document_type_code    = cv_doc_type_10
-        AND     mld.record_type_code      = cv_rec_type_10
+-- 2009/01/21 D.Nihei MOD START
+--        AND     mld.record_type_code      = cv_rec_type_10
+        AND     mld.record_type_code      = cv_rec_type_20
+-- 2009/01/21 D.Nihei MOD END
         AND     otta.attribute1           IN (cv_type_1,cv_type_3)
         AND     otta.transaction_type_id  = oha.order_type_id
-        ) - (
+        ) - 
+        ( -- I6)実績未取在庫数  支給
         SELECT  NVL(
                   SUM(
                     CASE otta.order_category_code
@@ -384,7 +403,8 @@ AS
         AND     mld.record_type_code      = cv_rec_type_20
         AND     otta.attribute1           = cv_type_2
         AND     otta.transaction_type_id  = oha.order_type_id
-        ) + (
+        ) + 
+        ( -- I7)実績未取在庫数  移動入庫訂正（入出庫報告有）
         SELECT  NVL(SUM(mld.actual_quantity),0) - NVL(SUM(mld.before_actual_quantity),0)
         FROM    xxinv_mov_req_instr_headers mrih    -- 移動依頼/指示ヘッダ（アドオン）
                ,xxinv_mov_req_instr_lines   mril    -- 移動依頼/指示明細（アドオン）
@@ -403,7 +423,8 @@ AS
         AND     mld.lot_id              = it_lot_id
         AND     mld.document_type_code  = cv_doc_type_20
         AND     mld.record_type_code    = cv_rec_type_30
-        ) + (
+        ) + 
+        ( -- I8)実績未取在庫数  移動出庫訂正（入出庫報告有）
         SELECT  NVL(SUM(mld.before_actual_quantity),0) - NVL(SUM(mld.actual_quantity),0)
         FROM    xxinv_mov_req_instr_headers mrih    -- 移動依頼/指示ヘッダ（アドオン）
                ,xxinv_mov_req_instr_lines   mril    -- 移動依頼/指示明細（アドオン）
@@ -422,7 +443,8 @@ AS
         AND     mld.lot_id              = it_lot_id
         AND     mld.document_type_code  = cv_doc_type_20
         AND     mld.record_type_code    = cv_rec_type_20
-        ) + (
+        ) + 
+        ( -- I0)EBS手持在庫取得
         SELECT NVL(SUM(ili.loct_onhand),0)
         FROM   ic_loct_inv ili
               ,xxwsh_frq_item_locations xfil
@@ -431,7 +453,9 @@ AS
         AND    ili.location                = xfil.item_location_code
         AND    xfil.frq_item_location_code = it_head_loc
         AND    xfil.item_id                = it_item_id
-        ) + (
+        ) + 
+        ( -- I1)実績未取在庫数  移動入庫（入出庫報告有）
+          -- I2)実績未取在庫数  移動入庫（入庫報告有）
         SELECT  NVL(SUM(mld.actual_quantity), 0)
         FROM    xxinv_mov_req_instr_headers mrih    -- 移動依頼/指示ヘッダ（アドオン）
                ,xxinv_mov_req_instr_lines   mril    -- 移動依頼/指示明細（アドオン）
@@ -449,7 +473,9 @@ AS
         AND     mld.lot_id              = it_lot_id
         AND     mld.document_type_code  = cv_doc_type_20
         AND     mld.record_type_code    = cv_rec_type_30
-        ) - (
+        ) - 
+        ( -- I3)実績未取在庫数  移動出庫（入出庫報告有）
+          -- I4)実績未取在庫数  移動出庫（出庫報告有）
         SELECT  NVL(SUM(mld.actual_quantity), 0)
         FROM    xxinv_mov_req_instr_headers mrih    -- 移動依頼/指示ヘッダ（アドオン）
                ,xxinv_mov_req_instr_lines   mril    -- 移動依頼/指示明細（アドオン）
@@ -467,7 +493,8 @@ AS
         AND     mld.lot_id              = it_lot_id
         AND     mld.document_type_code  = cv_doc_type_20
         AND     mld.record_type_code    = cv_rec_type_20
-        ) - (
+        ) - 
+        ( -- I5)実績未取在庫数  出荷
         SELECT  NVL(
                   SUM(
                     CASE otta.order_category_code
@@ -493,10 +520,14 @@ AS
         AND     mld.item_id               = it_item_id
         AND     mld.lot_id                = it_lot_id
         AND     mld.document_type_code    = cv_doc_type_10
-        AND     mld.record_type_code      = cv_rec_type_10
+-- 2009/01/21 D.Nihei MOD START
+--        AND     mld.record_type_code      = cv_rec_type_10
+        AND     mld.record_type_code      = cv_rec_type_20
+-- 2009/01/21 D.Nihei MOD END
         AND     otta.attribute1           IN (cv_type_1,cv_type_3)
         AND     otta.transaction_type_id  = oha.order_type_id
-        ) - (
+        ) - 
+        ( -- I6)実績未取在庫数  支給
         SELECT  NVL(
                   SUM(
                     CASE otta.order_category_code
@@ -525,7 +556,8 @@ AS
         AND     mld.record_type_code      = cv_rec_type_20
         AND     otta.attribute1           = cv_type_2
         AND     otta.transaction_type_id  = oha.order_type_id
-        ) + (
+        ) + 
+        ( -- I7)実績未取在庫数  移動入庫訂正（入出庫報告有）
         SELECT  NVL(SUM(mld.actual_quantity),0) - NVL(SUM(mld.before_actual_quantity),0)
         FROM    xxinv_mov_req_instr_headers mrih    -- 移動依頼/指示ヘッダ（アドオン）
                ,xxinv_mov_req_instr_lines   mril    -- 移動依頼/指示明細（アドオン）
@@ -544,7 +576,8 @@ AS
         AND     mld.lot_id              = it_lot_id
         AND     mld.document_type_code  = cv_doc_type_20
         AND     mld.record_type_code    = cv_rec_type_30
-        ) + (
+        ) + 
+        ( -- I8)実績未取在庫数  移動出庫訂正（入出庫報告有）
         SELECT  NVL(SUM(mld.before_actual_quantity),0) - NVL(SUM(mld.actual_quantity),0)
         FROM    xxinv_mov_req_instr_headers mrih    -- 移動依頼/指示ヘッダ（アドオン）
                ,xxinv_mov_req_instr_lines   mril    -- 移動依頼/指示明細（アドオン）
@@ -569,7 +602,7 @@ AS
     --対象倉庫の親と子倉庫の需給数を取得するカーソル(親子別に取得する必要がないため)
     CURSOR get_demsup_all_cur (id_target_date IN DATE) IS
       SELECT
-        (
+        ( -- S1)供給数  移動入庫予定
         SELECT  NVL(SUM(mld.actual_quantity), 0)
         FROM    xxinv_mov_req_instr_headers mrih    -- 移動依頼/指示ヘッダ（アドオン）
                ,xxinv_mov_req_instr_lines   mril    -- 移動依頼/指示明細（アドオン）
@@ -587,7 +620,8 @@ AS
         AND     mld.lot_id              = it_lot_id
         AND     mld.document_type_code  = cv_doc_type_20
         AND     mld.record_type_code    = cv_rec_type_10
-        ) + (
+        ) + 
+        ( -- S2)供給数  発注受入予定
         SELECT  NVL(SUM(pla.quantity), 0)
         FROM    ic_item_mst_b      iimb
                ,mtl_system_items_b msib
@@ -606,7 +640,8 @@ AS
         AND     pha.attribute4        <= TO_CHAR(id_target_date,'YYYY/MM/DD')
         AND     pha.attribute5         = mil.segment1
         AND     mil.attribute5         = it_head_loc
-        ) + (
+        ) + 
+        ( -- S3)供給数  生産入庫予定
         SELECT  NVL(SUM(mld.actual_quantity), 0)
         FROM    gme_batch_header      gbh  -- 生産バッチ
                ,gme_material_details  gmd  -- 生産原料詳細
@@ -633,7 +668,8 @@ AS
         -- yoshida 2008/12/18 v1.17 add start
         AND     itp.delete_mark        = cn_type_0
         -- yoshida 2008/12/18 v1.17 add end
-        ) + (
+        ) + 
+        ( -- S4)供給数  実績計上済の移動出庫実績
         SELECT  NVL(SUM(mld.actual_quantity), 0)
         FROM    xxinv_mov_req_instr_headers mrih    -- 移動依頼/指示ヘッダ（アドオン）
                ,xxinv_mov_req_instr_lines   mril    -- 移動依頼/指示明細（アドオン）
@@ -651,7 +687,8 @@ AS
         AND     mld.lot_id              = it_lot_id
         AND     mld.document_type_code  = cv_doc_type_20
         AND     mld.record_type_code    = cv_rec_type_20
-        ) - (
+        ) - 
+        ( -- D1)需要数  実績未計上の出荷依頼
         SELECT  NVL(SUM(mld.actual_quantity), 0)
         FROM    xxwsh_order_headers_all    oha   -- 受注ヘッダ（アドオン）
                ,xxwsh_order_lines_all      ola   -- 受注明細（アドオン）
@@ -673,7 +710,8 @@ AS
         AND     mld.record_type_code      = cv_rec_type_10
         AND     otta.attribute1           = cv_type_1
         AND     otta.transaction_type_id  = oha.order_type_id
-        ) - (
+        ) - 
+        ( -- D2)需要数  実績未計上の支給指示
         SELECT  NVL(SUM(mld.actual_quantity), 0)
         FROM    xxwsh_order_headers_all    oha   -- 受注ヘッダ（アドオン）
                ,xxwsh_order_lines_all      ola   -- 受注明細（アドオン）
@@ -695,7 +733,8 @@ AS
         AND     mld.record_type_code      = cv_rec_type_10
         AND     otta.attribute1           = cv_type_2
         AND     otta.transaction_type_id  = oha.order_type_id
-        ) - (
+        ) - 
+        ( -- D3)需要数  実績未計上の移動指示
         SELECT  NVL(SUM(mld.actual_quantity), 0)
         FROM    xxinv_mov_req_instr_headers mrih    -- 移動依頼/指示ヘッダ（アドオン）
                ,xxinv_mov_req_instr_lines   mril    -- 移動依頼/指示明細（アドオン）
@@ -713,7 +752,8 @@ AS
         AND     mld.lot_id              = it_lot_id
         AND     mld.document_type_code  = cv_doc_type_20
         AND     mld.record_type_code    = cv_rec_type_10
-        ) - (
+        ) - 
+        ( -- D4)需要数  実績計上済の移動入庫実績
         SELECT  NVL(SUM(mld.actual_quantity), 0)
         FROM    xxinv_mov_req_instr_headers mrih    -- 移動依頼/指示ヘッダ（アドオン）
                ,xxinv_mov_req_instr_lines   mril    -- 移動依頼/指示明細（アドオン）
@@ -731,7 +771,8 @@ AS
         AND     mld.lot_id              = it_lot_id
         AND     mld.document_type_code  = cv_doc_type_20
         AND     mld.record_type_code    = cv_rec_type_30
-        ) - (
+        ) - 
+        ( -- D5)需要数  実績未計上の生産投入予定
         SELECT  NVL(SUM(mld.actual_quantity), 0)
         FROM    gme_batch_header      gbh  -- 生産バッチ
                ,gme_material_details  gmd  -- 生産原料詳細
@@ -757,7 +798,8 @@ AS
         AND     itp.completed_ind      = cn_type_0
         AND     grb.attribute9         = mil.segment1
         AND     mil.attribute5         = it_head_loc
-        ) - (
+        ) - 
+        ( -- D6)需要数  実績未計上の相手先倉庫発注入庫予定
         SELECT  NVL(SUM(mld.actual_quantity), 0)
         FROM    ic_item_mst_b         iimb
                ,mtl_system_items_b    msib    -- 品目マスタ
@@ -780,7 +822,8 @@ AS
         AND     mld.record_type_code   = cv_rec_type_10
         AND     pla.attribute12        = mil.segment1
         AND     mil.attribute5         = it_head_loc
-        ) + (
+        ) + 
+        ( -- S1)供給数  移動入庫予定
         SELECT  NVL(SUM(mld.actual_quantity), 0)
         FROM    xxinv_mov_req_instr_headers mrih    -- 移動依頼/指示ヘッダ（アドオン）
                ,xxinv_mov_req_instr_lines   mril    -- 移動依頼/指示明細（アドオン）
@@ -799,7 +842,8 @@ AS
         AND     mld.lot_id              = it_lot_id
         AND     mld.document_type_code  = cv_doc_type_20
         AND     mld.record_type_code    = cv_rec_type_10
-        ) + (
+        ) + 
+        ( -- S2)供給数  発注受入予定
         SELECT  NVL(SUM(pla.quantity), 0)
         FROM    ic_item_mst_b      iimb
                ,mtl_system_items_b msib
@@ -819,7 +863,8 @@ AS
         AND     pha.attribute5         = xfil.item_location_code
         AND     xfil.frq_item_location_code = it_head_loc
         AND     xfil.item_id           = it_item_id
-        ) + (
+        ) + 
+        ( -- S3)供給数  生産入庫予定
         SELECT  NVL(SUM(mld.actual_quantity), 0)
         FROM    gme_batch_header      gbh  -- 生産バッチ
                ,gme_material_details  gmd  -- 生産原料詳細
@@ -847,7 +892,8 @@ AS
         -- yoshida 2008/12/18 v1.17 add start
         AND     itp.delete_mark        = cn_type_0
         -- yoshida 2008/12/18 v1.17 add end
-        ) + (
+        ) + 
+        ( -- S4)供給数  実績計上済の移動出庫実績
         SELECT  NVL(SUM(mld.actual_quantity), 0)
         FROM    xxinv_mov_req_instr_headers mrih    -- 移動依頼/指示ヘッダ（アドオン）
                ,xxinv_mov_req_instr_lines   mril    -- 移動依頼/指示明細（アドオン）
@@ -866,7 +912,8 @@ AS
         AND     mld.lot_id              = it_lot_id
         AND     mld.document_type_code  = cv_doc_type_20
         AND     mld.record_type_code    = cv_rec_type_20
-        ) - (
+        ) - 
+        ( -- D1)需要数  実績未計上の出荷依頼
         SELECT  NVL(SUM(mld.actual_quantity), 0)
         FROM    xxwsh_order_headers_all    oha   -- 受注ヘッダ（アドオン）
                ,xxwsh_order_lines_all      ola   -- 受注明細（アドオン）
@@ -889,7 +936,8 @@ AS
         AND     mld.record_type_code      = cv_rec_type_10
         AND     otta.attribute1           = cv_type_1
         AND     otta.transaction_type_id  = oha.order_type_id
-        ) - (
+        ) - 
+        ( -- D2)需要数  実績未計上の支給指示
         SELECT  NVL(SUM(mld.actual_quantity), 0)
         FROM    xxwsh_order_headers_all    oha   -- 受注ヘッダ（アドオン）
                ,xxwsh_order_lines_all      ola   -- 受注明細（アドオン）
@@ -912,7 +960,8 @@ AS
         AND     mld.record_type_code      = cv_rec_type_10
         AND     otta.attribute1           = cv_type_2
         AND     otta.transaction_type_id  = oha.order_type_id
-        ) - (
+        ) - 
+        ( -- D3)需要数  実績未計上の移動指示
         SELECT  NVL(SUM(mld.actual_quantity), 0)
         FROM    xxinv_mov_req_instr_headers mrih    -- 移動依頼/指示ヘッダ（アドオン）
                ,xxinv_mov_req_instr_lines   mril    -- 移動依頼/指示明細（アドオン）
@@ -931,7 +980,8 @@ AS
         AND     mld.lot_id              = it_lot_id
         AND     mld.document_type_code  = cv_doc_type_20
         AND     mld.record_type_code    = cv_rec_type_10
-        ) - (
+        ) - 
+        ( -- D4)需要数  実績計上済の移動入庫実績
         SELECT  NVL(SUM(mld.actual_quantity), 0)
         FROM    xxinv_mov_req_instr_headers mrih    -- 移動依頼/指示ヘッダ（アドオン）
                ,xxinv_mov_req_instr_lines   mril    -- 移動依頼/指示明細（アドオン）
@@ -950,7 +1000,8 @@ AS
         AND     mld.lot_id              = it_lot_id
         AND     mld.document_type_code  = cv_doc_type_20
         AND     mld.record_type_code    = cv_rec_type_30
-        ) - (
+        ) - 
+        ( -- D5)需要数  実績未計上の生産投入予定
         SELECT  NVL(SUM(mld.actual_quantity), 0)
         FROM    gme_batch_header      gbh  -- 生産バッチ
                ,gme_material_details  gmd  -- 生産原料詳細
@@ -977,7 +1028,8 @@ AS
         AND     grb.attribute9         = xfil.item_location_code
         AND     xfil.frq_item_location_code = it_head_loc
         AND     xfil.item_id           = it_item_id
-        ) - (
+        ) - 
+        ( -- D6)需要数  実績未計上の相手先倉庫発注入庫予定
         SELECT  NVL(SUM(mld.actual_quantity), 0)
         FROM    ic_item_mst_b         iimb
                ,mtl_system_items_b    msib    -- 品目マスタ
@@ -1007,24 +1059,35 @@ AS
     --対象倉庫の親倉庫(ダミー)の在庫数を取得するカーソル
     CURSOR get_stock_dummy_cur IS
       SELECT
-        (
+        ( -- I0)EBS手持在庫取得
         SELECT NVL(SUM(ili.loct_onhand),0)
         FROM   ic_loct_inv ili
               ,xxwsh_frq_item_locations xfil
         WHERE  ili.item_id                 = it_item_id
         AND    ili.lot_id                  = it_lot_id
-        AND    ili.location                = xfil.item_location_code
-        AND    xfil.frq_item_location_code = it_loc_code
+-- 2009/01/21 D.Nihei MOD START
+--        AND    ili.location                = xfil.item_location_code
+--        AND    xfil.frq_item_location_code = it_loc_code
+        AND    ili.location                = xfil.frq_item_location_code
+        AND    xfil.item_location_code     = it_loc_code
+-- 2009/01/21 D.Nihei MOD END
         AND    xfil.item_id                = it_item_id
-        ) + (
+        ) + 
+        ( -- I1)実績未取在庫数  移動入庫（入出庫報告有）
+          -- I2)実績未取在庫数  移動入庫（入庫報告有）
         SELECT  NVL(SUM(mld.actual_quantity), 0)
         FROM    xxinv_mov_req_instr_headers mrih    -- 移動依頼/指示ヘッダ（アドオン）
                ,xxinv_mov_req_instr_lines   mril    -- 移動依頼/指示明細（アドオン）
                ,xxinv_mov_lot_details       mld     -- 移動ロット詳細（アドオン）
                ,xxwsh_frq_item_locations    xfil
-        WHERE   xfil.frq_item_location_code = it_loc_code
+-- 2009/01/21 D.Nihei MOD START
+--        WHERE   xfil.frq_item_location_code = it_loc_code
+--        AND     xfil.item_id            = it_item_id
+--        AND     mrih.ship_to_locat_id   = xfil.item_location_id
+        WHERE   xfil.item_location_code = it_loc_code
         AND     xfil.item_id            = it_item_id
-        AND     mrih.ship_to_locat_id   = xfil.item_location_id
+        AND     mrih.ship_to_locat_id   = xfil.frq_item_location_id
+-- 2009/01/21 D.Nihei MOD END
         AND     mrih.comp_actual_flg    = cv_flag_n
         AND     mrih.status            IN (cv_status_05,cv_status_06)
         AND     mrih.mov_hdr_id         = mril.mov_hdr_id
@@ -1034,15 +1097,22 @@ AS
         AND     mld.lot_id              = it_lot_id
         AND     mld.document_type_code  = cv_doc_type_20
         AND     mld.record_type_code    = cv_rec_type_30
-        ) - (
+        ) - 
+        ( -- I3)実績未取在庫数  移動出庫（入出庫報告有）
+          -- I4)実績未取在庫数  移動出庫（出庫報告有）
         SELECT  NVL(SUM(mld.actual_quantity), 0)
         FROM    xxinv_mov_req_instr_headers mrih    -- 移動依頼/指示ヘッダ（アドオン）
                ,xxinv_mov_req_instr_lines   mril    -- 移動依頼/指示明細（アドオン）
                ,xxinv_mov_lot_details       mld     -- 移動ロット詳細（アドオン）
                ,xxwsh_frq_item_locations    xfil
-        WHERE   xfil.frq_item_location_code = it_loc_code
+-- 2009/01/21 D.Nihei MOD START
+--        WHERE   xfil.frq_item_location_code = it_loc_code
+--        AND     xfil.item_id            = it_item_id
+--        AND     mrih.shipped_locat_id   = xfil.item_location_id
+        WHERE   xfil.item_location_code = it_loc_code
         AND     xfil.item_id            = it_item_id
-        AND     mrih.shipped_locat_id   = xfil.item_location_id
+        AND     mrih.shipped_locat_id   = xfil.frq_item_location_id
+-- 2009/01/21 D.Nihei MOD END
         AND     mrih.comp_actual_flg    = cv_flag_n
         AND     mrih.status            IN (cv_status_04,cv_status_06)
         AND     mrih.mov_hdr_id         = mril.mov_hdr_id
@@ -1052,7 +1122,8 @@ AS
         AND     mld.lot_id              = it_lot_id
         AND     mld.document_type_code  = cv_doc_type_20
         AND     mld.record_type_code    = cv_rec_type_20
-        ) - (
+        ) - 
+        ( -- I5)実績未取在庫数  出荷
         SELECT  NVL(
                   SUM(
                     CASE otta.order_category_code
@@ -1066,9 +1137,14 @@ AS
                ,xxinv_mov_lot_details      mld  -- 移動ロット詳細（アドオン）
                ,oe_transaction_types_all   otta -- 受注タイプ
                ,xxwsh_frq_item_locations   xfil
-        WHERE   xfil.frq_item_location_code = it_loc_code
+-- 2009/01/21 D.Nihei MOD START
+--        WHERE   xfil.frq_item_location_code = it_loc_code
+--        AND     xfil.item_id            = it_item_id
+--        AND     oha.deliver_from_id     = xfil.item_location_id
+        WHERE   xfil.item_location_code   = it_loc_code
         AND     xfil.item_id              = it_item_id
-        AND     oha.deliver_from_id       = xfil.item_location_id
+        AND     oha.deliver_from_id       = xfil.frq_item_location_id
+-- 2009/01/21 D.Nihei MOD END
         AND     oha.req_status            = cv_status_04
         AND     oha.actual_confirm_class  = cv_flag_n
         AND     oha.latest_external_flag  = cv_flag_y
@@ -1078,10 +1154,14 @@ AS
         AND     mld.item_id               = it_item_id
         AND     mld.lot_id                = it_lot_id
         AND     mld.document_type_code    = cv_doc_type_10
-        AND     mld.record_type_code      = cv_rec_type_10
+-- 2009/01/21 D.Nihei MOD START
+--        AND     mld.record_type_code      = cv_rec_type_10
+        AND     mld.record_type_code      = cv_rec_type_20
+-- 2009/01/21 D.Nihei MOD END
         AND     otta.attribute1           IN (cv_type_1,cv_type_3)
         AND     otta.transaction_type_id  = oha.order_type_id
-        ) - (
+        ) - 
+        ( -- I6)実績未取在庫数  支給
         SELECT  NVL(
                   SUM(
                     CASE otta.order_category_code
@@ -1095,9 +1175,14 @@ AS
                ,xxinv_mov_lot_details      mld   -- 移動ロット詳細（アドオン）
                ,oe_transaction_types_all   otta   -- 受注タイプ
                ,xxwsh_frq_item_locations   xfil
-        WHERE   xfil.frq_item_location_code = it_loc_code
+-- 2009/01/21 D.Nihei MOD START
+--        WHERE   xfil.frq_item_location_code = it_loc_code
+--        AND     xfil.item_id              = it_item_id
+--        AND     oha.deliver_from_id       = xfil.item_location_id
+        WHERE   xfil.item_location_code   = it_loc_code
         AND     xfil.item_id              = it_item_id
-        AND     oha.deliver_from_id       = xfil.item_location_id
+        AND     oha.deliver_from_id       = xfil.frq_item_location_id
+-- 2009/01/21 D.Nihei MOD END
         AND     oha.req_status            = cv_status_08
         AND     oha.actual_confirm_class  = cv_flag_n
         AND     oha.latest_external_flag  = cv_flag_y
@@ -1110,15 +1195,21 @@ AS
         AND     mld.record_type_code      = cv_rec_type_20
         AND     otta.attribute1           = cv_type_2
         AND     otta.transaction_type_id  = oha.order_type_id
-        ) + (
+        ) + 
+        ( -- I7)実績未取在庫数  移動入庫訂正（入出庫報告有）
         SELECT  NVL(SUM(mld.actual_quantity),0) - NVL(SUM(mld.before_actual_quantity),0)
         FROM    xxinv_mov_req_instr_headers mrih    -- 移動依頼/指示ヘッダ（アドオン）
                ,xxinv_mov_req_instr_lines   mril    -- 移動依頼/指示明細（アドオン）
                ,xxinv_mov_lot_details       mld     -- 移動ロット詳細（アドオン）
                ,xxwsh_frq_item_locations    xfil
-        WHERE   xfil.frq_item_location_code = it_loc_code
+-- 2009/01/21 D.Nihei MOD START
+--        WHERE   xfil.frq_item_location_code = it_loc_code
+--        AND     xfil.item_id            = it_item_id
+--        AND     mrih.ship_to_locat_id   = xfil.item_location_id
+        WHERE   xfil.item_location_code = it_loc_code
         AND     xfil.item_id            = it_item_id
-        AND     mrih.ship_to_locat_id   = xfil.item_location_id
+        AND     mrih.ship_to_locat_id   = xfil.frq_item_location_id
+-- 2009/01/21 D.Nihei MOD END
         AND     mrih.comp_actual_flg    = cv_flag_y
         AND     mrih.correct_actual_flg = cv_flag_y
         AND     mrih.status             = cv_status_06
@@ -1129,15 +1220,21 @@ AS
         AND     mld.lot_id              = it_lot_id
         AND     mld.document_type_code  = cv_doc_type_20
         AND     mld.record_type_code    = cv_rec_type_30
-        ) + (
+        ) + 
+        ( -- I8)実績未取在庫数  移動出庫訂正（入出庫報告有）
         SELECT  NVL(SUM(mld.before_actual_quantity),0) - NVL(SUM(mld.actual_quantity),0)
         FROM    xxinv_mov_req_instr_headers mrih    -- 移動依頼/指示ヘッダ（アドオン）
                ,xxinv_mov_req_instr_lines   mril    -- 移動依頼/指示明細（アドオン）
                ,xxinv_mov_lot_details       mld     -- 移動ロット詳細（アドオン）
                ,xxwsh_frq_item_locations    xfil
-        WHERE   xfil.frq_item_location_code = it_loc_code
+-- 2009/01/21 D.Nihei MOD START
+--        WHERE   xfil.frq_item_location_code = it_loc_code
+--        AND     xfil.item_id            = it_item_id
+--        AND     mrih.shipped_locat_id   = xfil.item_location_id
+        WHERE   xfil.item_location_code = it_loc_code
         AND     xfil.item_id            = it_item_id
-        AND     mrih.shipped_locat_id   = xfil.item_location_id
+        AND     mrih.shipped_locat_id   = xfil.frq_item_location_id
+-- 2009/01/21 D.Nihei MOD END
         AND     mrih.comp_actual_flg    = cv_flag_y
         AND     mrih.correct_actual_flg = cv_flag_y
         AND     mrih.status             = cv_status_06
@@ -1154,15 +1251,20 @@ AS
     --対象倉庫の親倉庫(ダミー)の需給数を取得するカーソル
     CURSOR get_demsup_dummy_cur (id_target_date IN DATE) IS
       SELECT
-        (
+        ( -- S1)供給数  移動入庫予定
         SELECT  NVL(SUM(mld.actual_quantity), 0)
         FROM    xxinv_mov_req_instr_headers mrih    -- 移動依頼/指示ヘッダ（アドオン）
                ,xxinv_mov_req_instr_lines   mril    -- 移動依頼/指示明細（アドオン）
                ,xxinv_mov_lot_details       mld     -- 移動ロット詳細（アドオン）
                ,xxwsh_frq_item_locations    xfil
-        WHERE   xfil.frq_item_location_code = it_loc_code
+-- 2009/01/21 D.Nihei MOD START
+--        WHERE   xfil.frq_item_location_code = it_loc_code
+--        AND     xfil.item_id            = it_item_id
+--        AND     mrih.ship_to_locat_id   = xfil.item_location_id
+        WHERE   xfil.item_location_code = it_loc_code
         AND     xfil.item_id            = it_item_id
-        AND     mrih.ship_to_locat_id   = xfil.item_location_id
+        AND     mrih.ship_to_locat_id   = xfil.frq_item_location_id
+-- 2009/01/21 D.Nihei MOD END
         AND     mrih.comp_actual_flg    = cv_flag_n
         AND     mrih.status            IN (cv_status_02,cv_status_03)
         AND     mrih.schedule_arrival_date  <= id_target_date
@@ -1173,27 +1275,33 @@ AS
         AND     mld.lot_id              = it_lot_id
         AND     mld.document_type_code  = cv_doc_type_20
         AND     mld.record_type_code    = cv_rec_type_10
-        ) + (
+        ) + 
+        ( -- S2)供給数  発注受入予定
         SELECT  NVL(SUM(pla.quantity), 0)
         FROM    ic_item_mst_b      iimb
                ,mtl_system_items_b msib
                ,po_lines_all       pla
                ,po_headers_all     pha
                ,xxwsh_frq_item_locations xfil
-        WHERE   iimb.item_id           = it_item_id
-        AND     msib.segment1          = iimb.item_no
-        AND     msib.organization_id   = it_org_id
-        AND     msib.inventory_item_id = pla.item_id
-        AND     pla.attribute1         = it_lot_no
-        AND     pla.attribute13        = cv_flag_n
-        AND     pla.cancel_flag        = cv_flag_n
-        AND     pla.po_header_id       = pha.po_header_id
-        AND     pha.attribute1        IN (cv_status_20,cv_status_25)
-        AND     pha.attribute4        <= TO_CHAR(id_target_date,'YYYY/MM/DD')
-        AND     pha.attribute5         = xfil.item_location_code
-        AND     xfil.frq_item_location_code = it_loc_code
-        AND     xfil.item_id           = it_item_id
-        ) + (
+        WHERE   iimb.item_id            = it_item_id
+        AND     msib.segment1           = iimb.item_no
+        AND     msib.organization_id    = it_org_id
+        AND     msib.inventory_item_id  = pla.item_id
+        AND     pla.attribute1          = it_lot_no
+        AND     pla.attribute13         = cv_flag_n
+        AND     pla.cancel_flag         = cv_flag_n
+        AND     pla.po_header_id        = pha.po_header_id
+        AND     pha.attribute1          IN (cv_status_20,cv_status_25)
+        AND     pha.attribute4        < = TO_CHAR(id_target_date,'YYYY/MM/DD')
+-- 2009/01/21 D.Nihei MOD START
+--        AND     pha.attribute5         = xfil.item_location_code
+--        AND     xfil.frq_item_location_code = it_loc_code
+        AND     pha.attribute5          = xfil.frq_item_location_code
+        AND     xfil.item_location_code = it_loc_code
+-- 2009/01/21 D.Nihei MOD END
+        AND     xfil.item_id            = it_item_id
+        ) + 
+        ( -- S3)供給数  生産入庫予定
         SELECT  NVL(SUM(mld.actual_quantity), 0)
         FROM    gme_batch_header      gbh  -- 生産バッチ
                ,gme_material_details  gmd  -- 生産原料詳細
@@ -1201,35 +1309,45 @@ AS
                ,xxinv_mov_lot_details mld  -- 移動ロット詳細（アドオン）
                ,gmd_routings_b        grb  -- 工順マスタ
                ,xxwsh_frq_item_locations xfil
-        WHERE   gbh.batch_status      IN (cn_type_1,cn_type_2)
-        AND     gbh.plan_start_date   <= id_target_date
-        AND     gbh.batch_id           = gmd.batch_id
-        AND     gmd.line_type         IN (cn_type_1,cn_type_2)
-        AND     gmd.item_id            = it_item_id
-        AND     gmd.material_detail_id = itp.line_id
-        AND     itp.completed_ind      = cn_type_0
-        AND     itp.doc_type           = cv_doc_type_pr
-        AND     itp.lot_id             = mld.lot_id
-        AND     gmd.material_detail_id = mld.mov_line_id
-        AND     mld.document_type_code = cv_doc_type_40
-        AND     mld.record_type_code   = cv_rec_type_10
-        AND     mld.lot_id             = it_lot_id
-        AND     gbh.routing_id         = grb.routing_id
-        AND     grb.attribute9         = xfil.item_location_code
-        AND     xfil.frq_item_location_code = it_loc_code
-        AND     xfil.item_id           = it_item_id
+        WHERE   gbh.batch_status        IN (cn_type_1,cn_type_2)
+        AND     gbh.plan_start_date    <= id_target_date
+        AND     gbh.batch_id            = gmd.batch_id
+        AND     gmd.line_type           IN (cn_type_1,cn_type_2)
+        AND     gmd.item_id             = it_item_id
+        AND     gmd.material_detail_id  = itp.line_id
+        AND     itp.completed_ind       = cn_type_0
+        AND     itp.doc_type            = cv_doc_type_pr
+        AND     itp.lot_id              = mld.lot_id
+        AND     gmd.material_detail_id  = mld.mov_line_id
+        AND     mld.document_type_code  = cv_doc_type_40
+        AND     mld.record_type_code    = cv_rec_type_10
+        AND     mld.lot_id              = it_lot_id
+        AND     gbh.routing_id          = grb.routing_id
+-- 2009/01/21 D.Nihei MOD START
+--        AND     grb.attribute9         = xfil.item_location_code
+--        AND     xfil.frq_item_location_code = it_loc_code
+        AND     grb.attribute9          = xfil.frq_item_location_code
+        AND     xfil.item_location_code = it_loc_code
+-- 2009/01/21 D.Nihei MOD END
+        AND     xfil.item_id            = it_item_id
         -- yoshida 2008/12/18 v1.17 add start
         AND     itp.delete_mark        = cn_type_0
         -- yoshida 2008/12/18 v1.17 add end
-        ) + (
+        ) + 
+        ( -- S4)供給数  実績計上済の移動出庫実績
         SELECT  NVL(SUM(mld.actual_quantity), 0)
         FROM    xxinv_mov_req_instr_headers mrih    -- 移動依頼/指示ヘッダ（アドオン）
                ,xxinv_mov_req_instr_lines   mril    -- 移動依頼/指示明細（アドオン）
                ,xxinv_mov_lot_details       mld     -- 移動ロット詳細（アドオン）
                ,xxwsh_frq_item_locations    xfil
-        WHERE   xfil.frq_item_location_code = it_loc_code
+-- 2009/01/21 D.Nihei MOD START
+--        WHERE   xfil.frq_item_location_code = it_loc_code
+--        AND     xfil.item_id            = it_item_id
+--        AND     mrih.ship_to_locat_id   = xfil.item_location_id
+        WHERE   xfil.item_location_code = it_loc_code
         AND     xfil.item_id            = it_item_id
-        AND     mrih.ship_to_locat_id   = xfil.item_location_id
+        AND     mrih.ship_to_locat_id   = xfil.frq_item_location_id
+-- 2009/01/21 D.Nihei MOD END
         AND     mrih.comp_actual_flg    = cv_flag_n
         AND     mrih.status             = cv_status_04
         AND     NVL(mrih.actual_arrival_date, mrih.schedule_arrival_date) <= id_target_date
@@ -1240,16 +1358,22 @@ AS
         AND     mld.lot_id              = it_lot_id
         AND     mld.document_type_code  = cv_doc_type_20
         AND     mld.record_type_code    = cv_rec_type_20
-        ) - (
+        ) - 
+        ( -- D1)需要数  実績未計上の出荷依頼
         SELECT  NVL(SUM(mld.actual_quantity), 0)
         FROM    xxwsh_order_headers_all    oha   -- 受注ヘッダ（アドオン）
                ,xxwsh_order_lines_all      ola   -- 受注明細（アドオン）
                ,xxinv_mov_lot_details      mld   -- 移動ロット詳細（アドオン）
                ,oe_transaction_types_all   otta  -- 受注タイプ
                ,xxwsh_frq_item_locations   xfil
-        WHERE   xfil.frq_item_location_code = it_loc_code
+-- 2009/01/21 D.Nihei MOD START
+--        WHERE   xfil.frq_item_location_code = it_loc_code
+--        AND     xfil.item_id              = it_item_id
+--        AND     oha.deliver_from_id       = xfil.item_location_id
+        WHERE   xfil.item_location_code   = it_loc_code
         AND     xfil.item_id              = it_item_id
-        AND     oha.deliver_from_id       = xfil.item_location_id
+        AND     oha.deliver_from_id       = xfil.frq_item_location_id
+-- 2009/01/21 D.Nihei MOD END
         AND     oha.req_status            = cv_status_03
         AND     oha.actual_confirm_class  = cv_flag_n
         AND     oha.latest_external_flag  = cv_flag_y
@@ -1263,16 +1387,22 @@ AS
         AND     mld.record_type_code      = cv_rec_type_10
         AND     otta.attribute1           = cv_type_1
         AND     otta.transaction_type_id  = oha.order_type_id
-        ) - (
+        ) - 
+        ( -- D2)需要数  実績未計上の支給指示
         SELECT  NVL(SUM(mld.actual_quantity), 0)
         FROM    xxwsh_order_headers_all    oha   -- 受注ヘッダ（アドオン）
                ,xxwsh_order_lines_all      ola   -- 受注明細（アドオン）
                ,xxinv_mov_lot_details      mld   -- 移動ロット詳細（アドオン）
                ,oe_transaction_types_all   otta  -- 受注タイプ
                ,xxwsh_frq_item_locations   xfil
-        WHERE   xfil.frq_item_location_code = it_loc_code
+-- 2009/01/21 D.Nihei MOD START
+--        WHERE   xfil.frq_item_location_code = it_loc_code
+--        AND     xfil.item_id              = it_item_id
+--        AND     oha.deliver_from_id       = xfil.item_location_id
+        WHERE   xfil.item_location_code   = it_loc_code
         AND     xfil.item_id              = it_item_id
-        AND     oha.deliver_from_id       = xfil.item_location_id
+        AND     oha.deliver_from_id       = xfil.frq_item_location_id
+-- 2009/01/21 D.Nihei MOD END
         AND     oha.req_status            = cv_status_07
         AND     oha.actual_confirm_class  = cv_flag_n
         AND     oha.latest_external_flag  = cv_flag_y
@@ -1286,15 +1416,21 @@ AS
         AND     mld.record_type_code      = cv_rec_type_10
         AND     otta.attribute1           = cv_type_2
         AND     otta.transaction_type_id  = oha.order_type_id
-        ) - (
+        ) - 
+        ( -- D3)需要数  実績未計上の移動指示
         SELECT  NVL(SUM(mld.actual_quantity), 0)
         FROM    xxinv_mov_req_instr_headers mrih    -- 移動依頼/指示ヘッダ（アドオン）
                ,xxinv_mov_req_instr_lines   mril    -- 移動依頼/指示明細（アドオン）
                ,xxinv_mov_lot_details       mld     -- 移動ロット詳細（アドオン）
                ,xxwsh_frq_item_locations    xfil
-        WHERE   xfil.frq_item_location_code = it_loc_code
+-- 2009/01/21 D.Nihei MOD START
+--        WHERE   xfil.frq_item_location_code = it_loc_code
+--        AND     xfil.item_id            = it_item_id
+--        AND     mrih.shipped_locat_id   = xfil.item_location_id
+        WHERE   xfil.item_location_code = it_loc_code
         AND     xfil.item_id            = it_item_id
-        AND     mrih.shipped_locat_id   = xfil.item_location_id
+        AND     mrih.shipped_locat_id   = xfil.frq_item_location_id
+-- 2009/01/21 D.Nihei MOD END
         AND     mrih.comp_actual_flg    = cv_flag_n
         AND     mrih.status            IN (cv_status_02,cv_status_03)
         AND     mrih.schedule_ship_date  <= id_target_date
@@ -1305,15 +1441,21 @@ AS
         AND     mld.lot_id              = it_lot_id
         AND     mld.document_type_code  = cv_doc_type_20
         AND     mld.record_type_code    = cv_rec_type_10
-        ) - (
+        ) - 
+        ( -- D4)需要数  実績計上済の移動入庫実績
         SELECT  NVL(SUM(mld.actual_quantity), 0)
         FROM    xxinv_mov_req_instr_headers mrih    -- 移動依頼/指示ヘッダ（アドオン）
                ,xxinv_mov_req_instr_lines   mril    -- 移動依頼/指示明細（アドオン）
                ,xxinv_mov_lot_details       mld     -- 移動ロット詳細（アドオン）
                ,xxwsh_frq_item_locations    xfil
-        WHERE   xfil.frq_item_location_code = it_loc_code
+-- 2009/01/21 D.Nihei MOD START
+--        WHERE   xfil.frq_item_location_code = it_loc_code
+--        AND     xfil.item_id            = it_item_id
+--        AND     mrih.shipped_locat_id   = xfil.item_location_id
+        WHERE   xfil.item_location_code = it_loc_code
         AND     xfil.item_id            = it_item_id
-        AND     mrih.shipped_locat_id   = xfil.item_location_id
+        AND     mrih.shipped_locat_id   = xfil.frq_item_location_id
+-- 2009/01/21 D.Nihei MOD END
         AND     mrih.comp_actual_flg    = cv_flag_n
         AND     mrih.status             = cv_status_05
         AND     NVL(mrih.actual_ship_date, mrih.schedule_ship_date) <= id_target_date
@@ -1324,7 +1466,8 @@ AS
         AND     mld.lot_id              = it_lot_id
         AND     mld.document_type_code  = cv_doc_type_20
         AND     mld.record_type_code    = cv_rec_type_30
-        ) - (
+        ) - 
+        ( -- D5)需要数  実績未計上の生産投入予定
         SELECT  NVL(SUM(mld.actual_quantity), 0)
         FROM    gme_batch_header      gbh  -- 生産バッチ
                ,gme_material_details  gmd  -- 生産原料詳細
@@ -1332,26 +1475,31 @@ AS
                ,gmd_routings_b        grb  -- 工順マスタ
                ,ic_tran_pnd           itp  -- 保留在庫トランザクション
                ,xxwsh_frq_item_locations xfil
-        WHERE   gbh.batch_status      IN (cn_type_1,cn_type_2)
-        AND     gbh.plan_start_date   <= id_target_date
-        AND     gbh.batch_id           = gmd.batch_id
-        AND     gmd.line_type          = cn_type_m1
-        AND     gmd.item_id            = it_item_id
-        AND     gmd.material_detail_id = mld.mov_line_id
-        AND     mld.lot_id             = it_lot_id
-        AND     gbh.routing_id         = grb.routing_id
-        AND     mld.document_type_code = cv_doc_type_40
-        AND     mld.record_type_code   = cv_rec_type_10
-        AND     itp.line_id            = gmd.material_detail_id 
-        AND     itp.item_id            = gmd.item_id
-        AND     itp.lot_id             = mld.lot_id
-        AND     itp.doc_type           = cv_doc_type_pr
-        AND     itp.delete_mark        = cn_type_0
-        AND     itp.completed_ind      = cn_type_0
-        AND     grb.attribute9         = xfil.item_location_code
-        AND     xfil.frq_item_location_code = it_loc_code
-        AND     xfil.item_id           = it_item_id
-        ) - (
+        WHERE   gbh.batch_status        IN (cn_type_1,cn_type_2)
+        AND     gbh.plan_start_date   < = id_target_date
+        AND     gbh.batch_id            = gmd.batch_id
+        AND     gmd.line_type           = cn_type_m1
+        AND     gmd.item_id             = it_item_id
+        AND     gmd.material_detail_id  = mld.mov_line_id
+        AND     mld.lot_id              = it_lot_id
+        AND     gbh.routing_id          = grb.routing_id
+        AND     mld.document_type_code  = cv_doc_type_40
+        AND     mld.record_type_code    = cv_rec_type_10
+        AND     itp.line_id             = gmd.material_detail_id 
+        AND     itp.item_id             = gmd.item_id
+        AND     itp.lot_id              = mld.lot_id
+        AND     itp.doc_type            = cv_doc_type_pr
+        AND     itp.delete_mark         = cn_type_0
+        AND     itp.completed_ind       = cn_type_0
+-- 2009/01/21 D.Nihei MOD START
+--        AND     grb.attribute9         = xfil.item_location_code
+--        AND     xfil.frq_item_location_code = it_loc_code
+        AND     grb.attribute9          = xfil.frq_item_location_code
+        AND     xfil.item_location_code = it_loc_code
+-- 2009/01/21 D.Nihei MOD END
+        AND     xfil.item_id            = it_item_id
+        ) - 
+        ( -- D6)需要数  実績未計上の相手先倉庫発注入庫予定
         SELECT  NVL(SUM(mld.actual_quantity), 0)
         FROM    ic_item_mst_b         iimb
                ,mtl_system_items_b    msib    -- 品目マスタ
@@ -1359,29 +1507,33 @@ AS
                ,po_headers_all        pha     -- 発注ヘッダ
                ,xxinv_mov_lot_details mld     -- 移動ロット詳細（アドオン）
                ,xxwsh_frq_item_locations xfil
-        WHERE   iimb.item_id           = it_item_id
-        AND     msib.segment1          = iimb.item_no
-        AND     msib.organization_id   = it_org_id
-        AND     msib.inventory_item_id = pla.item_id
-        AND     pla.attribute13        = cv_flag_n
-        AND     pla.cancel_flag        = cv_flag_n
-        AND     pla.po_header_id       = pha.po_header_id
-        AND     pha.attribute1        IN (cv_status_20,cv_status_25)
-        AND     pha.attribute4        <= TO_CHAR(id_target_date,'YYYY/MM/DD')
-        AND     pla.po_line_id         = mld.mov_line_id
-        AND     mld.lot_id             = it_lot_id
-        AND     mld.document_type_code = cv_doc_type_50
-        AND     mld.record_type_code   = cv_rec_type_10
-        AND     pla.attribute12        = xfil.item_location_code
-        AND     xfil.frq_item_location_code = it_loc_code
-        AND     xfil.item_id           = it_item_id
+        WHERE   iimb.item_id            = it_item_id
+        AND     msib.segment1           = iimb.item_no
+        AND     msib.organization_id    = it_org_id
+        AND     msib.inventory_item_id  = pla.item_id
+        AND     pla.attribute13         = cv_flag_n
+        AND     pla.cancel_flag         = cv_flag_n
+        AND     pla.po_header_id        = pha.po_header_id
+        AND     pha.attribute1          IN (cv_status_20,cv_status_25)
+        AND     pha.attribute4        < = TO_CHAR(id_target_date,'YYYY/MM/DD')
+        AND     pla.po_line_id          = mld.mov_line_id
+        AND     mld.lot_id              = it_lot_id
+        AND     mld.document_type_code  = cv_doc_type_50
+        AND     mld.record_type_code    = cv_rec_type_10
+-- 2009/01/21 D.Nihei MOD START
+--        AND     pla.attribute12        = xfil.item_location_code
+--        AND     xfil.frq_item_location_code = it_loc_code
+        AND     pla.attribute12         = xfil.frq_item_location_code
+        AND     xfil.item_location_code = it_loc_code
+-- 2009/01/21 D.Nihei MOD END
+        AND     xfil.item_id            = it_item_id
         ) demand_supply
       FROM DUAL;
 --
     --対象倉庫の親倉庫の在庫数を取得するカーソル
     CURSOR get_stock_parent_cur IS
       SELECT
-        (
+        ( -- I0)EBS手持在庫取得
         SELECT NVL(SUM(ili.loct_onhand),0)
         FROM   ic_loct_inv ili
               ,mtl_item_locations mil
@@ -1389,7 +1541,9 @@ AS
         AND    ili.lot_id                  = it_lot_id
         AND    ili.location                = mil.segment1
         AND    mil.segment1                = it_head_loc
-        ) + (
+        ) + 
+        ( -- I1)実績未取在庫数  移動入庫（入出庫報告有）
+          -- I2)実績未取在庫数  移動入庫（入庫報告有）
         SELECT  NVL(SUM(mld.actual_quantity), 0)
         FROM    xxinv_mov_req_instr_headers mrih    -- 移動依頼/指示ヘッダ（アドオン）
                ,xxinv_mov_req_instr_lines   mril    -- 移動依頼/指示明細（アドオン）
@@ -1406,7 +1560,9 @@ AS
         AND     mld.lot_id              = it_lot_id
         AND     mld.document_type_code  = cv_doc_type_20
         AND     mld.record_type_code    = cv_rec_type_30
-        ) - (
+        ) - 
+        ( -- I3)実績未取在庫数  移動出庫（入出庫報告有）
+          -- I4)実績未取在庫数  移動出庫（出庫報告有）
         SELECT  NVL(SUM(mld.actual_quantity), 0)
         FROM    xxinv_mov_req_instr_headers mrih    -- 移動依頼/指示ヘッダ（アドオン）
                ,xxinv_mov_req_instr_lines   mril    -- 移動依頼/指示明細（アドオン）
@@ -1423,7 +1579,8 @@ AS
         AND     mld.lot_id              = it_lot_id
         AND     mld.document_type_code  = cv_doc_type_20
         AND     mld.record_type_code    = cv_rec_type_20
-        ) - (
+        ) - 
+        ( -- I5)実績未取在庫数  出荷
         SELECT  NVL(
                   SUM(
                     CASE otta.order_category_code
@@ -1448,10 +1605,14 @@ AS
         AND     mld.item_id               = it_item_id
         AND     mld.lot_id                = it_lot_id
         AND     mld.document_type_code    = cv_doc_type_10
-        AND     mld.record_type_code      = cv_rec_type_10
+-- 2009/01/21 D.Nihei MOD START
+--        AND     mld.record_type_code      = cv_rec_type_10
+        AND     mld.record_type_code      = cv_rec_type_20
+-- 2009/01/21 D.Nihei MOD END
         AND     otta.attribute1           IN (cv_type_1,cv_type_3)
         AND     otta.transaction_type_id  = oha.order_type_id
-        ) - (
+        ) - 
+        ( -- I6)実績未取在庫数  支給
         SELECT  NVL(
                   SUM(
                     CASE otta.order_category_code
@@ -1479,7 +1640,8 @@ AS
         AND     mld.record_type_code      = cv_rec_type_20
         AND     otta.attribute1           = cv_type_2
         AND     otta.transaction_type_id  = oha.order_type_id
-        ) + (
+        ) + 
+        ( -- I7)実績未取在庫数  移動入庫訂正（入出庫報告有）
         SELECT  NVL(SUM(mld.actual_quantity),0) - NVL(SUM(mld.before_actual_quantity),0)
         FROM    xxinv_mov_req_instr_headers mrih    -- 移動依頼/指示ヘッダ（アドオン）
                ,xxinv_mov_req_instr_lines   mril    -- 移動依頼/指示明細（アドオン）
@@ -1497,7 +1659,8 @@ AS
         AND     mld.lot_id              = it_lot_id
         AND     mld.document_type_code  = cv_doc_type_20
         AND     mld.record_type_code    = cv_rec_type_30
-        ) + (
+        ) + 
+        ( -- I8)実績未取在庫数  移動出庫訂正（入出庫報告有）
         SELECT  NVL(SUM(mld.before_actual_quantity),0) - NVL(SUM(mld.actual_quantity),0)
         FROM    xxinv_mov_req_instr_headers mrih    -- 移動依頼/指示ヘッダ（アドオン）
                ,xxinv_mov_req_instr_lines   mril    -- 移動依頼/指示明細（アドオン）
@@ -1521,7 +1684,7 @@ AS
     --対象倉庫の親倉庫の需給数を取得するカーソル
     CURSOR get_demsup_parent_cur (id_target_date IN DATE) IS
       SELECT
-        (
+        ( -- S1)供給数  移動入庫予定
         SELECT  NVL(SUM(mld.actual_quantity), 0)
         FROM    xxinv_mov_req_instr_headers mrih    -- 移動依頼/指示ヘッダ（アドオン）
                ,xxinv_mov_req_instr_lines   mril    -- 移動依頼/指示明細（アドオン）
@@ -1539,7 +1702,8 @@ AS
         AND     mld.lot_id              = it_lot_id
         AND     mld.document_type_code  = cv_doc_type_20
         AND     mld.record_type_code    = cv_rec_type_10
-        ) + (
+        ) + 
+        ( -- S2)供給数  発注受入予定
         SELECT  NVL(SUM(pla.quantity), 0)
         FROM    ic_item_mst_b      iimb
                ,mtl_system_items_b msib
@@ -1558,7 +1722,8 @@ AS
         AND     pha.attribute4        <= TO_CHAR(id_target_date,'YYYY/MM/DD')
         AND     pha.attribute5         = mil.segment1
         AND     mil.segment1           = it_head_loc
-        ) + (
+        ) + 
+        ( -- S3)供給数  生産入庫予定
         SELECT  NVL(SUM(mld.actual_quantity), 0)
         FROM    gme_batch_header      gbh  -- 生産バッチ
                ,gme_material_details  gmd  -- 生産原料詳細
@@ -1585,7 +1750,8 @@ AS
         -- yoshida 2008/12/18 v1.17 add start
         AND     itp.delete_mark        = cn_type_0
         -- yoshida 2008/12/18 v1.17 add end
-        ) + (
+        ) + 
+        ( -- S4)供給数  実績計上済の移動出庫実績
         SELECT  NVL(SUM(mld.actual_quantity), 0)
         FROM    xxinv_mov_req_instr_headers mrih    -- 移動依頼/指示ヘッダ（アドオン）
                ,xxinv_mov_req_instr_lines   mril    -- 移動依頼/指示明細（アドオン）
@@ -1603,7 +1769,8 @@ AS
         AND     mld.lot_id              = it_lot_id
         AND     mld.document_type_code  = cv_doc_type_20
         AND     mld.record_type_code    = cv_rec_type_20
-        ) - (
+        ) - 
+        ( -- D1)需要数  実績未計上の出荷依頼
         SELECT  NVL(SUM(mld.actual_quantity), 0)
         FROM    xxwsh_order_headers_all    oha   -- 受注ヘッダ（アドオン）
                ,xxwsh_order_lines_all      ola   -- 受注明細（アドオン）
@@ -1625,7 +1792,8 @@ AS
         AND     mld.record_type_code      = cv_rec_type_10
         AND     otta.attribute1           = cv_type_1
         AND     otta.transaction_type_id  = oha.order_type_id
-        ) - (
+        ) - 
+        ( -- D2)需要数  実績未計上の支給指示
         SELECT  NVL(SUM(mld.actual_quantity), 0)
         FROM    xxwsh_order_headers_all    oha   -- 受注ヘッダ（アドオン）
                ,xxwsh_order_lines_all      ola   -- 受注明細（アドオン）
@@ -1647,7 +1815,8 @@ AS
         AND     mld.record_type_code      = cv_rec_type_10
         AND     otta.attribute1           = cv_type_2
         AND     otta.transaction_type_id  = oha.order_type_id
-        ) - (
+        ) - 
+        ( -- D3)需要数  実績未計上の移動指示
         SELECT  NVL(SUM(mld.actual_quantity), 0)
         FROM    xxinv_mov_req_instr_headers mrih    -- 移動依頼/指示ヘッダ（アドオン）
                ,xxinv_mov_req_instr_lines   mril    -- 移動依頼/指示明細（アドオン）
@@ -1665,7 +1834,8 @@ AS
         AND     mld.lot_id              = it_lot_id
         AND     mld.document_type_code  = cv_doc_type_20
         AND     mld.record_type_code    = cv_rec_type_10
-        ) - (
+        ) - 
+        ( -- D4)需要数  実績計上済の移動入庫実績
         SELECT  NVL(SUM(mld.actual_quantity), 0)
         FROM    xxinv_mov_req_instr_headers mrih    -- 移動依頼/指示ヘッダ（アドオン）
                ,xxinv_mov_req_instr_lines   mril    -- 移動依頼/指示明細（アドオン）
@@ -1683,7 +1853,8 @@ AS
         AND     mld.lot_id              = it_lot_id
         AND     mld.document_type_code  = cv_doc_type_20
         AND     mld.record_type_code    = cv_rec_type_30
-        ) - (
+        ) - 
+        ( -- D5)需要数  実績未計上の生産投入予定
         SELECT  NVL(SUM(mld.actual_quantity), 0)
         FROM    gme_batch_header      gbh  -- 生産バッチ
                ,gme_material_details  gmd  -- 生産原料詳細
@@ -1709,7 +1880,8 @@ AS
         AND     itp.completed_ind      = cn_type_0
         AND     grb.attribute9         = mil.segment1
         AND     mil.segment1           = it_head_loc
-        ) - (
+        ) - 
+        ( -- D6)需要数  実績未計上の相手先倉庫発注入庫予定
         SELECT  NVL(SUM(mld.actual_quantity), 0)
         FROM    ic_item_mst_b         iimb
                ,mtl_system_items_b    msib    -- 品目マスタ
@@ -1869,9 +2041,9 @@ AS
 --
       END IF;
 --
---    --非ロット管理品の場合
---    ELSE
---
+
+
+
     END IF;
 --
     RETURN ln_ret_qty;
@@ -1913,7 +2085,7 @@ AS
     IF (it_lot_ctl = 1) THEN
 --
       SELECT
-          (
+          ( -- I0)EBS手持在庫取得
 -- mod ohashi start
 --          SELECT NVL(ili.loct_onhand,0)
           SELECT NVL(SUM(ili.loct_onhand),0)
@@ -1924,7 +2096,9 @@ AS
           AND    ili.lot_id                = it_lot_id
           AND    ili.location              = mil.segment1
           AND    mil.inventory_location_id = it_loc_id
-          ) + (
+          ) + 
+          ( -- I1)実績未取在庫数  移動入庫（入出庫報告有）
+            -- I2)実績未取在庫数  移動入庫（入庫報告有）
           SELECT  NVL(SUM(mld.actual_quantity), 0)
           FROM    xxinv_mov_req_instr_headers mrih    -- 移動依頼/指示ヘッダ（アドオン）
                  ,xxinv_mov_req_instr_lines   mril    -- 移動依頼/指示明細（アドオン）
@@ -1939,7 +2113,9 @@ AS
           AND     mld.lot_id              = it_lot_id
           AND     mld.document_type_code  = cv_doc_type_20
           AND     mld.record_type_code    = cv_rec_type_30
-          ) - (
+          ) - 
+          ( -- I3)実績未取在庫数  移動出庫（入出庫報告有）
+            -- I4)実績未取在庫数  移動出庫（出庫報告有）
           SELECT  NVL(SUM(mld.actual_quantity), 0)
           FROM    xxinv_mov_req_instr_headers mrih    -- 移動依頼/指示ヘッダ（アドオン）
                  ,xxinv_mov_req_instr_lines   mril    -- 移動依頼/指示明細（アドオン）
@@ -1954,7 +2130,8 @@ AS
           AND     mld.lot_id              = it_lot_id
           AND     mld.document_type_code  = cv_doc_type_20
           AND     mld.record_type_code    = cv_rec_type_20
-          ) - (
+          ) - 
+          ( -- I5)実績未取在庫数  出荷
           SELECT  NVL(
                     SUM(
                       CASE otta.order_category_code
@@ -1980,7 +2157,8 @@ AS
           AND     mld.record_type_code      = cv_rec_type_20
           AND     otta.attribute1           IN (cv_type_1,cv_type_3)
           AND     otta.transaction_type_id  = oha.order_type_id
-          ) - (
+          ) - 
+          ( -- I6)実績未取在庫数  支給
           SELECT  NVL(
                     SUM(
                       CASE otta.order_category_code
@@ -2006,7 +2184,8 @@ AS
           AND     mld.record_type_code      = cv_rec_type_20
           AND     otta.attribute1           = cv_type_2
           AND     otta.transaction_type_id  = oha.order_type_id
-          ) + (
+          ) + 
+          ( -- I7)実績未取在庫数  移動入庫訂正（入出庫報告有）
           SELECT  NVL(SUM(mld.actual_quantity),0) - NVL(SUM(mld.before_actual_quantity),0)
           FROM    xxinv_mov_req_instr_headers mrih    -- 移動依頼/指示ヘッダ（アドオン）
                  ,xxinv_mov_req_instr_lines   mril    -- 移動依頼/指示明細（アドオン）
@@ -2022,7 +2201,8 @@ AS
           AND     mld.lot_id              = it_lot_id
           AND     mld.document_type_code  = cv_doc_type_20
           AND     mld.record_type_code    = cv_rec_type_30
-          ) + (
+          ) + 
+          ( -- I8)実績未取在庫数  移動出庫訂正（入出庫報告有）
           SELECT  NVL(SUM(mld.before_actual_quantity),0) - NVL(SUM(mld.actual_quantity),0)
           FROM    xxinv_mov_req_instr_headers mrih    -- 移動依頼/指示ヘッダ（アドオン）
                  ,xxinv_mov_req_instr_lines   mril    -- 移動依頼/指示明細（アドオン）
@@ -2040,10 +2220,10 @@ AS
           AND     mld.record_type_code    = cv_rec_type_20
           ) stock_qty
       INTO   ln_ret_qty
-      FROM   DUAL;
---
---    --非ロット管理品の場合
---    ELSE
+      FROM   DUAL
+      ;
+
+
 --
     END IF;
 --
@@ -2057,3 +2237,4 @@ AS
 --
 END xxwsh_common_get_qty_pkg;
 /
+
