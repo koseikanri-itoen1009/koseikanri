@@ -35,4 +35,3 @@ AS
     iv_output_kbn      IN  VARCHAR2      -- o—Í‹æ•ª
   );
 END XXCOI006A08R;
-/

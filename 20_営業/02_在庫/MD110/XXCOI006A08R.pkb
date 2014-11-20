@@ -8,7 +8,7 @@ AS
  * Description      : 要求の発行画面から、品目毎の明細および棚卸数量を帳票に出力します。
  *                    帳票に出力した棚卸結果データには処理済フラグ"Y"を設定します。
  * MD.050           : 棚卸チェックリスト    MD050_COI_006_A08
- * Version          : 1.3
+ * Version          : 1.4
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -31,6 +31,7 @@ AS
  *  2009/02/16    1.1   N.Abe            [障害COI_006] 抽出条件の不備対応
  *  2009/02/18    1.2   N.Abe            [障害COI_019] 良品区分取得用コード修正対応
  *  2009/03/05    1.3   T.Nakamura       [障害COI_033] 件数出力の不具合対応
+ *  2009/03/23    1.4   H.Sasaki         [障害T1_0107] 抽出条件の修正
  *
  *****************************************************************************************/
 --
@@ -280,52 +281,137 @@ AS
     ln_check_num              NUMBER        := 0;      -- チェックリストID
 --
     -- *** ローカル・カーソル(A-2-2) ***
-    CURSOR pickout_cur
+-- == 2009/03/23 V1.4 Modified START ===============================================================
+--    CURSOR pickout_cur
+--    IS
+--    SELECT xir.ROWID                      xir_row_id                    -- ROWID
+--          ,xir.base_code                  xir_base_code                 -- 拠点コード
+--          ,biv.base_short_name            biv_base_short_name           -- 拠点略称
+--          ,msi.secondary_inventory_name   msi_secondary_inventory_name  -- 保管場所コード
+--          ,msi.description                msi_description               -- 保管場所名称
+--          ,xir.inventory_date             xir_inventory_date            -- 棚卸日
+--          ,xir.slip_no                    xir_slip_no                   -- 伝票No
+--          ,xir.item_code                  xir_item_code                 -- 品目コード
+--          ,imb.item_short_name            imb_item_short_name           -- 品名
+--          ,xir.case_in_qty                xir_case_in_qty               -- 入数
+--          ,xir.case_qty                   xir_case_qty                  -- ケース数
+--          ,xir.quantity                   xir_quantity                  -- 本数
+--          ,xir.quality_goods_kbn          xir_quality_goods_kbn         -- 良品区分
+--          ,xir.input_order                xir_input_order               -- 取込み順
+--    FROM   xxcoi_inv_result               xir                           -- HHT棚卸結果テーブル(XXCOI)
+--          ,xxcoi_inv_control              xic                           -- 棚卸管理テーブル   (XXCOI)
+--          ,mtl_secondary_inventories      msi                           -- 保管場所マスタ     (INV)
+--          ,xxcmn_item_mst_b               imb                           -- OPM品目アドオン    (XXCMN)
+--          ,ic_item_mst_b                  iib                           -- OPM品目マスタ      (GMI)
+--          ,xxcoi_base_info2_v             biv                           -- 拠点情報ビュー     (XXCOI)
+--    WHERE  xir.inventory_kbn            = iv_inventory_kbn              -- 棚卸区分
+--    AND   (   (TO_CHAR(xir.inventory_date, 'YYYYMM') = iv_practice_month)
+--           OR (TRUNC(xir.inventory_date)    = TRUNC(id_practice_date))
+--          )
+--    AND    biv.base_code                = xir.base_code
+--    AND    biv.focus_base_code          = NVL(iv_base_code,gv_user_basecode)
+--    AND    msi.organization_id          = gn_organization_id
+--    AND    xic.inventory_seq            = xir.inventory_seq
+--    AND    xic.subinventory_code        = NVL(iv_inventory_place, xic.subinventory_code)
+--    AND    msi.secondary_inventory_name = xic.subinventory_code
+--    AND    msi.attribute1              <> cv_subinv_5                   -- 保管場所区分≠自販機
+--    AND    msi.attribute1              <> cv_subinv_8                   -- 保管場所区分≠直送
+--    AND    msi.attribute7               = xir.base_code
+--    AND    TRUNC(NVL(msi.disable_date, gd_target_date))  >=  TRUNC(gd_target_date)
+--    AND    iib.item_no                  = xir.item_code
+--    AND    iib.item_id                  = imb.item_id
+--    AND    xir.process_flag             = DECODE(iv_output_kbn,'1','Y','N')
+--
+    CURSOR pickout_cur(iv_cur_base_code IN  VARCHAR2)
     IS
-    SELECT xir.ROWID                      xir_row_id                    -- ROWID
-          ,xir.base_code                  xir_base_code                 -- 拠点コード
-          ,biv.base_short_name            biv_base_short_name           -- 拠点略称
-          ,msi.secondary_inventory_name   msi_secondary_inventory_name  -- 保管場所コード
-          ,msi.description                msi_description               -- 保管場所名称
-          ,xir.inventory_date             xir_inventory_date            -- 棚卸日
-          ,xir.slip_no                    xir_slip_no                   -- 伝票No
-          ,xir.item_code                  xir_item_code                 -- 品目コード
-          ,imb.item_short_name            imb_item_short_name           -- 品名
-          ,xir.case_in_qty                xir_case_in_qty               -- 入数
-          ,xir.case_qty                   xir_case_qty                  -- ケース数
-          ,xir.quantity                   xir_quantity                  -- 本数
-          ,xir.quality_goods_kbn          xir_quality_goods_kbn         -- 良品区分
-          ,xir.input_order                xir_input_order               -- 取込み順
-    FROM   xxcoi_inv_result               xir                           -- HHT棚卸結果テーブル(XXCOI)
-          ,xxcoi_inv_control              xic                           -- 棚卸管理テーブル   (XXCOI)
-          ,mtl_secondary_inventories      msi                           -- 保管場所マスタ     (INV)
-          ,xxcmn_item_mst_b               imb                           -- OPM品目アドオン    (XXCMN)
-          ,ic_item_mst_b                  iib                           -- OPM品目マスタ      (GMI)
-          ,xxcoi_base_info2_v             biv                           -- 拠点情報ビュー     (XXCOI)
-    WHERE  xir.inventory_kbn            = iv_inventory_kbn              -- 棚卸区分
-    AND   (TO_CHAR(xir.inventory_date,'YYYYMM') = iv_practice_month
-    OR     TRUNC(xir.inventory_date)    = TRUNC(id_practice_date))
-    AND    biv.base_code                = xir.base_code
-    AND    biv.focus_base_code          = NVL(iv_base_code,gv_user_basecode)
-    AND    msi.organization_id          = gn_organization_id
-    AND    xic.inventory_seq            = xir.inventory_seq
-    AND    xic.subinventory_code        = NVL(iv_inventory_place, xic.subinventory_code)
-    AND    msi.secondary_inventory_name = xic.subinventory_code
-    AND   (msi.attribute1              <> cv_subinv_5                   -- 保管場所区分≠自販機
-    AND    msi.attribute1              <> cv_subinv_8)                  -- 保管場所区分≠直送
-    AND    msi.attribute7               = xir.base_code
-    AND    TRUNC(NVL(msi.disable_date,gd_target_date))
-                                       >= TRUNC(gd_target_date)
-    AND    iib.item_no                  = xir.item_code
-    AND    iib.item_id                  = imb.item_id
-    AND    xir.process_flag             = DECODE(iv_output_kbn,'1','Y','N')
-    FOR UPDATE OF
-           xir.process_flag NOWAIT
-    ORDER BY
-           xir.base_code                                  -- 拠点コード
-          ,msi.secondary_inventory_name                   -- 保管場所コード
-          ,xir.slip_no                                    -- 伝票No.
-          ,xir.input_order;                               -- 取り込み順
+      SELECT  xir.ROWID                         xir_row_id                    -- ROWID
+             ,xir.base_code                     xir_base_code                 -- 拠点コード
+             ,SUBSTRB(hca.account_name, 1, 8)   biv_base_short_name           -- 拠点略称
+             ,msi.secondary_inventory_name      msi_secondary_inventory_name  -- 保管場所コード
+             ,msi.description                   msi_description               -- 保管場所名称
+             ,xir.inventory_date                xir_inventory_date            -- 棚卸日
+             ,xir.slip_no                       xir_slip_no                   -- 伝票No
+             ,xir.item_code                     xir_item_code                 -- 品目コード
+             ,imb.item_short_name               imb_item_short_name           -- 品名
+             ,xir.case_in_qty                   xir_case_in_qty               -- 入数
+             ,xir.case_qty                      xir_case_qty                  -- ケース数
+             ,xir.quantity                      xir_quantity                  -- 本数
+             ,xir.quality_goods_kbn             xir_quality_goods_kbn         -- 良品区分
+             ,xir.input_order                   xir_input_order               -- 取込み順
+      FROM    xxcoi_inv_result                  xir                           -- HHT棚卸結果テーブル(XXCOI)
+             ,xxcoi_inv_control                 xic                           -- 棚卸管理テーブル   (XXCOI)
+             ,mtl_secondary_inventories         msi                           -- 保管場所マスタ     (INV)
+             ,xxcmn_item_mst_b                  imb                           -- OPM品目アドオン    (XXCMN)
+             ,ic_item_mst_b                     iib                           -- OPM品目マスタ      (GMI)
+             ,(SELECT   xca.management_base_code    management_base_code
+                       ,NVL(xca.dept_hht_div, '2')  dept_hht_div
+                       ,hca.account_number          account_number
+               FROM     xxcmm_cust_accounts         xca
+                       ,hz_cust_accounts            hca
+               WHERE    xca.customer_id         =   hca.cust_account_id
+               AND      hca.account_number      =   iv_cur_base_code
+               AND      hca.customer_class_code =   '1'
+               AND      hca.status              =   'A'
+              )                                 cai                           -- 拠点情報
+             ,hz_cust_accounts                  hca                           -- 顧客マスタ
+      WHERE   xir.inventory_kbn                           = iv_inventory_kbn  -- 棚卸区分
+      AND     (   (TO_CHAR(xir.inventory_date, 'YYYYMM')  = iv_practice_month)
+               OR (TRUNC(xir.inventory_date)              = TRUNC(id_practice_date))
+              )
+      AND     (   (   (   (cai.dept_hht_div         = '1')
+                       OR (cai.management_base_code IS NULL)
+                      )
+                   AND  xir.base_code             = NVL(cai.management_base_code, iv_cur_base_code)
+                  )
+               OR (     cai.dept_hht_div         <> '1'
+                   AND  cai.management_base_code  = cai.account_number
+                   AND  xir.base_code            IN (SELECT  hca.account_number
+                                                     FROM    xxcmm_cust_accounts         xca
+                                                            ,hz_cust_accounts            hca
+                                                     WHERE   xca.customer_id          =  hca.cust_account_id
+                                                     AND     xca.management_base_code =  cai.management_base_code
+                                                     AND     hca.customer_class_code  =  '1'
+                                                     AND     hca.status               =  'A'
+                                                   )
+                  )
+               OR (     cai.dept_hht_div         <> '1'
+                   AND  cai.management_base_code <> cai.account_number
+                   AND  xir.base_code             = NVL(cai.account_number, iv_cur_base_code)
+                  )
+              )
+      AND     msi.organization_id          = gn_organization_id
+      AND     xic.inventory_seq            = xir.inventory_seq
+      AND     xic.subinventory_code        = NVL(iv_inventory_place, xic.subinventory_code)
+      AND     msi.secondary_inventory_name = xic.subinventory_code
+      AND     msi.attribute1              <> cv_subinv_5                   -- 保管場所区分≠自販機
+      AND     msi.attribute1              <> cv_subinv_8                   -- 保管場所区分≠直送
+      AND     (   (cai.management_base_code       = iv_cur_base_code)
+               OR (    (cai.management_base_code <> iv_cur_base_code)
+                   AND (msi.attribute7            = iv_cur_base_code)
+                  )
+               OR (    (cai.management_base_code IS NULL)
+                   AND (msi.attribute7            = iv_cur_base_code)
+                  )
+              )
+      AND     TRUNC(NVL(msi.disable_date, gd_target_date))  >=  TRUNC(gd_target_date)
+      AND     iib.item_no                  = xir.item_code
+      AND     iib.item_id                  = imb.item_id
+      AND     xir.process_flag             = DECODE(iv_output_kbn, '1', 'Y', 'N')
+      AND     (   (    cai.dept_hht_div             = '1'
+                   AND hca.account_number           = NVL(cai.management_base_code, iv_cur_base_code)
+                  )
+               OR (    cai.dept_hht_div            <> '1'
+                   AND hca.account_number           = xir.base_code
+                  )
+              )
+      FOR UPDATE OF
+             xir.process_flag NOWAIT
+      ORDER BY
+             xir.base_code                                  -- 拠点コード
+            ,msi.secondary_inventory_name                   -- 保管場所コード
+            ,xir.slip_no                                    -- 伝票No.
+            ,xir.input_order;                               -- 取り込み順
+-- == 2009/03/23 V1.4 Modified END   ===============================================================
 --
     -- *** ローカル・レコード ***
     pickout_rec pickout_cur%ROWTYPE;
@@ -344,7 +430,10 @@ AS
     -- ***************************************
 --
   -- カーソルオープン
-  OPEN pickout_cur;
+-- == 2009/03/23 V1.4 Modified START ===============================================================
+--  OPEN pickout_cur;
+  OPEN pickout_cur(NVL(iv_base_code, gv_user_basecode));
+-- == 2009/03/23 V1.4 Modified END   ===============================================================
   LOOP
     FETCH pickout_cur INTO pickout_rec;
     EXIT WHEN pickout_cur%NOTFOUND;
@@ -1049,4 +1138,3 @@ AS
 --###########################  固定部 END   #######################################################
 --
 END XXCOI006A08R;
-/

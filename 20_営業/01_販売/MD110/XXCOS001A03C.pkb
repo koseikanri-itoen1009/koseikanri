@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCOS001A03C (body)
  * Description      : VD納品データ作成
  * MD.050           : VD納品データ作成(MD050_COS_001_A03)
- * Version          : 1.5
+ * Version          : 1.7
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -32,6 +32,9 @@ AS
  *  2009/02/17    1.3     N.Maeda          消費税率取得条件に有効フラグを追加
  *  2009/02/18    1.4     N.Maeda          顧客情報取得時の条件変更(｢duns_number｣⇒｢duns_number_c｣)
  *  2009/02/20    1.5     N.Maeda          パラメータのログファイル出力対応
+ *  2009/03/18    1.6     T.Kitajima       [T1_0066] HHT納品データの販売実績連携時における設定項目の不備
+ *                                         [T1_0078] 金額の端数計算が正しく行われていない
+ *  2009/03/23    1.7     N.Maeda          [T1_0078]金額の端数処理の修正
  *
  *****************************************************************************************/
 --
@@ -877,8 +880,12 @@ AS
                         gt_head_receiv_base_code( i ),      --25.入金拠点コード
                         gt_head_order_source_id( i ),       --26.受注ソースID
                         gt_head_card_sale_class( i ),       --27.カード売り区分
+--************************** 2009/03/18 1.6 T.kitajima MOD START ************************************
                         gt_head_sales_classification( i ),  --28.伝票区分
                         gt_head_invoice_class( i ),         --29.伝票分類コード
+--                        gt_head_invoice_class( i ),         --28.売上伝票区分(伝票分類コード)
+--                        gt_head_sales_classification( i ),  --29.売上分類区分(伝票区分)
+--************************** 2009/03/18 1.6 T.kitajima MOD  END  ************************************
                         gt_head_change_out_time_100( i ),   --30.つり銭切れ時間100円
                         gt_head_change_out_time_10( i ),    --31.つり銭切れ時間10円
                         gt_head_ar_interface_flag( i ),     --32.ARインタフェース済フラグ
@@ -1044,6 +1051,12 @@ AS
   ln_sales_exp_line_id            NUMBER;                                            -- 明細ID
 --  ln_tax_Odd                      NUMBER;
 --  ln_up_odd                       NUMBER;
+--************************** 2009/03/18 1.6 T.kitajima ADD START ************************************
+  ln_amount                       NUMBER;                                            -- 作業用金額変数1
+--************************** 2009/03/18 1.6 T.kitajima ADD  END  ************************************
+--************************** 2009/03/23 1.7 N.Maeda    ADD START ************************************
+  ln_sal_amount_data              NUMBER;                                            -- 作業用金額変数2
+--************************** 2009/03/23 1.7 N.Maeda    ADD  END  ************************************
   ln_header_ck_no                 NUMBER  :=  1;                                     -- ヘッダチェック済番号
   ln_line_cnt                     NUMBER  :=  1;                                     -- 明細チェック済番号
   ln_all_tax_amount               NUMBER  :=  0;                                     -- 消費税金額合計値
@@ -1558,57 +1571,129 @@ AS
 --
         -- 基準単価
         lt_standard_unit_price   := lt_lin_wholesale_unit_ploce;
-        -- 売上金額
-        lt_sale_amount           := ( lt_lin_wholesale_unit_ploce * lt_lin_replenish_number );
+--************************** 2009/03/23 1.6 N.Maeda MOD START ************************************
+--        -- 売上金額
+--        lt_sale_amount           := ( lt_lin_wholesale_unit_ploce * lt_lin_replenish_number );
+--************************** 2009/03/23 1.6 N.Maeda MOD END ************************************
 --
         IF ( lt_consumption_tax_class = cv_non_tax ) THEN         -- 非課税
 --
           -- 税抜基準単価
           lt_stand_unit_price_excl := lt_lin_wholesale_unit_ploce;
           -- 本体金額
-          lt_pure_amount           := ( lt_lin_wholesale_unit_ploce * lt_lin_replenish_number );
+          lt_pure_amount           := TRUNC( lt_lin_wholesale_unit_ploce * lt_lin_replenish_number );
           -- 消費税金額
           lt_tax_amount            := cn_cons_tkn_zero;
+--************************** 2009/03/23 1.6 N.Maeda MOD START ************************************
+          -- 売上金額
+          lt_sale_amount           := TRUNC( lt_lin_wholesale_unit_ploce * lt_lin_replenish_number );
+--************************** 2009/03/23 1.6 N.Maeda MOD END ************************************
 --
         ELSIF ( lt_consumption_tax_class = cv_out_tax ) THEN      -- 外税
 --
           -- 税抜基準単価
           lt_stand_unit_price_excl := lt_lin_wholesale_unit_ploce;
           -- 本体金額
-          lt_pure_amount           := ( lt_lin_wholesale_unit_ploce * lt_lin_replenish_number );
+          lt_pure_amount           := TRUNC( lt_lin_wholesale_unit_ploce * lt_lin_replenish_number );
           -- 消費税金額
-          lt_tax_amount            := (  ( lt_pure_amount * ln_tax_data ) - lt_pure_amount );
-          IF ( lt_tax_amount <> TRUNC( lt_tax_amount ) ) THEN
+--************************** 2009/03/18 1.6 T.kitajima MOD START ************************************
+--          lt_tax_amount            := (  ( lt_pure_amount * ln_tax_data ) - lt_pure_amount );
+--          IF ( lt_tax_amount <> TRUNC( lt_tax_amount ) ) THEN
+--            IF ( lt_tax_odd = cv_amount_up ) THEN
+--              lt_tax_amount := ( TRUNC( lt_tax_amount ) + 1 );
+--            -- 切捨て
+--            ELSIF ( lt_tax_odd = cv_amount_down ) THEN
+--              lt_tax_amount := TRUNC( lt_tax_amount );
+--            -- 四捨五入
+--            ELSIF ( lt_tax_odd = cv_amount_nearest ) THEN
+--              lt_tax_amount := ROUND( lt_tax_amount );
+--            END IF;
+--          END IF;
+          ln_amount            := (  ( lt_pure_amount * ln_tax_data ) - lt_pure_amount );
+          IF ( ln_amount <> TRUNC( ln_amount ) ) THEN
             IF ( lt_tax_odd = cv_amount_up ) THEN
-              lt_tax_amount := ( TRUNC( lt_tax_amount ) + 1 );
+              lt_tax_amount := ( TRUNC( ln_amount ) + 1 );
             -- 切捨て
             ELSIF ( lt_tax_odd = cv_amount_down ) THEN
-              lt_tax_amount := TRUNC( lt_tax_amount );
+              lt_tax_amount := TRUNC( ln_amount );
             -- 四捨五入
             ELSIF ( lt_tax_odd = cv_amount_nearest ) THEN
-              lt_tax_amount := ROUND( lt_tax_amount );
+              lt_tax_amount := ROUND( ln_amount );
             END IF;
+          ELSE
+            lt_tax_amount := ln_amount;
           END IF;
+--************************** 2009/03/18 1.6 T.kitajima MOD  END  ************************************
+--************************** 2009/03/23 1.7 N.Maeda MOD START ************************************
+          -- 売上金額
+          ln_sal_amount_data    := ( lt_lin_wholesale_unit_ploce * lt_lin_replenish_number ) * ln_tax_data;
+          IF ( ln_sal_amount_data <> TRUNC( ln_sal_amount_data ) ) THEN
+            IF ( lt_tax_odd = cv_amount_up ) THEN
+              lt_sale_amount := ( TRUNC( ln_sal_amount_data ) + 1 );
+            -- 切捨て
+            ELSIF ( lt_tax_odd = cv_amount_down ) THEN
+              lt_sale_amount := TRUNC( ln_sal_amount_data );
+            -- 四捨五入
+            ELSIF ( lt_tax_odd = cv_amount_nearest ) THEN
+              lt_sale_amount := ROUND( ln_sal_amount_data );
+            END IF;
+          ELSE
+            lt_sale_amount := ln_sal_amount_data;
+          END IF;
+--************************** 2009/03/23 1.7 N.Maeda MOD END ************************************
 --
         ELSIF ( lt_consumption_tax_class = cv_ins_slip_tax ) THEN -- 内税（伝票課税）
 --
           -- 税抜基準単価
           lt_stand_unit_price_excl := lt_lin_wholesale_unit_ploce;
           -- 本体金額
-          lt_pure_amount           := ( lt_lin_wholesale_unit_ploce * lt_lin_replenish_number );
+          lt_pure_amount           := TRUNC( lt_lin_wholesale_unit_ploce * lt_lin_replenish_number );
           -- 消費税金額
-          lt_tax_amount            := ( ( lt_pure_amount * ln_tax_data ) - lt_pure_amount );
-          IF ( lt_tax_amount <> TRUNC( lt_tax_amount ) ) THEN
+--************************** 2009/03/18 1.6 T.kitajima MOD START ************************************
+--          lt_tax_amount            := ( ( lt_pure_amount * ln_tax_data ) - lt_pure_amount );
+--          IF ( lt_tax_amount <> TRUNC( lt_tax_amount ) ) THEN
+--            IF ( lt_tax_odd = cv_amount_up ) THEN
+--              lt_tax_amount := ( TRUNC( lt_tax_amount ) + 1 );
+--            -- 切捨て
+--            ELSIF ( lt_tax_odd = cv_amount_down ) THEN
+--              lt_tax_amount := TRUNC( lt_tax_amount );
+--            -- 四捨五入
+--            ELSIF ( lt_tax_odd = cv_amount_nearest ) THEN
+--              lt_tax_amount := ROUND( lt_tax_amount );
+--            END IF;
+--          END IF;
+          ln_amount            := ( ( lt_pure_amount * ln_tax_data ) - lt_pure_amount );
+          IF ( ln_amount <> TRUNC( ln_amount ) ) THEN
             IF ( lt_tax_odd = cv_amount_up ) THEN
-              lt_tax_amount := ( TRUNC( lt_tax_amount ) + 1 );
+              lt_tax_amount := ( TRUNC( ln_amount ) + 1 );
             -- 切捨て
             ELSIF ( lt_tax_odd = cv_amount_down ) THEN
-              lt_tax_amount := TRUNC( lt_tax_amount );
+              lt_tax_amount := TRUNC( ln_amount );
             -- 四捨五入
             ELSIF ( lt_tax_odd = cv_amount_nearest ) THEN
-              lt_tax_amount := ROUND( lt_tax_amount );
+              lt_tax_amount := ROUND( ln_amount );
             END IF;
+          ELSE
+            lt_tax_amount := ln_amount;
           END IF;
+--************************** 2009/03/18 1.6 T.kitajima MOD  END  ************************************
+--************************** 2009/03/23 1.7 N.Maeda MOD START ************************************
+          -- 売上金額
+          ln_sal_amount_data    := ( lt_lin_wholesale_unit_ploce * lt_lin_replenish_number ) * ln_tax_data;
+          IF ( ln_sal_amount_data <> TRUNC( ln_sal_amount_data ) ) THEN
+            IF ( lt_tax_odd = cv_amount_up ) THEN
+              lt_sale_amount := ( TRUNC( ln_sal_amount_data ) + 1 );
+            -- 切捨て
+            ELSIF ( lt_tax_odd = cv_amount_down ) THEN
+              lt_sale_amount := TRUNC( ln_sal_amount_data );
+            -- 四捨五入
+            ELSIF ( lt_tax_odd = cv_amount_nearest ) THEN
+              lt_sale_amount := ROUND( ln_sal_amount_data );
+            END IF;
+          ELSE
+            lt_sale_amount := ln_sal_amount_data;
+          END IF;
+--************************** 2009/03/23 1.7 N.Maeda MOD END ************************************
 --
         ELSIF ( lt_consumption_tax_class = cv_ins_bid_tax ) THEN  -- 内税（単価込み）
 --
@@ -1626,21 +1711,41 @@ AS
             END IF;
           END IF;
           -- 本体金額
-          lt_pure_amount           := ( ( lt_lin_wholesale_unit_ploce * lt_lin_replenish_number ) / ln_tax_data);
-          IF ( lt_pure_amount <> TRUNC( lt_pure_amount ) ) THEN
+--************************** 2009/03/18 1.6 T.kitajima MOD START ************************************
+--          lt_pure_amount           := ( ( lt_lin_wholesale_unit_ploce * lt_lin_replenish_number ) / ln_tax_data);
+--          IF ( lt_pure_amount <> TRUNC( lt_pure_amount ) ) THEN
+--            IF ( lt_tax_odd = cv_amount_up ) THEN
+--              lt_pure_amount := ( TRUNC( lt_pure_amount ) + 1 );
+--            -- 切捨て
+--            ELSIF ( lt_tax_odd = cv_amount_down ) THEN
+--              lt_pure_amount := TRUNC( lt_pure_amount );
+--            -- 四捨五入
+--            ELSIF ( lt_tax_odd = cv_amount_nearest ) THEN
+--              lt_pure_amount := ROUND( lt_pure_amount );
+--            END IF;
+--          END IF;
+          ln_amount           := ( ( lt_lin_wholesale_unit_ploce * lt_lin_replenish_number ) / ln_tax_data);
+          IF ( ln_amount <> TRUNC( ln_amount ) ) THEN
             IF ( lt_tax_odd = cv_amount_up ) THEN
-              lt_pure_amount := ( TRUNC( lt_pure_amount ) + 1 );
+              lt_pure_amount := ( TRUNC( ln_amount ) + 1 );
             -- 切捨て
             ELSIF ( lt_tax_odd = cv_amount_down ) THEN
-              lt_pure_amount := TRUNC( lt_pure_amount );
+              lt_pure_amount := TRUNC( ln_amount );
             -- 四捨五入
             ELSIF ( lt_tax_odd = cv_amount_nearest ) THEN
-              lt_pure_amount := ROUND( lt_pure_amount );
+              lt_pure_amount := ROUND( ln_amount );
             END IF;
+          ELSE
+            lt_pure_amount := ln_amount;
           END IF;
+--************************** 2009/03/18 1.6 T.kitajima MOD  END  ************************************
           -- 消費税金額
-          lt_tax_amount            := ( ( lt_lin_wholesale_unit_ploce * lt_lin_replenish_number )
+          lt_tax_amount            := TRUNC( ( lt_lin_wholesale_unit_ploce * lt_lin_replenish_number )
                                          - lt_pure_amount );
+--************************** 2009/03/23 1.6 N.Maeda MOD START ************************************
+          -- 売上金額
+          lt_sale_amount           := TRUNC( lt_lin_wholesale_unit_ploce * lt_lin_replenish_number );
+--************************** 2009/03/23 1.6 N.Maeda MOD END ************************************
 --
         END IF;
 --
@@ -1730,18 +1835,34 @@ AS
       ELSIF ( lt_consumption_tax_class = cv_out_tax ) THEN      -- 外税
 --
             -- 売上金額合計
-        lt_sale_amount_sum := ( lt_total_amount * ln_tax_data );
-        IF ( lt_sale_amount_sum <> TRUNC( lt_sale_amount_sum ) ) THEN
+--************************** 2009/03/18 1.6 T.kitajima MOD START ************************************
+--        lt_sale_amount_sum := ( lt_total_amount * ln_tax_data );
+--        IF ( lt_sale_amount_sum <> TRUNC( lt_sale_amount_sum ) ) THEN
+--          IF ( lt_tax_odd = cv_amount_up ) THEN
+--          lt_sale_amount_sum := ( TRUNC( lt_sale_amount_sum ) + 1 );
+--          -- 切捨て
+--          ELSIF ( lt_tax_odd = cv_amount_down ) THEN
+--            lt_sale_amount_sum := TRUNC( lt_sale_amount_sum );
+--          -- 四捨五入
+--          ELSIF ( lt_tax_odd = cv_amount_nearest ) THEN
+--            lt_sale_amount_sum := ROUND( lt_sale_amount_sum );
+--          END IF;
+--        END IF;
+        ln_amount := ( lt_total_amount * ln_tax_data );
+        IF ( ln_amount <> TRUNC( ln_amount ) ) THEN
           IF ( lt_tax_odd = cv_amount_up ) THEN
-          lt_sale_amount_sum := ( TRUNC( lt_sale_amount_sum ) + 1 );
+          lt_sale_amount_sum := ( TRUNC( ln_amount ) + 1 );
           -- 切捨て
           ELSIF ( lt_tax_odd = cv_amount_down ) THEN
-            lt_sale_amount_sum := TRUNC( lt_sale_amount_sum );
+            lt_sale_amount_sum := TRUNC( ln_amount );
           -- 四捨五入
           ELSIF ( lt_tax_odd = cv_amount_nearest ) THEN
-            lt_sale_amount_sum := ROUND( lt_sale_amount_sum );
+            lt_sale_amount_sum := ROUND( ln_amount );
           END IF;
+        ELSE
+          lt_sale_amount_sum := ln_amount;
         END IF;
+--************************** 2009/03/18 1.6 T.kitajima MOD  END  ************************************
         -- 本体金額合計
         lt_pure_amount_sum := lt_total_amount;
         -- 消費税金額合計
@@ -1750,40 +1871,72 @@ AS
       ELSIF ( lt_consumption_tax_class = cv_ins_slip_tax ) THEN -- 内税（伝票課税）
 --
         -- 売上金額合計
-        lt_sale_amount_sum := ( lt_total_amount * ln_tax_data );
-        IF ( lt_sale_amount_sum <> TRUNC( lt_sale_amount_sum ) ) THEN
+--************************** 2009/03/18 1.6 T.kitajima MOD START ************************************
+--        lt_sale_amount_sum := ( lt_total_amount * ln_tax_data );
+--        IF ( lt_sale_amount_sum <> TRUNC( lt_sale_amount_sum ) ) THEN
+--          IF ( lt_tax_odd = cv_amount_up ) THEN
+--          lt_sale_amount_sum := ( TRUNC( lt_sale_amount_sum ) + 1 );
+--          -- 切捨て
+--          ELSIF ( lt_tax_odd = cv_amount_down ) THEN
+--            lt_sale_amount_sum := TRUNC( lt_sale_amount_sum );
+--          -- 四捨五入
+--          ELSIF ( lt_tax_odd = cv_amount_nearest ) THEN
+--            lt_sale_amount_sum := ROUND( lt_sale_amount_sum );
+--          END IF;
+--        END IF;
+        ln_amount := ( lt_total_amount * ln_tax_data );
+        IF ( ln_amount <> TRUNC( ln_amount ) ) THEN
           IF ( lt_tax_odd = cv_amount_up ) THEN
-          lt_sale_amount_sum := ( TRUNC( lt_sale_amount_sum ) + 1 );
+          lt_sale_amount_sum := ( TRUNC( ln_amount ) + 1 );
           -- 切捨て
           ELSIF ( lt_tax_odd = cv_amount_down ) THEN
-            lt_sale_amount_sum := TRUNC( lt_sale_amount_sum );
+            lt_sale_amount_sum := TRUNC( ln_amount );
           -- 四捨五入
           ELSIF ( lt_tax_odd = cv_amount_nearest ) THEN
-            lt_sale_amount_sum := ROUND( lt_sale_amount_sum );
+            lt_sale_amount_sum := ROUND( ln_amount );
           END IF;
+        ELSE
+          lt_sale_amount_sum := ln_amount;
         END IF;
+--************************** 2009/03/18 1.6 T.kitajima MOD  END  ************************************
         -- 本体金額合計
         lt_pure_amount_sum := lt_total_amount;
         -- 消費税金額合計
         lt_tax_amount_sum  := ( lt_sale_amount_sum - lt_pure_amount_sum );
 --
       ELSIF ( lt_consumption_tax_class = cv_ins_bid_tax ) THEN  -- 内税（単価込み）
---  
+--
         -- 売上金額合計
         lt_sale_amount_sum := lt_total_amount;
         -- 本体金額合計
-        lt_pure_amount_sum := ( lt_total_amount / ln_tax_data );
-        IF ( lt_pure_amount_sum <> TRUNC( lt_pure_amount_sum ) ) THEN
+ --************************** 2009/03/18 1.6 T.kitajima MOD START ************************************
+--       lt_pure_amount_sum := ( lt_total_amount / ln_tax_data );
+--        IF ( lt_pure_amount_sum <> TRUNC( lt_pure_amount_sum ) ) THEN
+--          IF ( lt_tax_odd = cv_amount_up ) THEN
+--            lt_pure_amount_sum := ( TRUNC( lt_pure_amount_sum ) + 1 );
+--          -- 切捨て
+--          ELSIF ( lt_tax_odd = cv_amount_down ) THEN
+--            lt_pure_amount_sum := TRUNC( lt_pure_amount_sum );
+--          -- 四捨五入
+--          ELSIF ( lt_tax_odd = cv_amount_nearest ) THEN
+--            lt_pure_amount_sum:= ROUND( lt_pure_amount_sum );
+--          END IF;
+--        END IF;
+       ln_amount := ( lt_total_amount / ln_tax_data );
+        IF ( ln_amount <> TRUNC( ln_amount ) ) THEN
           IF ( lt_tax_odd = cv_amount_up ) THEN
-            lt_pure_amount_sum := ( TRUNC( lt_pure_amount_sum ) + 1 );
+            lt_pure_amount_sum := ( TRUNC( ln_amount ) + 1 );
           -- 切捨て
           ELSIF ( lt_tax_odd = cv_amount_down ) THEN
-            lt_pure_amount_sum := TRUNC( lt_pure_amount_sum );
+            lt_pure_amount_sum := TRUNC( ln_amount );
           -- 四捨五入
           ELSIF ( lt_tax_odd = cv_amount_nearest ) THEN
-            lt_pure_amount_sum:= ROUND( lt_pure_amount_sum );
+            lt_pure_amount_sum:= ROUND( ln_amount );
           END IF;
+        ELSE
+          lt_pure_amount_sum := ln_amount;
         END IF;
+--************************** 2009/03/18 1.6 T.kitajima MOD  END  ************************************
       -- 消費税金額合計
       lt_tax_amount_sum  := ln_all_tax_amount;
 --
@@ -1791,6 +1944,7 @@ AS
 --
       --非課税以外のとき
       IF ( lt_consumption_tax_class <> cv_non_tax ) THEN
+--
         --================================================
         --ヘッダ売上消費税額と明細売上消費税額比較判断処理
         --================================================
@@ -1843,8 +1997,10 @@ AS
       gt_head_performance_by_code( gn_header_ck_no )     := lt_performance_by_code;       -- 成績者コード(成績計上者コード)
       gt_head_sales_base_code( gn_header_ck_no )         := lt_sale_base_code;            -- 売上拠点コード(導出)
       gt_head_card_sale_class( gn_header_ck_no )         := lt_card_sale_class;           -- カード売り区分
-      gt_head_sales_classification( gn_header_ck_no )    := lt_sales_classification;      -- 売上分類区分(伝票区分)
-      gt_head_invoice_class( gn_header_ck_no )           := lt_sales_invoice;             -- 売上伝票区分(伝票分類コード)
+--      gt_head_sales_classification( gn_header_ck_no )    := lt_sales_classification;    -- 売上分類区分(伝票区分)
+--      gt_head_invoice_class( gn_header_ck_no )           := lt_sales_invoice;           -- 売上伝票区分(伝票分類コード)
+      gt_head_sales_classification( gn_header_ck_no )    := lt_sales_invoice;             -- 売上分類区分(伝票区分)
+      gt_head_invoice_class( gn_header_ck_no )           := lt_sales_classification;      -- 売上伝票区分(伝票分類コード)
       gt_head_receiv_base_code( gn_header_ck_no )        := lt_sale_base_code;            -- 入金拠点コード(導出)
       gt_head_change_out_time_100( gn_header_ck_no )     := lt_change_out_time_100;       -- つり銭切れ時間100円
       gt_head_change_out_time_10( gn_header_ck_no )      := lt_change_out_time_10;        -- つり銭切れ時間10円

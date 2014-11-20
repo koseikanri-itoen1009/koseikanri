@@ -7,7 +7,7 @@ AS
  * Description      : 生産物流(引当、配車)
  * MD.050           : 出荷・移動インタフェース         T_MD050_BPO_930
  * MD.070           : 外部倉庫入出庫実績インタフェース T_MD070_BPO_93A
- * Version          : 1.48
+ * Version          : 1.49
  *
  * Program List
  * ------------------------------------ -------------------------------------------------
@@ -143,6 +143,7 @@ AS
  *  2009/02/20    1.46 Oracle 佐久間尚豊 本番障害対応#1199 配送No/移動No-EOSデータ種別単位のエラーは明細単位（一部はヘッダ単位）で出力する。
  *  2009/03/13    1.47 Oracle 北寒寺正夫 本番障害対応#1068 重量容積小口個数更新関数でのエラーメッセージに92Eのメッセージを使用していたため修正
  *  2009/03/27    1.48 SCS    伊藤ひとみ 本番障害対応#1342 ロットマスタの固有記号がNULLの場合の考慮ができていないため修正
+ *  2009/03/30    1.49 SCS    飯田 甫    本番障害対応#1346 顧客マスタの顧客区分対応(拠点、又は配送先のみ抽出)
  *****************************************************************************************/
 --
 --#######################  固定グローバル定数宣言部 START   #######################
@@ -1702,6 +1703,10 @@ AS
           AND     xcav.account_status = gv_view_status   -- 顧客ステータス = '有効'
           AND     xcav.start_date_active <= TRUNC(gr_interface_info_rec(in_idx).shipped_date)  -- 適用開始日 <= 出荷日
           AND     xcav.end_date_active   >= TRUNC(gr_interface_info_rec(in_idx).shipped_date)  -- 適用終了日 >= 出荷日
+-- 2009/03/30 H.Iida Add Start 本番障害#1346対応
+          -- 顧客区分'1', '10'のみ抽出
+          AND     xcav.customer_class_code IN ('1', '10')
+-- 2009/03/30 H.Iida Add End
           AND     ROWNUM          = 1;
 --
 -- 2009/02/09 本番障害#1165 DEL START
@@ -1747,6 +1752,10 @@ AS
           AND     xcav.account_status = gv_view_status   -- 顧客ステータス = '有効'
           AND     xcav.start_date_active <= TRUNC(gr_interface_info_rec(in_idx).shipped_date)  -- 適用開始日 <= 出荷日
           AND     xcav.end_date_active   >= TRUNC(gr_interface_info_rec(in_idx).shipped_date)  -- 適用終了日 >= 出荷日
+-- 2009/03/30 H.Iida Add Start 本番障害#1346対応
+          -- 顧客区分'1', '10'のみ抽出
+          AND     xcav.customer_class_code IN ('1', '10')
+-- 2009/03/30 H.Iida Add End
           AND     ROWNUM          = 1;
 --
           gr_interface_info_rec(in_idx).customer_id     := lt_customer_id;
@@ -15316,6 +15325,10 @@ AS
         AND     xoha.latest_external_flag = gv_yesno_y
         AND     xca.party_status          = gv_view_status
         AND     xca.account_status        = gv_view_status
+-- 2009/03/30 H.Iida Add Start 本番障害#1346対応
+        -- 顧客区分'1', '10'のみ抽出
+        AND     xca.customer_class_code IN ('1', '10')
+-- 2009/03/30 H.Iida Add End
         AND     ROWNUM = 1                                           -- 混載単位<->集約No単位での重複を排除
         ;
 --

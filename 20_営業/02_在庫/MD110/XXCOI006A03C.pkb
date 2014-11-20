@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCOI006A03C(body)
  * Description      : 月次在庫受払（日次）を元に、月次在庫受払表を作成します。
  * MD.050           : 月次在庫受払表作成<MD050_COI_006_A03>
- * Version          : 1.5
+ * Version          : 1.6
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -39,6 +39,7 @@ AS
  *  2009/02/18    1.3   H.Sasaki         [障害COI_016]棚卸管理の抽出方法変更
  *  2009/02/19    1.4   H.Sasaki         [障害COI_020]棚卸管理新規作成時の条件を追加
  *  2009/03/17    1.5   H.Sasaki         [T1_0076]月首棚卸高算出の実行条件変更
+ *  2009/03/30    1.6   H.Sasaki         [T1_0195]棚卸情報登録時の拠点コード変換条件変更
  *
  *****************************************************************************************/
 --
@@ -860,11 +861,19 @@ AS
         WHERE   hca.cust_account_id       =   xca.customer_id
         AND     hca.account_number        =   gt_save_3_base_code
         AND     hca.customer_class_code   =   '1'           -- 拠点
-        AND     hca.status                =   'A';          -- 有効
+        AND     hca.status                =   'A'           -- 有効
+-- == 2009/03/30 V1.6 Added START ===============================================================
+        AND     xca.dept_hht_div          =   '1';          -- HHT区分（1:百貨店）
+-- == 2009/03/30 V1.6 Added END   ===============================================================
         --
         IF (lt_base_code IS NULL) THEN
           lt_base_code  :=  gt_save_3_base_code;
         END IF;
+-- == 2009/03/30 V1.6 Added START ===============================================================
+      EXCEPTION
+        WHEN NO_DATA_FOUND THEN
+          lt_base_code  :=  gt_save_3_base_code;
+-- == 2009/03/30 V1.6 Added END   ===============================================================
       END;
       --
       INSERT INTO xxcoi_inv_control(
@@ -2126,11 +2135,19 @@ AS
           WHERE   hca.cust_account_id       =   xca.customer_id
           AND     hca.account_number        =   ir_invrcp_daily.base_code
           AND     hca.customer_class_code   =   '1'           -- 拠点
-          AND     hca.status                =   'A';          -- 有効
+          AND     hca.status                =   'A'           -- 有効
+-- == 2009/03/30 V1.6 Added START ===============================================================
+          AND     xca.dept_hht_div          =   '1';          -- HHT区分（1:百貨店）
+-- == 2009/03/30 V1.6 Added END   ===============================================================
           --
           IF (lt_base_code IS NULL) THEN
             lt_base_code  :=  ir_invrcp_daily.base_code;
           END IF;
+-- == 2009/03/30 V1.6 Added START ===============================================================
+        EXCEPTION
+          WHEN NO_DATA_FOUND THEN
+            lt_base_code  :=  ir_invrcp_daily.base_code;
+-- == 2009/03/30 V1.6 Added END   ===============================================================
         END;
         --
         -- 棚卸SEQがNULLの場合
