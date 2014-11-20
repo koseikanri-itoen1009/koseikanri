@@ -11,7 +11,7 @@ AS
  *                    ます。
  * MD.050           : MD050_CSO_010_A02_マスタ連携機能
  *
- * Version          : 1.10
+ * Version          : 1.11
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -75,6 +75,7 @@ AS
  *  2009-05-15    1.8   Kazuo.Satomura   システムテスト障害(障害番号T1_1010)
  *  2009-09-25    1.9   Daisuke.Abe      共通課題IE548
  *  2009-10-15    1.10  Daisuke.Abe      0001537対応
+ *  2009-11-26    1.11  Kazuo.Satomura   E_本稼動_00109対応
  *****************************************************************************************/
   --
   --#######################  固定グローバル定数宣言部 START   #######################
@@ -820,6 +821,9 @@ AS
             AND    bau.end_date                                IS NULL
             AND    bau.external_bank_account_id                =  bac.bank_account_id
             AND    bac.bank_branch_id                          =  bbr.bank_branch_id
+            /* 2009.11.26 K.Satomura E_本稼動_00109対応 START */
+            AND    bau.primary_flag                            =  cv_flag_yes
+            /* 2009.11.26 K.Satomura E_本稼動_00109対応 END */
             ;
             --
           EXCEPTION
