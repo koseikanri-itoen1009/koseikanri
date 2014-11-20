@@ -7,8 +7,8 @@ AS
  * Package Name     : XXCFF003A07C(body)
  * Description      : リース契約・物件アップロード
  * MD.050           : MD050_CFF_003_A07_リース契約・物件アップロード.doc
- * Version          : 1.6X 【暫定対応版】
-  *
+ * Version          : 1.7
+ *
  * Program List
  * ---------------------- ----------------------------------------------------------
  *  Name                   Description
@@ -55,6 +55,11 @@ AS
  *                                      移行漏れ登録のため、チェックをはずす。
  *                                      ・契約番号の半角チェック
  *                                      ・終了日と最終支払日の大小チェック
+ *  2010/01/07    1.7   SCS渡辺学       Ver.1.6X【暫定対応版】の対応は恒久対応とする。
+ *                                      [E_本番_00229]
+ *                                        入力項目「月額リース控除額（税抜）」を「維持管理費用相当額（総額）」変更。
+ *                                        「維持管理費用相当額（総額）」から月額金額を換算し（円未満切捨て）、
+ *                                        端数差額を初回の月額控除額で調整する。
  *****************************************************************************************/
 --
 --#######################  固定グローバル定数宣言部 START   #######################
@@ -333,6 +338,9 @@ AS
    ,second_tax_charge          xxcff_cont_lines_work.second_tax_charge%TYPE
    ,first_deduction            xxcff_cont_lines_work.first_deduction%TYPE
    ,first_tax_deduction        xxcff_cont_lines_work.first_tax_deduction%TYPE
+   --ADD 2010/01/07 START
+   ,second_deduction           xxcff_cont_lines_work.first_deduction%TYPE
+   --ADD 2010/01/07 END
    ,estimated_cash_price       xxcff_cont_lines_work.estimated_cash_price%TYPE
    ,life_in_months             xxcff_cont_lines_work.life_in_months%TYPE
    ,lease_kind                 xxcff_cont_lines_work.lease_kind%TYPE
@@ -1789,7 +1797,7 @@ AS
         gn_second_tax_charge := TO_NUMBER(gr_lord_data_tab(20));
       END IF;      
 --
-      -- 12.月額リース控除額
+      -- 12.維持管理費用相当額（総額）
       --(必須、文字数チェック)
       xxccp_common_pkg2.upload_item_check(
         gr_lord_name_tab(21)   -- 項目名称
@@ -1838,7 +1846,713 @@ AS
         gn_first_deduction := TO_NUMBER(gr_lord_data_tab(21));
       END IF;      
 --
-      -- 12.月額リース控除消費税額
+--DEL 2010/01/07 START
+--      -- 12.月額リース控除消費税額
+--      --(必須、文字数チェック)
+--      xxccp_common_pkg2.upload_item_check(
+--        gr_lord_name_tab(22)   -- 項目名称
+--       ,gr_lord_data_tab(22)   -- 項目値
+--       ,gr_lord_len_tab(22)    -- 項目の長さ
+--       ,gr_lord_dec_tab(22)    -- 項目の長さ(小数点以下)
+--       ,gr_lord_null_tab(22)   -- 必須フラグ
+--       ,gr_lord_attr_tab(22)    -- 項目型
+--       ,lv_errbuf
+--       ,lv_retcode
+--       ,lv_errmsg);
+--      IF (lv_retcode <> cv_status_normal) THEN
+--        -- エラー対象情報の出力
+--        IF (lv_err_flag = cv_const_n) THEN
+--          FND_FILE.PUT_LINE(
+--            which  => FND_FILE.OUTPUT
+--           ,buff   => lv_err_info
+--          );
+--          lv_err_flag := cv_const_y;
+--        END IF;
+--        -- エラー内容の出力
+--        FND_FILE.PUT_LINE(
+--          which  => FND_FILE.OUTPUT
+--         ,buff   => lv_errmsg
+--        );  
+--      ELSE
+--        IF (TO_NUMBER(gr_lord_data_tab(22)) < 0) THEN
+--          IF (lv_err_flag = cv_const_n) THEN
+--            FND_FILE.PUT_LINE(
+--              which  => FND_FILE.OUTPUT
+--             ,buff   => lv_err_info
+--            );
+--            lv_err_flag := cv_const_y;
+--          END IF;
+--          FND_FILE.PUT_LINE(
+--            which  => FND_FILE.OUTPUT
+--           ,buff   => SUBSTRB(xxccp_common_pkg.get_msg(
+--                        cv_app_kbn_cff,      -- アプリケーション短縮名：XXCFF
+--                        cv_msg_cff_00117,    -- メッセージ：数値論理エラー(0以下）
+--                        cv_tk_cff_00005_01,  -- カラム名
+--                        cv_msg_cff_50159     -- 月額リース控除消費税額
+--                      ),1,5000)
+--          );
+--        END IF;
+--        --変数に格納する。
+--        gn_first_tax_deduction := TO_NUMBER(gr_lord_data_tab(22));
+--      END IF;      
+----
+--      -- 13.見積現金購入金額
+--      --(必須、文字数チェック)
+--      xxccp_common_pkg2.upload_item_check(
+--        gr_lord_name_tab(23)   -- 項目名称
+--       ,gr_lord_data_tab(23)   -- 項目値
+--       ,gr_lord_len_tab(23)    -- 項目の長さ
+--       ,gr_lord_dec_tab(23)    -- 項目の長さ(小数点以下)
+--       ,gr_lord_null_tab(23)   -- 必須フラグ
+--       ,gr_lord_attr_tab(23)    -- 項目型
+--       ,lv_errbuf
+--       ,lv_retcode
+--       ,lv_errmsg);
+--      IF (lv_retcode <> cv_status_normal) THEN
+--        -- エラー対象情報の出力
+--        IF (lv_err_flag = cv_const_n) THEN
+--          FND_FILE.PUT_LINE(
+--            which  => FND_FILE.OUTPUT
+--           ,buff   => lv_err_info
+--          );
+--          lv_err_flag := cv_const_y;
+--        END IF;
+--        -- エラー内容の出力
+--        FND_FILE.PUT_LINE(
+--          which  => FND_FILE.OUTPUT
+--         ,buff   => lv_errmsg
+--        );  
+--      ELSE
+--        IF (TO_NUMBER(gr_lord_data_tab(23)) < 0) THEN
+--          IF (lv_err_flag = cv_const_n) THEN
+--            FND_FILE.PUT_LINE(
+--              which  => FND_FILE.OUTPUT
+--             ,buff   => lv_err_info
+--            );
+--            lv_err_flag := cv_const_y;
+--          END IF;
+--          FND_FILE.PUT_LINE(
+--            which  => FND_FILE.OUTPUT
+--           ,buff   => SUBSTRB(xxccp_common_pkg.get_msg(
+--                        cv_app_kbn_cff,      -- アプリケーション短縮名：XXCFF
+--                        cv_msg_cff_00117,    -- メッセージ：数値論理エラー(0以下）
+--                        cv_tk_cff_00005_01,  -- カラム名
+--                        cv_msg_cff_50064     -- 見積現金購入金額
+--                      ),1,5000)
+--          );
+--        END IF;
+--        --変数に格納する。
+--        gn_estimated_cash_price := TO_NUMBER(gr_lord_data_tab(23));
+--      END IF;      
+----
+--      -- 14.法定耐用年数
+--      --(必須、文字数チェック)
+--      xxccp_common_pkg2.upload_item_check(
+--        gr_lord_name_tab(24)   -- 項目名称
+--       ,gr_lord_data_tab(24)   -- 項目値
+--       ,gr_lord_len_tab(24)    -- 項目の長さ
+--       ,gr_lord_dec_tab(24)    -- 項目の長さ(小数点以下)
+--       ,gr_lord_null_tab(24)   -- 必須フラグ
+--       ,gr_lord_attr_tab(24)    -- 項目型
+--       ,lv_errbuf
+--       ,lv_retcode
+--       ,lv_errmsg);
+--      IF (lv_retcode <> cv_status_normal) THEN
+--        -- エラー対象情報の出力
+--        IF (lv_err_flag = cv_const_n) THEN
+--          FND_FILE.PUT_LINE(
+--            which  => FND_FILE.OUTPUT
+--           ,buff   => lv_err_info
+--          );
+--          lv_err_flag := cv_const_y;
+--        END IF;
+--        -- エラー内容の出力
+--        FND_FILE.PUT_LINE(
+--          which  => FND_FILE.OUTPUT
+--         ,buff   => lv_errmsg
+--        );  
+--      ELSE
+--        IF (TO_NUMBER(gr_lord_data_tab(24)) < 0) THEN
+--          IF (lv_err_flag = cv_const_n) THEN
+--            FND_FILE.PUT_LINE(
+--              which  => FND_FILE.OUTPUT
+--             ,buff   => lv_err_info
+--            );
+--            lv_err_flag := cv_const_y;
+--          END IF;
+--          --
+--          FND_FILE.PUT_LINE(
+--            which  => FND_FILE.OUTPUT
+--           ,buff   => SUBSTRB(xxccp_common_pkg.get_msg(
+--                        cv_app_kbn_cff,      -- アプリケーション短縮名：XXCFF
+--                        cv_msg_cff_00117,    -- メッセージ：数値論理エラー(0以下）
+--                        cv_tk_cff_00005_01,  -- カラム名
+--                        cv_msg_cff_50032     -- 法定耐用年数
+--                      ),1,5000)
+--          );
+--        END IF;
+--        --変数に格納する。
+--        gn_life_in_months := TO_NUMBER(gr_lord_data_tab(24));
+--      END IF;         
+----
+--      -- 15.本社/工場
+--      --(必須、文字数チェック)
+--      xxccp_common_pkg2.upload_item_check(
+--        gr_lord_name_tab(25)   -- 項目名称
+--       ,gr_lord_data_tab(25)   -- 項目値
+--       ,gr_lord_len_tab(25)    -- 項目の長さ
+--       ,gr_lord_dec_tab(25)    -- 項目の長さ(小数点以下)
+--       ,gr_lord_null_tab(25)   -- 必須フラグ
+--       ,gr_lord_attr_tab(25)    -- 項目型
+--       ,lv_errbuf
+--       ,lv_retcode
+--       ,lv_errmsg);
+--      IF (lv_retcode <> cv_status_normal) THEN
+--        -- エラー対象情報の出力
+--        IF (lv_err_flag = cv_const_n) THEN
+--          FND_FILE.PUT_LINE(
+--            which  => FND_FILE.OUTPUT
+--           ,buff   => lv_err_info
+--          );
+--          lv_err_flag := cv_const_y;
+--        END IF;
+--        -- エラー内容の出力
+--        FND_FILE.PUT_LINE(
+--          which  => FND_FILE.OUTPUT
+--         ,buff   => lv_errmsg
+--        );  
+--      ELSE
+--        --(禁則文字チェック)
+--        lv_return := xxccp_common_pkg2.chk_moji(
+--                       gr_lord_data_tab(25),   -- 対象文字列
+--                       cv_check_scope);
+--        IF (lv_return <> TRUE) THEN
+--          -- エラー対象情報の出力
+--          IF (lv_err_flag = cv_const_n) THEN
+--            FND_FILE.PUT_LINE(
+--              which  => FND_FILE.OUTPUT
+--             ,buff   => lv_err_info
+--            );
+--            lv_err_flag := cv_const_y;
+--          END IF;
+--          -- エラー内容の出力
+--          FND_FILE.PUT_LINE(
+--            which  => FND_FILE.OUTPUT
+--           ,buff   => SUBSTRB(xxccp_common_pkg.get_msg(
+--                        cv_app_kbn_cff,      -- アプリケーション短縮名：XXCFF
+--                        cv_msg_cff_00138,    -- メッセージ：禁則文字エラー
+--                        cv_tk_cff_00005_01,  -- カラム名
+--                        cv_msg_cff_50012     -- 工場/本社
+--                      ),1,5000)
+--          );            
+--        ELSE
+--          --変数に格納する。
+--          gv_owner_company := gr_lord_data_tab(25);
+--        END IF;         
+--      END IF;         
+----
+--      -- 16.管理部門コード
+--      --(必須、文字数チェック)
+--      xxccp_common_pkg2.upload_item_check(
+--        gr_lord_name_tab(26)   -- 項目名称
+--       ,gr_lord_data_tab(26)   -- 項目値
+--       ,gr_lord_len_tab(26)    -- 項目の長さ
+--       ,gr_lord_dec_tab(26)    -- 項目の長さ(小数点以下)
+--       ,gr_lord_null_tab(26)   -- 必須フラグ
+--       ,gr_lord_attr_tab(26)    -- 項目型
+--       ,lv_errbuf
+--       ,lv_retcode
+--       ,lv_errmsg);
+--      IF (lv_retcode <> cv_status_normal) THEN
+--        -- エラー対象情報の出力
+--        IF (lv_err_flag = cv_const_n) THEN
+--          FND_FILE.PUT_LINE(
+--            which  => FND_FILE.OUTPUT
+--           ,buff   => lv_err_info
+--          );
+--          lv_err_flag := cv_const_y;
+--        END IF;
+--        -- エラー内容の出力
+--        FND_FILE.PUT_LINE(
+--          which  => FND_FILE.OUTPUT
+--         ,buff   => lv_errmsg
+--        );  
+--      ELSE
+--        --(禁則文字チェック)
+--        lv_return := xxccp_common_pkg2.chk_moji(
+--                       gr_lord_data_tab(26),   -- 対象文字列
+--                       cv_check_scope);
+--        IF (lv_return <> TRUE) THEN
+--          -- エラー対象情報の出力
+--          IF (lv_err_flag = cv_const_n) THEN
+--            FND_FILE.PUT_LINE(
+--              which  => FND_FILE.OUTPUT
+--             ,buff   => lv_err_info
+--            );
+--            lv_err_flag := cv_const_y;
+--          END IF;
+--          -- エラー内容の出力
+--          FND_FILE.PUT_LINE(
+--            which  => FND_FILE.OUTPUT
+--           ,buff   => SUBSTRB(xxccp_common_pkg.get_msg(
+--                        cv_app_kbn_cff,      -- アプリケーション短縮名：XXCFF
+--                        cv_msg_cff_00138,    -- メッセージ：禁則文字エラー
+--                        cv_tk_cff_00005_01,  -- カラム名
+--                        cv_msg_cff_50011     -- 管理部門コード
+--                      ),1,5000)
+--          );            
+--        ELSE
+--          --変数に格納する。
+--          gv_department_code := gr_lord_data_tab(26);
+--        END IF;         
+--      END IF;         
+----
+--      -- 17.発注番号
+--      --(必須、文字数チェック) gv_po_number
+--      xxccp_common_pkg2.upload_item_check(
+--        gr_lord_name_tab(27)   -- 項目名称
+--       ,gr_lord_data_tab(27)   -- 項目値
+--       ,gr_lord_len_tab(27)    -- 項目の長さ
+--       ,gr_lord_dec_tab(27)    -- 項目の長さ(小数点以下)
+--       ,gr_lord_null_tab(27)   -- 必須フラグ
+--       ,gr_lord_attr_tab(27)   -- 項目型
+--       ,lv_errbuf
+--       ,lv_retcode
+--       ,lv_errmsg);
+--      IF (lv_retcode <> cv_status_normal) THEN
+--        -- エラー対象情報の出力
+--        IF (lv_err_flag = cv_const_n) THEN
+--          FND_FILE.PUT_LINE(
+--            which  => FND_FILE.OUTPUT
+--           ,buff   => lv_err_info
+--          );
+--          lv_err_flag := cv_const_y;
+--        END IF;
+--        -- エラー内容の出力
+--        FND_FILE.PUT_LINE(
+--          which  => FND_FILE.OUTPUT
+--         ,buff   => lv_errmsg
+--        );  
+--      ELSE
+--        --(禁則文字チェック)
+--        lv_return := xxccp_common_pkg2.chk_moji(
+--                       gr_lord_data_tab(27),   -- 対象文字列
+--                       cv_check_scope);
+--        IF (lv_return <> TRUE) THEN
+--          -- エラー対象情報の出力
+--          IF (lv_err_flag = cv_const_n) THEN
+--            FND_FILE.PUT_LINE(
+--              which  => FND_FILE.OUTPUT
+--             ,buff   => lv_err_info
+--            );
+--            lv_err_flag := cv_const_y;
+--          END IF;
+--          -- エラー内容の出力
+--          FND_FILE.PUT_LINE(
+--            which  => FND_FILE.OUTPUT
+--           ,buff   => SUBSTRB(xxccp_common_pkg.get_msg(
+--                        cv_app_kbn_cff,      -- アプリケーション短縮名：XXCFF
+--                        cv_msg_cff_00138,    -- メッセージ：禁則文字エラー
+--                        cv_tk_cff_00005_01,  -- カラム名
+--                        cv_msg_cff_50184     -- 発注番号
+--                      ),1,5000)
+--          );            
+--        ELSE
+--          --変数に格納する。
+--           gv_po_number := gr_lord_data_tab(27);
+--        END IF;         
+--      END IF;               
+----
+--      -- 18.メーカー名
+--      --(必須、文字数チェック)
+--      xxccp_common_pkg2.upload_item_check(
+--        gr_lord_name_tab(28)   -- 項目名称
+--       ,gr_lord_data_tab(28)   -- 項目値
+--       ,gr_lord_len_tab(28)    -- 項目の長さ
+--       ,gr_lord_dec_tab(28)    -- 項目の長さ(小数点以下)
+--       ,gr_lord_null_tab(28)   -- 必須フラグ
+--       ,gr_lord_attr_tab(28)   -- 項目型
+--       ,lv_errbuf
+--       ,lv_retcode
+--       ,lv_errmsg);
+--      IF (lv_retcode <> cv_status_normal) THEN
+--        -- エラー対象情報の出力
+--        IF (lv_err_flag = cv_const_n) THEN
+--          FND_FILE.PUT_LINE(
+--            which  => FND_FILE.OUTPUT
+--           ,buff   => lv_err_info
+--          );
+--          lv_err_flag := cv_const_y;
+--        END IF;
+--        -- エラー内容の出力
+--        FND_FILE.PUT_LINE(
+--          which  => FND_FILE.OUTPUT
+--         ,buff   => lv_errmsg
+--        );  
+--      ELSE
+--        --(禁則文字チェック)
+--        lv_return := xxccp_common_pkg2.chk_moji(
+--                       gr_lord_data_tab(28),   -- 対象文字列
+--                       cv_check_scope);
+--        IF (lv_return <> TRUE) THEN
+--          -- エラー対象情報の出力
+--          IF (lv_err_flag = cv_const_n) THEN
+--            FND_FILE.PUT_LINE(
+--              which  => FND_FILE.OUTPUT
+--             ,buff   => lv_err_info
+--            );
+--            lv_err_flag := cv_const_y;
+--          END IF;
+--          -- エラー内容の出力
+--          FND_FILE.PUT_LINE(
+--            which  => FND_FILE.OUTPUT
+--           ,buff   => SUBSTRB(xxccp_common_pkg.get_msg(
+--                        cv_app_kbn_cff,      -- アプリケーション短縮名：XXCFF
+--                        cv_msg_cff_00138,    -- メッセージ：禁則文字エラー
+--                        cv_tk_cff_00005_01,  -- カラム名
+--                        cv_msg_cff_50177     -- メーカー名
+--                      ),1,5000)
+--          );            
+--        ELSE
+--          --変数に格納する。
+--          gv_manufacturer_name := gr_lord_data_tab(28);
+--        END IF;         
+--      END IF;               
+----
+--      -- 19.機種
+--      --(必須、文字数チェック)
+--      xxccp_common_pkg2.upload_item_check(
+--        gr_lord_name_tab(29)   -- 項目名称
+--       ,gr_lord_data_tab(29)   -- 項目値
+--       ,gr_lord_len_tab(29)    -- 項目の長さ
+--       ,gr_lord_dec_tab(29)    -- 項目の長さ(小数点以下)
+--       ,gr_lord_null_tab(29)   -- 必須フラグ
+--       ,gr_lord_attr_tab(29)   -- 項目型
+--       ,lv_errbuf
+--       ,lv_retcode
+--       ,lv_errmsg);
+--      IF (lv_retcode <> cv_status_normal) THEN
+--        -- エラー対象情報の出力
+--        IF (lv_err_flag = cv_const_n) THEN
+--          FND_FILE.PUT_LINE(
+--            which  => FND_FILE.OUTPUT
+--           ,buff   => lv_err_info
+--          );
+--          lv_err_flag := cv_const_y;
+--        END IF;
+--        -- エラー内容の出力
+--        FND_FILE.PUT_LINE(
+--          which  => FND_FILE.OUTPUT
+--         ,buff   => lv_errmsg
+--        );  
+--      ELSE
+--        --(禁則文字チェック)
+--        lv_return := xxccp_common_pkg2.chk_moji(
+--                       gr_lord_data_tab(29),   -- 対象文字列
+--                       cv_check_scope);
+--        IF (lv_return <> TRUE) THEN
+--          -- エラー対象情報の出力
+--          IF (lv_err_flag = cv_const_n) THEN
+--            FND_FILE.PUT_LINE(
+--              which  => FND_FILE.OUTPUT
+--             ,buff   => lv_err_info
+--            );
+--            lv_err_flag := cv_const_y;
+--          END IF;
+--          -- エラー内容の出力
+--          FND_FILE.PUT_LINE(
+--            which  => FND_FILE.OUTPUT
+--           ,buff   => SUBSTRB(xxccp_common_pkg.get_msg(
+--                        cv_app_kbn_cff,      -- アプリケーション短縮名：XXCFF
+--                        cv_msg_cff_00138,    -- メッセージ：禁則文字エラー
+--                        cv_tk_cff_00005_01,  -- カラム名
+--                        cv_msg_cff_50178     -- 機種
+--                      ),1,5000)
+--          );            
+--        ELSE
+--          --変数に格納する。
+--          gv_model   := gr_lord_data_tab(29);
+--        END IF;         
+--      END IF;               
+----
+--      -- 20.機番
+--      --(必須、文字数チェック)
+--      xxccp_common_pkg2.upload_item_check(
+--        gr_lord_name_tab(30)   -- 項目名称
+--       ,gr_lord_data_tab(30)   -- 項目値
+--       ,gr_lord_len_tab(30)    -- 項目の長さ
+--       ,gr_lord_dec_tab(30)    -- 項目の長さ(小数点以下)
+--       ,gr_lord_null_tab(30)   -- 必須フラグ
+--       ,gr_lord_attr_tab(30)   -- 項目型
+--       ,lv_errbuf
+--       ,lv_retcode
+--       ,lv_errmsg);
+--      IF (lv_retcode <> cv_status_normal) THEN
+--        -- エラー対象情報の出力
+--        IF (lv_err_flag = cv_const_n) THEN
+--          FND_FILE.PUT_LINE(
+--            which  => FND_FILE.OUTPUT
+--           ,buff   => lv_err_info
+--          );
+--          lv_err_flag := cv_const_y;
+--        END IF;
+--        -- エラー内容の出力
+--        FND_FILE.PUT_LINE(
+--          which  => FND_FILE.OUTPUT
+--         ,buff   => lv_errmsg
+--        );  
+--      ELSE
+--        --(禁則文字チェック)
+--        lv_return := xxccp_common_pkg2.chk_moji(
+--                       gr_lord_data_tab(30),   -- 対象文字列
+--                       cv_check_scope);
+--        IF (lv_return <> TRUE) THEN
+--          -- エラー対象情報の出力
+--          IF (lv_err_flag = cv_const_n) THEN
+--            FND_FILE.PUT_LINE(
+--              which  => FND_FILE.OUTPUT
+--             ,buff   => lv_err_info
+--            );
+--            lv_err_flag := cv_const_y;
+--          END IF;
+--          -- エラー内容の出力
+--          FND_FILE.PUT_LINE(
+--            which  => FND_FILE.OUTPUT
+--           ,buff   => SUBSTRB(xxccp_common_pkg.get_msg(
+--                        cv_app_kbn_cff,      -- アプリケーション短縮名：XXCFF
+--                        cv_msg_cff_00138,    -- メッセージ：禁則文字エラー
+--                        cv_tk_cff_00005_01,  -- カラム名
+--                        cv_msg_cff_50179     -- 機番
+--                      ),1,5000)
+--          );            
+--        ELSE
+--          --変数に格納する。
+--          gv_serial_number   := gr_lord_data_tab(30);
+--        END IF;         
+--      END IF;      
+----
+--      -- 21.年式
+--      --(必須、文字数チェック)
+--      xxccp_common_pkg2.upload_item_check(
+--        gr_lord_name_tab(31)   -- 項目名称
+--       ,gr_lord_data_tab(31)   -- 項目値
+--       ,gr_lord_len_tab(31)    -- 項目の長さ
+--       ,gr_lord_dec_tab(31)    -- 項目の長さ(小数点以下)
+--       ,gr_lord_null_tab(31)   -- 必須フラグ
+--       ,gr_lord_attr_tab(31)   -- 項目型
+--       ,lv_errbuf
+--       ,lv_retcode
+--       ,lv_errmsg);
+--      IF (lv_retcode <> cv_status_normal) THEN
+--        -- エラー対象情報の出力
+--        IF (lv_err_flag = cv_const_n) THEN
+--          FND_FILE.PUT_LINE(
+--            which  => FND_FILE.OUTPUT
+--           ,buff   => lv_err_info
+--          );
+--          lv_err_flag := cv_const_y;
+--        END IF;
+--        -- エラー内容の出力
+--        FND_FILE.PUT_LINE(
+--          which  => FND_FILE.OUTPUT
+--         ,buff   => lv_errmsg
+--        );  
+--      ELSE
+--        --(禁則文字チェック)
+--        lv_return := xxccp_common_pkg2.chk_moji(
+--                       gr_lord_data_tab(31),   -- 対象文字列
+--                       cv_check_scope);
+--        IF (lv_return <> TRUE) THEN
+--          -- エラー対象情報の出力
+--          IF (lv_err_flag = cv_const_n) THEN
+--            FND_FILE.PUT_LINE(
+--              which  => FND_FILE.OUTPUT
+--             ,buff   => lv_err_info
+--            );
+--            lv_err_flag := cv_const_y;
+--          END IF;
+--          -- エラー内容の出力
+--          FND_FILE.PUT_LINE(
+--            which  => FND_FILE.OUTPUT
+--           ,buff   => SUBSTRB(xxccp_common_pkg.get_msg(
+--                        cv_app_kbn_cff,      -- アプリケーション短縮名：XXCFF
+--                        cv_msg_cff_00138,    -- メッセージ：禁則文字エラー
+--                        cv_tk_cff_00005_01,  -- カラム名
+--                        cv_msg_cff_50180     -- 年式
+--                      ),1,5000)
+--          );            
+--        ELSE
+--          --変数に格納する。
+--          gv_age_type   := gr_lord_data_tab(31);
+--        END IF;         
+--      END IF;      
+----
+--      -- 22.数量
+--      --(必須、文字数チェック)
+--      xxccp_common_pkg2.upload_item_check(
+--        gr_lord_name_tab(32)   -- 項目名称
+--       ,gr_lord_data_tab(32)   -- 項目値
+--       ,gr_lord_len_tab(32)    -- 項目の長さ
+--       ,gr_lord_dec_tab(32)    -- 項目の長さ(小数点以下)
+--       ,gr_lord_null_tab(32)   -- 必須フラグ
+--       ,gr_lord_attr_tab(32)   -- 項目型
+--       ,lv_errbuf
+--       ,lv_retcode
+--       ,lv_errmsg);
+--      IF (lv_retcode <> cv_status_normal) THEN
+--        -- エラー対象情報の出力
+--        IF (lv_err_flag = cv_const_n) THEN
+--          FND_FILE.PUT_LINE(
+--            which  => FND_FILE.OUTPUT
+--           ,buff   => lv_err_info
+--          );
+--          lv_err_flag := cv_const_y;
+--        END IF;
+--        -- エラー内容の出力
+--        FND_FILE.PUT_LINE(
+--          which  => FND_FILE.OUTPUT
+--         ,buff   => lv_errmsg
+--        );  
+--      ELSE
+--        IF (TO_NUMBER(gr_lord_data_tab(32)) < 0) THEN
+--          IF (lv_err_flag = cv_const_n) THEN
+--            FND_FILE.PUT_LINE(
+--              which  => FND_FILE.OUTPUT
+--             ,buff   => lv_err_info
+--            );
+--            lv_err_flag := cv_const_y;
+--          END IF;
+--          FND_FILE.PUT_LINE(
+--            which  => FND_FILE.OUTPUT
+--           ,buff   => SUBSTRB(xxccp_common_pkg.get_msg(
+--                        cv_app_kbn_cff,      -- アプリケーション短縮名：XXCFF
+--                        cv_msg_cff_00117,    -- メッセージ：数値論理エラー(0以下）
+--                        cv_tk_cff_00005_01,  -- カラム名
+--                        cv_msg_cff_50181     -- 数量
+--                      ),1,5000)
+--          );
+--        ELSE
+--          --変数に格納する。
+--          gn_quantity   := TO_NUMBER(gr_lord_data_tab(32));
+--        END IF;
+--      END IF;      
+----
+--      -- 23.車台番号
+--      --(必須、文字数チェック)
+--      xxccp_common_pkg2.upload_item_check(
+--        gr_lord_name_tab(33)   -- 項目名称
+--       ,gr_lord_data_tab(33)   -- 項目値
+--       ,gr_lord_len_tab(33)    -- 項目の長さ
+--       ,gr_lord_dec_tab(33)    -- 項目の長さ(小数点以下)
+--       ,gr_lord_null_tab(33)   -- 必須フラグ
+--       ,gr_lord_attr_tab(33)   -- 項目型
+--       ,lv_errbuf
+--       ,lv_retcode
+--       ,lv_errmsg);
+--      IF (lv_retcode <> cv_status_normal) THEN
+--        -- エラー対象情報の出力
+--        IF (lv_err_flag = cv_const_n) THEN
+--          FND_FILE.PUT_LINE(
+--            which  => FND_FILE.OUTPUT
+--           ,buff   => lv_err_info
+--          );
+--          lv_err_flag := cv_const_y;
+--        END IF;
+--        -- エラー内容の出力
+--        FND_FILE.PUT_LINE(
+--          which  => FND_FILE.OUTPUT
+--         ,buff   => lv_errmsg
+--        );  
+--      ELSE
+--        --(禁則文字チェック)
+--        lv_return := xxccp_common_pkg2.chk_moji(
+--                       gr_lord_data_tab(33),   -- 対象文字列
+--                       cv_check_scope);
+--        IF (lv_return <> TRUE) THEN
+--          -- エラー対象情報の出力
+--          IF (lv_err_flag = cv_const_n) THEN
+--            FND_FILE.PUT_LINE(
+--              which  => FND_FILE.OUTPUT
+--             ,buff   => lv_err_info
+--            );
+--            lv_err_flag := cv_const_y;
+--          END IF;
+--          -- エラー内容の出力
+--          FND_FILE.PUT_LINE(
+--            which  => FND_FILE.OUTPUT
+--           ,buff   => SUBSTRB(xxccp_common_pkg.get_msg(
+--                        cv_app_kbn_cff,      -- アプリケーション短縮名：XXCFF
+--                        cv_msg_cff_00138,    -- メッセージ：禁則文字エラー
+--                        cv_tk_cff_00005_01,  -- カラム名
+--                        cv_msg_cff_50182     -- 車台番号
+--                      ),1,5000)
+--          );            
+--        ELSE
+--          --変数に格納する。
+--          gv_chassis_number  := gr_lord_data_tab(33);
+--        END IF;         
+--      END IF;      
+----
+--      -- 24.登録番号
+--      --(必須、文字数チェック)
+--      xxccp_common_pkg2.upload_item_check(
+--        gr_lord_name_tab(34)   -- 項目名称
+--       ,gr_lord_data_tab(34)   -- 項目値
+--       ,gr_lord_len_tab(34)    -- 項目の長さ
+--       ,gr_lord_dec_tab(34)    -- 項目の長さ(小数点以下)
+--       ,gr_lord_null_tab(34)   -- 必須フラグ
+--       ,gr_lord_attr_tab(34)   -- 項目型
+--       ,lv_errbuf
+--       ,lv_retcode
+--       ,lv_errmsg);
+--      IF (lv_retcode <> cv_status_normal) THEN
+--        -- エラー対象情報の出力
+--        IF (lv_err_flag = cv_const_n) THEN
+--          FND_FILE.PUT_LINE(
+--            which  => FND_FILE.OUTPUT
+--           ,buff   => lv_err_info
+--          );
+--          lv_err_flag := cv_const_y;
+--        END IF;
+--        -- エラー内容の出力
+--        FND_FILE.PUT_LINE(
+--          which  => FND_FILE.OUTPUT
+--         ,buff   => lv_errmsg
+--        );  
+--      ELSE
+--        --(禁則文字チェック)
+--        lv_return := xxccp_common_pkg2.chk_moji(
+--                       gr_lord_data_tab(34),   -- 対象文字列
+--                       cv_check_scope);
+--        IF (lv_return <> TRUE) THEN
+--          -- エラー対象情報の出力
+--          IF (lv_err_flag = cv_const_n) THEN
+--            FND_FILE.PUT_LINE(
+--              which  => FND_FILE.OUTPUT
+--             ,buff   => lv_err_info
+--            );
+--            lv_err_flag := cv_const_y;
+--          END IF;
+--          -- エラー内容の出力
+--          FND_FILE.PUT_LINE(
+--            which  => FND_FILE.OUTPUT
+--           ,buff   => SUBSTRB(xxccp_common_pkg.get_msg(
+--                        cv_app_kbn_cff,      -- アプリケーション短縮名：XXCFF
+--                        cv_msg_cff_00138,    -- メッセージ：禁則文字エラー
+--                        cv_tk_cff_00005_01,  -- カラム名
+--                        cv_msg_cff_50183     -- 登録番号
+--                      ),1,5000)
+--          );            
+--        ELSE
+--          --変数に格納する。
+--          gv_registration_number  := gr_lord_data_tab(34);
+--        END IF;         
+--      END IF;      
+--DEL 2010/01/07 END
+--
+--ADD 2010/01/07 START
+--
+      -- 13.見積現金購入金額
       --(必須、文字数チェック)
       xxccp_common_pkg2.upload_item_check(
         gr_lord_name_tab(22)   -- 項目名称
@@ -1879,15 +2593,15 @@ AS
                         cv_app_kbn_cff,      -- アプリケーション短縮名：XXCFF
                         cv_msg_cff_00117,    -- メッセージ：数値論理エラー(0以下）
                         cv_tk_cff_00005_01,  -- カラム名
-                        cv_msg_cff_50159     -- 月額リース控除消費税額
+                        cv_msg_cff_50064     -- 見積現金購入金額
                       ),1,5000)
           );
         END IF;
         --変数に格納する。
-        gn_first_tax_deduction := TO_NUMBER(gr_lord_data_tab(22));
+        gn_estimated_cash_price := TO_NUMBER(gr_lord_data_tab(22));
       END IF;      
 --
-      -- 13.見積現金購入金額
+      -- 14.法定耐用年数
       --(必須、文字数チェック)
       xxccp_common_pkg2.upload_item_check(
         gr_lord_name_tab(23)   -- 項目名称
@@ -1922,21 +2636,22 @@ AS
             );
             lv_err_flag := cv_const_y;
           END IF;
+          --
           FND_FILE.PUT_LINE(
             which  => FND_FILE.OUTPUT
            ,buff   => SUBSTRB(xxccp_common_pkg.get_msg(
                         cv_app_kbn_cff,      -- アプリケーション短縮名：XXCFF
                         cv_msg_cff_00117,    -- メッセージ：数値論理エラー(0以下）
                         cv_tk_cff_00005_01,  -- カラム名
-                        cv_msg_cff_50064     -- 見積現金購入金額
+                        cv_msg_cff_50032     -- 法定耐用年数
                       ),1,5000)
           );
         END IF;
         --変数に格納する。
-        gn_estimated_cash_price := TO_NUMBER(gr_lord_data_tab(23));
-      END IF;      
+        gn_life_in_months := TO_NUMBER(gr_lord_data_tab(23));
+      END IF;         
 --
-      -- 14.法定耐用年数
+      -- 15.本社/工場
       --(必須、文字数チェック)
       xxccp_common_pkg2.upload_item_check(
         gr_lord_name_tab(24)   -- 項目名称
@@ -1963,7 +2678,12 @@ AS
          ,buff   => lv_errmsg
         );  
       ELSE
-        IF (TO_NUMBER(gr_lord_data_tab(24)) < 0) THEN
+        --(禁則文字チェック)
+        lv_return := xxccp_common_pkg2.chk_moji(
+                       gr_lord_data_tab(24),   -- 対象文字列
+                       cv_check_scope);
+        IF (lv_return <> TRUE) THEN
+          -- エラー対象情報の出力
           IF (lv_err_flag = cv_const_n) THEN
             FND_FILE.PUT_LINE(
               which  => FND_FILE.OUTPUT
@@ -1971,22 +2691,23 @@ AS
             );
             lv_err_flag := cv_const_y;
           END IF;
-          --
+          -- エラー内容の出力
           FND_FILE.PUT_LINE(
             which  => FND_FILE.OUTPUT
            ,buff   => SUBSTRB(xxccp_common_pkg.get_msg(
                         cv_app_kbn_cff,      -- アプリケーション短縮名：XXCFF
-                        cv_msg_cff_00117,    -- メッセージ：数値論理エラー(0以下）
+                        cv_msg_cff_00138,    -- メッセージ：禁則文字エラー
                         cv_tk_cff_00005_01,  -- カラム名
-                        cv_msg_cff_50032     -- 法定耐用年数
+                        cv_msg_cff_50012     -- 工場/本社
                       ),1,5000)
-          );
-        END IF;
-        --変数に格納する。
-        gn_life_in_months := TO_NUMBER(gr_lord_data_tab(24));
+          );            
+        ELSE
+          --変数に格納する。
+          gv_owner_company := gr_lord_data_tab(24);
+        END IF;         
       END IF;         
 --
-      -- 15.本社/工場
+      -- 16.管理部門コード
       --(必須、文字数チェック)
       xxccp_common_pkg2.upload_item_check(
         gr_lord_name_tab(25)   -- 項目名称
@@ -2033,24 +2754,24 @@ AS
                         cv_app_kbn_cff,      -- アプリケーション短縮名：XXCFF
                         cv_msg_cff_00138,    -- メッセージ：禁則文字エラー
                         cv_tk_cff_00005_01,  -- カラム名
-                        cv_msg_cff_50012     -- 工場/本社
+                        cv_msg_cff_50011     -- 管理部門コード
                       ),1,5000)
           );            
         ELSE
           --変数に格納する。
-          gv_owner_company := gr_lord_data_tab(25);
+          gv_department_code := gr_lord_data_tab(25);
         END IF;         
       END IF;         
 --
-      -- 16.管理部門コード
-      --(必須、文字数チェック)
+      -- 17.発注番号
+      --(必須、文字数チェック) gv_po_number
       xxccp_common_pkg2.upload_item_check(
         gr_lord_name_tab(26)   -- 項目名称
        ,gr_lord_data_tab(26)   -- 項目値
        ,gr_lord_len_tab(26)    -- 項目の長さ
        ,gr_lord_dec_tab(26)    -- 項目の長さ(小数点以下)
        ,gr_lord_null_tab(26)   -- 必須フラグ
-       ,gr_lord_attr_tab(26)    -- 項目型
+       ,gr_lord_attr_tab(26)   -- 項目型
        ,lv_errbuf
        ,lv_retcode
        ,lv_errmsg);
@@ -2089,17 +2810,17 @@ AS
                         cv_app_kbn_cff,      -- アプリケーション短縮名：XXCFF
                         cv_msg_cff_00138,    -- メッセージ：禁則文字エラー
                         cv_tk_cff_00005_01,  -- カラム名
-                        cv_msg_cff_50011     -- 管理部門コード
+                        cv_msg_cff_50184     -- 発注番号
                       ),1,5000)
           );            
         ELSE
           --変数に格納する。
-          gv_department_code := gr_lord_data_tab(26);
+           gv_po_number := gr_lord_data_tab(26);
         END IF;         
-      END IF;         
+      END IF;               
 --
-      -- 17.発注番号
-      --(必須、文字数チェック) gv_po_number
+      -- 18.メーカー名
+      --(必須、文字数チェック)
       xxccp_common_pkg2.upload_item_check(
         gr_lord_name_tab(27)   -- 項目名称
        ,gr_lord_data_tab(27)   -- 項目値
@@ -2145,16 +2866,16 @@ AS
                         cv_app_kbn_cff,      -- アプリケーション短縮名：XXCFF
                         cv_msg_cff_00138,    -- メッセージ：禁則文字エラー
                         cv_tk_cff_00005_01,  -- カラム名
-                        cv_msg_cff_50184     -- 発注番号
+                        cv_msg_cff_50177     -- メーカー名
                       ),1,5000)
           );            
         ELSE
           --変数に格納する。
-           gv_po_number := gr_lord_data_tab(27);
+          gv_manufacturer_name := gr_lord_data_tab(27);
         END IF;         
       END IF;               
 --
-      -- 18.メーカー名
+      -- 19.機種
       --(必須、文字数チェック)
       xxccp_common_pkg2.upload_item_check(
         gr_lord_name_tab(28)   -- 項目名称
@@ -2201,16 +2922,16 @@ AS
                         cv_app_kbn_cff,      -- アプリケーション短縮名：XXCFF
                         cv_msg_cff_00138,    -- メッセージ：禁則文字エラー
                         cv_tk_cff_00005_01,  -- カラム名
-                        cv_msg_cff_50177     -- メーカー名
+                        cv_msg_cff_50178     -- 機種
                       ),1,5000)
           );            
         ELSE
           --変数に格納する。
-          gv_manufacturer_name := gr_lord_data_tab(28);
+          gv_model   := gr_lord_data_tab(28);
         END IF;         
       END IF;               
 --
-      -- 19.機種
+      -- 20.機番
       --(必須、文字数チェック)
       xxccp_common_pkg2.upload_item_check(
         gr_lord_name_tab(29)   -- 項目名称
@@ -2257,16 +2978,16 @@ AS
                         cv_app_kbn_cff,      -- アプリケーション短縮名：XXCFF
                         cv_msg_cff_00138,    -- メッセージ：禁則文字エラー
                         cv_tk_cff_00005_01,  -- カラム名
-                        cv_msg_cff_50178     -- 機種
+                        cv_msg_cff_50179     -- 機番
                       ),1,5000)
           );            
         ELSE
           --変数に格納する。
-          gv_model   := gr_lord_data_tab(29);
+          gv_serial_number   := gr_lord_data_tab(29);
         END IF;         
-      END IF;               
+      END IF;      
 --
-      -- 20.機番
+      -- 21.年式
       --(必須、文字数チェック)
       xxccp_common_pkg2.upload_item_check(
         gr_lord_name_tab(30)   -- 項目名称
@@ -2313,16 +3034,16 @@ AS
                         cv_app_kbn_cff,      -- アプリケーション短縮名：XXCFF
                         cv_msg_cff_00138,    -- メッセージ：禁則文字エラー
                         cv_tk_cff_00005_01,  -- カラム名
-                        cv_msg_cff_50179     -- 機番
+                        cv_msg_cff_50180     -- 年式
                       ),1,5000)
           );            
         ELSE
           --変数に格納する。
-          gv_serial_number   := gr_lord_data_tab(30);
+          gv_age_type   := gr_lord_data_tab(30);
         END IF;         
       END IF;      
 --
-      -- 21.年式
+      -- 22.数量
       --(必須、文字数チェック)
       xxccp_common_pkg2.upload_item_check(
         gr_lord_name_tab(31)   -- 項目名称
@@ -2349,12 +3070,7 @@ AS
          ,buff   => lv_errmsg
         );  
       ELSE
-        --(禁則文字チェック)
-        lv_return := xxccp_common_pkg2.chk_moji(
-                       gr_lord_data_tab(31),   -- 対象文字列
-                       cv_check_scope);
-        IF (lv_return <> TRUE) THEN
-          -- エラー対象情報の出力
+        IF (TO_NUMBER(gr_lord_data_tab(31)) < 0) THEN
           IF (lv_err_flag = cv_const_n) THEN
             FND_FILE.PUT_LINE(
               which  => FND_FILE.OUTPUT
@@ -2362,23 +3078,22 @@ AS
             );
             lv_err_flag := cv_const_y;
           END IF;
-          -- エラー内容の出力
           FND_FILE.PUT_LINE(
             which  => FND_FILE.OUTPUT
            ,buff   => SUBSTRB(xxccp_common_pkg.get_msg(
                         cv_app_kbn_cff,      -- アプリケーション短縮名：XXCFF
-                        cv_msg_cff_00138,    -- メッセージ：禁則文字エラー
+                        cv_msg_cff_00117,    -- メッセージ：数値論理エラー(0以下）
                         cv_tk_cff_00005_01,  -- カラム名
-                        cv_msg_cff_50180     -- 年式
+                        cv_msg_cff_50181     -- 数量
                       ),1,5000)
-          );            
+          );
         ELSE
           --変数に格納する。
-          gv_age_type   := gr_lord_data_tab(31);
-        END IF;         
+          gn_quantity   := TO_NUMBER(gr_lord_data_tab(31));
+        END IF;
       END IF;      
 --
-      -- 22.数量
+      -- 23.車台番号
       --(必須、文字数チェック)
       xxccp_common_pkg2.upload_item_check(
         gr_lord_name_tab(32)   -- 項目名称
@@ -2405,7 +3120,12 @@ AS
          ,buff   => lv_errmsg
         );  
       ELSE
-        IF (TO_NUMBER(gr_lord_data_tab(32)) < 0) THEN
+        --(禁則文字チェック)
+        lv_return := xxccp_common_pkg2.chk_moji(
+                       gr_lord_data_tab(32),   -- 対象文字列
+                       cv_check_scope);
+        IF (lv_return <> TRUE) THEN
+          -- エラー対象情報の出力
           IF (lv_err_flag = cv_const_n) THEN
             FND_FILE.PUT_LINE(
               which  => FND_FILE.OUTPUT
@@ -2413,22 +3133,23 @@ AS
             );
             lv_err_flag := cv_const_y;
           END IF;
+          -- エラー内容の出力
           FND_FILE.PUT_LINE(
             which  => FND_FILE.OUTPUT
            ,buff   => SUBSTRB(xxccp_common_pkg.get_msg(
                         cv_app_kbn_cff,      -- アプリケーション短縮名：XXCFF
-                        cv_msg_cff_00117,    -- メッセージ：数値論理エラー(0以下）
+                        cv_msg_cff_00138,    -- メッセージ：禁則文字エラー
                         cv_tk_cff_00005_01,  -- カラム名
-                        cv_msg_cff_50181     -- 数量
+                        cv_msg_cff_50182     -- 車台番号
                       ),1,5000)
-          );
+          );            
         ELSE
           --変数に格納する。
-          gn_quantity   := TO_NUMBER(gr_lord_data_tab(32));
-        END IF;
+          gv_chassis_number  := gr_lord_data_tab(32);
+        END IF;         
       END IF;      
 --
-      -- 23.車台番号
+      -- 24.登録番号
       --(必須、文字数チェック)
       xxccp_common_pkg2.upload_item_check(
         gr_lord_name_tab(33)   -- 項目名称
@@ -2475,70 +3196,16 @@ AS
                         cv_app_kbn_cff,      -- アプリケーション短縮名：XXCFF
                         cv_msg_cff_00138,    -- メッセージ：禁則文字エラー
                         cv_tk_cff_00005_01,  -- カラム名
-                        cv_msg_cff_50182     -- 車台番号
-                      ),1,5000)
-          );            
-        ELSE
-          --変数に格納する。
-          gv_chassis_number  := gr_lord_data_tab(33);
-        END IF;         
-      END IF;      
---
-      -- 24.登録番号
-      --(必須、文字数チェック)
-      xxccp_common_pkg2.upload_item_check(
-        gr_lord_name_tab(34)   -- 項目名称
-       ,gr_lord_data_tab(34)   -- 項目値
-       ,gr_lord_len_tab(34)    -- 項目の長さ
-       ,gr_lord_dec_tab(34)    -- 項目の長さ(小数点以下)
-       ,gr_lord_null_tab(34)   -- 必須フラグ
-       ,gr_lord_attr_tab(34)   -- 項目型
-       ,lv_errbuf
-       ,lv_retcode
-       ,lv_errmsg);
-      IF (lv_retcode <> cv_status_normal) THEN
-        -- エラー対象情報の出力
-        IF (lv_err_flag = cv_const_n) THEN
-          FND_FILE.PUT_LINE(
-            which  => FND_FILE.OUTPUT
-           ,buff   => lv_err_info
-          );
-          lv_err_flag := cv_const_y;
-        END IF;
-        -- エラー内容の出力
-        FND_FILE.PUT_LINE(
-          which  => FND_FILE.OUTPUT
-         ,buff   => lv_errmsg
-        );  
-      ELSE
-        --(禁則文字チェック)
-        lv_return := xxccp_common_pkg2.chk_moji(
-                       gr_lord_data_tab(34),   -- 対象文字列
-                       cv_check_scope);
-        IF (lv_return <> TRUE) THEN
-          -- エラー対象情報の出力
-          IF (lv_err_flag = cv_const_n) THEN
-            FND_FILE.PUT_LINE(
-              which  => FND_FILE.OUTPUT
-             ,buff   => lv_err_info
-            );
-            lv_err_flag := cv_const_y;
-          END IF;
-          -- エラー内容の出力
-          FND_FILE.PUT_LINE(
-            which  => FND_FILE.OUTPUT
-           ,buff   => SUBSTRB(xxccp_common_pkg.get_msg(
-                        cv_app_kbn_cff,      -- アプリケーション短縮名：XXCFF
-                        cv_msg_cff_00138,    -- メッセージ：禁則文字エラー
-                        cv_tk_cff_00005_01,  -- カラム名
                         cv_msg_cff_50183     -- 登録番号
                       ),1,5000)
           );            
         ELSE
           --変数に格納する。
-          gv_registration_number  := gr_lord_data_tab(34);
+          gv_registration_number  := gr_lord_data_tab(33);
         END IF;         
       END IF;      
+--ADD 2010/01/07 END
+--
     END IF;
 --   
    --エラー存在時
@@ -2713,7 +3380,10 @@ AS
       , gn_second_charge                          -- ２回目リース料
       , gn_second_tax_charge                      -- ２回目リース料_消費税額
       , gn_first_deduction                        -- 初回リース料_控除額
-      , gn_first_tax_deduction                    -- 初回消費税額_控除額
+--UPD 2010/01/07 START
+      --, gn_first_tax_deduction                    -- 初回消費税額_控除額
+      , 0                                         -- 初回消費税額_控除額
+--UPD 2010/01/07 END
       , gn_estimated_cash_price                   -- 見積現金購入価額
       , gn_life_in_months                         -- 法定耐用年数
       , gv_object_code                            -- 物件コード
@@ -4105,24 +4775,28 @@ AS
       -- ***************************************************
       -- 6. 月額リース料控除額
       -- ***************************************************
-      IF ((xclw_data_rec.first_charge  <= xclw_data_rec.first_deduction) OR
-          (xclw_data_rec.second_charge <= xclw_data_rec.first_deduction)) THEN
-        IF (lv_err_flag = cv_const_n) THEN
-          FND_FILE.PUT_LINE(
-            which  => FND_FILE.OUTPUT
-           ,buff   => lv_err_info
-          );
-          lv_err_flag := cv_const_y;
-        END IF;
-        -- エラー内容の出力
-        FND_FILE.PUT_LINE(
-          which  => FND_FILE.OUTPUT
-         ,buff   => SUBSTRB(xxccp_common_pkg.get_msg(
-                      cv_app_kbn_cff,      -- アプリケーション短縮名：XXCFF
-                      cv_msg_cff_00034     -- メッセージ：控除額エラー
-                    ),1,5000)
-        );
-      END IF;
+--
+      --DEL 2010/01/07 START
+      --IF ((xclw_data_rec.first_charge  <= xclw_data_rec.first_deduction) OR
+      --    (xclw_data_rec.second_charge <= xclw_data_rec.first_deduction)) THEN
+      --  IF (lv_err_flag = cv_const_n) THEN
+      --    FND_FILE.PUT_LINE(
+      --      which  => FND_FILE.OUTPUT
+      --     ,buff   => lv_err_info
+      --    );
+      --    lv_err_flag := cv_const_y;
+      --  END IF;
+      --  -- エラー内容の出力
+      --  FND_FILE.PUT_LINE(
+      --    which  => FND_FILE.OUTPUT
+      --   ,buff   => SUBSTRB(xxccp_common_pkg.get_msg(
+      --                cv_app_kbn_cff,      -- アプリケーション短縮名：XXCFF
+      --                cv_msg_cff_00034     -- メッセージ：控除額エラー
+      --              ),1,5000)
+      --  );
+      --END IF;
+      --DEL 2010/01/07 START
+--
       -- ***************************************************
       -- 7. 月額消費税額控除額
       -- ***************************************************
@@ -4553,7 +5227,12 @@ AS
     gr_cont_line_rec.first_total_deduction  := 
       gr_cont_line_rec.first_deduction  + gr_cont_line_rec.first_tax_deduction ;          -- 初回計控除額
   --
-    gr_cont_line_rec.second_deduction       := gr_contract_info_rec.first_deduction;      -- ２回目以降月額リース料_控除額
+--
+    --UPD 2010/01/07 START
+    --gr_cont_line_rec.second_deduction       := gr_contract_info_rec.first_deduction;      -- ２回目以降月額リース料_控除額
+    gr_cont_line_rec.second_deduction       := gr_contract_info_rec.second_deduction;       -- ２回目以降月額リース料_控除額
+    --UPD 2010/01/07 END
+--
     gr_cont_line_rec.second_tax_deduction   := gr_contract_info_rec.first_tax_deduction;  -- ２回目以降消費税額_控除額
     gr_cont_line_rec.second_total_deduction := 
       gr_cont_line_rec.second_deduction + gr_cont_line_rec.second_tax_deduction ;         -- ２回目以降計控除額
@@ -4566,9 +5245,13 @@ AS
   -- 総額計_リース料
     gr_cont_line_rec.gross_total_charge     :=
       gr_cont_line_rec.gross_charge         + gr_cont_line_rec.gross_tax_charge;
-  -- 総額リース料_控除額  
-    gr_cont_line_rec.gross_deduction        :=
-      (gr_contract_info_rec.first_deduction * gr_contract_info_rec.payment_frequency);
+  -- 総額リース料_控除額
+    --UPD 2010/01/07 START
+    --gr_cont_line_rec.gross_deduction        :=
+    --  (gr_contract_info_rec.first_deduction * gr_contract_info_rec.payment_frequency);
+    gr_cont_line_rec.gross_deduction        := gr_contract_info_rec.first_deduction +
+      (gr_contract_info_rec.second_deduction * (gr_contract_info_rec.payment_frequency - 1));
+    --UPD 2010/01/07 END
   -- 総額消費税_控除額
     gr_cont_line_rec.gross_tax_deduction    :=
       (gr_contract_info_rec.first_tax_deduction * gr_contract_info_rec.payment_frequency);
@@ -4893,6 +5576,14 @@ AS
     ln_cont_header_id    xxcff_contract_lines.contract_header_id%TYPE;
     ln_object_header_id  xxcff_object_headers.object_header_id%TYPE;
 --
+  --ADD 2010/01/07 START
+    ln_second_deduction               NUMBER;
+    ln_truncated_deduction            NUMBER;
+    ln_total_fraction                 NUMBER;
+    ln_first_deduction                NUMBER;
+  --ADD 2010/01/07 END
+--
+--
     -- ===============================
     -- ローカル・カーソル
     -- ===============================
@@ -4919,6 +5610,9 @@ AS
             ,xclw.second_tax_charge          AS second_tax_charge
             ,xclw.first_deduction            AS first_deduction
             ,xclw.first_tax_deduction        AS first_tax_deduction
+            --ADD 2010/01/07 STAR
+            ,NULL                            AS second_deduction
+            --ADD 2010/01/07 END
             ,xclw.estimated_cash_price       AS estimated_cash_price
             ,xclw.life_in_months             AS life_in_months
             ,xclw.lease_kind                 AS lease_kind
@@ -4967,6 +5661,34 @@ AS
 --
       gn_target_cnt := gn_target_cnt + 1;
 --
+  --ADD 2010/01/07 START
+  -- ***************************************************
+  --  維持管理費相当額の月額金額を計算
+  --  初回月額リース料控除額、2回目以降月額リース料控除額に金額設定
+  --  端数調整は 初回月額リース料控除額 で実施
+  -- ***************************************************
+--
+      -- 金額算出ロジック
+--
+      -- 維持管理費用相当額の月額の金額を算出(円未満の端数切捨て)
+      -- 2回目以降月額リース料控除額
+      ln_second_deduction := trunc(gr_contract_info_rec.first_deduction / gr_contract_info_rec.payment_frequency);
+      -- 2回目以降月額リース料控除額と支払回数より維持管理費用相当額（端数切捨て）を算出
+      ln_truncated_deduction := ln_second_deduction * gr_contract_info_rec.payment_frequency;
+      -- 維持管理費用相当額と維持管理費用相当額（端数切捨て）より端数の総額を算出
+      ln_total_fraction := gr_contract_info_rec.first_deduction - ln_truncated_deduction;
+      -- 端数の総額を初回月額リース料控除額で調整する
+      ln_first_deduction := ln_second_deduction + ln_total_fraction;
+--
+      -- 金額設定
+--
+      -- 初回月額リース料控除額
+      gr_contract_info_rec.first_deduction := ln_first_deduction;
+      -- 2回目以降月額リース料控除額
+      gr_contract_info_rec.second_deduction := ln_second_deduction;
+--
+  --ADD 2010/01/07 END
+--
   -- ***************************************************
   -- 1. アップロード項目編集                      (A-12)
   -- ***************************************************
@@ -4981,7 +5703,6 @@ AS
         CLOSE contract_work_data_cur;
         RAISE global_api_expt;
       END IF;
---
   -- ***************************************************
   -- 2. リース種類判定                            (A-14)
   -- ***************************************************
@@ -5040,7 +5761,6 @@ AS
         CLOSE contract_work_data_cur;
         RAISE global_api_expt;
       END IF;
---
   -- ***************************************************
   -- 5. リース契約明細新規登録                    (A-17)
   -- ***************************************************
