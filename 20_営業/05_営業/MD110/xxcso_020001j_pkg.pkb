@@ -6,7 +6,7 @@ AS
  * Package Name     : xxcso_020001j_pkg(BODY)
  * Description      : フルベンダーSP専決
  * MD.050/070       : 
- * Version          : 1.0
+ * Version          : 1.3
  *
  * Program List
  *  ------------------------- ---- ----- --------------------------------------------------
@@ -37,9 +37,9 @@ AS
  *  Date          Ver.  Editor           Description
  * ------------- ----- ---------------- -------------------------------------------------
  *  2008/12/23    1.0   H.Ogawa          新規作成
- *  2008/03/23    1.1   N.Yanagitaira    [障害T1_0163]承認時契約先update処理修正
- *  2008/04/06    1.2   N.Yanagitaira    [障害T1_0316]回送先レコード更新処理修正
- *
+ *  2009/03/23    1.1   N.Yanagitaira    [障害T1_0163]承認時契約先update処理修正
+ *  2009/04/06    1.2   N.Yanagitaira    [障害T1_0316]回送先レコード更新処理修正
+ *  2009/04/09    1.3   K.Satomura       [障害T1_0424]承認完了日・決裁日設定値修正
  *****************************************************************************************/
 --
   -- ===============================
@@ -323,7 +323,10 @@ AS
           -- 処理中の回送先を見つけ、決裁状態区分を処理済に設定する
           UPDATE  xxcso_sp_decision_sends
           SET     approval_state_type = cv_approval_state_end
-                 ,approval_date       = SYSDATE
+                 /* 2009.04.09 K.Satomura T1_0424対応 START */
+                 --,approval_date       = SYSDATE
+                 ,approval_date       = xxcso_util_common_pkg.get_online_sysdate
+                 /* 2009.04.09 K.Satomura T1_0424対応 END */
                  ,approval_content    = cv_content_confirm
                  ,last_updated_by     = fnd_global.user_id
                  ,last_update_date    = SYSDATE
@@ -398,7 +401,10 @@ AS
           -- 処理中の回送先を見つけ、決裁状態区分を処理済に設定する
           UPDATE  xxcso_sp_decision_sends
           SET     approval_state_type = cv_approval_state_end
-                 ,approval_date       = SYSDATE
+                 /* 2009.04.09 K.Satomura T1_0424対応 START */
+                 --,approval_date       = SYSDATE
+                 ,approval_date       = xxcso_util_common_pkg.get_online_sysdate
+                 /* 2009.04.09 K.Satomura T1_0424対応 END */
                  ,approval_content    = cv_content_approve
                  ,last_updated_by     = fnd_global.user_id
                  ,last_update_date    = SYSDATE
@@ -469,7 +475,10 @@ AS
           -- 処理中の回送先を見つけ、決裁状態区分を未処理に設定する
           UPDATE  xxcso_sp_decision_sends
           SET     approval_state_type = cv_approval_state_none
-                 ,approval_date       = SYSDATE
+                 /* 2009.04.09 K.Satomura T1_0424対応 START */
+                 --,approval_date       = SYSDATE
+                 ,approval_date       = xxcso_util_common_pkg.get_online_sysdate
+                 /* 2009.04.09 K.Satomura T1_0424対応 END */
                  ,approval_content    = cv_content_return
                  ,last_updated_by     = fnd_global.user_id
                  ,last_update_date    = SYSDATE
@@ -534,7 +543,10 @@ AS
           -- 処理中の回送先を見つけ、決裁状態区分を未処理に設定する
           UPDATE  xxcso_sp_decision_sends
           SET     approval_state_type = cv_approval_state_none
-                 ,approval_date       = SYSDATE
+                 /* 2009.04.09 K.Satomura T1_0424対応 START */
+                 --,approval_date       = SYSDATE
+                 ,approval_date       = xxcso_util_common_pkg.get_online_sysdate
+                 /* 2009.04.09 K.Satomura T1_0424対応 END */
                  ,approval_content    = cv_content_reject
                  ,last_updated_by     = fnd_global.user_id
                  ,last_update_date    = SYSDATE
@@ -624,7 +636,10 @@ AS
         -- 承認完了日にシステム日付を設定する
         UPDATE  xxcso_sp_decision_headers
         SET     status                 = cv_status_enabled
-               ,approval_complete_date = SYSDATE
+               /* 2009.04.09 K.Satomura T1_0424対応 START */
+               --,approval_complete_date = SYSDATE
+               ,approval_complete_date = xxcso_util_common_pkg.get_online_sysdate
+               /* 2009.04.09 K.Satomura T1_0424対応 END */
                ,last_updated_by        = fnd_global.user_id
                ,last_update_date       = SYSDATE
                ,last_update_login      = fnd_global.login_id
