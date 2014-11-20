@@ -7,7 +7,7 @@ AS
  * Description      : 受払残高表（Ⅰ）原料・資材・半製品
  * MD.050/070       : 月次〆切処理（経理）Issue1.0(T_MD050_BPO_770)
  *                    月次〆切処理（経理）Issue1.0(T_MD070_BPO_77A)
- * Version          : 1.17
+ * Version          : 1.18
  *
  * Program List
  * -------------------------- ----------------------------------------------------------
@@ -55,6 +55,7 @@ AS
  *  2008/11/11    1.16  A.Shiina         移行不具合修正
  *  2008/11/13    1.16  N.Fukuda         統合指摘#634対応(移行データ検証不具合対応)
  *  2008/11/17    1.17  A.Shiina         月首･月末在庫不具合修正
+ *  2008/11/19    1.18  N.Yoshida        I_S_684対応、移行データ検証不具合対応
  *****************************************************************************************/
 --
 --#######################  固定グローバル定数宣言部 START   #######################
@@ -858,6 +859,12 @@ AS
       AND    gic3.item_id            = itc.item_id
       AND    gic3.category_set_id    = ln_crowd_code_id
       AND    gic3.category_id        = mcb3.category_id
+-- 2008/11/19 v1.18 ADD START
+      AND    xrpm.rcv_pay_div        = CASE
+                                       WHEN itc.trans_qty >= 0 THEN 1
+                                       ELSE -1
+                                       END
+-- 2008/11/19 v1.18 ADD END
       AND    xrpm.doc_type           = itc.doc_type
       AND    xrpm.reason_code        = itc.reason_code
       AND    xrpm.rcv_pay_div        = itc.line_type
@@ -935,7 +942,12 @@ AS
                                        ,'X961'
                                        ,'X962'
                                        ,'X963'
-                                       ,'X964')
+-- 2008/11/19 v1.18 UPDATE START
+--                                       ,'X964')
+                                       ,'X964'
+                                       ,'X965'
+                                       ,'X966')
+-- 2008/11/19 v1.18 UPDATE END
       AND    itc.trans_date > FND_DATE.STRING_TO_DATE(gd_prv1_dt_chr,gc_char_dt_format)
       AND    itc.trans_date < FND_DATE.STRING_TO_DATE(gd_flw_dt_chr,gc_char_dt_format)
       AND    ilm.item_id             = itc.item_id
@@ -1287,10 +1299,12 @@ AS
       AND    gic3.item_id            = itc.item_id
       AND    gic3.category_set_id    = ln_crowd_code_id
       AND    gic3.category_id        = mcb3.category_id
-      AND    xrpm.rcv_pay_div        = CASE
-                                       WHEN itc.trans_qty >= 0 THEN 1
-                                       ELSE -1
-                                       END
+-- 2008/11/19 v1.18 DELETE START
+      --AND    xrpm.rcv_pay_div        = CASE
+      --                                 WHEN itc.trans_qty >= 0 THEN 1
+      --                                 ELSE -1
+      --                                 END
+-- 2008/11/19 v1.18 DELETE END
       AND    xrpm.doc_type           = itc.doc_type
       AND    xrpm.reason_code        = itc.reason_code
       AND    xrpm.break_col_01       IS NOT NULL
@@ -2406,6 +2420,69 @@ AS
       AND    xrpm.break_col_01       IS NOT NULL
       AND    mcb3.segment1           = lt_crowd_code
       AND    iwm.whse_code           = itp.whse_code
+      -- 当月受払無しデータ
+      UNION ALL
+      SELECT /*+ leading (xsims gic1 mcb1 gic2 mcb2 gic3 mcb3 iimb ximb xlc) use_nl (xsims gic1 mcb1 gic2 mcb2 gic3 mcb3 iimb ximb xlc) */
+             iwm.whse_code                        h_whse_code
+            ,iwm.whse_name                        h_whse_name
+            ,NULL                                 trans_id
+            ,iimb.attribute15                     cost_mng_clss
+            ,iimb.lot_ctl                         lot_ctl
+            ,xlc.unit_ploce                       actual_unit_price
+            ,'1'                                  column_no
+            ,NULL                                 reason_code
+            ,gd_s_date                            trans_date
+            ,TO_CHAR(gd_s_date, gc_char_ym_format)  trans_ym
+            ,'1'                                  rcv_pay_div
+            ,NULL                                 dealings_div
+            ,NULL                                 doc_type
+            ,ir_param.item_class                  item_div
+            ,ir_param.goods_class                 prod_div
+            ,mcb3.segment1                        crowd_code
+            ,SUBSTR(mcb3.segment1, 1, 3)          crowd_low
+            ,SUBSTR(mcb3.segment1, 1, 2)          crowd_mid
+            ,SUBSTR(mcb3.segment1, 1, 1)          crowd_high
+            ,iimb.item_id                         item_id
+            ,0                                    lot_id
+            ,0                                    trans_qty
+            ,gd_s_date                            arrival_date
+            ,TO_CHAR(gd_s_date, gc_char_ym_format)  arrival_ym
+            ,iimb.item_no                         item_code
+            ,ximb.item_short_name                 item_name
+      FROM   xxinv_stc_inventory_month_stck   xsims
+            ,ic_item_mst_b                    iimb
+            ,xxcmn_item_mst_b                 ximb
+            ,ic_lots_mst                      ilm
+            ,xxcmn_lot_cost                   xlc
+            ,gmi_item_categories              gic1
+            ,mtl_categories_b                 mcb1
+            ,gmi_item_categories              gic2
+            ,mtl_categories_b                 mcb2
+            ,gmi_item_categories              gic3
+            ,mtl_categories_b                 mcb3
+            ,ic_whse_mst                      iwm
+      WHERE  xsims.item_id           = iimb.item_id
+      AND    ximb.item_id            = iimb.item_id
+      AND    ilm.item_id             = xsims.item_id
+      AND    ilm.lot_id              = xsims.lot_id
+      AND    xlc.item_id(+)          = ilm.item_id
+      AND    xlc.lot_id (+)          = ilm.lot_id
+      AND    ximb.start_date_active <= gd_s_date
+      AND    ximb.end_date_active   >= gd_s_date
+      AND    gic1.item_id            = xsims.item_id
+      AND    gic1.category_set_id    = cn_prod_class_id
+      AND    gic1.category_id        = mcb1.category_id
+      AND    mcb1.segment1           = ir_param.goods_class
+      AND    gic2.item_id            = xsims.item_id
+      AND    gic2.category_set_id    = cn_item_class_id
+      AND    gic2.category_id        = mcb2.category_id
+      AND    mcb2.segment1           = ir_param.item_class
+      AND    gic3.item_id            = xsims.item_id
+      AND    gic3.category_set_id    = ln_crowd_code_id
+      AND    gic3.category_id        = mcb3.category_id
+      AND    mcb3.segment1           = lt_crowd_code
+      AND    iwm.whse_code           = xsims.whse_code
+      AND    xsims.invent_ym         = TO_CHAR(gd_s_date, gc_char_ym_format)
       ORDER BY h_whse_code
               ,crowd_code
               ,item_code
@@ -2591,6 +2668,12 @@ AS
       AND    gic3.item_id            = itc.item_id
       AND    gic3.category_set_id    = ln_crowd_code_id
       AND    gic3.category_id        = mcb3.category_id
+-- 2008/11/19 v1.18 ADD START
+      AND    xrpm.rcv_pay_div        = CASE
+                                       WHEN itc.trans_qty >= 0 THEN 1
+                                       ELSE -1
+                                       END
+-- 2008/11/19 v1.18 ADD END
       AND    xrpm.doc_type           = itc.doc_type
       AND    xrpm.reason_code        = itc.reason_code
       AND    xrpm.rcv_pay_div        = itc.line_type
@@ -2667,7 +2750,12 @@ AS
                                        ,'X961'
                                        ,'X962'
                                        ,'X963'
-                                       ,'X964')
+-- 2008/11/19 v1.18 UPDATE START
+--                                       ,'X964')
+                                       ,'X964'
+                                       ,'X965'
+                                       ,'X966')
+-- 2008/11/19 v1.18 UPDATE END
       AND    itc.trans_date > FND_DATE.STRING_TO_DATE(gd_prv1_dt_chr,gc_char_dt_format)
       AND    itc.trans_date < FND_DATE.STRING_TO_DATE(gd_flw_dt_chr,gc_char_dt_format)
       AND    ilm.item_id             = itc.item_id
@@ -3015,10 +3103,12 @@ AS
       AND    gic3.item_id            = itc.item_id
       AND    gic3.category_set_id    = ln_crowd_code_id
       AND    gic3.category_id        = mcb3.category_id
-      AND    xrpm.rcv_pay_div        = CASE
-                                       WHEN itc.trans_qty >= 0 THEN 1
-                                       ELSE -1
-                                       END
+-- 2008/11/19 v1.18 DELETE START
+      --AND    xrpm.rcv_pay_div        = CASE
+      --                                 WHEN itc.trans_qty >= 0 THEN 1
+      --                                 ELSE -1
+      --                                 END
+-- 2008/11/19 v1.18 DELETE END
       AND    xrpm.doc_type           = itc.doc_type
       AND    xrpm.reason_code        = itc.reason_code
       AND    xrpm.break_col_01       IS NOT NULL
@@ -4122,6 +4212,68 @@ AS
       AND    xrpm.ship_prov_rcv_pay_category = otta.attribute11
       AND    xrpm.break_col_01       IS NOT NULL
       AND   iwm.whse_code            = itp.whse_code
+      -- 当月受払無しデータ
+      UNION ALL
+      SELECT /*+ leading (xsims gic1 mcb1 gic2 mcb2 gic3 mcb3 iimb ximb xlc) use_nl (xsims gic1 mcb1 gic2 mcb2 gic3 mcb3 iimb ximb xlc) */
+             iwm.whse_code                        h_whse_code
+            ,iwm.whse_name                        h_whse_name
+            ,NULL                                 trans_id
+            ,iimb.attribute15                     cost_mng_clss
+            ,iimb.lot_ctl                         lot_ctl
+            ,xlc.unit_ploce                       actual_unit_price
+            ,'1'                                  column_no
+            ,NULL                                 reason_code
+            ,gd_s_date                            trans_date
+            ,TO_CHAR(gd_s_date, gc_char_ym_format)  trans_ym
+            ,'1'                                  rcv_pay_div
+            ,NULL                                 dealings_div
+            ,NULL                                 doc_type
+            ,ir_param.item_class                  item_div
+            ,ir_param.goods_class                 prod_div
+            ,mcb3.segment1                        crowd_code
+            ,SUBSTR(mcb3.segment1, 1, 3)          crowd_low
+            ,SUBSTR(mcb3.segment1, 1, 2)          crowd_mid
+            ,SUBSTR(mcb3.segment1, 1, 1)          crowd_high
+            ,iimb.item_id                         item_id
+            ,0                                    lot_id
+            ,0                                    trans_qty
+            ,gd_s_date                            arrival_date
+            ,TO_CHAR(gd_s_date, gc_char_ym_format)  arrival_ym
+            ,iimb.item_no                         item_code
+            ,ximb.item_short_name                 item_name
+      FROM   xxinv_stc_inventory_month_stck   xsims
+            ,ic_item_mst_b                    iimb
+            ,xxcmn_item_mst_b                 ximb
+            ,ic_lots_mst                      ilm
+            ,xxcmn_lot_cost                   xlc
+            ,gmi_item_categories              gic1
+            ,mtl_categories_b                 mcb1
+            ,gmi_item_categories              gic2
+            ,mtl_categories_b                 mcb2
+            ,gmi_item_categories              gic3
+            ,mtl_categories_b                 mcb3
+            ,ic_whse_mst                      iwm
+      WHERE  xsims.item_id           = iimb.item_id
+      AND    ximb.item_id            = iimb.item_id
+      AND    ilm.item_id             = xsims.item_id
+      AND    ilm.lot_id              = xsims.lot_id
+      AND    xlc.item_id(+)          = ilm.item_id
+      AND    xlc.lot_id (+)          = ilm.lot_id
+      AND    ximb.start_date_active <= gd_s_date
+      AND    ximb.end_date_active   >= gd_s_date
+      AND    gic1.item_id            = xsims.item_id
+      AND    gic1.category_set_id    = cn_prod_class_id
+      AND    gic1.category_id        = mcb1.category_id
+      AND    mcb1.segment1           = ir_param.goods_class
+      AND    gic2.item_id            = xsims.item_id
+      AND    gic2.category_set_id    = cn_item_class_id
+      AND    gic2.category_id        = mcb2.category_id
+      AND    mcb2.segment1           = ir_param.item_class
+      AND    gic3.item_id            = xsims.item_id
+      AND    gic3.category_set_id    = ln_crowd_code_id
+      AND    gic3.category_id        = mcb3.category_id
+      AND    iwm.whse_code           = xsims.whse_code
+      AND    xsims.invent_ym         = TO_CHAR(gd_s_date, gc_char_ym_format)
       ORDER BY h_whse_code
               ,crowd_code
               ,item_code
@@ -4309,6 +4461,12 @@ AS
       AND    gic3.item_id            = itc.item_id
       AND    gic3.category_set_id    = ln_crowd_code_id
       AND    gic3.category_id        = mcb3.category_id
+-- 2008/11/19 v1.18 ADD START
+      AND    xrpm.rcv_pay_div        = CASE
+                                       WHEN itc.trans_qty >= 0 THEN 1
+                                       ELSE -1
+                                       END
+-- 2008/11/19 v1.18 ADD END
       AND    xrpm.doc_type           = itc.doc_type
       AND    xrpm.reason_code        = itc.reason_code
       AND    xrpm.rcv_pay_div        = itc.line_type
@@ -4387,7 +4545,12 @@ AS
                                        ,'X961'
                                        ,'X962'
                                        ,'X963'
-                                       ,'X964')
+-- 2008/11/19 v1.18 UPDATE START
+--                                       ,'X964')
+                                       ,'X964'
+                                       ,'X965'
+                                       ,'X966')
+-- 2008/11/19 v1.18 UPDATE END
       AND    itc.trans_date > FND_DATE.STRING_TO_DATE(gd_prv1_dt_chr,gc_char_dt_format)
       AND    itc.trans_date < FND_DATE.STRING_TO_DATE(gd_flw_dt_chr,gc_char_dt_format)
       AND    ilm.item_id             = itc.item_id
@@ -4743,10 +4906,12 @@ AS
       AND    gic3.item_id            = itc.item_id
       AND    gic3.category_set_id    = ln_crowd_code_id
       AND    gic3.category_id        = mcb3.category_id
-      AND    xrpm.rcv_pay_div        = CASE
-                                       WHEN itc.trans_qty >= 0 THEN 1
-                                       ELSE -1
-                                       END
+-- 2008/11/19 v1.18 DELETE START
+      --AND    xrpm.rcv_pay_div        = CASE
+      --                                 WHEN itc.trans_qty >= 0 THEN 1
+      --                                 ELSE -1
+      --                                 END
+-- 2008/11/19 v1.18 DELETE END
       AND    xrpm.doc_type           = itc.doc_type
       AND    xrpm.reason_code        = itc.reason_code
       AND    xrpm.break_col_01       IS NOT NULL
@@ -5874,6 +6039,71 @@ AS
       AND    iwm.whse_code           = itp.whse_code
       AND    iwm.whse_code           = ir_param.locat_code
       AND    mcb3.segment1           = lt_crowd_code
+      -- 当月受払無しデータ
+      UNION ALL
+      SELECT /*+ leading (xsims gic1 mcb1 gic2 mcb2 gic3 mcb3 iimb ximb xlc) use_nl (xsims gic1 mcb1 gic2 mcb2 gic3 mcb3 iimb ximb xlc) */
+             iwm.whse_code                        h_whse_code
+            ,iwm.whse_name                        h_whse_name
+            ,NULL                                 trans_id
+            ,iimb.attribute15                     cost_mng_clss
+            ,iimb.lot_ctl                         lot_ctl
+            ,xlc.unit_ploce                       actual_unit_price
+            ,'1'                                  column_no
+            ,NULL                                 reason_code
+            ,gd_s_date                            trans_date
+            ,TO_CHAR(gd_s_date, gc_char_ym_format)  trans_ym
+            ,'1'                                  rcv_pay_div
+            ,NULL                                 dealings_div
+            ,NULL                                 doc_type
+            ,ir_param.item_class                  item_div
+            ,ir_param.goods_class                 prod_div
+            ,mcb3.segment1                        crowd_code
+            ,SUBSTR(mcb3.segment1, 1, 3)          crowd_low
+            ,SUBSTR(mcb3.segment1, 1, 2)          crowd_mid
+            ,SUBSTR(mcb3.segment1, 1, 1)          crowd_high
+            ,iimb.item_id                         item_id
+            ,0                                    lot_id
+            ,0                                    trans_qty
+            ,gd_s_date                            arrival_date
+            ,TO_CHAR(gd_s_date, gc_char_ym_format)  arrival_ym
+            ,iimb.item_no                         item_code
+            ,ximb.item_short_name                 item_name
+      FROM   xxinv_stc_inventory_month_stck   xsims
+            ,ic_item_mst_b                    iimb
+            ,xxcmn_item_mst_b                 ximb
+            ,ic_lots_mst                      ilm
+            ,xxcmn_lot_cost                   xlc
+            ,gmi_item_categories              gic1
+            ,mtl_categories_b                 mcb1
+            ,gmi_item_categories              gic2
+            ,mtl_categories_b                 mcb2
+            ,gmi_item_categories              gic3
+            ,mtl_categories_b                 mcb3
+            ,ic_whse_mst                      iwm
+      WHERE  xsims.item_id           = iimb.item_id
+      AND    ximb.item_id            = iimb.item_id
+      AND    ilm.item_id             = xsims.item_id
+      AND    ilm.lot_id              = xsims.lot_id
+      AND    xlc.item_id(+)          = ilm.item_id
+      AND    xlc.lot_id (+)          = ilm.lot_id
+      AND    ximb.start_date_active <= gd_s_date
+      AND    ximb.end_date_active   >= gd_s_date
+      AND    gic1.item_id            = xsims.item_id
+      AND    gic1.category_set_id    = cn_prod_class_id
+      AND    gic1.category_id        = mcb1.category_id
+      AND    mcb1.segment1           = ir_param.goods_class
+      AND    gic2.item_id            = xsims.item_id
+      AND    gic2.category_set_id    = cn_item_class_id
+      AND    gic2.category_id        = mcb2.category_id
+      AND    mcb2.segment1           = ir_param.item_class
+      AND    gic3.item_id            = xsims.item_id
+      AND    gic3.category_set_id    = ln_crowd_code_id
+      AND    gic3.category_id        = mcb3.category_id
+      AND    mcb3.segment1           = lt_crowd_code
+      AND    iwm.whse_code           = xsims.whse_code
+      AND    xsims.invent_ym         = TO_CHAR(gd_s_date, gc_char_ym_format)
+      AND    iwm.whse_code           = ir_param.locat_code
+      AND    mcb3.segment1           = lt_crowd_code
       ORDER BY h_whse_code
               ,crowd_code
               ,item_code
@@ -6060,6 +6290,12 @@ AS
       AND    gic3.item_id            = itc.item_id
       AND    gic3.category_set_id    = ln_crowd_code_id
       AND    gic3.category_id        = mcb3.category_id
+-- 2008/11/19 v1.18 ADD START
+      AND    xrpm.rcv_pay_div        = CASE
+                                       WHEN itc.trans_qty >= 0 THEN 1
+                                       ELSE -1
+                                       END
+-- 2008/11/19 v1.18 ADD END
       AND    xrpm.doc_type           = itc.doc_type
       AND    xrpm.reason_code        = itc.reason_code
       AND    xrpm.rcv_pay_div        = itc.line_type
@@ -6137,7 +6373,12 @@ AS
                                        ,'X961'
                                        ,'X962'
                                        ,'X963'
-                                       ,'X964')
+-- 2008/11/19 v1.18 UPDATE START
+--                                       ,'X964')
+                                       ,'X964'
+                                       ,'X965'
+                                       ,'X966')
+-- 2008/11/19 v1.18 UPDATE END
       AND    itc.trans_date > FND_DATE.STRING_TO_DATE(gd_prv1_dt_chr,gc_char_dt_format)
       AND    itc.trans_date < FND_DATE.STRING_TO_DATE(gd_flw_dt_chr,gc_char_dt_format)
       AND    ilm.item_id             = itc.item_id
@@ -6489,10 +6730,12 @@ AS
       AND    gic3.item_id            = itc.item_id
       AND    gic3.category_set_id    = ln_crowd_code_id
       AND    gic3.category_id        = mcb3.category_id
-      AND    xrpm.rcv_pay_div        = CASE
-                                       WHEN itc.trans_qty >= 0 THEN 1
-                                       ELSE -1
-                                       END
+-- 2008/11/19 v1.18 DELETE START
+      --AND    xrpm.rcv_pay_div        = CASE
+      --                                 WHEN itc.trans_qty >= 0 THEN 1
+      --                                 ELSE -1
+      --                                 END
+-- 2008/11/19 v1.18 DELETE END
       AND    xrpm.doc_type           = itc.doc_type
       AND    xrpm.reason_code        = itc.reason_code
       AND    xrpm.break_col_01       IS NOT NULL
@@ -7607,6 +7850,70 @@ AS
       AND    xrpm.ship_prov_rcv_pay_category = otta.attribute11
       AND    xrpm.break_col_01       IS NOT NULL
       AND    iwm.whse_code           = itp.whse_code
+      AND    iwm.whse_code           = ir_param.locat_code
+      -- 当月受払無しデータ
+      UNION ALL
+      SELECT /*+ leading (xsims gic1 mcb1 gic2 mcb2 gic3 mcb3 iimb ximb xlc) use_nl (xsims gic1 mcb1 gic2 mcb2 gic3 mcb3 iimb ximb xlc) */
+             iwm.whse_code                        h_whse_code
+            ,iwm.whse_name                        h_whse_name
+            ,NULL                                 trans_id
+            ,iimb.attribute15                     cost_mng_clss
+            ,iimb.lot_ctl                         lot_ctl
+            ,xlc.unit_ploce                       actual_unit_price
+            ,'1'                                  column_no
+            ,NULL                                 reason_code
+            ,gd_s_date                            trans_date
+            ,TO_CHAR(gd_s_date, gc_char_ym_format)  trans_ym
+            ,'1'                                  rcv_pay_div
+            ,NULL                                 dealings_div
+            ,NULL                                 doc_type
+            ,ir_param.item_class                  item_div
+            ,ir_param.goods_class                 prod_div
+            ,mcb3.segment1                        crowd_code
+            ,SUBSTR(mcb3.segment1, 1, 3)          crowd_low
+            ,SUBSTR(mcb3.segment1, 1, 2)          crowd_mid
+            ,SUBSTR(mcb3.segment1, 1, 1)          crowd_high
+            ,iimb.item_id                         item_id
+            ,0                                    lot_id
+            ,0                                    trans_qty
+            ,gd_s_date                            arrival_date
+            ,TO_CHAR(gd_s_date, gc_char_ym_format)  arrival_ym
+            ,iimb.item_no                         item_code
+            ,ximb.item_short_name                 item_name
+      FROM   xxinv_stc_inventory_month_stck   xsims
+            ,ic_item_mst_b                    iimb
+            ,xxcmn_item_mst_b                 ximb
+            ,ic_lots_mst                      ilm
+            ,xxcmn_lot_cost                   xlc
+            ,gmi_item_categories              gic1
+            ,mtl_categories_b                 mcb1
+            ,gmi_item_categories              gic2
+            ,mtl_categories_b                 mcb2
+            ,gmi_item_categories              gic3
+            ,mtl_categories_b                 mcb3
+            ,ic_whse_mst                      iwm
+      WHERE  xsims.item_id           = iimb.item_id
+      AND    ximb.item_id            = iimb.item_id
+      AND    ilm.item_id             = xsims.item_id
+      AND    ilm.lot_id              = xsims.lot_id
+      AND    xlc.item_id(+)          = ilm.item_id
+      AND    xlc.lot_id (+)          = ilm.lot_id
+      AND    ximb.start_date_active <= gd_s_date
+      AND    ximb.end_date_active   >= gd_s_date
+      AND    gic1.item_id            = xsims.item_id
+      AND    gic1.category_set_id    = cn_prod_class_id
+      AND    gic1.category_id        = mcb1.category_id
+      AND    mcb1.segment1           = ir_param.goods_class
+      AND    gic2.item_id            = xsims.item_id
+      AND    gic2.category_set_id    = cn_item_class_id
+      AND    gic2.category_id        = mcb2.category_id
+      AND    mcb2.segment1           = ir_param.item_class
+      AND    gic3.item_id            = xsims.item_id
+      AND    gic3.category_set_id    = ln_crowd_code_id
+      AND    gic3.category_id        = mcb3.category_id
+      AND    mcb3.segment1           = lt_crowd_code
+      AND    iwm.whse_code           = xsims.whse_code
+      AND    xsims.invent_ym         = TO_CHAR(gd_s_date, gc_char_ym_format)
       AND    iwm.whse_code           = ir_param.locat_code
       ORDER BY h_whse_code
               ,crowd_code
@@ -7791,6 +8098,12 @@ AS
       AND    gic3.item_id            = itc.item_id
       AND    gic3.category_set_id    = ln_crowd_code_id
       AND    gic3.category_id        = mcb3.category_id
+-- 2008/11/19 v1.18 ADD START
+      AND    xrpm.rcv_pay_div        = CASE
+                                       WHEN itc.trans_qty >= 0 THEN 1
+                                       ELSE -1
+                                       END
+-- 2008/11/19 v1.18 ADD END
       AND    xrpm.doc_type           = itc.doc_type
       AND    xrpm.reason_code        = itc.reason_code
       AND    xrpm.rcv_pay_div        = itc.line_type
@@ -7866,7 +8179,12 @@ AS
                                        ,'X961'
                                        ,'X962'
                                        ,'X963'
-                                       ,'X964')
+-- 2008/11/19 v1.18 UPDATE START
+--                                       ,'X964')
+                                       ,'X964'
+                                       ,'X965'
+                                       ,'X966')
+-- 2008/11/19 v1.18 UPDATE END
       AND    itc.trans_date > FND_DATE.STRING_TO_DATE(gd_prv1_dt_chr,gc_char_dt_format)
       AND    itc.trans_date < FND_DATE.STRING_TO_DATE(gd_flw_dt_chr,gc_char_dt_format)
       AND    ilm.item_id             = itc.item_id
@@ -8210,10 +8528,12 @@ AS
       AND    gic3.item_id            = itc.item_id
       AND    gic3.category_set_id    = ln_crowd_code_id
       AND    gic3.category_id        = mcb3.category_id
-      AND    xrpm.rcv_pay_div        = CASE
-                                       WHEN itc.trans_qty >= 0 THEN 1
-                                       ELSE -1
-                                       END
+-- 2008/11/19 v1.18 DELETE START
+      --AND    xrpm.rcv_pay_div        = CASE
+      --                                 WHEN itc.trans_qty >= 0 THEN 1
+      --                                 ELSE -1
+      --                                 END
+-- 2008/11/19 v1.18 DELETE END
       AND    xrpm.doc_type           = itc.doc_type
       AND    xrpm.reason_code        = itc.reason_code
       AND    xrpm.break_col_01       IS NOT NULL
@@ -9305,6 +9625,68 @@ AS
       AND    xrpm.stock_adjustment_div = otta.attribute4
       AND    xrpm.ship_prov_rcv_pay_category = otta.attribute11
       AND    xrpm.break_col_01       IS NOT NULL
+      AND    mcb3.segment1           = lt_crowd_code
+      -- 当月受払無しデータ
+      UNION ALL
+      SELECT /*+ leading (xsims gic1 mcb1 gic2 mcb2 gic3 mcb3 iimb ximb xlc) use_nl (xsims gic1 mcb1 gic2 mcb2 gic3 mcb3 iimb ximb xlc) */
+             NULL                                 h_whse_code
+            ,NULL                                 h_whse_name
+            ,NULL                                 trans_id
+            ,iimb.attribute15                     cost_mng_clss
+            ,iimb.lot_ctl                         lot_ctl
+            ,xlc.unit_ploce                       actual_unit_price
+            ,'1'                                  column_no
+            ,NULL                                 reason_code
+            ,gd_s_date                            trans_date
+            ,TO_CHAR(gd_s_date, gc_char_ym_format)  trans_ym
+            ,'1'                                  rcv_pay_div
+            ,NULL                                 dealings_div
+            ,NULL                                 doc_type
+            ,ir_param.item_class                  item_div
+            ,ir_param.goods_class                 prod_div
+            ,mcb3.segment1                        crowd_code
+            ,SUBSTR(mcb3.segment1, 1, 3)          crowd_low
+            ,SUBSTR(mcb3.segment1, 1, 2)          crowd_mid
+            ,SUBSTR(mcb3.segment1, 1, 1)          crowd_high
+            ,iimb.item_id                         item_id
+            ,0                                    lot_id
+            ,0                                    trans_qty
+            ,gd_s_date                            arrival_date
+            ,TO_CHAR(gd_s_date, gc_char_ym_format)  arrival_ym
+            ,iimb.item_no                         item_code
+            ,ximb.item_short_name                 item_name
+      FROM   xxinv_stc_inventory_month_stck   xsims
+            ,ic_item_mst_b                    iimb
+            ,xxcmn_item_mst_b                 ximb
+            ,ic_lots_mst                      ilm
+            ,xxcmn_lot_cost                   xlc
+            ,gmi_item_categories              gic1
+            ,mtl_categories_b                 mcb1
+            ,gmi_item_categories              gic2
+            ,mtl_categories_b                 mcb2
+            ,gmi_item_categories              gic3
+            ,mtl_categories_b                 mcb3
+      WHERE  xsims.item_id           = iimb.item_id
+      AND    ximb.item_id            = iimb.item_id
+      AND    ilm.item_id             = xsims.item_id
+      AND    ilm.lot_id              = xsims.lot_id
+      AND    xlc.item_id(+)          = ilm.item_id
+      AND    xlc.lot_id (+)          = ilm.lot_id
+      AND    ximb.start_date_active <= gd_s_date
+      AND    ximb.end_date_active   >= gd_s_date
+      AND    gic1.item_id            = xsims.item_id
+      AND    gic1.category_set_id    = cn_prod_class_id
+      AND    gic1.category_id        = mcb1.category_id
+      AND    mcb1.segment1           = ir_param.goods_class
+      AND    gic2.item_id            = xsims.item_id
+      AND    gic2.category_set_id    = cn_item_class_id
+      AND    gic2.category_id        = mcb2.category_id
+      AND    mcb2.segment1           = ir_param.item_class
+      AND    gic3.item_id            = xsims.item_id
+      AND    gic3.category_set_id    = ln_crowd_code_id
+      AND    gic3.category_id        = mcb3.category_id
+      AND    mcb3.segment1           = lt_crowd_code
+      AND    xsims.invent_ym         = TO_CHAR(gd_s_date, gc_char_ym_format)
       AND    mcb3.segment1           = lt_crowd_code
       ORDER BY crowd_code
               ,item_code
@@ -9487,6 +9869,12 @@ AS
       AND    gic3.item_id            = itc.item_id
       AND    gic3.category_set_id    = ln_crowd_code_id
       AND    gic3.category_id        = mcb3.category_id
+-- 2008/11/19 v1.18 ADD START
+      AND    xrpm.rcv_pay_div        = CASE
+                                       WHEN itc.trans_qty >= 0 THEN 1
+                                       ELSE -1
+                                       END
+-- 2008/11/19 v1.18 ADD END
       AND    xrpm.doc_type           = itc.doc_type
       AND    xrpm.reason_code        = itc.reason_code
       AND    xrpm.rcv_pay_div        = itc.line_type
@@ -9561,7 +9949,12 @@ AS
                                        ,'X961'
                                        ,'X962'
                                        ,'X963'
-                                       ,'X964')
+-- 2008/11/19 v1.18 UPDATE START
+--                                       ,'X964')
+                                       ,'X964'
+                                       ,'X965'
+                                       ,'X966')
+-- 2008/11/19 v1.18 UPDATE END
       AND    itc.trans_date > FND_DATE.STRING_TO_DATE(gd_prv1_dt_chr,gc_char_dt_format)
       AND    itc.trans_date < FND_DATE.STRING_TO_DATE(gd_flw_dt_chr,gc_char_dt_format)
       AND    ilm.item_id             = itc.item_id
@@ -9901,10 +10294,12 @@ AS
       AND    gic3.item_id            = itc.item_id
       AND    gic3.category_set_id    = ln_crowd_code_id
       AND    gic3.category_id        = mcb3.category_id
-      AND    xrpm.rcv_pay_div        = CASE
-                                       WHEN itc.trans_qty >= 0 THEN 1
-                                       ELSE -1
-                                       END
+-- 2008/11/19 v1.18 DELETE START
+      --AND    xrpm.rcv_pay_div        = CASE
+      --                                 WHEN itc.trans_qty >= 0 THEN 1
+      --                                 ELSE -1
+      --                                 END
+-- 2008/11/19 v1.18 DELETE END
       AND    xrpm.doc_type           = itc.doc_type
       AND    xrpm.reason_code        = itc.reason_code
       AND    xrpm.break_col_01       IS NOT NULL
@@ -10985,6 +11380,67 @@ AS
       AND    xrpm.stock_adjustment_div = otta.attribute4
       AND    xrpm.ship_prov_rcv_pay_category = otta.attribute11
       AND    xrpm.break_col_01       IS NOT NULL
+      -- 当月受払無しデータ
+      UNION ALL
+      SELECT /*+ leading (xsims gic1 mcb1 gic2 mcb2 gic3 mcb3 iimb ximb xlc) use_nl (xsims gic1 mcb1 gic2 mcb2 gic3 mcb3 iimb ximb xlc) */
+             NULL                                 h_whse_code
+            ,NULL                                 h_whse_name
+            ,NULL                                 trans_id
+            ,iimb.attribute15                     cost_mng_clss
+            ,iimb.lot_ctl                         lot_ctl
+            ,xlc.unit_ploce                       actual_unit_price
+            ,'1'                                  column_no
+            ,NULL                                 reason_code
+            ,gd_s_date                            trans_date
+            ,TO_CHAR(gd_s_date, gc_char_ym_format)  trans_ym
+            ,'1'                                  rcv_pay_div
+            ,NULL                                 dealings_div
+            ,NULL                                 doc_type
+            ,ir_param.item_class                  item_div
+            ,ir_param.goods_class                 prod_div
+            ,mcb3.segment1                        crowd_code
+            ,SUBSTR(mcb3.segment1, 1, 3)          crowd_low
+            ,SUBSTR(mcb3.segment1, 1, 2)          crowd_mid
+            ,SUBSTR(mcb3.segment1, 1, 1)          crowd_high
+            ,iimb.item_id                         item_id
+            ,0                                    lot_id
+            ,0                                    trans_qty
+            ,gd_s_date                            arrival_date
+            ,TO_CHAR(gd_s_date, gc_char_ym_format)  arrival_ym
+            ,iimb.item_no                         item_code
+            ,ximb.item_short_name                 item_name
+      FROM   xxinv_stc_inventory_month_stck   xsims
+            ,ic_item_mst_b                    iimb
+            ,xxcmn_item_mst_b                 ximb
+            ,ic_lots_mst                      ilm
+            ,xxcmn_lot_cost                   xlc
+            ,gmi_item_categories              gic1
+            ,mtl_categories_b                 mcb1
+            ,gmi_item_categories              gic2
+            ,mtl_categories_b                 mcb2
+            ,gmi_item_categories              gic3
+            ,mtl_categories_b                 mcb3
+      WHERE  xsims.item_id           = iimb.item_id
+      AND    ximb.item_id            = iimb.item_id
+      AND    ilm.item_id             = xsims.item_id
+      AND    ilm.lot_id              = xsims.lot_id
+      AND    xlc.item_id(+)          = ilm.item_id
+      AND    xlc.lot_id (+)          = ilm.lot_id
+      AND    ximb.start_date_active <= gd_s_date
+      AND    ximb.end_date_active   >= gd_s_date
+      AND    gic1.item_id            = xsims.item_id
+      AND    gic1.category_set_id    = cn_prod_class_id
+      AND    gic1.category_id        = mcb1.category_id
+      AND    mcb1.segment1           = ir_param.goods_class
+      AND    gic2.item_id            = xsims.item_id
+      AND    gic2.category_set_id    = cn_item_class_id
+      AND    gic2.category_id        = mcb2.category_id
+      AND    mcb2.segment1           = ir_param.item_class
+      AND    gic3.item_id            = xsims.item_id
+      AND    gic3.category_set_id    = ln_crowd_code_id
+      AND    gic3.category_id        = mcb3.category_id
+      AND    mcb3.segment1           = lt_crowd_code
+      AND    xsims.invent_ym         = TO_CHAR(gd_s_date, gc_char_ym_format)
       ORDER BY crowd_code
               ,item_code
       ;

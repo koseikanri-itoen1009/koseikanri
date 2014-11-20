@@ -7,7 +7,7 @@ AS
  * Description      : 受払その他実績リスト
  * MD.050/070       : 月次〆切処理帳票Issue1.0 (T_MD050_BPO_770)
  *                    月次〆切処理帳票Issue1.0 (T_MD070_BPO_77D)
- * Version          : 1.11
+ * Version          : 1.12
  *
  * Program List
  * -------------------------- ----------------------------------------------------------
@@ -46,6 +46,7 @@ AS
  *  2008/08/20    1.9   A.Shiina         結合指摘#14対応
  *  2008/10/27    1.10  A.Shiina         T_S_524対応
  *  2008/11/11    1.11  A.Shiina         移行不具合修正
+ *  2008/11/19    1.12  N.Yoshida        I_S_684対応、移行データ検証不具合対応
  *****************************************************************************************/
 --
 --#######################  固定グローバル定数宣言部 START   #######################
@@ -172,33 +173,7 @@ AS
      ,trans_qty          ic_tran_pnd.trans_qty%TYPE                    -- 取引数量
      ,description        ic_lots_mst.attribute18%TYPE                  -- 摘要
    ) ;
-   TYPE rec_data_type_dtl2  IS RECORD(
-      div_tocode         VARCHAR2(100)                                 -- 受払先コード
-     ,div_toname         VARCHAR2(100)                                 -- 受払先名
-     ,h_reason_code      gmd_routings_b.attribute14%TYPE               -- 事由コード
-     ,h_reason_name      sy_reas_cds_tl.reason_desc1%TYPE              -- 事由コード名
-     ,dept_code          oe_order_headers_all.attribute11%TYPE         -- 成績部署コード
-     ,dept_name          xxcmn_locations2_v.location_short_name%TYPE   -- 成績部署名
-     ,trans_date         DATE                                          -- 取引日
-     ,h_div_code         xxcmn_rcv_pay_mst.new_div_account%TYPE        -- 受払区分
-     ,h_div_name         fnd_lookup_values.meaning%TYPE                -- 受払区分名
-     ,item_id            ic_item_mst_b.item_id%TYPE                    -- 品目ＩＤ
-     ,h_item_code        ic_item_mst_b.item_no%TYPE                    -- 品目コード
-     ,h_item_name        xxcmn_item_mst_b.item_short_name%TYPE         -- 品目名
-     ,locat_code         mtl_item_locations.segment1%TYPE              -- 倉庫コード
-     ,locat_name         mtl_item_locations.description%TYPE           -- 倉庫名
-     ,wip_date           ic_lots_mst.attribute1%TYPE                   -- 製造日
-     ,lot_no             ic_lots_mst.lot_no%TYPE                       -- ロットNo
-     ,original_char      ic_lots_mst.attribute2%TYPE                   -- 固有記号
-     ,use_by_date        ic_lots_mst.attribute3%TYPE                   -- 賞味期限
-     ,cost_kbn           ic_item_mst_b.attribute15%TYPE                -- 原価管理区分
-     ,lot_kbn            xxcmn_lot_each_item_v.lot_ctl%TYPE            -- ロット管理区分
-     ,actual_unit_price  xxcmn_lot_cost.unit_ploce%TYPE                -- 実際原価
-     ,trans_qty          ic_tran_pnd.trans_qty%TYPE                    -- 取引数量
-     ,description        ic_lots_mst.attribute18%TYPE                  -- 摘要
-   ) ;
   TYPE tab_data_type_dtl IS TABLE OF rec_data_type_dtl INDEX BY BINARY_INTEGER ;
-  TYPE tab_data_type_dtl2 IS TABLE OF rec_data_type_dtl2 INDEX BY BINARY_INTEGER ;
 --
   -- ===============================
   -- ユーザー定義グローバル変数
@@ -498,6 +473,23 @@ AS
     cv_reason_941             CONSTANT VARCHAR2(5) := 'X941';
     cv_reason_931             CONSTANT VARCHAR2(5) := 'X931';
     cv_reason_932             CONSTANT VARCHAR2(5) := 'X932';
+-- 2008/11/19 v1.12 ADD START
+    cv_reason_952             CONSTANT VARCHAR2(5) := 'X952';
+    cv_reason_953             CONSTANT VARCHAR2(5) := 'X953';
+    cv_reason_954             CONSTANT VARCHAR2(5) := 'X954';
+    cv_reason_955             CONSTANT VARCHAR2(5) := 'X955';
+    cv_reason_956             CONSTANT VARCHAR2(5) := 'X956';
+    cv_reason_957             CONSTANT VARCHAR2(5) := 'X957';
+    cv_reason_958             CONSTANT VARCHAR2(5) := 'X958';
+    cv_reason_959             CONSTANT VARCHAR2(5) := 'X959';
+    cv_reason_960             CONSTANT VARCHAR2(5) := 'X960';
+    cv_reason_961             CONSTANT VARCHAR2(5) := 'X961';
+    cv_reason_962             CONSTANT VARCHAR2(5) := 'X962';
+    cv_reason_963             CONSTANT VARCHAR2(5) := 'X963';
+    cv_reason_964             CONSTANT VARCHAR2(5) := 'X964';
+    cv_reason_965             CONSTANT VARCHAR2(5) := 'X965';
+    cv_reason_966             CONSTANT VARCHAR2(5) := 'X966';
+-- 2008/11/19 v1.12 ADD END
 --
     cv_div_type    CONSTANT fnd_lookup_values.lookup_type%TYPE := 'XXCMN_NEW_ACCOUNT_DIV';
     cv_out_flag    CONSTANT fnd_lookup_values.lookup_type%TYPE := 'XXCMN_MONTH_TRANS_OUTPUT_FLAG';
@@ -650,7 +642,13 @@ AS
       SELECT /*+ leading (xoha xola wdd trn xrpm ooha otta gic1 mcb1 gic2 mcb2) use_nl (xoha xola wdd trn xrpm ooha otta gic1 mcb1 gic2 mcb2) */
 -- 2008/11/11 v1.11 UPDATE END
              hca.account_number             div_tocode
-            ,xp.party_short_name            div_toname
+-- 2008/11/19 v1.12 UPDATE START
+            --,xp.party_short_name            div_toname
+            ,CASE WHEN hca.customer_class_code = '10' 
+                  THEN xp.party_name
+                  ELSE xp.party_short_name
+             END                            div_toname
+-- 2008/11/19 v1.12 UPDATE END
             ,NULL                           reason_code
             ,NULL                           reason_name
             ,ooha.attribute11               post_code
@@ -859,7 +857,10 @@ AS
       AND    gic3.item_id            = trn.item_id
       AND    gic3.category_set_id    = cn_item_class_id
       AND    gic3.category_id        = mcb3.category_id
-      AND    mcb3.segment1           IN ('1','2','4')
+-- 2008/11/19 v1.12 UPDATE START
+--      AND    mcb3.segment1           IN ('1','2','4')
+      AND    xola.request_item_code  <> xola.shipping_item_code
+-- 2008/11/19 v1.12 UPDATE END
       AND    wdd.delivery_detail_id  = trn.line_detail_id
       AND    ooha.header_id          = wdd.source_header_id
       AND    xoha.header_id          = ooha.header_id
@@ -1115,7 +1116,10 @@ AS
       AND    gic3.item_id            = trn.item_id
       AND    gic3.category_set_id    = cn_item_class_id
       AND    gic3.category_id        = mcb3.category_id
-      AND    mcb3.segment1           IN ('1','2','4')
+-- 2008/11/19 v1.12 UPDATE START
+--      AND    mcb3.segment1           IN ('1','2','4')
+      AND    xola.request_item_code  <> xola.shipping_item_code
+-- 2008/11/19 v1.12 UPDATE END
       AND    rsl.shipment_header_id  = trn.doc_id
       AND    rsl.line_num            = trn.doc_line
 -- 2008/11/11 v1.11 ADD START
@@ -2794,7 +2798,13 @@ AS
       SELECT /*+ leading (xoha ooha otta xrpm xola iimb gic1 mcb1 gic2 mcb2 wdd trn) use_nl (xoha ooha otta xrpm xola iimb gic1 mcb1 gic2 mcb2 wdd trn) */
 -- 2008/11/11 v1.11 UPDATE END
              hca.account_number             div_tocode
-            ,xp.party_short_name            div_toname
+-- 2008/11/19 v1.12 UPDATE START
+            --,xp.party_short_name            div_toname
+            ,CASE WHEN hca.customer_class_code = '10' 
+                  THEN xp.party_name
+                  ELSE xp.party_short_name
+             END                            div_toname
+-- 2008/11/19 v1.12 UPDATE END
             ,NULL                           reason_code
             ,NULL                           reason_name
             ,ooha.attribute11               post_code
@@ -2911,6 +2921,9 @@ AS
       AND    xrpm.break_col_04       IS NOT NULL
       AND    xrpm.new_div_account    = iv_div_type
       AND    xrpm.item_div_origin    IN ('1','4')
+-- 2008/11/19 v1.12 ADD START
+      AND    xrpm.item_div_origin    = mcb3.segment1
+-- 2008/11/19 v1.12 ADD END
       AND    trn.whse_code           = iwm.whse_code
       AND    xlv1.lookup_type        = cv_div_type
       AND    xrpm.new_div_account    = xlv1.lookup_code
@@ -3051,6 +3064,9 @@ AS
       AND    xrpm.break_col_04       IS NOT NULL
       AND    xrpm.new_div_account    = iv_div_type
       AND    xrpm.item_div_origin    IN ('1','4')
+-- 2008/11/19 v1.12 ADD START
+      AND    xrpm.item_div_origin    = mcb3.segment1
+-- 2008/11/19 v1.12 ADD END
       AND    trn.whse_code           = iwm.whse_code
       AND    xlv1.lookup_type        = cv_div_type
       AND    xrpm.new_div_account    = xlv1.lookup_code
@@ -3332,7 +3348,13 @@ AS
       SELECT /*+ leading (xoha xola wdd trn xrpm ooha otta gic1 mcb1 gic2 mcb2) use_nl (xoha xola wdd trn xrpm ooha otta gic1 mcb1 gic2 mcb2) */
 -- 2008/11/11 v1.11 UPDATE END
              hca.account_number             div_tocode
-            ,xp.party_short_name            div_toname
+-- 2008/11/19 v1.12 UPDATE START
+            --,xp.party_short_name            div_toname
+            ,CASE WHEN hca.customer_class_code = '10' 
+                  THEN xp.party_name
+                  ELSE xp.party_short_name
+             END                            div_toname
+-- 2008/11/19 v1.12 UPDATE END
             ,NULL                           reason_code
             ,NULL                           reason_name
             ,ooha.attribute11               post_code
@@ -4854,13 +4876,19 @@ AS
       AND    mcb2.segment1           = ir_param.item_class
       AND    xrpm.reason_code        = trn.reason_code
       AND    xrpm.doc_type           = trn.doc_type
+-- 2008/11/19 v1.12 UPDATE START
 -- 2008/11/11 v1.11 UPDATE START
 --      AND    xrpm.rcv_pay_div        = CASE
 --                                         WHEN trn.trans_qty >= 0 THEN cv_div_rcv
 --                                         ELSE cv_div_pay
 --                                       END
+      AND    xrpm.rcv_pay_div        = CASE
+                                         WHEN trn.trans_qty >= 0 THEN cv_div_rcv
+                                         ELSE cv_div_pay
+                                       END
       AND    xrpm.rcv_pay_div        = trn.line_type
 -- 2008/11/11 v1.11 UPDATE END
+-- 2008/11/19 v1.12 UPDATE END
       AND    xrpm.break_col_04       IS NOT NULL
       AND    xrpm.new_div_account    = iv_div_type
       AND    xrpm.reason_code        = srct.reason_code(+)
@@ -4961,7 +4989,24 @@ AS
                                       ,cv_reason_922
                                       ,cv_reason_941
                                       ,cv_reason_931
-                                      ,cv_reason_932)
+                                      ,cv_reason_932
+-- 2008/11/19 v1.12 ADD START
+                                      ,cv_reason_952
+                                      ,cv_reason_953
+                                      ,cv_reason_954
+                                      ,cv_reason_955
+                                      ,cv_reason_956
+                                      ,cv_reason_957
+                                      ,cv_reason_958
+                                      ,cv_reason_959
+                                      ,cv_reason_960
+                                      ,cv_reason_961
+                                      ,cv_reason_962
+                                      ,cv_reason_963
+                                      ,cv_reason_964
+                                      ,cv_reason_965
+                                      ,cv_reason_966)
+-- 2008/11/19 v1.12 ADD END
       AND    xrpm.reason_code        = srct.reason_code(+)
       AND    xrpm.break_col_04       IS NOT NULL
       AND    srct.language(+)        = gc_ja
@@ -5061,7 +5106,24 @@ AS
                                       ,cv_reason_922
                                       ,cv_reason_941
                                       ,cv_reason_931
-                                      ,cv_reason_932)
+                                      ,cv_reason_932
+-- 2008/11/19 v1.12 ADD START
+                                      ,cv_reason_952
+                                      ,cv_reason_953
+                                      ,cv_reason_954
+                                      ,cv_reason_955
+                                      ,cv_reason_956
+                                      ,cv_reason_957
+                                      ,cv_reason_958
+                                      ,cv_reason_959
+                                      ,cv_reason_960
+                                      ,cv_reason_961
+                                      ,cv_reason_962
+                                      ,cv_reason_963
+                                      ,cv_reason_964
+                                      ,cv_reason_965
+                                      ,cv_reason_966)
+-- 2008/11/19 v1.12 ADD END
       AND    xrpm.reason_code        = srct.reason_code(+)
       AND    xrpm.break_col_04       IS NOT NULL
       AND    srct.language(+)        = gc_ja
@@ -5155,27 +5217,30 @@ AS
                                       ,cv_ovlook_rcv
                                       ,cv_sonota_rcv
 -- 2008/10/27 v1.10 ADD END
+-- 2008/11/19 v1.12 UPDATE START
 -- 2008/11/11 v1.11 UPDATE START
 --                                      ,cv_sonota_pay)
-                                      ,cv_sonota_pay
-                                      ,cv_prod_use
-                                      ,cv_from_drink
-                                      ,cv_to_drink
-                                      ,cv_set_arvl
-                                      ,cv_set_ship
-                                      ,cv_dis_arvl
-                                      ,cv_dis_ship
-                                      ,cv_oki_rcv
-                                      ,cv_oki_pay
-                                      ,cv_item_mov_arvl
-                                      ,cv_item_mov_ship
-                                      ,cv_to_leaf
-                                      ,cv_from_leaf)
+                                      ,cv_sonota_pay)
+--                                      ,cv_sonota_pay
+--                                      ,cv_prod_use
+--                                      ,cv_from_drink
+--                                      ,cv_to_drink
+--                                      ,cv_set_arvl
+--                                      ,cv_set_ship
+--                                      ,cv_dis_arvl
+--                                      ,cv_dis_ship
+--                                      ,cv_oki_rcv
+--                                      ,cv_oki_pay
+--                                      ,cv_item_mov_arvl
+--                                      ,cv_item_mov_ship
+--                                      ,cv_to_leaf
+--                                      ,cv_from_leaf)
 -- 2008/11/11 v1.11 UPDATE END
-      AND    xrpm.rcv_pay_div        = CASE
-                                         WHEN trn.trans_qty >= 0 THEN cv_div_rcv
-                                         ELSE cv_div_pay
-                                       END
+--      AND    xrpm.rcv_pay_div        = CASE
+--                                         WHEN trn.trans_qty >= 0 THEN cv_div_rcv
+--                                         ELSE cv_div_pay
+--                                       END
+-- 2008/11/19 v1.12 UPDATE END
       AND    xrpm.reason_code        = srct.reason_code(+)
       AND    xrpm.break_col_04       IS NOT NULL
       AND    srct.language(+)        = gc_ja
@@ -5275,7 +5340,24 @@ AS
                                       ,cv_reason_922
                                       ,cv_reason_941
                                       ,cv_reason_931
-                                      ,cv_reason_932)
+                                      ,cv_reason_932
+-- 2008/11/19 v1.12 ADD START
+                                      ,cv_reason_952
+                                      ,cv_reason_953
+                                      ,cv_reason_954
+                                      ,cv_reason_955
+                                      ,cv_reason_956
+                                      ,cv_reason_957
+                                      ,cv_reason_958
+                                      ,cv_reason_959
+                                      ,cv_reason_960
+                                      ,cv_reason_961
+                                      ,cv_reason_962
+                                      ,cv_reason_963
+                                      ,cv_reason_964
+                                      ,cv_reason_965
+                                      ,cv_reason_966)
+-- 2008/11/19 v1.12 ADD END
       AND    xrpm.reason_code        = srct.reason_code(+)
       AND    xrpm.break_col_04       IS NOT NULL
       AND    srct.language(+)        = gc_ja
@@ -5609,7 +5691,13 @@ AS
       SELECT /*+ leading (xoha xola wdd trn xrpm ooha otta gic1 mcb1 gic2 mcb2) use_nl (xoha xola wdd trn xrpm ooha otta gic1 mcb1 gic2 mcb2) */
 -- 2008/11/11 v1.11 UPDATE END
              hca.account_number             div_tocode
-            ,xp.party_short_name            div_toname
+-- 2008/11/19 v1.12 UPDATE START
+            --,xp.party_short_name            div_toname
+            ,CASE WHEN hca.customer_class_code = '10' 
+                  THEN xp.party_name
+                  ELSE xp.party_short_name
+             END                            div_toname
+-- 2008/11/19 v1.12 UPDATE END
             ,NULL                           reason_code
             ,NULL                           reason_name
             ,ooha.attribute11               post_code
@@ -5819,7 +5907,10 @@ AS
       AND    gic3.item_id            = trn.item_id
       AND    gic3.category_set_id    = cn_item_class_id
       AND    gic3.category_id        = mcb3.category_id
-      AND    mcb3.segment1           IN ('1','2','4')
+-- 2008/11/19 v1.12 UPDATE START
+--      AND    mcb3.segment1           IN ('1','2','4')
+      AND    xola.request_item_code  <> xola.shipping_item_code
+-- 2008/11/19 v1.12 UPDATE END
       AND    wdd.delivery_detail_id  = trn.line_detail_id
       AND    ooha.header_id          = wdd.source_header_id
       AND    xoha.header_id          = ooha.header_id
@@ -6077,7 +6168,10 @@ AS
       AND    gic3.item_id            = trn.item_id
       AND    gic3.category_set_id    = cn_item_class_id
       AND    gic3.category_id        = mcb3.category_id
-      AND    mcb3.segment1           IN ('1','2','4')
+-- 2008/11/19 v1.12 UPDATE START
+--      AND    mcb3.segment1           IN ('1','2','4')
+      AND    xola.request_item_code  <> xola.shipping_item_code
+-- 2008/11/19 v1.12 UPDATE END
       AND    rsl.shipment_header_id  = trn.doc_id
       AND    rsl.line_num            = trn.doc_line
 -- 2008/11/11 v1.11 ADD START
@@ -7769,7 +7863,13 @@ AS
       SELECT /*+ leading (xoha ooha otta xrpm xola iimb gic1 mcb1 gic2 mcb2 wdd trn) use_nl (xoha ooha otta xrpm xola iimb gic1 mcb1 gic2 mcb2 wdd trn) */
 -- 2008/11/11 v1.11 UPDATE END
              hca.account_number             div_tocode
-            ,xp.party_short_name            div_toname
+-- 2008/11/19 v1.12 UPDATE START
+            --,xp.party_short_name            div_toname
+            ,CASE WHEN hca.customer_class_code = '10' 
+                  THEN xp.party_name
+                  ELSE xp.party_short_name
+             END                            div_toname
+-- 2008/11/19 v1.12 UPDATE END
             ,NULL                           reason_code
             ,NULL                           reason_name
             ,ooha.attribute11               post_code
@@ -7886,6 +7986,9 @@ AS
       AND    xrpm.break_col_04       IS NOT NULL
       AND    xrpm.new_div_account    = iv_div_type
       AND    xrpm.item_div_origin    IN ('1','4')
+-- 2008/11/19 v1.12 ADD START
+      AND    xrpm.item_div_origin    = mcb3.segment1
+-- 2008/11/19 v1.12 ADD END
       AND    trn.whse_code           = iwm.whse_code
       AND    xlv1.lookup_type        = cv_div_type
       AND    xrpm.new_div_account    = xlv1.lookup_code
@@ -8027,6 +8130,9 @@ AS
       AND    xrpm.break_col_04       IS NOT NULL
       AND    xrpm.new_div_account    = iv_div_type
       AND    xrpm.item_div_origin    IN ('1','4')
+-- 2008/11/19 v1.12 ADD START
+      AND    xrpm.item_div_origin    = mcb3.segment1
+-- 2008/11/19 v1.12 ADD END
       AND    trn.whse_code           = iwm.whse_code
       AND    xlv1.lookup_type        = cv_div_type
       AND    xrpm.new_div_account    = xlv1.lookup_code
@@ -8311,7 +8417,13 @@ AS
       SELECT /*+ leading (xoha xola wdd trn xrpm ooha otta gic1 mcb1 gic2 mcb2) use_nl (xoha xola wdd trn xrpm ooha otta gic1 mcb1 gic2 mcb2) */
 -- 2008/11/11 v1.11 UPDATE END
              hca.account_number             div_tocode
-            ,xp.party_short_name            div_toname
+-- 2008/11/19 v1.12 UPDATE START
+            --,xp.party_short_name            div_toname
+            ,CASE WHEN hca.customer_class_code = '10' 
+                  THEN xp.party_name
+                  ELSE xp.party_short_name
+             END                            div_toname
+-- 2008/11/19 v1.12 UPDATE END
             ,NULL                           reason_code
             ,NULL                           reason_name
             ,ooha.attribute11               post_code
@@ -9846,13 +9958,19 @@ AS
       AND    mcb2.segment1           = ir_param.item_class
       AND    xrpm.reason_code        = trn.reason_code
       AND    xrpm.doc_type           = trn.doc_type
+-- 2008/11/19 v1.12 UPDATE START
 -- 2008/11/11 v1.11 UPDATE START
 --      AND    xrpm.rcv_pay_div        = CASE
 --                                         WHEN trn.trans_qty >= 0 THEN cv_div_rcv
 --                                         ELSE cv_div_pay
 --                                       END
+      AND    xrpm.rcv_pay_div        = CASE
+                                         WHEN trn.trans_qty >= 0 THEN cv_div_rcv
+                                         ELSE cv_div_pay
+                                       END
       AND    xrpm.rcv_pay_div        = trn.line_type
 -- 2008/11/11 v1.11 UPDATE END
+-- 2008/11/19 v1.12 UPDATE END
       AND    xrpm.break_col_04       IS NOT NULL
       AND    xrpm.new_div_account    = iv_div_type
       AND    xrpm.reason_code        = srct.reason_code(+)
@@ -9954,7 +10072,24 @@ AS
                                       ,cv_reason_922
                                       ,cv_reason_941
                                       ,cv_reason_931
-                                      ,cv_reason_932)
+                                      ,cv_reason_932
+-- 2008/11/19 v1.12 ADD START
+                                      ,cv_reason_952
+                                      ,cv_reason_953
+                                      ,cv_reason_954
+                                      ,cv_reason_955
+                                      ,cv_reason_956
+                                      ,cv_reason_957
+                                      ,cv_reason_958
+                                      ,cv_reason_959
+                                      ,cv_reason_960
+                                      ,cv_reason_961
+                                      ,cv_reason_962
+                                      ,cv_reason_963
+                                      ,cv_reason_964
+                                      ,cv_reason_965
+                                      ,cv_reason_966)
+-- 2008/11/19 v1.12 ADD END
       AND    xrpm.reason_code        = srct.reason_code(+)
       AND    xrpm.break_col_04       IS NOT NULL
       AND    srct.language(+)        = gc_ja
@@ -10055,7 +10190,24 @@ AS
                                       ,cv_reason_922
                                       ,cv_reason_941
                                       ,cv_reason_931
-                                      ,cv_reason_932)
+                                      ,cv_reason_932
+-- 2008/11/19 v1.12 ADD START
+                                      ,cv_reason_952
+                                      ,cv_reason_953
+                                      ,cv_reason_954
+                                      ,cv_reason_955
+                                      ,cv_reason_956
+                                      ,cv_reason_957
+                                      ,cv_reason_958
+                                      ,cv_reason_959
+                                      ,cv_reason_960
+                                      ,cv_reason_961
+                                      ,cv_reason_962
+                                      ,cv_reason_963
+                                      ,cv_reason_964
+                                      ,cv_reason_965
+                                      ,cv_reason_966)
+-- 2008/11/19 v1.12 ADD END
       AND    xrpm.reason_code        = srct.reason_code(+)
       AND    xrpm.break_col_04       IS NOT NULL
       AND    srct.language(+)        = gc_ja
@@ -10150,27 +10302,31 @@ AS
                                       ,cv_ovlook_rcv
                                       ,cv_sonota_rcv
 -- 2008/10/27 v1.10 ADD END
+-- 2008/10/27 v1.10 ADD START
+-- 2008/11/19 v1.12 UPDATE START
 -- 2008/11/11 v1.11 UPDATE START
 --                                      ,cv_sonota_pay)
-                                      ,cv_sonota_pay
-                                      ,cv_prod_use
-                                      ,cv_from_drink
-                                      ,cv_to_drink
-                                      ,cv_set_arvl
-                                      ,cv_set_ship
-                                      ,cv_dis_arvl
-                                      ,cv_dis_ship
-                                      ,cv_oki_rcv
-                                      ,cv_oki_pay
-                                      ,cv_item_mov_arvl
-                                      ,cv_item_mov_ship
-                                      ,cv_to_leaf
-                                      ,cv_from_leaf)
+                                      ,cv_sonota_pay)
+--                                      ,cv_sonota_pay
+--                                      ,cv_prod_use
+--                                      ,cv_from_drink
+--                                      ,cv_to_drink
+--                                      ,cv_set_arvl
+--                                      ,cv_set_ship
+--                                      ,cv_dis_arvl
+--                                      ,cv_dis_ship
+--                                      ,cv_oki_rcv
+--                                      ,cv_oki_pay
+--                                      ,cv_item_mov_arvl
+--                                      ,cv_item_mov_ship
+--                                      ,cv_to_leaf
+--                                      ,cv_from_leaf)
 -- 2008/11/11 v1.11 UPDATE END
-      AND    xrpm.rcv_pay_div        = CASE
-                                         WHEN trn.trans_qty >= 0 THEN cv_div_rcv
-                                         ELSE cv_div_pay
-                                       END
+--      AND    xrpm.rcv_pay_div        = CASE
+--                                         WHEN trn.trans_qty >= 0 THEN cv_div_rcv
+--                                         ELSE cv_div_pay
+--                                       END
+-- 2008/11/19 v1.12 UPDATE END
       AND    xrpm.reason_code        = srct.reason_code(+)
       AND    xrpm.break_col_04       IS NOT NULL
       AND    srct.language(+)        = gc_ja
@@ -10271,7 +10427,24 @@ AS
                                       ,cv_reason_922
                                       ,cv_reason_941
                                       ,cv_reason_931
-                                      ,cv_reason_932)
+                                      ,cv_reason_932
+-- 2008/11/19 v1.12 ADD START
+                                      ,cv_reason_952
+                                      ,cv_reason_953
+                                      ,cv_reason_954
+                                      ,cv_reason_955
+                                      ,cv_reason_956
+                                      ,cv_reason_957
+                                      ,cv_reason_958
+                                      ,cv_reason_959
+                                      ,cv_reason_960
+                                      ,cv_reason_961
+                                      ,cv_reason_962
+                                      ,cv_reason_963
+                                      ,cv_reason_964
+                                      ,cv_reason_965
+                                      ,cv_reason_966)
+-- 2008/11/19 v1.12 ADD END
       AND    xrpm.reason_code        = srct.reason_code(+)
       AND    xrpm.break_col_04       IS NOT NULL
       AND    srct.language(+)        = gc_ja
@@ -11199,7 +11372,6 @@ AS
     -- =====================================================
     -- 項目データ抽出・出力処理
     -- =====================================================
-FND_FILE.PUT_LINE(FND_FILE.LOG,'test2') ;
     <<main_data_loop>>
     FOR i IN 1..gt_main_data.COUNT LOOP
       -- =====================================================

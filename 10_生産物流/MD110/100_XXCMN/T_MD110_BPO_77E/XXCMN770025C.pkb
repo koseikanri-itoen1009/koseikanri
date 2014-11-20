@@ -7,7 +7,7 @@ AS
  * Description      : 仕入実績表作成
  * MD.050/070       : 月次〆切処理（経理）Issue1.0(T_MD050_BPO_770)
  *                    月次〆切処理（経理）Issue1.0(T_MD070_BPO_77E)
- * Version          : 1.8
+ * Version          : 1.9
  *
  * Program List
  * -------------------- ------------------------------------------------------------
@@ -39,6 +39,7 @@ AS
  *  2008/10/14    1.6   A.Shiina         T_S_524対応
  *  2008/10/28    1.7   H.Itou           T_S_524対応(再対応)
  *  2008/11/13    1.8   A.Shiina         移行データ検証不具合対応
+ *  2008/11/19    1.9   N.Yoshida        移行データ検証不具合対応
  *****************************************************************************************/
 --
 --#######################  固定グローバル定数宣言部 START   #######################
@@ -1409,7 +1410,10 @@ AS
       || '      ,SUM(mst.assessment)       AS assessment '
 -- 2008/10/28 H.Itou Mod Start T_S_524対応(再対応)
 --      || '      ,SUM(mst.stnd_unit_price)   / SUM(mst.trans_qty) AS stnd_unit_price '
-      || '      ,SUM(mst.stnd_unit_price) / DECODE(SUM(mst.trans_qty),0,1,SUM(mst.trans_qty)) AS stnd_unit_price '
+-- 2008/11/19 N.Yoshida mod start 移行データ検証不具合対応
+--      || '      ,SUM(mst.stnd_unit_price) / DECODE(SUM(mst.trans_qty),0,1,SUM(mst.trans_qty)) AS stnd_unit_price '
+      || '      ,mst.stnd_unit_price       AS stnd_unit_price '
+-- 2008/11/19 N.Yoshida mod end 移行データ検証不具合対応
 -- 2008/10/28 H.Itou Mod End
       || '      ,SUM(mst.stnd_unit_price * mst.trans_qty) AS j_amt '
 --      || '      ,SUM(mst.purchases_price * mst.trans_qty) AS s_amt '
@@ -1805,7 +1809,10 @@ AS
       || '        ,mst.item_s_name '
       || '        ,mst.item_um '
       || '        ,mst.item_atr15 '
-      || '        ,mst.lot_ctl ';
+      || '        ,mst.lot_ctl '
+-- 2008/11/19 N.Yoshida mod start 移行データ検証不具合対応
+      || '        ,mst.stnd_unit_price ';
+-- 2008/11/19 N.Yoshida mod end 移行データ検証不具合対応
 --
     -- ----------------------------------------------------
     -- ORDER句生成

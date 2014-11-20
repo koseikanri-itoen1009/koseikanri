@@ -8,7 +8,7 @@ AS
  * Description      : 受払残高表（Ⅱ）
  * MD.050/070       : 月次〆切処理帳票Issue1.0(T_MD050_BPO_770)
  *                  : 月次〆切処理帳票Issue1.0(T_MD070_BPO_77C)
- * Version          : 1.11
+ * Version          : 1.12
  *
  * Program List
  * -------------------------- ------------------------------------------------------------
@@ -47,7 +47,8 @@ AS
  *  2008/08/28    1.8   A.Shiina         取引数量は取得時に受払区分を掛ける。
  *  2008/10/22    1.9   N.Yoshida        T_S_524対応(PT対応)
  *  2008/11/04    1.10  N.Yoshida        移行リハ暫定対応
- *  2008/11/12    1.10  N.Fukuda         統合指摘#634対応(移行データ検証不具合対応)
+ *  2008/11/12    1.11  N.Fukuda         統合指摘#634対応(移行データ検証不具合対応)
+ *  2008/11/19    1.12  N.Yoshida        I_S_684対応、移行データ検証不具合対応
  *****************************************************************************************/
 --
 --#######################  固定グローバル定数宣言部 START   #######################
@@ -584,6 +585,8 @@ AS
     cv_reason_960     CONSTANT VARCHAR2(4)  := 'X960';
     cv_reason_962     CONSTANT VARCHAR2(4)  := 'X962';
     cv_reason_964     CONSTANT VARCHAR2(4)  := 'X964';
+    cv_reason_965     CONSTANT VARCHAR2(4)  := 'X965';
+    cv_reason_966     CONSTANT VARCHAR2(4)  := 'X966';
       -- 2008/11/4 modify yoshida 暫定ロジック end
 --
 -- 2008/10/22 v1.09 ADD START
@@ -875,6 +878,10 @@ AS
                                       ,cv_reason_960
                                       ,cv_reason_962
                                       ,cv_reason_964
+-- 2008/11/19 v1.12 ADD START
+                                      ,cv_reason_965
+                                      ,cv_reason_966
+-- 2008/11/19 v1.12 ADD END
                                       ,cv_reason_932)
       AND    itc.trans_date     >= FND_DATE.STRING_TO_DATE(gv_exec_start,gc_char_dt_format)
       AND    itc.trans_date     <= FND_DATE.STRING_TO_DATE(gv_exec_end,gc_char_dt_format)
@@ -1105,11 +1112,13 @@ AS
       AND    gic3.category_id        = mcb3.category_id
       AND    xrpm.doc_type           = itc.doc_type
       AND    xrpm.reason_code        = itc.reason_code
-      AND    xrpm.rcv_pay_div        = CASE
-                                         WHEN itc.trans_qty >= cn_zero
-                                         THEN cv_one
-                                         ELSE cv_min
-                                       END
+-- 2008/11/19 v1.12 DELETE START
+      --AND    xrpm.rcv_pay_div        = CASE
+      --                                   WHEN itc.trans_qty >= cn_zero
+      --                                   THEN cv_one
+      --                                   ELSE cv_min
+      --                                 END
+-- 2008/11/19 v1.12 DELETE END
       AND    xrpm.break_col_03       IS NOT NULL
       AND    iwm.whse_code           = itc.whse_code
       AND    mcb3.segment1           = lt_crowd_code
@@ -1586,6 +1595,10 @@ AS
                                       ,cv_reason_960
                                       ,cv_reason_962
                                       ,cv_reason_964
+-- 2008/11/19 v1.12 ADD START
+                                      ,cv_reason_965
+                                      ,cv_reason_966
+-- 2008/11/19 v1.12 ADD END
                                       ,cv_reason_932)
       AND    itc.trans_date     >= FND_DATE.STRING_TO_DATE(gv_exec_start,gc_char_dt_format)
       AND    itc.trans_date     <= FND_DATE.STRING_TO_DATE(gv_exec_end,gc_char_dt_format)
@@ -1813,11 +1826,13 @@ AS
       AND    gic3.category_id        = mcb3.category_id
       AND    xrpm.doc_type           = itc.doc_type
       AND    xrpm.reason_code        = itc.reason_code
-      AND    xrpm.rcv_pay_div        = CASE
-                                         WHEN itc.trans_qty >= cn_zero
-                                         THEN cv_one
-                                         ELSE cv_min
-                                       END
+-- 2008/11/19 v1.12 DELETE START
+      --AND    xrpm.rcv_pay_div        = CASE
+      --                                   WHEN itc.trans_qty >= cn_zero
+      --                                   THEN cv_one
+      --                                   ELSE cv_min
+      --                                 END
+-- 2008/11/19 v1.12 DELETE END
       AND    xrpm.break_col_03       IS NOT NULL
       AND    iwm.whse_code           = itc.whse_code
       UNION ALL
@@ -2294,6 +2309,10 @@ AS
                                       ,cv_reason_960
                                       ,cv_reason_962
                                       ,cv_reason_964
+-- 2008/11/19 v1.12 ADD START
+                                      ,cv_reason_965
+                                      ,cv_reason_966
+-- 2008/11/19 v1.12 ADD END
                                       ,cv_reason_932)
       AND    itc.trans_date     >= FND_DATE.STRING_TO_DATE(gv_exec_start,gc_char_dt_format)
       AND    itc.trans_date     <= FND_DATE.STRING_TO_DATE(gv_exec_end,gc_char_dt_format)
@@ -2527,11 +2546,13 @@ AS
       AND    gic3.category_id        = mcb3.category_id
       AND    xrpm.doc_type           = itc.doc_type
       AND    xrpm.reason_code        = itc.reason_code
-      AND    xrpm.rcv_pay_div        = CASE
-                                         WHEN itc.trans_qty >= cn_zero
-                                         THEN cv_one
-                                         ELSE cv_min
-                                       END
+-- 2008/11/19 v1.12 DELETE START
+      --AND    xrpm.rcv_pay_div        = CASE
+      --                                   WHEN itc.trans_qty >= cn_zero
+      --                                   THEN cv_one
+      --                                   ELSE cv_min
+      --                                 END
+-- 2008/11/19 v1.12 DELETE END
       AND    xrpm.break_col_03       IS NOT NULL
       AND    mcb3.segment1           = lt_crowd_code
       AND    iwm.whse_code           = itc.whse_code
@@ -3014,6 +3035,10 @@ AS
                                       ,cv_reason_960
                                       ,cv_reason_962
                                       ,cv_reason_964
+-- 2008/11/19 v1.12 ADD START
+                                      ,cv_reason_965
+                                      ,cv_reason_966
+-- 2008/11/19 v1.12 ADD END
                                       ,cv_reason_932)
       AND    itc.trans_date     >= FND_DATE.STRING_TO_DATE(gv_exec_start,gc_char_dt_format)
       AND    itc.trans_date     <= FND_DATE.STRING_TO_DATE(gv_exec_end,gc_char_dt_format)
@@ -3244,11 +3269,13 @@ AS
       AND    gic3.category_id        = mcb3.category_id
       AND    xrpm.doc_type           = itc.doc_type
       AND    xrpm.reason_code        = itc.reason_code
-      AND    xrpm.rcv_pay_div        = CASE
-                                         WHEN itc.trans_qty >= cn_zero
-                                         THEN cv_one
-                                         ELSE cv_min
-                                       END
+-- 2008/11/19 v1.12 DELETE START
+      --AND    xrpm.rcv_pay_div        = CASE
+      --                                   WHEN itc.trans_qty >= cn_zero
+      --                                   THEN cv_one
+      --                                   ELSE cv_min
+      --                                 END
+-- 2008/11/19 v1.12 DELETE END
       AND    xrpm.break_col_03       IS NOT NULL
       AND    iwm.whse_code           = itc.whse_code
       AND    iwm.whse_code           = ir_param.warehouse_code
@@ -3722,6 +3749,10 @@ AS
                                       ,cv_reason_960
                                       ,cv_reason_962
                                       ,cv_reason_964
+-- 2008/11/19 v1.12 ADD START
+                                      ,cv_reason_965
+                                      ,cv_reason_966
+-- 2008/11/19 v1.12 ADD END
                                       ,cv_reason_932)
       AND    itc.trans_date     >= FND_DATE.STRING_TO_DATE(gv_exec_start,gc_char_dt_format)
       AND    itc.trans_date     <= FND_DATE.STRING_TO_DATE(gv_exec_end,gc_char_dt_format)
@@ -3946,11 +3977,13 @@ AS
       AND    gic3.category_id        = mcb3.category_id
       AND    xrpm.doc_type           = itc.doc_type
       AND    xrpm.reason_code        = itc.reason_code
-      AND    xrpm.rcv_pay_div        = CASE
-                                         WHEN itc.trans_qty >= cn_zero
-                                         THEN cv_one
-                                         ELSE cv_min
-                                       END
+-- 2008/11/19 v1.12 DELETE START
+      --AND    xrpm.rcv_pay_div        = CASE
+      --                                   WHEN itc.trans_qty >= cn_zero
+      --                                   THEN cv_one
+      --                                   ELSE cv_min
+      --                                 END
+-- 2008/11/19 v1.12 DELETE END
       AND    xrpm.break_col_03       IS NOT NULL
       AND    mcb3.segment1           = lt_crowd_code
       UNION ALL
@@ -4415,6 +4448,10 @@ AS
                                       ,cv_reason_960
                                       ,cv_reason_962
                                       ,cv_reason_964
+-- 2008/11/19 v1.12 ADD START
+                                      ,cv_reason_965
+                                      ,cv_reason_966
+-- 2008/11/19 v1.12 ADD END
                                       ,cv_reason_932)
       AND    itc.trans_date     >= FND_DATE.STRING_TO_DATE(gv_exec_start,gc_char_dt_format)
       AND    itc.trans_date     <= FND_DATE.STRING_TO_DATE(gv_exec_end,gc_char_dt_format)
@@ -4636,11 +4673,13 @@ AS
       AND    gic3.category_id        = mcb3.category_id
       AND    xrpm.doc_type           = itc.doc_type
       AND    xrpm.reason_code        = itc.reason_code
-      AND    xrpm.rcv_pay_div        = CASE
-                                         WHEN itc.trans_qty >= cn_zero
-                                         THEN cv_one
-                                         ELSE cv_min
-                                       END
+-- 2008/11/19 v1.12 DELETE START
+      --AND    xrpm.rcv_pay_div        = CASE
+      --                                   WHEN itc.trans_qty >= cn_zero
+      --                                   THEN cv_one
+      --                                   ELSE cv_min
+      --                                 END
+-- 2008/11/19 v1.12 DELETE END
       AND    xrpm.break_col_03       IS NOT NULL
       UNION ALL
       -- ----------------------------------------------------

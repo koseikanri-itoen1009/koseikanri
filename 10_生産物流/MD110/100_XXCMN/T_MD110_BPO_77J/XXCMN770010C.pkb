@@ -7,7 +7,7 @@ AS
  * Description      : 標準原価内訳表
  * MD.050/070       : 月次〆切処理帳票Issue1.0 (T_MD050_BPO_770)
  *                    月次〆切処理帳票Issue1.0 (T_MD070_BPO_77J)
- * Version          : 1.11
+ * Version          : 1.12
  *
  * Program List
  * -------------------------- ----------------------------------------------------------
@@ -40,6 +40,7 @@ AS
  *  2008/08/28    1.9   A.Shiina         T_TE080_BPO_770 指摘19対応
  *  2008/10/23    1.10  N.Yoshida        T_S_524対応(PT対応)
  *  2008/11/14    1.11  N.Yoshida        移行データ検証不具合対応
+ *  2008/11/19    1.12  N.Yoshida        I_S_684対応、移行データ検証不具合対応
  *
  *****************************************************************************************/
 --
@@ -2570,7 +2571,12 @@ AS
     || '                                   ,''X961'''
     || '                                   ,''X962'''
     || '                                   ,''X963'''
-    || '                                   ,''X964'')'
+-- 2008/11/19 v1.12 UPDATE START
+--    || '                                   ,''X964'')'
+    || '                                   ,''X964'''
+    || '                                   ,''X965'''
+    || '                                   ,''X966'')'
+-- 2008/11/19 v1.12 UPDATE END
     || '  AND    xrpm.new_div_account    = ''' || ir_param.rcv_pay_div || ''''
     || '  AND    xrpm.break_col_10       IS NOT NULL'
     ;
@@ -2689,11 +2695,13 @@ AS
     || '  AND    xrpm.reason_code        IN (''' || cv_reason_code_mokusi || ''',''' || cv_reason_code_sonota || ''',''' || cv_reason_code_mokusi_u || ''',''' || cv_reason_code_sonota_u || ''')'
     || '  AND    xrpm.new_div_account    = ''' || ir_param.rcv_pay_div || ''''
     || '  AND    xrpm.break_col_10       IS NOT NULL'
-    || '  AND    xrpm.rcv_pay_div       = CASE'
-    || '                                    WHEN itc.trans_qty >= 0 THEN'
-    || '                                         ''' || cv_rcv_pay_div_plus || ''''
-    || '                                    ELSE ''' || cv_rcv_pay_div_minus || ''''
-    || '                                  END'
+-- 2008/11/19 v1.12 DELETE START
+--    || '  AND    xrpm.rcv_pay_div       = CASE'
+--    || '                                    WHEN itc.trans_qty >= 0 THEN'
+--    || '                                         ''' || cv_rcv_pay_div_plus || ''''
+--    || '                                    ELSE ''' || cv_rcv_pay_div_minus || ''''
+--    || '                                  END'
+-- 2008/11/19 v1.12 DELETE END
     ;
 --
     --===============================================================

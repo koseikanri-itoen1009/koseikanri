@@ -7,7 +7,7 @@ AS
  * Description      : 他勘定振替原価差異表
  * MD.050/070       : 月次〆切処理帳票Issue1.0(T_MD050_BPO_770)
  *                  : 月次〆切処理帳票Issue1.0(T_MD070_BPO_77I)
- * Version          : 1.11
+ * Version          : 1.12
  *
  * Program List
  * -------------------------- ----------------------------------------------------------
@@ -44,6 +44,7 @@ AS
  *  2008/10/28    1.9   T.Ohashi         T_S_524対応(PT対応)再対応
  *  2008/10/29    1.10  T.Ohashi         T_S_524対応(PT対応)再対応
  *  2008/11/13    1.11  A.Shiina         移行データ検証不具合対応
+ *  2008/11/19    1.12  N.Yoshida        移行データ検証不具合対応
  *
  *****************************************************************************************/
 --
@@ -1002,6 +1003,9 @@ AS
       AND    xoha.req_status         = '04'
       AND    mcb4.segment1           IN ('1','4')
       AND    xrpm.item_div_origin    IN ('1','4')
+-- 2008/11/19 v1.12 ADD START
+      AND    xrpm.item_div_origin    = mcb4.segment1
+-- 2008/11/19 v1.12 ADD END
       AND    xrpm.doc_type           = itp.doc_type
       AND    xrpm.doc_type           = 'PORC'
       AND    xrpm.source_document_code = 'RMA'
@@ -1653,6 +1657,9 @@ AS
       AND    gic4.category_id        = mcb4.category_id
       AND    mcb4.segment1           IN ('1','4')
       AND    xrpm.item_div_origin    IN ('1','4')
+-- 2008/11/19 v1.12 ADD START
+      AND    xrpm.item_div_origin    = mcb4.segment1
+-- 2008/11/19 v1.12 ADD END
 --      AND    xrpm.item_div_origin    = mcb4.segment1
       AND    wdd.delivery_detail_id  = itp.line_detail_id
       AND    xoha.header_id          = wdd.source_header_id
@@ -2354,6 +2361,9 @@ AS
       AND    xoha.req_status         = '04'
       AND    mcb4.segment1           IN ('1','4')
       AND    xrpm.item_div_origin    IN ('1','4')
+-- 2008/11/19 v1.12 ADD START
+      AND    xrpm.item_div_origin    = mcb4.segment1
+-- 2008/11/19 v1.12 ADD END
       AND    xrpm.doc_type           = itp.doc_type
       AND    xrpm.doc_type           = 'PORC'
       AND    xrpm.source_document_code = 'RMA'
@@ -3011,6 +3021,9 @@ AS
       AND    gic4.category_id        = mcb4.category_id
       AND    mcb4.segment1           IN ('1','4')
       AND    xrpm.item_div_origin    IN ('1','4')
+-- 2008/11/19 v1.12 ADD START
+      AND    xrpm.item_div_origin    = mcb4.segment1
+-- 2008/11/19 v1.12 ADD END
 --      AND    xrpm.item_div_origin    = mcb4.segment1
       AND    wdd.delivery_detail_id  = itp.line_detail_id
       AND    xoha.header_id          = wdd.source_header_id
@@ -3714,6 +3727,9 @@ AS
       AND    xoha.req_status         = '04'
       AND    mcb4.segment1           IN ('1','4')
       AND    xrpm.item_div_origin    IN ('1','4')
+-- 2008/11/19 v1.12 ADD START
+      AND    xrpm.item_div_origin    = mcb4.segment1
+-- 2008/11/19 v1.12 ADD END
       AND    xrpm.doc_type           = itp.doc_type
       AND    xrpm.doc_type           = 'PORC'
       AND    xrpm.source_document_code = 'RMA'
@@ -4371,6 +4387,9 @@ AS
       AND    gic4.category_id        = mcb4.category_id
       AND    mcb4.segment1           IN ('1','4')
       AND    xrpm.item_div_origin    IN ('1','4')
+-- 2008/11/19 v1.12 ADD START
+      AND    xrpm.item_div_origin    = mcb4.segment1
+-- 2008/11/19 v1.12 ADD END
 --      AND    xrpm.item_div_origin    = mcb4.segment1
       AND    wdd.delivery_detail_id  = itp.line_detail_id
       AND    xoha.header_id          = wdd.source_header_id
@@ -5078,6 +5097,9 @@ AS
       AND    xoha.req_status         = '04'
       AND    mcb4.segment1           IN ('1','4')
       AND    xrpm.item_div_origin    IN ('1','4')
+-- 2008/11/19 v1.12 ADD START
+      AND    xrpm.item_div_origin    = mcb4.segment1
+-- 2008/11/19 v1.12 ADD END
       AND    xrpm.doc_type           = itp.doc_type
       AND    xrpm.doc_type           = 'PORC'
       AND    xrpm.source_document_code = 'RMA'
@@ -5741,6 +5763,9 @@ AS
       AND    gic4.category_id        = mcb4.category_id
       AND    mcb4.segment1           IN ('1','4')
       AND    xrpm.item_div_origin    IN ('1','4')
+-- 2008/11/19 v1.12 ADD START
+      AND    xrpm.item_div_origin    = mcb4.segment1
+-- 2008/11/19 v1.12 ADD END
 --      AND    xrpm.item_div_origin    = mcb4.segment1
       AND    wdd.delivery_detail_id  = itp.line_detail_id
       AND    xoha.header_id          = wdd.source_header_id

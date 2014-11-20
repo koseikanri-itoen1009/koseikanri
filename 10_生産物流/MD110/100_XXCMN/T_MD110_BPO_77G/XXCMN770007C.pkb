@@ -7,7 +7,7 @@ AS
  * Description      : 生産原価差異表
  * MD.050           : 有償支給帳票Issue1.0(T_MD050_BPO_770)
  * MD.070           : 有償支給帳票Issue1.0(T_MD070_BPO_77G)
- * Version          : 1.11
+ * Version          : 1.12
  *
  * Program List
  * -------------------------- ----------------------------------------------------------
@@ -39,6 +39,7 @@ AS
  *  2008/10/08    1.9   A.Shiina         T_S_455対応
  *  2008/10/09    1.10  A.Shiina         T_S_422対応
  *  2008/11/11    1.11  N.Yoshida        I_S_511対応、移行データ検証不具合対応
+ *  2008/11/19    1.12  N.Yoshida        移行データ検証不具合対応
  *
  *****************************************************************************************/
 --
@@ -494,8 +495,7 @@ AS
            , gmd1.item_id                      item_id 
            , iimb2.item_no                     item_code 
            , ximb2.item_short_name             item_name 
-           , iimb2.attribute12                 item_net
-           , NVL(xcup.stnd_unit_price , 0)     cmpnt_cost
+           , NVL(iimb2.attribute12,1)          item_net
            , SUM(NVL(itp.trans_qty , 0) * TO_NUMBER(xrpm.rcv_pay_div))       trans_qty 
            , SUM(NVL(DECODE(xrpm.line_type
                            ,gc_kan, itp.trans_qty * TO_NUMBER(xrpm.rcv_pay_div)
@@ -506,50 +506,72 @@ AS
            , SUM(NVL(DECODE(xrpm.line_type
                            ,gc_huku, itp.trans_qty * TO_NUMBER(xrpm.rcv_pay_div)
                            ), 0)) huku_qty 
+-- 2008/11/19 v1.12 UPDATE START
            , SUM(NVL(DECODE(iimb.attribute15
-                           ,gc_cost_st,xcup.stnd_unit_price
+--                           ,gc_cost_st,xcup.stnd_unit_price
+                           ,gc_cost_st,xcup2.stnd_unit_price
                            ,gc_cost_ac,DECODE(iimb.lot_ctl
                                              ,gc_lot_ine,xlc.unit_ploce
-                                             ,gc_lot_view,xcup.stnd_unit_price)),0)) actual_unit_price 
+--                                             ,gc_lot_view,xcup.stnd_unit_price)),0)) actual_unit_price
+                                             ,gc_lot_view,xcup2.stnd_unit_price)),0)) actual_unit_price
            , SUM(NVL(DECODE(xrpm.line_type
                            ,gc_kan, ROUND((itp.trans_qty * TO_NUMBER(xrpm.rcv_pay_div))
                                                  * DECODE(iimb.attribute15
-                                                         ,gc_cost_st,xcup.stnd_unit_price
+--                                                         ,gc_cost_st,xcup.stnd_unit_price
+                                                         ,gc_cost_st,xcup2.stnd_unit_price
                                                          ,gc_cost_ac,DECODE(iimb.lot_ctl
                                                                            ,gc_lot_ine,xlc.unit_ploce
-                                                                           ,gc_lot_view,xcup.stnd_unit_price)))),0)
+--                                                                           ,gc_lot_view,xcup.stnd_unit_price)))),0)
+                                                                           ,gc_lot_view,xcup2.stnd_unit_price)))),0)
                 )   kan_jitu 
            , SUM(NVL(DECODE(xrpm.line_type
                            ,gc_tou, ROUND((itp.trans_qty * TO_NUMBER(xrpm.rcv_pay_div))
                                                  * DECODE(iimb.attribute15
-                                                         ,gc_cost_st,xcup.stnd_unit_price
+--                                                         ,gc_cost_st,xcup.stnd_unit_price
+                                                         ,gc_cost_st,xcup2.stnd_unit_price
                                                          ,gc_cost_ac,DECODE(iimb.lot_ctl
                                                                            ,gc_lot_ine,xlc.unit_ploce
-                                                                           ,gc_lot_view,xcup.stnd_unit_price)))),0)
+--                                                                           ,gc_lot_view,xcup.stnd_unit_price)))),0)
+                                                                           ,gc_lot_view,xcup2.stnd_unit_price)))),0)
                 )   tou_jitu 
+-- 2008/11/19 v1.12 UPDATE END
            --, SUM(NVL(xcup.stnd_unit_price , 0))                          cmpnt_cost 
+           , NVL(xcup.stnd_unit_price , 0)     cmpnt_cost
            , SUM(NVL(DECODE(xrpm.line_type
                            ,gc_huku, ROUND((itp.trans_qty * TO_NUMBER(xrpm.rcv_pay_div))
-                             * xcup.stnd_unit_price)), 0)) cmpnt_huku 
-           , SUM(NVL(xcup.stnd_unit_price * (itp.trans_qty * TO_NUMBER(xrpm.rcv_pay_div)), 0)
+-- 2008/11/19 v1.12 UPDATE START
+                             * xcup2.stnd_unit_price)), 0)) cmpnt_huku 
+-- 2008/11/19 v1.12 UPDATE END
+-- 2008/11/19 v1.12 UPDATE START
+           --, SUM(NVL(xcup.stnd_unit_price * (itp.trans_qty * TO_NUMBER(xrpm.rcv_pay_div)), 0)
+           , SUM(NVL(xcup.stnd_unit_price , 0) * NVL(DECODE(xrpm.line_type
+                           ,gc_kan, itp.trans_qty * TO_NUMBER(xrpm.rcv_pay_div)
+                           ), 0)
+-- 2008/11/19 v1.12 UPDATE END
              ) cmpnt_kin 
            , SUM(NVL(CASE  -- 投入品で資材以外
                      WHEN xrpm.line_type =   gc_tou  
                      AND  mcb2.segment1 <>   gc_sizai  
                      THEN ROUND((itp.trans_qty * TO_NUMBER(xrpm.rcv_pay_div))
                                         * DECODE(iimb.attribute15
-                                                ,gc_cost_st,xcup.stnd_unit_price
+-- 2008/11/19 v1.12 UPDATE START
+--                                                ,gc_cost_st,xcup.stnd_unit_price
+                                                ,gc_cost_st,xcup2.stnd_unit_price
                                                 ,gc_cost_ac,DECODE(iimb.lot_ctl
                                                                   ,gc_lot_ine,xlc.unit_ploce
-                                                                  ,gc_lot_view,xcup.stnd_unit_price)))
+--                                                                  ,gc_lot_view,xcup.stnd_unit_price)))
+                                                                  ,gc_lot_view,xcup2.stnd_unit_price)))
                      END  , 0))                                              tou_kin 
            , SUM(NVL(DECODE(xrpm.hit_in_div
                            ,gc_y, ROUND((itp.trans_qty * TO_NUMBER(xrpm.rcv_pay_div))
                                                * DECODE(iimb.attribute15
-                                                       ,gc_cost_st,xcup.stnd_unit_price
+--                                                       ,gc_cost_st,xcup.stnd_unit_price
+                                                       ,gc_cost_st,xcup2.stnd_unit_price
                                                        ,gc_cost_ac,DECODE(iimb.lot_ctl
                                                                          ,gc_lot_ine,xlc.unit_ploce
-                                                                         ,gc_lot_view,xcup.stnd_unit_price))),0),0)
+--                                                                         ,gc_lot_view,xcup.stnd_unit_price))),0),0)
+                                                                         ,gc_lot_view,xcup2.stnd_unit_price))),0),0)
+-- 2008/11/19 v1.12 UPDATE END
                 ) uti_kin 
       FROM
             ic_tran_pnd              itp      --在庫トラン
@@ -567,6 +589,9 @@ AS
            ,xxcmn_item_mst_b         ximb2
            ,xxcmn_lot_cost           xlc
            ,xxcmn_stnd_unit_price_v  xcup     --標準原価情報View
+-- 2008/11/19 v1.12 ADD START
+           ,xxcmn_stnd_unit_price_v  xcup2    --標準原価情報View
+-- 2008/11/19 v1.12 ADD END
            ,gme_material_details     gmd1     -- 
            ,gme_batch_header         gbh1     -- 
            ,gmd_routings_b           grb1     -- 
@@ -595,8 +620,13 @@ AS
       AND    itp.trans_date        BETWEEN ximb.start_date_active AND ximb.end_date_active
       AND    xlc.item_id(+)        = itp.item_id
       AND    xlc.lot_id(+)         = itp.lot_id
-      AND    xcup.item_id(+)       = itp.item_id
-      AND    itp.trans_date        BETWEEN xcup.start_date_active(+) AND xcup.end_date_active(+) 
+-- 2008/11/19 v1.12 UPDATE START
+      AND    xcup.item_id(+)       = gmd1.item_id
+      AND    itp.trans_date        BETWEEN NVL(xcup.start_date_active, FND_DATE.STRING_TO_DATE('1900/01/01 00:00:00', 'YYYY/MM/DD HH24:MI:SS'))
+                                   AND NVL(xcup.end_date_active, FND_DATE.STRING_TO_DATE('9999/12/31 23:59:59', 'YYYY/MM/DD HH24:MI:SS'))
+      AND    xcup2.item_id(+)      = itp.item_id
+      AND    itp.trans_date        BETWEEN xcup2.start_date_active(+) AND xcup2.end_date_active(+) 
+-- 2008/11/19 v1.12 UPDATE END
       AND    itp.doc_id            = gmd1.batch_id
       AND    itp.doc_line          = gmd1.line_no
       AND    gbh1.batch_id         = gmd1.batch_id
@@ -662,7 +692,7 @@ AS
            , gmd1.item_id                      item_id 
            , iimb2.item_no                     item_code 
            , ximb2.item_short_name             item_name 
-           , iimb2.attribute12                 item_net
+           , NVL(iimb2.attribute12,1)          item_net
            , SUM(NVL(itp.trans_qty , 0) * TO_NUMBER(xrpm.rcv_pay_div))       trans_qty 
            , SUM(NVL(DECODE(xrpm.line_type
                            ,gc_kan, itp.trans_qty * TO_NUMBER(xrpm.rcv_pay_div)
@@ -857,7 +887,7 @@ AS
                                 AND    xlvv2.lookup_type     = gv_cmpntcls_type
                                 AND    xlvv2.meaning         = gv_raw_mat_cost_name)
                            )), 0)) cmpnt_huku 
-           , SUM(NVL(ROUND((SELECT NVL(SUM(xpl.unit_price),0)
+           , SUM(ROUND(NVL((SELECT NVL(SUM(xpl.unit_price),0)
                       FROM   xxpo_price_headers    xph
                             ,xxpo_price_lines      xpl
                             ,xxcmn_lookup_values_v xlvv1
@@ -869,8 +899,10 @@ AS
                       AND    xph.item_code         = iimb.item_no
                       AND    xlvv1.lookup_type     = gv_expense_item_type
                       AND    xlvv2.lookup_type     = gv_cmpntcls_type
-                      AND    xlvv2.meaning         = gv_raw_mat_cost_name)
-             * (itp.trans_qty * TO_NUMBER(xrpm.rcv_pay_div))), 0)) cmpnt_kin 
+                      AND    xlvv2.meaning         = gv_raw_mat_cost_name),0)
+             * NVL(DECODE(xrpm.line_type
+                           ,gc_kan, itp.trans_qty * TO_NUMBER(xrpm.rcv_pay_div)
+                           ), 0))) cmpnt_kin 
            , SUM(NVL(CASE  -- 投入品で資材以外
                      WHEN xrpm.line_type =   gc_tou  
                      AND  mcb2.segment1 <>   gc_sizai  
@@ -1464,8 +1496,11 @@ AS
 --
       --標準原価
       IF (gt_main_data(ln_loop_index).trans_qty != 0) THEN
-        ln_std_cost :=  gt_main_data(ln_loop_index).cmpnt_kin
-                      / gt_main_data(ln_loop_index).trans_qty;
+-- 2008/11/19 v1.12 UPDATE START
+--        ln_std_cost :=  gt_main_data(ln_loop_index).cmpnt_kin
+--                      / gt_main_data(ln_loop_index).trans_qty;
+          ln_std_cost :=  gt_main_data(ln_loop_index).cmpnt_cost;
+-- 2008/11/19 v1.12 UPDATE END
       END IF;
       prc_set_xml('D', 'standard_cost', ln_std_cost);
 --
@@ -1510,7 +1545,10 @@ AS
       lr_pre_key := lr_now_key;
 --
       --合計加算
-      ln_sum_qty      := ln_sum_qty      + gt_main_data(ln_loop_index).trans_qty;
+-- 2008/11/19 v1.12 UPDATE START
+--      ln_sum_qty      := ln_sum_qty      + gt_main_data(ln_loop_index).trans_qty;
+      ln_sum_qty      := ln_sum_qty      + gt_main_data(ln_loop_index).kan_qty;
+-- 2008/11/19 v1.12 UPDATE END
       ln_sum_std_cost := ln_sum_std_cost + ln_std_cost;
       ln_sum_std_kin  := ln_sum_std_kin  + gt_main_data(ln_loop_index).cmpnt_kin;
       ln_sum_tou      := ln_sum_tou      + gt_main_data(ln_loop_index).tou_kin;
