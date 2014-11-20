@@ -6,7 +6,7 @@ AS
  * Package Name           : xxwsh_common_pkg(BODY)
  * Description            : 共通関数(BODY)
  * MD.070(CMD.050)        : なし
- * Version                : 1.49
+ * Version                : 1.50
  *
  * Program List
  *  ----------------------   ---- ----- --------------------------------------------------
@@ -104,6 +104,7 @@ AS
  *  2009/05/07   1.47  SCS    伊藤ひとみ[引当解除関数]本番#1443対応 減数チェックエラー時も引当を解除する。
  *  2009/06/25   1.48  SCS    伊藤ひとみ[稼働日算出関数]本番#1463対応 日付＋LTも算出できるよう変更
  *  2009/08/18   1.49  SCS    伊藤ひとみ[配車解除関数]本番#1581対応(営業システム:特別横持マスタ対応)
+ *  2012/07/18   1.50  SCSK   菅原大輔  E_本稼動_09810対応
  *****************************************************************************************/
 --
 --#######################  固定グローバル定数宣言部 START   #######################
@@ -5839,9 +5840,16 @@ AS
 -- 2009/02/20 D.Nihei Add Start 本番障害#1034対応
       -- 受注ヘッダアドオンのロック取得
     CURSOR  ship_lock_cur IS
-      SELECT 1
+-- 2012/07/18 D.Sugahara 1.50 Mod Start(ヒント句追加）
+      SELECT /*+ INDEX ( xoha xxwsh_oh_n24 ) INDEX ( xoha xxwsh_oh_n23 ) */
+-- 2012/07/18 D.Sugahara 1.50 Mod End
+              1
       FROM   xxwsh_order_headers_all     xoha       -- 受注ヘッダアドオン
-      WHERE  NVL(xoha.delivery_no, xoha.mixed_no)       =  lv_delivery_no
+-- 2012/07/18 D.Sugahara 1.50 Mod Start
+--      WHERE  NVL(xoha.delivery_no, xoha.mixed_no)       =  lv_delivery_no
+      WHERE  ((xoha.delivery_no = lv_delivery_no) OR
+              (xoha.delivery_no IS NULL AND xoha.mixed_no = lv_delivery_no))
+-- 2012/07/18 D.Sugahara 1.50 Mod End
       AND    NVL(xoha.latest_external_flag, cv_flag_no) =  cv_flag_yes
       FOR UPDATE OF xoha.order_header_id NOWAIT
     ;
@@ -7106,14 +7114,21 @@ END;
              ,ln_deli_sum_c
              ,ln_deli_sum_pallet_w
       FROM   (-- 受注データ
-              SELECT  xoha.sum_weight                 sum_weight
+-- 2012/07/18 D.Sugahara 1.50 Mod Start(ヒント句追加）
+              SELECT  /*+ INDEX ( xoha xxwsh_oh_n24 ) INDEX ( xoha xxwsh_oh_n23 ) */
+-- 2012/07/18 D.Sugahara 1.50 Mod End
+                      xoha.sum_weight                 sum_weight
                      ,xoha.sum_capacity               sum_capacity
                      ,NVL(xoha.sum_pallet_weight, 0)  sum_pallet_weight
               FROM    xxwsh_order_headers_all         xoha
--- 2009/02/20 D.Nihei Mod Start 本番障害#863対応
---              WHERE   xoha.delivery_no                            =  lv_delivery_no
-              WHERE   NVL(xoha.delivery_no, xoha.mixed_no)        =  lv_delivery_no
--- 2009/02/20 D.Nihei Mod End
+-- 2012/07/18 D.Sugahara 1.50 Mod Start
+---- 2009/02/20 D.Nihei Mod Start 本番障害#863対応
+----              WHERE   xoha.delivery_no                            =  lv_delivery_no
+--              WHERE   NVL(xoha.delivery_no, xoha.mixed_no)        =  lv_delivery_no
+              WHERE  ((xoha.delivery_no = lv_delivery_no) OR
+                      (xoha.delivery_no IS NULL AND xoha.mixed_no = lv_delivery_no))
+---- 2009/02/20 D.Nihei Mod End
+-- 2012/07/18 D.Sugahara 1.50 Mod End
               AND     NVL(xoha.latest_external_flag, cv_flag_no)  =  cv_flag_yes
               -- 移動データ
               UNION ALL
