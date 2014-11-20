@@ -1,5 +1,4 @@
-CREATE OR REPLACE
-PACKAGE BODY XXCOK014A01C
+CREATE OR REPLACE PACKAGE BODY XXCOK014A01C
 AS
 /*****************************************************************************************
  * Copyright(c)Sumisho Computer Systems Corporation, 2008. All rights reserved.
@@ -7,30 +6,32 @@ AS
  * Package Name     : XXCOK014A01C(body)
  * Description      : 販売実績情報・手数料計算条件からの販売手数料計算処理
  * MD.050           : 条件別販手販協計算処理 MD050_COK_014_A01
- * Version          : 1.8
+ * Version          : 2.0
  *
  * Program List
- * -------------------------- ------------------------------------------------------------
- *  Name                       Description
- * -------------------------- ------------------------------------------------------------
- *  main                      販売実績情報・手数料計算条件からの販売手数料計算処理
- *  submain                   メイン処理プロシージャ
- *  init_proc                 初期処理(A-1)
- *  del_bm_support_info       販手販協保持期間外データの削除(A-2)
- *  chk_customer_info         処理対象顧客データの判断(A-4,A-22,A-40)
- *  get_bm_support_add_info   販手販協計算付加情報の取得(A-5,A-23,A-41)
- *  del_bm_contract_err_info  販手条件エラーデータの削除(A-6,A-24)
- *  get_active_vendor_info    支払先データの取得(A-9,A-27)
- *  cal_bm_contract10_info    売価別条件の計算(A-10,A-28)
- *  cal_bm_contract20_info    容器区分別条件の計算(A-11,A-29)
- *  cal_bm_contract30_info    一律条件の計算(A-12,A-30)
- *  cal_bm_contract40_info    定額条件の計算(A-13,A-31)
- *  cal_bm_contract50_info    電気料条件の計算(A-14,A-32)
- *  ins_bm_contract_err_info  販手条件エラーデータの登録(A-17,A-35)
- *  upd_sales_exp_lines_info  販売実績連携結果の更新(A-17,A-35,A-46)
- *  del_pre_bm_support_info   前回販手販協計算結果データの削除(A-18,A-36,A-47)
- *  ins_bm_support_info       条件別販手販協計算データの登録(A-20,A-38,A-49)
- *  
+ * -------------------- ------------------------------------------------------------
+ *  Name                 Description
+ * -------------------- ------------------------------------------------------------
+ *  update_xsel          販売実績連携結果の更新                       (A-12)
+ *  insert_xbce          販手条件エラーテーブルへの登録               (A-11)
+ *  insert_xcbs          条件別販手販協テーブルへの登録               (A-10)
+ *  set_xcbs_data        条件別販手販協情報の設定                     (A-9)
+ *  sales_result_loop1   販売実績の取得・売価別条件                   (A-8)
+ *  sales_result_loop2   販売実績の取得・容器区分別条件               (A-8)
+ *  sales_result_loop3   販売実績の取得・一律条件                     (A-8)
+ *  sales_result_loop4   販売実績の取得・定額条件                     (A-8)
+ *  sales_result_loop5   販売実績の取得・電気料（固定／変動）         (A-8)
+ *  sales_result_loop6   販売実績の取得・入金値引率                   (A-8)
+ *  delete_xbce          販手条件エラーの削除処理                     (A-7)
+ *  delete_xcbs          条件別販手販協データの削除（未確定金額）     (A-3)
+ *  insert_xt0c          条件別販手販協計算顧客情報一時表への登録     (A-6)
+ *  get_cust_subdata     条件別販手販協計算日付情報の導出             (A-5)
+ *  cust_loop            顧客情報ループ                               (A-4)
+ *  purge_xcbs           条件別販手販協データの削除（保持期間外）     (A-2)
+ *  init                 初期処理                                     (A-1)
+ *  submain              メイン処理プロシージャ
+ *  main                 コンカレント実行ファイル登録プロシージャ
+ *
  * Change Record
  * ------------- ----- ---------------- -------------------------------------------------
  *  Date          Ver.  Editor           Description
@@ -46,5700 +47,5295 @@ AS
  *  2009/04/14    1.6   K.Yamaguchi      [障害T1_0523] 販売実績の売上金額（税込）取得方法不正対応
  *  2009/04/20    1.7   K.Yamaguchi      [障害T1_0688] 販手条件マスタの有効日を判定しないように修正
  *  2009/05/20    1.8   K.Yamaguchi      [障害T1_0686] メッセージ修正
+ *  2009/06/01    2.0   K.Yamaguchi      [障害T1_0620][障害T1_0823][障害T1_1124][障害T1_1303]
+ *                                       [障害T1_1400][障害T1_1402][障害T1_1422]
+ *                                       修正困難により再作成
+ *
  *****************************************************************************************/
---
-  ------------------------------------------------------------
-  -- ユーザー定義グローバル定数
-  ------------------------------------------------------------
-  -- パッケージ定義
-  cv_pkg_name       CONSTANT VARCHAR2(12) := 'XXCOK014A01C';                     -- パッケージ名
-  -- 初期値
-  cv_msg_part       CONSTANT VARCHAR2(3)  := ' : ';                              -- メッセージデリミタ
-  cv_msg_cont       CONSTANT VARCHAR2(1)  := '.';                                -- カンマ
-  cn_zero           CONSTANT NUMBER       := 0;                                  -- 数値:0
-  cn_one            CONSTANT NUMBER       := 1;                                  -- 数値:1
-  cn_two            CONSTANT NUMBER       := 2;                                  -- 数値:2
-  cv_zero           CONSTANT VARCHAR2(1)  := '0';                                -- 文字:0
-  cv_one            CONSTANT VARCHAR2(1)  := '1';                                -- 文字:1
-  cv_msg_wq         CONSTANT VARCHAR2(1)  := '"';                                -- ダブルクォーテイション
-  cv_msg_c          CONSTANT VARCHAR2(1)  := ',';                                -- コンマ
-  cv_csv_sep        CONSTANT VARCHAR2(1)  := ',';                                -- CSVセパレータ
-  cv_yes            CONSTANT VARCHAR2(1)  := 'Y';                                -- 文字:Y
-  cv_no             CONSTANT VARCHAR2(1)  := 'N';                                -- 文字:N
-  cv_output         CONSTANT VARCHAR2(6)  := 'OUTPUT';                           -- ヘッダログ出力
-  cv_language       CONSTANT VARCHAR2(4)  := 'LANG';                             -- 言語
-  -- 日付書式
-  cv_format1        CONSTANT VARCHAR2(10) := 'YYYY/MM/DD';                       -- 書式１
-  cv_format2        CONSTANT VARCHAR2(6)  := 'YYYYMM';                           -- 書式２
-  cv_format3        CONSTANT VARCHAR2(2)  := 'MM';                               -- 書式３
-  -- ベンダー区分
-  cv_vendor_type1   CONSTANT VARCHAR2(1)  := '1';                                -- フルベンダー
-  cv_vendor_type2   CONSTANT VARCHAR2(1)  := '2';                                -- フルベンダー消化
-  cv_vendor_type3   CONSTANT VARCHAR2(1)  := '3';                                -- 一般
-  -- 顧客区分
-  cv_cust_type1     CONSTANT VARCHAR2(2)  := '10';                               -- 顧客
-  cv_cust_type2     CONSTANT VARCHAR2(2)  := '13';                               -- 請求顧客
-  -- 業態区分
-  cv_bus_type       CONSTANT VARCHAR2(2)  := '11';                               -- ベンダー
-  -- 業態小分類区分
-  cv_bus_type1      CONSTANT VARCHAR2(2)  := '25';                               -- フルベンダー
-  cv_bus_type2      CONSTANT VARCHAR2(2)  := '24';                               -- フルベンダー消化
-  -- 請求区分
-  cv_bill_site_use  CONSTANT VARCHAR2(7)  := 'BILL_TO';                          -- 請求
-  -- 容器群ダミーコード
-  cv_ves_dmmy       CONSTANT VARCHAR2(4)  := '9999';                             -- 容器群ダミーコード
-  -- 会計カレンダステータス
-  cv_cal_op_status  CONSTANT VARCHAR2(1)  := 'O';                                -- オープン
-  -- 連携ステータス
-  cv_if_status0     CONSTANT VARCHAR2(1)  := '0';                                -- 未処理
-  cv_if_status1     CONSTANT VARCHAR2(1)  := '1';                                -- 処理済
-  cv_if_status2     CONSTANT VARCHAR2(1)  := '2';                                -- 不要
-  -- 支払先退避
-  cn_bm1_set        CONSTANT PLS_INTEGER  := 1;                                  -- BM1退避
-  cn_bm2_set        CONSTANT PLS_INTEGER  := 2;                                  -- BM2退避
-  cn_bm3_set        CONSTANT PLS_INTEGER  := 3;                                  -- BM3退避
-  -- 支払区分
-  cv_bm1_type       CONSTANT VARCHAR2(3)  := 'BM1';                              -- 契約者仕入先コード
-  cv_bm2_type       CONSTANT VARCHAR2(3)  := 'BM2';                              -- 紹介者BM支払仕入先コード１
-  cv_bm3_type       CONSTANT VARCHAR2(3)  := 'BM3';                              -- 紹介者BM支払仕入先コード２
-  cv_en1_type       CONSTANT VARCHAR2(3)  := 'EN1';                              -- 電気料
-  -- 支払月
-  cv_month_type1    CONSTANT VARCHAR2(2)  := '40';                               -- 当月
-  cv_month_type2    CONSTANT VARCHAR2(2)  := '50';                               -- 翌月
-  -- サイト
-  cv_site_type1     CONSTANT VARCHAR2(2)  := '00';                               -- 当月
-  cv_site_type2     CONSTANT VARCHAR2(2)  := '01';                               -- 翌月
-  -- BM支払区分
-  cv_bm_pay1_type   CONSTANT VARCHAR2(1)  := '1';                                -- FB支払案内有
-  cv_bm_pay2_type   CONSTANT VARCHAR2(1)  := '2';                                -- FB支払案内無
-  cv_bm_pay3_type   CONSTANT VARCHAR2(1)  := '3';                                -- AP支払
-  cv_bm_pay4_type   CONSTANT VARCHAR2(1)  := '4';                                -- 現金持参
-  -- 計算条件
-  cv_cal_type10     CONSTANT VARCHAR2(2)  := '10';                               -- 売価別条件
-  cv_cal_type20     CONSTANT VARCHAR2(2)  := '20';                               -- 容器区分別条件
-  cv_cal_type30     CONSTANT VARCHAR2(2)  := '30';                               -- 一律条件
-  cv_cal_type40     CONSTANT VARCHAR2(2)  := '40';                               -- 定額条件
-  cv_cal_type50     CONSTANT VARCHAR2(2)  := '50';                               -- 電気料(固定)／電気料（変動）
-  cv_cal_type60     CONSTANT VARCHAR2(2)  := '60';                               -- 入金値引額
-  -- WHOカラム
-  cn_created_by     CONSTANT NUMBER       := fnd_global.user_id;                 -- 作成者のユーザーID
-  cn_last_upd_by    CONSTANT NUMBER       := fnd_global.user_id;                 -- 最終更新者のユーザーID
-  cn_last_upd_login CONSTANT NUMBER       := fnd_global.login_id;                -- 最終更新者のログインID
-  cn_request_id     CONSTANT NUMBER       := fnd_global.conc_request_id;         -- 要求ID
-  cn_prg_appl_id    CONSTANT NUMBER       := fnd_global.prog_appl_id;            -- コンカレントアプリケーションID
-  cn_program_id     CONSTANT NUMBER       := fnd_global.conc_program_id;         -- コンカレントプログラムID
+  --==================================================
+  -- グローバル定数
+  --==================================================
+  -- パッケージ名
+  cv_pkg_name                      CONSTANT VARCHAR2(20)    := 'XXCOK014A01C';
   -- アプリケーション短縮名
-  cv_ap_type_xxccp  CONSTANT VARCHAR2(5)  := 'XXCCP';                            -- 共通
-  cv_ap_type_xxcok  CONSTANT VARCHAR2(5)  := 'XXCOK';                            -- 個別開発
-  cv_ap_type_sqlgl  CONSTANT VARCHAR2(5)  := 'SQLGL';                            -- 会計
-  cv_ap_type_ar     CONSTANT VARCHAR2(2)  := 'AR';                               -- 請求
+  cv_appl_short_name_cok           CONSTANT VARCHAR2(10)    := 'XXCOK';
+  cv_appl_short_name_ccp           CONSTANT VARCHAR2(10)    := 'XXCCP';
+  cv_appl_short_name_gl            CONSTANT VARCHAR2(10)    := 'SQLGL';
+  cv_appl_short_name_ar            CONSTANT VARCHAR2(10)    := 'AR';
   -- ステータス・コード
-  cv_status_normal  CONSTANT VARCHAR2(1)  := xxccp_common_pkg.set_status_normal; -- 正常:0
-  cv_status_warn    CONSTANT VARCHAR2(1)  := xxccp_common_pkg.set_status_warn;   -- 警告:1
-  cv_status_error   CONSTANT VARCHAR2(1)  := xxccp_common_pkg.set_status_error;  -- 異常:2
-  cv_customer_err   CONSTANT VARCHAR2(1)  := 8;                                  -- 処理対象外顧客エラー:8
-  cv_contract_err   CONSTANT VARCHAR2(1)  := 9;                                  -- 販手条件エラー:9
-  -- 共通メッセージ定義
-  cv_normal_msg     CONSTANT VARCHAR2(16) := 'APP-XXCCP1-90004';                 -- 正常終了メッセージ
-  cv_warn_msg       CONSTANT VARCHAR2(16) := 'APP-XXCCP1-90005';                 -- 警告終了メッセージ
-  cv_error_msg      CONSTANT VARCHAR2(16) := 'APP-XXCCP1-90007';                 -- エラー終了メッセージ
-  cv_mainmsg_90000  CONSTANT VARCHAR2(16) := 'APP-XXCCP1-90000';                 -- 対象件数出力
-  cv_mainmsg_90001  CONSTANT VARCHAR2(16) := 'APP-XXCCP1-90001';                 -- 成功件数出力
-  cv_mainmsg_90002  CONSTANT VARCHAR2(16) := 'APP-XXCCP1-90002';                 -- エラー件数出力
-  cv_mainmsg_90003  CONSTANT VARCHAR2(16) := 'APP-XXCCP1-90003';                 -- スキップ件数出力
-  -- 個別メッセージ定義
-  cv_prmmsg_00022   CONSTANT VARCHAR2(16) := 'APP-XXCOK1-00022';                 -- 業務日付入力パラメータ
-  cv_prmmsg_00044   CONSTANT VARCHAR2(16) := 'APP-XXCOK1-00044';                 -- 実行区分入力パラメータ
-  cv_prmmsg_00028   CONSTANT VARCHAR2(16) := 'APP-XXCOK1-00028';                 -- 業務日付取得エラー
-  cv_prmmsg_00003   CONSTANT VARCHAR2(16) := 'APP-XXCOK1-00003';                 -- プロファイル値取得エラー
-  cv_prmmsg_00051   CONSTANT VARCHAR2(16) := 'APP-XXCOK1-00051';                 -- 販手販協保持期間外情報ロックエラー
-  cv_prmmsg_10398   CONSTANT VARCHAR2(16) := 'APP-XXCOK1-10398';                 -- 販手販協保持期間外情報削除エラー
-  cv_prmmsg_10399   CONSTANT VARCHAR2(16) := 'APP-XXCOK1-10399';                 -- 契約情報取得エラー
--- 2009/05/20 Ver.1.8 [障害T1_0686] SCS K.Yamaguchi REPAIR START
---  cv_prmmsg_00036   CONSTANT VARCHAR2(16) := 'APP-XXCOK1-00036';                 -- 締め・支払日取得エラー
-  cv_prmmsg_10454   CONSTANT VARCHAR2(16) := 'APP-XXCOK1-10454';                 -- 締め・支払日取得エラー
--- 2009/05/20 Ver.1.8 [障害T1_0686] SCS K.Yamaguchi REPAIR END
--- 2009/05/20 Ver.1.8 [障害T1_0686] SCS K.Yamaguchi REPAIR START
---  cv_prmmsg_00027   CONSTANT VARCHAR2(16) := 'APP-XXCOK1-00027';                 -- 営業日取得エラー
-  cv_prmmsg_10455   CONSTANT VARCHAR2(16) := 'APP-XXCOK1-10455';                 -- 営業日取得エラー
--- 2009/05/20 Ver.1.8 [障害T1_0686] SCS K.Yamaguchi REPAIR END
-  cv_prmmsg_00079   CONSTANT VARCHAR2(16) := 'APP-XXCOK1-00079';                 -- 請求先顧客取得エラー
--- 2009/05/20 Ver.1.8 [障害T1_0686] SCS K.Yamaguchi REPAIR START
---  cv_prmmsg_00011   CONSTANT VARCHAR2(16) := 'APP-XXCOK1-00011';                 -- 会計カレンダ情報取得エラー
-  cv_prmmsg_10456   CONSTANT VARCHAR2(16) := 'APP-XXCOK1-10456';                 -- 会計カレンダ情報取得エラー
--- 2009/05/20 Ver.1.8 [障害T1_0686] SCS K.Yamaguchi REPAIR END
-  cv_prmmsg_00080   CONSTANT VARCHAR2(16) := 'APP-XXCOK1-00080';                 -- 販手条件エラー情報ロックエラー
-  cv_prmmsg_10400   CONSTANT VARCHAR2(16) := 'APP-XXCOK1-10400';                 -- 販手条件エラー情報削除エラー
-  cv_prmmsg_10401   CONSTANT VARCHAR2(16) := 'APP-XXCOK1-10401';                 -- 販手条件エラー情報登録エラー
-  cv_prmmsg_10426   CONSTANT VARCHAR2(16) := 'APP-XXCOK1-10426';                 -- 販手条件取得エラー
-  cv_prmmsg_10427   CONSTANT VARCHAR2(16) := 'APP-XXCOK1-10427';                 -- 支払先情報取得エラー
-  cv_prmmsg_00081   CONSTANT VARCHAR2(16) := 'APP-XXCOK1-00081';                 -- 販売実績連携結果更新ロックエラー
-  cv_prmmsg_10402   CONSTANT VARCHAR2(16) := 'APP-XXCOK1-10402';                 -- 販売実績連携結果更新エラー
-  cv_prmmsg_10403   CONSTANT VARCHAR2(16) := 'APP-XXCOK1-10403';                 -- 販手販協前回計算情報削除エラー
-  cv_prmmsg_10404   CONSTANT VARCHAR2(16) := 'APP-XXCOK1-10404';                 -- 販手販協計算情報登録エラー
-  cv_prmmsg_10405   CONSTANT VARCHAR2(16) := 'APP-XXCOK1-10405';                 -- 販売実績取得エラー
-  cv_prmmsg_00100   CONSTANT VARCHAR2(16) := 'APP-XXCOK1-00100';                 -- 機能例外エラー
-  cv_prmmsg_00101   CONSTANT VARCHAR2(16) := 'APP-XXCOK1-00101';                 -- 共通機能例外エラー
-  -- メッセージトークン定義
-  cv_tkn_bis_date   CONSTANT VARCHAR2(13) := 'BUSINESS_DATE';                    -- 業務日付トークン
-  cv_tkn_proc_date  CONSTANT VARCHAR2(9)  := 'PROC_DATE';                        -- 処理日トークン
-  cv_tkn_proc_type  CONSTANT VARCHAR2(9)  := 'PROC_TYPE';                        -- 実行区分トークン
-  cv_tkn_profile    CONSTANT VARCHAR2(7)  := 'PROFILE';                          -- プロファイルトークン
-  cv_tkn_dept_code  CONSTANT VARCHAR2(9)  := 'DEPT_CODE';                        -- 部門コードトークン
-  cv_tkn_cust_code  CONSTANT VARCHAR2(9)  := 'CUST_CODE';                        -- 顧客コードトークン
-  cv_tkn_vend_code  CONSTANT VARCHAR2(11) := 'VENDOR_CODE';                      -- 仕入先コードトークン
-  cv_tkn_close_date CONSTANT VARCHAR2(10) := 'CLOSE_DATE';                       -- 締め日トークン
-  cv_tkn_pay_date   CONSTANT VARCHAR2(8)  := 'PAY_DATE';                         -- 支払日トークン
-  cv_tkn_sales_amt  CONSTANT VARCHAR2(9)  := 'SALES_AMT';                        -- 売価トークン
-  cv_tkn_cont_type  CONSTANT VARCHAR2(14) := 'CONTAINER_TYPE';                   -- 容器区分トークン
-  cv_tkn_count      CONSTANT VARCHAR2(5)  := 'COUNT';                            -- 件数出力トークン
-  cv_tkn_errmsg     CONSTANT VARCHAR2(6)  := 'ERRMSG';                           -- エラーメッセージトークン
-  -- プロファイル定義
-  cv_pro_org_code   CONSTANT VARCHAR2(30) := 'ORG_ID';                           -- 組織ID
-  cv_pro_books_code CONSTANT VARCHAR2(30) := 'GL_SET_OF_BKS_ID';                 -- 会計帳簿ID
-  cv_pro_bm_sup_fm  CONSTANT VARCHAR2(30) := 'XXCOK1_BM_SUPPORT_PERIOD_FROM';    -- 条件別販手販協計算処理期間(From)
-  cv_pro_bm_sup_to  CONSTANT VARCHAR2(30) := 'XXCOK1_BM_SUPPORT_PERIOD_TO';      -- 条件別販手販協計算処理期間(To)
-  cv_pro_sales_ret  CONSTANT VARCHAR2(30) := 'XXCOK1_SALES_RETENTION_PERIOD';    -- 販手販協計算結果保持期間
-  cv_pro_elec_ch    CONSTANT VARCHAR2(30) := 'XXCOK1_ELEC_CHANGE_ITEM_CODE';     -- 電気料(変動)品目コード
-  cv_pro_vendor     CONSTANT VARCHAR2(30) := 'XXCOK1_VENDOR_DUMMY_CODE';         -- 仕入先ダミーコード
-  -- 参照表定義
-  cv_lk_bm_dis_type CONSTANT VARCHAR2(30) := 'XXCOK1_BM_DISTRICT_PARA_MST';      -- 販手販協計算実行区分
-  cv_lk_itm_yk_type CONSTANT VARCHAR2(30) := 'XXCMM_ITM_YOKIGUN';                -- 容器群区分
-  cv_lk_cust_type   CONSTANT VARCHAR2(30) := 'XXCMM_CUST_GYOTAI_SHO';            -- 顧客業態小分類区分
-  cv_lk_no_inv_type CONSTANT VARCHAR2(30) := 'XXCOK1_NO_INV_ITEM_MST';           -- 非在庫品目区分
-  ------------------------------------------------------------
-  -- ユーザー定義グローバル変数
-  ------------------------------------------------------------
-  gv_language       fnd_languages.iso_language%TYPE DEFAULT NULL;                -- 言語
-  gd_proc_date      DATE                            DEFAULT NULL;                -- 業務日付
-  gv_proc_type      VARCHAR2(1)                     DEFAULT NULL;                -- 実行区分
-  gn_target_cnt     NUMBER                          DEFAULT 0;                   -- 対象件数
-  gn_normal_cnt     NUMBER                          DEFAULT 0;                   -- 正常件数
-  gn_warning_cnt    NUMBER                          DEFAULT 0;                   -- 警告件数
-  gn_error_cnt      NUMBER                          DEFAULT 0;                   -- エラー件数
-  gn_customer_cnt   NUMBER                          DEFAULT 0;                   -- 顧客件数
-  gn_contract_cnt   NUMBER                          DEFAULT 0;                   -- 販手条件エラー件数
-  gd_limit_date     DATE                            DEFAULT NULL;                -- 販手販協保持期限日
-  gn_pro_org_id     NUMBER                          DEFAULT NULL;                -- 組織ID
-  gn_pro_books_id   NUMBER                          DEFAULT NULL;                -- 会計帳簿ID
-  gn_pro_bm_sup_fm  NUMBER                          DEFAULT NULL;                -- 条件別販手販協計算処理期間(From)
-  gn_pro_bm_sup_to  NUMBER                          DEFAULT NULL;                -- 条件別販手販協計算処理期間(To)
-  gn_pro_sales_ret  NUMBER                          DEFAULT NULL;                -- 販手販協計算結果保持期間
-  gv_pro_elec_ch    VARCHAR2(7)                     DEFAULT NULL;                -- 電気料(変動)品目コード
-  gv_pro_vendor     VARCHAR2(9)                     DEFAULT NULL;                -- 仕入先ダミーコード
-  gv_pro_vendor_s   VARCHAR2(9)                     DEFAULT NULL;                -- 仕入先サイトダミーコード
-  gv_bm1_vendor     VARCHAR2(9)                     DEFAULT NULL;                -- BM1仕入先コード
-  gv_bm1_vendor_s   VARCHAR2(9)                     DEFAULT NULL;                -- BM1仕入先サイトコード
-  gv_sales_upd_flg  VARCHAR2(1)                     DEFAULT NULL;                -- 販売実績更新フラグ
-  ------------------------------------------------------------
-  -- ユーザー定義グローバルテーブル・レコード型
-  ------------------------------------------------------------
-  -- 支払条件退避テーブル型
-  TYPE g_term_name_ttype IS TABLE OF ra_terms_tl.name%TYPE INDEX BY BINARY_INTEGER;
-  -- 締め日情報退避レコード型
-  TYPE g_close_date_rtype IS RECORD (
-     start_date xxcok_cond_bm_support.closing_date%TYPE                          -- 販手計算開始日
-    ,end_date   xxcok_cond_bm_support.closing_date%TYPE                          -- 販手計算終了日
-    ,close_date xxcok_cond_bm_support.closing_date%TYPE                          -- 締め日
-    ,pay_date   xxcok_cond_bm_support.expect_payment_date%TYPE                   -- 支払日
-    ,term_name  ra_terms_tl.name%TYPE                                            -- 支払条件
-  );
-  -- 締め日情報退避テーブル型
-  TYPE g_close_date_ttype IS TABLE OF g_close_date_rtype INDEX BY BINARY_INTEGER;
-  -- 複数支払条件情報退避レコード型
-  TYPE g_many_term_rtype IS RECORD (
-     to_close_date xxcok_cond_bm_support.closing_date%TYPE                       -- 今回締め日
-    ,to_pay_date   xxcok_cond_bm_support.expect_payment_date%TYPE                -- 今回支払日
-    ,to_term_name  ra_terms_tl.name%TYPE                                         -- 今回支払条件
-    ,fm_close_date xxcok_cond_bm_support.closing_date%TYPE                       -- 前回締め日
-    ,fm_pay_date   xxcok_cond_bm_support.expect_payment_date%TYPE                -- 前回支払日
-    ,fm_term_name  ra_terms_tl.name%TYPE                                         -- 前回支払条件
-    ,end_date      xxcok_cond_bm_support.closing_date%TYPE                       -- 販手計算終了日
-  );
-  -- 複数支払条件情報退避テーブル型
-  TYPE g_many_term_ttype IS TABLE OF g_many_term_rtype INDEX BY BINARY_INTEGER;
-  -- 計算条件退避テーブル型
-  TYPE g_calculation_ttype IS TABLE OF xxcok_mst_bm_contract.calc_type%TYPE INDEX BY BINARY_INTEGER;
-  -- 支払先チェック退避レコード型
-  TYPE g_vendor_rtype IS RECORD (
-     bm_type     VARCHAR2(3)                                                     -- 支払区分
-    ,vendor_code po_vendors.segment1%TYPE                                        -- 仕入先コード
-  );
-  -- 支払先チェック退避テーブル型
-  TYPE g_vendor_ttype IS TABLE OF g_vendor_rtype INDEX BY BINARY_INTEGER;
-  -- 販手販協計算登録情報退避レコード型
-  TYPE g_bm_support_rtype IS RECORD (
-     bm_type              VARCHAR2(3)                                            -- 支払区分
-    ,base_code            xxcok_cond_bm_support.base_code%TYPE                   -- 拠点コード
-    ,emp_code             xxcok_cond_bm_support.emp_code%TYPE                    -- 担当者コード
-    ,delivery_cust_code   xxcok_cond_bm_support.delivery_cust_code%TYPE          -- 顧客【納品先】
-    ,demand_to_cust_code  xxcok_cond_bm_support.demand_to_cust_code%TYPE         -- 顧客【請求先】
-    ,acctg_year           xxcok_cond_bm_support.acctg_year%TYPE                  -- 会計年度
-    ,chain_store_code     xxcok_cond_bm_support.chain_store_code%TYPE            -- チェーン店コード
-    ,supplier_code        xxcok_cond_bm_support.supplier_code%TYPE               -- 仕入先コード
-    ,supplier_site_code   xxcok_cond_bm_support.supplier_site_code%TYPE          -- 仕入先サイトコード
-    ,calc_type            xxcok_cond_bm_support.calc_type%TYPE                   -- 計算条件
-    ,delivery_date        xxcok_cond_bm_support.delivery_date%TYPE               -- 納品日年月
-    ,delivery_qty         xxcok_cond_bm_support.delivery_qty%TYPE                -- 納品数量
-    ,delivery_unit_type   xxcok_cond_bm_support.delivery_unit_type%TYPE          -- 納品単位
-    ,selling_amt_tax      xxcok_cond_bm_support.selling_amt_tax%TYPE             -- 売上金額(税込)
-    ,rebate_rate          xxcok_cond_bm_support.rebate_rate%TYPE                 -- 割戻率
-    ,rebate_amt           xxcok_cond_bm_support.rebate_amt%TYPE                  -- 割戻額
-    ,container_type       xxcok_cond_bm_support.container_type_code%TYPE         -- 容器区分コード
-    ,selling_price        xxcok_cond_bm_support.selling_price%TYPE               -- 売価金額
-    ,cond_bm_amt_tax      xxcok_cond_bm_support.cond_bm_amt_tax%TYPE             -- 条件別手数料額(税込)
-    ,cond_bm_amt_no_tax   xxcok_cond_bm_support.cond_bm_amt_no_tax%TYPE          -- 条件別手数料額(税抜)
-    ,cond_tax_amt         xxcok_cond_bm_support.cond_tax_amt%TYPE                -- 条件別消費税額
-    ,electric_amt_tax     xxcok_cond_bm_support.electric_amt_tax%TYPE            -- 電気料(税込)
-    ,electric_amt_no_tax  xxcok_cond_bm_support.electric_amt_no_tax%TYPE         -- 電気料(税抜)
-    ,electric_tax_amt     xxcok_cond_bm_support.electric_tax_amt%TYPE            -- 電気料消費税額
-    ,csh_rcpt_dis_amt     xxcok_cond_bm_support.csh_rcpt_discount_amt%TYPE       -- 入金値引額
-    ,csh_rcpt_dis_amt_tax xxcok_cond_bm_support.csh_rcpt_discount_amt_tax%TYPE   -- 入金値引消費税額
-    ,tax_class            xxcok_cond_bm_support.consumption_tax_class%TYPE       -- 消費税区分
-    ,tax_code             xxcok_cond_bm_support.tax_code%TYPE                    -- 税金コード
-    ,tax_rate             xxcok_cond_bm_support.tax_rate%TYPE                    -- 消費税率
-    ,term_code            xxcok_cond_bm_support.term_code%TYPE                   -- 支払条件
-    ,closing_date         xxcok_cond_bm_support.closing_date%TYPE                -- 締め日
-    ,expect_payment_date  xxcok_cond_bm_support.expect_payment_date%TYPE         -- 支払予定日
-    ,calc_period_from     xxcok_cond_bm_support.calc_target_period_from%TYPE     -- 計算対象期間(From)
-    ,calc_period_to       xxcok_cond_bm_support.calc_target_period_to%TYPE       -- 計算対象期間(To)
-    ,cond_bm_if_status    xxcok_cond_bm_support.cond_bm_interface_status%TYPE    -- 連携ステータス(条件別販手販協)
-    ,cond_bm_if_date      xxcok_cond_bm_support.cond_bm_interface_date%TYPE      -- 連携日(条件別販手販協)
-    ,bm_interface_status  xxcok_cond_bm_support.bm_interface_status%TYPE         -- 連携ステータス(販手残高)
-    ,bm_interface_date    xxcok_cond_bm_support.bm_interface_date%TYPE           -- 連携日(販手残高)
-    ,ar_interface_status  xxcok_cond_bm_support.ar_interface_status%TYPE         -- 連携ステータス(AR)
-    ,ar_interface_date    xxcok_cond_bm_support.ar_interface_date%TYPE           -- 連携日(AR)
-  );
-  -- 販手販協計算登録情報退避テーブル型
-  TYPE g_bm_support_ttype IS TABLE OF g_bm_support_rtype INDEX BY BINARY_INTEGER;
-  ------------------------------------------------------------
-  -- ユーザー定義例外
-  ------------------------------------------------------------
+  cv_status_normal                 CONSTANT VARCHAR2(1)     := xxccp_common_pkg.set_status_normal;  -- 正常:0
+  cv_status_warn                   CONSTANT VARCHAR2(1)     := xxccp_common_pkg.set_status_warn;    -- 警告:1
+  cv_status_error                  CONSTANT VARCHAR2(1)     := xxccp_common_pkg.set_status_error;   -- 異常:2
+  -- WHOカラム
+  cn_created_by                    CONSTANT NUMBER          := fnd_global.user_id;          -- CREATED_BY
+  cn_last_updated_by               CONSTANT NUMBER          := fnd_global.user_id;          -- LAST_UPDATED_BY
+  cn_last_update_login             CONSTANT NUMBER          := fnd_global.login_id;         -- LAST_UPDATE_LOGIN
+  cn_request_id                    CONSTANT NUMBER          := fnd_global.conc_request_id;  -- REQUEST_ID
+  cn_program_application_id        CONSTANT NUMBER          := fnd_global.prog_appl_id;     -- PROGRAM_APPLICATION_ID
+  cn_program_id                    CONSTANT NUMBER          := fnd_global.conc_program_id;  -- PROGRAM_ID
+  -- メッセージコード
+  cv_msg_ccp_90000                 CONSTANT VARCHAR2(50)    := 'APP-XXCCP1-90000';        -- 対象件数
+  cv_msg_ccp_90001                 CONSTANT VARCHAR2(50)    := 'APP-XXCCP1-90001';        -- 成功件数
+  cv_msg_ccp_90002                 CONSTANT VARCHAR2(50)    := 'APP-XXCCP1-90002';        -- エラー件数
+  cv_msg_ccp_90003                 CONSTANT VARCHAR2(50)    := 'APP-XXCCP1-90003';        -- エラー件数
+  cv_msg_ccp_90004                 CONSTANT VARCHAR2(50)    := 'APP-XXCCP1-90004';        -- 正常終了
+  cv_msg_ccp_90005                 CONSTANT VARCHAR2(50)    := 'APP-XXCCP1-90005';        -- 警告終了
+  cv_msg_ccp_90006                 CONSTANT VARCHAR2(50)    := 'APP-XXCCP1-90006';        -- エラー終了全ロールバック
+  cv_msg_cok_00003                 CONSTANT VARCHAR2(50)    := 'APP-XXCOK1-00003';
+  cv_msg_cok_00022                 CONSTANT VARCHAR2(50)    := 'APP-XXCOK1-00022';
+  cv_msg_cok_00028                 CONSTANT VARCHAR2(50)    := 'APP-XXCOK1-00028';
+  cv_msg_cok_00044                 CONSTANT VARCHAR2(50)    := 'APP-XXCOK1-00044';
+  cv_msg_cok_00051                 CONSTANT VARCHAR2(50)    := 'APP-XXCOK1-00051';
+  cv_msg_cok_00080                 CONSTANT VARCHAR2(50)    := 'APP-XXCOK1-00080';
+  cv_msg_cok_00081                 CONSTANT VARCHAR2(50)    := 'APP-XXCOK1-00081';
+  cv_msg_cok_00086                 CONSTANT VARCHAR2(50)    := 'APP-XXCOK1-00086';
+  cv_msg_cok_10398                 CONSTANT VARCHAR2(50)    := 'APP-XXCOK1-10398';
+  cv_msg_cok_10401                 CONSTANT VARCHAR2(50)    := 'APP-XXCOK1-10401';
+  cv_msg_cok_10402                 CONSTANT VARCHAR2(50)    := 'APP-XXCOK1-10402';
+  cv_msg_cok_10404                 CONSTANT VARCHAR2(50)    := 'APP-XXCOK1-10404';
+  cv_msg_cok_10405                 CONSTANT VARCHAR2(50)    := 'APP-XXCOK1-10405';
+  cv_msg_cok_10426                 CONSTANT VARCHAR2(50)    := 'APP-XXCOK1-10426';
+  cv_msg_cok_10427                 CONSTANT VARCHAR2(50)    := 'APP-XXCOK1-10427';
+  cv_msg_cok_10454                 CONSTANT VARCHAR2(50)    := 'APP-XXCOK1-10454';
+  cv_msg_cok_10455                 CONSTANT VARCHAR2(50)    := 'APP-XXCOK1-10455';
+  cv_msg_cok_10456                 CONSTANT VARCHAR2(50)    := 'APP-XXCOK1-10456';
+  -- トークン
+  cv_tkn_close_date                CONSTANT VARCHAR2(30)    := 'CLOSE_DATE';
+  cv_tkn_container_type            CONSTANT VARCHAR2(30)    := 'CONTAINER_TYPE';
+  cv_tkn_count                     CONSTANT VARCHAR2(30)    := 'COUNT';
+  cv_tkn_cust_code                 CONSTANT VARCHAR2(30)    := 'CUST_CODE';
+  cv_tkn_dept_code                 CONSTANT VARCHAR2(30)    := 'DEPT_CODE';
+  cv_tkn_pay_date                  CONSTANT VARCHAR2(30)    := 'PAY_DATE';
+  cv_tkn_proc_date                 CONSTANT VARCHAR2(30)    := 'PROC_DATE';
+  cv_tkn_proc_type                 CONSTANT VARCHAR2(30)    := 'PROC_TYPE';
+  cv_tkn_profile                   CONSTANT VARCHAR2(30)    := 'PROFILE';
+  cv_tkn_sales_amt                 CONSTANT VARCHAR2(30)    := 'SALES_AMT';
+  cv_tkn_vendor_code               CONSTANT VARCHAR2(30)    := 'VENDOR_CODE';
+  cv_tkn_business_date             CONSTANT VARCHAR2(30)    := 'BUSINESS_DATE';
+  -- セパレータ
+  cv_msg_part                      CONSTANT VARCHAR2(3)     := ' : ';
+  cv_msg_cont                      CONSTANT VARCHAR2(3)     := '.';
+  -- プロファイル・オプション名
+  cv_profile_name_01               CONSTANT VARCHAR2(50)    := 'ORG_ID';                            -- MO: 営業単位
+  cv_profile_name_02               CONSTANT VARCHAR2(50)    := 'GL_SET_OF_BKS_ID';                  -- 会計帳簿ID
+  cv_profile_name_03               CONSTANT VARCHAR2(50)    := 'XXCOK1_BM_SUPPORT_PERIOD_FROM';     -- XXCOK:販手販協計算処理期間（From）
+  cv_profile_name_04               CONSTANT VARCHAR2(50)    := 'XXCOK1_BM_SUPPORT_PERIOD_TO';       -- XXCOK:販手販協計算処理期間（To）
+  cv_profile_name_05               CONSTANT VARCHAR2(50)    := 'XXCOK1_SALES_RETENTION_PERIOD';     -- XXCOK:販手販協情報保持期間
+  cv_profile_name_06               CONSTANT VARCHAR2(50)    := 'XXCOK1_ELEC_CHANGE_ITEM_CODE';      -- 電気料（変動）品目コード
+  cv_profile_name_07               CONSTANT VARCHAR2(50)    := 'XXCOK1_VENDOR_DUMMY_CODE';          -- 仕入先ダミーコード
+  cv_profile_name_08               CONSTANT VARCHAR2(50)    := 'XXCOK1_INSTANTLY_TERM_NAME';        -- 支払条件_即時払い
+  cv_profile_name_09               CONSTANT VARCHAR2(50)    := 'XXCOK1_DEFAULT_TERM_NAME';          -- 支払条件_デフォルト
+  -- 参照タイプ名
+  cv_lookup_type_01                CONSTANT VARCHAR2(30)    := 'XXCOK1_BM_DISTRICT_PARA_MST';       -- 販手販協計算実行区分
+  cv_lookup_type_02                CONSTANT VARCHAR2(30)    := 'XXCOK1_CONSUMPTION_TAX_CLASS';      -- 消費税区分
+  cv_lookup_type_03                CONSTANT VARCHAR2(30)    := 'XXCMM_CUST_GYOTAI_SHO';             -- 業態（小分類）
+  cv_lookup_type_04                CONSTANT VARCHAR2(30)    := 'XXCMM_ITM_YOKIGUN';                 -- 容器群
+  cv_lookup_type_05                CONSTANT VARCHAR2(30)    := 'XXCOS1_NO_INV_ITEM_CODE';           -- 非在庫品目
+  -- 有効フラグ
+  cv_enable                        CONSTANT VARCHAR2(1)     := 'Y';
+  -- 共通関数メッセージ出力区分
+  cv_which_log                     CONSTANT VARCHAR2(10)    := 'LOG';
+  -- 書式フォーマット
+  cv_format_fxrrrrmmdd             CONSTANT VARCHAR2(50)    := 'FXRRRR/MM/DD';
+  -- 条件別販手販協テーブル連携ステータス
+  cv_xcbs_if_status_no             CONSTANT VARCHAR2(1)     := '0'; -- 未処理
+  cv_xcbs_if_status_yes            CONSTANT VARCHAR2(1)     := '1'; -- 処理済
+  cv_xcbs_if_status_off            CONSTANT VARCHAR2(1)     := '2'; -- 不要
+  -- 顧客使用目的
+  cv_site_use_code_ship            CONSTANT VARCHAR2(10)    := 'SHIP_TO'; -- 出荷先
+  cv_site_use_code_bill            CONSTANT VARCHAR2(10)    := 'BILL_TO'; -- 請求先
+  -- 支払月
+  cv_month_type1                   CONSTANT VARCHAR2(2)     := '40'; -- 当月
+  cv_month_type2                   CONSTANT VARCHAR2(2)     := '50'; -- 翌月
+  -- サイト
+  cv_site_type1                    CONSTANT VARCHAR2(2)     := '00'; -- 当月
+  cv_site_type2                    CONSTANT VARCHAR2(2)     := '01'; -- 翌月
+  -- 契約管理ステータス
+  cv_xcm_status_result             CONSTANT VARCHAR2(1)     := '1'; -- 確定
+  -- 条件別販手販協テーブル金額確定ステータス
+  cv_xcbs_temp                     CONSTANT VARCHAR2(1)     := '0'; -- 未確定
+  cv_xcbs_fix                      CONSTANT VARCHAR2(1)     := '1'; -- 確定
+  -- 手数料計算インターフェース済フラグ
+  cv_xsel_if_flag_yes              CONSTANT VARCHAR2(1)     := 'Y'; -- 処理済
+  cv_xsel_if_flag_no               CONSTANT VARCHAR2(1)     := 'N'; -- 未処理
+  -- 顧客区分
+  cv_customer_class_customer       CONSTANT VARCHAR2(2)     := '10'; -- 顧客
+  -- 業態（小分類）
+  cv_gyotai_sho_24                 CONSTANT VARCHAR2(2)     := '24'; -- フルサービスVD（消化）
+  cv_gyotai_sho_25                 CONSTANT VARCHAR2(2)     := '25'; -- フルサービスVD
+  -- 業態（中分類）
+  cv_gyotai_tyu_vd                 CONSTANT VARCHAR2(2)     := '11'; -- VD
+  -- 営業日取得関数・処理区分
+  cn_proc_type_before              CONSTANT NUMBER          := 1;  -- 前
+  cn_proc_type_after               CONSTANT NUMBER          := 2;  -- 後
+  -- 容器区分コード
+  cv_container_code_others         CONSTANT VARCHAR2(4)     := '9999';   -- その他
+  -- 計算条件
+  cv_calc_type_sales_price         CONSTANT VARCHAR2(2)     := '10';  -- 売価別条件
+  cv_calc_type_container           CONSTANT VARCHAR2(2)     := '20';  -- 容器区分別条件
+  cv_calc_type_uniform_rate        CONSTANT VARCHAR2(2)     := '30';  -- 一律条件
+  cv_calc_type_flat_rate           CONSTANT VARCHAR2(2)     := '40';  -- 定額
+  cv_calc_type_electricity_cost    CONSTANT VARCHAR2(2)     := '50';  -- 電気料（固定／変動）
+  -- 端数処理区分
+  cv_tax_rounding_rule_nearest     CONSTANT VARCHAR2(10)    :=  'NEAREST'; -- 四捨五入
+  cv_tax_rounding_rule_up          CONSTANT VARCHAR2(10)    :=  'UP';      -- 切り上げ
+  cv_tax_rounding_rule_down        CONSTANT VARCHAR2(10)    :=  'DOWN';    -- 切り捨て
+  --==================================================
+  -- グローバル変数
+  --==================================================
+  -- カウンタ
+  gn_target_cnt                    NUMBER        DEFAULT 0;      -- 対象件数
+  gn_normal_cnt                    NUMBER        DEFAULT 0;      -- 正常件数
+  gn_error_cnt                     NUMBER        DEFAULT 0;      -- 異常件数
+  gn_skip_cnt                      NUMBER        DEFAULT 0;      -- スキップ件数
+  gn_contract_err_cnt              NUMBER        DEFAULT 0;      -- 販手条件エラー件数
+  -- 入力パラメータ
+  gv_param_proc_date               VARCHAR2(10)  DEFAULT NULL;   -- 業務日付
+  gv_param_proc_type               VARCHAR2(10)  DEFAULT NULL;   -- 処理区分
+  -- 初期処理取得値
+  gd_process_date                  DATE          DEFAULT NULL;   -- 業務処理日付
+  gn_org_id                        NUMBER        DEFAULT NULL;   -- 営業単位ID
+  gn_set_of_books_id               NUMBER        DEFAULT NULL;   -- 会計帳簿ID
+  gn_bm_support_period_from        NUMBER        DEFAULT NULL;   -- XXCOK:販手販協計算処理期間（From）
+  gn_bm_support_period_to          NUMBER        DEFAULT NULL;   -- XXCOK:販手販協計算処理期間（To）
+  gn_sales_retention_period        NUMBER        DEFAULT NULL;   -- XXCOK:販手販協情報保持期間
+  gv_elec_change_item_code         VARCHAR2(7)   DEFAULT NULL;   -- 電気料（変動）品目コード
+  gv_vendor_dummy_code             VARCHAR2(9)   DEFAULT NULL;   -- 仕入先ダミーコード
+  gv_instantly_term_name           VARCHAR2(8)   DEFAULT NULL;   -- 支払条件_即時払い
+  gv_default_term_name             VARCHAR2(8)   DEFAULT NULL;   -- 支払条件_デフォルト
+  --==================================================
   -- 共通例外
-  global_process_expt    EXCEPTION;                                              -- 処理部共通例外
-  global_api_expt        EXCEPTION;                                              -- 共通関数例外
-  global_api_others_expt EXCEPTION;                                              -- 共通関数OTHERS例外
-  global_lock_expt       EXCEPTION;                                              -- グローバル例外
-  -- プラグマ
-  PRAGMA EXCEPTION_INIT(global_api_others_expt,-20000);
-  PRAGMA EXCEPTION_INIT(global_lock_expt, -54);
-  --
-  /**********************************************************************************
-   * Procedure Name   : ins_bm_support_info
-   * Description      : 条件別販手販協計算データの登録(A-20,A-38,A-49)
-   ***********************************************************************************/
-  PROCEDURE ins_bm_support_info(
-     ov_errbuf        OUT VARCHAR2                                -- エラーメッセージ
-    ,ov_retcode       OUT VARCHAR2                                -- リターン・コード
-    ,ov_errmsg        OUT VARCHAR2                                -- ユーザー・エラーメッセージ
-    ,iv_vendor_type   IN  VARCHAR2                                -- ベンダー区分
-    ,id_fm_close_date IN  xxcok_cond_bm_support.closing_date%TYPE -- 前回締め日
-    ,id_to_close_date IN  xxcok_cond_bm_support.closing_date%TYPE -- 今回締め日
-    ,it_bm_support    IN  g_bm_support_ttype                      -- 販手販協計算登録情報
-  )
-  IS
-    --===============================
-    -- ローカル定数
-    --===============================
-    cv_prg_name CONSTANT VARCHAR2(30) := 'ins_bm_support_info'; -- プログラム名
-    --===============================
-    -- ローカル変数
-    --===============================
-    lv_errbuf   VARCHAR2(5000);   -- エラーメッセージ
-    lv_retcode  VARCHAR2(1);      -- リターン・コード
-    lv_errmsg   VARCHAR2(5000);   -- ユーザー・エラーメッセージ
-    lv_out_msg  VARCHAR2(2000);   -- メッセージ
-    lb_retcode  BOOLEAN;          -- メッセージ戻り値
-    ln_cnt      PLS_INTEGER := 0; -- カウンタ
-    ln_ins_cnt  PLS_INTEGER := 0; -- 登録件数カウンタ
-  --
-  BEGIN
-  --
-    --===============================================
-    -- A-0.初期化
-    --===============================================
-    lv_retcode := cv_status_normal;
-    --===============================================
-    -- A-1.条件別販手販協計算登録
-    --===============================================
-    BEGIN
-      << bm_support_all_loop >>
-      FOR ln_cnt IN it_bm_support.FIRST..it_bm_support.LAST LOOP
-        -------------------------------------------------
-        -- 条件別販手販協計算登録
-        -------------------------------------------------
-        INSERT INTO xxcok_cond_bm_support(
-           cond_bm_support_id        -- 条件別販手販協ID
-          ,base_code                 -- 拠点コード
-          ,emp_code                  -- 担当者コード
-          ,delivery_cust_code        -- 顧客【納品先】
-          ,demand_to_cust_code       -- 顧客【請求先】
-          ,acctg_year                -- 会計年度
-          ,chain_store_code          -- チェーン店コード
-          ,supplier_code             -- 仕入先コード
-          ,supplier_site_code        -- 仕入先サイトコード
-          ,calc_type                 -- 計算条件
-          ,delivery_date             -- 納品日年月
-          ,delivery_qty              -- 納品数量
-          ,delivery_unit_type        -- 納品単位
-          ,selling_amt_tax           -- 売上金額(税込)
-          ,rebate_rate               -- 割戻率
-          ,rebate_amt                -- 割戻額
-          ,container_type_code       -- 容器区分コード
-          ,selling_price             -- 売価金額
-          ,cond_bm_amt_tax           -- 条件別手数料額(税込)
-          ,cond_bm_amt_no_tax        -- 条件別手数料額(税抜)
-          ,cond_tax_amt              -- 条件別消費税額
-          ,electric_amt_tax          -- 電気料(税込)
-          ,electric_amt_no_tax       -- 電気料(税抜)
-          ,electric_tax_amt          -- 電気料消費税額
-          ,csh_rcpt_discount_amt     -- 入金値引額
-          ,csh_rcpt_discount_amt_tax -- 入金値引消費税額
-          ,consumption_tax_class     -- 消費税区分
-          ,tax_code                  -- 税金コード
-          ,tax_rate                  -- 消費税率
-          ,term_code                 -- 支払条件
-          ,closing_date              -- 締め日
-          ,expect_payment_date       -- 支払予定日
-          ,calc_target_period_from   -- 計算対象期間(From)
-          ,calc_target_period_to     -- 計算対象期間(To)
-          ,cond_bm_interface_status  -- 連携ステータス(条件別販手販協)
-          ,cond_bm_interface_date    -- 連携日(条件別販手販協)
-          ,bm_interface_status       -- 連携ステータス(販手残高)
-          ,bm_interface_date         -- 連携日(販手残高)
-          ,ar_interface_status       -- 連携ステータス(AR)
-          ,ar_interface_date         -- 連携日(AR)
-          ,created_by                -- 作成者
-          ,creation_date             -- 作成日
-          ,last_updated_by           -- 最終更新者
-          ,last_update_date          -- 最終更新日
-          ,last_update_login         -- 最終更新ログイン
-          ,request_id                -- 要求ID
-          ,program_application_id    -- コンカレント・プログラム・アプリケーションID
-          ,program_id                -- コンカレント・プログラムID
-          ,program_update_date       -- プログラム更新日
-        ) VALUES (
-           xxcok_cond_bm_support_s01.NEXTVAL            -- 条件別販手販協ID
-          ,it_bm_support( ln_cnt ).base_code            -- 拠点コード
-          ,it_bm_support( ln_cnt ).emp_code             -- 担当者コード
-          ,it_bm_support( ln_cnt ).delivery_cust_code   -- 顧客【納品先】
-          ,it_bm_support( ln_cnt ).demand_to_cust_code  -- 顧客【請求先】
-          ,it_bm_support( ln_cnt ).acctg_year           -- 会計年度
-          ,it_bm_support( ln_cnt ).chain_store_code     -- チェーン店コード
-          ,it_bm_support( ln_cnt ).supplier_code        -- 仕入先コード
-          ,it_bm_support( ln_cnt ).supplier_site_code   -- 仕入先サイトコード
-          ,it_bm_support( ln_cnt ).calc_type            -- 計算条件
-          ,it_bm_support( ln_cnt ).delivery_date        -- 納品日年月
-          ,it_bm_support( ln_cnt ).delivery_qty         -- 納品数量
-          ,it_bm_support( ln_cnt ).delivery_unit_type   -- 納品単位
-          ,it_bm_support( ln_cnt ).selling_amt_tax      -- 売上金額(税込)
-          ,it_bm_support( ln_cnt ).rebate_rate          -- 割戻率
-          ,it_bm_support( ln_cnt ).rebate_amt           -- 割戻額
-          ,it_bm_support( ln_cnt ).container_type       -- 容器区分コード
-          ,it_bm_support( ln_cnt ).selling_price        -- 売価金額
-          ,it_bm_support( ln_cnt ).cond_bm_amt_tax      -- 条件別手数料額(税込)
-          ,it_bm_support( ln_cnt ).cond_bm_amt_no_tax   -- 条件別手数料額(税抜)
-          ,it_bm_support( ln_cnt ).cond_tax_amt         -- 条件別消費税額
-          ,it_bm_support( ln_cnt ).electric_amt_tax     -- 電気料(税込)
-          ,it_bm_support( ln_cnt ).electric_amt_no_tax  -- 電気料(税抜)
-          ,it_bm_support( ln_cnt ).electric_tax_amt     -- 電気料消費税額
-          ,it_bm_support( ln_cnt ).csh_rcpt_dis_amt     -- 入金値引額
-          ,it_bm_support( ln_cnt ).csh_rcpt_dis_amt_tax -- 入金値引消費税額
-          ,it_bm_support( ln_cnt ).tax_class            -- 消費税区分
-          ,it_bm_support( ln_cnt ).tax_code             -- 税金コード
-          ,it_bm_support( ln_cnt ).tax_rate             -- 消費税率
-          ,it_bm_support( ln_cnt ).term_code            -- 支払条件
-          ,it_bm_support( ln_cnt ).closing_date         -- 締め日
-          ,it_bm_support( ln_cnt ).expect_payment_date  -- 支払予定日
-          ,it_bm_support( ln_cnt ).calc_period_from     -- 計算対象期間(From)
-          ,it_bm_support( ln_cnt ).calc_period_to       -- 計算対象期間(To)
-          ,it_bm_support( ln_cnt ).cond_bm_if_status    -- 連携ステータス(条件別販手販協)
-          ,it_bm_support( ln_cnt ).cond_bm_if_date      -- 連携日(条件別販手販協)
-          ,it_bm_support( ln_cnt ).bm_interface_status  -- 連携ステータス(販手残高)
-          ,it_bm_support( ln_cnt ).bm_interface_date    -- 連携日(販手残高)
-          ,it_bm_support( ln_cnt ).ar_interface_status  -- 連携ステータス(AR)
-          ,it_bm_support( ln_cnt ).ar_interface_date    -- 連携日(AR)
-          ,cn_created_by                                -- 作成者
-          ,SYSDATE                                      -- 作成日
-          ,cn_last_upd_by                               -- 最終更新者
-          ,SYSDATE                                      -- 最終更新日
-          ,cn_last_upd_login                            -- 最終更新ログイン
-          ,cn_request_id                                -- 要求ID
-          ,cn_prg_appl_id                               -- コンカレント・プログラム・アプリケーションID
-          ,cn_program_id                                -- コンカレント・プログラムID
-          ,SYSDATE                                      -- プログラム更新日
-        );
-        -- 登録件数をインクリメント
-        ln_ins_cnt := ln_ins_cnt + 1;
-      END LOOP bm_support_all_loop;
-    EXCEPTION
-      ----------------------------------------------------------
-      -- 条件別販手販協計算登録例外
-      ----------------------------------------------------------
-      WHEN OTHERS THEN
-        lv_out_msg := xxccp_common_pkg.get_msg(
-                         iv_application  => cv_ap_type_xxcok
-                        ,iv_name         => cv_prmmsg_10404
-                        ,iv_token_name1  => cv_tkn_cust_code
-                        ,iv_token_value1 => it_bm_support( ln_ins_cnt ).delivery_cust_code
-                        ,iv_token_name2  => cv_tkn_close_date
-                        ,iv_token_value2 => TO_CHAR( id_to_close_date,cv_format1 )
-                      );
-        lb_retcode := xxcok_common_pkg.put_message_f(
-                         in_which    => fnd_file.output -- 出力区分
-                        ,iv_message  => lv_out_msg      -- メッセージ
-                        ,in_new_line => cn_zero         -- 改行
-                      );
-        ov_errmsg  := lv_out_msg;
-        ov_errbuf  := SUBSTRB( cv_pkg_name||cv_msg_cont||cv_prg_name||cv_msg_part||SQLERRM,1,5000 );
-        ov_retcode := cv_status_error;
-    END;
-  --
-  EXCEPTION
-  --
-    ----------------------------------------------------------
-    -- 共通関数OTHERS例外ハンドラ
-    ----------------------------------------------------------
-    WHEN global_api_others_expt THEN
-      ov_errbuf  := SUBSTRB( cv_pkg_name||cv_msg_cont||cv_prg_name||cv_msg_part||SQLERRM,1,5000 );
-      ov_retcode := cv_status_error;
-    ----------------------------------------------------------
-    -- OTHERS例外ハンドラ
-    ----------------------------------------------------------
-    WHEN OTHERS THEN
-      ov_errbuf  := SUBSTRB( cv_pkg_name||cv_msg_cont||cv_prg_name||cv_msg_part||SQLERRM,1,5000 );
-      ov_retcode := cv_status_error;
-  --
-  END ins_bm_support_info;
-  --
-  /**********************************************************************************
-   * Procedure Name   : del_pre_bm_support_info
-   * Description      : 前回販手販協計算結果データの削除(A-18,A-36,A-47)
-   ***********************************************************************************/
-  PROCEDURE del_pre_bm_support_info(
-     ov_errbuf        OUT VARCHAR2                                -- エラーメッセージ
-    ,ov_retcode       OUT VARCHAR2                                -- リターン・コード
-    ,ov_errmsg        OUT VARCHAR2                                -- ユーザー・エラーメッセージ
-    ,iv_customer_code IN  hz_cust_accounts.account_number%TYPE    -- 顧客コード
-    ,id_close_date    IN  xxcok_cond_bm_support.closing_date%TYPE -- 締め日
-  )
-  IS
-    --===============================
-    -- ローカル定数
-    --===============================
-    cv_prg_name CONSTANT VARCHAR2(100) := 'del_pre_bm_support_info'; -- プログラム名
-    --===============================
-    -- ローカル変数
-    --===============================
-    lv_errbuf   VARCHAR2(5000); -- エラーメッセージ
-    lv_retcode  VARCHAR2(1);    -- リターン・コード
-    lv_errmsg   VARCHAR2(5000); -- ユーザー・エラーメッセージ
-    lv_out_msg  VARCHAR2(2000); -- メッセージ
-    lb_retcode  BOOLEAN;        -- APIリターン・メッセージ用
-    --===============================
-    -- ローカルカーソル定義
-    --===============================
-    -- 条件別販手販協テーブルロック
-    CURSOR bm_support_del_cur(
-       iv_customer_code IN hz_cust_accounts.account_number%TYPE    -- 顧客コード
-      ,id_close_date    IN xxcok_cond_bm_support.closing_date%TYPE -- 締め日
-    )
-    IS
-      SELECT xcs.cond_bm_support_id AS bm_support_id -- 前回販手販協計算結果
-      FROM   xxcok_cond_bm_support xcs -- 条件別販手販協テーブル
-      WHERE  xcs.delivery_cust_code = iv_customer_code
-      AND    xcs.closing_date       = id_close_date
-      FOR UPDATE NOWAIT;
-  --
-  BEGIN
-  --
-    -------------------------------------------------
-    -- 0.初期化
-    -------------------------------------------------
-    ov_retcode := cv_status_normal;
-    -------------------------------------------------
-    -- 1.前回販手販協計算結果データ削除ロック処理
-    -------------------------------------------------
-    -- ロック処理
-    OPEN bm_support_del_cur(
-       iv_customer_code -- 顧客コード
-      ,id_close_date    -- 締め日
-    );
-    CLOSE bm_support_del_cur;
-    -------------------------------------------------
-    -- 2.前回販手販協計算結果データ削除処理
-    -------------------------------------------------
-    BEGIN
-      DELETE FROM xxcok_cond_bm_support xcs
-      WHERE  xcs.delivery_cust_code = iv_customer_code
-      AND    xcs.closing_date       = id_close_date;
-    EXCEPTION
-      ----------------------------------------------------------
-      -- 前回販手販協計算結果データ削除例外
-      ----------------------------------------------------------
-      WHEN OTHERS THEN
-        lv_out_msg := xxccp_common_pkg.get_msg(
-                         iv_application  => cv_ap_type_xxcok
-                        ,iv_name         => cv_prmmsg_10403
-                        ,iv_token_name1  => cv_tkn_cust_code
-                        ,iv_token_value1 => iv_customer_code
-                        ,iv_token_name2  => cv_tkn_close_date
-                        ,iv_token_value2 => TO_CHAR( id_close_date,cv_format1 )
-                      );
-        lb_retcode := xxcok_common_pkg.put_message_f(
-                         in_which    => fnd_file.output -- 出力区分
-                        ,iv_message  => lv_out_msg      -- メッセージ
-                        ,in_new_line => cn_zero         -- 改行
-                      );
-        ov_errmsg  := lv_out_msg;
-        ov_errbuf  := SUBSTRB( cv_pkg_name||cv_msg_cont||cv_prg_name||cv_msg_part||lv_out_msg,1,5000 );
-        ov_retcode := cv_status_error;
-    END;
-  --
-  EXCEPTION
-  --
-    ----------------------------------------------------------
-    -- ロック例外ハンドラ
-    ----------------------------------------------------------
-    WHEN global_lock_expt THEN
-      -- メッセージ取得
-      lv_out_msg := xxccp_common_pkg.get_msg(
-                       iv_application  => cv_ap_type_xxcok
-                      ,iv_name         => cv_prmmsg_00051
-                    );    
-      -- メッセージ出力
-      lb_retcode := xxcok_common_pkg.put_message_f(
-                       in_which    => fnd_file.output -- 出力区分
-                      ,iv_message  => lv_out_msg      -- メッセージ
-                      ,in_new_line => cn_zero         -- 改行
-                    );
-      ov_errmsg  := lv_errmsg;
-      ov_errbuf  := SUBSTRB(cv_pkg_name||cv_msg_cont||cv_prg_name||cv_msg_part||lv_out_msg,1,5000);
-      ov_retcode := cv_status_warn;
-    ----------------------------------------------------------
-    -- 共通関数OTHERS例外ハンドラ
-    ----------------------------------------------------------
-    WHEN global_api_others_expt THEN
-      ov_errbuf  := SUBSTRB( cv_pkg_name||cv_msg_cont||cv_prg_name||cv_msg_part||SQLERRM,1,5000 );
-      ov_retcode := cv_status_error;
-    ----------------------------------------------------------
-    -- OTHERS例外ハンドラ
-    ----------------------------------------------------------
-    WHEN OTHERS THEN
-      ov_errbuf  := SUBSTRB( cv_pkg_name||cv_msg_cont||cv_prg_name||cv_msg_part||SQLERRM,1,5000 );
-      ov_retcode := cv_status_error;
-  --
-  END del_pre_bm_support_info;
-  --
-  /**********************************************************************************
-   * Procedure Name   : upd_sales_exp_lines_info
-   * Description      : 販売実績連携結果の更新(A-17,A-35,A-46)
-   ***********************************************************************************/
-  PROCEDURE upd_sales_exp_lines_info(
-     ov_errbuf           OUT VARCHAR2                                           -- エラーメッセージ
-    ,ov_retcode          OUT VARCHAR2                                           -- リターン・コード
-    ,ov_errmsg           OUT VARCHAR2                                           -- ユーザー・エラーメッセージ
-    ,iv_if_status        IN  xxcos_sales_exp_lines.to_calculate_fees_flag%TYPE  -- 手数料計算インタフェース済フラグ
-    ,iv_customer_code    IN  hz_cust_accounts.account_number%TYPE               -- 顧客コード
-    ,iv_invoice_num      IN  xxcos_sales_exp_lines.dlv_invoice_number%TYPE      -- 納品伝票番号
-    ,iv_invoice_line_num IN  xxcos_sales_exp_lines.dlv_invoice_line_number%TYPE -- 納品明細番号
-  )
-  IS
-    --===============================
-    -- ローカル定数
-    --===============================
-    cv_prg_name CONSTANT VARCHAR2(100) := 'upd_sales_exp_lines_info'; -- プログラム名
-    --===============================
-    -- ローカル変数
-    --===============================
-    lv_errbuf   VARCHAR2(5000); -- エラーメッセージ
-    lv_retcode  VARCHAR2(1);    -- リターン・コード
-    lv_errmsg   VARCHAR2(5000); -- ユーザー・エラーメッセージ
-    lv_out_msg  VARCHAR2(2000); -- メッセージ
-    lb_retcode  BOOLEAN;        -- APIリターン・メッセージ用
-    --===============================
-    -- ローカルカーソル定義
-    --===============================
-    -- 販売実績明細テーブルロック
-    CURSOR sales_exp_lines_upd_cur(
-       iv_invoice_num      IN xxcos_sales_exp_lines.dlv_invoice_number%TYPE      -- 納品伝票番号
-      ,iv_invoice_line_num IN xxcos_sales_exp_lines.dlv_invoice_line_number%TYPE -- 納品明細番号
-    )
-    IS
-      SELECT xsl.sales_exp_line_id AS sales_exp_line_id -- 販売実績明細
-      FROM   xxcos_sales_exp_lines xsl -- 販売実績明細テーブル
-      WHERE  xsl.dlv_invoice_number      = iv_invoice_num
-      AND    xsl.dlv_invoice_line_number = iv_invoice_line_num
-      FOR UPDATE NOWAIT;
-  --
-  BEGIN
-  --
-    -------------------------------------------------
-    -- 0.初期化
-    -------------------------------------------------
-    ov_retcode := cv_status_normal;
-    -------------------------------------------------
-    -- 1.販売実績明細テーブルロック処理
-    -------------------------------------------------
-    -- ロック処理
-    OPEN sales_exp_lines_upd_cur(
-       iv_invoice_num      -- 納品伝票番号
-      ,iv_invoice_line_num -- 納品明細番号
-    );
-    CLOSE sales_exp_lines_upd_cur;
-    -------------------------------------------------
-    -- 2.販売実績連携結果更新処理
-    -------------------------------------------------
-    BEGIN
-      UPDATE xxcos_sales_exp_lines -- 販売実績明細テーブル
-      SET    to_calculate_fees_flag = iv_if_status      -- 手数料計算インタフェース済フラグ
-            ,last_updated_by        = cn_last_upd_by    -- 最終更新者
-            ,last_update_date       = SYSDATE           -- 最終更新日
-            ,last_update_login      = cn_last_upd_login -- 最終更新ログイン
-            ,request_id             = cn_request_id     -- 要求ID
-            ,program_application_id = cn_prg_appl_id    -- コンカレント・プログラム・アプリケーションID
-            ,program_id             = cn_program_id     -- コンカレント・プログラムID
-            ,program_update_date    = SYSDATE           -- プログラム更新日
-      WHERE  dlv_invoice_number      = iv_invoice_num
-      AND    dlv_invoice_line_number = iv_invoice_line_num;
-    EXCEPTION
-      ----------------------------------------------------------
-      -- 販売実績連携結果更新例外
-      ----------------------------------------------------------
-      WHEN OTHERS THEN
-        lv_out_msg := xxccp_common_pkg.get_msg(
-                         iv_application  => cv_ap_type_xxcok
-                        ,iv_name         => cv_prmmsg_10402
-                        ,iv_token_name1  => cv_tkn_cust_code
-                        ,iv_token_value1 => iv_customer_code
-                      );
-        lb_retcode := xxcok_common_pkg.put_message_f(
-                         in_which    => fnd_file.output -- 出力区分
-                        ,iv_message  => lv_out_msg      -- メッセージ
-                        ,in_new_line => cn_zero         -- 改行
-                      );
-        ov_errmsg  := lv_out_msg;
-        ov_errbuf  := SUBSTRB( cv_pkg_name||cv_msg_cont||cv_prg_name||cv_msg_part||lv_out_msg,1,5000 );
-        ov_retcode := cv_status_error;
-    END;
-  --
-  EXCEPTION
-  --
-    ----------------------------------------------------------
-    -- ロック例外ハンドラ
-    ----------------------------------------------------------
-    WHEN global_lock_expt THEN
-      -- メッセージ取得
-      lv_out_msg := xxccp_common_pkg.get_msg(
-                       iv_application  => cv_ap_type_xxcok
-                      ,iv_name         => cv_prmmsg_00081
-                    );    
-      -- メッセージ出力
-      lb_retcode := xxcok_common_pkg.put_message_f(
-                       in_which    => fnd_file.output -- 出力区分
-                      ,iv_message  => lv_out_msg      -- メッセージ
-                      ,in_new_line => cn_zero         -- 改行
-                    );
-      ov_errmsg  := lv_out_msg;
-      ov_errbuf  := SUBSTRB(cv_pkg_name||cv_msg_cont||cv_prg_name||cv_msg_part||lv_out_msg,1,5000);
-      ov_retcode := cv_status_warn;
-    ----------------------------------------------------------
-    -- 共通関数OTHERS例外ハンドラ
-    ----------------------------------------------------------
-    WHEN global_api_others_expt THEN
-      ov_errbuf  := SUBSTRB( cv_pkg_name||cv_msg_cont||cv_prg_name||cv_msg_part||SQLERRM,1,5000 );
-      ov_retcode := cv_status_error;
-    ----------------------------------------------------------
-    -- OTHERS例外ハンドラ
-    ----------------------------------------------------------
-    WHEN OTHERS THEN
-      ov_errbuf  := SUBSTRB( cv_pkg_name||cv_msg_cont||cv_prg_name||cv_msg_part||SQLERRM,1,5000 );
-      ov_retcode := cv_status_error;
-  --
-  END upd_sales_exp_lines_info;
-  --
-  /**********************************************************************************
-   * Procedure Name   : ins_bm_contract_err_info
-   * Description      : 販手条件エラーデータの登録(A-17,A-35)
-   ***********************************************************************************/
-  PROCEDURE ins_bm_contract_err_info(
-     ov_errbuf         OUT VARCHAR2                                     -- エラーメッセージ
-    ,ov_retcode        OUT VARCHAR2                                     -- リターン・コード
-    ,ov_errmsg         OUT VARCHAR2                                     -- ユーザー・エラーメッセージ
-    ,iv_base_code      IN  xxcos_sales_exp_headers.sales_base_code%TYPE -- 拠点コード
-    ,iv_customer_code  IN  hz_cust_accounts.account_number%TYPE         -- 顧客コード
-    ,iv_item_code      IN  xxcos_sales_exp_lines.item_code%TYPE         -- 品目コード
-    ,iv_container_type IN  fnd_lookup_values.attribute1%TYPE            -- 容器区分コード
-    ,in_retail_amount  IN  xxcos_sales_exp_lines.dlv_unit_price%TYPE    -- 売価
-    ,in_sales_amount   IN  xxcos_sales_exp_lines.sale_amount%TYPE       -- 売上金額(税込)
-    ,id_close_date     IN  xxcok_cond_bm_support.closing_date%TYPE      -- 締め日
-  )
-  IS
-    --===============================
-    -- ローカル定数
-    --===============================
-    cv_prg_name CONSTANT VARCHAR2(30) := 'ins_bm_contract_err_info'; -- プログラム名
-    --===============================
-    -- ローカル変数
-    --===============================
-    lv_errbuf   VARCHAR2(5000); -- エラーメッセージ
-    lv_retcode  VARCHAR2(1);    -- リターン・コード
-    lv_errmsg   VARCHAR2(5000); -- ユーザー・エラーメッセージ
-    lv_out_msg  VARCHAR2(2000); -- メッセージ
-    lb_retcode  BOOLEAN;        -- メッセージ戻り値
-  --
-  BEGIN
-  --
-    --===============================================
-    -- A-0.初期化
-    --===============================================
-    ov_retcode := cv_status_normal;
-    --===============================================
-    -- A-1.販手条件エラー登録
-    --===============================================
-    BEGIN
-      INSERT INTO xxcok_bm_contract_err(
-         base_code              -- 拠点コード
-        ,cust_code              -- 顧客コード
-        ,item_code              -- 品目コード
-        ,container_type_code    -- 容器区分コード
-        ,selling_price          -- 売価
-        ,selling_amt_tax        -- 売上金額(税込)
-        ,closing_date           -- 締め日
-        ,created_by             -- 作成者
-        ,creation_date          -- 作成日
-        ,last_updated_by        -- 最終更新者
-        ,last_update_date       -- 最終更新日
-        ,last_update_login      -- 最終更新ログイン
-        ,request_id             -- 要求ID
-        ,program_application_id -- コンカレント・プログラム・アプリケーションID
-        ,program_id             -- コンカレント・プログラムID
-        ,program_update_date    -- プログラム更新日
-      ) VALUES (
-         iv_base_code      -- 拠点コード
-        ,iv_customer_code  -- 顧客コード
-        ,iv_item_code      -- 品目コード
-        ,iv_container_type -- 容器区分コード
-        ,in_retail_amount  -- 売価
-        ,in_sales_amount   -- 売上金額(税込)
-        ,id_close_date     -- 締め日
-        ,cn_created_by     -- 作成者
-        ,SYSDATE           -- 作成日
-        ,cn_last_upd_by    -- 最終更新者
-        ,SYSDATE           -- 最終更新日
-        ,cn_last_upd_login -- 最終更新ログイン
-        ,cn_request_id     -- 要求ID
-        ,cn_prg_appl_id    -- コンカレント・プログラム・アプリケーションID
-        ,cn_program_id     -- コンカレント・プログラムID
-        ,SYSDATE           -- プログラム更新日
-      );
-    EXCEPTION
-      ----------------------------------------------------------
-      -- 販手条件エラー登録例外
-      ----------------------------------------------------------
-      WHEN OTHERS THEN
-        lv_out_msg := xxccp_common_pkg.get_msg(
-                         iv_application  => cv_ap_type_xxcok
-                        ,iv_name         => cv_prmmsg_10401
-                        ,iv_token_name1  => cv_tkn_dept_code
-                        ,iv_token_value1 => iv_base_code
-                        ,iv_token_name2  => cv_tkn_cust_code
-                        ,iv_token_value2 => iv_customer_code
-                        ,iv_token_name3  => cv_tkn_close_date
-                        ,iv_token_value3 => TO_CHAR( id_close_date,cv_format1 )
-                      );
-        lb_retcode := xxcok_common_pkg.put_message_f(
-                         in_which    => fnd_file.output -- 出力区分
-                        ,iv_message  => lv_out_msg      -- メッセージ
-                        ,in_new_line => cn_zero         -- 改行
-                      );
-        ov_errmsg  := lv_out_msg;
-        ov_errbuf  := SUBSTRB( cv_pkg_name||cv_msg_cont||cv_prg_name||cv_msg_part||SQLERRM,1,5000 );
-        ov_retcode := cv_status_error;
-    END;
-    --===============================================
-    -- A-2.販手条件エラーメッセージ出力
-    --===============================================
-    IF ( ov_retcode = cv_status_normal ) THEN
-      lv_out_msg := xxccp_common_pkg.get_msg(
-                       iv_application  => cv_ap_type_xxcok
-                      ,iv_name         => cv_prmmsg_10426
-                      ,iv_token_name1  => cv_tkn_cust_code
-                      ,iv_token_value1 => iv_customer_code
-                      ,iv_token_name2  => cv_tkn_sales_amt
-                      ,iv_token_value2 => TO_CHAR( in_retail_amount )
-                      ,iv_token_name3  => cv_tkn_cont_type
-                      ,iv_token_value3 => iv_container_type
-                    );
-      lb_retcode := xxcok_common_pkg.put_message_f(
-                       in_which    => fnd_file.output -- 出力区分
-                      ,iv_message  => lv_out_msg      -- メッセージ
-                      ,in_new_line => cn_zero         -- 改行
-                    );
-    END IF;
-  --
-  EXCEPTION
-  --
-    ----------------------------------------------------------
-    -- 共通関数OTHERS例外ハンドラ
-    ----------------------------------------------------------
-    WHEN global_api_others_expt THEN
-      ov_errbuf  := SUBSTRB( cv_pkg_name||cv_msg_cont||cv_prg_name||cv_msg_part||SQLERRM,1,5000 );
-      ov_retcode := cv_status_error;
-    ----------------------------------------------------------
-    -- OTHERS例外ハンドラ
-    ----------------------------------------------------------
-    WHEN OTHERS THEN
-      ov_errbuf  := SUBSTRB( cv_pkg_name||cv_msg_cont||cv_prg_name||cv_msg_part||SQLERRM,1,5000 );
-      ov_retcode := cv_status_error;
-  --
-  END ins_bm_contract_err_info;
-  --
-  /**********************************************************************************
-   * Procedure Name   : cal_bm_contract60_info
-   * Description      : 入金値引額の計算(A-43)
-   ***********************************************************************************/
-  PROCEDURE cal_bm_contract60_info(
-     ov_errbuf        OUT VARCHAR2                                             -- エラーメッセージ
-    ,ov_retcode       OUT VARCHAR2                                             -- リターン・コード
-    ,ov_errmsg        OUT VARCHAR2                                             -- ユーザー・エラーメッセージ
-    ,iv_customer_code IN  hz_cust_accounts.account_number%TYPE                 -- 顧客コード
-    ,id_close_date    IN  xxcok_cond_bm_support.closing_date%TYPE              -- 締め日
-    ,in_sale_amount   IN  xxcos_sales_exp_lines.sale_amount%TYPE               -- 売上金額
-    ,in_tax_rate      IN  xxcos_sales_exp_headers.tax_rate%TYPE                -- 消費税率
-    ,in_discount_rate IN  xxcmm_cust_accounts.receiv_discount_rate%TYPE        -- 入金値引率
-    ,on_rc_amount     OUT xxcok_cond_bm_support.csh_rcpt_discount_amt%TYPE     -- 入金値引額
-    ,on_rc_amount_tax OUT xxcok_cond_bm_support.csh_rcpt_discount_amt_tax%TYPE -- 入金値引消費税額
-  )
-  IS
-    --===============================
-    -- ローカル定数
-    --===============================
-    cv_prg_name CONSTANT VARCHAR2(100) := 'cal_bm_contract60_info'; -- プログラム名
-    --===============================
-    -- ローカル変数
-    --===============================
-    lv_errbuf   VARCHAR2(5000); -- エラーメッセージ
-    lv_retcode  VARCHAR2(1);    -- リターン・コード
-    lv_errmsg   VARCHAR2(5000); -- ユーザー・エラーメッセージ
-    lv_out_msg  VARCHAR2(2000); -- メッセージ
-    lb_retcode  BOOLEAN;        -- APIリターン・メッセージ用
-    -- 計算結果退避
-    ln_rc_amount     xxcok_cond_bm_support.csh_rcpt_discount_amt%TYPE     := NULL; -- 入金値引額
-    ln_rc_amount_tax xxcok_cond_bm_support.csh_rcpt_discount_amt_tax%TYPE := NULL; -- 入金値引消費税額
-  --
-  BEGIN
-  --
-    -------------------------------------------------
-    -- 0.初期化
-    -------------------------------------------------
-    ov_retcode := cv_status_normal;
-    -------------------------------------------------
-    -- 1.入金値引額計算
-    -------------------------------------------------
-    -- 入金値引額＝売上金額×入金値引率
-    ln_rc_amount := NVL( in_sale_amount,cn_zero ) * ( NVL( in_discount_rate,cn_zero ) / 100 );
-    -- 入金値引額税抜き＝入金値引額÷(1＋(100/販売実績情報.消費税率))
-    ln_rc_amount_tax := ROUND( NVL( ln_rc_amount,cn_zero ) / ( cn_one + ( NVL( in_tax_rate,cn_zero ) / 100 ) ) );
-    -- 入金値引消費税額＝販売手数料－販売手数料税抜き
-    ln_rc_amount_tax := ln_rc_amount - ln_rc_amount_tax;
-    -------------------------------------------------
-    -- 3.戻り値設定
-    -------------------------------------------------
-    on_rc_amount     := ln_rc_amount;     -- 入金値引額
-    on_rc_amount_tax := ln_rc_amount_tax; -- 入金値引消費税額
-  --
-  EXCEPTION
-  --
-    ----------------------------------------------------------
-    -- OTHERS例外ハンドラ
-    ----------------------------------------------------------
-    WHEN OTHERS THEN
-      ov_errbuf  := SUBSTRB( cv_pkg_name||cv_msg_cont||cv_prg_name||cv_msg_part||SQLERRM,1,5000 );
-      ov_retcode := cv_status_error;
-  --
-  END cal_bm_contract60_info;
-  --
-  /**********************************************************************************
-   * Procedure Name   : cal_bm_contract50_info
-   * Description      : 電気料条件の計算(A-14,A-32)
-   ***********************************************************************************/
-  PROCEDURE cal_bm_contract50_info(
-     ov_errbuf        OUT VARCHAR2                                           -- エラーメッセージ
-    ,ov_retcode       OUT VARCHAR2                                           -- リターン・コード
-    ,ov_errmsg        OUT VARCHAR2                                           -- ユーザー・エラーメッセージ
-    ,iv_customer_code IN  hz_cust_accounts.account_number%TYPE               -- 顧客コード
-    ,id_close_date    IN  xxcok_cond_bm_support.closing_date%TYPE            -- 締め日
-    ,iv_calculat_type IN  xxcok_mst_bm_contract.calc_type%TYPE               -- 計算条件
-    ,in_tax_rate      IN  xxcos_sales_exp_headers.tax_rate%TYPE              -- 消費税率
-    ,iv_con_tax_class IN  xxcos_sales_exp_headers.consumption_tax_class%TYPE -- 消費税区分
-    ,on_el_amount     OUT xxcok_cond_bm_support.electric_amt_tax%TYPE        -- 電気料
-    ,on_el_amount_tax OUT xxcok_cond_bm_support.electric_tax_amt%TYPE        -- 電気料消費税額
-  )
-  IS
-    --===============================
-    -- ローカル定数
-    --===============================
-    cv_prg_name CONSTANT VARCHAR2(100) := 'cal_bm_contract50_info'; -- プログラム名
-    --===============================
-    -- ローカル変数
-    --===============================
-    lv_errbuf   VARCHAR2(5000); -- エラーメッセージ
-    lv_retcode  VARCHAR2(1);    -- リターン・コード
-    lv_errmsg   VARCHAR2(5000); -- ユーザー・エラーメッセージ
-    lv_out_msg  VARCHAR2(2000); -- メッセージ
-    lb_retcode  BOOLEAN;        -- APIリターン・メッセージ用
-    -- 計算結果退避
-    ln_el_amount     xxcok_cond_bm_support.electric_amt_tax%TYPE := NULL; -- 電気料
-    ln_el_amount_tax xxcok_cond_bm_support.electric_tax_amt%TYPE := NULL; -- 電気料消費税額
-    --===============================
-    -- ローカルカーソル定義
-    --===============================
-    -- 販手条件情報カーソル定義
-    CURSOR contract_mst_cur(
-       iv_customer_code IN hz_cust_accounts.account_number%TYPE    -- 顧客コード
-      ,id_close_date    IN xxcok_cond_bm_support.closing_date%TYPE -- 締め日
-      ,iv_calculat_type IN xxcok_mst_bm_contract.calc_type%TYPE    -- 計算条件
-    )
-    IS
-      SELECT xmb.calc_type AS calc_type -- 計算条件
-            ,xmb.bm1_amt   AS bm1_amt   -- BM1金額
-      FROM   xxcok_mst_bm_contract xmb
-      WHERE  xmb.cust_code        = iv_customer_code
-      AND    xmb.calc_target_flag = cv_yes -- Y：計算対象
-      AND    xmb.calc_type        = iv_calculat_type
--- 2009/04/20 Ver.1.7 [障害T1_0688] SCS K.Yamaguchi REPAIR START
---      AND    id_close_date BETWEEN NVL( xmb.start_date_active,id_close_date )
---                           AND     NVL( xmb.end_date_active,id_close_date );
-      ;
--- 2009/04/20 Ver.1.7 [障害T1_0688] SCS K.Yamaguchi REPAIR END
-    -- 販手条件情報レコード定義
-    contract_mst_rec contract_mst_cur%ROWTYPE;
-    --===============================
-    -- ローカル例外
-    --===============================
-    contract_err_expt EXCEPTION; -- 販手条件エラー
-  --
-  BEGIN
-  --
-    -------------------------------------------------
-    -- 0.初期化
-    -------------------------------------------------
-    ov_retcode := cv_status_normal;
-    -------------------------------------------------
-    -- 1.電気料条件判定
-    -------------------------------------------------
-    OPEN contract_mst_cur(
-       iv_customer_code -- 顧客コード
-      ,id_close_date    -- 締め日：今回締め日
-      ,iv_calculat_type -- 計算条件
-    );
-    FETCH contract_mst_cur INTO contract_mst_rec;
-    -- 条件存在チェック
-    IF ( contract_mst_cur%NOTFOUND ) THEN
-      -- カーソルクローズ
-      CLOSE contract_mst_cur;
-      -- 販手条件エラー
-      RAISE contract_err_expt;
-    END IF;
-    -- カーソルクローズ
-    CLOSE contract_mst_cur;
-    -------------------------------------------------
-    -- 2.電気料条件計算
-    -------------------------------------------------
-    -- 税区分が非課税の場合
-    IF ( iv_con_tax_class = cv_zero ) THEN
-      -- 電気料＝0
-      ln_el_amount := cn_zero;
-      -- 電気料消費税額＝0
-      ln_el_amount_tax := cn_zero;
-    -- 税区分が非課税以外の場合
-    ELSE
-      -- 電気料＝BM1金額
-      ln_el_amount := NVL( contract_mst_rec.bm1_amt,cn_zero );
-      -- 電気料税抜き＝販売手数料÷(1＋(100/販売実績情報.消費税率))
-      ln_el_amount_tax := ROUND( NVL( ln_el_amount,cn_zero ) / ( cn_one + ( NVL( in_tax_rate,cn_zero ) / 100 ) ) );
-      -- 電気料消費税額＝販売手数料－販売手数料税抜き
-      ln_el_amount_tax := ln_el_amount - ln_el_amount_tax;
-    END IF;
-    -------------------------------------------------
-    -- 3.戻り値設定
-    -------------------------------------------------
-    on_el_amount     := ln_el_amount;     -- 電気料
-    on_el_amount_tax := ln_el_amount_tax; -- 電気料消費税額
-  --
-  EXCEPTION
-  --
-    ----------------------------------------------------------
-    -- 販手条件エラー例外ハンドラ
-    ----------------------------------------------------------
-    WHEN contract_err_expt THEN
-      ov_errmsg  := NULL;
-      ov_errbuf  := NULL;
-      ov_retcode := cv_contract_err;
-    ----------------------------------------------------------
-    -- OTHERS例外ハンドラ
-    ----------------------------------------------------------
-    WHEN OTHERS THEN
-      ov_errbuf  := SUBSTRB( cv_pkg_name||cv_msg_cont||cv_prg_name||cv_msg_part||SQLERRM,1,5000 );
-      ov_retcode := cv_status_error;
-  --
-  END cal_bm_contract50_info;
-  --
-  /**********************************************************************************
-   * Procedure Name   : cal_bm_contract40_info
-   * Description      : 定額条件の計算(A-13,A-31)
-   ***********************************************************************************/
-  PROCEDURE cal_bm_contract40_info(
-     ov_errbuf        OUT VARCHAR2                                -- エラーメッセージ
-    ,ov_retcode       OUT VARCHAR2                                -- リターン・コード
-    ,ov_errmsg        OUT VARCHAR2                                -- ユーザー・エラーメッセージ
-    ,iv_customer_code IN  hz_cust_accounts.account_number%TYPE    -- 顧客コード
-    ,id_close_date    IN  xxcok_cond_bm_support.closing_date%TYPE -- 締め日
-    ,iv_bm_type       IN  VARCHAR2                                -- 支払区分
-    ,iv_calculat_type IN  xxcok_mst_bm_contract.calc_type%TYPE    -- 計算条件
-    ,in_tax_rate      IN  xxcos_sales_exp_headers.tax_rate%TYPE   -- 消費税率
-    ,on_bm_amt        OUT xxcok_mst_bm_contract.bm1_amt%TYPE      -- 割戻額
-    ,on_bm_amount     OUT xxcos_sales_exp_lines.sale_amount%TYPE  -- 販売手数料
-    ,on_bm_amount_tax OUT xxcos_sales_exp_lines.tax_amount%TYPE   -- 販売手数料消費税額
-  )
-  IS
-    --===============================
-    -- ローカル定数
-    --===============================
-    cv_prg_name CONSTANT VARCHAR2(100) := 'cal_bm_contract40_info'; -- プログラム名
-    --===============================
-    -- ローカル変数
-    --===============================
-    lv_errbuf   VARCHAR2(5000); -- エラーメッセージ
-    lv_retcode  VARCHAR2(1);    -- リターン・コード
-    lv_errmsg   VARCHAR2(5000); -- ユーザー・エラーメッセージ
-    lv_out_msg  VARCHAR2(2000); -- メッセージ
-    lb_retcode  BOOLEAN;        -- APIリターン・メッセージ用
-    -- 計算結果退避
-    ln_bm_amt        xxcok_mst_bm_contract.bm1_amt%TYPE     := NULL; -- 割戻額
-    ln_bm_amount     xxcos_sales_exp_lines.sale_amount%TYPE := NULL; -- 販売手数料
-    ln_bm_amount_tax xxcos_sales_exp_lines.tax_amount%TYPE  := NULL; -- 販売手数料消費税額
-    --===============================
-    -- ローカルカーソル定義
-    --===============================
-    -- 販手条件情報カーソル定義
-    CURSOR contract_mst_cur(
-       iv_customer_code IN hz_cust_accounts.account_number%TYPE    -- 顧客コード
-      ,id_close_date    IN xxcok_cond_bm_support.closing_date%TYPE -- 締め日
-      ,iv_calculat_type IN xxcok_mst_bm_contract.calc_type%TYPE    -- 計算条件
-    )
-    IS
-      SELECT xmb.calc_type AS calc_type -- 計算条件
-            ,xmb.bm1_amt   AS bm1_amt   -- BM1金額
-            ,xmb.bm2_amt   AS bm2_amt   -- BM2金額
-            ,xmb.bm3_amt   AS bm3_amt   -- BM3金額
-      FROM   xxcok_mst_bm_contract xmb
-      WHERE  xmb.cust_code        = iv_customer_code
-      AND    xmb.calc_target_flag = cv_yes -- Y：計算対象
-      AND    xmb.calc_type        = iv_calculat_type
--- 2009/04/20 Ver.1.7 [障害T1_0688] SCS K.Yamaguchi REPAIR START
---      AND    id_close_date BETWEEN NVL( xmb.start_date_active,id_close_date )
---                           AND     NVL( xmb.end_date_active,id_close_date );
-      ;
--- 2009/04/20 Ver.1.7 [障害T1_0688] SCS K.Yamaguchi REPAIR END
-    -- 販手条件情報レコード定義
-    contract_mst_rec contract_mst_cur%ROWTYPE;
-    --===============================
-    -- ローカル例外
-    --===============================
-    contract_err_expt EXCEPTION; -- 販手条件エラー
-  --
-  BEGIN
-  --
-    -------------------------------------------------
-    -- 0.初期化
-    -------------------------------------------------
-    ov_retcode := cv_status_normal;
-    -------------------------------------------------
-    -- 1.定額条件判定
-    -------------------------------------------------
-    OPEN contract_mst_cur(
-       iv_customer_code -- 顧客コード
-      ,id_close_date    -- 締め日：今回締め日
-      ,iv_calculat_type -- 計算条件
-    );
-    FETCH contract_mst_cur INTO contract_mst_rec;
-    -- 条件存在チェック
-    IF ( contract_mst_cur%NOTFOUND ) THEN
-      -- カーソルクローズ
-      CLOSE contract_mst_cur;
-      -- 販手条件エラー
-      RAISE contract_err_expt;
-    END IF;
-    -- カーソルクローズ
-    CLOSE contract_mst_cur;
-    -------------------------------------------------
-    -- 2.定額条件計算
-    -------------------------------------------------
-    -- 契約者仕入先判定
-    IF ( iv_bm_type = cv_bm1_type ) THEN
-      -- 割戻額退避
-      ln_bm_amt := NVL( contract_mst_rec.bm1_amt,cn_zero );
-      -- 販売手数料＝BM1金額
-      ln_bm_amount := NVL( contract_mst_rec.bm1_amt,cn_zero );
-      -- 販売手数料税抜き＝販売手数料÷(1＋(100/販売実績情報.消費税率))
-      ln_bm_amount_tax := ROUND( NVL( ln_bm_amount,cn_zero ) / ( cn_one + ( NVL( in_tax_rate,cn_zero ) / 100 ) ) );
-      -- 販売手数料消費税額＝販売手数料－販売手数料税抜き
-      ln_bm_amount_tax := ln_bm_amount - ln_bm_amount_tax;
-    -- 紹介者BM支払仕入先１判定
-    ELSIF ( iv_bm_type = cv_bm2_type ) THEN
-      -- 割戻額退避
-      ln_bm_amt := NVL( contract_mst_rec.bm2_amt,cn_zero );
-      -- 販売手数料＝BM2金額
-      ln_bm_amount := NVL( contract_mst_rec.bm2_amt,cn_zero );
-      -- 販売手数料税抜き＝販売手数料÷(1＋(100/販売実績情報.消費税率))
-      ln_bm_amount_tax := ROUND( NVL( ln_bm_amount,cn_zero ) / ( cn_one + ( NVL( in_tax_rate,cn_zero ) / 100 ) ) );
-      -- 販売手数料消費税額＝販売手数料－販売手数料税抜き
-      ln_bm_amount_tax := ln_bm_amount - ln_bm_amount_tax;
-    -- 紹介者BM支払仕入先３判定
-    ELSIF ( iv_bm_type = cv_bm3_type ) THEN
-      -- 割戻額退避
-      ln_bm_amt := NVL( contract_mst_rec.bm3_amt,cn_zero );
-      -- 販売手数料＝BM3金額
-      ln_bm_amount := NVL( contract_mst_rec.bm3_amt,cn_zero );
-      -- 販売手数料税抜き＝販売手数料÷(1＋(100/販売実績情報.消費税率))
-      ln_bm_amount_tax := ROUND( NVL( ln_bm_amount,cn_zero ) / ( cn_one + ( NVL( in_tax_rate,cn_zero ) / 100 ) ) );
-      -- 販売手数料消費税額＝販売手数料－販売手数料税抜き
-      ln_bm_amount_tax := ln_bm_amount - ln_bm_amount_tax;
-    END IF;
-    -------------------------------------------------
-    -- 3.戻り値設定
-    -------------------------------------------------
-    on_bm_amt        := ln_bm_amt;        -- 割戻額
-    on_bm_amount     := ln_bm_amount;     -- 販売手数料
-    on_bm_amount_tax := ln_bm_amount_tax; -- 販売手数料消費税額
-  --
-  EXCEPTION
-  --
-    ----------------------------------------------------------
-    -- 販手条件エラー例外ハンドラ
-    ----------------------------------------------------------
-    WHEN contract_err_expt THEN
-      ov_errmsg  := NULL;
-      ov_errbuf  := NULL;
-      ov_retcode := cv_contract_err;
-    ----------------------------------------------------------
-    -- OTHERS例外ハンドラ
-    ----------------------------------------------------------
-    WHEN OTHERS THEN
-      ov_errbuf  := SUBSTRB( cv_pkg_name||cv_msg_cont||cv_prg_name||cv_msg_part||SQLERRM,1,5000 );
-      ov_retcode := cv_status_error;
-  --
-  END cal_bm_contract40_info;
-  --
-  /**********************************************************************************
-   * Procedure Name   : cal_bm_contract30_info
-   * Description      : 一律条件の計算(A-12,A-30)
-   ***********************************************************************************/
-  PROCEDURE cal_bm_contract30_info(
-     ov_errbuf        OUT VARCHAR2                                -- エラーメッセージ
-    ,ov_retcode       OUT VARCHAR2                                -- リターン・コード
-    ,ov_errmsg        OUT VARCHAR2                                -- ユーザー・エラーメッセージ
-    ,iv_customer_code IN  hz_cust_accounts.account_number%TYPE    -- 顧客コード
-    ,id_close_date    IN  xxcok_cond_bm_support.closing_date%TYPE -- 締め日
-    ,iv_bm_type       IN  VARCHAR2                                -- 支払区分
-    ,iv_calculat_type IN  xxcok_mst_bm_contract.calc_type%TYPE    -- 計算条件
-    ,in_sales_amount  IN  xxcos_sales_exp_lines.sale_amount%TYPE  -- 売上金額
-    ,in_tax_rate      IN  xxcos_sales_exp_headers.tax_rate%TYPE   -- 消費税率
-    ,in_dlv_quantity  IN  xxcos_sales_exp_lines.dlv_qty%TYPE      -- 納品数量
-    ,on_bm_pct        OUT xxcok_mst_bm_contract.bm1_pct%TYPE      -- 割戻率
-    ,on_bm_amt        OUT xxcok_mst_bm_contract.bm1_amt%TYPE      -- 割戻額
-    ,on_bm_amount     OUT xxcos_sales_exp_lines.sale_amount%TYPE  -- 販売手数料
-    ,on_bm_amount_tax OUT xxcos_sales_exp_lines.tax_amount%TYPE   -- 販売手数料消費税額
-  )
-  IS
-    --===============================
-    -- ローカル定数
-    --===============================
-    cv_prg_name CONSTANT VARCHAR2(100) := 'cal_bm_contract30_info'; -- プログラム名
-    --===============================
-    -- ローカル変数
-    --===============================
-    lv_errbuf   VARCHAR2(5000); -- エラーメッセージ
-    lv_retcode  VARCHAR2(1);    -- リターン・コード
-    lv_errmsg   VARCHAR2(5000); -- ユーザー・エラーメッセージ
-    lv_out_msg  VARCHAR2(2000); -- メッセージ
-    lb_retcode  BOOLEAN;        -- APIリターン・メッセージ用
-    -- 計算結果退避
-    ln_bm_pct        xxcok_mst_bm_contract.bm1_pct%TYPE       := NULL; -- 割戻率
-    ln_bm_amt        xxcok_mst_bm_contract.bm1_amt%TYPE       := NULL; -- 割戻額
-    ln_bm_amount     xxcos_sales_exp_lines.sale_amount%TYPE := NULL; -- 販売手数料
-    ln_bm_amount_tax xxcos_sales_exp_lines.tax_amount%TYPE  := NULL; -- 販売手数料消費税額
-    --===============================
-    -- ローカルカーソル定義
-    --===============================
-    -- 販手条件情報カーソル定義
-    CURSOR contract_mst_cur(
-       iv_customer_code IN hz_cust_accounts.account_number%TYPE    -- 顧客コード
-      ,id_close_date    IN xxcok_cond_bm_support.closing_date%TYPE -- 締め日
-      ,iv_calculat_type IN xxcok_mst_bm_contract.calc_type%TYPE    -- 計算条件
-    )
-    IS
-      SELECT xmb.calc_type AS calc_type -- 計算条件
-            ,xmb.bm1_pct   AS bm1_pct   -- BM1率(%)
-            ,xmb.bm1_amt   AS bm1_amt   -- BM1金額
-            ,xmb.bm2_pct   AS bm2_pct   -- BM2率(%)
-            ,xmb.bm2_amt   AS bm2_amt   -- BM2金額
-            ,xmb.bm3_pct   AS bm3_pct   -- BM3率(%)
-            ,xmb.bm3_amt   AS bm3_amt   -- BM3金額
-      FROM   xxcok_mst_bm_contract xmb
-      WHERE  xmb.cust_code        = iv_customer_code
-      AND    xmb.calc_target_flag = cv_yes -- Y：計算対象
-      AND    xmb.calc_type        = iv_calculat_type
--- 2009/04/20 Ver.1.7 [障害T1_0688] SCS K.Yamaguchi REPAIR START
---      AND    id_close_date BETWEEN NVL( xmb.start_date_active,id_close_date )
---                           AND     NVL( xmb.end_date_active,id_close_date );
-      ;
--- 2009/04/20 Ver.1.7 [障害T1_0688] SCS K.Yamaguchi REPAIR END
-    -- 販手条件情報レコード定義
-    contract_mst_rec contract_mst_cur%ROWTYPE;
-    --===============================
-    -- ローカル例外
-    --===============================
-    contract_err_expt EXCEPTION; -- 販手条件エラー
-  --
-  BEGIN
-  --
-    -------------------------------------------------
-    -- 0.初期化
-    -------------------------------------------------
-    ov_retcode := cv_status_normal;
-    -------------------------------------------------
-    -- 1.一律条件判定
-    -------------------------------------------------
-    OPEN contract_mst_cur(
-       iv_customer_code -- 顧客コード
-      ,id_close_date    -- 締め日：今回締め日
-      ,iv_calculat_type -- 計算条件
-    );
-    FETCH contract_mst_cur INTO contract_mst_rec;
-    -- 条件存在チェック
-    IF ( contract_mst_cur%NOTFOUND ) THEN
-      -- カーソルクローズ
-      CLOSE contract_mst_cur;
-      -- 販手条件エラー
-      RAISE contract_err_expt;
-    END IF;
-    -- カーソルクローズ
-    CLOSE contract_mst_cur;
-    -------------------------------------------------
-    -- 2.一律条件計算
-    -------------------------------------------------
-    -- 契約者仕入先判定
-    IF ( iv_bm_type = cv_bm1_type ) THEN
-      -- 計算方法（率・金額）判定
-      IF ( contract_mst_rec.bm1_pct IS NOT NULL ) THEN
-        -- 割戻率退避
-        ln_bm_pct := NVL( contract_mst_rec.bm1_pct,cn_zero );
-        -- 販売手数料＝販売実績情報.売上金額×BM1率（%）
-        ln_bm_amount := ROUND( NVL( in_sales_amount,cn_zero ) * ( NVL( contract_mst_rec.bm1_pct,cn_zero ) / 100 ) );
-        -- 販売手数料税抜き＝販売手数料÷(1＋(100/販売実績情報.消費税率))
-        ln_bm_amount_tax := ROUND( NVL( ln_bm_amount,cn_zero ) / ( cn_one + ( NVL( in_tax_rate,cn_zero ) / 100 ) ) );
-        -- 販売手数料消費税額＝販売手数料－販売手数料税抜き
-        ln_bm_amount_tax := ln_bm_amount - ln_bm_amount_tax;
-      ELSE
-        -- 割戻額退避
-        ln_bm_amt := NVL( contract_mst_rec.bm1_amt,cn_zero );
-        -- 販売手数料＝販売実績情報.納品数量×BM1金額
-        ln_bm_amount := ROUND( NVL( in_dlv_quantity,cn_zero ) * NVL( contract_mst_rec.bm1_amt,cn_zero ) );
-        -- 販売手数料税抜き＝販売手数料÷(1＋(100/販売実績情報.消費税率))
-        ln_bm_amount_tax := ROUND( NVL( ln_bm_amount,cn_zero ) / ( cn_one + ( NVL( in_tax_rate,cn_zero ) / 100 ) ) );
-        -- 販売手数料消費税額＝販売手数料－販売手数料税抜き
-        ln_bm_amount_tax := ln_bm_amount - ln_bm_amount_tax;
-      END IF;
-    -- 紹介者BM支払仕入先１判定
-    ELSIF ( iv_bm_type = cv_bm2_type ) THEN
-      -- 計算方法（率・金額）判定
-      IF ( contract_mst_rec.bm2_pct IS NOT NULL ) THEN
-        -- 割戻率退避
-        ln_bm_pct := NVL( contract_mst_rec.bm2_pct,cn_zero );
-        -- 販売手数料＝販売実績情報.売上金額×BM2率（%）
-        ln_bm_amount := ROUND( NVL( in_sales_amount,cn_zero ) * ( NVL( contract_mst_rec.bm2_pct,cn_zero ) / 100 ) );
-        -- 販売手数料税抜き＝販売手数料÷(1＋(100/販売実績情報.消費税率))
-        ln_bm_amount_tax := ROUND( NVL( ln_bm_amount,cn_zero ) / ( cn_one + ( NVL( in_tax_rate,cn_zero ) / 100 ) ) );
-        -- 販売手数料消費税額＝販売手数料－販売手数料税抜き
-        ln_bm_amount_tax := ln_bm_amount - ln_bm_amount_tax;
-      ELSE
-        -- 割戻額退避
-        ln_bm_amt := NVL( contract_mst_rec.bm2_amt,cn_zero );
-        -- 販売手数料＝販売実績情報.納品数量×BM2金額
-        ln_bm_amount := ROUND( NVL( in_dlv_quantity,cn_zero ) * NVL( contract_mst_rec.bm2_amt,cn_zero ) );
-        -- 販売手数料税抜き＝販売手数料÷(1＋(100/販売実績情報.消費税率))
-        ln_bm_amount_tax := ROUND( NVL( ln_bm_amount,cn_zero ) / ( cn_one + ( NVL( in_tax_rate,cn_zero ) / 100 ) ) );
-        -- 販売手数料消費税額＝販売手数料－販売手数料税抜き
-        ln_bm_amount_tax := ln_bm_amount - ln_bm_amount_tax;
-      END IF;
-    -- 紹介者BM支払仕入先３判定
-    ELSIF ( iv_bm_type = cv_bm3_type ) THEN
-      -- 計算方法（率・金額）判定
-      IF ( contract_mst_rec.bm3_pct IS NOT NULL ) THEN
-        -- 割戻率退避
-        ln_bm_pct := NVL( contract_mst_rec.bm3_pct,cn_zero );
-        -- 販売手数料＝販売実績情報.売上金額×BM3率（%）
-        ln_bm_amount := ROUND( NVL( in_sales_amount,cn_zero ) * ( NVL( contract_mst_rec.bm3_pct,cn_zero ) / 100 ) );
-        -- 販売手数料税抜き＝販売手数料÷(1＋(100/販売実績情報.消費税率))
-        ln_bm_amount_tax := ROUND( NVL( ln_bm_amount,cn_zero ) / ( cn_one + ( NVL( in_tax_rate,cn_zero ) / 100 ) ) );
-        -- 販売手数料消費税額＝販売手数料－販売手数料税抜き
-        ln_bm_amount_tax := ln_bm_amount - ln_bm_amount_tax;
-      ELSE
-        -- 割戻額退避
-        ln_bm_amt := NVL( contract_mst_rec.bm3_amt,cn_zero );
-        -- 販売手数料＝販売実績情報.納品数量×BM3金額
-        ln_bm_amount := ROUND( NVL( in_dlv_quantity,cn_zero ) * NVL( contract_mst_rec.bm3_amt,cn_zero ) );
-        -- 販売手数料税抜き＝販売手数料÷(1＋(100/販売実績情報.消費税率))
-        ln_bm_amount_tax := ROUND( NVL( ln_bm_amount,cn_zero ) / ( cn_one + ( NVL( in_tax_rate,cn_zero ) / 100 ) ) );
-        -- 販売手数料消費税額＝販売手数料－販売手数料税抜き
-        ln_bm_amount_tax := ln_bm_amount - ln_bm_amount_tax;
-      END IF;
-    END IF;
-    -------------------------------------------------
-    -- 3.戻り値設定
-    -------------------------------------------------
-    on_bm_pct        := ln_bm_pct;        -- 割戻率
-    on_bm_amt        := ln_bm_amt;        -- 割戻額
-    on_bm_amount     := ln_bm_amount;     -- 販売手数料
-    on_bm_amount_tax := ln_bm_amount_tax; -- 販売手数料消費税額
-  --
-  EXCEPTION
-  --
-    ----------------------------------------------------------
-    -- 販手条件エラー例外ハンドラ
-    ----------------------------------------------------------
-    WHEN contract_err_expt THEN
-      ov_errmsg  := NULL;
-      ov_errbuf  := NULL;
-      ov_retcode := cv_contract_err;
-    ----------------------------------------------------------
-    -- OTHERS例外ハンドラ
-    ----------------------------------------------------------
-    WHEN OTHERS THEN
-      ov_errbuf  := SUBSTRB( cv_pkg_name||cv_msg_cont||cv_prg_name||cv_msg_part||SQLERRM,1,5000 );
-      ov_retcode := cv_status_error;
-  --
-  END cal_bm_contract30_info;
-  --
-  /**********************************************************************************
-   * Procedure Name   : cal_bm_contract20_info
-   * Description      : 容器区分別条件の計算(A-11,A-29)
-   ***********************************************************************************/
-  PROCEDURE cal_bm_contract20_info(
-     ov_errbuf         OUT VARCHAR2                                -- エラーメッセージ
-    ,ov_retcode        OUT VARCHAR2                                -- リターン・コード
-    ,ov_errmsg         OUT VARCHAR2                                -- ユーザー・エラーメッセージ
-    ,iv_customer_code  IN  hz_cust_accounts.account_number%TYPE    -- 顧客コード
-    ,id_close_date     IN  xxcok_cond_bm_support.closing_date%TYPE -- 締め日
-    ,iv_bm_type        IN  VARCHAR2                                -- 支払区分
-    ,iv_calculat_type  IN  xxcok_mst_bm_contract.calc_type%TYPE    -- 計算条件
-    ,iv_container_type IN  fnd_lookup_values.attribute1%TYPE       -- 容器区分
-    ,in_sales_amount   IN  xxcos_sales_exp_lines.sale_amount%TYPE  -- 売上金額
-    ,in_tax_rate       IN  xxcos_sales_exp_headers.tax_rate%TYPE   -- 消費税率
-    ,in_dlv_quantity   IN  xxcos_sales_exp_lines.dlv_qty%TYPE      -- 納品数量
-    ,on_bm_pct         OUT xxcok_mst_bm_contract.bm1_pct%TYPE      -- 割戻率
-    ,on_bm_amt         OUT xxcok_mst_bm_contract.bm1_amt%TYPE      -- 割戻額
-    ,on_bm_amount      OUT xxcos_sales_exp_lines.sale_amount%TYPE  -- 販売手数料
-    ,on_bm_amount_tax  OUT xxcos_sales_exp_lines.tax_amount%TYPE   -- 販売手数料消費税額
-  )
-  IS
-    --===============================
-    -- ローカル定数
-    --===============================
-    cv_prg_name CONSTANT VARCHAR2(100) := 'cal_bm_contract20_info'; -- プログラム名
-    --===============================
-    -- ローカル変数
-    --===============================
-    lv_errbuf   VARCHAR2(5000); -- エラーメッセージ
-    lv_retcode  VARCHAR2(1);    -- リターン・コード
-    lv_errmsg   VARCHAR2(5000); -- ユーザー・エラーメッセージ
-    lv_out_msg  VARCHAR2(2000); -- メッセージ
-    lb_retcode  BOOLEAN;        -- APIリターン・メッセージ用
-    -- 計算結果退避
-    ln_bm_pct        xxcok_mst_bm_contract.bm1_pct%TYPE     := NULL; -- 割戻率
-    ln_bm_amt        xxcok_mst_bm_contract.bm1_amt%TYPE     := NULL; -- 割戻額
-    ln_bm_amount     xxcos_sales_exp_lines.sale_amount%TYPE := NULL; -- 販売手数料
-    ln_bm_amount_tax xxcos_sales_exp_lines.tax_amount%TYPE  := NULL; -- 販売手数料消費税額
-    --===============================
-    -- ローカルカーソル定義
-    --===============================
-    -- 販手条件情報カーソル定義
-    CURSOR contract_mst_cur(
-       iv_customer_code  IN hz_cust_accounts.account_number%TYPE           -- 顧客コード
-      ,id_close_date     IN xxcok_cond_bm_support.closing_date%TYPE        -- 締め日
-      ,iv_calculat_type  IN xxcok_mst_bm_contract.calc_type%TYPE           -- 計算条件
-      ,iv_container_type IN xxcok_mst_bm_contract.container_type_code%TYPE -- 容器区分
-    )
-    IS
-      SELECT xmb.calc_type           AS calc_type           -- 計算条件
-            ,xmb.container_type_code AS container_type_code -- 容器区分
-            ,xmb.bm1_pct             AS bm1_pct             -- BM1率(%)
-            ,xmb.bm1_amt             AS bm1_amt             -- BM1金額
-            ,xmb.bm2_pct             AS bm2_pct             -- BM2率(%)
-            ,xmb.bm2_amt             AS bm2_amt             -- BM2金額
-            ,xmb.bm3_pct             AS bm3_pct             -- BM3率(%)
-            ,xmb.bm3_amt             AS bm3_amt             -- BM3金額
-      FROM   xxcok_mst_bm_contract xmb
-      WHERE  xmb.cust_code           = iv_customer_code
-      AND    xmb.calc_target_flag    = cv_yes -- Y：計算対象
-      AND    xmb.calc_type           = iv_calculat_type
-      AND    xmb.container_type_code = iv_container_type
--- 2009/04/20 Ver.1.7 [障害T1_0688] SCS K.Yamaguchi REPAIR START
---      AND    id_close_date BETWEEN NVL( xmb.start_date_active,id_close_date )
---                           AND     NVL( xmb.end_date_active,id_close_date );
-      ;
--- 2009/04/20 Ver.1.7 [障害T1_0688] SCS K.Yamaguchi REPAIR END
-    -- 販手条件情報レコード定義
-    contract_mst_rec contract_mst_cur%ROWTYPE;
-    --===============================
-    -- ローカル例外
-    --===============================
-    contract_err_expt EXCEPTION; -- 販手条件エラー
-  --
-  BEGIN
-  --
-    -------------------------------------------------
-    -- 0.初期化
-    -------------------------------------------------
-    ov_retcode := cv_status_normal;
-    -------------------------------------------------
-    -- 1.容器区分別条件判定
-    -------------------------------------------------
-    OPEN contract_mst_cur(
-       iv_customer_code  -- 顧客コード
-      ,id_close_date     -- 締め日：今回締め日
-      ,iv_calculat_type  -- 計算条件
-      ,iv_container_type -- 容器区分
-    );
-    FETCH contract_mst_cur INTO contract_mst_rec;
-    -- 条件存在チェック
-    IF ( contract_mst_cur%NOTFOUND ) THEN
-      -- カーソルクローズ
-      CLOSE contract_mst_cur;
-      -- 販手条件エラー
-      RAISE contract_err_expt;
-    END IF;
-    -- カーソルクローズ
-    CLOSE contract_mst_cur;
-    -------------------------------------------------
-    -- 2.容器区分別条件計算
-    -------------------------------------------------
-    -- 契約者仕入先判定
-    IF ( iv_bm_type = cv_bm1_type ) THEN
-      -- 計算方法（率・金額）判定
-      IF ( contract_mst_rec.bm1_pct IS NOT NULL ) THEN
-        -- 割戻率退避
-        ln_bm_pct := NVL( contract_mst_rec.bm1_pct,cn_zero );
-        -- 販売手数料＝販売実績情報.売上金額×BM1率（%）
-        ln_bm_amount := ROUND( NVL( in_sales_amount,cn_zero ) * ( NVL( contract_mst_rec.bm1_pct,cn_zero ) / 100 ) );
-        -- 販売手数料税抜き＝販売手数料÷(1＋(100/販売実績情報.消費税率))
-        ln_bm_amount_tax := ROUND( NVL( ln_bm_amount,cn_zero ) / ( cn_one + ( NVL( in_tax_rate,cn_zero ) / 100 ) ) );
-        -- 販売手数料消費税額＝販売手数料－販売手数料税抜き
-        ln_bm_amount_tax := ln_bm_amount - ln_bm_amount_tax;
-      ELSE
-        -- 割戻額退避
-        ln_bm_amt := NVL( contract_mst_rec.bm1_amt,cn_zero );
-        -- 販売手数料＝販売実績情報.納品数量×BM1金額
-        ln_bm_amount := ROUND( NVL( in_dlv_quantity,cn_zero ) * NVL( contract_mst_rec.bm1_amt,cn_zero ) );
-        -- 販売手数料税抜き＝販売手数料÷(1＋(100/販売実績情報.消費税率))
-        ln_bm_amount_tax := ROUND( NVL( ln_bm_amount,cn_zero ) / ( cn_one + ( NVL( in_tax_rate,cn_zero ) / 100 ) ) );
-        -- 販売手数料消費税額＝販売手数料－販売手数料税抜き
-        ln_bm_amount_tax := ln_bm_amount - ln_bm_amount_tax;
-      END IF;
-    -- 紹介者BM支払仕入先１判定
-    ELSIF ( iv_bm_type = cv_bm2_type ) THEN
-      -- 計算方法（率・金額）判定
-      IF ( contract_mst_rec.bm2_pct IS NOT NULL ) THEN
-        -- 割戻率退避
-        ln_bm_pct := NVL( contract_mst_rec.bm2_pct,cn_zero );
-        -- 販売手数料＝販売実績情報.売上金額×BM2率（%）
-        ln_bm_amount := ROUND( NVL( in_sales_amount,cn_zero ) * ( NVL( contract_mst_rec.bm2_pct,cn_zero ) / 100 ) );
-        -- 販売手数料税抜き＝販売手数料÷(1＋(100/販売実績情報.消費税率))
-        ln_bm_amount_tax := ROUND( NVL( ln_bm_amount,cn_zero ) / ( cn_one + ( NVL( in_tax_rate,cn_zero ) / 100 ) ) );
-        -- 販売手数料消費税額＝販売手数料－販売手数料税抜き
-        ln_bm_amount_tax := ln_bm_amount - ln_bm_amount_tax;
-      ELSE
-        -- 割戻額退避
-        ln_bm_amt := NVL( contract_mst_rec.bm2_amt,cn_zero );
-        -- 販売手数料＝販売実績情報.納品数量×BM2金額
-        ln_bm_amount := ROUND( NVL( in_dlv_quantity,cn_zero ) * NVL( contract_mst_rec.bm2_amt,cn_zero ) );
-        -- 販売手数料税抜き＝販売手数料÷(1＋(100/販売実績情報.消費税率))
-        ln_bm_amount_tax := ROUND( NVL( ln_bm_amount,cn_zero ) / ( cn_one + ( NVL( in_tax_rate,cn_zero ) / 100 ) ) );
-        -- 販売手数料消費税額＝販売手数料－販売手数料税抜き
-        ln_bm_amount_tax := ln_bm_amount - ln_bm_amount_tax;
-      END IF;
-    -- 紹介者BM支払仕入先３判定
-    ELSIF ( iv_bm_type = cv_bm3_type ) THEN
-      -- 計算方法（率・金額）判定
-      IF ( contract_mst_rec.bm3_pct IS NOT NULL ) THEN
-        -- 割戻率退避
-        ln_bm_pct := NVL( contract_mst_rec.bm3_pct,cn_zero );
-        -- 販売手数料＝販売実績情報.売上金額×BM3率（%）
-        ln_bm_amount := ROUND( NVL( in_sales_amount,cn_zero ) * ( NVL( contract_mst_rec.bm3_pct,cn_zero ) / 100 ) );
-        -- 販売手数料税抜き＝販売手数料÷(1＋(100/販売実績情報.消費税率))
-        ln_bm_amount_tax := ROUND( NVL( ln_bm_amount,cn_zero ) / ( cn_one + ( NVL( in_tax_rate,cn_zero ) / 100 ) ) );
-        -- 販売手数料消費税額＝販売手数料－販売手数料税抜き
-        ln_bm_amount_tax := ln_bm_amount - ln_bm_amount_tax;
-      ELSE
-        -- 割戻額退避
-        ln_bm_amt := NVL( contract_mst_rec.bm3_amt,cn_zero );
-        -- 販売手数料＝販売実績情報.納品数量×BM3金額
-        ln_bm_amount := ROUND( NVL( in_dlv_quantity,cn_zero ) * NVL( contract_mst_rec.bm3_amt,cn_zero ) );
-        -- 販売手数料税抜き＝販売手数料÷(1＋(100/販売実績情報.消費税率))
-        ln_bm_amount_tax := ROUND( NVL( ln_bm_amount,cn_zero ) / ( cn_one + ( NVL( in_tax_rate,cn_zero ) / 100 ) ) );
-        -- 販売手数料消費税額＝販売手数料－販売手数料税抜き
-        ln_bm_amount_tax := ln_bm_amount - ln_bm_amount_tax;
-      END IF;
-    END IF;
-    -------------------------------------------------
-    -- 3.戻り値設定
-    -------------------------------------------------
-    on_bm_pct        := ln_bm_pct;        -- 割戻率
-    on_bm_amt        := ln_bm_amt;        -- 割戻額
-    on_bm_amount     := ln_bm_amount;     -- 販売手数料
-    on_bm_amount_tax := ln_bm_amount_tax; -- 販売手数料消費税額
-  --
-  EXCEPTION
-  --
-    ----------------------------------------------------------
-    -- 販手条件エラー例外ハンドラ
-    ----------------------------------------------------------
-    WHEN contract_err_expt THEN
-      ov_errmsg  := NULL;
-      ov_errbuf  := NULL;
-      ov_retcode := cv_contract_err;
-    ----------------------------------------------------------
-    -- OTHERS例外ハンドラ
-    ----------------------------------------------------------
-    WHEN OTHERS THEN
-      ov_errbuf  := SUBSTRB( cv_pkg_name||cv_msg_cont||cv_prg_name||cv_msg_part||SQLERRM,1,5000 );
-      ov_retcode := cv_status_error;
-  --
-  END cal_bm_contract20_info;
-  --
-  /**********************************************************************************
-   * Procedure Name   : cal_bm_contract10_info
-   * Description      : 売価別条件の計算(A-10,A-28)
-   ***********************************************************************************/
-  PROCEDURE cal_bm_contract10_info(
-     ov_errbuf        OUT VARCHAR2                                  -- エラーメッセージ
-    ,ov_retcode       OUT VARCHAR2                                  -- リターン・コード
-    ,ov_errmsg        OUT VARCHAR2                                  -- ユーザー・エラーメッセージ
-    ,iv_customer_code IN  hz_cust_accounts.account_number%TYPE      -- 顧客コード
-    ,id_close_date    IN  xxcok_cond_bm_support.closing_date%TYPE   -- 締め日
-    ,iv_bm_type       IN  VARCHAR2                                  -- 支払区分
-    ,iv_calculat_type IN  xxcok_mst_bm_contract.calc_type%TYPE      -- 計算条件
-    ,in_retail_amount IN  xxcos_sales_exp_lines.dlv_unit_price%TYPE -- 売価
-    ,in_sales_amount  IN  xxcos_sales_exp_lines.sale_amount%TYPE    -- 売上金額
-    ,in_tax_rate      IN  xxcos_sales_exp_headers.tax_rate%TYPE     -- 消費税率
-    ,in_dlv_quantity  IN  xxcos_sales_exp_lines.dlv_qty%TYPE        -- 納品数量
-    ,on_bm_pct        OUT xxcok_mst_bm_contract.bm1_pct%TYPE        -- 割戻率
-    ,on_bm_amt        OUT xxcok_mst_bm_contract.bm1_amt%TYPE        -- 割戻額
-    ,on_bm_amount     OUT xxcos_sales_exp_lines.sale_amount%TYPE    -- 販売手数料
-    ,on_bm_amount_tax OUT xxcos_sales_exp_lines.tax_amount%TYPE     -- 販売手数料消費税額
-  )
-  IS
-    --===============================
-    -- ローカル定数
-    --===============================
-    cv_prg_name CONSTANT VARCHAR2(100) := 'cal_bm_contract10_info'; -- プログラム名
-    --===============================
-    -- ローカル変数
-    --===============================
-    lv_errbuf   VARCHAR2(5000); -- エラーメッセージ
-    lv_retcode  VARCHAR2(1);    -- リターン・コード
-    lv_errmsg   VARCHAR2(5000); -- ユーザー・エラーメッセージ
-    lv_out_msg  VARCHAR2(2000); -- メッセージ
-    lb_retcode  BOOLEAN;        -- APIリターン・メッセージ用
-    -- 計算結果退避
-    ln_bm_pct        xxcok_mst_bm_contract.bm1_pct%TYPE     := NULL; -- 割戻率
-    ln_bm_amt        xxcok_mst_bm_contract.bm1_amt%TYPE     := NULL; -- 割戻額
-    ln_bm_amount     xxcos_sales_exp_lines.sale_amount%TYPE := NULL; -- 販売手数料
-    ln_bm_amount_tax xxcos_sales_exp_lines.tax_amount%TYPE  := NULL; -- 販売手数料消費税額
-    --===============================
-    -- ローカルカーソル定義
-    --===============================
-    -- 販手条件情報カーソル定義
-    CURSOR contract_mst_cur(
-       iv_customer_code IN hz_cust_accounts.account_number%TYPE      -- 顧客コード
-      ,id_close_date    IN xxcok_cond_bm_support.closing_date%TYPE   -- 締め日
-      ,iv_calculat_type IN xxcok_mst_bm_contract.calc_type%TYPE      -- 計算条件
-      ,in_retail        IN xxcos_sales_exp_lines.dlv_unit_price%TYPE -- 売価
-    )
-    IS
-      SELECT xmb.calc_type     AS calc_type     -- 計算条件
-            ,xmb.selling_price AS selling_price -- 売価
-            ,xmb.bm1_pct       AS bm1_pct       -- BM1率(%)
-            ,xmb.bm1_amt       AS bm1_amt       -- BM1金額
-            ,xmb.bm2_pct       AS bm2_pct       -- BM2率(%)
-            ,xmb.bm2_amt       AS bm2_amt       -- BM2金額
-            ,xmb.bm3_pct       AS bm3_pct       -- BM3率(%)
-            ,xmb.bm3_amt       AS bm3_amt       -- BM3金額
-      FROM   xxcok_mst_bm_contract xmb
-      WHERE  xmb.cust_code        = iv_customer_code
-      AND    xmb.calc_target_flag = cv_yes -- Y：計算対象
-      AND    xmb.calc_type        = iv_calculat_type
-      AND    xmb.selling_price    = in_retail
--- 2009/04/20 Ver.1.7 [障害T1_0688] SCS K.Yamaguchi REPAIR START
---      AND    id_close_date BETWEEN NVL( xmb.start_date_active,id_close_date )
---                           AND     NVL( xmb.end_date_active,id_close_date );
-      ;
--- 2009/04/20 Ver.1.7 [障害T1_0688] SCS K.Yamaguchi REPAIR END
-    -- 販手条件情報レコード定義
-    contract_mst_rec contract_mst_cur%ROWTYPE;
-    --===============================
-    -- ローカル例外
-    --===============================
-    contract_err_expt EXCEPTION; -- 販手条件エラー
-  --
-  BEGIN
-  --
-    -------------------------------------------------
-    -- 0.初期化
-    -------------------------------------------------
-    ov_retcode := cv_status_normal;
-    -------------------------------------------------
-    -- 1.売価別条件判定
-    -------------------------------------------------
-    OPEN contract_mst_cur(
-       iv_customer_code -- 顧客コード
-      ,id_close_date    -- 締め日：今回締め日
-      ,iv_calculat_type -- 計算条件
-      ,in_retail_amount -- 売価：納品単価
-    );
-    FETCH contract_mst_cur INTO contract_mst_rec;
-    -- 条件存在チェック
-    IF ( contract_mst_cur%NOTFOUND ) THEN
-      -- カーソルクローズ
-      CLOSE contract_mst_cur;
-      -- 販手条件エラー
-      RAISE contract_err_expt;
-    END IF;
-    -- カーソルクローズ
-    CLOSE contract_mst_cur;
-    --
-    -------------------------------------------------
-    -- 2.売価別条件計算
-    -------------------------------------------------
-    -- 契約者仕入先判定
-    IF ( iv_bm_type = cv_bm1_type ) THEN
-      -- 計算方法（率・金額）判定
-      IF ( contract_mst_rec.bm1_pct IS NOT NULL ) THEN
-        -- 割戻率退避
-        ln_bm_pct := NVL( contract_mst_rec.bm1_pct,cn_zero );
-        -- 販売手数料＝販売実績情報.売上金額×BM1率（%）
-        ln_bm_amount := ROUND( NVL( in_sales_amount,cn_zero ) * ( NVL( contract_mst_rec.bm1_pct,cn_zero ) / 100 ) );
-        -- 販売手数料税抜き＝販売手数料÷(1＋(100/販売実績情報.消費税率))
-        ln_bm_amount_tax := ROUND( NVL( ln_bm_amount,cn_zero ) / ( cn_one + ( NVL( in_tax_rate,cn_zero ) / 100 ) ) );
-        -- 販売手数料消費税額＝販売手数料－販売手数料税抜き
-        ln_bm_amount_tax := ln_bm_amount - ln_bm_amount_tax;
-      ELSE
-        -- 割戻額退避
-        ln_bm_amt := NVL( contract_mst_rec.bm1_amt,cn_zero );
-        -- 販売手数料＝販売実績情報.納品数量×BM1金額
-        ln_bm_amount := ROUND( NVL( in_dlv_quantity,cn_zero ) * NVL( contract_mst_rec.bm1_amt,cn_zero ) );
-        -- 販売手数料税抜き＝販売手数料÷(1＋(100/販売実績情報.消費税率))
-        ln_bm_amount_tax := ROUND( NVL( ln_bm_amount,cn_zero ) / ( cn_one + ( NVL( in_tax_rate,cn_zero ) / 100 ) ) );
-        -- 販売手数料消費税額＝販売手数料－販売手数料税抜き
-        ln_bm_amount_tax := ln_bm_amount - ln_bm_amount_tax;
-      END IF;
-    -- 紹介者BM支払仕入先１判定
-    ELSIF ( iv_bm_type = cv_bm2_type ) THEN
-      -- 計算方法（率・金額）判定
-      IF ( contract_mst_rec.bm2_pct IS NOT NULL ) THEN
-        -- 割戻率退避
-        ln_bm_pct := NVL( contract_mst_rec.bm2_pct,cn_zero );
-        -- 販売手数料＝販売実績情報.売上金額×BM2率（%）
-        ln_bm_amount := ROUND( NVL( in_sales_amount,cn_zero ) * ( NVL( contract_mst_rec.bm2_pct,cn_zero ) / 100 ) );
-        -- 販売手数料税抜き＝販売手数料÷(1＋(100/販売実績情報.消費税率))
-        ln_bm_amount_tax := ROUND( NVL( ln_bm_amount,cn_zero ) / ( cn_one + ( NVL( in_tax_rate,cn_zero ) / 100 ) ) );
-        -- 販売手数料消費税額＝販売手数料－販売手数料税抜き
-        ln_bm_amount_tax := ln_bm_amount - ln_bm_amount_tax;
-      ELSE
-        -- 割戻額退避
-        ln_bm_amt := NVL( contract_mst_rec.bm2_amt,cn_zero );
-        -- 販売手数料＝販売実績情報.納品数量×BM2金額
-        ln_bm_amount := ROUND( NVL( in_dlv_quantity,cn_zero ) * NVL( contract_mst_rec.bm2_amt,cn_zero ) );
-        -- 販売手数料税抜き＝販売手数料÷(1＋(100/販売実績情報.消費税率))
-        ln_bm_amount_tax := ROUND( NVL( ln_bm_amount,cn_zero ) / ( cn_one + ( NVL( in_tax_rate,cn_zero ) / 100 ) ) );
-        -- 販売手数料消費税額＝販売手数料－販売手数料税抜き
-        ln_bm_amount_tax := ln_bm_amount - ln_bm_amount_tax;
-      END IF;
-    -- 紹介者BM支払仕入先３判定
-    ELSIF ( iv_bm_type = cv_bm3_type ) THEN
-      -- 計算方法（率・金額）判定
-      IF ( contract_mst_rec.bm3_pct IS NOT NULL ) THEN
-        -- 割戻率退避
-        ln_bm_pct := NVL( contract_mst_rec.bm3_pct,cn_zero );
-        -- 販売手数料＝販売実績情報.売上金額×BM3率（%）
-        ln_bm_amount := ROUND( NVL( in_sales_amount,cn_zero ) * ( NVL( contract_mst_rec.bm3_pct,cn_zero ) / 100 ) );
-        -- 販売手数料税抜き＝販売手数料÷(1＋(100/販売実績情報.消費税率))
-        ln_bm_amount_tax := ROUND( NVL( ln_bm_amount,cn_zero ) / ( cn_one + ( NVL( in_tax_rate,cn_zero ) / 100 ) ) );
-        -- 販売手数料消費税額＝販売手数料－販売手数料税抜き
-        ln_bm_amount_tax := ln_bm_amount - ln_bm_amount_tax;
-      ELSE
-        -- 割戻額退避
-        ln_bm_amt := NVL( contract_mst_rec.bm3_amt,cn_zero );
-        -- 販売手数料＝販売実績情報.納品数量×BM3金額
-        ln_bm_amount := ROUND( NVL( in_dlv_quantity,cn_zero ) * NVL( contract_mst_rec.bm3_amt,cn_zero ) );
-        -- 販売手数料税抜き＝販売手数料÷(1＋(100/販売実績情報.消費税率))
-        ln_bm_amount_tax := ROUND( NVL( ln_bm_amount,cn_zero ) / ( cn_one + ( NVL( in_tax_rate,cn_zero ) / 100 ) ) );
-        -- 販売手数料消費税額＝販売手数料－販売手数料税抜き
-        ln_bm_amount_tax := ln_bm_amount - ln_bm_amount_tax;
-      END IF;
-    END IF;
-    -------------------------------------------------
-    -- 3.戻り値設定
-    -------------------------------------------------
-    on_bm_pct        := ln_bm_pct;        -- 割戻率
-    on_bm_amt        := ln_bm_amt;        -- 割戻額
-    on_bm_amount     := ln_bm_amount;     -- 販売手数料
-    on_bm_amount_tax := ln_bm_amount_tax; -- 販売手数料消費税額
-  --
-  EXCEPTION
-  --
-    ----------------------------------------------------------
-    -- 販手条件エラー例外ハンドラ
-    ----------------------------------------------------------
-    WHEN contract_err_expt THEN
-      ov_errmsg  := NULL;
-      ov_errbuf  := NULL;
-      ov_retcode := cv_contract_err;
-    ----------------------------------------------------------
-    -- OTHERS例外ハンドラ
-    ----------------------------------------------------------
-    WHEN OTHERS THEN
-      ov_errbuf  := SUBSTRB( cv_pkg_name||cv_msg_cont||cv_prg_name||cv_msg_part||SQLERRM,1,5000 );
-      ov_retcode := cv_status_error;
-  --
-  END cal_bm_contract10_info;
-  --
-  /**********************************************************************************
-   * Procedure Name   : get_active_vendor_info
-   * Description      : 支払先データの取得(A-9,A-27)
-   ***********************************************************************************/
-  PROCEDURE get_active_vendor_info(
-     ov_errbuf        OUT VARCHAR2                                          -- エラーメッセージ
-    ,ov_retcode       OUT VARCHAR2                                          -- リターン・コード
-    ,ov_errmsg        OUT VARCHAR2                                          -- ユーザー・エラーメッセージ
-    ,iv_vendor_type   IN  VARCHAR2                                          -- ベンダー区分
-    ,iv_customer_code IN  hz_cust_accounts.account_number%TYPE              -- 顧客コード
-    ,id_pay_work_date IN  xxcok_cond_bm_support.expect_payment_date%TYPE    -- 支払予定日
-    ,iv_vendor_code1  IN  xxcmm_cust_accounts.contractor_supplier_code%TYPE -- 契約者仕入先コード
-    ,iv_vendor_code2  IN  xxcmm_cust_accounts.bm_pay_supplier_code1%TYPE    -- 紹介者BM支払仕入先コード１
-    ,iv_vendor_code3  IN  xxcmm_cust_accounts.bm_pay_supplier_code2%TYPE    -- 紹介者BM支払仕入先コード２
-    ,in_elc_cnt       IN  NUMBER                                            -- 電気料計算条件有無
-    ,ot_bm_support    OUT g_bm_support_ttype                                -- 支払先情報
-  )
-  IS
-    --===============================
-    -- ローカル定数
-    --===============================
-    cv_prg_name CONSTANT VARCHAR2(100) := 'get_active_vendor_info'; -- プログラム名
-    --===============================
-    -- ローカル変数
-    --===============================
-    lv_errbuf   VARCHAR2(5000);   -- エラーメッセージ
-    lv_retcode  VARCHAR2(1);      -- リターン・コード
-    lv_errmsg   VARCHAR2(5000);   -- ユーザー・エラーメッセージ
-    lv_out_msg  VARCHAR2(2000);   -- メッセージ
-    lb_retcode  BOOLEAN;          -- APIリターン・メッセージ用
-    ln_cnt      PLS_INTEGER := 0; -- カウンタ
-    ln_vend_cnt PLS_INTEGER := 0; -- 仕入先カウンタ
-    ln_pay_cnt  PLS_INTEGER := 0; -- 支払先カウンタ
-    -- 支払先テーブル定義
-    lt_vendor_chk g_vendor_ttype;     -- 支払先チェック
-    lt_bm_support g_bm_support_ttype; -- 支払先情報
-    -- 仕入先情報退避
-    lv_vendor_code1 po_vendors.segment1%TYPE := NULL; -- 仕入先コード１
-    lv_vendor_code2 po_vendors.segment1%TYPE := NULL; -- 仕入先コード２
-    lv_vendor_code3 po_vendors.segment1%TYPE := NULL; -- 仕入先コード３
-    --===============================
-    -- ローカルカーソル定義
-    --===============================
-    -- 支払先情報カーソル定義
-    CURSOR vendor_info_cur(
-       iv_vendor_code   IN po_vendors.segment1%TYPE                       -- 仕入先コード
-      ,id_pay_work_date IN xxcok_cond_bm_support.expect_payment_date%TYPE -- 締め日
-    )
-    IS
-      SELECT pvd.segment1         AS vendor_code      -- 仕入先コード
-            ,pvs.vendor_site_code AS vendor_site_code -- 仕入先サイトコード
-      FROM   po_vendors          pvd -- 仕入先マスタ
-            ,po_vendor_sites_all pvs -- 仕入先サイトマスタ
-      WHERE  pvd.segment1     = iv_vendor_code
-      AND    pvd.enabled_flag = cv_yes -- Y：有効
-      AND    pvd.vendor_id    = pvs.vendor_id
-      AND    pvs.attribute4   IN ( cv_bm_pay1_type
-                                  ,cv_bm_pay2_type
-                                  ,cv_bm_pay3_type
-                                  ,cv_bm_pay4_type )
-      AND    NVL( pvs.inactive_date,id_pay_work_date ) >= id_pay_work_date
-      AND    id_pay_work_date BETWEEN NVL( pvd.start_date_active,id_pay_work_date )
-                              AND     NVL( pvd.end_date_active,id_pay_work_date );
-    --===============================
-    -- ローカル例外
-    --===============================
-    contract_err_expt EXCEPTION; -- 販手条件エラー
-  --
-  BEGIN
-  --
-    -------------------------------------------------
-    -- 0.初期化
-    -------------------------------------------------
-    ov_retcode := cv_status_normal;
-    -- 引数退避
-    lv_vendor_code1 := iv_vendor_code1; -- 仕入先１退避
-    lv_vendor_code2 := iv_vendor_code2; -- 仕入先２退避
-    lv_vendor_code3 := iv_vendor_code3; -- 仕入先３退避
-    -- テーブル定義初期化
-    lt_vendor_chk.DELETE;
-    lt_bm_support.DELETE;
-    -- BM1退避
-    lt_vendor_chk( cn_bm1_set ).bm_type := cv_bm1_type;
-    -- 契約者仕入先コード退避
-    lt_vendor_chk( cn_bm1_set ).vendor_code := lv_vendor_code1;
-    -- BM2退避
-    lt_vendor_chk( cn_bm2_set ).bm_type := cv_bm2_type;
-    -- 紹介者BM支払仕入先コード１退避
-    lt_vendor_chk( cn_bm2_set ).vendor_code := lv_vendor_code2;
-    -- BM3退避
-    lt_vendor_chk( cn_bm3_set ).bm_type := cv_bm3_type;
-    -- 紹介者BM支払仕入先コード２退避
-    lt_vendor_chk( cn_bm3_set ).vendor_code := lv_vendor_code3;
-    -------------------------------------------------
-    -- 1.フルベンダー支払先取得
-    -------------------------------------------------
-    IF ( iv_vendor_type = cv_vendor_type1 ) THEN
-      -------------------------------------------------
-      -- 支払先情報チェックループ
-      -------------------------------------------------
-      << vendor_chk_all_loop >>
-      FOR ln_vend_cnt IN lt_vendor_chk.FIRST..lt_vendor_chk.LAST LOOP
-        -- 支払先情報取得
-        << payment_chk_all_loop >>
-        FOR vendor_info_rec IN vendor_info_cur(
-           lt_vendor_chk( ln_vend_cnt ).vendor_code -- 仕入先コード：BM1～BM3
-          ,id_pay_work_date                         -- 支払予定日
+  --==================================================
+  --*** 処理部共通例外 ***
+  global_process_expt              EXCEPTION;
+  --*** 共通関数例外 ***
+  global_api_expt                  EXCEPTION;
+  --*** 共通関数OTHERS例外 ***
+  global_api_others_expt           EXCEPTION;
+  PRAGMA EXCEPTION_INIT( global_api_others_expt, -20000 );
+  --*** ロック取得エラー ***
+  resource_busy_expt               EXCEPTION;
+  PRAGMA EXCEPTION_INIT( resource_busy_expt, -54 );
+  --==================================================
+  -- グローバル例外
+  --==================================================
+  --*** エラー終了 ***
+  error_proc_expt                  EXCEPTION;
+  --*** 警告スキップ ***
+  warning_skip_expt                EXCEPTION;
+--
+  --==================================================
+  -- グローバルカーソル
+  --==================================================
+  -- 顧客情報
+  CURSOR get_cust_data_cur IS
+    SELECT ship_hca.account_number               AS ship_cust_code             -- 【出荷先】顧客コード
+         , ship_flv1.attribute1                  AS ship_gyotai_tyu            -- 【出荷先】業態（中分類）
+         , ship_xca.business_low_type            AS ship_gyotai_sho            -- 【出荷先】業態（小分類）
+         , ship_xca.delivery_chain_code          AS ship_delivery_chain_code   -- 【出荷先】納品先チェーンコード
+         , bill_hca.account_number               AS bill_cust_code             -- 【請求先】顧客コード
+         , CASE
+             WHEN bill_xca.business_low_type = cv_gyotai_sho_25 THEN
+               ship_xcm.term_name
+             ELSE
+               bill_rtt1.name
+           END                                   AS term_name1                 -- 支払条件
+         , CASE
+             WHEN bill_xca.business_low_type = cv_gyotai_sho_25 THEN
+               NULL
+             ELSE
+               bill_rtt2.name
+           END                                   AS term_name2                 -- 第2支払条件
+         , CASE
+             WHEN bill_xca.business_low_type = cv_gyotai_sho_25 THEN
+               NULL
+             ELSE
+               bill_rtt3.name
+           END                                   AS term_name3                 -- 第3支払条件
+         , CASE
+             WHEN bill_xca.business_low_type = cv_gyotai_sho_25 THEN
+               gn_bm_support_period_to
+             ELSE
+               TO_NUMBER( bill_hcsua.attribute8 )
+           END                                   AS settle_amount_cycle        -- 金額確定サイクル
+         , bill_xca.tax_div                      AS tax_div                    -- 消費税区分
+         , bill_avtab.tax_code                   AS tax_code                   -- 税金コード
+         , bill_avtab.tax_rate                   AS tax_rate                   -- 税率
+         , bill_hcsua.tax_rounding_rule          AS tax_rounding_rule          -- 端数処理区分
+         , CASE
+             WHEN (     ( ship_flv1.attribute1          <> cv_gyotai_tyu_vd )
+                    AND ( ship_xca.receiv_discount_rate IS NOT NULL         )
+                  )
+             THEN
+               gv_vendor_dummy_code
+             ELSE
+               ship_xca.contractor_supplier_code
+           END                                   AS bm1_vendor_code            -- 【ＢＭ１】仕入先コード
+         , bm1_pvsa.vendor_site_code             AS bm1_vendor_site_code       -- 【ＢＭ１】仕入先サイトコード
+         , bm1_pvsa.attribute4                   AS bm1_bm_payment_type        -- 【ＢＭ１】BM支払区分
+         , ship_xca.bm_pay_supplier_code1        AS bm2_vendor_code            -- 【ＢＭ２】仕入先コード
+         , bm2_pvsa.vendor_site_code             AS bm2_vendor_site_code       -- 【ＢＭ２】仕入先サイトコード
+         , bm2_pvsa.attribute4                   AS bm2_bm_payment_type        -- 【ＢＭ２】BM支払区分
+         , ship_xca.bm_pay_supplier_code2        AS bm3_vendor_code            -- 【ＢＭ３】仕入先コード
+         , bm3_pvsa.vendor_site_code             AS bm3_vendor_site_code       -- 【ＢＭ３】仕入先サイトコード
+         , bm3_pvsa.attribute4                   AS bm3_bm_payment_type        -- 【ＢＭ３】BM支払区分
+         , ship_xca.receiv_discount_rate         AS receiv_discount_rate       -- 入金値引率
+         , NVL2( MAX( ship_xcbs.calc_target_period_to )
+               , MAX( ship_xcbs.calc_target_period_to ) + 1
+               , MIN( xseh.delivery_date )
+           )                                     AS calc_target_period_from    -- 計算対象期間(FROM)
+    FROM xxcos_sales_exp_headers       xseh                -- 販売実績ヘッダ
+       , xxcos_sales_exp_lines         xsel                -- 販売実績明細
+       , hz_cust_accounts              ship_hca            -- 【出荷先】顧客マスタ
+       , xxcmm_cust_accounts           ship_xca            -- 【出荷先】顧客追加情報
+       , hz_parties                    ship_hp             -- 【出荷先】顧客パーティ
+       , hz_party_sites                ship_hps            -- 【出荷先】顧客パーティサイト
+       , hz_locations                  ship_hl             -- 【出荷先】顧客事業所
+       , hz_cust_acct_sites_all        ship_hcasa          -- 【出荷先】顧客所在地
+       , hz_cust_site_uses_all         ship_hcsua          -- 【出荷先】顧客使用目的
+       , hz_cust_accounts              bill_hca            -- 【請求先】顧客マスタ
+       , xxcmm_cust_accounts           bill_xca            -- 【請求先】顧客追加情報
+       , hz_parties                    bill_hp             -- 【請求先】顧客パーティ
+       , hz_party_sites                bill_hps            -- 【請求先】顧客パーティサイト
+       , hz_cust_acct_sites_all        bill_hcasa          -- 【請求先】顧客所在地
+       , hz_cust_site_uses_all         bill_hcsua          -- 【請求先】顧客使用目的
+       , po_vendors                    bm1_pv              -- 【ＢＭ１】仕入先マスタ
+       , po_vendor_sites_all           bm1_pvsa            -- 【ＢＭ１】仕入先サイトマスタ
+       , po_vendors                    bm2_pv              -- 【ＢＭ２】仕入先マスタ
+       , po_vendor_sites_all           bm2_pvsa            -- 【ＢＭ２】仕入先サイトマスタ
+       , po_vendors                    bm3_pv              -- 【ＢＭ３】仕入先マスタ
+       , po_vendor_sites_all           bm3_pvsa            -- 【ＢＭ３】仕入先サイトマスタ
+       , xxcok_cond_bm_support         ship_xcbs           -- 条件別販手販協
+       , ra_terms_tl                   bill_rtt1           -- 支払条件マスタ
+       , ra_terms_tl                   bill_rtt2           -- 第2支払条件マスタ
+       , ra_terms_tl                   bill_rtt3           -- 第3支払条件マスタ
+       , fnd_lookup_values             bill_flv1           -- 消費税区分
+       , ar_vat_tax_all_b              bill_avtab          -- 税金マスタ
+       , fnd_lookup_values             ship_flv1           -- 業態（小分類）
+       , fnd_lookup_values             ship_flv2           -- 実行区分
+       , ( SELECT xcm.install_account_id  AS install_account_id -- 設置先顧客ID
+                , CASE
+                    WHEN (    ( xcm.close_day_code      IS NULL )
+                           OR ( xcm.transfer_day_code   IS NULL )
+                           OR ( xcm.transfer_month_code IS NULL )
+                         )
+                    THEN
+                      gv_default_term_name
+                    ELSE
+                         xcm.close_day_code
+                      || '_'
+                      || xcm.transfer_day_code
+                      || '_'
+                      || CASE
+                           WHEN xcm.transfer_month_code = cv_month_type1 THEN
+                             cv_site_type1
+                           ELSE
+                             cv_site_type2
+                         END
+                  END                     AS term_name          -- 支払条件
+           FROM xxcso_contract_managements  xcm -- 契約管理
+           WHERE xcm.status =  cv_xcm_status_result
+             AND EXISTS ( SELECT    'X'
+                          FROM xxcso_contract_managements  xcm2  -- 契約管理
+                          WHERE xcm2.status                    =  '1'                -- ステータス：確定済
+                            AND xcm2.install_account_id        = xcm.install_account_id
+                          GROUP BY  xcm2.install_account_id
+                          HAVING MAX( xcm2.contract_number )   = xcm.contract_number
+                 )
+          )                            ship_xcm            -- 契約管理情報
+    WHERE xsel.to_calculate_fees_flag  = cv_xsel_if_flag_no
+      AND xseh.sales_exp_header_id     = xsel.sales_exp_header_id
+      AND xseh.delivery_date          <= gd_process_date - gn_bm_support_period_from
+      AND ship_hca.account_number      = xseh.ship_to_customer_code
+      AND ship_hca.customer_class_code = cv_customer_class_customer
+      AND ship_hca.cust_account_id     = ship_xca.customer_id
+      AND ship_hp.party_id             = ship_hca.party_id
+      AND ship_hp.party_id             = ship_hps.party_id
+      AND ship_hl.location_id          = ship_hps.location_id
+      AND ship_hca.cust_account_id     = ship_hcasa.cust_account_id
+      AND ship_hps.party_site_id       = ship_hcasa.party_site_id
+      AND ship_hcasa.org_id            = gn_org_id
+      AND ship_hcasa.cust_acct_site_id = ship_hcsua.cust_acct_site_id
+      AND ship_hcsua.org_id            = gn_org_id
+      AND ship_hcsua.site_use_code     = cv_site_use_code_ship
+      AND bill_hcsua.site_use_id       = ship_hcsua.bill_to_site_use_id
+      AND bill_hcsua.org_id            = gn_org_id
+      AND bill_hcsua.site_use_code     = cv_site_use_code_bill
+      AND bill_hcasa.cust_acct_site_id = bill_hcsua.cust_acct_site_id
+      AND bill_hcasa.org_id            = gn_org_id
+      AND bill_hps.party_site_id       = bill_hcasa.party_site_id
+      AND bill_hca.cust_account_id     = bill_hcasa.cust_account_id
+      AND bill_hp.party_id             = bill_hps.party_id
+      AND bill_hp.party_id             = bill_hca.party_id
+      AND bill_hca.cust_account_id     = bill_xca.customer_id
+      AND bm1_pv.segment1(+)           = ship_xca.contractor_supplier_code
+      AND bm1_pv.vendor_id             = bm1_pvsa.vendor_id(+)
+      AND bm1_pvsa.org_id(+)           = gn_org_id
+      AND bm2_pv.segment1(+)           = ship_xca.bm_pay_supplier_code1
+      AND bm2_pv.vendor_id             = bm2_pvsa.vendor_id(+)
+      AND bm2_pvsa.org_id(+)           = gn_org_id
+      AND bm3_pv.segment1(+)           = ship_xca.bm_pay_supplier_code2
+      AND bm3_pv.vendor_id             = bm3_pvsa.vendor_id(+)
+      AND bm3_pvsa.org_id(+)           = gn_org_id
+      AND ship_hca.cust_account_id     = ship_xcm.install_account_id(+)
+      AND ship_hca.account_number      = ship_xcbs.delivery_cust_code(+)
+      AND ship_xcbs.closing_date(+)   <= gd_process_date
+      AND bill_rtt1.term_id(+)         = bill_hcsua.payment_term_id
+      AND bill_rtt1.language(+)        = USERENV( 'LANG' )
+      AND bill_rtt2.term_id(+)         = bill_hcsua.attribute2
+      AND bill_rtt2.language(+)        = USERENV( 'LANG' )
+      AND bill_rtt3.term_id(+)         = bill_hcsua.attribute3
+      AND bill_rtt3.language(+)        = USERENV( 'LANG' )
+      AND bill_flv1.lookup_code        = bill_xca.tax_div
+      AND bill_flv1.lookup_type        = cv_lookup_type_02      -- 参照タイプ：消費税区分
+      AND bill_flv1.language           = USERENV( 'LANG' )
+      AND bill_flv1.enabled_flag       = cv_enable
+      AND gd_process_date        BETWEEN NVL( bill_flv1.start_date_active, gd_process_date )
+                                     AND NVL( bill_flv1.end_date_active,   gd_process_date )
+      AND bill_avtab.tax_code          = bill_flv1.attribute1
+      AND bill_avtab.set_of_books_id   = gn_set_of_books_id
+      AND bill_avtab.org_id            = gn_org_id
+      AND bill_avtab.validate_flag     = cv_enable
+      AND gd_process_date        BETWEEN NVL( bill_avtab.start_date, gd_process_date )
+                                     AND NVL( bill_avtab.end_date,   gd_process_date )
+      AND ship_flv1.lookup_code        = ship_xca.business_low_type
+      AND ship_flv1.lookup_type        = cv_lookup_type_03      -- 参照タイプ：業態(小分類)
+      AND ship_flv1.language           = USERENV( 'LANG' )
+      AND ship_flv1.enabled_flag       = cv_enable
+      AND gd_process_date        BETWEEN NVL( ship_flv1.start_date_active, gd_process_date )
+                                     AND NVL( ship_flv1.end_date_active,   gd_process_date )
+      AND (    ( ship_flv1.lookup_code IN( cv_gyotai_sho_24, cv_gyotai_sho_25 )  )
+            OR ( ship_flv1.attribute1  <> cv_gyotai_tyu_vd                       )
           )
-        LOOP
-          -- 支払区分：BM1～BM3
-          lt_bm_support( ln_pay_cnt ).bm_type := lt_vendor_chk( ln_vend_cnt ).bm_type;
-          -- 仕入先コード
-          lt_bm_support( ln_pay_cnt ).supplier_code := vendor_info_rec.vendor_code;
-          -- 仕入先サイトコード
-          lt_bm_support( ln_pay_cnt ).supplier_site_code := vendor_info_rec.vendor_site_code;
-          -- BM1の仕入先情報を退避する
-          IF ( lt_bm_support( ln_pay_cnt ).bm_type = cv_bm1_type ) THEN
-            -- BM1仕入先コード
-            gv_bm1_vendor := lt_bm_support( ln_pay_cnt ).supplier_code;
-            -- BM1仕入先サイトコード
-            gv_bm1_vendor_s := lt_bm_support( ln_pay_cnt ).supplier_site_code;
-          END IF;
-          -- インクリメント
-          ln_pay_cnt := ln_pay_cnt + cn_one;
-        END LOOP payment_chk_all_loop;
-      END LOOP vendor_chk_all_loop;
-    -------------------------------------------------
-    -- 2.フルベンダー（消化）支払先取得
-    -------------------------------------------------
-    ELSIF ( iv_vendor_type = cv_vendor_type2 ) THEN
-      -------------------------------------------------
-      -- ベンダーチェック
-      -------------------------------------------------
-      << vendor_chk_point_loop >>
-      FOR ln_vend_cnt IN lt_vendor_chk.FIRST..lt_vendor_chk.LAST LOOP
-        -- 契約者仕入先コードチェック
-        IF ( lv_vendor_code1 IS NOT NULL ) THEN
-          -- BM1退避
-          lt_bm_support( ln_pay_cnt ).bm_type := cv_bm1_type;
-          -- 契約者仕入先コード退避
-          lt_bm_support( ln_pay_cnt ).supplier_code := lv_vendor_code1;
-          -- 仕入先サイトコード
-          lt_bm_support( ln_pay_cnt ).supplier_site_code := lv_vendor_code1;
-          -- BM1仕入先コード
-          gv_bm1_vendor := lv_vendor_code1;
-          -- BM1仕入先サイトコード
-          gv_bm1_vendor_s := lv_vendor_code1;
-          -- インクリメント
-          ln_pay_cnt := ln_pay_cnt + cn_one;
-          -- 仕入先クリア
-          lv_vendor_code1 := NULL;
-        -- 紹介者BM支払仕入先コード１チェック
-        ELSIF ( lv_vendor_code2 IS NOT NULL ) THEN
-          -- BM2退避
-          lt_bm_support( ln_pay_cnt ).bm_type := cv_bm2_type;
-          -- 紹介者BM支払仕入先コード１退避
-          lt_bm_support( ln_pay_cnt ).supplier_code := lv_vendor_code2;
-          -- 仕入先サイトコード
-          lt_bm_support( ln_pay_cnt ).supplier_site_code := lv_vendor_code2;
-          -- インクリメント
-          ln_pay_cnt := ln_pay_cnt + cn_one;
-          -- 仕入先クリア
-          lv_vendor_code2 := NULL;
-        -- 紹介者BM支払仕入先コード２チェック
-        ELSIF ( lv_vendor_code3 IS NOT NULL ) THEN
-          -- BM2退避
-          lt_bm_support( ln_pay_cnt ).bm_type := cv_bm3_type;
-          -- 紹介者BM支払仕入先コード２退避
-          lt_bm_support( ln_pay_cnt ).supplier_code := lv_vendor_code3;
-          -- 仕入先サイトコード
-          lt_bm_support( ln_pay_cnt ).supplier_site_code := lv_vendor_code3;
-          -- インクリメント
-          ln_pay_cnt := ln_pay_cnt + cn_one;
-          -- 仕入先クリア
-          lv_vendor_code3 := NULL;
-        END IF;
-      END LOOP vendor_chk_point_loop;
-    END IF;
-    -------------------------------------------------
-    -- 3.電気料条件設定
-    -------------------------------------------------
-    -- 電気料計算有りの場合は配列を拡張
-    IF ( ln_pay_cnt <> cn_zero ) AND
-       ( in_elc_cnt <> cn_zero ) THEN
-      -- 支払区分：EN1
-      lt_bm_support( lt_bm_support.LAST + 1 ).bm_type := cv_en1_type;
-      -- 仕入先ダミーコード
-      lt_bm_support( lt_bm_support.LAST + 1 ).supplier_code := gv_bm1_vendor;
-      -- 仕入先サイトダミーコード
-      lt_bm_support( lt_bm_support.LAST + 1 ).supplier_site_code := gv_bm1_vendor_s;
-    END IF;
-    -------------------------------------------------
-    -- 4.支払先チェック
-    -------------------------------------------------
-    IF ( ln_pay_cnt = cn_zero ) OR
-       ( gv_bm1_vendor IS NULL ) THEN
-      -- 支払先情報取得エラー
-      lv_out_msg := xxccp_common_pkg.get_msg(
-                       iv_application  => cv_ap_type_xxcok
-                      ,iv_name         => cv_prmmsg_10427
-                      ,iv_token_name1  => cv_tkn_vend_code
-                      ,iv_token_value1 => iv_customer_code
-                      ,iv_token_name2  => cv_tkn_pay_date
-                      ,iv_token_value2 => id_pay_work_date
-                    );
-      lb_retcode := xxcok_common_pkg.put_message_f(
-                       in_which    => fnd_file.output -- 出力区分
-                      ,iv_message  => lv_out_msg      -- メッセージ
-                      ,in_new_line => cn_zero         -- 改行
-                    );
-      ov_errmsg  := lv_out_msg;
-      ov_errbuf  := SUBSTRB( cv_pkg_name||cv_msg_cont||cv_prg_name||cv_msg_part||lv_out_msg,1,5000 );
-      ov_retcode := cv_status_warn;
-    END IF;
-    -------------------------------------------------
-    -- 5.戻り値設定
-    -------------------------------------------------
-    ot_bm_support := lt_bm_support; -- 支払先情報
-  --
-  EXCEPTION
-  --
-    ----------------------------------------------------------
-    -- 販手条件エラー例外ハンドラ
-    ----------------------------------------------------------
-    WHEN contract_err_expt THEN
-      ov_errmsg  := NULL;
-      ov_errbuf  := NULL;
-      ov_retcode := cv_contract_err;
-    ----------------------------------------------------------
-    -- 共通関数OTHERS例外ハンドラ
-    ----------------------------------------------------------
-    WHEN global_api_others_expt THEN
-      ov_errbuf  := SUBSTRB( cv_pkg_name||cv_msg_cont||cv_prg_name||cv_msg_part||SQLERRM,1,5000 );
-      ov_retcode := cv_status_error;
-    ----------------------------------------------------------
-    -- OTHERS例外ハンドラ
-    ----------------------------------------------------------
-    WHEN OTHERS THEN
-      ov_errbuf  := SUBSTRB( cv_pkg_name||cv_msg_cont||cv_prg_name||cv_msg_part||SQLERRM,1,5000 );
-      ov_retcode := cv_status_error;
-  --
-  END get_active_vendor_info;
-  --
+      AND ship_flv2.lookup_code        = gv_param_proc_type
+      AND ship_flv2.lookup_type        = cv_lookup_type_01      -- 参照タイプ：販手販協計算実行区分
+      AND ship_flv2.language           = USERENV( 'LANG' )
+      AND ship_flv2.enabled_flag       = cv_enable
+      AND gd_process_date        BETWEEN NVL( ship_flv2.start_date_active, gd_process_date )
+                                     AND NVL( ship_flv2.end_date_active,   gd_process_date )
+      AND (    ( ship_flv2.attribute1  IS NOT NULL AND ship_hl.address3 LIKE ship_flv2.attribute1  || '%' )
+            OR ( ship_flv2.attribute2  IS NOT NULL AND ship_hl.address3 LIKE ship_flv2.attribute2  || '%' )
+            OR ( ship_flv2.attribute3  IS NOT NULL AND ship_hl.address3 LIKE ship_flv2.attribute3  || '%' )
+            OR ( ship_flv2.attribute4  IS NOT NULL AND ship_hl.address3 LIKE ship_flv2.attribute4  || '%' )
+            OR ( ship_flv2.attribute5  IS NOT NULL AND ship_hl.address3 LIKE ship_flv2.attribute5  || '%' )
+            OR ( ship_flv2.attribute6  IS NOT NULL AND ship_hl.address3 LIKE ship_flv2.attribute6  || '%' )
+            OR ( ship_flv2.attribute7  IS NOT NULL AND ship_hl.address3 LIKE ship_flv2.attribute7  || '%' )
+            OR ( ship_flv2.attribute8  IS NOT NULL AND ship_hl.address3 LIKE ship_flv2.attribute8  || '%' )
+            OR ( ship_flv2.attribute9  IS NOT NULL AND ship_hl.address3 LIKE ship_flv2.attribute9  || '%' )
+            OR ( ship_flv2.attribute10 IS NOT NULL AND ship_hl.address3 LIKE ship_flv2.attribute10 || '%' )
+            OR ( ship_flv2.attribute11 IS NOT NULL AND ship_hl.address3 LIKE ship_flv2.attribute11 || '%' )
+            OR ( ship_flv2.attribute12 IS NOT NULL AND ship_hl.address3 LIKE ship_flv2.attribute12 || '%' )
+            OR ( ship_flv2.attribute13 IS NOT NULL AND ship_hl.address3 LIKE ship_flv2.attribute13 || '%' )
+            OR ( ship_flv2.attribute14 IS NOT NULL AND ship_hl.address3 LIKE ship_flv2.attribute14 || '%' )
+            OR ( ship_flv2.attribute15 IS NOT NULL AND ship_hl.address3 LIKE ship_flv2.attribute15 || '%' )
+          )
+    GROUP BY ship_hca.account_number
+           , ship_flv1.attribute1
+           , ship_xca.business_low_type
+           , ship_xca.delivery_chain_code           , bill_hca.account_number
+           , CASE
+               WHEN bill_xca.business_low_type = cv_gyotai_sho_25 THEN
+                 ship_xcm.term_name
+               ELSE
+                 bill_rtt1.name
+             END
+           , CASE
+               WHEN bill_xca.business_low_type = cv_gyotai_sho_25 THEN
+                 NULL
+               ELSE
+                 bill_rtt2.name
+             END
+           , CASE
+               WHEN bill_xca.business_low_type = cv_gyotai_sho_25 THEN
+                 NULL
+               ELSE
+                 bill_rtt3.name
+             END
+           , CASE
+               WHEN bill_xca.business_low_type = cv_gyotai_sho_25 THEN
+                 gn_bm_support_period_to
+               ELSE
+                 TO_NUMBER( bill_hcsua.attribute8 )
+             END
+           , bill_xca.tax_div
+           , bill_avtab.tax_code
+           , bill_avtab.tax_rate
+           , bill_hcsua.tax_rounding_rule
+           , CASE
+               WHEN (     ( ship_flv1.attribute1          <> cv_gyotai_tyu_vd )
+                      AND ( ship_xca.receiv_discount_rate IS NOT NULL         )
+                    )
+               THEN
+                 gv_vendor_dummy_code
+               ELSE
+                 ship_xca.contractor_supplier_code
+             END
+           , bm1_pvsa.vendor_site_code
+           , bm1_pvsa.attribute4
+           , ship_xca.bm_pay_supplier_code1
+           , bm2_pvsa.vendor_site_code
+           , bm2_pvsa.attribute4
+           , ship_xca.bm_pay_supplier_code2
+           , bm3_pvsa.vendor_site_code
+           , bm3_pvsa.attribute4
+           , ship_xca.receiv_discount_rate
+    ORDER BY bill_hca.account_number
+           , ship_flv1.attribute1
+           , ship_xca.business_low_type
+           , ship_hca.account_number
+  ;
+  -- 販売実績情報・売価別条件
+  CURSOR get_sales_data_cur1 IS
+    SELECT xbc.base_code                                                  AS base_code                  -- 拠点コード
+         , xbc.emp_code                                                   AS emp_code                   -- 担当者コード
+         , xbc.ship_cust_code                                             AS ship_cust_code             -- 顧客【納品先】
+         , xbc.ship_gyotai_sho                                            AS ship_gyotai_sho            -- 顧客【納品先】業態（小分類）
+         , xbc.ship_gyotai_tyu                                            AS ship_gyotai_tyu            -- 顧客【納品先】業態（中分類）
+         , xbc.bill_cust_code                                             AS bill_cust_code             -- 顧客【請求先】
+         , xbc.period_year                                                AS period_year                -- 会計年度
+         , xbc.ship_delivery_chain_code                                   AS ship_delivery_chain_code   -- チェーン店コード
+         , xbc.delivery_ym                                                AS delivery_ym                -- 納品日年月
+         , SUM( xbc.dlv_qty )                                             AS dlv_qty                    -- 納品数量
+         , xbc.dlv_uom_code                                               AS dlv_uom_code               -- 納品単位
+         , SUM( xbc.amount_inc_tax )                                      AS amount_inc_tax             -- 売上金額（税込）
+         , xbc.container_code                                             AS container_code             -- 容器区分コード
+         , xbc.dlv_unit_price                                             AS dlv_unit_price             -- 売価金額
+         , xbc.tax_div                                                    AS tax_div                    -- 消費税区分
+         , xbc.tax_code                                                   AS tax_code                   -- 税金コード
+         , xbc.tax_rate                                                   AS tax_rate                   -- 消費税率
+         , xbc.tax_rounding_rule                                          AS tax_rounding_rule          -- 端数処理区分
+         , xbc.term_name                                                  AS term_name                  -- 支払条件
+         , xbc.closing_date                                               AS closing_date               -- 締め日
+         , xbc.expect_payment_date                                        AS expect_payment_date        -- 支払予定日
+         , xbc.calc_target_period_from                                    AS calc_target_period_from    -- 計算対象期間(FROM)
+         , xbc.calc_target_period_to                                      AS calc_target_period_to      -- 計算対象期間(TO)
+         , xbc.calc_type                                                  AS calc_type                  -- 計算条件
+         , xbc.bm1_vendor_code                                            AS bm1_vendor_code            -- 【ＢＭ１】仕入先コード
+         , xbc.bm1_vendor_site_code                                       AS bm1_vendor_site_code       -- 【ＢＭ１】仕入先サイトコード
+         , xbc.bm1_bm_payment_type                                        AS bm1_bm_payment_type        -- 【ＢＭ１】BM支払区分
+         , xbc.bm1_pct                                                    AS bm1_pct                    -- 【ＢＭ１】BM率(%)
+         , xbc.bm1_amt                                                    AS bm1_amt                    -- 【ＢＭ１】BM金額
+         , ROUND( SUM( xbc.amount_inc_tax * xbc.bm1_pct ) / 100 )         AS bm1_cond_bm_tax_pct        -- 【ＢＭ１】条件別手数料額(税込)_率
+         , ROUND( SUM( xbc.dlv_qty * xbc.bm1_amt ) )                      AS bm1_cond_bm_amt_tax        -- 【ＢＭ１】条件別手数料額(税込)_額
+         , NULL                                                           AS bm1_electric_amt_tax       -- 【ＢＭ１】電気料(税込)
+         , xbc.bm2_vendor_code                                            AS bm2_vendor_code            -- 【ＢＭ２】仕入先コード
+         , xbc.bm2_vendor_site_code                                       AS bm2_vendor_site_code       -- 【ＢＭ２】仕入先サイトコード
+         , xbc.bm2_bm_payment_type                                        AS bm2_bm_payment_type        -- 【ＢＭ２】BM支払区分
+         , xbc.bm2_pct                                                    AS bm2_pct                    -- 【ＢＭ２】BM率(%)
+         , xbc.bm2_amt                                                    AS bm2_amt                    -- 【ＢＭ２】BM金額
+         , ROUND( SUM( xbc.amount_inc_tax * xbc.bm2_pct ) / 100 )         AS bm2_cond_bm_tax_pct        -- 【ＢＭ２】条件別手数料額(税込)_率
+         , ROUND( SUM( xbc.dlv_qty * xbc.bm2_amt ) )                      AS bm2_cond_bm_amt_tax        -- 【ＢＭ２】条件別手数料額(税込)_額
+         , NULL                                                           AS bm2_electric_amt_tax       -- 【ＢＭ２】電気料(税込)
+         , xbc.bm3_vendor_code                                            AS bm3_vendor_code            -- 【ＢＭ３】仕入先コード
+         , xbc.bm3_vendor_site_code                                       AS bm3_vendor_site_code       -- 【ＢＭ３】仕入先サイトコード
+         , xbc.bm3_bm_payment_type                                        AS bm3_bm_payment_type        -- 【ＢＭ３】BM支払区分
+         , xbc.bm3_pct                                                    AS bm3_pct                    -- 【ＢＭ３】BM率(%)
+         , xbc.bm3_amt                                                    AS bm3_amt                    -- 【ＢＭ３】BM金額
+         , ROUND( SUM( xbc.amount_inc_tax * xbc.bm3_pct ) / 100 )         AS bm3_cond_bm_tax_pct        -- 【ＢＭ３】条件別手数料額(税込)_率
+         , ROUND( SUM( xbc.dlv_qty * xbc.bm3_amt ) )                      AS bm3_cond_bm_amt_tax        -- 【ＢＭ３】条件別手数料額(税込)_額
+         , NULL                                                           AS bm3_electric_amt_tax       -- 【ＢＭ３】電気料(税込)
+         , xbc.item_code                                                  AS item_code                  -- エラー品目コード
+         , xbc.amount_fix_date                                            AS amount_fix_date            -- 金額確定日
+    FROM ( SELECT xse.sales_base_code                                             AS base_code                  -- 拠点コード
+                , NVL2( xmbc.calc_type, xse.results_employee_code       , NULL )  AS emp_code                   -- 担当者コード
+                , xse.ship_to_customer_code                                       AS ship_cust_code             -- 顧客【納品先】
+                , NVL2( xmbc.calc_type, xse.ship_gyotai_sho             , NULL )  AS ship_gyotai_sho            -- 顧客【納品先】業態（小分類）
+                , NVL2( xmbc.calc_type, xse.ship_gyotai_tyu             , NULL )  AS ship_gyotai_tyu            -- 顧客【納品先】業態（中分類）
+                , NVL2( xmbc.calc_type, xse.bill_cust_code              , NULL )  AS bill_cust_code             -- 顧客【請求先】
+                , NVL2( xmbc.calc_type, xse.period_year                 , NULL )  AS period_year                -- 会計年度
+                , NVL2( xmbc.calc_type, xse.ship_delivery_chain_code    , NULL )  AS ship_delivery_chain_code   -- チェーン店コード
+                , NVL2( xmbc.calc_type, xse.delivery_ym                 , NULL )  AS delivery_ym                -- 納品日年月
+                , NVL2( xmbc.calc_type, xse.dlv_qty                     , NULL )  AS dlv_qty                    -- 納品数量
+                , NVL2( xmbc.calc_type, xse.dlv_uom_code                , NULL )  AS dlv_uom_code               -- 納品単位
+                , xse.amount_inc_tax                                              AS amount_inc_tax             -- 売上金額(税込)
+                , NVL2( xmbc.calc_type, NULL, xse.container_code )                AS container_code             -- 容器区分コード
+                , xse.dlv_unit_price                                              AS dlv_unit_price             -- 売価金額
+                , NVL2( xmbc.calc_type, xse.tax_div                     , NULL )  AS tax_div                    -- 消費税区分
+                , NVL2( xmbc.calc_type, xse.tax_code                    , NULL )  AS tax_code                   -- 税金コード
+                , NVL2( xmbc.calc_type, xse.tax_rate                    , NULL )  AS tax_rate                   -- 消費税率
+                , NVL2( xmbc.calc_type, xse.tax_rounding_rule           , NULL )  AS tax_rounding_rule          -- 端数処理区分
+                , NVL2( xmbc.calc_type, xse.term_name                   , NULL )  AS term_name                  -- 支払条件
+                , xse.closing_date                                                AS closing_date               -- 締め日
+                , NVL2( xmbc.calc_type, xse.expect_payment_date         , NULL )  AS expect_payment_date        -- 支払予定日
+                , NVL2( xmbc.calc_type, xse.calc_target_period_from     , NULL )  AS calc_target_period_from    -- 計算対象期間(FROM)
+                , NVL2( xmbc.calc_type, xse.calc_target_period_to       , NULL )  AS calc_target_period_to      -- 計算対象期間(TO)
+                , xmbc.calc_type                                                  AS calc_type                  -- 計算条件
+                , NVL2( xmbc.calc_type, xse.bm1_vendor_code             , NULL )  AS bm1_vendor_code            -- 【ＢＭ１】仕入先コード
+                , NVL2( xmbc.calc_type, xse.bm1_vendor_site_code        , NULL )  AS bm1_vendor_site_code       -- 【ＢＭ１】仕入先サイトコード
+                , NVL2( xmbc.calc_type, xse.bm1_bm_payment_type         , NULL )  AS bm1_bm_payment_type        -- 【ＢＭ１】BM支払区分
+                , NVL2( xmbc.calc_type, xmbc.bm1_pct                    , NULL )  AS bm1_pct                    -- 【ＢＭ１】BM率(%)
+                , NVL2( xmbc.calc_type, xmbc.bm1_amt                    , NULL )  AS bm1_amt                    -- 【ＢＭ１】BM金額
+                , NVL2( xmbc.calc_type, xse.bm2_vendor_code             , NULL )  AS bm2_vendor_code            -- 【ＢＭ２】仕入先コード
+                , NVL2( xmbc.calc_type, xse.bm2_vendor_site_code        , NULL )  AS bm2_vendor_site_code       -- 【ＢＭ２】仕入先サイトコード
+                , NVL2( xmbc.calc_type, xse.bm2_bm_payment_type         , NULL )  AS bm2_bm_payment_type        -- 【ＢＭ２】BM支払区分
+                , NVL2( xmbc.calc_type, xmbc.bm2_pct                    , NULL )  AS bm2_pct                    -- 【ＢＭ２】BM率(%)
+                , NVL2( xmbc.calc_type, xmbc.bm2_amt                    , NULL )  AS bm2_amt                    -- 【ＢＭ２】BM金額
+                , NVL2( xmbc.calc_type, xse.bm3_vendor_code             , NULL )  AS bm3_vendor_code            -- 【ＢＭ３】仕入先コード
+                , NVL2( xmbc.calc_type, xse.bm3_vendor_site_code        , NULL )  AS bm3_vendor_site_code       -- 【ＢＭ３】仕入先サイトコード
+                , NVL2( xmbc.calc_type, xse.bm3_bm_payment_type         , NULL )  AS bm3_bm_payment_type        -- 【ＢＭ３】BM支払区分
+                , NVL2( xmbc.calc_type, xmbc.bm3_pct                    , NULL )  AS bm3_pct                    -- 【ＢＭ３】BM率(%)
+                , NVL2( xmbc.calc_type, xmbc.bm3_amt                    , NULL )  AS bm3_amt                    -- 【ＢＭ３】BM金額
+                , NVL2( xmbc.calc_type, NULL, xse.item_code )                     AS item_code                  -- エラー品目コード
+                , xse.amount_fix_date                                             AS amount_fix_date            -- 金額確定日
+           FROM ( SELECT xseh.ship_to_customer_code                 AS ship_to_customer_code         -- 【出荷先】顧客コード
+                       , xt0c.ship_gyotai_tyu                       AS ship_gyotai_tyu               -- 【出荷先】業態（中分類）
+                       , xt0c.ship_gyotai_sho                       AS ship_gyotai_sho               -- 【出荷先】業態（小分類）
+                       , xt0c.ship_delivery_chain_code              AS ship_delivery_chain_code      -- 【出荷先】納品先チェーンコード
+                       , xt0c.bill_cust_code                        AS bill_cust_code                -- 【請求先】顧客コード
+                       , xt0c.bm1_vendor_code                       AS bm1_vendor_code               -- 【ＢＭ１】仕入先コード
+                       , xt0c.bm1_vendor_site_code                  AS bm1_vendor_site_code          -- 【ＢＭ１】仕入先サイトコード
+                       , xt0c.bm1_bm_payment_type                   AS bm1_bm_payment_type           -- 【ＢＭ１】BM支払区分
+                       , xt0c.bm2_vendor_code                       AS bm2_vendor_code               -- 【ＢＭ２】仕入先コード
+                       , xt0c.bm2_vendor_site_code                  AS bm2_vendor_site_code          -- 【ＢＭ２】仕入先サイトコード
+                       , xt0c.bm2_bm_payment_type                   AS bm2_bm_payment_type           -- 【ＢＭ２】BM支払区分
+                       , xt0c.bm3_vendor_code                       AS bm3_vendor_code               -- 【ＢＭ３】仕入先コード
+                       , xt0c.bm3_vendor_site_code                  AS bm3_vendor_site_code          -- 【ＢＭ３】仕入先サイトコード
+                       , xt0c.bm3_bm_payment_type                   AS bm3_bm_payment_type           -- 【ＢＭ３】BM支払区分
+                       , xt0c.tax_div                               AS tax_div                       -- 消費税区分
+                       , xt0c.tax_code                              AS tax_code                      -- 税金コード
+                       , xt0c.tax_rate                              AS tax_rate                      -- 消費税率
+                       , xt0c.tax_rounding_rule                     AS tax_rounding_rule             -- 端数処理区分
+                       , xt0c.receiv_discount_rate                  AS receiv_discount_rate          -- 入金値引率
+                       , xt0c.term_name                             AS term_name                     -- 支払条件
+                       , xt0c.closing_date                          AS closing_date                  -- 締め日
+                       , xt0c.expect_payment_date                   AS expect_payment_date           -- 支払予定日
+                       , xt0c.period_year                           AS period_year                   -- 会計年度
+                       , xt0c.calc_target_period_from               AS calc_target_period_from       -- 計算対象期間(FROM)
+                       , xt0c.calc_target_period_to                 AS calc_target_period_to         -- 計算対象期間(TO)
+                       , xseh.sales_base_code                       AS sales_base_code               -- 売上拠点コード
+                       , xseh.results_employee_code                 AS results_employee_code         -- 成績計上者コード
+                       , TO_CHAR( xseh.delivery_date, 'RRRRMM' )    AS delivery_ym                   -- 納品年月
+                       , xsel.dlv_qty                               AS dlv_qty                       -- 納品数量
+                       , xsel.dlv_uom_code                          AS dlv_uom_code                  -- 納品単位
+                       , xsel.pure_amount + xsel.tax_amount         AS amount_inc_tax                -- 売上金額（税込）
+                       , NVL( flv1.attribute1
+                            , cv_container_code_others )            AS container_code                -- 容器区分コード
+                       , xsel.dlv_unit_price                        AS dlv_unit_price                -- 売価金額
+                       , NVL2( flv2.lookup_code
+                             , NULL
+                             , xsel.item_code )                     AS item_code                     -- 在庫品目コード
+                       , flv2.lookup_code                           AS item_code_no_inv              -- 非在庫品目コード
+                       , xt0c.amount_fix_date                       AS amount_fix_date               -- 金額確定日
+                  FROM xxcok_tmp_014a01c_custdata    xt0c       -- 条件別販手販協計算顧客情報一時表
+                     , xxcos_sales_exp_headers       xseh       -- 販売実績ヘッダ
+                     , xxcos_sales_exp_lines         xsel       -- 販売実績明細
+                     , xxcmm_system_items_b          xsim       -- Disc品目アドオン
+                     , fnd_lookup_values             flv1       -- 容器群
+                     , fnd_lookup_values             flv2       -- 非在庫品目
+                  WHERE xseh.ship_to_customer_code  = xt0c.ship_cust_code
+                    AND xseh.delivery_date         <= xt0c.closing_date
+                    AND xseh.sales_exp_header_id    = xsel.sales_exp_header_id
+                    AND xsel.to_calculate_fees_flag = cv_xsel_if_flag_no
+                    AND xsim.item_code              = xsel.item_code
+                    AND flv1.lookup_code(+)         = xsim.vessel_group
+                    AND flv1.lookup_type(+)         = cv_lookup_type_04
+                    AND flv1.language(+)            = USERENV( 'LANG' )
+                    AND flv1.enabled_flag(+)        = cv_enable
+                    AND gd_process_date       BETWEEN NVL( flv1.start_date_active, gd_process_date )
+                                                  AND NVL( flv1.end_date_active,   gd_process_date )
+                    AND flv2.lookup_code(+)         = xsel.item_code
+                    AND flv2.lookup_type(+)         = cv_lookup_type_05
+                    AND flv2.language(+)            = USERENV( 'LANG' )
+                    AND flv2.enabled_flag(+)        = cv_enable
+                    AND gd_process_date       BETWEEN NVL( flv2.start_date_active, gd_process_date )
+                                                  AND NVL( flv2.end_date_active,   gd_process_date )
+                )                           xse       -- インラインビュー・販売実績情報
+              , xxcok_mst_bm_contract       xmbc      -- 販手条件マスタ
+           WHERE xse.ship_gyotai_tyu               = cv_gyotai_tyu_vd
+             AND xse.item_code_no_inv             IS NULL
+             AND xmbc.calc_type(+)                 = cv_calc_type_sales_price
+             AND xmbc.cust_code(+)                 = xse.ship_to_customer_code
+             AND xmbc.selling_price(+)             = xse.dlv_unit_price
+             AND xmbc.calc_target_flag(+)          = cv_enable
+             AND EXISTS ( SELECT 'X'
+                          FROM xxcok_mst_bm_contract xmbc2 -- 販手条件マスタ
+                          WHERE xmbc2.calc_type        = cv_calc_type_sales_price
+                            AND xmbc2.cust_code        = xse.ship_to_customer_code
+                            AND xmbc2.calc_target_flag = cv_enable
+                 )
+         )                        xbc
+    GROUP BY xbc.base_code
+           , xbc.emp_code
+           , xbc.ship_cust_code
+           , xbc.ship_gyotai_sho
+           , xbc.ship_gyotai_tyu
+           , xbc.bill_cust_code
+           , xbc.period_year
+           , xbc.ship_delivery_chain_code
+           , xbc.delivery_ym
+           , xbc.dlv_uom_code
+           , xbc.container_code
+           , xbc.dlv_unit_price
+           , xbc.tax_div
+           , xbc.tax_code
+           , xbc.tax_rate
+           , xbc.tax_rounding_rule
+           , xbc.term_name
+           , xbc.closing_date
+           , xbc.expect_payment_date
+           , xbc.calc_target_period_from
+           , xbc.calc_target_period_to
+           , xbc.calc_type
+           , xbc.bm1_vendor_code
+           , xbc.bm1_vendor_site_code
+           , xbc.bm1_bm_payment_type
+           , xbc.bm1_pct
+           , xbc.bm1_amt
+           , xbc.bm2_vendor_code
+           , xbc.bm2_vendor_site_code
+           , xbc.bm2_bm_payment_type
+           , xbc.bm2_pct
+           , xbc.bm2_amt
+           , xbc.bm3_vendor_code
+           , xbc.bm3_vendor_site_code
+           , xbc.bm3_bm_payment_type
+           , xbc.bm3_pct
+           , xbc.bm3_amt
+           , xbc.item_code
+           , xbc.amount_fix_date
+  ;
+  -- 販売実績情報・容器区分別条件
+  CURSOR get_sales_data_cur2 IS
+    SELECT xbc.base_code                                                  AS base_code                  -- 拠点コード
+         , xbc.emp_code                                                   AS emp_code                   -- 担当者コード
+         , xbc.ship_cust_code                                             AS ship_cust_code             -- 顧客【納品先】
+         , xbc.ship_gyotai_sho                                            AS ship_gyotai_sho            -- 顧客【納品先】業態（小分類）
+         , xbc.ship_gyotai_tyu                                            AS ship_gyotai_tyu            -- 顧客【納品先】業態（中分類）
+         , xbc.bill_cust_code                                             AS bill_cust_code             -- 顧客【請求先】
+         , xbc.period_year                                                AS period_year                -- 会計年度
+         , xbc.ship_delivery_chain_code                                   AS ship_delivery_chain_code   -- チェーン店コード
+         , xbc.delivery_ym                                                AS delivery_ym                -- 納品日年月
+         , SUM( xbc.dlv_qty )                                             AS dlv_qty                    -- 納品数量
+         , xbc.dlv_uom_code                                               AS dlv_uom_code               -- 納品単位
+         , SUM( xbc.amount_inc_tax )                                      AS amount_inc_tax             -- 売上金額（税込）
+         , xbc.container_code                                             AS container_code             -- 容器区分コード
+         , xbc.dlv_unit_price                                             AS dlv_unit_price             -- 売価金額
+         , xbc.tax_div                                                    AS tax_div                    -- 消費税区分
+         , xbc.tax_code                                                   AS tax_code                   -- 税金コード
+         , xbc.tax_rate                                                   AS tax_rate                   -- 消費税率
+         , xbc.tax_rounding_rule                                          AS tax_rounding_rule          -- 端数処理区分
+         , xbc.term_name                                                  AS term_name                  -- 支払条件
+         , xbc.closing_date                                               AS closing_date               -- 締め日
+         , xbc.expect_payment_date                                        AS expect_payment_date        -- 支払予定日
+         , xbc.calc_target_period_from                                    AS calc_target_period_from    -- 計算対象期間(FROM)
+         , xbc.calc_target_period_to                                      AS calc_target_period_to      -- 計算対象期間(TO)
+         , xbc.calc_type                                                  AS calc_type                  -- 計算条件
+         , xbc.bm1_vendor_code                                            AS bm1_vendor_code            -- 【ＢＭ１】仕入先コード
+         , xbc.bm1_vendor_site_code                                       AS bm1_vendor_site_code       -- 【ＢＭ１】仕入先サイトコード
+         , xbc.bm1_bm_payment_type                                        AS bm1_bm_payment_type        -- 【ＢＭ１】BM支払区分
+         , xbc.bm1_pct                                                    AS bm1_pct                    -- 【ＢＭ１】BM率(%)
+         , xbc.bm1_amt                                                    AS bm1_amt                    -- 【ＢＭ１】BM金額
+         , ROUND( SUM( xbc.amount_inc_tax * xbc.bm1_pct ) / 100 )         AS bm1_cond_bm_tax_pct        -- 【ＢＭ１】条件別手数料額(税込)_率
+         , ROUND( SUM( xbc.dlv_qty * xbc.bm1_amt ) )                      AS bm1_cond_bm_amt_tax        -- 【ＢＭ１】条件別手数料額(税込)_額
+         , NULL                                                           AS bm1_electric_amt_tax       -- 【ＢＭ１】電気料(税込)
+         , xbc.bm2_vendor_code                                            AS bm2_vendor_code            -- 【ＢＭ２】仕入先コード
+         , xbc.bm2_vendor_site_code                                       AS bm2_vendor_site_code       -- 【ＢＭ２】仕入先サイトコード
+         , xbc.bm2_bm_payment_type                                        AS bm2_bm_payment_type        -- 【ＢＭ２】BM支払区分
+         , xbc.bm2_pct                                                    AS bm2_pct                    -- 【ＢＭ２】BM率(%)
+         , xbc.bm2_amt                                                    AS bm2_amt                    -- 【ＢＭ２】BM金額
+         , ROUND( SUM( xbc.amount_inc_tax * xbc.bm2_pct ) / 100 )         AS bm2_cond_bm_tax_pct        -- 【ＢＭ２】条件別手数料額(税込)_率
+         , ROUND( SUM( xbc.dlv_qty * xbc.bm2_amt ) )                      AS bm2_cond_bm_amt_tax        -- 【ＢＭ２】条件別手数料額(税込)_額
+         , NULL                                                           AS bm2_electric_amt_tax       -- 【ＢＭ２】電気料(税込)
+         , xbc.bm3_vendor_code                                            AS bm3_vendor_code            -- 【ＢＭ３】仕入先コード
+         , xbc.bm3_vendor_site_code                                       AS bm3_vendor_site_code       -- 【ＢＭ３】仕入先サイトコード
+         , xbc.bm3_bm_payment_type                                        AS bm3_bm_payment_type        -- 【ＢＭ３】BM支払区分
+         , xbc.bm3_pct                                                    AS bm3_pct                    -- 【ＢＭ３】BM率(%)
+         , xbc.bm3_amt                                                    AS bm3_amt                    -- 【ＢＭ３】BM金額
+         , ROUND( SUM( xbc.amount_inc_tax * xbc.bm3_pct ) / 100 )         AS bm3_cond_bm_tax_pct        -- 【ＢＭ３】条件別手数料額(税込)_率
+         , ROUND( SUM( xbc.dlv_qty * xbc.bm3_amt ) )                      AS bm3_cond_bm_amt_tax        -- 【ＢＭ３】条件別手数料額(税込)_額
+         , NULL                                                           AS bm3_electric_amt_tax       -- 【ＢＭ３】電気料(税込)
+         , xbc.item_code                                                  AS item_code                  -- エラー品目コード
+         , xbc.amount_fix_date                                            AS amount_fix_date            -- 金額確定日
+    FROM ( SELECT xse.sales_base_code                                             AS base_code                  -- 拠点コード
+                , NVL2( xmbc.calc_type, xse.results_employee_code       , NULL )  AS emp_code                   -- 担当者コード
+                , xse.ship_to_customer_code                                       AS ship_cust_code             -- 顧客【納品先】
+                , NVL2( xmbc.calc_type, xse.ship_gyotai_sho             , NULL )  AS ship_gyotai_sho            -- 顧客【納品先】業態（小分類）
+                , NVL2( xmbc.calc_type, xse.ship_gyotai_tyu             , NULL )  AS ship_gyotai_tyu            -- 顧客【納品先】業態（中分類）
+                , NVL2( xmbc.calc_type, xse.bill_cust_code              , NULL )  AS bill_cust_code             -- 顧客【請求先】
+                , NVL2( xmbc.calc_type, xse.period_year                 , NULL )  AS period_year                -- 会計年度
+                , NVL2( xmbc.calc_type, xse.ship_delivery_chain_code    , NULL )  AS ship_delivery_chain_code   -- チェーン店コード
+                , NVL2( xmbc.calc_type, xse.delivery_ym                 , NULL )  AS delivery_ym                -- 納品日年月
+                , NVL2( xmbc.calc_type, xse.dlv_qty                     , NULL )  AS dlv_qty                    -- 納品数量
+                , NVL2( xmbc.calc_type, xse.dlv_uom_code                , NULL )  AS dlv_uom_code               -- 納品単位
+                , xse.amount_inc_tax                                              AS amount_inc_tax             -- 売上金額(税込)
+                , xse.container_code                                              AS container_code             -- 容器区分コード
+                , NVL2( xmbc.calc_type, NULL, xse.dlv_unit_price )                AS dlv_unit_price             -- 売価金額
+                , NVL2( xmbc.calc_type, xse.tax_div                     , NULL )  AS tax_div                    -- 消費税区分
+                , NVL2( xmbc.calc_type, xse.tax_code                    , NULL )  AS tax_code                   -- 税金コード
+                , NVL2( xmbc.calc_type, xse.tax_rate                    , NULL )  AS tax_rate                   -- 消費税率
+                , NVL2( xmbc.calc_type, xse.tax_rounding_rule           , NULL )  AS tax_rounding_rule          -- 端数処理区分
+                , NVL2( xmbc.calc_type, xse.term_name                   , NULL )  AS term_name                  -- 支払条件
+                , xse.closing_date                                                AS closing_date               -- 締め日
+                , NVL2( xmbc.calc_type, xse.expect_payment_date         , NULL )  AS expect_payment_date        -- 支払予定日
+                , NVL2( xmbc.calc_type, xse.calc_target_period_from     , NULL )  AS calc_target_period_from    -- 計算対象期間(FROM)
+                , NVL2( xmbc.calc_type, xse.calc_target_period_to       , NULL )  AS calc_target_period_to      -- 計算対象期間(TO)
+                , xmbc.calc_type                                                  AS calc_type                  -- 計算条件
+                , NVL2( xmbc.calc_type, xse.bm1_vendor_code             , NULL )  AS bm1_vendor_code            -- 【ＢＭ１】仕入先コード
+                , NVL2( xmbc.calc_type, xse.bm1_vendor_site_code        , NULL )  AS bm1_vendor_site_code       -- 【ＢＭ１】仕入先サイトコード
+                , NVL2( xmbc.calc_type, xse.bm1_bm_payment_type         , NULL )  AS bm1_bm_payment_type        -- 【ＢＭ１】BM支払区分
+                , NVL2( xmbc.calc_type, xmbc.bm1_pct                    , NULL )  AS bm1_pct                    -- 【ＢＭ１】BM率(%)
+                , NVL2( xmbc.calc_type, xmbc.bm1_amt                    , NULL )  AS bm1_amt                    -- 【ＢＭ１】BM金額
+                , NVL2( xmbc.calc_type, xse.bm2_vendor_code             , NULL )  AS bm2_vendor_code            -- 【ＢＭ２】仕入先コード
+                , NVL2( xmbc.calc_type, xse.bm2_vendor_site_code        , NULL )  AS bm2_vendor_site_code       -- 【ＢＭ２】仕入先サイトコード
+                , NVL2( xmbc.calc_type, xse.bm2_bm_payment_type         , NULL )  AS bm2_bm_payment_type        -- 【ＢＭ２】BM支払区分
+                , NVL2( xmbc.calc_type, xmbc.bm2_pct                    , NULL )  AS bm2_pct                    -- 【ＢＭ２】BM率(%)
+                , NVL2( xmbc.calc_type, xmbc.bm2_amt                    , NULL )  AS bm2_amt                    -- 【ＢＭ２】BM金額
+                , NVL2( xmbc.calc_type, xse.bm3_vendor_code             , NULL )  AS bm3_vendor_code            -- 【ＢＭ３】仕入先コード
+                , NVL2( xmbc.calc_type, xse.bm3_vendor_site_code        , NULL )  AS bm3_vendor_site_code       -- 【ＢＭ３】仕入先サイトコード
+                , NVL2( xmbc.calc_type, xse.bm3_bm_payment_type         , NULL )  AS bm3_bm_payment_type        -- 【ＢＭ３】BM支払区分
+                , NVL2( xmbc.calc_type, xmbc.bm3_pct                    , NULL )  AS bm3_pct                    -- 【ＢＭ３】BM率(%)
+                , NVL2( xmbc.calc_type, xmbc.bm3_amt                    , NULL )  AS bm3_amt                    -- 【ＢＭ３】BM金額
+                , NVL2( xmbc.calc_type, NULL, xse.item_code )                     AS item_code                  -- エラー品目コード
+                , xse.amount_fix_date                                             AS amount_fix_date            -- 金額確定日
+           FROM ( SELECT xseh.ship_to_customer_code                 AS ship_to_customer_code         -- 【出荷先】顧客コード
+                       , xt0c.ship_gyotai_tyu                       AS ship_gyotai_tyu               -- 【出荷先】業態（中分類）
+                       , xt0c.ship_gyotai_sho                       AS ship_gyotai_sho               -- 【出荷先】業態（小分類）
+                       , xt0c.ship_delivery_chain_code              AS ship_delivery_chain_code      -- 【出荷先】納品先チェーンコード
+                       , xt0c.bill_cust_code                        AS bill_cust_code                -- 【請求先】顧客コード
+                       , xt0c.bm1_vendor_code                       AS bm1_vendor_code               -- 【ＢＭ１】仕入先コード
+                       , xt0c.bm1_vendor_site_code                  AS bm1_vendor_site_code          -- 【ＢＭ１】仕入先サイトコード
+                       , xt0c.bm1_bm_payment_type                   AS bm1_bm_payment_type           -- 【ＢＭ１】BM支払区分
+                       , xt0c.bm2_vendor_code                       AS bm2_vendor_code               -- 【ＢＭ２】仕入先コード
+                       , xt0c.bm2_vendor_site_code                  AS bm2_vendor_site_code          -- 【ＢＭ２】仕入先サイトコード
+                       , xt0c.bm2_bm_payment_type                   AS bm2_bm_payment_type           -- 【ＢＭ２】BM支払区分
+                       , xt0c.bm3_vendor_code                       AS bm3_vendor_code               -- 【ＢＭ３】仕入先コード
+                       , xt0c.bm3_vendor_site_code                  AS bm3_vendor_site_code          -- 【ＢＭ３】仕入先サイトコード
+                       , xt0c.bm3_bm_payment_type                   AS bm3_bm_payment_type           -- 【ＢＭ３】BM支払区分
+                       , xt0c.tax_div                               AS tax_div                       -- 消費税区分
+                       , xt0c.tax_code                              AS tax_code                      -- 税金コード
+                       , xt0c.tax_rate                              AS tax_rate                      -- 消費税率
+                       , xt0c.tax_rounding_rule                     AS tax_rounding_rule             -- 端数処理区分
+                       , xt0c.receiv_discount_rate                  AS receiv_discount_rate          -- 入金値引率
+                       , xt0c.term_name                             AS term_name                     -- 支払条件
+                       , xt0c.closing_date                          AS closing_date                  -- 締め日
+                       , xt0c.expect_payment_date                   AS expect_payment_date           -- 支払予定日
+                       , xt0c.period_year                           AS period_year                   -- 会計年度
+                       , xt0c.calc_target_period_from               AS calc_target_period_from       -- 計算対象期間(FROM)
+                       , xt0c.calc_target_period_to                 AS calc_target_period_to         -- 計算対象期間(TO)
+                       , xseh.sales_base_code                       AS sales_base_code               -- 売上拠点コード
+                       , xseh.results_employee_code                 AS results_employee_code         -- 成績計上者コード
+                       , TO_CHAR( xseh.delivery_date, 'RRRRMM' )    AS delivery_ym                   -- 納品年月
+                       , xsel.dlv_qty                               AS dlv_qty                       -- 納品数量
+                       , xsel.dlv_uom_code                          AS dlv_uom_code                  -- 納品単位
+                       , xsel.pure_amount + xsel.tax_amount         AS amount_inc_tax                -- 売上金額（税込）
+                       , NVL( flv1.attribute1
+                            , cv_container_code_others )            AS container_code                -- 容器区分コード
+                       , xsel.dlv_unit_price                        AS dlv_unit_price                -- 売価金額
+                       , NVL2( flv2.lookup_code
+                             , NULL
+                             , xsel.item_code )                     AS item_code                     -- 在庫品目コード
+                       , flv2.lookup_code                           AS item_code_no_inv              -- 非在庫品目コード
+                       , xt0c.amount_fix_date                       AS amount_fix_date               -- 金額確定日
+                  FROM xxcok_tmp_014a01c_custdata    xt0c       -- 条件別販手販協計算顧客情報一時表
+                     , xxcos_sales_exp_headers       xseh       -- 販売実績ヘッダ
+                     , xxcos_sales_exp_lines         xsel       -- 販売実績明細
+                     , xxcmm_system_items_b          xsim       -- Disc品目アドオン
+                     , fnd_lookup_values             flv1       -- 容器群
+                     , fnd_lookup_values             flv2       -- 非在庫品目
+                  WHERE xseh.ship_to_customer_code  = xt0c.ship_cust_code
+                    AND xseh.delivery_date         <= xt0c.closing_date
+                    AND xseh.sales_exp_header_id    = xsel.sales_exp_header_id
+                    AND xsel.to_calculate_fees_flag = cv_xsel_if_flag_no
+                    AND xsim.item_code              = xsel.item_code
+                    AND flv1.lookup_code(+)         = xsim.vessel_group
+                    AND flv1.lookup_type(+)         = cv_lookup_type_04
+                    AND flv1.language(+)            = USERENV( 'LANG' )
+                    AND flv1.enabled_flag(+)        = cv_enable
+                    AND gd_process_date       BETWEEN NVL( flv1.start_date_active, gd_process_date )
+                                                  AND NVL( flv1.end_date_active,   gd_process_date )
+                    AND flv2.lookup_code(+)         = xsel.item_code
+                    AND flv2.lookup_type(+)         = cv_lookup_type_05
+                    AND flv2.language(+)            = USERENV( 'LANG' )
+                    AND flv2.enabled_flag(+)        = cv_enable
+                    AND gd_process_date       BETWEEN NVL( flv2.start_date_active, gd_process_date )
+                                                  AND NVL( flv2.end_date_active,   gd_process_date )
+                )                           xse       -- インラインビュー・販売実績情報
+              , xxcok_mst_bm_contract       xmbc      -- 販手条件マスタ
+           WHERE xse.ship_gyotai_tyu               = cv_gyotai_tyu_vd
+             AND xse.item_code_no_inv             IS NULL
+             AND xmbc.calc_type(+)                 = cv_calc_type_container
+             AND xmbc.cust_code(+)                 = xse.ship_to_customer_code
+             AND xmbc.container_type_code(+)       = xse.container_code
+             AND xmbc.calc_target_flag(+)          = cv_enable
+             AND EXISTS ( SELECT 'X'
+                          FROM xxcok_mst_bm_contract xmbc2 -- 販手条件マスタ
+                          WHERE xmbc2.calc_type        = cv_calc_type_container
+                            AND xmbc2.cust_code        = xse.ship_to_customer_code
+                            AND xmbc2.calc_target_flag = cv_enable
+                 )
+         )                        xbc
+    GROUP BY xbc.base_code
+           , xbc.emp_code
+           , xbc.ship_cust_code
+           , xbc.ship_gyotai_sho
+           , xbc.ship_gyotai_tyu
+           , xbc.bill_cust_code
+           , xbc.period_year
+           , xbc.ship_delivery_chain_code
+           , xbc.delivery_ym
+           , xbc.dlv_uom_code
+           , xbc.container_code
+           , xbc.dlv_unit_price
+           , xbc.tax_div
+           , xbc.tax_code
+           , xbc.tax_rate
+           , xbc.tax_rounding_rule
+           , xbc.term_name
+           , xbc.closing_date
+           , xbc.expect_payment_date
+           , xbc.calc_target_period_from
+           , xbc.calc_target_period_to
+           , xbc.calc_type
+           , xbc.bm1_vendor_code
+           , xbc.bm1_vendor_site_code
+           , xbc.bm1_bm_payment_type
+           , xbc.bm1_pct
+           , xbc.bm1_amt
+           , xbc.bm2_vendor_code
+           , xbc.bm2_vendor_site_code
+           , xbc.bm2_bm_payment_type
+           , xbc.bm2_pct
+           , xbc.bm2_amt
+           , xbc.bm3_vendor_code
+           , xbc.bm3_vendor_site_code
+           , xbc.bm3_bm_payment_type
+           , xbc.bm3_pct
+           , xbc.bm3_amt
+           , xbc.item_code
+           , xbc.amount_fix_date
+  ;
+  -- 販売実績情報・一律条件
+  CURSOR get_sales_data_cur3 IS
+    SELECT xbc.base_code                                                  AS base_code                  -- 拠点コード
+         , xbc.emp_code                                                   AS emp_code                   -- 担当者コード
+         , xbc.ship_cust_code                                             AS ship_cust_code             -- 顧客【納品先】
+         , xbc.ship_gyotai_sho                                            AS ship_gyotai_sho            -- 顧客【納品先】業態（小分類）
+         , xbc.ship_gyotai_tyu                                            AS ship_gyotai_tyu            -- 顧客【納品先】業態（中分類）
+         , xbc.bill_cust_code                                             AS bill_cust_code             -- 顧客【請求先】
+         , xbc.period_year                                                AS period_year                -- 会計年度
+         , xbc.ship_delivery_chain_code                                   AS ship_delivery_chain_code   -- チェーン店コード
+         , xbc.delivery_ym                                                AS delivery_ym                -- 納品日年月
+         , SUM( xbc.dlv_qty )                                             AS dlv_qty                    -- 納品数量
+         , xbc.dlv_uom_code                                               AS dlv_uom_code               -- 納品単位
+         , SUM( xbc.amount_inc_tax )                                      AS amount_inc_tax             -- 売上金額（税込）
+         , NULL                                                           AS container_code             -- 容器区分コード
+         , NULL                                                           AS dlv_unit_price             -- 売価金額
+         , xbc.tax_div                                                    AS tax_div                    -- 消費税区分
+         , xbc.tax_code                                                   AS tax_code                   -- 税金コード
+         , xbc.tax_rate                                                   AS tax_rate                   -- 消費税率
+         , xbc.tax_rounding_rule                                          AS tax_rounding_rule          -- 端数処理区分
+         , xbc.term_name                                                  AS term_name                  -- 支払条件
+         , xbc.closing_date                                               AS closing_date               -- 締め日
+         , xbc.expect_payment_date                                        AS expect_payment_date        -- 支払予定日
+         , xbc.calc_target_period_from                                    AS calc_target_period_from    -- 計算対象期間(FROM)
+         , xbc.calc_target_period_to                                      AS calc_target_period_to      -- 計算対象期間(TO)
+         , xbc.calc_type                                                  AS calc_type                  -- 計算条件
+         , xbc.bm1_vendor_code                                            AS bm1_vendor_code            -- 【ＢＭ１】仕入先コード
+         , xbc.bm1_vendor_site_code                                       AS bm1_vendor_site_code       -- 【ＢＭ１】仕入先サイトコード
+         , xbc.bm1_bm_payment_type                                        AS bm1_bm_payment_type        -- 【ＢＭ１】BM支払区分
+         , xbc.bm1_pct                                                    AS bm1_pct                    -- 【ＢＭ１】BM率(%)
+         , xbc.bm1_amt                                                    AS bm1_amt                    -- 【ＢＭ１】BM金額
+         , TRUNC( SUM( xbc.amount_inc_tax * xbc.bm1_pct ) / 100 )         AS bm1_cond_bm_tax_pct        -- 【ＢＭ１】条件別手数料額(税込)_率
+         , TRUNC( SUM( xbc.dlv_qty * xbc.bm1_amt ) )                      AS bm1_cond_bm_amt_tax        -- 【ＢＭ１】条件別手数料額(税込)_額
+         , NULL                                                           AS bm1_electric_amt_tax       -- 【ＢＭ１】電気料(税込)
+         , xbc.bm2_vendor_code                                            AS bm2_vendor_code            -- 【ＢＭ２】仕入先コード
+         , xbc.bm2_vendor_site_code                                       AS bm2_vendor_site_code       -- 【ＢＭ２】仕入先サイトコード
+         , xbc.bm2_bm_payment_type                                        AS bm2_bm_payment_type        -- 【ＢＭ２】BM支払区分
+         , xbc.bm2_pct                                                    AS bm2_pct                    -- 【ＢＭ２】BM率(%)
+         , xbc.bm2_amt                                                    AS bm2_amt                    -- 【ＢＭ２】BM金額
+         , TRUNC( SUM( xbc.amount_inc_tax * xbc.bm2_pct ) / 100 )         AS bm2_cond_bm_tax_pct        -- 【ＢＭ２】条件別手数料額(税込)_率
+         , TRUNC( SUM( xbc.dlv_qty * xbc.bm2_amt ) )                      AS bm2_cond_bm_amt_tax        -- 【ＢＭ２】条件別手数料額(税込)_額
+         , NULL                                                           AS bm2_electric_amt_tax       -- 【ＢＭ２】電気料(税込)
+         , xbc.bm3_vendor_code                                            AS bm3_vendor_code            -- 【ＢＭ３】仕入先コード
+         , xbc.bm3_vendor_site_code                                       AS bm3_vendor_site_code       -- 【ＢＭ３】仕入先サイトコード
+         , xbc.bm3_bm_payment_type                                        AS bm3_bm_payment_type        -- 【ＢＭ３】BM支払区分
+         , xbc.bm3_pct                                                    AS bm3_pct                    -- 【ＢＭ３】BM率(%)
+         , xbc.bm3_amt                                                    AS bm3_amt                    -- 【ＢＭ３】BM金額
+         , TRUNC( SUM( xbc.amount_inc_tax * xbc.bm3_pct ) / 100 )         AS bm3_cond_bm_tax_pct        -- 【ＢＭ３】条件別手数料額(税込)_率
+         , TRUNC( SUM( xbc.dlv_qty * xbc.bm3_amt ) )                      AS bm3_cond_bm_amt_tax        -- 【ＢＭ３】条件別手数料額(税込)_額
+         , NULL                                                           AS bm3_electric_amt_tax       -- 【ＢＭ３】電気料(税込)
+         , xbc.item_code                                                  AS item_code                  -- エラー品目コード
+         , xbc.amount_fix_date                                            AS amount_fix_date            -- 金額確定日
+    FROM ( SELECT xse.sales_base_code                                             AS base_code                  -- 拠点コード
+                , NVL2( xmbc.calc_type, xse.results_employee_code       , NULL )  AS emp_code                   -- 担当者コード
+                , xse.ship_to_customer_code                                       AS ship_cust_code             -- 顧客【納品先】
+                , NVL2( xmbc.calc_type, xse.ship_gyotai_sho             , NULL )  AS ship_gyotai_sho            -- 顧客【納品先】業態（小分類）
+                , NVL2( xmbc.calc_type, xse.ship_gyotai_tyu             , NULL )  AS ship_gyotai_tyu            -- 顧客【納品先】業態（中分類）
+                , NVL2( xmbc.calc_type, xse.bill_cust_code              , NULL )  AS bill_cust_code             -- 顧客【請求先】
+                , NVL2( xmbc.calc_type, xse.period_year                 , NULL )  AS period_year                -- 会計年度
+                , NVL2( xmbc.calc_type, xse.ship_delivery_chain_code    , NULL )  AS ship_delivery_chain_code   -- チェーン店コード
+                , NVL2( xmbc.calc_type, xse.delivery_ym                 , NULL )  AS delivery_ym                -- 納品日年月
+                , NVL2( xmbc.calc_type, xse.dlv_qty                     , NULL )  AS dlv_qty                    -- 納品数量
+                , NVL2( xmbc.calc_type, xse.dlv_uom_code                , NULL )  AS dlv_uom_code               -- 納品単位
+                , xse.amount_inc_tax                                              AS amount_inc_tax             -- 売上金額(税込)
+                , NULL                                                            AS container_code             -- 容器区分コード
+                , NULL                                                            AS dlv_unit_price             -- 売価金額
+                , NVL2( xmbc.calc_type, xse.tax_div                     , NULL )  AS tax_div                    -- 消費税区分
+                , NVL2( xmbc.calc_type, xse.tax_code                    , NULL )  AS tax_code                   -- 税金コード
+                , NVL2( xmbc.calc_type, xse.tax_rate                    , NULL )  AS tax_rate                   -- 消費税率
+                , NVL2( xmbc.calc_type, xse.tax_rounding_rule           , NULL )  AS tax_rounding_rule          -- 端数処理区分
+                , NVL2( xmbc.calc_type, xse.term_name                   , NULL )  AS term_name                  -- 支払条件
+                , xse.closing_date                                                AS closing_date               -- 締め日
+                , NVL2( xmbc.calc_type, xse.expect_payment_date         , NULL )  AS expect_payment_date        -- 支払予定日
+                , NVL2( xmbc.calc_type, xse.calc_target_period_from     , NULL )  AS calc_target_period_from    -- 計算対象期間(FROM)
+                , NVL2( xmbc.calc_type, xse.calc_target_period_to       , NULL )  AS calc_target_period_to      -- 計算対象期間(TO)
+                , xmbc.calc_type                                                  AS calc_type                  -- 計算条件
+                , NVL2( xmbc.calc_type, xse.bm1_vendor_code             , NULL )  AS bm1_vendor_code            -- 【ＢＭ１】仕入先コード
+                , NVL2( xmbc.calc_type, xse.bm1_vendor_site_code        , NULL )  AS bm1_vendor_site_code       -- 【ＢＭ１】仕入先サイトコード
+                , NVL2( xmbc.calc_type, xse.bm1_bm_payment_type         , NULL )  AS bm1_bm_payment_type        -- 【ＢＭ１】BM支払区分
+                , NVL2( xmbc.calc_type, xmbc.bm1_pct                    , NULL )  AS bm1_pct                    -- 【ＢＭ１】BM率(%)
+                , NVL2( xmbc.calc_type, xmbc.bm1_amt                    , NULL )  AS bm1_amt                    -- 【ＢＭ１】BM金額
+                , NVL2( xmbc.calc_type, xse.bm2_vendor_code             , NULL )  AS bm2_vendor_code            -- 【ＢＭ２】仕入先コード
+                , NVL2( xmbc.calc_type, xse.bm2_vendor_site_code        , NULL )  AS bm2_vendor_site_code       -- 【ＢＭ２】仕入先サイトコード
+                , NVL2( xmbc.calc_type, xse.bm2_bm_payment_type         , NULL )  AS bm2_bm_payment_type        -- 【ＢＭ２】BM支払区分
+                , NVL2( xmbc.calc_type, xmbc.bm2_pct                    , NULL )  AS bm2_pct                    -- 【ＢＭ２】BM率(%)
+                , NVL2( xmbc.calc_type, xmbc.bm2_amt                    , NULL )  AS bm2_amt                    -- 【ＢＭ２】BM金額
+                , NVL2( xmbc.calc_type, xse.bm3_vendor_code             , NULL )  AS bm3_vendor_code            -- 【ＢＭ３】仕入先コード
+                , NVL2( xmbc.calc_type, xse.bm3_vendor_site_code        , NULL )  AS bm3_vendor_site_code       -- 【ＢＭ３】仕入先サイトコード
+                , NVL2( xmbc.calc_type, xse.bm3_bm_payment_type         , NULL )  AS bm3_bm_payment_type        -- 【ＢＭ３】BM支払区分
+                , NVL2( xmbc.calc_type, xmbc.bm3_pct                    , NULL )  AS bm3_pct                    -- 【ＢＭ３】BM率(%)
+                , NVL2( xmbc.calc_type, xmbc.bm3_amt                    , NULL )  AS bm3_amt                    -- 【ＢＭ３】BM金額
+                , NVL2( xmbc.calc_type, NULL, xse.item_code )                     AS item_code                  -- エラー品目コード
+                , xse.amount_fix_date                                             AS amount_fix_date            -- 金額確定日
+           FROM ( SELECT xseh.ship_to_customer_code                 AS ship_to_customer_code         -- 【出荷先】顧客コード
+                       , xt0c.ship_gyotai_tyu                       AS ship_gyotai_tyu               -- 【出荷先】業態（中分類）
+                       , xt0c.ship_gyotai_sho                       AS ship_gyotai_sho               -- 【出荷先】業態（小分類）
+                       , xt0c.ship_delivery_chain_code              AS ship_delivery_chain_code      -- 【出荷先】納品先チェーンコード
+                       , xt0c.bill_cust_code                        AS bill_cust_code                -- 【請求先】顧客コード
+                       , xt0c.bm1_vendor_code                       AS bm1_vendor_code               -- 【ＢＭ１】仕入先コード
+                       , xt0c.bm1_vendor_site_code                  AS bm1_vendor_site_code          -- 【ＢＭ１】仕入先サイトコード
+                       , xt0c.bm1_bm_payment_type                   AS bm1_bm_payment_type           -- 【ＢＭ１】BM支払区分
+                       , xt0c.bm2_vendor_code                       AS bm2_vendor_code               -- 【ＢＭ２】仕入先コード
+                       , xt0c.bm2_vendor_site_code                  AS bm2_vendor_site_code          -- 【ＢＭ２】仕入先サイトコード
+                       , xt0c.bm2_bm_payment_type                   AS bm2_bm_payment_type           -- 【ＢＭ２】BM支払区分
+                       , xt0c.bm3_vendor_code                       AS bm3_vendor_code               -- 【ＢＭ３】仕入先コード
+                       , xt0c.bm3_vendor_site_code                  AS bm3_vendor_site_code          -- 【ＢＭ３】仕入先サイトコード
+                       , xt0c.bm3_bm_payment_type                   AS bm3_bm_payment_type           -- 【ＢＭ３】BM支払区分
+                       , xt0c.tax_div                               AS tax_div                       -- 消費税区分
+                       , xt0c.tax_code                              AS tax_code                      -- 税金コード
+                       , xt0c.tax_rate                              AS tax_rate                      -- 消費税率
+                       , xt0c.tax_rounding_rule                     AS tax_rounding_rule             -- 端数処理区分
+                       , xt0c.receiv_discount_rate                  AS receiv_discount_rate          -- 入金値引率
+                       , xt0c.term_name                             AS term_name                     -- 支払条件
+                       , xt0c.closing_date                          AS closing_date                  -- 締め日
+                       , xt0c.expect_payment_date                   AS expect_payment_date           -- 支払予定日
+                       , xt0c.period_year                           AS period_year                   -- 会計年度
+                       , xt0c.calc_target_period_from               AS calc_target_period_from       -- 計算対象期間(FROM)
+                       , xt0c.calc_target_period_to                 AS calc_target_period_to         -- 計算対象期間(TO)
+                       , xseh.sales_base_code                       AS sales_base_code               -- 売上拠点コード
+                       , xseh.results_employee_code                 AS results_employee_code         -- 成績計上者コード
+                       , TO_CHAR( xseh.delivery_date, 'RRRRMM' )    AS delivery_ym                   -- 納品年月
+                       , xsel.dlv_qty                               AS dlv_qty                       -- 納品数量
+                       , xsel.dlv_uom_code                          AS dlv_uom_code                  -- 納品単位
+                       , xsel.pure_amount + xsel.tax_amount         AS amount_inc_tax                -- 売上金額（税込）
+                       , NVL( flv1.attribute1
+                            , cv_container_code_others )            AS container_code                -- 容器区分コード
+                       , xsel.dlv_unit_price                        AS dlv_unit_price                -- 売価金額
+                       , NVL2( flv2.lookup_code
+                             , NULL
+                             , xsel.item_code )                     AS item_code                     -- 在庫品目コード
+                       , flv2.lookup_code                           AS item_code_no_inv              -- 非在庫品目コード
+                       , xt0c.amount_fix_date                       AS amount_fix_date               -- 金額確定日
+                  FROM xxcok_tmp_014a01c_custdata    xt0c       -- 条件別販手販協計算顧客情報一時表
+                     , xxcos_sales_exp_headers       xseh       -- 販売実績ヘッダ
+                     , xxcos_sales_exp_lines         xsel       -- 販売実績明細
+                     , xxcmm_system_items_b          xsim       -- Disc品目アドオン
+                     , fnd_lookup_values             flv1       -- 容器群
+                     , fnd_lookup_values             flv2       -- 非在庫品目
+                  WHERE xseh.ship_to_customer_code  = xt0c.ship_cust_code
+                    AND xseh.delivery_date         <= xt0c.closing_date
+                    AND xseh.sales_exp_header_id    = xsel.sales_exp_header_id
+                    AND xsel.to_calculate_fees_flag = cv_xsel_if_flag_no
+                    AND xsim.item_code              = xsel.item_code
+                    AND flv1.lookup_code(+)         = xsim.vessel_group
+                    AND flv1.lookup_type(+)         = cv_lookup_type_04
+                    AND flv1.language(+)            = USERENV( 'LANG' )
+                    AND flv1.enabled_flag(+)        = cv_enable
+                    AND gd_process_date       BETWEEN NVL( flv1.start_date_active, gd_process_date )
+                                                  AND NVL( flv1.end_date_active,   gd_process_date )
+                    AND flv2.lookup_code(+)         = xsel.item_code
+                    AND flv2.lookup_type(+)         = cv_lookup_type_05
+                    AND flv2.language(+)            = USERENV( 'LANG' )
+                    AND flv2.enabled_flag(+)        = cv_enable
+                    AND gd_process_date       BETWEEN NVL( flv2.start_date_active, gd_process_date )
+                                                  AND NVL( flv2.end_date_active,   gd_process_date )
+                )                           xse       -- インラインビュー・販売実績情報
+              , xxcok_mst_bm_contract       xmbc      -- 販手条件マスタ
+           WHERE xse.ship_gyotai_tyu               = cv_gyotai_tyu_vd
+             AND xse.item_code_no_inv             IS NULL
+             AND xmbc.calc_type                    = cv_calc_type_uniform_rate
+             AND xmbc.cust_code                    = xse.ship_to_customer_code
+             AND xmbc.calc_target_flag             = cv_enable
+         )                        xbc
+    GROUP BY xbc.base_code
+           , xbc.emp_code
+           , xbc.ship_cust_code
+           , xbc.ship_gyotai_sho
+           , xbc.ship_gyotai_tyu
+           , xbc.bill_cust_code
+           , xbc.period_year
+           , xbc.ship_delivery_chain_code
+           , xbc.delivery_ym
+           , xbc.dlv_uom_code
+           , xbc.tax_div
+           , xbc.tax_code
+           , xbc.tax_rate
+           , xbc.tax_rounding_rule
+           , xbc.term_name
+           , xbc.closing_date
+           , xbc.expect_payment_date
+           , xbc.calc_target_period_from
+           , xbc.calc_target_period_to
+           , xbc.calc_type
+           , xbc.bm1_vendor_code
+           , xbc.bm1_vendor_site_code
+           , xbc.bm1_bm_payment_type
+           , xbc.bm1_pct
+           , xbc.bm1_amt
+           , xbc.bm2_vendor_code
+           , xbc.bm2_vendor_site_code
+           , xbc.bm2_bm_payment_type
+           , xbc.bm2_pct
+           , xbc.bm2_amt
+           , xbc.bm3_vendor_code
+           , xbc.bm3_vendor_site_code
+           , xbc.bm3_bm_payment_type
+           , xbc.bm3_pct
+           , xbc.bm3_amt
+           , xbc.item_code
+           , xbc.amount_fix_date
+  ;
+  -- 販売実績情報・定額条件
+  CURSOR get_sales_data_cur4 IS
+    SELECT xbc.base_code                                                  AS base_code                  -- 拠点コード
+         , xbc.emp_code                                                   AS emp_code                   -- 担当者コード
+         , xbc.ship_cust_code                                             AS ship_cust_code             -- 顧客【納品先】
+         , xbc.ship_gyotai_sho                                            AS ship_gyotai_sho            -- 顧客【納品先】業態（小分類）
+         , xbc.ship_gyotai_tyu                                            AS ship_gyotai_tyu            -- 顧客【納品先】業態（中分類）
+         , xbc.bill_cust_code                                             AS bill_cust_code             -- 顧客【請求先】
+         , xbc.period_year                                                AS period_year                -- 会計年度
+         , xbc.ship_delivery_chain_code                                   AS ship_delivery_chain_code   -- チェーン店コード
+         , xbc.delivery_ym                                                AS delivery_ym                -- 納品日年月
+         , xbc.dlv_qty                                                    AS dlv_qty                    -- 納品数量
+         , xbc.dlv_uom_code                                               AS dlv_uom_code               -- 納品単位
+         , xbc.amount_inc_tax                                             AS amount_inc_tax             -- 売上金額（税込）
+         , xbc.container_code                                             AS container_code             -- 容器区分コード
+         , xbc.dlv_unit_price                                             AS dlv_unit_price             -- 売価金額
+         , xbc.tax_div                                                    AS tax_div                    -- 消費税区分
+         , xbc.tax_code                                                   AS tax_code                   -- 税金コード
+         , xbc.tax_rate                                                   AS tax_rate                   -- 消費税率
+         , xbc.tax_rounding_rule                                          AS tax_rounding_rule          -- 端数処理区分
+         , xbc.term_name                                                  AS term_name                  -- 支払条件
+         , xbc.closing_date                                               AS closing_date               -- 締め日
+         , xbc.expect_payment_date                                        AS expect_payment_date        -- 支払予定日
+         , xbc.calc_target_period_from                                    AS calc_target_period_from    -- 計算対象期間(FROM)
+         , xbc.calc_target_period_to                                      AS calc_target_period_to      -- 計算対象期間(TO)
+         , xbc.calc_type                                                  AS calc_type                  -- 計算条件
+         , xbc.bm1_vendor_code                                            AS bm1_vendor_code            -- 【ＢＭ１】仕入先コード
+         , xbc.bm1_vendor_site_code                                       AS bm1_vendor_site_code       -- 【ＢＭ１】仕入先サイトコード
+         , xbc.bm1_bm_payment_type                                        AS bm1_bm_payment_type        -- 【ＢＭ１】BM支払区分
+         , xbc.bm1_pct                                                    AS bm1_pct                    -- 【ＢＭ１】BM率(%)
+         , xbc.bm1_amt                                                    AS bm1_amt                    -- 【ＢＭ１】BM金額
+         , NULL                                                           AS bm1_cond_bm_tax_pct        -- 【ＢＭ１】条件別手数料額(税込)_率
+         , TRUNC( SUM( xbc.bm1_amt ) )                                    AS bm1_cond_bm_amt_tax        -- 【ＢＭ１】条件別手数料額(税込)_額
+         , NULL                                                           AS bm1_electric_amt_tax       -- 【ＢＭ１】電気料(税込)
+         , xbc.bm2_vendor_code                                            AS bm2_vendor_code            -- 【ＢＭ２】仕入先コード
+         , xbc.bm2_vendor_site_code                                       AS bm2_vendor_site_code       -- 【ＢＭ２】仕入先サイトコード
+         , xbc.bm2_bm_payment_type                                        AS bm2_bm_payment_type        -- 【ＢＭ２】BM支払区分
+         , xbc.bm2_pct                                                    AS bm2_pct                    -- 【ＢＭ２】BM率(%)
+         , xbc.bm2_amt                                                    AS bm2_amt                    -- 【ＢＭ２】BM金額
+         , NULL                                                           AS bm2_cond_bm_tax_pct        -- 【ＢＭ２】条件別手数料額(税込)_率
+         , TRUNC( SUM( xbc.bm2_amt ) )                                    AS bm2_cond_bm_amt_tax        -- 【ＢＭ２】条件別手数料額(税込)_額
+         , NULL                                                           AS bm2_electric_amt_tax       -- 【ＢＭ２】電気料(税込)
+         , xbc.bm3_vendor_code                                            AS bm3_vendor_code            -- 【ＢＭ３】仕入先コード
+         , xbc.bm3_vendor_site_code                                       AS bm3_vendor_site_code       -- 【ＢＭ３】仕入先サイトコード
+         , xbc.bm3_bm_payment_type                                        AS bm3_bm_payment_type        -- 【ＢＭ３】BM支払区分
+         , xbc.bm3_pct                                                    AS bm3_pct                    -- 【ＢＭ３】BM率(%)
+         , xbc.bm3_amt                                                    AS bm3_amt                    -- 【ＢＭ３】BM金額
+         , NULL                                                           AS bm3_cond_bm_tax_pct        -- 【ＢＭ３】条件別手数料額(税込)_率
+         , TRUNC( SUM( xbc.bm3_amt ) )                                    AS bm3_cond_bm_amt_tax        -- 【ＢＭ３】条件別手数料額(税込)_額
+         , NULL                                                           AS bm3_electric_amt_tax       -- 【ＢＭ３】電気料(税込)
+         , xbc.item_code                                                  AS item_code                  -- エラー品目コード
+         , xbc.amount_fix_date                                            AS amount_fix_date            -- 金額確定日
+    FROM ( SELECT xses.sales_base_code                                            AS base_code                  -- 拠点コード
+                , xses.results_employee_code                                      AS emp_code                   -- 担当者コード
+                , xses.ship_to_customer_code                                      AS ship_cust_code             -- 顧客【納品先】
+                , xses.ship_gyotai_sho                                            AS ship_gyotai_sho            -- 顧客【納品先】業態（小分類）
+                , xses.ship_gyotai_tyu                                            AS ship_gyotai_tyu            -- 顧客【納品先】業態（中分類）
+                , xses.bill_cust_code                                             AS bill_cust_code             -- 顧客【請求先】
+                , xses.period_year                                                AS period_year                -- 会計年度
+                , xses.ship_delivery_chain_code                                   AS ship_delivery_chain_code   -- チェーン店コード
+                , xses.delivery_ym                                                AS delivery_ym                -- 納品日年月
+                , xses.dlv_qty                                                    AS dlv_qty                    -- 納品数量
+                , xses.dlv_uom_code                                               AS dlv_uom_code               -- 納品単位
+                , xses.amount_inc_tax                                             AS amount_inc_tax             -- 売上金額(税込)
+                , NULL                                                            AS container_code             -- 容器区分コード
+                , NULL                                                            AS dlv_unit_price             -- 売価金額
+                , xses.tax_div                                                    AS tax_div                    -- 消費税区分
+                , xses.tax_code                                                   AS tax_code                   -- 税金コード
+                , xses.tax_rate                                                   AS tax_rate                   -- 消費税率
+                , xses.tax_rounding_rule                                          AS tax_rounding_rule          -- 端数処理区分
+                , xses.term_name                                                  AS term_name                  -- 支払条件
+                , xses.closing_date                                               AS closing_date               -- 締め日
+                , xses.expect_payment_date                                        AS expect_payment_date        -- 支払予定日
+                , xses.calc_target_period_from                                    AS calc_target_period_from    -- 計算対象期間(FROM)
+                , xses.calc_target_period_to                                      AS calc_target_period_to      -- 計算対象期間(TO)
+                , xmbc.calc_type                                                  AS calc_type                  -- 計算条件
+                , xses.bm1_vendor_code                                            AS bm1_vendor_code            -- 【ＢＭ１】仕入先コード
+                , xses.bm1_vendor_site_code                                       AS bm1_vendor_site_code       -- 【ＢＭ１】仕入先サイトコード
+                , xses.bm1_bm_payment_type                                        AS bm1_bm_payment_type        -- 【ＢＭ１】BM支払区分
+                , xmbc.bm1_pct                                                    AS bm1_pct                    -- 【ＢＭ１】BM率(%)
+                , xmbc.bm1_amt                                                    AS bm1_amt                    -- 【ＢＭ１】BM金額
+                , xses.bm2_vendor_code                                            AS bm2_vendor_code            -- 【ＢＭ２】仕入先コード
+                , xses.bm2_vendor_site_code                                       AS bm2_vendor_site_code       -- 【ＢＭ２】仕入先サイトコード
+                , xses.bm2_bm_payment_type                                        AS bm2_bm_payment_type        -- 【ＢＭ２】BM支払区分
+                , xmbc.bm2_pct                                                    AS bm2_pct                    -- 【ＢＭ２】BM率(%)
+                , xmbc.bm2_amt                                                    AS bm2_amt                    -- 【ＢＭ２】BM金額
+                , xses.bm3_vendor_code                                            AS bm3_vendor_code            -- 【ＢＭ３】仕入先コード
+                , xses.bm3_vendor_site_code                                       AS bm3_vendor_site_code       -- 【ＢＭ３】仕入先サイトコード
+                , xses.bm3_bm_payment_type                                        AS bm3_bm_payment_type        -- 【ＢＭ３】BM支払区分
+                , xmbc.bm3_pct                                                    AS bm3_pct                    -- 【ＢＭ３】BM率(%)
+                , xmbc.bm3_amt                                                    AS bm3_amt                    -- 【ＢＭ３】BM金額
+                , NULL                                                            AS item_code                  -- エラー品目コード
+                , xses.amount_fix_date                                            AS amount_fix_date            -- 金額確定日
+           FROM ( SELECT xseh.ship_to_customer_code                 AS ship_to_customer_code         -- 【出荷先】顧客コード
+                       , xt0c.ship_gyotai_tyu                       AS ship_gyotai_tyu               -- 【出荷先】業態（中分類）
+                       , xt0c.ship_gyotai_sho                       AS ship_gyotai_sho               -- 【出荷先】業態（小分類）
+                       , xt0c.ship_delivery_chain_code              AS ship_delivery_chain_code      -- 【出荷先】納品先チェーンコード
+                       , xt0c.bill_cust_code                        AS bill_cust_code                -- 【請求先】顧客コード
+                       , xt0c.bm1_vendor_code                       AS bm1_vendor_code               -- 【ＢＭ１】仕入先コード
+                       , xt0c.bm1_vendor_site_code                  AS bm1_vendor_site_code          -- 【ＢＭ１】仕入先サイトコード
+                       , xt0c.bm1_bm_payment_type                   AS bm1_bm_payment_type           -- 【ＢＭ１】BM支払区分
+                       , xt0c.bm2_vendor_code                       AS bm2_vendor_code               -- 【ＢＭ２】仕入先コード
+                       , xt0c.bm2_vendor_site_code                  AS bm2_vendor_site_code          -- 【ＢＭ２】仕入先サイトコード
+                       , xt0c.bm2_bm_payment_type                   AS bm2_bm_payment_type           -- 【ＢＭ２】BM支払区分
+                       , xt0c.bm3_vendor_code                       AS bm3_vendor_code               -- 【ＢＭ３】仕入先コード
+                       , xt0c.bm3_vendor_site_code                  AS bm3_vendor_site_code          -- 【ＢＭ３】仕入先サイトコード
+                       , xt0c.bm3_bm_payment_type                   AS bm3_bm_payment_type           -- 【ＢＭ３】BM支払区分
+                       , xt0c.tax_div                               AS tax_div                       -- 消費税区分
+                       , xt0c.tax_code                              AS tax_code                      -- 税金コード
+                       , xt0c.tax_rate                              AS tax_rate                      -- 消費税率
+                       , xt0c.tax_rounding_rule                     AS tax_rounding_rule             -- 端数処理区分
+                       , xt0c.receiv_discount_rate                  AS receiv_discount_rate          -- 入金値引率
+                       , xt0c.term_name                             AS term_name                     -- 支払条件
+                       , xt0c.closing_date                          AS closing_date                  -- 締め日
+                       , xt0c.expect_payment_date                   AS expect_payment_date           -- 支払予定日
+                       , xt0c.period_year                           AS period_year                   -- 会計年度
+                       , xt0c.calc_target_period_from               AS calc_target_period_from       -- 計算対象期間(FROM)
+                       , xt0c.calc_target_period_to                 AS calc_target_period_to         -- 計算対象期間(TO)
+                       , xseh.sales_base_code                       AS sales_base_code               -- 売上拠点コード
+                       , xseh.results_employee_code                 AS results_employee_code         -- 成績計上者コード
+                       , TO_CHAR( xseh.delivery_date, 'RRRRMM' )    AS delivery_ym                   -- 納品年月
+                       , NULL                                       AS dlv_qty                       -- 納品数量
+                       , NULL                                       AS dlv_uom_code                  -- 納品単位
+                       , SUM( xsel.pure_amount + xsel.tax_amount )  AS amount_inc_tax                -- 売上金額（税込）
+                       , NULL                                       AS container_code                -- 容器区分コード
+                       , NULL                                       AS dlv_unit_price                -- 売価金額
+                       , NULL                                       AS item_code                     -- 在庫品目コード
+                       , xt0c.amount_fix_date                       AS amount_fix_date               -- 金額確定日
+                  FROM xxcok_tmp_014a01c_custdata    xt0c       -- 条件別販手販協計算顧客情報一時表
+                     , xxcos_sales_exp_headers       xseh       -- 販売実績ヘッダ
+                     , xxcos_sales_exp_lines         xsel       -- 販売実績明細
+                     , xxcmm_system_items_b          xsim       -- Disc品目アドオン
+                  WHERE xseh.ship_to_customer_code  = xt0c.ship_cust_code
+                    AND xseh.delivery_date         <= xt0c.closing_date
+                    AND xseh.sales_exp_header_id    = xsel.sales_exp_header_id
+                    AND xsel.to_calculate_fees_flag = cv_xsel_if_flag_no
+                    AND xsim.item_code              = xsel.item_code
+                    AND NOT EXISTS ( SELECT 'X'
+                                     FROM fnd_lookup_values             flv2       -- 非在庫品目
+                                     WHERE flv2.lookup_code         = xsel.item_code
+                                       AND flv2.lookup_type         = cv_lookup_type_05
+                                       AND flv2.language            = USERENV( 'LANG' )
+                                       AND flv2.enabled_flag        = cv_enable
+                                       AND gd_process_date       BETWEEN NVL( flv2.start_date_active, gd_process_date )
+                                                                     AND NVL( flv2.end_date_active,   gd_process_date )
+                        )
+                  GROUP BY xseh.ship_to_customer_code
+                         , xt0c.ship_gyotai_tyu
+                         , xt0c.ship_gyotai_sho
+                         , xt0c.ship_delivery_chain_code
+                         , xt0c.bill_cust_code
+                         , xt0c.bm1_vendor_code
+                         , xt0c.bm1_vendor_site_code
+                         , xt0c.bm1_bm_payment_type
+                         , xt0c.bm2_vendor_code
+                         , xt0c.bm2_vendor_site_code
+                         , xt0c.bm2_bm_payment_type
+                         , xt0c.bm3_vendor_code
+                         , xt0c.bm3_vendor_site_code
+                         , xt0c.bm3_bm_payment_type
+                         , xt0c.tax_div
+                         , xt0c.tax_code
+                         , xt0c.tax_rate
+                         , xt0c.tax_rounding_rule
+                         , xt0c.receiv_discount_rate
+                         , xt0c.term_name
+                         , xt0c.closing_date
+                         , xt0c.expect_payment_date
+                         , xt0c.period_year
+                         , xt0c.calc_target_period_from
+                         , xt0c.calc_target_period_to
+                         , xseh.sales_base_code
+                         , xseh.results_employee_code
+                         , TO_CHAR( xseh.delivery_date, 'RRRRMM' )
+                         , xt0c.amount_fix_date
+                )                           xses      -- インラインビュー・販売実績情報（顧客サマリ）
+              , xxcok_mst_bm_contract       xmbc      -- 販手条件マスタ
+           WHERE xses.ship_gyotai_tyu              = cv_gyotai_tyu_vd
+             AND xmbc.calc_type                    = cv_calc_type_flat_rate
+             AND xmbc.cust_code                    = xses.ship_to_customer_code
+             AND xmbc.calc_target_flag             = cv_enable
+         )                        xbc
+    GROUP BY xbc.base_code
+           , xbc.emp_code
+           , xbc.ship_cust_code
+           , xbc.ship_gyotai_sho
+           , xbc.ship_gyotai_tyu
+           , xbc.bill_cust_code
+           , xbc.period_year
+           , xbc.ship_delivery_chain_code
+           , xbc.delivery_ym
+           , xbc.dlv_qty
+           , xbc.dlv_uom_code
+           , xbc.amount_inc_tax
+           , xbc.container_code
+           , xbc.dlv_unit_price
+           , xbc.tax_div
+           , xbc.tax_code
+           , xbc.tax_rate
+           , xbc.tax_rounding_rule
+           , xbc.term_name
+           , xbc.closing_date
+           , xbc.expect_payment_date
+           , xbc.calc_target_period_from
+           , xbc.calc_target_period_to
+           , xbc.calc_type
+           , xbc.bm1_vendor_code
+           , xbc.bm1_vendor_site_code
+           , xbc.bm1_bm_payment_type
+           , xbc.bm1_pct
+           , xbc.bm1_amt
+           , xbc.bm2_vendor_code
+           , xbc.bm2_vendor_site_code
+           , xbc.bm2_bm_payment_type
+           , xbc.bm2_pct
+           , xbc.bm2_amt
+           , xbc.bm3_vendor_code
+           , xbc.bm3_vendor_site_code
+           , xbc.bm3_bm_payment_type
+           , xbc.bm3_pct
+           , xbc.bm3_amt
+           , xbc.item_code
+           , xbc.amount_fix_date
+  ;
+  -- 販売実績情報・電気料（固定／変動）
+  CURSOR get_sales_data_cur5 IS
+    SELECT xbc.base_code                                                  AS base_code                  -- 拠点コード
+         , xbc.emp_code                                                   AS emp_code                   -- 担当者コード
+         , xbc.ship_cust_code                                             AS ship_cust_code             -- 顧客【納品先】
+         , xbc.ship_gyotai_sho                                            AS ship_gyotai_sho            -- 顧客【納品先】業態（小分類）
+         , xbc.ship_gyotai_tyu                                            AS ship_gyotai_tyu            -- 顧客【納品先】業態（中分類）
+         , xbc.bill_cust_code                                             AS bill_cust_code             -- 顧客【請求先】
+         , xbc.period_year                                                AS period_year                -- 会計年度
+         , xbc.ship_delivery_chain_code                                   AS ship_delivery_chain_code   -- チェーン店コード
+         , xbc.delivery_ym                                                AS delivery_ym                -- 納品日年月
+         , xbc.dlv_qty                                                    AS dlv_qty                    -- 納品数量
+         , xbc.dlv_uom_code                                               AS dlv_uom_code               -- 納品単位
+         , xbc.amount_inc_tax                                             AS amount_inc_tax             -- 売上金額（税込）
+         , xbc.container_code                                             AS container_code             -- 容器区分コード
+         , xbc.dlv_unit_price                                             AS dlv_unit_price             -- 売価金額
+         , xbc.tax_div                                                    AS tax_div                    -- 消費税区分
+         , xbc.tax_code                                                   AS tax_code                   -- 税金コード
+         , xbc.tax_rate                                                   AS tax_rate                   -- 消費税率
+         , xbc.tax_rounding_rule                                          AS tax_rounding_rule          -- 端数処理区分
+         , xbc.term_name                                                  AS term_name                  -- 支払条件
+         , xbc.closing_date                                               AS closing_date               -- 締め日
+         , xbc.expect_payment_date                                        AS expect_payment_date        -- 支払予定日
+         , xbc.calc_target_period_from                                    AS calc_target_period_from    -- 計算対象期間(FROM)
+         , xbc.calc_target_period_to                                      AS calc_target_period_to      -- 計算対象期間(TO)
+         , xbc.calc_type                                                  AS calc_type                  -- 計算条件
+         , xbc.bm1_vendor_code                                            AS bm1_vendor_code            -- 【ＢＭ１】仕入先コード
+         , xbc.bm1_vendor_site_code                                       AS bm1_vendor_site_code       -- 【ＢＭ１】仕入先サイトコード
+         , xbc.bm1_bm_payment_type                                        AS bm1_bm_payment_type        -- 【ＢＭ１】BM支払区分
+         , xbc.bm1_pct                                                    AS bm1_pct                    -- 【ＢＭ１】BM率(%)
+         , xbc.bm1_amt                                                    AS bm1_amt                    -- 【ＢＭ１】BM金額
+         , NULL                                                           AS bm1_cond_bm_tax_pct        -- 【ＢＭ１】条件別手数料額(税込)_率
+         , NULL                                                           AS bm1_cond_bm_amt_tax        -- 【ＢＭ１】条件別手数料額(税込)_額
+         , TRUNC( SUM( xbc.bm1_amt ) )                                    AS bm1_electric_amt_tax       -- 【ＢＭ１】電気料(税込)
+         , xbc.bm2_vendor_code                                            AS bm2_vendor_code            -- 【ＢＭ２】仕入先コード
+         , xbc.bm2_vendor_site_code                                       AS bm2_vendor_site_code       -- 【ＢＭ２】仕入先サイトコード
+         , xbc.bm2_bm_payment_type                                        AS bm2_bm_payment_type        -- 【ＢＭ２】BM支払区分
+         , xbc.bm2_pct                                                    AS bm2_pct                    -- 【ＢＭ２】BM率(%)
+         , xbc.bm2_amt                                                    AS bm2_amt                    -- 【ＢＭ２】BM金額
+         , NULL                                                           AS bm2_cond_bm_tax_pct        -- 【ＢＭ２】条件別手数料額(税込)_率
+         , NULL                                                           AS bm2_cond_bm_amt_tax        -- 【ＢＭ２】条件別手数料額(税込)_額
+         , NULL                                                           AS bm2_electric_amt_tax       -- 【ＢＭ２】電気料(税込)
+         , xbc.bm3_vendor_code                                            AS bm3_vendor_code            -- 【ＢＭ３】仕入先コード
+         , xbc.bm3_vendor_site_code                                       AS bm3_vendor_site_code       -- 【ＢＭ３】仕入先サイトコード
+         , xbc.bm3_bm_payment_type                                        AS bm3_bm_payment_type        -- 【ＢＭ３】BM支払区分
+         , xbc.bm3_pct                                                    AS bm3_pct                    -- 【ＢＭ３】BM率(%)
+         , xbc.bm3_amt                                                    AS bm3_amt                    -- 【ＢＭ３】BM金額
+         , NULL                                                           AS bm3_cond_bm_tax_pct        -- 【ＢＭ３】条件別手数料額(税込)_率
+         , NULL                                                           AS bm3_cond_bm_amt_tax        -- 【ＢＭ３】条件別手数料額(税込)_額
+         , NULL                                                           AS bm3_electric_amt_tax       -- 【ＢＭ３】電気料(税込)
+         , xbc.item_code                                                  AS item_code                  -- エラー品目コード
+         , xbc.amount_fix_date                                            AS amount_fix_date            -- 金額確定日
+    FROM ( -- 電気料（固定）
+           SELECT xses.sales_base_code                                            AS base_code                  -- 拠点コード
+                , xses.results_employee_code                                      AS emp_code                   -- 担当者コード
+                , xses.ship_to_customer_code                                      AS ship_cust_code             -- 顧客【納品先】
+                , xses.ship_gyotai_sho                                            AS ship_gyotai_sho            -- 顧客【納品先】業態（小分類）
+                , xses.ship_gyotai_tyu                                            AS ship_gyotai_tyu            -- 顧客【納品先】業態（中分類）
+                , xses.bill_cust_code                                             AS bill_cust_code             -- 顧客【請求先】
+                , xses.period_year                                                AS period_year                -- 会計年度
+                , xses.ship_delivery_chain_code                                   AS ship_delivery_chain_code   -- チェーン店コード
+                , xses.delivery_ym                                                AS delivery_ym                -- 納品日年月
+                , NULL                                                            AS dlv_qty                    -- 納品数量
+                , NULL                                                            AS dlv_uom_code               -- 納品単位
+                , 0                                                               AS amount_inc_tax             -- 売上金額(税込)
+                , NULL                                                            AS container_code             -- 容器区分コード
+                , NULL                                                            AS dlv_unit_price             -- 売価金額
+                , xses.tax_div                                                    AS tax_div                    -- 消費税区分
+                , xses.tax_code                                                   AS tax_code                   -- 税金コード
+                , xses.tax_rate                                                   AS tax_rate                   -- 消費税率
+                , xses.tax_rounding_rule                                          AS tax_rounding_rule          -- 端数処理区分
+                , xses.term_name                                                  AS term_name                  -- 支払条件
+                , xses.closing_date                                               AS closing_date               -- 締め日
+                , xses.expect_payment_date                                        AS expect_payment_date        -- 支払予定日
+                , xses.calc_target_period_from                                    AS calc_target_period_from    -- 計算対象期間(FROM)
+                , xses.calc_target_period_to                                      AS calc_target_period_to      -- 計算対象期間(TO)
+                , xmbc.calc_type                                                  AS calc_type                  -- 計算条件
+                , xses.bm1_vendor_code                                            AS bm1_vendor_code            -- 【ＢＭ１】仕入先コード
+                , xses.bm1_vendor_site_code                                       AS bm1_vendor_site_code       -- 【ＢＭ１】仕入先サイトコード
+                , xses.bm1_bm_payment_type                                        AS bm1_bm_payment_type        -- 【ＢＭ１】BM支払区分
+                , NULL                                                            AS bm1_pct                    -- 【ＢＭ１】BM率(%)
+                , xmbc.bm1_amt                                                    AS bm1_amt                    -- 【ＢＭ１】BM金額
+                , NULL                                                            AS bm2_vendor_code            -- 【ＢＭ２】仕入先コード
+                , NULL                                                            AS bm2_vendor_site_code       -- 【ＢＭ２】仕入先サイトコード
+                , NULL                                                            AS bm2_bm_payment_type        -- 【ＢＭ２】BM支払区分
+                , NULL                                                            AS bm2_pct                    -- 【ＢＭ２】BM率(%)
+                , NULL                                                            AS bm2_amt                    -- 【ＢＭ２】BM金額
+                , NULL                                                            AS bm3_vendor_code            -- 【ＢＭ３】仕入先コード
+                , NULL                                                            AS bm3_vendor_site_code       -- 【ＢＭ３】仕入先サイトコード
+                , NULL                                                            AS bm3_bm_payment_type        -- 【ＢＭ３】BM支払区分
+                , NULL                                                            AS bm3_pct                    -- 【ＢＭ３】BM率(%)
+                , NULL                                                            AS bm3_amt                    -- 【ＢＭ３】BM金額
+                , NULL                                                            AS item_code                  -- エラー品目コード
+                , xses.amount_fix_date                                            AS amount_fix_date            -- 金額確定日
+           FROM ( SELECT xseh.ship_to_customer_code                 AS ship_to_customer_code         -- 【出荷先】顧客コード
+                       , xt0c.ship_gyotai_tyu                       AS ship_gyotai_tyu               -- 【出荷先】業態（中分類）
+                       , xt0c.ship_gyotai_sho                       AS ship_gyotai_sho               -- 【出荷先】業態（小分類）
+                       , xt0c.ship_delivery_chain_code              AS ship_delivery_chain_code      -- 【出荷先】納品先チェーンコード
+                       , xt0c.bill_cust_code                        AS bill_cust_code                -- 【請求先】顧客コード
+                       , xt0c.bm1_vendor_code                       AS bm1_vendor_code               -- 【ＢＭ１】仕入先コード
+                       , xt0c.bm1_vendor_site_code                  AS bm1_vendor_site_code          -- 【ＢＭ１】仕入先サイトコード
+                       , xt0c.bm1_bm_payment_type                   AS bm1_bm_payment_type           -- 【ＢＭ１】BM支払区分
+                       , xt0c.bm2_vendor_code                       AS bm2_vendor_code               -- 【ＢＭ２】仕入先コード
+                       , xt0c.bm2_vendor_site_code                  AS bm2_vendor_site_code          -- 【ＢＭ２】仕入先サイトコード
+                       , xt0c.bm2_bm_payment_type                   AS bm2_bm_payment_type           -- 【ＢＭ２】BM支払区分
+                       , xt0c.bm3_vendor_code                       AS bm3_vendor_code               -- 【ＢＭ３】仕入先コード
+                       , xt0c.bm3_vendor_site_code                  AS bm3_vendor_site_code          -- 【ＢＭ３】仕入先サイトコード
+                       , xt0c.bm3_bm_payment_type                   AS bm3_bm_payment_type           -- 【ＢＭ３】BM支払区分
+                       , xt0c.tax_div                               AS tax_div                       -- 消費税区分
+                       , xt0c.tax_code                              AS tax_code                      -- 税金コード
+                       , xt0c.tax_rate                              AS tax_rate                      -- 消費税率
+                       , xt0c.tax_rounding_rule                     AS tax_rounding_rule             -- 端数処理区分
+                       , xt0c.receiv_discount_rate                  AS receiv_discount_rate          -- 入金値引率
+                       , xt0c.term_name                             AS term_name                     -- 支払条件
+                       , xt0c.closing_date                          AS closing_date                  -- 締め日
+                       , xt0c.expect_payment_date                   AS expect_payment_date           -- 支払予定日
+                       , xt0c.period_year                           AS period_year                   -- 会計年度
+                       , xt0c.calc_target_period_from               AS calc_target_period_from       -- 計算対象期間(FROM)
+                       , xt0c.calc_target_period_to                 AS calc_target_period_to         -- 計算対象期間(TO)
+                       , xseh.sales_base_code                       AS sales_base_code               -- 売上拠点コード
+                       , xseh.results_employee_code                 AS results_employee_code         -- 成績計上者コード
+                       , TO_CHAR( xseh.delivery_date, 'RRRRMM' )    AS delivery_ym                   -- 納品年月
+                       , NULL                                       AS dlv_qty                       -- 納品数量
+                       , NULL                                       AS dlv_uom_code                  -- 納品単位
+                       , SUM( xsel.pure_amount + xsel.tax_amount )  AS amount_inc_tax                -- 売上金額（税込）
+                       , NULL                                       AS container_code                -- 容器区分コード
+                       , NULL                                       AS dlv_unit_price                -- 売価金額
+                       , NULL                                       AS item_code                     -- 在庫品目コード
+                       , xt0c.amount_fix_date                       AS amount_fix_date               -- 金額確定日
+                  FROM xxcok_tmp_014a01c_custdata    xt0c       -- 条件別販手販協計算顧客情報一時表
+                     , xxcos_sales_exp_headers       xseh       -- 販売実績ヘッダ
+                     , xxcos_sales_exp_lines         xsel       -- 販売実績明細
+                     , xxcmm_system_items_b          xsim       -- Disc品目アドオン
+                  WHERE xseh.ship_to_customer_code  = xt0c.ship_cust_code
+                    AND xseh.delivery_date         <= xt0c.closing_date
+                    AND xseh.sales_exp_header_id    = xsel.sales_exp_header_id
+                    AND xsel.to_calculate_fees_flag = cv_xsel_if_flag_no
+                    AND xsim.item_code              = xsel.item_code
+                    AND NOT EXISTS ( SELECT 'X'
+                                     FROM fnd_lookup_values             flv2       -- 非在庫品目
+                                     WHERE flv2.lookup_code         = xsel.item_code
+                                       AND flv2.lookup_type         = cv_lookup_type_05
+                                       AND flv2.language            = USERENV( 'LANG' )
+                                       AND flv2.enabled_flag        = cv_enable
+                                       AND gd_process_date       BETWEEN NVL( flv2.start_date_active, gd_process_date )
+                                                                     AND NVL( flv2.end_date_active,   gd_process_date )                    )
+                  GROUP BY xseh.ship_to_customer_code
+                         , xt0c.ship_gyotai_tyu
+                         , xt0c.ship_gyotai_sho
+                         , xt0c.ship_delivery_chain_code
+                         , xt0c.bill_cust_code
+                         , xt0c.bm1_vendor_code
+                         , xt0c.bm1_vendor_site_code
+                         , xt0c.bm1_bm_payment_type
+                         , xt0c.bm2_vendor_code
+                         , xt0c.bm2_vendor_site_code
+                         , xt0c.bm2_bm_payment_type
+                         , xt0c.bm3_vendor_code
+                         , xt0c.bm3_vendor_site_code
+                         , xt0c.bm3_bm_payment_type
+                         , xt0c.tax_div
+                         , xt0c.tax_code
+                         , xt0c.tax_rate
+                         , xt0c.tax_rounding_rule
+                         , xt0c.receiv_discount_rate
+                         , xt0c.term_name
+                         , xt0c.closing_date
+                         , xt0c.expect_payment_date
+                         , xt0c.period_year
+                         , xt0c.calc_target_period_from
+                         , xt0c.calc_target_period_to
+                         , xseh.sales_base_code
+                         , xseh.results_employee_code
+                         , TO_CHAR( xseh.delivery_date, 'RRRRMM' )
+                         , xt0c.amount_fix_date
+                )                           xses      -- インラインビュー・販売実績情報（顧客サマリ）
+              , xxcok_mst_bm_contract       xmbc      -- 販手条件マスタ
+           WHERE xses.ship_gyotai_tyu              = cv_gyotai_tyu_vd
+             AND xmbc.calc_type                    = cv_calc_type_electricity_cost
+             AND xmbc.cust_code                    = xses.ship_to_customer_code
+             AND xmbc.calc_target_flag             = cv_enable
+           UNION ALL
+           -- 電気料（変動）
+           SELECT xses.sales_base_code                                            AS base_code                  -- 拠点コード
+                , xses.results_employee_code                                      AS emp_code                   -- 担当者コード
+                , xses.ship_to_customer_code                                      AS ship_cust_code             -- 顧客【納品先】
+                , xses.ship_gyotai_sho                                            AS ship_gyotai_sho            -- 顧客【納品先】業態（小分類）
+                , xses.ship_gyotai_tyu                                            AS ship_gyotai_tyu            -- 顧客【納品先】業態（中分類）
+                , xses.bill_cust_code                                             AS bill_cust_code             -- 顧客【請求先】
+                , xses.period_year                                                AS period_year                -- 会計年度
+                , xses.ship_delivery_chain_code                                   AS ship_delivery_chain_code   -- チェーン店コード
+                , xses.delivery_ym                                                AS delivery_ym                -- 納品日年月
+                , NULL                                                            AS dlv_qty                    -- 納品数量
+                , NULL                                                            AS dlv_uom_code               -- 納品単位
+                , 0                                                               AS amount_inc_tax             -- 売上金額(税込)
+                , NULL                                                            AS container_code             -- 容器区分コード
+                , NULL                                                            AS dlv_unit_price             -- 売価金額
+                , xses.tax_div                                                    AS tax_div                    -- 消費税区分
+                , xses.tax_code                                                   AS tax_code                   -- 税金コード
+                , xses.tax_rate                                                   AS tax_rate                   -- 消費税率
+                , xses.tax_rounding_rule                                          AS tax_rounding_rule          -- 端数処理区分
+                , xses.term_name                                                  AS term_name                  -- 支払条件
+                , xses.closing_date                                               AS closing_date               -- 締め日
+                , xses.expect_payment_date                                        AS expect_payment_date        -- 支払予定日
+                , xses.calc_target_period_from                                    AS calc_target_period_from    -- 計算対象期間(FROM)
+                , xses.calc_target_period_to                                      AS calc_target_period_to      -- 計算対象期間(TO)
+                , cv_calc_type_electricity_cost                                   AS calc_type                  -- 計算条件
+                , xses.bm1_vendor_code                                            AS bm1_vendor_code            -- 【ＢＭ１】仕入先コード
+                , xses.bm1_vendor_site_code                                       AS bm1_vendor_site_code       -- 【ＢＭ１】仕入先サイトコード
+                , xses.bm1_bm_payment_type                                        AS bm1_bm_payment_type        -- 【ＢＭ１】BM支払区分
+                , NULL                                                            AS bm1_pct                    -- 【ＢＭ１】BM率(%)
+                , xses.amount_inc_tax                                             AS bm1_amt                    -- 【ＢＭ１】BM金額
+                , NULL                                                            AS bm2_vendor_code            -- 【ＢＭ２】仕入先コード
+                , NULL                                                            AS bm2_vendor_site_code       -- 【ＢＭ２】仕入先サイトコード
+                , NULL                                                            AS bm2_bm_payment_type        -- 【ＢＭ２】BM支払区分
+                , NULL                                                            AS bm2_pct                    -- 【ＢＭ２】BM率(%)
+                , NULL                                                            AS bm2_amt                    -- 【ＢＭ２】BM金額
+                , NULL                                                            AS bm3_vendor_code            -- 【ＢＭ３】仕入先コード
+                , NULL                                                            AS bm3_vendor_site_code       -- 【ＢＭ３】仕入先サイトコード
+                , NULL                                                            AS bm3_bm_payment_type        -- 【ＢＭ３】BM支払区分
+                , NULL                                                            AS bm3_pct                    -- 【ＢＭ３】BM率(%)
+                , NULL                                                            AS bm3_amt                    -- 【ＢＭ３】BM金額
+                , NULL                                                            AS item_code                  -- エラー品目コード
+                , xses.amount_fix_date                                            AS amount_fix_date            -- 金額確定日
+           FROM ( SELECT xseh.ship_to_customer_code                 AS ship_to_customer_code         -- 【出荷先】顧客コード
+                       , xt0c.ship_gyotai_tyu                       AS ship_gyotai_tyu               -- 【出荷先】業態（中分類）
+                       , xt0c.ship_gyotai_sho                       AS ship_gyotai_sho               -- 【出荷先】業態（小分類）
+                       , xt0c.ship_delivery_chain_code              AS ship_delivery_chain_code      -- 【出荷先】納品先チェーンコード
+                       , xt0c.bill_cust_code                        AS bill_cust_code                -- 【請求先】顧客コード
+                       , xt0c.bm1_vendor_code                       AS bm1_vendor_code               -- 【ＢＭ１】仕入先コード
+                       , xt0c.bm1_vendor_site_code                  AS bm1_vendor_site_code          -- 【ＢＭ１】仕入先サイトコード
+                       , xt0c.bm1_bm_payment_type                   AS bm1_bm_payment_type           -- 【ＢＭ１】BM支払区分
+                       , xt0c.bm2_vendor_code                       AS bm2_vendor_code               -- 【ＢＭ２】仕入先コード
+                       , xt0c.bm2_vendor_site_code                  AS bm2_vendor_site_code          -- 【ＢＭ２】仕入先サイトコード
+                       , xt0c.bm2_bm_payment_type                   AS bm2_bm_payment_type           -- 【ＢＭ２】BM支払区分
+                       , xt0c.bm3_vendor_code                       AS bm3_vendor_code               -- 【ＢＭ３】仕入先コード
+                       , xt0c.bm3_vendor_site_code                  AS bm3_vendor_site_code          -- 【ＢＭ３】仕入先サイトコード
+                       , xt0c.bm3_bm_payment_type                   AS bm3_bm_payment_type           -- 【ＢＭ３】BM支払区分
+                       , xt0c.tax_div                               AS tax_div                       -- 消費税区分
+                       , xt0c.tax_code                              AS tax_code                      -- 税金コード
+                       , xt0c.tax_rate                              AS tax_rate                      -- 消費税率
+                       , xt0c.tax_rounding_rule                     AS tax_rounding_rule             -- 端数処理区分
+                       , xt0c.receiv_discount_rate                  AS receiv_discount_rate          -- 入金値引率
+                       , xt0c.term_name                             AS term_name                     -- 支払条件
+                       , xt0c.closing_date                          AS closing_date                  -- 締め日
+                       , xt0c.expect_payment_date                   AS expect_payment_date           -- 支払予定日
+                       , xt0c.period_year                           AS period_year                   -- 会計年度
+                       , xt0c.calc_target_period_from               AS calc_target_period_from       -- 計算対象期間(FROM)
+                       , xt0c.calc_target_period_to                 AS calc_target_period_to         -- 計算対象期間(TO)
+                       , xseh.sales_base_code                       AS sales_base_code               -- 売上拠点コード
+                       , xseh.results_employee_code                 AS results_employee_code         -- 成績計上者コード
+                       , TO_CHAR( xseh.delivery_date, 'RRRRMM' )    AS delivery_ym                   -- 納品年月
+                       , NULL                                       AS dlv_qty                       -- 納品数量
+                       , NULL                                       AS dlv_uom_code                  -- 納品単位
+                       , SUM( xsel.pure_amount + xsel.tax_amount )  AS amount_inc_tax                -- 売上金額（税込）
+                       , NULL                                       AS container_code                -- 容器区分コード
+                       , NULL                                       AS dlv_unit_price                -- 売価金額
+                       , NULL                                       AS item_code                     -- 在庫品目コード
+                       , xt0c.amount_fix_date                       AS amount_fix_date               -- 金額確定日
+                  FROM xxcok_tmp_014a01c_custdata    xt0c       -- 条件別販手販協計算顧客情報一時表
+                     , xxcos_sales_exp_headers       xseh       -- 販売実績ヘッダ
+                     , xxcos_sales_exp_lines         xsel       -- 販売実績明細
+                     , xxcmm_system_items_b          xsim       -- Disc品目アドオン
+                  WHERE xseh.ship_to_customer_code  = xt0c.ship_cust_code
+                    AND xseh.delivery_date         <= xt0c.closing_date
+                    AND xseh.sales_exp_header_id    = xsel.sales_exp_header_id
+                    AND xsel.to_calculate_fees_flag = cv_xsel_if_flag_no
+                    AND xsim.item_code              = xsel.item_code
+                    AND xsel.item_code              = gv_elec_change_item_code
+                  GROUP BY xseh.ship_to_customer_code
+                         , xt0c.ship_gyotai_tyu
+                         , xt0c.ship_gyotai_sho
+                         , xt0c.ship_delivery_chain_code
+                         , xt0c.bill_cust_code
+                         , xt0c.bm1_vendor_code
+                         , xt0c.bm1_vendor_site_code
+                         , xt0c.bm1_bm_payment_type
+                         , xt0c.bm2_vendor_code
+                         , xt0c.bm2_vendor_site_code
+                         , xt0c.bm2_bm_payment_type
+                         , xt0c.bm3_vendor_code
+                         , xt0c.bm3_vendor_site_code
+                         , xt0c.bm3_bm_payment_type
+                         , xt0c.tax_div
+                         , xt0c.tax_code
+                         , xt0c.tax_rate
+                         , xt0c.tax_rounding_rule
+                         , xt0c.receiv_discount_rate
+                         , xt0c.term_name
+                         , xt0c.closing_date
+                         , xt0c.expect_payment_date
+                         , xt0c.period_year
+                         , xt0c.calc_target_period_from
+                         , xt0c.calc_target_period_to
+                         , xseh.sales_base_code
+                         , xseh.results_employee_code
+                         , TO_CHAR( xseh.delivery_date, 'RRRRMM' )
+                         , xt0c.amount_fix_date
+                )                           xses      -- インラインビュー・販売実績情報（顧客サマリ）
+         )                        xbc
+    GROUP BY xbc.base_code
+           , xbc.emp_code
+           , xbc.ship_cust_code
+           , xbc.ship_gyotai_sho
+           , xbc.ship_gyotai_tyu
+           , xbc.bill_cust_code
+           , xbc.period_year
+           , xbc.ship_delivery_chain_code
+           , xbc.delivery_ym
+           , xbc.dlv_qty
+           , xbc.dlv_uom_code
+           , xbc.amount_inc_tax
+           , xbc.container_code
+           , xbc.dlv_unit_price
+           , xbc.tax_div
+           , xbc.tax_code
+           , xbc.tax_rate
+           , xbc.tax_rounding_rule
+           , xbc.term_name
+           , xbc.closing_date
+           , xbc.expect_payment_date
+           , xbc.calc_target_period_from
+           , xbc.calc_target_period_to
+           , xbc.calc_type
+           , xbc.bm1_vendor_code
+           , xbc.bm1_vendor_site_code
+           , xbc.bm1_bm_payment_type
+           , xbc.bm1_pct
+           , xbc.bm1_amt
+           , xbc.bm2_vendor_code
+           , xbc.bm2_vendor_site_code
+           , xbc.bm2_bm_payment_type
+           , xbc.bm2_pct
+           , xbc.bm2_amt
+           , xbc.bm3_vendor_code
+           , xbc.bm3_vendor_site_code
+           , xbc.bm3_bm_payment_type
+           , xbc.bm3_pct
+           , xbc.bm3_amt
+           , xbc.item_code
+           , xbc.amount_fix_date
+  ;
+  -- 販売実績情報・入金値引率
+  CURSOR get_sales_data_cur6 IS
+    SELECT xbc.base_code                                                  AS base_code                  -- 拠点コード
+         , xbc.emp_code                                                   AS emp_code                   -- 担当者コード
+         , xbc.ship_cust_code                                             AS ship_cust_code             -- 顧客【納品先】
+         , xbc.ship_gyotai_sho                                            AS ship_gyotai_sho            -- 顧客【納品先】業態（小分類）
+         , xbc.ship_gyotai_tyu                                            AS ship_gyotai_tyu            -- 顧客【納品先】業態（中分類）
+         , xbc.bill_cust_code                                             AS bill_cust_code             -- 顧客【請求先】
+         , xbc.period_year                                                AS period_year                -- 会計年度
+         , xbc.ship_delivery_chain_code                                   AS ship_delivery_chain_code   -- チェーン店コード
+         , xbc.delivery_ym                                                AS delivery_ym                -- 納品日年月
+         , xbc.dlv_qty                                                    AS dlv_qty                    -- 納品数量
+         , xbc.dlv_uom_code                                               AS dlv_uom_code               -- 納品単位
+         , xbc.amount_inc_tax                                             AS amount_inc_tax             -- 売上金額（税込）
+         , xbc.container_code                                             AS container_code             -- 容器区分コード
+         , xbc.dlv_unit_price                                             AS dlv_unit_price             -- 売価金額
+         , xbc.tax_div                                                    AS tax_div                    -- 消費税区分
+         , xbc.tax_code                                                   AS tax_code                   -- 税金コード
+         , xbc.tax_rate                                                   AS tax_rate                   -- 消費税率
+         , xbc.tax_rounding_rule                                          AS tax_rounding_rule          -- 端数処理区分
+         , xbc.term_name                                                  AS term_name                  -- 支払条件
+         , xbc.closing_date                                               AS closing_date               -- 締め日
+         , xbc.expect_payment_date                                        AS expect_payment_date        -- 支払予定日
+         , xbc.calc_target_period_from                                    AS calc_target_period_from    -- 計算対象期間(FROM)
+         , xbc.calc_target_period_to                                      AS calc_target_period_to      -- 計算対象期間(TO)
+         , xbc.calc_type                                                  AS calc_type                  -- 計算条件
+         , xbc.bm1_vendor_code                                            AS bm1_vendor_code            -- 【ＢＭ１】仕入先コード
+         , xbc.bm1_vendor_site_code                                       AS bm1_vendor_site_code       -- 【ＢＭ１】仕入先サイトコード
+         , xbc.bm1_bm_payment_type                                        AS bm1_bm_payment_type        -- 【ＢＭ１】BM支払区分
+         , xbc.bm1_pct                                                    AS bm1_pct                    -- 【ＢＭ１】BM率(%)
+         , xbc.bm1_amt                                                    AS bm1_amt                    -- 【ＢＭ１】BM金額
+         , TRUNC( SUM( xbc.amount_inc_tax * xbc.bm1_pct ) / 100 )         AS bm1_cond_bm_tax_pct        -- 【ＢＭ１】条件別手数料額(税込)_率
+         , TRUNC( SUM( xbc.dlv_qty * xbc.bm1_amt ) )                      AS bm1_cond_bm_amt_tax        -- 【ＢＭ１】条件別手数料額(税込)_額
+         , NULL                                                           AS bm1_electric_amt_tax       -- 【ＢＭ１】電気料(税込)
+         , xbc.bm2_vendor_code                                            AS bm2_vendor_code            -- 【ＢＭ２】仕入先コード
+         , xbc.bm2_vendor_site_code                                       AS bm2_vendor_site_code       -- 【ＢＭ２】仕入先サイトコード
+         , xbc.bm2_bm_payment_type                                        AS bm2_bm_payment_type        -- 【ＢＭ２】BM支払区分
+         , xbc.bm2_pct                                                    AS bm2_pct                    -- 【ＢＭ２】BM率(%)
+         , xbc.bm2_amt                                                    AS bm2_amt                    -- 【ＢＭ２】BM金額
+         , TRUNC( SUM( xbc.amount_inc_tax * xbc.bm2_pct ) / 100 )         AS bm2_cond_bm_tax_pct        -- 【ＢＭ２】条件別手数料額(税込)_率
+         , TRUNC( SUM( xbc.dlv_qty * xbc.bm2_amt ) )                      AS bm2_cond_bm_amt_tax        -- 【ＢＭ２】条件別手数料額(税込)_額
+         , NULL                                                           AS bm2_electric_amt_tax       -- 【ＢＭ２】電気料(税込)
+         , xbc.bm3_vendor_code                                            AS bm3_vendor_code            -- 【ＢＭ３】仕入先コード
+         , xbc.bm3_vendor_site_code                                       AS bm3_vendor_site_code       -- 【ＢＭ３】仕入先サイトコード
+         , xbc.bm3_bm_payment_type                                        AS bm3_bm_payment_type        -- 【ＢＭ３】BM支払区分
+         , xbc.bm3_pct                                                    AS bm3_pct                    -- 【ＢＭ３】BM率(%)
+         , xbc.bm3_amt                                                    AS bm3_amt                    -- 【ＢＭ３】BM金額
+         , TRUNC( SUM( xbc.amount_inc_tax * xbc.bm3_pct ) / 100 )         AS bm3_cond_bm_tax_pct        -- 【ＢＭ３】条件別手数料額(税込)_率
+         , TRUNC( SUM( xbc.dlv_qty * xbc.bm3_amt ) )                      AS bm3_cond_bm_amt_tax        -- 【ＢＭ３】条件別手数料額(税込)_額
+         , NULL                                                           AS bm3_electric_amt_tax       -- 【ＢＭ３】電気料(税込)
+         , xbc.item_code                                                  AS item_code                  -- エラー品目コード
+         , xbc.amount_fix_date                                            AS amount_fix_date            -- 金額確定日
+    FROM ( SELECT xses.sales_base_code                                            AS base_code                  -- 拠点コード
+                , xses.results_employee_code                                      AS emp_code                   -- 担当者コード
+                , xses.ship_to_customer_code                                      AS ship_cust_code             -- 顧客【納品先】
+                , xses.ship_gyotai_sho                                            AS ship_gyotai_sho            -- 顧客【納品先】業態（小分類）
+                , xses.ship_gyotai_tyu                                            AS ship_gyotai_tyu            -- 顧客【納品先】業態（中分類）
+                , xses.bill_cust_code                                             AS bill_cust_code             -- 顧客【請求先】
+                , xses.period_year                                                AS period_year                -- 会計年度
+                , xses.ship_delivery_chain_code                                   AS ship_delivery_chain_code   -- チェーン店コード
+                , xses.delivery_ym                                                AS delivery_ym                -- 納品日年月
+                , NULL                                                            AS dlv_qty                    -- 納品数量
+                , NULL                                                            AS dlv_uom_code               -- 納品単位
+                , amount_inc_tax                                                  AS amount_inc_tax             -- 売上金額(税込)
+                , NULL                                                            AS container_code             -- 容器区分コード
+                , NULL                                                            AS dlv_unit_price             -- 売価金額
+                , xses.tax_div                                                    AS tax_div                    -- 消費税区分
+                , xses.tax_code                                                   AS tax_code                   -- 税金コード
+                , xses.tax_rate                                                   AS tax_rate                   -- 消費税率
+                , xses.tax_rounding_rule                                          AS tax_rounding_rule          -- 端数処理区分
+                , xses.term_name                                                  AS term_name                  -- 支払条件
+                , xses.closing_date                                               AS closing_date               -- 締め日
+                , xses.expect_payment_date                                        AS expect_payment_date        -- 支払予定日
+                , xses.calc_target_period_from                                    AS calc_target_period_from    -- 計算対象期間(FROM)
+                , xses.calc_target_period_to                                      AS calc_target_period_to      -- 計算対象期間(TO)
+                , cv_calc_type_uniform_rate                                       AS calc_type                  -- 計算条件
+                , xses.bm1_vendor_code                                            AS bm1_vendor_code            -- 【ＢＭ１】仕入先コード
+                , xses.bm1_vendor_site_code                                       AS bm1_vendor_site_code       -- 【ＢＭ１】仕入先サイトコード
+                , xses.bm1_bm_payment_type                                        AS bm1_bm_payment_type        -- 【ＢＭ１】BM支払区分
+                , receiv_discount_rate                                            AS bm1_pct                    -- 【ＢＭ１】BM率(%)
+                , NULL                                                            AS bm1_amt                    -- 【ＢＭ１】BM金額
+                , NULL                                                            AS bm2_vendor_code            -- 【ＢＭ２】仕入先コード
+                , NULL                                                            AS bm2_vendor_site_code       -- 【ＢＭ２】仕入先サイトコード
+                , NULL                                                            AS bm2_bm_payment_type        -- 【ＢＭ２】BM支払区分
+                , NULL                                                            AS bm2_pct                    -- 【ＢＭ２】BM率(%)
+                , NULL                                                            AS bm2_amt                    -- 【ＢＭ２】BM金額
+                , NULL                                                            AS bm3_vendor_code            -- 【ＢＭ３】仕入先コード
+                , NULL                                                            AS bm3_vendor_site_code       -- 【ＢＭ３】仕入先サイトコード
+                , NULL                                                            AS bm3_bm_payment_type        -- 【ＢＭ３】BM支払区分
+                , NULL                                                            AS bm3_pct                    -- 【ＢＭ３】BM率(%)
+                , NULL                                                            AS bm3_amt                    -- 【ＢＭ３】BM金額
+                , NULL                                                            AS item_code                  -- エラー品目コード
+                , xses.amount_fix_date                                            AS amount_fix_date            -- 金額確定日
+           FROM ( SELECT xseh.ship_to_customer_code                 AS ship_to_customer_code         -- 【出荷先】顧客コード
+                       , xt0c.ship_gyotai_tyu                       AS ship_gyotai_tyu               -- 【出荷先】業態（中分類）
+                       , xt0c.ship_gyotai_sho                       AS ship_gyotai_sho               -- 【出荷先】業態（小分類）
+                       , xt0c.ship_delivery_chain_code              AS ship_delivery_chain_code      -- 【出荷先】納品先チェーンコード
+                       , xt0c.bill_cust_code                        AS bill_cust_code                -- 【請求先】顧客コード
+                       , xt0c.bm1_vendor_code                       AS bm1_vendor_code               -- 【ＢＭ１】仕入先コード
+                       , xt0c.bm1_vendor_site_code                  AS bm1_vendor_site_code          -- 【ＢＭ１】仕入先サイトコード
+                       , xt0c.bm1_bm_payment_type                   AS bm1_bm_payment_type           -- 【ＢＭ１】BM支払区分
+                       , xt0c.bm2_vendor_code                       AS bm2_vendor_code               -- 【ＢＭ２】仕入先コード
+                       , xt0c.bm2_vendor_site_code                  AS bm2_vendor_site_code          -- 【ＢＭ２】仕入先サイトコード
+                       , xt0c.bm2_bm_payment_type                   AS bm2_bm_payment_type           -- 【ＢＭ２】BM支払区分
+                       , xt0c.bm3_vendor_code                       AS bm3_vendor_code               -- 【ＢＭ３】仕入先コード
+                       , xt0c.bm3_vendor_site_code                  AS bm3_vendor_site_code          -- 【ＢＭ３】仕入先サイトコード
+                       , xt0c.bm3_bm_payment_type                   AS bm3_bm_payment_type           -- 【ＢＭ３】BM支払区分
+                       , xt0c.tax_div                               AS tax_div                       -- 消費税区分
+                       , xt0c.tax_code                              AS tax_code                      -- 税金コード
+                       , xt0c.tax_rate                              AS tax_rate                      -- 消費税率
+                       , xt0c.tax_rounding_rule                     AS tax_rounding_rule             -- 端数処理区分
+                       , xt0c.receiv_discount_rate                  AS receiv_discount_rate          -- 入金値引率
+                       , xt0c.term_name                             AS term_name                     -- 支払条件
+                       , xt0c.closing_date                          AS closing_date                  -- 締め日
+                       , xt0c.expect_payment_date                   AS expect_payment_date           -- 支払予定日
+                       , xt0c.period_year                           AS period_year                   -- 会計年度
+                       , xt0c.calc_target_period_from               AS calc_target_period_from       -- 計算対象期間(FROM)
+                       , xt0c.calc_target_period_to                 AS calc_target_period_to         -- 計算対象期間(TO)
+                       , xseh.sales_base_code                       AS sales_base_code               -- 売上拠点コード
+                       , xseh.results_employee_code                 AS results_employee_code         -- 成績計上者コード
+                       , TO_CHAR( xseh.delivery_date, 'RRRRMM' )    AS delivery_ym                   -- 納品年月
+                       , NULL                                       AS dlv_qty                       -- 納品数量
+                       , NULL                                       AS dlv_uom_code                  -- 納品単位
+                       , SUM( xsel.pure_amount + xsel.tax_amount )  AS amount_inc_tax                -- 売上金額（税込）
+                       , NULL                                       AS container_code                -- 容器区分コード
+                       , NULL                                       AS dlv_unit_price                -- 売価金額
+                       , NULL                                       AS item_code                     -- 在庫品目コード
+                       , xt0c.amount_fix_date                       AS amount_fix_date               -- 金額確定日
+                  FROM xxcok_tmp_014a01c_custdata    xt0c       -- 条件別販手販協計算顧客情報一時表
+                     , xxcos_sales_exp_headers       xseh       -- 販売実績ヘッダ
+                     , xxcos_sales_exp_lines         xsel       -- 販売実績明細
+                     , xxcmm_system_items_b          xsim       -- Disc品目アドオン
+                  WHERE xseh.ship_to_customer_code  = xt0c.ship_cust_code
+                    AND xseh.delivery_date         <= xt0c.closing_date
+                    AND xseh.sales_exp_header_id    = xsel.sales_exp_header_id
+                    AND xsel.to_calculate_fees_flag = cv_xsel_if_flag_no
+                    AND xsim.item_code              = xsel.item_code
+                    AND NOT EXISTS ( SELECT 'X'
+                                     FROM fnd_lookup_values             flv2       -- 非在庫品目
+                                     WHERE flv2.lookup_code         = xsel.item_code
+                                       AND flv2.lookup_type         = cv_lookup_type_05
+                                       AND flv2.language            = USERENV( 'LANG' )
+                                       AND flv2.enabled_flag        = cv_enable
+                                       AND gd_process_date       BETWEEN NVL( flv2.start_date_active, gd_process_date )
+                                                                     AND NVL( flv2.end_date_active,   gd_process_date )
+                        )
+                  GROUP BY xseh.ship_to_customer_code
+                         , xt0c.ship_gyotai_tyu
+                         , xt0c.ship_gyotai_sho
+                         , xt0c.ship_delivery_chain_code
+                         , xt0c.bill_cust_code
+                         , xt0c.bm1_vendor_code
+                         , xt0c.bm1_vendor_site_code
+                         , xt0c.bm1_bm_payment_type
+                         , xt0c.bm2_vendor_code
+                         , xt0c.bm2_vendor_site_code
+                         , xt0c.bm2_bm_payment_type
+                         , xt0c.bm3_vendor_code
+                         , xt0c.bm3_vendor_site_code
+                         , xt0c.bm3_bm_payment_type
+                         , xt0c.tax_div
+                         , xt0c.tax_code
+                         , xt0c.tax_rate
+                         , xt0c.tax_rounding_rule
+                         , xt0c.receiv_discount_rate
+                         , xt0c.term_name
+                         , xt0c.closing_date
+                         , xt0c.expect_payment_date
+                         , xt0c.period_year
+                         , xt0c.calc_target_period_from
+                         , xt0c.calc_target_period_to
+                         , xseh.sales_base_code
+                         , xseh.results_employee_code
+                         , TO_CHAR( xseh.delivery_date, 'RRRRMM' )
+                         , xt0c.amount_fix_date
+                )                           xses      -- インラインビュー・販売実績情報（顧客サマリ）
+           WHERE xses.ship_gyotai_tyu             <> cv_gyotai_tyu_vd
+         )                        xbc
+    GROUP BY xbc.base_code
+           , xbc.emp_code
+           , xbc.ship_cust_code
+           , xbc.ship_gyotai_sho
+           , xbc.ship_gyotai_tyu
+           , xbc.bill_cust_code
+           , xbc.period_year
+           , xbc.ship_delivery_chain_code
+           , xbc.delivery_ym
+           , xbc.dlv_qty
+           , xbc.dlv_uom_code
+           , xbc.amount_inc_tax
+           , xbc.container_code
+           , xbc.dlv_unit_price
+           , xbc.tax_div
+           , xbc.tax_code
+           , xbc.tax_rate
+           , xbc.tax_rounding_rule
+           , xbc.term_name
+           , xbc.closing_date
+           , xbc.expect_payment_date
+           , xbc.calc_target_period_from
+           , xbc.calc_target_period_to
+           , xbc.calc_type
+           , xbc.bm1_vendor_code
+           , xbc.bm1_vendor_site_code
+           , xbc.bm1_bm_payment_type
+           , xbc.bm1_pct
+           , xbc.bm1_amt
+           , xbc.bm2_vendor_code
+           , xbc.bm2_vendor_site_code
+           , xbc.bm2_bm_payment_type
+           , xbc.bm2_pct
+           , xbc.bm2_amt
+           , xbc.bm3_vendor_code
+           , xbc.bm3_vendor_site_code
+           , xbc.bm3_bm_payment_type
+           , xbc.bm3_pct
+           , xbc.bm3_amt
+           , xbc.item_code
+           , xbc.amount_fix_date
+  ;
+  --==================================================
+  -- グローバルタイプ
+  --==================================================
+  TYPE get_sales_data_rtype        IS RECORD (
+    base_code                      VARCHAR2(4)
+  , emp_code                       VARCHAR2(5)
+  , ship_cust_code                 VARCHAR2(9)
+  , ship_gyotai_sho                VARCHAR2(2)
+  , ship_gyotai_tyu                VARCHAR2(2)
+  , bill_cust_code                 VARCHAR2(9)
+  , period_year                    NUMBER
+  , ship_delivery_chain_code       VARCHAR2(9)
+  , delivery_ym                    VARCHAR2(6)
+  , dlv_qty                        NUMBER
+  , dlv_uom_code                   VARCHAR2(3)
+  , amount_inc_tax                 NUMBER
+  , container_code                 VARCHAR2(4)
+  , dlv_unit_price                 NUMBER
+  , tax_div                        VARCHAR2(1)
+  , tax_code                       VARCHAR2(50)
+  , tax_rate                       NUMBER
+  , tax_rounding_rule              VARCHAR2(30)
+  , term_name                      VARCHAR2(8)
+  , closing_date                   DATE
+  , expect_payment_date            DATE
+  , calc_target_period_from        DATE
+  , calc_target_period_to          DATE
+  , calc_type                      VARCHAR2(2)
+  , bm1_vendor_code                VARCHAR2(9)
+  , bm1_vendor_site_code           VARCHAR2(10)
+  , bm1_bm_payment_type            VARCHAR2(1)
+  , bm1_pct                        NUMBER
+  , bm1_amt                        NUMBER
+  , bm1_cond_bm_tax_pct            NUMBER
+  , bm1_cond_bm_amt_tax            NUMBER
+  , bm1_electric_amt_tax           NUMBER
+  , bm2_vendor_code                VARCHAR2(9)
+  , bm2_vendor_site_code           VARCHAR2(10)
+  , bm2_bm_payment_type            VARCHAR2(1)
+  , bm2_pct                        NUMBER
+  , bm2_amt                        NUMBER
+  , bm2_cond_bm_tax_pct            NUMBER
+  , bm2_cond_bm_amt_tax            NUMBER
+  , bm2_electric_amt_tax           NUMBER
+  , bm3_vendor_code                VARCHAR2(9)
+  , bm3_vendor_site_code           VARCHAR2(10)
+  , bm3_bm_payment_type            VARCHAR2(1)
+  , bm3_pct                        NUMBER
+  , bm3_amt                        NUMBER
+  , bm3_cond_bm_tax_pct            NUMBER
+  , bm3_cond_bm_amt_tax            NUMBER
+  , bm3_electric_amt_tax           NUMBER
+  , item_code                      VARCHAR2(7)
+  , amount_fix_date                DATE
+  );
+  TYPE xcbs_data_ttype             IS TABLE OF xxcok_cond_bm_support%ROWTYPE INDEX BY BINARY_INTEGER;
+--
   /**********************************************************************************
-   * Procedure Name   : del_bm_contract_err_info
-   * Description      : 販手条件エラーデータの削除(A-6,A-24)
+   * Procedure Name   : update_xsel
+   * Description      : 販売実績連携結果の更新(A-12)
    ***********************************************************************************/
-  PROCEDURE del_bm_contract_err_info(
-     ov_errbuf        OUT VARCHAR2                             -- エラーメッセージ
-    ,ov_retcode       OUT VARCHAR2                             -- リターン・コード
-    ,ov_errmsg        OUT VARCHAR2                             -- ユーザー・エラーメッセージ
-    ,iv_customer_code IN  hz_cust_accounts.account_number%TYPE -- 顧客コード
+  PROCEDURE update_xsel(
+    ov_errbuf                      OUT VARCHAR2        -- エラー・メッセージ
+  , ov_retcode                     OUT VARCHAR2        -- リターン・コード
+  , ov_errmsg                      OUT VARCHAR2        -- ユーザー・エラー・メッセージ
   )
   IS
-    --===============================
+    --==================================================
     -- ローカル定数
-    --===============================
-    cv_prg_name CONSTANT VARCHAR2(100) := 'del_bm_contract_err_info'; -- プログラム名
-    --===============================
+    --==================================================
+    cv_prg_name                    CONSTANT VARCHAR2(30) := 'update_xsel';      -- プログラム名
+    --==================================================
     -- ローカル変数
-    --===============================
-    lv_errbuf   VARCHAR2(5000); -- エラーメッセージ
-    lv_retcode  VARCHAR2(1);    -- リターン・コード
-    lv_errmsg   VARCHAR2(5000); -- ユーザー・エラーメッセージ
-    lv_out_msg  VARCHAR2(2000); -- メッセージ
-    lb_retcode  BOOLEAN;        -- APIリターン・メッセージ用
-    --===============================
-    -- ローカルカーソル定義
-    --===============================
-    -- 販手条件エラーテーブルロック
-    CURSOR bm_contract_err_del_cur(
-       iv_customer_code IN hz_cust_accounts.account_number%TYPE -- 顧客コード
-    )
+    --==================================================
+    lv_errbuf                      VARCHAR2(5000) DEFAULT NULL;                 -- エラー・メッセージ
+    lv_retcode                     VARCHAR2(1)    DEFAULT cv_status_normal;     -- リターン・コード
+    lv_end_retcode                 VARCHAR2(1)    DEFAULT cv_status_normal;     -- リターン・コード
+    lv_errmsg                      VARCHAR2(5000) DEFAULT NULL;                 -- ユーザー・エラー・メッセージ
+    lv_outmsg                      VARCHAR2(5000) DEFAULT NULL;                 -- 出力用メッセージ
+    lb_retcode                     BOOLEAN        DEFAULT TRUE;                 -- メッセージ出力関数戻り値
+    -- エラー時ログ出力用退避変数
+    lt_sales_exp_line_id           xxcos_sales_exp_lines.sales_exp_line_id%TYPE DEFAULT NULL;
+    --==================================================
+    -- ローカルカーソル
+    --==================================================
+    CURSOR xsel_update_lock_cur
     IS
-      SELECT xbe.cust_code AS bm_contract_err -- 販手条件
-      FROM   xxcok_bm_contract_err xbe -- 販手条件エラーテーブル
-      WHERE  xbe.cust_code = iv_customer_code
-      FOR UPDATE NOWAIT;
-  --
+      SELECT xsel.sales_exp_line_id    AS sales_exp_line_id    -- 販売実績明細ID
+           , xsel.sales_exp_header_id  AS sales_exp_header_id  -- 販売実績ヘッダID
+           , xsel.item_code            AS item_code            -- 品目コード
+           , xsel.dlv_unit_price       AS dlv_unit_price       -- 納品単価
+      FROM xxcok_tmp_014a01c_custdata xt0c            -- 条件別販手販協計算顧客情報一時表
+         , xxcos_sales_exp_headers    xseh            -- 販売実績ヘッダーテーブル
+         , xxcos_sales_exp_lines      xsel            -- 販売実績明細テーブル
+         , xxcmm_system_items_b       xsib            -- disc品目マスタアドオン
+         , fnd_lookup_values          flv             -- クイックコード（容器群）
+      WHERE xseh.ship_to_customer_code   = xt0c.ship_cust_code
+        AND xseh.delivery_date          <= xt0c.closing_date
+        AND xt0c.amount_fix_date         = gd_process_date
+        AND xseh.sales_exp_header_id     = xsel.sales_exp_header_id
+        AND xsel.to_calculate_fees_flag  = cv_xsel_if_flag_no
+        AND xsib.item_code               = xsel.item_code
+        AND flv.lookup_code (+)          = xsib.vessel_group
+        AND flv.lookup_type (+)          = cv_lookup_type_04
+        AND flv.language    (+)          = USERENV( 'LANG' )
+        AND flv.enabled_flag (+)         = cv_enable
+        AND gd_process_date BETWEEN NVL( flv.start_date_active, gd_process_date )
+                                AND NVL( flv.end_date_active  , gd_process_date )
+        AND NOT EXISTS ( SELECT 'X'
+                         FROM xxcok_bm_contract_err xbce
+                         WHERE xbce.cust_code           = xseh.ship_to_customer_code
+                           AND xbce.item_code           = xsel.item_code
+                           AND xbce.container_type_code = NVL( flv.attribute1, cv_container_code_others )
+                           AND xbce.selling_price       = xsel.dlv_unit_price
+            )
+      FOR UPDATE OF xsel.sales_exp_line_id NOWAIT
+    ;
+--
   BEGIN
-  --
-    -------------------------------------------------
-    -- 0.初期化
-    -------------------------------------------------
-    ov_retcode := cv_status_normal;
-    -------------------------------------------------
-    -- 1.販手条件エラーデータ削除ロック処理
-    -------------------------------------------------
-    -- ロック処理
-    OPEN bm_contract_err_del_cur(
-       iv_customer_code -- 顧客コード
-    );
-    CLOSE bm_contract_err_del_cur;
-    -------------------------------------------------
-    -- 2.販手条件エラーデータ削除処理
-    -------------------------------------------------
-    BEGIN
-      DELETE FROM xxcok_bm_contract_err xbe
-      WHERE xbe.cust_code = iv_customer_code;
-    EXCEPTION
-      ----------------------------------------------------------
-      -- 販手条件エラーデータ削除例外
-      ----------------------------------------------------------
-      WHEN OTHERS THEN
-        lv_out_msg := xxccp_common_pkg.get_msg(
-                         iv_application  => cv_ap_type_xxcok
-                        ,iv_name         => cv_prmmsg_10400
-                        ,iv_token_name1  => cv_tkn_cust_code
-                        ,iv_token_value1 => iv_customer_code
-                      );
-        lb_retcode := xxcok_common_pkg.put_message_f(
-                         in_which    => fnd_file.output -- 出力区分
-                        ,iv_message  => lv_out_msg      -- メッセージ
-                        ,in_new_line => cn_zero         -- 改行
-                      );
-        ov_errmsg  := lv_out_msg;
-        ov_errbuf  := SUBSTRB( cv_pkg_name||cv_msg_cont||cv_prg_name||cv_msg_part||lv_out_msg,1,5000 );
-        ov_retcode := cv_status_error;
-    END;
-  --
+    --==================================================
+    -- ステータス初期化
+    --==================================================
+    lv_end_retcode := cv_status_normal;
+    --==================================================
+    -- 販売実績連携結果更新ループ
+    --==================================================
+    << xsel_update_lock_loop >>
+    FOR xsel_update_lock_rec IN xsel_update_lock_cur LOOP
+      lt_sales_exp_line_id := xsel_update_lock_rec.sales_exp_line_id;
+      --==================================================
+      -- 販売実績連携結果データ更新
+      --==================================================
+      UPDATE xxcos_sales_exp_lines      xsel
+      SET xsel.to_calculate_fees_flag = cv_xsel_if_flag_yes   -- 手数料計算インターフェース済フラグ
+        , xsel.last_updated_by        = cn_last_updated_by
+        , xsel.last_update_date       = SYSDATE
+        , xsel.last_update_login      = cn_last_update_login
+        , xsel.request_id             = cn_request_id
+        , xsel.program_application_id = cn_program_application_id
+        , xsel.program_id             = cn_program_id
+        , xsel.program_update_date    = SYSDATE
+      WHERE xsel.sales_exp_header_id    = xsel_update_lock_rec.sales_exp_header_id
+        AND xsel.item_code              = xsel_update_lock_rec.item_code
+        AND xsel.dlv_unit_price         = xsel_update_lock_rec.dlv_unit_price
+        AND xsel.to_calculate_fees_flag = cv_xsel_if_flag_no
+      ;
+    END LOOP xsel_update_lock_loop;
+    --==================================================
+    -- 出力パラメータ設定
+    --==================================================
+    ov_errbuf  := NULL;
+    ov_errmsg  := NULL;
+    ov_retcode := lv_end_retcode;
+--
   EXCEPTION
-  --
-    ----------------------------------------------------------
-    -- ロック例外ハンドラ
-    ----------------------------------------------------------
-    WHEN global_lock_expt THEN
-      -- メッセージ取得
-      lv_out_msg := xxccp_common_pkg.get_msg(
-                       iv_application  => cv_ap_type_xxcok
-                      ,iv_name         => cv_prmmsg_00080
-                    );    
-      -- メッセージ出力
-      lb_retcode := xxcok_common_pkg.put_message_f(
-                       in_which    => fnd_file.output -- 出力区分
-                      ,iv_message  => lv_out_msg      -- メッセージ
-                      ,in_new_line => cn_zero         -- 改行
+    -- *** ロック取得エラー ***
+    WHEN resource_busy_expt THEN
+      lv_outmsg  := xxccp_common_pkg.get_msg(
+                      iv_application          => cv_appl_short_name_cok
+                    , iv_name                 => cv_msg_cok_00081
                     );
-      ov_errmsg  := lv_out_msg;
-      ov_errbuf  := SUBSTRB(cv_pkg_name||cv_msg_cont||cv_prg_name||cv_msg_part||lv_out_msg,1,5000);
-      ov_retcode := cv_status_warn;
-    ----------------------------------------------------------
-    -- 共通関数OTHERS例外ハンドラ
-    ----------------------------------------------------------
+      lb_retcode := xxcok_common_pkg.put_message_f(
+                      in_which                => FND_FILE.OUTPUT
+                    , iv_message              => lv_outmsg
+                    , in_new_line             => 0
+                    );
+      ov_errmsg  := NULL;
+      ov_errbuf  := SUBSTRB( cv_pkg_name || cv_msg_cont || cv_prg_name || cv_msg_part || lv_outmsg, 1, 5000 );
+      ov_retcode := cv_status_error;
+    -- *** 共通関数OTHERS例外 ***
     WHEN global_api_others_expt THEN
-      ov_errbuf  := SUBSTRB( cv_pkg_name||cv_msg_cont||cv_prg_name||cv_msg_part||SQLERRM,1,5000 );
+      ov_errbuf  := SUBSTRB( cv_pkg_name || cv_msg_cont || cv_prg_name || cv_msg_part || SQLERRM, 1, 5000 );
       ov_retcode := cv_status_error;
-    ----------------------------------------------------------
-    -- OTHERS例外ハンドラ
-    ----------------------------------------------------------
+    -- *** OTHERS例外 ***
     WHEN OTHERS THEN
-      ov_errbuf  := SUBSTRB( cv_pkg_name||cv_msg_cont||cv_prg_name||cv_msg_part||SQLERRM,1,5000 );
+fnd_file.put_line( FND_FILE.LOG, 'For Debug:' || 'sales_exp_line_id' || '【' || lt_sales_exp_line_id || '】' ); -- debug
+      ov_errbuf  := SUBSTRB( cv_pkg_name || cv_msg_cont || cv_prg_name || cv_msg_part || SQLERRM, 1, 5000 );
       ov_retcode := cv_status_error;
-  --
-  END del_bm_contract_err_info;
-  --
+  END update_xsel;
+--
   /**********************************************************************************
-   * Procedure Name   : get_bm_support_add_info
-   * Description      : 販手販協計算付加情報の取得(A-5,A-23,A-41)
+   * Procedure Name   : insert_xbce
+   * Description      : 販手条件エラーテーブルへの登録(A-11)
    ***********************************************************************************/
-  PROCEDURE get_bm_support_add_info(
-     ov_errbuf        OUT VARCHAR2                                       -- エラーメッセージ
-    ,ov_retcode       OUT VARCHAR2                                       -- リターン・コード
-    ,ov_errmsg        OUT VARCHAR2                                       -- ユーザー・エラーメッセージ
-    ,iv_vendor_type   IN  VARCHAR2                                       -- ベンダー区分
-    ,iv_customer_code IN  hz_cust_accounts.account_number%TYPE           -- 顧客コード
-    ,id_pay_date      IN  xxcok_cond_bm_support.expect_payment_date%TYPE -- 支払日
-    ,od_pay_work_date OUT xxcok_cond_bm_support.expect_payment_date%TYPE -- 支払予定日
-    ,ov_period_year   OUT gl_period_statuses.period_year%TYPE            -- 会計年度
+  PROCEDURE insert_xbce(
+    ov_errbuf                      OUT VARCHAR2        -- エラー・メッセージ
+  , ov_retcode                     OUT VARCHAR2        -- リターン・コード
+  , ov_errmsg                      OUT VARCHAR2        -- ユーザー・エラー・メッセージ
+  , i_get_sales_data_rec           IN  get_sales_data_rtype  -- 販売実績情報レコード
   )
   IS
-    --===============================
+    --==================================================
     -- ローカル定数
-    --===============================
-    cv_prg_name CONSTANT VARCHAR2(100) := 'get_bm_support_add_info'; -- プログラム名
-    --===============================
+    --==================================================
+    cv_prg_name                    CONSTANT VARCHAR2(30) := 'insert_xbce';      -- プログラム名
+    --==================================================
     -- ローカル変数
-    --===============================
-    lv_errbuf   VARCHAR2(5000); -- エラーメッセージ
-    lv_retcode  VARCHAR2(1);    -- リターン・コード
-    lv_errmsg   VARCHAR2(5000); -- ユーザー・エラーメッセージ
-    lv_out_msg  VARCHAR2(2000); -- メッセージ
-    lb_retcode  BOOLEAN;        -- APIリターン・メッセージ用
-    -- 付加情報退避
-    ld_pay_work_date   xxcok_cond_bm_support.expect_payment_date%TYPE := NULL; -- 営業日を考慮した支払日
-    lv_appl_short_name fnd_application.application_short_name%TYPE    := NULL; -- アプリケーション短縮名
-    lv_period_year     gl_period_statuses.period_year%TYPE            := NULL; -- 会計年度
-    lv_period_name     gl_period_statuses.period_name%TYPE            := NULL; -- 会計期間名
-    lv_closing_status  gl_period_statuses.closing_status%TYPE         := NULL; -- 会計カレンダステータス
-    --===============================
-    -- ローカル例外
-    --===============================
-    work_date_err_expt EXCEPTION; -- 営業日取得エラー
-    calendar_err_expt  EXCEPTION; -- 会計カレンダ情報取得エラー
-  --
+    --==================================================
+    lv_errbuf                      VARCHAR2(5000) DEFAULT NULL;                 -- エラー・メッセージ
+    lv_retcode                     VARCHAR2(1)    DEFAULT cv_status_normal;     -- リターン・コード
+    lv_end_retcode                 VARCHAR2(1)    DEFAULT cv_status_normal;     -- リターン・コード
+    lv_errmsg                      VARCHAR2(5000) DEFAULT NULL;                 -- ユーザー・エラー・メッセージ
+    lv_outmsg                      VARCHAR2(5000) DEFAULT NULL;                 -- 出力用メッセージ
+    lb_retcode                     BOOLEAN        DEFAULT TRUE;                 -- メッセージ出力関数戻り値
+--
   BEGIN
-  --
-    -------------------------------------------------
-    -- 0.初期化
-    -------------------------------------------------
-    ov_retcode := cv_status_normal;
-    -------------------------------------------------
-    -- 1.支払予定日取得（共通）
-    -------------------------------------------------
-    BEGIN
-      -- 営業日取得
-      ld_pay_work_date := xxcok_common_pkg.get_operating_day_f(
-         id_proc_date => id_pay_date -- 処理日：今回支払日
-        ,in_days      => cn_zero     -- 日数：条件別販手販協計算処理期間(From)
-        ,in_proc_type => cn_one      -- 処理区分：前
+    --==================================================
+    -- ステータス初期化
+    --==================================================
+    lv_end_retcode := cv_status_normal;
+    --==================================================
+    -- 販手条件エラーテーブルへの登録
+    --==================================================
+    IF( i_get_sales_data_rec.calc_type IS NULL ) THEN
+      INSERT INTO xxcok_bm_contract_err (
+        base_code              -- 拠点コード
+      , cust_code              -- 顧客コード
+      , item_code              -- 品目コード
+      , container_type_code    -- 容器区分コード
+      , selling_price          -- 売価
+      , selling_amt_tax        -- 売上金額(税込)
+      , closing_date           -- 締め日
+      , created_by             -- 作成者
+      , creation_date          -- 作成日
+      , last_updated_by        -- 最終更新者
+      , last_update_date       -- 最終更新日
+      , last_update_login      -- 最終更新ログイン
+      , request_id             -- 要求ID
+      , program_application_id -- コンカレント・プログラム・アプリケーションID
+      , program_id             -- コンカレント・プログラムID
+      , program_update_date    -- プログラム更新日
+      )
+      VALUES (
+        i_get_sales_data_rec.base_code           -- 拠点コード
+      , i_get_sales_data_rec.ship_cust_code      -- 顧客コード
+      , i_get_sales_data_rec.item_code           -- 品目コード
+      , i_get_sales_data_rec.container_code      -- 容器区分コード
+      , i_get_sales_data_rec.dlv_unit_price      -- 売価
+      , i_get_sales_data_rec.amount_inc_tax      -- 売上金額(税込)
+      , i_get_sales_data_rec.closing_date        -- 締め日
+      , cn_created_by                            -- 作成者
+      , SYSDATE                                  -- 作成日
+      , cn_last_updated_by                       -- 最終更新者
+      , SYSDATE                                  -- 最終更新日
+      , cn_last_update_login                     -- 最終更新ログイン
+      , cn_request_id                            -- 要求ID
+      , cn_program_application_id                -- コンカレント・プログラム・アプリケーションID
+      , cn_program_id                            -- コンカレント・プログラムID
+      , SYSDATE                                  -- プログラム更新日
       );
-    EXCEPTION
-      WHEN OTHERS THEN
-        -- 営業日取得エラー
-        RAISE work_date_err_expt;
-    END;
-    -------------------------------------------------
-    -- 2.会計年度取得（共通）
-    -------------------------------------------------
-    IF ( iv_vendor_type = cv_vendor_type1 ) THEN
-      lv_appl_short_name := cv_ap_type_sqlgl; -- アプリケーション短縮名：SQLGL
+      gn_contract_err_cnt := gn_contract_err_cnt + 1;
+      lv_end_retcode := cv_status_warn;
+    END IF;
+    --==================================================
+    -- 出力パラメータ設定
+    --==================================================
+    ov_errbuf  := NULL;
+    ov_errmsg  := NULL;
+    ov_retcode := lv_end_retcode;
+--
+  EXCEPTION
+    -- *** エラー終了 ***
+    WHEN error_proc_expt THEN
+      ov_errmsg  := NULL;
+      ov_errbuf  := SUBSTRB( cv_pkg_name || cv_msg_cont || cv_prg_name || cv_msg_part || lv_outmsg, 1, 5000 );
+      ov_retcode := cv_status_error;
+    -- *** 処理部共通例外 ***
+    WHEN global_process_expt THEN
+      ov_errmsg  := NULL;
+      ov_errbuf  := SUBSTRB( cv_pkg_name || cv_msg_cont || cv_prg_name || cv_msg_part || lv_errbuf, 1, 5000 );
+      ov_retcode := lv_end_retcode;
+    -- *** 共通関数OTHERS例外 ***
+    WHEN global_api_others_expt THEN
+      ov_errbuf  := SUBSTRB( cv_pkg_name || cv_msg_cont || cv_prg_name || cv_msg_part || SQLERRM, 1, 5000 );
+      ov_retcode := cv_status_error;
+    -- *** OTHERS例外 ***
+    WHEN OTHERS THEN
+fnd_file.put_line( FND_FILE.LOG, 'For Debug:' || 'ship_cust_code' || '【' || i_get_sales_data_rec.ship_cust_code || '】' ); -- debug
+      ov_errbuf  := SUBSTRB( cv_pkg_name || cv_msg_cont || cv_prg_name || cv_msg_part || SQLERRM, 1, 5000 );
+      ov_retcode := cv_status_error;
+  END insert_xbce;
+--
+  /**********************************************************************************
+   * Procedure Name   : insert_xcbs
+   * Description      : 条件別販手販協テーブルへの登録(A-10)
+   ***********************************************************************************/
+  PROCEDURE insert_xcbs(
+    ov_errbuf                      OUT VARCHAR2        -- エラー・メッセージ
+  , ov_retcode                     OUT VARCHAR2        -- リターン・コード
+  , ov_errmsg                      OUT VARCHAR2        -- ユーザー・エラー・メッセージ
+  , i_get_sales_data_rec           IN  get_sales_data_rtype      -- 販売実績情報レコード
+  , i_xcbs_data_tab                IN  xcbs_data_ttype           -- 条件別販手販協情報
+  )
+  IS
+    --==================================================
+    -- ローカル定数
+    --==================================================
+    cv_prg_name                    CONSTANT VARCHAR2(30) := 'insert_xcbs';      -- プログラム名
+    cn_index_1                     CONSTANT NUMBER       := 1;                  -- BM1_索引
+    cn_index_2                     CONSTANT NUMBER       := 2;                  -- BM2_索引
+    cn_index_3                     CONSTANT NUMBER       := 3;                  -- BM3_索引
+    --==================================================
+    -- ローカル変数
+    --==================================================
+    lv_errbuf                      VARCHAR2(5000) DEFAULT NULL;                 -- エラー・メッセージ
+    lv_retcode                     VARCHAR2(1)    DEFAULT cv_status_normal;     -- リターン・コード
+    lv_end_retcode                 VARCHAR2(1)    DEFAULT cv_status_normal;     -- リターン・コード
+    lv_errmsg                      VARCHAR2(5000) DEFAULT NULL;                 -- ユーザー・エラー・メッセージ
+    lv_outmsg                      VARCHAR2(5000) DEFAULT NULL;                 -- 出力用メッセージ
+    lb_retcode                     BOOLEAN        DEFAULT TRUE;                 -- メッセージ出力関数戻り値
+    lv_fix_status                  xxcok_cond_bm_support.amt_fix_status%TYPE;   -- 金額確定ステータス
+--
+  BEGIN
+    --==================================================
+    -- ステータス初期化
+    --==================================================
+    lv_end_retcode := cv_status_normal;
+    --==================================================
+    -- 金額確定ステータス決定
+    --==================================================
+    IF( i_get_sales_data_rec.amount_fix_date = gd_process_date ) THEN
+      lv_fix_status := cv_xcbs_fix;
     ELSE
-      lv_appl_short_name := cv_ap_type_ar;    -- アプリケーション短縮名：AR
+      lv_fix_status := cv_xcbs_temp;
     END IF;
-    -- 会計カレンダ情報取得
-    xxcok_common_pkg.get_acctg_calendar_p(
-       ov_errbuf                 => lv_errbuf          -- エラーメッセージ
-      ,ov_retcode                => lv_retcode         -- リターン・コード
-      ,ov_errmsg                 => lv_errmsg          -- ユーザー・エラーメッセージ
-      ,in_set_of_books_id        => gn_pro_books_id    -- 会計帳簿ID
-      ,iv_application_short_name => lv_appl_short_name -- アプリケーション短縮名
-      ,id_object_date            => ld_pay_work_date   -- 対象日
-      ,on_period_year            => lv_period_year     -- 会計年度
-      ,ov_period_name            => lv_period_name     -- 会計期間名
-      ,ov_closing_status         => lv_closing_status  -- ステータス
-    );
-    -- ステータスエラー判定
-    IF ( lv_retcode = cv_status_error ) OR
-       ( lv_closing_status <> cv_cal_op_status ) THEN
-      RAISE calendar_err_expt;
-    END IF;
-    -------------------------------------------------
-    -- 3.戻り値設定
-    -------------------------------------------------
-    od_pay_work_date := ld_pay_work_date; -- 支払予定日
-    ov_period_year   := lv_period_year;   -- 会計年度
-  --
+    --==================================================
+    -- ループ処理でBM1からBM3までの3レコードを登録
+    --==================================================
+    << insert_xcbs_loop >>
+    FOR i IN cn_index_1 .. cn_index_3 LOOP
+      --==================================================
+      -- 登録条件確認
+      --==================================================
+      IF( i_xcbs_data_tab( i ).supplier_code IS NOT NULL ) THEN
+        --==================================================
+        -- 条件別販手販協計算結果を条件別販手販協テーブルに登録
+        --==================================================
+        INSERT INTO xxcok_cond_bm_support (
+          cond_bm_support_id        -- 条件別販手販協ID
+        , base_code                 -- 拠点コード
+        , emp_code                  -- 担当者コード
+        , delivery_cust_code        -- 顧客【納品先】
+        , demand_to_cust_code       -- 顧客【請求先】
+        , acctg_year                -- 会計年度
+        , chain_store_code          -- チェーン店コード
+        , supplier_code             -- 仕入先コード
+        , supplier_site_code        -- 仕入先サイトコード
+        , calc_type                 -- 計算条件
+        , delivery_date             -- 納品日年月
+        , delivery_qty              -- 納品数量
+        , delivery_unit_type        -- 納品単位
+        , selling_amt_tax           -- 売上金額(税込)
+        , rebate_rate               -- 割戻率
+        , rebate_amt                -- 割戻額
+        , container_type_code       -- 容器区分コード
+        , selling_price             -- 売価金額
+        , cond_bm_amt_tax           -- 条件別手数料額(税込)
+        , cond_bm_amt_no_tax        -- 条件別手数料額(税抜)
+        , cond_tax_amt              -- 条件別消費税額
+        , electric_amt_tax          -- 電気料(税込)
+        , electric_amt_no_tax       -- 電気料(税抜)
+        , electric_tax_amt          -- 電気料消費税額
+        , csh_rcpt_discount_amt     -- 入金値引額
+        , csh_rcpt_discount_amt_tax -- 入金値引消費税額
+        , consumption_tax_class     -- 消費税区分
+        , tax_code                  -- 税金コード
+        , tax_rate                  -- 消費税率
+        , term_code                 -- 支払条件
+        , closing_date              -- 締め日
+        , expect_payment_date       -- 支払予定日
+        , calc_target_period_from   -- 計算対象期間(FROM)
+        , calc_target_period_to     -- 計算対象期間(TO)
+        , cond_bm_interface_status  -- 連携ステータス(条件別販手販協)
+        , cond_bm_interface_date    -- 連携日(条件別販手販協)
+        , bm_interface_status       -- 連携ステータス(販手残高)
+        , bm_interface_date         -- 連携日(販手残高)
+        , ar_interface_status       -- 連携ステータス(AR)
+        , ar_interface_date         -- 連携日(AR)
+        , amt_fix_status            -- 金額確定ステータス
+        , created_by                -- 作成者
+        , creation_date             -- 作成日
+        , last_updated_by           -- 最終更新者
+        , last_update_date          -- 最終更新日
+        , last_update_login         -- 最終更新ログイン
+        , request_id                -- 要求ID
+        , program_application_id    -- コンカレント・プログラム・アプリケーションID
+        , program_id                -- コンカレント・プログラムID
+        , program_update_date       -- プログラム更新日
+        )
+        VALUES (
+          xxcok_cond_bm_support_s01.NEXTVAL                   -- 条件別販手販協ID
+        , i_xcbs_data_tab( i ).base_code                 -- 拠点コード
+        , i_xcbs_data_tab( i ).emp_code                  -- 担当者コード
+        , i_xcbs_data_tab( i ).delivery_cust_code        -- 顧客【納品先】
+        , i_xcbs_data_tab( i ).demand_to_cust_code       -- 顧客【請求先】
+        , i_xcbs_data_tab( i ).acctg_year                -- 会計年度
+        , i_xcbs_data_tab( i ).chain_store_code          -- チェーン店コード
+        , i_xcbs_data_tab( i ).supplier_code             -- 仕入先コード
+        , i_xcbs_data_tab( i ).supplier_site_code        -- 仕入先サイトコード
+        , i_xcbs_data_tab( i ).calc_type                 -- 計算条件
+        , i_xcbs_data_tab( i ).delivery_date             -- 納品日年月
+        , i_xcbs_data_tab( i ).delivery_qty              -- 納品数量
+        , i_xcbs_data_tab( i ).delivery_unit_type        -- 納品単位
+        , i_xcbs_data_tab( i ).selling_amt_tax           -- 売上金額(税込)
+        , i_xcbs_data_tab( i ).rebate_rate               -- 割戻率
+        , i_xcbs_data_tab( i ).rebate_amt                -- 割戻額
+        , i_xcbs_data_tab( i ).container_type_code       -- 容器区分コード
+        , i_xcbs_data_tab( i ).selling_price             -- 売価金額
+        , i_xcbs_data_tab( i ).cond_bm_amt_tax           -- 条件別手数料額(税込)
+        , i_xcbs_data_tab( i ).cond_bm_amt_no_tax        -- 条件別手数料額(税抜)
+        , i_xcbs_data_tab( i ).cond_tax_amt              -- 条件別消費税額
+        , i_xcbs_data_tab( i ).electric_amt_tax          -- 電気料(税込)
+        , i_xcbs_data_tab( i ).electric_amt_no_tax       -- 電気料(税抜)
+        , i_xcbs_data_tab( i ).electric_tax_amt          -- 電気料消費税額
+        , i_xcbs_data_tab( i ).csh_rcpt_discount_amt     -- 入金値引額
+        , i_xcbs_data_tab( i ).csh_rcpt_discount_amt_tax -- 入金値引消費税額
+        , i_xcbs_data_tab( i ).consumption_tax_class     -- 消費税区分
+        , i_xcbs_data_tab( i ).tax_code                  -- 税金コード
+        , i_xcbs_data_tab( i ).tax_rate                  -- 消費税率
+        , i_xcbs_data_tab( i ).term_code                 -- 支払条件
+        , i_xcbs_data_tab( i ).closing_date              -- 締め日
+        , i_xcbs_data_tab( i ).expect_payment_date       -- 支払予定日
+        , i_xcbs_data_tab( i ).calc_target_period_from   -- 計算対象期間(FROM)
+        , i_xcbs_data_tab( i ).calc_target_period_to     -- 計算対象期間(TO)
+        , i_xcbs_data_tab( i ).cond_bm_interface_status  -- 連携ステータス(条件別販手販協)
+        , i_xcbs_data_tab( i ).cond_bm_interface_date    -- 連携日(条件別販手販協)
+        , i_xcbs_data_tab( i ).bm_interface_status       -- 連携ステータス(販手残高)
+        , i_xcbs_data_tab( i ).bm_interface_date         -- 連携日(販手残高)
+        , i_xcbs_data_tab( i ).ar_interface_status       -- 連携ステータス(AR)
+        , i_xcbs_data_tab( i ).ar_interface_date         -- 連携日(AR)
+        , lv_fix_status                                  -- 金額確定ステータス
+        , cn_created_by                                       -- 作成者
+        , SYSDATE                                             -- 作成日
+        , cn_last_updated_by                                  -- 最終更新者
+        , SYSDATE                                             -- 最終更新日
+        , cn_last_update_login                                -- 最終更新ログイン
+        , cn_request_id                                       -- 要求ID
+        , cn_program_application_id                           -- コンカレント・プログラム・アプリケーションID
+        , cn_program_id                                       -- コンカレント・プログラムID
+        , SYSDATE                                             -- プログラム更新日
+        );
+      END IF;
+    END LOOP insert_xcbs_loop;
+    --==================================================
+    -- 出力パラメータ設定
+    --==================================================
+    ov_errbuf  := NULL;
+    ov_errmsg  := NULL;
+    ov_retcode := lv_end_retcode;
+--
   EXCEPTION
-  --
-    ----------------------------------------------------------
-    -- 営業日取得例外ハンドラ
-    ----------------------------------------------------------
-    WHEN work_date_err_expt THEN
-      -- メッセージ取得
--- 2009/05/20 Ver.1.8 [障害T1_0686] SCS K.Yamaguchi REPAIR START
---      lv_out_msg := xxccp_common_pkg.get_msg(
---                       iv_application  => cv_ap_type_xxcok
---                      ,iv_name         => cv_prmmsg_00027
---                    );    
-      lv_out_msg := xxccp_common_pkg.get_msg(
-                       iv_application  => cv_ap_type_xxcok
-                      ,iv_name         => cv_prmmsg_10455
-                      ,iv_token_name1  => cv_tkn_cust_code
-                      ,iv_token_value1 => iv_customer_code
-                    );    
--- 2009/05/20 Ver.1.8 [障害T1_0686] SCS K.Yamaguchi REPAIR END
-      -- メッセージ出力
-      lb_retcode := xxcok_common_pkg.put_message_f(
-                       in_which    => fnd_file.output -- 出力区分
-                      ,iv_message  => lv_out_msg      -- メッセージ
-                      ,in_new_line => cn_zero         -- 改行
-                    );
-      ov_errmsg  := lv_out_msg;
-      ov_errbuf  := SUBSTRB(cv_pkg_name||cv_msg_cont||cv_prg_name||cv_msg_part||lv_out_msg,1,5000);
-      ov_retcode := cv_status_warn;
-    ----------------------------------------------------------
-    -- 会計カレンダ情報取得例外ハンドラ
-    ----------------------------------------------------------
-    WHEN calendar_err_expt THEN
-      -- メッセージ取得
--- 2009/05/20 Ver.1.8 [障害T1_0686] SCS K.Yamaguchi REPAIR START
---      lv_out_msg := xxccp_common_pkg.get_msg(
---                       iv_application  => cv_ap_type_xxcok
---                      ,iv_name         => cv_prmmsg_00011
---                      ,iv_token_name1  => cv_tkn_proc_date
---                      ,iv_token_value1 => TO_CHAR( ld_pay_work_date,cv_format1 )
---                    );    
-      lv_out_msg := xxccp_common_pkg.get_msg(
-                       iv_application  => cv_ap_type_xxcok
-                      ,iv_name         => cv_prmmsg_10456
-                      ,iv_token_name1  => cv_tkn_cust_code
-                      ,iv_token_value1 => iv_customer_code
-                      ,iv_token_name2  => cv_tkn_proc_date
-                      ,iv_token_value2 => TO_CHAR( ld_pay_work_date,cv_format1 )
-                    );
--- 2009/05/20 Ver.1.8 [障害T1_0686] SCS K.Yamaguchi REPAIR END
-      -- メッセージ出力
-      lb_retcode := xxcok_common_pkg.put_message_f(
-                       in_which    => fnd_file.output -- 出力区分
-                      ,iv_message  => lv_out_msg      -- メッセージ
-                      ,in_new_line => cn_zero         -- 改行
-                    );
-      ov_errmsg  := lv_out_msg;
-      ov_errbuf  := SUBSTRB(cv_pkg_name||cv_msg_cont||cv_prg_name||cv_msg_part||lv_out_msg,1,5000);
-      ov_retcode := cv_status_warn;
-    ----------------------------------------------------------
-    -- 共通関数OTHERS例外ハンドラ
-    ----------------------------------------------------------
-    WHEN global_api_others_expt THEN
-      ov_errbuf  := SUBSTRB( cv_pkg_name||cv_msg_cont||cv_prg_name||cv_msg_part||SQLERRM,1,5000 );
-      ov_retcode := cv_status_error;
-    ----------------------------------------------------------
-    -- OTHERS例外ハンドラ
-    ----------------------------------------------------------
-    WHEN OTHERS THEN
-      ov_errbuf  := SUBSTRB( cv_pkg_name||cv_msg_cont||cv_prg_name||cv_msg_part||SQLERRM,1,5000 );
-      ov_retcode := cv_status_error;
-  --
-  END get_bm_support_add_info;
-  --
-  /**********************************************************************************
-   * Procedure Name   : chk_customer_info
-   * Description      : 処理対象顧客データの判断(A-4,A-22,A-40)
-   ***********************************************************************************/
-  PROCEDURE chk_customer_info(
-     ov_errbuf         OUT VARCHAR2                             -- エラーメッセージ
-    ,ov_retcode        OUT VARCHAR2                             -- リターン・コード
-    ,ov_errmsg         OUT VARCHAR2                             -- ユーザー・エラーメッセージ
-    ,iv_vendor_type    IN  VARCHAR2                             -- ベンダー区分
-    ,iv_customer_code  IN  hz_cust_accounts.account_number%TYPE -- 顧客コード
-    ,ov_bill_cust_code OUT hz_cust_accounts.account_number%TYPE -- 請求先顧客コード
-    ,ot_many_term      OUT g_many_term_ttype                    -- 複数支払条件
-  )
-  IS
-    --===============================
-    -- ローカル定数
-    --===============================
-    cv_prg_name CONSTANT VARCHAR2(100) := 'chk_customer_info'; -- プログラム名
-    --===============================
-    -- ローカル変数
-    --===============================
-    lv_errbuf   VARCHAR2(5000); -- エラーメッセージ
-    lv_retcode  VARCHAR2(1);    -- リターン・コード
-    lv_errmsg   VARCHAR2(5000); -- ユーザー・エラーメッセージ
-    lv_out_msg  VARCHAR2(2000); -- メッセージ
-    lb_retcode  BOOLEAN;        -- APIリターン・メッセージ用
-    -- カウンタ
-    ln_term_cnt  PLS_INTEGER := 0; -- 支払条件カウンタ
-    ln_close_cnt PLS_INTEGER := 0; -- 締め日カウンタ
-    ln_match_cnt PLS_INTEGER := 0; -- 締め日ソート用カウンタ
-    -- 処理結果
-    ld_pre_month1 DATE   := NULL; -- 前月処理日退避
-    ld_pre_month2 DATE   := NULL; -- 前々月処理日退避
-    ln_bill_cycle NUMBER := NULL; -- 請求書発行サイクル退避
-    -- 支払情報テーブル定義
-    lt_term_name  g_term_name_ttype;  -- 支払条件退避
-    lt_close_date g_close_date_ttype; -- 締め日情報退避
-    -- 処理結果タイプ定義
-    lv_bill_cust_code hz_cust_accounts.account_number%TYPE           := NULL; -- 請求先顧客コード
-    ld_close_date     xxcok_cond_bm_support.closing_date%TYPE        := NULL; -- 締め日
-    ld_pay_date       xxcok_cond_bm_support.expect_payment_date%TYPE := NULL; -- 支払日
-    ld_to_close_date  xxcok_cond_bm_support.closing_date%TYPE        := NULL; -- 今回締め日
-    ld_to_pay_date    xxcok_cond_bm_support.expect_payment_date%TYPE := NULL; -- 今回支払日
-    ld_fm_close_date  xxcok_cond_bm_support.closing_date%TYPE        := NULL; -- 前回締め日
-    ld_fm_pay_date    xxcok_cond_bm_support.expect_payment_date%TYPE := NULL; -- 前回支払日
-    ld_stert_date     xxcok_cond_bm_support.closing_date%TYPE        := NULL; -- 販手販協計算開始日
-    ld_end_date       xxcok_cond_bm_support.closing_date%TYPE        := NULL; -- 販手販協計算終了日
-    lv_term_name1     ra_terms_tl.name%TYPE                          := NULL; -- 支払条件1
-    lv_term_name2     ra_terms_tl.name%TYPE                          := NULL; -- 支払条件2
-    lv_term_name3     ra_terms_tl.name%TYPE                          := NULL; -- 支払条件3
-    --===============================
-    -- ローカルカーソル定義
-    --===============================
-    -- 契約情報カーソル定義
-    CURSOR contract_info_cur(
-       iv_customer_code IN hz_cust_accounts.account_number%TYPE -- 顧客コード
-    )
-    IS
-      SELECT xcm.install_account_number AS in_account_number -- 設置先顧客コード
-            ,xcm.close_day_code         AS close_day_code      -- 締め日
-            ,xcm.transfer_day_code      AS transfer_day_code   -- 振込日
-            ,xcm.transfer_month_code    AS transfer_month_code -- 振込月
-      FROM   xxcso_contract_managements xcm
-            ,( SELECT MAX( contract_number ) AS contract_number   -- 契約番号
-                     ,install_account_id     AS in_account_number -- 設置先顧客ID
-               FROM   xxcso_contract_managements xcm -- 契約管理テーブル
-                     ,hz_cust_accounts           hca -- 顧客マスタ
-                     ,xxcmm_cust_accounts        xca -- 顧客マスタアドオン
-               WHERE  hca.account_number      = iv_customer_code
-               AND    hca.customer_class_code = cv_cust_type1 -- 顧客区分：顧客
-               AND    hca.cust_account_id     = xca.customer_id
-               AND    xca.business_low_type   = cv_bus_type1 -- 業態小分類区分：フルベンダー
-               AND    hca.cust_account_id     = xcm.install_account_id
-               AND    xcm.status              = cv_one -- 確定済
-               GROUP BY install_account_id ) ina
-      WHERE  xcm.contract_number    = ina.contract_number
-      AND    xcm.install_account_id = ina.in_account_number
-      AND    xcm.status             = cv_one -- 確定済
-      AND    ROWNUM                 = 1;
-    -- 契約情報レコード定義
-    contract_info_rec contract_info_cur%ROWTYPE;
-    -- 請求先顧客情報カーソル定義
-    CURSOR bill_cust_info_cur(
-       iv_customer_code IN hz_cust_accounts.account_number%TYPE -- 顧客コード
-      ,in_org_id        IN hz_cust_acct_sites_all.org_id%TYPE   -- 組織ID
-      ,iv_language      IN ra_terms_tl.language%TYPE            -- 言語
-    )
-    IS
-      SELECT hca.account_number AS customer_code -- 顧客コード
-            ,rt1.name           AS term_name1    -- 支払条件１
-            ,rt2.name           AS term_name2    -- 支払条件２
-            ,rt3.name           AS term_name3    -- 支払条件３
-            ,hcu.attribute8     AS bill_cycle    -- 請求書発行サイクル
-      FROM   hz_cust_accounts       hca -- 顧客マスタ
-            ,hz_cust_acct_sites_all hcs -- 顧客サイトマスタ
-            ,hz_cust_site_uses_all  hcu -- 顧客サイト使用目的
-            ,ra_terms_tl            rt1 -- 支払条件マスタ１
-            ,ra_terms_tl            rt2 -- 支払条件マスタ２
-            ,ra_terms_tl            rt3 -- 支払条件マスタ３
-      WHERE  hca.account_number    = iv_customer_code
-      AND    hca.cust_account_id   = hcs.cust_account_id
-      AND    hcs.org_id            = in_org_id
-      AND    hcs.cust_acct_site_id = hcu.cust_acct_site_id
-      AND    hcu.org_id            = in_org_id
-      AND    hcu.site_use_code     = cv_bill_site_use -- 請求先
-      AND    hcu.payment_term_id   = rt1.term_id
-      AND    rt1.language          = iv_language
-      AND    hcu.attribute2        = rt2.term_id(+)
-      AND    rt2.language(+)       = iv_language
-      AND    hcu.attribute3        = rt3.term_id(+)
-      AND    rt3.language(+)       = iv_language
-      AND    ROWNUM                = 1;
-    -- 請求先顧客情報レコード定義
-    bill_cust_info_rec bill_cust_info_cur%ROWTYPE;
-    --===============================
-    -- ローカル例外
-    --===============================
-    contract_err_expt   EXCEPTION; -- 契約情報取得エラー
-    bill_cust_err_expt  EXCEPTION; -- 請求先顧客取得エラー
-    close_date_err_expt EXCEPTION; -- 締め・支払日取得エラー
-    work_date_err_expt  EXCEPTION; -- 営業日取得エラー
-    customer_err_expt   EXCEPTION; -- 処理対象外顧客エラー
-  --
-  BEGIN
-  --
-    -------------------------------------------------
-    -- 0.初期化
-    -------------------------------------------------
-    ov_retcode := cv_status_normal;
-    -- 前月の処理日を取得
-    ld_pre_month1 := ADD_MONTHS( gd_proc_date , - cn_one );
-    -- 前々月の処理日を取得
-    ld_pre_month2 := ADD_MONTHS( gd_proc_date , - cn_two );
-    -------------------------------------------------
-    -- 1.フルベンダー契約情報取得
-    -------------------------------------------------
-    IF ( iv_vendor_type = cv_vendor_type1 ) THEN
-      -------------------------------------------------
-      -- 契約情報取得
-      -------------------------------------------------
-      OPEN contract_info_cur(
-         iv_customer_code -- 顧客コード
-      );
-      FETCH contract_info_cur INTO contract_info_rec;
-      -- 契約情報チェック
-      IF ( contract_info_cur%NOTFOUND ) THEN
-        RAISE contract_err_expt;
-      END IF;
-      -- 当月振込月判定
-      IF ( contract_info_rec.transfer_month_code = cv_month_type1 ) THEN
-        -- 当月支払条件生成
-        lt_term_name( cn_bm1_set ) :=
-             TO_CHAR( TO_NUMBER( contract_info_rec.close_day_code ) ,'FM00' )    || '_' ||
-             TO_CHAR( TO_NUMBER( contract_info_rec.transfer_day_code ) ,'FM00' ) || '_' ||
-             cv_site_type1;
-      -- 翌月振込月判定
-      ELSIF ( contract_info_rec.transfer_month_code = cv_month_type2 ) THEN
-        -- 翌月支払条件生成
-        lt_term_name( cn_bm1_set ) :=
-             TO_CHAR( TO_NUMBER( contract_info_rec.close_day_code ) ,'FM00' )    || '_' ||
-             TO_CHAR( TO_NUMBER( contract_info_rec.transfer_day_code ) ,'FM00' ) || '_' ||
-             cv_site_type2;
-      -- 振込月取得判定
-      ELSIF ( contract_info_rec.transfer_month_code IS NULL ) OR
-            ( contract_info_rec.transfer_month_code <> cv_month_type1 ) OR
-            ( contract_info_rec.transfer_month_code <> cv_month_type2 ) THEN
-        -- 契約情報取得エラー
-        RAISE contract_err_expt;
-      END IF;
-    -------------------------------------------------
-    -- 2.フルベンダー(消化)・一般契約情報取得
-    -------------------------------------------------
-    ELSIF ( iv_vendor_type = cv_vendor_type2 ) OR
-          ( iv_vendor_type = cv_vendor_type3 ) THEN
-      -------------------------------------------------
-      -- 請求先顧客コード取得
-      -------------------------------------------------
-      lv_bill_cust_code := xxcok_common_pkg.get_bill_to_cust_code_f(
-         iv_ship_to_cust_code => iv_customer_code -- 納品先顧客コード
-      );
-      -- 請求先顧客コード取得判定
-      IF ( lv_bill_cust_code IS NULL ) THEN
-        RAISE bill_cust_err_expt;
-      END IF;
-      -------------------------------------------------
-      -- 請求先顧客情報取得
-      -------------------------------------------------
-      OPEN bill_cust_info_cur(
-         lv_bill_cust_code -- 請求先顧客コード
-        ,gn_pro_org_id     -- 組織ID
-        ,gv_language       -- 言語
-      );
-      FETCH bill_cust_info_cur INTO bill_cust_info_rec;
-      -- 請求先顧客情報チェック
-      IF ( bill_cust_info_cur%NOTFOUND ) THEN
-        RAISE bill_cust_err_expt;
-      END IF;
-      -- 支払条件退避
-      lv_term_name1 := bill_cust_info_rec.term_name1;
-      lv_term_name2 := bill_cust_info_rec.term_name2;
-      lv_term_name3 := bill_cust_info_rec.term_name3;
-      -- 請求書発行サイクル退避
-      ln_bill_cycle := TO_NUMBER( bill_cust_info_rec.bill_cycle );
-      -------------------------------------------------
-      -- 有効支払条件チェック
-      -------------------------------------------------
-      << vendor_chk_point_loop >>
-      FOR ln_term_cnt IN cn_bm1_set..cn_bm3_set LOOP
-        -- 契約者支払条件チェック
-        IF ( lv_term_name1 IS NOT NULL ) THEN
-          -- BM1退避
-          lt_term_name( ln_match_cnt ) := lv_term_name1;
-          -- 支払条件クリア
-          lv_term_name1 := NULL;
-          -- 配列インクリメント
-          ln_match_cnt := ln_match_cnt + cn_one;
-        -- 紹介者BM２支払条件チェック
-        ELSIF ( lv_term_name2 IS NOT NULL ) THEN
-          -- BM2退避
-          lt_term_name( ln_match_cnt ) := lv_term_name2;
-          -- 支払条件クリア
-          lv_term_name2 := NULL;
-          -- 配列インクリメント
-          ln_match_cnt := ln_match_cnt + cn_one;
-        -- 紹介者BM３支払条件チェック
-        ELSIF ( lv_term_name3 IS NOT NULL ) THEN
-          -- BM3退避
-          lt_term_name( ln_match_cnt ) := lv_term_name3;
-          -- 支払条件クリア
-          lv_term_name3 := NULL;
-          -- 配列インクリメント
-          ln_match_cnt := ln_match_cnt + cn_one;
-        END IF;
-      END LOOP vendor_chk_point_loop;
-    END IF;
-    -------------------------------------------------
-    -- 3.支払条件変換処理
-    -------------------------------------------------
-    << term_change_loop >>
-    FOR ln_term_cnt IN lt_term_name.FIRST..lt_term_name.LAST LOOP
-      -------------------------------------------------
-      -- 今回締め・支払日取得
-      -------------------------------------------------
-      BEGIN
-        -- 締め・支払日取得
-        xxcok_common_pkg.get_close_date_p(
-           ov_errbuf     => lv_errbuf                                -- エラーメッセージ
-          ,ov_retcode    => lv_retcode                               -- リターン・コード
-          ,ov_errmsg     => lv_errmsg                                -- ユーザー・エラーメッセージ
-          ,id_proc_date  => gd_proc_date                             -- 処理日
-          ,iv_pay_cond   => lt_term_name( ln_term_cnt )              -- 支払条件
-          ,od_close_date => lt_close_date( ln_close_cnt ).close_date -- 締め日
-          ,od_pay_date   => lt_close_date( ln_close_cnt ).pay_date   -- 支払日
-        );
-      EXCEPTION
-        WHEN OTHERS THEN
-          -- 締め・支払日取得エラー
-          RAISE close_date_err_expt;
-      END;
-      -- 支払条件退避
-      lt_close_date( ln_close_cnt ).term_name := lt_term_name( ln_term_cnt );
-      -- インクリメント
-      ln_close_cnt := ln_close_cnt + cn_one;
-      -------------------------------------------------
-      -- 前回締め・支払日取得
-      -------------------------------------------------
-      BEGIN
-        -- 締め・支払日取得
-        xxcok_common_pkg.get_close_date_p(
-           ov_errbuf     => lv_errbuf                                -- エラーメッセージ
-          ,ov_retcode    => lv_retcode                               -- リターン・コード
-          ,ov_errmsg     => lv_errmsg                                -- ユーザー・エラーメッセージ
-          ,id_proc_date  => ld_pre_month1                            -- 処理日
-          ,iv_pay_cond   => lt_term_name( ln_term_cnt )              -- 支払条件
-          ,od_close_date => lt_close_date( ln_close_cnt ).close_date -- 締め日
-          ,od_pay_date   => lt_close_date( ln_close_cnt ).pay_date   -- 支払日
-        );
-      EXCEPTION
-        WHEN OTHERS THEN
-          -- 締め・支払日取得エラー
-          RAISE close_date_err_expt;
-      END;
-      -- 支払条件退避
-      lt_close_date( ln_close_cnt ).term_name := lt_term_name( ln_term_cnt );
-      -- インクリメント
-      ln_close_cnt := ln_close_cnt + cn_one;
-      -------------------------------------------------
-      -- 前々回締め・支払日取得
-      -------------------------------------------------
-      BEGIN
-        -- 締め・支払日取得
-        xxcok_common_pkg.get_close_date_p(
-           ov_errbuf     => lv_errbuf                                -- エラーメッセージ
-          ,ov_retcode    => lv_retcode                               -- リターン・コード
-          ,ov_errmsg     => lv_errmsg                                -- ユーザー・エラーメッセージ
-          ,id_proc_date  => ld_pre_month2                            -- 処理日
-          ,iv_pay_cond   => lt_term_name( ln_term_cnt )              -- 支払条件
-          ,od_close_date => lt_close_date( ln_close_cnt ).close_date -- 締め日
-          ,od_pay_date   => lt_close_date( ln_close_cnt ).pay_date   -- 支払日
-        );
-      EXCEPTION
-        WHEN OTHERS THEN
-          -- 締め・支払日取得エラー
-          RAISE close_date_err_expt;
-      END;
-      -- 支払条件退避
-      lt_close_date( ln_close_cnt ).term_name := lt_term_name( ln_term_cnt );
-      -- インクリメント
-      ln_close_cnt := ln_close_cnt + cn_one;
-    END LOOP term_change_loop;
-    -------------------------------------------------
-    -- 4.販手販協計算算出
-    -------------------------------------------------
-    << close_change_loop >>
-    FOR ln_close_cnt IN lt_close_date.FIRST..lt_close_date.LAST LOOP
-      -------------------------------------------------
-      -- 販手販協計算開始日取得
-      -------------------------------------------------
-      BEGIN
-        -- 営業日取得
-        lt_close_date( ln_close_cnt ).start_date := xxcok_common_pkg.get_operating_day_f(
-           id_proc_date => lt_close_date( ln_close_cnt ).close_date -- 処理日：締め日
-          ,in_days      => gn_pro_bm_sup_fm                         -- 日数：条件別販手販協計算処理期間(From)
-          ,in_proc_type => cn_one                                   -- 処理区分：前
-        );
-      EXCEPTION
-        WHEN OTHERS THEN
-          -- 営業日取得エラー
-          RAISE work_date_err_expt;
-      END;
-      -------------------------------------------------
-      -- 販手販協計算終了日取得
-      -------------------------------------------------
-      BEGIN
-        -------------------------------------------------
-        -- フルベンダー販手販協計算終了日取得
-        -------------------------------------------------
-        IF ( iv_vendor_type = cv_vendor_type1 ) THEN
-          -- 営業日取得
-          lt_close_date( ln_close_cnt ).end_date := xxcok_common_pkg.get_operating_day_f(
-             id_proc_date => lt_close_date( ln_close_cnt ).close_date -- 処理日：締め日
-            ,in_days      => gn_pro_bm_sup_to                         -- 日数：条件別販手販協計算処理期間(To)
-            ,in_proc_type => cn_one                                   -- 処理区分：前
-          );
-        --------------------------------------------------------
-        -- フルベンダー(消化)・一般販手販協計算終了日取得
-        --------------------------------------------------------
-        ELSIF ( iv_vendor_type = cv_vendor_type2 ) OR
-              ( iv_vendor_type = cv_vendor_type3 ) THEN
-          -- 営業日取得
-          lt_close_date( ln_close_cnt ).end_date := xxcok_common_pkg.get_operating_day_f(
-             id_proc_date => lt_close_date( ln_close_cnt ).close_date -- 処理日：締め日
-            ,in_days      => ln_bill_cycle                            -- 日数：請求書発行サイクル
-            ,in_proc_type => cn_one                                   -- 処理区分：前
-          );
-        END IF;
-      EXCEPTION
-        WHEN OTHERS THEN
-          -- 営業日取得エラー
-          RAISE work_date_err_expt;
-      END;
-      ---------------------------------------------------------
-      -- 販手販協計算開始日≦業務日付≦販手販協計算終了日判定
-      ---------------------------------------------------------
-      IF ( lt_close_date( ln_close_cnt ).start_date <= gd_proc_date ) AND
-         ( lt_close_date( ln_close_cnt ).end_date >= gd_proc_date ) THEN
-        -- 今回締め・今回支払日・支払条件退避
-        ot_many_term( ln_term_cnt ).to_close_date := lt_close_date( ln_close_cnt ).close_date;
-        ot_many_term( ln_term_cnt ).to_pay_date   := lt_close_date( ln_close_cnt ).pay_date;
-        ot_many_term( ln_term_cnt ).to_term_name  := lt_close_date( ln_close_cnt ).term_name;
-        ot_many_term( ln_term_cnt ).end_date      := lt_close_date( ln_close_cnt ).end_date;
-        -- 支払条件インクリメント
-        ln_term_cnt := ln_term_cnt + cn_one;
-      END IF;
-    END LOOP close_change_loop;
-    -------------------------------------------------
-    -- 5.処理対象顧客存在チェック
-    -------------------------------------------------
-    IF ( ot_many_term.COUNT = cn_zero ) THEN
-      RAISE customer_err_expt;
-    END IF;
-    -------------------------------------------------
-    -- 6.締め日クイックソート
-    -------------------------------------------------
-    << close_date_all_loop >>
-    FOR ln_close_cnt IN lt_close_date.FIRST..lt_close_date.LAST LOOP
-      << close_date_point_loop >>
-      FOR ln_match_cnt IN lt_close_date.FIRST..lt_close_date.LAST LOOP
-        -- 締め日大小判定
-        IF ( lt_close_date( ln_close_cnt ).close_date < lt_close_date( ln_match_cnt ).close_date ) THEN
-          -- レコード退避
-          ld_stert_date := lt_close_date( ln_close_cnt ).start_date;
-          ld_end_date   := lt_close_date( ln_close_cnt ).end_date;
-          ld_close_date := lt_close_date( ln_close_cnt ).close_date;
-          ld_pay_date   := lt_close_date( ln_close_cnt ).pay_date;
-          lv_term_name1 := lt_close_date( ln_close_cnt ).term_name;
-          -- 大データ置換
-          lt_close_date( ln_close_cnt ).start_date := lt_close_date( ln_match_cnt ).start_date;
-          lt_close_date( ln_close_cnt ).end_date   := lt_close_date( ln_match_cnt ).end_date;
-          lt_close_date( ln_close_cnt ).close_date := lt_close_date( ln_match_cnt ).close_date;
-          lt_close_date( ln_close_cnt ).pay_date   := lt_close_date( ln_match_cnt ).pay_date;
-          lt_close_date( ln_close_cnt ).term_name  := lt_close_date( ln_match_cnt ).term_name;
-          -- 小データ置換
-          lt_close_date( ln_match_cnt ).start_date := ld_stert_date;
-          lt_close_date( ln_match_cnt ).end_date   := ld_end_date;
-          lt_close_date( ln_match_cnt ).close_date := ld_close_date;
-          lt_close_date( ln_match_cnt ).pay_date   := ld_pay_date;
-          lt_close_date( ln_match_cnt ).term_name  := lv_term_name1;
-        END IF;
-      END LOOP close_date_point_loop;
-    END LOOP close_date_all_loop;
-    -------------------------------------------------
-    -- 7.前回締め支払日取得
-    -------------------------------------------------
-    << many_term_all_loop >>
-    FOR ln_term_cnt IN ot_many_term.FIRST..ot_many_term.LAST LOOP
-      << close_date_point_loop >>
-      FOR ln_close_cnt IN lt_close_date.FIRST..lt_close_date.LAST LOOP
-        -- 締め日一致判定
-        IF ( ot_many_term( ln_term_cnt ).to_close_date = lt_close_date( ln_close_cnt ).close_date ) THEN
-          -- １件前のレコード（前回締め日）退避
-          ot_many_term( ln_term_cnt ).fm_close_date := lt_close_date( ln_close_cnt - cn_one ).close_date;
-          ot_many_term( ln_term_cnt ).fm_pay_date   := lt_close_date( ln_close_cnt - cn_one ).pay_date;
-          ot_many_term( ln_term_cnt ).fm_term_name  := lt_close_date( ln_close_cnt - cn_one ).term_name;
-        END IF;
-      END LOOP close_date_point_loop;
-    END LOOP many_term_all_loop;
-    -------------------------------------------------
-    -- 8.支払条件クイックソート
-    -------------------------------------------------
-    << many_term_sort_all_loop >>
-    FOR ln_close_cnt IN ot_many_term.FIRST..ot_many_term.LAST LOOP
-      << many_term_sort_point_loop >>
-      FOR ln_match_cnt IN ot_many_term.FIRST..ot_many_term.LAST LOOP
-        -- 締め日大小判定
-        IF ( ot_many_term( ln_close_cnt ).to_close_date < ot_many_term( ln_match_cnt ).to_close_date ) THEN
-          -- レコード退避
-          ld_to_close_date := ot_many_term( ln_close_cnt ).to_close_date;
-          ld_to_pay_date   := ot_many_term( ln_close_cnt ).to_pay_date;
-          lv_term_name1    := ot_many_term( ln_close_cnt ).to_term_name;
-          ld_fm_close_date := ot_many_term( ln_close_cnt ).fm_close_date;
-          ld_fm_pay_date   := ot_many_term( ln_close_cnt ).fm_pay_date;
-          lv_term_name2    := ot_many_term( ln_close_cnt ).fm_term_name;
-          ld_end_date      := ot_many_term( ln_close_cnt ).end_date;
-          -- 大データ置換
-          ot_many_term( ln_close_cnt ).to_close_date := ot_many_term( ln_match_cnt ).to_close_date;
-          ot_many_term( ln_close_cnt ).to_pay_date   := ot_many_term( ln_match_cnt ).to_pay_date;
-          ot_many_term( ln_close_cnt ).to_term_name  := ot_many_term( ln_match_cnt ).to_term_name;
-          ot_many_term( ln_close_cnt ).fm_close_date := ot_many_term( ln_match_cnt ).fm_close_date;
-          ot_many_term( ln_close_cnt ).fm_pay_date   := ot_many_term( ln_match_cnt ).fm_pay_date;
-          ot_many_term( ln_close_cnt ).fm_term_name  := ot_many_term( ln_match_cnt ).fm_term_name;
-          ot_many_term( ln_close_cnt ).end_date      := ot_many_term( ln_match_cnt ).end_date;
-          -- 小データ置換
-          ot_many_term( ln_match_cnt ).to_close_date := ld_to_close_date;
-          ot_many_term( ln_match_cnt ).to_pay_date   := ld_to_pay_date;
-          ot_many_term( ln_match_cnt ).to_term_name  := lv_term_name1;
-          ot_many_term( ln_match_cnt ).fm_close_date := ld_fm_close_date;
-          ot_many_term( ln_match_cnt ).fm_pay_date   := ld_fm_pay_date;
-          ot_many_term( ln_match_cnt ).fm_term_name  := lv_term_name2;
-          ot_many_term( ln_match_cnt ).end_date      := ld_end_date;
-        END IF;
-      END LOOP many_term_sort_point_loop;
-    END LOOP many_term_sort_all_loop;
-    -------------------------------------------------
-    -- 9.戻り値設定
-    -------------------------------------------------
-    ov_bill_cust_code := lv_bill_cust_code; -- 請求先顧客コード
-  --
-  EXCEPTION
-  --
-    ----------------------------------------------------------
-    -- 請求先顧客取得例外ハンドラ
-    ----------------------------------------------------------
-    WHEN bill_cust_err_expt THEN
-      -- メッセージ取得
-      lv_out_msg := xxccp_common_pkg.get_msg(
-                       iv_application  => cv_ap_type_xxcok
-                      ,iv_name         => cv_prmmsg_00079
-                      ,iv_token_name1  => cv_tkn_cust_code
-                      ,iv_token_value1 => iv_customer_code
-                    );    
-      -- メッセージ出力
-      lb_retcode := xxcok_common_pkg.put_message_f(
-                       in_which    => fnd_file.output -- 出力区分
-                      ,iv_message  => lv_out_msg      -- メッセージ
-                      ,in_new_line => cn_zero         -- 改行
-                    );
-      ov_errmsg  := lv_out_msg;
-      ov_errbuf  := SUBSTRB(cv_pkg_name||cv_msg_cont||cv_prg_name||cv_msg_part||lv_out_msg,1,5000);
-      ov_retcode := cv_status_warn;
-    ----------------------------------------------------------
-    -- 契約情報取得例外ハンドラ
-    ----------------------------------------------------------
-    WHEN contract_err_expt THEN
-      -- メッセージ取得
-      lv_out_msg := xxccp_common_pkg.get_msg(
-                       iv_application  => cv_ap_type_xxcok
-                      ,iv_name         => cv_prmmsg_10399
-                      ,iv_token_name1  => cv_tkn_cust_code
-                      ,iv_token_value1 => iv_customer_code
-                    );
-      -- メッセージ出力
-      lb_retcode := xxcok_common_pkg.put_message_f(
-                       in_which    => fnd_file.output -- 出力区分
-                      ,iv_message  => lv_out_msg      -- メッセージ
-                      ,in_new_line => cn_zero         -- 改行
-                    );
-      ov_errmsg  := lv_out_msg;
-      ov_errbuf  := SUBSTRB(cv_pkg_name||cv_msg_cont||cv_prg_name||cv_msg_part||lv_out_msg,1,5000);
-      ov_retcode := cv_status_warn;
-    ----------------------------------------------------------
-    -- 締め・支払日取得例外ハンドラ
-    ----------------------------------------------------------
-    WHEN close_date_err_expt THEN
-      -- メッセージ取得
--- 2009/05/20 Ver.1.8 [障害T1_0686] SCS K.Yamaguchi REPAIR START
---      lv_out_msg := xxccp_common_pkg.get_msg(
---                       iv_application  => cv_ap_type_xxcok
---                      ,iv_name         => cv_prmmsg_00036
---                    );
-      lv_out_msg := xxccp_common_pkg.get_msg(
-                       iv_application  => cv_ap_type_xxcok
-                      ,iv_name         => cv_prmmsg_10454
-                      ,iv_token_name1  => cv_tkn_cust_code
-                      ,iv_token_value1 => iv_customer_code
-                    );
--- 2009/05/20 Ver.1.8 [障害T1_0686] SCS K.Yamaguchi REPAIR END
-      -- メッセージ出力
-      lb_retcode := xxcok_common_pkg.put_message_f(
-                       in_which    => fnd_file.output -- 出力区分
-                      ,iv_message  => lv_out_msg      -- メッセージ
-                      ,in_new_line => cn_zero         -- 改行
-                    );
-      ov_errmsg  := lv_out_msg;
-      ov_errbuf  := SUBSTRB(cv_pkg_name||cv_msg_cont||cv_prg_name||cv_msg_part||lv_out_msg,1,5000);
-      ov_retcode := cv_status_warn;
-    ----------------------------------------------------------
-    -- 営業日取得例外ハンドラ
-    ----------------------------------------------------------
-    WHEN work_date_err_expt THEN
-      -- メッセージ取得
--- 2009/05/20 Ver.1.8 [障害T1_0686] SCS K.Yamaguchi REPAIR START
---      lv_out_msg := xxccp_common_pkg.get_msg(
---                       iv_application  => cv_ap_type_xxcok
---                      ,iv_name         => cv_prmmsg_00027
---                    );
-      lv_out_msg := xxccp_common_pkg.get_msg(
-                       iv_application  => cv_ap_type_xxcok
-                      ,iv_name         => cv_prmmsg_10455
-                      ,iv_token_name1  => cv_tkn_cust_code
-                      ,iv_token_value1 => iv_customer_code
-                    );
--- 2009/05/20 Ver.1.8 [障害T1_0686] SCS K.Yamaguchi REPAIR END
-      -- メッセージ出力
-      lb_retcode := xxcok_common_pkg.put_message_f(
-                       in_which    => fnd_file.output -- 出力区分
-                      ,iv_message  => lv_out_msg      -- メッセージ
-                      ,in_new_line => cn_zero         -- 改行
-                    );
-      ov_errmsg  := lv_out_msg;
-      ov_errbuf  := SUBSTRB(cv_pkg_name||cv_msg_cont||cv_prg_name||cv_msg_part||lv_out_msg,1,5000);
-      ov_retcode := cv_status_warn;
-    ----------------------------------------------------------
-    -- 処理対象外顧客例外ハンドラ
-    ----------------------------------------------------------
-    WHEN customer_err_expt THEN
+    -- *** エラー終了 ***
+    WHEN error_proc_expt THEN
       ov_errmsg  := NULL;
-      ov_errbuf  := NULL;
-      ov_retcode := cv_customer_err;
-    ----------------------------------------------------------
-    -- 共通関数OTHERS例外ハンドラ
-    ----------------------------------------------------------
+      ov_errbuf  := SUBSTRB( cv_pkg_name || cv_msg_cont || cv_prg_name || cv_msg_part || lv_outmsg, 1, 5000 );
+      ov_retcode := cv_status_error;
+    -- *** 処理部共通例外 ***
+    WHEN global_process_expt THEN
+      ov_errmsg  := NULL;
+      ov_errbuf  := SUBSTRB( cv_pkg_name || cv_msg_cont || cv_prg_name || cv_msg_part || lv_errbuf, 1, 5000 );
+      ov_retcode := lv_end_retcode;
+    -- *** 共通関数OTHERS例外 ***
     WHEN global_api_others_expt THEN
-      ov_errbuf  := SUBSTRB( cv_pkg_name||cv_msg_cont||cv_prg_name||cv_msg_part||SQLERRM,1,5000 );
+      ov_errbuf  := SUBSTRB( cv_pkg_name || cv_msg_cont || cv_prg_name || cv_msg_part || SQLERRM, 1, 5000 );
       ov_retcode := cv_status_error;
-    ----------------------------------------------------------
-    -- OTHERS例外ハンドラ
-    ----------------------------------------------------------
+    -- *** OTHERS例外 ***
     WHEN OTHERS THEN
-      ov_errbuf  := SUBSTRB( cv_pkg_name||cv_msg_cont||cv_prg_name||cv_msg_part||SQLERRM,1,5000 );
+fnd_file.put_line( FND_FILE.LOG, 'For Debug:' || 'delivery_cust_code' || '【' || i_xcbs_data_tab( 1 ).delivery_cust_code || '】' ); -- debug
+      ov_errbuf  := SUBSTRB( cv_pkg_name || cv_msg_cont || cv_prg_name || cv_msg_part || SQLERRM, 1, 5000 );
       ov_retcode := cv_status_error;
-  --
-  END chk_customer_info;
-  --
+END insert_xcbs;
+--
   /**********************************************************************************
-   * Procedure Name   : del_bm_support_info
-   * Description      : 販手販協保持期間外データの削除(A-2)
+   * Procedure Name   : set_xcbs_data
+   * Description      : 条件別販手販協情報の設定(A-9)
    ***********************************************************************************/
-  PROCEDURE del_bm_support_info(
-     ov_errbuf  OUT VARCHAR2 -- エラーメッセージ
-    ,ov_retcode OUT VARCHAR2 -- リターン・コード
-    ,ov_errmsg  OUT VARCHAR2 -- ユーザー・エラーメッセージ
+  PROCEDURE set_xcbs_data(
+    ov_errbuf                      OUT VARCHAR2        -- エラー・メッセージ
+  , ov_retcode                     OUT VARCHAR2        -- リターン・コード
+  , ov_errmsg                      OUT VARCHAR2        -- ユーザー・エラー・メッセージ
+  , i_get_sales_data_rec           IN  get_sales_data_rtype  -- 販売実績情報レコード
+  , o_xcbs_data_tab                OUT xcbs_data_ttype       -- 条件別販手販協情報
   )
   IS
-    --===============================
+    --==================================================
     -- ローカル定数
-    --===============================
-    cv_prg_name CONSTANT VARCHAR2(100) := 'del_bm_support_info'; -- プログラム名
-    --===============================
+    --==================================================
+    cv_prg_name                    CONSTANT VARCHAR2(30) := 'set_xcbs_data';    -- プログラム名
+    cn_index_1                     CONSTANT NUMBER       := 1;                  -- BM1_索引
+    cn_index_2                     CONSTANT NUMBER       := 2;                  -- BM2_索引
+    cn_index_3                     CONSTANT NUMBER       := 3;                  -- BM3_索引
+    --==================================================
     -- ローカル変数
-    --===============================
-    lv_errbuf   VARCHAR2(5000); -- エラーメッセージ
-    lv_retcode  VARCHAR2(1);    -- リターン・コード
-    lv_errmsg   VARCHAR2(5000); -- ユーザー・エラーメッセージ
-    lv_out_msg  VARCHAR2(2000); -- メッセージ
-    lb_retcode  BOOLEAN;        -- APIリターン・メッセージ用
-    --===============================
-    -- ローカルカーソル定義
-    --===============================
-    -- 条件別販手販協テーブルロック
-    CURSOR bm_support_del_cur(
-       in_proc_date IN DATE -- 業務日付
+    --==================================================
+    lv_errbuf                      VARCHAR2(5000) DEFAULT NULL;                 -- エラー・メッセージ
+    lv_retcode                     VARCHAR2(1)    DEFAULT cv_status_normal;     -- リターン・コード
+    lv_end_retcode                 VARCHAR2(1)    DEFAULT cv_status_normal;     -- リターン・コード
+    lv_errmsg                      VARCHAR2(5000) DEFAULT NULL;                 -- ユーザー・エラー・メッセージ
+    lv_outmsg                      VARCHAR2(5000) DEFAULT NULL;                 -- 出力用メッセージ
+    lb_retcode                     BOOLEAN        DEFAULT TRUE;                 -- メッセージ出力関数戻り値
+--
+    ln_bm1_rcpt_discount_amt_notax NUMBER         DEFAULT NULL;                 -- BM1_入金値引額(税抜)_一時格納
+    ln_bm2_rcpt_discount_amt_notax NUMBER         DEFAULT NULL;                 -- BM2_入金値引額(税抜)_一時格納
+    ln_bm3_rcpt_discount_amt_notax NUMBER         DEFAULT NULL;                 -- BM3_入金値引額(税抜)_一時格納
+--
+    -- 連携ステータス(条件別販手販協)_一時格納
+    lv_cond_bm_interface_status    xxcok_cond_bm_support.cond_bm_interface_status%TYPE DEFAULT NULL;
+    -- 連携ステータス(販手残高)_一時格納
+    lv_bm_interface_status         xxcok_cond_bm_support.bm_interface_status%TYPE      DEFAULT NULL;
+    -- 連携ステータス(AR)_一時格納
+    lv_ar_interface_status         xxcok_cond_bm_support.ar_interface_status%TYPE      DEFAULT NULL;
+--
+    l_xcbs_data_tab                     xcbs_data_ttype;                             -- 条件別販手販協テーブルタイプ
+--
+  BEGIN
+    --==================================================
+    -- ステータス初期化
+    --==================================================
+    lv_end_retcode := cv_status_normal;
+    --==================================================
+    -- 初期化
+    --==================================================
+    l_xcbs_data_tab( cn_index_1 ) := NULL;
+    l_xcbs_data_tab( cn_index_2 ) := NULL;
+    l_xcbs_data_tab( cn_index_3 ) := NULL;
+    --==================================================
+    -- 1.販売実績情報の業態(小分類)が '25':フルサービスVDの場合、VDBM(税込)を設定します。
+    --==================================================
+    IF( i_get_sales_data_rec.ship_gyotai_sho = cv_gyotai_sho_25 ) THEN
+      -- 販売実績情報の BM1 BM率(%)が NULL以外 の場合
+      IF( i_get_sales_data_rec.bm1_pct IS NOT NULL ) THEN
+        l_xcbs_data_tab( cn_index_1 ).cond_bm_amt_tax       := i_get_sales_data_rec.bm1_cond_bm_tax_pct;
+        l_xcbs_data_tab( cn_index_1 ).csh_rcpt_discount_amt := NULL;
+      -- 販売実績情報の BM1 BM金額が NULL 以外の場合
+      ELSIF( i_get_sales_data_rec.bm1_amt IS NOT NULL ) THEN
+        l_xcbs_data_tab( cn_index_1 ).cond_bm_amt_tax       := i_get_sales_data_rec.bm1_cond_bm_amt_tax;
+        l_xcbs_data_tab( cn_index_1 ).csh_rcpt_discount_amt := NULL;
+      END IF;
+--
+      -- 販売実績情報の BM2 BM率(%)が NULL以外 の場合
+      IF( i_get_sales_data_rec.bm2_pct IS NOT NULL ) THEN
+        l_xcbs_data_tab( cn_index_2 ).cond_bm_amt_tax       := i_get_sales_data_rec.bm2_cond_bm_tax_pct;
+        l_xcbs_data_tab( cn_index_2 ).csh_rcpt_discount_amt := NULL;
+      -- 販売実績情報の BM2 BM金額が NULL 以外の場合
+      ELSIF( i_get_sales_data_rec.bm2_amt IS NOT NULL ) THEN
+        l_xcbs_data_tab( cn_index_2 ).cond_bm_amt_tax       := i_get_sales_data_rec.bm2_cond_bm_amt_tax;
+        l_xcbs_data_tab( cn_index_2 ).csh_rcpt_discount_amt := NULL;
+      END IF;
+--
+      -- 販売実績情報の BM3 BM率(%)が NULL以外 の場合
+      IF( i_get_sales_data_rec.bm3_pct IS NOT NULL ) THEN
+        l_xcbs_data_tab( cn_index_3 ).cond_bm_amt_tax       := i_get_sales_data_rec.bm3_cond_bm_tax_pct;
+        l_xcbs_data_tab( cn_index_3 ).csh_rcpt_discount_amt := NULL;
+      -- 販売実績情報の BM3 BM金額が NULL 以外の場合
+      ELSIF( i_get_sales_data_rec.bm3_amt IS NOT NULL ) THEN
+        l_xcbs_data_tab( cn_index_3 ).cond_bm_amt_tax       := i_get_sales_data_rec.bm3_cond_bm_amt_tax;
+        l_xcbs_data_tab( cn_index_3 ).csh_rcpt_discount_amt := NULL;
+      END IF;
+    --==================================================
+    -- 2.販売実績情報の業態(小分類)が '25':フルサービスVD以外の場合、入金値引額(税込)を設定します。
+    --==================================================
+    ELSIF( i_get_sales_data_rec.ship_gyotai_sho <> cv_gyotai_sho_25 ) THEN
+      -- 販売実績情報の BM1 BM率(%)が NULL以外 の場合
+      IF( i_get_sales_data_rec.bm1_pct IS NOT NULL ) THEN
+        l_xcbs_data_tab( cn_index_1 ).cond_bm_amt_tax       := NULL;
+        l_xcbs_data_tab( cn_index_1 ).csh_rcpt_discount_amt := i_get_sales_data_rec.bm1_cond_bm_tax_pct;
+      -- 販売実績情報の BM1 BM金額が NULL 以外の場合
+      ELSIF( i_get_sales_data_rec.bm1_amt IS NOT NULL ) THEN
+        l_xcbs_data_tab( cn_index_1 ).cond_bm_amt_tax       := NULL;
+        l_xcbs_data_tab( cn_index_1 ).csh_rcpt_discount_amt := i_get_sales_data_rec.bm1_cond_bm_amt_tax;
+      END IF;
+--
+      -- 販売実績情報の BM2 BM率(%)が NULL以外 の場合
+      IF( i_get_sales_data_rec.bm2_pct IS NOT NULL ) THEN
+        l_xcbs_data_tab( cn_index_2 ).cond_bm_amt_tax       := NULL;
+        l_xcbs_data_tab( cn_index_2 ).csh_rcpt_discount_amt := i_get_sales_data_rec.bm2_cond_bm_tax_pct;
+      -- 販売実績情報の BM2 BM金額が NULL 以外の場合
+      ELSIF( i_get_sales_data_rec.bm2_amt IS NOT NULL ) THEN
+        l_xcbs_data_tab( cn_index_2 ).cond_bm_amt_tax       := NULL;
+        l_xcbs_data_tab( cn_index_2 ).csh_rcpt_discount_amt := i_get_sales_data_rec.bm2_cond_bm_amt_tax;
+      END IF;
+--
+      -- 販売実績情報の BM3 BM率(%)が NULL以外 の場合
+      IF( i_get_sales_data_rec.bm3_pct IS NOT NULL ) THEN
+        l_xcbs_data_tab( cn_index_3 ).cond_bm_amt_tax       := NULL;
+        l_xcbs_data_tab( cn_index_3 ).csh_rcpt_discount_amt := i_get_sales_data_rec.bm3_cond_bm_tax_pct;
+      -- 販売実績情報の BM3 BM金額が NULL 以外の場合
+      ELSIF( i_get_sales_data_rec.bm3_amt IS NOT NULL ) THEN
+        l_xcbs_data_tab( cn_index_3 ).cond_bm_amt_tax       := NULL;
+        l_xcbs_data_tab( cn_index_3 ).csh_rcpt_discount_amt := i_get_sales_data_rec.bm3_cond_bm_amt_tax;
+      END IF;
+    END IF;
+    --==================================================
+    -- 3.各VDBM(税込)、入金値引額(税込)、電気料(税込)が NULL 以外の場合、税抜金額および消費税額を算出します。
+    --==================================================
+    -- BM1 VDBM(税抜)の設定
+    IF( l_xcbs_data_tab( cn_index_1 ).cond_bm_amt_tax IS NOT NULL ) THEN
+      l_xcbs_data_tab( cn_index_1 ).cond_bm_amt_no_tax
+        := l_xcbs_data_tab( cn_index_1 ).cond_bm_amt_tax / ( 1 + ( i_get_sales_data_rec.tax_rate / 100 ) );
+    END IF;
+    -- BM1 入金値引額(税抜)の設定
+    IF( l_xcbs_data_tab( cn_index_1 ).csh_rcpt_discount_amt IS NOT NULL ) THEN
+      ln_bm1_rcpt_discount_amt_notax
+        := l_xcbs_data_tab( cn_index_1 ).csh_rcpt_discount_amt / ( 1 + ( i_get_sales_data_rec.tax_rate / 100 )  );
+    END IF;
+    -- BM1 電気料(税抜)の設定
+    IF( i_get_sales_data_rec.bm1_electric_amt_tax IS NOT NULL ) THEN
+      l_xcbs_data_tab( cn_index_1 ).electric_amt_no_tax
+        := i_get_sales_data_rec.bm1_electric_amt_tax / ( 1 + ( i_get_sales_data_rec.tax_rate / 100 ) );
+    END IF;
+    -- BM2 VDBM(税抜)の設定
+    IF( l_xcbs_data_tab( cn_index_2 ).cond_bm_amt_tax IS NOT NULL ) THEN
+      l_xcbs_data_tab( cn_index_2 ).cond_bm_amt_no_tax
+        := l_xcbs_data_tab( cn_index_2 ).cond_bm_amt_tax / ( 1 + ( i_get_sales_data_rec.tax_rate / 100 ) );
+    END IF;
+    -- BM2 入金値引額(税抜)の設定
+    IF( l_xcbs_data_tab( cn_index_2 ).csh_rcpt_discount_amt IS NOT NULL ) THEN
+      ln_bm2_rcpt_discount_amt_notax
+        := l_xcbs_data_tab( cn_index_2 ).csh_rcpt_discount_amt / ( 1 + ( i_get_sales_data_rec.tax_rate / 100 ) );
+    END IF;
+    -- BM2 電気料(税抜)の設定
+    IF( i_get_sales_data_rec.bm2_electric_amt_tax IS NOT NULL ) THEN
+      l_xcbs_data_tab( cn_index_2 ).electric_amt_no_tax
+        := i_get_sales_data_rec.bm2_electric_amt_tax / ( 1 + ( i_get_sales_data_rec.tax_rate / 100 ) );
+    END IF;
+    -- BM3 VDBM(税抜)の設定
+    IF( l_xcbs_data_tab( cn_index_3 ).cond_bm_amt_tax IS NOT NULL ) THEN
+      l_xcbs_data_tab( cn_index_3 ).cond_bm_amt_no_tax
+        := l_xcbs_data_tab( cn_index_3 ).cond_bm_amt_tax / ( 1 + ( i_get_sales_data_rec.tax_rate/ 100 ) );
+    END IF;
+    -- BM3 入金値引額(税抜)の設定
+    IF( l_xcbs_data_tab( cn_index_3 ).csh_rcpt_discount_amt IS NOT NULL ) THEN
+      ln_bm3_rcpt_discount_amt_notax
+        := l_xcbs_data_tab( cn_index_3 ).csh_rcpt_discount_amt / ( 1 + ( i_get_sales_data_rec.tax_rate / 100 ) );
+    END IF;
+    -- BM3 電気料(税抜)の設定
+    IF( i_get_sales_data_rec.bm3_electric_amt_tax IS NOT NULL ) THEN
+      l_xcbs_data_tab( cn_index_3 ).electric_amt_no_tax
+        := i_get_sales_data_rec.bm3_electric_amt_tax / ( 1 + ( i_get_sales_data_rec.tax_rate / 100 ) );
+    END IF;
+    --==================================================
+    -- 端数処理区分による取得値の端数処理
+    --==================================================
+    -- 販売実績情報の端数処理区分が 'NEAREST':四捨五入の場合、少数点以下の端数を四捨五入します。
+    IF( i_get_sales_data_rec.tax_rounding_rule = cv_tax_rounding_rule_nearest ) THEN
+      l_xcbs_data_tab( cn_index_1 ).cond_bm_amt_no_tax  := ROUND( l_xcbs_data_tab( cn_index_1 ).cond_bm_amt_no_tax );
+      ln_bm1_rcpt_discount_amt_notax                    := ROUND( ln_bm1_rcpt_discount_amt_notax );
+      l_xcbs_data_tab( cn_index_1 ).electric_amt_no_tax := ROUND( l_xcbs_data_tab( cn_index_1 ).electric_amt_no_tax );
+      l_xcbs_data_tab( cn_index_2 ).cond_bm_amt_no_tax  := ROUND( l_xcbs_data_tab( cn_index_2 ).cond_bm_amt_no_tax );
+      ln_bm2_rcpt_discount_amt_notax                    := ROUND( ln_bm2_rcpt_discount_amt_notax );
+      l_xcbs_data_tab( cn_index_2 ).electric_amt_no_tax := ROUND( l_xcbs_data_tab( cn_index_2 ).electric_amt_no_tax );
+      l_xcbs_data_tab( cn_index_3 ).cond_bm_amt_no_tax  := ROUND( l_xcbs_data_tab( cn_index_3 ).cond_bm_amt_no_tax );
+      ln_bm3_rcpt_discount_amt_notax                    := ROUND( ln_bm3_rcpt_discount_amt_notax );
+      l_xcbs_data_tab( cn_index_3 ).electric_amt_no_tax := ROUND( l_xcbs_data_tab( cn_index_3 ).electric_amt_no_tax );
+    -- 販売実績情報の端数処理区分が 'UP':切り上げの場合、小数点以下の端数を切り上げします。
+    ELSIF ( i_get_sales_data_rec.tax_rounding_rule = cv_tax_rounding_rule_up ) THEN
+      IF( l_xcbs_data_tab( cn_index_1 ).cond_bm_amt_no_tax > 0 )    THEN
+        l_xcbs_data_tab( cn_index_1 ).cond_bm_amt_no_tax  := CEIL( l_xcbs_data_tab( cn_index_1 ).cond_bm_amt_no_tax );
+      ELSIF ( l_xcbs_data_tab( cn_index_1 ).cond_bm_amt_no_tax < 0 ) THEN
+        l_xcbs_data_tab( cn_index_1 ).cond_bm_amt_no_tax  := FLOOR( l_xcbs_data_tab( cn_index_1 ).cond_bm_amt_no_tax );
+      END IF;
+      IF( ln_bm1_rcpt_discount_amt_notax > 0 )    THEN
+        ln_bm1_rcpt_discount_amt_notax  := CEIL( ln_bm1_rcpt_discount_amt_notax );
+      ELSIF( ln_bm1_rcpt_discount_amt_notax < 0 ) THEN
+        ln_bm1_rcpt_discount_amt_notax  := FLOOR( ln_bm1_rcpt_discount_amt_notax );
+      END IF;
+      IF( l_xcbs_data_tab( cn_index_1 ).electric_amt_no_tax > 0 )    THEN
+        l_xcbs_data_tab( cn_index_1 ).electric_amt_no_tax  := CEIL( l_xcbs_data_tab( cn_index_1 ).electric_amt_no_tax );
+      ELSIF( l_xcbs_data_tab( cn_index_1 ).electric_amt_no_tax < 0 ) THEN
+        l_xcbs_data_tab( cn_index_1 ).electric_amt_no_tax  := FLOOR( l_xcbs_data_tab( cn_index_1 ).electric_amt_no_tax );
+      END IF;
+      IF( l_xcbs_data_tab( cn_index_2 ).cond_bm_amt_no_tax > 0 )    THEN
+        l_xcbs_data_tab( cn_index_2 ).cond_bm_amt_no_tax  := CEIL( l_xcbs_data_tab( cn_index_2 ).cond_bm_amt_no_tax );
+      ELSIF( l_xcbs_data_tab( cn_index_2 ).cond_bm_amt_no_tax < 0 ) THEN
+        l_xcbs_data_tab( cn_index_2 ).cond_bm_amt_no_tax  := FLOOR( l_xcbs_data_tab( cn_index_2 ).cond_bm_amt_no_tax );
+      END IF;
+      IF( ln_bm2_rcpt_discount_amt_notax > 0 )    THEN
+        ln_bm2_rcpt_discount_amt_notax  := CEIL( ln_bm2_rcpt_discount_amt_notax );
+      ELSIF ( ln_bm2_rcpt_discount_amt_notax < 0 ) THEN
+        ln_bm2_rcpt_discount_amt_notax  := FLOOR( ln_bm2_rcpt_discount_amt_notax );
+      END IF;
+      IF( l_xcbs_data_tab( cn_index_2 ).electric_amt_no_tax > 0 )    THEN
+        l_xcbs_data_tab( cn_index_2 ).electric_amt_no_tax  := CEIL( l_xcbs_data_tab( cn_index_2 ).electric_amt_no_tax );
+      ELSIF( l_xcbs_data_tab( cn_index_2 ).electric_amt_no_tax < 0 ) THEN
+        l_xcbs_data_tab( cn_index_2 ).electric_amt_no_tax  := FLOOR( l_xcbs_data_tab( cn_index_2 ).electric_amt_no_tax );
+      END IF;
+      IF( l_xcbs_data_tab( cn_index_3 ).cond_bm_amt_no_tax > 0 )    THEN
+        l_xcbs_data_tab( cn_index_3 ).cond_bm_amt_no_tax  := CEIL( l_xcbs_data_tab( cn_index_3 ).cond_bm_amt_no_tax );
+      ELSIF( l_xcbs_data_tab( cn_index_3 ).cond_bm_amt_no_tax < 0 ) THEN
+        l_xcbs_data_tab( cn_index_3 ).cond_bm_amt_no_tax  := FLOOR( l_xcbs_data_tab( cn_index_3 ).cond_bm_amt_no_tax );
+      END IF;
+      IF( ln_bm3_rcpt_discount_amt_notax > 0 )    THEN
+        ln_bm3_rcpt_discount_amt_notax  := CEIL( ln_bm3_rcpt_discount_amt_notax );
+      ELSIF( ln_bm3_rcpt_discount_amt_notax < 0 ) THEN
+        ln_bm3_rcpt_discount_amt_notax  := FLOOR( ln_bm3_rcpt_discount_amt_notax );
+      END IF;
+      IF( l_xcbs_data_tab( cn_index_3 ).electric_amt_no_tax > 0 )    THEN
+        l_xcbs_data_tab( cn_index_3 ).electric_amt_no_tax  := CEIL( l_xcbs_data_tab( cn_index_3 ).electric_amt_no_tax );
+      ELSIF ( l_xcbs_data_tab( cn_index_3 ).electric_amt_no_tax < 0 ) THEN
+        l_xcbs_data_tab( cn_index_3 ).electric_amt_no_tax  := FLOOR( l_xcbs_data_tab( cn_index_3 ).electric_amt_no_tax );
+      END IF;
+    -- 上記以外の場合、'DOWN':切り捨てが設定されていることとし、少数点以下の端数を切り捨てします。
+    ELSE
+      l_xcbs_data_tab( cn_index_1 ).cond_bm_amt_no_tax  := TRUNC( l_xcbs_data_tab( cn_index_1 ).cond_bm_amt_no_tax );
+      ln_bm1_rcpt_discount_amt_notax                    := TRUNC( ln_bm1_rcpt_discount_amt_notax );
+      l_xcbs_data_tab( cn_index_1 ).electric_amt_no_tax := TRUNC( l_xcbs_data_tab( cn_index_1 ).electric_amt_no_tax );
+      l_xcbs_data_tab( cn_index_2 ).cond_bm_amt_no_tax  := TRUNC( l_xcbs_data_tab( cn_index_2 ).cond_bm_amt_no_tax );
+      ln_bm2_rcpt_discount_amt_notax                    := TRUNC( ln_bm2_rcpt_discount_amt_notax );
+      l_xcbs_data_tab( cn_index_2 ).electric_amt_no_tax := TRUNC( l_xcbs_data_tab( cn_index_2 ).electric_amt_no_tax );
+      l_xcbs_data_tab( cn_index_3 ).cond_bm_amt_no_tax  := TRUNC( l_xcbs_data_tab( cn_index_3 ).cond_bm_amt_no_tax );
+      ln_bm3_rcpt_discount_amt_notax                    := TRUNC( ln_bm3_rcpt_discount_amt_notax );
+      l_xcbs_data_tab( cn_index_3 ).electric_amt_no_tax := TRUNC( l_xcbs_data_tab( cn_index_3 ).electric_amt_no_tax );
+    END IF;
+    --==================================================
+    -- 消費税額算出
+    --==================================================
+    -- 消費税額
+    l_xcbs_data_tab( cn_index_1 ).cond_tax_amt
+      := l_xcbs_data_tab( cn_index_1 ).cond_bm_amt_tax - l_xcbs_data_tab( cn_index_1 ).cond_bm_amt_no_tax;
+    l_xcbs_data_tab( cn_index_2 ).cond_tax_amt
+      := l_xcbs_data_tab( cn_index_2 ).cond_bm_amt_tax - l_xcbs_data_tab( cn_index_2 ).cond_bm_amt_no_tax;
+    l_xcbs_data_tab( cn_index_3 ).cond_tax_amt
+      := l_xcbs_data_tab( cn_index_3 ).cond_bm_amt_tax - l_xcbs_data_tab( cn_index_3 ).cond_bm_amt_no_tax;
+    -- 入金値引消費税額
+    l_xcbs_data_tab( cn_index_1 ).csh_rcpt_discount_amt_tax
+      := l_xcbs_data_tab( cn_index_1 ).csh_rcpt_discount_amt - ln_bm1_rcpt_discount_amt_notax;
+    l_xcbs_data_tab( cn_index_2 ).csh_rcpt_discount_amt_tax
+      := l_xcbs_data_tab( cn_index_2 ).csh_rcpt_discount_amt - ln_bm2_rcpt_discount_amt_notax;
+    l_xcbs_data_tab( cn_index_3 ).csh_rcpt_discount_amt_tax
+      := l_xcbs_data_tab( cn_index_3 ).csh_rcpt_discount_amt - ln_bm3_rcpt_discount_amt_notax;
+    -- 電気料消費税額
+    l_xcbs_data_tab( cn_index_1 ).electric_tax_amt
+      := i_get_sales_data_rec.bm1_electric_amt_tax - l_xcbs_data_tab( cn_index_1 ).electric_amt_no_tax;
+    l_xcbs_data_tab( cn_index_2 ).electric_tax_amt
+      := i_get_sales_data_rec.bm2_electric_amt_tax - l_xcbs_data_tab( cn_index_2 ).electric_amt_no_tax;
+    l_xcbs_data_tab( cn_index_3 ).electric_tax_amt
+      := i_get_sales_data_rec.bm3_electric_amt_tax - l_xcbs_data_tab( cn_index_3 ).electric_amt_no_tax;
+    --==================================================
+    -- 4.各連携ステータス
+    --==================================================
+    -- 販売実績情報の業態(小分類)が '25'：フルサービスVD、かつ業務日付が販売実績情報の計算対象期間(TO)と一致しない
+    IF(     ( i_get_sales_data_rec.ship_gyotai_sho  = cv_gyotai_sho_25 )
+        AND ( i_get_sales_data_rec.amount_fix_date <> gd_process_date  )
+    ) THEN
+      lv_cond_bm_interface_status := cv_xcbs_if_status_off;    -- 条件別販手販協 不要
+      lv_bm_interface_status      := cv_xcbs_if_status_no;     -- 販手残高       未処理
+      lv_ar_interface_status      := cv_xcbs_if_status_off;    -- AR             不要
+    -- 販売実績情報の業態(小分類)が '25'：フルサービスVD、かつ業務日付が販売実績情報の計算対象期間(TO)と一致する
+    ELSIF(     ( i_get_sales_data_rec.ship_gyotai_sho  = cv_gyotai_sho_25 )
+           AND ( i_get_sales_data_rec.amount_fix_date  = gd_process_date  )
+    ) THEN
+      lv_cond_bm_interface_status := cv_xcbs_if_status_no;     -- 条件別販手販協 未処理
+      lv_bm_interface_status      := cv_xcbs_if_status_no;     -- 販手残高       未処理
+      lv_ar_interface_status      := cv_xcbs_if_status_off;    -- AR             不要
+    -- 販売実績情報の業態(小分類)が '25'：フルサービスVD以外、かつ業務日付が販売実績情報の計算対象期間(TO)と一致しない
+    ELSIF(     ( i_get_sales_data_rec.ship_gyotai_sho <> cv_gyotai_sho_25 )
+           AND ( i_get_sales_data_rec.amount_fix_date <> gd_process_date  )
+    ) THEN
+      lv_cond_bm_interface_status := cv_xcbs_if_status_off;    -- 条件別販手販協 不要
+      lv_bm_interface_status      := cv_xcbs_if_status_off;    -- 販手残高       不要
+      lv_ar_interface_status      := cv_xcbs_if_status_off;    -- AR             不要
+    -- 販売実績情報の業態(小分類)が '25'：フルサービスVD、かつ業務日付が販売実績情報の計算対象期間(TO)と一致する
+    ELSIF(     ( i_get_sales_data_rec.ship_gyotai_sho  <> cv_gyotai_sho_25 )
+           AND ( i_get_sales_data_rec.amount_fix_date   = gd_process_date  )
+    ) THEN
+      lv_cond_bm_interface_status := cv_xcbs_if_status_off;    -- 条件別販手販協 不要
+      lv_bm_interface_status      := cv_xcbs_if_status_off;    -- 販手残高       不要
+      lv_ar_interface_status      := cv_xcbs_if_status_no;     -- AR             未処理
+    END IF;
+    --==================================================
+    -- その他値設定
+    --==================================================
+    -- 仕入先コード
+    l_xcbs_data_tab( cn_index_1 ).supplier_code := i_get_sales_data_rec.bm1_vendor_code;
+    l_xcbs_data_tab( cn_index_2 ).supplier_code := i_get_sales_data_rec.bm2_vendor_code;
+    l_xcbs_data_tab( cn_index_3 ).supplier_code := i_get_sales_data_rec.bm3_vendor_code;
+    -- 仕入先サイトコード
+    l_xcbs_data_tab( cn_index_1 ).supplier_site_code := i_get_sales_data_rec.bm1_vendor_site_code;
+    l_xcbs_data_tab( cn_index_2 ).supplier_site_code := i_get_sales_data_rec.bm2_vendor_site_code;
+    l_xcbs_data_tab( cn_index_3 ).supplier_site_code := i_get_sales_data_rec.bm3_vendor_site_code;
+    -- BM率(%)
+    l_xcbs_data_tab( cn_index_1 ).rebate_rate := i_get_sales_data_rec.bm1_pct;
+    l_xcbs_data_tab( cn_index_2 ).rebate_rate := i_get_sales_data_rec.bm2_pct;
+    l_xcbs_data_tab( cn_index_3 ).rebate_rate := i_get_sales_data_rec.bm3_pct;
+    -- BM金額
+    l_xcbs_data_tab( cn_index_1 ).rebate_amt := i_get_sales_data_rec.bm1_amt;
+    l_xcbs_data_tab( cn_index_2 ).rebate_amt := i_get_sales_data_rec.bm2_amt;
+    l_xcbs_data_tab( cn_index_3 ).rebate_amt := i_get_sales_data_rec.bm3_amt;
+    -- 電気料(税込)
+    l_xcbs_data_tab( cn_index_1 ).electric_amt_tax := i_get_sales_data_rec.bm1_electric_amt_tax;
+    l_xcbs_data_tab( cn_index_2 ).electric_amt_tax := i_get_sales_data_rec.bm2_electric_amt_tax;
+    l_xcbs_data_tab( cn_index_3 ).electric_amt_tax := i_get_sales_data_rec.bm3_electric_amt_tax;
+    --==================================================
+    -- 5.取得した内容を条件別販手販協情報に設定します。
+    --==================================================
+    << set_xcbs_data_loop >>
+    FOR i IN cn_index_1 .. cn_index_3 LOOP
+      -- 共通項目をループで設定
+      l_xcbs_data_tab( i ).base_code                 := i_get_sales_data_rec.base_code;                 -- 拠点コード
+      l_xcbs_data_tab( i ).emp_code                  := i_get_sales_data_rec.emp_code;                  -- 担当者コード
+      l_xcbs_data_tab( i ).delivery_cust_code        := i_get_sales_data_rec.ship_cust_code;            -- 顧客【納品先】
+      l_xcbs_data_tab( i ).demand_to_cust_code       := i_get_sales_data_rec.bill_cust_code;            -- 顧客【請求先】
+      l_xcbs_data_tab( i ).acctg_year                := i_get_sales_data_rec.period_year;               -- 会計年度
+      l_xcbs_data_tab( i ).chain_store_code          := i_get_sales_data_rec.ship_delivery_chain_code;  -- チェーン店コード
+      l_xcbs_data_tab( i ).calc_type                 := i_get_sales_data_rec.calc_type;                 -- 計算条件
+      l_xcbs_data_tab( i ).delivery_date             := i_get_sales_data_rec.delivery_ym;               -- 納品日年月
+      l_xcbs_data_tab( i ).delivery_qty              := i_get_sales_data_rec.dlv_qty;                   -- 納品数量
+      l_xcbs_data_tab( i ).delivery_unit_type        := i_get_sales_data_rec.dlv_uom_code;              -- 納品単位
+      l_xcbs_data_tab( i ).selling_amt_tax           := i_get_sales_data_rec.amount_inc_tax;            -- 売上金額(税込)
+      l_xcbs_data_tab( i ).container_type_code       := i_get_sales_data_rec.container_code;            -- 容器区分コード
+      l_xcbs_data_tab( i ).selling_price             := i_get_sales_data_rec.dlv_unit_price;            -- 売価金額
+      l_xcbs_data_tab( i ).consumption_tax_class     := i_get_sales_data_rec.tax_div;                   -- 消費税区分
+      l_xcbs_data_tab( i ).tax_code                  := i_get_sales_data_rec.tax_code;                  -- 税金コード
+      l_xcbs_data_tab( i ).tax_rate                  := i_get_sales_data_rec.tax_rate;                  -- 消費税率
+      l_xcbs_data_tab( i ).term_code                 := i_get_sales_data_rec.term_name;                 -- 支払条件
+      l_xcbs_data_tab( i ).closing_date              := i_get_sales_data_rec.closing_date;              -- 締め日
+      l_xcbs_data_tab( i ).expect_payment_date       := i_get_sales_data_rec.expect_payment_date;       -- 支払予定日
+      l_xcbs_data_tab( i ).calc_target_period_from   := i_get_sales_data_rec.calc_target_period_from;   -- 計算対象期間(FROM)
+      l_xcbs_data_tab( i ).calc_target_period_to     := i_get_sales_data_rec.calc_target_period_to;     -- 計算対象期間(TO)
+      l_xcbs_data_tab( i ).cond_bm_interface_status  := lv_cond_bm_interface_status;                    -- 連携ステータス(条件別販手販協)
+      l_xcbs_data_tab( i ).cond_bm_interface_date    := NULL;                                           -- 連携日(条件別販手販協)
+      l_xcbs_data_tab( i ).bm_interface_status       := lv_bm_interface_status;                         -- 連携ステータス(販手残高)
+      l_xcbs_data_tab( i ).bm_interface_date         := NULL;                                           -- 連携日(販手残高)
+      l_xcbs_data_tab( i ).ar_interface_status       := lv_ar_interface_status;                         -- 連携ステータス(AR)
+      l_xcbs_data_tab( i ).ar_interface_date         := NULL;                                           -- 連携日(AR)
+    END LOOP set_xcbs_data_loop;
+    --==================================================
+    -- 出力パラメータ設定
+    --==================================================
+    o_xcbs_data_tab := l_xcbs_data_tab;
+    ov_errbuf  := NULL;
+    ov_errmsg  := NULL;
+    ov_retcode := lv_end_retcode;
+--
+  EXCEPTION
+    -- *** エラー終了 ***
+    WHEN error_proc_expt THEN
+      ov_errmsg  := NULL;
+      ov_errbuf  := SUBSTRB( cv_pkg_name || cv_msg_cont || cv_prg_name || cv_msg_part || lv_outmsg, 1, 5000 );
+      ov_retcode := cv_status_error;
+    -- *** 処理部共通例外 ***
+    WHEN global_process_expt THEN
+      ov_errmsg  := NULL;
+      ov_errbuf  := SUBSTRB( cv_pkg_name || cv_msg_cont || cv_prg_name || cv_msg_part || lv_errbuf, 1, 5000 );
+      ov_retcode := lv_end_retcode;
+    -- *** 共通関数OTHERS例外 ***
+    WHEN global_api_others_expt THEN
+fnd_file.put_line( FND_FILE.LOG, 'For Debug:' || 'ship_cust_code' || '【' || i_get_sales_data_rec.ship_cust_code || '】' ); -- debug
+      ov_errbuf  := SUBSTRB( cv_pkg_name || cv_msg_cont || cv_prg_name || cv_msg_part || SQLERRM, 1, 5000 );
+      ov_retcode := cv_status_error;
+    -- *** OTHERS例外 ***
+    WHEN OTHERS THEN
+fnd_file.put_line( FND_FILE.LOG, 'For Debug:' || 'ship_cust_code' || '【' || i_get_sales_data_rec.ship_cust_code || '】' ); -- debug
+      ov_errbuf  := SUBSTRB( cv_pkg_name || cv_msg_cont || cv_prg_name || cv_msg_part || SQLERRM, 1, 5000 );
+      ov_retcode := cv_status_error;
+END set_xcbs_data;
+--
+  /**********************************************************************************
+   * Procedure Name   : sales_result_loop1
+   * Description      : 販売実績の取得・売価別条件(A-8)
+   ***********************************************************************************/
+  PROCEDURE sales_result_loop1(
+    ov_errbuf                      OUT VARCHAR2        -- エラー・メッセージ
+  , ov_retcode                     OUT VARCHAR2        -- リターン・コード
+  , ov_errmsg                      OUT VARCHAR2        -- ユーザー・エラー・メッセージ
+  )
+  IS
+    --==================================================
+    -- ローカル定数
+    --==================================================
+    cv_prg_name                    CONSTANT VARCHAR2(30) := 'sales_result_loop1';             -- プログラム名
+    --==================================================
+    -- ローカル変数
+    --==================================================
+    lv_errbuf                      VARCHAR2(5000) DEFAULT NULL;                 -- エラー・メッセージ
+    lv_retcode                     VARCHAR2(1)    DEFAULT cv_status_normal;     -- リターン・コード
+    lv_end_retcode                 VARCHAR2(1)    DEFAULT cv_status_normal;     -- リターン・コード
+    lv_errmsg                      VARCHAR2(5000) DEFAULT NULL;                 -- ユーザー・エラー・メッセージ
+    lv_outmsg                      VARCHAR2(5000) DEFAULT NULL;                 -- 出力用メッセージ
+    lb_retcode                     BOOLEAN        DEFAULT TRUE;                 -- メッセージ出力関数戻り値
+    l_xcbs_data_tab                xcbs_data_ttype;
+    l_get_sales_data_rec           get_sales_data_rtype;
+--
+  BEGIN
+    --==================================================
+    -- ステータス初期化
+    --==================================================
+    lv_end_retcode := cv_status_normal;
+    --==================================================
+    -- 顧客情報の取得
+    --==================================================
+    OPEN get_sales_data_cur1;
+    << get_sales_data_loop1 >>
+    LOOP
+      FETCH get_sales_data_cur1 INTO l_get_sales_data_rec;
+      EXIT WHEN get_sales_data_cur1%NOTFOUND;
+      --==================================================
+      -- 条件別販手販協情報の設定
+      --==================================================
+      set_xcbs_data(
+        ov_errbuf                   => lv_errbuf                  -- エラー・メッセージ
+      , ov_retcode                  => lv_retcode                 -- リターン・コード
+      , ov_errmsg                   => lv_errmsg                  -- ユーザー・エラー・メッセージ
+      , i_get_sales_data_rec        => l_get_sales_data_rec       -- 販売実績情報レコード
+      , o_xcbs_data_tab             => l_xcbs_data_tab            -- 条件別販手販協情報
+      );
+      IF( lv_retcode = cv_status_error ) THEN
+        lv_end_retcode := cv_status_error;
+        RAISE global_process_expt;
+      END IF;
+      --==================================================
+      -- 条件別販手販協テーブルへの登録
+      --==================================================
+      insert_xcbs(
+        ov_errbuf                   => lv_errbuf                  -- エラー・メッセージ
+      , ov_retcode                  => lv_retcode                 -- リターン・コード
+      , ov_errmsg                   => lv_errmsg                  -- ユーザー・エラー・メッセージ
+      , i_get_sales_data_rec        => l_get_sales_data_rec       -- 販売実績情報レコード
+      , i_xcbs_data_tab             => l_xcbs_data_tab            -- 条件別販手販協情報
+      );
+      IF( lv_retcode = cv_status_error ) THEN
+        lv_end_retcode := cv_status_error;
+        RAISE global_process_expt;
+      END IF;
+      --==================================================
+      -- 販手条件エラーテーブルへの登録
+      --==================================================
+      insert_xbce(
+        ov_errbuf                   => lv_errbuf                  -- エラー・メッセージ
+      , ov_retcode                  => lv_retcode                 -- リターン・コード
+      , ov_errmsg                   => lv_errmsg                  -- ユーザー・エラー・メッセージ
+      , i_get_sales_data_rec        => l_get_sales_data_rec       -- 販売実績情報レコード
+      );
+      IF( lv_retcode = cv_status_error ) THEN
+        lv_end_retcode := cv_status_error;
+        RAISE global_process_expt;
+      ELSIF( lv_retcode = cv_status_warn ) THEN
+        lv_end_retcode := cv_status_warn;
+      END IF;
+    END LOOP get_sales_data_loop1;
+    CLOSE get_sales_data_cur1;
+    --==================================================
+    -- 出力パラメータ設定
+    --==================================================
+    ov_errbuf  := NULL;
+    ov_errmsg  := NULL;
+    ov_retcode := lv_end_retcode;
+--
+  EXCEPTION
+    -- *** エラー終了 ***
+    WHEN error_proc_expt THEN
+      ov_errmsg  := NULL;
+      ov_errbuf  := SUBSTRB( cv_pkg_name || cv_msg_cont || cv_prg_name || cv_msg_part || lv_outmsg, 1, 5000 );
+      ov_retcode := cv_status_error;
+    -- *** 処理部共通例外 ***
+    WHEN global_process_expt THEN
+      ov_errmsg  := NULL;
+      ov_errbuf  := SUBSTRB( cv_pkg_name || cv_msg_cont || cv_prg_name || cv_msg_part || lv_errbuf, 1, 5000 );
+      ov_retcode := lv_end_retcode;
+    -- *** 共通関数OTHERS例外 ***
+    WHEN global_api_others_expt THEN
+      ov_errbuf  := SUBSTRB( cv_pkg_name || cv_msg_cont || cv_prg_name || cv_msg_part || SQLERRM, 1, 5000 );
+      ov_retcode := cv_status_error;
+    -- *** OTHERS例外 ***
+    WHEN OTHERS THEN
+fnd_file.put_line( FND_FILE.LOG, 'For Debug:' || 'ship_cust_code' || '【' || l_get_sales_data_rec.ship_cust_code || '】' ); -- debug
+      ov_errbuf  := SUBSTRB( cv_pkg_name || cv_msg_cont || cv_prg_name || cv_msg_part || SQLERRM, 1, 5000 );
+      ov_retcode := cv_status_error;
+  END sales_result_loop1;
+--
+  /**********************************************************************************
+   * Procedure Name   : sales_result_loop2
+   * Description      : 販売実績の取得・容器区分別条件(A-8)
+   ***********************************************************************************/
+  PROCEDURE sales_result_loop2(
+    ov_errbuf                      OUT VARCHAR2        -- エラー・メッセージ
+  , ov_retcode                     OUT VARCHAR2        -- リターン・コード
+  , ov_errmsg                      OUT VARCHAR2        -- ユーザー・エラー・メッセージ
+  )
+  IS
+    --==================================================
+    -- ローカル定数
+    --==================================================
+    cv_prg_name                    CONSTANT VARCHAR2(30) := 'sales_result_loop2';             -- プログラム名
+    --==================================================
+    -- ローカル変数
+    --==================================================
+    lv_errbuf                      VARCHAR2(5000) DEFAULT NULL;                 -- エラー・メッセージ
+    lv_retcode                     VARCHAR2(1)    DEFAULT cv_status_normal;     -- リターン・コード
+    lv_end_retcode                 VARCHAR2(1)    DEFAULT cv_status_normal;     -- リターン・コード
+    lv_errmsg                      VARCHAR2(5000) DEFAULT NULL;                 -- ユーザー・エラー・メッセージ
+    lv_outmsg                      VARCHAR2(5000) DEFAULT NULL;                 -- 出力用メッセージ
+    lb_retcode                     BOOLEAN        DEFAULT TRUE;                 -- メッセージ出力関数戻り値
+    l_xcbs_data_tab                xcbs_data_ttype;
+    l_get_sales_data_rec           get_sales_data_rtype;
+--
+  BEGIN
+    --==================================================
+    -- ステータス初期化
+    --==================================================
+    lv_end_retcode := cv_status_normal;
+    --==================================================
+    -- 顧客情報の取得
+    --==================================================
+    OPEN get_sales_data_cur2;
+    << get_sales_data_loop2 >>
+    LOOP
+      FETCH get_sales_data_cur2 INTO l_get_sales_data_rec;
+      EXIT WHEN get_sales_data_cur2%NOTFOUND;
+      --==================================================
+      -- 条件別販手販協情報の設定
+      --==================================================
+      set_xcbs_data(
+        ov_errbuf                   => lv_errbuf                  -- エラー・メッセージ
+      , ov_retcode                  => lv_retcode                 -- リターン・コード
+      , ov_errmsg                   => lv_errmsg                  -- ユーザー・エラー・メッセージ
+      , i_get_sales_data_rec        => l_get_sales_data_rec       -- 販売実績情報レコード
+      , o_xcbs_data_tab             => l_xcbs_data_tab            -- 条件別販手販協情報
+      );
+      IF( lv_retcode = cv_status_error ) THEN
+        lv_end_retcode := cv_status_error;
+        RAISE global_process_expt;
+      END IF;
+      --==================================================
+      -- 条件別販手販協テーブルへの登録
+      --==================================================
+      insert_xcbs(
+        ov_errbuf                   => lv_errbuf                  -- エラー・メッセージ
+      , ov_retcode                  => lv_retcode                 -- リターン・コード
+      , ov_errmsg                   => lv_errmsg                  -- ユーザー・エラー・メッセージ
+      , i_get_sales_data_rec        => l_get_sales_data_rec       -- 販売実績情報レコード
+      , i_xcbs_data_tab             => l_xcbs_data_tab            -- 条件別販手販協情報
+      );
+      IF( lv_retcode = cv_status_error ) THEN
+        lv_end_retcode := cv_status_error;
+        RAISE global_process_expt;
+      END IF;
+      --==================================================
+      -- 販手条件エラーテーブルへの登録
+      --==================================================
+      insert_xbce(
+        ov_errbuf                   => lv_errbuf                  -- エラー・メッセージ
+      , ov_retcode                  => lv_retcode                 -- リターン・コード
+      , ov_errmsg                   => lv_errmsg                  -- ユーザー・エラー・メッセージ
+      , i_get_sales_data_rec        => l_get_sales_data_rec         -- 販売実績情報レコード
+      );
+      IF( lv_retcode = cv_status_error ) THEN
+        lv_end_retcode := cv_status_error;
+        RAISE global_process_expt;
+      ELSIF( lv_retcode = cv_status_warn ) THEN
+        lv_end_retcode := cv_status_warn;
+      END IF;
+    END LOOP get_sales_data_loop2;
+    CLOSE get_sales_data_cur2;
+    --==================================================
+    -- 出力パラメータ設定
+    --==================================================
+    ov_errbuf  := NULL;
+    ov_errmsg  := NULL;
+    ov_retcode := lv_end_retcode;
+--
+  EXCEPTION
+    -- *** エラー終了 ***
+    WHEN error_proc_expt THEN
+      ov_errmsg  := NULL;
+      ov_errbuf  := SUBSTRB( cv_pkg_name || cv_msg_cont || cv_prg_name || cv_msg_part || lv_outmsg, 1, 5000 );
+      ov_retcode := cv_status_error;
+    -- *** 処理部共通例外 ***
+    WHEN global_process_expt THEN
+      ov_errmsg  := NULL;
+      ov_errbuf  := SUBSTRB( cv_pkg_name || cv_msg_cont || cv_prg_name || cv_msg_part || lv_errbuf, 1, 5000 );
+      ov_retcode := lv_end_retcode;
+    -- *** 共通関数OTHERS例外 ***
+    WHEN global_api_others_expt THEN
+      ov_errbuf  := SUBSTRB( cv_pkg_name || cv_msg_cont || cv_prg_name || cv_msg_part || SQLERRM, 1, 5000 );
+      ov_retcode := cv_status_error;
+    -- *** OTHERS例外 ***
+    WHEN OTHERS THEN
+fnd_file.put_line( FND_FILE.LOG, 'For Debug:' || 'ship_cust_code' || '【' || l_get_sales_data_rec.ship_cust_code || '】' ); -- debug
+      ov_errbuf  := SUBSTRB( cv_pkg_name || cv_msg_cont || cv_prg_name || cv_msg_part || SQLERRM, 1, 5000 );
+      ov_retcode := cv_status_error;
+  END sales_result_loop2;
+--
+  /**********************************************************************************
+   * Procedure Name   : sales_result_loop3
+   * Description      : 販売実績の取得・一律条件(A-8)
+   ***********************************************************************************/
+  PROCEDURE sales_result_loop3(
+    ov_errbuf                      OUT VARCHAR2        -- エラー・メッセージ
+  , ov_retcode                     OUT VARCHAR2        -- リターン・コード
+  , ov_errmsg                      OUT VARCHAR2        -- ユーザー・エラー・メッセージ
+  )
+  IS
+    --==================================================
+    -- ローカル定数
+    --==================================================
+    cv_prg_name                    CONSTANT VARCHAR2(30) := 'sales_result_loop3';             -- プログラム名
+    --==================================================
+    -- ローカル変数
+    --==================================================
+    lv_errbuf                      VARCHAR2(5000) DEFAULT NULL;                 -- エラー・メッセージ
+    lv_retcode                     VARCHAR2(1)    DEFAULT cv_status_normal;     -- リターン・コード
+    lv_end_retcode                 VARCHAR2(1)    DEFAULT cv_status_normal;     -- リターン・コード
+    lv_errmsg                      VARCHAR2(5000) DEFAULT NULL;                 -- ユーザー・エラー・メッセージ
+    lv_outmsg                      VARCHAR2(5000) DEFAULT NULL;                 -- 出力用メッセージ
+    lb_retcode                     BOOLEAN        DEFAULT TRUE;                 -- メッセージ出力関数戻り値
+    l_xcbs_data_tab                xcbs_data_ttype;
+    l_get_sales_data_rec           get_sales_data_rtype;
+--
+  BEGIN
+    --==================================================
+    -- ステータス初期化
+    --==================================================
+    lv_end_retcode := cv_status_normal;
+    --==================================================
+    -- 顧客情報の取得
+    --==================================================
+    OPEN get_sales_data_cur3;
+    << get_sales_data_loop3 >>
+    LOOP
+      FETCH get_sales_data_cur3 INTO l_get_sales_data_rec;
+      EXIT WHEN get_sales_data_cur3%NOTFOUND;
+      --==================================================
+      -- 条件別販手販協情報の設定
+      --==================================================
+      set_xcbs_data(
+        ov_errbuf                   => lv_errbuf                  -- エラー・メッセージ
+      , ov_retcode                  => lv_retcode                 -- リターン・コード
+      , ov_errmsg                   => lv_errmsg                  -- ユーザー・エラー・メッセージ
+      , i_get_sales_data_rec        => l_get_sales_data_rec       -- 販売実績情報レコード
+      , o_xcbs_data_tab             => l_xcbs_data_tab            -- 条件別販手販協情報
+      );
+      IF( lv_retcode = cv_status_error ) THEN
+        lv_end_retcode := cv_status_error;
+        RAISE global_process_expt;
+      END IF;
+      --==================================================
+      -- 条件別販手販協テーブルへの登録
+      --==================================================
+      insert_xcbs(
+        ov_errbuf                   => lv_errbuf                  -- エラー・メッセージ
+      , ov_retcode                  => lv_retcode                 -- リターン・コード
+      , ov_errmsg                   => lv_errmsg                  -- ユーザー・エラー・メッセージ
+      , i_get_sales_data_rec        => l_get_sales_data_rec       -- 販売実績情報レコード
+      , i_xcbs_data_tab             => l_xcbs_data_tab            -- 条件別販手販協情報
+      );
+      IF( lv_retcode = cv_status_error ) THEN
+        lv_end_retcode := cv_status_error;
+        RAISE global_process_expt;
+      END IF;
+      --==================================================
+      -- 販手条件エラーテーブルへの登録
+      --==================================================
+      insert_xbce(
+        ov_errbuf                   => lv_errbuf                  -- エラー・メッセージ
+      , ov_retcode                  => lv_retcode                 -- リターン・コード
+      , ov_errmsg                   => lv_errmsg                  -- ユーザー・エラー・メッセージ
+      , i_get_sales_data_rec        => l_get_sales_data_rec       -- 販売実績情報レコード
+      );
+      IF( lv_retcode = cv_status_error ) THEN
+        lv_end_retcode := cv_status_error;
+        RAISE global_process_expt;
+      ELSIF( lv_retcode = cv_status_warn ) THEN
+        lv_end_retcode := cv_status_warn;
+      END IF;
+    END LOOP get_sales_data_loop3;
+    CLOSE get_sales_data_cur3;
+    --==================================================
+    -- 出力パラメータ設定
+    --==================================================
+    ov_errbuf  := NULL;
+    ov_errmsg  := NULL;
+    ov_retcode := lv_end_retcode;
+--
+  EXCEPTION
+    -- *** エラー終了 ***
+    WHEN error_proc_expt THEN
+      ov_errmsg  := NULL;
+      ov_errbuf  := SUBSTRB( cv_pkg_name || cv_msg_cont || cv_prg_name || cv_msg_part || lv_outmsg, 1, 5000 );
+      ov_retcode := cv_status_error;
+    -- *** 処理部共通例外 ***
+    WHEN global_process_expt THEN
+      ov_errmsg  := NULL;
+      ov_errbuf  := SUBSTRB( cv_pkg_name || cv_msg_cont || cv_prg_name || cv_msg_part || lv_errbuf, 1, 5000 );
+      ov_retcode := lv_end_retcode;
+    -- *** 共通関数OTHERS例外 ***
+    WHEN global_api_others_expt THEN
+      ov_errbuf  := SUBSTRB( cv_pkg_name || cv_msg_cont || cv_prg_name || cv_msg_part || SQLERRM, 1, 5000 );
+      ov_retcode := cv_status_error;
+    -- *** OTHERS例外 ***
+    WHEN OTHERS THEN
+fnd_file.put_line( FND_FILE.LOG, 'For Debug:' || 'ship_cust_code' || '【' || l_get_sales_data_rec.ship_cust_code || '】' ); -- debug
+      ov_errbuf  := SUBSTRB( cv_pkg_name || cv_msg_cont || cv_prg_name || cv_msg_part || SQLERRM, 1, 5000 );
+      ov_retcode := cv_status_error;
+  END sales_result_loop3;
+--
+  /**********************************************************************************
+   * Procedure Name   : sales_result_loop4
+   * Description      : 販売実績の取得・定額条件(A-8)
+   ***********************************************************************************/
+  PROCEDURE sales_result_loop4(
+    ov_errbuf                      OUT VARCHAR2        -- エラー・メッセージ
+  , ov_retcode                     OUT VARCHAR2        -- リターン・コード
+  , ov_errmsg                      OUT VARCHAR2        -- ユーザー・エラー・メッセージ
+  )
+  IS
+    --==================================================
+    -- ローカル定数
+    --==================================================
+    cv_prg_name                    CONSTANT VARCHAR2(30) := 'sales_result_loop4';             -- プログラム名
+    --==================================================
+    -- ローカル変数
+    --==================================================
+    lv_errbuf                      VARCHAR2(5000) DEFAULT NULL;                 -- エラー・メッセージ
+    lv_retcode                     VARCHAR2(1)    DEFAULT cv_status_normal;     -- リターン・コード
+    lv_end_retcode                 VARCHAR2(1)    DEFAULT cv_status_normal;     -- リターン・コード
+    lv_errmsg                      VARCHAR2(5000) DEFAULT NULL;                 -- ユーザー・エラー・メッセージ
+    lv_outmsg                      VARCHAR2(5000) DEFAULT NULL;                 -- 出力用メッセージ
+    lb_retcode                     BOOLEAN        DEFAULT TRUE;                 -- メッセージ出力関数戻り値
+    l_xcbs_data_tab                xcbs_data_ttype;
+    l_get_sales_data_rec           get_sales_data_rtype;
+--
+  BEGIN
+    --==================================================
+    -- ステータス初期化
+    --==================================================
+    lv_end_retcode := cv_status_normal;
+    --==================================================
+    -- 顧客情報の取得
+    --==================================================
+    OPEN get_sales_data_cur4;
+    << get_sales_data_loop4 >>
+    LOOP
+      FETCH get_sales_data_cur4 INTO l_get_sales_data_rec;
+      EXIT WHEN get_sales_data_cur4%NOTFOUND;
+      --==================================================
+      -- 条件別販手販協情報の設定
+      --==================================================
+      set_xcbs_data(
+        ov_errbuf                   => lv_errbuf                  -- エラー・メッセージ
+      , ov_retcode                  => lv_retcode                 -- リターン・コード
+      , ov_errmsg                   => lv_errmsg                  -- ユーザー・エラー・メッセージ
+      , i_get_sales_data_rec        => l_get_sales_data_rec       -- 販売実績情報レコード
+      , o_xcbs_data_tab             => l_xcbs_data_tab            -- 条件別販手販協情報
+      );
+      IF( lv_retcode = cv_status_error ) THEN
+        lv_end_retcode := cv_status_error;
+        RAISE global_process_expt;
+      END IF;
+      --==================================================
+      -- 条件別販手販協テーブルへの登録
+      --==================================================
+      insert_xcbs(
+        ov_errbuf                   => lv_errbuf                  -- エラー・メッセージ
+      , ov_retcode                  => lv_retcode                 -- リターン・コード
+      , ov_errmsg                   => lv_errmsg                  -- ユーザー・エラー・メッセージ
+      , i_get_sales_data_rec        => l_get_sales_data_rec       -- 販売実績情報レコード
+      , i_xcbs_data_tab             => l_xcbs_data_tab            -- 条件別販手販協情報
+      );
+      IF( lv_retcode = cv_status_error ) THEN
+        lv_end_retcode := cv_status_error;
+        RAISE global_process_expt;
+      END IF;
+      --==================================================
+      -- 販手条件エラーテーブルへの登録
+      --==================================================
+      insert_xbce(
+        ov_errbuf                   => lv_errbuf                  -- エラー・メッセージ
+      , ov_retcode                  => lv_retcode                 -- リターン・コード
+      , ov_errmsg                   => lv_errmsg                  -- ユーザー・エラー・メッセージ
+      , i_get_sales_data_rec        => l_get_sales_data_rec       -- 販売実績情報レコード
+      );
+      IF( lv_retcode = cv_status_error ) THEN
+        lv_end_retcode := cv_status_error;
+        RAISE global_process_expt;
+      ELSIF( lv_retcode = cv_status_warn ) THEN
+        lv_end_retcode := cv_status_warn;
+      END IF;
+    END LOOP get_sales_data_loop4;
+    CLOSE get_sales_data_cur4;
+    --==================================================
+    -- 出力パラメータ設定
+    --==================================================
+    ov_errbuf  := NULL;
+    ov_errmsg  := NULL;
+    ov_retcode := lv_end_retcode;
+--
+  EXCEPTION
+    -- *** エラー終了 ***
+    WHEN error_proc_expt THEN
+      ov_errmsg  := NULL;
+      ov_errbuf  := SUBSTRB( cv_pkg_name || cv_msg_cont || cv_prg_name || cv_msg_part || lv_outmsg, 1, 5000 );
+      ov_retcode := cv_status_error;
+    -- *** 処理部共通例外 ***
+    WHEN global_process_expt THEN
+      ov_errmsg  := NULL;
+      ov_errbuf  := SUBSTRB( cv_pkg_name || cv_msg_cont || cv_prg_name || cv_msg_part || lv_errbuf, 1, 5000 );
+      ov_retcode := lv_end_retcode;
+    -- *** 共通関数OTHERS例外 ***
+    WHEN global_api_others_expt THEN
+      ov_errbuf  := SUBSTRB( cv_pkg_name || cv_msg_cont || cv_prg_name || cv_msg_part || SQLERRM, 1, 5000 );
+      ov_retcode := cv_status_error;
+    -- *** OTHERS例外 ***
+    WHEN OTHERS THEN
+fnd_file.put_line( FND_FILE.LOG, 'For Debug:' || 'ship_cust_code' || '【' || l_get_sales_data_rec.ship_cust_code || '】' ); -- debug
+      ov_errbuf  := SUBSTRB( cv_pkg_name || cv_msg_cont || cv_prg_name || cv_msg_part || SQLERRM, 1, 5000 );
+      ov_retcode := cv_status_error;
+  END sales_result_loop4;
+--
+  /**********************************************************************************
+   * Procedure Name   : sales_result_loop5
+   * Description      : 販売実績の取得・電気料（固定／変動）(A-8)
+   ***********************************************************************************/
+  PROCEDURE sales_result_loop5(
+    ov_errbuf                      OUT VARCHAR2        -- エラー・メッセージ
+  , ov_retcode                     OUT VARCHAR2        -- リターン・コード
+  , ov_errmsg                      OUT VARCHAR2        -- ユーザー・エラー・メッセージ
+  )
+  IS
+    --==================================================
+    -- ローカル定数
+    --==================================================
+    cv_prg_name                    CONSTANT VARCHAR2(30) := 'sales_result_loop5';             -- プログラム名
+    --==================================================
+    -- ローカル変数
+    --==================================================
+    lv_errbuf                      VARCHAR2(5000) DEFAULT NULL;                 -- エラー・メッセージ
+    lv_retcode                     VARCHAR2(1)    DEFAULT cv_status_normal;     -- リターン・コード
+    lv_end_retcode                 VARCHAR2(1)    DEFAULT cv_status_normal;     -- リターン・コード
+    lv_errmsg                      VARCHAR2(5000) DEFAULT NULL;                 -- ユーザー・エラー・メッセージ
+    lv_outmsg                      VARCHAR2(5000) DEFAULT NULL;                 -- 出力用メッセージ
+    lb_retcode                     BOOLEAN        DEFAULT TRUE;                 -- メッセージ出力関数戻り値
+    l_xcbs_data_tab                xcbs_data_ttype;
+    l_get_sales_data_rec           get_sales_data_rtype;
+--
+  BEGIN
+    --==================================================
+    -- ステータス初期化
+    --==================================================
+    lv_end_retcode := cv_status_normal;
+    --==================================================
+    -- 顧客情報の取得
+    --==================================================
+    OPEN get_sales_data_cur5;
+    << get_sales_data_loop5 >>
+    LOOP
+      FETCH get_sales_data_cur5 INTO l_get_sales_data_rec;
+      EXIT WHEN get_sales_data_cur5%NOTFOUND;
+      --==================================================
+      -- 条件別販手販協情報の設定
+      --==================================================
+      set_xcbs_data(
+        ov_errbuf                   => lv_errbuf                  -- エラー・メッセージ
+      , ov_retcode                  => lv_retcode                 -- リターン・コード
+      , ov_errmsg                   => lv_errmsg                  -- ユーザー・エラー・メッセージ
+      , i_get_sales_data_rec        => l_get_sales_data_rec       -- 販売実績情報レコード
+      , o_xcbs_data_tab             => l_xcbs_data_tab            -- 条件別販手販協情報
+      );
+      IF( lv_retcode = cv_status_error ) THEN
+        lv_end_retcode := cv_status_error;
+        RAISE global_process_expt;
+      END IF;
+      --==================================================
+      -- 条件別販手販協テーブルへの登録
+      --==================================================
+      insert_xcbs(
+        ov_errbuf                   => lv_errbuf                  -- エラー・メッセージ
+      , ov_retcode                  => lv_retcode                 -- リターン・コード
+      , ov_errmsg                   => lv_errmsg                  -- ユーザー・エラー・メッセージ
+      , i_get_sales_data_rec        => l_get_sales_data_rec       -- 販売実績情報レコード
+      , i_xcbs_data_tab             => l_xcbs_data_tab            -- 条件別販手販協情報
+      );
+      IF( lv_retcode = cv_status_error ) THEN
+        lv_end_retcode := cv_status_error;
+        RAISE global_process_expt;
+      END IF;
+      --==================================================
+      -- 販手条件エラーテーブルへの登録
+      --==================================================
+      insert_xbce(
+        ov_errbuf                   => lv_errbuf                  -- エラー・メッセージ
+      , ov_retcode                  => lv_retcode                 -- リターン・コード
+      , ov_errmsg                   => lv_errmsg                  -- ユーザー・エラー・メッセージ
+      , i_get_sales_data_rec        => l_get_sales_data_rec         -- 販売実績情報レコード
+      );
+      IF( lv_retcode = cv_status_error ) THEN
+        lv_end_retcode := cv_status_error;
+        RAISE global_process_expt;
+      ELSIF( lv_retcode = cv_status_warn ) THEN
+        lv_end_retcode := cv_status_warn;
+      END IF;
+    END LOOP get_sales_data_loop5;
+    CLOSE get_sales_data_cur5;
+    --==================================================
+    -- 出力パラメータ設定
+    --==================================================
+    ov_errbuf  := NULL;
+    ov_errmsg  := NULL;
+    ov_retcode := lv_end_retcode;
+--
+  EXCEPTION
+    -- *** エラー終了 ***
+    WHEN error_proc_expt THEN
+      ov_errmsg  := NULL;
+      ov_errbuf  := SUBSTRB( cv_pkg_name || cv_msg_cont || cv_prg_name || cv_msg_part || lv_outmsg, 1, 5000 );
+      ov_retcode := cv_status_error;
+    -- *** 処理部共通例外 ***
+    WHEN global_process_expt THEN
+      ov_errmsg  := NULL;
+      ov_errbuf  := SUBSTRB( cv_pkg_name || cv_msg_cont || cv_prg_name || cv_msg_part || lv_errbuf, 1, 5000 );
+      ov_retcode := lv_end_retcode;
+    -- *** 共通関数OTHERS例外 ***
+    WHEN global_api_others_expt THEN
+      ov_errbuf  := SUBSTRB( cv_pkg_name || cv_msg_cont || cv_prg_name || cv_msg_part || SQLERRM, 1, 5000 );
+      ov_retcode := cv_status_error;
+    -- *** OTHERS例外 ***
+    WHEN OTHERS THEN
+fnd_file.put_line( FND_FILE.LOG, 'For Debug:' || 'ship_cust_code' || '【' || l_get_sales_data_rec.ship_cust_code || '】' ); -- debug
+      ov_errbuf  := SUBSTRB( cv_pkg_name || cv_msg_cont || cv_prg_name || cv_msg_part || SQLERRM, 1, 5000 );
+      ov_retcode := cv_status_error;
+  END sales_result_loop5;
+--
+  /**********************************************************************************
+   * Procedure Name   : sales_result_loop6
+   * Description      : 販売実績の取得・入金値引率(A-8)
+   ***********************************************************************************/
+  PROCEDURE sales_result_loop6(
+    ov_errbuf                      OUT VARCHAR2        -- エラー・メッセージ
+  , ov_retcode                     OUT VARCHAR2        -- リターン・コード
+  , ov_errmsg                      OUT VARCHAR2        -- ユーザー・エラー・メッセージ
+  )
+  IS
+    --==================================================
+    -- ローカル定数
+    --==================================================
+    cv_prg_name                    CONSTANT VARCHAR2(30) := 'sales_result_loop6';             -- プログラム名
+    --==================================================
+    -- ローカル変数
+    --==================================================
+    lv_errbuf                      VARCHAR2(5000) DEFAULT NULL;                 -- エラー・メッセージ
+    lv_retcode                     VARCHAR2(1)    DEFAULT cv_status_normal;     -- リターン・コード
+    lv_end_retcode                 VARCHAR2(1)    DEFAULT cv_status_normal;     -- リターン・コード
+    lv_errmsg                      VARCHAR2(5000) DEFAULT NULL;                 -- ユーザー・エラー・メッセージ
+    lv_outmsg                      VARCHAR2(5000) DEFAULT NULL;                 -- 出力用メッセージ
+    lb_retcode                     BOOLEAN        DEFAULT TRUE;                 -- メッセージ出力関数戻り値
+    l_xcbs_data_tab                xcbs_data_ttype;
+    l_get_sales_data_rec           get_sales_data_rtype;
+--
+  BEGIN
+    --==================================================
+    -- ステータス初期化
+    --==================================================
+    lv_end_retcode := cv_status_normal;
+    --==================================================
+    -- 顧客情報の取得
+    --==================================================
+    OPEN get_sales_data_cur6;
+    << get_sales_data_loop6 >>
+    LOOP
+      FETCH get_sales_data_cur6 INTO l_get_sales_data_rec;
+      EXIT WHEN get_sales_data_cur6%NOTFOUND;
+      --==================================================
+      -- 条件別販手販協情報の設定
+      --==================================================
+      set_xcbs_data(
+        ov_errbuf                   => lv_errbuf                  -- エラー・メッセージ
+      , ov_retcode                  => lv_retcode                 -- リターン・コード
+      , ov_errmsg                   => lv_errmsg                  -- ユーザー・エラー・メッセージ
+      , i_get_sales_data_rec        => l_get_sales_data_rec       -- 販売実績情報レコード
+      , o_xcbs_data_tab             => l_xcbs_data_tab            -- 条件別販手販協情報
+      );
+      IF( lv_retcode = cv_status_error ) THEN
+        lv_end_retcode := cv_status_error;
+        RAISE global_process_expt;
+      END IF;
+      --==================================================
+      -- 条件別販手販協テーブルへの登録
+      --==================================================
+      insert_xcbs(
+        ov_errbuf                   => lv_errbuf                  -- エラー・メッセージ
+      , ov_retcode                  => lv_retcode                 -- リターン・コード
+      , ov_errmsg                   => lv_errmsg                  -- ユーザー・エラー・メッセージ
+      , i_get_sales_data_rec        => l_get_sales_data_rec       -- 販売実績情報レコード
+      , i_xcbs_data_tab             => l_xcbs_data_tab            -- 条件別販手販協情報
+      );
+      IF( lv_retcode = cv_status_error ) THEN
+        lv_end_retcode := cv_status_error;
+        RAISE global_process_expt;
+      END IF;
+      --==================================================
+      -- 販手条件エラーテーブルへの登録
+      --==================================================
+      insert_xbce(
+        ov_errbuf                   => lv_errbuf                  -- エラー・メッセージ
+      , ov_retcode                  => lv_retcode                 -- リターン・コード
+      , ov_errmsg                   => lv_errmsg                  -- ユーザー・エラー・メッセージ
+      , i_get_sales_data_rec        => l_get_sales_data_rec       -- 販売実績情報レコード
+      );
+      IF( lv_retcode = cv_status_error ) THEN
+        lv_end_retcode := cv_status_error;
+        RAISE global_process_expt;
+      ELSIF( lv_retcode = cv_status_warn ) THEN
+        lv_end_retcode := cv_status_warn;
+      END IF;
+    END LOOP get_sales_data_loop6;
+    CLOSE get_sales_data_cur6;
+    --==================================================
+    -- 出力パラメータ設定
+    --==================================================
+    ov_errbuf  := NULL;
+    ov_errmsg  := NULL;
+    ov_retcode := lv_end_retcode;
+--
+  EXCEPTION
+    -- *** エラー終了 ***
+    WHEN error_proc_expt THEN
+      ov_errmsg  := NULL;
+      ov_errbuf  := SUBSTRB( cv_pkg_name || cv_msg_cont || cv_prg_name || cv_msg_part || lv_outmsg, 1, 5000 );
+      ov_retcode := cv_status_error;
+    -- *** 処理部共通例外 ***
+    WHEN global_process_expt THEN
+      ov_errmsg  := NULL;
+      ov_errbuf  := SUBSTRB( cv_pkg_name || cv_msg_cont || cv_prg_name || cv_msg_part || lv_errbuf, 1, 5000 );
+      ov_retcode := lv_end_retcode;
+    -- *** 共通関数OTHERS例外 ***
+    WHEN global_api_others_expt THEN
+      ov_errbuf  := SUBSTRB( cv_pkg_name || cv_msg_cont || cv_prg_name || cv_msg_part || SQLERRM, 1, 5000 );
+      ov_retcode := cv_status_error;
+    -- *** OTHERS例外 ***
+    WHEN OTHERS THEN
+fnd_file.put_line( FND_FILE.LOG, 'For Debug:' || 'ship_cust_code' || '【' || l_get_sales_data_rec.ship_cust_code || '】' ); -- debug
+      ov_errbuf  := SUBSTRB( cv_pkg_name || cv_msg_cont || cv_prg_name || cv_msg_part || SQLERRM, 1, 5000 );
+      ov_retcode := cv_status_error;
+  END sales_result_loop6;
+--
+  /**********************************************************************************
+   * Procedure Name   : delete_xbce
+   * Description      : 販手条件エラーの削除処理(A-7)
+   ***********************************************************************************/
+  PROCEDURE delete_xbce(
+    ov_errbuf                      OUT VARCHAR2        -- エラー・メッセージ
+  , ov_retcode                     OUT VARCHAR2        -- リターン・コード
+  , ov_errmsg                      OUT VARCHAR2        -- ユーザー・エラー・メッセージ
+  )
+  IS
+    --==================================================
+    -- ローカル定数
+    --==================================================
+    cv_prg_name                    CONSTANT VARCHAR2(30) := 'delete_xbce';      -- プログラム名
+    --==================================================
+    -- ローカル変数
+    --==================================================
+    lv_errbuf                      VARCHAR2(5000) DEFAULT NULL;                 -- エラー・メッセージ
+    lv_retcode                     VARCHAR2(1)    DEFAULT cv_status_normal;     -- リターン・コード
+    lv_end_retcode                 VARCHAR2(1)    DEFAULT cv_status_normal;     -- リターン・コード
+    lv_errmsg                      VARCHAR2(5000) DEFAULT NULL;                 -- ユーザー・エラー・メッセージ
+    lv_outmsg                      VARCHAR2(5000) DEFAULT NULL;                 -- 出力用メッセージ
+    lb_retcode                     BOOLEAN        DEFAULT TRUE;                 -- メッセージ出力関数戻り値
+    -- ログ出力用退避項目
+    lt_cust_code                   xxcok_bm_contract_err.cust_code%TYPE DEFAULT NULL;
+    --==================================================
+    -- ローカルカーソル
+    --==================================================
+    CURSOR xbce_delete_lock_cur
+    IS
+      SELECT xbce.cust_code                AS cust_code  -- 顧客コード
+      FROM xxcok_bm_contract_err      xbce               -- 販手条件エラーテーブル
+         , xxcok_tmp_014a01c_custdata xt0c               -- 条件別販手販協計算顧客情報一時表
+      WHERE xbce.cust_code  = xt0c.ship_cust_code
+      FOR UPDATE OF xbce.cust_code NOWAIT
+    ;
+--
+  BEGIN
+    --==================================================
+    -- ステータス初期化
+    --==================================================
+    lv_end_retcode := cv_status_normal;
+    --==================================================
+    -- 販手条件エラー削除ループ
+    --==================================================
+    << xbce_delete_lock_loop >>
+    FOR xbce_delete_lock_rec IN xbce_delete_lock_cur LOOP
+      --==================================================
+      -- 販手条件エラーデータ削除
+      --==================================================
+      lt_cust_code := xbce_delete_lock_rec.cust_code;
+      DELETE
+      FROM xxcok_bm_contract_err   xbce
+      WHERE xbce.cust_code = xbce_delete_lock_rec.cust_code
+      ;
+    END LOOP xbce_delete_lock_loop;
+    --==================================================
+    -- 削除処理の確定
+    --==================================================
+    COMMIT;
+    --==================================================
+    -- 出力パラメータ設定
+    --==================================================
+    ov_errbuf  := NULL;
+    ov_errmsg  := NULL;
+    ov_retcode := lv_end_retcode;
+--
+  EXCEPTION
+    -- ロック取得エラー
+    WHEN resource_busy_expt THEN
+      lv_outmsg  := xxccp_common_pkg.get_msg(
+                      iv_application          => cv_appl_short_name_cok
+                    , iv_name                 => cv_msg_cok_00080
+                    );
+      lb_retcode := xxcok_common_pkg.put_message_f(
+                      in_which                => FND_FILE.OUTPUT
+                    , iv_message              => lv_outmsg
+                    , in_new_line             => 0
+                    );
+      ov_errmsg  := NULL;
+      ov_errbuf  := SUBSTRB( cv_pkg_name || cv_msg_cont || cv_prg_name || cv_msg_part || lv_outmsg, 1, 5000 );
+      ov_retcode := cv_status_error;
+    -- *** エラー終了 ***
+    WHEN error_proc_expt THEN
+      ov_errmsg  := NULL;
+      ov_errbuf  := SUBSTRB( cv_pkg_name || cv_msg_cont || cv_prg_name || cv_msg_part || lv_outmsg, 1, 5000 );
+      ov_retcode := cv_status_error;
+    -- *** 処理部共通例外 ***
+    WHEN global_process_expt THEN
+      ov_errmsg  := NULL;
+      ov_errbuf  := SUBSTRB( cv_pkg_name || cv_msg_cont || cv_prg_name || cv_msg_part || lv_errbuf, 1, 5000 );
+      ov_retcode := lv_end_retcode;
+    -- *** 共通関数OTHERS例外 ***
+    WHEN global_api_others_expt THEN
+      ov_errbuf  := SUBSTRB( cv_pkg_name || cv_msg_cont || cv_prg_name || cv_msg_part || SQLERRM, 1, 5000 );
+      ov_retcode := cv_status_error;
+    -- *** OTHERS例外 ***
+    WHEN OTHERS THEN
+fnd_file.put_line( FND_FILE.LOG, 'For Debug:' || 'cust_code' || '【' || lt_cust_code || '】' ); -- debug
+      ov_errbuf  := SUBSTRB( cv_pkg_name || cv_msg_cont || cv_prg_name || cv_msg_part || SQLERRM, 1, 5000 );
+      ov_retcode := cv_status_error;
+END delete_xbce;
+--
+  /**********************************************************************************
+   * Procedure Name   : delete_xcbs
+   * Description      : 条件別販手販協データの削除（未確定金額）(A-3)
+   ***********************************************************************************/
+  PROCEDURE delete_xcbs(
+    ov_errbuf                      OUT VARCHAR2        -- エラー・メッセージ
+  , ov_retcode                     OUT VARCHAR2        -- リターン・コード
+  , ov_errmsg                      OUT VARCHAR2        -- ユーザー・エラー・メッセージ
+  )
+  IS
+    --==================================================
+    -- ローカル定数
+    --==================================================
+    cv_prg_name                    CONSTANT VARCHAR2(30) := 'delete_xcbs';      -- プログラム名
+    --==================================================
+    -- ローカル変数
+    --==================================================
+    lv_errbuf                      VARCHAR2(5000) DEFAULT NULL;                 -- エラー・メッセージ
+    lv_retcode                     VARCHAR2(1)    DEFAULT cv_status_normal;     -- リターン・コード
+    lv_end_retcode                 VARCHAR2(1)    DEFAULT cv_status_normal;     -- リターン・コード
+    lv_errmsg                      VARCHAR2(5000) DEFAULT NULL;                 -- ユーザー・エラー・メッセージ
+    lv_outmsg                      VARCHAR2(5000) DEFAULT NULL;                 -- 出力用メッセージ
+    lb_retcode                     BOOLEAN        DEFAULT TRUE;                 -- メッセージ出力関数戻り値
+    -- ログ出力用退避項目
+    lt_cond_bm_support_id          xxcok_cond_bm_support.cond_bm_support_id%TYPE DEFAULT NULL;
+    --==================================================
+    -- ローカルカーソル
+    --==================================================
+    CURSOR xcbs_delete_lock_cur
+    IS
+      SELECT xcbs.cond_bm_support_id    AS cond_bm_support_id  -- 条件別販手販協ID
+           , xcbs.delivery_cust_code    AS delivery_cust_code  -- 顧客【納品先】
+           , xcbs.closing_date          AS closing_date        -- 締め日
+      FROM xxcok_cond_bm_support      xcbs               -- 条件別販手販協テーブル
+         , hz_cust_accounts        hca                -- 顧客マスタ
+         , hz_cust_acct_sites_all  hcas               -- 顧客サイトマスタ
+         , hz_parties              hp                 -- パーティマスタ
+         , hz_party_sites          hps                -- パーティサイトマスタ
+         , hz_locations            hl                 -- 顧客所在地マスタ
+         , fnd_lookup_values       flv                -- 販手販協計算実行区分
+      WHERE xcbs.delivery_cust_code          = hca.account_number
+        AND hca.cust_account_id              = hcas.cust_account_id
+        AND hca.party_id                     = hp.party_id
+        AND hp.party_id                      = hps.party_id
+        AND hcas.party_site_id               = hps.party_site_id
+        AND hps.location_id                  = hl.location_id
+        AND hcas.org_id                      = gn_org_id
+        AND flv.lookup_type                  = cv_lookup_type_01
+        AND flv.lookup_code                  = gv_param_proc_type
+        AND flv.language                     = USERENV( 'LANG' )
+        AND gd_process_date            BETWEEN NVL( flv.start_date_active, gd_process_date )
+                                           AND NVL( flv.end_date_active  , gd_process_date )
+        AND flv.enabled_flag                 = cv_enable
+        AND (    ( hl.address3              LIKE flv.attribute1  || '%' AND flv.attribute1  IS NOT NULL )
+              OR ( hl.address3              LIKE flv.attribute2  || '%' AND flv.attribute2  IS NOT NULL )
+              OR ( hl.address3              LIKE flv.attribute3  || '%' AND flv.attribute3  IS NOT NULL )
+              OR ( hl.address3              LIKE flv.attribute4  || '%' AND flv.attribute4  IS NOT NULL )
+              OR ( hl.address3              LIKE flv.attribute5  || '%' AND flv.attribute5  IS NOT NULL )
+              OR ( hl.address3              LIKE flv.attribute6  || '%' AND flv.attribute6  IS NOT NULL )
+              OR ( hl.address3              LIKE flv.attribute7  || '%' AND flv.attribute7  IS NOT NULL )
+              OR ( hl.address3              LIKE flv.attribute8  || '%' AND flv.attribute8  IS NOT NULL )
+              OR ( hl.address3              LIKE flv.attribute9  || '%' AND flv.attribute9  IS NOT NULL )
+              OR ( hl.address3              LIKE flv.attribute10 || '%' AND flv.attribute10 IS NOT NULL )
+              OR ( hl.address3              LIKE flv.attribute11 || '%' AND flv.attribute11 IS NOT NULL )
+              OR ( hl.address3              LIKE flv.attribute12 || '%' AND flv.attribute12 IS NOT NULL )
+              OR ( hl.address3              LIKE flv.attribute13 || '%' AND flv.attribute13 IS NOT NULL )
+              OR ( hl.address3              LIKE flv.attribute14 || '%' AND flv.attribute14 IS NOT NULL )
+              OR ( hl.address3              LIKE flv.attribute15 || '%' AND flv.attribute15 IS NOT NULL )
+            )
+        AND xcbs.amt_fix_status    = cv_xcbs_temp -- 未確定
+      FOR UPDATE OF xcbs.cond_bm_support_id NOWAIT
+    ;
+--
+  BEGIN
+    --==================================================
+    -- ステータス初期化
+    --==================================================
+    lv_end_retcode := cv_status_normal;
+    --==================================================
+    -- 条件別販手販協削除ループ
+    --==================================================
+    << xcbs_delete_lock_loop >>
+    FOR xcbs_delete_lock_rec IN xcbs_delete_lock_cur LOOP
+      --==================================================
+      -- 条件別販手販協データ削除
+      --==================================================
+      DELETE
+      FROM xxcok_cond_bm_support   xcbs
+      WHERE xcbs.cond_bm_support_id = xcbs_delete_lock_rec.cond_bm_support_id
+      ;
+    END LOOP xcbs_delete_lock_loop;
+    --==================================================
+    -- 出力パラメータ設定
+    --==================================================
+    ov_errbuf  := NULL;
+    ov_errmsg  := NULL;
+    ov_retcode := lv_end_retcode;
+--
+  EXCEPTION
+    -- *** ロック取得エラー ***
+    WHEN resource_busy_expt THEN
+      lv_outmsg  := xxccp_common_pkg.get_msg(
+                      iv_application          => cv_appl_short_name_cok
+                    , iv_name                 => cv_msg_cok_00051
+                    );
+      lb_retcode := xxcok_common_pkg.put_message_f(
+                      in_which                => FND_FILE.OUTPUT
+                    , iv_message              => lv_outmsg
+                    , in_new_line             => 0
+                    );
+      ov_errmsg  := NULL;
+      ov_errbuf  := SUBSTRB( cv_pkg_name || cv_msg_cont || cv_prg_name || cv_msg_part || lv_outmsg, 1, 5000 );
+      ov_retcode := cv_status_error;
+    -- *** エラー終了 ***
+    WHEN error_proc_expt THEN
+      ov_errmsg  := NULL;
+      ov_errbuf  := SUBSTRB( cv_pkg_name || cv_msg_cont || cv_prg_name || cv_msg_part || lv_outmsg, 1, 5000 );
+      ov_retcode := cv_status_error;
+    -- *** 処理部共通例外 ***
+    WHEN global_process_expt THEN
+      ov_errmsg  := NULL;
+      ov_errbuf  := SUBSTRB( cv_pkg_name || cv_msg_cont || cv_prg_name || cv_msg_part || lv_errbuf, 1, 5000 );
+      ov_retcode := lv_end_retcode;
+    -- *** 共通関数OTHERS例外 ***
+    WHEN global_api_others_expt THEN
+      ov_errbuf  := SUBSTRB( cv_pkg_name || cv_msg_cont || cv_prg_name || cv_msg_part || SQLERRM, 1, 5000 );
+      ov_retcode := cv_status_error;
+    -- *** OTHERS例外 ***
+    WHEN OTHERS THEN
+fnd_file.put_line( FND_FILE.LOG, 'For Debug:' || 'cond_bm_support_id' || '【' || lt_cond_bm_support_id || '】' ); -- debug
+      ov_errbuf  := SUBSTRB( cv_pkg_name || cv_msg_cont || cv_prg_name || cv_msg_part || SQLERRM, 1, 5000 );
+      ov_retcode := cv_status_error;
+END delete_xcbs;
+--
+  /**********************************************************************************
+   * Procedure Name   : insert_xt0c
+   * Description      : 条件別販手販協計算顧客情報一時表への登録(A-6)
+   ***********************************************************************************/
+  PROCEDURE insert_xt0c(
+    ov_errbuf                      OUT VARCHAR2        -- エラー・メッセージ
+  , ov_retcode                     OUT VARCHAR2        -- リターン・コード
+  , ov_errmsg                      OUT VARCHAR2        -- ユーザー・エラー・メッセージ
+  , i_get_cust_data_rec            IN  get_cust_data_cur%ROWTYPE  -- 顧客情報レコード
+  , iv_term_name                   IN  VARCHAR2                   -- 支払条件
+  , id_close_date                  IN  DATE                       -- 締め日
+  , id_expect_payment_date         IN  DATE                       -- 支払予定日
+  , in_period_year                 IN  NUMBER                     -- 会計年度
+  , id_amount_fix_date             IN  DATE                       -- 金額確定日
+  )
+  IS
+    --==================================================
+    -- ローカル定数
+    --==================================================
+    cv_prg_name                    CONSTANT VARCHAR2(30) := 'insert_xt0c';      -- プログラム名
+    --==================================================
+    -- ローカル変数
+    --==================================================
+    lv_errbuf                      VARCHAR2(5000) DEFAULT NULL;                 -- エラー・メッセージ
+    lv_retcode                     VARCHAR2(1)    DEFAULT cv_status_normal;     -- リターン・コード
+    lv_end_retcode                 VARCHAR2(1)    DEFAULT cv_status_normal;     -- リターン・コード
+    lv_errmsg                      VARCHAR2(5000) DEFAULT NULL;                 -- ユーザー・エラー・メッセージ
+    lv_outmsg                      VARCHAR2(5000) DEFAULT NULL;                 -- 出力用メッセージ
+    lb_retcode                     BOOLEAN        DEFAULT TRUE;                 -- メッセージ出力関数戻り値
+--
+    ld_expect_payment_date         DATE           DEFAULT NULL;                 -- 支払予定日
+--
+  BEGIN
+    --==================================================
+    -- ステータス初期化
+    --==================================================
+    lv_end_retcode := cv_status_normal;
+    --==================================================
+    -- 支払予定日
+    --==================================================
+    IF ( i_get_cust_data_rec.ship_gyotai_sho = cv_gyotai_sho_25 ) THEN
+      ld_expect_payment_date := id_expect_payment_date;
+    ELSE
+      ld_expect_payment_date := id_close_date;
+    END IF;
+    --==================================================
+    -- 条件別販手販協計算顧客情報一時表への登録
+    --==================================================
+    INSERT INTO xxcok_tmp_014a01c_custdata (
+      ship_cust_code              -- 【出荷先】顧客コード
+    , ship_gyotai_tyu             -- 【出荷先】業態（中分類）
+    , ship_gyotai_sho             -- 【出荷先】業態（小分類）
+    , ship_delivery_chain_code    -- 【出荷先】納品先チェーンコード
+    , bill_cust_code              -- 【請求先】顧客コード
+    , bm1_vendor_code             -- 【ＢＭ１】仕入先コード
+    , bm1_vendor_site_code        -- 【ＢＭ１】仕入先サイトコード
+    , bm1_bm_payment_type         -- 【ＢＭ１】BM支払区分
+    , bm2_vendor_code             -- 【ＢＭ２】仕入先コード
+    , bm2_vendor_site_code        -- 【ＢＭ２】仕入先サイトコード
+    , bm2_bm_payment_type         -- 【ＢＭ２】BM支払区分
+    , bm3_vendor_code             -- 【ＢＭ３】仕入先コード
+    , bm3_vendor_site_code        -- 【ＢＭ３】仕入先サイトコード
+    , bm3_bm_payment_type         -- 【ＢＭ３】BM支払区分
+    , tax_div                     -- 消費税区分
+    , tax_code                    -- 税金コード
+    , tax_rate                    -- 税率
+    , tax_rounding_rule           -- 端数処理区分
+    , receiv_discount_rate        -- 入金値引率
+    , term_name                   -- 支払条件
+    , closing_date                -- 締め日
+    , expect_payment_date         -- 支払予定日
+    , period_year                 -- 会計年度
+    , calc_target_period_from     -- 計算対象期間(FROM)
+    , calc_target_period_to       -- 計算対象期間(TO)
+    , amount_fix_date             -- 金額確定日
+    )
+    VALUES (
+      i_get_cust_data_rec.ship_cust_code             -- 【出荷先】顧客コード
+    , i_get_cust_data_rec.ship_gyotai_tyu            -- 【出荷先】業態（中分類）
+    , i_get_cust_data_rec.ship_gyotai_sho            -- 【出荷先】業態（小分類）
+    , i_get_cust_data_rec.ship_delivery_chain_code   -- 【出荷先】納品先チェーンコード
+    , i_get_cust_data_rec.bill_cust_code             -- 【請求先】顧客コード
+    , i_get_cust_data_rec.bm1_vendor_code            -- 【ＢＭ１】仕入先コード
+    , i_get_cust_data_rec.bm1_vendor_site_code       -- 【ＢＭ１】仕入先サイトコード
+    , i_get_cust_data_rec.bm1_bm_payment_type        -- 【ＢＭ１】BM支払区分
+    , i_get_cust_data_rec.bm2_vendor_code            -- 【ＢＭ２】仕入先コード
+    , i_get_cust_data_rec.bm2_vendor_site_code       -- 【ＢＭ２】仕入先サイトコード
+    , i_get_cust_data_rec.bm2_bm_payment_type        -- 【ＢＭ２】BM支払区分
+    , i_get_cust_data_rec.bm3_vendor_code            -- 【ＢＭ３】仕入先コード
+    , i_get_cust_data_rec.bm3_vendor_site_code       -- 【ＢＭ３】仕入先サイトコード
+    , i_get_cust_data_rec.bm3_bm_payment_type        -- 【ＢＭ３】BM支払区分
+    , i_get_cust_data_rec.tax_div                    -- 消費税区分
+    , i_get_cust_data_rec.tax_code                   -- 税金コード
+    , i_get_cust_data_rec.tax_rate                   -- 税率
+    , i_get_cust_data_rec.tax_rounding_rule          -- 端数処理区分
+    , i_get_cust_data_rec.receiv_discount_rate       -- 入金値引率
+    , iv_term_name                                   -- 支払条件
+    , id_close_date                                  -- 締め日
+    , ld_expect_payment_date                         -- 支払予定日
+    , in_period_year                                 -- 会計年度
+    , i_get_cust_data_rec.calc_target_period_from    -- 計算対象期間(FROM)
+    , id_close_date                                  -- 計算対象期間(TO)
+    , id_amount_fix_date                             -- 金額確定日
+    );
+    --==================================================
+    -- 出力パラメータ設定
+    --==================================================
+    ov_errbuf  := NULL;
+    ov_errmsg  := NULL;
+    ov_retcode := lv_end_retcode;
+--
+  EXCEPTION
+    -- *** エラー終了 ***
+    WHEN error_proc_expt THEN
+      ov_errmsg  := NULL;
+      ov_errbuf  := SUBSTRB( cv_pkg_name || cv_msg_cont || cv_prg_name || cv_msg_part || lv_outmsg, 1, 5000 );
+      ov_retcode := cv_status_error;
+    -- *** 処理部共通例外 ***
+    WHEN global_process_expt THEN
+      ov_errmsg  := NULL;
+      ov_errbuf  := SUBSTRB( cv_pkg_name || cv_msg_cont || cv_prg_name || cv_msg_part || lv_errbuf, 1, 5000 );
+      ov_retcode := lv_end_retcode;
+    -- *** 共通関数OTHERS例外 ***
+    WHEN global_api_others_expt THEN
+      ov_errbuf  := SUBSTRB( cv_pkg_name || cv_msg_cont || cv_prg_name || cv_msg_part || SQLERRM, 1, 5000 );
+      ov_retcode := cv_status_error;
+    -- *** OTHERS例外 ***
+    WHEN OTHERS THEN
+fnd_file.put_line( FND_FILE.LOG, 'For Debug:' || 'ship_cust_code' || '【' || i_get_cust_data_rec.ship_cust_code || '】' ); -- debug
+      ov_errbuf  := SUBSTRB( cv_pkg_name || cv_msg_cont || cv_prg_name || cv_msg_part || SQLERRM, 1, 5000 );
+      ov_retcode := cv_status_error;
+END insert_xt0c;
+--
+  /**********************************************************************************
+   * Procedure Name   : get_cust_subdata
+   * Description      : 条件別販手販協計算日付情報の導出(A-5)
+   ***********************************************************************************/
+  PROCEDURE get_cust_subdata(
+    ov_errbuf                      OUT VARCHAR2        -- エラー・メッセージ
+  , ov_retcode                     OUT VARCHAR2        -- リターン・コード
+  , ov_errmsg                      OUT VARCHAR2        -- ユーザー・エラー・メッセージ
+  , i_get_cust_data_rec            IN  get_cust_data_cur%ROWTYPE  -- 顧客情報レコード
+  , ov_term_name                   OUT VARCHAR2                   -- 支払条件
+  , od_close_date                  OUT DATE                       -- 締め日
+  , od_expect_payment_date         OUT DATE                       -- 支払予定日
+  , od_bm_support_period_from      OUT DATE                       -- 条件別販手販協計算開始日
+  , od_bm_support_period_to        OUT DATE                       -- 条件別販手販協計算終了日
+  , on_period_year                 OUT NUMBER                     -- 会計年度
+  , od_amount_fix_date             OUT DATE                       -- 金額確定日
+  )
+  IS
+    --==================================================
+    -- ローカル定数
+    --==================================================
+    cv_prg_name                    CONSTANT VARCHAR2(30) := 'get_cust_subdata';             -- プログラム名
+    --==================================================
+    -- ローカル変数
+    --==================================================
+    lv_errbuf                      VARCHAR2(5000) DEFAULT NULL;                 -- エラー・メッセージ
+    lv_retcode                     VARCHAR2(1)    DEFAULT cv_status_normal;     -- リターン・コード
+    lv_end_retcode                 VARCHAR2(1)    DEFAULT cv_status_normal;     -- リターン・コード
+    lv_errmsg                      VARCHAR2(5000) DEFAULT NULL;                 -- ユーザー・エラー・メッセージ
+    lv_outmsg                      VARCHAR2(5000) DEFAULT NULL;                 -- 出力用メッセージ
+    lb_retcode                     BOOLEAN        DEFAULT TRUE;                 -- メッセージ出力関数戻り値
+    ld_tmp_bm_support_period_from  DATE           DEFAULT NULL;                 -- 条件別販手販協計算開始日(仮)
+    ld_tmp_bm_support_period_to    DATE           DEFAULT NULL;                 -- 条件別販手販協計算終了日(仮)
+    ld_close_date1                 DATE           DEFAULT NULL;                 -- 締め日（支払条件）
+    ld_pay_date1                   DATE           DEFAULT NULL;                 -- 支払日（支払条件）
+    ld_expect_payment_date1        DATE           DEFAULT NULL;                 -- 支払予定日（支払条件）
+    ld_close_date2                 DATE           DEFAULT NULL;                 -- 締め日（第2支払条件）
+    ld_pay_date2                   DATE           DEFAULT NULL;                 -- 支払日（第2支払条件）
+    ld_expect_payment_date2        DATE           DEFAULT NULL;                 -- 支払予定日（第2支払条件）
+    ld_close_date3                 DATE           DEFAULT NULL;                 -- 締め日（第3支払条件）
+    ld_pay_date3                   DATE           DEFAULT NULL;                 -- 支払日（第3支払条件）
+    ld_expect_payment_date3        DATE           DEFAULT NULL;                 -- 支払予定日（第3支払条件）
+    ld_bm_support_period_from_1    DATE           DEFAULT NULL;                 -- 条件別販手販協計算開始日（支払条件）
+    ld_bm_support_period_to_1      DATE           DEFAULT NULL;                 -- 条件別販手販協計算終了日（支払条件）
+    ld_bm_support_period_from_2    DATE           DEFAULT NULL;                 -- 条件別販手販協計算開始日（第2支払条件）
+    ld_bm_support_period_to_2      DATE           DEFAULT NULL;                 -- 条件別販手販協計算終了日（第2支払条件）
+    ld_bm_support_period_from_3    DATE           DEFAULT NULL;                 -- 条件別販手販協計算開始日（第3支払条件）
+    ld_bm_support_period_to_3      DATE           DEFAULT NULL;                 -- 条件別販手販協計算終了日（第3支払条件）
+    lv_fix_term_name               VARCHAR2(10)   DEFAULT NULL;                 -- 支払条件
+    ld_fix_close_date              DATE           DEFAULT NULL;                 -- 締め日
+    ld_fix_expect_payment_date     DATE           DEFAULT NULL;                 -- 支払予定日
+    ld_fix_bm_support_period_from  DATE           DEFAULT NULL;                 -- 条件別販手販協計算開始日
+    ld_fix_bm_support_period_to    DATE           DEFAULT NULL;                 -- 条件別販手販協計算終了日
+    ln_period_year                 NUMBER         DEFAULT NULL;                 -- 会計年度
+    ld_amount_fix_date             DATE           DEFAULT NULL;                 -- 金額確定日
+    lv_period_name                 gl_periods.period_name%TYPE DEFAULT NULL;    -- 会計期間名
+    lv_closing_status              gl_period_statuses.closing_status%TYPE DEFAULT NULL;                 -- ステータス
+    --==================================================
+    -- ローカル例外
+    --==================================================
+    skip_proc_expt                 EXCEPTION; -- 計算対象外スキップ
+    get_close_date_expt            EXCEPTION; -- 締め・支払日取得関数エラー
+    get_operating_day_expt         EXCEPTION; -- 営業日取得関数エラー
+    get_acctg_calendar_expt        EXCEPTION; -- 会計カレンダ取得関数エラー
+--
+  BEGIN
+    --==================================================
+    -- ステータス初期化
+    --==================================================
+    lv_end_retcode := cv_status_normal;
+    --==================================================
+    -- 条件別販手販協計算開始日(仮)取得
+    --==================================================
+    IF( i_get_cust_data_rec.settle_amount_cycle IS NULL ) THEN
+      RAISE get_operating_day_expt;
+    END IF;
+    ld_tmp_bm_support_period_from :=
+      xxcok_common_pkg.get_operating_day_f(
+        id_proc_date             => gd_process_date                               -- IN DATE   処理日
+      , in_days                  => -1 * i_get_cust_data_rec.settle_amount_cycle  -- IN NUMBER 日数
+      , in_proc_type             => cn_proc_type_before                           -- IN NUMBER 処理区分
+      );
+    IF( ld_tmp_bm_support_period_from IS NULL ) THEN
+      RAISE get_operating_day_expt;
+    END IF;
+    --==================================================
+    -- 支払条件
+    --==================================================
+    IF( i_get_cust_data_rec.term_name1 IS NOT NULL ) THEN
+      --==================================================
+      -- 締め支払日取得（支払条件）
+      --==================================================
+      xxcok_common_pkg.get_close_date_p(
+        ov_errbuf                  => lv_errbuf                         -- OUT VARCHAR2          ログに出力するエラー・メッセージ
+      , ov_retcode                 => lv_retcode                        -- OUT VARCHAR2          リターンコード
+      , ov_errmsg                  => lv_errmsg                         -- OUT VARCHAR2          ユーザーに見せるエラー・メッセージ
+      , id_proc_date               => ld_tmp_bm_support_period_from     -- IN  DATE DEFAULT NULL 処理日(対象日)
+      , iv_pay_cond                => i_get_cust_data_rec.term_name1    -- IN  VARCHAR2          支払条件(IN)
+      , od_close_date              => ld_close_date1                    -- OUT DATE              締め日(OUT)
+      , od_pay_date                => ld_pay_date1                      -- OUT DATE              支払日(OUT)
+      );
+      IF( lv_retcode = cv_status_error ) THEN
+        RAISE get_close_date_expt;
+      END IF;
+      --==================================================
+      -- 支払予定日取得（支払条件）
+      --==================================================
+      ld_expect_payment_date1 :=
+        xxcok_common_pkg.get_operating_day_f(
+          id_proc_date             => ld_pay_date1                             -- IN DATE   処理日
+        , in_days                  => 0                                        -- IN NUMBER 日数
+        , in_proc_type             => cn_proc_type_before                      -- IN NUMBER 処理区分
+        );
+      IF( ld_expect_payment_date1 IS NULL ) THEN
+        RAISE get_operating_day_expt;
+      END IF;
+    END IF;
+    --==================================================
+    -- 第2支払条件
+    --==================================================
+    IF( i_get_cust_data_rec.term_name2 IS NOT NULL ) THEN
+      --==================================================
+      -- 締め支払日取得（第2支払条件）
+      --==================================================
+      xxcok_common_pkg.get_close_date_p(
+        ov_errbuf                  => lv_errbuf                         -- OUT VARCHAR2          ログに出力するエラー・メッセージ
+      , ov_retcode                 => lv_retcode                        -- OUT VARCHAR2          リターンコード
+      , ov_errmsg                  => lv_errmsg                         -- OUT VARCHAR2          ユーザーに見せるエラー・メッセージ
+      , id_proc_date               => ld_tmp_bm_support_period_from     -- IN  DATE DEFAULT NULL 処理日(対象日)
+      , iv_pay_cond                => i_get_cust_data_rec.term_name2    -- IN  VARCHAR2          支払条件(IN)
+      , od_close_date              => ld_close_date2                    -- OUT DATE              締め日(OUT)
+      , od_pay_date                => ld_pay_date2                      -- OUT DATE              支払日(OUT)
+      );
+      IF( lv_retcode = cv_status_error ) THEN
+        RAISE get_close_date_expt;
+      END IF;
+      --==================================================
+      -- 支払予定日取得（第2支払条件）
+      --==================================================
+      ld_expect_payment_date2 :=
+        xxcok_common_pkg.get_operating_day_f(
+          id_proc_date             => ld_pay_date2                             -- IN DATE   処理日
+        , in_days                  => 0                                        -- IN NUMBER 日数
+        , in_proc_type             => cn_proc_type_before                      -- IN NUMBER 処理区分
+        );
+      IF( ld_expect_payment_date2 IS NULL ) THEN
+        RAISE get_operating_day_expt;
+      END IF;
+    END IF;
+    --==================================================
+    -- 第3支払条件
+    --==================================================
+    IF( i_get_cust_data_rec.term_name3 IS NOT NULL ) THEN
+      --==================================================
+      -- 締め支払日取得（第3支払条件）
+      --==================================================
+      xxcok_common_pkg.get_close_date_p(
+        ov_errbuf                  => lv_errbuf                         -- OUT VARCHAR2          ログに出力するエラー・メッセージ
+      , ov_retcode                 => lv_retcode                        -- OUT VARCHAR2          リターンコード
+      , ov_errmsg                  => lv_errmsg                         -- OUT VARCHAR2          ユーザーに見せるエラー・メッセージ
+      , id_proc_date               => ld_tmp_bm_support_period_from     -- IN  DATE DEFAULT NULL 処理日(対象日)
+      , iv_pay_cond                => i_get_cust_data_rec.term_name3    -- IN  VARCHAR2          支払条件(IN)
+      , od_close_date              => ld_close_date3                    -- OUT DATE              締め日(OUT)
+      , od_pay_date                => ld_pay_date3                      -- OUT DATE              支払日(OUT)
+      );
+      IF( lv_retcode = cv_status_error ) THEN
+        RAISE get_close_date_expt;
+      END IF;
+      --==================================================
+      -- 支払予定日取得（第3支払条件）
+      --==================================================
+      ld_expect_payment_date3 :=
+        xxcok_common_pkg.get_operating_day_f(
+          id_proc_date             => ld_pay_date3                             -- IN DATE   処理日
+        , in_days                  => 0                                        -- IN NUMBER 日数
+        , in_proc_type             => cn_proc_type_before                      -- IN NUMBER 処理区分
+        );
+      IF( ld_expect_payment_date3 IS NULL ) THEN
+        RAISE get_operating_day_expt;
+      END IF;
+    END IF;
+    --==================================================
+    -- 条件別販手販協計算開始・終了日決定（支払条件）
+    --==================================================
+    IF( i_get_cust_data_rec.term_name1 = gv_instantly_term_name ) THEN
+      ld_bm_support_period_from_1 := gd_process_date;
+      ld_bm_support_period_to_1   := gd_process_date;
+      ld_close_date1              := gd_process_date;
+    ELSIF( i_get_cust_data_rec.term_name1 IS NOT NULL ) THEN
+      ld_bm_support_period_from_1 :=
+        xxcok_common_pkg.get_operating_day_f(
+          id_proc_date             => ld_close_date1                           -- IN DATE   処理日
+        , in_days                  => ABS( gn_bm_support_period_from )         -- IN NUMBER 日数
+        , in_proc_type             => cn_proc_type_before                      -- IN NUMBER 処理区分
+        );
+      IF( ld_bm_support_period_from_1 IS NULL ) THEN
+        RAISE get_operating_day_expt;
+      END IF;
+      ld_bm_support_period_to_1   :=
+        xxcok_common_pkg.get_operating_day_f(
+          id_proc_date             => ld_close_date1                           -- IN DATE   処理日
+        , in_days                  => i_get_cust_data_rec.settle_amount_cycle  -- IN NUMBER 日数
+        , in_proc_type             => cn_proc_type_before                      -- IN NUMBER 処理区分
+        );
+      IF( ld_bm_support_period_to_1 IS NULL ) THEN
+        RAISE get_operating_day_expt;
+      END IF;
+    ELSE
+      ld_bm_support_period_from_1 := NULL;
+      ld_bm_support_period_to_1   := NULL;
+    END IF;
+    IF(     ( i_get_cust_data_rec.term_name1      <> gv_instantly_term_name )
+        AND ( i_get_cust_data_rec.ship_gyotai_tyu <> cv_gyotai_tyu_vd       )
+    ) THEN
+      ld_bm_support_period_from_1 := ld_bm_support_period_to_1;
+    END IF;
+    --==================================================
+    -- 条件別販手販協計算開始・終了日決定（第2支払条件）
+    --==================================================
+    IF( i_get_cust_data_rec.term_name2 = gv_instantly_term_name ) THEN
+      ld_bm_support_period_from_2 := gd_process_date;
+      ld_bm_support_period_to_2   := gd_process_date;
+      ld_close_date2              := gd_process_date;
+    ELSIF( i_get_cust_data_rec.term_name2 IS NOT NULL ) THEN
+      ld_bm_support_period_from_2 := 
+        xxcok_common_pkg.get_operating_day_f(
+          id_proc_date             => ld_close_date2                           -- IN DATE   処理日
+        , in_days                  => ABS( gn_bm_support_period_from )         -- IN NUMBER 日数
+        , in_proc_type             => cn_proc_type_before                      -- IN NUMBER 処理区分
+        );
+      IF( ld_bm_support_period_from_2 IS NULL ) THEN
+        RAISE get_operating_day_expt;
+      END IF;
+      ld_bm_support_period_to_2   :=
+        xxcok_common_pkg.get_operating_day_f(
+          id_proc_date             => ld_close_date2                           -- IN DATE   処理日
+        , in_days                  => i_get_cust_data_rec.settle_amount_cycle  -- IN NUMBER 日数
+        , in_proc_type             => cn_proc_type_before                      -- IN NUMBER 処理区分
+        );
+      IF( ld_bm_support_period_to_2 IS NULL ) THEN
+        RAISE get_operating_day_expt;
+      END IF;
+    ELSE
+      ld_bm_support_period_from_2 := NULL;
+      ld_bm_support_period_to_2   := NULL;
+    END IF;
+    IF(     ( i_get_cust_data_rec.term_name2      <> gv_instantly_term_name )
+        AND ( i_get_cust_data_rec.ship_gyotai_tyu <> cv_gyotai_tyu_vd       )
+    ) THEN
+      ld_bm_support_period_from_2 := ld_bm_support_period_to_2;
+    END IF;
+    --==================================================
+    -- 条件別販手販協計算開始・終了日決定（第3支払条件）
+    --==================================================
+    IF( i_get_cust_data_rec.term_name3 = gv_instantly_term_name ) THEN
+      ld_bm_support_period_from_3 := gd_process_date;
+      ld_bm_support_period_to_3   := gd_process_date;
+      ld_close_date3              := gd_process_date;
+    ELSIF( i_get_cust_data_rec.term_name3 IS NOT NULL ) THEN
+      ld_bm_support_period_from_3 := 
+        xxcok_common_pkg.get_operating_day_f(
+          id_proc_date             => ld_close_date3                           -- IN DATE   処理日
+        , in_days                  => ABS( gn_bm_support_period_from )         -- IN NUMBER 日数
+        , in_proc_type             => cn_proc_type_before                      -- IN NUMBER 処理区分
+        );
+      IF( ld_bm_support_period_from_3 IS NULL ) THEN
+        RAISE get_operating_day_expt;
+      END IF;
+      ld_bm_support_period_to_3   :=
+        xxcok_common_pkg.get_operating_day_f(
+          id_proc_date             => ld_close_date3                           -- IN DATE   処理日
+        , in_days                  => i_get_cust_data_rec.settle_amount_cycle  -- IN NUMBER 日数
+        , in_proc_type             => cn_proc_type_before                      -- IN NUMBER 処理区分
+        );
+      IF( ld_bm_support_period_to_3 IS NULL ) THEN
+        RAISE get_operating_day_expt;
+      END IF;
+    ELSE
+      ld_bm_support_period_from_3 := NULL;
+      ld_bm_support_period_to_3   := NULL;
+    END IF;
+    IF(     ( i_get_cust_data_rec.term_name3      <> gv_instantly_term_name )
+        AND ( i_get_cust_data_rec.ship_gyotai_tyu <> cv_gyotai_tyu_vd       )
+    ) THEN
+      ld_bm_support_period_from_3 := ld_bm_support_period_to_3;
+    END IF;
+    --==================================================
+    -- 支払条件判定
+    --==================================================
+fnd_file.put_line( FND_FILE.LOG,'' || '===============================================' ); -- debug
+fnd_file.put_line( FND_FILE.LOG,'ship_cust_code            ' || '【' || i_get_cust_data_rec.ship_cust_code || '】' ); -- debug
+fnd_file.put_line( FND_FILE.LOG,'term_name1                ' || '【' || i_get_cust_data_rec.term_name1     || '】' ); -- debug
+fnd_file.put_line( FND_FILE.LOG,'term_name2                ' || '【' || i_get_cust_data_rec.term_name2     || '】' ); -- debug
+fnd_file.put_line( FND_FILE.LOG,'term_name3                ' || '【' || i_get_cust_data_rec.term_name3     || '】' ); -- debug
+fnd_file.put_line( FND_FILE.LOG,'close_date1               ' || '【' || ld_close_date1                     || '】' ); -- debug
+fnd_file.put_line( FND_FILE.LOG,'close_date2               ' || '【' || ld_close_date2                     || '】' ); -- debug
+fnd_file.put_line( FND_FILE.LOG,'close_date3               ' || '【' || ld_close_date3                     || '】' ); -- debug
+fnd_file.put_line( FND_FILE.LOG,'bm_support_period_from_1  ' || '【' || ld_bm_support_period_from_1        || '】' ); -- debug
+fnd_file.put_line( FND_FILE.LOG,'bm_support_period_to_1    ' || '【' || ld_bm_support_period_to_1          || '】' ); -- debug
+fnd_file.put_line( FND_FILE.LOG,'bm_support_period_from_2  ' || '【' || ld_bm_support_period_from_2        || '】' ); -- debug
+fnd_file.put_line( FND_FILE.LOG,'bm_support_period_to_2    ' || '【' || ld_bm_support_period_to_2          || '】' ); -- debug
+fnd_file.put_line( FND_FILE.LOG,'bm_support_period_from_3  ' || '【' || ld_bm_support_period_from_3        || '】' ); -- debug
+fnd_file.put_line( FND_FILE.LOG,'bm_support_period_to_3    ' || '【' || ld_bm_support_period_to_3          || '】' ); -- debug
+fnd_file.put_line( FND_FILE.LOG,'' || '===============================================' ); -- debug
+    IF( i_get_cust_data_rec.term_name1 = gv_instantly_term_name ) THEN
+      lv_fix_term_name              := i_get_cust_data_rec.term_name1;
+      ld_fix_close_date             := gd_process_date;
+      ld_fix_expect_payment_date    := gd_process_date;
+      ld_fix_bm_support_period_from := gd_process_date;
+      ld_fix_bm_support_period_to   := gd_process_date;
+    ELSIF( i_get_cust_data_rec.term_name2 = gv_instantly_term_name ) THEN
+      lv_fix_term_name              := i_get_cust_data_rec.term_name2;
+      ld_fix_close_date             := gd_process_date;
+      ld_fix_expect_payment_date    := gd_process_date;
+      ld_fix_bm_support_period_from := gd_process_date;
+      ld_fix_bm_support_period_to   := gd_process_date;
+    ELSIF( i_get_cust_data_rec.term_name3 = gv_instantly_term_name ) THEN
+      lv_fix_term_name              := i_get_cust_data_rec.term_name3;
+      ld_fix_close_date             := gd_process_date;
+      ld_fix_expect_payment_date    := gd_process_date;
+      ld_fix_bm_support_period_from := gd_process_date;
+      ld_fix_bm_support_period_to   := gd_process_date;
+    ELSIF( gd_process_date BETWEEN ld_bm_support_period_from_1
+                               AND ld_bm_support_period_to_1  ) THEN
+      lv_fix_term_name              := i_get_cust_data_rec.term_name1;
+      ld_fix_close_date             := ld_close_date1;
+      ld_fix_expect_payment_date    := ld_pay_date1;
+      ld_fix_bm_support_period_from := ld_bm_support_period_from_1;
+      ld_fix_bm_support_period_to   := ld_bm_support_period_to_1;
+    ELSIF( gd_process_date BETWEEN ld_bm_support_period_from_2
+                               AND ld_bm_support_period_to_2  ) THEN
+      lv_fix_term_name              := i_get_cust_data_rec.term_name2;
+      ld_fix_close_date             := ld_close_date2;
+      ld_fix_expect_payment_date    := ld_pay_date2;
+      ld_fix_bm_support_period_from := ld_bm_support_period_from_2;
+      ld_fix_bm_support_period_to   := ld_bm_support_period_to_2;
+    ELSIF( gd_process_date BETWEEN ld_bm_support_period_from_3
+                               AND ld_bm_support_period_to_3  ) THEN
+      lv_fix_term_name              := i_get_cust_data_rec.term_name3;
+      ld_fix_close_date             := ld_close_date3;
+      ld_fix_expect_payment_date    := ld_pay_date3;
+      ld_fix_bm_support_period_from := ld_bm_support_period_from_3;
+      ld_fix_bm_support_period_to   := ld_bm_support_period_to_3;
+    ELSE
+      lv_fix_term_name              := NULL;
+      ld_fix_close_date             := NULL;
+      ld_fix_expect_payment_date    := NULL;
+      ld_fix_bm_support_period_from := NULL;
+      ld_fix_bm_support_period_to   := NULL;
+      RAISE skip_proc_expt;
+    END IF;
+    --==================================================
+    -- 金額確定日取得
+    --==================================================
+    IF( lv_fix_term_name = gv_instantly_term_name ) THEN
+      ld_amount_fix_date := ld_fix_close_date;
+    ELSIF( lv_fix_term_name <> gv_instantly_term_name ) THEN
+      ld_amount_fix_date := 
+        xxcok_common_pkg.get_operating_day_f(
+          id_proc_date             => ld_fix_close_date                        -- IN DATE   処理日
+        , in_days                  => i_get_cust_data_rec.settle_amount_cycle  -- IN NUMBER 日数
+        , in_proc_type             => cn_proc_type_before                      -- IN NUMBER 処理区分
+        );
+      IF( ld_amount_fix_date IS NULL ) THEN
+        RAISE get_operating_day_expt;
+      END IF;
+    ELSE
+      ld_amount_fix_date := NULL;
+    END IF;
+    --==================================================
+    -- 会計期間取得
+    --==================================================
+    IF( i_get_cust_data_rec.ship_gyotai_sho = cv_gyotai_sho_25 ) THEN
+      xxcok_common_pkg.get_acctg_calendar_p(
+        ov_errbuf                 => lv_errbuf                        -- OUT VARCHAR2     エラーバッファ
+      , ov_retcode                => lv_retcode                       -- OUT VARCHAR2     リターンコード
+      , ov_errmsg                 => lv_errmsg                        -- OUT VARCHAR2     エラーメッセージ
+      , in_set_of_books_id        => gn_set_of_books_id               -- IN  NUMBER       会計帳簿ID
+      , iv_application_short_name => cv_appl_short_name_gl            -- IN  VARCHAR2     アプリケーション短縮名
+      , id_object_date            => ld_fix_expect_payment_date       -- IN  DATE         対象日
+      , on_period_year            => ln_period_year                   -- OUT NUMBER       会計年度
+      , ov_period_name            => lv_period_name                   -- OUT VARCHAR2     会計期間名
+      , ov_closing_status         => lv_closing_status                -- OUT VARCHAR2     ステータス
+      );
+      IF( lv_retcode = cv_status_error ) THEN
+        RAISE get_acctg_calendar_expt;
+      END IF;
+    ELSE
+      xxcok_common_pkg.get_acctg_calendar_p(
+        ov_errbuf                 => lv_errbuf                        -- OUT VARCHAR2     エラーバッファ
+      , ov_retcode                => lv_retcode                       -- OUT VARCHAR2     リターンコード
+      , ov_errmsg                 => lv_errmsg                        -- OUT VARCHAR2     エラーメッセージ
+      , in_set_of_books_id        => gn_set_of_books_id               -- IN  NUMBER       会計帳簿ID
+      , iv_application_short_name => cv_appl_short_name_ar            -- IN  VARCHAR2     アプリケーション短縮名
+      , id_object_date            => ld_fix_close_date                -- IN  DATE         対象日
+      , on_period_year            => ln_period_year                   -- OUT NUMBER       会計年度
+      , ov_period_name            => lv_period_name                   -- OUT VARCHAR2     会計期間名
+      , ov_closing_status         => lv_closing_status                -- OUT VARCHAR2     ステータス
+      );
+      IF( lv_retcode = cv_status_error ) THEN
+        RAISE get_acctg_calendar_expt;
+      END IF;
+    END IF;
+    --==================================================
+    -- 出力パラメータ設定
+    --==================================================
+    ov_term_name              := lv_fix_term_name;
+    od_close_date             := ld_fix_close_date;
+    od_expect_payment_date    := ld_fix_expect_payment_date;
+    od_bm_support_period_from := ld_fix_bm_support_period_from;
+    od_bm_support_period_to   := ld_fix_bm_support_period_to;
+    on_period_year            := ln_period_year;
+    od_amount_fix_date        := ld_amount_fix_date;
+    ov_errbuf  := NULL;
+    ov_errmsg  := NULL;
+    ov_retcode := lv_end_retcode;
+--
+  EXCEPTION
+    -- *** 計算対象外スキップ ***
+    WHEN skip_proc_expt THEN
+      ov_term_name              := NULL;
+      od_close_date             := NULL;
+      od_expect_payment_date    := NULL;
+      od_bm_support_period_from := NULL;
+      od_bm_support_period_to   := NULL;
+      on_period_year            := NULL;
+      ov_errbuf  := NULL;
+      ov_errmsg  := NULL;
+      ov_retcode := cv_status_normal;
+    -- *** 締め・支払日取得関数エラー ***
+    WHEN get_close_date_expt THEN
+      lv_outmsg  := xxccp_common_pkg.get_msg(
+                      iv_application          => cv_appl_short_name_cok
+                    , iv_name                 => cv_msg_cok_10454
+                    , iv_token_name1          => cv_tkn_cust_code
+                    , iv_token_value1         => i_get_cust_data_rec.ship_cust_code
+                    );
+      lb_retcode := xxcok_common_pkg.put_message_f(
+                      in_which                => FND_FILE.OUTPUT
+                    , iv_message              => lv_outmsg
+                    , in_new_line             => 0
+                    );
+      ov_term_name              := NULL;
+      od_close_date             := NULL;
+      od_expect_payment_date    := NULL;
+      od_bm_support_period_from := NULL;
+      od_bm_support_period_to   := NULL;
+      on_period_year            := NULL;
+      ov_errmsg  := NULL;
+      ov_errbuf  := SUBSTRB( cv_pkg_name || cv_msg_cont || cv_prg_name || cv_msg_part || lv_outmsg, 1, 5000 );
+      ov_retcode := cv_status_warn;
+    -- *** 営業日取得関数エラー ***
+    WHEN get_operating_day_expt THEN
+      lv_outmsg  := xxccp_common_pkg.get_msg(
+                      iv_application          => cv_appl_short_name_cok
+                    , iv_name                 => cv_msg_cok_10455
+                    , iv_token_name1          => cv_tkn_cust_code
+                    , iv_token_value1         => i_get_cust_data_rec.ship_cust_code
+                    );
+      lb_retcode := xxcok_common_pkg.put_message_f(
+                      in_which                => FND_FILE.OUTPUT
+                    , iv_message              => lv_outmsg
+                    , in_new_line             => 0
+                    );
+      ov_term_name              := NULL;
+      od_close_date             := NULL;
+      od_expect_payment_date    := NULL;
+      od_bm_support_period_from := NULL;
+      od_bm_support_period_to   := NULL;
+      on_period_year            := NULL;
+      ov_errmsg  := NULL;
+      ov_errbuf  := SUBSTRB( cv_pkg_name || cv_msg_cont || cv_prg_name || cv_msg_part || lv_outmsg, 1, 5000 );
+      ov_retcode := cv_status_warn;
+    -- *** 会計カレンダ取得関数エラー ***
+    WHEN get_acctg_calendar_expt THEN
+      lv_outmsg  := xxccp_common_pkg.get_msg(
+                      iv_application          => cv_appl_short_name_cok
+                    , iv_name                 => cv_msg_cok_10456
+                    , iv_token_name1          => cv_tkn_cust_code
+                    , iv_token_value1         => i_get_cust_data_rec.ship_cust_code
+                    , iv_token_name2          => cv_tkn_proc_date
+                    , iv_token_value2         => ld_fix_expect_payment_date
+                    );
+      lb_retcode := xxcok_common_pkg.put_message_f(
+                      in_which                => FND_FILE.OUTPUT
+                    , iv_message              => lv_outmsg
+                    , in_new_line             => 0
+                    );
+      ov_term_name              := NULL;
+      od_close_date             := NULL;
+      od_expect_payment_date    := NULL;
+      od_bm_support_period_from := NULL;
+      od_bm_support_period_to   := NULL;
+      on_period_year            := NULL;
+      ov_errmsg  := NULL;
+      ov_errbuf  := SUBSTRB( cv_pkg_name || cv_msg_cont || cv_prg_name || cv_msg_part || lv_outmsg, 1, 5000 );
+      ov_retcode := cv_status_warn;
+    -- *** エラー終了 ***
+    WHEN error_proc_expt THEN
+fnd_file.put_line( FND_FILE.LOG, 'For Debug:' || 'ship_cust_code' || '【' || i_get_cust_data_rec.ship_cust_code || '】' ); -- debug
+      ov_errmsg  := NULL;
+      ov_errbuf  := SUBSTRB( cv_pkg_name || cv_msg_cont || cv_prg_name || cv_msg_part || lv_outmsg, 1, 5000 );
+      ov_retcode := cv_status_error;
+    --*** 処理部共通例外 ***
+    WHEN global_process_expt THEN
+fnd_file.put_line( FND_FILE.LOG, 'For Debug:' || 'ship_cust_code' || '【' || i_get_cust_data_rec.ship_cust_code || '】' ); -- debug
+      ov_errmsg  := NULL;
+      ov_errbuf  := SUBSTRB( cv_pkg_name || cv_msg_cont || cv_prg_name || cv_msg_part || lv_errbuf, 1, 5000 );
+      ov_retcode := lv_end_retcode;
+    -- *** 共通関数OTHERS例外 ***
+    WHEN global_api_others_expt THEN
+fnd_file.put_line( FND_FILE.LOG, 'For Debug:' || 'ship_cust_code' || '【' || i_get_cust_data_rec.ship_cust_code || '】' ); -- debug
+      ov_errbuf  := SUBSTRB( cv_pkg_name || cv_msg_cont || cv_prg_name || cv_msg_part || SQLERRM, 1, 5000 );
+      ov_retcode := cv_status_error;
+    -- *** OTHERS例外 ***
+    WHEN OTHERS THEN
+fnd_file.put_line( FND_FILE.LOG, 'For Debug:' || 'ship_cust_code' || '【' || i_get_cust_data_rec.ship_cust_code || '】' ); -- debug
+      ov_errbuf  := SUBSTRB( cv_pkg_name || cv_msg_cont || cv_prg_name || cv_msg_part || SQLERRM, 1, 5000 );
+      ov_retcode := cv_status_error;
+  END get_cust_subdata;
+--
+  /**********************************************************************************
+   * Procedure Name   : cust_loop
+   * Description      : 顧客情報ループ(A-4)
+   ***********************************************************************************/
+  PROCEDURE cust_loop(
+    ov_errbuf                      OUT VARCHAR2        -- エラー・メッセージ
+  , ov_retcode                     OUT VARCHAR2        -- リターン・コード
+  , ov_errmsg                      OUT VARCHAR2        -- ユーザー・エラー・メッセージ
+  )
+  IS
+    --==================================================
+    -- ローカル定数
+    --==================================================
+    cv_prg_name                    CONSTANT VARCHAR2(30) := 'cust_loop';             -- プログラム名
+    --==================================================
+    -- ローカル変数
+    --==================================================
+    lv_errbuf                      VARCHAR2(5000) DEFAULT NULL;                 -- エラー・メッセージ
+    lv_retcode                     VARCHAR2(1)    DEFAULT cv_status_normal;     -- リターン・コード
+    lv_end_retcode                 VARCHAR2(1)    DEFAULT cv_status_normal;     -- リターン・コード
+    lv_errmsg                      VARCHAR2(5000) DEFAULT NULL;                 -- ユーザー・エラー・メッセージ
+    lv_outmsg                      VARCHAR2(5000) DEFAULT NULL;                 -- 出力用メッセージ
+    lb_retcode                     BOOLEAN        DEFAULT TRUE;                 -- メッセージ出力関数戻り値
+    lv_term_name                   VARCHAR2(5000) DEFAULT NULL;                 -- 支払条件
+    ld_close_date                  DATE           DEFAULT NULL;                 -- 締め日
+    ld_expect_payment_date         DATE           DEFAULT NULL;                 -- 支払予定日
+    ld_bm_support_period_from      DATE           DEFAULT NULL;                 -- 条件別販手販協計算開始日
+    ld_bm_support_period_to        DATE           DEFAULT NULL;                 -- 条件別販手販協計算終了日
+    ln_period_year                 NUMBER         DEFAULT NULL;                 -- 会計年度
+    ld_amount_fix_date             DATE           DEFAULT NULL;                 -- 金額確定日
+    -- ブレイク条件
+    lv_pre_bill_cust_code          hz_cust_accounts.account_number      %TYPE DEFAULT NULL; -- 前レコード【請求先】顧客コード退避
+    lv_pre_ship_gyotai_sho         xxcmm_cust_accounts.business_low_type%TYPE DEFAULT NULL; -- 前レコード【出荷先】業態（小分類）退避
+    -- ログ出力用退避項目
+    lt_ship_cust_code              hz_cust_accounts.account_number      %TYPE DEFAULT NULL;
+--
+  BEGIN
+    --==================================================
+    -- ステータス初期化
+    --==================================================
+    lv_end_retcode := cv_status_normal;
+    --==================================================
+    -- 顧客情報の取得
+    --==================================================
+    << cust_data_loop >>
+    FOR get_cust_data_rec IN get_cust_data_cur LOOP
+      lt_ship_cust_code := get_cust_data_rec.ship_cust_code;
+      gn_target_cnt := gn_target_cnt + 1;
+      DECLARE
+        normal_skip_expt           EXCEPTION; -- 処理スキップ
+      BEGIN
+        --==================================================
+        -- 条件別販手販協計算日付情報の導出
+        --==================================================
+        IF(    ( lv_pre_bill_cust_code  IS NULL                              )
+            OR ( lv_pre_ship_gyotai_sho IS NULL                              )
+            OR ( lv_pre_bill_cust_code  <> get_cust_data_rec.bill_cust_code  )
+            OR ( lv_pre_ship_gyotai_sho <> get_cust_data_rec.ship_gyotai_sho )
+        ) THEN
+          get_cust_subdata(
+            ov_errbuf                   => lv_errbuf                  -- エラー・メッセージ
+          , ov_retcode                  => lv_retcode                 -- リターン・コード
+          , ov_errmsg                   => lv_errmsg                  -- ユーザー・エラー・メッセージ
+          , i_get_cust_data_rec         => get_cust_data_rec          -- 顧客情報レコード
+          , ov_term_name                => lv_term_name               -- 支払条件
+          , od_close_date               => ld_close_date              -- 締め日
+          , od_expect_payment_date      => ld_expect_payment_date     -- 支払予定日
+          , od_bm_support_period_from   => ld_bm_support_period_from  -- 条件別販手販協計算開始日
+          , od_bm_support_period_to     => ld_bm_support_period_to    -- 条件別販手販協計算終了日
+          , on_period_year              => ln_period_year             -- 会計年度
+          , od_amount_fix_date          => ld_amount_fix_date         -- 金額確定日
+          );
+          IF( lv_retcode = cv_status_error ) THEN
+            lv_end_retcode := cv_status_error;
+            RAISE global_process_expt;
+          ELSIF( lv_retcode = cv_status_warn ) THEN
+            --==================================================
+            -- ブレイク条件にNULLを設定
+            -- （エラーが発生した場合は次のレコードで必ず実行する）
+            --==================================================
+            lv_pre_bill_cust_code  := NULL;
+            lv_pre_ship_gyotai_sho := NULL;
+            RAISE warning_skip_expt;
+          ELSE
+            --==================================================
+            -- ブレイク条件退避
+            --==================================================
+            lv_pre_bill_cust_code  := get_cust_data_rec.bill_cust_code;
+            lv_pre_ship_gyotai_sho := get_cust_data_rec.ship_gyotai_sho;
+          END IF;
+        END IF;
+        --==================================================
+        -- 条件別販手販協計算顧客情報一時表への登録
+        --==================================================
+        IF( gd_process_date BETWEEN ld_bm_support_period_from AND ld_bm_support_period_to ) THEN
+          insert_xt0c(
+            ov_errbuf                   => lv_errbuf                  -- エラー・メッセージ
+          , ov_retcode                  => lv_retcode                 -- リターン・コード
+          , ov_errmsg                   => lv_errmsg                  -- ユーザー・エラー・メッセージ
+          , i_get_cust_data_rec         => get_cust_data_rec          -- 顧客情報レコード
+          , iv_term_name                => lv_term_name               -- 支払条件
+          , id_close_date               => ld_close_date              -- 締め日
+          , id_expect_payment_date      => ld_expect_payment_date     -- 支払予定日
+          , in_period_year              => ln_period_year             -- 会計年度
+          , id_amount_fix_date          => ld_amount_fix_date         -- 金額確定日
+          );
+          IF( lv_retcode = cv_status_error ) THEN
+            lv_end_retcode := cv_status_error;
+            RAISE global_process_expt;
+          ELSIF( lv_retcode = cv_status_warn ) THEN
+            RAISE warning_skip_expt;
+          END IF;
+        ELSE
+          RAISE normal_skip_expt;
+        END IF;
+        --==================================================
+        -- 正常件数カウント
+        --==================================================
+        gn_normal_cnt := gn_normal_cnt + 1;
+      EXCEPTION
+        WHEN normal_skip_expt THEN
+          --==================================================
+          -- スキップ件数カウント
+          --==================================================
+          gn_skip_cnt := gn_skip_cnt + 1;
+        WHEN warning_skip_expt THEN
+          --==================================================
+          -- 異常件数カウント
+          --==================================================
+          gn_error_cnt := gn_error_cnt + 1;
+          --==================================================
+          -- ステータス設定
+          --==================================================
+          lv_end_retcode := cv_status_warn;
+      END;
+    END LOOP cust_data_loop;
+    --==================================================
+    -- 出力パラメータ設定
+    --==================================================
+    ov_errbuf  := NULL;
+    ov_errmsg  := NULL;
+    ov_retcode := lv_end_retcode;
+--
+  EXCEPTION
+    -- *** エラー終了 ***
+    WHEN error_proc_expt THEN
+      ov_errmsg  := NULL;
+      ov_errbuf  := SUBSTRB( cv_pkg_name || cv_msg_cont || cv_prg_name || cv_msg_part || lv_outmsg, 1, 5000 );
+      ov_retcode := cv_status_error;
+    -- *** 処理部共通例外 ***
+    WHEN global_process_expt THEN
+      ov_errmsg  := NULL;
+      ov_errbuf  := SUBSTRB( cv_pkg_name || cv_msg_cont || cv_prg_name || cv_msg_part || lv_errbuf, 1, 5000 );
+      ov_retcode := lv_end_retcode;
+    -- *** 共通関数OTHERS例外 ***
+    WHEN global_api_others_expt THEN
+      ov_errbuf  := SUBSTRB( cv_pkg_name || cv_msg_cont || cv_prg_name || cv_msg_part || SQLERRM, 1, 5000 );
+      ov_retcode := cv_status_error;
+    -- *** OTHERS例外 ***
+    WHEN OTHERS THEN
+fnd_file.put_line( FND_FILE.LOG, 'For Debug:' || 'ship_cust_code' || '【' || lt_ship_cust_code || '】' ); -- debug
+      ov_errbuf  := SUBSTRB( cv_pkg_name || cv_msg_cont || cv_prg_name || cv_msg_part || SQLERRM, 1, 5000 );
+      ov_retcode := cv_status_error;
+  END cust_loop;
+--
+  /**********************************************************************************
+   * Procedure Name   : purge_xcbs
+   * Description      : 条件別販手販協データの削除（保持期間外）(A-2)
+   ***********************************************************************************/
+  PROCEDURE purge_xcbs(
+    ov_errbuf                      OUT VARCHAR2        -- エラー・メッセージ
+  , ov_retcode                     OUT VARCHAR2        -- リターン・コード
+  , ov_errmsg                      OUT VARCHAR2        -- ユーザー・エラー・メッセージ
+  )
+  IS
+    --==================================================
+    -- ローカル定数
+    --==================================================
+    cv_prg_name                    CONSTANT VARCHAR2(30) := 'purge_xcbs';             -- プログラム名
+    --==================================================
+    -- ローカル変数
+    --==================================================
+    lv_errbuf                      VARCHAR2(5000) DEFAULT NULL;                 -- エラー・メッセージ
+    lv_retcode                     VARCHAR2(1)    DEFAULT cv_status_normal;     -- リターン・コード
+    lv_end_retcode                 VARCHAR2(1)    DEFAULT cv_status_normal;     -- リターン・コード
+    lv_errmsg                      VARCHAR2(5000) DEFAULT NULL;                 -- ユーザー・エラー・メッセージ
+    lv_outmsg                      VARCHAR2(5000) DEFAULT NULL;                 -- 出力用メッセージ
+    lb_retcode                     BOOLEAN        DEFAULT TRUE;                 -- メッセージ出力関数戻り値
+    ld_start_date                  DATE           DEFAULT NULL;                 -- 業務月月初日
+    --==================================================
+    -- ローカルカーソル
+    --==================================================
+    CURSOR xcbs_parge_lock_cur(
+      id_target_date               IN  DATE
     )
     IS
-      SELECT xbs.cond_bm_support_id AS bm_support_id -- 条件別販手販協ID
-      FROM   xxcok_cond_bm_support xbs -- 条件別販手販協テーブル
-      WHERE  xbs.closing_date < in_proc_date
-      FOR UPDATE NOWAIT;
-  --
+      SELECT xcbs.cond_bm_support_id    AS cond_bm_support_id
+      FROM xxcok_cond_bm_support   xcbs               -- 条件別販手販協テーブル
+         , hz_cust_accounts        hca                -- 顧客マスタ
+         , hz_cust_acct_sites_all  hcas               -- 顧客サイトマスタ
+         , hz_parties              hp                 -- パーティマスタ
+         , hz_party_sites          hps                -- パーティサイトマスタ
+         , hz_locations            hl                 -- 顧客所在地マスタ
+         , fnd_lookup_values       flv                -- 販手販協計算実行区分
+      WHERE xcbs.delivery_cust_code          = hca.account_number
+        AND hca.cust_account_id              = hcas.cust_account_id
+        AND hca.party_id                     = hp.party_id
+        AND hp.party_id                      = hps.party_id
+        AND hcas.party_site_id               = hps.party_site_id
+        AND hps.location_id                  = hl.location_id
+        AND hcas.org_id                      = gn_org_id
+        AND flv.lookup_type                  = cv_lookup_type_01
+        AND flv.lookup_code                  = gv_param_proc_type
+        AND flv.language                     = USERENV( 'LANG' )
+        AND gd_process_date            BETWEEN NVL( flv.start_date_active, gd_process_date )
+                                           AND NVL( flv.end_date_active  , gd_process_date )
+        AND flv.enabled_flag                 = cv_enable
+        AND (    ( hl.address3              LIKE flv.attribute1  || '%' AND flv.attribute1  IS NOT NULL )
+              OR ( hl.address3              LIKE flv.attribute2  || '%' AND flv.attribute2  IS NOT NULL )
+              OR ( hl.address3              LIKE flv.attribute3  || '%' AND flv.attribute3  IS NOT NULL )
+              OR ( hl.address3              LIKE flv.attribute4  || '%' AND flv.attribute4  IS NOT NULL )
+              OR ( hl.address3              LIKE flv.attribute5  || '%' AND flv.attribute5  IS NOT NULL )
+              OR ( hl.address3              LIKE flv.attribute6  || '%' AND flv.attribute6  IS NOT NULL )
+              OR ( hl.address3              LIKE flv.attribute7  || '%' AND flv.attribute7  IS NOT NULL )
+              OR ( hl.address3              LIKE flv.attribute8  || '%' AND flv.attribute8  IS NOT NULL )
+              OR ( hl.address3              LIKE flv.attribute9  || '%' AND flv.attribute9  IS NOT NULL )
+              OR ( hl.address3              LIKE flv.attribute10 || '%' AND flv.attribute10 IS NOT NULL )
+              OR ( hl.address3              LIKE flv.attribute11 || '%' AND flv.attribute11 IS NOT NULL )
+              OR ( hl.address3              LIKE flv.attribute12 || '%' AND flv.attribute12 IS NOT NULL )
+              OR ( hl.address3              LIKE flv.attribute13 || '%' AND flv.attribute13 IS NOT NULL )
+              OR ( hl.address3              LIKE flv.attribute14 || '%' AND flv.attribute14 IS NOT NULL )
+              OR ( hl.address3              LIKE flv.attribute15 || '%' AND flv.attribute15 IS NOT NULL )
+            )
+        AND xcbs.closing_date                < id_target_date
+        AND xcbs.cond_bm_interface_status   <> cv_xcbs_if_status_no
+        AND xcbs.bm_interface_status        <> cv_xcbs_if_status_no
+        AND xcbs.ar_interface_status        <> cv_xcbs_if_status_no
+        AND NOT EXISTS ( SELECT 'X'
+                         FROM xxcok_backmargin_balance      xbb
+                         WHERE xbb.base_code                = xcbs.base_code
+                           AND xbb.cust_code                = xcbs.delivery_cust_code
+                           AND xbb.supplier_code            = xcbs.supplier_code
+                           AND xbb.supplier_site_code       = xcbs.supplier_site_code
+                           AND xbb.closing_date             = xcbs.closing_date
+                           AND xbb.expect_payment_date      = xcbs.expect_payment_date
+            )
+      FOR UPDATE OF xcbs.cond_bm_support_id NOWAIT
+    ;
+--
   BEGIN
-  --
-    -------------------------------------------------
-    -- 0.初期化
-    -------------------------------------------------
-    ov_retcode := cv_status_normal;
-    -------------------------------------------------
-    -- 1.販手販協保持期間外データ削除ロック処理
-    -------------------------------------------------
-    -- ロック処理
-    OPEN bm_support_del_cur(
-       gd_limit_date -- 販手販協保持期限日取得
-    );
-    CLOSE bm_support_del_cur;
-    -------------------------------------------------
-    -- 2.販手販協保持期間外データ削除処理
-    -------------------------------------------------
-    BEGIN
-      DELETE FROM xxcok_cond_bm_support xbs
-      WHERE xbs.closing_date < gd_limit_date;
-    EXCEPTION
-      ----------------------------------------------------------
-      -- 販手販協保持期間外データ削除例外
-      ----------------------------------------------------------
-      WHEN OTHERS THEN
-        lv_out_msg := xxccp_common_pkg.get_msg(
-                         iv_application  => cv_ap_type_xxcok
-                        ,iv_name         => cv_prmmsg_10398
-                      );
-        lb_retcode := xxcok_common_pkg.put_message_f(
-                         in_which    => fnd_file.output -- 出力区分
-                        ,iv_message  => lv_out_msg      -- メッセージ
-                        ,in_new_line => cn_zero         -- 改行
-                      );
-        ov_errmsg  := lv_out_msg;
-        ov_errbuf  := SUBSTRB( cv_pkg_name||cv_msg_cont||cv_prg_name||cv_msg_part||lv_out_msg,1,5000 );
-        ov_retcode := cv_status_error;
-    END;
-  --
+    --==================================================
+    -- ステータス初期化
+    --==================================================
+    lv_end_retcode := cv_status_normal;
+    --==================================================
+    -- 月初日取得
+    --==================================================
+    ld_start_date := ADD_MONTHS( TRUNC( gd_process_date, 'MM' ), - gn_sales_retention_period );
+    --==================================================
+    -- 条件別販手販協削除ループ
+    --==================================================
+    << xcbs_parge_lock_loop >>
+    FOR xcbs_parge_lock_rec IN xcbs_parge_lock_cur( ld_start_date ) LOOP
+      --==================================================
+      -- 条件別販手販協データ削除
+      --==================================================
+      BEGIN
+        DELETE
+        FROM xxcok_cond_bm_support   xcbs
+        WHERE xcbs.cond_bm_support_id = xcbs_parge_lock_rec.cond_bm_support_id
+        ;
+      EXCEPTION
+        WHEN OTHERS THEN
+          lv_outmsg  := xxccp_common_pkg.get_msg(
+                          iv_application          => cv_appl_short_name_cok
+                        , iv_name                 => cv_msg_cok_10398
+                        );
+          lb_retcode := xxcok_common_pkg.put_message_f(
+                          in_which                => FND_FILE.OUTPUT
+                        , iv_message              => lv_outmsg
+                        , in_new_line             => 0
+                        );
+          RAISE error_proc_expt;
+      END;
+    END LOOP xcbs_parge_lock_loop;
+    --==================================================
+    -- パージ処理の確定
+    --==================================================
+    COMMIT;
+    --==================================================
+    -- 出力パラメータ設定
+    --==================================================
+    ov_errbuf  := NULL;
+    ov_errmsg  := NULL;
+    ov_retcode := lv_end_retcode;
+--
   EXCEPTION
-    ----------------------------------------------------------
-    -- ロック例外ハンドラ
-    ----------------------------------------------------------
-    WHEN global_lock_expt THEN
-      -- メッセージ取得
-      lv_out_msg := xxccp_common_pkg.get_msg(
-                       iv_application  => cv_ap_type_xxcok
-                      ,iv_name         => cv_prmmsg_00051
-                    );    
-      -- メッセージ出力
-      lb_retcode := xxcok_common_pkg.put_message_f(
-                       in_which    => fnd_file.output -- 出力区分
-                      ,iv_message  => lv_out_msg      -- メッセージ
-                      ,in_new_line => cn_zero         -- 改行
+    --*** ロック取得エラー ***
+    WHEN resource_busy_expt THEN
+      lv_outmsg  := xxccp_common_pkg.get_msg(
+                      iv_application          => cv_appl_short_name_cok
+                    , iv_name                 => cv_msg_cok_00051
                     );
-      ov_errmsg  := lv_out_msg;
-      ov_errbuf  := SUBSTRB(cv_pkg_name||cv_msg_cont||cv_prg_name||cv_msg_part||lv_out_msg,1,5000);
+      lb_retcode := xxcok_common_pkg.put_message_f(
+                      in_which                => FND_FILE.OUTPUT
+                    , iv_message              => lv_outmsg
+                    , in_new_line             => 0
+                    );
+      ov_errmsg  := NULL;
+      ov_errbuf  := SUBSTRB( cv_pkg_name || cv_msg_cont || cv_prg_name || cv_msg_part || lv_outmsg, 1, 5000 );
       ov_retcode := cv_status_error;
-    ----------------------------------------------------------
-    -- 共通関数OTHERS例外ハンドラ
-    ----------------------------------------------------------
+    -- *** エラー終了 ***
+    WHEN error_proc_expt THEN
+      ov_errmsg  := NULL;
+      ov_errbuf  := SUBSTRB( cv_pkg_name || cv_msg_cont || cv_prg_name || cv_msg_part || lv_outmsg, 1, 5000 );
+      ov_retcode := cv_status_error;
+    -- *** 処理部共通例外 ***
+    WHEN global_process_expt THEN
+      ov_errmsg  := NULL;
+      ov_errbuf  := SUBSTRB( cv_pkg_name || cv_msg_cont || cv_prg_name || cv_msg_part || lv_errbuf, 1, 5000 );
+      ov_retcode := lv_end_retcode;
+    -- *** 共通関数OTHERS例外 ***
     WHEN global_api_others_expt THEN
-      ov_errbuf  := SUBSTRB( cv_pkg_name||cv_msg_cont||cv_prg_name||cv_msg_part||SQLERRM,1,5000 );
+      ov_errbuf  := SUBSTRB( cv_pkg_name || cv_msg_cont || cv_prg_name || cv_msg_part || SQLERRM, 1, 5000 );
       ov_retcode := cv_status_error;
-    ----------------------------------------------------------
-    -- OTHERS例外ハンドラ
-    ----------------------------------------------------------
+    -- *** OTHERS例外 ***
     WHEN OTHERS THEN
-      ov_errbuf  := SUBSTRB( cv_pkg_name||cv_msg_cont||cv_prg_name||cv_msg_part||SQLERRM,1,5000 );
+      ov_errbuf  := SUBSTRB( cv_pkg_name || cv_msg_cont || cv_prg_name || cv_msg_part || SQLERRM, 1, 5000 );
       ov_retcode := cv_status_error;
-  --
-  END del_bm_support_info;
-  --
-  /***********************************************************************************
-   * Procedure Name   : init_proc
+  END purge_xcbs;
+--
+  /**********************************************************************************
+   * Procedure Name   : init
    * Description      : 初期処理(A-1)
    ***********************************************************************************/
-  PROCEDURE init_proc(
-     ov_errbuf    OUT VARCHAR2 -- エラーメッセージ
-    ,ov_retcode   OUT VARCHAR2 -- リターン・コード
-    ,ov_errmsg    OUT VARCHAR2 -- ユーザー・エラーメッセージ
-    ,iv_proc_date IN  VARCHAR2 -- 業務日付
-    ,iv_proc_type IN  VARCHAR2 -- 実行区分
+  PROCEDURE init(
+    ov_errbuf                      OUT VARCHAR2        -- エラー・メッセージ
+  , ov_retcode                     OUT VARCHAR2        -- リターン・コード
+  , ov_errmsg                      OUT VARCHAR2        -- ユーザー・エラー・メッセージ
+  , iv_proc_date                   IN  VARCHAR2        -- 業務日付
+  , iv_proc_type                   IN  VARCHAR2        -- 実行区分
   )
   IS
-    --===============================
+    --==================================================
     -- ローカル定数
-    --===============================
-    cv_prg_name CONSTANT VARCHAR2(100) := 'init_proc'; -- プログラム名
-    --===============================
+    --==================================================
+    cv_prg_name                    CONSTANT VARCHAR2(30) := 'init';             -- プログラム名
+    --==================================================
     -- ローカル変数
-    --===============================
-    lv_errbuf   VARCHAR2(5000); -- エラーメッセージ
-    lv_retcode  VARCHAR2(1);    -- リターン・コード
-    lv_errmsg   VARCHAR2(5000); -- ユーザー・エラーメッセージ
-    lv_out_msg  VARCHAR2(2000); -- メッセージ
-    lb_retcode  BOOLEAN;        -- メッセージ戻り値
-    -- エラーメッセージ用
-    lv_prof_err fnd_profile_options.profile_option_name%TYPE := NULL; -- プロファイル退避
-    ln_user_err fnd_user.user_id%TYPE                        := NULL; -- ユーザID退避
-    --===============================
-    -- ローカル例外
-    --===============================
-    get_date_err_expt EXCEPTION; -- 業務処理日付取得エラー
-    get_prof_err_expt EXCEPTION; -- プロファイル取得エラー
-    get_dept_err_expt EXCEPTION; -- 所属部門取得エラー
-  --
+    --==================================================
+    lv_errbuf                      VARCHAR2(5000) DEFAULT NULL;                 -- エラー・メッセージ
+    lv_retcode                     VARCHAR2(1)    DEFAULT cv_status_normal;     -- リターン・コード
+    lv_end_retcode                 VARCHAR2(1)    DEFAULT cv_status_normal;     -- リターン・コード
+    lv_errmsg                      VARCHAR2(5000) DEFAULT NULL;                 -- ユーザー・エラー・メッセージ
+    lv_outmsg                      VARCHAR2(5000) DEFAULT NULL;                 -- 出力用メッセージ
+    lb_retcode                     BOOLEAN        DEFAULT TRUE;                 -- メッセージ出力関数戻り値
+--
   BEGIN
-  --
-    -------------------------------------------------
-    -- 0.初期化
-    -------------------------------------------------
-    ov_retcode := cv_status_normal;
-    -- 処理区分退避
-    gv_proc_type := iv_proc_type;
-    -- 言語設定
-    gv_language  := USERENV( cv_language );
-    -------------------------------------------------
-    -- 1.コンカレント入力パラメータメッセージ出力
-    -------------------------------------------------
-    -- コンカレントパラメータ.業務日付メッセージ取得
-    lv_out_msg := xxccp_common_pkg.get_msg(
-                     iv_application  => cv_ap_type_xxcok
-                    ,iv_name         => cv_prmmsg_00022
-                    ,iv_token_name1  => cv_tkn_bis_date
-                    ,iv_token_value1 => iv_proc_date
+    --==================================================
+    -- ステータス初期化
+    --==================================================
+    lv_end_retcode := cv_status_normal;
+    --==================================================
+    -- プログラム入力項目を出力
+    --==================================================
+    -- 業務日付
+    lv_outmsg  := xxccp_common_pkg.get_msg(
+                    iv_application          => cv_appl_short_name_cok
+                  , iv_name                 => cv_msg_cok_00022
+                  , iv_token_name1          => cv_tkn_business_date
+                  , iv_token_value1         => iv_proc_date
                   );
-    -- コンカレントパラメータ.業務日付メッセージ出力
     lb_retcode := xxcok_common_pkg.put_message_f(
-                     in_which    => fnd_file.output -- 出力区分
-                    ,iv_message  => lv_out_msg      -- メッセージ
-                    ,in_new_line => cn_zero         -- 改行
+                    in_which                => FND_FILE.OUTPUT    -- 出力区分
+                  , iv_message              => lv_outmsg         -- メッセージ
+                  , in_new_line             => 0                  -- 改行
                   );
-    -- コンカレントパラメータ.実行区分パターンメッセージ取得
-    lv_out_msg := xxccp_common_pkg.get_msg(
-                     iv_application  => cv_ap_type_xxcok
-                    ,iv_name         => cv_prmmsg_00044
-                    ,iv_token_name1  => cv_tkn_proc_type
-                    ,iv_token_value1 => iv_proc_type
-                  );
-    -- コンカレントパラメータ.実行区分パターンメッセージ出力
     lb_retcode := xxcok_common_pkg.put_message_f(
-                     in_which    => fnd_file.output -- 出力区分
-                    ,iv_message  => lv_out_msg      -- メッセージ
-                    ,in_new_line => cn_one          -- 改行
+                    in_which                => FND_FILE.LOG
+                  , iv_message              => lv_outmsg
+                  , in_new_line             => 0
                   );
-    -------------------------------------------------
-    -- 2.日付変換
-    -------------------------------------------------
-    IF ( iv_proc_date IS NOT NULL ) THEN
-      gd_proc_date := fnd_date.canonical_to_date( iv_proc_date );
-    -------------------------------------------------
-    -- 3.業務処理日付取得
-    -------------------------------------------------
+    -- 処理区分
+    lv_outmsg  := xxccp_common_pkg.get_msg(
+                    iv_application          => cv_appl_short_name_cok
+                  , iv_name                 => cv_msg_cok_00044
+                  , iv_token_name1          => cv_tkn_proc_type
+                  , iv_token_value1         => iv_proc_type
+                  );
+    lb_retcode := xxcok_common_pkg.put_message_f( 
+                    in_which                => FND_FILE.OUTPUT    -- 出力区分
+                  , iv_message              => lv_outmsg          -- メッセージ
+                  , in_new_line             => 1                  -- 改行
+                  );
+    lb_retcode := xxcok_common_pkg.put_message_f(
+                    in_which                => FND_FILE.LOG
+                  , iv_message              => lv_outmsg
+                  , in_new_line             => 1
+                  );
+    --==================================================
+    -- プログラム入力項目をグローバル変数へ格納
+    --==================================================
+    gv_param_proc_date := iv_proc_date;
+    gv_param_proc_type := iv_proc_type;
+    --==================================================
+    -- 業務処理日付取得
+    --==================================================
+    IF( gv_param_proc_date IS NOT NULL ) THEN
+      gd_process_date := TO_DATE( gv_param_proc_date, cv_format_fxrrrrmmdd );
     ELSE
-      gd_proc_date := xxccp_common_pkg2.get_process_date;
+      gd_process_date := TRUNC( xxccp_common_pkg2.get_process_date );
+      IF( gd_process_date IS NULL ) THEN
+        lv_outmsg  := xxccp_common_pkg.get_msg(
+                        iv_application          => cv_appl_short_name_cok
+                      , iv_name                 => cv_msg_cok_00028
+                      );
+        lb_retcode := xxcok_common_pkg.put_message_f(
+                        in_which                => FND_FILE.OUTPUT
+                      , iv_message              => lv_outmsg
+                      , in_new_line             => 0
+                      );
+        RAISE error_proc_expt;
+      END IF;
     END IF;
-    -- NULLの場合はエラー
-    IF( gd_proc_date IS NULL ) THEN
-      RAISE get_date_err_expt;
+    --==================================================
+    -- プロファイル取得(MO: 営業単位)
+    --==================================================
+    gn_org_id := TO_NUMBER( FND_PROFILE.VALUE( cv_profile_name_01 ) );
+    IF( gn_org_id IS NULL ) THEN
+      lv_outmsg  := xxccp_common_pkg.get_msg(
+                      iv_application          => cv_appl_short_name_cok
+                    , iv_name                 => cv_msg_cok_00003
+                    , iv_token_name1          => cv_tkn_profile
+                    , iv_token_value1         => cv_profile_name_01
+                    );
+      lb_retcode := xxcok_common_pkg.put_message_f(
+                      in_which                => FND_FILE.OUTPUT
+                    , iv_message              => lv_outmsg
+                    , in_new_line             => 0
+                    );
+      RAISE error_proc_expt;
     END IF;
-    -------------------------------------------------
-    -- 4.組織IDプロファイル取得
-    -------------------------------------------------
-    gn_pro_org_id := TO_NUMBER( fnd_profile.value( cv_pro_org_code ) );
-    -- NULLの場合はエラー
-    IF ( gn_pro_org_id IS NULL ) THEN
-      lv_prof_err := cv_pro_org_code;
-      RAISE get_prof_err_expt;
+    --==================================================
+    -- プロファイル取得(会計帳簿ID)
+    --==================================================
+    gn_set_of_books_id := TO_NUMBER( FND_PROFILE.VALUE( cv_profile_name_02 ) );
+    IF( gn_set_of_books_id IS NULL ) THEN
+      lv_outmsg  := xxccp_common_pkg.get_msg(
+                      iv_application          => cv_appl_short_name_cok
+                    , iv_name                 => cv_msg_cok_00003
+                    , iv_token_name1          => cv_tkn_profile
+                    , iv_token_value1         => cv_profile_name_02
+                    );
+      lb_retcode := xxcok_common_pkg.put_message_f(
+                      in_which                => FND_FILE.OUTPUT
+                    , iv_message              => lv_outmsg
+                    , in_new_line             => 0
+                    );
+      RAISE error_proc_expt;
     END IF;
-    -------------------------------------------------
-    -- 5.会計帳簿IDプロファイル取得
-    -------------------------------------------------
-    gn_pro_books_id := TO_NUMBER( fnd_profile.value( cv_pro_books_code ) );
-    -- NULLの場合はエラー
-    IF ( gn_pro_books_id IS NULL ) THEN
-      lv_prof_err := cv_pro_books_code;
-      RAISE get_prof_err_expt;
+    --==================================================
+    -- プロファイル取得(XXCOK:販手販協計算処理期間（From）)
+    --==================================================
+    gn_bm_support_period_from := TO_NUMBER( FND_PROFILE.VALUE( cv_profile_name_03 ) );
+    IF( gn_bm_support_period_from IS NULL ) THEN
+      lv_outmsg  := xxccp_common_pkg.get_msg(
+                      iv_application          => cv_appl_short_name_cok
+                    , iv_name                 => cv_msg_cok_00003
+                    , iv_token_name1          => cv_tkn_profile
+                    , iv_token_value1         => cv_profile_name_03
+                    );
+      lb_retcode := xxcok_common_pkg.put_message_f(
+                      in_which                => FND_FILE.OUTPUT
+                    , iv_message              => lv_outmsg
+                    , in_new_line             => 0
+                    );
+      RAISE error_proc_expt;
     END IF;
-    -------------------------------------------------
-    -- 6.条件別販手販協計算処理期間(From)プロファイル取得
-    -------------------------------------------------
-    gn_pro_bm_sup_fm := TO_NUMBER( fnd_profile.value( cv_pro_bm_sup_fm ) );
-    -- NULLの場合はエラー
-    IF ( gn_pro_bm_sup_fm IS NULL ) THEN
-      lv_prof_err := cv_pro_bm_sup_fm;
-      RAISE get_prof_err_expt;
+    --==================================================
+    -- プロファイル取得(XXCOK:販手販協計算処理期間（To）)
+    --==================================================
+    gn_bm_support_period_to := TO_NUMBER( FND_PROFILE.VALUE( cv_profile_name_04 ) );
+    IF( gn_bm_support_period_to IS NULL ) THEN
+      lv_outmsg  := xxccp_common_pkg.get_msg(
+                      iv_application          => cv_appl_short_name_cok
+                    , iv_name                 => cv_msg_cok_00003
+                    , iv_token_name1          => cv_tkn_profile
+                    , iv_token_value1         => cv_profile_name_04
+                    );
+      lb_retcode := xxcok_common_pkg.put_message_f(
+                      in_which                => FND_FILE.OUTPUT
+                    , iv_message              => lv_outmsg
+                    , in_new_line             => 0
+                    );
+      RAISE error_proc_expt;
     END IF;
-    -------------------------------------------------
-    -- 7.条件別販手販協計算処理期間(To)プロファイル取得
-    -------------------------------------------------
-    gn_pro_bm_sup_to := TO_NUMBER( fnd_profile.value( cv_pro_bm_sup_to ) );
-    -- NULLの場合はエラー
-    IF ( gn_pro_bm_sup_to IS NULL ) THEN
-      lv_prof_err := cv_pro_bm_sup_to;
-      RAISE get_prof_err_expt;
+    --==================================================
+    -- プロファイル取得(XXCOK:販手販協情報保持期間)
+    --==================================================
+    gn_sales_retention_period := TO_NUMBER( FND_PROFILE.VALUE( cv_profile_name_05 ) );
+    IF( gn_sales_retention_period IS NULL ) THEN
+      lv_outmsg  := xxccp_common_pkg.get_msg(
+                      iv_application          => cv_appl_short_name_cok
+                    , iv_name                 => cv_msg_cok_00003
+                    , iv_token_name1          => cv_tkn_profile
+                    , iv_token_value1         => cv_profile_name_05
+                    );
+      lb_retcode := xxcok_common_pkg.put_message_f(
+                      in_which                => FND_FILE.OUTPUT
+                    , iv_message              => lv_outmsg
+                    , in_new_line             => 0
+                    );
+      RAISE error_proc_expt;
     END IF;
-    -------------------------------------------------
-    -- 8.販手販協計算結果保持期間プロファイル取得
-    -------------------------------------------------
-    gn_pro_sales_ret := TO_NUMBER( fnd_profile.value( cv_pro_sales_ret ) );
-    -- NULLの場合はエラー
-    IF ( gn_pro_sales_ret IS NULL ) THEN
-      lv_prof_err := cv_pro_sales_ret;
-      RAISE get_prof_err_expt;
+    --==================================================
+    -- プロファイル取得(電気料（変動）品目コード)
+    --==================================================
+    gv_elec_change_item_code := FND_PROFILE.VALUE( cv_profile_name_06 );
+    IF( gv_elec_change_item_code IS NULL ) THEN
+      lv_outmsg  := xxccp_common_pkg.get_msg(
+                      iv_application          => cv_appl_short_name_cok
+                    , iv_name                 => cv_msg_cok_00003
+                    , iv_token_name1          => cv_tkn_profile
+                    , iv_token_value1         => cv_profile_name_06
+                    );
+      lb_retcode := xxcok_common_pkg.put_message_f(
+                      in_which                => FND_FILE.OUTPUT
+                    , iv_message              => lv_outmsg
+                    , in_new_line             => 0
+                    );
+      RAISE error_proc_expt;
     END IF;
-    -------------------------------------------------
-    -- 9.電気料(変動)品目コードプロファイル取得
-    -------------------------------------------------
-    gv_pro_elec_ch := fnd_profile.value( cv_pro_elec_ch );
-    -- NULLの場合はエラー
-    IF ( gv_pro_elec_ch IS NULL ) THEN
-      lv_prof_err := cv_pro_elec_ch;
-      RAISE get_prof_err_expt;
+    --==================================================
+    -- プロファイル取得(仕入先ダミーコード)
+    --==================================================
+    gv_vendor_dummy_code := FND_PROFILE.VALUE( cv_profile_name_07 );
+    IF( gv_vendor_dummy_code IS NULL ) THEN
+      lv_outmsg  := xxccp_common_pkg.get_msg(
+                      iv_application          => cv_appl_short_name_cok
+                    , iv_name                 => cv_msg_cok_00003
+                    , iv_token_name1          => cv_tkn_profile
+                    , iv_token_value1         => cv_profile_name_07
+                    );
+      lb_retcode := xxcok_common_pkg.put_message_f(
+                      in_which                => FND_FILE.OUTPUT
+                    , iv_message              => lv_outmsg
+                    , in_new_line             => 0
+                    );
+      RAISE error_proc_expt;
     END IF;
-    -------------------------------------------------
-    -- 10.仕入先ダミーコードプロファイル取得
-    -------------------------------------------------
-    gv_pro_vendor := fnd_profile.value( cv_pro_vendor );
-    -- NULLの場合はエラー
-    IF ( gv_pro_vendor IS NULL ) THEN
-      lv_prof_err := cv_pro_vendor;
-      RAISE get_prof_err_expt;
+    --==================================================
+    -- プロファイル取得(支払条件_即時払い)
+    --==================================================
+    gv_instantly_term_name := FND_PROFILE.VALUE( cv_profile_name_08 );
+    IF( gv_instantly_term_name IS NULL ) THEN
+      lv_outmsg  := xxccp_common_pkg.get_msg(
+                      iv_application          => cv_appl_short_name_cok
+                    , iv_name                 => cv_msg_cok_00003
+                    , iv_token_name1          => cv_tkn_profile
+                    , iv_token_value1         => cv_profile_name_08
+                    );
+      lb_retcode := xxcok_common_pkg.put_message_f(
+                      in_which                => FND_FILE.OUTPUT
+                    , iv_message              => lv_outmsg
+                    , in_new_line             => 0
+                    );
+      RAISE error_proc_expt;
     END IF;
-    -------------------------------------------------
-    -- 11.仕入先サイトダミーコードプロファイル取得
-    -------------------------------------------------
-    gv_pro_vendor_s := fnd_profile.value( cv_pro_vendor );
-    -- NULLの場合はエラー
-    IF ( gv_pro_vendor_s IS NULL ) THEN
-      lv_prof_err := cv_pro_vendor;
-      RAISE get_prof_err_expt;
+    --==================================================
+    -- プロファイル取得(支払条件_デフォルト)
+    --==================================================
+    gv_default_term_name := FND_PROFILE.VALUE( cv_profile_name_09 );
+    IF( gv_default_term_name IS NULL ) THEN
+      lv_outmsg  := xxccp_common_pkg.get_msg(
+                      iv_application          => cv_appl_short_name_cok
+                    , iv_name                 => cv_msg_cok_00003
+                    , iv_token_name1          => cv_tkn_profile
+                    , iv_token_value1         => cv_profile_name_09
+                    );
+      lb_retcode := xxcok_common_pkg.put_message_f(
+                      in_which                => FND_FILE.OUTPUT
+                    , iv_message              => lv_outmsg
+                    , in_new_line             => 0
+                    );
+      RAISE error_proc_expt;
     END IF;
-    -------------------------------------------------
-    -- 12.販手販協保持期限日取得
-    -------------------------------------------------
-    gd_limit_date := ADD_MONTHS( TRUNC( gd_proc_date,cv_format3 ), - gn_pro_sales_ret );
-  --
+    --==================================================
+    -- 出力パラメータ設定
+    --==================================================
+    ov_errbuf  := NULL;
+    ov_errmsg  := NULL;
+    ov_retcode := lv_end_retcode;
+--
   EXCEPTION
-  --
-    ----------------------------------------------------------
-    -- 業務処理日付取得例外ハンドラ
-    ----------------------------------------------------------
-    WHEN get_date_err_expt THEN
-      -- エラーメッセージ取得
-      lv_out_msg := xxccp_common_pkg.get_msg(
-                       iv_application  => cv_ap_type_xxcok
-                      ,iv_name         => cv_prmmsg_00028
-                    );
-      -- エラーメッセージ出力
-      lb_retcode := xxcok_common_pkg.put_message_f(
-                       in_which    => fnd_file.output -- 出力区分
-                      ,iv_message  => lv_out_msg      -- メッセージ
-                      ,in_new_line => cn_zero         -- 改行
-                    );
-      ov_errmsg  := lv_out_msg;
-      ov_errbuf  := SUBSTRB(cv_pkg_name||cv_msg_cont||cv_prg_name||cv_msg_part||lv_out_msg,1,5000);
+    -- *** エラー終了 ***
+    WHEN error_proc_expt THEN
+      ov_errmsg  := NULL;
+      ov_errbuf  := SUBSTRB( cv_pkg_name || cv_msg_cont || cv_prg_name || cv_msg_part || lv_outmsg, 1, 5000 );
       ov_retcode := cv_status_error;
-    ----------------------------------------------------------
-    -- プロファイル取得例外ハンドラ
-    ----------------------------------------------------------
-    WHEN get_prof_err_expt THEN
-      -- エラーメッセージ取得
-      lv_out_msg := xxccp_common_pkg.get_msg(
-                       iv_application  => cv_ap_type_xxcok
-                      ,iv_name         => cv_prmmsg_00003
-                      ,iv_token_name1  => cv_tkn_profile
-                      ,iv_token_value1 => lv_prof_err
-                    );
-      -- エラーメッセージ出力
-      lb_retcode := xxcok_common_pkg.put_message_f(
-                       in_which    => fnd_file.output -- 出力区分
-                      ,iv_message  => lv_out_msg      -- メッセージ
-                      ,in_new_line => cn_zero         -- 改行
-                    );
-      ov_errmsg  := lv_out_msg;
-      ov_errbuf  := SUBSTRB(cv_pkg_name||cv_msg_cont||cv_prg_name||cv_msg_part||lv_out_msg,1,5000);
-      ov_retcode := cv_status_error;
-    ----------------------------------------------------------
-    -- 共通関数OTHERS例外ハンドラ
-    ----------------------------------------------------------
+    -- *** 処理部共通例外 ***
+    WHEN global_process_expt THEN
+      ov_errmsg  := NULL;
+      ov_errbuf  := SUBSTRB( cv_pkg_name || cv_msg_cont || cv_prg_name || cv_msg_part || lv_errbuf, 1, 5000 );
+      ov_retcode := lv_end_retcode;
+    -- *** 共通関数OTHERS例外 ***
     WHEN global_api_others_expt THEN
-      ov_errbuf  := SUBSTRB( cv_pkg_name||cv_msg_cont||cv_prg_name||cv_msg_part||SQLERRM,1,5000 );
+      ov_errbuf  := SUBSTRB( cv_pkg_name || cv_msg_cont || cv_prg_name || cv_msg_part || SQLERRM, 1, 5000 );
       ov_retcode := cv_status_error;
-    ----------------------------------------------------------
-    -- OTHERS例外ハンドラ
-    ----------------------------------------------------------
+    -- *** OTHERS例外 ***
     WHEN OTHERS THEN
-      ov_errbuf  := SUBSTRB( cv_pkg_name||cv_msg_cont||cv_prg_name||cv_msg_part||SQLERRM,1,5000 );
+      ov_errbuf  := SUBSTRB( cv_pkg_name || cv_msg_cont || cv_prg_name || cv_msg_part || SQLERRM, 1, 5000 );
       ov_retcode := cv_status_error;
-  --
-  END init_proc;
-  --
+  END init;
+--
   /**********************************************************************************
    * Procedure Name   : submain
    * Description      : メイン処理プロシージャ
    **********************************************************************************/
   PROCEDURE submain(
-     ov_errbuf    OUT VARCHAR2 -- エラーメッセージ
-    ,ov_retcode   OUT VARCHAR2 -- リターン・コード
-    ,ov_errmsg    OUT VARCHAR2 -- ユーザー・エラーメッセージ
-    ,iv_proc_date IN  VARCHAR2 -- 業務日付
-    ,iv_proc_type IN  VARCHAR2 -- 実行区分
+    ov_errbuf                      OUT VARCHAR2        -- エラー・メッセージ
+  , ov_retcode                     OUT VARCHAR2        -- リターン・コード
+  , ov_errmsg                      OUT VARCHAR2        -- ユーザー・エラー・メッセージ
+  , iv_proc_date                   IN  VARCHAR2        -- 業務日付
+  , iv_proc_type                   IN  VARCHAR2        -- 実行区分
   )
   IS
-    --===============================
+    --==================================================
     -- ローカル定数
-    --===============================
-    cv_prg_name CONSTANT VARCHAR2(100) := 'submain'; -- プログラム名
-    --===============================
+    --==================================================
+    cv_prg_name                    CONSTANT VARCHAR2(30) := 'submain';             -- プログラム名
+    --==================================================
     -- ローカル変数
-    --===============================
-    lv_errbuf   VARCHAR2(5000); -- エラーメッセージ
-    lv_retcode  VARCHAR2(1);    -- リターン・コード
-    lv_errmsg   VARCHAR2(5000); -- ユーザー・エラーメッセージ
-    lv_out_msg  VARCHAR2(2000); -- メッセージ
-    lb_retcode  BOOLEAN;        -- メッセージ戻り値
-    -- カウンタ
-    ln_full_cnt PLS_INTEGER := 0; -- フルベンダーカウンタ
-    ln_term_cnt PLS_INTEGER := 0; -- 支払条件カウンタ
-    ln_calc_cnt PLS_INTEGER := 0; -- 計算条件カウンタ
-    ln_vend_cnt PLS_INTEGER := 0; -- 仕入先カウンタ
-    ln_pay_cnt  PLS_INTEGER := 0; -- 支払先カウンタ
-    ln_chk_cnt  PLS_INTEGER := 0; -- 支払先チェックカウンタ
-    ln_sup_cnt  PLS_INTEGER := 0; -- 販協計算結果登録カウンタ
-    ln_sale_cnt PLS_INTEGER := 0; -- 販売実績ループカウンタ
-    ln_elc_cnt  PLS_INTEGER := 0; -- 電気料計算カウンタ
-    -- フラグ
-    ln_row_flg   NUMBER      := 0;     -- 配列拡張フラグ
-    lv_vend_type VARCHAR2(1) := NULL;  -- ベンダー区分
-    lv_bus_type  VARCHAR2(2) := NULL;  -- 業態小分類区分
-    lv_el_flg1   VARCHAR2(1) := cv_no; -- 電気料(固定)算出済フラグ
-    lv_el_flg2   VARCHAR2(1) := cv_no; -- 電気料(変動)算出済フラグ
-    -- テーブル型定義
-    lt_many_term   g_many_term_ttype;   -- 複数支払条件
-    lt_calculation g_calculation_ttype; -- 計算条件
-    lt_bm_vendor   g_bm_support_ttype;  -- 支払先情報
-    lt_bm_support  g_bm_support_ttype;  -- 販手計算情報
-    -- タイプ定義
-    lv_bill_cust_code hz_cust_accounts.account_number%TYPE                 := NULL; -- 請求先顧客コード
-    ld_pay_work_date  xxcok_cond_bm_support.expect_payment_date%TYPE       := NULL; -- 営業日を考慮した支払日
-    ld_period_fm_date xxcok_cond_bm_support.calc_target_period_from%TYPE   := NULL; -- 計算対象期間(From)
-    lv_period_year    gl_period_statuses.period_year%TYPE                  := NULL; -- 会計年度
-    ln_bm_pct         xxcok_mst_bm_contract.bm1_pct%TYPE                   := NULL; -- 割戻率
-    ln_bm_amt         xxcok_mst_bm_contract.bm1_amt%TYPE                   := NULL; -- 割戻額
-    ln_bm_amount      xxcos_sales_exp_lines.sale_amount%TYPE               := NULL; -- 販売手数料
-    ln_bm_amount_tax  xxcos_sales_exp_lines.tax_amount%TYPE                := NULL; -- 販売手数料消費税額
-    ln_el_amount      xxcok_cond_bm_support.electric_amt_tax%TYPE          := NULL; -- 電気料
-    ln_el_amount_tax  xxcok_cond_bm_support.electric_tax_amt%TYPE          := NULL; -- 電気料消費税額
-    ln_rc_amount      xxcok_cond_bm_support.csh_rcpt_discount_amt%TYPE     := NULL; -- 入金値引額
-    ln_rc_amount_tax  xxcok_cond_bm_support.csh_rcpt_discount_amt_tax%TYPE := NULL; -- 入金値引消費税額
-    --===============================
-    -- ローカルカーソル定義
-    --===============================
-    -- 顧客情報カーソル定義（フルベンダー・フルベンダー(消化)）
-    CURSOR customer_main_cur(
-       iv_proc_type IN fnd_lookup_values.lookup_code%TYPE -- 実行区分
-      ,iv_bus_type  IN fnd_lookup_values.lookup_code%TYPE -- 業態小分類区分
-      ,in_org_id    IN hz_cust_acct_sites_all.org_id%TYPE -- 組織ID
-      ,iv_language  IN fnd_lookup_values.language%TYPE    -- 言語
-    )
-    IS
-      SELECT hca.account_number           AS customer_code  -- 顧客コード
-            ,xca.contractor_supplier_code AS bm_vend_code1  -- 契約者仕入先コード
-            ,xca.bm_pay_supplier_code1    AS bm_vend_code2  -- 紹介者BM支払仕入先コード１
-            ,xca.bm_pay_supplier_code2    AS bm_vend_code3  -- 紹介者BM支払仕入先コード２
-            ,xca.delivery_chain_code      AS del_chain_code -- 納品先チェーンコード
-      FROM   hz_cust_accounts       hca -- 顧客マスタ
-            ,xxcmm_cust_accounts    xca -- 顧客マスタアドオン
-            ,hz_cust_acct_sites_all hcs -- 顧客サイトマスタ
-            ,hz_party_sites         hzp -- 顧客パーティサイト
-            ,hz_locations           hls -- 事業所マスタ
-            ,fnd_lookup_values      flv -- クイックコード
-      WHERE  hca.customer_class_code = cv_cust_type1 -- 顧客区分：顧客
-      AND    hca.cust_account_id     = xca.customer_id
-      AND    xca.business_low_type   = iv_bus_type
-      AND    hca.cust_account_id     = hcs.cust_account_id
-      AND    hcs.org_id              = in_org_id
-      AND    hcs.party_site_id       = hzp.party_site_id
-      AND    hzp.location_id         = hls.location_id
-      AND    flv.lookup_type         = cv_lk_bm_dis_type -- 販手販協計算実行区分
-      AND    flv.language            = iv_language
-      AND    flv.lookup_code         = iv_proc_type
-      AND    SUBSTR ( hls.address3,1,2 ) IN ( flv.attribute1
-                                             ,flv.attribute2
-                                             ,flv.attribute3
-                                             ,flv.attribute4
-                                             ,flv.attribute5
-                                             ,flv.attribute6
-                                             ,flv.attribute7
-                                             ,flv.attribute8
-                                             ,flv.attribute9
-                                             ,flv.attribute10
-                                             ,flv.attribute11
-                                             ,flv.attribute12
-                                             ,flv.attribute13
-                                             ,flv.attribute14
-                                             ,flv.attribute15 );
-    -- 顧客情報レコード定義
-    customer_main_rec customer_main_cur%ROWTYPE;
-    -- 顧客情報カーソル定義（一般）
-    CURSOR customer_ip_main_cur(
-       iv_proc_type IN fnd_lookup_values.lookup_code%TYPE -- 実行区分
-      ,in_org_id    IN hz_cust_acct_sites_all.org_id%TYPE -- 組織ID
-      ,iv_language  IN fnd_lookup_values.language%TYPE    -- 言語
-    )
-    IS
-      SELECT hca.account_number                      AS customer_code  -- 顧客コード
-            ,xca.delivery_chain_code                 AS del_chain_code -- 納品先チェーンコード
-            ,NVL( xca.receiv_discount_rate,cn_zero ) AS discount_rate  -- 入金値引率
-      FROM   hz_cust_accounts       hca -- 顧客マスタ
-            ,xxcmm_cust_accounts    xca -- 顧客マスタアドオン
-            ,hz_cust_acct_sites_all hcs -- 顧客サイトマスタ
-            ,hz_party_sites         hzp -- 顧客パーティサイト
-            ,hz_locations           hls -- 事業所マスタ
-            ,fnd_lookup_values      fl1 -- クイックコード１
-            ,fnd_lookup_values      fl2 -- クイックコード
-      WHERE  hca.customer_class_code = cv_cust_type1 -- 顧客区分：顧客
-      AND    hca.cust_account_id     = xca.customer_id
-      AND    hca.cust_account_id     = hcs.cust_account_id
-      AND    hcs.org_id              = in_org_id
-      AND    hcs.party_site_id       = hzp.party_site_id
-      AND    hzp.location_id         = hls.location_id
-      AND    fl1.lookup_type         = cv_lk_bm_dis_type -- 販手販協計算実行区分
-      AND    fl1.language            = iv_language
-      AND    fl1.lookup_code         = iv_proc_type
-      AND    SUBSTR ( hls.address3,1,2 ) IN ( fl1.attribute1
-                                             ,fl1.attribute2
-                                             ,fl1.attribute3
-                                             ,fl1.attribute4
-                                             ,fl1.attribute5
-                                             ,fl1.attribute6
-                                             ,fl1.attribute7
-                                             ,fl1.attribute8
-                                             ,fl1.attribute9
-                                             ,fl1.attribute10
-                                             ,fl1.attribute11
-                                             ,fl1.attribute12
-                                             ,fl1.attribute13
-                                             ,fl1.attribute14
-                                             ,fl1.attribute15 )
-      AND    fl2.lookup_type         = cv_lk_cust_type -- 顧客業態区分
-      AND    fl2.language            = iv_language
-      AND    fl2.attribute1          <> cv_bus_type -- 11：VD以外
-      AND    xca.business_low_type   = fl2.lookup_code;
-    -- 顧客情報レコード定義
-    customer_ip_main_rec customer_ip_main_cur%ROWTYPE;
-    -- 販売実績情報カーソル定義（フルベンダー・フルベンダー消化）
-    CURSOR sales_exp_main_cur(
-       iv_bus_type      IN fnd_lookup_values.lookup_code%TYPE      -- 業態小分類区分
-      ,id_close_date    IN xxcok_cond_bm_support.closing_date%TYPE -- 締め日
-      ,iv_customer_code IN hz_cust_accounts.account_number%TYPE    -- 顧客コード
-      ,iv_language      IN fnd_lookup_values.language%TYPE         -- 言語
-    )
-    IS
-      SELECT xsh.dlv_invoice_number            AS invoice_num      -- 納品伝票番号
-            ,xsh.sales_base_code               AS sales_base_code  -- 売上拠点コード
-            ,xsh.results_employee_code         AS employee_code    -- 成績計上者コード
-            ,xsh.ship_to_customer_code         AS ship_cust_code   -- 顧客【納品先】
-            ,xsh.consumption_tax_class         AS con_tax_class    -- 消費税区分
-            ,xsh.tax_code                      AS tax_code         -- 税金コード
-            ,NVL( xsh.tax_rate,cn_zero )       AS tax_rate         -- 消費税率
-            ,xsl.dlv_invoice_line_number       AS invoice_line_num -- 納品明細番号
-            ,xsl.item_code                     AS item_code        -- 品目コード
-            ,NVL( xsl.dlv_qty,cn_zero )        AS dlv_quantity     -- 納品数量
-            ,xsl.dlv_uom_code                  AS dlv_uom_code     -- 納品単位
-            ,NVL( xsl.dlv_unit_price,cn_zero ) AS dlv_unit_price   -- 納品単価
--- 2009/04/14 Ver.1.6 [障害T1_0523] SCS K.Yamaguchi REPAIR START
---            ,NVL( xsl.sale_amount,cn_zero )    AS sales_amount     -- 売上金額
-            ,NVL( xsl.pure_amount, cn_zero )
-             + NVL( xsl.tax_amount, cn_zero )  AS sales_amount     -- 売上金額
--- 2009/04/14 Ver.1.6 [障害T1_0523] SCS K.Yamaguchi REPAIR END
-            ,NVL( xsl.pure_amount,cn_zero )    AS body_amount      -- 本体金額
-            ,NVL( xsl.tax_amount,cn_zero )     AS tax_amount       -- 消費税金額
-            ,NVL( fl1.attribute1,cv_ves_dmmy ) AS container_type   -- 容器区分
-      FROM   xxcos_sales_exp_headers xsh -- 販売実績ヘッダーテーブル
-            ,xxcos_sales_exp_lines   xsl -- 販売実績明細テーブル
-            ,xxcmm_system_items_b    xsi -- disc品目マスタアドオン
-            ,fnd_lookup_values       fl1 -- クイックコード１
-      WHERE  xsh.cust_gyotai_sho        = iv_bus_type
-      AND    xsh.delivery_date         <= id_close_date
-      AND    xsh.dlv_invoice_number     = xsl.dlv_invoice_number
-      AND    xsh.ship_to_customer_code  = iv_customer_code
-      AND    xsl.to_calculate_fees_flag = cv_no -- N：未処理
-      AND    xsl.item_code              = xsi.item_code
-      AND    xsi.vessel_group           = fl1.lookup_code(+)
-      AND    fl1.lookup_type(+)         = cv_lk_itm_yk_type -- 容器群区分
-      AND    fl1.language(+)            = iv_language
-      AND    xsh.sales_exp_header_id    = xsl.sales_exp_header_id
-      AND    NOT EXISTS ( SELECT 'X'
-                          FROM   fnd_lookup_values fl2 -- クイックコード２
-                          WHERE  xsl.item_code   = fl2.lookup_code
-                          AND    fl2.lookup_type = cv_lk_no_inv_type -- 非在庫品目区分
-                          AND    fl2.language    = iv_language );
-    -- 販売実績情報レコード定義
-    sales_exp_main_rec sales_exp_main_cur%ROWTYPE;
-    -- 販売実績情報カーソル定義（一般）
-    CURSOR sales_exp_ip_main_cur(
-       id_close_date    IN xxcok_cond_bm_support.closing_date%TYPE -- 締め日
-      ,iv_customer_code IN hz_cust_accounts.account_number%TYPE    -- 顧客コード
-      ,iv_language      IN fnd_lookup_values.language%TYPE         -- 言語
-    )
-    IS
-      SELECT xsh.dlv_invoice_number            AS invoice_num      -- 納品伝票番号
-            ,xsh.sales_base_code               AS sales_base_code  -- 売上拠点コード
-            ,xsh.results_employee_code         AS employee_code    -- 成績計上者コード
-            ,xsh.ship_to_customer_code         AS ship_cust_code   -- 顧客【納品先】
-            ,xsh.consumption_tax_class         AS con_tax_class    -- 消費税区分
-            ,xsh.tax_code                      AS tax_code         -- 税金コード
-            ,NVL( xsh.tax_rate,cn_zero )       AS tax_rate         -- 消費税率
-            ,xsl.dlv_invoice_line_number       AS invoice_line_num -- 納品明細番号
-            ,xsl.item_code                     AS item_code        -- 品目コード
-            ,NVL( xsl.dlv_qty,cn_zero )        AS dlv_quantity     -- 納品数量
-            ,xsl.dlv_uom_code                  AS dlv_uom_code     -- 納品単位
-            ,NVL( xsl.dlv_unit_price,cn_zero ) AS dlv_unit_price   -- 納品単価
--- 2009/04/14 Ver.1.6 [障害T1_0523] SCS K.Yamaguchi REPAIR START
---            ,NVL( xsl.sale_amount,cn_zero )    AS sales_amount     -- 売上金額
-            ,NVL( xsl.pure_amount,cn_zero )
-             + NVL( xsl.tax_amount,cn_zero )   AS sales_amount     -- 売上金額
--- 2009/04/14 Ver.1.6 [障害T1_0523] SCS K.Yamaguchi REPAIR END
-            ,NVL( xsl.pure_amount,cn_zero )    AS body_amount      -- 本体金額
-            ,NVL( xsl.tax_amount,cn_zero )     AS tax_amount       -- 消費税金額
-            ,NVL( fl1.attribute1,cv_ves_dmmy ) AS container_type   -- 容器区分
-      FROM   xxcos_sales_exp_headers xsh -- 販売実績ヘッダーテーブル
-            ,xxcos_sales_exp_lines   xsl -- 販売実績明細テーブル
-            ,xxcmm_system_items_b    xsi -- disc品目マスタアドオン
-            ,fnd_lookup_values       fl1 -- クイックコード１
-      WHERE  xsh.delivery_date         <= id_close_date
-      AND    xsh.dlv_invoice_number     = xsl.dlv_invoice_number
-      AND    xsh.ship_to_customer_code  = iv_customer_code
-      AND    xsl.to_calculate_fees_flag = cv_no -- N：未処理
-      AND    xsl.item_code              = xsi.item_code
-      AND    xsi.vessel_group           = fl1.lookup_code(+)
-      AND    fl1.lookup_type(+)         = cv_lk_itm_yk_type -- 容器群区分
-      AND    fl1.language(+)            = iv_language
-      AND    xsh.sales_exp_header_id    = xsl.sales_exp_header_id
-      AND    NOT EXISTS ( SELECT 'X'
-                          FROM   fnd_lookup_values fl2 -- クイックコード２
-                          WHERE  xsh.cust_gyotai_sho = fl2.lookup_code
-                          AND    fl2.lookup_type     = cv_lk_cust_type -- 顧客業態小分類区分
-                          AND    fl2.language        = iv_language
-                          AND    fl2.attribute1      = cv_bus_type ) -- 11：VD以外
-      AND    NOT EXISTS ( SELECT 'X'
-                          FROM   fnd_lookup_values fl3 -- クイックコード３
-                          WHERE  xsl.item_code   = fl3.lookup_code
-                          AND    fl3.lookup_type = cv_lk_no_inv_type -- 非在庫品目区分
-                          AND    fl3.language    = iv_language );
-    -- 販売実績情報レコード定義
-    sales_exp_ip_main_rec sales_exp_ip_main_cur%ROWTYPE;
-    -- 販手条件集約情報カーソル定義
-    CURSOR contract_mst_grp_cur(
-       iv_customer_code IN hz_cust_accounts.account_number%TYPE         -- 顧客コード
-      ,id_close_date    IN xxcok_cond_bm_support.closing_date%TYPE      -- 締め日
-    )
-    IS
-      SELECT xmb.calc_type AS calc_type -- 計算条件
-      FROM   xxcok_mst_bm_contract xmb -- 販手条件マスタ
-      WHERE  xmb.cust_code        = iv_customer_code
-      AND    xmb.calc_target_flag = cv_yes -- Y：計算対象
--- 2009/04/20 Ver.1.7 [障害T1_0688] SCS K.Yamaguchi DEL START
---      AND    id_close_date BETWEEN NVL( xmb.start_date_active,id_close_date )
---                           AND     NVL( xmb.end_date_active,id_close_date )
--- 2009/04/20 Ver.1.7 [障害T1_0688] SCS K.Yamaguchi DEL END
-      GROUP BY xmb.calc_type;
-    -- 販手条件集約情報レコード定義
-    contract_mst_grp_rec contract_mst_grp_cur%ROWTYPE;
-    --===============================
-    -- ローカル例外
-    --===============================
-    customer_chk_expt  EXCEPTION; -- 対象外顧客情報エラー
-    customer_err_expt  EXCEPTION; -- 顧客情報エラー
-    sales_exp_err_expt EXCEPTION; -- 販売実績情報エラー
-    contract_err_expt  EXCEPTION; -- 販手条件エラー
-  --
+    --==================================================
+    lv_errbuf                      VARCHAR2(5000) DEFAULT NULL;                 -- エラー・メッセージ
+    lv_retcode                     VARCHAR2(1)    DEFAULT cv_status_normal;     -- リターン・コード
+    lv_end_retcode                 VARCHAR2(1)    DEFAULT cv_status_normal;     -- リターン・コード
+    lv_errmsg                      VARCHAR2(5000) DEFAULT NULL;                 -- ユーザー・エラー・メッセージ
+    lv_outmsg                      VARCHAR2(5000) DEFAULT NULL;                 -- 出力用メッセージ
+    lb_retcode                     BOOLEAN        DEFAULT TRUE;                 -- メッセージ出力関数戻り値
+--
   BEGIN
-  --
-    --===============================================
-    -- A-0.初期化
-    --===============================================
-    lv_retcode := cv_status_normal;
-    --===============================================
-    -- A-01.初期処理
-    --===============================================
-    init_proc(
-       ov_errbuf    => lv_errbuf    -- エラーメッセージ
-      ,ov_retcode   => lv_retcode   -- リターン・コード
-      ,ov_errmsg    => lv_errmsg    -- ユーザー・エラーメッセージ
-      ,iv_proc_date => iv_proc_date -- 業務日付
-      ,iv_proc_type => iv_proc_type -- 実行区分
+    --==================================================
+    -- ステータス初期化
+    --==================================================
+    lv_end_retcode := cv_status_normal;
+    --==================================================
+    -- 初期処理(A-1)
+    --==================================================
+    init(
+      ov_errbuf               => lv_errbuf             -- エラー・メッセージ
+    , ov_retcode              => lv_retcode            -- リターン・コード
+    , ov_errmsg               => lv_errmsg             -- ユーザー・エラー・メッセージ
+    , iv_proc_date            => iv_proc_date          -- 業務日付
+    , iv_proc_type            => iv_proc_type          -- 処理区分
     );
-    -- ステータスエラー判定
-    IF ( lv_retcode = cv_status_error ) THEN
+    IF( lv_retcode = cv_status_error ) THEN
+      lv_end_retcode := cv_status_error;
       RAISE global_process_expt;
     END IF;
-    --===============================================
-    -- A-02.販手販協保持期間外データの削除
-    --===============================================
-    del_bm_support_info(
-       ov_errbuf  => lv_errbuf  -- エラーメッセージ
-      ,ov_retcode => lv_retcode -- リターン・コード
-      ,ov_errmsg  => lv_errmsg  -- ユーザー・エラーメッセージ 
+    --==================================================
+    -- 条件別販手販協データの削除（保持期間外）(A-2)
+    --==================================================
+    purge_xcbs(
+      ov_errbuf               => lv_errbuf             -- エラー・メッセージ
+    , ov_retcode              => lv_retcode            -- リターン・コード
+    , ov_errmsg               => lv_errmsg             -- ユーザー・エラー・メッセージ
     );
-    -- ステータスエラー判定
-    IF ( lv_retcode = cv_status_error ) THEN
+    IF( lv_retcode = cv_status_error ) THEN
+      lv_end_retcode := cv_status_error;
       RAISE global_process_expt;
     END IF;
-    -------------------------------------------------
-    -- フルベンダー情報ループ
-    -------------------------------------------------
-    << full_vendor_loop >>
-    FOR ln_full_cnt IN cn_one..cn_two LOOP
-      --***************************************************************************************************************
-      -- ベンダー切替時変数初期化処理
-      --***************************************************************************************************************
-      ln_term_cnt := 0;     -- 支払条件カウンタ
-      ln_calc_cnt := 0;     -- 計算条件カウンタ
-      ln_vend_cnt := 0;     -- 仕入先カウンタ
-      ln_pay_cnt  := 0;     -- 支払先カウンタ
-      ln_sale_cnt := 0;     -- 販売実績ループカウンタ
-      lv_el_flg1  := cv_no; -- 電気料(固定)算出済フラグ
-      lv_el_flg2  := cv_no; -- 電気料(変動)算出済フラグ
-      -- タイプ定義
-      lv_bill_cust_code := NULL; -- 請求先顧客コード
-      ld_pay_work_date  := NULL; -- 営業日を考慮した支払日
-      ld_period_fm_date := NULL; -- 計算対象期間(From)
-      lv_period_year    := NULL; -- 会計年度
-      ln_bm_pct         := NULL; -- 割戻率
-      ln_bm_amt         := NULL; -- 割戻額
-      ln_bm_amount      := NULL; -- 販売手数料
-      ln_bm_amount_tax  := NULL; -- 販売手数料消費税額
-      ln_el_amount      := NULL; -- 電気料
-      ln_el_amount_tax  := NULL; -- 電気料消費税額
-      -- グローバル変数
-      gn_contract_cnt   := 0;    -- 販手条件エラー件数
-      gv_sales_upd_flg  := NULL; -- 販売実績更新フラグ
-      -- テーブル型定義
-      lt_many_term.DELETE;   -- 複数支払条件
-      lt_calculation.DELETE; -- 計算条件
-      lt_bm_vendor.DELETE;   -- 支払先情報
-      lt_bm_support.DELETE;  -- 販手計算情報
-      -- カーソルクローズ
-      IF ( customer_main_cur%ISOPEN ) THEN
-        CLOSE customer_main_cur;
-      END IF;
-      IF ( sales_exp_main_cur%ISOPEN  ) THEN
-        CLOSE sales_exp_main_cur;
-      END IF;
-      --===============================================
-      -- A-03.顧客データの取得（フルベンダー）
-      -- A-21.顧客データの取得（フルベンダー消化）
-      --===============================================
-      -- 実行ベンダーの判定
-      IF ( ln_full_cnt = cn_one ) THEN
-        -- フルベンダー設定
-        lv_vend_type := cv_vendor_type1;-- ベンダー区分
-        lv_bus_type  := cv_bus_type1;   -- 業態小分類区分
-      ELSIF ( ln_full_cnt = cn_two ) THEN
-        -- フルベンダー消化設定
-        lv_vend_type := cv_vendor_type2;-- ベンダー区分
-        lv_bus_type  := cv_bus_type2;   -- 業態小分類区分
-      END IF;
-      -------------------------------------------------
-      -- 顧客情報ループ
-      -------------------------------------------------
-      OPEN customer_main_cur(
-         iv_proc_type  -- 実行区分
-        ,lv_bus_type   -- 業態小分類区分
-        ,gn_pro_org_id -- 組織ID
-        ,gv_language   -- 言語
-      );
-      << customer_main_loop2 >>
-      LOOP
-        FETCH customer_main_cur INTO customer_main_rec;
-        EXIT WHEN customer_main_cur%NOTFOUND;
-        --*************************************************************************************************************
-        -- 顧客情報単位の処理 START
-        --*************************************************************************************************************
-        BEGIN
-          -------------------------------------------------
-          -- 初期処理
-          -------------------------------------------------
-          -- 顧客の件数をインクリメント
-          gn_customer_cnt := gn_customer_cnt + cn_one;
-          -- 販売実績ループ初期化
-          ln_sale_cnt := 0;
-          -- 販手条件計算配列ポインタ初期化
-          ln_sup_cnt := 0;
-          -- 販売実績更新不要
-          gv_sales_upd_flg := cv_no;
-          -- 電気料(固定)未算出
-          lv_el_flg1 := cv_no;
-          -- BM1仕入先コード初期化
-          gv_bm1_vendor := NULL;
-          -- BM1仕入先サイトコード初期化
-          gv_bm1_vendor_s := NULL;
-          -- 支払先情報配列初期化
-          lt_bm_vendor.DELETE;
-          -- 販手条件計算結果配列初期化
-          lt_bm_support.DELETE;
-          -- 複数支払条件配列初期化
-          lt_many_term.DELETE;
-          -- 販売実績カーソルクローズ
-          IF ( sales_exp_main_cur%ISOPEN ) THEN
-            CLOSE sales_exp_main_cur;
-          END IF;
-          --===================================================
-          -- A-04.処理対象顧客データの判断（フルベンダー）
-          -- A-22.処理対象顧客データの判断（フルベンダー消化）
-          --===================================================
-          chk_customer_info(
-             ov_errbuf         => lv_errbuf                       -- エラーメッセージ
-            ,ov_retcode        => lv_retcode                      -- リターン・コード
-            ,ov_errmsg         => lv_errmsg                       -- ユーザー・エラーメッセージ 消化
-            ,iv_vendor_type    => lv_vend_type                    -- ベンダー区分
-            ,iv_customer_code  => customer_main_rec.customer_code -- 顧客コード
-            ,ov_bill_cust_code => lv_bill_cust_code               -- 請求先顧客コード
-            ,ot_many_term      => lt_many_term                    -- 複数支払条件
-          );
-          -- 処理対象外顧客判定
-          IF ( lv_retcode = cv_customer_err ) THEN
-            -- 顧客情報スキップ
-            RAISE customer_chk_expt;
-          -- ステータス警告判定
-          ELSIF ( lv_retcode = cv_status_warn ) THEN
-            -- 顧客情報スキップ
-            RAISE customer_err_expt;
-          -- ステータスエラー判定
-          ELSIF ( lv_retcode = cv_status_error ) THEN
-            -- 処理部共通エラー
-            RAISE global_process_expt;
-          END IF;
-          -------------------------------------------------
-          -- 複数支払条件ループ
-          -------------------------------------------------
-          << many_term_all_loop >>
-          FOR ln_term_cnt IN lt_many_term.FIRST..lt_many_term.LAST LOOP
-            -------------------------------------------------
-            -- 初期処理
-            -------------------------------------------------
-            -- 販売実績ループ初期化
-            ln_sale_cnt := 0;
-            -- 販手条件計算配列ポインタ初期化
-            ln_sup_cnt := 0;
-            -- 販売実績更新不要
-            gv_sales_upd_flg := cv_no;
-            -- 電気料(固定)未算出
-            lv_el_flg1 := cv_no;
-            -- BM1仕入先コード初期化
-            gv_bm1_vendor := NULL;
-            -- BM1仕入先サイトコード初期化
-            gv_bm1_vendor_s := NULL;
-            -- 支払先情報配列初期化
-            lt_bm_vendor.DELETE;
-            -- 販手条件計算結果配列初期化
-            lt_bm_support.DELETE;
-            -- 販売実績カーソルクローズ
-            IF ( sales_exp_main_cur%ISOPEN ) THEN
-              CLOSE sales_exp_main_cur;
-            END IF;
-            -------------------------------------------------
-            -- 販手販協計算終了日＝業務日付判定
-            -------------------------------------------------
-            IF ( lt_many_term( ln_term_cnt ).end_date = gd_proc_date ) THEN
-              -- 販売実績更新要
-              gv_sales_upd_flg := cv_yes;
-            END IF;
-            --=====================================================
-            -- A-05.販手販協計算付加情報の取得（フルベンダー）
-            -- A-23.販手販協計算付加情報の取得（フルベンダー消化）
-            --=====================================================
-            get_bm_support_add_info(
-               ov_errbuf        => lv_errbuf                               -- エラーメッセージ
-              ,ov_retcode       => lv_retcode                              -- リターン・コード
-              ,ov_errmsg        => lv_errmsg                               -- ユーザー・エラーメッセージ 
-              ,iv_vendor_type   => lv_vend_type                            -- ベンダー区分
-              ,iv_customer_code => customer_main_rec.customer_code         -- 顧客コード
-              ,id_pay_date      => lt_many_term( ln_term_cnt ).to_pay_date -- 今回支払日
-              ,od_pay_work_date => ld_pay_work_date                        -- 支払予定日
-              ,ov_period_year   => lv_period_year                          -- 会計年度
-            );
-            -- ステータス警告判定
-            IF ( lv_retcode = cv_status_warn ) THEN
-              -- 顧客情報スキップ
-              RAISE customer_err_expt;
-            ELSIF ( lv_retcode = cv_status_error ) THEN
-              -- 処理部共通エラー
-              RAISE global_process_expt;
-            END IF;
-            --=====================================================
-            -- A-06.販手条件エラーデータの削除（フルベンダー）
-            -- A-24.販手条件エラーデータの削除（フルベンダー消化）
-            --=====================================================
-            del_bm_contract_err_info(
-               ov_errbuf        => lv_errbuf                       -- エラーメッセージ
-              ,ov_retcode       => lv_retcode                      -- リターン・コード
-              ,ov_errmsg        => lv_errmsg                       -- ユーザー・エラーメッセージ 
-              ,iv_customer_code => customer_main_rec.customer_code -- 顧客コード
-            );
-            -- ステータス警告判定
-            IF ( lv_retcode = cv_status_warn ) THEN
-              -- 顧客情報スキップ
-              RAISE customer_err_expt;
-            -- ステータスエラー判定
-            ELSIF ( lv_retcode = cv_status_error ) THEN
-              -- 処理部共通エラー
-              RAISE global_process_expt;
-            END IF;
-            --===============================================
-            -- A-07.販売実績データの取得（フルベンダー）
-            -- A-25.販売実績データの取得（フルベンダー消化）
-            --===============================================
-            OPEN sales_exp_main_cur(
-               lv_bus_type                               -- 業態小分類区分
-              ,lt_many_term( ln_term_cnt ).to_close_date -- 締め日：今回締め日
-              ,customer_main_rec.customer_code           -- 顧客コード
-              ,gv_language                               -- 言語
-            );
-            << sales_exp_main_loop >>
-            LOOP
-              FETCH sales_exp_main_cur INTO sales_exp_main_rec;
-              EXIT WHEN sales_exp_main_cur%NOTFOUND;
-              --*******************************************************************************************************
-              -- 販売実績情報単位の処理 START
-              --*******************************************************************************************************
-              BEGIN
-                -------------------------------------------------
-                -- 初期処理
-                -------------------------------------------------
-                -- 対象件数インクリメント
-                gn_target_cnt := gn_target_cnt + cn_one;
-                -- 販売実績ループインクリメント
-                ln_sale_cnt := ln_sale_cnt + cn_one;
-                -- 電気料(変動)未算出
-                lv_el_flg2 := cv_no;
-                -------------------------------------------------
-                -- 計算条件・支払先取得判定
-                -------------------------------------------------
-                -- 販売実績ループの初回または支払先情報が存在しない場合
-                IF ( ln_sale_cnt = cn_one ) OR
-                   ( lt_bm_vendor.COUNT = cn_zero ) THEN
-                  --===============================================
-                  -- A-08.計算条件の取得（フルベンダー）
-                  -- A-26.計算条件の取得（フルベンダー消化）
-                  --===============================================
-                  -------------------------------------------------
-                  -- 計算条件初期処理
-                  -------------------------------------------------
-                  -- 計算条件カウンタ初期化
-                  ln_calc_cnt := cn_zero;
-                  -- 計算条件配列初期化
-                  lt_calculation.DELETE;
-                  -- 計算条件カーソルクローズ
-                  IF ( contract_mst_grp_cur%ISOPEN ) THEN
-                    CLOSE contract_mst_grp_cur;
-                  END IF;
-                  -------------------------------------------------
-                  -- 計算条件集約情報取得ループ
-                  -------------------------------------------------
-                  OPEN contract_mst_grp_cur(
-                     customer_main_rec.customer_code           -- 顧客コード
-                    ,lt_many_term( ln_term_cnt ).to_close_date -- 締め日：今回締め日
-                  );
-                  << contract_mst_grp_loop >>
-                  LOOP
-                    FETCH contract_mst_grp_cur INTO contract_mst_grp_rec;
-                    EXIT WHEN contract_mst_grp_cur%NOTFOUND;
-                    -- 計算条件カウンタインクリメント
-                    ln_calc_cnt := ln_calc_cnt + cn_one;
-                    -- 計算条件退避
-                    lt_calculation( ln_calc_cnt ) := contract_mst_grp_rec.calc_type;
-                    -- 電気料計算チェック
-                    IF ( contract_mst_grp_rec.calc_type = cv_cal_type50 ) THEN
-                      -- 電気料計算インクリメント
-                      ln_elc_cnt := ln_elc_cnt + cn_one;
-                    END IF;
-                  END LOOP contract_mst_grp_loop;
-                  -------------------------------------------------
-                  -- 計算条件取得結果判定
-                  -------------------------------------------------
-                  IF ( ln_calc_cnt = cn_zero ) THEN
-                    -- 販手条件エラースキップ
-                    RAISE contract_err_expt;
-                  END IF;
-                  --===============================================
-                  -- A-09.支払先データの取得（フルベンダー）
-                  -- A-27.支払先データの取得（フルベンダー消化）
-                  --===============================================
-                  get_active_vendor_info(
-                     ov_errbuf        => lv_errbuf                       -- エラーメッセージ
-                    ,ov_retcode       => lv_retcode                      -- リターン・コード
-                    ,ov_errmsg        => lv_errmsg                       -- ユーザー・エラーメッセージ 
-                    ,iv_vendor_type   => lv_vend_type                    -- ベンダー区分
-                    ,iv_customer_code => customer_main_rec.customer_code -- 顧客コード
-                    ,id_pay_work_date => ld_pay_work_date                -- 支払予定日
-                    ,iv_vendor_code1  => customer_main_rec.bm_vend_code1 -- 契約者仕入先コード
-                    ,iv_vendor_code2  => customer_main_rec.bm_vend_code2 -- 紹介者BM支払仕入先コード１
-                    ,iv_vendor_code3  => customer_main_rec.bm_vend_code3 -- 紹介者BM支払仕入先コード２
-                    ,in_elc_cnt       => ln_elc_cnt                      -- 電気料計算条件有無
-                    ,ot_bm_support    => lt_bm_vendor                    -- 支払先情報
-                  );
-                  -- ステータス警告判定
-                  IF ( lv_retcode = cv_status_warn ) THEN
-                    -- 顧客情報スキップ
-                    RAISE customer_err_expt;
-                  -- ステータスエラー判定
-                  ELSIF ( lv_retcode = cv_status_error ) THEN
-                    -- 処理部共通エラー
-                    RAISE global_process_expt;
-                  END IF;
-                END IF;
-                -------------------------------------------------
-                -- 支払先情報ループ
-                -------------------------------------------------
-                << bm_vendor_all_loop >>
-                FOR ln_vend_cnt IN lt_bm_vendor.FIRST..lt_bm_vendor.LAST LOOP
-                  --***************************************************************************************************
-                  -- 支払先情報単位の処理 START
-                  --***************************************************************************************************
-                  BEGIN
-                    -------------------------------------------------
-                    -- 計算条件集約情報ループ
-                    -------------------------------------------------
-                    << calculation_all_loop >>
-                    FOR ln_calc_cnt IN lt_calculation.FIRST..lt_calculation.LAST LOOP
-                      --***********************************************************************************************
-                      -- 計算条件集約情報単位の処理 START
-                      --***********************************************************************************************
-                      BEGIN
-                        -------------------------------------------------
-                        -- 初期処理
-                        -------------------------------------------------
-                        -- チェック用フラグ初期化
-                        ln_row_flg := cn_zero;
-                        --===============================================
-                        -- A-10.売価別条件の計算（フルベンダー）
-                        -- A-28.売価別条件の計算（フルベンダー消化）
-                        --===============================================
-                        -- 計算条件が10:売価別条件かつ品目が電気料（変動）以外かつ
-                        -- 支払区分が電気料以外の場合
-                        IF ( lt_calculation( ln_calc_cnt ) = cv_cal_type10 ) AND
-                           ( lt_bm_vendor( ln_vend_cnt ).bm_type <> cv_en1_type ) AND
-                           ( sales_exp_main_rec.item_code <> gv_pro_elec_ch ) THEN
-                          -------------------------------------------------
-                          -- 売価別計算処理
-                          -------------------------------------------------
-                          cal_bm_contract10_info(
-                             ov_errbuf        => lv_errbuf                                 -- エラーメッセージ
-                            ,ov_retcode       => lv_retcode                                -- リターン・コード
-                            ,ov_errmsg        => lv_errmsg                                 -- ユーザーメッセージ 
-                            ,iv_customer_code => customer_main_rec.customer_code           -- 顧客コード
-                            ,id_close_date    => lt_many_term( ln_term_cnt ).to_close_date -- 締め日：今回締め日
-                            ,iv_bm_type       => lt_bm_vendor( ln_vend_cnt ).bm_type       -- 支払区分：BM1～BM3
-                            ,iv_calculat_type => lt_calculation( ln_calc_cnt )             -- 計算条件
-                            ,in_retail_amount => sales_exp_main_rec.dlv_unit_price         -- 売価：納品単価
-                            ,in_sales_amount  => sales_exp_main_rec.sales_amount           -- 売上金額
-                            ,in_tax_rate      => sales_exp_main_rec.tax_rate               -- 消費税率
-                            ,in_dlv_quantity  => sales_exp_main_rec.dlv_quantity           -- 納品数量
-                            ,on_bm_pct        => ln_bm_pct                                 -- 割戻率
-                            ,on_bm_amt        => ln_bm_amt                                 -- 割戻額
-                            ,on_bm_amount     => ln_bm_amount                              -- 販売手数料
-                            ,on_bm_amount_tax => ln_bm_amount_tax                          -- 販売手数料消費税額
-                          );
-                          -- 販手条件エラー判定
-                          IF ( lv_retcode = cv_contract_err ) THEN
-                            RAISE contract_err_expt;
-                          -- ステータスエラー判定
-                          ELSIF ( lv_retcode = cv_status_error ) THEN
-                            RAISE global_process_expt;
-                          END IF;
-                          ----------------------------------------------------------
-                          -- 配列存在チェック
-                          ----------------------------------------------------------
-                          IF ( lt_bm_support.COUNT <> cn_zero ) THEN
-                            ln_row_flg := cn_one;
-                          END IF;
-                          ----------------------------------------------------------
-                          -- 売価存在チェックループ
-                          ----------------------------------------------------------
-                          IF ( ln_row_flg = cn_one ) THEN
-                            << bm_sup_type10_chk_loop >>
-                            FOR ln_chk_cnt IN lt_bm_support.FIRST..lt_bm_support.LAST LOOP
-                              -- 売価が一致し、かつ支払区分も一致する場合は一致した時点の配列項目に累積する
-                              IF ( lt_bm_support( ln_chk_cnt ).selling_price =
-                                                               sales_exp_main_rec.dlv_unit_price ) AND
-                                 ( lt_bm_support( ln_chk_cnt ).bm_type =
-                                                               lt_bm_vendor( ln_vend_cnt ).bm_type ) THEN
-                                -- 既存売価有り
-                                ln_row_flg := cn_two;
-                                -- 現在の配列へ累積
-                                ln_sup_cnt := ln_chk_cnt;
-                                -- ループEXIT
-                                EXIT;
-                              END IF;
-                            END LOOP bm_sup_type10_chk_loop;
-                          END IF;
-                          ----------------------------------------------------------
-                          -- 配列設定
-                          ----------------------------------------------------------
-                          -- 初回実行時
-                          IF ( ln_row_flg = cn_zero ) THEN
-                            -- 配列初期値セット
-                            ln_sup_cnt := cn_zero;
-                          -- 一致しない場合
-                          ELSIF ( ln_row_flg = cn_one ) THEN
-                            -- 配列を拡張
-                            ln_sup_cnt := lt_bm_support.LAST + 1;
-                          END IF;
-                          -------------------------------------------------
-                          -- 計算結果退避
-                          -------------------------------------------------
-                          -- 支払区分：BM1～BM3
-                          lt_bm_support( ln_sup_cnt ).bm_type := lt_bm_vendor( ln_vend_cnt ).bm_type;
-                          -- 仕入先コード
-                          lt_bm_support( ln_sup_cnt ).supplier_code :=
-                            lt_bm_vendor( ln_vend_cnt ).supplier_code;
-                          -- 仕入先サイトコード
-                          lt_bm_support( ln_sup_cnt ).supplier_site_code :=
-                            lt_bm_vendor( ln_vend_cnt ).supplier_site_code;
-                          -- 計算条件
-                          lt_bm_support( ln_sup_cnt ).calc_type := cv_cal_type10;
-                          -- 納品数量
-                          lt_bm_support( ln_sup_cnt ).delivery_qty :=
-                            NVL( lt_bm_support( ln_sup_cnt ).delivery_qty,cn_zero ) +
-                              sales_exp_main_rec.dlv_quantity;
-                          -- 納品単位
-                          lt_bm_support( ln_sup_cnt ).delivery_unit_type := sales_exp_main_rec.dlv_uom_code;
-                          -- 売上金額
-                          lt_bm_support( ln_sup_cnt ).selling_amt_tax :=
-                            NVL( lt_bm_support( ln_sup_cnt ).selling_amt_tax,cn_zero ) +
-                              sales_exp_main_rec.sales_amount;
-                          -- 割戻率
-                          lt_bm_support( ln_sup_cnt ).rebate_rate := ln_bm_pct;
-                          -- 割戻額
-                          lt_bm_support( ln_sup_cnt ).rebate_amt := ln_bm_amt;
-                          -- 売価金額
-                          lt_bm_support( ln_sup_cnt ).selling_price := sales_exp_main_rec.dlv_unit_price;
-                          -- フルベンダーの場合
-                          IF ( lv_vend_type = cv_vendor_type1 ) THEN
-                            -- 条件別手数料額(税込)
-                            lt_bm_support( ln_sup_cnt ).cond_bm_amt_tax :=
-                              NVL( lt_bm_support( ln_sup_cnt ).cond_bm_amt_tax,cn_zero ) +
-                                ln_bm_amount;
-                            -- 条件別手数料額(税抜)
-                            lt_bm_support( ln_sup_cnt ).cond_bm_amt_no_tax :=
-                              NVL( lt_bm_support( ln_sup_cnt ).cond_bm_amt_no_tax,cn_zero ) +
-                                ln_bm_amount - ln_bm_amount_tax;
-                            -- 条件別消費税額
-                            lt_bm_support( ln_sup_cnt ).cond_tax_amt :=
-                              NVL( lt_bm_support( ln_sup_cnt ).cond_tax_amt,cn_zero ) +
-                                ln_bm_amount_tax;
-                          -- フルベンダー消化の場合
-                          ELSIF ( lv_vend_type = cv_vendor_type2 ) THEN
-                            -- 入金値引額
-                            lt_bm_support( ln_sup_cnt ).csh_rcpt_dis_amt :=
-                              NVL( lt_bm_support( ln_sup_cnt ).csh_rcpt_dis_amt,cn_zero ) +
-                                ln_bm_amount;
-                            -- 入金値引消費税額
-                            lt_bm_support( ln_sup_cnt ).csh_rcpt_dis_amt_tax :=
-                              NVL( lt_bm_support( ln_sup_cnt ).csh_rcpt_dis_amt_tax,cn_zero ) +
-                                ln_bm_amount_tax;
-                          END IF;
-                        --===============================================
-                        -- A-11.容器区分別条件の計算（フルベンダー）
-                        -- A-29.容器区分別条件の計算（フルベンダー消化）
-                        --===============================================
-                        -- 計算条件が20:容器区分別条件かつ品目が電気料（変動）以外かつ
-                        -- 支払区分が電気料以外の場合
-                        ELSIF ( lt_calculation( ln_calc_cnt ) = cv_cal_type20 ) AND
-                              ( lt_bm_vendor( ln_vend_cnt ).bm_type <> cv_en1_type ) AND
-                              ( sales_exp_main_rec.item_code <> gv_pro_elec_ch ) THEN
-                          -------------------------------------------------
-                          -- 容器区分別計算処理
-                          -------------------------------------------------
-                          cal_bm_contract20_info(
-                             ov_errbuf         => lv_errbuf                                 -- エラーメッセージ
-                            ,ov_retcode        => lv_retcode                                -- リターン・コード
-                            ,ov_errmsg         => lv_errmsg                                 -- ユーザーメッセージ 
-                            ,iv_customer_code  => customer_main_rec.customer_code           -- 顧客コード
-                            ,id_close_date     => lt_many_term( ln_term_cnt ).to_close_date -- 締め日：今回締め日
-                            ,iv_bm_type        => lt_bm_vendor( ln_vend_cnt ).bm_type       -- 支払区分：BM1～BM3
-                            ,iv_calculat_type  => lt_calculation( ln_calc_cnt )             -- 計算条件
-                            ,iv_container_type => sales_exp_main_rec.container_type         -- 容器区分
-                            ,in_sales_amount   => sales_exp_main_rec.sales_amount           -- 売上金額
-                            ,in_tax_rate       => sales_exp_main_rec.tax_rate               -- 消費税率
-                            ,in_dlv_quantity   => sales_exp_main_rec.dlv_quantity           -- 納品数量
-                            ,on_bm_pct         => ln_bm_pct                                 -- 割戻率
-                            ,on_bm_amt         => ln_bm_amt                                 -- 割戻額
-                            ,on_bm_amount      => ln_bm_amount                              -- 販売手数料
-                            ,on_bm_amount_tax  => ln_bm_amount_tax                          -- 販売手数料消費税額
-                          );
-                          -- 販手条件エラー判定
-                          IF ( lv_retcode = cv_contract_err ) THEN
-                            RAISE contract_err_expt;
-                          -- ステータスエラー判定
-                          ELSIF ( lv_retcode = cv_status_error ) THEN
-                            RAISE global_process_expt;
-                          END IF;
-                          ----------------------------------------------------------
-                          -- 配列存在チェック
-                          ----------------------------------------------------------
-                          IF ( lt_bm_support.COUNT <> cn_zero ) THEN
-                            ln_row_flg := cn_one;
-                          END IF;
-                          ----------------------------------------------------------
-                          -- 容器区分存在チェックループ
-                          ----------------------------------------------------------
-                          IF ( ln_row_flg = cn_one ) THEN
-                            << bm_sup_type20_chk_loop >>
-                            FOR ln_chk_cnt IN lt_bm_support.FIRST..lt_bm_support.LAST LOOP
-                              -- 容器区分が一致し、かつ支払区分も一致する場合は一致した時点の配列項目に累積する
-                              IF ( lt_bm_support( ln_chk_cnt ).container_type =
-                                                               sales_exp_main_rec.container_type ) AND
-                                 ( lt_bm_support( ln_chk_cnt ).bm_type =
-                                                               lt_bm_vendor( ln_vend_cnt ).bm_type ) THEN
-                                -- 既存容器区分有り
-                                ln_row_flg := cn_two;
-                                -- 現在の配列へ累積
-                                ln_sup_cnt := ln_chk_cnt;
-                                -- ループEXIT
-                                EXIT;
-                              END IF;
-                            END LOOP bm_sup_type20_chk_loop;
-                          END IF;
-                          ----------------------------------------------------------
-                          -- 配列設定
-                          ----------------------------------------------------------
-                          -- 初回実行時
-                          IF ( ln_row_flg = cn_zero ) THEN
-                            -- 配列初期値セット
-                            ln_sup_cnt := cn_zero;
-                          -- 一致しない場合
-                          ELSIF ( ln_row_flg = cn_one ) THEN
-                            -- 配列を拡張
-                            ln_sup_cnt := lt_bm_support.LAST + 1;
-                          END IF;
-                          -------------------------------------------------
-                          -- 計算結果退避
-                          -------------------------------------------------
-                          -- 支払区分：BM1～BM3
-                          lt_bm_support( ln_sup_cnt ).bm_type := lt_bm_vendor( ln_vend_cnt ).bm_type;
-                          -- 仕入先コード
-                          lt_bm_support( ln_sup_cnt ).supplier_code :=
-                            lt_bm_vendor( ln_vend_cnt ).supplier_code;
-                          -- 仕入先サイトコード
-                          lt_bm_support( ln_sup_cnt ).supplier_site_code :=
-                            lt_bm_vendor( ln_vend_cnt ).supplier_site_code;
-                          -- 計算条件
-                          lt_bm_support( ln_sup_cnt ).calc_type := cv_cal_type20;
-                          -- 納品数量
-                          lt_bm_support( ln_sup_cnt ).delivery_qty :=
-                            NVL( lt_bm_support( ln_sup_cnt ).delivery_qty,cn_zero ) +
-                              sales_exp_main_rec.dlv_quantity;
-                          -- 納品単位
-                          lt_bm_support( ln_sup_cnt ).delivery_unit_type := sales_exp_main_rec.dlv_uom_code;
-                          -- 売上金額
-                          lt_bm_support( ln_sup_cnt ).selling_amt_tax :=
-                            NVL( lt_bm_support( ln_sup_cnt ).selling_amt_tax,cn_zero ) +
-                              sales_exp_main_rec.sales_amount;
-                          -- 割戻率
-                          lt_bm_support( ln_sup_cnt ).rebate_rate := ln_bm_pct;
-                          -- 割戻額
-                          lt_bm_support( ln_sup_cnt ).rebate_amt := ln_bm_amt;
-                          -- 容器区分
-                          lt_bm_support( ln_sup_cnt ).container_type := sales_exp_main_rec.container_type;
-                          -- フルベンダーの場合
-                          IF ( lv_vend_type = cv_vendor_type1 ) THEN
-                            -- 条件別手数料額(税込)
-                            lt_bm_support( ln_sup_cnt ).cond_bm_amt_tax :=
-                              NVL( lt_bm_support( ln_sup_cnt ).cond_bm_amt_tax,cn_zero ) +
-                                ln_bm_amount;
-                            -- 条件別手数料額(税抜)
-                            lt_bm_support( ln_sup_cnt ).cond_bm_amt_no_tax :=
-                              NVL( lt_bm_support( ln_sup_cnt ).cond_bm_amt_no_tax,cn_zero ) +
-                                ln_bm_amount - ln_bm_amount_tax;
-                            -- 条件別消費税額
-                            lt_bm_support( ln_sup_cnt ).cond_tax_amt :=
-                              NVL( lt_bm_support( ln_sup_cnt ).cond_tax_amt,cn_zero ) +
-                                ln_bm_amount_tax;
-                          -- フルベンダー消化の場合
-                          ELSIF ( lv_vend_type = cv_vendor_type2 ) THEN
-                            -- 入金値引額
-                            lt_bm_support( ln_sup_cnt ).csh_rcpt_dis_amt :=
-                              NVL( lt_bm_support( ln_sup_cnt ).csh_rcpt_dis_amt,cn_zero ) +
-                                ln_bm_amount;
-                            -- 入金値引消費税額
-                            lt_bm_support( ln_sup_cnt ).csh_rcpt_dis_amt_tax :=
-                              NVL( lt_bm_support( ln_sup_cnt ).csh_rcpt_dis_amt_tax,cn_zero ) +
-                                ln_bm_amount_tax;
-                          END IF;
-                        --===============================================
-                        -- A-12.一律条件の計算（フルベンダー）
-                        -- A-30.一律条件の計算（フルベンダー消化）
-                        --===============================================
-                        -- 計算条件が30:一律条件かつ品目が電気料（変動）以外かつ
-                        -- 支払区分が電気料以外の場合
-                        ELSIF ( lt_calculation( ln_calc_cnt ) = cv_cal_type30 ) AND
-                              ( lt_bm_vendor( ln_vend_cnt ).bm_type <> cv_en1_type ) AND
-                              ( sales_exp_main_rec.item_code <> gv_pro_elec_ch ) THEN
-                          -------------------------------------------------
-                          -- 一律計算処理
-                          -------------------------------------------------
-                          cal_bm_contract30_info(
-                             ov_errbuf        => lv_errbuf                                 -- エラーメッセージ
-                            ,ov_retcode       => lv_retcode                                -- リターン・コード
-                            ,ov_errmsg        => lv_errmsg                                 -- ユーザーメッセージ 
-                            ,iv_customer_code => customer_main_rec.customer_code           -- 顧客コード
-                            ,id_close_date    => lt_many_term( ln_term_cnt ).to_close_date -- 締め日：今回締め日
-                            ,iv_bm_type       => lt_bm_vendor( ln_vend_cnt ).bm_type       -- 支払区分：BM1～BM3
-                            ,iv_calculat_type => lt_calculation( ln_calc_cnt )             -- 計算条件
-                            ,in_sales_amount  => sales_exp_main_rec.sales_amount           -- 売上金額
-                            ,in_tax_rate      => sales_exp_main_rec.tax_rate               -- 消費税率
-                            ,in_dlv_quantity  => sales_exp_main_rec.dlv_quantity           -- 納品数量
-                            ,on_bm_pct        => ln_bm_pct                                 -- 割戻率
-                            ,on_bm_amt        => ln_bm_amt                                 -- 割戻額
-                            ,on_bm_amount     => ln_bm_amount                              -- 販売手数料
-                            ,on_bm_amount_tax => ln_bm_amount_tax                          -- 販売手数料消費税額
-                          );
-                          -- 販手条件エラー判定
-                          IF ( lv_retcode = cv_contract_err ) THEN
-                            RAISE contract_err_expt;
-                          -- ステータスエラー判定
-                          ELSIF ( lv_retcode = cv_status_error ) THEN
-                            RAISE global_process_expt;
-                          END IF;
-                          ----------------------------------------------------------
-                          -- 配列存在チェック
-                          ----------------------------------------------------------
-                          IF ( lt_bm_support.COUNT <> cn_zero ) THEN
-                            ln_row_flg := cn_one;
-                          END IF;
-                          ----------------------------------------------------------
-                          -- 支払区分存在チェックループ
-                          ----------------------------------------------------------
-                          IF ( ln_row_flg = cn_one ) THEN
-                            << bm_sup_type30_chk_loop >>
-                            FOR ln_chk_cnt IN lt_bm_support.FIRST..lt_bm_support.LAST LOOP
-                              -- 支払区分が一致する場合は一致した時点の配列項目に累積する
-                              IF ( lt_bm_support( ln_chk_cnt ).bm_type =
-                                                               lt_bm_vendor( ln_vend_cnt ).bm_type ) THEN
-                                -- 既存容器区分有り
-                                ln_row_flg := cn_two;
-                                -- 現在の配列へ累積
-                                ln_sup_cnt := ln_chk_cnt;
-                                -- ループEXIT
-                                EXIT;
-                              END IF;
-                            END LOOP bm_sup_type30_chk_loop;
-                          END IF;
-                          ----------------------------------------------------------
-                          -- 配列設定
-                          ----------------------------------------------------------
-                          -- 初回実行時
-                          IF ( ln_row_flg = cn_zero ) THEN
-                            -- 配列初期値セット
-                            ln_sup_cnt := cn_zero;
-                          -- 一致しない場合
-                          ELSIF ( ln_row_flg = cn_one ) THEN
-                            -- 配列を拡張
-                            ln_sup_cnt := lt_bm_support.LAST + 1;
-                          END IF;
-                          -------------------------------------------------
-                          -- 計算結果退避
-                          -------------------------------------------------
-                          -- 支払区分：BM1～BM3
-                          lt_bm_support( ln_sup_cnt ).bm_type := lt_bm_vendor( ln_vend_cnt ).bm_type;
-                          -- 仕入先コード
-                          lt_bm_support( ln_sup_cnt ).supplier_code :=
-                            lt_bm_vendor( ln_vend_cnt ).supplier_code;
-                          -- 仕入先サイトコード
-                          lt_bm_support( ln_sup_cnt ).supplier_site_code :=
-                            lt_bm_vendor( ln_vend_cnt ).supplier_site_code;
-                          -- 計算条件
-                          lt_bm_support( ln_sup_cnt ).calc_type := cv_cal_type30;
-                          -- 納品数量
-                          lt_bm_support( ln_sup_cnt ).delivery_qty :=
-                            NVL( lt_bm_support( ln_sup_cnt ).delivery_qty,cn_zero ) +
-                              sales_exp_main_rec.dlv_quantity;
-                          -- 納品単位
-                          lt_bm_support( ln_sup_cnt ).delivery_unit_type := sales_exp_main_rec.dlv_uom_code;
-                          -- 売上金額
-                          lt_bm_support( ln_sup_cnt ).selling_amt_tax :=
-                            NVL( lt_bm_support( ln_sup_cnt ).selling_amt_tax,cn_zero ) +
-                              sales_exp_main_rec.sales_amount;
-                          -- 割戻率
-                          lt_bm_support( ln_sup_cnt ).rebate_rate := ln_bm_pct;
-                          -- 割戻額
-                          lt_bm_support( ln_sup_cnt ).rebate_amt := ln_bm_amt;
-                          -- フルベンダーの場合
-                          IF ( lv_vend_type = cv_vendor_type1 ) THEN
-                            -- 条件別手数料額(税込)
-                            lt_bm_support( ln_sup_cnt ).cond_bm_amt_tax :=
-                              NVL( lt_bm_support( ln_sup_cnt ).cond_bm_amt_tax,cn_zero ) +
-                                ln_bm_amount;
-                            -- 条件別手数料額(税抜)
-                            lt_bm_support( ln_sup_cnt ).cond_bm_amt_no_tax :=
-                              NVL( lt_bm_support( ln_sup_cnt ).cond_bm_amt_no_tax,cn_zero ) +
-                                ln_bm_amount - ln_bm_amount_tax;
-                            -- 条件別消費税額
-                            lt_bm_support( ln_sup_cnt ).cond_tax_amt :=
-                              NVL( lt_bm_support( ln_sup_cnt ).cond_tax_amt,cn_zero ) +
-                                ln_bm_amount_tax;
-                          -- フルベンダー消化の場合
-                          ELSIF ( lv_vend_type = cv_vendor_type2 ) THEN
-                            -- 入金値引額
-                            lt_bm_support( ln_sup_cnt ).csh_rcpt_dis_amt :=
-                              NVL( lt_bm_support( ln_sup_cnt ).csh_rcpt_dis_amt,cn_zero ) +
-                                ln_bm_amount;
-                            -- 入金値引消費税額
-                            lt_bm_support( ln_sup_cnt ).csh_rcpt_dis_amt_tax :=
-                              NVL( lt_bm_support( ln_sup_cnt ).csh_rcpt_dis_amt_tax,cn_zero ) +
-                                ln_bm_amount_tax;
-                          END IF;
-                        --===============================================
-                        -- A-13.定額条件の計算（フルベンダー）
-                        -- A-31.定額条件の計算（フルベンダー消化）
-                        --===============================================
-                        -- 計算条件が40:定額条件かつ品目が電気料（変動）以外かつ
-                        -- 支払区分が電気料以外の場合
-                        ELSIF ( lt_calculation( ln_calc_cnt ) = cv_cal_type40 ) AND
-                              ( lt_bm_vendor( ln_vend_cnt ).bm_type <> cv_en1_type ) AND
-                              ( sales_exp_main_rec.item_code <> gv_pro_elec_ch ) THEN
-                          -------------------------------------------------
-                          -- 定額計算処理
-                          -------------------------------------------------
-                          cal_bm_contract40_info(
-                             ov_errbuf        => lv_errbuf                                 -- エラーメッセージ
-                            ,ov_retcode       => lv_retcode                                -- リターン・コード
-                            ,ov_errmsg        => lv_errmsg                                 -- ユーザーメッセージ 
-                            ,iv_customer_code => customer_main_rec.customer_code           -- 顧客コード
-                            ,id_close_date    => lt_many_term( ln_term_cnt ).to_close_date -- 締め日：今回締め日
-                            ,iv_bm_type       => lt_bm_vendor( ln_vend_cnt ).bm_type       -- 支払区分：BM1～BM3
-                            ,iv_calculat_type => lt_calculation( ln_calc_cnt )             -- 計算条件
-                            ,in_tax_rate      => sales_exp_main_rec.tax_rate               -- 消費税率
-                            ,on_bm_amt        => ln_bm_amt                                 -- 割戻額
-                            ,on_bm_amount     => ln_bm_amount                              -- 販売手数料
-                            ,on_bm_amount_tax => ln_bm_amount_tax                          -- 販売手数料消費税額
-                          );
-                          -- 販手条件エラー判定
-                          IF ( lv_retcode = cv_contract_err ) THEN
-                            RAISE contract_err_expt;
-                          -- ステータスエラー判定
-                          ELSIF ( lv_retcode = cv_status_error ) THEN
-                            RAISE global_process_expt;
-                          END IF;
-                          ----------------------------------------------------------
-                          -- 配列存在チェック
-                          ----------------------------------------------------------
-                          IF ( lt_bm_support.COUNT <> cn_zero ) THEN
-                            ln_row_flg := cn_one;
-                          END IF;
-                          ----------------------------------------------------------
-                          -- 支払区分存在チェックループ
-                          ----------------------------------------------------------
-                          IF ( ln_row_flg = cn_one ) THEN
-                            << bm_sup_type40_chk_loop >>
-                            FOR ln_chk_cnt IN lt_bm_support.FIRST..lt_bm_support.LAST LOOP
-                              -- 支払区分が一致する場合は一致した時点の配列項目に累積する
-                              IF ( lt_bm_support( ln_chk_cnt ).bm_type =
-                                                               lt_bm_vendor( ln_vend_cnt ).bm_type ) THEN
-                                -- 既存容器区分有り
-                                ln_row_flg := cn_two;
-                                -- 現在の配列へ累積
-                                ln_sup_cnt := ln_chk_cnt;
-                                -- ループEXIT
-                                EXIT;
-                              END IF;
-                            END LOOP bm_sup_type40_chk_loop;
-                          END IF;
-                          ----------------------------------------------------------
-                          -- 配列設定
-                          ----------------------------------------------------------
-                          -- 初回実行時
-                          IF ( ln_row_flg = cn_zero ) THEN
-                            -- 配列初期値セット
-                            ln_sup_cnt := cn_zero;
-                          -- 一致しない場合
-                          ELSIF ( ln_row_flg = cn_one ) THEN
-                            -- 配列を拡張
-                            ln_sup_cnt := lt_bm_support.LAST + 1;
-                          END IF;
-                          -------------------------------------------------
-                          -- 計算結果退避
-                          -------------------------------------------------
-                          -- 支払区分：BM1～BM3
-                          lt_bm_support( ln_sup_cnt ).bm_type := lt_bm_vendor( ln_vend_cnt ).bm_type;
-                          -- 仕入先コード
-                          lt_bm_support( ln_sup_cnt ).supplier_code :=
-                            lt_bm_vendor( ln_vend_cnt ).supplier_code;
-                          -- 仕入先サイトコード
-                          lt_bm_support( ln_sup_cnt ).supplier_site_code :=
-                            lt_bm_vendor( ln_vend_cnt ).supplier_site_code;
-                          -- 計算条件
-                          lt_bm_support( ln_sup_cnt ).calc_type := cv_cal_type40;
-                          -- 納品数量
-                          lt_bm_support( ln_sup_cnt ).delivery_qty :=
-                            NVL( lt_bm_support( ln_sup_cnt ).delivery_qty,cn_zero ) +
-                              sales_exp_main_rec.dlv_quantity;
-                          -- 納品単位
-                          lt_bm_support( ln_sup_cnt ).delivery_unit_type := sales_exp_main_rec.dlv_uom_code;
-                          -- 売上金額
-                          lt_bm_support( ln_sup_cnt ).selling_amt_tax :=
-                            NVL( lt_bm_support( ln_sup_cnt ).selling_amt_tax,cn_zero ) +
-                              sales_exp_main_rec.sales_amount;
-                          -- フルベンダーの場合
-                          IF ( lv_vend_type = cv_vendor_type1 ) THEN
-                            -- 条件別手数料額(税込)
-                            lt_bm_support( ln_sup_cnt ).cond_bm_amt_tax := ln_bm_amount;
-                            -- 条件別手数料額(税抜)
-                            lt_bm_support( ln_sup_cnt ).cond_bm_amt_no_tax := ln_bm_amount - ln_bm_amount_tax;
-                            -- 条件別消費税額
-                            lt_bm_support( ln_sup_cnt ).cond_tax_amt := ln_bm_amount_tax;
-                          -- フルベンダー消化の場合
-                          ELSIF ( lv_vend_type = cv_vendor_type2 ) THEN
-                            -- 入金値引額
-                            lt_bm_support( ln_sup_cnt ).csh_rcpt_dis_amt := ln_bm_amount;
-                            -- 入金値引消費税額
-                            lt_bm_support( ln_sup_cnt ).csh_rcpt_dis_amt_tax := ln_bm_amount_tax;
-                          END IF;
-                        --===============================================
-                        -- A-14.電気料条件の計算（フルベンダー）
-                        -- A-32.電気料条件の計算（フルベンダー消化）
-                        --===============================================
-                        -- 計算条件が50:電気料（固定）かつ品目が電気料（変動）以外かつ
-                        -- 電気料（固定）計算が顧客情報内で初回の場合
-                        ELSIF ( lt_calculation( ln_calc_cnt ) = cv_cal_type50 ) AND
-                              ( sales_exp_main_rec.item_code <> gv_pro_elec_ch ) AND
-                              ( lv_el_flg1 = cv_no ) THEN
-                          -------------------------------------------------
-                          -- 電気料（固定）計算処理
-                          -------------------------------------------------
-                          cal_bm_contract50_info(
-                             ov_errbuf        => lv_errbuf                                 -- エラーメッセージ
-                            ,ov_retcode       => lv_retcode                                -- リターン・コード
-                            ,ov_errmsg        => lv_errmsg                                 -- ユーザー・エラーメッセージ 
-                            ,iv_customer_code => customer_main_rec.customer_code           -- 顧客コード
-                            ,id_close_date    => lt_many_term( ln_term_cnt ).to_close_date -- 締め日：今回締め日
-                            ,iv_calculat_type => lt_calculation( ln_calc_cnt )             -- 計算条件
-                            ,in_tax_rate      => sales_exp_main_rec.tax_rate               -- 消費税率
-                            ,iv_con_tax_class => sales_exp_main_rec.con_tax_class          -- 消費税区分
-                            ,on_el_amount     => ln_el_amount                              -- 電気料
-                            ,on_el_amount_tax => ln_el_amount_tax                          -- 電気料消費税額
-                          );
-                          -- 販手条件エラー判定
-                          IF ( lv_retcode = cv_contract_err ) THEN
-                            RAISE contract_err_expt;
-                          -- ステータスエラー判定
-                          ELSIF ( lv_retcode = cv_status_error ) THEN
-                            RAISE global_process_expt;
-                          END IF;
-                          ----------------------------------------------------------
-                          -- 配列存在チェック
-                          ----------------------------------------------------------
-                          IF ( lt_bm_support.COUNT <> cn_zero ) THEN
-                            ln_row_flg := cn_one;
-                          END IF;
-                          ----------------------------------------------------------
-                          -- 電気料支払区分存在チェックループ
-                          ----------------------------------------------------------
-                          IF ( ln_row_flg = cn_one ) THEN
-                            << bm_sup_type50_chk_loop >>
-                            FOR ln_chk_cnt IN lt_bm_support.FIRST..lt_bm_support.LAST LOOP
-                              -- 支払区分が一致する場合は一致した時点の配列項目に累積する
-                              IF ( lt_bm_support( ln_chk_cnt ).bm_type = cv_en1_type ) THEN
-                                -- 既存電気料有り
-                                ln_row_flg := cn_two;
-                                -- 現在の配列へ累積
-                                ln_sup_cnt := ln_chk_cnt;
-                                -- ループEXIT
-                                EXIT;
-                              END IF;
-                            END LOOP bm_sup_type50_chk_loop;
-                          END IF;
-                          ----------------------------------------------------------
-                          -- 配列設定
-                          ----------------------------------------------------------
-                          -- 初回実行時
-                          IF ( ln_row_flg = cn_zero ) THEN
-                            -- 配列初期値セット
-                            ln_sup_cnt := cn_zero;
-                          -- 一致しない場合
-                          ELSIF ( ln_row_flg = cn_one ) THEN
-                            -- 配列を拡張
-                            ln_sup_cnt := lt_bm_support.LAST + 1;
-                          END IF;
-                          -------------------------------------------------
-                          -- 計算結果退避
-                          -------------------------------------------------
-                          -- 支払区分：EN1
-                          lt_bm_support( ln_sup_cnt ).bm_type := cv_en1_type;
-                          -- 計算条件
-                          lt_bm_support( ln_sup_cnt ).calc_type := lt_calculation( ln_calc_cnt );
-                          -- 仕入先コード
-                          lt_bm_support( ln_sup_cnt ).supplier_code := gv_bm1_vendor;
-                          -- 仕入先サイトコード
-                          lt_bm_support( ln_sup_cnt ).supplier_site_code := gv_bm1_vendor_s;
-                          -- 売上金額
-                          lt_bm_support( ln_sup_cnt ).selling_amt_tax := cn_zero;
-                          -- 電気料(税込)
-                          lt_bm_support( ln_sup_cnt ).electric_amt_tax :=
-                            NVL( lt_bm_support( ln_sup_cnt ).electric_amt_tax,cn_zero ) +
-                              ln_el_amount;
-                          -- 電気料(税抜)
-                          lt_bm_support( ln_sup_cnt ).electric_amt_no_tax :=
-                            NVL( lt_bm_support( ln_sup_cnt ).electric_amt_no_tax,cn_zero ) +
-                              ln_el_amount - ln_el_amount_tax;
-                          -- 電気料消費税額
-                          lt_bm_support( ln_sup_cnt ).electric_tax_amt :=
-                            NVL( lt_bm_support( ln_sup_cnt ).electric_tax_amt,cn_zero ) +
-                              ln_el_amount_tax;
-                          -- 電気料(固定)算出済
-                          lv_el_flg1 := cv_yes;
-                        --===============================================
-                        -- A-15.電気料（変動）の計算（フルベンダー）
-                        -- A-33.電気料（変動）の計算（フルベンダー消化）
-                        --===============================================
-                        -- 品目が電気料（変動）かつ電気料（変動）計算が
-                        -- 販売実績情報内で初回の場合
-                        ELSIF ( sales_exp_main_rec.item_code = gv_pro_elec_ch ) AND
-                              ( lv_el_flg2 = cv_no ) THEN
-                          ----------------------------------------------------------
-                          -- 配列存在チェック
-                          ----------------------------------------------------------
-                          IF ( lt_bm_support.COUNT <> cn_zero ) THEN
-                            ln_row_flg := cn_one;
-                          END IF;
-                          ----------------------------------------------------------
-                          -- 電気料支払区分存在チェックループ
-                          ----------------------------------------------------------
-                          IF ( ln_row_flg = cn_one ) THEN
-                            << bm_elc_type50_chk_loop >>
-                            FOR ln_chk_cnt IN lt_bm_support.FIRST..lt_bm_support.LAST LOOP
-                              -- 支払区分が一致する場合は一致した時点の配列項目に累積する
-                              IF ( lt_bm_support( ln_chk_cnt ).bm_type = cv_en1_type ) THEN
-                                -- 既存電気料有り
-                                ln_row_flg := cn_two;
-                                -- 現在の配列へ累積
-                                ln_sup_cnt := ln_chk_cnt;
-                                -- ループEXIT
-                                EXIT;
-                              END IF;
-                            END LOOP bm_elc_type50_chk_loop;
-                          END IF;
-                          ----------------------------------------------------------
-                          -- 配列設定
-                          ----------------------------------------------------------
-                          -- 初回実行時
-                          IF ( ln_row_flg = cn_zero ) THEN
-                            -- 配列初期値セット
-                            ln_sup_cnt := cn_zero;
-                          -- 一致しない場合
-                          ELSIF ( ln_row_flg = cn_one ) THEN
-                            -- 配列を拡張
-                            ln_sup_cnt := lt_bm_support.LAST + 1;
-                          END IF;
-                          -------------------------------------------------
-                          -- 計算結果退避
-                          -------------------------------------------------
-                          -- 支払区分：EN1
-                          lt_bm_support( ln_sup_cnt ).bm_type := cv_en1_type;
-                          -- 仕入先コード
-                          lt_bm_support( ln_sup_cnt ).supplier_code := gv_bm1_vendor;
-                          -- 仕入先サイトコード
-                          lt_bm_support( ln_sup_cnt ).supplier_site_code := gv_bm1_vendor_s;
-                          -- 計算条件
-                          lt_bm_support( ln_sup_cnt ).calc_type := cv_cal_type50;
-                          -- 売上金額
-                          lt_bm_support( ln_sup_cnt ).selling_amt_tax := cn_zero;
-                          -- 電気料(税込)
-                          lt_bm_support( ln_sup_cnt ).electric_amt_tax :=
-                            NVL( lt_bm_support( ln_sup_cnt ).electric_amt_tax,cn_zero ) +
-                              sales_exp_main_rec.sales_amount;
-                          -- 電気料(税抜)
-                          lt_bm_support( ln_sup_cnt ).electric_amt_no_tax :=
-                            NVL( lt_bm_support( ln_sup_cnt ).electric_amt_no_tax,cn_zero ) +
-                              sales_exp_main_rec.body_amount;
-                          -- 電気料消費税額
-                          lt_bm_support( ln_sup_cnt ).electric_tax_amt :=
-                            NVL( lt_bm_support( ln_sup_cnt ).electric_tax_amt,cn_zero ) +
-                              sales_exp_main_rec.tax_amount;
-                          -- 電気料(変動)算出済
-                          lv_el_flg2 := cv_yes;
-                        END IF;
-                      --***********************************************************************************************
-                      -- 計算条件集約情報単位の処理 END
-                      --***********************************************************************************************
-                      EXCEPTION
-                        ----------------------------------------------------------
-                        -- 販手条件エラー例外ハンドラ
-                        ----------------------------------------------------------
-                        WHEN contract_err_expt THEN
-                          --=====================================================
-                          -- A-16.販手条件エラーデータの登録（フルベンダー）
-                          -- A-34.販手条件エラーデータの登録（フルベンダー消化）
-                          --=====================================================
-                          ins_bm_contract_err_info(
-                             ov_errbuf         => lv_errbuf                                 -- エラーメッセージ
-                            ,ov_retcode        => lv_retcode                                -- リターン・コード
-                            ,ov_errmsg         => lv_errmsg                                 -- ユーザーメッセージ 
-                            ,iv_base_code      => sales_exp_main_rec.sales_base_code        -- 拠点コード
-                            ,iv_customer_code  => customer_main_rec.customer_code           -- 顧客コード
-                            ,iv_item_code      => sales_exp_main_rec.item_code              -- 品目コード
-                            ,iv_container_type => sales_exp_main_rec.container_type         -- 容器区分コード
-                            ,in_retail_amount  => sales_exp_main_rec.dlv_unit_price         -- 売価
-                            ,in_sales_amount   => sales_exp_main_rec.sales_amount           -- 売上金額(税込)
-                            ,id_close_date     => lt_many_term( ln_term_cnt ).to_close_date -- 締め日
-                          );
-                          -- ステータスエラー判定
-                          IF ( lv_retcode = cv_status_error ) THEN
-                            -- 支払先情報の処理部共通例外へ
-                            RAISE global_process_expt;
-                          END IF;
-                          -- 販手条件エラー件数をインクリメント
-                          gn_contract_cnt := gn_contract_cnt + cn_one;
-                        ----------------------------------------------------------
-                        -- 処理部共通例外ハンドラ
-                        ----------------------------------------------------------
-                        WHEN global_process_expt THEN
-                          -- 支払先情報の処理部共通例外へ
-                          RAISE global_process_expt;
-                      END;
-                      -- BM1（初回の支払情報）で販手条件エラーが発生した場合、後続の支払先をスキップする
-                      IF ( gn_contract_cnt <> cn_zero ) THEN
-                        -- 支払先情報の販手条件エラー例外へ
-                        RAISE contract_err_expt;
-                      END IF;
-                    ----------------------------------------------------------
-                    -- 販手販協計算ループ
-                    ----------------------------------------------------------
-                    END LOOP calculation_all_loop;
-                  --***************************************************************************************************
-                  -- 支払先情報単位の処理 END
-                  --***************************************************************************************************
-                  EXCEPTION
-                    ----------------------------------------------------------
-                    -- 販手条件エラー例外ハンドラ
-                    ----------------------------------------------------------
-                    WHEN contract_err_expt THEN
-                      -- 販売実績情報のスキップ例外へ
-                      RAISE sales_exp_err_expt;
-                    ----------------------------------------------------------
-                    -- 処理部共通例外ハンドラ
-                    ----------------------------------------------------------
-                    WHEN global_process_expt THEN
-                      -- 販売実績情報の処理部共通例外へ
-                      RAISE global_process_expt;
-                  END;
-                ----------------------------------------------------------
-                -- 支払先情報ループ
-                ----------------------------------------------------------
-                END LOOP bm_vendor_all_loop;
-                --=================================================
-                -- A-17.販売実績連携結果の更新（フルベンダー）
-                -- A-35.販売実績連携結果の更新（フルベンダー消化）
-                --=================================================
-                -- 販手販協計算終了日＝業務日付の場合、
-                -- 販手条件エラーが発生していない場合は更新
-                IF ( gv_sales_upd_flg = cv_yes ) AND
-                   ( gn_contract_cnt = cn_zero ) THEN
-                  -- 販売実績連携結果の更新
-                  upd_sales_exp_lines_info(
-                     ov_errbuf           => lv_errbuf                           -- エラーメッセージ
-                    ,ov_retcode          => lv_retcode                          -- リターン・コード
-                    ,ov_errmsg           => lv_errmsg                           -- ユーザー・エラーメッセージ 
-                    ,iv_if_status        => cv_yes                              -- 手数料計算インタフェース済フラグ
-                    ,iv_customer_code    => customer_main_rec.customer_code     -- 顧客コード
-                    ,iv_invoice_num      => sales_exp_main_rec.invoice_num      -- 納品伝票番号
-                    ,iv_invoice_line_num => sales_exp_main_rec.invoice_line_num -- 納品明細番号
-                  );
-                END IF;
-                -- ステータス警告判定
-                IF ( lv_retcode = cv_status_warn ) THEN
-                  -- 販売実績情報スキップ
-                  RAISE sales_exp_err_expt;
-                -- ステータスエラー判定
-                ELSIF ( lv_retcode = cv_status_error ) THEN
-                  -- 処理部共通エラー
-                  RAISE global_process_expt;
-                END IF;
-                -- 販手条件エラー件数をクリア
-                gn_contract_cnt := cn_zero;
-              --*******************************************************************************************************
-              -- 販売実績情報単位の処理 END
-              --*******************************************************************************************************
-              EXCEPTION
-                ----------------------------------------------------------
-                -- 顧客情報スキップ処理例外ハンドラ
-                ----------------------------------------------------------
-                WHEN customer_err_expt THEN
-                  -- 顧客情報のスキップ例外へ
-                  RAISE customer_err_expt;
-                ----------------------------------------------------------
-                -- 販売実績情報スキップ処理例外ハンドラ
-                ----------------------------------------------------------
-                WHEN sales_exp_err_expt THEN
-                  IF ( gn_contract_cnt <> cn_zero ) THEN
-                    -- 販手条件エラー件数を合算
-                    gn_warning_cnt := gn_warning_cnt + gn_contract_cnt;
-                  ELSE
-                    -- 警告件数をインクリメント
-                    gn_warning_cnt := gn_warning_cnt + cn_one;
-                  END IF;
-                  -- 販手条件エラー件数をクリア
-                  gn_contract_cnt := cn_zero;
-                ----------------------------------------------------------
-                -- 販手条件エラー（計算条件集約情報取得時）例外ハンドラ
-                ----------------------------------------------------------
-                WHEN contract_err_expt THEN
-                  --=====================================================
-                  -- A-16.販手条件エラーデータの登録（フルベンダー）
-                  -- A-34.販手条件エラーデータの登録（フルベンダー消化）
-                  --=====================================================
-                  ins_bm_contract_err_info(
-                     ov_errbuf         => lv_errbuf                                 -- エラーメッセージ
-                    ,ov_retcode        => lv_retcode                                -- リターン・コード
-                    ,ov_errmsg         => lv_errmsg                                 -- ユーザー・エラーメッセージ 
-                    ,iv_base_code      => sales_exp_main_rec.sales_base_code        -- 拠点コード
-                    ,iv_customer_code  => customer_main_rec.customer_code           -- 顧客コード
-                    ,iv_item_code      => sales_exp_main_rec.item_code              -- 品目コード
-                    ,iv_container_type => sales_exp_main_rec.container_type         -- 容器区分コード
-                    ,in_retail_amount  => sales_exp_main_rec.dlv_unit_price         -- 売価
-                    ,in_sales_amount   => sales_exp_main_rec.sales_amount           -- 売上金額(税込)
-                    ,id_close_date     => lt_many_term( ln_term_cnt ).to_close_date -- 締め日
-                  );
-                  -- ステータスエラー判定
-                  IF ( lv_retcode = cv_status_error ) THEN
-                    RAISE global_process_expt;
-                  END IF;
-                  -- 警告件数をインクリメント
-                  gn_warning_cnt := gn_warning_cnt + cn_one;
-                ----------------------------------------------------------
-                -- 処理部共通例外ハンドラ
-                ----------------------------------------------------------
-                WHEN global_process_expt THEN
-                  -- 顧客情報の処理部共通例外へ
-                  RAISE global_process_expt;
-              END;
-            ----------------------------------------------------------
-            -- 販売実績データループ
-            ----------------------------------------------------------
-            END LOOP sales_exp_main_loop;
-            ----------------------------------------------------------
-            -- 計算結果登録処理
-            ----------------------------------------------------------
-            -- 販売実績が存在しない場合は処理を行わない
-            IF ( lt_bm_support.COUNT <> cn_zero ) THEN
-              --============================================================
-              -- A-18.前回販手販協計算結果データの削除（フルベンダー）
-              -- A-36.前回販手販協計算結果データの削除（フルベンダー消化）
-              --============================================================
-              del_pre_bm_support_info(
-                 ov_errbuf        => lv_errbuf                                 -- エラーメッセージ
-                ,ov_retcode       => lv_retcode                                -- リターン・コード
-                ,ov_errmsg        => lv_errmsg                                 -- ユーザー・エラーメッセージ 
-                ,iv_customer_code => customer_main_rec.customer_code           -- 顧客コード
-                ,id_close_date    => lt_many_term( ln_term_cnt ).to_close_date -- 締め日
-              );
-              -- ステータス警告判定
-              IF ( lv_retcode = cv_status_warn ) THEN
-                -- 顧客情報スキップ
-                RAISE customer_err_expt;
-              -- ステータスエラー判定
-              ELSIF ( lv_retcode = cv_status_error ) THEN
-                -- 処理部共通エラー
-                RAISE global_process_expt;
-              END IF;
-              --==============================================================
-              -- A-19.販手販協計算登録情報の付加情報設定（フルベンダー）
-              -- A-37.販手販協計算登録情報の付加情報設定（フルベンダー消化）
-              --==============================================================
-              << bm_support_all_loop >>
-              FOR ln_vend_cnt IN lt_bm_support.FIRST..lt_bm_support.LAST LOOP
-                -------------------------------------------------
-                -- 計算結果退避
-                -------------------------------------------------
-                -- 拠点コード
-                lt_bm_support( ln_vend_cnt ).base_code := sales_exp_main_rec.sales_base_code;
-                -- 担当者コード
-                lt_bm_support( ln_vend_cnt ).emp_code := sales_exp_main_rec.employee_code;
-                -- 顧客【納品先】
-                lt_bm_support( ln_vend_cnt ).delivery_cust_code := sales_exp_main_rec.ship_cust_code;
-                -- 顧客【請求先】
-                lt_bm_support( ln_vend_cnt ).demand_to_cust_code := lv_bill_cust_code;
-                -- 会計年度
-                lt_bm_support( ln_vend_cnt ).acctg_year := lv_period_year;
-                -- チェーン店コード
-                lt_bm_support( ln_vend_cnt ).chain_store_code := customer_main_rec.del_chain_code;
-                -- 納品日年月
-                lt_bm_support( ln_vend_cnt ).delivery_date :=
-                  TO_CHAR( lt_many_term( ln_term_cnt ).to_close_date,cv_format2 );
-                -- 消費税区分
-                lt_bm_support( ln_vend_cnt ).tax_class := sales_exp_main_rec.con_tax_class;
-                -- 税金コード
-                lt_bm_support( ln_vend_cnt ).tax_code := sales_exp_main_rec.tax_code;
-                -- 消費税率
-                lt_bm_support( ln_vend_cnt ).tax_rate := sales_exp_main_rec.tax_rate;
-                -- 支払条件
-                lt_bm_support( ln_vend_cnt ).term_code := lt_many_term( ln_term_cnt ).to_term_name;
-                -- 締め日
-                lt_bm_support( ln_vend_cnt ).closing_date := lt_many_term( ln_term_cnt ).to_close_date;
-                -- 支払予定日
-                lt_bm_support( ln_vend_cnt ).expect_payment_date := ld_pay_work_date;
-                -- 計算対象期間(From)＋１日
-                ld_period_fm_date := lt_many_term( ln_term_cnt ).fm_close_date + cn_one;
-                lt_bm_support( ln_vend_cnt ).calc_period_from := ld_period_fm_date; 
-                -- 計算対象期間(To)
-                lt_bm_support( ln_vend_cnt ).calc_period_to := lt_many_term( ln_term_cnt ).to_close_date;
-                -- フルベンダーの場合
-                IF ( lv_vend_type = cv_vendor_type1 ) THEN
-                  -- 連携ステータス(条件別販手販協)
-                  lt_bm_support( ln_vend_cnt ).cond_bm_if_status := cv_if_status0;
-                  -- 連携日(条件別販手販協)
-                  lt_bm_support( ln_vend_cnt ).cond_bm_if_date := NULL;
-                  -- 連携ステータス(販手残高)
-                  lt_bm_support( ln_vend_cnt ).bm_interface_status := cv_if_status0;
-                  -- 連携日(販手残高)
-                  lt_bm_support( ln_vend_cnt ).bm_interface_date := NULL;
-                  -- 連携ステータス(AR)
-                  lt_bm_support( ln_vend_cnt ).ar_interface_status := cv_if_status2;
-                  -- 連携日(AR)
-                  lt_bm_support( ln_vend_cnt ).ar_interface_date := NULL;
-                -- フルベンダー消化の場合
-                ELSIF ( lv_vend_type = cv_vendor_type2 ) THEN
-                  -- 連携ステータス(条件別販手販協)
-                  lt_bm_support( ln_vend_cnt ).cond_bm_if_status := cv_if_status2;
-                  -- 連携日(条件別販手販協)
-                  lt_bm_support( ln_vend_cnt ).cond_bm_if_date := NULL;
-                  -- 連携ステータス(販手残高)
-                  lt_bm_support( ln_vend_cnt ).bm_interface_status := cv_if_status2;
-                  -- 連携日(販手残高)
-                  lt_bm_support( ln_vend_cnt ).bm_interface_date := NULL;
-                  -- 販手販協計算終了日＝業務日付の場合
-                  IF ( gv_sales_upd_flg = cv_yes ) THEN
-                    -- 支払区分が電気料の場合
-                    IF ( lt_bm_support( ln_vend_cnt ).bm_type = cv_en1_type ) THEN
-                      -- 連携ステータス(AR)
-                      lt_bm_support( ln_vend_cnt ).ar_interface_status := cv_if_status2;
-                      -- 連携日(AR)
-                      lt_bm_support( ln_vend_cnt ).ar_interface_date := NULL;
-                    ELSE
-                      -- 連携ステータス(AR)
-                      lt_bm_support( ln_vend_cnt ).ar_interface_status := cv_if_status0;
-                      -- 連携日(AR)
-                      lt_bm_support( ln_vend_cnt ).ar_interface_date := NULL;
-                    END IF;
-                  -- 販手販協計算終了日＝業務日付でない場合
-                  ELSE
-                    -- 連携ステータス(AR)
-                    lt_bm_support( ln_vend_cnt ).ar_interface_status := cv_if_status2;
-                    -- 連携日(AR)
-                    lt_bm_support( ln_vend_cnt ).ar_interface_date := NULL;
-                  END IF;
-                END IF;
-              END LOOP bm_support_all_loop;
-              --=========================================================
-              -- A-20.条件別販手販協計算データの登録（フルベンダー）
-              -- A-38.条件別販手販協計算データの登録（フルベンダー消化）
-              --=========================================================
-              ins_bm_support_info(
-                 ov_errbuf        => lv_errbuf                                 -- エラーメッセージ
-                ,ov_retcode       => lv_retcode                                -- リターン・コード
-                ,ov_errmsg        => lv_errmsg                                 -- ユーザー・エラーメッセージ 
-                ,iv_vendor_type   => lv_vend_type                              -- ベンダー区分
-                ,id_fm_close_date => lt_many_term( ln_term_cnt ).fm_close_date -- 前回締め日
-                ,id_to_close_date => lt_many_term( ln_term_cnt ).to_close_date -- 今回締め日
-                ,it_bm_support    => lt_bm_support                             -- 販手販協計算登録情報
-              );
-              -- ステータスエラー判定
-              IF ( lv_retcode = cv_status_error ) THEN
-                RAISE global_process_expt;
-              END IF;
-              -- 正常処理件数へ登録に成功した件数を加算
-              gn_normal_cnt := gn_normal_cnt + lt_bm_support.COUNT;
-            END IF;
-          -------------------------------------------------
-          -- 複数支払条件ループ
-          -------------------------------------------------
-          END LOOP many_term_all_loop;
-          -------------------------------------------------
-          -- COMMIT判定
-          -------------------------------------------------
-          IF ( lt_bm_support.COUNT <> cn_zero ) THEN
-            -- 顧客単位にCOMMIT
-            COMMIT;
-          END IF;
-          -------------------------------------------------
-        --*************************************************************************************************************
-        -- 顧客情報単位の処理 END
-        --*************************************************************************************************************
-        EXCEPTION
-          ----------------------------------------------------------
-          -- 顧客情報スキップ処理（処理対象外顧客）例外ハンドラ
-          ----------------------------------------------------------
-          WHEN customer_chk_expt THEN
-            -- 顧客情報をスキップ
-            NULL;
-          ----------------------------------------------------------
-          -- 顧客情報スキップ処理例外ハンドラ
-          ----------------------------------------------------------
-          WHEN customer_err_expt THEN
-            -- 警告件数をインクリメント
-            gn_warning_cnt := gn_warning_cnt + cn_one;
-          ----------------------------------------------------------
-          -- 処理部共通例外ハンドラ
-          ----------------------------------------------------------
-          WHEN global_process_expt THEN
-            -- submainの処理部共通例外へ
-            RAISE global_process_expt;
-        END;
-      ----------------------------------------------------------
-      -- 顧客情報ループ
-      ----------------------------------------------------------
-      END LOOP customer_main_loop2;
-    ----------------------------------------------------------
-    -- フルベンダー情報ループ
-    ----------------------------------------------------------
-    END LOOP full_vendor_loop;
-    --*****************************************************************************************************************
-    -- 一般切替時変数初期化処理
-    --*****************************************************************************************************************
-    ln_term_cnt := 0;     -- 支払条件カウンタ
-    ln_calc_cnt := 0;     -- 計算条件カウンタ
-    ln_vend_cnt := 0;     -- 仕入先カウンタ
-    ln_pay_cnt  := 0;     -- 支払先カウンタ
-    ln_sale_cnt := 0;     -- 販売実績ループカウンタ
-    lv_el_flg1  := cv_no; -- 電気料(固定)算出済フラグ
-    lv_el_flg2  := cv_no; -- 電気料(変動)算出済フラグ
-    -- タイプ定義
-    lv_bill_cust_code := NULL; -- 請求先顧客コード
-    ld_pay_work_date  := NULL; -- 営業日を考慮した支払日
-    ld_period_fm_date := NULL; -- 計算対象期間(From)
-    lv_period_year    := NULL; -- 会計年度
-    ln_bm_pct         := NULL; -- 割戻率
-    ln_bm_amt         := NULL; -- 割戻額
-    ln_bm_amount      := NULL; -- 販売手数料
-    ln_bm_amount_tax  := NULL; -- 販売手数料消費税額
-    ln_el_amount      := NULL; -- 電気料
-    ln_el_amount_tax  := NULL; -- 電気料消費税額
-    -- グローバル変数
-    gn_contract_cnt   := 0;    -- 販手条件エラー件数
-    gv_sales_upd_flg  := NULL; -- 販売実績更新フラグ
-    -- テーブル型定義
-    lt_many_term.DELETE;   -- 複数支払条件
-    lt_calculation.DELETE; -- 計算条件
-    lt_bm_vendor.DELETE;   -- 支払先情報
-    lt_bm_support.DELETE;  -- 販手計算情報
-    -- カーソルクローズ
-    IF ( customer_main_cur%ISOPEN ) THEN
-      CLOSE customer_main_cur;
-    END IF;
-    IF ( sales_exp_main_cur%ISOPEN  ) THEN
-      CLOSE sales_exp_main_cur;
-    END IF;
-    --===============================================
-    -- A-39.顧客データの取得（一般）
-    --===============================================
-    OPEN customer_ip_main_cur(
-       iv_proc_type  -- 実行区分
-      ,gn_pro_org_id -- 組織ID
-      ,gv_language   -- 言語
+    --==================================================
+    -- 条件別販手販協データの削除（未確定金額）(A-3)
+    --==================================================
+    delete_xcbs(
+      ov_errbuf               => lv_errbuf             -- エラー・メッセージ
+    , ov_retcode              => lv_retcode            -- リターン・コード
+    , ov_errmsg               => lv_errmsg             -- ユーザー・エラー・メッセージ
     );
-    << customer_main_loop3 >>
-    LOOP
-      FETCH customer_ip_main_cur INTO customer_ip_main_rec;
-      EXIT WHEN customer_ip_main_cur%NOTFOUND;
-      --***************************************************************************************************************
-      -- 顧客情報単位の処理 START
-      --***************************************************************************************************************
-      BEGIN
-        -------------------------------------------------
-        -- 初期処理
-        -------------------------------------------------
-        -- 顧客の件数をインクリメント
-        gn_customer_cnt := gn_customer_cnt + cn_one;
-        -- 販売実績ループ初期化
-        ln_sale_cnt := 0;
-        -- 販手条件計算配列ポインタ初期化
-        ln_sup_cnt := 0;
-        -- 販売実績更新不要
-        gv_sales_upd_flg := cv_no;
-        -- 電気料(変動)未算出
-        lv_el_flg2 := cv_no;
-        -- 販手条件計算結果配列初期化
-        lt_bm_support.DELETE;
-        -- 複数支払条件配列初期化
-        lt_many_term.DELETE;   
-        -- 販売実績カーソルクローズ
-        IF ( sales_exp_ip_main_cur%ISOPEN ) THEN
-          CLOSE sales_exp_ip_main_cur;
-        END IF;
-        --===============================================
-        -- A-40.処理対象顧客データの判断（一般）
-        --===============================================
-        chk_customer_info(
-           ov_errbuf         => lv_errbuf                          -- エラーメッセージ
-          ,ov_retcode        => lv_retcode                         -- リターン・コード
-          ,ov_errmsg         => lv_errmsg                          -- ユーザー・エラーメッセージ 
-          ,iv_vendor_type    => cv_vendor_type3                    -- ベンダー区分：一般
-          ,iv_customer_code  => customer_ip_main_rec.customer_code -- 顧客コード
-          ,ov_bill_cust_code => lv_bill_cust_code                  -- 請求先顧客コード
-          ,ot_many_term      => lt_many_term                       -- 複数支払条件
-        );
-        -- 処理対象外顧客判定
-        IF ( lv_retcode = cv_customer_err ) THEN
-          -- 顧客情報スキップ
-          RAISE customer_chk_expt;
-        -- ステータス警告判定
-        ELSIF ( lv_retcode = cv_status_warn ) THEN
-          -- 顧客情報スキップ
-          RAISE customer_err_expt;
-        -- ステータスエラー判定
-        ELSIF ( lv_retcode = cv_status_error ) THEN
-          -- 処理部共通エラー
-          RAISE global_process_expt;
-        END IF;
-        -------------------------------------------------
-        -- 複数支払条件ループ
-        -------------------------------------------------
-        << many_term_all_loop >>
-        FOR ln_term_cnt IN lt_many_term.FIRST..lt_many_term.LAST LOOP
-          -------------------------------------------------
-          -- 初期処理
-          -------------------------------------------------
-          -- 販売実績ループ初期化
-          ln_sale_cnt := 0;
-          -- 販手条件計算配列ポインタ初期化
-          ln_sup_cnt := 0;
-          -- 販売実績更新不要
-          gv_sales_upd_flg := cv_no;
-          -- 電気料(変動)未算出
-          lv_el_flg2 := cv_no;
-          -- 販手条件計算結果配列初期化
-          lt_bm_support.DELETE;
-          -- 販売実績カーソルクローズ
-          IF ( sales_exp_ip_main_cur%ISOPEN ) THEN
-            CLOSE sales_exp_ip_main_cur;
-          END IF;
-          -------------------------------------------------
-          -- 販手販協計算終了日＝業務日付判定
-          -------------------------------------------------
-          IF ( lt_many_term( ln_term_cnt ).end_date = gd_proc_date ) THEN
-            -- 販売実績更新要
-            gv_sales_upd_flg := cv_yes;
-          END IF;
-          --=================================================
-          -- A-41.販手販協計算付加情報の取得（一般）
-          --=================================================
-          get_bm_support_add_info(
-             ov_errbuf        => lv_errbuf                               -- エラーメッセージ
-            ,ov_retcode       => lv_retcode                              -- リターン・コード
-            ,ov_errmsg        => lv_errmsg                               -- ユーザー・エラーメッセージ 
-            ,iv_vendor_type   => cv_vendor_type3                         -- ベンダー区分：一般
-            ,iv_customer_code => customer_ip_main_rec.customer_code      -- 顧客コード
-            ,id_pay_date      => lt_many_term( ln_term_cnt ).to_pay_date -- 今回支払日
-            ,od_pay_work_date => ld_pay_work_date                        -- 支払予定日
-            ,ov_period_year   => lv_period_year                          -- 会計年度
-          );
-          -- ステータスエラー判定
-          IF ( lv_retcode = cv_status_warn ) THEN
-            -- 顧客情報スキップ
-            RAISE customer_err_expt;
-          ELSIF ( lv_retcode = cv_status_error ) THEN
-            -- 処理部共通エラー
-            RAISE global_process_expt;
-          END IF;
-          --===============================================
-          -- A-42.販売実績データの取得（一般）
-          --===============================================
-          OPEN sales_exp_ip_main_cur(
-             lt_many_term( ln_term_cnt ).to_close_date -- 締め日：今回締め日
-            ,customer_ip_main_rec.customer_code        -- 顧客コード
-            ,gv_language                               -- 言語
-          );
-          << sales_exp_main_loop >>
-          LOOP
-            FETCH sales_exp_ip_main_cur INTO sales_exp_ip_main_rec;
-            EXIT WHEN sales_exp_ip_main_cur%NOTFOUND;
-            --*********************************************************************************************************
-            -- 販売実績情報単位の処理 START
-            --*********************************************************************************************************
-            BEGIN
-              -------------------------------------------------
-              -- 初期処理
-              -------------------------------------------------
-              -- 対象件数インクリメント
-              gn_target_cnt := gn_target_cnt + cn_one;
-              -- 販売実績ループインクリメント
-              ln_sale_cnt := ln_sale_cnt + cn_one;
-              -- チェック用フラグ初期化
-              ln_row_flg := cn_zero;
-              --===============================================
-              -- A-43.値引額の計算（一般）
-              --===============================================
-              -- 品目が電気料（変動）以外かつ入金値引率が設定されている顧客のみ
-              IF ( customer_ip_main_rec.discount_rate <> cn_zero ) AND
-                 ( sales_exp_ip_main_rec.item_code <> gv_pro_elec_ch ) THEN
-                -------------------------------------------------
-                -- 入金値引額計算処理
-                -------------------------------------------------
-                cal_bm_contract60_info(
-                   ov_errbuf        => lv_errbuf                                 -- エラーメッセージ
-                  ,ov_retcode       => lv_retcode                                -- リターン・コード
-                  ,ov_errmsg        => lv_errmsg                                 -- ユーザー・エラーメッセージ 
-                  ,iv_customer_code => customer_ip_main_rec.customer_code        -- 顧客コード
-                  ,id_close_date    => lt_many_term( ln_term_cnt ).to_close_date -- 締め日：今回締め日
-                  ,in_sale_amount   => sales_exp_ip_main_rec.sales_amount        -- 売上金額
-                  ,in_tax_rate      => sales_exp_ip_main_rec.tax_rate            -- 消費税率
-                  ,in_discount_rate => customer_ip_main_rec.discount_rate        -- 入金値引率
-                  ,on_rc_amount     => ln_rc_amount                              -- 入金値引額
-                  ,on_rc_amount_tax => ln_rc_amount_tax                          -- 入金値引消費税額
-                );
-                -- 販手条件エラー判定
-                IF ( lv_retcode = cv_contract_err ) THEN
-                  RAISE contract_err_expt;
-                -- ステータスエラー判定
-                ELSIF ( lv_retcode = cv_status_error ) THEN
-                  RAISE global_process_expt;
-                END IF;
-                ----------------------------------------------------------
-                -- 配列存在チェック
-                ----------------------------------------------------------
-                IF ( lt_bm_support.COUNT <> cn_zero ) THEN
-                  ln_row_flg := cn_one;
-                END IF;
-                ----------------------------------------------------------
-                -- 値引額支払区分存在チェックループ
-                ----------------------------------------------------------
-                IF ( ln_row_flg = cn_one ) THEN
-                  << bm_rcpt_type60_chk_loop >>
-                  FOR ln_chk_cnt IN lt_bm_support.FIRST..lt_bm_support.LAST LOOP
-                    -- 支払区分が一致する場合は一致した時点の配列項目に累積する
-                    IF ( lt_bm_support( ln_chk_cnt ).bm_type = cv_bm1_type ) THEN
-                      -- 既存売価有り
-                      ln_row_flg := cn_two;
-                      -- 現在の配列へ累積
-                      ln_sup_cnt := ln_chk_cnt;
-                      -- ループEXIT
-                      EXIT;
-                    END IF;
-                  END LOOP bm_rcpt_type60_chk_loop;
-                END IF;
-                ----------------------------------------------------------
-                -- 配列設定
-                ----------------------------------------------------------
-                -- 初回実行時
-                IF ( ln_row_flg = cn_zero ) THEN
-                  -- 配列初期値セット
-                  ln_sup_cnt := cn_zero;
-                -- 一致しない場合
-                ELSIF ( ln_row_flg = cn_one ) THEN
-                  -- 配列を拡張
-                  ln_sup_cnt := lt_bm_support.LAST + 1;
-                END IF;
-                -------------------------------------------------
-                -- 計算結果退避
-                -------------------------------------------------
-                -- 支払区分：BM1
-                lt_bm_support( ln_sup_cnt ).bm_type := cv_bm1_type;
-                -- 仕入先ダミーコード
-                lt_bm_support( ln_sup_cnt ).supplier_code := gv_pro_vendor;
-                -- 仕入先サイトダミーコード
-                lt_bm_support( ln_sup_cnt ).supplier_site_code := gv_pro_vendor_s;
-                -- 計算条件
-                lt_bm_support( ln_sup_cnt ).calc_type := cv_cal_type60;
-                -- 納品数量
-                lt_bm_support( ln_sup_cnt ).delivery_qty :=
-                  NVL( lt_bm_support( ln_sup_cnt ).delivery_qty,cn_zero ) +
-                    sales_exp_ip_main_rec.dlv_quantity;
-                -- 納品単位
-                lt_bm_support( ln_sup_cnt ).delivery_unit_type := sales_exp_ip_main_rec.dlv_uom_code;
-                -- 売上金額
-                lt_bm_support( ln_sup_cnt ).selling_amt_tax :=
-                  NVL( lt_bm_support( ln_sup_cnt ).selling_amt_tax,cn_zero ) +
-                    sales_exp_ip_main_rec.sales_amount;
-                -- 入金値引額
-                lt_bm_support( ln_sup_cnt ).csh_rcpt_dis_amt :=
-                  NVL( lt_bm_support( ln_sup_cnt ).csh_rcpt_dis_amt,cn_zero ) +
-                    ln_rc_amount;
-                -- 入金値引消費税額
-                lt_bm_support( ln_sup_cnt ).csh_rcpt_dis_amt_tax :=
-                  NVL( lt_bm_support( ln_sup_cnt ).csh_rcpt_dis_amt_tax,cn_zero ) +
-                    ln_rc_amount_tax;
-              --===============================================
-              -- A-44.電気料（変動）の計算（一般）
-              --===============================================
-              -- 品目が電気料（変動）の場合
-              ELSIF ( sales_exp_ip_main_rec.item_code = gv_pro_elec_ch ) THEN
-                ----------------------------------------------------------
-                -- 配列存在チェック
-                ----------------------------------------------------------
-                IF ( lt_bm_support.COUNT <> cn_zero ) THEN
-                  ln_row_flg := cn_one;
-                END IF;
-                ----------------------------------------------------------
-                -- 電気料支払区分存在チェックループ
-                ----------------------------------------------------------
-                IF ( ln_row_flg = cn_one ) THEN
-                  << bm_rcpt_type50_chk_loop >>
-                  FOR ln_chk_cnt IN lt_bm_support.FIRST..lt_bm_support.LAST LOOP
-                    -- 支払区分が一致する場合は一致した時点の配列項目に累積する
-                    IF ( lt_bm_support( ln_chk_cnt ).bm_type = cv_en1_type ) THEN
-                      -- 既存売価有り
-                      ln_row_flg := cn_two;
-                      -- 現在の配列へ累積
-                      ln_sup_cnt := ln_chk_cnt;
-                      -- ループEXIT
-                      EXIT;
-                    END IF;
-                  END LOOP bm_rcpt_type50_chk_loop;
-                END IF;
-                ----------------------------------------------------------
-                -- 配列設定
-                ----------------------------------------------------------
-                -- 初回実行時
-                IF ( ln_row_flg = cn_zero ) THEN
-                  -- 配列初期値セット
-                  ln_sup_cnt := cn_zero;
-                -- 一致しない場合
-                ELSIF ( ln_row_flg = cn_one ) THEN
-                  -- 配列を拡張
-                  ln_sup_cnt := lt_bm_support.LAST + 1;
-                END IF;
-                -------------------------------------------------
-                -- 計算結果退避
-                -------------------------------------------------
-                -- 支払区分：EN1
-                lt_bm_support( ln_sup_cnt ).bm_type := cv_en1_type;
-                -- 仕入先ダミーコード
-                lt_bm_support( ln_sup_cnt ).supplier_code := gv_pro_vendor;
-                -- 仕入先サイトダミーコード
-                lt_bm_support( ln_sup_cnt ).supplier_site_code := gv_pro_vendor_s;
-                -- 計算条件
-                lt_bm_support( ln_sup_cnt ).calc_type := cv_cal_type50;
-                -- 売上金額
-                lt_bm_support( ln_sup_cnt ).selling_amt_tax := cn_zero;
-                -- 電気料(税込)
-                lt_bm_support( ln_sup_cnt ).electric_amt_tax :=
-                  NVL( lt_bm_support( ln_sup_cnt ).electric_amt_tax,cn_zero ) +
-                    sales_exp_ip_main_rec.sales_amount;
-                -- 電気料(税抜)
-                lt_bm_support( ln_sup_cnt ).electric_amt_no_tax :=
-                  NVL( lt_bm_support( ln_sup_cnt ).electric_amt_no_tax,cn_zero ) +
-                    sales_exp_ip_main_rec.body_amount;
-                -- 電気料消費税額
-                lt_bm_support( ln_sup_cnt ).electric_tax_amt :=
-                  NVL( lt_bm_support( ln_sup_cnt ).electric_tax_amt,cn_zero ) +
-                    sales_exp_ip_main_rec.tax_amount;
-                -- 電気料(変動)算出済
-                lv_el_flg2 := cv_yes;
-              END IF;
-              --===============================================
-              -- A-45.販売実績連携結果の更新（一般）
-              --===============================================
-              -- 販手販協計算終了日＝業務日付の場合は更新
-              IF ( gv_sales_upd_flg = cv_yes ) THEN
-                -- 入金値引率が設定されているまたは
-                -- 入金値引率が設定されず、変動電気料の計算が行われた場合
-                IF ( customer_ip_main_rec.discount_rate <> cn_zero ) OR
-                   ( (customer_ip_main_rec.discount_rate = cn_zero ) AND ( lv_el_flg2 = cv_yes ) ) THEN
-                  -- 販売実績連携結果更新
-                  upd_sales_exp_lines_info(
-                     ov_errbuf           => lv_errbuf                              -- エラーメッセージ
-                    ,ov_retcode          => lv_retcode                             -- リターン・コード
-                    ,ov_errmsg           => lv_errmsg                              -- ユーザー・エラーメッセージ
-                    ,iv_if_status        => cv_yes                                 -- 手数料計算インタフェース済フラグ
-                    ,iv_customer_code    => customer_ip_main_rec.customer_code     -- 顧客コード
-                    ,iv_invoice_num      => sales_exp_ip_main_rec.invoice_num      -- 納品伝票番号
-                    ,iv_invoice_line_num => sales_exp_ip_main_rec.invoice_line_num -- 納品明細番号
-                  );
-                -- 入金値引率が設定されていない場合
-                ELSE
-                  -- 販売実績連携不要更新
-                  upd_sales_exp_lines_info(
-                     ov_errbuf           => lv_errbuf                              -- エラーメッセージ
-                    ,ov_retcode          => lv_retcode                             -- リターン・コード
-                    ,ov_errmsg           => lv_errmsg                              -- ユーザー・エラーメッセージ
-                    ,iv_if_status        => cv_yes                                 -- 手数料計算インタフェース済フラグ
-                    ,iv_customer_code    => customer_ip_main_rec.customer_code     -- 顧客コード
-                    ,iv_invoice_num      => sales_exp_ip_main_rec.invoice_num      -- 納品伝票番号
-                    ,iv_invoice_line_num => sales_exp_ip_main_rec.invoice_line_num -- 納品明細番号
-                  );
-                END IF;
-                -- ステータス警告判定
-                IF ( lv_retcode = cv_status_warn ) THEN
-                  -- 販売実績情報スキップ
-                  RAISE sales_exp_err_expt;
-                -- ステータスエラー判定
-                ELSIF ( lv_retcode = cv_status_error ) THEN
-                  -- 処理部共通エラー
-                  RAISE global_process_expt;
-                END IF;
-              END IF;
-            --*********************************************************************************************************
-            -- 販売実績情報単位の処理 END
-            --*********************************************************************************************************
-            EXCEPTION
-              ----------------------------------------------------------
-              -- 顧客情報スキップ処理例外ハンドラ
-              ----------------------------------------------------------
-              WHEN customer_err_expt THEN
-                -- 顧客情報のスキップ例外へ
-                RAISE customer_err_expt;
-              ----------------------------------------------------------
-              -- 販売実績情報スキップ処理例外ハンドラ
-              ----------------------------------------------------------
-              WHEN sales_exp_err_expt THEN
-                -- 警告件数をインクリメント
-                gn_warning_cnt := gn_warning_cnt + cn_one;
-              ----------------------------------------------------------
-              -- 処理部共通例外ハンドラ
-              ----------------------------------------------------------
-              WHEN global_process_expt THEN
-                -- 顧客情報の処理部共通例外へ
-                RAISE global_process_expt;
-            END;
-          ----------------------------------------------------------
-          -- 販売実績データループ
-          ----------------------------------------------------------
-          END LOOP sales_exp_main_loop;
-          ----------------------------------------------------------
-          -- 計算結果登録処理
-          ----------------------------------------------------------
-          -- 販売実績が存在しない場合は処理を行わない
-          IF ( lt_bm_support.COUNT <> cn_zero ) THEN
-            --========================================================
-            -- A-46.前回販手販協計算結果データの削除（一般）
-            --========================================================
-            -- 前回販手販協計算結果データの削除
-            del_pre_bm_support_info(
-               ov_errbuf        => lv_errbuf                                 -- エラーメッセージ
-              ,ov_retcode       => lv_retcode                                -- リターン・コード
-              ,ov_errmsg        => lv_errmsg                                 -- ユーザー・エラーメッセージ 
-              ,iv_customer_code => customer_ip_main_rec.customer_code        -- 顧客コード
-              ,id_close_date    => lt_many_term( ln_term_cnt ).to_close_date -- 締め日
-            );
-            -- ステータス警告判定
-            IF ( lv_retcode = cv_status_warn ) THEN
-              -- 顧客情報スキップ
-              RAISE customer_err_expt;
-            -- ステータスエラー判定
-            ELSIF ( lv_retcode = cv_status_error ) THEN
-              -- 処理部共通エラー
-              RAISE global_process_expt;
-            END IF;
-            --=========================================================
-            -- A-47.販手販協計算登録情報の付加情報設定（一般）
-            --=========================================================
-            << bm_support_all_loop >>
-            FOR ln_vend_cnt IN lt_bm_support.FIRST..lt_bm_support.LAST LOOP
-              -------------------------------------------------
-              -- 計算結果退避
-              -------------------------------------------------
-              -- 拠点コード
-              lt_bm_support( ln_vend_cnt ).base_code := sales_exp_ip_main_rec.sales_base_code;
-              -- 担当者コード
-              lt_bm_support( ln_vend_cnt ).emp_code := sales_exp_ip_main_rec.employee_code;
-              -- 顧客【納品先】
-              lt_bm_support( ln_vend_cnt ).delivery_cust_code := sales_exp_ip_main_rec.ship_cust_code;
-              -- 顧客【請求先】
-              lt_bm_support( ln_vend_cnt ).demand_to_cust_code := lv_bill_cust_code;
-              -- 会計年度
-              lt_bm_support( ln_vend_cnt ).acctg_year := lv_period_year;
-              -- チェーン店コード
-              lt_bm_support( ln_vend_cnt ).chain_store_code := customer_ip_main_rec.del_chain_code;
-              -- 納品日年月
-              lt_bm_support( ln_vend_cnt ).delivery_date :=
-                TO_CHAR( lt_many_term( ln_term_cnt ).to_close_date,cv_format2 );
-              -- 消費税区分
-              lt_bm_support( ln_vend_cnt ).tax_class := sales_exp_ip_main_rec.con_tax_class;
-              -- 税金コード
-              lt_bm_support( ln_vend_cnt ).tax_code := sales_exp_ip_main_rec.tax_code;
-              -- 消費税率
-              lt_bm_support( ln_vend_cnt ).tax_rate := sales_exp_ip_main_rec.tax_rate;
-              -- 支払条件
-              lt_bm_support( ln_vend_cnt ).term_code := lt_many_term( ln_term_cnt ).to_term_name;
-              -- 締め日
-              lt_bm_support( ln_vend_cnt ).closing_date := lt_many_term( ln_term_cnt ).to_close_date;
-              -- 支払予定日
-              lt_bm_support( ln_vend_cnt ).expect_payment_date := ld_pay_work_date;
-              -- 計算対象期間(From)＋１日
-              ld_period_fm_date := lt_many_term( ln_term_cnt ).fm_close_date + cn_one;
-              lt_bm_support( ln_vend_cnt ).calc_period_from := ld_period_fm_date; 
-              -- 計算対象期間(To)
-              lt_bm_support( ln_vend_cnt ).calc_period_to := lt_many_term( ln_term_cnt ).to_close_date;
-              -- 連携ステータス(条件別販手販協)
-              lt_bm_support( ln_vend_cnt ).cond_bm_if_status := cv_if_status2;
-              -- 連携日(条件別販手販協)
-              lt_bm_support( ln_vend_cnt ).cond_bm_if_date := NULL;
-              -- 連携ステータス(販手残高)
-              lt_bm_support( ln_vend_cnt ).bm_interface_status := cv_if_status2;
-              -- 連携日(販手残高)
-              lt_bm_support( ln_vend_cnt ).bm_interface_date := NULL;
-              -- 販手販協計算終了日＝業務日付の場合
-              IF ( gv_sales_upd_flg = cv_yes ) THEN
-                -- 支払区分が電気料の場合
-                IF ( lt_bm_support( ln_vend_cnt ).bm_type = cv_en1_type ) THEN
-                  -- 連携ステータス(AR)
-                  lt_bm_support( ln_vend_cnt ).ar_interface_status := cv_if_status2;
-                  -- 連携日(AR)
-                  lt_bm_support( ln_vend_cnt ).ar_interface_date := NULL;
-                ELSE
-                  -- 連携ステータス(AR)
-                  lt_bm_support( ln_vend_cnt ).ar_interface_status := cv_if_status0;
-                  -- 連携日(AR)
-                  lt_bm_support( ln_vend_cnt ).ar_interface_date := NULL;
-                END IF;
-              -- 販手販協計算終了日＝業務日付でない場合
-              ELSE
-                -- 連携ステータス(AR)
-                lt_bm_support( ln_vend_cnt ).ar_interface_status := cv_if_status2;
-                -- 連携日(AR)
-                lt_bm_support( ln_vend_cnt ).ar_interface_date := NULL;
-              END IF;
-            END LOOP bm_support_all_loop;
-            --=====================================================
-            -- A-48.条件別販手販協計算データの登録（一般）
-            --=====================================================
-            ins_bm_support_info(
-               ov_errbuf        => lv_errbuf                                 -- エラーメッセージ
-              ,ov_retcode       => lv_retcode                                -- リターン・コード
-              ,ov_errmsg        => lv_errmsg                                 -- ユーザー・エラーメッセージ 
-              ,iv_vendor_type   => cv_vendor_type1                           -- ベンダー区分：一般
-              ,id_fm_close_date => lt_many_term( ln_term_cnt ).fm_close_date -- 前回締め日
-              ,id_to_close_date => lt_many_term( ln_term_cnt ).to_close_date -- 今回締め日
-              ,it_bm_support    => lt_bm_support                             -- 販手販協計算登録情報
-            );
-            -- ステータスエラー判定
-            IF ( lv_retcode = cv_status_error ) THEN
-              RAISE global_process_expt;
-            END IF;
-            -- 正常処理件数をインクリメント
-            gn_normal_cnt := gn_normal_cnt + lt_bm_support.COUNT;
-          END IF;
-        -------------------------------------------------
-        -- 複数支払条件ループ
-        -------------------------------------------------
-        END LOOP many_term_all_loop;
-        -------------------------------------------------
-        -- COMMIT判定
-        -------------------------------------------------
-        IF ( lt_bm_support.COUNT <> cn_zero ) THEN
-          -- 顧客単位にCOMMIT
-          COMMIT;
-        END IF;
-      --***************************************************************************************************************
-      -- 顧客情報単位の処理 END
-      --***************************************************************************************************************
-      EXCEPTION
-        ----------------------------------------------------------
-        -- 顧客情報スキップ処理（処理対象外顧客）例外ハンドラ
-        ----------------------------------------------------------
-        WHEN customer_chk_expt THEN
-          -- 顧客情報をスキップ
-          NULL;
-        ----------------------------------------------------------
-        -- 顧客情報スキップ処理例外ハンドラ
-        ----------------------------------------------------------
-        WHEN customer_err_expt THEN
-          -- 警告件数をインクリメント
-          gn_warning_cnt := gn_warning_cnt + cn_one;
-        ----------------------------------------------------------
-        -- 処理部共通例外ハンドラ
-        ----------------------------------------------------------
-        WHEN global_process_expt THEN
-          -- submainの処理部共通例外へ
-          RAISE global_process_expt;
-      END;
-    ----------------------------------------------------------
-    -- 顧客情報ループ
-    ----------------------------------------------------------
-    END LOOP customer_main_loop3;
-    --=====================================================
-    -- 終了判定
-    --=====================================================
-    -- 警告が発生している場合
-    IF ( gn_warning_cnt <> cn_zero ) THEN
-      -- 警告終了
-      ov_retcode := cv_status_warn;
-    ELSE
-      -- 正常終了
-      ov_retcode := cv_status_normal;
+    IF( lv_retcode = cv_status_error ) THEN
+      lv_end_retcode := cv_status_error;
+      RAISE global_process_expt;
     END IF;
-  --
+    --==================================================
+    -- 顧客情報ループ(A-4)
+    --==================================================
+    cust_loop(
+      ov_errbuf               => lv_errbuf             -- エラー・メッセージ
+    , ov_retcode              => lv_retcode            -- リターン・コード
+    , ov_errmsg               => lv_errmsg             -- ユーザー・エラー・メッセージ
+    );
+    IF( lv_retcode = cv_status_error ) THEN
+      lv_end_retcode := cv_status_error;
+      RAISE global_process_expt;
+    ELSIF( lv_retcode = cv_status_warn ) THEN
+      lv_end_retcode := cv_status_warn;
+    END IF;
+    --==================================================
+    -- 販手条件エラーの削除処理(A-7)
+    --==================================================
+    delete_xbce(
+      ov_errbuf               => lv_errbuf             -- エラー・メッセージ
+    , ov_retcode              => lv_retcode            -- リターン・コード
+    , ov_errmsg               => lv_errmsg             -- ユーザー・エラー・メッセージ
+    );
+    IF( lv_retcode = cv_status_error ) THEN
+      lv_end_retcode := cv_status_error;
+      RAISE global_process_expt;
+    END IF;
+    --==================================================
+    -- 販売実績ループ(A-8)
+    --==================================================
+    sales_result_loop1(
+      ov_errbuf               => lv_errbuf             -- エラー・メッセージ
+    , ov_retcode              => lv_retcode            -- リターン・コード
+    , ov_errmsg               => lv_errmsg             -- ユーザー・エラー・メッセージ
+    );
+    IF( lv_retcode = cv_status_error ) THEN
+      lv_end_retcode := cv_status_error;
+      RAISE global_process_expt;
+    ELSIF( lv_retcode = cv_status_warn ) THEN
+      lv_end_retcode := cv_status_warn;
+    END IF;
+    --==================================================
+    -- 販売実績ループ(A-8)
+    --==================================================
+    sales_result_loop2(
+      ov_errbuf               => lv_errbuf             -- エラー・メッセージ
+    , ov_retcode              => lv_retcode            -- リターン・コード
+    , ov_errmsg               => lv_errmsg             -- ユーザー・エラー・メッセージ
+    );
+    IF( lv_retcode = cv_status_error ) THEN
+      lv_end_retcode := cv_status_error;
+      RAISE global_process_expt;
+    ELSIF( lv_retcode = cv_status_warn ) THEN
+      lv_end_retcode := cv_status_warn;
+    END IF;
+    --==================================================
+    -- 販売実績ループ(A-8)
+    --==================================================
+    sales_result_loop3(
+      ov_errbuf               => lv_errbuf             -- エラー・メッセージ
+    , ov_retcode              => lv_retcode            -- リターン・コード
+    , ov_errmsg               => lv_errmsg             -- ユーザー・エラー・メッセージ
+    );
+    IF( lv_retcode = cv_status_error ) THEN
+      lv_end_retcode := cv_status_error;
+      RAISE global_process_expt;
+    ELSIF( lv_retcode = cv_status_warn ) THEN
+      lv_end_retcode := cv_status_warn;
+    END IF;
+    --==================================================
+    -- 販売実績ループ(A-8)
+    --==================================================
+    sales_result_loop4(
+      ov_errbuf               => lv_errbuf             -- エラー・メッセージ
+    , ov_retcode              => lv_retcode            -- リターン・コード
+    , ov_errmsg               => lv_errmsg             -- ユーザー・エラー・メッセージ
+    );
+    IF( lv_retcode = cv_status_error ) THEN
+      lv_end_retcode := cv_status_error;
+      RAISE global_process_expt;
+    ELSIF( lv_retcode = cv_status_warn ) THEN
+      lv_end_retcode := cv_status_warn;
+    END IF;
+    --==================================================
+    -- 販売実績ループ(A-8)
+    --==================================================
+    sales_result_loop5(
+      ov_errbuf               => lv_errbuf             -- エラー・メッセージ
+    , ov_retcode              => lv_retcode            -- リターン・コード
+    , ov_errmsg               => lv_errmsg             -- ユーザー・エラー・メッセージ
+    );
+    IF( lv_retcode = cv_status_error ) THEN
+      lv_end_retcode := cv_status_error;
+      RAISE global_process_expt;
+    ELSIF( lv_retcode = cv_status_warn ) THEN
+      lv_end_retcode := cv_status_warn;
+    END IF;
+    --==================================================
+    -- 販売実績ループ(A-8)
+    --==================================================
+    sales_result_loop6(
+      ov_errbuf               => lv_errbuf             -- エラー・メッセージ
+    , ov_retcode              => lv_retcode            -- リターン・コード
+    , ov_errmsg               => lv_errmsg             -- ユーザー・エラー・メッセージ
+    );
+    IF( lv_retcode = cv_status_error ) THEN
+      lv_end_retcode := cv_status_error;
+      RAISE global_process_expt;
+    ELSIF( lv_retcode = cv_status_warn ) THEN
+      lv_end_retcode := cv_status_warn;
+    END IF;
+    --==================================================
+    -- 販売実績連携結果の更新(A-12)
+    --==================================================
+    update_xsel(
+      ov_errbuf               => lv_errbuf             -- エラー・メッセージ
+    , ov_retcode              => lv_retcode            -- リターン・コード
+    , ov_errmsg               => lv_errmsg             -- ユーザー・エラー・メッセージ
+    );
+    IF( lv_retcode = cv_status_error ) THEN
+      lv_end_retcode := cv_status_error;
+      RAISE global_process_expt;
+    END IF;
+    --==================================================
+    -- 出力パラメータ設定
+    --==================================================
+    ov_errbuf  := NULL;
+    ov_errmsg  := NULL;
+    ov_retcode := lv_end_retcode;
+--
   EXCEPTION
-  --
-    ----------------------------------------------------------
-    -- 処理部共通例外ハンドラ
-    ----------------------------------------------------------
+    -- *** 処理部共通例外 ***
     WHEN global_process_expt THEN
-      IF ( lv_errmsg IS NULL ) THEN
-        -- メッセージ取得
-        lv_out_msg := xxccp_common_pkg.get_msg(
-                         iv_application  => cv_ap_type_xxcok
-                        ,iv_name         => cv_prmmsg_00100
-                        ,iv_token_name1  => cv_tkn_errmsg
-                        ,iv_token_value1 => SUBSTRB( SQLERRM,1,5000 )
-                      );
-        -- メッセージ出力
-        lb_retcode := xxcok_common_pkg.put_message_f(
-                         in_which    => fnd_file.output -- 出力区分
-                        ,iv_message  => lv_out_msg      -- メッセージ
-                        ,in_new_line => cn_zero         -- 改行
-                      );
-        ov_errmsg  := lv_errmsg;
-        ov_errbuf  := SUBSTRB( cv_pkg_name||cv_msg_cont||cv_prg_name||cv_msg_part||lv_errbuf,1,5000 );
-        ov_retcode := cv_status_error;
-      ELSE
-        ov_errmsg  := NULL;
-        ov_errbuf  := SUBSTRB( cv_pkg_name||cv_msg_cont||cv_prg_name||cv_msg_part||lv_errbuf,1,5000 );
-        ov_retcode := cv_status_error;
-      END IF;
-      -- エラー件数をインクリメント
-      gn_error_cnt := gn_error_cnt + cn_one;
-    ----------------------------------------------------------
-    -- 共通関数OTHERS例外ハンドラ
-    ----------------------------------------------------------
+      ov_errmsg  := NULL;
+      ov_errbuf  := SUBSTRB( cv_pkg_name || cv_msg_cont || cv_prg_name || cv_msg_part || lv_errbuf, 1, 5000 );
+      ov_retcode := lv_end_retcode;
+    -- *** 共通関数OTHERS例外 ***
     WHEN global_api_others_expt THEN
-      IF ( lv_errmsg IS NULL ) THEN
-        -- メッセージ取得
-        lv_out_msg := xxccp_common_pkg.get_msg(
-                         iv_application  => cv_ap_type_xxcok
-                        ,iv_name         => cv_prmmsg_00101
-                        ,iv_token_name1  => cv_tkn_errmsg
-                        ,iv_token_value1 => SUBSTRB( SQLERRM,1,5000 )
-                      );
-        -- メッセージ出力
-        lb_retcode := xxcok_common_pkg.put_message_f(
-                         in_which    => fnd_file.output -- 出力区分
-                        ,iv_message  => lv_out_msg      -- メッセージ
-                        ,in_new_line => cn_zero         -- 改行
-                      );
-        ov_errmsg  := lv_errmsg;
-        ov_errbuf  := SUBSTRB( cv_pkg_name||cv_msg_cont||cv_prg_name||cv_msg_part||SQLERRM,1,5000 );
-        ov_retcode := cv_status_error;
-      ELSE
-        ov_errmsg  := NULL;
-        ov_errbuf  := SUBSTRB( cv_pkg_name||cv_msg_cont||cv_prg_name||cv_msg_part||SQLERRM,1,5000 );
-        ov_retcode := cv_status_error;
-      END IF;
-      -- エラー件数をインクリメント
-      gn_error_cnt := gn_error_cnt + cn_one;
-    ----------------------------------------------------------
-    -- OTHERS例外ハンドラ
-    ----------------------------------------------------------
+      ov_errbuf  := SUBSTRB( cv_pkg_name || cv_msg_cont || cv_prg_name || cv_msg_part || SQLERRM, 1, 5000 );
+      ov_retcode := cv_status_error;
+    -- *** OTHERS例外 ***
     WHEN OTHERS THEN
-      IF ( lv_errmsg IS NULL ) THEN
-        -- メッセージ取得
-        lv_out_msg := xxccp_common_pkg.get_msg(
-                         iv_application  => cv_ap_type_xxcok
-                        ,iv_name         => cv_prmmsg_00100
-                        ,iv_token_name1  => cv_tkn_errmsg
-                        ,iv_token_value1 => SUBSTRB( SQLERRM,1,5000 )
-                      );
-        -- メッセージ出力
-        lb_retcode := xxcok_common_pkg.put_message_f(
-                         in_which    => fnd_file.output -- 出力区分
-                        ,iv_message  => lv_out_msg      -- メッセージ
-                        ,in_new_line => cn_zero         -- 改行
-                      );
-        ov_errmsg  := lv_errmsg;
-        ov_errbuf  := SUBSTRB( cv_pkg_name||cv_msg_cont||cv_prg_name||cv_msg_part||SQLERRM,1,5000 );
-        ov_retcode := cv_status_error;
-      ELSE
-        ov_errmsg  := NULL;
-        ov_errbuf  := SUBSTRB( cv_pkg_name||cv_msg_cont||cv_prg_name||cv_msg_part||SQLERRM,1,5000 );
-        ov_retcode := cv_status_error;
-      END IF;
-      -- エラー件数をインクリメント
-      gn_error_cnt := gn_error_cnt + cn_one;
-  --
+      ov_errbuf  := SUBSTRB( cv_pkg_name || cv_msg_cont || cv_prg_name || cv_msg_part || SQLERRM, 1, 5000 );
+      ov_retcode := cv_status_error;
   END submain;
-  --
+--
   /**********************************************************************************
    * Procedure Name   : main
    * Description      : コンカレント実行ファイル登録プロシージャ
    **********************************************************************************/
   PROCEDURE main(
-     errbuf       OUT VARCHAR2 -- エラーメッセージ
-    ,retcode      OUT VARCHAR2 -- リターン・コード
-    ,iv_proc_date IN  VARCHAR2 -- 業務日付
-    ,iv_proc_type IN  VARCHAR2 -- 実行区分
+    errbuf                         OUT VARCHAR2        -- エラーメッセージ
+  , retcode                        OUT VARCHAR2        -- エラーコード
+  , iv_proc_date                   IN  VARCHAR2        -- 業務日付
+  , iv_proc_type                   IN  VARCHAR2        -- 実行区分
   )
   IS
-    --===============================
+    --==================================================
     -- ローカル定数
-    --===============================
-    cv_prg_name CONSTANT VARCHAR2(100) := 'main';  -- プログラム名
-    --===============================
+    --==================================================
+    cv_prg_name                    CONSTANT VARCHAR2(30) := 'main';             -- プログラム名
+    --==================================================
     -- ローカル変数
-    --===============================
-    lv_errbuf  VARCHAR2(5000); -- エラーメッセージ
-    lv_retcode VARCHAR2(1);    -- リターン・コード
-    lv_errmsg  VARCHAR2(5000); -- ユーザー・エラーメッセージ
-    lv_out_msg VARCHAR2(2000); -- メッセージ
-    lb_retcode BOOLEAN;        -- メッセージ戻り値
-    -- メッセージ退避
-    lv_message_code VARCHAR2(5000); -- 処理終了メッセージ
-  --
+    --==================================================
+    lv_errbuf                      VARCHAR2(5000) DEFAULT NULL;                 -- エラー・メッセージ
+    lv_retcode                     VARCHAR2(1)    DEFAULT cv_status_normal;     -- リターン・コード
+    lv_errmsg                      VARCHAR2(5000) DEFAULT NULL;                 -- ユーザー・エラー・メッセージ
+    lv_outmsg                      VARCHAR2(5000) DEFAULT NULL;                 -- 出力用メッセージ
+    lv_message_code                VARCHAR2(100)  DEFAULT NULL;                 -- 終了メッセージコード
+    lb_retcode                     BOOLEAN        DEFAULT TRUE;                 -- メッセージ出力関数戻り値
+--
   BEGIN
-  --
-    --===============================================
-    -- 初期化
-    --===============================================
-    lv_out_msg := NULL;
-    --===============================================
-    -- コンカレントヘッダ出力
-    --===============================================
+    --==================================================
+    -- コンカレントヘッダメッセージ出力関数の呼び出し
+    --==================================================
     xxccp_common_pkg.put_log_header(
-       iv_which   => cv_output
-      ,ov_retcode => lv_retcode
-      ,ov_errbuf  => lv_errbuf
-      ,ov_errmsg  => lv_errmsg
+      ov_retcode              => lv_retcode
+    , ov_errbuf               => lv_errbuf
+    , ov_errmsg               => lv_errmsg
     );
-    --
     IF( lv_retcode = cv_status_error ) THEN
       RAISE global_api_expt;
     END IF;
-    --===============================================
-    -- サブメイン処理
-    --===============================================
+    lb_retcode := xxcok_common_pkg.put_message_f(
+                    in_which                 => FND_FILE.OUTPUT    -- 出力区分
+                  , iv_message               => NULL               -- メッセージ
+                  , in_new_line              => 1                  -- 改行
+                  );
+    --==================================================
+    -- submainの呼び出し（実際の処理はsubmainで行う）
+    --==================================================
     submain(
-       ov_errbuf    => lv_errbuf    -- エラーメッセージ
-      ,ov_retcode   => lv_retcode   -- リターン・コード
-      ,ov_errmsg    => lv_errmsg    -- ユーザー・エラーメッセージ
-      ,iv_proc_date => iv_proc_date -- 業務日付
-      ,iv_proc_type => iv_proc_type -- 実行区分
+      ov_errbuf               => lv_errbuf             -- エラー・メッセージ
+    , ov_retcode              => lv_retcode            -- リターン・コード
+    , ov_errmsg               => lv_errmsg             -- ユーザー・エラー・メッセージ
+    , iv_proc_date            => iv_proc_date          -- 業務日付
+    , iv_proc_type            => iv_proc_type          -- 実行区分
     );
-    --
-    IF ( lv_retcode = cv_status_error ) THEN
-      -- エラーメッセージ出力
-      lb_retcode := xxcok_common_pkg.put_message_f(
-                       in_which    => fnd_file.output -- 出力区分
-                      ,iv_message  => lv_errmsg       -- メッセージ
-                      ,in_new_line => cn_one          -- 改行
+    --==================================================
+    -- 販手条件エラーメッセージ出力
+    --==================================================
+    IF( gn_contract_err_cnt > 0 ) THEN
+      lv_outmsg  := xxccp_common_pkg.get_msg(
+                      iv_application           => cv_appl_short_name_cok
+                    , iv_name                  => cv_msg_cok_10401
                     );
       lb_retcode := xxcok_common_pkg.put_message_f(
-                       in_which    => fnd_file.log    -- 出力区分
-                      ,iv_message  => lv_errbuf       -- メッセージ
-                      ,in_new_line => cn_one          -- 改行
-                    );
-    ELSIF ( lv_retcode = cv_status_warn ) THEN
-      -- 警告時改行出力
-      lb_retcode := xxcok_common_pkg.put_message_f(
-                       in_which    => fnd_file.output -- 出力区分
-                      ,iv_message  => NULL            -- メッセージ
-                      ,in_new_line => cn_one          -- 改行
+                      in_which                 => FND_FILE.OUTPUT
+                    , iv_message               => lv_outmsg
+                    , in_new_line              => 1
                     );
     END IF;
-    --===============================================
-    -- A-50.終了処理
-    --===============================================
-    -------------------------------------------------
-    -- 1.販売実績取得エラーメッセージ出力
-    -------------------------------------------------
-    IF ( lv_retcode = cv_status_normal ) AND
-       ( gn_target_cnt = cn_zero ) THEN
-      -- メッセージ取得
-      lv_out_msg := xxccp_common_pkg.get_msg(
-                       iv_application => cv_ap_type_xxcok
-                      ,iv_name        => cv_prmmsg_10405
-                    );
-      -- メッセージ出力
+    --==================================================
+    -- エラー出力
+    --==================================================
+    IF( lv_retcode <> cv_status_normal ) THEN
       lb_retcode := xxcok_common_pkg.put_message_f(
-                       in_which    => fnd_file.output -- 出力区分
-                      ,iv_message  => lv_out_msg      -- メッセージ
-                      ,in_new_line => cn_one          -- 改行
+                      in_which                 => FND_FILE.OUTPUT     -- 出力区分
+                    , iv_message               => lv_errmsg           -- メッセージ
+                    , in_new_line              => 1                   -- 改行
+                    );
+      lb_retcode := xxcok_common_pkg.put_message_f(
+                      in_which                 => FND_FILE.LOG
+                    , iv_message               => lv_errbuf
+                    , in_new_line              => 0
                     );
     END IF;
-    -------------------------------------------------
-    -- 2.対象件数メッセージ出力
-    -------------------------------------------------
-    -- メッセージ取得
-    lv_out_msg := xxccp_common_pkg.get_msg(
-                     iv_application  => cv_ap_type_xxccp
-                    ,iv_name         => cv_mainmsg_90000
-                    ,iv_token_name1  => cv_tkn_count
-                    ,iv_token_value1 => TO_CHAR( gn_target_cnt )
+    --==================================================
+    -- 対象件数出力
+    --==================================================
+    lv_outmsg  := xxccp_common_pkg.get_msg(
+                    iv_application           => cv_appl_short_name_ccp
+                  , iv_name                  => cv_msg_ccp_90000
+                  , iv_token_name1           => cv_tkn_count
+                  , iv_token_value1          => TO_CHAR( gn_target_cnt )
                   );
-    -- メッセージ出力
     lb_retcode := xxcok_common_pkg.put_message_f(
-                     in_which    => fnd_file.output -- 出力区分
-                    ,iv_message  => lv_out_msg      -- メッセージ
-                    ,in_new_line => cn_zero         -- 改行
+                    in_which                 => FND_FILE.OUTPUT
+                  , iv_message               => lv_outmsg
+                  , in_new_line              => 0
                   );
-    -------------------------------------------------
-    -- 3.成功件数メッセージ出力
-    -------------------------------------------------
-    -- メッセージ取得
-    lv_out_msg := xxccp_common_pkg.get_msg(
-                     iv_application  => cv_ap_type_xxccp
-                    ,iv_name         => cv_mainmsg_90001
-                    ,iv_token_name1  => cv_tkn_count
-                    ,iv_token_value1 => TO_CHAR( gn_normal_cnt )
-                   );
-    -- メッセージ出力
-    lb_retcode := xxcok_common_pkg.put_message_f(
-                     in_which    => fnd_file.output -- 出力区分
-                    ,iv_message  => lv_out_msg      -- メッセージ
-                    ,in_new_line => cn_zero         -- 改行
-                  );
-    -------------------------------------------------
-    -- 4.エラー件数メッセージ出力
-    -------------------------------------------------
-    -- メッセージ取得
-    lv_out_msg := xxccp_common_pkg.get_msg(
-                     iv_application  => cv_ap_type_xxccp
-                    ,iv_name         => cv_mainmsg_90002
-                    ,iv_token_name1  => cv_tkn_count
-                    ,iv_token_value1 => TO_CHAR( gn_error_cnt )
-                   );
-    -- メッセージ出力
-    lb_retcode := xxcok_common_pkg.put_message_f(
-                     in_which    => fnd_file.output -- 出力区分
-                    ,iv_message  => lv_out_msg      -- メッセージ
-                    ,in_new_line => cn_zero         -- 改行
-                  );
-    -------------------------------------------------
-    -- 5.スキップ件数メッセージ出力
-    -------------------------------------------------
-    -- メッセージ取得
-    lv_out_msg := xxccp_common_pkg.get_msg(
-                     iv_application  => cv_ap_type_xxccp
-                    ,iv_name         => cv_mainmsg_90003
-                    ,iv_token_name1  => cv_tkn_count
-                    ,iv_token_value1 => TO_CHAR( gn_warning_cnt )
-                   );
-    -- メッセージ出力
-    lb_retcode := xxcok_common_pkg.put_message_f(
-                     in_which    => fnd_file.output -- 出力区分
-                    ,iv_message  => lv_out_msg      -- メッセージ
-                    ,in_new_line => cn_one          -- 改行
-                  );
-    -------------------------------------------------
-    -- 6.終了メッセージ出力
-    -------------------------------------------------
-    -- 終了メッセージ判断
-    IF ( lv_retcode = cv_status_normal ) THEN
-      lv_message_code := cv_normal_msg;
-    ELSIF ( lv_retcode = cv_status_warn ) THEN
-      lv_message_code := cv_warn_msg;
-    ELSIF ( lv_retcode = cv_status_error ) THEN
-      lv_message_code := cv_error_msg;
+    --==================================================
+    -- 成功件数出力(エラー発生の場合、成功件数:0件 エラー件数:1件  対象件数0件の場合、成功件数:0件)
+    --==================================================
+    IF( lv_retcode = cv_status_error ) THEN
+      gn_normal_cnt := 0;
+      gn_error_cnt  := 1;
+    ELSE
+      IF( gn_target_cnt = 0 ) THEN
+        gn_normal_cnt := 0;
+      END IF;
     END IF;
-    -- メッセージ取得
-    lv_out_msg := xxccp_common_pkg.get_msg(
-                     iv_application  => cv_ap_type_xxccp
-                    ,iv_name         => lv_message_code
-                   );
-    -- メッセージ出力
-    lb_retcode := xxcok_common_pkg.put_message_f(
-                     in_which    => fnd_file.output -- 出力区分
-                    ,iv_message  => lv_out_msg      -- メッセージ
-                    ,in_new_line => cn_zero         -- 改行
+    lv_outmsg  := xxccp_common_pkg.get_msg(
+                    iv_application           => cv_appl_short_name_ccp
+                  , iv_name                  => cv_msg_ccp_90001
+                  , iv_token_name1           => cv_tkn_count
+                  , iv_token_value1          => TO_CHAR( gn_normal_cnt )
                   );
+    lb_retcode := xxcok_common_pkg.put_message_f(
+                    in_which                 => FND_FILE.OUTPUT
+                  , iv_message               => lv_outmsg
+                  , in_new_line              => 0
+                  );
+    --==================================================
+    -- スキップ件数出力
+    --==================================================
+    lv_outmsg  := xxccp_common_pkg.get_msg(
+                    iv_application           => cv_appl_short_name_ccp
+                  , iv_name                  => cv_msg_ccp_90003
+                  , iv_token_name1           => cv_tkn_count
+                  , iv_token_value1          => TO_CHAR( gn_skip_cnt )
+                  );
+    lb_retcode := xxcok_common_pkg.put_message_f(
+                    in_which                 => FND_FILE.OUTPUT
+                  , iv_message               => lv_outmsg
+                  , in_new_line              => 0
+                  );
+    --==================================================
+    -- エラー件数出力
+    --==================================================
+    lv_outmsg  := xxccp_common_pkg.get_msg(
+                    iv_application           => cv_appl_short_name_ccp
+                  , iv_name                  => cv_msg_ccp_90002
+                  , iv_token_name1           => cv_tkn_count
+                  , iv_token_value1          => TO_CHAR( gn_error_cnt )
+                  );
+    lb_retcode := xxcok_common_pkg.put_message_f(
+                    in_which                 => FND_FILE.OUTPUT
+                  , iv_message               => lv_outmsg
+                  , in_new_line              => 1
+                  );
+    --==================================================
+    -- 処理終了メッセージ出力
+    --==================================================
+    IF( lv_retcode = cv_status_normal ) THEN
+      lv_message_code := cv_msg_ccp_90004;
+    ELSIF( lv_retcode = cv_status_warn ) THEN
+      lv_message_code := cv_msg_ccp_90005;
+    ELSE
+      lv_message_code := cv_msg_ccp_90006;
+    END IF;
+    lv_outmsg  := xxccp_common_pkg.get_msg(
+                    iv_application           => cv_appl_short_name_ccp
+                  , iv_name                  => lv_message_code
+                  );
+    lb_retcode := xxcok_common_pkg.put_message_f(
+                    in_which                 => FND_FILE.OUTPUT
+                  , iv_message               => lv_outmsg
+                  , in_new_line              => 0
+                  );
+    --==================================================
     -- ステータスセット
+    --==================================================
     retcode := lv_retcode;
-    -- ステータスがエラーの場合はROLLBACKする
-    IF (retcode = cv_status_error) THEN
+    --==================================================
+    -- 終了ステータスエラー時、ロールバック
+    --==================================================
+    IF( retcode = cv_status_error ) THEN
       ROLLBACK;
     END IF;
-  --
+--
   EXCEPTION
-  --
-    ----------------------------------------------------------
-    -- 共通関数例外ハンドラ
-    ----------------------------------------------------------
+    -- *** 共通関数例外 ***
     WHEN global_api_expt THEN
-      errbuf  := SUBSTRB( cv_pkg_name||cv_msg_cont||cv_prg_name||cv_msg_part||lv_errbuf,1,5000 );
+      errbuf  := SUBSTRB( cv_pkg_name || cv_msg_cont || cv_prg_name || cv_msg_part || lv_errbuf, 1, 5000 );
       retcode := cv_status_error;
       ROLLBACK;
-    ----------------------------------------------------------
-    -- 共通関数OTHERS例外ハンドラ
-    ----------------------------------------------------------
+    -- *** 共通関数OTHERS例外 ***
     WHEN global_api_others_expt THEN
-      errbuf  := SUBSTRB( cv_pkg_name||cv_msg_cont||cv_prg_name||cv_msg_part||SQLERRM,1,5000 );
+      errbuf  := cv_pkg_name || cv_msg_cont || cv_prg_name || cv_msg_part || SQLERRM;
       retcode := cv_status_error;
       ROLLBACK;
-    ----------------------------------------------------------
-    -- OTHERS例外ハンドラ
-    ----------------------------------------------------------
+    -- *** OTHERS例外 ***
     WHEN OTHERS THEN
-      errbuf  := SUBSTRB( cv_pkg_name||cv_msg_cont||cv_prg_name||cv_msg_part||SQLERRM,1,5000 );
+      errbuf  := cv_pkg_name || cv_msg_cont || cv_prg_name || cv_msg_part || SQLERRM;
       retcode := cv_status_error;
       ROLLBACK;
-  --
   END main;
-  --
 END XXCOK014A01C;
 /
