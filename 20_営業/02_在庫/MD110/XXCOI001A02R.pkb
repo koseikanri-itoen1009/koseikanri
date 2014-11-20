@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCOI001A02R(body)
  * Description      : 指定された条件に紐づく入庫確認情報のリストを出力します。
  * MD.050           : 入庫未確認リスト MD050_COI_001_A02
- * Version          : 1.12
+ * Version          : 1.13
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -38,6 +38,10 @@ AS
  *  2010/01/13    1.10  H.Sasaki         [E_本稼動_01094]伝票日付差異を出力対象外
  *  2010/01/18    1.11  H.Sasaki         [E_本稼動_01167]同一データの重複出力を修正
  *  2011/02/15    1.12  H.Sekine         [E_本稼動_04380]入力パラメータ「拠点コード」が未入力の場合は全拠点を出力対象とする
+ *  2014/07/18    1.13  T.Kobori         [E_本稼動_12170]PT対応
+ *                                                       ①適切なINDEXを使用するようヒント句を追加
+ *                                                       ②抽出条件の拠点コードのNVLを削除
+ *                                                       ③商品部の実行時は、全拠点を取得・全拠点を取得して実行するように修正
  *
  *****************************************************************************************/
 --
@@ -407,7 +411,10 @@ AS
   AND     iimb.item_id                    =   ximb.item_id
   AND     xsi.slip_date                   >=  TO_DATE(iv_date_from, 'YYYY/MM/DD')
   AND     xsi.slip_date                   <   TO_DATE(iv_date_to,   'YYYY/MM/DD') + 1
-  AND     xsi.base_code                   =   NVL(iv_base_code, xsi.base_code)
+ -- 2014/07/18 MOD START
+--  AND     xsi.base_code                   =   NVL(iv_base_code, xsi.base_code)
+  AND     xsi.base_code                   =   iv_base_code
+ -- 2014/07/18 MOD END
   AND     flv.enabled_flag                =   cv_yes
   AND     flv.language                    =   USERENV('LANG')
   AND     flv.lookup_type                 =   cv_list_type
@@ -416,12 +423,19 @@ AS
   AND     xsi.slip_date   BETWEEN ximb.start_date_active
                           AND     NVL(ximb.end_date_active, xsi.slip_date)
   AND EXISTS(
-              SELECT  1
+ -- 2014/07/18 MOD START
+--              SELECT  1
+              SELECT  /*+ INDEX(xsi_s XXCOI_STORAGE_INFORMATION_N06) */
+                      1
+ -- 2014/07/18 MOD END
               FROM    xxcoi_storage_information     xsi_s
               WHERE   xsi_s.slip_date           >=  TO_DATE(iv_date_from, 'YYYY/MM/DD')
               AND     xsi_s.slip_date           <   TO_DATE(iv_date_to,   'YYYY/MM/DD') + 1
               AND     xsi_s.summary_data_flag   =   cv_yes
-              AND     xsi_s.base_code           =   NVL(iv_base_code, xsi_s.base_code)
+ -- 2014/07/18 MOD START
+--              AND     xsi_s.base_code           =   NVL(iv_base_code, xsi_s.base_code)
+              AND     xsi_s.base_code           =   iv_base_code
+ -- 2014/07/18 MOD END
               AND    ((iv_output_type = cv_output_div_10 AND xsi_s.store_check_flag   =   cv_no )
                       OR
                       (iv_output_type = cv_output_div_20 AND NVL(xsi_s.ship_summary_qty, 0)  <>  NVL(xsi_s.check_summary_qty, 0))
@@ -718,10 +732,24 @@ AS
     -- 入力パラメータ「拠点コード」がNULL、かつ、ログインユーザの所属拠点が商品部拠点コード(1020)の場合
     IF  ( iv_base_code IS NULL ) AND ( gt_base_code = gv_item_dept_base_code )  THEN
       --
-      gn_output_base_num := 1;
+ -- 2014/07/18 MOD START
+--      gn_output_base_num := 1;
+--      --
+--      gt_base_tab(1).base_code := NULL;
+--      gt_base_tab(1).base_name := NULL;
+      -- 全拠点取得
+      SELECT hca.account_number                                 -- 拠点コード
+            ,SUBSTRB(hca.account_name, 1, 8)                    -- 拠点略称
+      BULK COLLECT INTO gt_base_tab
+      FROM   hz_cust_accounts hca                               -- 顧客マスタ
+            ,xxcmm_cust_accounts xca                            -- 顧客追加情報
+      WHERE  hca.status               = 'A'
+      AND    hca.customer_class_code  = '1'
+      AND    hca.cust_account_id      = xca.customer_id
+      ;
       --
-      gt_base_tab(1).base_code := NULL;
-      gt_base_tab(1).base_name := NULL;
+      gn_output_base_num := gt_base_tab.COUNT;
+ -- 2014/07/18 MOD END
       --
     ELSE
 -- == 2011/02/15 V1.12 Added END   =================================================================
