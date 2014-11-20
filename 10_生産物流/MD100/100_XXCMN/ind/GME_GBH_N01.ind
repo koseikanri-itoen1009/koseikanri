@@ -1,1 +1,0 @@
-CREATE INDEX gme.gme_gbh_n01 ON gme.gme_batch_header( batch_status,routing_id,plan_start_date ) TABLESPACE xxidx;

@@ -1,1 +1,0 @@
-CREATE INDEX gmd.gmd_grb_n01 ON gmd.gmd_routings_b( attribute9 ) TABLESPACE xxidx;

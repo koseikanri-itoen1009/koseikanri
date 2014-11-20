@@ -1,1 +1,0 @@
-CREATE INDEX po.po_pla_n01 ON po.po_lines_all( item_id,attribute12,attribute13 ) TABLESPACE xxidx;
