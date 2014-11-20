@@ -7,7 +7,7 @@ AS
  * Description      : 顧客マスタから新規獲得した顧客を抽出し、新規獲得ポイント顧客別履歴テーブル
  *                  : にデータを登録します。
  * MD.050           : 新規獲得ポイント集計（新規獲得ポイント集計処理）MD050_CSM_004_A04
- * Version          : 1.7
+ * Version          : 1.8
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -51,6 +51,7 @@ AS
  *  2009/07/29    1.5   T.Tsukino      ［SCS障害管理番号0000815］パフォーマンス障害対応
  *  2009/08/17    1.6   T.Tsukino      ［SCS障害管理番号0000870］中止顧客判定期間の不具合追加
  *  2009/11/27    1.7   K.Kubo         ［障害管理番号E_本稼動_00112］獲得/紹介営業員が同一時の不具合
+ *  2009/12/07    1.8   T.Tsukino      ［障害管理番号E_本稼動_00335］獲得/紹介営業員が入替え時の不具合/判定日付の変更
  *****************************************************************************************/
 --
 --#######################  固定グローバル定数宣言部 START   #######################
@@ -555,7 +556,10 @@ AS
 --//+ADD START   2009/07/07 0000254 M.Ohtsuki
     ln_check_cnt         NUMBER;                                                                    -- 部署チェック用カウンタ
 --//+ADD END     2009/07/07 0000254 M.Ohtsuki
-
+--//+ADD START  2009/12/07 E_本稼動_00335 T.Tsukino
+    ln_wk_chk         NUMBER;                                                                       -- ワークテーブル内登録チェック
+    lv_cwork_flg      VARCHAR2(1);                                                                  -- IN変数格納用顧客獲得時ワーク有無フラグ
+--//+ADD END  2009/12/07 E_本稼動_00335 T.Tsukino
     -- *** ローカル・カーソル ***
 --
   BEGIN
@@ -565,6 +569,10 @@ AS
     ov_retcode := cv_status_normal;
 --
 --###########################  固定部 END   ############################
+--//+ADD START  2009/12/07 E_本稼動_00335  T.Tsukino
+    -- 入力パラメータの格納
+    lv_cwork_flg := iv_cust_work_flg;
+--//+ADD END  2009/12/07 E_本稼動_00335  T.Tsukino
 --
     -- ==============================================================
     -- A-8.ワークテーブルデータ作成／更新処理
@@ -716,11 +724,40 @@ AS
       RAISE global_skip_expt;
 --//+UPD END   2009/07/14 0000663 M.Ohtsuki
     END IF;
+--//+ADD START  2009/12/07 E_本稼動_00335 T.Tsukino
+    -- 5.INパラメータの顧客獲得時ワーク有無フラグの判定を、獲得・紹介区分を使用せず実施します。
+    IF (lv_cwork_flg = cv_cust_work_nasi) THEN
+      ln_wk_chk    := NULL;   -- 変数の初期化
+     --
+     -- 顧客獲得時従業員ワークテーブルに獲得営業員コードがすでに存在しているか
+     -- チェックする。
+      SELECT count(1)
+      INTO   ln_wk_chk  -- 存在チェックのため、NO_DATA_FOUNDはなし
+      FROM   xxcsm_wk_new_cust_get_emp  xwncge
+      WHERE  xwncge.subject_year = it_year                                                           -- 対象年度
+        AND  xwncge.account_number = it_account_number                                               -- 顧客コード
+        AND  xwncge.employee_number = it_employee_number                                             -- 獲得営業員コード
+      ;
+      --ワークテーブル内に獲得区分でデータが存在した場合、
+      --既存のワークテーブル内獲得営業員コードを更新する
+      IF (ln_wk_chk >= 1) THEN
+        lv_cwork_flg     := cv_cust_work_ari;
+      END IF;
+    END IF;
+--//+ADD END  2009/12/07 E_本稼動_00335  T.Tsukino
+--//+UPD START  2009/12/07 E_本稼動_00335 T.Tsukino
+-- ↓↓↓↓(MD050上の変更)↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓
     -- 5.顧客獲得時従業員ワークテーブルへ作成／更新を行ないます。
+    -- 6.顧客獲得時従業員ワークテーブルへ作成／更新を行ないます。
+--//+UPD END  2009/12/07 E_本稼動_00335 T.Tsukino
     -- ===============================
     -- 未登録の場合、作成します。
     -- ===============================
-    IF (iv_cust_work_flg = cv_cust_work_nasi) THEN
+--//+UPD START  2009/12/07 E_本稼動_00335 T.Tsukino
+--↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓
+--    IF (iv_cust_work_flg = cv_cust_work_nasi) THEN
+    IF (lv_cwork_flg = cv_cust_work_nasi) THEN
+--//+UPD END  2009/12/07 E_本稼動_00335 T.Tsukino
       INSERT INTO xxcsm_wk_new_cust_get_emp(                                                        -- 顧客獲得時従業員ワークテーブル
         subject_year                                                                                -- 対象年度
        ,account_number                                                                              -- 顧客コード
@@ -771,7 +808,10 @@ AS
     -- 発令日＜＝顧客獲得日の間、従業員情報を最新化します。（マスタ不備対応）
     -- 発令日＞顧客獲得日の場合、従業員情報を最新化しません。（獲得日時点の従業員情報を保持する）
     -- ===============================
-    ELSIF (iv_cust_work_flg = cv_cust_work_ari) THEN
+--//+UPD START  2009/12/07 E_本稼動_00335 T.Tsukino
+--    ELSIF (iv_cust_work_flg = cv_cust_work_ari) THEN
+    ELSIF (lv_cwork_flg = cv_cust_work_ari) THEN
+--//+UPD END  2009/12/07 E_本稼動_00335 T.Tsukino
       UPDATE xxcsm_wk_new_cust_get_emp xwncge                                                       -- 顧客獲得時従業員ワークテーブル
       SET xwncge.custom_condition_cd    =  lt_custom_condition_cd                                   -- 顧客業態コード
          ,xwncge.post_cd                =  DECODE(lv_new_old_type,cv_empinfo_upd,lt_post_cd,xwncge.post_cd)               -- 部署コード
@@ -791,10 +831,11 @@ AS
       WHERE xwncge.subject_year = it_year                                                           -- 対象年度
         AND xwncge.account_number = it_account_number                                               -- 顧客コード
         AND xwncge.employee_number = it_employee_number                                             -- 獲得営業員コード
-        AND xwncge.get_intro_kbn = it_get_intro_kbn                                                 -- 獲得／紹介区分
+--//+DEL START  2009/12/07 E_本稼動_00335 T.Tsukino
+--        AND xwncge.get_intro_kbn = it_get_intro_kbn                                                 -- 獲得／紹介区分
+--//+DEL END  2009/12/07 E_本稼動_00335 T.Tsukino
       ;
     END IF;
-
   EXCEPTION
 --//+ADD START 2009/07/14 0000663 M.Ohtsuki
     WHEN global_skip_expt THEN
@@ -1349,7 +1390,11 @@ AS
           -- 1.初回取引日から新規獲得ポイント最低取引期間内に中止顧客なった場合、ポイント付与しない。
           IF (set_new_point_rec.duns_number_c = cv_sts_stop )                                       -- 中止顧客の場合
             AND (TRUNC(set_new_point_rec.stop_approval_date)
-              <=  TRUNC(set_new_point_rec.start_tran_date
+--//+UPD START  2009/12/07 E_本稼動_00335 T.Tsukino
+          -- 1.顧客獲得日から新規獲得ポイント最低取引期間内に注視顧客になった場合、ポイント付与しない。（初回取引日は使用しない）
+--              <=  TRUNC(set_new_point_rec.start_tran_date
+              <=  TRUNC(set_new_point_rec.cnvs_date
+--//+UPD END  2009/12/07 E_本稼動_00335 T.Tsukino
                      + TO_NUMBER(gv_min_deal_period))) 
           THEN
             lt_decision_flg_upd := cv_kakutei;                                                      -- 確定フラグを確定とする。
@@ -1383,7 +1428,11 @@ AS
 --//+UPD START 2009/07/30 0000870 T.Tsukino
 --            AND (TRUNC(set_new_point_rec.stop_approval_date) < TRUNC(set_new_point_rec.start_tran_date + 90 )) THEN -- 90日以内に中止顧客となった。
             AND (TRUNC(set_new_point_rec.stop_approval_date)
-              <=  TRUNC(set_new_point_rec.start_tran_date
+--//+UPD START  2009/12/07 E_本稼動_00335 T.Tsukino
+--              <=  TRUNC(set_new_point_rec.start_tran_date
+          -- 1.顧客獲得日から新規獲得ポイント最低取引期間内に中止顧客になった場合、ポイント付与しない。（初回取引日は使用しない）
+              <=  TRUNC(set_new_point_rec.cnvs_date
+--//+UPD END  2009/12/07 E_本稼動_00335 T.Tsukino
                      + TO_NUMBER(gv_min_deal_period))) 
           THEN
 --//+UPD END   2009/07/30 0000870 T.Tsukino
@@ -1446,11 +1495,19 @@ AS
 --                 AND gps.closing_status  NOT IN ( cv_closing_status_c,cv_closing_status_p)          -- クローズでない
 --↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓
                  AND (gps.closing_status = cv_closing_status_o                                      -- オープン
-                    OR TO_CHAR(ADD_MONTHS(TRUNC(set_new_point_rec.start_tran_date,'MM'),ln_add_mm),'YYYYMM')
+--//+UPD START  2009/12/07 E_本稼動_00335 T.Tsukino
+--↓↓↓↓↓↓↓ 初回取引日による判定を顧客獲得日に変更↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓
+--                    OR TO_CHAR(ADD_MONTHS(TRUNC(set_new_point_rec.start_tran_date,'MM'),ln_add_mm),'YYYYMM')
+                    OR TO_CHAR(ADD_MONTHS(TRUNC(set_new_point_rec.cnvs_date,'MM'),ln_add_mm),'YYYYMM')
+--//+UPD END  2009/12/07 E_本稼動_00335 T.Tsukino
                     >= TO_CHAR(gd_process_date,'YYYYMM'))                                           -- 未来日
                  AND gps.adjustment_period_flag = cv_flg_n                                          -- 通常の会計期間
 --//+UPD END   2009/04/27 T1_0713 M.Ohtsuki
-                 AND TO_CHAR(ADD_MONTHS(TRUNC(set_new_point_rec.start_tran_date,'MM'),ln_add_mm),'YYYYMM') = TO_CHAR(gps.start_date,'YYYYMM')
+--//+UPD START  2009/12/07 E_本稼動_00335 T.Tsukino
+--↓↓↓↓↓↓↓ 初回取引日による判定を顧客獲得日に変更↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓
+--                 AND TO_CHAR(ADD_MONTHS(TRUNC(set_new_point_rec.start_tran_date,'MM'),ln_add_mm),'YYYYMM') = TO_CHAR(gps.start_date,'YYYYMM')
+                 AND TO_CHAR(ADD_MONTHS(TRUNC(set_new_point_rec.cnvs_date,'MM'),ln_add_mm),'YYYYMM') = TO_CHAR(gps.start_date,'YYYYMM')
+--//+UPD END  2009/12/07 E_本稼動_00335 T.Tsukino
                 ;
               IF ln_dummy >= 1 THEN
                 lt_evaluration_kbn := cv_grant_ok;                                                  -- ポイント付与
@@ -1464,7 +1521,11 @@ AS
                 IF (lt_1st_month = cv_chk_on) THEN                                                  -- 当月が対象月ならば
                   OPEN set_month_amount_cur(
                      set_new_point_rec.account_number
-                  ,  ADD_MONTHS(TRUNC(set_new_point_rec.start_tran_date,'MM'),0)
+--//+UPD START  2009/12/07 E_本稼動_00335 T.Tsukino
+--                  ,  ADD_MONTHS(TRUNC(set_new_point_rec.start_tran_date,'MM'),0)
+--↓↓↓↓↓↓↓ 初回取引日による判定を顧客獲得日に変更↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓
+                   ,  ADD_MONTHS(TRUNC(set_new_point_rec.cnvs_date,'MM'),0)
+--//+UPD END  2009/12/07 E_本稼動_00335 T.Tsukino
                   );
                   FETCH set_month_amount_cur INTO set_month_amount_rec;
                   IF set_month_amount_cur%NOTFOUND THEN
@@ -1478,7 +1539,11 @@ AS
                 IF (lt_2nd_month = cv_chk_on) THEN                                                   -- 翌月が対象月ならば
                   OPEN set_month_amount_cur(
                      set_new_point_rec.account_number
-                  ,  ADD_MONTHS(TRUNC(set_new_point_rec.start_tran_date,'MM'),1)
+--//+UPD START  2009/12/07 E_本稼動_00335 T.Tsukino
+--↓↓↓↓↓↓↓ 初回取引日による判定を顧客獲得日に変更↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓
+--                  ,  ADD_MONTHS(TRUNC(set_new_point_rec.start_tran_date,'MM'),1)
+                  ,  ADD_MONTHS(TRUNC(set_new_point_rec.cnvs_date,'MM'),1)
+--//+UPD END  2009/12/07 E_本稼動_00335 T.Tsukino
                   );
                   FETCH set_month_amount_cur INTO set_month_amount_rec;
                   IF set_month_amount_cur%NOTFOUND THEN
@@ -1492,7 +1557,11 @@ AS
                 IF (lt_3rd_month = cv_chk_on) THEN                                                   -- 翌々月が対象月ならば
                   OPEN set_month_amount_cur(
                      set_new_point_rec.account_number
-                  ,  ADD_MONTHS(TRUNC(set_new_point_rec.start_tran_date,'MM'),2)
+--//+UPD START  2009/12/07 E_本稼動_00335 T.Tsukino
+--↓↓↓↓↓↓↓ 初回取引日による判定を顧客獲得日に変更↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓
+--                  ,  ADD_MONTHS(TRUNC(set_new_point_rec.start_tran_date,'MM'),2)
+                  ,  ADD_MONTHS(TRUNC(set_new_point_rec.cnvs_date,'MM'),2)
+--//+UPD END  2009/12/07 E_本稼動_00335 T.Tsukino
                   );
                   FETCH set_month_amount_cur INTO set_month_amount_rec;
                   IF set_month_amount_cur%NOTFOUND THEN
@@ -1588,10 +1657,17 @@ AS
                AND gps.set_of_books_id  =  gt_set_of_bks_id                                         -- 会計帳簿ID
                AND gps.closing_status   <>  cv_closing_status_o                                     -- オープン
                AND gps.adjustment_period_flag = cv_flg_n                                            -- 通常の会計期間
-               AND TO_CHAR(TRUNC(set_new_point_rec.start_tran_date,'MM'),'YYYYMM')
+--//+UPD START  2009/12/07 E_本稼動_00335 T.Tsukino
+--↓↓↓↓↓↓↓ 初回取引日による判定を顧客獲得日に変更↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓
+--               AND TO_CHAR(TRUNC(set_new_point_rec.start_tran_date,'MM'),'YYYYMM')
+--                   <= TO_CHAR(ADD_MONTHS(gd_process_date,-3),'YYYYMM')                              -- 初回取引日が業務日付の3ヶ月前以前
+--               AND TO_CHAR(TRUNC(set_new_point_rec.start_tran_date,'MM'),'YYYYMM')
+--                    = TO_CHAR(gps.start_date,'YYYYMM')                                              -- 初回取引日の会計年月を判定
+               AND TO_CHAR(TRUNC(set_new_point_rec.cnvs_date,'MM'),'YYYYMM')
                    <= TO_CHAR(ADD_MONTHS(gd_process_date,-3),'YYYYMM')                              -- 初回取引日が業務日付の3ヶ月前以前
-               AND TO_CHAR(TRUNC(set_new_point_rec.start_tran_date,'MM'),'YYYYMM')
+               AND TO_CHAR(TRUNC(set_new_point_rec.cnvs_date,'MM'),'YYYYMM')
                     = TO_CHAR(gps.start_date,'YYYYMM')                                              -- 初回取引日の会計年月を判定
+--//+UPD END  2009/12/07 E_本稼動_00335 T.Tsukino
             ;
             --初回取引日の会計期間がオープン以外の場合
             IF(ln_dummy >= 1) THEN
