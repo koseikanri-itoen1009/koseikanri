@@ -7,7 +7,7 @@ AS
  * Description      : 原価差異表作成
  * MD.050/070       : 標準原価マスタIssue1.0(T_MD050_BPO_820)
  *                    原価差異表作成Issue1.0(T_MD070_BPO_82B/T_MD070_BPO_82C)
- * Version          : 1.10
+ * Version          : 1.11
  *
  * Program List
  * ---------------------------- ----------------------------------------------------------
@@ -48,6 +48,7 @@ AS
  *  2008/12/11    1.8   T.Miyata         本番#542対応(バグ修正)
  *  2008/12/12    1.9   H.Itou           本番#681対応
  *  2008/12/14    1.10  H.Marushita      加重平均計算の割る数値を修正
+ *  2009/01/15    1.11  T.Ohashi         本番#897対応
  *****************************************************************************************/
 --
 --#######################  固定グローバル定数宣言部 START   #######################
@@ -168,6 +169,11 @@ AS
   gv_quant              NUMBER := 0 ;         -- 数量
   gv_quant_disp         NUMBER := 0 ;         -- 数量（表示用）
   gv_quant_dpt          NUMBER := 0 ;         -- 数量（部署計）
+-- add start 1.11
+  gv_amount             NUMBER := 0 ;         -- 金額
+  gv_amount_dpt         NUMBER := 0 ;         -- 金額（部署計）
+  gv_amount_dpt1        NUMBER := 0 ;         -- 金額（部署計）
+-- add end 1.11
 --add start 1.4.1
   gv_save_case_quant    NUMBER := 0;
 --add end 1.4.1
@@ -630,11 +636,20 @@ AS
 --                 ,xrart.quantity * xpl.unit_price AS s_amount
 -- S 2008/12/12 1.9 MOD BY H.Itou 本番#681 受入でない場合は数量はマイナスで取得
 --                ,SUM(xrart.quantity * xpl.unit_price) AS s_amount
+-- 2009/01/05 v1.11 UPDATE START
+/*
                 ,SUM((CASE
                         WHEN (xrart.txns_type = gc_txns_type_uke) THEN -- 実績区分が受入の場合
                              xrart.quantity
                         ELSE xrart.quantity * -1                       -- 実績区分が返品の場合、マイナス
                       END) * xpl.unit_price) AS s_amount
+*/
+                ,SUM(ROUND((CASE
+                        WHEN (xrart.txns_type = gc_txns_type_uke) THEN -- 実績区分が受入の場合
+                             xrart.quantity
+                        ELSE xrart.quantity * -1                       -- 実績区分が返品の場合、マイナス
+                      END) * xpl.unit_price)) AS s_amount
+-- 2009/01/05 v1.11 UPDATE END
 -- E 2008/12/12 1.9 MOD BY H.Itou 本番#681 
 -- E 2008/12/09 1.7 MOD BY T.Miyata 本番#542
 -- E 2008/05/21 1.1 MOD BY M.Ikeda ------------------------------------------------------------ E --
@@ -688,11 +703,20 @@ AS
 --                ,xrart.quantity * xpl.unit_price AS r_amount
 -- S 2008/12/12 1.9 MOD BY H.Itou 本番#681 受入でない場合は数量はマイナスで取得
 --                ,SUM(xrart.quantity * xpl.unit_price) AS r_amount
+-- 2009/01/05 v1.11 UPDATE START
+/*
                 ,SUM((CASE
                         WHEN (xrart.txns_type = gc_txns_type_uke) THEN -- 実績区分が受入の場合
                              xrart.quantity
                         ELSE xrart.quantity * -1                       -- 実績区分が返品の場合、マイナス
                       END) * xpl.unit_price) AS r_amount
+*/
+                ,SUM(ROUND((CASE
+                        WHEN (xrart.txns_type = gc_txns_type_uke) THEN -- 実績区分が受入の場合
+                             xrart.quantity
+                        ELSE xrart.quantity * -1                       -- 実績区分が返品の場合、マイナス
+                      END) * xpl.unit_price)) AS r_amount
+-- 2009/01/05 v1.11 UPDATE END
 -- E 2008/12/12 1.9 MOD BY H.Itou 本番#681
                 
 -- E  2008/12/09 1.7 MOD BY T.Miyata 本番#542
@@ -760,7 +784,10 @@ AS
                 ,flv.attribute1         AS detail_code
                 ,flv.meaning            AS detail_name
                 ,0                                           AS s_amount
-                ,SUM(xrart.quantity * xpl.unit_price) * -1   AS r_amount
+-- 2009/01/05 v1.11 UPDATE START
+--                ,SUM(xrart.quantity * xpl.unit_price) * -1   AS r_amount
+                ,SUM(ROUND(xrart.quantity * xpl.unit_price)) * -1   AS r_amount
+-- 2009/01/05 v1.11 UPDATE END
                 ,0                                           AS s_quantity
                 ,SUM(xrart.quantity ) * -1 / count(*)        AS r_quantity
           FROM xxpo_rcv_and_rtn_txns    xrart
@@ -902,6 +929,15 @@ AS
 --
       END IF ;
 --
+-- add start 1.11
+      -- ----------------------------------------------------
+      -- 品目計
+      -- ----------------------------------------------------
+      gl_xml_idx := gt_xml_data_table.COUNT + 1 ;
+      gt_xml_data_table(gl_xml_idx).tag_name  := 'amount_item' ;
+      gt_xml_data_table(gl_xml_idx).tag_type  := 'D' ;
+      gt_xml_data_table(gl_xml_idx).tag_value := gv_amount;
+-- add end 1.11
       -- 取引数量
       gl_xml_idx := gt_xml_data_table.COUNT + 1 ;
       gt_xml_data_table(gl_xml_idx).tag_name  := 'quant' ;
@@ -1316,6 +1352,9 @@ AS
        ,uom             xxpo_rcv_and_rtn_txns.uom%TYPE        -- 取引単位
        ,case_quant      ic_item_mst_b.attribute11%TYPE        -- 入数
        ,quant           xxpo_rcv_and_rtn_txns.quantity%TYPE   -- 取引数量
+-- add start 1.11
+       ,amount          NUMBER   -- 取引数量
+-- add end 1.11
       ) ;
     lc_ref    ref_cursor ;
     lr_ref    ret_value ;
@@ -1344,11 +1383,21 @@ AS
       || '          ELSE xrart.quantity * -1 '                       -- 実績区分が返品の場合、マイナス
       || '        END) AS quant '
 -- E 2008/12/12 1.9 MOD BY H.Itou 本番#681
+-- add start 1.11
+      || '  ,SUM(ROUND(CASE '
+      || '          WHEN (xrart.txns_type = ''' || gc_txns_type_uke || ''') THEN ' -- 実績区分が受入の場合
+      || '               xrart.quantity * xsupv.stnd_unit_price'
+      || '          ELSE xrart.quantity * -1 * xsupv.stnd_unit_price'               -- 実績区分が返品の場合、マイナス
+      || '        END)) AS amount '
+-- add end 1.11
       ;
     lv_sql_from
       := ' FROM'
       || '   ic_item_mst_b          iimc'           -- ＯＰＭ品目マスタ
       || '  ,xxcmn_item_mst_b       ximc'           -- ＯＰＭアドオン品目マスタ
+-- add start 1.11
+      || '  ,xxcmn_stnd_unit_price_v xsupv'    -- 標準原価情報VIEW
+-- add end 1.11
       || gv_sql_cmn_from
       ;
     lv_sql_where
@@ -1359,6 +1408,10 @@ AS
       || ' AND xrart.item_id            = iimc.item_id'
       || ' AND xrart.department_code    = NVL( :v3, xrart.department_code )'
       || ' AND xrart.vendor_id          = :v4'
+-- add start 1.11
+      || ' AND   xsupv.item_id(+)       = xrart.item_id'
+      || ' AND   :v5 BETWEEN xsupv.start_date_active(+) AND xsupv.end_date_active(+)'
+-- add end 1.11
       || gv_sql_cmn_where
       ;
     lv_sql_other
@@ -1381,6 +1434,9 @@ AS
     OPEN lc_ref FOR lv_sql
     USING iv_dept_code
          ,iv_vendor_id
+-- add start 1.11
+         ,gd_fiscal_date_from
+-- add end 1.11
          ,gd_fiscal_date_from
          ,gd_fiscal_date_to
     ;
@@ -1414,6 +1470,9 @@ AS
       gv_case_quant := lr_ref.case_quant ;        -- ケース入数
       gv_quant      := lr_ref.quant ;             -- 数量
       gv_quant_disp := lr_ref.quant ;             -- 数量（表示用）
+-- add start 1.11
+      gv_amount     := lr_ref.amount ;             -- 金額（表示用）
+-- add end 1.11
 --
       -- ====================================================
       -- 費目情報出力
@@ -1431,6 +1490,7 @@ AS
         RAISE global_process_expt ;
       END IF ;
 --
+--
       -- ----------------------------------------------------
       -- 終了タグ
       -- ----------------------------------------------------
@@ -1438,6 +1498,9 @@ AS
       gt_xml_data_table(gl_xml_idx).tag_name  := '/g_itm' ;
       gt_xml_data_table(gl_xml_idx).tag_type  := 'T' ;
 --
+-- add start 1.11
+      gv_amount_dpt := gv_amount_dpt + gv_amount ; -- 金額（部署計）
+-- add end 1.11
     END LOOP main_data_loop ;
 --
     -- ====================================================
@@ -1752,6 +1815,9 @@ AS
        ,item_name       xxcmn_item_mst_b.item_short_name%TYPE -- 品目名称
        ,case_quant      ic_item_mst_b.attribute11%TYPE        -- ケース入数
        ,quant           NUMBER                                -- 取引数量
+-- add start 1.11
+       ,amount          NUMBER                                -- 取引金額
+-- add end 1.11
       ) ;
     lc_ref    ref_cursor ;
     lr_ref    ret_value ;
@@ -1790,11 +1856,20 @@ AS
                 -- ,xrart.quantity * xpl.unit_price AS s_amount
 -- S 2008/12/12 1.9 MOD BY H.Itou 本番#681 受入でない場合は数量はマイナスで取得
 --                ,SUM(xrart.quantity * xpl.unit_price) AS s_amount
+-- 2009/01/05 v1.11 UPDATE START
+/*
                 ,SUM((CASE
                         WHEN (xrart.txns_type = gc_txns_type_uke) THEN -- 実績区分が受入の場合
                              xrart.quantity
                         ELSE xrart.quantity * -1                       -- 実績区分が返品の場合、マイナス
                       END) * xpl.unit_price) AS s_amount
+*/
+                ,SUM(ROUND((CASE
+                        WHEN (xrart.txns_type = gc_txns_type_uke) THEN -- 実績区分が受入の場合
+                             xrart.quantity
+                        ELSE xrart.quantity * -1                       -- 実績区分が返品の場合、マイナス
+                      END) * xpl.unit_price)) AS s_amount
+-- 2009/01/05 v1.11 UPDATE END
 -- E 2008/12/12 1.9 MOD BY H.Itou 本番#681
 -- E 2008/12/09 1.7 MOD BY T.Miyata 本番#542
 -- E 2008/05/21 1.1 MOD BY M.Ikeda ------------------------------------------------------------ E --
@@ -1846,11 +1921,20 @@ AS
 --                ,xrart.quantity * xpl.unit_price AS r_amount
 -- S 2008/12/12 1.9 MOD BY H.Itou 本番#681 受入でない場合は数量はマイナスで取得
 --                ,SUM(xrart.quantity * xpl.unit_price) AS r_amount
+-- 2009/01/05 v1.11 UPDATE START
+/*
                 ,SUM((CASE
                         WHEN (xrart.txns_type = gc_txns_type_uke) THEN -- 実績区分が受入の場合
                              xrart.quantity
                         ELSE xrart.quantity * -1                       -- 実績区分が返品の場合、マイナス
                       END) * xpl.unit_price) AS r_amount
+*/
+                ,SUM(ROUND((CASE
+                        WHEN (xrart.txns_type = gc_txns_type_uke) THEN -- 実績区分が受入の場合
+                             xrart.quantity
+                        ELSE xrart.quantity * -1                       -- 実績区分が返品の場合、マイナス
+                      END) * xpl.unit_price)) AS r_amount
+-- 2009/01/05 v1.11 UPDATE END
 -- E 2008/12/12 1.9 MOD BY H.Itou 本番#681
 -- E  2008/12/09 1.7 MOD BY T.Miyata 本番#542
 --mod end 1.3.3
@@ -1915,7 +1999,10 @@ AS
                 ,flv.attribute1
                 ,flv.meaning
                 ,0                                           AS s_amount
-                ,SUM(xrart.quantity * xpl.unit_price) * -1   AS r_amount
+-- 2009/01/05 v1.11 UPDATE START
+--                ,SUM(xrart.quantity * xpl.unit_price) * -1   AS r_amount
+                ,SUM(ROUND(xrart.quantity * xpl.unit_price)) * -1   AS r_amount
+-- 2009/01/05 v1.11 UPDATE END
                 ,0                                           AS s_quantity
                 ,SUM(xrart.quantity ) * -1 / count(*)        AS r_quantity
           FROM xxpo_rcv_and_rtn_txns    xrart
@@ -1973,12 +2060,22 @@ AS
       || '               xrart.quantity '
       || '          ELSE xrart.quantity * -1 '                       -- 実績区分が返品の場合、マイナス
       || '        END) AS quant '
+-- add start 1.11
+      || '  ,SUM(ROUND(CASE '
+      || '          WHEN (xrart.txns_type = ''' || gc_txns_type_uke || ''') THEN ' -- 実績区分が受入の場合
+      || '               xrart.quantity * xsupv.stnd_unit_price'
+      || '          ELSE xrart.quantity * -1 * xsupv.stnd_unit_price'               -- 実績区分が返品の場合、マイナス
+      || '        END)) AS amount '
+-- add end 1.11
 -- E 2008/12/12 1.9 MOD BY H.Itou 本番#681
       ;
     lv_sql_from
       := ' FROM'
       || '   ic_item_mst_b          iimc'           -- ＯＰＭ品目マスタ
       || '  ,xxcmn_item_mst_b       ximc'           -- ＯＰＭアドオン品目マスタ
+-- add start 1.11
+      || '  ,xxcmn_stnd_unit_price_v xsupv'    -- 標準原価情報VIEW
+-- add end 1.11
       || gv_sql_cmn_from
       ;
     lv_sql_where
@@ -1988,6 +2085,10 @@ AS
       || ' AND iimc.item_id             = ximc.item_id'
       || ' AND xrart.item_id            = iimc.item_id'
       || ' AND xrart.department_code    = NVL( :v3, xrart.department_code )'
+-- add start 1.11
+      || ' AND   xsupv.item_id(+)       = xrart.item_id'
+      || ' AND   :v4 BETWEEN xsupv.start_date_active(+) AND xsupv.end_date_active(+)'
+-- add end 1.11
       || gv_sql_cmn_where
       ;
     lv_sql_other
@@ -2008,6 +2109,9 @@ AS
     -- ====================================================
     OPEN lc_ref FOR lv_sql
     USING iv_dept_code
+-- add start 1.11
+         ,gd_fiscal_date_from
+-- add end 1.11
          ,gd_fiscal_date_from
          ,gd_fiscal_date_to
     ;
@@ -2136,11 +2240,20 @@ AS
 --                          xrart.quantity * xpl.unit_price * xpl.quantity
 -- S 2008/12/12 1.9 MOD BY H.Itou 本番#681 受入でない場合は数量はマイナスで取得
 --                          xrart.quantity * xpl.unit_price
+-- 2009/01/05 v1.11 UPDATE START
+/*
                          (CASE
                             WHEN (xrart.txns_type = gc_txns_type_uke) THEN -- 実績区分が受入の場合
                                  xrart.quantity
                             ELSE xrart.quantity * -1                       -- 実績区分が返品の場合、マイナス
                           END) * xpl.unit_price
+*/
+                         ROUND((CASE
+                            WHEN (xrart.txns_type = gc_txns_type_uke) THEN -- 実績区分が受入の場合
+                                 xrart.quantity
+                            ELSE xrart.quantity * -1                       -- 実績区分が返品の場合、マイナス
+                          END) * xpl.unit_price)
+-- 2009/01/05 v1.11 UPDATE END
 -- E 2008/12/12 1.9 MOD BY H.Itou 本番#681
 -- E 2008/05/21 1.1 MOD BY M.Ikeda ------------------------------------------------------------ E --
                      ELSE 0
@@ -2151,11 +2264,20 @@ AS
 --                          xrart.quantity * xpl.unit_price * xpl.quantity
 -- S 2008/12/12 1.9 MOD BY H.Itou 本番#681 受入でない場合は数量はマイナスで取得
 --                          xrart.quantity * xpl.unit_price
+-- 2009/01/05 v1.11 UPDATE START
+/*
                          (CASE
                             WHEN (xrart.txns_type = gc_txns_type_uke) THEN -- 実績区分が受入の場合
                                  xrart.quantity
                             ELSE xrart.quantity * -1                       -- 実績区分が返品の場合、マイナス
                           END) * xpl.unit_price
+*/
+                         ROUND((CASE
+                            WHEN (xrart.txns_type = gc_txns_type_uke) THEN -- 実績区分が受入の場合
+                                 xrart.quantity
+                            ELSE xrart.quantity * -1                       -- 実績区分が返品の場合、マイナス
+                          END) * xpl.unit_price)
+-- 2009/01/05 v1.11 UPDATE END
 -- E 2008/12/12 1.9 MOD BY H.Itou 本番#681
 -- E 2008/05/21 1.1 MOD BY M.Ikeda ------------------------------------------------------------ E --
                      ELSE 0
@@ -2190,11 +2312,20 @@ AS
 --                          xrart.quantity * xpl.unit_price * xpl.quantity
 -- S 2008/12/12 1.9 MOD BY H.Itou 本番#681 受入でない場合は数量はマイナスで取得
 --                          xrart.quantity * xpl.unit_price
+-- 2009/01/05 v1.11 UPDATE START
+/*
                          (CASE
                             WHEN (xrart.txns_type = gc_txns_type_uke) THEN -- 実績区分が受入の場合
                                  xrart.quantity
                             ELSE xrart.quantity * -1                       -- 実績区分が返品の場合、マイナス
                           END) * xpl.unit_price
+*/
+                         ROUND((CASE
+                            WHEN (xrart.txns_type = gc_txns_type_uke) THEN -- 実績区分が受入の場合
+                                 xrart.quantity
+                            ELSE xrart.quantity * -1                       -- 実績区分が返品の場合、マイナス
+                          END) * xpl.unit_price)
+-- 2009/01/05 v1.11 UPDATE END
 -- E 2008/12/12 1.9 MOD BY H.Itou 本番#681
 --mod end 1.3.3
                      ELSE 0
@@ -2205,11 +2336,20 @@ AS
 --                          xrart.quantity * xpl.unit_price * xpl.quantity
 -- S 2008/12/12 1.9 MOD BY H.Itou 本番#681 受入でない場合は数量はマイナスで取得
 --                          xrart.quantity * xpl.unit_price
+-- 2009/01/05 v1.11 UPDATE START
+/*
                          (CASE
                             WHEN (xrart.txns_type = gc_txns_type_uke) THEN -- 実績区分が受入の場合
                                  xrart.quantity
                             ELSE xrart.quantity * -1                       -- 実績区分が返品の場合、マイナス
                           END) * xpl.unit_price
+*/
+                         ROUND((CASE
+                            WHEN (xrart.txns_type = gc_txns_type_uke) THEN -- 実績区分が受入の場合
+                                 xrart.quantity
+                            ELSE xrart.quantity * -1                       -- 実績区分が返品の場合、マイナス
+                          END) * xpl.unit_price)
+-- 2009/01/05 v1.11 UPDATE END
 -- E 2008/12/12 1.9 MOD BY H.Itou 本番#681
 --mod end 1.3.3
                      ELSE 0
@@ -2260,12 +2400,18 @@ AS
                   ,0  AS s_rcv_amount
                   ,CASE
                      WHEN flv.attribute3 = gc_temp_rcv_div_n THEN 
-                          xrart.quantity * xpl.unit_price * -1
+-- 2009/01/05 v1.11 UPDATE START
+--                          xrart.quantity * xpl.unit_price * -1
+                          ROUND(xrart.quantity * xpl.unit_price) * -1
+-- 2009/01/05 v1.11 UPDATE END
                      ELSE 0
                    END r_dif_amount
                   ,CASE
                      WHEN flv.attribute3 = gc_temp_rcv_div_y THEN 
-                          xrart.quantity * xpl.unit_price * -1
+-- 2009/01/05 v1.11 UPDATE START
+--                          xrart.quantity * xpl.unit_price * -1
+                          ROUND(xrart.quantity * xpl.unit_price) * -1
+-- 2009/01/05 v1.11 UPDATE END
                      ELSE 0
                    END r_rcv_amount
             FROM xxpo_rcv_and_rtn_txns  xrart
@@ -2326,6 +2472,9 @@ AS
       lr_amount_rcv.d_amount     := lr_amount_rcv.s_amount     - lr_amount_rcv.r_amount ;
 --
       gv_quant_dpt  := gv_quant_dpt + lr_ref.quant ;  -- 数量（部署計）
+-- add start 1.11
+      gv_amount_dpt1 := gv_amount_dpt1 + lr_ref.amount ; -- 金額（部署計）
+-- add end 1.11
 --
       -- ----------------------------------------------------
       -- 品目計項目を出力
@@ -2640,6 +2789,15 @@ AS
         gt_xml_data_table(gl_xml_idx).tag_value := gv_quant_dpt;
 --
         gv_quant_dpt := 0 ;
+-- add start 1.11
+        -- 金額（部署計）
+        gl_xml_idx := gt_xml_data_table.COUNT + 1 ;
+        gt_xml_data_table(gl_xml_idx).tag_name  := 'amount_dpt' ;
+        gt_xml_data_table(gl_xml_idx).tag_type  := 'D' ;
+        gt_xml_data_table(gl_xml_idx).tag_value := gv_amount_dpt1;
+--
+        gv_amount_dpt1 := 0 ;
+-- add end 1.11
 --
         -- ====================================================
         -- 終了タグ
@@ -2748,6 +2906,9 @@ AS
        ,vendor_code     po_vendors.segment1%TYPE        -- 取引先コード
        ,vendor_name     po_vendors.vendor_name%TYPE     -- 取引先名称
        ,quant           NUMBER                          -- 取引数量
+-- add start 1.11
+       ,amount          NUMBER                          -- 取引金額
+-- add end 1.11
       ) ;
     lc_ref    ref_cursor ;
     lr_ref    ret_value ;
@@ -2786,11 +2947,20 @@ AS
 --                ,xrart.quantity * xpl.unit_price AS s_amount
 -- S 2008/12/12 1.9 MOD BY H.Itou 本番#681 受入でない場合は数量はマイナスで取得
 --                ,SUM(xrart.quantity * xpl.unit_price) AS s_amount
+-- 2009/01/05 v1.11 UPDATE START
+/*
                 ,SUM((CASE
                         WHEN (xrart.txns_type = gc_txns_type_uke) THEN -- 実績区分が受入の場合
                              xrart.quantity
                         ELSE xrart.quantity * -1                       -- 実績区分が返品の場合、マイナス
                       END) * xpl.unit_price) AS s_amount
+*/
+                ,SUM(ROUND((CASE
+                        WHEN (xrart.txns_type = gc_txns_type_uke) THEN -- 実績区分が受入の場合
+                             xrart.quantity
+                        ELSE xrart.quantity * -1                       -- 実績区分が返品の場合、マイナス
+                      END) * xpl.unit_price)) AS s_amount
+-- 2009/01/05 v1.11 UPDATE END
 -- E 2008/12/12 1.9 MOD BY H.Itou 本番#681
 -- E 2008/12/09 1.7 MOD BY T.Miyata 本番#542
 -- E 2008/05/21 1.1 MOD BY M.Ikeda ------------------------------------------------------------ E --
@@ -2849,11 +3019,20 @@ AS
 --                ,xrart.quantity * xpl.unit_price AS r_amount
 -- S 2008/12/12 1.9 MOD BY H.Itou 本番#681 受入でない場合は数量はマイナスで取得
 --                ,SUM(xrart.quantity * xpl.unit_price) AS r_amount
+-- 2009/01/05 v1.11 UPDATE START
+/*
                 ,SUM((CASE
                         WHEN (xrart.txns_type = gc_txns_type_uke) THEN -- 実績区分が受入の場合
                              xrart.quantity
                         ELSE xrart.quantity * -1                       -- 実績区分が返品の場合、マイナス
                       END) * xpl.unit_price) AS r_amount
+*/
+                ,SUM(ROUND((CASE
+                        WHEN (xrart.txns_type = gc_txns_type_uke) THEN -- 実績区分が受入の場合
+                             xrart.quantity
+                        ELSE xrart.quantity * -1                       -- 実績区分が返品の場合、マイナス
+                      END) * xpl.unit_price)) AS r_amount
+-- 2009/01/05 v1.11 UPDATE END
 -- E 2008/12/12 1.9 MOD BY H.Itou 本番#681
 -- E 2008/12/09 1.7 MOD BY T.Miyata 本番#542
 --mod end 1.3.3
@@ -2925,7 +3104,10 @@ AS
                 ,flv.attribute1
                 ,flv.meaning
                 ,0                                              AS s_amount
-                ,SUM(xrart.quantity * xpl.unit_price) * -1      AS r_amount
+-- 2009/01/05 v1.11 UPDATE START
+--                ,SUM(xrart.quantity * xpl.unit_price) * -1      AS r_amount
+                ,SUM(ROUND(xrart.quantity * xpl.unit_price)) * -1      AS r_amount
+-- 2009/01/05 v1.11 UPDATE END
                 ,0                                              AS s_quantity
                 ,SUM(xrart.quantity)/count(*) * -1              AS r_quantity
           FROM xxpo_rcv_and_rtn_txns    xrart
@@ -2989,12 +3171,22 @@ AS
       || '               xrart.quantity '
       || '          ELSE xrart.quantity * -1 '                       -- 実績区分が返品の場合、マイナス
       || '        END) AS quant '
+-- add start 1.11
+      || '  ,SUM(ROUND(CASE '
+      || '          WHEN (xrart.txns_type = ''' || gc_txns_type_uke || ''') THEN ' -- 実績区分が受入の場合
+      || '               xrart.quantity * xsupv.stnd_unit_price'
+      || '          ELSE xrart.quantity * -1 * xsupv.stnd_unit_price'               -- 実績区分が返品の場合、マイナス
+      || '        END)) AS amount '
+-- add end 1.11
 -- E 2008/12/12 1.9 MOD BY H.Itou 本番#681
       ;
     lv_sql_from
       := ' FROM'
       || '   po_vendors    pv'    -- 仕入先マスタ
       || '  ,xxcmn_vendors xv'    -- 仕入先アドオンマスタ
+-- add start 1.11
+      || '  ,xxcmn_stnd_unit_price_v xsupv'    -- 標準原価情報VIEW
+-- add end 1.11
       || gv_sql_cmn_from
       ;
     lv_sql_where
@@ -3004,6 +3196,10 @@ AS
       || ' AND pv.vendor_id             = xv.vendor_id'
       || ' AND xrart.vendor_id          = pv.vendor_id'
       || ' AND xrart.department_code    = NVL( :v3, xrart.department_code )'
+-- add start 1.11
+      || ' AND   xsupv.item_id(+)       = xrart.item_id'
+      || ' AND   :v4 BETWEEN xsupv.start_date_active(+) AND xsupv.end_date_active(+)'
+-- add end 1.11
       || gv_sql_cmn_where
       ;
     lv_sql_other
@@ -3022,6 +3218,9 @@ AS
     -- ====================================================
     OPEN lc_ref FOR lv_sql
     USING iv_dept_code
+-- add start 1.11
+         ,gd_fiscal_date_from
+-- add end 1.11
          ,gd_fiscal_date_from
          ,gd_fiscal_date_to
     ;
@@ -3145,11 +3344,20 @@ AS
 --                          xrart.quantity * xpl.unit_price * xpl.quantity
 -- S 2008/12/12 1.9 MOD BY H.Itou 本番#681 受入でない場合は数量はマイナスで取得
 --                          xrart.quantity * xpl.unit_price
+-- 2009/01/05 v1.11 UPDATE START
+/*
                          (CASE
                             WHEN (xrart.txns_type = gc_txns_type_uke) THEN -- 実績区分が受入の場合
                                  xrart.quantity
                             ELSE xrart.quantity * -1                       -- 実績区分が返品の場合、マイナス
                           END) * xpl.unit_price
+*/
+                         ROUND((CASE
+                            WHEN (xrart.txns_type = gc_txns_type_uke) THEN -- 実績区分が受入の場合
+                                 xrart.quantity
+                            ELSE xrart.quantity * -1                       -- 実績区分が返品の場合、マイナス
+                          END) * xpl.unit_price)
+-- 2009/01/05 v1.11 UPDATE END
 -- E 2008/12/12 1.9 MOD BY H.Itou 本番#681
 -- E 2008/05/21 1.1 MOD BY M.Ikeda ------------------------------------------------------------ E --
                           ELSE 0
@@ -3160,11 +3368,20 @@ AS
 --                          xrart.quantity * xpl.unit_price * xpl.quantity
 -- S 2008/12/12 1.9 MOD BY H.Itou 本番#681 受入でない場合は数量はマイナスで取得
 --                          xrart.quantity * xpl.unit_price
+-- 2009/01/05 v1.11 UPDATE START
+/*
                          (CASE
                             WHEN (xrart.txns_type = gc_txns_type_uke) THEN -- 実績区分が受入の場合
                                  xrart.quantity
                             ELSE xrart.quantity * -1                       -- 実績区分が返品の場合、マイナス
                           END) * xpl.unit_price
+*/
+                         ROUND((CASE
+                            WHEN (xrart.txns_type = gc_txns_type_uke) THEN -- 実績区分が受入の場合
+                                 xrart.quantity
+                            ELSE xrart.quantity * -1                       -- 実績区分が返品の場合、マイナス
+                          END) * xpl.unit_price)
+-- 2009/01/05 v1.11 UPDATE END
 -- E 2008/12/12 1.9 MOD BY H.Itou 本番#681
 -- E 2008/05/21 1.1 MOD BY M.Ikeda ------------------------------------------------------------ E --
                      ELSE 0
@@ -3206,11 +3423,20 @@ AS
 --                          xrart.quantity * xpl.unit_price * xpl.quantity
 -- S 2008/12/12 1.9 MOD BY H.Itou 本番#681 受入でない場合は数量はマイナスで取得
 --                          xrart.quantity * xpl.unit_price
+-- 2009/01/05 v1.11 UPDATE START
+/*
                          (CASE
                             WHEN (xrart.txns_type = gc_txns_type_uke) THEN -- 実績区分が受入の場合
                                  xrart.quantity
                             ELSE xrart.quantity * -1                       -- 実績区分が返品の場合、マイナス
                           END) * xpl.unit_price
+*/
+                         ROUND((CASE
+                            WHEN (xrart.txns_type = gc_txns_type_uke) THEN -- 実績区分が受入の場合
+                                 xrart.quantity
+                            ELSE xrart.quantity * -1                       -- 実績区分が返品の場合、マイナス
+                          END) * xpl.unit_price)
+-- 2009/01/05 v1.11 UPDATE END
 -- E 2008/12/12 1.9 MOD BY H.Itou 本番#681
 --mod end 1.3.3
                      ELSE 0
@@ -3221,11 +3447,20 @@ AS
 --                          xrart.quantity * xpl.unit_price * xpl.quantity
 -- S 2008/12/12 1.9 MOD BY H.Itou 本番#681 受入でない場合は数量はマイナスで取得
 --                          xrart.quantity * xpl.unit_price
+-- 2009/01/05 v1.11 UPDATE START
+/*
                          (CASE
                             WHEN (xrart.txns_type = gc_txns_type_uke) THEN -- 実績区分が受入の場合
                                  xrart.quantity
                             ELSE xrart.quantity * -1                       -- 実績区分が返品の場合、マイナス
                           END) * xpl.unit_price
+*/
+                         ROUND((CASE
+                            WHEN (xrart.txns_type = gc_txns_type_uke) THEN -- 実績区分が受入の場合
+                                 xrart.quantity
+                            ELSE xrart.quantity * -1                       -- 実績区分が返品の場合、マイナス
+                          END) * xpl.unit_price)
+-- 2009/01/05 v1.11 UPDATE END
 -- E 2008/12/12 1.9 MOD BY H.Itou 本番#681
 --mod end 1.3.3
                      ELSE 0
@@ -3283,12 +3518,18 @@ AS
                   ,0  AS s_rcv_amount
                   ,CASE
                      WHEN flv.attribute3 = gc_temp_rcv_div_n THEN 
-                          xrart.quantity * xpl.unit_price * -1
+-- 2009/01/05 v1.11 UPDATE START
+--                          xrart.quantity * xpl.unit_price * -1
+                          ROUND(xrart.quantity * xpl.unit_price) * -1
+-- 2009/01/05 v1.11 UPDATE END
                      ELSE 0
                    END r_dif_amount
                   ,CASE
                      WHEN flv.attribute3 = gc_temp_rcv_div_y THEN 
-                          xrart.quantity * xpl.unit_price * -1
+-- 2009/01/05 v1.11 UPDATE START
+--                          xrart.quantity * xpl.unit_price * -1
+                          ROUND(xrart.quantity * xpl.unit_price) * -1
+-- 2009/01/05 v1.11 UPDATE END
                      ELSE 0
                    END r_rcv_amount
             FROM xxpo_rcv_and_rtn_txns    xrart
@@ -3635,6 +3876,15 @@ AS
       END IF;
 --add end 1.3.2
 --
+-- add start 1.11
+      IF ( gr_param.output_type IN( xxcmn820011c.program_id_05            -- 明細：部門別取引先別
+                                   ,xxcmn820011c.program_id_07 ) ) THEN   -- 明細：取引先別
+        gv_amount_dpt1 := gv_amount_dpt1 + gv_amount_dpt ; -- 金額（部署計）
+        gv_amount_dpt := 0;
+      ELSIF ( gr_param.output_type = xxcmn820011c.program_id_06) THEN     -- 合計：部門別取引先別
+        gv_amount_dpt1 := gv_amount_dpt1 + lr_ref.amount ; -- 金額（部署計）
+      END IF;
+-- add end 1.11
     END LOOP main_data_loop ;
 --
 --mod start 1.3.2
@@ -3661,6 +3911,16 @@ AS
         gt_xml_data_table(gl_xml_idx).tag_name  := 'quant_dpt' ;
         gt_xml_data_table(gl_xml_idx).tag_type  := 'D' ;
         gt_xml_data_table(gl_xml_idx).tag_value := gv_quant_dpt;
+--
+-- add start 1.11
+        -- 金額（部署計）
+        gl_xml_idx := gt_xml_data_table.COUNT + 1 ;
+        gt_xml_data_table(gl_xml_idx).tag_name  := 'amount_dpt' ;
+        gt_xml_data_table(gl_xml_idx).tag_type  := 'D' ;
+        gt_xml_data_table(gl_xml_idx).tag_value := gv_amount_dpt1;
+--
+        gv_amount_dpt1 := 0 ;
+-- add end 1.11
 --
         gv_quant_dpt := 0 ;
 --
