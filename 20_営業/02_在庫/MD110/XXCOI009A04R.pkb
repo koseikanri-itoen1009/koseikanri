@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCOI009A04R(body)
  * Description      : 入出庫ジャーナルチェックリスト
  * MD.050           : 入出庫ジャーナルチェックリスト MD050_COI_009_A04
- * Version          : 1.5
+ * Version          : 1.6
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -33,6 +33,7 @@ AS
  *  2009/06/03    1.3   H.Sasaki         [T1_1202]保管場所マスタの結合条件に在庫組織IDを追加
  *  2009/06/19    1.4   H.Sasaki         [I_E_453][T1_1090]HHT入出庫取得データを変更
  *  2009/07/02    1.5   H.Sasaki         [0000275]パフォーマンス改善
+ *  2009/07/10    1.6   H.Sasaki         [0000459]入出庫逆転データの出力条件を変更
  *
  *****************************************************************************************/
 --
@@ -115,11 +116,11 @@ AS
   cv_msg_xxcoi10067  CONSTANT VARCHAR2(16) := 'APP-XXCOI1-10067';   -- パラメータ.年月日メッセージ
   cv_msg_xxcoi10307  CONSTANT VARCHAR2(16) := 'APP-XXCOI1-10307';   -- パラメータ.出力区分メッセージ
   cv_msg_xxcoi10308  CONSTANT VARCHAR2(16) := 'APP-XXCOI1-10308';   -- パラメータ.拠点メッセージ
-  cv_msg_xxcoi10309  CONSTANT VARCHAR2(16) := 'APP-XXCOI1-10309';   -- パラメータ.入出庫逆転データ区分メッセージ
+  cv_msg_xxcoi10309  CONSTANT VARCHAR2(16) := 'APP-XXCOI1-10309';   -- パラメータ.正負データ区分メッセージ
   cv_msg_xxcoi10310  CONSTANT VARCHAR2(16) := 'APP-XXCOI1-10310';   -- パラメータ.伝票区分メッセージ
   cv_msg_xxcoi10311  CONSTANT VARCHAR2(16) := 'APP-XXCOI1-10311';   -- パラメータ出力区分名取得エラー
   cv_msg_xxcoi10312  CONSTANT VARCHAR2(16) := 'APP-XXCOI1-10312';   -- パラメータ伝票区分名取得エラー
-  cv_msg_xxcoi10313  CONSTANT VARCHAR2(16) := 'APP-XXCOI1-10313';   -- パラメータ入出庫逆転データ区分名取得エラー
+  cv_msg_xxcoi10313  CONSTANT VARCHAR2(16) := 'APP-XXCOI1-10313';   -- パラメータ正負データ区分名取得エラー
 --
   -- トークン名
   cv_token_pro                CONSTANT VARCHAR2(30) := 'PRO_TOK';
@@ -140,7 +141,7 @@ AS
      ,invoice_kbn       VARCHAR2(2)       -- 02 : 伝票区分      (任意)
      ,target_date       VARCHAR2(20)      -- 03 : 年月日        (必須)
      ,out_base_code     VARCHAR2(4)       -- 04 : 拠点          (任意)
-     ,reverse_kbn       VARCHAR2(1)       -- 05 : 入出庫逆転データ出力区分 (必須)
+     ,reverse_kbn       VARCHAR2(1)       -- 05 : 正負データ出力区分 (必須)
      ,output_dpt        VARCHAR2(1)       -- 06 : 帳票出力場所  (必須)
     );
 --
@@ -1092,14 +1093,26 @@ AS
       AND     xhit.invoice_date                         =   TO_DATE(SUBSTR(gr_param.target_date, 1, 10), 'YYYY/MM/DD')
 -- == 2009/07/02 V1.5 Modified END   ===============================================================
       AND     xhit.outside_base_code                    =   gt_base_num_tab(gn_base_loop_cnt).hca_cust_num
-      AND     ((    (gr_param.reverse_kbn   =   cv_1)
-                AND (xhit.total_quantity    <   0)
-               )
+-- == 2009/07/10 V1.6 Modified START ===============================================================
+--      AND     ((    (gr_param.reverse_kbn   =   cv_1)
+--                AND (xhit.total_quantity    <   0)
+--               )
+--               OR
+--               (    (gr_param.reverse_kbn   = cv_0)
+--                AND (xhit.total_quantity    > 0)
+--               )
+--              )
+      AND     ((gr_param.reverse_kbn  =  cv_0)
                OR
-               (    (gr_param.reverse_kbn   = cv_0)
+               (    (gr_param.reverse_kbn   = cv_1)
                 AND (xhit.total_quantity    > 0)
                )
+               OR
+               (    (gr_param.reverse_kbn   = cv_2)
+                AND (xhit.total_quantity    < 0)
+               )
               )
+-- == 2009/07/10 V1.6 Modified END   ===============================================================
       AND     hca.account_number                        =   xhit.outside_base_code
       AND     hca.customer_class_code                   =   cv_1
       AND     msib.segment1                             =   xhit.item_code
@@ -1362,7 +1375,10 @@ AS
     -- 定数
     cv_profile_name    CONSTANT VARCHAR2(24)   := 'XXCOI1_ORGANIZATION_CODE';        -- プロファイル名(在庫組織コード)
     cv_output_kbn      CONSTANT VARCHAR2(30)   := 'XXCOI1_OUTPUT_KBN';               -- 参照タイプ(出力区分)
-    cv_reverse_kbn     CONSTANT VARCHAR2(30)   := 'XXCOI1_REVERSE_DATA_OUTPUT_KBN';  -- 参照タイプ(入出庫逆転データ出力区分)
+-- == 2009/07/10 V1.6 Modified START ===============================================================
+--    cv_reverse_kbn     CONSTANT VARCHAR2(30)   := 'XXCOI1_REVERSE_DATA_OUTPUT_KBN';  -- 参照タイプ(入出庫逆転データ出力区分)
+    cv_reverse_kbn     CONSTANT VARCHAR2(30)   := 'XXCOI1_DATA_SIGN_KBN';  -- 参照タイプ(正負データ出力区分)
+-- == 2009/07/10 V1.6 Modified END   ===============================================================
 -- == 2009/06/19 V1.4 Modified START ===============================================================
 --    cv_invoice_type    CONSTANT VARCHAR2(30)   := 'XXCOI1_INVOICE_KBN';              -- 参照タイプ(伝票区分)
     cv_invoice_type    CONSTANT VARCHAR2(30)   := 'XXCOI1_HHT_EBS_CONVERT_TABLE';    -- 参照タイプ(伝票区分)
@@ -1371,7 +1387,7 @@ AS
     -- *** ローカル変数 ***
     lv_organization_code mtl_parameters.organization_code%TYPE;  -- 在庫組織コード
     lv_invoice_type_name fnd_lookup_values.meaning%TYPE ;        -- 伝票区分
-    lv_reverse_kbn_name  fnd_lookup_values.meaning%TYPE;         -- 入出庫逆転データ出力区分
+    lv_reverse_kbn_name  fnd_lookup_values.meaning%TYPE;         -- 正負データ出力区分
 --
     -- *** ローカル・カーソル ***
 --
@@ -1565,9 +1581,9 @@ AS
     , buff   => gv_out_msg
     );
 --
-    -- パラメータ.入出庫逆転データ出力区分
-    -- 入出庫逆転データ出力区分名取得
-    lv_reverse_kbn_name := xxcoi_common_pkg.get_meaning(cv_reverse_kbn,gr_param.reverse_kbn);
+    -- パラメータ.正負データ出力区分
+    -- 正負データ出力区分名取得
+    lv_reverse_kbn_name := xxcoi_common_pkg.get_meaning(cv_reverse_kbn, gr_param.reverse_kbn);
     --
     -- リターンコードがNULLの場合はエラー
     IF ( lv_reverse_kbn_name IS NULL ) THEN
@@ -1628,7 +1644,7 @@ AS
     iv_invoice_kbn       IN  VARCHAR2,         --   2.伝票区分
     iv_target_date       IN  VARCHAR2,         --   3.年月日
     iv_out_base_code     IN  VARCHAR2,         --   4.拠点
-    iv_reverse_kbn       IN  VARCHAR2,         --   5.入出庫逆転データ出力区分
+    iv_reverse_kbn       IN  VARCHAR2,         --   5.正負データ出力区分
     iv_output_dpt        IN  VARCHAR2,         --   6.帳票出力場所
     ov_errbuf            OUT VARCHAR2,         --   エラー・メッセージ           --# 固定 #
     ov_retcode           OUT VARCHAR2,         --   リターン・コード             --# 固定 #
@@ -1691,7 +1707,7 @@ AS
     gr_param.invoice_kbn       := iv_invoice_kbn;        -- 02 : 伝票区分    (任意)
     gr_param.target_date       := iv_target_date;        -- 03 : 年月日      (必須)
     gr_param.out_base_code     := iv_out_base_code;      -- 04 : 拠点        (任意)
-    gr_param.reverse_kbn       := iv_reverse_kbn;        -- 05 : 入出庫逆転データ出力区分 (必須)
+    gr_param.reverse_kbn       := iv_reverse_kbn;        -- 05 : 正負データ出力区分 (必須)
     gr_param.output_dpt        := iv_output_dpt;         -- 06 : 出力場所    (必須)
 --
     -- =====================================================
@@ -1878,8 +1894,8 @@ AS
     iv_invoice_kbn       IN  VARCHAR2,      --   2.伝票区分
     iv_target_date       IN  VARCHAR2,      --   3.年月日
     iv_out_base_code     IN  VARCHAR2,      --   4.出庫拠点
-    iv_reverse_kbn       IN  VARCHAR2,      --   5.入出庫逆転データ出力区分
-    iv_output_dpt        IN  VARCHAR2)      --   5.帳票出力場所
+    iv_reverse_kbn       IN  VARCHAR2,      --   5.正負データ出力区分
+    iv_output_dpt        IN  VARCHAR2)      --   6.帳票出力場所
 --
 --###########################  固定部 START   ###########################
 --
@@ -1934,7 +1950,7 @@ AS
       ,iv_invoice_kbn       --   2.伝票区分
       ,iv_target_date       --   3.日
       ,iv_out_base_code     --   4.出庫拠点
-      ,iv_reverse_kbn       --   5.入出庫逆転データ出力区分
+      ,iv_reverse_kbn       --   5.正負データ出力区分
       ,iv_output_dpt        --   6.帳票出力場所
       ,lv_errbuf       -- エラー・メッセージ           --# 固定 #
       ,lv_retcode      -- リターン・コード             --# 固定 #
