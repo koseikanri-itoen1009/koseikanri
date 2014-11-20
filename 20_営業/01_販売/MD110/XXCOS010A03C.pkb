@@ -1,4 +1,4 @@
-CREATE OR REPLACE PACKAGE BODY XXCOS010A03C
+CREATE OR REPLACE PACKAGE BODY APPS.XXCOS010A03C
 AS
 /*****************************************************************************************
  * Copyright(c)Sumisho Computer Systems Corporation, 2008. All rights reserved.
@@ -59,6 +59,7 @@ AS
  *  2009/07/22    1.8   K.Kiriu          [0000644]原価金額の端数処理対応
  *  2009/08/06    1.8   M.Sano           [0000644]レビュー指摘対応
  *  2009/08/07    1.9   M.Sano           [0000059]納品確定データ取込のPT考慮
+ *  2009/09/10    1.10  K.Kiriu          [0001308]エラー処理実行の判定を情報区分から通過在庫型区分に変更
  *
  *****************************************************************************************/
 --
@@ -240,10 +241,15 @@ AS
 --****************************** 2009/05/19 1.5 T.Kitajima ADD START  ******************************--
   cv_format_yyyymmdds    CONSTANT VARCHAR2(10)  := 'YYYY/MM/DD';                -- 日付フォーマット
 --****************************** 2009/05/19 1.5 T.Kitajima ADD  END  ******************************--
--- **************************** 2009/06/26 N.Maeda ADD Ver1.6 START ************************************************ --
-  cv_info_class_type_01 CONSTANT VARCHAR2(2) := '01';                        -- 情報区分:'01'
-  cv_info_class_type_02 CONSTANT VARCHAR2(2) := '02';                        -- 情報区分:'02'
--- **************************** 2009/06/26 N.Maeda ADD Ver1.6  END  ************************************************ --
+/* 2009/09/10 Ver1.10 Mod Start */
+---- **************************** 2009/06/26 N.Maeda ADD Ver1.6 START ************************************************ --
+--  cv_info_class_type_01 CONSTANT VARCHAR2(2) := '01';                        -- 情報区分:'01'
+--  cv_info_class_type_02 CONSTANT VARCHAR2(2) := '02';                        -- 情報区分:'02'
+---- **************************** 2009/06/26 N.Maeda ADD Ver1.6  END  ************************************************ --
+  cv_yes                 CONSTANT VARCHAR2(1)  := 'Y';                          -- 条件判断用(Y)
+  cv_no                  CONSTANT VARCHAR2(1)  := 'N';                          -- 条件判断用(N)
+  cv_tsukagatazaiko_13   CONSTANT VARCHAR2(2)  := '13';                         -- 通過在庫型区分13（受注を作成する）
+/* 2009/09/10 Ver1.10 Mod End   */
 --
   -- ===============================
   -- ユーザー定義グローバル型
@@ -1762,6 +1768,9 @@ AS
   gn_organization_id                         NUMBER;                                                -- 在庫組織ID
   gn_org_unit_id                             NUMBER;                                                -- 営業単位
   gv_creation_class                          fnd_lookup_values.meaning%TYPE;                        -- 作成元区分
+/* 2009/09/10 Ver1.10 Add Start */
+  gv_error_check_flag                        VARCHAR2(1);                                           -- エラーチェック有無フラグ
+/* 2009/09/10 Ver1.10 Add end   */
 --
   -- 伝票エラーフラグ変数
   gn_invoice_err_flag                        NUMBER(1) := 0;
@@ -2834,7 +2843,11 @@ AS
     TYPE l_cust_info_rtype IS RECORD
       (
         conv_cust_code        hz_cust_accounts.account_number%TYPE,             -- 顧客コード
-        price_list_id         hz_cust_site_uses_all.price_list_id%TYPE          -- 価格表ID
+/* 2009/09/10 Ver1.10 Mod Start */
+--        price_list_id         hz_cust_site_uses_all.price_list_id%TYPE          -- 価格表ID
+        price_list_id         hz_cust_site_uses_all.price_list_id%TYPE,         -- 価格表ID
+        tsukagatazaiko_div    xxcmm_cust_accounts.tsukagatazaiko_div%TYPE       -- 通過在庫型区分(EDI)
+/* 2009/09/10 Ver1.10 Mod End   */
       );
 --
     -- 品目情報定義
@@ -2970,6 +2983,10 @@ AS
       ov_check_status    OUT NOCOPY VARCHAR2                -- OUT：チェックステータス
     )
     IS
+/* 2009/09/10 Ver1.10 Add Start */
+      -- *** ローカル例外 ***
+      get_cust_expt EXCEPTION;
+/* 2009/09/10 Ver1.10 Add End   */
       -- *** ローカル定数 ***
       cv_prg_name   CONSTANT VARCHAR2(100) := 'customer_conv_check'; -- プログラム名
 --
@@ -2979,62 +2996,110 @@ AS
       ov_check_status                 := cv_edi_status_normal;
       ot_cust_info_rec.conv_cust_code := NULL;
       ot_cust_info_rec.price_list_id  := NULL;
+/* 2009/09/10 Ver1.10 Add Start */
+      ot_cust_info_rec.tsukagatazaiko_div := NULL;
+/* 2009/09/10 Ver1.10 Add End   */
 --
-      SELECT  accounts.account_number,                                          -- 顧客コード
-              uses.price_list_id                                                -- 価格表ID
-      INTO    ot_cust_info_rec.conv_cust_code,
-              ot_cust_info_rec.price_list_id
-      FROM    hz_cust_accounts               accounts,                          -- 顧客マスタ
-              xxcmm_cust_accounts            addon,                             -- 顧客アドオン
-              hz_cust_acct_sites_all         sites,                             -- 顧客所在地
-              hz_cust_site_uses_all          uses,                              -- 顧客使用目的
-              hz_parties                     party                              -- パーティマスタ
-      WHERE   accounts.cust_account_id       = sites.cust_account_id
-      AND     sites.cust_acct_site_id        = uses.cust_acct_site_id
-      AND     accounts.cust_account_id       = addon.customer_id
-      AND     accounts.status                = cv_cust_status_active            -- ステータス：A（有効）
-      AND     accounts.customer_class_code   = cv_cust_class_cust               -- 顧客区分：10（顧客）
-      AND     accounts.party_id              = party.party_id
-      AND     party.duns_number_c            IN ( cv_cust_status_30,            -- 顧客ステータス：30（承認済）
-                                                  cv_cust_status_40 )           -- 顧客ステータス：40（顧客）
-      AND     addon.chain_store_code         = it_edi_work.edi_chain_code       -- EDIチェーン店コード
-      AND     addon.store_code               = it_edi_work.shop_code            -- 店コード
-      AND     sites.org_id                   = gn_org_unit_id                   -- 営業単位
-      AND     uses.site_use_code             = cv_cust_site_use_code            -- 顧客使用目的：SHIP_TO(出荷先)
-      AND     uses.org_id                    = gn_org_unit_id;                  -- 営業単位
+/* 2009/09/10 Ver1.10 Add Start */
+      -- 店コードがNULL以外の場合のみ取得
+      IF ( it_edi_work.shop_code IS NOT NULL ) THEN
+--
+        BEGIN
+--
+/* 2009/09/10 Ver1.10 Add End   */
+          SELECT  accounts.account_number,                                          -- 顧客コード
+/* 2009/09/10 Ver1.10 Mod Start */
+--                  uses.price_list_id                                                -- 価格表ID
+                  uses.price_list_id,                                               -- 価格表ID
+                  addon.tsukagatazaiko_div                                          -- 通過在庫型区分(EDI)
+/* 2009/09/10 Ver1.10 Mod End   */
+          INTO    ot_cust_info_rec.conv_cust_code,
+/* 2009/09/10 Ver1.10 Mod Start */
+--                  ot_cust_info_rec.price_list_id
+                  ot_cust_info_rec.price_list_id,
+                  ot_cust_info_rec.tsukagatazaiko_div
+/* 2009/09/10 Ver1.10 Mod End   */
+          FROM    hz_cust_accounts               accounts,                          -- 顧客マスタ
+                  xxcmm_cust_accounts            addon,                             -- 顧客アドオン
+                  hz_cust_acct_sites_all         sites,                             -- 顧客所在地
+                  hz_cust_site_uses_all          uses,                              -- 顧客使用目的
+                  hz_parties                     party                              -- パーティマスタ
+          WHERE   accounts.cust_account_id       = sites.cust_account_id
+          AND     sites.cust_acct_site_id        = uses.cust_acct_site_id
+          AND     accounts.cust_account_id       = addon.customer_id
+          AND     accounts.status                = cv_cust_status_active            -- ステータス：A（有効）
+          AND     accounts.customer_class_code   = cv_cust_class_cust               -- 顧客区分：10（顧客）
+          AND     accounts.party_id              = party.party_id
+          AND     party.duns_number_c            IN ( cv_cust_status_30,            -- 顧客ステータス：30（承認済）
+                                                      cv_cust_status_40 )           -- 顧客ステータス：40（顧客）
+          AND     addon.chain_store_code         = it_edi_work.edi_chain_code       -- EDIチェーン店コード
+          AND     addon.store_code               = it_edi_work.shop_code            -- 店コード
+          AND     sites.org_id                   = gn_org_unit_id                   -- 営業単位
+          AND     uses.site_use_code             = cv_cust_site_use_code            -- 顧客使用目的：SHIP_TO(出荷先)
+          AND     uses.org_id                    = gn_org_unit_id;                  -- 営業単位
+/* 2009/09/10 Ver1.10 Add Start */
+--
+        EXCEPTION
+          WHEN NO_DATA_FOUND THEN
+            RAISE get_cust_expt;
+        END;
+--
+        --通過在庫型区分のチェック
+        IF ( ot_cust_info_rec.tsukagatazaiko_div IS NULL ) THEN
+          RAISE get_cust_expt;
+        END IF;
+--
+        --エラーチェック有無の判定フラグ設定(受注を作成する通過在庫型区分の場合チェックあり)
+        IF ( ot_cust_info_rec.tsukagatazaiko_div = cv_tsukagatazaiko_13 ) THEN
+          gv_error_check_flag := cv_yes; --エラーチェックあり
+        ELSE
+          gv_error_check_flag := cv_no;  --エラーチェックなし
+        END IF;
+--
+      -- 店コードがNULLの場合
+      ELSE
+        gv_error_check_flag := cv_no;  --エラーチェックなし
+      END IF;
+/* 2009/09/10 Ver1.10 Add End   */
 --
     EXCEPTION
-      -- データが存在しない場合
-      WHEN NO_DATA_FOUND THEN
+/* 2009/09/10 Ver1.10 Mod Start */
+--      -- データが存在しない場合
+--      WHEN NO_DATA_FOUND THEN
 --
--- **************************** 2009/06/26 N.Maeda MOD Ver1.6 START ************************************************ --
---      -- 情報区分が「NULL」,「'01'」,「'02'」の場合、エラー。
-        IF ( gt_edi_work(gt_edi_work.first).info_class IS NULL )
-        OR ( gt_edi_work(gt_edi_work.first).info_class = cv_info_class_type_01 )
-        OR ( gt_edi_work(gt_edi_work.first).info_class = cv_info_class_type_02 )THEN
-          -- 顧客コード変換エラーを出力
-          lv_errmsg := xxccp_common_pkg.get_msg( cv_application,
-                                                 cv_msg_cust_conv,
-                                                 cv_tkn_chain_shop_code,
-                                                 it_edi_work.edi_chain_code,
-                                                 cv_tkn_shop_code,
-                                                 it_edi_work.shop_code
-                                               );
-          lv_errbuf := lv_errmsg;
-          -- ログ出力
-          proc_msg_output( cv_prg_name, lv_errbuf );
-          -- 警告ステータス設定
-          ov_check_status := cv_edi_status_warning;
-          -- EDIエラー情報追加
-          proc_set_edi_errors( it_edi_work, NULL, NULL, cv_msg_rep_cust_conv );
-          -- 伝票エラーフラグ設定
-          gn_invoice_err_flag := 1;
-        -- 情報区分がその他の場合
-        ELSE
-          ot_cust_info_rec.conv_cust_code := NULL;
-          ot_cust_info_rec.price_list_id  := NULL;
-        END IF;
--- **************************** 2009/06/26 N.Maeda MOD Ver1.6  END  ************************************************ --
+---- **************************** 2009/06/26 N.Maeda MOD Ver1.6 START ************************************************ --
+----      -- 情報区分が「NULL」,「'01'」,「'02'」の場合、エラー。
+--        IF ( gt_edi_work(gt_edi_work.first).info_class IS NULL )
+--        OR ( gt_edi_work(gt_edi_work.first).info_class = cv_info_class_type_01 )
+--        OR ( gt_edi_work(gt_edi_work.first).info_class = cv_info_class_type_02 )THEN
+--
+      -- データが存在しない、もしくは、通過在庫型区分がNULLの場合
+      WHEN get_cust_expt THEN
+--
+        -- 顧客コード変換エラーを出力
+        lv_errmsg := xxccp_common_pkg.get_msg( cv_application,
+                                               cv_msg_cust_conv,
+                                               cv_tkn_chain_shop_code,
+                                               it_edi_work.edi_chain_code,
+                                               cv_tkn_shop_code,
+                                               it_edi_work.shop_code
+                                             );
+        lv_errbuf := lv_errmsg;
+        -- ログ出力
+        proc_msg_output( cv_prg_name, lv_errbuf );
+        -- 警告ステータス設定
+        ov_check_status := cv_edi_status_warning;
+        -- EDIエラー情報追加
+        proc_set_edi_errors( it_edi_work, NULL, NULL, cv_msg_rep_cust_conv );
+        -- 伝票エラーフラグ設定
+        gn_invoice_err_flag := 1;
+--        -- 情報区分がその他の場合
+--        ELSE
+--          ot_cust_info_rec.conv_cust_code := NULL;
+--          ot_cust_info_rec.price_list_id  := NULL;
+--        END IF;
+---- **************************** 2009/06/26 N.Maeda MOD Ver1.6  END  ************************************************ --
+/* 2009/09/10 Ver1.10 Mod End   */
 --
     END;
 --
@@ -3520,11 +3585,16 @@ AS
 --
       END IF;
 --
--- **************************** 2009/06/26 N.Maeda MOD Ver1.6 START ************************************************ --
---    -- 情報区分が「NULL」,「'01'」,「'02'」の場合、エラー処理チェックを行う。
-      IF ( gt_edi_work(gt_edi_work.first).info_class IS NULL )
-      OR ( gt_edi_work(gt_edi_work.first).info_class = cv_info_class_type_01 )
-      OR ( gt_edi_work(gt_edi_work.first).info_class = cv_info_class_type_02 )THEN
+/* 2009/09/10 Ver1.10 Mod Start */
+---- **************************** 2009/06/26 N.Maeda MOD Ver1.6 START ************************************************ --
+----    -- 情報区分が「NULL」,「'01'」,「'02'」の場合、エラー処理チェックを行う。
+--      IF ( gt_edi_work(gt_edi_work.first).info_class IS NULL )
+--      OR ( gt_edi_work(gt_edi_work.first).info_class = cv_info_class_type_01 )
+--      OR ( gt_edi_work(gt_edi_work.first).info_class = cv_info_class_type_02 )THEN
+--
+      -- エラーチェック有りの場合、EDI品目エラーチェックを行う
+      IF ( gv_error_check_flag = cv_yes ) THEN
+/* 2009/09/10 Ver1.10 Mod End   */
       --
         -- EDI品目エラーの場合
         IF ( lv_error_type IS NOT NULL ) THEN
@@ -3587,28 +3657,7 @@ AS
     -- 伝票エラーフラグ初期化
     gn_invoice_err_flag := 0;
 --
-    ----------------------------------------
-    -- 必須入力チェック
-    ----------------------------------------
--- **************************** 2009/06/26 N.Maeda MOD Ver1.6 START ************************************************ --
---    -- 情報区分が「NULL」,「'01'」,「'02'」の場合、必須チェックを行う。
-    IF ( gt_edi_work(gt_edi_work.first).info_class IS NULL )
-    OR ( gt_edi_work(gt_edi_work.first).info_class = cv_info_class_type_01 )
-    OR ( gt_edi_work(gt_edi_work.first).info_class = cv_info_class_type_02 )THEN
---
-      IF ( check_required( gt_edi_work )  != 0 ) THEN
-        -- 全データに警告ステータスを設定
-        set_check_status_all( cv_edi_status_warning );
-        -- 伝票エラーフラグ設定
-        gn_invoice_err_flag := 1;
-        -- チェック処理終了
-        ov_retcode := cv_status_warn;
-        RETURN;
-      END IF;
---
-    END IF;
--- **************************** 2009/06/26 N.Maeda MOD Ver1.6  END  ************************************************ --
---
+/* 2009/09/10 Ver1.10 Add Start */
     -- 顧客コード変換チェック
     customer_conv_check(
       gt_edi_work(gt_edi_work.first),        -- IN：EDI納品返品情報ワークデータ
@@ -3625,17 +3674,68 @@ AS
       RETURN;
     END IF;
 --
+/* 2009/09/10 Ver1.10 Add End   */
+    ----------------------------------------
+    -- 必須入力チェック
+    ----------------------------------------
+/* 2009/09/10 Ver1.10 Mod Start */
+---- **************************** 2009/06/26 N.Maeda MOD Ver1.6 START ************************************************ --
+----    -- 情報区分が「NULL」,「'01'」,「'02'」の場合、必須チェックを行う。
+--    IF ( gt_edi_work(gt_edi_work.first).info_class IS NULL )
+--    OR ( gt_edi_work(gt_edi_work.first).info_class = cv_info_class_type_01 )
+--    OR ( gt_edi_work(gt_edi_work.first).info_class = cv_info_class_type_02 )THEN
+--
+    -- エラーチェック有りの場合、必須チェックを行う
+    IF ( gv_error_check_flag = cv_yes ) THEN
+/* 2009/09/10 Ver1.10 Mod End */
+--
+      IF ( check_required( gt_edi_work )  != 0 ) THEN
+        -- 全データに警告ステータスを設定
+        set_check_status_all( cv_edi_status_warning );
+        -- 伝票エラーフラグ設定
+        gn_invoice_err_flag := 1;
+        -- チェック処理終了
+        ov_retcode := cv_status_warn;
+        RETURN;
+      END IF;
+--
+    END IF;
+-- **************************** 2009/06/26 N.Maeda MOD Ver1.6  END  ************************************************ --
+--
+/* 2009/09/10 Ver1.10 Del Start */
+--    -- 顧客コード変換チェック
+--    customer_conv_check(
+--      gt_edi_work(gt_edi_work.first),        -- IN：EDI納品返品情報ワークデータ
+--      lt_cust_info_rec,                      -- OUT：顧客情報
+--      lv_check_status                        -- OUT：チェックステータス
+--    );
+----
+--    -- ステータスが正常以外は、ステータスを設定
+--    IF ( lv_check_status != cv_edi_status_normal ) THEN
+--      -- 全データにステータスを設定
+--      set_check_status_all( lv_check_status );
+--      -- チェック処理終了
+--      ov_retcode := cv_status_warn;
+--      RETURN;
+--    END IF;
+/* 2009/09/10 Ver1.10 Del End   */
+--
     -- EDI連携品目コード区分を取得
     get_edi_item_code_div(
       gt_edi_work(gt_edi_work.first).edi_chain_code,
       lv_edi_item_code_div
     );
 --
--- **************************** 2009/06/26 N.Maeda MOD Ver1.6 START ************************************************ --
---    -- 情報区分が「NULL」,「'01'」,「'02'」の場合、必須チェックを行う。
-    IF ( gt_edi_work(gt_edi_work.first).info_class IS NULL )
-    OR ( gt_edi_work(gt_edi_work.first).info_class = cv_info_class_type_01 )
-    OR ( gt_edi_work(gt_edi_work.first).info_class = cv_info_class_type_02 )THEN
+/* 2009/09/10 Ver1.10 Mod Start */
+---- **************************** 2009/06/26 N.Maeda MOD Ver1.6 START ************************************************ --
+----    -- 情報区分が「NULL」,「'01'」,「'02'」の場合、必須チェックを行う。
+--    IF ( gt_edi_work(gt_edi_work.first).info_class IS NULL )
+--    OR ( gt_edi_work(gt_edi_work.first).info_class = cv_info_class_type_01 )
+--    OR ( gt_edi_work(gt_edi_work.first).info_class = cv_info_class_type_02 )THEN
+--
+    -- エラーチェック有りの場合、EDI連携品目コード区分チェックを行う
+    IF ( gv_error_check_flag = cv_yes ) THEN
+/* 2009/09/10 Ver1.10 Mod End */
 --
       -- EDI連携品目コード区分が「0:なし」の場合
       IF ( NVL( lv_edi_item_code_div, 0 ) = 0 ) THEN
@@ -3721,10 +3821,15 @@ AS
           ELSE
 -- **************************** 2009/06/26 N.Maeda MOD Ver1.6 START ************************************************ --
           -- 単価が取得できなかった（共通関数でエラー）場合
---          -- 情報区分が「NULL」,「'01'」,「'02'」の場合、必須チェックを行う。
-            IF ( gt_edi_work(gt_edi_work.first).info_class IS NULL )
-            OR ( gt_edi_work(gt_edi_work.first).info_class = cv_info_class_type_01 )
-            OR ( gt_edi_work(gt_edi_work.first).info_class = cv_info_class_type_02 )THEN
+/* 2009/09/10 Ver1.10 Mod Start */
+----          -- 情報区分が「NULL」,「'01'」,「'02'」の場合、必須チェックを行う。
+--            IF ( gt_edi_work(gt_edi_work.first).info_class IS NULL )
+--            OR ( gt_edi_work(gt_edi_work.first).info_class = cv_info_class_type_01 )
+--            OR ( gt_edi_work(gt_edi_work.first).info_class = cv_info_class_type_02 )THEN
+--
+            -- エラーチェック有りの場合、単価取得エラー処理を行う
+            IF ( gv_error_check_flag = cv_yes ) THEN
+/* 2009/09/10 Ver1.10 Mod End */
 --
               lv_errmsg := xxccp_common_pkg.get_msg( cv_application, cv_msg_price_err );
               lv_errbuf := lv_errmsg;
@@ -3744,11 +3849,16 @@ AS
           END IF;
 --
         ELSE
--- **************************** 2009/06/26 N.Maeda MOD Ver1.6 START ************************************************ --
---        -- 情報区分が「NULL」,「'01'」,「'02'」の場合、エラー処理を行う。
-          IF ( gt_edi_work(gt_edi_work.first).info_class IS NULL )
-          OR ( gt_edi_work(gt_edi_work.first).info_class = cv_info_class_type_01 )
-          OR ( gt_edi_work(gt_edi_work.first).info_class = cv_info_class_type_02 )THEN
+/* 2009/09/10 Ver1.10 Mod Start */
+---- **************************** 2009/06/26 N.Maeda MOD Ver1.6 START ************************************************ --
+----        -- 情報区分が「NULL」,「'01'」,「'02'」の場合、エラー処理を行う。
+--          IF ( gt_edi_work(gt_edi_work.first).info_class IS NULL )
+--          OR ( gt_edi_work(gt_edi_work.first).info_class = cv_info_class_type_01 )
+--          OR ( gt_edi_work(gt_edi_work.first).info_class = cv_info_class_type_02 )THEN
+--
+          -- エラーチェック有りの場合、価格表取得エラー処理を行う
+          IF ( gv_error_check_flag = cv_yes ) THEN
+/* 2009/09/10 Ver1.10 Mod End */
 --
             -- 価格表未設定エラーを出力
             lv_errmsg := xxccp_common_pkg.get_msg( cv_application,
@@ -4396,10 +4506,13 @@ AS
             OR ( head.order_date = it_edi_work.order_date ) )                        -- 発注日
     AND     TRUNC( head.data_creation_date_edi_data ) = TRUNC( it_edi_work.data_creation_date_edi_data ) -- データ作成日（ＥＤＩデータ中）
     AND     head.shop_code              = it_edi_work.shop_code                      -- 店コード
--- **************************** 2009/06/26 N.Maeda MOD Ver1.6 START ************************************************ --
-    AND     ( ( head.info_class IS NULL AND it_edi_work.info_class IS NULL  )
-            OR( head.info_class             = it_edi_work.info_class));                    -- 情報区分
--- **************************** 2009/06/26 N.Maeda MOD Ver1.6  END  ************************************************ --
+/* 2009/09/10 Ver1.10 Mod Start */
+---- **************************** 2009/06/26 N.Maeda MOD Ver1.6 START ************************************************ --
+--    AND     ( ( head.info_class IS NULL AND it_edi_work.info_class IS NULL  )
+--            OR( head.info_class             = it_edi_work.info_class));                    -- 情報区分
+---- **************************** 2009/06/26 N.Maeda MOD Ver1.6  END  ************************************************ --
+    ;
+/* 2009/09/10 Ver1.10 Mod End   */
 --
   EXCEPTION
     WHEN NO_DATA_FOUND THEN
@@ -6986,6 +7099,10 @@ AS
         gn_invoice_err_flag := 0;
         -- ヘッダ重複エラーフラグ初期化
         ln_head_duplicate_err := 0;
+/* 2009/09/10 Ver1.10 Add Start */
+        -- エラーチェックフラグ初期化
+        gv_error_check_flag   := cv_no;
+/* 2009/09/10 Ver1.10 Add End   */
 --
         -- ============================================
         -- データ妥当性チェック(A-4)
@@ -7010,11 +7127,16 @@ AS
           ln_edi_line_id := NULL;
           ln_edi_head_ins_flag := 0;
 --
--- **************************** 2009/06/26 N.Maeda MOD Ver1.6 START ************************************************ --
-            -- 情報区分が「NULL」,「'01'」,「'02'」の場合、必須チェックを行う。
-          IF ( gt_edi_work(gt_edi_work.first).info_class IS NULL )
-          OR ( gt_edi_work(gt_edi_work.first).info_class = cv_info_class_type_01 )
-          OR ( gt_edi_work(gt_edi_work.first).info_class = cv_info_class_type_02 )THEN
+/* 2009/09/10 Ver1.10 Mod Start */
+---- **************************** 2009/06/26 N.Maeda MOD Ver1.6 START ************************************************ --
+--            -- 情報区分が「NULL」,「'01'」,「'02'」の場合、必須チェックを行う。
+--          IF ( gt_edi_work(gt_edi_work.first).info_class IS NULL )
+--          OR ( gt_edi_work(gt_edi_work.first).info_class = cv_info_class_type_01 )
+--          OR ( gt_edi_work(gt_edi_work.first).info_class = cv_info_class_type_02 )THEN
+--
+          -- エラーチェック有りの場合、EDIヘッダ情報の取得を行う
+          IF ( gv_error_check_flag = cv_yes ) THEN
+/* 2009/09/10 Ver1.10 Mod End   */
             -- ============================================
             -- EDIヘッダ情報テーブルデータ抽出(A-7)
             -- ============================================
@@ -7106,11 +7228,15 @@ AS
             -- 伝票エラー、ヘッダ重複エラーが発生していない場合
             IF (( gn_invoice_err_flag = 0 ) AND ( ln_head_duplicate_err = 0 )) THEN
 --
--- **************************** 2009/06/26 N.Maeda MOD Ver1.6 START ************************************************ --
-              -- 情報区分が「NULL」,「'01'」,「'02'」の場合、必須チェックを行う。
-              IF ( gt_edi_work(gt_edi_work.first).info_class IS NULL )
-              OR ( gt_edi_work(gt_edi_work.first).info_class = cv_info_class_type_01 )
-              OR ( gt_edi_work(gt_edi_work.first).info_class = cv_info_class_type_02 )THEN
+/* 2009/09/10 Ver1.10 Mod Start */
+---- **************************** 2009/06/26 N.Maeda MOD Ver1.6 START ************************************************ --
+--              -- 情報区分が「NULL」,「'01'」,「'02'」の場合、必須チェックを行う。
+--              IF ( gt_edi_work(gt_edi_work.first).info_class IS NULL )
+--              OR ( gt_edi_work(gt_edi_work.first).info_class = cv_info_class_type_01 )
+--              OR ( gt_edi_work(gt_edi_work.first).info_class = cv_info_class_type_02 )THEN
+              -- エラーチェック有りの場合、EDIヘッダ情報の取得を行う
+              IF ( gv_error_check_flag = cv_yes ) THEN
+/* 2009/09/10 Ver1.10 Mod End   */
                 -- ============================================
                 -- EDI明細情報テーブルデータ抽出(A-10)
                 -- ============================================
