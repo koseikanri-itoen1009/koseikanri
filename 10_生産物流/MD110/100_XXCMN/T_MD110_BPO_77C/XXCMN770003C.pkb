@@ -7,7 +7,7 @@ AS
  * Description      : 受払残高表（Ⅱ）
  * MD.050/070       : 月次〆切処理帳票Issue1.0(T_MD050_BPO_770)
  *                  : 月次〆切処理帳票Issue1.0(T_MD070_BPO_77C)
- * Version          : 1.21
+ * Version          : 1.22
  *
  * Program List
  * -------------------------- ------------------------------------------------------------
@@ -57,6 +57,7 @@ AS
  *  2009/05/29    1.19  Marushita        本番障害1511対応
  *  2009/08/12    1.20  Marushita        本番障害1608対応
  *  2009/09/07    1.21  Marushita        本番障害1639対応
+ *  2010/05/14    1.22  M.Hokkanji       本稼動障害#2688対応
  *
  *****************************************************************************************/
 --
@@ -148,6 +149,9 @@ AS
   gc_dis_etc_num          CONSTANT NUMBER := 12; -- その他（払出）
   gc_inv_he_num           CONSTANT NUMBER := 13; -- 棚卸減耗（払出）
 --
+-- 2010/05/14 Ver1.22 M.Hokaknji ADD START
+  gc_dealings_div         CONSTANT VARCHAR2(3) := '303'; --合組打込
+-- 2010/05/14 Ver1.22 M.Hokaknji ADD END
   -- ===============================
   -- ユーザー定義グローバル型
   -- ===============================
@@ -1251,6 +1255,9 @@ AS
 --      AND    xrpm.dealings_div IN('306','309')
       AND    ((xrpm.dealings_div = '306' AND mcb2.segment1 = '5') OR 
               (xrpm.dealings_div = '309' AND mcb2.segment1 IN ('1','4'))
+-- 2010/05/14 Ver1.22 M.Hokkanji ADD START
+              OR (xrpm.dealings_div = gc_dealings_div)
+-- 2010/05/14 Ver1.22 M.Hokkanji ADD END
              )
 -- 2009/09/07 MOD END
       AND ((xrpm.routing_class    <> '70') OR 
@@ -2033,6 +2040,9 @@ AS
 --      AND    xrpm.dealings_div IN('306','309')
       AND    ((xrpm.dealings_div = '306' AND mcb2.segment1 = '5') OR 
               (xrpm.dealings_div = '309' AND mcb2.segment1 IN ('1','4'))
+-- 2010/05/14 Ver1.22 M.Hokkanji ADD START
+              OR (xrpm.dealings_div = gc_dealings_div)
+-- 2010/05/14 Ver1.22 M.Hokkanji ADD END
              )
 -- 2009/09/07 MOD END
       AND ((xrpm.routing_class    <> '70') OR 
@@ -2824,6 +2834,9 @@ AS
 --      AND    xrpm.dealings_div IN('306','309')
       AND    ((xrpm.dealings_div = '306' AND mcb2.segment1 = '5') OR 
               (xrpm.dealings_div = '309' AND mcb2.segment1 IN ('1','4'))
+-- 2010/05/14 Ver1.22 M.Hokkanji ADD START
+              OR (xrpm.dealings_div = gc_dealings_div)
+-- 2010/05/14 Ver1.22 M.Hokkanji ADD END
              )
 -- 2009/09/07 MOD END
       AND ((xrpm.routing_class    <> '70') OR 
@@ -3615,6 +3628,9 @@ AS
 --      AND    xrpm.dealings_div IN('306','309')
       AND    ((xrpm.dealings_div = '306' AND mcb2.segment1 = '5') OR 
               (xrpm.dealings_div = '309' AND mcb2.segment1 IN ('1','4'))
+-- 2010/05/14 Ver1.22 M.Hokkanji ADD START
+              OR (xrpm.dealings_div = gc_dealings_div)
+-- 2010/05/14 Ver1.22 M.Hokkanji ADD END
              )
 -- 2009/09/07 MOD END
       AND ((xrpm.routing_class    <> '70') OR 
@@ -4403,6 +4419,9 @@ AS
 --      AND    xrpm.dealings_div IN('306','309')
       AND    ((xrpm.dealings_div = '306' AND mcb2.segment1 = '5') OR 
               (xrpm.dealings_div = '309' AND mcb2.segment1 IN ('1','4'))
+-- 2010/05/14 Ver1.22 M.Hokkanji ADD START
+              OR (xrpm.dealings_div = gc_dealings_div)
+-- 2010/05/14 Ver1.22 M.Hokkanji ADD END
              )
 -- 2009/09/07 MOD END
       AND ((xrpm.routing_class    <> '70') OR 
@@ -5185,6 +5204,9 @@ AS
 --      AND    xrpm.dealings_div IN('306','309')
       AND    ((xrpm.dealings_div = '306' AND mcb2.segment1 = '5') OR 
               (xrpm.dealings_div = '309' AND mcb2.segment1 IN ('1','4'))
+-- 2010/05/14 Ver1.22 M.Hokkanji ADD START
+              OR (xrpm.dealings_div = gc_dealings_div)
+-- 2010/05/14 Ver1.22 M.Hokkanji ADD END
              )
 -- 2009/09/07 MOD END
       AND ((xrpm.routing_class    <> '70') OR 
