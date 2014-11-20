@@ -7,7 +7,7 @@ AS
  * Description      : 倉庫品目マスタのアップロード
  * MD.050           : ファイルアップロード     T_MD050_BPO_922
  * MD.070           : 倉庫品目マスタのアップロード T_MD070_BPO_92G
- * Version          : 1.0
+ * Version          : 1.1
  *
  * Program List
  * ------------------------- ----------------------------------------------------------
@@ -25,7 +25,8 @@ AS
  * ------------- ----- ---------------- -------------------------------------------------
  *  Date          Ver.  Editor           Description
  * ------------- ----- ---------------- -------------------------------------------------
- *  2008/06/16    1.0   Oracle 新藤義勝   初回作成
+ *  2008/06/16    1.0   Y.shindou        初回作成
+ *  2008/08/25    1.1   H.Itou           内部変更要求#207対応
  *****************************************************************************************/
 --
 --#######################  固定グローバル定数宣言部 START   #######################
@@ -86,9 +87,14 @@ AS
   -- メッセージ番号
   gv_c_msg_ng_profile CONSTANT VARCHAR2(15)  := 'APP-XXWSH-11601';  -- プロファイル取得エラー
   gv_c_msg_ng_lock    CONSTANT VARCHAR2(15)  := 'APP-XXWSH-12954';  -- ロックエラー
-  gv_c_msg_ng_data    CONSTANT VARCHAR2(15)  := 'APP-XXWSH-13152';  -- データ取得エラー
-  gv_c_msg_ng_format  CONSTANT VARCHAR2(15)  := 'APP-XXWSH-13153';
-                                                     -- フォーマットチェックエラーメッセージ
+-- 2008/08/25 H.Itou Mod Start
+--  gv_c_msg_ng_data    CONSTANT VARCHAR2(15)  := 'APP-XXWSH-13152';  -- データ取得エラー
+  gv_c_msg_ng_data    CONSTANT VARCHAR2(15)  := 'APP-XXWSH-13401';  -- データ取得エラー
+-- 2008/08/25 H.Itou Mod End
+-- 2008/08/25 H.Itou Mod Start
+--  gv_c_msg_ng_format  CONSTANT VARCHAR2(15)  := 'APP-XXWSH-13153';  -- フォーマットチェックエラーメッセージ
+  gv_c_msg_ng_format  CONSTANT VARCHAR2(15)  := 'APP-XXWSH-13402';  -- フォーマットチェックエラーメッセージ
+-- 2008/08/25 H.Itou Mod End
 --
   gv_c_msg_file_name  CONSTANT VARCHAR2(15)  := 'APP-XXWSH-33305';  -- ファイル名
   gv_c_msg_up_date    CONSTANT VARCHAR2(15)  := 'APP-XXWSH-33306';  -- アップロード日時
