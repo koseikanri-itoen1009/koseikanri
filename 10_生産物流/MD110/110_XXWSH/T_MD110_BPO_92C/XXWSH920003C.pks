@@ -1,4 +1,4 @@
-CREATE OR REPLACE PACKAGE APPS.XXWSH920003C AS
+CREATE OR REPLACE PACKAGE XXWSH920003C AS
 /*****************************************************************************************
  * Copyright(c)Oracle Corporation Japan, 2008. All rights reserved.
  *
@@ -6,7 +6,7 @@ CREATE OR REPLACE PACKAGE APPS.XXWSH920003C AS
  * Description      : 移動指示発注依頼自動作成
  * MD.050           : 生産物流共通（出荷・移動仮引当） T_MD050_BPO921
  * MD.070           : 移動指示発注依頼自動作成 T_MD070_BPO92C
- * Version          : 1.4
+ * Version          : 1.5
  *
  * Program List
  * -------------------- ------------------------------------------------------------
@@ -31,7 +31,7 @@ CREATE OR REPLACE PACKAGE APPS.XXWSH920003C AS
  *  2008/10/03   1.4   Oracle 中田 準   内部課題#32、内部課題#58/内部変更#166、
  *                                      内部課題#66/内部変更#173、内部変更#183
  *                                      内部変更#233
- *
+ *  2008/10/20   1.5   Oracle 福田      統合テスト指摘#240
  *****************************************************************************************/
 --
   --コンカレント実行ファイル登録プロシージャ

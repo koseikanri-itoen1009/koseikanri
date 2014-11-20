@@ -7,7 +7,7 @@ AS
  * Description      : 移動指示発注依頼自動作成
  * MD.050           : 生産物流共通（出荷・移動仮引当） T_MD050_BPO921
  * MD.070           : 移動指示発注依頼自動作成 T_MD070_BPO92C
- * Version          : 1.4
+ * Version          : 1.5
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -50,7 +50,7 @@ AS
  *  2008/10/03   1.4   Oracle 中田 準   内部課題#32、内部課題#58/内部変更#166、
  *                                      内部課題#66/内部変更#173、内部変更#183
  *                                      内部変更#233
- *
+ *  2008/10/20   1.5   Oracle 福田      統合テスト指摘#240
  *****************************************************************************************/
 --
 --#######################  固定グローバル定数宣言部 START   #######################
@@ -5902,7 +5902,9 @@ debug_log(FND_FILE.LOG,'(C-15)' || cv_prg_name || ' Start･･･');
                                          lv_errmsg,           -- 5.エラーメッセージ O
                                          ln_weight,           -- 6.合計重量 O
                                          ln_capacity,         -- 7.合計容積 O
-                                         ln_p_weight);        -- 8.合計パレット重量 O
+                                         ln_p_weight,         -- 8.合計パレット重量 O
+                                         TO_DATE(iv_arrival_date,'YYYY/MM/DD') -- 9.基準日 I     2008/10/20 統合テスト指摘#240 Add
+                                         );
 --
 debug_log(FND_FILE.LOG,'  移動明細 合計値算出(重量/容積)');
 debug_log(FND_FILE.LOG,'    品目コード  = ' || lv_item_code);
@@ -5913,6 +5915,7 @@ debug_log(FND_FILE.LOG,'    エラーメッセージ = ' || lv_errmsg);
 debug_log(FND_FILE.LOG,'    合計重量 = ' || ln_weight);
 debug_log(FND_FILE.LOG,'    合計容積 = ' || ln_capacity);
 debug_log(FND_FILE.LOG,'    合計パレット重量 = ' || ln_p_weight);
+debug_log(FND_FILE.LOG,'    基準日 = ' || iv_arrival_date);
 --
       -- 関数エラー処理
       IF (lv_retcode <> gv_status_normal) THEN
