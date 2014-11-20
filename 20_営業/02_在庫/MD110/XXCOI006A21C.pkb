@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCOI006A21C(body)
  * Description      : 棚卸結果作成
  * MD.050           : HHT棚卸結果データ取込 <MD050_COI_A21>
- * Version          : 1.7
+ * Version          : 1.8
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -39,6 +39,7 @@ AS
  *  2009/06/02    1.5   H.Sasaki         [T1_1300]棚卸場所の編集処理を追加
  *  2009/07/14    1.6   H.Sasaki         [0000461]棚卸しデータ取込順の採番方法修正
  *  2009/11/18    1.7   N.Abe            [E_T4_00199]ケース数、入数、本数がNULLの場合、0に変換
+ *  2009/11/29    1.8   N.Abe            [E_本稼動_00134]棚卸しデータ取込順の採番方法修正
  *
  *****************************************************************************************/
 --
@@ -2286,7 +2287,10 @@ AS
 --               ,ilv.input_order                   --  2.取込順
                ,ROW_NUMBER() OVER
                           (PARTITION BY ilv.base_code, ilv.inventory_place
-                           ORDER BY     ilv.base_code, ilv.inventory_place, ilv.creation_date
+-- == 2009/11/29 V1.8 Modified START ===============================================================
+--                           ORDER BY     ilv.base_code, ilv.inventory_place, ilv.creation_date
+                           ORDER BY     ilv.base_code, ilv.inventory_place, ilv.interface_id
+-- == 2009/11/29 V1.8 Modified END   ===============================================================
                           ) input_order           --  2.取込順
 -- == 2009/07/14 V1.6 Modified END   ===============================================================
                ,ilv.base_code                     --  3.拠点コード
@@ -2332,6 +2336,9 @@ AS
       AND       ilv.inventory_kbn   = xic.inventory_kbn(+)      -- 棚卸区分
       ORDER BY  ilv.base_code
                ,ilv.inventory_place
+-- == 2009/11/29 V1.8 Added START ===============================================================
+               ,ilv.interface_id
+-- == 2009/11/29 V1.8 Added END   ===============================================================
                ,ilv.inventory_date
                ,ilv.inventory_kbn
       FOR UPDATE OF ilv.interface_id NOWAIT
