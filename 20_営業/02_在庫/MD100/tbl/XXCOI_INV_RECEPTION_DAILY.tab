@@ -3,7 +3,7 @@
  *
  * Table Name  : XXCOI_INV_RECEPTION_DAILY
  * Description : 月次在庫受払表（日次）
- * Version     : 1.2
+ * Version     : 1.3
  *
  * Change Record
  * ------------- ----- ---------------- ---------------------------------
@@ -11,7 +11,8 @@
  * ------------- ----- ---------------- ---------------------------------
  *  2008/11/28    1.0   H.Sasaki         新規作成
  *  2009/05/29    1.1   S.Moriyama       PKよりORGANIZATION_IDを除外
- *  2009/08/18    1.2   N.Abe            STANDARD_COSTを7,2→9,2へ修正
+ *  2009/08/18    1.2   N.Abe            STANDARD_COSTを7,2→9,2へ修
+ *  2009/08/24    1.3   H.Sasaki         [0000956]PRIMARY KEYの順序を変更
  *
  ************************************************************************/
  CREATE TABLE xxcoi.xxcoi_inv_reception_daily (
@@ -72,7 +73,7 @@
     ,program_application_id         NUMBER(15)
     ,program_id                     NUMBER(15)
     ,program_update_date            DATE
-  ,CONSTRAINT xxcoi_inv_reception_daily_pk PRIMARY KEY (base_code, subinventory_code, practice_date, inventory_item_id)
+  ,CONSTRAINT xxcoi_inv_reception_daily_pk PRIMARY KEY (subinventory_code, inventory_item_id, practice_date, organization_id, base_code)
   USING INDEX TABLESPACE xxidx2)
  PCTFREE 20 PCTUSED 60 INITRANS 32 STORAGE ( INITIAL 65M)
 /

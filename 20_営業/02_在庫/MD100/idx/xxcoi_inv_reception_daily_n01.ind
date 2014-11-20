@@ -3,20 +3,22 @@
  *
  * Index Name  : XXCOI_INV_RECEPTION_DAILY_N01
  * Description : 月次在庫受払表（日次）インデックスN01
- * Version     : 1.0
+ * Version     : 1.1
  *
  * Change Record
  * ------------- ----- ---------------- ---------------------------------
  *  Date          Ver.  Editor           Description
  * ------------- ----- ---------------- ---------------------------------
  *  2009/05/29    1.0   S.Moriyama       新規作成
+ *  2009/08/24    1.1   H.Sasaki         [0000956]項目順序を変更
  *
  ************************************************************************/
 CREATE INDEX XXCOI.XXCOI_INV_RECEPTION_DAILY_N01
 ON XXCOI.XXCOI_INV_RECEPTION_DAILY
 (
-  PRACTICE_DATE
+  SUBINVENTORY_CODE
+ ,PRACTICE_DATE
+ ,ORGANIZATION_ID
  ,BASE_CODE
- ,SUBINVENTORY_CODE
 )
 TABLESPACE XXIDX2;
