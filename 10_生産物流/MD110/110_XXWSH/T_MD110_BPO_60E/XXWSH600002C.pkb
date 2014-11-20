@@ -7,7 +7,7 @@ AS
  * Description      : 入出庫配送計画情報抽出処理
  * MD.050           : T_MD050_BPO_601_配車配送計画
  * MD.070           : T_MD070_BPO_60E_入出庫配送計画情報抽出処理
- * Version          : 1.16
+ * Version          : 1.17
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -54,6 +54,8 @@ AS
  *  2008/08/12    1.15  N.Fukuda         課題#32対応
  *  2008/08/12    1.15  N.Fukuda         課題#48(変更要求#164)対応
  *  2008/09/01    1.16  Y.Yamamoto       PT 2-2_17 指摘17対応
+ *  2008/09/09    1.17  N.Fukuda         TE080_600指摘#30対応
+ *  2008/09/10    1.17  N.Fukuda         参照Viewの変更(パーティから顧客に変更)
  *****************************************************************************************/
 --
 --#######################  固定グローバル定数宣言部 START   #######################
@@ -979,16 +981,20 @@ AS
             ,xc.eos_detination                        -- 09:EOS宛先（運送業者）
             ,xoha.delivery_no                         -- 10:配送No
             ,xoha.request_no                          -- 11:依頼No
-            ,xp.party_number                          -- 12:拠点コード
-            ,xp.party_name                            -- 13:管轄拠点名称
+            --,xp.party_number                          -- 12:拠点コード   -- 2008/09/10 参照View変更 Del
+            --,xp.party_name                            -- 13:管轄拠点名称 -- 2008/09/10 参照View変更 Del
+            ,xca.party_number                         -- 12:拠点コード     -- 2008/09/10 参照View変更 Add
+            ,xca.party_name                           -- 13:管轄拠点名称   -- 2008/09/10 参照View変更 Add
             ,xil.segment1                             -- 14:出庫倉庫コード
             ,SUBSTRB( xil.description, 1, 20 )        -- 15:出庫倉庫名称
             ,NULL                                     -- 16:入庫倉庫コード
             ,NULL                                     -- 17:入庫倉庫名称
             ,xc.party_number                          -- 18:運送業者コード
             ,xc.party_name                            -- 19:運送業者名
-            ,xps.party_site_number                    -- 20:配送先コード
-            ,xps.party_site_full_name                 -- 21:配送先名
+            --,xps.party_site_number                    -- 20:配送先コード  -- 2008/09/10 参照View変更 Del
+            --,xps.party_site_full_name                 -- 21:配送先名      -- 2008/09/10 参照View変更 Del
+            ,xcas.party_site_number                   -- 20:配送先コード    -- 2008/09/10 参照View変更 Add
+            ,xcas.party_site_full_name                -- 21:配送先名        -- 2008/09/10 参照View変更 Add
             ,xoha.schedule_ship_date                  -- 22:発日
             ,xoha.schedule_arrival_date               -- 23:着日
             ,xlv.lookup_code                          -- 24:配送区分
@@ -1034,8 +1040,10 @@ AS
           ,oe_transaction_types_all   otta      -- 受注タイプ
           ,xxcmn_item_locations_v     xil       -- OPM保管場所情報VIEW
           ,xxcmn_carriers2_v          xc        -- 運送業者情報VIEW2
-          ,xxcmn_party_sites2_v       xps       -- パーティサイト情報VIEW2（配送先）
-          ,xxcmn_parties2_v           xp        -- パーティ情報VIEW2（拠点）
+          --,xxcmn_party_sites2_v       xps       -- パーティサイト情報VIEW2（配送先）-- 2008/09/10 参照View変更 Del
+          ,xxcmn_cust_acct_sites2_v   xcas      -- 顧客サイト情報VIEW2                -- 2008/09/10 参照View変更 Add
+          --,xxcmn_parties2_v           xp        -- パーティ情報VIEW2（拠点）        -- 2008/09/10 参照View変更 Del
+          ,xxcmn_cust_accounts2_v     xca       -- 顧客情報VIEW2                      -- 2008/09/10 参照View変更 Add
           ,xxwsh_carriers_schedule    xcs       -- 配車配送計画アドオン
           ,xxcmn_lookup_values2_v     xlv       -- クイックコード情報VIEW2
           ,xxcmn_item_mst2_v          xim       -- OPM品目情報VIEW2
@@ -1078,12 +1086,22 @@ AS
 -- M.HOKKANJI Ver1.2 END
       ----------------------------------------------------------------------------------------------
       -- 配送先
-      AND   gd_effective_date  BETWEEN xp.start_date_active
-                               AND     NVL( xp.end_date_active, gd_effective_date )
-      AND   xps.base_code      = xp.party_number
-      AND   gd_effective_date  BETWEEN xps.start_date_active
-                               AND     NVL( xps.end_date_active, gd_effective_date )
-      AND   xoha.deliver_to_id = xps.party_site_id
+      --AND   gd_effective_date  BETWEEN xp.start_date_active                         -- 2008/09/10 参照View変更 Del
+      --                         AND     NVL( xp.end_date_active, gd_effective_date ) -- 2008/09/10 参照View変更 Del
+      AND   gd_effective_date  BETWEEN xca.start_date_active                          -- 2008/09/10 参照View変更 Add
+                               AND     NVL( xca.end_date_active, gd_effective_date )  -- 2008/09/10 参照View変更 Add
+      -- 2008/09/10 参照View変更 Del Start -------------------------------
+      --AND   xps.base_code      = xp.party_number
+      --AND   gd_effective_date  BETWEEN xps.start_date_active
+      --                         AND     NVL( xps.end_date_active, gd_effective_date )
+      --AND   xoha.deliver_to_id = xps.party_site_id
+      -- 2008/09/10 参照View変更 Del End --------------------------------
+      -- 2008/09/10 参照View変更 Add Start --------------------------------
+      AND   xcas.base_code      = xca.party_number
+      AND   gd_effective_date  BETWEEN xcas.start_date_active
+                               AND     NVL( xcas.end_date_active, gd_effective_date )
+      AND   xoha.deliver_to_id = xcas.party_site_id
+      -- 2008/09/10 参照View変更 Add End --------------------------------
       ----------------------------------------------------------------------------------------------
       -- 運送業者
       AND   gd_effective_date BETWEEN xc.start_date_active(+)
@@ -1338,8 +1356,10 @@ AS
             ,NVL( xmrih.arrival_time_to  , gc_time_default )    -- 30:着荷時間指定To
             ,NULL                                     -- 31:顧客発注番号
             ,xmrih.description                        -- 32:摘要
-            ,xmrih.out_pallet_qty                     -- 33:ﾊﾟﾚｯﾄ使用枚数（出）
-            ,xmrih.in_pallet_qty                      -- 34:ﾊﾟﾚｯﾄ使用枚数（入）
+            --,xmrih.out_pallet_qty                     -- 33:ﾊﾟﾚｯﾄ使用枚数（出） -- 2008/09/09 TE080_600指摘#30 Del
+            --,xmrih.in_pallet_qty                      -- 34:ﾊﾟﾚｯﾄ使用枚数（入） -- 2008/09/09 TE080_600指摘#30 Del
+            ,xmrih.pallet_sum_quantity                  -- 33:ﾊﾟﾚｯﾄ使用枚数（出） -- 2008/09/09 TE080_600指摘#30 Add
+            ,xmrih.pallet_sum_quantity                  -- 34:ﾊﾟﾚｯﾄ使用枚数（入） -- 2008/09/09 TE080_600指摘#30 Add
             ,xmrih.instruction_post_code              -- 35:報告部署
             ,xic.prod_class_code                      -- 36:商品区分
             ,xic.item_class_code                      -- 37:品目区分
@@ -1463,16 +1483,20 @@ AS
             ,xc.eos_detination                        -- 09:EOS宛先（運送業者）
             ,xoha.delivery_no                         -- 10:配送No
             ,xoha.request_no                          -- 11:依頼No
-            ,xp.party_number                          -- 12:拠点コード
-            ,xp.party_name                            -- 13:管轄拠点名称
+            --,xp.party_number                          -- 12:拠点コード   -- 2008/09/10 参照View変更 Del
+            --,xp.party_name                            -- 13:管轄拠点名称 -- 2008/09/10 参照View変更 Del
+            ,xca.party_number                          -- 12:拠点コード    -- 2008/09/10 参照View変更 Add
+            ,xca.party_name                            -- 13:管轄拠点名称  -- 2008/09/10 参照View変更 Add
             ,xil.segment1                             -- 14:出庫倉庫コード
             ,SUBSTRB( xil.description, 1, 20 )        -- 15:出庫倉庫名称
             ,NULL                                     -- 16:入庫倉庫コード
             ,NULL                                     -- 17:入庫倉庫名称
             ,xc.party_number                          -- 18:運送業者コード
             ,xc.party_name                            -- 19:運送業者名
-            ,xps.party_site_number                    -- 20:配送先コード
-            ,xps.party_site_full_name                 -- 21:配送先名
+            --,xps.party_site_number                    -- 20:配送先コード -- 2008/09/10 参照View変更 Del
+            --,xps.party_site_full_name                 -- 21:配送先名     -- 2008/09/10 参照View変更 Del
+            ,xcas.party_site_number                   -- 20:配送先コード   -- 2008/09/10 参照View変更 Add
+            ,xcas.party_site_full_name                -- 21:配送先名       -- 2008/09/10 参照View変更 Add
             ,xoha.schedule_ship_date                  -- 22:発日
             ,xoha.schedule_arrival_date               -- 23:着日
             ,xlv.lookup_code                          -- 24:配送区分
@@ -1518,8 +1542,10 @@ AS
           ,oe_transaction_types_all   otta      -- 受注タイプ
           ,xxcmn_item_locations_v     xil       -- OPM保管場所情報VIEW
           ,xxcmn_carriers2_v          xc        -- 運送業者情報VIEW2
-          ,xxcmn_party_sites2_v       xps       -- パーティサイト情報VIEW2（配送先）
-          ,xxcmn_parties2_v           xp        -- パーティ情報VIEW2（拠点）
+          --,xxcmn_party_sites2_v       xps       -- パーティサイト情報VIEW2（配送先）-- 2008/09/10 参照View変更 Del
+          ,xxcmn_cust_acct_sites2_v   xcas      -- 顧客サイト情報VIEW2                -- 2008/09/10 参照View変更 Add
+          --,xxcmn_parties2_v           xp        -- パーティ情報VIEW2（拠点）        -- 2008/09/10 参照View変更 Del
+          ,xxcmn_cust_accounts2_v     xca       -- 顧客情報VIEW2                      -- 2008/09/10 参照View変更 Add
           ,xxwsh_carriers_schedule    xcs       -- 配車配送計画アドオン
           ,xxcmn_lookup_values2_v     xlv       -- クイックコード情報VIEW2
           ,xxcmn_item_mst2_v          xim       -- OPM品目情報VIEW2
@@ -1557,12 +1583,22 @@ AS
 -- M.HOKKANJI Ver1.2 END
       ----------------------------------------------------------------------------------------------
       -- 配送先
-      AND   gd_effective_date  BETWEEN xp.start_date_active
-                               AND     NVL( xp.end_date_active, gd_effective_date )
-      AND   xps.base_code      = xp.party_number
-      AND   gd_effective_date  BETWEEN xps.start_date_active
-                               AND     NVL( xps.end_date_active, gd_effective_date )
-      AND   xoha.deliver_to_id = xps.party_site_id
+      --AND   gd_effective_date  BETWEEN xp.start_date_active                         -- 2008/09/10 参照View変更 Del
+      --                         AND     NVL( xp.end_date_active, gd_effective_date ) -- 2008/09/10 参照View変更 Del
+      AND   gd_effective_date  BETWEEN xca.start_date_active                          -- 2008/09/10 参照View変更 Add
+                               AND     NVL( xca.end_date_active, gd_effective_date )  -- 2008/09/10 参照View変更 Add
+      -- 2008/09/10 参照View変更 Del Start ----------------------------------
+      --AND   xps.base_code      = xp.party_number
+      --AND   gd_effective_date  BETWEEN xps.start_date_active
+      --                         AND     NVL( xps.end_date_active, gd_effective_date )
+      --AND   xoha.deliver_to_id = xps.party_site_id
+      -- 2008/09/10 参照View変更 Del End ----------------------------------
+      -- 2008/09/10 参照View変更 Add Start ----------------------------------
+      AND   xcas.base_code      = xca.party_number
+      AND   gd_effective_date  BETWEEN xcas.start_date_active
+                               AND     NVL( xcas.end_date_active, gd_effective_date )
+      AND   xoha.deliver_to_id = xcas.party_site_id
+      -- 2008/09/10 参照View変更 Add End ----------------------------------
       ----------------------------------------------------------------------------------------------
       -- 運送業者
       AND   gd_effective_date BETWEEN xc.start_date_active(+)
@@ -1820,8 +1856,10 @@ AS
             ,NVL( xmrih.arrival_time_to  , gc_time_default )    -- 30:着荷時間指定To
             ,NULL                                     -- 31:顧客発注番号
             ,xmrih.description                        -- 32:摘要
-            ,xmrih.out_pallet_qty                     -- 33:ﾊﾟﾚｯﾄ使用枚数（出）
-            ,xmrih.in_pallet_qty                      -- 34:ﾊﾟﾚｯﾄ使用枚数（入）
+            --,xmrih.out_pallet_qty                     -- 33:ﾊﾟﾚｯﾄ使用枚数（出）  -- 2008/09/09 TE080_600指摘#30 Del
+            --,xmrih.in_pallet_qty                      -- 34:ﾊﾟﾚｯﾄ使用枚数（入）  -- 2008/09/09 TE080_600指摘#30 Del
+            ,xmrih.pallet_sum_quantity                  -- 33:ﾊﾟﾚｯﾄ使用枚数（出）  -- 2008/09/09 TE080_600指摘#30 Add
+            ,xmrih.pallet_sum_quantity                  -- 34:ﾊﾟﾚｯﾄ使用枚数（入）  -- 2008/09/09 TE080_600指摘#30 Add
             ,xmrih.instruction_post_code              -- 35:報告部署
             ,xic.prod_class_code                      -- 36:商品区分
             ,xic.item_class_code                      -- 37:品目区分

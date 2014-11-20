@@ -7,7 +7,7 @@ AS
  * Description      : ＨＨＴ入出庫配車確定情報抽出処理
  * MD.050           : T_MD050_BPO_601_配車配送計画
  * MD.070           : T_MD070_BPO_60F_ＨＨＴ入出庫配車確定情報抽出処理
- * Version          : 1.12
+ * Version          : 1.13
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -50,6 +50,8 @@ AS
  *  2008/08/29    1.11  N.Fukuda         TE080_600指摘#28対応
  *  2008/08/29    1.11  N.Fukuda         TE080_600指摘#29対応(TE080_400指摘#83の再修正)
  *  2008/08/29    1.12  N.Fukuda         取消ヘッダに品目数量・ロット数量に0がセットされている
+ *  2008/09/09    1.13  N.Fukuda         TE080_600指摘#30対応
+ *  2008/09/10    1.13  N.Fukuda         参照Viewの変更(パーティから顧客に変更)
  *****************************************************************************************/
 --
 --#######################  固定グローバル定数宣言部 START   #######################
@@ -952,16 +954,20 @@ AS
               -- 2008/08/29 TE080_600指摘#27(1) Add End ----------------------------
               ,xoha.delivery_no                   AS delivery_no
               ,xoha.request_no                    AS request_no
-              ,xp.party_number                    AS head_sales_branch
-              ,xp.party_name                      AS head_sales_branch_name
+              --,xp.party_number                    AS head_sales_branch      -- 2008/09/10 参照View変更 Del
+              --,xp.party_name                      AS head_sales_branch_name -- 2008/09/10 参照View変更 Del
+              ,xca.party_number                    AS head_sales_branch       -- 2008/09/10 参照View変更 Add
+              ,xca.party_name                      AS head_sales_branch_name  -- 2008/09/10 参照View変更 Add
               ,xil.segment1                       AS shipped_locat_code
               ,SUBSTRB( xil.description, 1, 20 )  AS shipped_locat_name
               ,NULL                               AS ship_to_locat_code
               ,NULL                               AS ship_to_locat_name
               ,xc.party_number                    AS freight_carrier_code
               ,xc.party_name                      AS freight_carrier_name
-              ,xps.party_site_number              AS deliver_to
-              ,xps.party_site_full_name           AS deliver_to_name
+              --,xps.party_site_number              AS deliver_to        -- 2008/09/10 参照View変更 Del
+              --,xps.party_site_full_name           AS deliver_to_name   -- 2008/09/10 参照View変更 Del
+              ,xcas.party_site_number             AS deliver_to          -- 2008/09/10 参照View変更 Add
+              ,xcas.party_site_full_name          AS deliver_to_name     -- 2008/09/10 参照View変更 Add
               ,xoha.schedule_ship_date            AS schedule_ship_date
               ,xoha.schedule_arrival_date         AS schedule_arrival_date
               ,xlv.lookup_code                    AS shipping_method_code
@@ -1022,8 +1028,10 @@ AS
             ,xxwsh_oe_transaction_types2_v   xottv  -- 受注タイプ情報View２ -- 2008/07/22 I_S_001 Add
             ,xxcmn_item_locations_v     xil       -- OPM保管場所情報VIEW
             ,xxcmn_carriers2_v          xc        -- 運送業者情報VIEW2
-            ,xxcmn_party_sites2_v       xps       -- パーティサイト情報VIEW2（配送先）
-            ,xxcmn_parties2_v           xp        -- パーティ情報VIEW2（拠点）
+            --,xxcmn_party_sites2_v       xps       -- パーティサイト情報VIEW2（配送先）-- 2008/09/10 参照View変更 Del
+            ,xxcmn_cust_acct_sites2_v   xcas      -- 顧客サイト情報VIEW2                -- 2008/09/10 参照View変更 Add
+            --,xxcmn_parties2_v           xp        -- パーティ情報VIEW2（拠点）        -- 2008/09/10 参照View変更 Del
+            ,xxcmn_cust_accounts2_v     xca       -- 顧客情報VIEW2                      -- 2008/09/10 参照View変更 Add
             ,xxwsh_carriers_schedule    xcs       -- 配車配送計画アドオン
 -- M.HOKKANJI Ver1.2 START
 --            ,xxcmn_lookup_values_v      xlv       -- クイックコード情報VIEW
@@ -1057,12 +1065,22 @@ AS
 -- M.HOKKANJI Ver1.2 END
         -------------------------------------------------------------------------------------------
         -- 配送先
-        AND   gd_effective_date  BETWEEN xp.start_date_active
-                                 AND     NVL( xp.end_date_active, gd_effective_date )
-        AND   xps.base_code      = xp.party_number
-        AND   gd_effective_date  BETWEEN xps.start_date_active
-                                 AND     NVL( xps.end_date_active, gd_effective_date )
-        AND   xoha.deliver_to_id = xps.party_site_id
+        --AND   gd_effective_date  BETWEEN xp.start_date_active                         -- 2008/09/10 参照View変更 Del
+        --                         AND     NVL( xp.end_date_active, gd_effective_date ) -- 2008/09/10 参照View変更 Del
+        AND   gd_effective_date  BETWEEN xca.start_date_active                          -- 2008/09/10 参照View変更 Add
+                                 AND     NVL( xca.end_date_active, gd_effective_date )  -- 2008/09/10 参照View変更 Add
+        -- 2008/09/10 参照View変更 Del Start -------------------------------
+        --AND   xps.base_code      = xp.party_number
+        --AND   gd_effective_date  BETWEEN xps.start_date_active
+        --                         AND     NVL( xps.end_date_active, gd_effective_date )
+        --AND   xoha.deliver_to_id = xps.party_site_id
+        -- 2008/09/10 参照View変更 Del End -------------------------------
+        -- 2008/09/10 参照View変更 Add Start -------------------------------
+        AND   xcas.base_code      = xca.party_number
+        AND   gd_effective_date  BETWEEN xcas.start_date_active
+                                 AND     NVL( xcas.end_date_active, gd_effective_date )
+        AND   xoha.deliver_to_id = xcas.party_site_id
+        -- 2008/09/10 参照View変更 Add End -------------------------------
         -------------------------------------------------------------------------------------------
         -- 運送業者
 -- M.HOKKANJI Ver1.2 START
@@ -1203,8 +1221,10 @@ AS
               ,NVL( xmrih.arrival_time_to  , gc_time_default ) AS arrival_time_to
               ,NULL                               AS cust_po_number
               ,xmrih.description                  AS description
-              ,xmrih.out_pallet_qty               AS pallet_quantity_o
-              ,xmrih.in_pallet_qty                AS pallet_quantity_i
+              --,xmrih.out_pallet_qty               AS pallet_quantity_o  -- 2008/09/09 TE080_600指摘#30 Del
+              --,xmrih.in_pallet_qty                AS pallet_quantity_i  -- 2008/09/09 TE080_600指摘#30 Del
+              ,xmrih.pallet_sum_quantity          AS pallet_quantity_o    -- 2008/09/09 TE080_600指摘#30 Add
+              ,xmrih.pallet_sum_quantity          AS pallet_quantity_i    -- 2008/09/09 TE080_600指摘#30 Add
               ,xmrih.instruction_post_code        AS report_dept
               ,xim.item_no                        AS item_code
               ,xim.item_id                        AS item_id
