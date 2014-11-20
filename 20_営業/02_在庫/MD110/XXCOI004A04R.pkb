@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCOI004A04R(body)
  * Description      : VD機内在庫表
  * MD.050           : MD050_COI_004_A04
- * Version          : 1.9
+ * Version          : 1.10
  *
  * Program List
  * ------------------------ --------------------------------------------------------
@@ -38,6 +38,7 @@ AS
  *  2009/10/21    1.7   N.Abe            [E_最終移行リハ_00502]物件マスタの機器区分を参照する修正
  *  2009/12/25    1.8   N.Abe            [E_本稼動_00222]顧客名称取得方法修正
  *  2010/02/03    1.9   H.Sasaki         [E_本稼動_01410]品目未設定コラムを出力するよう変更
+ *  2011/11/07    1.10  K.Nakamura       [E_本稼動_08440]コラム数上限変更対応
  *
  *****************************************************************************************/
 --
@@ -1593,7 +1594,7 @@ AS
     gv_f_organization_code  :=  fnd_profile.value(cv_prf_name_orgcd);
     --
     IF (gv_f_organization_code IS NULL) THEN
-      -- プロファイル:在庫組織コード( &PRO_TOK )の取得に失敗しました。
+      -- プロファイル:在庫組織コード( PRO_TOK )の取得に失敗しました。
       lv_errmsg   :=  xxccp_common_pkg.get_msg(
                         iv_application  => cv_msg_kbn_coi
                        ,iv_name         => cv_msg_coi_00005
@@ -1610,7 +1611,7 @@ AS
     gn_f_organization_id  :=  xxcoi_common_pkg.get_organization_id(gv_f_organization_code);
     --
     IF (gn_f_organization_id IS NULL) THEN
-      -- 在庫組織コード( &ORG_CODE_TOK )に対する在庫組織IDの取得に失敗しました。
+      -- 在庫組織コード( ORG_CODE_TOK )に対する在庫組織IDの取得に失敗しました。
       lv_errmsg   :=  xxccp_common_pkg.get_msg(
                         iv_application  => cv_msg_kbn_coi
                        ,iv_name         => cv_msg_coi_00006
@@ -1776,6 +1777,10 @@ AS
     -- *** ローカル定数 ***
     cv_0               CONSTANT VARCHAR2(1) := '0';
     cv_1               CONSTANT VARCHAR2(1) := '1';
+-- == 2011/11/07 V1.10 Added START =================================================================
+    cn_line_change_rq  CONSTANT NUMBER      := 7; -- 列切替を行う基準となるラック数
+    cn_mod             CONSTANT NUMBER      := 8; -- コラム列数カウンターを割る値
+-- == 2011/11/07 V1.10 Added END   =================================================================
     -- *** ローカル変数 ***
     ln_vd_inv_wk_id    NUMBER;         -- ベンダ機内在庫表ワークID
     ln_cust_loop_cnt   NUMBER;         -- 顧客ループカウンター
@@ -2337,12 +2342,26 @@ AS
           gt_vd_inv_wk_tab(ln_cust_loop_cnt)(233 + ln_column_cnt) := get_column_info_rec.hot_cold;      -- HOT/COLD
           gt_vd_inv_wk_tab(ln_cust_loop_cnt)(289 + ln_column_cnt) := get_column_info_rec.inventory_qnt; -- 基準在庫
   --
+-- == 2011/11/07 V1.10 Modified START ==============================================================
+--          -- コラム列数カウンターをカウントアップ
+--          ln_column_cnt := ln_column_cnt + 1;
+--          -- ラック数カウンターにコラム列数カウンター÷8の余りを設定
+--          ln_rack_cnt := MOD(ln_column_cnt, 8);
+--          -- ラック数カウンター＞取得したラック数の場合
+--          IF (ln_rack_cnt > get_customer_info_rec.rack_quantity) THEN
+          -- ラック数カウンターにコラム列数カウンター÷8の余りを設定
+          ln_rack_cnt := MOD(ln_column_cnt, cn_mod);
           -- コラム列数カウンターをカウントアップ
           ln_column_cnt := ln_column_cnt + 1;
-          -- ラック数カウンターにコラム列数カウンター÷8の余りを設定
-          ln_rack_cnt := MOD(ln_column_cnt, 8);
-          -- ラック数カウンター＞取得したラック数の場合
-          IF (ln_rack_cnt > get_customer_info_rec.rack_quantity) THEN
+          -- 以下のいずれかの場合、次の列へ切り替える
+          --   取得したラック数≦7かつ、取得したラック数≦ラック数カウンターの場合
+          --   取得したラック数＞7かつ、取得したラック数＝0の場合
+          IF ( ( ( get_customer_info_rec.rack_quantity <= cn_line_change_rq )
+            AND  ( get_customer_info_rec.rack_quantity <= ln_rack_cnt ) )
+            OR
+               ( ( get_customer_info_rec.rack_quantity > cn_line_change_rq )
+            AND  ( ln_rack_cnt = 0 ) ) ) THEN
+-- == 2011/11/07 V1.10 Modified END   ==============================================================
             -- コラム列数カウンター＜９の場合
             IF (ln_column_cnt < 9) THEN
               ln_column_cnt := 9;
