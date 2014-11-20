@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCMM003A19C(body)
  * Description      : HHT連携IFデータ作成
  * MD.050           : MD050_CMM_003_A19_HHT系連携IFデータ作成
- * Version          : 1.6
+ * Version          : 1.7
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -29,6 +29,7 @@ AS
  *  2009/06/09    1.4   Yutaka.Kuboshima 障害T1_1364の対応
  *  2009/08/24    1.5   Yutaka.Kuboshima 統合テスト障害0000487の対応
  *  2009/11/23    1.6   Yutaka.Kuboshima 障害E_本番_00329の対応
+ *  2009/12/06    1.7   Yutaka.Kuboshima 障害E_本稼動_00327の対応
  *
  *****************************************************************************************/
 --
@@ -535,7 +536,42 @@ AS
                WHERE  hca7.party_id = hp7.party_id
                  AND  hp7.party_id  = hop7.party_id
                  AND  hop7.organization_profile_id = hopev7.organization_profile_id
+-- 2009/12/06 Ver1.7 障害E_本稼動_00327 add start by Yutaka.Kuboshima
+                 AND  hop7.effective_end_date IS NULL
+-- 2009/12/06 Ver1.7 障害E_本稼動_00327 add end by Yutaka.Kuboshima
                  AND  hopev7.last_update_date BETWEEN p_proc_date_from AND p_proc_date_to
+-- 2009/12/06 Ver1.7 障害E_本稼動_00327 add start by Yutaka.Kuboshima
+-- 担当営業員、ルートの有効開始日が
+-- 最終更新日(開始) + 1 <= 有効開始日 <= 最終更新日(終了)の翌日付の場合も対象データとするように修正
+               UNION
+               -- 担当営業員
+               SELECT hca8.cust_account_id customer_id
+               FROM   hz_cust_accounts hca8
+                     ,hz_parties hp8
+                     ,hz_organization_profiles hop8
+                     ,hz_org_profiles_ext_vl hopev8
+                     ,ego_resource_agv era8
+               WHERE  hca8.party_id = hp8.party_id
+                 AND  hp8.party_id  = hop8.party_id
+                 AND  hop8.organization_profile_id = hopev8.organization_profile_id
+                 AND  hopev8.extension_id = era8.extension_id
+                 AND  hop8.effective_end_date IS NULL
+                 AND  hopev8.d_ext_attr1 BETWEEN (p_proc_date_from + 1) AND xxccp_common_pkg2.get_working_day(p_proc_date_to, 1)
+               UNION
+               -- ルート
+               SELECT hca9.cust_account_id customer_id
+               FROM   hz_cust_accounts hca9
+                     ,hz_parties hp9
+                     ,hz_organization_profiles hop9
+                     ,hz_org_profiles_ext_vl hopev9
+                     ,ego_route_agv era9
+               WHERE  hca9.party_id = hp9.party_id
+                 AND  hp9.party_id  = hop9.party_id
+                 AND  hop9.organization_profile_id = hopev9.organization_profile_id
+                 AND  hopev9.extension_id = era9.extension_id
+                 AND  hop9.effective_end_date IS NULL
+                 AND  hopev9.d_ext_attr3 BETWEEN (p_proc_date_from + 1) AND xxccp_common_pkg2.get_working_day(p_proc_date_to, 1)
+-- 2009/12/06 Ver1.7 障害E_本稼動_00327 add end by Yutaka.Kuboshima
              ) def
       WHERE  hca.cust_account_id = def.customer_id
       ORDER BY hca.account_number;
