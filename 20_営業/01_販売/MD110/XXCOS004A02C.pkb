@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCOS004A02C (body)
  * Description      : 商品別売上計算
  * MD.050           : 商品別売上計算 MD050_COS_004_A02
- * Version          : 1.12
+ * Version          : 1.13
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -42,6 +42,7 @@ AS
  *  2009/05/26    1.11  T.kitajima       [T1_1217]単価四捨五入
  *  2009/06/09    1.12  T.kitajima       [T1_1371]行ロック
  *  2009/06/10    1.12  T.kitajima       [T1_1412]納品伝票番号取得処理変更
+ *  2009/06/11    1.13  T.kitajima       [T1_1415]納品伝票番号取得処理変更
  *
  *****************************************************************************************/
 --
@@ -1623,7 +1624,12 @@ AS
           INTO   ln_header_id
           FROM   DUAL;
           --納品伝票番号シーケンス取得
-          lv_deli_seq := xxcos_def_pkg.set_order_number(NULL,NULL);
+--******************************* 2009/06/11 1.13 T.Kitajima MOD START ******************************--
+--        lv_deli_seq := xxcos_def_pkg.set_order_number(NULL,NULL);
+          SELECT cv_snq_i || TO_CHAR( ( lpad( XXCOS_CUST_PO_NUMBER_S01.nextval, 11, 0) ) )
+            INTO lv_deli_seq
+            FROM dual;
+--******************************* 2009/06/11 1.13 T.Kitajima MOD  END  ******************************--
           --次のINDEX値を保管
           ln_index := ln_m + 1;
         END IF;

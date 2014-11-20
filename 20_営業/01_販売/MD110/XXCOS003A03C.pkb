@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCOS003A03C(body)
  * Description      : ベンダ納品実績情報作成
  * MD.050           : ベンダ納品実績情報作成 MD050_COS_003_A03
- * Version          : 1.1
+ * Version          : 1.2
  *
  * Program List     
  * ---------------------- ----------------------------------------------------------
@@ -28,6 +28,7 @@ AS
  * ------------- ----- ---------------- -------------------------------------------------
  *  2009/01/05   1.0    K.Okaguchi       新規作成
  *  2009/02/24   1.1    T.Nakamura       [障害COS_130] メッセージ出力、ログ出力への出力内容の追加・修正
+ *  2009/06/10   1.2    T.Tominaga       [障害T1_1408] エラーメッセージの納品日の書式を’YYYY/MM/DD’に変更
  *
  *****************************************************************************************/
 --
@@ -482,7 +483,10 @@ AS
                                           ,iv_item_name1  => gv_msg_tkn_cust_code       --項目名称1
                                           ,iv_data_value1 => main_rec.customer_number   --データの値1
                                           ,iv_item_name2  => gv_msg_tkn_dlv_date        --項目名称2
-                                          ,iv_data_value2 => main_rec.dlv_date          --データの値2
+-- ******************** 2009/06/10 Var.1.2 T.Tominaga MOD START  ******************************************
+--                                          ,iv_data_value2 => main_rec.dlv_date          --データの値2
+                                          ,iv_data_value2 => TO_CHAR(main_rec.dlv_date, 'YYYY/MM/DD')   --データの値2
+-- ******************** 2009/06/10 Var.1.2 T.Tominaga MOD END    ******************************************
                                           );
           
           ov_errmsg := xxccp_common_pkg.get_msg(cv_application
@@ -554,7 +558,10 @@ AS
                                             ,iv_item_name1  => gv_msg_tkn_cust_code       --項目名称1
                                             ,iv_data_value1 => main_rec.customer_number   --データの値1
                                             ,iv_item_name2  => gv_msg_tkn_dlv_date        --項目名称2
-                                            ,iv_data_value2 => main_rec.dlv_date          --データの値2
+-- ******************** 2009/06/10 Var.1.2 T.Tominaga MOD START  ******************************************
+--                                            ,iv_data_value2 => main_rec.dlv_date          --データの値2
+                                            ,iv_data_value2 => TO_CHAR(main_rec.dlv_date, 'YYYY/MM/DD')   --データの値2
+-- ******************** 2009/06/10 Var.1.2 T.Tominaga MOD END    ******************************************
                                             );
             
             ov_errmsg := xxccp_common_pkg.get_msg(cv_application
@@ -593,7 +600,10 @@ AS
                                           ,iv_item_name1  => gv_msg_tkn_cust_code       --項目名称1
                                           ,iv_data_value1 => main_rec.customer_number   --データの値1
                                           ,iv_item_name2  => gv_msg_tkn_dlv_date        --項目名称2
-                                          ,iv_data_value2 => main_rec.dlv_date          --データの値2
+-- ******************** 2009/06/10 Var.1.2 T.Tominaga MOD START  ******************************************
+--                                          ,iv_data_value2 => main_rec.dlv_date          --データの値2
+                                          ,iv_data_value2 => TO_CHAR(main_rec.dlv_date, 'YYYY/MM/DD')   --データの値2
+-- ******************** 2009/06/10 Var.1.2 T.Tominaga MOD END    ******************************************
                                           );
           
           ov_errmsg := xxccp_common_pkg.get_msg(cv_application
@@ -837,7 +847,10 @@ AS
                                           ,iv_item_name1  => gv_msg_tkn_cust_code       --項目名称1
                                           ,iv_data_value1 => main_rec.customer_number   --データの値1
                                           ,iv_item_name2  => gv_msg_tkn_dlv_date        --項目名称2
-                                          ,iv_data_value2 => main_rec.dlv_date          --データの値2
+-- ******************** 2009/06/10 Var.1.2 T.Tominaga MOD START  ******************************************
+--                                          ,iv_data_value2 => main_rec.dlv_date          --データの値2
+                                          ,iv_data_value2 => TO_CHAR(main_rec.dlv_date, 'YYYY/MM/DD')   --データの値2
+-- ******************** 2009/06/10 Var.1.2 T.Tominaga MOD END    ******************************************
                                           ,iv_item_name3  => gv_msg_tkn_column_no       --項目名称3
                                           ,iv_data_value3 => sub_main_rec.column_no     --データの値3
                                           ,iv_item_name4  => gv_msg_tkn_item_code       --項目名称4
@@ -918,7 +931,10 @@ AS
                                             ,iv_item_name1  => gv_msg_tkn_cust_code       --項目名称1
                                             ,iv_data_value1 => main_rec.customer_number   --データの値1
                                             ,iv_item_name2  => gv_msg_tkn_dlv_date        --項目名称2
-                                            ,iv_data_value2 => main_rec.dlv_date          --データの値2
+-- ******************** 2009/06/10 Var.1.2 T.Tominaga MOD START  ******************************************
+--                                            ,iv_data_value2 => main_rec.dlv_date          --データの値2
+                                            ,iv_data_value2 => TO_CHAR(main_rec.dlv_date, 'YYYY/MM/DD')   --データの値2
+-- ******************** 2009/06/10 Var.1.2 T.Tominaga MOD END    ******************************************
                                             ,iv_item_name3  => gv_msg_tkn_column_no       --項目名称3
                                             ,iv_data_value3 => sub_main_rec.column_no     --データの値3
                                             ,iv_item_name4  => gv_msg_tkn_item_code       --項目名称4
@@ -961,7 +977,10 @@ AS
                                           ,iv_item_name1  => gv_msg_tkn_cust_code       --項目名称1
                                           ,iv_data_value1 => main_rec.customer_number   --データの値1
                                           ,iv_item_name2  => gv_msg_tkn_dlv_date        --項目名称2
-                                          ,iv_data_value2 => main_rec.dlv_date          --データの値2
+-- ******************** 2009/06/10 Var.1.2 T.Tominaga MOD START  ******************************************
+--                                          ,iv_data_value2 => main_rec.dlv_date          --データの値2
+                                          ,iv_data_value2 => TO_CHAR(main_rec.dlv_date, 'YYYY/MM/DD')   --データの値2
+-- ******************** 2009/06/10 Var.1.2 T.Tominaga MOD END    ******************************************
                                           ,iv_item_name3  => gv_msg_tkn_column_no       --項目名称3
                                           ,iv_data_value3 => sub_main_rec.column_no     --データの値3
                                           ,iv_item_name4  => gv_msg_tkn_item_code       --項目名称4

@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCOS004A04C (body)
  * Description      : 消化ＶＤ納品データ作成
  * MD.050           : 消化ＶＤ納品データ作成 MD050_COS_004_A04
- * Version          : 1.16
+ * Version          : 1.17
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -52,6 +52,7 @@ AS
  *                                       [T1_1208]単価四捨五入
  *  2009/06/09   1.16  T.kitajima        [T1_1371]行ロック
  *  2009/06/10   1.16  T.kitajima        [T1_1412]納品伝票番号取得処理変更
+ *  2009/06/11   1.17  T.kitajima        [T1_1415]納品伝票番号取得処理変更
  *
  *****************************************************************************************/
 --
@@ -1772,12 +1773,12 @@ AS
     INTO   ln_header_id
     FROM   DUAL;
     --納品伝票番号シーケンス取得
---******************************* 2009/06/10 1.12 T.Kitajima MOD START ******************************--
+--******************************* 2009/06/10 1.16 T.Kitajima MOD START ******************************--
 --    lv_deli_seq := xxcos_def_pkg.set_order_number( NULL,NULL );
     SELECT cv_snq_i || TO_CHAR( ( lpad( XXCOS_CUST_PO_NUMBER_S01.nextval, 11, 0) ) )
       INTO lv_deli_seq
       FROM dual;
---******************************* 2009/06/10 1.12 T.Kitajima MOD  END  ******************************--
+--******************************* 2009/06/10 1.16 T.Kitajima MOD  END  ******************************--
     -- ループ開始
     <<keisan_loop>>
     FOR ln_i IN 1..gn_target_cnt LOOP
@@ -2695,7 +2696,12 @@ AS
           INTO   ln_header_id
           FROM   DUAL;
           --納品伝票番号シーケンス取得
-          lv_deli_seq := xxcos_def_pkg.set_order_number( NULL,NULL );
+--******************************* 2009/06/11 1.17 T.Kitajima MOD START ******************************--
+--         lv_deli_seq := xxcos_def_pkg.set_order_number(NULL,NULL);
+         SELECT cv_snq_i || TO_CHAR( ( lpad( XXCOS_CUST_PO_NUMBER_S01.nextval, 11, 0) ) )
+           INTO lv_deli_seq
+           FROM dual;
+--******************************* 2009/06/11 1.17 T.Kitajima MOD  END  ******************************--
         END IF;
         --次の削除開始ポイントINDEX値を保管
         ln_delete_start_index := ln_m + cn_1;
