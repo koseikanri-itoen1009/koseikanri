@@ -53,6 +53,9 @@ WHERE pha.vendor_id        = cvv1.vendor_id
   AND pha.segment1         = xoha.po_no(+)
   AND NVL(xoha.notif_status, '40') = '40'      
 -- 2009/08/24 T.Yoshimoto Add End –{”ÔáŠQ#1618
+-- 2009/08/24 T.Yoshimoto Add Start –{”ÔáŠQ#1631
+  AND NVL(xoha.latest_external_flag, 'Y') = 'Y'
+-- 2009/08/24 T.Yoshimoto Add End –{”ÔáŠQ#1631
   AND clvv1.lookup_type    = 'XXPO_PO_ADD_STATUS'
   AND pha.attribute1       = clvv1.lookup_code
   AND clvv1.lookup_code   >= '20'
