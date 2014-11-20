@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCSM002A05C(body)
  * Description      : 商品計画単品別按分処理
  * MD.050           : 商品計画単品別按分処理 MD050_CSM_002_A05
- * Version          : 1.4
+ * Version          : 1.5
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -38,6 +38,7 @@ AS
  *  2009/02/18    1.2   M.Ohtsuki       ［障害CT_033］ 予算差分チェック不具合の対応
  *  2009/03/02    1.3   M.Ohtsuki       ［障害CT_073］ 値引き用品目不具合の対応
  *  2009/05/07    1.4   T.Tsukino       ［障害T1_0792］チェックリストに出力される新商品予算の粗利益額が不正
+ *  2009/05/19    1.5   T.Tsukino       ［障害T1_1069］T1_0792対応不良の対応
  *
   *****************************************************************************************/
 --
@@ -1575,6 +1576,10 @@ AS
   PROCEDURE new_item_no_select(
     it_item_group_cd     IN  xxcsm_item_plan_lines.item_group_no%TYPE,         -- A-3で取得した政策群コード
     ov_new_item_no       OUT NOCOPY VARCHAR2,                                  -- 新商品コード
+--//ADD START 2009/05/19 T1_1069 T.Tsukino
+    ov_new_item_cost     OUT NOCOPY VARCHAR2,                                  -- 営業原価
+    ov_new_item_price    OUT NOCOPY VARCHAR2,                                  -- 定価
+--//ADD END 2009/05/19 T1_1069 T.Tsukino
     ov_errbuf            OUT NOCOPY VARCHAR2,                                  -- エラー・メッセージ
     ov_retcode           OUT NOCOPY VARCHAR2,                                  -- リターン・コード
     ov_errmsg            OUT NOCOPY VARCHAR2)                                  -- ユーザー・エラー・メッセージ
@@ -1638,6 +1643,16 @@ AS
       WHERE    xicv.segment1 LIKE REPLACE(it_item_group_cd,'*','_')     --商品群コード
       AND      xicv.attribute3 IS NOT NULL                              --新商品コード
       ;
+--//ADD START 2009/05/19 T1_1069 T.Tsukino
+      SELECT xxcg3v.now_business_cost   -- 営業原価
+            ,xxcg3v.now_unit_price      -- 定価
+      INTO  ov_new_item_cost            -- 営業原価
+           ,ov_new_item_price           -- 定価
+      FROM  xxcsm_commodity_group3_v  xxcg3v
+      WHERE xxcg3v.item_cd = ov_new_item_no
+      AND   xxcg3v.group3_cd = it_item_group_cd
+      ;
+--//ADD END 2009/05/19 T1_1069 T.Tsukino
     END IF;
   END;
 --
@@ -2141,6 +2156,10 @@ AS
     ln_new_plan_amount            NUMBER;                                         --新商品数量
     ln_new_plan_credit            NUMBER;                                         --新商品掛率
 --//ADD END 2009/05/07 T1_0792 T.Tsukino
+--//ADD START 2009/05/19 T1_1069 T.Tsukino
+    lv_new_item_cost              VARCHAR2(240);                                  --営業原価
+    lv_new_item_price             VARCHAR2(240);                                  --定価
+--//ADD END 2009/05/19 T1_1069 T.Tsukino
               
     -- ===============================
     -- ローカル・カーソル
@@ -2820,6 +2839,10 @@ AS
         new_item_no_select(
                            lt_item_group_no       -- A-3で取得した政策群コード
                           ,lv_new_item_no         -- 新商品コード
+--//ADD START 2009/05/19 T1_1069 T.Tsukino
+                          ,lv_new_item_cost       -- 営業原価
+                          ,lv_new_item_price      -- 定価
+--//ADD END 2009/05/19 T1_1069 T.Tsukino                          
                           ,lv_errbuf              -- エラー・メッセージ
                           ,lv_retcode             -- リターン・コード
                           ,lv_errmsg);            -- ユーザー・エラー・メッセージ
@@ -2875,12 +2898,12 @@ AS
             --③新商品計画値算出
             ln_new_plan_sales := ln_new_sales_budget - NVL(ln_month_sales_sum,0);
             ln_new_plan_gross := ln_new_gross_budget - NVL(ln_month_gross_sum,0);
---//ADD START 2009/05/07 T1_0792 T.Tsukino
+--//UPD START 2009/05/19 T1_1069 T.Tsukino
             -- 数量 = ( ( 売上 - 粗利益額 ) / 原価(1つあたり) )
-            ln_new_plan_amount :=  ROUND(((ln_new_plan_sales - ln_new_plan_gross) / ln_discrete_cost),0);
+            ln_new_plan_amount :=  ROUND(((ln_new_plan_sales - ln_new_plan_gross) / lv_new_item_cost),0);
             -- 掛率 = ( 売上 / ( 数量 * 定価) ) * 100        
-            ln_new_plan_credit :=  ROUND((ln_new_plan_sales / (ln_new_plan_amount * ln_fixed_price)) * 100,2);
---//ADD END 2009/05/07 T1_0792 T.Tsukino
+            ln_new_plan_credit :=  ROUND((ln_new_plan_sales / (ln_new_plan_amount * lv_new_item_price)) * 100,2);
+--//UPD END 2009/05/19 T1_1069 T.Tsukino
             --新商品登録値保存
             lr_new_plan_rec.item_plan_header_id    := lt_item_plan_header_id;         --商品計画ヘッダID
             lr_new_plan_rec.item_plan_lines_id     := NULL;
