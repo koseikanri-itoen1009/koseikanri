@@ -7,7 +7,7 @@ AS
  * Description      : 受払その他実績リスト
  * MD.050/070       : 月次〆切処理帳票Issue1.0 (T_MD050_BPO_770)
  *                    月次〆切処理帳票Issue1.0 (T_MD070_BPO_77D)
- * Version          : 1.24
+ * Version          : 1.25
  *
  * Program List
  * -------------------------- ----------------------------------------------------------
@@ -61,6 +61,7 @@ AS
  *  2008/03/06    1.22  H.Marushita      本番障害1274対応 伊藤園在庫のみ条件追加
  *  2009/05/29    1.23  Marushita        本番障害1511対応
  *  2009/11/09    1.24  Marushita        本番障害1685対応
+ *  2011/03/10    1.25  H.Sasaki         [E_本稼動_06267] 原価管理区分「標準原価」時の金額算出方法変更
  *****************************************************************************************/
 --
 --#######################  固定グローバル定数宣言部 START   #######################
@@ -11797,10 +11798,12 @@ AS
            OR  ( NVL( gt_main_data(i).h_item_code, lc_break_null ) <> lv_item_code ))
       AND (( lv_locat_code <> lc_break_init ) AND ( lv_lot_no <> lc_break_init )) THEN
 --
-        -- 金額算出（原価管理区分が「標準原価」の場合）
-        IF (lv_cost_kbn = gc_cost_st ) THEN
-          ln_amount := ln_stand_unit_price * ln_quantity;
-        END IF;
+-- 2011/03/10 v1.25 Deleted START
+--        -- 金額算出（原価管理区分が「標準原価」の場合）
+--        IF (lv_cost_kbn = gc_cost_st ) THEN
+--          ln_amount := ln_stand_unit_price * ln_quantity;
+--        END IF;
+-- 2011/03/10 v1.25 Deleted END
         -- -----------------------------------------------------
         -- ロットＬＧ開始タグ出力
         -- -----------------------------------------------------
@@ -12031,13 +12034,15 @@ AS
         IF   (( lr_data_dtl.locat_code <> gt_main_data(i).locat_code )    -- 倉庫コード
            OR ( lr_data_dtl.lot_no     <> gt_main_data(i).lot_no )) THEN   -- ロットNo
 --
-          -- 金額算出（原価管理区分が「標準原価」の場合）
-          IF (lv_cost_kbn = gc_cost_st ) THEN
--- 2008/11/11 v1.11 UPDATE START
---            ln_amount := ln_stand_unit_price * ln_quantity;
-            ln_amount := ROUND(ln_stand_unit_price * ln_quantity);
--- 2008/11/11 v1.11 UPDATE END
-          END IF;
+-- 2011/03/10 v1.25 Deleted START
+--          -- 金額算出（原価管理区分が「標準原価」の場合）
+--          IF (lv_cost_kbn = gc_cost_st ) THEN
+---- 2008/11/11 v1.11 UPDATE START
+----            ln_amount := ln_stand_unit_price * ln_quantity;
+--            ln_amount := ROUND(ln_stand_unit_price * ln_quantity);
+---- 2008/11/11 v1.11 UPDATE END
+--          END IF;
+-- 2011/03/10 v1.25 Deleted END
           -- -----------------------------------------------------
           -- ロットＬＧ開始タグ出力
           -- -----------------------------------------------------
@@ -12124,6 +12129,12 @@ AS
                    + ROUND(NVL(gt_main_data(i).trans_qty,0) * NVL(ln_stand_unit_price,0));
 -- 2008/11/11 v1.11 UPDATE END
         END IF;
+-- 2011/03/10 v1.25 Added START
+      ELSE
+        --  原価管理区分が「標準原価」の場合
+        ln_amount :=  ln_amount
+                        +   ROUND(NVL(gt_main_data(i).trans_qty,0) * NVL(ln_stand_unit_price,0));
+-- 2011/03/10 v1.25 Added END
       END IF;
 --
       -- 値を退避
@@ -12134,13 +12145,15 @@ AS
       -- 最後の明細を出力
       IF ( gt_main_data.LAST = i ) THEN
 --
-        -- 金額算出（原価管理区分が「標準原価」の場合）
-        IF (lv_cost_kbn = gc_cost_st ) THEN
--- 2008/11/11 v1.11 UPDATE START
---          ln_amount := ln_stand_unit_price * ln_quantity;
-          ln_amount := ROUND(ln_stand_unit_price * ln_quantity);
--- 2008/11/11 v1.11 UPDATE END
-        END IF;
+-- 2011/03/10 v1.25 Deleted START
+--        -- 金額算出（原価管理区分が「標準原価」の場合）
+--        IF (lv_cost_kbn = gc_cost_st ) THEN
+---- 2008/11/11 v1.11 UPDATE START
+----          ln_amount := ln_stand_unit_price * ln_quantity;
+--          ln_amount := ROUND(ln_stand_unit_price * ln_quantity);
+---- 2008/11/11 v1.11 UPDATE END
+--        END IF;
+-- 2011/03/10 v1.25 Deleted END
         -- -----------------------------------------------------
         -- ロットＬＧ開始タグ出力
         -- -----------------------------------------------------
