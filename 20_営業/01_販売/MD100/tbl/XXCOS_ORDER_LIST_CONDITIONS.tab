@@ -9,7 +9,8 @@
  * ------------- ----- ---------------- ---------------------------------
  *  Date          Ver.  Editor           Description
  * ------------- ----- ---------------- ---------------------------------
- *  2010/09/18    1.0   K.Taniguchi      新規作成 [E_本稼働_09940]
+ *  2012/09/18    1.0   K.Taniguchi      新規作成 [E_本稼働_09940]
+ *  2012/11/21    1.1   K.Kiriu          E_本稼働_09940再対応
  *
  ****************************************************************************************/
 CREATE TABLE XXCOS.XXCOS_ORDER_LIST_CONDITIONS (
@@ -17,7 +18,10 @@ CREATE TABLE XXCOS.XXCOS_ORDER_LIST_CONDITIONS (
   ,DELIVERY_BASE_CODE             VARCHAR2(4)   NOT NULL        --拠点コード
   ,OUTPUT_DATETIME                DATE          NOT NULL        --出力時間
   ,CHAIN_CODE                     VARCHAR2(4)                   --チェーン店コード
-  ,CHAIN_NAME                     VARCHAR2(40)                  --チェーン店名
+-- 2012/11/21 Ver.1.1 Mod Start
+--  ,CHAIN_NAME                     VARCHAR2(40)                  --チェーン店名
+  ,CHAIN_NAME                     VARCHAR2(360)                 --チェーン店名
+-- 2012/11/21 Ver.1.1 Mod End
   ,STORE_CODE                     VARCHAR2(10)                  --店舗コード
   ,INVOICE_NUMBER                 VARCHAR2(12)                  --伝票番号
   ,ORDER_NUMBER                   NUMBER                        --受注番号
