@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCMM003A36C(body)
  * Description      : 各諸マスタ連携IFデータ作成
  * MD.050           : MD050_CMM_003_A36_各諸マスタ連携IFデータ作成
- * Version          : 1.5
+ * Version          : 1.6
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -29,6 +29,7 @@ AS
  *  2009/04/15    1.3   Yutaka.Kuboshima    障害T1_0577の対応
  *  2009/05/28    1.4   Yutaka.Kuboshima    障害T1_1244の対応
  *  2009/06/03    1.5   Yutaka.Kuboshima    障害T1_1321の対応
+ *  2009/06/30    1.6   Yutaka.Kuboshima    障害0000328の対応
  *
  *****************************************************************************************/
 --
@@ -376,6 +377,9 @@ AS
 --
     -- *** ローカル変数 ***
     lv_output_str        VARCHAR2(4095)           := NULL;                --出力文字列格納用変数
+-- 2009/06/30 Ver1.6 add start by Yutaka.Kuboshima
+    lv_meaning           VARCHAR2(200)            := NULL;                --名称用格納変数
+-- 2009/06/30 Ver1.6 add end by Yutaka.Kuboshima
 --
   BEGIN
 --
@@ -386,12 +390,17 @@ AS
 --###########################  固定部 END   ############################
 --
     BEGIN
-
+-- 2009/06/30 Ver1.7 add start by Yutaka.Kuboshima
+      lv_meaning := xxcso_util_common_pkg.conv_multi_byte(ref_name);
+-- 2009/06/30 Ver1.7 add end by Yutaka.Kuboshima
       --文字列出力    
       lv_output_str := cv_dqu        || cv_comp_code || cv_dqu;                       --会社コード
       lv_output_str := lv_output_str || cv_comma || cv_dqu || SUBSTRB(ref_type, 1, 30) || cv_dqu;     --参照タイプ
       lv_output_str := lv_output_str || cv_comma || cv_dqu || SUBSTRB(ref_code, 1, 30) || cv_dqu;     --参照コード
-      lv_output_str := lv_output_str || cv_comma || cv_dqu || SUBSTRB(ref_name, 1, 80) || cv_dqu;     --名称
+-- 2009/06/30 Ver1.7 modify start by Yutaka.Kuboshima
+--      lv_output_str := lv_output_str || cv_comma || cv_dqu || SUBSTRB(ref_name, 1, 80) || cv_dqu;     --名称
+      lv_output_str := lv_output_str || cv_comma || cv_dqu || SUBSTRB(lv_meaning, 1, 80) || cv_dqu;     --名称
+-- 2009/06/30 Ver1.7 modify end by Yutaka.Kuboshima
 -- 2009/04/15 Ver1.3 modify start by Yutaka.Kuboshima
 -- 2009/04/02 Ver1.2 modify start by Yutaka.Kuboshima
 --      lv_output_str := lv_output_str || cv_comma || cv_dqu || SUBSTRB(pt_ref_type, 1, 30) || cv_dqu;  --親参照タイプ
