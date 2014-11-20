@@ -206,6 +206,7 @@ SELECT
                              ,xxinv_mov_req_instr_lines     XML                 --移動依頼/指示明細(アドオン)
                              ,xxinv_mov_lot_details         XMD                 --移動ロット詳細(アドオン)
                              ,xxsky_item_locations_v        XIL                 --OPM保管場所情報VIEW
+                             ,xxsky_item_locations_v        XIL_TO              --OPM保管場所情報VIEW -- 2010/03/09 H.Itou Add E_本稼動_01822
                        WHERE
                          -- 出庫日の年月 < 入庫日の年月   …積層中と判断
                               TO_CHAR( XMH.actual_ship_date, 'YYYYMM' ) 
@@ -222,6 +223,8 @@ SELECT
                          AND  XML.mov_line_id               = XMD.mov_line_id
                          -- 保管場所情報取得
                          AND  XMH.shipped_locat_id          = XIL.inventory_location_id
+                         AND  XMH.ship_to_locat_id          = XIL_TO.inventory_location_id -- 2010/03/09 H.Itou Add E_本稼動_01822
+                         AND  XIL.whse_code                <> XIL_TO.whse_code             -- 2010/03/09 H.Itou Add E_本稼動_01822 同一倉庫移動は対象外
                       --[ １．移動出庫実績（積層中のみ） END ]--
                     UNION ALL
                       ----------------------------------------------------------------------
@@ -447,6 +450,7 @@ SELECT
                              ,xxinv_mov_req_instr_lines     XML                 --移動依頼/指示明細(アドオン)
                              ,xxinv_mov_lot_details         XMD                 --移動ロット詳細(アドオン)
                              ,xxsky_item_locations_v        XIL                 --OPM保管場所情報VIEW
+                             ,xxsky_item_locations_v        XIL_FROM            --OPM保管場所情報VIEW -- 2010/03/09 H.Itou Add E_本稼動_01822
                        WHERE
                          -- 移動依頼/指示ヘッダ(アドオン)の条件
                               XMH.status                    IN ( '06', '05' )   --06:入出庫報告有、05:入庫報告有
@@ -460,6 +464,8 @@ SELECT
                          AND  XML.mov_line_id               = XMD.mov_line_id
                          -- 保管場所情報取得
                          AND  XMH.ship_to_locat_id          = XIL.inventory_location_id
+                         AND  XMH.shipped_locat_id          = XIL_FROM.inventory_location_id -- 2010/03/09 H.Itou Add E_本稼動_01822
+                         AND  XIL.whse_code                <> XIL_FROM.whse_code             -- 2010/03/09 H.Itou Add E_本稼動_01822 同一倉庫移動は対象外
                       --[ ３．移動入庫実績 END ]--
                     UNION ALL
                       ----------------------------------------------------------------------
@@ -736,6 +742,7 @@ SELECT
                              ,xxinv_mov_req_instr_lines     XML                 --移動依頼/指示明細(アドオン)
                              ,xxinv_mov_lot_details         XMD                 --移動ロット詳細(アドオン)
                              ,xxsky_item_locations_v        XIL                 --OPM保管場所情報VIEW
+                             ,xxsky_item_locations_v        XIL_TO              --OPM保管場所情報VIEW -- 2010/03/09 H.Itou Add E_本稼動_01822
                        WHERE
                          -- 移動依頼/指示ヘッダ(アドオン)の条件
                               XMH.status                    IN ( '06', '04' )   -- 06:入出庫報告有、04:出庫報告有
@@ -749,6 +756,8 @@ SELECT
                          AND  XML.mov_line_id               = XMD.mov_line_id
                          -- 保管場所情報取得
                          AND  XMH.shipped_locat_id          = XIL.inventory_location_id
+                         AND  XMH.ship_to_locat_id          = XIL_TO.inventory_location_id -- 2010/03/09 H.Itou Add E_本稼動_01822
+                         AND  XIL.whse_code                <> XIL_TO.whse_code             -- 2010/03/09 H.Itou Add E_本稼動_01822 同一倉庫移動は対象外
                       --[ ４．移動出荷実績 END ]--
                     UNION ALL
                       ----------------------------------------------------------------------
