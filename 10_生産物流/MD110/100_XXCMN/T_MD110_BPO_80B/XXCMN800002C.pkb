@@ -7,7 +7,7 @@ AS
  * Description      : 品目マスタインタフェース
  * MD.050           : マスタインタフェース T_MD050_BPO_800
  * MD.070           : 品目インタフェース T_MD070_BPO_80B
- * Version          : 1.17
+ * Version          : 1.18
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -84,6 +84,7 @@ AS
  *  2008/10/21    1.15  Oracle 丸下 博宣 I_S_431対応
  *  2008/11/13    1.16  Oracle 伊藤ひとみ 統合テスト指摘538,641対応
  *  2008/11/24    1.17  Oracle 大橋孝郎  本番環境問合せ_障害管理表#221対応
+ *  2008/12/22    1.18  Oracle 椎名 昭圭 本番#830対応
  *****************************************************************************************/
 --
 --#######################  固定グローバル定数宣言部 START   #######################
@@ -166,6 +167,9 @@ AS
   gv_description       CONSTANT VARCHAR2(100) := '本';
   gv_lookup_code       CONSTANT VARCHAR2(1)   := '2';
   gv_lot_ctl_on        CONSTANT VARCHAR2(1)   := '1';
+-- 2008/12/22 v1.18 ADD START
+  gv_lot_ctl_off       CONSTANT VARCHAR2(1)   := '0';
+-- 2008/12/22 v1.18 ADD END
   gv_active_flag_mi    CONSTANT VARCHAR2(1)   := 'N';
   gv_inactive_ind_on   CONSTANT VARCHAR2(1)   := '0';
   gv_inactive_ind_off  CONSTANT VARCHAR2(1)   := '1';
@@ -5894,7 +5898,15 @@ AS
     lr_item_rec.item_no     := ir_masters_rec.item_code;           -- 品名コード
     lr_item_rec.item_desc1  := ir_masters_rec.item_name;           -- 品名・正式名
     lr_item_rec.item_um     := lv_uom_code;
+-- 2008/12/22 v1.18 ADD START
+   IF (SUBSTRB(ir_masters_rec.item_code, 1, 1) = '5') THEN
+    lr_item_rec.lot_ctl     := gv_lot_ctl_off;
+   ELSE
+-- 2008/12/22 v1.18 ADD END
     lr_item_rec.lot_ctl     := gv_lot_ctl_on;
+-- 2008/12/22 v1.18 ADD START
+   END IF;
+-- 2008/12/22 v1.18 ADD END
     lr_item_rec.attribute1  := ir_masters_rec.old_crowd_code;      -- 旧・群コード
     lr_item_rec.attribute2  := ir_masters_rec.new_crowd_code;      -- 新・群コード
     lr_item_rec.attribute3  := ir_masters_rec.crowd_start_days;    -- 適用開始日
@@ -5980,6 +5992,9 @@ AS
       RAISE global_api_expt;
     END IF;
 --
+-- 2008/12/22 v1.18 ADD START
+   IF (lr_item_rec.lot_ctl = gv_lot_ctl_on) THEN
+-- 2008/12/22 v1.18 ADD END
     -- 自動ロット採番有効・ロット・サフィックスの更新
     BEGIN
       UPDATE ic_item_mst_b
@@ -6004,6 +6019,9 @@ AS
         RAISE global_api_others_expt;
     END;
 --
+-- 2008/12/22 v1.18 ADD START
+   END IF;
+-- 2008/12/22 v1.18 ADD END
     -- OPM品目アドオンマスタ(直接)
     proc_xxcmn_item_mst(ir_masters_rec,
                         gn_proc_insert,
