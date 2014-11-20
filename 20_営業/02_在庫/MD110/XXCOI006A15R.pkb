@@ -8,7 +8,7 @@ AS
  * Description      : 倉庫毎に日次または月中、月末の受払残高情報を受払残高表に出力します。
  *                    預け先毎に月末の受払残高情報を受払残高表に出力します。
  * MD.050           : 受払残高表(倉庫・預け先)    MD050_COI_006_A15
- * Version          : 1.5
+ * Version          : 1.6
  *
  * Program List
  * -------------------- ------------------------------------------------------------
@@ -33,6 +33,7 @@ AS
  *  2009/06/19    1.3   H.Sasaki         [障害T1_1444] PT対応
  *  2009/07/22    1.4   H.Sasaki         [0000685]パラメータ日付項目のPT対応
  *  2009/08/06    1.5   H.Sasaki         [0000893]PT対応
+ *  2009/08/10    1.6   N.Abe            [0000809]消化VD保管場所の出力対応
  *
  *****************************************************************************************/
 --
@@ -162,8 +163,10 @@ AS
   gv_inventory_month          VARCHAR2(6);                  -- 棚卸月(CHAR)
   gv_out_kbn                  VARCHAR2(99);                 -- 出力区分
   gv_inv_kbn                  VARCHAR2(99);                 -- 棚卸区分
-  gv_warehouse                VARCHAR2(99);                 -- 倉庫/預け先名称
-
+-- == 2009/08/10 V1.6 Modified START ===============================================================
+--  gv_warehouse                VARCHAR2(99);                 -- 倉庫/預け先名称
+  gv_warehouse                VARCHAR2(240);                -- 倉庫/預け先名称
+-- == 2009/08/10 V1.6 Modified END   ===============================================================
 --
   /**********************************************************************************
    * Procedure Name   : final_svf
@@ -942,9 +945,15 @@ AS
        ,irm_base_code                 xxcoi_inv_reception_monthly.base_code%TYPE                    -- 拠点コード
        ,biv_base_short_name           xxcoi_base_info2_v.base_short_name%TYPE                       -- 拠点名称
        ,msi_warehouse_code            mtl_secondary_inventories.secondary_inventory_name%TYPE       -- 倉庫コード
-       ,msi_left_base_code            mtl_secondary_inventories.attribute4%TYPE                     -- 預け先コード
+-- == 2009/08/10 V1.6 Modified START ===============================================================
+--       ,msi_left_base_code            mtl_secondary_inventories.attribute4%TYPE                     -- 預け先コード
+       ,msi_left_base_code            VARCHAR2(150)                                                 -- 預け先コード
+-- == 2009/08/10 V1.6 Modified END   ===============================================================
        ,msi_warehouse_name            mtl_secondary_inventories.description%TYPE                    -- 倉庫名称
-       ,hca_left_base_name            hz_cust_accounts.account_name%TYPE                            -- 預け先名称
+-- == 2009/08/10 V1.6 Modified START ===============================================================
+--       ,hca_left_base_name            hz_cust_accounts.account_name%TYPE                            -- 預け先名称
+       ,hca_left_base_name            VARCHAR2(240)                                                 -- 預け先名称
+-- == 2009/08/10 V1.6 Modified END   ===============================================================
        ,iib_gun_code                  ic_item_mst_b.attribute1%TYPE                                 -- 群コード
        ,iib_item_no                   ic_item_mst_b.item_no%TYPE                                    -- 商品コード
        ,imb_item_short_name           xxcmn_item_mst_b.item_short_name%TYPE                         -- 商品名称
@@ -995,7 +1004,10 @@ AS
       );
       month_rec       rec_type;
       --
-      lv_sql_str      VARCHAR2(4000);
+-- == 2009/08/10 V1.6 Modified START ===============================================================
+--      lv_sql_str      VARCHAR2(4000);
+      lv_sql_str      VARCHAR2(4500);
+-- == 2009/08/10 V1.6 Modified END   ===============================================================
 -- == 2009/06/19 V1.3 Added END   ===============================================================
 --
   BEGIN
@@ -1025,9 +1037,17 @@ AS
                 ||  ',irm.base_code  irm_base_code '
                 ||  ',biv.base_short_name  biv_base_short_name '
                 ||  ',SUBSTR(msi.secondary_inventory_name, 6, 2)  msi_warehouse_code '
-                ||  ',msi.attribute4  msi_left_base_code '
+-- == 2009/08/10 V1.6 Modified START ===============================================================
+--                ||  ',msi.attribute4  msi_left_base_code '
+                ||  ',DECODE(msi.attribute13, ' || '''' || cv_subinv_7 || ''''
+                ||  ', msi.secondary_inventory_name, msi.attribute4)  msi_left_base_code '
+-- == 2009/08/10 V1.6 Modified END   ===============================================================
                 ||  ',msi.description  msi_warehouse_name '
-                ||  ',hca.account_name  hca_left_base_name '
+-- == 2009/08/10 V1.6 Modified START ===============================================================
+--                ||  ',hca.account_name  hca_left_base_name '
+                ||  ',DECODE(msi.attribute13, ' || '''' || cv_subinv_7 || ''''
+                ||  ', msi.description, hca.account_name)  hca_left_base_name '
+-- == 2009/08/10 V1.6 Modified END   ===============================================================
                 ||  ',SUBSTR((CASE '
                 ||  'WHEN TRUNC(TO_DATE(iib.attribute3,' || '''' || 'YYYY/MM/DD' || '''' || ')) > TRUNC(TO_DATE(' 
                 ||  '''' || TO_CHAR(gd_target_date, 'YYYY/MM/DD') || '''' || ',' || '''' || 'YYYY/MM/DD' || '''' || ')) '
@@ -1095,8 +1115,20 @@ AS
                 ||  ',(SELECT  hca.account_number '
                 ||  '         ,SUBSTRB(hca.account_name,1,8)  base_short_name '
                 ||  '  FROM    hz_cust_accounts    hca '
-                ||  '         ,xxcmm_cust_accounts xca '
-                ||  '  WHERE   xca.management_base_code  =   NVL(' || iv_base_code || ', ' || gv_user_base || ') '
+                ||  '         ,xxcmm_cust_accounts xca ';
+-- == 2009/08/10 V1.6 Modified START ===============================================================
+  IF (iv_base_code IS NOT NULL) THEN
+    --パラメータ.拠点が設定されている場合
+    lv_sql_str  :=    lv_sql_str
+--                ||  '  WHERE   xca.management_base_code  =   NVL(' || iv_base_code || ', ' || gv_user_base || ') '
+                ||  '  WHERE   xca.management_base_code  ='   || '''' || iv_base_code || ''' ';
+  ELSE
+    --パラメータ.拠点が設定されていない場合
+    lv_sql_str  :=    lv_sql_str
+                ||  '  WHERE   xca.management_base_code  ='   || '''' || gv_user_base || ''' ';
+  END IF;
+  lv_sql_str  :=    lv_sql_str
+-- == 2009/08/10 V1.6 Modified END   ===============================================================
                 ||  '  AND     hca.status                ='   || '''' || 'A' || ''' '
                 ||  '  AND     hca.customer_class_code   ='   || '''' || '1' || ''' '
                 ||  '  AND     hca.cust_account_id       =   xca.customer_id '
@@ -1104,8 +1136,20 @@ AS
                 ||  '  SELECT  hca.account_number '
                 ||  '         ,SUBSTRB(hca.account_name,1,8)  base_short_name '
                 ||  '  FROM    hz_cust_accounts    hca '
-                ||  '         ,xxcmm_cust_accounts xca '
-                ||  '  WHERE   xca.customer_code         =   NVL(' || iv_base_code || ', ' || gv_user_base || ') '
+                ||  '         ,xxcmm_cust_accounts xca ';
+-- == 2009/08/10 V1.6 Modified START ===============================================================
+  IF (iv_base_code IS NOT NULL) THEN
+    --パラメータ.拠点が設定されている場合
+    lv_sql_str  :=    lv_sql_str
+--                ||  '  WHERE   xca.management_base_code  =   NVL(' || iv_base_code || ', ' || gv_user_base || ') '
+                ||  '  WHERE   xca.management_base_code  ='   || '''' || iv_base_code || ''' ';
+  ELSE
+    --パラメータ.拠点が設定されていない場合
+    lv_sql_str  :=    lv_sql_str
+                ||  '  WHERE   xca.management_base_code  ='   || '''' || gv_user_base || ''' ';
+  END IF;
+  lv_sql_str  :=    lv_sql_str
+-- == 2009/08/10 V1.6 Modified END   ===============================================================
                 ||  '  AND     hca.status                ='   || '''' || 'A' || ''' '
                 ||  '  AND     hca.customer_class_code   ='   || '''' || '1' || ''' '
                 ||  '  AND     hca.cust_account_id       =   xca.customer_id '
@@ -1167,12 +1211,18 @@ AS
   ELSE
     -- 預け先の場合
     lv_sql_str  :=    lv_sql_str
-                  ||  'AND msi.attribute1  IN(' || '''' || cv_subinv_3 || '''' || ',' || '''' || cv_subinv_4 || '''' || ') '
-                  ||  'AND msi.attribute13 <> ' || '''' || cv_subinv_7 || '''' || ' ';
+                  ||  'AND msi.attribute1  IN(' || '''' || cv_subinv_3 || '''' || ',' || '''' || cv_subinv_4 || '''' || ') ';
+-- == 2009/08/10 V1.6 Deleted START ===============================================================
+--                  ||  'AND msi.attribute13 <> ' || '''' || cv_subinv_7 || '''' || ' ';
+-- == 2009/08/10 V1.6 Deleted END   ===============================================================
     IF (iv_left_base  IS NOT NULL)  THEN
       -- 預け先が指定されている場合
       lv_sql_str  :=    lv_sql_str
-                    ||  'AND msi.attribute4 = ' || '''' || iv_left_base || '''' || ' ';
+-- == 2009/08/10 V1.6 Modified START ===============================================================
+--                    ||  'AND msi.attribute4 = ' || '''' || iv_left_base || '''' || ' ';
+                    ||  'AND DECODE(msi.attribute13,  ' || '''' || cv_subinv_7 || ''''
+                    ||  ', msi.secondary_inventory_name, msi.attribute4) = ' || '''' || iv_left_base || '''' || ' ';
+-- == 2009/08/10 V1.6 Modified END   ===============================================================
     END IF;
   END IF;
   --
@@ -1413,10 +1463,19 @@ AS
         AND    msi.attribute1 = cv_subinv_1
         AND    msi.attribute7 = iv_base_code;
       ELSIF (iv_output_kbn = cv_out_kbn2 AND iv_left_base IS NOT NULL) THEN
-        SELECT hca.account_name
+-- == 2009/08/10 V1.6 Modified START ===============================================================
+--        SELECT hca.account_name
+--        INTO   gv_warehouse
+--        FROM   hz_cust_accounts     hca           -- 顧客マスタ
+--        WHERE  hca.account_number = iv_left_base;
+        SELECT DECODE(msi.attribute13, cv_subinv_7, msi.description, hca.account_name)
         INTO   gv_warehouse
-        FROM   hz_cust_accounts     hca           -- 顧客マスタ
-        WHERE  hca.account_number = iv_left_base;
+        FROM   mtl_secondary_inventories msi
+              ,hz_cust_accounts          hca
+        WHERE  msi.attribute4 = hca.account_number(+)
+        AND    DECODE(msi.attribute13, cv_subinv_7, msi.secondary_inventory_name
+                                                  , hca.account_number) = iv_left_base;
+-- == 2009/08/10 V1.6 Modified END   ===============================================================
       END IF;
     EXCEPTION
       WHEN OTHERS THEN
