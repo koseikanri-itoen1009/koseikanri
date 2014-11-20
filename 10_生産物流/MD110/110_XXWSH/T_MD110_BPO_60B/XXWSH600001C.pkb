@@ -7,7 +7,7 @@ AS
  * Description      : 自動配車配送計画作成処理
  * MD.050           : 配車配送計画 T_MD050_BPO_600
  * MD.070           : 自動配車配送計画作成処理 T_MD070_BPO_60B
- * Version          : 1.16
+ * Version          : 1.17
  *
  * Program List
  * ----------------------------- ---------------------------------------------------------
@@ -49,6 +49,7 @@ AS
  *  2008/11/29    1.14 SCS    MIYATA     ロック対応 NO WAIT　を削除してWAITにする
  *  2008/12/02    1.15 SCS    H.Itou     本番障害#220対応
  *  2008/12/07    1.16 SCS    D.Sugahara 本番障害#524暫定対応
+ *  2009/01/05    1.17 SCS    H.Itou     本番障害#879対応
  *****************************************************************************************/
 --
 --#######################  固定グローバル定数宣言部 START   #######################
@@ -1848,8 +1849,12 @@ debug_log(FND_FILE.LOG,'移動指示データ登録');
     lt_prev_ship_to         xxwsh_carriers_sort_tmp.deliver_to%TYPE;            -- 前出荷先
     lt_prev_mixed_no        xxwsh_carriers_sort_tmp.mixed_no%TYPE;              -- 前混載元No
 --
-    ln_sum_weight           NUMBER DEFAULT 0;                       -- 集約重量
-    ln_sum_capacity         NUMBER DEFAULT 0;                       -- 集約容積
+    ln_sum_weight           NUMBER DEFAULT 0;                       -- 集約重量(1箇所目の配送先)
+    ln_sum_capacity         NUMBER DEFAULT 0;                       -- 集約容積(1箇所目の配送先)
+-- 2009/01/05 H.Itou Add Start 本番障害#879
+    ln_sum_weight_2         NUMBER DEFAULT 0;                       -- 集約重量(2箇所目の配送先)
+    ln_sum_capacity_2       NUMBER DEFAULT 0;                       -- 集約容積(2箇所目の配送先)
+-- 2009/01/05 H.Itou Add End
 --
     ln_mixed_cnt            NUMBER DEFAULT 0;                       -- 混載カウント
     ln_mixed_loop_cnt       NUMBER DEFAULT 0;                       -- ループカウント
@@ -1858,7 +1863,10 @@ debug_log(FND_FILE.LOG,'移動指示データ登録');
     lt_request_no_tab       req_mov_no_ttype;                       -- 依頼No格納用テーブル
     lt_trans_id_tab         transaction_id_ttype;                   -- トランザクションID格納用
 --
-    ln_intensive_no         NUMBER DEFAULT NULL;                    -- 集約No
+    ln_intensive_no         NUMBER DEFAULT NULL;                    -- 集約No(1箇所目の配送先)
+-- 2009/01/05 H.Itou Add Start 本番障害#879
+    ln_intensive_no_2       NUMBER DEFAULT NULL;                    -- 集約No(2箇所目の配送先)
+-- 2009/01/05 H.Itou Add End
     ln_grp_cnt              NUMBER DEFAULT 0;                       -- 同一キーグループカウント
     ln_detail_ins_cnt       NUMBER DEFAULT 0;                       -- 明細登録カウント
     ln_start_cnt            NUMBER DEFAULT 0;                       -- 処理開始カウント
@@ -1942,7 +1950,10 @@ debug_log(FND_FILE.LOG,'移動指示データ登録');
 --
     -- *** ローカル・レコード ***
     lr_mixed_info     mixed_info_cur%ROWTYPE;               -- カーソルレコード
-    lr_intensive_tmp  xxwsh_intensive_carriers_tmp%ROWTYPE; -- 自動配車集約中間テーブルレコード
+    lr_intensive_tmp  xxwsh_intensive_carriers_tmp%ROWTYPE; -- 自動配車集約中間テーブルレコード(1箇所目の配送先用)
+-- 2009/01/05 H.Itou Add Start 本番障害#879
+    lr_intensive_tmp_2  xxwsh_intensive_carriers_tmp%ROWTYPE; -- 自動配車集約中間テーブルレコード(2箇所目の配送先用)
+-- 2009/01/05 H.Itou Add End
 --
 debug_cnt number default 0;
 --
@@ -1962,6 +1973,9 @@ debug_cnt number default 0;
     BEGIN
 debug_log(FND_FILE.LOG,'B4_1.5【キーブレイク処理】');
 --
+            ----------------------------------------------------------------
+            -- 自動配車集約中間テーブル用PL/SQL表にセット(1箇所目の配送先)
+            ----------------------------------------------------------------
             -- インサートカウント
             ln_ins_cnt  :=  ln_ins_cnt + 1;
 --
@@ -2009,6 +2023,40 @@ debug_log(FND_FILE.LOG,'B4_1.51 集約NO取得：'||ln_intensive_no);
             gt_max_capa_tab(ln_ins_cnt)
                     :=  lr_intensive_tmp.max_capacity;              -- 最大積載容積
 --
+-- 2009/01/05 H.Itou Add Start 本番障害#879
+            ----------------------------------------------------------------
+            -- 自動配車集約中間テーブル用PL/SQL表にセット(2箇所目の配送先)
+            ----------------------------------------------------------------
+            -- インサートカウント
+            ln_ins_cnt  :=  ln_ins_cnt + 1;
+--
+            -- 集約NO取得
+            SELECT xxwsh_intensive_no_s1.NEXTVAL
+            INTO   ln_intensive_no_2
+            FROM   dual;
+debug_log(FND_FILE.LOG,'B4_1.51 2箇所目の配送先の集約NO取得：'||ln_intensive_no_2);
+--
+            -- 自動配車集約中間テーブル用PL/SQL表にセット
+            gt_int_no_tab(ln_ins_cnt)       := ln_intensive_no_2;                            -- 集約NO
+            gt_tran_type_tab(ln_ins_cnt)    := lr_intensive_tmp_2.transaction_type;          -- 処理種別
+            gt_int_source_tab(ln_ins_cnt)   := lr_intensive_tmp_2.intensive_source_no;       -- 集約元No
+            gt_deli_from_tab(ln_ins_cnt)    := lr_intensive_tmp_2.deliver_from;              -- 配送元
+            gt_deli_from_id_tab(ln_ins_cnt) := lr_intensive_tmp_2.deliver_from_id;           -- 配送元ID
+            gt_deli_to_tab(ln_ins_cnt)      := lr_intensive_tmp_2.deliver_to;                -- 配送先
+            gt_deli_to_id_tab(ln_ins_cnt)   := lr_intensive_tmp_2.deliver_to_id;             -- 配送先ID
+            gt_ship_date_tab(ln_ins_cnt)    := lr_intensive_tmp_2.schedule_ship_date;        -- 出庫予定日
+            gt_arvl_date_tab(ln_ins_cnt)    := lr_intensive_tmp_2.schedule_arrival_date;     -- 着荷予定日
+            gt_tran_type_nm_tab(ln_ins_cnt) := lr_intensive_tmp_2.transaction_type_name;     -- 出庫形態
+            gt_carrier_code_tab(ln_ins_cnt) := lr_intensive_tmp_2.freight_carrier_code;      -- 運送業者
+            gt_carrier_id_tab(ln_ins_cnt)   := lr_intensive_tmp_2.carrier_id;                -- 運送業者ID
+            gt_sum_weight_tab(ln_ins_cnt)   := ln_sum_weight_2;                              -- 集約合計重量
+            gt_sum_capa_tab(ln_ins_cnt)     := ln_sum_capacity_2;                            -- 集約合計容積
+            gt_max_ship_cd_tab(ln_ins_cnt)  := lr_intensive_tmp_2.max_shipping_method_code;  -- 最大配送区分
+            gt_weight_capa_tab(ln_ins_cnt)  := lr_intensive_tmp_2.weight_capacity_class;     -- 重量容積区分
+            gt_max_weight_tab(ln_ins_cnt)   := lr_intensive_tmp_2.max_weight;                -- 最大積載重量
+            gt_max_capa_tab(ln_ins_cnt)     := lr_intensive_tmp_2.max_capacity;              -- 最大積載容積
+-- 2009/01/05 H.Itou Add End
+--
 debug_log(FND_FILE.LOG,'(B-4)gt_sum_weight_tab：'||gt_sum_weight_tab(ln_ins_cnt));
 --
 debug_log(FND_FILE.LOG,'-------------------------------------');
@@ -2025,11 +2073,20 @@ debug_log(FND_FILE.LOG,' 明細用登録カウントln_detail_ins_cnt：'||ln_detail_ins_c
 debug_log(FND_FILE.LOG,'明細用登録カウント：'||ln_detail_ins_cnt);
 --
               -- 集約NO
-              gt_int_no_lines_tab(ln_detail_ins_cnt) := ln_intensive_no;
+-- 2009/01/05 H.Itou Add Start 本番障害#879
+              -- 1箇所目の配送先と同じ場合
+              IF (lr_intensive_tmp.deliver_to = mixed_info_tab(loop_cnt).deliver_to) THEN
+-- 2009/01/05 H.Itou Add End
+                gt_int_no_lines_tab(ln_detail_ins_cnt) := ln_intensive_no;
+-- 2009/01/05 H.Itou Add Start 本番障害#879
+              -- 2箇所目の配送先と同じ場合
+              ELSE
+                gt_int_no_lines_tab(ln_detail_ins_cnt) := ln_intensive_no_2;
+              END IF;
+-- 2009/01/05 H.Itou Add End
 --
               -- 依頼NO
               gt_request_no_tab(ln_detail_ins_cnt) := lt_request_no_tab(loop_cnt);
-              
 --20080519 D.Sugahara Add 不具合No3対応->
               -- トランザクションID（ソートテーブル更新用）
 -- 2008/12/02 H.Itou Mod Start 本番障害#220 ソートテーブル更新トランザクションIDがずれているため修正。
@@ -2200,7 +2257,10 @@ debug_log(FND_FILE.LOG,'  出荷元保管場所：'||mixed_info_tab(ln_work_cnt).deliver
 --
 debug_log(FND_FILE.LOG,'B4_1.3キーブレイクしない Req_No: '||mixed_info_tab(ln_work_cnt).request_no);
           --配送先同一（集約）
-          IF (lt_prev_ship_to = mixed_info_tab(ln_work_cnt).deliver_to) THEN
+-- 2009/01/05 H.Itou Add Start 本番障害#879
+--          IF (lt_prev_ship_to = mixed_info_tab(ln_work_cnt).deliver_to) THEN
+          IF (lr_intensive_tmp.deliver_to = mixed_info_tab(ln_work_cnt).deliver_to) THEN
+-- 2009/01/05 H.Itou Add End
 --
 debug_log(FND_FILE.LOG,'B4_1.31 配送先同一');
             -- 重量／容積集約
@@ -2220,9 +2280,31 @@ debug_log(FND_FILE.LOG,'B4_1.31 配送先同一');
             END IF;
 --
           -- 配送先が異なる
-          ELSIF (lt_prev_ship_to <> mixed_info_tab(ln_work_cnt).deliver_to) THEN -- 混載
---
+-- 2009/01/05 H.Itou Add Start 本番障害#879
+--          ELSIF (lt_prev_ship_to <> mixed_info_tab(ln_work_cnt).deliver_to) THEN -- 混載
+          ELSIF (lr_intensive_tmp.deliver_to <> mixed_info_tab(ln_work_cnt).deliver_to) THEN -- 混載
+-- 2009/01/05 H.Itou Add End
 debug_log(FND_FILE.LOG,'B4_1.32 配送先異なる');
+-- 2009/01/05 H.Itou Add Start 本番障害#879
+            -- 2箇所目の配送先情報を設定
+            IF (ln_mixed_cnt = 0) THEN
+              lr_intensive_tmp_2.transaction_type         := gv_ship_type_ship;                                 -- 処理種別
+              lr_intensive_tmp_2.intensive_source_no      := mixed_info_tab(ln_work_cnt).mixed_no;              -- 集約元No
+              lr_intensive_tmp_2.schedule_ship_date       := mixed_info_tab(ln_work_cnt).schedule_ship_date;    -- 出庫日
+              lr_intensive_tmp_2.schedule_arrival_date    := mixed_info_tab(ln_work_cnt).schedule_arrival_date; -- 着荷日
+              lr_intensive_tmp_2.freight_carrier_code     := mixed_info_tab(ln_work_cnt).freight_carrier_code;  -- 運送業者
+              lr_intensive_tmp_2.carrier_id               := mixed_info_tab(ln_work_cnt).career_id;             -- 運送業者ID
+              lr_intensive_tmp_2.deliver_to               := mixed_info_tab(ln_work_cnt).deliver_to;            -- 配送先
+              lr_intensive_tmp_2.deliver_to_id            := mixed_info_tab(ln_work_cnt).deliver_to_id;         -- 配送先ID
+              lr_intensive_tmp_2.deliver_from             := mixed_info_tab(ln_work_cnt).deliver_from;          -- 配送元
+              lr_intensive_tmp_2.deliver_from_id          := mixed_info_tab(ln_work_cnt).deliver_from_id;       -- 配送元ID
+              lr_intensive_tmp_2.transaction_type_name    := mixed_info_tab(ln_work_cnt).order_type_id;         -- 出庫形態
+              lr_intensive_tmp_2.max_shipping_method_code := mixed_info_tab(ln_work_cnt).shipping_method_code;  -- 最大配送区分
+              lr_intensive_tmp_2.weight_capacity_class    := mixed_info_tab(ln_work_cnt).weight_capacity_class; -- 重量容積区分
+              lr_intensive_tmp_2.max_weight               := mixed_info_tab(ln_work_cnt).based_weight;          -- 基本重量
+              lr_intensive_tmp_2.max_capacity             := mixed_info_tab(ln_work_cnt).based_capacity;        -- 基本容積
+            END IF;
+-- 2009/01/05 H.Itou Add Start 本番障害#879
             -- 混載カウント
             ln_mixed_cnt := ln_mixed_cnt + 1;
 debug_log(FND_FILE.LOG,'混載カウント：'||ln_mixed_cnt);
@@ -2231,20 +2313,27 @@ debug_log(FND_FILE.LOG,'混載カウント：'||ln_mixed_cnt);
             IF (mixed_info_tab(ln_work_cnt).weight_capacity_class = gv_weight) THEN
 --
               -- 重量
-              ln_sum_weight := ln_sum_weight
+-- 2009/01/05 H.Itou Add Start 本番障害#879
+              ln_sum_weight_2 := ln_sum_weight_2
+-- 2009/01/05 H.Itou Add End
                               + mixed_info_tab(ln_work_cnt).sum_weight          -- 積載重量合計
                               + mixed_info_tab(ln_work_cnt).sum_pallet_weight;  -- 合計パレット重量
 --
             ELSE
-                -- 容積
-                ln_sum_capacity := ln_sum_capacity + mixed_info_tab(ln_work_cnt).sum_capacity;
+              -- 容積
+-- 2009/01/05 H.Itou Add Start 本番障害#879
+--              ln_sum_capacity := ln_sum_capacity + mixed_info_tab(ln_work_cnt).sum_capacity;
+              ln_sum_capacity_2 := ln_sum_capacity_2 + mixed_info_tab(ln_work_cnt).sum_capacity;
+-- 2009/01/05 H.Itou Add End
 --
             END IF;
 --
           END IF;
 --
-debug_log(FND_FILE.LOG,'重量合計：'||ln_sum_weight);
-debug_log(FND_FILE.LOG,'容積合計：'||ln_sum_capacity);
+debug_log(FND_FILE.LOG,'重量合計(1箇所目の配送先)：'||ln_sum_weight);
+debug_log(FND_FILE.LOG,'容積合計(1箇所目の配送先)：'||ln_sum_capacity);
+debug_log(FND_FILE.LOG,'重量合計(2箇所目の配送先)：'||ln_sum_weight_2);
+debug_log(FND_FILE.LOG,'容積合計(2箇所目の配送先)：'||ln_sum_capacity_2);
 --20080519 D.Sugahara Del 不具合No3対応->
           -- トランザクションID（ソートテーブル更新用）
 --          lt_trans_id_tab(ln_work_cnt) := mixed_info_tab(ln_work_cnt).transaction_id;
@@ -2304,6 +2393,10 @@ debug_log(FND_FILE.LOG,'グループカウントリセット：'||ln_grp_cnt);
           -- 集約値をリセット
           ln_sum_weight   := 0;
           ln_sum_capacity := 0;
+-- 2009/01/05 H.Itou Add Start 本番障害#879
+          ln_sum_weight_2   := 0;
+          ln_sum_capacity_2 := 0;
+-- 2009/01/05 H.Itou Add End
 --
 debug_log(FND_FILE.LOG,'集約値リセット');
 --
@@ -5504,6 +5597,10 @@ debug_log(FND_FILE.LOG,'小口配送情報作成処理終了');
     cv_effective_date     CONSTANT VARCHAR2(30) := '基準日';
     cv_consolid_false     CONSTANT NUMBER       := 0;   -- 混載許可フラグ：不許可
 -- Ver1.3 M.Hokkanji End
+-- 2009/01/05 H.Itou Add Start 本番障害#879
+    cv_pre_save           CONSTANT VARCHAR2(1) := '1';           -- 拠点混載登録：登録済
+    cv_not_save           CONSTANT VARCHAR2(1) := '0';           -- 拠点混載登録：未登録
+-- 2009/01/05 H.Itou Add End
 --
     -- *** ローカル変数 ***
     TYPE get_intensive_tmp_rtype IS RECORD(
@@ -5536,6 +5633,9 @@ debug_log(FND_FILE.LOG,'小口配送情報作成処理終了');
       , max_weight                xxwsh_intensive_carriers_tmp.max_weight%TYPE    -- 最大積載重量
       , max_capacity              xxwsh_intensive_carriers_tmp.max_capacity%TYPE  -- 最大積載容積
       , finish_sum_flag           VARCHAR2(1)                                     -- 集約済フラグ
+-- 2009/01/05 H.Itou Add Start 本番障害#879
+      , pre_saved_flg             xxwsh_carriers_sort_tmp.pre_saved_flg%TYPE      -- 拠点混載登録済フラグ
+-- 2009/01/05 H.Itou Add End
       );
 --
     -- 自動配車集約中間テーブル用PLSQL表型
@@ -5599,6 +5699,9 @@ debug_log(FND_FILE.LOG,'小口配送情報作成処理終了');
                                                                                 -- 最大積載重量
     first_max_capacity              xxwsh_intensive_carriers_tmp.max_capacity%TYPE;
                                                                                 -- 最大積載容積
+-- 2009/01/05 H.Itou Mod Start 本番障害#879
+    first_pre_saved_flg             xxwsh_carriers_sort_tmp.pre_saved_flg%TYPE; -- 拠点混載登録済フラグ
+-- 2009/01/05 H.Itou Mod End
 --
     ln_intensive_weight       NUMBER DEFAULT 0;                                 -- 混載合計重量
     ln_intensive_capacity     NUMBER DEFAULT 0;                                 -- 混載合計容積
@@ -5657,8 +5760,15 @@ debug_cnt number default 0;
             , xict.weight_capacity_class    weight_capacity_class     -- 重量容積区分
             , xict.max_weight               max_weight                -- 最大積載重量
             , xict.max_capacity             max_capacity              -- 最大積載容積
-            , NULL                                                    -- 集約済フラグ
-      FROM xxwsh_intensive_carriers_tmp xict  -- 自動配車集約中間テーブル
+            , NULL                          finish_sum_flag           -- 集約済フラグ
+-- 2009/01/05 H.Itou Add Start 本番障害#879
+            , xcst.pre_saved_flg            pre_saved_flg             -- 拠点混載登録済フラグ
+-- 2009/01/05 H.Itou Add End
+      FROM    xxwsh_intensive_carriers_tmp xict  -- 自動配車集約中間テーブル
+-- 2009/01/05 H.Itou Add Start 本番障害#879
+            , xxwsh_carriers_sort_tmp      xcst  -- 自動配車ソート用中間テーブル
+      WHERE   xict.intensive_source_no = xcst.request_no
+-- 2009/01/05 H.Itou Add End
       ORDER BY  xict.schedule_ship_date       -- 出庫予定日
               , xict.schedule_arrival_date    -- 着荷予定日
               , xict.deliver_from             -- 配送元
@@ -5668,7 +5778,10 @@ debug_cnt number default 0;
               , xict.head_sales_branch        -- 管轄拠点
               , DECODE (xict.weight_capacity_class, gv_weight
                         , xict.intensive_sum_weight         -- 集約重量合計
-                        , xict.weight_capacity_class) DESC  -- 集約合計容積
+-- 2009/01/05 H.Itou Add Start 本番障害#879
+--                        , xict.weight_capacity_class) DESC  -- 集約合計容積
+                        , xict.intensive_sum_capacity) DESC  -- 集約合計容積
+-- 2009/01/05 H.Itou Add End
       ;
 --
     -- *** ローカル・レコード ***
@@ -6362,7 +6475,10 @@ debug_cnt := debug_cnt + 1;
             IF (gv_prod_class = gv_prod_cls_leaf) THEN
 --
               -- リーフ積載容積
-              on_next_weight_capacity := lr_ship_method_class.drink_loading_capacity;
+-- 2009/01/05 H.Itou Mod Start 本番障害#879
+--              on_next_weight_capacity := lr_ship_method_class.drink_loading_capacity;
+              on_next_weight_capacity := lr_ship_method_class.leaf_loading_capacity;
+-- 2009/01/05 H.Itou Mod End
 --
             ELSE
               -- ドリンク積載容積
@@ -7286,6 +7402,9 @@ debug_log(FND_FILE.LOG,'最大積載容積:'|| lt_intensive_tab(ln_parent_no).max_capa
                   := lt_intensive_tab(ln_parent_no).max_weight;                -- 最大積載重量
             first_max_capacity
                   := lt_intensive_tab(ln_parent_no).max_capacity;              -- 最大積載容積
+-- 2009/01/05 H.Itou Mod Start 本番障害#879
+            first_pre_saved_flg := lt_intensive_tab(ln_parent_no).pre_saved_flg;  -- 拠点混載登録済フラグ
+-- 2009/01/05 H.Itou Mod End
 --
             -- 比較用変数にキー項目を格納
             lt_prev_ship_date       := lt_intensive_tab(ln_parent_no).schedule_ship_date;    -- 出庫日
@@ -7396,7 +7515,12 @@ debug_log(FND_FILE.LOG,'2レコード目以降');
               END IF;
 --
 -- 2008/10/01 H.Itou Add Start PT 6-1_27 指摘18 基準レコードと同じ配送先の場合は重量オーバーで混載できないので、混載不可とする。
-              IF (first_deliver_to = lt_intensive_tab(ln_loop_cnt).deliver_to) THEN
+-- 2009/01/05 H.Itou Mod Start 本番障害#879 基準レコードが拠点混載登録済みの場合、同一混載元No(集約元No)以外、混載不可とする。
+--              IF (first_deliver_to = lt_intensive_tab(ln_loop_cnt).deliver_to) THEN
+              IF   ((first_deliver_to = lt_intensive_tab(ln_loop_cnt).deliver_to) 
+                OR ((cv_pre_save IN (first_pre_saved_flg, lt_intensive_tab(ln_loop_cnt).pre_saved_flg))
+                AND (first_intensive_source_no <> lt_intensive_tab(ln_loop_cnt).intensive_source_no))) THEN
+-- 2009/01/05 H.Itou Mod End
                 -- 混載可否フラグ：不可
                 lv_consolid_flag := NULL;
 --
