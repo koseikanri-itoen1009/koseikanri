@@ -7,7 +7,7 @@ AS
  * Description      : 支払運賃データ自動作成
  * MD.050           : 運賃計算（トランザクション） T_MD050_BPO_730
  * MD.070           : 支払運賃データ自動作成 T_MD070_BPO_73A
- * Version          : 1.15
+ * Version          : 1.16
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -108,6 +108,7 @@ AS
  *  2008/11/25    1.13 Oracle 吉田       本番#104対応
  *  2008/11/28    1.14 Oracle 椎名       本番#201対応
  *  2008/12/09    1.15 Oracle 野村       本番#595対応
+ *  2008/12/10    1.16 Oracle 野村       本番#401対応
  *
  *****************************************************************************************/
 --
@@ -2329,6 +2330,10 @@ AS
     ld_ship_date              xxwip_delivery_lines.ship_date%TYPE;              -- 出荷日
     ld_arrival_date           xxwip_delivery_lines.arrival_date%TYPE;           -- 着荷日
 -- ##### 20081021 Ver.1.9 T_S_572 統合#392対応 END   #####
+-- ##### 20081210 Ver.1.16 本番#401対応 START #####
+    lv_delivery_no            xxwip_delivery_lines.delivery_no%TYPE;            -- 配送No
+    ln_deli_cnt               NUMBER;
+-- ##### 20081210 Ver.1.16 本番#401対応 END   #####
 --
     ln_deliv_line_flg         VARCHAR2(1);      -- 受注明細アドオン 存在フラグ Y:有 N:無
 --
@@ -2386,6 +2391,9 @@ AS
               , xwdl.ship_date              -- 出荷日
               , xwdl.arrival_date           -- 着荷日
 -- ##### 20081021 Ver.1.9 T_S_572 統合#392対応 END   #####
+-- ##### 20081210 Ver.1.16 本番#401対応 START #####
+              , xwdl.delivery_no            -- 配送No
+-- ##### 20081210 Ver.1.16 本番#401対応 END   #####
         INTO    lv_delivery_company_code
               , lv_whs_code
               , lv_shipping_address_code
@@ -2396,6 +2404,9 @@ AS
               , ld_ship_date                -- 出荷日
               , ld_arrival_date             -- 着荷日
 -- ##### 20081021 Ver.1.9 T_S_572 統合#392対応 END   #####
+-- ##### 20081210 Ver.1.16 本番#401対応 START #####
+              , lv_delivery_no              -- 配送No
+-- ##### 20081210 Ver.1.16 本番#401対応 END   #####
         FROM   xxwip_delivery_lines xwdl    -- 運賃明細アドオン
         WHERE  xwdl.request_no = gt_order_inf_tab(ln_index).request_no; -- 依頼No
       EXCEPTION
@@ -2425,8 +2436,48 @@ AS
         FND_FILE.PUT_LINE(FND_FILE.LOG, 'set_order_deliv_line：重量         ：' || TO_CHAR(ln_delivery_weight));
         FND_FILE.PUT_LINE(FND_FILE.LOG, 'set_order_deliv_line：出荷日       ：' || TO_CHAR(ld_ship_date    ,'YYYY/MM/DD'));
         FND_FILE.PUT_LINE(FND_FILE.LOG, 'set_order_deliv_line：着荷日       ：' || TO_CHAR(ld_arrival_date ,'YYYY/MM/DD'));
+        FND_FILE.PUT_LINE(FND_FILE.LOG, 'set_order_deliv_line：配送No       ：' || lv_delivery_no);
       END IF;
 --<><><><><><><><><><><><><><><><><> DEBUG END   <><><><><><><><><><><><><><><><><><><><><><><>
+--
+-- ##### 20081210 Ver.1.16 本番#401対応 START #####
+--
+      -- **************************************************
+      -- ***  配送Noの変更による削除処理
+      -- **************************************************
+      -- 運賃明細アドオンが存在する場合
+      IF (ln_deliv_line_flg = gv_ktg_yes) THEN
+        -- 運賃明細の配送Noと実績の配送Noが異なる場合
+        IF (gt_order_inf_tab(ln_index).delivery_no <> lv_delivery_no) THEN
+          -- 旧配送Noの件数取得
+          BEGIN
+            SELECT  COUNT(delivery_no)
+            INTO    ln_deli_cnt
+            FROM    xxwip_delivery_lines xwdl           -- 運賃明細アドオン
+            WHERE   xwdl.delivery_no = lv_delivery_no;  -- 配送No
+          END;
+  --
+          -- 旧配送Noが運賃明細に1件の場合
+          -- 複数件の場合は混載、集約であるため、削除しない
+          IF ( ln_deli_cnt = 1 ) THEN
+--<><><><><><><><><><><><><><><><><> DEBUG START <><><><><><><><><><><><><><><><><><><><><><><>
+            IF (gv_debug_flg = gv_debug_on) THEN
+              FND_FILE.PUT_LINE(FND_FILE.LOG, 'get_order_line：配送組替 旧DELETE：' ||
+                                                                  lv_delivery_no || '->' ||
+                                          gt_order_inf_tab(ln_index).delivery_no);
+            END IF;
+--<><><><><><><><><><><><><><><><><> DEBUG END   <><><><><><><><><><><><><><><><><><><><><><><>
+            -- 運賃ヘッダより削除する
+            BEGIN
+              -- 対象配送Noを削除する
+              DELETE FROM xxwip_deliverys
+              WHERE delivery_no = lv_delivery_no;
+            END;
+          END IF;
+        END IF;
+      END IF;
+--
+-- ##### 20081210 Ver.1.16 本番#401対応 END   #####
 --
       -- **************************************************
       -- ***  運賃明細アドオンにデータが存在しない場合
@@ -2542,11 +2593,14 @@ AS
         -- **************************************************
         -- ***  登録されている内容より再計算が必要な場合
         -- **************************************************
-        --   対象項目：運送業者、出庫倉庫、配送先コード、配送区分、個数、重量、出庫日、入庫日
+        --   対象項目：運送業者、出庫倉庫、配送先コード、配送区分、配送No、個数、重量、出庫日、入庫日
         IF ((gt_order_inf_tab(ln_index).result_freight_carrier_code  <> lv_delivery_company_code )
           OR (gt_order_inf_tab(ln_index).deliver_from                 <> lv_whs_code              )
           OR (gt_order_inf_tab(ln_index).result_deliver_to            <> lv_shipping_address_code )
           OR (gt_order_inf_tab(ln_index).result_shipping_method_code  <> lv_dellivary_classe      )
+-- ##### 20081210 Ver.1.16 本番#401対応 START #####
+          OR (gt_order_inf_tab(ln_index).delivery_no                  <> lv_delivery_no           )
+-- ##### 20081210 Ver.1.16 本番#401対応 END   #####
 -- ##### 20081021 Ver.1.9 T_S_572 統合#392対応 START #####
           OR (gt_order_inf_tab(ln_index).shipped_date  <>  ld_ship_date     )
           OR (gt_order_inf_tab(ln_index).arrival_date  <>  ld_arrival_date  )
@@ -3572,6 +3626,10 @@ AS
     ld_ship_date              xxwip_delivery_lines.ship_date%TYPE;              -- 出荷日
     ld_arrival_date           xxwip_delivery_lines.arrival_date%TYPE;           -- 着荷日
 -- ##### 20081021 Ver.1.9 T_S_572 統合#392対応 END   #####
+-- ##### 20081210 Ver.1.16 本番#401対応 START #####
+    lv_delivery_no            xxwip_delivery_lines.delivery_no%TYPE;            -- 配送No
+    ln_deli_cnt               NUMBER;
+-- ##### 20081210 Ver.1.16 本番#401対応 END   #####
 --
     ln_deliv_line_flg         VARCHAR2(1);      -- 受注明細アドオン 存在フラグ Y:有 N:無
 --
@@ -3630,6 +3688,9 @@ AS
               , xwdl.ship_date              -- 出荷日
               , xwdl.arrival_date           -- 着荷日
 -- ##### 20081021 Ver.1.9 T_S_572 統合#392対応 END   #####
+-- ##### 20081210 Ver.1.16 本番#401対応 START #####
+              , xwdl.delivery_no            -- 配送No
+-- ##### 20081210 Ver.1.16 本番#401対応 END   #####
         INTO    lv_delivery_company_code
               , lv_whs_code
               , lv_shipping_address_code
@@ -3640,6 +3701,9 @@ AS
               , ld_ship_date                -- 出荷日
               , ld_arrival_date             -- 着荷日
 -- ##### 20081021 Ver.1.9 T_S_572 統合#392対応 END   #####
+-- ##### 20081210 Ver.1.16 本番#401対応 START #####
+              , lv_delivery_no              -- 配送No
+-- ##### 20081210 Ver.1.16 本番#401対応 END   #####
         FROM   xxwip_delivery_lines xwdl    -- 運賃明細アドオン
         WHERE  xwdl.request_no = gt_move_inf_tab(ln_index).mov_num; -- 移動番号
       EXCEPTION
@@ -3672,6 +3736,44 @@ AS
       END IF;
 --<><><><><><><><><><><><><><><><><> DEBUG END   <><><><><><><><><><><><><><><><><><><><><><><>
 --
+-- ##### 20081210 Ver.1.16 本番#401対応 START #####
+--
+      -- **************************************************
+      -- ***  配送Noの変更による削除処理
+      -- **************************************************
+      -- 運賃明細アドオンが存在する場合
+      IF (ln_deliv_line_flg = gv_ktg_yes) THEN
+        -- 運賃明細の配送Noと実績の配送Noが異なる場合
+        IF (gt_move_inf_tab(ln_index).delivery_no <> lv_delivery_no) THEN
+          -- 旧配送Noの件数取得
+          BEGIN
+            SELECT  COUNT(delivery_no)
+            INTO    ln_deli_cnt
+            FROM    xxwip_delivery_lines xwdl           -- 運賃明細アドオン
+            WHERE   xwdl.delivery_no = lv_delivery_no;  -- 配送No
+          END;
+--
+          -- 旧配送Noが運賃明細に1件の場合
+          -- 複数件の場合は混載、集約であるため、削除しない
+          IF ( ln_deli_cnt = 1 ) THEN
+--<><><><><><><><><><><><><><><><><> DEBUG START <><><><><><><><><><><><><><><><><><><><><><><>
+            IF (gv_debug_flg = gv_debug_on) THEN
+              FND_FILE.PUT_LINE(FND_FILE.LOG, 'set_move_deliv_line：配送組替 旧DELETE：' ||
+                                                                  lv_delivery_no || '->' ||
+                                          gt_move_inf_tab(ln_index).delivery_no);
+            END IF;
+--<><><><><><><><><><><><><><><><><> DEBUG END   <><><><><><><><><><><><><><><><><><><><><><><>
+            -- 運賃ヘッダより削除する
+            BEGIN
+              -- 対象配送Noを削除する
+              DELETE FROM xxwip_deliverys
+              WHERE delivery_no = lv_delivery_no;
+            END;
+          END IF;
+        END IF;
+      END IF;
+--
+-- ##### 20081210 Ver.1.16 本番#401対応 END   #####
       -- **************************************************
       -- ***  運賃明細アドオンにデータが存在しない場合
       -- **************************************************
@@ -3787,6 +3889,9 @@ AS
           OR (gt_move_inf_tab(ln_index).shipped_locat_code   <> lv_whs_code              )
           OR (gt_move_inf_tab(ln_index).ship_to_locat_code   <> lv_shipping_address_code )
           OR (gt_move_inf_tab(ln_index).shipping_method_code <> lv_dellivary_classe      )
+-- ##### 20081210 Ver.1.16 本番#401対応 START #####
+          OR (gt_move_inf_tab(ln_index).delivery_no          <> lv_delivery_no      )
+-- ##### 20081210 Ver.1.16 本番#401対応 END   #####
 -- ##### 20081021 Ver.1.9 T_S_572 統合#392対応 START #####
           OR (gt_move_inf_tab(ln_index).actual_ship_date     <> ld_ship_date    )
           OR (gt_move_inf_tab(ln_index).actual_arrival_date  <> ld_arrival_date )
@@ -9773,6 +9878,92 @@ AS
 --
   END delete_exch_deliv_head;
 --
+-- ##### 20081210 Ver.1.16 本番#401対応 START #####
+  /**********************************************************************************
+   * Procedure Name   : delete_deli_cleaning
+   * Description      : 配車組換削除
+   ***********************************************************************************/
+  PROCEDURE delete_deli_cleaning(
+    ov_errbuf     OUT NOCOPY VARCHAR2,     --   エラー・メッセージ           --# 固定 #
+    ov_retcode    OUT NOCOPY VARCHAR2,     --   リターン・コード             --# 固定 #
+    ov_errmsg     OUT NOCOPY VARCHAR2)     --   ユーザー・エラー・メッセージ --# 固定 #
+  IS
+    -- ===============================
+    -- 固定ローカル定数
+    -- ===============================
+    cv_prg_name   CONSTANT VARCHAR2(100) := 'delete_deli_cleaning'; -- プログラム名
+--
+--#####################  固定ローカル変数宣言部 START   ########################
+--
+    lv_errbuf  VARCHAR2(5000);  -- エラー・メッセージ
+    lv_retcode VARCHAR2(1);     -- リターン・コード
+    lv_errmsg  VARCHAR2(5000);  -- ユーザー・エラー・メッセージ
+--
+--###########################  固定部 END   ####################################
+--
+    -- ===============================
+    -- ユーザー宣言部
+    -- ===============================
+    -- *** ローカル定数 ***
+--
+    -- *** ローカル変数 ***
+--
+    -- *** ローカル・カーソル ***
+--
+    -- *** ローカル・レコード ***
+--
+  BEGIN
+--
+--##################  固定ステータス初期化部 START   ###################
+--
+    ov_retcode := gv_status_normal;
+--
+--###########################  固定部 END   ############################
+--
+    -- ***************************************
+    -- ***        実処理の記述             ***
+    -- ***       共通関数の呼び出し        ***
+    -- ***************************************
+--
+      -- **************************************************
+      -- * 通常配車、且つ、運賃ヘッダに存在して、
+      -- *            運賃明細に存在しない配送Noを削除
+      -- **************************************************
+      DELETE FROM  xxwip_deliverys xd        -- 運賃ヘッダアドオン
+        WHERE  xd.dispatch_type = gv_car_normal  -- 通常配車
+        AND    NOT EXISTS (SELECT 'x'
+                           FROM   xxwip_delivery_lines xdl
+                           WHERE  xd.delivery_no = xdl.delivery_no);
+--
+      -- **************************************************
+      -- 件数設定
+      -- **************************************************
+      gn_deliv_del_cnt := gn_deliv_del_cnt + SQL%ROWCOUNT;
+--
+  EXCEPTION
+--
+--#################################  固定例外処理部 START   ####################################
+--
+    -- *** 共通関数例外ハンドラ ***
+    WHEN global_api_expt THEN
+      ov_errmsg  := lv_errmsg;
+      ov_errbuf  := SUBSTRB(gv_pkg_name||gv_msg_cont||cv_prg_name||gv_msg_part||lv_errbuf,1,5000);
+      ov_retcode := gv_status_error;
+    -- *** 共通関数OTHERS例外ハンドラ ***
+    WHEN global_api_others_expt THEN
+      ov_errbuf  := gv_pkg_name||gv_msg_cont||cv_prg_name||gv_msg_part||SQLERRM;
+      ov_retcode := gv_status_error;
+    -- *** OTHERS例外ハンドラ ***
+    WHEN OTHERS THEN
+      ov_errbuf  := gv_pkg_name||gv_msg_cont||cv_prg_name||gv_msg_part||SQLERRM;
+      ov_retcode := gv_status_error;
+--
+--#####################################  固定部 END   ##########################################
+--
+  END delete_deli_cleaning;
+--
+-- ##### 20081210 Ver.1.16 本番#401対応 END   #####
+--
   /**********************************************************************************
    * Procedure Name   : submain
    * Description      : メイン処理プロシージャ
@@ -10146,6 +10337,19 @@ AS
       IF (lv_retcode = gv_status_error) THEN
         RAISE global_process_expt;
       END IF;
+--
+-- ##### 20081210 Ver.1.16 本番#401対応 START #####
+      -- =========================================
+      -- 配車組換削除
+      -- =========================================
+      delete_deli_cleaning(
+        lv_errbuf,         -- エラー・メッセージ           --# 固定 #
+        lv_retcode,        -- リターン・コード             --# 固定 #
+        lv_errmsg);        -- ユーザー・エラー・メッセージ --# 固定 #
+      IF (lv_retcode = gv_status_error) THEN
+        RAISE global_process_expt;
+      END IF;
+-- ##### 20081210 Ver.1.16 本番#401対応 END   #####
 --
       -- =========================================
       -- 運賃計算コントロール更新処理(A-36)
