@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCOS014A01C (body)
  * Description      : 納品書用データ作成
  * MD.050           : 納品書用データ作成 MD050_COS_014_A01
- * Version          : 1.15
+ * Version          : 1.16
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -50,6 +50,7 @@ AS
  *  2009/09/07    1.15  M.Sano           [0001211] 税関連項目取得基準日修正
  *                                       [0001216] 売上区分の外部結合化対応
  *  2009/09/15    1.15  M.Sano           [0001211] レビュー指摘対応
+ *  2009/10/02    1.16  M.Sano           [0001306] 売上区分混在チェックのIF条件修正
  *
  *****************************************************************************************/
 --
@@ -1557,6 +1558,9 @@ AS
     cv_init_cust_po_number    CONSTANT VARCHAR2(04) := 'INIT';                --固定値INIT
     -- *** ローカル変数 ***
     lt_header_id          oe_order_headers_all.header_id%TYPE;                --ヘッダID
+/* 2009/10/02 Ver1.16 Mod Start */
+    lt_last_header_id     oe_order_headers_all.header_id%TYPE;                --ヘッダID(前回ヘッダID)
+/* 2009/10/02 Ver1.16 Mod End   */
     lt_tkn                fnd_new_messages.message_text%TYPE;                 --メッセージ用文字列
     lv_break_key_old                   VARCHAR2(100);                         --旧ブレイクキー
     lv_break_key_new                   VARCHAR2(100);                         --新ブレイクキー
@@ -1565,7 +1569,9 @@ AS
 /* 2009/08/12 Ver1.14 Del Start */
 --    lt_bargain_class                   VARCHAR2(100);
 /* 2009/08/12 Ver1.14 Del End   */
-    lt_last_invoice_number             VARCHAR2(100);
+/* 2009/10/02 Ver1.16 Del Start */
+--    lt_last_invoice_number             VARCHAR2(100);
+/* 2009/10/02 Ver1.16 Del End   */
     lt_outbound_flag                   VARCHAR2(100);
 /* 2009/08/12 Ver1.14 Del Start */
 --    lt_last_bargain_class              VARCHAR2(100);
@@ -3282,6 +3288,9 @@ AS
        AND   oola.flow_status_code         != cv_cancel                                                       --ステータス
 --******************************************* 2009/05/21 Ver.1.10 M.Sano ADD  END  *****************************************
        ORDER BY ivoh.cust_po_number                                                                           --受注ヘッダ（顧客発注）
+/* 2009/10/02 Ver1.16 Mod Start */
+               ,ivoh.header_id
+/* 2009/10/02 Ver1.16 Mod End   */
                ,oola.line_number                                                                              --受注明細  （明細番号）
        FOR UPDATE OF ooha_lock.header_id NOWAIT                                                               --ロック
        ;
@@ -3812,7 +3821,10 @@ AS
       --==============================================================
       --売上区分混在チェック
       --==============================================================
-      IF (lt_last_invoice_number = l_data_tab('INVOICE_NUMBER')) AND cur_data_record%ROWCOUNT > 1 THEN
+/* 2009/10/02 Ver1.16 Mod Start */
+--      IF (lt_last_invoice_number = l_data_tab('INVOICE_NUMBER')) AND cur_data_record%ROWCOUNT > 1 THEN
+      IF ( lt_last_header_id = lt_header_id ) AND cur_data_record%ROWCOUNT > 1 THEN
+/* 2009/10/02 Ver1.16 Mod END   */
 /* 2009/08/12 Ver1.14 Mod Start */
 --        --前回伝票番号＝今回伝票番号の場合
 --        IF (lt_last_bargain_class != lt_bargain_class AND lb_mix_error_order = FALSE) THEN
@@ -3836,8 +3848,12 @@ AS
         NULL;
 /* 2009/08/12 Ver1.14 Mod End   */
       ELSE
-        --前回伝票番号≠今回伝票番号の場合
-        lt_last_invoice_number  := l_data_tab('INVOICE_NUMBER');
+/* 2009/10/02 Ver1.16 Mod Start */
+--        --前回伝票番号≠今回伝票番号の場合
+--        lt_last_invoice_number  := l_data_tab('INVOICE_NUMBER');
+        -- 前回受注ヘッダID ≠ 今回受注ヘッダIDの場合
+        lt_last_header_id := lt_header_id;
+/* 2009/10/02 Ver1.16 Mod END   */
 /* 2009/08/12 Ver1.4 Del Start */
 --        lt_last_bargain_class   := lt_bargain_class;
 --        lb_mix_error_order      := FALSE;
@@ -3888,7 +3904,10 @@ AS
       --データレコード作成処理《伝票単位の編集》
       --==============================================================
     --
-      lv_break_key_new  :=  lt_cust_po_number;                                --ブレイクキー初期値設定：新
+/* 2009/10/02 Ver1.16 Mod Start */
+--      lv_break_key_new  :=  lt_cust_po_number;                                --ブレイクキー初期値設定：新
+      lv_break_key_new  :=  TO_CHAR(lt_header_id);                            --ブレイクキー初期値設定：新
+/* 2009/10/02 Ver1.16 Mod End   */
     --
       IF ( cur_data_record%ROWCOUNT = 1 ) THEN
         lv_break_key_old  :=  cv_init_cust_po_number;                         --ブレイクキー初期値設定：旧
