@@ -56,88 +56,46 @@ CREATE TABLE xxcff.xxcff_gl_transactions (
   ,CONSTRAINT xxcff_gl_transactions_pk PRIMARY KEY (gl_transaction_id)
   USING INDEX TABLESPACE xxidx2)
  TABLESPACE xxdata2 PCTFREE 20 PCTUSED 40 INITRANS 8 STORAGE ( INITIAL 64K)
-/
-COMMENT ON TABLE xxcff.xxcff_gl_transactions IS 'リース仕訳'
-/
-COMMENT ON COLUMN xxcff.xxcff_gl_transactions.gl_transaction_id                        IS 'リース仕訳内部ID'
-/
-COMMENT ON COLUMN xxcff.xxcff_gl_transactions.fa_transaction_id                        IS 'リース取引内部ID'
-/
-COMMENT ON COLUMN xxcff.xxcff_gl_transactions.contract_header_id                       IS '契約内部ID'
-/
-COMMENT ON COLUMN xxcff.xxcff_gl_transactions.contract_line_id                         IS '契約明細内部ID'
-/
-COMMENT ON COLUMN xxcff.xxcff_gl_transactions.object_header_id                         IS '物件内部ID'
-/
-COMMENT ON COLUMN xxcff.xxcff_gl_transactions.payment_frequency                        IS '支払回数'
-/
-COMMENT ON COLUMN xxcff.xxcff_gl_transactions.transaction_num                          IS '連番'
-/
-COMMENT ON COLUMN xxcff.xxcff_gl_transactions.status                                   IS 'ステータス'
-/
-COMMENT ON COLUMN xxcff.xxcff_gl_transactions.set_of_books_id                          IS '会計帳簿ID'
-/
-COMMENT ON COLUMN xxcff.xxcff_gl_transactions.date_created                             IS '仕訳有効日付'
-/
-COMMENT ON COLUMN xxcff.xxcff_gl_transactions.currency_code                            IS '通貨コード'
-/
-COMMENT ON COLUMN xxcff.xxcff_gl_transactions.new_creation_date                        IS '新規作成日付'
-/
-COMMENT ON COLUMN xxcff.xxcff_gl_transactions.new_created_by                           IS '新規作成者ID'
-/
-COMMENT ON COLUMN xxcff.xxcff_gl_transactions.remainning_type                          IS '残高タイプ'
-/
-COMMENT ON COLUMN xxcff.xxcff_gl_transactions.je_category                              IS '仕訳カテゴリ名'
-/
-COMMENT ON COLUMN xxcff.xxcff_gl_transactions.je_source                                IS '仕訳ソース名'
-/
-COMMENT ON COLUMN xxcff.xxcff_gl_transactions.company_code                             IS '会社コード'
-/
-COMMENT ON COLUMN xxcff.xxcff_gl_transactions.department_code                          IS '管理部門コード'
-/
-COMMENT ON COLUMN xxcff.xxcff_gl_transactions.account_code                             IS '勘定科目コード'
-/
-COMMENT ON COLUMN xxcff.xxcff_gl_transactions.sub_account_code                         IS '補助科目コード'
-/
-COMMENT ON COLUMN xxcff.xxcff_gl_transactions.customer_code                            IS '顧客コード'
-/
-COMMENT ON COLUMN xxcff.xxcff_gl_transactions.enterprise_code                          IS '企業コード'
-/
-COMMENT ON COLUMN xxcff.xxcff_gl_transactions.reserve_1                                IS '予備1'
-/
-COMMENT ON COLUMN xxcff.xxcff_gl_transactions.reserve_2                                IS '予備2'
-/
-COMMENT ON COLUMN xxcff.xxcff_gl_transactions.accounted_dr                             IS '借方金額'
-/
-COMMENT ON COLUMN xxcff.xxcff_gl_transactions.accounted_cr                             IS '貸方金額'
-/
-COMMENT ON COLUMN xxcff.xxcff_gl_transactions.period_name                              IS '会計期間'
-/
-COMMENT ON COLUMN xxcff.xxcff_gl_transactions.description                              IS '摘要'
-/
-COMMENT ON COLUMN xxcff.xxcff_gl_transactions.tax_code                                 IS '税コード'
-/
-COMMENT ON COLUMN xxcff.xxcff_gl_transactions.slip_number                              IS '伝票番号'
-/
-COMMENT ON COLUMN xxcff.xxcff_gl_transactions.gl_if_date                               IS 'GL連携日'
-/
-COMMENT ON COLUMN xxcff.xxcff_gl_transactions.gl_if_flag                               IS 'GL連携フラグ'
-/
-COMMENT ON COLUMN xxcff.xxcff_gl_transactions.created_by                               IS '作成者'
-/
-COMMENT ON COLUMN xxcff.xxcff_gl_transactions.creation_date                            IS '作成日'
-/
-COMMENT ON COLUMN xxcff.xxcff_gl_transactions.last_updated_by                          IS '最終更新者'
-/
-COMMENT ON COLUMN xxcff.xxcff_gl_transactions.last_update_date                         IS '最終更新日'
-/
-COMMENT ON COLUMN xxcff.xxcff_gl_transactions.last_update_login                        IS '最終更新ログイン'
-/
-COMMENT ON COLUMN xxcff.xxcff_gl_transactions.request_id                               IS '要求ID'
-/
-COMMENT ON COLUMN xxcff.xxcff_gl_transactions.program_application_id                   IS 'コンカレント・プログラム・アプリケーションID'
-/
-COMMENT ON COLUMN xxcff.xxcff_gl_transactions.program_id                               IS 'コンカレント・プログラムID'
-/
-COMMENT ON COLUMN xxcff.xxcff_gl_transactions.program_update_date                      IS 'プログラム更新日'
-/
+;
+COMMENT ON TABLE xxcff.xxcff_gl_transactions IS 'リース仕訳';
+COMMENT ON COLUMN xxcff.xxcff_gl_transactions.gl_transaction_id                        IS 'リース仕訳内部ID';
+COMMENT ON COLUMN xxcff.xxcff_gl_transactions.fa_transaction_id                        IS 'リース取引内部ID';
+COMMENT ON COLUMN xxcff.xxcff_gl_transactions.contract_header_id                       IS '契約内部ID';
+COMMENT ON COLUMN xxcff.xxcff_gl_transactions.contract_line_id                         IS '契約明細内部ID';
+COMMENT ON COLUMN xxcff.xxcff_gl_transactions.object_header_id                         IS '物件内部ID';
+COMMENT ON COLUMN xxcff.xxcff_gl_transactions.payment_frequency                        IS '支払回数';
+COMMENT ON COLUMN xxcff.xxcff_gl_transactions.transaction_num                          IS '連番';
+COMMENT ON COLUMN xxcff.xxcff_gl_transactions.status                                   IS 'ステータス';
+COMMENT ON COLUMN xxcff.xxcff_gl_transactions.set_of_books_id                          IS '会計帳簿ID';
+COMMENT ON COLUMN xxcff.xxcff_gl_transactions.date_created                             IS '仕訳有効日付';
+COMMENT ON COLUMN xxcff.xxcff_gl_transactions.currency_code                            IS '通貨コード';
+COMMENT ON COLUMN xxcff.xxcff_gl_transactions.new_creation_date                        IS '新規作成日付';
+COMMENT ON COLUMN xxcff.xxcff_gl_transactions.new_created_by                           IS '新規作成者ID';
+COMMENT ON COLUMN xxcff.xxcff_gl_transactions.remainning_type                          IS '残高タイプ';
+COMMENT ON COLUMN xxcff.xxcff_gl_transactions.je_category                              IS '仕訳カテゴリ名';
+COMMENT ON COLUMN xxcff.xxcff_gl_transactions.je_source                                IS '仕訳ソース名';
+COMMENT ON COLUMN xxcff.xxcff_gl_transactions.company_code                             IS '会社コード';
+COMMENT ON COLUMN xxcff.xxcff_gl_transactions.department_code                          IS '管理部門コード';
+COMMENT ON COLUMN xxcff.xxcff_gl_transactions.account_code                             IS '勘定科目コード';
+COMMENT ON COLUMN xxcff.xxcff_gl_transactions.sub_account_code                         IS '補助科目コード';
+COMMENT ON COLUMN xxcff.xxcff_gl_transactions.customer_code                            IS '顧客コード';
+COMMENT ON COLUMN xxcff.xxcff_gl_transactions.enterprise_code                          IS '企業コード';
+COMMENT ON COLUMN xxcff.xxcff_gl_transactions.reserve_1                                IS '予備1';
+COMMENT ON COLUMN xxcff.xxcff_gl_transactions.reserve_2                                IS '予備2';
+COMMENT ON COLUMN xxcff.xxcff_gl_transactions.accounted_dr                             IS '借方金額';
+COMMENT ON COLUMN xxcff.xxcff_gl_transactions.accounted_cr                             IS '貸方金額';
+COMMENT ON COLUMN xxcff.xxcff_gl_transactions.period_name                              IS '会計期間';
+COMMENT ON COLUMN xxcff.xxcff_gl_transactions.description                              IS '摘要';
+COMMENT ON COLUMN xxcff.xxcff_gl_transactions.tax_code                                 IS '税コード';
+COMMENT ON COLUMN xxcff.xxcff_gl_transactions.slip_number                              IS '伝票番号';
+COMMENT ON COLUMN xxcff.xxcff_gl_transactions.gl_if_date                               IS 'GL連携日';
+COMMENT ON COLUMN xxcff.xxcff_gl_transactions.gl_if_flag                               IS 'GL連携フラグ';
+COMMENT ON COLUMN xxcff.xxcff_gl_transactions.created_by                               IS '作成者';
+COMMENT ON COLUMN xxcff.xxcff_gl_transactions.creation_date                            IS '作成日';
+COMMENT ON COLUMN xxcff.xxcff_gl_transactions.last_updated_by                          IS '最終更新者';
+COMMENT ON COLUMN xxcff.xxcff_gl_transactions.last_update_date                         IS '最終更新日';
+COMMENT ON COLUMN xxcff.xxcff_gl_transactions.last_update_login                        IS '最終更新ログイン';
+COMMENT ON COLUMN xxcff.xxcff_gl_transactions.request_id                               IS '要求ID';
+COMMENT ON COLUMN xxcff.xxcff_gl_transactions.program_application_id                   IS 'コンカレント・プログラム・アプリケーションID';
+COMMENT ON COLUMN xxcff.xxcff_gl_transactions.program_id                               IS 'コンカレント・プログラムID';
+COMMENT ON COLUMN xxcff.xxcff_gl_transactions.program_update_date                      IS 'プログラム更新日';

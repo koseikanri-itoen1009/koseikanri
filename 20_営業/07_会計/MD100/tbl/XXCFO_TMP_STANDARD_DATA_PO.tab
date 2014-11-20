@@ -152,7 +152,7 @@ CREATE GLOBAL TEMPORARY TABLE xxcfo.xxcfo_tmp_standard_data_po
   program_id                     NUMBER                        ,-- コンカレント・プログラムID
   program_update_date            DATE                           -- プログラム更新日
 )ON COMMIT PRESERVE ROWS ;
-/
+;
 --
 COMMENT ON COLUMN xxcfo.xxcfo_tmp_standard_data_po.po_num                     IS '発注番号';
 COMMENT ON COLUMN xxcfo.xxcfo_tmp_standard_data_po.revision_num               IS '発注毎の改訂番号';
@@ -292,4 +292,3 @@ COMMENT ON COLUMN xxcfo.xxcfo_tmp_standard_data_po.program_id                 IS
 COMMENT ON COLUMN xxcfo.xxcfo_tmp_standard_data_po.program_update_date        IS 'プログラム更新日';
 --
 COMMENT ON TABLE  xxcfo.xxcfo_tmp_standard_data_po IS '発注書データ出力ワークテーブル';
-/

@@ -27,7 +27,7 @@ CREATE TABLE xxcfo.xxcfo_po_status_mng
   program_update_date        DATE                           ,-- プログラム更新日
   CONSTRAINT xxcfo_po_status_mng_pk PRIMARY KEY ( po_num, org_id )
 )
-/
+;
 --
 COMMENT ON COLUMN xxcfo.xxcfo_po_status_mng.po_num                 IS '発注番号';
 COMMENT ON COLUMN xxcfo.xxcfo_po_status_mng.org_id                 IS '組織ID';

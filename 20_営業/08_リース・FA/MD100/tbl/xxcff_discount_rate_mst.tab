@@ -75,126 +75,65 @@ CREATE TABLE xxcff.xxcff_discount_rate_mst (
   ,CONSTRAINT xxcff_discount_rate_mst_pk PRIMARY KEY (application_date)
   USING INDEX TABLESPACE xxidx2)
  TABLESPACE xxdata2 PCTFREE 20 PCTUSED 40 INITRANS 8 STORAGE ( INITIAL 64K)
-/
-COMMENT ON TABLE xxcff.xxcff_discount_rate_mst IS '割引率マスタ'
-/
-COMMENT ON COLUMN xxcff.xxcff_discount_rate_mst.application_date                       IS '適用年月'
-/
-COMMENT ON COLUMN xxcff.xxcff_discount_rate_mst.discount_rate_01                       IS '割引率1'
-/
-COMMENT ON COLUMN xxcff.xxcff_discount_rate_mst.discount_rate_02                       IS '割引率2'
-/
-COMMENT ON COLUMN xxcff.xxcff_discount_rate_mst.discount_rate_03                       IS '割引率3'
-/
-COMMENT ON COLUMN xxcff.xxcff_discount_rate_mst.discount_rate_04                       IS '割引率4'
-/
-COMMENT ON COLUMN xxcff.xxcff_discount_rate_mst.discount_rate_05                       IS '割引率5'
-/
-COMMENT ON COLUMN xxcff.xxcff_discount_rate_mst.discount_rate_06                       IS '割引率6'
-/
-COMMENT ON COLUMN xxcff.xxcff_discount_rate_mst.discount_rate_07                       IS '割引率7'
-/
-COMMENT ON COLUMN xxcff.xxcff_discount_rate_mst.discount_rate_08                       IS '割引率8'
-/
-COMMENT ON COLUMN xxcff.xxcff_discount_rate_mst.discount_rate_09                       IS '割引率9'
-/
-COMMENT ON COLUMN xxcff.xxcff_discount_rate_mst.discount_rate_10                       IS '割引率10'
-/
-COMMENT ON COLUMN xxcff.xxcff_discount_rate_mst.discount_rate_11                       IS '割引率11'
-/
-COMMENT ON COLUMN xxcff.xxcff_discount_rate_mst.discount_rate_12                       IS '割引率12'
-/
-COMMENT ON COLUMN xxcff.xxcff_discount_rate_mst.discount_rate_13                       IS '割引率13'
-/
-COMMENT ON COLUMN xxcff.xxcff_discount_rate_mst.discount_rate_14                       IS '割引率14'
-/
-COMMENT ON COLUMN xxcff.xxcff_discount_rate_mst.discount_rate_15                       IS '割引率15'
-/
-COMMENT ON COLUMN xxcff.xxcff_discount_rate_mst.discount_rate_16                       IS '割引率16'
-/
-COMMENT ON COLUMN xxcff.xxcff_discount_rate_mst.discount_rate_17                       IS '割引率17'
-/
-COMMENT ON COLUMN xxcff.xxcff_discount_rate_mst.discount_rate_18                       IS '割引率18'
-/
-COMMENT ON COLUMN xxcff.xxcff_discount_rate_mst.discount_rate_19                       IS '割引率19'
-/
-COMMENT ON COLUMN xxcff.xxcff_discount_rate_mst.discount_rate_20                       IS '割引率20'
-/
-COMMENT ON COLUMN xxcff.xxcff_discount_rate_mst.discount_rate_21                       IS '割引率21'
-/
-COMMENT ON COLUMN xxcff.xxcff_discount_rate_mst.discount_rate_22                       IS '割引率22'
-/
-COMMENT ON COLUMN xxcff.xxcff_discount_rate_mst.discount_rate_23                       IS '割引率23'
-/
-COMMENT ON COLUMN xxcff.xxcff_discount_rate_mst.discount_rate_24                       IS '割引率24'
-/
-COMMENT ON COLUMN xxcff.xxcff_discount_rate_mst.discount_rate_25                       IS '割引率25'
-/
-COMMENT ON COLUMN xxcff.xxcff_discount_rate_mst.discount_rate_26                       IS '割引率26'
-/
-COMMENT ON COLUMN xxcff.xxcff_discount_rate_mst.discount_rate_27                       IS '割引率27'
-/
-COMMENT ON COLUMN xxcff.xxcff_discount_rate_mst.discount_rate_28                       IS '割引率28'
-/
-COMMENT ON COLUMN xxcff.xxcff_discount_rate_mst.discount_rate_29                       IS '割引率29'
-/
-COMMENT ON COLUMN xxcff.xxcff_discount_rate_mst.discount_rate_30                       IS '割引率30'
-/
-COMMENT ON COLUMN xxcff.xxcff_discount_rate_mst.discount_rate_31                       IS '割引率31'
-/
-COMMENT ON COLUMN xxcff.xxcff_discount_rate_mst.discount_rate_32                       IS '割引率32'
-/
-COMMENT ON COLUMN xxcff.xxcff_discount_rate_mst.discount_rate_33                       IS '割引率33'
-/
-COMMENT ON COLUMN xxcff.xxcff_discount_rate_mst.discount_rate_34                       IS '割引率34'
-/
-COMMENT ON COLUMN xxcff.xxcff_discount_rate_mst.discount_rate_35                       IS '割引率35'
-/
-COMMENT ON COLUMN xxcff.xxcff_discount_rate_mst.discount_rate_36                       IS '割引率36'
-/
-COMMENT ON COLUMN xxcff.xxcff_discount_rate_mst.discount_rate_37                       IS '割引率37'
-/
-COMMENT ON COLUMN xxcff.xxcff_discount_rate_mst.discount_rate_38                       IS '割引率38'
-/
-COMMENT ON COLUMN xxcff.xxcff_discount_rate_mst.discount_rate_39                       IS '割引率39'
-/
-COMMENT ON COLUMN xxcff.xxcff_discount_rate_mst.discount_rate_40                       IS '割引率40'
-/
-COMMENT ON COLUMN xxcff.xxcff_discount_rate_mst.discount_rate_41                       IS '割引率41'
-/
-COMMENT ON COLUMN xxcff.xxcff_discount_rate_mst.discount_rate_42                       IS '割引率42'
-/
-COMMENT ON COLUMN xxcff.xxcff_discount_rate_mst.discount_rate_43                       IS '割引率43'
-/
-COMMENT ON COLUMN xxcff.xxcff_discount_rate_mst.discount_rate_44                       IS '割引率44'
-/
-COMMENT ON COLUMN xxcff.xxcff_discount_rate_mst.discount_rate_45                       IS '割引率45'
-/
-COMMENT ON COLUMN xxcff.xxcff_discount_rate_mst.discount_rate_46                       IS '割引率46'
-/
-COMMENT ON COLUMN xxcff.xxcff_discount_rate_mst.discount_rate_47                       IS '割引率47'
-/
-COMMENT ON COLUMN xxcff.xxcff_discount_rate_mst.discount_rate_48                       IS '割引率48'
-/
-COMMENT ON COLUMN xxcff.xxcff_discount_rate_mst.discount_rate_49                       IS '割引率49'
-/
-COMMENT ON COLUMN xxcff.xxcff_discount_rate_mst.discount_rate_50                       IS '割引率50'
-/
-COMMENT ON COLUMN xxcff.xxcff_discount_rate_mst.created_by                             IS '作成者'
-/
-COMMENT ON COLUMN xxcff.xxcff_discount_rate_mst.creation_date                          IS '作成日'
-/
-COMMENT ON COLUMN xxcff.xxcff_discount_rate_mst.last_updated_by                        IS '最終更新者'
-/
-COMMENT ON COLUMN xxcff.xxcff_discount_rate_mst.last_update_date                       IS '最終更新日'
-/
-COMMENT ON COLUMN xxcff.xxcff_discount_rate_mst.last_update_login                      IS '最終更新ログイン'
-/
-COMMENT ON COLUMN xxcff.xxcff_discount_rate_mst.request_id                             IS '要求ID'
-/
-COMMENT ON COLUMN xxcff.xxcff_discount_rate_mst.program_application_id                 IS 'コンカレント・プログラム・アプリケーションID'
-/
-COMMENT ON COLUMN xxcff.xxcff_discount_rate_mst.program_id                             IS 'コンカレント・プログラムID'
-/
-COMMENT ON COLUMN xxcff.xxcff_discount_rate_mst.program_update_date                    IS 'プログラム更新日'
-/
+;
+COMMENT ON TABLE xxcff.xxcff_discount_rate_mst IS '割引率マスタ';
+COMMENT ON COLUMN xxcff.xxcff_discount_rate_mst.application_date                       IS '適用年月';
+COMMENT ON COLUMN xxcff.xxcff_discount_rate_mst.discount_rate_01                       IS '割引率1';
+COMMENT ON COLUMN xxcff.xxcff_discount_rate_mst.discount_rate_02                       IS '割引率2';
+COMMENT ON COLUMN xxcff.xxcff_discount_rate_mst.discount_rate_03                       IS '割引率3';
+COMMENT ON COLUMN xxcff.xxcff_discount_rate_mst.discount_rate_04                       IS '割引率4';
+COMMENT ON COLUMN xxcff.xxcff_discount_rate_mst.discount_rate_05                       IS '割引率5';
+COMMENT ON COLUMN xxcff.xxcff_discount_rate_mst.discount_rate_06                       IS '割引率6';
+COMMENT ON COLUMN xxcff.xxcff_discount_rate_mst.discount_rate_07                       IS '割引率7';
+COMMENT ON COLUMN xxcff.xxcff_discount_rate_mst.discount_rate_08                       IS '割引率8';
+COMMENT ON COLUMN xxcff.xxcff_discount_rate_mst.discount_rate_09                       IS '割引率9';
+COMMENT ON COLUMN xxcff.xxcff_discount_rate_mst.discount_rate_10                       IS '割引率10';
+COMMENT ON COLUMN xxcff.xxcff_discount_rate_mst.discount_rate_11                       IS '割引率11';
+COMMENT ON COLUMN xxcff.xxcff_discount_rate_mst.discount_rate_12                       IS '割引率12';
+COMMENT ON COLUMN xxcff.xxcff_discount_rate_mst.discount_rate_13                       IS '割引率13';
+COMMENT ON COLUMN xxcff.xxcff_discount_rate_mst.discount_rate_14                       IS '割引率14';
+COMMENT ON COLUMN xxcff.xxcff_discount_rate_mst.discount_rate_15                       IS '割引率15';
+COMMENT ON COLUMN xxcff.xxcff_discount_rate_mst.discount_rate_16                       IS '割引率16';
+COMMENT ON COLUMN xxcff.xxcff_discount_rate_mst.discount_rate_17                       IS '割引率17';
+COMMENT ON COLUMN xxcff.xxcff_discount_rate_mst.discount_rate_18                       IS '割引率18';
+COMMENT ON COLUMN xxcff.xxcff_discount_rate_mst.discount_rate_19                       IS '割引率19';
+COMMENT ON COLUMN xxcff.xxcff_discount_rate_mst.discount_rate_20                       IS '割引率20';
+COMMENT ON COLUMN xxcff.xxcff_discount_rate_mst.discount_rate_21                       IS '割引率21';
+COMMENT ON COLUMN xxcff.xxcff_discount_rate_mst.discount_rate_22                       IS '割引率22';
+COMMENT ON COLUMN xxcff.xxcff_discount_rate_mst.discount_rate_23                       IS '割引率23';
+COMMENT ON COLUMN xxcff.xxcff_discount_rate_mst.discount_rate_24                       IS '割引率24';
+COMMENT ON COLUMN xxcff.xxcff_discount_rate_mst.discount_rate_25                       IS '割引率25';
+COMMENT ON COLUMN xxcff.xxcff_discount_rate_mst.discount_rate_26                       IS '割引率26';
+COMMENT ON COLUMN xxcff.xxcff_discount_rate_mst.discount_rate_27                       IS '割引率27';
+COMMENT ON COLUMN xxcff.xxcff_discount_rate_mst.discount_rate_28                       IS '割引率28';
+COMMENT ON COLUMN xxcff.xxcff_discount_rate_mst.discount_rate_29                       IS '割引率29';
+COMMENT ON COLUMN xxcff.xxcff_discount_rate_mst.discount_rate_30                       IS '割引率30';
+COMMENT ON COLUMN xxcff.xxcff_discount_rate_mst.discount_rate_31                       IS '割引率31';
+COMMENT ON COLUMN xxcff.xxcff_discount_rate_mst.discount_rate_32                       IS '割引率32';
+COMMENT ON COLUMN xxcff.xxcff_discount_rate_mst.discount_rate_33                       IS '割引率33';
+COMMENT ON COLUMN xxcff.xxcff_discount_rate_mst.discount_rate_34                       IS '割引率34';
+COMMENT ON COLUMN xxcff.xxcff_discount_rate_mst.discount_rate_35                       IS '割引率35';
+COMMENT ON COLUMN xxcff.xxcff_discount_rate_mst.discount_rate_36                       IS '割引率36';
+COMMENT ON COLUMN xxcff.xxcff_discount_rate_mst.discount_rate_37                       IS '割引率37';
+COMMENT ON COLUMN xxcff.xxcff_discount_rate_mst.discount_rate_38                       IS '割引率38';
+COMMENT ON COLUMN xxcff.xxcff_discount_rate_mst.discount_rate_39                       IS '割引率39';
+COMMENT ON COLUMN xxcff.xxcff_discount_rate_mst.discount_rate_40                       IS '割引率40';
+COMMENT ON COLUMN xxcff.xxcff_discount_rate_mst.discount_rate_41                       IS '割引率41';
+COMMENT ON COLUMN xxcff.xxcff_discount_rate_mst.discount_rate_42                       IS '割引率42';
+COMMENT ON COLUMN xxcff.xxcff_discount_rate_mst.discount_rate_43                       IS '割引率43';
+COMMENT ON COLUMN xxcff.xxcff_discount_rate_mst.discount_rate_44                       IS '割引率44';
+COMMENT ON COLUMN xxcff.xxcff_discount_rate_mst.discount_rate_45                       IS '割引率45';
+COMMENT ON COLUMN xxcff.xxcff_discount_rate_mst.discount_rate_46                       IS '割引率46';
+COMMENT ON COLUMN xxcff.xxcff_discount_rate_mst.discount_rate_47                       IS '割引率47';
+COMMENT ON COLUMN xxcff.xxcff_discount_rate_mst.discount_rate_48                       IS '割引率48';
+COMMENT ON COLUMN xxcff.xxcff_discount_rate_mst.discount_rate_49                       IS '割引率49';
+COMMENT ON COLUMN xxcff.xxcff_discount_rate_mst.discount_rate_50                       IS '割引率50';
+COMMENT ON COLUMN xxcff.xxcff_discount_rate_mst.created_by                             IS '作成者';
+COMMENT ON COLUMN xxcff.xxcff_discount_rate_mst.creation_date                          IS '作成日';
+COMMENT ON COLUMN xxcff.xxcff_discount_rate_mst.last_updated_by                        IS '最終更新者';
+COMMENT ON COLUMN xxcff.xxcff_discount_rate_mst.last_update_date                       IS '最終更新日';
+COMMENT ON COLUMN xxcff.xxcff_discount_rate_mst.last_update_login                      IS '最終更新ログイン';
+COMMENT ON COLUMN xxcff.xxcff_discount_rate_mst.request_id                             IS '要求ID';
+COMMENT ON COLUMN xxcff.xxcff_discount_rate_mst.program_application_id                 IS 'コンカレント・プログラム・アプリケーションID';
+COMMENT ON COLUMN xxcff.xxcff_discount_rate_mst.program_id                             IS 'コンカレント・プログラムID';
+COMMENT ON COLUMN xxcff.xxcff_discount_rate_mst.program_update_date                    IS 'プログラム更新日';

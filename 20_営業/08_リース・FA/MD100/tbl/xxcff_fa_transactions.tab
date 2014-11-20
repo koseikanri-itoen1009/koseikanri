@@ -62,126 +62,65 @@ CREATE TABLE xxcff.xxcff_fa_transactions (
   ,CONSTRAINT xxcff_fa_transactions_pk PRIMARY KEY (fa_transaction_id)
   USING INDEX TABLESPACE xxidx2)
  TABLESPACE xxdata2 PCTFREE 20 PCTUSED 40 INITRANS 8 STORAGE ( INITIAL 64K)
-/
-COMMENT ON TABLE xxcff.xxcff_fa_transactions IS 'リース取引'
-/
-COMMENT ON COLUMN xxcff.xxcff_fa_transactions.fa_transaction_id                        IS 'リース取引内部ID'
-/
-COMMENT ON COLUMN xxcff.xxcff_fa_transactions.contract_header_id                       IS '契約内部ID'
-/
-COMMENT ON COLUMN xxcff.xxcff_fa_transactions.contract_line_id                         IS '契約明細内部ID'
-/
-COMMENT ON COLUMN xxcff.xxcff_fa_transactions.object_header_id                         IS '物件内部ID'
-/
-COMMENT ON COLUMN xxcff.xxcff_fa_transactions.period_name                              IS '会計期間'
-/
-COMMENT ON COLUMN xxcff.xxcff_fa_transactions.transaction_type                         IS '取引タイプ'
-/
-COMMENT ON COLUMN xxcff.xxcff_fa_transactions.movement_type                            IS '移動タイプ'
-/
-COMMENT ON COLUMN xxcff.xxcff_fa_transactions.book_type_code                           IS '資産台帳名'
-/
-COMMENT ON COLUMN xxcff.xxcff_fa_transactions.asset_number                             IS '資産番号'
-/
-COMMENT ON COLUMN xxcff.xxcff_fa_transactions.description                              IS '摘要'
-/
-COMMENT ON COLUMN xxcff.xxcff_fa_transactions.category_id                              IS '資産カテゴリCCID'
-/
-COMMENT ON COLUMN xxcff.xxcff_fa_transactions.category_code                            IS '資産カテゴリコード'
-/
-COMMENT ON COLUMN xxcff.xxcff_fa_transactions.asset_category                           IS '資産種類'
-/
-COMMENT ON COLUMN xxcff.xxcff_fa_transactions.deprn_declaration                        IS '償却申告'
-/
-COMMENT ON COLUMN xxcff.xxcff_fa_transactions.asset_account                            IS '資産勘定'
-/
-COMMENT ON COLUMN xxcff.xxcff_fa_transactions.deprn_account                            IS '償却科目'
-/
-COMMENT ON COLUMN xxcff.xxcff_fa_transactions.life_in_months                           IS '法定耐用年数'
-/
-COMMENT ON COLUMN xxcff.xxcff_fa_transactions.cat_deprn_method                         IS '償却方法'
-/
-COMMENT ON COLUMN xxcff.xxcff_fa_transactions.lease_class                              IS 'リース種別'
-/
-COMMENT ON COLUMN xxcff.xxcff_fa_transactions.dprn_code_combination_id                 IS '減価償却費勘定CCID'
-/
-COMMENT ON COLUMN xxcff.xxcff_fa_transactions.dprn_company_code                        IS '会F_会社コード'
-/
-COMMENT ON COLUMN xxcff.xxcff_fa_transactions.dprn_department_code                     IS '会F_部門コード'
-/
-COMMENT ON COLUMN xxcff.xxcff_fa_transactions.dprn_account_code                        IS '会F_勘定科目コード'
-/
-COMMENT ON COLUMN xxcff.xxcff_fa_transactions.dprn_sub_account_code                    IS '会F_補助科目コード'
-/
-COMMENT ON COLUMN xxcff.xxcff_fa_transactions.dprn_customer_code                       IS '会F_顧客コード'
-/
-COMMENT ON COLUMN xxcff.xxcff_fa_transactions.dprn_enterprise_code                     IS '会F_企業コード'
-/
-COMMENT ON COLUMN xxcff.xxcff_fa_transactions.dprn_reserve_1                           IS '会F_予備1'
-/
-COMMENT ON COLUMN xxcff.xxcff_fa_transactions.dprn_reserve_2                           IS '会F_予備2'
-/
-COMMENT ON COLUMN xxcff.xxcff_fa_transactions.location_id                              IS '事業所CCID'
-/
-COMMENT ON COLUMN xxcff.xxcff_fa_transactions.dclr_place                               IS '申告地'
-/
-COMMENT ON COLUMN xxcff.xxcff_fa_transactions.department_code                          IS '管理部門コード'
-/
-COMMENT ON COLUMN xxcff.xxcff_fa_transactions.location_name                            IS '事業所'
-/
-COMMENT ON COLUMN xxcff.xxcff_fa_transactions.location_place                           IS '場所'
-/
-COMMENT ON COLUMN xxcff.xxcff_fa_transactions.owner_company                            IS '本社／工場'
-/
-COMMENT ON COLUMN xxcff.xxcff_fa_transactions.asset_key_id                             IS '資産キーCCID'
-/
-COMMENT ON COLUMN xxcff.xxcff_fa_transactions.key_reserve_1                            IS '資F_予備1'
-/
-COMMENT ON COLUMN xxcff.xxcff_fa_transactions.key_reserve_2                            IS '資F_予備2'
-/
-COMMENT ON COLUMN xxcff.xxcff_fa_transactions.date_placed_in_service                   IS '事業供用日'
-/
-COMMENT ON COLUMN xxcff.xxcff_fa_transactions.original_cost                            IS '取得価額'
-/
-COMMENT ON COLUMN xxcff.xxcff_fa_transactions.quantity                                 IS '数量'
-/
-COMMENT ON COLUMN xxcff.xxcff_fa_transactions.deprn_method                             IS '資産カテゴリコード'
-/
-COMMENT ON COLUMN xxcff.xxcff_fa_transactions.transfer_date                            IS '振替日'
-/
-COMMENT ON COLUMN xxcff.xxcff_fa_transactions.retirement_date                          IS '除却日'
-/
-COMMENT ON COLUMN xxcff.xxcff_fa_transactions.asset_type                               IS '資産タイプ'
-/
-COMMENT ON COLUMN xxcff.xxcff_fa_transactions.cost_retired                             IS '除売却・取得価格'
-/
-COMMENT ON COLUMN xxcff.xxcff_fa_transactions.ret_prorate_convention                   IS '除・売却年度償却'
-/
-COMMENT ON COLUMN xxcff.xxcff_fa_transactions.payment_frequency                        IS '計算月数(支払回数)'
-/
-COMMENT ON COLUMN xxcff.xxcff_fa_transactions.fa_if_date                               IS 'FA連携日'
-/
-COMMENT ON COLUMN xxcff.xxcff_fa_transactions.fa_if_flag                               IS 'FA連携フラグ'
-/
-COMMENT ON COLUMN xxcff.xxcff_fa_transactions.gl_if_date                               IS 'GL連携日'
-/
-COMMENT ON COLUMN xxcff.xxcff_fa_transactions.gl_if_flag                               IS 'GL連携フラグ'
-/
-COMMENT ON COLUMN xxcff.xxcff_fa_transactions.created_by                               IS '作成者'
-/
-COMMENT ON COLUMN xxcff.xxcff_fa_transactions.creation_date                            IS '作成日'
-/
-COMMENT ON COLUMN xxcff.xxcff_fa_transactions.last_updated_by                          IS '最終更新者'
-/
-COMMENT ON COLUMN xxcff.xxcff_fa_transactions.last_update_date                         IS '最終更新日'
-/
-COMMENT ON COLUMN xxcff.xxcff_fa_transactions.last_update_login                        IS '最終更新ログイン'
-/
-COMMENT ON COLUMN xxcff.xxcff_fa_transactions.request_id                               IS '要求ID'
-/
-COMMENT ON COLUMN xxcff.xxcff_fa_transactions.program_application_id                   IS 'コンカレント・プログラム・アプリケーションID'
-/
-COMMENT ON COLUMN xxcff.xxcff_fa_transactions.program_id                               IS 'コンカレント・プログラムID'
-/
-COMMENT ON COLUMN xxcff.xxcff_fa_transactions.program_update_date                      IS 'プログラム更新日'
-/
+;
+COMMENT ON TABLE xxcff.xxcff_fa_transactions IS 'リース取引';
+COMMENT ON COLUMN xxcff.xxcff_fa_transactions.fa_transaction_id                        IS 'リース取引内部ID';
+COMMENT ON COLUMN xxcff.xxcff_fa_transactions.contract_header_id                       IS '契約内部ID';
+COMMENT ON COLUMN xxcff.xxcff_fa_transactions.contract_line_id                         IS '契約明細内部ID';
+COMMENT ON COLUMN xxcff.xxcff_fa_transactions.object_header_id                         IS '物件内部ID';
+COMMENT ON COLUMN xxcff.xxcff_fa_transactions.period_name                              IS '会計期間';
+COMMENT ON COLUMN xxcff.xxcff_fa_transactions.transaction_type                         IS '取引タイプ';
+COMMENT ON COLUMN xxcff.xxcff_fa_transactions.movement_type                            IS '移動タイプ';
+COMMENT ON COLUMN xxcff.xxcff_fa_transactions.book_type_code                           IS '資産台帳名';
+COMMENT ON COLUMN xxcff.xxcff_fa_transactions.asset_number                             IS '資産番号';
+COMMENT ON COLUMN xxcff.xxcff_fa_transactions.description                              IS '摘要';
+COMMENT ON COLUMN xxcff.xxcff_fa_transactions.category_id                              IS '資産カテゴリCCID';
+COMMENT ON COLUMN xxcff.xxcff_fa_transactions.category_code                            IS '資産カテゴリコード';
+COMMENT ON COLUMN xxcff.xxcff_fa_transactions.asset_category                           IS '資産種類';
+COMMENT ON COLUMN xxcff.xxcff_fa_transactions.deprn_declaration                        IS '償却申告';
+COMMENT ON COLUMN xxcff.xxcff_fa_transactions.asset_account                            IS '資産勘定';
+COMMENT ON COLUMN xxcff.xxcff_fa_transactions.deprn_account                            IS '償却科目';
+COMMENT ON COLUMN xxcff.xxcff_fa_transactions.life_in_months                           IS '法定耐用年数';
+COMMENT ON COLUMN xxcff.xxcff_fa_transactions.cat_deprn_method                         IS '償却方法';
+COMMENT ON COLUMN xxcff.xxcff_fa_transactions.lease_class                              IS 'リース種別';
+COMMENT ON COLUMN xxcff.xxcff_fa_transactions.dprn_code_combination_id                 IS '減価償却費勘定CCID';
+COMMENT ON COLUMN xxcff.xxcff_fa_transactions.dprn_company_code                        IS '会F_会社コード';
+COMMENT ON COLUMN xxcff.xxcff_fa_transactions.dprn_department_code                     IS '会F_部門コード';
+COMMENT ON COLUMN xxcff.xxcff_fa_transactions.dprn_account_code                        IS '会F_勘定科目コード';
+COMMENT ON COLUMN xxcff.xxcff_fa_transactions.dprn_sub_account_code                    IS '会F_補助科目コード';
+COMMENT ON COLUMN xxcff.xxcff_fa_transactions.dprn_customer_code                       IS '会F_顧客コード';
+COMMENT ON COLUMN xxcff.xxcff_fa_transactions.dprn_enterprise_code                     IS '会F_企業コード';
+COMMENT ON COLUMN xxcff.xxcff_fa_transactions.dprn_reserve_1                           IS '会F_予備1';
+COMMENT ON COLUMN xxcff.xxcff_fa_transactions.dprn_reserve_2                           IS '会F_予備2';
+COMMENT ON COLUMN xxcff.xxcff_fa_transactions.location_id                              IS '事業所CCID';
+COMMENT ON COLUMN xxcff.xxcff_fa_transactions.dclr_place                               IS '申告地';
+COMMENT ON COLUMN xxcff.xxcff_fa_transactions.department_code                          IS '管理部門コード';
+COMMENT ON COLUMN xxcff.xxcff_fa_transactions.location_name                            IS '事業所';
+COMMENT ON COLUMN xxcff.xxcff_fa_transactions.location_place                           IS '場所';
+COMMENT ON COLUMN xxcff.xxcff_fa_transactions.owner_company                            IS '本社／工場';
+COMMENT ON COLUMN xxcff.xxcff_fa_transactions.asset_key_id                             IS '資産キーCCID';
+COMMENT ON COLUMN xxcff.xxcff_fa_transactions.key_reserve_1                            IS '資F_予備1';
+COMMENT ON COLUMN xxcff.xxcff_fa_transactions.key_reserve_2                            IS '資F_予備2';
+COMMENT ON COLUMN xxcff.xxcff_fa_transactions.date_placed_in_service                   IS '事業供用日';
+COMMENT ON COLUMN xxcff.xxcff_fa_transactions.original_cost                            IS '取得価額';
+COMMENT ON COLUMN xxcff.xxcff_fa_transactions.quantity                                 IS '数量';
+COMMENT ON COLUMN xxcff.xxcff_fa_transactions.deprn_method                             IS '資産カテゴリコード';
+COMMENT ON COLUMN xxcff.xxcff_fa_transactions.transfer_date                            IS '振替日';
+COMMENT ON COLUMN xxcff.xxcff_fa_transactions.retirement_date                          IS '除却日';
+COMMENT ON COLUMN xxcff.xxcff_fa_transactions.asset_type                               IS '資産タイプ';
+COMMENT ON COLUMN xxcff.xxcff_fa_transactions.cost_retired                             IS '除売却・取得価格';
+COMMENT ON COLUMN xxcff.xxcff_fa_transactions.ret_prorate_convention                   IS '除・売却年度償却';
+COMMENT ON COLUMN xxcff.xxcff_fa_transactions.payment_frequency                        IS '計算月数(支払回数)';
+COMMENT ON COLUMN xxcff.xxcff_fa_transactions.fa_if_date                               IS 'FA連携日';
+COMMENT ON COLUMN xxcff.xxcff_fa_transactions.fa_if_flag                               IS 'FA連携フラグ';
+COMMENT ON COLUMN xxcff.xxcff_fa_transactions.gl_if_date                               IS 'GL連携日';
+COMMENT ON COLUMN xxcff.xxcff_fa_transactions.gl_if_flag                               IS 'GL連携フラグ';
+COMMENT ON COLUMN xxcff.xxcff_fa_transactions.created_by                               IS '作成者';
+COMMENT ON COLUMN xxcff.xxcff_fa_transactions.creation_date                            IS '作成日';
+COMMENT ON COLUMN xxcff.xxcff_fa_transactions.last_updated_by                          IS '最終更新者';
+COMMENT ON COLUMN xxcff.xxcff_fa_transactions.last_update_date                         IS '最終更新日';
+COMMENT ON COLUMN xxcff.xxcff_fa_transactions.last_update_login                        IS '最終更新ログイン';
+COMMENT ON COLUMN xxcff.xxcff_fa_transactions.request_id                               IS '要求ID';
+COMMENT ON COLUMN xxcff.xxcff_fa_transactions.program_application_id                   IS 'コンカレント・プログラム・アプリケーションID';
+COMMENT ON COLUMN xxcff.xxcff_fa_transactions.program_id                               IS 'コンカレント・プログラムID';
+COMMENT ON COLUMN xxcff.xxcff_fa_transactions.program_update_date                      IS 'プログラム更新日';

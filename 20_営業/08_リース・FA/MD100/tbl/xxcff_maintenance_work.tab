@@ -40,56 +40,30 @@ CREATE TABLE xxcff.xxcff_maintenance_work (
     ,program_id                     NUMBER(15)
     ,program_update_date            DATE)
  TABLESPACE xxdata2 PCTFREE 20 PCTUSED 40 INITRANS 2 STORAGE ( INITIAL 64K)
-/
-COMMENT ON TABLE xxcff.xxcff_maintenance_work IS '物件メンテナンスワーク'
-/
-COMMENT ON COLUMN xxcff.xxcff_maintenance_work.file_id                                 IS 'ファイルID'
-/
-COMMENT ON COLUMN xxcff.xxcff_maintenance_work.object_code                             IS '物件コード'
-/
-COMMENT ON COLUMN xxcff.xxcff_maintenance_work.owner_company                           IS '本社工場'
-/
-COMMENT ON COLUMN xxcff.xxcff_maintenance_work.department_code                         IS '管理部門コード'
-/
-COMMENT ON COLUMN xxcff.xxcff_maintenance_work.registration_number                     IS '登録番号'
-/
-COMMENT ON COLUMN xxcff.xxcff_maintenance_work.po_number                               IS '発注番号'
-/
-COMMENT ON COLUMN xxcff.xxcff_maintenance_work.manufacturer_name                       IS 'メーカー名'
-/
-COMMENT ON COLUMN xxcff.xxcff_maintenance_work.model                                   IS '機種'
-/
-COMMENT ON COLUMN xxcff.xxcff_maintenance_work.serial_number                           IS '機番'
-/
-COMMENT ON COLUMN xxcff.xxcff_maintenance_work.age_type                                IS '年式'
-/
-COMMENT ON COLUMN xxcff.xxcff_maintenance_work.quantity                                IS '数量'
-/
-COMMENT ON COLUMN xxcff.xxcff_maintenance_work.chassis_number                          IS '車台番号'
-/
-COMMENT ON COLUMN xxcff.xxcff_maintenance_work.installation_address                    IS '現設置場所'
-/
-COMMENT ON COLUMN xxcff.xxcff_maintenance_work.installation_place                      IS '現設置先'
-/
-COMMENT ON COLUMN xxcff.xxcff_maintenance_work.cancellation_class                      IS '解約種別'
-/
-COMMENT ON COLUMN xxcff.xxcff_maintenance_work.bond_acceptance_flag                    IS '証書受領フラグ'
-/
-COMMENT ON COLUMN xxcff.xxcff_maintenance_work.created_by                              IS '作成者'
-/
-COMMENT ON COLUMN xxcff.xxcff_maintenance_work.creation_date                           IS '作成日'
-/
-COMMENT ON COLUMN xxcff.xxcff_maintenance_work.last_updated_by                         IS '最終更新者'
-/
-COMMENT ON COLUMN xxcff.xxcff_maintenance_work.last_update_date                        IS '最終更新日'
-/
-COMMENT ON COLUMN xxcff.xxcff_maintenance_work.last_update_login                       IS '最終更新ログイン'
-/
-COMMENT ON COLUMN xxcff.xxcff_maintenance_work.request_id                              IS '要求ID'
-/
-COMMENT ON COLUMN xxcff.xxcff_maintenance_work.program_application_id                  IS 'コンカレント・プログラム・アプリケーションID'
-/
-COMMENT ON COLUMN xxcff.xxcff_maintenance_work.program_id                              IS 'コンカレント・プログラムID'
-/
-COMMENT ON COLUMN xxcff.xxcff_maintenance_work.program_update_date                     IS 'プログラム更新日'
-/
+;
+COMMENT ON TABLE xxcff.xxcff_maintenance_work IS '物件メンテナンスワーク';
+COMMENT ON COLUMN xxcff.xxcff_maintenance_work.file_id                                 IS 'ファイルID';
+COMMENT ON COLUMN xxcff.xxcff_maintenance_work.object_code                             IS '物件コード';
+COMMENT ON COLUMN xxcff.xxcff_maintenance_work.owner_company                           IS '本社工場';
+COMMENT ON COLUMN xxcff.xxcff_maintenance_work.department_code                         IS '管理部門コード';
+COMMENT ON COLUMN xxcff.xxcff_maintenance_work.registration_number                     IS '登録番号';
+COMMENT ON COLUMN xxcff.xxcff_maintenance_work.po_number                               IS '発注番号';
+COMMENT ON COLUMN xxcff.xxcff_maintenance_work.manufacturer_name                       IS 'メーカー名';
+COMMENT ON COLUMN xxcff.xxcff_maintenance_work.model                                   IS '機種';
+COMMENT ON COLUMN xxcff.xxcff_maintenance_work.serial_number                           IS '機番';
+COMMENT ON COLUMN xxcff.xxcff_maintenance_work.age_type                                IS '年式';
+COMMENT ON COLUMN xxcff.xxcff_maintenance_work.quantity                                IS '数量';
+COMMENT ON COLUMN xxcff.xxcff_maintenance_work.chassis_number                          IS '車台番号';
+COMMENT ON COLUMN xxcff.xxcff_maintenance_work.installation_address                    IS '現設置場所';
+COMMENT ON COLUMN xxcff.xxcff_maintenance_work.installation_place                      IS '現設置先';
+COMMENT ON COLUMN xxcff.xxcff_maintenance_work.cancellation_class                      IS '解約種別';
+COMMENT ON COLUMN xxcff.xxcff_maintenance_work.bond_acceptance_flag                    IS '証書受領フラグ';
+COMMENT ON COLUMN xxcff.xxcff_maintenance_work.created_by                              IS '作成者';
+COMMENT ON COLUMN xxcff.xxcff_maintenance_work.creation_date                           IS '作成日';
+COMMENT ON COLUMN xxcff.xxcff_maintenance_work.last_updated_by                         IS '最終更新者';
+COMMENT ON COLUMN xxcff.xxcff_maintenance_work.last_update_date                        IS '最終更新日';
+COMMENT ON COLUMN xxcff.xxcff_maintenance_work.last_update_login                       IS '最終更新ログイン';
+COMMENT ON COLUMN xxcff.xxcff_maintenance_work.request_id                              IS '要求ID';
+COMMENT ON COLUMN xxcff.xxcff_maintenance_work.program_application_id                  IS 'コンカレント・プログラム・アプリケーションID';
+COMMENT ON COLUMN xxcff.xxcff_maintenance_work.program_id                              IS 'コンカレント・プログラムID';
+COMMENT ON COLUMN xxcff.xxcff_maintenance_work.program_update_date                     IS 'プログラム更新日';

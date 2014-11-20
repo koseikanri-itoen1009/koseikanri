@@ -33,40 +33,22 @@ CREATE TABLE xxcff.xxcff_re_lease_work (
   ,CONSTRAINT xxcff_re_lease_work_pk PRIMARY KEY (file_id,lease_company,object_code)
   USING INDEX TABLESPACE xxidx2)
  TABLESPACE xxdata2 PCTFREE 5 PCTUSED 40 INITRANS 2 STORAGE ( INITIAL 64K)
-/
-COMMENT ON TABLE xxcff.xxcff_re_lease_work IS '再リース要否ワーク'
-/
-COMMENT ON COLUMN xxcff.xxcff_re_lease_work.object_code                                IS '物件コード'
-/
-COMMENT ON COLUMN xxcff.xxcff_re_lease_work.file_id                                    IS 'ファイルID'
-/
-COMMENT ON COLUMN xxcff.xxcff_re_lease_work.contract_number                            IS '契約番号'
-/
-COMMENT ON COLUMN xxcff.xxcff_re_lease_work.contract_line_num                          IS '契約枝番'
-/
-COMMENT ON COLUMN xxcff.xxcff_re_lease_work.re_lease_flag                              IS '再リース要フラグ'
-/
-COMMENT ON COLUMN xxcff.xxcff_re_lease_work.lease_company                              IS 'リース会社'
-/
-COMMENT ON COLUMN xxcff.xxcff_re_lease_work.lease_type                                 IS 'リース区分'
-/
-COMMENT ON COLUMN xxcff.xxcff_re_lease_work.re_lease_times                             IS '再リース回数'
-/
-COMMENT ON COLUMN xxcff.xxcff_re_lease_work.created_by                                 IS '作成者'
-/
-COMMENT ON COLUMN xxcff.xxcff_re_lease_work.creation_date                              IS '作成日'
-/
-COMMENT ON COLUMN xxcff.xxcff_re_lease_work.last_updated_by                            IS '最終更新者'
-/
-COMMENT ON COLUMN xxcff.xxcff_re_lease_work.last_update_date                           IS '最終更新日'
-/
-COMMENT ON COLUMN xxcff.xxcff_re_lease_work.last_update_login                          IS '最終更新ログイン'
-/
-COMMENT ON COLUMN xxcff.xxcff_re_lease_work.request_id                                 IS '要求ID'
-/
-COMMENT ON COLUMN xxcff.xxcff_re_lease_work.program_application_id                     IS 'コンカレント・プログラム・アプリケーションID'
-/
-COMMENT ON COLUMN xxcff.xxcff_re_lease_work.program_id                                 IS 'コンカレント・プログラムID'
-/
-COMMENT ON COLUMN xxcff.xxcff_re_lease_work.program_update_date                        IS 'プログラム更新日'
-/
+;
+COMMENT ON TABLE xxcff.xxcff_re_lease_work IS '再リース要否ワーク';
+COMMENT ON COLUMN xxcff.xxcff_re_lease_work.object_code                                IS '物件コード';
+COMMENT ON COLUMN xxcff.xxcff_re_lease_work.file_id                                    IS 'ファイルID';
+COMMENT ON COLUMN xxcff.xxcff_re_lease_work.contract_number                            IS '契約番号';
+COMMENT ON COLUMN xxcff.xxcff_re_lease_work.contract_line_num                          IS '契約枝番';
+COMMENT ON COLUMN xxcff.xxcff_re_lease_work.re_lease_flag                              IS '再リース要フラグ';
+COMMENT ON COLUMN xxcff.xxcff_re_lease_work.lease_company                              IS 'リース会社';
+COMMENT ON COLUMN xxcff.xxcff_re_lease_work.lease_type                                 IS 'リース区分';
+COMMENT ON COLUMN xxcff.xxcff_re_lease_work.re_lease_times                             IS '再リース回数';
+COMMENT ON COLUMN xxcff.xxcff_re_lease_work.created_by                                 IS '作成者';
+COMMENT ON COLUMN xxcff.xxcff_re_lease_work.creation_date                              IS '作成日';
+COMMENT ON COLUMN xxcff.xxcff_re_lease_work.last_updated_by                            IS '最終更新者';
+COMMENT ON COLUMN xxcff.xxcff_re_lease_work.last_update_date                           IS '最終更新日';
+COMMENT ON COLUMN xxcff.xxcff_re_lease_work.last_update_login                          IS '最終更新ログイン';
+COMMENT ON COLUMN xxcff.xxcff_re_lease_work.request_id                                 IS '要求ID';
+COMMENT ON COLUMN xxcff.xxcff_re_lease_work.program_application_id                     IS 'コンカレント・プログラム・アプリケーションID';
+COMMENT ON COLUMN xxcff.xxcff_re_lease_work.program_id                                 IS 'コンカレント・プログラムID';
+COMMENT ON COLUMN xxcff.xxcff_re_lease_work.program_update_date                        IS 'プログラム更新日';

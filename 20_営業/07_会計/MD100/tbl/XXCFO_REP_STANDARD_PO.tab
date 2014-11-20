@@ -51,7 +51,7 @@ CREATE TABLE xxcfo.xxcfo_rep_standard_po
   program_id                    NUMBER                          ,-- ƒRƒ“ƒJƒŒƒ“ƒgEƒvƒƒOƒ‰ƒ€ID
   program_update_date           DATE                             -- ƒvƒƒOƒ‰ƒ€XV“ú
 )
-/
+;
 --
 COMMENT ON COLUMN xxcfo.xxcfo_rep_standard_po.vendor_name              IS 'd“üæ–¼';
 COMMENT ON COLUMN xxcfo.xxcfo_rep_standard_po.vendor_phone             IS 'd“üæ_“d˜b”Ô†';
@@ -90,4 +90,3 @@ COMMENT ON COLUMN xxcfo.xxcfo_rep_standard_po.program_id               IS 'ƒRƒ“ƒ
 COMMENT ON COLUMN xxcfo.xxcfo_rep_standard_po.program_update_date      IS 'ƒvƒƒOƒ‰ƒ€XV“ú';
 --
 COMMENT ON TABLE  xxcfo.xxcfo_rep_standard_po IS '•W€”­’‘ì¬—p’ •[ƒ[ƒNƒe[ƒuƒ‹';
-/

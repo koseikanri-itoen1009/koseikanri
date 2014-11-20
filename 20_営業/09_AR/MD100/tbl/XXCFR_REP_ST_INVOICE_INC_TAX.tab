@@ -44,7 +44,7 @@ CREATE TABLE xxcfr.xxcfr_rep_st_invoice_inc_tax
   program_id              NUMBER(15)            , -- コンカレント・プログラムID
   program_update_date     DATE                    -- プログラム更新日
 )
-/
+;
 --
 COMMENT ON COLUMN xxcfr.xxcfr_rep_st_invoice_inc_tax.report_id                  IS '帳票ID';
 COMMENT ON COLUMN xxcfr.xxcfr_rep_st_invoice_inc_tax.issue_date                 IS '発行日付';

@@ -57,7 +57,7 @@ CREATE TABLE xxcfr.xxcfr_rep_sales_rep_pay_sch
 --    INITRANS    1
 --    PCTFREE     10
 --    PCTUSED     40
-/
+;
 --
 COMMENT ON COLUMN xxcfr.xxcfr_rep_sales_rep_pay_sch.report_id                 IS '帳票ID';
 COMMENT ON COLUMN xxcfr.xxcfr_rep_sales_rep_pay_sch.output_date               IS '出力日';
@@ -90,4 +90,3 @@ COMMENT ON COLUMN xxcfr.xxcfr_rep_sales_rep_pay_sch.program_id                IS
 COMMENT ON COLUMN xxcfr.xxcfr_rep_sales_rep_pay_sch.program_update_date       IS 'プログラム更新日';
 --
 COMMENT ON TABLE  xxcfr.xxcfr_rep_sales_rep_pay_sch IS '営業員別払日別入金予定表帳票ワークテーブル';
-

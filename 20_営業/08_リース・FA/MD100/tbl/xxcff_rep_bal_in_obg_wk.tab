@@ -114,208 +114,106 @@ CREATE TABLE xxcff.xxcff_rep_bal_in_obg_wk (
     ,program_id                     NUMBER(15)
     ,program_update_date            DATE)
  TABLESPACE xxdata2 PCTFREE 20 PCTUSED 40 INITRANS 8 STORAGE ( INITIAL 64K)
-/
-COMMENT ON TABLE xxcff.xxcff_rep_bal_in_obg_wk IS 'リース債務残高レポート帳票ワーク'
-/
-COMMENT ON COLUMN xxcff.xxcff_rep_bal_in_obg_wk.period_from                            IS '出力期間（自）'
-/
-COMMENT ON COLUMN xxcff.xxcff_rep_bal_in_obg_wk.period_to                              IS '出力期間（至）'
-/
-COMMENT ON COLUMN xxcff.xxcff_rep_bal_in_obg_wk.f_original_cost                        IS '取得価額相当額Fin'
-/
-COMMENT ON COLUMN xxcff.xxcff_rep_bal_in_obg_wk.f_deprn_reserve                        IS '減価償却累計額相当額Fin'
-/
-COMMENT ON COLUMN xxcff.xxcff_rep_bal_in_obg_wk.f_bal_amount                           IS '期末残高相当額Fin'
-/
-COMMENT ON COLUMN xxcff.xxcff_rep_bal_in_obg_wk.f_lease_charge_debt                    IS '未経過リース期末残高相当額Fin'
-/
-COMMENT ON COLUMN xxcff.xxcff_rep_bal_in_obg_wk.f_interest_future                      IS '未経過リース支払利息額Fin'
-/
-COMMENT ON COLUMN xxcff.xxcff_rep_bal_in_obg_wk.f_tax_future                           IS '未経過リース消費税額Fin'
-/
-COMMENT ON COLUMN xxcff.xxcff_rep_bal_in_obg_wk.f_principal_1year                      IS '1年以内元本Fin'
-/
-COMMENT ON COLUMN xxcff.xxcff_rep_bal_in_obg_wk.f_interest_1year                       IS '1年以内支払利息Fin'
-/
-COMMENT ON COLUMN xxcff.xxcff_rep_bal_in_obg_wk.f_tax_1year                            IS '1年以内消費税Fin'
-/
-COMMENT ON COLUMN xxcff.xxcff_rep_bal_in_obg_wk.f_principal_1to2year                   IS '1年越2年以内元本Fin'
-/
-COMMENT ON COLUMN xxcff.xxcff_rep_bal_in_obg_wk.f_interest_1to2year                    IS '1年越2年以内支払利息Fin'
-/
-COMMENT ON COLUMN xxcff.xxcff_rep_bal_in_obg_wk.f_tax_1to2year                         IS '1年越2年以内消費税Fin'
-/
-COMMENT ON COLUMN xxcff.xxcff_rep_bal_in_obg_wk.f_principal_2to3year                   IS '2年超3年以内元本Fin'
-/
-COMMENT ON COLUMN xxcff.xxcff_rep_bal_in_obg_wk.f_interest_2to3year                    IS '2年超3年以内支払利息Fin'
-/
-COMMENT ON COLUMN xxcff.xxcff_rep_bal_in_obg_wk.f_tax_2to3year                         IS '2年超3年以内消費税Fin'
-/
-COMMENT ON COLUMN xxcff.xxcff_rep_bal_in_obg_wk.f_principal_3to4year                   IS '3年越4年以内元本Fin'
-/
-COMMENT ON COLUMN xxcff.xxcff_rep_bal_in_obg_wk.f_interest_3to4year                    IS '3年越4年以内支払利息Fin'
-/
-COMMENT ON COLUMN xxcff.xxcff_rep_bal_in_obg_wk.f_tax_3to4year                         IS '3年越4年以内消費税Fin'
-/
-COMMENT ON COLUMN xxcff.xxcff_rep_bal_in_obg_wk.f_principal_4to5year                   IS '4年越5年以内元本Fin'
-/
-COMMENT ON COLUMN xxcff.xxcff_rep_bal_in_obg_wk.f_interest_4to5year                    IS '4年越5年以内支払利息Fin'
-/
-COMMENT ON COLUMN xxcff.xxcff_rep_bal_in_obg_wk.f_tax_4to5year                         IS '4年越5年以内消費税Fin'
-/
-COMMENT ON COLUMN xxcff.xxcff_rep_bal_in_obg_wk.f_principal_over_5year                 IS '5年越元本Fin'
-/
-COMMENT ON COLUMN xxcff.xxcff_rep_bal_in_obg_wk.f_interest_over_5year                  IS '5年越支払利息Fin'
-/
-COMMENT ON COLUMN xxcff.xxcff_rep_bal_in_obg_wk.f_tax_over_5year                       IS '5年越消費税Fin'
-/
-COMMENT ON COLUMN xxcff.xxcff_rep_bal_in_obg_wk.f_monthly_charge                       IS '月間リース料Fin'
-/
-COMMENT ON COLUMN xxcff.xxcff_rep_bal_in_obg_wk.f_gross_charge                         IS 'リース料総額Fin'
-/
-COMMENT ON COLUMN xxcff.xxcff_rep_bal_in_obg_wk.f_lease_charge_this_month              IS '当期支払リース料Fin'
-/
-COMMENT ON COLUMN xxcff.xxcff_rep_bal_in_obg_wk.f_deprn_amount                         IS '減価償却相当額Fin'
-/
-COMMENT ON COLUMN xxcff.xxcff_rep_bal_in_obg_wk.f_interest_amount                      IS '支払利息相当額Fin'
-/
-COMMENT ON COLUMN xxcff.xxcff_rep_bal_in_obg_wk.f_lease_charge_1year                   IS '1年以内未経過リース料Fin'
-/
-COMMENT ON COLUMN xxcff.xxcff_rep_bal_in_obg_wk.f_lease_charge_over_1year              IS '1年越未経過リース料Fin'
-/
-COMMENT ON COLUMN xxcff.xxcff_rep_bal_in_obg_wk.f_lease_charge_future                  IS '未経過リース料Fin'
-/
-COMMENT ON COLUMN xxcff.xxcff_rep_bal_in_obg_wk.f_monthly_deduction                    IS '月間リース料（控除額）Fin'
-/
-COMMENT ON COLUMN xxcff.xxcff_rep_bal_in_obg_wk.f_gross_deduction                      IS 'リース料総額（控除額）Fin'
-/
-COMMENT ON COLUMN xxcff.xxcff_rep_bal_in_obg_wk.f_deduction_this_month                 IS '当期支払リース料（控除額）Fin'
-/
-COMMENT ON COLUMN xxcff.xxcff_rep_bal_in_obg_wk.f_deduction_1year                      IS '1年以内未経過リース料（控除額）Fin'
-/
-COMMENT ON COLUMN xxcff.xxcff_rep_bal_in_obg_wk.f_deduction_over_1year                 IS '1年越未経過リース料（控除額）Fin'
-/
-COMMENT ON COLUMN xxcff.xxcff_rep_bal_in_obg_wk.f_deduction_future                     IS '未経過リース料（控除額）Fin'
-/
-COMMENT ON COLUMN xxcff.xxcff_rep_bal_in_obg_wk.q_original_cost                        IS '取得価額相当額旧Fin'
-/
-COMMENT ON COLUMN xxcff.xxcff_rep_bal_in_obg_wk.q_deprn_reserve                        IS '減価償却累計額相当額旧Fin'
-/
-COMMENT ON COLUMN xxcff.xxcff_rep_bal_in_obg_wk.q_bal_amount                           IS '期末残高相当額旧Fin'
-/
-COMMENT ON COLUMN xxcff.xxcff_rep_bal_in_obg_wk.q_lease_charge_debt                    IS '未経過リース期末残高相当額旧Fin'
-/
-COMMENT ON COLUMN xxcff.xxcff_rep_bal_in_obg_wk.q_interest_future                      IS '未経過リース支払利息額旧Fin'
-/
-COMMENT ON COLUMN xxcff.xxcff_rep_bal_in_obg_wk.q_tax_future                           IS '未経過リース消費税額旧Fin'
-/
-COMMENT ON COLUMN xxcff.xxcff_rep_bal_in_obg_wk.q_principal_1year                      IS '1年以内元本旧Fin'
-/
-COMMENT ON COLUMN xxcff.xxcff_rep_bal_in_obg_wk.q_interest_1year                       IS '1年以内支払利息旧Fin'
-/
-COMMENT ON COLUMN xxcff.xxcff_rep_bal_in_obg_wk.q_tax_1year                            IS '1年以内消費税旧Fin'
-/
-COMMENT ON COLUMN xxcff.xxcff_rep_bal_in_obg_wk.q_principal_1to2year                   IS '1年越2年以内元本旧Fin'
-/
-COMMENT ON COLUMN xxcff.xxcff_rep_bal_in_obg_wk.q_interest_1to2year                    IS '1年越2年以内支払利息旧Fin'
-/
-COMMENT ON COLUMN xxcff.xxcff_rep_bal_in_obg_wk.q_tax_1to2year                         IS '1年越2年以内消費税旧Fin'
-/
-COMMENT ON COLUMN xxcff.xxcff_rep_bal_in_obg_wk.q_principal_2to3year                   IS '2年超3年以内元本旧Fin'
-/
-COMMENT ON COLUMN xxcff.xxcff_rep_bal_in_obg_wk.q_interest_2to3year                    IS '2年超3年以内支払利息旧Fin'
-/
-COMMENT ON COLUMN xxcff.xxcff_rep_bal_in_obg_wk.q_tax_2to3year                         IS '2年超3年以内消費税旧Fin'
-/
-COMMENT ON COLUMN xxcff.xxcff_rep_bal_in_obg_wk.q_principal_3to4year                   IS '3年越4年以内元本旧Fin'
-/
-COMMENT ON COLUMN xxcff.xxcff_rep_bal_in_obg_wk.q_interest_3to4year                    IS '3年越4年以内支払利息旧Fin'
-/
-COMMENT ON COLUMN xxcff.xxcff_rep_bal_in_obg_wk.q_tax_3to4year                         IS '3年越4年以内消費税旧Fin'
-/
-COMMENT ON COLUMN xxcff.xxcff_rep_bal_in_obg_wk.q_principal_4to5year                   IS '4年越5年以内元本旧Fin'
-/
-COMMENT ON COLUMN xxcff.xxcff_rep_bal_in_obg_wk.q_interest_4to5year                    IS '4年越5年以内支払利息旧Fin'
-/
-COMMENT ON COLUMN xxcff.xxcff_rep_bal_in_obg_wk.q_tax_4to5year                         IS '4年越5年以内消費税旧Fin'
-/
-COMMENT ON COLUMN xxcff.xxcff_rep_bal_in_obg_wk.q_principal_over_5year                 IS '5年越元本旧Fin'
-/
-COMMENT ON COLUMN xxcff.xxcff_rep_bal_in_obg_wk.q_interest_over_5year                  IS '5年越支払利息旧Fin'
-/
-COMMENT ON COLUMN xxcff.xxcff_rep_bal_in_obg_wk.q_tax_over_5year                       IS '5年越消費税旧Fin'
-/
-COMMENT ON COLUMN xxcff.xxcff_rep_bal_in_obg_wk.q_monthly_charge                       IS '月間リース料旧Fin'
-/
-COMMENT ON COLUMN xxcff.xxcff_rep_bal_in_obg_wk.q_gross_charge                         IS 'リース料総額旧Fin'
-/
-COMMENT ON COLUMN xxcff.xxcff_rep_bal_in_obg_wk.q_lease_charge_this_month              IS '当期支払リース料旧Fin'
-/
-COMMENT ON COLUMN xxcff.xxcff_rep_bal_in_obg_wk.q_deprn_amount                         IS '減価償却相当額旧Fin'
-/
-COMMENT ON COLUMN xxcff.xxcff_rep_bal_in_obg_wk.q_interest_amount                      IS '支払利息相当額旧Fin'
-/
-COMMENT ON COLUMN xxcff.xxcff_rep_bal_in_obg_wk.q_lease_charge_1year                   IS '1年以内未経過リース料旧Fin'
-/
-COMMENT ON COLUMN xxcff.xxcff_rep_bal_in_obg_wk.q_lease_charge_over_1year              IS '1年越未経過リース料旧Fin'
-/
-COMMENT ON COLUMN xxcff.xxcff_rep_bal_in_obg_wk.q_lease_charge_future                  IS '未経過リース料旧Fin'
-/
-COMMENT ON COLUMN xxcff.xxcff_rep_bal_in_obg_wk.q_monthly_deduction                    IS '月間リース料（控除額）旧Fin'
-/
-COMMENT ON COLUMN xxcff.xxcff_rep_bal_in_obg_wk.q_gross_deduction                      IS 'リース料総額（控除額）旧Fin'
-/
-COMMENT ON COLUMN xxcff.xxcff_rep_bal_in_obg_wk.q_deduction_this_month                 IS '当期支払リース料（控除額）旧Fin'
-/
-COMMENT ON COLUMN xxcff.xxcff_rep_bal_in_obg_wk.q_deduction_1year                      IS '1年以内未経過リース料（控除額）旧Fin'
-/
-COMMENT ON COLUMN xxcff.xxcff_rep_bal_in_obg_wk.q_deduction_over_1year                 IS '1年越未経過リース料（控除額）旧Fin'
-/
-COMMENT ON COLUMN xxcff.xxcff_rep_bal_in_obg_wk.q_deduction_future                     IS '未経過リース料（控除額）旧Fin'
-/
-COMMENT ON COLUMN xxcff.xxcff_rep_bal_in_obg_wk.o_monthly_charge                       IS '月間リース料Op'
-/
-COMMENT ON COLUMN xxcff.xxcff_rep_bal_in_obg_wk.o_gross_charge                         IS 'リース料総額Op'
-/
-COMMENT ON COLUMN xxcff.xxcff_rep_bal_in_obg_wk.o_lease_charge_this_month              IS '当期支払リース料Op'
-/
-COMMENT ON COLUMN xxcff.xxcff_rep_bal_in_obg_wk.o_deprn_amount                         IS '減価償却相当額Op'
-/
-COMMENT ON COLUMN xxcff.xxcff_rep_bal_in_obg_wk.o_interest_amount                      IS '支払利息相当額Op'
-/
-COMMENT ON COLUMN xxcff.xxcff_rep_bal_in_obg_wk.o_lease_charge_1year                   IS '1年以内未経過リース料Op'
-/
-COMMENT ON COLUMN xxcff.xxcff_rep_bal_in_obg_wk.o_lease_charge_over_1year              IS '1年越未経過リース料Op'
-/
-COMMENT ON COLUMN xxcff.xxcff_rep_bal_in_obg_wk.o_lease_charge_future                  IS '未経過リース料Op'
-/
-COMMENT ON COLUMN xxcff.xxcff_rep_bal_in_obg_wk.o_monthly_deduction                    IS '月間リース料（控除額）Op'
-/
-COMMENT ON COLUMN xxcff.xxcff_rep_bal_in_obg_wk.o_gross_deduction                      IS 'リース料総額（控除額）Op'
-/
-COMMENT ON COLUMN xxcff.xxcff_rep_bal_in_obg_wk.o_deduction_this_month                 IS '当期支払リース料（控除額）Op'
-/
-COMMENT ON COLUMN xxcff.xxcff_rep_bal_in_obg_wk.o_deduction_1year                      IS '1年以内未経過リース料（控除額）Op'
-/
-COMMENT ON COLUMN xxcff.xxcff_rep_bal_in_obg_wk.o_deduction_over_1year                 IS '1年越未経過リース料（控除額）Op'
-/
-COMMENT ON COLUMN xxcff.xxcff_rep_bal_in_obg_wk.o_deduction_future                     IS '未経過リース料（控除額）Op'
-/
-COMMENT ON COLUMN xxcff.xxcff_rep_bal_in_obg_wk.created_by                             IS '作成者'
-/
-COMMENT ON COLUMN xxcff.xxcff_rep_bal_in_obg_wk.creation_date                          IS '作成日'
-/
-COMMENT ON COLUMN xxcff.xxcff_rep_bal_in_obg_wk.last_updated_by                        IS '最終更新者'
-/
-COMMENT ON COLUMN xxcff.xxcff_rep_bal_in_obg_wk.last_update_date                       IS '最終更新日'
-/
-COMMENT ON COLUMN xxcff.xxcff_rep_bal_in_obg_wk.last_update_login                      IS '最終更新ログイン'
-/
-COMMENT ON COLUMN xxcff.xxcff_rep_bal_in_obg_wk.request_id                             IS '要求ID'
-/
-COMMENT ON COLUMN xxcff.xxcff_rep_bal_in_obg_wk.program_application_id                 IS 'コンカレント・プログラム・アプリケーションID'
-/
-COMMENT ON COLUMN xxcff.xxcff_rep_bal_in_obg_wk.program_id                             IS 'コンカレント・プログラムID'
-/
-COMMENT ON COLUMN xxcff.xxcff_rep_bal_in_obg_wk.program_update_date                    IS 'プログラム更新日'
-/
+;
+COMMENT ON TABLE xxcff.xxcff_rep_bal_in_obg_wk IS 'リース債務残高レポート帳票ワーク';
+COMMENT ON COLUMN xxcff.xxcff_rep_bal_in_obg_wk.period_from                            IS '出力期間（自）';
+COMMENT ON COLUMN xxcff.xxcff_rep_bal_in_obg_wk.period_to                              IS '出力期間（至）';
+COMMENT ON COLUMN xxcff.xxcff_rep_bal_in_obg_wk.f_original_cost                        IS '取得価額相当額Fin';
+COMMENT ON COLUMN xxcff.xxcff_rep_bal_in_obg_wk.f_deprn_reserve                        IS '減価償却累計額相当額Fin';
+COMMENT ON COLUMN xxcff.xxcff_rep_bal_in_obg_wk.f_bal_amount                           IS '期末残高相当額Fin';
+COMMENT ON COLUMN xxcff.xxcff_rep_bal_in_obg_wk.f_lease_charge_debt                    IS '未経過リース期末残高相当額Fin';
+COMMENT ON COLUMN xxcff.xxcff_rep_bal_in_obg_wk.f_interest_future                      IS '未経過リース支払利息額Fin';
+COMMENT ON COLUMN xxcff.xxcff_rep_bal_in_obg_wk.f_tax_future                           IS '未経過リース消費税額Fin';
+COMMENT ON COLUMN xxcff.xxcff_rep_bal_in_obg_wk.f_principal_1year                      IS '1年以内元本Fin';
+COMMENT ON COLUMN xxcff.xxcff_rep_bal_in_obg_wk.f_interest_1year                       IS '1年以内支払利息Fin';
+COMMENT ON COLUMN xxcff.xxcff_rep_bal_in_obg_wk.f_tax_1year                            IS '1年以内消費税Fin';
+COMMENT ON COLUMN xxcff.xxcff_rep_bal_in_obg_wk.f_principal_1to2year                   IS '1年越2年以内元本Fin';
+COMMENT ON COLUMN xxcff.xxcff_rep_bal_in_obg_wk.f_interest_1to2year                    IS '1年越2年以内支払利息Fin';
+COMMENT ON COLUMN xxcff.xxcff_rep_bal_in_obg_wk.f_tax_1to2year                         IS '1年越2年以内消費税Fin';
+COMMENT ON COLUMN xxcff.xxcff_rep_bal_in_obg_wk.f_principal_2to3year                   IS '2年超3年以内元本Fin';
+COMMENT ON COLUMN xxcff.xxcff_rep_bal_in_obg_wk.f_interest_2to3year                    IS '2年超3年以内支払利息Fin';
+COMMENT ON COLUMN xxcff.xxcff_rep_bal_in_obg_wk.f_tax_2to3year                         IS '2年超3年以内消費税Fin';
+COMMENT ON COLUMN xxcff.xxcff_rep_bal_in_obg_wk.f_principal_3to4year                   IS '3年越4年以内元本Fin';
+COMMENT ON COLUMN xxcff.xxcff_rep_bal_in_obg_wk.f_interest_3to4year                    IS '3年越4年以内支払利息Fin';
+COMMENT ON COLUMN xxcff.xxcff_rep_bal_in_obg_wk.f_tax_3to4year                         IS '3年越4年以内消費税Fin';
+COMMENT ON COLUMN xxcff.xxcff_rep_bal_in_obg_wk.f_principal_4to5year                   IS '4年越5年以内元本Fin';
+COMMENT ON COLUMN xxcff.xxcff_rep_bal_in_obg_wk.f_interest_4to5year                    IS '4年越5年以内支払利息Fin';
+COMMENT ON COLUMN xxcff.xxcff_rep_bal_in_obg_wk.f_tax_4to5year                         IS '4年越5年以内消費税Fin';
+COMMENT ON COLUMN xxcff.xxcff_rep_bal_in_obg_wk.f_principal_over_5year                 IS '5年越元本Fin';
+COMMENT ON COLUMN xxcff.xxcff_rep_bal_in_obg_wk.f_interest_over_5year                  IS '5年越支払利息Fin';
+COMMENT ON COLUMN xxcff.xxcff_rep_bal_in_obg_wk.f_tax_over_5year                       IS '5年越消費税Fin';
+COMMENT ON COLUMN xxcff.xxcff_rep_bal_in_obg_wk.f_monthly_charge                       IS '月間リース料Fin';
+COMMENT ON COLUMN xxcff.xxcff_rep_bal_in_obg_wk.f_gross_charge                         IS 'リース料総額Fin';
+COMMENT ON COLUMN xxcff.xxcff_rep_bal_in_obg_wk.f_lease_charge_this_month              IS '当期支払リース料Fin';
+COMMENT ON COLUMN xxcff.xxcff_rep_bal_in_obg_wk.f_deprn_amount                         IS '減価償却相当額Fin';
+COMMENT ON COLUMN xxcff.xxcff_rep_bal_in_obg_wk.f_interest_amount                      IS '支払利息相当額Fin';
+COMMENT ON COLUMN xxcff.xxcff_rep_bal_in_obg_wk.f_lease_charge_1year                   IS '1年以内未経過リース料Fin';
+COMMENT ON COLUMN xxcff.xxcff_rep_bal_in_obg_wk.f_lease_charge_over_1year              IS '1年越未経過リース料Fin';
+COMMENT ON COLUMN xxcff.xxcff_rep_bal_in_obg_wk.f_lease_charge_future                  IS '未経過リース料Fin';
+COMMENT ON COLUMN xxcff.xxcff_rep_bal_in_obg_wk.f_monthly_deduction                    IS '月間リース料（控除額）Fin';
+COMMENT ON COLUMN xxcff.xxcff_rep_bal_in_obg_wk.f_gross_deduction                      IS 'リース料総額（控除額）Fin';
+COMMENT ON COLUMN xxcff.xxcff_rep_bal_in_obg_wk.f_deduction_this_month                 IS '当期支払リース料（控除額）Fin';
+COMMENT ON COLUMN xxcff.xxcff_rep_bal_in_obg_wk.f_deduction_1year                      IS '1年以内未経過リース料（控除額）Fin';
+COMMENT ON COLUMN xxcff.xxcff_rep_bal_in_obg_wk.f_deduction_over_1year                 IS '1年越未経過リース料（控除額）Fin';
+COMMENT ON COLUMN xxcff.xxcff_rep_bal_in_obg_wk.f_deduction_future                     IS '未経過リース料（控除額）Fin';
+COMMENT ON COLUMN xxcff.xxcff_rep_bal_in_obg_wk.q_original_cost                        IS '取得価額相当額旧Fin';
+COMMENT ON COLUMN xxcff.xxcff_rep_bal_in_obg_wk.q_deprn_reserve                        IS '減価償却累計額相当額旧Fin';
+COMMENT ON COLUMN xxcff.xxcff_rep_bal_in_obg_wk.q_bal_amount                           IS '期末残高相当額旧Fin';
+COMMENT ON COLUMN xxcff.xxcff_rep_bal_in_obg_wk.q_lease_charge_debt                    IS '未経過リース期末残高相当額旧Fin';
+COMMENT ON COLUMN xxcff.xxcff_rep_bal_in_obg_wk.q_interest_future                      IS '未経過リース支払利息額旧Fin';
+COMMENT ON COLUMN xxcff.xxcff_rep_bal_in_obg_wk.q_tax_future                           IS '未経過リース消費税額旧Fin';
+COMMENT ON COLUMN xxcff.xxcff_rep_bal_in_obg_wk.q_principal_1year                      IS '1年以内元本旧Fin';
+COMMENT ON COLUMN xxcff.xxcff_rep_bal_in_obg_wk.q_interest_1year                       IS '1年以内支払利息旧Fin';
+COMMENT ON COLUMN xxcff.xxcff_rep_bal_in_obg_wk.q_tax_1year                            IS '1年以内消費税旧Fin';
+COMMENT ON COLUMN xxcff.xxcff_rep_bal_in_obg_wk.q_principal_1to2year                   IS '1年越2年以内元本旧Fin';
+COMMENT ON COLUMN xxcff.xxcff_rep_bal_in_obg_wk.q_interest_1to2year                    IS '1年越2年以内支払利息旧Fin';
+COMMENT ON COLUMN xxcff.xxcff_rep_bal_in_obg_wk.q_tax_1to2year                         IS '1年越2年以内消費税旧Fin';
+COMMENT ON COLUMN xxcff.xxcff_rep_bal_in_obg_wk.q_principal_2to3year                   IS '2年超3年以内元本旧Fin';
+COMMENT ON COLUMN xxcff.xxcff_rep_bal_in_obg_wk.q_interest_2to3year                    IS '2年超3年以内支払利息旧Fin';
+COMMENT ON COLUMN xxcff.xxcff_rep_bal_in_obg_wk.q_tax_2to3year                         IS '2年超3年以内消費税旧Fin';
+COMMENT ON COLUMN xxcff.xxcff_rep_bal_in_obg_wk.q_principal_3to4year                   IS '3年越4年以内元本旧Fin';
+COMMENT ON COLUMN xxcff.xxcff_rep_bal_in_obg_wk.q_interest_3to4year                    IS '3年越4年以内支払利息旧Fin';
+COMMENT ON COLUMN xxcff.xxcff_rep_bal_in_obg_wk.q_tax_3to4year                         IS '3年越4年以内消費税旧Fin';
+COMMENT ON COLUMN xxcff.xxcff_rep_bal_in_obg_wk.q_principal_4to5year                   IS '4年越5年以内元本旧Fin';
+COMMENT ON COLUMN xxcff.xxcff_rep_bal_in_obg_wk.q_interest_4to5year                    IS '4年越5年以内支払利息旧Fin';
+COMMENT ON COLUMN xxcff.xxcff_rep_bal_in_obg_wk.q_tax_4to5year                         IS '4年越5年以内消費税旧Fin';
+COMMENT ON COLUMN xxcff.xxcff_rep_bal_in_obg_wk.q_principal_over_5year                 IS '5年越元本旧Fin';
+COMMENT ON COLUMN xxcff.xxcff_rep_bal_in_obg_wk.q_interest_over_5year                  IS '5年越支払利息旧Fin';
+COMMENT ON COLUMN xxcff.xxcff_rep_bal_in_obg_wk.q_tax_over_5year                       IS '5年越消費税旧Fin';
+COMMENT ON COLUMN xxcff.xxcff_rep_bal_in_obg_wk.q_monthly_charge                       IS '月間リース料旧Fin';
+COMMENT ON COLUMN xxcff.xxcff_rep_bal_in_obg_wk.q_gross_charge                         IS 'リース料総額旧Fin';
+COMMENT ON COLUMN xxcff.xxcff_rep_bal_in_obg_wk.q_lease_charge_this_month              IS '当期支払リース料旧Fin';
+COMMENT ON COLUMN xxcff.xxcff_rep_bal_in_obg_wk.q_deprn_amount                         IS '減価償却相当額旧Fin';
+COMMENT ON COLUMN xxcff.xxcff_rep_bal_in_obg_wk.q_interest_amount                      IS '支払利息相当額旧Fin';
+COMMENT ON COLUMN xxcff.xxcff_rep_bal_in_obg_wk.q_lease_charge_1year                   IS '1年以内未経過リース料旧Fin';
+COMMENT ON COLUMN xxcff.xxcff_rep_bal_in_obg_wk.q_lease_charge_over_1year              IS '1年越未経過リース料旧Fin';
+COMMENT ON COLUMN xxcff.xxcff_rep_bal_in_obg_wk.q_lease_charge_future                  IS '未経過リース料旧Fin';
+COMMENT ON COLUMN xxcff.xxcff_rep_bal_in_obg_wk.q_monthly_deduction                    IS '月間リース料（控除額）旧Fin';
+COMMENT ON COLUMN xxcff.xxcff_rep_bal_in_obg_wk.q_gross_deduction                      IS 'リース料総額（控除額）旧Fin';
+COMMENT ON COLUMN xxcff.xxcff_rep_bal_in_obg_wk.q_deduction_this_month                 IS '当期支払リース料（控除額）旧Fin';
+COMMENT ON COLUMN xxcff.xxcff_rep_bal_in_obg_wk.q_deduction_1year                      IS '1年以内未経過リース料（控除額）旧Fin';
+COMMENT ON COLUMN xxcff.xxcff_rep_bal_in_obg_wk.q_deduction_over_1year                 IS '1年越未経過リース料（控除額）旧Fin';
+COMMENT ON COLUMN xxcff.xxcff_rep_bal_in_obg_wk.q_deduction_future                     IS '未経過リース料（控除額）旧Fin';
+COMMENT ON COLUMN xxcff.xxcff_rep_bal_in_obg_wk.o_monthly_charge                       IS '月間リース料Op';
+COMMENT ON COLUMN xxcff.xxcff_rep_bal_in_obg_wk.o_gross_charge                         IS 'リース料総額Op';
+COMMENT ON COLUMN xxcff.xxcff_rep_bal_in_obg_wk.o_lease_charge_this_month              IS '当期支払リース料Op';
+COMMENT ON COLUMN xxcff.xxcff_rep_bal_in_obg_wk.o_deprn_amount                         IS '減価償却相当額Op';
+COMMENT ON COLUMN xxcff.xxcff_rep_bal_in_obg_wk.o_interest_amount                      IS '支払利息相当額Op';
+COMMENT ON COLUMN xxcff.xxcff_rep_bal_in_obg_wk.o_lease_charge_1year                   IS '1年以内未経過リース料Op';
+COMMENT ON COLUMN xxcff.xxcff_rep_bal_in_obg_wk.o_lease_charge_over_1year              IS '1年越未経過リース料Op';
+COMMENT ON COLUMN xxcff.xxcff_rep_bal_in_obg_wk.o_lease_charge_future                  IS '未経過リース料Op';
+COMMENT ON COLUMN xxcff.xxcff_rep_bal_in_obg_wk.o_monthly_deduction                    IS '月間リース料（控除額）Op';
+COMMENT ON COLUMN xxcff.xxcff_rep_bal_in_obg_wk.o_gross_deduction                      IS 'リース料総額（控除額）Op';
+COMMENT ON COLUMN xxcff.xxcff_rep_bal_in_obg_wk.o_deduction_this_month                 IS '当期支払リース料（控除額）Op';
+COMMENT ON COLUMN xxcff.xxcff_rep_bal_in_obg_wk.o_deduction_1year                      IS '1年以内未経過リース料（控除額）Op';
+COMMENT ON COLUMN xxcff.xxcff_rep_bal_in_obg_wk.o_deduction_over_1year                 IS '1年越未経過リース料（控除額）Op';
+COMMENT ON COLUMN xxcff.xxcff_rep_bal_in_obg_wk.o_deduction_future                     IS '未経過リース料（控除額）Op';
+COMMENT ON COLUMN xxcff.xxcff_rep_bal_in_obg_wk.created_by                             IS '作成者';
+COMMENT ON COLUMN xxcff.xxcff_rep_bal_in_obg_wk.creation_date                          IS '作成日';
+COMMENT ON COLUMN xxcff.xxcff_rep_bal_in_obg_wk.last_updated_by                        IS '最終更新者';
+COMMENT ON COLUMN xxcff.xxcff_rep_bal_in_obg_wk.last_update_date                       IS '最終更新日';
+COMMENT ON COLUMN xxcff.xxcff_rep_bal_in_obg_wk.last_update_login                      IS '最終更新ログイン';
+COMMENT ON COLUMN xxcff.xxcff_rep_bal_in_obg_wk.request_id                             IS '要求ID';
+COMMENT ON COLUMN xxcff.xxcff_rep_bal_in_obg_wk.program_application_id                 IS 'コンカレント・プログラム・アプリケーションID';
+COMMENT ON COLUMN xxcff.xxcff_rep_bal_in_obg_wk.program_id                             IS 'コンカレント・プログラムID';
+COMMENT ON COLUMN xxcff.xxcff_rep_bal_in_obg_wk.program_update_date                    IS 'プログラム更新日';

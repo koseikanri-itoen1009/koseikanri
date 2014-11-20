@@ -42,60 +42,32 @@ CREATE TABLE xxcff.xxcff_pay_planning (
   ,CONSTRAINT xxcff_pay_planning_pk PRIMARY KEY (contract_line_id,payment_frequency)
   USING INDEX TABLESPACE xxidx2)
  TABLESPACE xxdata2 PCTFREE 20 PCTUSED 40 INITRANS 8 STORAGE ( INITIAL 2M)
-/
-COMMENT ON TABLE xxcff.xxcff_pay_planning IS 'リース支払計画'
-/
-COMMENT ON COLUMN xxcff.xxcff_pay_planning.contract_line_id                            IS '契約明細内部ID'
-/
-COMMENT ON COLUMN xxcff.xxcff_pay_planning.payment_frequency                           IS '支払回数'
-/
-COMMENT ON COLUMN xxcff.xxcff_pay_planning.contract_header_id                          IS '契約内部ID'
-/
-COMMENT ON COLUMN xxcff.xxcff_pay_planning.period_name                                 IS '会計期間'
-/
-COMMENT ON COLUMN xxcff.xxcff_pay_planning.payment_date                                IS '支払日'
-/
-COMMENT ON COLUMN xxcff.xxcff_pay_planning.lease_charge                                IS 'リース料'
-/
-COMMENT ON COLUMN xxcff.xxcff_pay_planning.lease_tax_charge                            IS 'リース料_消費税'
-/
-COMMENT ON COLUMN xxcff.xxcff_pay_planning.lease_deduction                             IS 'リース控除額'
-/
-COMMENT ON COLUMN xxcff.xxcff_pay_planning.lease_tax_deduction                         IS 'リース控除額_消費税'
-/
-COMMENT ON COLUMN xxcff.xxcff_pay_planning.op_charge                                   IS 'ＯＰリース料'
-/
-COMMENT ON COLUMN xxcff.xxcff_pay_planning.op_tax_charge                               IS 'ＯＰリース料額_消費税'
-/
-COMMENT ON COLUMN xxcff.xxcff_pay_planning.fin_debt                                    IS 'ＦＩＮリース債務額'
-/
-COMMENT ON COLUMN xxcff.xxcff_pay_planning.fin_tax_debt                                IS 'ＦＩＮリース債務額_消費税'
-/
-COMMENT ON COLUMN xxcff.xxcff_pay_planning.fin_interest_due                            IS 'ＦＩＮリース支払利息'
-/
-COMMENT ON COLUMN xxcff.xxcff_pay_planning.fin_debt_rem                                IS 'ＦＩＮリース債務残'
-/
-COMMENT ON COLUMN xxcff.xxcff_pay_planning.fin_tax_debt_rem                            IS 'ＦＩＮリース債務残_消費税'
-/
-COMMENT ON COLUMN xxcff.xxcff_pay_planning.accounting_if_flag                          IS '会計ＩＦフラグ'
-/
-COMMENT ON COLUMN xxcff.xxcff_pay_planning.payment_match_flag                          IS '照合済フラグ'
-/
-COMMENT ON COLUMN xxcff.xxcff_pay_planning.created_by                                  IS '作成者'
-/
-COMMENT ON COLUMN xxcff.xxcff_pay_planning.creation_date                               IS '作成日'
-/
-COMMENT ON COLUMN xxcff.xxcff_pay_planning.last_updated_by                             IS '最終更新者'
-/
-COMMENT ON COLUMN xxcff.xxcff_pay_planning.last_update_date                            IS '最終更新日'
-/
-COMMENT ON COLUMN xxcff.xxcff_pay_planning.last_update_login                           IS '最終更新ログイン'
-/
-COMMENT ON COLUMN xxcff.xxcff_pay_planning.request_id                                  IS '要求ID'
-/
-COMMENT ON COLUMN xxcff.xxcff_pay_planning.program_application_id                      IS 'コンカレント・プログラム・アプリケーションID'
-/
-COMMENT ON COLUMN xxcff.xxcff_pay_planning.program_id                                  IS 'コンカレント・プログラムID'
-/
-COMMENT ON COLUMN xxcff.xxcff_pay_planning.program_update_date                         IS 'プログラム更新日'
-/
+;
+COMMENT ON TABLE xxcff.xxcff_pay_planning IS 'リース支払計画';
+COMMENT ON COLUMN xxcff.xxcff_pay_planning.contract_line_id                            IS '契約明細内部ID';
+COMMENT ON COLUMN xxcff.xxcff_pay_planning.payment_frequency                           IS '支払回数';
+COMMENT ON COLUMN xxcff.xxcff_pay_planning.contract_header_id                          IS '契約内部ID';
+COMMENT ON COLUMN xxcff.xxcff_pay_planning.period_name                                 IS '会計期間';
+COMMENT ON COLUMN xxcff.xxcff_pay_planning.payment_date                                IS '支払日';
+COMMENT ON COLUMN xxcff.xxcff_pay_planning.lease_charge                                IS 'リース料';
+COMMENT ON COLUMN xxcff.xxcff_pay_planning.lease_tax_charge                            IS 'リース料_消費税';
+COMMENT ON COLUMN xxcff.xxcff_pay_planning.lease_deduction                             IS 'リース控除額';
+COMMENT ON COLUMN xxcff.xxcff_pay_planning.lease_tax_deduction                         IS 'リース控除額_消費税';
+COMMENT ON COLUMN xxcff.xxcff_pay_planning.op_charge                                   IS 'ＯＰリース料';
+COMMENT ON COLUMN xxcff.xxcff_pay_planning.op_tax_charge                               IS 'ＯＰリース料額_消費税';
+COMMENT ON COLUMN xxcff.xxcff_pay_planning.fin_debt                                    IS 'ＦＩＮリース債務額';
+COMMENT ON COLUMN xxcff.xxcff_pay_planning.fin_tax_debt                                IS 'ＦＩＮリース債務額_消費税';
+COMMENT ON COLUMN xxcff.xxcff_pay_planning.fin_interest_due                            IS 'ＦＩＮリース支払利息';
+COMMENT ON COLUMN xxcff.xxcff_pay_planning.fin_debt_rem                                IS 'ＦＩＮリース債務残';
+COMMENT ON COLUMN xxcff.xxcff_pay_planning.fin_tax_debt_rem                            IS 'ＦＩＮリース債務残_消費税';
+COMMENT ON COLUMN xxcff.xxcff_pay_planning.accounting_if_flag                          IS '会計ＩＦフラグ';
+COMMENT ON COLUMN xxcff.xxcff_pay_planning.payment_match_flag                          IS '照合済フラグ';
+COMMENT ON COLUMN xxcff.xxcff_pay_planning.created_by                                  IS '作成者';
+COMMENT ON COLUMN xxcff.xxcff_pay_planning.creation_date                               IS '作成日';
+COMMENT ON COLUMN xxcff.xxcff_pay_planning.last_updated_by                             IS '最終更新者';
+COMMENT ON COLUMN xxcff.xxcff_pay_planning.last_update_date                            IS '最終更新日';
+COMMENT ON COLUMN xxcff.xxcff_pay_planning.last_update_login                           IS '最終更新ログイン';
+COMMENT ON COLUMN xxcff.xxcff_pay_planning.request_id                                  IS '要求ID';
+COMMENT ON COLUMN xxcff.xxcff_pay_planning.program_application_id                      IS 'コンカレント・プログラム・アプリケーションID';
+COMMENT ON COLUMN xxcff.xxcff_pay_planning.program_id                                  IS 'コンカレント・プログラムID';
+COMMENT ON COLUMN xxcff.xxcff_pay_planning.program_update_date                         IS 'プログラム更新日';

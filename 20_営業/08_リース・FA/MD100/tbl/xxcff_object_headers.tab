@@ -59,82 +59,43 @@ CREATE TABLE xxcff.xxcff_object_headers (
   ,CONSTRAINT xxcff_object_headers_u01 UNIQUE (object_code)
   USING INDEX TABLESPACE xxidx2)
  TABLESPACE xxdata2 PCTFREE 10 PCTUSED 50 INITRANS 8 STORAGE ( INITIAL 65M)
-/
-COMMENT ON TABLE xxcff.xxcff_object_headers IS 'リース物件'
-/
-COMMENT ON COLUMN xxcff.xxcff_object_headers.object_header_id                          IS '物件内部ID'
-/
-COMMENT ON COLUMN xxcff.xxcff_object_headers.object_code                               IS '物件コード'
-/
-COMMENT ON COLUMN xxcff.xxcff_object_headers.lease_class                               IS 'リース種別'
-/
-COMMENT ON COLUMN xxcff.xxcff_object_headers.lease_type                                IS 'リース区分'
-/
-COMMENT ON COLUMN xxcff.xxcff_object_headers.re_lease_times                            IS '再リース回数'
-/
-COMMENT ON COLUMN xxcff.xxcff_object_headers.po_number                                 IS '発注番号'
-/
-COMMENT ON COLUMN xxcff.xxcff_object_headers.registration_number                       IS '登録番号'
-/
-COMMENT ON COLUMN xxcff.xxcff_object_headers.age_type                                  IS '年式'
-/
-COMMENT ON COLUMN xxcff.xxcff_object_headers.model                                     IS '機種'
-/
-COMMENT ON COLUMN xxcff.xxcff_object_headers.serial_number                             IS '機番'
-/
-COMMENT ON COLUMN xxcff.xxcff_object_headers.quantity                                  IS '数量'
-/
-COMMENT ON COLUMN xxcff.xxcff_object_headers.manufacturer_name                         IS 'メーカー名'
-/
-COMMENT ON COLUMN xxcff.xxcff_object_headers.department_code                           IS '管理部門コード'
-/
-COMMENT ON COLUMN xxcff.xxcff_object_headers.owner_company                             IS '本社／工場'
-/
-COMMENT ON COLUMN xxcff.xxcff_object_headers.installation_address                      IS '現設置場所'
-/
-COMMENT ON COLUMN xxcff.xxcff_object_headers.installation_place                        IS '現設置先'
-/
-COMMENT ON COLUMN xxcff.xxcff_object_headers.chassis_number                            IS '車台番号'
-/
-COMMENT ON COLUMN xxcff.xxcff_object_headers.re_lease_flag                             IS '再リース要フラグ'
-/
-COMMENT ON COLUMN xxcff.xxcff_object_headers.cancellation_type                         IS '解約区分'
-/
-COMMENT ON COLUMN xxcff.xxcff_object_headers.cancellation_date                         IS '中途解約日'
-/
-COMMENT ON COLUMN xxcff.xxcff_object_headers.dissolution_date                          IS '中途解約キャンセル日'
-/
-COMMENT ON COLUMN xxcff.xxcff_object_headers.bond_acceptance_flag                      IS '証書受領フラグ'
-/
-COMMENT ON COLUMN xxcff.xxcff_object_headers.bond_acceptance_date                      IS '証書受領日'
-/
-COMMENT ON COLUMN xxcff.xxcff_object_headers.expiration_date                           IS '満了日'
-/
-COMMENT ON COLUMN xxcff.xxcff_object_headers.object_status                             IS '物件ステータス'
-/
-COMMENT ON COLUMN xxcff.xxcff_object_headers.active_flag                               IS '物件有効フラグ'
-/
-COMMENT ON COLUMN xxcff.xxcff_object_headers.info_sys_if_date                          IS 'リース管理情報連携日'
-/
-COMMENT ON COLUMN xxcff.xxcff_object_headers.generation_date                           IS '発生日'
-/
-COMMENT ON COLUMN xxcff.xxcff_object_headers.customer_code                             IS '顧客コード'
-/
-COMMENT ON COLUMN xxcff.xxcff_object_headers.created_by                                IS '作成者'
-/
-COMMENT ON COLUMN xxcff.xxcff_object_headers.creation_date                             IS '作成日'
-/
-COMMENT ON COLUMN xxcff.xxcff_object_headers.last_updated_by                           IS '最終更新者'
-/
-COMMENT ON COLUMN xxcff.xxcff_object_headers.last_update_date                          IS '最終更新日'
-/
-COMMENT ON COLUMN xxcff.xxcff_object_headers.last_update_login                         IS '最終更新ログイン'
-/
-COMMENT ON COLUMN xxcff.xxcff_object_headers.request_id                                IS '要求ID'
-/
-COMMENT ON COLUMN xxcff.xxcff_object_headers.program_application_id                    IS 'コンカレント・プログラム・アプリケーションID'
-/
-COMMENT ON COLUMN xxcff.xxcff_object_headers.program_id                                IS 'コンカレント・プログラムID'
-/
-COMMENT ON COLUMN xxcff.xxcff_object_headers.program_update_date                       IS 'プログラム更新日'
-/
+;
+COMMENT ON TABLE xxcff.xxcff_object_headers IS 'リース物件';
+COMMENT ON COLUMN xxcff.xxcff_object_headers.object_header_id                          IS '物件内部ID';
+COMMENT ON COLUMN xxcff.xxcff_object_headers.object_code                               IS '物件コード';
+COMMENT ON COLUMN xxcff.xxcff_object_headers.lease_class                               IS 'リース種別';
+COMMENT ON COLUMN xxcff.xxcff_object_headers.lease_type                                IS 'リース区分';
+COMMENT ON COLUMN xxcff.xxcff_object_headers.re_lease_times                            IS '再リース回数';
+COMMENT ON COLUMN xxcff.xxcff_object_headers.po_number                                 IS '発注番号';
+COMMENT ON COLUMN xxcff.xxcff_object_headers.registration_number                       IS '登録番号';
+COMMENT ON COLUMN xxcff.xxcff_object_headers.age_type                                  IS '年式';
+COMMENT ON COLUMN xxcff.xxcff_object_headers.model                                     IS '機種';
+COMMENT ON COLUMN xxcff.xxcff_object_headers.serial_number                             IS '機番';
+COMMENT ON COLUMN xxcff.xxcff_object_headers.quantity                                  IS '数量';
+COMMENT ON COLUMN xxcff.xxcff_object_headers.manufacturer_name                         IS 'メーカー名';
+COMMENT ON COLUMN xxcff.xxcff_object_headers.department_code                           IS '管理部門コード';
+COMMENT ON COLUMN xxcff.xxcff_object_headers.owner_company                             IS '本社／工場';
+COMMENT ON COLUMN xxcff.xxcff_object_headers.installation_address                      IS '現設置場所';
+COMMENT ON COLUMN xxcff.xxcff_object_headers.installation_place                        IS '現設置先';
+COMMENT ON COLUMN xxcff.xxcff_object_headers.chassis_number                            IS '車台番号';
+COMMENT ON COLUMN xxcff.xxcff_object_headers.re_lease_flag                             IS '再リース要フラグ';
+COMMENT ON COLUMN xxcff.xxcff_object_headers.cancellation_type                         IS '解約区分';
+COMMENT ON COLUMN xxcff.xxcff_object_headers.cancellation_date                         IS '中途解約日';
+COMMENT ON COLUMN xxcff.xxcff_object_headers.dissolution_date                          IS '中途解約キャンセル日';
+COMMENT ON COLUMN xxcff.xxcff_object_headers.bond_acceptance_flag                      IS '証書受領フラグ';
+COMMENT ON COLUMN xxcff.xxcff_object_headers.bond_acceptance_date                      IS '証書受領日';
+COMMENT ON COLUMN xxcff.xxcff_object_headers.expiration_date                           IS '満了日';
+COMMENT ON COLUMN xxcff.xxcff_object_headers.object_status                             IS '物件ステータス';
+COMMENT ON COLUMN xxcff.xxcff_object_headers.active_flag                               IS '物件有効フラグ';
+COMMENT ON COLUMN xxcff.xxcff_object_headers.info_sys_if_date                          IS 'リース管理情報連携日';
+COMMENT ON COLUMN xxcff.xxcff_object_headers.generation_date                           IS '発生日';
+COMMENT ON COLUMN xxcff.xxcff_object_headers.customer_code                             IS '顧客コード';
+COMMENT ON COLUMN xxcff.xxcff_object_headers.created_by                                IS '作成者';
+COMMENT ON COLUMN xxcff.xxcff_object_headers.creation_date                             IS '作成日';
+COMMENT ON COLUMN xxcff.xxcff_object_headers.last_updated_by                           IS '最終更新者';
+COMMENT ON COLUMN xxcff.xxcff_object_headers.last_update_date                          IS '最終更新日';
+COMMENT ON COLUMN xxcff.xxcff_object_headers.last_update_login                         IS '最終更新ログイン';
+COMMENT ON COLUMN xxcff.xxcff_object_headers.request_id                                IS '要求ID';
+COMMENT ON COLUMN xxcff.xxcff_object_headers.program_application_id                    IS 'コンカレント・プログラム・アプリケーションID';
+COMMENT ON COLUMN xxcff.xxcff_object_headers.program_id                                IS 'コンカレント・プログラムID';
+COMMENT ON COLUMN xxcff.xxcff_object_headers.program_update_date                       IS 'プログラム更新日';

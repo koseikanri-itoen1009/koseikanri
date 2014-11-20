@@ -389,4 +389,3 @@ COMMENT ON COLUMN xxcfr_cust_hierarchy_v.bill_tax_round_rule     IS 'Å‹à|’[”
 COMMENT ON COLUMN xxcfr_cust_hierarchy_v.ship_sale_base_code     IS '”„ã‹’“_ƒR[ƒh';
 --
 COMMENT ON TABLE  xxcfr_cust_hierarchy_v IS 'ŒÚ‹qŠK‘wVIEW';
-/

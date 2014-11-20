@@ -26,7 +26,7 @@ CREATE GLOBAL TEMPORARY TABLE xxcfr.xxcfr_inv_target_cust_list
   CONSTRAINT xxcfr_inv_target_cust_list PRIMARY KEY ( bill_cust_code, cutoff_date )
 )
 ON COMMIT DELETE ROWS
-/
+;
 --
 COMMENT ON COLUMN xxcfr.xxcfr_inv_target_cust_list.bill_cust_code          IS '¿‹æŒÚ‹qƒR[ƒh';
 COMMENT ON COLUMN xxcfr.xxcfr_inv_target_cust_list.cutoff_date             IS '’÷“ú';

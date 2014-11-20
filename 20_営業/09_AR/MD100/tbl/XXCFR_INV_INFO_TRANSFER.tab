@@ -29,7 +29,7 @@ CREATE TABLE xxcfr.xxcfr_inv_info_transfer
   CONSTRAINT xxcfr_inv_info_transfer_pk PRIMARY KEY ( target_request_id )
   USING INDEX TABLESPACE xxidx2
 )
-/
+;
 --
 COMMENT ON COLUMN xxcfr.xxcfr_inv_info_transfer.target_request_id       IS 'èàóùëŒè€óvãÅID';
 COMMENT ON COLUMN xxcfr.xxcfr_inv_info_transfer.set_of_books_id         IS 'âÔåví†ïÎID';

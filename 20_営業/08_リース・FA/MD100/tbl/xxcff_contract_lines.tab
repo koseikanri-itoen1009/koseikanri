@@ -63,98 +63,51 @@ CREATE TABLE xxcff.xxcff_contract_lines (
   ,CONSTRAINT xxcff_contract_lines_u01 UNIQUE (contract_header_id,contract_line_num)
   USING INDEX TABLESPACE xxidx2)
  TABLESPACE xxdata2 PCTFREE 10 PCTUSED 50 INITRANS 8 STORAGE ( INITIAL 65M)
-/
-COMMENT ON TABLE xxcff.xxcff_contract_lines IS 'リース契約明細'
-/
-COMMENT ON COLUMN xxcff.xxcff_contract_lines.contract_line_id                          IS '契約明細内部ID'
-/
-COMMENT ON COLUMN xxcff.xxcff_contract_lines.contract_header_id                        IS '契約内部ID'
-/
-COMMENT ON COLUMN xxcff.xxcff_contract_lines.contract_line_num                         IS '契約枝番'
-/
-COMMENT ON COLUMN xxcff.xxcff_contract_lines.contract_status                           IS '契約ステータス'
-/
-COMMENT ON COLUMN xxcff.xxcff_contract_lines.first_charge                              IS '初回月額リース料_リース料'
-/
-COMMENT ON COLUMN xxcff.xxcff_contract_lines.first_tax_charge                          IS '初回消費税額_リース料'
-/
-COMMENT ON COLUMN xxcff.xxcff_contract_lines.first_total_charge                        IS '初回計_リース料'
-/
-COMMENT ON COLUMN xxcff.xxcff_contract_lines.second_charge                             IS '2回目以降月額リース料_リース料'
-/
-COMMENT ON COLUMN xxcff.xxcff_contract_lines.second_tax_charge                         IS '2回目以降消費税額_リース料'
-/
-COMMENT ON COLUMN xxcff.xxcff_contract_lines.second_total_charge                       IS '2回目以降計_リース料'
-/
-COMMENT ON COLUMN xxcff.xxcff_contract_lines.first_deduction                           IS '初回月額リース料_控除額'
-/
-COMMENT ON COLUMN xxcff.xxcff_contract_lines.first_tax_deduction                       IS '初回月額消費税額_控除額'
-/
-COMMENT ON COLUMN xxcff.xxcff_contract_lines.first_total_deduction                     IS '初回計_控除額'
-/
-COMMENT ON COLUMN xxcff.xxcff_contract_lines.second_deduction                          IS '2回目以降月額リース料_控除額'
-/
-COMMENT ON COLUMN xxcff.xxcff_contract_lines.second_tax_deduction                      IS '2回目以降消費税額_控除額'
-/
-COMMENT ON COLUMN xxcff.xxcff_contract_lines.second_total_deduction                    IS '2回目以降計_控除額'
-/
-COMMENT ON COLUMN xxcff.xxcff_contract_lines.gross_charge                              IS '総額リース料_リース料'
-/
-COMMENT ON COLUMN xxcff.xxcff_contract_lines.gross_tax_charge                          IS '総額消費税_リース料'
-/
-COMMENT ON COLUMN xxcff.xxcff_contract_lines.gross_total_charge                        IS '総額計_リース料'
-/
-COMMENT ON COLUMN xxcff.xxcff_contract_lines.gross_deduction                           IS '総額リース料_控除額'
-/
-COMMENT ON COLUMN xxcff.xxcff_contract_lines.gross_tax_deduction                       IS '総額消費税_控除額'
-/
-COMMENT ON COLUMN xxcff.xxcff_contract_lines.gross_total_deduction                     IS '総額計_控除額'
-/
-COMMENT ON COLUMN xxcff.xxcff_contract_lines.lease_kind                                IS 'リース種類'
-/
-COMMENT ON COLUMN xxcff.xxcff_contract_lines.estimated_cash_price                      IS '見積現金購入価額'
-/
-COMMENT ON COLUMN xxcff.xxcff_contract_lines.present_value_discount_rate               IS '現在価値割引率'
-/
-COMMENT ON COLUMN xxcff.xxcff_contract_lines.present_value                             IS '現在価値'
-/
-COMMENT ON COLUMN xxcff.xxcff_contract_lines.life_in_months                            IS '法定耐用年数'
-/
-COMMENT ON COLUMN xxcff.xxcff_contract_lines.original_cost                             IS '取得価額'
-/
-COMMENT ON COLUMN xxcff.xxcff_contract_lines.calc_interested_rate                      IS '計算利子率'
-/
-COMMENT ON COLUMN xxcff.xxcff_contract_lines.object_header_id                          IS '物件内部ID'
-/
-COMMENT ON COLUMN xxcff.xxcff_contract_lines.asset_category                            IS '資産種類'
-/
-COMMENT ON COLUMN xxcff.xxcff_contract_lines.expiration_date                           IS '満了日'
-/
-COMMENT ON COLUMN xxcff.xxcff_contract_lines.cancellation_date                         IS '中途解約日'
-/
-COMMENT ON COLUMN xxcff.xxcff_contract_lines.vd_if_date                                IS 'リース契約情報連携日'
-/
-COMMENT ON COLUMN xxcff.xxcff_contract_lines.info_sys_if_date                          IS 'リース管理情報連携日'
-/
-COMMENT ON COLUMN xxcff.xxcff_contract_lines.first_installation_address                IS '初回設置場所'
-/
-COMMENT ON COLUMN xxcff.xxcff_contract_lines.first_installation_place                  IS '初回設置先'
-/
-COMMENT ON COLUMN xxcff.xxcff_contract_lines.created_by                                IS '作成者'
-/
-COMMENT ON COLUMN xxcff.xxcff_contract_lines.creation_date                             IS '作成日'
-/
-COMMENT ON COLUMN xxcff.xxcff_contract_lines.last_updated_by                           IS '最終更新者'
-/
-COMMENT ON COLUMN xxcff.xxcff_contract_lines.last_update_date                          IS '最終更新日'
-/
-COMMENT ON COLUMN xxcff.xxcff_contract_lines.last_update_login                         IS '最終更新ログイン'
-/
-COMMENT ON COLUMN xxcff.xxcff_contract_lines.request_id                                IS '要求ID'
-/
-COMMENT ON COLUMN xxcff.xxcff_contract_lines.program_application_id                    IS 'コンカレント・プログラム・アプリケーションID'
-/
-COMMENT ON COLUMN xxcff.xxcff_contract_lines.program_id                                IS 'コンカレント・プログラムID'
-/
-COMMENT ON COLUMN xxcff.xxcff_contract_lines.program_update_date                       IS 'プログラム更新日'
-/
+;
+COMMENT ON TABLE xxcff.xxcff_contract_lines IS 'リース契約明細';
+COMMENT ON COLUMN xxcff.xxcff_contract_lines.contract_line_id                          IS '契約明細内部ID';
+COMMENT ON COLUMN xxcff.xxcff_contract_lines.contract_header_id                        IS '契約内部ID';
+COMMENT ON COLUMN xxcff.xxcff_contract_lines.contract_line_num                         IS '契約枝番';
+COMMENT ON COLUMN xxcff.xxcff_contract_lines.contract_status                           IS '契約ステータス';
+COMMENT ON COLUMN xxcff.xxcff_contract_lines.first_charge                              IS '初回月額リース料_リース料';
+COMMENT ON COLUMN xxcff.xxcff_contract_lines.first_tax_charge                          IS '初回消費税額_リース料';
+COMMENT ON COLUMN xxcff.xxcff_contract_lines.first_total_charge                        IS '初回計_リース料';
+COMMENT ON COLUMN xxcff.xxcff_contract_lines.second_charge                             IS '2回目以降月額リース料_リース料';
+COMMENT ON COLUMN xxcff.xxcff_contract_lines.second_tax_charge                         IS '2回目以降消費税額_リース料';
+COMMENT ON COLUMN xxcff.xxcff_contract_lines.second_total_charge                       IS '2回目以降計_リース料';
+COMMENT ON COLUMN xxcff.xxcff_contract_lines.first_deduction                           IS '初回月額リース料_控除額';
+COMMENT ON COLUMN xxcff.xxcff_contract_lines.first_tax_deduction                       IS '初回月額消費税額_控除額';
+COMMENT ON COLUMN xxcff.xxcff_contract_lines.first_total_deduction                     IS '初回計_控除額';
+COMMENT ON COLUMN xxcff.xxcff_contract_lines.second_deduction                          IS '2回目以降月額リース料_控除額';
+COMMENT ON COLUMN xxcff.xxcff_contract_lines.second_tax_deduction                      IS '2回目以降消費税額_控除額';
+COMMENT ON COLUMN xxcff.xxcff_contract_lines.second_total_deduction                    IS '2回目以降計_控除額';
+COMMENT ON COLUMN xxcff.xxcff_contract_lines.gross_charge                              IS '総額リース料_リース料';
+COMMENT ON COLUMN xxcff.xxcff_contract_lines.gross_tax_charge                          IS '総額消費税_リース料';
+COMMENT ON COLUMN xxcff.xxcff_contract_lines.gross_total_charge                        IS '総額計_リース料';
+COMMENT ON COLUMN xxcff.xxcff_contract_lines.gross_deduction                           IS '総額リース料_控除額';
+COMMENT ON COLUMN xxcff.xxcff_contract_lines.gross_tax_deduction                       IS '総額消費税_控除額';
+COMMENT ON COLUMN xxcff.xxcff_contract_lines.gross_total_deduction                     IS '総額計_控除額';
+COMMENT ON COLUMN xxcff.xxcff_contract_lines.lease_kind                                IS 'リース種類';
+COMMENT ON COLUMN xxcff.xxcff_contract_lines.estimated_cash_price                      IS '見積現金購入価額';
+COMMENT ON COLUMN xxcff.xxcff_contract_lines.present_value_discount_rate               IS '現在価値割引率';
+COMMENT ON COLUMN xxcff.xxcff_contract_lines.present_value                             IS '現在価値';
+COMMENT ON COLUMN xxcff.xxcff_contract_lines.life_in_months                            IS '法定耐用年数';
+COMMENT ON COLUMN xxcff.xxcff_contract_lines.original_cost                             IS '取得価額';
+COMMENT ON COLUMN xxcff.xxcff_contract_lines.calc_interested_rate                      IS '計算利子率';
+COMMENT ON COLUMN xxcff.xxcff_contract_lines.object_header_id                          IS '物件内部ID';
+COMMENT ON COLUMN xxcff.xxcff_contract_lines.asset_category                            IS '資産種類';
+COMMENT ON COLUMN xxcff.xxcff_contract_lines.expiration_date                           IS '満了日';
+COMMENT ON COLUMN xxcff.xxcff_contract_lines.cancellation_date                         IS '中途解約日';
+COMMENT ON COLUMN xxcff.xxcff_contract_lines.vd_if_date                                IS 'リース契約情報連携日';
+COMMENT ON COLUMN xxcff.xxcff_contract_lines.info_sys_if_date                          IS 'リース管理情報連携日';
+COMMENT ON COLUMN xxcff.xxcff_contract_lines.first_installation_address                IS '初回設置場所';
+COMMENT ON COLUMN xxcff.xxcff_contract_lines.first_installation_place                  IS '初回設置先';
+COMMENT ON COLUMN xxcff.xxcff_contract_lines.created_by                                IS '作成者';
+COMMENT ON COLUMN xxcff.xxcff_contract_lines.creation_date                             IS '作成日';
+COMMENT ON COLUMN xxcff.xxcff_contract_lines.last_updated_by                           IS '最終更新者';
+COMMENT ON COLUMN xxcff.xxcff_contract_lines.last_update_date                          IS '最終更新日';
+COMMENT ON COLUMN xxcff.xxcff_contract_lines.last_update_login                         IS '最終更新ログイン';
+COMMENT ON COLUMN xxcff.xxcff_contract_lines.request_id                                IS '要求ID';
+COMMENT ON COLUMN xxcff.xxcff_contract_lines.program_application_id                    IS 'コンカレント・プログラム・アプリケーションID';
+COMMENT ON COLUMN xxcff.xxcff_contract_lines.program_id                                IS 'コンカレント・プログラムID';
+COMMENT ON COLUMN xxcff.xxcff_contract_lines.program_update_date                       IS 'プログラム更新日';

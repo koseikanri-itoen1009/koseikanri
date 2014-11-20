@@ -79,11 +79,10 @@ SELECT
       AND hca.cust_account_id     = hcp.cust_account_id         --請求先顧客マスタ.顧客ID = 請求先顧客プロファイル.顧客ID
       AND hcp.site_use_id         IS NULL                       --請求先顧客プロファイル.使用目的 IS NULL
   )  xxcfr_receipt_cust_account
-/
+;
 --
 COMMENT ON COLUMN xxcfr_receipt_cust_accounts_v.type                IS 'タイプ';
 COMMENT ON COLUMN xxcfr_receipt_cust_accounts_v.account_number      IS '顧客コード';
 COMMENT ON COLUMN xxcfr_receipt_cust_accounts_v.party_name          IS '顧客名';
 --
 COMMENT ON TABLE  xxcfr_receipt_cust_accounts_v IS '入金先顧客ビュー（支払通知データダウンロード用）';
-

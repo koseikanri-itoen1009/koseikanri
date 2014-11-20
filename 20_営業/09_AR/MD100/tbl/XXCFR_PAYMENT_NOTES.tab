@@ -43,8 +43,8 @@ CREATE TABLE xxcfr.xxcfr_payment_notes
   payment_type                VARCHAR2(2)           ,     -- 支払区分
   payment_method_type         VARCHAR2(2)           ,     -- 支払方法区分
   due_type                    VARCHAR2(2)           ,     -- 発行区分
-  shop_code                   VARCHAR2(10)           ,     -- 店コード
-  shop_name                   VARCHAR2(100)          ,     -- 店舗名称（漢字）
+  shop_code                   VARCHAR2(10)          ,     -- 店コード
+  shop_name                   VARCHAR2(100)         ,     -- 店舗名称（漢字）
   shop_name_alt               VARCHAR2(50)          ,     -- 店舗名称（カナ）
   amount_sign                 VARCHAR2(1)           ,     -- 金額符号
   amount                      NUMBER                ,     -- 金額
@@ -107,83 +107,81 @@ CREATE TABLE xxcfr.xxcfr_payment_notes
 --    INITRANS    1
 --    PCTFREE     10
 --    PCTUSED     40
-/
+;
 --
 COMMENT ON COLUMN xxcfr.xxcfr_payment_notes.payment_note_id           IS '支払通知情報ID';
-COMMENT ON COLUMN xxcfr.xxcfr_payment_notes.ebs_posted_date						IS 'EBS取込日';
-COMMENT ON COLUMN xxcfr.xxcfr_payment_notes.ebs_cust_account_number		IS 'EBS顧客コード';
-COMMENT ON COLUMN xxcfr.xxcfr_payment_notes.record_type								IS 'レコード区分';
-COMMENT ON COLUMN xxcfr.xxcfr_payment_notes.record_number							IS 'レコード通番';
-COMMENT ON COLUMN xxcfr.xxcfr_payment_notes.chain_shop_code						IS 'チェーン店コード';
-COMMENT ON COLUMN xxcfr.xxcfr_payment_notes.process_date							IS 'データ処理日付';
-COMMENT ON COLUMN xxcfr.xxcfr_payment_notes.process_time							IS 'データ処理時刻';
-COMMENT ON COLUMN xxcfr.xxcfr_payment_notes.vendor_code								IS '仕入先コード';
-COMMENT ON COLUMN xxcfr.xxcfr_payment_notes.vendor_name								IS '仕入先名称/取引先名称（漢字）';
-COMMENT ON COLUMN xxcfr.xxcfr_payment_notes.vendor_name_alt						IS '仕入先名称/取引先名称（カナ）';
-COMMENT ON COLUMN xxcfr.xxcfr_payment_notes.company_code							IS '社コード';
-COMMENT ON COLUMN xxcfr.xxcfr_payment_notes.period_from								IS '対象期間・自';
-COMMENT ON COLUMN xxcfr.xxcfr_payment_notes.period_to									IS '対象期間・至';
-COMMENT ON COLUMN xxcfr.xxcfr_payment_notes.invoice_close_date				IS '請求締年月日';
-COMMENT ON COLUMN xxcfr.xxcfr_payment_notes.payment_date							IS '支払年月日';
-COMMENT ON COLUMN xxcfr.xxcfr_payment_notes.site_month								IS 'サイト月数';
-COMMENT ON COLUMN xxcfr.xxcfr_payment_notes.note_count								IS '伝票枚数';
-COMMENT ON COLUMN xxcfr.xxcfr_payment_notes.credit_note_count					IS '訂正伝票枚数';
-COMMENT ON COLUMN xxcfr.xxcfr_payment_notes.rem_acceptance_count			IS '未検収伝票枚数';
-COMMENT ON COLUMN xxcfr.xxcfr_payment_notes.vendor_record_count				IS '取引先内レコード通番';
-COMMENT ON COLUMN xxcfr.xxcfr_payment_notes.invoice_number						IS '請求番号';
-COMMENT ON COLUMN xxcfr.xxcfr_payment_notes.invoice_type							IS '請求区分';
-COMMENT ON COLUMN xxcfr.xxcfr_payment_notes.payment_type							IS '支払区分';
-COMMENT ON COLUMN xxcfr.xxcfr_payment_notes.payment_method_type				IS '支払方法区分';
-COMMENT ON COLUMN xxcfr.xxcfr_payment_notes.due_type									IS '発行区分';
-COMMENT ON COLUMN xxcfr.xxcfr_payment_notes.shop_code									IS '店コード';
-COMMENT ON COLUMN xxcfr.xxcfr_payment_notes.shop_name									IS '店舗名称（漢字）';
-COMMENT ON COLUMN xxcfr.xxcfr_payment_notes.shop_name_alt							IS '店舗名称（カナ）';
-COMMENT ON COLUMN xxcfr.xxcfr_payment_notes.amount_sign								IS '金額符号';
-COMMENT ON COLUMN xxcfr.xxcfr_payment_notes.amount										IS '金額';
-COMMENT ON COLUMN xxcfr.xxcfr_payment_notes.tax_type									IS '消費税区分';
-COMMENT ON COLUMN xxcfr.xxcfr_payment_notes.tax_rate									IS '消費税率';
-COMMENT ON COLUMN xxcfr.xxcfr_payment_notes.tax_amount								IS '消費税額';
-COMMENT ON COLUMN xxcfr.xxcfr_payment_notes.tax_diff_flag							IS '消費税差額フラグ';
-COMMENT ON COLUMN xxcfr.xxcfr_payment_notes.diff_calc_flag						IS '違算区分';
-COMMENT ON COLUMN xxcfr.xxcfr_payment_notes.match_type								IS 'マッチ区分';
-COMMENT ON COLUMN xxcfr.xxcfr_payment_notes.unmatch_accoumt_amount		IS 'アンマッチ買掛計上金額';
-COMMENT ON COLUMN xxcfr.xxcfr_payment_notes.double_type								IS 'ダブリ区分';
-COMMENT ON COLUMN xxcfr.xxcfr_payment_notes.acceptance_date						IS '検収日';
-COMMENT ON COLUMN xxcfr.xxcfr_payment_notes.max_month									IS '月限';
-COMMENT ON COLUMN xxcfr.xxcfr_payment_notes.note_number								IS '伝票番号';
-COMMENT ON COLUMN xxcfr.xxcfr_payment_notes.line_number								IS '行№';
-COMMENT ON COLUMN xxcfr.xxcfr_payment_notes.note_type									IS '伝票区分';
-COMMENT ON COLUMN xxcfr.xxcfr_payment_notes.class_code								IS '分類コード';
-COMMENT ON COLUMN xxcfr.xxcfr_payment_notes.div_code									IS '部門コード';
-COMMENT ON COLUMN xxcfr.xxcfr_payment_notes.sec_code									IS '課コード';
-COMMENT ON COLUMN xxcfr.xxcfr_payment_notes.return_type								IS '売上返品区分';
-COMMENT ON COLUMN xxcfr.xxcfr_payment_notes.nitiriu_type							IS 'ニチリウ経由区分';
-COMMENT ON COLUMN xxcfr.xxcfr_payment_notes.sp_sale_type							IS '特売区分';
-COMMENT ON COLUMN xxcfr.xxcfr_payment_notes.shipment									IS '便';
-COMMENT ON COLUMN xxcfr.xxcfr_payment_notes.order_date								IS '発注日';
-COMMENT ON COLUMN xxcfr.xxcfr_payment_notes.delivery_date							IS '納品日_返品日';
-COMMENT ON COLUMN xxcfr.xxcfr_payment_notes.product_code							IS '商品コード';
-COMMENT ON COLUMN xxcfr.xxcfr_payment_notes.product_name							IS '商品名（漢字）';
-COMMENT ON COLUMN xxcfr.xxcfr_payment_notes.product_name_alt					IS '商品名（カナ）';
-COMMENT ON COLUMN xxcfr.xxcfr_payment_notes.delivery_quantity					IS '納品数量';
-COMMENT ON COLUMN xxcfr.xxcfr_payment_notes.cost_unit_price						IS '原価単価';
-COMMENT ON COLUMN xxcfr.xxcfr_payment_notes.cost_price								IS '原価金額';
-COMMENT ON COLUMN xxcfr.xxcfr_payment_notes.desc_code									IS '備考コード';
-COMMENT ON COLUMN xxcfr.xxcfr_payment_notes.chain_orig_desc						IS 'チェーン固有エリア';
-COMMENT ON COLUMN xxcfr.xxcfr_payment_notes.sum_amount								IS '合計金額';
-COMMENT ON COLUMN xxcfr.xxcfr_payment_notes.discount_sum_amount				IS '値引合計金額';
-COMMENT ON COLUMN xxcfr.xxcfr_payment_notes.return_sum_amount					IS '返品合計金額';
-COMMENT ON COLUMN xxcfr.xxcfr_payment_notes.org_id										IS '組織ID';
-COMMENT ON COLUMN xxcfr.xxcfr_payment_notes.created_by								IS '作成者';
-COMMENT ON COLUMN xxcfr.xxcfr_payment_notes.creation_date							IS '作成日';
-COMMENT ON COLUMN xxcfr.xxcfr_payment_notes.last_updated_by						IS '最終更新者';
-COMMENT ON COLUMN xxcfr.xxcfr_payment_notes.last_update_date					IS '最終更新日';
-COMMENT ON COLUMN xxcfr.xxcfr_payment_notes.last_update_login 				IS '最終更新ログイン';
-COMMENT ON COLUMN xxcfr.xxcfr_payment_notes.request_id								IS '要求ID';
-COMMENT ON COLUMN xxcfr.xxcfr_payment_notes.program_application_id		IS 'コンカレント・プログラム・アプリケーションID';
-COMMENT ON COLUMN xxcfr.xxcfr_payment_notes.program_id								IS 'コンカレント・プログラムID';
-COMMENT ON COLUMN xxcfr.xxcfr_payment_notes.program_update_date				IS 'プログラム更新日';
+COMMENT ON COLUMN xxcfr.xxcfr_payment_notes.ebs_posted_date           IS 'EBS取込日';
+COMMENT ON COLUMN xxcfr.xxcfr_payment_notes.ebs_cust_account_number   IS 'EBS顧客コード';
+COMMENT ON COLUMN xxcfr.xxcfr_payment_notes.record_type               IS 'レコード区分';
+COMMENT ON COLUMN xxcfr.xxcfr_payment_notes.record_number             IS 'レコード通番';
+COMMENT ON COLUMN xxcfr.xxcfr_payment_notes.chain_shop_code           IS 'チェーン店コード';
+COMMENT ON COLUMN xxcfr.xxcfr_payment_notes.process_date              IS 'データ処理日付';
+COMMENT ON COLUMN xxcfr.xxcfr_payment_notes.process_time              IS 'データ処理時刻';
+COMMENT ON COLUMN xxcfr.xxcfr_payment_notes.vendor_code               IS '仕入先コード';
+COMMENT ON COLUMN xxcfr.xxcfr_payment_notes.vendor_name               IS '仕入先名称/取引先名称（漢字）';
+COMMENT ON COLUMN xxcfr.xxcfr_payment_notes.vendor_name_alt           IS '仕入先名称/取引先名称（カナ）';
+COMMENT ON COLUMN xxcfr.xxcfr_payment_notes.company_code              IS '社コード';
+COMMENT ON COLUMN xxcfr.xxcfr_payment_notes.period_from               IS '対象期間・自';
+COMMENT ON COLUMN xxcfr.xxcfr_payment_notes.period_to                 IS '対象期間・至';
+COMMENT ON COLUMN xxcfr.xxcfr_payment_notes.invoice_close_date        IS '請求締年月日';
+COMMENT ON COLUMN xxcfr.xxcfr_payment_notes.payment_date              IS '支払年月日';
+COMMENT ON COLUMN xxcfr.xxcfr_payment_notes.site_month                IS 'サイト月数';
+COMMENT ON COLUMN xxcfr.xxcfr_payment_notes.note_count                IS '伝票枚数';
+COMMENT ON COLUMN xxcfr.xxcfr_payment_notes.credit_note_count         IS '訂正伝票枚数';
+COMMENT ON COLUMN xxcfr.xxcfr_payment_notes.rem_acceptance_count      IS '未検収伝票枚数';
+COMMENT ON COLUMN xxcfr.xxcfr_payment_notes.vendor_record_count       IS '取引先内レコード通番';
+COMMENT ON COLUMN xxcfr.xxcfr_payment_notes.invoice_number            IS '請求番号';
+COMMENT ON COLUMN xxcfr.xxcfr_payment_notes.invoice_type              IS '請求区分';
+COMMENT ON COLUMN xxcfr.xxcfr_payment_notes.payment_type              IS '支払区分';
+COMMENT ON COLUMN xxcfr.xxcfr_payment_notes.payment_method_type       IS '支払方法区分';
+COMMENT ON COLUMN xxcfr.xxcfr_payment_notes.due_type                  IS '発行区分';
+COMMENT ON COLUMN xxcfr.xxcfr_payment_notes.shop_code                 IS '店コード';
+COMMENT ON COLUMN xxcfr.xxcfr_payment_notes.shop_name                 IS '店舗名称（漢字）';
+COMMENT ON COLUMN xxcfr.xxcfr_payment_notes.shop_name_alt             IS '店舗名称（カナ）';
+COMMENT ON COLUMN xxcfr.xxcfr_payment_notes.amount_sign               IS '金額符号';
+COMMENT ON COLUMN xxcfr.xxcfr_payment_notes.amount                    IS '金額';
+COMMENT ON COLUMN xxcfr.xxcfr_payment_notes.tax_type                  IS '消費税区分';
+COMMENT ON COLUMN xxcfr.xxcfr_payment_notes.tax_rate                  IS '消費税率';
+COMMENT ON COLUMN xxcfr.xxcfr_payment_notes.tax_amount                IS '消費税額';
+COMMENT ON COLUMN xxcfr.xxcfr_payment_notes.tax_diff_flag             IS '消費税差額フラグ';
+COMMENT ON COLUMN xxcfr.xxcfr_payment_notes.diff_calc_flag            IS '違算区分';
+COMMENT ON COLUMN xxcfr.xxcfr_payment_notes.match_type                IS 'マッチ区分';
+COMMENT ON COLUMN xxcfr.xxcfr_payment_notes.unmatch_accoumt_amount    IS 'アンマッチ買掛計上金額';
+COMMENT ON COLUMN xxcfr.xxcfr_payment_notes.double_type               IS 'ダブリ区分';
+COMMENT ON COLUMN xxcfr.xxcfr_payment_notes.acceptance_date           IS '検収日';
+COMMENT ON COLUMN xxcfr.xxcfr_payment_notes.max_month                 IS '月限';
+COMMENT ON COLUMN xxcfr.xxcfr_payment_notes.note_number               IS '伝票番号';
+COMMENT ON COLUMN xxcfr.xxcfr_payment_notes.line_number               IS '行№';
+COMMENT ON COLUMN xxcfr.xxcfr_payment_notes.note_type                 IS '伝票区分';
+COMMENT ON COLUMN xxcfr.xxcfr_payment_notes.class_code                IS '分類コード';
+COMMENT ON COLUMN xxcfr.xxcfr_payment_notes.div_code                  IS '部門コード';
+COMMENT ON COLUMN xxcfr.xxcfr_payment_notes.sec_code                  IS '課コード';
+COMMENT ON COLUMN xxcfr.xxcfr_payment_notes.return_type               IS '売上返品区分';
+COMMENT ON COLUMN xxcfr.xxcfr_payment_notes.nitiriu_type              IS 'ニチリウ経由区分';
+COMMENT ON COLUMN xxcfr.xxcfr_payment_notes.sp_sale_type              IS '特売区分';
+COMMENT ON COLUMN xxcfr.xxcfr_payment_notes.shipment                  IS '便';
+COMMENT ON COLUMN xxcfr.xxcfr_payment_notes.order_date                IS '発注日';
+COMMENT ON COLUMN xxcfr.xxcfr_payment_notes.delivery_date             IS '納品日_返品日';
+COMMENT ON COLUMN xxcfr.xxcfr_payment_notes.product_code              IS '商品コード';
+COMMENT ON COLUMN xxcfr.xxcfr_payment_notes.product_name              IS '商品名（漢字）';
+COMMENT ON COLUMN xxcfr.xxcfr_payment_notes.product_name_alt          IS '商品名（カナ）';
+COMMENT ON COLUMN xxcfr.xxcfr_payment_notes.delivery_quantity         IS '納品数量';
+COMMENT ON COLUMN xxcfr.xxcfr_payment_notes.cost_unit_price           IS '原価単価';
+COMMENT ON COLUMN xxcfr.xxcfr_payment_notes.cost_price                IS '原価金額';
+COMMENT ON COLUMN xxcfr.xxcfr_payment_notes.desc_code                 IS '備考コード';
+COMMENT ON COLUMN xxcfr.xxcfr_payment_notes.chain_orig_desc           IS 'チェーン固有エリア';
+COMMENT ON COLUMN xxcfr.xxcfr_payment_notes.sum_amount                IS '合計金額';
+COMMENT ON COLUMN xxcfr.xxcfr_payment_notes.discount_sum_amount       IS '値引合計金額';
+COMMENT ON COLUMN xxcfr.xxcfr_payment_notes.return_sum_amount         IS '返品合計金額';
+COMMENT ON COLUMN xxcfr.xxcfr_payment_notes.org_id                    IS '組織ID';
+COMMENT ON COLUMN xxcfr.xxcfr_payment_notes.created_by                IS '作成者';
+COMMENT ON COLUMN xxcfr.xxcfr_payment_notes.creation_date             IS '作成日';
+COMMENT ON COLUMN xxcfr.xxcfr_payment_notes.last_updated_by           IS '最終更新者';
+COMMENT ON COLUMN xxcfr.xxcfr_payment_notes.last_update_date          IS '最終更新日';
+COMMENT ON COLUMN xxcfr.xxcfr_payment_notes.last_update_login         IS '最終更新ログイン';
+COMMENT ON COLUMN xxcfr.xxcfr_payment_notes.request_id                IS '要求ID';
+COMMENT ON COLUMN xxcfr.xxcfr_payment_notes.program_application_id    IS 'コンカレント・プログラム・アプリケーションID';
+COMMENT ON COLUMN xxcfr.xxcfr_payment_notes.program_id                IS 'コンカレント・プログラムID';
+COMMENT ON COLUMN xxcfr.xxcfr_payment_notes.program_update_date       IS 'プログラム更新日';
 --
 COMMENT ON TABLE  xxcfr.xxcfr_payment_notes IS '支払通知情報テーブル';
-/
-

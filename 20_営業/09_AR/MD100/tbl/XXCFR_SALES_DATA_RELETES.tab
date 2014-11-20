@@ -40,7 +40,7 @@ CREATE TABLE xxcfr.xxcfr_sales_data_reletes
 --    INITRANS    1
 --    PCTFREE     10
 --    PCTUSED     40
-/
+;
 --
 COMMENT ON COLUMN xxcfr.xxcfr_sales_data_reletes.customer_trx_id           IS 'æˆøƒwƒbƒ_ID';
 COMMENT ON COLUMN xxcfr.xxcfr_sales_data_reletes.created_by                IS 'ì¬Ò';
@@ -54,4 +54,3 @@ COMMENT ON COLUMN xxcfr.xxcfr_sales_data_reletes.program_id                IS 'ƒ
 COMMENT ON COLUMN xxcfr.xxcfr_sales_data_reletes.program_update_date       IS 'ƒvƒƒOƒ‰ƒ€XV“ú';
 --
 COMMENT ON TABLE  xxcfr.xxcfr_sales_data_reletes IS '”„ãÀÑ˜AŒgÏƒe[ƒuƒ‹';
-

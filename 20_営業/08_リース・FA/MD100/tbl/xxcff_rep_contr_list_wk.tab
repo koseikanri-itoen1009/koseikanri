@@ -51,82 +51,43 @@ CREATE TABLE xxcff.xxcff_rep_contr_list_wk (
     ,program_id                     NUMBER(15)
     ,program_update_date            DATE)
  TABLESPACE xxdata2 PCTFREE 20 PCTUSED 40 INITRANS 1 STORAGE ( INITIAL 64K)
-/
-COMMENT ON TABLE xxcff.xxcff_rep_contr_list_wk IS 'リース契約登録一覧帳票ワーク'
-/
-COMMENT ON COLUMN xxcff.xxcff_rep_contr_list_wk.lease_company                          IS 'リース会社'
-/
-COMMENT ON COLUMN xxcff.xxcff_rep_contr_list_wk.contract_number                        IS '契約番号'
-/
-COMMENT ON COLUMN xxcff.xxcff_rep_contr_list_wk.comments                               IS '件名'
-/
-COMMENT ON COLUMN xxcff.xxcff_rep_contr_list_wk.lease_class                            IS 'リース種別'
-/
-COMMENT ON COLUMN xxcff.xxcff_rep_contr_list_wk.lease_type                             IS 'リース区分'
-/
-COMMENT ON COLUMN xxcff.xxcff_rep_contr_list_wk.contract_date                          IS '契約日'
-/
-COMMENT ON COLUMN xxcff.xxcff_rep_contr_list_wk.lease_start_date                       IS 'リース開始日'
-/
-COMMENT ON COLUMN xxcff.xxcff_rep_contr_list_wk.lease_end_date                         IS 'リース終了日'
-/
-COMMENT ON COLUMN xxcff.xxcff_rep_contr_list_wk.payment_frequency                      IS '支払回数'
-/
-COMMENT ON COLUMN xxcff.xxcff_rep_contr_list_wk.payment_type                           IS '頻度'
-/
-COMMENT ON COLUMN xxcff.xxcff_rep_contr_list_wk.term                                   IS '期間'
-/
-COMMENT ON COLUMN xxcff.xxcff_rep_contr_list_wk.first_payment_date                     IS '初回支払日'
-/
-COMMENT ON COLUMN xxcff.xxcff_rep_contr_list_wk.second_payment_date                    IS '2回目支払日'
-/
-COMMENT ON COLUMN xxcff.xxcff_rep_contr_list_wk.third_payment_date                     IS '3回目以降支払日'
-/
-COMMENT ON COLUMN xxcff.xxcff_rep_contr_list_wk.fin_cnt                                IS '明細数（Fin数）'
-/
-COMMENT ON COLUMN xxcff.xxcff_rep_contr_list_wk.op_cnt                                 IS '明細数（Op数）'
-/
-COMMENT ON COLUMN xxcff.xxcff_rep_contr_list_wk.estimated_cash_price                   IS '見積現金購入価額'
-/
-COMMENT ON COLUMN xxcff.xxcff_rep_contr_list_wk.gross_charge                           IS 'リース料総額（リース料）'
-/
-COMMENT ON COLUMN xxcff.xxcff_rep_contr_list_wk.gross_tax_charge                       IS 'リース料総額（消費税）'
-/
-COMMENT ON COLUMN xxcff.xxcff_rep_contr_list_wk.gross_total_charge                     IS 'リース料総額（計）'
-/
-COMMENT ON COLUMN xxcff.xxcff_rep_contr_list_wk.gross_deduction                        IS '控除額総額（リース料）'
-/
-COMMENT ON COLUMN xxcff.xxcff_rep_contr_list_wk.gross_tax_deduction                    IS '控除額総額（消費税）'
-/
-COMMENT ON COLUMN xxcff.xxcff_rep_contr_list_wk.gross_total_deduction                  IS '控除額総額（計）'
-/
-COMMENT ON COLUMN xxcff.xxcff_rep_contr_list_wk.first_charge                           IS '初回リース料（リース料）'
-/
-COMMENT ON COLUMN xxcff.xxcff_rep_contr_list_wk.first_tax_charge                       IS '初回リース料（消費税）'
-/
-COMMENT ON COLUMN xxcff.xxcff_rep_contr_list_wk.first_total_charge                     IS '初回リース料（計）'
-/
-COMMENT ON COLUMN xxcff.xxcff_rep_contr_list_wk.second_charge                          IS '月額リース料（リース料）'
-/
-COMMENT ON COLUMN xxcff.xxcff_rep_contr_list_wk.second_tax_charge                      IS '月額リース料（消費税）'
-/
-COMMENT ON COLUMN xxcff.xxcff_rep_contr_list_wk.second_total_charge                    IS '月額リース料（計）'
-/
-COMMENT ON COLUMN xxcff.xxcff_rep_contr_list_wk.created_by                             IS '作成者'
-/
-COMMENT ON COLUMN xxcff.xxcff_rep_contr_list_wk.creation_date                          IS '作成日'
-/
-COMMENT ON COLUMN xxcff.xxcff_rep_contr_list_wk.last_updated_by                        IS '最終更新者'
-/
-COMMENT ON COLUMN xxcff.xxcff_rep_contr_list_wk.last_update_date                       IS '最終更新日'
-/
-COMMENT ON COLUMN xxcff.xxcff_rep_contr_list_wk.last_update_login                      IS '最終更新ログイン'
-/
-COMMENT ON COLUMN xxcff.xxcff_rep_contr_list_wk.request_id                             IS '要求ID'
-/
-COMMENT ON COLUMN xxcff.xxcff_rep_contr_list_wk.program_application_id                 IS 'コンカレント・プログラム・アプリケーションID'
-/
-COMMENT ON COLUMN xxcff.xxcff_rep_contr_list_wk.program_id                             IS 'コンカレント・プログラムID'
-/
-COMMENT ON COLUMN xxcff.xxcff_rep_contr_list_wk.program_update_date                    IS 'プログラム更新日'
-/
+;
+COMMENT ON TABLE xxcff.xxcff_rep_contr_list_wk IS 'リース契約登録一覧帳票ワーク';
+COMMENT ON COLUMN xxcff.xxcff_rep_contr_list_wk.lease_company                          IS 'リース会社';
+COMMENT ON COLUMN xxcff.xxcff_rep_contr_list_wk.contract_number                        IS '契約番号';
+COMMENT ON COLUMN xxcff.xxcff_rep_contr_list_wk.comments                               IS '件名';
+COMMENT ON COLUMN xxcff.xxcff_rep_contr_list_wk.lease_class                            IS 'リース種別';
+COMMENT ON COLUMN xxcff.xxcff_rep_contr_list_wk.lease_type                             IS 'リース区分';
+COMMENT ON COLUMN xxcff.xxcff_rep_contr_list_wk.contract_date                          IS '契約日';
+COMMENT ON COLUMN xxcff.xxcff_rep_contr_list_wk.lease_start_date                       IS 'リース開始日';
+COMMENT ON COLUMN xxcff.xxcff_rep_contr_list_wk.lease_end_date                         IS 'リース終了日';
+COMMENT ON COLUMN xxcff.xxcff_rep_contr_list_wk.payment_frequency                      IS '支払回数';
+COMMENT ON COLUMN xxcff.xxcff_rep_contr_list_wk.payment_type                           IS '頻度';
+COMMENT ON COLUMN xxcff.xxcff_rep_contr_list_wk.term                                   IS '期間';
+COMMENT ON COLUMN xxcff.xxcff_rep_contr_list_wk.first_payment_date                     IS '初回支払日';
+COMMENT ON COLUMN xxcff.xxcff_rep_contr_list_wk.second_payment_date                    IS '2回目支払日';
+COMMENT ON COLUMN xxcff.xxcff_rep_contr_list_wk.third_payment_date                     IS '3回目以降支払日';
+COMMENT ON COLUMN xxcff.xxcff_rep_contr_list_wk.fin_cnt                                IS '明細数（Fin数）';
+COMMENT ON COLUMN xxcff.xxcff_rep_contr_list_wk.op_cnt                                 IS '明細数（Op数）';
+COMMENT ON COLUMN xxcff.xxcff_rep_contr_list_wk.estimated_cash_price                   IS '見積現金購入価額';
+COMMENT ON COLUMN xxcff.xxcff_rep_contr_list_wk.gross_charge                           IS 'リース料総額（リース料）';
+COMMENT ON COLUMN xxcff.xxcff_rep_contr_list_wk.gross_tax_charge                       IS 'リース料総額（消費税）';
+COMMENT ON COLUMN xxcff.xxcff_rep_contr_list_wk.gross_total_charge                     IS 'リース料総額（計）';
+COMMENT ON COLUMN xxcff.xxcff_rep_contr_list_wk.gross_deduction                        IS '控除額総額（リース料）';
+COMMENT ON COLUMN xxcff.xxcff_rep_contr_list_wk.gross_tax_deduction                    IS '控除額総額（消費税）';
+COMMENT ON COLUMN xxcff.xxcff_rep_contr_list_wk.gross_total_deduction                  IS '控除額総額（計）';
+COMMENT ON COLUMN xxcff.xxcff_rep_contr_list_wk.first_charge                           IS '初回リース料（リース料）';
+COMMENT ON COLUMN xxcff.xxcff_rep_contr_list_wk.first_tax_charge                       IS '初回リース料（消費税）';
+COMMENT ON COLUMN xxcff.xxcff_rep_contr_list_wk.first_total_charge                     IS '初回リース料（計）';
+COMMENT ON COLUMN xxcff.xxcff_rep_contr_list_wk.second_charge                          IS '月額リース料（リース料）';
+COMMENT ON COLUMN xxcff.xxcff_rep_contr_list_wk.second_tax_charge                      IS '月額リース料（消費税）';
+COMMENT ON COLUMN xxcff.xxcff_rep_contr_list_wk.second_total_charge                    IS '月額リース料（計）';
+COMMENT ON COLUMN xxcff.xxcff_rep_contr_list_wk.created_by                             IS '作成者';
+COMMENT ON COLUMN xxcff.xxcff_rep_contr_list_wk.creation_date                          IS '作成日';
+COMMENT ON COLUMN xxcff.xxcff_rep_contr_list_wk.last_updated_by                        IS '最終更新者';
+COMMENT ON COLUMN xxcff.xxcff_rep_contr_list_wk.last_update_date                       IS '最終更新日';
+COMMENT ON COLUMN xxcff.xxcff_rep_contr_list_wk.last_update_login                      IS '最終更新ログイン';
+COMMENT ON COLUMN xxcff.xxcff_rep_contr_list_wk.request_id                             IS '要求ID';
+COMMENT ON COLUMN xxcff.xxcff_rep_contr_list_wk.program_application_id                 IS 'コンカレント・プログラム・アプリケーションID';
+COMMENT ON COLUMN xxcff.xxcff_rep_contr_list_wk.program_id                             IS 'コンカレント・プログラムID';
+COMMENT ON COLUMN xxcff.xxcff_rep_contr_list_wk.program_update_date                    IS 'プログラム更新日';

@@ -47,7 +47,7 @@ CREATE TABLE xxcfr.xxcfr_rep_invoice_list
   program_id                   NUMBER(15)                     ,     -- コンカレント・プログラムID
   program_update_date          DATE                                 -- プログラム更新日
 )
-/
+;
 --
 COMMENT ON COLUMN xxcfr.xxcfr_rep_invoice_list.report_id                 IS '帳票ID';
 COMMENT ON COLUMN xxcfr.xxcfr_rep_invoice_list.output_date               IS '出力日';

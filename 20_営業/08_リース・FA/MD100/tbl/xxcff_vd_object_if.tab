@@ -47,60 +47,32 @@ CREATE TABLE xxcff.xxcff_vd_object_if (
   ,CONSTRAINT xxcff_vd_object_if_pk PRIMARY KEY (object_code)
   USING INDEX TABLESPACE xxidx2)
  TABLESPACE xxdata2 PCTFREE 20 PCTUSED 40 INITRANS 8 STORAGE ( INITIAL 64K)
-/
-COMMENT ON TABLE xxcff.xxcff_vd_object_if IS '自販機SH物件インタフェース'
-/
-COMMENT ON COLUMN xxcff.xxcff_vd_object_if.object_code                                 IS '物件コード'
-/
-COMMENT ON COLUMN xxcff.xxcff_vd_object_if.generation_date                             IS '発生日'
-/
-COMMENT ON COLUMN xxcff.xxcff_vd_object_if.lease_class                                 IS 'リース種別'
-/
-COMMENT ON COLUMN xxcff.xxcff_vd_object_if.po_number                                   IS '発注番号'
-/
-COMMENT ON COLUMN xxcff.xxcff_vd_object_if.manufacturer_name                           IS 'メーカー名'
-/
-COMMENT ON COLUMN xxcff.xxcff_vd_object_if.age_type                                    IS '年式'
-/
-COMMENT ON COLUMN xxcff.xxcff_vd_object_if.model                                       IS '機種'
-/
-COMMENT ON COLUMN xxcff.xxcff_vd_object_if.serial_number                               IS '機番'
-/
-COMMENT ON COLUMN xxcff.xxcff_vd_object_if.quantity                                    IS '数量'
-/
-COMMENT ON COLUMN xxcff.xxcff_vd_object_if.department_code                             IS '管理部門コード'
-/
-COMMENT ON COLUMN xxcff.xxcff_vd_object_if.owner_company                               IS '本社／工場'
-/
-COMMENT ON COLUMN xxcff.xxcff_vd_object_if.installation_place                          IS '現設置先'
-/
-COMMENT ON COLUMN xxcff.xxcff_vd_object_if.installation_address                        IS '現設置場所'
-/
-COMMENT ON COLUMN xxcff.xxcff_vd_object_if.active_flag                                 IS '物件有効フラグ'
-/
-COMMENT ON COLUMN xxcff.xxcff_vd_object_if.import_status                               IS '取込ステータス'
-/
-COMMENT ON COLUMN xxcff.xxcff_vd_object_if.group_id                                    IS 'グループID'
-/
-COMMENT ON COLUMN xxcff.xxcff_vd_object_if.customer_code                               IS '顧客コード'
-/
-COMMENT ON COLUMN xxcff.xxcff_vd_object_if.extract_flag                                IS '抽出フラグ'
-/
-COMMENT ON COLUMN xxcff.xxcff_vd_object_if.created_by                                  IS '作成者'
-/
-COMMENT ON COLUMN xxcff.xxcff_vd_object_if.creation_date                               IS '作成日'
-/
-COMMENT ON COLUMN xxcff.xxcff_vd_object_if.last_updated_by                             IS '最終更新者'
-/
-COMMENT ON COLUMN xxcff.xxcff_vd_object_if.last_update_date                            IS '最終更新日'
-/
-COMMENT ON COLUMN xxcff.xxcff_vd_object_if.last_update_login                           IS '最終更新ログイン'
-/
-COMMENT ON COLUMN xxcff.xxcff_vd_object_if.request_id                                  IS '要求ID'
-/
-COMMENT ON COLUMN xxcff.xxcff_vd_object_if.program_application_id                      IS 'コンカレント・プログラム・アプリケーションID'
-/
-COMMENT ON COLUMN xxcff.xxcff_vd_object_if.program_id                                  IS 'コンカレント・プログラムID'
-/
-COMMENT ON COLUMN xxcff.xxcff_vd_object_if.program_update_date                         IS 'プログラム更新日'
-/
+;
+COMMENT ON TABLE xxcff.xxcff_vd_object_if IS '自販機SH物件インタフェース';
+COMMENT ON COLUMN xxcff.xxcff_vd_object_if.object_code                                 IS '物件コード';
+COMMENT ON COLUMN xxcff.xxcff_vd_object_if.generation_date                             IS '発生日';
+COMMENT ON COLUMN xxcff.xxcff_vd_object_if.lease_class                                 IS 'リース種別';
+COMMENT ON COLUMN xxcff.xxcff_vd_object_if.po_number                                   IS '発注番号';
+COMMENT ON COLUMN xxcff.xxcff_vd_object_if.manufacturer_name                           IS 'メーカー名';
+COMMENT ON COLUMN xxcff.xxcff_vd_object_if.age_type                                    IS '年式';
+COMMENT ON COLUMN xxcff.xxcff_vd_object_if.model                                       IS '機種';
+COMMENT ON COLUMN xxcff.xxcff_vd_object_if.serial_number                               IS '機番';
+COMMENT ON COLUMN xxcff.xxcff_vd_object_if.quantity                                    IS '数量';
+COMMENT ON COLUMN xxcff.xxcff_vd_object_if.department_code                             IS '管理部門コード';
+COMMENT ON COLUMN xxcff.xxcff_vd_object_if.owner_company                               IS '本社／工場';
+COMMENT ON COLUMN xxcff.xxcff_vd_object_if.installation_place                          IS '現設置先';
+COMMENT ON COLUMN xxcff.xxcff_vd_object_if.installation_address                        IS '現設置場所';
+COMMENT ON COLUMN xxcff.xxcff_vd_object_if.active_flag                                 IS '物件有効フラグ';
+COMMENT ON COLUMN xxcff.xxcff_vd_object_if.import_status                               IS '取込ステータス';
+COMMENT ON COLUMN xxcff.xxcff_vd_object_if.group_id                                    IS 'グループID';
+COMMENT ON COLUMN xxcff.xxcff_vd_object_if.customer_code                               IS '顧客コード';
+COMMENT ON COLUMN xxcff.xxcff_vd_object_if.extract_flag                                IS '抽出フラグ';
+COMMENT ON COLUMN xxcff.xxcff_vd_object_if.created_by                                  IS '作成者';
+COMMENT ON COLUMN xxcff.xxcff_vd_object_if.creation_date                               IS '作成日';
+COMMENT ON COLUMN xxcff.xxcff_vd_object_if.last_updated_by                             IS '最終更新者';
+COMMENT ON COLUMN xxcff.xxcff_vd_object_if.last_update_date                            IS '最終更新日';
+COMMENT ON COLUMN xxcff.xxcff_vd_object_if.last_update_login                           IS '最終更新ログイン';
+COMMENT ON COLUMN xxcff.xxcff_vd_object_if.request_id                                  IS '要求ID';
+COMMENT ON COLUMN xxcff.xxcff_vd_object_if.program_application_id                      IS 'コンカレント・プログラム・アプリケーションID';
+COMMENT ON COLUMN xxcff.xxcff_vd_object_if.program_id                                  IS 'コンカレント・プログラムID';
+COMMENT ON COLUMN xxcff.xxcff_vd_object_if.program_update_date                         IS 'プログラム更新日';

@@ -74,7 +74,7 @@ CREATE TABLE xxcfr.xxcfr_invoice_headers
   CONSTRAINT xxcfr_invoice_headers_pk PRIMARY KEY ( invoice_id )
   USING INDEX TABLESPACE xxidx2
 )
-/
+;
 --
 COMMENT ON COLUMN xxcfr.xxcfr_invoice_headers.invoice_id             IS 'ˆêŠ‡¿‹‘ID';
 COMMENT ON COLUMN xxcfr.xxcfr_invoice_headers.set_of_books_id        IS '‰ïŒv’ •ëID';

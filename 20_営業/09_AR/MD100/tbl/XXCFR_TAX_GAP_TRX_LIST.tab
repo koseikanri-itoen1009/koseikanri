@@ -36,7 +36,7 @@ CREATE TABLE xxcfr.xxcfr_tax_gap_trx_list
   CONSTRAINT xxcfr_tax_gap_trx_list_pk PRIMARY KEY ( invoice_id, tax_code_id )
   USING INDEX TABLESPACE xxidx2
 )
-/
+;
 --
 COMMENT ON COLUMN xxcfr.xxcfr_tax_gap_trx_list.invoice_id              IS 'àÍäáêøãÅèëID';
 COMMENT ON COLUMN xxcfr.xxcfr_tax_gap_trx_list.tax_code_id             IS 'ê≈ã‡ÉRÅ[ÉhID';

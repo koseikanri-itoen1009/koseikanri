@@ -80,7 +80,7 @@ CREATE TABLE xxcfr.xxcfr_invoice_lines
   CONSTRAINT xxcfr_invoice_lines_pk PRIMARY KEY ( invoice_id, invoice_detail_num )
   USING INDEX TABLESPACE xxidx2
 )
-/
+;
 --
 COMMENT ON COLUMN xxcfr.xxcfr_invoice_lines.invoice_id                   IS 'ˆêŠ‡¿‹‘ID';
 COMMENT ON COLUMN xxcfr.xxcfr_invoice_lines.invoice_detail_num           IS 'ˆêŠ‡¿‹‘–¾×No';
