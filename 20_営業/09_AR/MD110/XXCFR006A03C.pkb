@@ -7,7 +7,7 @@ AS
  * Description      : 入金消込処理（HHT）
  * MD.050           : MD050_CFR_006_A03_入金消込処理（HHT）
  * MD.070           : MD050_CFR_006_A03_入金消込処理（HHT）
- * Version          : 1.1
+ * Version          : 1.3
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -28,6 +28,7 @@ AS
  *  2008/12/03    1.00 SCS 高岡 健太    初回作成
  *  2009/02/12    1.1  SCS T.KANEDA     [障害COK_003] 入金額取得不具合対応
  *  2009/07/15    1.2  SCS M.HIROSE     [障害0000511] パフォーマンス改善
+ *  2010/01/12    1.3  SCS 安川 智博    障害「E_本稼動_01136」対応
  *
  *****************************************************************************************/
 --
@@ -93,6 +94,10 @@ AS
   cv_msg_006a03_009  CONSTANT VARCHAR2(20) := 'APP-XXCFR1-00004'; --プロファイル取得エラーメッセージ
   cv_msg_006a03_010  CONSTANT VARCHAR2(20) := 'APP-XXCFR1-00006'; --業務処理日付取得エラーメッセージ
   cv_msg_006a03_011  CONSTANT VARCHAR2(20) := 'APP-XXCFR1-00036'; --入金消込APIエラーメッセージ
+-- Modify 2010.01.12 Ver1.3 Start
+  cv_msg_006a03_086  CONSTANT VARCHAR2(20) := 'APP-XXCFR1-00086'; --支払期日猶予日数未定義エラーメッセージ
+  cv_msg_006a03_087  CONSTANT VARCHAR2(20) := 'APP-XXCFR1-00087'; --支払期日猶予日数数値エラーメッセージ
+-- Modify 2010.01.12 Ver1.3 End
 --
 -- トークン
   cv_tkn_prof        CONSTANT VARCHAR2(15) := 'PROF_NAME';        -- プロファイル名
@@ -102,6 +107,10 @@ AS
   cv_tkn_receipt_dt  CONSTANT VARCHAR2(15) := 'RECEIPT_DATE';     -- 入金日
   cv_tkn_amount      CONSTANT VARCHAR2(15) := 'AMOUNT';           -- 入金額
   cv_tkn_trx_nm      CONSTANT VARCHAR2(15) := 'TRX_NUMBER';       -- 取引番号
+-- Modify 2010.01.12 Ver1.3 Start
+  cv_tkn_hht_lookup_type CONSTANT VARCHAR2(15) := 'LOOKUP_TYPE';  -- 参照タイプ
+  cv_tkn_hht_lookup_code CONSTANT VARCHAR2(15) := 'LOOKUP_CODE';  -- 参照コード
+-- Modify 2010.01.12 Ver1.3 End
 --
   --プロファイル
   cv_org_id          CONSTANT VARCHAR2(30) := 'ORG_ID';           -- 組織ID
@@ -117,6 +126,14 @@ AS
   cv_status_op        CONSTANT VARCHAR2(10) := 'OP';              -- ステータス：オープン
   cv_flag_y           CONSTANT VARCHAR2(10) := 'Y';               -- フラグ値：Y
 --
+--
+  -- 参照タイプ
+-- Modify 2010.01.12 Ver1.3 Start
+  cv_hht_receipt_date CONSTANT fnd_lookup_values.lookup_type%TYPE := 'XXCFR1_HHT_RECEIPT_DATE'; -- 参照タイプ「HHT消込対象猶予期間」
+  cv_date_from        CONSTANT fnd_lookup_values.lookup_code%TYPE := 'DATE_FROM';               -- 参照コード「支払期日前猶予日数」
+  cv_date_to          CONSTANT fnd_lookup_values.lookup_code%TYPE := 'DATE_TO';                 -- 参照コード「支払期日後猶予日数」
+-- Modify 2010.01.12 Ver1.3 End
+--
   -- ===============================
   -- ユーザー定義グローバル型
   -- ===============================
@@ -127,6 +144,10 @@ AS
   gn_org_id             NUMBER;             -- 組織ID
   gd_process_date       DATE;               -- 業務処理日付
   gd_receipt_date       DATE;               -- 入金日
+-- Modify 2010.01.12 Ver1.3 Start
+  gn_hht_date_from      NUMBER;             -- 支払期日前猶予日数
+  gn_hht_date_to        NUMBER;             -- 支払期日後猶予日数
+-- Modify 2010.01.12 Ver1.3 End
 --
   /**********************************************************************************
    * Procedure Name   : init
@@ -162,6 +183,13 @@ AS
 --
     -- *** ローカル・レコード ***
 --
+    -- *** ローカル・例外 ***
+-- Modify 2010.01.12 Ver1.3 Start
+    hht_date_from_null_expt   EXCEPTION;  -- 参照コード「支払期日前猶予日数」定義なし例外
+    hht_date_to_null_expt     EXCEPTION;  -- 参照コード「支払期日後猶予日数」定義なし例外
+    hht_date_from_number_expt EXCEPTION;  -- 参照コード「支払期日前猶予日数」数値例外
+    hht_date_to_number_expt   EXCEPTION;  -- 参照コード「支払期日後猶予日数」数値例外
+-- Modify 2010.01.12 Ver1.3 End
 --
   BEGIN
 --
@@ -208,10 +236,89 @@ AS
       RAISE global_api_expt;
     END IF;
 --
+-- Modify 2010.01.12 Ver1.3 Start
+    -- 参照コード「支払期日前猶予日数」取得処理
+    BEGIN
+      SELECT NVL(TO_NUMBER(flvv.description),0) description
+      INTO gn_hht_date_from
+      FROM fnd_lookup_values_vl flvv
+      WHERE flvv.lookup_type = cv_hht_receipt_date
+        AND flvv.lookup_code = cv_date_from
+        AND flvv.enabled_flag = cv_flag_y
+        AND SYSDATE BETWEEN NVL(flvv.start_date_active,SYSDATE) AND NVL(flvv.end_date_active,SYSDATE);
+    EXCEPTION
+      WHEN NO_DATA_FOUND THEN
+        RAISE hht_date_from_null_expt;
+      WHEN INVALID_NUMBER THEN
+        RAISE hht_date_from_number_expt;
+    END;
+--
+    -- 参照コード「支払期日後猶予日数」取得処理
+    BEGIN
+      SELECT NVL(TO_NUMBER(flvv.description),0) description
+      INTO gn_hht_date_to
+      FROM fnd_lookup_values_vl flvv
+      WHERE flvv.lookup_type = cv_hht_receipt_date
+        AND flvv.lookup_code = cv_date_to
+        AND flvv.enabled_flag = cv_flag_y
+        AND SYSDATE BETWEEN NVL(flvv.start_date_active,SYSDATE) AND NVL(flvv.end_date_active,SYSDATE);
+    EXCEPTION
+      WHEN NO_DATA_FOUND THEN
+        RAISE hht_date_to_null_expt;
+      WHEN INVALID_NUMBER THEN
+        RAISE hht_date_to_number_expt;
+    END;
+-- Modify 2010.01.12 Ver1.3 End    
   EXCEPTION
 --
 --#################################  固定例外処理部 START   ####################################
 --
+-- Modify 2010.01.12 Ver1.3 Start
+    -- *** 参照コード「支払期日前猶予日数」定義なし例外ハンドラ ***
+    WHEN hht_date_from_null_expt THEN
+      lv_errmsg := xxccp_common_pkg.get_msg(iv_application => cv_msg_kbn_cfr,
+                                            iv_name => cv_msg_006a03_086,
+                                            iv_token_name1 => cv_tkn_hht_lookup_type,
+                                            iv_token_value1 => cv_hht_receipt_date,
+                                            iv_token_name2 => cv_tkn_hht_lookup_code,
+                                            iv_token_value2 => cv_date_from);
+      ov_errmsg  := lv_errmsg;
+      ov_errbuf  := SUBSTRB(cv_pkg_name||cv_msg_cont||cv_prg_name||cv_msg_part||lv_errmsg,1,5000);
+      ov_retcode := cv_status_error;
+    -- *** 参照コード「支払期日後猶予日数」定義なし例外ハンドラ ***
+    WHEN hht_date_to_null_expt THEN
+      lv_errmsg := xxccp_common_pkg.get_msg(iv_application => cv_msg_kbn_cfr,
+                                            iv_name => cv_msg_006a03_086,
+                                            iv_token_name1 => cv_tkn_hht_lookup_type,
+                                            iv_token_value1 => cv_hht_receipt_date,
+                                            iv_token_name2 => cv_tkn_hht_lookup_code,
+                                            iv_token_value2 => cv_date_to);
+      ov_errmsg  := lv_errmsg;
+      ov_errbuf  := SUBSTRB(cv_pkg_name||cv_msg_cont||cv_prg_name||cv_msg_part||lv_errmsg,1,5000);
+      ov_retcode := cv_status_error;
+    -- *** 参照コード「支払期日前猶予日数」数値例外ハンドラ ***
+    WHEN hht_date_from_number_expt THEN
+      lv_errmsg := xxccp_common_pkg.get_msg(iv_application => cv_msg_kbn_cfr,
+                                            iv_name => cv_msg_006a03_087,
+                                            iv_token_name1 => cv_tkn_hht_lookup_type,
+                                            iv_token_value1 => cv_hht_receipt_date,
+                                            iv_token_name2 => cv_tkn_hht_lookup_code,
+                                            iv_token_value2 => cv_date_from);
+      ov_errmsg  := lv_errmsg;
+      ov_errbuf  := SUBSTRB(cv_pkg_name||cv_msg_cont||cv_prg_name||cv_msg_part||lv_errmsg,1,5000);
+      ov_retcode := cv_status_error;
+    -- *** 参照コード「支払期日後猶予日数」数値例外ハンドラ ***
+    WHEN hht_date_to_number_expt THEN
+      lv_errmsg := xxccp_common_pkg.get_msg(iv_application => cv_msg_kbn_cfr,
+                                            iv_name => cv_msg_006a03_087,
+                                            iv_token_name1 => cv_tkn_hht_lookup_type,
+                                            iv_token_value1 => cv_hht_receipt_date,
+                                            iv_token_name2 => cv_tkn_hht_lookup_code,
+                                            iv_token_value2 => cv_date_to);
+      ov_errmsg  := lv_errmsg;
+      ov_errbuf  := SUBSTRB(cv_pkg_name||cv_msg_cont||cv_prg_name||cv_msg_part||lv_errmsg,1,5000);
+      ov_retcode := cv_status_error;
+-- Modify 2010.01.12 Ver1.3 End
     -- *** 共通関数例外ハンドラ ***
     WHEN global_api_expt THEN
       ov_errmsg  := lv_errmsg;
@@ -473,7 +580,17 @@ AS
       AND rcta.complete_flag       = cv_flag_y
       AND apsa.status              = cv_status_op
       AND rcta.bill_to_customer_id = xchvg.bill_account_id
-      AND apsa.due_date            = id_receipt_date    --パラメータ：入金日
+-- Modify 2010.01.12 Ver1.3 Start
+--      AND apsa.due_date            = id_receipt_date    --パラメータ：入金日
+      AND apsa.due_date            >= id_receipt_date - gn_hht_date_from
+      AND apsa.due_date            <= id_receipt_date + gn_hht_date_to
+      AND rcta.trx_date            <= id_receipt_date
+      AND EXISTS (SELECT 'X'
+                  FROM ra_cust_trx_line_gl_dist_all radist
+                  WHERE radist.customer_trx_id = rcta.customer_trx_id
+                    AND radist.account_class = 'REV'
+                    AND radist.gl_date <= id_receipt_date)
+-- Modify 2010.01.12 Ver1.3 End
     ;
 --
   EXCEPTION
@@ -757,7 +874,17 @@ AS
         AND rcta.complete_flag       = cv_flag_y
         AND apsa.status              = cv_status_op
         AND rcta.bill_to_customer_id = xchvg.bill_account_id
-        AND apsa.due_date            = id_receipt_date  --A-4入金日
+-- Modify 2010.01.12 Ver1.3 Start
+--        AND apsa.due_date            = id_receipt_date  --A-4入金日
+        AND apsa.due_date            >= id_receipt_date - gn_hht_date_from
+        AND apsa.due_date            <= id_receipt_date + gn_hht_date_to
+        AND rcta.trx_date            <= id_receipt_date
+        AND EXISTS (SELECT 'X'
+                    FROM ra_cust_trx_line_gl_dist_all radist
+                    WHERE radist.customer_trx_id = rcta.customer_trx_id
+                      AND radist.account_class = 'REV'
+                      AND radist.gl_date <= id_receipt_date)
+-- Modify 2010.01.12 Ver1.3 End
       ORDER BY apsa.amount_due_remaining
     ;
 --
