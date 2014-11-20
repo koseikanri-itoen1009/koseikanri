@@ -358,10 +358,13 @@ AS
         ,gbh_in_pr.batch_no                            AS voucher_no
         ,grt_in_pr.routing_desc                        AS ukebaraisaki_name
         ,NULL                                          AS deliver_to_name
--- 2008/11/19 Y.Yamamoto v1.2 update start
---        ,gmd_in_pr.plan_qty                            AS stock_quantity
-        ,TO_NUMBER(NVL(gbh_in_pr.attribute23,'0'))     AS stock_quantity
--- 2008/11/19 Y.Yamamoto v1.2 update end
+-- 2009/01/16 D.Nihei update start ñ{î‘è·äQ#1033
+---- 2008/11/19 Y.Yamamoto v1.2 update start
+----        ,gmd_in_pr.plan_qty                            AS stock_quantity
+--        ,TO_NUMBER(NVL(gbh_in_pr.attribute23,'0'))     AS stock_quantity
+---- 2008/11/19 Y.Yamamoto v1.2 update end
+        ,NVL(xmld_in_pr.actual_quantity, 0)            AS stock_quantity
+-- 2009/01/16 D.Nihei update end
         ,0                                             AS leaving_quantity
   FROM   gme_batch_header             gbh_in_pr                  -- ê∂éYÉoÉbÉ`
         ,gme_material_details         gmd_in_pr                  -- ê∂éYå¥óøè⁄ç◊
