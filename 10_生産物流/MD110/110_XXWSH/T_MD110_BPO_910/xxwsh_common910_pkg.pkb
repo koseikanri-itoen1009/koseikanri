@@ -6,7 +6,7 @@ AS
  * Package Name           : xxwsh_common910_pkg(BODY)
  * Description            : 共通関数(BODY)
  * MD.070(CMD.050)        : なし
- * Version                : 1.26
+ * Version                : 1.27
  *
  * Program List
  *  -------------------- ---- ----- --------------------------------------------------
@@ -60,6 +60,7 @@ AS
  *  2008/11/12   1.24  ORACLE伊藤ひとみ [積載効率チェック(合計値算出)] 統合テスト指摘597対応
  *  2008/11/12   1.25  ORACLE伊藤ひとみ [積載効率チェック(合計値算出)] 統合テスト指摘311対応
  *  2008/12/07   1.26  ORACLE北寒寺正夫 [出荷可否チェック]本番障害#318対応
+ *  2008/12/23   1.27  ORACLE北寒寺正夫 [積載効率チェック(合計値算出)] 本番指摘#781対応
  *****************************************************************************************/
 --
 --#######################  固定グローバル定数宣言部 START   #######################
@@ -480,6 +481,9 @@ AS
     cn_conv_cm3_to_m3     CONSTANT NUMBER        := 1000000;
     -- 単位換算(2) グラム->キログラム
     cn_conv_g_to_kg       CONSTANT NUMBER        := 1000;
+-- Ver1.27 M.Hokkanji Start
+    cn_roundup_no         CONSTANT NUMBER        := 1;                    -- 切り上げ用数量
+-- Ver1.27 M.Hokkanji End
 --
     -- *** ローカル変数 ***
     -- エラー変数
@@ -688,8 +692,15 @@ AS
       --「パレット枚数」の算出
       ln_pallet_qty
         := ( (  ( in_quantity   / ln_num_of_cases  ) / ln_delivery_qty  ) / ln_max_palette_steps);
-      ln_pallet_qty
-        := TRUNC( ln_pallet_qty + cn_rounup_const_no , cn_roundup_digits );
+
+-- Ver1.27 M.Hokkanji Start
+      -- 算出したパレット枚数から小数点を切り捨てたパレット枚数を引いた値が0より大きい場合パレット枚数に+1する
+      IF (ABS(ln_pallet_qty - TRUNC(ln_pallet_qty)) > 0) THEN
+        ln_pallet_qty := TRUNC(ln_pallet_qty) + cn_roundup_no;
+      END IF;
+--      ln_pallet_qty
+--        := TRUNC( ln_pallet_qty + cn_rounup_const_no , cn_roundup_digits );
+-- Ver1.27 M.Hokkanji End
       --
       -- 「合計パレット重量」の算出
       ln_pallet_sum_weight
@@ -812,6 +823,9 @@ AS
     cn_rounup_const_no    CONSTANT NUMBER        := 0.9;
     -- 丸め桁数
     cn_roundup_digits     CONSTANT NUMBER        := 0;
+-- Ver1.27 M.Hokkanji Start
+    cn_roundup_no         CONSTANT NUMBER        := 1;                    -- 切り上げ用数量
+-- Ver1.27 M.Hokkanji End
     -- 単位換算(1) 立法センチメートル->立方メートル
     cn_conv_cm3_to_m3     CONSTANT NUMBER        := 1000000;
     -- 単位換算(2) グラム->キログラム
@@ -1058,8 +1072,14 @@ AS
       --「パレット枚数」の算出
       ln_pallet_qty
         := ( (  ( in_quantity   / ln_num_of_cases  ) / ln_delivery_qty  ) / ln_max_palette_steps);
-      ln_pallet_qty
-        := TRUNC( ln_pallet_qty + cn_rounup_const_no , cn_roundup_digits );
+-- Ver1.27 M.Hokkanji Start
+      -- 算出したパレット枚数から小数点を切り捨てたパレット枚数を引いた値が0より大きい場合パレット枚数に+1する
+      IF (ABS(ln_pallet_qty - TRUNC(ln_pallet_qty)) > 0) THEN
+        ln_pallet_qty := TRUNC(ln_pallet_qty) + cn_roundup_no;
+      END IF;
+--      ln_pallet_qty
+--        := TRUNC( ln_pallet_qty + cn_rounup_const_no , cn_roundup_digits );
+-- Ver1.27 M.Hokkanji End
       --
       -- 「合計パレット重量」の算出
       ln_pallet_sum_weight
