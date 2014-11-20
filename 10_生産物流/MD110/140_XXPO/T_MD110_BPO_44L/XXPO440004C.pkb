@@ -7,7 +7,7 @@ AS
  * Description      : 入出庫差異明細表
  * MD.050/070       : 有償支給帳票Issue1.0(T_MD050_BPO_444)
  *                    有償支給帳票Issue1.0(T_MD070_BPO_44L)
- * Version          : 1.0
+ * Version          : 1.3
  *
  * Program List
  * ---------------------------- ----------------------------------------------------------
@@ -27,6 +27,7 @@ AS
  *  2008/03/18    1.0   Yusuke Tabata   新規作成
  *  2008/05/20    1.1   Yusuke Tabata   内部変更要求Seq95(日付型パラメータ型変換)対応
  *  2008/05/28    1.2   Yusuke Tabata   結合不具合対応(出荷実績計上済のコード誤り)
+ *  2008/07/01    1.3   椎名            内部変更要求142
  *
  *****************************************************************************************/
 --
@@ -530,6 +531,10 @@ AS
     || '                                    ,FND_DATE.STRING_TO_DATE(''' || gc_max_date_char || ''''
     || '                                                            ,''' || gc_date_mask     || '''))'
     || ' AND xoha.deliver_from_id          = xil.inventory_location_id' -- OPM保管場所情報VIEW結合
+    || ' AND ' || lv_date_from || ' BETWEEN xil.date_from'
+    || '                            AND     NVL( xil.date_to'
+    || '                                    ,FND_DATE.STRING_TO_DATE(''' || gc_max_date_char || ''''
+    || '                                                            ,''' || gc_date_mask     || '''))'
     || ' AND xoha.latest_external_flag     = ''' || gc_yn_div_y         || ''''
     || ' AND xoha.notif_status             = ''' || gc_notif_status_ok  || ''''
     || ' AND xoha.req_status              <> ''' || gc_req_status_p_ccl || ''''
@@ -1458,7 +1463,7 @@ AS
 --
     --データの場合
     IF ( ic_type = 'D' ) THEN
-      lv_convert_data := '<'||iv_name||'>'||iv_value||'</'||iv_name||'>' ;
+      lv_convert_data := '<'||iv_name||'><![CDATA['||iv_value||']]></'||iv_name||'>';
     ELSE
       lv_convert_data := '<'||iv_name||'>' ;
     END IF ;
