@@ -7,7 +7,7 @@ AS
  * Description      : 仕入実績作成処理
  * MD.050           : 受入実績            T_MD050_BPO_310
  * MD.070           : 仕入実績作成        T_MD070_BPO_31D
- * Version          : 1.4
+ * Version          : 1.5
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -39,6 +39,7 @@ AS
  *  2008/05/14    1.3   Oracle 山根 一浩 変更要求No90対応
  *  2008/05/21    1.4   Oracle 山根 一浩 変更要求No109対応
  *                                       結合テスト不具合ログ#300_3対応
+ *  2008/10/27    1.5   Oracle 吉元 強樹 内部変更No216対応
  *****************************************************************************************/
 --
 --#######################  固定グローバル定数宣言部 START   #######################
@@ -204,6 +205,14 @@ AS
   -- ***************************************
 --
   gt_master_tbl                masters_tbl;  -- 各マスタへ登録するデータ
+-- 2008/10/27 v1.5 T.Yoshimoto Add Start
+  -- 元文書番号
+  TYPE reg_src_doc_num       IS TABLE OF xxpo_rcv_txns_interface.source_document_number   %TYPE INDEX BY BINARY_INTEGER;
+  -- 元文書明細番号
+  TYPE reg_src_doc_line_num  IS TABLE OF xxpo_rcv_txns_interface.source_document_line_num %TYPE INDEX BY BINARY_INTEGER;
+  -- 受入返品明細番号
+  TYPE reg_rtn_line_num      IS TABLE OF xxpo_rcv_and_rtn_txns.rcv_rtn_line_number        %TYPE INDEX BY BINARY_INTEGER;
+-- 2008/10/27 v1.5 T.Yoshimoto Add End
 --
   -- ===============================
   -- ユーザー定義グローバル変数
@@ -226,6 +235,13 @@ AS
   gn_program_id               NUMBER;                     -- プログラムID
   gd_program_update_date      DATE;                       -- プログラム更新日
   gv_user_name                fnd_user.user_name%TYPE;    -- ユーザ名
+--
+-- 2008/10/27 v1.5 T.Yoshimoto Add Start
+  -- 項目テーブル型定義
+  gt_src_doc_num       reg_src_doc_num;       -- 元文書番号
+  gt_src_doc_line_num  reg_src_doc_line_num;  -- 元文書明細番号
+  gt_rtn_line_num      reg_rtn_line_num;      -- 受入返品明細番号
+-- 2008/10/27 v1.5 T.Yoshimoto Add End
 --
   -- ===============================
   -- ユーザー定義グローバル・カーソル
@@ -1117,6 +1133,9 @@ AS
    ***********************************************************************************/
   PROCEDURE insert_opif(
     ir_mst_rec      IN OUT NOCOPY masters_rec,  -- 対象レコード
+-- 2008/10/27 v1.5 T.Yoshimoto Add Start
+    ir_rtn_line_num IN            xxpo_rcv_txns_interface.source_document_line_num%TYPE, -- 受入返品明細番号
+-- 2008/10/27 v1.5 T.Yoshimoto Add End
     ov_errbuf          OUT NOCOPY VARCHAR2,     -- エラー・メッセージ           --# 固定 #
     ov_retcode         OUT NOCOPY VARCHAR2,     -- リターン・コード             --# 固定 #
     ov_errmsg          OUT NOCOPY VARCHAR2)     -- ユーザー・エラー・メッセージ --# 固定 #
@@ -1358,7 +1377,10 @@ AS
          gn_txns_id                                      -- txns_id
         ,'1'                                             -- txns_type
         ,ir_mst_rec.h_segment1                           -- rcv_rtn_number
-        ,ir_mst_rec.line_num                             -- rcv_rtn_line_number
+-- 2008/10/27 v1.5 T.Yoshimoto Add Start
+        --,ir_mst_rec.line_num                             -- rcv_rtn_line_number
+        ,ir_rtn_line_num                                 -- rcv_rtn_line_number
+-- 2008/10/27 v1.5 T.Yoshimoto Add End
         ,ir_mst_rec.h_segment1                           -- source_document_number
         ,ir_mst_rec.line_num                             -- source_document_line_num
         ,ir_mst_rec.h_attribute6                         -- drop_ship_type
@@ -2194,6 +2216,11 @@ AS
 --
     -- *** ローカル変数 ***
     mst_rec         masters_rec;
+-- 2008/10/27 v1.5 T.Yoshimoto Add Start
+    ln_count      NUMBER;
+    lv_doc_num    xxpo_rcv_and_rtn_txns.source_document_number%TYPE;
+    ln_line_num   xxpo_rcv_and_rtn_txns.source_document_line_num%TYPE;
+-- 2008/10/27 v1.5 T.Yoshimoto Add End
 --
     -- ===============================
     -- ローカル・カーソル
@@ -2258,6 +2285,33 @@ AS
       RAISE global_process_expt;
     END IF;
 --
+-- 2008/10/27 v1.5 T.Yoshimoto Add Start
+    <<number_get_loop>>
+    FOR i IN 0..gt_master_tbl.COUNT-1 LOOP
+--
+      mst_rec := gt_master_tbl(i);
+--
+      IF ((i = 0)
+       OR (lv_doc_num <> mst_rec.h_segment1)
+       OR (ln_line_num <> mst_rec.line_num)) THEN
+--
+        lv_doc_num  := mst_rec.h_segment1;
+        ln_line_num := mst_rec.line_num;
+--
+        -- 件数取得
+        SELECT COUNT(xrrt.txns_id)
+        INTO   ln_count
+        FROM   xxpo_rcv_and_rtn_txns xrrt
+        WHERE  xrrt.source_document_number   = mst_rec.h_segment1
+        AND    xrrt.source_document_line_num = mst_rec.line_num
+        AND    ROWNUM = 1;
+      END IF;
+--
+      ln_count := ln_count + 1;
+      gt_rtn_line_num(i) := ln_count;
+    END LOOP number_get_loop;
+-- 2008/10/27 v1.5 T.Yoshimoto Add End
+--
     <<main_proc_loop>>
     FOR i IN 0..gt_master_tbl.COUNT-1 LOOP
       mst_rec := gt_master_tbl(i);
@@ -2267,6 +2321,9 @@ AS
       -- ================================
       insert_opif(
         mst_rec,            -- 対象データ
+-- 2008/10/27 v1.5 T.Yoshimoto Add Start
+        gt_rtn_line_num(i), -- 元文書明細番号
+-- 2008/10/27 v1.5 T.Yoshimoto Add End
         lv_errbuf,          -- エラー・メッセージ           --# 固定 #
         lv_retcode,         -- リターン・コード             --# 固定 #
         lv_errmsg);         -- ユーザー・エラー・メッセージ --# 固定 #

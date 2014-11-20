@@ -7,7 +7,7 @@ AS
  * Description      : 支払運賃データ自動作成
  * MD.050           : 運賃計算（トランザクション） T_MD050_BPO_730
  * MD.070           : 支払運賃データ自動作成 T_MD070_BPO_73A
- * Version          : 1.9
+ * Version          : 1.10
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -102,6 +102,7 @@ AS
  *  2008/08/25    1.7  Oracle 野村       ST事前確認障害
  *  2008/09/12    1.8  Oracle 野村       TE080指摘事項15対応 区分設定見直対応
  *  2008/10/21    1.9  Oracle 野村       T_S_572 統合#392対応
+ *  2008/10/27    1.10 Oracle 野村       統合#436対応
  *
  *****************************************************************************************/
 --
@@ -2172,9 +2173,14 @@ AS
 --
         -- 上記以外
         ELSE
-          -- 車立距離 ＋ 混載割増距離
-          i_line_ditnc_tab(ln_line_insert_cnt) := gt_order_inf_tab(ln_index).post_distance +
-                                                  gt_order_inf_tab(ln_index).consolid_add_distance;
+--
+-- ##### 20081027 Ver.1.10 統合#436対応 START #####
+          -- 車立距離（明細へは混載割増距離を加算しない）
+--          i_line_ditnc_tab(ln_line_insert_cnt) := gt_order_inf_tab(ln_index).post_distance +
+--                                                  gt_order_inf_tab(ln_index).consolid_add_distance;
+          i_line_ditnc_tab(ln_line_insert_cnt) := gt_order_inf_tab(ln_index).post_distance;
+-- ##### 20081027 Ver.1.10 統合#436対応 END   #####
+--
         END IF;
         -- 実際距離
         i_line_actual_dstnc_tab(ln_line_insert_cnt) := 
@@ -2289,10 +2295,15 @@ AS
 --
           -- 上記以外
           ELSE
-            -- 車立距離 ＋ 混載割増距離
-            us_line_ditnc_tab(ln_line_calc_update_cnt) := 
-                                    gt_order_inf_tab(ln_index).post_distance +
-                                    gt_order_inf_tab(ln_index).consolid_add_distance;
+--
+-- ##### 20081027 Ver.1.10 統合#436対応 START #####
+          -- 車立距離（明細へは混載割増距離を加算しない）
+--            us_line_ditnc_tab(ln_line_calc_update_cnt) := 
+--                                    gt_order_inf_tab(ln_index).post_distance +
+--                                    gt_order_inf_tab(ln_index).consolid_add_distance;
+            us_line_ditnc_tab(ln_line_calc_update_cnt) := gt_order_inf_tab(ln_index).post_distance;
+-- ##### 20081027 Ver.1.10 統合#436対応 END   #####
+--
           END IF;
           -- 実際距離
           us_line_actual_dstnc_tab(ln_line_calc_update_cnt) := 
@@ -3232,9 +3243,14 @@ AS
 --
         -- 上記以外
         ELSE
-          -- 車立距離 ＋ 混載割増距離
-          i_line_ditnc_tab(ln_line_insert_cnt) := gt_move_inf_tab(ln_index).post_distance +
-                                                  gt_move_inf_tab(ln_index).consolid_add_distance;
+--
+-- ##### 20081027 Ver.1.10 統合#436対応 START #####
+          -- 車立距離1（明細は混載割増距離を加算しない）
+--          i_line_ditnc_tab(ln_line_insert_cnt) := gt_move_inf_tab(ln_index).post_distance +
+--                                                  gt_move_inf_tab(ln_index).consolid_add_distance;
+          i_line_ditnc_tab(ln_line_insert_cnt) := gt_move_inf_tab(ln_index).post_distance;
+-- ##### 20081027 Ver.1.10 統合#436対応 END   #####
+--
         END IF;
         -- 実際距離
         i_line_actual_dstnc_tab(ln_line_insert_cnt) := gt_move_inf_tab(ln_index).actual_distance;
@@ -3348,9 +3364,14 @@ AS
 --
           -- 上記以外
           ELSE
-            -- 車立距離 ＋ 混載割増距離
-            us_line_ditnc_tab(ln_line_calc_update_cnt) := gt_move_inf_tab(ln_index).post_distance +
-                                                    gt_move_inf_tab(ln_index).consolid_add_distance;
+--
+-- ##### 20081027 Ver.1.10 統合#436対応 START #####
+            -- 車立距離1（明細は混載割増距離を加算しない）
+--            us_line_ditnc_tab(ln_line_calc_update_cnt) := gt_move_inf_tab(ln_index).post_distance +
+--                                                    gt_move_inf_tab(ln_index).consolid_add_distance;
+            us_line_ditnc_tab(ln_line_calc_update_cnt) := gt_move_inf_tab(ln_index).post_distance;
+-- ##### 20081027 Ver.1.10 統合#436対応 END   #####
+--
           END IF;
           -- 実際距離
           us_line_actual_dstnc_tab(ln_line_calc_update_cnt)      := 
@@ -4653,6 +4674,9 @@ AS
     -- *** ローカル変数 ***
     lr_delivery_company_tab   xxwip_common3_pkg.delivery_company_rec;   -- 運賃用運送業者
     lr_delivery_charges_tab   xxwip_common3_pkg.delivery_charges_rec;   -- 運賃
+-- ##### 20081027 Ver.1.10 統合#436対応 START #####
+    lr_delivery_distance_tab  xxwip_common3_pkg.delivery_distance_rec;  -- 配送距離
+-- ##### 20081027 Ver.1.10 統合#436対応 END   #####
     ln_deliv_no_cnt           NUMBER;
 --
     -- *** ローカル・カーソル ***
@@ -4773,6 +4797,50 @@ AS
         FND_FILE.PUT_LINE(FND_FILE.LOG, 'get_deliv_line：最長距離：' || TO_CHAR(gt_delivno_deliv_line_tab(ln_index).distance));
       END IF;
 --<><><><><><><><><><><><><><><><><> DEBUG END   <><><><><><><><><><><><><><><><><><><><><><><>
+--
+-- ##### 20081027 Ver.1.10 統合#436対応 START #####
+      -- 商品区分＝「ドリンク」且つ、混載区分＝「混載」の場合
+      IF ((gt_deliv_line_tab(ln_index).goods_classe = gv_prod_class_drk)
+        AND (gt_deliv_line_tab(ln_index).mixed_code = gv_target_y)) THEN
+--
+        -- **************************************************
+        -- * 配送距離マスタ抽出
+        -- **************************************************
+        xxwip_common3_pkg.get_delivery_distance(
+          gt_deliv_line_tab(ln_index).goods_classe,           -- 商品区分
+          gt_deliv_line_tab(ln_index).delivery_company_code,  -- 運送業者
+          gt_deliv_line_tab(ln_index).whs_code,               -- 出庫倉庫
+          gt_deliv_line_tab(ln_index).code_division ,         -- コード区分
+          gt_deliv_line_tab(ln_index).shipping_address_code,  -- 配送先コード
+          gt_deliv_line_tab(ln_index).judgement_date,         -- 判断日
+          lr_delivery_distance_tab,
+          lv_errbuf,
+          lv_retcode,
+          lv_errmsg);
+--
+        IF (lv_retcode = gv_status_error) THEN
+          RAISE global_api_expt;
+        END IF;
+--
+        -- 車立距離 ＋ 混載割増距離を再設定
+        gt_delivno_deliv_line_tab(ln_index).distance := lr_delivery_distance_tab.post_distance +
+                                                        lr_delivery_distance_tab.consolid_add_distance;
+--
+--<><><><><><><><><><><><><><><><><> DEBUG START <><><><><><><><><><><><><><><><><><><><><><><>
+        IF (gv_debug_flg = gv_debug_on) THEN
+          FND_FILE.PUT_LINE(FND_FILE.LOG, 'get_deliv_line：########## 配送距離マスタ抽出 ドリンク混載のみ ##########：' || TO_CHAR(ln_index));
+          FND_FILE.PUT_LINE(FND_FILE.LOG, 'get_deliv_line：商品区分      ：' || gt_deliv_line_tab(ln_index).goods_classe);
+          FND_FILE.PUT_LINE(FND_FILE.LOG, 'get_deliv_line：混載区分      ：' || gt_deliv_line_tab(ln_index).mixed_code);
+          FND_FILE.PUT_LINE(FND_FILE.LOG, 'get_deliv_line：車立距離      ：' || TO_CHAR(lr_delivery_distance_tab.post_distance));
+          FND_FILE.PUT_LINE(FND_FILE.LOG, 'get_deliv_line：小口距離      ：' || TO_CHAR(lr_delivery_distance_tab.small_distance));
+          FND_FILE.PUT_LINE(FND_FILE.LOG, 'get_deliv_line：混載割増距離  ：' || TO_CHAR(lr_delivery_distance_tab.consolid_add_distance));
+          FND_FILE.PUT_LINE(FND_FILE.LOG, 'get_deliv_line：実際距離      ：' || TO_CHAR(lr_delivery_distance_tab.actual_distance));
+          FND_FILE.PUT_LINE(FND_FILE.LOG, 'get_deliv_line：最長距離（再設定）：' || TO_CHAR(gt_delivno_deliv_line_tab(ln_index).distance));
+        END IF;
+--<><><><><><><><><><><><><><><><><> DEBUG END   <><><><><><><><><><><><><><><><><><><><><><><>
+--
+      END IF;
+-- ##### 20081027 Ver.1.10 統合#436対応 END   #####
 --
       -- **************************************************
       -- * 運賃明細混載数算出（A-28）
@@ -7555,9 +7623,14 @@ AS
 --
       -- 上記以外の場合
       ELSE
-        -- 車立距離＋混載距離を設定
-        ue_line_ditnc_tab(ln_index)  := gt_exch_deliv_line_tab(ln_index).post_distance +
-                                        gt_exch_deliv_line_tab(ln_index).consolid_add_distance;
+--
+-- ##### 20081027 Ver.1.10 統合#436対応 START #####
+        -- 車立距離（明細は混載割増距離を加算しない）
+--        ue_line_ditnc_tab(ln_index)  := gt_exch_deliv_line_tab(ln_index).post_distance +
+--                                        gt_exch_deliv_line_tab(ln_index).consolid_add_distance;
+        ue_line_ditnc_tab(ln_index)  := gt_exch_deliv_line_tab(ln_index).post_distance;
+-- ##### 20081027 Ver.1.10 統合#436対応 END   #####
+--
       END IF;
 --
       -- *** 実際距離 ***
@@ -8304,9 +8377,11 @@ AS
 --2008/08/04 Add ↓
 -- ##### 20080912 Ver.1.8 TE080指摘事項15対応 区分設定見直対応 START #####
 --      IF (gt_exch_deliv_tab(ln_index).dispatch_type = gv_carcan_target_y) THEN
-      -- 伝票なし配車の場合
-      IF (gt_exch_deliv_tab(ln_index).dispatch_type IN (gv_carcan_target_y, 
-                                                        gv_carcan_target_n)) THEN
+-- ##### 20081027 Ver.1.10 統合#436対応 START #####
+      -- 全てのケースにおいて取得し直す
+--      IF (gt_exch_deliv_tab(ln_index).dispatch_type IN (gv_carcan_target_y, 
+--                                                        gv_carcan_target_n)) THEN
+-- ##### 20081027 Ver.1.10 統合#436対応 END   #####
 -- ##### 20080912 Ver.1.8 TE080指摘事項15対応 区分設定見直対応 END   #####
         -- **************************************************
         -- ***  配送距離アドオンマスタ抽出
@@ -8335,14 +8410,49 @@ AS
           gt_exch_deliv_tab(ln_index).distance        := lr_delivery_distance_tab.small_distance;
 --
         -- 伝票なし配車（リーフ小口以外）の場合
-        ELSE
+-- ##### 20081027 Ver.1.10 統合#436対応 START #####
+--        ELSE
+        ELSIF (gt_exch_deliv_tab(ln_index).dispatch_type = gv_carcan_target_n) THEN
+-- ##### 20081027 Ver.1.10 統合#436対応 END   #####
           -- 車立距離を設定
           gt_exch_deliv_tab(ln_index).distance        := lr_delivery_distance_tab.post_distance;
+--
+-- ##### 20081027 Ver.1.10 統合#436対応 START #####
+        -- 通常配車の場合
+        ELSIF (gt_exch_deliv_tab(ln_index).dispatch_type = gv_car_normal) THEN
+          -- 商品区分＝「ドリンク」且つ混載区分＝「混載」の場合
+          IF ((gt_exch_deliv_tab(ln_index).goods_classe = gv_prod_class_drk )
+            AND (gt_exch_deliv_tab(ln_index).mixed_code = gv_target_y )) THEN
+--
+            -- 車立距離＋混載割増距離
+            gt_exch_deliv_tab(ln_index).distance := lr_delivery_distance_tab.post_distance +
+                                                    lr_delivery_distance_tab.consolid_add_distance ;
+          END IF;
+--
+          -- 上記で設定した条件以外は既に設定されている最長距離で更新する
+-- ##### 20081027 Ver.1.10 統合#436対応 END   #####
+--
         END IF;
 -- ##### 20080912 Ver.1.8 TE080指摘事項15対応 区分設定見直対応 END   #####
+        -- 最長実際距離
         gt_exch_deliv_tab(ln_index).actual_distance := lr_delivery_distance_tab.actual_distance;
-      END IF;
+-- ##### 20081027 Ver.1.10 統合#436対応 START #####
+--      END IF;
+-- ##### 20081027 Ver.1.10 統合#436対応 END   #####
 --2008/08/04 Add ↑
+--
+--
+--<><><><><><><><><><><><><><><><><> DEBUG START <><><><><><><><><><><><><><><><><><><><><><><>
+      IF (gv_debug_flg = gv_debug_on) THEN
+        FND_FILE.PUT_LINE(FND_FILE.LOG, 'get_exch_deliv_charg：********** 洗替配送距離アドオンマスタ抽出 **********：'|| TO_CHAR(ln_index));
+        FND_FILE.PUT_LINE(FND_FILE.LOG, 'get_exch_deliv_charg：運送業者：' || gt_exch_deliv_tab(ln_index).delivery_company_code);
+        FND_FILE.PUT_LINE(FND_FILE.LOG, 'get_exch_deliv_charg：配送No  ：' || gt_exch_deliv_tab(ln_index).delivery_no);
+        FND_FILE.PUT_LINE(FND_FILE.LOG, 'get_exch_deliv_charg：商品区分：' || gt_exch_deliv_tab(ln_index).goods_classe);
+        FND_FILE.PUT_LINE(FND_FILE.LOG, 'get_exch_deliv_charg：混載区分：' || gt_exch_deliv_tab(ln_index).mixed_code);
+        FND_FILE.PUT_LINE(FND_FILE.LOG, 'get_exch_deliv_charg：最長距離    ：' || gt_exch_deliv_tab(ln_index).distance);
+        FND_FILE.PUT_LINE(FND_FILE.LOG, 'get_exch_deliv_charg：最長実際距離：' || gt_exch_deliv_tab(ln_index).actual_distance);
+      END IF;
+--<><><><><><><><><><><><><><><><><> DEBUG END   <><><><><><><><><><><><><><><><><><><><><><><>
 --
       -- **************************************************
       -- * 運賃アドオンマスタ抽出
