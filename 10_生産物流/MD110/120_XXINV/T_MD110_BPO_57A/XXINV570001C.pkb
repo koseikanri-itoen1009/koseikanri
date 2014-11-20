@@ -7,7 +7,7 @@ AS
  * Description      : 移動入出庫実績登録
  * MD.050           : 移動入出庫実績登録(T_MD050_BPO_570)
  * MD.070           : 移動入出庫実績登録(T_MD070_BPO_57A)
- * Version          : 1.3
+ * Version          : 1.4
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -32,6 +32,7 @@ AS
  *  2008/04/08    1.1   Sumie Nakamura   内部変更要求No49
  *  2008/06/02    1.2   Kazuo Kumamoto   結合テスト障害対応(出庫実績数量≠入庫実績数量のステータス変更)
  *  2008/07/24    1.3   Takao Ohashi     T_TE080_BPO_540 指摘5対応
+ *  2008/08/21    1.4   Yuko  Kawano     内部変更要求対応 #202
  *
  *****************************************************************************************/
 --
@@ -976,6 +977,10 @@ AS
     ln_tmp_idx           NUMBER;
     ln_idx               NUMBER;
 --
+--2008/08/21 Y.Kawano add start
+    lv_err_flg           VARCHAR(1);              -- エラーチェック用フラグ
+--2008/08/21 Y.Kawano add start
+--
   BEGIN
 --
 --##################  固定ステータス初期化部 START   ###################
@@ -1253,35 +1258,78 @@ AS
 --
     END LOOP data_loop;
 --
-    <<rec_loop>>
-    FOR gn_rec_idx IN 1 .. move_data_rec_tbl.COUNT LOOP
+--2008/08/21 Y.Kawano mod start
 --
-      -- エラー移動番号がある場合
-      IF err_mov_tmp_rec_tbl.exists(1) then
+--    <<rec_loop>>
+--    FOR gn_rec_idx IN 1 .. move_data_rec_tbl.COUNT LOOP
+--
+--      -- エラー移動番号がある場合
+--      IF err_mov_tmp_rec_tbl.exists(1) then
+--
+--        <<target_loop>>
+--        FOR ln_tmp_idx IN 1 .. err_mov_tmp_rec_tbl.COUNT LOOP
+--
+--          -- エラー移動番号でない場合
+--          IF  move_data_rec_tbl(gn_rec_idx).mov_num <> err_mov_tmp_rec_tbl(ln_tmp_idx).mov_num THEN
+--
+--            -- 処理対象PLSQL表に格納
+--            move_target_tbl(ln_idx) := move_data_rec_tbl(gn_rec_idx);
+--            ln_idx := ln_idx + 1;
+--
+--          END IF;
+--
+--        END LOOP target_loop;
+--
+--      -- エラー移動番号がない場合
+--      ELSE
+--
+--        -- 処理対象PLSQL表に格納
+--        move_target_tbl := move_data_rec_tbl;
+--
+--      END IF;
+--
+--    END LOOP rec_loop;
+--
+    -- エラー移動番号がある場合
+    IF err_mov_tmp_rec_tbl.exists(1) then
+--
+      <<rec_loop>>
+      FOR gn_rec_idx IN 1 .. move_data_rec_tbl.COUNT LOOP
+--
+     -- エラーチェックフラグの初期化
+        lv_err_flg := gv_c_ynkbn_n;
 --
         <<target_loop>>
         FOR ln_tmp_idx IN 1 .. err_mov_tmp_rec_tbl.COUNT LOOP
 --
-          -- エラー移動番号でない場合
-          IF  move_data_rec_tbl(gn_rec_idx).mov_num <> err_mov_tmp_rec_tbl(ln_tmp_idx).mov_num THEN
+          -- エラー移動番号の場合
+          IF move_data_rec_tbl(gn_rec_idx).mov_num = err_mov_tmp_rec_tbl(ln_tmp_idx).mov_num THEN
 --
-            -- 処理対象PLSQL表に格納
-            move_target_tbl(ln_idx) := move_data_rec_tbl(gn_rec_idx);
-            ln_idx := ln_idx + 1;
+             lv_err_flg := gv_c_ynkbn_y;
 --
           END IF;
 --
+          EXIT target_loop WHEN (lv_err_flg = gv_c_ynkbn_y);
+--
         END LOOP target_loop;
 --
-      -- エラー移動番号がない場合
-      ELSE
+        IF ( lv_err_flg = gv_c_ynkbn_n ) THEN
+            -- 処理対象PLSQL表に格納
+            move_target_tbl(ln_idx) := move_data_rec_tbl(gn_rec_idx);
+            ln_idx := ln_idx + 1;
+        END IF;
 --
-        -- 処理対象PLSQL表に格納
-        move_target_tbl := move_data_rec_tbl;
+      END LOOP rec_loop;
 --
-      END IF;
+    -- エラー移動番号がない場合
+    ELSE
 --
-    END LOOP rec_loop;
+      -- 処理対象PLSQL表に全データを格納
+      move_target_tbl := move_data_rec_tbl;
+--
+    END IF;
+--
+--2008/08/21 Y.Kawano mod end
 --
     -- スキップ件数が0件でない場合
     IF gn_warn_cnt <> 0 THEN
