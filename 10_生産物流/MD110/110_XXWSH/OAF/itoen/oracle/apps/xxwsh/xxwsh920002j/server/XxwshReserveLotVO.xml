@@ -343,7 +343,10 @@ SELECT ilm.lot_no                            lot_no,                            
          AND     oha.shipped_date         >= TO_DATE(:28, 'YYYY/MM/DD')     -- 実績計上前なのでOPEN日付のデータのみ対象。 -- 2010/01/08 Add
 -- 2010/01/27 M.Hokkanji 本稼働障害#1320 Mod Start
          AND     otta.transaction_type_id  = oha.order_type_id  
-         AND     otta.attribute1           IN ('1','2')
+-- 2010/01/28 M.Hokkanji 本稼働障害#1320 Mod Start
+         AND     otta.attribute1           IN ('1','2','3')
+--         AND     otta.attribute1           IN ('1','2')
+-- 2010/01/28 M.Hokkanji 本稼働障害#1320 Mod End
          AND     (
                    (otta.order_category_code = 'ORDER'
                      AND NVL(mld.before_actual_quantity, 0) - mld.actual_quantity > 0 -- 出庫訂正はマイナス訂正のみ取得
