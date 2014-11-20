@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCOS014A03C (body)
  * Description      : 納品確定情報データ作成(EDI)
  * MD.050           : 納品確定情報データ作成(EDI) MD050_COS_014_A03
- * Version          : 1.10
+ * Version          : 1.11
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -42,6 +42,7 @@ AS
  *  2009/07/15    1.9   N.Maeda          [T1_1359] レビュー指摘対応(伝票計取得方法修正)
  *  2009/07/29    1.9   M.Sano           [T1_1359] レビュー指摘対応(INパラ：単位設定方法修正)
  *  2009/08/10    1.10  M.Sano           [0000442] 『返品確定情報データ作成』PTの考慮
+ *  2009/08/13    1.11  M.Sano           [0001043] 売上区分混在チェック削除
  *
  *****************************************************************************************/
 --
@@ -146,7 +147,9 @@ AS
   ct_msg_input_parameters1        CONSTANT fnd_new_messages.message_name%TYPE := 'APP-XXCOS1-13001';                    --パラメータ出力メッセージ1
   ct_msg_input_parameters2        CONSTANT fnd_new_messages.message_name%TYPE := 'APP-XXCOS1-13002';                    --パラメータ出力メッセージ2
   ct_msg_fopen_err                CONSTANT fnd_new_messages.message_name%TYPE := 'APP-XXCOS1-00009';                    --ファイルオープンエラーメッセージ
-  ct_msg_sale_class_mixed         CONSTANT fnd_new_messages.message_name%TYPE := 'APP-XXCOS1-00034';                    --売上区分混在エラーメッセージ
+-- 2009/08/13 Ver1.11 M.Sano DEL Start
+--  ct_msg_sale_class_mixed         CONSTANT fnd_new_messages.message_name%TYPE := 'APP-XXCOS1-00034';                    --売上区分混在エラーメッセージ
+-- 2009/08/13 Ver1.11 M.Sano DEL End
   ct_msg_sale_class_err           CONSTANT fnd_new_messages.message_name%TYPE := 'APP-XXCOS1-00111';                    --売上区分エラー
   ct_msg_header_type              CONSTANT fnd_new_messages.message_name%TYPE := 'APP-XXCOS1-00122';                    --メッセージ用文字列.通常受注
   ct_msg_line_type                CONSTANT fnd_new_messages.message_name%TYPE := 'APP-XXCOS1-00121';                    --メッセージ用文字列.通常出荷
@@ -4418,25 +4421,28 @@ AS
       --売上区分混在チェック
       --==============================================================
       IF (lt_last_invoice_number = l_data_tab('INVOICE_NUMBER')) AND cur_data_record%ROWCOUNT > 1 THEN
---        IF (lt_last_bargain_class != lt_bargain_class) THEN
-        IF (lt_last_bargain_class != lt_bargain_class AND lb_mix_error_order = FALSE) THEN
-          --前回定番特売区分≠今回定番特売区分の場合
-          lb_error           := TRUE;
-          lb_mix_error_order := TRUE;
-          lv_errmsg          := xxccp_common_pkg.get_msg(
-                                  cv_apl_name
-                                 ,ct_msg_sale_class_mixed
-                                 ,cv_tkn_order_no
-                                 ,l_data_tab('INVOICE_NUMBER')
-                                );
-          FND_FILE.PUT_LINE(
-             which  => FND_FILE.OUTPUT
-            ,buff   => lv_errmsg
-          );
--- 2009/02/19 T.Nakamura Ver.1.5 add start
-          lv_errbuf_all := lv_errbuf_all || lv_errmsg;
--- 2009/02/19 T.Nakamura Ver.1.5 add end
-        END IF;
+-- 2009/08/13 Ver1.11 M.Sano Mod Start
+----        IF (lt_last_bargain_class != lt_bargain_class) THEN
+--        IF (lt_last_bargain_class != lt_bargain_class AND lb_mix_error_order = FALSE) THEN
+--          --前回定番特売区分≠今回定番特売区分の場合
+--          lb_error           := TRUE;
+--          lb_mix_error_order := TRUE;
+--          lv_errmsg          := xxccp_common_pkg.get_msg(
+--                                  cv_apl_name
+--                                 ,ct_msg_sale_class_mixed
+--                                 ,cv_tkn_order_no
+--                                 ,l_data_tab('INVOICE_NUMBER')
+--                                );
+--          FND_FILE.PUT_LINE(
+--             which  => FND_FILE.OUTPUT
+--            ,buff   => lv_errmsg
+--          );
+---- 2009/02/19 T.Nakamura Ver.1.5 add start
+--          lv_errbuf_all := lv_errbuf_all || lv_errmsg;
+---- 2009/02/19 T.Nakamura Ver.1.5 add end
+--        END IF;
+          NULL;
+-- 2009/08/13 Ver1.11 M.Sano Mod End
       ELSE
         --前回伝票番号≠今回伝票番号の場合
         lt_last_invoice_number  := l_data_tab('INVOICE_NUMBER');
