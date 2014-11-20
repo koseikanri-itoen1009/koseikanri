@@ -7,7 +7,7 @@ AS
  * Description      : 在庫（帳票）
  * MD.050/070       : 在庫（帳票）Issue1.0  (T_MD050_BPO_550)
  *                    受払残高リスト        (T_MD070_BPO_55A)
- * Version          : 1.34
+ * Version          : 1.35
  *
  * Program List
  * -------------------------- ----------------------------------------------------------
@@ -61,6 +61,7 @@ AS
  *  2008/12/10    1.32  Yasuhisa Yamamoto  統合指摘 #627対応
  *  2008/12/16    1.33  Akiyoshi Shiina    統合指摘 #742対応
  *  2008/12/19    1.34  Yasuhisa Yamamoto  統合指摘 #732対応
+ *  2008/12/25    1.35  Yasuhisa Yamamoto  統合指摘 #674対応
  *****************************************************************************************/
 --
 --#######################  固定グローバル定数宣言部 START   #######################
@@ -1251,7 +1252,11 @@ AS
                           ,gd_date_ym_first      AS trans_date       -- 前月のデータなので結合するため
                           ,0                     AS trans_qty
                           ,NULL                  AS rcv_pay_div
-                          ,SUM( NVL( xsims_be.monthly_stock, 0 ) ) AS month_stock_be  -- 月末在庫数
+-- 08/12/25 Y.Yamamoto update v1.35 start #674
+--                          ,SUM( NVL( xsims_be.monthly_stock, 0 ) ) AS month_stock_be  -- 月末在庫数
+                          ,SUM( NVL( xsims_be.monthly_stock, 0 ) - NVL( xsims_be.cargo_stock_not_stn, 0 ) ) 
+                                                                   AS month_stock_be  -- 月末在庫数
+-- 08/12/25 Y.Yamamoto update v1.35 end   #674
                           ,SUM( NVL( xsims_be.cargo_stock,   0 ) ) AS cargo_stock_be  -- 積送中在庫数
                           ,0                     AS month_stock_nw   -- 当月末在庫数
                           ,0                     AS cargo_stock_nw   -- 当月積送中在庫数
@@ -1268,7 +1273,10 @@ AS
                            WHERE  x.whse_code = xsims_be.whse_code
                            GROUP BY x.whse_code
                            HAVING   xilv_be.segment1 =MIN (x.segment1))
-                    HAVING NOT (    SUM( NVL( xsims_be.monthly_stock,0 )) = 0         -- 月末在庫数
+-- 08/12/25 Y.Yamamoto update v1.35 start #674
+--                    HAVING NOT (    SUM( NVL( xsims_be.monthly_stock,0 )) = 0         -- 月末在庫数
+                    HAVING NOT (    SUM( NVL( xsims_be.monthly_stock,0 ) - NVL( xsims_be.cargo_stock_not_stn, 0 )) = 0 -- 月末在庫数
+-- 08/12/25 Y.Yamamoto update v1.35 end   #674
                                 AND SUM( NVL( xsims_be.cargo_stock,0   )) = 0         -- 積送中在庫数
                                )
                     GROUP BY xsims_be.whse_code                      -- 倉庫コード
@@ -1285,7 +1293,10 @@ AS
                           ,NULL                  AS rcv_pay_div
                           ,0                     AS month_stock_be   -- 月末在庫数
                           ,0                     AS cargo_stock_be   -- 積送中在庫数
-                          ,SUM( NVL( xsims_nw.monthly_stock, 0 ) ) AS month_stock_nw  -- 当月末在庫数
+-- 08/12/25 Y.Yamamoto update v1.35 start #674
+--                          ,SUM( NVL( xsims_nw.monthly_stock, 0 ) ) AS month_stock_nw  -- 当月末在庫数
+                          ,SUM( NVL( xsims_nw.monthly_stock, 0 ) - NVL( xsims_nw.cargo_stock_not_stn, 0 ) ) AS month_stock_nw  -- 当月末在庫数
+-- 08/12/25 Y.Yamamoto update v1.35 end   #674
                           ,SUM( NVL( xsims_nw.cargo_stock,   0 ) ) AS cargo_stock_nw  -- 当月積送中在庫数
                           ,0                     AS case_amt         -- 棚卸ケース数
                           ,0                     AS loose_amt        -- 棚卸バラ
@@ -1300,7 +1311,10 @@ AS
                            WHERE  x.whse_code = xilv_nw.whse_code
                            GROUP BY x.whse_code
                            HAVING   xilv_nw.segment1 = MIN(x.segment1)) 
-                    HAVING NOT (    SUM( NVL( xsims_nw.monthly_stock,0 )) = 0         -- 当月末在庫数
+-- 08/12/25 Y.Yamamoto update v1.35 start #674
+--                    HAVING NOT (    SUM( NVL( xsims_nw.monthly_stock,0 )) = 0         -- 当月末在庫数
+                    HAVING NOT (    SUM( NVL( xsims_nw.monthly_stock,0 ) - NVL( xsims_nw.cargo_stock_not_stn, 0 )) = 0 -- 当月末在庫数
+-- 08/12/25 Y.Yamamoto update v1.35 end   #674
                                 AND SUM( NVL( xsims_nw.cargo_stock,0   )) = 0         -- 当月積送中在庫数
                                )
                     GROUP BY xsims_nw.whse_code                      -- 倉庫コード
@@ -1766,7 +1780,10 @@ AS
                           ,gd_date_ym_first      AS trans_date       -- 前月のデータなので結合するため
                           ,0                     AS trans_qty
                           ,NULL                  AS rcv_pay_div
-                          ,SUM( NVL( xsims_be.monthly_stock, 0 ) ) AS month_stock_be  -- 月末在庫数
+-- 08/12/25 Y.Yamamoto update v1.35 start #674
+--                          ,SUM( NVL( xsims_be.monthly_stock, 0 ) ) AS month_stock_be  -- 月末在庫数
+                          ,SUM( NVL( xsims_be.monthly_stock, 0 ) - NVL( xsims_be.cargo_stock_not_stn, 0 ) ) AS month_stock_be  -- 月末在庫数
+-- 08/12/25 Y.Yamamoto update v1.35 end   #674
                           ,SUM( NVL( xsims_be.cargo_stock,   0 ) ) AS cargo_stock_be  -- 積送中在庫数
                           ,0                     AS month_stock_nw   -- 当月末在庫数
                           ,0                     AS cargo_stock_nw   -- 当月積送中在庫数
@@ -1783,7 +1800,10 @@ AS
                            WHERE  x.whse_code = xsims_be.whse_code
                            GROUP BY x.whse_code
                            HAVING   xilv_be.segment1 =MIN (x.segment1))
-                    HAVING NOT (    SUM( NVL( xsims_be.monthly_stock,0 )) = 0         -- 月末在庫数
+-- 08/12/25 Y.Yamamoto update v1.35 start #674
+--                    HAVING NOT (    SUM( NVL( xsims_be.monthly_stock,0 )) = 0         -- 月末在庫数
+                    HAVING NOT (    SUM( NVL( xsims_be.monthly_stock,0 ) - NVL( xsims_be.cargo_stock_not_stn, 0 )) = 0 -- 月末在庫数
+-- 08/12/25 Y.Yamamoto update v1.35 end   #674
                                 AND SUM( NVL( xsims_be.cargo_stock,0   )) = 0         -- 積送中在庫数
                                )
                     GROUP BY xsims_be.whse_code                      -- 倉庫コード
@@ -1800,7 +1820,10 @@ AS
                           ,NULL                  AS rcv_pay_div
                           ,0                     AS month_stock_be   -- 月末在庫数
                           ,0                     AS cargo_stock_be   -- 積送中在庫数
-                          ,SUM( NVL( xsims_nw.monthly_stock, 0 ) ) AS month_stock_nw  -- 当月末在庫数
+-- 08/12/25 Y.Yamamoto update v1.35 start #674
+--                          ,SUM( NVL( xsims_nw.monthly_stock, 0 ) ) AS month_stock_nw  -- 当月末在庫数
+                          ,SUM( NVL( xsims_nw.monthly_stock, 0 ) - NVL( xsims_nw.cargo_stock_not_stn, 0 ) ) AS month_stock_nw  -- 当月末在庫数
+-- 08/12/25 Y.Yamamoto update v1.35 end   #674
                           ,SUM( NVL( xsims_nw.cargo_stock,   0 ) ) AS cargo_stock_nw  -- 当月積送中在庫数
                           ,0                     AS case_amt         -- 棚卸ケース数
                           ,0                     AS loose_amt        -- 棚卸バラ
@@ -1815,7 +1838,10 @@ AS
                            WHERE  x.whse_code = xilv_nw.whse_code
                            GROUP BY x.whse_code
                            HAVING   xilv_nw.segment1 = MIN(x.segment1)) 
-                    HAVING NOT (    SUM( NVL( xsims_nw.monthly_stock,0 )) = 0         -- 当月末在庫数
+-- 08/12/25 Y.Yamamoto update v1.35 start #674
+--                    HAVING NOT (    SUM( NVL( xsims_nw.monthly_stock,0 )) = 0         -- 当月末在庫数
+                    HAVING NOT (    SUM( NVL( xsims_nw.monthly_stock,0 ) - NVL( xsims_nw.cargo_stock_not_stn, 0 ) ) = 0 -- 当月末在庫数
+-- 08/12/25 Y.Yamamoto update v1.35 end   #674
                                 AND SUM( NVL( xsims_nw.cargo_stock,0   )) = 0         -- 当月積送中在庫数
                                )
                     GROUP BY xsims_nw.whse_code                      -- 倉庫コード

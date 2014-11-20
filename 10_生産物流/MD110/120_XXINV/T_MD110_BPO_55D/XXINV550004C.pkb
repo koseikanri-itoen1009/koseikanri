@@ -8,7 +8,7 @@ AS
  * Description      : 棚卸スナップショット作成
  * MD.050           : 在庫(帳票)               T_MD050_BPO_550
  * MD.070           : 棚卸スナップショット作成 T_MD070_BPO_55D
- * Version          : 1.8
+ * Version          : 1.9
  *
  * Program List
  * -------------------- ------------------------------------------------------------
@@ -30,6 +30,7 @@ AS
  *  2008/09/24    1.6   Y.Kawano         T_S_500対応
  *  2008/10/02    1.7   Y.Yamamoto       PT 2-1_12 #85
  *  2008/11/11    1.8   Y.Kawano         統合テスト指摘#565対応
+ *  2008/12/12    1.9   Y.Yamamoto       本番#674対応
  *
  *****************************************************************************************/
 --  
@@ -251,6 +252,12 @@ AS
     ln_d5_quantity ary_quantity;           -- D-5. 出荷・有償積送分情報抽出 数量
     ln_d7_quantity ary_quantity;           -- D-7. 移動積送分情報抽出（前月分） 数量
     ln_d8_quantity ary_quantity;           -- D-8. 出荷・有償積送分情報抽出（前月分） 数量
+-- 2008/12/12 v1.9 Y.Yamamoto add start
+    ln_d12_quantity ary_quantity;          -- D-12.移動積送分情報抽出 数量
+    ln_d13_quantity ary_quantity;          -- D-13.出荷・有償積送分情報抽出 数量
+    ln_d14_quantity ary_quantity;          -- D-14.移動積送分情報抽出（前月分） 数量
+    ln_d15_quantity ary_quantity;          -- D-15.出荷・有償積送分情報抽出（前月分） 数量
+-- 2008/12/12 v1.9 Y.Yamamoto add end
 --
     ln_user_id          NUMBER;            -- ログインしているユーザー
     ln_login_id         NUMBER;            -- 最終更新ログイン
@@ -788,6 +795,10 @@ AS
           ln_d3_itp_trans_qty(i):=0;
           ln_d3_itc_trans_qty(i):=0;
           ln_d4_quantity(i):=0;
+-- 2008/12/12 v1.9 Y.Yamamoto add start
+          ln_d12_quantity(i) := 0;
+          ln_d13_quantity(i) := 0;
+-- 2008/12/12 v1.9 Y.Yamamoto add end
 --
           -- 月跨ぎの確認
           IF (iv_invent_ym < lv_sysdate_ym) THEN
@@ -1023,6 +1034,208 @@ AS
               ln_d5_quantity(i):=0;
           END;
 --
+-- 2008/12/12 v1.9 Y.Yamamoto add start
+          BEGIN
+            -- D-12. 移動積送分情報抽出 数量
+            lv_item_cd := TO_CHAR(curr_item_no_tbl(i));
+--
+            IF (1 = curr_lot_ctl_tbl(i)) THEN
+              -- ロット管理品目の場合
+              SELECT SUM(NVL(xmld.actual_quantity,0))                             -- ③移動ロット詳細(アドオン)の実績数量
+              INTO   ln_d12_quantity(i)
+              FROM   xxinv_mov_req_instr_headers xmrih
+                    ,xxinv_mov_req_instr_lines xmril
+                    ,xxinv_mov_lot_details xmld                                   --③移動ロット詳細(アドオン)
+                    ,xxcmn_item_locations_v xilv                                   --④⑤OPM保管場所情報VIEW 
+              WHERE xmrih.mov_hdr_id        = xmril.mov_hdr_id
+              AND   xmril.mov_line_id       = xmld.mov_line_id               --②の移動明細id=③の明細id
+              AND   xmrih.shipped_locat_id  = xilv.inventory_location_id     --①の出庫元id=⑤の保管倉庫id
+              AND   xilv.whse_code          = curr_whse_code_tbl(i)         --④の倉庫コード= d-2で取得した倉庫コード
+              AND   xmril.item_id           = curr_item_id_tbl(i)            --②の品目id= d-2で取得した品目id
+              AND   xmrih.status           IN ('04','06')                    --①のステータス=  "出庫報告有"または"入出庫報告有"
+              AND   xmrih.comp_actual_flg   = 'N'
+              AND   xmril.delete_flg        = 'N'
+              AND   xmld.document_type_code = '20'                           --③の文書タイプ= "移動"
+              AND   xmld.record_type_code   = '20'                           --③のレコードタイプ= "出庫実績"
+              AND   TRUNC(xmrih.actual_ship_date) BETWEEN TRUNC(ld_invent_begin_ymd)
+                                                  AND TRUNC(ld_invent_end_ymd)     --①の出庫実績日の年月=起動パラメータの対象年月
+              AND  (TRUNC(xmrih.actual_arrival_date) > TRUNC(ld_invent_end_ymd)    --①の入庫実績日の年月＞起動パラメータの対象年月
+                       OR xmrih.actual_arrival_date IS NULL                   --①の入庫実績日= 指定なし  
+                   )
+              AND  xmld.lot_id = curr_lot_id_tbl(i)                               --③のロットid = d-6で取得したロットid
+              AND  NOT EXISTS (SELECT 1
+                               FROM   ic_xfer_mst ixm
+                                     ,ic_tran_pnd itp
+                               WHERE  itp.doc_type      = 'XFER'
+                               AND    itp.completed_ind = 1
+                               AND    itp.reason_code   = 'X122'
+                               AND    itp.doc_id        = ixm.transfer_id
+                               AND    ixm.attribute1    = TO_CHAR(xmril.mov_line_id)
+                               AND    ROWNUM            = 1)
+              AND  NOT EXISTS (SELECT 1
+                               FROM   ic_jrnl_mst ijm
+                                     ,ic_adjs_jnl iaj
+                                     ,ic_tran_cmp itc
+                               WHERE  itc.doc_type    = 'TRNI'
+                               AND    itc.reason_code = 'X122'
+                               AND    itc.doc_type    = iaj.trans_type
+                               AND    itc.doc_id      = iaj.doc_id
+                               AND    itc.doc_line    = iaj.doc_line
+                               AND    iaj.journal_id  = ijm.journal_id
+                               AND    ijm.attribute1  = TO_CHAR(xmril.mov_line_id)
+                               AND    ROWNUM          = 1)
+              AND  NOT EXISTS (SELECT 1
+                               FROM   ic_jrnl_mst ijm
+                                     ,ic_adjs_jnl iaj
+                                     ,ic_tran_cmp itc
+                               WHERE  itc.doc_type    = 'ADJI'
+                               AND    itc.reason_code = 'X123'
+                               AND    itc.doc_type    = iaj.trans_type
+                               AND    itc.doc_id      = iaj.doc_id
+                               AND    itc.doc_line    = iaj.doc_line
+                               AND    iaj.journal_id  = ijm.journal_id
+                               AND    ijm.attribute1  = TO_CHAR(xmril.mov_line_id)
+                               AND    ROWNUM          = 1)
+              GROUP BY xilv.whse_code, xmld.item_code, xmld.lot_no;
+--
+            ELSE
+--
+              -- ロット管理品目以外の場合
+              SELECT SUM(NVL(xmril.shipped_quantity,0))                           --②移動依頼/指示明細(アドオン)の出庫実績数量
+              INTO   ln_d12_quantity(i)
+              FROM   xxinv_mov_req_instr_headers xmrih
+                    ,xxinv_mov_req_instr_lines xmril
+                    ,xxcmn_item_locations_v xilv                                   --④⑤OPM保管場所情報VIEW 
+              WHERE xmrih.mov_hdr_id        = xmril.mov_hdr_id
+              AND   xmrih.shipped_locat_id  = xilv.inventory_location_id     --①の出庫元id=⑤の保管倉庫id
+              AND   xilv.whse_code          = curr_whse_code_tbl(i)         --④の倉庫コード= d-2で取得した倉庫コード
+              AND   xmril.item_id           = curr_item_id_tbl(i)            --②の品目id= d-2で取得した品目id
+              AND   xmrih.status           IN ('04','06')                   --①のステータス=  "出庫報告有"または"入出庫報告有"
+              AND   xmrih.comp_actual_flg   = 'N'
+              AND   xmril.delete_flg        = 'N'
+              AND   TRUNC(xmrih.actual_ship_date) BETWEEN TRUNC(ld_invent_begin_ymd)
+                                                  AND TRUNC(ld_invent_end_ymd)     --①の出庫実績日の年月=起動パラメータの対象年月
+              AND  (TRUNC(xmrih.actual_arrival_date) > TRUNC(ld_invent_end_ymd)    --①の入庫実績日の年月＞起動パラメータの対象年月
+                       OR xmrih.actual_arrival_date IS NULL                   --①の入庫実績日= 指定なし  
+                   )
+              AND  NOT EXISTS (SELECT 1
+                               FROM   ic_xfer_mst ixm
+                                     ,ic_tran_pnd itp
+                               WHERE  itp.doc_type      = 'XFER'
+                               AND    itp.completed_ind = 1
+                               AND    itp.reason_code   = 'X122'
+                               AND    itp.doc_id        = ixm.transfer_id
+                               AND    ixm.attribute1    = TO_CHAR(xmril.mov_line_id)
+                               AND    ROWNUM            = 1)
+              AND  NOT EXISTS (SELECT 1
+                               FROM   ic_jrnl_mst ijm
+                                     ,ic_adjs_jnl iaj
+                                     ,ic_tran_cmp itc
+                               WHERE  itc.doc_type    = 'TRNI'
+                               AND    itc.reason_code = 'X122'
+                               AND    itc.doc_type    = iaj.trans_type
+                               AND    itc.doc_id      = iaj.doc_id
+                               AND    itc.doc_line    = iaj.doc_line
+                               AND    iaj.journal_id  = ijm.journal_id
+                               AND    ijm.attribute1  = TO_CHAR(xmril.mov_line_id)
+                               AND    ROWNUM          = 1)
+              AND  NOT EXISTS (SELECT 1
+                               FROM   ic_jrnl_mst ijm
+                                     ,ic_adjs_jnl iaj
+                                     ,ic_tran_cmp itc
+                               WHERE  itc.doc_type    = 'ADJI'
+                               AND    itc.reason_code = 'X123'
+                               AND    itc.doc_type    = iaj.trans_type
+                               AND    itc.doc_id      = iaj.doc_id
+                               AND    itc.doc_line    = iaj.doc_line
+                               AND    iaj.journal_id  = ijm.journal_id
+                               AND    ijm.attribute1  = TO_CHAR(xmril.mov_line_id)
+                               AND    ROWNUM          = 1)
+              GROUP BY xilv.whse_code, xmril.item_code;
+--
+            END IF;
+--
+          EXCEPTION
+            WHEN NO_DATA_FOUND THEN
+              ln_d12_quantity(i):=0;
+          END;
+--
+          BEGIN
+            -- D-13.出荷・有償積送分情報抽出
+            lv_item_cd := TO_CHAR(curr_item_no_tbl(i));
+--
+            IF (1 = curr_lot_ctl_tbl(i)) THEN
+--
+              -- ロット管理品目の場合
+              SELECT SUM(NVL(xmld.actual_quantity,0))                             -- ③移動ロット詳細(アドオン)の実績数量
+              INTO  ln_d13_quantity(i)
+              FROM  xxwsh_order_headers_all xoha
+                   ,xxwsh_order_lines_all xola
+                   ,xxinv_mov_lot_details xmld                                   -- ③移動ロット詳細(アドオン)
+                   ,xxcmn_item_locations_v xilv                                  -- ④⑤OPM保管場所情報VIEW   
+                   ,ic_item_mst_b iimb                                            -- ⑥品目マスタ
+              WHERE xoha.order_header_id         = xola.order_header_id           -- ①の受注ヘッダアドオンID= ②の受注ヘッダアドオンID
+              AND   xola.order_line_id           = xmld.mov_line_id               -- ②の受注明細アドオンID    = ③の明細ID
+              AND   xoha.deliver_from_id         = xilv.inventory_location_id     -- ①の出荷元ID= ⑤の保管倉庫ID
+              AND   xilv.whse_code               = curr_whse_code_tbl(i)         -- ④の倉庫コード= D-2で取得した倉庫コード
+              AND   iimb.item_no                 = lv_item_cd                     -- ⑥の品目コード= D-2で取得した品目コード
+              AND   xola.shipping_item_code      = iimb.item_no                   -- ②の出荷品目ID= ⑥の品目ID
+              AND   iimb.item_id                 = xmld.item_id                   -- ⑥の品目ID    = D-2で取得した品目ID
+              AND   xoha.req_status             IN ('04','08')
+              AND   xoha.actual_confirm_class    = 'N'
+              AND   xoha.latest_external_flag    = 'Y'                            -- ①の最新フラグ= "ON"
+              AND   xola.delete_flag             = 'N'                            -- ②の削除フラグ= "OFF"
+              AND   xmld.document_type_code     IN ('10','30')                   -- ③の文書タイプ= "出荷依頼" または "支給指示"
+              AND   xmld.record_type_code        = '20'                           -- ③のレコードタイプ = "出庫実績"
+              AND   xoha.shipped_date BETWEEN TRUNC(ld_invent_begin_ymd)
+                                      AND     TRUNC(ld_invent_end_ymd)     -- ①の出庫実績日の年月=起動パラメータの対象年月
+              AND  (TRUNC(xoha.arrival_date) > TRUNC(ld_invent_end_ymd)           -- ①の入庫実績日の年月＞起動パラメータの対象年月
+                    OR xoha.arrival_date IS NULL                                  -- ①の着荷日=指定なし
+                   )
+              AND   xmld.lot_id = curr_lot_id_tbl(i)                              -- ③のロットid = d-2で取得したロットid
+              AND NOT EXISTS (SELECT 'X'
+                              FROM   oe_order_headers_all ooha
+                              WHERE  ooha.attribute1 = xoha.request_no)
+              GROUP BY xilv.whse_code, xmld.item_code, xmld.lot_no;
+--
+            ELSE
+--
+              -- ロット管理品目以外の場合
+              SELECT SUM(NVL(xola.shipped_quantity,0))                            -- ②受注明細アドオンの出庫実績数量
+              INTO  ln_d13_quantity(i)
+              FROM  xxwsh_order_headers_all xoha
+                   ,xxwsh_order_lines_all xola
+                   ,xxcmn_item_locations_v xilv                                  -- ④⑤OPM保管場所情報VIEW   
+                   ,ic_item_mst_b iimb                                            -- ⑥品目マスタ
+                   ,xxcmn_item_mst_v ximv                                       -- OPM品目情報VIEW
+              WHERE xoha.order_header_id         = xola.order_header_id           -- ①の受注ヘッダアドオンID= ②の受注ヘッダアドオンID
+              AND   xoha.deliver_from_id         = xilv.inventory_location_id     -- ①の出荷元ID= ⑤の保管倉庫ID
+              AND   xilv.whse_code               = curr_whse_code_tbl(i)         -- ④の倉庫コード= D-2で取得した倉庫コード
+              AND   iimb.item_no                 = lv_item_cd                     -- ⑥の品目コード= D-2で取得した品目コード
+              AND   iimb.item_no                 = ximv.item_no
+              AND   xola.shipping_item_code      = iimb.item_no                   -- ②の出荷品目ID= ⑥の品目ID
+              AND   xoha.req_status             IN ('04','08')
+              AND   xoha.actual_confirm_class    = 'N'
+              AND   xoha.latest_external_flag    = 'Y'                            -- ①の最新フラグ= "ON"
+              AND   xola.delete_flag             = 'N'                            -- ②の削除フラグ= "OFF"
+              AND   xoha.shipped_date BETWEEN TRUNC(ld_invent_begin_ymd)
+                                      AND     TRUNC(ld_invent_end_ymd)     -- ①の出庫実績日の年月=起動パラメータの対象年月
+              AND  (TRUNC(xoha.arrival_date) > TRUNC(ld_invent_end_ymd)           -- ①の入庫実績日の年月＞起動パラメータの対象年月
+                    OR xoha.arrival_date IS NULL                                  -- ①の着荷日=指定なし
+                   )
+              AND NOT EXISTS (SELECT 'X'
+                              FROM   oe_order_headers_all ooha
+                              WHERE  ooha.attribute1 = xoha.request_no)
+              GROUP BY xilv.whse_code, ximv.item_id;
+--
+            END IF;
+--
+          EXCEPTION
+            WHEN NO_DATA_FOUND THEN
+              ln_d13_quantity(i):=0;
+          END;
+--
+-- 2008/12/12 v1.9 Y.Yamamoto add end
 -- 2008/09/16 v1.5 Y.Yamamoto Update Start
 --        END LOOP current_cargo_cur;
         END LOOP D2_loop;
@@ -1176,6 +1389,10 @@ AS
 --add end 1.3
           ln_d7_quantity(i):=0;
           ln_d8_quantity(i):=0;
+-- 2008/12/12 v1.9 Y.Yamamoto add start
+          ln_d14_quantity(i) := 0;
+          ln_d15_quantity(i) := 0;
+-- 2008/12/12 v1.9 Y.Yamamoto add end
 --
           BEGIN
             -- D-7. 移動積送分情報抽出（前月分）
@@ -1361,6 +1578,208 @@ AS
             WHEN NO_DATA_FOUND THEN
               ln_d8_quantity(i):=0;
           END;
+-- 2008/12/12 v1.9 Y.Yamamoto add start
+          BEGIN
+            -- D-14. 移動積送分情報抽出 数量前月分
+            lv_item_cd := TO_CHAR(pre_item_no_tbl(i));
+--
+            IF (1 = pre_lot_ctl_tbl(i)) THEN
+              -- ロット管理品目の場合
+              SELECT SUM(NVL(xmld.actual_quantity,0))                             -- ③移動ロット詳細(アドオン)の実績数量
+              INTO   ln_d14_quantity(i)
+              FROM   xxinv_mov_req_instr_headers xmrih
+                    ,xxinv_mov_req_instr_lines xmril
+                    ,xxinv_mov_lot_details xmld                                   --③移動ロット詳細(アドオン)
+                    ,xxcmn_item_locations_v xilv                                   --④⑤OPM保管場所情報VIEW 
+              WHERE xmrih.mov_hdr_id        = xmril.mov_hdr_id
+              AND   xmril.mov_line_id       = xmld.mov_line_id               --②の移動明細id=③の明細id
+              AND   xmrih.shipped_locat_id  = xilv.inventory_location_id     --①の出庫元id=⑤の保管倉庫id
+              AND   xilv.whse_code          = pre_whse_code_tbl(i)         --④の倉庫コード= d-2で取得した倉庫コード
+              AND   xmril.item_id           = pre_item_id_tbl(i)            --②の品目id= d-2で取得した品目id
+              AND   xmrih.status           IN ('04','06')                    --①のステータス=  "出庫報告有"または"入出庫報告有"
+              AND   xmrih.comp_actual_flg   = 'N'
+              AND   xmril.delete_flg        = 'N'
+              AND   xmld.document_type_code = '20'                           --③の文書タイプ= "移動"
+              AND   xmld.record_type_code   = '20'                           --③のレコードタイプ= "出庫実績"
+              AND   TRUNC(xmrih.actual_ship_date) BETWEEN TRUNC(ld_pre_invent_begin_ymd)
+                                                  AND TRUNC(ld_pre_invent_end_ymd)    --①の出庫実績日の年月=起動パラメータの対象年月の前月
+              AND  (TRUNC(xmrih.actual_arrival_date) > TRUNC(ld_pre_invent_end_ymd)   --①の入庫実績日の年月＞起動パラメータの対象年月の前月
+                    OR xmrih.actual_arrival_date IS NULL                              --①の入庫実績日= 指定なし
+                   )
+              AND  xmld.lot_id = pre_lot_id_tbl(i)                               --③のロットid = d-6で取得したロットid
+              AND  NOT EXISTS (SELECT 1
+                               FROM   ic_xfer_mst ixm
+                                     ,ic_tran_pnd itp
+                               WHERE  itp.doc_type      = 'XFER'
+                               AND    itp.completed_ind = 1
+                               AND    itp.reason_code   = 'X122'
+                               AND    itp.doc_id        = ixm.transfer_id
+                               AND    ixm.attribute1    = TO_CHAR(xmril.mov_line_id)
+                               AND    ROWNUM            = 1)
+              AND  NOT EXISTS (SELECT 1
+                               FROM   ic_jrnl_mst ijm
+                                     ,ic_adjs_jnl iaj
+                                     ,ic_tran_cmp itc
+                               WHERE  itc.doc_type    = 'TRNI'
+                               AND    itc.reason_code = 'X122'
+                               AND    itc.doc_type    = iaj.trans_type
+                               AND    itc.doc_id      = iaj.doc_id
+                               AND    itc.doc_line    = iaj.doc_line
+                               AND    iaj.journal_id  = ijm.journal_id
+                               AND    ijm.attribute1  = TO_CHAR(xmril.mov_line_id)
+                               AND    ROWNUM          = 1)
+              AND  NOT EXISTS (SELECT 1
+                               FROM   ic_jrnl_mst ijm
+                                     ,ic_adjs_jnl iaj
+                                     ,ic_tran_cmp itc
+                               WHERE  itc.doc_type    = 'ADJI'
+                               AND    itc.reason_code = 'X123'
+                               AND    itc.doc_type    = iaj.trans_type
+                               AND    itc.doc_id      = iaj.doc_id
+                               AND    itc.doc_line    = iaj.doc_line
+                               AND    iaj.journal_id  = ijm.journal_id
+                               AND    ijm.attribute1  = TO_CHAR(xmril.mov_line_id)
+                               AND    ROWNUM          = 1)
+              GROUP BY xilv.whse_code, xmld.item_code, xmld.lot_no;
+--
+            ELSE
+--
+              -- ロット管理品目以外の場合
+              SELECT SUM(NVL(xmril.shipped_quantity,0))                           --②移動依頼/指示明細(アドオン)の出庫実績数量
+              INTO   ln_d14_quantity(i)
+              FROM   xxinv_mov_req_instr_headers xmrih
+                    ,xxinv_mov_req_instr_lines xmril
+                    ,xxcmn_item_locations_v xilv                                   --④⑤OPM保管場所情報VIEW 
+              WHERE xmrih.mov_hdr_id        = xmril.mov_hdr_id
+              AND   xmrih.shipped_locat_id  = xilv.inventory_location_id     --①の出庫元id=⑤の保管倉庫id
+              AND   xilv.whse_code          = pre_whse_code_tbl(i)         --④の倉庫コード= d-2で取得した倉庫コード
+              AND   xmril.item_id           = pre_item_id_tbl(i)            --②の品目id= d-2で取得した品目id
+              AND   xmrih.status           IN ('04','06')                   --①のステータス=  "出庫報告有"または"入出庫報告有"
+              AND   xmrih.comp_actual_flg   = 'N'
+              AND   xmril.delete_flg        = 'N'
+              AND   TRUNC(xmrih.actual_ship_date) BETWEEN TRUNC(ld_pre_invent_begin_ymd)
+                                                  AND TRUNC(ld_pre_invent_end_ymd)    --①の出庫実績日の年月=起動パラメータの対象年月の前月
+              AND  (TRUNC(xmrih.actual_arrival_date) > TRUNC(ld_pre_invent_end_ymd)   --①の入庫実績日の年月＞起動パラメータの対象年月の前月
+                    OR xmrih.actual_arrival_date IS NULL                              --①の入庫実績日= 指定なし
+                   )
+              AND  NOT EXISTS (SELECT 1
+                               FROM   ic_xfer_mst ixm
+                                     ,ic_tran_pnd itp
+                               WHERE  itp.doc_type      = 'XFER'
+                               AND    itp.completed_ind = 1
+                               AND    itp.reason_code   = 'X122'
+                               AND    itp.doc_id        = ixm.transfer_id
+                               AND    ixm.attribute1    = TO_CHAR(xmril.mov_line_id)
+                               AND    ROWNUM            = 1)
+              AND  NOT EXISTS (SELECT 1
+                               FROM   ic_jrnl_mst ijm
+                                     ,ic_adjs_jnl iaj
+                                     ,ic_tran_cmp itc
+                               WHERE  itc.doc_type    = 'TRNI'
+                               AND    itc.reason_code = 'X122'
+                               AND    itc.doc_type    = iaj.trans_type
+                               AND    itc.doc_id      = iaj.doc_id
+                               AND    itc.doc_line    = iaj.doc_line
+                               AND    iaj.journal_id  = ijm.journal_id
+                               AND    ijm.attribute1  = TO_CHAR(xmril.mov_line_id)
+                               AND    ROWNUM          = 1)
+              AND  NOT EXISTS (SELECT 1
+                               FROM   ic_jrnl_mst ijm
+                                     ,ic_adjs_jnl iaj
+                                     ,ic_tran_cmp itc
+                               WHERE  itc.doc_type    = 'ADJI'
+                               AND    itc.reason_code = 'X123'
+                               AND    itc.doc_type    = iaj.trans_type
+                               AND    itc.doc_id      = iaj.doc_id
+                               AND    itc.doc_line    = iaj.doc_line
+                               AND    iaj.journal_id  = ijm.journal_id
+                               AND    ijm.attribute1  = TO_CHAR(xmril.mov_line_id)
+                               AND    ROWNUM          = 1)
+              GROUP BY xilv.whse_code, xmril.item_code;
+--
+            END IF;
+--
+          EXCEPTION
+            WHEN NO_DATA_FOUND THEN
+              ln_d14_quantity(i):=0;
+          END;
+--
+          BEGIN
+            -- D-15.出荷・有償積送分情報抽出前月分
+            lv_item_cd := TO_CHAR(pre_item_no_tbl(i));
+--
+            IF (1 = pre_lot_ctl_tbl(i)) THEN
+--
+              -- ロット管理品目の場合
+              SELECT SUM(NVL(xmld.actual_quantity,0))                             -- ③移動ロット詳細(アドオン)の実績数量
+              INTO  ln_d15_quantity(i)
+              FROM  xxwsh_order_headers_all xoha
+                   ,xxwsh_order_lines_all xola
+                   ,xxinv_mov_lot_details xmld                                   -- ③移動ロット詳細(アドオン)
+                   ,xxcmn_item_locations_v xilv                                  -- ④⑤OPM保管場所情報VIEW   
+                   ,ic_item_mst_b iimb                                            -- ⑥品目マスタ
+              WHERE xoha.order_header_id         = xola.order_header_id           -- ①の受注ヘッダアドオンID= ②の受注ヘッダアドオンID
+              AND   xola.order_line_id           = xmld.mov_line_id               -- ②の受注明細アドオンID    = ③の明細ID
+              AND   xoha.deliver_from_id         = xilv.inventory_location_id     -- ①の出荷元ID= ⑤の保管倉庫ID
+              AND   xilv.whse_code               = pre_whse_code_tbl(i)         -- ④の倉庫コード= D-2で取得した倉庫コード
+              AND   iimb.item_no                 = lv_item_cd                     -- ⑥の品目コード= D-2で取得した品目コード
+              AND   xola.shipping_item_code      = iimb.item_no                   -- ②の出荷品目ID= ⑥の品目ID
+              AND   iimb.item_id                 = xmld.item_id                   -- ⑥の品目ID    = D-2で取得した品目ID
+              AND   xoha.req_status             IN ('04','08')
+              AND   xoha.actual_confirm_class    = 'N'
+              AND   xoha.latest_external_flag    = 'Y'                            -- ①の最新フラグ= "ON"
+              AND   xola.delete_flag             = 'N'                            -- ②の削除フラグ= "OFF"
+              AND   xmld.document_type_code     IN ('10','30')                   -- ③の文書タイプ= "出荷依頼" または "支給指示"
+              AND   xmld.record_type_code        = '20'                           -- ③のレコードタイプ = "出庫実績"
+              AND   TRUNC(xoha.shipped_date) BETWEEN TRUNC(ld_pre_invent_begin_ymd)
+                                                 AND TRUNC(ld_pre_invent_end_ymd)   -- ①の出荷日の年月=起動パラメータの対象年月の前月
+              AND  (TRUNC(xoha.arrival_date) > TRUNC(ld_pre_invent_end_ymd)         -- ①の着荷日の年月＞起動パラメータの対象年月の前月
+                    OR xoha.arrival_date IS NULL                                    -- ①の着荷日=指定なし
+                   )
+              AND   xmld.lot_id = pre_lot_id_tbl(i)                              -- ③のロットid = d-2で取得したロットid
+              AND NOT EXISTS (SELECT 'X'
+                              FROM   oe_order_headers_all ooha
+                              WHERE  ooha.attribute1 = xoha.request_no)
+              GROUP BY xilv.whse_code, xmld.item_code, xmld.lot_no;
+--
+            ELSE
+--
+              -- ロット管理品目以外の場合
+              SELECT SUM(NVL(xola.shipped_quantity,0))                            -- ②受注明細アドオンの出庫実績数量
+              INTO  ln_d15_quantity(i)
+              FROM  xxwsh_order_headers_all xoha
+                   ,xxwsh_order_lines_all xola
+                   ,xxcmn_item_locations_v xilv                                  -- ④⑤OPM保管場所情報VIEW   
+                   ,ic_item_mst_b iimb                                            -- ⑥品目マスタ
+                   ,xxcmn_item_mst_v ximv                                       -- OPM品目情報VIEW
+              WHERE xoha.order_header_id         = xola.order_header_id           -- ①の受注ヘッダアドオンID= ②の受注ヘッダアドオンID
+              AND   xoha.deliver_from_id         = xilv.inventory_location_id     -- ①の出荷元ID= ⑤の保管倉庫ID
+              AND   xilv.whse_code               = pre_whse_code_tbl(i)         -- ④の倉庫コード= D-2で取得した倉庫コード
+              AND   iimb.item_no                 = lv_item_cd                     -- ⑥の品目コード= D-2で取得した品目コード
+              AND   iimb.item_no                 = ximv.item_no
+              AND   xola.shipping_item_code      = iimb.item_no                   -- ②の出荷品目ID= ⑥の品目ID
+              AND   xoha.req_status             IN ('04','08')
+              AND   xoha.actual_confirm_class    = 'N'
+              AND   xoha.latest_external_flag    = 'Y'                            -- ①の最新フラグ= "ON"
+              AND   xola.delete_flag             = 'N'                            -- ②の削除フラグ= "OFF"
+              AND   TRUNC(xoha.shipped_date) BETWEEN TRUNC(ld_pre_invent_begin_ymd)
+                                                 AND TRUNC(ld_pre_invent_end_ymd)   -- ①の出荷日の年月=起動パラメータの対象年月の前月
+              AND  (TRUNC(xoha.arrival_date) > TRUNC(ld_pre_invent_end_ymd)         -- ①の着荷日の年月＞起動パラメータの対象年月の前月
+                    OR xoha.arrival_date IS NULL                                    -- ①の着荷日=指定なし
+                   )
+              AND NOT EXISTS (SELECT 'X'
+                              FROM   oe_order_headers_all ooha
+                              WHERE  ooha.attribute1 = xoha.request_no)
+              GROUP BY xilv.whse_code, ximv.item_id;
+--
+            END IF;
+--
+          EXCEPTION
+            WHEN NO_DATA_FOUND THEN
+              ln_d15_quantity(i):=0;
+          END;
+--
+-- 2008/12/12 v1.9 Y.Yamamoto add end
 --
 -- 2008/09/16 v1.5 Y.Yamamoto Update Start
 --        END LOOP pre_cargo_cur;
@@ -1481,7 +1900,11 @@ AS
           ,request_id
           ,program_application_id
           ,program_id
-          ,program_update_date)
+-- 2008/12/12 v1.9 Y.Yamamoto update start
+--          ,program_update_date)
+          ,program_update_date
+          ,cargo_stock_not_stn)
+-- 2008/12/12 v1.9 Y.Yamamoto update end
         VALUES (
            curr_invent_monthly_stock_id(i)       -- 棚卸月末在庫ID
           ,curr_whse_code_tbl(i)                 -- OPM手持数量  倉庫コード
@@ -1502,7 +1925,11 @@ AS
           ,ln_conc_request_id
           ,ln_prog_appl_id
           ,ln_conc_program_id
-          ,SYSDATE);
+-- 2008/12/12 v1.9 Y.Yamamoto update start
+--          ,SYSDATE);
+          ,SYSDATE
+          ,ln_d12_quantity(i) + ln_d13_quantity(i)); -- 標準にない積送中在庫数（D-12の数量＋D-13の数量）
+-- 2008/12/12 v1.9 Y.Yamamoto update end
 --
       -- 棚卸月末在庫IDの取得
       FOR i IN 1..pre_whse_code_tbl.COUNT LOOP
@@ -1531,7 +1958,11 @@ AS
           ,request_id
           ,program_application_id
           ,program_id
-          ,program_update_date)
+-- 2008/12/12 v1.9 Y.Yamamoto update start
+--          ,program_update_date)
+          ,program_update_date
+          ,cargo_stock_not_stn)
+-- 2008/12/12 v1.9 Y.Yamamoto update end
         VALUES (
            pre_invent_monthly_stock_id(i)        -- 棚卸月末在庫ID
           ,pre_whse_code_tbl(i)                  -- OPM手持数量  倉庫コード
@@ -1551,7 +1982,11 @@ AS
           ,ln_conc_request_id
           ,ln_prog_appl_id
           ,ln_conc_program_id
-          ,SYSDATE);
+-- 2008/12/12 v1.9 Y.Yamamoto update start
+--          ,SYSDATE);
+          ,SYSDATE
+          ,ln_d14_quantity(i) + ln_d15_quantity(i)); -- 標準にない積送中在庫数（D-14の数量＋D-15の数量）
+-- 2008/12/12 v1.9 Y.Yamamoto update end
 --
         COMMIT; -- コミット
 --
