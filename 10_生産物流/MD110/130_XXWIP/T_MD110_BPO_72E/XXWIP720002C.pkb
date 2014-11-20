@@ -7,7 +7,7 @@ AS
  * Description      : 運賃アドオンマスタ取込処理
  * MD.050           : 運賃計算（マスタ） T_MD050_BPO_720
  * MD.070           : 運賃アドオンマスタ取込処理（72E）T_MD070_BPO_72E
- * Version          : 1.1
+ * Version          : 1.2
  *
  * Program List
  * ------------------------ ----------------------------------------------------------
@@ -35,6 +35,7 @@ AS
  * ------------- ----- ---------------- -------------------------------------------------
  *  2008/01/09    1.0   Y.Kanami         新規作成
  *  2008/11/11    1.1   N.Fukuda         統合指摘#589対応
+ *  2009/04/03    1.2   A.Shiina         本番#432対応
  *****************************************************************************************/
 --
 --#######################  固定グローバル定数宣言部 START   #######################
@@ -115,6 +116,10 @@ AS
   gv_tkn_key          CONSTANT VARCHAR2(100) := 'KEY';              -- トークン：KEY
   gv_tkn_ng_profile   CONSTANT VARCHAR2(100) := 'NG_PROFILE';       -- トークン：NG_PROFILE
 --
+-- 2009/04/03 v1.2 ADD START
+  gv_on               CONSTANT VARCHAR2(1) := '1';                  -- 変更フラグ：変更あり
+--
+-- 2009/04/03 v1.2 ADD END
   -- ===============================
   -- ユーザー定義グローバル型
   -- ===============================
@@ -1658,6 +1663,10 @@ AS
                                         -- 運送費
           ,   leaf_consolid_add       = NVL(leaf_consolid_add_upd_tab(ln_cnt), 0)
                                         -- リーフ混載割増
+-- 2009/04/03 v1.2 ADD START
+          ,   change_flg              = gv_on
+                                        -- 変更フラグ
+-- 2009/04/03 v1.2 ADD END
           ,   last_updated_by         = FND_GLOBAL.USER_ID
                                         -- 最終更新者
           ,   last_update_date        = SYSDATE
@@ -1972,6 +1981,10 @@ AS
         UPDATE  xxwip_delivery_charges xdc -- 運賃アドオンマスタ
           SET   end_date_active             = end_date_active_tab(ln_upd_cnt)
                                               -- 適用終了日
+-- 2009/04/03 v1.2 ADD START
+            ,   change_flg                  = gv_on
+                                              -- 変更フラグ
+-- 2009/04/03 v1.2 ADD END
             ,   last_updated_by             = FND_GLOBAL.USER_ID
                                               -- 最終更新者
             ,   last_update_date            = SYSDATE

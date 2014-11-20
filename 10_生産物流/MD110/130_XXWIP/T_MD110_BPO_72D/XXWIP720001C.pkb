@@ -7,7 +7,7 @@ AS
  * Description      : 配送距離アドオンマスタ取込処理
  * MD.050           : 運賃計算（マスタ） T_MD050_BPO_720
  * MD.070           : 配送距離アドオンマスタ取込処理(72D) T_MD070_BPO_72D
- * Version          : 1.1
+ * Version          : 1.2
  *
  * Program List
  * --------------------------- ----------------------------------------------------------
@@ -35,6 +35,7 @@ AS
  * ------------- ----- ---------------- -------------------------------------------------
  *  2007/12/12    1.0   H.Itou           新規作成
  *  2008/09/02    1.1   A.Shiina         内部変更要求#204対応
+ *  2009/04/03    1.2   A.Shiina         本番#432対応
  *
  *****************************************************************************************/
 --
@@ -133,6 +134,10 @@ AS
   gv_code_type_customer         CONSTANT VARCHAR2(1) := '2';  -- コード区分：2(取引先)
   gv_code_type_delivery         CONSTANT VARCHAR2(1) := '3';  -- コード区分：3(配送先)
 --
+-- 2009/04/03 v1.2 ADD START
+  gv_on                         CONSTANT VARCHAR2(1) := '1';  -- 変更フラグ：変更あり
+--
+-- 2009/04/03 v1.2 ADD END
   -- ===============================
   -- ユーザー定義グローバル型
   -- ===============================
@@ -1968,6 +1973,9 @@ AS
             ,xdd.area_a                 = area_a_upd_tab(ln_cnt_loop)                  -- エリアA
             ,xdd.area_b                 = area_b_upd_tab(ln_cnt_loop)                  -- エリアB
             ,xdd.area_c                 = area_c_upd_tab(ln_cnt_loop)                  -- エリアC
+-- 2009/04/03 v1.2 ADD START
+            ,xdd.change_flg             = gv_on                                        -- 変更フラグ
+-- 2009/04/03 v1.2 ADD END
             ,xdd.last_updated_by        = FND_GLOBAL.USER_ID                           -- 最終更新者
             ,xdd.last_update_date       = SYSDATE                                      -- 最終更新日
             ,xdd.last_update_login      = FND_GLOBAL.LOGIN_ID                          -- 最終更新ログイン
@@ -2226,6 +2234,9 @@ AS
     FORALL ln_cnt_loop IN 1 .. delivery_company_code_tab.COUNT
       UPDATE xxwip_delivery_distance  xdd   -- 配送距離アドオンマスタ
       SET    xdd.end_date_active        = end_date_active_tab(ln_cnt_loop)      -- 適用終了日
+-- 2009/04/03 v1.2 ADD START
+            ,xdd.change_flg             = gv_on                                 -- 変更フラグ
+-- 2009/04/03 v1.2 ADD END
             ,xdd.last_updated_by        = FND_GLOBAL.USER_ID                    -- 最終更新者
             ,xdd.last_update_date       = SYSDATE                               -- 最終更新日
             ,xdd.last_update_login      = FND_GLOBAL.LOGIN_ID                   -- 最終更新ログイン
