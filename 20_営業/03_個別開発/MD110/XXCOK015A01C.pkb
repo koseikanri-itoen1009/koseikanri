@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCOK015A01C(body)
  * Description      : 営業システム構築プロジェクト
  * MD.050           : EDIシステムにてイセトー社へ送信する支払案内書(圧着はがき)用データファイル作成
- * Version          : 1.3
+ * Version          : 1.4
  *
  * Program List
  * --------------------------- ----------------------------------------------------------
@@ -32,6 +32,7 @@ AS
  *  2009/02/06    1.1   K.Iwabuchi       [障害COK_014] クイックコードビュー有効判定追加、ディレクトリパス取得変更対応
  *  2009/02/20    1.2   K.Iwabuchi       [障害COK_050] 仕入先サイト無効日判定追加
  *  2009/05/22    1.3   M.Hiruta         [障害T1_1144] フッタレコード作成時にデータ種コードを使用するよう変更
+ *  2009/07/01    1.4   M.Hiruta         [障害0000289] パフォーマンス向上のためデータ抽出方法を変更
  *
  *****************************************************************************************/
   -- ===============================================
@@ -267,8 +268,10 @@ AS
     AND    ( abaua.start_date               <= gd_process_date OR abaua.start_date IS NULL )
     AND    ( abaua.end_date                 >= gd_process_date OR abaua.end_date   IS NULL )
     ORDER BY pvsa.zip;
-  TYPE g_bm_data_ttype IS TABLE OF g_bm_data_cur%ROWTYPE INDEX BY BINARY_INTEGER;
-  g_bm_data_tab g_bm_data_ttype;
+-- Start 2009/07/01 Ver_1.4 0000289 M.Hiruta
+--  TYPE g_bm_data_ttype IS TABLE OF g_bm_data_cur%ROWTYPE INDEX BY BINARY_INTEGER;
+--  g_bm_data_tab g_bm_data_ttype;
+-- End   2009/07/01 Ver_1.4 0000289 M.Hiruta
   -- ===============================================
   -- 共通例外
   -- ===============================================
@@ -420,10 +423,16 @@ AS
    * Description      : 連携対象データ更新(A-7)
    ***********************************************************************************/
   PROCEDURE update_bm_data(
-    ov_errbuf   OUT VARCHAR2
-  , ov_retcode  OUT VARCHAR2
-  , ov_errmsg   OUT VARCHAR2
-  , in_index    IN  NUMBER
+-- Start 2009/07/01 Ver_1.4 0000289 M.Hiruta
+--    ov_errbuf   OUT VARCHAR2
+--  , ov_retcode  OUT VARCHAR2
+--  , ov_errmsg   OUT VARCHAR2
+--  , in_index    IN  NUMBER
+    ov_errbuf      OUT VARCHAR2
+  , ov_retcode     OUT VARCHAR2
+  , ov_errmsg      OUT VARCHAR2
+  , it_bm_data_rec  IN g_bm_data_cur%ROWTYPE
+-- End   2009/07/01 Ver_1.4 0000289 M.Hiruta
   )
   IS
     -- ===============================================
@@ -445,7 +454,10 @@ AS
     IS
       SELECT 'X'
       FROM   xxcok_backmargin_balance  xbb
-      WHERE  xbb.supplier_code         = g_bm_data_tab( in_index ).supplier_code
+-- Start 2009/07/01 Ver_1.4 0000289 M.Hiruta
+--      WHERE  xbb.supplier_code         = g_bm_data_tab( in_index ).supplier_code
+      WHERE  xbb.supplier_code         = it_bm_data_rec.supplier_code
+-- End   2009/07/01 Ver_1.4 0000289 M.Hiruta
       AND    xbb.edi_interface_status  = cv_edi_if_status_0
       AND    xbb.resv_flag             IS NULL
       FOR UPDATE OF xbb.bm_balance_id NOWAIT;
@@ -464,7 +476,10 @@ AS
     -- 販手残高テーブル更新
     -- ===============================================
     UPDATE xxcok_backmargin_balance xbb
-    SET    xbb.publication_date        = g_bm_data_tab( in_index ).expect_payment_date  -- 案内書発効日
+-- Start 2009/07/01 Ver_1.4 0000289 M.Hiruta
+--    SET    xbb.publication_date        = g_bm_data_tab( in_index ).expect_payment_date  -- 案内書発効日
+    SET    xbb.publication_date        = it_bm_data_rec.expect_payment_date              -- 案内書発効日
+-- End   2009/07/01 Ver_1.4 0000289 M.Hiruta
          , xbb.edi_interface_date      = gd_process_date                                -- 連携日（EDI支払案内書）
          , xbb.edi_interface_status    = cv_edi_if_status_1                             -- 連携ステータス（EDI支払案内書）
          , xbb.last_updated_by         = cn_last_updated_by
@@ -474,7 +489,10 @@ AS
          , xbb.program_application_id  = cn_program_application_id
          , xbb.program_id              = cn_program_id
          , xbb.program_update_date     = SYSDATE
-    WHERE  xbb.supplier_code           = g_bm_data_tab( in_index ).supplier_code
+-- Start 2009/07/01 Ver_1.4 0000289 M.Hiruta
+--    WHERE  xbb.supplier_code           = g_bm_data_tab( in_index ).supplier_code
+    WHERE  xbb.supplier_code           = it_bm_data_rec.supplier_code
+-- End   2009/07/01 Ver_1.4 0000289 M.Hiruta
     AND    xbb.edi_interface_status    = cv_edi_if_status_0
     AND    xbb.resv_flag               IS NULL;
   EXCEPTION
@@ -507,10 +525,16 @@ AS
    * Description      : 連携データファイル作成(A-6)
    ***********************************************************************************/
   PROCEDURE file_output(
-    ov_errbuf   OUT VARCHAR2
-  , ov_retcode  OUT VARCHAR2
-  , ov_errmsg   OUT VARCHAR2
-  , in_index    IN  NUMBER
+-- Start 2009/07/01 Ver_1.4 0000289 M.Hiruta
+--    ov_errbuf   OUT VARCHAR2
+--  , ov_retcode  OUT VARCHAR2
+--  , ov_errmsg   OUT VARCHAR2
+--  , in_index    IN  NUMBER
+    ov_errbuf      OUT VARCHAR2
+  , ov_retcode     OUT VARCHAR2
+  , ov_errmsg      OUT VARCHAR2
+  , it_bm_data_rec  IN g_bm_data_cur%ROWTYPE
+-- End   2009/07/01 Ver_1.4 0000289 M.Hiruta
   )
   IS
     -- ===============================================
@@ -692,57 +716,129 @@ AS
     -- カウンタ
     -- ===============================================
     gn_cnt := gn_cnt + cn_number_1;
+-- Start 2009/07/01 Ver_1.4 0000289 M.Hiruta
+--    -- ===============================================
+--    -- 変数にデータ格納
+--    -- ===============================================
+--    lv_if_data           :=  gv_if_data;        -- レコード区分
+--    lv_data_class        :=  gv_i_data_class;   -- データ種別
+--    lv_cust_code         :=  LPAD( g_bm_data_tab( in_index ).supplier_code, 9, cv_0 );                             -- 顧客コード
+--    lv_counter           :=  LPAD( TO_CHAR( gn_cnt ), 5, cv_0 );                                                   -- カウンタ
+--    lv_cust_name1        :=  SUBSTRB( RPAD( g_bm_data_tab( in_index ).vendor_name, 30, cv_space ) , 1, 30 );       -- 顧客名１
+--    lv_cust_name2        :=  SUBSTRB( RPAD( g_bm_data_tab( in_index ).vendor_name, 30, cv_space ) , 1, 30 );       -- 顧客名２
+--    lv_atena1            :=  SUBSTRB( RPAD( g_bm_data_tab( in_index ).vendor_name, 30, cv_space ) , 1, 30 );       -- 宛名１
+--    lv_atena2            :=  SUBSTRB( RPAD( g_bm_data_tab( in_index ).vendor_name, 30, cv_space ) , 1, 30 );       -- 宛名２
+--    lv_zip               :=  RPAD( NVL( g_bm_data_tab( in_index ).zip, cv_space ), 8, cv_space );                  -- 郵便番号
+--    lv_address1          :=  SUBSTRB( RPAD( NVL( g_bm_data_tab( in_index ).address1, cv_space ), 30, cv_space ) , 1, 30 );      -- 住所１
+--    lv_address2          :=  SUBSTRB( RPAD( NVL( g_bm_data_tab( in_index ).address2, cv_space ), 30, cv_space ) , 1, 30 );      -- 住所２
+--    lv_base_name         :=  SUBSTRB( RPAD( NVL( g_bm_data_tab( in_index ).base_name, cv_space ), 20, cv_space ) , 1, 20 );     -- 拠点名
+--    lv_base_address      :=  SUBSTRB( RPAD( NVL( g_bm_data_tab( in_index ).base_address, cv_space ), 60, cv_space ) , 1, 60 );  -- 拠点住所
+--    lv_base_postal_code  :=  RPAD( NVL( g_bm_data_tab( in_index ).base_postal_code, cv_space ), 8, cv_space );     -- 拠点郵便番号
+--    lv_base_phone        :=  RPAD( NVL( g_bm_data_tab( in_index ).base_phone, cv_space ), 15, cv_space );          -- 拠点電話番号
+--    lv_years             :=  g_bm_data_tab( in_index ).years;                -- 年月分
+--    lv_payment_date      :=  g_bm_data_tab( in_index ).payment_month_date;   -- 支払日
+--    lv_bank_code         :=  LPAD( NVL( g_bm_data_tab( in_index ).bank_number, cv_0 ), 4, cv_0 );                  -- 銀行コード
+--    lv_bank_name         :=  SUBSTRB( RPAD( g_bm_data_tab( in_index ).bank_name, 20, cv_space ) , 1, 20 );         -- 銀行名
+--    lv_branch_code       :=  LPAD( NVL( g_bm_data_tab( in_index ).bank_num, cv_0 ), 4, cv_0 );                     -- 支店コード
+--    lv_branch_name       :=  SUBSTRB( RPAD( g_bm_data_tab( in_index ).bank_branch_name, 20, cv_space ) , 1, 20 );  -- 支店名
+--    lv_account_type      :=  SUBSTRB( RPAD( lv_account_type, 8, cv_asterisk ) , 1, 8 );                            -- 口座種類
+--    lv_account_number    :=  SUBSTRB( RPAD( lv_account_number, 8, cv_asterisk_half ) , 1, 8 );                     -- 口座番号
+--    lv_account_name      :=  SUBSTRB( RPAD( lv_account_name, 40, cv_asterisk_half ) , 1, 40 );                     -- 口座名
+--    lv_selling_amt_tax   :=  LPAD( NVL( TO_CHAR( g_bm_data_tab( in_index ).selling_amt_tax ), cv_0 ), 11, cv_0 );  -- 販売金額合計
+--    -- 販売手数料が0の場合、1に電気料をセットし2は未設定
+--    IF ( g_bm_data_tab( in_index ).backmargin = cn_number_0 ) THEN
+--      lv_total_prompt1   :=  SUBSTRB( RPAD( gv_prompt_ep, 20, cv_space ) , 1, 20 );                             -- 合計見出し1(電気)
+--      lv_total_bm1       :=  LPAD( NVL( TO_CHAR( g_bm_data_tab( in_index ).electric_amt ), cv_0 ), 11, cv_0 );  -- 合計手数料1
+--      lv_total_prompt2   :=  RPAD( lv_dummy_v, 20, cv_space );        -- 合計見出し2
+--      lv_total_bm2       :=  LPAD( lv_dummy_n, 11, cv_0 );            -- 合計手数料2
+--    ELSE
+--      lv_total_prompt1   :=  SUBSTRB( RPAD( gv_prompt_bm, 20, cv_space ) , 1, 20 );                             -- 合計見出し1(販売手数料)
+--      lv_total_bm1       :=  LPAD( NVL( TO_CHAR( g_bm_data_tab( in_index ).backmargin ), cv_0 ), 11, cv_0 );    -- 合計手数料1
+--      -- 電気料が0の場合、2は未設定
+--      IF ( g_bm_data_tab( in_index ).electric_amt = cn_number_0 ) THEN
+--        lv_total_prompt2 :=  RPAD( lv_dummy_v, 20, cv_space );        -- 合計見出し2
+--        lv_total_bm2     :=  LPAD( lv_dummy_n, 11, cv_0 );            -- 合計手数料2
+--      ELSE
+--        lv_total_prompt2 :=  SUBSTRB( RPAD( gv_prompt_ep, 20, cv_space ) , 1, 20 );                             -- 合計見出し2(電気)
+--        lv_total_bm2     :=  LPAD( NVL( TO_CHAR( g_bm_data_tab( in_index ).electric_amt ), cv_0 ), 11, cv_0 );  -- 合計手数料2
+--      END IF;
+--    END IF;
+--    lv_total_prompt3     :=  RPAD( lv_dummy_v, 20, cv_space );        -- 合計見出し3
+--    lv_total_bm3         :=  LPAD( lv_dummy_n, 11, cv_0 );            -- 合計手数料3
+--    lv_total_prompt4     :=  RPAD( lv_dummy_v, 20, cv_space );        -- 合計見出し4
+--    lv_total_bm4         :=  LPAD( lv_dummy_n, 11, cv_0 );            -- 合計手数料4
+--    lv_total_bm          :=  LPAD( NVL( TO_CHAR( g_bm_data_tab( in_index ).expect_payment_amt_tax ), cv_0 ), 11, cv_0 );  -- 合計販売手数料
+--    lv_dtl_prompt1       :=  RPAD( lv_dummy_v, 12, cv_space );        -- 明細見出し1
+--    lv_dtl_sell_amt1     :=  LPAD( lv_dummy_n, 11, cv_0 );            -- 販売金額1
+--    lv_dtl_sell_qty1     :=  LPAD( lv_dummy_n, 11, cv_0 );            -- 販売本数1
+--    lv_dtl_bm1           :=  LPAD( lv_dummy_n, 4, cv_0 );             -- BM1
+--    lv_dtl_unit_bm1      :=  RPAD( lv_dummy_v, 2, cv_space );         -- BM単位1
+--    lv_dtl_total_bm1     :=  LPAD( lv_dummy_n, 11, cv_0 );            -- 販売手数料1
+--    lv_dtl_prompt2       :=  RPAD( lv_dummy_v, 12, cv_space );        -- 明細見出し2
+--    lv_dtl_sell_amt2     :=  LPAD( lv_dummy_n, 11, cv_0 );            -- 販売金額2
+--    lv_dtl_sell_qty2     :=  LPAD( lv_dummy_n, 11, cv_0 );            -- 販売本数2
+--    lv_dtl_bm2           :=  LPAD( lv_dummy_n, 4, cv_0 );             -- BM2
+--    lv_dtl_unit_bm2      :=  RPAD( lv_dummy_v, 2, cv_space );         -- BM単位2
+--    lv_dtl_total_bm2     :=  LPAD( lv_dummy_n, 11, cv_0 );            -- 販売手数料2
+--    lv_dtl_prompt3       :=  RPAD( lv_dummy_v, 12, cv_space );        -- 明細見出し3
+--    lv_dtl_sell_amt3     :=  LPAD( lv_dummy_n, 11, cv_0 );            -- 販売金額3
+--    lv_dtl_sell_qty3     :=  LPAD( lv_dummy_n, 11, cv_0 );            -- 販売本数3
+--    lv_dtl_bm3           :=  LPAD( lv_dummy_n, 4, cv_0 );             -- BM3
+--    lv_dtl_unit_bm3      :=  RPAD( lv_dummy_v, 2, cv_space );         -- BM単位3
+--    lv_dtl_total_bm3     :=  LPAD( lv_dummy_n, 11, cv_0 );            -- 販売手数料3
+--    lv_jpn_calendar      :=  g_bm_data_tab( in_index ).jpn_calendar;  -- 年号
+--    lv_reserve           :=  RPAD( lv_dummy_v, 53, cv_space );        -- 予備
     -- ===============================================
     -- 変数にデータ格納
     -- ===============================================
     lv_if_data           :=  gv_if_data;        -- レコード区分
     lv_data_class        :=  gv_i_data_class;   -- データ種別
-    lv_cust_code         :=  LPAD( g_bm_data_tab( in_index ).supplier_code, 9, cv_0 );                             -- 顧客コード
-    lv_counter           :=  LPAD( TO_CHAR( gn_cnt ), 5, cv_0 );                                                   -- カウンタ
-    lv_cust_name1        :=  SUBSTRB( RPAD( g_bm_data_tab( in_index ).vendor_name, 30, cv_space ) , 1, 30 );       -- 顧客名１
-    lv_cust_name2        :=  SUBSTRB( RPAD( g_bm_data_tab( in_index ).vendor_name, 30, cv_space ) , 1, 30 );       -- 顧客名２
-    lv_atena1            :=  SUBSTRB( RPAD( g_bm_data_tab( in_index ).vendor_name, 30, cv_space ) , 1, 30 );       -- 宛名１
-    lv_atena2            :=  SUBSTRB( RPAD( g_bm_data_tab( in_index ).vendor_name, 30, cv_space ) , 1, 30 );       -- 宛名２
-    lv_zip               :=  RPAD( NVL( g_bm_data_tab( in_index ).zip, cv_space ), 8, cv_space );                  -- 郵便番号
-    lv_address1          :=  SUBSTRB( RPAD( NVL( g_bm_data_tab( in_index ).address1, cv_space ), 30, cv_space ) , 1, 30 );      -- 住所１
-    lv_address2          :=  SUBSTRB( RPAD( NVL( g_bm_data_tab( in_index ).address2, cv_space ), 30, cv_space ) , 1, 30 );      -- 住所２
-    lv_base_name         :=  SUBSTRB( RPAD( NVL( g_bm_data_tab( in_index ).base_name, cv_space ), 20, cv_space ) , 1, 20 );     -- 拠点名
-    lv_base_address      :=  SUBSTRB( RPAD( NVL( g_bm_data_tab( in_index ).base_address, cv_space ), 60, cv_space ) , 1, 60 );  -- 拠点住所
-    lv_base_postal_code  :=  RPAD( NVL( g_bm_data_tab( in_index ).base_postal_code, cv_space ), 8, cv_space );     -- 拠点郵便番号
-    lv_base_phone        :=  RPAD( NVL( g_bm_data_tab( in_index ).base_phone, cv_space ), 15, cv_space );          -- 拠点電話番号
-    lv_years             :=  g_bm_data_tab( in_index ).years;                -- 年月分
-    lv_payment_date      :=  g_bm_data_tab( in_index ).payment_month_date;   -- 支払日
-    lv_bank_code         :=  LPAD( NVL( g_bm_data_tab( in_index ).bank_number, cv_0 ), 4, cv_0 );                  -- 銀行コード
-    lv_bank_name         :=  SUBSTRB( RPAD( g_bm_data_tab( in_index ).bank_name, 20, cv_space ) , 1, 20 );         -- 銀行名
-    lv_branch_code       :=  LPAD( NVL( g_bm_data_tab( in_index ).bank_num, cv_0 ), 4, cv_0 );                     -- 支店コード
-    lv_branch_name       :=  SUBSTRB( RPAD( g_bm_data_tab( in_index ).bank_branch_name, 20, cv_space ) , 1, 20 );  -- 支店名
-    lv_account_type      :=  SUBSTRB( RPAD( lv_account_type, 8, cv_asterisk ) , 1, 8 );                            -- 口座種類
-    lv_account_number    :=  SUBSTRB( RPAD( lv_account_number, 8, cv_asterisk_half ) , 1, 8 );                     -- 口座番号
-    lv_account_name      :=  SUBSTRB( RPAD( lv_account_name, 40, cv_asterisk_half ) , 1, 40 );                     -- 口座名
-    lv_selling_amt_tax   :=  LPAD( NVL( TO_CHAR( g_bm_data_tab( in_index ).selling_amt_tax ), cv_0 ), 11, cv_0 );  -- 販売金額合計
+    lv_cust_code         :=  LPAD( it_bm_data_rec.supplier_code, 9, cv_0 );                             -- 顧客コード
+    lv_counter           :=  LPAD( TO_CHAR( gn_cnt ), 5, cv_0 );                                       -- カウンタ
+    lv_cust_name1        :=  SUBSTRB( RPAD( it_bm_data_rec.vendor_name, 30, cv_space ) , 1, 30 );       -- 顧客名１
+    lv_cust_name2        :=  SUBSTRB( RPAD( it_bm_data_rec.vendor_name, 30, cv_space ) , 1, 30 );       -- 顧客名２
+    lv_atena1            :=  SUBSTRB( RPAD( it_bm_data_rec.vendor_name, 30, cv_space ) , 1, 30 );       -- 宛名１
+    lv_atena2            :=  SUBSTRB( RPAD( it_bm_data_rec.vendor_name, 30, cv_space ) , 1, 30 );       -- 宛名２
+    lv_zip               :=  RPAD( NVL( it_bm_data_rec.zip, cv_space ), 8, cv_space );                  -- 郵便番号
+    lv_address1          :=  SUBSTRB( RPAD( NVL( it_bm_data_rec.address1, cv_space ), 30, cv_space ) , 1, 30 );      -- 住所１
+    lv_address2          :=  SUBSTRB( RPAD( NVL( it_bm_data_rec.address2, cv_space ), 30, cv_space ) , 1, 30 );      -- 住所２
+    lv_base_name         :=  SUBSTRB( RPAD( NVL( it_bm_data_rec.base_name, cv_space ), 20, cv_space ) , 1, 20 );     -- 拠点名
+    lv_base_address      :=  SUBSTRB( RPAD( NVL( it_bm_data_rec.base_address, cv_space ), 60, cv_space ) , 1, 60 );  -- 拠点住所
+    lv_base_postal_code  :=  RPAD( NVL( it_bm_data_rec.base_postal_code, cv_space ), 8, cv_space );     -- 拠点郵便番号
+    lv_base_phone        :=  RPAD( NVL( it_bm_data_rec.base_phone, cv_space ), 15, cv_space );          -- 拠点電話番号
+    lv_years             :=  it_bm_data_rec.years;                -- 年月分
+    lv_payment_date      :=  it_bm_data_rec.payment_month_date;   -- 支払日
+    lv_bank_code         :=  LPAD( NVL( it_bm_data_rec.bank_number, cv_0 ), 4, cv_0 );                  -- 銀行コード
+    lv_bank_name         :=  SUBSTRB( RPAD( it_bm_data_rec.bank_name, 20, cv_space ) , 1, 20 );         -- 銀行名
+    lv_branch_code       :=  LPAD( NVL( it_bm_data_rec.bank_num, cv_0 ), 4, cv_0 );                     -- 支店コード
+    lv_branch_name       :=  SUBSTRB( RPAD( it_bm_data_rec.bank_branch_name, 20, cv_space ) , 1, 20 );  -- 支店名
+    lv_account_type      :=  SUBSTRB( RPAD( lv_account_type, 8, cv_asterisk ) , 1, 8 );                -- 口座種類
+    lv_account_number    :=  SUBSTRB( RPAD( lv_account_number, 8, cv_asterisk_half ) , 1, 8 );         -- 口座番号
+    lv_account_name      :=  SUBSTRB( RPAD( lv_account_name, 40, cv_asterisk_half ) , 1, 40 );         -- 口座名
+    lv_selling_amt_tax   :=  LPAD( NVL( TO_CHAR( it_bm_data_rec.selling_amt_tax ), cv_0 ), 11, cv_0 );  -- 販売金額合計
     -- 販売手数料が0の場合、1に電気料をセットし2は未設定
-    IF ( g_bm_data_tab( in_index ).backmargin = cn_number_0 ) THEN
-      lv_total_prompt1   :=  SUBSTRB( RPAD( gv_prompt_ep, 20, cv_space ) , 1, 20 );                             -- 合計見出し1(電気)
-      lv_total_bm1       :=  LPAD( NVL( TO_CHAR( g_bm_data_tab( in_index ).electric_amt ), cv_0 ), 11, cv_0 );  -- 合計手数料1
+    IF ( it_bm_data_rec.backmargin = cn_number_0 ) THEN
+      lv_total_prompt1   :=  SUBSTRB( RPAD( gv_prompt_ep, 20, cv_space ) , 1, 20 );                    -- 合計見出し1(電気)
+      lv_total_bm1       :=  LPAD( NVL( TO_CHAR( it_bm_data_rec.electric_amt ), cv_0 ), 11, cv_0 );     -- 合計手数料1
       lv_total_prompt2   :=  RPAD( lv_dummy_v, 20, cv_space );        -- 合計見出し2
       lv_total_bm2       :=  LPAD( lv_dummy_n, 11, cv_0 );            -- 合計手数料2
     ELSE
-      lv_total_prompt1   :=  SUBSTRB( RPAD( gv_prompt_bm, 20, cv_space ) , 1, 20 );                             -- 合計見出し1(販売手数料)
-      lv_total_bm1       :=  LPAD( NVL( TO_CHAR( g_bm_data_tab( in_index ).backmargin ), cv_0 ), 11, cv_0 );    -- 合計手数料1
+      lv_total_prompt1   :=  SUBSTRB( RPAD( gv_prompt_bm, 20, cv_space ) , 1, 20 );                    -- 合計見出し1(販売手数料)
+      lv_total_bm1       :=  LPAD( NVL( TO_CHAR( it_bm_data_rec.backmargin ), cv_0 ), 11, cv_0 );       -- 合計手数料1
       -- 電気料が0の場合、2は未設定
-      IF ( g_bm_data_tab( in_index ).electric_amt = cn_number_0 ) THEN
+      IF ( it_bm_data_rec.electric_amt = cn_number_0 ) THEN
         lv_total_prompt2 :=  RPAD( lv_dummy_v, 20, cv_space );        -- 合計見出し2
         lv_total_bm2     :=  LPAD( lv_dummy_n, 11, cv_0 );            -- 合計手数料2
       ELSE
-        lv_total_prompt2 :=  SUBSTRB( RPAD( gv_prompt_ep, 20, cv_space ) , 1, 20 );                             -- 合計見出し2(電気)
-        lv_total_bm2     :=  LPAD( NVL( TO_CHAR( g_bm_data_tab( in_index ).electric_amt ), cv_0 ), 11, cv_0 );  -- 合計手数料2
+        lv_total_prompt2 :=  SUBSTRB( RPAD( gv_prompt_ep, 20, cv_space ) , 1, 20 );                    -- 合計見出し2(電気)
+        lv_total_bm2     :=  LPAD( NVL( TO_CHAR( it_bm_data_rec.electric_amt ), cv_0 ), 11, cv_0 );     -- 合計手数料2
       END IF;
     END IF;
     lv_total_prompt3     :=  RPAD( lv_dummy_v, 20, cv_space );        -- 合計見出し3
     lv_total_bm3         :=  LPAD( lv_dummy_n, 11, cv_0 );            -- 合計手数料3
     lv_total_prompt4     :=  RPAD( lv_dummy_v, 20, cv_space );        -- 合計見出し4
     lv_total_bm4         :=  LPAD( lv_dummy_n, 11, cv_0 );            -- 合計手数料4
-    lv_total_bm          :=  LPAD( NVL( TO_CHAR( g_bm_data_tab( in_index ).expect_payment_amt_tax ), cv_0 ), 11, cv_0 );  -- 合計販売手数料
+    lv_total_bm          :=  LPAD( NVL( TO_CHAR( it_bm_data_rec.expect_payment_amt_tax ), cv_0 ), 11, cv_0 );  -- 合計販売手数料
     lv_dtl_prompt1       :=  RPAD( lv_dummy_v, 12, cv_space );        -- 明細見出し1
     lv_dtl_sell_amt1     :=  LPAD( lv_dummy_n, 11, cv_0 );            -- 販売金額1
     lv_dtl_sell_qty1     :=  LPAD( lv_dummy_n, 11, cv_0 );            -- 販売本数1
@@ -761,8 +857,9 @@ AS
     lv_dtl_bm3           :=  LPAD( lv_dummy_n, 4, cv_0 );             -- BM3
     lv_dtl_unit_bm3      :=  RPAD( lv_dummy_v, 2, cv_space );         -- BM単位3
     lv_dtl_total_bm3     :=  LPAD( lv_dummy_n, 11, cv_0 );            -- 販売手数料3
-    lv_jpn_calendar      :=  g_bm_data_tab( in_index ).jpn_calendar;  -- 年号
+    lv_jpn_calendar      :=  it_bm_data_rec.jpn_calendar;  -- 年号
     lv_reserve           :=  RPAD( lv_dummy_v, 53, cv_space );        -- 予備
+-- End   2009/07/01 Ver_1.4 0000289 M.Hiruta
     -- ===============================================
     -- ファイル出力データ格納
     -- ===============================================
@@ -852,15 +949,487 @@ AS
       ov_retcode := cv_status_error;
   END file_output;
 --
+-- Start 2009/07/01 Ver_1.4 0000289 M.Hiruta
+--  /**********************************************************************************
+--   * Procedure Name   : check_bm_data
+--   * Description      : 連携データ妥当性チェック(A-5)
+--   ***********************************************************************************/
+--  PROCEDURE check_bm_data(
+--    ov_errbuf   OUT VARCHAR2
+--  , ov_retcode  OUT VARCHAR2
+--  , ov_errmsg   OUT VARCHAR2
+--  , in_index    IN  NUMBER
+--  )
+--  IS
+--    -- ===============================================
+--    -- ローカル定数
+--    -- ===============================================
+--    cv_prg_name    CONSTANT VARCHAR2(20) := 'check_bm_data';  -- プログラム名
+--    -- ===============================================
+--    -- ローカル変数
+--    -- ===============================================
+--    lv_errbuf       VARCHAR2(5000) DEFAULT NULL;              -- エラー・メッセージ
+--    lv_retcode      VARCHAR2(1)    DEFAULT cv_status_normal;  -- リターン・コード
+--    lv_errmsg       VARCHAR2(5000) DEFAULT NULL;              -- ユーザー・エラー・メッセージ
+--    lv_outmsg       VARCHAR2(5000) DEFAULT NULL;              -- 出力用メッセージ
+--    lb_msg_return   BOOLEAN        DEFAULT TRUE;              -- メッセージ関数戻り値用
+--    lb_chk_return   BOOLEAN        DEFAULT TRUE;              -- チェック結果戻り値用
+--    ln_chk_length   NUMBER         DEFAULT 0;                 -- 数値桁数チェック用
+----
+--  BEGIN
+--    -- ===============================================
+--    -- ステータス初期化
+--    -- ===============================================
+--    ov_retcode := cv_status_normal;
+--    -- ===============================================
+--    -- 仕入先名 全角チェック(顧客名１・顧客名２・宛名1・宛名2)
+--    -- ===============================================
+--    lb_chk_return := xxccp_common_pkg.chk_double_byte(
+--                       iv_chk_char  => g_bm_data_tab( in_index ).vendor_name
+--                     );
+--    IF ( lb_chk_return = FALSE ) THEN
+--      lv_outmsg       := xxccp_common_pkg.get_msg(
+--                           iv_application   => cv_appli_short_name_xxcok
+--                         , iv_name          => cv_msg_xxcok1_10430
+--                         , iv_token_name1   => cv_token_conn_loc
+--                         , iv_token_value1  => g_bm_data_tab( in_index ).base_charge
+--                         , iv_token_name2   => cv_token_vendor_code
+--                         , iv_token_value2  => g_bm_data_tab( in_index ).supplier_code
+--                         );
+--      lb_msg_return   := xxcok_common_pkg.put_message_f(
+--                           in_which         => FND_FILE.OUTPUT
+--                         , iv_message       => lv_outmsg
+--                         , in_new_line      => cn_number_0
+--                         );
+--      ov_retcode := cv_status_warn;
+--    END IF;
+--    -- ===============================================
+--    -- 住所1 全角チェック
+--    -- ===============================================
+--    lb_chk_return := xxccp_common_pkg.chk_double_byte(
+--                       iv_chk_char  => g_bm_data_tab( in_index ).address1
+--                     );
+--    IF ( lb_chk_return = FALSE ) THEN
+--      lv_outmsg       := xxccp_common_pkg.get_msg(
+--                           iv_application   => cv_appli_short_name_xxcok
+--                         , iv_name          => cv_msg_xxcok1_10431
+--                         , iv_token_name1   => cv_token_conn_loc
+--                         , iv_token_value1  => g_bm_data_tab( in_index ).base_charge
+--                         , iv_token_name2   => cv_token_vendor_code
+--                         , iv_token_value2  => g_bm_data_tab( in_index ).supplier_code
+--                         );
+--      lb_msg_return   := xxcok_common_pkg.put_message_f(
+--                           in_which         => FND_FILE.OUTPUT
+--                         , iv_message       => lv_outmsg
+--                         , in_new_line      => cn_number_0
+--                         );
+--      ov_retcode := cv_status_warn;
+--    END IF;
+--    -- ===============================================
+--    -- 住所2 全角チェック
+--    -- ===============================================
+--    lb_chk_return := xxccp_common_pkg.chk_double_byte(
+--                       iv_chk_char  => g_bm_data_tab( in_index ).address2
+--                     );
+--    IF ( lb_chk_return = FALSE ) THEN
+--      lv_outmsg       := xxccp_common_pkg.get_msg(
+--                           iv_application   => cv_appli_short_name_xxcok
+--                         , iv_name          => cv_msg_xxcok1_10431
+--                         , iv_token_name1   => cv_token_conn_loc
+--                         , iv_token_value1  => g_bm_data_tab( in_index ).base_charge
+--                         , iv_token_name2   => cv_token_vendor_code
+--                         , iv_token_value2  => g_bm_data_tab( in_index ).supplier_code
+--                         );
+--      lb_msg_return   := xxcok_common_pkg.put_message_f(
+--                           in_which         => FND_FILE.OUTPUT
+--                         , iv_message       => lv_outmsg
+--                         , in_new_line      => cn_number_0
+--                         );
+--      ov_retcode := cv_status_warn;
+--    END IF;
+--    -- ===============================================
+--    -- 拠点名 全角チェック
+--    -- ===============================================
+--    lb_chk_return := xxccp_common_pkg.chk_double_byte(
+--                       iv_chk_char  => g_bm_data_tab( in_index ).base_name
+--                     );
+--    IF ( lb_chk_return = FALSE ) THEN
+--      lv_outmsg       := xxccp_common_pkg.get_msg(
+--                           iv_application   => cv_appli_short_name_xxcok
+--                         , iv_name          => cv_msg_xxcok1_10432
+--                         , iv_token_name1   => cv_token_conn_loc
+--                         , iv_token_value1  => g_bm_data_tab( in_index ).base_charge
+--                         , iv_token_name2   => cv_token_vendor_code
+--                         , iv_token_value2  => g_bm_data_tab( in_index ).supplier_code
+--                         );
+--      lb_msg_return   := xxcok_common_pkg.put_message_f(
+--                           in_which         => FND_FILE.OUTPUT
+--                         , iv_message       => lv_outmsg
+--                         , in_new_line      => cn_number_0
+--                         );
+--      ov_retcode := cv_status_warn;
+--    END IF;
+--    -- ===============================================
+--    -- 拠点住所 全角チェック
+--    -- ===============================================
+--    lb_chk_return := xxccp_common_pkg.chk_double_byte(
+--                       iv_chk_char  => g_bm_data_tab( in_index ).base_address
+--                     );
+--    IF ( lb_chk_return = FALSE ) THEN
+--      lv_outmsg       := xxccp_common_pkg.get_msg(
+--                           iv_application   => cv_appli_short_name_xxcok
+--                         , iv_name          => cv_msg_xxcok1_10433
+--                         , iv_token_name1   => cv_token_conn_loc
+--                         , iv_token_value1  => g_bm_data_tab( in_index ).base_charge
+--                         , iv_token_name2   => cv_token_vendor_code
+--                         , iv_token_value2  => g_bm_data_tab( in_index ).supplier_code
+--                         );
+--      lb_msg_return   := xxcok_common_pkg.put_message_f(
+--                           in_which         => FND_FILE.OUTPUT
+--                         , iv_message       => lv_outmsg
+--                         , in_new_line      => cn_number_0
+--                         );
+--      ov_retcode := cv_status_warn;
+--    END IF;
+--    -- ===============================================
+--    -- 銀行名 全角チェック
+--    -- ===============================================
+--    lb_chk_return := xxccp_common_pkg.chk_double_byte(
+--                       iv_chk_char  => g_bm_data_tab( in_index ).bank_name
+--                     );
+--    IF ( lb_chk_return = FALSE ) THEN
+--      lv_outmsg       := xxccp_common_pkg.get_msg(
+--                           iv_application   => cv_appli_short_name_xxcok
+--                         , iv_name          => cv_msg_xxcok1_10434
+--                         , iv_token_name1   => cv_token_conn_loc
+--                         , iv_token_value1  => g_bm_data_tab( in_index ).base_charge
+--                         , iv_token_name2   => cv_token_vendor_code
+--                         , iv_token_value2  => g_bm_data_tab( in_index ).supplier_code
+--                         );
+--      lb_msg_return   := xxcok_common_pkg.put_message_f(
+--                           in_which         => FND_FILE.OUTPUT
+--                         , iv_message       => lv_outmsg
+--                         , in_new_line      => cn_number_0
+--                         );
+--      ov_retcode := cv_status_warn;
+--    END IF;
+--    -- ===============================================
+--    -- 銀行支店名 全角チェック
+--    -- ===============================================
+--    lb_chk_return := xxccp_common_pkg.chk_double_byte(
+--                       iv_chk_char  => g_bm_data_tab( in_index ).bank_branch_name
+--                     );
+--    IF ( lb_chk_return = FALSE ) THEN
+--      lv_outmsg       := xxccp_common_pkg.get_msg(
+--                           iv_application   => cv_appli_short_name_xxcok
+--                         , iv_name          => cv_msg_xxcok1_10435
+--                         , iv_token_name1   => cv_token_conn_loc
+--                         , iv_token_value1  => g_bm_data_tab( in_index ).base_charge
+--                         , iv_token_name2   => cv_token_vendor_code
+--                         , iv_token_value2  => g_bm_data_tab( in_index ).supplier_code
+--                         );
+--      lb_msg_return   := xxcok_common_pkg.put_message_f(
+--                           in_which         => FND_FILE.OUTPUT
+--                         , iv_message       => lv_outmsg
+--                         , in_new_line      => cn_number_0
+--                         );
+--      ov_retcode := cv_status_warn;
+--    END IF;
+--    -- ===============================================
+--    -- 郵便番号 半角英数字記号チェック
+--    -- ===============================================
+--    lb_chk_return := xxccp_common_pkg.chk_alphabet_number(
+--                       iv_check_char  => g_bm_data_tab( in_index ).zip
+--                     );
+--    IF ( lb_chk_return = FALSE ) THEN
+--      lv_outmsg       := xxccp_common_pkg.get_msg(
+--                           iv_application   => cv_appli_short_name_xxcok
+--                         , iv_name          => cv_msg_xxcok1_10436
+--                         , iv_token_name1   => cv_token_conn_loc
+--                         , iv_token_value1  => g_bm_data_tab( in_index ).base_charge
+--                         , iv_token_name2   => cv_token_vendor_code
+--                         , iv_token_value2  => g_bm_data_tab( in_index ).supplier_code
+--                         );
+--      lb_msg_return   := xxcok_common_pkg.put_message_f(
+--                           in_which         => FND_FILE.OUTPUT
+--                         , iv_message       => lv_outmsg
+--                         , in_new_line      => cn_number_0
+--                         );
+--      ov_retcode := cv_status_warn;
+--    END IF;
+--    -- ===============================================
+--    -- 拠点郵便番号 半角英数字チェック
+--    -- ===============================================
+--    lb_chk_return := xxccp_common_pkg.chk_alphabet_number(
+--                       iv_check_char  => g_bm_data_tab( in_index ).base_postal_code
+--                     );
+--    IF ( lb_chk_return = FALSE ) THEN
+--      lv_outmsg       := xxccp_common_pkg.get_msg(
+--                           iv_application   => cv_appli_short_name_xxcok
+--                         , iv_name          => cv_msg_xxcok1_10437
+--                         , iv_token_name1   => cv_token_conn_loc
+--                         , iv_token_value1  => g_bm_data_tab( in_index ).base_charge
+--                         , iv_token_name2   => cv_token_vendor_code
+--                         , iv_token_value2  => g_bm_data_tab( in_index ).supplier_code
+--                         );
+--      lb_msg_return   := xxcok_common_pkg.put_message_f(
+--                           in_which         => FND_FILE.OUTPUT
+--                         , iv_message       => lv_outmsg
+--                         , in_new_line      => cn_number_0
+--                         );
+--      ov_retcode := cv_status_warn;
+--    END IF;
+--    -- ===============================================
+--    -- 拠点電話番号 半角英数字チェック
+--    -- ===============================================
+--    lb_chk_return := xxccp_common_pkg.chk_alphabet_number(
+--                       iv_check_char  => g_bm_data_tab( in_index ).base_phone
+--                     );
+--    IF ( lb_chk_return = FALSE ) THEN
+--      lv_outmsg       := xxccp_common_pkg.get_msg(
+--                           iv_application   => cv_appli_short_name_xxcok
+--                         , iv_name          => cv_msg_xxcok1_10438
+--                         , iv_token_name1   => cv_token_conn_loc
+--                         , iv_token_value1  => g_bm_data_tab( in_index ).base_charge
+--                         , iv_token_name2   => cv_token_vendor_code
+--                         , iv_token_value2  => g_bm_data_tab( in_index ).supplier_code
+--                         );
+--      lb_msg_return   := xxcok_common_pkg.put_message_f(
+--                           in_which         => FND_FILE.OUTPUT
+--                         , iv_message       => lv_outmsg
+--                         , in_new_line      => cn_number_0
+--                         );
+--      ov_retcode := cv_status_warn;
+--    END IF;
+--    -- ===============================================
+--    -- 仕入先コード 桁数チェック
+--    -- ===============================================
+--    ln_chk_length := LENGTHB( g_bm_data_tab( in_index ).supplier_code );
+--    IF ( ln_chk_length > cn_number_9 ) THEN
+--      lv_outmsg       := xxccp_common_pkg.get_msg(
+--                           iv_application   => cv_appli_short_name_xxcok
+--                         , iv_name          => cv_msg_xxcok1_10439
+--                         , iv_token_name1   => cv_token_conn_loc
+--                         , iv_token_value1  => g_bm_data_tab( in_index ).base_charge
+--                         , iv_token_name2   => cv_token_vendor_code
+--                         , iv_token_value2  => g_bm_data_tab( in_index ).supplier_code
+--                         );
+--      lb_msg_return   := xxcok_common_pkg.put_message_f(
+--                           in_which         => FND_FILE.OUTPUT
+--                         , iv_message       => lv_outmsg
+--                         , in_new_line      => cn_number_0
+--                         );
+--      ov_retcode := cv_status_warn;
+--    END IF;
+--    ln_chk_length := cn_number_0;
+--    -- ===============================================
+--    -- 郵便番号 桁数チェック
+--    -- ===============================================
+--    ln_chk_length := LENGTHB( g_bm_data_tab( in_index ).zip );
+--    IF ( ln_chk_length > cn_number_7 ) THEN
+--      lv_outmsg       := xxccp_common_pkg.get_msg(
+--                           iv_application   => cv_appli_short_name_xxcok
+--                         , iv_name          => cv_msg_xxcok1_10440
+--                         , iv_token_name1   => cv_token_conn_loc
+--                         , iv_token_value1  => g_bm_data_tab( in_index ).base_charge
+--                         , iv_token_name2   => cv_token_vendor_code
+--                         , iv_token_value2  => g_bm_data_tab( in_index ).supplier_code
+--                         );
+--      lb_msg_return   := xxcok_common_pkg.put_message_f(
+--                           in_which         => FND_FILE.OUTPUT
+--                         , iv_message       => lv_outmsg
+--                         , in_new_line      => cn_number_0
+--                         );
+--      ov_retcode := cv_status_warn;
+--    END IF;
+--    ln_chk_length := cn_number_0;
+--    -- ===============================================
+--    -- 拠点郵便番号 桁数チェック
+--    -- ===============================================
+--    ln_chk_length := LENGTHB( g_bm_data_tab( in_index ).base_postal_code );
+--    IF ( ln_chk_length > cn_number_7 ) THEN
+--      lv_outmsg       := xxccp_common_pkg.get_msg(
+--                           iv_application   => cv_appli_short_name_xxcok
+--                         , iv_name          => cv_msg_xxcok1_10441
+--                         , iv_token_name1   => cv_token_conn_loc
+--                         , iv_token_value1  => g_bm_data_tab( in_index ).base_charge
+--                         , iv_token_name2   => cv_token_vendor_code
+--                         , iv_token_value2  => g_bm_data_tab( in_index ).supplier_code
+--                         );
+--      lb_msg_return   := xxcok_common_pkg.put_message_f(
+--                           in_which         => FND_FILE.OUTPUT
+--                         , iv_message       => lv_outmsg
+--                         , in_new_line      => cn_number_0
+--                         );
+--      ov_retcode := cv_status_warn;
+--    END IF;
+--    ln_chk_length := cn_number_0;
+--    -- ===============================================
+--    -- 拠点電話番号 桁数チェック
+--    -- ===============================================
+--    ln_chk_length := LENGTHB( g_bm_data_tab( in_index ).base_phone );
+--    IF ( ln_chk_length > cn_number_15 ) THEN
+--      lv_outmsg       := xxccp_common_pkg.get_msg(
+--                           iv_application   => cv_appli_short_name_xxcok
+--                         , iv_name          => cv_msg_xxcok1_10442
+--                         , iv_token_name1   => cv_token_conn_loc
+--                         , iv_token_value1  => g_bm_data_tab( in_index ).base_charge
+--                         , iv_token_name2   => cv_token_vendor_code
+--                         , iv_token_value2  => g_bm_data_tab( in_index ).supplier_code
+--                         );
+--      lb_msg_return   := xxcok_common_pkg.put_message_f(
+--                           in_which         => FND_FILE.OUTPUT
+--                         , iv_message       => lv_outmsg
+--                         , in_new_line      => cn_number_0
+--                         );
+--      ov_retcode := cv_status_warn;
+--    END IF;
+--    ln_chk_length := cn_number_0;
+--    -- ===============================================
+--    -- 銀行番号 桁数チェック
+--    -- ===============================================
+--    ln_chk_length := LENGTHB( g_bm_data_tab( in_index ).bank_number );
+--    IF ( ln_chk_length > cn_number_4 ) THEN
+--      lv_outmsg       := xxccp_common_pkg.get_msg(
+--                           iv_application   => cv_appli_short_name_xxcok
+--                         , iv_name          => cv_msg_xxcok1_10443
+--                         , iv_token_name1   => cv_token_conn_loc
+--                         , iv_token_value1  => g_bm_data_tab( in_index ).base_charge
+--                         , iv_token_name2   => cv_token_vendor_code
+--                         , iv_token_value2  => g_bm_data_tab( in_index ).supplier_code
+--                         );
+--      lb_msg_return   := xxcok_common_pkg.put_message_f(
+--                           in_which         => FND_FILE.OUTPUT
+--                         , iv_message       => lv_outmsg
+--                         , in_new_line      => cn_number_0
+--                         );
+--      ov_retcode := cv_status_warn;
+--    END IF;
+--    ln_chk_length := cn_number_0;
+--    -- ===============================================
+--    -- 銀行支店番号 桁数チェック
+--    -- ===============================================
+--    ln_chk_length := LENGTHB( g_bm_data_tab( in_index ).bank_num );
+--    IF ( ln_chk_length > cn_number_4 ) THEN
+--      lv_outmsg       := xxccp_common_pkg.get_msg(
+--                           iv_application   => cv_appli_short_name_xxcok
+--                         , iv_name          => cv_msg_xxcok1_10444
+--                         , iv_token_name1   => cv_token_conn_loc
+--                         , iv_token_value1  => g_bm_data_tab( in_index ).base_charge
+--                         , iv_token_name2   => cv_token_vendor_code
+--                         , iv_token_value2  => g_bm_data_tab( in_index ).supplier_code
+--                         );
+--      lb_msg_return   := xxcok_common_pkg.put_message_f(
+--                           in_which         => FND_FILE.OUTPUT
+--                         , iv_message       => lv_outmsg
+--                         , in_new_line      => cn_number_0
+--                         );
+--      ov_retcode := cv_status_warn;
+--    END IF;
+--    ln_chk_length := cn_number_0;
+--    -- ===============================================
+--    -- 販売金額合計 桁数チェック
+--    -- ===============================================
+--    ln_chk_length := LENGTHB( g_bm_data_tab( in_index ).selling_amt_tax );
+--    IF ( ln_chk_length > cn_number_11 ) THEN
+--      lv_outmsg       := xxccp_common_pkg.get_msg(
+--                           iv_application   => cv_appli_short_name_xxcok
+--                         , iv_name          => cv_msg_xxcok1_10445
+--                         , iv_token_name1   => cv_token_conn_loc
+--                         , iv_token_value1  => g_bm_data_tab( in_index ).base_charge
+--                         , iv_token_name2   => cv_token_vendor_code
+--                         , iv_token_value2  => g_bm_data_tab( in_index ).supplier_code
+--                         );
+--      lb_msg_return   := xxcok_common_pkg.put_message_f(
+--                           in_which         => FND_FILE.OUTPUT
+--                         , iv_message       => lv_outmsg
+--                         , in_new_line      => cn_number_0
+--                         );
+--      ov_retcode := cv_status_warn;
+--    END IF;
+--    ln_chk_length := cn_number_0;
+--    -- ===============================================
+--    -- 販売手数料 桁数チェック
+--    -- ===============================================
+--    ln_chk_length := LENGTHB( g_bm_data_tab( in_index ).backmargin );
+--    IF ( ln_chk_length > cn_number_11 ) THEN
+--      lv_outmsg       := xxccp_common_pkg.get_msg(
+--                           iv_application   => cv_appli_short_name_xxcok
+--                         , iv_name          => cv_msg_xxcok1_10446
+--                         , iv_token_name1   => cv_token_conn_loc
+--                         , iv_token_value1  => g_bm_data_tab( in_index ).base_charge
+--                         , iv_token_name2   => cv_token_vendor_code
+--                         , iv_token_value2  => g_bm_data_tab( in_index ).supplier_code
+--                         );
+--      lb_msg_return   := xxcok_common_pkg.put_message_f(
+--                           in_which         => FND_FILE.OUTPUT
+--                         , iv_message       => lv_outmsg
+--                         , in_new_line      => cn_number_0
+--                         );
+--      ov_retcode := cv_status_warn;
+--    END IF;
+--    ln_chk_length := cn_number_0;
+--    -- ===============================================
+--    -- 電気料 桁数チェック
+--    -- ===============================================
+--    ln_chk_length := LENGTHB( g_bm_data_tab( in_index ).electric_amt );
+--    IF ( ln_chk_length > cn_number_11 ) THEN
+--      lv_outmsg       := xxccp_common_pkg.get_msg(
+--                           iv_application   => cv_appli_short_name_xxcok
+--                         , iv_name          => cv_msg_xxcok1_10447
+--                         , iv_token_name1   => cv_token_conn_loc
+--                         , iv_token_value1  => g_bm_data_tab( in_index ).base_charge
+--                         , iv_token_name2   => cv_token_vendor_code
+--                         , iv_token_value2  => g_bm_data_tab( in_index ).supplier_code
+--                         );
+--      lb_msg_return   := xxcok_common_pkg.put_message_f(
+--                           in_which         => FND_FILE.OUTPUT
+--                         , iv_message       => lv_outmsg
+--                         , in_new_line      => cn_number_0
+--                         );
+--      ov_retcode := cv_status_warn;
+--    END IF;
+--    ln_chk_length := cn_number_0;
+--    -- ===============================================
+--    -- 支払予定額 桁数チェック
+--    -- ===============================================
+--    ln_chk_length := LENGTHB( g_bm_data_tab( in_index ).expect_payment_amt_tax );
+--    IF ( ln_chk_length > cn_number_11 ) THEN
+--      lv_outmsg       := xxccp_common_pkg.get_msg(
+--                           iv_application   => cv_appli_short_name_xxcok
+--                         , iv_name          => cv_msg_xxcok1_10448
+--                         , iv_token_name1   => cv_token_conn_loc
+--                         , iv_token_value1  => g_bm_data_tab( in_index ).base_charge
+--                         , iv_token_name2   => cv_token_vendor_code
+--                         , iv_token_value2  => g_bm_data_tab( in_index ).supplier_code
+--                         );
+--      lb_msg_return   := xxcok_common_pkg.put_message_f(
+--                           in_which         => FND_FILE.OUTPUT
+--                         , iv_message       => lv_outmsg
+--                         , in_new_line      => cn_number_0
+--                         );
+--      ov_retcode := cv_status_warn;
+--    END IF;
+--  EXCEPTION
+--    -- *** 共通関数OTHERS例外 ***
+--    WHEN global_api_others_expt THEN
+--      ov_errbuf  := SUBSTRB( cv_pkg_name || cv_msg_cont || cv_prg_name || cv_msg_part || SQLERRM, 1, 5000 );
+--      ov_retcode := cv_status_error;
+--    -- *** OTHERS例外 ***
+--    WHEN OTHERS THEN
+--      ov_errbuf  := SUBSTRB( cv_pkg_name || cv_msg_cont || cv_prg_name || cv_msg_part || SQLERRM, 1, 5000 );
+--      ov_retcode := cv_status_error;
+--  END check_bm_data;
+--
   /**********************************************************************************
    * Procedure Name   : check_bm_data
    * Description      : 連携データ妥当性チェック(A-5)
    ***********************************************************************************/
   PROCEDURE check_bm_data(
-    ov_errbuf   OUT VARCHAR2
-  , ov_retcode  OUT VARCHAR2
-  , ov_errmsg   OUT VARCHAR2
-  , in_index    IN  NUMBER
+    ov_errbuf      OUT VARCHAR2
+  , ov_retcode     OUT VARCHAR2
+  , ov_errmsg      OUT VARCHAR2
+  , it_bm_data_rec  IN g_bm_data_cur%ROWTYPE
   )
   IS
     -- ===============================================
@@ -883,20 +1452,21 @@ AS
     -- ステータス初期化
     -- ===============================================
     ov_retcode := cv_status_normal;
+--
     -- ===============================================
     -- 仕入先名 全角チェック(顧客名１・顧客名２・宛名1・宛名2)
     -- ===============================================
     lb_chk_return := xxccp_common_pkg.chk_double_byte(
-                       iv_chk_char  => g_bm_data_tab( in_index ).vendor_name
+                       iv_chk_char  => it_bm_data_rec.vendor_name
                      );
     IF ( lb_chk_return = FALSE ) THEN
       lv_outmsg       := xxccp_common_pkg.get_msg(
                            iv_application   => cv_appli_short_name_xxcok
                          , iv_name          => cv_msg_xxcok1_10430
                          , iv_token_name1   => cv_token_conn_loc
-                         , iv_token_value1  => g_bm_data_tab( in_index ).base_charge
+                         , iv_token_value1  => it_bm_data_rec.base_charge
                          , iv_token_name2   => cv_token_vendor_code
-                         , iv_token_value2  => g_bm_data_tab( in_index ).supplier_code
+                         , iv_token_value2  => it_bm_data_rec.supplier_code
                          );
       lb_msg_return   := xxcok_common_pkg.put_message_f(
                            in_which         => FND_FILE.OUTPUT
@@ -909,16 +1479,16 @@ AS
     -- 住所1 全角チェック
     -- ===============================================
     lb_chk_return := xxccp_common_pkg.chk_double_byte(
-                       iv_chk_char  => g_bm_data_tab( in_index ).address1
+                       iv_chk_char  => it_bm_data_rec.address1
                      );
     IF ( lb_chk_return = FALSE ) THEN
       lv_outmsg       := xxccp_common_pkg.get_msg(
                            iv_application   => cv_appli_short_name_xxcok
                          , iv_name          => cv_msg_xxcok1_10431
                          , iv_token_name1   => cv_token_conn_loc
-                         , iv_token_value1  => g_bm_data_tab( in_index ).base_charge
+                         , iv_token_value1  => it_bm_data_rec.base_charge
                          , iv_token_name2   => cv_token_vendor_code
-                         , iv_token_value2  => g_bm_data_tab( in_index ).supplier_code
+                         , iv_token_value2  => it_bm_data_rec.supplier_code
                          );
       lb_msg_return   := xxcok_common_pkg.put_message_f(
                            in_which         => FND_FILE.OUTPUT
@@ -931,16 +1501,16 @@ AS
     -- 住所2 全角チェック
     -- ===============================================
     lb_chk_return := xxccp_common_pkg.chk_double_byte(
-                       iv_chk_char  => g_bm_data_tab( in_index ).address2
+                       iv_chk_char  => it_bm_data_rec.address2
                      );
     IF ( lb_chk_return = FALSE ) THEN
       lv_outmsg       := xxccp_common_pkg.get_msg(
                            iv_application   => cv_appli_short_name_xxcok
                          , iv_name          => cv_msg_xxcok1_10431
                          , iv_token_name1   => cv_token_conn_loc
-                         , iv_token_value1  => g_bm_data_tab( in_index ).base_charge
+                         , iv_token_value1  => it_bm_data_rec.base_charge
                          , iv_token_name2   => cv_token_vendor_code
-                         , iv_token_value2  => g_bm_data_tab( in_index ).supplier_code
+                         , iv_token_value2  => it_bm_data_rec.supplier_code
                          );
       lb_msg_return   := xxcok_common_pkg.put_message_f(
                            in_which         => FND_FILE.OUTPUT
@@ -953,16 +1523,16 @@ AS
     -- 拠点名 全角チェック
     -- ===============================================
     lb_chk_return := xxccp_common_pkg.chk_double_byte(
-                       iv_chk_char  => g_bm_data_tab( in_index ).base_name
+                       iv_chk_char  => it_bm_data_rec.base_name
                      );
     IF ( lb_chk_return = FALSE ) THEN
       lv_outmsg       := xxccp_common_pkg.get_msg(
                            iv_application   => cv_appli_short_name_xxcok
                          , iv_name          => cv_msg_xxcok1_10432
                          , iv_token_name1   => cv_token_conn_loc
-                         , iv_token_value1  => g_bm_data_tab( in_index ).base_charge
+                         , iv_token_value1  => it_bm_data_rec.base_charge
                          , iv_token_name2   => cv_token_vendor_code
-                         , iv_token_value2  => g_bm_data_tab( in_index ).supplier_code
+                         , iv_token_value2  => it_bm_data_rec.supplier_code
                          );
       lb_msg_return   := xxcok_common_pkg.put_message_f(
                            in_which         => FND_FILE.OUTPUT
@@ -975,16 +1545,16 @@ AS
     -- 拠点住所 全角チェック
     -- ===============================================
     lb_chk_return := xxccp_common_pkg.chk_double_byte(
-                       iv_chk_char  => g_bm_data_tab( in_index ).base_address
+                       iv_chk_char  => it_bm_data_rec.base_address
                      );
     IF ( lb_chk_return = FALSE ) THEN
       lv_outmsg       := xxccp_common_pkg.get_msg(
                            iv_application   => cv_appli_short_name_xxcok
                          , iv_name          => cv_msg_xxcok1_10433
                          , iv_token_name1   => cv_token_conn_loc
-                         , iv_token_value1  => g_bm_data_tab( in_index ).base_charge
+                         , iv_token_value1  => it_bm_data_rec.base_charge
                          , iv_token_name2   => cv_token_vendor_code
-                         , iv_token_value2  => g_bm_data_tab( in_index ).supplier_code
+                         , iv_token_value2  => it_bm_data_rec.supplier_code
                          );
       lb_msg_return   := xxcok_common_pkg.put_message_f(
                            in_which         => FND_FILE.OUTPUT
@@ -997,16 +1567,16 @@ AS
     -- 銀行名 全角チェック
     -- ===============================================
     lb_chk_return := xxccp_common_pkg.chk_double_byte(
-                       iv_chk_char  => g_bm_data_tab( in_index ).bank_name
+                       iv_chk_char  => it_bm_data_rec.bank_name
                      );
     IF ( lb_chk_return = FALSE ) THEN
       lv_outmsg       := xxccp_common_pkg.get_msg(
                            iv_application   => cv_appli_short_name_xxcok
                          , iv_name          => cv_msg_xxcok1_10434
                          , iv_token_name1   => cv_token_conn_loc
-                         , iv_token_value1  => g_bm_data_tab( in_index ).base_charge
+                         , iv_token_value1  => it_bm_data_rec.base_charge
                          , iv_token_name2   => cv_token_vendor_code
-                         , iv_token_value2  => g_bm_data_tab( in_index ).supplier_code
+                         , iv_token_value2  => it_bm_data_rec.supplier_code
                          );
       lb_msg_return   := xxcok_common_pkg.put_message_f(
                            in_which         => FND_FILE.OUTPUT
@@ -1019,16 +1589,16 @@ AS
     -- 銀行支店名 全角チェック
     -- ===============================================
     lb_chk_return := xxccp_common_pkg.chk_double_byte(
-                       iv_chk_char  => g_bm_data_tab( in_index ).bank_branch_name
+                       iv_chk_char  => it_bm_data_rec.bank_branch_name
                      );
     IF ( lb_chk_return = FALSE ) THEN
       lv_outmsg       := xxccp_common_pkg.get_msg(
                            iv_application   => cv_appli_short_name_xxcok
                          , iv_name          => cv_msg_xxcok1_10435
                          , iv_token_name1   => cv_token_conn_loc
-                         , iv_token_value1  => g_bm_data_tab( in_index ).base_charge
+                         , iv_token_value1  => it_bm_data_rec.base_charge
                          , iv_token_name2   => cv_token_vendor_code
-                         , iv_token_value2  => g_bm_data_tab( in_index ).supplier_code
+                         , iv_token_value2  => it_bm_data_rec.supplier_code
                          );
       lb_msg_return   := xxcok_common_pkg.put_message_f(
                            in_which         => FND_FILE.OUTPUT
@@ -1041,16 +1611,16 @@ AS
     -- 郵便番号 半角英数字記号チェック
     -- ===============================================
     lb_chk_return := xxccp_common_pkg.chk_alphabet_number(
-                       iv_check_char  => g_bm_data_tab( in_index ).zip
+                       iv_check_char  => it_bm_data_rec.zip
                      );
     IF ( lb_chk_return = FALSE ) THEN
       lv_outmsg       := xxccp_common_pkg.get_msg(
                            iv_application   => cv_appli_short_name_xxcok
                          , iv_name          => cv_msg_xxcok1_10436
                          , iv_token_name1   => cv_token_conn_loc
-                         , iv_token_value1  => g_bm_data_tab( in_index ).base_charge
+                         , iv_token_value1  => it_bm_data_rec.base_charge
                          , iv_token_name2   => cv_token_vendor_code
-                         , iv_token_value2  => g_bm_data_tab( in_index ).supplier_code
+                         , iv_token_value2  => it_bm_data_rec.supplier_code
                          );
       lb_msg_return   := xxcok_common_pkg.put_message_f(
                            in_which         => FND_FILE.OUTPUT
@@ -1063,16 +1633,16 @@ AS
     -- 拠点郵便番号 半角英数字チェック
     -- ===============================================
     lb_chk_return := xxccp_common_pkg.chk_alphabet_number(
-                       iv_check_char  => g_bm_data_tab( in_index ).base_postal_code
+                       iv_check_char  => it_bm_data_rec.base_postal_code
                      );
     IF ( lb_chk_return = FALSE ) THEN
       lv_outmsg       := xxccp_common_pkg.get_msg(
                            iv_application   => cv_appli_short_name_xxcok
                          , iv_name          => cv_msg_xxcok1_10437
                          , iv_token_name1   => cv_token_conn_loc
-                         , iv_token_value1  => g_bm_data_tab( in_index ).base_charge
+                         , iv_token_value1  => it_bm_data_rec.base_charge
                          , iv_token_name2   => cv_token_vendor_code
-                         , iv_token_value2  => g_bm_data_tab( in_index ).supplier_code
+                         , iv_token_value2  => it_bm_data_rec.supplier_code
                          );
       lb_msg_return   := xxcok_common_pkg.put_message_f(
                            in_which         => FND_FILE.OUTPUT
@@ -1085,16 +1655,16 @@ AS
     -- 拠点電話番号 半角英数字チェック
     -- ===============================================
     lb_chk_return := xxccp_common_pkg.chk_alphabet_number(
-                       iv_check_char  => g_bm_data_tab( in_index ).base_phone
+                       iv_check_char  => it_bm_data_rec.base_phone
                      );
     IF ( lb_chk_return = FALSE ) THEN
       lv_outmsg       := xxccp_common_pkg.get_msg(
                            iv_application   => cv_appli_short_name_xxcok
                          , iv_name          => cv_msg_xxcok1_10438
                          , iv_token_name1   => cv_token_conn_loc
-                         , iv_token_value1  => g_bm_data_tab( in_index ).base_charge
+                         , iv_token_value1  => it_bm_data_rec.base_charge
                          , iv_token_name2   => cv_token_vendor_code
-                         , iv_token_value2  => g_bm_data_tab( in_index ).supplier_code
+                         , iv_token_value2  => it_bm_data_rec.supplier_code
                          );
       lb_msg_return   := xxcok_common_pkg.put_message_f(
                            in_which         => FND_FILE.OUTPUT
@@ -1106,15 +1676,15 @@ AS
     -- ===============================================
     -- 仕入先コード 桁数チェック
     -- ===============================================
-    ln_chk_length := LENGTHB( g_bm_data_tab( in_index ).supplier_code );
+    ln_chk_length := LENGTHB( it_bm_data_rec.supplier_code );
     IF ( ln_chk_length > cn_number_9 ) THEN
       lv_outmsg       := xxccp_common_pkg.get_msg(
                            iv_application   => cv_appli_short_name_xxcok
                          , iv_name          => cv_msg_xxcok1_10439
                          , iv_token_name1   => cv_token_conn_loc
-                         , iv_token_value1  => g_bm_data_tab( in_index ).base_charge
+                         , iv_token_value1  => it_bm_data_rec.base_charge
                          , iv_token_name2   => cv_token_vendor_code
-                         , iv_token_value2  => g_bm_data_tab( in_index ).supplier_code
+                         , iv_token_value2  => it_bm_data_rec.supplier_code
                          );
       lb_msg_return   := xxcok_common_pkg.put_message_f(
                            in_which         => FND_FILE.OUTPUT
@@ -1127,15 +1697,15 @@ AS
     -- ===============================================
     -- 郵便番号 桁数チェック
     -- ===============================================
-    ln_chk_length := LENGTHB( g_bm_data_tab( in_index ).zip );
+    ln_chk_length := LENGTHB( it_bm_data_rec.zip );
     IF ( ln_chk_length > cn_number_7 ) THEN
       lv_outmsg       := xxccp_common_pkg.get_msg(
                            iv_application   => cv_appli_short_name_xxcok
                          , iv_name          => cv_msg_xxcok1_10440
                          , iv_token_name1   => cv_token_conn_loc
-                         , iv_token_value1  => g_bm_data_tab( in_index ).base_charge
+                         , iv_token_value1  => it_bm_data_rec.base_charge
                          , iv_token_name2   => cv_token_vendor_code
-                         , iv_token_value2  => g_bm_data_tab( in_index ).supplier_code
+                         , iv_token_value2  => it_bm_data_rec.supplier_code
                          );
       lb_msg_return   := xxcok_common_pkg.put_message_f(
                            in_which         => FND_FILE.OUTPUT
@@ -1148,15 +1718,15 @@ AS
     -- ===============================================
     -- 拠点郵便番号 桁数チェック
     -- ===============================================
-    ln_chk_length := LENGTHB( g_bm_data_tab( in_index ).base_postal_code );
+    ln_chk_length := LENGTHB( it_bm_data_rec.base_postal_code );
     IF ( ln_chk_length > cn_number_7 ) THEN
       lv_outmsg       := xxccp_common_pkg.get_msg(
                            iv_application   => cv_appli_short_name_xxcok
                          , iv_name          => cv_msg_xxcok1_10441
                          , iv_token_name1   => cv_token_conn_loc
-                         , iv_token_value1  => g_bm_data_tab( in_index ).base_charge
+                         , iv_token_value1  => it_bm_data_rec.base_charge
                          , iv_token_name2   => cv_token_vendor_code
-                         , iv_token_value2  => g_bm_data_tab( in_index ).supplier_code
+                         , iv_token_value2  => it_bm_data_rec.supplier_code
                          );
       lb_msg_return   := xxcok_common_pkg.put_message_f(
                            in_which         => FND_FILE.OUTPUT
@@ -1169,15 +1739,15 @@ AS
     -- ===============================================
     -- 拠点電話番号 桁数チェック
     -- ===============================================
-    ln_chk_length := LENGTHB( g_bm_data_tab( in_index ).base_phone );
+    ln_chk_length := LENGTHB( it_bm_data_rec.base_phone );
     IF ( ln_chk_length > cn_number_15 ) THEN
       lv_outmsg       := xxccp_common_pkg.get_msg(
                            iv_application   => cv_appli_short_name_xxcok
                          , iv_name          => cv_msg_xxcok1_10442
                          , iv_token_name1   => cv_token_conn_loc
-                         , iv_token_value1  => g_bm_data_tab( in_index ).base_charge
+                         , iv_token_value1  => it_bm_data_rec.base_charge
                          , iv_token_name2   => cv_token_vendor_code
-                         , iv_token_value2  => g_bm_data_tab( in_index ).supplier_code
+                         , iv_token_value2  => it_bm_data_rec.supplier_code
                          );
       lb_msg_return   := xxcok_common_pkg.put_message_f(
                            in_which         => FND_FILE.OUTPUT
@@ -1190,15 +1760,15 @@ AS
     -- ===============================================
     -- 銀行番号 桁数チェック
     -- ===============================================
-    ln_chk_length := LENGTHB( g_bm_data_tab( in_index ).bank_number );
+    ln_chk_length := LENGTHB( it_bm_data_rec.bank_number );
     IF ( ln_chk_length > cn_number_4 ) THEN
       lv_outmsg       := xxccp_common_pkg.get_msg(
                            iv_application   => cv_appli_short_name_xxcok
                          , iv_name          => cv_msg_xxcok1_10443
                          , iv_token_name1   => cv_token_conn_loc
-                         , iv_token_value1  => g_bm_data_tab( in_index ).base_charge
+                         , iv_token_value1  => it_bm_data_rec.base_charge
                          , iv_token_name2   => cv_token_vendor_code
-                         , iv_token_value2  => g_bm_data_tab( in_index ).supplier_code
+                         , iv_token_value2  => it_bm_data_rec.supplier_code
                          );
       lb_msg_return   := xxcok_common_pkg.put_message_f(
                            in_which         => FND_FILE.OUTPUT
@@ -1211,15 +1781,15 @@ AS
     -- ===============================================
     -- 銀行支店番号 桁数チェック
     -- ===============================================
-    ln_chk_length := LENGTHB( g_bm_data_tab( in_index ).bank_num );
+    ln_chk_length := LENGTHB( it_bm_data_rec.bank_num );
     IF ( ln_chk_length > cn_number_4 ) THEN
       lv_outmsg       := xxccp_common_pkg.get_msg(
                            iv_application   => cv_appli_short_name_xxcok
                          , iv_name          => cv_msg_xxcok1_10444
                          , iv_token_name1   => cv_token_conn_loc
-                         , iv_token_value1  => g_bm_data_tab( in_index ).base_charge
+                         , iv_token_value1  => it_bm_data_rec.base_charge
                          , iv_token_name2   => cv_token_vendor_code
-                         , iv_token_value2  => g_bm_data_tab( in_index ).supplier_code
+                         , iv_token_value2  => it_bm_data_rec.supplier_code
                          );
       lb_msg_return   := xxcok_common_pkg.put_message_f(
                            in_which         => FND_FILE.OUTPUT
@@ -1232,15 +1802,15 @@ AS
     -- ===============================================
     -- 販売金額合計 桁数チェック
     -- ===============================================
-    ln_chk_length := LENGTHB( g_bm_data_tab( in_index ).selling_amt_tax );
+    ln_chk_length := LENGTHB( it_bm_data_rec.selling_amt_tax );
     IF ( ln_chk_length > cn_number_11 ) THEN
       lv_outmsg       := xxccp_common_pkg.get_msg(
                            iv_application   => cv_appli_short_name_xxcok
                          , iv_name          => cv_msg_xxcok1_10445
                          , iv_token_name1   => cv_token_conn_loc
-                         , iv_token_value1  => g_bm_data_tab( in_index ).base_charge
+                         , iv_token_value1  => it_bm_data_rec.base_charge
                          , iv_token_name2   => cv_token_vendor_code
-                         , iv_token_value2  => g_bm_data_tab( in_index ).supplier_code
+                         , iv_token_value2  => it_bm_data_rec.supplier_code
                          );
       lb_msg_return   := xxcok_common_pkg.put_message_f(
                            in_which         => FND_FILE.OUTPUT
@@ -1253,15 +1823,15 @@ AS
     -- ===============================================
     -- 販売手数料 桁数チェック
     -- ===============================================
-    ln_chk_length := LENGTHB( g_bm_data_tab( in_index ).backmargin );
+    ln_chk_length := LENGTHB( it_bm_data_rec.backmargin );
     IF ( ln_chk_length > cn_number_11 ) THEN
       lv_outmsg       := xxccp_common_pkg.get_msg(
                            iv_application   => cv_appli_short_name_xxcok
                          , iv_name          => cv_msg_xxcok1_10446
                          , iv_token_name1   => cv_token_conn_loc
-                         , iv_token_value1  => g_bm_data_tab( in_index ).base_charge
+                         , iv_token_value1  => it_bm_data_rec.base_charge
                          , iv_token_name2   => cv_token_vendor_code
-                         , iv_token_value2  => g_bm_data_tab( in_index ).supplier_code
+                         , iv_token_value2  => it_bm_data_rec.supplier_code
                          );
       lb_msg_return   := xxcok_common_pkg.put_message_f(
                            in_which         => FND_FILE.OUTPUT
@@ -1274,15 +1844,15 @@ AS
     -- ===============================================
     -- 電気料 桁数チェック
     -- ===============================================
-    ln_chk_length := LENGTHB( g_bm_data_tab( in_index ).electric_amt );
+    ln_chk_length := LENGTHB( it_bm_data_rec.electric_amt );
     IF ( ln_chk_length > cn_number_11 ) THEN
       lv_outmsg       := xxccp_common_pkg.get_msg(
                            iv_application   => cv_appli_short_name_xxcok
                          , iv_name          => cv_msg_xxcok1_10447
                          , iv_token_name1   => cv_token_conn_loc
-                         , iv_token_value1  => g_bm_data_tab( in_index ).base_charge
+                         , iv_token_value1  => it_bm_data_rec.base_charge
                          , iv_token_name2   => cv_token_vendor_code
-                         , iv_token_value2  => g_bm_data_tab( in_index ).supplier_code
+                         , iv_token_value2  => it_bm_data_rec.supplier_code
                          );
       lb_msg_return   := xxcok_common_pkg.put_message_f(
                            in_which         => FND_FILE.OUTPUT
@@ -1295,15 +1865,15 @@ AS
     -- ===============================================
     -- 支払予定額 桁数チェック
     -- ===============================================
-    ln_chk_length := LENGTHB( g_bm_data_tab( in_index ).expect_payment_amt_tax );
+    ln_chk_length := LENGTHB( it_bm_data_rec.expect_payment_amt_tax );
     IF ( ln_chk_length > cn_number_11 ) THEN
       lv_outmsg       := xxccp_common_pkg.get_msg(
                            iv_application   => cv_appli_short_name_xxcok
                          , iv_name          => cv_msg_xxcok1_10448
                          , iv_token_name1   => cv_token_conn_loc
-                         , iv_token_value1  => g_bm_data_tab( in_index ).base_charge
+                         , iv_token_value1  => it_bm_data_rec.base_charge
                          , iv_token_name2   => cv_token_vendor_code
-                         , iv_token_value2  => g_bm_data_tab( in_index ).supplier_code
+                         , iv_token_value2  => it_bm_data_rec.supplier_code
                          );
       lb_msg_return   := xxcok_common_pkg.put_message_f(
                            in_which         => FND_FILE.OUTPUT
@@ -1322,16 +1892,154 @@ AS
       ov_errbuf  := SUBSTRB( cv_pkg_name || cv_msg_cont || cv_prg_name || cv_msg_part || SQLERRM, 1, 5000 );
       ov_retcode := cv_status_error;
   END check_bm_data;
+-- End   2009/07/01 Ver_1.4 0000289 M.Hiruta
 --
+-- Start 2009/07/01 Ver_1.4 0000289 M.Hiruta
+--  /**********************************************************************************
+--   * Procedure Name   : check_bm_amt
+--   * Description      : 販手残高情報金額チェック(A-4)
+--   ***********************************************************************************/
+--  PROCEDURE check_bm_amt(
+--    ov_errbuf   OUT VARCHAR2
+--  , ov_retcode  OUT VARCHAR2
+--  , ov_errmsg   OUT VARCHAR2
+--  , in_index    IN  NUMBER
+--  )
+--  IS
+--    -- ===============================================
+--    -- ローカル定数
+--    -- ===============================================
+--    cv_prg_name    CONSTANT VARCHAR2(20) := 'check_bm_amt';  -- プログラム名
+--    -- ===============================================
+--    -- ローカル変数
+--    -- ===============================================
+--    lv_errbuf       VARCHAR2(5000) DEFAULT NULL;              -- エラー・メッセージ
+--    lv_retcode      VARCHAR2(1)    DEFAULT cv_status_normal;  -- リターン・コード
+--    lv_errmsg       VARCHAR2(5000) DEFAULT NULL;              -- ユーザー・エラー・メッセージ
+--    lv_outmsg       VARCHAR2(5000) DEFAULT NULL;              -- 出力用メッセージ
+--    lb_msg_return   BOOLEAN        DEFAULT TRUE;              -- メッセージ関数戻り値用
+--    ln_bank_fee     NUMBER         DEFAULT NULL;              -- 銀行手数料額
+--    -- ===============================================
+--    -- ローカル例外
+--    -- ===============================================
+--    --*** 連携対象チェック例外 ***
+--    check_warn_expt  EXCEPTION;
+----
+--  BEGIN
+--    -- ===============================================
+--    -- ステータス初期化
+--    -- ===============================================
+--    ov_retcode := cv_status_normal;
+--    -- ===============================================
+--    -- 銀行手数料支払対象チェック
+--    -- ===============================================
+--    IF ( g_bm_data_tab( in_index ).bank_charge_bearer = cv_bank_charge_bearer ) THEN
+--      -- ===============================================
+--      -- 支払予定額(税込)より銀行手数料額設定
+--      -- ===============================================
+--      IF ( g_bm_data_tab( in_index ).expect_payment_amt_tax     < TO_NUMBER( gv_bank_fee_trans ) ) THEN
+--        ln_bank_fee := TO_NUMBER( gv_bank_fee_less );
+--      ELSIF ( g_bm_data_tab( in_index ).expect_payment_amt_tax >= TO_NUMBER( gv_bank_fee_trans ) ) THEN
+--        ln_bank_fee := TO_NUMBER( gv_bank_fee_more );
+--      END IF;
+--      -- ===============================================
+--      -- 銀行手数料額に消費税額付与
+--      -- ===============================================
+--      ln_bank_fee := ln_bank_fee + ln_bank_fee * ( TO_NUMBER( gv_bm_tax ) / 100 );
+--    ELSE
+--      ln_bank_fee := cn_number_0;
+--    END IF;
+--    -- ===============================================
+--    -- 支払予定額(税込)から銀行手数料額を引いた金額が0円以下チェック
+--    -- ===============================================
+--    IF ( g_bm_data_tab( in_index ).expect_payment_amt_tax - ln_bank_fee <= cn_number_0 ) THEN
+--      lv_outmsg     := xxccp_common_pkg.get_msg(
+--                         iv_application   => cv_appli_short_name_xxcok
+--                       , iv_name          => cv_msg_xxcok1_10009
+--                       , iv_token_name1   => cv_token_conn_loc
+--                       , iv_token_value1  => g_bm_data_tab( in_index ).base_charge
+--                       , iv_token_name2   => cv_token_vendor_code
+--                       , iv_token_value2  => g_bm_data_tab( in_index ).supplier_code
+--                       , iv_token_name3   => cv_token_close_date
+--                       , iv_token_value3  => TO_CHAR( g_bm_data_tab( in_index ).closing_date, cv_format_yyyy_mm_dd )
+--                       , iv_token_name4   => cv_token_due_date
+--                       , iv_token_value4  => TO_CHAR( g_bm_data_tab( in_index ).expect_payment_date, cv_format_yyyy_mm_dd )
+--                       );
+--      lb_msg_return := xxcok_common_pkg.put_message_f(
+--                         in_which        => FND_FILE.OUTPUT
+--                       , iv_message      => lv_outmsg
+--                       , in_new_line     => cn_number_0
+--                       );
+--      RAISE check_warn_expt;
+--    END IF;
+--    -- ===============================================
+--    -- 連携データ妥当性チェック(A-5)
+--    -- ===============================================
+--    check_bm_data(
+--      ov_errbuf   => lv_errbuf
+--    , ov_retcode  => lv_retcode
+--    , ov_errmsg   => lv_errmsg
+--    , in_index    => in_index
+--    );
+--    IF ( lv_retcode    = cv_status_error ) THEN
+--      RAISE global_process_expt;
+--    ELSIF ( lv_retcode = cv_status_warn ) THEN
+--      RAISE check_warn_expt;
+--    END IF;
+--    -- ===============================================
+--    -- 連携データファイル作成(A-6)
+--    -- ===============================================
+--    file_output(
+--      ov_errbuf   => lv_errbuf
+--    , ov_retcode  => lv_retcode
+--    , ov_errmsg   => lv_errmsg
+--    , in_index    => in_index
+--    );
+--    IF ( lv_retcode = cv_status_error ) THEN
+--      RAISE global_process_expt;
+--    END IF;
+--    -- ===============================================
+--    -- 連携対象データ更新(A-7)
+--    -- ===============================================
+--    update_bm_data(
+--      ov_errbuf   => lv_errbuf
+--    , ov_retcode  => lv_retcode
+--    , ov_errmsg   => lv_errmsg
+--    , in_index    => in_index
+--    );
+--    IF ( lv_retcode = cv_status_error ) THEN
+--      RAISE global_process_expt;
+--    END IF;
+--  EXCEPTION
+--    -- *** 連携対象チェック例外 ***
+--    WHEN check_warn_expt THEN
+--      ov_errmsg  := NULL;
+--      ov_errbuf  := NULL;
+--      ov_retcode := cv_status_warn;
+--    -- *** 処理部共通例外 ***
+--    WHEN global_process_expt THEN
+--      ov_errmsg  := lv_errmsg;
+--      ov_errbuf  := SUBSTRB( cv_pkg_name || cv_msg_cont || cv_prg_name || cv_msg_part || lv_errbuf, 1, 5000 );
+--      ov_retcode := cv_status_error;
+--    -- *** 共通関数OTHERS例外 ***
+--    WHEN global_api_others_expt THEN
+--      ov_errbuf  := SUBSTRB( cv_pkg_name || cv_msg_cont || cv_prg_name || cv_msg_part || SQLERRM, 1, 5000 );
+--      ov_retcode := cv_status_error;
+--    -- *** OTHERS例外 ***
+--    WHEN OTHERS THEN
+--      ov_errbuf  := SUBSTRB( cv_pkg_name || cv_msg_cont || cv_prg_name || cv_msg_part || SQLERRM, 1, 5000 );
+--      ov_retcode := cv_status_error;
+--  END check_bm_amt;
+----
   /**********************************************************************************
    * Procedure Name   : check_bm_amt
    * Description      : 販手残高情報金額チェック(A-4)
    ***********************************************************************************/
   PROCEDURE check_bm_amt(
-    ov_errbuf   OUT VARCHAR2
-  , ov_retcode  OUT VARCHAR2
-  , ov_errmsg   OUT VARCHAR2
-  , in_index    IN  NUMBER
+    ov_errbuf      OUT VARCHAR2
+  , ov_retcode     OUT VARCHAR2
+  , ov_errmsg      OUT VARCHAR2
+  , it_bm_data_rec  IN g_bm_data_cur%ROWTYPE
   )
   IS
     -- ===============================================
@@ -1361,13 +2069,13 @@ AS
     -- ===============================================
     -- 銀行手数料支払対象チェック
     -- ===============================================
-    IF ( g_bm_data_tab( in_index ).bank_charge_bearer = cv_bank_charge_bearer ) THEN
+    IF ( it_bm_data_rec.bank_charge_bearer = cv_bank_charge_bearer ) THEN
       -- ===============================================
       -- 支払予定額(税込)より銀行手数料額設定
       -- ===============================================
-      IF ( g_bm_data_tab( in_index ).expect_payment_amt_tax     < TO_NUMBER( gv_bank_fee_trans ) ) THEN
+      IF ( it_bm_data_rec.expect_payment_amt_tax     < TO_NUMBER( gv_bank_fee_trans ) ) THEN
         ln_bank_fee := TO_NUMBER( gv_bank_fee_less );
-      ELSIF ( g_bm_data_tab( in_index ).expect_payment_amt_tax >= TO_NUMBER( gv_bank_fee_trans ) ) THEN
+      ELSIF ( it_bm_data_rec.expect_payment_amt_tax >= TO_NUMBER( gv_bank_fee_trans ) ) THEN
         ln_bank_fee := TO_NUMBER( gv_bank_fee_more );
       END IF;
       -- ===============================================
@@ -1380,18 +2088,18 @@ AS
     -- ===============================================
     -- 支払予定額(税込)から銀行手数料額を引いた金額が0円以下チェック
     -- ===============================================
-    IF ( g_bm_data_tab( in_index ).expect_payment_amt_tax - ln_bank_fee <= cn_number_0 ) THEN
+    IF ( it_bm_data_rec.expect_payment_amt_tax - ln_bank_fee <= cn_number_0 ) THEN
       lv_outmsg     := xxccp_common_pkg.get_msg(
                          iv_application   => cv_appli_short_name_xxcok
                        , iv_name          => cv_msg_xxcok1_10009
                        , iv_token_name1   => cv_token_conn_loc
-                       , iv_token_value1  => g_bm_data_tab( in_index ).base_charge
+                       , iv_token_value1  => it_bm_data_rec.base_charge
                        , iv_token_name2   => cv_token_vendor_code
-                       , iv_token_value2  => g_bm_data_tab( in_index ).supplier_code
+                       , iv_token_value2  => it_bm_data_rec.supplier_code
                        , iv_token_name3   => cv_token_close_date
-                       , iv_token_value3  => TO_CHAR( g_bm_data_tab( in_index ).closing_date, cv_format_yyyy_mm_dd )
+                       , iv_token_value3  => TO_CHAR( it_bm_data_rec.closing_date, cv_format_yyyy_mm_dd )
                        , iv_token_name4   => cv_token_due_date
-                       , iv_token_value4  => TO_CHAR( g_bm_data_tab( in_index ).expect_payment_date, cv_format_yyyy_mm_dd )
+                       , iv_token_value4  => TO_CHAR( it_bm_data_rec.expect_payment_date, cv_format_yyyy_mm_dd )
                        );
       lb_msg_return := xxcok_common_pkg.put_message_f(
                          in_which        => FND_FILE.OUTPUT
@@ -1404,10 +2112,10 @@ AS
     -- 連携データ妥当性チェック(A-5)
     -- ===============================================
     check_bm_data(
-      ov_errbuf   => lv_errbuf
-    , ov_retcode  => lv_retcode
-    , ov_errmsg   => lv_errmsg
-    , in_index    => in_index
+      ov_errbuf      => lv_errbuf
+    , ov_retcode     => lv_retcode
+    , ov_errmsg      => lv_errmsg
+    , it_bm_data_rec => it_bm_data_rec
     );
     IF ( lv_retcode    = cv_status_error ) THEN
       RAISE global_process_expt;
@@ -1418,10 +2126,10 @@ AS
     -- 連携データファイル作成(A-6)
     -- ===============================================
     file_output(
-      ov_errbuf   => lv_errbuf
-    , ov_retcode  => lv_retcode
-    , ov_errmsg   => lv_errmsg
-    , in_index    => in_index
+      ov_errbuf      => lv_errbuf
+    , ov_retcode     => lv_retcode
+    , ov_errmsg      => lv_errmsg
+    , it_bm_data_rec => it_bm_data_rec
     );
     IF ( lv_retcode = cv_status_error ) THEN
       RAISE global_process_expt;
@@ -1430,10 +2138,10 @@ AS
     -- 連携対象データ更新(A-7)
     -- ===============================================
     update_bm_data(
-      ov_errbuf   => lv_errbuf
-    , ov_retcode  => lv_retcode
-    , ov_errmsg   => lv_errmsg
-    , in_index    => in_index
+      ov_errbuf      => lv_errbuf
+    , ov_retcode     => lv_retcode
+    , ov_errmsg      => lv_errmsg
+    , it_bm_data_rec => it_bm_data_rec
     );
     IF ( lv_retcode = cv_status_error ) THEN
       RAISE global_process_expt;
@@ -1458,6 +2166,7 @@ AS
       ov_errbuf  := SUBSTRB( cv_pkg_name || cv_msg_cont || cv_prg_name || cv_msg_part || SQLERRM, 1, 5000 );
       ov_retcode := cv_status_error;
   END check_bm_amt;
+-- End   2009/07/01 Ver_1.4 0000289 M.Hiruta
 --
   /**********************************************************************************
    * Procedure Name   : get_bm_data
@@ -1488,10 +2197,41 @@ AS
     -- ===============================================
     -- カーソル
     -- ===============================================
-    OPEN  g_bm_data_cur;
-    FETCH g_bm_data_cur BULK COLLECT INTO g_bm_data_tab;
-    CLOSE g_bm_data_cur;
+-- Start 2009/07/01 Ver_1.4 0000289 M.Hiruta
+--    OPEN  g_bm_data_cur;
+--    FETCH g_bm_data_cur BULK COLLECT INTO g_bm_data_tab;
+--    CLOSE g_bm_data_cur;
+    << bm_data_loop >>
+    FOR l_bm_data_rec IN g_bm_data_cur LOOP
+      -- ===============================================
+      -- 対象件数取得
+      -- ===============================================
+      gn_target_cnt := gn_target_cnt + 1;
+      -- ===============================================
+      -- 販手残高情報金額チェック(A-4)、連携データ妥当性チェック(A-5)、連携データファイル作成(A-6)、連携対象データ更新(A-7)
+      -- ===============================================
+      check_bm_amt(
+        ov_errbuf      => lv_errbuf
+      , ov_retcode     => lv_retcode
+      , ov_errmsg      => lv_errmsg
+      , it_bm_data_rec => l_bm_data_rec
+      );
+      IF ( lv_retcode    = cv_status_error ) THEN
+        RAISE global_process_expt;
+      ELSIF ( lv_retcode = cv_status_normal ) THEN
+        gn_normal_cnt := gn_normal_cnt + cn_number_1;
+      ELSIF ( lv_retcode = cv_status_warn ) THEN
+        gn_skip_cnt   := gn_skip_cnt   + cn_number_1;
+      END IF;
+    END LOOP bm_data_loop;
+-- End   2009/07/01 Ver_1.4 0000289 M.Hiruta
   EXCEPTION
+-- Start 2009/07/01 Ver_1.4 0000289 M.Hiruta
+    WHEN global_process_expt THEN
+      ov_errmsg  := lv_errmsg;
+      ov_errbuf  := SUBSTRB( cv_pkg_name || cv_msg_cont || cv_prg_name || cv_msg_part || lv_errbuf, 1, 5000 );
+      ov_retcode := cv_status_error;
+-- End   2009/07/01 Ver_1.4 0000289 M.Hiruta
     -- *** 共通関数OTHERS例外 ***
     WHEN global_api_others_expt THEN
       ov_errbuf  := SUBSTRB( cv_pkg_name || cv_msg_cont || cv_prg_name || cv_msg_part || SQLERRM, 1, 5000 );
@@ -1998,44 +2738,59 @@ AS
     IF ( lv_retcode = cv_status_error ) THEN
       RAISE global_process_file_close_expt;
     END IF;
+-- Start 2009/07/01 Ver_1.4 0000289 M.Hiruta
+--    -- ===============================================
+--    -- 対象件数取得
+--    -- ===============================================
+--    gn_target_cnt := g_bm_data_tab.COUNT;
+--    IF ( gn_target_cnt > 0 ) THEN
+--      << bm_data_loop >>
+--      FOR i IN g_bm_data_tab.FIRST .. g_bm_data_tab.LAST LOOP
+--        -- ===============================================
+--        -- 販手残高情報金額チェック(A-4)、連携データ妥当性チェック(A-5)、連携データファイル作成(A-6)、連携対象データ更新(A-7)
+--        -- ===============================================
+--        check_bm_amt(
+--          ov_errbuf   => lv_errbuf
+--        , ov_retcode  => lv_retcode
+--        , ov_errmsg   => lv_errmsg
+--        , in_index    => i
+--        );
+--        IF ( lv_retcode    = cv_status_error ) THEN
+--          RAISE global_process_file_close_expt;
+--        ELSIF ( lv_retcode = cv_status_normal ) THEN
+--          gn_normal_cnt := gn_normal_cnt + cn_number_1;
+--        ELSIF ( lv_retcode = cv_status_warn ) THEN
+--          gn_skip_cnt   := gn_skip_cnt   + cn_number_1;
+--        END IF;
+--      END LOOP bm_data_loop;
+--      -- ===============================================
+--      -- 成功件数が存在する場合、フッタレコード取得(A-8)
+--      -- ===============================================
+--      IF ( gn_normal_cnt > cn_number_0 ) THEN
+--        get_footer_data(
+--          ov_errbuf   => lv_errbuf
+--        , ov_retcode  => lv_retcode
+--        , ov_errmsg   => lv_errmsg
+--        );
+--        IF ( lv_retcode    = cv_status_error ) THEN
+--          RAISE global_process_file_close_expt;
+--        END IF;
+--      END IF;
+--    END IF;
     -- ===============================================
-    -- 対象件数取得
+    -- 成功件数が存在する場合、フッタレコード取得(A-8)
     -- ===============================================
-    gn_target_cnt := g_bm_data_tab.COUNT;
-    IF ( gn_target_cnt > 0 ) THEN
-      << bm_data_loop >>
-      FOR i IN g_bm_data_tab.FIRST .. g_bm_data_tab.LAST LOOP
-        -- ===============================================
-        -- 販手残高情報金額チェック(A-4)、連携データ妥当性チェック(A-5)、連携データファイル作成(A-6)、連携対象データ更新(A-7)
-        -- ===============================================
-        check_bm_amt(
-          ov_errbuf   => lv_errbuf
-        , ov_retcode  => lv_retcode
-        , ov_errmsg   => lv_errmsg
-        , in_index    => i
-        );
-        IF ( lv_retcode    = cv_status_error ) THEN
-          RAISE global_process_file_close_expt;
-        ELSIF ( lv_retcode = cv_status_normal ) THEN
-          gn_normal_cnt := gn_normal_cnt + cn_number_1;
-        ELSIF ( lv_retcode = cv_status_warn ) THEN
-          gn_skip_cnt   := gn_skip_cnt   + cn_number_1;
-        END IF;
-      END LOOP bm_data_loop;
-      -- ===============================================
-      -- 成功件数が存在する場合、フッタレコード取得(A-8)
-      -- ===============================================
-      IF ( gn_normal_cnt > cn_number_0 ) THEN
-        get_footer_data(
-          ov_errbuf   => lv_errbuf
-        , ov_retcode  => lv_retcode
-        , ov_errmsg   => lv_errmsg
-        );
-        IF ( lv_retcode    = cv_status_error ) THEN
-          RAISE global_process_file_close_expt;
-        END IF;
+    IF ( gn_normal_cnt > cn_number_0 ) THEN
+      get_footer_data(
+        ov_errbuf   => lv_errbuf
+      , ov_retcode  => lv_retcode
+      , ov_errmsg   => lv_errmsg
+      );
+      IF ( lv_retcode    = cv_status_error ) THEN
+        RAISE global_process_file_close_expt;
       END IF;
     END IF;
+-- End   2009/07/01 Ver_1.4 0000289 M.Hiruta
     -- ===============================================
     -- ファイルクローズ(A-9)
     -- ===============================================
