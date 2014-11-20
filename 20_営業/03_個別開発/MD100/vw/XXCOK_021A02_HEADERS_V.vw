@@ -3,7 +3,7 @@
  *
  * View Name   : XXCOK_021A02_HEADERS_V
  * Description : 問屋請求見積書突き合わせ画面（ヘッダ）ビュー
- * Version     : 1.3
+ * Version     : 1.4
  *
  * Change Record
  * ------------- ----- ---------------- ---------------------------------
@@ -14,6 +14,7 @@
  *                                       [障害COK_004] 抽出条件に仕入先サイトマスタの無効日を追加
  *  2010/02/23    1.2   K.Yamaguchi      [E_本稼動_01176] 口座種別の取得元変更
  *  2012/03/08    1.3   S.Niki           [E_本稼動_08315] ヘッダに売上対象年月を追加
+ *  2012/07/05    1.4   T.Osawa          [E_本稼動_08317] 問屋請求書明細テーブルに抽出条件を追加
  *
  **************************************************************************************/
 CREATE OR REPLACE VIEW apps.xxcok_021a02_headers_v(
@@ -72,6 +73,10 @@ FROM xxcok_wholesale_bill_head     xwbh      -- 問屋請求書ヘッダテーブル
    , ( SELECT xwbl.wholesale_bill_header_id      AS wholesale_bill_header_id  -- 問屋請求書ヘッダID
             , xwbl.selling_month                 AS selling_month             -- 売上対象年月
        FROM   xxcok_wholesale_bill_line  xwbl  -- 問屋請求書明細テーブル
+-- 2012/07/05 Ver.1.4 [障害E_本稼動_08317] SCSK T.Osawa ADD START
+       WHERE (xwbl.status               IS NULL                       -- ステータスコードがＮＵＬＬ又は 
+       OR     xwbl.status               <> 'D')                       -- ステータスコードが削除以外
+-- 2012/07/05 Ver.1.4 [障害E_本稼動_08317] SCSK T.Osawa ADD END
        GROUP BY xwbl.wholesale_bill_header_id
               , xwbl.selling_month
      )                             line      -- 問屋請求書明細テーブル

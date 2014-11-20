@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCOK021A06R(body)
  * Description      : 帳合問屋に関する請求書と見積書を突き合わせ、品目別に請求書と見積書の内容を表示
  * MD.050           : 問屋販売条件支払チェック表 MD050_COK_021_A06
- * Version          : 1.12
+ * Version          : 1.13
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -43,6 +43,7 @@ AS
  *  2010/04/23    1.10  K.Yamaguchi      [E_本稼動_02088] NET掛け率・CSマージン額で請求単位（ボール）を考慮
  *  2012/03/12    1.11  K.Nakamura       [E_本稼動_08318] レイアウト改修対応
  *  2012/07/12    1.12  S.Niki           [E_本稼動_09806] 単位別にNET価格と営業原価の比較方法を変更
+ *  2012/07/19    1.13  T.Osawa          [E_本稼動_08317] 問屋請求見積書明細の取得方法変更
  *
  *****************************************************************************************/
   -- ===============================================
@@ -336,6 +337,10 @@ AS
     AND    xwbh.cust_code                = NVL( iv_cust_code, xwbh.cust_code )
     AND    xwbl.sales_outlets_code       = NVL( iv_sales_outlets_code, xwbl.sales_outlets_code )
     AND    xwbl.selling_month            = NVL( lv_selling_month, xwbl.selling_month )
+-- 2012/07/19 Ver.1.13 [E_本稼動_08317] SCSK T.Osawa ADD START
+    AND  ( xwbl.status                   IS NULL            -- ステータスコードがNULLまたは
+    OR     xwbl.status                   <> 'D' )           -- ステータスコードが'D'(削除)以外
+-- 2012/07/19 Ver.1.13 [E_本稼動_08317] SCSK T.Osawa ADD END
     AND    xca.wholesale_ctrl_code       = NVL( iv_wholesale_code_admin, xca.wholesale_ctrl_code )
     AND    xca.customer_id               = hca.cust_account_id
     AND    hca.account_number            = xwbh.cust_code
