@@ -8,7 +8,7 @@ AS
  * Description      : 入出庫配送計画情報抽出処理
  * MD.050           : T_MD050_BPO_601_配車配送計画
  * MD.070           : T_MD070_BPO_60E_入出庫配送計画情報抽出処理
- * Version          : 1.10
+ * Version          : 1.11
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -48,6 +48,7 @@ AS
  *  2008/06/16    1.8   M.NOMURA         結合テスト 440 不具合対応#64
  *  2008/06/18    1.9   M.HOKKANJI       システムテスト不具合対応#147,#187
  *  2008/06/23    1.10  M.NOMURA         システムテスト不具合対応#217
+ *  2008/06/27    1.11  M.NOMURA         システムテスト不具合対応#303
  *
  *****************************************************************************************/
 --
@@ -1565,6 +1566,12 @@ AS
     -------------------------------------------------------
     lv_where := lv_where
              || ' AND wsdit2.line_id = imld.mov_line_id (+) '
+-- ##### 20080627 Ver.1.11 ロット数量換算対応 START #####
+             || ' AND imld.document_type_code IN ('
+             ||                 gc_doc_type_ship  || ',' 
+             ||                 gc_doc_type_move  || ',' 
+             ||                 gc_doc_type_prov  || ')'
+-- ##### 20080627 Ver.1.11 ロット数量換算対応 END   #####
              ;
 --
 --
@@ -1932,6 +1939,37 @@ AS
           gt_lot_sign(gn_cre_idx)      := NULL ;     -- 固有記号
           gt_lot_quantity(gn_cre_idx)  := NULL ;     -- ロット数量
       END ;
+--
+-- ##### 20080627 Ver.1.11 ロット数量換算対応 START #####
+      -------------------------------------------------------
+      -- ロット数量換算
+      -------------------------------------------------------
+      -- 出荷の場合
+      IF ( ir_main_data.data_type = gc_data_type_syu_ins ) THEN
+--
+        -- 入出庫換算単位≠NULLの場合の換算
+        IF (ir_main_data.conv_unit IS NOT NULL) THEN
+          -- ロット数量 ÷ ケース入り数
+          gt_lot_quantity(gn_cre_idx) := gt_lot_quantity(gn_cre_idx)
+                                            / ir_main_data.case_quantity ;
+          gt_lot_quantity(gn_cre_idx) := TRUNC( gt_lot_quantity(gn_cre_idx), 3 ) ;
+--
+        END IF;
+--
+      -- 移動の場合（ドリンク製品のみ）
+      ELSIF (   ( ir_main_data.data_type  = gc_data_type_mov_ins )
+            AND ( ir_main_data.prod_class = gc_prod_class_d      ) 
+            AND ( ir_main_data.item_class = gc_item_class_i      ) ) THEN
+        -- 入出庫換算単位≠NULLの場合
+        IF (ir_main_data.conv_unit IS NOT NULL) THEN
+          -- ロット数量 ÷ ケース入り数
+          gt_lot_quantity(gn_cre_idx) := gt_lot_quantity(gn_cre_idx)
+                                            / ir_main_data.case_quantity ;
+          gt_lot_quantity(gn_cre_idx) := TRUNC( gt_lot_quantity(gn_cre_idx), 3 ) ;
+        END IF ;
+      END IF;
+-- ##### 20080627 Ver.1.11 ロット数量換算対応 END   #####
+--
     END IF ;
 --
   EXCEPTION
@@ -2047,19 +2085,35 @@ AS
     lv_tok_val := gt_main_data(in_idx).item_code ;
     -- 出荷の場合
     IF ( gt_main_data(in_idx).data_type = gc_data_type_syu_ins ) THEN
-      -- ケース入り数の値がない場合
-      IF ( NVL( gt_main_data(in_idx).case_quantity, 0 ) = 0 ) THEN
-        RAISE ex_case_quant_error ;
+-- ##### 20080627 Ver.1.11 ロット数量換算対応 START #####
+--
+      -- 入出庫換算単位≠NULLの場合
+      IF (gt_main_data(in_idx).conv_unit IS NOT NULL) THEN
+-- ##### 20080627 Ver.1.11 ロット数量換算対応 END   #####
+        -- ケース入り数の値がない場合
+        IF ( NVL( gt_main_data(in_idx).case_quantity, 0 ) = 0 ) THEN
+          RAISE ex_case_quant_error ;
+        END IF ;
+-- ##### 20080627 Ver.1.11 ロット数量換算対応 START #####
       END IF ;
+-- ##### 20080627 Ver.1.11 ロット数量換算対応 END   #####
 --
     -- 移動の場合（ドリンク製品のみ）
     ELSIF (   ( gt_main_data(in_idx).data_type  = gc_data_type_mov_ins )
           AND ( gt_main_data(in_idx).prod_class = gc_prod_class_d      ) 
           AND ( gt_main_data(in_idx).item_class = gc_item_class_i      ) ) THEN
-      -- ケース入り数の値がない場合
-      IF ( NVL( gt_main_data(in_idx).case_quantity, 0 ) = 0 ) THEN
-        RAISE ex_case_quant_error ;
+-- ##### 20080627 Ver.1.11 ロット数量換算対応 START #####
+--
+      -- 入出庫換算単位≠NULLの場合
+      IF (gt_main_data(in_idx).conv_unit IS NOT NULL) THEN
+-- ##### 20080627 Ver.1.11 ロット数量換算対応 END   #####
+        -- ケース入り数の値がない場合
+        IF ( NVL( gt_main_data(in_idx).case_quantity, 0 ) = 0 ) THEN
+          RAISE ex_case_quant_error ;
+        END IF ;
+-- ##### 20080627 Ver.1.11 ロット数量換算対応 START #####
       END IF ;
+-- ##### 20080627 Ver.1.11 ロット数量換算対応 END   #####
     END IF ;
 --
     -- =============================================================================================
@@ -2079,9 +2133,21 @@ AS
       lv_item_uom_code := NVL( gt_main_data(in_idx).conv_unit
                               ,gt_main_data(in_idx).item_uom_code ) ;
       -- 品目数量
-      lv_item_quantity := gt_main_data(in_idx).item_quantity
-                        / gt_main_data(in_idx).case_quantity ;
-      lv_item_quantity := TRUNC( lv_item_quantity, 3 ) ;
+-- ##### 20080627 Ver.1.11 ロット数量換算対応 START #####
+--
+      -- 入出庫換算単位≠NULLの場合
+      IF (gt_main_data(in_idx).conv_unit IS NOT NULL) THEN
+-- ##### 20080627 Ver.1.11 ロット数量換算対応 END   #####
+        lv_item_quantity := gt_main_data(in_idx).item_quantity
+                          / gt_main_data(in_idx).case_quantity ;
+        lv_item_quantity := TRUNC( lv_item_quantity, 3 ) ;
+-- ##### 20080627 Ver.1.11 ロット数量換算対応 START #####
+--
+      -- 入出庫換算単位＝NULLの場合
+      ELSE
+        lv_item_quantity       := gt_main_data(in_idx).item_quantity ;  -- 品目数量
+      END IF;
+-- ##### 20080627 Ver.1.11 ロット数量換算対応 END   #####
 --
       -------------------------------------------------------
       -- ヘッダデータの作成
@@ -2198,10 +2264,22 @@ AS
         -- 品目単位
         lv_item_uom_code := NVL( gt_main_data(in_idx).conv_unit
                                 ,gt_main_data(in_idx).item_uom_code ) ;
-        -- 品目数量
-        lv_item_quantity := gt_main_data(in_idx).item_quantity
-                          / gt_main_data(in_idx).case_quantity ;
-        lv_item_quantity := TRUNC( lv_item_quantity, 3 ) ;
+-- ##### 20080627 Ver.1.11 ロット数量換算対応 START #####
+--
+        -- 入出庫換算単位≠NULLの場合
+        IF (gt_main_data(in_idx).conv_unit IS NOT NULL) THEN
+-- ##### 20080627 Ver.1.11 ロット数量換算対応 END   #####
+          -- 品目数量
+          lv_item_quantity := gt_main_data(in_idx).item_quantity
+                            / gt_main_data(in_idx).case_quantity ;
+          lv_item_quantity := TRUNC( lv_item_quantity, 3 ) ;
+-- ##### 20080627 Ver.1.11 ロット数量換算対応 START #####
+--
+        -- 入出庫換算単位＝NULLの場合
+        ELSE
+          lv_item_quantity       := gt_main_data(in_idx).item_quantity ;  -- 品目数量
+        END IF;
+-- ##### 20080627 Ver.1.11 ロット数量換算対応 END   #####
 --
       ELSE
 --
@@ -2360,10 +2438,21 @@ AS
         -- 品目単位
         lv_item_uom_code := NVL( gt_main_data(in_idx).conv_unit
                                 ,gt_main_data(in_idx).item_uom_code ) ;
-        -- 品目数量
+-- ##### 20080627 Ver.1.11 ロット数量換算対応 START #####
+--
+      -- 入出庫換算単位≠NULLの場合
+      IF (gt_main_data(in_idx).conv_unit IS NOT NULL) THEN
+-- ##### 20080627 Ver.1.11 ロット数量換算対応 END   #####
         lv_item_quantity := gt_main_data(in_idx).item_quantity
                           / gt_main_data(in_idx).case_quantity ;
         lv_item_quantity := TRUNC( lv_item_quantity, 3 ) ;
+-- ##### 20080627 Ver.1.11 ロット数量換算対応 START #####
+--
+      -- 入出庫換算単位＝NULLの場合
+      ELSE
+        lv_item_quantity       := gt_main_data(in_idx).item_quantity ;  -- 品目数量
+      END IF;
+-- ##### 20080627 Ver.1.11 ロット数量換算対応 END   #####
 --
         -------------------------------------------------------
         -- ヘッダデータの作成
@@ -2480,10 +2569,22 @@ AS
         -- 品目単位
         lv_item_uom_code := NVL( gt_main_data(in_idx).conv_unit
                                 ,gt_main_data(in_idx).item_uom_code ) ;
-        -- 品目数量
-        lv_item_quantity := gt_main_data(in_idx).item_quantity
-                          / gt_main_data(in_idx).case_quantity ;
-        lv_item_quantity := TRUNC( lv_item_quantity, 3 ) ;
+-- ##### 20080627 Ver.1.11 ロット数量換算対応 START #####
+--
+        -- 入出庫換算単位≠NULLの場合
+        IF (gt_main_data(in_idx).conv_unit IS NOT NULL) THEN
+-- ##### 20080627 Ver.1.11 ロット数量換算対応 END   #####
+          -- 品目数量
+          lv_item_quantity := gt_main_data(in_idx).item_quantity
+                            / gt_main_data(in_idx).case_quantity ;
+          lv_item_quantity := TRUNC( lv_item_quantity, 3 ) ;
+-- ##### 20080627 Ver.1.11 ロット数量換算対応 START #####
+--
+        -- 入出庫換算単位＝NULLの場合
+        ELSE
+          lv_item_quantity       := gt_main_data(in_idx).item_quantity ;  -- 品目数量
+        END IF;
+-- ##### 20080627 Ver.1.11 ロット数量換算対応 END   #####
 --
       ELSE
 --

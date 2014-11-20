@@ -7,7 +7,7 @@ AS
  * Description      : ＨＨＴ入出庫配車確定情報抽出処理
  * MD.050           : T_MD050_BPO_601_配車配送計画
  * MD.070           : T_MD070_BPO_60F_ＨＨＴ入出庫配車確定情報抽出処理
- * Version          : 1.5
+ * Version          : 1.6
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -38,6 +38,7 @@ AS
  *  2008/06/12    1.3   M.Nomura         結合テスト 不具合対応#7
  *  2008/06/17    1.4   M.Hokkanji       システムテスト 不具合対応#153
  *  2008/06/19    1.5   M.Nomura         システムテスト 不具合対応#193
+ *  2008/06/27    1.6   M.Nomura         システムテスト 不具合対応#303
  *
  *****************************************************************************************/
 --
@@ -1528,6 +1529,24 @@ AS
           gt_lot_sign(gn_cre_idx)      := NULL ;     -- 固有記号
           gt_lot_quantity(gn_cre_idx)  := NULL ;     -- ロット数量
       END ;
+--
+-- ##### 20080627 Ver.1.6 ロット数量換算対応 START #####
+      -------------------------------------------------------
+      -- ロット数量換算
+      -------------------------------------------------------
+    -- 出荷の場合
+    IF ( ir_main_data.data_type = gc_data_type_syu_ins ) THEN
+--
+        -- 入出庫換算単位≠NULLの場合
+        IF (ir_main_data.conv_unit IS NOT NULL) THEN
+          -- ロット数量 ÷ ケース入り数
+          gt_lot_quantity(gn_cre_idx) := gt_lot_quantity(gn_cre_idx)
+                                           / ir_main_data.num_of_cases ;
+          gt_lot_quantity(gn_cre_idx) := TRUNC( gt_lot_quantity(gn_cre_idx), 3 ) ;
+        END IF ;
+    END IF ;
+-- ##### 20080627 Ver.1.6 ロット数量換算対応 END   #####
+--
     END IF ;
 --
   EXCEPTION

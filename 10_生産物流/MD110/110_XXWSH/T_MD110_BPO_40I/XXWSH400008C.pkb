@@ -7,7 +7,7 @@ AS
  * Description      : 生産物流（出荷）
  * MD.050           : 出荷依頼 T_MD050_BPO_401
  * MD.070           : 出荷調整表 T_MD070_BPO_40I
- * Version          : 1.1
+ * Version          : 1.2
  *
  * Program List
  * ---------------------------- ----------------------------------------------------------
@@ -41,6 +41,7 @@ AS
  * ------------- ----- --------------------- -------------------------------------------------
  *  2008/04/10    1.0   Masakazu Yamashita    新規作成
  *  2008/06/19    1.1   Yasuhisa Yamamoto     システムテスト障害対応
+ *  2008/06/26    1.2   ToshikazuIshiwata     システムテスト障害対応(#309)
  *
  *****************************************************************************************/
 --
@@ -117,7 +118,7 @@ AS
         -- 拠点コード
         head_sales_branch           mrp_forecast_designators.attribute3%TYPE
         -- 品目コード
-       ,item_code                   xxcmn_item_mst_v.item_id%TYPE
+       ,item_code                   xxcmn_item_mst_v.item_no%TYPE
         -- 品目名
        ,item_name                   xxcmn_item_mst_v.item_short_name%TYPE
         -- 着日

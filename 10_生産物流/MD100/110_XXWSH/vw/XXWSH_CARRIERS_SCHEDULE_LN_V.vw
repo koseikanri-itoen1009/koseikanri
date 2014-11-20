@@ -55,6 +55,7 @@ CREATE OR REPLACE VIEW apps.xxwsh_carriers_schedule_ln_v
 ,new_modify_flg              -- 新規修正フラグ
 ,screen_update_by            -- 画面更新者
 ,screen_update_date          -- 画面更新日時
+,prev_delivery_no            -- 前回配送№
 ,created_by                  -- 作成者
 ,creation_date               -- 作成日
 ,last_updated_by             -- 最終更新者
@@ -121,6 +122,8 @@ AS
         ,xoha.new_modify_flg              new_modify_flg              -- 新規修正フラグ
         ,xoha.screen_update_by            screen_update_by            -- 画面更新者
         ,xoha.screen_update_date          screen_update_date          -- 画面更新日時
+        -- 
+        ,xoha.prev_delivery_no            prev_delivery_no            -- 前回配送№
         -- 
         ,xoha.created_by                  created_by                  -- 作成者
         ,xoha.creation_date               creation_date               -- 作成日
@@ -217,6 +220,8 @@ AS
         ,xmrih.new_modify_flg               new_modify_flg              -- 新規修正フラグ
         ,xmrih.screen_update_by             screen_update_by            -- 画面更新者
         ,xmrih.screen_update_date           screen_update_date          -- 画面更新日時
+        -- 
+        ,xmrih.prev_delivery_no             prev_delivery_no            -- 前回配送№
         -- 
         ,xmrih.created_by                   created_by                  -- 作成者
         ,xmrih.creation_date                creation_date               -- 作成日

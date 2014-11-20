@@ -7,7 +7,7 @@ AS
  * Description      : 引取計画からのリーフ出荷依頼自動作成
  * MD.050/070       : 出荷依頼                              (T_MD050_BPO_400)
  *                    引取計画からのリーフ出荷依頼自動作成  (T_MD070_BPO_40A)
- * Version          : 1.5
+ * Version          : 1.6
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -40,6 +40,7 @@ AS
  *  2008/06/10    1.4   石渡  賢和       不具合修正(エラーリストでスペース埋めを削除）
  *                                       xxwsh_common910_pkgの帰り値判定を修正
  *  2008/06/19    1.5   Y.Shindou        内部変更要求#143対応
+ *  2008/06/27    1.6   石渡  賢和       不具合修正(着荷日がずれる、TRUNC対応）
  *
  *****************************************************************************************/
 --
@@ -2604,7 +2605,8 @@ AS
    ***********************************************************************************/
   PROCEDURE pro_headers_create
     (
-      ov_errbuf     OUT VARCHAR2     -- エラー・メッセージ           --# 固定 #
+      in_plan_cnt   IN  NUMBER       -- 対象としているForecastの件数
+     ,ov_errbuf     OUT VARCHAR2     -- エラー・メッセージ           --# 固定 #
      ,ov_retcode    OUT VARCHAR2     -- リターン・コード             --# 固定 #
      ,ov_errmsg     OUT VARCHAR2     -- ユーザー・エラー・メッセージ --# 固定 #
     )
@@ -2656,21 +2658,32 @@ AS
     gt_h_organization_id(gn_h_cnt)         := gv_name_m_org;               -- 組織ID
     gt_h_latest_external_flag(gn_h_cnt)    := gv_yes;                      -- 最新フラグ
     gt_h_ordered_date(gn_h_cnt)            := gd_sysdate;                  -- 受注日
-    gt_h_customer_id(gn_h_cnt)             := gt_to_plan(gn_i).par_id;     -- 顧客ID
-    gt_h_customer_code(gn_h_cnt)           := gt_to_plan(gn_i).par_num;    -- 顧客
-    gt_h_deliver_to_id(gn_h_cnt)           := gt_to_plan(gn_i).p_s_site;   -- 配送先ID
-    gt_h_deliver_to(gn_h_cnt)              := gt_to_plan(gn_i).ship_t_no;  -- 配送先
+    --gt_h_customer_id(gn_h_cnt)             := gt_to_plan(gn_i).par_id;     -- 顧客ID
+    --gt_h_customer_code(gn_h_cnt)           := gt_to_plan(gn_i).par_num;    -- 顧客
+    --gt_h_deliver_to_id(gn_h_cnt)           := gt_to_plan(gn_i).p_s_site;   -- 配送先ID
+    --gt_h_deliver_to(gn_h_cnt)              := gt_to_plan(gn_i).ship_t_no;  -- 配送先
+    --
+    gt_h_customer_id(gn_h_cnt)             := gt_to_plan(in_plan_cnt).par_id;     -- 顧客ID
+    gt_h_customer_code(gn_h_cnt)           := gt_to_plan(in_plan_cnt).par_num;    -- 顧客
+    gt_h_deliver_to_id(gn_h_cnt)           := gt_to_plan(in_plan_cnt).p_s_site;   -- 配送先ID
+    gt_h_deliver_to(gn_h_cnt)              := gt_to_plan(in_plan_cnt).ship_t_no;  -- 配送先
+    --
     gt_h_shipping_method_code(gn_h_cnt)    := gv_max_kbn;                  -- 配送区分
     gt_h_request_no(gn_h_cnt)              := gv_req_no;                   -- 依頼No
     gt_h_req_status(gn_h_cnt)              := gr_ship_st;                  -- ステータス
     gt_h_schedule_ship_date(gn_h_cnt)      := gd_ship_day;                 -- 出荷予定日
-    gt_h_schedule_arrival_date(gn_h_cnt)   := gt_to_plan(gn_i).for_date;   -- 着荷予定日
+    --gt_h_schedule_arrival_date(gn_h_cnt)   := gt_to_plan(gn_i).for_date;   -- 着荷予定日
+    gt_h_schedule_arrival_date(gn_h_cnt)   := gt_to_plan(in_plan_cnt).for_date;   -- 着荷予定日
     gt_h_notif_status(gn_h_cnt)            := gr_notice_st;                -- 通知ステータス
-    gt_h_deliver_from_id(gn_h_cnt)         := gt_to_plan(gn_i).ship_id;    -- 出荷元ID
-    gt_h_deliver_from(gn_h_cnt)            := gt_to_plan(gn_i).ship_fr;    -- 出荷元保管場所
-    gt_h_Head_sales_branch(gn_h_cnt)       := gt_to_plan(gn_i).ktn;        -- 管轄拠点
+    --gt_h_deliver_from_id(gn_h_cnt)         := gt_to_plan(gn_i).ship_id;    -- 出荷元ID
+    --gt_h_deliver_from(gn_h_cnt)            := gt_to_plan(gn_i).ship_fr;    -- 出荷元保管場所
+    --gt_h_Head_sales_branch(gn_h_cnt)       := gt_to_plan(gn_i).ktn;        -- 管轄拠点
+    gt_h_deliver_from_id(gn_h_cnt)         := gt_to_plan(in_plan_cnt).ship_id;    -- 出荷元ID
+    gt_h_deliver_from(gn_h_cnt)            := gt_to_plan(in_plan_cnt).ship_fr;    -- 出荷元保管場所
+    gt_h_Head_sales_branch(gn_h_cnt)       := gt_to_plan(in_plan_cnt).ktn;        -- 管轄拠点
     gt_h_input_sales_branch(gn_h_cnt)      := gr_param.base;               -- 入力拠点
-    gt_h_prod_class(gn_h_cnt)              := gt_to_plan(gn_i).skbn;       -- 商品区分
+    --gt_h_prod_class(gn_h_cnt)              := gt_to_plan(gn_i).skbn;       -- 商品区分
+    gt_h_prod_class(gn_h_cnt)              := gt_to_plan(in_plan_cnt).skbn; -- 商品区分
     gt_h_sum_quantity(gn_h_cnt)            := gn_ttl_amount;               -- 合計数量
     gt_h_small_quantity(gn_h_cnt)          := gn_ttl_ship_am;              -- 小口個数
     gt_h_label_quantity(gn_h_cnt)          := gn_ttl_ship_am;              -- ラベル枚数
@@ -2681,7 +2694,8 @@ AS
     gt_h_sum_weight(gn_h_cnt)              := gn_h_ttl_weight;             -- 積載重量合計
     gt_h_sum_capacity(gn_h_cnt)            := gn_h_ttl_capa;               -- 積載容積合計
     gt_h_sum_pallet_weight(gn_h_cnt)       := gn_h_ttl_pallet;             -- 合計パレット重量
-    gt_h_weight_capacity_class(gn_h_cnt)   := gt_to_plan(gn_i).wei_kbn;    -- 重量容積区分
+    --gt_h_weight_capacity_class(gn_h_cnt)   := gt_to_plan(gn_i).wei_kbn;      -- 重量容積区分
+    gt_h_weight_capacity_class(gn_h_cnt)   := gt_to_plan(in_plan_cnt).wei_kbn; -- 重量容積区分
     gt_h_actual_confirm_class(gn_h_cnt)    := gv_no;                       -- 実績計上済区分
     gt_h_new_modify_flg(gn_h_cnt)          := gv_no;                       -- 新規修正フラグ
     gt_h_per_management_dept(gn_h_cnt)     := NULL;                        -- 成績管理部署
@@ -2961,6 +2975,8 @@ AS
 --
 --###########################  固定部 END   ####################################
 --
+    ln_plan_cnt NUMBER;
+--
   BEGIN
 --
 --##################  固定ステータス初期化部 START   ###################
@@ -2979,7 +2995,7 @@ AS
     gr_param.base    := iv_base;      -- 管轄拠点
 --
     -- 開始時のシステム現在日付を代入
-    gd_sysdate       := SYSDATE;
+    gd_sysdate       := TRUNC( SYSDATE );
 --
     -- グローバル変数の初期化
     gn_target_cnt    := 0;
@@ -3058,12 +3074,14 @@ AS
          )
       THEN
 --
+        ln_plan_cnt := gn_i - 1;
       -- =====================================================
       -- 受注ヘッダアドオンレコード生成 (A-11)
       -- =====================================================
         pro_headers_create
           (
-            ov_errbuf         => lv_errbuf          -- エラー・メッセージ           --# 固定 #
+            in_plan_cnt       => ln_plan_cnt        -- 対象としているForecastの件数
+           ,ov_errbuf         => lv_errbuf          -- エラー・メッセージ           --# 固定 #
            ,ov_retcode        => lv_retcode         -- リターン・コード             --# 固定 #
            ,ov_errmsg         => lv_errmsg          -- ユーザー・エラー・メッセージ --# 固定 #
           );
@@ -3243,7 +3261,8 @@ AS
       -- =====================================================
         pro_headers_create
           (
-            ov_errbuf         => lv_errbuf          -- エラー・メッセージ           --# 固定 #
+             in_plan_cnt       => (gn_i)            -- 対象としているForecastの件数
+            ,ov_errbuf         => lv_errbuf          -- エラー・メッセージ           --# 固定 #
             ,ov_retcode        => lv_retcode         -- リターン・コード             --# 固定 #
             ,ov_errmsg         => lv_errmsg          -- ユーザー・エラー・メッセージ --# 固定 #
           );
