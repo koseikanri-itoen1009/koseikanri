@@ -7,7 +7,7 @@ AS
  * Description      : 生産物流(引当、配車)
  * MD.050           : 出荷・引当/配車：生産物流共通（出荷・移動仮引当） T_MD050_BPO_920
  * MD.070           : 出荷・引当/配車：生産物流共通（出荷・移動仮引当） T_MD070_BPO92A
- * Version          : 1.9
+ * Version          : 1.10
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -34,6 +34,7 @@ AS
  *  2009/01/28   1.7   SCS 二瓶          本番障害#949対応（トレース取得用処理追加）
  *  2009/02/03   1.8   SCS 二瓶          本番障害#949対応（トレース取得用処理削除）
  *  2009/02/18   1.9   SCS 野村          本番障害#1176対応
+ *  2009/02/19   1.10  SCS 野村          本番障害#1176対応（追加修正）
  *
  *****************************************************************************************/
 --
@@ -1041,6 +1042,11 @@ AS
              , lok.type           type
              , lok_sess.module    module
              , lok_sess.action    action
+-- ##### 20090219 Ver.1.10 本番#1176対応（追加修正） START #####
+             , lok.lmode          lmode
+             , lok.request        request
+             , lok.ctime          ctime
+-- ##### 20090219 Ver.1.10 本番#1176対応（追加修正） END   #####
         FROM   gv$lock    lok
              , gv$session lok_sess
              , gv$lock    req
@@ -1048,6 +1054,13 @@ AS
         WHERE lok.inst_id = lok_sess.inst_id
           AND lok.sid     = lok_sess.sid
           AND lok.lmode   = 6
+-- ##### 20090219 Ver.1.10 本番#1176対応（追加修正） START #####
+          AND (lok.id1, lok.id2) IN (SELECT lok_not.id1, lok_not.id2
+                                     FROM   gv$lock   lok_not
+                                     WHERE  lok_not.id1 =lok.id1 
+                                     AND    lok_not.id2 =lok.id2 
+                                     AND    lok_not.request > 0) 
+-- ##### 20090219 Ver.1.10 本番#1176対応（追加修正） END   #####
           AND req.inst_id = req_sess.inst_id
           AND req.sid     = req_sess.sid
           AND (   req.inst_id <> lok.inst_id
@@ -1091,16 +1104,29 @@ AS
 --          EXECUTE IMMEDIATE lv_strsql;
 --          lv_staus := '1';
 --
+-- ##### 20090219 Ver.1.10 本番#1176対応（追加修正） START #####
           -- 削除対象セッションログ出力
-          FND_FILE.PUT_LINE(FND_FILE.LOG, '【セッション切断】' || 
-                                          ' 自動仮引当： 要求ID[' || TO_CHAR(in_reqid) || '] ' ||
-                                          ' 切断対象セッション：' ||
-                                          ' inst_id[' || TO_CHAR(lock_rec.inst_id) || '] ' ||
-                                          ' sid['     || TO_CHAR(lock_rec.sid)     || '] ' ||
-                                          ' serial['  || TO_CHAR(lock_rec.serial#) || '] ' ||
-                                          ' action['  || lock_rec.action           || '] ' ||
-                                          ' module['  || lock_rec.module           || '] '
-                                          );
+--          FND_FILE.PUT_LINE(FND_FILE.LOG, '【セッション切断】' || 
+--                                          ' 自動仮引当： 要求ID[' || TO_CHAR(in_reqid) || '] ' ||
+--                                          ' 切断対象セッション：' ||
+--                                          ' inst_id[' || TO_CHAR(lock_rec.inst_id) || '] ' ||
+--                                          ' sid['     || TO_CHAR(lock_rec.sid)     || '] ' ||
+--                                          ' serial['  || TO_CHAR(lock_rec.serial#) || '] ' ||
+--                                          ' action['  || lock_rec.action           || '] ' ||
+--                                          ' module['  || lock_rec.module           || '] '
+--                                          );
+      FND_FILE.PUT_LINE(FND_FILE.LOG, '【セッション切断】' || ' 要求ID[' || TO_CHAR(in_reqid) || '] ' ||
+                                      ' 切断対象セッション：' ||
+                                      ' inst_id[' || TO_CHAR(lock_rec.inst_id) || '] ' ||
+                                      ' sid['     || TO_CHAR(lock_rec.sid)     || '] ' ||
+                                      ' serial#[' || TO_CHAR(lock_rec.serial#) || '] ' ||
+                                      ' action['  || lock_rec.action           || '] ' ||
+                                      ' module['  || lock_rec.module           || '] ' ||
+                                      ' lmode['   || TO_CHAR(lock_rec.lmode)   || '] ' ||
+                                      ' request[' || TO_CHAR(lock_rec.request) || '] ' ||
+                                      ' ctime['   || TO_CHAR(lock_rec.ctime)   || '] '
+                                      );
+-- ##### 20090219 Ver.1.10 本番#1176対応（追加修正） END   #####
 --
         -- =====================================
         -- セッション切断コンカレントを起動する

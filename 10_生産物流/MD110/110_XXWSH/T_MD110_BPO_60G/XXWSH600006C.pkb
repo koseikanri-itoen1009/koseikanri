@@ -7,7 +7,7 @@ AS
  * Description      : 自動配車配送計画作成処理ロック対応
  * MD.050           : 配車配送計画 T_MD050_BPO_600
  * MD.070           : 自動配車配送計画作成処理 T_MD070_BPO_60B
- * Version          : 1.4
+ * Version          : 1.5
  *
  * Program List
  *  ------------------------ ---- ---- --------------------------------------------------
@@ -23,6 +23,7 @@ AS
  *  2009/01/16    1.2  M.Nomura         本番障害#900
  *  2009/01/27    1.3  H.Itou           本番障害#1028
  *  2009/02/17    1.4  M.Nomura         本番障害#1176
+ *  2009/02/19    1.5  M.Nomura         本番障害#1176（追加修正）
  *
  *****************************************************************************************/
 --
@@ -206,6 +207,11 @@ AS
              , lok.type           type
              , lok_sess.module    module
              , lok_sess.action    action
+-- ##### 20090219 Ver.1.5 本番#1176対応（追加修正） START #####
+             , lok.lmode          lmode
+             , lok.request        request
+             , lok.ctime          ctime
+-- ##### 20090219 Ver.1.5 本番#1176対応（追加修正） END   #####
         FROM   gv$lock    lok
              , gv$session lok_sess
              , gv$lock    req
@@ -213,6 +219,13 @@ AS
         WHERE lok.inst_id = lok_sess.inst_id
           AND lok.sid     = lok_sess.sid
           AND lok.lmode   = 6
+-- ##### 20090219 Ver.1.5 本番#1176対応（追加修正） START #####
+          AND (lok.id1, lok.id2) IN (SELECT lok_not.id1, lok_not.id2
+                                     FROM   gv$lock   lok_not
+                                     WHERE  lok_not.id1 =lok.id1 
+                                     AND    lok_not.id2 =lok.id2 
+                                     AND    lok_not.request > 0) 
+-- ##### 20090219 Ver.1.5 本番#1176対応（追加修正） END   #####
           AND req.inst_id = req_sess.inst_id
           AND req.sid     = req_sess.sid
           AND (   req.inst_id <> lok.inst_id
@@ -265,15 +278,31 @@ AS
     FOR lock_rec IN lock_cur LOOP
 --
       -- 削除対象セッションログ出力
-      FND_FILE.PUT_LINE(FND_FILE.LOG, '【セッション切断】' || 
-                                      ' 自動配車： 要求ID[' || TO_CHAR(in_reqid) || '] ' ||
+-- ##### 20090219 Ver.1.5 本番#1176対応（追加修正） START #####
+-- ログ内容変更
+--      FND_FILE.PUT_LINE(FND_FILE.LOG, '【セッション切断】' || 
+--                                      ' 自動配車： 要求ID[' || TO_CHAR(in_reqid) || '] ' ||
+--                                      ' 切断対象セッション：' ||
+--                                     ' inst_id[' || TO_CHAR(lock_rec.inst_id) || '] ' ||
+--                                      ' sid['     || TO_CHAR(lock_rec.sid)     || '] ' ||
+--                                      ' serial['  || TO_CHAR(lock_rec.serial#) || '] ' ||
+--                                      ' action['  || lock_rec.action           || '] ' ||
+--                                      ' module['  || lock_rec.module           || '] '
+--                                      );
+--
+      FND_FILE.PUT_LINE(FND_FILE.LOG, '【セッション切断】' || ' 要求ID[' || TO_CHAR(in_reqid) || '] ' ||
                                       ' 切断対象セッション：' ||
                                       ' inst_id[' || TO_CHAR(lock_rec.inst_id) || '] ' ||
                                       ' sid['     || TO_CHAR(lock_rec.sid)     || '] ' ||
-                                      ' serial['  || TO_CHAR(lock_rec.serial#) || '] ' ||
+                                      ' serial#[' || TO_CHAR(lock_rec.serial#) || '] ' ||
                                       ' action['  || lock_rec.action           || '] ' ||
-                                      ' module['  || lock_rec.module           || '] '
+                                      ' module['  || lock_rec.module           || '] ' ||
+                                      ' lmode['   || TO_CHAR(lock_rec.lmode)   || '] ' ||
+                                      ' request[' || TO_CHAR(lock_rec.request) || '] ' ||
+                                      ' ctime['   || TO_CHAR(lock_rec.ctime)   || '] '
                                       );
+--
+-- ##### 20090219 Ver.1.5 本番#1176対応（追加修正） END   #####
 --
 -- ##### 20090116 Ver.1.2 本番#900対応 START #####
 --      lv_strsql := 'ALTER SYSTEM KILL SESSION ''' || lock_rec.sid || ',' || lock_rec.serial# || ''' IMMEDIATE';
