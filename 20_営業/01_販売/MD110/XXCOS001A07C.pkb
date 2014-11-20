@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCOS001A07C (body)
  * Description      : 入出庫一時表、納品ヘッダ・明細テーブルのデータの抽出を行う
  * MD.050           : VDコラム別取引データ抽出 (MD050_COS_001_A07)
- * Version          : 1.5
+ * Version          : 1.6
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -31,6 +31,7 @@ AS
  *  2009/02/20    1.3   S.Miyakoshi      パラメータのログファイル出力対応
  *  2009/04/15    1.4   N.Maeda          [T1_0576]補充数ケース数に対する伝票区分別処理の追加
  *  2009/04/16    1.5   N.Maeda          [T1_0621]従業員絞込み条件の変更、出力ケース数の修正
+ *  2009/04/17    1.6   T.Kitajima       [T1_0601]入出庫データ更新処理修正
  *
  *****************************************************************************************/
 --
@@ -211,7 +212,11 @@ AS
       tax_div             xxcmm_cust_accounts.tax_div%TYPE,                           -- 消費税区分
       tax_round_rule      hz_cust_site_uses_all.tax_rounding_rule%TYPE,               -- 税金－端数処理
       inv_price           xxcoi_mst_vd_column.price%TYPE,                             -- 単価：VDコラムマスタより
-      perform_code        xxcos_vd_column_headers.performance_by_code%TYPE            -- 成績者コード
+--****************************** 2009/04/17 1.6 T.Kitajima MOD START ******************************--
+--      perform_code        xxcos_vd_column_headers.performance_by_code%TYPE            -- 成績者コード
+      perform_code        xxcos_vd_column_headers.performance_by_code%TYPE,           -- 成績者コード
+      transaction_id      xxcoi_hht_inv_transactions.transaction_id%TYPE              -- 入出庫一時表ID
+--****************************** 2009/04/17 1.6 T.Kitajima MOD START ******************************--
     );
   TYPE g_tab_inv_data IS TABLE OF g_rec_inv_data INDEX BY PLS_INTEGER;
 --
@@ -275,6 +280,11 @@ AS
   TYPE g_tab_replenish_number      IS TABLE OF xxcos_vd_column_lines.replenish_number%TYPE
     INDEX BY PLS_INTEGER;   -- 補充数
 --
+--****************************** 2009/04/17 1.6 T.Kitajima ADD START ******************************--
+  TYPE g_tab_transaction_id        IS TABLE OF xxcoi_hht_inv_transactions.transaction_id%TYPE
+    INDEX BY PLS_INTEGER;   -- 入出庫一時表ID
+--****************************** 2009/04/17 1.6 T.Kitajima ADD  END  ******************************--
+--
   -- ===============================
   -- ユーザー定義グローバル変数
   -- ===============================
@@ -309,6 +319,10 @@ AS
   gt_column_no          g_tab_column_no;                -- コラムNo.
   gt_h_and_c            g_tab_h_and_c;                  -- H/C
   gt_replenish_num      g_tab_replenish_number;         -- 補充数
+--
+--****************************** 2009/04/17 1.6 T.Kitajima ADD START ******************************--
+  gt_transaction_id     g_tab_transaction_id;         --  入出庫一時表ID
+--****************************** 2009/04/17 1.6 T.Kitajima ADD  END  ******************************--
 --
   gn_inv_target_cnt     NUMBER;                         -- 入出庫情報抽出件数
   gn_dlv_h_target_cnt   NUMBER;                         -- 納品ヘッダ情報抽出件数
@@ -626,6 +640,9 @@ AS
         ,tax_rounding_rule         tax_rounding_rule     -- 税金－端数処理
         ,price                     price                 -- 単価
         ,perform_code              perform_code          -- 成績者コード
+--****************************** 2009/04/17 1.6 T.Kitajima ADD START ******************************--
+        ,transaction_id            transaction_id        -- 入出庫一時表ID
+--****************************** 2009/04/17 1.6 T.Kitajima ADD  END  ******************************--
       FROM
         (
           SELECT inv.base_code                 base_code                    -- 拠点コード
@@ -653,6 +670,9 @@ AS
                 ,site.tax_rounding_rule        tax_rounding_rule            -- 税金－端数処理
                 ,vd.price                      price                        -- 単価
                 ,xsv.employee_number           perform_code                 -- 成績者コード
+--****************************** 2009/04/17 1.6 T.Kitajima ADD START ******************************--
+                ,inv.transaction_id            transaction_id               -- 入出庫一時表ID
+--****************************** 2009/04/17 1.6 T.Kitajima ADD  END  ******************************--
           FROM   xxcoi_hht_inv_transactions    inv     -- 入出庫一時表
                 ,hz_cust_accounts              hz_cus  -- アカウント
                 ,xxcmm_cust_accounts           cust    -- 顧客追加情報
@@ -743,6 +763,9 @@ AS
         ,tax_rounding_rule         tax_rounding_rule              -- 税金－端数処理
         ,price                     price                          -- 単価
         ,perform_code              perform_code                   -- 成績者コード
+--****************************** 2009/04/17 1.6 T.Kitajima ADD START ******************************--
+        ,transaction_id            transaction_id                 -- 入出庫一時表ID
+--****************************** 2009/04/17 1.6 T.Kitajima ADD  END  ******************************--
       FROM
         (
           SELECT inv.base_code                 base_code                    -- 拠点コード
@@ -770,6 +793,9 @@ AS
                 ,site.tax_rounding_rule        tax_rounding_rule            -- 税金－端数処理
                 ,vd.price                      price                        -- 単価
                 ,xsv.employee_number           perform_code                 -- 成績者コード
+--****************************** 2009/04/17 1.6 T.Kitajima ADD START ******************************--
+                ,inv.transaction_id            transaction_id               -- 入出庫一時表ID
+--****************************** 2009/04/17 1.6 T.Kitajima ADD  END  ******************************--
           FROM   xxcoi_hht_inv_transactions    inv     -- 入出庫一時表
                 ,hz_cust_accounts              hz_cus  -- アカウント
                 ,xxcmm_cust_accounts           cust    -- 顧客追加情報
@@ -1052,6 +1078,9 @@ AS
     lt_vd_replenish_number xxcos_vd_column_lines.replenish_number%TYPE;                -- 補充数(数量加工用)
     lt_vd_case_quant       xxcoi_hht_inv_transactions.case_quantity%TYPE;              -- ケース数(数量加工用)
 --************************* 2009/04/15 N.Maeda Var1.4 ADD END ******************************************************
+--****************************** 2009/04/17 1.6 T.Kitajima ADD START ******************************--
+    lt_transaction_id      xxcoi_hht_inv_transactions.transaction_id%TYPE;             -- 入出庫一時表ID
+--****************************** 2009/04/17 1.6 T.Kitajima ADD  END  ******************************--
     ln_inv_header_num      NUMBER DEFAULT  '1';                                        -- 入出庫ヘッダ件数ナンバー
     ln_inv_lines_num       NUMBER DEFAULT  '1';                                        -- 入出庫明細件数ナンバー
     ln_line_no             NUMBER DEFAULT  '1';                                        -- 行No.(HHT)
@@ -1103,6 +1132,9 @@ AS
       lt_tax_round_rule   := gt_inv_data(inv_no).tax_round_rule;    -- 税金－端数処理
       lt_inv_price        := gt_inv_data(inv_no).inv_price;         -- 単価：VDコラムマスタより
       lt_perform_code     := gt_inv_data(inv_no).perform_code;      -- 成績者コード
+--****************************** 2009/04/17 1.6 T.Kitajima ADD START ******************************--
+      lt_transaction_id   := gt_inv_data(inv_no).transaction_id;    -- 入出庫一時表ID
+--****************************** 2009/04/17 1.6 T.Kitajima ADD  END  ******************************--
 --
       -- 受注No.(HHT)を取得する場合
       IF ( lv_order_no_flag = cv_one ) THEN
@@ -1276,6 +1308,9 @@ AS
 --      gt_replenish_num(ln_inv_lines_num)  := lt_replenish_number;  -- 補充数
       gt_replenish_num(ln_inv_lines_num)  := lt_vd_replenish_number;  -- 補充数
 --************************* 2009/04/15 N.Maeda Var1.4 MOD END ******************************************************
+--****************************** 2009/04/17 1.6 T.Kitajima ADD START ******************************--
+      gt_transaction_id(ln_inv_lines_num)   := lt_transaction_id;     -- 入出庫一時表ID
+--****************************** 2009/04/17 1.6 T.Kitajima ADD  END  ******************************--
       ln_line_no := ln_line_no + 1;                                -- 行No.(HHT)更新
       ln_inv_lines_num := ln_inv_lines_num + 1;                    -- 入出庫明細件数ナンバー更新
 --
@@ -1978,43 +2013,58 @@ AS
     -- コラム転送フラグ更新
     --==============================================================
     BEGIN
-      UPDATE
-        xxcoi_hht_inv_transactions  inv   -- 入出庫一時表
-      SET
-        inv.column_if_flag         = cv_tkn_yes,                  -- コラム転送フラグ
-        inv.column_if_date         = cd_last_update_date,         -- コラム別転送日
-        inv.last_updated_by        = cn_last_updated_by,          -- 最終更新者
-        inv.last_update_date       = cd_last_update_date,         -- 最終更新日
-        inv.last_update_login      = cn_last_update_login,        -- 最終更新ログイン
-        inv.request_id             = cn_request_id,               -- 要求ID
-        inv.program_application_id = cn_program_application_id,   -- コンカレント・プログラム・アプリケーションID
-        inv.program_id             = cn_program_id,               -- コンカレント・プログラムID
-        inv.program_update_date    = cd_program_update_date       -- プログラム更新日
-      WHERE  inv.invoice_type IN (
-                                     SELECT  look_val.lookup_code  code
-                                     FROM    fnd_lookup_values     look_val
-                                            ,fnd_lookup_types_tl   types_tl
-                                            ,fnd_lookup_types      types
-                                            ,fnd_application_tl    appl
-                                            ,fnd_application       app
-                                     WHERE   app.application_short_name = cv_application
-                                     AND     look_val.lookup_type  = cv_qck_invo_type
-                                     AND     look_val.enabled_flag = cv_tkn_yes
-                                     AND     gd_process_date      >= NVL(look_val.start_date_active, gd_process_date)
-                                     AND     gd_process_date      >= look_val.start_date_active
-                                     AND     gd_process_date      <= NVL(look_val.end_date_active, gd_max_date)
-                                     AND     types_tl.language     = USERENV( 'LANG' )
-                                     AND     look_val.language     = USERENV( 'LANG' )
-                                     AND     appl.language         = USERENV( 'LANG' )
-                                     AND     appl.application_id   = types.application_id
-                                     AND     app.application_id    = appl.application_id
-                                     AND     types_tl.lookup_type  = look_val.lookup_type
-                                     AND     types.lookup_type     = types_tl.lookup_type
-                                     AND     types.security_group_id   = types_tl.security_group_id
-                                     AND     types.view_application_id = types_tl.view_application_id
-                                   )                              -- 伝票区分＝4,5,6,7
-      AND    inv.column_if_flag = cv_tkn_no                       -- コラム別転送フラグ＝N
-      AND    inv.status         = cv_one;                         -- 処理ステータス＝1
+--****************************** 2009/04/17 1.6 T.Kitajima MOD START ******************************--
+--      UPDATE
+--        xxcoi_hht_inv_transactions  inv   -- 入出庫一時表
+--      SET
+--        inv.column_if_flag         = cv_tkn_yes,                  -- コラム転送フラグ
+--        inv.column_if_date         = cd_last_update_date,         -- コラム別転送日
+--        inv.last_updated_by        = cn_last_updated_by,          -- 最終更新者
+--        inv.last_update_date       = cd_last_update_date,         -- 最終更新日
+--        inv.last_update_login      = cn_last_update_login,        -- 最終更新ログイン
+--        inv.request_id             = cn_request_id,               -- 要求ID
+--        inv.program_application_id = cn_program_application_id,   -- コンカレント・プログラム・アプリケーションID
+--        inv.program_id             = cn_program_id,               -- コンカレント・プログラムID
+--        inv.program_update_date    = cd_program_update_date       -- プログラム更新日
+--      WHERE  inv.invoice_type IN (
+--                                     SELECT  look_val.lookup_code  code
+--                                     FROM    fnd_lookup_values     look_val
+--                                            ,fnd_lookup_types_tl   types_tl
+--                                            ,fnd_lookup_types      types
+--                                            ,fnd_application_tl    appl
+--                                            ,fnd_application       app
+--                                     WHERE   app.application_short_name = cv_application
+--                                     AND     look_val.lookup_type  = cv_qck_invo_type
+--                                     AND     look_val.enabled_flag = cv_tkn_yes
+--                                     AND     gd_process_date      >= NVL(look_val.start_date_active, gd_process_date)
+--                                     AND     gd_process_date      >= look_val.start_date_active
+--                                     AND     gd_process_date      <= NVL(look_val.end_date_active, gd_max_date)
+--                                     AND     types_tl.language     = USERENV( 'LANG' )
+--                                     AND     look_val.language     = USERENV( 'LANG' )
+--                                     AND     appl.language         = USERENV( 'LANG' )
+--                                     AND     appl.application_id   = types.application_id
+--                                     AND     app.application_id    = appl.application_id
+--                                     AND     types_tl.lookup_type  = look_val.lookup_type
+--                                     AND     types.lookup_type     = types_tl.lookup_type
+--                                     AND     types.security_group_id   = types_tl.security_group_id
+--                                     AND     types.view_application_id = types_tl.view_application_id
+--                                   )                              -- 伝票区分＝4,5,6,7
+--      AND    inv.column_if_flag = cv_tkn_no                       -- コラム別転送フラグ＝N
+--      AND    inv.status         = cv_one;                         -- 処理ステータス＝1
+      FORALL i in 1..gt_transaction_id.COUNT
+        UPDATE xxcoi_hht_inv_transactions  inv   -- 入出庫一時表
+           SET inv.column_if_flag         = cv_tkn_yes,                  -- コラム転送フラグ
+               inv.column_if_date         = cd_last_update_date,         -- コラム別転送日
+               inv.last_updated_by        = cn_last_updated_by,          -- 最終更新者
+               inv.last_update_date       = cd_last_update_date,         -- 最終更新日
+               inv.last_update_login      = cn_last_update_login,        -- 最終更新ログイン
+               inv.request_id             = cn_request_id,               -- 要求ID
+               inv.program_application_id = cn_program_application_id,   -- コンカレント・プログラム・アプリケーションID
+               inv.program_id             = cn_program_id,               -- コンカレント・プログラムID
+               inv.program_update_date    = cd_program_update_date       -- プログラム更新日
+         WHERE inv.transaction_id         = gt_transaction_id(i)
+        ;
+--****************************** 2009/04/17 1.6 T.Kitajima MOD START ******************************--
 --
     EXCEPTION
       WHEN OTHERS THEN
