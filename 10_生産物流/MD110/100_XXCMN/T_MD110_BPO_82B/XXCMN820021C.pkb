@@ -7,7 +7,7 @@ AS
  * Description      : 原価差異表作成
  * MD.050/070       : 標準原価マスタIssue1.0(T_MD050_BPO_820)
  *                    原価差異表作成Issue1.0(T_MD070_BPO_82B/T_MD070_BPO_82C)
- * Version          : 1.7
+ * Version          : 1.8
  *
  * Program List
  * ---------------------------- ----------------------------------------------------------
@@ -45,6 +45,7 @@ AS
  *  2008/07/01    1.5   Marushita        ST不具合339対応製造日をロットマスタから取得
  *  2008/07/02    1.6   Satoshi Yunba    禁則文字対応
  *  2008/12/09    1.7   T.Miyata         本番#542対応
+ *  2008/12/11    1.8   T.Miyata         本番#542対応(バグ修正)
  *
  *****************************************************************************************/
 --
@@ -752,7 +753,10 @@ AS
         ELSE
             lr_amount.s_unit_price := ROUND( re_main.s_amount / re_main.s_quantity, 2 ) ;
         END IF;
-        IF ( lr_amount.r_unit_price = 0 ) THEN
+-- S  2008/12/11 1.8 MOD BY T.Miyata 本番#542 バグ修正
+--        IF ( lr_amount.r_unit_price = 0 ) THEN
+        IF ( re_main.r_quantity = 0 ) THEN
+-- E  2008/12/11 1.8 MOD BY T.Miyata 本番#542 バグ修正
           lr_amount.r_unit_price := 0;
         ELSE
           lr_amount.r_unit_price := ROUND( re_main.r_amount / re_main.r_quantity, 2 ) ;
