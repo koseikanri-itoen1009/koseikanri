@@ -8,7 +8,7 @@ AS
  *                    CSVファイルを作成します。
  * MD.050           : MD050_CSO_014_A06_HHT-EBSインターフェース：
  *                    (OUT)営業員管理ファイル
- * Version          : 1.10
+ * Version          : 1.11
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -51,6 +51,7 @@ AS
  *                                        成績計上者ベースとする）
  *  2010-08-26    1.9   K.Kiriu           E_本番_04153対応（PT対応)
  *  2013-05-13    1.10  K.Kiriu           E_本番_10735対応(営業員別月別ノルマ実績)
+ *  2013-06-18    1.11  T.Ishiwata        E_本番_10837対応(メール配信機能対応)
  *****************************************************************************************/
 --
 --#######################  固定グローバル定数宣言部 START   #######################
@@ -2170,10 +2171,16 @@ AS
                USE_NL(flv xstm)
                INDEX(xstm xxcso_sales_target_mst_pk)
              */
-              ct_base_code                                      base_code              --拠点コード
+/* 2013.06.18 T.Ishiwata E_本稼動_10873対応 MOD START */
+--              ct_base_code                                      base_code              --拠点コード
+              xstm.base_code                                    base_code              --拠点コード
+/* 2013.06.18 T.Ishiwata E_本稼動_10873対応 MOD END   */
              ,xstm.employee_code                                employee_code          --営業員コード
              ,0                                                 sale_amount_month_sum  --実績金額
-             ,ROUND( NVL( xstm.target_amount,0 ) / 1000 )       target_amount          --目標金額
+/* 2013.06.18 T.Ishiwata E_本稼動_10873対応 MOD START */
+--             ,ROUND( NVL( xstm.target_amount,0 ) / 1000 )       target_amount          --目標金額
+             ,NVL( xstm.target_amount,0 )                       target_amount          --目標金額
+/* 2013.06.18 T.Ishiwata E_本稼動_10873対応 MOD END   */
              ,xstm.target_management_code                       target_management_code --目標管理項目コード
              ,xstm.target_month                                 target_month           --年月
              ,''                                                actual_day_cnt         --実働日数
@@ -2197,10 +2204,17 @@ AS
       SELECT /*+
                LEADING(sum_d)
              */ 
-              ct_base_code                                          base_code              --拠点(部門)コード
+/* 2013.06.18 T.Ishiwata E_本稼動_10873対応 MOD START */
+--              ct_base_code                                          base_code              --拠点(部門)コード
+              sum_d.base_code                                       base_code              --拠点(部門)コード
+/* 2013.06.18 T.Ishiwata E_本稼動_10873対応 MOD END   */
              ,sum_d.employee_code                                   employee_code          --営業員コード
-             ,ROUND( NVL(sum_d.sale_amount_month_sum, 0 ) /1000 )   sale_amount_month_sum  --実績金額
-             ,ROUND( NVL( xstm.target_amount, 0 ) /1000 )           target_amount          --目標金額
+/* 2013.06.18 T.Ishiwata E_本稼動_10873対応 MOD START */
+--             ,ROUND( NVL(sum_d.sale_amount_month_sum, 0 ) /1000 )   sale_amount_month_sum  --実績金額
+--             ,ROUND( NVL( xstm.target_amount, 0 ) /1000 )           target_amount          --目標金額
+             ,NVL( sum_d.sale_amount_month_sum, 0 )                sale_amount_month_sum  --実績金額
+             ,NVL( xstm.target_amount, 0 )                         target_amount          --目標金額
+/* 2013.06.18 T.Ishiwata E_本稼動_10873対応 MOD END   */
              ,SUBSTRB(flv.lookup_code, 1, 9)                        target_management_code --目標管理項目コード(小計行)
              ,sum_d.target_month                                    target_month           --対象年月(YYYYMM形式)
              ,NULL                                                  actual_day_cnt         --実働日数
@@ -2213,6 +2227,9 @@ AS
                       ,TO_CHAR(xrbsgs.dlv_date, 'YYYYMM')  target_month            --対象年月
                       ,xrbsgs.results_employee_code        employee_code           --営業員コード
                       ,SUM(xrbsgs.sale_amount)             sale_amount_month_sum   --月別純売上金額合計
+/* 2013.06.18 T.Ishiwata E_本稼動_10873対応 ADD START */
+                      ,xrbsgs.sale_base_code               base_code               --拠点コード
+/* 2013.06.18 T.Ishiwata E_本稼動_10873対応 ADD END   */
                 FROM   fnd_lookup_values_vl        flv     --商品別売上集計マスタ(集約)
                       ,xxcos_rep_bus_s_group_sum   xrbsgs  --営業成績表 政策群別実績集計テーブル
                 WHERE  flv.lookup_type         =  ct_item_group_summary      --XXCMM1_ITEM_GROUP_SUMMARY
@@ -2231,6 +2248,9 @@ AS
                        flv.attribute2                      --小計区分
                       ,TO_CHAR(xrbsgs.dlv_date, 'YYYYMM')  --納品日(月単位)
                       ,xrbsgs.results_employee_code        --成績計上者コード
+/* 2013.06.18 T.Ishiwata E_本稼動_10873対応 ADD START */
+                      ,xrbsgs.sale_base_code               --拠点コード
+/* 2013.06.18 T.Ishiwata E_本稼動_10873対応 ADD END   */
               ) sum_d                             --営業員別売上サマリ
              ,fnd_lookup_values_vl        flv     --商品別売上集計マスタ(送信)
              ,xxcso_sales_target_mst      xstm    --売上目標マスタ
@@ -2241,6 +2261,9 @@ AS
       AND     sum_d.sum_code                         = xstm.target_management_code(+)
       AND     sum_d.employee_code                    = xstm.employee_code(+)
       AND     sum_d.target_month                     = xstm.target_month(+)
+/* 2013.06.18 T.Ishiwata E_本稼動_10873対応 ADD START */
+      AND     sum_d.base_code                        = xstm.base_code(+)
+/* 2013.06.18 T.Ishiwata E_本稼動_10873対応 ADD END */
       ;
 --
     -- 売上目標データ処理で実績が存在しない場合に目標のみ(月初を除く)の取得を行うカーソルの定義
@@ -2251,10 +2274,16 @@ AS
                 USE_NL(flv xstm)
                 INDEX(xstm xxcso_sales_target_mst_pk)
               */
-              ct_base_code                                  base_code              --拠点コード
+/* 2013.06.18 T.Ishiwata E_本稼動_10873対応 MOD START */
+--              ct_base_code                                  base_code              --拠点コード
+              xstm.base_code                                base_code              --拠点コード
+/* 2013.06.18 T.Ishiwata E_本稼動_10873対応 MOD END   */
              ,xstm.employee_code                            employee_code          --営業員コード
              ,0                                             sale_amount_month_sum  --実績金額
-             ,ROUND( NVL( xstm.target_amount, 0 ) / 1000 )  target_amount          --目標金額
+/* 2013.06.18 T.Ishiwata E_本稼動_10873対応 MOD START */
+--             ,ROUND( NVL( xstm.target_amount, 0 ) / 1000 )  target_amount          --目標金額
+             ,NVL( xstm.target_amount, 0 )                  target_amount          --目標金額
+/* 2013.06.18 T.Ishiwata E_本稼動_10873対応 MOD END   */
              ,xstm.target_management_code                   target_management_code --目標管理項目コード
              ,xstm.target_month                             target_month           --年月
              ,''                                            actual_day_cnt         --実働日数
@@ -2283,6 +2312,9 @@ AS
                 WHERE  xwst.target_management_code = xstm.target_management_code
                 AND    xwst.employee_code          = xstm.employee_code
                 AND    xwst.target_month           = xstm.target_month
+/* 2013.06.18 T.Ishiwata E_本稼動_10873対応 ADD START */
+                AND    xwst.base_code              = xstm.base_code
+/* 2013.06.18 T.Ishiwata E_本稼動_10873対応 ADD END */
                 AND    rownum                      = 1
               )  --営業員の目標は存在するが対象の月の実績は存在しない
       ;
@@ -2290,16 +2322,33 @@ AS
     -- 売上目標データCSV出力を行うカーソルの定義
     CURSOR sales_target_out_cur
     IS
-      SELECT  xwst.base_code                   base_code               --拠点コード
+/* 2013.06.18 T.Ishiwata E_本稼動_10873対応 MOD START */
+--      SELECT  xwst.base_code                   base_code               --拠点コード
+      SELECT  ct_base_code                      base_code               --拠点コード
+/* 2013.06.18 T.Ishiwata E_本稼動_10873対応 MOD END   */
              ,xwst.employee_code               employee_code           --営業員コード
-             ,xwst.sale_amount_month_sum       sale_amount_month_sum   --実績金額
-             ,xwst.target_amount               target_amount           --目標金額
+/* 2013.06.18 T.Ishiwata E_本稼動_10873対応 MOD START */
+--             ,xwst.sale_amount_month_sum       sale_amount_month_sum   --実績金額
+--             ,xwst.target_amount               target_amount           --目標金額
+             ,ROUND( SUM( xwst.sale_amount_month_sum ) / 1000 )
+                                                 sale_amount_month_sum   --実績金額(サマリ後に四捨五入)
+             ,ROUND( SUM( xwst.target_amount         ) / 1000 )
+                                                 target_amount           --目標金額(サマリ後に四捨五入)
+/* 2013.06.18 T.Ishiwata E_本稼動_10873対応 MOD END   */
              ,xwst.target_management_code      target_management_code  --目標管理項目コード
              ,SUBSTRB(xwst.target_month, 3, 4) target_month            --年月(YYMM形式とする)
              ,xwst.actual_day_cnt              actual_day_cnt          --実働日数
              ,xwst.passed_day_cnt              passed_day_cnt          --経過日数
              ,xwst.target_month                output_month            --CSV出力エラー時のメッセージに使用
       FROM   xxcso_wk_sales_target xwst  --売上目標ワークテーブル
+/* 2013.06.18 T.Ishiwata E_本稼動_10873対応 ADDD START */
+      GROUP BY
+             xwst.employee_code           --営業員コード
+            ,xwst.target_management_code  --目標管理項目コード
+            ,xwst.target_month            --年月
+            ,xwst.actual_day_cnt          --実働日数
+            ,xwst.passed_day_cnt          --経過日数
+/* 2013.06.18 T.Ishiwata E_本稼動_10873対応 ADD END   */
       ;
     /* 2013.05.13 K.Kiriu E_本稼動_10735対応 ADD END   */
     -- *** ローカル・レコード ***

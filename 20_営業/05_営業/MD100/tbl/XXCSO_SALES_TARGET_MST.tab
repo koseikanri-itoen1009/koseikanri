@@ -3,18 +3,22 @@
  * TABLE Name      : xxcso_sales_target_mst
  * Description     : 売上目標マスタ
  * MD.070          : 
- * Version         : 1.0
+ * Version         : 1.1
  * 
  * Change Record
  * ------------- ----- ------------ -------------------------------------
  *  Date          Ver.  Editor       Description
  * ------------- ----- ------------ -------------------------------------
  *  2013/05/13    1.0  K.Kiriu      初回作成
+ *  2013/06/18    1.1  T.Ishiwata   E_本稼動_10837対応
  ************************************************************************/
 CREATE TABLE xxcso.xxcso_sales_target_mst
 (
   target_management_code          NUMBER(9)    NOT NULL,
-  base_code                       VARCHAR2(4),
+-- 2013/06/18 Ver.1.1 Mod Start
+--  base_code                       VARCHAR2(4),
+  base_code                       VARCHAR2(4)  NOT NULL,
+-- 2013/06/18 Ver.1.1 Mod End
   employee_code                   VARCHAR2(5)  NOT NULL,
   target_month                    VARCHAR2(6)  NOT NULL,
   target_amount                   NUMBER,
@@ -31,6 +35,9 @@ CREATE TABLE xxcso.xxcso_sales_target_mst
   CONSTRAINT xxcso_sales_target_mst_pk PRIMARY KEY
   (
     target_management_code,  --目標管理項目コード
+-- 2013/06/18 Ver.1.1 Add Start
+    base_code,               --拠点コード
+-- 2013/06/18 Ver.1.1 Add End
     employee_code,           --営業員コード
     target_month             --目標年月
   )

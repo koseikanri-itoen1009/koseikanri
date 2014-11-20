@@ -3,17 +3,21 @@
  * TABLE Name      : xxcso_wk_sales_target
  * Description     : 売上目標ワークテーブル
  * MD.070          : 
- * Version         : 1.0
+ * Version         : 1.1
  * 
  * Change Record
  * ------------- ----- ------------ -------------------------------------
  *  Date          Ver.  Editor       Description
  * ------------- ----- ------------ -------------------------------------
  *  2013/05/13    1.0  K.Kiriu      初回作成
+ *  2013/06/18    1.1  T.Ishiwata   E_本稼動_10837対応
  ************************************************************************/
 CREATE TABLE xxcso.xxcso_wk_sales_target
 (
-  base_code                       VARCHAR2(4),
+-- 2013/06/18 Ver.1.1 Mod Start
+--  base_code                       VARCHAR2(4),
+  base_code                       VARCHAR2(4)  NOT NULL,
+-- 2013/06/18 Ver.1.1 Mod End
   employee_code                   VARCHAR2(5)  NOT NULL,
   sale_amount_month_sum           NUMBER,
   target_amount                   NUMBER,
@@ -33,6 +37,9 @@ CREATE TABLE xxcso.xxcso_wk_sales_target
   CONSTRAINT xxcso_wk_sales_target_pk PRIMARY KEY
   (
     target_management_code,  --目標管理項目コード
+-- 2013/06/18 Ver.1.1 Add Start
+    base_code,               --拠点コード
+-- 2013/06/18 Ver.1.1 Add End
     employee_code,           --営業員コード
     target_month             --目標年月
   )
