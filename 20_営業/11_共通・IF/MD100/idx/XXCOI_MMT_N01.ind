@@ -1,0 +1,2 @@
+CREATE INDEX inv.xxcoi_mmt_n01 ON mtl_material_transactions (transaction_type_id,attribute4) TABLESPACE apps_ts_tx_idx
+/

@@ -1,0 +1,2 @@
+CREATE INDEX inv.xxcoi_msi_n05 ON mtl_secondary_inventories (attribute3) TABLESPACE apps_ts_tx_idx
+/
