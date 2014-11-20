@@ -7,7 +7,7 @@ AS
  * Description      : 受払残高表（Ⅰ）原料・資材・半製品
  * MD.050/070       : 月次〆切処理（経理）Issue1.0(T_MD050_BPO_770)
  *                    月次〆切処理（経理）Issue1.0(T_MD070_BPO_77A)
- * Version          : 1.7
+ * Version          : 1.9
  *
  * Program List
  * -------------------------- ----------------------------------------------------------
@@ -44,6 +44,8 @@ AS
  *                                       されない現象への対応
  *  2008/08/05    1.7   R.Tomoyose       参照ビューの変更「xxcmn_rcv_pay_mst_porc_rma_v」→
  *                                                       「xxcmn_rcv_pay_mst_porc_rma01_v」
+ *  2008/08/20    1.8   A.Shiina         T_TE080_BPO_770 指摘9対応
+ *  2008/08/22    1.9   A.Shiina         T_TE080_BPO_770 指摘14対応
  *
  *****************************************************************************************/
 --
@@ -1103,8 +1105,11 @@ AS
     lv_select_porc := ''
       || ',NVL( xrpmxv.item_id,trn.item_id)  item_id'  -- 品目ID
       || ',trn.lot_id               lot_id'            -- ロットID
-      || ',NVL2(xrpmxv.item_id,trn.trans_qty,'
-      || ' trn.trans_qty * TO_NUMBER(xrpmxv.rcv_pay_div)) trans_qty'-- 取引数量
+-- 2008/08/22 v1.9 UPDATE START
+--      || ',NVL2(xrpmxv.item_id,trn.trans_qty,'
+--      || ' trn.trans_qty * TO_NUMBER(xrpmxv.rcv_pay_div)) trans_qty'-- 取引数量
+      || ',trn.trans_qty   trans_qty'                               -- 取引数量
+-- 2008/08/22 v1.9 UPDATE END
       || ',trn.trans_date  arrival_date'                            -- 着荷日
       || ',TO_CHAR(trn.trans_date, ''' || gc_char_ym_format || ''') arrival_ym'-- 着荷年月
       || ',xitem.item_no            item_code' -- 品目コード
@@ -1167,8 +1172,11 @@ AS
     lv_select_omso := ''
       || ',NVL( xrpmxv.item_id,trn.item_id)  item_id'  -- 品目ID
       || ',trn.lot_id               lot_id'            -- ロットID
-      || ',NVL2(xrpmxv.item_id,trn.trans_qty,'
-      || ' trn.trans_qty * TO_NUMBER(xrpmxv.rcv_pay_div)) trans_qty'-- 取引数量
+-- 2008/08/22 v1.9 UPDATE START
+--      || ',NVL2(xrpmxv.item_id,trn.trans_qty,'
+--      || ' trn.trans_qty * TO_NUMBER(xrpmxv.rcv_pay_div)) trans_qty'-- 取引数量
+      || ',trn.trans_qty   trans_qty'                               -- 取引数量
+-- 2008/08/22 v1.9 UPDATE END
       || ',xrpmxv.arrival_date           arrival_date' -- 着荷日
       || ',TO_CHAR(xrpmxv.arrival_date, '''
       || gc_char_ym_format || ''') arrival_ym'         -- 着荷年月
@@ -1660,7 +1668,10 @@ AS
         END IF;
         prc_xml_add('inv_qty', 'D',       TO_CHAR(NVL(ln_stock_qty, 0)));--棚卸在庫数量
         prc_xml_add('inv_amt', 'D',       TO_CHAR(NVL(ln_stock_amt, 0)));--棚卸在庫金額
-        IF  (ln_end_stock_qty !=  0 OR ln_stock_qty != 0)  THEN
+-- 2008/08/20 v1.8 UPDATE START
+--        IF  (ln_end_stock_qty !=  0 OR ln_stock_qty != 0)  THEN
+        IF  (ln_end_stock_qty <> 0)  THEN
+-- 2008/08/20 v1.8 UPDATE END
           IF  (ib_print = FALSE) THEN
             prc_xml_add( 'g_item', 'T');
             prc_xml_add('item_code', 'D', gt_body_data(in_pos).item_code); --品目ID
@@ -1674,8 +1685,12 @@ AS
         IF  (ib_print = TRUE) THEN
           prc_xml_add('inv_qty', 'D',  0);--棚卸在庫数量
           prc_xml_add('inv_amt', 'D',  0);--棚卸在庫金額
-          prc_xml_add('quantity','D',  0);--差異数量
-          prc_xml_add('amount',  'D',  0);--差異金額
+-- 2008/08/20 v1.8 UPDATE START
+--          prc_xml_add('quantity','D',  0);--差異数量
+--          prc_xml_add('amount',  'D',  0);--差異金額
+          prc_xml_add('quantity', 'D',      TO_CHAR((ln_end_stock_qty  - ln_stock_qty)));--差異数量
+          prc_xml_add('amount', 'D',        TO_CHAR((ln_end_stock_amt  - ln_stock_amt)));--差異金額
+-- 2008/08/20 v1.8 UPDATE END
         END IF;
       END IF;
 --

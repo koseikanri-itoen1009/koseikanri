@@ -7,7 +7,7 @@ AS
  * Description      : 受払残高表（Ⅰ）製品
  * MD.050/070       : 月次〆切処理帳票Issue1.0 (T_MD050_BPO_770)
  *                    月次〆切処理帳票Issue1.0 (T_MD070_BPO_77B)
- * Version          : 1.6
+ * Version          : 1.8
  *
  * Program List
  * -------------------------- ----------------------------------------------------------
@@ -40,6 +40,8 @@ AS
  *                                       されない現象への対応
  *  2008/08/05    1.6   R.Tomoyose       参照ビューの変更「xxcmn_rcv_pay_mst_porc_rma_v」→
  *                                                       「xxcmn_rcv_pay_mst_porc_rma02_v」
+ *  2008/08/20    1.7   A.Shiina         T_TE080_BPO_770 指摘9対応
+ *  2008/08/22    1.8   A.Shiina         T_TE080_BPO_770 指摘14対応
  *
  *****************************************************************************************/
 --
@@ -1232,6 +1234,9 @@ AS
     -- 項目判定用
     lb_trnsfr               BOOLEAN       DEFAULT FALSE;           -- 振替項目
     lb_payout               BOOLEAN       DEFAULT FALSE;           -- 払出項目
+-- 2008/08/22 v1.8 ADD START
+    lb_revi                 BOOLEAN       DEFAULT FALSE;           -- 数値補正
+-- 2008/08/22 v1.8 ADD END
 --
     -- *** ローカル・例外処理 ***
     no_data_expt            EXCEPTION ;             -- 取得レコードなし
@@ -1658,6 +1663,12 @@ AS
             ln_quantity := ln_quantity * -1;
             ln_amount   := ln_amount * -1;
           END IF;
+-- 2008/08/22 v1.8 ADD START
+          IF (lb_revi = TRUE) THEN
+            ln_quantity := ln_quantity * -1;
+            ln_amount   := ln_amount * -1;
+          END IF;
+-- 2008/08/22 v1.8 ADD END
           -- 数量
           prc_set_xml('Z', lv_col_name || '_qty' ,TO_CHAR(ROUND(ln_quantity, gn_quantity_decml)));
           -- 金額
@@ -1698,8 +1709,16 @@ AS
             -- 在庫数量が確定していない場合
             prc_set_xml('N', 'inv_qty'  , '0');
             prc_set_xml('N', 'inv_amt'  , '0');
-            prc_set_xml('N', 'quantity' , '0');
-            prc_set_xml('N', 'amount'   , '0');
+-- 2008/08/20 v1.7 UPDATE START
+--            prc_set_xml('N', 'quantity' , '0');
+--            prc_set_xml('N', 'amount'   , '0');
+            -- 差異数量
+            ln_quantity := ln_quantity - ln_end_inv_qty;
+            prc_set_xml('N', 'quantity' ,TO_CHAR(ROUND(ln_quantity, gn_quantity_decml )));
+            -- 差異金額
+            ln_amount := ln_amount - ln_end_inv_amt ;
+            prc_set_xml('N', 'amount' ,TO_CHAR(ROUND(ln_amount, gn_amount_decml )));
+-- 2008/08/20 v1.7 UPDATE END
           ELSE
             -- 在庫数量が確定している場合
             -- 棚卸数量
@@ -1818,6 +1837,12 @@ AS
             ln_quantity := ln_quantity * -1;
             ln_amount   := ln_amount * -1;
           END IF;
+-- 2008/08/22 v1.8 ADD START
+          IF (lb_revi = TRUE) THEN
+            ln_quantity := ln_quantity * -1;
+            ln_amount   := ln_amount * -1;
+          END IF;
+-- 2008/08/22 v1.8 ADD END
           -- 数量
           prc_set_xml('Z', lv_col_name || '_qty' ,TO_CHAR(ROUND(ln_quantity, gn_quantity_decml)));
           -- 金額
@@ -1858,8 +1883,16 @@ AS
             -- 在庫数量が確定していない場合
             prc_set_xml('N', 'inv_qty'  , '0');
             prc_set_xml('N', 'inv_amt'  , '0');
-            prc_set_xml('N', 'quantity' , '0');
-            prc_set_xml('N', 'amount'   , '0');
+-- 2008/08/20 v1.7 UPDATE START
+--            prc_set_xml('N', 'quantity' , '0');
+--            prc_set_xml('N', 'amount'   , '0');
+            -- 差異数量
+            ln_quantity := ln_quantity - ln_end_inv_qty;
+            prc_set_xml('N', 'quantity' ,TO_CHAR(ROUND(ln_quantity, gn_quantity_decml )));
+            -- 差異金額
+            ln_amount := ln_amount - ln_end_inv_amt ;
+            prc_set_xml('N', 'amount' ,TO_CHAR(ROUND(ln_amount, gn_amount_decml )));
+-- 2008/08/20 v1.7 UPDATE END
           ELSE
             -- 在庫数量が確定している場合
             -- 棚卸数量
@@ -1965,6 +1998,12 @@ AS
             ln_quantity := ln_quantity * -1;
             ln_amount   := ln_amount * -1;
           END IF;
+-- 2008/08/22 v1.8 ADD START
+          IF (lb_revi = TRUE) THEN
+            ln_quantity := ln_quantity * -1;
+            ln_amount   := ln_amount * -1;
+          END IF;
+-- 2008/08/22 v1.8 ADD END
           -- 数量
           prc_set_xml('Z', lv_col_name || '_qty' ,TO_CHAR(ROUND(ln_quantity, gn_quantity_decml)));
           -- 金額
@@ -2005,8 +2044,16 @@ AS
             -- 在庫数量が確定していない場合
             prc_set_xml('N', 'inv_qty'  , '0');
             prc_set_xml('N', 'inv_amt'  , '0');
-            prc_set_xml('N', 'quantity' , '0');
-            prc_set_xml('N', 'amount'   , '0');
+-- 2008/08/20 v1.7 UPDATE START
+--            prc_set_xml('N', 'quantity' , '0');
+--            prc_set_xml('N', 'amount'   , '0');
+            -- 差異数量
+            ln_quantity := ln_quantity - ln_end_inv_qty;
+            prc_set_xml('N', 'quantity' ,TO_CHAR(ROUND(ln_quantity, gn_quantity_decml )));
+            -- 差異金額
+            ln_amount := ln_amount - ln_end_inv_amt ;
+            prc_set_xml('N', 'amount' ,TO_CHAR(ROUND(ln_amount, gn_amount_decml )));
+-- 2008/08/20 v1.7 UPDATE END
           ELSE
             -- 在庫数量が確定している場合
             -- 棚卸数量
@@ -2104,6 +2151,12 @@ AS
             ln_quantity := ln_quantity * -1;
             ln_amount   := ln_amount * -1;
           END IF;
+-- 2008/08/22 v1.8 ADD START
+          IF (lb_revi = TRUE) THEN
+            ln_quantity := ln_quantity * -1;
+            ln_amount   := ln_amount * -1;
+          END IF;
+-- 2008/08/22 v1.8 ADD END
           -- 数量
           prc_set_xml('Z', lv_col_name || '_qty' ,TO_CHAR(ROUND(ln_quantity, gn_quantity_decml)));
           -- 金額
@@ -2144,8 +2197,16 @@ AS
             -- 在庫数量が確定していない場合
             prc_set_xml('N', 'inv_qty'  , '0');
             prc_set_xml('N', 'inv_amt'  , '0');
-            prc_set_xml('N', 'quantity' , '0');
-            prc_set_xml('N', 'amount'   , '0');
+-- 2008/08/20 v1.7 UPDATE START
+--            prc_set_xml('N', 'quantity' , '0');
+--            prc_set_xml('N', 'amount'   , '0');
+            -- 差異数量
+            ln_quantity := ln_quantity - ln_end_inv_qty;
+            prc_set_xml('N', 'quantity' ,TO_CHAR(ROUND(ln_quantity, gn_quantity_decml )));
+            -- 差異金額
+            ln_amount := ln_amount - ln_end_inv_amt ;
+            prc_set_xml('N', 'amount' ,TO_CHAR(ROUND(ln_amount, gn_amount_decml )));
+-- 2008/08/20 v1.7 UPDATE END
           ELSE
             -- 在庫数量が確定している場合
             -- 棚卸数量
@@ -2235,6 +2296,12 @@ AS
             ln_quantity := ln_quantity * -1;
             ln_amount   := ln_amount * -1;
           END IF;
+-- 2008/08/22 v1.8 ADD START
+          IF (lb_revi = TRUE) THEN
+            ln_quantity := ln_quantity * -1;
+            ln_amount   := ln_amount * -1;
+          END IF;
+-- 2008/08/22 v1.8 ADD END
           -- 数量
           prc_set_xml('Z', lv_col_name || '_qty' ,TO_CHAR(ROUND(ln_quantity, gn_quantity_decml)));
           -- 金額
@@ -2275,8 +2342,16 @@ AS
             -- 在庫数量が確定していない場合
             prc_set_xml('N', 'inv_qty'  , '0');
             prc_set_xml('N', 'inv_amt'  , '0');
-            prc_set_xml('N', 'quantity' , '0');
-            prc_set_xml('N', 'amount'   , '0');
+-- 2008/08/20 v1.7 UPDATE START
+--            prc_set_xml('N', 'quantity' , '0');
+--            prc_set_xml('N', 'amount'   , '0');
+            -- 差異数量
+            ln_quantity := ln_quantity - ln_end_inv_qty;
+            prc_set_xml('N', 'quantity' ,TO_CHAR(ROUND(ln_quantity, gn_quantity_decml )));
+            -- 差異金額
+            ln_amount := ln_amount - ln_end_inv_amt ;
+            prc_set_xml('N', 'amount' ,TO_CHAR(ROUND(ln_amount, gn_amount_decml )));
+-- 2008/08/20 v1.7 UPDATE END
           ELSE
             -- 在庫数量が確定している場合
             -- 棚卸数量
@@ -2368,6 +2443,12 @@ AS
             ln_quantity := ln_quantity * -1;
             ln_amount   := ln_amount * -1;
           END IF;
+-- 2008/08/22 v1.8 ADD START
+          IF (lb_revi = TRUE) THEN
+            ln_quantity := ln_quantity * -1;
+            ln_amount   := ln_amount * -1;
+          END IF;
+-- 2008/08/22 v1.8 ADD END
           -- 数量
           prc_set_xml('Z', lv_col_name || '_qty' ,TO_CHAR(ROUND(ln_quantity, gn_quantity_decml)));
           -- 金額
@@ -2408,8 +2489,16 @@ AS
             -- 在庫数量が確定していない場合
             prc_set_xml('N', 'inv_qty'  , '0');
             prc_set_xml('N', 'inv_amt'  , '0');
-            prc_set_xml('N', 'quantity' , '0');
-            prc_set_xml('N', 'amount'   , '0');
+-- 2008/08/20 v1.7 UPDATE START
+--            prc_set_xml('N', 'quantity' , '0');
+--            prc_set_xml('N', 'amount'   , '0');
+            -- 差異数量
+            ln_quantity := ln_quantity - ln_end_inv_qty;
+            prc_set_xml('N', 'quantity' ,TO_CHAR(ROUND(ln_quantity, gn_quantity_decml )));
+            -- 差異金額
+            ln_amount := ln_amount - ln_end_inv_amt ;
+            prc_set_xml('N', 'amount' ,TO_CHAR(ROUND(ln_amount, gn_amount_decml )));
+-- 2008/08/20 v1.7 UPDATE END
           ELSE
             -- 在庫数量が確定している場合
             -- 棚卸数量
@@ -2526,6 +2615,12 @@ AS
             ln_quantity := ln_quantity * -1;
             ln_amount   := ln_amount * -1;
           END IF;
+-- 2008/08/22 v1.8 ADD START
+          IF (lb_revi = TRUE) THEN
+            ln_quantity := ln_quantity * -1;
+            ln_amount   := ln_amount * -1;
+          END IF;
+-- 2008/08/22 v1.8 ADD END
           -- 数量
           prc_set_xml('Z', lv_col_name || '_qty' ,TO_CHAR(ROUND(ln_quantity, gn_quantity_decml)));
           -- 金額
@@ -2554,6 +2649,9 @@ AS
         -- 項目判定初期化
         lb_trnsfr   := FALSE;
         lb_payout   := FALSE;
+-- 2008/08/22 v1.8 ADD START
+        lb_revi     := FALSE;
+-- 2008/08/22 v1.8 ADD END
       END IF ;
 --
       -- =====================================================
@@ -2581,10 +2679,16 @@ AS
         WHEN gc_col_no_acct_1 THEN
           lv_col_name := 'acct_1';
           lb_trnsfr   := TRUE;
+-- 2008/08/22 v1.8 ADD START
+          lb_revi     := TRUE;
+-- 2008/08/22 v1.8 ADD END
         -- 緑営２
         WHEN gc_col_no_acct_2 THEN
           lv_col_name := 'acct_2';
           lb_trnsfr   := TRUE;
+-- 2008/08/22 v1.8 ADD START
+          lb_revi     := TRUE;
+-- 2008/08/22 v1.8 ADD END
         -- ドリンクギフト
         WHEN gc_col_no_guift THEN
           lv_col_name := 'guift';
@@ -2676,6 +2780,12 @@ AS
       ln_quantity := ln_quantity * -1;
       ln_amount   := ln_amount * -1;
     END IF;
+-- 2008/08/22 v1.8 ADD START
+    IF (lb_revi = TRUE) THEN
+      ln_quantity := ln_quantity * -1;
+      ln_amount   := ln_amount * -1;
+    END IF;
+-- 2008/08/22 v1.8 ADD END
     -- 数量
     prc_set_xml('Z', lv_col_name || '_qty' ,TO_CHAR(ROUND(ln_quantity, gn_quantity_decml)));
     -- 金額
@@ -2717,8 +2827,16 @@ AS
       -- 在庫数量が確定していない場合
       prc_set_xml('N', 'inv_qty'  , '0');
       prc_set_xml('N', 'inv_amt'  , '0');
-      prc_set_xml('N', 'quantity' , '0');
-      prc_set_xml('N', 'amount'   , '0');
+-- 2008/08/20 v1.7 UPDATE START
+--      prc_set_xml('N', 'quantity' , '0');
+--      prc_set_xml('N', 'amount'   , '0');
+      -- 差異数量
+      ln_quantity := ln_quantity - ln_end_inv_qty;
+      prc_set_xml('N', 'quantity' ,TO_CHAR(ROUND(ln_quantity, gn_quantity_decml )));
+      -- 差異金額
+      ln_amount := ln_amount - ln_end_inv_amt ;
+      prc_set_xml('N', 'amount' ,TO_CHAR(ROUND(ln_amount, gn_amount_decml )));
+-- 2008/08/20 v1.7 UPDATE END
     ELSE
       -- 在庫数量が確定している場合
       -- 棚卸数量

@@ -7,7 +7,7 @@ AS
  * Description      : 受払その他実績リスト
  * MD.050/070       : 月次〆切処理帳票Issue1.0 (T_MD050_BPO_770)
  *                    月次〆切処理帳票Issue1.0 (T_MD070_BPO_77D)
- * Version          : 1.8
+ * Version          : 1.9
  *
  * Program List
  * -------------------------- ----------------------------------------------------------
@@ -43,6 +43,7 @@ AS
  *                                       されない現象への対応
  *  2008/08/07    1.8   R.Tomoyose       参照ビューの変更「xxcmn_rcv_pay_mst_porc_rma_v」→
  *                                                       「xxcmn_rcv_pay_mst_porc_rma04_v」
+ *  2008/08/20    1.9   A.Shiina         結合指摘#14対応
  *
  *****************************************************************************************/
 --
@@ -586,7 +587,10 @@ AS
               || '  ,xlei.item_attribute15    AS cost_mng_clss'     -- 原価管理区分
               || '  ,xlei.lot_ctl             AS lot_ctl'           -- ロット管理区分
               || '  ,xlei.actual_unit_price   AS actual_unit_price' -- 実際単価
-              || '  ,trn.trans_qty            AS trans_qty'         -- 数量
+-- 2008/08/20 v1.9 UPDATE START
+--              || '  ,trn.trans_qty            AS trans_qty'         -- 数量
+              || '  ,trn.trans_qty * TO_NUMBER(rpmv.rcv_pay_div) AS trans_qty' -- 数量
+-- 2008/08/20 v1.9 UPDATE END
               || '  ,DECODE(xlei.lot_ctl,'    || gv_lot_n || ',NULL'
               || '  ,xlei.lot_attribute18)    AS lot_desc'          -- 摘要
               ;
@@ -1307,6 +1311,8 @@ AS
       || '  ,xlei.item_attribute15    AS cost_mng_clss'     -- 原価管理区分
       || '  ,xlei.lot_ctl             AS lot_ctl'           -- ロット管理区分
       || '  ,xlei.actual_unit_price   AS actual_unit_price' -- 実際単価
+-- 2008/08/20 v1.9 UPDATE START
+/*
       || '  ,NVL2(rpmv.item_id, '
       ||      ' trn.trans_qty, '
       ||      ' DECODE(rpmv.dealings_div_name,''' || gv_haiki || ''' '
@@ -1314,6 +1320,13 @@ AS
       ||      '       , ''' || gv_mihon || ''' '
       ||      '       ,trn.trans_qty '
       ||      ',trn.trans_qty * TO_NUMBER(rpmv.rcv_pay_div))) trans_qty ' -- 数量
+*/
+      ||      ',DECODE(rpmv.dealings_div_name,''' || gv_haiki || ''' '
+      ||      '       ,trn.trans_qty '
+      ||      '       , ''' || gv_mihon || ''' '
+      ||      '       ,trn.trans_qty '
+      ||      ',trn.trans_qty * TO_NUMBER(rpmv.rcv_pay_div)) trans_qty ' -- 数量
+-- 2008/08/20 v1.9 UPDATE END
       || '  ,DECODE(xlei.lot_ctl,'    || gv_lot_n || ',NULL'
       || '  ,xlei.lot_attribute18)    AS lot_desc'          -- 摘要
       ;
@@ -1434,6 +1447,8 @@ AS
       || '  ,xlei.item_attribute15    AS cost_mng_clss'     -- 原価管理区分
       || '  ,xlei.lot_ctl             AS lot_ctl'           -- ロット管理区分
       || '  ,xlei.actual_unit_price   AS actual_unit_price' -- 実際単価
+-- 2008/08/20 v1.9 UPDATE START
+/*
       || '  ,NVL2(rpmv.item_id, '
       ||      ' trn.trans_qty, '
       ||      ' DECODE(rpmv.dealings_div_name,''' || gv_haiki || ''' '
@@ -1441,6 +1456,13 @@ AS
       ||      '       , ''' || gv_mihon || ''' '
       ||      '       ,trn.trans_qty '
       ||      ',trn.trans_qty * TO_NUMBER(rpmv.rcv_pay_div))) trans_qty ' -- 数量
+*/
+      ||      ',DECODE(rpmv.dealings_div_name,''' || gv_haiki || ''' '
+      ||      '       ,trn.trans_qty '
+      ||      '       , ''' || gv_mihon || ''' '
+      ||      '       ,trn.trans_qty '
+      ||      ',trn.trans_qty * TO_NUMBER(rpmv.rcv_pay_div)) trans_qty ' -- 数量
+-- 2008/08/20 v1.9 UPDATE END
       || '  ,DECODE(xlei.lot_ctl,'    || gv_lot_n || ',NULL'
       || '  ,xlei.lot_attribute18)    AS lot_desc'          -- 摘要
       ;
