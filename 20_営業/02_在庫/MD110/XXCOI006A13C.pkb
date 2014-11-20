@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCOI006A13C(body)
  * Description      : 棚卸減耗データ作成
  * MD.050           : 棚卸減耗データ作成 <MD050_COI_A13>
- * Version          : 1.5
+ * Version          : 1.6
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -32,6 +32,7 @@ AS
  *  2009/06/26    1.3   H.Sasaki         [0000258]棚卸対象外を処理対象とする
  *  2009/07/14    1.4   H.Sasaki         [0000679]棚卸減耗情報抽出カーソルのPT対応
  *  2009/07/29    1.5   N.Abe            [0000638]単位の取得項目修正
+ *  2009/12/17    1.6   N.Abe            [E_本稼動_00508]品目ステータス、売上対象区分チェックの修正
  *
  *****************************************************************************************/
 --
@@ -90,8 +91,10 @@ AS
   org_code_expt            EXCEPTION;     -- 在庫組織コード取得エラー
   org_id_expt              EXCEPTION;     -- 在庫組織ID取得エラー
   lock_expt                EXCEPTION;     -- ロック取得エラー
-  chk_item_expt            EXCEPTION;     -- 品目ステータス有効チェックエラー
-  chk_sales_item_expt      EXCEPTION;     -- 品目売上対象区分有効チェックエラー
+-- == 2009/12/17 V1.6 Deleted START ===============================================================
+--  chk_item_expt            EXCEPTION;     -- 品目ステータス有効チェックエラー
+--  chk_sales_item_expt      EXCEPTION;     -- 品目売上対象区分有効チェックエラー
+-- == 2009/12/17 V1.6 Deleted END   ===============================================================
   genmou_son_expt          EXCEPTION;     -- 棚卸減耗損取引タイプ名取得エラー
   genmou_eki_expt          EXCEPTION;     -- 棚卸減耗益取引タイプ名取得エラー
   tran_id_expt             EXCEPTION;     -- 取引タイプ取得エラー
@@ -401,10 +404,21 @@ AS
     -- ===============================
     -- *** ローカル定数 ***
     --メッセージ
-    cv_xxcoi1_msg_10291   CONSTANT VARCHAR2(16) := 'APP-XXCOI1-10291';  --品目ステータス有効エラー
-    cv_xxcoi1_msg_10229   CONSTANT VARCHAR2(16) := 'APP-XXCOI1-10229';  --品目売上対象区分エラー
+-- == 2009/12/17 V1.6 Modified START ===============================================================
+--    cv_xxcoi1_msg_10291   CONSTANT VARCHAR2(16) := 'APP-XXCOI1-10291';  --品目ステータス有効エラー
+--    cv_xxcoi1_msg_10229   CONSTANT VARCHAR2(16) := 'APP-XXCOI1-10229';  --品目売上対象区分エラー
+    cv_xxcoi1_msg_10409   CONSTANT VARCHAR2(16) := 'APP-XXCOI1-10409';  --品目ステータスチェックエラー
+    cv_xxcoi1_msg_10410   CONSTANT VARCHAR2(16) := 'APP-XXCOI1-10410';  --売上対象区分チェックエラー
+-- == 2009/12/17 V1.6 Modified END   ===============================================================
     --トークン
     cv_tkn_item_code      CONSTANT VARCHAR2(9)  := 'ITEM_CODE';
+-- == 2009/12/17 V1.6 Added START ===============================================================
+    cv_tkn_item_status    CONSTANT VARCHAR2(11) := 'ITEM_STATUS';
+    cv_tkn_cust_order     CONSTANT VARCHAR2(10) := 'CUST_ORDER';
+    cv_tkn_trn_enable     CONSTANT VARCHAR2(10) := 'TRN_ENABLE';
+    cv_tkn_stock_enable   CONSTANT VARCHAR2(12) := 'STOCK_ENABLE';
+    cv_tkn_return_enable  CONSTANT VARCHAR2(13) := 'RETURN_ENABLE';
+-- == 2009/12/17 V1.6 Added END   ===============================================================
     --コード＆フラグ
     cv_inactive           CONSTANT VARCHAR2(8)  := 'Inactive';
     cv_n                  CONSTANT VARCHAR2(1)  := 'N';
@@ -512,7 +526,36 @@ AS
       OR  (lt_return_enable      = cv_n))
     THEN
       --品目ステータス有効チェックエラー
-      RAISE chk_item_expt;
+-- == 2009/12/17 V1.6 Modified START ===============================================================
+--      RAISE chk_item_expt;
+      --品目ステータスチェックエラー
+      lv_errmsg := xxccp_common_pkg.get_msg(
+                  iv_application  => cv_xxcoi_short_name
+                 ,iv_name         => cv_xxcoi1_msg_10409
+                 ,iv_token_name1  => cv_tkn_item_code
+                 ,iv_token_value1 => lt_item_code
+                 ,iv_token_name2  => cv_tkn_item_status
+                 ,iv_token_value2 => lt_item_status
+                 ,iv_token_name3  => cv_tkn_cust_order
+                 ,iv_token_value3 => lt_cust_order_flg
+                 ,iv_token_name4  => cv_tkn_trn_enable
+                 ,iv_token_value4 => lt_transaction_enable
+                 ,iv_token_name5  => cv_tkn_stock_enable
+                 ,iv_token_value5 => lt_stock_enabled_flg
+                 ,iv_token_name6  => cv_tkn_return_enable
+                 ,iv_token_value6 => lt_return_enable
+                );
+      --
+      FND_FILE.PUT_LINE(
+          which  => FND_FILE.OUTPUT
+        , buff   => lv_errmsg );
+      --
+      FND_FILE.PUT_LINE(
+          which  => FND_FILE.LOG
+        , buff   => lv_errmsg );
+      --
+      ov_retcode := cv_status_warn;
+-- == 2009/12/17 V1.6 Modified END   ===============================================================
     END IF;
 --
     --=============================
@@ -520,8 +563,27 @@ AS
     --=============================
     --NULLの場合もエラーとする。
     IF (NVL(lt_sales_class, cv_2) <> cv_1) THEN
-      --品目売上対象区分有効チェックエラー
-      RAISE chk_sales_item_expt;
+-- == 2009/12/17 V1.6 Modified START ===============================================================
+--      --品目売上対象区分有効チェックエラー
+--      RAISE chk_sales_item_expt;
+      --売上対象区分チェックエラー
+      lv_errmsg := xxccp_common_pkg.get_msg(
+                  iv_application  => cv_xxcoi_short_name
+                 ,iv_name         => cv_xxcoi1_msg_10410
+                 ,iv_token_name1  => cv_tkn_item_code
+                 ,iv_token_value1 => lt_item_code
+                );
+      --
+      FND_FILE.PUT_LINE(
+          which  => FND_FILE.OUTPUT
+        , buff   => lv_errmsg );
+      --
+      FND_FILE.PUT_LINE(
+          which  => FND_FILE.LOG
+        , buff   => lv_errmsg );
+      --
+      ov_retcode := cv_status_warn;
+-- == 2009/12/17 V1.6 Modified END   ===============================================================
     END IF;
 --
 -- == 2009/07/29 V1.5 Deleted START ===============================================================
@@ -533,31 +595,33 @@ AS
     --==============================================================
 --
   EXCEPTION
-    --*** 品目ステータス有効チェックエラー ***
-    WHEN chk_item_expt THEN
-      lv_errmsg := xxccp_common_pkg.get_msg(
-                  iv_application  => cv_xxcoi_short_name
-                 ,iv_name         => cv_xxcoi1_msg_10291
-                 ,iv_token_name1  => cv_tkn_item_code
-                 ,iv_token_value1 => lt_item_code
-                );
-      ov_errmsg  := lv_errmsg;
-      lv_errbuf  := lv_errmsg;
-      ov_errbuf  := SUBSTRB(cv_pkg_name||cv_msg_cont||cv_prg_name||cv_msg_part||lv_errbuf,1,5000);
-      ov_retcode := cv_status_error;                     --# 任意 #
---
-    --*** 品目売上対象区分有効チェックエラー ***
-    WHEN chk_sales_item_expt THEN
-      lv_errmsg := xxccp_common_pkg.get_msg(
-                  iv_application  => cv_xxcoi_short_name
-                 ,iv_name         => cv_xxcoi1_msg_10229
-                 ,iv_token_name1  => cv_tkn_item_code
-                 ,iv_token_value1 => lt_item_code
-                );
-      ov_errmsg  := lv_errmsg;
-      lv_errbuf  := lv_errmsg;
-      ov_errbuf  := SUBSTRB(cv_pkg_name||cv_msg_cont||cv_prg_name||cv_msg_part||lv_errbuf,1,5000);
-      ov_retcode := cv_status_error;                     --# 任意 #
+-- == 2009/12/17 V1.6 Deleted START ===============================================================
+--    --*** 品目ステータス有効チェックエラー ***
+--    WHEN chk_item_expt THEN
+--      lv_errmsg := xxccp_common_pkg.get_msg(
+--                  iv_application  => cv_xxcoi_short_name
+--                 ,iv_name         => cv_xxcoi1_msg_10291
+--                 ,iv_token_name1  => cv_tkn_item_code
+--                 ,iv_token_value1 => lt_item_code
+--                );
+--      ov_errmsg  := lv_errmsg;
+--      lv_errbuf  := lv_errmsg;
+--      ov_errbuf  := SUBSTRB(cv_pkg_name||cv_msg_cont||cv_prg_name||cv_msg_part||lv_errbuf,1,5000);
+--      ov_retcode := cv_status_error;                     --# 任意 #
+----
+--    --*** 品目売上対象区分有効チェックエラー ***
+--    WHEN chk_sales_item_expt THEN
+--      lv_errmsg := xxccp_common_pkg.get_msg(
+--                  iv_application  => cv_xxcoi_short_name
+--                 ,iv_name         => cv_xxcoi1_msg_10229
+--                 ,iv_token_name1  => cv_tkn_item_code
+--                 ,iv_token_value1 => lt_item_code
+--                );
+--      ov_errmsg  := lv_errmsg;
+--      lv_errbuf  := lv_errmsg;
+--      ov_errbuf  := SUBSTRB(cv_pkg_name||cv_msg_cont||cv_prg_name||cv_msg_part||lv_errbuf,1,5000);
+--      ov_retcode := cv_status_error;                     --# 任意 #
+-- == 2009/12/17 V1.6 Deleted END   ===============================================================
 --
 --#################################  固定例外処理部 START   ####################################
 --
@@ -1128,10 +1192,19 @@ AS
         ,ov_errbuf            => lv_errbuf                            -- エラー・メッセージ           --# 固定 #
         ,ov_retcode           => lv_retcode                           -- リターン・コード             --# 固定 #
         ,ov_errmsg            => lv_errmsg);                          -- ユーザー・エラー・メッセージ --# 固定 #
-      IF (lv_retcode <> cv_status_normal) THEN
-      --正常終了以外
+-- == 2009/12/17 V1.6 Modified START ===============================================================
+--      IF (lv_retcode <> cv_status_normal) THEN
+--      -- 正常終了以外
+--        RAISE global_process_expt;
+--      END IF;
+      IF (lv_retcode = cv_status_error) THEN
+        -- 異常終了
         RAISE global_process_expt;
+      ELSIF (lv_retcode = cv_status_warn) THEN
+        --警告終了
+        gn_warn_cnt := gn_warn_cnt + 1;
       END IF;
+-- == 2009/12/17 V1.6 Modified END ===============================================================
 --
       --1件目のレコード又は、前レコードと拠点コードが違う場合
       IF    ((lt_old_base_code IS NULL)
@@ -1406,6 +1479,14 @@ AS
       ,buff   => ''
     );
     --
+-- == 2009/12/17 V1.6 Added START ===============================================================
+    IF    ( (gn_warn_cnt > 0)
+      AND   (lv_retcode = cv_status_normal)
+          )
+    THEN
+      lv_retcode := cv_status_warn;
+    END IF;
+-- == 2009/12/17 V1.6 Added END   ===============================================================
     --終了メッセージ
     IF (lv_retcode = cv_status_normal) THEN
       lv_message_code := cv_normal_msg;
