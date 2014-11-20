@@ -5,7 +5,7 @@
 ## Program Name     : XXCCP009A01C                                              ##
 ## Description      : 画面起動ジョブネット対応                                  ##
 ## MD.050           : 画面起動ジョブネット対応 <MD050_CCP_009_A01>              ##
-## Version          : 1.4                                                       ##
+## Version          : 1.5                                                       ##
 ##                                                                              ##
 ## Parameter List                                                               ##
 ## -------- ----------------------------------------------------------          ##
@@ -68,6 +68,11 @@
 ##                                         確認する方法を変更。                 ##
 ##                                         ステータステーブル作成位置変更。　   ##
 ##                                         ステータステーブル更新処理追加。     ##
+##  2009/05/11    1.5   Masayuki.Sano    [障害T1_0784]                          ##
+##                                       ・ジョブ状況ステータス更新処理で       ##
+##                                         whoカラムを更新しない                ##
+##                                       ・ジョブ状況ステータス更新処理で       ##
+##                                         ステータスが"0","i"時のみ更新する    ##
 ##                                                                              ##
 ##################################################################################
 
@@ -166,6 +171,7 @@ update_job_process()
   # ** 変数定義 **
   L_return=0
   L_if_job_status_id=""  # 対向システムジョブ状況テーブルID
+  L_update_date=`date +"%Y%m%d%H%M%S"`  # 2009/05/11 Ver.1.5 Masayuki.Sano Add
   # ** 処理定義 **
   for L_if_job_status_id in "${@}"
   do
@@ -176,13 +182,20 @@ update_job_process()
       UPDATE xxccp_if_job_status xijs
       SET    xijs.job_process            = 'E'   -- ジョブ状況ステータス
             ,xijs.last_updated_by        = TO_NUMBER('${C_requested_by}')
-            ,xijs.last_update_date       = TO_DATE('${C_date2}','YYYYMMDDHH24MISS')
+-- 2009/05/11 Ver.1.5 Masayuki.Sano Update Start
+--            ,xijs.last_update_date       = TO_DATE('${C_date2}','YYYYMMDDHH24MISS')
+            ,xijs.last_update_date       = TO_DATE('${L_update_date}','YYYYMMDDHH24MISS')
+-- 2009/05/11 Ver.1.5 Masayuki.Sano Update End
             ,xijs.last_update_login      = TO_NUMBER('${C_last_update_login}')
             ,xijs.request_id             = TO_NUMBER('${C_request_id}')
             ,xijs.program_application_id = TO_NUMBER('${C_program_application_id}')
             ,xijs.program_id             = TO_NUMBER('${C_concurrent_program_id}')
-            ,xijs.program_update_date    = TO_DATE('${C_date2}','YYYYMMDDHH24MISS')
+-- 2009/05/11 Ver.1.5 Masayuki.Sano Update Start
+--            ,xijs.program_update_date    = TO_DATE('${C_date2}','YYYYMMDDHH24MISS')
+            ,xijs.program_update_date    = TO_DATE('${L_update_date}','YYYYMMDDHH24MISS')
+-- 2009/05/11 Ver.1.5 Masayuki.Sano Update End
       WHERE  xijs.if_job_status_id = $L_if_job_status_id
+      AND    xijs.status_code NOT IN ('1','8','9')  -- 2009/04/02 Ver.1.5 Masayuki.Sano Add
       ;
       EXIT SUCCESS COMMIT
 EOF
@@ -1779,7 +1792,7 @@ do
   SELECT 'L_execute_cnt='''|| COUNT(1) ||''''
   FROM   xxccp_if_job_status xijs
   WHERE  xijs.exec_request_id = TO_NUMBER('${L_exec_req_id}')
-  AND    xijs.status_code = 0
+  AND    xijs.status_code = '0'
   AND    xijs.job_process = 'R'
   ;
   EXIT
