@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCOP004A03C(body)
  * Description      : 引取計画集計
  * MD.050           : 引取計画集計 MD050_COP_004_A03
- * Version          : 1.1
+ * Version          : 1.2
  *
  * Program List
  * ------------------------------ ----------------------------------------------------------
@@ -30,6 +30,7 @@ AS
  * ------------- ----- ---------------- -------------------------------------------------
  *  2008/11/03    1.0  SCS.Kikuchi       新規作成
  *  2009/02/13    1.1  SCS.Kikuchi       結合テスト仕様変更（結合障害No.008,009）
+ *  2009/04/07    1.2  SCS.Kikuchi       T1_0271対応
  *
  *****************************************************************************************/
 --
@@ -1220,6 +1221,11 @@ AS
     -- エラーメッセージ
 --
     -- *** ローカル変数 ***
+--20090407_Ver1.2_T1_0271_SCS.Kikuchi_ADD_START
+    -- 共通関数：ケース換算用
+    ln_case_quantity   NUMBER;          -- ケース数量
+--20090407_Ver1.2_T1_0271_SCS.Kikuchi_ADD_END
+
     -- 処理結果レポート出力文字列バッファ
     lv_title_buff VARCHAR2(256);
     lv_buff       VARCHAR2(256);
@@ -1308,6 +1314,22 @@ AS
       END IF;
 --★v1.1 Add End
 
+--20090407_Ver1.2_T1_0271_SCS.Kikuchi_ADD_START
+      --[共通関数]ケース数換算関数の呼び出し（ケース数計算）
+      xxcop_common_pkg.get_case_quantity(
+        iv_item_no               => get_csv_output_rec.item_code     -- 品目コード
+       ,in_individual_quantity   => get_csv_output_rec.total_amount  -- バラ数量
+       ,in_trunc_digits          => 0                                -- 切捨て桁数
+       ,on_case_quantity         => ln_case_quantity        -- ケース数量
+       ,ov_retcode               => lv_retcode              -- リターンコード
+       ,ov_errbuf                => lv_errbuf               -- エラー・メッセージ
+       ,ov_errmsg                => lv_errmsg               -- ユーザー・エラー・メッセージ
+      );
+      IF ( lv_retcode = cv_status_error ) THEN
+        RAISE internal_process_expt;
+      END IF;
+--20090407_Ver1.2_T1_0271_SCS.Kikuchi_ADD_END
+
       -- データ行
       lv_buff :=           get_csv_output_rec.schedule_type
         || cv_csv_cont ||  get_csv_output_rec.whse_code
@@ -1315,7 +1337,10 @@ AS
         || cv_csv_cont ||  get_csv_output_rec.item_code
         || cv_csv_cont ||  TO_CHAR(get_csv_output_rec.count_period_from,cv_date_format6)
         || cv_csv_cont ||  TO_CHAR(get_csv_output_rec.count_period_to  ,cv_date_format6)
-        || cv_csv_cont ||  TO_CHAR(get_csv_output_rec.total_amount)
+--20090407_Ver1.2_T1_0271_SCS.Kikuchi_MOD_START
+--        || cv_csv_cont ||  TO_CHAR(get_csv_output_rec.total_amount)
+        || cv_csv_cont ||  TO_CHAR(ln_case_quantity)
+--20090407_Ver1.2_T1_0271_SCS.Kikuchi_MOD_END
         || cv_csv_cont ||  get_csv_output_rec.planed_item_flg
         || cv_csv_cont ||  get_csv_output_rec.no_shipment_results
         ;
@@ -1331,6 +1356,15 @@ AS
     END LOOP csv_output_loop;
 --
   EXCEPTION
+--20090407_Ver1.2_T1_0271_SCS.Kikuchi_ADD_START
+    WHEN internal_process_expt THEN
+      ov_errmsg  := NULL;
+      ov_errbuf  := NVL(lv_errbuf,lv_errmsg);
+      ov_retcode := cv_status_error;
+
+      -- 正常件数加算
+      gn_normal_cnt := 0;
+--20090407_Ver1.2_T1_0271_SCS.Kikuchi_ADD_END
 --
 --#################################  固定例外処理部 START   ####################################
 --■当処理では使用しない■■■■■■■■■■■■■■■■■■■■■■
